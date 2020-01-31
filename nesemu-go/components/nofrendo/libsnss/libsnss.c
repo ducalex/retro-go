@@ -8,8 +8,6 @@
       $Id: libsnss.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 /**************************************************************************/
-#include "esp_heap_caps.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -207,7 +205,6 @@ SNSS_OpenFile (SNSS_FILE **snssFile, const char *filename, SNSS_OPEN_MODE mode)
    *snssFile = malloc(sizeof(SNSS_FILE));
    if (NULL == *snssFile)
    {
-       abort();
       return SNSS_OUT_OF_MEMORY;
    }
 
@@ -228,7 +225,6 @@ SNSS_OpenFile (SNSS_FILE **snssFile, const char *filename, SNSS_OPEN_MODE mode)
 
    if (NULL == (*snssFile)->fp)
    {
-       //abort();
       free(*snssFile);
       *snssFile = NULL;
       return SNSS_OPEN_FAILED;
@@ -266,7 +262,7 @@ SNSS_CloseFile (SNSS_FILE **snssFile)
       /* write the header again to update block count */
       if (SNSS_OK != (code = SNSS_WriteFileHeader(*snssFile)))
       {
-         return SNSS_CLOSE_FAILED;
+         goto _error;
       }
 
       fseek((*snssFile)->fp, prevLoc, SEEK_SET);
@@ -274,13 +270,18 @@ SNSS_CloseFile (SNSS_FILE **snssFile)
 
    if (fclose ((*snssFile)->fp) != 0)
    {
-      return SNSS_CLOSE_FAILED;
+      goto _error;
    }
 
    free(*snssFile);
    *snssFile = NULL;
 
    return SNSS_OK;
+
+_error:
+   free(*snssFile);
+   *snssFile = NULL;
+   return SNSS_CLOSE_FAILED;
 }
 
 /**************************************************************************/
@@ -378,12 +379,12 @@ SNSS_ReadBaseBlock (SNSS_FILE *snssFile)
 
    if (SNSS_ReadBlockHeader (&header, snssFile) != SNSS_OK)
    {
-      return SNSS_READ_FAILED;
+      goto _error;
    }
 
    if (fread (blockBytes, MIN (header.blockLength, BASE_BLOCK_LENGTH), 1, snssFile->fp) != 1)
    {
-      return SNSS_READ_FAILED;
+      goto _error;
    }
 
    snssFile->baseBlock.regA = blockBytes[0x0];
@@ -405,7 +406,12 @@ SNSS_ReadBaseBlock (SNSS_FILE *snssFile)
    snssFile->baseBlock.spriteRamAddress = blockBytes[0x192F];
    snssFile->baseBlock.tileXOffset = blockBytes[0x1930];
 
+   free(blockBytes);
    return SNSS_OK;
+
+_error:
+   free(blockBytes);
+   return SNSS_READ_FAILED;
 }
 
 /**************************************************************************/
@@ -427,6 +433,7 @@ SNSS_WriteBaseBlock (SNSS_FILE *snssFile)
 
    if ((returnCode = SNSS_WriteBlockHeader (&header, snssFile)) != SNSS_OK)
    {
+      free(blockBytes);
       return returnCode;
    }
 
@@ -453,11 +460,13 @@ SNSS_WriteBaseBlock (SNSS_FILE *snssFile)
 
    if (fwrite (blockBytes, BASE_BLOCK_LENGTH, 1, snssFile->fp) != 1)
    {
+      free(blockBytes);
       return SNSS_WRITE_FAILED;
    }
 
    snssFile->headerBlock.numberOfBlocks++;
 
+   free(blockBytes);
    return SNSS_OK;
 }
 

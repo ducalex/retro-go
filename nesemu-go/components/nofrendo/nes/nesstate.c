@@ -34,9 +34,9 @@
 #include <libsnss.h>
 #include "nes6502.h"
 
-#include "../../odroid/odroid_sdcard.h"
-#include "../../odroid/odroid_settings.h"
-#include "../../odroid/odroid_display.h"
+#include "odroid_sdcard.h"
+#include "odroid_settings.h"
+#include "odroid_display.h"
 
 extern nes_t* console_nes;
 extern nes6502_context cpu;
@@ -389,7 +389,7 @@ static int state_save(char* fn)
    /* open our state file for writing */
    status = SNSS_OpenFile(&snssFile, fn, SNSS_OPEN_WRITE);
    if (SNSS_OK != status)
-      goto _error;
+      return -1;
 
    printf("state_save: SNSS_OpenFile OK\n");
 
@@ -474,7 +474,7 @@ static int state_load(char* fn)
    {
        printf("state_load: file '%s' could not be opened.\n", fn);
        forceConsoleReset = true;
-       return 0; //goto _error;
+       return -1; //goto _error;
   }
 
 
@@ -545,31 +545,17 @@ void save_sram()
     char* romPath = odroid_settings_RomFilePath_get();
     if (romPath)
     {
-        esp_err_t r = odroid_sdcard_open(SD_BASE_PATH);
-        if (r != ESP_OK)
-        {
-            odroid_display_show_sderr(ODROID_SD_ERR_NOCARD);
-            abort();
-        }
-
-        char* fileName = odroid_util_GetFileName(romPath);
-        if (!fileName) abort();
-
-        char* pathName = odroid_sdcard_create_savefile_path(SD_BASE_PATH, fileName);
+        char* pathName = odroid_sdcard_get_savefile_path(romPath);
         if (!pathName) abort();
 
-        state_save(pathName);
-
-        free(pathName);
-        free(fileName);
-        free(romPath);
-
-        r = odroid_sdcard_close();
-        if (r != ESP_OK)
+        if (state_save(pathName) < 0)
         {
             odroid_display_show_sderr(ODROID_SD_ERR_NOCARD);
             abort();
         }
+
+        free(pathName);
+        free(romPath);
     }
 
     odroid_display_unlock();
@@ -582,31 +568,17 @@ void load_sram()
     char* romName = odroid_settings_RomFilePath_get();
     if (romName)
     {
-        esp_err_t r = odroid_sdcard_open(SD_BASE_PATH);
-        if (r != ESP_OK)
-        {
-            odroid_display_show_sderr(ODROID_SD_ERR_NOCARD);
-            abort();
-        }
-
-        char* fileName = odroid_util_GetFileName(romName);
-        if (!fileName) abort();
-
-        char* pathName = odroid_sdcard_create_savefile_path(SD_BASE_PATH, fileName);
+        char* pathName = odroid_sdcard_get_savefile_path(romName);
         if (!pathName) abort();
 
-        state_load(pathName);
+        if (state_load(pathName) < 0)
+        {
+            // odroid_display_show_sderr(ODROID_SD_ERR_NOCARD);
+            // abort();
+        }
 
         free(pathName);
-        free(fileName);
         free(romName);
-
-        r = odroid_sdcard_close();
-        if (r != ESP_OK)
-        {
-            odroid_display_show_sderr(ODROID_SD_ERR_NOCARD);
-            abort();
-        }
     }
 
     odroid_display_unlock();

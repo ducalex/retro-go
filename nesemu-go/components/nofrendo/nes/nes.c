@@ -44,7 +44,7 @@
 
 #include <esp_attr.h>
 #include "esp_system.h"
-#include "../../odroid/odroid_input.h"
+#include "odroid_input.h"
 
 
 #define  NES_CLOCK_DIVIDER    12
