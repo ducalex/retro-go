@@ -26,7 +26,6 @@ static bool show_cover = true;
 static int  selected_emu = 0;
 static int  font_size = 0;
 static int  theme = 0;
-static bool redraw = true;
 
 static bool font_size_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
@@ -113,6 +112,7 @@ void retro_loop()
     int last_key = -1;
     int selected_emu_last = -1;
     int idle_counter = 0;
+    bool redraw = true;
 
     emulators_init();
     load_config();
