@@ -1,23 +1,22 @@
 #include "freertos/FreeRTOS.h"
 #include "esp_system.h"
 #include "esp_event.h"
-#include "nvs_flash.h"
 #include "esp_partition.h"
 #include "driver/i2s.h"
 #include "esp_spiffs.h"
-#include "nvs_flash.h"
 #include "esp_sleep.h"
 #include "driver/rtc_io.h"
 #include "esp_ota_ops.h"
 
 #include "../components/smsplus/shared.h"
 
-#include "../components/odroid/odroid_settings.h"
-#include "../components/odroid/odroid_audio.h"
-#include "../components/odroid/odroid_input.h"
-#include "../components/odroid/odroid_system.h"
-#include "../components/odroid/odroid_display.h"
-#include "../components/odroid/odroid_sdcard.h"
+#include "odroid_settings.h"
+#include "odroid_audio.h"
+#include "odroid_input.h"
+#include "odroid_system.h"
+#include "odroid_display.h"
+#include "odroid_overlay.h"
+#include "odroid_sdcard.h"
 
 #include <dirent.h>
 
@@ -76,6 +75,7 @@ static struct bitmap_meta *update = &update1;
 
 bool scaling_enabled = true;
 bool previous_scaling_enabled = true;
+bool force_redraw = false;
 
 volatile bool videoTaskIsRunning = false;
 void videoTask(void *arg)
@@ -91,10 +91,12 @@ void videoTask(void *arg)
         if (!meta) break;
 
         bool scale_changed = (previous_scaling_enabled != scaling_enabled);
-        if (scale_changed)
+        bool redraw = force_redraw || scale_changed;
+        if (redraw)
         {
             ili9341_blank_screen();
             previous_scaling_enabled = scaling_enabled;
+            force_redraw = false;
             if (scaling_enabled) {
                 odroid_display_set_scale(meta->width, meta->height, 1.f);
             } else {
@@ -103,7 +105,7 @@ void videoTask(void *arg)
         }
 
         ili9341_write_frame_8bit(meta->buffer,
-                                 scale_changed ? NULL : meta->diff,
+                                 redraw ? NULL : meta->diff,
                                  meta->width, meta->height,
                                  meta->stride, PIXEL_MASK, meta->palette);
 
@@ -145,7 +147,7 @@ char unalChar(const unsigned char *adr) {
 const char* StateFileName = "/storage/smsplus.sav";
 const char* StoragePath = "/storage";
 
-static void SaveState()
+void SaveState()
 {
     // Save sram
     odroid_input_battery_monitor_enabled_set(0);
@@ -157,10 +159,7 @@ static void SaveState()
         odroid_display_lock();
         odroid_display_drain_spi();
 
-        char* fileName = odroid_util_GetFileName(romName);
-        if (!fileName) abort();
-
-        char* pathName = odroid_sdcard_create_savefile_path(SD_BASE_PATH, fileName);
+        char* pathName = odroid_sdcard_get_savefile_path(romName);
         if (!pathName) abort();
 
         // esp_err_t r = odroid_sdcard_open(SD_BASE_PATH);
@@ -194,7 +193,6 @@ static void SaveState()
         odroid_display_unlock();
 
         free(pathName);
-        free(fileName);
         free(romName);
     }
     else
@@ -217,7 +215,7 @@ static void SaveState()
     odroid_input_battery_monitor_enabled_set(1);
 }
 
-static void LoadState(const char* cartName)
+void LoadState(const char* cartName)
 {
     char* romName = odroid_settings_RomFilePath_get();
     if (romName)
@@ -225,10 +223,7 @@ static void LoadState(const char* cartName)
         odroid_display_lock();
         odroid_display_drain_spi();
 
-        char* fileName = odroid_util_GetFileName(romName);
-        if (!fileName) abort();
-
-        char* pathName = odroid_sdcard_create_savefile_path(SD_BASE_PATH, fileName);
+        char* pathName = odroid_sdcard_get_savefile_path(romName);
         if (!pathName) abort();
 
         // esp_err_t r = odroid_sdcard_open(SD_BASE_PATH);
@@ -261,7 +256,6 @@ static void LoadState(const char* cartName)
         odroid_display_unlock();
 
         free(pathName);
-        free(fileName);
         free(romName);
     }
     else
@@ -283,7 +277,7 @@ static void LoadState(const char* cartName)
     Volume = odroid_settings_Volume_get();
 }
 
-static void PowerDown()
+void PowerDown()
 {
     // Stop tasks
     printf("PowerDown: stopping tasks.\n");
@@ -311,7 +305,7 @@ static void PowerDown()
     abort();
 }
 
-static void DoHome()
+void QuitEmulator(bool save)
 {
     esp_err_t err;
 
@@ -322,44 +316,17 @@ static void DoHome()
     printf("PowerDown: stopping audio.\n");
     odroid_audio_terminate();
 
+    ili9341_blank_screen();
 
     void *exitVideoTask = NULL;
     xQueueSend(vidQueue, &exitVideoTask, portMAX_DELAY);
     while (videoTaskIsRunning) { vTaskDelay(10); }
 
-
-    // state
-    printf("PowerDown: Saving state.\n");
-    SaveState();
-
-
-    // Set menu application
-    odroid_system_application_set(0);
-
-
-    // Reset
-    esp_restart();
-}
-
-static void DoHomeNoSave()
-{
-    esp_err_t err;
-
-    // Clear audio to prevent studdering
-    printf("PowerDown: stopping audio.\n");
-    odroid_audio_terminate();
-
-
-    // Stop tasks
-    printf("PowerDown: stopping tasks.\n");
-
-void *exitVideoTask = NULL;
-xQueueSend(vidQueue, &exitVideoTask, portMAX_DELAY);
-while (videoTaskIsRunning)
-{
-   vTaskDelay(10);
-}
-
+    if (save) {
+        // state
+        printf("PowerDown: Saving state.\n");
+        SaveState();
+    }
 
     // Set menu application
     odroid_system_application_set(0);
@@ -390,12 +357,9 @@ void app_main(void)
     if (!framebuffer[1]) abort();
     printf("app_main: framebuffer[1]=%p\n", framebuffer[1]);
 
-
-    nvs_flash_init();
-
+    odroid_settings_init();
+    odroid_overlay_init();
     odroid_system_init();
-
-    // Joystick.
     odroid_input_gamepad_init();
     odroid_input_battery_level_init();
 
@@ -403,23 +367,7 @@ void app_main(void)
     // Boot state overrides
     bool forceConsoleReset = false;
 
-
-    ili9341_prepare();
-
-
-    // Disable LCD CD to prevent garbage
-    const gpio_num_t LCD_PIN_NUM_CS = GPIO_NUM_5;
-
-    gpio_config_t io_conf = { 0 };
-    io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
-    io_conf.mode = GPIO_MODE_OUTPUT;
-    io_conf.pin_bit_mask = (1ULL << LCD_PIN_NUM_CS);
-    io_conf.pull_down_en = 0;
-    io_conf.pull_up_en = 0;
-
-    gpio_config(&io_conf);
-    gpio_set_level(LCD_PIN_NUM_CS, 1);
-
+	esp_err_t sd_init = odroid_sdcard_open(SD_BASE_PATH);
 
     switch (esp_sleep_get_wakeup_cause())
     {
@@ -474,87 +422,6 @@ void app_main(void)
 
     ili9341_init();
 
-#if 0
-    void* const romAddress = (void*)0x3f800000;
-    size_t cartSize = 1024 * 1024;
-
-    char* cartName = odroid_settings_RomFilePath_get();
-    if (!cartName)
-    {
-        printf("app_main: Reading cartName from flash.\n");
-
-        // determine cart type
-        cartName = (char*)malloc(1024);
-        if (!cartName)
-            abort();
-
-        esp_err_t err1 = spi_flash_read(0x300000, cartName, 1024);
-        if (err1 != ESP_OK)
-        {
-            printf("spi_flash_read failed. (%d)\n", err1);
-            abort();
-        }
-
-        cartName[1023] = 0;
-
-
-        // copy from flash
-        spi_flash_mmap_handle_t hrom;
-
-        const esp_partition_t* part = esp_partition_find_first(0x40, 0, NULL);
-        if (part == 0)
-        {
-        	printf("esp_partition_find_first failed.\n");
-        	abort();
-        }
-
-        void* flashAddress;
-        esp_err_t err = esp_partition_mmap(part, 0, cartSize, SPI_FLASH_MMAP_DATA, (const void**)&flashAddress, &hrom);
-        if (err != ESP_OK)
-        {
-            printf("esp_partition_mmap failed. (%d)\n", err);
-            abort();
-        }
-
-        memcpy(romAddress, flashAddress, cartSize);
-    }
-    else
-    {
-        printf("app_main: loading from sdcard.\n");
-
-        // copy from SD card
-        esp_err_t r = odroid_sdcard_open(SD_BASE_PATH);
-        if (r != ESP_OK)
-        {
-            odroid_display_show_sderr(ODROID_SD_ERR_NOCARD);
-            abort();
-        }
-
-        char* path = cartName; //(char*)malloc(1024);
-        // if (!path) abort();
-        //
-        // strcpy(path, "/sd/roms/sms/");
-        // strcat(path, cartName);
-
-        cartSize = odroid_sdcard_copy_file_to_memory(path, romAddress);
-        //free(path);
-        if (cartSize == 0)
-        {
-            odroid_display_show_sderr(ODROID_SD_ERR_BADFILE);
-            abort();
-        }
-
-        r = odroid_sdcard_close();
-        if (r != ESP_OK)
-        {
-            odroid_display_show_sderr(ODROID_SD_ERR_NOCARD);
-            abort();
-        }
-    }
-
-    printf("app_main: cartName='%s'\n", cartName);
-#else
-
     const char* FILENAME = NULL;
 
     char* cartName = odroid_settings_RomFilePath_get();
@@ -568,28 +435,10 @@ void app_main(void)
         FILENAME = cartName;
     }
 
-    // Open SD card
-    esp_err_t r = odroid_sdcard_open(SD_BASE_PATH);
-    if (r != ESP_OK)
-    {
-        odroid_display_show_sderr(ODROID_SD_ERR_NOCARD);
-        abort();
-    }
-
     // Load the ROM
     load_rom(FILENAME);
 
     //printf("%s: cart.crc=%#010lx\n", __func__, cart.crc);
-
-    // // Close SD card
-    // r = odroid_sdcard_close();
-    // if (r != ESP_OK)
-    // {
-    //     odroid_display_show_sderr(ODROID_SD_ERR_NOCARD);
-    //     abort();
-    // }
-
-#endif
 
 #if 0
     if (strstr(cartName, ".sms") != 0 ||
@@ -605,7 +454,8 @@ void app_main(void)
     free(cartName);
 #endif
 
-
+    scaling_enabled = odroid_settings_ScaleDisabled_get(1) ? false : true;
+    previous_scaling_enabled = !scaling_enabled;
 
     odroid_audio_init(odroid_settings_AudioSink_get(), AUDIO_SAMPLE_RATE);
 
@@ -649,32 +499,21 @@ void app_main(void)
     system_init2();
     system_reset();
 
-    // Restore state
-    LoadState(cartName);
-
-    if (forceConsoleReset)
+    if (!forceConsoleReset)
     {
-        // Reset emulator if button held at startup to
-        // override save state
-        printf("%s: forceConsoleReset=true\n", __func__);
-        system_reset();
+        // Restore state
+        LoadState(cartName);
     }
 
 
-    odroid_gamepad_state previousState;
-    odroid_input_gamepad_read(&previousState);
+    odroid_gamepad_state previousJoystickState;
+    odroid_input_gamepad_read(&previousJoystickState);
 
     uint startTime;
     uint stopTime;
     uint totalElapsedTime = 0;
     int frame = 0;
     uint16_t muteFrameCount = 0;
-    uint16_t powerFrameCount = 0;
-
-    bool ignoreMenuButton = previousState.values[ODROID_INPUT_MENU];
-
-    scaling_enabled = odroid_settings_ScaleDisabled_get(ODROID_SCALE_DISABLE_SMS) ? false : true;
-    previous_scaling_enabled = !scaling_enabled;
 
     int refresh = (sms.display == DISPLAY_NTSC) ? 60 : 50;
     const int frameTime = CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / refresh;
@@ -689,50 +528,20 @@ void app_main(void)
         odroid_gamepad_state joystick;
         odroid_input_gamepad_read(&joystick);
 
-        if (ignoreMenuButton)
-        {
-            ignoreMenuButton = previousState.values[ODROID_INPUT_MENU];
+        if (joystick.values[ODROID_INPUT_MENU]) {
+            odroid_overlay_game_menu();
+            force_redraw = true;
         }
-
-        if (!ignoreMenuButton && previousState.values[ODROID_INPUT_MENU] && joystick.values[ODROID_INPUT_MENU])
-        {
-            ++powerFrameCount;
+        else if (joystick.values[ODROID_INPUT_VOLUME]) {
+            odroid_overlay_settings_menu(NULL, 0);
+            force_redraw = true;
         }
-        else
-        {
-            powerFrameCount = 0;
-        }
-
-        // Note: this will cause an exception on 2nd Core in Debug mode
-        if (powerFrameCount > 60 * 1)
-        {
-            DoHome();
-        }
-
-        if (previousState.values[ODROID_INPUT_VOLUME] && !joystick.values[ODROID_INPUT_VOLUME])
-        {
-            odroid_audio_volume_change();
-            printf("main: Volume=%d\n", odroid_audio_volume_get());
-        }
-
-        if (!ignoreMenuButton && previousState.values[ODROID_INPUT_MENU] && !joystick.values[ODROID_INPUT_MENU])
-        {
-            DoHomeNoSave();
-        }
-
-
-        // Scaling
-        if (joystick.values[ODROID_INPUT_START] && !previousState.values[ODROID_INPUT_RIGHT] && joystick.values[ODROID_INPUT_RIGHT])
-        {
-            scaling_enabled = !scaling_enabled;
-            odroid_settings_ScaleDisabled_set(ODROID_SCALE_DISABLE_SMS, scaling_enabled ? 0 : 1);
-        }
-
 
         startTime = xthal_get_ccount();
 
+        int smsButtons = 0;
+        int smsSystem = 0;
 
-        int smsButtons=0;
     	if (joystick.values[ODROID_INPUT_UP]) smsButtons |= INPUT_UP;
     	if (joystick.values[ODROID_INPUT_DOWN]) smsButtons |= INPUT_DOWN;
     	if (joystick.values[ODROID_INPUT_LEFT]) smsButtons |= INPUT_LEFT;
@@ -740,9 +549,7 @@ void app_main(void)
     	if (joystick.values[ODROID_INPUT_A]) smsButtons |= INPUT_BUTTON2;
     	if (joystick.values[ODROID_INPUT_B]) smsButtons |= INPUT_BUTTON1;
 
-        int smsSystem=0;
-
-		if (sms.console == CONSOLE_SMS||sms.console == CONSOLE_SMS2)
+		if (sms.console == CONSOLE_SMS || sms.console == CONSOLE_SMS2)
 		{
 			if (joystick.values[ODROID_INPUT_START]) smsSystem |= INPUT_PAUSE;
 			if (joystick.values[ODROID_INPUT_SELECT]) smsSystem |= INPUT_START;
@@ -753,8 +560,8 @@ void app_main(void)
 			if (joystick.values[ODROID_INPUT_SELECT]) smsSystem |= INPUT_PAUSE;
 		}
 
-    	input.pad[0]=smsButtons;
-        input.system=smsSystem;
+    	input.pad[0] = smsButtons;
+        input.system = smsSystem;
 
 
         if (sms.console == CONSOLE_COLECO)
@@ -775,7 +582,7 @@ void app_main(void)
                         coleco.keypad[0] = 10; // *
                     }
 
-                    if (previousState.values[ODROID_INPUT_SELECT] &&
+                    if (previousJoystickState.values[ODROID_INPUT_SELECT] &&
                         !joystick.values[ODROID_INPUT_SELECT])
                     {
                         system_reset();
@@ -796,7 +603,7 @@ void app_main(void)
                         coleco.keypad[0] = 1;
                     }
 
-                    if (previousState.values[ODROID_INPUT_SELECT] &&
+                    if (previousJoystickState.values[ODROID_INPUT_SELECT] &&
                         !joystick.values[ODROID_INPUT_SELECT])
                     {
                         system_reset();
@@ -821,7 +628,7 @@ void app_main(void)
                         coleco.keypad[0] = 1;
                     }
 
-                    if (previousState.values[ODROID_INPUT_SELECT] &&
+                    if (previousJoystickState.values[ODROID_INPUT_SELECT] &&
                         !joystick.values[ODROID_INPUT_SELECT])
                     {
                         system_reset();
@@ -829,6 +636,8 @@ void app_main(void)
                     break;
             }
         }
+
+        previousJoystickState = joystick;
 
         if (!skipFrame)
         {
@@ -952,9 +761,6 @@ void app_main(void)
 
 
         stopTime = xthal_get_ccount();
-
-        previousState = joystick;
-
 
         elapsedTime = (stopTime > startTime) ?
             (stopTime - startTime) :

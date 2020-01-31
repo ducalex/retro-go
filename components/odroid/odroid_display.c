@@ -1,11 +1,12 @@
 #pragma GCC optimize ("O3")
 
 #include "odroid_display.h"
-#include "image_sd_card_alert.h"
-#include "image_sd_card_unknown.h"
-#include "hourglass_empty_black_48dp.h"
-
-#include "image_splash.h"
+#include "odroid_settings.h"
+#include "odroid_colors.h"
+#include "odroid_image_sd_card_alert.h"
+#include "odroid_image_sd_card_unknown.h"
+#include "odroid_image_hourglass.h"
+#include "odroid_image_splash.h"
 
 #include "freertos/FreeRTOS.h"
 #include "esp_system.h"
@@ -57,15 +58,18 @@ bool use_polling = false;
 // screen than try to break it down into partial updates
 #define PARTIAL_UPDATE_THRESHOLD (160*144)
 
-bool isBackLightIntialized = false;
-
-
  // GB
 #define GAMEBOY_WIDTH (160)
 #define GAMEBOY_HEIGHT (144)
 
+// Lynx
+#define LYNX_GAME_WIDTH (160)
+#define LYNX_GAME_HEIGHT (102)
 
 
+bool isBackLightIntialized = false;
+int BacklightLevels[] = {10, 25, 50, 75, 100};
+int BacklightLevel = ODROID_BACKLIGHT_LEVEL2;
 
 
 /*
@@ -313,7 +317,7 @@ static void ili_init()
 
     //Initialize non-SPI GPIOs
     gpio_set_direction(LCD_PIN_NUM_DC, GPIO_MODE_OUTPUT);
-    gpio_set_direction(LCD_PIN_NUM_BCKL, GPIO_MODE_OUTPUT);
+    //gpio_set_direction(LCD_PIN_NUM_BCKL, GPIO_MODE_OUTPUT);
 
     //Send all the commands
     while (ili_init_cmds[cmd].databytes != 0xff)
@@ -323,10 +327,10 @@ static void ili_init()
         int len = ili_init_cmds[cmd].databytes & 0x7f;
         if (len) ili_data(ili_init_cmds[cmd].data, len);
 
-        if (ili_init_cmds[cmd].databytes & 0x80)
-        {
-            vTaskDelay(100 / portTICK_RATE_MS);
-        }
+        // if (ili_init_cmds[cmd].databytes & 0x80)
+        // {
+        //     vTaskDelay(10 / portTICK_RATE_MS);
+        // }
 
         cmd++;
     }
@@ -436,13 +440,15 @@ static void backlight_init()
     ledc_fade_func_install(0);
 
     // duty range is 0 ~ ((2**bit_num)-1)
-    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, (LCD_BACKLIGHT_ON_VALUE) ? DUTY_MAX : 0, 500);
-    ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
+    // ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, (LCD_BACKLIGHT_ON_VALUE) ? DUTY_MAX : 0, 500);
+    // ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
+
+    BacklightLevel = odroid_settings_Backlight_get();
+    odroid_display_backlight_set(BacklightLevel);
 
     isBackLightIntialized = true;
 }
 
-#if 1
 void backlight_percentage_set(int value)
 {
     int duty = DUTY_MAX * (value * 0.01f);
@@ -468,10 +474,35 @@ void backlight_percentage_set(int value)
     //
     // ledc_channel_config(&ledc_channel);
 
-    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty, 500);
+    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty, 1);
     ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
 }
-#endif
+
+int odroid_display_backlight_get()
+{
+    return BacklightLevel;
+}
+
+void odroid_display_backlight_set(int level)
+{
+    if (level < 0)
+    {
+        printf("odroid_display_backlight_set: level out of range (%d)\n", level);
+        level = 0;
+    }
+    else if (level >= ODROID_BACKLIGHT_LEVEL_COUNT)
+    {
+        printf("odroid_display_backlight_set: level out of range (%d)\n", level);
+        level = ODROID_BACKLIGHT_LEVEL_COUNT - 1;
+    }
+
+    if (level != BacklightLevel) {
+        odroid_settings_Backlight_set(level);
+    }
+
+    BacklightLevel = level;
+    backlight_percentage_set(BacklightLevels[level]);
+}
 
 static uint16_t Blend(uint16_t a, uint16_t b)
 {
@@ -641,6 +672,13 @@ void ili9341_write_frame_gb(uint16_t* buffer, int scale)
 
 void ili9341_init()
 {
+    // Return use of backlight pin
+    // esp_err_t err = rtc_gpio_deinit(LCD_PIN_NUM_BCKL);
+    // if (err != ESP_OK)
+    // {
+    //     abort();
+    // }
+
     // Init
     spi_initialize();
 
@@ -688,11 +726,11 @@ void ili9341_init()
 
     //Initialize the SPI bus
     ret=spi_bus_initialize(HSPI_HOST, &buscfg, 1);
-    assert(ret==ESP_OK);
+    //assert(ret==ESP_OK);
 
     //Attach the LCD to the SPI bus
     ret=spi_bus_add_device(HSPI_HOST, &devcfg, &spi);
-    assert(ret==ESP_OK);
+    //assert(ret==ESP_OK);
 
 
 
@@ -765,30 +803,6 @@ void ili9341_poweroff()
     }
 }
 
-void ili9341_prepare()
-{
-    // Return use of backlight pin
-    esp_err_t err = rtc_gpio_deinit(LCD_PIN_NUM_BCKL);
-    if (err != ESP_OK)
-    {
-        abort();
-    }
-
-#if 0
-    // Disable backlight
-    err = gpio_set_direction(LCD_PIN_NUM_BCKL, GPIO_MODE_OUTPUT);
-    if (err != ESP_OK)
-    {
-        abort();
-    }
-
-    err = gpio_set_level(LCD_PIN_NUM_BCKL, LCD_BACKLIGHT_ON_VALUE ? 0 : 1);
-    if (err != ESP_OK)
-    {
-        abort();
-    }
-#endif
-}
 
 void ili9341_blank_screen()
 {
@@ -1261,7 +1275,6 @@ void odroid_display_show_hourglass()
         image_hourglass_empty_black_48dp.height,
         image_hourglass_empty_black_48dp.pixel_data);
 }
-
 
 SemaphoreHandle_t display_mutex = NULL;
 

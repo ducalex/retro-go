@@ -27,9 +27,9 @@
 #include "rc.h"
 #include "sound.h"
 
-#include "../odroid/odroid_settings.h"
-#include "../odroid/odroid_sdcard.h"
-#include "../odroid/odroid_display.h"
+#include "odroid_settings.h"
+#include "odroid_sdcard.h"
+#include "odroid_display.h"
 
 
 void* FlashAddress = 0;
@@ -230,12 +230,12 @@ int rom_load()
 		printf("loader: Reading from sdcard.\n");
 
 		// copy from SD card
-		esp_err_t r = odroid_sdcard_open(SD_BASE_PATH);
-		if (r != ESP_OK)
-		{
-			odroid_display_show_sderr(ODROID_SD_ERR_NOCARD);
-			abort();
-		}
+		// esp_err_t r = odroid_sdcard_open(SD_BASE_PATH);
+		// if (r != ESP_OK)
+		// {
+			// odroid_display_show_sderr(ODROID_SD_ERR_NOCARD);
+			// abort();
+		// }
 
 		// load the first 16k
 		RomFile = fopen(romPath, "rb");

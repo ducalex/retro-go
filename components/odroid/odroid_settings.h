@@ -2,11 +2,6 @@
 
 #include <stdint.h>
 
-char* odroid_util_GetFileName(const char* path);
-char* odroid_util_GetFileExtenstion(const char* path);
-char* odroid_util_GetFileNameWithoutExtension(const char* path);
-
-
 typedef enum
 {
     ODROID_START_ACTION_NORMAL = 0,
@@ -26,6 +21,7 @@ typedef enum
     ODROID_AUDIO_SINK_DAC
 } ODROID_AUDIO_SINK;
 
+void odroid_settings_init();
 
 int32_t odroid_settings_VRef_get();
 void odroid_settings_VRef_set(int32_t value);
@@ -56,3 +52,6 @@ void odroid_settings_AudioSink_set(ODROID_AUDIO_SINK value);
 
 int32_t odroid_settings_GBPalette_get();
 void odroid_settings_GBPalette_set(int32_t value);
+
+int32_t odroid_settings_int32_get(const char *key, int32_t value_default);
+void odroid_settings_int32_set(const char *key, int32_t value);

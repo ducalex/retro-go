@@ -13,7 +13,7 @@
 static int AudioSink = ODROID_AUDIO_SINK_SPEAKER;
 static float Volume = 1.0f;
 static odroid_volume_level volumeLevel = ODROID_VOLUME_LEVEL3;
-static int volumeLevels[] = {0, 125, 250, 500, 1000};
+static int volumeLevels[] = {0, 60, 125, 187, 250, 375, 500, 750, 1000};
 static int audio_sample_rate;
 
 
@@ -22,24 +22,25 @@ odroid_volume_level odroid_audio_volume_get()
     return volumeLevel;
 }
 
-void odroid_audio_volume_set(odroid_volume_level value)
+void odroid_audio_volume_set(odroid_volume_level level)
 {
-    if (value >= ODROID_VOLUME_LEVEL_COUNT)
+    if ((int)level < 0)
     {
-        printf("odroid_audio_volume_set: value out of range (%d)\n", value);
-        abort();
+        printf("odroid_audio_volume_set: level out of range (< 0) (%d)\n", level);
+        level = ODROID_VOLUME_LEVEL0;
+    }
+    else if ((int)level > ODROID_VOLUME_LEVEL_COUNT - 1)
+    {
+        printf("odroid_audio_volume_set: level out of range (> max) (%d)\n", level);
+        level = ODROID_VOLUME_LEVEL_COUNT - 1;
     }
 
-    volumeLevel = value;
-    Volume = (float)volumeLevels[value] * 0.001f;
-}
+    if (level != volumeLevel) {
+        odroid_settings_Volume_set(level);
+    }
 
-void odroid_audio_volume_change()
-{
-    int level = (volumeLevel + 1) % ODROID_VOLUME_LEVEL_COUNT;
-    odroid_audio_volume_set(level);
-
-    odroid_settings_Volume_set(level);
+    volumeLevel = level;
+    Volume = (float)volumeLevels[level] * 0.001f;
 }
 
 void odroid_audio_init(ODROID_AUDIO_SINK sink, int sample_rate)
@@ -124,8 +125,8 @@ void odroid_audio_init(ODROID_AUDIO_SINK sink, int sample_rate)
         abort();
     }
 
-    odroid_volume_level level = odroid_settings_Volume_get();
-    odroid_audio_volume_set(level);
+    volumeLevel = odroid_settings_Volume_get();
+    odroid_audio_volume_set(volumeLevel);
 }
 
 void odroid_audio_terminate()
@@ -156,6 +157,16 @@ void odroid_audio_terminate()
     {
         abort();
     }
+}
+
+void odroid_audio_set_sink(ODROID_AUDIO_SINK sink)
+{
+    if (audio_sample_rate == 0)
+    {
+        return;
+    }
+    odroid_audio_terminate();
+    odroid_audio_init(sink, audio_sample_rate);
 }
 
 void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
@@ -258,4 +269,11 @@ void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
 int odroid_audio_sample_rate_get()
 {
     return audio_sample_rate;
+}
+
+void odroid_audio_clear_buffer()
+{
+    if (audio_sample_rate) {
+	    i2s_zero_dma_buffer(I2S_NUM);
+    }
 }

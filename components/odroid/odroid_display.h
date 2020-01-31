@@ -7,6 +7,16 @@ enum ODROID_SD_ERR {
     ODROID_SD_ERR_NOCARD = 0x02
 };
 
+typedef enum
+{
+    ODROID_BACKLIGHT_LEVEL0 = 0,
+    ODROID_BACKLIGHT_LEVEL1 = 1,
+    ODROID_BACKLIGHT_LEVEL2 = 2,
+    ODROID_BACKLIGHT_LEVEL3 = 3,
+    ODROID_BACKLIGHT_LEVEL4 = 4,
+    ODROID_BACKLIGHT_LEVEL_COUNT = 5,
+} odroid_backlight_level;
+
 typedef struct __attribute__((__packed__)) {
     short left;
     short width;
@@ -15,7 +25,6 @@ typedef struct __attribute__((__packed__)) {
 
 void ili9341_init();
 void ili9341_poweroff();
-void ili9341_prepare();
 void send_reset_drawing(int left, int top, int width, int height);
 void send_continue_wait();
 void send_continue_line(uint16_t *line, int width, int lineCount);
@@ -32,6 +41,9 @@ void ili9341_clear(uint16_t color);
 void ili9341_blank_screen();
 void ili9341_write_frame_rectangleLE(short left, short top, short width, short height, uint16_t* buffer);
 void display_tasktonotify_set(int value);
+
+void odroid_display_backlight_set(int level);
+int odroid_display_backlight_get();
 
 int is_backlight_initialized();
 void odroid_display_show_splash();

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 
@@ -43,9 +44,10 @@ typedef struct
 void odroid_input_gamepad_init();
 void odroid_input_gamepad_terminate();
 void odroid_input_gamepad_read(odroid_gamepad_state* out_state);
+uint16_t odroid_input_gamepad_read_masked();
 odroid_gamepad_state odroid_input_read_raw();
+void odroid_input_wait_for_key(int key, bool pressed);
 
 void odroid_input_battery_level_init();
 void odroid_input_battery_level_read(odroid_battery_state* out_state);
-void odroid_input_battery_level_force_voltage(float volts);
 void odroid_input_battery_monitor_enabled_set(int value);

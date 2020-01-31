@@ -1,4 +1,6 @@
 #include "odroid_system.h"
+#include "odroid_settings.h"
+#include "odroid_input.h"
 
 #include "freertos/FreeRTOS.h"
 #include "esp_system.h"
@@ -6,8 +8,6 @@
 #include "driver/rtc_io.h"
 #include "esp_partition.h"
 #include "esp_ota_ops.h"
-
-#include "odroid_input.h"
 
 static bool system_initialized = false;
 
@@ -96,6 +96,10 @@ void odroid_system_init()
     // blue led
     gpio_set_direction(GPIO_NUM_2, GPIO_MODE_OUTPUT);
     gpio_set_level(GPIO_NUM_2, 0);
+
+    // Disable LCD CD to prevent garbage
+    gpio_set_direction(GPIO_NUM_5, GPIO_MODE_OUTPUT);
+    gpio_set_level(GPIO_NUM_5, 1);
 
     system_initialized = true;
 }

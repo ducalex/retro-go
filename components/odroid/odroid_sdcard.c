@@ -12,6 +12,7 @@
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <ctype.h>
 
 
@@ -23,7 +24,7 @@
 
 
 static bool isOpen = false;
-
+static char SD_BASE_PATH[32];
 
 esp_err_t odroid_sdcard_open(const char* base_path)
 {
@@ -67,6 +68,7 @@ esp_err_t odroid_sdcard_open(const char* base_path)
 
     	if (ret == ESP_OK)
         {
+            strcpy(SD_BASE_PATH, base_path);
             isOpen = true;
         }
         else
@@ -81,24 +83,19 @@ esp_err_t odroid_sdcard_open(const char* base_path)
 
 esp_err_t odroid_sdcard_close()
 {
-    esp_err_t ret;
-
     if (!isOpen)
     {
         printf("odroid_sdcard_close: not open.\n");
-        ret = ESP_FAIL;
+        return ESP_FAIL;
     }
-    else
+
+    esp_err_t ret = esp_vfs_fat_sdmmc_unmount();
+    if (ret != ESP_OK)
     {
-        ret = esp_vfs_fat_sdmmc_unmount();
-
-        if (ret != ESP_OK)
-        {
-            printf("odroid_sdcard_close: esp_vfs_fat_sdmmc_unmount failed (%d)\n", ret);
-    	}
-
-        isOpen = false;
+        printf("odroid_sdcard_close: esp_vfs_fat_sdmmc_unmount failed (%d)\n", ret);
     }
+
+    isOpen = false;
 
     return ret;
 }
@@ -111,22 +108,19 @@ size_t odroid_sdcard_get_filesize(const char* path)
     if (!isOpen)
     {
         printf("odroid_sdcard_get_filesize: not open.\n");
+        return 0;
     }
-    else
+
+    FILE* f = fopen(path, "rb");
+    if (f == NULL)
     {
-        FILE* f = fopen(path, "rb");
-        if (f == NULL)
-        {
-            printf("odroid_sdcard_get_filesize: fopen failed.\n");
-        }
-        else
-        {
-            // get the file size
-            fseek(f, 0, SEEK_END);
-            ret = ftell(f);
-            fseek(f, 0, SEEK_SET);
-        }
+        printf("odroid_sdcard_get_filesize: fopen failed.\n");
+        return 0;
     }
+
+    fseek(f, 0, SEEK_END);
+    ret = ftell(f);
+    fseek(f, 0, SEEK_SET);
 
     return ret;
 }
@@ -138,47 +132,40 @@ size_t odroid_sdcard_copy_file_to_memory(const char* path, void* ptr)
     if (!isOpen)
     {
         printf("odroid_sdcard_copy_file_to_memory: not open.\n");
+        return 0;
     }
-    else
+
+    if (!ptr)
     {
-        if (!ptr)
-        {
-            printf("odroid_sdcard_copy_file_to_memory: ptr is null.\n");
-        }
-        else
-        {
-            FILE* f = fopen(path, "rb");
-            if (f == NULL)
-            {
-                printf("odroid_sdcard_copy_file_to_memory: fopen failed.\n");
-            }
-            else
-            {
-                // copy
-                const size_t BLOCK_SIZE = 512;
-                while(true)
-                {
-                    __asm__("memw");
-                    size_t count = fread((uint8_t*)ptr + ret, 1, BLOCK_SIZE, f);
-                    __asm__("memw");
-
-                    ret += count;
-
-                    if (count < BLOCK_SIZE) break;
-                }
-            }
-        }
+        printf("odroid_sdcard_copy_file_to_memory: ptr is null.\n");
+        return 0;
     }
+
+    FILE* f = fopen(path, "rb");
+    if (f == NULL)
+    {
+        printf("odroid_sdcard_copy_file_to_memory: fopen failed.\n");
+        return 0;
+    }
+
+    const size_t BLOCK_SIZE = 512;
+    while(true)
+    {
+        size_t count = fread((uint8_t*)ptr + ret, 1, BLOCK_SIZE, f);
+        ret += count;
+        if (count < BLOCK_SIZE) break;
+    }
+
+    fclose(f);
 
     return ret;
 }
 
-char* odroid_sdcard_create_savefile_path(const char* base_path, const char* fileName)
+char* odroid_sdcard_get_savefile_path(const char* romPath)
 {
     char* result = NULL;
 
-    if (!base_path) abort();
-    if (!fileName) abort();
+    char* fileName = odroid_sdcard_get_filename(romPath);
 
     //printf("%s: base_path='%s', fileName='%s'\n", __func__, base_path, fileName);
 
@@ -205,11 +192,11 @@ char* odroid_sdcard_create_savefile_path(const char* base_path, const char* file
     const char* DATA_PATH = "/odroid/data/";
     const char* SAVE_EXTENSION = ".sav";
 
-    size_t savePathLength = strlen(base_path) + strlen(DATA_PATH) + strlen(extension) + 1 + strlen(fileName) + strlen(SAVE_EXTENSION) + 1;
+    size_t savePathLength = strlen(SD_BASE_PATH) + strlen(DATA_PATH) + strlen(extension) + 1 + strlen(fileName) + strlen(SAVE_EXTENSION) + 1;
     char* savePath = malloc(savePathLength);
     if (savePath)
     {
-        strcpy(savePath, base_path);
+        strcpy(savePath, SD_BASE_PATH);
         strcat(savePath, DATA_PATH);
         strcat(savePath, extension);
         strcat(savePath, "/");
@@ -221,5 +208,141 @@ char* odroid_sdcard_create_savefile_path(const char* base_path, const char* file
         result = savePath;
     }
 
+    free(fileName);
+
     return result;
+}
+
+
+char* odroid_sdcard_get_filename(const char* path)
+{
+	int length = strlen(path);
+	int fileNameStart = length;
+
+	if (fileNameStart < 1) abort();
+
+	while (fileNameStart > 0)
+	{
+		if (path[fileNameStart] == '/')
+		{
+			++fileNameStart;
+			break;
+		}
+
+		--fileNameStart;
+	}
+
+	int size = length - fileNameStart + 1;
+
+	char* result = malloc(size);
+	if (!result) abort();
+
+	result[size - 1] = 0;
+	for (int i = 0; i < size - 1; ++i)
+	{
+		result[i] = path[fileNameStart + i];
+	}
+
+	//printf("GetFileName: result='%s'\n", result);
+
+	return result;
+}
+
+char* odroid_sdcard_get_extension(const char* path)
+{
+	// Note: includes '.'
+	int length = strlen(path);
+	int extensionStart = length;
+
+	if (extensionStart < 1) abort();
+
+	while (extensionStart > 0)
+	{
+		if (path[extensionStart] == '.')
+		{
+			break;
+		}
+
+		--extensionStart;
+	}
+
+	int size = length - extensionStart + 1;
+
+	char* result = malloc(size);
+	if (!result) abort();
+
+	result[size - 1] = 0;
+	for (int i = 0; i < size - 1; ++i)
+	{
+		result[i] = path[extensionStart + i];
+	}
+
+	//printf("GetFileExtenstion: result='%s'\n", result);
+
+	return result;
+}
+
+char* odroid_sdcard_get_filename_without_extension(const char* path)
+{
+	char* fileName = odroid_sdcard_get_filename(path);
+
+	int length = strlen(fileName);
+	int extensionStart = length;
+
+	if (extensionStart < 1) abort();
+
+	while (extensionStart > 0)
+	{
+		if (fileName[extensionStart] == '.')
+		{
+			break;
+		}
+
+		--extensionStart;
+	}
+
+	int size = extensionStart + 1;
+
+	char* result = malloc(size);
+	if (!result) abort();
+
+	result[size - 1] = 0;
+	for (int i = 0; i < size - 1; ++i)
+	{
+		result[i] = fileName[i];
+	}
+
+	free(fileName);
+
+	//printf("GetFileNameWithoutExtension: result='%s'\n", result);
+
+	return result;
+}
+
+int odroid_sdcard_mkdir(char *dir)
+{
+    if (!isOpen)
+    {
+        printf("odroid_sdcard_mkdir: not open.\n");
+        return 0;
+    }
+
+    char tmp[128];
+    size_t len = strlen(tmp);
+
+    strcpy(tmp, dir);
+    if (tmp[len - 1] == '/') {
+        tmp[len - 1] = 0;
+    }
+
+    for (char *p = tmp + strlen(SD_BASE_PATH) + 1; *p; p++) {
+        if (*p == '/') {
+            *p = 0;
+            printf("odroid_sdcard_mkdir: Creating %s\n", tmp);
+            mkdir(tmp, 0777);
+            *p = '/';
+        }
+    }
+
+    return mkdir(tmp, 0777);
 }

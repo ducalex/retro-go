@@ -19,6 +19,7 @@
 #include "esp_partition.h"
 #include "esp_ota_ops.h"
 #include "driver/rtc_io.h"
+#include "driver/i2s.h"
 
 //Nes stuff wants to define this as well...
 #undef false
@@ -39,16 +40,15 @@
 #include <nesinput.h>
 #include <osd.h>
 #include <stdint.h>
-#include "driver/i2s.h"
 #include "sdkconfig.h"
 #include "../nofrendo/nes/nesstate.h"
 
-#include "hourglass_empty_black_48dp.h"
-#include "../odroid/odroid_settings.h"
-#include "../odroid/odroid_audio.h"
-#include "../odroid/odroid_system.h"
-#include "../odroid/odroid_display.h"
-#include "../odroid/odroid_input.h"
+#include "odroid_settings.h"
+#include "odroid_audio.h"
+#include "odroid_system.h"
+#include "odroid_display.h"
+#include "odroid_overlay.h"
+#include "odroid_input.h"
 
 
 #define DEFAULT_SAMPLERATE   32000
@@ -66,9 +66,8 @@ struct update_meta {
     int stride;
 };
 
-odroid_volume_level Volume;
-int scaling_enabled = 1;
-int previous_scaling_enabled = 1;
+bool scaling_enabled = true;
+bool previous_scaling_enabled = true;
 QueueHandle_t vidQueue;
 
 
@@ -84,12 +83,10 @@ int osd_installtimer(int frequency, void *func, int funcsize, void *counter, int
 */
 static void (*audio_callback)(void *buffer, int length) = NULL;
 
-#if CONFIG_SOUND_ENA
 static int16_t *audio_frame;
-#endif
 
-void do_audio_frame() {
-#if CONFIG_SOUND_ENA
+void do_audio_frame()
+{
    audio_callback(audio_frame, DEFAULT_FRAGSIZE); //get audio data
 
    //16 bit mono -> 32-bit (16 bit r+l)
@@ -102,7 +99,6 @@ void do_audio_frame() {
    }
 
    odroid_audio_submit(audio_frame, DEFAULT_FRAGSIZE);
-#endif
 }
 
 void osd_setsound(void (*playfunc)(void *buffer, int length))
@@ -119,14 +115,8 @@ static void osd_stopsound(void)
 
 static int osd_init_sound(void)
 {
-#if CONFIG_SOUND_ENA
-
-   audio_frame=malloc(4*DEFAULT_FRAGSIZE);
-
+   audio_frame = malloc(4 * DEFAULT_FRAGSIZE);
    odroid_audio_init(odroid_settings_AudioSink_get(), DEFAULT_SAMPLERATE);
-
-#endif
-
 	audio_callback = NULL;
 
 	return 0;
@@ -293,8 +283,7 @@ static void vidTaskCallback(void *arg) {
            ili9341_blank_screen();
            previous_scaling_enabled = scaling_enabled;
            if (scaling_enabled) {
-               odroid_display_set_scale(NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT,
-                                        (8.f/7.f));
+               odroid_display_set_scale(NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT, (8.f / 7.f));
            } else {
                odroid_display_reset_scale(NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT);
            }
@@ -331,7 +320,7 @@ static void osd_initinput()
 }
 
 
-static void SaveState()
+void SaveState()
 {
     printf("Saving state.\n");
 
@@ -346,7 +335,7 @@ static void SaveState()
     printf("Saving state OK.\n");
 }
 
-static void PowerDown()
+void PowerDown()
 {
     // Stop tasks
     printf("PowerDown: stopping tasks.\n");
@@ -373,158 +362,104 @@ static void PowerDown()
     abort();
 }
 
-
-static odroid_gamepad_state previousJoystickState;
-static bool ignoreMenuButton;
-static ushort powerFrameCount;
-
-static int ConvertJoystickInput()
+void QuitEmulator(bool save)
 {
-    if (ignoreMenuButton)
-    {
-        ignoreMenuButton = previousJoystickState.values[ODROID_INPUT_MENU];
-    }
+   odroid_audio_terminate();
 
+   ili9341_blank_screen();
 
-    odroid_gamepad_state state;
-    odroid_input_gamepad_read(&state);
+   void *exitVideoTask = NULL;
+   xQueueSend(vidQueue, &exitVideoTask, portMAX_DELAY);
+   while (vidTaskIsRunning) { vTaskDelay(10); }
 
-	int result = 0;
+   if (save) {
+      SaveState();
+   }
 
+   // Set menu application
+   odroid_system_application_set(0);
 
-	// A
-	if (!state.values[ODROID_INPUT_A])
-	{
-		result |= (1<<13);
-	}
-
-	// B
-	if (!state.values[ODROID_INPUT_B])
-	{
-		result |= (1 << 14);
-	}
-
-	// select
-	if (!state.values[ODROID_INPUT_SELECT])
-		result |= (1 << 0);
-
-	// start
-	if (!state.values[ODROID_INPUT_START])
-		result |= (1 << 3);
-
-	// right
-	if (!state.values[ODROID_INPUT_RIGHT])
-			result |= (1 << 5);
-
-	// left
-	if (!state.values[ODROID_INPUT_LEFT])
-			result |= (1 << 7);
-
-	// up
-	if (!state.values[ODROID_INPUT_UP])
-			result |= (1 << 4);
-
-	// down
-	if (!state.values[ODROID_INPUT_DOWN])
-			result |= (1 << 6);
-
-
-    if (!previousJoystickState.values[ODROID_INPUT_VOLUME] && state.values[ODROID_INPUT_VOLUME])
-    {
-        odroid_audio_volume_change();
-    }
-
-    if (!ignoreMenuButton && previousJoystickState.values[ODROID_INPUT_MENU] && state.values[ODROID_INPUT_MENU])
-    {
-        ++powerFrameCount;
-    }
-    else
-    {
-        powerFrameCount = 0;
-    }
-
-    // Note: this will cause an exception on 2nd Core in Debug mode
-    if (powerFrameCount > /*60*/ 30 * 1)
-    {
-        printf("Stopping video queue.\n");
-
-        odroid_audio_terminate();
-
-        void *exitVideoTask = NULL;
-        xQueueSend(vidQueue, &exitVideoTask, portMAX_DELAY);
-        while (vidTaskIsRunning) { vTaskDelay(10); }
-
-        //odroid_display_drain_spi();
-
-        SaveState();
-
-
-        // Set menu application
-        odroid_system_application_set(0);
-
-
-        // Reset
-        esp_restart();
-    }
-
-    if (!ignoreMenuButton && previousJoystickState.values[ODROID_INPUT_MENU] && !state.values[ODROID_INPUT_MENU])
-    {
-        odroid_audio_terminate();
-
-        printf("Stopping video queue.\n");
-
-        void *exitVideoTask = NULL;
-        xQueueSend(vidQueue, &exitVideoTask, portMAX_DELAY);
-        while (vidTaskIsRunning)
-        {
-             vTaskDelay(10);
-        }
-
-        // Set menu application
-        odroid_system_application_set(0);
-
-
-        // Reset
-        esp_restart();
-    }
-
-    // Scaling
-    if (state.values[ODROID_INPUT_START] && !previousJoystickState.values[ODROID_INPUT_RIGHT] && state.values[ODROID_INPUT_RIGHT])
-    {
-        scaling_enabled = !scaling_enabled;
-        odroid_settings_ScaleDisabled_set(ODROID_SCALE_DISABLE_NES, scaling_enabled ? 0 : 1);
-    }
-
-
-    previousJoystickState = state;
-
-	return result;
+   // Reset
+   esp_restart();
 }
 
+void RedrawScreen()
+{
+   ili9341_write_frame_8bit(update->buffer,
+                           NULL,
+                           NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT,
+                           update->stride, PIXEL_MASK,
+                           myPalette);
+}
 
 extern nes_t* console_nes;
 extern nes6502_context cpu;
 
 void osd_getinput(void)
 {
-	const int ev[16]={
-			event_joypad1_select,0,0,event_joypad1_start,event_joypad1_up,event_joypad1_right,event_joypad1_down,event_joypad1_left,
-			0,0,0,0,event_soft_reset,event_joypad1_a,event_joypad1_b,event_hard_reset
-		};
-	static int oldb=0xffff;
-	int b=ConvertJoystickInput();
-	int chg=b^oldb;
-	int x;
-	oldb=b;
+	const int event[16] = {
+      event_joypad1_select,0,0,event_joypad1_start,event_joypad1_up,event_joypad1_right,event_joypad1_down,event_joypad1_left,
+      0,0,0,0,event_soft_reset,event_joypad1_a,event_joypad1_b,event_hard_reset
+	};
+
 	event_t evh;
-//	printf("Input: %x\n", b);
-	for (x=0; x<16; x++) {
-		if (chg&1) {
-			evh=event_get(ev[x]);
-			if (evh) evh((b&1)?INP_STATE_BREAK:INP_STATE_MAKE);
+   static int previous = 0xffff;
+   int b = 0;
+   int changed = b ^ previous;
+
+   odroid_gamepad_state joystick;
+   odroid_input_gamepad_read(&joystick);
+
+   if (joystick.values[ODROID_INPUT_MENU]) {
+      odroid_overlay_game_menu();
+      RedrawScreen();
+   }
+   else if (joystick.values[ODROID_INPUT_VOLUME]) {
+      odroid_overlay_settings_menu(NULL, 0);
+      RedrawScreen();
+   }
+
+	// A
+	if (!joystick.values[ODROID_INPUT_A])
+		b |= (1 << 13);
+
+	// B
+	if (!joystick.values[ODROID_INPUT_B])
+		b |= (1 << 14);
+
+	// select
+	if (!joystick.values[ODROID_INPUT_SELECT])
+		b |= (1 << 0);
+
+	// start
+	if (!joystick.values[ODROID_INPUT_START])
+		b |= (1 << 3);
+
+	// right
+	if (!joystick.values[ODROID_INPUT_RIGHT])
+		b |= (1 << 5);
+
+	// left
+	if (!joystick.values[ODROID_INPUT_LEFT])
+		b |= (1 << 7);
+
+	// up
+	if (!joystick.values[ODROID_INPUT_UP])
+		b |= (1 << 4);
+
+	// down
+	if (!joystick.values[ODROID_INPUT_DOWN])
+		b |= (1 << 6);
+
+   previous = b;
+
+	for (int x = 0; x < 16; x++) {
+		if (changed & 1) {
+			evh = event_get(event[x]);
+			if (evh) evh((b & 1) ? INP_STATE_BREAK : INP_STATE_MAKE);
 		}
-		chg>>=1;
-		b>>=1;
+		changed >>= 1;
+		b >>= 1;
 	}
 }
 
@@ -567,17 +502,10 @@ int osd_init()
       abort();
    }
 
-
-   Volume = odroid_settings_Volume_get();
-
-   scaling_enabled = odroid_settings_ScaleDisabled_get(ODROID_SCALE_DISABLE_NES) ? false : true;
+   scaling_enabled = odroid_settings_ScaleDisabled_get(1) ? false : true;
    previous_scaling_enabled = !scaling_enabled;
 
-   previousJoystickState = odroid_input_read_raw();
-   ignoreMenuButton = previousJoystickState.values[ODROID_INPUT_MENU];
-
-
-   ili9341_blank_screen();
+   //ili9341_blank_screen();
 
    vidQueue = xQueueCreate(1, sizeof(struct update_meta *));
    xTaskCreatePinnedToCore(&vidTaskCallback, "vidTask", 2048, NULL, 5, NULL, 1);

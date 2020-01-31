@@ -1,6 +1,9 @@
 #include "odroid_input.h"
 #include "odroid_settings.h"
+#include "odroid_display.h"
+#include "odroid_overlay.h"
 #include "odroid_system.h"
+#include "odroid_audio.h"
 //#include "odroid_display.h"
 #include "driver/ledc.h"
 
@@ -12,26 +15,15 @@
 
 #include <string.h>
 
-//extern void backlight_percentage_set(int value);
-
 static volatile bool input_task_is_running = false;
 static volatile odroid_gamepad_state gamepad_state;
-static odroid_gamepad_state previous_gamepad_state;
-static uint8_t debounce[ODROID_INPUT_MAX];
 static volatile bool input_gamepad_initialized = false;
 static SemaphoreHandle_t xSemaphore;
 
 static esp_adc_cal_characteristics_t characteristics;
 static bool input_battery_initialized = false;
 static float adc_value = 0.0f;
-static float forced_adc_value = 0.0f;
 static bool battery_monitor_enabled = true;
-
-#define BACKLIGHT_LEVEL_COUNT (4)
-static int BacklightLevels[BACKLIGHT_LEVEL_COUNT] = {10, 33, 66, 100};
-static int BacklightLevel = BACKLIGHT_LEVEL_COUNT - 1;
-
-int is_backlight_initialized();
 
 odroid_gamepad_state odroid_input_read_raw()
 {
@@ -88,76 +80,25 @@ static void odroid_input_task(void *arg)
 {
     input_task_is_running = true;
 
+    odroid_gamepad_state previous_gamepad_state;
+    uint8_t debounce[ODROID_INPUT_MAX];
+
     // Initialize state
     for(int i = 0; i < ODROID_INPUT_MAX; ++i)
     {
         debounce[i] = 0xff;
     }
 
-    BacklightLevel = odroid_settings_Backlight_get();
-    bool changed = false;
-
     while(input_task_is_running)
     {
-        // Shift current values
-        for(int i = 0; i < ODROID_INPUT_MAX; ++i)
-		{
-			debounce[i] <<= 1;
-		}
-
-
         // Read hardware
-#if 1
-
         odroid_gamepad_state state = odroid_input_read_raw();
 
-#else
-        odroid_gamepad_state state = {0};
-
-        int joyX = adc1_get_raw(ODROID_GAMEPAD_IO_X);
-    	int joyY = adc1_get_raw(ODROID_GAMEPAD_IO_Y);
-
-    	if (joyX > 2048 + 1024)
-    	{
-    		state.values[ODROID_INPUT_LEFT] = 1;
-    		state.values[ODROID_INPUT_RIGHT] = 0;
-    	}
-    	else if (joyX > 1024)
-    	{
-    		state.values[ODROID_INPUT_LEFT] = 0;
-    		state.values[ODROID_INPUT_RIGHT] = 1;
-    	}
-    	else
-    	{
-    		state.values[ODROID_INPUT_LEFT] = 0;
-    		state.values[ODROID_INPUT_RIGHT] = 0;
-    	}
-
-    	if (joyY > 2048 + 1024)
-    	{
-    		state.values[ODROID_INPUT_UP] = 1;
-    		state.values[ODROID_INPUT_DOWN] = 0;
-    	}
-    	else if (joyY > 1024)
-    	{
-    		state.values[ODROID_INPUT_UP] = 0;
-    		state.values[ODROID_INPUT_DOWN] = 1;
-    	}
-    	else
-    	{
-    		state.values[ODROID_INPUT_UP] = 0;
-    		state.values[ODROID_INPUT_DOWN] = 0;
-    	}
-
-    	state.values[ODROID_INPUT_SELECT] = !(gpio_get_level(ODROID_GAMEPAD_IO_SELECT));
-    	state.values[ODROID_INPUT_START] = !(gpio_get_level(ODROID_GAMEPAD_IO_START));
-
-        state.values[ODROID_INPUT_A] = !(gpio_get_level(ODROID_GAMEPAD_IO_A));
-        state.values[ODROID_INPUT_B] = !(gpio_get_level(ODROID_GAMEPAD_IO_B));
-
-    	state.values[ODROID_INPUT_MENU] = !(gpio_get_level(ODROID_GAMEPAD_IO_MENU));
-    	state.values[ODROID_INPUT_VOLUME] = !(gpio_get_level(ODROID_GAMEPAD_IO_VOLUME));
-#endif
+        for(int i = 0; i < ODROID_INPUT_MAX; ++i)
+		{
+            // Shift current values
+			debounce[i] <<= 1;
+		}
 
         // Debounce
         xSemaphoreTake(xSemaphore, portMAX_DELAY);
@@ -184,58 +125,9 @@ static void odroid_input_task(void *arg)
             //printf("odroid_input_task: %d=%d (raw=%d)\n", i, gamepad_state.values[i], state.values[i]);
 		}
 
-        if (gamepad_state.values[ODROID_INPUT_START])
-        {
-
-            if (gamepad_state.values[ODROID_INPUT_DOWN] && !previous_gamepad_state.values[ODROID_INPUT_DOWN])
-            {
-                --BacklightLevel;
-                if (BacklightLevel < 0) BacklightLevel = 0;
-
-                changed = true;
-                odroid_settings_Backlight_set(BacklightLevel);
-            }
-            else if (gamepad_state.values[ODROID_INPUT_UP] && !previous_gamepad_state.values[ODROID_INPUT_UP])
-            {
-                ++BacklightLevel;
-                if (BacklightLevel >= BACKLIGHT_LEVEL_COUNT) BacklightLevel = BACKLIGHT_LEVEL_COUNT - 1;
-
-                changed = true;
-                odroid_settings_Backlight_set(BacklightLevel);
-            }
-
-
-        }
-
-        if (is_backlight_initialized())
-        {
-            const int DUTY_MAX = 0x1fff;
-            int duty = DUTY_MAX * (BacklightLevels[BacklightLevel] * 0.01f);
-
-            uint32_t currentDuty = ledc_get_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
-            if (currentDuty != duty)
-            {
-                changed = true;
-            }
-
-            if (changed)
-            {
-                //backlight_percentage_set(BacklightLevels[BacklightLevel]);
-
-
-                ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty, 1);
-                ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_WAIT_DONE /*LEDC_FADE_NO_WAIT*/);
-
-                //ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty);
-
-                changed = false;
-            }
-        }
-
         previous_gamepad_state = gamepad_state;
 
         xSemaphoreGive(xSemaphore);
-
 
         // delay
         vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -311,6 +203,18 @@ void odroid_input_gamepad_read(odroid_gamepad_state* out_state)
     xSemaphoreGive(xSemaphore);
 }
 
+void odroid_input_wait_for_key(int key, bool pressed)
+{
+	while (true)
+    {
+        odroid_gamepad_state joystick;
+        odroid_input_gamepad_read(&joystick);
+
+        if (joystick.values[key] == pressed) {
+        	break;
+        }
+    }
+}
 
 static void odroid_battery_monitor_task()
 {
@@ -405,18 +309,13 @@ void odroid_input_battery_level_read(odroid_battery_state* out_state)
     const float R1 = 10000;
     const float R2 = 10000;
     const float Vo = adc_value;
-    const float Vs = (forced_adc_value > 0.0f) ? (forced_adc_value) : (Vo / R2 * (R1 + R2));
+    const float Vs = (Vo / R2 * (R1 + R2));
 
     const float FullVoltage = 4.2f;
     const float EmptyVoltage = 3.5f;
 
     out_state->millivolts = (int)(Vs * 1000);
     out_state->percentage = (int)((Vs - EmptyVoltage) / (FullVoltage - EmptyVoltage) * 100.0f);
-}
-
-void odroid_input_battery_level_force_voltage(float volts)
-{
-    forced_adc_value = volts;
 }
 
 void odroid_input_battery_monitor_enabled_set(int value)
