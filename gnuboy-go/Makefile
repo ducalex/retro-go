@@ -5,4 +5,5 @@
 #EXTRA_COMPONENT_DIRS := 
 PROJECT_NAME := gnuboy-go
 
+EXTRA_COMPONENT_DIRS := ../components
 include $(IDF_PATH)/make/project.mk
