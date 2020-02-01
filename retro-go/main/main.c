@@ -223,8 +223,10 @@ void retro_loop()
                 odroid_dialog_choice_t choices[] = {
                     {0, "Date", COMPILEDATE, 1, NULL},
                     {0, "Commit", GITREV, 1, NULL},
+                    {0, "", "", 0, NULL},
+                    {0, "Close", "", 1, NULL},
                 };
-                odroid_overlay_dialog("Retro-Go", choices, 2, 3);
+                odroid_overlay_dialog("Retro-Go", choices, 4, 3);
                 redraw = true;
             }
             else if (joystick.values[ODROID_INPUT_VOLUME]) {
