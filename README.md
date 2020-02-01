@@ -1,19 +1,22 @@
 # Description
 Retro-Go is composed of a frontend and several emulators.
 
-Supported systems:
+### Supported systems:
 - NES
 - Gameboy / Gameboy Color
 - Sega Master System
 - Sega Game Gear
 - Colecovision
 
-Compared to other similar projects for the ODROID-GO, Retro-Go brings:
+### Compared to other similar projects for the ODROID-GO, Retro-Go brings:
 - In-game menu
 - Faster/smoother transitions
 - RTC adjust and save
 - Rewind/Fastforward
 - Customizable frontend
+
+# Screenshot
+![Preview](https://raw.githubusercontent.com/ducalex/retro-go/116199c69c081de7a/screenshot.jpg)
 
 # Key Mappings
 
@@ -40,12 +43,19 @@ Compared to other similar projects for the ODROID-GO, Retro-Go brings:
 - Sound distortion in NES with volume above 5
 
 
+# Future plans
+
+- CMake support
+- Convert cover art to GIF
+- Add Lynx emulator
+
+
 # Compilation
 The official esp-idf version 3.3 is required and you should apply the following patch:
 
 - [Improve SD card compatibility](https://github.com/OtherCrashOverride/esp-idf/commit/a83e557538a033e25c376eedac79663c9b7b75da)
 
-_Note: It is possible to use esp-idf as low as 3.1 but changes to sdkconfig might be necessary._
+_Note: It is possible to use esp-idf 3.2 but changes to sdkconfig might be necessary._
 
 ## Build Steps:
 1. Build all subprojects: `./build_all.sh`
