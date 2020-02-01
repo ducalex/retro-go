@@ -113,6 +113,7 @@ void gui_header_draw(retro_emulator_t *emu)
 void gui_list_draw(retro_emulator_t *emu, int theme_)
 {
     int lines = LIST_LINE_COUNT;
+    float gradient = 16.f / lines;
     theme_t theme = gui_themes[theme_ % gui_themes_count];
 
     for (int i = 0; i < lines; i++) {
@@ -120,7 +121,7 @@ void gui_list_draw(retro_emulator_t *emu, int theme_)
         int y = LIST_Y_OFFSET + i * LIST_LINE_HEIGHT;
         char *text = (entry >= 0 && entry < emu->roms.count) ? emu->roms.files[entry].name : (char *)" ";
         uint16_t fg_color = (entry == emu->roms.selected) ? theme.list_highlight : theme.list_foreground;
-        odroid_overlay_draw_chars(LIST_X_OFFSET, y, LIST_WIDTH, text, fg_color, (int)(0.75 * i) << theme.list_background);
+        odroid_overlay_draw_chars(LIST_X_OFFSET, y, LIST_WIDTH, text, fg_color, (int)(gradient * i) << theme.list_background);
     }
 }
 
