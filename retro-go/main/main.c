@@ -189,7 +189,7 @@ void retro_loop()
                         {1, "New game", "", 1, NULL},
                         {2, "Delete save", "", has_save, NULL},
                     };
-                    int sel = odroid_overlay_dialog(NULL, &choices, 3, has_save ? 0 : 1);
+                    int sel = odroid_overlay_dialog(NULL, choices, 3, has_save ? 0 : 1);
 
                     if (sel == 0) {
                         break;

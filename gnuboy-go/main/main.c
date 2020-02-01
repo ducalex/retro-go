@@ -238,6 +238,7 @@ void SaveState()
         }
 
         savestate(f);
+        rtc_save_internal(f);
         fclose(f);
 
         printf("%s: savestate OK.\n", __func__);
@@ -282,6 +283,7 @@ void LoadState(const char* cartName)
         else
         {
             loadstate(f);
+            rtc_load_internal(f);
             fclose(f);
 
             vram_dirty();
@@ -386,9 +388,8 @@ void QuitEmulator(bool save)
     esp_restart();
 }
 
-bool palette_update_cb(void *c, odroid_dialog_event_t event)
+bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
-    odroid_dialog_choice_t *option = (odroid_dialog_choice_t *)c;
     int pal = odroid_settings_GBPalette_get();
     int max = 7;
 
@@ -404,6 +405,47 @@ bool palette_update_cb(void *c, odroid_dialog_event_t event)
 
     sprintf(option->value, "%d/%d", pal, max);
     return event == ODROID_DIALOG_ENTER;
+}
+
+
+bool rtc_t_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+{
+    if (option->id == 'd') {
+        if (event == ODROID_DIALOG_PREV && --rtc.d < 0) rtc.d = 364;
+        if (event == ODROID_DIALOG_NEXT && ++rtc.d > 364) rtc.d = 0;
+        sprintf(option->value, "%03d", rtc.d);
+    }
+    if (option->id == 'h') {
+        if (event == ODROID_DIALOG_PREV && --rtc.h < 0) rtc.h = 23;
+        if (event == ODROID_DIALOG_NEXT && ++rtc.h > 23) rtc.h = 0;
+        sprintf(option->value, "%02d", rtc.h);
+    }
+    if (option->id == 'm') {
+        if (event == ODROID_DIALOG_PREV && --rtc.m < 0) rtc.m = 59;
+        if (event == ODROID_DIALOG_NEXT && ++rtc.m > 59) rtc.m = 0;
+        sprintf(option->value, "%02d", rtc.m);
+    }
+    if (option->id == 's') {
+        if (event == ODROID_DIALOG_PREV && --rtc.s < 0) rtc.s = 59;
+        if (event == ODROID_DIALOG_NEXT && ++rtc.s > 59) rtc.s = 0;
+        sprintf(option->value, "%02d", rtc.s);
+    }
+    return event == ODROID_DIALOG_ENTER;
+}
+
+bool rtc_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+{
+    if (event == ODROID_DIALOG_ENTER) {
+        odroid_dialog_choice_t choices[] = {
+            {'d', "Day", "000", 1, &rtc_t_update_cb},
+            {'h', "Hour", "00", 1, &rtc_t_update_cb},
+            {'m', "Min", "00", 1, &rtc_t_update_cb},
+            {'s', "Sec", "00", 1, &rtc_t_update_cb},
+        };
+        odroid_overlay_dialog("Set Clock", choices, 4, 0);
+    }
+    sprintf(option->value, "%02d:%02d", rtc.h, rtc.m);
+    return false;
 }
 
 void app_main(void)
@@ -581,9 +623,10 @@ void app_main(void)
         }
         else if (joystick.values[ODROID_INPUT_VOLUME]) {
             odroid_dialog_choice_t options[] = {
-                {100, "GB Palette", "7/7",  1, &palette_update_cb},
+                {10, "Palette", "7/7",  1, &palette_update_cb},
+                {20, "Set clock", "00:00", 1, &rtc_update_cb},
             };
-            odroid_overlay_settings_menu(options, 1);
+            odroid_overlay_settings_menu(options, 2);
         }
 
         pad_set(PAD_UP, joystick.values[ODROID_INPUT_UP]);

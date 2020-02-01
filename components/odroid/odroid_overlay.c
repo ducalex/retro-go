@@ -116,28 +116,32 @@ void odroid_overlay_dialog_draw(char *header, odroid_dialog_choice_t *options, i
 {
     int width = header ? strlen(header) : 8;
     int padding = 0;
+    int len = 0;
 
     char row_format[16] = " %s ";
     char row_format_kv[16] = " %s: %s ";
-    char buffer[32];
+    char rows[16][32];
+
+    for (int i = 0; i < options_count; i++) {
+        if (options[i].value[0]) {
+            len = strlen(options[i].label);
+            padding = (len > padding) ? len : padding;
+        }
+    }
+
+    sprintf(row_format_kv, " %%-%ds: %%s ", padding);
 
     for (int i = 0; i < options_count; i++) {
         if (options[i].update_cb != NULL) {
             options[i].update_cb(&options[i], ODROID_DIALOG_INIT);
         }
-
-        int key_len = strlen(options[i].label);
-        int val_len = strlen(options[i].value);
-        int total_len = key_len + val_len + 2;
-
-        if (val_len) {
-            padding = (key_len > padding) ? key_len : padding;
-            total_len += 2;
+        if (options[i].value[0]) {
+            len = sprintf(rows[i], row_format_kv, options[i].label, options[i].value);
+        } else {
+            len = sprintf(rows[i], row_format, options[i].label);
         }
-        width = (total_len > width) ? total_len : width;
+        width = len > width ? len : width;
     }
-
-    sprintf(row_format_kv, " %%-%ds: %%s ", padding);
 
     int box_width = width * ODROID_FONT_WIDTH;
     int box_height = ODROID_FONT_HEIGHT * (options_count + 2);
@@ -156,14 +160,9 @@ void odroid_overlay_dialog_draw(char *header, odroid_dialog_choice_t *options, i
     }
 
     for (int i = 0; i < options_count; i++) {
-        if (options[i].value[0]) {
-            sprintf(buffer, row_format_kv, options[i].label, options[i].value);
-        } else {
-            sprintf(buffer, row_format, options[i].label);
-        }
         int color = options[i].enabled ? C_WHITE : C_GRAY;
         int xo = x, yo = y + ODROID_FONT_HEIGHT + i * ODROID_FONT_HEIGHT;
-        odroid_overlay_draw_chars(xo, yo, box_width, buffer, i == sel ? C_NAVY : color, i == sel ? color : C_NAVY);
+        odroid_overlay_draw_chars(xo, yo, box_width, rows[i], i == sel ? C_NAVY : color, i == sel ? color : C_NAVY);
     }
 }
 

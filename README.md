@@ -11,6 +11,7 @@ Supported systems:
 Compared to other similar projects for the ODROID-GO, Retro-Go brings:
 - In-game menu
 - Faster/smoother transitions
+- RTC adjust and save
 - Rewind/Fastforward
 - Customizable frontend
 
