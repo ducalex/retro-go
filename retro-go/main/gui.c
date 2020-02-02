@@ -102,10 +102,11 @@ void gui_header_draw(retro_emulator_t *emu)
     int y_pos = IMAGE_BANNER_HEIGHT;
     char buffer[40];
 
-    odroid_overlay_draw_chars(0, CRC_Y_OFFSET, 320, (char*)" ", C_WHITE, C_BLACK);
+    for (int i = y_pos; i < LIST_Y_OFFSET - 1; i += ODROID_FONT_HEIGHT) {
+        odroid_overlay_draw_chars(0, i, 320, (char*)" ", C_WHITE, C_BLACK);
+    }
     sprintf(buffer, "Games: %d", emu->roms.count);
-    odroid_overlay_draw_chars(x_pos, y_pos + ODROID_FONT_HEIGHT, 320 - x_pos, buffer, C_WHITE, C_BLACK);
-    odroid_overlay_draw_chars(x_pos, y_pos, 320 - x_pos, emu->system_name, C_WHITE, C_BLACK);
+    odroid_overlay_draw_chars(x_pos + 4, y_pos + 2, 0, buffer, C_WHITE, C_BLACK);
     ili9341_write_frame_rectangleLE(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, emu->image_logo);
     ili9341_write_frame_rectangleLE(x_pos, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, emu->image_header);
 }

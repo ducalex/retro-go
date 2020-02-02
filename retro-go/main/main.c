@@ -132,7 +132,7 @@ void retro_loop()
 
             if (!emu->initialized)
             {
-                odroid_overlay_draw_chars(48, 40, 272, "Loading directory...", C_WHITE, C_BLACK);
+                odroid_overlay_draw_chars(48, 34, 272, "Loading directory...", C_WHITE, C_BLACK);
                 emulators_init_emu(emu);
             }
 
@@ -227,6 +227,7 @@ void retro_loop()
                     {0, "Close", "", 1, NULL},
                 };
                 odroid_overlay_dialog("Retro-Go", choices, 4, 3);
+                selected_emu_last = -1;
                 redraw = true;
             }
             else if (joystick.values[ODROID_INPUT_VOLUME]) {
