@@ -16,7 +16,7 @@ Retro-Go is composed of a frontend and several emulators.
 - Customizable frontend
 
 # Screenshot
-![Preview](https://raw.githubusercontent.com/ducalex/retro-go/116199c69c081de7a/screenshot.jpg)
+![Preview](https://raw.githubusercontent.com/ducalex/retro-go/116199c69c081de7a/assets/screenshot.jpg)
 
 # Key Mappings
 
