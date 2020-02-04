@@ -132,6 +132,9 @@ void gui_list_draw(retro_emulator_t *emu, int theme_)
     }
 }
 
+// This should be in a FreeRTOS task
+// But the problem is that the main task can't draw while this task accesses the SD Card or draws
+// So it's kind of pointless. The solution would be preloading I think.
 void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
 {
     if (emu->roms.count == 0 || emu->roms.selected > emu->roms.count) {
@@ -161,13 +164,14 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
             int buf_size = 32768;
             uint32_t crc_tmp = 0;
             bool abort = false;
+
             while (true)
             {
                 odroid_input_gamepad_read(joystick);
                 abort = joystick->bitmask > 0;
                 if (abort) break;
                 int count = fread(cover_buffer, 1, buf_size, fp);
-                crc_tmp = crc32_le(crc_tmp, cover_buffer, count);
+                crc_tmp = crc32_le(crc_tmp, (const uint8_t*)cover_buffer, count);
                 if (count != buf_size)
                 {
                     break;
@@ -199,22 +203,6 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
     {
         sprintf(buf_crc, "%X", *crc);
 
-        char *basename = odroid_sdcard_get_filename_without_extension(file->name);
-        sprintf(path, ROMART_PATH "/%s/%c/%s.gif", emu->dirname, buf_crc[0], buf_crc); // /sd/romart/gbc/0/08932754.gif
-        sprintf(path2, ROMART_PATH "/%s/%s.gif", emu->dirname, basename); // /sdcard/romart/gbc/Super Mario.gif
-        free(basename);
-
-        if ((gif = gd_open_gif(path)) != NULL || (gif = gd_open_gif(path2)) != NULL)
-        {
-            if (gd_get_frame(gif) != -1)
-            {
-                gd_render_frame565(gif, cover_buffer);
-                ili9341_write_frame_rectangleLE(320 - gif->width, 240 - gif->height, gif->width, gif->height, cover_buffer);
-            }
-            gd_close_gif(gif);
-            return;
-        }
-
         // /sd/romart/gbc/0/08932754.art
         sprintf(path, ROMART_PATH "/%s/%c/%s.art", emu->dirname, buf_crc[0], buf_crc);
         if ((fp = fopen(path, "rb")) != NULL)
@@ -228,6 +216,24 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
                 ili9341_write_frame_rectangleLE(320 - width, 240 - height, width, height, cover_buffer);
             }
             fclose(fp);
+            return;
+        }
+
+        // /sd/romart/gbc/0/08932754.gif
+        // /sdcard/romart/gbc/Super Mario.gif
+        char *basename = odroid_sdcard_get_filename_without_extension(file->name);
+        sprintf(path, ROMART_PATH "/%s/%c/%s.gif", emu->dirname, buf_crc[0], buf_crc);
+        sprintf(path2, ROMART_PATH "/%s/%s.gif", emu->dirname, basename);
+        free(basename);
+
+        if ((gif = gd_open_gif(path)) != NULL || (gif = gd_open_gif(path2)) != NULL)
+        {
+            if (gd_get_frame(gif) != -1)
+            {
+                gd_render_frame565(gif, cover_buffer);
+                ili9341_write_frame_rectangleLE(320 - gif->width, 240 - gif->height, gif->width, gif->height, cover_buffer);
+            }
+            gd_close_gif(gif);
             return;
         }
     }

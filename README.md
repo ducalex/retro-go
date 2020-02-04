@@ -16,7 +16,7 @@ Retro-Go is composed of a frontend and several emulators.
 - Customizable frontend
 
 # Screenshot
-![Preview](https://raw.githubusercontent.com/ducalex/retro-go/116199c69c081de7a/assets/screenshot.jpg)
+![Preview](https://raw.githubusercontent.com/ducalex/retro-go/master/assets/screenshot.jpg)
 
 # Key Mappings
 
@@ -38,6 +38,25 @@ Retro-Go is composed of a frontend and several emulators.
 | Volume  | Options menu  |
 
 
+# Game covers/artwork
+A premade gif romart pack is available in the assets folder of this repository. 
+
+Retro-Go is also compatible with the Go-Play romart pack. You can find it [on the release page](https://github.com/ducalex/retro-go/releases/tag/romart), it has higher quality and faster loading.
+
+
+## Adding missing artwork
+The simplest method is to create a gif file named like your rom (minus the extension) and place it in `/romart/emu/<my rom name>.gif`
+
+Example:  
+/roms/nes/Super Mario.nes  
+/romart/nes/Super Mario.gif  
+
+Important: The file must be less than 200x200px.
+
+## CRC cache
+Retro-Go caches some data to speed up cover art discovery and display.
+If you have any problem the first step is to clear the cache located in /odroid/cache.
+
 
 # Known issues
 - Sound distortion in NES with volume above 5
@@ -46,7 +65,6 @@ Retro-Go is composed of a frontend and several emulators.
 # Future plans
 
 - CMake support
-- Convert cover art to GIF
 - Add Lynx emulator
 
 

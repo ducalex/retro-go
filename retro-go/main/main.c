@@ -162,7 +162,7 @@ void retro_loop()
         odroid_gamepad_state joystick;
         odroid_input_gamepad_read(&joystick);
 
-        if (redraw || (show_cover && idle_counter == 10))
+        if (redraw || (show_cover && idle_counter == 9))
         {
             gui_cover_draw(emu, &joystick);
         }

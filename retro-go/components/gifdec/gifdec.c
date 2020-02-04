@@ -506,7 +506,7 @@ gd_render_frame(gd_GIF *gif, uint8_t *buffer)
 }
 
 void
-gd_render_frame565(gd_GIF *gif, uint8_t *buffer)
+gd_render_frame565(gd_GIF *gif, uint16_t *buffer)
 {
     render_frame_rect565(gif, buffer);
 }
