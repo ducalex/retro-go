@@ -39,17 +39,19 @@ Retro-Go is composed of a frontend and several emulators.
 
 
 # Game covers/artwork
-A premade gif romart pack is available in the assets folder of this repository. 
+Retro-Go supports both RAW565 and PNG formats for cover art.
 
-Retro-Go is also compatible with the Go-Play romart pack. You can find it [on the release page](https://github.com/ducalex/retro-go/releases/tag/romart), it has higher quality and faster loading.
+A premade PNG romart pack is available in the assets folder of this repository.
+
+Retro-Go is also compatible with the Go-Play romart pack that you may already have.
 
 
 ## Adding missing artwork
-The simplest method is to create a gif file named like your rom (minus the extension) and place it in `/romart/emu/<my rom name>.gif`
+The simplest method is to create a PNG file named like your rom (minus the extension) and place it in `/romart/emu/<my rom name>.png`
 
 Example:  
 /roms/nes/Super Mario.nes  
-/romart/nes/Super Mario.gif  
+/romart/nes/Super Mario.png  
 
 Important: The file must be less than 200x200px.
 
@@ -81,5 +83,7 @@ _Note: It is possible to use esp-idf 3.2 but changes to sdkconfig might be neces
 
 
 # Acknowledgements
-- The emulators code was originally from the "Triforce" fork the official Go-Play firmware.
+- The emulators code was originally from the "Triforce" fork of the official Go-Play firmware.
 - A few lines of code were taken from go-emu by pelle7, as well as the esthetics was copied.
+- [miniz](https://github.com/richgel999/miniz) For zipped ROM and zlib API
+- [luPng](https://github.com/jansol/LuPng) For basic PNG decoding

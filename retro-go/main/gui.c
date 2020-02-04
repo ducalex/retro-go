@@ -10,7 +10,7 @@
 #include "odroid_overlay.h"
 #include "odroid_sdcard.h"
 #include "odroid_input.h"
-#include "gifdec.h"
+#include "lupng.h"
 #include "gui.h"
 
 #define IMAGE_LOGO_WIDTH    (47)
@@ -148,7 +148,6 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
     const retro_emulator_file_t *file = gui_list_selected_file(emu);
     uint32_t *crc = &file->checksum;
     char path[128], path2[128], buf_crc[10];
-    gd_GIF *gif;
     FILE *fp;
 
     if (*crc == 0)
@@ -203,6 +202,26 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
     {
         sprintf(buf_crc, "%X", *crc);
 
+        // /sd/romart/gbc/0/08932754.png
+        // /sdcard/romart/gbc/Super Mario.png
+        char *basename = odroid_sdcard_get_filename_without_extension(file->name);
+        sprintf(path, ROMART_PATH "/%s/%c/%s.png", emu->dirname, buf_crc[0], buf_crc);
+        sprintf(path2, ROMART_PATH "/%s/%s.png", emu->dirname, basename);
+        free(basename);
+        LuImage *img;
+        if ((img = luPngReadFile(path)) || (img = luPngReadFile(path2)))
+        {
+            for (int p = 0, i = 0; i < img->dataSize; i += 3) {
+                uint8_t r = img->data[i];
+                uint8_t g = img->data[i + 1];
+                uint8_t b = img->data[i + 2];
+                cover_buffer[p++] = ((r / 8) << 11) | ((g / 4) << 5) | (b / 8);
+            }
+            ili9341_write_frame_rectangleLE(320 - img->width, 240 - img->height, img->width, img->height, cover_buffer);
+            luImageRelease(img, NULL);
+            return;
+        }
+
         // /sd/romart/gbc/0/08932754.art
         sprintf(path, ROMART_PATH "/%s/%c/%s.art", emu->dirname, buf_crc[0], buf_crc);
         if ((fp = fopen(path, "rb")) != NULL)
@@ -216,24 +235,6 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
                 ili9341_write_frame_rectangleLE(320 - width, 240 - height, width, height, cover_buffer);
             }
             fclose(fp);
-            return;
-        }
-
-        // /sd/romart/gbc/0/08932754.gif
-        // /sdcard/romart/gbc/Super Mario.gif
-        char *basename = odroid_sdcard_get_filename_without_extension(file->name);
-        sprintf(path, ROMART_PATH "/%s/%c/%s.gif", emu->dirname, buf_crc[0], buf_crc);
-        sprintf(path2, ROMART_PATH "/%s/%s.gif", emu->dirname, basename);
-        free(basename);
-
-        if ((gif = gd_open_gif(path)) != NULL || (gif = gd_open_gif(path2)) != NULL)
-        {
-            if (gd_get_frame(gif) != -1)
-            {
-                gd_render_frame565(gif, cover_buffer);
-                ili9341_write_frame_rectangleLE(320 - gif->width, 240 - gif->height, gif->width, gif->height, cover_buffer);
-            }
-            gd_close_gif(gif);
             return;
         }
     }

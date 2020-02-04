@@ -161,6 +161,25 @@ size_t odroid_sdcard_copy_file_to_memory(const char* path, void* ptr)
     return ret;
 }
 
+size_t odroid_sdcard_unzip_file_to_memory(const char* path, void* ptr)
+{
+    size_t ret = 0;
+
+    if (!isOpen)
+    {
+        printf("odroid_sdcard_unzip_file_to_memory: not open.\n");
+        return 0;
+    }
+
+    if (!ptr)
+    {
+        printf("odroid_sdcard_unzip_file_to_memory: ptr is null.\n");
+        return 0;
+    }
+
+    return ret;
+}
+
 char* odroid_sdcard_get_savefile_path(const char* romPath)
 {
     char* result = NULL;
