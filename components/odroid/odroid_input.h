@@ -33,6 +33,7 @@ enum
 typedef struct
 {
     uint8_t values[ODROID_INPUT_MAX];
+    uint16_t bitmask;
 } odroid_gamepad_state;
 
 typedef struct

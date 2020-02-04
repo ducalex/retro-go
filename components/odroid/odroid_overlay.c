@@ -20,14 +20,9 @@ int ODROID_FONT_HEIGHT = 8;
 static void wait_all_keys_released()
 {
     odroid_gamepad_state joystick;
-    bool pressed = false;
     do {
-        pressed = false;
         odroid_input_gamepad_read(&joystick);
-        for (int i = 0; i < ODROID_INPUT_MAX; i++) {
-            pressed = pressed || joystick.values[i];
-        }
-    } while (pressed);
+    } while (joystick.bitmask > 0);
 }
 
 void odroid_overlay_init()

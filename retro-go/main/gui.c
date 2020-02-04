@@ -156,9 +156,7 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
             while (true)
             {
                 odroid_input_gamepad_read(joystick);
-                for (int i = 0; i < ODROID_INPUT_MAX; i++) {
-                    abort = abort || joystick->values[i];
-                }
+                abort = joystick->bitmask > 0;
                 if (abort) break;
                 int count = fread(buffer, 1, buf_size, fp);
                 crc_tmp = crc32_le(crc_tmp, buffer, count);

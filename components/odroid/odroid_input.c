@@ -103,6 +103,8 @@ static void odroid_input_task(void *arg)
         // Debounce
         xSemaphoreTake(xSemaphore, portMAX_DELAY);
 
+        gamepad_state.bitmask = 0;
+
         for(int i = 0; i < ODROID_INPUT_MAX; ++i)
 		{
             debounce[i] |= state.values[i] ? 1 : 0;
@@ -114,6 +116,7 @@ static void odroid_input_task(void *arg)
 
                 case 0x03: //0x0f:
                     gamepad_state.values[i] = 1;
+                    gamepad_state.bitmask |= 1 << i;
                     break;
 
                 default:
