@@ -98,7 +98,10 @@ void videoTask(void *arg)
             previous_scaling_enabled = scaling_enabled;
             force_redraw = false;
             if (scaling_enabled) {
-                odroid_display_set_scale(meta->width, meta->height, 1.f);
+                // The game gear aspect ratio is 1.33, as proved by its LCD size (65.27mm x 48.90mm)
+                // But 1.2 gives us a perfect 2x x_scale, which is what we want.
+                float aspect = (sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS) ? 1.2f : 1.f;
+                odroid_display_set_scale(meta->width, meta->height, aspect);
             } else {
                 odroid_display_reset_scale(meta->width, meta->height);
             }
