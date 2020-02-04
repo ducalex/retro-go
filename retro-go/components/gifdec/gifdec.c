@@ -424,6 +424,36 @@ render_frame_rect(gd_GIF *gif, uint8_t *buffer)
     }
 }
 
+
+// By @johannesbehr
+static void
+render_frame_rect565(gd_GIF *gif, uint8_t *buffer)
+{
+    int i, j, k;
+    uint8_t index, *color;
+    i = gif->fy * gif->width + gif->fx;
+    for (j = 0; j < gif->fh; j++) {
+        for (k = 0; k < gif->fw; k++) {
+            index = gif->frame[(gif->fy + j) * gif->width + gif->fx + k];
+            color = &gif->palette->colors[index*3];
+            if (!gif->gce.transparency || index != gif->gce.tindex)
+			{
+				// Special conversation for RGB565
+				uint8_t r = *color;
+				uint8_t g = *(color+1);
+				uint8_t b = *(color+2);
+
+				buffer[(i+k)*2] = ((b & 0xf8)>>3) | ((g & 0xfc) <<3);
+				buffer[(i+k)*2 + 1] = (r&0xf8) | (g>>5);
+
+				//memcpy(&buffer[(i+k)*3], color, 3);
+			}
+
+        }
+        i += gif->width;
+    }
+}
+
 static void
 dispose(gd_GIF *gif)
 {
@@ -473,6 +503,12 @@ gd_render_frame(gd_GIF *gif, uint8_t *buffer)
 {
     memcpy(buffer, gif->canvas, gif->width * gif->height * 3);
     render_frame_rect(gif, buffer);
+}
+
+void
+gd_render_frame565(gd_GIF *gif, uint8_t *buffer)
+{
+    render_frame_rect565(gif, buffer);
 }
 
 void

@@ -6,11 +6,12 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-#include "gui.h"
 #include "odroid_display.h"
 #include "odroid_overlay.h"
 #include "odroid_sdcard.h"
 #include "odroid_input.h"
+#include "gifdec.h"
+#include "gui.h"
 
 #define IMAGE_LOGO_WIDTH    (47)
 #define IMAGE_LOGO_HEIGHT   (51)
@@ -51,6 +52,9 @@ theme_t gui_themes[] = {
     {16, C_WHITE, C_GREEN},
 };
 int gui_themes_count = 12;
+
+
+static uint16_t *cover_buffer;
 
 
 const retro_emulator_file_t *gui_list_selected_file(retro_emulator_t *emu)
@@ -117,6 +121,8 @@ void gui_list_draw(retro_emulator_t *emu, int theme_)
     float gradient = 16.f / lines;
     theme_t theme = gui_themes[theme_ % gui_themes_count];
 
+    odroid_overlay_draw_chars(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" ", C_RED, C_BLACK);
+
     for (int i = 0; i < lines; i++) {
         int entry = emu->roms.selected + i - (lines / 2);
         int y = LIST_Y_OFFSET + i * LIST_LINE_HEIGHT;
@@ -129,18 +135,21 @@ void gui_list_draw(retro_emulator_t *emu, int theme_)
 void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
 {
     if (emu->roms.count == 0 || emu->roms.selected > emu->roms.count) {
-        odroid_overlay_draw_chars(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" ", C_RED, C_BLACK);
         return;
     }
 
-    uint32_t *crc = &emu->roms.files[emu->roms.selected].checksum;
-    char path[128], buf_crc[10];
+    if (!cover_buffer) {
+        cover_buffer = (uint16_t*)malloc(200 * 200 * 2);
+    }
+
+    const retro_emulator_file_t *file = gui_list_selected_file(emu);
+    uint32_t *crc = &file->checksum;
+    char path[128], path2[128], buf_crc[10];
+    gd_GIF *gif;
     FILE *fp;
 
     if (*crc == 0)
     {
-        const retro_emulator_file_t *file = gui_list_selected_file(emu);
-
         sprintf(path, CACHE_PATH "/%s/romart/%c/%s", emu->dirname, file->name[0], file->name);
         if (odroid_sdcard_copy_file_to_memory(path, crc)) {
             printf("Cache found: %s\n", path);
@@ -150,7 +159,6 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
             odroid_overlay_draw_chars(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"       CRC32", C_GREEN, C_BLACK);
             fseek(fp, emu->crc_offset, SEEK_SET);
             int buf_size = 32768;
-            unsigned char *buffer = (unsigned char*)malloc(buf_size);
             uint32_t crc_tmp = 0;
             bool abort = false;
             while (true)
@@ -158,14 +166,13 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
                 odroid_input_gamepad_read(joystick);
                 abort = joystick->bitmask > 0;
                 if (abort) break;
-                int count = fread(buffer, 1, buf_size, fp);
-                crc_tmp = crc32_le(crc_tmp, buffer, count);
+                int count = fread(cover_buffer, 1, buf_size, fp);
+                crc_tmp = crc32_le(crc_tmp, cover_buffer, count);
                 if (count != buf_size)
                 {
                     break;
                 }
             }
-            free(buffer);
             fclose(fp);
 
             if (!abort)
@@ -180,15 +187,35 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
                     fclose(fp);
                 }
             }
+            odroid_overlay_draw_chars(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" ", C_RED, C_BLACK);
         }
         else
         {
             *crc = 1;
         }
     }
+
     if (*crc > 1)
     {
         sprintf(buf_crc, "%X", *crc);
+
+        char *basename = odroid_sdcard_get_filename_without_extension(file->name);
+        sprintf(path, ROMART_PATH "/%s/%c/%s.gif", emu->dirname, buf_crc[0], buf_crc); // /sd/romart/gbc/0/08932754.gif
+        sprintf(path2, ROMART_PATH "/%s/%s.gif", emu->dirname, basename); // /sdcard/romart/gbc/Super Mario.gif
+        free(basename);
+
+        if ((gif = gd_open_gif(path)) != NULL || (gif = gd_open_gif(path2)) != NULL)
+        {
+            if (gd_get_frame(gif) != -1)
+            {
+                gd_render_frame565(gif, cover_buffer);
+                ili9341_write_frame_rectangleLE(320 - gif->width, 240 - gif->height, gif->width, gif->height, cover_buffer);
+            }
+            gd_close_gif(gif);
+            return;
+        }
+
+        // /sd/romart/gbc/0/08932754.art
         sprintf(path, ROMART_PATH "/%s/%c/%s.art", emu->dirname, buf_crc[0], buf_crc);
         if ((fp = fopen(path, "rb")) != NULL)
         {
@@ -197,28 +224,14 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
             fread(&height, 2, 1, fp);
             if (width <= 320 && height <= 176)
             {
-                uint16_t *img = (uint16_t*)malloc(width * height * 2);
-                fread(img, 2, width * height, fp);
-                ili9341_write_frame_rectangleLE(320 - width, 240 - height, width, height, img);
-                free(img);
-            }
-            else
-            {
-                *crc = 1;
+                fread(cover_buffer, 2, width * height, fp);
+                ili9341_write_frame_rectangleLE(320 - width, 240 - height, width, height, cover_buffer);
             }
             fclose(fp);
-        }
-        else
-        {
-            *crc = 1;
+            return;
         }
     }
-    if (*crc == 1)
-    {
-        odroid_overlay_draw_chars(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"No art found", C_RED, C_BLACK);
-    }
-    else
-    {
-        odroid_overlay_draw_chars(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" ", C_RED, C_BLACK);
-    }
+
+    odroid_overlay_draw_chars(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"No art found", C_RED, C_BLACK);
+    *crc = 1;
 }

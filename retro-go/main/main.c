@@ -153,17 +153,16 @@ void retro_loop()
             odroid_overlay_draw_battery(320 - 23, 1, -1);
         }
 
-        odroid_gamepad_state joystick;
-        odroid_input_gamepad_read(&joystick);
-
         if (redraw)
         {
             gui_list_draw(emu, theme);
-            idle_counter = 1;
             redraw = false;
         }
 
-        if (show_cover && idle_counter == 5)
+        odroid_gamepad_state joystick;
+        odroid_input_gamepad_read(&joystick);
+
+        if (redraw || (show_cover && idle_counter == 10))
         {
             gui_cover_draw(emu, &joystick);
         }
@@ -172,8 +171,8 @@ void retro_loop()
             if (!joystick.values[last_key]) {
                 last_key = -1;
                 debounce = 0;
-            } else if (debounce++ > 15) {
-                debounce = 15;
+            } else if (debounce++ > 12) {
+                debounce = 12;
                 last_key = -1;
             }
         } else {
@@ -250,11 +249,13 @@ void retro_loop()
             }
         }
 
-        if (last_key < 0) {
+        if (joystick.bitmask > 0) {
+            idle_counter = 0;
+        } else {
             idle_counter++;
         }
 
-        usleep(20 * 1000UL);
+        usleep(15 * 1000UL);
     }
 
     odroid_display_unlock();
