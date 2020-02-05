@@ -73,8 +73,12 @@ void emulators_init_emu(retro_emulator_t *emu)
         {
             if (strlen(in_file->d_name) < strlen(emu->ext) + 1)
                 continue;
-            if (strcasecmp(emu->ext, &in_file->d_name[strlen(in_file->d_name)-strlen(emu->ext)]) != 0)
+
+            char *ext = &in_file->d_name[strlen(in_file->d_name)-strlen(emu->ext)];
+
+            if (strcasecmp(emu->ext, ext) != 0 && strcasecmp("zip", ext) != 0)
                 continue;
+
             if (emu->roms.count % 100 == 0) {
                 emu->roms.files = (retro_emulator_file_t *)realloc(emu->roms.files,
                     (emu->roms.count + 100) * sizeof(retro_emulator_file_t));

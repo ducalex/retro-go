@@ -21,6 +21,7 @@
  ******************************************************************************/
 
 #include "shared.h"
+#include "odroid_sdcard.h"
 
 extern unsigned long crc32(crc, buf, len);
 
@@ -375,52 +376,32 @@ int load_rom (char *filename)
 
     if (strcmp(filename + (nameLength - 4), ".col") == 0)
     {
-        fd = fopen("/sd/roms/col/BIOS.col", "rb");
-        if(!fd) abort();
-
+        if (odroid_sdcard_copy_file_to_memory("/sd/roms/col/BIOS.col", ESP32_PSRAM + 0x100000, 0x2000)) {
+            printf("Colecovision BIOS loaded.\n");
+        } else {
+            printf("Colecovision BIOS failed to load.\n");
+        }
         coleco.rom = ESP32_PSRAM + 0x100000;
-
-        fread(coleco.rom, 0x2000, 1, fd);
-
-        __asm__("nop");
-        __asm__("nop");
-        __asm__("nop");
-        __asm__("nop");
-        __asm__("memw");
-
-        fclose(fd);
-
         option.console = 6;
-        printf("Colecovision BIOS loaded.\n");
     }
 
+    size_t actual_size = 0;
 
-    fd = fopen(filename, "rb");
-    if(!fd) abort();
-
-    /* Seek to end of file, and get size */
-
-    fseek(fd, 0, SEEK_END);
-    size_t actual_size = ftell(fd);
-    fseek(fd, 0, SEEK_SET);
+    if (strcasecmp(filename + (nameLength - 4), ".zip") == 0)
+    {
+        printf("load_rom: File is compressed.\n");
+        actual_size = odroid_sdcard_unzip_file_to_memory(filename, ESP32_PSRAM, 2 * 1024 * 1024);
+    }
+    else
+    {
+        actual_size = odroid_sdcard_copy_file_to_memory(filename, ESP32_PSRAM, 2 * 1024 * 1024);
+    }
+    printf("load_rom: fileSize=%d.\n", actual_size);
 
     cart.size = actual_size;
     if (cart.size < 0x4000) cart.size = 0x4000;
 
     cart.rom = ESP32_PSRAM;
-    size_t cnt = fread(cart.rom, cart.size, 1, fd);
-    //if (cnt != 1) abort();
-    __asm__("nop");
-    __asm__("nop");
-    __asm__("nop");
-    __asm__("nop");
-    __asm__("memw");
-
-    fclose(fd);
-
-
-    //cart.sram = ESP32_PSRAM + 0x280000;
-
 
 
   /* Take care of image header, if present */

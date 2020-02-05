@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <ctype.h>
 
+#include "../miniz/miniz.h"
 
 
 #define SD_PIN_NUM_MISO 19
@@ -125,33 +126,33 @@ size_t odroid_sdcard_get_filesize(const char* path)
     return ret;
 }
 
-size_t odroid_sdcard_copy_file_to_memory(const char* path, void* ptr)
+size_t odroid_sdcard_copy_file_to_memory(const char* path, void* buf, size_t buf_size)
 {
     size_t ret = 0;
 
     if (!isOpen)
     {
-        printf("odroid_sdcard_copy_file_to_memory: not open.\n");
+        printf("%s: not open.\n", __func__);
         return 0;
     }
 
-    if (!ptr)
+    if (!buf)
     {
-        printf("odroid_sdcard_copy_file_to_memory: ptr is null.\n");
+        printf("%s: buf is null.\n", __func__);
         return 0;
     }
 
     FILE* f = fopen(path, "rb");
     if (f == NULL)
     {
-        printf("odroid_sdcard_copy_file_to_memory: fopen failed.\n");
+        printf("%s: fopen failed.\n", __func__);
         return 0;
     }
 
-    const size_t BLOCK_SIZE = 512;
+    const size_t BLOCK_SIZE = MIN(4096, buf_size);
     while(true)
     {
-        size_t count = fread((uint8_t*)ptr + ret, 1, BLOCK_SIZE, f);
+        size_t count = fread((uint8_t*)buf + ret, 1, BLOCK_SIZE, f);
         ret += count;
         if (count < BLOCK_SIZE) break;
     }
@@ -161,20 +162,38 @@ size_t odroid_sdcard_copy_file_to_memory(const char* path, void* ptr)
     return ret;
 }
 
-size_t odroid_sdcard_unzip_file_to_memory(const char* path, void* ptr)
+size_t odroid_sdcard_unzip_file_to_memory(const char* path, void* buf, size_t buf_size)
 {
     size_t ret = 0;
 
     if (!isOpen)
     {
-        printf("odroid_sdcard_unzip_file_to_memory: not open.\n");
+        printf("%s: not open.\n", __func__);
         return 0;
     }
 
-    if (!ptr)
+    if (!buf)
     {
-        printf("odroid_sdcard_unzip_file_to_memory: ptr is null.\n");
+        printf("%s: buf is null.\n", __func__);
         return 0;
+    }
+
+    mz_zip_archive zip_archive;
+    memset(&zip_archive, 0, sizeof(zip_archive));
+
+    if (mz_zip_reader_init_file(&zip_archive, path, 0))
+    {
+        printf("%s: Opened archive %s\n", __func__, path);
+        mz_zip_archive_file_stat file_stat;
+        if (mz_zip_reader_file_stat(&zip_archive, 0, &file_stat))
+        {
+            printf("%s: Extracting file %s\n", __func__, file_stat.m_filename);
+            if (mz_zip_reader_extract_to_mem(&zip_archive, 0, buf, buf_size, 0))
+            {
+                ret = file_stat.m_uncomp_size;
+            }
+        }
+        mz_zip_reader_end(&zip_archive);
     }
 
     return ret;

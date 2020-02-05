@@ -12,6 +12,8 @@
 #include "odroid_overlay.h"
 #include "odroid_input.h"
 
+#include "string.h"
+
 const char* SD_BASE_PATH = "/sd";
 static char* ROM_DATA;
 
@@ -76,10 +78,19 @@ int app_main(void)
 
 	char* romPath = odroid_settings_RomFilePath_get();
     char *fileName = odroid_sdcard_get_filename(romPath);
-    printf("osd_getromdata: Reading from sdcard.\n");
 
-    size_t fileSize = odroid_sdcard_copy_file_to_memory(romPath, ROM_DATA);
-    printf("app_main: fileSize=%d\n", fileSize);
+
+    size_t fileSize = 0;
+
+    if (strcasecmp(fileName + (strlen(fileName) - 4), ".zip") == 0) {
+        printf("app_main ROM: Reading compressed file from sdcard: %s\n", fileName);
+        fileSize = odroid_sdcard_unzip_file_to_memory(romPath, ROM_DATA, 1024 * 1024);
+    } else {
+        printf("app_main ROM: Reading from sdcard: %s\n", fileName);
+        fileSize = odroid_sdcard_copy_file_to_memory(romPath, ROM_DATA, 1024 * 1024);
+    }
+
+    printf("app_main ROM: fileSize=%d\n", fileSize);
     if (fileSize == 0)
     {
         odroid_display_show_sderr(ODROID_SD_ERR_BADFILE);
