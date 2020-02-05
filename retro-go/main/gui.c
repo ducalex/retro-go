@@ -203,7 +203,7 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
         sprintf(buf_crc, "%X", *crc);
 
         // /sd/romart/gbc/0/08932754.png
-        // /sdcard/romart/gbc/Super Mario.png
+        // /sd/romart/gbc/Super Mario.png
         char *basename = odroid_sdcard_get_filename_without_extension(file->name);
         sprintf(path, ROMART_PATH "/%s/%c/%s.png", emu->dirname, buf_crc[0], buf_crc);
         sprintf(path2, ROMART_PATH "/%s/%s.png", emu->dirname, basename);

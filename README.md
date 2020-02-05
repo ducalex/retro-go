@@ -1,9 +1,10 @@
 # Description
-Retro-Go is composed of a frontend and several emulators.
+Retro-Go is composed of a launcher and several emulators.
 
 ### Supported systems:
 - NES
-- Gameboy / Gameboy Color
+- Gameboy
+- Gameboy Color
 - Sega Master System
 - Sega Game Gear
 - Colecovision
@@ -13,7 +14,8 @@ Retro-Go is composed of a frontend and several emulators.
 - Faster/smoother transitions
 - RTC adjust and save
 - Rewind/Fastforward
-- Customizable frontend
+- Customizable launcher
+- PNG cover art
 
 # Screenshot
 ![Preview](https://raw.githubusercontent.com/ducalex/retro-go/master/assets/screenshot.jpg)
@@ -53,7 +55,7 @@ Example:
 /roms/nes/Super Mario.nes  
 /romart/nes/Super Mario.png  
 
-Important: The file must be less than 200x200px.
+Important: The file must be at most 200x200px.
 
 ## CRC cache
 Retro-Go caches some data to speed up cover art discovery and display.
@@ -65,7 +67,6 @@ If you have any problem the first step is to clear the cache located in /odroid/
 
 
 # Future plans
-
 - CMake support
 - Add Lynx emulator
 
