@@ -550,7 +550,7 @@ void save_sram()
 
         if (state_save(pathName) < 0)
         {
-            odroid_display_show_sderr(ODROID_SD_ERR_NOCARD);
+            odroid_display_show_error(ODROID_SD_ERR_NOCARD);
             abort();
         }
 
@@ -573,7 +573,7 @@ void load_sram()
 
         if (state_load(pathName) < 0)
         {
-            // odroid_display_show_sderr(ODROID_SD_ERR_NOCARD);
+            // odroid_display_show_error(ODROID_SD_ERR_NOCARD);
             // abort();
         }
 

@@ -233,7 +233,7 @@ int rom_load()
 		// esp_err_t r = odroid_sdcard_open(SD_BASE_PATH);
 		// if (r != ESP_OK)
 		// {
-			// odroid_display_show_sderr(ODROID_SD_ERR_NOCARD);
+			// odroid_display_show_error(ODROID_SD_ERR_NOCARD);
 			// abort();
 		// }
 
@@ -242,7 +242,7 @@ int rom_load()
 		if (RomFile == NULL)
 		{
 			printf("loader: fopen failed.\n");
-                        odroid_display_show_sderr(ODROID_SD_ERR_BADFILE);
+            odroid_display_show_error(ODROID_SD_ERR_BADFILE);
 			abort();
 		}
 
@@ -264,8 +264,8 @@ int rom_load()
 		size_t count = fread((uint8_t*)data, 1, 0x4000, RomFile);
 		if (count < 0x4000)
 		{
-                        odroid_display_show_sderr(ODROID_SD_ERR_BADFILE);
 			printf("loader: fread failed.\n");
+            odroid_display_show_error(ODROID_SD_ERR_BADFILE);
 			abort();
 		}
 #endif

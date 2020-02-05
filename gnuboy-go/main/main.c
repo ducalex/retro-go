@@ -34,6 +34,7 @@ extern int debug_trace;
 struct fb fb;
 struct pcm pcm;
 
+bool forceConsoleReset = false;
 
 uint16_t* displayBuffer[2]; //= { fb0, fb0 }; //[160 * 144];
 uint8_t currentBuffer;
@@ -458,51 +459,26 @@ void app_main(void)
     odroid_input_gamepad_init();
     odroid_input_battery_level_init();
 
-    // Boot state overrides
-    bool forceConsoleReset = false;
+	//sdcard init must be before LCD init
+	esp_err_t sd_init = odroid_sdcard_open(SD_BASE_PATH);
 
-    switch (esp_sleep_get_wakeup_cause())
+    ili9341_init();
+
+    odroid_gamepad_state bootState = odroid_input_read_raw();
+
+    if (bootState.values[ODROID_INPUT_MENU])
     {
-        case ESP_SLEEP_WAKEUP_EXT0:
-        {
-            printf("app_main: ESP_SLEEP_WAKEUP_EXT0 deep sleep wake\n");
-            break;
-        }
+        // Force return to menu to recover from
+        // ROM loading crashes
+        odroid_system_application_set(0);
+        esp_restart();
+    }
 
-        case ESP_SLEEP_WAKEUP_EXT1:
-        case ESP_SLEEP_WAKEUP_TIMER:
-        case ESP_SLEEP_WAKEUP_TOUCHPAD:
-        case ESP_SLEEP_WAKEUP_ULP:
-        case ESP_SLEEP_WAKEUP_UNDEFINED:
-        {
-            printf("app_main: Non deep sleep startup\n");
-
-            odroid_gamepad_state bootState = odroid_input_read_raw();
-
-            if (bootState.values[ODROID_INPUT_MENU])
-            {
-                // Force return to factory app to recover from
-                // ROM loading crashes
-
-                // Set menu application
-                odroid_system_application_set(0);
-
-                // Reset
-                esp_restart();
-            }
-
-            if (bootState.values[ODROID_INPUT_START])
-            {
-                // Reset emulator if button held at startup to
-                // override save state
-                forceConsoleReset = true;
-            }
-
-            break;
-        }
-        default:
-            printf("app_main: Not a deep sleep reset\n");
-            break;
+    if (bootState.values[ODROID_INPUT_START])
+    {
+        // Reset emulator if button held at startup to
+        // override save state
+        forceConsoleReset = true; //emu_reset();
     }
 
     if (odroid_settings_StartAction_get() == ODROID_START_ACTION_RESTART)
@@ -511,15 +487,11 @@ void app_main(void)
         odroid_settings_StartAction_set(ODROID_START_ACTION_NORMAL);
     }
 
-	//sdcard init must be before LCD init
-	esp_err_t sd_init = odroid_sdcard_open(SD_BASE_PATH);
-
-    // Display
-    ili9341_init();
-    //odroid_display_show_splash();
-
-    // Clear display
-    //ili9341_write_frame_gb(NULL, true);
+    if (sd_init != ESP_OK)
+    {
+        odroid_display_show_error(ODROID_SD_ERR_NOCARD);
+        abort();
+    }
 
     // Load ROM
     loader_init(NULL);
@@ -666,4 +638,7 @@ void app_main(void)
           totalElapsedTime = 0;
         }
     }
+
+    printf("GNUBoy died.\n");
+    odroid_display_show_error(ODROID_EMU_ERR_CRASH);
 }

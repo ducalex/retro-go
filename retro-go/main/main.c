@@ -132,7 +132,7 @@ void retro_loop()
 
             if (!emu->initialized)
             {
-                odroid_overlay_draw_chars(48, 34, 272, "Loading directory...", C_WHITE, C_BLACK);
+                odroid_overlay_draw_chars(58, 35, 320 - 58, "Loading directory...", C_WHITE, C_BLACK);
                 emulators_init_emu(emu);
             }
 
@@ -280,8 +280,7 @@ void app_main(void)
 
     if (r != ESP_OK)
     {
-        odroid_display_show_sderr(ODROID_SD_ERR_NOCARD);
-        usleep(100 * 1000UL);
+        odroid_display_show_error(ODROID_SD_ERR_NOCARD);
         abort();
     }
 

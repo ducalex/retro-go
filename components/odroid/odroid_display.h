@@ -2,9 +2,10 @@
 
 #include <stdint.h>
 
-enum ODROID_SD_ERR {
+enum ODROID_SYS_ERROR {
     ODROID_SD_ERR_BADFILE = 0x01,
-    ODROID_SD_ERR_NOCARD = 0x02
+    ODROID_SD_ERR_NOCARD = 0x02,
+    ODROID_EMU_ERR_CRASH = 0x03,
 };
 
 typedef enum
@@ -50,7 +51,7 @@ void odroid_display_show_splash();
 void odroid_display_drain_spi();
 void odroid_display_lock();
 void odroid_display_unlock();
-void odroid_display_show_sderr(int errNum);
+void odroid_display_show_error(int errNum);
 void odroid_display_show_hourglass();
 void odroid_buffer_diff(uint8_t *buffer,
                         uint8_t *old_buffer,

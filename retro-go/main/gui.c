@@ -20,7 +20,7 @@
 
 #define CRC_WIDTH    (96)
 #define CRC_X_OFFSET (320 - CRC_WIDTH)
-#define CRC_Y_OFFSET (48)
+#define CRC_Y_OFFSET (35)
 
 #define LIST_WIDTH       (320)
 #define LIST_LINE_COUNT  ((240 - LIST_Y_OFFSET) / LIST_LINE_HEIGHT)
@@ -110,7 +110,7 @@ void gui_header_draw(retro_emulator_t *emu)
         odroid_overlay_draw_chars(0, i, 320, (char*)" ", C_WHITE, C_BLACK);
     }
     sprintf(buffer, "Games: %d", emu->roms.count);
-    odroid_overlay_draw_chars(x_pos + 4, y_pos + 2, 0, buffer, C_WHITE, C_BLACK);
+    odroid_overlay_draw_chars(x_pos + 10, y_pos + 3, 0, buffer, C_WHITE, C_BLACK);
     ili9341_write_frame_rectangleLE(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, emu->image_logo);
     ili9341_write_frame_rectangleLE(x_pos, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, emu->image_header);
 }
@@ -211,13 +211,17 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
         LuImage *img;
         if ((img = luPngReadFile(path)) || (img = luPngReadFile(path2)))
         {
-            for (int p = 0, i = 0; i < img->dataSize; i += 3) {
-                uint8_t r = img->data[i];
-                uint8_t g = img->data[i + 1];
-                uint8_t b = img->data[i + 2];
-                cover_buffer[p++] = ((r / 8) << 11) | ((g / 4) << 5) | (b / 8);
+            if (img->width <= 200 && img->height <= 200) {
+                for (int p = 0, i = 0; i < img->dataSize; i += 3) {
+                    uint8_t r = img->data[i];
+                    uint8_t g = img->data[i + 1];
+                    uint8_t b = img->data[i + 2];
+                    cover_buffer[p++] = ((r / 8) << 11) | ((g / 4) << 5) | (b / 8);
+                }
+                ili9341_write_frame_rectangleLE(320 - img->width, 240 - img->height, img->width, img->height, cover_buffer);
+            } else {
+                odroid_overlay_draw_chars(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"Art too large", C_ORANGE, C_BLACK);
             }
-            ili9341_write_frame_rectangleLE(320 - img->width, 240 - img->height, img->width, img->height, cover_buffer);
             luImageRelease(img, NULL);
             return;
         }

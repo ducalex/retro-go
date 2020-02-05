@@ -27,7 +27,7 @@ char *osd_getromdata()
 }
 
 
-int app_main(void)
+void app_main(void)
 {
 	printf("nesemu (%s-%s).\n", COMPILEDATE, GITREV);
 	printf("A HEAP:0x%x\n", esp_get_free_heap_size());
@@ -42,12 +42,6 @@ int app_main(void)
 	esp_err_t sd_init = odroid_sdcard_open(SD_BASE_PATH);
 
 	ili9341_init();
-
-    if (sd_init != ESP_OK)
-    {
-        odroid_display_show_sderr(ODROID_SD_ERR_NOCARD);
-        abort();
-    }
 
     odroid_gamepad_state bootState = odroid_input_read_raw();
 
@@ -72,13 +66,21 @@ int app_main(void)
         odroid_settings_StartAction_set(ODROID_START_ACTION_NORMAL);
     }
 
+    if (sd_init != ESP_OK)
+    {
+        odroid_display_show_error(ODROID_SD_ERR_NOCARD);
+        abort();
+    }
+
 	// Load ROM
     ROM_DATA = heap_caps_malloc(1024 * 1024, MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
     if (!ROM_DATA) abort();
 
 	char* romPath = odroid_settings_RomFilePath_get();
+    if (!romPath) {
+        odroid_display_show_error(ODROID_SD_ERR_BADFILE);
+    }
     char *fileName = odroid_sdcard_get_filename(romPath);
-
 
     size_t fileSize = 0;
 
@@ -93,8 +95,7 @@ int app_main(void)
     printf("app_main ROM: fileSize=%d\n", fileSize);
     if (fileSize == 0)
     {
-        odroid_display_show_sderr(ODROID_SD_ERR_BADFILE);
-        abort();
+        odroid_display_show_error(ODROID_SD_ERR_BADFILE);
     }
 
     free(romPath);
@@ -107,6 +108,6 @@ int app_main(void)
 	nofrendo_main(1, args);
 
 	printf("NoFrendo died.\n");
-	asm("break.n 1");
-    return 0;
+    odroid_display_show_error(ODROID_EMU_ERR_CRASH);
+    abort();
 }

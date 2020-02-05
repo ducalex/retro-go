@@ -1247,7 +1247,7 @@ void odroid_display_drain_spi()
     }
 }
 
-void odroid_display_show_sderr(int errNum)
+void odroid_display_show_error(int errNum)
 {
     switch(errNum)
     {
@@ -1260,7 +1260,7 @@ void odroid_display_show_sderr(int errNum)
             break;
 
         default:
-            abort();
+            ili9341_clear(C_RED);
     }
 
     // Drain SPI queue
