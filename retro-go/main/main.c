@@ -22,7 +22,7 @@ bool scaling_enabled = true;
 extern int gui_themes_count;
 
 static bool show_empty = true;
-static bool show_cover = true;
+static int  show_cover = 1;
 static int  selected_emu = 0;
 static int  font_size = 0;
 static int  theme = 0;
@@ -54,11 +54,17 @@ static bool hide_empty_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t 
 
 static bool show_cover_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
-    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
-        show_cover = !show_cover;
+    if (event == ODROID_DIALOG_PREV) {
+        if (--show_cover < 0) show_cover = 0;
         odroid_settings_int32_set("ShowCover", show_cover);
     }
-    strcpy(option->value, show_cover ? "Yes" : "No");
+    if (event == ODROID_DIALOG_NEXT) {
+        if (++show_cover > 2) show_cover = 2;
+        odroid_settings_int32_set("ShowCover", show_cover);
+    }
+    if (show_cover == 0) strcpy(option->value, "No");
+    if (show_cover == 1) strcpy(option->value, "Slow");
+    if (show_cover == 2) strcpy(option->value, "Fast");
     return event == ODROID_DIALOG_ENTER;
 }
 
@@ -148,7 +154,7 @@ void retro_loop()
             redraw = true;
         }
 
-        if (redraw ||idle_counter % 100 == 0)
+        if (redraw || idle_counter % 100 == 0)
         {
             odroid_overlay_draw_battery(320 - 23, 1, -1);
         }
@@ -162,7 +168,7 @@ void retro_loop()
         odroid_gamepad_state joystick;
         odroid_input_gamepad_read(&joystick);
 
-        if (redraw || (show_cover && idle_counter == 8))
+        if (show_cover && idle_counter == (show_cover == 1 ? 8 : 1))
         {
             gui_cover_draw(emu, &joystick);
         }
@@ -204,7 +210,7 @@ void retro_loop()
                     }
                     free(save_path);
                     redraw = true;
-                    continue;
+                    // continue;
                 }
             }
             else if (joystick.values[ODROID_INPUT_SELECT]) {
