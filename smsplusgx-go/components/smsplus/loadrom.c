@@ -22,6 +22,7 @@
 
 #include "shared.h"
 #include "odroid_display.h"
+#include "odroid_overlay.h"
 #include "odroid_sdcard.h"
 
 extern unsigned long crc32(crc, buf, len);
@@ -380,8 +381,7 @@ int load_rom (char *filename)
         if (!odroid_sdcard_copy_file_to_memory("/sd/roms/col/BIOS.col", ESP32_PSRAM + 0x100000, 0x2000))
         {
             printf("load_rom: Colecovision BIOS failed to load.\n");
-            odroid_display_show_error(ODROID_SD_ERR_NOBIOS);
-            abort();
+            odroid_overlay_alert("BIOS file BIOS.col not found");
         }
         coleco.rom = ESP32_PSRAM + 0x100000;
         option.console = 6;

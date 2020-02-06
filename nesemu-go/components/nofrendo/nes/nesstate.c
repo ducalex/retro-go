@@ -36,6 +36,7 @@
 
 #include "odroid_sdcard.h"
 #include "odroid_settings.h"
+#include "odroid_overlay.h"
 #include "odroid_display.h"
 
 extern nes_t* console_nes;
@@ -445,7 +446,7 @@ static int state_save(char* fn)
 _error:
    printf("error: %s\n", SNSS_GetErrorString(status));
    SNSS_CloseFile(&snssFile);
-   abort();
+   return -1;
 }
 
 
@@ -550,8 +551,7 @@ void save_sram()
 
         if (state_save(pathName) < 0)
         {
-            odroid_display_show_error(ODROID_SD_ERR_NOCARD);
-            abort();
+            odroid_overlay_alert("Save failed");
         }
 
         free(pathName);
@@ -573,7 +573,6 @@ void load_sram()
 
         if (state_load(pathName) < 0)
         {
-            // odroid_display_show_error(ODROID_SD_ERR_NOCARD);
             // abort();
         }
 

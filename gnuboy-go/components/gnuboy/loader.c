@@ -29,6 +29,7 @@
 
 #include "odroid_settings.h"
 #include "odroid_sdcard.h"
+#include "odroid_system.h"
 #include "odroid_display.h"
 
 
@@ -207,7 +208,7 @@ int rom_load()
 	{
 		printf("loader: fopen failed.\n");
 		odroid_display_show_error(ODROID_SD_ERR_BADFILE);
-		abort();
+		odroid_system_halt();
 	}
 
 	// copy
@@ -216,7 +217,7 @@ int rom_load()
 	{
 		printf("loader: fread failed.\n");
 		odroid_display_show_error(ODROID_SD_ERR_BADFILE);
-		abort();
+		odroid_system_halt();
 	}
 
 	BankCache[0] = 1;

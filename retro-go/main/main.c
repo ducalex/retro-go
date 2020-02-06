@@ -287,7 +287,7 @@ void app_main(void)
     if (r != ESP_OK)
     {
         odroid_display_show_error(ODROID_SD_ERR_NOCARD);
-        abort();
+        odroid_system_halt();
     }
 
     ili9341_blank_screen();

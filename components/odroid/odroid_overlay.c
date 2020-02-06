@@ -264,12 +264,15 @@ int odroid_overlay_confirm(char *text, bool yes_selected)
         {1, "Yes", "", 1, NULL},
         {0, "No ", "", 1, NULL},
     };
-    return odroid_overlay_dialog(text, &choices, 2, yes_selected ? 1 : 0);
+    return odroid_overlay_dialog(text, choices, 2, yes_selected ? 1 : 0);
 }
 
-int odroid_overlay_error(char *text)
+void odroid_overlay_alert(char *text)
 {
-    return 0;
+    odroid_dialog_choice_t choices[] = {
+        {1, "OK", "", 1, NULL},
+    };
+    odroid_overlay_dialog(text, choices, 1, 0);
 }
 
 void odroid_overlay_fill_rect(int x_, int y_, int width, int height, uint16_t color, int buffer_width)

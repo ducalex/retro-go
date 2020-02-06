@@ -104,6 +104,12 @@ void odroid_system_init()
     system_initialized = true;
 }
 
+void odroid_system_halt()
+{
+    vTaskSuspendAll();
+    while (1);
+}
+
 void odroid_system_led_set(int value)
 {
     if (!system_initialized)

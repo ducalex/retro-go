@@ -166,6 +166,7 @@ void SaveState()
     if (f == NULL)
     {
         printf("SaveState: fopen save failed\n");
+        odroid_overlay_alert("Save failed");
     }
     else
     {
@@ -281,8 +282,6 @@ void app_main(void)
     framebuffers[0] = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
     framebuffers[1] = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
     printf("app_main: framebuffers[0]=%p, [1]=%p\n", framebuffers[0], framebuffers[1]);
-    if (!framebuffers[0] || !framebuffers[1])
-        abort();
 
     odroid_settings_init();
     odroid_overlay_init();
@@ -291,18 +290,11 @@ void app_main(void)
     odroid_input_battery_level_init();
 
     odroid_gamepad_state bootState = odroid_input_read_raw();
-
     if (bootState.values[ODROID_INPUT_MENU])
     {
         // Force return to menu to recover from ROM loading crashes
         odroid_system_application_set(0);
         esp_restart();
-    }
-
-    if (bootState.values[ODROID_INPUT_START])
-    {
-        // Do not load save state
-        forceConsoleReset = true;
     }
 
     if (odroid_settings_StartAction_get() == ODROID_START_ACTION_RESTART)
@@ -316,16 +308,28 @@ void app_main(void)
 
     ili9341_init();
 
+    if (esp_reset_reason() == ESP_RST_PANIC)
+    {
+        odroid_overlay_alert("The emulator crashed");
+        odroid_system_application_set(0);
+        esp_restart();
+    }
+
     if (sd_init != ESP_OK)
     {
         odroid_display_show_error(ODROID_SD_ERR_NOCARD);
-        abort();
+        odroid_system_halt();
     }
 
     romPath = odroid_settings_RomFilePath_get();
     if (!romPath || strlen(romPath) < 4)
     {
         odroid_display_show_error(ODROID_SD_ERR_BADFILE);
+        odroid_system_halt();
+    }
+
+    if (!framebuffers[0] || !framebuffers[1])
+    {
         abort();
     }
 

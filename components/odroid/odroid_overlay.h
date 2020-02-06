@@ -41,7 +41,7 @@ void odroid_overlay_draw_battery(int x_, int y_, int percentage);
 
 int odroid_overlay_dialog(char *header, odroid_dialog_choice_t *options, int options_count, int selected_initial);
 int odroid_overlay_confirm(char *text, bool yes_selected);
-int odroid_overlay_error(char *text);
+void odroid_overlay_alert(char *text);
 
 int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options, int extra_count);
 int odroid_overlay_game_menu();

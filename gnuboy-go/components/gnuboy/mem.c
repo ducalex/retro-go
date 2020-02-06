@@ -53,7 +53,6 @@ static inline byte* GetRomPtr(short bank)
 
 				odroid_audio_terminate();
 
-				odroid_display_show_error(ODROID_SD_ERR_BADFILE);
 				abort();
 			}
 
@@ -78,7 +77,6 @@ static inline byte* GetRomPtr(short bank)
 
 				odroid_audio_terminate();
 
-				odroid_display_show_error(ODROID_SD_ERR_BADFILE);
 				abort();
 			}
 	#endif
