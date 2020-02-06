@@ -16,10 +16,6 @@
 #include "../components/gnuboy/rtc.h"
 #include "../components/gnuboy/gnuboy.h"
 
-#define GAMEBOY_WIDTH (160)
-#define GAMEBOY_HEIGHT (144)
-#define AUDIO_SAMPLE_RATE (32000)
-
 #include "odroid_settings.h"
 #include "odroid_input.h"
 #include "odroid_display.h"
@@ -28,6 +24,12 @@
 #include "odroid_system.h"
 #include "odroid_sdcard.h"
 
+const char* SD_BASE_PATH = "/sd";
+
+#define AUDIO_SAMPLE_RATE (32000)
+
+#define GB_WIDTH (160)
+#define GB_HEIGHT (144)
 
 extern int debug_trace;
 
@@ -35,11 +37,11 @@ struct fb fb;
 struct pcm pcm;
 
 bool forceConsoleReset = false;
+static char *romPath = NULL;
 
-uint16_t* displayBuffer[2]; //= { fb0, fb0 }; //[160 * 144];
+uint16_t* framebuffers[2]; //= { fb0, fb0 }; //[160 * 144];
 uint8_t currentBuffer;
 
-uint16_t* framebuffer;
 int frame = 0;
 uint elapsedTime = 0;
 
@@ -50,15 +52,9 @@ volatile int16_t* currentAudioBufferPtr;
 
 odroid_battery_state battery_state;
 
-const char* StateFileName = "/storage/gnuboy.sav";
-
-const char* SD_BASE_PATH = "/sd";
-
 // --- MAIN
 QueueHandle_t vidQueue;
 QueueHandle_t audioQueue;
-
-float Volume = 1.0f;
 
 int pcm_submit()
 {
@@ -90,13 +86,11 @@ void run_to_vblank()
   //vid_end();
   if ((frame % 2) == 0)
   {
-      xQueueSend(vidQueue, &framebuffer, portMAX_DELAY);
+      xQueueSend(vidQueue, &framebuffers[currentBuffer], portMAX_DELAY);
 
       // swap buffers
       currentBuffer = currentBuffer ? 0 : 1;
-      framebuffer = displayBuffer[currentBuffer];
-
-      fb.ptr = framebuffer;
+      fb.ptr = framebuffers[currentBuffer];
   }
 
   rtc_tick();
@@ -131,8 +125,6 @@ void run_to_vblank()
   }
 }
 
-
-uint16_t* menuFramebuffer = 0;
 
 volatile bool videoTaskIsRunning = false;
 bool scaling_enabled = true;
@@ -225,44 +217,23 @@ void SaveState()
     odroid_input_battery_monitor_enabled_set(0);
     odroid_system_led_set(1);
 
-    char* romPath = odroid_settings_RomFilePath_get();
-    if (romPath)
+    char* pathName = odroid_sdcard_get_savefile_path(romPath);
+    if (!pathName) abort();
+
+    FILE* f = fopen(pathName, "w");
+    if (f == NULL)
     {
-        char* pathName = odroid_sdcard_get_savefile_path(romPath);
-        if (!pathName) abort();
-
-        FILE* f = fopen(pathName, "w");
-        if (f == NULL)
-        {
-            printf("%s: fopen save failed\n", __func__);
-            abort();
-        }
-
-        savestate(f);
-        rtc_save_internal(f);
-        fclose(f);
-
-        printf("%s: savestate OK.\n", __func__);
-
-        free(pathName);
-        free(romPath);
-    }
-    else
-    {
-        FILE* f = fopen(StateFileName, "w");
-        if (f == NULL)
-        {
-            printf("SaveState: fopen save failed\n");
-        }
-        else
-        {
-            savestate(f);
-            fclose(f);
-
-            printf("SaveState: savestate OK.\n");
-        }
+        printf("%s: fopen save failed\n", __func__);
+        abort();
     }
 
+    savestate(f);
+    rtc_save_internal(f);
+    fclose(f);
+
+    printf("%s: savestate OK.\n", __func__);
+
+    free(pathName);
 
     odroid_system_led_set(0);
     odroid_input_battery_monitor_enabled_set(1);
@@ -270,57 +241,29 @@ void SaveState()
 
 void LoadState(const char* cartName)
 {
-    char* romName = odroid_settings_RomFilePath_get();
-    if (romName)
+    char* pathName = odroid_sdcard_get_savefile_path(romPath);
+    if (!pathName) abort();
+
+    FILE* f = fopen(pathName, "r");
+    if (f == NULL)
     {
-        char* pathName = odroid_sdcard_get_savefile_path(romName);
-        if (!pathName) abort();
-
-        FILE* f = fopen(pathName, "r");
-        if (f == NULL)
-        {
-            printf("LoadState: fopen load failed\n");
-        }
-        else
-        {
-            loadstate(f);
-            rtc_load_internal(f);
-            fclose(f);
-
-            vram_dirty();
-            pal_dirty();
-            sound_dirty();
-            mem_updatemap();
-
-            printf("LoadState: loadstate OK.\n");
-        }
-
-        free(pathName);
-        free(romName);
+        printf("LoadState: fopen load failed\n");
     }
     else
     {
-        FILE* f = fopen(StateFileName, "r");
-        if (f == NULL)
-        {
-            printf("LoadState: fopen load failed\n");
-        }
-        else
-        {
-            loadstate(f);
-            fclose(f);
+        loadstate(f);
+        rtc_load_internal(f);
+        fclose(f);
 
-            vram_dirty();
-            pal_dirty();
-            sound_dirty();
-            mem_updatemap();
+        vram_dirty();
+        pal_dirty();
+        sound_dirty();
+        mem_updatemap();
 
-            printf("LoadState: loadstate OK.\n");
-        }
+        printf("LoadState: loadstate OK.\n");
     }
 
-	pal_set(odroid_settings_GBPalette_get());
-    Volume = odroid_settings_Volume_get();
+    free(pathName);
 }
 
 void PowerDown()
@@ -453,32 +396,31 @@ void app_main(void)
 {
     printf("gnuboy (%s-%s).\n", COMPILEDATE, GITREV);
 
+    framebuffers[0] = heap_caps_calloc(GB_WIDTH * GB_HEIGHT, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    framebuffers[1] = heap_caps_calloc(GB_WIDTH * GB_HEIGHT, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    printf("app_main: framebuffers[0]=%p, [1]=%p\n", framebuffers[0], framebuffers[1]);
+    if (!framebuffers[0] || !framebuffers[1])
+        abort();
+
 	odroid_settings_init();
     odroid_overlay_init();
     odroid_system_init();
     odroid_input_gamepad_init();
     odroid_input_battery_level_init();
 
-	//sdcard init must be before LCD init
-	esp_err_t sd_init = odroid_sdcard_open(SD_BASE_PATH);
-
-    ili9341_init();
-
     odroid_gamepad_state bootState = odroid_input_read_raw();
 
     if (bootState.values[ODROID_INPUT_MENU])
     {
-        // Force return to menu to recover from
-        // ROM loading crashes
+        // Force return to menu to recover from ROM loading crashes
         odroid_system_application_set(0);
         esp_restart();
     }
 
     if (bootState.values[ODROID_INPUT_START])
     {
-        // Reset emulator if button held at startup to
-        // override save state
-        forceConsoleReset = true; //emu_reset();
+        // Do not load save state
+        forceConsoleReset = true;
     }
 
     if (odroid_settings_StartAction_get() == ODROID_START_ACTION_RESTART)
@@ -487,28 +429,29 @@ void app_main(void)
         odroid_settings_StartAction_set(ODROID_START_ACTION_NORMAL);
     }
 
+	//sdcard init must be before LCD init
+	esp_err_t sd_init = odroid_sdcard_open(SD_BASE_PATH);
+
+    ili9341_init();
+
     if (sd_init != ESP_OK)
     {
         odroid_display_show_error(ODROID_SD_ERR_NOCARD);
         abort();
     }
 
+    romPath = odroid_settings_RomFilePath_get();
+    if (!romPath || strlen(romPath) < 4)
+	{
+        odroid_display_show_error(ODROID_SD_ERR_BADFILE);
+        abort();
+    }
+
     // Load ROM
-    loader_init(NULL);
+    loader_init(romPath);
 
     // Audio hardware
     odroid_audio_init(odroid_settings_AudioSink_get(), AUDIO_SAMPLE_RATE);
-
-    // Allocate display buffers
-    displayBuffer[0] = heap_caps_calloc(160 * 144, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
-    displayBuffer[1] = heap_caps_calloc(160 * 144, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
-
-    if (displayBuffer[0] == 0 || displayBuffer[1] == 0)
-        abort();
-
-    framebuffer = displayBuffer[0];
-
-    printf("app_main: displayBuffer[0]=%p, [1]=%p\n", displayBuffer[0], displayBuffer[1]);
 
     scaling_enabled = odroid_settings_ScaleDisabled_get(1) ? false : true;
     previous_scale_enabled = !scaling_enabled;
@@ -539,7 +482,7 @@ void app_main(void)
   	fb.pelsize = 2;
   	fb.pitch = fb.w * fb.pelsize;
   	fb.indexed = 0;
-  	fb.ptr = framebuffer;
+  	fb.ptr = framebuffers[currentBuffer];
   	fb.enabled = 1;
   	fb.dirty = 0;
 
@@ -566,24 +509,25 @@ void app_main(void)
 
     sound_reset();
 
-
     lcd_begin();
 
+    pal_set(odroid_settings_GBPalette_get());
 
     // Load state
-    LoadState(rom.name);
+    if (!forceConsoleReset)
+    {
+        LoadState(romPath);
+    }
+    else
+    {
+        emu_reset();
+    }
 
 
     uint startTime;
     uint stopTime;
     uint totalElapsedTime = 0;
     uint actualFrameCount = 0;
-
-    // Reset if button held at startup
-    if (forceConsoleReset)
-    {
-        emu_reset();
-    }
 
     while (true)
     {

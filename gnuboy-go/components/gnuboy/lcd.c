@@ -72,7 +72,7 @@ static int palettes[8][4] = {GB_DEFAULT_PALETTE,
 static int current_palette = 1;
 static int nr_of_palettes = 8;
 
-					
+
 static int sprsort = 1;
 static int sprdebug = 0;
 
@@ -670,7 +670,7 @@ inline void lcd_begin()
 
 
 extern int frame;
-extern uint16_t* displayBuffer[2];
+extern uint16_t* framebuffers[2];
 int lastLcdDisabled = 0;
 
 void IRAM_ATTR lcd_refreshline()
@@ -700,8 +700,8 @@ void IRAM_ATTR lcd_refreshline()
 		{
 			if (!lastLcdDisabled)
 			{
-				memset(displayBuffer[0], 0xff, 144 * 160 * 2);
-				memset(displayBuffer[1], 0xff, 144 * 160 * 2);
+				memset(framebuffers[0], 0xff, 144 * 160 * 2);
+				memset(framebuffers[1], 0xff, 144 * 160 * 2);
 
 				lastLcdDisabled = 1;
 			}
@@ -747,7 +747,7 @@ void IRAM_ATTR lcd_refreshline()
 
 //void change_palette(int i)
 //{
-	
+
 //}
 
 inline static void updatepalette(int i)
@@ -823,7 +823,7 @@ void pal_set(int palette)
 {
 	int i,j;
 	current_palette = palette % nr_of_palettes;
-	
+
 	for(i = 0; i < 4; i++)
 	{
 		for(j = 0; j < 4;j++)
@@ -831,8 +831,8 @@ void pal_set(int palette)
 			 dmg_pal[i][j] = palettes[current_palette][j];
 		}
 	}
-	
-	pal_dirty();	
+
+	pal_dirty();
 }
 
 void pal_next()

@@ -3,9 +3,10 @@
 #include <stdint.h>
 
 enum ODROID_SYS_ERROR {
-    ODROID_SD_ERR_BADFILE = 0x01,
-    ODROID_SD_ERR_NOCARD = 0x02,
-    ODROID_EMU_ERR_CRASH = 0x03,
+    ODROID_SD_ERR_BADFILE = 1,
+    ODROID_SD_ERR_NOCARD,
+    ODROID_SD_ERR_NOBIOS,
+    ODROID_EMU_ERR_CRASH,
 };
 
 typedef enum

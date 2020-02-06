@@ -38,26 +38,19 @@ void app_main(void)
     odroid_input_gamepad_init();
     odroid_input_battery_level_init();
 
-	//sdcard init must be before LCD init
-	esp_err_t sd_init = odroid_sdcard_open(SD_BASE_PATH);
-
-	ili9341_init();
-
     odroid_gamepad_state bootState = odroid_input_read_raw();
 
     if (bootState.values[ODROID_INPUT_MENU])
     {
-        // Force return to menu to recover from
-        // ROM loading crashes
+        // Force return to menu to recover from ROM loading crashes
         odroid_system_application_set(0);
         esp_restart();
     }
 
     if (bootState.values[ODROID_INPUT_START])
     {
-        // Reset emulator if button held at startup to
-        // override save state
-        forceConsoleReset = true; //emu_reset();
+        // Do not load save state
+        forceConsoleReset = true;
     }
 
     if (odroid_settings_StartAction_get() == ODROID_START_ACTION_RESTART)
@@ -66,29 +59,38 @@ void app_main(void)
         odroid_settings_StartAction_set(ODROID_START_ACTION_NORMAL);
     }
 
+	//sdcard init must be before LCD init
+	esp_err_t sd_init = odroid_sdcard_open(SD_BASE_PATH);
+
+	ili9341_init();
+
     if (sd_init != ESP_OK)
     {
         odroid_display_show_error(ODROID_SD_ERR_NOCARD);
         abort();
     }
 
-	// Load ROM
+	char* romPath = odroid_settings_RomFilePath_get();
+    if (!romPath || strlen(romPath) < 4)
+    {
+        odroid_display_show_error(ODROID_SD_ERR_BADFILE);
+        abort();
+    }
+
+    // Load ROM
     ROM_DATA = heap_caps_malloc(1024 * 1024, MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
     if (!ROM_DATA) abort();
 
-	char* romPath = odroid_settings_RomFilePath_get();
-    if (!romPath) {
-        odroid_display_show_error(ODROID_SD_ERR_BADFILE);
-    }
-    char *fileName = odroid_sdcard_get_filename(romPath);
-
     size_t fileSize = 0;
 
-    if (strcasecmp(fileName + (strlen(fileName) - 4), ".zip") == 0) {
-        printf("app_main ROM: Reading compressed file from sdcard: %s\n", fileName);
+    if (strcasecmp(romPath + (strlen(romPath) - 4), ".zip") == 0)
+    {
+        printf("app_main ROM: Reading compressed file: %s\n", romPath);
         fileSize = odroid_sdcard_unzip_file_to_memory(romPath, ROM_DATA, 1024 * 1024);
-    } else {
-        printf("app_main ROM: Reading from sdcard: %s\n", fileName);
+    }
+    else
+    {
+        printf("app_main ROM: Reading file: %s\n", romPath);
         fileSize = odroid_sdcard_copy_file_to_memory(romPath, ROM_DATA, 1024 * 1024);
     }
 
@@ -103,8 +105,7 @@ void app_main(void)
 	printf("B HEAP:0x%x\n", esp_get_free_heap_size());
 
 	printf("NoFrendo start!\n");
-
-	char* args[1] = { fileName };
+	char* args[1] = { odroid_sdcard_get_filename(romPath) };
 	nofrendo_main(1, args);
 
 	printf("NoFrendo died.\n");

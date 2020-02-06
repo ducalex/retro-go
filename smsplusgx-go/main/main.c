@@ -48,9 +48,10 @@ const char* SD_BASE_PATH = "/sd";
 #define PAL_SHIFT_MASK 0x80
 
 bool forceConsoleReset = false;
+static char* romPath = NULL;
 
-uint8_t* framebuffer[2];
-int currentFramebuffer = 0;
+uint8_t* framebuffers[2];
+int currentBuffer = 0;
 
 uint32_t* audioBuffer = NULL;
 int audioBufferCount = 0;
@@ -60,7 +61,6 @@ spi_flash_mmap_handle_t hrom;
 QueueHandle_t vidQueue;
 TaskHandle_t videoTaskHandle;
 
-odroid_volume_level Volume;
 odroid_battery_state battery;
 
 struct bitmap_meta {
@@ -149,58 +149,35 @@ char unalChar(const unsigned char *adr) {
     return 0;
 }
 
-const char* StateFileName = "/storage/smsplus.sav";
-const char* StoragePath = "/storage";
-
 void SaveState()
 {
     // Save sram
     odroid_input_battery_monitor_enabled_set(0);
     odroid_system_led_set(1);
 
-    char* romName = odroid_settings_RomFilePath_get();
-    if (romName)
+    odroid_display_lock();
+    odroid_display_drain_spi();
+
+    char* pathName = odroid_sdcard_get_savefile_path(romPath);
+    if (!pathName) abort();
+
+    FILE* f = fopen(pathName, "w");
+
+    if (f == NULL)
     {
-        odroid_display_lock();
-        odroid_display_drain_spi();
-
-        char* pathName = odroid_sdcard_get_savefile_path(romName);
-        if (!pathName) abort();
-
-        FILE* f = fopen(pathName, "w");
-
-        if (f == NULL)
-        {
-            printf("SaveState: fopen save failed\n");
-        }
-        else
-        {
-            system_save_state(f);
-            fclose(f);
-
-            printf("SaveState: system_save_state OK.\n");
-        }
-
-        odroid_display_unlock();
-
-        free(pathName);
-        free(romName);
+        printf("SaveState: fopen save failed\n");
     }
     else
     {
-        FILE* f = fopen(StateFileName, "w");
-        if (f == NULL)
-        {
-            printf("SaveState: fopen save failed\n");
-        }
-        else
-        {
-            system_save_state(f);
-            fclose(f);
+        system_save_state(f);
+        fclose(f);
 
-            printf("SaveState: system_save_state OK.\n");
-        }
+        printf("SaveState: system_save_state OK.\n");
     }
+
+    odroid_display_unlock();
+
+    free(pathName);
 
     odroid_system_led_set(0);
     odroid_input_battery_monitor_enabled_set(1);
@@ -208,50 +185,28 @@ void SaveState()
 
 void LoadState(const char* cartName)
 {
-    char* romName = odroid_settings_RomFilePath_get();
-    if (romName)
+    odroid_display_lock();
+    odroid_display_drain_spi();
+
+    char* pathName = odroid_sdcard_get_savefile_path(romPath);
+    if (!pathName) abort();
+
+    FILE* f = fopen(pathName, "r");
+    if (f == NULL)
     {
-        odroid_display_lock();
-        odroid_display_drain_spi();
-
-        char* pathName = odroid_sdcard_get_savefile_path(romName);
-        if (!pathName) abort();
-
-        FILE* f = fopen(pathName, "r");
-        if (f == NULL)
-        {
-            printf("LoadState: fopen load failed\n");
-        }
-        else
-        {
-            system_load_state(f);
-            fclose(f);
-
-            printf("LoadState: loadstate OK.\n");
-        }
-
-        odroid_display_unlock();
-
-        free(pathName);
-        free(romName);
+        printf("LoadState: fopen load failed\n");
     }
     else
     {
-        FILE* f = fopen(StateFileName, "r");
-        if (f == NULL)
-        {
-            printf("LoadState: fopen load failed\n");
-        }
-        else
-        {
-            system_load_state(f);
-            fclose(f);
+        system_load_state(f);
+        fclose(f);
 
-            printf("LoadState: system_load_state OK.\n");
-        }
+        printf("LoadState: loadstate OK.\n");
     }
 
-    Volume = odroid_settings_Volume_get();
+    odroid_display_unlock();
+
+    free(pathName);
 }
 
 void PowerDown()
@@ -319,20 +274,15 @@ void system_manage_sram(uint8 *sram, int slot, int mode)
     //sram_load();
 }
 
-//char cartName[1024];
 void app_main(void)
 {
     printf("smsplusgx (%s-%s).\n", COMPILEDATE, GITREV);
 
-    framebuffer[0] = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT,
-                                      MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
-    if (!framebuffer[0]) abort();
-    printf("app_main: framebuffer[0]=%p\n", framebuffer[0]);
-
-    framebuffer[1] = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT,
-                                      MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
-    if (!framebuffer[1]) abort();
-    printf("app_main: framebuffer[1]=%p\n", framebuffer[1]);
+    framebuffers[0] = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    framebuffers[1] = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    printf("app_main: framebuffers[0]=%p, [1]=%p\n", framebuffers[0], framebuffers[1]);
+    if (!framebuffers[0] || !framebuffers[1])
+        abort();
 
     odroid_settings_init();
     odroid_overlay_init();
@@ -340,26 +290,19 @@ void app_main(void)
     odroid_input_gamepad_init();
     odroid_input_battery_level_init();
 
-    //sdcard init must be before LCD init
-	esp_err_t sd_init = odroid_sdcard_open(SD_BASE_PATH);
-
-    ili9341_init();
-
     odroid_gamepad_state bootState = odroid_input_read_raw();
 
     if (bootState.values[ODROID_INPUT_MENU])
     {
-        // Force return to menu to recover from
-        // ROM loading crashes
+        // Force return to menu to recover from ROM loading crashes
         odroid_system_application_set(0);
         esp_restart();
     }
 
     if (bootState.values[ODROID_INPUT_START])
     {
-        // Reset emulator if button held at startup to
-        // override save state
-        forceConsoleReset = true; //emu_reset();
+        // Do not load save state
+        forceConsoleReset = true;
     }
 
     if (odroid_settings_StartAction_get() == ODROID_START_ACTION_RESTART)
@@ -368,44 +311,26 @@ void app_main(void)
         odroid_settings_StartAction_set(ODROID_START_ACTION_NORMAL);
     }
 
+    //sdcard init must be before LCD init
+	esp_err_t sd_init = odroid_sdcard_open(SD_BASE_PATH);
+
+    ili9341_init();
+
     if (sd_init != ESP_OK)
     {
         odroid_display_show_error(ODROID_SD_ERR_NOCARD);
         abort();
     }
 
-
-    const char* FILENAME = NULL;
-
-    char* cartName = odroid_settings_RomFilePath_get();
-    if (!cartName)
+    romPath = odroid_settings_RomFilePath_get();
+    if (!romPath || strlen(romPath) < 4)
     {
-        // Load fixed file name
-        FILENAME = "/sd/default.sms";
-    }
-    else
-    {
-        FILENAME = cartName;
+        odroid_display_show_error(ODROID_SD_ERR_BADFILE);
+        abort();
     }
 
-    // Load the ROM
-    load_rom(FILENAME);
-
-    //printf("%s: cart.crc=%#010lx\n", __func__, cart.crc);
-
-#if 0
-    if (strstr(cartName, ".sms") != 0 ||
-        strstr(cartName, ".SMS") != 0)
-    {
-        cart.type = TYPE_SMS;
-    }
-    else
-    {
-        cart.type = TYPE_GG;
-    }
-
-    free(cartName);
-#endif
+    // Load ROM
+    load_rom(romPath);
 
     scaling_enabled = odroid_settings_ScaleDisabled_get(1) ? false : true;
     previous_scaling_enabled = !scaling_enabled;
@@ -436,7 +361,7 @@ void app_main(void)
     bitmap.height = SMS_HEIGHT;
     bitmap.pitch = bitmap.width;
     //bitmap.depth = 8;
-    bitmap.data = framebuffer[0];
+    bitmap.data = framebuffers[0];
 
     // cart.pages = (cartSize / 0x4000);
     // cart.rom = romAddress;
@@ -454,8 +379,7 @@ void app_main(void)
 
     if (!forceConsoleReset)
     {
-        // Restore state
-        LoadState(cartName);
+        LoadState(romPath);
     }
 
 
@@ -641,8 +565,8 @@ void app_main(void)
             update = old_update;
 
             // Swap buffers
-            currentFramebuffer = 1 - currentFramebuffer;
-            bitmap.data = framebuffer[currentFramebuffer];
+            currentBuffer = 1 - currentBuffer;
+            bitmap.data = framebuffers[currentBuffer];
             ++renderedFrames;
         }
         else

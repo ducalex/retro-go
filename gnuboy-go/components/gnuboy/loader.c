@@ -199,80 +199,27 @@ int rom_load()
 
 	data = (void*)0x3f800000;
 
-	char* romPath = odroid_settings_RomFilePath_get();
-	if (!romPath)
+    printf("rom_load ROM: Reading file: %s\n", romfile);
+
+	// load the first 16k
+	RomFile = fopen(romfile, "rb");
+	if (RomFile == NULL)
 	{
-		printf("loader: Reading from flash.\n");
-
-		// copy from flash
-		spi_flash_mmap_handle_t hrom;
-
-		const esp_partition_t* part = esp_partition_find_first(0x40, 0, NULL);
-		if (part == 0)
-		{
-			printf("esp_partition_find_first failed.\n");
-			abort();
-		}
-
-		void* flashAddress;
-		for (size_t offset = 0; offset < 0x400000; offset += 0x100000)
-		{
-			esp_err_t err = esp_partition_read(part, offset, (void *)(data + offset), 0x100000);
-			if (err != ESP_OK)
-			{
-				printf("esp_partition_read failed. size = %x, offset = %x (%d)\n", part->size, offset, err);
-				abort();
-			}
-		}
-	}
-	else
-	{
-		printf("loader: Reading from sdcard.\n");
-
-		// copy from SD card
-		// esp_err_t r = odroid_sdcard_open(SD_BASE_PATH);
-		// if (r != ESP_OK)
-		// {
-			// odroid_display_show_error(ODROID_SD_ERR_NOCARD);
-			// abort();
-		// }
-
-		// load the first 16k
-		RomFile = fopen(romPath, "rb");
-		if (RomFile == NULL)
-		{
-			printf("loader: fopen failed.\n");
-            odroid_display_show_error(ODROID_SD_ERR_BADFILE);
-			abort();
-		}
-
-		// copy
-#if 0
-		const size_t BLOCK_SIZE = 512;
-		for (size_t offset = 0; offset < 0x4000; offset += BLOCK_SIZE)
-		{
-			size_t count = fread((uint8_t*)data + offset, 1, BLOCK_SIZE, RomFile);
-			__asm__("nop");
-			__asm__("nop");
-			__asm__("nop");
-			__asm__("nop");
-			__asm__("memw");
-
-			if (count < BLOCK_SIZE) break;
-		}
-#else
-		size_t count = fread((uint8_t*)data, 1, 0x4000, RomFile);
-		if (count < 0x4000)
-		{
-			printf("loader: fread failed.\n");
-            odroid_display_show_error(ODROID_SD_ERR_BADFILE);
-			abort();
-		}
-#endif
-
-		BankCache[0] = 1;
+		printf("loader: fopen failed.\n");
+		odroid_display_show_error(ODROID_SD_ERR_BADFILE);
+		abort();
 	}
 
+	// copy
+	size_t count = fread((uint8_t*)data, 1, 0x4000, RomFile);
+	if (count < 0x4000)
+	{
+		printf("loader: fread failed.\n");
+		odroid_display_show_error(ODROID_SD_ERR_BADFILE);
+		abort();
+	}
+
+	BankCache[0] = 1;
 
 	printf("Initialized. ROM@%p\n", data);
 	header = data;
@@ -559,7 +506,7 @@ static void cleanup()
 
 void loader_init(char *s)
 {
-	char *name, *p;
+	romfile = s;
 
 	rom_load();
 	rtc_load();
