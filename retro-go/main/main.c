@@ -16,8 +16,6 @@
 #include "emulators.h"
 #include "gui.h"
 
-const char* SD_BASE_PATH = "/sd";
-
 bool scaling_enabled = true;
 extern int gui_themes_count;
 
@@ -138,7 +136,7 @@ void retro_loop()
 
             if (!emu->initialized)
             {
-                odroid_overlay_draw_chars(58, 35, 320 - 58, "Loading directory...", C_WHITE, C_BLACK);
+                odroid_overlay_draw_text(58, 35, 320 - 58, "Loading directory...", C_WHITE, C_BLACK);
                 emulators_init_emu(emu);
             }
 
@@ -156,7 +154,7 @@ void retro_loop()
 
         if (redraw || idle_counter % 100 == 0)
         {
-            odroid_overlay_draw_battery(320 - 23, 1, -1);
+            odroid_overlay_draw_battery(320 - 23, 1);
         }
 
         if (redraw)
@@ -281,7 +279,7 @@ void app_main(void)
     odroid_input_gamepad_init();
     odroid_input_battery_level_init();
 
-    esp_err_t r = odroid_sdcard_open(SD_BASE_PATH);
+    esp_err_t r = odroid_sdcard_open();
     ili9341_init();
 
     if (r != ESP_OK)

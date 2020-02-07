@@ -1,12 +1,13 @@
 #pragma once
 
+#include <odroid_sdcard.h>
 #include <stdint.h>
 #include <stdbool.h>
 
-#define ROM_PATH  "/sd/roms"
-#define SAVE_PATH "/sd/odroid/data"
-#define CACHE_PATH "/sd/odroid/cache"
-#define ROMART_PATH "/sd/romart"
+#define ROM_PATH  SD_BASE_PATH "/roms"
+#define SAVE_PATH SD_BASE_PATH "/odroid/data"
+#define CACHE_PATH SD_BASE_PATH "/odroid/cache"
+#define ROMART_PATH SD_BASE_PATH "/romart"
 
 typedef struct {
     char name[64];

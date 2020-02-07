@@ -118,8 +118,6 @@ static int forcedmg=0, gbamode=0;
 
 static int memfill = 0, memrand = -1;
 
-extern const char* SD_BASE_PATH;
-
 
 static void initmem(void *mem, int size)
 {

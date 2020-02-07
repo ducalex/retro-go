@@ -17,17 +17,10 @@
 
 #include "../miniz/miniz.h"
 
-
-#define SD_PIN_NUM_MISO 19
-#define SD_PIN_NUM_MOSI 23
-#define SD_PIN_NUM_CLK  18
-#define SD_PIN_NUM_CS 22
-
-
 static bool isOpen = false;
-static char SD_BASE_PATH[32];
 
-esp_err_t odroid_sdcard_open(const char* base_path)
+
+esp_err_t odroid_sdcard_open()
 {
     esp_err_t ret;
 
@@ -65,11 +58,10 @@ esp_err_t odroid_sdcard_open(const char* base_path)
     	// Please check its source code and implement error recovery when developing
     	// production applications.
     	sdmmc_card_t* card;
-    	ret = esp_vfs_fat_sdmmc_mount(base_path, &host, &slot_config, &mount_config, &card);
+    	ret = esp_vfs_fat_sdmmc_mount(SD_BASE_PATH, &host, &slot_config, &mount_config, &card);
 
     	if (ret == ESP_OK)
         {
-            strcpy(SD_BASE_PATH, base_path);
             isOpen = true;
         }
         else

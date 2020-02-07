@@ -378,7 +378,7 @@ int load_rom (char *filename)
 
     if (strcasecmp(filename + (nameLength - 4), ".col") == 0)
     {
-        if (!odroid_sdcard_copy_file_to_memory("/sd/roms/col/BIOS.col", ESP32_PSRAM + 0x100000, 0x2000))
+        if (!odroid_sdcard_copy_file_to_memory(SD_BASE_PATH "/roms/col/BIOS.col", ESP32_PSRAM + 0x100000, 0x2000))
         {
             printf("load_rom: Colecovision BIOS failed to load.\n");
             odroid_overlay_alert("BIOS file BIOS.col not found");

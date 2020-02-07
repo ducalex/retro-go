@@ -41,13 +41,11 @@
 
 extern nes_t* console_nes;
 extern nes6502_context cpu;
-const char* SD_BASE_PATH;
 
 #define  FIRST_STATE_SLOT  0
 #define  LAST_STATE_SLOT   9
 
 static int state_slot = FIRST_STATE_SLOT;
-const char* SaveName = "/storage/nesemu.nes.sav";
 
 /* Set the state-save slot to use (0 - 9) */
 void state_setslot(int slot)

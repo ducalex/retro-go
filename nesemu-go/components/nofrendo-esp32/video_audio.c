@@ -21,11 +21,12 @@
 #include "driver/rtc_io.h"
 #include "driver/i2s.h"
 
+#include "odroid_console.h"
+
 //Nes stuff wants to define this as well...
 #undef false
 #undef true
 #undef bool
-
 
 #include <math.h>
 #include <string.h>
@@ -43,17 +44,9 @@
 #include "sdkconfig.h"
 #include "../nofrendo/nes/nesstate.h"
 
-#include "odroid_settings.h"
-#include "odroid_audio.h"
-#include "odroid_system.h"
-#include "odroid_display.h"
-#include "odroid_overlay.h"
-#include "odroid_input.h"
-
-
-#define DEFAULT_SAMPLERATE   32000
-//#define  DEFAULT_FRAGSIZE     512
-#define DEFAULT_FRAGSIZE     (DEFAULT_SAMPLERATE/NES_REFRESH_RATE)
+#define AUDIO_SAMPLERATE   32000
+//#define  AUDIO_FRAGSIZE     512
+#define AUDIO_FRAGSIZE     (AUDIO_SAMPLERATE/NES_REFRESH_RATE)
 
 #define  DEFAULT_WIDTH        256
 #define  DEFAULT_HEIGHT       NES_VISIBLE_HEIGHT
@@ -87,10 +80,10 @@ static int16_t *audio_frame;
 
 void do_audio_frame()
 {
-   audio_callback(audio_frame, DEFAULT_FRAGSIZE); //get audio data
+   audio_callback(audio_frame, AUDIO_FRAGSIZE); //get audio data
 
    //16 bit mono -> 32-bit (16 bit r+l)
-   for (int i = DEFAULT_FRAGSIZE - 1; i >= 0; --i)
+   for (int i = AUDIO_FRAGSIZE - 1; i >= 0; --i)
    {
       int sample = (int)audio_frame[i];
 
@@ -98,7 +91,7 @@ void do_audio_frame()
       audio_frame[i*2+1] = (short)sample;
    }
 
-   odroid_audio_submit(audio_frame, DEFAULT_FRAGSIZE);
+   odroid_audio_submit(audio_frame, AUDIO_FRAGSIZE);
 }
 
 void osd_setsound(void (*playfunc)(void *buffer, int length))
@@ -115,16 +108,14 @@ static void osd_stopsound(void)
 
 static int osd_init_sound(void)
 {
-   audio_frame = malloc(4 * DEFAULT_FRAGSIZE);
-   odroid_audio_init(odroid_settings_AudioSink_get(), DEFAULT_SAMPLERATE);
+   audio_frame = malloc(4 * AUDIO_FRAGSIZE);
 	audio_callback = NULL;
-
 	return 0;
 }
 
 void osd_getsoundinfo(sndinfo_t *info)
 {
-   info->sample_rate = DEFAULT_SAMPLERATE;
+   info->sample_rate = AUDIO_SAMPLERATE;
    info->bps = 16;
 }
 
@@ -315,11 +306,6 @@ static void vidTaskCallback(void *arg) {
 ** Input
 */
 
-static void osd_initinput()
-{
-}
-
-
 void SaveState()
 {
     printf("Saving state.\n");
@@ -497,20 +483,13 @@ int osd_init()
 {
    log_chain_logfunc(logprint);
 
-   if (osd_init_sound())
-   {
-      abort();
-   }
+   osd_init_sound();
 
    scaling_enabled = odroid_settings_ScaleDisabled_get(1) ? false : true;
    previous_scaling_enabled = !scaling_enabled;
 
-   //ili9341_blank_screen();
-
    vidQueue = xQueueCreate(1, sizeof(struct update_meta *));
    xTaskCreatePinnedToCore(&vidTaskCallback, "vidTask", 2048, NULL, 5, NULL, 1);
-
-   osd_initinput();
 
    return 0;
 }

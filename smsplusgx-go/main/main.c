@@ -1,26 +1,10 @@
 #include "freertos/FreeRTOS.h"
 #include "esp_system.h"
 #include "esp_event.h"
-#include "esp_partition.h"
-#include "driver/i2s.h"
-#include "esp_spiffs.h"
-#include "esp_sleep.h"
-#include "driver/rtc_io.h"
-#include "esp_ota_ops.h"
+#include "esp_err.h"
 
 #include "../components/smsplus/shared.h"
-
-#include "odroid_settings.h"
-#include "odroid_audio.h"
-#include "odroid_input.h"
-#include "odroid_system.h"
-#include "odroid_display.h"
-#include "odroid_overlay.h"
-#include "odroid_sdcard.h"
-
-#include <dirent.h>
-
-const char* SD_BASE_PATH = "/sd";
+#include "odroid_console.h"
 
 #define AUDIO_SAMPLE_RATE (32000)
 
@@ -55,8 +39,6 @@ int currentBuffer = 0;
 
 uint32_t* audioBuffer = NULL;
 int audioBufferCount = 0;
-
-spi_flash_mmap_handle_t hrom;
 
 QueueHandle_t vidQueue;
 TaskHandle_t videoTaskHandle;
@@ -283,50 +265,7 @@ void app_main(void)
     framebuffers[1] = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
     printf("app_main: framebuffers[0]=%p, [1]=%p\n", framebuffers[0], framebuffers[1]);
 
-    odroid_settings_init();
-    odroid_overlay_init();
-    odroid_system_init();
-    odroid_input_gamepad_init();
-    odroid_input_battery_level_init();
-
-    odroid_gamepad_state bootState = odroid_input_read_raw();
-    if (bootState.values[ODROID_INPUT_MENU])
-    {
-        // Force return to menu to recover from ROM loading crashes
-        odroid_system_application_set(0);
-        esp_restart();
-    }
-
-    if (odroid_settings_StartAction_get() == ODROID_START_ACTION_RESTART)
-    {
-        forceConsoleReset = true;
-        odroid_settings_StartAction_set(ODROID_START_ACTION_NORMAL);
-    }
-
-    //sdcard init must be before LCD init
-	esp_err_t sd_init = odroid_sdcard_open(SD_BASE_PATH);
-
-    ili9341_init();
-
-    if (esp_reset_reason() == ESP_RST_PANIC)
-    {
-        odroid_overlay_alert("The emulator crashed");
-        odroid_system_application_set(0);
-        esp_restart();
-    }
-
-    if (sd_init != ESP_OK)
-    {
-        odroid_display_show_error(ODROID_SD_ERR_NOCARD);
-        odroid_system_halt();
-    }
-
-    romPath = odroid_settings_RomFilePath_get();
-    if (!romPath || strlen(romPath) < 4)
-    {
-        odroid_display_show_error(ODROID_SD_ERR_BADFILE);
-        odroid_system_halt();
-    }
+    odroid_console_init(&romPath, &forceConsoleReset, AUDIO_SAMPLE_RATE);
 
     if (!framebuffers[0] || !framebuffers[1])
     {
@@ -338,9 +277,6 @@ void app_main(void)
 
     scaling_enabled = odroid_settings_ScaleDisabled_get(1) ? false : true;
     previous_scaling_enabled = !scaling_enabled;
-
-    odroid_audio_init(odroid_settings_AudioSink_get(), AUDIO_SAMPLE_RATE);
-
 
     vidQueue = xQueueCreate(1, sizeof(uint16_t*));
     xTaskCreatePinnedToCore(&videoTask, "videoTask", 1024 * 4, NULL, 5, &videoTaskHandle, 1);

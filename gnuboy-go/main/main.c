@@ -16,15 +16,7 @@
 #include "../components/gnuboy/rtc.h"
 #include "../components/gnuboy/gnuboy.h"
 
-#include "odroid_settings.h"
-#include "odroid_input.h"
-#include "odroid_display.h"
-#include "odroid_overlay.h"
-#include "odroid_audio.h"
-#include "odroid_system.h"
-#include "odroid_sdcard.h"
-
-const char* SD_BASE_PATH = "/sd";
+#include "odroid_console.h"
 
 #define AUDIO_SAMPLE_RATE (32000)
 
@@ -400,50 +392,7 @@ void app_main(void)
     framebuffers[1] = heap_caps_calloc(GB_WIDTH * GB_HEIGHT, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
     printf("app_main: framebuffers[0]=%p, [1]=%p\n", framebuffers[0], framebuffers[1]);
 
-	odroid_settings_init();
-    odroid_overlay_init();
-    odroid_system_init();
-    odroid_input_gamepad_init();
-    odroid_input_battery_level_init();
-
-    odroid_gamepad_state bootState = odroid_input_read_raw();
-    if (bootState.values[ODROID_INPUT_MENU])
-    {
-        // Force return to menu to recover from ROM loading crashes
-        odroid_system_application_set(0);
-        esp_restart();
-    }
-
-    if (odroid_settings_StartAction_get() == ODROID_START_ACTION_RESTART)
-    {
-        forceConsoleReset = true;
-        odroid_settings_StartAction_set(ODROID_START_ACTION_NORMAL);
-    }
-
-	//sdcard init must be before LCD init
-	esp_err_t sd_init = odroid_sdcard_open(SD_BASE_PATH);
-
-    ili9341_init();
-
-    if (esp_reset_reason() == ESP_RST_PANIC)
-    {
-        odroid_overlay_alert("The emulator crashed");
-        odroid_system_application_set(0);
-        esp_restart();
-    }
-
-    if (sd_init != ESP_OK)
-    {
-        odroid_display_show_error(ODROID_SD_ERR_NOCARD);
-        odroid_system_halt();
-    }
-
-    romPath = odroid_settings_RomFilePath_get();
-    if (!romPath || strlen(romPath) < 4)
-	{
-        odroid_display_show_error(ODROID_SD_ERR_BADFILE);
-        odroid_system_halt();
-    }
+	odroid_console_init(&romPath, &forceConsoleReset, AUDIO_SAMPLE_RATE);
 
     if (!framebuffers[0] || !framebuffers[1])
     {
@@ -452,9 +401,6 @@ void app_main(void)
 
     // Load ROM
     loader_init(romPath);
-
-    // Audio hardware
-    odroid_audio_init(odroid_settings_AudioSink_get(), AUDIO_SAMPLE_RATE);
 
     scaling_enabled = odroid_settings_ScaleDisabled_get(1) ? false : true;
     previous_scale_enabled = !scaling_enabled;

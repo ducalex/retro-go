@@ -1,17 +1,12 @@
 #include "odroid_input.h"
 #include "odroid_settings.h"
-#include "odroid_display.h"
-#include "odroid_overlay.h"
 #include "odroid_system.h"
-#include "odroid_audio.h"
-//#include "odroid_display.h"
-#include "driver/ledc.h"
 
+#include "freertos/FreeRTOS.h"
 #include "driver/i2c.h"
 #include "driver/gpio.h"
-#include <driver/adc.h>
+#include "driver/adc.h"
 #include "esp_adc_cal.h"
-#include "freertos/FreeRTOS.h"
 
 #include <string.h>
 
@@ -24,6 +19,7 @@ static esp_adc_cal_characteristics_t characteristics;
 static bool input_battery_initialized = false;
 static float adc_value = 0.0f;
 static bool battery_monitor_enabled = true;
+static odroid_battery_state battery_state;
 
 odroid_gamepad_state odroid_input_read_raw()
 {
@@ -227,15 +223,14 @@ static void odroid_battery_monitor_task()
     {
         if (battery_monitor_enabled)
         {
-            odroid_battery_state battery;
-            odroid_input_battery_level_read(&battery);
+            odroid_input_battery_level_read_now(&battery_state);
 
-            if (battery.percentage < 2)
+            if (battery_state.percentage < 2)
             {
                 led_state = !led_state;
                 odroid_system_led_set(led_state);
             }
-            else if(led_state)
+            else if (led_state)
             {
                 led_state = 0;
                 odroid_system_led_set(led_state);
@@ -246,17 +241,6 @@ static void odroid_battery_monitor_task()
     }
 }
 
-
-static void print_char_val_type(esp_adc_cal_value_t val_type)
-{
-    if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP) {
-        printf("ADC: Characterized using Two Point Value\n");
-    } else if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
-        printf("ADC: Characterized using eFuse Vref\n");
-    } else {
-        printf("ADC: Characterized using Default Vref\n");
-    }
-}
 
 #define DEFAULT_VREF 1100
 void odroid_input_battery_level_init()
@@ -270,13 +254,20 @@ void odroid_input_battery_level_init()
     //Characterize ADC
     //adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
     esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_11db, ADC_WIDTH_BIT_12, DEFAULT_VREF, &characteristics);
-    print_char_val_type(val_type);
+
+    if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP) {
+        printf("ADC: Characterized using Two Point Value\n");
+    } else if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
+        printf("ADC: Characterized using eFuse Vref\n");
+    } else {
+        printf("ADC: Characterized using Default Vref\n");
+    }
 
     input_battery_initialized = true;
     xTaskCreatePinnedToCore(&odroid_battery_monitor_task, "battery_monitor", 1024, NULL, 5, NULL, 1);
 }
 
-void odroid_input_battery_level_read(odroid_battery_state* out_state)
+void odroid_input_battery_level_read_now(odroid_battery_state* out_state)
 {
     if (!input_battery_initialized)
     {
@@ -319,6 +310,16 @@ void odroid_input_battery_level_read(odroid_battery_state* out_state)
 
     out_state->millivolts = (int)(Vs * 1000);
     out_state->percentage = (int)((Vs - EmptyVoltage) / (FullVoltage - EmptyVoltage) * 100.0f);
+}
+
+void odroid_input_battery_level_read(odroid_battery_state* out_state)
+{
+    if (battery_monitor_enabled) {
+        out_state->millivolts = battery_state.millivolts;
+        out_state->percentage = battery_state.percentage;
+    } else {
+        odroid_input_battery_level_read_now(out_state);
+    }
 }
 
 void odroid_input_battery_monitor_enabled_set(int value)
