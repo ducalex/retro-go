@@ -16,7 +16,7 @@
 #include "emulators.h"
 #include "gui.h"
 
-bool scaling_enabled = true;
+uint8_t scaling_mode = 1;
 extern int gui_themes_count;
 
 static bool show_empty = true;

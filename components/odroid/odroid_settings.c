@@ -16,7 +16,7 @@ static const char* NvsKey_AppSlot = "AppSlot";
 static const char* NvsKey_DataSlot = "DataSlot";
 static const char* NvsKey_Backlight = "Backlight";
 static const char* NvsKey_StartAction = "StartAction";
-static const char* NvsKey_ScaleDisabled = "ScaleDisabled";
+static const char* NvsKey_Scaling = "Scaling";
 static const char* NvsKey_AudioSink = "AudioSink";
 static const char* NvsKey_GBPalette = "GBPalette";
 
@@ -210,41 +210,26 @@ void odroid_settings_StartAction_set(ODROID_START_ACTION value)
 }
 
 
-uint8_t odroid_settings_ScaleDisabled_get(ODROID_SCALE_DISABLE system)
+ODROID_SCALING odroid_settings_Scaling_get(uint8_t system)
 {
     int result = 0;
+    char key[16];
 
-    // Read
-    esp_err_t err = nvs_get_i32(my_handle, NvsKey_ScaleDisabled, &result);
-    if (err == ESP_OK)
-    {
-        printf("%s: result=%d\n", __func__, result);
-    }
+    system = 0; // Temp fix
 
-    return (result & system) ? 1 : 0;
+    sprintf(key, "%s.%d", NvsKey_Scaling, system);
+    esp_err_t err = nvs_get_u8(my_handle, key, &result);
+
+    return (err == ESP_OK) ? result : ODROID_SCALING_FIT;
 }
-void odroid_settings_ScaleDisabled_set(ODROID_SCALE_DISABLE system, uint8_t value)
+void odroid_settings_Scaling_set(uint8_t system, ODROID_SCALING value)
 {
-	printf("%s: system=%#010x, value=%d\n", __func__, system, value);
+    char key[16];
 
-	// Read
-	int result = 0;
-	esp_err_t err = nvs_get_i32(my_handle, NvsKey_ScaleDisabled, &result);
-	if (err == ESP_OK)
-	{
-		printf("%s: result=%d\n", __func__, result);
-	}
+    system = 0; // Temp fix
 
-	// set system flag
-	//result = 1;
-	result &= ~system;
-	//printf("%s: result=%d\n", __func__, result);
-	result |= (system & (value ? 0xffffffff : 0));
-	printf("%s: set result=%d\n", __func__, result);
-
-    // Write
-    err = nvs_set_i32(my_handle, NvsKey_ScaleDisabled, result);
-    if (err != ESP_OK) abort();
+    sprintf(key, "%s.%d", NvsKey_Scaling, system);
+    esp_err_t err = nvs_set_u8(my_handle, key, value);
 
     nvs_commit(my_handle);
 }

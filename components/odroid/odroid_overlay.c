@@ -12,7 +12,7 @@
 #include "stdio.h"
 
 static uint16_t *overlay_buffer = NULL;
-extern bool scaling_enabled;
+extern uint8_t scaling_mode;
 
 int ODROID_FONT_WIDTH = 8;
 int ODROID_FONT_HEIGHT = 8;
@@ -124,7 +124,7 @@ void odroid_overlay_draw_dialog(char *header, odroid_dialog_choice_t *options, i
         width = len > width ? len : width;
     }
 
-    int box_width = (ODROID_FONT_WIDTH * width) + 8;
+    int box_width = (ODROID_FONT_WIDTH * width) + 12;
     int box_height = (ODROID_FONT_HEIGHT * options_count) + 12;
 
     if (header)
@@ -142,7 +142,7 @@ void odroid_overlay_draw_dialog(char *header, odroid_dialog_choice_t *options, i
     odroid_overlay_draw_rect(x, y, box_width, box_height, 6, box_color);
     odroid_overlay_draw_rect(x - 1, y - 1, box_width + 2, box_height + 2, 1, box_border_color);
 
-    x += 4;
+    x += 6;
     y += 6;
 
     if (header)
@@ -350,12 +350,23 @@ static bool brightness_update_cb(odroid_dialog_choice_t *option, odroid_dialog_e
 
 static bool scaling_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
-    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
-        scaling_enabled = !scaling_enabled;
-        odroid_settings_ScaleDisabled_set(1, !scaling_enabled);
+    uint8_t level = odroid_settings_Scaling_get(0);
+    uint8_t max = 2;
+
+    if (event == ODROID_DIALOG_PREV && level > 0) {
+        odroid_settings_Scaling_set(0, --level);
     }
 
-    strcpy(option->value, scaling_enabled ? "Yes" : "No");
+    if (event == ODROID_DIALOG_NEXT && level < max) {
+        odroid_settings_Scaling_set(0, ++level);
+    }
+
+    scaling_mode = level;
+
+    if (level == 0) strcpy(option->value, "Off ");
+    if (level == 1) strcpy(option->value, "On  ");
+    if (level == 2) strcpy(option->value, "Fill");
+
     return event == ODROID_DIALOG_ENTER;
 }
 

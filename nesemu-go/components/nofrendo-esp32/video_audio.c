@@ -59,8 +59,8 @@ struct update_meta {
     int stride;
 };
 
-bool scaling_enabled = true;
-bool previous_scaling_enabled = true;
+uint8_t scaling_mode = 1;
+uint8_t previous_scaling_mode = 1;
 QueueHandle_t vidQueue;
 
 
@@ -267,13 +267,13 @@ static void vidTaskCallback(void *arg) {
 
         if (!update) break;
 
-        bool scale_changed = (previous_scaling_enabled != scaling_enabled);
+        bool scale_changed = (previous_scaling_mode != scaling_mode);
         if (scale_changed)
         {
            // Clear display
            ili9341_blank_screen();
-           previous_scaling_enabled = scaling_enabled;
-           if (scaling_enabled) {
+           previous_scaling_mode = scaling_mode;
+           if (scaling_mode) {
                odroid_display_set_scale(NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT, (8.f / 7.f));
            } else {
                odroid_display_reset_scale(NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT);
@@ -485,8 +485,8 @@ int osd_init()
 
    osd_init_sound();
 
-   scaling_enabled = odroid_settings_ScaleDisabled_get(1) ? false : true;
-   previous_scaling_enabled = !scaling_enabled;
+   scaling_mode = odroid_settings_Scaling_get(1);
+   previous_scaling_mode = 0xFF;
 
    vidQueue = xQueueCreate(1, sizeof(struct update_meta *));
    xTaskCreatePinnedToCore(&vidTaskCallback, "vidTask", 2048, NULL, 5, NULL, 1);

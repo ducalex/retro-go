@@ -57,8 +57,8 @@ static struct bitmap_meta update1 = {0,};
 static struct bitmap_meta update2 = {0,};
 static struct bitmap_meta *update = &update1;
 
-bool scaling_enabled = true;
-bool previous_scaling_enabled = true;
+uint8_t scaling_mode = 1;
+uint8_t previous_scaling_mode = 1;
 bool force_redraw = false;
 
 volatile bool videoTaskIsRunning = false;
@@ -74,14 +74,14 @@ void videoTask(void *arg)
 
         if (!meta) break;
 
-        bool scale_changed = (previous_scaling_enabled != scaling_enabled);
+        bool scale_changed = (previous_scaling_mode != scaling_mode);
         bool redraw = force_redraw || scale_changed;
         if (redraw)
         {
             ili9341_blank_screen();
-            previous_scaling_enabled = scaling_enabled;
+            previous_scaling_mode = scaling_mode;
             force_redraw = false;
-            if (scaling_enabled) {
+            if (scaling_mode) {
                 // The game gear aspect ratio is 1.33, as proved by its LCD size (65.27mm x 48.90mm)
                 // But 1.2 gives us a perfect 2x x_scale, which is what we want.
                 float aspect = (sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS) ? 1.2f : 1.f;
@@ -275,8 +275,8 @@ void app_main(void)
     // Load ROM
     load_rom(romPath);
 
-    scaling_enabled = odroid_settings_ScaleDisabled_get(1) ? false : true;
-    previous_scaling_enabled = !scaling_enabled;
+    scaling_mode = odroid_settings_Scaling_get(3);
+    previous_scaling_mode = 0xFF;
 
     vidQueue = xQueueCreate(1, sizeof(uint16_t*));
     xTaskCreatePinnedToCore(&videoTask, "videoTask", 1024 * 4, NULL, 5, &videoTaskHandle, 1);

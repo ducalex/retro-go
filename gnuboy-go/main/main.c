@@ -119,8 +119,8 @@ void run_to_vblank()
 
 
 volatile bool videoTaskIsRunning = false;
-bool scaling_enabled = true;
-bool previous_scale_enabled = true;
+uint8_t scaling_mode = 1;
+uint8_t previous_scale_enabled = 1;
 
 void videoTask(void *arg)
 {
@@ -136,14 +136,14 @@ void videoTask(void *arg)
         if (param == 1)
             break;
 
-        if (previous_scale_enabled != scaling_enabled)
+        if (previous_scale_enabled != scaling_mode)
         {
             // Clear display
-            ili9341_write_frame_gb(NULL, true);
-            previous_scale_enabled = scaling_enabled;
+            ili9341_blank_screen();
+            previous_scale_enabled = scaling_mode;
         }
 
-        ili9341_write_frame_gb(param, scaling_enabled);
+        ili9341_write_frame_gb(param, scaling_mode);
         odroid_input_battery_level_read(&battery_state);
 
         xQueueReceive(vidQueue, &param, portMAX_DELAY);
@@ -402,8 +402,8 @@ void app_main(void)
     // Load ROM
     loader_init(romPath);
 
-    scaling_enabled = odroid_settings_ScaleDisabled_get(1) ? false : true;
-    previous_scale_enabled = !scaling_enabled;
+    scaling_mode = odroid_settings_Scaling_get(2);
+    previous_scale_enabled = 0xFF;
 
     // video
     vidQueue = xQueueCreate(1, sizeof(uint16_t*));
