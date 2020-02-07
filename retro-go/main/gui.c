@@ -107,10 +107,10 @@ void gui_header_draw(retro_emulator_t *emu)
     char buffer[40];
 
     for (int i = y_pos; i < LIST_Y_OFFSET - 1; i += ODROID_FONT_HEIGHT) {
-        odroid_overlay_draw_chars(0, i, 320, (char*)" ", C_WHITE, C_BLACK);
+        odroid_overlay_draw_text(0, i, 320, (char*)" ", C_WHITE, C_BLACK);
     }
     sprintf(buffer, "Games: %d", emu->roms.count);
-    odroid_overlay_draw_chars(x_pos + 10, y_pos + 3, 0, buffer, C_WHITE, C_BLACK);
+    odroid_overlay_draw_text(x_pos + 10, y_pos + 3, 0, buffer, C_WHITE, C_BLACK);
     ili9341_write_frame_rectangleLE(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, emu->image_logo);
     ili9341_write_frame_rectangleLE(x_pos, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, emu->image_header);
 }
@@ -121,14 +121,14 @@ void gui_list_draw(retro_emulator_t *emu, int theme_)
     float gradient = 16.f / lines;
     theme_t theme = gui_themes[theme_ % gui_themes_count];
 
-    odroid_overlay_draw_chars(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" ", C_RED, C_BLACK);
+    odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" ", C_RED, C_BLACK);
 
     for (int i = 0; i < lines; i++) {
         int entry = emu->roms.selected + i - (lines / 2);
         int y = LIST_Y_OFFSET + i * LIST_LINE_HEIGHT;
         char *text = (entry >= 0 && entry < emu->roms.count) ? emu->roms.files[entry].name : (char *)" ";
         uint16_t fg_color = (entry == emu->roms.selected) ? theme.list_highlight : theme.list_foreground;
-        odroid_overlay_draw_chars(LIST_X_OFFSET, y, LIST_WIDTH, text, fg_color, (int)(gradient * i) << theme.list_background);
+        odroid_overlay_draw_text(LIST_X_OFFSET, y, LIST_WIDTH, text, fg_color, (int)(gradient * i) << theme.list_background);
     }
 }
 
@@ -158,7 +158,7 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
         }
         else if ((fp = fopen(file->path, "rb")) != NULL)
         {
-            odroid_overlay_draw_chars(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"       CRC32", C_GREEN, C_BLACK);
+            odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"       CRC32", C_GREEN, C_BLACK);
             fseek(fp, emu->crc_offset, SEEK_SET);
             int buf_size = 32768;
             uint32_t crc_tmp = 0;
@@ -190,7 +190,7 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
                     fclose(fp);
                 }
             }
-            odroid_overlay_draw_chars(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" ", C_RED, C_BLACK);
+            odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" ", C_RED, C_BLACK);
         }
         else
         {
@@ -220,7 +220,7 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
                 }
                 ili9341_write_frame_rectangleLE(320 - img->width, 240 - img->height, img->width, img->height, cover_buffer);
             } else {
-                odroid_overlay_draw_chars(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"Art too large", C_ORANGE, C_BLACK);
+                odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"Art too large", C_ORANGE, C_BLACK);
             }
             luImageRelease(img, NULL);
             return;
@@ -243,6 +243,6 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
         }
     }
 
-    odroid_overlay_draw_chars(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"No art found", C_RED, C_BLACK);
+    odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"No art found", C_RED, C_BLACK);
     *crc = 1;
 }

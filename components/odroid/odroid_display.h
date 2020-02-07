@@ -48,7 +48,6 @@ void odroid_display_backlight_set(int level);
 int odroid_display_backlight_get();
 
 int is_backlight_initialized();
-void odroid_display_show_splash();
 void odroid_display_drain_spi();
 void odroid_display_lock();
 void odroid_display_unlock();

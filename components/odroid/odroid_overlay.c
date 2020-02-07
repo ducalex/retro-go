@@ -38,7 +38,7 @@ void odroid_overlay_init()
     ODROID_FONT_HEIGHT = odroid_settings_int32_get("FontSize", 0) ? 16 : 8;
 }
 
-void odroid_overlay_draw_chars(uint16_t x_pos, uint16_t y_pos, uint16_t width, char *text, uint16_t color, uint16_t color_bg)
+void odroid_overlay_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, char *text, uint16_t color, uint16_t color_bg)
 {
     int x_offset = 0;
     int multi = ODROID_FONT_HEIGHT / 8;
@@ -66,63 +66,43 @@ void odroid_overlay_draw_chars(uint16_t x_pos, uint16_t y_pos, uint16_t width, c
     ili9341_write_frame_rectangleLE(x_pos, y_pos, width, ODROID_FONT_HEIGHT, overlay_buffer);
 }
 
-void odroid_overlay_draw_battery(int x_pos, int y_pos, int percentage)
+void odroid_overlay_draw_battery(int x_pos, int y_pos)
 {
-    if (percentage == -1) {
-        odroid_battery_state battery_state;
-        odroid_input_battery_level_read(&battery_state);
-        percentage = battery_state.percentage;
-    }
+    odroid_battery_state battery_state;
+    odroid_input_battery_level_read(&battery_state);
 
+    uint16_t percentage = battery_state.percentage;
+    uint16_t color_fill = C_FOREST_GREEN;
     uint16_t color_border = C_SILVER;
-    int width = 20 + 3;
-    int height = 8;
+    uint16_t width_fill = 18.f / 100 * percentage;
 
-    int value = ((percentage-1)/5) + 1;
+    if (percentage < 20)
+        color_fill = C_RED;
+    else if (percentage < 40)
+        color_fill = C_ORANGE;
 
-    if (value<=0) value = 0;
-    else if (value>20) value = 20;
-
-    for (int x = 0; x< width; x++)
-    {
-        overlay_buffer[x] = color_border;
-        overlay_buffer[x + (height-1)*width] = color_border;
-    }
-    for (int y = 0; y< height; y++)
-    {
-        overlay_buffer[y*width] = color_border;
-        overlay_buffer[width-2 + y*width] = color_border;
-        if (y>2 && y <height -2)
-        {
-            overlay_buffer[width-1 + y*width] = color_border;
-        }
-        else
-        {
-            overlay_buffer[width-1 + y*width] = C_BLACK;
-        }
-    }
-
-    uint16_t col;
-    if (percentage>40) col = C_FOREST_GREEN;
-    else if (percentage>20) col = C_ORANGE;
-    else col = C_RED;
-
-    odroid_overlay_fill_rect(1,1, value, height-2, col, width);
-    odroid_overlay_fill_rect(1 + value,1, 20-value, height-2, C_BLACK, width);
-    ili9341_write_frame_rectangleLE(x_pos, y_pos, width, height, overlay_buffer);
+    odroid_overlay_draw_rect(x_pos, y_pos, 20, 8, 1, C_SILVER);
+    odroid_overlay_draw_rect(x_pos + 20, y_pos + 2, 2, 4, 1, C_SILVER);
+    odroid_overlay_draw_rect(x_pos + 1, y_pos + 1, width_fill, 6, 3, color_fill);
 }
 
-void odroid_overlay_dialog_draw(char *header, odroid_dialog_choice_t *options, int options_count, int sel)
+void odroid_overlay_draw_dialog(char *header, odroid_dialog_choice_t *options, int options_count, int sel)
 {
     int width = header ? strlen(header) : 8;
     int padding = 0;
     int len = 0;
 
+    int box_color = C_NAVY;
+    int box_border_color = C_DIM_GRAY;
+    int box_shadow_color = C_BLACK;
+    int box_text_color = C_WHITE;
+
     char row_format[16] = " %s ";
     char row_format_kv[16] = " %s: %s ";
     char rows[16][32];
 
-    for (int i = 0; i < options_count; i++) {
+    for (int i = 0; i < options_count; i++)
+    {
         if (options[i].value[0]) {
             len = strlen(options[i].label);
             padding = (len > padding) ? len : padding;
@@ -131,7 +111,8 @@ void odroid_overlay_dialog_draw(char *header, odroid_dialog_choice_t *options, i
 
     sprintf(row_format_kv, " %%-%ds: %%s ", padding);
 
-    for (int i = 0; i < options_count; i++) {
+    for (int i = 0; i < options_count; i++)
+    {
         if (options[i].update_cb != NULL) {
             options[i].update_cb(&options[i], ODROID_DIALOG_INIT);
         }
@@ -143,26 +124,42 @@ void odroid_overlay_dialog_draw(char *header, odroid_dialog_choice_t *options, i
         width = len > width ? len : width;
     }
 
-    int box_width = width * ODROID_FONT_WIDTH;
-    int box_height = ODROID_FONT_HEIGHT * (options_count + 2);
+    int box_width = (ODROID_FONT_WIDTH * width) + 8;
+    int box_height = (ODROID_FONT_HEIGHT * options_count) + 12;
+
+    if (header)
+    {
+        box_height += ODROID_FONT_HEIGHT + 4;
+    }
+
     int x = (320 - box_width) / 2;
     int y = (240 - box_height) / 2;
 
-    for (int i = 0; i < options_count + 2; i++) {
-        odroid_overlay_draw_chars(x - 4, y + i * ODROID_FONT_HEIGHT, box_width + 8, (char*)" ", C_WHITE, C_NAVY);
-    }
+    memset(overlay_buffer, 0, 2048); // Black
+    ili9341_write_frame_rectangleLE(x + 5, y + box_height + 1, box_width, 4, overlay_buffer); // Bottom
+    ili9341_write_frame_rectangleLE(x + box_width + 1, y + 5, 4, box_height, overlay_buffer); // Rright
 
-    if (header) {
+    odroid_overlay_draw_rect(x, y, box_width, box_height, 6, box_color);
+    odroid_overlay_draw_rect(x - 1, y - 1, box_width + 2, box_height + 2, 1, box_border_color);
+
+    x += 4;
+    y += 6;
+
+    if (header)
+    {
         int pad = (0.5f * (width - strlen(header)) * ODROID_FONT_WIDTH);
-        odroid_overlay_draw_chars(x - 4, y - ODROID_FONT_HEIGHT, box_width + 8, (char*)" ", C_WHITE, C_NAVY);
-        odroid_overlay_draw_chars(x + pad, y - 2, 0, header, C_WHITE, C_NAVY);
-        y += 2;
+        odroid_overlay_draw_rect(x, y, box_width - 8, ODROID_FONT_HEIGHT + 4, (ODROID_FONT_HEIGHT + 4 / 2), box_color);
+        odroid_overlay_draw_text(x + pad, y, 0, header, box_text_color, box_color);
+        y += ODROID_FONT_HEIGHT + 4;
     }
 
-    for (int i = 0; i < options_count; i++) {
-        int color = options[i].enabled ? C_WHITE : C_GRAY;
-        int xo = x, yo = y + ODROID_FONT_HEIGHT + i * ODROID_FONT_HEIGHT;
-        odroid_overlay_draw_chars(xo, yo, box_width, rows[i], i == sel ? C_NAVY : color, i == sel ? color : C_NAVY);
+    uint16_t fg, bg, color;
+    for (int i = 0; i < options_count; i++)
+    {
+        color = options[i].enabled ? box_text_color : C_GRAY;
+        fg = (i == sel) ? box_color : color;
+        bg = (i == sel) ? color : box_color;
+        odroid_overlay_draw_text(x, y + i * ODROID_FONT_HEIGHT, width * ODROID_FONT_WIDTH, rows[i], fg, bg);
     }
 }
 
@@ -174,11 +171,8 @@ int odroid_overlay_dialog(char *header, odroid_dialog_choice_t *options, int opt
     bool select = false;
     odroid_gamepad_state joystick;
 
-    odroid_overlay_dialog_draw(header, options, options_count, sel);
-    // Debounce
-    // while (odroid_input_gamepad_read_masked() != 0) {
-    //     usleep(1000);
-    // }
+    odroid_overlay_draw_dialog(header, options, options_count, sel);
+
     wait_all_keys_released();
 
     while (1)
@@ -246,7 +240,7 @@ int odroid_overlay_dialog(char *header, odroid_dialog_choice_t *options, int opt
         }
         if (sel_old != sel)
         {
-            odroid_overlay_dialog_draw(header, options, options_count, sel);
+            odroid_overlay_draw_dialog(header, options, options_count, sel);
             sel_old = sel;
         }
 
@@ -275,19 +269,36 @@ void odroid_overlay_alert(char *text)
     odroid_overlay_dialog(text, choices, 1, 0);
 }
 
-void odroid_overlay_fill_rect(int x_, int y_, int width, int height, uint16_t color, int buffer_width)
+void odroid_overlay_draw_rect(int x, int y, int width, int height, int border, uint16_t color)
 {
-    if (width == 0 || height == 0) return;
-    for (int x = 0; x < width; x++)
+    int pixels = (width > height ? width : height) * border;
+    for (int i = 0; i < pixels; i++)
     {
-        for (int y = 0;y < height; y++)
-        {
-            overlay_buffer[x_+x+(y_+y)*buffer_width] = color;
-        }
+        overlay_buffer[i] = color;
     }
+    ili9341_write_frame_rectangleLE(x, y, width, border, overlay_buffer); // T
+    ili9341_write_frame_rectangleLE(x, y + height - border, width, border, overlay_buffer); // B
+    ili9341_write_frame_rectangleLE(x, y, border, height, overlay_buffer); // L
+    ili9341_write_frame_rectangleLE(x + width - border, y, border, height, overlay_buffer); // R
 }
 
+void odroid_overlay_draw_fill_rect(int x, int y, int width, int height, int border, uint16_t color)
+{
+    for (int i = 0; i < width * 16; i++)
+    {
+        overlay_buffer[i] = color;
+    }
 
+    int y_pos = y;
+    int y_end = y + height;
+
+    while (y_pos < y_end)
+    {
+        int thickness = (y_end - y_pos >= 16) ? 16 : (y_end - y_pos);
+        ili9341_write_frame_rectangleLE(x, y_pos, width, thickness, overlay_buffer);
+        y_pos += 16;
+    }
+}
 
 static bool audio_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
