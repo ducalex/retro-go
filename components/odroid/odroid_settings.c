@@ -18,11 +18,12 @@ static const char* NvsKey_Backlight = "Backlight";
 static const char* NvsKey_StartAction = "StartAction";
 static const char* NvsKey_Scaling = "Scaling";
 static const char* NvsKey_AudioSink = "AudioSink";
-static const char* NvsKey_GBPalette = "GBPalette";
+static const char* NvsKey_Palette = "Palette";
 
 static nvs_handle my_handle;
+static int app_id = 0;
 
-void odroid_settings_init()
+void odroid_settings_init(int _app_id)
 {
     // NVS
     esp_err_t err = nvs_flash_init();
@@ -36,52 +37,8 @@ void odroid_settings_init()
 
 	err = nvs_open(NvsNamespace, NVS_READWRITE, &my_handle);
 	if (err != ESP_OK) abort();
-}
 
-int32_t odroid_settings_VRef_get()
-{
-    int32_t result = 1100;
-
-	// Read
-	esp_err_t err = nvs_get_i32(my_handle, NvsKey_VRef, &result);
-	if (err == ESP_OK)
-    {
-        printf("odroid_settings_VRefGet: value=%d\n", result);
-	}
-
-    return result;
-}
-void odroid_settings_VRef_set(int32_t value)
-{
-    // Write key
-    esp_err_t err = nvs_set_i32(my_handle, NvsKey_VRef, value);
-    if (err != ESP_OK) abort();
-
-    // Close
-    nvs_commit(my_handle);
-}
-
-
-int32_t odroid_settings_Volume_get()
-{
-    int result = ODROID_VOLUME_LEVEL3;
-
-    // Read
-    esp_err_t err = nvs_get_i32(my_handle, NvsKey_Volume, &result);
-    if (err == ESP_OK)
-    {
-        printf("odroid_settings_Volume_get: value=%d\n", result);
-    }
-
-    return result;
-}
-void odroid_settings_Volume_set(int32_t value)
-{
-    // Read
-    esp_err_t err = nvs_set_i32(my_handle, NvsKey_Volume, value);
-    if (err != ESP_OK) abort();
-
-    nvs_commit(my_handle);
+    app_id = _app_id;
 }
 
 
@@ -102,7 +59,7 @@ char* odroid_settings_RomFilePath_get()
 
         result = value;
 
-        printf("odroid_settings_RomFilePathGet: value='%s'\n", value);
+        printf("%s: value='%s'\n", __func__, result);
     }
 
     return result;
@@ -117,188 +74,113 @@ void odroid_settings_RomFilePath_set(char* value)
 }
 
 
-int32_t odroid_settings_AppSlot_get()
+int32_t odroid_settings_VRef_get()
 {
-    int32_t result = -1;
-
-	// Read
-	esp_err_t err = nvs_get_i32(my_handle, NvsKey_AppSlot, &result);
-	if (err == ESP_OK)
-    {
-        printf("odroid_settings_AppSlot_get: value=%d\n", result);
-	}
-
-    return result;
+	return odroid_settings_int32_get(NvsKey_VRef, 1100);
 }
-void odroid_settings_AppSlot_set(int32_t value)
+void odroid_settings_VRef_set(int32_t value)
 {
-    // Write key
-    esp_err_t err = nvs_set_i32(my_handle, NvsKey_AppSlot, value);
-    if (err != ESP_OK) abort();
+    odroid_settings_int32_set(NvsKey_VRef, value);
+}
 
-    nvs_commit(my_handle);
+
+int32_t odroid_settings_Volume_get()
+{
+    return odroid_settings_int32_get(NvsKey_Volume, ODROID_VOLUME_LEVEL3);
+}
+void odroid_settings_Volume_set(int32_t value)
+{
+    odroid_settings_int32_set(NvsKey_Volume, value);
+}
+
+
+ODROID_AUDIO_SINK odroid_settings_AudioSink_get()
+{
+    return odroid_settings_int32_get(NvsKey_AudioSink, ODROID_AUDIO_SINK_SPEAKER);
+}
+void odroid_settings_AudioSink_set(ODROID_AUDIO_SINK value)
+{
+    odroid_settings_int32_set(NvsKey_AudioSink, value);
 }
 
 
 int32_t odroid_settings_DataSlot_get()
 {
-    int32_t result = -1;
-
-	// Read
-	esp_err_t err = nvs_get_i32(my_handle, NvsKey_DataSlot, &result);
-	if (err == ESP_OK)
-    {
-        printf("odroid_settings_DataSlot_get: value=%d\n", result);
-	}
-
-    return result;
+    return odroid_settings_int32_get(NvsKey_DataSlot, -1);
 }
 void odroid_settings_DataSlot_set(int32_t value)
 {
-    // Write key
-    esp_err_t err = nvs_set_i32(my_handle, NvsKey_DataSlot, value);
-    if (err != ESP_OK) abort();
-
-    nvs_commit(my_handle);
+    odroid_settings_int32_set(NvsKey_DataSlot, value);
 }
 
 
 int32_t odroid_settings_Backlight_get()
 {
-	// TODO: Move to header
-    int result = 2;
-
-    // Read
-    esp_err_t err = nvs_get_i32(my_handle, NvsKey_Backlight, &result);
-    if (err == ESP_OK)
-    {
-        printf("odroid_settings_Backlight_get: value=%d\n", result);
-    }
-
-    return result;
+    return odroid_settings_int32_get(NvsKey_Backlight, 2);
 }
 void odroid_settings_Backlight_set(int32_t value)
 {
-    // Read
-    esp_err_t err = nvs_set_i32(my_handle, NvsKey_Backlight, value);
-    if (err != ESP_OK) abort();
-
-    nvs_commit(my_handle);
+    odroid_settings_int32_set(NvsKey_Backlight, value);
 }
 
 
 ODROID_START_ACTION odroid_settings_StartAction_get()
 {
-    int result = 0;
-
-    // Read
-    esp_err_t err = nvs_get_i32(my_handle, NvsKey_StartAction, &result);
-    if (err == ESP_OK)
-    {
-        printf("%s: value=%d\n", __func__, result);
-    }
-
-    return result;
+    return odroid_settings_int32_get(NvsKey_StartAction, 0);
 }
 void odroid_settings_StartAction_set(ODROID_START_ACTION value)
 {
-    // Write
-    esp_err_t err = nvs_set_i32(my_handle, NvsKey_StartAction, value);
-    if (err != ESP_OK) abort();
-
-    nvs_commit(my_handle);
+    odroid_settings_int32_set(NvsKey_StartAction, value);
 }
 
 
-ODROID_SCALING odroid_settings_Scaling_get(uint8_t system)
+ODROID_SCALING odroid_settings_Scaling_get()
 {
-    int result = 0;
-    char key[16];
-
-    system = 0; // Temp fix
-
-    sprintf(key, "%s.%d", NvsKey_Scaling, system);
-    esp_err_t err = nvs_get_u8(my_handle, key, &result);
-
-    return (err == ESP_OK) ? result : ODROID_SCALING_FIT;
+    return odroid_settings_app_int32_get(NvsKey_Scaling, ODROID_SCALING_FIT);
 }
-void odroid_settings_Scaling_set(uint8_t system, ODROID_SCALING value)
+void odroid_settings_Scaling_set(ODROID_SCALING value)
 {
-    char key[16];
-
-    system = 0; // Temp fix
-
-    sprintf(key, "%s.%d", NvsKey_Scaling, system);
-    esp_err_t err = nvs_set_u8(my_handle, key, value);
-
-    nvs_commit(my_handle);
-}
-
-ODROID_AUDIO_SINK odroid_settings_AudioSink_get()
-{
-    int result = ODROID_AUDIO_SINK_SPEAKER;
-
-    // Read
-    esp_err_t err = nvs_get_i32(my_handle, NvsKey_AudioSink, &result);
-    if (err == ESP_OK)
-    {
-        printf("%s: value=%d\n", __func__, result);
-    }
-
-    return (ODROID_AUDIO_SINK)result;
-}
-void odroid_settings_AudioSink_set(ODROID_AUDIO_SINK value)
-{
-    // Write
-    esp_err_t err = nvs_set_i32(my_handle, NvsKey_AudioSink, (int)value);
-    if (err != ESP_OK) abort();
-
-    nvs_commit(my_handle);
+    odroid_settings_app_int32_set(NvsKey_Scaling, value);
 }
 
 
-int32_t odroid_settings_GBPalette_get()
+int32_t odroid_settings_Palette_get()
 {
-	// TODO: Move to header
-    int result = 0;
-
-    // Read
-    esp_err_t err = nvs_get_i32(my_handle, NvsKey_GBPalette, &result);
-    if (err == ESP_OK)
-    {
-        printf("odroid_settings_GBPalette_get: value=%d\n", result);
-    }
-
-    return result;
+    return odroid_settings_app_int32_get(NvsKey_Palette, 0);
 }
-void odroid_settings_GBPalette_set(int32_t value)
+void odroid_settings_Palette_set(int32_t value)
 {
-    // Read
-    esp_err_t err = nvs_set_i32(my_handle, NvsKey_GBPalette, value);
-    if (err != ESP_OK) abort();
-
-    nvs_commit(my_handle);
+    odroid_settings_app_int32_set(NvsKey_Palette, value);
 }
 
-int32_t odroid_settings_int32_get(const char *key, int32_t value_default)
-{
-    // TODO: Move to header
-    int result = value_default;
 
-    // Read
+int32_t odroid_settings_int32_get(const char *key, int32_t default_value)
+{
+    int result = default_value;
+
     esp_err_t err = nvs_get_i32(my_handle, key, &result);
-    if (err == ESP_OK)
-    {
-        printf("%s: value=%d\n", __func__, result);
-    }
+    printf("odroid_settings_int32_get: key='%s' value=%d, err=%d\n", key, result, err);
 
     return result;
 }
 void odroid_settings_int32_set(const char *key, int32_t value)
 {
-    // Read
     esp_err_t err = nvs_set_i32(my_handle, key, value);
-    if (err != ESP_OK) abort();
+    printf("odroid_settings_int32_set: key='%s' value=%d, err=%d\n", key, value, err);
 
     nvs_commit(my_handle);
+}
+
+
+int32_t odroid_settings_app_int32_get(const char *key, int32_t default_value)
+{
+    char app_key[16];
+    sprintf(app_key, "%s.%d", key, app_id);
+    return odroid_settings_int32_get(app_key, default_value);
+}
+void odroid_settings_app_int32_set(const char *key, int32_t value)
+{
+    char app_key[16];
+    sprintf(app_key, "%s.%d", key, app_id);
+    odroid_settings_int32_set(app_key, value);
 }

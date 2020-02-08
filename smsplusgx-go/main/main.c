@@ -4,7 +4,7 @@
 #include "esp_err.h"
 
 #include "../components/smsplus/shared.h"
-#include "odroid_console.h"
+#include "odroid_system.h"
 
 #define AUDIO_SAMPLE_RATE (32000)
 
@@ -40,7 +40,7 @@ int currentBuffer = 0;
 uint32_t* audioBuffer = NULL;
 int audioBufferCount = 0;
 
-QueueHandle_t vidQueue;
+QueueHandle_t videoQueue;
 TaskHandle_t videoTaskHandle;
 
 struct bitmap_meta {
@@ -55,34 +55,33 @@ static struct bitmap_meta update1 = {0,};
 static struct bitmap_meta update2 = {0,};
 static struct bitmap_meta *update = &update1;
 
-uint8_t scaling_mode = 1;
-uint8_t previous_scaling_mode = 1;
-bool force_redraw = false;
+int8_t scaling_mode = ODROID_SCALING_FIT;
+int8_t force_redraw = false;
 
 volatile bool videoTaskIsRunning = false;
-void videoTask(void *arg)
+static void videoTask(void *arg)
 {
     struct bitmap_meta* meta;
 
     videoTaskIsRunning = true;
 
-    // Game Gear should be stretched to 4:3
-    float aspect = (sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS) ? 1.2f : 1.f;
+    int8_t previous_scaling_mode = ODROID_SCALING_UNKNOWN;
+    float aspect = 1;
 
     while(1)
     {
-        xQueuePeek(vidQueue, &meta, portMAX_DELAY);
+        xQueuePeek(videoQueue, &meta, portMAX_DELAY);
 
         if (!meta) break;
 
-        bool scale_changed = (previous_scaling_mode != scaling_mode);
-        bool redraw = force_redraw || scale_changed;
+        bool redraw = (previous_scaling_mode != scaling_mode) || force_redraw;
         if (redraw)
         {
             ili9341_blank_screen();
             previous_scaling_mode = scaling_mode;
             force_redraw = false;
             if (scaling_mode) {
+                aspect = (sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS) ? 1.2f : 1.f;
                 odroid_display_set_scale(meta->width, meta->height, aspect);
             } else {
                 odroid_display_reset_scale(meta->width, meta->height);
@@ -94,7 +93,7 @@ void videoTask(void *arg)
                                  meta->width, meta->height,
                                  meta->stride, PIXEL_MASK, meta->palette);
 
-        xQueueReceive(vidQueue, &meta, portMAX_DELAY);
+        xQueueReceive(videoQueue, &meta, portMAX_DELAY);
     }
 
     odroid_display_lock();
@@ -198,7 +197,7 @@ void PowerDown()
     odroid_audio_terminate();
 
     void *exitVideoTask = NULL;
-    xQueueSend(vidQueue, &exitVideoTask, portMAX_DELAY);
+    xQueueSend(videoQueue, &exitVideoTask, portMAX_DELAY);
     while (videoTaskIsRunning) { vTaskDelay(10); }
 
 
@@ -230,7 +229,7 @@ void QuitEmulator(bool save)
     ili9341_blank_screen();
 
     void *exitVideoTask = NULL;
-    xQueueSend(vidQueue, &exitVideoTask, portMAX_DELAY);
+    xQueueSend(videoQueue, &exitVideoTask, portMAX_DELAY);
     while (videoTaskIsRunning) { vTaskDelay(10); }
 
     if (save) {
@@ -249,34 +248,31 @@ void QuitEmulator(bool save)
 
 void system_manage_sram(uint8 *sram, int slot, int mode)
 {
-    printf("system_manage_sram\n");
-    //sram_load();
+    // printf("system_manage_sram\n");
+    // sram_load();
 }
 
 void app_main(void)
 {
     printf("smsplusgx (%s-%s).\n", COMPILEDATE, GITREV);
 
+    // Do before odroid_system_init to make sure we get the caps requested
     framebuffers[0] = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
     framebuffers[1] = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
-    printf("app_main: framebuffers[0]=%p, [1]=%p\n", framebuffers[0], framebuffers[1]);
 
-    odroid_console_init(&romPath, &forceConsoleReset, AUDIO_SAMPLE_RATE);
+    // Init all the console hardware
+    odroid_system_init(3, AUDIO_SAMPLE_RATE, &romPath, &forceConsoleReset);
 
-    if (!framebuffers[0] || !framebuffers[1])
-    {
-        abort();
-    }
+    assert(framebuffers[0] && framebuffers[1]);
+
+    scaling_mode = odroid_settings_Scaling_get();
+
+    videoQueue = xQueueCreate(1, sizeof(uint16_t*));
+    xTaskCreatePinnedToCore(&videoTask, "videoTask", 1024 * 4, NULL, 5, &videoTaskHandle, 1);
+
 
     // Load ROM
     load_rom(romPath);
-
-    scaling_mode = odroid_settings_Scaling_get(3);
-    previous_scaling_mode = 0xFF;
-
-    vidQueue = xQueueCreate(1, sizeof(uint16_t*));
-    xTaskCreatePinnedToCore(&videoTask, "videoTask", 1024 * 4, NULL, 5, &videoTaskHandle, 1);
-
 
     sms.use_fm = 0;
 
@@ -493,7 +489,7 @@ void app_main(void)
 #if 1
             // Send update data to video queue on other core
             void *arg = (void*)update;
-            xQueueSend(vidQueue, &arg, portMAX_DELAY);
+            xQueueSend(videoQueue, &arg, portMAX_DELAY);
 #endif
 
             // Flip the update struct so we don't start writing into it while

@@ -1,11 +1,4 @@
-#include "odroid_settings.h"
-#include "odroid_audio.h"
-#include "odroid_input.h"
 #include "odroid_system.h"
-#include "odroid_settings.h"
-#include "odroid_display.h"
-#include "odroid_overlay.h"
-#include "odroid_sdcard.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -16,7 +9,7 @@
 #include "emulators.h"
 #include "gui.h"
 
-uint8_t scaling_mode = 1;
+int8_t scaling_mode = 1;
 extern int gui_themes_count;
 
 static bool show_empty = true;
@@ -154,7 +147,7 @@ void retro_loop()
 
         if (redraw || idle_counter % 100 == 0)
         {
-            odroid_overlay_draw_battery(320 - 23, 1);
+            odroid_overlay_draw_battery(320 - 26, 3);
         }
 
         if (redraw)
@@ -273,8 +266,8 @@ void app_main(void)
 {
     printf("Retro-Go (%s-%s).\n", COMPILEDATE, GITREV);
 
-	odroid_settings_init();
-    odroid_system_init();
+    odroid_system_gpio_init();
+	odroid_settings_init(0);
     odroid_overlay_init();
     odroid_input_gamepad_init();
     odroid_input_battery_level_init();

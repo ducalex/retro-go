@@ -4,18 +4,6 @@
 #include <time.h>
 #include <ctype.h>
 
-#include "esp_heap_caps.h"
-#include "esp_system.h"
-
-#ifndef GNUBOY_NO_MINIZIP
-/*
-** use http://www.winimage.com/zLibDll/minizip.html v1.1
-** which needs zlib
-*/
-#include <unzip/unzip.h>
-#endif /* GNUBOY_USE_MINIZIP */
-
-
 #include "gnuboy.h"
 #include "defs.h"
 #include "regs.h"
@@ -26,15 +14,11 @@
 #include "rc.h"
 #include "sound.h"
 
+#include "esp_heap_caps.h"
+#include "esp_system.h"
+
 #include "odroid_system.h"
 #include "odroid_display.h"
-
-static FILE* RomFile = NULL;
-
-#ifndef GNUBOY_NO_MINIZIP
-static int check_zip(char *filename);
-static byte *loadzipfile(char *archive, int *filesize);
-#endif /* GNUBOY_USE_MINIZIP */
 
 static int mbc_table[256] =
 {
@@ -96,6 +80,8 @@ static int ramsize_table[256] =
 };
 
 
+static FILE* fpRomFile = NULL;
+
 static char *romfile=NULL;
 static char *sramfile=NULL;
 static char *rtcfile=NULL;
@@ -114,44 +100,20 @@ static int memfill = 0, memrand = -1;
 
 static void initmem(void *mem, int size)
 {
-	char *p = mem;
-	memset(p, 0xff /*memfill*/, size);
+	memset(mem, 0xff /*memfill*/, size);
 }
 
 static byte *loadfile(FILE *f, int *len)
 {
-	int l = 0, c = 0;
-	byte *d = NULL;
-#ifdef GNUBOY_ENABLE_ORIGINAL_SLOW_INCREMENTAL_LOADER
-	int p = 0;
-	byte buf[512];
-
-	for(;;)
-	{
-		c = fread(buf, 1, sizeof buf, f);
-		if (c <= 0) break;
-		l += c;
-		d = realloc(d, l);
-		if (!d) return 0;
-		memcpy(d+p, buf, c);
-		p += c;
-	}
-#else /* fast and no space check */
-	/* alloc and read once - NOTE no sanity check on filesize */
 	fseek(f, 0, SEEK_END);
-	l = ftell(f);
+	int l = ftell(f);
+	byte *d = (byte*)malloc(l);
+
 	fseek(f, 0, SEEK_SET);
-	d = (byte*) malloc(l);
-	if (d != NULL)
+	if (fread((void *)d, (size_t) l, 1, f) != 1)
 	{
-		c = fread((void *) d, (size_t) l, 1, f);
-		if (c != 1)
-		{
-			l = 0;
-			/* NOTE if this fails caller doesn't catch it (ditto the slow and "safe" version) */
-		}
+		l = 0;
 	}
-#endif /* GNUBOY_ENABLE_ORIGINAL_SLOW_INCREMENTAL_LOADER */
 	*len = l;
 	return d;
 }
@@ -170,17 +132,14 @@ static void inflate_callback(byte b)
 	inf_buf[inf_pos++] = b;
 }
 
+
 static byte *decompress(byte *data, int *len)
 {
-	long pos = 0;
-	if (data[0] != 0x1f || data[1] != 0x8b)
-		return data;
-	inf_buf = 0;
-	inf_pos = inf_len = 0;
-	if (unzip(data, &pos, inflate_callback) < 0)
-		return data;
-	*len = inf_pos;
-	return inf_buf;
+	// if (data[0] == 0x1f && data[1] == 0x8b)
+	// 	return gunzip(data, len);
+	// if(data[0] == 0xFD && !memcmp(data+1, "7zXZ", 4))
+	// 	return do_unxz(data, len);
+	return data;
 }
 
 
@@ -211,14 +170,14 @@ int IRAM_ATTR rom_loadbank(short bank)
 	odroid_display_lock();
 
 	// Load the 16K page
-	if (fseek(RomFile, OFFSET, SEEK_SET))
+	if (fseek(fpRomFile, OFFSET, SEEK_SET))
 	{
 		printf("bank_load: fseek failed. OFFSET=%d\n", OFFSET);
 		odroid_display_show_error(ODROID_SD_ERR_BADFILE);
 		odroid_system_halt();
 	}
 
-	if (fread(rom.bank[bank], BANK_SIZE, 1, RomFile) < 1)
+	if (fread(rom.bank[bank], BANK_SIZE, 1, fpRomFile) < 1)
 	{
 		printf("bank_load: fread failed. bank=%d\n", bank);
 		odroid_display_show_error(ODROID_SD_ERR_BADFILE);
@@ -235,8 +194,8 @@ int rom_load()
 {
     printf("loader: Loading file: %s\n", romfile);
 
-	RomFile = fopen(romfile, "rb");
-	if (RomFile == NULL)
+	fpRomFile = fopen(romfile, "rb");
+	if (fpRomFile == NULL)
 	{
 		printf("loader: fopen failed.\n");
 		odroid_display_show_error(ODROID_SD_ERR_BADFILE);
@@ -249,7 +208,6 @@ int rom_load()
 
 	memcpy(rom.name, header + 0x0134, 16);
 	rom.name[16] = 0;
-	printf("loader: rom.name='%s'\n", rom.name);
 
 	int tmp = *((int*)(header + 0x0140));
 	byte c = tmp >> 24;
@@ -310,14 +268,15 @@ int rom_load()
 			break;
 	}
 
-	int sram_length = 8192 * mbc.ramsize;
-	printf("loader: mbc.type=%s, mbc.romsize=%d (%dK), mbc.ramsize=%d (%dK)\n", mbcName, mbc.romsize, rom.length / 1024, mbc.ramsize, sram_length / 1024);
+	printf("loader: rom.name='%s'\n", rom.name);
+	printf("loader: mbc.type=%s, mbc.romsize=%d (%dK), mbc.ramsize=%d (%dK)\n",
+		mbcName, mbc.romsize, rom.length / 1024, mbc.ramsize, mbc.ramsize * 8);
 
 	// SRAM
 	ram.sram_dirty = 1;
-	ram.sbank = malloc(sram_length);
+	ram.sbank = malloc(8192 * mbc.ramsize);
 
-	initmem(ram.sbank, sram_length);
+	initmem(ram.sbank, 8192 * mbc.ramsize);
 	initmem(ram.ibank, 4096 * 8);
 
 	mbc.rombank = 1;
@@ -336,10 +295,17 @@ int rom_load()
 
 int sram_load()
 {
-	if (!mbc.batt) return -1;
+	FILE *f;
+
+	if (!mbc.batt || !sramfile || !*sramfile) return -1;
 
 	/* Consider sram loaded at this point, even if file doesn't exist */
 	ram.loaded = 1;
+
+	// f = fopen(sramfile, "rb");
+	// if (!f) return -1;
+	// fread(ram.sbank, 8192, mbc.ramsize, f);
+	// fclose(f);
 
 	return 0;
 }
@@ -347,9 +313,16 @@ int sram_load()
 
 int sram_save()
 {
+	FILE *f;
+
 	/* If we crash before we ever loaded sram, DO NOT SAVE! */
-	if (!mbc.batt || !ram.loaded || !mbc.ramsize)
+	if (!mbc.batt || !sramfile || !ram.loaded || !mbc.ramsize)
 		return -1;
+
+	// f = fopen(sramfile, "wb");
+	// if (!f) return -1;
+	// fwrite(ram.sbank, 8192, mbc.ramsize, f);
+	// fclose(f);
 
 	return 0;
 }
@@ -400,18 +373,18 @@ void rtc_save()
 {
 	FILE *f;
 	if (!rtc.batt) return;
-	if (!(f = fopen(rtcfile, "wb"))) return;
-	rtc_save_internal(f);
-	fclose(f);
+	// if (!(f = fopen(rtcfile, "wb"))) return;
+	// rtc_save_internal(f);
+	// fclose(f);
 }
 
 void rtc_load()
 {
-	//FILE *f;
+	FILE *f;
 	if (!rtc.batt) return;
-	//if (!(f = fopen(rtcfile, "r"))) return;
-	//rtc_load_internal(f);
-	//fclose(f);
+	// if (!(f = fopen(rtcfile, "r"))) return;
+	// rtc_load_internal(f);
+	// fclose(f);
 }
 
 
@@ -483,110 +456,3 @@ rcvar_t loader_exports[] =
 	RCV_INT("memrand", &memrand),
 	RCV_END
 };
-
-#ifndef GNUBOY_NO_MINIZIP
-/*
-** Simplistic zip support, only loads the first file in a zip file
-** with no check as to the type (or filename/extension).
-*/
-
-/*
-**  returns 1 if a filename is a zip file
-*/
-static int check_zip(char *filename)
-{
-    char buf[2];
-    FILE *fd = NULL;
-    fd = fopen(filename, "rb");
-    if(!fd) return (0);
-    fread(buf, 2, 1, fd);
-    fclose(fd);
-    if(memcmp(buf, "PK", 2) == 0) return (1);
-    return (0);
-}
-
-static byte *loadzipfile(char *archive, int *filesize)
-{
-    char name[256];
-    unsigned char *buffer=NULL;
-    int zerror = UNZ_OK;
-    unzFile zhandle;
-    unz_file_info zinfo;
-    char tmp_header[0x200];
-    unsigned char rom_found=0;
-
-    zhandle = unzOpen(archive);
-    if(!zhandle) return (NULL);
-
-#ifdef IS_LITTLE_ENDIAN
-#define GAMEBOY_HEADER_MAGIC 0x6666EDCE
-#else /* BIG ENDIAN */
-#define GAMEBOY_HEADER_MAGIC 0xCEED6666
-#endif /* IS_LITTLE_ENDIAN */
-
-    /* Find first gameboy rom, do not use file extension, look for magic bytes/fingerprint */
-    /* Seek to first file in archive */
-    zerror = unzGoToFirstFile(zhandle);
-    if(zerror != UNZ_OK)
-    {
-        unzClose(zhandle);
-        return (NULL);
-    }
-
-    do
-    {
-        unzOpenCurrentFile(zhandle);
-        unzReadCurrentFile(zhandle, tmp_header, sizeof(tmp_header));
-        unzCloseCurrentFile(zhandle);
-        if ((*((unsigned long *)(tmp_header + 0x104))) == GAMEBOY_HEADER_MAGIC)
-        {
-            /* Gameboy Rom found! */
-            rom_found++;
-            break;
-        }
-    } while (unzGoToNextFile(zhandle) != UNZ_END_OF_LIST_OF_FILE);
-
-    if (rom_found == 0)
-        return (NULL);
-
-    /* Get information about the file */
-    unzGetCurrentFileInfo(zhandle, &zinfo, &name[0], 0xff, NULL, 0, NULL, 0);
-    *filesize = zinfo.uncompressed_size;
-
-    /* Error: file size is zero */
-    if(*filesize <= 0)
-    {
-        unzClose(zhandle);
-        return (NULL);
-    }
-
-    /* Open current file */
-    zerror = unzOpenCurrentFile(zhandle);
-    if(zerror != UNZ_OK)
-    {
-        unzClose(zhandle);
-        return (NULL);
-    }
-
-    /* Allocate buffer and read in file */
-    buffer = malloc(*filesize);
-    if(!buffer) return (NULL);
-    zerror = unzReadCurrentFile(zhandle, buffer, *filesize);
-
-    /* Internal error: free buffer and close file */
-    if(zerror < 0 || zerror != *filesize)
-    {
-        free(buffer);
-        buffer = NULL;
-        unzCloseCurrentFile(zhandle);
-        unzClose(zhandle);
-        return (NULL);
-    }
-
-    /* Close current file and archive file */
-    unzCloseCurrentFile(zhandle);
-    unzClose(zhandle);
-
-    return (buffer);
-}
-#endif /* GNUBOY_USE_MINIZIP */

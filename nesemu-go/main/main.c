@@ -2,7 +2,7 @@
 #include "esp_err.h"
 #include "string.h"
 
-#include "odroid_console.h"
+#include "odroid_system.h"
 #include "nofrendo.h"
 
 static char* romPath;
@@ -22,7 +22,7 @@ void app_main(void)
 {
 	printf("nesemu (%s-%s).\n", COMPILEDATE, GITREV);
 
-    odroid_console_init(&romPath, &forceConsoleReset, 32000);
+    odroid_system_init(2, 32000, &romPath, &forceConsoleReset);
 
     // Load ROM
     romData = heap_caps_malloc(1024 * 1024, MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);

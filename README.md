@@ -13,7 +13,8 @@ Retro-Go is composed of a launcher and several emulators.
 - In-game menu
 - Faster/smoother transitions
 - RTC adjust and save
-- Rewind/Fastforward
+- More scaling options
+- Fastforward
 - Customizable launcher
 - PNG cover art
 
@@ -69,6 +70,7 @@ If you have any problem the first step is to clear the cache located in /odroid/
 # Future plans
 - CMake support
 - Add Lynx emulator
+- Rewind
 
 
 # Compilation

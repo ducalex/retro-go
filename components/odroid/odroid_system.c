@@ -1,15 +1,93 @@
 #include "odroid_system.h"
-#include "odroid_settings.h"
-#include "odroid_input.h"
-
 #include "freertos/FreeRTOS.h"
+#include "esp_heap_caps.h"
+#include "esp_partition.h"
+#include "esp_ota_ops.h"
 #include "esp_system.h"
 #include "esp_event.h"
 #include "driver/rtc_io.h"
-#include "esp_partition.h"
-#include "esp_ota_ops.h"
+#include "string.h"
+#include "stdio.h"
 
 static bool system_initialized = false;
+
+void odroid_system_init(int app_id, int sample_rate, char **romPath, bool *reset)
+{
+    if (system_initialized) abort();
+
+    printf("odroid_system_init: %d KB free\n", esp_get_free_heap_size() / 1024);
+
+    odroid_settings_init(app_id);
+    odroid_overlay_init();
+    odroid_system_gpio_init();
+    odroid_input_gamepad_init();
+    odroid_input_battery_level_init();
+
+    odroid_gamepad_state bootState = odroid_input_read_raw();
+    if (bootState.values[ODROID_INPUT_MENU])
+    {
+        // Force return to menu to recover from ROM loading crashes
+        odroid_system_application_set(0);
+        esp_restart();
+    }
+
+    *reset = odroid_settings_StartAction_get() == ODROID_START_ACTION_RESTART;
+    if (*reset)
+    {
+        odroid_settings_StartAction_set(ODROID_START_ACTION_NORMAL);
+    }
+
+    //sdcard init must be before LCD init
+    esp_err_t sd_init = odroid_sdcard_open();
+
+    ili9341_init();
+
+    if (esp_reset_reason() == ESP_RST_PANIC)
+    {
+        odroid_overlay_alert("The emulator crashed");
+        odroid_system_application_set(0);
+        esp_restart();
+    }
+
+    if (esp_reset_reason() != ESP_RST_SW)
+    {
+        ili9341_blank_screen();
+        odroid_display_show_hourglass();
+    }
+
+    if (sd_init != ESP_OK)
+    {
+        odroid_display_show_error(ODROID_SD_ERR_NOCARD);
+        odroid_system_halt();
+    }
+
+    *romPath = odroid_settings_RomFilePath_get();
+    if (!*romPath || strlen(*romPath) < 4)
+    {
+        odroid_display_show_error(ODROID_SD_ERR_BADFILE);
+        odroid_system_halt();
+    }
+
+    odroid_audio_init(odroid_settings_AudioSink_get(), sample_rate);
+
+    system_initialized = true;
+
+    printf("odroid_system_init: System ready!\n");
+}
+
+void odroid_system_gpio_init()
+{
+    rtc_gpio_deinit(ODROID_GAMEPAD_IO_MENU);
+    //rtc_gpio_deinit(GPIO_NUM_14);
+
+    // blue led
+    gpio_set_direction(GPIO_NUM_2, GPIO_MODE_OUTPUT);
+    gpio_set_level(GPIO_NUM_2, 0);
+
+    // Disable LCD CD to prevent garbage
+    gpio_set_direction(GPIO_NUM_5, GPIO_MODE_OUTPUT);
+    gpio_set_level(GPIO_NUM_5, 1);
+}
 
 void odroid_system_application_set(int slot)
 {
@@ -42,66 +120,8 @@ void odroid_system_sleep()
         odroid_input_gamepad_read(&joystick);
     }
 
-    //odroid_input_gamepad_terminate();
-
-
-    // Configure button to wake
-    printf("odroid_system_sleep: Configuring deep sleep.\n");
-#if 1
-    esp_err_t err = esp_sleep_enable_ext0_wakeup(ODROID_GAMEPAD_IO_MENU, 0);
-#else
-    const int ext_wakeup_pin_1 = ODROID_GAMEPAD_IO_MENU;
-    const uint64_t ext_wakeup_pin_1_mask = 1ULL << ext_wakeup_pin_1;
-
-    esp_err_t err = esp_sleep_enable_ext1_wakeup(ext_wakeup_pin_1_mask, ESP_EXT1_WAKEUP_ALL_LOW);
-#endif
-    if (err != ESP_OK)
-    {
-        printf("odroid_system_sleep: esp_sleep_enable_ext0_wakeup failed.\n");
-        abort();
-    }
-
-    err = rtc_gpio_pullup_en(ODROID_GAMEPAD_IO_MENU);
-    if (err != ESP_OK)
-    {
-        printf("odroid_system_sleep: rtc_gpio_pullup_en failed.\n");
-        abort();
-    }
-
-
-    // Isolate GPIO12 pin from external circuits. This is needed for modules
-    // which have an external pull-up resistor on GPIO12 (such as ESP32-WROVER)
-    // to minimize current consumption.
-    rtc_gpio_isolate(GPIO_NUM_12);
-#if 1
-    rtc_gpio_isolate(GPIO_NUM_34);
-    rtc_gpio_isolate(GPIO_NUM_35);
-    rtc_gpio_isolate(GPIO_NUM_0);
-    rtc_gpio_isolate(GPIO_NUM_39);
-    //rtc_gpio_isolate(GPIO_NUM_14);
-#endif
-
-    // Sleep
-    //esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
-
     vTaskDelay(100);
     esp_deep_sleep_start();
-}
-
-void odroid_system_init()
-{
-    rtc_gpio_deinit(ODROID_GAMEPAD_IO_MENU);
-    //rtc_gpio_deinit(GPIO_NUM_14);
-
-    // blue led
-    gpio_set_direction(GPIO_NUM_2, GPIO_MODE_OUTPUT);
-    gpio_set_level(GPIO_NUM_2, 0);
-
-    // Disable LCD CD to prevent garbage
-    gpio_set_direction(GPIO_NUM_5, GPIO_MODE_OUTPUT);
-    gpio_set_level(GPIO_NUM_5, 1);
-
-    system_initialized = true;
 }
 
 void odroid_system_halt()

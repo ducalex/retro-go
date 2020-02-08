@@ -21,7 +21,7 @@
 #include "driver/rtc_io.h"
 #include "driver/i2s.h"
 
-#include "odroid_console.h"
+#include "odroid_system.h"
 
 //Nes stuff wants to define this as well...
 #undef false
@@ -45,8 +45,8 @@
 #include "../nofrendo/nes/nesstate.h"
 
 #define AUDIO_SAMPLERATE   32000
-//#define  AUDIO_FRAGSIZE     512
 #define AUDIO_FRAGSIZE     (AUDIO_SAMPLERATE/NES_REFRESH_RATE)
+//#define  AUDIO_FRAGSIZE
 
 #define  DEFAULT_WIDTH        256
 #define  DEFAULT_HEIGHT       NES_VISIBLE_HEIGHT
@@ -59,8 +59,7 @@ struct update_meta {
     int stride;
 };
 
-uint8_t scaling_mode = 1;
-uint8_t previous_scaling_mode = 1;
+int8_t scaling_mode = ODROID_SCALING_FILL;
 QueueHandle_t vidQueue;
 
 
@@ -220,7 +219,8 @@ static struct update_meta *update = &update2;
 #define NES_VERTICAL_OVERDRAW (NES_SCREEN_HEIGHT-NES_VISIBLE_HEIGHT)
 #define INTERLACE_THRESHOLD ((NES_SCREEN_WIDTH*NES_VISIBLE_HEIGHT)/2)
 
-static void IRAM_ATTR custom_blit(bitmap_t *bmp, short interlace) {
+static void IRAM_ATTR custom_blit(bitmap_t *bmp, short interlace)
+{
    if (!bmp) {
       printf("custom_blit called with NULL bitmap!\n");
       abort();
@@ -257,9 +257,13 @@ static void IRAM_ATTR custom_blit(bitmap_t *bmp, short interlace) {
 
 
 //This runs on core 1.
-volatile bool vidTaskIsRunning = false;
-static void vidTaskCallback(void *arg) {
-    vidTaskIsRunning = true;
+volatile bool videoTaskIsRunning = false;
+static void videoTask(void *arg)
+{
+    videoTaskIsRunning = true;
+
+    int8_t previous_scaling_mode = ODROID_SCALING_UNKNOWN;
+
     while(1)
     {
         struct update_meta *update = NULL;
@@ -294,7 +298,7 @@ static void vidTaskCallback(void *arg) {
     odroid_display_show_hourglass();
     odroid_display_unlock();
 
-    vidTaskIsRunning = false;
+    videoTaskIsRunning = false;
 
     vTaskDelete(NULL);
 
@@ -331,7 +335,7 @@ void PowerDown()
 
     void *exitVideoTask = NULL;
     xQueueSend(vidQueue, &exitVideoTask, portMAX_DELAY);
-    while (vidTaskIsRunning) { vTaskDelay(10); }
+    while (videoTaskIsRunning) { vTaskDelay(10); }
 
     // state
     printf("PowerDown: Saving state.\n");
@@ -356,7 +360,7 @@ void QuitEmulator(bool save)
 
    void *exitVideoTask = NULL;
    xQueueSend(vidQueue, &exitVideoTask, portMAX_DELAY);
-   while (vidTaskIsRunning) { vTaskDelay(10); }
+   while (videoTaskIsRunning) { vTaskDelay(10); }
 
    if (save) {
       SaveState();
@@ -485,11 +489,10 @@ int osd_init()
 
    osd_init_sound();
 
-   scaling_mode = odroid_settings_Scaling_get(1);
-   previous_scaling_mode = 0xFF;
+   scaling_mode = odroid_settings_Scaling_get();
 
    vidQueue = xQueueCreate(1, sizeof(struct update_meta *));
-   xTaskCreatePinnedToCore(&vidTaskCallback, "vidTask", 2048, NULL, 5, NULL, 1);
+   xTaskCreatePinnedToCore(&videoTask, "videoTask", 2048, NULL, 5, NULL, 1);
 
    return 0;
 }

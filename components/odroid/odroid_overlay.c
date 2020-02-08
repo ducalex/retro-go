@@ -12,7 +12,7 @@
 #include "stdio.h"
 
 static uint16_t *overlay_buffer = NULL;
-extern uint8_t scaling_mode;
+extern int8_t scaling_mode;
 
 int ODROID_FONT_WIDTH = 8;
 int ODROID_FONT_HEIGHT = 8;
@@ -74,16 +74,19 @@ void odroid_overlay_draw_battery(int x_pos, int y_pos)
     uint16_t percentage = battery_state.percentage;
     uint16_t color_fill = C_FOREST_GREEN;
     uint16_t color_border = C_SILVER;
-    uint16_t width_fill = 18.f / 100 * percentage;
+    uint16_t color_empty = C_BLACK;
+    uint16_t width_fill = 20.f / 100 * percentage;
+    uint16_t width_empty = 20 - width_fill;
 
     if (percentage < 20)
         color_fill = C_RED;
     else if (percentage < 40)
         color_fill = C_ORANGE;
 
-    odroid_overlay_draw_rect(x_pos, y_pos, 20, 8, 1, C_SILVER);
-    odroid_overlay_draw_rect(x_pos + 20, y_pos + 2, 2, 4, 1, C_SILVER);
-    odroid_overlay_draw_rect(x_pos + 1, y_pos + 1, width_fill, 6, 3, color_fill);
+    odroid_overlay_draw_rect(x_pos, y_pos, 22, 10, 1, color_border);
+    odroid_overlay_draw_rect(x_pos + 22, y_pos + 2, 2, 6, 1, color_border);
+    odroid_overlay_draw_fill_rect(x_pos + 1, y_pos + 1, width_fill, 8, color_fill);
+    odroid_overlay_draw_fill_rect(x_pos + 1 + width_fill, y_pos + 1, width_empty, 8, color_empty);
 }
 
 void odroid_overlay_draw_dialog(char *header, odroid_dialog_choice_t *options, int options_count, int sel)
@@ -271,6 +274,9 @@ void odroid_overlay_alert(char *text)
 
 void odroid_overlay_draw_rect(int x, int y, int width, int height, int border, uint16_t color)
 {
+    if (width == 0 || height == 0)
+        return;
+
     int pixels = (width > height ? width : height) * border;
     for (int i = 0; i < pixels; i++)
     {
@@ -282,8 +288,11 @@ void odroid_overlay_draw_rect(int x, int y, int width, int height, int border, u
     ili9341_write_frame_rectangleLE(x + width - border, y, border, height, overlay_buffer); // R
 }
 
-void odroid_overlay_draw_fill_rect(int x, int y, int width, int height, int border, uint16_t color)
+void odroid_overlay_draw_fill_rect(int x, int y, int width, int height, uint16_t color)
 {
+    if (width == 0 || height == 0)
+        return;
+
     for (int i = 0; i < width * 16; i++)
     {
         overlay_buffer[i] = color;
@@ -310,7 +319,7 @@ static bool audio_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_
         odroid_audio_set_sink(sink);
     }
 
-    strcpy(option->value, (sink == ODROID_AUDIO_SINK_DAC) ? "DAC" : "Spkr");
+    strcpy(option->value, (sink == ODROID_AUDIO_SINK_DAC) ? "Ext DAC" : "Speaker");
     return event == ODROID_DIALOG_ENTER;
 }
 
@@ -350,15 +359,15 @@ static bool brightness_update_cb(odroid_dialog_choice_t *option, odroid_dialog_e
 
 static bool scaling_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
-    uint8_t level = odroid_settings_Scaling_get(0);
+    uint8_t level = odroid_settings_Scaling_get();
     uint8_t max = 2;
 
     if (event == ODROID_DIALOG_PREV && level > 0) {
-        odroid_settings_Scaling_set(0, --level);
+        odroid_settings_Scaling_set(--level);
     }
 
     if (event == ODROID_DIALOG_NEXT && level < max) {
-        odroid_settings_Scaling_set(0, ++level);
+        odroid_settings_Scaling_set(++level);
     }
 
     scaling_mode = level;
