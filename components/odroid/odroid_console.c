@@ -8,9 +8,9 @@ void odroid_console_init(char **romPath, bool *reset, int sample_rate)
 {
     printf("odroid_console_init: %d KB free\n", esp_get_free_heap_size() / 1024);
 
-	odroid_settings_init();
-	odroid_overlay_init();
-	odroid_system_init();
+    odroid_settings_init();
+    odroid_overlay_init();
+    odroid_system_init();
     odroid_input_gamepad_init();
     odroid_input_battery_level_init();
 
@@ -28,15 +28,10 @@ void odroid_console_init(char **romPath, bool *reset, int sample_rate)
         odroid_settings_StartAction_set(ODROID_START_ACTION_NORMAL);
     }
 
-	//sdcard init must be before LCD init
-	esp_err_t sd_init = odroid_sdcard_open();
+    //sdcard init must be before LCD init
+    esp_err_t sd_init = odroid_sdcard_open();
 
-	ili9341_init();
-
-    if (esp_reset_reason() == ESP_RST_POWERON)
-    {
-        // ili9341_blank_screen();
-    }
+    ili9341_init();
 
     if (esp_reset_reason() == ESP_RST_PANIC)
     {
@@ -45,13 +40,19 @@ void odroid_console_init(char **romPath, bool *reset, int sample_rate)
         esp_restart();
     }
 
+    if (esp_reset_reason() != ESP_RST_SW)
+    {
+        ili9341_blank_screen();
+        odroid_display_show_hourglass();
+    }
+
     if (sd_init != ESP_OK)
     {
         odroid_display_show_error(ODROID_SD_ERR_NOCARD);
         odroid_system_halt();
     }
 
-	*romPath = odroid_settings_RomFilePath_get();
+    *romPath = odroid_settings_RomFilePath_get();
     if (!*romPath || strlen(*romPath) < 4)
     {
         odroid_display_show_error(ODROID_SD_ERR_BADFILE);

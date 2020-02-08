@@ -43,8 +43,6 @@ int audioBufferCount = 0;
 QueueHandle_t vidQueue;
 TaskHandle_t videoTaskHandle;
 
-odroid_battery_state battery;
-
 struct bitmap_meta {
     odroid_scanline diff[SMS_HEIGHT];
     uint8_t *buffer;
@@ -68,6 +66,9 @@ void videoTask(void *arg)
 
     videoTaskIsRunning = true;
 
+    // Game Gear should be stretched to 4:3
+    float aspect = (sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS) ? 1.2f : 1.f;
+
     while(1)
     {
         xQueuePeek(vidQueue, &meta, portMAX_DELAY);
@@ -82,9 +83,6 @@ void videoTask(void *arg)
             previous_scaling_mode = scaling_mode;
             force_redraw = false;
             if (scaling_mode) {
-                // The game gear aspect ratio is 1.33, as proved by its LCD size (65.27mm x 48.90mm)
-                // But 1.2 gives us a perfect 2x x_scale, which is what we want.
-                float aspect = (sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS) ? 1.2f : 1.f;
                 odroid_display_set_scale(meta->width, meta->height, aspect);
             } else {
                 odroid_display_reset_scale(meta->width, meta->height);
@@ -95,8 +93,6 @@ void videoTask(void *arg)
                                  redraw ? NULL : meta->diff,
                                  meta->width, meta->height,
                                  meta->stride, PIXEL_MASK, meta->palette);
-
-        odroid_input_battery_level_read(&battery);
 
         xQueueReceive(vidQueue, &meta, portMAX_DELAY);
     }
@@ -588,16 +584,20 @@ void app_main(void)
 
         if (frame == 60)
         {
-          float seconds = totalElapsedTime / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f);
-          float fps = (frame / seconds);
+            float seconds = totalElapsedTime / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f);
+            float fps = (frame / seconds);
 
+            odroid_battery_state battery;
+            odroid_input_battery_level_read(&battery);
 
-          printf("HEAP:0x%x, FPS:%f, INT:%d, SKIP:%d, BATTERY:%d [%d]\n", esp_get_free_heap_size(), fps, interlacedFrames, skippedFrames, battery.millivolts, battery.percentage);
+            printf("HEAP:%d, FPS:%f, INT:%d, SKIP:%d, BATTERY:%d [%d]\n",
+                esp_get_free_heap_size() / 1024, fps, interlacedFrames, skippedFrames,
+                battery.millivolts, battery.percentage);
 
-          frame = 0;
-          totalElapsedTime = 0;
-          skippedFrames = 0;
-          interlacedFrames = 0;
+            frame = 0;
+            totalElapsedTime = 0;
+            skippedFrames = 0;
+            interlacedFrames = 0;
         }
     }
 }

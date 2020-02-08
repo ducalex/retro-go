@@ -72,7 +72,6 @@
 #define INTERLACE_OFF_THRESHOLD 0
 #endif
 
-odroid_battery_state battery;
 static short interlace = -1;
 
 static nes_t nes;
@@ -472,19 +471,20 @@ void nes_emulate(void)
 
         if (frame == 60)
         {
-          float seconds = totalElapsedTime / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f);
-          float fps = (60 - skippedFrames) / (frame / seconds) * 60.f;
+            float seconds = totalElapsedTime / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f);
+            float fps = (60 - skippedFrames) / (frame / seconds) * 60.f;
 
-          odroid_input_battery_level_read(&battery);
+            odroid_battery_state battery;
+            odroid_input_battery_level_read(&battery);
 
-          printf("HEAP:0x%x, FPS:%f, INT:%d, SKIP:%d, BATTERY:%d [%d]\n",
-                 esp_get_free_heap_size(), fps, interlacedFrames, skippedFrames,
-                 battery.millivolts, battery.percentage);
+            printf("HEAP:%d, FPS:%f, INT:%d, SKIP:%d, BATTERY:%d [%d]\n",
+               esp_get_free_heap_size() / 1024, fps, interlacedFrames, skippedFrames,
+               battery.millivolts, battery.percentage);
 
-          frame = 0;
-          totalElapsedTime = 0;
-          skippedFrames = 0;
-          interlacedFrames = 0;
+            frame = 0;
+            totalElapsedTime = 0;
+            skippedFrames = 0;
+            interlacedFrames = 0;
         }
    }
 }

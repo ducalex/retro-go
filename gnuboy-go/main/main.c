@@ -42,8 +42,6 @@ volatile uint8_t currentAudioBuffer = 0;
 volatile uint16_t currentAudioSampleCount;
 volatile int16_t* currentAudioBufferPtr;
 
-odroid_battery_state battery_state;
-
 // --- MAIN
 QueueHandle_t vidQueue;
 QueueHandle_t audioQueue;
@@ -144,7 +142,6 @@ void videoTask(void *arg)
         }
 
         ili9341_write_frame_gb(param, scaling_mode);
-        odroid_input_battery_level_read(&battery_state);
 
         xQueueReceive(vidQueue, &param, portMAX_DELAY);
     }
@@ -516,13 +513,18 @@ void app_main(void)
 
         if (actualFrameCount == 60)
         {
-          float seconds = totalElapsedTime / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f); // 240000000.0f; // (240Mhz)
-          float fps = actualFrameCount / seconds;
+            float seconds = totalElapsedTime / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f); // 240000000.0f; // (240Mhz)
+            float fps = actualFrameCount / seconds;
 
-          printf("HEAP:0x%x, FPS:%f, BATTERY:%d [%d]\n", esp_get_free_heap_size(), fps, battery_state.millivolts, battery_state.percentage);
+            odroid_battery_state battery;
+            odroid_input_battery_level_read(&battery);
 
-          actualFrameCount = 0;
-          totalElapsedTime = 0;
+            printf("HEAP:%d, FPS:%f, BATTERY:%d [%d]\n",
+                esp_get_free_heap_size() / 1024, fps,
+                battery.millivolts, battery.percentage);
+
+            actualFrameCount = 0;
+            totalElapsedTime = 0;
         }
     }
 }

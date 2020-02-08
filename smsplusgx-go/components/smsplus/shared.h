@@ -24,8 +24,6 @@ typedef signed long int int32;
 //#include <zlib.h>
 #include <esp_attr.h>
 
-#define ESP32_PSRAM (0x3f800000)
-
 #ifndef NGC
 #ifndef PATH_MAX
 #ifdef  MAX_PATH

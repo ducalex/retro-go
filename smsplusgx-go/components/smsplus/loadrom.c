@@ -24,6 +24,7 @@
 #include "odroid_display.h"
 #include "odroid_overlay.h"
 #include "odroid_sdcard.h"
+#include "esp_heap_caps.h"
 
 extern unsigned long crc32(crc, buf, len);
 
@@ -366,51 +367,48 @@ void set_config()
 
 int load_rom (char *filename)
 {
-    FILE *fd = NULL;
-
-    size_t nameLength = strlen(filename);
-    if (nameLength < 4)
-    {
-        printf("%s: file name too short. filename='%s', nameLength=%d\n",
-            __func__, filename, nameLength);
-        abort();
-     }
-
-    if (strcasecmp(filename + (nameLength - 4), ".col") == 0)
-    {
-        if (!odroid_sdcard_copy_file_to_memory(SD_BASE_PATH "/roms/col/BIOS.col", ESP32_PSRAM + 0x100000, 0x2000))
-        {
-            printf("load_rom: Colecovision BIOS failed to load.\n");
-            odroid_overlay_alert("BIOS file BIOS.col not found");
-        }
-        coleco.rom = ESP32_PSRAM + 0x100000;
-        option.console = 6;
+  size_t nameLength = strlen(filename);
+  if (nameLength < 4)
+  {
+      printf("%s: file name too short. filename='%s', nameLength=%d\n",
+          __func__, filename, nameLength);
+      abort();
     }
 
-    size_t actual_size = 0;
+  if (strcasecmp(filename + (nameLength - 4), ".col") == 0)
+  {
+      option.console = 6;
+      coleco.rom = heap_caps_malloc(0x2000, MALLOC_CAP_SPIRAM);
+      if (!odroid_sdcard_copy_file_to_memory(SD_BASE_PATH "/roms/col/BIOS.col", coleco.rom, 0x2000))
+      {
+          printf("load_rom: Colecovision BIOS failed to load.\n");
+          odroid_overlay_alert("BIOS file BIOS.col not found");
+      }
+  }
 
-    if (strcasecmp(filename + (nameLength - 4), ".zip") == 0)
-    {
-        printf("load_rom: File is compressed.\n");
-        actual_size = odroid_sdcard_unzip_file_to_memory(filename, ESP32_PSRAM, 2 * 1024 * 1024);
-    }
-    else
-    {
-        actual_size = odroid_sdcard_copy_file_to_memory(filename, ESP32_PSRAM, 2 * 1024 * 1024);
-    }
-    printf("load_rom: fileSize=%d.\n", actual_size);
+  cart.rom = heap_caps_malloc(0x200000, MALLOC_CAP_SPIRAM);
 
-    cart.size = actual_size;
-    if (cart.size < 0x4000) cart.size = 0x4000;
+  size_t actual_size = 0;
 
-    cart.rom = ESP32_PSRAM;
+  if (strcasecmp(filename + (nameLength - 4), ".zip") == 0)
+  {
+      printf("load_rom: File is compressed.\n");
+      actual_size = odroid_sdcard_unzip_file_to_memory(filename, cart.rom, 0x200000);
+  }
+  else
+  {
+      actual_size = odroid_sdcard_copy_file_to_memory(filename, cart.rom, 0x200000);
+  }
+  printf("load_rom: fileSize=%d.\n", actual_size);
+
+  cart.size = (actual_size < 0x4000) ? 0x4000 : actual_size;
 
 
   /* Take care of image header, if present */
   if ((cart.size / 512) & 1)
   {
     cart.size -= 512;
-    memcpy (cart.rom, cart.rom + 512, cart.size);
+    memcpy(cart.rom, cart.rom + 512, cart.size);
   }
 
   /* 16k pages */
