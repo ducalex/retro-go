@@ -22,8 +22,8 @@ void odroid_console_init(char **romPath, bool *reset, int sample_rate)
         esp_restart();
     }
 
-    reset = odroid_settings_StartAction_get() == ODROID_START_ACTION_RESTART;
-    if (reset)
+    *reset = odroid_settings_StartAction_get() == ODROID_START_ACTION_RESTART;
+    if (*reset)
     {
         odroid_settings_StartAction_set(ODROID_START_ACTION_NORMAL);
     }
