@@ -15,21 +15,20 @@ extern int gui_themes_count;
 static bool show_empty = true;
 static int  show_cover = 1;
 static int  selected_emu = 0;
-static int  font_size = 0;
 static int  theme = 0;
 
 static bool font_size_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
+    int font_size = odroid_settings_int32_get("FontSize", 1);
     if (event == ODROID_DIALOG_PREV) {
-        if (--font_size < 0) font_size = 0;
-        odroid_settings_int32_set("FontSize", font_size);
+        if (--font_size < 1) font_size = 1;
+        odroid_overlay_set_font_size(font_size);
     }
     if (event == ODROID_DIALOG_NEXT) {
-        if (++font_size > 1) font_size = 1;
-        odroid_settings_int32_set("FontSize", font_size);
+        if (++font_size > 2) font_size = 2;
+        odroid_overlay_set_font_size(font_size);
     }
-    ODROID_FONT_HEIGHT = font_size ? 16 : 8;
-    strcpy(option->value, font_size ? "Large" : "Small");
+    strcpy(option->value, font_size > 1 ? "Large" : "Small");
     return event == ODROID_DIALOG_ENTER;
 }
 
@@ -78,7 +77,6 @@ static void load_config()
 {
     show_empty = odroid_settings_int32_get("ShowEmpty", 1);
     show_cover = odroid_settings_int32_get("ShowCover", 1);
-    font_size  = odroid_settings_int32_get("FontSize", 0);
     theme      = odroid_settings_int32_get("Theme", 0);
     selected_emu = odroid_settings_int32_get("SelectedEmu", 0);
     char keyBuffer[16];
@@ -93,7 +91,6 @@ static void save_config()
     // odroid_settings_int32_set("ShowEmpty", show_empty);
     // odroid_settings_int32_get("ShowCover", show_cover);
     // odroid_settings_int32_get("Background", color_shift);
-    // odroid_settings_int32_get("FontSize", font_size);
     odroid_settings_int32_set("SelectedEmu", selected_emu);
     char keyBuffer[16];
     for (int i = 0; i < emulators->count; i++) {

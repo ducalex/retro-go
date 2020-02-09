@@ -35,7 +35,14 @@ void odroid_overlay_init()
 	if (!overlay_buffer) {
         overlay_buffer = (uint16_t *)heap_caps_calloc_prefer(2, 320 * 16, 2, MALLOC_CAP_SPIRAM, MALLOC_CAP_8BIT);
     }
-    ODROID_FONT_HEIGHT = odroid_settings_int32_get("FontSize", 0) ? 16 : 8;
+    ODROID_FONT_HEIGHT = odroid_settings_int32_get("FontSize", 1) * 8;
+}
+
+void odroid_overlay_set_font_size(int factor)
+{
+    factor = (factor < 1) ? 1 : factor;
+    ODROID_FONT_HEIGHT = 8 * factor;
+    odroid_settings_int32_set("FontSize", factor);
 }
 
 void odroid_overlay_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, char *text, uint16_t color, uint16_t color_bg)
@@ -138,9 +145,8 @@ void odroid_overlay_draw_dialog(char *header, odroid_dialog_choice_t *options, i
     int x = (320 - box_width) / 2;
     int y = (240 - box_height) / 2;
 
-    memset(overlay_buffer, 0, 2048); // Black
-    ili9341_write_frame_rectangleLE(x + 5, y + box_height + 1, box_width, 4, overlay_buffer); // Bottom
-    ili9341_write_frame_rectangleLE(x + box_width + 1, y + 5, 4, box_height, overlay_buffer); // Rright
+    // odroid_overlay_draw_fill_rect(x + 5, y + box_height + 1, box_width, 4, box_shadow_color); // Bottom
+    // odroid_overlay_draw_fill_rect(x + box_width + 1, y + 5, 4, box_height, box_shadow_color); // Rright
 
     odroid_overlay_draw_rect(x, y, box_width, box_height, 6, box_color);
     odroid_overlay_draw_rect(x - 1, y - 1, box_width + 2, box_height + 2, 1, box_border_color);
@@ -372,9 +378,9 @@ static bool scaling_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
 
     scaling_mode = level;
 
-    if (level == 0) strcpy(option->value, "Off ");
-    if (level == 1) strcpy(option->value, "On  ");
-    if (level == 2) strcpy(option->value, "Fill");
+    if (level == 0) strcpy(option->value, "Off  ");
+    if (level == 1) strcpy(option->value, "Scale");
+    if (level == 2) strcpy(option->value, "Full ");
 
     return event == ODROID_DIALOG_ENTER;
 }

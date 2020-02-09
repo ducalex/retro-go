@@ -136,7 +136,7 @@ void odroid_settings_StartAction_set(ODROID_START_ACTION value)
 
 ODROID_SCALING odroid_settings_Scaling_get()
 {
-    return odroid_settings_app_int32_get(NvsKey_Scaling, ODROID_SCALING_FIT);
+    return odroid_settings_app_int32_get(NvsKey_Scaling, ODROID_SCALING_FILL);
 }
 void odroid_settings_Scaling_set(ODROID_SCALING value)
 {

@@ -278,7 +278,8 @@ static void videoTask(void *arg)
            ili9341_blank_screen();
            previous_scaling_mode = scaling_mode;
            if (scaling_mode) {
-               odroid_display_set_scale(NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT, (8.f / 7.f));
+               float aspect = (scaling_mode == ODROID_SCALING_FILL) ? (8.f / 7.f) : 1.f;
+               odroid_display_set_scale(NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT, aspect);
            } else {
                odroid_display_reset_scale(NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT);
            }

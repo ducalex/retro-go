@@ -55,7 +55,7 @@ static struct bitmap_meta update1 = {0,};
 static struct bitmap_meta update2 = {0,};
 static struct bitmap_meta *update = &update1;
 
-int8_t scaling_mode = ODROID_SCALING_FIT;
+int8_t scaling_mode = ODROID_SCALING_FILL;
 int8_t force_redraw = false;
 
 volatile bool videoTaskIsRunning = false;
@@ -66,7 +66,6 @@ static void videoTask(void *arg)
     videoTaskIsRunning = true;
 
     int8_t previous_scaling_mode = ODROID_SCALING_UNKNOWN;
-    float aspect = 1;
 
     while(1)
     {
@@ -80,10 +79,18 @@ static void videoTask(void *arg)
             ili9341_blank_screen();
             previous_scaling_mode = scaling_mode;
             force_redraw = false;
-            if (scaling_mode) {
-                aspect = (sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS) ? 1.2f : 1.f;
+
+            if (scaling_mode == ODROID_SCALING_FILL)
+            {
+                float aspect = (sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS) ? 1.2f : 1.f;
                 odroid_display_set_scale(meta->width, meta->height, aspect);
-            } else {
+            }
+            else if (scaling_mode)
+            {
+                odroid_display_set_scale(meta->width, meta->height, 1.f);
+            }
+            else
+            {
                 odroid_display_reset_scale(meta->width, meta->height);
             }
         }
