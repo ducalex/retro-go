@@ -14,6 +14,8 @@
 static uint16_t *overlay_buffer = NULL;
 extern int8_t scaling_mode;
 
+const char *NVS_KEY_FONTSIZE = "FontSize";
+
 int ODROID_FONT_WIDTH = 8;
 int ODROID_FONT_HEIGHT = 8;
 
@@ -35,14 +37,17 @@ void odroid_overlay_init()
 	if (!overlay_buffer) {
         overlay_buffer = (uint16_t *)heap_caps_calloc_prefer(2, 320 * 16, 2, MALLOC_CAP_SPIRAM, MALLOC_CAP_8BIT);
     }
-    ODROID_FONT_HEIGHT = odroid_settings_int32_get("FontSize", 1) * 8;
+    odroid_overlay_set_font_size(odroid_settings_int32_get(NVS_KEY_FONTSIZE, 1));
 }
 
 void odroid_overlay_set_font_size(int factor)
 {
-    factor = (factor < 1) ? 1 : factor;
+    factor = factor < 1 ? 1 : factor;
+    factor = factor > 3 ? 3 : factor;
     ODROID_FONT_HEIGHT = 8 * factor;
-    odroid_settings_int32_set("FontSize", factor);
+    if (factor != odroid_settings_int32_get(NVS_KEY_FONTSIZE, 0)) {
+        odroid_settings_int32_set(NVS_KEY_FONTSIZE, factor);
+    }
 }
 
 void odroid_overlay_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, char *text, uint16_t color, uint16_t color_bg)
