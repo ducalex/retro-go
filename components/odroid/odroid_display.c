@@ -3,8 +3,7 @@
 #include "odroid_display.h"
 #include "odroid_settings.h"
 #include "odroid_colors.h"
-#include "odroid_image_sd_card_alert.h"
-#include "odroid_image_sd_card_unknown.h"
+#include "odroid_image_sdcard.h"
 #include "odroid_image_hourglass.h"
 
 #include "freertos/FreeRTOS.h"
@@ -1065,11 +1064,13 @@ void odroid_display_show_error(int errNum)
     switch(errNum)
     {
         case ODROID_SD_ERR_BADFILE:
-            ili9341_write_frame_rectangleLE(0, 0, image_sd_card_unknown.width, image_sd_card_unknown.height, image_sd_card_unknown.pixel_data); // Bad File image
-            break;
-
         case ODROID_SD_ERR_NOCARD:
-            ili9341_write_frame_rectangleLE(0, 0, image_sd_card_alert.width, image_sd_card_alert.height, image_sd_card_alert.pixel_data); // No Card image
+            ili9341_clear(C_WHITE);
+            ili9341_write_frame_rectangleLE((SCREEN_WIDTH / 2) - (image_sdcard_red_48dp.width / 2),
+                (SCREEN_HEIGHT / 2) - (image_sdcard_red_48dp.height / 2),
+                image_sdcard_red_48dp.width,
+                image_sdcard_red_48dp.height,
+                image_sdcard_red_48dp.pixel_data);
             break;
 
         default:

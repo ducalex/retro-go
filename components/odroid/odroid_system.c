@@ -64,7 +64,7 @@ void odroid_system_init(int app_id, int sample_rate, char **romPath, bool *reset
     *romPath = odroid_settings_RomFilePath_get();
     if (!*romPath || strlen(*romPath) < 4)
     {
-        odroid_display_show_error(ODROID_SD_ERR_BADFILE);
+        odroid_overlay_alert("ROM File not found!");
         odroid_system_halt();
     }
 

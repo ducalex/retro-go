@@ -218,7 +218,7 @@ static int z80_requested_cycles = 0;   /* requested cycles to execute this times
 
 static UINT32 EA;
 
-#if 0
+#if 1
 static UINT8 SZ[256];       /* zero and sign flags */
 static UINT8 SZ_BIT[256];   /* zero, sign and parity/overflow (=zero) flags for BIT opcode */
 static UINT8 SZP[256];      /* zero, sign and parity flags */
@@ -3381,7 +3381,7 @@ void z80_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
   int i, p;
 
-#if 0
+#if 1
   if( !SZHVC_add || !SZHVC_sub )
   {
     int oldval, newval, val;

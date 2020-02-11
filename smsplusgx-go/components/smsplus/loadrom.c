@@ -24,7 +24,6 @@
 #include "odroid_display.h"
 #include "odroid_overlay.h"
 #include "odroid_sdcard.h"
-#include "esp_heap_caps.h"
 
 extern unsigned long crc32(crc, buf, len);
 
@@ -378,7 +377,7 @@ int load_rom (char *filename)
   if (strcasecmp(filename + (nameLength - 4), ".col") == 0)
   {
       option.console = 6;
-      coleco.rom = heap_caps_malloc(0x2000, MALLOC_CAP_SPIRAM);
+      coleco.rom = malloc(0x2000);
       if (!odroid_sdcard_copy_file_to_memory(SD_BASE_PATH "/roms/col/BIOS.col", coleco.rom, 0x2000))
       {
           printf("load_rom: Colecovision BIOS failed to load.\n");
@@ -386,7 +385,7 @@ int load_rom (char *filename)
       }
   }
 
-  cart.rom = heap_caps_malloc(0x200000, MALLOC_CAP_SPIRAM);
+  cart.rom = malloc(0x200000);
 
   size_t actual_size = 0;
 

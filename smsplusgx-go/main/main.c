@@ -7,6 +7,7 @@
 #include "odroid_system.h"
 
 #define AUDIO_SAMPLE_RATE (32000)
+#define AUDIO_SAMPLE_COUNT (AUDIO_SAMPLE_RATE / 60 + 1)
 
 #define FRAME_CHECK 10
 #if 0
@@ -266,11 +267,13 @@ void app_main(void)
     // Do before odroid_system_init to make sure we get the caps requested
     framebuffers[0] = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
     framebuffers[1] = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    audioBuffer = heap_caps_malloc(AUDIO_SAMPLE_COUNT * 2 * sizeof(int16_t), MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
 
     // Init all the console hardware
     odroid_system_init(3, AUDIO_SAMPLE_RATE, &romPath, &forceConsoleReset);
 
     assert(framebuffers[0] && framebuffers[1]);
+    assert(audioBuffer);
 
     scaling_mode = odroid_settings_Scaling_get();
 
@@ -533,23 +536,6 @@ void app_main(void)
             renderedFrames = 0;
         }
 #endif
-
-        // Create a buffer for audio if needed
-        if (!audioBuffer || audioBufferCount < snd.sample_count)
-        {
-            if (audioBuffer)
-                free(audioBuffer);
-
-            size_t bufferSize = snd.sample_count * 2 * sizeof(int16_t);
-            //audioBuffer = malloc(bufferSize);
-            audioBuffer = heap_caps_malloc(bufferSize, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
-            if (!audioBuffer)
-                abort();
-
-            audioBufferCount = snd.sample_count;
-
-            printf("app_main: Created audio buffer (%d bytes).\n", bufferSize);
-        }
 
         // Process audio
         for (int x = 0; x < snd.sample_count; x++)
