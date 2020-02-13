@@ -11,7 +11,7 @@
 
 static bool system_initialized = false;
 
-void odroid_system_init(int app_id, int sample_rate, char **romPath, bool *reset)
+void odroid_system_init(int app_id, int sampleRate, char **romPath, ODROID_START_ACTION *startAction)
 {
     if (system_initialized) abort();
 
@@ -31,10 +31,10 @@ void odroid_system_init(int app_id, int sample_rate, char **romPath, bool *reset
         esp_restart();
     }
 
-    *reset = odroid_settings_StartAction_get() == ODROID_START_ACTION_RESTART;
-    if (*reset)
+    *startAction = odroid_settings_StartAction_get();
+    if (*startAction == ODROID_START_ACTION_RESTART)
     {
-        odroid_settings_StartAction_set(ODROID_START_ACTION_NORMAL);
+        odroid_settings_StartAction_set(ODROID_START_ACTION_RESUME);
     }
 
     //sdcard init must be before LCD init
@@ -68,7 +68,12 @@ void odroid_system_init(int app_id, int sample_rate, char **romPath, bool *reset
         odroid_system_halt();
     }
 
-    odroid_audio_init(odroid_settings_AudioSink_get(), sample_rate);
+    odroid_audio_init(odroid_settings_AudioSink_get(), sampleRate);
+
+    if (*startAction == ODROID_START_ACTION_NETPLAY)
+    {
+        // odroid_netplay_init();
+    }
 
     system_initialized = true;
 

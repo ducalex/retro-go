@@ -414,12 +414,10 @@ void nes_emulate(void)
        nes_renderframe(1);
    }
 
-   load_sram();
-
-    if (forceConsoleReset)
-    {
-        nes_reset(SOFT_RESET);
-    }
+   if (!forceConsoleReset)
+   {
+      load_sram();
+   }
 
    const int frameTime = CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / NES_REFRESH_RATE;
    bool renderFrame = true;

@@ -32,7 +32,7 @@ extern int debug_trace;
 struct fb fb;
 struct pcm pcm;
 
-bool forceConsoleReset = false;
+static ODROID_START_ACTION startAction = 0;
 static char *romPath = NULL;
 
 uint16_t* framebuffers[2]; //= { fb0, fb0 }; //[160 * 144];
@@ -125,13 +125,13 @@ int8_t scaling_mode = ODROID_SCALING_FILL;
 volatile bool videoTaskIsRunning = false;
 void videoTask(void *arg)
 {
-  videoTaskIsRunning = true;
+    videoTaskIsRunning = true;
 
-  int8_t previous_scaling_mode = -1;
-  uint16_t* param;
+    int8_t previous_scaling_mode = -1;
+    uint16_t* param;
 
-  while(1)
-  {
+    while(1)
+    {
         xQueuePeek(videoQueue, &param, portMAX_DELAY);
 
         if (param == 1)
@@ -139,7 +139,6 @@ void videoTask(void *arg)
 
         if (previous_scaling_mode != scaling_mode)
         {
-            // Clear display
             ili9341_blank_screen();
             previous_scaling_mode = scaling_mode;
         }
@@ -149,57 +148,40 @@ void videoTask(void *arg)
         xQueueReceive(videoQueue, &param, portMAX_DELAY);
     }
 
-
-    // Draw hourglass
-    odroid_display_lock();
-
-    odroid_display_show_hourglass();
-
-    odroid_display_unlock();
-
-
     videoTaskIsRunning = false;
+
     vTaskDelete(NULL);
 
     while (1) {}
 }
 
 
-volatile bool AudioTaskIsRunning = false;
+volatile bool audioTaskIsRunning = false;
 void audioTask(void* arg)
 {
-  // sound
-  uint16_t* param;
+    audioTaskIsRunning = true;
 
-  AudioTaskIsRunning = true;
-  while(1)
-  {
-    xQueuePeek(audioQueue, &param, portMAX_DELAY);
+    uint16_t* param;
 
-    if (param == 0)
+    while(1)
     {
-        // TODO: determine if this is still needed
-        abort();
-    }
-    else if (param == 1)
-    {
-        break;
-    }
-    else
-    {
+        xQueuePeek(audioQueue, &param, portMAX_DELAY);
+
+        if (param == 1)
+            break;
+
         pcm_submit();
+
+        xQueueReceive(audioQueue, &param, portMAX_DELAY);
     }
 
-    xQueueReceive(audioQueue, &param, portMAX_DELAY);
-  }
+    odroid_audio_terminate();
 
-  printf("audioTask: exiting.\n");
-  odroid_audio_terminate();
+    audioTaskIsRunning = false;
 
-  AudioTaskIsRunning = false;
-  vTaskDelete(NULL);
+    vTaskDelete(NULL);
 
-  while (1) {}
+    while (1) {}
 }
 
 
@@ -258,67 +240,29 @@ void LoadState(const char* cartName)
     free(pathName);
 }
 
-void PowerDown()
-{
-    uint16_t* param = 1;
-
-    // Clear audio to prevent studdering
-    printf("PowerDown: stopping audio.\n");
-
-    xQueueSend(audioQueue, &param, portMAX_DELAY);
-    while (AudioTaskIsRunning) {}
-
-
-    // Stop tasks
-    printf("PowerDown: stopping tasks.\n");
-
-    xQueueSend(videoQueue, &param, portMAX_DELAY);
-    while (videoTaskIsRunning) {}
-
-
-    // state
-    printf("PowerDown: Saving state.\n");
-    SaveState();
-
-    // LCD
-    printf("PowerDown: Powerdown LCD panel.\n");
-    ili9341_poweroff();
-
-    odroid_system_sleep();
-
-
-    // Should never reach here
-    abort();
-}
-
 void QuitEmulator(bool save)
 {
-   esp_err_t err;
+    printf("QuitEmulator: stopping tasks.\n");
+
     uint16_t* param = 1;
-
-    // Clear audio to prevent studdering
-    printf("PowerDown: stopping audio.\n");
-
     xQueueSend(audioQueue, &param, portMAX_DELAY);
-    while (AudioTaskIsRunning) {}
+    xQueueSend(videoQueue, &param, portMAX_DELAY);
+    while (videoTaskIsRunning || audioTaskIsRunning) vTaskDelay(1);
 
+    odroid_audio_terminate();
     ili9341_blank_screen();
 
-    // Stop tasks
-    printf("PowerDown: stopping tasks.\n");
-
-    xQueueSend(videoQueue, &param, portMAX_DELAY);
-    while (videoTaskIsRunning) {}
+    odroid_display_lock();
+    odroid_display_show_hourglass();
+    odroid_display_unlock();
 
     if (save) {
-        // state
-        printf("PowerDown: Saving state.\n");
+        printf("QuitEmulator: Saving state.\n");
         SaveState();
     }
 
     // Set menu application
     odroid_system_application_set(0);
-
 
     // Reset
     esp_restart();
@@ -395,7 +339,7 @@ void app_main(void)
     audioBuffers[1] = heap_caps_malloc(AUDIO_BUFFER_SIZE, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
 
     // Init all the console hardware
-	odroid_system_init(1, AUDIO_SAMPLE_RATE, &romPath, &forceConsoleReset);
+	odroid_system_init(1, AUDIO_SAMPLE_RATE, &romPath, &startAction);
 
     assert(framebuffers[0] && framebuffers[1]);
     assert(audioBuffers[0] && audioBuffers[1]);
@@ -442,7 +386,7 @@ void app_main(void)
     pal_set(odroid_settings_Palette_get());
 
     // Load state
-    if (!forceConsoleReset)
+    if (startAction == ODROID_START_ACTION_RESUME)
     {
         LoadState(romPath);
     }

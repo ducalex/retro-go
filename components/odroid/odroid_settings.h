@@ -4,8 +4,9 @@
 
 typedef enum
 {
-    ODROID_START_ACTION_NORMAL = 0,
-    ODROID_START_ACTION_RESTART
+    ODROID_START_ACTION_RESUME = 0,
+    ODROID_START_ACTION_RESTART,
+    ODROID_START_ACTION_NETPLAY
 } ODROID_START_ACTION;
 
 typedef enum
@@ -50,6 +51,9 @@ void odroid_settings_AudioSink_set(ODROID_AUDIO_SINK value);
 
 int32_t odroid_settings_Palette_get();
 void odroid_settings_Palette_set(int32_t value);
+
+void odroid_settings_string_set(const char *key, char *value);
+char* odroid_settings_string_get(const char *key, char *default_value);
 
 int32_t odroid_settings_int32_get(const char *key, int32_t value_default);
 void odroid_settings_int32_set(const char *key, int32_t value);

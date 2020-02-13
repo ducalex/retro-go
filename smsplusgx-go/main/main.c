@@ -32,7 +32,7 @@
 #define PIXEL_MASK 0x1F
 #define PAL_SHIFT_MASK 0x80
 
-bool forceConsoleReset = false;
+static ODROID_START_ACTION startAction = 0;
 static char* romPath = NULL;
 
 uint8_t* framebuffers[2];
@@ -42,9 +42,8 @@ uint32_t* audioBuffer = NULL;
 int audioBufferCount = 0;
 
 QueueHandle_t videoQueue;
-TaskHandle_t videoTaskHandle;
 
-struct bitmap_meta {
+struct update_meta {
     odroid_scanline diff[SMS_HEIGHT];
     uint8_t *buffer;
     uint16 palette[PALETTE_SIZE*2];
@@ -52,9 +51,9 @@ struct bitmap_meta {
     int height;
     int stride;
 };
-static struct bitmap_meta update1 = {0,};
-static struct bitmap_meta update2 = {0,};
-static struct bitmap_meta *update = &update1;
+static struct update_meta update1 = {0,};
+static struct update_meta update2 = {0,};
+static struct update_meta *update = &update1;
 
 int8_t scaling_mode = ODROID_SCALING_FILL;
 int8_t force_redraw = false;
@@ -62,7 +61,7 @@ int8_t force_redraw = false;
 volatile bool videoTaskIsRunning = false;
 static void videoTask(void *arg)
 {
-    struct bitmap_meta* meta;
+    struct update_meta* update;
 
     videoTaskIsRunning = true;
 
@@ -70,9 +69,9 @@ static void videoTask(void *arg)
 
     while(1)
     {
-        xQueuePeek(videoQueue, &meta, portMAX_DELAY);
+        xQueuePeek(videoQueue, &update, portMAX_DELAY);
 
-        if (!meta) break;
+        if (!update) break;
 
         bool redraw = (previous_scaling_mode != scaling_mode) || force_redraw;
         if (redraw)
@@ -84,54 +83,30 @@ static void videoTask(void *arg)
             if (scaling_mode == ODROID_SCALING_FILL)
             {
                 float aspect = (sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS) ? 1.2f : 1.f;
-                odroid_display_set_scale(meta->width, meta->height, aspect);
+                odroid_display_set_scale(update->width, update->height, aspect);
             }
             else if (scaling_mode)
             {
-                odroid_display_set_scale(meta->width, meta->height, 1.f);
+                odroid_display_set_scale(update->width, update->height, 1.f);
             }
             else
             {
-                odroid_display_reset_scale(meta->width, meta->height);
+                odroid_display_reset_scale(update->width, update->height);
             }
         }
 
-        ili9341_write_frame_8bit(meta->buffer,
-                                 redraw ? NULL : meta->diff,
-                                 meta->width, meta->height,
-                                 meta->stride, PIXEL_MASK, meta->palette);
+        ili9341_write_frame_diff(update->buffer,
+                                 redraw ? NULL : update->diff,
+                                 update->width, update->height,
+                                 update->stride, PIXEL_MASK, update->palette);
 
-        xQueueReceive(videoQueue, &meta, portMAX_DELAY);
+        xQueueReceive(videoQueue, &update, portMAX_DELAY);
     }
-
-    odroid_display_lock();
-
-    // Draw hourglass
-    odroid_display_show_hourglass();
-
-    odroid_display_unlock();
 
     videoTaskIsRunning = false;
     vTaskDelete(NULL);
 
     while (1) {}
-}
-
-//Read an unaligned byte.
-char unalChar(const unsigned char *adr) {
-	//See if the byte is in memory that can be read unaligned anyway.
-	if (!(((int)adr)&0x40000000)) return *adr;
-	//Nope: grab a word and distill the byte.
-	int *p=(int *)((int)adr&0xfffffffc);
-	int v=*p;
-	int w=((int)adr&3);
-	if (w==0) return ((v>>0)&0xff);
-	if (w==1) return ((v>>8)&0xff);
-	if (w==2) return ((v>>16)&0xff);
-	if (w==3) return ((v>>24)&0xff);
-
-    abort();
-    return 0;
 }
 
 void SaveState()
@@ -195,60 +170,28 @@ void LoadState(const char* cartName)
     free(pathName);
 }
 
-void PowerDown()
-{
-    // Stop tasks
-    printf("PowerDown: stopping tasks.\n");
-
-    // Clear audio to prevent studdering
-    printf("PowerDown: stopping audio.\n");
-    odroid_audio_terminate();
-
-    void *exitVideoTask = NULL;
-    xQueueSend(videoQueue, &exitVideoTask, portMAX_DELAY);
-    while (videoTaskIsRunning) { vTaskDelay(10); }
-
-
-    // state
-    printf("PowerDown: Saving state.\n");
-    SaveState();
-
-    // LCD
-    printf("PowerDown: Powerdown LCD panel.\n");
-    ili9341_poweroff();
-
-    odroid_system_sleep();
-
-    // Should never reach here
-    abort();
-}
-
 void QuitEmulator(bool save)
 {
-    esp_err_t err;
-
-    // Stop tasks
-    printf("PowerDown: stopping tasks.\n");
-
-    // Clear audio to prevent studdering
-    printf("PowerDown: stopping audio.\n");
-    odroid_audio_terminate();
-
-    ili9341_blank_screen();
+    printf("QuitEmulator: stopping tasks.\n");
 
     void *exitVideoTask = NULL;
     xQueueSend(videoQueue, &exitVideoTask, portMAX_DELAY);
-    while (videoTaskIsRunning) { vTaskDelay(10); }
+    while (videoTaskIsRunning) vTaskDelay(1);
+
+    odroid_audio_terminate();
+    ili9341_blank_screen();
+
+    odroid_display_lock();
+    odroid_display_show_hourglass();
+    odroid_display_unlock();
 
     if (save) {
-        // state
-        printf("PowerDown: Saving state.\n");
+        printf("QuitEmulator: Saving state.\n");
         SaveState();
     }
 
     // Set menu application
     odroid_system_application_set(0);
-
 
     // Reset
     esp_restart();
@@ -270,7 +213,7 @@ void app_main(void)
     audioBuffer = heap_caps_malloc(AUDIO_SAMPLE_COUNT * 2 * sizeof(int16_t), MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
 
     // Init all the console hardware
-    odroid_system_init(3, AUDIO_SAMPLE_RATE, &romPath, &forceConsoleReset);
+    odroid_system_init(3, AUDIO_SAMPLE_RATE, &romPath, &startAction);
 
     assert(framebuffers[0] && framebuffers[1]);
     assert(audioBuffer);
@@ -278,7 +221,7 @@ void app_main(void)
     scaling_mode = odroid_settings_Scaling_get();
 
     videoQueue = xQueueCreate(1, sizeof(uint16_t*));
-    xTaskCreatePinnedToCore(&videoTask, "videoTask", 1024 * 4, NULL, 5, &videoTaskHandle, 1);
+    xTaskCreatePinnedToCore(&videoTask, "videoTask", 1024 * 4, NULL, 5, NULL, 1);
 
 
     // Load ROM
@@ -319,7 +262,7 @@ void app_main(void)
     system_init2();
     system_reset();
 
-    if (!forceConsoleReset)
+    if (startAction == ODROID_START_ACTION_RESUME)
     {
         LoadState(romPath);
     }
@@ -475,7 +418,7 @@ void app_main(void)
             update->stride = bitmap.pitch;
             render_copy_palette(update->palette);
 
-            struct bitmap_meta *old_update = (update == &update1) ? &update2 : &update1;
+            struct update_meta *old_update = (update == &update1) ? &update2 : &update1;
 
             // Diff buffer
             if (interlace >= 0) {
@@ -496,11 +439,9 @@ void app_main(void)
                                    update->diff);
             }
 
-#if 1
             // Send update data to video queue on other core
             void *arg = (void*)update;
             xQueueSend(videoQueue, &arg, portMAX_DELAY);
-#endif
 
             // Flip the update struct so we don't start writing into it while
             // the second core is still updating the screen.

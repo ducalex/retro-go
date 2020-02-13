@@ -181,10 +181,12 @@ void retro_loop()
                         {0, "Resume game", "", has_save, NULL},
                         {1, "New game", "", 1, NULL},
                         {2, "Delete save", "", has_save, NULL},
+                        // {3, "Multiplayer", "", 1, NULL},
                     };
                     int sel = odroid_overlay_dialog(NULL, choices, 3, has_save ? 0 : 1);
 
                     if (sel == 0) {
+                        odroid_settings_StartAction_set(ODROID_START_ACTION_RESUME);
                         break;
                     }
                     else if (sel == 1) {
@@ -195,6 +197,10 @@ void retro_loop()
                         if (odroid_overlay_confirm("Delete savestate?", true) == 1) {
                             unlink(save_path);
                         }
+                    }
+                    else if (sel == 3) {
+                        odroid_settings_StartAction_set(ODROID_START_ACTION_NETPLAY);
+                        break;
                     }
                     free(save_path);
                     redraw = true;

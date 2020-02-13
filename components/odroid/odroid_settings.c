@@ -12,7 +12,6 @@ static const char* NvsNamespace = "Odroid";
 static const char* NvsKey_RomFilePath = "RomFilePath";
 static const char* NvsKey_Volume = "Volume";
 static const char* NvsKey_VRef = "VRef";
-static const char* NvsKey_AppSlot = "AppSlot";
 static const char* NvsKey_DataSlot = "DataSlot";
 static const char* NvsKey_Backlight = "Backlight";
 static const char* NvsKey_StartAction = "StartAction";
@@ -25,7 +24,6 @@ static int app_id = 0;
 
 void odroid_settings_init(int _app_id)
 {
-    // NVS
     esp_err_t err = nvs_flash_init();
     if (err != ESP_OK) {
         nvs_flash_erase();
@@ -41,20 +39,18 @@ void odroid_settings_init(int _app_id)
     app_id = _app_id;
 }
 
-
-char* odroid_settings_RomFilePath_get()
+char* odroid_settings_string_get(const char *key, char *default_value)
 {
-    char* result = NULL;
+    char* result = default_value;
 
-	// Read
     size_t required_size;
-    esp_err_t err = nvs_get_str(my_handle, NvsKey_RomFilePath, NULL, &required_size);
+    esp_err_t err = nvs_get_str(my_handle, key, NULL, &required_size);
     if (err == ESP_OK)
     {
         char* value = malloc(required_size);
         if (!value) abort();
 
-        esp_err_t err = nvs_get_str(my_handle, NvsKey_RomFilePath, value, &required_size);
+        esp_err_t err = nvs_get_str(my_handle, key, value, &required_size);
         if (err != ESP_OK) abort();
 
         result = value;
@@ -64,13 +60,64 @@ char* odroid_settings_RomFilePath_get()
 
     return result;
 }
-void odroid_settings_RomFilePath_set(char* value)
+
+void odroid_settings_string_set(const char *key, char *value)
 {
-    // Write key
-    esp_err_t err = nvs_set_str(my_handle, NvsKey_RomFilePath, value);
+    // To do: Check if value is same and avoid overwrite
+    esp_err_t err = nvs_set_str(my_handle, key, value);
     if (err != ESP_OK) abort();
 
     nvs_commit(my_handle);
+}
+
+int32_t odroid_settings_int32_get(const char *key, int32_t default_value)
+{
+    int result = default_value;
+
+    esp_err_t err = nvs_get_i32(my_handle, key, &result);
+    printf("%s: key='%s' value=%d, err=%d\n", __func__, key, result, err);
+
+    return result;
+}
+
+void odroid_settings_int32_set(const char *key, int32_t value)
+{
+    int32_t current = 0;
+    // Don't wear the flash for nothing if we can avoid it
+    if (nvs_get_i32(my_handle, key, &current) != ESP_OK || current != value)
+    {
+        esp_err_t err = nvs_set_i32(my_handle, key, value);
+        nvs_commit(my_handle);
+        printf("%s: key='%s', value=%d, err=%d\n", __func__, key, value, err);
+    }
+    else
+    {
+        printf("%s: key='%s', same value=%d\n", __func__, key, value);
+    }
+}
+
+int32_t odroid_settings_app_int32_get(const char *key, int32_t default_value)
+{
+    char app_key[16];
+    sprintf(app_key, "%s.%d", key, app_id);
+    return odroid_settings_int32_get(app_key, default_value);
+}
+
+void odroid_settings_app_int32_set(const char *key, int32_t value)
+{
+    char app_key[16];
+    sprintf(app_key, "%s.%d", key, app_id);
+    odroid_settings_int32_set(app_key, value);
+}
+
+
+char* odroid_settings_RomFilePath_get()
+{
+    return odroid_settings_string_get(NvsKey_RomFilePath, NULL);
+}
+void odroid_settings_RomFilePath_set(char* value)
+{
+    odroid_settings_string_set(NvsKey_RomFilePath, value);
 }
 
 
@@ -151,36 +198,4 @@ int32_t odroid_settings_Palette_get()
 void odroid_settings_Palette_set(int32_t value)
 {
     odroid_settings_app_int32_set(NvsKey_Palette, value);
-}
-
-
-int32_t odroid_settings_int32_get(const char *key, int32_t default_value)
-{
-    int result = default_value;
-
-    esp_err_t err = nvs_get_i32(my_handle, key, &result);
-    printf("odroid_settings_int32_get: key='%s' value=%d, err=%d\n", key, result, err);
-
-    return result;
-}
-void odroid_settings_int32_set(const char *key, int32_t value)
-{
-    esp_err_t err = nvs_set_i32(my_handle, key, value);
-    printf("odroid_settings_int32_set: key='%s' value=%d, err=%d\n", key, value, err);
-
-    nvs_commit(my_handle);
-}
-
-
-int32_t odroid_settings_app_int32_get(const char *key, int32_t default_value)
-{
-    char app_key[16];
-    sprintf(app_key, "%s.%d", key, app_id);
-    return odroid_settings_int32_get(app_key, default_value);
-}
-void odroid_settings_app_int32_set(const char *key, int32_t value)
-{
-    char app_key[16];
-    sprintf(app_key, "%s.%d", key, app_id);
-    odroid_settings_int32_set(app_key, value);
 }
