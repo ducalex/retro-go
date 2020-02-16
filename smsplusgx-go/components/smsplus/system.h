@@ -96,7 +96,7 @@ extern cart_t cart;       /* Game cartridge data */
 extern input_t input;     /* Controller input */
 
 /* Function prototypes */
-extern void system_frame(int skip_render, int interlace);
+extern void system_frame(int skip);
 extern void system_init2(void);
 extern void system_shutdown(void);
 extern void system_reset(void);

@@ -51,8 +51,7 @@ int8_t force_redraw = false;
 
 bool speedup_enabled = false;
 
-uint frame = 0;
-uint elapsedTime = 0;
+uint frameCounter = 0;
 
 QueueHandle_t videoQueue;
 // --- MAIN
@@ -68,7 +67,7 @@ int pcm_submit()
 }
 
 
-void run_to_vblank()
+void run_to_vblank(bool draw)
 {
     /* FRAME BEGIN */
 
@@ -86,10 +85,8 @@ void run_to_vblank()
     }
 
     /* VBLANK BEGIN */
-    uint8_t frameskip = speedup_enabled ? 10 : 2;
-
     //vid_end();
-    if ((frame % frameskip) == 0)
+    if (draw)
     {
         struct video_update *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
 
@@ -378,7 +375,8 @@ void app_main(void)
     uint startTime;
     uint stopTime;
     uint totalElapsedTime = 0;
-    uint actualFrameCount = 0;
+    uint skippedFrames = 0;
+    uint frame = 0;
 
     while (true)
     {
@@ -409,32 +407,36 @@ void app_main(void)
 
 
         startTime = xthal_get_ccount();
-        run_to_vblank();
+        bool draw = (frame % (speedup_enabled ? 10 : 2)) == 0;
+        if (!draw) {
+            ++skippedFrames;
+        }
+        run_to_vblank(draw);
         stopTime = xthal_get_ccount();
 
 
-        if (stopTime > startTime)
-          elapsedTime = (stopTime - startTime);
-        else
-          elapsedTime = ((uint64_t)stopTime + (uint64_t)0xffffffff) - (startTime);
+        int elapsedTime = (stopTime > startTime) ?
+            (stopTime - startTime) :
+            ((uint64_t)stopTime + (uint64_t)0xffffffff) - (startTime);
 
         totalElapsedTime += elapsedTime;
+        ++frameCounter;
         ++frame;
-        ++actualFrameCount;
 
-        if (actualFrameCount == 60)
+        if (frame == 60)
         {
             float seconds = totalElapsedTime / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f); // 240000000.0f; // (240Mhz)
-            float fps = actualFrameCount / seconds;
+            float fps = frame / seconds;
 
             odroid_battery_state battery;
             odroid_input_battery_level_read(&battery);
 
-            printf("HEAP:%d, FPS:%f, BATTERY:%d [%d]\n",
-                esp_get_free_heap_size() / 1024, fps,
+            printf("HEAP:%d, FPS:%f, SKIP: %d, BATTERY:%d [%d]\n",
+                esp_get_free_heap_size() / 1024, fps, skippedFrames,
                 battery.millivolts, battery.percentage);
 
-            actualFrameCount = 0;
+            frame = 0;
+            skippedFrames = 0;
             totalElapsedTime = 0;
         }
     }

@@ -393,8 +393,7 @@ static bool scaling_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
 
 bool speedup_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
-    bool toggle = event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT
-               || event == ODROID_DIALOG_ENTER;
+    bool toggle = event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT;
 
     if (toggle) {
         speedup_enabled = !speedup_enabled;

@@ -56,15 +56,4 @@ void odroid_buffer_diff(void *buffer,
                         short pixel_width, uint8_t pixel_mask,
                         uint8_t palette_shift_mask,
                         odroid_scanline *out_diff);
-void odroid_buffer_diff_interlaced(void *buffer,
-                                   void *old_buffer,
-                                   uint16_t *palette,
-                                   uint16_t *old_palette,
-                                   short width, short height, short stride,
-                                   short pixel_width, uint8_t pixel_mask,
-                                   uint8_t palette_shift_mask,
-                                   short field,
-                                   odroid_scanline *out_diff,
-                                   odroid_scanline *old_diff);
-
 int odroid_buffer_diff_count(odroid_scanline *diff, short height);

@@ -669,7 +669,7 @@ inline void lcd_begin()
 }
 
 
-extern int frame;
+extern int frameCounter;
 extern uint16_t* framebuffers[2];
 int lastLcdDisabled = 0;
 
@@ -677,7 +677,7 @@ void IRAM_ATTR lcd_refreshline()
 {
 	byte *dest;
 
-	if ((frame % 7) == 0) ++frame;
+	if ((frameCounter % 7) == 0) ++frameCounter;
 
 
 	L = R_LY;
@@ -694,7 +694,7 @@ void IRAM_ATTR lcd_refreshline()
 	WT = (L - WY) >> 3;
 	WV = (L - WY) & 7;
 
-	if ((frame % 2) == 0)
+	if ((frameCounter % 2) == 0)
 	{
 		if (!(R_LCDC & 0x80))
 		{

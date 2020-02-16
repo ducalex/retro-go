@@ -26,7 +26,6 @@
 #define DEFAULT_HEIGHT       NES_VISIBLE_HEIGHT
 
 #define NES_VERTICAL_OVERDRAW (NES_SCREEN_HEIGHT-NES_VISIBLE_HEIGHT)
-#define INTERLACE_THRESHOLD ((NES_SCREEN_WIDTH*NES_VISIBLE_HEIGHT)/2)
 
 #define PIXEL_MASK 0x3F
 
@@ -196,7 +195,7 @@ static void free_write(int num_dirties, rect_t *dirty_rects)
    bmp_destroy(&myBitmap);
 }
 
-static void IRAM_ATTR custom_blit(bitmap_t *bmp, short interlace)
+static void IRAM_ATTR custom_blit(bitmap_t *bmp)
 {
    if (!bmp) {
       printf("custom_blit called with NULL bitmap!\n");
@@ -213,16 +212,9 @@ static void IRAM_ATTR custom_blit(bitmap_t *bmp, short interlace)
    // Note, the NES palette never changes during runtime and we assume that
    // there are no duplicate entries, so no need to pass the palette over to
    // the diff function.
-   if (interlace >= 0) {
-      odroid_buffer_diff_interlaced(currentUpdate->buffer, previousUpdate->buffer, NULL, NULL,
-                                    NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT,
-                                    currentUpdate->stride, 1, PIXEL_MASK, 0, interlace,
-                                    currentUpdate->diff, previousUpdate->diff);
-   } else {
-      odroid_buffer_diff(currentUpdate->buffer, previousUpdate->buffer, NULL, NULL,
-                         NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT,
-                         currentUpdate->stride, 1, PIXEL_MASK, 0, currentUpdate->diff);
-   }
+   odroid_buffer_diff(currentUpdate->buffer, previousUpdate->buffer, NULL, NULL,
+                      NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT, currentUpdate->stride,
+                      1, PIXEL_MASK, 0, currentUpdate->diff);
 
    xQueueSend(videoQueue, &currentUpdate, portMAX_DELAY);
 

@@ -29,12 +29,11 @@ cart_t cart;
 input_t input;
 
 /* Run the virtual console emulation for one frame */
-void system_frame(int skip_render, int interlace)
+void system_frame(int skip)
 {
   int iline, line_z80 = 0;
 
-  /* Set whether this frame will have interlaced rendering or not */
-  render_mode(skip_render, interlace);
+  render_mode(skip);
 
   /* Debounce pause key */
   if(input.system & INPUT_PAUSE)
@@ -55,7 +54,7 @@ void system_frame(int skip_render, int interlace)
   text_counter = 0;
 
   /* 3D glasses faking */
-  if (sms.glasses_3d) skip_render = sms.wram[0x1ffb];
+  if (sms.glasses_3d) skip = sms.wram[0x1ffb];
 
   /* VDP register 9 is latched during VBLANK */
   vdp.vscroll = vdp.reg[9];
@@ -72,7 +71,7 @@ void system_frame(int skip_render, int interlace)
     iline = vdp.height;
 
     /* VDP line rendering */
-    if(!skip_render)
+    if(!skip)
     {
       render_line(vdp.line);
     }

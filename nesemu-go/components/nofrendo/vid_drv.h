@@ -3,14 +3,14 @@
 **
 **
 ** This program is free software; you can redistribute it and/or
-** modify it under the terms of version 2 of the GNU Library General 
+** modify it under the terms of version 2 of the GNU Library General
 ** Public License as published by the Free Software Foundation.
 **
-** This program is distributed in the hope that it will be useful, 
+** This program is distributed in the hope that it will be useful,
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
-** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
-** Library General Public License for more details.  To obtain a 
-** copy of the GNU Library General Public License, write to the Free 
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+** Library General Public License for more details.  To obtain a
+** copy of the GNU Library General Public License, write to the Free
 ** Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 **
 ** Any permitted reproduction of these routines, in whole or in part,
@@ -47,7 +47,7 @@ typedef struct viddriver_s
    /* free a locked surface (can be NULL) */
    void      (*free_write)(int num_dirties, rect_t *dirty_rects);
    /* custom blitter - num_dirties == -1 if full blit required */
-   void      (*custom_blit)(bitmap_t *primary, short interlace);
+   void      (*custom_blit)(bitmap_t *primary);
    /* immediately invalidate the buffer, i.e. full redraw */
    bool      invalidate;
 } viddriver_t;
@@ -62,7 +62,7 @@ extern int  vid_setmode(int width, int height);
 extern void vid_setpalette(rgb_t *pal);
 
 extern void vid_swap(bitmap_t **bitmap);
-extern void vid_flush(short interlace);
+extern void vid_flush();
 
 #endif /* _VID_DRV_H_ */
 

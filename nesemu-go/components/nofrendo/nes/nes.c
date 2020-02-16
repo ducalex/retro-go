@@ -57,23 +57,6 @@
 
 #define  NES_SKIP_LIMIT       (NES_REFRESH_RATE / 5)   /* 12 or 10, depending on PAL/NTSC */
 
-
-#define FRAME_CHECK 10
-#if 1
-#define INTERLACE_ON_THRESHOLD 8
-#define INTERLACE_OFF_THRESHOLD 10
-#elif 0
-// All interlaced updates
-#define INTERLACE_ON_THRESHOLD (FRAME_CHECK+1)
-#define INTERLACE_OFF_THRESHOLD (FRAME_CHECK+1)
-#else
-// All progressive updates
-#define INTERLACE_ON_THRESHOLD 0
-#define INTERLACE_OFF_THRESHOLD 0
-#endif
-
-static short interlace = -1;
-
 static nes_t nes;
 
 /* find out if a file is ours */
@@ -325,9 +308,7 @@ static void nes_renderframe(bool draw_flag)
 
    while (262 != nes.scanline)
    {
-      bool draw_scanline = draw_flag &&
-          ((interlace < 0) || ((nes.scanline % 2) ^ interlace));
-      ppu_scanline(nes.vidbuf, nes.scanline, draw_scanline);
+      ppu_scanline(nes.vidbuf, nes.scanline, draw_flag);
 
       if (241 == nes.scanline)
       {
@@ -355,8 +336,6 @@ static void nes_renderframe(bool draw_flag)
       nes.scanline++;
    }
 
-   if (draw_flag && interlace >= 0) interlace = 1 - interlace;
-
    nes.scanline = 0;
 }
 
@@ -373,7 +352,7 @@ static void system_video(bool draw)
    //gui_frame(true);
 
    /* Flush buffer to screen */
-   vid_flush(interlace);
+   vid_flush();
 }
 
 extern void do_audio_frame();
@@ -404,8 +383,7 @@ void nes_emulate(void)
    uint totalElapsedTime = 0;
    int frame = 0;
    int skippedFrames = 0;
-   int interlacedFrames = 0;
-   int renderedFrames = FRAME_CHECK;
+   int renderedFrames = 0;
 
 
    for (int i = 0; i < 4; ++i)
@@ -437,9 +415,6 @@ void nes_emulate(void)
         // Don't allow skipping more than one frame at a time.
         if (renderFrame) {
            ++renderedFrames;
-           if (interlace >= 0) {
-              ++interlacedFrames;
-           }
 
            if (elapsedTime > frameTime) {
               renderFrame = false;
@@ -457,32 +432,22 @@ void nes_emulate(void)
         totalElapsedTime += elapsedTime;
         ++frame;
 
-        if ((frame % FRAME_CHECK) == 0) {
-           if (renderedFrames <= INTERLACE_ON_THRESHOLD && interlace == -1) {
-              interlace = 0;
-           }
-           if (renderedFrames >= INTERLACE_OFF_THRESHOLD) {
-              interlace = -1;
-           }
-           renderedFrames = 0;
-        }
-
         if (frame == 60)
         {
             float seconds = totalElapsedTime / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f);
-            float fps = (60 - skippedFrames) / (frame / seconds) * 60.f;
+            float fps = frame / seconds;
 
             odroid_battery_state battery;
             odroid_input_battery_level_read(&battery);
 
-            printf("HEAP:%d, FPS:%f, INT:%d, SKIP:%d, BATTERY:%d [%d]\n",
-               esp_get_free_heap_size() / 1024, fps, interlacedFrames, skippedFrames,
+            printf("HEAP:%d, FPS:%f, SKIP:%d, BATTERY:%d [%d]\n",
+               esp_get_free_heap_size() / 1024, fps, skippedFrames,
                battery.millivolts, battery.percentage);
 
             frame = 0;
             totalElapsedTime = 0;
+            renderedFrames = 0;
             skippedFrames = 0;
-            interlacedFrames = 0;
         }
    }
 }

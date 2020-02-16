@@ -281,7 +281,7 @@ INLINE int calc_dirties(rect_t *list)
 }
 #endif
 
-void vid_flush(short interlace)
+void vid_flush()
 {
    bitmap_t *temp;
    int num_dirties;
@@ -301,7 +301,7 @@ void vid_flush(short interlace)
    }
 
    if (driver->custom_blit)
-      driver->custom_blit(primary_buffer, interlace);
+      driver->custom_blit(primary_buffer);
    else
       vid_blitscreen(num_dirties, dirty_rects);
 }
