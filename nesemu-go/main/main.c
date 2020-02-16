@@ -33,17 +33,26 @@
 struct update_meta {
     odroid_scanline diff[NES_VISIBLE_HEIGHT];
     uint8_t *buffer;
+    uint16_t *palette;
     int stride;
 };
+
+static char fb[1];
+static bitmap_t *myBitmap;
+static uint16_t myPalette[64];
+
+static struct update_meta update1 = {0,};
+static struct update_meta update2 = {0,};
+static struct update_meta *update = &update2;
+
+int8_t scaling_mode = ODROID_SCALING_FILL;
+bool force_redraw = true;
 
 static char* romPath;
 static char* romData;
 
 ODROID_START_ACTION startAction = 0;
 bool forceConsoleReset = false;
-
-int8_t scaling_mode = ODROID_SCALING_FILL;
-bool force_redraw = true;
 
 QueueHandle_t videoQueue;
 
@@ -136,13 +145,6 @@ void osd_getsoundinfo(sndinfo_t *info)
 /*
 ** Video
 */
-static char fb[1];
-static bitmap_t *myBitmap;
-static uint16_t myPalette[64];
-
-static struct update_meta update1 = {0,};
-static struct update_meta update2 = {0,};
-static struct update_meta *update = &update2;
 
 /* initialise video */
 static int init(int width, int height)
@@ -197,8 +199,7 @@ static void IRAM_ATTR custom_blit(bitmap_t *bmp, short interlace)
       abort();
    }
 
-   uint8_t *old_buffer = update->buffer;
-   odroid_scanline *old_diff = update->diff;
+   struct update_meta *old_update = update;
 
    // Flip the update struct so we can keep track of the changes in the last
    // frame and fill in the new details (actually, these ought to always be
@@ -211,16 +212,14 @@ static void IRAM_ATTR custom_blit(bitmap_t *bmp, short interlace)
    // there are no duplicate entries, so no need to pass the palette over to
    // the diff function.
    if (interlace >= 0) {
-      odroid_buffer_diff_interlaced(update->buffer, old_buffer,
-                                    NULL, NULL,
+      odroid_buffer_diff_interlaced(update->buffer, old_update->buffer, NULL, NULL,
                                     NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT,
-                                    update->stride, PIXEL_MASK, 0, interlace,
-                                    update->diff, old_diff);
+                                    update->stride, 1, PIXEL_MASK, 0, interlace,
+                                    update->diff, old_update->diff);
    } else {
-      odroid_buffer_diff(update->buffer, old_buffer,
-                         NULL, NULL,
+      odroid_buffer_diff(update->buffer, old_update->buffer, NULL, NULL,
                          NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT,
-                         update->stride, PIXEL_MASK, 0, update->diff);
+                         update->stride, 1, PIXEL_MASK, 0, update->diff);
    }
 
    xQueueSend(videoQueue, &update, portMAX_DELAY);
@@ -252,39 +251,33 @@ static void videoTask(void *arg)
 {
     videoTaskIsRunning = true;
 
-    int8_t previous_scaling_mode = ODROID_SCALING_UNKNOWN;
+    int8_t previous_scaling_mode = -1;
+    struct update_meta *update;
 
     while(1)
     {
-        struct update_meta *update = NULL;
         xQueuePeek(videoQueue, &update, portMAX_DELAY);
 
         if (!update) break;
 
-        bool redraw = (previous_scaling_mode != scaling_mode) || force_redraw;
+        bool redraw = previous_scaling_mode != scaling_mode || force_redraw;
         if (redraw)
         {
-           // Clear display
            ili9341_blank_screen();
            previous_scaling_mode = scaling_mode;
            force_redraw = false;
 
-           if (scaling_mode)
-           {
+           if (scaling_mode) {
                float aspect = (scaling_mode == ODROID_SCALING_FILL) ? (8.f / 7.f) : 1.f;
                odroid_display_set_scale(NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT, aspect);
-           }
-           else
-           {
+           } else {
                odroid_display_reset_scale(NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT);
            }
         }
 
-        ili9341_write_frame_diff(update->buffer,
-                                 redraw ? NULL : update->diff,
-                                 NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT,
-                                 update->stride, PIXEL_MASK,
-                                 myPalette);
+        ili9341_write_frame_scaled(update->buffer, redraw ? NULL : update->diff,
+                                   NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT, update->stride,
+                                   1, PIXEL_MASK, myPalette);
 
         xQueueReceive(videoQueue, &update, portMAX_DELAY);
     }

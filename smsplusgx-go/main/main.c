@@ -36,7 +36,6 @@ static ODROID_START_ACTION startAction = 0;
 static char* romPath = NULL;
 
 uint8_t* framebuffers[2];
-int currentBuffer = 0;
 
 uint32_t* audioBuffer = NULL;
 int audioBufferCount = 0;
@@ -61,11 +60,10 @@ int8_t force_redraw = false;
 volatile bool videoTaskIsRunning = false;
 static void videoTask(void *arg)
 {
-    struct update_meta* update;
-
     videoTaskIsRunning = true;
 
-    int8_t previous_scaling_mode = ODROID_SCALING_UNKNOWN;
+    int8_t previous_scaling_mode = -1;
+    struct update_meta* update;
 
     while(1)
     {
@@ -73,32 +71,25 @@ static void videoTask(void *arg)
 
         if (!update) break;
 
-        bool redraw = (previous_scaling_mode != scaling_mode) || force_redraw;
+        bool redraw = previous_scaling_mode != scaling_mode || force_redraw;
         if (redraw)
         {
             ili9341_blank_screen();
             previous_scaling_mode = scaling_mode;
             force_redraw = false;
 
-            if (scaling_mode == ODROID_SCALING_FILL)
-            {
-                float aspect = (sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS) ? 1.2f : 1.f;
+            if (scaling_mode) {
+                float aspect = (scaling_mode == ODROID_SCALING_FILL) &&
+                               (sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS) ? 1.2f : 1.f;
                 odroid_display_set_scale(update->width, update->height, aspect);
-            }
-            else if (scaling_mode)
-            {
-                odroid_display_set_scale(update->width, update->height, 1.f);
-            }
-            else
-            {
+            } else {
                 odroid_display_reset_scale(update->width, update->height);
             }
         }
 
-        ili9341_write_frame_diff(update->buffer,
-                                 redraw ? NULL : update->diff,
-                                 update->width, update->height,
-                                 update->stride, PIXEL_MASK, update->palette);
+        ili9341_write_frame_scaled(update->buffer, redraw ? NULL : update->diff,
+                                   update->width, update->height, update->stride,
+                                   1, PIXEL_MASK, update->palette);
 
         xQueueReceive(videoQueue, &update, portMAX_DELAY);
     }
@@ -218,10 +209,13 @@ void app_main(void)
     assert(framebuffers[0] && framebuffers[1]);
     assert(audioBuffer);
 
+    update1.buffer = framebuffers[0];
+    update2.buffer = framebuffers[1];
+
     scaling_mode = odroid_settings_Scaling_get();
 
     videoQueue = xQueueCreate(1, sizeof(uint16_t*));
-    xTaskCreatePinnedToCore(&videoTask, "videoTask", 1024 * 4, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(&videoTask, "videoTask", 4096, NULL, 5, NULL, 1);
 
 
     // Load ROM
@@ -427,29 +421,24 @@ void app_main(void)
                 odroid_buffer_diff_interlaced(update->buffer, old_update->buffer,
                                               update->palette, old_update->palette,
                                               update->width, update->height,
-                                              update->stride,
-                                              PIXEL_MASK, PAL_SHIFT_MASK,
-                                              interlace,
-                                              update->diff, old_update->diff);
+                                              update->stride, 1, PIXEL_MASK, PAL_SHIFT_MASK,
+                                              interlace, update->diff, old_update->diff);
             } else {
                 odroid_buffer_diff(update->buffer, old_update->buffer,
                                    update->palette, old_update->palette,
-                                   update->width, update->height,
-                                   update->stride, PIXEL_MASK, PAL_SHIFT_MASK,
-                                   update->diff);
+                                   update->width, update->height, update->stride,
+                                   1, PIXEL_MASK, PAL_SHIFT_MASK, update->diff);
             }
 
             // Send update data to video queue on other core
-            void *arg = (void*)update;
-            xQueueSend(videoQueue, &arg, portMAX_DELAY);
+            xQueueSend(videoQueue, &update, portMAX_DELAY);
 
             // Flip the update struct so we don't start writing into it while
             // the second core is still updating the screen.
             update = old_update;
 
             // Swap buffers
-            currentBuffer = 1 - currentBuffer;
-            bitmap.data = framebuffers[currentBuffer];
+            bitmap.data = update->buffer;
             ++renderedFrames;
         }
         else

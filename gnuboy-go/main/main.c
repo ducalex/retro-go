@@ -36,9 +36,20 @@ static ODROID_START_ACTION startAction = 0;
 static char *romPath = NULL;
 
 uint16_t* framebuffers[2]; //= { fb0, fb0 }; //[160 * 144];
-uint8_t currentBuffer;
 
-int frame = 0;
+struct update_meta {
+    odroid_scanline diff[GB_HEIGHT];
+    uint16_t *buffer;
+    int stride;
+};
+static struct update_meta update1 = {0,};
+static struct update_meta update2 = {0,};
+static struct update_meta *update = &update1;
+
+int8_t scaling_mode = ODROID_SCALING_FILL;
+int8_t force_redraw = false;
+
+uint frame = 0;
 uint elapsedTime = 0;
 
 int16_t* audioBuffers[2];
@@ -60,39 +71,48 @@ int pcm_submit()
 
 void run_to_vblank()
 {
-  /* FRAME BEGIN */
+    /* FRAME BEGIN */
 
-  /* FIXME: djudging by the time specified this was intended
-  to emulate through vblank phase which is handled at the
-  end of the loop. */
-  cpu_emulate(2280);
+    /* FIXME: djudging by the time specified this was intended
+    to emulate through vblank phase which is handled at the
+    end of the loop. */
+    cpu_emulate(2280);
 
-  /* FIXME: R_LY >= 0; comparsion to zero can also be removed
-  altogether, R_LY is always 0 at this point */
-  while (R_LY > 0 && R_LY < 144)
-  {
-    /* Step through visible line scanning phase */
-    emu_step();
-  }
+    /* FIXME: R_LY >= 0; comparsion to zero can also be removed
+    altogether, R_LY is always 0 at this point */
+    while (R_LY > 0 && R_LY < 144)
+    {
+        /* Step through visible line scanning phase */
+        emu_step();
+    }
 
-  /* VBLANK BEGIN */
+    /* VBLANK BEGIN */
 
-  //vid_end();
-  if ((frame % 2) == 0)
-  {
-      xQueueSend(videoQueue, &framebuffers[currentBuffer], portMAX_DELAY);
+    //vid_end();
+    if ((frame % 2) == 0)
+    {
+        struct update_meta *old_update = (update == &update1) ? &update2 : &update1;
 
-      // swap buffers
-      currentBuffer = currentBuffer ? 0 : 1;
-      fb.ptr = framebuffers[currentBuffer];
-  }
+        // interlace = 1 - interlace;
+        // odroid_buffer_diff_interlaced(update->buffer, old_update->buffer,
+        //                     NULL, NULL,
+        //                     GB_WIDTH, GB_HEIGHT,
+        //                     GB_WIDTH * 2, 2, 0xFF, 0, interlace,
+        //                     update->diff, old_update->diff);
 
-  rtc_tick();
+        xQueueSend(videoQueue, &update, portMAX_DELAY);
 
-  sound_mix();
+        // swap buffers
+        update = old_update;
+        fb.ptr = update->buffer;
+    }
 
-  //if (pcm.pos > 100)
-  {
+    rtc_tick();
+
+    sound_mix();
+
+    //if (pcm.pos > 100)
+    {
         currentAudioBufferPtr = audioBuffers[currentAudioBuffer];
         currentAudioSampleCount = pcm.pos;
 
@@ -103,24 +123,22 @@ void run_to_vblank()
         currentAudioBuffer = currentAudioBuffer ? 0 : 1;
         pcm.buf = audioBuffers[currentAudioBuffer];
         pcm.pos = 0;
-  }
+    }
 
-  if (!(R_LCDC & 0x80)) {
-    /* LCDC operation stopped */
-    /* FIXME: djudging by the time specified, this is
-    intended to emulate through visible line scanning
-    phase, even though we are already at vblank here */
-    cpu_emulate(32832);
-  }
+    if (!(R_LCDC & 0x80)) {
+        /* LCDC operation stopped */
+        /* FIXME: djudging by the time specified, this is
+        intended to emulate through visible line scanning
+        phase, even though we are already at vblank here */
+        cpu_emulate(32832);
+    }
 
-  while (R_LY > 0) {
-    /* Step through vblank phase */
-    emu_step();
-  }
+    while (R_LY > 0) {
+        /* Step through vblank phase */
+        emu_step();
+    }
 }
 
-
-int8_t scaling_mode = ODROID_SCALING_FILL;
 
 volatile bool videoTaskIsRunning = false;
 void videoTask(void *arg)
@@ -128,24 +146,32 @@ void videoTask(void *arg)
     videoTaskIsRunning = true;
 
     int8_t previous_scaling_mode = -1;
-    uint16_t* param;
+    struct update_meta *update;
 
     while(1)
     {
-        xQueuePeek(videoQueue, &param, portMAX_DELAY);
+        xQueuePeek(videoQueue, &update, portMAX_DELAY);
 
-        if (param == 1)
-            break;
+        if (!update) break;
 
         if (previous_scaling_mode != scaling_mode)
         {
             ili9341_blank_screen();
             previous_scaling_mode = scaling_mode;
+
+            if (scaling_mode) {
+                float aspect = (scaling_mode == ODROID_SCALING_FILL) ? 1.2f : 1.f;
+                odroid_display_set_scale(GB_WIDTH, GB_HEIGHT, aspect);
+            } else {
+                odroid_display_reset_scale(GB_WIDTH, GB_HEIGHT);
+            }
         }
 
-        ili9341_write_frame_gb(param, scaling_mode);
+        // ili9341_write_frame_scaled(update->buffer, update->diff, GB_WIDTH, GB_HEIGHT,
+        //                            GB_WIDTH * 2, 2, 0xFF, NULL);
+        ili9341_write_frame_gb(update->buffer, scaling_mode);
 
-        xQueueReceive(videoQueue, &param, portMAX_DELAY);
+        xQueueReceive(videoQueue, &update, portMAX_DELAY);
     }
 
     videoTaskIsRunning = false;
@@ -161,14 +187,13 @@ void audioTask(void* arg)
 {
     audioTaskIsRunning = true;
 
-    uint16_t* param;
+    void* param;
 
     while(1)
     {
         xQueuePeek(audioQueue, &param, portMAX_DELAY);
 
-        if (param == 1)
-            break;
+        if (!param) break;
 
         pcm_submit();
 
@@ -244,7 +269,7 @@ void QuitEmulator(bool save)
 {
     printf("QuitEmulator: stopping tasks.\n");
 
-    uint16_t* param = 1;
+    void *param = NULL;
     xQueueSend(audioQueue, &param, portMAX_DELAY);
     xQueueSend(videoQueue, &param, portMAX_DELAY);
     while (videoTaskIsRunning || audioTaskIsRunning) vTaskDelay(1);
@@ -346,12 +371,14 @@ void app_main(void)
 
     scaling_mode = odroid_settings_Scaling_get();
 
-    videoQueue = xQueueCreate(1, sizeof(uint16_t*));
-    audioQueue = xQueueCreate(1, sizeof(uint16_t*));
+    videoQueue = xQueueCreate(1, sizeof(void*));
+    audioQueue = xQueueCreate(1, sizeof(void*));
 
-    xTaskCreatePinnedToCore(&videoTask, "videoTask", 1024, NULL, 5, NULL, 1);
-    xTaskCreatePinnedToCore(&audioTask, "audioTask", 2048, NULL, 5, NULL, 1); //768
+    xTaskCreatePinnedToCore(&videoTask, "videoTask", 2048, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(&audioTask, "audioTask", 2048, NULL, 5, NULL, 1);
 
+    update1.buffer = framebuffers[0];
+    update2.buffer = framebuffers[1];
 
     // Load ROM
     loader_init(romPath);
@@ -366,7 +393,7 @@ void app_main(void)
   	fb.pelsize = 2;
   	fb.pitch = fb.w * fb.pelsize;
   	fb.indexed = 0;
-  	fb.ptr = framebuffers[currentBuffer];
+  	fb.ptr = update->buffer;
   	fb.enabled = 1;
   	fb.dirty = 0;
 
