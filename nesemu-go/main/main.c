@@ -30,36 +30,36 @@
 
 #define PIXEL_MASK 0x3F
 
-struct update_meta {
-    odroid_scanline diff[NES_VISIBLE_HEIGHT];
-    uint8_t *buffer;
-    uint16_t *palette;
-    int stride;
-};
+ODROID_START_ACTION startAction = 0;
+bool forceConsoleReset = false;
+
+static char* romPath;
+static char* romData;
 
 static char fb[1];
 static bitmap_t *myBitmap;
 static uint16_t myPalette[64];
 
-static struct update_meta update1 = {0,};
-static struct update_meta update2 = {0,};
-static struct update_meta *update = &update2;
+struct video_update {
+    odroid_scanline diff[NES_VISIBLE_HEIGHT];
+    uint8_t *buffer;
+    uint16_t *palette;
+    int stride;
+};
+static struct video_update update1 = {0,};
+static struct video_update update2 = {0,};
+static struct video_update *currentUpdate = &update1;
 
 int8_t scaling_mode = ODROID_SCALING_FILL;
 bool force_redraw = true;
 
-static char* romPath;
-static char* romData;
-
-ODROID_START_ACTION startAction = 0;
-bool forceConsoleReset = false;
+bool speedup_enabled = false;
 
 QueueHandle_t videoQueue;
 
-static char configfilename[] = "na";
-
 extern nes_t* console_nes;
 extern nes6502_context cpu;
+// --- MAIN
 
 
 /* File system interface */
@@ -104,6 +104,10 @@ static int16_t *audio_frame;
 
 void do_audio_frame()
 {
+   if (speedup_enabled) {
+      return;
+   }
+
    audio_callback(audio_frame, AUDIO_FRAGSIZE); //get audio data
 
    //16 bit mono -> 32-bit (16 bit r+l)
@@ -199,30 +203,30 @@ static void IRAM_ATTR custom_blit(bitmap_t *bmp, short interlace)
       abort();
    }
 
-   struct update_meta *old_update = update;
-
+   struct video_update *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
    // Flip the update struct so we can keep track of the changes in the last
    // frame and fill in the new details (actually, these ought to always be
    // the same...)
-   update = (update == &update1) ? &update2 : &update1;
-   update->buffer = bmp->line[NES_VERTICAL_OVERDRAW/2];
-   update->stride = bmp->pitch;
+   currentUpdate->buffer = bmp->line[NES_VERTICAL_OVERDRAW/2];
+   currentUpdate->stride = bmp->pitch;
 
    // Note, the NES palette never changes during runtime and we assume that
    // there are no duplicate entries, so no need to pass the palette over to
    // the diff function.
    if (interlace >= 0) {
-      odroid_buffer_diff_interlaced(update->buffer, old_update->buffer, NULL, NULL,
+      odroid_buffer_diff_interlaced(currentUpdate->buffer, previousUpdate->buffer, NULL, NULL,
                                     NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT,
-                                    update->stride, 1, PIXEL_MASK, 0, interlace,
-                                    update->diff, old_update->diff);
+                                    currentUpdate->stride, 1, PIXEL_MASK, 0, interlace,
+                                    currentUpdate->diff, previousUpdate->diff);
    } else {
-      odroid_buffer_diff(update->buffer, old_update->buffer, NULL, NULL,
+      odroid_buffer_diff(currentUpdate->buffer, previousUpdate->buffer, NULL, NULL,
                          NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT,
-                         update->stride, 1, PIXEL_MASK, 0, update->diff);
+                         currentUpdate->stride, 1, PIXEL_MASK, 0, currentUpdate->diff);
    }
 
-   xQueueSend(videoQueue, &update, portMAX_DELAY);
+   xQueueSend(videoQueue, &currentUpdate, portMAX_DELAY);
+
+   currentUpdate = previousUpdate;
 }
 
 viddriver_t sdlDriver =
@@ -252,7 +256,7 @@ static void videoTask(void *arg)
     videoTaskIsRunning = true;
 
     int8_t previous_scaling_mode = -1;
-    struct update_meta *update;
+    struct video_update *update;
 
     while(1)
     {
@@ -313,7 +317,7 @@ void osd_getinput(void)
       force_redraw = true;
    }
    else if (joystick.values[ODROID_INPUT_VOLUME]) {
-      odroid_overlay_settings_menu(NULL, 0);
+      odroid_overlay_game_settings_menu(NULL, 0);
       force_redraw = true;
    }
 
@@ -378,7 +382,7 @@ int osd_init()
 
    scaling_mode = odroid_settings_Scaling_get();
 
-   videoQueue = xQueueCreate(1, sizeof(struct update_meta *));
+   videoQueue = xQueueCreate(1, sizeof(void*));
    xTaskCreatePinnedToCore(&videoTask, "videoTask", 2048, NULL, 5, NULL, 1);
 
    return 0;
@@ -386,7 +390,7 @@ int osd_init()
 
 int osd_main(int argc, char *argv[])
 {
-   config.filename = configfilename;
+   config.filename = "n/a";
 
    return main_loop(argv[0], system_nes);
 }

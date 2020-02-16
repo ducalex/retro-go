@@ -7,21 +7,8 @@
 #include "odroid_system.h"
 
 #define AUDIO_SAMPLE_RATE (32000)
-#define AUDIO_SAMPLE_COUNT (AUDIO_SAMPLE_RATE / 60 + 1)
+#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 1)
 
-#define FRAME_CHECK 10
-#if 0
-#define INTERLACE_ON_THRESHOLD 8
-#define INTERLACE_OFF_THRESHOLD 10
-#elif 0
-// All interlaced updates
-#define INTERLACE_ON_THRESHOLD (FRAME_CHECK+1)
-#define INTERLACE_OFF_THRESHOLD (FRAME_CHECK+1)
-#else
-// All progressive updates
-#define INTERLACE_ON_THRESHOLD 0
-#define INTERLACE_OFF_THRESHOLD 0
-#endif
 
 #define SMS_WIDTH 256
 #define SMS_HEIGHT 192
@@ -35,14 +22,12 @@
 static ODROID_START_ACTION startAction = 0;
 static char* romPath = NULL;
 
+uint32_t* audioBuffer;
+
 uint8_t* framebuffers[2];
+int currentBuffer = 0;
 
-uint32_t* audioBuffer = NULL;
-int audioBufferCount = 0;
-
-QueueHandle_t videoQueue;
-
-struct update_meta {
+struct video_update {
     odroid_scanline diff[SMS_HEIGHT];
     uint8_t *buffer;
     uint16 palette[PALETTE_SIZE*2];
@@ -50,12 +35,18 @@ struct update_meta {
     int height;
     int stride;
 };
-static struct update_meta update1 = {0,};
-static struct update_meta update2 = {0,};
-static struct update_meta *update = &update1;
+static struct video_update update1 = {0,};
+static struct video_update update2 = {0,};
+static struct video_update *currentUpdate = &update1;
 
 int8_t scaling_mode = ODROID_SCALING_FILL;
 int8_t force_redraw = false;
+
+bool speedup_enabled = false;
+
+QueueHandle_t videoQueue;
+// --- MAIN
+
 
 volatile bool videoTaskIsRunning = false;
 static void videoTask(void *arg)
@@ -63,7 +54,7 @@ static void videoTask(void *arg)
     videoTaskIsRunning = true;
 
     int8_t previous_scaling_mode = -1;
-    struct update_meta* update;
+    struct video_update* update;
 
     while(1)
     {
@@ -79,8 +70,8 @@ static void videoTask(void *arg)
             force_redraw = false;
 
             if (scaling_mode) {
-                float aspect = (scaling_mode == ODROID_SCALING_FILL) &&
-                               (sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS) ? 1.2f : 1.f;
+                float aspect = (sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS) &&
+                               scaling_mode == ODROID_SCALING_FILL ? 1.2f : 1.f;
                 odroid_display_set_scale(update->width, update->height, aspect);
             } else {
                 odroid_display_reset_scale(update->width, update->height);
@@ -201,16 +192,13 @@ void app_main(void)
     // Do before odroid_system_init to make sure we get the caps requested
     framebuffers[0] = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
     framebuffers[1] = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
-    audioBuffer = heap_caps_malloc(AUDIO_SAMPLE_COUNT * 2 * sizeof(int16_t), MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    audioBuffer     = heap_caps_calloc(AUDIO_BUFFER_LENGTH * 2, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
 
     // Init all the console hardware
     odroid_system_init(3, AUDIO_SAMPLE_RATE, &romPath, &startAction);
 
     assert(framebuffers[0] && framebuffers[1]);
     assert(audioBuffer);
-
-    update1.buffer = framebuffers[0];
-    update2.buffer = framebuffers[1];
 
     scaling_mode = odroid_settings_Scaling_get();
 
@@ -276,8 +264,6 @@ void app_main(void)
     int skipFrame = 0;
     int skippedFrames = 0;
     int renderedFrames = 0;
-    int interlacedFrames = 0;
-    int interlace = -1;
 
     while (true)
     {
@@ -289,7 +275,7 @@ void app_main(void)
             force_redraw = true;
         }
         else if (joystick.values[ODROID_INPUT_VOLUME]) {
-            odroid_overlay_settings_menu(NULL, 0);
+            odroid_overlay_game_settings_menu(NULL, 0);
             force_redraw = true;
         }
 
@@ -397,53 +383,45 @@ void app_main(void)
 
         if (!skipFrame)
         {
-            system_frame(0, interlace);
+            system_frame(false);
 
             // Store buffer data
             if (sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS) {
-                update->buffer = bitmap.data + (SMS_WIDTH - GG_WIDTH) / 2;
-                update->width = GG_WIDTH;
-                update->height = GG_HEIGHT;
+                currentUpdate->buffer = bitmap.data + (SMS_WIDTH - GG_WIDTH) / 2;
+                currentUpdate->width = GG_WIDTH;
+                currentUpdate->height = GG_HEIGHT;
             } else {
-                update->buffer = bitmap.data;
-                update->width = SMS_WIDTH;
-                update->height = SMS_HEIGHT;
+                currentUpdate->buffer = bitmap.data;
+                currentUpdate->width = SMS_WIDTH;
+                currentUpdate->height = SMS_HEIGHT;
             }
-            update->stride = bitmap.pitch;
-            render_copy_palette(update->palette);
+            currentUpdate->stride = bitmap.pitch;
+            render_copy_palette(currentUpdate->palette);
 
-            struct update_meta *old_update = (update == &update1) ? &update2 : &update1;
+            struct video_update *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
 
             // Diff buffer
-            if (interlace >= 0) {
-                ++interlacedFrames;
-                interlace = 1 - interlace;
-                odroid_buffer_diff_interlaced(update->buffer, old_update->buffer,
-                                              update->palette, old_update->palette,
-                                              update->width, update->height,
-                                              update->stride, 1, PIXEL_MASK, PAL_SHIFT_MASK,
-                                              interlace, update->diff, old_update->diff);
-            } else {
-                odroid_buffer_diff(update->buffer, old_update->buffer,
-                                   update->palette, old_update->palette,
-                                   update->width, update->height, update->stride,
-                                   1, PIXEL_MASK, PAL_SHIFT_MASK, update->diff);
-            }
+            odroid_buffer_diff(currentUpdate->buffer, previousUpdate->buffer,
+                               currentUpdate->palette, previousUpdate->palette,
+                               currentUpdate->width, currentUpdate->height,
+                               currentUpdate->stride, 1, PIXEL_MASK, PAL_SHIFT_MASK,
+                               currentUpdate->diff);
 
             // Send update data to video queue on other core
-            xQueueSend(videoQueue, &update, portMAX_DELAY);
+            xQueueSend(videoQueue, &currentUpdate, portMAX_DELAY);
 
             // Flip the update struct so we don't start writing into it while
             // the second core is still updating the screen.
-            update = old_update;
+            currentUpdate = previousUpdate;
 
             // Swap buffers
-            bitmap.data = update->buffer;
+            currentBuffer = 1 - currentBuffer;
+            bitmap.data = framebuffers[currentBuffer];
             ++renderedFrames;
         }
         else
         {
-            system_frame(1, -1);
+            system_frame(true);
             ++skippedFrames;
         }
 
@@ -452,44 +430,33 @@ void app_main(void)
         int elapsedTime = (stopTime > startTime) ?
             (stopTime - startTime) :
             ((uint64_t)stopTime + (uint64_t)0xffffffff) - (startTime);
-#if 1
-        skipFrame = (!skipFrame && elapsedTime > frameTime);
 
-        // Use interlacing if we drop too many frames
-        if ((frame % FRAME_CHECK) == 0) {
-            if (renderedFrames <= INTERLACE_ON_THRESHOLD && interlace == -1) {
-                interlace = 0;
-            }
-            if (renderedFrames >= INTERLACE_OFF_THRESHOLD) {
-                interlace = -1;
-            }
-            renderedFrames = 0;
-        }
-#endif
-
-        // Process audio
-        for (int x = 0; x < snd.sample_count; x++)
+        if (speedup_enabled)
         {
-            uint32_t sample;
+            skipFrame = frame % 5;
+        }
+        else
+        {
+            skipFrame = (!skipFrame && elapsedTime > frameTime);
 
-            if (muteFrameCount < 60 * 2)
+            // Process audio
+            for (int x = 0; x < snd.sample_count; x++)
             {
                 // When the emulator starts, audible popping is generated.
                 // Audio should be disabled during this startup period.
-                sample = 0;
-                ++muteFrameCount;
-            }
-            else
-            {
-                sample = (snd.output[0][x] << 16) + snd.output[1][x];
+                if (muteFrameCount < 60 * 2)
+                {
+                    ++muteFrameCount;
+                    audioBuffer[x] = 0;
+                }
+                else
+                {
+                    audioBuffer[x] = (snd.output[0][x] << 16) + snd.output[1][x];
+                }
             }
 
-            audioBuffer[x] = sample;
+            odroid_audio_submit((short*)audioBuffer, snd.sample_count);
         }
-
-        // send audio
-
-        odroid_audio_submit((short*)audioBuffer, snd.sample_count);
 
 
         stopTime = xthal_get_ccount();
@@ -509,14 +476,14 @@ void app_main(void)
             odroid_battery_state battery;
             odroid_input_battery_level_read(&battery);
 
-            printf("HEAP:%d, FPS:%f, INT:%d, SKIP:%d, BATTERY:%d [%d]\n",
-                esp_get_free_heap_size() / 1024, fps, interlacedFrames, skippedFrames,
+            printf("HEAP:%d, FPS:%f, SKIP:%d, BATTERY:%d [%d]\n",
+                esp_get_free_heap_size() / 1024, fps, skippedFrames,
                 battery.millivolts, battery.percentage);
 
             frame = 0;
             totalElapsedTime = 0;
+            renderedFrames = 0;
             skippedFrames = 0;
-            interlacedFrames = 0;
         }
     }
 }

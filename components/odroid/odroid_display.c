@@ -1203,7 +1203,7 @@ odroid_buffer_diff_optimize(odroid_scanline *diff, short height)
 static inline bool
 palette_diff(uint16_t *palette1, uint16_t *palette2, short count)
 {
-    return memcmp(palette1, palette2, count * sizeof(uint16_t)) != 0;
+    return palette1 != palette2 && memcmp(palette1, palette2, count * sizeof(uint16_t)) != 0;
 }
 
 void IRAM_ATTR
@@ -1213,8 +1213,7 @@ odroid_buffer_diff(void *buffer, void *old_buffer,
                    uint8_t pixel_mask, uint8_t palette_shift_mask,
                    odroid_scanline *out_diff)
 {
-    if (palette &&
-        !palette_diff(palette, old_palette, pixel_mask + 1))
+    if (!palette_diff(palette, old_palette, pixel_mask + 1))
     {
         // This may cause over-diffing the frame after a palette change on an
         // interlaced frame, but I think we can deal with that.

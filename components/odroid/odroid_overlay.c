@@ -13,6 +13,7 @@
 
 static uint16_t *overlay_buffer = NULL;
 extern int8_t scaling_mode;
+extern bool speedup_enabled;
 
 const char *NVS_KEY_FONTSIZE = "FontSize";
 
@@ -390,6 +391,18 @@ static bool scaling_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
     return event == ODROID_DIALOG_ENTER;
 }
 
+bool speedup_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+{
+    bool toggle = event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT
+               || event == ODROID_DIALOG_ENTER;
+
+    if (toggle) {
+        speedup_enabled = !speedup_enabled;
+    }
+
+    sprintf(option->value, "%s", speedup_enabled ? "On" : "Off");
+    return toggle;
+}
 
 int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options, int extra_options_count)
 {
@@ -401,9 +414,8 @@ int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options, int extr
         {0, "Brightness", "50%",  1, &brightness_update_cb},
         {1, "Volume    ", "50%",  1, &volume_update_cb},
         {2, "Audio out ", "Spkr", 1, &audio_update_cb},
-        {3, "Scaling   ", "Yes",  1, &scaling_update_cb},
     };
-    int options_count = 4;
+    int options_count = 3;
 
     if (extra_options_count > 0) {
         memcpy(options + options_count, extra_options, extra_options_count * sizeof(odroid_dialog_choice_t));
@@ -414,6 +426,22 @@ int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options, int extr
     odroid_display_unlock();
 
     return r;
+}
+
+int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options, int extra_options_count)
+{
+    odroid_dialog_choice_t options[12] = {
+        {10, "Scaling ", "Yes", 1, &scaling_update_cb},
+        {11, "Speed up", "Off", 1, &speedup_update_cb},
+    };
+    int options_count = 2;
+
+    if (extra_options_count > 0) {
+        memcpy(options + options_count, extra_options, extra_options_count * sizeof(odroid_dialog_choice_t));
+        options_count += extra_options_count;
+    }
+
+    return odroid_overlay_settings_menu(options, options_count);
 }
 
 // We should use pointers instead...
