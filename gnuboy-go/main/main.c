@@ -47,11 +47,10 @@ static struct video_update update2 = {0,};
 static struct video_update *currentUpdate = &update1;
 
 int8_t scaling_mode = ODROID_SCALING_FILL;
-int8_t force_redraw = false;
 
+bool force_redraw = false;
 bool speedup_enabled = false;
-
-uint frameCounter = 0;
+bool skipFrame = false;
 
 QueueHandle_t videoQueue;
 // --- MAIN
@@ -67,7 +66,7 @@ int pcm_submit()
 }
 
 
-void run_to_vblank(bool draw)
+void run_to_vblank()
 {
     /* FRAME BEGIN */
 
@@ -86,7 +85,7 @@ void run_to_vblank(bool draw)
 
     /* VBLANK BEGIN */
     //vid_end();
-    if (draw)
+    if (!skipFrame)
     {
         struct video_update *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
 
@@ -129,6 +128,8 @@ volatile bool videoTaskIsRunning = false;
 void videoTask(void *arg)
 {
     videoTaskIsRunning = true;
+
+    scaling_mode = odroid_settings_Scaling_get();
 
     int8_t previous_scaling_mode = -1;
     struct video_update *update;
@@ -324,10 +325,7 @@ void app_main(void)
     assert(framebuffers[0] && framebuffers[1]);
     assert(audioBuffer);
 
-    scaling_mode = odroid_settings_Scaling_get();
-
     videoQueue = xQueueCreate(1, sizeof(void*));
-
     xTaskCreatePinnedToCore(&videoTask, "videoTask", 2048, NULL, 5, NULL, 1);
 
     update1.buffer = framebuffers[0];
@@ -375,8 +373,8 @@ void app_main(void)
     uint startTime;
     uint stopTime;
     uint totalElapsedTime = 0;
+    uint emulatedFrames = 0;
     uint skippedFrames = 0;
-    uint frame = 0;
 
     while (true)
     {
@@ -406,12 +404,13 @@ void app_main(void)
         pad_set(PAD_B, joystick.values[ODROID_INPUT_B]);
 
 
-        startTime = xthal_get_ccount();
-        bool draw = (frame % (speedup_enabled ? 10 : 2)) == 0;
-        if (!draw) {
+        skipFrame = (emulatedFrames % (speedup_enabled ? 5 : 2)) != 0;
+        if (skipFrame) {
             ++skippedFrames;
         }
-        run_to_vblank(draw);
+
+        startTime = xthal_get_ccount();
+        run_to_vblank();
         stopTime = xthal_get_ccount();
 
 
@@ -420,13 +419,12 @@ void app_main(void)
             ((uint64_t)stopTime + (uint64_t)0xffffffff) - (startTime);
 
         totalElapsedTime += elapsedTime;
-        ++frameCounter;
-        ++frame;
+        ++emulatedFrames;
 
-        if (frame == 60)
+        if (emulatedFrames == 60)
         {
-            float seconds = totalElapsedTime / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f); // 240000000.0f; // (240Mhz)
-            float fps = frame / seconds;
+            float seconds = totalElapsedTime / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f);
+            float fps = emulatedFrames / seconds;
 
             odroid_battery_state battery;
             odroid_input_battery_level_read(&battery);
@@ -435,7 +433,7 @@ void app_main(void)
                 esp_get_free_heap_size() / 1024, fps, skippedFrames,
                 battery.millivolts, battery.percentage);
 
-            frame = 0;
+            emulatedFrames = 0;
             skippedFrames = 0;
             totalElapsedTime = 0;
         }

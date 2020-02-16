@@ -30,19 +30,19 @@ int currentBuffer = 0;
 struct video_update {
     odroid_scanline diff[SMS_HEIGHT];
     uint8_t *buffer;
-    uint16 palette[PALETTE_SIZE*2];
-    int width;
-    int height;
-    int stride;
+    uint16_t palette[PALETTE_SIZE];
+    short width;
+    short height;
+    short stride;
 };
 static struct video_update update1 = {0,};
 static struct video_update update2 = {0,};
 static struct video_update *currentUpdate = &update1;
 
 int8_t scaling_mode = ODROID_SCALING_FILL;
-int8_t force_redraw = false;
-
+bool force_redraw = false;
 bool speedup_enabled = false;
+bool skipFrame = false;
 
 QueueHandle_t videoQueue;
 // --- MAIN
@@ -52,6 +52,8 @@ volatile bool videoTaskIsRunning = false;
 static void videoTask(void *arg)
 {
     videoTaskIsRunning = true;
+
+    scaling_mode = odroid_settings_Scaling_get();
 
     int8_t previous_scaling_mode = -1;
     struct video_update* update;
@@ -200,8 +202,6 @@ void app_main(void)
     assert(framebuffers[0] && framebuffers[1]);
     assert(audioBuffer);
 
-    scaling_mode = odroid_settings_Scaling_get();
-
     videoQueue = xQueueCreate(1, sizeof(uint16_t*));
     xTaskCreatePinnedToCore(&videoTask, "videoTask", 4096, NULL, 5, NULL, 1);
 
@@ -255,15 +255,14 @@ void app_main(void)
 
     uint startTime;
     uint stopTime;
+    uint elapsedTime;
     uint totalElapsedTime = 0;
-    int frame = 0;
-    uint16_t muteFrameCount = 0;
+    uint emulatedFrames = 0;
+    uint skippedFrames = 0;
+    uint muteFrameCount = 0;
 
-    int refresh = (sms.display == DISPLAY_NTSC) ? 60 : 50;
+    uint8_t refresh = (sms.display == DISPLAY_NTSC) ? 60 : 50;
     const int frameTime = CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / refresh;
-    int skipFrame = 0;
-    int skippedFrames = 0;
-    int renderedFrames = 0;
 
     while (true)
     {
@@ -381,20 +380,17 @@ void app_main(void)
 
         previousJoystickState = joystick;
 
-        if (!skipFrame)
-        {
-            system_frame(false);
+        system_frame(skipFrame);
 
-            // Store buffer data
-            if (sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS) {
-                currentUpdate->buffer = bitmap.data + (SMS_WIDTH - GG_WIDTH) / 2;
-                currentUpdate->width = GG_WIDTH;
-                currentUpdate->height = GG_HEIGHT;
-            } else {
-                currentUpdate->buffer = bitmap.data;
-                currentUpdate->width = SMS_WIDTH;
-                currentUpdate->height = SMS_HEIGHT;
-            }
+        if (skipFrame)
+        {
+            ++skippedFrames;
+        }
+        else
+        {
+            currentUpdate->width  = bitmap.viewport.w;
+            currentUpdate->height = bitmap.viewport.h;
+            currentUpdate->buffer = bitmap.data + bitmap.viewport.x;
             currentUpdate->stride = bitmap.pitch;
             render_copy_palette(currentUpdate->palette);
 
@@ -417,26 +413,23 @@ void app_main(void)
             // Swap buffers
             currentBuffer = 1 - currentBuffer;
             bitmap.data = framebuffers[currentBuffer];
-            ++renderedFrames;
         }
-        else
-        {
-            system_frame(true);
-            ++skippedFrames;
-        }
-
-        // See if we need to skip a frame to keep up
-        stopTime = xthal_get_ccount();
-        int elapsedTime = (stopTime > startTime) ?
-            (stopTime - startTime) :
-            ((uint64_t)stopTime + (uint64_t)0xffffffff) - (startTime);
 
         if (speedup_enabled)
         {
-            skipFrame = frame % 5;
+            skipFrame = emulatedFrames % 4;
+            snd.enabled = false;
         }
         else
         {
+            snd.enabled = true;
+
+            // See if we need to skip a frame to keep up
+            stopTime = xthal_get_ccount();
+            elapsedTime = (stopTime > startTime) ?
+                (stopTime - startTime) :
+                ((uint64_t)stopTime + (uint64_t)0xffffffff) - (startTime);
+
             skipFrame = (!skipFrame && elapsedTime > frameTime);
 
             // Process audio
@@ -460,18 +453,17 @@ void app_main(void)
 
 
         stopTime = xthal_get_ccount();
-
         elapsedTime = (stopTime > startTime) ?
             (stopTime - startTime) :
             ((uint64_t)stopTime + (uint64_t)0xffffffff) - (startTime);
 
         totalElapsedTime += elapsedTime;
-        ++frame;
+        ++emulatedFrames;
 
-        if (frame == 60)
+        if (emulatedFrames == refresh)
         {
             float seconds = totalElapsedTime / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f);
-            float fps = (frame / seconds);
+            float fps = emulatedFrames / seconds;
 
             odroid_battery_state battery;
             odroid_input_battery_level_read(&battery);
@@ -480,10 +472,9 @@ void app_main(void)
                 esp_get_free_heap_size() / 1024, fps, skippedFrames,
                 battery.millivolts, battery.percentage);
 
-            frame = 0;
-            totalElapsedTime = 0;
-            renderedFrames = 0;
+            emulatedFrames = 0;
             skippedFrames = 0;
+            totalElapsedTime = 0;
         }
     }
 }

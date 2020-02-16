@@ -30,7 +30,6 @@
 #define PIXEL_MASK 0x3F
 
 ODROID_START_ACTION startAction = 0;
-bool forceConsoleReset = false;
 
 static char* romPath;
 static char* romData;
@@ -51,8 +50,8 @@ static struct video_update *currentUpdate = &update1;
 
 int8_t scaling_mode = ODROID_SCALING_FILL;
 bool force_redraw = true;
-
 bool speedup_enabled = false;
+
 
 QueueHandle_t videoQueue;
 
@@ -84,6 +83,7 @@ char *osd_getromdata()
 	return (char*)romData;
 }
 
+// We use this well placed call to load our save game
 int osd_installtimer(int frequency, void *func, int funcsize, void *counter, int countersize)
 {
    return 0;
@@ -247,6 +247,8 @@ static void videoTask(void *arg)
 {
     videoTaskIsRunning = true;
 
+    scaling_mode = odroid_settings_Scaling_get();
+
     int8_t previous_scaling_mode = -1;
     struct video_update *update;
 
@@ -372,8 +374,6 @@ int osd_init()
 
    osd_init_sound();
 
-   scaling_mode = odroid_settings_Scaling_get();
-
    videoQueue = xQueueCreate(1, sizeof(void*));
    xTaskCreatePinnedToCore(&videoTask, "videoTask", 2048, NULL, 5, NULL, 1);
 
@@ -441,7 +441,6 @@ void app_main(void)
 	printf("nesemu (%s-%s).\n", COMPILEDATE, GITREV);
 
    odroid_system_init(2, 32000, &romPath, &startAction);
-   forceConsoleReset = (startAction == ODROID_START_ACTION_RESTART);
 
    // Load ROM
    romData = heap_caps_malloc(1024 * 1024, MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);

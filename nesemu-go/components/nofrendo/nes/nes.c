@@ -356,7 +356,7 @@ static void system_video(bool draw)
 }
 
 extern void do_audio_frame();
-extern bool forceConsoleReset;
+extern int8_t startAction;
 
 static inline int
 get_elapsed_time(uint startTime, uint stopTime)
@@ -369,30 +369,25 @@ get_elapsed_time(uint startTime, uint stopTime)
 /* main emulation loop */
 void nes_emulate(void)
 {
-   int last_ticks, frames_to_render;
-
    osd_setsound(nes.apu->process);
 
-   last_ticks = nofrendo_ticks;
-   frames_to_render = 0;
    nes.scanline_cycles = 0;
    nes.fiq_cycles = (int) NES_FIQ_PERIOD;
 
    int elapsedTime;
    uint startTime, stopTime;
    uint totalElapsedTime = 0;
-   int frame = 0;
-   int skippedFrames = 0;
-   int renderedFrames = 0;
+   uint emulatedFrames = 0;
+   uint skippedFrames = 0;
 
 
    for (int i = 0; i < 4; ++i)
    {
-       osd_getinput();
-       nes_renderframe(1);
+      osd_getinput();
+      nes_renderframe(1);
    }
 
-   if (!forceConsoleReset)
+   if (startAction == 0)
    {
       load_sram();
    }
@@ -402,53 +397,44 @@ void nes_emulate(void)
 
    while (false == nes.poweroff)
    {
-       startTime = xthal_get_ccount();
+      startTime = xthal_get_ccount();
 
-        osd_getinput();
-        nes_renderframe(renderFrame);
-        system_video(renderFrame);
+      osd_getinput();
+      nes_renderframe(renderFrame);
+      system_video(renderFrame);
 
-#if 1
-        stopTime = xthal_get_ccount();
-        elapsedTime = get_elapsed_time(startTime, stopTime);
+      stopTime = xthal_get_ccount();
+      elapsedTime = get_elapsed_time(startTime, stopTime);
 
-        // Don't allow skipping more than one frame at a time.
-        if (renderFrame) {
-           ++renderedFrames;
+      // Don't allow skipping more than one frame at a time.
+      renderFrame = !renderFrame || elapsedTime <= frameTime;
+      if (!renderFrame) {
+         ++skippedFrames;
+      }
 
-           if (elapsedTime > frameTime) {
-              renderFrame = false;
-              ++skippedFrames;
-           }
-        } else {
-            renderFrame = true;
-        }
-#endif
+      do_audio_frame();
 
-        do_audio_frame();
+      stopTime = xthal_get_ccount();
+      elapsedTime = get_elapsed_time(startTime, stopTime);
+      totalElapsedTime += elapsedTime;
+      ++emulatedFrames;
 
-        stopTime = xthal_get_ccount();
-        elapsedTime = get_elapsed_time(startTime, stopTime);
-        totalElapsedTime += elapsedTime;
-        ++frame;
+      if (emulatedFrames == NES_REFRESH_RATE)
+      {
+         float seconds = totalElapsedTime / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f);
+         float fps = emulatedFrames / seconds;
 
-        if (frame == 60)
-        {
-            float seconds = totalElapsedTime / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f);
-            float fps = frame / seconds;
+         odroid_battery_state battery;
+         odroid_input_battery_level_read(&battery);
 
-            odroid_battery_state battery;
-            odroid_input_battery_level_read(&battery);
+         printf("HEAP:%d, FPS:%f, SKIP:%d, BATTERY:%d [%d]\n",
+            esp_get_free_heap_size() / 1024, fps, skippedFrames,
+            battery.millivolts, battery.percentage);
 
-            printf("HEAP:%d, FPS:%f, SKIP:%d, BATTERY:%d [%d]\n",
-               esp_get_free_heap_size() / 1024, fps, skippedFrames,
-               battery.millivolts, battery.percentage);
-
-            frame = 0;
-            totalElapsedTime = 0;
-            renderedFrames = 0;
-            skippedFrames = 0;
-        }
+         emulatedFrames = 0;
+         skippedFrames = 0;
+         totalElapsedTime = 0;
+      }
    }
 }
 
