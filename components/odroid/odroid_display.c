@@ -52,10 +52,9 @@ bool use_polling = false;
 // instead of polling.
 #define POLLING_PIXEL_THRESHOLD (LINE_BUFFER_SIZE)
 
-// At a certain point, it's quicker to just do a single transfer for the whole
-// screen than try to break it down into partial updates
-#define PARTIAL_UPDATE_THRESHOLD (160*144)
-
+// Maximum amount of change (percent) in a frame before we trigger a full transfer
+// instead of a partial update (faster). This also allows us to stop the diff early!
+#define FULL_UPDATE_THRESHOLD (0.4f)
 
 int BacklightLevels[] = {10, 25, 50, 75, 100};
 int BacklightLevel = ODROID_BACKLIGHT_LEVEL2;
@@ -778,185 +777,6 @@ ili9341_write_frame_scaled(void* buffer, odroid_scanline *diff,
     odroid_display_unlock();
 }
 
-static uint16_t Blend(uint16_t a, uint16_t b)
-{
-  // Big endian
-  // rrrrrGGG gggbbbbb
-
-  char r0 = (a >> 11) & 0x1f;
-  char g0 = (a >> 5) & 0x3f;
-  char b0 = (a) & 0x1f;
-
-  char r1 = (b >> 11) & 0x1f;
-  char g1 = (b >> 5) & 0x3f;
-  char b1 = (b) & 0x1f;
-
-  uint16_t rv = ((r1 - r0) >> 1) + r0;
-  uint16_t gv = ((g1 - g0) >> 1) + g0;
-  uint16_t bv = ((b1 - b0) >> 1) + b0;
-
-  return (rv << 11) | (gv << 5) | (bv);
-}
-
-void ili9341_write_frame_gb(uint16_t* framePtr, int scale)
-{
-    if (framePtr == NULL)
-    {
-        ili9341_blank_screen();
-        return;
-    }
-
-    const short GAMEBOY_WIDTH = 160;
-    const short GAMEBOY_HEIGHT = 144;
-
-    short x, y, i, j;
-
-    odroid_display_lock();
-
-    //xTaskToNotify = xTaskGetCurrentTaskHandle();
-
-    if (scale == ODROID_SCALING_FILL)
-    {
-        send_reset_drawing(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-        uint16_t* line_buffer = NULL;
-        short linesWritten = 0;
-        int index = 0;
-
-        for (y = 0; y < GAMEBOY_HEIGHT; ++y)
-        {
-            if (!line_buffer) {
-                line_buffer = line_buffer_get();
-                linesWritten = 0;
-                index = 0;
-            }
-
-            int bufferIndex = (y * GAMEBOY_WIDTH);
-
-            for (x = 0; x < GAMEBOY_WIDTH; ++x)
-            {
-                uint16_t sample = framePtr[bufferIndex++];
-                uint16_t pixel = ((sample >> 8) | ((sample & 0xff) << 8));
-                line_buffer[index++] = pixel;
-                line_buffer[index++] = pixel;
-            }
-            linesWritten++;
-
-            if ((y & 1) || (y % 6) == 0) {
-                memcpy(&line_buffer[index], &line_buffer[index - SCREEN_WIDTH], SCREEN_WIDTH * 2);
-                index += SCREEN_WIDTH;
-                linesWritten++;
-            }
-
-            if (linesWritten >= LINE_COUNT - 1 || y == GAMEBOY_HEIGHT - 1) {
-                send_continue_line(line_buffer, SCREEN_WIDTH, linesWritten);
-                line_buffer = NULL;
-            }
-        }
-    }
-    #if 1
-    else if (scale) // ODROID_SCALING_FIT
-    {
-        // NOTE: LINE_COUNT must be 3 or greater
-        const short outputWidth = 265;
-        const short outputHeight = 240;
-
-        send_reset_drawing((SCREEN_WIDTH - outputWidth) / 2, 0, outputWidth, outputHeight);
-
-        for (y = 0; y < GAMEBOY_HEIGHT; y += 3)
-        {
-            uint16_t* line_buffer = line_buffer_get();
-
-            for (i = 0; i < 3; ++i)
-            {
-                // skip middle vertical line
-                int index = i * outputWidth * 2;
-                int bufferIndex = ((y + i) * GAMEBOY_WIDTH);
-
-                for (x = 0; x < GAMEBOY_WIDTH; x += 3)
-                {
-                    uint16_t a = framePtr[bufferIndex++];
-                    uint16_t b;
-                    uint16_t c;
-
-                    if (x < GAMEBOY_WIDTH - 1)
-                    {
-                        b = framePtr[bufferIndex++];
-                        c = framePtr[bufferIndex++];
-                    }
-                    else
-                    {
-                        b = framePtr[bufferIndex++];
-                        c = 0;
-                    }
-
-                    uint16_t mid1 = Blend(a, b);
-                    uint16_t mid2 = Blend(b, c);
-
-                    line_buffer[index++] = ((a >> 8) | ((a) << 8));
-                    line_buffer[index++] = ((mid1 >> 8) | ((mid1) << 8));
-                    line_buffer[index++] = ((b >> 8) | ((b) << 8));
-                    line_buffer[index++] = ((mid2 >> 8) | ((mid2) << 8));
-                    line_buffer[index++] = ((c >> 8) | ((c ) << 8));
-                }
-            }
-
-            // Blend top and bottom lines into middle
-            short sourceA = 0;
-            short sourceB = outputWidth * 2;
-            short sourceC = sourceB + (outputWidth * 2);
-
-            short output1 = outputWidth;
-            short output2 = output1 + (outputWidth * 2);
-
-            for (j = 0; j < outputWidth; ++j)
-            {
-                uint16_t a = line_buffer[sourceA++];
-                a = ((a >> 8) | ((a) << 8));
-
-                uint16_t b = line_buffer[sourceB++];
-                b = ((b >> 8) | ((b) << 8));
-
-                uint16_t c = line_buffer[sourceC++];
-                c = ((c >> 8) | ((c) << 8));
-
-                uint16_t mid = Blend(a, b);
-                mid = ((mid >> 8) | ((mid) << 8));
-
-                line_buffer[output1++] = mid;
-
-                uint16_t mid2 = Blend(b, c);
-                mid2 = ((mid2 >> 8) | ((mid2) << 8));
-
-                line_buffer[output2++] = mid2;
-            }
-
-            // send the data
-            send_continue_line(line_buffer, outputWidth, 5);
-        }
-    }
-    else
-    {
-        ili9341_write_frame_rectangleLE(
-            (SCREEN_WIDTH / 2) - (GAMEBOY_WIDTH / 2),
-            (SCREEN_HEIGHT / 2) - (GAMEBOY_HEIGHT / 2),
-            GAMEBOY_WIDTH,
-            GAMEBOY_HEIGHT,
-            framePtr
-        );
-    }
-    #else
-    else
-    {
-        odroid_display_unlock();
-        ili9341_write_frame_scaled(framePtr, NULL, 160, 144, 320, 2, 0xFF, NULL);
-        odroid_display_lock();
-    }
-    #endif
-
-    odroid_display_unlock();
-}
-
 void ili9341_write_frame(uint16_t* buffer)
 {
     ili9341_write_frame_rectangleLE(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, buffer);
@@ -1151,71 +971,69 @@ odroid_buffer_diff(void *buffer, void *old_buffer,
     }
 
     if (!old_buffer) {
-        for (short y = 0; y < height; ++y) {
-            out_diff[y].left = 0;
-            out_diff[y].width = width;
-            out_diff[y].repeat = 1;
-        }
-    } else {
-        int i = 0;
-        uint32_t pixel_mask32 = (pixel_mask << 24) | (pixel_mask << 16) |
-                                (pixel_mask <<8) | pixel_mask;
-        for (short y = 0; y < height; ++y, i += stride) {
-            out_diff[y].left = width;
-            out_diff[y].width = 0;
-            out_diff[y].repeat = 1;
+        out_diff[0].left = 0;
+        out_diff[0].width = width;
+        out_diff[0].repeat = height;
+        return;
+    }
 
-            if (!palette) {
-                // This is only accurate to 4 pixels of course, but much faster
-                uint32_t *buffer32 = buffer + i;
-                uint32_t *old_buffer32 = old_buffer + i;
-                for (short x = 0; x < width>>2; ++x) {
-                    if ((buffer32[x] & pixel_mask32) !=
-                        (old_buffer32[x] & pixel_mask32))
-                    {
-                        out_diff[y].left = x << 2;
-                        for (x = (width-1)>>2; x >= 0; --x) {
-                            if ((buffer32[x] & pixel_mask32) !=
-                                (old_buffer32[x] & pixel_mask32)) {
-                                out_diff[y].width = (((x + 1)<<2) - out_diff[y].left);
-                                break;
-                            }
+    uint32_t partial_update_remaining = width * height * FULL_UPDATE_THRESHOLD;
+
+    uint32_t u32_pixel_mask = (pixel_mask << 24)|(pixel_mask << 16)|(pixel_mask << 8)|pixel_mask;
+    uint16_t u32_blocks = (width * pixel_width / 4);
+    uint16_t u32_pixels = 4 / pixel_width;
+
+    for (int y = 0, i = 0; y < height; ++y, i += stride) {
+        out_diff[y].left = width;
+        out_diff[y].width = 0;
+        out_diff[y].repeat = 1;
+
+        if (!palette) {
+            // This is only accurate to 4 pixels of course, but much faster
+            uint32_t *buffer32 = buffer + i;
+            uint32_t *old_buffer32 = old_buffer + i;
+            for (short x = 0; x < u32_blocks; ++x) {
+                if ((buffer32[x] & u32_pixel_mask) != (old_buffer32[x] & u32_pixel_mask))
+                {
+                    out_diff[y].left = x * u32_pixels;
+                    for (x = u32_blocks - 1; x >= 0; --x) {
+                        if ((buffer32[x] & u32_pixel_mask) != (old_buffer32[x] & u32_pixel_mask)) {
+                            out_diff[y].width = (((x + 1) * u32_pixels) - out_diff[y].left);
+                            break;
                         }
                     }
                 }
-            } else {
-                for (int x = 0, idx = i; x < width; ++x, ++idx) {
+            }
+        } else {
+            for (int x = 0, idx = i; x < width; ++x, ++idx) {
+                if (!pixel_diff(buffer, old_buffer, palette, old_palette,
+                                pixel_mask, palette_shift_mask, idx)) {
+                    continue;
+                }
+                out_diff[y].left = x;
+
+                for (x = width - 1, idx = i + (width - 1); x >= 0; --x, --idx)
+                {
                     if (!pixel_diff(buffer, old_buffer, palette, old_palette,
                                     pixel_mask, palette_shift_mask, idx)) {
                         continue;
                     }
-                    out_diff[y].left = x;
-
-                    for (x = width - 1, idx = i + (width - 1);
-                         x >= 0; --x, --idx)
-                    {
-                        if (!pixel_diff(buffer, old_buffer, palette, old_palette,
-                                        pixel_mask, palette_shift_mask, idx)) {
-                            continue;
-                        }
-                        out_diff[y].width = (x - out_diff[y].left) + 1;
-                        break;
-                    }
+                    out_diff[y].width = (x - out_diff[y].left) + 1;
                     break;
                 }
+                break;
             }
         }
-    }
-    odroid_buffer_diff_optimize(out_diff, height);
-}
 
-int IRAM_ATTR
-odroid_buffer_diff_count(odroid_scanline *diff, short height)
-{
-    int n_pixels = 0;
-    for (short y = 0; y < height;) {
-        n_pixels += diff[y].width * diff[y].repeat;
-        y += diff[y].repeat;
+        partial_update_remaining -= out_diff[y].width;
+
+        if (partial_update_remaining <= 0) {
+            out_diff[0].left = 0;
+            out_diff[0].width = width;
+            out_diff[0].repeat = height;
+            return;
+        }
     }
-    return n_pixels;
+
+    odroid_buffer_diff_optimize(out_diff, height);
 }

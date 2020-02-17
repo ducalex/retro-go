@@ -7,6 +7,7 @@
 #include "odroid_netplay.h"
 #include "odroid_sdcard.h"
 #include "odroid_settings.h"
+#include "esp_system.h"
 #include "stdbool.h"
 
 void odroid_system_init(int app_id, int sampleRate, char **romPath);
@@ -20,3 +21,9 @@ extern ODROID_START_ACTION startAction;
 extern ODROID_SCALING scalingMode;
 extern int8_t forceRedraw;
 extern int8_t speedupEnabled;
+
+inline int get_elapsed_time_since(int start)
+{
+     int now = xthal_get_ccount();
+     return ((now > start) ? now - start : ((uint64_t)now + (uint64_t)0xffffffff) - start);
+}

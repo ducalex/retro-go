@@ -248,8 +248,6 @@ void app_main(void)
     odroid_input_gamepad_read(&previousJoystickState);
 
     uint startTime;
-    uint stopTime;
-    uint elapsedTime;
     uint totalElapsedTime = 0;
     uint emulatedFrames = 0;
     uint skippedFrames = 0;
@@ -272,8 +270,8 @@ void app_main(void)
 
         startTime = xthal_get_ccount();
 
-        int smsButtons = 0;
-        int smsSystem = 0;
+        uint8_t smsButtons = 0;
+        uint8_t smsSystem = 0;
 
     	if (joystick.values[ODROID_INPUT_UP]) smsButtons |= INPUT_UP;
     	if (joystick.values[ODROID_INPUT_DOWN]) smsButtons |= INPUT_DOWN;
@@ -417,12 +415,7 @@ void app_main(void)
             snd.enabled = true;
 
             // See if we need to skip a frame to keep up
-            stopTime = xthal_get_ccount();
-            elapsedTime = (stopTime > startTime) ?
-                (stopTime - startTime) :
-                ((uint64_t)stopTime + (uint64_t)0xffffffff) - (startTime);
-
-            skipFrame = (!skipFrame && elapsedTime > frameTime);
+            skipFrame = (!skipFrame && get_elapsed_time_since(startTime) > frameTime);
 
             // Process audio
             for (int x = 0; x < snd.sample_count; x++)
@@ -444,12 +437,7 @@ void app_main(void)
         }
 
 
-        stopTime = xthal_get_ccount();
-        elapsedTime = (stopTime > startTime) ?
-            (stopTime - startTime) :
-            ((uint64_t)stopTime + (uint64_t)0xffffffff) - (startTime);
-
-        totalElapsedTime += elapsedTime;
+        totalElapsedTime += get_elapsed_time_since(startTime);
         ++emulatedFrames;
 
         if (emulatedFrames == refresh)

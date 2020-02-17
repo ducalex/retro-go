@@ -25,7 +25,7 @@
 #define GB_WIDTH (160)
 #define GB_HEIGHT (144)
 
-extern int debug_trace;
+static const int frameTime = (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / 60);
 
 static char *romPath = NULL;
 
@@ -63,7 +63,7 @@ int pcm_submit()
 
 void run_to_vblank()
 {
-    /* FRAME BEGIN */
+    int startTime = xthal_get_ccount();
 
     /* FIXME: djudging by the time specified this was intended
     to emulate through vblank phase which is handled at the
@@ -84,12 +84,11 @@ void run_to_vblank()
     {
         struct video_update *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
 
-        // interlace = 1 - interlace;
-        // odroid_buffer_diff_interlaced(currentUpdate->buffer, previousUpdate->buffer,
-        //                     NULL, NULL,
-        //                     GB_WIDTH, GB_HEIGHT,
-        //                     GB_WIDTH * 2, 2, 0xFF, 0, interlace,
-        //                     currentUpdate->diff, previousUpdate->diff);
+        odroid_buffer_diff(currentUpdate->buffer, previousUpdate->buffer,
+                            NULL, NULL,
+                            GB_WIDTH, GB_HEIGHT,
+                            GB_WIDTH * 2, 2, 0xFF, 0,
+                            currentUpdate->diff);
 
         xQueueSend(videoQueue, &currentUpdate, portMAX_DELAY);
 
@@ -102,7 +101,7 @@ void run_to_vblank()
 
     sound_mix();
 
-    pcm_submit();
+    // pcm_submit();
 
     if (!(R_LCDC & 0x80)) {
         /* LCDC operation stopped */
@@ -116,6 +115,10 @@ void run_to_vblank()
         /* Step through vblank phase */
         emu_step();
     }
+
+    skipFrame = !skipFrame && get_elapsed_time_since(startTime) > frameTime;
+
+    pcm_submit();
 }
 
 
@@ -133,10 +136,12 @@ void videoTask(void *arg)
 
         if (!update) break;
 
-        if (previousScalingMode != scalingMode)
+        bool redraw = previousScalingMode != scalingMode || forceRedraw;
+        if (redraw)
         {
             ili9341_blank_screen();
             previousScalingMode = scalingMode;
+            forceRedraw = false;
 
             if (scalingMode) {
                 float aspect = (scalingMode == ODROID_SCALING_FILL) ? 1.2f : 1.f;
@@ -146,9 +151,9 @@ void videoTask(void *arg)
             }
         }
 
-        // ili9341_write_frame_scaled(update->buffer, NULL, GB_WIDTH, GB_HEIGHT, // update->diff
-        //                            GB_WIDTH * 2, 2, 0xFF, NULL);
-        ili9341_write_frame_gb(update->buffer, scalingMode);
+        ili9341_write_frame_scaled(update->buffer, redraw ? NULL : update->diff, // NULL, //
+                                   GB_WIDTH, GB_HEIGHT,
+                                   GB_WIDTH * 2, 2, 0xFF, NULL);
 
         xQueueReceive(videoQueue, &update, portMAX_DELAY);
     }
@@ -364,7 +369,6 @@ void app_main(void)
 
 
     uint startTime;
-    uint stopTime;
     uint totalElapsedTime = 0;
     uint emulatedFrames = 0;
     uint skippedFrames = 0;
@@ -385,6 +389,8 @@ void app_main(void)
             odroid_overlay_game_settings_menu(options, 2);
         }
 
+        startTime = xthal_get_ccount();
+
         pad_set(PAD_UP, joystick.values[ODROID_INPUT_UP]);
         pad_set(PAD_RIGHT, joystick.values[ODROID_INPUT_RIGHT]);
         pad_set(PAD_DOWN, joystick.values[ODROID_INPUT_DOWN]);
@@ -396,22 +402,17 @@ void app_main(void)
         pad_set(PAD_A, joystick.values[ODROID_INPUT_A]);
         pad_set(PAD_B, joystick.values[ODROID_INPUT_B]);
 
-
-        skipFrame = (emulatedFrames % ((speedupEnabled << 1) + 2));
         if (skipFrame) {
             ++skippedFrames;
         }
 
-        startTime = xthal_get_ccount();
         run_to_vblank();
-        stopTime = xthal_get_ccount();
 
+        if (speedupEnabled) {
+            skipFrame = emulatedFrames % (speedupEnabled * 4);
+        }
 
-        int elapsedTime = (stopTime > startTime) ?
-            (stopTime - startTime) :
-            ((uint64_t)stopTime + (uint64_t)0xffffffff) - (startTime);
-
-        totalElapsedTime += elapsedTime;
+        totalElapsedTime += get_elapsed_time_since(startTime);
         ++emulatedFrames;
 
         if (emulatedFrames == 60)

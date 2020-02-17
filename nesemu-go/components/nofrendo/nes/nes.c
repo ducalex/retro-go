@@ -357,14 +357,6 @@ static void system_video(bool draw)
 
 extern void do_audio_frame();
 
-static inline int
-get_elapsed_time(uint startTime, uint stopTime)
-{
-   return (stopTime > startTime) ?
-      stopTime - startTime :
-      ((uint64_t)stopTime + (uint64_t)0xffffffff) - startTime;
-}
-
 /* main emulation loop */
 void nes_emulate(void)
 {
@@ -373,14 +365,15 @@ void nes_emulate(void)
    nes.scanline_cycles = 0;
    nes.fiq_cycles = (int) NES_FIQ_PERIOD;
 
-   uint elapsedTime;
-   uint startTime, stopTime;
+   uint startTime;
    uint totalElapsedTime = 0;
    uint emulatedFrames = 0;
    uint renderedFrames = 0;
    uint interlacedFrames = 0;
    uint skippedFrames = 0;
 
+   const int frameTime = CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / NES_REFRESH_RATE;
+   bool renderFrame = true;
 
    for (int i = 0; i < 4; ++i)
    {
@@ -393,9 +386,6 @@ void nes_emulate(void)
       load_sram();
    }
 
-   const int frameTime = CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / NES_REFRESH_RATE;
-   bool renderFrame = true;
-
    while (false == nes.poweroff)
    {
       startTime = xthal_get_ccount();
@@ -404,11 +394,8 @@ void nes_emulate(void)
       nes_renderframe(renderFrame);
       system_video(renderFrame);
 
-      stopTime = xthal_get_ccount();
-      elapsedTime = get_elapsed_time(startTime, stopTime);
-
       // Don't allow skipping more than one frame at a time.
-      renderFrame = !renderFrame || elapsedTime <= frameTime;
+      renderFrame = !renderFrame || get_elapsed_time_since(startTime) <= frameTime;
 
       if (speedupEnabled) {
          renderFrame = (emulatedFrames % speedupEnabled) == 0;
@@ -425,9 +412,7 @@ void nes_emulate(void)
          ++skippedFrames;
       }
 
-      stopTime = xthal_get_ccount();
-      elapsedTime = get_elapsed_time(startTime, stopTime);
-      totalElapsedTime += elapsedTime;
+      totalElapsedTime += get_elapsed_time_since(startTime);
       ++emulatedFrames;
 
       if (emulatedFrames == NES_REFRESH_RATE)
