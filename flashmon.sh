@@ -1,7 +1,12 @@
 #!/bin/bash
 COMPORT="$1"
-BINFILE="$2"
-OFFSET="$3"
+OFFSET="$2"
+BINFILE="*-go"
 
-esptool.py $COMPORT $BINFILE.bin $OFFSET no reset
+# make -j 6 || exit
+
+esptool.py --chip esp32 --port $COMPORT --baud 1152000 --before default_reset write_flash \
+           -u --flash_mode qio --flash_freq 80m --flash_size detect $OFFSET build/$BINFILE.bin \
+           || exit
+
 idf_monitor.py --port $COMPORT build/$BINFILE.elf

@@ -27,7 +27,6 @@
 
 extern int debug_trace;
 
-static ODROID_START_ACTION startAction = 0;
 static char *romPath = NULL;
 
 struct fb fb;
@@ -46,10 +45,6 @@ static struct video_update update1 = {0,};
 static struct video_update update2 = {0,};
 static struct video_update *currentUpdate = &update1;
 
-int8_t scaling_mode = ODROID_SCALING_FILL;
-
-bool force_redraw = false;
-bool speedup_enabled = false;
 bool skipFrame = false;
 
 QueueHandle_t videoQueue;
@@ -58,7 +53,7 @@ QueueHandle_t videoQueue;
 
 int pcm_submit()
 {
-    if (!speedup_enabled) {
+    if (!speedupEnabled) {
         odroid_audio_submit(pcm.buf, pcm.pos >> 1);
     }
     pcm.pos = 0;
@@ -129,9 +124,7 @@ void videoTask(void *arg)
 {
     videoTaskIsRunning = true;
 
-    scaling_mode = odroid_settings_Scaling_get();
-
-    int8_t previous_scaling_mode = -1;
+    int8_t previousScalingMode = -1;
     struct video_update *update;
 
     while(1)
@@ -140,13 +133,13 @@ void videoTask(void *arg)
 
         if (!update) break;
 
-        if (previous_scaling_mode != scaling_mode)
+        if (previousScalingMode != scalingMode)
         {
             ili9341_blank_screen();
-            previous_scaling_mode = scaling_mode;
+            previousScalingMode = scalingMode;
 
-            if (scaling_mode) {
-                float aspect = (scaling_mode == ODROID_SCALING_FILL) ? 1.2f : 1.f;
+            if (scalingMode) {
+                float aspect = (scalingMode == ODROID_SCALING_FILL) ? 1.2f : 1.f;
                 odroid_display_set_scale(GB_WIDTH, GB_HEIGHT, aspect);
             } else {
                 odroid_display_reset_scale(GB_WIDTH, GB_HEIGHT);
@@ -155,7 +148,7 @@ void videoTask(void *arg)
 
         // ili9341_write_frame_scaled(update->buffer, update->diff, GB_WIDTH, GB_HEIGHT,
         //                            GB_WIDTH * 2, 2, 0xFF, NULL);
-        ili9341_write_frame_gb(update->buffer, scaling_mode);
+        ili9341_write_frame_gb(update->buffer, scalingMode);
 
         xQueueReceive(videoQueue, &update, portMAX_DELAY);
     }
@@ -320,7 +313,7 @@ void app_main(void)
     audioBuffer     = heap_caps_calloc(AUDIO_BUFFER_LENGTH * 2, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
 
     // Init all the console hardware
-	odroid_system_init(1, AUDIO_SAMPLE_RATE, &romPath, &startAction);
+	odroid_system_init(1, AUDIO_SAMPLE_RATE, &romPath);
 
     assert(framebuffers[0] && framebuffers[1]);
     assert(audioBuffer);
@@ -404,7 +397,7 @@ void app_main(void)
         pad_set(PAD_B, joystick.values[ODROID_INPUT_B]);
 
 
-        skipFrame = (emulatedFrames % (speedup_enabled ? 5 : 2)) != 0;
+        skipFrame = (emulatedFrames % ((speedupEnabled << 1) + 2));
         if (skipFrame) {
             ++skippedFrames;
         }

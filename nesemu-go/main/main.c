@@ -29,8 +29,6 @@
 
 #define PIXEL_MASK 0x3F
 
-ODROID_START_ACTION startAction = 0;
-
 static char* romPath;
 static char* romData;
 
@@ -47,11 +45,6 @@ struct video_update {
 static struct video_update update1 = {0,};
 static struct video_update update2 = {0,};
 static struct video_update *currentUpdate = &update1;
-
-int8_t scaling_mode = ODROID_SCALING_FILL;
-bool force_redraw = true;
-bool speedup_enabled = false;
-
 
 QueueHandle_t videoQueue;
 
@@ -103,10 +96,6 @@ static int16_t *audio_frame;
 
 void do_audio_frame()
 {
-   if (speedup_enabled) {
-      return;
-   }
-
    audio_callback(audio_frame, AUDIO_FRAGSIZE); //get audio data
 
    //16 bit mono -> 32-bit (16 bit r+l)
@@ -247,9 +236,7 @@ static void videoTask(void *arg)
 {
     videoTaskIsRunning = true;
 
-    scaling_mode = odroid_settings_Scaling_get();
-
-    int8_t previous_scaling_mode = -1;
+    int8_t previousScalingMode = -1;
     struct video_update *update;
 
     while(1)
@@ -258,15 +245,15 @@ static void videoTask(void *arg)
 
         if (!update) break;
 
-        bool redraw = previous_scaling_mode != scaling_mode || force_redraw;
+        bool redraw = previousScalingMode != scalingMode || forceRedraw;
         if (redraw)
         {
            ili9341_blank_screen();
-           previous_scaling_mode = scaling_mode;
-           force_redraw = false;
+           previousScalingMode = scalingMode;
+           forceRedraw = false;
 
-           if (scaling_mode) {
-               float aspect = (scaling_mode == ODROID_SCALING_FILL) ? (8.f / 7.f) : 1.f;
+           if (scalingMode) {
+               float aspect = (scalingMode == ODROID_SCALING_FILL) ? (8.f / 7.f) : 1.f;
                odroid_display_set_scale(NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT, aspect);
            } else {
                odroid_display_reset_scale(NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT);
@@ -308,11 +295,9 @@ void osd_getinput(void)
 
    if (joystick.values[ODROID_INPUT_MENU]) {
       odroid_overlay_game_menu();
-      force_redraw = true;
    }
    else if (joystick.values[ODROID_INPUT_VOLUME]) {
       odroid_overlay_game_settings_menu(NULL, 0);
-      force_redraw = true;
    }
 
 	// A
@@ -440,7 +425,7 @@ void app_main(void)
 {
 	printf("nesemu (%s-%s).\n", COMPILEDATE, GITREV);
 
-   odroid_system_init(2, 32000, &romPath, &startAction);
+   odroid_system_init(2, 32000, &romPath);
 
    // Load ROM
    romData = heap_caps_malloc(1024 * 1024, MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);

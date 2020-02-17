@@ -9,9 +9,14 @@
 #include "odroid_settings.h"
 #include "stdbool.h"
 
-void odroid_system_init(int app_id, int sampleRate, char **romPath, ODROID_START_ACTION *action);
+void odroid_system_init(int app_id, int sampleRate, char **romPath);
 void odroid_system_halt();
 void odroid_system_sleep();
 void odroid_system_application_set(int slot);
 void odroid_system_led_set(int value);
 void odroid_system_gpio_init();
+
+extern ODROID_START_ACTION startAction;
+extern ODROID_SCALING scalingMode;
+extern int8_t forceRedraw;
+extern int8_t speedupEnabled;

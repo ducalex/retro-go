@@ -19,7 +19,6 @@
 #define PIXEL_MASK 0x1F
 #define PAL_SHIFT_MASK 0x80
 
-static ODROID_START_ACTION startAction = 0;
 static char* romPath = NULL;
 
 uint32_t* audioBuffer;
@@ -39,9 +38,6 @@ static struct video_update update1 = {0,};
 static struct video_update update2 = {0,};
 static struct video_update *currentUpdate = &update1;
 
-int8_t scaling_mode = ODROID_SCALING_FILL;
-bool force_redraw = false;
-bool speedup_enabled = false;
 bool skipFrame = false;
 
 QueueHandle_t videoQueue;
@@ -53,9 +49,7 @@ static void videoTask(void *arg)
 {
     videoTaskIsRunning = true;
 
-    scaling_mode = odroid_settings_Scaling_get();
-
-    int8_t previous_scaling_mode = -1;
+    int8_t previousScalingMode = -1;
     struct video_update* update;
 
     while(1)
@@ -64,16 +58,16 @@ static void videoTask(void *arg)
 
         if (!update) break;
 
-        bool redraw = previous_scaling_mode != scaling_mode || force_redraw;
+        bool redraw = previousScalingMode != scalingMode || forceRedraw;
         if (redraw)
         {
             ili9341_blank_screen();
-            previous_scaling_mode = scaling_mode;
-            force_redraw = false;
+            previousScalingMode = scalingMode;
+            forceRedraw = false;
 
-            if (scaling_mode) {
+            if (scalingMode) {
                 float aspect = (sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS) &&
-                               scaling_mode == ODROID_SCALING_FILL ? 1.2f : 1.f;
+                               scalingMode == ODROID_SCALING_FILL ? 1.2f : 1.f;
                 odroid_display_set_scale(update->width, update->height, aspect);
             } else {
                 odroid_display_reset_scale(update->width, update->height);
@@ -197,7 +191,7 @@ void app_main(void)
     audioBuffer     = heap_caps_calloc(AUDIO_BUFFER_LENGTH * 2, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
 
     // Init all the console hardware
-    odroid_system_init(3, AUDIO_SAMPLE_RATE, &romPath, &startAction);
+    odroid_system_init(3, AUDIO_SAMPLE_RATE, &romPath);
 
     assert(framebuffers[0] && framebuffers[1]);
     assert(audioBuffer);
@@ -271,11 +265,9 @@ void app_main(void)
 
         if (joystick.values[ODROID_INPUT_MENU]) {
             odroid_overlay_game_menu();
-            force_redraw = true;
         }
         else if (joystick.values[ODROID_INPUT_VOLUME]) {
             odroid_overlay_game_settings_menu(NULL, 0);
-            force_redraw = true;
         }
 
         startTime = xthal_get_ccount();
@@ -415,10 +407,10 @@ void app_main(void)
             bitmap.data = framebuffers[currentBuffer];
         }
 
-        if (speedup_enabled)
+        if (speedupEnabled)
         {
-            skipFrame = emulatedFrames % 4;
-            snd.enabled = false;
+            skipFrame = emulatedFrames % (2 + speedupEnabled);
+            snd.enabled = speedupEnabled < 2;
         }
         else
         {

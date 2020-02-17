@@ -51,5 +51,5 @@ int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options, int extr
 int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options, int extra_count);
 int odroid_overlay_game_menu();
 
-extern int ODROID_FONT_WIDTH;
-extern int ODROID_FONT_HEIGHT;
+extern short ODROID_FONT_WIDTH;
+extern short ODROID_FONT_HEIGHT;

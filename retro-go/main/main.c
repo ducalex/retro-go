@@ -9,7 +9,6 @@
 #include "emulators.h"
 #include "gui.h"
 
-int8_t scaling_mode = 1;
 extern int gui_themes_count;
 
 static bool show_empty = true;

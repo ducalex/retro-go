@@ -44,7 +44,7 @@
 
 #include <esp_attr.h>
 #include "esp_system.h"
-#include "odroid_input.h"
+#include "odroid_system.h"
 
 
 #define  NES_CLOCK_DIVIDER    12
@@ -356,7 +356,6 @@ static void system_video(bool draw)
 }
 
 extern void do_audio_frame();
-extern int8_t startAction;
 
 static inline int
 get_elapsed_time(uint startTime, uint stopTime)
@@ -374,7 +373,7 @@ void nes_emulate(void)
    nes.scanline_cycles = 0;
    nes.fiq_cycles = (int) NES_FIQ_PERIOD;
 
-   int elapsedTime;
+   uint elapsedTime;
    uint startTime, stopTime;
    uint totalElapsedTime = 0;
    uint emulatedFrames = 0;
@@ -387,7 +386,7 @@ void nes_emulate(void)
       nes_renderframe(1);
    }
 
-   if (startAction == 0)
+   if (startAction == ODROID_START_ACTION_RESUME)
    {
       load_sram();
    }
@@ -408,11 +407,16 @@ void nes_emulate(void)
 
       // Don't allow skipping more than one frame at a time.
       renderFrame = !renderFrame || elapsedTime <= frameTime;
+
+      if (speedupEnabled) {
+         renderFrame = (emulatedFrames % speedupEnabled) == 0;
+      } else {
+         do_audio_frame();
+      }
+
       if (!renderFrame) {
          ++skippedFrames;
       }
-
-      do_audio_frame();
 
       stopTime = xthal_get_ccount();
       elapsedTime = get_elapsed_time(startTime, stopTime);

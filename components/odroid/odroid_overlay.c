@@ -1,9 +1,6 @@
 #include "odroid_overlay.h"
-#include "odroid_display.h"
-#include "odroid_settings.h"
-#include "odroid_audio.h"
 #include "odroid_font8x8.h"
-#include "odroid_input.h"
+#include "odroid_system.h"
 #include "esp_heap_caps.h"
 #include "esp_system.h"
 #include "unistd.h"
@@ -12,13 +9,10 @@
 #include "stdio.h"
 
 static uint16_t *overlay_buffer = NULL;
-extern int8_t scaling_mode;
-extern bool speedup_enabled;
+static const char *NVS_KEY_FONTSIZE = "FontSize";
 
-const char *NVS_KEY_FONTSIZE = "FontSize";
-
-int ODROID_FONT_WIDTH = 8;
-int ODROID_FONT_HEIGHT = 8;
+short ODROID_FONT_WIDTH = 8;
+short ODROID_FONT_HEIGHT = 8;
 
 static void wait_all_keys_released()
 {
@@ -264,6 +258,8 @@ int odroid_overlay_dialog(char *header, odroid_dialog_choice_t *options, int opt
 
     odroid_input_wait_for_key(last_key, false);
 
+    forceRedraw = true;
+
     return sel < 0 ? sel : options[sel].id;
 }
 
@@ -382,7 +378,7 @@ static bool scaling_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
         odroid_settings_Scaling_set(++level);
     }
 
-    scaling_mode = level;
+    scalingMode = level;
 
     if (level == 0) strcpy(option->value, "Off  ");
     if (level == 1) strcpy(option->value, "Scale");
@@ -393,14 +389,11 @@ static bool scaling_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
 
 bool speedup_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
-    bool toggle = event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT;
+    if (event == ODROID_DIALOG_PREV && speedupEnabled > 0) --speedupEnabled;
+    if (event == ODROID_DIALOG_NEXT && speedupEnabled < 2) ++speedupEnabled;
 
-    if (toggle) {
-        speedup_enabled = !speedup_enabled;
-    }
-
-    sprintf(option->value, "%s", speedup_enabled ? "On" : "Off");
-    return toggle;
+    sprintf(option->value, "%dx", speedupEnabled + 1);
+    return event == ODROID_DIALOG_ENTER;
 }
 
 int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options, int extra_options_count)
@@ -430,8 +423,8 @@ int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options, int extr
 int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options, int extra_options_count)
 {
     odroid_dialog_choice_t options[12] = {
-        {10, "Scaling ", "Yes", 1, &scaling_update_cb},
-        {11, "Speed up", "Off", 1, &speedup_update_cb},
+        {10, "Scaling", "Yes", 1, &scaling_update_cb},
+        {11, "Speed  ", "Off", 1, &speedup_update_cb},
     };
     int options_count = 2;
 

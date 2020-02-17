@@ -11,7 +11,12 @@
 
 static bool system_initialized = false;
 
-void odroid_system_init(int app_id, int sampleRate, char **romPath, ODROID_START_ACTION *startAction)
+ODROID_START_ACTION startAction = 0;
+ODROID_SCALING scalingMode = ODROID_SCALING_FILL;
+int8_t speedupEnabled = 0;
+int8_t forceRedraw = 0;
+
+void odroid_system_init(int app_id, int sampleRate, char **romPath)
 {
     if (system_initialized) abort();
 
@@ -31,8 +36,8 @@ void odroid_system_init(int app_id, int sampleRate, char **romPath, ODROID_START
         esp_restart();
     }
 
-    *startAction = odroid_settings_StartAction_get();
-    if (*startAction == ODROID_START_ACTION_RESTART)
+    startAction = odroid_settings_StartAction_get();
+    if (startAction == ODROID_START_ACTION_RESTART)
     {
         odroid_settings_StartAction_set(ODROID_START_ACTION_RESUME);
     }
@@ -70,7 +75,9 @@ void odroid_system_init(int app_id, int sampleRate, char **romPath, ODROID_START
 
     odroid_audio_init(odroid_settings_AudioSink_get(), sampleRate);
 
-    if (*startAction == ODROID_START_ACTION_NETPLAY)
+    scalingMode = odroid_settings_Scaling_get();
+
+    if (startAction == ODROID_START_ACTION_NETPLAY)
     {
         // odroid_netplay_init();
     }
