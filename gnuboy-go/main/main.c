@@ -63,7 +63,7 @@ int pcm_submit()
 
 void run_to_vblank()
 {
-    int startTime = xthal_get_ccount();
+    uint startTime = xthal_get_ccount();
 
     /* FIXME: djudging by the time specified this was intended
     to emulate through vblank phase which is handled at the
@@ -368,7 +368,6 @@ void app_main(void)
     }
 
 
-    uint startTime;
     uint totalElapsedTime = 0;
     uint emulatedFrames = 0;
     uint skippedFrames = 0;
@@ -389,7 +388,7 @@ void app_main(void)
             odroid_overlay_game_settings_menu(options, 2);
         }
 
-        startTime = xthal_get_ccount();
+        uint startTime = xthal_get_ccount();
 
         pad_set(PAD_UP, joystick.values[ODROID_INPUT_UP]);
         pad_set(PAD_RIGHT, joystick.values[ODROID_INPUT_RIGHT]);

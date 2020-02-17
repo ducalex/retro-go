@@ -84,7 +84,7 @@ static int dmg_pal[4][4] = {{0xffffff, 0x808080, 0x404040, 0x000000},
 							{0x00ff00, 0x008000, 0x004000, 0x000000},
 							{0x0000ff, 0x000080, 0x000040, 0x000000} };
 #else
- static int dmg_pal[4][4] = {GB_NGBARNE_PALETTE,
+static int dmg_pal[4][4] = {GB_NGBARNE_PALETTE,
 	 						GB_NGBARNE_PALETTE,
 							GB_NGBARNE_PALETTE,
 							GB_NGBARNE_PALETTE };
@@ -93,11 +93,8 @@ static int dmg_pal[4][4] = {{0xffffff, 0x808080, 0x404040, 0x000000},
 
 static byte *vdest;
 
-//#ifdef ALLOW_UNALIGNED_IO /* long long is ok since this is i386-only anyway? */
-#define MEMCPY8(d, s) ((*(long long *)(d)) = (*(long long *)(s)))
-//#else
+#define MEMCPY8(d, s) ((*(uint64_t *)(d)) = (*(uint64_t *)(s)))
 //#define MEMCPY8(d, s) memcpy((d), (s), 8)
-//#endif
 
 static byte pix[8];
 
@@ -318,14 +315,7 @@ static void IRAM_ATTR bg_scan()
 	{
 		src = get_patpix(*(tile++), V);
 
-#if 0
 		MEMCPY8(dest, src);
-#else
-		int* tmpDest =(int*)dest;
-		int* tmpSrc = (int*)src;
-		tmpDest[0] = tmpSrc[0];
-		tmpDest[1] = tmpSrc[1];
-#endif
 
 		dest += 8;
 		cnt -= 8;
@@ -350,14 +340,7 @@ static void IRAM_ATTR wnd_scan()
 	{
 		src = get_patpix(*(tile++), WV);
 
-#if 0
 		MEMCPY8(dest, src);
-#else
-		int* tmpDest =(int*)dest;
-		int* tmpSrc = (int*)src;
-		tmpDest[0] = tmpSrc[0];
-		tmpDest[1] = tmpSrc[1];
-#endif
 
 		dest += 8;
 		cnt -= 8;

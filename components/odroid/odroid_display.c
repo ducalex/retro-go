@@ -27,7 +27,7 @@ const gpio_num_t LCD_PIN_NUM_CS   = GPIO_NUM_5;
 const gpio_num_t LCD_PIN_NUM_DC   = GPIO_NUM_21;
 const gpio_num_t LCD_PIN_NUM_BCKL = GPIO_NUM_14;
 const int LCD_BACKLIGHT_ON_VALUE = 1;
-const int LCD_SPI_CLOCK_RATE = 40000000;
+const int LCD_SPI_CLOCK_RATE = 48000000;
 
 
 #define SPI_TRANSACTION_COUNT (4)
@@ -977,7 +977,7 @@ odroid_buffer_diff(void *buffer, void *old_buffer,
         return;
     }
 
-    uint32_t partial_update_remaining = width * height * FULL_UPDATE_THRESHOLD;
+    int partial_update_remaining = width * height * FULL_UPDATE_THRESHOLD;
 
     uint32_t u32_pixel_mask = (pixel_mask << 24)|(pixel_mask << 16)|(pixel_mask << 8)|pixel_mask;
     uint16_t u32_blocks = (width * pixel_width / 4);

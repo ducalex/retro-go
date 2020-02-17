@@ -22,8 +22,8 @@ extern ODROID_SCALING scalingMode;
 extern int8_t forceRedraw;
 extern int8_t speedupEnabled;
 
-inline int get_elapsed_time_since(int start)
+inline uint get_elapsed_time_since(uint start)
 {
-     int now = xthal_get_ccount();
+     uint now = xthal_get_ccount();
      return ((now > start) ? now - start : ((uint64_t)now + (uint64_t)0xffffffff) - start);
 }

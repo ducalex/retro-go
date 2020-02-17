@@ -365,7 +365,6 @@ void nes_emulate(void)
    nes.scanline_cycles = 0;
    nes.fiq_cycles = (int) NES_FIQ_PERIOD;
 
-   uint startTime;
    uint totalElapsedTime = 0;
    uint emulatedFrames = 0;
    uint renderedFrames = 0;
@@ -388,7 +387,7 @@ void nes_emulate(void)
 
    while (false == nes.poweroff)
    {
-      startTime = xthal_get_ccount();
+      uint startTime = xthal_get_ccount();
 
       osd_getinput();
       nes_renderframe(renderFrame);

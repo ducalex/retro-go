@@ -9,7 +9,6 @@
 #define AUDIO_SAMPLE_RATE (32000)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 1)
 
-
 #define SMS_WIDTH 256
 #define SMS_HEIGHT 192
 
@@ -40,6 +39,9 @@ static struct video_update *currentUpdate = &update1;
 
 bool skipFrame = false;
 
+bool consoleIsGG = false;
+bool consoleIsSMS = false;
+
 QueueHandle_t videoQueue;
 // --- MAIN
 
@@ -66,8 +68,7 @@ static void videoTask(void *arg)
             forceRedraw = false;
 
             if (scalingMode) {
-                float aspect = (sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS) &&
-                               scalingMode == ODROID_SCALING_FILL ? 1.2f : 1.f;
+                float aspect = consoleIsGG && scalingMode == ODROID_SCALING_FILL ? 1.2f : 1.f;
                 odroid_display_set_scale(update->width, update->height, aspect);
             } else {
                 odroid_display_reset_scale(update->width, update->height);
@@ -224,11 +225,6 @@ void app_main(void)
     //bitmap.depth = 8;
     bitmap.data = framebuffers[0];
 
-    // cart.pages = (cartSize / 0x4000);
-    // cart.rom = romAddress;
-
-
-    //system_init2(AUDIO_SAMPLE_RATE);
     set_option_defaults();
 
     option.sndrate = AUDIO_SAMPLE_RATE;
@@ -243,15 +239,12 @@ void app_main(void)
         LoadState(romPath);
     }
 
+    consoleIsSMS = sms.console == CONSOLE_SMS || sms.console == CONSOLE_SMS2;
+    consoleIsGG  = sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS;
 
-    odroid_gamepad_state previousJoystickState;
-    odroid_input_gamepad_read(&previousJoystickState);
-
-    uint startTime;
     uint totalElapsedTime = 0;
     uint emulatedFrames = 0;
     uint skippedFrames = 0;
-    uint muteFrameCount = 0;
 
     uint8_t refresh = (sms.display == DISPLAY_NTSC) ? 60 : 50;
     const int frameTime = CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / refresh;
@@ -268,38 +261,38 @@ void app_main(void)
             odroid_overlay_game_settings_menu(NULL, 0);
         }
 
-        startTime = xthal_get_ccount();
+        uint startTime = xthal_get_ccount();
 
-        uint8_t smsButtons = 0;
-        uint8_t smsSystem = 0;
+        input.pad[0] = 0;
+        input.system = 0;
 
-    	if (joystick.values[ODROID_INPUT_UP]) smsButtons |= INPUT_UP;
-    	if (joystick.values[ODROID_INPUT_DOWN]) smsButtons |= INPUT_DOWN;
-    	if (joystick.values[ODROID_INPUT_LEFT]) smsButtons |= INPUT_LEFT;
-    	if (joystick.values[ODROID_INPUT_RIGHT]) smsButtons |= INPUT_RIGHT;
-    	if (joystick.values[ODROID_INPUT_A]) smsButtons |= INPUT_BUTTON2;
-    	if (joystick.values[ODROID_INPUT_B]) smsButtons |= INPUT_BUTTON1;
+    	if (joystick.values[ODROID_INPUT_UP])    input.pad[0] |= INPUT_UP;
+    	if (joystick.values[ODROID_INPUT_DOWN])  input.pad[0] |= INPUT_DOWN;
+    	if (joystick.values[ODROID_INPUT_LEFT])  input.pad[0] |= INPUT_LEFT;
+    	if (joystick.values[ODROID_INPUT_RIGHT]) input.pad[0] |= INPUT_RIGHT;
+    	if (joystick.values[ODROID_INPUT_A])     input.pad[0] |= INPUT_BUTTON2;
+    	if (joystick.values[ODROID_INPUT_B])     input.pad[0] |= INPUT_BUTTON1;
 
-		if (sms.console == CONSOLE_SMS || sms.console == CONSOLE_SMS2)
+		if (consoleIsSMS)
 		{
-			if (joystick.values[ODROID_INPUT_START]) smsSystem |= INPUT_PAUSE;
-			if (joystick.values[ODROID_INPUT_SELECT]) smsSystem |= INPUT_START;
+			if (joystick.values[ODROID_INPUT_START])  input.system |= INPUT_PAUSE;
+			if (joystick.values[ODROID_INPUT_SELECT]) input.system |= INPUT_START;
 		}
-		else
+		else if (consoleIsGG)
 		{
-			if (joystick.values[ODROID_INPUT_START]) smsSystem |= INPUT_START;
-			if (joystick.values[ODROID_INPUT_SELECT]) smsSystem |= INPUT_PAUSE;
+			if (joystick.values[ODROID_INPUT_START])  input.system |= INPUT_START;
+			if (joystick.values[ODROID_INPUT_SELECT]) input.system |= INPUT_PAUSE;
 		}
-
-    	input.pad[0] = smsButtons;
-        input.system = smsSystem;
-
-
-        if (sms.console == CONSOLE_COLECO)
+        else // Coleco
         {
-            input.system = 0;
             coleco.keypad[0] = 0xff;
             coleco.keypad[1] = 0xff;
+
+            if (joystick.values[ODROID_INPUT_SELECT])
+            {
+                odroid_input_wait_for_key(ODROID_INPUT_SELECT, false);
+                system_reset();
+            }
 
             // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, *, #
             switch (cart.crc)
@@ -311,12 +304,6 @@ void app_main(void)
                     if (joystick.values[ODROID_INPUT_START])
                     {
                         coleco.keypad[0] = 10; // *
-                    }
-
-                    if (previousJoystickState.values[ODROID_INPUT_SELECT] &&
-                        !joystick.values[ODROID_INPUT_SELECT])
-                    {
-                        system_reset();
                     }
                     break;
 
@@ -332,12 +319,6 @@ void app_main(void)
                         joystick.values[ODROID_INPUT_LEFT])
                     {
                         coleco.keypad[0] = 1;
-                    }
-
-                    if (previousJoystickState.values[ODROID_INPUT_SELECT] &&
-                        !joystick.values[ODROID_INPUT_SELECT])
-                    {
-                        system_reset();
                     }
                     break;
                 case 0x109699e2:    // Dr. Seuss's Fix-Up The Mix-Up Puzzler
@@ -358,17 +339,9 @@ void app_main(void)
                     {
                         coleco.keypad[0] = 1;
                     }
-
-                    if (previousJoystickState.values[ODROID_INPUT_SELECT] &&
-                        !joystick.values[ODROID_INPUT_SELECT])
-                    {
-                        system_reset();
-                    }
                     break;
             }
         }
-
-        previousJoystickState = joystick;
 
         system_frame(skipFrame);
 
@@ -418,19 +391,9 @@ void app_main(void)
             skipFrame = (!skipFrame && get_elapsed_time_since(startTime) > frameTime);
 
             // Process audio
-            for (int x = 0; x < snd.sample_count; x++)
+            for (short i = 0; i < snd.sample_count; i++)
             {
-                // When the emulator starts, audible popping is generated.
-                // Audio should be disabled during this startup period.
-                if (muteFrameCount < 60 * 2)
-                {
-                    ++muteFrameCount;
-                    audioBuffer[x] = 0;
-                }
-                else
-                {
-                    audioBuffer[x] = (snd.output[0][x] << 16) + snd.output[1][x];
-                }
+                audioBuffer[i] = snd.output[0][i] << 16 | snd.output[1][i];
             }
 
             odroid_audio_submit((short*)audioBuffer, snd.sample_count);
