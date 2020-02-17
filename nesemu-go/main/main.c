@@ -184,7 +184,7 @@ static void free_write(int num_dirties, rect_t *dirty_rects)
    bmp_destroy(&myBitmap);
 }
 
-static void IRAM_ATTR custom_blit(bitmap_t *bmp)
+static void IRAM_ATTR custom_blit(bitmap_t *bmp, short interlace)
 {
    if (!bmp) {
       printf("custom_blit called with NULL bitmap!\n");

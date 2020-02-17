@@ -352,7 +352,7 @@ static void system_video(bool draw)
    //gui_frame(true);
 
    /* Flush buffer to screen */
-   vid_flush();
+   vid_flush(-1);
 }
 
 extern void do_audio_frame();
@@ -377,6 +377,8 @@ void nes_emulate(void)
    uint startTime, stopTime;
    uint totalElapsedTime = 0;
    uint emulatedFrames = 0;
+   uint renderedFrames = 0;
+   uint interlacedFrames = 0;
    uint skippedFrames = 0;
 
 
@@ -414,7 +416,12 @@ void nes_emulate(void)
          do_audio_frame();
       }
 
-      if (!renderFrame) {
+      if (renderFrame) {
+         // ++renderedFrames;
+         // if (interlace >= 0) {
+         //    ++interlacedFrames;
+         // }
+      } else {
          ++skippedFrames;
       }
 
@@ -431,12 +438,13 @@ void nes_emulate(void)
          odroid_battery_state battery;
          odroid_input_battery_level_read(&battery);
 
-         printf("HEAP:%d, FPS:%f, SKIP:%d, BATTERY:%d [%d]\n",
-            esp_get_free_heap_size() / 1024, fps, skippedFrames,
+         printf("HEAP:%d, FPS:%f, INT: %d, SKIP:%d, BATTERY:%d [%d]\n",
+            esp_get_free_heap_size() / 1024, fps, interlacedFrames, skippedFrames,
             battery.millivolts, battery.percentage);
 
          emulatedFrames = 0;
          skippedFrames = 0;
+         interlacedFrames = 0;
          totalElapsedTime = 0;
       }
    }

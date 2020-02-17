@@ -146,7 +146,7 @@ void videoTask(void *arg)
             }
         }
 
-        // ili9341_write_frame_scaled(update->buffer, update->diff, GB_WIDTH, GB_HEIGHT,
+        // ili9341_write_frame_scaled(update->buffer, NULL, GB_WIDTH, GB_HEIGHT, // update->diff
         //                            GB_WIDTH * 2, 2, 0xFF, NULL);
         ili9341_write_frame_gb(update->buffer, scalingMode);
 
