@@ -282,7 +282,12 @@ int rom_load()
 	mbc.rombank = 1;
 	mbc.rambank = 0;
 
-	int preload = mbc.romsize < 32 ? mbc.romsize : 32;
+	int preload = mbc.romsize < 64 ? mbc.romsize : 64;
+
+	if (strncmp(rom.name, "RAYMAN", 6) == 0) {
+		printf("loader: Special preloading for Rayman 1/2\n");
+		preload = mbc.romsize - 8;
+	}
 
 	printf("loader: Preloading the first %d banks\n", preload);
 	for (int i = 1; i < preload; i++) {
