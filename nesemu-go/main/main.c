@@ -46,7 +46,9 @@ static struct video_update update1 = {0,};
 static struct video_update update2 = {0,};
 static struct video_update *currentUpdate = &update1;
 
-QueueHandle_t videoQueue;
+uint fullFrames = 0;
+
+volatile QueueHandle_t videoTaskQueue;
 
 extern nes_t* console_nes;
 extern nes6502_context cpu;
@@ -205,7 +207,11 @@ static void IRAM_ATTR custom_blit(bitmap_t *bmp, short interlace)
                       NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT, currentUpdate->stride,
                       1, PIXEL_MASK, 0, currentUpdate->diff);
 
-   xQueueSend(videoQueue, &currentUpdate, portMAX_DELAY);
+   if (currentUpdate->diff[0].width && currentUpdate->diff[0].repeat == NES_VISIBLE_HEIGHT) {
+      ++fullFrames;
+   }
+
+   xQueueSend(videoTaskQueue, &currentUpdate, portMAX_DELAY);
 
    currentUpdate = previousUpdate;
 }
@@ -231,17 +237,16 @@ void osd_getvideoinfo(vidinfo_t *info)
    info->driver = &sdlDriver;
 }
 
-volatile bool videoTaskIsRunning = false;
 static void videoTask(void *arg)
 {
-    videoTaskIsRunning = true;
+    videoTaskQueue = xQueueCreate(1, sizeof(void*));
 
     int8_t previousScalingMode = -1;
     struct video_update *update;
 
     while(1)
     {
-        xQueuePeek(videoQueue, &update, portMAX_DELAY);
+        xQueuePeek(videoTaskQueue, &update, portMAX_DELAY);
 
         if (!update) break;
 
@@ -264,14 +269,14 @@ static void videoTask(void *arg)
                                    NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT, update->stride,
                                    1, PIXEL_MASK, myPalette);
 
-        xQueueReceive(videoQueue, &update, portMAX_DELAY);
+        xQueueReceive(videoTaskQueue, &update, portMAX_DELAY);
     }
 
-    videoTaskIsRunning = false;
+    videoTaskQueue = NULL;
 
     vTaskDelete(NULL);
 
-    while(1){}
+    while (1) {}
 }
 
 
@@ -359,7 +364,6 @@ int osd_init()
 
    osd_init_sound();
 
-   videoQueue = xQueueCreate(1, sizeof(void*));
    xTaskCreatePinnedToCore(&videoTask, "videoTask", 2048, NULL, 5, NULL, 1);
 
    return 0;
@@ -398,8 +402,8 @@ void QuitEmulator(bool save)
    printf("QuitEmulator: stopping tasks.\n");
 
    void *exitVideoTask = NULL;
-   xQueueSend(videoQueue, &exitVideoTask, portMAX_DELAY);
-   while (videoTaskIsRunning) vTaskDelay(1);
+   xQueueSend(videoTaskQueue, &exitVideoTask, portMAX_DELAY);
+   while (videoTaskQueue) vTaskDelay(1);
 
    odroid_audio_terminate();
    ili9341_blank_screen();

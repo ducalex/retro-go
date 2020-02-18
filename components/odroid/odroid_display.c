@@ -16,24 +16,17 @@
 
 #include <string.h>
 
-
 const int DUTY_MAX = 0x1fff;
 
 const gpio_num_t SPI_PIN_NUM_MISO = GPIO_NUM_19;
 const gpio_num_t SPI_PIN_NUM_MOSI = GPIO_NUM_23;
 const gpio_num_t SPI_PIN_NUM_CLK  = GPIO_NUM_18;
-
 const gpio_num_t LCD_PIN_NUM_CS   = GPIO_NUM_5;
 const gpio_num_t LCD_PIN_NUM_DC   = GPIO_NUM_21;
 const gpio_num_t LCD_PIN_NUM_BCKL = GPIO_NUM_14;
+
 const int LCD_BACKLIGHT_ON_VALUE = 1;
 const int LCD_SPI_CLOCK_RATE = 48000000;
-
-
-#define SPI_TRANSACTION_COUNT (4)
-static spi_transaction_t trans[SPI_TRANSACTION_COUNT];
-static spi_device_handle_t spi;
-
 
 #define SCREEN_WIDTH 320
 #define SCREEN_HEIGHT 240
@@ -41,12 +34,8 @@ static spi_device_handle_t spi;
 #define LINE_BUFFERS (2)
 #define LINE_COUNT (5)
 #define LINE_BUFFER_SIZE (SCREEN_WIDTH*LINE_COUNT)
-uint16_t* line[LINE_BUFFERS];
-QueueHandle_t spi_queue;
-QueueHandle_t line_buffer_queue;
-SemaphoreHandle_t spi_count_semaphore;
-spi_transaction_t global_transaction;
-bool use_polling = false;
+
+#define SPI_TRANSACTION_COUNT (4)
 
 // The number of pixels that need to be updated to use interrupt-based updates
 // instead of polling.
@@ -56,9 +45,18 @@ bool use_polling = false;
 // instead of a partial update (faster). This also allows us to stop the diff early!
 #define FULL_UPDATE_THRESHOLD (0.4f)
 
-int BacklightLevels[] = {10, 25, 50, 75, 100};
-int BacklightLevel = ODROID_BACKLIGHT_LEVEL2;
+static uint16_t* line[LINE_BUFFERS];
+static SemaphoreHandle_t display_mutex;
+static QueueHandle_t spi_queue;
+static QueueHandle_t line_buffer_queue;
+static SemaphoreHandle_t spi_count_semaphore;
+static spi_transaction_t global_transaction;
+static spi_transaction_t trans[SPI_TRANSACTION_COUNT];
+static spi_device_handle_t spi;
+static bool use_polling = false;
 
+static int BacklightLevels[] = {10, 25, 50, 75, 100};
+static int BacklightLevel = ODROID_BACKLIGHT_LEVEL2;
 
 /*
  The ILI9341 needs a bunch of command/argument values to be initialized. They are stored in this struct.
@@ -133,6 +131,7 @@ DRAM_ATTR static const ili_init_cmd_t ili_init_cmds[] = {
 
     {0, {0}, 0xff}
 };
+
 
 static inline uint16_t* line_buffer_get()
 {
@@ -560,17 +559,22 @@ void ili9341_poweroff()
 }
 
 
-void ili9341_blank_screen()
+void ili9341_fill_screen(uint16_t color)
 {
-    odroid_display_lock();
-
-    // clear the buffer
+    // Fill the buffer with the color
     for (short i = 0; i < LINE_BUFFERS; ++i)
     {
-        memset(line[i], 0, SCREEN_WIDTH * sizeof(uint16_t) * LINE_COUNT);
+        if ((color & 0xFF) == (color >> 8))
+        {
+            memset(line[i], color & 0xFF, SCREEN_WIDTH * LINE_COUNT * 2);
+            continue;
+        }
+        for (short j = 0; j < SCREEN_WIDTH * LINE_COUNT; ++j)
+        {
+            line[i][j] = color;
+        }
     }
 
-    // clear the screen
     send_reset_drawing(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     for (short y = 0; y < SCREEN_HEIGHT; y += LINE_COUNT)
@@ -578,7 +582,12 @@ void ili9341_blank_screen()
         uint16_t* line_buffer = line_buffer_get();
         send_continue_line(line_buffer, SCREEN_WIDTH, LINE_COUNT);
     }
+}
 
+void ili9341_blank_screen()
+{
+    odroid_display_lock();
+    ili9341_fill_screen(C_BLACK);
     odroid_display_unlock();
 }
 
@@ -649,8 +658,7 @@ static short y_origin = 0;
 static float x_scale = 1.f;
 static float y_scale = 1.f;
 
-void
-odroid_display_reset_scale(short width, short height)
+void odroid_display_reset_scale(short width, short height)
 {
     x_inc = SCREEN_WIDTH;
     y_inc = SCREEN_HEIGHT;
@@ -659,8 +667,7 @@ odroid_display_reset_scale(short width, short height)
     x_scale = y_scale = 1.f;
 }
 
-void
-odroid_display_set_scale(short width, short height, float aspect)
+void odroid_display_set_scale(short width, short height, float aspect)
 {
     float buffer_aspect = ((width * aspect) / (float)height);
     float screen_aspect = SCREEN_WIDTH / (float)SCREEN_HEIGHT;
@@ -682,11 +689,10 @@ odroid_display_set_scale(short width, short height, float aspect)
            width, height, aspect, x_inc, y_inc, x_scale, y_scale, x_origin, y_origin);
 }
 
-void
-ili9341_write_frame_scaled(void* buffer, odroid_scanline *diff,
-                           short width, short height, short stride,
-                           short pixel_width, uint8_t pixel_mask,
-                           uint16_t* palette)
+void ili9341_write_frame_scaled(void* buffer, odroid_scanline *diff,
+                                short width, short height, short stride,
+                                short pixel_width, uint8_t pixel_mask,
+                                uint16_t* palette)
 {
     if (!buffer) {
         ili9341_blank_screen();
@@ -694,86 +700,44 @@ ili9341_write_frame_scaled(void* buffer, odroid_scanline *diff,
     }
 
     odroid_display_lock();
-
     spi_device_acquire_bus(spi, portMAX_DELAY);
 
-#if 0
+    // Interrupt/async updates
+    odroid_scanline int_updates[SCREEN_HEIGHT/LINE_COUNT];
+    odroid_scanline *int_ptr = &int_updates[0];
+    odroid_scanline full_update = {0, height, 0, width};
+
     if (diff) {
-        int n_pixels = odroid_buffer_diff_count(diff, height);
-        if (n_pixels * scale > PARTIAL_UPDATE_THRESHOLD) {
-            diff = NULL;
-        }
-    }
-#endif
-
-    bool need_interrupt_updates = false;
-    short left = 0;
-    short line_width = width;
-    short repeat = 0;
-
-#if 0
-    // Make all updates interrupt updates
-    poll_threshold = 0;
-#elif 0
-    // Make all updates polling updates
-    poll_threshold = INT_MAX;
-#endif
-
-    // Do polling updates first
-    use_polling = true;
-    for (int y = 0, i = 0; y < height; ++y, i += stride, --repeat)
-    {
-        if (repeat > 0) continue;
-
-        if (diff) {
-            left = diff[y].left;
-            line_width = diff[y].width;
-            repeat = diff[y].repeat;
-        } else {
-            repeat = height;
-        }
-
-        if (line_width > 0) {
-            int n_pixels = (x_scale * line_width) * (y_scale * repeat);
-            if (n_pixels < POLLING_PIXEL_THRESHOLD) {
-                write_rect(buffer + i + (left * pixel_width), palette,
-                            x_origin, y_origin, left, y, line_width, repeat,
-                            stride, pixel_width, pixel_mask, x_inc, y_inc);
-            } else {
-                need_interrupt_updates = true;
-            }
-        }
-    }
-    use_polling = false;
-
-    // Use interrupt updates for larger areas
-    if (need_interrupt_updates) {
-        repeat = 0;
-        for (int y = 0, i = 0; y < height; ++y, i += stride, --repeat)
+        use_polling = true; // Do polling updates first
+        for (short y = 0; y < height;)
         {
-            if (repeat > 0) continue;
+            odroid_scanline *update = &diff[y];
 
-            if (diff) {
-                left = diff[y].left;
-                line_width = diff[y].width;
-                repeat = diff[y].repeat;
-            } else {
-                repeat = height;
-            }
-
-            if (line_width > 0) {
-                int n_pixels = (x_scale * line_width) * (y_scale * repeat);
-                if (n_pixels >= POLLING_PIXEL_THRESHOLD) {
-                    write_rect(buffer + i + (left * pixel_width), palette,
-                               x_origin, y_origin, left, y, line_width, repeat,
-                               stride, pixel_width, pixel_mask, x_inc, y_inc);
+            if (update->width > 0) {
+                int n_pixels = (x_scale * update->width) * (y_scale * update->repeat);
+                if (n_pixels < POLLING_PIXEL_THRESHOLD) {
+                    write_rect(buffer + (y * stride) + (update->left * pixel_width), palette,
+                                x_origin, y_origin, update->left, y, update->width, update->repeat,
+                                stride, pixel_width, pixel_mask, x_inc, y_inc);
+                } else {
+                    (*int_ptr++) = (*update);
                 }
             }
+            y += update->repeat;
         }
+    } else {
+        (*int_ptr++) = full_update;
+    }
+
+    use_polling = false; // Use interrupt updates for larger areas
+    while (--int_ptr >= &int_updates)
+    {
+        write_rect(buffer + (int_ptr->top * stride) + (int_ptr->left * pixel_width), palette,
+                    x_origin, y_origin, int_ptr->left, int_ptr->top, int_ptr->width, int_ptr->repeat,
+                    stride, pixel_width, pixel_mask, x_inc, y_inc);
     }
 
     spi_device_release_bus(spi);
-
     odroid_display_unlock();
 }
 
@@ -813,34 +777,6 @@ void ili9341_write_frame_rectangleLE(short left, short top, short width, short h
     }
 }
 
-void ili9341_clear(uint16_t color)
-{
-    //xTaskToNotify = xTaskGetCurrentTaskHandle();
-
-    // clear the buffer
-    for (short i = 0; i < LINE_BUFFERS; ++i)
-    {
-        for (short j = 0; j < SCREEN_WIDTH * LINE_COUNT; ++j)
-        {
-            line[i][j] = color;
-        }
-    }
-
-    // clear the screen
-    send_reset_drawing(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-    for (short y = 0; y < SCREEN_HEIGHT; y += LINE_COUNT)
-    {
-        uint16_t* line_buffer = line_buffer_get();
-        send_continue_line(line_buffer, SCREEN_WIDTH, LINE_COUNT);
-    }
-}
-
-void display_tasktonotify_set(int value)
-{
-    //xTaskToNotify = value;
-}
-
 void odroid_display_drain_spi()
 {
     spi_transaction_t *t[SPI_TRANSACTION_COUNT];
@@ -861,7 +797,7 @@ void odroid_display_show_error(int errNum)
     {
         case ODROID_SD_ERR_BADFILE:
         case ODROID_SD_ERR_NOCARD:
-            ili9341_clear(C_WHITE);
+            ili9341_fill_screen(C_WHITE);
             ili9341_write_frame_rectangleLE((SCREEN_WIDTH / 2) - (image_sdcard_red_48dp.width / 2),
                 (SCREEN_HEIGHT / 2) - (image_sdcard_red_48dp.height / 2),
                 image_sdcard_red_48dp.width,
@@ -870,7 +806,7 @@ void odroid_display_show_error(int errNum)
             break;
 
         default:
-            ili9341_clear(C_RED);
+            ili9341_fill_screen(C_RED);
     }
 
     // Drain SPI queue
@@ -885,8 +821,6 @@ void odroid_display_show_hourglass()
         image_hourglass_empty_black_48dp.height,
         image_hourglass_empty_black_48dp.pixel_data);
 }
-
-SemaphoreHandle_t display_mutex = NULL;
 
 void odroid_display_lock()
 {
@@ -929,32 +863,6 @@ pixel_diff(uint8_t *buffer1, uint8_t *buffer2,
     return palette1[p1] != palette2[p2];
 }
 
-static void IRAM_ATTR
-odroid_buffer_diff_optimize(odroid_scanline *diff, short height)
-{
-    // Run through and count how many lines each particular run has
-    // so that we can optimise and use write_continue and save on SPI
-    // bandwidth.
-    // Because of the bandwidth required to setup the page/column
-    // address, etc., it can actually cost more to run setup than just
-    // transfer the extra pixels.
-    for (short y = height - 1; y > 0; --y) {
-        short left_diff = abs(diff[y].left - diff[y-1].left);
-        if (left_diff > 8) continue;
-
-        short right = diff[y].left + diff[y].width;
-        short right_prev = diff[y-1].left + diff[y-1].width;
-        short right_diff = abs(right - right_prev);
-        if (right_diff > 8) continue;
-
-        if (diff[y].left < diff[y-1].left)
-          diff[y-1].left = diff[y].left;
-        diff[y-1].width = (right > right_prev) ?
-          right - diff[y-1].left : right_prev - diff[y-1].left;
-        diff[y-1].repeat = diff[y].repeat + 1;
-    }
-}
-
 void IRAM_ATTR
 odroid_buffer_diff(void *buffer, void *old_buffer,
                    uint16_t *palette, uint16_t *old_palette,
@@ -962,19 +870,16 @@ odroid_buffer_diff(void *buffer, void *old_buffer,
                    uint8_t pixel_mask, uint8_t palette_shift_mask,
                    odroid_scanline *out_diff)
 {
+    if (!old_buffer) {
+        goto _full_update;
+    }
+
     // If the palette didn't change we can speed up things by avoiding pixel_diff()
     if (palette == old_palette || memcmp(palette, old_palette, (pixel_mask + 1) * 2) == 0)
     {
         pixel_mask |= palette_shift_mask;
         palette_shift_mask = 0;
         palette = NULL;
-    }
-
-    if (!old_buffer) {
-        out_diff[0].left = 0;
-        out_diff[0].width = width;
-        out_diff[0].repeat = height;
-        return;
     }
 
     int partial_update_remaining = width * height * FULL_UPDATE_THRESHOLD;
@@ -984,6 +889,7 @@ odroid_buffer_diff(void *buffer, void *old_buffer,
     uint16_t u32_pixels = 4 / pixel_width;
 
     for (int y = 0, i = 0; y < height; ++y, i += stride) {
+        out_diff[y].top = y;
         out_diff[y].left = width;
         out_diff[y].width = 0;
         out_diff[y].repeat = 1;
@@ -1028,12 +934,32 @@ odroid_buffer_diff(void *buffer, void *old_buffer,
         partial_update_remaining -= out_diff[y].width;
 
         if (partial_update_remaining <= 0) {
-            out_diff[0].left = 0;
-            out_diff[0].width = width;
-            out_diff[0].repeat = height;
-            return;
+            goto _full_update;
         }
     }
 
-    odroid_buffer_diff_optimize(out_diff, height);
+    // Combine consecutive lines with similar changes location to optimize the SPI transfer
+    odroid_scanline *diff = out_diff;
+    for (short y = height - 1; y > 0; --y) {
+        short left_diff = abs(diff[y].left - diff[y-1].left);
+        if (left_diff > 8) continue;
+
+        short right = diff[y].left + diff[y].width;
+        short right_prev = diff[y-1].left + diff[y-1].width;
+        short right_diff = abs(right - right_prev);
+        if (right_diff > 8) continue;
+
+        if (diff[y].left < diff[y-1].left)
+          diff[y-1].left = diff[y].left;
+        diff[y-1].width = (right > right_prev) ?
+          right - diff[y-1].left : right_prev - diff[y-1].left;
+        diff[y-1].repeat = diff[y].repeat + 1;
+    }
+    return;
+
+_full_update:
+    out_diff[0].top = 0;
+    out_diff[0].left = 0;
+    out_diff[0].width = width;
+    out_diff[0].repeat = height;
 }

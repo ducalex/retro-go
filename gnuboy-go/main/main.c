@@ -45,9 +45,14 @@ static struct video_update update1 = {0,};
 static struct video_update update2 = {0,};
 static struct video_update *currentUpdate = &update1;
 
+static uint totalElapsedTime = 0;
+static uint emulatedFrames = 0;
+static uint skippedFrames = 0;
+static uint fullFrames = 0;
+
 bool skipFrame = false;
 
-QueueHandle_t videoQueue;
+volatile QueueHandle_t videoTaskQueue;
 // --- MAIN
 
 
@@ -90,7 +95,11 @@ void run_to_vblank()
                             GB_WIDTH * 2, 2, 0xFF, 0,
                             currentUpdate->diff);
 
-        xQueueSend(videoQueue, &currentUpdate, portMAX_DELAY);
+        if (currentUpdate->diff[0].width && currentUpdate->diff[0].repeat == GB_HEIGHT) {
+            ++fullFrames;
+        }
+
+        xQueueSend(videoTaskQueue, &currentUpdate, portMAX_DELAY);
 
         // swap buffers
         currentUpdate = previousUpdate;
@@ -122,17 +131,16 @@ void run_to_vblank()
 }
 
 
-volatile bool videoTaskIsRunning = false;
 void videoTask(void *arg)
 {
-    videoTaskIsRunning = true;
+    videoTaskQueue = xQueueCreate(1, sizeof(void*));
 
     int8_t previousScalingMode = -1;
     struct video_update *update;
 
     while(1)
     {
-        xQueuePeek(videoQueue, &update, portMAX_DELAY);
+        xQueuePeek(videoTaskQueue, &update, portMAX_DELAY);
 
         if (!update) break;
 
@@ -155,10 +163,10 @@ void videoTask(void *arg)
                                    GB_WIDTH, GB_HEIGHT,
                                    GB_WIDTH * 2, 2, 0xFF, NULL);
 
-        xQueueReceive(videoQueue, &update, portMAX_DELAY);
+        xQueueReceive(videoTaskQueue, &update, portMAX_DELAY);
     }
 
-    videoTaskIsRunning = false;
+    videoTaskQueue = NULL;
 
     vTaskDelete(NULL);
 
@@ -226,8 +234,8 @@ void QuitEmulator(bool save)
     printf("QuitEmulator: stopping tasks.\n");
 
     void *param = NULL;
-    xQueueSend(videoQueue, &param, portMAX_DELAY);
-    while (videoTaskIsRunning) vTaskDelay(1);
+    xQueueSend(videoTaskQueue, &param, portMAX_DELAY);
+    while (videoTaskQueue) vTaskDelay(1);
 
     odroid_audio_terminate();
     ili9341_blank_screen();
@@ -323,7 +331,6 @@ void app_main(void)
     assert(framebuffers[0] && framebuffers[1]);
     assert(audioBuffer);
 
-    videoQueue = xQueueCreate(1, sizeof(void*));
     xTaskCreatePinnedToCore(&videoTask, "videoTask", 2048, NULL, 5, NULL, 1);
 
     update1.buffer = framebuffers[0];
@@ -366,11 +373,6 @@ void app_main(void)
     {
         LoadState(romPath);
     }
-
-
-    uint totalElapsedTime = 0;
-    uint emulatedFrames = 0;
-    uint skippedFrames = 0;
 
     while (true)
     {
@@ -422,12 +424,13 @@ void app_main(void)
             odroid_battery_state battery;
             odroid_input_battery_level_read(&battery);
 
-            printf("HEAP:%d, FPS:%f, SKIP: %d, BATTERY:%d [%d]\n",
-                esp_get_free_heap_size() / 1024, fps, skippedFrames,
+            printf("HEAP:%d, FPS:%f, SKIP:%d, FULL:%d, BATTERY:%d [%d]\n",
+                esp_get_free_heap_size() / 1024, fps, skippedFrames, fullFrames,
                 battery.millivolts, battery.percentage);
 
             emulatedFrames = 0;
             skippedFrames = 0;
+            fullFrames = 0;
             totalElapsedTime = 0;
         }
     }

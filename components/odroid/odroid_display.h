@@ -20,9 +20,10 @@ typedef enum
 } odroid_backlight_level;
 
 typedef struct __attribute__((__packed__)) {
+    uint8_t top;
+    uint8_t repeat;
     short left;
     short width;
-    short repeat;
 } odroid_scanline;
 
 void ili9341_init();
@@ -31,10 +32,8 @@ void ili9341_write_frame(uint16_t* buffer);
 void ili9341_write_frame_rectangleLE(short left, short top, short width, short height, uint16_t* buffer);
 void ili9341_write_frame_scaled(void* buffer, odroid_scanline* diff, short width, short height, short stride,
                                 short pixel_width, uint8_t pixel_mask, uint16_t* palette);
-void ili9341_clear(uint16_t color);
+void ili9341_fill_screen(uint16_t color);
 void ili9341_blank_screen();
-
-void display_tasktonotify_set(int value);
 
 int odroid_display_backlight_get();
 void odroid_display_backlight_set(int level);
@@ -47,6 +46,7 @@ void odroid_display_lock();
 void odroid_display_unlock();
 void odroid_display_show_error(int errNum);
 void odroid_display_show_hourglass();
+
 void odroid_buffer_diff(void *buffer,
                         void *old_buffer,
                         uint16_t *palette,

@@ -20,10 +20,10 @@
 
 static char* romPath = NULL;
 
-uint32_t* audioBuffer;
+static uint32_t* audioBuffer;
 
-uint8_t* framebuffers[2];
-int currentBuffer = 0;
+static uint8_t* framebuffers[2];
+static int currentBuffer = 0;
 
 struct video_update {
     odroid_scanline diff[SMS_HEIGHT];
@@ -37,26 +37,30 @@ static struct video_update update1 = {0,};
 static struct video_update update2 = {0,};
 static struct video_update *currentUpdate = &update1;
 
-bool skipFrame = false;
+static uint totalElapsedTime = 0;
+static uint emulatedFrames = 0;
+static uint skippedFrames = 0;
+static uint fullFrames = 0;
 
-bool consoleIsGG = false;
-bool consoleIsSMS = false;
+static bool skipFrame = false;
 
-QueueHandle_t videoQueue;
+static bool consoleIsGG = false;
+static bool consoleIsSMS = false;
+
+volatile QueueHandle_t videoTaskQueue;
 // --- MAIN
 
 
-volatile bool videoTaskIsRunning = false;
 static void videoTask(void *arg)
 {
-    videoTaskIsRunning = true;
+    videoTaskQueue = xQueueCreate(1, sizeof(void*));
 
     int8_t previousScalingMode = -1;
     struct video_update* update;
 
     while(1)
     {
-        xQueuePeek(videoQueue, &update, portMAX_DELAY);
+        xQueuePeek(videoTaskQueue, &update, portMAX_DELAY);
 
         if (!update) break;
 
@@ -79,10 +83,11 @@ static void videoTask(void *arg)
                                    update->width, update->height, update->stride,
                                    1, PIXEL_MASK, update->palette);
 
-        xQueueReceive(videoQueue, &update, portMAX_DELAY);
+        xQueueReceive(videoTaskQueue, &update, portMAX_DELAY);
     }
 
-    videoTaskIsRunning = false;
+    videoTaskQueue = NULL;
+
     vTaskDelete(NULL);
 
     while (1) {}
@@ -154,8 +159,8 @@ void QuitEmulator(bool save)
     printf("QuitEmulator: stopping tasks.\n");
 
     void *exitVideoTask = NULL;
-    xQueueSend(videoQueue, &exitVideoTask, portMAX_DELAY);
-    while (videoTaskIsRunning) vTaskDelay(1);
+    xQueueSend(videoTaskQueue, &exitVideoTask, portMAX_DELAY);
+    while (videoTaskQueue) vTaskDelay(1);
 
     odroid_audio_terminate();
     ili9341_blank_screen();
@@ -197,7 +202,6 @@ void app_main(void)
     assert(framebuffers[0] && framebuffers[1]);
     assert(audioBuffer);
 
-    videoQueue = xQueueCreate(1, sizeof(uint16_t*));
     xTaskCreatePinnedToCore(&videoTask, "videoTask", 4096, NULL, 5, NULL, 1);
 
 
@@ -241,10 +245,6 @@ void app_main(void)
 
     consoleIsSMS = sms.console == CONSOLE_SMS || sms.console == CONSOLE_SMS2;
     consoleIsGG  = sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS;
-
-    uint totalElapsedTime = 0;
-    uint emulatedFrames = 0;
-    uint skippedFrames = 0;
 
     uint8_t refresh = (sms.display == DISPLAY_NTSC) ? 60 : 50;
     const int frameTime = CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / refresh;
@@ -366,8 +366,12 @@ void app_main(void)
                                currentUpdate->stride, 1, PIXEL_MASK, PAL_SHIFT_MASK,
                                currentUpdate->diff);
 
+            if (currentUpdate->diff[0].width && currentUpdate->diff[0].repeat == currentUpdate->height) {
+                ++fullFrames;
+            }
+
             // Send update data to video queue on other core
-            xQueueSend(videoQueue, &currentUpdate, portMAX_DELAY);
+            xQueueSend(videoTaskQueue, &currentUpdate, portMAX_DELAY);
 
             // Flip the update struct so we don't start writing into it while
             // the second core is still updating the screen.
@@ -411,12 +415,13 @@ void app_main(void)
             odroid_battery_state battery;
             odroid_input_battery_level_read(&battery);
 
-            printf("HEAP:%d, FPS:%f, SKIP:%d, BATTERY:%d [%d]\n",
-                esp_get_free_heap_size() / 1024, fps, skippedFrames,
+            printf("HEAP:%d, FPS:%f, SKIP:%d, FULL:%d, BATTERY:%d [%d]\n",
+                esp_get_free_heap_size() / 1024, fps, skippedFrames, fullFrames,
                 battery.millivolts, battery.percentage);
 
             emulatedFrames = 0;
             skippedFrames = 0;
+            fullFrames = 0;
             totalElapsedTime = 0;
         }
     }

@@ -356,6 +356,7 @@ static void system_video(bool draw)
 }
 
 extern void do_audio_frame();
+extern uint fullFrames;
 
 /* main emulation loop */
 void nes_emulate(void)
@@ -368,7 +369,6 @@ void nes_emulate(void)
    uint totalElapsedTime = 0;
    uint emulatedFrames = 0;
    uint renderedFrames = 0;
-   uint interlacedFrames = 0;
    uint skippedFrames = 0;
 
    const int frameTime = CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / NES_REFRESH_RATE;
@@ -422,13 +422,13 @@ void nes_emulate(void)
          odroid_battery_state battery;
          odroid_input_battery_level_read(&battery);
 
-         printf("HEAP:%d, FPS:%f, INT: %d, SKIP:%d, BATTERY:%d [%d]\n",
-            esp_get_free_heap_size() / 1024, fps, interlacedFrames, skippedFrames,
+         printf("HEAP:%d, FPS:%f, SKIP:%d, FULL:%d, BATTERY:%d [%d]\n",
+            esp_get_free_heap_size() / 1024, fps, skippedFrames, fullFrames,
             battery.millivolts, battery.percentage);
 
          emulatedFrames = 0;
          skippedFrames = 0;
-         interlacedFrames = 0;
+         fullFrames = 0;
          totalElapsedTime = 0;
       }
    }
