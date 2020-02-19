@@ -36,14 +36,9 @@ int16_t* audioBuffer;
 
 uint16_t* framebuffers[2];
 
-struct video_update {
-    odroid_scanline diff[GB_HEIGHT];
-    uint16_t *buffer;
-    int stride;
-};
-static struct video_update update1 = {0,};
-static struct video_update update2 = {0,};
-static struct video_update *currentUpdate = &update1;
+static odroid_video_update update1 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, NULL, NULL};
+static odroid_video_update update2 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, NULL, NULL};
+static odroid_video_update *currentUpdate = &update1;
 
 static uint totalElapsedTime = 0;
 static uint emulatedFrames = 0;
@@ -87,15 +82,15 @@ void run_to_vblank()
     //vid_end();
     if (!skipFrame)
     {
-        struct video_update *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
+        odroid_video_update *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
 
         odroid_buffer_diff(currentUpdate->buffer, previousUpdate->buffer,
                             NULL, NULL,
-                            GB_WIDTH, GB_HEIGHT,
-                            GB_WIDTH * 2, 2, 0xFF, 0,
+                            currentUpdate->width, currentUpdate->height,
+                            currentUpdate->pitch, 2, 0xFF, 0,
                             currentUpdate->diff);
 
-        if (currentUpdate->diff[0].width && currentUpdate->diff[0].repeat == GB_HEIGHT) {
+        if (currentUpdate->diff[0].width && currentUpdate->diff[0].repeat == currentUpdate->height) {
             ++fullFrames;
         }
 
@@ -136,7 +131,7 @@ void videoTask(void *arg)
     videoTaskQueue = xQueueCreate(1, sizeof(void*));
 
     int8_t previousScalingMode = -1;
-    struct video_update *update;
+    odroid_video_update *update;
 
     while(1)
     {
@@ -153,15 +148,15 @@ void videoTask(void *arg)
 
             if (scalingMode) {
                 float aspect = (scalingMode == ODROID_SCALING_FILL) ? 1.2f : 1.f;
-                odroid_display_set_scale(GB_WIDTH, GB_HEIGHT, aspect);
+                odroid_display_set_scale(update->width, update->height, aspect);
             } else {
-                odroid_display_reset_scale(GB_WIDTH, GB_HEIGHT);
+                odroid_display_reset_scale(update->width, update->height);
             }
         }
 
-        ili9341_write_frame_scaled(update->buffer, redraw ? NULL : update->diff, // NULL, //
-                                   GB_WIDTH, GB_HEIGHT,
-                                   GB_WIDTH * 2, 2, 0xFF, NULL);
+        ili9341_write_frame_scaled(update->buffer, redraw ? NULL : update->diff,
+                                   update->width, update->height,
+                                   update->pitch, 2, 0xFF, NULL);
 
         xQueueReceive(videoTaskQueue, &update, portMAX_DELAY);
     }
@@ -344,8 +339,8 @@ void app_main(void)
 
     // Video
     memset(&fb, 0, sizeof(fb));
-    fb.w = 160;
-  	fb.h = 144;
+    fb.w = GB_WIDTH;
+  	fb.h = GB_HEIGHT;
   	fb.pelsize = 2;
   	fb.pitch = fb.w * fb.pelsize;
   	fb.indexed = 0;

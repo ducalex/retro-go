@@ -36,15 +36,9 @@ static char fb[1];
 static bitmap_t *myBitmap;
 static uint16_t myPalette[64];
 
-struct video_update {
-    odroid_scanline diff[NES_VISIBLE_HEIGHT];
-    uint8_t *buffer;
-    uint16_t *palette;
-    int stride;
-};
-static struct video_update update1 = {0,};
-static struct video_update update2 = {0,};
-static struct video_update *currentUpdate = &update1;
+static odroid_video_update update1 = {DEFAULT_WIDTH, DEFAULT_HEIGHT, 0, NULL, myPalette};
+static odroid_video_update update2 = {DEFAULT_WIDTH, DEFAULT_HEIGHT, 0, NULL, myPalette};
+static odroid_video_update *currentUpdate = &update1;
 
 uint fullFrames = 0;
 
@@ -193,21 +187,21 @@ static void IRAM_ATTR custom_blit(bitmap_t *bmp, short interlace)
       abort();
    }
 
-   struct video_update *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
+   odroid_video_update *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
    // Flip the update struct so we can keep track of the changes in the last
    // frame and fill in the new details (actually, these ought to always be
    // the same...)
    currentUpdate->buffer = bmp->line[NES_VERTICAL_OVERDRAW/2];
-   currentUpdate->stride = bmp->pitch;
+   currentUpdate->pitch = bmp->pitch;
 
    // Note, the NES palette never changes during runtime and we assume that
    // there are no duplicate entries, so no need to pass the palette over to
    // the diff function.
    odroid_buffer_diff(currentUpdate->buffer, previousUpdate->buffer, NULL, NULL,
-                      NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT, currentUpdate->stride,
+                      currentUpdate->width, currentUpdate->height, currentUpdate->pitch,
                       1, PIXEL_MASK, 0, currentUpdate->diff);
 
-   if (currentUpdate->diff[0].width && currentUpdate->diff[0].repeat == NES_VISIBLE_HEIGHT) {
+   if (currentUpdate->diff[0].width && currentUpdate->diff[0].repeat == currentUpdate->height) {
       ++fullFrames;
    }
 
@@ -242,7 +236,7 @@ static void videoTask(void *arg)
     videoTaskQueue = xQueueCreate(1, sizeof(void*));
 
     int8_t previousScalingMode = -1;
-    struct video_update *update;
+    odroid_video_update *update;
 
     while(1)
     {
@@ -259,15 +253,15 @@ static void videoTask(void *arg)
 
            if (scalingMode) {
                float aspect = (scalingMode == ODROID_SCALING_FILL) ? (8.f / 7.f) : 1.f;
-               odroid_display_set_scale(NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT, aspect);
+               odroid_display_set_scale(update->width, update->height, aspect);
            } else {
-               odroid_display_reset_scale(NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT);
+               odroid_display_reset_scale(update->width, update->height);
            }
         }
 
         ili9341_write_frame_scaled(update->buffer, redraw ? NULL : update->diff,
-                                   NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT, update->stride,
-                                   1, PIXEL_MASK, myPalette);
+                                   update->width, update->height, update->pitch,
+                                   1, PIXEL_MASK, update->palette);
 
         xQueueReceive(videoTaskQueue, &update, portMAX_DELAY);
     }

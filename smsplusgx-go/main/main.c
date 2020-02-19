@@ -23,19 +23,11 @@ static char* romPath = NULL;
 static uint32_t* audioBuffer;
 
 static uint8_t* framebuffers[2];
-static int currentBuffer = 0;
+static uint16_t currentBuffer = 0;
 
-struct video_update {
-    odroid_scanline diff[SMS_HEIGHT];
-    uint8_t *buffer;
-    uint16_t palette[PALETTE_SIZE];
-    short width;
-    short height;
-    short stride;
-};
-static struct video_update update1 = {0,};
-static struct video_update update2 = {0,};
-static struct video_update *currentUpdate = &update1;
+static odroid_video_update update1;
+static odroid_video_update update2;
+static odroid_video_update *currentUpdate = &update1;
 
 static uint totalElapsedTime = 0;
 static uint emulatedFrames = 0;
@@ -56,7 +48,7 @@ static void videoTask(void *arg)
     videoTaskQueue = xQueueCreate(1, sizeof(void*));
 
     int8_t previousScalingMode = -1;
-    struct video_update* update;
+    odroid_video_update* update;
 
     while(1)
     {
@@ -80,7 +72,7 @@ static void videoTask(void *arg)
         }
 
         ili9341_write_frame_scaled(update->buffer, redraw ? NULL : update->diff,
-                                   update->width, update->height, update->stride,
+                                   update->width, update->height, update->pitch,
                                    1, PIXEL_MASK, update->palette);
 
         xQueueReceive(videoTaskQueue, &update, portMAX_DELAY);
@@ -246,6 +238,11 @@ void app_main(void)
     consoleIsSMS = sms.console == CONSOLE_SMS || sms.console == CONSOLE_SMS2;
     consoleIsGG  = sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS;
 
+    update1.width  = update2.width  = bitmap.viewport.w;
+    update1.height = update2.height = bitmap.viewport.h;
+    update1.pitch  = update2.pitch  = bitmap.pitch;
+    update1.palette = malloc(64); update2.palette = malloc(64);
+
     uint8_t refresh = (sms.display == DISPLAY_NTSC) ? 60 : 50;
     const int frameTime = CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / refresh;
 
@@ -351,19 +348,16 @@ void app_main(void)
         }
         else
         {
-            currentUpdate->width  = bitmap.viewport.w;
-            currentUpdate->height = bitmap.viewport.h;
             currentUpdate->buffer = bitmap.data + bitmap.viewport.x;
-            currentUpdate->stride = bitmap.pitch;
             render_copy_palette(currentUpdate->palette);
 
-            struct video_update *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
+            odroid_video_update *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
 
             // Diff buffer
             odroid_buffer_diff(currentUpdate->buffer, previousUpdate->buffer,
                                currentUpdate->palette, previousUpdate->palette,
                                currentUpdate->width, currentUpdate->height,
-                               currentUpdate->stride, 1, PIXEL_MASK, PAL_SHIFT_MASK,
+                               currentUpdate->pitch, 1, PIXEL_MASK, PAL_SHIFT_MASK,
                                currentUpdate->diff);
 
             if (currentUpdate->diff[0].width && currentUpdate->diff[0].repeat == currentUpdate->height) {

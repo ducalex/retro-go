@@ -275,7 +275,7 @@ void app_main(void)
     odroid_input_battery_level_init();
 
     esp_err_t r = odroid_sdcard_open();
-    ili9341_init();
+    odroid_display_init();
 
     if (r != ESP_OK)
     {

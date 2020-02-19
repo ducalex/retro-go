@@ -18,8 +18,6 @@ void odroid_system_led_set(int value);
 void odroid_system_gpio_init();
 
 extern ODROID_START_ACTION startAction;
-extern ODROID_SCALING scalingMode;
-extern int8_t forceRedraw;
 extern int8_t speedupEnabled;
 
 inline uint get_elapsed_time_since(uint start)

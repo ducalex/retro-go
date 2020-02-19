@@ -12,9 +12,7 @@
 static bool system_initialized = false;
 
 ODROID_START_ACTION startAction = 0;
-ODROID_SCALING scalingMode = ODROID_SCALING_FILL;
 int8_t speedupEnabled = 0;
-int8_t forceRedraw = 0;
 
 void odroid_system_init(int app_id, int sampleRate, char **romPath)
 {
@@ -45,7 +43,7 @@ void odroid_system_init(int app_id, int sampleRate, char **romPath)
     //sdcard init must be before LCD init
     esp_err_t sd_init = odroid_sdcard_open();
 
-    ili9341_init();
+    odroid_display_init();
 
     if (esp_reset_reason() == ESP_RST_PANIC)
     {
@@ -74,8 +72,6 @@ void odroid_system_init(int app_id, int sampleRate, char **romPath)
     }
 
     odroid_audio_init(odroid_settings_AudioSink_get(), sampleRate);
-
-    scalingMode = odroid_settings_Scaling_get();
 
     if (startAction == ODROID_START_ACTION_NETPLAY)
     {
