@@ -716,9 +716,9 @@ void ili9341_write_frame_scaled(void* buffer, odroid_line_diff *diff,
             if (update->width > 0) {
                 int n_pixels = (x_scale * update->width) * (y_scale * update->repeat);
                 if (n_pixels < POLLING_PIXEL_THRESHOLD) {
-                    write_rect(buffer + (y * pitch) + (update->left * pixel_width), palette,
-                                x_origin, y_origin, update->left, y, update->width, update->repeat,
-                                pitch, pixel_width, pixel_mask, x_inc, y_inc);
+                    write_rect(buffer + (update->top * pitch) + (update->left * pixel_width), palette,
+                               x_origin, y_origin, update->left, update->top, update->width,
+                               update->repeat, pitch, pixel_width, pixel_mask, x_inc, y_inc);
                 } else {
                     (*int_ptr++) = (*update);
                 }
@@ -734,8 +734,8 @@ void ili9341_write_frame_scaled(void* buffer, odroid_line_diff *diff,
     while (--int_ptr >= &int_updates)
     {
         write_rect(buffer + (int_ptr->top * pitch) + (int_ptr->left * pixel_width), palette,
-                    x_origin, y_origin, int_ptr->left, int_ptr->top, int_ptr->width, int_ptr->repeat,
-                    pitch, pixel_width, pixel_mask, x_inc, y_inc);
+                   x_origin, y_origin, int_ptr->left, int_ptr->top, int_ptr->width, int_ptr->repeat,
+                   pitch, pixel_width, pixel_mask, x_inc, y_inc);
     }
 
     spi_device_release_bus(spi);

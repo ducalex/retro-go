@@ -90,3 +90,9 @@ _Note: It is possible to use esp-idf 3.2 but changes to sdkconfig might be neces
 - A few lines of code were taken from go-emu by pelle7, as well as the esthetics was copied.
 - [miniz](https://github.com/richgel999/miniz) For zipped ROM and zlib API
 - [luPng](https://github.com/jansol/LuPng) For basic PNG decoding
+
+
+# License
+Every part of this project is licensed under the MIT license with the exception of:
+- gnuboy-go/components/gnuboy (GPL2)
+- smsplusgx-go/components/smsplus (GPL2)
