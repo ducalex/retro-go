@@ -11,6 +11,7 @@
 
 typedef struct {
     char name[64];
+    char ext[8];
     char path[96];
     uint32_t checksum;
 } retro_emulator_file_t;

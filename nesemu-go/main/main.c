@@ -456,7 +456,7 @@ void app_main(void)
    }
 
    printf("NoFrendo start!\n");
-   char* args[1] = { odroid_sdcard_get_filename(romPath) };
+   char* args[1] = { strdup(odroid_sdcard_get_filename(romPath)) };
    nofrendo_main(1, args);
 
    printf("NoFrendo died.\n");

@@ -152,7 +152,7 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
 
     if (*crc == 0)
     {
-        sprintf(path, CACHE_PATH "/%s/romart/%c/%s", emu->dirname, file->name[0], file->name);
+        sprintf(path, CACHE_PATH "/%s/romart/%c/%s%s", emu->dirname, file->name[0], file->name, file->ext);
         if (odroid_sdcard_copy_file_to_memory(path, crc, 4)) {
             printf("Cache found: %s\n", path);
         }
@@ -184,6 +184,7 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
                 sprintf(path, CACHE_PATH "/%s/romart/%c/", emu->dirname, file->name[0]);
                 odroid_sdcard_mkdir(path);
                 strcat(path, file->name);
+                strcat(path, file->ext);
                 if ((fp = fopen(path, "wb")) != NULL)
                 {
                     fwrite(crc, 4, 1, fp);
@@ -204,10 +205,8 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
 
         // /sd/romart/gbc/0/08932754.png
         // /sd/romart/gbc/Super Mario.png
-        char *basename = odroid_sdcard_get_filename_without_extension(file->name);
         sprintf(path, ROMART_PATH "/%s/%c/%s.png", emu->dirname, buf_crc[0], buf_crc);
-        sprintf(path2, ROMART_PATH "/%s/%s.png", emu->dirname, basename);
-        free(basename);
+        sprintf(path2, ROMART_PATH "/%s/%s.png", emu->dirname, file->name);
         LuImage *img;
         if ((img = luPngReadFile(path)) || (img = luPngReadFile(path2)))
         {

@@ -193,160 +193,63 @@ size_t odroid_sdcard_unzip_file_to_memory(const char* path, void* buf, size_t bu
 
 char* odroid_sdcard_get_savefile_path(const char* romPath)
 {
-    char* result = NULL;
-
     char* fileName = odroid_sdcard_get_filename(romPath);
+    char* extension = odroid_sdcard_get_extension(fileName);
+    char buffer[128];
 
-    //printf("%s: base_path='%s', fileName='%s'\n", __func__, base_path, fileName);
-
-    // Determine folder
-    char* extension = fileName + strlen(fileName); // place at NULL terminator
-    while (extension != fileName)
-    {
-        if (*extension == '.')
-        {
-            ++extension;
-            break;
-        }
-        --extension;
-    }
-
-    if (extension == fileName)
+    if (!extension)
     {
         printf("%s: File extention not found.\n", __func__);
         abort();
     }
 
-    //printf("%s: extension='%s'\n", __func__, extension);
+    sprintf(buffer, SD_BASE_PATH "/odroid/data/%s/%s.sav", extension, fileName);
 
-    const char* DATA_PATH = "/odroid/data/";
-    const char* SAVE_EXTENSION = ".sav";
-
-    size_t savePathLength = strlen(SD_BASE_PATH) + strlen(DATA_PATH) + strlen(extension) + 1 + strlen(fileName) + strlen(SAVE_EXTENSION) + 1;
-    char* savePath = malloc(savePathLength);
-    if (savePath)
-    {
-        strcpy(savePath, SD_BASE_PATH);
-        strcat(savePath, DATA_PATH);
-        strcat(savePath, extension);
-        strcat(savePath, "/");
-        strcat(savePath, fileName);
-        strcat(savePath, SAVE_EXTENSION);
-
-        printf("%s: savefile_path='%s'\n", __func__, savePath);
-
-        result = savePath;
-    }
-
-    free(fileName);
-
-    return result;
+    return strdup(buffer);
 }
 
 
 char* odroid_sdcard_get_filename(const char* path)
 {
-	int length = strlen(path);
-	int fileNameStart = length;
+	int pos = strlen(path);
 
-	if (fileNameStart < 1) abort();
-
-	while (fileNameStart > 0)
+	while (--pos > 0)
 	{
-		if (path[fileNameStart] == '/')
+		if (path[pos] == '/')
 		{
-			++fileNameStart;
-			break;
+			return path + pos + 1;
 		}
-
-		--fileNameStart;
 	}
 
-	int size = length - fileNameStart + 1;
-
-	char* result = malloc(size);
-	if (!result) abort();
-
-	result[size - 1] = 0;
-	for (int i = 0; i < size - 1; ++i)
-	{
-		result[i] = path[fileNameStart + i];
-	}
-
-	//printf("GetFileName: result='%s'\n", result);
-
-	return result;
+    return path;
 }
 
 char* odroid_sdcard_get_extension(const char* path)
 {
 	// Note: includes '.'
-	int length = strlen(path);
-	int extensionStart = length;
+	int pos = strlen(path);
 
-	if (extensionStart < 1) abort();
-
-	while (extensionStart > 0)
+	while (--pos > 0)
 	{
-		if (path[extensionStart] == '.')
+		if (path[pos] == '.')
 		{
-			break;
+			return path + pos + 1;
 		}
-
-		--extensionStart;
 	}
 
-	int size = length - extensionStart + 1;
-
-	char* result = malloc(size);
-	if (!result) abort();
-
-	result[size - 1] = 0;
-	for (int i = 0; i < size - 1; ++i)
-	{
-		result[i] = path[extensionStart + i];
-	}
-
-	//printf("GetFileExtenstion: result='%s'\n", result);
-
-	return result;
+	return NULL;
 }
 
 char* odroid_sdcard_get_filename_without_extension(const char* path)
 {
-	char* fileName = odroid_sdcard_get_filename(path);
+	char* fileName = strdup(odroid_sdcard_get_filename(path));
+    char* ext = odroid_sdcard_get_extension(fileName);
 
-	int length = strlen(fileName);
-	int extensionStart = length;
+    if (ext) {
+        fileName[strlen(fileName)-strlen(ext)] = 0;
+    }
 
-	if (extensionStart < 1) abort();
-
-	while (extensionStart > 0)
-	{
-		if (fileName[extensionStart] == '.')
-		{
-			break;
-		}
-
-		--extensionStart;
-	}
-
-	int size = extensionStart + 1;
-
-	char* result = malloc(size);
-	if (!result) abort();
-
-	result[size - 1] = 0;
-	for (int i = 0; i < size - 1; ++i)
-	{
-		result[i] = fileName[i];
-	}
-
-	free(fileName);
-
-	//printf("GetFileNameWithoutExtension: result='%s'\n", result);
-
-	return result;
+    return fileName;
 }
 
 int odroid_sdcard_mkdir(char *dir)

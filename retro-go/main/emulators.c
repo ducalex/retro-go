@@ -71,10 +71,9 @@ void emulators_init_emu(retro_emulator_t *emu)
 
         while ((in_file = readdir(dir)))
         {
-            if (strlen(in_file->d_name) < strlen(emu->ext) + 1)
-                continue;
+            char *ext = odroid_sdcard_get_extension(in_file->d_name);
 
-            char *ext = &in_file->d_name[strlen(in_file->d_name)-strlen(emu->ext)];
+            if (!ext) continue;
 
             if (strcasecmp(emu->ext, ext) != 0 && strcasecmp("zip", ext) != 0)
                 continue;
@@ -85,7 +84,9 @@ void emulators_init_emu(retro_emulator_t *emu)
             }
             retro_emulator_file_t *file = &emu->roms.files[emu->roms.count++];
             sprintf(file->path, "%s/%s", path, in_file->d_name);
-            sprintf(file->name, "%s", in_file->d_name);
+            strcpy(file->name, in_file->d_name);
+            strcpy(file->ext, ext);
+            file->name[strlen(file->name)-strlen(ext)-1] = 0;
             file->checksum = 0;
         }
 
