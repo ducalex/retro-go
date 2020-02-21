@@ -5,6 +5,7 @@
 
 #include "string.h"
 
+#include "odroid_display.h"
 #include "odroid_audio.h"
 
 static const char* NvsNamespace = "Odroid";
@@ -18,6 +19,7 @@ static const char* NvsKey_StartAction = "StartAction";
 static const char* NvsKey_Scaling = "Scaling";
 static const char* NvsKey_AudioSink = "AudioSink";
 static const char* NvsKey_Palette = "Palette";
+static const char* NvsKey_DispUpdate = "DispUpdate";
 
 static nvs_handle my_handle;
 static int app_id = 0;
@@ -198,4 +200,13 @@ int32_t odroid_settings_Palette_get()
 void odroid_settings_Palette_set(int32_t value)
 {
     odroid_settings_app_int32_set(NvsKey_Palette, value);
+}
+
+int32_t odroid_settings_DisplayUpdateMode_get()
+{
+    return odroid_settings_app_int32_get(NvsKey_DispUpdate, ODROID_DISPLAY_UPDATE_AUTO);
+}
+void odroid_settings_DisplayUpdateMode_set(int32_t value)
+{
+    odroid_settings_app_int32_set(NvsKey_DispUpdate, value);
 }

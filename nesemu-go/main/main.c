@@ -1,6 +1,4 @@
 #include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-#include <freertos/queue.h>
 #include "esp_heap_caps.h"
 #include "odroid_system.h"
 
@@ -36,13 +34,11 @@ static char fb[1];
 static bitmap_t *myBitmap;
 static uint16_t myPalette[64];
 
-static odroid_video_update update1 = {DEFAULT_WIDTH, DEFAULT_HEIGHT, 0, NULL, myPalette};
-static odroid_video_update update2 = {DEFAULT_WIDTH, DEFAULT_HEIGHT, 0, NULL, myPalette};
-static odroid_video_update *currentUpdate = &update1;
+static odroid_video_frame update1 = {DEFAULT_WIDTH, DEFAULT_HEIGHT, 0, 1, PIXEL_MASK, NULL, myPalette};
+static odroid_video_frame update2 = {DEFAULT_WIDTH, DEFAULT_HEIGHT, 0, 1, PIXEL_MASK, NULL, myPalette};
+static odroid_video_frame *currentUpdate = &update1;
 
 uint fullFrames = 0;
-
-volatile QueueHandle_t videoTaskQueue;
 
 extern nes_t* console_nes;
 extern nes6502_context cpu;
@@ -164,7 +160,7 @@ static void set_palette(rgb_t *pal)
 static void clear(uint8 color)
 {
 //   SDL_FillRect(mySurface, 0, color);
-}
+ }
 
 /* acquire the directbuffer for writing */
 static bitmap_t *lock_write(void)
@@ -187,25 +183,18 @@ static void IRAM_ATTR custom_blit(bitmap_t *bmp, short interlace)
       abort();
    }
 
-   odroid_video_update *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
+   odroid_video_frame *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
    // Flip the update struct so we can keep track of the changes in the last
    // frame and fill in the new details (actually, these ought to always be
    // the same...)
    currentUpdate->buffer = bmp->line[NES_VERTICAL_OVERDRAW/2];
-   currentUpdate->pitch = bmp->pitch;
+   currentUpdate->stride = bmp->pitch;
 
-   // Note, the NES palette never changes during runtime and we assume that
-   // there are no duplicate entries, so no need to pass the palette over to
-   // the diff function.
-   odroid_buffer_diff(currentUpdate->buffer, previousUpdate->buffer, NULL, NULL,
-                      currentUpdate->width, currentUpdate->height, currentUpdate->pitch,
-                      1, PIXEL_MASK, 0, currentUpdate->diff);
+   odroid_display_queue_update(currentUpdate, previousUpdate);
 
-   if (currentUpdate->diff[0].width && currentUpdate->diff[0].repeat == currentUpdate->height) {
+   if (currentUpdate->diff[0].width && currentUpdate->diff[0].height == currentUpdate->height) {
       ++fullFrames;
    }
-
-   xQueueSend(videoTaskQueue, &currentUpdate, portMAX_DELAY);
 
    currentUpdate = previousUpdate;
 }
@@ -230,49 +219,6 @@ void osd_getvideoinfo(vidinfo_t *info)
    info->default_height = DEFAULT_HEIGHT;
    info->driver = &sdlDriver;
 }
-
-static void videoTask(void *arg)
-{
-    videoTaskQueue = xQueueCreate(1, sizeof(void*));
-
-    int8_t previousScalingMode = -1;
-    odroid_video_update *update;
-
-    while(1)
-    {
-        xQueuePeek(videoTaskQueue, &update, portMAX_DELAY);
-
-        if (!update) break;
-
-        bool redraw = previousScalingMode != scalingMode || forceRedraw;
-        if (redraw)
-        {
-           ili9341_blank_screen();
-           previousScalingMode = scalingMode;
-           forceRedraw = false;
-
-           if (scalingMode) {
-               float aspect = (scalingMode == ODROID_SCALING_FILL) ? (8.f / 7.f) : 1.f;
-               odroid_display_set_scale(update->width, update->height, aspect);
-           } else {
-               odroid_display_reset_scale(update->width, update->height);
-           }
-        }
-
-        ili9341_write_frame_scaled(update->buffer, redraw ? NULL : update->diff,
-                                   update->width, update->height, update->pitch,
-                                   1, PIXEL_MASK, update->palette);
-
-        xQueueReceive(videoTaskQueue, &update, portMAX_DELAY);
-    }
-
-    videoTaskQueue = NULL;
-
-    vTaskDelete(NULL);
-
-    while (1) {}
-}
-
 
 /**
  * Input
@@ -358,8 +304,6 @@ int osd_init()
 
    osd_init_sound();
 
-   xTaskCreatePinnedToCore(&videoTask, "videoTask", 2048, NULL, 5, NULL, 1);
-
    return 0;
 }
 
@@ -395,11 +339,9 @@ void QuitEmulator(bool save)
 {
    printf("QuitEmulator: stopping tasks.\n");
 
-   void *exitVideoTask = NULL;
-   xQueueSend(videoTaskQueue, &exitVideoTask, portMAX_DELAY);
-   while (videoTaskQueue) vTaskDelay(1);
-
    odroid_audio_terminate();
+
+   // odroid_display_queue_update(NULL);
    ili9341_blank_screen();
 
    odroid_display_lock();

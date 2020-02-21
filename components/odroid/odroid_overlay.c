@@ -258,7 +258,7 @@ int odroid_overlay_dialog(char *header, odroid_dialog_choice_t *options, int opt
 
     odroid_input_wait_for_key(last_key, false);
 
-    forceRedraw = true;
+    forceVideoRefresh = true;
 
     return sel < 0 ? sel : options[sel].id;
 }
@@ -331,6 +331,25 @@ static bool audio_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_
     return event == ODROID_DIALOG_ENTER;
 }
 
+static bool display_mode_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+{
+    if (event == ODROID_DIALOG_PREV && displayUpdateMode > 0) {
+        odroid_settings_DisplayUpdateMode_set(--displayUpdateMode);
+        forceVideoRefresh = true;
+    }
+
+    if (event == ODROID_DIALOG_NEXT && displayUpdateMode < ODROID_DISPLAY_UPDATE_COUNT - 1) {
+        odroid_settings_DisplayUpdateMode_set(++displayUpdateMode);
+        forceVideoRefresh = true;
+    }
+
+    if (displayUpdateMode == ODROID_DISPLAY_UPDATE_AUTO)    strcpy(option->value, "Auto");
+    if (displayUpdateMode == ODROID_DISPLAY_UPDATE_FULL)    strcpy(option->value, "Full");
+    if (displayUpdateMode == ODROID_DISPLAY_UPDATE_PARTIAL) strcpy(option->value, "Partial");
+
+    return event == ODROID_DIALOG_ENTER;
+}
+
 static bool volume_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
     int level = odroid_settings_Volume_get();
@@ -367,22 +386,21 @@ static bool brightness_update_cb(odroid_dialog_choice_t *option, odroid_dialog_e
 
 static bool scaling_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
-    uint8_t level = odroid_settings_Scaling_get();
     uint8_t max = 2;
 
-    if (event == ODROID_DIALOG_PREV && level > 0) {
-        odroid_settings_Scaling_set(--level);
+    if (event == ODROID_DIALOG_PREV && scalingMode > 0) {
+        odroid_settings_Scaling_set(--scalingMode);
+        forceVideoRefresh = true;
     }
 
-    if (event == ODROID_DIALOG_NEXT && level < max) {
-        odroid_settings_Scaling_set(++level);
+    if (event == ODROID_DIALOG_NEXT && scalingMode < max) {
+        odroid_settings_Scaling_set(++scalingMode);
+        forceVideoRefresh = true;
     }
 
-    scalingMode = level;
-
-    if (level == 0) strcpy(option->value, "Off  ");
-    if (level == 1) strcpy(option->value, "Scale");
-    if (level == 2) strcpy(option->value, "Full ");
+    if (scalingMode == 0) strcpy(option->value, "Off  ");
+    if (scalingMode == 1) strcpy(option->value, "Scale");
+    if (scalingMode == 2) strcpy(option->value, "Full ");
 
     return event == ODROID_DIALOG_ENTER;
 }
@@ -423,10 +441,12 @@ int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options, int extr
 int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options, int extra_options_count)
 {
     odroid_dialog_choice_t options[12] = {
-        {10, "Scaling", "Yes", 1, &scaling_update_cb},
-        {11, "Speed  ", "Off", 1, &speedup_update_cb},
+        {10, "Scaling", "Full", 1, &scaling_update_cb},
+        {12, "Filter", "Nearest", 1, NULL}, // Interpolation
+        {11, "Update Mode", "Auto", 1, &display_mode_update_cb},
+        {13, "Speed", "1x", 1, &speedup_update_cb},
     };
-    int options_count = 2;
+    int options_count = 4;
 
     if (extra_options_count > 0) {
         memcpy(options + options_count, extra_options, extra_options_count * sizeof(odroid_dialog_choice_t));

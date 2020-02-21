@@ -25,9 +25,9 @@ static uint32_t* audioBuffer;
 static uint8_t* framebuffers[2];
 static uint16_t currentBuffer = 0;
 
-static odroid_video_update update1;
-static odroid_video_update update2;
-static odroid_video_update *currentUpdate = &update1;
+static odroid_video_frame update1;
+static odroid_video_frame update2;
+static odroid_video_frame *currentUpdate = &update1;
 
 static uint totalElapsedTime = 0;
 static uint emulatedFrames = 0;
@@ -38,52 +38,8 @@ static bool skipFrame = false;
 
 static bool consoleIsGG = false;
 static bool consoleIsSMS = false;
-
-volatile QueueHandle_t videoTaskQueue;
 // --- MAIN
 
-
-static void videoTask(void *arg)
-{
-    videoTaskQueue = xQueueCreate(1, sizeof(void*));
-
-    int8_t previousScalingMode = -1;
-    odroid_video_update* update;
-
-    while(1)
-    {
-        xQueuePeek(videoTaskQueue, &update, portMAX_DELAY);
-
-        if (!update) break;
-
-        bool redraw = previousScalingMode != scalingMode || forceRedraw;
-        if (redraw)
-        {
-            ili9341_blank_screen();
-            previousScalingMode = scalingMode;
-            forceRedraw = false;
-
-            if (scalingMode) {
-                float aspect = consoleIsGG && scalingMode == ODROID_SCALING_FILL ? 1.2f : 1.f;
-                odroid_display_set_scale(update->width, update->height, aspect);
-            } else {
-                odroid_display_reset_scale(update->width, update->height);
-            }
-        }
-
-        ili9341_write_frame_scaled(update->buffer, redraw ? NULL : update->diff,
-                                   update->width, update->height, update->pitch,
-                                   1, PIXEL_MASK, update->palette);
-
-        xQueueReceive(videoTaskQueue, &update, portMAX_DELAY);
-    }
-
-    videoTaskQueue = NULL;
-
-    vTaskDelete(NULL);
-
-    while (1) {}
-}
 
 void SaveState()
 {
@@ -150,11 +106,9 @@ void QuitEmulator(bool save)
 {
     printf("QuitEmulator: stopping tasks.\n");
 
-    void *exitVideoTask = NULL;
-    xQueueSend(videoTaskQueue, &exitVideoTask, portMAX_DELAY);
-    while (videoTaskQueue) vTaskDelay(1);
-
     odroid_audio_terminate();
+
+    // odroid_display_queue_update(NULL);
     ili9341_blank_screen();
 
     odroid_display_lock();
@@ -193,8 +147,6 @@ void app_main(void)
 
     assert(framebuffers[0] && framebuffers[1]);
     assert(audioBuffer);
-
-    xTaskCreatePinnedToCore(&videoTask, "videoTask", 4096, NULL, 5, NULL, 1);
 
 
     // Load ROM
@@ -240,7 +192,10 @@ void app_main(void)
 
     update1.width  = update2.width  = bitmap.viewport.w;
     update1.height = update2.height = bitmap.viewport.h;
-    update1.pitch  = update2.pitch  = bitmap.pitch;
+    update1.stride  = update2.stride  = bitmap.pitch;
+    update1.pixel_size = update2.pixel_size = 1;
+    update1.pixel_mask = update2.pixel_mask = PIXEL_MASK;
+    update1.pal_shift_mask = update2.pal_shift_mask = PAL_SHIFT_MASK;
     update1.palette = malloc(64); update2.palette = malloc(64);
 
     uint8_t refresh = (sms.display == DISPLAY_NTSC) ? 60 : 50;
@@ -351,21 +306,13 @@ void app_main(void)
             currentUpdate->buffer = bitmap.data + bitmap.viewport.x;
             render_copy_palette(currentUpdate->palette);
 
-            odroid_video_update *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
+            odroid_video_frame *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
 
-            // Diff buffer
-            odroid_buffer_diff(currentUpdate->buffer, previousUpdate->buffer,
-                               currentUpdate->palette, previousUpdate->palette,
-                               currentUpdate->width, currentUpdate->height,
-                               currentUpdate->pitch, 1, PIXEL_MASK, PAL_SHIFT_MASK,
-                               currentUpdate->diff);
+            odroid_display_queue_update(currentUpdate, previousUpdate);
 
-            if (currentUpdate->diff[0].width && currentUpdate->diff[0].repeat == currentUpdate->height) {
+            if (currentUpdate->diff[0].width && currentUpdate->diff[0].height == currentUpdate->height) {
                 ++fullFrames;
             }
-
-            // Send update data to video queue on other core
-            xQueueSend(videoTaskQueue, &currentUpdate, portMAX_DELAY);
 
             // Flip the update struct so we don't start writing into it while
             // the second core is still updating the screen.

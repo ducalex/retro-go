@@ -52,6 +52,9 @@ void odroid_settings_AudioSink_set(ODROID_AUDIO_SINK value);
 int32_t odroid_settings_Palette_get();
 void odroid_settings_Palette_set(int32_t value);
 
+int32_t odroid_settings_DisplayUpdateMode_get();
+void odroid_settings_DisplayUpdateMode_set(int32_t value);
+
 void odroid_settings_string_set(const char *key, char *value);
 char* odroid_settings_string_get(const char *key, char *default_value);
 
