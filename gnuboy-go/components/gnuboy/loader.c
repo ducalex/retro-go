@@ -274,7 +274,7 @@ int rom_load()
 
 	// SRAM
 	ram.sram_dirty = 1;
-	ram.sbank = malloc(8192 * mbc.ramsize);
+	ram.sbank = heap_caps_malloc_prefer(8192 * mbc.ramsize, MALLOC_CAP_INTERNAL, MALLOC_CAP_SPIRAM);
 
 	initmem(ram.sbank, 8192 * mbc.ramsize);
 	initmem(ram.ibank, 4096 * 8);
