@@ -52,16 +52,16 @@ typedef struct {
     int8_t use_diff;
 } odroid_video_update;
 
-extern int8_t scalingMode;
-extern int8_t displayUpdateMode;
-extern int8_t forceVideoRefresh;
+extern volatile int8_t scalingMode;
+extern volatile int8_t displayUpdateMode;
+extern volatile int8_t forceVideoRefresh;
 
 void ili9341_write_frame_rectangleLE(short left, short top, short width, short height, uint16_t* buffer);
 void ili9341_clear_screen(uint16_t color);
 void ili9341_blank_screen();
 
-int odroid_display_backlight_get();
-void odroid_display_backlight_set(int level);
+int8_t odroid_display_backlight_get();
+void odroid_display_backlight_set(int8_t level);
 
 void odroid_display_reset_scale(short width, short height);
 void odroid_display_set_scale(short width, short height, float aspect_ratio);

@@ -35,9 +35,8 @@ int16_t* audioBuffer;
 
 uint16_t* framebuffers[2];
 
-static odroid_line_diff diff[GB_HEIGHT];
-static odroid_video_frame update1 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, NULL, NULL};
-static odroid_video_frame update2 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, NULL, NULL};
+static odroid_video_frame update1 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, NULL, NULL, 0};
+static odroid_video_frame update2 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, NULL, NULL, 0};
 static odroid_video_frame *currentUpdate = &update1;
 
 static uint totalElapsedTime = 0;

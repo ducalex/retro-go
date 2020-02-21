@@ -34,8 +34,8 @@ static char fb[1];
 static bitmap_t *myBitmap;
 static uint16_t myPalette[64];
 
-static odroid_video_frame update1 = {DEFAULT_WIDTH, DEFAULT_HEIGHT, 0, 1, PIXEL_MASK, NULL, myPalette};
-static odroid_video_frame update2 = {DEFAULT_WIDTH, DEFAULT_HEIGHT, 0, 1, PIXEL_MASK, NULL, myPalette};
+static odroid_video_frame update1 = {DEFAULT_WIDTH, DEFAULT_HEIGHT, 0, 1, PIXEL_MASK, NULL, myPalette, 0};
+static odroid_video_frame update2 = {DEFAULT_WIDTH, DEFAULT_HEIGHT, 0, 1, PIXEL_MASK, NULL, myPalette, 0};
 static odroid_video_frame *currentUpdate = &update1;
 
 uint fullFrames = 0;

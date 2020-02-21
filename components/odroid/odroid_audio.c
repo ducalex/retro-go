@@ -169,7 +169,7 @@ void odroid_audio_set_sink(ODROID_AUDIO_SINK sink)
     odroid_audio_init(sink, audio_sample_rate);
 }
 
-void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
+void IRAM_ATTR odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
 {
     short currentAudioSampleCount = frameCount * 2;
 

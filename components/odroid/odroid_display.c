@@ -53,14 +53,13 @@ static spi_transaction_t trans[SPI_TRANSACTION_COUNT];
 static spi_device_handle_t spi;
 static bool use_polling = false;
 
-static int backlightLevels[] = {10, 25, 50, 75, 100};
-static int backlightLevel = ODROID_BACKLIGHT_LEVEL2;
+static int8_t backlightLevels[] = {10, 25, 50, 75, 100};
+static int8_t backlightLevel = ODROID_BACKLIGHT_LEVEL2;
 
-int8_t scalingMode = ODROID_SCALING_FILL;
-int8_t displayUpdateMode = ODROID_DISPLAY_UPDATE_AUTO;
-int8_t forceVideoRefresh = true;
-
-static volatile QueueHandle_t videoTaskQueue;
+volatile int8_t scalingMode = ODROID_SCALING_FILL;
+volatile int8_t displayUpdateMode = ODROID_DISPLAY_UPDATE_AUTO;
+volatile int8_t forceVideoRefresh = true;
+volatile static QueueHandle_t videoTaskQueue;
 
 /*
  The ILI9341 needs a bunch of command/argument values to be initialized. They are stored in this struct.
@@ -246,7 +245,6 @@ static inline void spi_put_transaction(spi_transaction_t* t)
     }
 }
 
-
 //Send a command to the ILI9341. Uses spi_device_transmit, which waits until the transfer is complete.
 static void ili_cmd(const uint8_t cmd)
 {
@@ -364,10 +362,6 @@ static void backlight_init()
     ledc_timer.speed_mode = LEDC_LOW_SPEED_MODE;   //timer mode,
     ledc_timer.timer_num = LEDC_TIMER_0;    //timer index
 
-
-    ledc_timer_config(&ledc_timer);
-
-
     //set the configuration
     ledc_channel_config_t ledc_channel;
     memset(&ledc_channel, 0, sizeof(ledc_channel));
@@ -386,9 +380,8 @@ static void backlight_init()
     //the frequency and bit_num of these channels should be the same
     ledc_channel.timer_sel = LEDC_TIMER_0;
 
+    ledc_timer_config(&ledc_timer);
     ledc_channel_config(&ledc_channel);
-
-    //initialize fade service.
     ledc_fade_func_install(0);
 }
 
@@ -434,10 +427,7 @@ static void ili9341_init()
 
 static void ili9341_deinit()
 {
-    // // Drain SPI queue
-    // xTaskToNotify = 0;
-    //
-     esp_err_t err = ESP_OK;
+    esp_err_t err = ESP_OK;
 
     backlight_deinit();
 
@@ -601,12 +591,11 @@ pixel_diff(uint8_t *buffer1, uint8_t *buffer2,
     return palette1[p1] != palette2[p2];
 }
 
-void IRAM_ATTR
-odroid_buffer_diff(void *buffer, void *old_buffer,
-                   uint16_t *palette, uint16_t *old_palette,
-                   short width, short height, short stride, short pixel_size,
-                   uint8_t pixel_mask, uint8_t palette_shift_mask,
-                   odroid_line_diff *out_diff)
+static inline void
+odroid_buffer_diff(void *buffer, void *old_buffer, uint16_t *palette,
+                   uint16_t *old_palette, short width, short height,
+                   short stride, short pixel_size, uint8_t pixel_mask,
+                   uint8_t palette_shift_mask, odroid_line_diff *out_diff)
 {
     // If the palette didn't change we can speed up things by avoiding pixel_diff()
     if (palette == old_palette || memcmp(palette, old_palette, (pixel_mask + 1) * 2) == 0)
@@ -781,13 +770,8 @@ static void videoTask(void *arg)
     while (1) {}
 }
 
-void odroid_display_write_frame(odroid_video_frame *frame)
+void IRAM_ATTR odroid_display_write_frame(odroid_video_frame *frame)
 {
-    if (!frame->buffer) {
-        ili9341_blank_screen();
-        return;
-    }
-
     odroid_display_lock();
     spi_device_acquire_bus(spi, portMAX_DELAY);
 
@@ -827,7 +811,7 @@ void odroid_display_write_frame(odroid_video_frame *frame)
     odroid_display_unlock();
 }
 
-void odroid_display_queue_update(odroid_video_frame *frame, odroid_video_frame *previousFrame)
+void IRAM_ATTR odroid_display_queue_update(odroid_video_frame *frame, odroid_video_frame *previousFrame)
 {
     if (!forceVideoRefresh && displayUpdateMode != ODROID_DISPLAY_UPDATE_FULL && previousFrame) {
         odroid_buffer_diff(frame->buffer, previousFrame->buffer, frame->palette, previousFrame->palette,
@@ -909,12 +893,12 @@ void odroid_display_unlock()
     xSemaphoreGive(display_mutex);
 }
 
-int odroid_display_backlight_get()
+int8_t odroid_display_backlight_get()
 {
     return backlightLevel;
 }
 
-void odroid_display_backlight_set(int level)
+void odroid_display_backlight_set(int8_t level)
 {
     if (level < 0)
     {
