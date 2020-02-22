@@ -459,6 +459,7 @@ int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options, int
 // We should use pointers instead...
 extern void QuitEmulator(bool save);
 extern void SaveState();
+extern void LoadState();
 
 int odroid_overlay_game_menu()
 {
@@ -478,7 +479,8 @@ int odroid_overlay_game_menu()
     odroid_display_unlock();
 
     if (r == 2) {
-        esp_restart();
+        LoadState();
+        // esp_restart();
     } else if (r == 3) {
         SaveState();
     } else if (r == 4) {

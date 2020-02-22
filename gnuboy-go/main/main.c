@@ -119,9 +119,9 @@ void run_to_vblank()
 
 void SaveState()
 {
-    // Save sram
     odroid_input_battery_monitor_enabled_set(0);
     odroid_system_led_set(1);
+    odroid_display_lock();
 
     char* pathName = odroid_sdcard_get_savefile_path(romPath);
     if (!pathName) abort();
@@ -132,21 +132,25 @@ void SaveState()
         printf("%s: fopen save failed\n", __func__);
         odroid_overlay_alert("Save failed");
     }
+    else
+    {
+        savestate(f);
+        rtc_save_internal(f);
+        fclose(f);
 
-    savestate(f);
-    rtc_save_internal(f);
-    fclose(f);
-
-    printf("%s: savestate OK.\n", __func__);
+        printf("%s: savestate OK.\n", __func__);
+    }
 
     free(pathName);
 
+    odroid_display_unlock();
     odroid_system_led_set(0);
     odroid_input_battery_monitor_enabled_set(1);
 }
 
-void LoadState(const char* cartName)
+void LoadState()
 {
+    odroid_display_lock();
     char* pathName = odroid_sdcard_get_savefile_path(romPath);
     if (!pathName) abort();
 
@@ -170,6 +174,7 @@ void LoadState(const char* cartName)
     }
 
     free(pathName);
+    odroid_display_unlock();
 }
 
 void QuitEmulator(bool save)
@@ -310,7 +315,7 @@ void app_main(void)
     // Load state
     if (startAction == ODROID_START_ACTION_RESUME)
     {
-        LoadState(romPath);
+        LoadState();
     }
 
     while (true)

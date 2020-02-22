@@ -357,6 +357,7 @@ static void system_video(bool draw)
 
 extern void do_audio_frame();
 extern uint fullFrames;
+extern void LoadState();
 
 /* main emulation loop */
 void nes_emulate(void)
@@ -382,7 +383,7 @@ void nes_emulate(void)
 
    if (startAction == ODROID_START_ACTION_RESUME)
    {
-      load_sram();
+      LoadState();
    }
 
    while (false == nes.poweroff)

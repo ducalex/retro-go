@@ -46,9 +46,7 @@ void SaveState()
     // Save sram
     odroid_input_battery_monitor_enabled_set(0);
     odroid_system_led_set(1);
-
     odroid_display_lock();
-    odroid_display_drain_spi();
 
     char* pathName = odroid_sdcard_get_savefile_path(romPath);
     if (!pathName) abort();
@@ -68,18 +66,16 @@ void SaveState()
         printf("SaveState: system_save_state OK.\n");
     }
 
-    odroid_display_unlock();
-
     free(pathName);
 
+    odroid_display_unlock();
     odroid_system_led_set(0);
     odroid_input_battery_monitor_enabled_set(1);
 }
 
-void LoadState(const char* cartName)
+void LoadState()
 {
     odroid_display_lock();
-    odroid_display_drain_spi();
 
     char* pathName = odroid_sdcard_get_savefile_path(romPath);
     if (!pathName) abort();
@@ -97,9 +93,9 @@ void LoadState(const char* cartName)
         printf("LoadState: loadstate OK.\n");
     }
 
-    odroid_display_unlock();
-
     free(pathName);
+
+    odroid_display_unlock();
 }
 
 void QuitEmulator(bool save)
@@ -184,7 +180,7 @@ void app_main(void)
 
     if (startAction == ODROID_START_ACTION_RESUME)
     {
-        LoadState(romPath);
+        LoadState();
     }
 
     consoleIsSMS = sms.console == CONSOLE_SMS || sms.console == CONSOLE_SMS2;

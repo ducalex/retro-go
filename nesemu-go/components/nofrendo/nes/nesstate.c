@@ -372,7 +372,7 @@ void load_mapperblock(nes_t *state, SNSS_FILE *snssFile)
 }
 
 
-static int state_save(char* fn)
+int state_save(char* fn)
 {
    SNSS_FILE *snssFile;
    SNSS_RETURN_CODE status;
@@ -448,7 +448,7 @@ _error:
 }
 
 
-static int state_load(char* fn)
+int state_load(char* fn)
 {
    SNSS_FILE *snssFile;
    SNSS_RETURN_CODE status;
@@ -531,51 +531,6 @@ _error:
    gui_sendmsg(GUI_RED, "error: %s", SNSS_GetErrorString(status));
    SNSS_CloseFile(&snssFile);
    abort();
-}
-
-
-void save_sram()
-{
-    odroid_display_lock();
-
-    char* romPath = odroid_settings_RomFilePath_get();
-    if (romPath)
-    {
-        char* pathName = odroid_sdcard_get_savefile_path(romPath);
-        if (!pathName) abort();
-
-        if (state_save(pathName) < 0)
-        {
-            odroid_overlay_alert("Save failed");
-        }
-
-        free(pathName);
-        free(romPath);
-    }
-
-    odroid_display_unlock();
-}
-
-void load_sram()
-{
-    odroid_display_lock();
-
-    char* romName = odroid_settings_RomFilePath_get();
-    if (romName)
-    {
-        char* pathName = odroid_sdcard_get_savefile_path(romName);
-        if (!pathName) abort();
-
-        if (state_load(pathName) < 0)
-        {
-            // abort();
-        }
-
-        free(pathName);
-        free(romName);
-    }
-
-    odroid_display_unlock();
 }
 
 /*

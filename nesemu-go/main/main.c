@@ -322,17 +322,47 @@ void osd_shutdown()
 
 void SaveState()
 {
-    printf("Saving state.\n");
+   odroid_input_battery_monitor_enabled_set(0);
+   odroid_system_led_set(1);
+   odroid_display_lock();
 
-    odroid_input_battery_monitor_enabled_set(0);
-    odroid_system_led_set(1);
+   char* pathName = odroid_sdcard_get_savefile_path(romPath);
+   if (!pathName) abort();
 
-    save_sram();
+   if (state_save(pathName) < 0)
+   {
+      printf("SaveState: failed.\n");
+      odroid_overlay_alert("Save failed");
+   }
+   else
+   {
+      printf("Saving state OK.\n");
+   }
 
-    odroid_system_led_set(0);
-    odroid_input_battery_monitor_enabled_set(1);
+   odroid_display_unlock();
+   odroid_system_led_set(0);
+   odroid_input_battery_monitor_enabled_set(1);
+}
 
-    printf("Saving state OK.\n");
+void LoadState()
+{
+   odroid_display_lock();
+
+   char* pathName = odroid_sdcard_get_savefile_path(romPath);
+   if (!pathName) abort();
+
+   if (state_load(pathName) < 0)
+   {
+      printf("LoadState: failed.\n");
+   }
+   else
+   {
+      printf("LoadState: success.\n");
+   }
+
+   free(pathName);
+
+   odroid_display_unlock();
 }
 
 void QuitEmulator(bool save)

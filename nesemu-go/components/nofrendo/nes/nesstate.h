@@ -29,11 +29,8 @@
 #include <nes.h>
 
 extern void state_setslot(int slot);
-//extern int state_load();
-//extern int state_save();
-
-void save_sram();
-void load_sram();
+int state_load(char* fn);
+int state_save(char* fn);
 
 #endif /* _NESSTATE_H_ */
 
