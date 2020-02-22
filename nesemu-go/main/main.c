@@ -372,7 +372,7 @@ void QuitEmulator(bool save)
    odroid_audio_terminate();
 
    // odroid_display_queue_update(NULL);
-   ili9341_blank_screen();
+   odroid_display_clear(0);
 
    odroid_display_lock();
    odroid_display_show_hourglass();
@@ -417,8 +417,7 @@ void app_main(void)
    printf("app_main ROM: fileSize=%d\n", fileSize);
    if (fileSize == 0)
    {
-      odroid_display_show_error(ODROID_SD_ERR_BADFILE);
-      odroid_system_halt();
+      odroid_system_panic("ROM read failed");
    }
 
    printf("NoFrendo start!\n");

@@ -209,7 +209,12 @@ void odroid_input_wait_for_key(int key, bool pressed)
         odroid_gamepad_state joystick;
         odroid_input_gamepad_read(&joystick);
 
-        if (joystick.values[key] == pressed) {
+        if (key == ODROID_INPUT_ANY) {
+            for (int i = 0; i < ODROID_INPUT_MAX; i++) {
+                if (joystick.values[i] == pressed) break;
+            }
+        }
+        else if (joystick.values[key] == pressed) {
         	break;
         }
     }

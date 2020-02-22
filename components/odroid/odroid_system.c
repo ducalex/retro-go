@@ -47,14 +47,12 @@ void odroid_system_init(int app_id, int sampleRate, char **romPath)
 
     if (esp_reset_reason() == ESP_RST_PANIC)
     {
-        odroid_overlay_alert("The emulator crashed");
-        odroid_system_application_set(0);
-        esp_restart();
+        odroid_system_panic("The emulator crashed");
     }
 
     if (esp_reset_reason() != ESP_RST_SW)
     {
-        ili9341_blank_screen();
+        odroid_display_clear(0);
         odroid_display_show_hourglass();
     }
 
@@ -67,8 +65,7 @@ void odroid_system_init(int app_id, int sampleRate, char **romPath)
     *romPath = odroid_settings_RomFilePath_get();
     if (!*romPath || strlen(*romPath) < 4)
     {
-        odroid_overlay_alert("ROM File not found!");
-        odroid_system_halt();
+        odroid_system_panic("ROM File not found");
     }
 
     odroid_audio_init(odroid_settings_AudioSink_get(), sampleRate);
@@ -103,7 +100,10 @@ void odroid_system_application_set(int slot)
         ESP_PARTITION_TYPE_APP,
         ESP_PARTITION_SUBTYPE_APP_OTA_MIN + slot,
         NULL);
-    if (partition != NULL)
+    // Do not overwrite the boot sector for nothing
+    const esp_partition_t* boot_partition = esp_ota_get_boot_partition();
+
+    if (partition != NULL && partition != boot_partition)
     {
         esp_err_t err = esp_ota_set_boot_partition(partition);
         if (err != ESP_OK)
@@ -130,6 +130,24 @@ void odroid_system_sleep()
 
     vTaskDelay(100);
     esp_deep_sleep_start();
+}
+
+void odroid_system_panic(const char *reason)
+{
+    printf("PANIC: %s\n", reason);
+
+    // Here we should stop unecessary tasks
+
+    odroid_system_application_set(0);
+
+    // In case we panicked from inside a dialog
+    odroid_display_unlock();
+
+    odroid_display_clear(C_RED);
+
+    odroid_overlay_alert(reason);
+
+    esp_restart();
 }
 
 void odroid_system_halt()

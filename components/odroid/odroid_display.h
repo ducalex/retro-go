@@ -57,8 +57,6 @@ extern volatile int8_t displayUpdateMode;
 extern volatile int8_t forceVideoRefresh;
 
 void ili9341_write_frame_rectangleLE(short left, short top, short width, short height, uint16_t* buffer);
-void ili9341_clear_screen(uint16_t color);
-void ili9341_blank_screen();
 
 int8_t odroid_display_backlight_get();
 void odroid_display_backlight_set(int8_t level);
@@ -73,5 +71,6 @@ void odroid_display_deinit();
 void odroid_display_lock();
 void odroid_display_unlock();
 void odroid_display_drain_spi();
+void odroid_display_clear(uint16_t color);
 void odroid_display_show_error(int errNum);
 void odroid_display_show_hourglass();

@@ -11,6 +11,7 @@
 #include "stdbool.h"
 
 void odroid_system_init(int app_id, int sampleRate, char **romPath);
+void odroid_system_panic(const char *reason);
 void odroid_system_halt();
 void odroid_system_sleep();
 void odroid_system_application_set(int slot);

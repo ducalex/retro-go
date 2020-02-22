@@ -105,7 +105,7 @@ void QuitEmulator(bool save)
     odroid_audio_terminate();
 
     // odroid_display_queue_update(NULL);
-    ili9341_blank_screen();
+    odroid_display_clear(0);
 
     odroid_display_lock();
     odroid_display_show_hourglass();

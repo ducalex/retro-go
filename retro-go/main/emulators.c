@@ -135,7 +135,7 @@ void emulators_start_emu(retro_emulator_t *emu)
     const retro_emulator_file_t *file = gui_list_selected_file(emu);
     printf("Starting game: %s\n", file->path);
 
-    ili9341_blank_screen();
+    odroid_display_clear(0);
     odroid_display_show_hourglass();
     odroid_settings_RomFilePath_set(file->path);
     odroid_system_application_set(emu->partition);

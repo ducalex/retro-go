@@ -283,6 +283,6 @@ void app_main(void)
         odroid_system_halt();
     }
 
-    ili9341_blank_screen();
+    odroid_display_clear(0);
     retro_loop();
 }

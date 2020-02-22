@@ -173,15 +173,13 @@ int IRAM_ATTR rom_loadbank(short bank)
 	if (fseek(fpRomFile, OFFSET, SEEK_SET))
 	{
 		printf("bank_load: fseek failed. OFFSET=%d\n", OFFSET);
-		odroid_display_show_error(ODROID_SD_ERR_BADFILE);
-		odroid_system_halt();
+		odroid_system_panic("ROM fseek failed");
 	}
 
 	if (fread(rom.bank[bank], BANK_SIZE, 1, fpRomFile) < 1)
 	{
 		printf("bank_load: fread failed. bank=%d\n", bank);
-		odroid_display_show_error(ODROID_SD_ERR_BADFILE);
-		odroid_system_halt();
+		odroid_system_panic("ROM fread failed");
 	}
 
 	odroid_display_unlock();
@@ -198,8 +196,7 @@ int rom_load()
 	if (fpRomFile == NULL)
 	{
 		printf("loader: fopen failed.\n");
-		odroid_display_show_error(ODROID_SD_ERR_BADFILE);
-		odroid_system_halt();
+		odroid_system_panic("ROM fopen failed");
 	}
 
 	rom_loadbank(0);
