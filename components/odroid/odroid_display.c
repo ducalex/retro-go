@@ -2,6 +2,7 @@
 
 #include "odroid_display.h"
 #include "odroid_settings.h"
+#include "odroid_system.h"
 #include "odroid_colors.h"
 #include "odroid_image_sdcard.h"
 #include "odroid_image_hourglass.h"
@@ -23,35 +24,26 @@ const gpio_num_t LCD_PIN_NUM_CS   = GPIO_NUM_5;
 const gpio_num_t LCD_PIN_NUM_DC   = GPIO_NUM_21;
 const gpio_num_t LCD_PIN_NUM_BCKL = GPIO_NUM_14;
 
-const int LCD_SPI_CLOCK_RATE = 48000000;
 const int BACKLIGHT_DUTY_MAX = 0x1fff;
 
 #define SCREEN_WIDTH 320
 #define SCREEN_HEIGHT 240
 
-#define LINE_BUFFERS (2)
-#define LINE_COUNT (5)
-#define LINE_BUFFER_SIZE (SCREEN_WIDTH*LINE_COUNT)
-
-#define SPI_TRANSACTION_COUNT (4)
-
-// The number of pixels that need to be updated to use interrupt-based updates
-// instead of polling.
-#define POLLING_PIXEL_THRESHOLD (LINE_BUFFER_SIZE)
+#define SPI_TRANSACTION_COUNT (5)
+#define SPI_TRANSACTION_BUFFER_LINE_COUNT (6)
+#define SPI_TRANSACTION_BUFFER_SIZE (SCREEN_WIDTH*SPI_TRANSACTION_BUFFER_LINE_COUNT*2)
 
 // Maximum amount of change (percent) in a frame before we trigger a full transfer
 // instead of a partial update (faster). This also allows us to stop the diff early!
 #define FULL_UPDATE_THRESHOLD (0.4f)
 
-static uint16_t* line[LINE_BUFFERS];
+static uint16_t* buffers[SPI_TRANSACTION_COUNT];
 static SemaphoreHandle_t display_mutex;
 static QueueHandle_t spi_queue;
 static QueueHandle_t line_buffer_queue;
 static SemaphoreHandle_t spi_count_semaphore;
-static spi_transaction_t global_transaction;
 static spi_transaction_t trans[SPI_TRANSACTION_COUNT];
 static spi_device_handle_t spi;
-static bool use_polling = false;
 
 static int8_t backlightLevels[] = {10, 25, 50, 75, 100};
 static int8_t backlightLevel = ODROID_BACKLIGHT_LEVEL2;
@@ -139,9 +131,6 @@ DRAM_ATTR static const ili_init_cmd_t ili_init_cmds[] = {
 static inline uint16_t* line_buffer_get()
 {
     uint16_t* buffer;
-    if (use_polling) {
-        return line[0];
-    }
 
     if (xQueueReceive(line_buffer_queue, &buffer, 1000 / portTICK_RATE_MS) != pdTRUE)
     {
@@ -166,7 +155,7 @@ static void spi_task(void *arg)
     while(1)
     {
         // Ensure only LCD transactions are pulled
-        if(xSemaphoreTake(spi_count_semaphore, portMAX_DELAY) == pdTRUE )
+        if (xSemaphoreTake(spi_count_semaphore, portMAX_DELAY) == pdTRUE)
         {
             spi_transaction_t* t;
 
@@ -174,12 +163,12 @@ static void spi_task(void *arg)
             assert(ret==ESP_OK);
 
             int dc = (int)t->user & 0x80;
-            if(dc)
+            if (dc)
             {
                 line_buffer_put(t->tx_buffer);
             }
 
-            if(xQueueSend(spi_queue, &t, portMAX_DELAY) != pdPASS)
+            if (xQueueSend(spi_queue, &t, portMAX_DELAY) != pdPASS)
             {
                 abort();
             }
@@ -190,7 +179,6 @@ static void spi_task(void *arg)
         }
     }
 
-    printf("%s: Exiting.\n", __func__);
     vTaskDelete(NULL);
 
     while (1) {}
@@ -201,7 +189,7 @@ static void spi_initialize()
     spi_queue = xQueueCreate(SPI_TRANSACTION_COUNT, sizeof(void*));
     if(!spi_queue) abort();
 
-    line_buffer_queue = xQueueCreate(LINE_BUFFERS, sizeof(void*));
+    line_buffer_queue = xQueueCreate(SPI_TRANSACTION_COUNT, sizeof(void*));
     if(!line_buffer_queue) abort();
 
     spi_count_semaphore = xSemaphoreCreateCounting(SPI_TRANSACTION_COUNT, 0);
@@ -214,11 +202,7 @@ static inline spi_transaction_t* spi_get_transaction()
 {
     spi_transaction_t* t;
 
-    if (use_polling) {
-        t = &global_transaction;
-    } else {
-        xQueueReceive(spi_queue, &t, portMAX_DELAY);
-    }
+    xQueueReceive(spi_queue, &t, portMAX_DELAY);
 
     memset(t, 0, sizeof(*t));
 
@@ -235,14 +219,11 @@ static inline void spi_put_transaction(spi_transaction_t* t)
         t->flags |= SPI_TRANS_USE_RXDATA;
     }
 
-    if (use_polling) {
-        spi_device_polling_transmit(spi, t);
-    } else {
-        esp_err_t ret = spi_device_queue_trans(spi, t, portMAX_DELAY);
-        assert(ret==ESP_OK);
+    // spi_device_polling_transmit(spi, t);
+    esp_err_t ret = spi_device_queue_trans(spi, t, portMAX_DELAY);
+    assert(ret==ESP_OK);
 
-        xSemaphoreGive(spi_count_semaphore);
-    }
+    xSemaphoreGive(spi_count_semaphore);
 }
 
 //Send a command to the ILI9341. Uses spi_device_transmit, which waits until the transfer is complete.
@@ -289,7 +270,7 @@ static void ili_data(const uint8_t *data, int len)
 
 //This function is called (in irq context!) just before a transmission starts. It will
 //set the D/C line to the value indicated in the user field.
-static void ili_spi_pre_transfer_callback(spi_transaction_t *t)
+static void IRAM_ATTR ili_spi_pre_transfer_callback(spi_transaction_t *t)
 {
     gpio_set_level(LCD_PIN_NUM_DC, (int)t->user & 0x01);
 }
@@ -357,10 +338,10 @@ static void backlight_init()
     ledc_timer_config_t ledc_timer;
     memset(&ledc_timer, 0, sizeof(ledc_timer));
 
-    ledc_timer.bit_num = LEDC_TIMER_13_BIT; //set timer counter bit number
-    ledc_timer.freq_hz = 5000;              //set frequency of pwm
-    ledc_timer.speed_mode = LEDC_LOW_SPEED_MODE;   //timer mode,
-    ledc_timer.timer_num = LEDC_TIMER_0;    //timer index
+    ledc_timer.duty_resolution = LEDC_TIMER_13_BIT; //set timer counter bit number
+    ledc_timer.freq_hz = 5000;                      //set frequency of pwm
+    ledc_timer.speed_mode = LEDC_LOW_SPEED_MODE;    //timer mode,
+    ledc_timer.timer_num = LEDC_TIMER_0;            //timer index
 
     //set the configuration
     ledc_channel_config_t ledc_channel;
@@ -452,25 +433,25 @@ static void ili9341_deinit()
 
 void ili9341_clear_screen(uint16_t color)
 {
-    for (short i = 0; i < LINE_BUFFERS; ++i)
+    for (short i = 0; i < SPI_TRANSACTION_COUNT; ++i)
     {
         if ((color & 0xFF) == (color >> 8))
         {
-            memset(line[i], color & 0xFF, SCREEN_WIDTH * LINE_COUNT * 2);
+            memset(buffers[i], color & 0xFF, SPI_TRANSACTION_BUFFER_SIZE);
             continue;
         }
-        for (short j = 0; j < SCREEN_WIDTH * LINE_COUNT; ++j)
+        for (short j = 0; j < SCREEN_WIDTH * SPI_TRANSACTION_BUFFER_LINE_COUNT; ++j)
         {
-            line[i][j] = color;
+            buffers[i][j] = color;
         }
     }
 
     send_reset_drawing(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    for (short y = 0; y < SCREEN_HEIGHT; y += LINE_COUNT)
+    for (short y = 0; y < SCREEN_HEIGHT; y += SPI_TRANSACTION_BUFFER_LINE_COUNT)
     {
         uint16_t* line_buffer = line_buffer_get();
-        send_continue_line(line_buffer, SCREEN_WIDTH, LINE_COUNT);
+        send_continue_line(line_buffer, SCREEN_WIDTH, SPI_TRANSACTION_BUFFER_LINE_COUNT);
     }
 }
 
@@ -487,8 +468,6 @@ void ili9341_write_frame_rectangleLE(short left, short top, short width, short h
 
     if (left < 0 || top < 0) abort();
     if (width < 1 || height < 1) abort();
-
-    //xTaskToNotify = xTaskGetCurrentTaskHandle();
 
     send_reset_drawing(left, top, width, height);
 
@@ -526,7 +505,7 @@ write_rect(void *buffer, uint16_t *palette, short origin_x, short origin_y,
     short actual_height = actual_bottom - actual_top;
     short ix_acc = (x_inc * actual_left) % SCREEN_WIDTH;
     short iy_acc = (y_inc * actual_top) % SCREEN_HEIGHT;
-    short lines_per_buffer = LINE_BUFFER_SIZE / (actual_width * pixel_size); // or actual_width
+    short lines_per_buffer = SPI_TRANSACTION_BUFFER_SIZE / (actual_width * 2);
 
     if (actual_width == 0 || actual_height == 0) {
         return;
@@ -630,12 +609,13 @@ odroid_buffer_diff(void *buffer, void *old_buffer, uint16_t *palette,
                 if ((buffer32[x] & u32_pixel_mask) != (old_buffer32[x] & u32_pixel_mask))
                 {
                     out_diff[y].left = x * u32_pixels;
-                    for (x = u32_blocks - 1; x >= 0; --x) {
-                        if ((buffer32[x] & u32_pixel_mask) != (old_buffer32[x] & u32_pixel_mask)) {
-                            out_diff[y].width = (((x + 1) * u32_pixels) - out_diff[y].left);
+                    for (short xl = u32_blocks - 1; xl >= x; --xl) {
+                        if ((buffer32[xl] & u32_pixel_mask) != (old_buffer32[xl] & u32_pixel_mask)) {
+                            out_diff[y].width = ((xl + 1) - x) * u32_pixels;
                             break;
                         }
                     }
+                    break;
                 }
             }
         } else {
@@ -773,46 +753,28 @@ static void videoTask(void *arg)
 void IRAM_ATTR odroid_display_write_frame(odroid_video_frame *frame)
 {
     odroid_display_lock();
-    spi_device_acquire_bus(spi, portMAX_DELAY);
+    // spi_device_acquire_bus(spi, portMAX_DELAY);
 
-    // Interrupt/async updates
-    odroid_line_diff int_updates[SCREEN_HEIGHT/LINE_COUNT];
-    odroid_line_diff *int_ptr = &int_updates[0];
-
-    use_polling = true; // Do polling updates first
     for (short y = 0; y < frame->height;)
     {
         odroid_line_diff *diff = &frame->diff[y];
 
         if (diff->width > 0) {
-            int n_pixels = (x_scale * diff->width) * (y_scale * diff->height);
-            if (n_pixels < POLLING_PIXEL_THRESHOLD) {
-                write_rect(frame->buffer + (diff->top * frame->stride) + (diff->left * frame->pixel_size),
-                            frame->palette, x_origin, y_origin, diff->left, diff->top, diff->width,
-                            diff->height, frame->stride, frame->pixel_size, frame->pixel_mask,
-                            x_inc, y_inc, 0);
-            } else {
-                (*int_ptr++) = (*diff);
-            }
+            write_rect(frame->buffer + (diff->top * frame->stride) + (diff->left * frame->pixel_size),
+                        frame->palette, x_origin, y_origin, diff->left, diff->top, diff->width,
+                        diff->height, frame->stride, frame->pixel_size, frame->pixel_mask,
+                        x_inc, y_inc, 0);
         }
         y += diff->height;
     }
 
-    use_polling = false; // Use interrupt updates for larger areas
-    while (--int_ptr >= &int_updates)
-    {
-        write_rect(frame->buffer + (int_ptr->top * frame->stride) + (int_ptr->left * frame->pixel_size),
-                  frame->palette, x_origin, y_origin, int_ptr->left, int_ptr->top, int_ptr->width,
-                  int_ptr->height, frame->stride, frame->pixel_size, frame->pixel_mask,
-                  x_inc, y_inc, 0);
-    }
-
-    spi_device_release_bus(spi);
+    // spi_device_release_bus(spi);
     odroid_display_unlock();
 }
 
 void IRAM_ATTR odroid_display_queue_update(odroid_video_frame *frame, odroid_video_frame *previousFrame)
 {
+    //uint startTime = xthal_get_ccount();
     if (!forceVideoRefresh && displayUpdateMode != ODROID_DISPLAY_UPDATE_FULL && previousFrame) {
         odroid_buffer_diff(frame->buffer, previousFrame->buffer, frame->palette, previousFrame->palette,
                             frame->width, frame->height, frame->stride, frame->pixel_size,
@@ -824,6 +786,7 @@ void IRAM_ATTR odroid_display_queue_update(odroid_video_frame *frame, odroid_vid
         frame->diff[0].height = frame->height;
     }
     xQueueSend(videoTaskQueue, &frame, portMAX_DELAY);
+    //printf("Update time: %f\n", (float)get_elapsed_time_since(startTime) / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000));
 }
 
 void odroid_display_drain_spi()
@@ -833,10 +796,7 @@ void odroid_display_drain_spi()
         xQueueReceive(spi_queue, &t[i], portMAX_DELAY);
     }
     for (short i = 0; i < SPI_TRANSACTION_COUNT; ++i) {
-        if (xQueueSend(spi_queue, &t[i], portMAX_DELAY) != pdPASS)
-        {
-            abort();
-        }
+        xQueueSend(spi_queue, &t[i], portMAX_DELAY);
     }
 }
 
@@ -929,18 +889,12 @@ void odroid_display_init()
     // Initialize SPI
     spi_initialize();
 
-    const size_t lineSize = SCREEN_WIDTH * LINE_COUNT * sizeof(uint16_t);
-    for (short x = 0; x < LINE_BUFFERS; x++)
-    {
-        line[x] = heap_caps_malloc(lineSize, MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
-        if (!line[x]) abort();
-
-        printf("%s: line_buffer_put(%p)\n", __func__, line[x]);
-        line_buffer_put(line[x]);
-    }
-
     for (short x = 0; x < SPI_TRANSACTION_COUNT; x++)
     {
+        buffers[x] = heap_caps_malloc(SPI_TRANSACTION_BUFFER_SIZE, MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
+        if (!buffers[x]) abort();
+        line_buffer_put(buffers[x]);
+
         void* param = &trans[x];
         xQueueSend(spi_queue, &param, portMAX_DELAY);
     }
@@ -957,12 +911,12 @@ void odroid_display_init()
     spi_device_interface_config_t devcfg;
 	memset(&devcfg, 0, sizeof(devcfg));
 
-    devcfg.clock_speed_hz = LCD_SPI_CLOCK_RATE;
+    devcfg.clock_speed_hz = SPI_MASTER_FREQ_40M;    //80Mhz causes glitches unfortunately
     devcfg.mode = 0;                                //SPI mode 0
-    devcfg.spics_io_num = LCD_PIN_NUM_CS;               //CS pin
-    devcfg.queue_size = 7;                          //We want to be able to queue 7 transactions at a time
+    devcfg.spics_io_num = LCD_PIN_NUM_CS;           //CS pin
+    devcfg.queue_size = SPI_TRANSACTION_COUNT;      //We want to be able to queue 7 transactions at a time
     devcfg.pre_cb = ili_spi_pre_transfer_callback;  //Specify pre-transfer callback to handle D/C line
-    devcfg.flags = SPI_DEVICE_NO_DUMMY; //SPI_DEVICE_HALFDUPLEX;
+    devcfg.flags = SPI_DEVICE_NO_DUMMY;             //SPI_DEVICE_HALFDUPLEX;
 
     //Initialize the SPI bus
     spi_bus_initialize(HSPI_HOST, &buscfg, 1);
@@ -982,5 +936,5 @@ void odroid_display_init()
 	printf("LCD: starting videoTask.\n");
     xTaskCreatePinnedToCore(&videoTask, "videoTask", 4096, NULL, 5, NULL, 1);
 
-    printf("LCD Initialized (%d Hz).\n", LCD_SPI_CLOCK_RATE);
+    printf("LCD Initialized (%d Hz).\n", devcfg.clock_speed_hz);
 }
