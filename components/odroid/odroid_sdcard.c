@@ -193,8 +193,8 @@ size_t odroid_sdcard_unzip_file_to_memory(const char* path, void* buf, size_t bu
 
 char* odroid_sdcard_get_savefile_path(const char* romPath)
 {
-    char* fileName = odroid_sdcard_get_filename(romPath);
-    char* extension = odroid_sdcard_get_extension(fileName);
+    const char* fileName = odroid_sdcard_get_filename(romPath);
+    const char* extension = odroid_sdcard_get_extension(fileName);
     char buffer[128];
 
     if (!extension)
@@ -208,48 +208,16 @@ char* odroid_sdcard_get_savefile_path(const char* romPath)
     return strdup(buffer);
 }
 
-
-char* odroid_sdcard_get_filename(const char* path)
+const char* odroid_sdcard_get_filename(const char* path)
 {
-	int pos = strlen(path);
-
-	while (--pos > 0)
-	{
-		if (path[pos] == '/')
-		{
-			return path + pos + 1;
-		}
-	}
-
-    return path;
+    const char *name = strrchr(path, '/');
+    return name ? name + 1 : NULL;
 }
 
-char* odroid_sdcard_get_extension(const char* path)
+const char* odroid_sdcard_get_extension(const char* path)
 {
-	// Note: includes '.'
-	int pos = strlen(path);
-
-	while (--pos > 0)
-	{
-		if (path[pos] == '.')
-		{
-			return path + pos + 1;
-		}
-	}
-
-	return NULL;
-}
-
-char* odroid_sdcard_get_filename_without_extension(const char* path)
-{
-	char* fileName = strdup(odroid_sdcard_get_filename(path));
-    char* ext = odroid_sdcard_get_extension(fileName);
-
-    if (ext) {
-        fileName[strlen(fileName)-strlen(ext)] = 0;
-    }
-
-    return fileName;
+    const char *ext = strrchr(path, '.');
+    return ext ? ext + 1 : NULL;
 }
 
 int odroid_sdcard_mkdir(char *dir)

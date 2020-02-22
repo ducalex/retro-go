@@ -17,6 +17,5 @@ size_t odroid_sdcard_unzip_file_to_memory(const char* path, void* buf, size_t bu
 int odroid_sdcard_mkdir(char *dir);
 
 char* odroid_sdcard_get_savefile_path(const char* romPath);
-char* odroid_sdcard_get_filename(const char* path);
-char* odroid_sdcard_get_extension(const char* path);
-char* odroid_sdcard_get_filename_without_extension(const char* path);
+const char* odroid_sdcard_get_filename(const char* path);
+const char* odroid_sdcard_get_extension(const char* path);

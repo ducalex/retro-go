@@ -152,7 +152,7 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
 
     if (*crc == 0)
     {
-        sprintf(path, CACHE_PATH "/%s/romart/%c/%s%s", emu->dirname, file->name[0], file->name, file->ext);
+        sprintf(path, CACHE_PATH "/%s/romart/%c/%s.%s", emu->dirname, file->name[0], file->name, file->ext);
         if (odroid_sdcard_copy_file_to_memory(path, crc, 4)) {
             printf("Cache found: %s\n", path);
         }
@@ -184,6 +184,7 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
                 sprintf(path, CACHE_PATH "/%s/romart/%c/", emu->dirname, file->name[0]);
                 odroid_sdcard_mkdir(path);
                 strcat(path, file->name);
+                strcat(path, ".");
                 strcat(path, file->ext);
                 if ((fp = fopen(path, "wb")) != NULL)
                 {
