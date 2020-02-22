@@ -158,12 +158,15 @@ void LoadState()
     if (f == NULL)
     {
         printf("LoadState: fopen load failed\n");
+        odroid_display_unlock();
     }
     else
     {
         loadstate(f);
         rtc_load_internal(f);
         fclose(f);
+
+        odroid_display_unlock();
 
         vram_dirty();
         pal_dirty();
@@ -174,7 +177,6 @@ void LoadState()
     }
 
     free(pathName);
-    odroid_display_unlock();
 }
 
 void QuitEmulator(bool save)

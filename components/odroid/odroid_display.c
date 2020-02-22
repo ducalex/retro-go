@@ -774,7 +774,7 @@ void IRAM_ATTR odroid_display_write_frame(odroid_video_frame *frame)
 
 void IRAM_ATTR odroid_display_queue_update(odroid_video_frame *frame, odroid_video_frame *previousFrame)
 {
-    //uint startTime = xthal_get_ccount();
+    // uint startTime = xthal_get_ccount();
     if (!forceVideoRefresh && displayUpdateMode != ODROID_DISPLAY_UPDATE_FULL && previousFrame) {
         odroid_buffer_diff(frame->buffer, previousFrame->buffer, frame->palette, previousFrame->palette,
                             frame->width, frame->height, frame->stride, frame->pixel_size,
@@ -786,17 +786,19 @@ void IRAM_ATTR odroid_display_queue_update(odroid_video_frame *frame, odroid_vid
         frame->diff[0].height = frame->height;
     }
     xQueueSend(videoTaskQueue, &frame, portMAX_DELAY);
-    //printf("Update time: %f\n", (float)get_elapsed_time_since(startTime) / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000));
+    // printf("Update time: %f\n", (float)get_elapsed_time_since(startTime) / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000));
 }
 
-void odroid_display_drain_spi()
+void IRAM_ATTR odroid_display_drain_spi()
 {
-    spi_transaction_t *t[SPI_TRANSACTION_COUNT];
-    for (short i = 0; i < SPI_TRANSACTION_COUNT; ++i) {
-        xQueueReceive(spi_queue, &t[i], portMAX_DELAY);
-    }
-    for (short i = 0; i < SPI_TRANSACTION_COUNT; ++i) {
-        xQueueSend(spi_queue, &t[i], portMAX_DELAY);
+    if (uxQueueSpacesAvailable(spi_queue)) {
+        spi_transaction_t *t[SPI_TRANSACTION_COUNT];
+        for (short i = 0; i < SPI_TRANSACTION_COUNT; ++i) {
+            xQueueReceive(spi_queue, &t[i], portMAX_DELAY);
+        }
+        for (short i = 0; i < SPI_TRANSACTION_COUNT; ++i) {
+            xQueueSend(spi_queue, &t[i], portMAX_DELAY);
+        }
     }
 }
 
@@ -818,7 +820,6 @@ void odroid_display_show_error(int errNum)
             ili9341_clear_screen(C_RED);
     }
 
-    // Drain SPI queue
     odroid_display_drain_spi();
 }
 
@@ -829,27 +830,25 @@ void odroid_display_show_hourglass()
         image_hourglass_empty_black_48dp.width,
         image_hourglass_empty_black_48dp.height,
         image_hourglass_empty_black_48dp.pixel_data);
+    odroid_display_drain_spi();
 }
 
 void odroid_display_lock()
 {
-    if (!display_mutex)
-    {
-        display_mutex = xSemaphoreCreateMutex();
-        if (!display_mutex) abort();
-    }
-
     if (xSemaphoreTake(display_mutex, 1000 / portTICK_RATE_MS) != pdTRUE)
     {
         abort();
     }
+
+    // Wait for all transactions to finish after obtaining the lock
+    // This is mostly for locks requested by SD Card-related code
+    odroid_display_drain_spi();
 }
 
 void odroid_display_unlock()
 {
-    if (!display_mutex) abort();
+    // odroid_display_drain_spi();
 
-    odroid_display_drain_spi();
     xSemaphoreGive(display_mutex);
 }
 
@@ -885,6 +884,8 @@ void odroid_display_init()
     backlightLevel = odroid_settings_Backlight_get();
     scalingMode = odroid_settings_Scaling_get();
     displayUpdateMode = odroid_settings_DisplayUpdateMode_get();
+
+    display_mutex = xSemaphoreCreateMutex();
 
     // Initialize SPI
     spi_initialize();
