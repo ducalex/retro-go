@@ -608,9 +608,9 @@ odroid_buffer_diff(void *buffer, void *old_buffer, uint16_t *palette,
             for (short x = 0; x < u32_blocks; ++x) {
                 if ((buffer32[x] & u32_pixel_mask) != (old_buffer32[x] & u32_pixel_mask))
                 {
-                    out_diff[y].left = x * u32_pixels;
                     for (short xl = u32_blocks - 1; xl >= x; --xl) {
                         if ((buffer32[xl] & u32_pixel_mask) != (old_buffer32[xl] & u32_pixel_mask)) {
+                            out_diff[y].left = x * u32_pixels;
                             out_diff[y].width = ((xl + 1) - x) * u32_pixels;
                             break;
                         }

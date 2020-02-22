@@ -479,8 +479,8 @@ int odroid_overlay_game_menu()
     odroid_display_unlock();
 
     if (r == 2) {
-        LoadState();
-        // esp_restart();
+        // LoadState();
+        esp_restart();
     } else if (r == 3) {
         SaveState();
     } else if (r == 4) {
