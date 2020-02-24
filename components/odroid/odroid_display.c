@@ -434,7 +434,7 @@ void ili9341_clear_screen(uint16_t color)
         }
         for (short j = 0; j < SCREEN_WIDTH * SPI_TRANSACTION_BUFFER_LINE_COUNT; ++j)
         {
-            spi_buffers[i][j] = color;
+            spi_buffers[i][j] = color << 8 | color >> 8;
         }
     }
 

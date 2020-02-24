@@ -143,7 +143,7 @@ void odroid_system_panic(const char *reason)
     // In case we panicked from inside a dialog
     odroid_display_unlock();
 
-    odroid_display_clear(C_RED);
+    odroid_display_clear(C_BLUE);
 
     odroid_overlay_alert(reason);
 
