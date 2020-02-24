@@ -323,6 +323,9 @@ static void send_continue_line(uint16_t *line, int width, int lineCount)
 
 static void backlight_init()
 {
+    // Initial backlight percent
+    int percent = backlightLevels[backlightLevel % ODROID_BACKLIGHT_LEVEL_COUNT];
+
     //configure timer0
     ledc_timer_config_t ledc_timer;
     memset(&ledc_timer, 0, sizeof(ledc_timer));
@@ -339,7 +342,7 @@ static void backlight_init()
     //set LEDC channel 0
     ledc_channel.channel = LEDC_CHANNEL_0;
     //set the duty for initialization.(duty range is 0 ~ ((2**bit_num)-1)
-    ledc_channel.duty = BACKLIGHT_DUTY_MAX * (backlightLevels[backlightLevel % 4] * 0.01f);
+    ledc_channel.duty = BACKLIGHT_DUTY_MAX * (percent * 0.01f);
     //GPIO number
     ledc_channel.gpio_num = LCD_PIN_NUM_BCKL;
     //GPIO INTR TYPE, as an example, we enable fade_end interrupt here.
