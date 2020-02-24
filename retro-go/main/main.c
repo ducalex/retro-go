@@ -222,9 +222,14 @@ void retro_loop()
                     {0, "Date", COMPILEDATE, 1, NULL},
                     {0, "Commit", GITREV, 1, NULL},
                     {0, "", "", 0, NULL},
+                    {1, "Reboot to firmware", "", 1, NULL},
                     {0, "Close", "", 1, NULL},
                 };
-                odroid_overlay_dialog("Retro-Go", choices, 4, 3);
+                int sel = odroid_overlay_dialog("Retro-Go", choices, 5, 4);
+                if (sel == 1) {
+                    odroid_system_application_set(-16);
+                    esp_restart();
+                }
                 selected_emu_last = -1;
                 redraw = true;
             }

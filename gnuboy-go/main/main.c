@@ -209,14 +209,20 @@ bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t eve
     int pal = odroid_settings_Palette_get();
     int max = 7;
 
-    if (event == ODROID_DIALOG_PREV && pal > 0) {
-        odroid_settings_Palette_set(--pal);
-        pal_set(pal);
+    if (event == ODROID_DIALOG_PREV) {
+        pal = pal > 0 ? pal - 1 : max;    }
+
+    if (event == ODROID_DIALOG_NEXT) {
+        pal = pal < max ? pal + 1 : 0;
     }
 
-    if (event == ODROID_DIALOG_NEXT && pal < max) {
-        odroid_settings_Palette_set(++pal);
+    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
+        odroid_settings_Palette_set(pal);
         pal_set(pal);
+        // This is less than ideal, but it works for now
+        odroid_display_unlock();
+        run_to_vblank();
+        odroid_display_lock();
     }
 
     sprintf(option->value, "%d/%d", pal, max);
