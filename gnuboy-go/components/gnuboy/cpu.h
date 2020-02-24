@@ -1,10 +1,7 @@
 #ifndef __CPU_H__
 #define __CPU_H__
 
-
-
 #include "defs.h"
-
 
 union reg
 {

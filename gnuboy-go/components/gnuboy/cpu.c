@@ -1,6 +1,5 @@
 #pragma GCC optimize ("O3")
 
-#include "gnuboy.h"
 #include "defs.h"
 #include "regs.h"
 #include "hw.h"
@@ -11,14 +10,8 @@
 #include "cpuregs.h"
 #include "cpucore.h"
 
-#ifdef USE_ASM
-#include "asm.h"
-#endif
-
 
 struct cpu cpu;
-
-
 
 
 #define ZFLAG(n) ( (n) ? 0 : FZ )
@@ -549,22 +542,19 @@ next:
 		L = A; break;
 
 	case 0x70: /* LD (HL),B */
-		b = B; goto __LD_HL;
+		writeb(xHL, B); break;
 	case 0x71: /* LD (HL),C */
-		b = C; goto __LD_HL;
+		writeb(xHL, C); break;
 	case 0x72: /* LD (HL),D */
-		b = D; goto __LD_HL;
+		writeb(xHL, D); break;
 	case 0x73: /* LD (HL),E */
-		b = E; goto __LD_HL;
+		writeb(xHL, E); break;
 	case 0x74: /* LD (HL),H */
-		b = H; goto __LD_HL;
+		writeb(xHL, H); break;
 	case 0x75: /* LD (HL),L */
-		b = L; goto __LD_HL;
+		writeb(xHL, L); break;
 	case 0x77: /* LD (HL),A */
-		b = A;
-	__LD_HL:
-		writeb(xHL,b);
-		break;
+		writeb(xHL, A); break;
 
 	case 0x78: /* LD A,B */
 		A = B; break;
@@ -675,16 +665,13 @@ next:
 		ALU_CASES(0xB8, 0xFE, CP, __CP)
 
 	case 0x09: /* ADD HL,BC */
-		w = BC; goto __ADDW;
+		ADDW(BC); break;
 	case 0x19: /* ADD HL,DE */
-		w = DE; goto __ADDW;
+		ADDW(DE); break;
 	case 0x39: /* ADD HL,SP */
-		w = SP; goto __ADDW;
+		ADDW(SP); break;
 	case 0x29: /* ADD HL,HL */
-		w = HL;
-	__ADDW:
-		ADDW(w);
-		break;
+		ADDW(HL); break;
 
 	case 0x04: /* INC B */
 		INC(B); break;
@@ -802,32 +789,30 @@ next:
 		if (F&FC) goto __JR; NOJR; break;
 
 	case 0xC3: /* JP */
-	__JP:
 		JP; break;
 	case 0xC2: /* JP NZ */
-		if (!(F&FZ)) goto __JP; NOJP; break;
+		if (!(F&FZ)) JP; else NOJP; break;
 	case 0xCA: /* JP Z */
-		if (F&FZ) goto __JP; NOJP; break;
+		if (F&FZ) JP; else NOJP; break;
 	case 0xD2: /* JP NC */
-		if (!(F&FC)) goto __JP; NOJP; break;
+		if (!(F&FC)) JP; else NOJP; break;
 	case 0xDA: /* JP C */
-		if (F&FC) goto __JP; NOJP; break;
+		if (F&FC) JP; else NOJP; break;
 	case 0xE9: /* JP HL */
 		PC = HL; break;
 
 	case 0xC9: /* RET */
-	__RET:
 		RET; break;
 	case 0xC0: /* RET NZ */
-		if (!(F&FZ)) goto __RET; NORET; break;
+		if (!(F&FZ)) RET; else NORET; break;
 	case 0xC8: /* RET Z */
-		if (F&FZ) goto __RET; NORET; break;
+		if (F&FZ) RET; else NORET; break;
 	case 0xD0: /* RET NC */
-		if (!(F&FC)) goto __RET; NORET; break;
+		if (!(F&FC)) RET; else NORET; break;
 	case 0xD8: /* RET C */
-		if (F&FC) goto __RET; NORET; break;
+		if (F&FC) RET; else NORET; break;
 	case 0xD9: /* RETI */
-		IME = IMA = 1; goto __RET;
+		IME = IMA = 1; RET; break;
 
 	case 0xCD: /* CALL */
 	__CALL:
@@ -842,23 +827,21 @@ next:
 		if (F&FC) goto __CALL; NOCALL; break;
 
 	case 0xC7: /* RST 0 */
-		b = 0x00; goto __RST;
+		RST(0x00); break;
 	case 0xCF: /* RST 8 */
-		b = 0x08; goto __RST;
+		RST(0x08); break;
 	case 0xD7: /* RST 10 */
-		b = 0x10; goto __RST;
+		RST(0x10); break;
 	case 0xDF: /* RST 18 */
-		b = 0x18; goto __RST;
+		RST(0x18); break;
 	case 0xE7: /* RST 20 */
-		b = 0x20; goto __RST;
+		RST(0x20); break;
 	case 0xEF: /* RST 28 */
-		b = 0x28; goto __RST;
+		RST(0x28); break;
 	case 0xF7: /* RST 30 */
-		b = 0x30; goto __RST;
+		RST(0x30); break;
 	case 0xFF: /* RST 38 */
-		b = 0x38;
-	__RST:
-		RST(b); break;
+		RST(0x38); break;
 
 	case 0xC1: /* POP BC */
 		POP(BC); break;

@@ -1,7 +1,6 @@
 #if 0
 #include <stdlib.h>
 
-#include "gnuboy.h"
 #include "defs.h"
 #include "fb.h"
 

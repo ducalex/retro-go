@@ -13,7 +13,7 @@
 #include "../components/gnuboy/pcm.h"
 #include "../components/gnuboy/regs.h"
 #include "../components/gnuboy/rtc.h"
-#include "../components/gnuboy/gnuboy.h"
+#include "../components/gnuboy/defs.h"
 
 #include "odroid_system.h"
 
@@ -33,8 +33,6 @@ struct pcm pcm;
 
 int16_t* audioBuffer;
 
-uint16_t* framebuffers[2];
-
 static odroid_video_frame update1 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, NULL, NULL, 0};
 static odroid_video_frame update2 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, NULL, NULL, 0};
 static odroid_video_frame *currentUpdate = &update1;
@@ -45,6 +43,8 @@ static uint skippedFrames = 0;
 static uint fullFrames = 0;
 
 bool skipFrame = false;
+
+extern int debug_trace;
 // --- MAIN
 
 
@@ -112,6 +112,7 @@ void run_to_vblank()
     }
 
     skipFrame = !skipFrame && get_elapsed_time_since(startTime) > frameTime;
+    fb.enabled = !skipFrame;
 
     pcm_submit();
 }
@@ -275,18 +276,15 @@ void app_main(void)
     printf("gnuboy (%s-%s).\n", COMPILEDATE, GITREV);
 
     // Do before odroid_system_init to make sure we get the caps requested
-    framebuffers[0] = heap_caps_calloc(GB_WIDTH * GB_HEIGHT, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
-    framebuffers[1] = heap_caps_calloc(GB_WIDTH * GB_HEIGHT, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
-    audioBuffer     = heap_caps_calloc(AUDIO_BUFFER_LENGTH * 2, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    update1.buffer = heap_caps_calloc(GB_WIDTH * GB_HEIGHT, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    update2.buffer = heap_caps_calloc(GB_WIDTH * GB_HEIGHT, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    audioBuffer    = heap_caps_calloc(AUDIO_BUFFER_LENGTH * 2, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
 
     // Init all the console hardware
 	odroid_system_init(1, AUDIO_SAMPLE_RATE, &romPath);
 
-    assert(framebuffers[0] && framebuffers[1]);
+    assert(update1.buffer && update2.buffer);
     assert(audioBuffer);
-
-    update1.buffer = framebuffers[0];
-    update2.buffer = framebuffers[1];
 
     // Load ROM
     loader_init(romPath);
@@ -341,6 +339,10 @@ void app_main(void)
             };
             odroid_overlay_game_settings_menu(options, 2);
         }
+
+        // if (joystick.values[ODROID_INPUT_SELECT]) {
+        //     debug_trace = !debug_trace;
+        // }
 
         uint startTime = xthal_get_ccount();
 

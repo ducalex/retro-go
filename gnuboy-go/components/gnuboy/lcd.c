@@ -2,7 +2,6 @@
 
 #include <string.h>
 
-#include "gnuboy.h"
 #include "defs.h"
 #include "regs.h"
 #include "hw.h"
@@ -10,9 +9,6 @@
 #include "lcd.h"
 #include "rc.h"
 #include "fb.h"
-#ifdef USE_ASM
-#include "asm.h"
-#endif
 
 #include <stdlib.h>
 #include <esp_attr.h>
@@ -57,9 +53,6 @@ struct scan scan;
 #define GB_POKEMON_PALETTE { 0xffefff, 0x8cb5f7, 0x9c7384, 0x101018 }
 
 
-
-
-
 static int palettes[8][4] = {GB_DEFAULT_PALETTE,
 							GB_2BGRAYS_PALETTE,
 							GB_LINKSAW_PALETTE,
@@ -77,26 +70,19 @@ static int sprsort = 1;
 static int sprdebug = 0;
 
 // BGR
-#if 0
-// Testing/Debug palette
-static int dmg_pal[4][4] = {{0xffffff, 0x808080, 0x404040, 0x000000},
-							{0xff0000, 0x800000, 0x400000, 0x000000},
-							{0x00ff00, 0x008000, 0x004000, 0x000000},
-							{0x0000ff, 0x000080, 0x000040, 0x000000} };
-#else
 static int dmg_pal[4][4] = {GB_NGBARNE_PALETTE,
 	 						GB_NGBARNE_PALETTE,
 							GB_NGBARNE_PALETTE,
 							GB_NGBARNE_PALETTE };
 
-#endif
 
 static byte *vdest;
+static byte pix[8];
+
 
 #define MEMCPY8(d, s) ((*(uint64_t *)(d)) = (*(uint64_t *)(s)))
 //#define MEMCPY8(d, s) memcpy((d), (s), 8)
 
-static byte pix[8];
 
 __attribute__((optimize("unroll-loops")))
 static const byte* IRAM_ATTR get_patpix(int i, int x)
@@ -161,27 +147,23 @@ static const byte* IRAM_ATTR get_patpix(int i, int x)
 }
 
 
-#ifndef ASM_UPDATEPATPIX
 inline void updatepatpix()
 {
 }
-#endif /* ASM_UPDATEPATPIX */
 
 
-static const short DRAM_ATTR wraptable[64] =
-{
-	0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,-32
-};
-
-static void IRAM_ATTR tilebuf()
+static inline void tilebuf()
 {
 	int i, cnt;
 	int base;
 	byte *tilemap, *attrmap;
 	int *tilebuf;
 	short *wrap;
-
+	static const short wraptable[64] =
+	{
+		0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,-32
+	};
 
 	base = ((R_LCDC&0x08)?0x1C00:0x1800) + (T<<5) + S;
 	tilemap = lcd.vbank[0] + base;
@@ -268,7 +250,7 @@ static void IRAM_ATTR tilebuf()
 }
 
 
-static void IRAM_ATTR bg_scan()
+static inline void bg_scan()
 {
 	int cnt;
 	byte *src, *dest;
@@ -280,43 +262,14 @@ static void IRAM_ATTR bg_scan()
 	dest = BUF;
 
 	src = get_patpix(*(tile++), V) + U;
-
-#if 0
 	memcpy(dest, src, 8-U);
-#else
-	byte tmp = 8-U;
-	switch ((tmp))
-	{
-		case 8:
-			dest[7] = src[7];
-		case 7:
-			dest[6] = src[6];
-		case 6:
-			dest[5] = src[5];
-		case 5:
-			dest[4] = src[4];
-		case 4:
-			dest[3] = src[2];
-		case 3:
-			dest[2] = src[2];
-		case 2:
-			dest[1] = src[1];
-		case 1:
-			dest[0] = src[0];
-		default:
-			break;
-	}
-#endif
-
 	dest += 8-U;
 	cnt -= 8-U;
 	if (cnt <= 0) return;
 	while (cnt >= 8)
 	{
 		src = get_patpix(*(tile++), V);
-
 		MEMCPY8(dest, src);
-
 		dest += 8;
 		cnt -= 8;
 	}
@@ -325,7 +278,7 @@ static void IRAM_ATTR bg_scan()
 		*(dest++) = *(src++);
 }
 
-static void IRAM_ATTR wnd_scan()
+static inline void wnd_scan()
 {
 	int cnt;
 	byte *src, *dest;
@@ -350,18 +303,18 @@ static void IRAM_ATTR wnd_scan()
 		*(dest++) = *(src++);
 }
 
-inline static void blendcpy(byte *dest, byte *src, byte b, int cnt)
+static inline void blendcpy(byte *dest, byte *src, byte b, int cnt)
 {
 	while (cnt--) *(dest++) = *(src++) | b;
 }
 
-inline static int priused(void *attr)
+static inline int priused(void *attr)
 {
 	un32 *a = attr;
 	return (int)((a[0]|a[1]|a[2]|a[3]|a[4]|a[5]|a[6]|a[7])&0x80808080);
 }
 
-static void IRAM_ATTR bg_scan_pri()
+static inline void bg_scan_pri()
 {
 	int cnt, i;
 	byte *src, *dest;
@@ -391,7 +344,7 @@ static void IRAM_ATTR bg_scan_pri()
 	memset(dest, src[i&31]&128, cnt);
 }
 
-static void IRAM_ATTR wnd_scan_pri()
+static inline void wnd_scan_pri()
 {
 	int cnt, i;
 	byte *src, *dest;
@@ -417,8 +370,7 @@ static void IRAM_ATTR wnd_scan_pri()
 	memset(dest, src[i]&128, cnt);
 }
 
-#ifndef ASM_BG_SCAN_COLOR
-static void IRAM_ATTR bg_scan_color()
+static inline void bg_scan_color()
 {
 	int cnt;
 	byte *src, *dest;
@@ -444,9 +396,8 @@ static void IRAM_ATTR bg_scan_color()
 	src = get_patpix(*(tile++), V);
 	blendcpy(dest, src, *(tile++), cnt);
 }
-#endif
 
-static void IRAM_ATTR wnd_scan_color()
+static inline void wnd_scan_color()
 {
 	int cnt;
 	byte *src, *dest;
@@ -468,12 +419,12 @@ static void IRAM_ATTR wnd_scan_color()
 	blendcpy(dest, src, *(tile++), cnt);
 }
 
-inline static void recolor(byte *buf, byte fill, int cnt)
+static inline void recolor(byte *buf, byte fill, int cnt)
 {
 	while (cnt--) *(buf++) |= fill;
 }
 
-static void IRAM_ATTR spr_count()
+static inline void spr_count()
 {
 	int i;
 	struct obj *o;
@@ -494,12 +445,12 @@ static void IRAM_ATTR spr_count()
 }
 
 
-static struct vissprite ts[10];
 
-static void IRAM_ATTR spr_enum()
+static inline void spr_enum()
 {
 	int i, j;
 	struct obj *o;
+	struct vissprite ts[10];
 	int v, pat;
 	int l, x;
 
@@ -561,40 +512,21 @@ static void IRAM_ATTR spr_enum()
 		VS[l].x = 160;
 	}
 
-#if 1
 	memcpy(VS, ts, sizeof VS);
-#else
-	int* vsPtr = (int*)VS;
-	int* tsPtr = (int*)ts;
-	int count = 16;
-	while(count--)
-	{
-		vsPtr[0] = tsPtr[0];
-		vsPtr++[1] = tsPtr++[1];
-	}
-#endif
 }
 
 
-static byte bgdup[256];
-
-static void IRAM_ATTR spr_scan()
+static inline void spr_scan()
 {
 	int i, x;
 	byte pal, b, ns = NS;
 	byte *src, *dest, *bg, *pri;
 	struct vissprite *vs;
+	static byte bgdup[256];
 
 	if (!ns) return;
 
-#if 1
 	memcpy(bgdup, BUF, 256);
-#else
-	for (i = 0; i < 64; ++i)
-	{
-		((int*)bgdup)[i] = ((int*)BUF)[i];
-	}
-#endif
 
 	vs = &VS[ns-1];
 
@@ -645,23 +577,19 @@ static void IRAM_ATTR spr_scan()
 }
 
 
-inline void lcd_begin()
+void lcd_begin()
 {
 	vdest = fb.ptr;
 	WY = R_WY;
 }
 
 
-extern uint8_t skipFrame;
-extern uint16_t* framebuffers[2];
-int lastLcdDisabled = 0;
-
 void IRAM_ATTR lcd_refreshline()
 {
-	byte *dest;
+	if (!fb.enabled) return;
 
-	// if ((frameCounter % 7) == 0) ++frameCounter;
-
+	if (!(R_LCDC & 0x80))
+		return; /* should not happen... */
 
 	L = R_LY;
 	X = R_SCX;
@@ -677,53 +605,40 @@ void IRAM_ATTR lcd_refreshline()
 	WT = (L - WY) >> 3;
 	WV = (L - WY) & 7;
 
-	if (!skipFrame)
+	spr_enum();
+	tilebuf();
+
+	if (hw.cgb)
 	{
-		if (!(R_LCDC & 0x80))
+		bg_scan_color();
+		wnd_scan_color();
+		if (NS)
 		{
-			if (!lastLcdDisabled)
-			{
-				memset(framebuffers[0], 0xff, 144 * 160 * 2);
-				memset(framebuffers[1], 0xff, 144 * 160 * 2);
-
-				lastLcdDisabled = 1;
-			}
-
-			return;
+			bg_scan_pri();
+			wnd_scan_pri();
 		}
-
-		lastLcdDisabled = 0;
-
-
-		spr_enum();
-		tilebuf();
-
-		if (hw.cgb)
-		{
-			bg_scan_color();
-			wnd_scan_color();
-			if (NS)
-			{
-				bg_scan_pri();
-				wnd_scan_pri();
-			}
-		}
-		else
-		{
-			bg_scan();
-			wnd_scan();
-			recolor(BUF+WX, 0x04, 160-WX);
-		}
-		spr_scan();
-
-		dest = vdest;
-
-		int cnt = 160;
-		un16* dst = (un16*)dest;
-		byte* src = BUF;
-
-		while (cnt--) *(dst++) = PAL2[*(src++)];
 	}
+	else
+	{
+		bg_scan();
+		wnd_scan();
+		recolor(BUF+WX, 0x04, 160-WX);
+	}
+	spr_scan();
+
+	if (fb.dirty)
+	{
+		memset(fb.ptr, 0, fb.pitch * fb.h);
+		fb.dirty = 0;
+	}
+
+	byte *dest = vdest;
+
+	int cnt = 160;
+	un16* dst = (un16*)dest;
+	byte* src = BUF;
+
+	while (cnt--) *(dst++) = PAL2[*(src++)];
 
 	vdest += fb.pitch;
 }
@@ -733,7 +648,7 @@ void IRAM_ATTR lcd_refreshline()
 
 //}
 
-inline static void updatepalette(int i)
+static inline void updatepalette(int i)
 {
 	short c;
 	short r, g, b; //, y, u, v, rr, gg;
@@ -757,22 +672,20 @@ inline static void updatepalette(int i)
 
 inline void pal_write(int i, byte b)
 {
-	if (lcd.pal[i] != b)
-	{
-		lcd.pal[i] = b;
-		updatepalette(i>>1);
-	}
+	if (lcd.pal[i] == b) return;
+	lcd.pal[i] = b;
+	updatepalette(i>>1);
 }
 
 void IRAM_ATTR pal_write_dmg(int i, int mapnum, byte d)
 {
 	int j;
-	int * const cmap = dmg_pal[mapnum & 0x3];
-	int c;
-	int r, g, b;
+	int *cmap = dmg_pal[mapnum];
+	int c, r, g, b;
 
 	if (hw.cgb) return;
 
+	/* if (mapnum >= 2) d = 0xe4; */
 	for (j = 0; j < 8; j += 2)
 	{
 		c = cmap[(d >> j) & 3];
@@ -785,21 +698,20 @@ void IRAM_ATTR pal_write_dmg(int i, int mapnum, byte d)
 		pal_write(i+j, c & 0xff);
 		pal_write(i+j+1, c >> 8);
 	}
-
-	//printf("pal_write_dmg: i=%d, d=0x%x\n", i , d);
 }
 
 inline void vram_write(int a, byte b)
 {
-	//if (lcd.vbank[R_VBK&1][a] != b)
-	{
-		lcd.vbank[R_VBK&1][a] = b;
-		if (a >= 0x1800) return;
-	}
+	lcd.vbank[R_VBK&1][a] = b;
+	if (a >= 0x1800) return;
+	// patdirty[((R_VBK&1)<<9)+(a>>4)] = 1;
+	// anydirty = 1;
 }
 
 void vram_dirty()
 {
+	// anydirty = 1;
+	// memset(patdirty, 1, sizeof patdirty);
 }
 
 void pal_set(int palette)
@@ -818,16 +730,6 @@ void pal_set(int palette)
 	pal_dirty();
 }
 
-void pal_next()
-{
-	pal_set(current_palette + 1);
-}
-
-int pal_get()
-{
-	return current_palette;
-}
-
 void pal_dirty()
 {
 	int i;
@@ -838,19 +740,13 @@ void pal_dirty()
 		pal_write_dmg(64, 2, R_OBP0);
 		pal_write_dmg(72, 3, R_OBP1);
 	}
-	//else
-	{
-		for (i = 0; i < 64; i++)
-		{
-			updatepalette(i);
-		}
-	}
+	for (i = 0; i < 64; i++)
+		updatepalette(i);
 }
 
 void lcd_reset()
 {
 	memset(&lcd, 0, sizeof lcd);
-
 	lcd_begin();
 	vram_dirty();
 	pal_dirty();

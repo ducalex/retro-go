@@ -2,7 +2,6 @@
 
 #include <stdlib.h>
 
-#include "gnuboy.h"
 #include "defs.h"
 #include "hw.h"
 #include "cpu.h"
@@ -158,7 +157,7 @@ void IRAM_ATTR lcdc_trans()
 			{
 			case 0: /* hblank */
 			case 1: /* vblank */
-				lcd_refreshline();
+				//lcd_refreshline();
 				stat_change(2);
 				C += 40;
 				break;

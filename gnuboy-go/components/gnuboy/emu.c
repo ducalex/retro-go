@@ -1,17 +1,30 @@
-#include "gnuboy.h"
 #include "defs.h"
 #include "regs.h"
 #include "hw.h"
 #include "cpu.h"
 #include "sound.h"
+#include "stdarg.h"
+#include "stdio.h"
 #include "mem.h"
 #include "lcd.h"
 #include "rtc.h"
 #include "rc.h"
+#include "esp_system.h"
 
 
 static int framelen = 16743;
 static int framecount;
+
+
+void die(char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	abort();
+}
 
 
 void emu_init()

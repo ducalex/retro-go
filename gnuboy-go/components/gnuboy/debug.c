@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "gnuboy.h"
 #include "defs.h"
 #include "cpu.h"
 #include "mem.h"

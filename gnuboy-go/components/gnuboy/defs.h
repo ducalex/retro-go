@@ -1,9 +1,16 @@
-
-
-
 #ifndef __DEFS_H__
 #define __DEFS_H__
 
+
+typedef unsigned char byte;
+typedef unsigned char un8;
+typedef unsigned short un16;
+typedef unsigned int un32;
+typedef signed char n8;
+typedef signed short n16;
+typedef signed int n32;
+typedef un16 word;
+typedef word addr;
 
 
 #ifdef IS_LITTLE_ENDIAN
@@ -14,22 +21,105 @@
 #define HI 0
 #endif
 
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <signal.h>
+#include <malloc.h>
+#include <math.h>
 
-typedef unsigned char byte;
+void ev_poll();
+void vid_close();
+void vid_preinit();
+void vid_init();
+void vid_begin();
+void vid_end();
+void vid_setpal(int i, int r, int g, int b);
+void vid_settitle(char *title);
+#ifndef GNUBOY_NO_SCREENSHOT
+int  vid_screenshot(char *filename);
+#endif /*GNUBOY_NO_SCREENSHOT */
 
-typedef unsigned char un8;
-typedef unsigned short un16;
-typedef unsigned int un32;
+void sys_sleep(int us);
+void *sys_timer();
+int  sys_elapsed(void *in_ptr);
 
-typedef signed char n8;
-typedef signed short n16;
-typedef signed int n32;
+/* Sound */
+void pcm_init();
+int  pcm_submit();
+void pcm_close();
+#ifdef GNUBOY_HARDWARE_VOLUME
+void pcm_volume(int volume); /* volume should be specified in percent 0-100 */
+#endif /* GNBOY_HARDWARE_VOLUME */
 
-typedef un16 word;
-typedef word addr;
+void sys_checkdir(char *path, int wr);
+void sys_sanitize(char *s);
+void sys_initpath(char *exe);
+void doevents();
+void die(char *fmt, ...);
 
+#ifndef GNUBOY_NO_PRINTF
+#define debug_printf_init()
+#define debug_printf printf
+#else
+void debug_printf_init();
+void debug_printf(char *fmt, ...);
+#endif /* GNUBOY_HAVE_PRINTF */
 
+/* FIXME this header files is a poor location for the following prototypes */
+/*------------------------------------------*/
 
+/* emu.c */
+void emu_reset();
+void emu_run();
+void emu_step();
+
+ /* exports.c */
+void init_exports();
+void show_exports();
+
+/* hw.c */
+#include "defs.h" /* need byte for below */
+void hw_interrupt(byte i, byte mask);
+
+/* palette.c */
+void pal_set332();
+void pal_expire();
+void pal_release(byte n);
+byte pal_getcolor(int c, int r, int g, int b);
+
+/* save.c */
+#include <stdio.h> /* need FILE for below */
+void savestate(FILE *f);
+void loadstate(FILE *f);
+
+/* inflate.c */
+int unzip (const unsigned char *data, long *p, void (* callback) (unsigned char d));
+
+/* split.c */
+int splitline(char **argv, int max, char *line);
+
+/* refresh.c */
+void refresh_1(byte *dest, byte *src, byte *pal, int cnt);
+void refresh_2(un16 *dest, byte *src, un16 *pal, int cnt);
+void refresh_3(byte *dest, byte *src, un32 *pal, int cnt);
+void refresh_4(un32 *dest, byte *src, un32 *pal, int cnt);
+void refresh_2_3x(un16 *dest, byte *src, un16 *pal, int cnt);
+void refresh_3_2x(byte *dest, byte *src, un32 *pal, int cnt);
+void refresh_3_3x(byte *dest, byte *src, un32 *pal, int cnt);
+void refresh_3_4x(byte *dest, byte *src, un32 *pal, int cnt);
+void refresh_4_2x(un32 *dest, byte *src, un32 *pal, int cnt);
+void refresh_4_3x(un32 *dest, byte *src, un32 *pal, int cnt);
+void refresh_4_4x(un32 *dest, byte *src, un32 *pal, int cnt);
+
+/* path.c */
+char *path_search(char *name, char *mode, char *path);
+
+/* debug.c */
+void debug_disassemble(addr a, int c);
+
+void die(char *fmt, ...);
 
 
 #endif

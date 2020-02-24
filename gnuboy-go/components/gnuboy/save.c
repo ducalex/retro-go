@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "gnuboy.h"
 #include "defs.h"
 #include "cpu.h"
 #include "cpuregs.h"

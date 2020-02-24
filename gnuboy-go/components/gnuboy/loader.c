@@ -4,7 +4,6 @@
 #include <time.h>
 #include <ctype.h>
 
-#include "gnuboy.h"
 #include "defs.h"
 #include "regs.h"
 #include "mem.h"
@@ -413,7 +412,7 @@ void loader_unload()
 static char *base(char *s)
 {
 	char *p;
-	p = (char *) strrchr((unsigned char)s, DIRSEP_CHAR);
+	p = (char *) strrchr((unsigned char)s, '/');
 	if (p) return p+1;
 	return s;
 }

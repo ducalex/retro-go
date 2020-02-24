@@ -3,7 +3,6 @@
 #include "stdlib.h"
 #include "esp_attr.h"
 
-#include "gnuboy.h"
 #include "defs.h"
 #include "hw.h"
 #include "regs.h"
@@ -133,7 +132,7 @@ void IRAM_ATTR mem_updatemap()
  * byte value to be written.
  */
 
-void IRAM_ATTR ioreg_write(byte r, byte b)
+inline void ioreg_write(byte r, byte b)
 {
 	if (!hw.cgb)
 	{
@@ -282,7 +281,7 @@ void IRAM_ATTR ioreg_write(byte r, byte b)
 }
 
 
-byte IRAM_ATTR ioreg_read(byte r)
+inline byte ioreg_read(byte r)
 {
 	switch(r)
 	{
@@ -339,7 +338,7 @@ byte IRAM_ATTR ioreg_read(byte r)
  * and a byte value written to the address.
  */
 
-void IRAM_ATTR mbc_write(int a, byte b)
+inline void mbc_write(int a, byte b)
 {
 	byte ha = (a>>12);
 
@@ -431,7 +430,6 @@ void IRAM_ATTR mbc_write(int a, byte b)
 		case 0x4:
 		case 0x5:
 			mbc.rambank = b & 0x0f;
-			//printf("MBC5: Mapped rambank=%d\n", mbc.rambank);
 			break;
 		default:
 			printf("MBC_MBC5: invalid write to 0x%x (0x%x)\n", a, b);
@@ -520,22 +518,8 @@ void IRAM_ATTR mem_write(int a, byte b)
 			rtc_write(b);
 			break;
 		}
-
-		__asm__("nop");
-		__asm__("nop");
-		__asm__("nop");
-		__asm__("nop");
-		__asm__("memw");
 		ram.sbank[mbc.rambank][a & 0x1FFF] = b;
-		__asm__("nop");
-		__asm__("nop");
-		__asm__("nop");
-		__asm__("nop");
-		__asm__("memw");
-
 		ram.sram_dirty = 1;
-		//printf("mem_write: bank=%d, sram %p=0x%d\n", mbc.rambank, (void*)(a & 0x1fff), b);
-		//printf("mem_write: check - write=0x%x, read=0x%x\n", b, ram.sbank[mbc.rambank][a & 0x1FFF]);
 		break;
 	case 0xC:
 		if ((a & 0xF000) == 0xC000)
@@ -584,17 +568,12 @@ byte IRAM_ATTR mem_read(int a)
 {
 	int n;
 	byte ha = (a>>12) & 0xE;
-	int index;
-	byte* bnk;
-	int tmp;
 
-	//printf("read ha=0x%04x, a=0x%04x\n", ha, a);
-
+	/* printf("read %04x\n", a); */
 	switch (ha)
 	{
 	case 0x0:
 	case 0x2:
-		//if (a >= 16384) return 0xff;
 		return rom.bank[0][a & 0x3fff];
 	case 0x4:
 	case 0x6:
@@ -609,13 +588,6 @@ byte IRAM_ATTR mem_read(int a)
 			return 0xFF;
 		if (rtc.sel&8)
 			return rtc.regs[rtc.sel&7];
-
-		__asm__("nop");
-		__asm__("nop");
-		__asm__("nop");
-		__asm__("nop");
-		__asm__("memw");
-		//printf("mem_read: bank=%d, sram %p=0x%d\n", mbc.rambank, (void*)(a & 0x1fff), ram.sbank[mbc.rambank][a & 0x1FFF]);
 		return ram.sbank[mbc.rambank][a & 0x1FFF];
 	case 0xC:
 		if ((a & 0xF000) == 0xC000)

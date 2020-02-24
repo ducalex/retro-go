@@ -1,4 +1,3 @@
-#include "gnuboy.h"
 #include "defs.h"
 #include "lcd.h"
 
