@@ -23,10 +23,6 @@ struct cpu cpu;
 #define POP(w) ( ((w) = readw(xSP)), (SP += 2) )
 
 
-#define FETCH_OLD ( mbc.rmap[PC>>12] \
-? mbc.rmap[PC>>12][PC++] \
-: mem_read(PC++) )
-
 #define FETCH (readb(PC++))
 
 
@@ -272,7 +268,7 @@ void cpu_reset()
 /* FIXME: employ common unit to drive whatever_advance(),
 	(double-speed machine cycles (2MHz) is a good candidate)
 	handle differences in place */
-void IRAM_ATTR div_advance(int cnt)
+inline void timer_advance(int cnt)
 {
 	cpu.div += (cnt<<1);
 	if (cpu.div >= 256)
@@ -280,16 +276,7 @@ void IRAM_ATTR div_advance(int cnt)
 		R_DIV += (cpu.div >> 8);
 		cpu.div &= 0xff;
 	}
-}
 
-/* cnt - time to emulate, expressed in 2MHz units in
-	single-speed and 4MHz units in double speed mode
-*/
-/* FIXME: employ common unit to drive whatever_advance(),
-	(double-speed machine cycles (2MHz) is a good candidate)
-	handle differences in place */
-void IRAM_ATTR timer_advance(int cnt)
-{
 	int unit, tima;
 
 	if (!(R_TAC & 0x04)) return;
@@ -328,10 +315,10 @@ inline void sound_advance(int cnt)
 	cpu.snd += cnt;
 }
 
+#if 0
 /* cnt - time to emulate, expressed in 2MHz units */
 void IRAM_ATTR cpu_timers(int cnt)
 {
-	div_advance(cnt << cpu.speed);
 	timer_advance(cnt << cpu.speed);
 	lcdc_advance(cnt);
 	sound_advance(cnt);
@@ -344,15 +331,19 @@ void IRAM_ATTR cpu_timers(int cnt)
 	returns number of cycles skipped
 */
 /* FIXME: bring cpu_timers() out, make caller advance system */
-int IRAM_ATTR cpu_idle(int max)
+inline int cpu_idle(int max)
 {
 	int cnt, unit;
 
 
-	if (!(cpu.halt && IME)) return 0;
-	if (R_IF & R_IE)
+	// if (!(cpu.halt && IME)) return 0;
+	// if (R_IF & R_IE)
+	// {
+	// 	cpu.halt = 0;
+	// 	return 0;
+	// }
+	if (!cpu.halt)
 	{
-		cpu.halt = 0;
 		return 0;
 	}
 
@@ -378,8 +369,7 @@ int IRAM_ATTR cpu_idle(int max)
 	cpu_timers(cnt);
 	return cnt;
 }
-
-#ifndef ASM_CPU_EMULATE
+#endif
 
 extern int debug_trace;
 
@@ -394,22 +384,27 @@ extern int debug_trace;
 */
 int IRAM_ATTR cpu_emulate(int cycles)
 {
-	int i;
+	int clen, i;
 	byte op, cbop;
-	int clen;
 	static union reg acc;
 	static byte b;
-	static word w;
 
 	i = cycles;
 next:
 	/* Skip idle cycles */
+	#if 0
 	if ((clen = cpu_idle(i)))
 	{
 		i -= clen;
 		if (i > 0) goto next;
 		return cycles-i;
 	}
+	#else
+	if (cpu.halt) {
+		clen = 1;
+		goto _skip;
+	}
+	#endif
 
 	/* Handle interrupts */
 	if (IME && (IF & IE))
@@ -777,16 +772,15 @@ next:
 		CPL(A); break;
 
 	case 0x18: /* JR */
-	__JR:
 		JR; break;
 	case 0x20: /* JR NZ */
-		if (!(F&FZ)) goto __JR; NOJR; break;
+		if (!(F&FZ)) JR; else NOJR; break;
 	case 0x28: /* JR Z */
-		if (F&FZ) goto __JR; NOJR; break;
+		if (F&FZ) JR; else NOJR; break;
 	case 0x30: /* JR NC */
-		if (!(F&FC)) goto __JR; NOJR; break;
+		if (!(F&FC)) JR; else NOJR; break;
 	case 0x38: /* JR C */
-		if (F&FC) goto __JR; NOJR; break;
+		if (F&FC) JR; else NOJR; break;
 
 	case 0xC3: /* JP */
 		JP; break;
@@ -815,16 +809,15 @@ next:
 		IME = IMA = 1; RET; break;
 
 	case 0xCD: /* CALL */
-	__CALL:
 		CALL; break;
 	case 0xC4: /* CALL NZ */
-		if (!(F&FZ)) goto __CALL; NOCALL; break;
+		if (!(F&FZ)) CALL; else NOCALL; break;
 	case 0xCC: /* CALL Z */
-		if (F&FZ) goto __CALL; NOCALL; break;
+		if (F&FZ) CALL; else NOCALL; break;
 	case 0xD4: /* CALL NC */
-		if (!(F&FC)) goto __CALL; NOCALL; break;
+		if (!(F&FC)) CALL; else NOCALL; break;
 	case 0xDC: /* CALL C */
-		if (F&FC) goto __CALL; NOCALL; break;
+		if (F&FC) CALL; else NOCALL; break;
 
 	case 0xC7: /* RST 0 */
 		RST(0x00); break;
@@ -937,10 +930,10 @@ next:
 		break;
 	}
 
+_skip:
 	/* Advance time counters */
 	/* FIXME: make use of cpu_timers() */
 	clen <<= 1;
-	div_advance(clen);
 	timer_advance(clen);
 	clen >>= cpu.speed;
 	lcdc_advance(clen);
@@ -950,17 +943,3 @@ next:
 	if (i > 0) goto next;
 	return cycles-i;
 }
-
-#endif /* ASM_CPU_EMULATE */
-
-
-#ifndef ASM_CPU_STEP
-/* Outdated equivalent of emu.c:emu_step() probably? Doesn't seem to be used. */
-int IRAM_ATTR cpu_step(int max)
-{
-	int cnt;
-	if ((cnt = cpu_idle(max))) return cnt;
-	return cpu_emulate(1);
-}
-
-#endif /* ASM_CPU_STEP */

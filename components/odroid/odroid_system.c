@@ -85,13 +85,19 @@ void odroid_system_gpio_init()
     rtc_gpio_deinit(ODROID_GAMEPAD_IO_MENU);
     //rtc_gpio_deinit(GPIO_NUM_14);
 
-    // blue led
+    // Blue LED
     gpio_set_direction(GPIO_NUM_2, GPIO_MODE_OUTPUT);
     gpio_set_level(GPIO_NUM_2, 0);
 
     // Disable LCD CD to prevent garbage
     gpio_set_direction(GPIO_NUM_5, GPIO_MODE_OUTPUT);
     gpio_set_level(GPIO_NUM_5, 1);
+
+    // Disable speaker to prevent hiss/pops
+    gpio_set_direction(GPIO_NUM_25, GPIO_MODE_OUTPUT);
+    gpio_set_direction(GPIO_NUM_26, GPIO_MODE_OUTPUT);
+    gpio_set_level(GPIO_NUM_25, 0);
+    gpio_set_level(GPIO_NUM_26, 0);
 }
 
 void odroid_system_application_set(int slot)

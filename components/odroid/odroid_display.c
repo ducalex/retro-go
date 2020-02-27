@@ -862,9 +862,7 @@ void odroid_display_backlight_set(int8_t level)
         level = ODROID_BACKLIGHT_LEVEL_COUNT - 1;
     }
 
-    if (level != backlightLevel) {
-        odroid_settings_Backlight_set(level);
-    }
+    odroid_settings_Backlight_set(level);
 
     backlightLevel = level;
     backlight_percentage_set(backlightLevels[level]);

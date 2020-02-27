@@ -35,9 +35,7 @@ void odroid_audio_volume_set(odroid_volume_level level)
         level = ODROID_VOLUME_LEVEL_COUNT - 1;
     }
 
-    if (level != volumeLevel) {
-        odroid_settings_Volume_set(level);
-    }
+    odroid_settings_Volume_set(level);
 
     volumeLevel = level;
     Volume = (float)volumeLevels[level] * 0.001f;
@@ -132,31 +130,12 @@ void odroid_audio_init(ODROID_AUDIO_SINK sink, int sample_rate)
 void odroid_audio_terminate()
 {
     i2s_zero_dma_buffer(I2S_NUM);
-    i2s_stop(I2S_NUM);
+    //i2s_stop(I2S_NUM);
+    //i2s_start(I2S_NUM);
+    i2s_driver_uninstall(I2S_NUM);
 
-    i2s_start(I2S_NUM);
-
-
-    esp_err_t err = rtc_gpio_init(GPIO_NUM_25);
-    err = rtc_gpio_init(GPIO_NUM_26);
-    if (err != ESP_OK)
-    {
-        abort();
-    }
-
-    err = rtc_gpio_set_direction(GPIO_NUM_25, RTC_GPIO_MODE_OUTPUT_ONLY);
-    err = rtc_gpio_set_direction(GPIO_NUM_26, RTC_GPIO_MODE_OUTPUT_ONLY);
-    if (err != ESP_OK)
-    {
-        abort();
-    }
-
-    err = rtc_gpio_set_level(GPIO_NUM_25, 0);
-    err = rtc_gpio_set_level(GPIO_NUM_26, 0);
-    if (err != ESP_OK)
-    {
-        abort();
-    }
+    gpio_reset_pin(GPIO_NUM_25);
+    gpio_reset_pin(GPIO_NUM_26);
 }
 
 void odroid_audio_set_sink(ODROID_AUDIO_SINK sink)
