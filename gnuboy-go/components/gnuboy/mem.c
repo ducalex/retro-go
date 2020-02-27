@@ -245,7 +245,8 @@ inline void ioreg_write(byte r, byte b)
 		hw_dma(b);
 		break;
 	case RI_KEY1:
-		REG(r) = (REG(r) & 0x80) | (b & 0x01);
+		// REG(r) = (REG(r) & 0x80) | (b & 0x01);
+		REG(r) = b;
 		break;
 	case RI_HDMA1:
 		REG(r) = b;

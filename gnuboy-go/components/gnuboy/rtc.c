@@ -1,6 +1,3 @@
-
-
-
 #include <stdio.h>
 #include <time.h>
 
@@ -96,7 +93,7 @@ void rtc_tick()
 void rtc_save_internal(FILE *f)
 {
 	time_t rt;
-    
+
 	rt = time(0);
 #ifdef GNUBOY_USE_BINARY_RTC_FILES
 	/* WARNING using binary real time clock files is not portable! */

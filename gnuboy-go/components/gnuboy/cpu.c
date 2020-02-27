@@ -139,10 +139,6 @@ F |= (FH|FN); }
 
 #define CCF { F = (F & (FZ|FC)) ^ FC; }
 
-#define DAA { \
-A += (LB(acc) = daa_table[((((int)F)&0x70)<<4) | A]); \
-F = (F & (FN)) | ZFLAG(A) | daa_carry_table[LB(acc)>>2]; }
-
 #define SWAP(r) { \
 (r) = swap_table[(r)]; \
 F = ZFLAG((r)); }
@@ -223,10 +219,7 @@ label: op(b); break;
 #define DI ( cpu.halt = IMA = IME = 0 )
 
 
-
-#define PRE_INT ( DI, PUSH(PC) )
-#define THROW_INT(n) ( (IF &= ~(1<<(n))), (PC = 0x40+((n)<<3)) )
-
+#define COND_EXEC_INT(i, n) if (IF & IE & i) { DI; PUSH(PC); IF &= ~i; PC = 0x40+((n)<<3); clen = 5; goto _skip; }
 
 
 
@@ -270,31 +263,29 @@ void cpu_reset()
 	handle differences in place */
 inline void timer_advance(int cnt)
 {
-	cpu.div += (cnt<<1);
+	cpu.div += (cnt << 1);
+
 	if (cpu.div >= 256)
 	{
 		R_DIV += (cpu.div >> 8);
 		cpu.div &= 0xff;
 	}
 
-	int unit, tima;
-
 	if (!(R_TAC & 0x04)) return;
 
-	unit = ((-R_TAC) & 3) << 1;
-	cpu.tim += (cnt<<unit);
+	int unit = ((-R_TAC) & 3) << 1;
+	cpu.tim += (cnt << unit);
 
 	if (cpu.tim >= 512)
 	{
-		tima = R_TIMA + (cpu.tim >> 9);
+		int tima = R_TIMA + (cpu.tim >> 9);
 		cpu.tim &= 0x1ff;
 		if (tima >= 256)
 		{
 			hw_interrupt(IF_TIMER, IF_TIMER);
 			hw_interrupt(0, IF_TIMER);
+			tima = R_TMA;
 		}
-		while (tima >= 256)
-			tima = tima - 256 + R_TMA;
 		R_TIMA = tima;
 	}
 }
@@ -315,62 +306,6 @@ inline void sound_advance(int cnt)
 	cpu.snd += cnt;
 }
 
-#if 0
-/* cnt - time to emulate, expressed in 2MHz units */
-void IRAM_ATTR cpu_timers(int cnt)
-{
-	timer_advance(cnt << cpu.speed);
-	lcdc_advance(cnt);
-	sound_advance(cnt);
-}
-
-/* cpu_idle()
-	Skip idle phase of CPU operation, if any
-
-	max - maximum time to skip expressed in 2MHz units
-	returns number of cycles skipped
-*/
-/* FIXME: bring cpu_timers() out, make caller advance system */
-inline int cpu_idle(int max)
-{
-	int cnt, unit;
-
-
-	// if (!(cpu.halt && IME)) return 0;
-	// if (R_IF & R_IE)
-	// {
-	// 	cpu.halt = 0;
-	// 	return 0;
-	// }
-	if (!cpu.halt)
-	{
-		return 0;
-	}
-
-	/* Make sure we don't miss lcdc status events! */
-	if ((R_IE & (IF_VBLANK | IF_STAT)) && (max > cpu.lcdc))
-		max = cpu.lcdc;
-
-	/* If timer interrupt cannot happen, this is very simple! */
-	if (!((R_IE & IF_TIMER) && (R_TAC & 0x04)))
-	{
-		cpu_timers(max);
-		return max;
-	}
-
-	/* Figure out when the next timer interrupt will happen */
-	unit = ((-R_TAC) & 3) << 1;
-	cnt = (511 - cpu.tim + (1<<unit)) >> unit;
-	cnt += (255 - R_TIMA) << (9 - unit);
-
-	if (max < cnt)
-		cnt = max;
-
-	cpu_timers(cnt);
-	return cnt;
-}
-#endif
-
 extern int debug_trace;
 
 /* cpu_emulate()
@@ -384,49 +319,26 @@ extern int debug_trace;
 */
 int IRAM_ATTR cpu_emulate(int cycles)
 {
-	int clen, i;
-	byte op, cbop;
+	int clen, i = cycles;
+	byte op, cbop, b;
+	word temp;
 	static union reg acc;
-	static byte b;
 
-	i = cycles;
 next:
 	/* Skip idle cycles */
-	#if 0
-	if ((clen = cpu_idle(i)))
-	{
-		i -= clen;
-		if (i > 0) goto next;
-		return cycles-i;
-	}
-	#else
 	if (cpu.halt) {
 		clen = 1;
 		goto _skip;
 	}
-	#endif
 
 	/* Handle interrupts */
 	if (IME && (IF & IE))
 	{
-		PRE_INT;
-		switch ((byte)(IF & IE))
-		{
-		case 0x01: case 0x03: case 0x05: case 0x07:
-		case 0x09: case 0x0B: case 0x0D: case 0x0F:
-		case 0x11: case 0x13: case 0x15: case 0x17:
-		case 0x19: case 0x1B: case 0x1D: case 0x1F:
-			THROW_INT(0); break;
-		case 0x02: case 0x06: case 0x0A: case 0x0E:
-		case 0x12: case 0x16: case 0x1A: case 0x1E:
-			THROW_INT(1); break;
-		case 0x04: case 0x0C: case 0x14: case 0x1C:
-			THROW_INT(2); break;
-		case 0x08: case 0x18:
-			THROW_INT(3); break;
-		case 0x10:
-			THROW_INT(4); break;
-		}
+		COND_EXEC_INT(IF_VBLANK, 0);
+		COND_EXEC_INT(IF_STAT, 1);
+		COND_EXEC_INT(IF_TIMER, 2);
+		COND_EXEC_INT(IF_SERIAL, 3);
+		COND_EXEC_INT(IF_PAD, 4);
 	}
 	IME = IMA;
 
@@ -624,27 +536,18 @@ next:
 	case 0xF2: /* LDH A,(C) (undocumented) */
 		A = readhi(C); break;
 
-
 	case 0xF8: /* LD HL,SP+imm */
-#if 0
-		b = FETCH; LDHLSP(b); break;
-#else
-		{
-			// https://gammpei.github.io/blog/posts/2018-03-04/how-to-write-a-game-boy-emulator-part-8-blarggs-cpu-test-roms-1-3-4-5-7-8-9-10-11.html
-			signed char v = (signed char) FETCH;
-			int temp = (int)(SP) + (int)v;
+		// https://gammpei.github.io/blog/posts/2018-03-04/how-to-write-a-game-boy-emulator-part-8-blarggs-cpu-test-roms-1-3-4-5-7-8-9-10-11.html
+		b = FETCH;
+		temp = (int)(SP) + (signed char)b;
 
-			byte half_carry = ((SP & 0xff) ^ v ^ temp) & 0x10;
+		F &= ~(FZ | FN | FH | FC);
 
-			F &= ~(FZ | FN | FH | FC);
+		if (((SP & 0xff) ^ b ^ temp) & 0x10) F |= FH;
+		if ((SP & 0xff) + b > 0xff) F |= FC;
 
-			if (half_carry) F |= FH;
-			if ((SP & 0xff) + (byte)v > 0xff) F |= FC;
-
-			HL = temp & 0xffff;
-		}
+		HL = temp;
 		break;
-#endif
 	case 0xF9: /* LD SP,HL */
 		SP = HL; break;
 	case 0xFA: /* LD A,(imm) */
@@ -736,38 +639,27 @@ next:
 		RRA(A); break;
 
 	case 0x27: /* DAA */
-#if 0
-		DAA
-#else
+		//http://forums.nesdev.com/viewtopic.php?t=9088
+		temp = A;
+
+		if (F & FN)
 		{
-			//http://forums.nesdev.com/viewtopic.php?t=9088
-
-			int a = A;
-			if (!(F & FN))
-			{
-				if ((F & FH) || ((a & 0x0f) > 9)) a += 0x06;
-
-				if ((F & FC) || (a > 0x9f)) a += 0x60;
-			}
-			else
-			{
-				if (F & FH)	a = (a - 6) & 0xff;
-
-				if (F & FC) a -= 0x60;
-			}
-
-			F &= ~(FH | FZ);
-
-			if (a & 0x100) F |= FC;
-
-			a &= 0xff;
-
-			if (!a) F |= FZ;
-
-			A = (byte)a;
+			if (F & FH)	temp = (temp - 6) & 0xff;
+			if (F & FC) temp -= 0x60;
 		}
-#endif
+		else
+		{
+			if ((F & FH) || ((temp & 0x0f) > 9)) temp += 0x06;
+			if ((F & FC) || (temp > 0x9f)) temp += 0x60;
+		}
+
+		A = (byte)temp;
+		F &= ~(FH | FZ);
+
+		if (temp & 0x100)   F |= FC;
+		if (!(temp & 0xff)) F |= FZ;
 		break;
+
 	case 0x2F: /* CPL */
 		CPL(A); break;
 
@@ -854,25 +746,17 @@ next:
 		PUSH(AF); break;
 
 	case 0xE8: /* ADD SP,imm */
-#if 0
-		b = FETCH; ADDSP(b); break;
-#else
-		{
-			// https://gammpei.github.io/blog/posts/2018-03-04/how-to-write-a-game-boy-emulator-part-8-blarggs-cpu-test-roms-1-3-4-5-7-8-9-10-11.html
-			signed char v = (signed char) FETCH;
-			int temp = (int)(SP) + (int)v;
+		// https://gammpei.github.io/blog/posts/2018-03-04/how-to-write-a-game-boy-emulator-part-8-blarggs-cpu-test-roms-1-3-4-5-7-8-9-10-11.html
+		b = FETCH; // ADDSP(b); break;
+		temp = SP + (signed char)b;
 
-			byte half_carry = ((SP & 0xff) ^ v ^ temp) & 0x10;
+		F &= ~(FZ | FN | FH | FC);
 
-			F &= ~(FZ | FN | FH | FC);
+		if ((SP ^ b ^ temp) & 0x10) F |= FH;
+		if ((SP & 0xff) + b > 0xff) F |= FC;
 
-			if (half_carry) F |= FH;
-			if ((SP & 0xff) + (byte)v > 0xff) F |= FC;
-
-			SP = temp & 0xffff;
-		}
+		SP = temp;
 		break;
-#endif
 
 	case 0xF3: /* DI */
 		DI; break;

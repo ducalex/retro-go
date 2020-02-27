@@ -94,12 +94,6 @@ byte pal_getcolor(int c, int r, int g, int b);
 void savestate(FILE *f);
 void loadstate(FILE *f);
 
-/* inflate.c */
-int unzip (const unsigned char *data, long *p, void (* callback) (unsigned char d));
-
-/* split.c */
-int splitline(char **argv, int max, char *line);
-
 /* refresh.c */
 void refresh_1(byte *dest, byte *src, byte *pal, int cnt);
 void refresh_2(un16 *dest, byte *src, un16 *pal, int cnt);
@@ -112,9 +106,6 @@ void refresh_3_4x(byte *dest, byte *src, un32 *pal, int cnt);
 void refresh_4_2x(un32 *dest, byte *src, un32 *pal, int cnt);
 void refresh_4_3x(un32 *dest, byte *src, un32 *pal, int cnt);
 void refresh_4_4x(un32 *dest, byte *src, un32 *pal, int cnt);
-
-/* path.c */
-char *path_search(char *name, char *mode, char *path);
 
 /* debug.c */
 void debug_disassemble(addr a, int c);

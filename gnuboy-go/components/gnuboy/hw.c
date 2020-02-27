@@ -25,25 +25,14 @@ struct hw hw;
 
 void IRAM_ATTR hw_interrupt(byte i, byte mask)
 {
-#if 0
-	byte oldif = R_IF;
-	i &= 0x1F & mask;
-	R_IF |= i & (hw.ilines ^ i);
-
-	/* FIXME - is this correct? not sure the docs understand... */
-	if ((R_IF & (R_IF ^ oldif) & R_IE) && cpu.ime) cpu.halt = 0;
-	/* if ((i & (hw.ilines ^ i) & R_IE) && cpu.ime) cpu.halt = 0; */
-	/* if ((i & R_IE) && cpu.ime) cpu.halt = 0; */
-#else
-	i &= 0x1F & mask;
-	R_IF |= i & (hw.ilines ^ i);
 	if (i) {
+		// IF being set shouldn't depend on ilines (Fixes Worms Armageddon)
+		// R_IF |= i & (hw.ilines ^ i);
+		R_IF |= i;
 		// HALT shouldn't even be entered when interrupts are disabled.
 		// No need to check for IME, and it works around a stall bug.
 		cpu.halt = 0;
 	}
-#endif
-
 	hw.ilines &= ~mask;
 	hw.ilines |= i;
 }
@@ -58,11 +47,8 @@ void IRAM_ATTR hw_interrupt(byte i, byte mask)
 
 void IRAM_ATTR hw_dma(byte b)
 {
-	int i;
-	addr a;
-
-	a = ((addr)b) << 8;
-	for (i = 0; i < 160; i++, a++)
+	addr a = ((addr)b) << 8;
+	for (int i = 0; i < 160; i++, a++)
 		lcd.oam.mem[i] = readb(a);
 }
 
@@ -148,26 +134,16 @@ void IRAM_ATTR pad_refresh()
  * These simple functions just update the state of a button on the
  * pad.
  */
-
-void pad_press(byte k)
+void IRAM_ATTR pad_set(byte k, int st)
 {
-	if (hw.pad & k)
-		return;
-	hw.pad |= k;
+	if (st) {
+		if (hw.pad & k) return;
+		hw.pad |= k;
+	} else {
+		if (!(hw.pad & k)) return;
+		hw.pad &= ~k;
+	}
 	pad_refresh();
-}
-
-void pad_release(byte k)
-{
-	if (!(hw.pad & k))
-		return;
-	hw.pad &= ~k;
-	pad_refresh();
-}
-
-void pad_set(byte k, int st)
-{
-	st ? pad_press(k) : pad_release(k);
 }
 
 void hw_reset()
