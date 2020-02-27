@@ -26,8 +26,8 @@
 
 void IRAM_ATTR stat_trigger()
 {
-	static const int condbits[4] = { 0x08, 0x10, 0x20, 0x00 };
-	int flag = 0;
+	static const byte condbits[4] = { 0x08, 0x10, 0x20, 0x00 };
+	byte flag = 0;
 
 	if (R_LY == R_LYC)
 	{

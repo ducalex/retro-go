@@ -9,7 +9,6 @@
 
 #include "cpuregs.h"
 #ifndef GNUBOY_DISABLE_DEBUG_DISASSEMBLE
-#include "fastmem.h"
 
 static char *mnemonic_table[256] =
 {

@@ -40,89 +40,41 @@ inline byte *bank_ptr(short bank)
 
 void IRAM_ATTR mem_updatemap()
 {
-	int n;
-	byte **map;
-
 	mbc.rombank &= (mbc.romsize - 1);
+	mbc.rambank &= (mbc.ramsize - 1);
 
 	rom.bank[mbc.rombank] = bank_ptr(mbc.rombank);
 
-	mbc.rambank &= (mbc.ramsize - 1);
+	memset(mbc.rmap, 0, sizeof(mbc.rmap));
+	memset(mbc.wmap, 0, sizeof(mbc.wmap));
 
-	map = mbc.rmap;
-	map[0x0] = rom.bank[0];
-	map[0x1] = rom.bank[0];
-	map[0x2] = rom.bank[0];
-	map[0x3] = rom.bank[0];
+	mbc.rmap[0x0] = rom.bank[0];
+	mbc.rmap[0x1] = rom.bank[0];
+	mbc.rmap[0x2] = rom.bank[0];
+	mbc.rmap[0x3] = rom.bank[0];
 
 	if (mbc.rombank < mbc.romsize)
 	{
-		map[0x4] = rom.bank[mbc.rombank] - 0x4000;
-		map[0x5] = rom.bank[mbc.rombank] - 0x4000;
-		map[0x6] = rom.bank[mbc.rombank] - 0x4000;
-		map[0x7] = rom.bank[mbc.rombank] - 0x4000;
+		mbc.rmap[0x4] = rom.bank[mbc.rombank] - 0x4000;
+		mbc.rmap[0x5] = rom.bank[mbc.rombank] - 0x4000;
+		mbc.rmap[0x6] = rom.bank[mbc.rombank] - 0x4000;
+		mbc.rmap[0x7] = rom.bank[mbc.rombank] - 0x4000;
 	}
-	else
+
+	// VRAM
+	mbc.rmap[0x8] = mbc.wmap[0x8] = lcd.vbank[R_VBK & 1] - 0x8000;
+	mbc.rmap[0x9] = mbc.wmap[0x9] = lcd.vbank[R_VBK & 1] - 0x8000;
+
+	// SRAM
+	if (mbc.enableram && !(rtc.sel & 8))
 	{
-		map[0x4] = map[0x5] = map[0x6] = map[0x7] = NULL;
+	 	mbc.rmap[0xA] = mbc.wmap[0xA] = ram.sbank[mbc.rambank] - 0xA000;
+	 	mbc.rmap[0xB] = mbc.wmap[0xB] = ram.sbank[mbc.rambank] - 0xA000;
 	}
 
-	//if (0 && (R_STAT & 0x03) == 0x03)
-	//{
-		map[0x8] = NULL;
-		map[0x9] = NULL;
-	//}
-	//else
-	//{
-		// map[0x8] = lcd.vbank[R_VBK & 1] - 0x8000;
-		// map[0x9] = lcd.vbank[R_VBK & 1] - 0x8000;
-	//}
-
-	// if (mbc.enableram && !(rtc.sel&8))
-	// {
-	//  	map[0xA] = ram.sbank[mbc.rambank] - 0xA000;
-	//  	map[0xB] = ram.sbank[mbc.rambank] - 0xA000;
-	// }
-	//  else
-	// {
-		map[0xA] = map[0xB] = NULL;
-	//}
-
-#if 1
-	map[0xC] = ram.ibank[0] - 0xC000;
-	n = R_SVBK & 0x07;
-	map[0xD] = ram.ibank[n?n:1] - 0xD000;
-	map[0xE] = ram.ibank[0] - 0xE000;
-	map[0xF] = NULL;
-#else
-	map[0xC] = NULL;
-	map[0xD] = NULL;
-	map[0xE] = NULL;
-	map[0xF] = NULL;
-#endif
-
-#if 0
-	map = mbc.wmap;
-	map[0x0] = map[0x1] = map[0x2] = map[0x3] = NULL;
-	map[0x4] = map[0x5] = map[0x6] = map[0x7] = NULL;
-	map[0x8] = map[0x9] = NULL;
-
-	// if (mbc.enableram && !(rtc.sel&8))
-	// {
-	// 	map[0xA] = ram.sbank[mbc.rambank] - 0xA000;
-	// 	map[0xB] = ram.sbank[mbc.rambank] - 0xA000;
-	// }
-	// else
-	// {
-	// 	map[0xA] = map[0xB] = NULL;
-	// }
-
-	map[0xC] = ram.ibank[0] - 0xC000;
-	n = R_SVBK & 0x07;
-	map[0xD] = ram.ibank[n?n:1] - 0xD000;
-	map[0xE] = ram.ibank[0] - 0xE000;
-	map[0xF] = NULL;
-#endif
+	mbc.rmap[0xC] = mbc.wmap[0xC] = ram.ibank[0] - 0xC000;
+	mbc.rmap[0xD] = mbc.wmap[0xD] = ram.ibank[(R_SVBK & 0x07) ?: 1] - 0xD000;
+	// mbc.rmap[0xE] = mbc.wmap[0xE] = ram.ibank[0] - 0xE000;
 }
 
 
@@ -252,32 +204,23 @@ inline void ioreg_write(byte r, byte b)
 		REG(r) = b;
 		break;
 	case RI_HDMA2:
-		REG(r) = b; //& 0xF0;
+		REG(r) = b & 0xF0;
 		break;
 	case RI_HDMA3:
-		REG(r) = b; //& 0x1F;
+		REG(r) = b & 0x1F;
 		break;
 	case RI_HDMA4:
-		REG(r) = b; //& 0xF0;
+		REG(r) = b & 0xF0;
 		break;
 	case RI_HDMA5:
 		hw_hdma_cmd(b);
 		break;
+	default:
+		if (r >= 0x10 && r < 0x40) {
+			sound_write(r, b);
+		}
 	}
-	switch (r)
-	{
-	case RI_BGP:
-	case RI_OBP0:
-	case RI_OBP1:
-		/* printf("palette reg %02X write %02X at LY=%02X\n", r, b, R_LY); */
-	case RI_HDMA1:
-	case RI_HDMA2:
-	case RI_HDMA3:
-	case RI_HDMA4:
-	case RI_HDMA5:
-		/* printf("HDMA %d: %02X\n", r - RI_HDMA1 + 1, b); */
-		break;
-	}
+
 	/* printf("reg %02X => %02X (%02X)\n", r, REG(r), b); */
 }
 
@@ -324,7 +267,10 @@ inline byte ioreg_read(byte r)
 	case RI_HDMA5:
 		if (hw.cgb) return REG(r);
 	default:
-		return 0xff;
+		if (r >= 0x10 && r < 0x40) {
+			return sound_read(r);
+		}
+		return 0xFF;
 	}
 }
 
@@ -341,9 +287,9 @@ inline byte ioreg_read(byte r)
 
 inline void mbc_write(int a, byte b)
 {
-	byte ha = (a>>12);
+	byte ha = (a >> 12);
 
-	/* printf("mbc %d: rom bank %02X -[%04X:%02X]-> ", mbc.type, mbc.rombank, a, b); */
+	// printf("mbc %d: rom bank %02X -[%04X:%02X]-> ", mbc.type, mbc.rombank, a, b);
 	switch (mbc.type)
 	{
 	case MBC_MBC1:
@@ -404,14 +350,8 @@ inline void mbc_write(int a, byte b)
 		break;
 
 	case MBC_RUMBLE:
-		switch (ha & 0xF)
-		{
-		case 0x4:
-		case 0x5:
-			/* FIXME - save high bit as rumble state */
-			/* mask off high bit */
-			b &= 0x7;
-			break;
+		if (ha == 0x4 || ha == 0x5) {
+			b &= ~8;
 		}
 		/* fall thru */
 	case MBC_MBC5:
@@ -422,15 +362,14 @@ inline void mbc_write(int a, byte b)
 			mbc.enableram = ((b & 0x0F) == 0x0A);
 			break;
 		case 0x2:
-			//if ((b & 0xFF) == 0) b = 0x01;
 			mbc.rombank = (mbc.rombank & 0x100) | (b);
 			break;
 		case 0x3:
-			mbc.rombank = (mbc.rombank & 0x0FF) | ((int)(b&1)<<8);
+			mbc.rombank = (mbc.rombank & 0xFF) | ((int)(b & 1) << 8);
 			break;
 		case 0x4:
 		case 0x5:
-			mbc.rambank = b & 0x0f;
+			mbc.rambank = b & 0x0F;
 			break;
 		default:
 			printf("MBC_MBC5: invalid write to 0x%x (0x%x)\n", a, b);
@@ -483,7 +422,7 @@ inline void mbc_write(int a, byte b)
 		break;
 	}
 
-	/* printf("%02X\n", mbc.rombank); */
+	// printf("%02X\n", mbc.rombank);
 	mem_updatemap();
 }
 
@@ -494,67 +433,25 @@ inline void mbc_write(int a, byte b)
  * region, it accepts writes to any address.
  */
 
-void IRAM_ATTR mem_write(int a, byte b)
+void IRAM_ATTR mem_write(word a, byte b)
 {
-	int n;
-	byte ha = (a>>12) & 0xE;
+	byte ha = (a >> 12);
 
 	/* printf("write to 0x%04X: 0x%02X\n", a, b); */
-	switch (ha)
+	if (ha < 0x7)
 	{
-	case 0x0:
-	case 0x2:
-	case 0x4:
-	case 0x6:
 		mbc_write(a, b);
-		break;
-	case 0x8:
-		/* if ((R_STAT & 0x03) == 0x03) break; */
-		vram_write(a & 0x1FFF, b);
-		break;
-	case 0xA:
-		if (!mbc.enableram) break;
-		if (rtc.sel&8)
-		{
-			rtc_write(b);
-			break;
-		}
-		ram.sbank[mbc.rambank][a & 0x1FFF] = b;
-		ram.sram_dirty = 1;
-		break;
-	case 0xC:
-		if ((a & 0xF000) == 0xC000)
-		{
-			ram.ibank[0][a & 0x0FFF] = b;
-			break;
-		}
-		n = R_SVBK & 0x07;
-		ram.ibank[n?n:1][a & 0x0FFF] = b;
-		break;
-	case 0xE:
-		if (a < 0xFE00)
-		{
-			mem_write(a & 0xDFFF, b);
-			break;
-		}
-		if ((a & 0xFF00) == 0xFE00)
-		{
-			/* if (R_STAT & 0x02) break; */
-			if (a < 0xFEA0) lcd.oam.mem[a & 0xFF] = b;
-			break;
-		}
-		/* return writehi(a & 0xFF, b); */
-		if (a >= 0xFF10 && a <= 0xFF3F)
-		{
-			sound_write(a & 0xFF, b);
-			break;
-		}
-		if ((a & 0xFF80) == 0xFF80 && a != 0xFFFF)
-		{
-			ram.hi[a & 0xFF] = b;
-			break;
-		}
-		ioreg_write(a & 0xFF, b);
+	}
+	else if (ha == 0xA || ha == 0xB)
+	{
+		if (mbc.enableram && rtc.sel & 8) rtc_write(b);
+	}
+	else if (ha == 0xE || ha == 0xF)
+	{
+		if (a < 0xFE00)        writeb(a & 0xDFFF, b);
+		else if (a < 0xFEA0)   lcd.oam.mem[a & 0xFF] = b;
+		else if (a >= 0xFF80)  ram.hi[a & 0xFF] = b;
+		else if (a >= 0xFF00)  ioreg_write(a & 0xFF, b);
 	}
 }
 
@@ -565,53 +462,25 @@ void IRAM_ATTR mem_write(int a, byte b)
  * region.
  */
 
-byte IRAM_ATTR mem_read(int a)
+byte IRAM_ATTR mem_read(word a)
 {
-	int n;
-	byte ha = (a>>12) & 0xE;
+	byte ha = (a >> 12);
 
 	/* printf("read %04x\n", a); */
-	switch (ha)
+
+	if (ha == 0xA || ha == 0xB)
 	{
-	case 0x0:
-	case 0x2:
-		return rom.bank[0][a & 0x3fff];
-	case 0x4:
-	case 0x6:
-		return rom.bank[mbc.rombank][a & 0x3FFF];
-	case 0x8:
-		/* if ((R_STAT & 0x03) == 0x03) return 0xFF; */
-		return lcd.vbank[R_VBK&1][a & 0x1FFF];
-	case 0xA:
-		if (!mbc.enableram && mbc.type == MBC_HUC3)
-			return 0x01;
-		if (!mbc.enableram)
-			return 0xFF;
-		if (rtc.sel&8)
-			return rtc.regs[rtc.sel&7];
-		return ram.sbank[mbc.rambank][a & 0x1FFF];
-	case 0xC:
-		if ((a & 0xF000) == 0xC000)
-			return ram.ibank[0][a & 0x0FFF];
-		n = R_SVBK & 0x07;
-		return ram.ibank[n?n:1][a & 0x0FFF];
-	case 0xE:
-		if (a < 0xFE00) return mem_read(a & 0xDFFF);
-		if ((a & 0xFF00) == 0xFE00)
-		{
-			/* if (R_STAT & 0x02) return 0xFF; */
-			if (a < 0xFEA0) return lcd.oam.mem[a & 0xFF];
-			return 0xFF;
-		}
-		/* return readhi(a & 0xFF); */
-		if (a == 0xFFFF) return REG(0xFF);
-		if (a >= 0xFF10 && a <= 0xFF3F)
-			return sound_read(a & 0xFF);
-		if ((a & 0xFF80) == 0xFF80)
-			return ram.hi[a & 0xFF];
-		return ioreg_read(a & 0xFF);
+		if (mbc.enableram & rtc.sel & 8) return rtc.regs[rtc.sel & 7];
+		if (mbc.model == MBC_HUC3)       return 0x01;
 	}
-	return 0xff; /* not reached */
+	else if (ha == 0xE || ha == 0xF)
+	{
+		if (a < 0xFE00)   return readb(a & 0xDFFF);
+		if (a < 0xFEA0)   return lcd.oam.mem[a & 0xFF];
+		if (a >= 0xFF80)  return ram.hi[a & 0xFF];
+		if (a >= 0xFF00)  return ioreg_read(a & 0xFF);
+	}
+	return 0xFF; /* not reached */
 }
 
 void mbc_reset()

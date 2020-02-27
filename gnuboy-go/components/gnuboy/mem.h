@@ -1,10 +1,7 @@
 #ifndef __MEM_H__
 #define __MEM_H__
 
-
 #include "defs.h"
-
-
 
 #define MBC_NONE 0
 #define MBC_MBC1 1
@@ -51,20 +48,58 @@ extern struct ram ram;
 
 
 void mem_updatemap();
-void mem_write(int a, byte b);
-byte mem_read(int a);
+void mem_write(word a, byte b);
+byte mem_read(word a);
 void mbc_reset();
 
+inline static byte readb(word a)
+{
+	byte *p = mbc.rmap[a>>12];
+	if (p) return p[a];
+	return mem_read(a);
+}
 
-#define READB(a) ( mbc.rmap[(a)>>12] \
-? mbc.rmap[(a)>>12][(a)] \
-: mem_read((a)) )
-#define READW(a) ( READB((a)) | ((word)READB((a)+1)<<8) )
+inline static void writeb(word a, byte b)
+{
+	byte *p = mbc.wmap[a>>12];
+	if (p) p[a] = b;
+	else mem_write(a, b);
+}
 
-#define WRITEB(a, b) ( mbc.wmap[(a)>>12] \
-? ( mbc.wmap[(a)>>12][(a)] = (b) ) \
-: ( mem_write((a), (b)), (b) ) )
-#define WRITEW(a, w) ( WRITEB((a), (w)&0xFF), WRITEB((a)+1, (w)>>8) )
+inline static word readw(word a)
+{
+#ifdef IS_LITTLE_ENDIAN
+	if ((a & 0xFFF) == 0xFFF)
+#endif
+	{
+		return readb(a) | (readb(a + 1) << 8);
+	}
+	byte *p = mbc.rmap[a >> 12];
+	if (p)
+	{
+		return *(word *)(p + a);
+	}
+	return mem_read(a) | (mem_read(a + 1) << 8);
+}
 
+inline static void writew(word a, word w)
+{
+#ifdef IS_LITTLE_ENDIAN
+	if ((a & 0xFFF) == 0xFFF)
+#endif
+	{
+		writeb(a, w);
+		writeb(a + 1, w >> 8);
+		return;
+	}
+	byte *p = mbc.wmap[a >> 12];
+	if (p)
+	{
+		*(word *)(p + a) = w;
+		return;
+	}
+	mem_write(a, w);
+	mem_write(a + 1, w >> 8);
+}
 
 #endif

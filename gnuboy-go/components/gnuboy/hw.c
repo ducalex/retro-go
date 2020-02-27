@@ -8,7 +8,6 @@
 #include "regs.h"
 #include "lcd.h"
 #include "mem.h"
-#include "fastmem.h"
 
 #include "esp_attr.h"
 

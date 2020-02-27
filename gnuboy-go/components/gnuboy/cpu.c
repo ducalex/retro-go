@@ -527,13 +527,13 @@ next:
 		writeb(readw(xPC), A); PC += 2; break;
 
 	case 0xE0: /* LDH (imm),A */
-		writehi(FETCH, A); break;
+		writeb(0xff00 + FETCH, A); break;
 	case 0xE2: /* LDH (C),A */
-		writehi(C, A); break;
+		writeb(0xff00 + C, A); break;
 	case 0xF0: /* LDH A,(imm) */
-		A = readhi(FETCH); break;
+		A = readb(0xff00 + FETCH); break;
 	case 0xF2: /* LDH A,(C) (undocumented) */
-		A = readhi(C); break;
+		A = readb(0xff00 + C); break;
 
 	case 0xF8: /* LD HL,SP+imm */
 		// https://gammpei.github.io/blog/posts/2018-03-04/how-to-write-a-game-boy-emulator-part-8-blarggs-cpu-test-roms-1-3-4-5-7-8-9-10-11.html
