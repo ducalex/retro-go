@@ -6,7 +6,6 @@
 #include "lcd.h"
 #include "cpu.h"
 #include "mem.h"
-#include "fastmem.h"
 #include "cpuregs.h"
 #include "cpucore.h"
 

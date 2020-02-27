@@ -94,8 +94,8 @@ void odroid_system_gpio_init()
     gpio_set_level(GPIO_NUM_5, 1);
 
     // Disable speaker to prevent hiss/pops
-    gpio_set_direction(GPIO_NUM_25, GPIO_MODE_OUTPUT);
-    gpio_set_direction(GPIO_NUM_26, GPIO_MODE_OUTPUT);
+    gpio_set_direction(GPIO_NUM_25, GPIO_MODE_INPUT);
+    gpio_set_direction(GPIO_NUM_26, GPIO_MODE_INPUT);
     gpio_set_level(GPIO_NUM_25, 0);
     gpio_set_level(GPIO_NUM_26, 0);
 }
@@ -125,14 +125,7 @@ void odroid_system_sleep()
     printf("odroid_system_sleep: Entered.\n");
 
     // Wait for button release
-    odroid_gamepad_state joystick;
-    odroid_input_gamepad_read(&joystick);
-
-    while (joystick.values[ODROID_INPUT_MENU])
-    {
-        vTaskDelay(1);
-        odroid_input_gamepad_read(&joystick);
-    }
+    odroid_input_wait_for_key(ODROID_INPUT_MENU, false);
 
     vTaskDelay(100);
     esp_deep_sleep_start();

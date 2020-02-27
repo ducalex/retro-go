@@ -25,6 +25,7 @@ struct hw hw;
 
 void IRAM_ATTR hw_interrupt(byte i, byte mask)
 {
+	i &= 0x1F & mask;
 	if (i) {
 		// IF being set shouldn't depend on ilines (Fixes Worms Armageddon)
 		// R_IF |= i & (hw.ilines ^ i);
