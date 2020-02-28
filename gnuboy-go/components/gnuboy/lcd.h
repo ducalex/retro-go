@@ -62,7 +62,6 @@ void updatepatpix();
 /* lcdc.c */
 void lcdc_trans();
 void lcdc_change(byte b);
-void stat_write(byte b);
 void stat_trigger();
 
 

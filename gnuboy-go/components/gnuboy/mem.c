@@ -161,7 +161,8 @@ inline void ioreg_write(byte r, byte b)
 		lcdc_change(b);
 		break;
 	case RI_STAT:
-		stat_write(b);
+		REG(r) = (REG(r) & 0x07) | (b & 0x78);
+		stat_trigger();
 		break;
 	case RI_LYC:
 		REG(r) = b;

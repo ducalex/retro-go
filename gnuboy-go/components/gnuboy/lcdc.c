@@ -43,14 +43,6 @@ void IRAM_ATTR stat_trigger()
 	hw_interrupt(flag, IF_STAT);
 }
 
-void IRAM_ATTR stat_write(byte b)
-{
-	R_STAT = (R_STAT & 0x07) | (b & 0x78);
-	if (!hw.cgb && !(R_STAT & 2)) /* DMG STAT write bug => interrupt */
-		hw_interrupt(IF_STAT, IF_STAT);
-	stat_trigger();
-}
-
 
 /*
  * stat_change is called when a transition results in a change to the
@@ -123,64 +115,40 @@ void IRAM_ATTR lcdc_change(byte b)
 */
 void IRAM_ATTR lcdc_trans()
 {
-	/* FIXME: lacks clarity;
-	try and break into two switch() blocks
-	switch(state) {
-		case 0:
-			if(vblank) state = 1;
-			else state = 2;
-		case 1:
-			state = 2;
-		case 2:
-			state = 3;
-		case 3:
-			state = 0;
-	}
-
-	switch(state) {
-		case 0:
-			handle hblank
-		case 1:
-			handle vblank
-		case 2:
-			handle search
-		case 3:
-			handle transfer
-	}
-	*/
+	/* LCD disabled */
 	if (!(R_LCDC & 0x80))
 	{
-		/* LCDC operation disabled (short route) */
-		while (C <= 0)
-		{
-			switch ((byte)(R_STAT & 3))
-			{
-			case 0: /* hblank */
-			case 1: /* vblank */
-				lcd_refreshline();
-				stat_change(2);
-				C += 40;
-				break;
-			case 2: /* search */
-				stat_change(3);
-				C += 86;
-				break;
-			case 3: /* transfer */
-				stat_change(0);
-				/* FIXME: check docs; HDMA might require operating LCDC */
-				if (hw.hdma & 0x80)
-					hw_hdma();
-				else
-					C += 102;
-				break;
-			}
-			return;
-		}
+		R_LY = 0;
+		C = 0;
+		stat_change(0); /* -> hblank */
+		return;
 	}
+
 	while (C <= 0)
 	{
 		switch ((byte)(R_STAT & 3))
 		{
+		case 0:
+			/* hblank -> */
+			if (++R_LY >= 144)
+			{
+				/* FIXME: pick _one_ place to trigger vblank interrupt
+				this better be done here or within stat_change(),
+				otherwise CPU will have a chance to run	for some time
+				before interrupt is triggered */
+				if (cpu.halt)
+				{
+					hw_interrupt(IF_VBLANK, IF_VBLANK);
+					C += 228;
+				}
+				else C += 10;
+				stat_change(1); /* -> vblank */
+				break;
+			}
+			hw_interrupt(0, IF_STAT); // Fix for Worms Armageddon
+			stat_change(2); /* -> search */
+			C += 40;
+			break;
 		case 1:
 			/* vblank -> */
 			if (!(hw.ilines & IF_VBLANK))
@@ -224,26 +192,6 @@ void IRAM_ATTR lcdc_trans()
 			/* FIXME -- how much of the hblank does hdma use?? */
 			/* else */
 			C += 102;
-			break;
-		case 0:
-			/* hblank -> */
-			if (++R_LY >= 144)
-			{
-				/* FIXME: pick _one_ place to trigger vblank interrupt
-				this better be done here or within stat_change(),
-				otherwise CPU will have a chance to run	for some time
-				before interrupt is triggered */
-				if (cpu.halt)
-				{
-					hw_interrupt(IF_VBLANK, IF_VBLANK);
-					C += 228;
-				}
-				else C += 10;
-				stat_change(1); /* -> vblank */
-				break;
-			}
-			stat_change(2); /* -> search */
-			C += 40;
 			break;
 		}
 	}

@@ -74,6 +74,7 @@ void run_to_vblank()
         /* Step through visible line scanning phase */
         emu_step();
     }
+    // printf("%d us\n", get_elapsed_time_since(startTime) / 240);
 
     /* VBLANK BEGIN */
     //vid_end();
