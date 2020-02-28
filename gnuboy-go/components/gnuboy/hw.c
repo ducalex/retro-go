@@ -155,7 +155,7 @@ void hw_reset()
 	R_BGP = 0xFC;
 	R_OBP0 = 0xFF;
 	R_OBP1 = 0xFF;
-	R_SVBK = 0x01;
+	R_SVBK = 0xF9;
 	R_HDMA5 = 0xFF;
 	R_VBK = 0xFE;
 }

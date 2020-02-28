@@ -17,6 +17,7 @@ Retro-Go is composed of a launcher and several emulators.
 - Fastforward
 - Customizable launcher
 - PNG cover art
+- Improved GBC compatibility
 
 # Screenshot
 ![Preview](https://raw.githubusercontent.com/ducalex/retro-go/master/assets/screenshot.jpg)

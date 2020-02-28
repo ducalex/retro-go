@@ -73,8 +73,8 @@ void IRAM_ATTR mem_updatemap()
 	}
 
 	mbc.rmap[0xC] = mbc.wmap[0xC] = ram.ibank[0] - 0xC000;
-	mbc.rmap[0xD] = mbc.wmap[0xD] = ram.ibank[(R_SVBK & 0x07) ?: 1] - 0xD000;
-	// mbc.rmap[0xE] = mbc.wmap[0xE] = ram.ibank[0] - 0xE000;
+	mbc.rmap[0xD] = mbc.wmap[0xD] = ram.ibank[(R_SVBK & 0x7) ?: 1] - 0xD000;
+	mbc.rmap[0xE] = mbc.wmap[0xE] = ram.ibank[0] - 0xE000; // Mirror
 }
 
 
@@ -191,27 +191,20 @@ inline void ioreg_write(byte r, byte b)
 		if (R_OCPS & 0x80) R_OCPS = (R_OCPS+1) & 0xBF;
 		break;
 	case RI_SVBK:
-		REG(r) = b & 0x07;
+		REG(r) = b | 0xF8;
 		mem_updatemap();
 		break;
 	case RI_DMA:
 		hw_dma(b);
 		break;
 	case RI_KEY1:
-		// REG(r) = (REG(r) & 0x80) | (b & 0x01);
-		REG(r) = b;
+		REG(r) = (REG(r) & 0x80) | (b & 0x01);
 		break;
 	case RI_HDMA1:
-		REG(r) = b;
-		break;
 	case RI_HDMA2:
-		REG(r) = b & 0xF0;
-		break;
 	case RI_HDMA3:
-		REG(r) = b & 0x1F;
-		break;
 	case RI_HDMA4:
-		REG(r) = b & 0xF0;
+		REG(r) = b;
 		break;
 	case RI_HDMA5:
 		hw_hdma_cmd(b);
@@ -447,7 +440,7 @@ void IRAM_ATTR mem_write(word a, byte b)
 	{
 		if (mbc.enableram && rtc.sel & 8) rtc_write(b);
 	}
-	else if (ha == 0xE || ha == 0xF)
+	else if (ha == 0xF)
 	{
 		if (a < 0xFE00)        writeb(a & 0xDFFF, b);
 		else if (a < 0xFEA0)   lcd.oam.mem[a & 0xFF] = b;
@@ -474,7 +467,7 @@ byte IRAM_ATTR mem_read(word a)
 		if (mbc.enableram & rtc.sel & 8) return rtc.regs[rtc.sel & 7];
 		if (mbc.model == MBC_HUC3)       return 0x01;
 	}
-	else if (ha == 0xE || ha == 0xF)
+	else if (ha == 0xF)
 	{
 		if (a < 0xFE00)   return readb(a & 0xDFFF);
 		if (a < 0xFEA0)   return lcd.oam.mem[a & 0xFF];
