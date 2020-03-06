@@ -25,8 +25,8 @@ struct hw hw;
 void IRAM_ATTR hw_interrupt(byte i, byte mask)
 {
 	i &= mask;
+	R_IF |= i & (hw.ilines ^ i);
 	if (i) {
-		R_IF |= i & (hw.ilines ^ i);
 		// HALT shouldn't even be entered when interrupts are disabled.
 		// No need to check for IME, and it works around a stall bug.
 		cpu.halt = 0;

@@ -118,10 +118,32 @@ void IRAM_ATTR lcdc_trans()
 	/* LCD disabled */
 	if (!(R_LCDC & 0x80))
 	{
-		R_LY = 0;
-		C = 0;
-		stat_change(0); /* -> hblank */
-		return;
+		/* LCDC operation disabled (short route) */
+		while (C <= 0)
+		{
+			switch ((byte)(R_STAT & 3))
+			{
+			case 0: /* hblank */
+			case 1: /* vblank */
+				// lcd_refreshline();
+				stat_change(2);
+				C += 40;
+				break;
+			case 2: /* search */
+				stat_change(3);
+				C += 86;
+				break;
+			case 3: /* transfer */
+				stat_change(0);
+				/* FIXME: check docs; HDMA might require operating LCDC */
+				if (hw.hdma & 0x80)
+					hw_hdma();
+				else
+					C += 102;
+				break;
+			}
+			return;
+		}
 	}
 
 	while (C <= 0)

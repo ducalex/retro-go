@@ -335,15 +335,11 @@ void app_main(void)
         }
         else if (joystick.values[ODROID_INPUT_VOLUME]) {
             odroid_dialog_choice_t options[] = {
-                {100, "Palette", "7/7",  1, &palette_update_cb},
-                {101, "Set clock", "00:00", 1, &rtc_update_cb},
+                {100, "Palette", "7/7", !hw.cgb, &palette_update_cb},
+                {101, "Set clock", "00:00", mbc.type == MBC_MBC3, &rtc_update_cb},
             };
             odroid_overlay_game_settings_menu(options, 2);
         }
-
-        // if (joystick.values[ODROID_INPUT_SELECT]) {
-        //     debug_trace = !debug_trace;
-        // }
 
         uint startTime = xthal_get_ccount();
 

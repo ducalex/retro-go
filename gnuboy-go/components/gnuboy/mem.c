@@ -48,6 +48,7 @@ void IRAM_ATTR mem_updatemap()
 	memset(mbc.rmap, 0, sizeof(mbc.rmap));
 	memset(mbc.wmap, 0, sizeof(mbc.wmap));
 
+	// ROM
 	mbc.rmap[0x0] = rom.bank[0];
 	mbc.rmap[0x1] = rom.bank[0];
 	mbc.rmap[0x2] = rom.bank[0];
@@ -68,13 +69,18 @@ void IRAM_ATTR mem_updatemap()
 	// SRAM
 	if (mbc.enableram && !(rtc.sel & 8))
 	{
-	 	mbc.rmap[0xA] = mbc.wmap[0xA] = ram.sbank[mbc.rambank] - 0xA000;
-	 	mbc.rmap[0xB] = mbc.wmap[0xB] = ram.sbank[mbc.rambank] - 0xA000;
+	 	// mbc.rmap[0xA] = mbc.wmap[0xA] = ram.sbank[mbc.rambank] - 0xA000;
+	 	// mbc.rmap[0xB] = mbc.wmap[0xB] = ram.sbank[mbc.rambank] - 0xA000;
 	}
 
-	mbc.rmap[0xC] = mbc.wmap[0xC] = ram.ibank[0] - 0xC000;
-	mbc.rmap[0xD] = mbc.wmap[0xD] = ram.ibank[(R_SVBK & 0x7) ?: 1] - 0xD000;
-	mbc.rmap[0xE] = mbc.wmap[0xE] = ram.ibank[0] - 0xE000; // Mirror
+	// WRAM
+	// NOTE: This cause stuttering in some games, needs more investigating...
+	// mbc.rmap[0xC] = mbc.wmap[0xC] = ram.ibank[0] - 0xC000;
+	// mbc.rmap[0xD] = mbc.wmap[0xD] = ram.ibank[(R_SVBK & 0x7) ?: 1] - 0xD000;
+	// mbc.rmap[0xE] = mbc.wmap[0xE] = ram.ibank[0] - 0xE000; // Mirror
+
+	// IO port and registers
+	mbc.rmap[0xF] = mbc.wmap[0xF] = NULL;
 }
 
 
@@ -429,23 +435,60 @@ inline void mbc_write(int a, byte b)
 
 void IRAM_ATTR mem_write(word a, byte b)
 {
-	byte ha = (a >> 12);
+	byte ha = (a >> 12) & 0xE;
 
 	/* printf("write to 0x%04X: 0x%02X\n", a, b); */
-	if (ha < 0x7)
+	switch (ha)
 	{
+	case 0x0:
+	case 0x2:
+	case 0x4:
+	case 0x6:
 		mbc_write(a, b);
-	}
-	else if (ha == 0xA || ha == 0xB)
-	{
-		if (mbc.enableram && rtc.sel & 8) rtc_write(b);
-	}
-	else if (ha == 0xF)
-	{
-		if (a < 0xFE00)        writeb(a & 0xDFFF, b);
-		else if (a < 0xFEA0)   lcd.oam.mem[a & 0xFF] = b;
-		else if (a >= 0xFF80)  ram.hi[a & 0xFF] = b;
-		else if (a >= 0xFF00)  ioreg_write(a & 0xFF, b);
+		break;
+
+	case 0x8:
+		lcd.vbank[R_VBK&1][a & 0x1FFF] = b;
+		break;
+
+	case 0xA:
+		if (!mbc.enableram) break;
+		if (rtc.sel & 8) {
+			rtc_write(b);
+		} else {
+			ram.sbank[mbc.rambank][a & 0x1FFF] = b;
+			ram.sram_dirty = 1;
+		}
+		break;
+
+	case 0xC:
+		if ((a & 0xF000) == 0xC000)
+			ram.ibank[0][a & 0x0FFF] = b;
+		else
+			ram.ibank[(R_SVBK & 0x7) ?: 1][a & 0x0FFF] = b;
+		break;
+
+	case 0xE:
+		if (a < 0xFE00)
+		{
+			writeb(a & 0xDFFF, b);
+		}
+		else if ((a & 0xFF00) == 0xFE00)
+		{
+			if (a < 0xFEA0) lcd.oam.mem[a & 0xFF] = b;
+		}
+		else if (a >= 0xFF10 && a <= 0xFF3F)
+		{
+			sound_write(a & 0xFF, b);
+		}
+		else if ((a & 0xFF80) == 0xFF80 && a != 0xFFFF)
+		{
+			ram.hi[a & 0xFF] = b;
+		}
+		else
+		{
+			ioreg_write(a & 0xFF, b);
+		}
 	}
 }
 
@@ -458,23 +501,57 @@ void IRAM_ATTR mem_write(word a, byte b)
 
 byte IRAM_ATTR mem_read(word a)
 {
-	byte ha = (a >> 12);
+	byte ha = (a >> 12) & 0xE;
 
 	/* printf("read %04x\n", a); */
+	switch (ha)
+	{
+	case 0x0:
+	case 0x2:
+		return rom.bank[0][a & 0x3fff];
 
-	if (ha == 0xA || ha == 0xB)
-	{
-		if (mbc.enableram & rtc.sel & 8) return rtc.regs[rtc.sel & 7];
-		if (mbc.model == MBC_HUC3)       return 0x01;
+	case 0x4:
+	case 0x6:
+		return rom.bank[mbc.rombank][a & 0x3FFF];
+
+	case 0x8:
+		return lcd.vbank[R_VBK&1][a & 0x1FFF];
+
+	case 0xA:
+		if (!mbc.enableram && mbc.type == MBC_HUC3)
+			return 0x01;
+		if (!mbc.enableram)
+			return 0xFF;
+		if (rtc.sel & 8)
+			return rtc.regs[rtc.sel & 7];
+		return ram.sbank[mbc.rambank][a & 0x1FFF];
+
+	case 0xC:
+		if ((a & 0xF000) == 0xC000)
+			return ram.ibank[0][a & 0x0FFF];
+		return ram.ibank[(R_SVBK & 0x7) ?: 1][a & 0x0FFF];
+
+	case 0xE:
+		if (a < 0xFE00)
+		{
+			return readb(a & 0xDFFF);
+		}
+		else if ((a & 0xFF00) == 0xFE00)
+		{
+			return (a < 0xFEA0) ? lcd.oam.mem[a & 0xFF] : 0xFF;
+		}
+		else if (a >= 0xFF10 && a <= 0xFF3F)
+		{
+			return sound_read(a & 0xFF);
+		}
+		else if ((a & 0xFF80) == 0xFF80)
+		{
+			return REG(a & 0xFF);
+		}
+
+		return ioreg_read(a & 0xFF);
 	}
-	else if (ha == 0xF)
-	{
-		if (a < 0xFE00)   return readb(a & 0xDFFF);
-		if (a < 0xFEA0)   return lcd.oam.mem[a & 0xFF];
-		if (a >= 0xFF80)  return ram.hi[a & 0xFF];
-		if (a >= 0xFF00)  return ioreg_read(a & 0xFF);
-	}
-	return 0xFF; /* not reached */
+	return 0xFF;
 }
 
 void mbc_reset()
