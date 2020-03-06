@@ -1,12 +1,10 @@
 #include <freertos/FreeRTOS.h>
-#include "esp_heap_caps.h"
 #include "odroid_system.h"
 
 #include <string.h>
 #include <stdint.h>
 #include <noftypes.h>
 #include <bitmap.h>
-#include <nofconfig.h>
 #include <event.h>
 #include <gui.h>
 #include <log.h>
@@ -225,9 +223,9 @@ void osd_getvideoinfo(vidinfo_t *info)
  */
 void osd_getinput(void)
 {
-	const int event[16] = {
-      event_joypad1_select,0,0,event_joypad1_start,event_joypad1_up,event_joypad1_right,event_joypad1_down,event_joypad1_left,
-      0,0,0,0,event_soft_reset,event_joypad1_a,event_joypad1_b,event_hard_reset
+	const int event[15] = {
+      event_joypad1_select, 0, 0, event_joypad1_start, event_joypad1_up, event_joypad1_right,
+      event_joypad1_down, event_joypad1_left, 0, 0, 0, 0, 0, event_joypad1_a, event_joypad1_b
 	};
 
 	event_t evh;
@@ -279,7 +277,7 @@ void osd_getinput(void)
 
    previous = b;
 
-	for (int x = 0; x < 16; x++) {
+	for (int x = 0; x < 15; x++) {
 		if (changed & 1) {
 			evh = event_get(event[x]);
 			if (evh) evh((b & 1) ? INP_STATE_BREAK : INP_STATE_MAKE);
@@ -309,8 +307,6 @@ int osd_init()
 
 int osd_main(int argc, char *argv[])
 {
-   config.filename = "n/a";
-
    return main_loop(argv[0], system_nes);
 }
 
@@ -398,7 +394,7 @@ void app_main(void)
    odroid_system_init(2, 32000, &romPath);
 
    // Load ROM
-   romData = heap_caps_malloc(1024 * 1024, MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
+   romData = malloc(1024 * 1024);
    if (!romData) abort();
 
    size_t fileSize = 0;

@@ -29,7 +29,6 @@
 #include <noftypes.h>
 #include <nofrendo.h>
 #include <event.h>
-#include <nofconfig.h>
 #include <log.h>
 #include <osd.h>
 #include <gui.h>
@@ -80,7 +79,6 @@ static void shutdown_everything(void)
       console.nextfilename = NULL;
    }
 
-   config.close();
    osd_shutdown();
    gui_shutdown();
    vid_shutdown();
@@ -231,9 +229,6 @@ int main_loop(const char *filename, system_t type)
 
    /* register shutdown, in case of assertions, etc. */
 //   atexit(shutdown_everything);
-
-   if (config.open())
-      return -1;
 
    if (osd_init())
       return -1;

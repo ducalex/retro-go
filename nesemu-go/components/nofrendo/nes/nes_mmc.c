@@ -25,14 +25,13 @@
 
 #include <string.h>
 #include <noftypes.h>
-#include "nes6502.h"
-#include <nes_mmc.h>
-#include <nes_ppu.h>
+#include <nes6502.h>
 #include <libsnss.h>
 #include <log.h>
-#include <mmclist.h>
-#include <nes_rom.h>
-//#include <stdlib.h>
+#include "nes_ppu.h"
+#include "nes_mmc.h"
+#include "nes_rom.h"
+#include "mmc_list.h"
 
 #define  MMC_8KROM         (mmc.cart->rom_banks * 2)
 #define  MMC_16KROM        (mmc.cart->rom_banks)

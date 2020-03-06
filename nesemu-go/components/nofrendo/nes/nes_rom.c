@@ -25,20 +25,17 @@
 
 /* TODO: make this a generic ROM loading routine */
 #include <stdlib.h>
-
 #include <stdio.h>
 #include <string.h>
 #include <noftypes.h>
-#include <nes_rom.h>
-#include <intro.h>
-#include <nes_mmc.h>
-#include <nes_ppu.h>
-#include <nes.h>
+#include "nes_rom.h"
+#include "nes_mmc.h"
+#include "nes_ppu.h"
+#include "nes.h"
 #include <gui.h>
 #include <log.h>
 #include <osd.h>
 
-extern char *osd_getromdata();
 
 /* Max length for displayed filename */
 #define  ROM_DISP_MAXLEN   20

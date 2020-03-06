@@ -47,15 +47,15 @@
 #include "odroid_system.h"
 
 
-#define  NES_CLOCK_DIVIDER    12
-//#define  NES_MASTER_CLOCK     21477272.727272727272
-#define  NES_MASTER_CLOCK     (236250000 / 11)
-#define  NES_SCANLINE_CYCLES  (1364.0 / NES_CLOCK_DIVIDER)
-#define  NES_FIQ_PERIOD       (NES_MASTER_CLOCK / NES_CLOCK_DIVIDER / 60)
+// #define  NES_CLOCK_DIVIDER    12
+// #define  NES_MASTER_CLOCK     (236250000 / 11)
+// #define  NES_SCANLINE_CYCLES  (1364.0 / NES_CLOCK_DIVIDER)
+// #define  NES_FIQ_PERIOD       (NES_MASTER_CLOCK / NES_CLOCK_DIVIDER / 60)
 
-#define  NES_RAMSIZE          0x800
+static const float NES_SCANLINE_CYCLES = (341.f * 4 / 12); // https://wiki.nesdev.com/w/index.php/Cycle_reference_chart
+static const int   NES_FIQ_PERIOD      = (14914 * 2);   // https://wiki.nesdev.com/w/index.php/APU_Frame_Counter
+static const int   NES_RAMSIZE         = (0x800);
 
-#define  NES_SKIP_LIMIT       (NES_REFRESH_RATE / 5)   /* 12 or 10, depending on PAL/NTSC */
 
 static nes_t nes;
 
@@ -264,6 +264,11 @@ void IRAM_ATTR nes_irq(void)
    nes6502_irq();
 }
 
+void IRAM_ATTR nes_nmi(void)
+{
+   nes6502_nmi();
+}
+
 static uint8 nes_clearfiq(void)
 {
    if (nes.fiq_occurred)
@@ -278,59 +283,60 @@ static uint8 nes_clearfiq(void)
 void nes_setfiq(uint8 value)
 {
    nes.fiq_state = value;
-   nes.fiq_cycles = (int) NES_FIQ_PERIOD;
+   nes.fiq_cycles = -4; // 3-4 cpu cycles before reset
+   nes.fiq_occurred = false;
 }
 
 INLINE void nes_checkfiq(int cycles)
 {
-   nes.fiq_cycles -= cycles;
-   if (nes.fiq_cycles <= 0)
+   nes.fiq_cycles += cycles;
+   if (nes.fiq_cycles >= NES_FIQ_PERIOD)
    {
-      nes.fiq_cycles += (int) NES_FIQ_PERIOD;
-      if (0 == (nes.fiq_state & 0xC0))
+      if ((nes.fiq_state & 0xC0) == 0)
       {
          nes.fiq_occurred = true;
          nes6502_irq();
       }
+      // if (nes.fiq_cycles >= NES_FIQ_PERIOD + 2)
+      // {
+      //    nes.fiq_cycles = 0;
+      // }
+      nes.fiq_cycles = 0;
    }
-}
-
-void IRAM_ATTR nes_nmi(void)
-{
-   nes6502_nmi();
 }
 
 static void nes_renderframe(bool draw_flag)
 {
    int elapsed_cycles;
    mapintf_t *mapintf = nes.mmc->intf;
-   int in_vblank = 0;
 
-   while (262 != nes.scanline)
+   while (nes.scanline != 262)
    {
+      nes.scanline_cycles += NES_SCANLINE_CYCLES;
+
       ppu_scanline(nes.vidbuf, nes.scanline, draw_flag);
 
-      if (241 == nes.scanline)
+      if (nes.scanline == 241)
       {
-         /* 7-9 cycle delay between when VINT flag goes up and NMI is taken */
-         elapsed_cycles = nes6502_execute(7);
-         nes.scanline_cycles -= elapsed_cycles;
-         nes_checkfiq(elapsed_cycles);
-
          ppu_checknmi();
 
          if (mapintf->vblank)
             mapintf->vblank();
-         in_vblank = 1;
       }
 
       if (mapintf->hblank)
-         mapintf->hblank(in_vblank);
+         mapintf->hblank(nes.scanline >= 241);
 
-      nes.scanline_cycles += (float) NES_SCANLINE_CYCLES;
-      elapsed_cycles = nes6502_execute((int) nes.scanline_cycles);
-      nes.scanline_cycles -= (float) elapsed_cycles;
-      nes_checkfiq(elapsed_cycles);
+      while (nes.scanline_cycles >= 1)
+      {
+         int next_fiq = NES_FIQ_PERIOD - nes.fiq_cycles;
+         if (next_fiq > 0 && next_fiq < nes.scanline_cycles)
+            elapsed_cycles = nes6502_execute(next_fiq);
+         else
+            elapsed_cycles = nes6502_execute(nes.scanline_cycles);
+         nes.scanline_cycles -= elapsed_cycles;
+         nes_checkfiq(elapsed_cycles);
+      }
 
       ppu_endscanline(nes.scanline);
       nes.scanline++;
@@ -363,9 +369,6 @@ extern void LoadState();
 void nes_emulate(void)
 {
    osd_setsound(nes.apu->process);
-
-   nes.scanline_cycles = 0;
-   nes.fiq_cycles = (int) NES_FIQ_PERIOD;
 
    uint totalElapsedTime = 0;
    uint emulatedFrames = 0;
@@ -459,6 +462,10 @@ void nes_reset(int reset_type)
    nes6502_reset();
 
    nes.scanline = 241;
+   nes.scanline_cycles = 0;
+   nes.fiq_occurred = 0;
+   nes.fiq_state = 0;
+   nes.fiq_cycles = 0;
 
    gui_sendmsg(GUI_GREEN, "NES %s",
                (HARD_RESET == reset_type) ? "powered on" : "reset");

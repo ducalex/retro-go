@@ -3,14 +3,14 @@
 **
 **
 ** This program is free software; you can redistribute it and/or
-** modify it under the terms of version 2 of the GNU Library General 
+** modify it under the terms of version 2 of the GNU Library General
 ** Public License as published by the Free Software Foundation.
 **
-** This program is distributed in the hope that it will be useful, 
+** This program is distributed in the hope that it will be useful,
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
-** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
-** Library General Public License for more details.  To obtain a 
-** copy of the GNU Library General Public License, write to the Free 
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+** Library General Public License for more details.  To obtain a
+** copy of the GNU Library General Public License, write to the Free
 ** Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 **
 ** Any permitted reproduction of these routines, in whole or in part,
@@ -30,6 +30,7 @@
 #include <nes_ppu.h>
 #include <nes_apu.h>
 #include <nesinput.h>
+#include <nesstate.h>
 #include <nes.h>
 #include <log.h>
 #include <osd.h>
@@ -61,23 +62,12 @@ rgb_t gui_pal[GUI_TOTALCOLORS] =
 };
 
 /**************************************************************/
-#include <pcx.h>
-#include <nesstate.h>
 static bool option_drawsprites = true;
 
 /* save a PCX snapshot */
 void gui_savesnap(void)
 {
-   char filename[PATH_MAX];
-   nes_t *nes = nes_getcontextptr();
 
-   if (osd_makesnapname(filename, PATH_MAX) < 0)
-      return;
-
-   if (pcx_write(filename, nes->vidbuf, nes->ppu->curpal)) 
-      return;
-
-   gui_sendmsg(GUI_GREEN, "Screen saved to %s", filename);
 }
 
 /* Show/hide sprites (hiding sprites useful for making maps) */
@@ -123,7 +113,7 @@ void gui_toggle_chan(int chan)
                chan_enabled[4] ? FILL_CHAR : BLANK_CHAR,
                chan_enabled[5] ? FILL_CHAR : BLANK_CHAR);
 }
-                        
+
 void gui_setfilter(int filter_type)
 {
    char *types[3] = { "no", "lowpass", "weighted" };
@@ -333,7 +323,7 @@ void gui_tick(int ticks)
 
    gui_ticks += ticks;
    fps_counter += ticks;
-   
+
    if (fps_counter >= gui_refresh)
    {
       fps_counter -= gui_refresh;
@@ -360,7 +350,7 @@ static void gui_tickdec(void)
    if (hertz_ticks >= (10 * gui_refresh))
    {
       hertz_ticks -= (10 * gui_refresh);
-      mem_checkblocks(); 
+      mem_checkblocks();
    }
 #endif
 

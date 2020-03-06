@@ -21,9 +21,7 @@
  ******************************************************************************/
 
 #include "shared.h"
-#include "odroid_display.h"
-#include "odroid_overlay.h"
-#include "odroid_sdcard.h"
+#include "odroid_system.h"
 
 extern unsigned long crc32(crc, buf, len);
 
@@ -391,8 +389,9 @@ int load_rom (char *filename)
 
   if (strcasecmp(filename + (nameLength - 4), ".zip") == 0)
   {
-      printf("load_rom: File is compressed.\n");
-      actual_size = odroid_sdcard_unzip_file_to_memory(filename, cart.rom, 0x200000);
+      odroid_system_panic("Zip file not supported!"); // Zip support doesn't work very well, disable for now
+      // printf("load_rom: File is compressed.\n");
+      // actual_size = odroid_sdcard_unzip_file_to_memory(filename, cart.rom, 0x200000);
   }
   else
   {
