@@ -304,9 +304,8 @@ void app_main(void)
 
             odroid_video_frame *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
 
-            odroid_display_queue_update(currentUpdate, previousUpdate);
-
-            if (currentUpdate->diff[0].width && currentUpdate->diff[0].height == currentUpdate->height) {
+            if (odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL)
+            {
                 ++fullFrames;
             }
 

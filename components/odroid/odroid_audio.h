@@ -19,8 +19,9 @@ typedef enum
 
 odroid_volume_level odroid_audio_volume_get();
 void odroid_audio_volume_set(odroid_volume_level value);
-void odroid_audio_init(ODROID_AUDIO_SINK sink, int sample_rate);
+void odroid_audio_init(int sample_rate);
 void odroid_audio_set_sink(ODROID_AUDIO_SINK sink);
+ODROID_AUDIO_SINK odroid_audio_get_sink();
 void odroid_audio_terminate();
 void odroid_audio_submit(short* stereoAudioBuffer, int frameCount);
 int odroid_audio_sample_rate_get();

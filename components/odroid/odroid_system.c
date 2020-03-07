@@ -25,6 +25,7 @@ void odroid_system_init(int app_id, int sampleRate, char **romPath)
     odroid_system_gpio_init();
     odroid_input_gamepad_init();
     odroid_input_battery_level_init();
+    odroid_audio_init(sampleRate);
 
     odroid_gamepad_state bootState = odroid_input_read_raw();
     if (bootState.values[ODROID_INPUT_MENU])
@@ -34,12 +35,6 @@ void odroid_system_init(int app_id, int sampleRate, char **romPath)
         esp_restart();
     }
 
-    startAction = odroid_settings_StartAction_get();
-    if (startAction == ODROID_START_ACTION_RESTART)
-    {
-        odroid_settings_StartAction_set(ODROID_START_ACTION_RESUME);
-    }
-
     //sdcard init must be before LCD init
     esp_err_t sd_init = odroid_sdcard_open();
 
@@ -47,7 +42,7 @@ void odroid_system_init(int app_id, int sampleRate, char **romPath)
 
     if (esp_reset_reason() == ESP_RST_PANIC)
     {
-        odroid_system_panic("The emulator crashed");
+        odroid_system_panic("The application crashed");
     }
 
     if (esp_reset_reason() != ESP_RST_SW)
@@ -62,17 +57,25 @@ void odroid_system_init(int app_id, int sampleRate, char **romPath)
         odroid_system_halt();
     }
 
-    *romPath = odroid_settings_RomFilePath_get();
-    if (!*romPath || strlen(*romPath) < 4)
+    // Emulator-specific
+    if (romPath != NULL)
     {
-        odroid_system_panic("ROM File not found");
-    }
+        *romPath = odroid_settings_RomFilePath_get();
+        if (!*romPath || strlen(*romPath) < 4)
+        {
+            odroid_system_panic("ROM File not found");
+        }
 
-    odroid_audio_init(odroid_settings_AudioSink_get(), sampleRate);
+        startAction = odroid_settings_StartAction_get();
+        if (startAction == ODROID_START_ACTION_RESTART)
+        {
+            odroid_settings_StartAction_set(ODROID_START_ACTION_RESUME);
+        }
 
-    if (startAction == ODROID_START_ACTION_NETPLAY)
-    {
-        // odroid_netplay_init();
+        if (startAction == ODROID_START_ACTION_NETPLAY)
+        {
+            // odroid_netplay_init();
+        }
     }
 
     system_initialized = true;
@@ -138,6 +141,8 @@ void odroid_system_panic(const char *reason)
     // Here we should stop unecessary tasks
 
     odroid_system_application_set(0);
+
+    odroid_audio_terminate();
 
     // In case we panicked from inside a dialog
     odroid_display_unlock();

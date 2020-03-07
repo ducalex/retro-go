@@ -20,6 +20,7 @@ static const char* NvsKey_Scaling = "Scaling";
 static const char* NvsKey_AudioSink = "AudioSink";
 static const char* NvsKey_Palette = "Palette";
 static const char* NvsKey_DispUpdate = "DispUpdate";
+static const char* NvsKey_DispFilter = "DispFilter";
 
 static nvs_handle my_handle;
 static int app_id = 0;
@@ -183,16 +184,6 @@ void odroid_settings_StartAction_set(ODROID_START_ACTION value)
 }
 
 
-ODROID_SCALING odroid_settings_Scaling_get()
-{
-    return odroid_settings_app_int32_get(NvsKey_Scaling, ODROID_SCALING_FILL);
-}
-void odroid_settings_Scaling_set(ODROID_SCALING value)
-{
-    odroid_settings_app_int32_set(NvsKey_Scaling, value);
-}
-
-
 int32_t odroid_settings_Palette_get()
 {
     return odroid_settings_app_int32_get(NvsKey_Palette, 0);
@@ -202,6 +193,15 @@ void odroid_settings_Palette_set(int32_t value)
     odroid_settings_app_int32_set(NvsKey_Palette, value);
 }
 
+int32_t odroid_settings_DisplayScaling_get()
+{
+    return odroid_settings_app_int32_get(NvsKey_Scaling, ODROID_DISPLAY_SCALING_FILL);
+}
+void odroid_settings_DisplayScaling_set(int32_t value)
+{
+    odroid_settings_app_int32_set(NvsKey_Scaling, value);
+}
+
 int32_t odroid_settings_DisplayUpdateMode_get()
 {
     return odroid_settings_app_int32_get(NvsKey_DispUpdate, ODROID_DISPLAY_UPDATE_AUTO);
@@ -209,4 +209,13 @@ int32_t odroid_settings_DisplayUpdateMode_get()
 void odroid_settings_DisplayUpdateMode_set(int32_t value)
 {
     odroid_settings_app_int32_set(NvsKey_DispUpdate, value);
+}
+
+int32_t odroid_settings_DisplayFilter_get()
+{
+    return odroid_settings_app_int32_get(NvsKey_DispFilter, ODROID_DISPLAY_FILTER_NONE);
+}
+void odroid_settings_DisplayFilter_set(int32_t value)
+{
+    odroid_settings_app_int32_set(NvsKey_DispFilter, value);
 }

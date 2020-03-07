@@ -188,9 +188,8 @@ static void IRAM_ATTR custom_blit(bitmap_t *bmp, short interlace)
    currentUpdate->buffer = bmp->line[NES_VERTICAL_OVERDRAW/2];
    currentUpdate->stride = bmp->pitch;
 
-   odroid_display_queue_update(currentUpdate, previousUpdate);
-
-   if (currentUpdate->diff[0].width && currentUpdate->diff[0].height == currentUpdate->height) {
+   if (odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL)
+   {
       ++fullFrames;
    }
 

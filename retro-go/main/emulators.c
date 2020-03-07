@@ -126,8 +126,8 @@ void emulators_init()
     add_emulator("Sega Game Gear", "gg", "gg", "smsplusgx", 0, logo_gg, header_gg);
     add_emulator("ColecoVision", "col", "col", "smsplusgx", 0, logo_col, header_col);
     add_emulator("Atari Lynx", "lnx", "lnx", "lynx", 0, logo_lnx, header_lnx);
-    add_emulator("Atari 2600", "a26", "a26", "stella", 0, logo_a26, header_a26);
-    add_emulator("PC Engine", "pce", "pce", "pcengine", 0, logo_pce, header_pce);
+    // add_emulator("Atari 2600", "a26", "a26", "stella", 0, logo_a26, header_a26);
+    // add_emulator("PC Engine", "pce", "pce", "pcengine", 0, logo_pce, header_pce);
 }
 
 void emulators_start_emu(retro_emulator_t *emu)

@@ -11,14 +11,6 @@ typedef enum
 
 typedef enum
 {
-    ODROID_SCALING_NONE  = 0, // No scaling, center image on screen
-    ODROID_SCALING_SCALE = 1, // Scale and preserve aspect ratio
-    ODROID_SCALING_FILL  = 2, // Scale and stretch to fill screen
-    ODROID_SCALING_UNKNOWN = 0xFF
-} ODROID_SCALING;
-
-typedef enum
-{
     ODROID_AUDIO_SINK_SPEAKER = 0,
     ODROID_AUDIO_SINK_DAC
 } ODROID_AUDIO_SINK;
@@ -43,17 +35,20 @@ void odroid_settings_Backlight_set(int32_t value);
 ODROID_START_ACTION odroid_settings_StartAction_get();
 void odroid_settings_StartAction_set(ODROID_START_ACTION value);
 
-ODROID_SCALING odroid_settings_Scaling_get();
-void odroid_settings_Scaling_set(ODROID_SCALING value);
-
 ODROID_AUDIO_SINK odroid_settings_AudioSink_get();
 void odroid_settings_AudioSink_set(ODROID_AUDIO_SINK value);
 
 int32_t odroid_settings_Palette_get();
 void odroid_settings_Palette_set(int32_t value);
 
+int32_t odroid_settings_DisplayScaling_get();
+void odroid_settings_DisplayScaling_set(int32_t value);
+
 int32_t odroid_settings_DisplayUpdateMode_get();
 void odroid_settings_DisplayUpdateMode_set(int32_t value);
+
+int32_t odroid_settings_DisplayFilter_get();
+void odroid_settings_DisplayFilter_set(int32_t value);
 
 void odroid_settings_string_set(const char *key, char *value);
 char* odroid_settings_string_get(const char *key, char *default_value);

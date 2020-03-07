@@ -9,6 +9,13 @@ enum ODROID_SYS_ERROR {
     ODROID_EMU_ERR_CRASH,
 };
 
+typedef enum {
+    SCREEN_UPDATE_EMPTY,
+    SCREEN_UPDATE_FULL,
+    SCREEN_UPDATE_PARTIAL,
+    SCREEN_UPDATE_ERROR,
+} screen_update_t;
+
 typedef enum
 {
     ODROID_BACKLIGHT_LEVEL0 = 0,
@@ -21,17 +28,34 @@ typedef enum
 
 typedef enum
 {
+    ODROID_DISPLAY_SCALING_NONE = 0, // No scaling, center image on screen
+    ODROID_DISPLAY_SCALING_SCALE,    // Scale and preserve aspect ratio
+    ODROID_DISPLAY_SCALING_FILL,     // Scale and stretch to fill screen
+    ODROID_DISPLAY_SCALING_COUNT
+} odroid_display_scaling;
+
+typedef enum
+{
     ODROID_DISPLAY_UPDATE_AUTO = 0,
     ODROID_DISPLAY_UPDATE_FULL,
     ODROID_DISPLAY_UPDATE_PARTIAL,
     ODROID_DISPLAY_UPDATE_COUNT,
 } odroid_display_update_mode;
 
-typedef struct __attribute__((__packed__)) {
-    uint8_t top;
-    uint8_t height;
+typedef enum
+{
+    ODROID_DISPLAY_FILTER_NONE = 0x0,
+    ODROID_DISPLAY_FILTER_LINEAR_X = 0x1,
+    ODROID_DISPLAY_FILTER_LINEAR_Y = 0x2,
+    ODROID_DISPLAY_FILTER_BILINEAR = 0x3,
+    // ODROID_DISPLAY_FILTER_SCANLINE,
+    ODROID_DISPLAY_FILTER_COUNT = 4,
+} odroid_display_filter;
+
+typedef struct {
     short left;
     short width;
+    short repeat;
 } odroid_line_diff;
 
 typedef struct {
@@ -52,8 +76,9 @@ typedef struct {
     int8_t use_diff;
 } odroid_video_update;
 
-extern volatile int8_t scalingMode;
+extern volatile int8_t displayScalingMode;
 extern volatile int8_t displayUpdateMode;
+extern volatile int8_t displayFilterMode;
 extern volatile int8_t forceVideoRefresh;
 
 void ili9341_write_frame_rectangleLE(short left, short top, short width, short height, uint16_t* buffer);
@@ -64,7 +89,7 @@ void odroid_display_backlight_set(int8_t level);
 void odroid_display_reset_scale(short width, short height);
 void odroid_display_set_scale(short width, short height, float aspect_ratio);
 void odroid_display_write_frame(odroid_video_frame *frame);
-void odroid_display_queue_update(odroid_video_frame *frame, odroid_video_frame *previousFrame);
+short odroid_display_queue_update(odroid_video_frame *frame, odroid_video_frame *previousFrame);
 
 void odroid_display_init();
 void odroid_display_deinit();

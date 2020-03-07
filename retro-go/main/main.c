@@ -273,21 +273,8 @@ void app_main(void)
 {
     printf("Retro-Go (%s-%s).\n", COMPILEDATE, GITREV);
 
-    odroid_system_gpio_init();
-	odroid_settings_init(0);
-    odroid_overlay_init();
-    odroid_input_gamepad_init();
-    odroid_input_battery_level_init();
-
-    esp_err_t r = odroid_sdcard_open();
-    odroid_display_init();
-
-    if (r != ESP_OK)
-    {
-        odroid_display_show_error(ODROID_SD_ERR_NOCARD);
-        odroid_system_halt();
-    }
-
+    odroid_system_init(0, 32000, NULL);
     odroid_display_clear(0);
+
     retro_loop();
 }

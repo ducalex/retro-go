@@ -10,11 +10,11 @@
 
 #define I2S_NUM (I2S_NUM_0)
 
-static int AudioSink = ODROID_AUDIO_SINK_SPEAKER;
-static float Volume = 1.0f;
+static int audioSink = ODROID_AUDIO_SINK_SPEAKER;
+static int audioSampleRate = 0;
+static float volumePercent = 1.0f;
 static odroid_volume_level volumeLevel = ODROID_VOLUME_LEVEL3;
 static int volumeLevels[] = {0, 60, 125, 187, 250, 375, 500, 750, 1000};
-static int audio_sample_rate;
 
 
 odroid_volume_level odroid_audio_volume_get()
@@ -38,23 +38,24 @@ void odroid_audio_volume_set(odroid_volume_level level)
     odroid_settings_Volume_set(level);
 
     volumeLevel = level;
-    Volume = (float)volumeLevels[level] * 0.001f;
+    volumePercent = (float)volumeLevels[level] * 0.001f;
 }
 
-void odroid_audio_init(ODROID_AUDIO_SINK sink, int sample_rate)
+void odroid_audio_init(int sample_rate)
 {
-    printf("%s: sink=%d, sample_rate=%d\n", __func__, sink, sample_rate);
+    volumeLevel = odroid_settings_Volume_get();
+    audioSink = odroid_settings_AudioSink_get();
+    audioSampleRate = sample_rate;
 
-    AudioSink = sink;
-    audio_sample_rate = sample_rate;
+    printf("%s: sink=%d, sample_rate=%d\n", __func__, audioSink, sample_rate);
 
     // NOTE: buffer needs to be adjusted per AUDIO_SAMPLE_RATE
-    if(AudioSink == ODROID_AUDIO_SINK_SPEAKER)
+    if (audioSink == ODROID_AUDIO_SINK_SPEAKER)
     {
         i2s_config_t i2s_config = {
             //.mode = I2S_MODE_MASTER | I2S_MODE_TX,                                  // Only TX
             .mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN,
-            .sample_rate = audio_sample_rate,
+            .sample_rate = audioSampleRate,
             .bits_per_sample = 16,
             .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,                           //2-channels
             .communication_format = I2S_COMM_FORMAT_I2S_MSB,
@@ -71,11 +72,11 @@ void odroid_audio_init(ODROID_AUDIO_SINK sink, int sample_rate)
         i2s_set_pin(I2S_NUM, NULL);
         i2s_set_dac_mode(/*I2S_DAC_CHANNEL_LEFT_EN*/ I2S_DAC_CHANNEL_BOTH_EN);
     }
-    else if (AudioSink == ODROID_AUDIO_SINK_DAC)
+    else if (audioSink == ODROID_AUDIO_SINK_DAC)
     {
         i2s_config_t i2s_config = {
             .mode = I2S_MODE_MASTER | I2S_MODE_TX,                                  // Only TX
-            .sample_rate = audio_sample_rate,
+            .sample_rate = audioSampleRate,
             .bits_per_sample = 16,
             .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,                           //2-channels
             .communication_format = I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB,
@@ -123,7 +124,6 @@ void odroid_audio_init(ODROID_AUDIO_SINK sink, int sample_rate)
         abort();
     }
 
-    volumeLevel = odroid_settings_Volume_get();
     odroid_audio_volume_set(volumeLevel);
 }
 
@@ -138,21 +138,11 @@ void odroid_audio_terminate()
     gpio_reset_pin(GPIO_NUM_26);
 }
 
-void odroid_audio_set_sink(ODROID_AUDIO_SINK sink)
-{
-    if (audio_sample_rate == 0)
-    {
-        return;
-    }
-    odroid_audio_terminate();
-    odroid_audio_init(sink, audio_sample_rate);
-}
-
 void IRAM_ATTR odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
 {
     short currentAudioSampleCount = frameCount * 2;
 
-    if (AudioSink == ODROID_AUDIO_SINK_SPEAKER)
+    if (audioSink == ODROID_AUDIO_SINK_SPEAKER)
     {
         // Convert for built in DAC
         for (short i = 0; i < currentAudioSampleCount; i += 2)
@@ -160,7 +150,7 @@ void IRAM_ATTR odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
             uint16_t dac0;
             uint16_t dac1;
 
-            if (Volume == 0.0f)
+            if (volumePercent == 0.0f)
             {
                 // Disable amplifier
                 dac0 = 0;
@@ -178,7 +168,7 @@ void IRAM_ATTR odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
 
                 // Scale
                 const int magnitude = 127 + 127;
-                const float range = magnitude  * sn * Volume;
+                const float range = magnitude  * sn * volumePercent;
 
                 // Convert to differential output
                 if (range > 127)
@@ -216,13 +206,13 @@ void IRAM_ATTR odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
             abort();
         }
     }
-    else if (AudioSink == ODROID_AUDIO_SINK_DAC)
+    else if (audioSink == ODROID_AUDIO_SINK_DAC)
     {
         int len = currentAudioSampleCount * sizeof(int16_t);
 
         for (short i = 0; i < currentAudioSampleCount; ++i)
         {
-            int sample = stereoAudioBuffer[i] * Volume;
+            int sample = stereoAudioBuffer[i] * volumePercent;
 
             if (sample > 32767)
                 sample = 32767;
@@ -245,14 +235,32 @@ void IRAM_ATTR odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
     }
 }
 
+void odroid_audio_set_sink(ODROID_AUDIO_SINK sink)
+{
+    odroid_settings_AudioSink_set(sink);
+    audioSink = sink;
+
+    if (audioSampleRate == 0)
+    {
+        return;
+    }
+    odroid_audio_terminate();
+    odroid_audio_init(audioSampleRate);
+}
+
+ODROID_AUDIO_SINK odroid_audio_get_sink()
+{
+    return audioSink;
+}
+
 int odroid_audio_sample_rate_get()
 {
-    return audio_sample_rate;
+    return audioSampleRate;
 }
 
 void odroid_audio_clear_buffer()
 {
-    if (audio_sample_rate) {
+    if (audioSampleRate) {
 	    i2s_zero_dma_buffer(I2S_NUM);
     }
 }
