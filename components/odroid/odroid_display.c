@@ -58,6 +58,17 @@ static short x_inc = SCREEN_WIDTH;
 static short y_inc = SCREEN_HEIGHT;
 static short x_origin = 0;
 static short y_origin = 0;
+static int8_t screen_line_is_empty[SCREEN_HEIGHT];
+
+typedef struct {
+    int8_t start  : 1; // Indicates this line or column is safe to start an update on
+    int8_t stop   : 1; // Indicates this line or column is safe to end an update on
+    int8_t repeat : 6; // How many times the line or column is repeated by the scaler or filter
+} frame_vector_t;
+
+static frame_vector_t frame_scaling_columns[256];
+static frame_vector_t frame_scaling_lines[240];
+
 /*
  The ILI9341 needs a bunch of command/argument values to be initialized. They are stored in this struct.
 */
@@ -482,12 +493,77 @@ void ili9341_write_frame_rectangleLE(short left, short top, short width, short h
     }
 }
 
-static inline void
-write_rect(void *buffer, uint16_t *palette, short origin_x, short origin_y,
-           short left, short top, short width, short height, short stride,
-           short pixel_size, uint8_t pixel_mask, short x_inc, short y_inc,
-           uint8_t interpolation)
+static uint16_t Blend(uint16_t a, uint16_t b)
 {
+    a = a << 8 | a >> 8;
+    b = b << 8 | b >> 8;
+
+    int8_t r0 = (a >> 11) & 0x1f;
+    int8_t g0 = (a >> 5) & 0x3f;
+    int8_t b0 = (a) & 0x1f;
+
+    int8_t r1 = (b >> 11) & 0x1f;
+    int8_t g1 = (b >> 5) & 0x3f;
+    int8_t b1 = (b) & 0x1f;
+
+    uint16_t rv = ((r1 - r0) >> 1) + r0;
+    uint16_t gv = ((g1 - g0) >> 1) + g0;
+    uint16_t bv = ((b1 - b0) >> 1) + b0;
+
+    uint16_t out = (rv << 11) | (gv << 5) | (bv);
+
+    return out << 8 | out >> 8;
+}
+
+static inline void
+bilinear_filter(uint16_t *line_buffer, short top, short left, short width, short height,
+                bool filter_x, bool filter_y)
+{
+    short ix_acc = (x_inc * left) % SCREEN_WIDTH;
+    short fill_line = -1;
+
+    for (short y = 0; y < height; y++)
+    {
+        if (filter_y && y > 0 && screen_line_is_empty[top + y])
+        {
+            fill_line = y;
+            continue;
+        }
+
+        // Filter X
+        if (filter_x)
+        {
+            uint16_t *buffer = line_buffer + y * width;
+            for (short x = 0, frame_x = 0, prev_frame_x = -1, x_acc = ix_acc; x < width; ++x)
+            {
+                if (frame_x == prev_frame_x && x > 0 && x + 1 < width)
+                {
+                    buffer[x] = Blend(buffer[x - 1], buffer[x + 1]);
+                }
+                prev_frame_x = frame_x;
+
+                x_acc += x_inc;
+                while (x_acc >= SCREEN_WIDTH) {
+                    ++frame_x;
+                    x_acc -= SCREEN_WIDTH;
+                }
+            }
+        }
+
+        // Filter Y
+        if (filter_y && fill_line > 0)
+        {
+            uint16_t *lineA = line_buffer + (fill_line - 1) * width;
+            uint16_t *lineB = line_buffer + (fill_line + 0) * width;
+            uint16_t *lineC = line_buffer + (fill_line + 1) * width;
+            for (short x = 0; x < width; x++)
+            {
+                lineB[x] = Blend(lineA[x], lineC[x]);
+            }
+            fill_line = -1;
+        }
+    }
+}
 
 static inline void
 write_rect(void *buffer, uint16_t *palette, short left, short top, short width, short height,
@@ -514,18 +590,35 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
 
     send_reset_drawing(screen_left, screen_top, actual_width, actual_height);
 
-    for (short y = 0, y_acc = iy_acc; y < height;)
+    for (short y = 0, screen_y = screen_top; y < height;)
     {
         uint16_t* line_buffer = spi_get_buffer();
 
         short line_buffer_index = 0;
-        short lines_to_copy = 0;
+        short lines_to_copy = lines_per_buffer;
 
-        for (; (lines_to_copy < lines_per_buffer) && (y < height); ++lines_to_copy)
+        if (lines_to_copy > screen_bottom - screen_y)
         {
+            lines_to_copy = screen_bottom - screen_y;
+        }
+
+        while (screen_line_is_empty[screen_y + lines_to_copy] && lines_to_copy > 1)
+        {
+            --lines_to_copy;
+        }
+
+        for (short i = 0; i < lines_to_copy; ++i)
+        {
+            if (screen_line_is_empty[screen_y] && i > 0)
+            {
+                uint16_t *buffer = &line_buffer[line_buffer_index];
+                memcpy(buffer, buffer - actual_width, actual_width * 2);
+                line_buffer_index += actual_width;
+            }
+            else
             for (short x = 0, x_acc = ix_acc; x < width;)
             {
-                if (palette == NULL)  {
+                if (palette == NULL) {
                     uint16_t sample = ((uint16_t*)buffer)[x];
                     line_buffer[line_buffer_index++] = sample << 8 | sample >> 8;
                 } else {
@@ -539,12 +632,17 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
                 }
             }
 
-            y_acc += y_inc;
-            while (y_acc >= SCREEN_HEIGHT) {
-                ++y;
+            if (!screen_line_is_empty[++screen_y]) {
                 buffer += stride;
-                y_acc -= SCREEN_HEIGHT;
+                ++y;
             }
+        }
+
+        if (displayFilterMode && displayScalingMode)
+        {
+            bilinear_filter(line_buffer, screen_y - lines_to_copy, actual_left, actual_width, lines_to_copy,
+                            displayFilterMode & ODROID_DISPLAY_FILTER_LINEAR_X,
+                            displayFilterMode & ODROID_DISPLAY_FILTER_LINEAR_Y);
         }
 
         send_continue_line(line_buffer, actual_width, lines_to_copy);
@@ -655,6 +753,12 @@ static inline int frame_diff(odroid_video_frame *frame, odroid_video_frame *prev
         }
     }
 
+    if (displayFilterMode && displayScalingMode)
+    {
+        for (short y = 1; y < frame->height - 1; ++y)
+        {
+        }
+    }
         }
     }
 
@@ -685,11 +789,20 @@ void odroid_display_reset_scale(short width, short height)
     y_inc = SCREEN_HEIGHT;
     x_origin = (SCREEN_WIDTH - width) / 2;
     y_origin = (SCREEN_HEIGHT - height) / 2;
-    x_scale = y_scale = 1.f;
+
+    memset(frame_scaling_columns, 0, sizeof frame_scaling_columns);
+    memset(frame_scaling_lines, 0, sizeof frame_scaling_lines);
+    memset(screen_line_is_empty, 0, sizeof screen_line_is_empty);
+
+    // First and last are always valid
+    frame_scaling_lines[0].start = frame_scaling_lines[height-1].stop = true;
+    frame_scaling_columns[0].start = frame_scaling_columns[width-1].stop = true;
 }
 
 void odroid_display_set_scale(short width, short height, float new_ratio)
 {
+    odroid_display_reset_scale(width, height);
+
     float old_ratio = width/(float)height;
 
     if (new_ratio <= 0) {
@@ -706,6 +819,20 @@ void odroid_display_set_scale(short width, short height, float new_ratio)
     y_inc = SCREEN_HEIGHT / y_scale;
     x_origin = (SCREEN_WIDTH - new_width) / 2.f;
     y_origin = (SCREEN_HEIGHT - new_height) / 2.f;
+
+    short y_acc = (y_inc * y_origin) % SCREEN_HEIGHT;
+
+    for (short y = 0, screen_y = y_origin, prev_y = -1; y < height; ++screen_y)
+    {
+        screen_line_is_empty[screen_y] = (prev_y == y);
+        prev_y = y;
+
+        y_acc += y_inc;
+        while (y_acc >= SCREEN_HEIGHT) {
+            ++y;
+            y_acc -= SCREEN_HEIGHT;
+        }
+    }
 
     printf("%dx%d@%.3f => %dx%d@%.3f x_inc:%d y_inc:%d x_scale:%.3f y_scale:%.3f x_origin:%d y_origin:%d\n",
            width, height, old_ratio, new_width, new_height, new_ratio,
