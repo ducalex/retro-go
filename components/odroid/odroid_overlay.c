@@ -170,6 +170,8 @@ void odroid_overlay_draw_dialog(char *header, odroid_dialog_choice_t *options, i
         bg = (i == sel) ? color : box_color;
         odroid_overlay_draw_text(x, y + i * ODROID_FONT_HEIGHT, width * ODROID_FONT_WIDTH, rows[i], fg, bg);
     }
+
+    odroid_display_drain_spi();
 }
 
 int odroid_overlay_dialog(char *header, odroid_dialog_choice_t *options, int options_count, int selected)
