@@ -53,7 +53,7 @@
 // #define  NES_FIQ_PERIOD       (NES_MASTER_CLOCK / NES_CLOCK_DIVIDER / 60)
 
 static const float NES_SCANLINE_CYCLES = (341.f * 4 / 12); // https://wiki.nesdev.com/w/index.php/Cycle_reference_chart
-static const int   NES_FIQ_PERIOD      = (14914 * 2);   // https://wiki.nesdev.com/w/index.php/APU_Frame_Counter
+static const int   NES_FC_IRQ_PERIOD   = (14914 * 2);      // https://wiki.nesdev.com/w/index.php/APU_Frame_Counter
 static const int   NES_RAMSIZE         = (0x800);
 
 
@@ -287,21 +287,26 @@ void nes_setfiq(uint8 value)
    nes.fiq_occurred = false;
 }
 
-INLINE void nes_checkfiq(int cycles)
+static void nes_checkfiq(int cycles)
 {
    nes.fiq_cycles += cycles;
-   if (nes.fiq_cycles >= NES_FIQ_PERIOD)
+
+   if (nes.fiq_cycles >= NES_FC_IRQ_PERIOD)
    {
+      nes.fiq_cycles = 0;
+
       if ((nes.fiq_state & 0xC0) == 0)
       {
          nes.fiq_occurred = true;
+
+         // Our emulated accuracy isn't great and it breaks some games
+         if (
+            nes.rominfo->checksum == 0xDBB3BC30 || // Teenage Mutant Ninja Turtles 3
+            nes.rominfo->checksum == 0x0639E88E     // Felix the cat
+         ) return;
+
          nes6502_irq();
       }
-      // if (nes.fiq_cycles >= NES_FIQ_PERIOD + 2)
-      // {
-      //    nes.fiq_cycles = 0;
-      // }
-      nes.fiq_cycles = 0;
    }
 }
 
@@ -329,7 +334,7 @@ static void nes_renderframe(bool draw_flag)
 
       while (nes.scanline_cycles >= 1)
       {
-         int next_fiq = NES_FIQ_PERIOD - nes.fiq_cycles;
+         int next_fiq = NES_FC_IRQ_PERIOD - nes.fiq_cycles;
          if (next_fiq > 0 && next_fiq < nes.scanline_cycles)
             elapsed_cycles = nes6502_execute(next_fiq);
          else

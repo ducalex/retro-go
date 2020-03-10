@@ -35,6 +35,7 @@
 #include <gui.h>
 #include <log.h>
 #include <osd.h>
+#include <rom/crc.h>
 
 
 /* Max length for displayed filename */
@@ -130,15 +131,12 @@ static void rom_loadsram(rominfo_t *rominfo)
 static int rom_allocsram(rominfo_t *rominfo)
 {
    /* Load up SRAM */
-   rominfo->sram = malloc(SRAM_BANK_LENGTH * rominfo->sram_banks);
+   rominfo->sram = calloc(SRAM_BANK_LENGTH, rominfo->sram_banks);
    if (NULL == rominfo->sram)
    {
       printf("Could not allocate space for battery RAM");
       abort(); //return -1;
    }
-
-   /* make damn sure SRAM is clear */
-   memset(rominfo->sram, 0, SRAM_BANK_LENGTH * rominfo->sram_banks);
    return 0;
 }
 
@@ -194,13 +192,12 @@ static int rom_loadrom(unsigned char **rom, rominfo_t *rominfo)
    }
    else
    {
-      rominfo->vram = malloc(VRAM_LENGTH);
+      rominfo->vram = calloc(VRAM_LENGTH, 1);
       if (NULL == rominfo->vram)
       {
          printf("Could not allocate space for VRAM");
          abort(); //return -1;
       }
-      memset(rominfo->vram, 0, VRAM_LENGTH);
    }
 
    return 0;
@@ -323,9 +320,7 @@ int rom_checkmagic(const char *filename)
 
 static int rom_getheader(unsigned char **rom, rominfo_t *rominfo)
 {
-#define  RESERVED_LENGTH   8
    inesheader_t head;
-   uint8 reserved[RESERVED_LENGTH];
    bool header_dirty;
 
    ASSERT(rom);
@@ -334,7 +329,7 @@ static int rom_getheader(unsigned char **rom, rominfo_t *rominfo)
 
    /* Read in the header */
 //   _fread(&head, 1, sizeof(head), fp);
-	printf("Head: %p (%x %x %x %x)\n", *rom, (*rom)[0], (*rom)[1], (*rom)[2], (*rom)[3]);
+	printf("rom_getheader: %p (%x %x %x %x)\n", *rom, (*rom)[0], (*rom)[1], (*rom)[2], (*rom)[3]);
 	memcpy(&head, *rom, sizeof(head));
 	*rom+=sizeof(head);
 
@@ -361,8 +356,7 @@ static int rom_getheader(unsigned char **rom, rominfo_t *rominfo)
    rominfo->mapper_number = head.rom_type >> 4;
 
    /* Do a compare - see if we've got a clean extended header */
-   memset(reserved, 0, RESERVED_LENGTH);
-   if (0 == memcmp(head.reserved, reserved, RESERVED_LENGTH))
+   if (0 == (uint64_t)head.reserved)
    {
       /* We were clean */
       header_dirty = false;
@@ -436,17 +430,25 @@ char *rom_getinfo(rominfo_t *rominfo)
 /* Load a ROM image into memory */
 rominfo_t *rom_load(const char *filename)
 {
-   unsigned char *rom=(unsigned char*)osd_getromdata();
    rominfo_t *rominfo;
+   unsigned char *rom;
+   size_t filesize;
 
-   rominfo = malloc(sizeof(rominfo_t));
+   rominfo = calloc(sizeof(rominfo_t), 1);
    if (NULL == rominfo)
-      return NULL;
+      goto _fail;
 
-   memset(rominfo, 0, sizeof(rominfo_t));
+   filesize = osd_getromdata(&rom);
+   if (NULL == rom)
+      goto _fail;
 
    strncpy(rominfo->filename, filename, sizeof(rominfo->filename));
-   printf("rom_load: rominfo->filename='%s'\n", rominfo->filename);
+   // rominfo->checksum = crc32_le(0, rom + 16, filesize - 16);
+   rominfo->checksum = crc32_le(0, rom, filesize);
+
+   printf("rom_load: filename='%s'\n", rominfo->filename);
+   printf("rom_load: filesize=%d\n", filesize);
+   printf("rom_load: checksum='%8X'\n", rominfo->checksum);
 
    /* Get the header and stick it into rominfo struct */
 	if (rom_getheader(&rom, rominfo))
@@ -471,10 +473,10 @@ rominfo_t *rom_load(const char *filename)
 	if (rom_loadrom(&rom, rominfo))
       goto _fail;
 
-   rom_loadsram(rominfo);
+   // rom_loadsram(rominfo);
 
    /* See if there's a palette we can load up */
-//   rom_checkforpal(rominfo);
+   // rom_checkforpal(rominfo);
 
    gui_sendmsg(GUI_GREEN, "ROM loaded: %s", rom_getinfo(rominfo));
 

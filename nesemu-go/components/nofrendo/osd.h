@@ -96,7 +96,7 @@ extern void osd_getmouse(int *x, int *y, int *button);
 extern int osd_makesnapname(char *filename, int len);
 
 /* get rom data */
-extern char *osd_getromdata();
+extern size_t osd_getromdata(unsigned char **data);
 
 #endif /* !NSF_PLAYER */
 

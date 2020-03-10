@@ -27,6 +27,7 @@
 
 static char* romPath;
 static char* romData;
+static size_t romSize;
 
 static char fb[1];
 static bitmap_t *myBitmap;
@@ -61,9 +62,10 @@ int osd_makesnapname(char *filename, int len)
    return -1;
 }
 
-char *osd_getromdata()
+size_t osd_getromdata(unsigned char **data)
 {
-	return (char*)romData;
+	*data = (unsigned char*)romData;
+   return romSize;
 }
 
 // We use this well placed call to load our save game
@@ -396,21 +398,19 @@ void app_main(void)
    romData = malloc(1024 * 1024);
    if (!romData) abort();
 
-   size_t fileSize = 0;
-
    if (strcasecmp(romPath + (strlen(romPath) - 4), ".zip") == 0)
    {
       printf("app_main ROM: Reading compressed file: %s\n", romPath);
-      fileSize = odroid_sdcard_unzip_file_to_memory(romPath, romData, 1024 * 1024);
+      romSize = odroid_sdcard_unzip_file_to_memory(romPath, romData, 1024 * 1024);
    }
    else
    {
       printf("app_main ROM: Reading file: %s\n", romPath);
-      fileSize = odroid_sdcard_copy_file_to_memory(romPath, romData, 1024 * 1024);
+      romSize = odroid_sdcard_copy_file_to_memory(romPath, romData, 1024 * 1024);
    }
 
-   printf("app_main ROM: fileSize=%d\n", fileSize);
-   if (fileSize == 0)
+   printf("app_main ROM: romSize=%d\n", romSize);
+   if (romSize == 0)
    {
       odroid_system_panic("ROM read failed");
    }

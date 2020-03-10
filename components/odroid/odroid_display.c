@@ -753,7 +753,7 @@ static inline int frame_diff(odroid_video_frame *frame, odroid_video_frame *prev
         }
     }
 
-    if (displayFilterMode && displayScalingMode)
+    if (displayScalingMode && displayFilterMode != ODROID_DISPLAY_FILTER_NONE)
     {
         // printf("\nFRAME BEGIN\n");
         for (short y = 0; y < frame->height; ++y)
