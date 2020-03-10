@@ -301,8 +301,9 @@ static void nes_checkfiq(int cycles)
 
          // Our emulated accuracy isn't great and it breaks some games
          if (
-            nes.rominfo->checksum == 0xDBB3BC30 || // Teenage Mutant Ninja Turtles 3
-            nes.rominfo->checksum == 0x0639E88E     // Felix the cat
+            nes.rominfo->checksum == 0xDBB3BC30 || // Teenage Mutant Ninja Turtles 3 (USA)
+            nes.rominfo->checksum == 0x0639E88E || // Felix the cat (USA)
+            nes.rominfo->checksum == 0x150908E5    // Tetris 2 + Bombliss (J)
          ) return;
 
          nes6502_irq();
