@@ -755,10 +755,48 @@ static inline int frame_diff(odroid_video_frame *frame, odroid_video_frame *prev
 
     if (displayFilterMode && displayScalingMode)
     {
-        for (short y = 1; y < frame->height - 1; ++y)
+        // printf("\nFRAME BEGIN\n");
+        for (short y = 0; y < frame->height; ++y)
         {
-        }
-    }
+            if (out_diff[y].width > 0)
+            {
+                short block_start = y;
+                short block_end = y;
+                short left = out_diff[y].left;
+                short right = left + out_diff[y].width;
+
+                while (block_start > 0 && (out_diff[block_start].width > 0 || !frame_scaling_lines[block_start].start))
+                    block_start--;
+
+                while (block_end < frame->height - 1 && (out_diff[block_end].width > 0 || !frame_scaling_lines[block_end].stop))
+                    block_end++;
+
+                for (short i = block_start; i < block_end; i++)
+                {
+                    if (out_diff[i].width > 0) {
+                        if (out_diff[i].left + out_diff[i].width > right) right = out_diff[i].left + out_diff[i].width;
+                        if (out_diff[i].left < left) left = out_diff[i].left;
+                    }
+                }
+
+                if (--left < 0) left = 0;
+                if (++right > frame->width - 1) right = frame->width - 1;
+
+                // while (left > 0 && !frame_scaling_column_is_key[left])
+                //     left--;
+
+                // while (right < frame->width -1 && !frame_scaling_column_is_key[right])
+                //     right++;
+
+                for (short i = block_start; i < block_end; i++)
+                {
+                    out_diff[i].left = left;
+                    out_diff[i].width = right - left;
+                }
+
+                // printf("  Block Y=%d   %dx%d\n", y, block_end - block_start + 1, right - left + 1);
+                y = block_end;
+            }
         }
     }
 
@@ -820,12 +858,55 @@ void odroid_display_set_scale(short width, short height, float new_ratio)
     x_origin = (SCREEN_WIDTH - new_width) / 2.f;
     y_origin = (SCREEN_HEIGHT - new_height) / 2.f;
 
+    short x_acc = (x_inc * x_origin) % SCREEN_WIDTH;
     short y_acc = (y_inc * y_origin) % SCREEN_HEIGHT;
 
-    for (short y = 0, screen_y = y_origin, prev_y = -1; y < height; ++screen_y)
+    for (short x = 0, screen_x = x_origin; x < width; ++screen_x)
     {
-        screen_line_is_empty[screen_y] = (prev_y == y);
-        prev_y = y;
+        frame_scaling_columns[x].repeat++;
+
+        if (x > 1)
+        {
+            if (frame_scaling_columns[x - 2].repeat == 1 &&
+                frame_scaling_columns[x - 1].repeat == 1 &&
+                frame_scaling_columns[x - 0].repeat == 1)
+            {
+                frame_scaling_columns[x - 1].start = true;
+                frame_scaling_columns[x - 1].stop = true;
+            }
+        }
+
+        x_acc += x_inc;
+        while (x_acc >= SCREEN_WIDTH) {
+            ++x;
+            x_acc -= SCREEN_WIDTH;
+        }
+    }
+
+    for (short y = 0, screen_y = y_origin; y < height; ++screen_y)
+    {
+        short repeat = ++frame_scaling_lines[y].repeat;
+        screen_line_is_empty[screen_y] = repeat > 1;
+
+        if (y > 1)
+        {
+            // Valid as start and end
+            if (frame_scaling_lines[y - 2].repeat == 1 &&
+                frame_scaling_lines[y - 1].repeat == 1 &&
+                frame_scaling_lines[y - 0].repeat == 1)
+            {
+                frame_scaling_lines[y - 1].start = true;
+                frame_scaling_lines[y - 1].stop = true;
+            }
+
+            // Valid as start only
+            if (frame_scaling_lines[y - 2].repeat == 1 && frame_scaling_lines[y - 1].repeat == 2)
+                frame_scaling_lines[y - 1].start = true;
+
+            // Valid as end only
+            if (frame_scaling_lines[y - 2].repeat == 2 && frame_scaling_lines[y - 1].repeat == 1)
+                frame_scaling_lines[y - 1].stop = true;
+        }
 
         y_acc += y_inc;
         while (y_acc >= SCREEN_HEIGHT) {
