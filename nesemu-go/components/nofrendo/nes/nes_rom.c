@@ -67,7 +67,8 @@ typedef struct inesheader_s
    uint8 vrom_banks       ;
    uint8 rom_type         ;
    uint8 mapper_hinybble  ;
-   uint8 reserved[8]      ;
+   uint32 reserved1       ;
+   uint32 reserved2       ;
 } inesheader_t;
 
 
@@ -261,41 +262,6 @@ static FILE *rom_findrom(const char *filename, rominfo_t *rominfo)
    return fp;
 }
 
-/* Add ROM name to a list with dirty headers */
-static int rom_adddirty(char *filename)
-{
-#ifdef NOFRENDO_DEBUG
-#define  MAX_BUFFER_LENGTH    255
-   char buffer[MAX_BUFFER_LENGTH + 1];
-   bool found = false;
-
-   FILE *fp = fopen("dirtyrom.txt", "rt");
-   if (NULL == fp)
-      return -1;
-
-   while (fgets(buffer, MAX_BUFFER_LENGTH, fp))
-   {
-      if (0 == strncmp(filename, buffer, strlen(filename)))
-      {
-         found = true;
-         break;
-      }
-   }
-
-   if (false == found)
-   {
-      /* close up the file, open it back up for writing */
-      fclose(fp);
-      fp = fopen("dirtyrom.txt", "at");
-      fprintf(fp, "%s -- dirty header\n", filename);
-   }
-
-   fclose(fp);
-#endif /* NOFRENDO_DEBUG */
-
-   return 0;
-}
-
 /* return 0 if this *is* an iNES file */
 int rom_checkmagic(const char *filename)
 {
@@ -321,21 +287,19 @@ int rom_checkmagic(const char *filename)
 static int rom_getheader(unsigned char **rom, rominfo_t *rominfo)
 {
    inesheader_t head;
-   bool header_dirty;
 
    ASSERT(rom);
    ASSERT(*rom);
    ASSERT(rominfo);
 
    /* Read in the header */
-//   _fread(&head, 1, sizeof(head), fp);
-	printf("rom_getheader: %p (%x %x %x %x)\n", *rom, (*rom)[0], (*rom)[1], (*rom)[2], (*rom)[3]);
 	memcpy(&head, *rom, sizeof(head));
-	*rom+=sizeof(head);
+	*rom += sizeof(head);
 
    if (memcmp(head.ines_magic, ROM_INES_MAGIC, 4))
    {
       gui_sendmsg(GUI_RED, "%s is not a valid ROM image", rominfo->filename);
+      printf("rom_getheader: %s is not a valid ROM image\n", rominfo->filename);
       return -1;
    }
 
@@ -352,36 +316,21 @@ static int rom_getheader(unsigned char **rom, rominfo_t *rominfo)
       rominfo->flags |= ROM_FLAG_TRAINER;
    if (head.rom_type & ROM_FOURSCREEN)
       rominfo->flags |= ROM_FLAG_FOURSCREEN;
+   if (head.mapper_hinybble & 1)
+      rominfo->flags |= ROM_FLAG_VERSUS;
+
    /* TODO: fourscreen a mirroring type? */
    rominfo->mapper_number = head.rom_type >> 4;
 
-   /* Do a compare - see if we've got a clean extended header */
-   if (0 == (uint64_t)head.reserved)
+   if (head.reserved2 == 0)
    {
-      /* We were clean */
-      header_dirty = false;
+      // https://wiki.nesdev.com/w/index.php/INES
+      // A general rule of thumb: if the last 4 bytes are not all zero, and the header is
+      // not marked for NES 2.0 format, an emulator should either mask off the upper 4 bits
+      // of the mapper number or simply refuse to load the ROM.
+
       rominfo->mapper_number |= (head.mapper_hinybble & 0xF0);
    }
-   else
-   {
-      header_dirty = true;
-
-      /* @!?#@! DiskDude. */
-      if (('D' == head.mapper_hinybble) && (0 == memcmp(head.reserved, "iskDude!", 8)))
-         log_printf("`DiskDude!' found in ROM header, ignoring high mapper nybble\n");
-      else
-      {
-         log_printf("ROM header dirty, possible problem\n");
-         rominfo->mapper_number |= (head.mapper_hinybble & 0xF0);
-      }
-
-      rom_adddirty(rominfo->filename);
-   }
-
-   /* TODO: this is an ugly hack, but necessary, I guess */
-   /* Check for VS unisystem mapper */
-   if (99 == rominfo->mapper_number)
-      rominfo->flags |= ROM_FLAG_VERSUS;
 
    return 0;
 }
@@ -458,6 +407,7 @@ rominfo_t *rom_load(const char *filename)
    if (false == mmc_peek(rominfo->mapper_number))
    {
       gui_sendmsg(GUI_RED, "Mapper %d not yet implemented", rominfo->mapper_number);
+      printf("rom_load: Mapper %d not yet implemented\n", rominfo->mapper_number);
       goto _fail;
    }
 
@@ -483,6 +433,7 @@ rominfo_t *rom_load(const char *filename)
    return rominfo;
 
 _fail:
+   printf("rom_load: Rom loading failed\n");
    rom_free(&rominfo);
    return NULL;
 }
