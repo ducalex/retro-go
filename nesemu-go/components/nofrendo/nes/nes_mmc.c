@@ -71,6 +71,8 @@ void mmc_getcontext(mmc_t *dest_mmc)
 /* VROM bankswitching */
 void mmc_bankvrom(int size, uint32 address, int bank)
 {
+   // printf("mmc_bankvrom: Addr: 0x%x Size: 0x%x Bank:%d\n", address, size, bank);
+
    if (0 == mmc.cart->vrom_banks)
       return;
 
@@ -110,6 +112,8 @@ void mmc_bankvrom(int size, uint32 address, int bank)
 /* ROM bankswitching */
 void mmc_bankrom(int size, uint32 address, int bank)
 {
+   // printf("mmc_bankrom: Addr: 0x%x Size: 0x%x Bank:%d\n", address, size, bank);
+
    nes6502_context mmc_cpu;
 
    nes6502_getcontext(&mmc_cpu);

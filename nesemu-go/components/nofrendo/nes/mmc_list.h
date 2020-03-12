@@ -9,6 +9,7 @@ extern mapintf_t map2_intf;
 extern mapintf_t map3_intf;
 extern mapintf_t map4_intf;
 extern mapintf_t map5_intf;
+extern mapintf_t map5new_intf;
 extern mapintf_t map7_intf;
 extern mapintf_t map8_intf;
 extern mapintf_t map9_intf;
@@ -48,7 +49,7 @@ static const mapintf_t *mappers[] =
     &map2_intf,
     &map3_intf,
     &map4_intf,
-    &map5_intf,
+    &map5_intf, // &map5new_intf,
     &map7_intf,
     &map8_intf,
     &map9_intf,

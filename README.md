@@ -11,13 +11,14 @@ Retro-Go is composed of a launcher and several emulators.
 
 ### Compared to other similar projects for the ODROID-GO, Retro-Go brings:
 - In-game menu
-- Faster/smoother transitions
 - RTC adjust and save
 - More scaling options
+- Bilinear filtering
+- Smoother performance
+- Better compatibility
 - Fastforward
 - Customizable launcher
 - PNG cover art
-- Improved GBC compatibility
 
 # Screenshot
 ![Preview](https://raw.githubusercontent.com/ducalex/retro-go/master/assets/screenshot.jpg)
@@ -79,7 +80,7 @@ The official esp-idf version 3.3 is required and you should apply the following 
 
 - [Improve SD card compatibility](https://github.com/OtherCrashOverride/esp-idf/commit/a83e557538a033e25c376eedac79663c9b7b75da)
 
-_Note: It is possible to use esp-idf 3.2 but changes to sdkconfig might be necessary._
+_Note: It is possible to use esp-idf 3.2 but changes to sdkconfig will be necessary._
 
 ## Build Steps:
 1. Build all subprojects: `./build_all.sh`
