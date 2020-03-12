@@ -61,7 +61,6 @@ void state_setslot(int slot)
 
 int save_baseblock(nes_t *state, SNSS_FILE *snssFile)
 {
-    printf("save_baseblock\n");
    int i;
 
    ASSERT(state);
@@ -102,7 +101,6 @@ int save_baseblock(nes_t *state, SNSS_FILE *snssFile)
 
 bool save_vramblock(nes_t *state, SNSS_FILE *snssFile)
 {
-    printf("save_vramblock\n");
    ASSERT(state);
 
    if (NULL == state->rominfo->vram)
@@ -113,7 +111,7 @@ bool save_vramblock(nes_t *state, SNSS_FILE *snssFile)
 
    if (state->rominfo->vram_banks > 2)
    {
-      log_printf("too many VRAM banks: %d\n", state->rominfo->vram_banks);
+      printf("save_vramblock: too many VRAM banks: %d\n", state->rominfo->vram_banks);
       return -1;
    }
 
@@ -125,7 +123,6 @@ bool save_vramblock(nes_t *state, SNSS_FILE *snssFile)
 
 int save_sramblock(nes_t *state, SNSS_FILE *snssFile)
 {
-    printf("save_sramblock\n");
    int i;
    bool written = false;
    int sram_length;
@@ -146,13 +143,13 @@ int save_sramblock(nes_t *state, SNSS_FILE *snssFile)
 
    if (false == written)
    {
-       printf("save_srambloc: false == written\n");
+      // The SRAM is empty, no need to save it to the file
       return -1;
-  }
+   }
 
    if (state->rominfo->sram_banks > 8)
    {
-      log_printf("Unsupported number of SRAM banks: %d\n", state->rominfo->sram_banks);
+      printf("save_sramblock: Unsupported number of SRAM banks: %d\n", state->rominfo->sram_banks);
       return -1;
    }
 
@@ -168,7 +165,6 @@ int save_sramblock(nes_t *state, SNSS_FILE *snssFile)
 
 int save_soundblock(nes_t *state, SNSS_FILE *snssFile)
 {
-    printf("save_soundblock\n");
    ASSERT(state);
 
    apu_getcontext(state->apu);
@@ -204,7 +200,6 @@ int save_soundblock(nes_t *state, SNSS_FILE *snssFile)
 
 int save_mapperblock(nes_t *state, SNSS_FILE *snssFile)
 {
-    printf("save_mapperblock\n");
    int i;
    ASSERT(state);
 
@@ -244,8 +239,6 @@ int save_mapperblock(nes_t *state, SNSS_FILE *snssFile)
 
 void load_baseblock(nes_t *state, SNSS_FILE *snssFile)
 {
-    printf("load_baseblock\n");
-
    int i;
 
    ASSERT(state);
@@ -296,8 +289,6 @@ void load_baseblock(nes_t *state, SNSS_FILE *snssFile)
 
 void load_vramblock(nes_t *state, SNSS_FILE *snssFile)
 {
-    printf("load_vramblock\n");
-
    ASSERT(state);
 
    ASSERT(snssFile->vramBlock.vramSize <= VRAM_8K); /* can't handle more than this! */
@@ -306,8 +297,6 @@ void load_vramblock(nes_t *state, SNSS_FILE *snssFile)
 
 void load_sramblock(nes_t *state, SNSS_FILE *snssFile)
 {
-    printf("load_sramblock\n");
-
    ASSERT(state);
 
    ASSERT(snssFile->sramBlock.sramSize <= SRAM_8K); /* can't handle more than this! */
@@ -316,16 +305,12 @@ void load_sramblock(nes_t *state, SNSS_FILE *snssFile)
 
 void load_controllerblock(nes_t *state, SNSS_FILE *snssFile)
 {
-    printf("load_controllerblock\n");
-
    UNUSED(state);
    UNUSED(snssFile);
 }
 
 void load_soundblock(nes_t *state, SNSS_FILE *snssFile)
 {
-    printf("load_soundblock\n");
-
    int i;
 
    ASSERT(state);
@@ -341,8 +326,6 @@ void load_soundblock(nes_t *state, SNSS_FILE *snssFile)
 /* TODO: magic numbers galore */
 void load_mapperblock(nes_t *state, SNSS_FILE *snssFile)
 {
-    printf("load_mapperblock\n");
-
    int i;
 
    ASSERT(state);
@@ -398,51 +381,51 @@ int state_save(char* fn)
       status = SNSS_WriteBlock(snssFile, SNSS_BASR);
       if (SNSS_OK != status)
          goto _error;
+      printf("  - save_baseblock OK\n");
    }
-   printf("state_save: save_baseblock OK\n");
 
    if (0 == save_vramblock(machine, snssFile))
    {
       status = SNSS_WriteBlock(snssFile, SNSS_VRAM);
       if (SNSS_OK != status)
          goto _error;
+      printf("  - save_vramblock OK\n");
    }
-   printf("state_save: save_vramblock OK\n");
 
    if (0 == save_sramblock(machine, snssFile))
    {
       status = SNSS_WriteBlock(snssFile, SNSS_SRAM);
       if (SNSS_OK != status)
          goto _error;
+      printf("  - save_sramblock OK\n");
    }
-   printf("state_save: save_sramblock OK\n");
 
    if (0 == save_soundblock(machine, snssFile))
    {
       status = SNSS_WriteBlock(snssFile, SNSS_SOUN);
       if (SNSS_OK != status)
          goto _error;
+      printf("  - save_soundblock OK\n");
    }
-   printf("state_save: save_soundblock OK\n");
 
    if (0 == save_mapperblock(machine, snssFile))
    {
       status = SNSS_WriteBlock(snssFile, SNSS_MPRD);
       if (SNSS_OK != status)
          goto _error;
+      printf("  - save_mapperblock OK\n");
    }
-   printf("state_save: save_mapperblock OK\n");
 
    /* close the file, we're done */
    status = SNSS_CloseFile(&snssFile);
    if (SNSS_OK != status)
       goto _error;
 
-   printf("State %d saved\n", state_slot);
+   printf("state_save: Game %d saved\n", state_slot);
    return 0;
 
 _error:
-   printf("error: %s\n", SNSS_GetErrorString(status));
+   printf("state_save: Failed: %s\n", SNSS_GetErrorString(status));
    SNSS_CloseFile(&snssFile);
    return -1;
 }
@@ -490,32 +473,38 @@ int state_load(char* fn)
       switch (block_type)
       {
       case SNSS_BASR:
+         printf("  - load_baseblock\n");
          load_baseblock(machine, snssFile);
          break;
 
       case SNSS_VRAM:
+         printf("  - load_vramblock\n");
          load_vramblock(machine, snssFile);
          break;
 
       case SNSS_SRAM:
+         printf("  - load_sramblock\n");
          load_sramblock(machine, snssFile);
          break;
 
       case SNSS_MPRD:
+         printf("  - load_mapperblock\n");
          load_mapperblock(machine, snssFile);
          break;
 
       case SNSS_CNTR:
+         printf("  - load_controllerblock\n");
          load_controllerblock(machine, snssFile);
          break;
 
       case SNSS_SOUN:
+         printf("  - load_soundblock\n");
          load_soundblock(machine, snssFile);
          break;
 
       case SNSS_UNKNOWN_BLOCK:
       default:
-         log_printf("unknown SNSS block type\n");
+         printf("  - unknown SNSS block type\n");
          break;
       }
    }
@@ -523,12 +512,12 @@ int state_load(char* fn)
    /* close file, we're done */
    status = SNSS_CloseFile(&snssFile);
 
-   printf("State %d restored", state_slot);
+   printf("state_load: Game %d restored\n", state_slot);
 
    return 0;
 
 _error:
-   gui_sendmsg(GUI_RED, "error: %s", SNSS_GetErrorString(status));
+   printf("state_load: Failed: %s\n", SNSS_GetErrorString(status));
    SNSS_CloseFile(&snssFile);
    abort();
 }

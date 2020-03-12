@@ -58,10 +58,6 @@ void SaveState()
       printf("SaveState: failed.\n");
       odroid_overlay_alert("Save failed");
    }
-   else
-   {
-      printf("Saving state OK.\n");
-   }
 
    odroid_display_unlock();
    odroid_system_led_set(0);
@@ -78,10 +74,6 @@ void LoadState()
    if (state_load(pathName) < 0)
    {
       printf("LoadState: failed.\n");
-   }
-   else
-   {
-      printf("LoadState: success.\n");
    }
 
    free(pathName);
@@ -133,13 +125,8 @@ size_t osd_getromdata(unsigned char **data)
    return romSize;
 }
 
-// We use this well placed call to load our save game
 int osd_installtimer(int frequency, void *func, int funcsize, void *counter, int countersize)
 {
-   if (startAction == ODROID_START_ACTION_RESUME)
-   {
-      LoadState();
-   }
    return 0;
 }
 

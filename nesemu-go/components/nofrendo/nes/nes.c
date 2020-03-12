@@ -329,6 +329,7 @@ static void system_video(bool draw)
 
 extern void do_audio_frame();
 extern uint fullFrames;
+extern void LoadState();
 
 /* main emulation loop */
 void nes_emulate(void)
@@ -348,6 +349,12 @@ void nes_emulate(void)
    // Discard the garbage frames
    nes_renderframe(1);
    nes_renderframe(1);
+
+   // Load after running a few frames to avoid garbage
+   if (startAction == ODROID_START_ACTION_RESUME)
+   {
+      LoadState();
+   }
 
    while (false == nes.poweroff)
    {
