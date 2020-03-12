@@ -92,9 +92,6 @@ extern char *osd_newextension(char *string, char *ext);
 extern void osd_getinput(void);
 extern void osd_getmouse(int *x, int *y, int *button);
 
-/* build a filename for a snapshot, return -ve for error */
-extern int osd_makesnapname(char *filename, int len);
-
 /* get rom data */
 extern size_t osd_getromdata(unsigned char **data);
 

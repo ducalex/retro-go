@@ -3,14 +3,14 @@
 **
 **
 ** This program is free software; you can redistribute it and/or
-** modify it under the terms of version 2 of the GNU Library General 
+** modify it under the terms of version 2 of the GNU Library General
 ** Public License as published by the Free Software Foundation.
 **
-** This program is distributed in the hope that it will be useful, 
+** This program is distributed in the hope that it will be useful,
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
-** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
-** Library General Public License for more details.  To obtain a 
-** copy of the GNU Library General Public License, write to the Free 
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+** Library General Public License for more details.  To obtain a
+** copy of the GNU Library General Public License, write to the Free
 ** Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 **
 ** Any permitted reproduction of these routines, in whole or in part,
@@ -50,6 +50,7 @@
 #define  APU_WRE3       0x4013
 
 #define  APU_SMASK      0x4015
+#define  APU_FRAME_IRQ  0x4017
 
 /* length of generated noise */
 #define  APU_NOISE_32K  0x7FFF
@@ -62,13 +63,13 @@
 /* As much data as possible is precalculated,
 ** to keep the sample processing as lean as possible
 */
- 
+
 typedef struct rectangle_s
 {
    uint8 regs[4];
 
    bool enabled;
-   
+
    float accum;
    int32 freq;
    int32 output_vol;
@@ -150,7 +151,7 @@ typedef struct dmc_s
 
    /* bodge for timestamp queue */
    bool enabled;
-   
+
    float accum;
    int32 freq;
    int32 output_vol;
@@ -220,8 +221,14 @@ typedef struct apu_s
    int refresh_rate;
 
    void (*process)(void *buffer, int num_samples);
-   void (*irq_callback)(void);
-   uint8 (*irqclear_callback)(void);
+
+   struct {
+      uint8 state;
+      uint step;
+      uint cycles;
+      bool irq_occurred;
+      bool disable_irq;
+   } fc;
 
    /* external sound chip */
    apuext_t *ext;
@@ -235,6 +242,7 @@ extern "C" {
 /* Function prototypes */
 extern void apu_setcontext(apu_t *src_apu);
 extern void apu_getcontext(apu_t *dest_apu);
+extern apu_t* apu_getcontextptr();
 
 extern void apu_setparams(double base_freq, int sample_rate, int refresh_rate, int sample_bits);
 extern apu_t *apu_create(double base_freq, int sample_rate, int refresh_rate, int sample_bits);
@@ -250,6 +258,7 @@ extern void apu_setchan(int chan, bool enabled);
 extern uint8 apu_read(uint32 address);
 extern void apu_write(uint32 address, uint8 value);
 
+extern void apu_fc_advance(int cycles);
 
 #ifdef __cplusplus
 }

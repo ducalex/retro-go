@@ -311,10 +311,6 @@ void IRAM_ATTR ppu_writehigh(uint32 address, uint8 value)
       ppu.strobe = value;
       break;
 
-   case PPU_JOY1: /* frame IRQ control */
-      nes_setfiq(value);
-      break;
-
    default:
       break;
    }

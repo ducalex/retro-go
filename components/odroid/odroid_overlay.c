@@ -466,8 +466,9 @@ int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options, int
     odroid_dialog_choice_t options[12] = {
         {10, "Scaling", "Full", 1, &scaling_update_cb},
         {12, "Filtering", "None", 1, &filter_update_cb}, // Interpolation
-        //{11, "Update Mode", "Auto", 1, &display_mode_update_cb},
+        // {11, "Update Mode", "Auto", 1, &display_mode_update_cb},
         {13, "Speed", "1x", 1, &speedup_update_cb},
+        // {14, "", "", 1, NULL},
     };
     int options_count = 3;
 

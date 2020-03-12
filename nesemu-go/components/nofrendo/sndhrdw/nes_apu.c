@@ -3,14 +3,14 @@
 **
 **
 ** This program is free software; you can redistribute it and/or
-** modify it under the terms of version 2 of the GNU Library General 
+** modify it under the terms of version 2 of the GNU Library General
 ** Public License as published by the Free Software Foundation.
 **
-** This program is distributed in the hope that it will be useful, 
+** This program is distributed in the hope that it will be useful,
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
-** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
-** Library General Public License for more details.  To obtain a 
-** copy of the GNU Library General Public License, write to the Free 
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+** Library General Public License for more details.  To obtain a
+** copy of the GNU Library General Public License, write to the Free
 ** Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 **
 ** Any permitted reproduction of these routines, in whole or in part,
@@ -28,6 +28,7 @@
 #include <string.h>
 #include <noftypes.h>
 #include <log.h>
+#include <nes.h>
 #include <nes_apu.h>
 #include "nes6502.h"
 
@@ -57,6 +58,10 @@ static int trilength_lut[128];
 static int8 noise_long_lut[APU_NOISE_32K];
 static int8 noise_short_lut[APU_NOISE_93];
 #endif /* !REALTIME_NOISE */
+
+
+#define NES_CPU_CLOCK 1789772
+static int cycles_per_sample = 0;
 
 
 /* vblank length table used for rectangles, triangle, noise */
@@ -104,6 +109,36 @@ const int dmc_clocks[16] =
 static const int duty_flip[4] = { 2, 4, 8, 12 };
 
 
+static void apu_fc_set(uint8 value)
+{
+   apu.fc.state = value;
+   apu.fc.cycles = 0; // 3-4 cpu cycles before reset
+   apu.fc.irq_occurred = false;
+}
+
+void apu_fc_advance(int cycles)
+{
+   // https://wiki.nesdev.com/w/index.php/APU_Frame_Counter
+   const int int_period = 4 * 7457;
+
+   apu.fc.cycles += cycles;
+   // apu.fc.step = cycles / 7457;
+
+   if (apu.fc.cycles >= int_period)
+   {
+      apu.fc.cycles -= int_period;
+      // apu.fc.cycles = 0;
+
+      if ((apu.fc.state & 0xC0) == 0)
+      {
+         apu.fc.irq_occurred = true;
+
+         if (!apu.fc.disable_irq)
+            nes_irq();
+      }
+   }
+}
+
 void apu_setcontext(apu_t *src_apu)
 {
    apu = *src_apu;
@@ -112,6 +147,11 @@ void apu_setcontext(apu_t *src_apu)
 void apu_getcontext(apu_t *dest_apu)
 {
    *dest_apu = apu;
+}
+
+apu_t* apu_getcontextptr()
+{
+   return &apu;
 }
 
 void apu_setchan(int chan, bool enabled)
@@ -262,7 +302,7 @@ INLINE int32 apu_rectangle_##ch(void) \
 \
    apu.rectangle[ch].output_vol = total / num_times; \
    return APU_RECTANGLE_OUTPUT(ch); \
-} 
+}
 
 #else /* !APU_OVERSAMPLE */
 #define  APU_MAKE_RECTANGLE(ch) \
@@ -436,7 +476,7 @@ INLINE int32 apu_noise(void)
    apu.noise.accum -= apu.cycle_rate;
    if (apu.noise.accum >= 0)
       return APU_NOISE_OUTPUT;
-   
+
 #ifdef APU_OVERSAMPLE
    if (apu.noise.fixed_envelope)
       outvol = apu.noise.volume << 8; /* fixed volume */
@@ -542,17 +582,17 @@ INLINE int32 apu_dmc(void)
    if (apu.dmc.dma_length)
    {
       apu.dmc.accum -= apu.cycle_rate;
-      
+
       while (apu.dmc.accum < 0)
       {
          apu.dmc.accum += apu.dmc.freq;
-         
+
          delta_bit = (apu.dmc.dma_length & 7) ^ 7;
-         
+
          if (7 == delta_bit)
          {
             apu.dmc.cur_byte = nes6502_getbyte(apu.dmc.address);
-            
+
             /* steal a cycle from CPU*/
             nes6502_burn(1);
 
@@ -576,8 +616,7 @@ INLINE int32 apu_dmc(void)
                if (apu.dmc.irq_gen)
                {
                   apu.dmc.irq_occurred = true;
-                  if (apu.irq_callback)
-                     apu.irq_callback();
+                  nes_irq();
                }
 
                /* bodge for timestamp queue */
@@ -596,7 +635,7 @@ INLINE int32 apu_dmc(void)
             }
          }
          /* negative delta */
-         else            
+         else
          {
             if (apu.dmc.regs[1] > 1)
             {
@@ -612,7 +651,7 @@ INLINE int32 apu_dmc(void)
 
 
 void IRAM_ATTR apu_write(uint32 address, uint8 value)
-{  
+{
    int chan;
 
    switch (address)
@@ -675,16 +714,16 @@ void IRAM_ATTR apu_write(uint32 address, uint8 value)
    case APU_WRC3:
 
       apu.triangle.regs[2] = value;
-  
-      /* this is somewhat of a hack.  there appears to be some latency on 
-      ** the Real Thing between when trireg0 is written to and when the 
-      ** linear length counter actually begins its countdown.  we want to 
-      ** prevent the case where the program writes to the freq regs first, 
-      ** then to reg 0, and the counter accidentally starts running because 
+
+      /* this is somewhat of a hack.  there appears to be some latency on
+      ** the Real Thing between when trireg0 is written to and when the
+      ** linear length counter actually begins its countdown.  we want to
+      ** prevent the case where the program writes to the freq regs first,
+      ** then to reg 0, and the counter accidentally starts running because
       ** of the sound queue's timestamp processing.
       **
-      ** set latency to a couple hundred cycles -- should be plenty of time 
-      ** for the 6502 code to do a couple of table dereferences and load up 
+      ** set latency to a couple hundred cycles -- should be plenty of time
+      ** for the 6502 code to do a couple of table dereferences and load up
       ** the other triregs
       */
       apu.triangle.write_latency = (int) (228 / apu.cycle_rate);
@@ -817,11 +856,15 @@ void IRAM_ATTR apu_write(uint32 address, uint8 value)
       apu.dmc.irq_occurred = false;
       break;
 
+   case APU_FRAME_IRQ: /* frame IRQ control */
+      apu_fc_set(value);
+      break;
+
       /* unused, but they get hit in some mem-clear loops */
    case 0x4009:
    case 0x400D:
       break;
-   
+
    default:
       break;
    }
@@ -853,8 +896,10 @@ uint8 IRAM_ATTR apu_read(uint32 address)
       if (apu.dmc.irq_occurred)
          value |= 0x80;
 
-      if (apu.irqclear_callback)
-         value |= apu.irqclear_callback();
+      if (apu.fc.irq_occurred) {
+         value |= 0x40;
+         apu.fc.irq_occurred = false;
+      }
 
       break;
 
@@ -931,6 +976,9 @@ void IRAM_ATTR apu_process(void *buffer, int num_samples)
             *buf16++ = (int16) accum;
          else
             *buf8++ = (accum >> 8) ^ 0x80;
+
+         // Advance frame counter
+         // apu_fc_advance(cycles_per_sample);
       }
    }
 }
@@ -949,7 +997,8 @@ void apu_reset(void)
    for (address = 0x4000; address <= 0x4013; address++)
       apu_write(address, 0);
 
-   apu_write(0x4015, 0);
+   apu_write(0x4015, 0x00);
+   apu_write(0x4017, 0x80); // nesdev wiki says this should be 0, but it seems to work better disabled
 
    if (apu.ext && NULL != apu.ext->reset)
       apu.ext->reset();
@@ -990,6 +1039,8 @@ void apu_setparams(double base_freq, int sample_rate, int refresh_rate, int samp
       apu.base_freq = base_freq;
    apu.cycle_rate = (float) (apu.base_freq / sample_rate);
 
+   cycles_per_sample = NES_CPU_CLOCK / apu.sample_rate;
+
    /* build various lookup tables for apu */
    apu_build_luts(apu.num_samples);
 
@@ -1011,10 +1062,6 @@ apu_t *apu_create(double base_freq, int sample_rate, int refresh_rate, int sampl
    /* set the update routine */
    temp_apu->process = apu_process;
    temp_apu->ext = NULL;
-
-   /* clear the callbacks */
-   temp_apu->irq_callback = NULL;
-   temp_apu->irqclear_callback = NULL;
 
    apu_setcontext(temp_apu);
 
