@@ -64,10 +64,10 @@ typedef struct {
     int8_t start  : 1; // Indicates this line or column is safe to start an update on
     int8_t stop   : 1; // Indicates this line or column is safe to end an update on
     int8_t repeat : 6; // How many times the line or column is repeated by the scaler or filter
-} frame_vector_t;
+} frame_filter_cap_t;
 
-static frame_vector_t frame_scaling_columns[256];
-static frame_vector_t frame_scaling_lines[240];
+static frame_filter_cap_t frame_filter_columns[256];
+static frame_filter_cap_t frame_filter_lines[240];
 
 /*
  The ILI9341 needs a bunch of command/argument values to be initialized. They are stored in this struct.
@@ -602,9 +602,12 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
             lines_to_copy = screen_bottom - screen_y;
         }
 
-        while (screen_line_is_empty[screen_y + lines_to_copy] && lines_to_copy > 1)
+        // The vertical filter requires a block to start and end with unscaled lines
+        if (displayFilterMode & ODROID_DISPLAY_FILTER_LINEAR_Y)
         {
-            --lines_to_copy;
+            while (lines_to_copy > 1 && (screen_line_is_empty[screen_y + lines_to_copy - 1] ||
+                                         screen_line_is_empty[screen_y + lines_to_copy]))
+                --lines_to_copy;
         }
 
         for (short i = 0; i < lines_to_copy; ++i)
@@ -765,13 +768,13 @@ static inline int frame_diff(odroid_video_frame *frame, odroid_video_frame *prev
                 short left = out_diff[y].left;
                 short right = left + out_diff[y].width;
 
-                while (block_start > 0 && (out_diff[block_start].width > 0 || !frame_scaling_lines[block_start].start))
+                while (block_start > 0 && (out_diff[block_start].width > 0 || !frame_filter_lines[block_start].start))
                     block_start--;
 
-                while (block_end < frame->height - 1 && (out_diff[block_end].width > 0 || !frame_scaling_lines[block_end].stop))
+                while (block_end < frame->height - 1 && (out_diff[block_end].width > 0 || !frame_filter_lines[block_end].stop))
                     block_end++;
 
-                for (short i = block_start; i < block_end; i++)
+                for (short i = block_start; i <= block_end; i++)
                 {
                     if (out_diff[i].width > 0) {
                         if (out_diff[i].left + out_diff[i].width > right) right = out_diff[i].left + out_diff[i].width;
@@ -782,19 +785,19 @@ static inline int frame_diff(odroid_video_frame *frame, odroid_video_frame *prev
                 if (--left < 0) left = 0;
                 if (++right > frame->width - 1) right = frame->width - 1;
 
-                // while (left > 0 && !frame_scaling_column_is_key[left])
+                // while (left > 0 && !frame_filter_column_is_key[left])
                 //     left--;
 
-                // while (right < frame->width -1 && !frame_scaling_column_is_key[right])
+                // while (right < frame->width -1 && !frame_filter_column_is_key[right])
                 //     right++;
 
-                for (short i = block_start; i < block_end; i++)
+                for (short i = block_start; i <= block_end; i++)
                 {
                     out_diff[i].left = left;
                     out_diff[i].width = right - left;
                 }
 
-                // printf("  Block Y=%d   %dx%d\n", y, block_end - block_start + 1, right - left + 1);
+                // printf("  Block Y=%d   %dx%d\n", y, right - left + 1, block_end - block_start + 1);
                 y = block_end;
             }
         }
@@ -821,6 +824,46 @@ static inline int frame_diff(odroid_video_frame *frame, odroid_video_frame *prev
     return lines_changed;
 }
 
+static void generate_filter_structures(short width, short height)
+{
+    memset(frame_filter_columns, 0, sizeof frame_filter_columns);
+    memset(frame_filter_lines,   0, sizeof frame_filter_lines);
+    memset(screen_line_is_empty, 0, sizeof screen_line_is_empty);
+
+    short x_acc = (x_inc * x_origin) % SCREEN_WIDTH;
+    short y_acc = (y_inc * y_origin) % SCREEN_HEIGHT;
+
+    for (short x = 0, screen_x = x_origin; x < width; ++screen_x)
+    {
+        short repeat = ++frame_filter_columns[x].repeat;
+
+        x_acc += x_inc;
+        while (x_acc >= SCREEN_WIDTH) {
+            ++x;
+            x_acc -= SCREEN_WIDTH;
+        }
+    }
+
+    for (short y = 0, screen_y = y_origin; y < height; ++screen_y)
+    {
+        short repeat = ++frame_filter_lines[y].repeat;
+
+        frame_filter_lines[y].start = repeat == 1 || repeat == 2;
+        frame_filter_lines[y].stop  = repeat == 1;
+
+        screen_line_is_empty[screen_y] = repeat > 1;
+
+        y_acc += y_inc;
+        while (y_acc >= SCREEN_HEIGHT) {
+            ++y;
+            y_acc -= SCREEN_HEIGHT;
+        }
+    }
+
+    frame_filter_lines[0].start = frame_filter_lines[height-1].stop  = true;
+    frame_filter_columns[0].start = frame_filter_columns[width-1].stop = true;
+}
+
 void odroid_display_reset_scale(short width, short height)
 {
     x_inc = SCREEN_WIDTH;
@@ -828,19 +871,11 @@ void odroid_display_reset_scale(short width, short height)
     x_origin = (SCREEN_WIDTH - width) / 2;
     y_origin = (SCREEN_HEIGHT - height) / 2;
 
-    memset(frame_scaling_columns, 0, sizeof frame_scaling_columns);
-    memset(frame_scaling_lines, 0, sizeof frame_scaling_lines);
-    memset(screen_line_is_empty, 0, sizeof screen_line_is_empty);
-
-    // First and last are always valid
-    frame_scaling_lines[0].start = frame_scaling_lines[height-1].stop = true;
-    frame_scaling_columns[0].start = frame_scaling_columns[width-1].stop = true;
+    generate_filter_structures(width, height);
 }
 
 void odroid_display_set_scale(short width, short height, float new_ratio)
 {
-    odroid_display_reset_scale(width, height);
-
     float old_ratio = width/(float)height;
 
     if (new_ratio <= 0) {
@@ -858,62 +893,7 @@ void odroid_display_set_scale(short width, short height, float new_ratio)
     x_origin = (SCREEN_WIDTH - new_width) / 2.f;
     y_origin = (SCREEN_HEIGHT - new_height) / 2.f;
 
-    short x_acc = (x_inc * x_origin) % SCREEN_WIDTH;
-    short y_acc = (y_inc * y_origin) % SCREEN_HEIGHT;
-
-    for (short x = 0, screen_x = x_origin; x < width; ++screen_x)
-    {
-        frame_scaling_columns[x].repeat++;
-
-        if (x > 1)
-        {
-            if (frame_scaling_columns[x - 2].repeat == 1 &&
-                frame_scaling_columns[x - 1].repeat == 1 &&
-                frame_scaling_columns[x - 0].repeat == 1)
-            {
-                frame_scaling_columns[x - 1].start = true;
-                frame_scaling_columns[x - 1].stop = true;
-            }
-        }
-
-        x_acc += x_inc;
-        while (x_acc >= SCREEN_WIDTH) {
-            ++x;
-            x_acc -= SCREEN_WIDTH;
-        }
-    }
-
-    for (short y = 0, screen_y = y_origin; y < height; ++screen_y)
-    {
-        short repeat = ++frame_scaling_lines[y].repeat;
-        screen_line_is_empty[screen_y] = repeat > 1;
-
-        if (y > 1)
-        {
-            // Valid as start and end
-            if (frame_scaling_lines[y - 2].repeat == 1 &&
-                frame_scaling_lines[y - 1].repeat == 1 &&
-                frame_scaling_lines[y - 0].repeat == 1)
-            {
-                frame_scaling_lines[y - 1].start = true;
-                frame_scaling_lines[y - 1].stop = true;
-            }
-
-            // Valid as start only
-            if (frame_scaling_lines[y - 2].repeat == 1 && frame_scaling_lines[y - 1].repeat == 2)
-                frame_scaling_lines[y - 1].start = true;
-
-            // Valid as end only
-            if (frame_scaling_lines[y - 2].repeat == 2 && frame_scaling_lines[y - 1].repeat == 1)
-                frame_scaling_lines[y - 1].stop = true;
-        }
-
-        y_acc += y_inc;
-        while (y_acc >= SCREEN_HEIGHT) {
-            ++y;
-            y_acc -= SCREEN_HEIGHT;
-        }
-    }
+    generate_filter_structures(width, height);
 
     printf("%dx%d@%.3f => %dx%d@%.3f x_inc:%d y_inc:%d x_scale:%.3f y_scale:%.3f x_origin:%d y_origin:%d\n",
            width, height, old_ratio, new_width, new_height, new_ratio,
