@@ -285,6 +285,10 @@ static void nes_renderframe(bool draw_flag)
 
       if (nes.scanline == 241)
       {
+         /* 7-9 cycle delay between when VINT flag goes up and NMI is taken */
+         elapsed_cycles = nes6502_execute(7);
+         nes.scanline_cycles -= elapsed_cycles;
+
          ppu_checknmi();
 
          if (mapintf->vblank)
