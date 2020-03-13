@@ -22,26 +22,25 @@
 ** NES PPU emulation
 ** $Id: nes_ppu.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
-
 #pragma GCC optimize ("O3")
 
 #include <string.h>
 #include <stdlib.h>
+#include <esp_attr.h>
+
 #include <noftypes.h>
 #include <nes_ppu.h>
 #include <nes.h>
 #include <gui.h>
-#include "nes6502.h"
+#include <nes6502.h>
 #include <log.h>
 #include <nes_mmc.h>
-
 #include <bitmap.h>
 #include <vid_drv.h>
-#include <nes_pal.h>
 #include <nesinput.h>
 
-#include <esp_attr.h>
-
+/* static const palette_t nes_palettes[PPU_PAL_COUNT] */
+#include "palettes.h"
 
 /* PPU access */
 #define  PPU_MEM(x)           ppu.page[(x) >> 10][(x)]
@@ -126,7 +125,6 @@ void ppu_getcontext(ppu_t *dest_ppu)
 
 ppu_t *ppu_create(void)
 {
-   static bool pal_generated = false;
    ppu_t *temp;
 
    temp = malloc(sizeof(ppu_t));
@@ -140,14 +138,7 @@ ppu_t *ppu_create(void)
    temp->vram_present = false;
    temp->drawsprites = true;
 
-   /* TODO: probably a better way to do this... */
-   if (false == pal_generated)
-   {
-      pal_generate();
-      pal_generated = true;
-   }
-
-   ppu_setdefaultpal(temp);
+   ppu_setnpal(temp, 0); // Set default palette
 
    return temp;
 }
@@ -560,9 +551,14 @@ void ppu_setpal(ppu_t *src_ppu, rgb_t *pal)
    vid_setpalette(src_ppu->curpal);
 }
 
-void ppu_setdefaultpal(ppu_t *src_ppu)
+void ppu_setnpal(ppu_t *src_ppu, int n)
 {
-   ppu_setpal(src_ppu, nes_palette);
+   ppu_setpal(src_ppu, (rgb_t*)nes_palettes[n % PPU_PAL_COUNT].data);
+}
+
+palette_t *ppu_getnpal(int n)
+{
+   return &nes_palettes[n % PPU_PAL_COUNT];
 }
 
 void ppu_setlatchfunc(ppulatchfunc_t func)

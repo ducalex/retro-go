@@ -33,7 +33,6 @@
 /* TODO: put system specific stuff in their own files... */
 #include <nes.h>
 #include <nesinput.h>
-#include <nes_pal.h>
 #include <nesstate.h>
 
 /* pointer to our current system's event handler table */
@@ -271,78 +270,6 @@ static void func_event_toggle_sprites(int code)
       gui_togglesprites();
 }
 
-static void func_event_palette_hue_up(int code)
-{
-   /* make sure we don't have a VS game */
-   if (nes_getcontextptr()->rominfo->flags & ROM_FLAG_VERSUS)
-      return;
-
-   if (INP_STATE_MAKE == code)
-   {
-      pal_inchue();
-      ppu_setdefaultpal(nes_getcontextptr()->ppu);
-   }
-}
-
-static void func_event_palette_hue_down(int code)
-{
-   /* make sure we don't have a VS game */
-   if (nes_getcontextptr()->rominfo->flags & ROM_FLAG_VERSUS)
-      return;
-
-   if (INP_STATE_MAKE == code)
-   {
-      pal_dechue();
-      ppu_setdefaultpal(nes_getcontextptr()->ppu);
-   }
-}
-
-static void func_event_palette_tint_up(int code)
-{
-   /* make sure we don't have a VS game */
-   if (nes_getcontextptr()->rominfo->flags & ROM_FLAG_VERSUS)
-      return;
-
-   if (INP_STATE_MAKE == code)
-   {
-      pal_inctint();
-      ppu_setdefaultpal(nes_getcontextptr()->ppu);
-   }
-}
-
-static void func_event_palette_tint_down(int code)
-{
-   /* make sure we don't have a VS game */
-   if (nes_getcontextptr()->rominfo->flags & ROM_FLAG_VERSUS)
-      return;
-
-   if (INP_STATE_MAKE == code)
-   {
-      pal_dectint();
-      ppu_setdefaultpal(nes_getcontextptr()->ppu);
-   }
-}
-
-static void func_event_palette_set_default(int code)
-{
-   /* make sure we don't have a VS game */
-   if (nes_getcontextptr()->rominfo->flags & ROM_FLAG_VERSUS)
-      return;
-
-   if (INP_STATE_MAKE == code)
-      ppu_setdefaultpal(nes_getcontextptr()->ppu);
-}
-
-static void func_event_palette_set_shady(int code)
-{
-   /* make sure we don't have a VS game */
-   if (nes_getcontextptr()->rominfo->flags & ROM_FLAG_VERSUS)
-      return;
-
-   if (INP_STATE_MAKE == code)
-      ppu_setpal(nes_getcontextptr()->ppu, shady_palette);
-}
-
 static void func_event_joypad1_a(int code)
 {
    input_event(&kb_input, code, INP_PAD_A);
@@ -481,12 +408,12 @@ static event_t nes_events[] =
    func_event_set_filter_2,
    /* picture */
    func_event_toggle_sprites,
-   func_event_palette_hue_up,
-   func_event_palette_hue_down,
-   func_event_palette_tint_up, /* 40 */
-   func_event_palette_tint_down,
-   func_event_palette_set_default,
-   func_event_palette_set_shady,
+   NULL,
+   NULL,
+   NULL,
+   NULL,
+   NULL,
+   NULL,
    /* joypad 1 */
    func_event_joypad1_a,
    func_event_joypad1_b,

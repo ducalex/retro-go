@@ -3,14 +3,14 @@
 **
 **
 ** This program is free software; you can redistribute it and/or
-** modify it under the terms of version 2 of the GNU Library General 
+** modify it under the terms of version 2 of the GNU Library General
 ** Public License as published by the Free Software Foundation.
 **
-** This program is distributed in the hope that it will be useful, 
+** This program is distributed in the hope that it will be useful,
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
-** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
-** Library General Public License for more details.  To obtain a 
-** copy of the GNU Library General Public License, write to the Free 
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+** Library General Public License for more details.  To obtain a
+** copy of the GNU Library General Public License, write to the Free
 ** Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 **
 ** Any permitted reproduction of these routines, in whole or in part,
@@ -69,6 +69,10 @@
 /* Maximum number of sprites per horizontal scanline */
 #define  PPU_MAXSPRITE        8
 
+/* Predefined input palette count */
+#define  PPU_PAL_COUNT        6
+
+
 /* some mappers do *dumb* things */
 typedef void (*ppulatchfunc_t)(uint32 address, uint8 value);
 typedef void (*ppuvromswitch_t)(uint8 value);
@@ -93,7 +97,7 @@ typedef struct ppu_s
 
    bool bg_on, obj_on;
    bool obj_mask, bg_mask;
-   
+
    uint8 latch, vdata_latch;
    uint8 strobe;
 
@@ -113,6 +117,11 @@ typedef struct ppu_s
    bool drawsprites;
 } ppu_t;
 
+typedef struct
+{
+    char  name[16];
+    uint8 data[192]; // rgb_t
+} palette_t;
 
 /* TODO: should use this pointers */
 extern void ppu_setlatchfunc(ppulatchfunc_t func);
@@ -149,7 +158,8 @@ extern void ppu_writehigh(uint32 address, uint8 value);
 
 /* rendering */
 extern void ppu_setpal(ppu_t *src_ppu, rgb_t *pal);
-extern void ppu_setdefaultpal(ppu_t *src_ppu);
+extern palette_t *ppu_getnpal(int n);
+extern void ppu_setnpal(ppu_t *src_ppu, int n);
 
 /* bleh */
 extern void ppu_dumppattern(bitmap_t *bmp, int table_num, int x_loc, int y_loc, int col);

@@ -9,7 +9,6 @@
 #include <gui.h>
 #include <log.h>
 #include <nes.h>
-#include <nes_pal.h>
 #include <nesinput.h>
 #include <nes/nesstate.h>
 #include <osd.h>
@@ -127,6 +126,7 @@ size_t osd_getromdata(unsigned char **data)
 
 int osd_installtimer(int frequency, void *func, int funcsize, void *counter, int countersize)
 {
+   ppu_setnpal(nes_getcontextptr()->ppu, odroid_settings_Palette_get());
    return 0;
 }
 
@@ -265,18 +265,47 @@ void osd_getvideoinfo(vidinfo_t *info)
 
 static bool more_settings_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
-    if (event == ODROID_DIALOG_ENTER) {
-        odroid_dialog_choice_t choices[] = {
-            {1, "APU FC IRQ", "Auto", 1, NULL},
-            {2, "Region", "NTSC", 1, NULL},
-            {2, "Reduce flicker", "Off", 1, NULL}, // PPU_MAXSPRITE
-            {3, "", "", 1, NULL},
-            {0, "Reset all", "", 1, NULL},
-        };
-        odroid_overlay_dialog("Compatibility", choices, 5, 0);
-    }
-    return false;
+   if (event == ODROID_DIALOG_ENTER) {
+      odroid_dialog_choice_t choices[] = {
+         {1, "APU FC IRQ", "Auto", 1, NULL},
+         {2, "Region", "NTSC", 1, NULL},
+         {2, "Sprite Limit", "On", 1, NULL}, // PPU_MAXSPRITE
+         {3, "", "", 1, NULL},
+         {0, "Reset all", "", 1, NULL},
+      };
+      odroid_overlay_dialog("Compatibility", choices, 5, 0);
+   }
+   return false;
 }
+
+
+bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+{
+   int pal = odroid_settings_Palette_get();
+   int max = PPU_PAL_COUNT - 1;
+
+   if (event == ODROID_DIALOG_PREV) {
+      pal = pal > 0 ? pal - 1 : max;
+   }
+
+   if (event == ODROID_DIALOG_NEXT) {
+      pal = pal < max ? pal + 1 : 0;
+   }
+
+   if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
+      odroid_settings_Palette_set(pal);
+      ppu_setnpal(nes_getcontextptr()->ppu, pal);
+      // This is less than ideal, but it works for now
+      odroid_display_unlock();
+      odroid_display_queue_update(currentUpdate, NULL);
+      odroid_display_queue_update(currentUpdate, NULL);
+      odroid_display_lock();
+   }
+
+   sprintf(option->value, "%.7s", ppu_getnpal(pal)->name);
+   return event == ODROID_DIALOG_ENTER;
+}
+
 
 void osd_getinput(void)
 {
@@ -298,9 +327,10 @@ void osd_getinput(void)
    }
    else if (joystick.values[ODROID_INPUT_VOLUME]) {
       odroid_dialog_choice_t options[] = {
+            {100, "Palette", "Default", 1, &palette_update_cb},
             // {100, "", "", 0, NULL},
             // {100, "APU FC IRQ", "Auto", 1, NULL},
-            {100, "More settings...", "", 1, &more_settings_cb},
+            // {200, "More settings...", "", 1, &more_settings_cb},
       };
       odroid_overlay_game_settings_menu(options, 1);
    }

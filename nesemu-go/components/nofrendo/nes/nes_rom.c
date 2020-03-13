@@ -59,19 +59,6 @@
 #define  ROM_MIRRORTYPE    0x01
 #define  ROM_INES_MAGIC    "NES\x1A"
 
-//ToDo: packed - JD
-typedef struct inesheader_s
-{
-   uint8 ines_magic[4]    ;
-   uint8 rom_banks        ;
-   uint8 vrom_banks       ;
-   uint8 rom_type         ;
-   uint8 mapper_hinybble  ;
-   uint32 reserved1       ;
-   uint32 reserved2       ;
-} inesheader_t;
-
-
 #define  TRAINER_OFFSET    0x1000
 #define  TRAINER_LENGTH    0x200
 #define  VRAM_LENGTH       0x2000
@@ -202,38 +189,6 @@ static int rom_loadrom(unsigned char **rom, rominfo_t *rominfo)
    }
 
    return 0;
-}
-
-/* If we've got a VS. system game, load in the palette, as well */
-static void rom_checkforpal(rominfo_t *rominfo)
-{
-   FILE *fp;
-   rgb_t vs_pal[64];
-   char filename[PATH_MAX + 1];
-   int i;
-
-   ASSERT(rominfo);
-
-   strncpy(filename, rominfo->filename, PATH_MAX);
-   osd_newextension(filename, ".pal");
-
-   fp = fopen(filename, "rb");
-   if (NULL == fp)
-      return; /* no palette found  */
-
-   for (i = 0; i < 64; i++)
-   {
-      vs_pal[i].r = fgetc(fp);
-      vs_pal[i].g = fgetc(fp);
-      vs_pal[i].b = fgetc(fp);
-   }
-
-   fclose(fp);
-   /* TODO: this should really be a *SYSTEM* flag */
-   rominfo->flags |= ROM_FLAG_VERSUS;
-   /* TODO: bad, BAD idea, calling nes_getcontextptr... */
-   ppu_setpal(nes_getcontextptr()->ppu, vs_pal);
-   log_printf("Game specific palette found -- assuming VS. UniSystem\n");
 }
 
 static FILE *rom_findrom(const char *filename, rominfo_t *rominfo)
@@ -425,9 +380,6 @@ rominfo_t *rom_load(const char *filename)
 
    // rom_loadsram(rominfo);
 
-   /* See if there's a palette we can load up */
-   // rom_checkforpal(rominfo);
-
    gui_sendmsg(GUI_GREEN, "ROM loaded: %s", rom_getinfo(rominfo));
 
    return rominfo;
@@ -445,14 +397,6 @@ void rom_free(rominfo_t **rominfo)
    {
       gui_sendmsg(GUI_GREEN, "ROM not loaded");
       return;
-   }
-
-   /* Restore palette if we loaded in a VS jobber */
-   if ((*rominfo)->flags & ROM_FLAG_VERSUS)
-   {
-      /* TODO: bad idea calling nes_getcontextptr... */
-      ppu_setdefaultpal(nes_getcontextptr()->ppu);
-      log_printf("Default NES palette restored\n");
    }
 
    rom_savesram(*rominfo);

@@ -29,6 +29,17 @@
 #include <unistd.h>
 #include <osd.h>
 
+typedef struct inesheader_s
+{
+   uint8 ines_magic[4]    ;
+   uint8 rom_banks        ;
+   uint8 vrom_banks       ;
+   uint8 rom_type         ;
+   uint8 mapper_hinybble  ;
+   uint32 reserved1       ;
+   uint32 reserved2       ;
+} inesheader_t;
+
 typedef enum
 {
    MIRROR_HORIZ   = 0,
