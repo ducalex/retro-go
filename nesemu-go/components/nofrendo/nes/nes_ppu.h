@@ -115,6 +115,7 @@ typedef struct ppu_s
 
    bool vram_present;
    bool drawsprites;
+   bool limitsprites;
 } ppu_t;
 
 typedef struct
@@ -165,6 +166,7 @@ extern void ppu_setnpal(ppu_t *src_ppu, int n);
 extern void ppu_dumppattern(bitmap_t *bmp, int table_num, int x_loc, int y_loc, int col);
 extern void ppu_dumpoam(bitmap_t *bmp, int x_loc, int y_loc);
 extern void ppu_displaysprites(bool display);
+extern void ppu_limitsprites(bool limit);
 
 #endif /* _NES_PPU_H_ */
 

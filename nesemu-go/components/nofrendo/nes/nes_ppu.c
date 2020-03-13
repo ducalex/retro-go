@@ -63,6 +63,11 @@ void ppu_displaysprites(bool display)
    ppu.drawsprites = display;
 }
 
+void ppu_limitsprites(bool limit)
+{
+   ppu.limitsprites = limit;
+}
+
 void ppu_setcontext(ppu_t *src_ppu)
 {
    int nametab[4];
@@ -136,6 +141,7 @@ ppu_t *ppu_create(void)
    temp->vromswitch = NULL;
    temp->vram_present = false;
    temp->drawsprites = true;
+   temp->limitsprites = true;
 
    ppu_setnpal(temp, 0); // Set default palette
 
@@ -875,7 +881,7 @@ static void IRAM_ATTR ppu_renderoam(uint8 *vidbuf, int scanline)
          ppu_setstrike(strike_pixel);
 
       /* maximum of 8 sprites per scanline */
-      if (++spritecount == PPU_MAXSPRITE)
+      if (++spritecount == PPU_MAXSPRITE && ppu.limitsprites)
       {
          ppu.stat |= PPU_STATF_MAXSPRITE;
          break;

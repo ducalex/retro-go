@@ -18,6 +18,8 @@
 
 #define PIXEL_MASK 0x3F
 
+#define NVS_KEY_LIMIT_SPRITES "limitspr"
+
 static char* romPath;
 static char* romData;
 static size_t romSize;
@@ -123,6 +125,7 @@ void osd_loadstate()
       LoadState();
    }
 
+   ppu_limitsprites(odroid_settings_int32_get(NVS_KEY_LIMIT_SPRITES, 1));
    ppu_setnpal(nes_getcontextptr()->ppu, odroid_settings_Palette_get());
 }
 
@@ -199,17 +202,31 @@ void IRAM_ATTR osd_blitscreen(bitmap_t *bmp)
 }
 
 
-static bool more_settings_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+bool sprite_limit_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+{
+   int val = odroid_settings_int32_get(NVS_KEY_LIMIT_SPRITES, 1);
+
+   if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
+      val = val ? 0 : 1;
+      odroid_settings_int32_set(NVS_KEY_LIMIT_SPRITES, val);
+      ppu_limitsprites(val);
+   }
+
+   strcpy(option->value, val ? "On " : "Off");
+
+   return event == ODROID_DIALOG_ENTER;
+}
+
+static bool advanced_settings_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
    if (event == ODROID_DIALOG_ENTER) {
-      odroid_dialog_choice_t choices[] = {
-         {1, "APU FC IRQ", "Auto", 1, NULL},
-         {2, "Region", "NTSC", 1, NULL},
-         {2, "Sprite Limit", "On", 1, NULL}, // PPU_MAXSPRITE
-         {3, "", "", 1, NULL},
-         {0, "Reset all", "", 1, NULL},
+      odroid_dialog_choice_t options[] = {
+         {1, "Region", "NTSC", 1, NULL},
+         {2, "Sprite limit", "On ", 1, &sprite_limit_cb},
+         // {4, "", "", 1, NULL},
+         //{0, "Reset all", "", 1, NULL},
       };
-      odroid_overlay_dialog("Compatibility", choices, 5, 0);
+      odroid_overlay_dialog("Advanced", options, sizeof(options) / sizeof(options[0]), 0);
    }
    return false;
 }
@@ -264,11 +281,10 @@ void osd_getinput(void)
    else if (joystick.values[ODROID_INPUT_VOLUME]) {
       odroid_dialog_choice_t options[] = {
             {100, "Palette", "Default", 1, &palette_update_cb},
-            // {100, "", "", 0, NULL},
-            // {100, "APU FC IRQ", "Auto", 1, NULL},
-            // {200, "More settings...", "", 1, &more_settings_cb},
+            {101, "", "", -1, NULL},
+            {101, "More...", "", 1, &advanced_settings_cb},
       };
-      odroid_overlay_game_settings_menu(options, 1);
+      odroid_overlay_game_settings_menu(options, sizeof(options) / sizeof(options[0]));
    }
 
 	// A

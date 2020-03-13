@@ -222,7 +222,7 @@ void retro_loop()
                 odroid_dialog_choice_t choices[] = {
                     {0, "Date", COMPILEDATE, 1, NULL},
                     {0, "Commit", GITREV, 1, NULL},
-                    {0, "", "", 0, NULL},
+                    {0, "", "", -1, NULL},
                     {1, "Reboot to firmware", "", 1, NULL},
                     {0, "Close", "", 1, NULL},
                 };
@@ -237,7 +237,7 @@ void retro_loop()
             else if (joystick.values[ODROID_INPUT_VOLUME]) {
                 last_key = ODROID_INPUT_VOLUME;
                 odroid_dialog_choice_t choices[] = {
-                    {0, "---", "", 0, NULL},
+                    {0, "---", "", -1, NULL},
                     {0, "Color theme", "1/10", 1, &color_shift_cb},
                     {0, "Font size", "Small", 1, &font_size_cb},
                     {0, "Show cover", "Yes", 1, &show_cover_cb},

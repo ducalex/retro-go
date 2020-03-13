@@ -29,7 +29,7 @@ struct odroid_dialog_choice {
     int  id;
     char label[32];
     char value[16];
-    bool enabled;
+    int8_t enabled;
     bool (*update_cb)(odroid_dialog_choice_t *, odroid_dialog_event_t);
 };
 

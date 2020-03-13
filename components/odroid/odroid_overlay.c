@@ -165,7 +165,7 @@ void odroid_overlay_draw_dialog(char *header, odroid_dialog_choice_t *options, i
     uint16_t fg, bg, color;
     for (int i = 0; i < options_count; i++)
     {
-        color = options[i].enabled ? box_text_color : C_GRAY;
+        color = options[i].enabled == 1 ? box_text_color : C_GRAY;
         fg = (i == sel) ? box_color : color;
         bg = (i == sel) ? color : box_color;
         odroid_overlay_draw_text(x, y + i * ODROID_FONT_HEIGHT, width * ODROID_FONT_WIDTH, rows[i], fg, bg);
@@ -251,6 +251,11 @@ int odroid_overlay_dialog(char *header, odroid_dialog_choice_t *options, int opt
         }
         if (sel_old != sel)
         {
+            int dir = sel - sel_old;
+            while (options[sel].enabled == -1 && sel_old != sel)
+            {
+                sel = (sel + dir) % options_count;
+            }
             odroid_overlay_draw_dialog(header, options, options_count, sel);
             sel_old = sel;
         }
