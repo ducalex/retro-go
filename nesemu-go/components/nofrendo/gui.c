@@ -39,7 +39,6 @@
 
 #include <gui.h>
 #include <gui_elem.h>
-#include <vid_drv.h>
 
 /* TODO: oh god */
 /* 8-bit GUI color table */
@@ -538,13 +537,13 @@ static void gui_updateoam(void)
 
 
 /* The GUI overlay */
-void gui_frame(bool draw)
+void gui_frame(bitmap_t *bmp)
 {
    gui_fps++;
-   if (false == draw)
+   if (false == bmp)
       return;
 
-   gui_surface = vid_getbuffer();
+   gui_surface = bmp; // vid_getbuffer();
 
    ASSERT(gui_surface);
 

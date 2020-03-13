@@ -58,12 +58,11 @@ extern void osd_setsound(void (*playfunc)(void *buffer, int size));
 
 #ifndef NSF_PLAYER
 #include <noftypes.h>
-#include <vid_drv.h>
+#include <bitmap.h>
 
 typedef struct vidinfo_s
 {
-   int default_width, default_height;
-   viddriver_t *driver;
+   short default_width, default_height;
 } vidinfo_t;
 
 typedef struct sndinfo_s
@@ -76,13 +75,19 @@ typedef struct sndinfo_s
 extern void osd_getvideoinfo(vidinfo_t *info);
 extern void osd_getsoundinfo(sndinfo_t *info);
 
+/* video */
+extern void osd_setpalette(rgb_t *pal);
+extern void osd_blitscreen(bitmap_t *bmp);
+
+/* audio */
+void osd_playsamples(int nsamples);
+
 /* init / shutdown */
 extern int osd_init(void);
 extern void osd_shutdown(void);
 extern int osd_main(int argc, char *argv[]);
-
-extern int osd_installtimer(int frequency, void *func, int funcsize,
-                            void *counter, int countersize);
+extern void osd_loadstate();
+extern void osd_event(int event);
 
 /* filename manipulation */
 extern void osd_fullname(char *fullname, const char *shortname);

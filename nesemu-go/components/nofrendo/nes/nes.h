@@ -85,8 +85,6 @@ typedef struct nes_s
 } nes_t;
 
 
-extern int nes_isourfile(const char *filename);
-
 /* temp hack */
 extern nes_t *nes_getcontextptr(void);
 

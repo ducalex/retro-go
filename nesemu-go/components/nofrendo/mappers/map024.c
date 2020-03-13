@@ -3,14 +3,14 @@
 **
 **
 ** This program is free software; you can redistribute it and/or
-** modify it under the terms of version 2 of the GNU Library General 
+** modify it under the terms of version 2 of the GNU Library General
 ** Public License as published by the Free Software Foundation.
 **
-** This program is distributed in the hope that it will be useful, 
+** This program is distributed in the hope that it will be useful,
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
-** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
-** Library General Public License for more details.  To obtain a 
-** copy of the GNU Library General Public License, write to the Free 
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+** Library General Public License for more details.  To obtain a
+** copy of the GNU Library General Public License, write to the Free
 ** Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 **
 ** Any permitted reproduction of these routines, in whole or in part,
@@ -27,7 +27,6 @@
 #include <nes_mmc.h>
 #include <nes.h>
 #include <log.h>
-#include <vrcvisnd.h>
 
 static struct
 {
@@ -41,7 +40,7 @@ static void map24_init(void)
    irq.latch = irq.wait_state = 0;
 }
 
-static void map24_hblank(int vblank) 
+static void map24_hblank(int vblank)
 {
    UNUSED(vblank);
 
@@ -68,88 +67,88 @@ static void map24_write(uint32 address, uint8 value)
    case 0x9003:
       /* ??? */
       break;
-   
+
    case 0xB003:
       switch (value & 0x0C)
       {
       case 0x00:
          ppu_mirror(0, 1, 0, 1); /* vertical */
          break;
-      
+
       case 0x04:
          ppu_mirror(0, 0, 1, 1); /* horizontal */
          break;
-      
+
       case 0x08:
          ppu_mirror(0, 0, 0, 0);
          break;
-      
+
       case 0x0C:
          ppu_mirror(1, 1, 1, 1);
          break;
-      
+
       default:
          break;
       }
       break;
-   
+
 
    case 0xC000:
       mmc_bankrom(8, 0xC000, value);
       break;
-   
+
    case 0xD000:
       mmc_bankvrom(1, 0x0000, value);
       break;
-   
+
    case 0xD001:
       mmc_bankvrom(1, 0x0400, value);
       break;
-   
+
    case 0xD002:
       mmc_bankvrom(1, 0x0800, value);
       break;
-   
+
    case 0xD003:
       mmc_bankvrom(1, 0x0C00, value);
       break;
-   
+
    case 0xE000:
       mmc_bankvrom(1, 0x1000, value);
       break;
-   
+
    case 0xE001:
       mmc_bankvrom(1, 0x1400, value);
       break;
-   
+
    case 0xE002:
       mmc_bankvrom(1, 0x1800, value);
       break;
-   
+
    case 0xE003:
       mmc_bankvrom(1, 0x1C00, value);
       break;
-   
+
    case 0xF000:
       irq.latch = value;
       break;
-   
+
    case 0xF001:
       irq.enabled = (value >> 1) & 0x01;
       irq.wait_state = value & 0x01;
       if (irq.enabled)
          irq.counter = irq.latch;
       break;
-   
+
    case 0xF002:
       irq.enabled = irq.wait_state;
       break;
-   
+
    default:
 #ifdef NOFRENDO_DEBUG
       log_printf("invalid VRC6 write: $%02X to $%04X", value, address);
 #endif
-      break;      
+      break;
    }
 }
 
@@ -182,7 +181,7 @@ mapintf_t map24_intf =
    map24_setstate, /* set state (snss) */
    NULL, /* memory read structure */
    map24_memwrite, /* memory write structure */
-   &vrcvi_ext /* external sound device */
+   NULL /* external sound device */
 };
 
 /*

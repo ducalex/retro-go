@@ -32,29 +32,12 @@
 #include <log.h>
 #include <osd.h>
 #include <gui.h>
-#include <vid_drv.h>
 
 /* emulated system includes */
 #include <nes.h>
 
 /* our global machine structure */
-static struct
-{
-   char *filename, *nextfilename;
-   system_t type, nexttype;
-
-   union
-   {
-      nes_t *nes;
-   } machine;
-
-   int refresh_rate;
-
-   bool quit;
-} console;
-//console_t console;
-
-nes_t* console_nes;
+console_t console;
 
 
 /* our happy little timer ISR */
@@ -81,7 +64,7 @@ static void shutdown_everything(void)
 
    osd_shutdown();
    gui_shutdown();
-   vid_shutdown();
+   // vid_shutdown();
    log_shutdown();
 }
 
@@ -129,19 +112,11 @@ static system_t detect_systemtype(const char *filename)
    if (NULL == filename)
       return system_unknown;
 
-   if (0 == nes_isourfile(filename))
+   if (0 == rom_checkmagic(filename))
       return system_nes;
 
    /* can't figure out what this thing is */
    return system_unknown;
-}
-
-static int install_timer(int hertz)
-{
-   return osd_installtimer(hertz, (void *) timer_isr,
-                           (int) timer_isr_end - (int) timer_isr,
-                           (void *) &nofrendo_ticks,
-                           sizeof(nofrendo_ticks));
 }
 
 /* This assumes there is no current context */
@@ -160,10 +135,9 @@ static int internal_insert(const char *filename, system_t type)
    switch (console.type)
    {
    case system_nes:
-      gui_setrefresh(NES_REFRESH_RATE);
+      gui_setrefresh(console.refresh_rate);
 
       console.machine.nes = nes_create();
-      console_nes = console.machine.nes;
 
       if (NULL == console.machine.nes)
       {
@@ -172,11 +146,6 @@ static int internal_insert(const char *filename, system_t type)
       }
 
       if (nes_insertcart(console.filename, console.machine.nes))
-         return -1;
-
-      vid_setmode(NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT);
-
-      if (install_timer(NES_REFRESH_RATE))
          return -1;
 
       nes_emulate();
@@ -208,41 +177,22 @@ int nofrendo_main(int argc, char *argv[])
 {
    /* initialize our system structure */
    console.filename = NULL;
-   console.nextfilename = NULL;
+   console.nextfilename = argc ? argv[0] : NULL;
    console.type = system_unknown;
-   console.nexttype = system_unknown;
-   console.refresh_rate = 0;
+   console.nexttype = system_nes;
+   console.refresh_rate = 60;
    console.quit = false;
-
-   if (log_init())
-      return -1;
 
    event_init();
 
-   return osd_main(argc, argv);
-}
-
-/* This is the final leg of main() */
-int main_loop(const char *filename, system_t type)
-{
-   vidinfo_t video;
-
-   /* register shutdown, in case of assertions, etc. */
-//   atexit(shutdown_everything);
+   if (log_init())
+      return -1;
 
    if (osd_init())
       return -1;
 
    if (gui_init())
       return -1;
-
-   osd_getvideoinfo(&video);
-   if (vid_init(video.default_width, video.default_height, video.driver))
-      return -1;
-	printf("vid_init done\n");
-
-   console.nextfilename = filename;
-   console.nexttype = type;
 
    while (false == console.quit)
    {

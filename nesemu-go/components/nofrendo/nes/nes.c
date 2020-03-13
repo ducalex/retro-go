@@ -38,7 +38,6 @@
 #include <nes_ppu.h>
 #include <nes_rom.h>
 #include <nes_mmc.h>
-#include <vid_drv.h>
 #include <nofrendo.h>
 #include "nesstate.h"
 
@@ -55,14 +54,9 @@
 static const float NES_SCANLINE_CYCLES = (341.f * 4 / 12); // https://wiki.nesdev.com/w/index.php/Cycle_reference_chart
 static const int   NES_RAMSIZE         = (0x800);
 
+static bitmap_t *primary_buffer = NULL;
 
 static nes_t nes;
-
-/* find out if a file is ours */
-int nes_isourfile(const char *filename)
-{
-   return rom_checkmagic(filename);
-}
 
 /* TODO: just asking for problems -- please remove */
 nes_t *nes_getcontextptr(void)
@@ -318,43 +312,41 @@ static void system_video(bool draw)
    }
 
    /* Swap buffer to primary */
-   vid_swap(&nes.vidbuf);
+   if (!primary_buffer)
+   {
+      primary_buffer = bmp_create(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 8);
+   }
+   bitmap_t *temp = primary_buffer;
+   primary_buffer = nes.vidbuf;
+   nes.vidbuf = temp;
 
    /* overlay our GUI on top of it */
    //gui_frame(true);
 
    /* Flush buffer to screen */
-   vid_flush(-1);
+   osd_blitscreen(primary_buffer);
 }
 
 extern void do_audio_frame();
 extern uint fullFrames;
-extern void LoadState();
 
 /* main emulation loop */
 void nes_emulate(void)
 {
-   osd_setsound(nes.apu->process);
-
-   nes_compatibility_hacks();
-
    uint totalElapsedTime = 0;
    uint emulatedFrames = 0;
    uint renderedFrames = 0;
    uint skippedFrames = 0;
 
-   const int frameTime = CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / NES_REFRESH_RATE;
+   const int frameTime = CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / console.refresh_rate;
    bool renderFrame = true;
 
    // Discard the garbage frames
    nes_renderframe(1);
    nes_renderframe(1);
 
-   // Load after running a few frames to avoid garbage
-   if (startAction == ODROID_START_ACTION_RESUME)
-   {
-      LoadState();
-   }
+   osd_setsound(nes.apu->process);
+   osd_loadstate();
 
    while (false == nes.poweroff)
    {
@@ -380,7 +372,7 @@ void nes_emulate(void)
       totalElapsedTime += get_elapsed_time_since(startTime);
       ++emulatedFrames;
 
-      if (emulatedFrames == NES_REFRESH_RATE)
+      if (emulatedFrames == console.refresh_rate)
       {
          float seconds = totalElapsedTime / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f);
          float fps = emulatedFrames / seconds;
@@ -547,7 +539,7 @@ nes_t *nes_create(void)
 
    /* apu */
    osd_getsoundinfo(&osd_sound);
-   machine->apu = apu_create(0, osd_sound.sample_rate, NES_REFRESH_RATE, osd_sound.bps);
+   machine->apu = apu_create(0, osd_sound.sample_rate, console.refresh_rate, osd_sound.bps);
 
    if (NULL == machine->apu)
       goto _fail;

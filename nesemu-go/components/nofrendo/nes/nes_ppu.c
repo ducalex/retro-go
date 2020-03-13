@@ -36,7 +36,6 @@
 #include <log.h>
 #include <nes_mmc.h>
 #include <bitmap.h>
-#include <vid_drv.h>
 #include <nesinput.h>
 
 /* static const palette_t nes_palettes[PPU_PAL_COUNT] */
@@ -548,7 +547,7 @@ static void ppu_buildpalette(ppu_t *src_ppu, rgb_t *pal)
 void ppu_setpal(ppu_t *src_ppu, rgb_t *pal)
 {
    ppu_buildpalette(src_ppu, pal);
-   vid_setpalette(src_ppu->curpal);
+   osd_setpalette(src_ppu->curpal);
 }
 
 void ppu_setnpal(ppu_t *src_ppu, int n)

@@ -15,12 +15,6 @@
 #include "sdkconfig.h"
 
 #define AUDIO_SAMPLERATE   32000
-#define AUDIO_FRAGSIZE     (AUDIO_SAMPLERATE/NES_REFRESH_RATE)
-
-#define DEFAULT_WIDTH        NES_SCREEN_WIDTH
-#define DEFAULT_HEIGHT       NES_VISIBLE_HEIGHT
-
-#define NES_VERTICAL_OVERDRAW (NES_SCREEN_HEIGHT-NES_VISIBLE_HEIGHT)
 
 #define PIXEL_MASK 0x3F
 
@@ -28,19 +22,17 @@ static char* romPath;
 static char* romData;
 static size_t romSize;
 
-static char fb[1];
-static bitmap_t *myBitmap;
 static uint16_t myPalette[64];
 
-static odroid_video_frame update1 = {DEFAULT_WIDTH, DEFAULT_HEIGHT, 0, 1, PIXEL_MASK, NULL, myPalette, 0};
-static odroid_video_frame update2 = {DEFAULT_WIDTH, DEFAULT_HEIGHT, 0, 1, PIXEL_MASK, NULL, myPalette, 0};
+static odroid_video_frame update1 = {NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT, 0, 1, PIXEL_MASK, NULL, myPalette, 0};
+static odroid_video_frame update2 = {NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT, 0, 1, PIXEL_MASK, NULL, myPalette, 0};
 static odroid_video_frame *currentUpdate = &update1;
 
 uint fullFrames = 0;
 
-
 static void (*audio_callback)(void *buffer, int length) = NULL;
 static int16_t *audioBuffer;
+static int32_t audioBufferLength;
 // --- MAIN
 
 void SaveState()
@@ -124,10 +116,14 @@ size_t osd_getromdata(unsigned char **data)
    return romSize;
 }
 
-int osd_installtimer(int frequency, void *func, int funcsize, void *counter, int countersize)
+void osd_loadstate()
 {
+   if (startAction == ODROID_START_ACTION_RESUME)
+   {
+      LoadState();
+   }
+
    ppu_setnpal(nes_getcontextptr()->ppu, odroid_settings_Palette_get());
-   return 0;
 }
 
 int osd_logprint(const char *string)
@@ -141,17 +137,17 @@ int osd_logprint(const char *string)
 */
 void do_audio_frame()
 {
-   audio_callback(audioBuffer, AUDIO_FRAGSIZE); //get audio data
+   audio_callback(audioBuffer, audioBufferLength); //get audio data
 
    //16 bit mono -> 32-bit (16 bit r+l)
-   for (int i = AUDIO_FRAGSIZE - 1; i >= 0; --i)
+   for (int i = audioBufferLength - 1; i >= 0; --i)
    {
       int16_t sample = audioBuffer[i];
       audioBuffer[i*2] = sample;
       audioBuffer[i*2+1] = sample;
    }
 
-   odroid_audio_submit(audioBuffer, AUDIO_FRAGSIZE);
+   odroid_audio_submit(audioBuffer, audioBufferLength);
 }
 
 void osd_setsound(void (*playfunc)(void *buffer, int length))
@@ -175,62 +171,23 @@ void osd_getsoundinfo(sndinfo_t *info)
 /*
 ** Video
 */
-static int init(int width, int height)
-{
-	return 0;
-}
-
-static void shutdown(void)
-{
-}
-
-/* set a video mode */
-static int set_mode(int width, int height)
-{
-   return 0;
-}
-
-/* copy nes palette over to hardware */
-static void set_palette(rgb_t *pal)
+void osd_setpalette(rgb_t *pal)
 {
    for (int i = 0; i < 64; i++)
    {
       uint16_t c = (pal[i].b>>3) + ((pal[i].g>>2)<<5) + ((pal[i].r>>3)<<11);
       myPalette[i] = (c>>8) | ((c&0xff)<<8);
    }
+   forceVideoRefresh = true;
 }
 
-/* clear all frames to a particular color */
-static void clear(uint8 color)
+void IRAM_ATTR osd_blitscreen(bitmap_t *bmp)
 {
-//   SDL_FillRect(mySurface, 0, color);
-}
-
-/* acquire the directbuffer for writing */
-static bitmap_t *lock_write(void)
-{
-   myBitmap = bmp_createhw((uint8*)fb, DEFAULT_WIDTH, DEFAULT_HEIGHT, DEFAULT_WIDTH*2);
-   return myBitmap;
-}
-
-/* release the resource */
-static void free_write(int num_dirties, rect_t *dirty_rects)
-{
-   bmp_destroy(&myBitmap);
-}
-
-static void IRAM_ATTR custom_blit(bitmap_t *bmp, short interlace)
-{
-   if (!bmp) {
-      printf("custom_blit called with NULL bitmap!\n");
-      abort();
-   }
-
    odroid_video_frame *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
    // Flip the update struct so we can keep track of the changes in the last
    // frame and fill in the new details (actually, these ought to always be
    // the same...)
-   currentUpdate->buffer = bmp->line[NES_VERTICAL_OVERDRAW/2];
+   currentUpdate->buffer = bmp->line[8];
    currentUpdate->stride = bmp->pitch;
 
    if (odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL)
@@ -239,27 +196,6 @@ static void IRAM_ATTR custom_blit(bitmap_t *bmp, short interlace)
    }
 
    currentUpdate = previousUpdate;
-}
-
-viddriver_t sdlDriver =
-{
-   "Simple DirectMedia Layer",         /* name */
-   init,          /* init */
-   shutdown,      /* shutdown */
-   set_mode,      /* set_mode */
-   set_palette,   /* set_palette */
-   clear,         /* clear */
-   lock_write,    /* lock_write */
-   free_write,    /* free_write */
-   custom_blit,   /* custom_blit */
-   false          /* invalidate flag */
-};
-
-void osd_getvideoinfo(vidinfo_t *info)
-{
-   info->default_width = DEFAULT_WIDTH;
-   info->default_height = DEFAULT_HEIGHT;
-   info->driver = &sdlDriver;
 }
 
 
@@ -395,11 +331,6 @@ int osd_init()
    return 0;
 }
 
-int osd_main(int argc, char *argv[])
-{
-   return main_loop(argv[0], system_nes);
-}
-
 void osd_shutdown()
 {
 	osd_stopsound();
@@ -410,9 +341,12 @@ void app_main(void)
 {
 	printf("nesemu (%s-%s).\n", COMPILEDATE, GITREV);
 
-   odroid_system_init(2, 32000, &romPath);
+   odroid_system_init(2, AUDIO_SAMPLERATE, &romPath);
 
-   audioBuffer = calloc(AUDIO_FRAGSIZE, 4);
+   console.refresh_rate = 60; // get from settings
+   audioBufferLength = AUDIO_SAMPLERATE / console.refresh_rate;
+
+   audioBuffer = calloc(audioBufferLength, 4);
    assert(audioBuffer != NULL);
 
    // Load ROM

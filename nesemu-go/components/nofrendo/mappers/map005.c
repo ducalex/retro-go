@@ -3,14 +3,14 @@
 **
 **
 ** This program is free software; you can redistribute it and/or
-** modify it under the terms of version 2 of the GNU Library General 
+** modify it under the terms of version 2 of the GNU Library General
 ** Public License as published by the Free Software Foundation.
 **
-** This program is distributed in the hope that it will be useful, 
+** This program is distributed in the hope that it will be useful,
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
-** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
-** Library General Public License for more details.  To obtain a 
-** copy of the GNU Library General Public License, write to the Free 
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+** Library General Public License for more details.  To obtain a
+** copy of the GNU Library General Public License, write to the Free
 ** Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 **
 ** Any permitted reproduction of these routines, in whole or in part,
@@ -27,7 +27,6 @@
 #include <nes_mmc.h>
 #include <nes.h>
 #include <log.h>
-#include "mmc5_snd.h"
 
 /* TODO: there's lots of info about this mapper now;
 ** let's implement it correctly/completely
@@ -51,7 +50,7 @@ static void map5_hblank(int vblank)
          nes_irq();
          irq.reset = true;
       }
-      //else 
+      //else
       //   irq.reset = false;
       irq.counter = irq.latch;
    }
@@ -79,7 +78,7 @@ static void map5_write(uint32 address, uint8 value)
       case 1:
          page_size = 16;
          break;
-      
+
       case 2:
       case 3:
          page_size = 8;
@@ -101,7 +100,7 @@ static void map5_write(uint32 address, uint8 value)
       11:exram + write protect
       */
       break;
-   
+
    case 0x5105:
       /* TODO: exram needs to fill in nametables 2-3 */
       ppu_mirror(value & 3, (value >> 2) & 3, (value >> 4) & 3, value >> 6);
@@ -111,11 +110,11 @@ static void map5_write(uint32 address, uint8 value)
    case 0x5107:
       /* ex-ram fill mode stuff */
       break;
-   
+
    case 0x5113:
       /* ram page for $6000-7FFF? bit 2*/
       break;
-   
+
    case 0x5114:
       mmc_bankrom(8, 0x8000, value);
       //if (page_size == 8)
@@ -254,7 +253,7 @@ static map_memwrite map5_memwrite[] =
    {     -1,     -1, NULL }
 };
 
-static map_memread map5_memread[] = 
+static map_memread map5_memread[] =
 {
    { 0x5204, 0x5204, map5_read },
    {     -1,     -1, NULL }
@@ -271,7 +270,7 @@ mapintf_t map5_intf =
    map5_setstate, /* set state (snss) */
    map5_memread, /* memory read structure */
    map5_memwrite, /* memory write structure */
-   &mmc5_ext /* external sound device */
+   NULL /* external sound device */
 };
 /*
 ** $Log: map005.c,v $

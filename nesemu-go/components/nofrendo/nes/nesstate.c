@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <noftypes.h>
+#include <nofrendo.h>
 #include <nesstate.h>
 #include <gui.h>
 #include <nes.h>
@@ -39,7 +40,6 @@
 #include "odroid_overlay.h"
 #include "odroid_display.h"
 
-extern nes_t* console_nes;
 extern nes6502_context cpu;
 
 #define  FIRST_STATE_SLOT  0
@@ -363,7 +363,7 @@ int state_save(char* fn)
    nes_t *machine;
 
    /* get the pointer to our NES machine context */
-   machine = console_nes;
+   machine = console.machine.nes;
    ASSERT(machine);
 
    printf("state_save: fn='%s'\n", fn);
@@ -442,7 +442,7 @@ int state_load(char* fn)
    nes_t nes;
 
    /* get our machine's context pointer */
-   machine = console_nes;
+   machine = console.machine.nes;
 
    ASSERT(machine);
 

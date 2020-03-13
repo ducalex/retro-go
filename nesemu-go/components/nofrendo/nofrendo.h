@@ -24,12 +24,11 @@
 **
 ** $Id: nofrendo.h,v 1.2 2001/04/27 11:10:08 neil Exp $
 */
-//#include <noftypes.h>
-/* emulated system includes */
-//#include <nes.h>
 
 #ifndef _NOFRENDO_H_
 #define _NOFRENDO_H_
+
+#include <nes.h>
 
 typedef enum
 {
@@ -40,32 +39,27 @@ typedef enum
 } system_t;
 
 // /* our global machine structure */
-// typedef struct
-// {
-//    char *filename, *nextfilename;
-//    system_t type, nexttype;
-//
-//    union
-//    {
-//       nes_t *nes;
-//    } machine;
-//
-//    int refresh_rate;
-//
-//    bool quit;
-// } console_t;
-//
-// extern console_t console;
+typedef struct
+{
+   char *filename, *nextfilename;
+   system_t type, nexttype;
+
+   union
+   {
+      nes_t *nes;
+   } machine;
+
+   short refresh_rate;
+
+   bool quit;
+} console_t;
+
+extern console_t console;
 
 int nofrendo_main(int argc, char *argv[]);
 
 
 extern volatile int nofrendo_ticks; /* system timer ticks */
-
-/* osd_main should end with a call to main_loop().
-** Pass filename = NULL if you want to start with the demo rom
-*/
-extern int main_loop(const char *filename, system_t type);
 
 /* These should not be called directly. Use the event interface */
 extern void main_insert(const char *filename, system_t type);
