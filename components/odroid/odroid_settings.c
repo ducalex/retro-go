@@ -19,6 +19,7 @@ static const char* NvsKey_StartAction = "StartAction";
 static const char* NvsKey_Scaling = "Scaling";
 static const char* NvsKey_AudioSink = "AudioSink";
 static const char* NvsKey_Palette = "Palette";
+static const char* NvsKey_Region = "Region";
 static const char* NvsKey_DispUpdate = "DispUpdate";
 static const char* NvsKey_DispFilter = "DispFilter";
 
@@ -192,6 +193,17 @@ void odroid_settings_Palette_set(int32_t value)
 {
     odroid_settings_app_int32_set(NvsKey_Palette, value);
 }
+
+
+ODROID_REGION odroid_settings_Region_get()
+{
+    return odroid_settings_app_int32_get(NvsKey_Region, ODROID_REGION_AUTO);
+}
+void odroid_settings_Region_set(ODROID_REGION value)
+{
+    odroid_settings_app_int32_set(NvsKey_Region, value);
+}
+
 
 int32_t odroid_settings_DisplayScaling_get()
 {

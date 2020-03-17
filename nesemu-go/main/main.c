@@ -34,7 +34,6 @@ uint fullFrames = 0;
 
 static void (*audio_callback)(void *buffer, int length) = NULL;
 static int16_t *audioBuffer;
-static int32_t audioBufferLength;
 // --- MAIN
 
 void SaveState()
@@ -138,19 +137,19 @@ int osd_logprint(const char *string)
 /*
 ** Audio
 */
-void do_audio_frame()
+void do_audio_frame(int audioSamples)
 {
-   audio_callback(audioBuffer, audioBufferLength); //get audio data
+   audio_callback(audioBuffer, audioSamples); //get audio data
 
    //16 bit mono -> 32-bit (16 bit r+l)
-   for (int i = audioBufferLength - 1; i >= 0; --i)
+   for (int i = audioSamples - 1; i >= 0; --i)
    {
       int16_t sample = audioBuffer[i];
       audioBuffer[i*2] = sample;
       audioBuffer[i*2+1] = sample;
    }
 
-   odroid_audio_submit(audioBuffer, audioBufferLength);
+   odroid_audio_submit(audioBuffer, audioSamples);
 }
 
 void osd_setsound(void (*playfunc)(void *buffer, int length))
@@ -202,7 +201,7 @@ void IRAM_ATTR osd_blitscreen(bitmap_t *bmp)
 }
 
 
-bool sprite_limit_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+static bool sprite_limit_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
    int val = odroid_settings_int32_get(NVS_KEY_LIMIT_SPRITES, 1);
 
@@ -217,11 +216,30 @@ bool sprite_limit_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event
    return event == ODROID_DIALOG_ENTER;
 }
 
+static bool region_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+{
+   int val = odroid_settings_Region_get();
+   int max = 2;
+
+   if (event == ODROID_DIALOG_PREV) val = val > 0 ? val - 1 : max;
+   if (event == ODROID_DIALOG_NEXT) val = val < max ? val + 1 : 0;
+
+   if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
+      odroid_settings_Region_set(val);
+   }
+
+   if (val == ODROID_REGION_AUTO) strcpy(option->value, "Auto");
+   if (val == ODROID_REGION_NTSC) strcpy(option->value, "NTSC");
+   if (val == ODROID_REGION_PAL)  strcpy(option->value, "PAL ");
+
+   return event == ODROID_DIALOG_ENTER;
+}
+
 static bool advanced_settings_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
    if (event == ODROID_DIALOG_ENTER) {
       odroid_dialog_choice_t options[] = {
-         {1, "Region", "NTSC", 1, NULL},
+         {1, "Region", "Auto", 1, &region_update_cb},
          {2, "Sprite limit", "On ", 1, &sprite_limit_cb},
          // {4, "", "", 1, NULL},
          //{0, "Reset all", "", 1, NULL},
@@ -231,19 +249,13 @@ static bool advanced_settings_cb(odroid_dialog_choice_t *option, odroid_dialog_e
    return false;
 }
 
-
-bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
    int pal = odroid_settings_Palette_get();
    int max = PPU_PAL_COUNT - 1;
 
-   if (event == ODROID_DIALOG_PREV) {
-      pal = pal > 0 ? pal - 1 : max;
-   }
-
-   if (event == ODROID_DIALOG_NEXT) {
-      pal = pal < max ? pal + 1 : 0;
-   }
+   if (event == ODROID_DIALOG_PREV) pal = pal > 0 ? pal - 1 : max;
+   if (event == ODROID_DIALOG_NEXT) pal = pal < max ? pal + 1 : 0;
 
    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
       odroid_settings_Palette_set(pal);
@@ -287,37 +299,14 @@ void osd_getinput(void)
       odroid_overlay_game_settings_menu(options, sizeof(options) / sizeof(options[0]));
    }
 
-	// A
-	if (!joystick.values[ODROID_INPUT_A])
-		b |= (1 << 13);
-
-	// B
-	if (!joystick.values[ODROID_INPUT_B])
-		b |= (1 << 14);
-
-	// select
-	if (!joystick.values[ODROID_INPUT_SELECT])
-		b |= (1 << 0);
-
-	// start
-	if (!joystick.values[ODROID_INPUT_START])
-		b |= (1 << 3);
-
-	// right
-	if (!joystick.values[ODROID_INPUT_RIGHT])
-		b |= (1 << 5);
-
-	// left
-	if (!joystick.values[ODROID_INPUT_LEFT])
-		b |= (1 << 7);
-
-	// up
-	if (!joystick.values[ODROID_INPUT_UP])
-		b |= (1 << 4);
-
-	// down
-	if (!joystick.values[ODROID_INPUT_DOWN])
-		b |= (1 << 6);
+	if (!joystick.values[ODROID_INPUT_A])      b |= (1 << 13);
+	if (!joystick.values[ODROID_INPUT_B])      b |= (1 << 14);
+	if (!joystick.values[ODROID_INPUT_SELECT]) b |= (1 << 0);
+	if (!joystick.values[ODROID_INPUT_START])  b |= (1 << 3);
+	if (!joystick.values[ODROID_INPUT_RIGHT])  b |= (1 << 5);
+	if (!joystick.values[ODROID_INPUT_LEFT])   b |= (1 << 7);
+	if (!joystick.values[ODROID_INPUT_UP])     b |= (1 << 4);
+	if (!joystick.values[ODROID_INPUT_DOWN])   b |= (1 << 6);
 
    previous = b;
 
@@ -359,10 +348,7 @@ void app_main(void)
 
    odroid_system_init(2, AUDIO_SAMPLERATE, &romPath);
 
-   console.refresh_rate = 60; // get from settings
-   audioBufferLength = AUDIO_SAMPLERATE / console.refresh_rate;
-
-   audioBuffer = calloc(audioBufferLength, 4);
+   audioBuffer = calloc(AUDIO_SAMPLERATE / 50, 4);
    assert(audioBuffer != NULL);
 
    // Load ROM
@@ -386,9 +372,14 @@ void app_main(void)
       odroid_system_panic("ROM read failed");
    }
 
+   int region = NES_NTSC;
+   if (odroid_settings_Region_get() == ODROID_REGION_PAL)
+   {
+      region = NES_PAL;
+   }
+
    printf("NoFrendo start!\n");
-   char* args[1] = { strdup(odroid_sdcard_get_filename(romPath)) };
-   nofrendo_main(1, args);
+   nofrendo_start(odroid_sdcard_get_filename(romPath), region);
 
    printf("NoFrendo died.\n");
    abort();

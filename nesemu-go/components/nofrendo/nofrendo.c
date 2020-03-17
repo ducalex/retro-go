@@ -49,25 +49,6 @@ static void timer_isr(void)
 
 static void timer_isr_end(void) {} /* code marker for djgpp */
 
-static void shutdown_everything(void)
-{
-   if (console.filename)
-   {
-      free(console.filename);
-      console.filename = NULL;
-   }
-   if (console.nextfilename)
-   {
-      free(console.nextfilename);
-      console.nextfilename = NULL;
-   }
-
-   osd_shutdown();
-   gui_shutdown();
-   // vid_shutdown();
-   log_shutdown();
-}
-
 /* End the current context */
 void main_eject(void)
 {
@@ -94,95 +75,49 @@ void main_eject(void)
 void main_quit(void)
 {
    console.quit = true;
-
    main_eject();
-
-   /* if there's a pending filename / system, clear */
-   if (NULL != console.nextfilename)
-   {
-      free(console.nextfilename);
-      console.nextfilename = NULL;
-   }
-   console.nexttype = system_unknown;
 }
 
-/* brute force system autodetection */
-static system_t detect_systemtype(const char *filename)
+/* This tells main_loop to load this next image */
+int main_insert(const char *filename, system_t type)
 {
-   if (NULL == filename)
-      return system_unknown;
-
-   if (0 == rom_checkmagic(filename))
-      return system_nes;
-
-   /* can't figure out what this thing is */
-   return system_unknown;
-}
-
-/* This assumes there is no current context */
-static int internal_insert(const char *filename, system_t type)
-{
-   /* autodetect system type? */
-   if (system_autodetect == type)
-      type = detect_systemtype(filename);
-
-   console.filename = filename;
+   console.filename = strdup(filename);
    console.type = type;
+   console.quit = false;
+
+   if (system_nes != type)
+   {
+      log_printf("Unsupported system type.\n");
+      return -1;
+   }
 
    /* set up the event system for this system type */
    event_set_system(type);
 
-   switch (console.type)
+   console.machine.nes = nes_create(NES_NTSC);
+
+   if (NULL == console.machine.nes)
    {
-   case system_nes:
-      gui_setrefresh(console.refresh_rate);
-
-      console.machine.nes = nes_create();
-
-      if (NULL == console.machine.nes)
-      {
-         log_printf("Failed to create NES instance.\n");
-         return -1;
-      }
-
-      if (nes_insertcart(console.filename, console.machine.nes))
-         return -1;
-
-      nes_emulate();
-      break;
-
-   case system_unknown:
-   default:
-      log_printf("system type unknown, playing nofrendo NES intro.\n");
-      if (NULL != console.filename)
-         free(console.filename);
-
-      /* oooh, recursion */
-      return internal_insert(filename, system_nes);
+      log_printf("Failed to create NES instance.\n");
+      return -1;
    }
+
+   gui_setrefresh(console.machine.nes->refresh_rate);
+
+   if (nes_insertcart(console.filename, console.machine.nes))
+   {
+      log_printf("Failed to insert NES cart.\n");
+      // odroid_system_panic();
+      return -1;
+   }
+
+   nes_emulate();
 
    return 0;
 }
 
-/* This tells main_loop to load this next image */
-void main_insert(const char *filename, system_t type)
-{
-   console.nextfilename = strdup(filename);
-   console.nexttype = type;
-
-   main_eject();
-}
-
 int nofrendo_main(int argc, char *argv[])
 {
-   /* initialize our system structure */
-   console.filename = NULL;
-   console.nextfilename = argc ? argv[0] : NULL;
-   console.type = system_unknown;
-   console.nexttype = system_nes;
-   console.refresh_rate = 60;
-   console.quit = false;
-
    event_init();
 
    if (log_init())
@@ -196,8 +131,8 @@ int nofrendo_main(int argc, char *argv[])
 
    while (false == console.quit)
    {
-      if (internal_insert(console.nextfilename, console.nexttype))
-         return 1;
+      if (main_insert(argv[0], system_nes))
+         return -1;
    }
 
    return 0;

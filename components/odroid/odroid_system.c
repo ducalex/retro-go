@@ -9,18 +9,15 @@
 #include "string.h"
 #include "stdio.h"
 
-static bool system_initialized = false;
-
 ODROID_START_ACTION startAction = 0;
 int8_t speedupEnabled = 0;
+int8_t applicationId = -1;
 
-void odroid_system_init(int app_id, int sampleRate, char **romPath)
+void odroid_system_init(int appId, int sampleRate, char **romPath)
 {
-    if (system_initialized) abort();
-
     printf("odroid_system_init: %d KB free\n", esp_get_free_heap_size() / 1024);
 
-    odroid_settings_init(app_id);
+    odroid_settings_init(appId);
     odroid_overlay_init();
     odroid_system_gpio_init();
     odroid_input_gamepad_init();
@@ -78,7 +75,7 @@ void odroid_system_init(int app_id, int sampleRate, char **romPath)
         }
     }
 
-    system_initialized = true;
+    applicationId = appId;
 
     printf("odroid_system_init: System ready!\n");
 }
@@ -162,11 +159,5 @@ void odroid_system_halt()
 
 void odroid_system_led_set(int value)
 {
-    if (!system_initialized)
-    {
-        printf("odroid_system_init not called before use.\n");
-        abort();
-    }
-
     gpio_set_level(GPIO_NUM_2, value);
 }

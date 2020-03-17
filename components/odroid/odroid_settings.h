@@ -15,6 +15,13 @@ typedef enum
     ODROID_AUDIO_SINK_DAC
 } ODROID_AUDIO_SINK;
 
+typedef enum
+{
+    ODROID_REGION_AUTO = 0,
+    ODROID_REGION_NTSC,
+    ODROID_REGION_PAL
+} ODROID_REGION;
+
 void odroid_settings_init(int app_id);
 
 int32_t odroid_settings_VRef_get();
@@ -37,6 +44,9 @@ void odroid_settings_StartAction_set(ODROID_START_ACTION value);
 
 ODROID_AUDIO_SINK odroid_settings_AudioSink_get();
 void odroid_settings_AudioSink_set(ODROID_AUDIO_SINK value);
+
+ODROID_REGION odroid_settings_Region_get();
+void odroid_settings_Region_set(ODROID_REGION value);
 
 int32_t odroid_settings_Palette_get();
 void odroid_settings_Palette_set(int32_t value);

@@ -30,7 +30,7 @@ static uint8 map5_read(uint32 address)
 {
    printf("MMC5 read: $%04X", address);
 
-
+   return 0;
 }
 
 static void map5_init(void)

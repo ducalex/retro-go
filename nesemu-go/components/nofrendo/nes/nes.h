@@ -41,14 +41,13 @@
 #define  NES_SCREEN_WIDTH     256
 #define  NES_SCREEN_HEIGHT    240
 
-/* NTSC = 60Hz, PAL = 50Hz */
-#ifdef PAL
-#define  NES_REFRESH_RATE     50
-#else /* !PAL */
-#define  NES_REFRESH_RATE     60
-#endif /* !PAL */
-
 #define  MAX_MEM_HANDLERS     32
+
+typedef enum
+{
+   NES_NTSC,
+   NES_PAL
+} region_t;
 
 enum
 {
@@ -72,13 +71,18 @@ typedef struct nes_s
    /* video buffer */
    bitmap_t *vidbuf;
 
-   int scanline;
+   region_t region;
 
    /* Timing stuff */
-   float scanline_cycles;
-   bool autoframeskip;
+   short refresh_rate;
+   short scanlines;
+   float cycles_per_line;
+
+   short scanline;
+   float cycles;
 
    /* control */
+   bool autoframeskip;
    bool poweroff;
    bool pause;
 
@@ -92,7 +96,7 @@ extern nes_t *nes_getcontextptr(void);
 extern void nes_getcontext(nes_t *machine);
 extern void nes_setcontext(nes_t *machine);
 
-extern nes_t *nes_create(void);
+extern nes_t *nes_create(region_t region);
 extern void nes_destroy(nes_t **machine);
 extern int nes_insertcart(const char *filename, nes_t *machine);
 

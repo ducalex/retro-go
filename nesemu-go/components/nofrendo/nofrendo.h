@@ -41,15 +41,13 @@ typedef enum
 // /* our global machine structure */
 typedef struct
 {
-   char *filename, *nextfilename;
-   system_t type, nexttype;
+   char *filename;
+   system_t type;
 
    union
    {
       nes_t *nes;
    } machine;
-
-   short refresh_rate;
 
    bool quit;
 } console_t;
@@ -62,7 +60,7 @@ int nofrendo_main(int argc, char *argv[]);
 extern volatile int nofrendo_ticks; /* system timer ticks */
 
 /* These should not be called directly. Use the event interface */
-extern void main_insert(const char *filename, system_t type);
+extern int main_insert(const char *filename, system_t type);
 extern void main_eject(void);
 extern void main_quit(void);
 

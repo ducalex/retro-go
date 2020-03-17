@@ -51,8 +51,7 @@
 // #define  NES_SCANLINE_CYCLES  (1364.0 / NES_CLOCK_DIVIDER)
 // #define  NES_FIQ_PERIOD       (NES_MASTER_CLOCK / NES_CLOCK_DIVIDER / 60)
 
-static const float NES_SCANLINE_CYCLES = (341.f * 4 / 12); // https://wiki.nesdev.com/w/index.php/Cycle_reference_chart
-static const int   NES_RAMSIZE         = (0x800);
+static const int NES_RAMSIZE = (0x800);
 
 static bitmap_t *primary_buffer = NULL;
 
@@ -277,9 +276,9 @@ static void nes_renderframe(bool draw_flag)
    int elapsed_cycles;
    mapintf_t *mapintf = nes.mmc->intf;
 
-   while (nes.scanline != 262)
+   while (nes.scanline != nes.scanlines)
    {
-      nes.scanline_cycles += NES_SCANLINE_CYCLES;
+      nes.cycles += nes.cycles_per_line;
 
       ppu_scanline(nes.vidbuf, nes.scanline, draw_flag);
 
@@ -287,7 +286,7 @@ static void nes_renderframe(bool draw_flag)
       {
          /* 7-9 cycle delay between when VINT flag goes up and NMI is taken */
          elapsed_cycles = nes6502_execute(7);
-         nes.scanline_cycles -= elapsed_cycles;
+         nes.cycles -= elapsed_cycles;
 
          ppu_checknmi();
 
@@ -298,9 +297,9 @@ static void nes_renderframe(bool draw_flag)
       if (mapintf->hblank)
          mapintf->hblank(nes.scanline >= 241);
 
-      elapsed_cycles = nes6502_execute(nes.scanline_cycles);
+      elapsed_cycles = nes6502_execute(nes.cycles);
       apu_fc_advance(elapsed_cycles);
-      nes.scanline_cycles -= elapsed_cycles;
+      nes.cycles -= elapsed_cycles;
 
       ppu_endscanline(nes.scanline);
       nes.scanline++;
@@ -331,7 +330,7 @@ static void system_video(bool draw)
    osd_blitscreen(primary_buffer);
 }
 
-extern void do_audio_frame();
+extern void do_audio_frame(int audio_samples);
 extern uint fullFrames;
 
 /* main emulation loop */
@@ -342,7 +341,8 @@ void nes_emulate(void)
    uint renderedFrames = 0;
    uint skippedFrames = 0;
 
-   const int frameTime = CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / console.refresh_rate;
+   const int audioSamples = nes.apu->sample_rate / nes.refresh_rate;
+   const int frameTime = CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / nes.refresh_rate;
    bool renderFrame = true;
 
    // Discard the garbage frames
@@ -366,7 +366,7 @@ void nes_emulate(void)
       if (speedupEnabled) {
          renderFrame = (emulatedFrames % speedupEnabled) == 0;
       } else {
-         do_audio_frame();
+         do_audio_frame(audioSamples);
       }
 
       if (!renderFrame) {
@@ -376,7 +376,7 @@ void nes_emulate(void)
       totalElapsedTime += get_elapsed_time_since(startTime);
       ++emulatedFrames;
 
-      if (emulatedFrames == console.refresh_rate)
+      if (emulatedFrames == nes.refresh_rate)
       {
          float seconds = totalElapsedTime / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f);
          float fps = emulatedFrames / seconds;
@@ -420,7 +420,7 @@ void nes_reset(int reset_type)
    nes6502_reset();
 
    nes.scanline = 241;
-   nes.scanline_cycles = 0;
+   nes.cycles = 0;
 
    gui_sendmsg(GUI_GREEN, "NES %s",
                (HARD_RESET == reset_type) ? "powered on" : "reset");
@@ -502,7 +502,7 @@ _fail:
 
 
 /* Initialize NES CPU, hardware, etc. */
-nes_t *nes_create(void)
+nes_t *nes_create(region_t region)
 {
    nes_t *machine;
    sndinfo_t osd_sound;
@@ -513,6 +513,20 @@ nes_t *nes_create(void)
       return NULL;
 
    memset(machine, 0, sizeof(nes_t));
+
+   // https://wiki.nesdev.com/w/index.php/Cycle_reference_chart
+   if (region == NES_PAL)
+   {
+      machine->refresh_rate = 50;
+      machine->scanlines = 312;
+      machine->cycles_per_line = 341.f * 5 / 16;
+   }
+   else
+   {
+      machine->refresh_rate = 60;
+      machine->scanlines = 262;
+      machine->cycles_per_line = 341.f * 4 / 12;
+   }
 
    /* bitmap */
    /* 8 pixel overdraw */
@@ -543,7 +557,7 @@ nes_t *nes_create(void)
 
    /* apu */
    osd_getsoundinfo(&osd_sound);
-   machine->apu = apu_create(0, osd_sound.sample_rate, console.refresh_rate, osd_sound.bps);
+   machine->apu = apu_create(0, osd_sound.sample_rate, machine->refresh_rate, osd_sound.bps);
 
    if (NULL == machine->apu)
       goto _fail;
