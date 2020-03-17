@@ -91,6 +91,20 @@ extern void gui_toggle_chan(int chan);
 extern void gui_setfilter(int filter_type);
 
 
+typedef struct fontchar_s
+{
+   uint8 lines[6];
+   uint8 spacing;
+} fontchar_t;
+
+typedef struct font_s
+{
+   const fontchar_t *character;
+   uint8 height;
+} font_t;
+
+extern font_t small;
+
 #endif /* _GUI_H_ */
 
 /*

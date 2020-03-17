@@ -271,7 +271,7 @@ void IRAM_ATTR nes_nmi(void)
    nes6502_nmi();
 }
 
-static void nes_renderframe(bool draw_flag)
+static void inline nes_renderframe(bool draw_flag)
 {
    int elapsed_cycles;
    mapintf_t *mapintf = nes.mmc->intf;
@@ -308,7 +308,7 @@ static void nes_renderframe(bool draw_flag)
    nes.scanline = 0;
 }
 
-static void system_video(bool draw)
+static void inline system_video(bool draw)
 {
    if (!draw) {
       return;
@@ -330,7 +330,6 @@ static void system_video(bool draw)
    osd_blitscreen(primary_buffer);
 }
 
-extern void do_audio_frame(int audio_samples);
 extern uint fullFrames;
 
 /* main emulation loop */
@@ -366,7 +365,7 @@ void nes_emulate(void)
       if (speedupEnabled) {
          renderFrame = (emulatedFrames % speedupEnabled) == 0;
       } else {
-         do_audio_frame(audioSamples);
+         osd_audioframe(audioSamples);
       }
 
       if (!renderFrame) {
@@ -474,7 +473,6 @@ int nes_insertcart(const char *filename, nes_t *machine)
       machine->cpu->mem_page[7] = machine->rominfo->sram + 0x1000;
    }
 
-
    /* mapper */
    machine->mmc = mmc_create(machine->rominfo);
    if (NULL == machine->mmc)
@@ -488,6 +486,7 @@ int nes_insertcart(const char *filename, nes_t *machine)
 
    build_address_handlers(machine);
 
+   // nes_setregion();
 
    nes_setcontext(machine);
 
@@ -506,13 +505,10 @@ nes_t *nes_create(region_t region)
 {
    nes_t *machine;
    sndinfo_t osd_sound;
-   int i;
 
-   machine = malloc(sizeof(nes_t));
+   machine = calloc(sizeof(nes_t), 1);
    if (NULL == machine)
       return NULL;
-
-   memset(machine, 0, sizeof(nes_t));
 
    // https://wiki.nesdev.com/w/index.php/Cycle_reference_chart
    if (region == NES_PAL)
@@ -520,13 +516,20 @@ nes_t *nes_create(region_t region)
       machine->refresh_rate = 50;
       machine->scanlines = 312;
       machine->cycles_per_line = 341.f * 5 / 16;
+      printf("nes_create: System region: PAL\n");
    }
    else
    {
       machine->refresh_rate = 60;
       machine->scanlines = 262;
       machine->cycles_per_line = 341.f * 4 / 12;
+      printf("nes_create: System region: NTSC\n");
    }
+
+   machine->region = region;
+   machine->autoframeskip = true;
+   machine->poweroff = false;
+   machine->pause = false;
 
    /* bitmap */
    /* 8 pixel overdraw */
@@ -534,23 +537,15 @@ nes_t *nes_create(region_t region)
    if (NULL == machine->vidbuf)
       goto _fail;
 
-   machine->autoframeskip = true;
-
    /* cpu */
-   machine->cpu = malloc(sizeof(nes6502_context));
+   machine->cpu = calloc(sizeof(nes6502_context), 1);
    if (NULL == machine->cpu)
       goto _fail;
-
-   memset(machine->cpu, 0, sizeof(nes6502_context));
 
    /* allocate 2kB RAM */
    machine->cpu->mem_page[0] = malloc(NES_RAMSIZE);
    if (NULL == machine->cpu->mem_page[0])
       goto _fail;
-
-   /* point all pages at NULL for now */
-   for (i = 1; i < NES6502_NUMBANKS; i++)
-      machine->cpu->mem_page[i] = NULL;
 
    machine->cpu->read_handler = machine->readhandler;
    machine->cpu->write_handler = machine->writehandler;
@@ -558,7 +553,6 @@ nes_t *nes_create(region_t region)
    /* apu */
    osd_getsoundinfo(&osd_sound);
    machine->apu = apu_create(0, osd_sound.sample_rate, machine->refresh_rate, osd_sound.bps);
-
    if (NULL == machine->apu)
       goto _fail;
 
@@ -567,214 +561,9 @@ nes_t *nes_create(region_t region)
    if (NULL == machine->ppu)
       goto _fail;
 
-   machine->poweroff = false;
-   machine->pause = false;
-
    return machine;
 
 _fail:
    nes_destroy(&machine);
    return NULL;
 }
-
-/*
-** $Log: nes.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.18  2000/11/29 12:58:23  matt
-** timing/fiq fixes
-**
-** Revision 1.17  2000/11/27 19:36:15  matt
-** more timing fixes
-**
-** Revision 1.16  2000/11/26 16:13:13  matt
-** slight fix (?) to nes_fiq
-**
-** Revision 1.15  2000/11/26 15:51:13  matt
-** frame IRQ emulation
-**
-** Revision 1.14  2000/11/25 20:30:39  matt
-** scanline emulation simplifications/timing fixes
-**
-** Revision 1.13  2000/11/25 01:53:42  matt
-** bool stinks sometimes
-**
-** Revision 1.12  2000/11/21 13:28:40  matt
-** take care to zero allocated mem
-**
-** Revision 1.11  2000/11/20 13:23:32  matt
-** nofrendo.c now handles timer
-**
-** Revision 1.10  2000/11/09 14:07:27  matt
-** state load fixed, state save mostly fixed
-**
-** Revision 1.9  2000/11/05 22:19:37  matt
-** pause buglet fixed
-**
-** Revision 1.8  2000/11/05 06:27:09  matt
-** thinlib spawns changes
-**
-** Revision 1.7  2000/10/29 14:36:45  matt
-** nes_clearframeirq is static
-**
-** Revision 1.6  2000/10/28 15:20:41  matt
-** irq callbacks in nes_apu
-**
-** Revision 1.5  2000/10/27 12:55:58  matt
-** nes6502 now uses 4kB banks across the boards
-**
-** Revision 1.4  2000/10/25 13:44:02  matt
-** no more silly define names
-**
-** Revision 1.3  2000/10/25 01:23:08  matt
-** basic system autodetection
-**
-** Revision 1.2  2000/10/25 00:23:16  matt
-** makefiles updated for new directory structure
-**
-** Revision 1.1  2000/10/24 12:20:28  matt
-** changed directory structure
-**
-** Revision 1.50  2000/10/23 17:51:09  matt
-** adding fds support
-**
-** Revision 1.49  2000/10/23 15:53:08  matt
-** better system handling
-**
-** Revision 1.48  2000/10/22 20:02:29  matt
-** autoframeskip bugfix
-**
-** Revision 1.47  2000/10/22 19:16:15  matt
-** more sane timer ISR / autoframeskip
-**
-** Revision 1.46  2000/10/21 19:26:59  matt
-** many more cleanups
-**
-** Revision 1.45  2000/10/17 12:00:56  matt
-** selectable apu base frequency
-**
-** Revision 1.44  2000/10/10 13:58:14  matt
-** stroustrup squeezing his way in the door
-**
-** Revision 1.43  2000/10/10 13:05:30  matt
-** Mr. Clean makes a guest appearance
-**
-** Revision 1.42  2000/10/08 17:53:37  matt
-** minor accuracy changes
-**
-** Revision 1.41  2000/09/18 02:09:12  matt
-** -pedantic is your friend
-**
-** Revision 1.40  2000/09/15 13:38:39  matt
-** changes for optimized apu core
-**
-** Revision 1.39  2000/09/15 04:58:07  matt
-** simplifying and optimizing APU core
-**
-** Revision 1.38  2000/09/08 11:57:29  matt
-** no more nes_fiq
-**
-** Revision 1.37  2000/08/31 02:39:01  matt
-** moved dos stuff in here (temp)
-**
-** Revision 1.36  2000/08/16 02:51:55  matt
-** random cleanups
-**
-** Revision 1.35  2000/08/11 02:43:50  matt
-** moved frame irq stuff out of APU into here
-**
-** Revision 1.34  2000/08/11 01:42:43  matt
-** change to OSD sound info interface
-**
-** Revision 1.33  2000/07/31 04:27:59  matt
-** one million cleanups
-**
-** Revision 1.32  2000/07/30 04:32:32  matt
-** emulation of the NES frame IRQ
-**
-** Revision 1.31  2000/07/27 04:07:14  matt
-** cleaned up the neighborhood lawns
-**
-** Revision 1.30  2000/07/27 03:59:52  neil
-** pausing tweaks, during fullscreen toggles
-**
-** Revision 1.29  2000/07/27 03:19:22  matt
-** just a little cleaner, that's all
-**
-** Revision 1.28  2000/07/27 02:55:23  matt
-** nes_emulate went through detox
-**
-** Revision 1.27  2000/07/27 02:49:18  matt
-** cleaner flow in nes_emulate
-**
-** Revision 1.26  2000/07/27 01:17:09  matt
-** nes_insertrom -> nes_insertcart
-**
-** Revision 1.25  2000/07/26 21:36:14  neil
-** Big honkin' change -- see the mailing list
-**
-** Revision 1.24  2000/07/25 02:25:53  matt
-** safer xxx_destroy calls
-**
-** Revision 1.23  2000/07/24 04:32:40  matt
-** autoframeskip bugfix
-**
-** Revision 1.22  2000/07/23 15:13:48  matt
-** apu API change, autoframeskip part of nes_t struct
-**
-** Revision 1.21  2000/07/21 02:44:41  matt
-** merged osd_getinput and osd_gethostinput
-**
-** Revision 1.20  2000/07/17 05:12:55  matt
-** nes_ppu.c is no longer a scary place to be-- cleaner & faster
-**
-** Revision 1.19  2000/07/17 01:52:28  matt
-** made sure last line of all source files is a newline
-**
-** Revision 1.18  2000/07/15 23:51:23  matt
-** hack for certain filthy NES titles
-**
-** Revision 1.17  2000/07/11 04:31:54  matt
-** less magic number nastiness for screen dimensions
-**
-** Revision 1.16  2000/07/11 02:38:25  matt
-** encapsulated memory address handlers into nes/nsf
-**
-** Revision 1.15  2000/07/10 13:50:49  matt
-** added function nes_irq()
-**
-** Revision 1.14  2000/07/10 05:27:55  matt
-** cleaned up mapper-specific callbacks
-**
-** Revision 1.13  2000/07/09 03:43:26  matt
-** minor changes to gui handling
-**
-** Revision 1.12  2000/07/06 16:42:23  matt
-** updated for new video driver
-**
-** Revision 1.11  2000/07/05 19:57:36  neil
-** __GNUC -> __DJGPP in nes.c
-**
-** Revision 1.10  2000/07/05 12:23:03  matt
-** removed unnecessary references
-**
-** Revision 1.9  2000/07/04 23:12:34  matt
-** memory protection handlers
-**
-** Revision 1.8  2000/07/04 04:58:29  matt
-** dynamic memory range handlers
-**
-** Revision 1.7  2000/06/26 04:58:51  matt
-** minor bugfix
-**
-** Revision 1.6  2000/06/20 20:42:12  matt
-** fixed some NULL pointer problems
-**
-** Revision 1.5  2000/06/09 15:12:26  matt
-** initial revision
-**
-*/

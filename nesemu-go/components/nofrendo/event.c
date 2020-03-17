@@ -23,20 +23,13 @@
 ** $Id: event.c,v 1.3 2001/04/27 14:37:11 neil Exp $
 */
 
-#include <stdlib.h>
 #include <noftypes.h>
 #include <event.h>
 #include <nofrendo.h>
 #include <gui.h>
-#include <osd.h>
-
-/* TODO: put system specific stuff in their own files... */
 #include <nes.h>
 #include <nesinput.h>
 #include <nesstate.h>
-
-/* pointer to our current system's event handler table */
-static event_t *system_events = NULL;
 
 /* standard keyboard input */
 static nesinput_t kb_input = { INP_JOYPAD0, 0 };
@@ -45,19 +38,7 @@ static nesinput_t kb_alt_input = { INP_JOYPAD1, 0 };
 static void func_event_quit(int code)
 {
    UNUSED(code);
-   main_quit();
-}
-
-static void func_event_insert(int code)
-{
-   UNUSED(code);
-   /* TODO: after the GUI */
-}
-
-static void func_event_eject(int code)
-{
-   if (INP_STATE_MAKE == code)
-      main_eject();
+   // main_quit();
 }
 
 static void func_event_togglepause(int code)
@@ -76,12 +57,6 @@ static void func_event_hard_reset(int code)
 {
    if (INP_STATE_MAKE == code)
       nes_reset(HARD_RESET);
-}
-
-static void func_event_snapshot(int code)
-{
-   if (INP_STATE_MAKE == code)
-      gui_savesnap();
 }
 
 static void func_event_toggle_frameskip(int code)
@@ -350,30 +325,17 @@ static void func_event_joypad2_right(int code)
    input_event(&kb_alt_input, code, INP_PAD_RIGHT);
 }
 
-static void func_event_songup(int code)
-{
-}
-
-static void func_event_songdown(int code)
-{
-}
-
-static void func_event_startsong(int code)
-{
-}
 
 /* NES events */
-static event_t nes_events[] =
+static event_t system_events[64] =
 {
    NULL, /* 0 */
    func_event_quit,
-   func_event_insert,
-   func_event_eject,
    func_event_togglepause,
    func_event_soft_reset,
    func_event_hard_reset,
-   func_event_snapshot,
    func_event_toggle_frameskip,
+   func_event_toggle_sprites,
    /* saves */
    func_event_state_save,
    func_event_state_load, /* 10 */
@@ -406,14 +368,6 @@ static event_t nes_events[] =
    func_event_set_filter_0,
    func_event_set_filter_1,
    func_event_set_filter_2,
-   /* picture */
-   func_event_toggle_sprites,
-   NULL,
-   NULL,
-   NULL,
-   NULL,
-   NULL,
-   NULL,
    /* joypad 1 */
    func_event_joypad1_a,
    func_event_joypad1_b,
@@ -432,8 +386,9 @@ static event_t nes_events[] =
    func_event_joypad2_down,
    func_event_joypad2_left,
    func_event_joypad2_right,
-   /* NSF control */
-   NULL, /* 60 */
+   /* unused */
+   NULL,
+   NULL,
    NULL,
    NULL,
    /* OS-specific */
@@ -444,19 +399,10 @@ static event_t nes_events[] =
    NULL,
    NULL,
    NULL,
-   NULL, /* 70 */
    NULL,
-   /* last */
-   NULL
+   NULL,
 };
 
-
-static event_t *event_system_table[NUM_SUPPORTED_SYSTEMS] =
-{
-   NULL, /* unknown */
-   NULL, /* autodetect */
-   nes_events, /* nes */
-};
 
 void event_init(void)
 {
@@ -464,30 +410,9 @@ void event_init(void)
    input_register(&kb_alt_input);
 }
 
-/* set up the event system for a certain console/system type */
-void event_set_system(system_t type)
-{
-   ASSERT(type < NUM_SUPPORTED_SYSTEMS);
-
-   system_events = event_system_table[type];
-}
-
 void event_set(int index, event_t handler)
 {
-   /* now, event_set is used to set osd-specific events.  We should assume
-   ** (for now, at least) that these events should be used across all
-   ** emulated systems, so let's loop through all system event handler
-   ** tables and add this event...
-   */
-   int i;
-
-   for (i = 0; i < NUM_SUPPORTED_SYSTEMS; i++)
-   {
-      if(event_system_table[i])
-      {
-         event_system_table[i][index] = handler;
-      }
-   }
+   system_events[index] = handler;
 }
 
 event_t event_get(int index)
@@ -495,70 +420,8 @@ event_t event_get(int index)
    return system_events[index];
 }
 
-
-/*
-** $Log: event.c,v $
-** Revision 1.3  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.2  2001/04/27 11:10:08  neil
-** compile
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.18  2000/11/25 20:26:05  matt
-** removed fds "system"
-**
-** Revision 1.17  2000/11/09 14:05:42  matt
-** state load fixed, state save mostly fixed
-**
-** Revision 1.16  2000/11/05 16:37:18  matt
-** rolled rgb.h into bitmap.h
-**
-** Revision 1.15  2000/11/01 17:33:26  neil
-** little crash bugs fixed
-**
-** Revision 1.14  2000/11/01 14:15:35  matt
-** multi-system event system, or whatever
-**
-** Revision 1.13  2000/10/27 12:59:48  matt
-** api change for ppu palette functions
-**
-** Revision 1.12  2000/10/26 22:48:05  matt
-** no need for extern
-**
-** Revision 1.11  2000/10/25 00:23:16  matt
-** makefiles updated for new directory structure
-**
-** Revision 1.10  2000/10/23 17:50:46  matt
-** adding fds support
-**
-** Revision 1.9  2000/10/23 15:52:04  matt
-** better system handling
-**
-** Revision 1.8  2000/10/22 15:01:51  matt
-** prevented palette changing in VS unisystem games
-**
-** Revision 1.7  2000/10/10 13:03:54  matt
-** Mr. Clean makes a guest appearance
-**
-** Revision 1.6  2000/08/16 02:58:34  matt
-** random cleanups
-**
-** Revision 1.5  2000/07/27 01:15:33  matt
-** name changes
-**
-** Revision 1.4  2000/07/26 21:36:13  neil
-** Big honkin' change -- see the mailing list
-**
-** Revision 1.3  2000/07/23 15:17:19  matt
-** non-osd calls moved from osd.c to gui.c
-**
-** Revision 1.2  2000/07/21 12:07:40  neil
-** added room in event_array for all osd events
-**
-** Revision 1.1  2000/07/21 04:26:38  matt
-** initial revision
-**
-*/
+void event_raise(int index, int code)
+{
+   event_t evh = system_events[index];
+   if (evh) evh(code);
+}

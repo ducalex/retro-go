@@ -137,7 +137,7 @@ int osd_logprint(const char *string)
 /*
 ** Audio
 */
-void do_audio_frame(int audioSamples)
+void osd_audioframe(int audioSamples)
 {
    audio_callback(audioBuffer, audioSamples); //get audio data
 
@@ -274,15 +274,14 @@ static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
 
 void osd_getinput(void)
 {
-	const int event[15] = {
-      event_joypad1_select, 0, 0, event_joypad1_start, event_joypad1_up, event_joypad1_right,
-      event_joypad1_down, event_joypad1_left, 0, 0, 0, 0, 0, event_joypad1_a, event_joypad1_b
+	const int events[8] = {
+      event_joypad1_start, event_joypad1_select, event_joypad1_up, event_joypad1_right,
+      event_joypad1_down, event_joypad1_left, event_joypad1_a, event_joypad1_b
 	};
 
-	event_t evh;
-   static int previous = 0xffff;
-   int b = 0;
-   int changed = b ^ previous;
+   static uint8 previous = 0xff;
+   uint8 b = 0;
+   uint8 changed = b ^ previous;
 
    odroid_gamepad_state joystick;
    odroid_input_gamepad_read(&joystick);
@@ -299,29 +298,24 @@ void osd_getinput(void)
       odroid_overlay_game_settings_menu(options, sizeof(options) / sizeof(options[0]));
    }
 
-	if (!joystick.values[ODROID_INPUT_A])      b |= (1 << 13);
-	if (!joystick.values[ODROID_INPUT_B])      b |= (1 << 14);
-	if (!joystick.values[ODROID_INPUT_SELECT]) b |= (1 << 0);
-	if (!joystick.values[ODROID_INPUT_START])  b |= (1 << 3);
-	if (!joystick.values[ODROID_INPUT_RIGHT])  b |= (1 << 5);
-	if (!joystick.values[ODROID_INPUT_LEFT])   b |= (1 << 7);
-	if (!joystick.values[ODROID_INPUT_UP])     b |= (1 << 4);
-	if (!joystick.values[ODROID_INPUT_DOWN])   b |= (1 << 6);
+	if (!joystick.values[ODROID_INPUT_START])  b |= (1 << 0);
+	if (!joystick.values[ODROID_INPUT_SELECT]) b |= (1 << 1);
+	if (!joystick.values[ODROID_INPUT_UP])     b |= (1 << 2);
+	if (!joystick.values[ODROID_INPUT_RIGHT])  b |= (1 << 3);
+	if (!joystick.values[ODROID_INPUT_DOWN])   b |= (1 << 4);
+	if (!joystick.values[ODROID_INPUT_LEFT])   b |= (1 << 5);
+	if (!joystick.values[ODROID_INPUT_A])      b |= (1 << 6);
+	if (!joystick.values[ODROID_INPUT_B])      b |= (1 << 7);
 
    previous = b;
 
-	for (int x = 0; x < 15; x++) {
+	for (int x = 0; x < 8; x++) {
 		if (changed & 1) {
-			evh = event_get(event[x]);
-			if (evh) evh((b & 1) ? INP_STATE_BREAK : INP_STATE_MAKE);
+         event_raise(events[x], (b & 1) ? INP_STATE_BREAK : INP_STATE_MAKE);
 		}
 		changed >>= 1;
 		b >>= 1;
 	}
-}
-
-void osd_getmouse(int *x, int *y, int *button)
-{
 }
 
 
@@ -373,13 +367,15 @@ void app_main(void)
    }
 
    int region = NES_NTSC;
-   if (odroid_settings_Region_get() == ODROID_REGION_PAL)
+   switch(odroid_settings_Region_get())
    {
-      region = NES_PAL;
+      case ODROID_REGION_AUTO: region = NES_AUTO; break;
+      case ODROID_REGION_NTSC: region = NES_NTSC; break;
+      case ODROID_REGION_PAL:  region = NES_PAL;  break;
    }
 
    printf("NoFrendo start!\n");
-   nofrendo_start(odroid_sdcard_get_filename(romPath), region);
+   nofrendo_start(romPath, region);
 
    printf("NoFrendo died.\n");
    abort();

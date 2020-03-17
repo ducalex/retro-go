@@ -123,7 +123,7 @@ static int rom_allocsram(rominfo_t *rominfo)
    if (NULL == rominfo->sram)
    {
       printf("Could not allocate space for battery RAM");
-      abort(); //return -1;
+      return -1;
    }
    return 0;
 }
@@ -138,7 +138,7 @@ static void rom_loadtrainer(unsigned char **rom, rominfo_t *rominfo)
    {
 //      fread(rominfo->sram + TRAINER_OFFSET, TRAINER_LENGTH, 1, fp);
       memcpy(rominfo->sram + TRAINER_OFFSET, *rom, TRAINER_LENGTH);
-      rom+=TRAINER_LENGTH;
+      *rom += TRAINER_LENGTH;
       log_printf("Read in trainer at $7000\n");
    }
 }
@@ -158,8 +158,8 @@ static int rom_loadrom(unsigned char **rom, rominfo_t *rominfo)
    }
    _fread(rominfo->rom, ROM_BANK_LENGTH, rominfo->rom_banks, fp);
 */
-   rominfo->rom=*rom;
-   *rom+=ROM_BANK_LENGTH*rominfo->rom_banks;
+   rominfo->rom = *rom;
+   *rom += ROM_BANK_LENGTH * rominfo->rom_banks;
 
 
    /* If there's VROM, allocate and stuff it in */
@@ -174,9 +174,8 @@ static int rom_loadrom(unsigned char **rom, rominfo_t *rominfo)
       }
       _fread(rominfo->vrom, VROM_BANK_LENGTH, rominfo->vrom_banks, fp);
 */
-      rominfo->vrom=*rom;
-      *rom+=VROM_BANK_LENGTH*rominfo->vrom_banks;
-
+      rominfo->vrom = *rom;
+      *rom += VROM_BANK_LENGTH * rominfo->vrom_banks;
    }
    else
    {
@@ -184,7 +183,7 @@ static int rom_loadrom(unsigned char **rom, rominfo_t *rominfo)
       if (NULL == rominfo->vram)
       {
          printf("Could not allocate space for VRAM");
-         abort(); //return -1;
+         return -1;
       }
    }
 
@@ -414,85 +413,3 @@ void rom_free(rominfo_t **rominfo)
 
    gui_sendmsg(GUI_GREEN, "ROM freed");
 }
-
-/*
-** $Log: nes_rom.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.8  2000/11/21 13:28:40  matt
-** take care to zero allocated mem
-**
-** Revision 1.7  2000/11/09 14:07:28  matt
-** state load fixed, state save mostly fixed
-**
-** Revision 1.6  2000/10/28 14:24:54  matt
-** where did I put that underscore?
-**
-** Revision 1.5  2000/10/27 12:56:35  matt
-** api change for ppu palette functions
-**
-** Revision 1.4  2000/10/26 22:51:44  matt
-** correct NULL filename handling
-**
-** Revision 1.3  2000/10/25 01:23:08  matt
-** basic system autodetection
-**
-** Revision 1.2  2000/10/25 00:23:16  matt
-** makefiles updated for new directory structure
-**
-** Revision 1.1  2000/10/24 12:20:28  matt
-** changed directory structure
-**
-** Revision 1.19  2000/10/21 14:35:58  matt
-** typo
-**
-** Revision 1.18  2000/10/17 03:22:37  matt
-** cleaning up rom module
-**
-** Revision 1.17  2000/10/10 13:58:13  matt
-** stroustrup squeezing his way in the door
-**
-** Revision 1.16  2000/10/10 13:03:54  matt
-** Mr. Clean makes a guest appearance
-**
-** Revision 1.15  2000/07/31 04:28:46  matt
-** one million cleanups
-**
-** Revision 1.14  2000/07/30 04:31:26  matt
-** automagic loading of the nofrendo intro
-**
-** Revision 1.13  2000/07/25 02:20:58  matt
-** cleanups
-**
-** Revision 1.12  2000/07/20 01:53:27  matt
-** snprintf() ain't no standard function, eh?
-**
-** Revision 1.11  2000/07/19 16:06:54  neil
-** little error fixed (tempinfo vs rominfo->info)
-**
-** Revision 1.10  2000/07/19 15:59:39  neil
-** PATH_MAX, strncpy, snprintf, and strncat are our friends
-**
-** Revision 1.9  2000/07/17 01:52:27  matt
-** made sure last line of all source files is a newline
-**
-** Revision 1.8  2000/07/06 16:47:50  matt
-** new ppu palette setting calls
-**
-** Revision 1.7  2000/07/05 23:21:54  neil
-** fclose(fp) should not be done if fp == NULL
-**
-** Revision 1.6  2000/07/04 04:45:14  matt
-** changed include
-**
-** Revision 1.5  2000/06/26 04:56:10  matt
-** minor cleanup
-**
-** Revision 1.4  2000/06/09 15:12:25  matt
-** initial revision
-**
-*/
