@@ -39,6 +39,7 @@ extern mapintf_t map85_intf;
 extern mapintf_t map87_intf;
 extern mapintf_t map94_intf;
 extern mapintf_t map99_intf;
+extern mapintf_t map228_intf;
 extern mapintf_t map231_intf;
 
 /* implemented mapper interfaces */
@@ -79,6 +80,7 @@ static const mapintf_t *mappers[] =
     &map87_intf,
     &map94_intf,
     &map99_intf,
+    &map228_intf,
     &map231_intf,
     NULL
 };

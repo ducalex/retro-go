@@ -245,11 +245,9 @@ mmc_t *mmc_create(rominfo_t *rominfo)
          return NULL; /* Should *never* happen */
    }
 
-   temp = malloc(sizeof(mmc_t));
+   temp = calloc(sizeof(mmc_t), 1);
    if (NULL == temp)
       return NULL;
-
-   memset(temp, 0, sizeof(mmc_t));
 
    temp->intf = *map_ptr;
    temp->cart = rominfo;
