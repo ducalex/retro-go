@@ -92,7 +92,7 @@ static const byte* IRAM_ATTR get_patpix(int i, int x)
 
 	int j;
 	int a, c;
-	const byte* const vram = lcd.vbank[0];
+	const byte* vram = lcd.vbank[0];
 
 	switch (rotation)
 	{
@@ -632,10 +632,8 @@ void IRAM_ATTR lcd_refreshline()
 		fb.dirty = 0;
 	}
 
-	byte *dest = vdest;
-
 	int cnt = 160;
-	un16* dst = (un16*)dest;
+	un16* dst = (un16*)vdest;
 	byte* src = BUF;
 
 	while (cnt--) *(dst++) = PAL2[*(src++)];
@@ -668,6 +666,10 @@ static inline void updatepalette(int i)
 	b = (c >> 10) & 0x1f;
 
 	PAL2[i] = (r << 11) | (g << (5 + 1)) | (b);
+
+	if (fb.byteorder == 1) {
+		PAL2[i] = (PAL2[i] << 8) | (PAL2[i] >> 8);
+	}
 }
 
 inline void pal_write(int i, byte b)
@@ -702,7 +704,7 @@ void IRAM_ATTR pal_write_dmg(int i, int mapnum, byte d)
 
 inline void vram_write(int a, byte b)
 {
-	lcd.vbank[R_VBK&1][a] = b;
+	lcd.vbank[R_VBK & 1][a] = b;
 	if (a >= 0x1800) return;
 	// patdirty[((R_VBK&1)<<9)+(a>>4)] = 1;
 	// anydirty = 1;

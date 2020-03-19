@@ -71,7 +71,7 @@ void IRAM_ATTR lcdc_change(byte b)
 	{
 		R_LY = 0;
 		stat_change(2);
-		C = 40;
+		C = 40;  // Correct value seems to be 38
 		lcd_begin();
 	}
 }
@@ -167,7 +167,11 @@ void IRAM_ATTR lcdc_trans()
 				stat_change(1); /* -> vblank */
 				break;
 			}
-			hw_interrupt(0, IF_STAT); // Fix for Worms Armageddon
+
+			// Hack for Worms Armageddon
+			if (R_STAT == 0x48)
+				hw_interrupt(0, IF_STAT);
+
 			stat_change(2); /* -> search */
 			C += 40;
 			break;

@@ -19,7 +19,7 @@ struct fb
 	{
 		int l, r;
 	} cc[4];
-	int yuv;
+	int byteorder;
 	int enabled;
 	int dirty;
 };

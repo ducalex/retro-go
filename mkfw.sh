@@ -12,4 +12,4 @@ $mkfw "Retro-Go ($release)" assets/tile.raw \
 	0 18 458752 gnuboy gnuboy-go/build/gnuboy-go.bin  \
 	0 19 917504 smsplusgx smsplusgx-go/build/smsplusgx-go.bin
 
-mv firmware.fw retro-go.fw
+mv firmware.fw retro-go_$release.fw

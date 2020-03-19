@@ -622,8 +622,9 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
             for (short x = 0, x_acc = ix_acc; x < width;)
             {
                 if (palette == NULL) {
-                    uint16_t sample = ((uint16_t*)buffer)[x];
-                    line_buffer[line_buffer_index++] = sample << 8 | sample >> 8;
+                    // uint16_t sample = ((uint16_t*)buffer)[x];
+                    // line_buffer[line_buffer_index++] = sample << 8 | sample >> 8;
+                    line_buffer[line_buffer_index++] = ((uint16_t*)buffer)[x];
                 } else {
                     line_buffer[line_buffer_index++] = palette[((uint8_t*)buffer)[x] & pixel_mask];
                 }

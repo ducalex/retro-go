@@ -302,6 +302,7 @@ void app_main(void)
   	fb.ptr = currentUpdate->buffer;
   	fb.enabled = 1;
   	fb.dirty = 0;
+    fb.byteorder = 1;
 
     // Audio
     memset(&pcm, 0, sizeof(pcm));
@@ -323,7 +324,7 @@ void app_main(void)
     {
         LoadState();
     }
-
+int frames = 0;
     while (true)
     {
         odroid_gamepad_state joystick;
@@ -339,6 +340,13 @@ void app_main(void)
             };
             odroid_overlay_game_settings_menu(options, 2);
         }
+        // if (frames == 0 && joystick.values[ODROID_INPUT_START]) {
+        //     frames = 1;
+        // }
+        // if (frames > 0 && ++frames == 15)
+        // {
+        //     debug_trace = 1;
+        // }
 
         uint startTime = xthal_get_ccount();
 

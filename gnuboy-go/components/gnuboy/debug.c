@@ -575,7 +575,6 @@ void debug_disassemble(addr a, int c)
 	static char mnemonic[256];
 	static char *pattern;
 
-	if (!debug_trace) return;
 	while (c > 0)
 	{
 		k = 0;
