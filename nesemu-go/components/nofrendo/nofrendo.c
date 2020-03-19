@@ -95,7 +95,12 @@ int nofrendo_start(const char *filename, int region)
 
    if (region == NES_AUTO)
    {
-      if (strstr(filename, "(E)") != NULL || strstr(filename, "(A)") != NULL)
+      if (
+         strstr(filename, "(E)") != NULL ||
+         strstr(filename, "(Europe)") != NULL ||
+         strstr(filename, "(A)") != NULL ||
+         strstr(filename, "(Australia)") != NULL
+      )
          region = NES_PAL;
       else
          region = NES_NTSC;
