@@ -24,15 +24,11 @@ struct cpu
 	int serial;
 };
 
+extern int debug_trace;
 extern struct cpu cpu;
 
-
-void cpu_timers(int cnt);
 void cpu_reset();
-int cpu_emulate(int cycles); /* NOTE there may be an ASM version of that */
-
-void div_advance(int cnt);
-void timer_advance(int cnt);
-void sound_advance(int cnt);
+int  cpu_emulate(int cycles);
+void cpu_timers(int cnt);
 
 #endif

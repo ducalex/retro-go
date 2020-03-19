@@ -11,10 +11,18 @@
 
 extern int gui_themes_count;
 
+static retro_emulator_t *emu = NULL;
+
 static bool show_empty = true;
 static int  show_cover = 1;
 static int  selected_emu = 0;
 static int  theme = 0;
+
+static void redraw_screen()
+{
+    gui_header_draw(emu);
+    gui_list_draw(emu, theme);
+}
 
 static bool font_size_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
@@ -22,10 +30,12 @@ static bool font_size_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t e
     if (event == ODROID_DIALOG_PREV) {
         if (--font_size < 1) font_size = 1;
         odroid_overlay_set_font_size(font_size);
+        redraw_screen();
     }
     if (event == ODROID_DIALOG_NEXT) {
         if (++font_size > 2) font_size = 2;
         odroid_overlay_set_font_size(font_size);
+        redraw_screen();
     }
     strcpy(option->value, font_size > 1 ? "Large" : "Small");
     return event == ODROID_DIALOG_ENTER;
@@ -63,10 +73,12 @@ static bool color_shift_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t
     if (event == ODROID_DIALOG_PREV) {
         if (--theme < 0) theme = 0;
         odroid_settings_int32_set("Theme", theme);
+        redraw_screen();
     }
     if (event == ODROID_DIALOG_NEXT) {
         if (++theme > max) theme = max;
         odroid_settings_int32_set("Theme", theme);
+        redraw_screen();
     }
     sprintf(option->value, "%d/%d", theme + 1, max + 1);
     return event == ODROID_DIALOG_ENTER;
@@ -100,7 +112,6 @@ static void save_config()
 
 void retro_loop()
 {
-    retro_emulator_t *emu = NULL;
     int debounce = 0;
     int last_key = -1;
     int selected_emu_last = -1;

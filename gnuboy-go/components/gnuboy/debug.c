@@ -556,12 +556,6 @@ static byte operand_count[256] =
 
 int debug_trace = 0;
 
-rcvar_t debug_exports[] =
-{
-	RCV_BOOL("trace", &debug_trace),
-	RCV_END
-};
-
 void debug_disassemble(addr a, int c)
 {
 #ifdef GNUBOY_DISABLE_DEBUG_DISASSEMBLE

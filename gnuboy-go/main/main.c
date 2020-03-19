@@ -324,7 +324,9 @@ void app_main(void)
     {
         LoadState();
     }
-int frames = 0;
+
+    int delayFrames = 0;
+
     while (true)
     {
         odroid_gamepad_state joystick;
@@ -340,10 +342,10 @@ int frames = 0;
             };
             odroid_overlay_game_settings_menu(options, 2);
         }
-        // if (frames == 0 && joystick.values[ODROID_INPUT_START]) {
-        //     frames = 1;
+        // if (delayFrames == 0 && joystick.values[ODROID_INPUT_START]) {
+        //     delayFrames = 1;
         // }
-        // if (frames > 0 && ++frames == 15)
+        // if (delayFrames > 0 && ++delayFrames == 15)
         // {
         //     debug_trace = 1;
         // }

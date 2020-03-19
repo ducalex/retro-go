@@ -184,10 +184,6 @@ label: op(b); break;
 
 
 
-
-
-
-
 #define JR ( PC += 1+(n8)readb(PC) )
 #define JP ( PC = readw(PC) )
 
@@ -310,7 +306,16 @@ inline void sound_advance(int cnt)
 	cpu.sound += cnt;
 }
 
-extern int debug_trace;
+/* cnt - time to emulate, expressed in 2MHz units */
+void cpu_timers(int cnt)
+{
+	cnt <<= 1;
+	timer_advance(cnt);
+	serial_advance(cnt);
+	cnt >>= cpu.speed;
+	lcdc_advance(cnt);
+	sound_advance(cnt);
+}
 
 /* cpu_emulate()
 	Emulate CPU for time no less than specified
