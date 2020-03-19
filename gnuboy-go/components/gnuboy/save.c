@@ -55,9 +55,9 @@ struct svar svars[] =
 	I4("spd ", &cpu.speed),
 	I4("halt", &cpu.halt),
 	I4("div ", &cpu.div),
-	I4("tim ", &cpu.tim),
+	I4("tim ", &cpu.timer),
 	I4("lcdc", &cpu.lcdc),
-	I4("snd ", &cpu.snd),
+	I4("snd ", &cpu.sound),
 
 	I1("ints", &hw.ilines),
 	I1("pad ", &hw.pad),

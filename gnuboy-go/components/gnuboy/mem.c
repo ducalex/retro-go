@@ -9,6 +9,7 @@
 #include "mem.h"
 #include "rtc.h"
 #include "lcd.h"
+#include "cpu.h"
 #include "sound.h"
 #include "loader.h"
 
@@ -143,13 +144,10 @@ inline void ioreg_write(byte r, byte b)
 		pad_refresh();
 		break;
 	case RI_SC:
-		/* FIXME - this is a hack for stupid roms that probe serial */
 		if ((b & 0x81) == 0x81)
-		{
-			R_SB = 0xff;
-			hw_interrupt(IF_SERIAL, IF_SERIAL);
-			hw_interrupt(0, IF_SERIAL);
-		}
+			cpu.serial = 488; // 8 * 122 / 2
+		else
+			cpu.serial = 0;
 		R_SC = b; /* & 0x7f; */
 		break;
 	case RI_SB:
@@ -226,12 +224,9 @@ inline byte ioreg_read(byte r)
 {
 	switch(r)
 	{
-	case RI_SC:
-		r = R_SC;
-		R_SC &= 0x7f;
-		return r;
-	case RI_P1:
 	case RI_SB:
+	case RI_SC:
+	case RI_P1:
 	case RI_DIV:
 	case RI_TIMA:
 	case RI_TMA:

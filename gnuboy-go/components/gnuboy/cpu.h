@@ -12,12 +12,16 @@ union reg
 struct cpu
 {
 	union reg pc, sp, bc, de, hl, af;
+
 	int ime, ima;
 	int speed;
 	int halt;
-	int div, tim;
+
+	// Timers/counters
+	int div, timer;
 	int lcdc;
-	int snd;
+	int sound;
+	int serial;
 };
 
 extern struct cpu cpu;

@@ -164,9 +164,9 @@ void IRAM_ATTR sound_mix()
 {
 	int s, l, r, f, n;
 
-	if (!RATE || cpu.snd < RATE) return;
+	if (!RATE || cpu.sound < RATE) return;
 
-	for (; cpu.snd >= RATE; cpu.snd -= RATE)
+	for (; cpu.sound >= RATE; cpu.sound -= RATE)
 	{
 		l = r = 0;
 
