@@ -18,14 +18,6 @@ struct rom rom;
 struct ram ram;
 
 
-inline byte *bank_ptr(short bank)
-{
-	if (rom.bank[bank] == NULL) {
-		rom_loadbank(bank);
-	}
-	return rom.bank[bank];
-}
-
 /*
  * In order to make reads and writes efficient, we keep tables
  * (indexed by the high nibble of the address) specifying which
@@ -43,7 +35,10 @@ void IRAM_ATTR mem_updatemap()
 	mbc.rombank &= (mbc.romsize - 1);
 	mbc.rambank &= (mbc.ramsize - 1);
 
-	rom.bank[mbc.rombank] = bank_ptr(mbc.rombank);
+	if (rom.bank[mbc.rombank] == NULL)
+	{
+		rom_loadbank(mbc.rombank);
+	}
 
 	memset(mbc.rmap, 0, sizeof(mbc.rmap));
 	memset(mbc.wmap, 0, sizeof(mbc.wmap));

@@ -50,6 +50,7 @@ extern struct ram ram;
 void mem_updatemap();
 void mem_write(word a, byte b);
 byte mem_read(word a);
+// void mbc_write(int a, byte b);
 void mbc_reset();
 
 inline static byte readb(word a)

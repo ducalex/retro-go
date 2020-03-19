@@ -5,9 +5,8 @@
 
 union reg
 {
-	byte b[2][2];
-	word w[2];
-	un32 d; /* padding for alignment, carry */
+	byte b[2];
+	word w;
 };
 
 struct cpu

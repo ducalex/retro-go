@@ -5,10 +5,9 @@
 #include "defs.h"
 #include "cpu.h"
 
-#define LB(r) ((r).b[LO][LO])
-#define HB(r) ((r).b[LO][HI])
-#define W(r) ((r).w[LO])
-#define DW(r) ((r).d)
+#define LB(r) ((r).b[LO])
+#define HB(r) ((r).b[HI])
+#define W(r) ((r).w)
 
 #define A HB(cpu.af)
 #define F LB(cpu.af)
@@ -26,14 +25,6 @@
 
 #define PC W(cpu.pc)
 #define SP W(cpu.sp)
-
-#define xAF DW(cpu.af)
-#define xBC DW(cpu.bc)
-#define xDE DW(cpu.de)
-#define xHL DW(cpu.hl)
-
-#define xPC DW(cpu.pc)
-#define xSP DW(cpu.sp)
 
 #define IMA cpu.ima
 #define IME cpu.ime

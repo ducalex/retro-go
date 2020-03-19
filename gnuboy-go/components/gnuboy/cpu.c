@@ -18,8 +18,8 @@ struct cpu cpu;
 #define CFLAG(n) ( (n) ? 0 : FC )
 
 
-#define PUSH(w) ( (SP -= 2), (writew(xSP, (w))) )
-#define POP(w) ( ((w) = readw(xSP)), (SP += 2) )
+#define PUSH(w) ( (SP -= 2), (writew(SP, (w))) )
+#define POP(w) ( ((w) = readw(SP)), (SP += 2) )
 
 
 #define FETCH (readb(PC++))
@@ -50,23 +50,11 @@ F = (ZFLAG(LB(acc))) \
 A = LB(acc); }
 
 #define ADDW(n) { \
-DW(acc) = (un32)HL + (un32)(n); \
-F = (F & (FZ)) \
-| (FH & ((H ^ ((n)>>8) ^ HB(acc)) << 1)) \
-| (acc.b[HI][LO] << 4); \
-HL = W(acc); }
-
-#define ADDSP(n) { \
-DW(acc) = (un32)SP + (un32)(n8)(n); \
-F = (FH & (((SP>>8) ^ ((n)>>8) ^ HB(acc)) << 1)) \
-| (acc.b[HI][LO] << 4); \
-SP = W(acc); }
-
-#define LDHLSP(n) { \
-DW(acc) = (un32)SP + (un32)(n8)(n); \
-F = (FH & (((SP>>8) ^ ((n)>>8) ^ HB(acc)) << 1)) \
-| (acc.b[HI][LO] << 4); \
-HL = W(acc); }
+temp = (un32)HL + (un32)(n); \
+F &= FZ; \
+if (0xFFFF - (n) < HL) F |= FC; \
+if ((HL & 0xFFF) + ((n) & 0xFFF) > 0xFFF) F |= FH; \
+HL = temp; }
 
 #define CP(n) { \
 W(acc) = (un16)A - (un16)(n); \
@@ -320,7 +308,8 @@ int IRAM_ATTR cpu_emulate(int cycles)
 {
 	int clen, i = cycles;
 	byte op, cbop, b;
-	word temp;
+	// word temp;
+	int temp;
 	static union reg acc;
 
 next:
@@ -368,7 +357,7 @@ next:
 	case 0x45: /* LD B,L */
 		B = L; break;
 	case 0x46: /* LD B,(HL) */
-		B = readb(xHL); break;
+		B = readb(HL); break;
 	case 0x47: /* LD B,A */
 		B = A; break;
 
@@ -383,7 +372,7 @@ next:
 	case 0x4D: /* LD C,L */
 		C = L; break;
 	case 0x4E: /* LD C,(HL) */
-		C = readb(xHL); break;
+		C = readb(HL); break;
 	case 0x4F: /* LD C,A */
 		C = A; break;
 
@@ -398,7 +387,7 @@ next:
 	case 0x55: /* LD D,L */
 		D = L; break;
 	case 0x56: /* LD D,(HL) */
-		D = readb(xHL); break;
+		D = readb(HL); break;
 	case 0x57: /* LD D,A */
 		D = A; break;
 
@@ -413,7 +402,7 @@ next:
 	case 0x5D: /* LD E,L */
 		E = L; break;
 	case 0x5E: /* LD E,(HL) */
-		E = readb(xHL); break;
+		E = readb(HL); break;
 	case 0x5F: /* LD E,A */
 		E = A; break;
 
@@ -428,7 +417,7 @@ next:
 	case 0x65: /* LD H,L */
 		H = L; break;
 	case 0x66: /* LD H,(HL) */
-		H = readb(xHL); break;
+		H = readb(HL); break;
 	case 0x67: /* LD H,A */
 		H = A; break;
 
@@ -443,24 +432,24 @@ next:
 	case 0x6C: /* LD L,H */
 		L = H; break;
 	case 0x6E: /* LD L,(HL) */
-		L = readb(xHL); break;
+		L = readb(HL); break;
 	case 0x6F: /* LD L,A */
 		L = A; break;
 
 	case 0x70: /* LD (HL),B */
-		writeb(xHL, B); break;
+		writeb(HL, B); break;
 	case 0x71: /* LD (HL),C */
-		writeb(xHL, C); break;
+		writeb(HL, C); break;
 	case 0x72: /* LD (HL),D */
-		writeb(xHL, D); break;
+		writeb(HL, D); break;
 	case 0x73: /* LD (HL),E */
-		writeb(xHL, E); break;
+		writeb(HL, E); break;
 	case 0x74: /* LD (HL),H */
-		writeb(xHL, H); break;
+		writeb(HL, H); break;
 	case 0x75: /* LD (HL),L */
-		writeb(xHL, L); break;
+		writeb(HL, L); break;
 	case 0x77: /* LD (HL),A */
-		writeb(xHL, A); break;
+		writeb(HL, A); break;
 
 	case 0x78: /* LD A,B */
 		A = B; break;
@@ -475,34 +464,34 @@ next:
 	case 0x7D: /* LD A,L */
 		A = L; break;
 	case 0x7E: /* LD A,(HL) */
-		A = readb(xHL); break;
+		A = readb(HL); break;
 
 	case 0x01: /* LD BC,imm */
-		BC = readw(xPC); PC += 2; break;
+		BC = readw(PC); PC += 2; break;
 	case 0x11: /* LD DE,imm */
-		DE = readw(xPC); PC += 2; break;
+		DE = readw(PC); PC += 2; break;
 	case 0x21: /* LD HL,imm */
-		HL = readw(xPC); PC += 2; break;
+		HL = readw(PC); PC += 2; break;
 	case 0x31: /* LD SP,imm */
-		SP = readw(xPC); PC += 2; break;
+		SP = readw(PC); PC += 2; break;
 
 	case 0x02: /* LD (BC),A */
-		writeb(xBC, A); break;
+		writeb(BC, A); break;
 	case 0x0A: /* LD A,(BC) */
-		A = readb(xBC); break;
+		A = readb(BC); break;
 	case 0x12: /* LD (DE),A */
-		writeb(xDE, A); break;
+		writeb(DE, A); break;
 	case 0x1A: /* LD A,(DE) */
-		A = readb(xDE); break;
+		A = readb(DE); break;
 
 	case 0x22: /* LDI (HL),A */
-		writeb(xHL, A); HL++; break;
+		writeb(HL, A); HL++; break;
 	case 0x2A: /* LDI A,(HL) */
-		A = readb(xHL); HL++; break;
+		A = readb(HL); HL++; break;
 	case 0x32: /* LDD (HL),A */
-		writeb(xHL, A); HL--; break;
+		writeb(HL, A); HL--; break;
 	case 0x3A: /* LDD A,(HL) */
-		A = readb(xHL); HL--; break;
+		A = readb(HL); HL--; break;
 
 	case 0x06: /* LD B,imm */
 		B = FETCH; break;
@@ -517,14 +506,14 @@ next:
 	case 0x2E: /* LD L,imm */
 		L = FETCH; break;
 	case 0x36: /* LD (HL),imm */
-		b = FETCH; writeb(xHL, b); break;
+		writeb(HL, FETCH); break;
 	case 0x3E: /* LD A,imm */
 		A = FETCH; break;
 
 	case 0x08: /* LD (imm),SP */
-		writew(readw(xPC), SP); PC += 2; break;
+		writew(readw(PC), SP); PC += 2; break;
 	case 0xEA: /* LD (imm),A */
-		writeb(readw(xPC), A); PC += 2; break;
+		writeb(readw(PC), A); PC += 2; break;
 
 	case 0xE0: /* LDH (imm),A */
 		writeb(0xff00 + FETCH, A); break;
@@ -550,7 +539,7 @@ next:
 	case 0xF9: /* LD SP,HL */
 		SP = HL; break;
 	case 0xFA: /* LD A,(imm) */
-		A = readb(readw(xPC)); PC += 2; break;
+		A = readb(readw(PC)); PC += 2; break;
 
 		ALU_CASES(0x80, 0xC6, ADD, __ADD)
 		ALU_CASES(0x88, 0xCE, ADC, __ADC)
@@ -583,9 +572,9 @@ next:
 	case 0x2C: /* INC L */
 		INC(L); break;
 	case 0x34: /* INC (HL) */
-		b = readb(xHL);
+		b = readb(HL);
 		INC(b);
-		writeb(xHL, b);
+		writeb(HL, b);
 		break;
 	case 0x3C: /* INC A */
 		INC(A); break;
@@ -612,9 +601,9 @@ next:
 	case 0x2D: /* DEC L */
 		DEC(L); break;
 	case 0x35: /* DEC (HL) */
-		b = readb(xHL);
+		b = readb(HL);
 		DEC(b);
-		writeb(xHL, b);
+		writeb(HL, b);
 		break;
 	case 0x3D: /* DEC A */
 		DEC(A); break;
@@ -795,13 +784,13 @@ next:
 			CB_REG_CASES(L, 5);
 			CB_REG_CASES(A, 7);
 		default:
-			b = readb(xHL);
+			b = readb(HL);
 			switch(cbop)
 			{
 				CB_REG_CASES(b, 6);
 			}
 			if ((cbop & 0xC0) != 0x40) /* exclude BIT */
-				writeb(xHL, b);
+				writeb(HL, b);
 			break;
 		}
 		break;
