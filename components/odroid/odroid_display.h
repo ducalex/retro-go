@@ -67,12 +67,12 @@ typedef struct {
     void *buffer;        // Should match pixel_size
     uint16_t *palette;   //
     uint8_t pal_shift_mask;
-    odroid_line_diff diff[224];
+    odroid_line_diff diff[240];
 } odroid_video_frame;
 
 typedef struct {
     odroid_video_frame *frame;
-    odroid_line_diff diff[224];
+    odroid_line_diff diff[240];
     int8_t use_diff;
 } odroid_video_update;
 

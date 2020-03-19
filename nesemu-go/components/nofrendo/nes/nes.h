@@ -34,8 +34,6 @@
 #include "nes6502.h"
 #include <bitmap.h>
 
-/* Visible (NTSC) screen height */
-#define  NES_VISIBLE_HEIGHT   224
 #define  NES_SCREEN_WIDTH     256
 #define  NES_SCREEN_HEIGHT    240
 
@@ -70,6 +68,7 @@ typedef struct nes_s
    bitmap_t *vidbuf;
 
    region_t region;
+   short overscan;
 
    /* Timing stuff */
    short refresh_rate;

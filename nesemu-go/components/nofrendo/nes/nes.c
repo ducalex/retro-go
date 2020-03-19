@@ -53,8 +53,6 @@
 
 static const int NES_RAMSIZE = (0x800);
 
-static bitmap_t *primary_buffer = NULL;
-
 static nes_t nes;
 
 /* TODO: just asking for problems -- please remove */
@@ -515,6 +513,7 @@ nes_t *nes_create(region_t region)
    {
       machine->refresh_rate = 50;
       machine->scanlines = 312;
+      machine->overscan = 0;
       machine->cycles_per_line = 341.f * 5 / 16;
       printf("nes_create: System region: PAL\n");
    }
@@ -522,6 +521,7 @@ nes_t *nes_create(region_t region)
    {
       machine->refresh_rate = 60;
       machine->scanlines = 262;
+      machine->overscan = 8;
       machine->cycles_per_line = 341.f * 4 / 12;
       printf("nes_create: System region: NTSC\n");
    }

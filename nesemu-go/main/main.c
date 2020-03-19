@@ -26,9 +26,11 @@ static size_t romSize;
 
 static uint16_t myPalette[64];
 
-static odroid_video_frame update1 = {NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT, 0, 1, PIXEL_MASK, NULL, myPalette, 0};
-static odroid_video_frame update2 = {NES_SCREEN_WIDTH, NES_VISIBLE_HEIGHT, 0, 1, PIXEL_MASK, NULL, myPalette, 0};
+static odroid_video_frame update1 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, PIXEL_MASK, NULL, myPalette, 0};
+static odroid_video_frame update2 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, PIXEL_MASK, NULL, myPalette, 0};
 static odroid_video_frame *currentUpdate = &update1;
+
+static short overscan = -1;
 
 uint fullFrames = 0;
 
@@ -185,11 +187,15 @@ void osd_setpalette(rgb_t *pal)
 
 void IRAM_ATTR osd_blitscreen(bitmap_t *bmp)
 {
+   if (overscan < 0)
+   {
+      overscan = nes_getcontextptr()->overscan;
+      update1.height = update2.height = NES_SCREEN_HEIGHT - (overscan * 2);
+   }
+
    odroid_video_frame *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
-   // Flip the update struct so we can keep track of the changes in the last
-   // frame and fill in the new details (actually, these ought to always be
-   // the same...)
-   currentUpdate->buffer = bmp->line[8];
+
+   currentUpdate->buffer = bmp->line[overscan];
    currentUpdate->stride = bmp->pitch;
 
    if (odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL)

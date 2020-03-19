@@ -34,8 +34,8 @@
 #include <gui.h>
 #include <nes.h>
 
-static bitmap_t *primary_buffer = NULL;
 
+bitmap_t *primary_buffer;
 nes_t *console;
 
 
