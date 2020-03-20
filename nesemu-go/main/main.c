@@ -14,6 +14,8 @@
 #include <osd.h>
 #include "sdkconfig.h"
 
+#define APP_ID 10
+
 #define AUDIO_SAMPLERATE   32000
 
 #define PIXEL_MASK 0x3F
@@ -41,7 +43,7 @@ static int16_t *audioBuffer;
 void SaveState()
 {
    odroid_input_battery_monitor_enabled_set(0);
-   odroid_system_led_set(1);
+   odroid_system_set_led(1);
    odroid_display_lock();
 
    char* pathName = odroid_sdcard_get_savefile_path(romPath);
@@ -54,7 +56,7 @@ void SaveState()
    }
 
    odroid_display_unlock();
-   odroid_system_led_set(0);
+   odroid_system_set_led(0);
    odroid_input_battery_monitor_enabled_set(1);
 }
 
@@ -94,7 +96,7 @@ void QuitEmulator(bool save)
    }
 
    // Set menu application
-   odroid_system_application_set(0);
+   odroid_system_set_boot_app(0);
 
    // Reset
    esp_restart();
@@ -346,7 +348,7 @@ void app_main(void)
 {
 	printf("nesemu (%s-%s).\n", COMPILEDATE, GITREV);
 
-   odroid_system_init(2, AUDIO_SAMPLERATE, &romPath);
+   odroid_system_init(APP_ID, AUDIO_SAMPLERATE, &romPath);
 
    audioBuffer = calloc(AUDIO_SAMPLERATE / 50, 4);
    assert(audioBuffer != NULL);

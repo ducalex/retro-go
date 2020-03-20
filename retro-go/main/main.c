@@ -239,7 +239,7 @@ void retro_loop()
                 };
                 int sel = odroid_overlay_dialog("Retro-Go", choices, 5, 4);
                 if (sel == 1) {
-                    odroid_system_application_set(-16);
+                    odroid_system_set_boot_app(-16);
                     esp_restart();
                 }
                 selected_emu_last = -1;

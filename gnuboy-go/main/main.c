@@ -17,6 +17,8 @@
 
 #include "odroid_system.h"
 
+#define APP_ID 20
+
 #define AUDIO_SAMPLE_RATE (32000)
 // Note: Magic number obtained by adjusting until audio buffer overflows stop.
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 10 + 1)
@@ -121,7 +123,7 @@ void run_to_vblank()
 void SaveState()
 {
     odroid_input_battery_monitor_enabled_set(0);
-    odroid_system_led_set(1);
+    odroid_system_set_led(1);
     odroid_display_lock();
 
     char* pathName = odroid_sdcard_get_savefile_path(romPath);
@@ -145,7 +147,7 @@ void SaveState()
     free(pathName);
 
     odroid_display_unlock();
-    odroid_system_led_set(0);
+    odroid_system_set_led(0);
     odroid_input_battery_monitor_enabled_set(1);
 }
 
@@ -199,7 +201,7 @@ void QuitEmulator(bool save)
     }
 
     // Set menu application
-    odroid_system_application_set(0);
+    odroid_system_set_boot_app(0);
 
     // Reset
     esp_restart();
@@ -282,7 +284,7 @@ void app_main(void)
     audioBuffer    = heap_caps_calloc(AUDIO_BUFFER_LENGTH * 2, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
 
     // Init all the console hardware
-	odroid_system_init(1, AUDIO_SAMPLE_RATE, &romPath);
+	odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE, &romPath);
 
     assert(update1.buffer && update2.buffer);
     assert(audioBuffer);

@@ -42,6 +42,11 @@ void odroid_settings_init(int _app_id)
     app_id = _app_id;
 }
 
+void odroid_settings_set_app_id(int _app_id)
+{
+    app_id = _app_id;
+}
+
 char* odroid_settings_string_get(const char *key, char *default_value)
 {
     char* result = default_value;
@@ -102,14 +107,14 @@ void odroid_settings_int32_set(const char *key, int32_t value)
 int32_t odroid_settings_app_int32_get(const char *key, int32_t default_value)
 {
     char app_key[16];
-    sprintf(app_key, "%s.%d", key, app_id);
+    sprintf(app_key, "%.12s.%d", key, app_id);
     return odroid_settings_int32_get(app_key, default_value);
 }
 
 void odroid_settings_app_int32_set(const char *key, int32_t value)
 {
     char app_key[16];
-    sprintf(app_key, "%s.%d", key, app_id);
+    sprintf(app_key, "%.12s.%d", key, app_id);
     odroid_settings_int32_set(app_key, value);
 }
 

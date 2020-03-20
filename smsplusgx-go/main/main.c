@@ -6,6 +6,8 @@
 #include "../components/smsplus/shared.h"
 #include "odroid_system.h"
 
+#define APP_ID 30
+
 #define AUDIO_SAMPLE_RATE (32000)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 1)
 
@@ -45,7 +47,7 @@ void SaveState()
 {
     // Save sram
     odroid_input_battery_monitor_enabled_set(0);
-    odroid_system_led_set(1);
+    odroid_system_set_led(1);
     odroid_display_lock();
 
     char* pathName = odroid_sdcard_get_savefile_path(romPath);
@@ -69,7 +71,7 @@ void SaveState()
     free(pathName);
 
     odroid_display_unlock();
-    odroid_system_led_set(0);
+    odroid_system_set_led(0);
     odroid_input_battery_monitor_enabled_set(1);
 }
 
@@ -117,7 +119,7 @@ void QuitEmulator(bool save)
     }
 
     // Set menu application
-    odroid_system_application_set(0);
+    odroid_system_set_boot_app(0);
 
     // Reset
     esp_restart();
@@ -139,7 +141,7 @@ void app_main(void)
     audioBuffer     = heap_caps_calloc(AUDIO_BUFFER_LENGTH * 2, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
 
     // Init all the console hardware
-    odroid_system_init(3, AUDIO_SAMPLE_RATE, &romPath);
+    odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE, &romPath);
 
     assert(framebuffers[0] && framebuffers[1]);
     assert(audioBuffer);
@@ -178,13 +180,16 @@ void app_main(void)
     system_init2();
     system_reset();
 
+    consoleIsSMS = sms.console == CONSOLE_SMS || sms.console == CONSOLE_SMS2;
+    consoleIsGG  = sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS;
+
+    // if (consoleIsSMS) odroid_system_set_app_id(APP_ID + 1);
+    // if (consoleIsGG)  odroid_system_set_app_id(APP_ID + 2);
+
     if (startAction == ODROID_START_ACTION_RESUME)
     {
         LoadState();
     }
-
-    consoleIsSMS = sms.console == CONSOLE_SMS || sms.console == CONSOLE_SMS2;
-    consoleIsGG  = sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS;
 
     update1.width  = update2.width  = bitmap.viewport.w;
     update1.height = update2.height = bitmap.viewport.h;

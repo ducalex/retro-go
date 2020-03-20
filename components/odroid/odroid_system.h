@@ -11,11 +11,12 @@
 #include "stdbool.h"
 
 void odroid_system_init(int app_id, int sampleRate, char **romPath);
+void odroid_system_set_app_id(int appId);
 void odroid_system_panic(const char *reason);
 void odroid_system_halt();
 void odroid_system_sleep();
-void odroid_system_application_set(int slot);
-void odroid_system_led_set(int value);
+void odroid_system_set_boot_app(int slot);
+void odroid_system_set_led(int value);
 void odroid_system_gpio_init();
 
 extern ODROID_START_ACTION startAction;

@@ -28,7 +28,7 @@ void odroid_system_init(int appId, int sampleRate, char **romPath)
     if (bootState.values[ODROID_INPUT_MENU])
     {
         // Force return to menu to recover from ROM loading crashes
-        odroid_system_application_set(0);
+        odroid_system_set_boot_app(0);
         esp_restart();
     }
 
@@ -80,6 +80,12 @@ void odroid_system_init(int appId, int sampleRate, char **romPath)
     printf("odroid_system_init: System ready!\n");
 }
 
+void odroid_system_set_app_id(int appId)
+{
+    applicationId = appId;
+    odroid_settings_set_app_id(appId);
+}
+
 void odroid_system_gpio_init()
 {
     rtc_gpio_deinit(ODROID_GAMEPAD_IO_MENU);
@@ -100,7 +106,7 @@ void odroid_system_gpio_init()
     gpio_set_level(GPIO_NUM_26, 0);
 }
 
-void odroid_system_application_set(int slot)
+void odroid_system_set_boot_app(int slot)
 {
     const esp_partition_t* partition = esp_partition_find_first(
         ESP_PARTITION_TYPE_APP,
@@ -114,7 +120,7 @@ void odroid_system_application_set(int slot)
         esp_err_t err = esp_ota_set_boot_partition(partition);
         if (err != ESP_OK)
         {
-            printf("odroid_system_application_set: esp_ota_set_boot_partition failed.\n");
+            printf("odroid_system_set_boot_app: esp_ota_set_boot_partition failed.\n");
             abort();
         }
     }
@@ -137,7 +143,7 @@ void odroid_system_panic(const char *reason)
 
     // Here we should stop unecessary tasks
 
-    odroid_system_application_set(0);
+    odroid_system_set_boot_app(0);
 
     odroid_audio_terminate();
 
@@ -157,7 +163,7 @@ void odroid_system_halt()
     while (1);
 }
 
-void odroid_system_led_set(int value)
+void odroid_system_set_led(int value)
 {
     gpio_set_level(GPIO_NUM_2, value);
 }

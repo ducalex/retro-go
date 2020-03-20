@@ -23,6 +23,7 @@ typedef enum
 } ODROID_REGION;
 
 void odroid_settings_init(int app_id);
+void odroid_settings_set_app_id(int _app_id);
 
 int32_t odroid_settings_VRef_get();
 void odroid_settings_VRef_set(int32_t value);

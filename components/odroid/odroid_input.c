@@ -233,12 +233,12 @@ static void odroid_battery_monitor_task()
             if (battery_state.percentage < 2)
             {
                 led_state = !led_state;
-                odroid_system_led_set(led_state);
+                odroid_system_set_led(led_state);
             }
             else if (led_state)
             {
                 led_state = 0;
-                odroid_system_led_set(led_state);
+                odroid_system_set_led(led_state);
             }
         }
 

@@ -56,7 +56,7 @@ void odroid_netplay_init()
             netplay_mode = ODROID_NETPLAY_MODE_CLIENT;
             break;
         default:
-            odroid_system_application_set(0);
+            odroid_system_set_boot_app(0);
             esp_restart();
     }
 

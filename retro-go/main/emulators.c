@@ -138,6 +138,6 @@ void emulators_start_emu(retro_emulator_t *emu)
     odroid_display_clear(0);
     odroid_display_show_hourglass();
     odroid_settings_RomFilePath_set(file->path);
-    odroid_system_application_set(emu->partition);
+    odroid_system_set_boot_app(emu->partition);
     esp_restart();
 }
