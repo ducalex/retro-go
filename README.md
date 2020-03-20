@@ -15,6 +15,7 @@ Retro-Go is composed of a launcher and several emulators.
 - More scaling options
 - Bilinear filtering
 - NES color palettes
+- NES PAL support
 - Smoother performance
 - Better compatibility
 - Fastforward

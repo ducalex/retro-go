@@ -298,7 +298,7 @@ void osd_getinput(void)
    else if (joystick.values[ODROID_INPUT_VOLUME]) {
       odroid_dialog_choice_t options[] = {
             {100, "Palette", "Default", 1, &palette_update_cb},
-            {101, "", "", -1, NULL},
+            // {101, "", "", -1, NULL},
             {101, "More...", "", 1, &advanced_settings_cb},
       };
       odroid_overlay_game_settings_menu(options, sizeof(options) / sizeof(options[0]));

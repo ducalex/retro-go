@@ -371,26 +371,6 @@ static bool audio_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_
     return event == ODROID_DIALOG_ENTER;
 }
 
-static bool display_mode_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
-{
-    int8_t max = ODROID_DISPLAY_UPDATE_COUNT - 1;
-    int8_t prev = displayUpdateMode;
-
-    if (event == ODROID_DIALOG_PREV && --displayUpdateMode < 0) displayUpdateMode = 0;    // max;
-    if (event == ODROID_DIALOG_NEXT && ++displayUpdateMode > max) displayUpdateMode = max; // 0;
-
-    if (displayUpdateMode != prev) {
-        odroid_settings_DisplayUpdateMode_set(displayUpdateMode);
-        forceVideoRefresh = true;
-    }
-
-    if (displayUpdateMode == ODROID_DISPLAY_UPDATE_AUTO)    strcpy(option->value, "Auto");
-    if (displayUpdateMode == ODROID_DISPLAY_UPDATE_FULL)    strcpy(option->value, "Full");
-    if (displayUpdateMode == ODROID_DISPLAY_UPDATE_PARTIAL) strcpy(option->value, "Partial");
-
-    return event == ODROID_DIALOG_ENTER;
-}
-
 static bool filter_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
     int8_t max = ODROID_DISPLAY_FILTER_COUNT - 1;
@@ -468,10 +448,9 @@ int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options, int extr
 
 int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options, int extra_options_count)
 {
-    odroid_dialog_choice_t options[12] = {
+    static odroid_dialog_choice_t options[12] = {
         {10, "Scaling", "Full", 1, &scaling_update_cb},
         {12, "Filtering", "None", 1, &filter_update_cb}, // Interpolation
-        // {11, "Update Mode", "Auto", 1, &display_mode_update_cb},
         {13, "Speed", "1x", 1, &speedup_update_cb},
         // {14, "", "", 1, NULL},
     };
@@ -496,26 +475,26 @@ int odroid_overlay_game_menu()
     odroid_display_lock();
     wait_all_keys_released();
 
-    odroid_dialog_choice_t choices[] = {
-        {0, "Continue", "",  1, NULL},
-        {3, "Save & Continue", "",  1, NULL},
-        {4, "Save & Quit", "", 1, NULL},
-        {2, "Reload", "", 1, NULL},
-        {5, "Quit", "", 1, NULL},
+    static odroid_dialog_choice_t choices[] = {
+        // {0, "Continue", "",  1, NULL},
+        {10, "Save & Continue", "",  1, NULL},
+        {20, "Save & Quit", "", 1, NULL},
+        {30, "Reload", "", 1, NULL},
+        // {40, "Netplay", "", 1, NULL},
+        {50, "Quit", "", 1, NULL},
     };
 
     int r = odroid_overlay_dialog("Retro-Go", choices, sizeof(choices) / sizeof(choices[0]), 0);
     odroid_display_unlock();
 
-    if (r == 2) {
-        // LoadState();
-        esp_restart();
-    } else if (r == 3) {
-        SaveState();
-    } else if (r == 4) {
-        QuitEmulator(true);
-    } else if (r == 5) {
-        QuitEmulator(false);
+    switch (r)
+    {
+        case 10: SaveState(); break;
+        case 20: QuitEmulator(true); break;
+        // case 30: LoadState(); break;
+        case 30: esp_restart(); break;
+        // case 40: odroid_netplay_init(); break;
+        case 50: QuitEmulator(false); break;
     }
 
     return r;

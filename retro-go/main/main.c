@@ -28,12 +28,12 @@ static bool font_size_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t e
 {
     int font_size = odroid_settings_int32_get("FontSize", 1);
     if (event == ODROID_DIALOG_PREV) {
-        if (--font_size < 1) font_size = 1;
+        if (--font_size < 1) font_size = 2;
         odroid_overlay_set_font_size(font_size);
         redraw_screen();
     }
     if (event == ODROID_DIALOG_NEXT) {
-        if (++font_size > 2) font_size = 2;
+        if (++font_size > 2) font_size = 1;
         odroid_overlay_set_font_size(font_size);
         redraw_screen();
     }
@@ -54,11 +54,11 @@ static bool hide_empty_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t 
 static bool show_cover_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
     if (event == ODROID_DIALOG_PREV) {
-        if (--show_cover < 0) show_cover = 0;
+        if (--show_cover < 0) show_cover = 2;
         odroid_settings_int32_set("ShowCover", show_cover);
     }
     if (event == ODROID_DIALOG_NEXT) {
-        if (++show_cover > 2) show_cover = 2;
+        if (++show_cover > 2) show_cover = 0;
         odroid_settings_int32_set("ShowCover", show_cover);
     }
     if (show_cover == 0) strcpy(option->value, "No");
@@ -71,12 +71,12 @@ static bool color_shift_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t
 {
     int max = gui_themes_count - 1;
     if (event == ODROID_DIALOG_PREV) {
-        if (--theme < 0) theme = 0;
+        if (--theme < 0) theme = max;
         odroid_settings_int32_set("Theme", theme);
         redraw_screen();
     }
     if (event == ODROID_DIALOG_NEXT) {
-        if (++theme > max) theme = max;
+        if (++theme > max) theme = 0;
         odroid_settings_int32_set("Theme", theme);
         redraw_screen();
     }

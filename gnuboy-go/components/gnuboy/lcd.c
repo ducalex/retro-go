@@ -732,6 +732,11 @@ void pal_set(int palette)
 	pal_dirty();
 }
 
+int pal_get()
+{
+	return current_palette;
+}
+
 void pal_dirty()
 {
 	int i;

@@ -205,13 +205,14 @@ void QuitEmulator(bool save)
     esp_restart();
 }
 
-bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
-    int pal = odroid_settings_Palette_get();
+    int pal = pal_get();
     int max = 7;
 
     if (event == ODROID_DIALOG_PREV) {
-        pal = pal > 0 ? pal - 1 : max;    }
+        pal = pal > 0 ? pal - 1 : max;
+    }
 
     if (event == ODROID_DIALOG_NEXT) {
         pal = pal < max ? pal + 1 : 0;
@@ -231,7 +232,7 @@ bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t eve
 }
 
 
-bool rtc_t_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+static bool rtc_t_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
     if (option->id == 'd') {
         if (event == ODROID_DIALOG_PREV && --rtc.d < 0) rtc.d = 364;
@@ -256,14 +257,14 @@ bool rtc_t_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event
     return event == ODROID_DIALOG_ENTER;
 }
 
-bool rtc_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+static bool rtc_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
     if (event == ODROID_DIALOG_ENTER) {
-        odroid_dialog_choice_t choices[] = {
+        static odroid_dialog_choice_t choices[] = {
             {'d', "Day", "000", 1, &rtc_t_update_cb},
             {'h', "Hour", "00", 1, &rtc_t_update_cb},
-            {'m', "Min", "00", 1, &rtc_t_update_cb},
-            {'s', "Sec", "00", 1, &rtc_t_update_cb},
+            {'m', "Min",  "00", 1, &rtc_t_update_cb},
+            {'s', "Sec",  "00", 1, &rtc_t_update_cb},
         };
         odroid_overlay_dialog("Set Clock", choices, 4, 0);
     }

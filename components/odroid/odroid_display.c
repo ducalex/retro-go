@@ -50,7 +50,6 @@ static int8_t backlightLevels[] = {10, 25, 50, 75, 100};
 static int8_t backlightLevel = ODROID_BACKLIGHT_LEVEL2;
 
 volatile int8_t displayScalingMode = ODROID_DISPLAY_SCALING_FILL;
-volatile int8_t displayUpdateMode = ODROID_DISPLAY_UPDATE_AUTO;
 volatile int8_t displayFilterMode = ODROID_DISPLAY_FILTER_NONE;
 volatile int8_t forceVideoRefresh = true;
 
@@ -686,11 +685,6 @@ static inline int frame_diff(odroid_video_frame *frame, odroid_video_frame *prev
 
     int partial_update_remaining = frame->width * frame->height * FULL_UPDATE_THRESHOLD;
 
-    if (displayUpdateMode == ODROID_DISPLAY_UPDATE_PARTIAL) // force partial update
-    {
-        partial_update_remaining = SCREEN_HEIGHT * SCREEN_WIDTH;
-    }
-
     uint32_t u32_pixel_mask = (pixel_mask << 24)|(pixel_mask << 16)|(pixel_mask << 8)|pixel_mask;
     uint16_t u32_blocks = (frame->width * frame->pixel_size / 4);
     uint16_t u32_pixels = 4 / frame->pixel_size;
@@ -964,8 +958,7 @@ void IRAM_ATTR odroid_display_write_frame(odroid_video_frame *frame)
 short IRAM_ATTR odroid_display_queue_update(odroid_video_frame *frame, odroid_video_frame *previousFrame)
 {
     // uint startTime = xthal_get_ccount();
-    bool doPartialUpdate = displayUpdateMode != ODROID_DISPLAY_UPDATE_FULL
-                        && previousFrame != NULL && !forceVideoRefresh;
+    bool doPartialUpdate = previousFrame != NULL && !forceVideoRefresh;
 
     short linesChanged = 0;
 
@@ -1138,7 +1131,6 @@ void odroid_display_init()
     backlightLevel = odroid_settings_Backlight_get();
     displayScalingMode = odroid_settings_DisplayScaling_get();
     displayFilterMode = odroid_settings_DisplayFilter_get();
-    // displayUpdateMode = odroid_settings_DisplayUpdateMode_get();
 
     display_mutex = xSemaphoreCreateMutex();
 

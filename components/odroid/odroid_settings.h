@@ -54,9 +54,6 @@ void odroid_settings_Palette_set(int32_t value);
 int32_t odroid_settings_DisplayScaling_get();
 void odroid_settings_DisplayScaling_set(int32_t value);
 
-int32_t odroid_settings_DisplayUpdateMode_get();
-void odroid_settings_DisplayUpdateMode_set(int32_t value);
-
 int32_t odroid_settings_DisplayFilter_get();
 void odroid_settings_DisplayFilter_set(int32_t value);
 

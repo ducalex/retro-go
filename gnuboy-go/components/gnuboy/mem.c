@@ -145,7 +145,7 @@ inline void ioreg_write(byte r, byte b)
 		break;
 	case RI_SC:
 		if ((b & 0x81) == 0x81)
-			cpu.serial = 488; // 8 * 122 / 2
+			cpu.serial = 1952; // 8 * 122us;
 		else
 			cpu.serial = 0;
 		R_SC = b; /* & 0x7f; */

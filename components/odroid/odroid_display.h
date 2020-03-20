@@ -36,14 +36,6 @@ typedef enum
 
 typedef enum
 {
-    ODROID_DISPLAY_UPDATE_AUTO = 0,
-    ODROID_DISPLAY_UPDATE_FULL,
-    ODROID_DISPLAY_UPDATE_PARTIAL,
-    ODROID_DISPLAY_UPDATE_COUNT,
-} odroid_display_update_mode;
-
-typedef enum
-{
     ODROID_DISPLAY_FILTER_NONE = 0x0,
     ODROID_DISPLAY_FILTER_LINEAR_X = 0x1,
     ODROID_DISPLAY_FILTER_LINEAR_Y = 0x2,
@@ -77,7 +69,6 @@ typedef struct {
 } odroid_video_update;
 
 extern volatile int8_t displayScalingMode;
-extern volatile int8_t displayUpdateMode;
 extern volatile int8_t displayFilterMode;
 extern volatile int8_t forceVideoRefresh;
 
