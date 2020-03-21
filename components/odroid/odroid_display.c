@@ -144,7 +144,7 @@ DRAM_ATTR static const ili_init_cmd_t ili_init_cmds[] = {
 
 static inline void odroid_display_lock_fast()
 {
-    if (xSemaphoreTake(display_mutex, portMAX_DELAY) != pdPASS)
+    if (xSemaphoreTake(display_mutex, 10000 / portTICK_RATE_MS) != pdPASS)
         abort();
 }
 
@@ -440,6 +440,8 @@ static void ili9341_deinit()
 
 void ili9341_clear_screen(uint16_t color)
 {
+    odroid_display_lock_fast();
+
     short lines_per_buffer = SPI_TRANSACTION_BUFFER_LENGTH / SCREEN_WIDTH;
 
     send_reset_drawing(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -461,6 +463,8 @@ void ili9341_clear_screen(uint16_t color)
     {
         send_continue_line(spi_get_buffer(), SCREEN_WIDTH, lines_per_buffer);
     }
+
+    odroid_display_unlock();
 }
 
 void ili9341_write_frame_rectangleLE(short left, short top, short width, short height, uint16_t* buffer)
@@ -470,13 +474,15 @@ void ili9341_write_frame_rectangleLE(short left, short top, short width, short h
     if (left < 0 || top < 0) abort();
     if (width < 1 || height < 1) abort();
 
-    send_reset_drawing(left, top, width, height);
-
     if (buffer == NULL)
     {
         ili9341_clear_screen(C_BLACK);
         return;
     }
+
+    odroid_display_lock_fast();
+
+    send_reset_drawing(left, top, width, height);
 
     for (y = 0; y < height; y++)
     {
@@ -490,6 +496,8 @@ void ili9341_write_frame_rectangleLE(short left, short top, short width, short h
 
         send_continue_line(line_buffer, width, 1);
     }
+
+    odroid_display_unlock();
 }
 
 static uint16_t Blend(uint16_t a, uint16_t b)
@@ -1000,9 +1008,7 @@ void IRAM_ATTR odroid_display_drain_spi()
 
 void odroid_display_clear(uint16_t color)
 {
-    odroid_display_lock_fast();
     ili9341_clear_screen(color);
-    odroid_display_unlock();
 }
 
 void odroid_display_show_error(int errNum)
@@ -1033,16 +1039,11 @@ void odroid_display_show_hourglass()
         image_hourglass_empty_black_48dp.width,
         image_hourglass_empty_black_48dp.height,
         image_hourglass_empty_black_48dp.pixel_data);
-    odroid_display_drain_spi();
 }
 
 void odroid_display_lock()
 {
-    if (xSemaphoreTake(display_mutex, 1000 / portTICK_RATE_MS) != pdTRUE)
-    {
-        abort();
-    }
-
+    odroid_display_lock_fast();
     // Wait for all transactions to finish before returning the lock
     // This is mostly for locks requested by SD Card-related code
     odroid_display_drain_spi();
@@ -1051,7 +1052,6 @@ void odroid_display_lock()
 void odroid_display_unlock()
 {
     // odroid_display_drain_spi();
-
     xSemaphoreGive(display_mutex);
 }
 

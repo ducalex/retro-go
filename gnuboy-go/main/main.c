@@ -173,10 +173,7 @@ static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
     if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
         odroid_settings_Palette_set(pal);
         pal_set(pal);
-        // This is less than ideal, but it works for now
-        odroid_display_unlock();
         run_to_vblank();
-        odroid_display_lock();
     }
 
     sprintf(option->value, "%d/%d", pal, max);

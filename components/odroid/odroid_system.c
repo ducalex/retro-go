@@ -112,22 +112,22 @@ bool odroid_system_load_state(int slot)
     if (!romPath)
         odroid_system_panic("Emulator not initialized");
 
-    odroid_display_lock();
     odroid_display_show_hourglass();
+    odroid_display_lock();
 
-    char* pathName = odroid_sdcard_get_savefile_path(romPath);
-    if (!pathName) abort();
+    char *pathName = odroid_sdcard_get_savefile_path(romPath);
+    bool success = LoadState(pathName);
 
-    if (!LoadState(pathName))
+    odroid_display_unlock();
+
+    if (!success)
     {
         printf("odroid_system_load_state: Load failed!\n");
     }
 
     free(pathName);
 
-    odroid_display_unlock();
-
-    return true;
+    return success;
 }
 
 bool odroid_system_save_state(int slot)
@@ -137,13 +137,17 @@ bool odroid_system_save_state(int slot)
 
     odroid_input_battery_monitor_enabled_set(0);
     odroid_system_set_led(1);
-    odroid_display_lock();
     odroid_display_show_hourglass();
+    odroid_display_lock();
 
-    char* pathName = odroid_sdcard_get_savefile_path(romPath);
-    if (!pathName) abort();
+    char *pathName = odroid_sdcard_get_savefile_path(romPath);
+    bool success = SaveState(pathName);
 
-    if (!SaveState(pathName))
+    odroid_display_unlock();
+    odroid_system_set_led(0);
+    odroid_input_battery_monitor_enabled_set(1);
+
+    if (!success)
     {
         printf("odroid_system_save_state: Save failed!\n");
         odroid_overlay_alert("Save failed");
@@ -151,11 +155,7 @@ bool odroid_system_save_state(int slot)
 
     free(pathName);
 
-    odroid_display_unlock();
-    odroid_system_set_led(0);
-    odroid_input_battery_monitor_enabled_set(1);
-
-    return true;
+    return success;
 }
 
 void odroid_system_quit_app(bool save)
@@ -166,10 +166,7 @@ void odroid_system_quit_app(bool save)
 
     // odroid_display_queue_update(NULL);
     odroid_display_clear(0);
-
-    odroid_display_lock();
     odroid_display_show_hourglass();
-    odroid_display_unlock();
 
     if (save)
     {

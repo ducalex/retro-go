@@ -205,7 +205,10 @@ char* odroid_sdcard_get_savefile_path(const char* romPath)
 
     sprintf(buffer, SD_BASE_PATH "/odroid/data/%s/%s.sav", extension, fileName);
 
-    return strdup(buffer);
+    char *ret = strdup(buffer);
+    if (!ret) abort();
+
+    return ret;
 }
 
 const char* odroid_sdcard_get_filename(const char* path)

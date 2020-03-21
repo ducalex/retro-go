@@ -47,7 +47,7 @@ static bool consoleIsSMS = false;
 bool SaveState(char *pathName)
 {
     FILE* f = fopen(pathName, "w");
-    if (f != NULL)
+    if (f == NULL)
         return false;
 
     system_save_state(f);

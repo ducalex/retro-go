@@ -71,6 +71,44 @@ void odroid_overlay_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, ch
     }
 
     ili9341_write_frame_rectangleLE(x_pos, y_pos, width, ODROID_FONT_HEIGHT, overlay_buffer);
+    // odroid_display_drain_spi();
+}
+
+void odroid_overlay_draw_rect(int x, int y, int width, int height, int border, uint16_t color)
+{
+    if (width == 0 || height == 0)
+        return;
+
+    int pixels = (width > height ? width : height) * border;
+    for (int i = 0; i < pixels; i++)
+    {
+        overlay_buffer[i] = color;
+    }
+    ili9341_write_frame_rectangleLE(x, y, width, border, overlay_buffer); // T
+    ili9341_write_frame_rectangleLE(x, y + height - border, width, border, overlay_buffer); // B
+    ili9341_write_frame_rectangleLE(x, y, border, height, overlay_buffer); // L
+    ili9341_write_frame_rectangleLE(x + width - border, y, border, height, overlay_buffer); // R
+}
+
+void odroid_overlay_draw_fill_rect(int x, int y, int width, int height, uint16_t color)
+{
+    if (width == 0 || height == 0)
+        return;
+
+    for (int i = 0; i < width * 16; i++)
+    {
+        overlay_buffer[i] = color;
+    }
+
+    int y_pos = y;
+    int y_end = y + height;
+
+    while (y_pos < y_end)
+    {
+        int thickness = (y_end - y_pos >= 16) ? 16 : (y_end - y_pos);
+        ili9341_write_frame_rectangleLE(x, y_pos, width, thickness, overlay_buffer);
+        y_pos += 16;
+    }
 }
 
 void odroid_overlay_draw_battery(int x_pos, int y_pos)
@@ -94,6 +132,7 @@ void odroid_overlay_draw_battery(int x_pos, int y_pos)
     odroid_overlay_draw_rect(x_pos + 22, y_pos + 2, 2, 6, 1, color_border);
     odroid_overlay_draw_fill_rect(x_pos + 1, y_pos + 1, width_fill, 8, color_fill);
     odroid_overlay_draw_fill_rect(x_pos + 1 + width_fill, y_pos + 1, width_empty, 8, color_empty);
+    odroid_display_drain_spi();
 }
 
 void odroid_overlay_draw_dialog(char *header, odroid_dialog_choice_t *options, int options_count, int sel)
@@ -287,43 +326,6 @@ void odroid_overlay_alert(char *text)
     odroid_overlay_dialog(text, choices, 1, 0);
 }
 
-void odroid_overlay_draw_rect(int x, int y, int width, int height, int border, uint16_t color)
-{
-    if (width == 0 || height == 0)
-        return;
-
-    int pixels = (width > height ? width : height) * border;
-    for (int i = 0; i < pixels; i++)
-    {
-        overlay_buffer[i] = color;
-    }
-    ili9341_write_frame_rectangleLE(x, y, width, border, overlay_buffer); // T
-    ili9341_write_frame_rectangleLE(x, y + height - border, width, border, overlay_buffer); // B
-    ili9341_write_frame_rectangleLE(x, y, border, height, overlay_buffer); // L
-    ili9341_write_frame_rectangleLE(x + width - border, y, border, height, overlay_buffer); // R
-}
-
-void odroid_overlay_draw_fill_rect(int x, int y, int width, int height, uint16_t color)
-{
-    if (width == 0 || height == 0)
-        return;
-
-    for (int i = 0; i < width * 16; i++)
-    {
-        overlay_buffer[i] = color;
-    }
-
-    int y_pos = y;
-    int y_end = y + height;
-
-    while (y_pos < y_end)
-    {
-        int thickness = (y_end - y_pos >= 16) ? 16 : (y_end - y_pos);
-        ili9341_write_frame_rectangleLE(x, y_pos, width, thickness, overlay_buffer);
-        y_pos += 16;
-    }
-}
-
 static bool volume_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
     int8_t level = odroid_audio_volume_get();
@@ -425,7 +427,7 @@ bool speedup_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t eve
 int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options, int extra_options_count)
 {
     odroid_audio_clear_buffer();
-    odroid_display_lock();
+    odroid_display_drain_spi();
     wait_all_keys_released();
 
     odroid_dialog_choice_t options[12] = {
@@ -441,7 +443,6 @@ int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options, int extr
     }
 
     int r = odroid_overlay_dialog("Options", options, options_count, 0);
-    odroid_display_unlock();
 
     return r;
 }
@@ -467,7 +468,7 @@ int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options, int
 int odroid_overlay_game_menu()
 {
     odroid_audio_clear_buffer();
-    odroid_display_lock();
+    odroid_display_drain_spi();
     wait_all_keys_released();
 
     static odroid_dialog_choice_t choices[] = {
@@ -480,7 +481,6 @@ int odroid_overlay_game_menu()
     };
 
     int r = odroid_overlay_dialog("Retro-Go", choices, sizeof(choices) / sizeof(choices[0]), 0);
-    odroid_display_unlock();
 
     switch (r)
     {
@@ -488,7 +488,7 @@ int odroid_overlay_game_menu()
         case 20: odroid_system_quit_app(true); break;
         case 30: odroid_system_load_state(0); break;
         // case 30: esp_restart(); break;
-        // case 40: odroid_netplay_init(); break;
+        // case 40: odroid_netplay_init_ask(NULL); break;
         case 50: odroid_system_quit_app(false); break;
     }
 

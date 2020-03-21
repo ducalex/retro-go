@@ -223,11 +223,8 @@ static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
       odroid_settings_Palette_set(pal);
       ppu_setnpal(nes_getcontextptr()->ppu, pal);
-      // This is less than ideal, but it works for now
-      odroid_display_unlock();
       odroid_display_queue_update(currentUpdate, NULL);
       odroid_display_queue_update(currentUpdate, NULL);
-      odroid_display_lock();
    }
 
    sprintf(option->value, "%.7s", ppu_getnpal(pal)->name);

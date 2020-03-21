@@ -58,6 +58,8 @@ void emulators_init_emu(retro_emulator_t *emu)
 
     char path[128];
 
+    odroid_display_lock();
+
     sprintf(path, SAVE_PATH "/%s", emu->dirname);
     odroid_sdcard_mkdir(path);
 
@@ -115,6 +117,8 @@ void emulators_init_emu(retro_emulator_t *emu)
     if (emu->roms.selected > emu->roms.count - 1) {
         emu->roms.selected = 0;
     }
+
+    odroid_display_unlock();
 }
 
 void emulators_init()

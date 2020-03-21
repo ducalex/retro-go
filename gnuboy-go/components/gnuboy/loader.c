@@ -165,8 +165,8 @@ int IRAM_ATTR rom_loadbank(short bank)
 		abort();
 	}
 
-	// Stop the SPI bus
-	odroid_display_lock();
+	// Make sure no transaction is running
+	odroid_display_drain_spi();
 
 	// Load the 16K page
 	if (fseek(fpRomFile, OFFSET, SEEK_SET))
@@ -180,8 +180,6 @@ int IRAM_ATTR rom_loadbank(short bank)
 		printf("bank_load: fread failed. bank=%d\n", bank);
 		odroid_system_panic("ROM fread failed");
 	}
-
-	odroid_display_unlock();
 
 	return 0;
 }

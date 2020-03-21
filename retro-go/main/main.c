@@ -121,8 +121,6 @@ void retro_loop()
     emulators_init();
     load_config();
 
-    odroid_display_lock();
-
     while (true)
     {
         if (selected_emu != selected_emu_last)
@@ -254,9 +252,7 @@ void retro_loop()
                     {0, "Show cover", "Yes", 1, &show_cover_cb},
                     {0, "Show empty", "Yes", 1, &hide_empty_cb},
                 };
-                odroid_display_unlock();
                 odroid_overlay_settings_menu(choices, sizeof(choices) / sizeof(choices[0]));
-                odroid_display_lock();
                 selected_emu_last = -1;
                 redraw = true;
             }
@@ -274,7 +270,6 @@ void retro_loop()
         usleep(15 * 1000UL);
     }
 
-    odroid_display_unlock();
     save_config();
 
     emulators_start_emu(emu);
