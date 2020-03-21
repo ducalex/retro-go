@@ -464,11 +464,6 @@ int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options, int
     return odroid_overlay_settings_menu(options, options_count);
 }
 
-// We should use pointers instead...
-extern void QuitEmulator(bool save);
-extern void SaveState();
-extern void LoadState();
-
 int odroid_overlay_game_menu()
 {
     odroid_audio_clear_buffer();
@@ -489,12 +484,12 @@ int odroid_overlay_game_menu()
 
     switch (r)
     {
-        case 10: SaveState(); break;
-        case 20: QuitEmulator(true); break;
-        // case 30: LoadState(); break;
-        case 30: esp_restart(); break;
+        case 10: odroid_system_save_state(0); break;
+        case 20: odroid_system_quit_app(true); break;
+        case 30: odroid_system_load_state(0); break;
+        // case 30: esp_restart(); break;
         // case 40: odroid_netplay_init(); break;
-        case 50: QuitEmulator(false); break;
+        case 50: odroid_system_quit_app(false); break;
     }
 
     return r;

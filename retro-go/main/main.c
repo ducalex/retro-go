@@ -285,7 +285,7 @@ void app_main(void)
 {
     printf("Retro-Go (%s-%s).\n", COMPILEDATE, GITREV);
 
-    odroid_system_init(0, 32000, NULL);
+    odroid_system_init(0, 32000);
     odroid_display_clear(0);
 
     retro_loop();

@@ -16,12 +16,13 @@
 
 #define APP_ID 10
 
-#define AUDIO_SAMPLERATE   32000
+#define AUDIO_SAMPLE_RATE   32000
 
 #define PIXEL_MASK 0x3F
 
 #define NVS_KEY_LIMIT_SPRITES "limitspr"
 
+static int8_t startAction;
 static char* romPath;
 static char* romData;
 static size_t romSize;
@@ -40,66 +41,20 @@ static void (*audio_callback)(void *buffer, int length) = NULL;
 static int16_t *audioBuffer;
 // --- MAIN
 
-void SaveState()
+
+bool SaveState(char *pathName)
 {
-   odroid_input_battery_monitor_enabled_set(0);
-   odroid_system_set_led(1);
-   odroid_display_lock();
-
-   char* pathName = odroid_sdcard_get_savefile_path(romPath);
-   if (!pathName) abort();
-
-   if (state_save(pathName) < 0)
-   {
-      printf("SaveState: failed.\n");
-      odroid_overlay_alert("Save failed");
-   }
-
-   odroid_display_unlock();
-   odroid_system_set_led(0);
-   odroid_input_battery_monitor_enabled_set(1);
+   return state_save(pathName) >= 0;
 }
 
-void LoadState()
+bool LoadState(char *pathName)
 {
-   odroid_display_lock();
-
-   char* pathName = odroid_sdcard_get_savefile_path(romPath);
-   if (!pathName) abort();
-
    if (state_load(pathName) < 0)
    {
-      printf("LoadState: failed.\n");
+      nes_reset(HARD_RESET);
+      return false;
    }
-
-   free(pathName);
-
-   odroid_display_unlock();
-}
-
-void QuitEmulator(bool save)
-{
-   printf("QuitEmulator: stopping tasks.\n");
-
-   odroid_audio_terminate();
-
-   // odroid_display_queue_update(NULL);
-   odroid_display_clear(0);
-
-   odroid_display_lock();
-   odroid_display_show_hourglass();
-   odroid_display_unlock();
-
-   if (save) {
-      printf("QuitEmulator: Saving state.\n");
-      SaveState();
-   }
-
-   // Set menu application
-   odroid_system_set_boot_app(0);
-
-   // Reset
-   esp_restart();
+   return true;
 }
 
 
@@ -125,7 +80,7 @@ void osd_loadstate()
 {
    if (startAction == ODROID_START_ACTION_RESUME)
    {
-      LoadState();
+      odroid_system_load_state(0);
    }
 
    ppu_limitsprites(odroid_settings_int32_get(NVS_KEY_LIMIT_SPRITES, 1));
@@ -169,7 +124,7 @@ static void osd_stopsound(void)
 
 void osd_getsoundinfo(sndinfo_t *info)
 {
-   info->sample_rate = AUDIO_SAMPLERATE;
+   info->sample_rate = AUDIO_SAMPLE_RATE;
    info->bps = 16;
 }
 
@@ -348,9 +303,10 @@ void app_main(void)
 {
 	printf("nesemu (%s-%s).\n", COMPILEDATE, GITREV);
 
-   odroid_system_init(APP_ID, AUDIO_SAMPLERATE, &romPath);
+   odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
+   odroid_system_emu_init(&romPath, &startAction);
 
-   audioBuffer = calloc(AUDIO_SAMPLERATE / 50, 4);
+   audioBuffer = calloc(AUDIO_SAMPLE_RATE / 50, 4);
    assert(audioBuffer != NULL);
 
    // Load ROM

@@ -28,7 +28,8 @@
 
 static const int frameTime = (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / 60);
 
-static char *romPath = NULL;
+static int8_t startAction;
+static char* romPath;
 
 struct fb fb;
 struct pcm pcm;
@@ -120,91 +121,40 @@ void run_to_vblank()
 }
 
 
-void SaveState()
+bool SaveState(char *pathName)
 {
-    odroid_input_battery_monitor_enabled_set(0);
-    odroid_system_set_led(1);
-    odroid_display_lock();
-
-    char* pathName = odroid_sdcard_get_savefile_path(romPath);
-    if (!pathName) abort();
-
     FILE* f = fopen(pathName, "w");
+
     if (f == NULL)
-    {
-        printf("%s: fopen save failed\n", __func__);
-        odroid_overlay_alert("Save failed");
-    }
-    else
-    {
-        savestate(f);
-        rtc_save_internal(f);
-        fclose(f);
+        return false;
 
-        printf("%s: savestate OK.\n", __func__);
-    }
+    savestate(f);
+    rtc_save_internal(f);
+    fclose(f);
 
-    free(pathName);
-
-    odroid_display_unlock();
-    odroid_system_set_led(0);
-    odroid_input_battery_monitor_enabled_set(1);
+    return true;
 }
 
-void LoadState()
+bool LoadState(char *pathName)
 {
-    odroid_display_lock();
-    char* pathName = odroid_sdcard_get_savefile_path(romPath);
-    if (!pathName) abort();
-
     FILE* f = fopen(pathName, "r");
+
     if (f == NULL)
     {
-        printf("LoadState: fopen load failed\n");
-        odroid_display_unlock();
-    }
-    else
-    {
-        loadstate(f);
-        rtc_load_internal(f);
-        fclose(f);
-
-        odroid_display_unlock();
-
-        vram_dirty();
-        pal_dirty();
-        sound_dirty();
-        mem_updatemap();
-
-        printf("LoadState: loadstate OK.\n");
+        emu_reset();
+        return false;
     }
 
-    free(pathName);
-}
+    loadstate(f);
+    rtc_load_internal(f);
+    fclose(f);
 
-void QuitEmulator(bool save)
-{
-    printf("QuitEmulator: stopping tasks.\n");
+    vram_dirty();
+    pal_dirty();
+    sound_dirty();
+    mem_updatemap();
 
-    odroid_audio_terminate();
-
-    // odroid_display_queue_update(NULL);
-    odroid_display_clear(0);
-
-    odroid_display_lock();
-    odroid_display_show_hourglass();
-    odroid_display_unlock();
-
-    if (save) {
-        printf("QuitEmulator: Saving state.\n");
-        SaveState();
-    }
-
-    // Set menu application
-    odroid_system_set_boot_app(0);
-
-    // Reset
-    esp_restart();
+    return true;
 }
 
 static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
@@ -284,7 +234,8 @@ void app_main(void)
     audioBuffer    = heap_caps_calloc(AUDIO_BUFFER_LENGTH * 2, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
 
     // Init all the console hardware
-	odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE, &romPath);
+    odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
+    odroid_system_emu_init(&romPath, &startAction);
 
     assert(update1.buffer && update2.buffer);
     assert(audioBuffer);
@@ -325,7 +276,7 @@ void app_main(void)
     // Load state
     if (startAction == ODROID_START_ACTION_RESUME)
     {
-        LoadState();
+        odroid_system_load_state(0);
     }
 
     int delayFrames = 0;

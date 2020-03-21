@@ -9,11 +9,13 @@
 #include "string.h"
 #include "stdio.h"
 
-ODROID_START_ACTION startAction = 0;
 int8_t speedupEnabled = 0;
-int8_t applicationId = -1;
 
-void odroid_system_init(int appId, int sampleRate, char **romPath)
+static int8_t applicationId = -1;
+static int8_t startAction = 0;
+static char *romPath = NULL;
+
+void odroid_system_init(int appId, int sampleRate)
 {
     printf("odroid_system_init: %d KB free\n", esp_get_free_heap_size() / 1024);
 
@@ -54,30 +56,29 @@ void odroid_system_init(int appId, int sampleRate, char **romPath)
         odroid_system_halt();
     }
 
-    // Emulator-specific
-    if (romPath != NULL)
-    {
-        *romPath = odroid_settings_RomFilePath_get();
-        if (!*romPath || strlen(*romPath) < 4)
-        {
-            odroid_system_panic("ROM File not found");
-        }
-
-        startAction = odroid_settings_StartAction_get();
-        if (startAction == ODROID_START_ACTION_RESTART)
-        {
-            odroid_settings_StartAction_set(ODROID_START_ACTION_RESUME);
-        }
-
-        if (startAction == ODROID_START_ACTION_NETPLAY)
-        {
-            // odroid_netplay_init();
-        }
-    }
-
     applicationId = appId;
 
     printf("odroid_system_init: System ready!\n");
+}
+
+void odroid_system_emu_init(char **_romPath, int8_t *_startAction)
+{
+    romPath = odroid_settings_RomFilePath_get();
+    if (!romPath || strlen(romPath) < 4)
+    {
+        odroid_system_panic("ROM File not found");
+    }
+
+    startAction = odroid_settings_StartAction_get();
+    if (startAction == ODROID_START_ACTION_RESTART)
+    {
+        odroid_settings_StartAction_set(ODROID_START_ACTION_RESUME);
+    }
+
+    *_startAction = startAction;
+    *_romPath = romPath;
+
+    printf("odroid_system_emu_init: ROM: %s, action: %d\n", romPath, startAction);
 }
 
 void odroid_system_set_app_id(int appId)
@@ -104,6 +105,83 @@ void odroid_system_gpio_init()
     gpio_set_direction(GPIO_NUM_26, GPIO_MODE_INPUT);
     gpio_set_level(GPIO_NUM_25, 0);
     gpio_set_level(GPIO_NUM_26, 0);
+}
+
+bool odroid_system_load_state(int slot)
+{
+    if (!romPath)
+        odroid_system_panic("Emulator not initialized");
+
+    odroid_display_lock();
+    odroid_display_show_hourglass();
+
+    char* pathName = odroid_sdcard_get_savefile_path(romPath);
+    if (!pathName) abort();
+
+    if (!LoadState(pathName))
+    {
+        printf("odroid_system_load_state: Load failed!\n");
+    }
+
+    free(pathName);
+
+    odroid_display_unlock();
+
+    return true;
+}
+
+bool odroid_system_save_state(int slot)
+{
+    if (!romPath)
+        odroid_system_panic("Emulator not initialized");
+
+    odroid_input_battery_monitor_enabled_set(0);
+    odroid_system_set_led(1);
+    odroid_display_lock();
+    odroid_display_show_hourglass();
+
+    char* pathName = odroid_sdcard_get_savefile_path(romPath);
+    if (!pathName) abort();
+
+    if (!SaveState(pathName))
+    {
+        printf("odroid_system_save_state: Save failed!\n");
+        odroid_overlay_alert("Save failed");
+    }
+
+    free(pathName);
+
+    odroid_display_unlock();
+    odroid_system_set_led(0);
+    odroid_input_battery_monitor_enabled_set(1);
+
+    return true;
+}
+
+void odroid_system_quit_app(bool save)
+{
+    printf("odroid_system_quit_app: Stopping tasks.\n");
+
+    odroid_audio_terminate();
+
+    // odroid_display_queue_update(NULL);
+    odroid_display_clear(0);
+
+    odroid_display_lock();
+    odroid_display_show_hourglass();
+    odroid_display_unlock();
+
+    if (save)
+    {
+        printf("odroid_system_quit_app: Saving state.\n");
+        odroid_system_save_state(0);
+    }
+
+    // Set menu application
+    odroid_system_set_boot_app(0);
+
+    // Reset
+    esp_restart();
 }
 
 void odroid_system_set_boot_app(int slot)
