@@ -190,9 +190,9 @@ void retro_loop()
                         {0, "Resume game", "", has_save, NULL},
                         {1, "New game", "", 1, NULL},
                         {2, "Delete save", "", has_save, NULL},
-                        // {3, "Multiplayer", "", 1, NULL},
+                        ODROID_DIALOG_CHOICE_LAST
                     };
-                    int sel = odroid_overlay_dialog(NULL, choices, 3, has_save ? 0 : 1);
+                    int sel = odroid_overlay_dialog(NULL, choices, has_save ? 0 : 1);
 
                     if (sel == 0) {
                         odroid_settings_StartAction_set(ODROID_START_ACTION_RESUME);
@@ -234,8 +234,9 @@ void retro_loop()
                     {0, "", "", -1, NULL},
                     {1, "Reboot to firmware", "", 1, NULL},
                     {0, "Close", "", 1, NULL},
+                    ODROID_DIALOG_CHOICE_LAST
                 };
-                int sel = odroid_overlay_dialog("Retro-Go", choices, 5, 4);
+                int sel = odroid_overlay_dialog("Retro-Go", choices, 4);
                 if (sel == 1) {
                     odroid_system_set_boot_app(-16);
                     esp_restart();
@@ -251,8 +252,9 @@ void retro_loop()
                     {0, "Font size", "Small", 1, &font_size_cb},
                     {0, "Show cover", "Yes", 1, &show_cover_cb},
                     {0, "Show empty", "Yes", 1, &hide_empty_cb},
+                    ODROID_DIALOG_CHOICE_LAST
                 };
-                odroid_overlay_settings_menu(choices, sizeof(choices) / sizeof(choices[0]));
+                odroid_overlay_settings_menu(choices);
                 selected_emu_last = -1;
                 redraw = true;
             }

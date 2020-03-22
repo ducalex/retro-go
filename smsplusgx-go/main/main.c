@@ -158,7 +158,7 @@ void app_main(void)
             odroid_overlay_game_menu();
         }
         else if (joystick.values[ODROID_INPUT_VOLUME]) {
-            odroid_overlay_game_settings_menu(NULL, 0);
+            odroid_overlay_game_settings_menu(NULL);
         }
 
         uint startTime = xthal_get_ccount();

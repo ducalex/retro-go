@@ -135,7 +135,21 @@ void odroid_overlay_draw_battery(int x_pos, int y_pos)
     odroid_display_drain_spi();
 }
 
-void odroid_overlay_draw_dialog(char *header, odroid_dialog_choice_t *options, int options_count, int sel)
+static int get_dialog_items_count(odroid_dialog_choice_t *options)
+{
+    odroid_dialog_choice_t last = ODROID_DIALOG_CHOICE_LAST;
+
+    for (int i = 0; i < 16; i++)
+    {
+        // if (memcmp(&last, options + i, sizeof(last))) {
+        if (options[i].id == last.id && options[i].enabled == last.enabled) {
+            return i;
+        }
+    }
+    return 0;
+}
+
+void odroid_overlay_draw_dialog(char *header, odroid_dialog_choice_t *options, int sel)
 {
     int width = header ? strlen(header) : 8;
     int padding = 0;
@@ -149,6 +163,8 @@ void odroid_overlay_draw_dialog(char *header, odroid_dialog_choice_t *options, i
     char row_format[16] = " %s ";
     char row_format_kv[16] = " %s: %s ";
     char rows[16][32];
+
+    int options_count = get_dialog_items_count(options);
 
     for (int i = 0; i < options_count; i++)
     {
@@ -213,15 +229,16 @@ void odroid_overlay_draw_dialog(char *header, odroid_dialog_choice_t *options, i
     odroid_display_drain_spi();
 }
 
-int odroid_overlay_dialog(char *header, odroid_dialog_choice_t *options, int options_count, int selected)
+int odroid_overlay_dialog(char *header, odroid_dialog_choice_t *options, int selected)
 {
+    int options_count = get_dialog_items_count(options);
     int sel = selected;
     int sel_old = selected;
     int last_key = -1;
     bool select = false;
     odroid_gamepad_state joystick;
 
-    odroid_overlay_draw_dialog(header, options, options_count, sel);
+    odroid_overlay_draw_dialog(header, options, sel);
 
     wait_all_keys_released();
 
@@ -295,7 +312,7 @@ int odroid_overlay_dialog(char *header, odroid_dialog_choice_t *options, int opt
             {
                 sel = (sel + dir) % options_count;
             }
-            odroid_overlay_draw_dialog(header, options, options_count, sel);
+            odroid_overlay_draw_dialog(header, options, sel);
             sel_old = sel;
         }
 
@@ -314,16 +331,18 @@ int odroid_overlay_confirm(char *text, bool yes_selected)
     odroid_dialog_choice_t choices[] = {
         {1, "Yes", "", 1, NULL},
         {0, "No ", "", 1, NULL},
+        ODROID_DIALOG_CHOICE_LAST
     };
-    return odroid_overlay_dialog(text, choices, 2, yes_selected ? 1 : 0);
+    return odroid_overlay_dialog(text, choices, yes_selected ? 1 : 0);
 }
 
 void odroid_overlay_alert(char *text)
 {
     odroid_dialog_choice_t choices[] = {
         {1, "OK", "", 1, NULL},
+        ODROID_DIALOG_CHOICE_LAST
     };
-    odroid_overlay_dialog(text, choices, 1, 0);
+    odroid_overlay_dialog(text, choices, 0);
 }
 
 static bool volume_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
@@ -424,7 +443,7 @@ bool speedup_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t eve
     return event == ODROID_DIALOG_ENTER;
 }
 
-int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options, int extra_options_count)
+int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options)
 {
     odroid_audio_clear_buffer();
     odroid_display_drain_spi();
@@ -434,35 +453,36 @@ int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options, int extr
         {0, "Brightness", "50%",  1, &brightness_update_cb},
         {1, "Volume    ", "50%",  1, &volume_update_cb},
         {2, "Audio out ", "Spkr", 1, &audio_update_cb},
+        ODROID_DIALOG_CHOICE_LAST
     };
-    int options_count = 3;
 
-    if (extra_options_count > 0) {
-        memcpy(options + options_count, extra_options, extra_options_count * sizeof(odroid_dialog_choice_t));
-        options_count += extra_options_count;
+    if (extra_options) {
+        int options_count = get_dialog_items_count(options);
+        int extra_options_count = get_dialog_items_count(extra_options);
+        memcpy(options + options_count, extra_options, (extra_options_count + 1) * sizeof(odroid_dialog_choice_t));
     }
 
-    int r = odroid_overlay_dialog("Options", options, options_count, 0);
+    int r = odroid_overlay_dialog("Options", options, 0);
 
     return r;
 }
 
-int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options, int extra_options_count)
+int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options)
 {
-    static odroid_dialog_choice_t options[12] = {
+    odroid_dialog_choice_t options[12] = {
         {10, "Scaling", "Full", 1, &scaling_update_cb},
         {12, "Filtering", "None", 1, &filter_update_cb}, // Interpolation
         {13, "Speed", "1x", 1, &speedup_update_cb},
-        // {14, "", "", 1, NULL},
+        ODROID_DIALOG_CHOICE_LAST
     };
-    int options_count = 3;
 
-    if (extra_options_count > 0) {
-        memcpy(options + options_count, extra_options, extra_options_count * sizeof(odroid_dialog_choice_t));
-        options_count += extra_options_count;
+    if (extra_options) {
+        int options_count = get_dialog_items_count(options);
+        int extra_options_count = get_dialog_items_count(extra_options);
+        memcpy(options + options_count, extra_options, (extra_options_count + 1) * sizeof(odroid_dialog_choice_t));
     }
 
-    return odroid_overlay_settings_menu(options, options_count);
+    return odroid_overlay_settings_menu(options);
 }
 
 int odroid_overlay_game_menu()
@@ -471,16 +491,17 @@ int odroid_overlay_game_menu()
     odroid_display_drain_spi();
     wait_all_keys_released();
 
-    static odroid_dialog_choice_t choices[] = {
+    odroid_dialog_choice_t choices[] = {
         // {0, "Continue", "",  1, NULL},
         {10, "Save & Continue", "",  1, NULL},
         {20, "Save & Quit", "", 1, NULL},
         {30, "Reload", "", 1, NULL},
         // {40, "Netplay", "", 1, NULL},
         {50, "Quit", "", 1, NULL},
+        ODROID_DIALOG_CHOICE_LAST
     };
 
-    int r = odroid_overlay_dialog("Retro-Go", choices, sizeof(choices) / sizeof(choices[0]), 0);
+    int r = odroid_overlay_dialog("Retro-Go", choices, 0);
 
     switch (r)
     {

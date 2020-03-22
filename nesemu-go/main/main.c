@@ -21,6 +21,7 @@
 #define PIXEL_MASK 0x3F
 
 #define NVS_KEY_LIMIT_SPRITES "limitspr"
+#define NVS_KEY_OVERSCAN "overscan"
 
 static int8_t startAction;
 static char* romPath;
@@ -58,6 +59,13 @@ bool LoadState(char *pathName)
 }
 
 
+static void set_overscan(bool enabled)
+{
+   overscan = enabled ? nes_getcontextptr()->overscan : 0;
+   update1.height = update2.height = NES_SCREEN_HEIGHT - (overscan * 2);
+}
+
+
 /* File system interface */
 void osd_fullname(char *fullname, const char *shortname)
 {
@@ -85,6 +93,7 @@ void osd_loadstate()
 
    ppu_limitsprites(odroid_settings_int32_get(NVS_KEY_LIMIT_SPRITES, 1));
    ppu_setnpal(nes_getcontextptr()->ppu, odroid_settings_Palette_get());
+   set_overscan(odroid_settings_int32_get(NVS_KEY_OVERSCAN, 1));
 }
 
 int osd_logprint(const char *string)
@@ -144,12 +153,6 @@ void osd_setpalette(rgb_t *pal)
 
 void IRAM_ATTR osd_blitscreen(bitmap_t *bmp)
 {
-   if (overscan < 0)
-   {
-      overscan = nes_getcontextptr()->overscan;
-      update1.height = update2.height = NES_SCREEN_HEIGHT - (overscan * 2);
-   }
-
    odroid_video_frame *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
 
    currentUpdate->buffer = bmp->line[overscan];
@@ -179,6 +182,21 @@ static bool sprite_limit_cb(odroid_dialog_choice_t *option, odroid_dialog_event_
    return event == ODROID_DIALOG_ENTER;
 }
 
+static bool overscan_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+{
+   int val = odroid_settings_int32_get(NVS_KEY_OVERSCAN, 1);
+
+   if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
+      val = val ? 0 : 1;
+      odroid_settings_int32_set(NVS_KEY_OVERSCAN, val);
+      set_overscan(val);
+   }
+
+   strcpy(option->value, val ? "Auto" : "Off ");
+
+   return event == ODROID_DIALOG_ENTER;
+}
+
 static bool region_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
    int val = odroid_settings_Region_get();
@@ -203,11 +221,13 @@ static bool advanced_settings_cb(odroid_dialog_choice_t *option, odroid_dialog_e
    if (event == ODROID_DIALOG_ENTER) {
       odroid_dialog_choice_t options[] = {
          {1, "Region", "Auto", 1, &region_update_cb},
-         {2, "Sprite limit", "On ", 1, &sprite_limit_cb},
+         {2, "Overscan", "Auto", 1, &overscan_update_cb},
+         {3, "Sprite limit", "On ", 1, &sprite_limit_cb},
          // {4, "", "", 1, NULL},
          //{0, "Reset all", "", 1, NULL},
+         ODROID_DIALOG_CHOICE_LAST
       };
-      odroid_overlay_dialog("Advanced", options, sizeof(options) / sizeof(options[0]), 0);
+      odroid_overlay_dialog("Advanced", options, 0);
    }
    return false;
 }
@@ -254,8 +274,9 @@ void osd_getinput(void)
             {100, "Palette", "Default", 1, &palette_update_cb},
             // {101, "", "", -1, NULL},
             {101, "More...", "", 1, &advanced_settings_cb},
+            ODROID_DIALOG_CHOICE_LAST
       };
-      odroid_overlay_game_settings_menu(options, sizeof(options) / sizeof(options[0]));
+      odroid_overlay_game_settings_menu(options);
    }
 
 	if (!joystick.values[ODROID_INPUT_START])  b |= (1 << 0);

@@ -214,8 +214,9 @@ static bool rtc_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t 
             {'h', "Hour", "00", 1, &rtc_t_update_cb},
             {'m', "Min",  "00", 1, &rtc_t_update_cb},
             {'s', "Sec",  "00", 1, &rtc_t_update_cb},
+            ODROID_DIALOG_CHOICE_LAST
         };
-        odroid_overlay_dialog("Set Clock", choices, 4, 0);
+        odroid_overlay_dialog("Set Clock", choices, 0);
     }
     sprintf(option->value, "%02d:%02d", rtc.h, rtc.m);
     return false;
@@ -290,8 +291,9 @@ void app_main(void)
             odroid_dialog_choice_t options[] = {
                 {100, "Palette", "7/7", !hw.cgb, &palette_update_cb},
                 {101, "Set clock", "00:00", mbc.type == MBC_MBC3, &rtc_update_cb},
+                ODROID_DIALOG_CHOICE_LAST
             };
-            odroid_overlay_game_settings_menu(options, 2);
+            odroid_overlay_game_settings_menu(options);
         }
         // if (delayFrames == 0 && joystick.values[ODROID_INPUT_START]) {
         //     delayFrames = 1;
