@@ -34,7 +34,7 @@ const int BACKLIGHT_DUTY_MAX = 0x1fff;
 
 // Maximum amount of change (percent) in a frame before we trigger a full transfer
 // instead of a partial update (faster). This also allows us to stop the diff early!
-#define FULL_UPDATE_THRESHOLD (0.4f)
+#define FULL_UPDATE_THRESHOLD (0.6f) // 0.4f
 
 static uint16_t* spi_buffers[SPI_TRANSACTION_COUNT];
 static QueueHandle_t spi_queue;

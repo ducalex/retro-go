@@ -313,10 +313,6 @@ static void inline system_video(bool draw)
    }
 
    /* Swap buffer to primary */
-   if (!primary_buffer)
-   {
-      primary_buffer = bmp_create(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 8);
-   }
    bitmap_t *temp = primary_buffer;
    primary_buffer = nes.vidbuf;
    nes.vidbuf = temp;
@@ -341,6 +337,8 @@ void nes_emulate(void)
    const int audioSamples = nes.apu->sample_rate / nes.refresh_rate;
    const int frameTime = CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / nes.refresh_rate;
    bool renderFrame = true;
+
+   primary_buffer = bmp_create(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 8);
 
    // Discard the garbage frames
    nes_renderframe(1);
@@ -395,9 +393,7 @@ void nes_emulate(void)
 
 static void mem_trash(uint8 *buffer, int length)
 {
-   int i;
-
-   for (i = 0; i < length; i++)
+   for (int i = 0; i < length; i++)
       buffer[i] = (uint8) rand();
 }
 

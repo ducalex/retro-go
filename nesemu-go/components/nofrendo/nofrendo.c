@@ -48,24 +48,7 @@ static void timer_isr(void)
 
 void nofrendo_refresh()
 {
-   /* Swap buffer to primary */
-   if (!primary_buffer)
-   {
-      primary_buffer = bmp_create(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 8);
-   }
-
-   if (console)
-   {
-      bitmap_t *temp = primary_buffer;
-      primary_buffer = console->vidbuf;
-      console->vidbuf = temp;
-   }
-
-   /* overlay our GUI on top of it */
-   //gui_frame(true);
-
-   /* Flush buffer to screen */
-   osd_blitscreen(primary_buffer);
+   // osd_blitscreen(primary_buffer);
 }
 
 /* End the current context */
