@@ -1,6 +1,9 @@
 #pragma GCC optimize ("O3")
 
 #include <string.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <esp_attr.h>
 
 #include "defs.h"
 #include "regs.h"
@@ -10,10 +13,6 @@
 #include "rc.h"
 #include "fb.h"
 
-#include <stdlib.h>
-#include <esp_attr.h>
-#include <stdint.h>
-
 struct lcd lcd;
 
 struct scan scan;
@@ -22,7 +21,6 @@ struct scan scan;
 #define WND (scan.wnd)
 #define BUF (scan.buf)
 #define PRI (scan.pri)
-
 
 #define PAL2 (scan.pal2)
 
@@ -51,30 +49,22 @@ struct scan scan;
 #define GB_GRAPEFR_PALETTE { 0xddf5ff, 0x6bb2f4, 0x9165b7, 0x6c2965 }
 #define GB_MEGAMAN_PALETTE { 0xcecece, 0xdf9e6f, 0x8e6742, 0x332510 }
 #define GB_POKEMON_PALETTE { 0xffefff, 0x8cb5f7, 0x9c7384, 0x101018 }
+#define GB_DMGREEN_PALETTE { 0x079e92, 0x1b7153, 0x185529, 0x024712 }
 
-
-static int palettes[8][4] = {GB_DEFAULT_PALETTE,
-							GB_2BGRAYS_PALETTE,
-							GB_LINKSAW_PALETTE,
-							GB_NSUPRGB_PALETTE,
-							GB_NGBARNE_PALETTE,
-							GB_GRAPEFR_PALETTE,
-							GB_MEGAMAN_PALETTE,
-							GB_POKEMON_PALETTE	};
+static const int palettes[][4] = {GB_DEFAULT_PALETTE,
+								  GB_2BGRAYS_PALETTE,
+								  GB_LINKSAW_PALETTE,
+								  GB_NSUPRGB_PALETTE,
+								  GB_NGBARNE_PALETTE,
+								  GB_GRAPEFR_PALETTE,
+								  GB_MEGAMAN_PALETTE,
+								  GB_POKEMON_PALETTE,
+								  GB_DMGREEN_PALETTE	};
 
 static int current_palette = 1;
-static int nr_of_palettes = 8;
-
 
 static int sprsort = 1;
 static int sprdebug = 0;
-
-// BGR
-static int dmg_pal[4][4] = {GB_NGBARNE_PALETTE,
-	 						GB_NGBARNE_PALETTE,
-							GB_NGBARNE_PALETTE,
-							GB_NGBARNE_PALETTE };
-
 
 static byte *vdest;
 static byte pix[8];
@@ -144,11 +134,6 @@ static const byte* IRAM_ATTR get_patpix(int i, int x)
 	}
 
 	return pix;
-}
-
-
-inline void updatepatpix()
-{
 }
 
 
@@ -445,7 +430,6 @@ static inline void spr_count()
 }
 
 
-
 static inline void spr_enum()
 {
 	int i, j;
@@ -583,6 +567,13 @@ void lcd_begin()
 	WY = R_WY;
 }
 
+void lcd_reset()
+{
+	memset(&lcd, 0, sizeof lcd);
+	lcd_begin();
+	vram_dirty();
+	pal_dirty();
+}
 
 void IRAM_ATTR lcd_refreshline()
 {
@@ -641,10 +632,6 @@ void IRAM_ATTR lcd_refreshline()
 	vdest += fb.pitch;
 }
 
-//void change_palette(int i)
-//{
-
-//}
 
 static inline void updatepalette(int i)
 {
@@ -682,7 +669,8 @@ inline void pal_write(int i, byte b)
 void IRAM_ATTR pal_write_dmg(int i, int mapnum, byte d)
 {
 	int j;
-	int *cmap = dmg_pal[mapnum];
+	// int *cmap = dmg_pal[mapnum];
+	int *cmap = palettes[current_palette];
 	int c, r, g, b;
 
 	if (hw.cgb) return;
@@ -702,39 +690,20 @@ void IRAM_ATTR pal_write_dmg(int i, int mapnum, byte d)
 	}
 }
 
-inline void vram_write(int a, byte b)
+void pal_set_dmg(int palette)
 {
-	lcd.vbank[R_VBK & 1][a] = b;
-	if (a >= 0x1800) return;
-	// patdirty[((R_VBK&1)<<9)+(a>>4)] = 1;
-	// anydirty = 1;
-}
-
-void vram_dirty()
-{
-	// anydirty = 1;
-	// memset(patdirty, 1, sizeof patdirty);
-}
-
-void pal_set(int palette)
-{
-	int i,j;
-	current_palette = palette % nr_of_palettes;
-
-	for(i = 0; i < 4; i++)
-	{
-		for(j = 0; j < 4;j++)
-		{
-			 dmg_pal[i][j] = palettes[current_palette][j];
-		}
-	}
-
+	current_palette = palette % pal_count_dmg();
 	pal_dirty();
 }
 
-int pal_get()
+int pal_get_dmg()
 {
 	return current_palette;
+}
+
+int pal_count_dmg()
+{
+	return sizeof(palettes) / sizeof(palettes[0]);
 }
 
 void pal_dirty()
@@ -751,10 +720,16 @@ void pal_dirty()
 		updatepalette(i);
 }
 
-void lcd_reset()
+inline void vram_write(int a, byte b)
 {
-	memset(&lcd, 0, sizeof lcd);
-	lcd_begin();
-	vram_dirty();
-	pal_dirty();
+	lcd.vbank[R_VBK & 1][a] = b;
+	if (a >= 0x1800) return;
+	// patdirty[((R_VBK&1)<<9)+(a>>4)] = 1;
+	// anydirty = 1;
+}
+
+void vram_dirty()
+{
+	// anydirty = 1;
+	// memset(patdirty, 1, sizeof patdirty);
 }

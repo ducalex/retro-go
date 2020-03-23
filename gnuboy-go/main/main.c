@@ -159,8 +159,8 @@ bool LoadState(char *pathName)
 
 static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
-    int pal = pal_get();
-    int max = 7;
+    int pal = pal_get_dmg();
+    int max = pal_count_dmg() - 1;
 
     if (event == ODROID_DIALOG_PREV) {
         pal = pal > 0 ? pal - 1 : max;
@@ -172,7 +172,7 @@ static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
 
     if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
         odroid_settings_Palette_set(pal);
-        pal_set(pal);
+        pal_set_dmg(pal);
         run_to_vblank();
     }
 
@@ -269,7 +269,7 @@ void app_main(void)
 
     lcd_begin();
 
-    pal_set(odroid_settings_Palette_get());
+    pal_set_dmg(odroid_settings_Palette_get());
 
     // Load state
     if (startAction == ODROID_START_ACTION_RESUME)
