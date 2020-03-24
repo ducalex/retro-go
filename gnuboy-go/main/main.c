@@ -121,7 +121,7 @@ void run_to_vblank()
 }
 
 
-bool SaveState(char *pathName)
+static bool SaveState(char *pathName)
 {
     FILE* f = fopen(pathName, "w");
 
@@ -135,7 +135,7 @@ bool SaveState(char *pathName)
     return true;
 }
 
-bool LoadState(char *pathName)
+static bool LoadState(char *pathName)
 {
     FILE* f = fopen(pathName, "r");
 
@@ -233,10 +233,14 @@ void app_main(void)
 
     // Init all the console hardware
     odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    odroid_system_emu_init(&romPath, &startAction);
+    odroid_system_emu_init(&romPath, &startAction, &LoadState, &SaveState);
+    odroid_netplay_set_handler(&netplay_callback);
 
-    assert(update1.buffer && update2.buffer);
-    assert(audioBuffer);
+    // Do the check after screen init so we can display an error
+    if (!update1.buffer || !update2.buffer || !audioBuffer)
+    {
+        odroid_system_panic("Buffer allocation failed.");
+    }
 
     // Load ROM
     loader_init(romPath);

@@ -14,6 +14,8 @@ int8_t speedupEnabled = 0;
 static int8_t applicationId = -1;
 static int8_t startAction = 0;
 static char *romPath = NULL;
+static state_handler_t loadState;
+static state_handler_t saveState;
 
 void odroid_system_init(int appId, int sampleRate)
 {
@@ -61,7 +63,8 @@ void odroid_system_init(int appId, int sampleRate)
     printf("odroid_system_init: System ready!\n");
 }
 
-void odroid_system_emu_init(char **_romPath, int8_t *_startAction)
+void odroid_system_emu_init(char **_romPath, int8_t *_startAction,
+                            state_handler_t load, state_handler_t save)
 {
     romPath = odroid_settings_RomFilePath_get();
     if (!romPath || strlen(romPath) < 4)
@@ -77,6 +80,9 @@ void odroid_system_emu_init(char **_romPath, int8_t *_startAction)
 
     *_startAction = startAction;
     *_romPath = romPath;
+
+    loadState = load;
+    saveState = save;
 
     printf("odroid_system_emu_init: ROM: %s, action: %d\n", romPath, startAction);
 }
@@ -109,14 +115,14 @@ void odroid_system_gpio_init()
 
 bool odroid_system_load_state(int slot)
 {
-    if (!romPath)
+    if (!romPath || !loadState)
         odroid_system_panic("Emulator not initialized");
 
     odroid_display_show_hourglass();
     odroid_display_lock();
 
     char *pathName = odroid_sdcard_get_savefile_path(romPath);
-    bool success = LoadState(pathName);
+    bool success = (*loadState)(pathName);
 
     odroid_display_unlock();
 
@@ -132,7 +138,7 @@ bool odroid_system_load_state(int slot)
 
 bool odroid_system_save_state(int slot)
 {
-    if (!romPath)
+    if (!romPath || !saveState)
         odroid_system_panic("Emulator not initialized");
 
     odroid_input_battery_monitor_enabled_set(0);
@@ -141,7 +147,7 @@ bool odroid_system_save_state(int slot)
     odroid_display_lock();
 
     char *pathName = odroid_sdcard_get_savefile_path(romPath);
-    bool success = SaveState(pathName);
+    bool success = (*saveState)(pathName);
 
     odroid_display_unlock();
     odroid_system_set_led(0);

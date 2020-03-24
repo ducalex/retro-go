@@ -43,12 +43,12 @@ static int16_t *audioBuffer;
 // --- MAIN
 
 
-bool SaveState(char *pathName)
+static bool SaveState(char *pathName)
 {
    return state_save(pathName) >= 0;
 }
 
-bool LoadState(char *pathName)
+static bool LoadState(char *pathName)
 {
    if (state_load(pathName) < 0)
    {
@@ -321,16 +321,19 @@ void app_main(void)
 {
 	printf("nesemu (%s-%s).\n", COMPILEDATE, GITREV);
 
-   odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-   odroid_system_emu_init(&romPath, &startAction);
+   audioBuffer = heap_caps_calloc(AUDIO_SAMPLE_RATE / 50, 4, MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
+   romData     = heap_caps_malloc(1024 * 1024, MALLOC_CAP_8BIT);
 
-   audioBuffer = calloc(AUDIO_SAMPLE_RATE / 50, 4);
-   assert(audioBuffer != NULL);
+   odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
+   odroid_system_emu_init(&romPath, &startAction, &LoadState, &SaveState);
+
+   // Do the check after screen init so we can display an error
+   if (!romData || !audioBuffer)
+   {
+      odroid_system_panic("Buffer allocation failed.");
+   }
 
    // Load ROM
-   romData = malloc(1024 * 1024);
-   assert(romData != NULL);
-
    if (strcasecmp(romPath + (strlen(romPath) - 4), ".zip") == 0)
    {
       printf("app_main ROM: Reading compressed file: %s\n", romPath);

@@ -44,7 +44,7 @@ static bool consoleIsSMS = false;
 // --- MAIN
 
 
-bool SaveState(char *pathName)
+static bool SaveState(char *pathName)
 {
     FILE* f = fopen(pathName, "w");
     if (f == NULL)
@@ -56,7 +56,7 @@ bool SaveState(char *pathName)
     return true;
 }
 
-bool LoadState(char *pathName)
+static bool LoadState(char *pathName)
 {
     FILE* f = fopen(pathName, "r");
     if (f == NULL)
@@ -88,11 +88,13 @@ void app_main(void)
 
     // Init all the console hardware
     odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    odroid_system_emu_init(&romPath, &startAction);
+    odroid_system_emu_init(&romPath, &startAction, &LoadState, &SaveState);
 
-    assert(framebuffers[0] && framebuffers[1]);
-    assert(audioBuffer);
-
+    // Do the check after screen init so we can display an error
+    if (!framebuffers[0] || !framebuffers[1] || !audioBuffer)
+    {
+        odroid_system_panic("Buffer allocation failed.");
+    }
 
     // Load ROM
     load_rom(romPath);

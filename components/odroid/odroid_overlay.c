@@ -139,6 +139,9 @@ static int get_dialog_items_count(odroid_dialog_choice_t *options)
 {
     odroid_dialog_choice_t last = ODROID_DIALOG_CHOICE_LAST;
 
+    if (options == NULL)
+        return 0;
+
     for (int i = 0; i < 16; i++)
     {
         // if (memcmp(&last, options + i, sizeof(last))) {
@@ -333,7 +336,7 @@ int odroid_overlay_confirm(char *text, bool yes_selected)
         {0, "No ", "", 1, NULL},
         ODROID_DIALOG_CHOICE_LAST
     };
-    return odroid_overlay_dialog(text, choices, yes_selected ? 1 : 0);
+    return odroid_overlay_dialog(text, choices, yes_selected ? 0 : 1);
 }
 
 void odroid_overlay_alert(char *text)

@@ -203,7 +203,7 @@ void retro_loop()
                         break;
                     }
                     else if (sel == 2) {
-                        if (odroid_overlay_confirm("Delete savestate?", true) == 1) {
+                        if (odroid_overlay_confirm("Delete savestate?", false) == 1) {
                             unlink(save_path);
                         }
                     }
