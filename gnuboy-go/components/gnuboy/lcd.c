@@ -13,6 +13,8 @@
 #include "rc.h"
 #include "fb.h"
 
+#include "palettes.h"
+
 struct lcd lcd;
 
 struct scan scan;
@@ -39,29 +41,12 @@ struct scan scan;
 #define WT (scan.wt)
 #define WV (scan.wv)
 
+static uint16_t dmg_pal[4][4] = {
+	GB_DEFAULT_PALETTE, GB_DEFAULT_PALETTE,
+	GB_DEFAULT_PALETTE, GB_DEFAULT_PALETTE,
+};
 
-// Important! Colors are defined in reversed order: 0xBBGGRR !!!
-#define GB_DEFAULT_PALETTE { 0xd5f3ef, 0x7ab6a3, 0x3b6137, 0x161c04 }
-#define GB_2BGRAYS_PALETTE { 0xffffff, 0xb6b6b6, 0x676767, 0x000000 }
-#define GB_LINKSAW_PALETTE { 0xb5ffff, 0x7bc67b, 0x428c6b, 0x21395a }
-#define GB_NSUPRGB_PALETTE { 0xc6e7f7, 0x498ed6, 0x2537a6, 0x501e33 }
-#define GB_NGBARNE_PALETTE { 0x6bb5ac, 0x488476, 0x3f503f, 0x373124 }
-#define GB_GRAPEFR_PALETTE { 0xddf5ff, 0x6bb2f4, 0x9165b7, 0x6c2965 }
-#define GB_MEGAMAN_PALETTE { 0xcecece, 0xdf9e6f, 0x8e6742, 0x332510 }
-#define GB_POKEMON_PALETTE { 0xffefff, 0x8cb5f7, 0x9c7384, 0x101018 }
-#define GB_DMGREEN_PALETTE { 0x079e92, 0x1b7153, 0x185529, 0x024712 }
-
-static const int palettes[][4] = {GB_DEFAULT_PALETTE,
-								  GB_2BGRAYS_PALETTE,
-								  GB_LINKSAW_PALETTE,
-								  GB_NSUPRGB_PALETTE,
-								  GB_NGBARNE_PALETTE,
-								  GB_GRAPEFR_PALETTE,
-								  GB_MEGAMAN_PALETTE,
-								  GB_POKEMON_PALETTE,
-								  GB_DMGREEN_PALETTE	};
-
-static int current_palette = 1;
+static int dmg_selected_pal = 0;
 
 static int sprsort = 1;
 static int sprdebug = 0;
@@ -70,8 +55,8 @@ static byte *vdest;
 static byte pix[8];
 
 
-#define MEMCPY8(d, s) ((*(uint64_t *)(d)) = (*(uint64_t *)(s)))
-//#define MEMCPY8(d, s) memcpy((d), (s), 8)
+//#define MEMCPY8(d, s) ((*(uint64_t *)(d)) = (*(uint64_t *)(s)))
+#define MEMCPY8(d, s) memcpy((d), (s), 8)
 
 
 __attribute__((optimize("unroll-loops")))
@@ -633,24 +618,18 @@ void IRAM_ATTR lcd_refreshline()
 }
 
 
-static inline void updatepalette(int i)
+static inline void updatepalette(byte i)
 {
-	short c;
-	short r, g, b; //, y, u, v, rr, gg;
+	short c, r, g, b; //, y, u, v, rr, gg;
 
 	short low = lcd.pal[i << 1];
 	short high = lcd.pal[(i << 1) | 1];
 
 	c = (low | (high << 8)) & 0x7fff;
 
-	//bit 0-4 red
-	r = c & 0x1f;
-
-	// bit 5-9 green
-	g = (c >> 5) & 0x1f;
-
-	// bit 10-14 blue
-	b = (c >> 10) & 0x1f;
+	r = c & 0x1f;         // bit 0-4 red
+	g = (c >> 5) & 0x1f;  // bit 5-9 green
+	b = (c >> 10) & 0x1f; // bit 10-14 blue
 
 	PAL2[i] = (r << 11) | (g << (5 + 1)) | (b);
 
@@ -659,56 +638,108 @@ static inline void updatepalette(int i)
 	}
 }
 
-inline void pal_write(int i, byte b)
+inline void pal_write(byte i, byte b)
 {
 	if (lcd.pal[i] == b) return;
 	lcd.pal[i] = b;
-	updatepalette(i>>1);
+	updatepalette(i >> 1);
 }
 
-void IRAM_ATTR pal_write_dmg(int i, int mapnum, byte d)
+void IRAM_ATTR pal_write_dmg(byte i, byte mapnum, byte d)
 {
-	int j;
-	// int *cmap = dmg_pal[mapnum];
-	int *cmap = palettes[current_palette];
-	int c, r, g, b;
-
 	if (hw.cgb) return;
 
-	/* if (mapnum >= 2) d = 0xe4; */
-	for (j = 0; j < 8; j += 2)
-	{
-		c = cmap[(d >> j) & 3];
-		r = (c & 0xf8) >> 3;
-		g = (c & 0xf800) >> 6;
-		b = (c & 0xf80000) >> 9;
-		c = r | g | b;
+	mapnum &= 3;
 
+	for (int j = 0; j < 8; j += 2)
+	{
+		int c = dmg_pal[mapnum][(d >> j) & 3];
 		/* FIXME - handle directly without faking cgb */
 		pal_write(i+j, c & 0xff);
 		pal_write(i+j+1, c >> 8);
 	}
 }
 
+static void pal_detect_dmg()
+{
+    uint8_t infoIdx = 0;
+	uint8_t checksum = 0;
+	uint16_t* bgp, *obp0, *obp1;
+
+	// Calculate the checksum over 16 title bytes.
+	for (int i = 0; i < 16; i++)
+	{
+		checksum += mem_read(0x0134 + i);
+	}
+
+	// Check if the checksum is in the list.
+	for (size_t idx = 0; idx < sizeof(colorization_checksum); idx++)
+	{
+		if (colorization_checksum[idx] == checksum)
+		{
+			infoIdx = idx;
+
+			// Indexes above 0x40 have to be disambiguated.
+			if (idx > 0x40) {
+				// No idea how that works. But it works.
+				for (size_t i = idx - 0x41, j = 0; i < sizeof(colorization_disambig_chars); i += 14, j += 14) {
+					if (mem_read(0x0137) == colorization_disambig_chars[i]) {
+						infoIdx += j;
+						break;
+					}
+				}
+			}
+			break;
+		}
+	}
+
+    uint8_t palette = colorization_palette_info[infoIdx] & 0x1F;
+    uint8_t flags = (colorization_palette_info[infoIdx] & 0xE0) >> 5;
+
+	printf("DETECTED PALETTE: %d\n", palette);
+
+	bgp  = dmg_game_palettes[palette][2];
+    obp0 = dmg_game_palettes[palette][(flags & 1) ? 0 : 1];
+    obp1 = dmg_game_palettes[palette][(flags & 2) ? 0 : 1];
+
+    if (!(flags & 4)) {
+        obp1 = dmg_game_palettes[palette][2];
+    }
+
+	memcpy(&dmg_pal[0], bgp, 8); // BGP
+	memcpy(&dmg_pal[1], bgp, 8); // BGP
+	memcpy(&dmg_pal[2], obp0, 8); // OBP0
+	memcpy(&dmg_pal[3], obp1, 8); // OBP1
+}
+
 void pal_set_dmg(int palette)
 {
-	current_palette = palette % pal_count_dmg();
+	dmg_selected_pal = palette % (pal_count_dmg() + 1);
+
+	if (dmg_selected_pal == 0) {
+		pal_detect_dmg();
+	} else {
+		memcpy(&dmg_pal[0], dmg_palettes[dmg_selected_pal - 1], 8); // BGP
+		memcpy(&dmg_pal[1], dmg_palettes[dmg_selected_pal - 1], 8); // BGP
+		memcpy(&dmg_pal[2], dmg_palettes[dmg_selected_pal - 1], 8); // OBP0
+		memcpy(&dmg_pal[3], dmg_palettes[dmg_selected_pal - 1], 8); // OBP1
+	}
+
 	pal_dirty();
 }
 
 int pal_get_dmg()
 {
-	return current_palette;
+	return dmg_selected_pal;
 }
 
 int pal_count_dmg()
 {
-	return sizeof(palettes) / sizeof(palettes[0]);
+	return sizeof(dmg_palettes) / sizeof(dmg_palettes[0]);
 }
 
 void pal_dirty()
 {
-	int i;
 	if (!hw.cgb)
 	{
 		pal_write_dmg(0, 0, R_BGP);
@@ -716,11 +747,14 @@ void pal_dirty()
 		pal_write_dmg(64, 2, R_OBP0);
 		pal_write_dmg(72, 3, R_OBP1);
 	}
-	for (i = 0; i < 64; i++)
+
+	for (int i = 0; i < 64; i++)
+	{
 		updatepalette(i);
+	}
 }
 
-inline void vram_write(int a, byte b)
+inline void vram_write(word a, byte b)
 {
 	lcd.vbank[R_VBK & 1][a] = b;
 	if (a >= 0x1800) return;

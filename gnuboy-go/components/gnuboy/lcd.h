@@ -50,13 +50,13 @@ extern struct scan scan;
 void lcd_begin();
 void lcd_reset();
 void lcd_refreshline();
-void pal_write(int i, byte b);
-void pal_write_dmg(int i, int mapnum, byte d);
+void pal_write(byte i, byte b);
+void pal_write_dmg(byte i, byte mapnum, byte d);
 void pal_dirty();
 void pal_set_dmg(int palette);
 int  pal_get_dmg();
 int  pal_count_dmg();
-void vram_write(int a, byte b);
+void vram_write(word a, byte b);
 void vram_dirty();
 
 /* lcdc.c */

@@ -45,25 +45,18 @@ static uint emulatedFrames = 0;
 static uint skippedFrames = 0;
 static uint fullFrames = 0;
 
-bool skipFrame = false;
+static bool skipFrame = false;
+
+static bool netplay = false;
 
 extern int debug_trace;
 // --- MAIN
 
 
-int pcm_submit()
-{
-    if (!speedupEnabled) {
-        odroid_audio_submit(pcm.buf, pcm.pos >> 1);
-    }
-    pcm.pos = 0;
-    return 1;
-}
-
-
 void run_to_vblank()
 {
-    uint startTime = xthal_get_ccount();
+    fb.enabled = !skipFrame;
+    pcm.pos = 0;
 
     /* FIXME: djudging by the time specified this was intended
     to emulate through vblank phase which is handled at the
@@ -77,10 +70,8 @@ void run_to_vblank()
         /* Step through visible line scanning phase */
         emu_step();
     }
-    // printf("%d us\n", get_elapsed_time_since(startTime) / 240);
 
     /* VBLANK BEGIN */
-    //vid_end();
     if (!skipFrame)
     {
         odroid_video_frame *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
@@ -113,11 +104,6 @@ void run_to_vblank()
         /* Step through vblank phase */
         emu_step();
     }
-
-    skipFrame = !skipFrame && get_elapsed_time_since(startTime) > frameTime;
-    fb.enabled = !skipFrame;
-
-    pcm_submit();
 }
 
 
@@ -160,7 +146,7 @@ static bool LoadState(char *pathName)
 static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
     int pal = pal_get_dmg();
-    int max = pal_count_dmg() - 1;
+    int max = pal_count_dmg();
 
     if (event == ODROID_DIALOG_PREV) {
         pal = pal > 0 ? pal - 1 : max;
@@ -176,7 +162,9 @@ static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
         run_to_vblank();
     }
 
-    sprintf(option->value, "%d/%d", pal, max);
+    if (pal == 0) strcpy(option->value, "Auto");
+    else sprintf(option->value, "%d/%d", pal, max);
+
     return event == ODROID_DIALOG_ENTER;
 }
 
@@ -234,7 +222,6 @@ void app_main(void)
     // Init all the console hardware
     odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     odroid_system_emu_init(&romPath, &startAction, &LoadState, &SaveState);
-    odroid_netplay_set_handler(&netplay_callback);
 
     // Do the check after screen init so we can display an error
     if (!update1.buffer || !update2.buffer || !audioBuffer)
@@ -281,12 +268,35 @@ void app_main(void)
         odroid_system_load_state(0);
     }
 
-    int delayFrames = 0;
+    // Many games glitch on startup, let's hide that
+    skipFrame = true;
 
     while (true)
     {
         odroid_gamepad_state joystick;
         odroid_input_gamepad_read(&joystick);
+
+        if (netplay)
+        {
+            if (odroid_netplay_status() == NETPLAY_STATUS_DISCONNECTED)
+            {
+                odroid_overlay_alert("Connection lost");
+                odroid_netplay_stop();
+            }
+            else
+            {
+                if (memcmp(&joystick_prev, &joystick, sizeof joystick) != 0)
+                {
+                    odroid_netplay_send(&joystick, sizeof joystick);
+                    joystick_prev = joystick;
+                }
+
+                for (int i = 0; i < ODROID_INPUT_MAX; i++)
+                {
+                    joystick.values[i] = joystick.values[i] || joystick_remote.values[i];
+                }
+            }
+        }
 
         if (joystick.values[ODROID_INPUT_MENU]) {
             odroid_overlay_game_menu();
@@ -299,13 +309,6 @@ void app_main(void)
             };
             odroid_overlay_game_settings_menu(options);
         }
-        // if (delayFrames == 0 && joystick.values[ODROID_INPUT_START]) {
-        //     delayFrames = 1;
-        // }
-        // if (delayFrames > 0 && ++delayFrames == 15)
-        // {
-        //     debug_trace = 1;
-        // }
 
         uint startTime = xthal_get_ccount();
 
@@ -313,10 +316,8 @@ void app_main(void)
         pad_set(PAD_RIGHT, joystick.values[ODROID_INPUT_RIGHT]);
         pad_set(PAD_DOWN, joystick.values[ODROID_INPUT_DOWN]);
         pad_set(PAD_LEFT, joystick.values[ODROID_INPUT_LEFT]);
-
         pad_set(PAD_SELECT, joystick.values[ODROID_INPUT_SELECT]);
         pad_set(PAD_START, joystick.values[ODROID_INPUT_START]);
-
         pad_set(PAD_A, joystick.values[ODROID_INPUT_A]);
         pad_set(PAD_B, joystick.values[ODROID_INPUT_B]);
 
@@ -326,8 +327,12 @@ void app_main(void)
 
         run_to_vblank();
 
+        skipFrame = !skipFrame && get_elapsed_time_since(startTime) > frameTime;
+
         if (speedupEnabled) {
             skipFrame = emulatedFrames % (speedupEnabled * 4);
+        } else {
+            odroid_audio_submit(pcm.buf, pcm.pos >> 1);
         }
 
         totalElapsedTime += get_elapsed_time_since(startTime);
