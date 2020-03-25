@@ -18,8 +18,6 @@
 
 #define AUDIO_SAMPLE_RATE   32000
 
-#define PIXEL_MASK 0x3F
-
 #define NVS_KEY_LIMIT_SPRITES "limitspr"
 #define NVS_KEY_OVERSCAN "overscan"
 
@@ -29,17 +27,22 @@ static char* romData;
 static size_t romSize;
 
 static uint16_t myPalette[64];
-
-static odroid_video_frame update1 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, PIXEL_MASK, NULL, myPalette, 0};
-static odroid_video_frame update2 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, PIXEL_MASK, NULL, myPalette, 0};
+static odroid_video_frame update1 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 0x3F, NULL, myPalette, 0};
+static odroid_video_frame update2 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 0x3F, NULL, myPalette, 0};
 static odroid_video_frame *currentUpdate = &update1;
-
-static short overscan = -1;
-
-uint fullFrames = 0;
 
 static void (*audio_callback)(void *buffer, int length) = NULL;
 static int16_t *audioBuffer;
+
+static odroid_gamepad_state joystick1;
+static odroid_gamepad_state joystick2;
+static odroid_gamepad_state *localJoystick = &joystick1;
+static odroid_gamepad_state *remoteJoystick = &joystick2;
+
+static uint overscan = 0;
+static bool netplay = false;
+
+uint fullFrames = 0;
 // --- MAIN
 
 
@@ -58,113 +61,12 @@ static bool LoadState(char *pathName)
    return true;
 }
 
-
 static void set_overscan(bool enabled)
 {
    overscan = enabled ? nes_getcontextptr()->overscan : 0;
    update1.height = update2.height = NES_SCREEN_HEIGHT - (overscan * 2);
 }
 
-
-/* File system interface */
-void osd_fullname(char *fullname, const char *shortname)
-{
-   strncpy(fullname, shortname, PATH_MAX);
-}
-
-/* This gives filenames for storage of saves */
-char *osd_newextension(char *string, char *ext)
-{
-   return string;
-}
-
-size_t osd_getromdata(unsigned char **data)
-{
-	*data = (unsigned char*)romData;
-   return romSize;
-}
-
-void osd_loadstate()
-{
-   if (startAction == ODROID_START_ACTION_RESUME)
-   {
-      odroid_system_load_state(0);
-   }
-
-   ppu_limitsprites(odroid_settings_int32_get(NVS_KEY_LIMIT_SPRITES, 1));
-   ppu_setnpal(nes_getcontextptr()->ppu, odroid_settings_Palette_get());
-   set_overscan(odroid_settings_int32_get(NVS_KEY_OVERSCAN, 1));
-}
-
-int osd_logprint(const char *string)
-{
-   return printf("%s", string);
-}
-
-
-/*
-** Audio
-*/
-void osd_audioframe(int audioSamples)
-{
-   audio_callback(audioBuffer, audioSamples); //get audio data
-
-   //16 bit mono -> 32-bit (16 bit r+l)
-   for (int i = audioSamples - 1; i >= 0; --i)
-   {
-      int16_t sample = audioBuffer[i];
-      audioBuffer[i*2] = sample;
-      audioBuffer[i*2+1] = sample;
-   }
-
-   odroid_audio_submit(audioBuffer, audioSamples);
-}
-
-void osd_setsound(void (*playfunc)(void *buffer, int length))
-{
-   //Indicates we should call playfunc() to get more data.
-   audio_callback = playfunc;
-}
-
-static void osd_stopsound(void)
-{
-   audio_callback = NULL;
-}
-
-void osd_getsoundinfo(sndinfo_t *info)
-{
-   info->sample_rate = AUDIO_SAMPLE_RATE;
-   info->bps = 16;
-}
-
-
-/*
-** Video
-*/
-void osd_setpalette(rgb_t *pal)
-{
-   for (int i = 0; i < 64; i++)
-   {
-      uint16_t c = (pal[i].b>>3) + ((pal[i].g>>2)<<5) + ((pal[i].r>>3)<<11);
-      myPalette[i] = (c>>8) | ((c&0xff)<<8);
-   }
-   forceVideoRefresh = true;
-}
-
-void IRAM_ATTR osd_blitscreen(bitmap_t *bmp)
-{
-   odroid_video_frame *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
-
-   currentUpdate->buffer = bmp->line[overscan];
-   currentUpdate->stride = bmp->pitch;
-
-   if (odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL)
-   {
-      ++fullFrames;
-   }
-
-   currentUpdate = previousUpdate;
-}
 
 
 static bool sprite_limit_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
@@ -252,68 +154,163 @@ static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
 }
 
 
+void osd_fullname(char *fullname, const char *shortname)
+{
+   strncpy(fullname, shortname, PATH_MAX);
+}
+
+char *osd_newextension(char *string, char *ext)
+{
+   return string;
+}
+
+size_t osd_getromdata(unsigned char **data)
+{
+	*data = (unsigned char*)romData;
+   return romSize;
+}
+
+void osd_loadstate()
+{
+   if (startAction == ODROID_START_ACTION_RESUME)
+   {
+      odroid_system_load_state(0);
+   }
+
+   ppu_limitsprites(odroid_settings_int32_get(NVS_KEY_LIMIT_SPRITES, 1));
+   ppu_setnpal(nes_getcontextptr()->ppu, odroid_settings_Palette_get());
+   set_overscan(odroid_settings_int32_get(NVS_KEY_OVERSCAN, 1));
+}
+
+int osd_logprint(const char *string)
+{
+   return printf("%s", string);
+}
+
+int osd_init()
+{
+   log_chain_logfunc(osd_logprint);
+   return 0;
+}
+
+void osd_shutdown()
+{
+	audio_callback = NULL;
+}
+
+/*
+** Audio
+*/
+void osd_audioframe(int audioSamples)
+{
+   audio_callback(audioBuffer, audioSamples); //get audio data
+
+   //16 bit mono -> 32-bit (16 bit r+l)
+   for (int i = audioSamples - 1; i >= 0; --i)
+   {
+      int16_t sample = audioBuffer[i];
+      audioBuffer[i*2] = sample;
+      audioBuffer[i*2+1] = sample;
+   }
+
+   odroid_audio_submit(audioBuffer, audioSamples);
+}
+
+void osd_setsound(void (*playfunc)(void *buffer, int length))
+{
+   //Indicates we should call playfunc() to get more data.
+   audio_callback = playfunc;
+}
+
+void osd_getsoundinfo(sndinfo_t *info)
+{
+   info->sample_rate = AUDIO_SAMPLE_RATE;
+   info->bps = 16;
+}
+
+/*
+** Video
+*/
+void osd_setpalette(rgb_t *pal)
+{
+   for (int i = 0; i < 64; i++)
+   {
+      uint16_t c = (pal[i].b>>3) + ((pal[i].g>>2)<<5) + ((pal[i].r>>3)<<11);
+      myPalette[i] = (c>>8) | ((c&0xff)<<8);
+   }
+   forceVideoRefresh = true;
+}
+
+void IRAM_ATTR osd_blitscreen(bitmap_t *bmp)
+{
+   odroid_video_frame *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
+
+   currentUpdate->buffer = bmp->line[overscan];
+   currentUpdate->stride = bmp->pitch;
+
+   if (odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL)
+   {
+      ++fullFrames;
+   }
+
+   currentUpdate = previousUpdate;
+}
+
 void osd_getinput(void)
 {
-	const int events[8] = {
+	static const int events[] = {
       event_joypad1_start, event_joypad1_select, event_joypad1_up, event_joypad1_right,
-      event_joypad1_down, event_joypad1_left, event_joypad1_a, event_joypad1_b
+      event_joypad1_down, event_joypad1_left, event_joypad1_a, event_joypad1_b,
+      event_joypad2_start, event_joypad2_select, event_joypad2_up, event_joypad2_right,
+      event_joypad2_down, event_joypad2_left, event_joypad2_a, event_joypad2_b
 	};
+   static const int events_count = sizeof(events) / sizeof(int);
 
-   static uint8 previous = 0xff;
-   uint8 b = 0;
-   uint8 changed = b ^ previous;
+   static uint16 previous = 0xffff;
+   uint16 b = 0, changed = 0;
 
-   odroid_gamepad_state joystick;
-   odroid_input_gamepad_read(&joystick);
+   odroid_input_gamepad_read(localJoystick);
 
-   if (joystick.values[ODROID_INPUT_MENU]) {
+   if (localJoystick->values[ODROID_INPUT_MENU]) {
       odroid_overlay_game_menu();
    }
-   else if (joystick.values[ODROID_INPUT_VOLUME]) {
+   else if (localJoystick->values[ODROID_INPUT_VOLUME]) {
       odroid_dialog_choice_t options[] = {
             {100, "Palette", "Default", 1, &palette_update_cb},
-            // {101, "", "", -1, NULL},
             {101, "More...", "", 1, &advanced_settings_cb},
             ODROID_DIALOG_CHOICE_LAST
       };
       odroid_overlay_game_settings_menu(options);
    }
 
-	if (!joystick.values[ODROID_INPUT_START])  b |= (1 << 0);
-	if (!joystick.values[ODROID_INPUT_SELECT]) b |= (1 << 1);
-	if (!joystick.values[ODROID_INPUT_UP])     b |= (1 << 2);
-	if (!joystick.values[ODROID_INPUT_RIGHT])  b |= (1 << 3);
-	if (!joystick.values[ODROID_INPUT_DOWN])   b |= (1 << 4);
-	if (!joystick.values[ODROID_INPUT_LEFT])   b |= (1 << 5);
-	if (!joystick.values[ODROID_INPUT_A])      b |= (1 << 6);
-	if (!joystick.values[ODROID_INPUT_B])      b |= (1 << 7);
+	if (!joystick1.values[ODROID_INPUT_START])  b |= (1 << 0);
+	if (!joystick1.values[ODROID_INPUT_SELECT]) b |= (1 << 1);
+	if (!joystick1.values[ODROID_INPUT_UP])     b |= (1 << 2);
+	if (!joystick1.values[ODROID_INPUT_RIGHT])  b |= (1 << 3);
+	if (!joystick1.values[ODROID_INPUT_DOWN])   b |= (1 << 4);
+	if (!joystick1.values[ODROID_INPUT_LEFT])   b |= (1 << 5);
+	if (!joystick1.values[ODROID_INPUT_A])      b |= (1 << 6);
+	if (!joystick1.values[ODROID_INPUT_B])      b |= (1 << 7);
+	if (!joystick2.values[ODROID_INPUT_START])  b |= (1 << 8);
+	if (!joystick2.values[ODROID_INPUT_SELECT]) b |= (1 << 9);
+	if (!joystick2.values[ODROID_INPUT_UP])     b |= (1 << 10);
+	if (!joystick2.values[ODROID_INPUT_RIGHT])  b |= (1 << 11);
+	if (!joystick2.values[ODROID_INPUT_DOWN])   b |= (1 << 12);
+	if (!joystick2.values[ODROID_INPUT_LEFT])   b |= (1 << 13);
+	if (!joystick2.values[ODROID_INPUT_A])      b |= (1 << 14);
+	if (!joystick2.values[ODROID_INPUT_B])      b |= (1 << 15);
 
+   changed = b ^ previous;
    previous = b;
 
-	for (int x = 0; x < 8; x++) {
+
+	for (int x = 0; x < events_count; x++) {
 		if (changed & 1) {
          event_raise(events[x], (b & 1) ? INP_STATE_BREAK : INP_STATE_MAKE);
 		}
 		changed >>= 1;
 		b >>= 1;
 	}
-}
-
-
-/**
- * Init/Shutdown
- */
-
-int osd_init()
-{
-   log_chain_logfunc(osd_logprint);
-
-   return 0;
-}
-
-void osd_shutdown()
-{
-	osd_stopsound();
 }
 
 

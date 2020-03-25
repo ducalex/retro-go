@@ -25,9 +25,6 @@ static char* romPath;
 
 static uint32_t* audioBuffer;
 
-static uint8_t* framebuffers[2];
-static uint16_t currentBuffer = 0;
-
 static odroid_video_frame update1;
 static odroid_video_frame update2;
 static odroid_video_frame *currentUpdate = &update1;
@@ -41,6 +38,12 @@ static bool skipFrame = false;
 
 static bool consoleIsGG = false;
 static bool consoleIsSMS = false;
+
+static odroid_gamepad_state joystick1;
+static odroid_gamepad_state joystick2;
+static odroid_gamepad_state *localJoystick = &joystick1;
+static odroid_gamepad_state *remoteJoystick = &joystick2;
+
 // --- MAIN
 
 
@@ -82,8 +85,8 @@ void app_main(void)
     printf("smsplusgx (%s-%s).\n", COMPILEDATE, GITREV);
 
     // Do before odroid_system_init to make sure we get the caps requested
-    framebuffers[0] = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
-    framebuffers[1] = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    update1.buffer = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    update2.buffer = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
     audioBuffer     = heap_caps_calloc(AUDIO_BUFFER_LENGTH * 2, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
 
     // Init all the console hardware
@@ -91,7 +94,7 @@ void app_main(void)
     odroid_system_emu_init(&romPath, &startAction, &LoadState, &SaveState);
 
     // Do the check after screen init so we can display an error
-    if (!framebuffers[0] || !framebuffers[1] || !audioBuffer)
+    if (!update1.buffer || !update2.buffer || !audioBuffer)
     {
         odroid_system_panic("Buffer allocation failed.");
     }
@@ -118,7 +121,7 @@ void app_main(void)
     bitmap.height = SMS_HEIGHT;
     bitmap.pitch = bitmap.width;
     //bitmap.depth = 8;
-    bitmap.data = framebuffers[0];
+    bitmap.data = update1.buffer;
 
     set_option_defaults();
 
@@ -147,19 +150,20 @@ void app_main(void)
     update1.pixel_mask = update2.pixel_mask = PIXEL_MASK;
     update1.pal_shift_mask = update2.pal_shift_mask = PAL_SHIFT_MASK;
     update1.palette = malloc(64); update2.palette = malloc(64);
+    update1.buffer += bitmap.viewport.x;
+    update2.buffer += bitmap.viewport.x;
 
     uint8_t refresh = (sms.display == DISPLAY_NTSC) ? 60 : 50;
     const int frameTime = CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / refresh;
 
     while (true)
     {
-        odroid_gamepad_state joystick;
-        odroid_input_gamepad_read(&joystick);
+        odroid_input_gamepad_read(localJoystick);
 
-        if (joystick.values[ODROID_INPUT_MENU]) {
+        if (localJoystick->values[ODROID_INPUT_MENU]) {
             odroid_overlay_game_menu();
         }
-        else if (joystick.values[ODROID_INPUT_VOLUME]) {
+        else if (localJoystick->values[ODROID_INPUT_VOLUME]) {
             odroid_overlay_game_settings_menu(NULL);
         }
 
@@ -168,29 +172,29 @@ void app_main(void)
         input.pad[0] = 0;
         input.system = 0;
 
-    	if (joystick.values[ODROID_INPUT_UP])    input.pad[0] |= INPUT_UP;
-    	if (joystick.values[ODROID_INPUT_DOWN])  input.pad[0] |= INPUT_DOWN;
-    	if (joystick.values[ODROID_INPUT_LEFT])  input.pad[0] |= INPUT_LEFT;
-    	if (joystick.values[ODROID_INPUT_RIGHT]) input.pad[0] |= INPUT_RIGHT;
-    	if (joystick.values[ODROID_INPUT_A])     input.pad[0] |= INPUT_BUTTON2;
-    	if (joystick.values[ODROID_INPUT_B])     input.pad[0] |= INPUT_BUTTON1;
+    	if (localJoystick->values[ODROID_INPUT_UP])    input.pad[0] |= INPUT_UP;
+    	if (localJoystick->values[ODROID_INPUT_DOWN])  input.pad[0] |= INPUT_DOWN;
+    	if (localJoystick->values[ODROID_INPUT_LEFT])  input.pad[0] |= INPUT_LEFT;
+    	if (localJoystick->values[ODROID_INPUT_RIGHT]) input.pad[0] |= INPUT_RIGHT;
+    	if (localJoystick->values[ODROID_INPUT_A])     input.pad[0] |= INPUT_BUTTON2;
+    	if (localJoystick->values[ODROID_INPUT_B])     input.pad[0] |= INPUT_BUTTON1;
 
 		if (consoleIsSMS)
 		{
-			if (joystick.values[ODROID_INPUT_START])  input.system |= INPUT_PAUSE;
-			if (joystick.values[ODROID_INPUT_SELECT]) input.system |= INPUT_START;
+			if (localJoystick->values[ODROID_INPUT_START])  input.system |= INPUT_PAUSE;
+			if (localJoystick->values[ODROID_INPUT_SELECT]) input.system |= INPUT_START;
 		}
 		else if (consoleIsGG)
 		{
-			if (joystick.values[ODROID_INPUT_START])  input.system |= INPUT_START;
-			if (joystick.values[ODROID_INPUT_SELECT]) input.system |= INPUT_PAUSE;
+			if (localJoystick->values[ODROID_INPUT_START])  input.system |= INPUT_START;
+			if (localJoystick->values[ODROID_INPUT_SELECT]) input.system |= INPUT_PAUSE;
 		}
         else // Coleco
         {
             coleco.keypad[0] = 0xff;
             coleco.keypad[1] = 0xff;
 
-            if (joystick.values[ODROID_INPUT_SELECT])
+            if (localJoystick->values[ODROID_INPUT_SELECT])
             {
                 odroid_input_wait_for_key(ODROID_INPUT_SELECT, false);
                 system_reset();
@@ -203,7 +207,7 @@ void app_main(void)
                 case 0x32b95be0:    // Frogger
                 case 0x9cc3fabc:    // Alcazar
                 case 0x964db3bc:    // Fraction Fever
-                    if (joystick.values[ODROID_INPUT_START])
+                    if (localJoystick->values[ODROID_INPUT_START])
                     {
                         coleco.keypad[0] = 10; // *
                     }
@@ -212,32 +216,32 @@ void app_main(void)
                 case 0x1796de5e:    // Boulder Dash
                 case 0x5933ac18:    // Boulder Dash
                 case 0x6e5c4b11:    // Boulder Dash
-                    if (joystick.values[ODROID_INPUT_START])
+                    if (localJoystick->values[ODROID_INPUT_START])
                     {
                         coleco.keypad[0] = 11; // #
                     }
 
-                    if (joystick.values[ODROID_INPUT_START] &&
-                        joystick.values[ODROID_INPUT_LEFT])
+                    if (localJoystick->values[ODROID_INPUT_START] &&
+                        localJoystick->values[ODROID_INPUT_LEFT])
                     {
                         coleco.keypad[0] = 1;
                     }
                     break;
                 case 0x109699e2:    // Dr. Seuss's Fix-Up The Mix-Up Puzzler
                 case 0x614bb621:    // Decathlon
-                    if (joystick.values[ODROID_INPUT_START])
+                    if (localJoystick->values[ODROID_INPUT_START])
                     {
                         coleco.keypad[0] = 1;
                     }
-                    if (joystick.values[ODROID_INPUT_START] &&
-                        joystick.values[ODROID_INPUT_LEFT])
+                    if (localJoystick->values[ODROID_INPUT_START] &&
+                        localJoystick->values[ODROID_INPUT_LEFT])
                     {
                         coleco.keypad[0] = 10; // *
                     }
                     break;
 
                 default:
-                    if (joystick.values[ODROID_INPUT_START])
+                    if (localJoystick->values[ODROID_INPUT_START])
                     {
                         coleco.keypad[0] = 1;
                     }
@@ -253,23 +257,18 @@ void app_main(void)
         }
         else
         {
-            currentUpdate->buffer = bitmap.data + bitmap.viewport.x;
-            render_copy_palette(currentUpdate->palette);
-
             odroid_video_frame *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
+
+            render_copy_palette(currentUpdate->palette);
 
             if (odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL)
             {
                 ++fullFrames;
             }
 
-            // Flip the update struct so we don't start writing into it while
-            // the second core is still updating the screen.
-            currentUpdate = previousUpdate;
-
             // Swap buffers
-            currentBuffer = 1 - currentBuffer;
-            bitmap.data = framebuffers[currentBuffer];
+            currentUpdate = previousUpdate;
+            bitmap.data = currentUpdate->buffer - bitmap.viewport.x;
         }
 
         if (speedupEnabled)
