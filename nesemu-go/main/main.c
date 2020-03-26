@@ -85,11 +85,11 @@ static bool sprite_limit_cb(odroid_dialog_choice_t *option, odroid_dialog_event_
 
 static bool overscan_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
-   int val = odroid_settings_int32_get(NVS_KEY_OVERSCAN, 1);
+   int val = odroid_settings_app_int32_get(NVS_KEY_OVERSCAN, 1);
 
    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
       val = val ? 0 : 1;
-      odroid_settings_int32_set(NVS_KEY_OVERSCAN, val);
+      odroid_settings_app_int32_set(NVS_KEY_OVERSCAN, val);
       set_overscan(val);
    }
 
@@ -178,7 +178,7 @@ void osd_loadstate()
 
    ppu_limitsprites(odroid_settings_int32_get(NVS_KEY_LIMIT_SPRITES, 1));
    ppu_setnpal(nes_getcontextptr()->ppu, odroid_settings_Palette_get());
-   set_overscan(odroid_settings_int32_get(NVS_KEY_OVERSCAN, 1));
+   set_overscan(odroid_settings_app_int32_get(NVS_KEY_OVERSCAN, 1));
 }
 
 int osd_logprint(const char *string)

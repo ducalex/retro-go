@@ -267,8 +267,8 @@ int rom_load()
 		mbcName, mbc.romsize, rom.length / 1024, mbc.ramsize, mbc.ramsize * 8);
 
 	// SRAM
-	ram.sram_dirty = 1;
 	ram.sbank = heap_caps_malloc_prefer(8192 * mbc.ramsize, MALLOC_CAP_INTERNAL, MALLOC_CAP_SPIRAM);
+	ram.sram_dirty = 0;
 
 	initmem(ram.sbank, 8192 * mbc.ramsize);
 	initmem(ram.ibank, 4096 * 8);
@@ -298,15 +298,16 @@ int sram_load()
 
 	if (!mbc.batt || !sramfile || !*sramfile) return -1;
 
-	/* Consider sram loaded at this point, even if file doesn't exist */
-	ram.loaded = 1;
+	if ((f = fopen(sramfile, "rb")))
+	{
+		printf("sram_load: Loading SRAM\n");
+		fread(ram.sbank, 8192, mbc.ramsize, f);
+		rtc_load_internal(f); // Temporary hack, hopefully
+		fclose(f);
+		return 0;
+	}
 
-	// f = fopen(sramfile, "rb");
-	// if (!f) return -1;
-	// fread(ram.sbank, 8192, mbc.ramsize, f);
-	// fclose(f);
-
-	return 0;
+	return -1;
 }
 
 
@@ -314,58 +315,54 @@ int sram_save()
 {
 	FILE *f;
 
-	/* If we crash before we ever loaded sram, DO NOT SAVE! */
-	if (!mbc.batt || !sramfile || !ram.loaded || !mbc.ramsize)
-		return -1;
+	if (!mbc.batt || !sramfile || !mbc.ramsize) return -1;
 
-	// f = fopen(sramfile, "wb");
-	// if (!f) return -1;
-	// fwrite(ram.sbank, 8192, mbc.ramsize, f);
-	// fclose(f);
+	if ((f = fopen(sramfile, "wb")))
+	{
+		printf("sram_load: Saving SRAM\n");
+		fwrite(ram.sbank, 8192, mbc.ramsize, f);
+		rtc_save_internal(f); // Temporary hack, hopefully
+		fclose(f);
+		return 0;
+	}
 
-	return 0;
+	return -1;
 }
 
 
-void state_save(int n)
+int state_save(char *name)
 {
 	FILE *f;
-	char *name;
-
-	if (n < 0) n = saveslot;
-	if (n < 0) n = 0;
-	name = malloc(strlen(saveprefix) + 5);
-	sprintf(name, "%s.%03d", saveprefix, n);
 
 	if ((f = fopen(name, "wb")))
 	{
 		savestate(f);
+		rtc_save_internal(f);
 		fclose(f);
+		return 0;
 	}
-	free(name);
+
+	return -1;
 }
 
 
-void state_load(int n)
+int state_load(char *name)
 {
 	FILE *f;
-	char *name;
-
-	if (n < 0) n = saveslot;
-	if (n < 0) n = 0;
-	name = malloc(strlen(saveprefix) + 5);
-	sprintf(name, "%s.%03d", saveprefix, n);
 
 	if ((f = fopen(name, "rb")))
 	{
 		loadstate(f);
+		rtc_load_internal(f);
 		fclose(f);
 		vram_dirty();
 		pal_dirty();
 		sound_dirty();
 		mem_updatemap();
+		return 0;
 	}
-	free(name);
+
+	return -1;
 }
 
 void rtc_save()
@@ -425,21 +422,15 @@ static char *ldup(char *s)
 	return n;
 }
 
-static void cleanup()
-{
-	sram_save();
-	rtc_save();
-	/* IDEA - if error, write emergency savestate..? */
-}
-
 void loader_init(char *s)
 {
 	romfile = s;
 
+	sramfile = odroid_system_get_path(romfile, ODROID_PATH_SAVE_SRAM);
+
 	rom_load();
 	rtc_load();
-
-	//atexit(cleanup);
+	// sram_load();
 }
 
 rcvar_t loader_exports[] =

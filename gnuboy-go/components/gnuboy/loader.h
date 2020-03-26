@@ -8,7 +8,6 @@ typedef struct loader_s
 	char *base;
 	char *sram;
 	char *state;
-	int ramloaded;
 } loader_t;
 
 
@@ -20,8 +19,8 @@ int rom_loadbank(short);
 int rom_load();
 int sram_load();
 int sram_save();
-void state_load(int n);
-void state_save(int n);
+int state_load(char *s);
+int state_save(char *s);
 
 
 #endif

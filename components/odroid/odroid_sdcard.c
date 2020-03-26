@@ -191,26 +191,6 @@ size_t odroid_sdcard_unzip_file_to_memory(const char* path, void* buf, size_t bu
     return ret;
 }
 
-char* odroid_sdcard_get_savefile_path(const char* romPath)
-{
-    const char* fileName = odroid_sdcard_get_filename(romPath);
-    const char* extension = odroid_sdcard_get_extension(fileName);
-    char buffer[128];
-
-    if (!extension)
-    {
-        printf("%s: File extention not found.\n", __func__);
-        abort();
-    }
-
-    sprintf(buffer, SD_BASE_PATH "/odroid/data/%s/%s.sav", extension, fileName);
-
-    char *ret = strdup(buffer);
-    if (!ret) abort();
-
-    return ret;
-}
-
 const char* odroid_sdcard_get_filename(const char* path)
 {
     const char *name = strrchr(path, '/');

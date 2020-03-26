@@ -23,6 +23,17 @@ typedef struct
      state_handler_t save;
 } emu_state_t;
 
+typedef enum
+{
+     ODROID_PATH_SAVE_STATE = 0,
+     ODROID_PATH_SAVE_STATE_1,
+     ODROID_PATH_SAVE_STATE_2,
+     ODROID_PATH_SAVE_STATE_3,
+     ODROID_PATH_SAVE_SRAM,
+     ODROID_PATH_ROM_FILE,
+     ODROID_PATH_ART_FILE,
+} emu_path_type_t;
+
 void odroid_system_init(int app_id, int sampleRate);
 void odroid_system_emu_init(char **romPath, int8_t *startAction, state_handler_t load, state_handler_t save);
 void odroid_system_set_app_id(int appId);
@@ -36,6 +47,7 @@ void odroid_system_set_boot_app(int slot);
 void odroid_system_set_led(int value);
 void odroid_system_gpio_init();
 void odroid_system_print_stats(uint ccount, uint frames, uint skippedFrames, uint fullFrames);
+char* odroid_system_get_path(char *romPath, emu_path_type_t type);
 
 inline uint get_elapsed_time_since(uint start)
 {

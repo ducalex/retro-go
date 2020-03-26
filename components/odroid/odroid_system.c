@@ -113,6 +113,47 @@ void odroid_system_gpio_init()
     gpio_set_level(GPIO_NUM_26, 0);
 }
 
+char* odroid_system_get_path(char *_romPath, emu_path_type_t type)
+{
+    const char* fileName = strstr(_romPath ?: romPath, "/roms/");
+    char *buffer = malloc(strlen(fileName) + 32);
+
+    if (!fileName)
+    {
+        printf("%s: Invalid rom path.\n", __func__);
+        abort();
+    }
+
+    strcpy(buffer, SD_BASE_PATH);
+
+    switch (type)
+    {
+        case ODROID_PATH_SAVE_STATE:
+        case ODROID_PATH_SAVE_STATE_1:
+        case ODROID_PATH_SAVE_STATE_2:
+        case ODROID_PATH_SAVE_STATE_3:
+            strcat(buffer, "/odroid/data/");
+            strcat(buffer, fileName + 6);
+            strcat(buffer, ".sav");
+            break;
+
+        case ODROID_PATH_SAVE_SRAM:
+            strcat(buffer, "/odroid/data/");
+            strcat(buffer, fileName + 6);
+            strcat(buffer, ".sram");
+            break;
+
+        case ODROID_PATH_ROM_FILE:
+            strcat(buffer, fileName);
+            break;
+
+        default:
+            abort();
+    }
+
+    return buffer;
+}
+
 bool odroid_system_load_state(int slot)
 {
     if (!romPath || !loadState)
@@ -121,7 +162,7 @@ bool odroid_system_load_state(int slot)
     odroid_display_show_hourglass();
     odroid_display_lock();
 
-    char *pathName = odroid_sdcard_get_savefile_path(romPath);
+    char *pathName = odroid_system_get_path(NULL, ODROID_PATH_SAVE_STATE);
     bool success = (*loadState)(pathName);
 
     odroid_display_unlock();
@@ -146,7 +187,7 @@ bool odroid_system_save_state(int slot)
     odroid_display_show_hourglass();
     odroid_display_lock();
 
-    char *pathName = odroid_sdcard_get_savefile_path(romPath);
+    char *pathName = odroid_system_get_path(NULL, ODROID_PATH_SAVE_STATE);
     bool success = (*saveState)(pathName);
 
     odroid_display_unlock();

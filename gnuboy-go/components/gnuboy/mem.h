@@ -37,7 +37,6 @@ struct ram
 	byte hi[256];
 	byte ibank[8][4096];
 	byte (*sbank)[8192];
-	byte loaded;
 	byte sram_dirty;
 };
 

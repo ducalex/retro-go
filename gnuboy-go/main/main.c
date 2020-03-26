@@ -26,6 +26,8 @@
 #define GB_WIDTH (160)
 #define GB_HEIGHT (144)
 
+#define NVS_KEY_SAVE_SRAM "sram"
+
 static const int frameTime = (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / 60);
 
 static int8_t startAction;
@@ -46,8 +48,8 @@ static uint skippedFrames = 0;
 static uint fullFrames = 0;
 
 static bool skipFrame = false;
-
 static bool netplay = false;
+static bool saveSRAM = false;
 
 extern int debug_trace;
 // --- MAIN
@@ -109,39 +111,22 @@ void run_to_vblank()
 
 static bool SaveState(char *pathName)
 {
-    FILE* f = fopen(pathName, "w");
-
-    if (f == NULL)
-        return false;
-
-    savestate(f);
-    rtc_save_internal(f);
-    fclose(f);
-
-    return true;
+    return state_save(pathName) == 0;
 }
 
 static bool LoadState(char *pathName)
 {
-    FILE* f = fopen(pathName, "r");
-
-    if (f == NULL)
+    if (state_load(pathName) != 0)
     {
         emu_reset();
+
+        if (saveSRAM) sram_load();
+
         return false;
     }
-
-    loadstate(f);
-    rtc_load_internal(f);
-    fclose(f);
-
-    vram_dirty();
-    pal_dirty();
-    sound_dirty();
-    mem_updatemap();
-
     return true;
 }
+
 
 static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
@@ -168,6 +153,17 @@ static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
     return event == ODROID_DIALOG_ENTER;
 }
 
+static bool save_sram_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+{
+    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
+        saveSRAM = !saveSRAM;
+        odroid_settings_app_int32_set(NVS_KEY_SAVE_SRAM, saveSRAM);
+    }
+
+    strcpy(option->value, saveSRAM ? "Yes" : "No");
+
+    return event == ODROID_DIALOG_ENTER;
+}
 
 static bool rtc_t_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
@@ -210,6 +206,19 @@ static bool rtc_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t 
     return false;
 }
 
+static bool advanced_settings_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+{
+   if (event == ODROID_DIALOG_ENTER) {
+      odroid_dialog_choice_t options[] = {
+        {101, "Set clock", "00:00", 1, &rtc_update_cb},
+        {102, "Save SRAM", "No", 1, &save_sram_update_cb},
+        ODROID_DIALOG_CHOICE_LAST
+      };
+      odroid_overlay_dialog("Advanced", options, 0);
+   }
+   return false;
+}
+
 void app_main(void)
 {
     printf("gnuboy (%s-%s).\n", COMPILEDATE, GITREV);
@@ -228,6 +237,8 @@ void app_main(void)
     {
         odroid_system_panic("Buffer allocation failed.");
     }
+
+    saveSRAM = odroid_settings_app_int32_get(NVS_KEY_SAVE_SRAM, 0);
 
     // Load ROM
     loader_init(romPath);
@@ -255,17 +266,19 @@ void app_main(void)
   	pcm.buf = audioBuffer;
   	pcm.pos = 0;
 
-
     emu_reset();
 
     lcd_begin();
 
     pal_set_dmg(odroid_settings_Palette_get());
 
-    // Load state
     if (startAction == ODROID_START_ACTION_RESUME)
     {
         odroid_system_load_state(0);
+    }
+    else if (saveSRAM)
+    {
+        sram_load();
     }
 
     // Many games glitch on startup, let's hide that
@@ -282,7 +295,7 @@ void app_main(void)
         else if (joystick.values[ODROID_INPUT_VOLUME]) {
             odroid_dialog_choice_t options[] = {
                 {100, "Palette", "7/7", !hw.cgb, &palette_update_cb},
-                {101, "Set clock", "00:00", mbc.type == MBC_MBC3, &rtc_update_cb},
+                {101, "More...", "", 1, &advanced_settings_cb},
                 ODROID_DIALOG_CHOICE_LAST
             };
             odroid_overlay_game_settings_menu(options);
@@ -322,6 +335,13 @@ void app_main(void)
 
             emulatedFrames = skippedFrames = fullFrames = 0;
             totalElapsedTime = 0;
+
+            if (saveSRAM && ram.sram_dirty)
+            {
+                odroid_display_drain_spi();
+                sram_save();
+                ram.sram_dirty = 0;
+            }
         }
     }
 }
