@@ -142,7 +142,7 @@ extern uint8 *ppu_getpage(int page);
 
 
 /* control */
-extern void ppu_reset(int reset_type);
+extern void ppu_reset();
 extern bool ppu_enabled(void);
 extern void ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag);
 extern void ppu_endscanline(int scanline);
@@ -167,6 +167,25 @@ extern void ppu_dumppattern(bitmap_t *bmp, int table_num, int x_loc, int y_loc, 
 extern void ppu_dumpoam(bitmap_t *bmp, int x_loc, int y_loc);
 extern void ppu_displaysprites(bool display);
 extern void ppu_limitsprites(bool limit);
+
+/* PPU debug drawing */
+
+#define  GUI_FIRSTENTRY 192
+
+enum
+{
+   GUI_BLACK = GUI_FIRSTENTRY,
+   GUI_DKGRAY,
+   GUI_GRAY,
+   GUI_LTGRAY,
+   GUI_WHITE,
+   GUI_RED,
+   GUI_GREEN,
+   GUI_BLUE,
+   GUI_LASTENTRY
+};
+
+#define  GUI_TOTALCOLORS   (GUI_LASTENTRY - GUI_FIRSTENTRY)
 
 #endif /* _NES_PPU_H_ */
 

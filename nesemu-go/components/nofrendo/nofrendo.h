@@ -39,5 +39,6 @@ extern bitmap_t *primary_buffer;
 extern int nofrendo_start(const char *filename, int region);
 extern void nofrendo_stop(void);
 extern void nofrendo_refresh(void);
+extern void nofrendo_notify(char *format, ...);
 
 #endif /* !_NOFRENDO_H_ */

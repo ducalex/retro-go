@@ -49,7 +49,8 @@ typedef enum
 enum
 {
    SOFT_RESET,
-   HARD_RESET
+   HARD_RESET,
+   ZERO_RESET,
 };
 
 typedef struct nes_s

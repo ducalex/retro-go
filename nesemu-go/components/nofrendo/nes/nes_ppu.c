@@ -31,7 +31,6 @@
 #include <noftypes.h>
 #include <nes_ppu.h>
 #include <nes.h>
-#include <gui.h>
 #include <nes6502.h>
 #include <log.h>
 #include <nes_mmc.h>
@@ -56,6 +55,18 @@
 
 /* the NES PPU */
 static ppu_t ppu;
+
+rgb_t gui_pal[] =
+{
+   { 0x00, 0x00, 0x00 }, /* black      */
+   { 0x3F, 0x3F, 0x3F }, /* dark gray  */
+   { 0x7F, 0x7F, 0x7F }, /* gray       */
+   { 0xBF, 0xBF, 0xBF }, /* light gray */
+   { 0xFF, 0xFF, 0xFF }, /* white      */
+   { 0xFF, 0x00, 0x00 }, /* red        */
+   { 0x00, 0xFF, 0x00 }, /* green      */
+   { 0x00, 0x00, 0xFF }, /* blue       */
+};
 
 
 void ppu_displaysprites(bool display)
@@ -205,19 +216,10 @@ uint8 *ppu_getpage(int page)
    return ppu.page[page];
 }
 
-static void mem_trash(uint8 *buffer, int length)
-{
-   int i;
-
-   for (i = 0; i < length; i++)
-      buffer[i] = (uint8) rand();
-}
-
 /* reset state of ppu */
-void ppu_reset(int reset_type)
+void ppu_reset()
 {
-   if (HARD_RESET == reset_type)
-      mem_trash(ppu.oam, 256);
+   memset(ppu.oam, 0, 256);
 
    ppu.ctrl0 = 0;
    ppu.ctrl1 = PPU_CTRL1F_OBJON | PPU_CTRL1F_BGON;

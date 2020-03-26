@@ -153,8 +153,8 @@ void app_main(void)
     update1.buffer += bitmap.viewport.x;
     update2.buffer += bitmap.viewport.x;
 
-    uint8_t refresh = (sms.display == DISPLAY_NTSC) ? 60 : 50;
-    const int frameTime = CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / refresh;
+    uint8_t refresh_rate = (sms.display == DISPLAY_NTSC) ? FPS_NTSC : FPS_PAL;
+    const int frameTime = CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / refresh_rate;
 
     while (true)
     {
@@ -296,21 +296,11 @@ void app_main(void)
         totalElapsedTime += get_elapsed_time_since(startTime);
         ++emulatedFrames;
 
-        if (emulatedFrames == refresh)
+        if (emulatedFrames == refresh_rate)
         {
-            float seconds = totalElapsedTime / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f);
-            float fps = emulatedFrames / seconds;
+            odroid_system_print_stats(totalElapsedTime, emulatedFrames, skippedFrames, fullFrames);
 
-            odroid_battery_state battery;
-            odroid_input_battery_level_read(&battery);
-
-            printf("HEAP:%d, FPS:%f, SKIP:%d, FULL:%d, BATTERY:%d [%d]\n",
-                esp_get_free_heap_size() / 1024, fps, skippedFrames, fullFrames,
-                battery.millivolts, battery.percentage);
-
-            emulatedFrames = 0;
-            skippedFrames = 0;
-            fullFrames = 0;
+            emulatedFrames = skippedFrames = fullFrames = 0;
             totalElapsedTime = 0;
         }
     }

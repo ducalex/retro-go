@@ -162,7 +162,7 @@ static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
         run_to_vblank();
     }
 
-    if (pal == 0) strcpy(option->value, "Auto");
+    if (pal == 0) strcpy(option->value, "GBC");
     else sprintf(option->value, "%d/%d", pal, max);
 
     return event == ODROID_DIALOG_ENTER;
@@ -276,28 +276,6 @@ void app_main(void)
         odroid_gamepad_state joystick;
         odroid_input_gamepad_read(&joystick);
 
-        if (netplay)
-        {
-            if (odroid_netplay_status() == NETPLAY_STATUS_DISCONNECTED)
-            {
-                odroid_overlay_alert("Connection lost");
-                odroid_netplay_stop();
-            }
-            else
-            {
-                if (memcmp(&joystick_prev, &joystick, sizeof joystick) != 0)
-                {
-                    odroid_netplay_send(&joystick, sizeof joystick);
-                    joystick_prev = joystick;
-                }
-
-                for (int i = 0; i < ODROID_INPUT_MAX; i++)
-                {
-                    joystick.values[i] = joystick.values[i] || joystick_remote.values[i];
-                }
-            }
-        }
-
         if (joystick.values[ODROID_INPUT_MENU]) {
             odroid_overlay_game_menu();
         }
@@ -340,19 +318,9 @@ void app_main(void)
 
         if (emulatedFrames == 60)
         {
-            float seconds = totalElapsedTime / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f);
-            float fps = emulatedFrames / seconds;
+            odroid_system_print_stats(totalElapsedTime, emulatedFrames, skippedFrames, fullFrames);
 
-            odroid_battery_state battery;
-            odroid_input_battery_level_read(&battery);
-
-            printf("HEAP:%d, FPS:%f, SKIP:%d, FULL:%d, BATTERY:%d [%d]\n",
-                esp_get_free_heap_size() / 1024, fps, skippedFrames, fullFrames,
-                battery.millivolts, battery.percentage);
-
-            emulatedFrames = 0;
-            skippedFrames = 0;
-            fullFrames = 0;
+            emulatedFrames = skippedFrames = fullFrames = 0;
             totalElapsedTime = 0;
         }
     }

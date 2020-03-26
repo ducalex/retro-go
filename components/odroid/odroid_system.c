@@ -248,3 +248,18 @@ void odroid_system_set_led(int value)
 {
     gpio_set_level(GPIO_NUM_2, value);
 }
+
+void odroid_system_print_stats(uint ccount, uint frames, uint skippedFrames, uint fullFrames)
+{
+    float seconds = (float)ccount / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f);
+    float fps = frames / seconds;
+
+    odroid_battery_state battery;
+    odroid_input_battery_level_read(&battery);
+
+    printf("HEAP:%d+%d, FPS:%f, SKIP:%d, FULL:%d, BATTERY:%d [%d]\n",
+        heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
+        heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024,
+        fps, skippedFrames, fullFrames,
+        battery.millivolts, battery.percentage);
+}

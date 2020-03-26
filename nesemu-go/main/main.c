@@ -6,7 +6,6 @@
 #include <noftypes.h>
 #include <bitmap.h>
 #include <event.h>
-#include <gui.h>
 #include <log.h>
 #include <nes.h>
 #include <nesinput.h>
@@ -302,7 +301,6 @@ void osd_getinput(void)
 
    changed = b ^ previous;
    previous = b;
-
 
 	for (int x = 0; x < events_count; x++) {
 		if (changed & 1) {

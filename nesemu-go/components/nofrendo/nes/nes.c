@@ -29,21 +29,20 @@
 #include <string.h>
 #include <stdlib.h>
 #include <noftypes.h>
-#include "nes6502.h"
+#include <nes6502.h>
 #include <log.h>
 #include <osd.h>
-#include <gui.h>
 #include <nes.h>
 #include <nes_apu.h>
 #include <nes_ppu.h>
 #include <nes_rom.h>
 #include <nes_mmc.h>
 #include <nofrendo.h>
-#include "nesstate.h"
+#include <nesstate.h>
 
 #include <esp_attr.h>
-#include "esp_system.h"
-#include "odroid_system.h"
+#include <esp_system.h>
+#include <odroid_system.h>
 
 
 // #define  NES_CLOCK_DIVIDER    12
@@ -373,50 +372,44 @@ void nes_emulate(void)
 
       if (emulatedFrames == nes.refresh_rate)
       {
-         float seconds = totalElapsedTime / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f);
-         float fps = emulatedFrames / seconds;
+         odroid_system_print_stats(totalElapsedTime, emulatedFrames, skippedFrames, fullFrames);
 
-         odroid_battery_state battery;
-         odroid_input_battery_level_read(&battery);
-
-         printf("HEAP:%d, FPS:%f, SKIP:%d, FULL:%d, BATTERY:%d [%d]\n",
-            esp_get_free_heap_size() / 1024, fps, skippedFrames, fullFrames,
-            battery.millivolts, battery.percentage);
-
-         emulatedFrames = 0;
-         skippedFrames = 0;
-         fullFrames = 0;
+         emulatedFrames = skippedFrames = fullFrames = 0;
          totalElapsedTime = 0;
       }
    }
 }
 
-static void mem_trash(uint8 *buffer, int length)
+static void mem_reset(uint8 *buffer, int length, int reset_type)
 {
-   for (int i = 0; i < length; i++)
-      buffer[i] = (uint8) rand();
+   if (!buffer) return;
+
+   if (HARD_RESET == reset_type)
+   {
+      for (int i = 0; i < length; i++)
+         buffer[i] = (uint8) rand();
+   }
+   else if (ZERO_RESET == reset_type)
+   {
+      memset(buffer, 0, length);
+   }
 }
 
 /* Reset NES hardware */
 void nes_reset(int reset_type)
 {
-   if (HARD_RESET == reset_type)
-   {
-      memset(nes.cpu->mem_page[0], 0, NES_RAMSIZE);
-      if (nes.rominfo->vram)
-         mem_trash(nes.rominfo->vram, 0x2000 * nes.rominfo->vram_banks);
-   }
+   mem_reset(nes.cpu->mem_page[0], NES_RAMSIZE, reset_type);
+   mem_reset(nes.rominfo->vram, 0x2000 * nes.rominfo->vram_banks, reset_type);
 
    apu_reset();
-   ppu_reset(reset_type);
+   ppu_reset();
    mmc_reset();
    nes6502_reset();
 
    nes.scanline = 241;
    nes.cycles = 0;
 
-   gui_sendmsg(GUI_GREEN, "NES %s",
-               (HARD_RESET == reset_type) ? "powered on" : "reset");
+   nofrendo_notify("NES %s", (SOFT_RESET == reset_type) ? "reset" : "powered on");
 }
 
 void nes_destroy(nes_t **machine)

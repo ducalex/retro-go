@@ -35,7 +35,7 @@ void odroid_system_sleep();
 void odroid_system_set_boot_app(int slot);
 void odroid_system_set_led(int value);
 void odroid_system_gpio_init();
-
+void odroid_system_print_stats(uint ccount, uint frames, uint skippedFrames, uint fullFrames);
 
 inline uint get_elapsed_time_since(uint start)
 {

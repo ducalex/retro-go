@@ -28,7 +28,6 @@
 #include <noftypes.h>
 #include <nofrendo.h>
 #include <nesstate.h>
-#include <gui.h>
 #include <nes.h>
 #include <log.h>
 #include <osd.h>
@@ -55,7 +54,7 @@ void state_setslot(int slot)
        && slot <= LAST_STATE_SLOT)
    {
       state_slot = slot;
-      gui_sendmsg(GUI_WHITE, "State slot set to %d", slot);
+      nofrendo_notify("State slot set to %d", slot);
    }
 }
 

@@ -51,15 +51,6 @@ enum
    event_state_slot_7,
    event_state_slot_8,
    event_state_slot_9,
-   /* GUI */
-   event_gui_toggle_oam,
-   event_gui_toggle_wave,
-   event_gui_toggle_pattern,
-   event_gui_pattern_color_up,
-   event_gui_pattern_color_down,
-   event_gui_toggle_fps,
-   event_gui_display_info,
-   event_gui_toggle,
    /* sound */
    event_toggle_channel_0,
    event_toggle_channel_1,
@@ -88,11 +79,6 @@ enum
    event_joypad2_down,
    event_joypad2_left,
    event_joypad2_right,
-   /* reserved */
-   event_reserved1,
-   event_reserved2,
-   event_reserved3,
-   event_reserved4,
    /* OS specific */
    event_osd_1,
    event_osd_2,

@@ -28,11 +28,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <noftypes.h>
+#include <nofrendo.h>
 #include "nes_rom.h"
 #include "nes_mmc.h"
 #include "nes_ppu.h"
 #include "nes.h"
-#include <gui.h>
 #include <log.h>
 #include <osd.h>
 #include <rom/crc.h>
@@ -252,7 +252,6 @@ static int rom_getheader(unsigned char **rom, rominfo_t *rominfo)
 
    if (memcmp(head.ines_magic, ROM_INES_MAGIC, 4))
    {
-      gui_sendmsg(GUI_RED, "%s is not a valid ROM image", rominfo->filename);
       printf("rom_getheader: %s is not a valid ROM image\n", rominfo->filename);
       return -1;
    }
@@ -360,7 +359,7 @@ rominfo_t *rom_load(const char *filename)
    /* Make sure we really support the mapper */
    if (false == mmc_peek(rominfo->mapper_number))
    {
-      gui_sendmsg(GUI_RED, "Mapper %d not yet implemented", rominfo->mapper_number);
+      nofrendo_notify("Mapper %d not yet implemented", rominfo->mapper_number);
       printf("rom_load: Mapper %d not yet implemented\n", rominfo->mapper_number);
       goto _fail;
    }
@@ -379,11 +378,12 @@ rominfo_t *rom_load(const char *filename)
 
    // rom_loadsram(rominfo);
 
-   gui_sendmsg(GUI_GREEN, "ROM loaded: %s", rom_getinfo(rominfo));
+   nofrendo_notify("ROM loaded: %s", rom_getinfo(rominfo));
 
    return rominfo;
 
 _fail:
+   nofrendo_notify("ROM not loaded.");
    printf("rom_load: Rom loading failed\n");
    rom_free(&rominfo);
    return NULL;
@@ -393,10 +393,7 @@ _fail:
 void rom_free(rominfo_t **rominfo)
 {
    if (NULL == *rominfo)
-   {
-      gui_sendmsg(GUI_GREEN, "ROM not loaded");
       return;
-   }
 
    rom_savesram(*rominfo);
 
@@ -410,6 +407,4 @@ void rom_free(rominfo_t **rominfo)
       free((*rominfo)->vram);
 
    free(*rominfo);
-
-   gui_sendmsg(GUI_GREEN, "ROM freed");
 }

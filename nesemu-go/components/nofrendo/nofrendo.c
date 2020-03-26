@@ -26,12 +26,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <noftypes.h>
 #include <nofrendo.h>
 #include <event.h>
 #include <log.h>
 #include <osd.h>
-#include <gui.h>
 #include <nes.h>
 
 
@@ -46,6 +46,24 @@ static void timer_isr(void)
    nofrendo_ticks++;
 }
 
+void nofrendo_notify(char *format, ...)
+{
+   va_list args;
+   va_start(args, format);
+
+   // Display on screen
+   // gui_sendmsg();
+
+   // Display on stdout
+   vprintf(format, args);
+
+   va_end(args);
+}
+
+//    apu_setchan(chan, chan_enabled[chan]);
+// apu_setfilter(filter_type);
+
+
 void nofrendo_refresh()
 {
    // osd_blitscreen(primary_buffer);
@@ -58,7 +76,6 @@ void nofrendo_stop(void)
    nes_destroy(&console);
 
    // osd_shutdown();
-   gui_shutdown();
    // vid_shutdown();
    log_shutdown();
 }
@@ -71,9 +88,6 @@ int nofrendo_start(const char *filename, int region)
       return -1;
 
    if (osd_init())
-      return -1;
-
-   if (gui_init())
       return -1;
 
    if (region == NES_AUTO)
