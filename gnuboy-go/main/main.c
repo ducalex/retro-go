@@ -51,6 +51,8 @@ static bool skipFrame = false;
 static bool netplay = false;
 static bool saveSRAM = false;
 
+static int sramSaveTimer = 0;
+
 extern int debug_trace;
 // --- MAIN
 
@@ -318,6 +320,21 @@ void app_main(void)
 
         run_to_vblank();
 
+        if (saveSRAM)
+        {
+            if (ram.sram_dirty)
+            {
+                sramSaveTimer = 90;
+                ram.sram_dirty = 0;
+            }
+
+            if (sramSaveTimer > 0 && --sramSaveTimer == 0)
+            {
+                odroid_display_drain_spi();
+                sram_save();
+            }
+        }
+
         skipFrame = !skipFrame && get_elapsed_time_since(startTime) > frameTime;
 
         if (speedupEnabled) {
@@ -335,13 +352,6 @@ void app_main(void)
 
             emulatedFrames = skippedFrames = fullFrames = 0;
             totalElapsedTime = 0;
-
-            if (saveSRAM && ram.sram_dirty)
-            {
-                odroid_display_drain_spi();
-                sram_save();
-                ram.sram_dirty = 0;
-            }
         }
     }
 }
