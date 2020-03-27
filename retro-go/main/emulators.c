@@ -58,7 +58,7 @@ void emulators_init_emu(retro_emulator_t *emu)
 
     char path[128];
 
-    odroid_display_lock();
+    odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
     sprintf(path, SAVE_PATH "/%s", emu->dirname);
     odroid_sdcard_mkdir(path);
@@ -118,7 +118,7 @@ void emulators_init_emu(retro_emulator_t *emu)
         emu->roms.selected = 0;
     }
 
-    odroid_display_unlock();
+    odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
 }
 
 void emulators_init()

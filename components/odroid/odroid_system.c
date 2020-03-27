@@ -1,5 +1,6 @@
-#include "odroid_system.h"
 #include "freertos/FreeRTOS.h"
+#include "odroid_image_sdcard.h"
+#include "odroid_system.h"
 #include "esp_heap_caps.h"
 #include "esp_partition.h"
 #include "esp_ota_ops.h"
@@ -17,6 +18,9 @@ static char *romPath = NULL;
 static state_handler_t loadState;
 static state_handler_t saveState;
 
+static SemaphoreHandle_t spiMutex;
+static int8_t spiMutexOwner;
+
 void odroid_system_init(int appId, int sampleRate)
 {
     printf("odroid_system_init: %d KB free\n", esp_get_free_heap_size() / 1024);
@@ -27,6 +31,10 @@ void odroid_system_init(int appId, int sampleRate)
     odroid_input_gamepad_init();
     odroid_input_battery_level_init();
     odroid_audio_init(sampleRate);
+
+    spiMutex = xSemaphoreCreateMutex();
+    spiMutexOwner = -1;
+    applicationId = appId;
 
     odroid_gamepad_state bootState = odroid_input_read_raw();
     if (bootState.values[ODROID_INPUT_MENU])
@@ -54,11 +62,14 @@ void odroid_system_init(int appId, int sampleRate)
 
     if (sd_init != ESP_OK)
     {
-        odroid_display_show_error(ODROID_SD_ERR_NOCARD);
+        odroid_display_clear(C_WHITE);
+        odroid_display_write((ODROID_SCREEN_WIDTH - image_sdcard_red_48dp.width) / 2,
+            (ODROID_SCREEN_HEIGHT - image_sdcard_red_48dp.height) / 2,
+            image_sdcard_red_48dp.width,
+            image_sdcard_red_48dp.height,
+            image_sdcard_red_48dp.pixel_data);
         odroid_system_halt();
     }
-
-    applicationId = appId;
 
     printf("odroid_system_init: System ready!\n");
 }
@@ -160,12 +171,12 @@ bool odroid_system_load_state(int slot)
         odroid_system_panic("Emulator not initialized");
 
     odroid_display_show_hourglass();
-    odroid_display_lock();
+    odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
     char *pathName = odroid_system_get_path(NULL, ODROID_PATH_SAVE_STATE);
     bool success = (*loadState)(pathName);
 
-    odroid_display_unlock();
+    odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
 
     if (!success)
     {
@@ -185,12 +196,12 @@ bool odroid_system_save_state(int slot)
     odroid_input_battery_monitor_enabled_set(0);
     odroid_system_set_led(1);
     odroid_display_show_hourglass();
-    odroid_display_lock();
+    odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
     char *pathName = odroid_system_get_path(NULL, ODROID_PATH_SAVE_STATE);
     bool success = (*saveState)(pathName);
 
-    odroid_display_unlock();
+    odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
     odroid_system_set_led(0);
     odroid_input_battery_monitor_enabled_set(1);
 
@@ -270,7 +281,7 @@ void odroid_system_panic(const char *reason)
     odroid_audio_terminate();
 
     // In case we panicked from inside a dialog
-    odroid_display_unlock();
+    odroid_system_spi_lock_release(SPI_LOCK_ANY);
 
     odroid_display_clear(C_BLUE);
 
@@ -281,6 +292,7 @@ void odroid_system_panic(const char *reason)
 
 void odroid_system_halt()
 {
+    printf("odroid_system_halt: Halting system!\n");
     vTaskSuspendAll();
     while (1);
 }
@@ -303,4 +315,30 @@ void odroid_system_print_stats(uint ccount, uint frames, uint skippedFrames, uin
         heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024,
         fps, skippedFrames, fullFrames,
         battery.millivolts, battery.percentage);
+}
+
+void IRAM_ATTR odroid_system_spi_lock_acquire(spi_lock_res_t owner)
+{
+    if (owner == spiMutexOwner)
+    {
+        return;
+    }
+    else if (xSemaphoreTake(spiMutex, 10000 / portTICK_RATE_MS) == pdPASS)
+    {
+        spiMutexOwner = owner;
+    }
+    else
+    {
+        printf("SPI Mutex Lock Acquisition failed!\n");
+        abort();
+    }
+}
+
+void IRAM_ATTR odroid_system_spi_lock_release(spi_lock_res_t owner)
+{
+    if (owner == spiMutexOwner || owner == SPI_LOCK_ANY)
+    {
+        xSemaphoreGive(spiMutex);
+        spiMutexOwner = SPI_LOCK_ANY;
+    }
 }

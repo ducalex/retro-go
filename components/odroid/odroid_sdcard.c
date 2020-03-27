@@ -1,14 +1,8 @@
 #include "odroid_sdcard.h"
-
-//#include "esp_err.h"
-#include "esp_log.h"
+#include "odroid_system.h"
 #include "esp_vfs_fat.h"
 #include "driver/sdmmc_host.h"
 #include "driver/sdspi_host.h"
-#include "sdmmc_cmd.h"
-#include "esp_heap_caps.h"
-#include "esp_spiffs.h"
-
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
@@ -16,6 +10,11 @@
 #include <ctype.h>
 
 #include "../miniz/miniz.h"
+
+#define SPI_PIN_NUM_MISO GPIO_NUM_19
+#define SPI_PIN_NUM_MOSI GPIO_NUM_23
+#define SPI_PIN_NUM_CLK  GPIO_NUM_18
+#define SPI_PIN_NUM_CS   GPIO_NUM_22
 
 static bool isOpen = false;
 
@@ -26,7 +25,7 @@ esp_err_t odroid_sdcard_open()
 
     if (isOpen)
     {
-        printf("odroid_sdcard_open: alread open.\n");
+        printf("odroid_sdcard_open: already open.\n");
         ret = ESP_FAIL;
     }
     else
@@ -37,10 +36,10 @@ esp_err_t odroid_sdcard_open()
         host.max_freq_khz = SDMMC_FREQ_DEFAULT;
 
     	sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
-    	slot_config.gpio_miso = (gpio_num_t)SD_PIN_NUM_MISO;
-    	slot_config.gpio_mosi = (gpio_num_t)SD_PIN_NUM_MOSI;
-    	slot_config.gpio_sck  = (gpio_num_t)SD_PIN_NUM_CLK;
-    	slot_config.gpio_cs = (gpio_num_t)SD_PIN_NUM_CS;
+    	slot_config.gpio_miso = SPI_PIN_NUM_MISO;
+    	slot_config.gpio_mosi = SPI_PIN_NUM_MOSI;
+    	slot_config.gpio_sck  = SPI_PIN_NUM_CLK;
+    	slot_config.gpio_cs = SPI_PIN_NUM_CS;
     	//slot_config.dma_channel = 2;
 
     	// Options for mounting the filesystem.

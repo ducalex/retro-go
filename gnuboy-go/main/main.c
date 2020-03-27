@@ -330,10 +330,9 @@ void app_main(void)
 
             if (sramSaveTimer > 0 && --sramSaveTimer == 0)
             {
-                odroid_display_drain_spi();
-                // odroid_display_lock();
+                odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
                 sram_save();
-                // odroid_display_unlock();
+                odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
             }
         }
 

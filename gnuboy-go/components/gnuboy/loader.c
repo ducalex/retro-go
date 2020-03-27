@@ -162,11 +162,11 @@ int IRAM_ATTR rom_loadbank(short bank)
 	}
 
 	if (rom.bank[bank] == NULL) {
-		abort();
+		odroid_system_panic("Out of memory");
 	}
 
 	// Make sure no transaction is running
-	odroid_display_drain_spi();
+	odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
 	// Load the 16K page
 	if (fseek(fpRomFile, OFFSET, SEEK_SET))
@@ -180,6 +180,8 @@ int IRAM_ATTR rom_loadbank(short bank)
 		printf("bank_load: fread failed. bank=%d\n", bank);
 		odroid_system_panic("ROM fread failed");
 	}
+
+	odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
 
 	return 0;
 }

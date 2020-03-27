@@ -71,7 +71,6 @@ void odroid_overlay_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, ch
     }
 
     ili9341_write_frame_rectangleLE(x_pos, y_pos, width, ODROID_FONT_HEIGHT, overlay_buffer);
-    // odroid_display_drain_spi();
 }
 
 void odroid_overlay_draw_rect(int x, int y, int width, int height, int border, uint16_t color)
@@ -132,7 +131,6 @@ void odroid_overlay_draw_battery(int x_pos, int y_pos)
     odroid_overlay_draw_rect(x_pos + 22, y_pos + 2, 2, 6, 1, color_border);
     odroid_overlay_draw_fill_rect(x_pos + 1, y_pos + 1, width_fill, 8, color_fill);
     odroid_overlay_draw_fill_rect(x_pos + 1 + width_fill, y_pos + 1, width_empty, 8, color_empty);
-    odroid_display_drain_spi();
 }
 
 static int get_dialog_items_count(odroid_dialog_choice_t *options)
@@ -228,8 +226,6 @@ void odroid_overlay_draw_dialog(char *header, odroid_dialog_choice_t *options, i
         bg = (i == sel) ? color : box_color;
         odroid_overlay_draw_text(x, y + i * ODROID_FONT_HEIGHT, width * ODROID_FONT_WIDTH, rows[i], fg, bg);
     }
-
-    odroid_display_drain_spi();
 }
 
 int odroid_overlay_dialog(char *header, odroid_dialog_choice_t *options, int selected)
@@ -449,7 +445,6 @@ bool speedup_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t eve
 int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options)
 {
     odroid_audio_clear_buffer();
-    odroid_display_drain_spi();
     wait_all_keys_released();
 
     odroid_dialog_choice_t options[12] = {
@@ -491,7 +486,6 @@ int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options)
 int odroid_overlay_game_menu()
 {
     odroid_audio_clear_buffer();
-    odroid_display_drain_spi();
     wait_all_keys_released();
 
     odroid_dialog_choice_t choices[] = {

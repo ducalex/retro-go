@@ -159,7 +159,6 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
         else if ((fp = fopen(file->path, "rb")) != NULL)
         {
             odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"       CRC32", C_GREEN, C_BLACK);
-            odroid_display_drain_spi();
 
             fseek(fp, emu->crc_offset, SEEK_SET);
             int buf_size = 32768;
@@ -200,7 +199,6 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
             *crc = 1;
         }
         odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" ", C_RED, C_BLACK);
-        odroid_display_drain_spi();
     }
 
     if (*crc > 1)

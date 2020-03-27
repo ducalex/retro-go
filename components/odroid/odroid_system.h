@@ -34,6 +34,13 @@ typedef enum
      ODROID_PATH_ART_FILE,
 } emu_path_type_t;
 
+typedef enum
+{
+     SPI_LOCK_ANY     = 0,
+     SPI_LOCK_SDCARD  = 1,
+     SPI_LOCK_DISPLAY = 2,
+} spi_lock_res_t;
+
 void odroid_system_init(int app_id, int sampleRate);
 void odroid_system_emu_init(char **romPath, int8_t *startAction, state_handler_t load, state_handler_t save);
 void odroid_system_set_app_id(int appId);
@@ -48,6 +55,9 @@ void odroid_system_set_led(int value);
 void odroid_system_gpio_init();
 void odroid_system_print_stats(uint ccount, uint frames, uint skippedFrames, uint fullFrames);
 char* odroid_system_get_path(char *romPath, emu_path_type_t type);
+
+void odroid_system_spi_lock_acquire(spi_lock_res_t);
+void odroid_system_spi_lock_release(spi_lock_res_t);
 
 inline uint get_elapsed_time_since(uint start)
 {

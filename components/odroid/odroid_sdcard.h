@@ -2,11 +2,6 @@
 
 #include "esp_err.h"
 
-#define SD_PIN_NUM_MISO 19
-#define SD_PIN_NUM_MOSI 23
-#define SD_PIN_NUM_CLK  18
-#define SD_PIN_NUM_CS 22
-
 #define SD_BASE_PATH "/sd"
 
 esp_err_t odroid_sdcard_open();

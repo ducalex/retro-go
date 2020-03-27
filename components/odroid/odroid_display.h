@@ -2,12 +2,8 @@
 
 #include <stdint.h>
 
-enum ODROID_SYS_ERROR {
-    ODROID_SD_ERR_BADFILE = 1,
-    ODROID_SD_ERR_NOCARD,
-    ODROID_SD_ERR_NOBIOS,
-    ODROID_EMU_ERR_CRASH,
-};
+#define ODROID_SCREEN_WIDTH  320
+#define ODROID_SCREEN_HEIGHT 240
 
 typedef enum {
     SCREEN_UPDATE_EMPTY,
@@ -51,28 +47,20 @@ typedef struct {
 } odroid_line_diff;
 
 typedef struct {
-    int16_t width;       // In px
-    int16_t height;      // In px
-    int16_t stride;      // In bytes
-    uint8_t pixel_size;  // In bytes
-    uint8_t pixel_mask;  // Put 0xFF if no palette
-    void *buffer;        // Should match pixel_size
-    uint16_t *palette;   //
+    short width;       // In px
+    short height;      // In px
+    short stride;      // In bytes
+    short pixel_size;  // In bytes
+    short pixel_mask;  // Put 0xFF if no palette
+    void *buffer;      // Should match pixel_size
+    uint16_t *palette; //
     uint8_t pal_shift_mask;
     odroid_line_diff diff[240];
 } odroid_video_frame;
 
-typedef struct {
-    odroid_video_frame *frame;
-    odroid_line_diff diff[240];
-    int8_t use_diff;
-} odroid_video_update;
-
 extern volatile int8_t displayScalingMode;
 extern volatile int8_t displayFilterMode;
 extern volatile int8_t forceVideoRefresh;
-
-void ili9341_write_frame_rectangleLE(short left, short top, short width, short height, uint16_t* buffer);
 
 int8_t odroid_display_backlight_get();
 void odroid_display_backlight_set(int8_t level);
@@ -84,9 +72,9 @@ short odroid_display_queue_update(odroid_video_frame *frame, odroid_video_frame 
 
 void odroid_display_init();
 void odroid_display_deinit();
-void odroid_display_lock();
-void odroid_display_unlock();
 void odroid_display_drain_spi();
-void odroid_display_clear(uint16_t color);
-void odroid_display_show_error(int errNum);
+void odroid_display_write(short left, short top, short width, short height, uint16_t* bufferLE);
+void odroid_display_clear(uint16_t colorLE);
 void odroid_display_show_hourglass();
+
+#define ili9341_write_frame_rectangleLE odroid_display_write
