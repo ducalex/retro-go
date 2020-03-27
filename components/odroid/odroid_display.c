@@ -786,7 +786,7 @@ static inline int frame_diff(odroid_video_frame *frame, odroid_video_frame *prev
                 }
 
                 if (--left < 0) left = 0;
-                if (++right > frame->width - 1) right = frame->width - 1;
+                if (++right > frame->width) right = frame->width;
 
                 // while (left > 0 && !frame_filter_column_is_key[left])
                 //     left--;

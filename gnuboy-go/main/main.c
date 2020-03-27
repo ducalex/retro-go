@@ -331,7 +331,9 @@ void app_main(void)
             if (sramSaveTimer > 0 && --sramSaveTimer == 0)
             {
                 odroid_display_drain_spi();
+                // odroid_display_lock();
                 sram_save();
+                // odroid_display_unlock();
             }
         }
 
