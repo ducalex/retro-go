@@ -982,7 +982,7 @@ short IRAM_ATTR odroid_display_queue_update(odroid_video_frame *frame, odroid_vi
         linesChanged = frame->height;
     }
 
-    if (linesChanged > 0)
+    // if (linesChanged > 0)
     {
         xQueueSend(videoTaskQueue, &frame, portMAX_DELAY);
     }
