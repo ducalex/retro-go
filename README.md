@@ -11,7 +11,8 @@ Retro-Go is composed of a launcher and several emulators.
 
 ### Compared to other similar projects for the ODROID-GO, Retro-Go brings:
 - In-game menu
-- RTC adjust and save
+- GB RTC adjust and save
+- GB GBC colorization palettes
 - More scaling options
 - Bilinear filtering
 - NES color palettes
@@ -76,6 +77,7 @@ If you have any problem the first step is to clear the cache located in /odroid/
 - CMake support
 - Add Lynx emulator
 - Rewind
+- Netplay
 
 
 # Compilation
