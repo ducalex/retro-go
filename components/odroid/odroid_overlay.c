@@ -70,7 +70,7 @@ void odroid_overlay_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, ch
         x_offset += ODROID_FONT_WIDTH;
     }
 
-    ili9341_write_frame_rectangleLE(x_pos, y_pos, width, ODROID_FONT_HEIGHT, overlay_buffer);
+    odroid_display_write(x_pos, y_pos, width, ODROID_FONT_HEIGHT, overlay_buffer);
 }
 
 void odroid_overlay_draw_rect(int x, int y, int width, int height, int border, uint16_t color)
@@ -83,10 +83,10 @@ void odroid_overlay_draw_rect(int x, int y, int width, int height, int border, u
     {
         overlay_buffer[i] = color;
     }
-    ili9341_write_frame_rectangleLE(x, y, width, border, overlay_buffer); // T
-    ili9341_write_frame_rectangleLE(x, y + height - border, width, border, overlay_buffer); // B
-    ili9341_write_frame_rectangleLE(x, y, border, height, overlay_buffer); // L
-    ili9341_write_frame_rectangleLE(x + width - border, y, border, height, overlay_buffer); // R
+    odroid_display_write(x, y, width, border, overlay_buffer); // T
+    odroid_display_write(x, y + height - border, width, border, overlay_buffer); // B
+    odroid_display_write(x, y, border, height, overlay_buffer); // L
+    odroid_display_write(x + width - border, y, border, height, overlay_buffer); // R
 }
 
 void odroid_overlay_draw_fill_rect(int x, int y, int width, int height, uint16_t color)
@@ -105,7 +105,7 @@ void odroid_overlay_draw_fill_rect(int x, int y, int width, int height, uint16_t
     while (y_pos < y_end)
     {
         int thickness = (y_end - y_pos >= 16) ? 16 : (y_end - y_pos);
-        ili9341_write_frame_rectangleLE(x, y_pos, width, thickness, overlay_buffer);
+        odroid_display_write(x, y_pos, width, thickness, overlay_buffer);
         y_pos += 16;
     }
 }

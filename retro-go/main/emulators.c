@@ -54,16 +54,21 @@ void emulators_init_emu(retro_emulator_t *emu)
         return;
     }
 
+    printf("emulators_init_emu: Initializing %s\n", emu->system_name);
+
     emu->initialized = true;
 
     char path[128];
 
     odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
-    sprintf(path, SAVE_PATH "/%s", emu->dirname);
+    sprintf(path, ODROID_BASE_PATH_CRC_CACHE "/%s", emu->dirname);
     odroid_sdcard_mkdir(path);
 
-    sprintf(path, ROM_PATH "/%s", emu->dirname);
+    sprintf(path, ODROID_BASE_PATH_SAVES "/%s", emu->dirname);
+    odroid_sdcard_mkdir(path);
+
+    sprintf(path, ODROID_BASE_PATH_ROMS "/%s", emu->dirname);
     odroid_sdcard_mkdir(path);
 
     DIR* dir = opendir(path);

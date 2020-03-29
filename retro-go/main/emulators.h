@@ -4,15 +4,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define ROM_PATH  SD_BASE_PATH "/roms"
-#define SAVE_PATH SD_BASE_PATH "/odroid/data"
-#define CACHE_PATH SD_BASE_PATH "/odroid/cache"
-#define ROMART_PATH SD_BASE_PATH "/romart"
-
 typedef struct {
-    char name[64];
+    char name[96];
     char ext[8];
-    char path[96];
+    char path[128];
     uint32_t checksum;
 } retro_emulator_file_t;
 

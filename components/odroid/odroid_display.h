@@ -77,4 +77,3 @@ void odroid_display_write(short left, short top, short width, short height, uint
 void odroid_display_clear(uint16_t colorLE);
 void odroid_display_show_hourglass();
 
-#define ili9341_write_frame_rectangleLE odroid_display_write

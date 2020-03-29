@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <ctype.h>
+#include <errno.h>
 
 #include "../miniz/miniz.h"
 
@@ -136,7 +137,7 @@ size_t odroid_sdcard_copy_file_to_memory(const char* path, void* buf, size_t buf
     FILE* f = fopen(path, "rb");
     if (f == NULL)
     {
-        printf("%s: fopen failed.\n", __func__);
+        printf("%s: fopen failed. path='%s'\n", __func__, path);
         return 0;
     }
 
@@ -204,28 +205,40 @@ const char* odroid_sdcard_get_extension(const char* path)
 
 int odroid_sdcard_mkdir(char *dir)
 {
-    if (!isOpen)
+    int ret = mkdir(dir, 0777);
+
+    if (ret == -1)
     {
-        printf("odroid_sdcard_mkdir: not open.\n");
-        return 0;
-    }
-
-    char tmp[128];
-    size_t len = strlen(tmp);
-
-    strcpy(tmp, dir);
-    if (tmp[len - 1] == '/') {
-        tmp[len - 1] = 0;
-    }
-
-    for (char *p = tmp + strlen(SD_BASE_PATH) + 1; *p; p++) {
-        if (*p == '/') {
-            *p = 0;
-            printf("odroid_sdcard_mkdir: Creating %s\n", tmp);
-            mkdir(tmp, 0777);
-            *p = '/';
+        if (errno == EEXIST)
+        {
+            printf("odroid_sdcard_mkdir: Folder exists %s\n", dir);
+            return 0;
         }
+
+        char tmp[128];
+        size_t len = strlen(tmp);
+
+        strcpy(tmp, dir);
+        if (tmp[len - 1] == '/') {
+            tmp[len - 1] = 0;
+        }
+
+        for (char *p = tmp + strlen(SD_BASE_PATH) + 1; *p; p++) {
+            if (*p == '/') {
+                *p = 0;
+                printf("odroid_sdcard_mkdir: Creating %s\n", tmp);
+                mkdir(tmp, 0777);
+                *p = '/';
+            }
+        }
+
+        ret = mkdir(tmp, 0777);
     }
 
-    return mkdir(tmp, 0777);
+    if (ret == 0)
+    {
+        printf("odroid_sdcard_mkdir: Folder created %s\n", dir);
+    }
+
+    return ret;
 }

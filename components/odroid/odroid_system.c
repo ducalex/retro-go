@@ -126,8 +126,8 @@ void odroid_system_gpio_init()
 
 char* odroid_system_get_path(char *_romPath, emu_path_type_t type)
 {
-    const char* fileName = strstr(_romPath ?: romPath, "/roms/");
-    char *buffer = malloc(strlen(fileName) + 32);
+    char* fileName = strstr(_romPath ?: romPath, ODROID_BASE_PATH_ROMS);
+    char *buffer = malloc(128); // Lazy arbitrary length...
 
     if (!fileName)
     {
@@ -135,7 +135,7 @@ char* odroid_system_get_path(char *_romPath, emu_path_type_t type)
         abort();
     }
 
-    strcpy(buffer, SD_BASE_PATH);
+    fileName += strlen(ODROID_BASE_PATH_ROMS);
 
     switch (type)
     {
@@ -143,19 +143,26 @@ char* odroid_system_get_path(char *_romPath, emu_path_type_t type)
         case ODROID_PATH_SAVE_STATE_1:
         case ODROID_PATH_SAVE_STATE_2:
         case ODROID_PATH_SAVE_STATE_3:
-            strcat(buffer, "/odroid/data/");
-            strcat(buffer, fileName + 6);
+            strcpy(buffer, ODROID_BASE_PATH_SAVES);
+            strcat(buffer, fileName);
             strcat(buffer, ".sav");
             break;
 
         case ODROID_PATH_SAVE_SRAM:
-            strcat(buffer, "/odroid/data/");
-            strcat(buffer, fileName + 6);
+            strcpy(buffer, ODROID_BASE_PATH_SAVES);
+            strcat(buffer, fileName);
             strcat(buffer, ".sram");
             break;
 
         case ODROID_PATH_ROM_FILE:
+            strcpy(buffer, ODROID_BASE_PATH_ROMS);
             strcat(buffer, fileName);
+            break;
+
+        case ODROID_PATH_CRC_CACHE:
+            strcpy(buffer, ODROID_BASE_PATH_CRC_CACHE);
+            strcat(buffer, fileName);
+            strcat(buffer, ".crc");
             break;
 
         default:

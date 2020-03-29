@@ -23,6 +23,11 @@ typedef struct
      state_handler_t save;
 } emu_state_t;
 
+#define ODROID_BASE_PATH_ROMS      SD_BASE_PATH "/roms"
+#define ODROID_BASE_PATH_SAVES     SD_BASE_PATH "/odroid/data"
+#define ODROID_BASE_PATH_ROMART    SD_BASE_PATH "/romart"
+#define ODROID_BASE_PATH_CRC_CACHE SD_BASE_PATH "/odroid/cache/crc"
+
 typedef enum
 {
      ODROID_PATH_SAVE_STATE = 0,
@@ -32,6 +37,7 @@ typedef enum
      ODROID_PATH_SAVE_SRAM,
      ODROID_PATH_ROM_FILE,
      ODROID_PATH_ART_FILE,
+     ODROID_PATH_CRC_CACHE,
 } emu_path_type_t;
 
 typedef enum

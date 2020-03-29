@@ -296,9 +296,12 @@ int rom_load()
 
 int sram_load()
 {
+	int ret = -1;
 	FILE *f;
 
 	if (!mbc.batt || !sramfile || !*sramfile) return -1;
+
+	odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
 	if ((f = fopen(sramfile, "rb")))
 	{
@@ -306,18 +309,22 @@ int sram_load()
 		fread(ram.sbank, 8192, mbc.ramsize, f);
 		rtc_load_internal(f); // Temporary hack, hopefully
 		fclose(f);
-		return 0;
+		ret = 0;
 	}
 
-	return -1;
+	odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
+	return ret;
 }
 
 
 int sram_save()
 {
+	int ret = -1;
 	FILE *f;
 
 	if (!mbc.batt || !sramfile || !mbc.ramsize) return -1;
+
+	odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
 	if ((f = fopen(sramfile, "wb")))
 	{
@@ -325,10 +332,11 @@ int sram_save()
 		fwrite(ram.sbank, 8192, mbc.ramsize, f);
 		rtc_save_internal(f); // Temporary hack, hopefully
 		fclose(f);
-		return 0;
+		ret = 0;
 	}
 
-	return -1;
+	odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
+	return ret;
 }
 
 

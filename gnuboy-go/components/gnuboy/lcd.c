@@ -696,8 +696,6 @@ static void pal_detect_dmg()
     uint8_t palette = colorization_palette_info[infoIdx] & 0x1F;
     uint8_t flags = (colorization_palette_info[infoIdx] & 0xE0) >> 5;
 
-	printf("DETECTED PALETTE: %d\n", palette);
-
 	bgp  = dmg_game_palettes[palette][2];
     obp0 = dmg_game_palettes[palette][(flags & 1) ? 0 : 1];
     obp1 = dmg_game_palettes[palette][(flags & 2) ? 0 : 1];
@@ -705,6 +703,8 @@ static void pal_detect_dmg()
     if (!(flags & 4)) {
         obp1 = dmg_game_palettes[palette][2];
     }
+
+	printf("pal_detect_dmg: Using GBC palette %d\n", palette);
 
 	memcpy(&dmg_pal[0], bgp, 8); // BGP
 	memcpy(&dmg_pal[1], bgp, 8); // BGP
