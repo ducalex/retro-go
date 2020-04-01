@@ -43,11 +43,11 @@ void odroid_overlay_draw_text(uint16_t x, uint16_t y, uint16_t width, char *text
 void odroid_overlay_draw_rect(int x, int y, int width, int height, int border, uint16_t color);
 void odroid_overlay_draw_fill_rect(int x, int y, int width, int height, uint16_t color);
 void odroid_overlay_draw_battery(int x, int y);
-void odroid_overlay_draw_dialog(char *header, odroid_dialog_choice_t *options, int sel);
+void odroid_overlay_draw_dialog(const char *header, odroid_dialog_choice_t *options, int sel);
 
-int odroid_overlay_dialog(char *header, odroid_dialog_choice_t *options, int selected_initial);
-int odroid_overlay_confirm(char *text, bool yes_selected);
-void odroid_overlay_alert(char *text);
+int odroid_overlay_dialog(const char *header, odroid_dialog_choice_t *options, int selected_initial);
+int odroid_overlay_confirm(const char *text, bool yes_selected);
+void odroid_overlay_alert(const char *text);
 
 int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options);
 int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options);

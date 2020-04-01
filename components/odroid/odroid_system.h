@@ -8,6 +8,7 @@
 #include "odroid_sdcard.h"
 #include "odroid_settings.h"
 #include "esp_system.h"
+#include "esp_timer.h"
 #include "stdbool.h"
 
 extern int8_t speedupEnabled;
@@ -65,8 +66,21 @@ char* odroid_system_get_path(char *romPath, emu_path_type_t type);
 void odroid_system_spi_lock_acquire(spi_lock_res_t);
 void odroid_system_spi_lock_release(spi_lock_res_t);
 
-inline uint get_elapsed_time_since(uint start)
+static inline uint get_frame_time(uint refresh_rate)
 {
-     uint now = xthal_get_ccount();
-     return ((now > start) ? now - start : ((uint64_t)now + (uint64_t)0xffffffff) - start);
+     // return (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000) / refresh_rate
+     return 1000000 / refresh_rate;
+}
+
+static inline uint get_elapsed_time()
+{
+     // uint now = xthal_get_ccount();
+     return (uint)esp_timer_get_time(); // uint is plenty resolution for us
+}
+
+static inline uint get_elapsed_time_since(uint start)
+{
+     // uint now = get_elapsed_time();
+     // return ((now > start) ? now - start : ((uint64_t)now + (uint64_t)0xffffffff) - start);
+     return get_elapsed_time() - start;
 }

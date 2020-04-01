@@ -309,9 +309,9 @@ void odroid_system_set_led(int value)
     gpio_set_level(GPIO_NUM_2, value);
 }
 
-void odroid_system_print_stats(uint ccount, uint frames, uint skippedFrames, uint fullFrames)
+void odroid_system_print_stats(uint us, uint frames, uint skippedFrames, uint fullFrames)
 {
-    float seconds = (float)ccount / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f);
+    float seconds = (float)us / 1000000.f;
     float fps = frames / seconds;
 
     odroid_battery_state battery;

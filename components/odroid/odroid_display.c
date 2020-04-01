@@ -889,7 +889,6 @@ short IRAM_ATTR odroid_display_queue_update(odroid_video_frame *frame, odroid_vi
     {
         xQueueSend(videoTaskQueue, &frame, portMAX_DELAY);
     }
-    // printf("Update time: %f\n", (float)get_elapsed_time_since(startTime) / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000));
 
     if (linesChanged == frame->height) return SCREEN_UPDATE_FULL;
     if (linesChanged == 0) return SCREEN_UPDATE_EMPTY;

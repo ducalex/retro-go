@@ -150,7 +150,7 @@ static int get_dialog_items_count(odroid_dialog_choice_t *options)
     return 0;
 }
 
-void odroid_overlay_draw_dialog(char *header, odroid_dialog_choice_t *options, int sel)
+void odroid_overlay_draw_dialog(const char *header, odroid_dialog_choice_t *options, int sel)
 {
     int width = header ? strlen(header) : 8;
     int padding = 0;
@@ -228,7 +228,7 @@ void odroid_overlay_draw_dialog(char *header, odroid_dialog_choice_t *options, i
     }
 }
 
-int odroid_overlay_dialog(char *header, odroid_dialog_choice_t *options, int selected)
+int odroid_overlay_dialog(const char *header, odroid_dialog_choice_t *options, int selected)
 {
     int options_count = get_dialog_items_count(options);
     int sel = selected;
@@ -325,7 +325,7 @@ int odroid_overlay_dialog(char *header, odroid_dialog_choice_t *options, int sel
     return sel < 0 ? sel : options[sel].id;
 }
 
-int odroid_overlay_confirm(char *text, bool yes_selected)
+int odroid_overlay_confirm(const char *text, bool yes_selected)
 {
     odroid_dialog_choice_t choices[] = {
         {1, "Yes", "", 1, NULL},
@@ -335,7 +335,7 @@ int odroid_overlay_confirm(char *text, bool yes_selected)
     return odroid_overlay_dialog(text, choices, yes_selected ? 0 : 1);
 }
 
-void odroid_overlay_alert(char *text)
+void odroid_overlay_alert(const char *text)
 {
     odroid_dialog_choice_t choices[] = {
         {1, "OK", "", 1, NULL},

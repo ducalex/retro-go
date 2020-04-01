@@ -153,8 +153,8 @@ void app_main(void)
     update1.buffer += bitmap.viewport.x;
     update2.buffer += bitmap.viewport.x;
 
-    uint8_t refresh_rate = (sms.display == DISPLAY_NTSC) ? FPS_NTSC : FPS_PAL;
-    const int frameTime = CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / refresh_rate;
+    const int refresh_rate = (sms.display == DISPLAY_NTSC) ? FPS_NTSC : FPS_PAL;
+    const int frameTime = get_frame_time(refresh_rate);
 
     while (true)
     {
@@ -167,7 +167,7 @@ void app_main(void)
             odroid_overlay_game_settings_menu(NULL);
         }
 
-        uint startTime = xthal_get_ccount();
+        uint startTime = get_elapsed_time();
 
         input.pad[0] = 0;
         input.system = 0;

@@ -334,7 +334,7 @@ void nes_emulate(void)
    uint skippedFrames = 0;
 
    const int audioSamples = nes.apu->sample_rate / nes.refresh_rate;
-   const int frameTime = CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / nes.refresh_rate;
+   const int frameTime = get_frame_time(nes.refresh_rate);
    bool renderFrame = true;
 
    primary_buffer = bmp_create(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 8);
@@ -348,7 +348,7 @@ void nes_emulate(void)
 
    while (false == nes.poweroff)
    {
-      uint startTime = xthal_get_ccount();
+      uint startTime = get_elapsed_time();
 
       osd_getinput();
       nes_renderframe(renderFrame);

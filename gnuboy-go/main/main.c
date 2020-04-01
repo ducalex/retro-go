@@ -28,8 +28,6 @@
 
 #define NVS_KEY_SAVE_SRAM "sram"
 
-static const int frameTime = (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000 / 60);
-
 static int8_t startAction;
 static char* romPath;
 
@@ -47,7 +45,7 @@ static uint emulatedFrames = 0;
 static uint skippedFrames = 0;
 static uint fullFrames = 0;
 
-static bool skipFrame = false;
+static bool skipFrame = true;
 static bool netplay = false;
 static bool saveSRAM = false;
 
@@ -283,8 +281,7 @@ void app_main(void)
         sram_load();
     }
 
-    // Many games glitch on startup, let's hide that
-    skipFrame = true;
+    const int frameTime = get_frame_time(60);
 
     while (true)
     {
@@ -303,7 +300,7 @@ void app_main(void)
             odroid_overlay_game_settings_menu(options);
         }
 
-        uint startTime = xthal_get_ccount();
+        uint startTime = get_elapsed_time();
 
         pad_set(PAD_UP, joystick.values[ODROID_INPUT_UP]);
         pad_set(PAD_RIGHT, joystick.values[ODROID_INPUT_RIGHT]);
