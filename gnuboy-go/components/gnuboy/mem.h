@@ -30,6 +30,7 @@ struct rom
 	byte* bank[512];
 	char name[20];
 	int length;
+	int checksum;
 };
 
 struct ram

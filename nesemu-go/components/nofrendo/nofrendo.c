@@ -46,7 +46,7 @@ static void timer_isr(void)
    nofrendo_ticks++;
 }
 
-void nofrendo_notify(char *format, ...)
+void nofrendo_notify(const char *format, ...)
 {
    va_list args;
    va_start(args, format);

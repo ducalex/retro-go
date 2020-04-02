@@ -179,6 +179,9 @@ void osd_loadstate()
    ppu_limitsprites(odroid_settings_int32_get(NVS_KEY_LIMIT_SPRITES, 1));
    ppu_setnpal(nes_getcontextptr()->ppu, odroid_settings_Palette_get());
    set_overscan(odroid_settings_app_int32_get(NVS_KEY_OVERSCAN, 1));
+
+   // Set game ID in netplay (maybe we need to add osd_emustart ?)
+   odroid_netplay_setup(nes_getcontextptr()->rominfo->checksum, NULL);
 }
 
 int osd_logprint(const char *string)
@@ -309,6 +312,10 @@ void osd_getinput(void)
 		changed >>= 1;
 		b >>= 1;
 	}
+
+   if (netplay) {
+      odroid_netplay_sync(localJoystick, remoteJoystick, sizeof(odroid_gamepad_state));
+   }
 }
 
 

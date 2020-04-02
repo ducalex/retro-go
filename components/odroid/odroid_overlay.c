@@ -493,7 +493,7 @@ int odroid_overlay_game_menu()
         {10, "Save & Continue", "",  1, NULL},
         {20, "Save & Quit", "", 1, NULL},
         {30, "Reload", "", 1, NULL},
-        {40, "Netplay", "", odroid_netplay_get_handler() ? 1 : 0, NULL},
+        {40, "Netplay", "", odroid_netplay_available() ? 1 : 0, NULL},
         {50, "Quit", "", 1, NULL},
         ODROID_DIALOG_CHOICE_LAST
     };

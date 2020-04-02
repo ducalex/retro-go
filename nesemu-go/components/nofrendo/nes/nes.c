@@ -339,6 +339,8 @@ void nes_emulate(void)
 
    primary_buffer = bmp_create(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 8);
 
+   odroid_netplay_setup(nes.rominfo->checksum, NULL);
+
    // Discard the garbage frames
    nes_renderframe(1);
    nes_renderframe(1);

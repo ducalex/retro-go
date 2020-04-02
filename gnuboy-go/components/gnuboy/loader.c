@@ -221,47 +221,23 @@ int rom_load()
 	mbc.ramsize = ramsize_table[((tmp >> 8) & 0xff)];
 	rom.length = 16384 * mbc.romsize;
 
+	memcpy(&rom.checksum, header + 0x014E, 2);
+
 	if (!mbc.romsize) die("unknown ROM size %02X\n", header[0x0148]);
 	if (!mbc.ramsize) die("unknown SRAM size %02X\n", header[0x0149]);
 
 	const char* mbcName;
 	switch (mbc.type)
 	{
-		case MBC_NONE:
-			mbcName = "MBC_NONE";
-			break;
-
-		case MBC_MBC1:
-			mbcName = "MBC_MBC1";
-			break;
-
-		case MBC_MBC2:
-			mbcName = "MBC_MBC2";
-			break;
-
-		case MBC_MBC3:
-			mbcName = "MBC_MBC3";
-			break;
-
-		case MBC_MBC5:
-			mbcName = "MBC_MBC5";
-			break;
-
-		case MBC_RUMBLE:
-			mbcName = "MBC_RUMBLE";
-			break;
-
-		case MBC_HUC1:
-			mbcName = "MBC_HUC1";
-			break;
-
-		case MBC_HUC3:
-			mbcName = "MBC_HUC3";
-			break;
-
-		default:
-			mbcName = "(unknown)";
-			break;
+		case MBC_NONE:   mbcName = "MBC_NONE"; break;
+		case MBC_MBC1:   mbcName = "MBC_MBC1"; break;
+		case MBC_MBC2:   mbcName = "MBC_MBC2"; break;
+		case MBC_MBC3:   mbcName = "MBC_MBC3"; break;
+		case MBC_MBC5:   mbcName = "MBC_MBC5"; break;
+		case MBC_RUMBLE: mbcName = "MBC_RUMBLE"; break;
+		case MBC_HUC1:   mbcName = "MBC_HUC1"; break;
+		case MBC_HUC3:   mbcName = "MBC_HUC3"; break;
+		default:         mbcName = "(unknown)"; break;
 	}
 
 	printf("loader: rom.name='%s'\n", rom.name);

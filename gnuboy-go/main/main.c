@@ -243,6 +243,9 @@ void app_main(void)
     // Load ROM
     loader_init(romPath);
 
+    // Set game ID in netplay
+    odroid_netplay_setup(rom.checksum, NULL);
+
     // RTC
     memset(&rtc, 0, sizeof(rtc));
 
