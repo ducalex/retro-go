@@ -346,11 +346,11 @@ rominfo_t *rom_load(const char *filename)
 
    strncpy(rominfo->filename, filename, sizeof(rominfo->filename));
    // rominfo->checksum = crc32_le(0, rom + 16, filesize - 16);
-   rominfo->checksum = crc32_le(0, rom, filesize);
+   // rominfo->checksum = crc32_le(0, rom, filesize);
 
    printf("rom_load: filename='%s'\n", rominfo->filename);
    printf("rom_load: filesize=%d\n", filesize);
-   printf("rom_load: checksum='%8X'\n", rominfo->checksum);
+   printf("rom_load: checksum='%08X'\n", rominfo->checksum);
 
    /* Get the header and stick it into rominfo struct */
 	if (rom_getheader(&rom, rominfo))

@@ -376,27 +376,23 @@ int load_rom (char *filename)
   {
       option.console = 6;
       coleco.rom = malloc(0x2000);
-      if (!odroid_sdcard_copy_file_to_memory(SD_BASE_PATH "/roms/col/BIOS.col", coleco.rom, 0x2000))
+      if (odroid_sdcard_copy_file_to_memory(SD_BASE_PATH "/roms/col/BIOS.col", coleco.rom, 0x2000) <= 0)
       {
-          printf("load_rom: Colecovision BIOS failed to load.\n");
-          odroid_overlay_alert("BIOS file BIOS.col not found");
+          odroid_system_panic("Colecovision bios file BIOS.col not found");
       }
   }
 
   cart.rom = malloc(0x200000);
 
-  size_t actual_size = 0;
+  // if (strcasecmp(filename + (nameLength - 4), ".zip") == 0)
+  // actual_size = odroid_sdcard_unzip_file_to_memory(filename, cart.rom, 0x200000);
 
-  if (strcasecmp(filename + (nameLength - 4), ".zip") == 0)
+  int actual_size = odroid_sdcard_copy_file_to_memory(filename, cart.rom, 0x200000);
+  if (actual_size <= 0)
   {
-      odroid_system_panic("Zip file not supported!"); // Zip support doesn't work very well, disable for now
-      // printf("load_rom: File is compressed.\n");
-      // actual_size = odroid_sdcard_unzip_file_to_memory(filename, cart.rom, 0x200000);
+      odroid_system_panic("ROM file loading failed!");
   }
-  else
-  {
-      actual_size = odroid_sdcard_copy_file_to_memory(filename, cart.rom, 0x200000);
-  }
+
   printf("load_rom: fileSize=%d.\n", actual_size);
 
   cart.size = (actual_size < 0x4000) ? 0x4000 : actual_size;

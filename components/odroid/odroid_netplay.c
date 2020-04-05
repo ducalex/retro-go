@@ -15,6 +15,8 @@
 #define NETPLAY_VERSION 0x01
 #define MAX_PLAYERS 8
 
+#define EVERYONE 0xFF
+
 // The SSID should be randomized to avoid conflicts
 #define WIFI_SSID "RETRO-GO"
 #define WIFI_CHANNEL 1
@@ -25,7 +27,6 @@ static netplay_status_t netplay_status = NETPLAY_STATUS_NOT_INIT;
 static netplay_mode_t netplay_mode = NETPLAY_MODE_NONE;
 static netplay_callback_t netplay_callback = NULL;
 static SemaphoreHandle_t netplay_sync;
-static uint32_t netplay_game_id = 0;
 static bool netplay_available = false;
 
 static netplay_player_t players[MAX_PLAYERS];
@@ -53,7 +54,7 @@ static void set_local_network_interface(tcpip_adapter_if_t tcpip_if)
     local_player = &players[local_if.ip.addr - local_if.gw.addr];
     local_player->id = local_if.ip.addr - local_if.gw.addr;
     local_player->version = NETPLAY_VERSION;
-    local_player->game_id = netplay_game_id;
+    local_player->game_id = odroid_system_get_game_id();
     local_player->ip_addr = local_if.ip.addr;
 }
 
@@ -85,8 +86,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
         case SYSTEM_EVENT_STA_GOT_IP:
             netplay_status = NETPLAY_STATUS_CONNECTED;
             set_local_network_interface(TCPIP_ADAPTER_IF_STA);
-            odroid_netplay_send_packet(0xFF, NETPLAY_PACKET_INFO, 0, local_player,
-                                       sizeof(netplay_player_t));
+            odroid_netplay_send_packet(EVERYONE, NETPLAY_PACKET_INFO, 0, local_player, sizeof(netplay_player_t));
             break;
 
         case SYSTEM_EVENT_AP_STADISCONNECTED:
@@ -190,7 +190,18 @@ static void netplay_task()
                     memcpy(remote_player, packet.data, packet.data_len);
                 }
 
-                printf("netplay: Remote client info player_id=%d game_id=0x%08x\n",
+                // If remote player is Host then his Game ID is decisive
+                if (remote_player->id <= 1)
+                {
+                    if (remote_player->game_id != local_player->game_id)
+                    {
+                        printf("netplay: Game ID mismatch. received: %08X, expected %08X\n",
+                                remote_player->game_id, local_player->game_id);
+                        // show warning;
+                    }
+                }
+
+                printf("netplay: Remote client info player_id=%d game_id=%08X\n",
                         remote_player->id, remote_player->game_id);
                 break;
 
@@ -228,11 +239,10 @@ static void netplay_task()
 }
 
 
-void odroid_netplay_setup(uint32_t game_id, netplay_callback_t callback)
+void odroid_netplay_pre_init(netplay_callback_t callback)
 {
-    printf("netplay: Game ID set to 0x%08x\n", game_id);
+    printf("netplay: %s called.\n", __func__);
 
-    netplay_game_id = game_id;
     netplay_callback = callback;
     netplay_available = true;
 }

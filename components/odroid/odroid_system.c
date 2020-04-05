@@ -7,41 +7,63 @@
 #include "esp_system.h"
 #include "esp_event.h"
 #include "driver/rtc_io.h"
+#include "rom/crc.h"
 #include "string.h"
 #include "stdio.h"
 
 int8_t speedupEnabled = 0;
 
-static int8_t applicationId = -1;
-static int8_t startAction = 0;
+static uint applicationId = 0;
+static uint gameId = 0;
+static uint startAction = 0;
 static char *romPath = NULL;
 static state_handler_t loadState;
 static state_handler_t saveState;
+static state_handler_t resetState;
 
 static SemaphoreHandle_t spiMutex;
-static int8_t spiMutexOwner;
+static int16_t spiMutexOwner;
+
+static void odroid_system_gpio_init()
+{
+    rtc_gpio_deinit(ODROID_GAMEPAD_IO_MENU);
+    //rtc_gpio_deinit(GPIO_NUM_14);
+
+    // Blue LED
+    gpio_set_direction(GPIO_NUM_2, GPIO_MODE_OUTPUT);
+    gpio_set_level(GPIO_NUM_2, 0);
+
+    // Disable LCD CD to prevent garbage
+    gpio_set_direction(GPIO_NUM_5, GPIO_MODE_OUTPUT);
+    gpio_set_level(GPIO_NUM_5, 1);
+
+    // Disable speaker to prevent hiss/pops
+    gpio_set_direction(GPIO_NUM_25, GPIO_MODE_INPUT);
+    gpio_set_direction(GPIO_NUM_26, GPIO_MODE_INPUT);
+    gpio_set_level(GPIO_NUM_25, 0);
+    gpio_set_level(GPIO_NUM_26, 0);
+}
 
 void odroid_system_init(int appId, int sampleRate)
 {
     printf("odroid_system_init: %d KB free\n", esp_get_free_heap_size() / 1024);
 
-    odroid_settings_init(appId);
+    spiMutex = xSemaphoreCreateMutex();
+    spiMutexOwner = -1;
+    applicationId = appId;
+
+    odroid_settings_init();
     odroid_overlay_init();
     odroid_system_gpio_init();
     odroid_input_gamepad_init();
     odroid_input_battery_level_init();
     odroid_audio_init(sampleRate);
 
-    spiMutex = xSemaphoreCreateMutex();
-    spiMutexOwner = -1;
-    applicationId = appId;
-
     odroid_gamepad_state bootState = odroid_input_read_raw();
     if (bootState.values[ODROID_INPUT_MENU])
     {
         // Force return to menu to recover from ROM loading crashes
-        odroid_system_set_boot_app(0);
-        esp_restart();
+        odroid_system_switch_app(0);
     }
 
     //sdcard init must be before LCD init
@@ -71,57 +93,68 @@ void odroid_system_init(int appId, int sampleRate)
         odroid_system_halt();
     }
 
-    printf("odroid_system_init: System ready!\n");
-}
-
-void odroid_system_emu_init(char **_romPath, int8_t *_startAction,
-                            state_handler_t load, state_handler_t save)
-{
-    romPath = odroid_settings_RomFilePath_get();
-    if (!romPath || strlen(romPath) < 4)
-    {
-        odroid_system_panic("ROM File not found");
-    }
-
     startAction = odroid_settings_StartAction_get();
     if (startAction == ODROID_START_ACTION_RESTART)
     {
         odroid_settings_StartAction_set(ODROID_START_ACTION_RESUME);
     }
 
-    *_startAction = startAction;
-    *_romPath = romPath;
+    printf("odroid_system_init: System ready!\n");
+}
+
+void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t netplay_cb)
+{
+    uint8_t buffer[0x150];
+    size_t len = 0;
 
     loadState = load;
     saveState = save;
 
-    printf("odroid_system_emu_init: ROM: %s, action: %d\n", romPath, startAction);
+    if (netplay_cb != NULL)
+    {
+        odroid_netplay_pre_init(netplay_cb);
+    }
+
+    romPath = odroid_settings_RomFilePath_get();
+    if (!romPath || strlen(romPath) < 4)
+    {
+        odroid_system_panic("Invalid ROM Path!");
+    }
+
+    if ((len = odroid_sdcard_copy_file_to_memory(romPath, buffer, sizeof(buffer))) > 0)
+    {
+        gameId = crc32_le(0, buffer, len);
+        printf("odroid_system_emu_init: Game ID set to %08X\n", gameId);
+    }
+    else
+    {
+        odroid_system_panic("ROM File not found!");
+    }
 }
 
-void odroid_system_set_app_id(int appId)
+void odroid_system_set_app_id(int _appId)
 {
-    applicationId = appId;
-    odroid_settings_set_app_id(appId);
+    applicationId = _appId;
 }
 
-void odroid_system_gpio_init()
+uint odroid_system_get_app_id()
 {
-    rtc_gpio_deinit(ODROID_GAMEPAD_IO_MENU);
-    //rtc_gpio_deinit(GPIO_NUM_14);
+    return applicationId;
+}
 
-    // Blue LED
-    gpio_set_direction(GPIO_NUM_2, GPIO_MODE_OUTPUT);
-    gpio_set_level(GPIO_NUM_2, 0);
+void odroid_system_set_game_id(int _gameId)
+{
+    gameId = _gameId;
+}
 
-    // Disable LCD CD to prevent garbage
-    gpio_set_direction(GPIO_NUM_5, GPIO_MODE_OUTPUT);
-    gpio_set_level(GPIO_NUM_5, 1);
+uint odroid_system_get_game_id()
+{
+    return gameId;
+}
 
-    // Disable speaker to prevent hiss/pops
-    gpio_set_direction(GPIO_NUM_25, GPIO_MODE_INPUT);
-    gpio_set_direction(GPIO_NUM_26, GPIO_MODE_INPUT);
-    gpio_set_level(GPIO_NUM_25, 0);
-    gpio_set_level(GPIO_NUM_26, 0);
+uint odroid_system_get_start_action()
+{
+    return startAction;
 }
 
 char* odroid_system_get_path(char *_romPath, emu_path_type_t type)
@@ -129,10 +162,9 @@ char* odroid_system_get_path(char *_romPath, emu_path_type_t type)
     char* fileName = strstr(_romPath ?: romPath, ODROID_BASE_PATH_ROMS);
     char *buffer = malloc(128); // Lazy arbitrary length...
 
-    if (!fileName)
+    if (!fileName || strlen(fileName) < 4)
     {
-        printf("%s: Invalid rom path.\n", __func__);
-        abort();
+        odroid_system_panic("Invalid ROM path");
     }
 
     fileName += strlen(ODROID_BASE_PATH_ROMS);
@@ -172,7 +204,7 @@ char* odroid_system_get_path(char *_romPath, emu_path_type_t type)
     return buffer;
 }
 
-bool odroid_system_load_state(int slot)
+bool odroid_system_emu_load_state(int slot)
 {
     if (!romPath || !loadState)
         odroid_system_panic("Emulator not initialized");
@@ -187,7 +219,7 @@ bool odroid_system_load_state(int slot)
 
     if (!success)
     {
-        printf("odroid_system_load_state: Load failed!\n");
+        printf("%s: Load failed!\n", __func__);
     }
 
     free(pathName);
@@ -195,7 +227,7 @@ bool odroid_system_load_state(int slot)
     return success;
 }
 
-bool odroid_system_save_state(int slot)
+bool odroid_system_emu_save_state(int slot)
 {
     if (!romPath || !saveState)
         odroid_system_panic("Emulator not initialized");
@@ -214,7 +246,7 @@ bool odroid_system_save_state(int slot)
 
     if (!success)
     {
-        printf("odroid_system_save_state: Save failed!\n");
+        printf("%s: Save failed!\n", __func__);
         odroid_overlay_alert("Save failed");
     }
 
@@ -223,26 +255,32 @@ bool odroid_system_save_state(int slot)
     return success;
 }
 
-void odroid_system_quit_app(bool save)
+void odroid_system_emu_reset()
 {
-    printf("odroid_system_quit_app: Stopping tasks.\n");
+    //
+}
 
-    odroid_audio_terminate();
+void odroid_system_emu_quit(bool save)
+{
+    if (save)
+    {
+        printf("odroid_system_emu_quit: Saving state.\n");
+        odroid_system_emu_save_state(0);
+    }
+    odroid_system_switch_app(0);
+}
 
-    // odroid_display_queue_update(NULL);
+void odroid_system_switch_app(int app)
+{
+    printf("odroid_system_switch_app: Switching to app %d.\n", app);
+
     odroid_display_clear(0);
     odroid_display_show_hourglass();
 
-    if (save)
-    {
-        printf("odroid_system_quit_app: Saving state.\n");
-        odroid_system_save_state(0);
-    }
+    odroid_audio_terminate();
+    odroid_sdcard_close();
 
-    // Set menu application
-    odroid_system_set_boot_app(0);
-
-    // Reset
+    odroid_system_set_boot_app(app);
     esp_restart();
 }
 
@@ -266,24 +304,11 @@ void odroid_system_set_boot_app(int slot)
     }
 }
 
-void odroid_system_sleep()
-{
-    printf("odroid_system_sleep: Entered.\n");
-
-    // Wait for button release
-    odroid_input_wait_for_key(ODROID_INPUT_MENU, false);
-
-    vTaskDelay(100);
-    esp_deep_sleep_start();
-}
-
 void odroid_system_panic(const char *reason)
 {
     printf("PANIC: %s\n", reason);
 
     // Here we should stop unecessary tasks
-
-    odroid_system_set_boot_app(0);
 
     odroid_audio_terminate();
 
@@ -294,7 +319,7 @@ void odroid_system_panic(const char *reason)
 
     odroid_overlay_alert(reason);
 
-    esp_restart();
+    odroid_system_switch_app(0);
 }
 
 void odroid_system_halt()
@@ -302,6 +327,17 @@ void odroid_system_halt()
     printf("odroid_system_halt: Halting system!\n");
     vTaskSuspendAll();
     while (1);
+}
+
+void odroid_system_sleep()
+{
+    printf("odroid_system_sleep: Entered.\n");
+
+    // Wait for button release
+    odroid_input_wait_for_key(ODROID_INPUT_MENU, false);
+    odroid_audio_terminate();
+    vTaskDelay(100);
+    esp_deep_sleep_start();
 }
 
 void odroid_system_set_led(int value)

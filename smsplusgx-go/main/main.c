@@ -20,9 +20,6 @@
 #define PIXEL_MASK 0x1F
 #define PAL_SHIFT_MASK 0x80
 
-static int8_t startAction;
-static char* romPath;
-
 static uint32_t* audioBuffer;
 
 static odroid_video_frame update1;
@@ -87,11 +84,11 @@ void app_main(void)
     // Do before odroid_system_init to make sure we get the caps requested
     update1.buffer = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
     update2.buffer = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
-    audioBuffer     = heap_caps_calloc(AUDIO_BUFFER_LENGTH * 2, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    audioBuffer    = heap_caps_calloc(AUDIO_BUFFER_LENGTH * 2, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
 
     // Init all the console hardware
     odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    odroid_system_emu_init(&romPath, &startAction, &LoadState, &SaveState);
+    odroid_system_emu_init(&LoadState, &SaveState, NULL);
 
     // Do the check after screen init so we can display an error
     if (!update1.buffer || !update2.buffer || !audioBuffer)
@@ -100,6 +97,7 @@ void app_main(void)
     }
 
     // Load ROM
+    char *romPath = odroid_system_get_path(NULL, ODROID_PATH_ROM_FILE);
     load_rom(romPath);
 
     sms.use_fm = 0;
@@ -138,9 +136,9 @@ void app_main(void)
     // if (consoleIsSMS) odroid_system_set_app_id(APP_ID + 1);
     // if (consoleIsGG)  odroid_system_set_app_id(APP_ID + 2);
 
-    if (startAction == ODROID_START_ACTION_RESUME)
+    if (odroid_system_get_start_action() == ODROID_START_ACTION_RESUME)
     {
-        odroid_system_load_state(0);
+        odroid_system_emu_load_state(0);
     }
 
     update1.width  = update2.width  = bitmap.viewport.w;

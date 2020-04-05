@@ -17,14 +17,14 @@
 #define SPI_PIN_NUM_CLK  GPIO_NUM_18
 #define SPI_PIN_NUM_CS   GPIO_NUM_22
 
-static bool isOpen = false;
+static bool sdcardOpen = false;
 
 
 esp_err_t odroid_sdcard_open()
 {
     esp_err_t ret;
 
-    if (isOpen)
+    if (sdcardOpen)
     {
         printf("odroid_sdcard_open: already open.\n");
         ret = ESP_FAIL;
@@ -62,7 +62,7 @@ esp_err_t odroid_sdcard_open()
 
     	if (ret == ESP_OK)
         {
-            isOpen = true;
+            sdcardOpen = true;
         }
         else
         {
@@ -76,99 +76,60 @@ esp_err_t odroid_sdcard_open()
 
 esp_err_t odroid_sdcard_close()
 {
-    if (!isOpen)
-    {
-        printf("odroid_sdcard_close: not open.\n");
-        return ESP_FAIL;
-    }
-
     esp_err_t ret = esp_vfs_fat_sdmmc_unmount();
     if (ret != ESP_OK)
     {
         printf("odroid_sdcard_close: esp_vfs_fat_sdmmc_unmount failed (%d)\n", ret);
     }
-
-    isOpen = false;
-
+    sdcardOpen = false;
     return ret;
 }
 
 
 size_t odroid_sdcard_get_filesize(const char* path)
 {
-    size_t ret = 0;
-
-    if (!isOpen)
-    {
-        printf("odroid_sdcard_get_filesize: not open.\n");
-        return 0;
-    }
+    assert(sdcardOpen == true);
 
     FILE* f = fopen(path, "rb");
-    if (f == NULL)
+    if (f)
     {
-        printf("odroid_sdcard_get_filesize: fopen failed.\n");
-        return 0;
+        fseek(f, 0, SEEK_END);
+        size_t ret = ftell(f);
+        fclose(f);
+        return ret;
     }
 
-    fseek(f, 0, SEEK_END);
-    ret = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    return ret;
+    printf("odroid_sdcard_get_filesize: fopen failed.\n");
+    return 0;
 }
 
 size_t odroid_sdcard_copy_file_to_memory(const char* path, void* buf, size_t buf_size)
 {
-    size_t ret = 0;
-
-    if (!isOpen)
-    {
-        printf("%s: not open.\n", __func__);
-        return 0;
-    }
-
-    if (!buf)
-    {
-        printf("%s: buf is null.\n", __func__);
-        return 0;
-    }
+    assert(sdcardOpen == true);
 
     FILE* f = fopen(path, "rb");
-    if (f == NULL)
+    if (f)
     {
-        printf("%s: fopen failed. path='%s'\n", __func__, path);
-        return 0;
+        size_t BLOCK_SIZE = MIN(4096, buf_size);
+        size_t ret = 0, count = 0;
+        do {
+            count = fread(buf + ret, 1, BLOCK_SIZE, f);
+            ret += count;
+        } while (count == BLOCK_SIZE && ret < buf_size);
+
+        fclose(f);
+        return ret;
     }
 
-    const size_t BLOCK_SIZE = MIN(4096, buf_size);
-    while(true)
-    {
-        size_t count = fread((uint8_t*)buf + ret, 1, BLOCK_SIZE, f);
-        ret += count;
-        if (count < BLOCK_SIZE) break;
-    }
-
-    fclose(f);
-
-    return ret;
+    printf("%s: fopen failed. path='%s'\n", __func__, path);
+    return 0;
 }
 
 size_t odroid_sdcard_unzip_file_to_memory(const char* path, void* buf, size_t buf_size)
 {
+    assert(sdcardOpen == true);
+
     size_t ret = 0;
-
-    if (!isOpen)
-    {
-        printf("%s: not open.\n", __func__);
-        return 0;
-    }
-
-    if (!buf)
-    {
-        printf("%s: buf is null.\n", __func__);
-        return 0;
-    }
 
     mz_zip_archive zip_archive;
     memset(&zip_archive, 0, sizeof(zip_archive));
@@ -205,6 +166,8 @@ const char* odroid_sdcard_get_extension(const char* path)
 
 int odroid_sdcard_mkdir(char *dir)
 {
+    assert(sdcardOpen == true);
+
     int ret = mkdir(dir, 0777);
 
     if (ret == -1)

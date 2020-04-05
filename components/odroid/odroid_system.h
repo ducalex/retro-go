@@ -48,18 +48,23 @@ typedef enum
      SPI_LOCK_DISPLAY = 2,
 } spi_lock_res_t;
 
+void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t netplay_cb);
+void odroid_system_emu_quit(bool save);
+void odroid_system_emu_reset();
+bool odroid_system_emu_save_state(int slot);
+bool odroid_system_emu_load_state(int slot);
 void odroid_system_init(int app_id, int sampleRate);
-void odroid_system_emu_init(char **romPath, int8_t *startAction, state_handler_t load, state_handler_t save);
+uint odroid_system_get_app_id();
 void odroid_system_set_app_id(int appId);
-void odroid_system_quit_app(bool save);
-bool odroid_system_save_state(int slot);
-bool odroid_system_load_state(int slot);
+uint odroid_system_get_game_id();
+void odroid_system_set_game_id(int gameId);
+uint odroid_system_get_start_action();
 void odroid_system_panic(const char *reason);
 void odroid_system_halt();
 void odroid_system_sleep();
+void odroid_system_switch_app(int app);
 void odroid_system_set_boot_app(int slot);
 void odroid_system_set_led(int value);
-void odroid_system_gpio_init();
 void odroid_system_print_stats(uint ccount, uint frames, uint skippedFrames, uint fullFrames);
 char* odroid_system_get_path(char *romPath, emu_path_type_t type);
 

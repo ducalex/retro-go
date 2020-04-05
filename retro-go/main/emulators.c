@@ -144,9 +144,6 @@ void emulators_start_emu(retro_emulator_t *emu)
     const retro_emulator_file_t *file = gui_list_selected_file(emu);
     printf("Starting game: %s\n", file->path);
 
-    odroid_display_clear(0);
-    odroid_display_show_hourglass();
     odroid_settings_RomFilePath_set(file->path);
-    odroid_system_set_boot_app(emu->partition);
-    esp_restart();
+    odroid_system_switch_app(emu->partition);
 }

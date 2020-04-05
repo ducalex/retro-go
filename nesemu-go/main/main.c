@@ -20,8 +20,6 @@
 #define NVS_KEY_LIMIT_SPRITES "limitspr"
 #define NVS_KEY_OVERSCAN "overscan"
 
-static int8_t startAction;
-static char* romPath;
 static char* romData;
 static size_t romSize;
 
@@ -45,6 +43,15 @@ uint fullFrames = 0;
 // --- MAIN
 
 
+static void netplay_callback(netplay_event_t event, void *arg)
+{
+   if (event == NETPLAY_EVENT_STATUS_CHANGED)
+   {
+      netplay = (odroid_netplay_status() == NETPLAY_STATUS_CONNECTED);
+   }
+}
+
+
 static bool SaveState(char *pathName)
 {
    return state_save(pathName) >= 0;
@@ -60,13 +67,12 @@ static bool LoadState(char *pathName)
    return true;
 }
 
+
 static void set_overscan(bool enabled)
 {
    overscan = enabled ? nes_getcontextptr()->overscan : 0;
    update1.height = update2.height = NES_SCREEN_HEIGHT - (overscan * 2);
 }
-
-
 
 static bool sprite_limit_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
@@ -171,17 +177,14 @@ size_t osd_getromdata(unsigned char **data)
 
 void osd_loadstate()
 {
-   if (startAction == ODROID_START_ACTION_RESUME)
+   if (odroid_system_get_start_action() == ODROID_START_ACTION_RESUME)
    {
-      odroid_system_load_state(0);
+      odroid_system_emu_load_state(0);
    }
 
    ppu_limitsprites(odroid_settings_int32_get(NVS_KEY_LIMIT_SPRITES, 1));
    ppu_setnpal(nes_getcontextptr()->ppu, odroid_settings_Palette_get());
    set_overscan(odroid_settings_app_int32_get(NVS_KEY_OVERSCAN, 1));
-
-   // Set game ID in netplay (maybe we need to add osd_emustart ?)
-   odroid_netplay_setup(nes_getcontextptr()->rominfo->checksum, NULL);
 }
 
 int osd_logprint(const char *string)
@@ -327,13 +330,15 @@ void app_main(void)
    romData     = heap_caps_malloc(1024 * 1024, MALLOC_CAP_8BIT);
 
    odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-   odroid_system_emu_init(&romPath, &startAction, &LoadState, &SaveState);
+   odroid_system_emu_init(&LoadState, &SaveState, &netplay_callback);
 
    // Do the check after screen init so we can display an error
    if (!romData || !audioBuffer)
    {
       odroid_system_panic("Buffer allocation failed.");
    }
+
+   char *romPath = odroid_system_get_path(NULL, ODROID_PATH_ROM_FILE);
 
    // Load ROM
    if (strcasecmp(romPath + (strlen(romPath) - 4), ".zip") == 0)
@@ -348,9 +353,9 @@ void app_main(void)
    }
 
    printf("app_main ROM: romSize=%d\n", romSize);
-   if (romSize == 0)
+   if (romSize <= 0)
    {
-      odroid_system_panic("ROM read failed");
+      odroid_system_panic("ROM file loading failed!");
    }
 
    int region = NES_NTSC;

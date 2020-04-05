@@ -28,9 +28,6 @@
 
 #define NVS_KEY_SAVE_SRAM "sram"
 
-static int8_t startAction;
-static char* romPath;
-
 struct fb fb;
 struct pcm pcm;
 
@@ -230,7 +227,7 @@ void app_main(void)
 
     // Init all the console hardware
     odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    odroid_system_emu_init(&romPath, &startAction, &LoadState, &SaveState);
+    odroid_system_emu_init(&LoadState, &SaveState, NULL);
 
     // Do the check after screen init so we can display an error
     if (!update1.buffer || !update2.buffer || !audioBuffer)
@@ -241,10 +238,8 @@ void app_main(void)
     saveSRAM = odroid_settings_app_int32_get(NVS_KEY_SAVE_SRAM, 0);
 
     // Load ROM
+    char *romPath = odroid_system_get_path(NULL, ODROID_PATH_ROM_FILE);
     loader_init(romPath);
-
-    // Set game ID in netplay
-    odroid_netplay_setup(rom.checksum, NULL);
 
     // RTC
     memset(&rtc, 0, sizeof(rtc));
@@ -275,9 +270,9 @@ void app_main(void)
 
     pal_set_dmg(odroid_settings_Palette_get());
 
-    if (startAction == ODROID_START_ACTION_RESUME)
+    if (odroid_system_get_start_action() == ODROID_START_ACTION_RESUME)
     {
-        odroid_system_load_state(0);
+        odroid_system_emu_load_state(0);
     }
     else if (saveSRAM)
     {

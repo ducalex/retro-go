@@ -1,12 +1,7 @@
 #include "odroid_settings.h"
-
+#include "odroid_system.h"
 #include "nvs_flash.h"
-#include "esp_heap_caps.h"
-
 #include "string.h"
-
-#include "odroid_display.h"
-#include "odroid_audio.h"
 
 static const char* NvsNamespace = "Odroid";
 
@@ -23,9 +18,8 @@ static const char* NvsKey_Region = "Region";
 static const char* NvsKey_DispFilter = "DispFilter";
 
 static nvs_handle my_handle;
-static int app_id = 0;
 
-void odroid_settings_init(int _app_id)
+void odroid_settings_init()
 {
     esp_err_t err = nvs_flash_init();
     if (err != ESP_OK) {
@@ -38,13 +32,6 @@ void odroid_settings_init(int _app_id)
 
 	err = nvs_open(NvsNamespace, NVS_READWRITE, &my_handle);
 	if (err != ESP_OK) abort();
-
-    app_id = _app_id;
-}
-
-void odroid_settings_set_app_id(int _app_id)
-{
-    app_id = _app_id;
 }
 
 char* odroid_settings_string_get(const char *key, char *default_value)
@@ -107,14 +94,14 @@ void odroid_settings_int32_set(const char *key, int32_t value)
 int32_t odroid_settings_app_int32_get(const char *key, int32_t default_value)
 {
     char app_key[16];
-    sprintf(app_key, "%.12s.%d", key, app_id);
+    sprintf(app_key, "%.12s.%d", key, odroid_system_get_app_id());
     return odroid_settings_int32_get(app_key, default_value);
 }
 
 void odroid_settings_app_int32_set(const char *key, int32_t value)
 {
     char app_key[16];
-    sprintf(app_key, "%.12s.%d", key, app_id);
+    sprintf(app_key, "%.12s.%d", key, odroid_system_get_app_id());
     odroid_settings_int32_set(app_key, value);
 }
 
@@ -159,16 +146,6 @@ void odroid_settings_AudioSink_set(ODROID_AUDIO_SINK value)
 }
 
 
-int32_t odroid_settings_DataSlot_get()
-{
-    return odroid_settings_int32_get(NvsKey_DataSlot, -1);
-}
-void odroid_settings_DataSlot_set(int32_t value)
-{
-    odroid_settings_int32_set(NvsKey_DataSlot, value);
-}
-
-
 int32_t odroid_settings_Backlight_get()
 {
     return odroid_settings_int32_get(NvsKey_Backlight, 2);
@@ -186,6 +163,17 @@ ODROID_START_ACTION odroid_settings_StartAction_get()
 void odroid_settings_StartAction_set(ODROID_START_ACTION value)
 {
     odroid_settings_int32_set(NvsKey_StartAction, value);
+}
+
+
+
+int32_t odroid_settings_DataSlot_get()
+{
+    return odroid_settings_app_int32_get(NvsKey_DataSlot, -1);
+}
+void odroid_settings_DataSlot_set(int32_t value)
+{
+    odroid_settings_app_int32_set(NvsKey_DataSlot, value);
 }
 
 

@@ -1,8 +1,8 @@
 This document describes the network protocol used for netplay in Retro-Go.
 
-Caution: This document is very much a work in progress that describes the currently untested netplay code. Design flaws and bugs are likely going to change the below procedures as they are discovered.
+Caution: This document is very much a work in progress that describes the currently untested netplay code. Design flaws and bugs are likely going to change the following procedures as they are discovered.
 
-Espressif's documentation suggests a very low variation of the main esp32 clock (up to .1%). I did measure a bigger variation than that, but it is still below 1%. For all intents and purposes we can assume all devices run at the same speed.
+Espressif's documentation suggests a low variation of the main esp32 oscillator (up to 240Mhz +/- .01%). In practice I've measured much higher variation between devices but it is still below 1%.For the time being we can safely assume that all devices run at the same speed.
 
 The network stack will need to be tuned somewhat to reduce latency further, but in a 2-player setting it should be adequate for the time being.
 
@@ -37,7 +37,7 @@ The network stack will need to be tuned somewhat to reduce latency further, but 
 
 # Emulation synchronization Game Boy/Game Gear
 
-It will likely be the similar as above but instead of odroid_gamepad_state, serial registers will be exchanged through odroid_netplay_sync(). Though at the moment Game Gear is very low priority as it was never requested.
+It will likely be the similar as above but, instead of odroid_gamepad_state, serial registers will be exchanged through odroid_netplay_sync(). Though at the moment Game Gear is very low priority and was never requested.
 
 
 # State exchange
@@ -47,7 +47,7 @@ Description of how save states loading/saving will work in a netplay environment
 
 # ROM exchange
 
-Description of how netplay will upload a ROM with a peer's RAM or SD Card in order to netplay.
+Description of how netplay will upload a ROM to a peer's RAM or SD Card in order to netplay.
 
 
 # Forced synchronization
