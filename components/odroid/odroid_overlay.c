@@ -503,11 +503,11 @@ int odroid_overlay_game_menu()
     switch (r)
     {
         case 10: odroid_system_emu_save_state(0); break;
-        case 20: odroid_system_emu_quit(true); break;
+        case 20: odroid_system_emu_save_state(0); odroid_system_switch_app(0); break;
         case 30: odroid_system_emu_load_state(0); break;
         // case 30: esp_restart(); break;
         case 40: odroid_netplay_quick_start(); break;
-        case 50: odroid_system_emu_quit(false); break;
+        case 50: odroid_system_switch_app(0); break;
     }
 
     return r;

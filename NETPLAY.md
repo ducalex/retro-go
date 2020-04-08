@@ -11,12 +11,10 @@ The network stack will need to be tuned somewhat to reduce latency further, but 
 
 - Host starts a wifi access point (at the moment the SSID isn't hidden, to help with development).
 - Guests connect to host's access point.
-- Once connected, the guest broadcasts their NETPLAY_PACKET_INFO.
-- All other players respond to the new player with their own NETPLAY_PACKET_INFO.
-- When a player receives a NETPLAY_PACKET_INFO from the *host*, it compares the protocol version and game ID with his own. If the protocol version doesn't match then the connection fails. If the game ID doesn't match then a warning is shown but connection may continue.
-- Once the host determines that all players are connected (at the moment only 1), it sends a NETPLAY_PACKET_GAME_RESET
-  which causes all players to zero reset the emulator. Zero reset means that we don't fill the memory with trash, instead we use a known value so that all players start with the exact same state.
-- Finally, the host starts its own emulation which broadcasts the first NETPLAY_PACKET_SYNC_REQ to all guests and waits until everybody is ready.
+- Upon connection the guest will receive a NETPLAY_PACKET_INFO from the host.
+- The guest can now decide if the protocol and game ID match his or abandon the connection.
+- Once the host determines that all players are connected (at the moment only 1), it broadcasts a NETPLAY_PACKET_READY that contains the list of players and instruct guests to zero reset their emulators. Zero reset means that we don't fill the memory with trash, instead we use a known value so that all players start with the exact same state.
+- Finally, the host starts its own emulation which broadcasts the first NETPLAY_PACKET_SYNC_REQ to all guests and move to the next section.
 
 
 # Emulation synchronization NES/SMS

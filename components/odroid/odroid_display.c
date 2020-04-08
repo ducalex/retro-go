@@ -386,7 +386,7 @@ static void ili9341_init()
     {
         ili_cmd(ili_init_cmds[cmd].cmd);
         ili_data(ili_init_cmds[cmd].data, ili_init_cmds[cmd].databytes & 0x7f);
-        //     vTaskDelay(10 / portTICK_RATE_MS);
+        //     vTaskDelay(pdMS_TO_TICKS(10));
         cmd++;
     }
 }

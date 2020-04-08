@@ -129,7 +129,7 @@ static void odroid_input_task(void *arg)
         xSemaphoreGive(xSemaphore);
 
         // delay
-        vTaskDelay(10 / portTICK_PERIOD_MS);
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 
     input_gamepad_initialized = false;
@@ -138,9 +138,6 @@ static void odroid_input_task(void *arg)
 
     // Remove the task from scheduler
     vTaskDelete(NULL);
-
-    // Never return
-    while (1) { vTaskDelay(1);}
 }
 
 void odroid_input_gamepad_init()
@@ -242,7 +239,7 @@ static void odroid_battery_monitor_task()
             }
         }
 
-        vTaskDelay(500 / portTICK_PERIOD_MS);
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 

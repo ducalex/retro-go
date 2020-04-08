@@ -49,8 +49,6 @@ typedef enum
 } spi_lock_res_t;
 
 void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t netplay_cb);
-void odroid_system_emu_quit(bool save);
-void odroid_system_emu_reset();
 bool odroid_system_emu_save_state(int slot);
 bool odroid_system_emu_load_state(int slot);
 void odroid_system_init(int app_id, int sampleRate);
@@ -63,6 +61,7 @@ void odroid_system_panic(const char *reason);
 void odroid_system_halt();
 void odroid_system_sleep();
 void odroid_system_switch_app(int app);
+void odroid_system_reload_app();
 void odroid_system_set_boot_app(int slot);
 void odroid_system_set_led(int value);
 void odroid_system_print_stats(uint ccount, uint frames, uint skippedFrames, uint fullFrames);

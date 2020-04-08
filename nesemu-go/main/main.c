@@ -45,9 +45,38 @@ uint fullFrames = 0;
 
 static void netplay_callback(netplay_event_t event, void *arg)
 {
-   if (event == NETPLAY_EVENT_STATUS_CHANGED)
+   bool new_netplay;
+
+   switch (event)
    {
-      netplay = (odroid_netplay_status() == NETPLAY_STATUS_CONNECTED);
+      case NETPLAY_EVENT_STATUS_CHANGED:
+         new_netplay = (odroid_netplay_status() == NETPLAY_STATUS_CONNECTED);
+
+         if (netplay && !new_netplay)
+         {
+            odroid_overlay_alert("Connection lost!");
+         }
+         else if (!netplay && new_netplay)
+         {
+            nes_reset(ZERO_RESET);
+         }
+
+         netplay = new_netplay;
+         break;
+
+      default:
+         break;
+   }
+
+   if (netplay && odroid_netplay_mode() == NETPLAY_MODE_GUEST)
+   {
+      localJoystick = &joystick2;
+      remoteJoystick = &joystick1;
+   }
+   else
+   {
+      localJoystick = &joystick1;
+      remoteJoystick = &joystick2;
    }
 }
 
@@ -288,6 +317,10 @@ void osd_getinput(void)
       odroid_overlay_game_settings_menu(options);
    }
 
+   if (netplay) {
+      odroid_netplay_sync(localJoystick, remoteJoystick, sizeof(odroid_gamepad_state));
+   }
+
 	if (!joystick1.values[ODROID_INPUT_START])  b |= (1 << 0);
 	if (!joystick1.values[ODROID_INPUT_SELECT]) b |= (1 << 1);
 	if (!joystick1.values[ODROID_INPUT_UP])     b |= (1 << 2);
@@ -315,10 +348,6 @@ void osd_getinput(void)
 		changed >>= 1;
 		b >>= 1;
 	}
-
-   if (netplay) {
-      odroid_netplay_sync(localJoystick, remoteJoystick, sizeof(odroid_gamepad_state));
-   }
 }
 
 

@@ -15,11 +15,11 @@
 #define NETPLAY_VERSION 0x01
 #define MAX_PLAYERS 8
 
-#define EVERYONE 0xFF
+#define BROADCAST (inet_addr(WIFI_BROADCAST_ADDR))
 
 // The SSID should be randomized to avoid conflicts
 #define WIFI_SSID "RETRO-GO"
-#define WIFI_CHANNEL 1
+#define WIFI_CHANNEL 12
 #define WIFI_BROADCAST_ADDR "192.168.4.255"
 #define WIFI_NETPLAY_PORT 1234
 
@@ -36,10 +36,9 @@ static netplay_player_t *remote_player; // This only works in 2 player mode
 static tcpip_adapter_ip_info_t local_if;
 static wifi_config_t wifi_config;
 
-static uint sync_req_time;
-
-static int tx_sock;
-static struct sockaddr_in tx_addr;
+static int server_sock, client_sock; // TCP
+static int rx_sock, tx_sock; // UDP
+static struct sockaddr_in rx_addr, tx_addr;
 
 
 static void dummy_netplay_callback(netplay_event_t event, void *arg)
@@ -48,63 +47,171 @@ static void dummy_netplay_callback(netplay_event_t event, void *arg)
 }
 
 
-static void set_local_network_interface(tcpip_adapter_if_t tcpip_if)
+static void network_cleanup()
+{
+    if (rx_sock) close(rx_sock);
+    if (tx_sock) close(tx_sock);
+    if (server_sock) close(server_sock);
+    if (client_sock) close(client_sock);
+
+    rx_sock = tx_sock = NULL;
+    server_sock = client_sock = NULL;
+    memset(&local_if, 0, sizeof(local_if));
+}
+
+
+static void network_setup(tcpip_adapter_if_t tcpip_if)
 {
     tcpip_adapter_get_ip_info(tcpip_if, &local_if);
-    local_player = &players[local_if.ip.addr - local_if.gw.addr];
-    local_player->id = local_if.ip.addr - local_if.gw.addr;
+
+    int player_id = ((local_if.ip.addr >> 24) & 0xF) - 1;
+
+    local_player = &players[player_id];
+    local_player->id = player_id;
     local_player->version = NETPLAY_VERSION;
     local_player->game_id = odroid_system_get_game_id();
     local_player->ip_addr = local_if.ip.addr;
+
+    printf("netplay: Local player ID: %d\n", local_player->id);
+
+    rx_addr.sin_family = AF_INET;
+    rx_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    rx_addr.sin_port = htons(WIFI_NETPLAY_PORT);
+
+    tx_addr.sin_family = AF_INET;
+    tx_addr.sin_addr.s_addr = inet_addr(WIFI_BROADCAST_ADDR);
+    tx_addr.sin_port = htons(WIFI_NETPLAY_PORT);
+
+    rx_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    tx_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    assert(rx_sock > 0 && tx_sock > 0);
+
+    // server_sock = socket(AF_INET, SOCK_STREAM, 0);
+    // client_sock = socket(AF_INET, SOCK_STREAM, 0);
+    // assert(client_sock > 0 && server_sock > 0);
+
+    if (bind(rx_sock, (struct sockaddr *)&rx_addr, sizeof rx_addr) < 0)
+    {
+        printf("netplay: bind() failed\n");
+        abort();
+    }
+
+    // if (bind(server_sock, (struct sockaddr *)&rx_addr, sizeof rx_addr) < 0)
+    // {
+    //     printf("netplay: bind() failed\n");
+    //     abort();
+    // }
+
+    // if (listen(server_sock, 2) < 0)
+    // {
+    //     printf("netplay: listen() failed\n");
+    //     abort();
+    // }
+}
+
+
+static void set_status(netplay_status_t status)
+{
+    bool changed = status != netplay_status;
+
+    netplay_status = status;
+
+    if (changed)
+    {
+        (*netplay_callback)(NETPLAY_EVENT_STATUS_CHANGED, &netplay_status);
+    }
+}
+
+
+static inline bool receive_packet(netplay_packet_t *packet, int timeout)
+{
+    fd_set read_fd_set;
+
+    FD_ZERO(&read_fd_set);
+    FD_SET(rx_sock, &read_fd_set);
+
+    int sel = select(FD_SETSIZE, &read_fd_set, NULL, NULL, NULL);
+
+    if (sel > 0)
+    {
+        return recv(rx_sock, &packet, sizeof packet, 0) >= 0;
+    }
+    else if (sel < 0)
+    {
+        printf("netplay: [Error] select() failed\n");
+    }
+
+    return false;
+}
+
+
+static inline void send_packet(uint32_t dest, uint8_t cmd, uint8_t arg, void *data, uint8_t data_len)
+{
+    netplay_packet_t packet = {local_player->id, cmd, arg, data_len};
+    size_t len = sizeof(packet) - sizeof(packet.data) + data_len;
+
+    if (data_len > 0)
+    {
+        memcpy(&packet.data, data, data_len);
+    }
+
+    if (dest < MAX_PLAYERS)
+    {
+        tx_addr.sin_addr.s_addr = players[dest].ip_addr;
+    }
+    else
+    {
+        tx_addr.sin_addr.s_addr = dest;
+    }
+
+    if (sendto(tx_sock, &packet, len, 0, (struct sockaddr*)&tx_addr, sizeof tx_addr) <= 0)
+    {
+        printf("netplay: [Error] sendto() failed\n");
+        // stop network
+    }
+    // return send(client_sock, &packet, len, 0) >= 0;
 }
 
 
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
-    uint temp;
-
     switch (event->event_id)
     {
         case SYSTEM_EVENT_AP_START:
-            netplay_status = NETPLAY_STATUS_LISTENING;
-            set_local_network_interface(TCPIP_ADAPTER_IF_AP);
+            network_setup(TCPIP_ADAPTER_IF_AP);
+            set_status(NETPLAY_STATUS_LISTENING);
             break;
 
         case SYSTEM_EVENT_STA_START:
-            netplay_status = NETPLAY_STATUS_CONNECTING;
-            break;
-
         case SYSTEM_EVENT_AP_STACONNECTED:
         case SYSTEM_EVENT_STA_CONNECTED:
-            netplay_status = NETPLAY_STATUS_CONNECTING;
+            set_status(NETPLAY_STATUS_CONNECTING);
             break;
 
         case SYSTEM_EVENT_AP_STAIPASSIGNED:
-            netplay_status = NETPLAY_STATUS_CONNECTED;
+            send_packet(event->event_info.ap_staipassigned.ip.addr, NETPLAY_PACKET_INFO,
+                                       NULL, local_player, sizeof(netplay_player_t));
+            set_status(NETPLAY_STATUS_HANDSHAKE);
             break;
 
         case SYSTEM_EVENT_STA_GOT_IP:
-            netplay_status = NETPLAY_STATUS_CONNECTED;
-            set_local_network_interface(TCPIP_ADAPTER_IF_STA);
-            odroid_netplay_send_packet(EVERYONE, NETPLAY_PACKET_INFO, 0, local_player, sizeof(netplay_player_t));
+            network_setup(TCPIP_ADAPTER_IF_STA);
+            set_status(NETPLAY_STATUS_HANDSHAKE);
             break;
 
         case SYSTEM_EVENT_AP_STADISCONNECTED:
         case SYSTEM_EVENT_STA_DISCONNECTED:
-            netplay_status = NETPLAY_STATUS_DISCONNECTED;
-            // memset(players[ipaddr], 0xFF, sizeof(netplay_player_t));
+            set_status(NETPLAY_STATUS_DISCONNECTED);
             break;
 
         case SYSTEM_EVENT_AP_STOP:
         case SYSTEM_EVENT_STA_STOP:
-            netplay_status = NETPLAY_STATUS_STOPPED;
+            set_status(NETPLAY_STATUS_STOPPED);
             break;
 
         default:
             return ESP_OK;
     }
-
-    (*netplay_callback)(NETPLAY_EVENT_STATUS_CHANGED, &netplay_status);
 
     return ESP_OK;
 }
@@ -112,21 +219,8 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
 
 static void netplay_task()
 {
-    int len, expected_len, rx_sock, temp;
+    int len, expected_len;
     netplay_packet_t packet;
-    struct sockaddr_in rx_addr;
-    char buffer[128];
-
-    rx_addr.sin_family = AF_INET;
-    rx_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    rx_addr.sin_port = htons(WIFI_NETPLAY_PORT);
-
-    rx_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-
-    if (rx_sock < 0 || bind(rx_sock, (struct sockaddr *)&rx_addr, sizeof rx_addr) < 0)
-    {
-        abort();
-    }
 
     printf("netplay: Task started!\n");
 
@@ -134,10 +228,18 @@ static void netplay_task()
     {
         memset(&packet, 0, sizeof(netplay_packet_t));
 
-        if ((len = recvfrom(rx_sock, &packet, sizeof packet, 0, NULL, 0)) < 0)
+        if (!(rx_sock || client_sock) || netplay_status < NETPLAY_STATUS_HANDSHAKE)
         {
-            printf("netplay: Network error in network task!\n");
-            vTaskDelay(10);
+            vTaskDelay(pdMS_TO_TICKS(100));
+            continue;
+        }
+
+        // if ((len = recv(client_sock, &packet, sizeof packet, 0)) <= 0)
+        if ((len = recvfrom(rx_sock, &packet, sizeof packet, 0, NULL, 0)) <= 0)
+        {
+            printf("netplay: [Error] Socket disconnected! (recv() failed)\n");
+            vTaskDelay(pdMS_TO_TICKS(100));
+            continue;
         }
 
         expected_len = sizeof(packet) - sizeof(packet.data) + packet.data_len;
@@ -158,77 +260,71 @@ static void netplay_task()
             continue;
         }
 
-        remote_player = &players[packet.player_id];
-        remote_player->last_contact = get_elapsed_time();
+        netplay_player_t *packet_from = &players[packet.player_id];
+        packet_from->last_contact = get_elapsed_time();
 
         switch (packet.cmd)
         {
-            case NETPLAY_PACKET_INFO:
+            case NETPLAY_PACKET_INFO: // HOST <-> GUEST
                 if (packet.data_len != sizeof(netplay_player_t))
                 {
                     printf("netplay: [Error] Player struct size mismatch. expected=%d received=%d\n",
                             sizeof(netplay_player_t), packet.data_len);
-                    break; // abort();
+                    break;
                 }
 
-                if (((netplay_player_t*)packet.data)->version != NETPLAY_VERSION)
+                memcpy(packet_from, packet.data, packet.data_len);
+                remote_player = packet_from;
+
+                printf("netplay: Remote client info player_id=%d game_id=%08X version=%02X\n",
+                        packet_from->id, packet_from->game_id, packet_from->version);
+
+                if (packet_from->version != NETPLAY_VERSION)
                 {
-                    printf("netplay: [Error] Protocol version mismatch. expected=%d received=%d\n",
-                            NETPLAY_VERSION, ((netplay_player_t*)packet.data)->version);
-                    break; // abort();
+                    printf("netplay: [Error] Remote client protocol version mismatch.\n");
+                    break;
                 }
-
-                // If it's a new player (to us) we send our information back
-                if (remote_player->id == 0xFF)
-                {
-                    memcpy(remote_player, packet.data, packet.data_len);
-                    odroid_netplay_send_packet(remote_player->id, NETPLAY_PACKET_INFO, 0,
-                                               local_player, sizeof(netplay_player_t));
-                }
-                else
-                {
-                    memcpy(remote_player, packet.data, packet.data_len);
-                }
-
-                // If remote player is Host then his Game ID is decisive
-                if (remote_player->id <= 1)
-                {
-                    if (remote_player->game_id != local_player->game_id)
-                    {
-                        printf("netplay: Game ID mismatch. received: %08X, expected %08X\n",
-                                remote_player->game_id, local_player->game_id);
-                        // show warning;
-                    }
-                }
-
-                printf("netplay: Remote client info player_id=%d game_id=%08X\n",
-                        remote_player->id, remote_player->game_id);
-                break;
-
-            case NETPLAY_PACKET_SYNC_REQ:
-                memcpy(&remote_player->sync_data, packet.data, packet.data_len);
-                odroid_netplay_send_packet(0xFF, NETPLAY_PACKET_SYNC_ACK, packet.arg,
-                                           local_player->sync_data, sizeof(local_player->sync_data));
-                break;
-
-            case NETPLAY_PACKET_SYNC_ACK:
-                memcpy(&remote_player->sync_data, packet.data, packet.data_len);
-                remote_player->sync_latency = get_elapsed_time_since(sync_req_time);
 
                 if (netplay_mode == NETPLAY_MODE_HOST)
                 {
-                    // if received all players ACK then:
-                    odroid_netplay_send_packet(0xFF, NETPLAY_PACKET_SYNC_DONE, packet.arg, 0, 0);
-                    xSemaphoreGive(netplay_sync);
+                    // Check if all players are ready (at the moment only 1, no need to check) then send NETPLAY_PACKET_READY
+                    send_packet(packet_from->id, NETPLAY_PACKET_READY, 0, 0, 0);
+                    set_status(NETPLAY_STATUS_CONNECTED);
+                }
+                else
+                {
+                    send_packet(packet_from->id, NETPLAY_PACKET_INFO, 1, local_player, sizeof(netplay_player_t));
                 }
                 break;
 
-            case NETPLAY_PACKET_SYNC_DONE:
+            case NETPLAY_PACKET_READY: // HOST -> GUEST
+                // if (packet.data_len != sizeof(players))
+                // {
+                //     printf("netplay: [Error] Players array size mismatch. expected=%d received=%d\n",
+                //             sizeof(players), packet.data_len);
+                //     break;
+                // }
+
+                // memcpy(&players, packet.data, packet.data_len);
+                set_status(NETPLAY_STATUS_CONNECTED);
+                break;
+
+            case NETPLAY_PACKET_SYNC_REQ: // HOST -> GUEST
+                memcpy(&packet_from->sync_data, packet.data, packet.data_len);
                 xSemaphoreGive(netplay_sync);
                 break;
 
-            case NETPLAY_PACKET_RAW_DATA:
-                (*netplay_callback)(NETPLAY_EVENT_PACKET_RECEIVED, &packet);
+            case NETPLAY_PACKET_SYNC_ACK: // GUEST -> HOST
+                memcpy(&packet_from->sync_data, packet.data, packet.data_len);
+
+                // if received all players ACK then:
+                send_packet(remote_player->id, NETPLAY_PACKET_SYNC_DONE, packet.arg, 0, 0);
+                xSemaphoreGive(netplay_sync);
+                break;
+
+            case NETPLAY_PACKET_SYNC_DONE: // HOST -> GUEST
+                xSemaphoreGive(netplay_sync);
+                break;
 
             default:
                 printf("netplay: [Error] Received unknown packet type 0x%02x\n", packet.cmd);
@@ -263,15 +359,9 @@ void odroid_netplay_init()
 
         wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
         ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+        ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE)); // Improves latency a lot
         ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
         ESP_ERROR_CHECK(esp_event_loop_init(&event_handler, NULL));
-
-        tx_addr.sin_family = AF_INET;
-        tx_addr.sin_addr.s_addr = inet_addr(WIFI_BROADCAST_ADDR);
-        tx_addr.sin_port = htons(WIFI_NETPLAY_PORT);
-
-        tx_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-        assert(tx_sock > 0);
 
         xTaskCreatePinnedToCore(&netplay_task, "netplay_task", 4096, NULL, 7, NULL, 1);
     }
@@ -297,15 +387,6 @@ bool odroid_netplay_quick_start()
     short timeout = 100;
     odroid_gamepad_state joystick;
 
-    if (netplay_status == NETPLAY_STATUS_CONNECTED)
-    {
-        if (odroid_overlay_confirm("Netplay connected. Disconnect?", true))
-        {
-            odroid_netplay_stop();
-        }
-        return false;
-    }
-
     odroid_display_clear(0);
 
     const odroid_dialog_choice_t choices[] = {
@@ -325,25 +406,36 @@ bool odroid_netplay_quick_start()
 
     while (1)
     {
-        if (netplay_status == NETPLAY_STATUS_CONNECTED)
+        switch (netplay_status)
         {
-            status_msg = "Exchanging info...";
-            if (remote_player != NULL)
-            {
-                return true;
-            }
-        }
-        else if (netplay_status == NETPLAY_STATUS_DISCONNECTED)
-        {
-            status_msg = "Unable to find host.";
-        }
-        else if (netplay_status == NETPLAY_STATUS_CONNECTING)
-        {
-            status_msg = "Connecting...";
-        }
-        else if (netplay_status == NETPLAY_STATUS_LISTENING)
-        {
-            status_msg = "Waiting for peer...";
+            case NETPLAY_STATUS_CONNECTED:
+                return remote_player->game_id == local_player->game_id
+                    || odroid_overlay_confirm("ROMs not identical. Continue?", 1);
+                break;
+
+            case NETPLAY_STATUS_HANDSHAKE:
+                status_msg = "Exchanging info...";
+                break;
+
+            case NETPLAY_STATUS_TCPCONNECT:
+            case NETPLAY_STATUS_CONNECTING:
+                status_msg = "Connecting...";
+                break;
+
+            case NETPLAY_STATUS_DISCONNECTED:
+                status_msg = "Unable to find host!";
+                break;
+
+            case NETPLAY_STATUS_STOPPED:
+                status_msg = "Connection failed!";
+                break;
+
+            case NETPLAY_STATUS_LISTENING:
+                status_msg = "Waiting for peer...";
+                break;
+
+            default:
+                status_msg = "Unknown status...";
         }
 
         if (screen_msg != status_msg)
@@ -357,7 +449,7 @@ bool odroid_netplay_quick_start()
 
         if (joystick.values[ODROID_INPUT_B]) break;
 
-        vTaskDelay(10 / portTICK_RATE_MS);
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 
     odroid_netplay_stop();
@@ -404,7 +496,7 @@ bool odroid_netplay_start(netplay_mode_t mode)
         strncpy((char*)wifi_config.ap.ssid, WIFI_SSID, 32);
         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
         wifi_config.ap.channel = WIFI_CHANNEL;
-        wifi_config.ap.max_connection = 1;
+        wifi_config.ap.max_connection = MAX_PLAYERS - 1;
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
         ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config));
         ret = esp_wifi_start();
@@ -428,6 +520,7 @@ bool odroid_netplay_stop()
 
     if (netplay_mode != NETPLAY_MODE_NONE)
     {
+        network_cleanup();
         ret = esp_wifi_stop();
         netplay_status = NETPLAY_STATUS_STOPPED;
         netplay_mode = NETPLAY_MODE_NONE;
@@ -440,65 +533,47 @@ bool odroid_netplay_stop()
 
 void odroid_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
 {
-    static uint sync_count = 0, sync_time = 0;
-    uint start_time = get_elapsed_time();
+    static uint sync_count = 0, sync_time = 0, start_time = 0;
+    static netplay_packet_t packet;
 
     if (netplay_status != NETPLAY_STATUS_CONNECTED)
     {
         return;
     }
 
+    start_time = get_elapsed_time();
+
     memcpy(&local_player->sync_data, data_in, data_len);
 
     if (netplay_mode == NETPLAY_MODE_HOST)
     {
-        sync_req_time = get_elapsed_time();
-        odroid_netplay_send_packet(0xFF, NETPLAY_PACKET_SYNC_REQ, 0, local_player->sync_data,
-                                   sizeof(local_player->sync_data));
+        odroid_netplay_send_packet(remote_player->id, NETPLAY_PACKET_SYNC_REQ, 0, data_in, data_len);
     }
 
     // wait to receive/send NETPLAY_PACKET_SYNC_DONE
-    if (xSemaphoreTake(netplay_sync, 100 / portTICK_PERIOD_MS) == pdPASS)
-    {
-        memcpy(data_out, remote_player->sync_data, data_len);
-    }
-    else
+    if (xSemaphoreTake(netplay_sync, 10000 / portTICK_PERIOD_MS) != pdPASS)
     {
         printf("netplay: [Error] Lost sync...\n");
-        // abort();
+        odroid_netplay_stop();
+        return;
+    }
+
+    memcpy(data_out, remote_player->sync_data, data_len);
+
+    if (netplay_mode == NETPLAY_MODE_GUEST)
+    {
+        odroid_netplay_send_packet(remote_player->id, NETPLAY_PACKET_SYNC_ACK, 0,
+                    local_player->sync_data, sizeof(local_player->sync_data));
+        xSemaphoreTake(netplay_sync, 1000 / portTICK_PERIOD_MS);
     }
 
     sync_time += get_elapsed_time_since(start_time);
 
     if (++sync_count == 60)
     {
-        printf("netplay: Sync delay=%.4fms", (float)sync_time / sync_count / 1000);
+        printf("netplay: Sync delay=%.4fms\n", (float)sync_time / sync_count / 1000);
         sync_count = sync_time = 0;
     }
-}
-
-
-bool odroid_netplay_send_packet(uint8_t dest, uint8_t cmd, uint8_t arg, void *data, uint8_t data_len)
-{
-    printf("netplay: %s called.\n", __func__);
-
-    if (netplay_status != NETPLAY_STATUS_CONNECTED)
-    {
-        return false;
-    }
-
-    // To do: avoid calling inet_addr every time
-    if (dest < MAX_PLAYERS) tx_addr.sin_addr.s_addr = players[dest].ip_addr;
-    else tx_addr.sin_addr.s_addr = inet_addr(WIFI_BROADCAST_ADDR);
-
-    netplay_packet_t packet = {local_player->id, arg, cmd, data_len};
-    size_t len = sizeof(packet) - sizeof(packet.data) + data_len;
-
-    if (data_len) {
-        memcpy(packet.data, data, data_len);
-    }
-
-    return sendto(tx_sock, &packet, len, 0, (struct sockaddr*)&tx_addr, sizeof tx_addr) >= 0;
 }
 
 

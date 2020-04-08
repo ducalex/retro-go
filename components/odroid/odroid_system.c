@@ -209,6 +209,8 @@ bool odroid_system_emu_load_state(int slot)
     if (!romPath || !loadState)
         odroid_system_panic("Emulator not initialized");
 
+    printf("odroid_system_emu_load_state: Loading state %d.\n", slot);
+
     odroid_display_show_hourglass();
     odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
@@ -231,6 +233,8 @@ bool odroid_system_emu_save_state(int slot)
 {
     if (!romPath || !saveState)
         odroid_system_panic("Emulator not initialized");
+
+    printf("odroid_system_emu_save_state: Saving state %d.\n", slot);
 
     odroid_input_battery_monitor_enabled_set(0);
     odroid_system_set_led(1);
@@ -255,19 +259,9 @@ bool odroid_system_emu_save_state(int slot)
     return success;
 }
 
-void odroid_system_emu_reset()
+void odroid_system_reload_app()
 {
     //
-}
-
-void odroid_system_emu_quit(bool save)
-{
-    if (save)
-    {
-        printf("odroid_system_emu_quit: Saving state.\n");
-        odroid_system_emu_save_state(0);
-    }
-    odroid_system_switch_app(0);
 }
 
 void odroid_system_switch_app(int app)
