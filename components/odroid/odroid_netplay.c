@@ -547,7 +547,7 @@ void odroid_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
 
     if (netplay_mode == NETPLAY_MODE_HOST)
     {
-        odroid_netplay_send_packet(remote_player->id, NETPLAY_PACKET_SYNC_REQ, 0, data_in, data_len);
+        send_packet(remote_player->id, NETPLAY_PACKET_SYNC_REQ, 0, data_in, data_len);
     }
 
     // wait to receive/send NETPLAY_PACKET_SYNC_DONE

@@ -112,10 +112,7 @@ void odroid_overlay_draw_fill_rect(int x, int y, int width, int height, uint16_t
 
 void odroid_overlay_draw_battery(int x_pos, int y_pos)
 {
-    odroid_battery_state battery_state;
-    odroid_input_battery_level_read(&battery_state);
-
-    uint16_t percentage = battery_state.percentage;
+    uint16_t percentage = odroid_input_battery_read().percentage;
     uint16_t color_fill = C_FOREST_GREEN;
     uint16_t color_border = C_SILVER;
     uint16_t color_empty = C_BLACK;

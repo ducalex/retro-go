@@ -11,15 +11,12 @@
 #include <string.h>
 
 static volatile bool input_task_is_running = false;
-static volatile odroid_gamepad_state gamepad_state;
-static volatile bool input_gamepad_initialized = false;
+static odroid_gamepad_state gamepad_state;
 static SemaphoreHandle_t xSemaphore;
 
-static esp_adc_cal_characteristics_t characteristics;
-static bool input_battery_initialized = false;
-static float adc_value = 0.0f;
+static bool battery_task_is_running = false;
 static bool battery_monitor_enabled = true;
-static odroid_battery_state battery_state;
+static esp_adc_cal_characteristics_t adc_chars;
 
 odroid_gamepad_state odroid_input_read_raw()
 {
@@ -76,16 +73,12 @@ static void odroid_input_task(void *arg)
 {
     input_task_is_running = true;
 
-    odroid_gamepad_state previous_gamepad_state;
     uint8_t debounce[ODROID_INPUT_MAX];
 
-    // Initialize state
-    for(int i = 0; i < ODROID_INPUT_MAX; ++i)
-    {
-        debounce[i] = 0xff;
-    }
+    // Initialize debounce state
+    memset(debounce, 0xFF, ODROID_INPUT_MAX);
 
-    while(input_task_is_running)
+    while (input_task_is_running)
     {
         // Read hardware
         odroid_gamepad_state state = odroid_input_read_raw();
@@ -119,12 +112,7 @@ static void odroid_input_task(void *arg)
                     // ignore
                     break;
             }
-
-            //gamepad_state.values[i] = (debounce[i] == 0xff);
-            //printf("odroid_input_task: %d=%d (raw=%d)\n", i, gamepad_state.values[i], state.values[i]);
 		}
-
-        previous_gamepad_state = gamepad_state;
 
         xSemaphoreGive(xSemaphore);
 
@@ -132,25 +120,15 @@ static void odroid_input_task(void *arg)
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 
-    input_gamepad_initialized = false;
-
     vSemaphoreDelete(xSemaphore);
-
-    // Remove the task from scheduler
     vTaskDelete(NULL);
 }
 
 void odroid_input_gamepad_init()
 {
-    //printf("portTICK_PERIOD_MS = %d\n", portTICK_PERIOD_MS);
+    if (input_task_is_running) abort();
 
     xSemaphore = xSemaphoreCreateMutex();
-
-    if(xSemaphore == NULL)
-    {
-        printf("xSemaphoreCreateMutex failed.\n");
-        abort();
-    }
 
 	gpio_set_direction(ODROID_GAMEPAD_IO_SELECT, GPIO_MODE_INPUT);
 	gpio_set_pull_mode(ODROID_GAMEPAD_IO_SELECT, GPIO_PULLUP_ONLY);
@@ -172,25 +150,20 @@ void odroid_input_gamepad_init()
 
 	gpio_set_direction(ODROID_GAMEPAD_IO_VOLUME, GPIO_MODE_INPUT);
 
-    input_gamepad_initialized = true;
-
     // Start background polling
     xTaskCreatePinnedToCore(&odroid_input_task, "odroid_input_task", 1024 * 2, NULL, 5, NULL, 1);
 
   	printf("odroid_input_gamepad_init done.\n");
-
 }
 
 void odroid_input_gamepad_terminate()
 {
-    if (!input_gamepad_initialized) abort();
-
     input_task_is_running = false;
 }
 
 void odroid_input_gamepad_read(odroid_gamepad_state* out_state)
 {
-    if (!input_gamepad_initialized) abort();
+    if (!input_task_is_running) abort();
 
     xSemaphoreTake(xSemaphore, portMAX_DELAY);
 
@@ -199,104 +172,97 @@ void odroid_input_gamepad_read(odroid_gamepad_state* out_state)
     xSemaphoreGive(xSemaphore);
 }
 
+bool odroid_input_key_is_pressed(int key)
+{
+    odroid_gamepad_state joystick;
+    odroid_input_gamepad_read(&joystick);
+
+    if (key == ODROID_INPUT_ANY) {
+        for (int i = 0; i < ODROID_INPUT_MAX; i++) {
+            if (joystick.values[i] == true) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    return joystick.values[key];
+}
+
 void odroid_input_wait_for_key(int key, bool pressed)
 {
 	while (true)
     {
-        odroid_gamepad_state joystick;
-        odroid_input_gamepad_read(&joystick);
-
-        if (key == ODROID_INPUT_ANY) {
-            for (int i = 0; i < ODROID_INPUT_MAX; i++) {
-                if (joystick.values[i] == pressed) break;
-            }
+        if (odroid_input_key_is_pressed(key) == pressed)
+        {
+            break;
         }
-        else if (joystick.values[key] == pressed) {
-        	break;
-        }
+        vTaskDelay(1);
     }
 }
 
-static void odroid_battery_monitor_task()
+static void odroid_battery_task()
 {
+    battery_task_is_running = true;
+
     bool led_state = false;
 
-    while(true)
+    while (battery_task_is_running)
     {
         if (battery_monitor_enabled)
         {
-            odroid_input_battery_level_read_now(&battery_state);
-
-            if (battery_state.percentage < 2)
+            if (odroid_input_battery_read().percentage < 2)
             {
                 led_state = !led_state;
                 odroid_system_set_led(led_state);
             }
             else if (led_state)
             {
-                led_state = 0;
+                led_state = false;
                 odroid_system_set_led(led_state);
             }
         }
 
         vTaskDelay(pdMS_TO_TICKS(500));
     }
+
+    vTaskDelete(NULL);
 }
 
-
-#define DEFAULT_VREF 1100
-void odroid_input_battery_level_init()
+void odroid_input_battery_init()
 {
+    if (battery_task_is_running) abort();
+
     adc1_config_width(ADC_WIDTH_12Bit);
     adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_11db);
 
-    //int vref_value = odroid_settings_VRef_get();
-    //esp_adc_cal_get_characteristics(vref_value, ADC_ATTEN_11db, ADC_WIDTH_12Bit, &characteristics);
+    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_11db, ADC_WIDTH_BIT_12, 1100, &adc_chars);
 
-    //Characterize ADC
-    //adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
-    esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_11db, ADC_WIDTH_BIT_12, DEFAULT_VREF, &characteristics);
-
-    if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP) {
-        printf("ADC: Characterized using Two Point Value\n");
-    } else if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
-        printf("ADC: Characterized using eFuse Vref\n");
-    } else {
-        printf("ADC: Characterized using Default Vref\n");
-    }
-
-    input_battery_initialized = true;
-    xTaskCreatePinnedToCore(&odroid_battery_monitor_task, "battery_monitor", 1024, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(&odroid_battery_task, "battery_task", 1024, NULL, 5, NULL, 1);
 }
 
-void odroid_input_battery_level_read_now(odroid_battery_state* out_state)
+odroid_battery_state odroid_input_battery_read()
 {
-    if (!input_battery_initialized)
-    {
-        printf("odroid_input_battery_level_read: not initilized.\n");
-        abort();
-    }
+    static float adcValue = 0.0f;
 
-
-    const int sampleCount = 4;
-
+    short sampleCount = 4;
     float adcSample = 0.0f;
+
     for (int i = 0; i < sampleCount; ++i)
     {
-        //adcSample += adc1_to_voltage(ADC1_CHANNEL_0, &characteristics) * 0.001f;
-        adcSample += esp_adc_cal_raw_to_voltage(adc1_get_raw(ADC1_CHANNEL_0), &characteristics) * 0.001f;
+        adcSample += esp_adc_cal_raw_to_voltage(adc1_get_raw(ADC1_CHANNEL_0), &adc_chars) * 0.001f;
     }
     adcSample /= sampleCount;
 
 
-    if (adc_value == 0.0f)
+    if (adcValue == 0.0f)
     {
-        adc_value = adcSample;
+        adcValue = adcSample;
     }
     else
     {
-        adc_value += adcSample;
-        adc_value /= 2.0f;
+        adcValue += adcSample;
+        adcValue /= 2.0f;
     }
 
 
@@ -304,24 +270,18 @@ void odroid_input_battery_level_read_now(odroid_battery_state* out_state)
     // Vs = Vo / R2 * (R1 + R2)
     const float R1 = 10000;
     const float R2 = 10000;
-    const float Vo = adc_value;
+    const float Vo = adcValue;
     const float Vs = (Vo / R2 * (R1 + R2));
 
     const float FullVoltage = 4.2f;
     const float EmptyVoltage = 3.5f;
 
-    out_state->millivolts = (int)(Vs * 1000);
-    out_state->percentage = (int)((Vs - EmptyVoltage) / (FullVoltage - EmptyVoltage) * 100.0f);
-}
+    odroid_battery_state out_state = {
+        .millivolts = (int)(Vs * 1000),
+        .percentage = (int)((Vs - EmptyVoltage) / (FullVoltage - EmptyVoltage) * 100.0f),
+    };
 
-void odroid_input_battery_level_read(odroid_battery_state* out_state)
-{
-    if (battery_monitor_enabled) {
-        out_state->millivolts = battery_state.millivolts;
-        out_state->percentage = battery_state.percentage;
-    } else {
-        odroid_input_battery_level_read_now(out_state);
-    }
+    return out_state;
 }
 
 void odroid_input_battery_monitor_enabled_set(int value)

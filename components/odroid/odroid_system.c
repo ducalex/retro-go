@@ -56,15 +56,8 @@ void odroid_system_init(int appId, int sampleRate)
     odroid_overlay_init();
     odroid_system_gpio_init();
     odroid_input_gamepad_init();
-    odroid_input_battery_level_init();
+    odroid_input_battery_init();
     odroid_audio_init(sampleRate);
-
-    odroid_gamepad_state bootState = odroid_input_read_raw();
-    if (bootState.values[ODROID_INPUT_MENU])
-    {
-        // Force return to menu to recover from ROM loading crashes
-        odroid_system_switch_app(0);
-    }
 
     //sdcard init must be before LCD init
     esp_err_t sd_init = odroid_sdcard_open();
@@ -105,10 +98,12 @@ void odroid_system_init(int appId, int sampleRate)
 void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t netplay_cb)
 {
     uint8_t buffer[0x150];
-    size_t len = 0;
 
-    loadState = load;
-    saveState = save;
+    // If any key is pressed we go back to the menu (recover from ROM crash)
+    if (odroid_input_key_is_pressed(ODROID_INPUT_ANY))
+    {
+        odroid_system_switch_app(0);
+    }
 
     if (netplay_cb != NULL)
     {
@@ -121,15 +116,17 @@ void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_
         odroid_system_panic("Invalid ROM Path!");
     }
 
-    if ((len = odroid_sdcard_copy_file_to_memory(romPath, buffer, sizeof(buffer))) > 0)
-    {
-        gameId = crc32_le(0, buffer, len);
-        printf("odroid_system_emu_init: Game ID set to %08X\n", gameId);
-    }
-    else
+    // Read some of the ROM to derive a unique id
+    if (!odroid_sdcard_copy_file_to_memory(romPath, buffer, sizeof(buffer)))
     {
         odroid_system_panic("ROM File not found!");
     }
+
+    gameId = crc32_le(0, buffer, sizeof(buffer));
+    loadState = load;
+    saveState = save;
+
+    printf("odroid_system_emu_init: Init done. GameId=%08X\n", gameId);
 }
 
 void odroid_system_set_app_id(int _appId)
@@ -344,14 +341,13 @@ void odroid_system_print_stats(uint us, uint frames, uint skippedFrames, uint fu
     float seconds = (float)us / 1000000.f;
     float fps = frames / seconds;
 
-    odroid_battery_state battery;
-    odroid_input_battery_level_read(&battery);
+    odroid_battery_state battery = odroid_input_battery_read();
 
-    printf("HEAP:%d+%d, FPS:%f, SKIP:%d, FULL:%d, BATTERY:%d [%d]\n",
+    printf("HEAP:%d+%d, FPS:%f, SKIP:%d, FULL:%d, BATTERY:%d\n",
         heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
         heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024,
         fps, skippedFrames, fullFrames,
-        battery.millivolts, battery.percentage);
+        battery.millivolts);
 }
 
 void IRAM_ATTR odroid_system_spi_lock_acquire(spi_lock_res_t owner)
