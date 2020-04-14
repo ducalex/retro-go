@@ -33,6 +33,8 @@ static uint fullFrames = 0;
 
 static bool skipFrame = false;
 
+static bool netplay = false;
+
 static bool consoleIsGG = false;
 static bool consoleIsSMS = false;
 
@@ -43,6 +45,43 @@ static odroid_gamepad_state *remoteJoystick = &joystick2;
 
 // --- MAIN
 
+
+static void netplay_callback(netplay_event_t event, void *arg)
+{
+   bool new_netplay;
+
+   switch (event)
+   {
+      case NETPLAY_EVENT_STATUS_CHANGED:
+         new_netplay = (odroid_netplay_status() == NETPLAY_STATUS_CONNECTED);
+
+         if (netplay && !new_netplay)
+         {
+            odroid_overlay_alert("Connection lost!");
+         }
+         else if (!netplay && new_netplay)
+         {
+            system_reset();
+         }
+
+         netplay = new_netplay;
+         break;
+
+      default:
+         break;
+   }
+
+   if (netplay && odroid_netplay_mode() == NETPLAY_MODE_GUEST)
+   {
+      localJoystick = &joystick2;
+      remoteJoystick = &joystick1;
+   }
+   else
+   {
+      localJoystick = &joystick1;
+      remoteJoystick = &joystick2;
+   }
+}
 
 static bool SaveState(char *pathName)
 {
@@ -102,18 +141,8 @@ void app_main(void)
 
     sms.use_fm = 0;
 
-// #if 1
-// 	sms.country = TYPE_OVERSEAS;
-// #else
-//     sms.country = TYPE_DOMESTIC;
-// #endif
-
-	//sms.dummy = framebuffer[0]; //A normal cart shouldn't access this memory ever. Point it to vram just in case.
+	// sms.dummy = framebuffer[0]; //A normal cart shouldn't access this memory ever. Point it to vram just in case.
 	// sms.sram = malloc(SRAM_SIZE);
-    // if (!sms.sram)
-    //     abort();
-    //
-    // memset(sms.sram, 0xff, SRAM_SIZE);
 
     bitmap.width = SMS_WIDTH;
     bitmap.height = SMS_HEIGHT;
@@ -167,8 +196,14 @@ void app_main(void)
 
         uint startTime = get_elapsed_time();
 
-        input.pad[0] = 0;
-        input.system = 0;
+        if (netplay)
+        {
+            odroid_netplay_sync(localJoystick, remoteJoystick, sizeof(odroid_gamepad_state));
+        }
+
+        input.pad[0] = 0x00;
+        input.pad[1] = 0x00;
+        input.system = 0x00;
 
     	if (localJoystick->values[ODROID_INPUT_UP])    input.pad[0] |= INPUT_UP;
     	if (localJoystick->values[ODROID_INPUT_DOWN])  input.pad[0] |= INPUT_DOWN;
@@ -176,16 +211,26 @@ void app_main(void)
     	if (localJoystick->values[ODROID_INPUT_RIGHT]) input.pad[0] |= INPUT_RIGHT;
     	if (localJoystick->values[ODROID_INPUT_A])     input.pad[0] |= INPUT_BUTTON2;
     	if (localJoystick->values[ODROID_INPUT_B])     input.pad[0] |= INPUT_BUTTON1;
+    	if (remoteJoystick->values[ODROID_INPUT_UP])    input.pad[1] |= INPUT_UP;
+    	if (remoteJoystick->values[ODROID_INPUT_DOWN])  input.pad[1] |= INPUT_DOWN;
+    	if (remoteJoystick->values[ODROID_INPUT_LEFT])  input.pad[1] |= INPUT_LEFT;
+    	if (remoteJoystick->values[ODROID_INPUT_RIGHT]) input.pad[1] |= INPUT_RIGHT;
+    	if (remoteJoystick->values[ODROID_INPUT_A])     input.pad[1] |= INPUT_BUTTON2;
+    	if (remoteJoystick->values[ODROID_INPUT_B])     input.pad[1] |= INPUT_BUTTON1;
 
 		if (consoleIsSMS)
 		{
 			if (localJoystick->values[ODROID_INPUT_START])  input.system |= INPUT_PAUSE;
 			if (localJoystick->values[ODROID_INPUT_SELECT]) input.system |= INPUT_START;
+			if (remoteJoystick->values[ODROID_INPUT_START])  input.system |= INPUT_PAUSE;
+			if (remoteJoystick->values[ODROID_INPUT_SELECT]) input.system |= INPUT_START;
 		}
 		else if (consoleIsGG)
 		{
 			if (localJoystick->values[ODROID_INPUT_START])  input.system |= INPUT_START;
 			if (localJoystick->values[ODROID_INPUT_SELECT]) input.system |= INPUT_PAUSE;
+			if (remoteJoystick->values[ODROID_INPUT_START])  input.system |= INPUT_START;
+			if (remoteJoystick->values[ODROID_INPUT_SELECT]) input.system |= INPUT_PAUSE;
 		}
         else // Coleco
         {

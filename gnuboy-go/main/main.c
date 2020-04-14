@@ -43,13 +43,36 @@ static uint skippedFrames = 0;
 static uint fullFrames = 0;
 
 static bool skipFrame = true;
-static bool netplay = false;
-static bool saveSRAM = false;
 
-static int sramSaveTimer = 0;
+static bool netplay = false;
+
+static bool saveSRAM = false;
+static int  sramSaveTimer = 0;
 
 extern int debug_trace;
 // --- MAIN
+
+
+static void netplay_callback(netplay_event_t event, void *arg)
+{
+   bool new_netplay;
+
+   switch (event)
+   {
+      case NETPLAY_EVENT_STATUS_CHANGED:
+        new_netplay = (odroid_netplay_status() == NETPLAY_STATUS_CONNECTED);
+
+        if (netplay && !new_netplay)
+        {
+            odroid_overlay_alert("Connection lost!");
+        }
+        netplay = new_netplay;
+        break;
+
+      default:
+         break;
+   }
+}
 
 
 void run_to_vblank()
@@ -227,7 +250,7 @@ void app_main(void)
 
     // Init all the console hardware
     odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    odroid_system_emu_init(&LoadState, &SaveState, NULL);
+    odroid_system_emu_init(&LoadState, &SaveState, &netplay_callback);
 
     // Do the check after screen init so we can display an error
     if (!update1.buffer || !update2.buffer || !audioBuffer)
@@ -325,6 +348,7 @@ void app_main(void)
 
             if (sramSaveTimer > 0 && --sramSaveTimer == 0)
             {
+                // TO DO: Try compressing the sram file, it might reduce stuttering
                 sram_save();
             }
         }
