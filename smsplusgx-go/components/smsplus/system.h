@@ -90,13 +90,40 @@ typedef struct
   } viewport;
 } bitmap_t;
 
+typedef struct
+{
+  char version[15];
+  int sndrate;
+  int country;
+  int console;
+  int display;
+  int fm;
+  int codies;
+  int16 xshift;
+  int16 yshift;
+  int16 xscale;
+  int16 yscale;
+  uint8 tv_mode;
+  uint8 aspect;
+  uint8 overscan;
+  uint8 render;
+  uint8 ntsc;
+  uint8 sms_pal;
+  uint8 tms_pal;
+  uint8 use_bios;
+  uint8 spritelimit;
+  uint8 extra_gg;
+} option_t;
+
 /* Global variables */
 extern bitmap_t bitmap;   /* Display bitmap */
 extern cart_t cart;       /* Game cartridge data */
 extern input_t input;     /* Controller input */
+extern option_t option;   /* EMulator configuration */
 
 /* Function prototypes */
 extern void system_frame(int skip);
+extern void system_reset_config();
 extern void system_init2(void);
 extern void system_shutdown(void);
 extern void system_reset(void);

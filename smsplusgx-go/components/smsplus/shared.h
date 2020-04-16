@@ -52,8 +52,4 @@ typedef signed long int int32;
 #include "config.h"
 #include "state.h"
 
-#ifndef NGC
-#include "fileio.h"
-#endif
-
 #endif /* _SHARED_H_ */

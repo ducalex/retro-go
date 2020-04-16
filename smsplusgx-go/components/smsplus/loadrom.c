@@ -21,9 +21,9 @@
  ******************************************************************************/
 
 #include "shared.h"
+#include "rom/crc.h"
 #include "odroid_system.h"
 
-extern unsigned long crc32(crc, buf, len);
 
 #define GAME_DATABASE_CNT 93
 
@@ -408,7 +408,7 @@ int load_rom (char *filename)
   /* 16k pages */
   cart.pages = cart.size / 0x4000;
 
-  cart.crc = crc32(0, cart.rom, option.console == 6 ? actual_size : cart.size);
+  cart.crc = crc32_le(0, cart.rom, option.console == 6 ? actual_size : cart.size);
   cart.loaded = 1;
 
   set_config();

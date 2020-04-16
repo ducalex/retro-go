@@ -26,16 +26,16 @@
 
 int text_counter;               /* Text offset counter */
 
-extern const uint8 tms_lookup[16][256][2];   /* Expand BD, PG data into 8-bit pixels (G1,G2) */
 extern const uint8 mc_lookup[16][256][8];    /* Expand BD, PG data into 8-bit pixels (MC) */
-extern const uint8 txt_lookup[256][2];       /* Expand BD, PG data into 8-bit pixels (TX) */
-extern const uint8 bp_expand[256][8];        /* Expand PG data into 8-bit pixels */
-extern const uint8 tms_obj_lut[16*256];      /* Look up priority between SG and display pixels */
+static uint8 tms_lookup[16][256][2];   /* Expand BD, PG data into 8-bit pixels (G1,G2) */
+static uint8 tms_obj_lut[16*256];      /* Look up priority between SG and display pixels */
+static uint8 txt_lookup[256][2];       /* Expand BD, PG data into 8-bit pixels (TX) */
+static uint8 bp_expand[256][8];        /* Expand PG data into 8-bit pixels */
 
-static uint8 diff_mask[]  = {0x07, 0x07, 0x0F, 0x0F};
-static uint8 name_mask[]  = {0xFF, 0xFF, 0xFC, 0xFC};
-static uint8 diff_shift[] = {0, 1, 0, 1};
-static uint8 size_tab[]   = {8, 16, 16, 32};
+static const uint8 diff_mask[]  = {0x07, 0x07, 0x0F, 0x0F};
+static const uint8 name_mask[]  = {0xFF, 0xFF, 0xFC, 0xFC};
+static const uint8 diff_shift[] = {0, 1, 0, 1};
+static const uint8 size_tab[]   = {8, 16, 16, 32};
 
 /* Internally latched sprite data in the VDP */
 typedef struct {
@@ -298,7 +298,6 @@ void make_tms_tables(void)
     int bd, pg, ct;
     int sx, bx;
 
-#if 0
     for(sx = 0; sx < 16; sx++)
     {
         for(bx = 0; bx < 256; bx++)
@@ -326,9 +325,7 @@ void make_tms_tables(void)
             }
         }
     }
-#endif
 
-#if 0
     /* Text lookup table */
     for(bd = 0; bd < 256; bd++)
     {
@@ -341,7 +338,6 @@ void make_tms_tables(void)
         txt_lookup[bd][0] = bg;
         txt_lookup[bd][1] = fg;
     }
-#endif
 
 #if 0
     /* Multicolor lookup table */
@@ -367,7 +363,6 @@ void make_tms_tables(void)
     }
 #endif
 
-#if 0
     /* Make bitmap data expansion table */
     memset(bp_expand, 0, sizeof(bp_expand));
     for(i = 0; i < 256; i++)
@@ -378,9 +373,7 @@ void make_tms_tables(void)
             bp_expand[i][j] = c;
         }
     }
-#endif
 
-#if 0
     /* Graphics I/II lookup table */
     for(bd = 0; bd < 0x10; bd++)
     {
@@ -398,8 +391,6 @@ void make_tms_tables(void)
             tms_lookup[bd][ct][1] = foreground;
         }
     }
-#endif
-
 }
 
 

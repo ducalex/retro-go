@@ -27,6 +27,7 @@
 bitmap_t bitmap;
 cart_t cart;
 input_t input;
+option_t option;
 
 /* Run the virtual console emulation for one frame */
 void system_frame(int skip)
@@ -120,6 +121,27 @@ void system_frame(int skip)
 
   /* Adjust Z80 cycle count for next frame */
   z80_cycle_count -= line_z80;
+}
+
+void system_reset_config()
+{
+  option.sndrate      = 48000;
+  option.country      = 0;
+  option.console      = 0;
+  option.fm           = SND_NONE;
+  option.overscan     = 1;
+  option.xshift       = 0;
+  option.yshift       = 0;
+  option.xscale       = 0;
+  option.yscale       = 0;
+  option.aspect       = 1;
+  option.render       = 0;
+  option.ntsc         = 0;
+  option.tv_mode      = 0;
+  option.sms_pal      = 1;
+  option.tms_pal      = 0;
+  option.spritelimit  = 1;
+  option.extra_gg     = 0;
 }
 
 void system_init2(void)

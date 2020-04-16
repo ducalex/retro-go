@@ -139,6 +139,8 @@ void app_main(void)
     char *romPath = odroid_system_get_path(NULL, ODROID_PATH_ROM_FILE);
     load_rom(romPath);
 
+    system_reset_config();
+
     sms.use_fm = 0;
 
 	// sms.dummy = framebuffer[0]; //A normal cart shouldn't access this memory ever. Point it to vram just in case.
@@ -149,8 +151,6 @@ void app_main(void)
     bitmap.pitch = bitmap.width;
     //bitmap.depth = 8;
     bitmap.data = update1.buffer;
-
-    set_option_defaults();
 
     option.sndrate = AUDIO_SAMPLE_RATE;
     option.overscan = 0;

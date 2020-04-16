@@ -67,9 +67,6 @@ static uint16 pixel[PALETTE_SIZE];
 //static uint8* bg_pattern_cache = ESP32_PSRAM + 0x300000; //[0x20000];/* Cached and flipped patterns */
 
 
-/* Pixel look-up table */
-extern const uint8 lut[0x10000];
-
 static uint8 object_index_count;
 
 /* Top Border area height */
@@ -162,8 +159,11 @@ static DRAM_ATTR const uint32 atex[4] =
   0x30303030,
 };
 
+/* Pixel look-up table */
+static const uint8 *lut; // )[0x10000];
+
 /* Bitplane to packed pixel LUT */
-extern const uint32 bp_lut[0x10000];
+static const uint32 *bp_lut; // 0x10000
 
 static void parse_satb(int line);
 static void update_bg_pattern_cache(void);
@@ -238,8 +238,9 @@ void render_init(void)
 
   make_tms_tables();
 
-#if 0
   /* Generate 64k of data for the look up table */
+  uint8 *_lut = malloc(0x10000);
+
   for(bx = 0; bx < 0x100; bx++)
   {
     for(sx = 0; sx < 0x100; sx++)
@@ -302,13 +303,15 @@ void render_init(void)
       }
 
       /* Store result */
-      lut[(bx << 8) | (sx)] = c;
+      _lut[(bx << 8) | (sx)] = c;
     }
   }
-#endif
+  lut = _lut;
 
-#if 0
+
   /* Make bitplane to pixel lookup table */
+  uint32 *_bp_lut = malloc(0x10000 * 4);
+
   for(i = 0; i < 0x100; i++)
   for(j = 0; j < 0x100; j++)
   {
@@ -320,12 +323,12 @@ void render_init(void)
       out |= (i & (0x80 >> x)) ? (uint32)(4 << (x << 2)) : 0;
     }
 #if LSB_FIRST
-    bp_lut[(j << 8) | (i)] = out;
+    _bp_lut[(j << 8) | (i)] = out;
 #else
-    bp_lut[(i << 8) | (j)] = out;
+    _bp_lut[(i << 8) | (j)] = out;
 #endif
   }
- #endif
+  bp_lut = _bp_lut;
 
   sms_cram_expand_table[0] =  0;
   sms_cram_expand_table[1] = (5 << 3)  + (1 << 2);
@@ -334,8 +337,7 @@ void render_init(void)
 
   for(i = 0; i < 16; i++)
   {
-    uint8 c = i << 4 | i;
-    gg_cram_expand_table[i] = c;
+    gg_cram_expand_table[i] = (i << 4) | i;
   }
 }
 
