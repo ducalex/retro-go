@@ -10,6 +10,7 @@ $mkfw "Retro-Go ($release)" assets/tile.raw \
 	0 16 655360  frontend retro-go/build/retro-go.bin  \
 	0 17 851968  nesemu nesemu-go/build/nesemu-go.bin  \
 	0 18 851968  gnuboy gnuboy-go/build/gnuboy-go.bin  \
-	0 19 1310720 smsplusgx smsplusgx-go/build/smsplusgx-go.bin
+	0 19 917504  smsplusgx smsplusgx-go/build/smsplusgx-go.bin \
+	0 20 917504  pcengine  pcengine-go.bin
 
 mv firmware.fw retro-go_$release.fw

@@ -8,6 +8,7 @@ Retro-Go is composed of a launcher and several emulators.
 - Sega Master System
 - Sega Game Gear
 - Colecovision
+- PC Engine (Soon!)
 
 ### Compared to other similar projects for the ODROID-GO, Retro-Go brings:
 - In-game menu
@@ -75,9 +76,8 @@ If you have any problem the first step is to clear the cache located in /odroid/
 
 # Future plans
 - CMake support
-- Add Lynx emulator
 - Rewind
-- Netplay
+- Netplay (In progress)
 
 
 # Compilation

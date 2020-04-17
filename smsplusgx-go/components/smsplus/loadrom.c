@@ -23,6 +23,7 @@
 #include "shared.h"
 #include "rom/crc.h"
 #include "odroid_system.h"
+#include "coleco_bios.h"
 
 
 #define GAME_DATABASE_CNT 93
@@ -364,28 +365,7 @@ void set_config()
 
 int load_rom (char *filename)
 {
-  size_t nameLength = strlen(filename);
-  if (nameLength < 4)
-  {
-      printf("%s: file name too short. filename='%s', nameLength=%d\n",
-          __func__, filename, nameLength);
-      abort();
-    }
-
-  if (strcasecmp(filename + (nameLength - 4), ".col") == 0)
-  {
-      option.console = 6;
-      coleco.rom = malloc(0x2000);
-      if (odroid_sdcard_copy_file_to_memory(SD_BASE_PATH "/roms/col/BIOS.col", coleco.rom, 0x2000) <= 0)
-      {
-          odroid_system_panic("Colecovision bios file BIOS.col not found");
-      }
-  }
-
   cart.rom = malloc(0x200000);
-
-  // if (strcasecmp(filename + (nameLength - 4), ".zip") == 0)
-  // actual_size = odroid_sdcard_unzip_file_to_memory(filename, cart.rom, 0x200000);
 
   int actual_size = odroid_sdcard_copy_file_to_memory(filename, cart.rom, 0x200000);
   if (actual_size <= 0)
@@ -393,10 +373,13 @@ int load_rom (char *filename)
       odroid_system_panic("ROM file loading failed!");
   }
 
-  printf("load_rom: fileSize=%d.\n", actual_size);
+  if (strcasecmp(filename + (strlen(filename) - 4), ".col") == 0)
+  {
+      option.console = 6;
+      coleco.rom = ColecoVision_BIOS;
+  }
 
   cart.size = (actual_size < 0x4000) ? 0x4000 : actual_size;
-
 
   /* Take care of image header, if present */
   if ((cart.size / 512) & 1)
@@ -405,15 +388,13 @@ int load_rom (char *filename)
     memcpy(cart.rom, cart.rom + 512, cart.size);
   }
 
-  /* 16k pages */
   cart.pages = cart.size / 0x4000;
-
   cart.crc = crc32_le(0, cart.rom, option.console == 6 ? actual_size : cart.size);
   cart.loaded = 1;
 
   set_config();
 
-  printf("%s: OK. cart.crc=%#010lx\n", __func__, cart.crc);
+  printf("%s: OK. cart.size=%d, cart.crc=%#010lx\n", __func__, (int)cart.size, cart.crc);
 
   return 1;
 }
