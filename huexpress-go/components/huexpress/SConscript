@@ -1,0 +1,80 @@
+import os
+import sys
+import platform
+
+Import("env")
+
+main_sources = [
+	'huexpress.cpp',
+	'PCEngine.cpp',
+	'iniconfig.c',
+	'utils.c',
+	'view_inf.c',
+	'view_zp.c',
+	'zipmgr.c'
+]
+
+sdl_sources = [
+	'osd_sdl_machine.c',
+	'osd_sdl_snd.c',
+	'osd_sdl_music.c',
+	'osd_sdl_gfx.c',
+]
+
+
+engine_sources = [
+	'engine/bios.c',
+	'engine/bp.c',
+	'engine/cd.c',
+	'engine/cheat.c',
+	'engine/debug.c',
+	'engine/dis.c',
+	'engine/edit_ram.c',
+	'engine/followop.c',
+	'engine/format.c',
+	'engine/gfx.c',
+	'engine/h6280.c',
+	'engine/hard_pce.c',
+	'engine/hcd.c',
+	'engine/lsmp3.c',
+	'engine/mix.c',
+	'engine/ogglength.c',
+	'engine/optable.c',
+	'engine/pce.c',
+	'engine/pcecd.c',
+	'engine/romdb.c',
+	'engine/sound.c',
+	'engine/sprite.c',
+	'engine/subs_eagle.c',
+	'engine/trans_fx.c'
+]
+
+if env['PLATFORM'] in ('posix', 'linux', 'freebsd'):
+	main_sources += [
+		'osd_linux_cd.c',
+		'osd_keyboard.c',
+	]
+elif env['PLATFORM'] in ('darwin'):
+   main_sources += [
+       'osd_dummy_cd.c',
+       'osd_keyboard.c',
+   ]
+elif env['PLATFORM'] in ('haiku'):
+	main_sources += [
+		'osd_haiku_cd.c',
+		'osd_keyboard.c',
+	]
+
+program_sources = [
+	main_sources +
+	sdl_sources +
+	engine_sources
+]
+
+huexpress = env.Clone()
+huexpress.ParseConfig('pkg-config --cflags --libs sdl2')
+huexpress.ParseConfig('pkg-config --cflags --libs SDL2_mixer')
+huexpress.ParseConfig('pkg-config --cflags --libs vorbisfile')
+huexpress.ParseConfig('pkg-config --cflags --libs --static libzip')
+huexpress.Program(target = 'huexpress', source = program_sources)
+huexpress.Program(target = 'hucrc', source = ['hucrc.c', 'utils.c', 'engine/romdb.c'])

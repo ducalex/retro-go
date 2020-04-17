@@ -1,0 +1,39 @@
+- HuExpress 3.0.4
+  * Minor bug fixes and upkeep
+- HuExpress 3.0.3
+  * Early Mac OS X support
+- HuExpress 3.0.2
+  * Greatly improved tool script to backup CD-ROM2 Discs to HCD archives
+  * New iso2hcd tool to convert iso/cue images into HCD archives
+  * Begin redesigning emulator parts in C++
+  * Drop old kernel
+  * Drop more allegro code
+  * Fix pausing HCD audio
+  * Always choose HCD files first in zip archive
+  * Improve code quality and portability
+- HuExpress 3.0.1
+  * No longer need to extract HCD archives from zip files to play
+  * Add script to automatically create HCD backups
+  * Utilize OpenGL for scaling rendered images *BIG*
+  * Utilize OpenGL for rendering displayed images *BIG*
+  * Move to SDL 2.0 *BIG*
+  * Display ROM info on startup (based on CRC)
+  * Add internal PC Engine / TurboGrafx CRC database
+  * Fix memory leaks through static analysis
+  * Compile with clang and GCC possible
+  * Ogg support for audio tracks in HCD
+  * Improved HCD format
+  * Type size cleanup
+  * Improved stability on non-x86 architectures
+  * Haiku operating system support
+  * Add vector icons
+  * Add on-screen volume bar
+  * Removal of non-SDL code
+  * Removal of rarely used and messy translations
+  * Removal of DOS Allegro code
+  * Removal of outdated GTK+ GUI code
+  * Removal of unused code
+  * Code style cleanup to follow KnR
+  * Code cleanup and reorganization
+  * Move to Scons build system
+- HuGO! 2.12 Release
