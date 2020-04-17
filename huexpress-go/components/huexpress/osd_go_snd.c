@@ -1,4 +1,4 @@
-#include "osd_sdl_snd.h"
+#include "osd_snd.h"
 
 #if 0
 

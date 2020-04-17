@@ -1,6 +1,11 @@
-#include "utils.h"
-#include "osd_sdl_machine.h"
-#include "myadd.h"
+#include "osd_machine.h"
+
+
+int osd_init_machine(void)
+{
+    //
+}
+
 
 #if 0
 
@@ -141,14 +146,6 @@ osd_readkey(void)
 		}
 	}
 	return 0;
-}
-
-#else
-
-int
-osd_init_machine(void)
-{
-    //
 }
 
 #endif

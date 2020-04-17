@@ -26,7 +26,7 @@ void Log(const char *, ...);
 void wait_next_vsync();
 
 //! CRC predefined array
-extern unsigned long TAB_CONST[256];
+extern const unsigned long TAB_CONST[256];
 
 #if defined(WIN32)
 #include <stdio.h>

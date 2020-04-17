@@ -82,7 +82,9 @@
 // #define WORDS_BIGENDIAN 1
 
 /* Define to empty if `const' does not conform to ANSI C. */
-#undef const
+// #undef const
+
+#define PCE_PATH_MAX 192
 
 /* Define to `__inline__' or `__inline' if that's what the C compiler
    calls it, or to nothing if 'inline' is not supported under any name.  */

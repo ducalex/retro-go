@@ -490,7 +490,11 @@ int odroid_overlay_game_menu()
         {10, "Save & Continue", "",  1, NULL},
         {20, "Save & Quit", "", 1, NULL},
         {30, "Reload", "", 1, NULL},
-        {40, "Netplay", "", odroid_netplay_available() ? 1 : 0, NULL},
+        #ifdef ENABLE_NETPLAY
+        {40, "Netplay", "", 1, NULL},
+        #else
+        {40, "Netplay", "", 0, NULL},
+        #endif
         {50, "Quit", "", 1, NULL},
         ODROID_DIALOG_CHOICE_LAST
     };
@@ -501,8 +505,7 @@ int odroid_overlay_game_menu()
     {
         case 10: odroid_system_emu_save_state(0); break;
         case 20: odroid_system_emu_save_state(0); odroid_system_switch_app(0); break;
-        case 30: odroid_system_emu_load_state(0); break;
-        // case 30: esp_restart(); break;
+        case 30: odroid_system_emu_load_state(0); break; // esp_restart();
         case 40: odroid_netplay_quick_start(); break;
         case 50: odroid_system_switch_app(0); break;
     }

@@ -156,7 +156,7 @@ hard_reset_io(void)
     memset(&io, 0, sizeof(IO));
     io.VCE = VCE;
     memcpy(io.psg_da_data, psg_da_data, sizeof(uchar *) * 6);
-    
+
     memset(io.VCE, 0, 0x200*sizeof(pair));
     for (int i = 0;i <6; i++)
     {
@@ -215,26 +215,18 @@ hard_init(void)
 	//hard_pce = (struct_hard_pce *) malloc(sizeof(struct_hard_pce));
 	hard_pce = (struct_hard_pce *) my_special_alloc(fast1, 1, sizeof(struct_hard_pce));
 	memset(hard_pce, 0, sizeof(struct_hard_pce));
-	
+
 	hard_pce->RAM = (uchar *)my_special_alloc(fast1, 1, 0x8000);//[0x8000]
     hard_pce->PCM = (uchar *)my_special_alloc(false, 1, 0x10000);//[0x10000]
     hard_pce->WRAM = (uchar *)my_special_alloc(fast1, 1, 0x2000);//[0x2000]
-    memset(hard_pce->RAM, 0, 0x8000*sizeof(uchar));
-    memset(hard_pce->PCM, 0, 0x10000*sizeof(uchar));
-    memset(hard_pce->WRAM, 0, 0x2000*sizeof(uchar));
 
     hard_pce->VRAM = (uchar *)my_special_alloc(false, 1, VRAMSIZE);//[VRAMSIZE]
     hard_pce->VRAM2 = (uchar *)my_special_alloc(false, 1, VRAMSIZE);//[VRAMSIZE];
     hard_pce->VRAMS = (uchar *)my_special_alloc(false, 1, VRAMSIZE);//[VRAMSIZE];
     hard_pce->vchange = (uchar *)my_special_alloc(false, 1, VRAMSIZE / 32);//[VRAMSIZE / 32];
     hard_pce->vchanges = (uchar *)my_special_alloc(false, 1, VRAMSIZE / 128);//[VRAMSIZE / 128];
-    memset(hard_pce->VRAM, 0, VRAMSIZE*sizeof(uchar));
-    memset(hard_pce->VRAM2, 0, VRAMSIZE*sizeof(uchar));
-    memset(hard_pce->VRAMS, 0, VRAMSIZE*sizeof(uchar));
-    memset(hard_pce->vchange, 0, VRAMSIZE/32*sizeof(uchar));
-    memset(hard_pce->vchanges, 0, VRAMSIZE/128*sizeof(uchar));
 
-/*    
+/*
 #define cd_extra_mem_size 0x10000
 #define cd_extra_super_mem_size 0x30000
 #define ac_extra_mem_size 0x200000
@@ -249,17 +241,11 @@ hard_init(void)
     hard_pce->cd_extra_super_mem = (uchar *)my_special_alloc(false, 1, cd_extra_super_mem_size);//[0x30000];
     hard_pce->ac_extra_mem = (uchar *)my_special_alloc(false, 1, ac_extra_mem_size);//[0x200000];
     hard_pce->cd_sector_buffer = (uchar *)my_special_alloc(false, 1, cd_sector_buffer_size);//[0x2000];
-    memset(hard_pce->cd_extra_mem, 0, cd_extra_mem_size*sizeof(uchar));
-    memset(hard_pce->cd_extra_super_mem, 0, cd_extra_super_mem_size*sizeof(uchar));
-    memset(hard_pce->ac_extra_mem, 0, ac_extra_mem_size*sizeof(uchar));
-    memset(hard_pce->cd_sector_buffer, 0, cd_sector_buffer_size*sizeof(uchar));
 
     //hard_pce->SPRAM = (uint16 *)my_special_alloc(false, 2, 64 * 4* sizeof(uint16));//[64 * 4];
     hard_pce->SPRAM = (uint16 *)my_special_alloc(fast1, 1, 64 * 4* sizeof(uint16));//[64 * 4];
     hard_pce->Pal = (uchar *)my_special_alloc(false, 1, 512);//[512];
-    memset(hard_pce->SPRAM, 0, 64 * 4*sizeof(uint16));
-    memset(hard_pce->Pal, 0, 512*sizeof(uchar));
-    
+
     //hard_pce->s_io.VCE = (pair*)my_special_alloc(false, sizeof(pair), 0x200*sizeof(pair));//[0x200]
     hard_pce->s_io.VCE = (pair*)my_special_alloc(fast1, 1, 0x200*sizeof(pair));//[0x200]
     memset(hard_pce->s_io.VCE, 0, 0x200*sizeof(pair));

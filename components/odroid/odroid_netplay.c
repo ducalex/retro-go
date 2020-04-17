@@ -335,16 +335,7 @@ static void netplay_task()
 }
 
 
-void odroid_netplay_pre_init(netplay_callback_t callback)
-{
-    printf("netplay: %s called.\n", __func__);
-
-    netplay_callback = callback;
-    netplay_available = true;
-}
-
-
-void odroid_netplay_init()
+static void netplay_init()
 {
     printf("netplay: %s called.\n", __func__);
 
@@ -368,20 +359,17 @@ void odroid_netplay_init()
 }
 
 
-void odroid_netplay_deinit()
+void odroid_netplay_pre_init(netplay_callback_t callback)
 {
     printf("netplay: %s called.\n", __func__);
-}
 
-
-bool odroid_netplay_available()
-{
-    return netplay_available;
+    netplay_callback = callback;
 }
 
 
 bool odroid_netplay_quick_start()
 {
+#ifdef ENABLE_NETPLAY
     const char *status_msg = "Initializing...";
     const char *screen_msg = NULL;
     short timeout = 100;
@@ -453,7 +441,7 @@ bool odroid_netplay_quick_start()
     }
 
     odroid_netplay_stop();
-
+#endif
     return false;
 }
 
@@ -466,7 +454,7 @@ bool odroid_netplay_start(netplay_mode_t mode)
 
     if (netplay_status == NETPLAY_STATUS_NOT_INIT)
     {
-        odroid_netplay_init();
+        netplay_init();
     }
     else if (netplay_mode != NETPLAY_MODE_NONE)
     {
@@ -533,6 +521,7 @@ bool odroid_netplay_stop()
 
 void odroid_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
 {
+#ifdef ENABLE_NETPLAY
     static uint sync_count = 0, sync_time = 0, start_time = 0;
     static netplay_packet_t packet;
 
@@ -574,6 +563,7 @@ void odroid_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
         printf("netplay: Sync delay=%.4fms\n", (float)sync_time / sync_count / 1000);
         sync_count = sync_time = 0;
     }
+#endif
 }
 
 

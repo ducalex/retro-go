@@ -1,7 +1,6 @@
+#if 0
 #include "osd_sdl_music.h"
 #include "utils.h"
-
-#if 0
 
 Mix_Music *sdlmixmusic[MAX_SONGS];
 
@@ -11,7 +10,7 @@ void
 sdlmixer_fill_audio(int channel)
 {
 	if (Callback_Stop == 1) {
-		// free things and 
+		// free things and
 		//stop calling backs...
 		if (chunk)
 			Mix_FreeChunk(chunk);
@@ -22,14 +21,14 @@ sdlmixer_fill_audio(int channel)
 
 	uchar lvol, rvol;
 	int i;
-    
+
 	if (!cvt.len) { // once only?
 		memset(stream,0,sbuf_size*host.sound.stereo);
 		if (!SDL_BuildAudioCVT (&cvt, AUDIO_U8, host.sound.stereo, host.sound.freq,
 			AUDIO_S16, 2, host.sound.freq)) {
 			Log("SDL_BuildAudioCVT failed...audio callback stopped.\n");
 			return;//#warning: avoid leaving without calling again ?
-		}	
+		}
 		Log("SDL_BuildAudioCVT init ok.\n");
 
  		cvt.len = sbuf_size*host.sound.stereo;
@@ -40,12 +39,12 @@ sdlmixer_fill_audio(int channel)
 		WriteBuffer(sbuf[i], i, cvt.len);
 
 	write_adpcm();
-  
+
 	// Adjust the final post-mixed left/right volumes.  0-15 * 1.22 comes out to
 	// (0..18) which when multiplied by the ((-127..127) * 7) we get in the final
 	// stream mix below we have (-16002..16002) which we then divide by 128 to get
 	// a nice unsigned 8-bit value of 128 + (-125..125).
- 
+
 	if (host.sound.stereo) {
 		lvol = (io.psg_volume >> 4) * 1.22;
 		rvol = (io.psg_volume & 0x0F) * 1.22;
@@ -55,7 +54,7 @@ sdlmixer_fill_audio(int channel)
 		//
 		lvol = rvol = (((io.psg_volume >> 4) * 1.22) + ((io.psg_volume & 0x0F) * 1.22)) / 2;
 	}
-		
+
     //
     // Mix streams and apply master volume.
     //
@@ -85,7 +84,7 @@ sdlmixer_fill_audio(int channel)
 //		return;//#warning: avoid leaving without calling again ?
 	}
 
-//#warning: test dump 
+//#warning: test dump
 	if (dump_snd) { // We also have to write data into a file
 		dump_audio_chunck(cvt.buf, cvt.len_cvt);
 	}

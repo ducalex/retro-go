@@ -27,24 +27,7 @@
 #define __PUBLISHER	"Unknown"
 
 
-struct rom_database kKnownRoms[KNOWN_ROM_COUNT] = {
-{0xD1993C9F, "SideArms - Hyper Dyne", "CAPCOM", __ID, __DATE, USA},
-};
-/*
-struct rom_database kKnownRoms[KNOWN_ROM_COUNT] = {
-{0xE5E7B8B7, "SideArms - Hyper Dyne", "CAPCOM", __ID, __DATE, JAP},
-{0xD1993C9F, "SideArms - Hyper Dyne", "CAPCOM", __ID, __DATE, USA},
-{0x91CE5156, "R-Type", "Hudson", __ID, __DATE, USA | US_ENCODED},
-{0x45FC8CB9, "R-Type", "Tai Sang", __ID, __DATE, JAP},
-{0x0517DA65, "Gradius", "KONAMI", "KM91001", "11-15-1991", JAP},
-{0x0F1B59B4, "Klax", "TENGEN", "TTGX20001", "08-10-1990", USA},
-{0xC74FFBC9, "Klax", __PUBLISHER, __ID, __DATE, JAP},
-{0xE203F223, "Out Run", "SEGA", "NAPH-1016", "12-21-1990", JAP},
-{0xB74EC562, "Override", "DEKA", "DE90006", "01-08-1991", JAP},
-};
-*/
-/*
-struct rom_database kKnownRoms[KNOWN_ROM_COUNT] = {
+const struct rom_database kKnownRoms[KNOWN_ROM_COUNT] = {
 {0x3F9F95A4, "[BIOS] CD-ROM System (v1.0)", "NEC", __ID, __DATE, JAP | CD_SYSTEM},
 {0x52520BC6, "[BIOS] CD-ROM System (v2.0)", "NEC", __ID, __DATE, JAP | CD_SYSTEM},
 {0x283B74E0, "[BIOS] CD-ROM System (v2.1)", "NEC", __ID, __DATE, JAP | CD_SYSTEM},
@@ -474,7 +457,7 @@ struct rom_database kKnownRoms[KNOWN_ROM_COUNT] = {
 {0xB77F2E2F, "Zero 4 Champ  (v1.5)", "Media Rings", __ID, __DATE, JAP},
 {0x67AAB7A1, "Zipang", "PACK-IN-VIDEO", "PV-1005", "12-14-1990", JAP},
 };
-*/
+
 
 unsigned long
 filesize(FILE * fp)

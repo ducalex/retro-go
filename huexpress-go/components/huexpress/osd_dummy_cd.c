@@ -1,4 +1,4 @@
-#include "osd_dummy_cd.h"
+#include "osd_cd.h"
 
 int osd_cd_init(char *device)
 {
@@ -19,7 +19,6 @@ void osd_cd_read(uchar *p, uint32 sector)
 {
 }
 
-extern uchar binbcd[];
 
 void osd_cd_subchannel_info(unsigned short offset)
 {

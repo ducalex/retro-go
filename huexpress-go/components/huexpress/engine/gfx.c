@@ -310,7 +310,7 @@ render_lines(int min_line, int max_line)
 
 	load_gfx_context(0);
 
-    if (!skipNextFrame)
+    if (!skipFrame)
 	if (!UCount) {				//Either we're in frameskip = 0 or we're in the frame to draw
 		if (SpriteON && SPONSwitch)
 #ifdef MY_INLINE_SPRITE

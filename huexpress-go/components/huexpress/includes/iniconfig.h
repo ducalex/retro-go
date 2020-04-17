@@ -21,7 +21,7 @@
 
 #else // not SDL
 
-// #include "osd_machine.h"
+#include "osd_machine.h"
 
 #endif
 
@@ -45,6 +45,6 @@ extern uchar joy_mapping[5][16];
 
 extern int32 smode,vmode;
 
-extern char *cdsystem_path;//[PATH_MAX];
+extern char cdsystem_path[PCE_PATH_MAX];
 
 #endif

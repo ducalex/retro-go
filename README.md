@@ -93,8 +93,9 @@ _Note: It is possible to use esp-idf 3.2 but changes to sdkconfig will be necess
 
 
 # Acknowledgements
-- The emulators code was originally from the "Triforce" fork of the official Go-Play firmware.
-- A few lines of code were taken from go-emu by pelle7, as well as the esthetics was copied.
+- The NES/GBC/SMS/COL emulators were originally from the "Triforce" fork of the official Go-Play firmware.
+- The PC Engine emulator was first ported to the GO by [pelle7](https://github.com/pelle7/odroid-go-pcengine-huexpress/).
+- The aesthetics of the launcher were inspired (copied) from [pelle7's go-emu](https://github.com/pelle7/odroid-go-emu-launcher).
 - [miniz](https://github.com/richgel999/miniz) For zipped ROM and zlib API
 - [luPng](https://github.com/jansol/LuPng) For basic PNG decoding
 

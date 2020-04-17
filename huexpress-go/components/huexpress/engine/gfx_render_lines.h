@@ -1,7 +1,7 @@
     save_gfx_context(1);
     load_gfx_context(0);
-    
-    if (!skipNextFrame)
+
+    if (!skipFrame)
     if (!UCount) { /* Either we're in frameskip = 0 or we're in the frame to draw */
         if (SpriteON && SPONSwitch)
         {
@@ -50,13 +50,6 @@
             RefreshSpriteExact(last_display_counter, display_counter - 1, 1);
 #endif
         }
-#ifdef MY_VIDEO_MODE_SCANLINES
-    struct my_scanline send;
-    send.YY1 = last_display_counter;
-    send.YY2 = display_counter;
-    send.buffer = osd_gfx_buffer;
-    xQueueSend(vidQueue, &send, portMAX_DELAY);
-#endif
     }
     load_gfx_context(1);
     gfx_need_redraw = 0;

@@ -1,4 +1,4 @@
-unsigned long TAB_CONST[256] = {
+const unsigned long TAB_CONST[256] = {
 	0X0,
 	0X77073096,
 	0XEE0E612C,

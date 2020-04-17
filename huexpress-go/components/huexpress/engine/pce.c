@@ -116,14 +116,14 @@ int scanlines_per_frame = 263;
 //int MinLine = 0,MaxLine = 255;
 //#define MAXDISP 227
 
-char *cart_name;//[PATH_MAX] = "";
+char cart_name[PCE_PATH_MAX] = "";
 // Name of the file containing the ROM
 
-char *short_cart_name;//[PATH_MAX];
+char short_cart_name[PCE_PATH_MAX];
 // Just the filename without the extension (with a dot)
 // you just have to add your own extension...
 
-char *short_iso_name;//[PATH_MAX];
+char short_iso_name[PCE_PATH_MAX];
 // Just the ISO filename without the extension (with a dot)
 // you just have to add your own extension...
 
@@ -136,26 +136,26 @@ uchar use_eagle = 0;
 uchar use_scanline = 0;
 // use scanline mode ?
 
-char *rom_file_name;//[PATH_MAX];
+char rom_file_name[PCE_PATH_MAX];
 // the name of the file containing the ROM (with path, ext)
 // Now needed 'coz of ZIP archiving...
 
-char *config_basepath;//[PATH_MAX];
+char config_basepath[PCE_PATH_MAX];
 // base path for all configs (in users home)
 
-char *sav_path;//[PATH_MAX];
+char sav_path[PCE_PATH_MAX];
 // The filename for saving games
 
-char *sav_basepath;//[PATH_MAX];
+char sav_basepath[PCE_PATH_MAX];
 // base path for saved games
 
-char *tmp_basepath;//[PATH_MAX];
+char tmp_basepath[PCE_PATH_MAX];
 // base path for temporary operations
 
-char *video_path;//[PATH_MAX];
+char video_path[PCE_PATH_MAX];
 // The place where to keep output pictures
 
-char *ISO_filename;//[PATH_MAX] = "";
+char ISO_filename[PCE_PATH_MAX] = "";
 // The name of the ISO file
 
 uchar force_header = 1;
@@ -803,7 +803,7 @@ TimerInt()
 #endif
 
 
-char *syscard_filename;//[PATH_MAX];
+char syscard_filename[PCE_PATH_MAX];
 
 /*****************************************************************************
 
@@ -821,8 +821,8 @@ search_possible_syscard()
 	MESSAGE_INFO("We need a syscard to load a CD, begining search...\n");
 	FILE *f;
 
-	char config_path[PATH_MAX];
-	snprintf(config_path, PATH_MAX, "%s/", config_basepath);
+	char config_path[PCE_PATH_MAX];
+	snprintf(config_path, PCE_PATH_MAX, "%s/", config_basepath);
 
 #if defined(__haiku__)
 #define POSSIBLE_LOCATION_COUNT 2
@@ -842,7 +842,7 @@ search_possible_syscard()
 	};
 
 	int location, filename;
-	char temp_buffer[PATH_MAX];
+	char temp_buffer[PCE_PATH_MAX];
 
 	for (location = 0; location <= POSSIBLE_LOCATION_COUNT; location++)
 		for (filename = 0; filename < POSSIBLE_FILENAME_COUNT; filename++) {
@@ -950,7 +950,7 @@ CartInit(char* name)
 
 		search_syscard();
 	} else if (strcasestr(name, ".ZIP")) {
-		char filename_in_archive[PATH_MAX];
+		char filename_in_archive[PCE_PATH_MAX];
 
 		MESSAGE_INFO("Parsing possible ZIP archive\n");
 
@@ -985,7 +985,7 @@ CartInit(char* name)
 #if defined(SHARED_MEMORY)
 				shm_rom_handle = shmget((key_t) SHM_ROM_HANDLE,
 					unzipped_rom_size, IPC_CREAT | IPC_EXCL | 0666);
-	
+
 				if (shm_rom_handle == -1) {
 					fprintf(stderr, "Couldn't get shared memory (%d bytes)\n",
 						unzipped_rom_size);
@@ -1019,8 +1019,8 @@ CartInit(char* name)
 					MESSAGE_ERROR("Error eixtracting zipfile\n");
 					return 1;
 				}
-				char tmpGame[PATH_MAX];
-				snprintf(tmpGame, PATH_MAX, "%s%s%s", tmp_basepath, PATH_SLASH,
+				char tmpGame[PCE_PATH_MAX];
+				snprintf(tmpGame, PCE_PATH_MAX, "%s%s%s", tmp_basepath, PATH_SLASH,
 					filename_in_archive);
 				CDemulation = CartInit(tmpGame);
 			}
@@ -1595,8 +1595,8 @@ InitPCE(char *name)
 	ROMMapW[0xFF] = IOAREA;
 
 	{
-		char backupmem[PATH_MAX];
-		snprintf(backupmem, PATH_MAX, "%s/backupmem.bin", config_basepath);
+		char backupmem[PCE_PATH_MAX];
+		snprintf(backupmem, PCE_PATH_MAX, "%s/backupmem.bin", config_basepath);
 
 		FILE *fp;
 		fp = fopen(backupmem, "rb");
@@ -1670,8 +1670,8 @@ TrashPCE()
 	FILE *fp;
 	char *tmp_buf = (char *) alloca(256);
 
-	char backupmem[PATH_MAX];
-	snprintf(backupmem, PATH_MAX, "%s/backupmem.bin", config_basepath);
+	char backupmem[PCE_PATH_MAX];
+	snprintf(backupmem, PCE_PATH_MAX, "%s/backupmem.bin", config_basepath);
 
 	// Save the backup ram into file
 	if (!(fp = fopen(backupmem, "wb"))) {

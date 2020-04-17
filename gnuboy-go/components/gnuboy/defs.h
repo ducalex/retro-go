@@ -37,9 +37,6 @@ void vid_begin();
 void vid_end();
 void vid_setpal(int i, int r, int g, int b);
 void vid_settitle(char *title);
-#ifndef GNUBOY_NO_SCREENSHOT
-int  vid_screenshot(char *filename);
-#endif /*GNUBOY_NO_SCREENSHOT */
 
 void sys_sleep(int us);
 void *sys_timer();

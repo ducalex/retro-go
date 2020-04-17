@@ -7,7 +7,7 @@
 #include "pce.h"
 #include "dis.h"
 #include "optable.h"
-// #include "osd_gfx.h"
+#include "osd_gfx.h"
 
 #define  MAX_BP        16
 // Max number of breakpoints

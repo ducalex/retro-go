@@ -2,15 +2,6 @@
 #include "hard_pce.h"
 #include "sound.h"
 
-#define JOY_A       0x01
-#define JOY_B       0x02
-#define JOY_SELECT  0x04
-#define JOY_RUN     0x08
-#define JOY_UP      0x10
-#define JOY_RIGHT   0x20
-#define JOY_DOWN    0x40
-#define JOY_LEFT    0x80
-
 #if 0
 
 #if defined(NETPLAY_DEBUG)
@@ -25,7 +16,7 @@
 
 Uint16 read_input (Uint16 port);
 
-// info about the input config 
+// info about the input config
 
 Uint8 *key;
 int16 joy[J_MAX];
@@ -36,7 +27,7 @@ input_config config[16] = {
 			{ 0, 0, 0, 0, 0, 0,
 				{ SDL_SCANCODE_UP,
 				  SDL_SCANCODE_DOWN,
-				  SDL_SCANCODE_LEFT, 
+				  SDL_SCANCODE_LEFT,
 				  SDL_SCANCODE_RIGHT,
 				  SDL_SCANCODE_Z,
 				  SDL_SCANCODE_X,
@@ -874,7 +865,7 @@ osd_keyboard (void)
     }
 
 #endif // ENABLE_NETPLAY
-  
+
   io.JOY[0] = read_input (0);
   io.JOY[1] = read_input (1);
   io.JOY[2] = read_input (2);
@@ -987,9 +978,9 @@ osd_init_netplay()
       send_identification (option.local_input_mapping);
 
     }
-	
+
 	return 0;
-	
+
 }
 
 void
@@ -1810,76 +1801,4 @@ wait_internet_digest_status (uchar * local_input)
 
 #endif // ENABLE_NETPLAY
 
-#else
-#include "../odroid/odroid_input.h"
-#include "../odroid/odroid_ui.h"
-
-extern void DoMenuHome(bool save);
-extern void EmuAudio(bool enable);
-
-    bool menu_restart = false;
-    bool ignoreMenuButton = true;
-    uint16_t menuButtonFrameCount = 0;
-    odroid_gamepad_state previousJoystickState;
-
-#define FRAMESKIP_MAX 11
-extern uint8_t frameskip;
-extern bool audioTaskIsRunning;
-
-void menu_pcengine_audio_update(odroid_ui_entry *entry) {
-    if (audioTaskIsRunning) {
-        sprintf(entry->text, "%-9s: %s", "audio", "on");
-    } else {
-        sprintf(entry->text, "%-9s: %s", "audio", "off");
-    }
-}
-
-odroid_ui_func_toggle_rc menu_pcengine_audio_toggle(odroid_ui_entry *entry, odroid_gamepad_state *joystick) {
-    EmuAudio(!audioTaskIsRunning);
-    return ODROID_UI_FUNC_TOGGLE_RC_CHANGED;
-}
-
-void menu_pcengine_frameskip_update(odroid_ui_entry *entry) {
-    sprintf(entry->text, "%-9s: %d", "frameskip", frameskip - 1);
-}
-
-odroid_ui_func_toggle_rc menu_pcengine_frameskip_toggle(odroid_ui_entry *entry, odroid_gamepad_state *joystick) {
-    if (joystick->values[ODROID_INPUT_A] || joystick->values[ODROID_INPUT_RIGHT]) {
-        if (frameskip<FRAMESKIP_MAX) frameskip++;
-    } else if (joystick->values[ODROID_INPUT_LEFT]) {
-        if (frameskip>3) frameskip--;
-    }
-    return ODROID_UI_FUNC_TOGGLE_RC_CHANGED;
-}
-
-void menu_pceninge_init(odroid_ui_window *window) {
-    odroid_ui_create_entry(window, &menu_pcengine_audio_update, &menu_pcengine_audio_toggle);
-    odroid_ui_create_entry(window, &menu_pcengine_frameskip_update, &menu_pcengine_frameskip_toggle);
-}
-
-int
-osd_keyboard (void)
-{
-    //printf("%s: \n", __func__);
-    odroid_gamepad_state joystick;
-    odroid_input_gamepad_read(&joystick);
-    
-    ODROID_UI_MENU_HANDLER_LOOP_V1_EXT(previousJoystickState, joystick, DoMenuHome, menu_pceninge_init);
-    previousJoystickState = joystick;
-    
-    uint8_t rc = 0;
-    if (joystick.values[ODROID_INPUT_LEFT]) rc |= JOY_LEFT;
-    if (joystick.values[ODROID_INPUT_RIGHT]) rc |= JOY_RIGHT;
-    if (joystick.values[ODROID_INPUT_UP]) rc |= JOY_UP;
-    if (joystick.values[ODROID_INPUT_DOWN]) rc |= JOY_DOWN;
-    
-    if (joystick.values[ODROID_INPUT_A]) rc |= JOY_A;
-    if (joystick.values[ODROID_INPUT_B]) rc |= JOY_B;
-    if (joystick.values[ODROID_INPUT_START]) rc |= JOY_RUN;
-    if (joystick.values[ODROID_INPUT_SELECT]) rc |= JOY_SELECT;
-    
-    io.JOY[0] = rc;
-    
-    return 0;
-}
 #endif

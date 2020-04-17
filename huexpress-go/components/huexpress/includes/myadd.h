@@ -1,7 +1,7 @@
 #pragma once
 
 #include "esp_system.h"
-#include "../../odroid/odroid_debug.h"
+#include "../../main/odroid_debug.h"
 
 extern void *my_special_alloc(unsigned char speed, unsigned char bytes, unsigned long size);
 
@@ -68,7 +68,7 @@ extern void *my_special_alloc(unsigned char speed, unsigned char bytes, unsigned
 //#define MY_DEBUG_CHECKS
 
 
-extern bool skipNextFrame;
+extern bool skipFrame;
 
 
 

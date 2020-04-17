@@ -63,9 +63,6 @@ typedef struct __attribute__ ((packed)) {
 typedef void (*netplay_callback_t)(netplay_event_t event, void *arg);
 
 void odroid_netplay_pre_init(netplay_callback_t callback);
-void odroid_netplay_init();
-void odroid_netplay_deinit();
-bool odroid_netplay_available();
 bool odroid_netplay_quick_start();
 bool odroid_netplay_start(netplay_mode_t mode);
 bool odroid_netplay_stop();

@@ -13,7 +13,7 @@
 #include "cheat.h"
 #include "debug.h"
 #include "gfx.h"
-
+#include "../../main/odroid_debug.h"
 #define WIDTH   (360+64)
 #define HEIGHT  256
 
@@ -42,7 +42,6 @@
 
 
 #define SERVER_HOSTNAME_MAX_SIZE 256
-
 
 uint32 CRC_file(char *);
 uchar CartInit(char* name);
@@ -80,42 +79,42 @@ extern char volatile key_delay;
 extern volatile uint32 message_delay;
 // if different of zero, we must display the message pointed by pmessage
 
-extern char *short_cart_name;//[PATH_MAX];
+extern char short_cart_name[PCE_PATH_MAX];
 // Just the filename without the extension (with a dot)
 // you just have to add your own extension...
 
-extern char *short_iso_name;//[PATH_MAX];
+extern char short_iso_name[PCE_PATH_MAX];
 // Added for ISO save support
 
-extern char *cdsystem_path;//[PATH_MAX];
+extern char cdsystem_path[PCE_PATH_MAX];
 // The path of the cdsystem to launch automaticaly
 
-extern char *sav_path;//[PATH_MAX];
+extern char sav_path[PCE_PATH_MAX];
 // The place where to keep saved games
 // currently a subdir a the EXE path named 'SAV'
 
-extern char *video_path;//[PATH_MAX];
+extern char video_path[PCE_PATH_MAX];
 // The place where to keep output pictures
 
-extern char *ISO_filename;//[PATH_MAX];
+extern char ISO_filename[PCE_PATH_MAX];
 // the name of the ISO file
 
-extern char *cart_name;//[PATH_MAX];
+extern char cart_name[PCE_PATH_MAX];
 // the name of the rom to load
 
-extern char *initial_path;//[PATH_MAX];
+extern char initial_path[PCE_PATH_MAX];
 // initial path for rom seeking
 
-extern char *sav_basepath;//[PATH_MAX];
+extern char sav_basepath[PCE_PATH_MAX];
 // base path for saved games
 
-extern char *tmp_basepath;//[PATH_MAX];
+extern char tmp_basepath[PCE_PATH_MAX];
 // base path for temporary operations
 
-extern char *log_filename;//[PATH_MAX];
+extern char log_filename[PCE_PATH_MAX];
 // filename of the log
 
-extern char *config_basepath;//[PATH_MAX];
+extern char config_basepath[PCE_PATH_MAX];
 // ~/.huexpress/
 
 extern uchar populus;
@@ -190,7 +189,7 @@ struct hugo_options {
 	uint16 window_size;
 	uint32 want_snd_freq;
 	uint32 wanted_hardware_format;
-	char resource_location[PATH_MAX];
+	char resource_location[PCE_PATH_MAX];
 #if defined(ENABLE_NETPLAY)
 	netplay_type want_netplay;
 	char server_hostname[SERVER_HOSTNAME_MAX_SIZE];

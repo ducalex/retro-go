@@ -6,9 +6,6 @@
 #include "sys_dep.h"
 
 
-#ifdef MY_GFX_AS_TASK
-extern QueueHandle_t vidQueue;
-#endif
 //#ifdef MY_VIDEO_MODE_SCANLINES
 struct my_scanline {
     int YY1;

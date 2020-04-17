@@ -1,4 +1,4 @@
-#include "osd_sdl_machine.h"
+#include "osd_machine.h"
 #include "mix.h"
 
 #if 0
@@ -226,7 +226,7 @@ WriteBuffer(char *buf, int ch, unsigned dwSize)
          * it all out . . . that's why I'm leaving the original formula here within the
          * comment.
          *    100 / 256, 451 / 256, 508 / 256, 573 / 256, 646 / 256, 728 / 256,
-         *    821 / 256, 925 / 256, 
+         *    821 / 256, 925 / 256,
          *    1043 / 256, 1175 / 256, 1325 / 256, 1493 / 256, 1683 / 256, 1898 / 256,
          *    2139 / 256, 2411 / 256,
          *    2718 / 256, 3064 / 256, 3454 / 256, 3893 / 256, 4388 / 256, 4947 / 256,
@@ -403,7 +403,7 @@ WriteBuffer(char *buf, int ch, unsigned dwSize)
 
             //*buf++ = (signed char) ((r[ch] ? 10 * 702 : -10 * 702) * vol / 256 / 16);   // Level 0
             *buf++ = (signed char) ((r[ch] ? 10 * 702 : -10 * 702) * vol / 256 / 16);   // Level 0
-            
+
             //sbuf[ch][dum++] = (WORD)((r[ch] ? 10*702 : -10*702)*lvol/64/256);
             //*buf++ = (r[ch] ? 32 : -32) * lvol / 24;
             dwPos++;
@@ -477,7 +477,7 @@ WriteBuffer(char *buf, int ch, unsigned dwSize)
 //#define MY_SOUND_2(va_) *buf++ = (char) ((Sint16) (sample * va_) >> 6);
 #define MY_SOUND_2(va_) *buf++ = (char) ((Sint16) (sample * va_) >> 6);
             MY_SOUND_2(lbal)
-            
+
             if (host.sound.stereo) {
                 MY_SOUND_2(rbal)
                 dwPos += 2;

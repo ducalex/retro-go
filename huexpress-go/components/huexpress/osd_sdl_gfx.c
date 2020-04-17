@@ -7,11 +7,9 @@
 /* Redesignd for HuExpress by:           */
 /*		Alexander von Gluck, kallisti5   */
 /*****************************************/
-
+#if 0
 #include "osd_sdl_gfx.h"
 #include "utils.h"
-
-#if 0
 
 //! Host machine rendered screen
 SDL_Renderer *sdlRenderer = NULL;
@@ -101,7 +99,7 @@ osd_gfx_put_image_normal(void)
 void
 osd_gfx_set_message(char *mess)
 {
-	
+
 }
 
 
@@ -184,7 +182,7 @@ osd_gfx_init_normal_mode()
 		MESSAGE_INFO("%dx%d , %dx%d\n", viewport.start_x, viewport.start_y,
 			viewport.end_x, viewport.end_y);
 	} else {
-		
+
 		viewport.end_x = io.screen_w * option.window_size;
 		viewport.end_y = io.screen_h * option.window_size;
 	}
@@ -199,7 +197,7 @@ osd_gfx_init_normal_mode()
 
 	uint32 windowFlags = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL;
 
-	if (option.want_fullscreen) 
+	if (option.want_fullscreen)
 		windowFlags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
 
 	sdlWindow = SDL_CreateWindow("HuExpress", SDL_WINDOWPOS_UNDEFINED,
@@ -467,145 +465,4 @@ drawVolume(char *name, int volume)
 	osd_gfx_set_message(result);
 }
 
-#else
-
-extern void update_display_task(int width);
-
-uint startTime;
-uint stopTime;
-uint totalElapsedTime;
-int my_frame;
-#ifdef MY_GFX_AS_TASK
-extern QueueHandle_t vidQueue;
-#endif
-extern uint8_t* framebuffer[2];
-uint8_t current_framebuffer = 0;
-extern uchar* XBuf;
-bool skipNextFrame = true;
-extern uint16_t* my_palette;
-bool scaling_enabled = false;
-uint8_t frameskip = 3;
-
-inline void update_ui_fps() {
-    stopTime = xthal_get_ccount();
-    int elapsedTime;
-    if (stopTime > startTime)
-      elapsedTime = (stopTime - startTime);
-    else
-      elapsedTime = ((uint64_t)stopTime + (uint64_t)0xffffffff) - (startTime);
-
-    totalElapsedTime += elapsedTime;
-    ++my_frame;
-
-    if (my_frame == 60)
-    {
-      float seconds = totalElapsedTime / (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000.0f);
-      float fps = my_frame / seconds;
-      printf("FPS:%f\n", fps);
-#ifdef MY_DEBUG_CHECKS
-      if (cycles_ > 0)
-      {
-        printf("Further OpCodes must be inlined! %d\n", cycles_);
-      }
-#endif
-      
-      my_frame = 0;
-      totalElapsedTime = 0;
-#ifdef ODROID_DEBUG_PERF_USE
-    odroid_debug_perf_log_one("cpu"        , ODROID_DEBUG_PERF_CPU);
-    odroid_debug_perf_log_one("loop6502"   , ODROID_DEBUG_PERF_LOOP6502);
-    odroid_debug_perf_log_one("INT"        , ODROID_DEBUG_PERF_INT);
-    odroid_debug_perf_log_one("INT2"       , ODROID_DEBUG_PERF_INT2);
-    
-    odroid_debug_perf_log_one("R_S_E"      , ODROID_DEBUG_PERF_SPRITE_RefreshSpriteExact);
-    odroid_debug_perf_log_one("Refr_Line"  , ODROID_DEBUG_PERF_SPRITE_RefreshLine);
-    odroid_debug_perf_log_one("Refr_Scr"   , ODROID_DEBUG_PERF_SPRITE_RefreshScreen);
-    odroid_debug_perf_log_one("Mem Op Acc" , ODROID_DEBUG_PERF_MEM_ACCESS1);
-#endif
-ODROID_DEBUG_PERF_LOG()
-    }
-    startTime = stopTime;
-}
-
-int
-osd_gfx_init(void)
-{
-    printf("%s: \n", __func__);
-    startTime = xthal_get_ccount();
-    SetPalette();
-    return true;
-}
-
-int
-osd_gfx_init_normal_mode()
-{
-    printf("%s: (%dx%d)\n", __func__, io.screen_w, io.screen_h);
-    startTime = xthal_get_ccount();
-    SetPalette();
-    update_display_task(io.screen_w);
-    return true;
-}
-
-void
-osd_gfx_put_image_normal(void)
-{
-   //printf("%s: %d\n", __func__, my_frame);
-   /*
-   if ((my_frame%15)==0)
-   {
-    //ili9341_write_frame_rectangleLE(0,0,300,240, osd_gfx_buffer-32);
-   }
-   */
-    if ((my_frame%frameskip)==1)
-    {
-    // printf("RES: (%dx%d)\n", io.screen_w, io.screen_h);
-#ifdef MY_GFX_AS_TASK
-#ifndef MY_VIDEO_MODE_SCANLINES
-    xQueueSend(vidQueue, &osd_gfx_buffer, portMAX_DELAY);
-#endif
-    current_framebuffer = current_framebuffer ? 0 : 1;
-#else
-    ili9341_write_frame_pcengine_mode0(osd_gfx_buffer, my_palette);
-#endif
-    XBuf = framebuffer[current_framebuffer];
-    osd_gfx_buffer = XBuf + 32 + 64 * XBUF_WIDTH;
-    skipNextFrame = true;
-    } else if ((frame%frameskip)==0) {
-        skipNextFrame = false;
-     } else {
-        skipNextFrame = true;
-     }
-   update_ui_fps();
-}
-
-void
-osd_gfx_shut_normal_mode(void)
-{
-   printf("%s: \n", __func__);
-}
-
-#define COLOR_RGB(r,g,b) ( (((r)<<12)&0xf800) + (((g)<<7)&0x07e0) + (((b)<<1)&0x001f) )
-void
-osd_gfx_set_color(uchar index, uchar r, uchar g, uchar b)
-{
-   uint16_t col;
-   if (index==255)
-   {
-      col = 0xffff;
-   }
-   else
-   {
-     r = r >> 2;
-     g = g >> 2;
-     b = b >> 2;
-     col = COLOR_RGB( (r),(g),(b) );
-     col = ((col&0x00ff) << 8) | ((col&0xff00) >> 8);
-   }
-   my_palette[index] = col;
-}
-
-osd_gfx_driver osd_gfx_driver_list[1] = {
-    {osd_gfx_init, osd_gfx_init_normal_mode,
-     osd_gfx_put_image_normal, osd_gfx_shut_normal_mode}
-};
 #endif

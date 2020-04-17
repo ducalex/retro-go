@@ -6,4 +6,6 @@
 PROJECT_NAME := gnuboy-go
 EXTRA_COMPONENT_DIRS := ../components
 
+CPPFLAGS += -DENABLE_NETPLAY
+
 include $(IDF_PATH)/make/project.mk

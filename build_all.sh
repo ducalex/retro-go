@@ -5,13 +5,18 @@ cd retro-go
 make -j 6 || exit
 
 echo ""
-echo "Building the NES emulator"
-cd ../nesemu-go
+echo "Building the Gameboy emulator"
+cd ../gnuboy-go
 make -j 6 || exit
 
 echo ""
-echo "Building the Gameboy emulator"
-cd ../gnuboy-go
+echo "Building the PC Engine emulator"
+cd ../huexpress-go
+make -j 6 || exit
+
+echo ""
+echo "Building the NES emulator"
+cd ../nesemu-go
 make -j 6 || exit
 
 echo ""
