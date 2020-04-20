@@ -48,6 +48,7 @@ static void timer_isr(void)
 
 void nofrendo_notify(const char *format, ...)
 {
+   static char buffer[512];
    va_list args;
    va_start(args, format);
 
@@ -55,7 +56,8 @@ void nofrendo_notify(const char *format, ...)
    // gui_sendmsg();
 
    // Display on stdout
-   vprintf(format, args);
+   vsprintf(buffer, format, args);
+   printf(" * %s \n", buffer);
 
    va_end(args);
 }

@@ -1,151 +1,85 @@
+#include "odroid_system.h"
 #include "osd_snd.h"
 
-#if 0
+#define AUDIO_SAMPLE_RATE 22050
+#define AUDIO_BUFFER_SIZE 4096
+#define AUDIO_CHANNELS 6
 
-#include <SDL.h>
-
-#include "utils.h"
-#include "osd_sdl_music.h"
+short *sbuf_mix[2];
+char *sbuf[AUDIO_CHANNELS];
 
 
-Uint8 *stream;
-Mix_Chunk *chunk;
-SDL_AudioCVT cvt;
-int Callback_Stop;
-int USE_S16;
+static void
+audioTask_mode0(void *arg)
+{
+    uint8_t* param;
+    printf("%s: STARTED\n", __func__);
+    uint8_t buf = 0;
 
+    while (1)
+    {
+        char *sbufp[AUDIO_CHANNELS];
+        for (int i = 0;i < AUDIO_CHANNELS;i++)
+        {
+          sbufp[i] = sbuf[i];
+          WriteBuffer((char*)sbuf[i], i, AUDIO_BUFFER_SIZE/2);
+        }
+        uchar lvol, rvol;
+        lvol = (io.psg_volume >> 4) * 1.22;
+        rvol = (io.psg_volume & 0x0F) * 1.22;
+
+        short *p = sbuf_mix[buf];
+        for (int i = 0;i < AUDIO_BUFFER_SIZE/2;i++)
+        {
+             short lval = 0;
+             short rval = 0;
+            for (int j = 0;j< AUDIO_CHANNELS;j++)
+            {
+                lval+=( short)sbufp[j][i];
+                rval+=( short)sbufp[j][i+1];
+            }
+            //lval = lval/AUDIO_CHANNELS;
+            //rval = rval/AUDIO_CHANNELS;
+            lval = lval * lvol;
+            rval = rval * rvol;
+            *p = lval;
+            *(p+1) = rval;
+            p+=2;
+        }
+
+        odroid_audio_submit((short*)sbuf_mix[buf], AUDIO_BUFFER_SIZE/4);
+        buf = buf?0:1;
+    }
+
+    vTaskDelete(NULL);
+}
 
 void
 osd_snd_set_volume(uchar v)
 {
-	#if ENABLE_TRACING_SND
-	TRACE("Sound: Set Volume 0x%X\n", v);
-	#endif
-
-	Uint8 vol;
-	vol = v / 2 + ((v == 0) ? 0 : 1);// v=0 <=> vol=0; v=255 <=> vol=128
-	Mix_Volume(-1, vol);
 }
-
 
 int
-osd_snd_init_sound(void)
+osd_snd_init_sound()
 {
-	uint16 i;
-	uint16 format;
-	int numopened, frequency, channels;
+    host.sound.stereo = true;
+    host.sound.signed_sound = false;
+    host.sound.freq = AUDIO_SAMPLE_RATE;
+    host.sound.sample_size = 1;
 
-	if (HCD_last_track > 1) {
-		for (i = 1; i<=HCD_last_track; i++) {
-			if ((CD_track[i].type==0)
-				&& (CD_track[i].source_type==HCD_SOURCE_REGULAR_FILE)) {
-				sdlmixmusic[i] = Mix_LoadMUS(CD_track[i].filename);
-				if (!sdlmixmusic[i]) {
-					Log("Warning: Error when loading '%s'\n",
-						CD_track[i].filename);
-				}
-			}
-			USE_S16 = 1;
-		}
-	} else {
-		USE_S16 = 0;
-	}
+    for (int i = 0;i < AUDIO_CHANNELS; i++)
+    {
+        sbuf[i] = rg_alloc(AUDIO_BUFFER_SIZE/2, MEM_SLOW);
+    }
+    sbuf_mix[0] = rg_alloc(AUDIO_BUFFER_SIZE, MEM_SLOW);
+    sbuf_mix[1] = rg_alloc(AUDIO_BUFFER_SIZE, MEM_SLOW);
 
-	numopened = Mix_QuerySpec(&frequency, &format, &channels);
-
-	if (!numopened) {
-		Log("Mixer initializing...\n");
-		if (SDL_InitSubSystem(SDL_INIT_AUDIO)) {
-			printf("SDL_InitSubSystem(SOUND) failed at %s:%d - %s\n",
-				__FILE__, __LINE__, SDL_GetError());
-			return 0;
-		}
-
-		//MIX_DEFAULT_FORMAT : AUDIO_S16SYS (system byte order).
-		host.sound.stereo = 2;
-		host.sound.sample_size = sbuf_size;
-		host.sound.freq = option.want_snd_freq;
-
-		if (Mix_OpenAudio((host.sound.freq), (USE_S16 ? AUDIO_S16 : AUDIO_U8),
-			(USE_S16 ? 2 : host.sound.stereo), sbuf_size) < 0) {
-			Log("Couldn't open audio: %s\n", Mix_GetError());
-			return 0;
-		}
-
-		Mix_QuerySpec(&frequency, &format, &channels);
-
-		if (channels == 2) {
-			Log("Mixer obtained stereo.\n");
-		}
-
-		Log("Mixer obtained frequency %d.\n", frequency);
-
-		if (format == AUDIO_U8) {
-			Log("Mixer obtained format U8.\n");
-		}
-
-		host.sound.stereo = channels;
-		host.sound.freq = frequency;
-		host.sound.sample_size = sbuf_size;
-
-
-		// sets the callback
-		Callback_Stop = 0;
-		Mix_AllocateChannels(1);
-		Mix_ChannelFinished(sdlmixer_fill_audio);
-
-		//FIXME: start playing silently!!
-		//needed for sound fx to start
-		int len = sbuf_size * host.sound.stereo;
-		stream = (Uint8*)malloc(len);
-		//memset(stream,0,len); //FIXME start playing silently!!
-
-		if (!(chunk = Mix_QuickLoad_RAW(stream, len)))
-			Log("Mix_QuickLoad_RAW: %s\n",Mix_GetError());
-
-		if (Mix_PlayChannel(0, chunk, 0)==-1)
-			Log("Mix_PlayChannel: %s\n", Mix_GetError());
-
-	} else {
-		Log("Mixer already initialized :\n");
-		Log("allocated mixer channels : %d\n", Mix_AllocateChannels(-1));
-	}
-
-	Mix_Resume(-1);
-
-	return 1;
+    xTaskCreatePinnedToCore(&audioTask_mode0, "audioTask", 1024 * 4, NULL, 5, NULL, 1);
 }
-
 
 void
 osd_snd_trash_sound(void)
 {
-	uchar chan;
-	if (sound_driver == 1)
-		osd_snd_set_volume(0);
-
-	//needed to stop properly...
-	Callback_Stop = 1;
-	//SDL_Delay(1000);
-	Mix_CloseAudio();
-
-	SDL_QuitSubSystem(SDL_INIT_AUDIO);
-
-	for (chan = 0; chan < 6; chan++)
-		memset(sbuf[chan], 0, SBUF_SIZE_BYTE);
-
-	memset(adpcmbuf, 0, SBUF_SIZE_BYTE);
-
-	free(stream);
-}
-#else
-void
-osd_snd_set_volume(uchar v)
-{
-}
-#endif
-
-
-int osd_sound_init()
-{
+	odroid_audio_clear_buffer();
+	odroid_audio_stop();
 }

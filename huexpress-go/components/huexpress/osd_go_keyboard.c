@@ -10,6 +10,12 @@
 #include "osd_keyboard.h"
 #include "hard_pce.h"
 
+
+int osd_init_input(void)
+{
+
+}
+
 int osd_keyboard(void)
 {
     odroid_gamepad_state joystick;

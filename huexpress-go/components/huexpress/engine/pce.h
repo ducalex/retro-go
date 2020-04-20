@@ -54,9 +54,7 @@ uint32 msf2nb_sect(uchar min, uchar sec, uchar fra);
 void fill_cd_info();
 void nb_sect2msf(uint32 lsn, uchar * min, uchar * sec, uchar * frm);
 void delete_file_tmp(char *name, int dummy, int dummy2);
-#ifndef MY_INLINE
 uchar TimerInt();
-#endif
 
 void init_log_file();
 int InitPCE(char *name);

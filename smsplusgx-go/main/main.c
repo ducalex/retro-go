@@ -22,16 +22,12 @@
 
 static uint32_t* audioBuffer;
 
+static uint16_t palettes[2][32];
 static odroid_video_frame update1;
 static odroid_video_frame update2;
 static odroid_video_frame *currentUpdate = &update1;
 
-static uint totalElapsedTime = 0;
-static uint emulatedFrames = 0;
-static uint skippedFrames = 0;
-static uint fullFrames = 0;
-
-static bool skipFrame = false;
+static uint skipFrames = 0;
 
 static bool netplay = false;
 
@@ -120,20 +116,13 @@ void app_main(void)
 {
     printf("smsplusgx (%s-%s).\n", COMPILEDATE, GITREV);
 
-    // Do before odroid_system_init to make sure we get the caps requested
-    update1.buffer = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
-    update2.buffer = heap_caps_malloc(SMS_WIDTH * SMS_HEIGHT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
-    audioBuffer    = heap_caps_calloc(AUDIO_BUFFER_LENGTH * 2, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
-
     // Init all the console hardware
     odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     odroid_system_emu_init(&LoadState, &SaveState, NULL);
 
-    // Do the check after screen init so we can display an error
-    if (!update1.buffer || !update2.buffer || !audioBuffer)
-    {
-        odroid_system_panic("Buffer allocation failed.");
-    }
+    update1.buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_ANY);
+    update2.buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_ANY);
+    audioBuffer    = rg_alloc(AUDIO_BUFFER_LENGTH * 2 * 2, MEM_DMA);
 
     // Load ROM
     char *romPath = odroid_system_get_path(NULL, ODROID_PATH_ROM_FILE);
@@ -176,12 +165,13 @@ void app_main(void)
     update1.pixel_size = update2.pixel_size = 1;
     update1.pixel_mask = update2.pixel_mask = PIXEL_MASK;
     update1.pal_shift_mask = update2.pal_shift_mask = PAL_SHIFT_MASK;
-    update1.palette = malloc(64); update2.palette = malloc(64);
+    update1.palette = &palettes[0]; update2.palette = &palettes[1];
     update1.buffer += bitmap.viewport.x;
     update2.buffer += bitmap.viewport.x;
 
     const int refresh_rate = (sms.display == DISPLAY_NTSC) ? FPS_NTSC : FPS_PAL;
     const int frameTime = get_frame_time(refresh_rate);
+    bool fullFrame = false;
 
     while (true)
     {
@@ -195,6 +185,7 @@ void app_main(void)
         }
 
         uint startTime = get_elapsed_time();
+        bool drawFrame = !skipFrames;
 
         if (netplay)
         {
@@ -292,40 +283,34 @@ void app_main(void)
             }
         }
 
-        system_frame(skipFrame);
+        system_frame(!drawFrame);
 
-        if (skipFrame)
-        {
-            ++skippedFrames;
-        }
-        else
+        if (drawFrame)
         {
             odroid_video_frame *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
 
             render_copy_palette(currentUpdate->palette);
 
-            if (odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL)
-            {
-                ++fullFrames;
-            }
+            fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
 
             // Swap buffers
             currentUpdate = previousUpdate;
             bitmap.data = currentUpdate->buffer - bitmap.viewport.x;
         }
 
-        if (speedupEnabled)
+        // See if we need to skip a frame to keep up
+        if (skipFrames == 0)
         {
-            skipFrame = emulatedFrames % (2 + speedupEnabled);
-            snd.enabled = speedupEnabled < 2;
+            if (get_elapsed_time_since(startTime) > frameTime) skipFrames = 1;
+            if (speedupEnabled) skipFrames += speedupEnabled * 2.5;
         }
-        else
+        else if (skipFrames > 0)
         {
-            snd.enabled = true;
+            skipFrames--;
+        }
 
-            // See if we need to skip a frame to keep up
-            skipFrame = (!skipFrame && get_elapsed_time_since(startTime) > frameTime);
-
+        if (!speedupEnabled)
+        {
             // Process audio
             for (short i = 0; i < snd.sample_count; i++)
             {
@@ -335,16 +320,6 @@ void app_main(void)
             odroid_audio_submit((short*)audioBuffer, snd.sample_count);
         }
 
-
-        totalElapsedTime += get_elapsed_time_since(startTime);
-        ++emulatedFrames;
-
-        if (emulatedFrames == refresh_rate)
-        {
-            odroid_system_print_stats(totalElapsedTime, emulatedFrames, skippedFrames, fullFrames);
-
-            emulatedFrames = skippedFrames = fullFrames = 0;
-            totalElapsedTime = 0;
-        }
+        odroid_system_stats_tick(!drawFrame, fullFrame);
     }
 }

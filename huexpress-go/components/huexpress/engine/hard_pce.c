@@ -66,11 +66,11 @@ uchar *cd_extra_super_mem;
 uchar *ac_extra_mem;
 
 uint32 pce_cd_read_datacnt;
- /**/ uchar cd_sectorcnt;
+uchar cd_sectorcnt;
 uchar pce_cd_curcmd;
- /**/
+
 // Memory
-	uchar * zp_base;
+uchar *zp_base;
 uchar *sp_base;
 uchar *mmr;
 uchar *IOAREA;
@@ -83,62 +83,36 @@ uint32 *p_cyclecountold;
 
 // registers
 
-#if defined(SHARED_MEMORY)
-
-//! Shared memory handle
-static int shm_handle;
-
-uint16 *p_reg_pc;
-uchar *p_reg_a;
-uchar *p_reg_x;
-uchar *p_reg_y;
-uchar *p_reg_p;
-uchar *p_reg_s;
-
-#else
-
-DRAM_ATTR uint32 reg_pc_;
-DRAM_ATTR uchar reg_a_;
-DRAM_ATTR uchar reg_x_;
-DRAM_ATTR uchar reg_y_;
-DRAM_ATTR uchar reg_p_;
-DRAM_ATTR uchar reg_s_;
-
-#endif
+uint32 reg_pc_;
+uchar reg_a_;
+uchar reg_x_;
+uchar reg_y_;
+uchar reg_p_;
+uchar reg_s_;
 
 // Mapping
-//uchar *PageR[8];
-// IRAM_ATTR slower
-uchar **PageR;
+uchar *PageR[8];
+uchar *PageW[8];
 uchar *ROMMapR[256];
-//uchar **ROMMapR;
-
-//uchar *PageW[8];
-uchar **PageW;
 uchar *ROMMapW[256];
-//uchar **ROMMapW;
 
 uchar *trap_ram_read;
 uchar *trap_ram_write;
 
 // Miscellaneous
-//DRAM_ATTR uint32 *p_cycles;
-DRAM_ATTR uint32 cycles_;
+///* DRAM_ATTR */ uint32 *p_cycles;
+/* DRAM_ATTR */ uint32 cycles_;
 int32 *p_external_control_cpu;
-
-//! External rom size hack for shared memory indication
-extern int ROM_size;
 
 /**
   * Predeclaration of access functions
-	**/
+**/
 uchar read_memory_simple(uint16);
 uchar read_memory_sf2(uint16);
 uchar read_memory_arcade_card(uint16);
 
 void write_memory_simple(uint16, uchar);
 void write_memory_arcade_card(uint16, uchar);
-
 
 
 //! Function to write into memory. Defaulted to the basic one
@@ -150,18 +124,17 @@ uchar(*read_memory_function) (uint16) = read_memory_simple;
 void
 hard_reset_io(void)
 {
-    pair *VCE = io.VCE;
     uchar *psg_da_data[6];
-    memcpy(psg_da_data,io.psg_da_data, sizeof(uchar *) * 6);
+
+    memcpy(psg_da_data, io.psg_da_data, sizeof(uchar *) * 6);
     memset(&io, 0, sizeof(IO));
-    io.VCE = VCE;
     memcpy(io.psg_da_data, psg_da_data, sizeof(uchar *) * 6);
 
-    memset(io.VCE, 0, 0x200*sizeof(pair));
     for (int i = 0;i <6; i++)
     {
        memset(io.psg_da_data[i], 0, PSG_DIRECT_ACCESS_BUFSIZE);
     }
+
     IO_VDC_reset
 }
 
@@ -171,90 +144,26 @@ hard_reset_io(void)
 void
 hard_init(void)
 {
-    PageR = (uchar **)my_special_alloc(true, 1,8*4);
-    PageW = (uchar **)my_special_alloc(true, 1,8*4);
-    //ROMMapR = (uchar **)my_special_alloc(true, 4,256*4);
-    //ROMMapW = (uchar **)my_special_alloc(true, 4,256*4);
-	trap_ram_read = malloc(0x2000);
-	trap_ram_write = malloc(0x2000);
-	//trap_ram_read = my_special_alloc(true, 1, 0x2000);
-    //trap_ram_write = my_special_alloc(true, 1, 0x2000);
+	trap_ram_read = rg_alloc(0x2000, MEM_SLOW);
+	trap_ram_write = rg_alloc(0x2000, MEM_SLOW);
 
-	if ((trap_ram_read == NULL) || (trap_ram_write == NULL))
-		fprintf(stderr, "Couldn't allocate trap_ram* (%s:%d)", __FILE__,
-				__LINE__);
+	assert(trap_ram_read && trap_ram_write);
 
-#if defined(SHARED_MEMORY)
-	shm_handle =
-		shmget((key_t) SHM_HANDLE, sizeof(struct_hard_pce),
-			   IPC_CREAT | IPC_EXCL | 0666);
-	if (shm_handle == -1)
-		fprintf(stderr, "Couldn't get shared memory\n");
-	else {
-		hard_pce = (struct_hard_pce *) shmat(shm_handle, NULL, 0);
-		if (hard_pce == NULL)
-			fprintf(stderr, "Couldn't attach shared memory\n");
+	hard_pce = (struct_hard_pce *) rg_alloc(sizeof(struct_hard_pce), MEM_FAST);
+    hard_pce->PCM   = (uchar *)rg_alloc(0x10000, MEM_SLOW);
+    hard_pce->VRAM  = (uchar *)rg_alloc(VRAMSIZE, MEM_SLOW);
+    hard_pce->VRAM2 = (uchar *)rg_alloc(VRAMSIZE, MEM_SLOW);
+    hard_pce->VRAMS = (uchar *)rg_alloc(VRAMSIZE, MEM_SLOW);
 
-		p_reg_pc = &hard_pce->s_reg_pc;
-		p_reg_a = &hard_pce->s_reg_a;
-		p_reg_x = &hard_pce->s_reg_x;
-		p_reg_y = &hard_pce->s_reg_y;
-		p_reg_p = &hard_pce->s_reg_p;
-		p_reg_s = &hard_pce->s_reg_s;
-		p_external_control_cpu = &hard_pce->s_external_control_cpu;
+    hard_pce->cd_extra_mem       =
+    hard_pce->cd_extra_super_mem =
+    hard_pce->ac_extra_mem       =
+    hard_pce->cd_sector_buffer   = (uchar *)rg_alloc(0x2000, MEM_SLOW);
 
-	}
-	memset(hard_pce, 0, sizeof(struct_hard_pce));
-#else
-    bool fast1;
-#ifdef MY_USE_FAST_RAM
-    fast1 = true;
-#else
-    fast1 = false;
-#endif
-	//hard_pce = (struct_hard_pce *) malloc(sizeof(struct_hard_pce));
-	hard_pce = (struct_hard_pce *) my_special_alloc(fast1, 1, sizeof(struct_hard_pce));
-	memset(hard_pce, 0, sizeof(struct_hard_pce));
-
-	hard_pce->RAM = (uchar *)my_special_alloc(fast1, 1, 0x8000);//[0x8000]
-    hard_pce->PCM = (uchar *)my_special_alloc(false, 1, 0x10000);//[0x10000]
-    hard_pce->WRAM = (uchar *)my_special_alloc(fast1, 1, 0x2000);//[0x2000]
-
-    hard_pce->VRAM = (uchar *)my_special_alloc(false, 1, VRAMSIZE);//[VRAMSIZE]
-    hard_pce->VRAM2 = (uchar *)my_special_alloc(false, 1, VRAMSIZE);//[VRAMSIZE];
-    hard_pce->VRAMS = (uchar *)my_special_alloc(false, 1, VRAMSIZE);//[VRAMSIZE];
-    hard_pce->vchange = (uchar *)my_special_alloc(false, 1, VRAMSIZE / 32);//[VRAMSIZE / 32];
-    hard_pce->vchanges = (uchar *)my_special_alloc(false, 1, VRAMSIZE / 128);//[VRAMSIZE / 128];
-
-/*
-#define cd_extra_mem_size 0x10000
-#define cd_extra_super_mem_size 0x30000
-#define ac_extra_mem_size 0x200000
-#define cd_sector_buffer_size 0x2000
-*/
-#define cd_extra_mem_size 4
-#define cd_extra_super_mem_size 4
-#define ac_extra_mem_size 4
-#define cd_sector_buffer_size 4
-
-    hard_pce->cd_extra_mem = (uchar *)my_special_alloc(false, 1, cd_extra_mem_size);//[0x10000];
-    hard_pce->cd_extra_super_mem = (uchar *)my_special_alloc(false, 1, cd_extra_super_mem_size);//[0x30000];
-    hard_pce->ac_extra_mem = (uchar *)my_special_alloc(false, 1, ac_extra_mem_size);//[0x200000];
-    hard_pce->cd_sector_buffer = (uchar *)my_special_alloc(false, 1, cd_sector_buffer_size);//[0x2000];
-
-    //hard_pce->SPRAM = (uint16 *)my_special_alloc(false, 2, 64 * 4* sizeof(uint16));//[64 * 4];
-    hard_pce->SPRAM = (uint16 *)my_special_alloc(fast1, 1, 64 * 4* sizeof(uint16));//[64 * 4];
-    hard_pce->Pal = (uchar *)my_special_alloc(false, 1, 512);//[512];
-
-    //hard_pce->s_io.VCE = (pair*)my_special_alloc(false, sizeof(pair), 0x200*sizeof(pair));//[0x200]
-    hard_pce->s_io.VCE = (pair*)my_special_alloc(fast1, 1, 0x200*sizeof(pair));//[0x200]
-    memset(hard_pce->s_io.VCE, 0, 0x200*sizeof(pair));
-    for (int i = 0;i <6; i++)
+    for (int i = 0;i < 6; i++)
     {
-        hard_pce->s_io.psg_da_data[i] = (uchar *)my_special_alloc(false, 1, PSG_DIRECT_ACCESS_BUFSIZE);//[PSG_DIRECT_ACCESS_BUFSIZE];
-        memset(hard_pce->s_io.psg_da_data[i], 0, PSG_DIRECT_ACCESS_BUFSIZE);
+        hard_pce->s_io.psg_da_data[i] = (uchar *)rg_alloc(PSG_DIRECT_ACCESS_BUFSIZE, MEM_SLOW);
     }
-#endif
 
 	RAM = hard_pce->RAM;
 	PCM = hard_pce->PCM;
@@ -285,14 +194,6 @@ hard_init(void)
 
 	p_io = &hard_pce->s_io;
 
-#if defined(SHARED_MEMORY)
-	/* Add debug on beginning option by setting 0 here */
-	external_control_cpu = -1;
-
-	hard_pce->rom_shared_memory_size = 0x2000 * ROM_size;
-
-#endif
-
 	if ((option.want_arcade_card_emulation) && (CD_emulation > 0)) {
 		read_memory_function = read_memory_arcade_card;
 		write_memory_function = write_memory_arcade_card;
@@ -308,12 +209,7 @@ hard_init(void)
 void
 hard_term(void)
 {
-#if defined(SHARED_MEMORY)
-	if (shmctl(shm_handle, IPC_RMID, NULL) == -1)
-		fprintf(stderr, "Couldn't destroy shared memory\n");
-#else
 	free(hard_pce);
-#endif
 	free(trap_ram_read);
 	free(trap_ram_write);
 }
@@ -473,15 +369,253 @@ return_value_mask(uint16 A)
 }
 
 /* read */
-uchar
+static inline uchar
 IO_read_raw(uint16 A)
 {
-#include "IO_read_raw.h"
+    uchar ret;
+
+#ifndef FINAL_RELEASE
+    if ((A & 0x1F00) == 0x1A00)
+        Log("AC Read at %04x\n", A);
+#endif
+
+    switch (A & 0x1FC0) {
+    case 0x0000:                /* VDC */
+        switch (A & 3) {
+        case 0:
+#if ENABLE_TRACING_DEEP_GFX
+            TRACE("Returning vdc_status = 0x%02x\n",
+                io.vdc_status);
+#endif
+            ret = io.vdc_status;
+            io.vdc_status = 0;  //&=VDC_InVBlank;//&=~VDC_BSY;
+#if ENABLE_TRACING_DEEP_GFX
+            Log("$0000 returns %02X\n", ret);
+#endif
+            return ret;
+        case 1:
+            return 0;
+        case 2:
+            if (io.vdc_reg == VRR)
+                return VRAM[IO_VDC_01_MARR.W * 2];
+            else
+                return IO_VDC_active.B.l;
+        case 3:
+            if (io.vdc_reg == VRR) {
+                ret = VRAM[IO_VDC_01_MARR.W * 2 + 1];
+                IO_VDC_01_MARR.W += io.vdc_inc;
+                return ret;
+            } else
+                return IO_VDC_active.B.h;
+        }
+        break;
+
+    case 0x0400:                /* VCE */
+        switch (A & 7) {
+        case 4:
+            return io.VCE[io.vce_reg.W].B.l;
+        case 5:
+            return io.VCE[io.vce_reg.W++].B.h;
+        }
+        break;
+    case 0x0800:                /* PSG */
+        switch (A & 15) {
+        case 0:
+            return io.psg_ch;
+        case 1:
+            return io.psg_volume;
+        case 2:
+            return io.PSG[io.psg_ch][2];
+        case 3:
+            return io.PSG[io.psg_ch][3];
+        case 4:
+            return io.PSG[io.psg_ch][4];
+        case 5:
+            return io.PSG[io.psg_ch][5];
+        case 6:
+            {
+                int ofs = io.PSG[io.psg_ch][PSG_DATA_INDEX_REG];
+                io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] =
+                    (uchar) ((io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] +
+                              1) & 31);
+                return io.wave[io.psg_ch][ofs];
+            }
+        case 7:
+            return io.PSG[io.psg_ch][7];
+
+        case 8:
+            return io.psg_lfo_freq;
+        case 9:
+            return io.psg_lfo_ctrl;
+        default:
+            return NODATA;
+        }
+        break;
+    case 0x0c00:                /* timer */
+        return io.timer_counter;
+
+    case 0x1000:                /* joypad */
+        ret = io.JOY[io.joy_counter] ^ 0xff;
+        if (io.joy_select & 1)
+            ret >>= 4;
+        else {
+            ret &= 15;
+            io.joy_counter = (uchar) ((io.joy_counter + 1) % 5);
+        }
+
+        /* return ret | Country; *//* country 0:JPN 1<<6=US */
+        return ret | 0x30;      // those 2 bits are always on, bit 6 = 0 (Jap), bit 7 = 0 (Attached cd)
+
+    case 0x1400:                /* IRQ */
+        switch (A & 15) {
+        case 2:
+            return io.irq_mask;
+        case 3:
+            ret = io.irq_status;
+            io.irq_status = 0;
+            return ret;
+        }
+        break;
+
+
+    case 0x18C0:                // Memory management ?
+        switch (A & 15) {
+        case 5:
+        case 1:
+            return 0xAA;
+        case 2:
+        case 6:
+            return 0x55;
+        case 3:
+        case 7:
+            return 0x03;
+        }
+        break;
+
+    case 0x1AC0:
+        switch (A & 15) {
+        case 0:
+            return (uchar) (io.ac_shift);
+        case 1:
+            return (uchar) (io.ac_shift >> 8);
+        case 2:
+            return (uchar) (io.ac_shift >> 16);
+        case 3:
+            return (uchar) (io.ac_shift >> 24);
+        case 4:
+            return io.ac_shiftbits;
+        case 5:
+            return io.ac_unknown4;
+        case 14:
+            return (uchar) (option.
+                            want_arcade_card_emulation ? 0x10 : NODATA);
+        case 15:
+            return (uchar) (option.
+                            want_arcade_card_emulation ? 0x51 : NODATA);
+        default:
+            Log("Unknown Arcade card port access : 0x%04X\n", A);
+        }
+        break;
+
+    case 0x1A00:
+        {
+            uchar ac_port = (uchar) ((A >> 4) & 3);
+            switch (A & 15) {
+            case 0:
+            case 1:
+                /*
+                 * switch (io.ac_control[ac_port] & (AC_USE_OFFSET | AC_USE_BASE))
+                 * {
+                 * case 0:
+                 * return ac_extra_mem[0];
+                 * case AC_USE_OFFSET:
+                 * ret = ac_extra_mem[io.ac_offset[ac_port]];
+                 * if (!(io.ac_control[ac_port] & AC_INCREMENT_BASE))
+                 * io.ac_offset[ac_port]+=io.ac_incr[ac_port];
+                 * return ret;
+                 * case AC_USE_BASE:
+                 * ret = ac_extra_mem[io.ac_base[ac_port]];
+                 * if (io.ac_control[ac_port] & AC_INCREMENT_BASE)
+                 * io.ac_base[ac_port]+=io.ac_incr[ac_port];
+                 * return ret;
+                 * default:
+                 * ret = ac_extra_mem[io.ac_base[ac_port] + io.ac_offset[ac_port]];
+                 * if (io.ac_control[ac_port] & AC_INCREMENT_BASE)
+                 * io.ac_base[ac_port]+=io.ac_incr[ac_port];
+                 * else
+                 * io.ac_offset[ac_port]+=io.ac_incr[ac_port];
+                 * return ret;
+                 * }
+                 * return 0;
+                 */
+
+
+#if ENABLE_TRACING_CD
+                printf
+                    ("Reading from AC main port. ac_port = %d. %suse offset. %sincrement. %sincrement base\n",
+                     ac_port,
+                     io.ac_control[ac_port] & AC_USE_OFFSET ? "" : "not ",
+                     io.ac_control[ac_port] & AC_ENABLE_INC ? "" : "not ",
+                     io.
+                     ac_control[ac_port] & AC_INCREMENT_BASE ? "" :
+                     "not ");
+#endif
+                if (io.ac_control[ac_port] & AC_USE_OFFSET)
+                    ret = ac_extra_mem[((io.ac_base[ac_port] +
+                                         io.ac_offset[ac_port]) &
+                                        0x1fffff)];
+                else
+                    ret = ac_extra_mem[((io.ac_base[ac_port]) & 0x1fffff)];
+
+                if (io.ac_control[ac_port] & AC_ENABLE_INC) {
+                    if (io.ac_control[ac_port] & AC_INCREMENT_BASE)
+                        io.ac_base[ac_port] =
+                            (io.ac_base[ac_port] +
+                             io.ac_incr[ac_port]) & 0xffffff;
+                    else
+                        io.ac_offset[ac_port] = (uint16)
+                            ((io.ac_offset[ac_port] +
+                              io.ac_incr[ac_port]) & 0xffff);
+                }
+#if ENABLE_TRACING_CD
+                printf
+                    ("Returned 0x%02x. now, base = 0x%x. offset = 0x%x, increment = 0x%x\n",
+                     ret, io.ac_base[ac_port], io.ac_offset[ac_port],
+                     io.ac_incr[ac_port]);
+#endif
+                return ret;
+
+
+            case 2:
+                return (uchar) (io.ac_base[ac_port]);
+            case 3:
+                return (uchar) (io.ac_base[ac_port] >> 8);
+            case 4:
+                return (uchar) (io.ac_base[ac_port] >> 16);
+            case 5:
+                return (uchar) (io.ac_offset[ac_port]);
+            case 6:
+                return (uchar) (io.ac_offset[ac_port] >> 8);
+            case 7:
+                return (uchar) (io.ac_incr[ac_port]);
+            case 8:
+                return (uchar) (io.ac_incr[ac_port] >> 8);
+            case 9:
+                return io.ac_control[ac_port];
+            default:
+                Log("Unknown Arcade card port access : 0x%04X\n", A);
+            }
+            break;
+        }
+    case 0x1800:                // CD-ROM extention
+        return pce_cd_handle_read_1800(A);
+    }
+    return NODATA;
 }
 
 //! Adds the io_buffer feature
-uchar
-IO_read_(uint16 A)
+IRAM_ATTR inline uchar
+IO_read(uint16 A)
 {
 	int mask;
 	uchar temporary_return_value;

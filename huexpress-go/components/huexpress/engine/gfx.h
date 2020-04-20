@@ -6,14 +6,6 @@
 #include "sys_dep.h"
 
 
-//#ifdef MY_VIDEO_MODE_SCANLINES
-struct my_scanline {
-    int YY1;
-    int YY2;
-    uint8_t* buffer;
-};
-//#endif
-
 #define	WIDTH	(360+64)
 #define	HEIGHT	256
 
@@ -69,60 +61,12 @@ void change_pce_screen_height();
 #define MAX_GFX_CONTEXT_SLOT_NUMBER 2
 extern gfx_context saved_gfx_context[MAX_GFX_CONTEXT_SLOT_NUMBER];
 
-void save_gfx_context_(int slot_number);
-// void load_gfx_context_(int slot_number);
-
-#ifdef MY_INLINE_GFX
-#define save_gfx_context(slot_number) do { \
-    gfx_context *destination_context; \
-    destination_context = saved_gfx_context + slot_number; \
-    if (slot_number == 0) { \
-        if (gfx_need_redraw == 0) \
-            gfx_need_redraw = 1; \
-        else { /* Context is already saved + we haven't render the line using it */ \
-            TRACE("Canceled context saving as a previous one wasn't consumed yet\n"); \
-            break;  \
-        } \
-    } \
-    if (slot_number >= MAX_GFX_CONTEXT_SLOT_NUMBER) { \
-        printf("Internal error in %s(%s), slot %d >= %d\n", __FUNCTION__, \
-            __FILE__, slot_number, MAX_GFX_CONTEXT_SLOT_NUMBER); \
-        Log("Internal error in %s(%s), slot %d >= %d\n", __FUNCTION__, \
-            __FILE__, slot_number, MAX_GFX_CONTEXT_SLOT_NUMBER); \
-        break; \
-    } \
-    destination_context->scroll_x = ScrollX; \
-    destination_context->scroll_y = ScrollY; \
-    destination_context->scroll_y_diff = ScrollYDiff; \
-    destination_context->cr = IO_VDC_05_CR.W; \
-    } while (false);
-
-#define load_gfx_context(slot_number) \
-    if (slot_number >= MAX_GFX_CONTEXT_SLOT_NUMBER) { \
-        Log("Internal error in %s(%s), slot %d >= %d\n", __FUNCTION__, \
-            __FILE__, slot_number, MAX_GFX_CONTEXT_SLOT_NUMBER); \
-    } else {  \
-    gfx_context *source_context; \
-    source_context = saved_gfx_context + slot_number; \
-    ScrollX = source_context->scroll_x; \
-    ScrollY = source_context->scroll_y; \
-    ScrollYDiff = source_context->scroll_y_diff; \
-    IO_VDC_05_CR.W = source_context->cr; \
-    TRACE("Restoring context %d, scroll = (%d,%d,%d), CR = 0x%02d\n", \
-        slot_number, ScrollX, ScrollY, ScrollYDiff, IO_VDC_05_CR.W); \
-    }
-
-#define gfx_init() \
-    UCount = 0; \
-    gfx_need_video_mode_change = 0; \
-    gfx_need_redraw = 0; \
-    IO_VDC_05_CR.W = 0;
-
-#else
-#define save_gfx_context(slot_number) save_gfx_context_(slot_number)
-#define load_gfx_context(slot_number) load_gfx_context_(slot_number)
+void save_gfx_context(int slot_number);
+// void load_gfx_context(int slot_number);
 void gfx_init();
-#endif
+
+// #define save_gfx_context(slot_number) save_gfx_context_(slot_number)
+// #define load_gfx_context(slot_number) load_gfx_context_(slot_number)
 
 int start_dump_video();
 void stop_dump_video();
@@ -133,18 +77,7 @@ void dump_rgb_frame(char *output_buffer);
 extern int UCount;
 extern int gfx_need_redraw;
 
-#ifdef MY_INLINE_GFX_Loop6502
-#define GFX_Loop6502_Init \
-    int video_dump_countdown = 0; \
-    int display_counter = 0; \
-    int last_display_counter = 0; \
-    int satb_dma_counter = 0;
-
-//uchar Loop6502_2();
-#else
-#define GFX_Loop6502_Init
 uchar Loop6502();
-#endif
 
 #if ENABLE_TRACING_GFX
 void gfx_debug_printf(char *format, ...);

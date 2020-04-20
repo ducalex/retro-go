@@ -27,7 +27,7 @@ typedef union {
 /* The structure containing all variables relatives to Input and Output */
 typedef struct tagIO {
 	/* VCE */
-	pair *VCE;//[0x200];			/* palette info */
+	pair VCE[0x200];			/* palette info */
 	pair vce_reg;				/* currently selected color */
 	uchar vce_ratch;			/* temporary value to keep track of the first byte
 								 * when setting a 16 bits value with two byte access
@@ -136,15 +136,14 @@ typedef struct tagIO {
 } IO;
 
 typedef struct {
-	uchar *RAM;//[0x8000]
-	uchar *PCM;//[0x10000]
-	uchar *WRAM;//[0x2000]
-	uchar *VRAM;//[VRAMSIZE]
-
-	uchar *VRAM2;//[VRAMSIZE];
-	uchar *VRAMS;//[VRAMSIZE];
-	uchar *vchange;//[VRAMSIZE / 32];
-	uchar *vchanges;//[VRAMSIZE / 128];
+	uchar RAM[0x8000];
+	uchar *PCM; //[0x10000]
+	uchar WRAM[0x2000];
+	uchar *VRAM; //[VRAMSIZE]
+	uchar *VRAM2; //[VRAMSIZE];
+	uchar *VRAMS; //[VRAMSIZE];
+	uchar vchange[VRAMSIZE / 32];
+	uchar vchanges[VRAMSIZE / 128];
 
 	uchar *cd_extra_mem;//[0x10000];
 	uchar *cd_extra_super_mem;//[0x30000];
@@ -153,8 +152,8 @@ typedef struct {
 
 	uint32 s_scanline;
 
-	uint16 *SPRAM;//[64 * 4];
-	uchar *Pal;//[512];
+	uint16 SPRAM[64 * 4];
+	uchar Pal[512];
 
 	uint16 s_reg_pc;
 	uchar s_reg_a;

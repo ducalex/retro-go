@@ -1039,24 +1039,23 @@ static void spi_initialize()
 
 void odroid_display_init()
 {
-    // Load settings
     backlightLevel = odroid_settings_Backlight_get();
     displayScalingMode = odroid_settings_DisplayScaling_get();
     displayFilterMode = odroid_settings_DisplayFilter_get();
 
-    // Initialize SPI
-    printf("LCD: calling spi_initialize.\n");
+    printf("LCD: Initialisation sequence:\n");
+
+    printf("     - calling spi_initialize.\n");
     spi_initialize();
 
-    //Initialize the LCD
-	printf("LCD: calling ili9341_init.\n");
+	printf("     - calling ili9341_init.\n");
     ili9341_init();
 
-	printf("LCD: calling backlight_init.\n");
+	printf("     - calling backlight_init.\n");
     backlight_init();
 
-	printf("LCD: starting videoTask.\n");
+	printf("     - starting videoTask.\n");
     xTaskCreatePinnedToCore(&videoTask, "videoTask", 4096, NULL, 5, NULL, 1);
 
-    printf("LCD Initialized.\n");
+    printf("     - done.\n");
 }

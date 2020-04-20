@@ -323,19 +323,14 @@ static void inline system_video(bool draw)
    osd_blitscreen(primary_buffer);
 }
 
-extern uint fullFrames;
+extern bool fullFrame;
 
 /* main emulation loop */
 void nes_emulate(void)
 {
-   uint totalElapsedTime = 0;
-   uint emulatedFrames = 0;
-   uint renderedFrames = 0;
-   uint skippedFrames = 0;
-
    const int audioSamples = nes.apu->sample_rate / nes.refresh_rate;
    const int frameTime = get_frame_time(nes.refresh_rate);
-   bool renderFrame = true;
+   uint skipFrames = 0;
 
    primary_buffer = bmp_create(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 8);
 
@@ -349,34 +344,27 @@ void nes_emulate(void)
    while (false == nes.poweroff)
    {
       uint startTime = get_elapsed_time();
+      bool drawFrame = !skipFrames;
 
       osd_getinput();
-      nes_renderframe(renderFrame);
-      system_video(renderFrame);
+      nes_renderframe(drawFrame);
+      system_video(drawFrame);
 
-      // Don't allow skipping more than one frame at a time.
-      renderFrame = !renderFrame || get_elapsed_time_since(startTime) <= frameTime;
+      if (skipFrames == 0)
+      {
+         if (get_elapsed_time_since(startTime) > frameTime) skipFrames = 1;
+         if (speedupEnabled) skipFrames += speedupEnabled * 2;
+      }
+      else if (skipFrames > 0)
+      {
+         skipFrames--;
+      }
 
-      if (speedupEnabled) {
-         renderFrame = (emulatedFrames % speedupEnabled) == 0;
-      } else {
+      if (!speedupEnabled) {
          osd_audioframe(audioSamples);
       }
 
-      if (!renderFrame) {
-         ++skippedFrames;
-      }
-
-      totalElapsedTime += get_elapsed_time_since(startTime);
-      ++emulatedFrames;
-
-      if (emulatedFrames == nes.refresh_rate)
-      {
-         odroid_system_print_stats(totalElapsedTime, emulatedFrames, skippedFrames, fullFrames);
-
-         emulatedFrames = skippedFrames = fullFrames = 0;
-         totalElapsedTime = 0;
-      }
+      odroid_system_stats_tick(!drawFrame, fullFrame);
    }
 }
 

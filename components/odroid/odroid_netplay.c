@@ -551,7 +551,7 @@ void odroid_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
 
     if (netplay_mode == NETPLAY_MODE_GUEST)
     {
-        odroid_netplay_send_packet(remote_player->id, NETPLAY_PACKET_SYNC_ACK, 0,
+        send_packet(remote_player->id, NETPLAY_PACKET_SYNC_ACK, 0,
                     local_player->sync_data, sizeof(local_player->sync_data));
         xSemaphoreTake(netplay_sync, 1000 / portTICK_PERIOD_MS);
     }

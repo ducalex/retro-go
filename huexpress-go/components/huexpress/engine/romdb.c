@@ -8,6 +8,7 @@
 
 
 #include "romdb.h"
+#include "debug.h"
 
 #if defined(__linux__) || defined(__APPLE__)
 #include <limits.h>
@@ -469,28 +470,6 @@ filesize(FILE * fp)
 	return size;
 }
 
-#if 0
-unsigned long pack_filesize(PACKFILE *F)
-  {
-   unsigned long old_pos,end;
-   pack_ftell(F,(long*)&old_pos);
-
-   end=old_pos;
-
-   while (!pack_feof(F))
-     {
-      pack_getc(F);
-      end++;
-      }
-
-
-   fseek(F,0,SEEK_END);
-   fgetpos(F,(long*)&end);
-   fseek(F,old_pos,SEEK_SET);
-   return end;
-   }
-#endif
-
 uint32
 CRC_file(char *name)
 {
@@ -507,8 +486,7 @@ CRC_file(char *name)
 		//fprintf(stderr,"HEADER OF 0X%X BYTES\n",taille & 0x0FFF);
 		fseek(F, taille & 0x0FFF, SEEK_SET);
 	}
-	//if (!(tmp_data = (uchar *) (malloc(true_size))))
-	if (!(tmp_data = (uchar *) (my_special_alloc(false, 1, true_size))))
+	if (!(tmp_data = (uchar *) (malloc(true_size))))
 		exit(-1);
 	fread(tmp_data, true_size, 1, F);
 	for (index = 0; index < true_size; index++) {
@@ -518,7 +496,29 @@ CRC_file(char *name)
 	}
 	free(tmp_data);
 	CRC = ~CRC;
-//      fprintf(stderr,"CRC = 0X%lX\n",CRC);
+    MESSAGE_INFO("CRC = 0X%lX\n", CRC);
 	fclose(F);
+	return CRC;
+}
+
+
+uint32
+CRC_buffer(uchar *buffer, int size)
+{
+	uint32 index = 0, CRC = -1, true_size;
+
+	true_size = size & 0xFFFFF000;
+
+	if (size & 0x0FFF) {
+		index += (size & 0x0FFF);
+	}
+
+	for (; index < true_size; index++) {
+		uchar b = buffer[index] ^ CRC;
+		CRC >>= 8;
+		CRC ^= TAB_CONST[b];
+	}
+	CRC = ~CRC;
+	MESSAGE_INFO("CRC = 0X%lX\n",CRC);
 	return CRC;
 }

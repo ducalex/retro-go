@@ -15,12 +15,6 @@
 #include "config.h"
 #include "cleantypes.h"
 
-#if defined(SHARED_MEMORY)
-#include <sys/types.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#endif
-
 #define PSG_VOICE_REG           0	/* voice index */
 
 #define PSG_VOLUME_REG          1	/* master volume */
@@ -51,11 +45,8 @@ void hard_init(void);
 void hard_reset_io(void);
 void hard_term(void);
 
-#define IO_write(A,V) IO_write_(A,V)
-#define IO_read(A) IO_read_(A) 
-
-void IO_write_(uint16 A, uchar V);
-uchar IO_read_(uint16 A);
+void IO_write(uint16 A, uchar V);
+uchar IO_read(uint16 A);
 void bank_set(uchar P, uchar V);
 
 extern void (*write_memory_function) (uint16, uchar);
@@ -165,16 +156,12 @@ extern uchar *mmr;
 extern uchar *IOAREA;
 // physical address on emulator machine of the IO area (fake address as it has to be handled specially)
 
-//! 
-//extern uchar *PageR[8];
-extern uchar **PageR;
+//!
+extern uchar *PageR[8];
 extern uchar *ROMMapR[256];
-//extern uchar **ROMMapR;
 
-//extern uchar *PageW[8];
-extern uchar **PageW;
+extern uchar *PageW[8];
 extern uchar *ROMMapW[256];
-//extern uchar **ROMMapW;
 
 //! False "ram"s in which you can read/write (to homogeneize writes into RAM, BRAM, ... as well as in rom) but the result isn't coherent
 extern uchar *trap_ram_read;
@@ -187,7 +174,7 @@ extern uchar *trap_ram_write;
 extern uint32 *p_cyclecount;
 // Number of elapsed cycles
 
-//#define cyclecountold (*p_cyclecountold)
+#define cyclecountold (*p_cyclecountold)
 
 extern uint32 *p_cyclecountold;
 // Previous number of elapsed cycles
@@ -202,23 +189,6 @@ extern int32 *p_external_control_cpu;
 
 // registers:
 
-#if defined(SHARED_MEMORY)
-
-#define reg_pc	(*p_reg_pc)
-#define reg_a   (*p_reg_a)
-#define reg_x   (*p_reg_x)
-#define reg_y   (*p_reg_y)
-#define reg_p   (*p_reg_p)
-#define reg_s   (*p_reg_s)
-
-extern uint16 *p_reg_pc;
-extern uchar *p_reg_a;
-extern uchar *p_reg_x;
-extern uchar *p_reg_y;
-extern uchar *p_reg_p;
-extern uchar *p_reg_s;
-
-#else
 #define reg_pc reg_pc_
 #define reg_a reg_a_
 #define reg_x reg_x_
@@ -226,13 +196,12 @@ extern uchar *p_reg_s;
 #define reg_p reg_p_
 #define reg_s reg_s_
 
-extern uint32 reg_pc_;
-extern uchar reg_a_;
-extern uchar reg_x_;
-extern uchar reg_y_;
-extern uchar reg_p_;
-extern uchar reg_s_;
-#endif
+extern uint32 reg_pc;
+extern uchar reg_a;
+extern uchar reg_x;
+extern uchar reg_y;
+extern uchar reg_p;
+extern uchar reg_s;
 
 // These are the main h6280 register, reg_p is the flag register
 

@@ -17,13 +17,10 @@ uint8_t current_fb;
 uchar* XBuf = NULL;
 uchar* osd_gfx_buffer = NULL;
 
-static uint totalElapsedTime = 0;
-static uint emulatedFrames = 0;
-static uint skippedFrames = 0;
-static uint fullFrames = 0;
 static uint frameTime = 0;
+uint skipFrames = 0;
 
-bool skipFrame;
+extern uchar *SPM_raw, *SPM;
 
 static odroid_video_frame frame1;
 static odroid_video_frame frame2;
@@ -32,6 +29,85 @@ static bool gfx_init_done = false;
 
 #define COLOR_RGB(r,g,b) ( (((r)<<12)&0xf800) + (((g)<<7)&0x07e0) + (((b)<<1)&0x001f) )
 
+#if 0
+#define PCENGINE_GAME_WIDTH  352
+#define PCENGINE_GAME_HEIGHT 240
+#define PCENGINE_REMOVE_X 16
+#define XBUF_WIDTH  (536 + 32 + 32)
+
+extern uchar *Pal;
+extern uchar *SPM;
+
+void ili9341_write_frame_pcengine_mode0(uint8_t* buffer, uint16_t* pal)
+{
+    // ili9341_write_frame_rectangleLE(0,0,300,240, buffer -32);
+#if 0
+    uint8_t* framePtr = buffer + PCENGINE_REMOVE_X;
+    uint8_t *sPtr = SPM;
+    short x, y;
+    uchar pal0 = Pal[0];
+    send_reset_drawing(0, 0, 320, 240);
+    for (y = 0; y < PCENGINE_GAME_HEIGHT; y += 4)
+    {
+      uint16_t* line_buffer = line_buffer_get();
+      uint16_t* line_buffer_ptr = line_buffer;
+      for (short i = 0; i < 4; ++i) // LINE_COUNT
+      {
+          //int index = i * displayWidth;
+          for (x = 0; x < 320; ++x)
+          {
+            uint8_t source=*framePtr;
+            *framePtr = pal0;
+            framePtr++;
+            uint16_t value1 = pal[source];
+            //line_buffer[index++] = value1;
+            *line_buffer_ptr = value1;
+            line_buffer_ptr++;
+            *sPtr = 0;
+            sPtr++;
+          }
+          framePtr+=280;
+      }
+      send_continue_line(line_buffer, 320, 4);
+    }
+    //memset(buffer, Pal[0], 240 * XBUF_WIDTH);
+    //memset(SPM, 0, 240 * XBUF_WIDTH);
+#endif
+
+    uint8_t* framePtr = buffer + PCENGINE_REMOVE_X;
+    uint8_t *sPtr = SPM;
+    short x, y;
+    uchar pal0 = Pal[0];
+    send_reset_drawing(0, 0, 320, 240);
+    for (y = 0; y < PCENGINE_GAME_HEIGHT; y += 4)
+    {
+      uint16_t* line_buffer = line_buffer_get();
+      uint16_t* line_buffer_ptr = line_buffer;
+      for (short i = 0; i < 4; ++i) // LINE_COUNT
+      {
+          for (x = 0; x < 320; ++x)
+          {
+            uint8_t source=*framePtr;
+            *framePtr = pal0;
+            framePtr++;
+            uint16_t value1 = pal[source];
+            *line_buffer_ptr = value1;
+            line_buffer_ptr++;
+            *sPtr = 0;
+            sPtr++;
+          }
+          framePtr+=280;
+          sPtr+=280;
+      }
+      send_continue_line(line_buffer, 320, 4);
+    }
+    //memset(buffer, Pal[0], 240 * XBUF_WIDTH);
+    //memset(SPM, 0, 240 * XBUF_WIDTH);
+
+    //#define MISSING ( 240 * XBUF_WIDTH - PCENGINE_GAME_HEIGHT*320)
+    //memset(sPtr, 0, MISSING);
+}
+#endif
 
 static inline void set_current_fb(int i)
 {
@@ -40,19 +116,24 @@ static inline void set_current_fb(int i)
     osd_gfx_buffer = XBuf + 32 + 64 * XBUF_WIDTH;
 }
 
-
-static void init_gfx()
+int osd_gfx_init(void)
 {
     printf("%s: (%dx%d)\n", __func__, io.screen_w, io.screen_h);
 
     forceVideoRefresh = true;
     frameTime = get_frame_time(60);
 
-    if (!framebuffers[0]) framebuffers[0] = calloc(1, XBUF_WIDTH * XBUF_HEIGHT);
-    if (!framebuffers[1]) framebuffers[1] = calloc(1, XBUF_WIDTH * XBUF_HEIGHT);
+    framebuffers[0] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
+    framebuffers[1] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
+    SPM_raw         = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
+    SPM = SPM_raw + XBUF_WIDTH * 64 + 32;
 
-    assert(framebuffers[0] && framebuffers[1]);
+    return true;
+}
 
+
+int osd_gfx_init_normal_mode(void)
+{
 	frame1.width = io.screen_w;
 	frame1.height = io.screen_h;
 	frame1.stride = XBUF_WIDTH;
@@ -68,19 +149,6 @@ static void init_gfx()
     SetPalette();
 
     gfx_init_done = true;
-}
-
-
-int osd_gfx_init(void)
-{
-    init_gfx();
-    return true;
-}
-
-
-int osd_gfx_init_normal_mode(void)
-{
-    init_gfx();
     return true;
 }
 
@@ -90,43 +158,42 @@ void osd_gfx_put_image_normal(void)
     if (!gfx_init_done) return;
 
     uint startTime = get_elapsed_time();
+    bool drawFrame = !skipFrames;
+    bool fullFrame = false;
 
-    if (skipFrame)
-    {
-        ++skippedFrames;
-    }
-    else
+    if (drawFrame)
     {
         short ret;
 
 		if (current_fb == 0)
         {
-    		ret = odroid_display_queue_update(&frame1, &frame2);
+    		ret = odroid_display_queue_update(&frame1, NULL);
             set_current_fb(1);
         }
 		else
         {
-	    	ret = odroid_display_queue_update(&frame2, &frame1);
+	    	ret = odroid_display_queue_update(&frame2, NULL);
             set_current_fb(0);
         }
 
-        if (ret == SCREEN_UPDATE_FULL) ++fullFrames;
+        fullFrame = (ret == SCREEN_UPDATE_FULL);
     }
 
-    skipFrame = !skipFrame && get_elapsed_time_since(startTime) > frameTime;
+    // See if we need to skip a frame to keep up
+    if (skipFrames == 0)
+    {
+        skipFrames = 1;
+        if (get_elapsed_time_since(startTime) > frameTime) skipFrames = 1;
+        if (speedupEnabled) skipFrames += speedupEnabled * 2.5;
+    }
+    else if (skipFrames > 0)
+    {
+        skipFrames--;
+    }
 
     // odroid_audio_submit(pcm.buf, pcm.pos >> 1);
 
-    totalElapsedTime += get_elapsed_time_since(startTime);
-    ++emulatedFrames;
-
-    if (emulatedFrames == 60)
-    {
-        odroid_system_print_stats(totalElapsedTime, emulatedFrames, skippedFrames, fullFrames);
-
-        emulatedFrames = skippedFrames = fullFrames = 0;
-        totalElapsedTime = 0;
-    }
+    odroid_system_stats_tick(!drawFrame, fullFrame);
 }
 
 

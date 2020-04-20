@@ -211,8 +211,6 @@ int UCount = 0;
 //! Whether we should change video mode after drawing the current frame
 int gfx_need_video_mode_change = 0;
 
-#ifndef MY_INLINE_GFX
-
 void gfx_init()
 {
     UCount = 0;
@@ -220,28 +218,14 @@ void gfx_init()
     gfx_need_redraw = 0;
 }
 
-void
-save_gfx_context_(int slot_number)
+inline void
+save_gfx_context(int slot_number)
 {
-
 	gfx_context *destination_context;
 
 	destination_context = saved_gfx_context + slot_number;
 
 	if (slot_number == 0) {
-		/*
-		   if ((destination_context->scroll_x == ScrollX) &&
-		   (destination_context->scroll_y == ScrollY) &&
-		   (destination_context->scroll_y_diff == ScrollYDiff) &&
-		   (destination_context->cr == IO_VDC_05_CR.W)) {
-
-		   #if ENABLE_TRACING_GFX
-		   TRACE("Canceled primary context saving, nothing changed");
-		   #endif
-		   return;
-		   }
-		 */
-
 		if (gfx_need_redraw == 0)
 			gfx_need_redraw = 1;
 		else {					// Context is already saved + we haven't render the line using it
@@ -268,10 +252,9 @@ save_gfx_context_(int slot_number)
 }
 
 
-void
-load_gfx_context_(int slot_number)
+static inline void
+load_gfx_context(int slot_number)
 {
-
 	gfx_context *source_context;
 
 	if (slot_number >= MAX_GFX_CONTEXT_SLOT_NUMBER) {
@@ -290,18 +273,15 @@ load_gfx_context_(int slot_number)
 	TRACE("Restoring context %d, scroll = (%d,%d,%d), CR = 0x%02d\n",
 		slot_number, ScrollX, ScrollY, ScrollYDiff, IO_VDC_05_CR.W);
 }
-#endif
 
-#ifndef MY_INLINE_GFX
 //! render lines
 /*
 	render lines into the buffer from min_line to max_line, inclusive
 				Refresh* draw things from min to max line given, with max exclusive
 */
-void
+static inline void
 render_lines(int min_line, int max_line)
 {
-
 #if !defined(FINAL_RELEASE)
 	//printf("render lines %3d - %3d in %s\n", min_line, max_line, __FILE__);
 #endif
@@ -310,43 +290,21 @@ render_lines(int min_line, int max_line)
 
 	load_gfx_context(0);
 
-    if (!skipFrame)
 	if (!UCount) {				//Either we're in frameskip = 0 or we're in the frame to draw
 		if (SpriteON && SPONSwitch)
-#ifdef MY_INLINE_SPRITE
-        {
-            int Y1 = last_display_counter;
-            int Y2 = display_counter;
-            uchar bg = 0;
-            #include "sprite_RefreshSpriteExact.h"
-        }
-#else
-            RefreshSpriteExact(min_line, max_line - 1, 0);
-#endif
+			RefreshSpriteExact(min_line, max_line - 1, 0);
 
-        RefreshLine(min_line, max_line - 1);
+		RefreshLine(min_line, max_line - 1);
 
 		if (SpriteON && SPONSwitch)
-#ifdef MY_INLINE_SPRITE
-        {
-            int Y1 = last_display_counter;
-            int Y2 = display_counter;
-            uchar bg = 1;
-            #include "sprite_RefreshSpriteExact.h"
-        }
-#else
-            RefreshSpriteExact(min_line, max_line - 1, 1);
-#endif
+			RefreshSpriteExact(min_line, max_line - 1, 1);
 	}
 
 	load_gfx_context(1);
 
 	gfx_need_redraw = 0;
 }
-#endif
 
-
-#ifndef MY_INLINE_GFX_Loop6502
 
 //! Rewritten version of Loop6502 from scratch, called when each line drawing should occur
 /* TODO:
@@ -429,11 +387,11 @@ Loop6502()
 			if (gfx_need_redraw) {
 				// && scanline > io.vdc_min_display)
 				// We got render things before being on the second line
-#ifdef MY_INLINE_GFX
-                #include "gfx_render_lines.h"
-#else
-                render_lines(last_display_counter, display_counter);
-#endif
+
+				if (skipFrames == 0) {
+                	render_lines(last_display_counter, display_counter);
+				}
+
 				last_display_counter = display_counter;
 			}
 			display_counter++;
@@ -442,11 +400,9 @@ Loop6502()
 		if (scanline == 14 + 242) {
 			save_gfx_context(0);
 
-#ifdef MY_INLINE_GFX
-            #include "gfx_render_lines.h"
-#else
-            render_lines(last_display_counter, display_counter);
-#endif
+			if (skipFrames == 0) {
+            	render_lines(last_display_counter, display_counter);
+			}
 
 			if (video_dump_flag) {
 				if (video_dump_countdown)
@@ -543,19 +499,6 @@ Loop6502()
     ODROID_DEBUG_PERF_INCR2(debug_perf_part1, ODROID_DEBUG_PERF_LOOP6502)
 	return INT_NONE;
 }
-#else
-/*
-GFX_Loop6502_Init
-
-inline uchar
-Loop6502_2()
-{
-char I;
-#include "gfx_Loop6502.h"
-return I;
-}
-*/
-#endif
 
 int video_dump_flag = 0;
 

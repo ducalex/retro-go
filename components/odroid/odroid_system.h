@@ -8,6 +8,7 @@
 #include "odroid_sdcard.h"
 #include "odroid_settings.h"
 #include "esp_system.h"
+#include "esp_heap_caps.h"
 #include "esp_timer.h"
 #include "stdbool.h"
 
@@ -64,11 +65,12 @@ void odroid_system_switch_app(int app);
 void odroid_system_reload_app();
 void odroid_system_set_boot_app(int slot);
 void odroid_system_set_led(int value);
-void odroid_system_print_stats(uint ccount, uint frames, uint skippedFrames, uint fullFrames);
+void odroid_system_stats_tick(bool frameSkipped, bool fullFrame);
 char* odroid_system_get_path(char *romPath, emu_path_type_t type);
 
 void odroid_system_spi_lock_acquire(spi_lock_res_t);
 void odroid_system_spi_lock_release(spi_lock_res_t);
+
 
 static inline uint get_frame_time(uint refresh_rate)
 {
@@ -87,4 +89,58 @@ static inline uint get_elapsed_time_since(uint start)
      // uint now = get_elapsed_time();
      // return ((now > start) ? now - start : ((uint64_t)now + (uint64_t)0xffffffff) - start);
      return get_elapsed_time() - start;
+}
+
+
+// Perhaps the following functions shouldn't be inline, it's not performance-critical?
+
+#define MEM_ANY   0
+#define MEM_SLOW  MALLOC_CAP_SPIRAM
+#define MEM_FAST  MALLOC_CAP_INTERNAL
+#define MEM_DMA   MALLOC_CAP_DMA
+#define MEM_8BIT  MALLOC_CAP_8BIT
+#define MEM_32BIT MALLOC_CAP_32BIT
+
+static inline void *rg_alloc(size_t size, uint32_t caps)
+{
+     void *ptr;
+
+     if (!(caps & MALLOC_CAP_32BIT))
+     {
+          caps |= MALLOC_CAP_8BIT;
+     }
+
+     ptr = heap_caps_calloc(1, size, caps);
+
+     printf("RG_ALLOC: SIZE: %u  [SPIRAM: %u; 32BIT: %u; DMA: %u]  PTR: %p\n",
+               size, (caps & MALLOC_CAP_SPIRAM) != 0, (caps & MALLOC_CAP_32BIT) != 0,
+               (caps & MALLOC_CAP_DMA) != 0, ptr);
+
+     if (!ptr)
+     {
+          if ((caps & MALLOC_CAP_DMA))
+          {
+               printf("        - INFO: CAPS not met and DMA was requested, aborting.\n");
+          }
+          else
+          {
+               printf("        - INFO: CAPS not met, trying removing SPIRAM|INTERNAL caps\n");
+               ptr = heap_caps_calloc(1, size, caps & ~(MALLOC_CAP_SPIRAM|MALLOC_CAP_INTERNAL));
+          }
+     }
+
+     if (!ptr)
+     {
+          printf("        - ERROR: Memory allocation failed\n");
+          // This could fail, but let's try
+          odroid_system_panic("Memory allocation failed!");
+          abort();
+     }
+
+     return ptr;
+}
+
+static inline void rg_free(void *ptr)
+{
+     return heap_caps_free(ptr);
 }

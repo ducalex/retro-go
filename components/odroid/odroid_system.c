@@ -24,6 +24,15 @@ static state_handler_t resetState;
 static SemaphoreHandle_t spiMutex;
 static int16_t spiMutexOwner;
 
+static struct {
+    uint total;
+    uint skipped;
+    uint full;
+    uint resetTime;
+} frameCounter;
+
+static void odroid_system_stats_task(void *arg);
+
 static void odroid_system_gpio_init()
 {
     rtc_gpio_deinit(ODROID_GAMEPAD_IO_MENU);
@@ -92,6 +101,8 @@ void odroid_system_init(int appId, int sampleRate)
         odroid_settings_StartAction_set(ODROID_START_ACTION_RESUME);
     }
 
+    xTaskCreate(&odroid_system_stats_task, "statistics", 2048, NULL, 7, NULL);
+
     printf("odroid_system_init: System ready!\n");
 }
 
@@ -157,7 +168,7 @@ uint odroid_system_get_start_action()
 char* odroid_system_get_path(char *_romPath, emu_path_type_t type)
 {
     char* fileName = strstr(_romPath ?: romPath, ODROID_BASE_PATH_ROMS);
-    char *buffer = malloc(128); // Lazy arbitrary length...
+    char *buffer = malloc(256); // Lazy arbitrary length...
 
     if (!fileName || strlen(fileName) < 4)
     {
@@ -297,7 +308,7 @@ void odroid_system_set_boot_app(int slot)
 
 void odroid_system_panic(const char *reason)
 {
-    printf("PANIC: %s\n", reason);
+    printf(" *** PANIC: %s *** \n", reason);
 
     // Here we should stop unecessary tasks
 
@@ -336,18 +347,38 @@ void odroid_system_set_led(int value)
     gpio_set_level(GPIO_NUM_2, value);
 }
 
-void odroid_system_print_stats(uint us, uint frames, uint skippedFrames, uint fullFrames)
+static void odroid_system_stats_task(void *arg)
 {
-    float seconds = (float)us / 1000000.f;
-    float fps = frames / seconds;
+    while (1)
+    {
+        float seconds = (float)get_elapsed_time_since(frameCounter.resetTime) / 1000000.f;
+        float fps = frameCounter.total / seconds;
 
-    odroid_battery_state battery = odroid_input_battery_read();
+        odroid_battery_state battery = odroid_input_battery_read();
 
-    printf("HEAP:%d+%d, FPS:%f, SKIP:%d, FULL:%d, BATTERY:%d\n",
-        heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
-        heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024,
-        fps, skippedFrames, fullFrames,
-        battery.millivolts);
+        printf("HEAP:%d+%d, FPS:%f (SKIP:%d, PART:%d, FULL:%d), BATTERY:%d\n",
+            heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
+            heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024,
+            fps,
+            frameCounter.skipped,
+            frameCounter.total - frameCounter.full - frameCounter.skipped,
+            frameCounter.full,
+            battery.millivolts);
+
+        frameCounter.total = frameCounter.skipped = frameCounter.full = 0;
+        frameCounter.resetTime = get_elapsed_time();
+
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+
+    vTaskDelete(NULL);
+}
+
+void IRAM_ATTR odroid_system_stats_tick(bool frameSkipped, bool fullFrame)
+{
+    if (frameSkipped) frameCounter.skipped++;
+    else if (fullFrame) frameCounter.full++;
+    frameCounter.total++;
 }
 
 void IRAM_ATTR odroid_system_spi_lock_acquire(spi_lock_res_t owner)

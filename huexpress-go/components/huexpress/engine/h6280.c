@@ -12,85 +12,6 @@
 #include "pce.h"
 #include "utils.h"
 
-#ifdef MY_INLINE_IO_ReadWrite
-#undef IO_write
-#undef IO_read
-
-#define IO_write(A,V) IO_write_inline(A,V)
-#define IO_read(A) IO_read_inline(A)
-
-extern int scroll;
-extern int return_value_mask_tab_0002[32];
-extern int return_value_mask_tab_0003[32];
-extern int return_value_mask_tab_0400[8];
-extern int return_value_mask_tab_0800[16];
-extern int return_value_mask_tab_0c00[2];
-extern int return_value_mask_tab_1400[4];
-
-inline int
-return_value_mask_inline(uint16 A)
-{
-    if (A < 0x400)              // VDC
-    {
-        if ((A & 0x3) == 0x02) {
-            return return_value_mask_tab_0002[io.vdc_reg];
-        } else if ((A & 0x3) == 0x03) {
-            return return_value_mask_tab_0003[io.vdc_reg];
-        } else
-            return 0xFF;
-    }
-
-    if (A < 0x800)              // VCE
-        return return_value_mask_tab_0400[A & 0x07];
-
-    if (A < 0xC00)              /* PSG */
-        return return_value_mask_tab_0800[A & 0x0F];
-
-    if (A < 0x1000)             /* Timer */
-        return return_value_mask_tab_0c00[A & 0x01];
-
-    if (A < 0x1400)             /* Joystick / IO port */
-        return 0xFF;
-
-    if (A < 0x1800)             /* Interruption acknowledgement */
-        return return_value_mask_tab_1400[A & 0x03];
-
-    /* We don't know for higher ports */
-    return 0xFF;
-}
-
-inline void
-IO_write_inline(uint16 A, uchar V)
-{
-#include "IO_write.h"
-}
-
-inline uchar
-IO_read_raw_inline(uint16 A)
-{
-#include "IO_read_raw.h"
-}
-
-inline uchar
-IO_read_inline(uint16 A)
-{
-    int mask;
-    uchar temporary_return_value;
-
-    if ((A < 0x800) || (A >= 0x1800))   // latch isn't affected out of the 0x800 - 0x1800 range
-        return IO_read_raw_inline(A);
-
-    mask = return_value_mask_inline(A);
-
-    temporary_return_value = IO_read_raw_inline(A);
-
-    io.io_buffer = temporary_return_value | (io.io_buffer & ~mask);
-
-    return io.io_buffer;
-}
-#endif
-
-
 #ifdef MY_INLINE
 #define imm_operand(addr) ((uchar) (PageR[(unsigned short int)(addr >> 13)][addr]))
 #define get_8bit_addr(addr) get_8bit_addr_(addr)
@@ -146,9 +67,7 @@ one_bit_set(uchar arg)
 #endif
 
 // flag-value table (for speed)
-//DRAM_ATTR uchar *flnz_list;
-// much faster
-/*DRAM_ATTR*/ uchar flnz_list[256] = {
+uchar flnz_list[256] = {
 	FL_Z, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	// 00-0F
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -423,20 +342,6 @@ dump_pce_core()
 }
 
 
-#ifdef BENCHMARK
-/* code copied from utils.c */
-#include <sys/time.h>
-static double
-osd_getTime(void)
-{
-	struct timeval tp;
-
-	gettimeofday(&tp, NULL);
-	// printf("current microsec = %f\n",tp.tv_sec + 1e-6 * tp.tv_usec);
-	return tp.tv_sec + 1e-6 * tp.tv_usec;
-}
-#endif
-
 // Execute instructions as a machine would, including all
 // important (known) interrupts, hardware functions, and
 // actual video display on the hardware
@@ -451,27 +356,12 @@ osd_getTime(void)
 void
 exe_go(void)
 {
-/*    flnz_list = (uchar *)my_special_alloc(false, 1,256);
-    {
-        memset(flnz_list,0,256);
-        flnz_list[0] = FL_Z;
-        for (int i = 0x80;i<256;i++)
-            flnz_list[i] = FL_N;
-    }
-  */  gfx_init();
+  	gfx_init();
 	//int err = 0;
 	uchar I;
-	GFX_Loop6502_Init
 
 #if defined(KERNEL_DEBUG)
 	uint16 old_reg_pc;
-#endif
-
-#ifdef BENCHMARK
-	static int countNb = 8;		/* run for 8 * 65536 scan lines */
-	static int countScan = 0;	/* scan line counter */
-	static double startTime;
-    startTime = lastTime = osd_getTime();
 #endif
 
 	// err is set on a 'trap':
@@ -540,16 +430,6 @@ exe_go(void)
 
 		   }
 		 */
-
-#if defined(SHARED_MEMORY)
-		if (external_control_cpu >= 0) {
-			while (external_control_cpu == 0) {
-				usleep(1);
-			}
-			if (external_control_cpu > 0)
-				external_control_cpu--;
-		}
-#endif
 
 #if defined(KERNEL_DEBUG)
 		old_reg_pc = reg_pc;
@@ -629,22 +509,6 @@ exe_go(void)
 		// HSYNC stuff - count cycles:
 		if (cycles > 455) {
 
-#ifdef BENCHMARK
-			countScan++;
-			if ((countScan & 0xFFFF) == 0) {
-				double currentTime = osd_getTime();
-				printf("%f\n", currentTime - lastTime);
-				lastTime = currentTime;
-				countNb--;
-				if (countNb == 0)
-				{
-				    printf("RESULT: %f\n", currentTime - startTime);
-				    esp_restart();
-                    //abort();
-                }
-			}
-#endif
-
 /*
       Log("Horizontal sync, cycles = %d, cycleNew = %d\n",
           cycles,
@@ -655,14 +519,9 @@ exe_go(void)
 			// scanline++;
 
 			// Log("Calling periodic handler\n");
-#ifdef MY_INLINE_GFX_Loop6502
-{
-            #include "gfx_Loop6502.h"
-            //I = Loop6502_2();     /* Call the periodic handler */
-}
-#else
+
 			I = Loop6502();		/* Call the periodic handler */
-#endif
+
             ODROID_DEBUG_PERF_START2(debug_perf_int)
 			// _ICount += _IPeriod;
 			/* Reset the cycle counter */
@@ -715,10 +574,6 @@ exe_go(void)
 
 #else
 
-#ifdef MY_h6280_ON_CPU0
-#include "h6280_exe_go_multi.h"
-#else
 #include "h6280_exe_go.h"
-#endif
 
 #endif

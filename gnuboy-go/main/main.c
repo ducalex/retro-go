@@ -37,12 +37,8 @@ static odroid_video_frame update1 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF,
 static odroid_video_frame update2 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, NULL, NULL, 0};
 static odroid_video_frame *currentUpdate = &update1;
 
-static uint totalElapsedTime = 0;
-static uint emulatedFrames = 0;
-static uint skippedFrames = 0;
-static uint fullFrames = 0;
-
-static bool skipFrame = true;
+static bool fullFrame = false;
+static uint skipFrames = 0;
 
 static bool netplay = false;
 
@@ -75,9 +71,9 @@ static void netplay_callback(netplay_event_t event, void *arg)
 }
 
 
-void run_to_vblank()
+void run_to_vblank(bool draw)
 {
-    fb.enabled = !skipFrame;
+    fb.enabled = draw;
     pcm.pos = 0;
 
     /* FIXME: djudging by the time specified this was intended
@@ -94,14 +90,11 @@ void run_to_vblank()
     }
 
     /* VBLANK BEGIN */
-    if (!skipFrame)
+    if (draw)
     {
         odroid_video_frame *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
 
-        if (odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL)
-        {
-            ++fullFrames;
-        }
+        fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
 
         // swap buffers
         currentUpdate = previousUpdate;
@@ -164,7 +157,7 @@ static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
     if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
         odroid_settings_Palette_set(pal);
         pal_set_dmg(pal);
-        run_to_vblank();
+        run_to_vblank(true);
     }
 
     if (pal == 0) strcpy(option->value, "GBC");
@@ -243,20 +236,13 @@ void app_main(void)
 {
     printf("gnuboy (%s-%s).\n", COMPILEDATE, GITREV);
 
-    // Do before odroid_system_init to make sure we get the caps requested
-    update1.buffer = heap_caps_calloc(GB_WIDTH * GB_HEIGHT, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
-    update2.buffer = heap_caps_calloc(GB_WIDTH * GB_HEIGHT, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
-    audioBuffer    = heap_caps_calloc(AUDIO_BUFFER_LENGTH * 2, 2, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
-
     // Init all the console hardware
     odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     odroid_system_emu_init(&LoadState, &SaveState, &netplay_callback);
 
-    // Do the check after screen init so we can display an error
-    if (!update1.buffer || !update2.buffer || !audioBuffer)
-    {
-        odroid_system_panic("Buffer allocation failed.");
-    }
+    update1.buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
+    update2.buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
+    audioBuffer    = rg_alloc(AUDIO_BUFFER_LENGTH * 2 * 2, MEM_DMA);
 
     saveSRAM = odroid_settings_app_int32_get(NVS_KEY_SAVE_SRAM, 0);
 
@@ -322,6 +308,7 @@ void app_main(void)
         }
 
         uint startTime = get_elapsed_time();
+        bool drawFrame = !skipFrames;
 
         pad_set(PAD_UP, joystick.values[ODROID_INPUT_UP]);
         pad_set(PAD_RIGHT, joystick.values[ODROID_INPUT_RIGHT]);
@@ -332,11 +319,7 @@ void app_main(void)
         pad_set(PAD_A, joystick.values[ODROID_INPUT_A]);
         pad_set(PAD_B, joystick.values[ODROID_INPUT_B]);
 
-        if (skipFrame) {
-            ++skippedFrames;
-        }
-
-        run_to_vblank();
+        run_to_vblank(drawFrame);
 
         if (saveSRAM)
         {
@@ -353,23 +336,20 @@ void app_main(void)
             }
         }
 
-        skipFrame = !skipFrame && get_elapsed_time_since(startTime) > frameTime;
+        if (skipFrames == 0)
+        {
+            if (get_elapsed_time_since(startTime) > frameTime) skipFrames = 1;
+            if (speedupEnabled) skipFrames += speedupEnabled * 2;
+        }
+        else if (skipFrames > 0)
+        {
+            skipFrames--;
+        }
 
-        if (speedupEnabled) {
-            skipFrame = emulatedFrames % (speedupEnabled * 4);
-        } else {
+        if (!speedupEnabled) {
             odroid_audio_submit(pcm.buf, pcm.pos >> 1);
         }
 
-        totalElapsedTime += get_elapsed_time_since(startTime);
-        ++emulatedFrames;
-
-        if (emulatedFrames == 60)
-        {
-            odroid_system_print_stats(totalElapsedTime, emulatedFrames, skippedFrames, fullFrames);
-
-            emulatedFrames = skippedFrames = fullFrames = 0;
-            totalElapsedTime = 0;
-        }
+        odroid_system_stats_tick(!drawFrame, fullFrame);
     }
 }

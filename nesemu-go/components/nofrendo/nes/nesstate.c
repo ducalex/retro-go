@@ -445,8 +445,6 @@ int state_load(char* fn)
 
    ASSERT(machine);
 
-   printf("state_load: fn='%s'\n", fn);
-
    /* open our file for reading */
    status = SNSS_OpenFile(&snssFile, fn, SNSS_OPEN_READ);
    if (SNSS_OK != status)
@@ -455,6 +453,7 @@ int state_load(char* fn)
        return -1; //goto _error;
   }
 
+   printf("state_load: file '%s' opened.\n", fn);
 
    /* iterate through all present blocks */
    printf("state_load: snssFile->headerBlock.numberOfBlocks=%d\n", snssFile->headerBlock.numberOfBlocks);

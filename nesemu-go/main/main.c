@@ -39,7 +39,7 @@ static odroid_gamepad_state *remoteJoystick = &joystick2;
 static uint overscan = 0;
 static bool netplay = false;
 
-uint fullFrames = 0;
+bool fullFrame = 0;
 // --- MAIN
 
 
@@ -285,10 +285,7 @@ void IRAM_ATTR osd_blitscreen(bitmap_t *bmp)
    currentUpdate->buffer = bmp->line[overscan];
    currentUpdate->stride = bmp->pitch;
 
-   if (odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL)
-   {
-      ++fullFrames;
-   }
+   fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
 
    currentUpdate = previousUpdate;
 }
@@ -358,17 +355,11 @@ void app_main(void)
 {
 	printf("nesemu (%s-%s).\n", COMPILEDATE, GITREV);
 
-   audioBuffer = heap_caps_calloc(AUDIO_SAMPLE_RATE / 50, 4, MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
-   romData     = heap_caps_malloc(1024 * 1024, MALLOC_CAP_8BIT);
-
    odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
    odroid_system_emu_init(&LoadState, &SaveState, &netplay_callback);
 
-   // Do the check after screen init so we can display an error
-   if (!romData || !audioBuffer)
-   {
-      odroid_system_panic("Buffer allocation failed.");
-   }
+   audioBuffer = rg_alloc(AUDIO_SAMPLE_RATE / 50 * 4, MEM_DMA);
+   romData     = rg_alloc(1024 * 1024, MEM_ANY);
 
    char *romPath = odroid_system_get_path(NULL, ODROID_PATH_ROM_FILE);
 

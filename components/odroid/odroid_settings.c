@@ -50,7 +50,12 @@ char* odroid_settings_string_get(const char *key, char *default_value)
 
         result = value;
 
-        printf("%s: value='%s'\n", __func__, result);
+        // printf("%s: key='%s' value='%s'\n", __func__, key, result);
+    }
+
+    if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
+    {
+        printf("%s: key='%s' err=%d\n", __func__, key, err);
     }
 
     return result;
@@ -70,24 +75,27 @@ int32_t odroid_settings_int32_get(const char *key, int32_t default_value)
     int result = default_value;
 
     esp_err_t err = nvs_get_i32(my_handle, key, &result);
-    printf("%s: key='%s' value=%d, err=%d\n", __func__, key, result, err);
-
+    if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
+    {
+        printf("%s: key='%s' err=%d\n", __func__, key, err);
+    }
     return result;
 }
 
 void odroid_settings_int32_set(const char *key, int32_t value)
 {
     int32_t current = 0;
+    esp_err_t err = ESP_OK;
     // Don't wear the flash for nothing if we can avoid it
     if (nvs_get_i32(my_handle, key, &current) != ESP_OK || current != value)
     {
-        esp_err_t err = nvs_set_i32(my_handle, key, value);
+        err = nvs_set_i32(my_handle, key, value);
         nvs_commit(my_handle);
-        printf("%s: key='%s', value=%d, err=%d\n", __func__, key, value, err);
     }
-    else
+
+    if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
     {
-        printf("%s: key='%s', same value=%d\n", __func__, key, value);
+        printf("%s: key='%s' err=%d\n", __func__, key, err);
     }
 }
 
