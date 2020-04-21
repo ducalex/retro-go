@@ -13,7 +13,7 @@
 #include "cheat.h"
 #include "debug.h"
 #include "gfx.h"
-#include "../../main/odroid_debug.h"
+
 #define WIDTH   (360+64)
 #define HEIGHT  256
 
@@ -158,9 +158,9 @@ extern uchar use_eagle;
 extern uint32 timer_60;
 // how many times do the interrupt have been called
 
-extern uchar bcdbin[0x100];
+extern const uchar bcdbin[0x100];
 
-extern uchar binbcd[0x100];
+extern const uchar binbcd[0x100];
 
 extern uint32 pce_cd_sectoraddy;
 

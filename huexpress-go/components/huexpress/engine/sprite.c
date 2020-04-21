@@ -85,6 +85,102 @@ CheckSprites(void)
 
 #include "sprite_ops_func.h"
 
+/*****************************************************************************
+
+        Function: RefreshScreen
+
+        Description: refresh screen
+        Parameters: none
+        Return: nothing
+
+*****************************************************************************/
+void
+RefreshScreen(void)
+{
+    frame += UPeriod + 1;
+#ifndef MY_EXCLUDE
+    HCD_handle_subtitle();
+#endif
+    /*
+       {
+       char* spr = SPRAM;
+       uint32 CRC = -1;
+       int index;
+       for (index = 0; index < 64 * sizeof(SPR); index++) {
+       spr[index] ^= CRC;
+       CRC >>= 8;
+       CRC ^= TAB_CONST[spr[index]];
+       }
+       Log("frame %d : CRC = %X\n", frame, CRC);
+
+       {
+       char* spr = ((uint16*)VRAM) + 2048;
+       uint32 CRC = -1;
+       int index;
+       for (index = 0; index < 64 * sizeof(SPR); index++) {
+       char tmp = spr[index];
+       tmp ^= CRC;
+       CRC >>= 8;
+       CRC ^= TAB_CONST[tmp];
+       }
+       Log("frame %d : CRC VRAM[2048-] = %X\n", frame, CRC);
+       }
+     */
+
+    (*osd_gfx_driver_list[video_driver].draw) ();
+
+#if ENABLE_TRACING_GFX
+    /*
+       Log("VRAM: %02x%02x%02x%02x %02x%02x%02x%02x\n",
+       VRAM[0],
+       VRAM[1],
+       VRAM[2],
+       VRAM[3],
+       VRAM[4],
+       VRAM[5],
+       VRAM[6],
+       VRAM[7]);
+     */
+    {
+        int index;
+        uchar tmp_data;
+        uint32 CRC = 0xFFFFFFFF;
+
+        for (index = 0; index < 0x10000; index++) {
+            tmp_data = VRAM2[index];
+            tmp_data ^= CRC;
+            CRC >>= 8;
+            CRC ^= TAB_CONST[tmp_data];
+        }
+        Log("VRAM2 CRC = %08x\n", ~CRC);
+
+        for (index = 0; index < 0x10000; index++) {
+            if (VRAM2[index] != 0)
+                Log("%04X:%08X\n", index, VRAM2[index]);
+        }
+    }
+
+    /*
+       {
+       int index;
+       uchar tmp_data;
+       unsigned int CRC = 0xFFFFFFFF;
+
+       for (index = 0; index < 256; index++) {
+       tmp_data = zp_base[index];
+       tmp_data ^= CRC;
+       CRC >>= 8;
+       CRC ^= TAB_CONST[tmp_data];
+       }
+       Log("ZP CRC = %08x\n", ~CRC);
+       }
+     */
+#endif
+    //memset(osd_gfx_buffer, Pal[0], 240 * XBUF_WIDTH);
+    // We don't clear the part out of reach of the screen blitter
+    //memset(SPM, 0, 240 * XBUF_WIDTH);
+}
+
 #ifndef MY_INLINE_SPRITE
 /*****************************************************************************
 

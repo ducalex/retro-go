@@ -116,7 +116,7 @@ int scanlines_per_frame = 263;
 //int MinLine = 0,MaxLine = 255;
 //#define MAXDISP 227
 
-char cart_name[PCE_PATH_MAX] = "";
+char cart_name[PCE_PATH_MAX];
 // Name of the file containing the ROM
 
 char short_cart_name[PCE_PATH_MAX];
@@ -155,7 +155,7 @@ char tmp_basepath[PCE_PATH_MAX];
 char video_path[PCE_PATH_MAX];
 // The place where to keep output pictures
 
-char ISO_filename[PCE_PATH_MAX] = "";
+char ISO_filename[PCE_PATH_MAX];
 // The name of the ISO file
 
 uchar force_header = 1;
@@ -214,10 +214,10 @@ static volatile uchar can_blit = 1;
 volatile uint32 message_delay = 0;
 // if different of zero, we must display the message pointed by pmessage
 
-char exit_message[256] = "";
+char exit_message[256];
 // What we must display at the end
 
-uchar binbcd[0x100] = {
+const uchar binbcd[0x100] = {
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,
 	0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
 	0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29,
@@ -231,7 +231,7 @@ uchar binbcd[0x100] = {
 };
 
 
-uchar bcdbin[0x100] = {
+const uchar bcdbin[0x100] = {
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0, 0, 0, 0,
 		0, 0,
 	0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0, 0, 0, 0,
@@ -1636,7 +1636,7 @@ CartLoad(char *name)
 	fsize &= ~0x1fff;
 
 	// read ROM
-	ROM = (uchar *)malloc(fsize);
+	ROM = (uchar *)rg_alloc(fsize, MEM_SLOW);
 	ROM_size = fsize / 0x2000;
 	fread(ROM, 1, fsize, fp);
 
@@ -1915,7 +1915,6 @@ InitPCE(char *name)
 
 	memset(VRAMS, 0, VRAMSIZE);
 
-	IOAREA = (uchar *) malloc(0x2000);
 	memset(IOAREA, 0xFF, 0x2000);
 
 	memset(vchange, 1, VRAMSIZE / 32);
@@ -2188,7 +2187,6 @@ InitPCE(char *name)
     void *mem_fast = rg_alloc(0x2000, MEM_FAST);
     int nr = 7;
     memcpy(mem_fast, ROMMapR[0], 0x2000);
-    printf("FAST MEM: %X -> %X\n", ROMMapR[0], mem_fast);
     ROMMapR[0] = mem_fast;
     ROMMapW[0] = mem_fast;
     }

@@ -279,17 +279,3 @@ extern void plane2pixel(int no);
     }                                                                                \
 }
 #endif
-
-
-#ifndef MY_INLINE_SPRITE_RefreshScreen
-extern void RefreshScreen(void);
-#else
-#define RefreshScreen() \
-    \
-    frame += UPeriod + 1; \
-    (*osd_gfx_driver_list[video_driver].draw) (); \
-    /* memset(osd_gfx_buffer, Pal[0], 240 * XBUF_WIDTH); */ \
-    /* We don't clear the part out of reach of the screen blitter */ \
-    /* memset(SPM, 0, 240 * XBUF_WIDTH); */
-
-#endif

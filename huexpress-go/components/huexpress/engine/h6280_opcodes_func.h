@@ -1,5 +1,3 @@
-#define cycles cycles_
-
 //
 // Implementation of actual opcodes:
 //

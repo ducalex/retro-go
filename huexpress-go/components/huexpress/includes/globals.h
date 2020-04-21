@@ -44,7 +44,6 @@ extern uchar * mmr;
 //
 // Globals which hold emulation-realted info:
 //
-extern uint32    cycles_;
 extern uchar   halt_flag;
 
 //

@@ -102,5 +102,6 @@ extern void RefreshLine(int Y1, int Y2);
 #ifndef MY_INLINE_SPRITE_CheckSprites
 extern int32 CheckSprites(void);
 #endif
+extern void RefreshScreen(void);
 
 #endif

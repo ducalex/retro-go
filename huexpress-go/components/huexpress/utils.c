@@ -23,7 +23,7 @@
 #if defined(__linux__)
 #include <limits.h>
 #else
-#define PATH_MAX 192
+#define PATH_MAX 255
 #define MAX_INPUT 255
 #endif
 
@@ -31,6 +31,7 @@
 #include <stdlib.h>
 
 #include "utils.h"
+#include "config.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -42,7 +43,7 @@
  * Log stuff
  *****************************************************************************/
 
-char log_filename[PATH_MAX];
+char log_filename[PCE_PATH_MAX];
 // real filename of the logging file
 // it thus also includes full path on advanced system
 

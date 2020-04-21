@@ -83,7 +83,7 @@ typedef struct tagIO {
 
 	uchar psg_ch, psg_volume, psg_lfo_freq, psg_lfo_ctrl;
 
-	uchar *psg_da_data[6];//[PSG_DIRECT_ACCESS_BUFSIZE];
+	uchar psg_da_data[6][PSG_DIRECT_ACCESS_BUFSIZE];
 	uint16 psg_da_index[6], psg_da_count[6];
 	int psg_channel_disabled[6];
 
@@ -145,10 +145,10 @@ typedef struct {
 	uchar vchange[VRAMSIZE / 32];
 	uchar vchanges[VRAMSIZE / 128];
 
-	uchar *cd_extra_mem;//[0x10000];
-	uchar *cd_extra_super_mem;//[0x30000];
-	uchar *ac_extra_mem;//[0x200000];
-	uchar *cd_sector_buffer;//[0x2000];
+	uchar cd_extra_mem[0x10];//[0x10000];
+	uchar cd_extra_super_mem[0x10];//[0x30000];
+	uchar ac_extra_mem[0x10];//[0x200000];
+	uchar cd_sector_buffer[0x10];//[0x2000];
 
 	uint32 s_scanline;
 

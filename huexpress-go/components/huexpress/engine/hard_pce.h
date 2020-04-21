@@ -205,9 +205,8 @@ extern uchar reg_s;
 
 // These are the main h6280 register, reg_p is the flag register
 
-//#define cycles (*p_cycles)
-//extern uint32 *p_cycles;
-extern uint32 cycles_;
+#define cycles (*p_cycles)
+extern uint32 *p_cycles;
 
 // Number of pc engine cycles elapsed since the resetting of the emulated console
 

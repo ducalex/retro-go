@@ -59,7 +59,7 @@ uchar *PCM;
 IO *p_io;
 
 // CD
- /**/ uchar * cd_read_buffer;
+uchar * cd_read_buffer;
 uchar *cd_sector_buffer;
 uchar *cd_extra_mem;
 uchar *cd_extra_super_mem;
@@ -100,8 +100,7 @@ uchar *trap_ram_read;
 uchar *trap_ram_write;
 
 // Miscellaneous
-///* DRAM_ATTR */ uint32 *p_cycles;
-/* DRAM_ATTR */ uint32 cycles_;
+uint32 *p_cycles;
 int32 *p_external_control_cpu;
 
 /**
@@ -124,16 +123,7 @@ uchar(*read_memory_function) (uint16) = read_memory_simple;
 void
 hard_reset_io(void)
 {
-    uchar *psg_da_data[6];
-
-    memcpy(psg_da_data, io.psg_da_data, sizeof(uchar *) * 6);
     memset(&io, 0, sizeof(IO));
-    memcpy(io.psg_da_data, psg_da_data, sizeof(uchar *) * 6);
-
-    for (int i = 0;i <6; i++)
-    {
-       memset(io.psg_da_data[i], 0, PSG_DIRECT_ACCESS_BUFSIZE);
-    }
 
     IO_VDC_reset
 }
@@ -144,10 +134,9 @@ hard_reset_io(void)
 void
 hard_init(void)
 {
-	trap_ram_read = rg_alloc(0x2000, MEM_SLOW);
-	trap_ram_write = rg_alloc(0x2000, MEM_SLOW);
-
-	assert(trap_ram_read && trap_ram_write);
+	trap_ram_read = rg_alloc(0x2000, MEM_FAST);
+	trap_ram_write = rg_alloc(0x2000, MEM_FAST);
+	IOAREA = rg_alloc(0x2000, MEM_FAST);
 
 	hard_pce = (struct_hard_pce *) rg_alloc(sizeof(struct_hard_pce), MEM_FAST);
     hard_pce->PCM   = (uchar *)rg_alloc(0x10000, MEM_SLOW);
@@ -155,22 +144,12 @@ hard_init(void)
     hard_pce->VRAM2 = (uchar *)rg_alloc(VRAMSIZE, MEM_SLOW);
     hard_pce->VRAMS = (uchar *)rg_alloc(VRAMSIZE, MEM_SLOW);
 
-    hard_pce->cd_extra_mem       =
-    hard_pce->cd_extra_super_mem =
-    hard_pce->ac_extra_mem       =
-    hard_pce->cd_sector_buffer   = (uchar *)rg_alloc(0x2000, MEM_SLOW);
-
-    for (int i = 0;i < 6; i++)
-    {
-        hard_pce->s_io.psg_da_data[i] = (uchar *)rg_alloc(PSG_DIRECT_ACCESS_BUFSIZE, MEM_SLOW);
-    }
-
 	RAM = hard_pce->RAM;
 	PCM = hard_pce->PCM;
 	WRAM = hard_pce->WRAM;
 	VRAM = hard_pce->VRAM;
 	VRAM2 = hard_pce->VRAM2;
-	VRAMS = (uchar *) hard_pce->VRAMS;
+	VRAMS = hard_pce->VRAMS;
 	vchange = hard_pce->vchange;
 	vchanges = hard_pce->vchanges;
 
@@ -187,8 +166,7 @@ hard_init(void)
 	p_cyclecount = &hard_pce->s_cyclecount;
 	p_cyclecountold = &hard_pce->s_cyclecountold;
 
-	//p_cycles = &hard_pce->s_cycles;
-	cycles_ = 0;
+	p_cycles = &hard_pce->s_cycles;
 
 	mmr = hard_pce->mmr;
 
