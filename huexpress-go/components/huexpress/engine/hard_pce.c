@@ -33,11 +33,13 @@
   * cf explanations in the header file
   **/
 
-struct_hard_pce hard_pce;
+struct_hard_pce PCE;
 
 // Memory
 uchar *IOAREA;
 uchar *TRAPRAM;
+
+uchar *VRAM2, *VRAMS;
 
 // Mapping
 uchar *PageR[8];
@@ -56,7 +58,7 @@ hard_reset(void)
     uchar *vram2 = VRAM2;
     uchar *vrams = VRAMS;
 
-    memset(&hard_pce, 0x00, sizeof(struct_hard_pce));
+    memset(&PCE, 0x00, sizeof(PCE));
     memcpy(&SaveRAM, SaveRAM_Header, sizeof(SaveRAM_Header));
 
     SuperRAM = superram;
@@ -71,8 +73,8 @@ hard_reset(void)
 void
 hard_init(void)
 {
-    VRAMS = (uchar *)rg_alloc(VRAMSIZE, MEM_FAST);
-    VRAM2 = (uchar *)rg_alloc(VRAMSIZE, MEM_FAST);
+    VRAMS = PCE.VRAMS = (uchar *)rg_alloc(VRAMSIZE, MEM_FAST);
+    VRAM2 = PCE.VRAM2 = (uchar *)rg_alloc(VRAMSIZE, MEM_FAST);
 	TRAPRAM = (uchar *)rg_alloc(0x2004, MEM_FAST);
 	IOAREA = TRAPRAM + 4;
 
@@ -368,13 +370,13 @@ IO_read_raw(uint16 A)
         }
         break;
 
-    case 0x1A00:
+    case 0x1A00:                // Arcade Card
     case 0x1AC0:
-        Log("Arcade Card not supported : 0x%04X\n", A);
+        MESSAGE_INFO("Arcade Card not supported : 0x%04X\n", A);
         break;
 
     case 0x1800:                // CD-ROM extention
-		// Log("CD Emulation not implemented : 0x%04X\n", A);
+		MESSAGE_INFO("CD Emulation not implemented : 0x%04X\n", A);
 		return 0;
     }
     return NODATA;
@@ -535,8 +537,8 @@ IO_write(uint16 A, uchar V)
                 VRAM[IO_VDC_00_MAWR.W * 2] = io.vdc_ratch;
                 VRAM[IO_VDC_00_MAWR.W * 2 + 1] = V;
 
-                plane_converted[IO_VDC_00_MAWR.W / 16] = 0;
-                sprite_converted[IO_VDC_00_MAWR.W / 64] = 0;
+                SPR_CACHE.Planes[IO_VDC_00_MAWR.W / 16] = 0;
+                SPR_CACHE.Sprites[IO_VDC_00_MAWR.W / 64] = 0;
 
                 IO_VDC_00_MAWR.W += io.vdc_inc;
 
@@ -596,8 +598,7 @@ IO_write(uint16 A, uchar V)
 
                 IO_VDC_12_LENR.W = 0xFFFF;
 
-                memset(plane_converted, 0, sizeof(plane_converted));
-                memset(sprite_converted, 0, sizeof(sprite_converted));
+                memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
 
                 /* TODO: check whether this flag can be ignored */
                 io.vdc_status |= VDC_DMAfinish;
@@ -849,12 +850,12 @@ IO_write(uint16 A, uchar V)
         }
         break;
 
-    case 0x1A00:
-		Log("Arcade Card not supported : %d into 0x%04X\n", V, A);
+    case 0x1A00:                /* Arcade Card */
+		MESSAGE_INFO("Arcade Card not supported : %d into 0x%04X\n", V, A);
         break;
 
     case 0x1800:                /* CD-ROM extention */
-		// Log("CD Emulation not implemented : %d 0x%04X\n", V, A);
+		MESSAGE_INFO("CD Emulation not implemented : %d 0x%04X\n", V, A);
         break;
     }
 
@@ -885,9 +886,7 @@ TimerInt()
 IRAM_ATTR void
 bank_set(uchar P, uchar V)
 {
-	if (V >= 0x40 && V <= 0x43) {
-		MESSAGE_DEBUG("AC pseudo bank switching !!! (mmr[%d] = %d)\n", P, V);
-    }
+    MESSAGE_DEBUG("Bank switching (mmr[%d] = %d)\n", P, V);
 
 	mmr[P] = V;
 	if (ROMMapR[V] == IOAREA) {

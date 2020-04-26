@@ -40,6 +40,12 @@ DRAM_ATTR const uchar flnz_list[256] = {
 
 #define OP_CALL_THROUGH_LOOKUP (*optable_runtime[opcode].func_exe)();
 
+// pointer to the beginning of the Zero Page area
+#define zp_base (RAM)
+
+// pointer to the beginning of the Stack Area
+#define sp_base (RAM + 0x100)
+
 // Addressing modes:
 #define imm_operand(addr) ((uchar) (PageR[(addr) >> 13][(addr)]))
 #define abs_operand(x)     get_8bit_addr(get_16bit_addr(x))

@@ -33,6 +33,14 @@ typedef struct {
  *          1 -> must be drawn verticaly flipped
  */
 
+typedef struct
+{
+	bool Planes[2048];
+	bool Sprites[512];
+} sprite_cache_t;
+
+extern sprite_cache_t SPR_CACHE;
+
 extern uchar BGONSwitch;
 /* do we have to draw background ? */
 

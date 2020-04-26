@@ -34,8 +34,6 @@ typedef struct {
 
 extern int gfx_need_video_mode_change;
 
-void change_pce_screen_height();
-
 #define MAX_GFX_CONTEXT_SLOT_NUMBER 2
 extern gfx_context saved_gfx_context[MAX_GFX_CONTEXT_SLOT_NUMBER];
 

@@ -61,7 +61,7 @@ SetPalette(void)
 }
 
 //! Computes the new screen height and eventually change the screen mode
-void
+static inline void
 change_pce_screen_height()
 {
 	//! minimal theorical line where to begin drawing
@@ -133,6 +133,7 @@ void gfx_init()
     UCount = 0;
     gfx_need_video_mode_change = 0;
     gfx_need_redraw = 0;
+    memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
 }
 
 inline void
@@ -203,14 +204,17 @@ render_lines(int min_line, int max_line)
 		save_gfx_context(1);
 		load_gfx_context(0);
 
+		// Temp hack
+		if (max_line == 239) max_line = 240;
+
 		if (SpriteON && SPONSwitch)
 		{
-			RefreshSpriteExact(min_line, max_line + 1, 0);
-			RefreshLine(min_line, max_line + 1);
-			RefreshSpriteExact(min_line, max_line + 1, 1);
+			RefreshSpriteExact(min_line, max_line, 0); // max_line + 1
+			RefreshLine(min_line, max_line); // max_line + 1
+			RefreshSpriteExact(min_line, max_line, 1);  // max_line + 1
 		}
 		else
-			RefreshLine(min_line, max_line + 1);
+			RefreshLine(min_line, max_line); // max_line + 1
 
 		load_gfx_context(1);
 	}

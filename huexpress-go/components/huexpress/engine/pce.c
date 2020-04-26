@@ -167,8 +167,7 @@ ResetPCE()
 int
 InitPCE(char *name)
 {
-	int i = 0, ROMmask;
-	char local_us_encoded_card = 0;
+	int i = 0, local_us_encoded_card = 0, ROMmask;
 
 	if (LoadCard(name))
 		return 1;
@@ -186,51 +185,88 @@ InitPCE(char *name)
 	/* TEST */
 	io.screen_w = 256;
 
+	for (i = 0; i < 0xFF; i++) {
+		ROMMapR[i] = TRAPRAM;
+		ROMMapW[i] = TRAPRAM;
+	}
+
+	// Backup RAM
+	ROMMapR[0xF7] = SaveRAM;
+	ROMMapW[0xF7] = SaveRAM;
+
+	ROMMapR[0xF8] = RAM;
+	ROMMapW[0xF8] = RAM;
+
+	// supergraphx
+	if (SuperRAM) {
+		ROMMapR[0xF9] = ROMMapW[0xF9] = SuperRAM;
+		ROMMapR[0xFA] = ROMMapW[0xFA] = SuperRAM + 0x2000;
+		ROMMapR[0xFB] = ROMMapW[0xFB] = SuperRAM + 0x4000;
+	}
+
+	ROMMapR[0xFF] = IOAREA;
+	ROMMapW[0xFF] = IOAREA;
+
+
 	uint32 CRC = CRC_buffer(ROM, ROM_size * 0x2000);
 
 	NO_ROM = 0xFFFF;
 
-	int index;
-	for (index = 0; index < KNOWN_ROM_COUNT; index++) {
-		if (CRC == kKnownRoms[index].CRC)
+	for (int index = 0; index < KNOWN_ROM_COUNT; index++) {
+		if (CRC == kKnownRoms[index].CRC) {
 			NO_ROM = index;
-	}
-
-	if (NO_ROM == 0xFFFF)
-		printf("ROM not in database: CRC=%lx\n", CRC);
-
-	if ((NO_ROM != 0xFFFF) && (kKnownRoms[NO_ROM].Flags & US_ENCODED))
-		local_us_encoded_card = 1;
-
-	if (ROM[0x1FFF] < 0xE0) {
-		Log("This rom is probably US encrypted, decrypting...\n");
-		local_us_encoded_card = 1;
-	}
-
-	if (local_us_encoded_card) {
-		uint32 x;
-		uchar inverted_nibble[16] = { 0, 8, 4, 12,
-			2, 10, 6, 14,
-			1, 9, 5, 13,
-			3, 11, 7, 15
-		};
-
-		for (x = 0; x < ROM_size * 0x2000; x++) {
-			uchar temp;
-
-			temp = ROM[x] & 15;
-
-			ROM[x] &= ~0x0F;
-			ROM[x] |= inverted_nibble[ROM[x] >> 4];
-
-			ROM[x] &= ~0xF0;
-			ROM[x] |= inverted_nibble[temp] << 4;
+			break;
 		}
 	}
 
-	// For example with Devil Crush 512Ko
-	if ((NO_ROM != 0xFFFF) && (kKnownRoms[NO_ROM].Flags & TWO_PART_ROM))
-		ROM_size = 0x30;
+	if (NO_ROM == 0xFFFF)
+	{
+		MESSAGE_INFO("ROM not in database: CRC=%lx\n", CRC);
+	}
+	else
+	{
+		MESSAGE_INFO("Rom Name: %s\n", kKnownRoms[NO_ROM].Name);
+		MESSAGE_INFO("Publisher: %s\n", kKnownRoms[NO_ROM].Publisher);
+
+		// US Encrypted
+		if ((kKnownRoms[NO_ROM].Flags & US_ENCODED) || ROM[0x1FFF] < 0xE0)
+		{
+			MESSAGE_INFO("This rom is probably US encrypted, decrypting...\n");
+
+			uchar inverted_nibble[16] = {
+				0, 8, 4, 12, 2, 10, 6, 14,
+				1, 9, 5, 13, 3, 11, 7, 15
+			};
+
+			for (uint32 x = 0; x < ROM_size * 0x2000; x++) {
+				uchar temp = ROM[x] & 15;
+
+				ROM[x] &= ~0x0F;
+				ROM[x] |= inverted_nibble[ROM[x] >> 4];
+
+				ROM[x] &= ~0xF0;
+				ROM[x] |= inverted_nibble[temp] << 4;
+			}
+		}
+
+		// For example with Devil Crush 512Ko
+		if (kKnownRoms[NO_ROM].Flags & TWO_PART_ROM)
+			ROM_size = 0x30;
+
+		// Hu Card with onboard RAM
+		if (kKnownRoms[NO_ROM].Flags & POPULOUS)
+		{
+			MESSAGE_INFO("Special Rom: Populous detected!\n");
+			if (!ExtraRAM)
+				ExtraRAM = (uchar*)rg_alloc(0x8000, MEM_FAST);
+
+			ROMMapR[0x40] = ROMMapW[0x40] = ExtraRAM;
+			ROMMapR[0x41] = ROMMapW[0x41] = ExtraRAM + 0x2000;
+			ROMMapR[0x42] = ROMMapW[0x42] = ExtraRAM + 0x4000;
+			ROMMapR[0x43] = ROMMapW[0x43] = ExtraRAM + 0x6000;
+		}
+	}
+
 
 	ROMmask = 1;
 	while (ROMmask < ROM_size)
@@ -238,11 +274,6 @@ InitPCE(char *name)
 	ROMmask--;
 
 	MESSAGE_DEBUG("ROMmask=%02X, ROM_size=%02X\n", ROMmask, ROM_size);
-
-	for (i = 0; i < 0xFF; i++) {
-		ROMMapR[i] = TRAPRAM;
-		ROMMapW[i] = TRAPRAM;
-	}
 
 	for (i = 0; i < 0x80; i++) {
 		if (ROM_size == 0x30) {
@@ -268,81 +299,6 @@ InitPCE(char *name)
 			ROMMapR[i] = ROM + (i & ROMmask) * 0x2000;
 		}
 	}
-
-	if (NO_ROM != 0xFFFF) {
-		MESSAGE_INFO("Rom Name: %s\n", kKnownRoms[NO_ROM].Name);
-		MESSAGE_INFO("Publisher: %s\n", kKnownRoms[NO_ROM].Publisher);
-
-		if (kKnownRoms[NO_ROM].Flags & POPULOUS) {
-			MESSAGE_INFO("Special Rom: Populous detected!\n");
-			if (!ExtraRAM)
-				ExtraRAM = (uchar*)rg_alloc(0x8000, MEM_FAST);
-
-			ROMMapR[0x40] = ExtraRAM;
-			ROMMapR[0x41] = ExtraRAM + 0x2000;
-			ROMMapR[0x42] = ExtraRAM + 0x4000;
-			ROMMapR[0x43] = ExtraRAM + 0x6000;
-
-			ROMMapW[0x40] = ExtraRAM;
-			ROMMapW[0x41] = ExtraRAM + 0x2000;
-			ROMMapW[0x42] = ExtraRAM + 0x4000;
-			ROMMapW[0x43] = ExtraRAM + 0x6000;
-		}
-
-		if (kKnownRoms[NO_ROM].Flags & CD_SYSTEM) {
-			uint16 offset = 0;
-			uchar new_val = 0;
-
-			switch(kKnownRoms[NO_ROM].CRC) {
-				case 0X3F9F95A4:
-					// CD-ROM SYSTEM VER. 1.00
-					offset = 56254;
-					new_val = 17;
-					break;
-				case 0X52520BC6:
-				case 0X283B74E0:
-					// CD-ROM SYSTEM VER. 2.00
-					// CD-ROM SYSTEM VER. 2.10
-					offset = 51356;
-					new_val = 128;
-					break;
-				case 0XDD35451D:
-				case 0XE6F16616:
-					// CD ROM 2 SYSTEM 3.0
-					// SUPER CD-ROM2 SYSTEM VER. 3.00
-					// SUPER CD-ROM2 SYSTEM VER. 3.00
-					offset = 51401;
-					new_val = 128;
-					break;
-			}
-
-			if (offset > 0)
-				ROMMapW[0xE1][offset & 0x1fff] = new_val;
-		}
-	} else {
-		MESSAGE_ERROR("Unknown ROM\n");
-	}
-
-	// Backup RAM
-	ROMMapR[0xF7] = SaveRAM;
-	ROMMapW[0xF7] = SaveRAM;
-
-	ROMMapR[0xF8] = RAM;
-	ROMMapW[0xF8] = RAM;
-
-	// supergraphx
-	if (SuperRAM) {
-		ROMMapR[0xF9] = SuperRAM;
-		ROMMapR[0xFA] = SuperRAM + 0x2000;
-		ROMMapR[0xFB] = SuperRAM + 0x4000;
-
-		ROMMapW[0xF9] = SuperRAM;
-		ROMMapW[0xFA] = SuperRAM + 0x2000;
-		ROMMapW[0xFB] = SuperRAM + 0x4000;
-	}
-
-	ROMMapR[0xFF] = IOAREA;
-	ROMMapW[0xFF] = IOAREA;
 
 	return 0;
 }
@@ -386,9 +342,6 @@ TrashPCE()
 {
 	// Set volume to zero
 	io.psg_volume = 0;
-
-	if (TRAPRAM)
-		free(TRAPRAM);
 
 	if (ROM)
 		free(ROM);

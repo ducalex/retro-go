@@ -31,6 +31,11 @@
 #endif
 
 
+// These array are boolean array to know if we must update the
+// corresponding linear sprite representation in VRAM2 and VRAMS or not
+// if (SPR_CACHE.Sprites[5] == 0) 6th pattern in VRAM2 must be updated
+sprite_cache_t SPR_CACHE;
+
 uchar BGONSwitch = 1;
 // do we have to draw background ?
 
@@ -38,9 +43,6 @@ uchar SPONSwitch = 1;
 // Do we have to draw sprites ?
 
 uchar sprite_usespbg = 0;
-
-// uint32 spr_init_pos[1024];
-// cooked initial position of sprite
 
 int ScrollYDiff;
 int oldScrollX;
@@ -464,8 +466,8 @@ RefreshLine(int Y1, int Y2)
 
             no &= 0x7FF;
 
-            if (plane_converted[no] == 0) {
-                plane_converted[no] = 1;
+            if (SPR_CACHE.Planes[no] == 0) {
+                SPR_CACHE.Planes[no] = 1;
                 plane2pixel(no);
             }
 
@@ -677,26 +679,6 @@ PutSpriteMakeMask(uchar * P, uchar * C, uchar * C2, uchar * R, int16 h,
 		J = (C[0] + (C[1] << 8)) | (C[32] + (C[33] << 8)) | (C[64]
 			+ (C[65] << 8)) | (C[96] + (C[97] << 8));
 
-#if 0
-		if ((uint16) J !=
-			(uint16) ((C[0] + (C[1] << 8)) | (C[32] + (C[33] << 8))
-			| (C[64] + (C[65] << 8)) | (C[92] + (C[93] << 8)))) {
-			Log("J != ... ( 0x%x != 0x%x )\n", J,
-				(C[0] + (C[1] << 8)) | (C[32] + (C[33] << 8)) | (C[64]
-				+ (C[65] << 8)) | (C[92] + (C[93] << 8)));
-			Log("((uint16 *) C)[0] = %x\t(C[0] + (C[1] << 8)) = %x\n",
-				((uint16 *) C)[0], (C[0] + (C[1] << 8)));
-			Log("((uint16 *) C)[16] = %x\t(C[32] + (C[33] << 8)) = %x\n",
-				((uint16 *) C)[16], (C[32] + (C[33] << 8)));
-			Log("((uint16 *) C)[32] = %x\t(C[64] + (C[65] << 8)) = %x\n",
-				((uint16 *) C)[32], (C[64] + (C[65] << 8)));
-			Log("((uint16 *) C)[48] = %x\t(C[92] + (C[93] << 8)) = %x\n",
-				((uint16 *) C)[48], (C[92] + (C[93] << 8)));
-			Log("& ((uint16 *) C)[48] = %p\t&C[92] = %p\n",
-				&((uint16 *) C)[48], &C[92]);
-		}
-#endif
-
 		if (!J)
 			continue;
 		/* L = C2[1];        *///sp2pixel(C+1);
@@ -831,8 +813,8 @@ RefreshSpriteExact(int Y1, int Y2, uchar bg)
 
         uchar* R = &SPal[(atr & 15) * 16];
         for (i = 0; i < cgy * 2 + cgx + 1; i++) {
-            if (sprite_converted[no + i] == 0) {
-                sprite_converted[no + i] = 1;
+            if (SPR_CACHE.Sprites[no + i] == 0) {
+                SPR_CACHE.Sprites[no + i] = 1;
                 sp2pixel(no + i);
             }
             if (!cgx)

@@ -4,7 +4,7 @@
 /*                                                                         */
 /* This header deals with definition of structure and functions used to    */
 /* handle the pc engine hardware in itself (RAM, IO ports, ...) which were */
-/* previously found in pce.h                                               */
+/* previously found in PCE.h                                               */
 /*                                                                         */
 /***************************************************************************/
 #ifndef _INCLUDE_HARD_PCE_H
@@ -151,12 +151,6 @@ typedef struct {
 	uchar *VRAM2; // [VRAMSIZE];
 	uchar *VRAMS; // [VRAMSIZE];
 
-	// These array are boolean array to know if we must update the
-	// corresponding linear sprite representation in VRAM2 and VRAMS or not
-	// if (sprite_converted[5] == 0) 6th pattern in VRAM2 must be updated
-	bool plane_converted[VRAMSIZE / 32];
-	bool sprite_converted[VRAMSIZE / 128];
-
 	// SPRAM = sprite RAM
 	// The pc engine got a function to transfert a piece VRAM toward the inner
 	// gfx cpu sprite memory from where data will be grabbed to render sprites
@@ -165,34 +159,32 @@ typedef struct {
 	// PCE->PC Palette convetion array
 	// Each of the 512 available PCE colors (333 RGB -> 512 colors)
 	// got a correspondancy in the 256 fixed colors palette
-	uchar Pal[512];
+	uchar Palette[512];
 
 	// CPU Registers
-	uint16 s_reg_pc;
-	uchar s_reg_a;
-	uchar s_reg_x;
-	uchar s_reg_y;
-	uchar s_reg_p;
-	uchar s_reg_s;
+	uint16 reg_pc;
+	uchar reg_a;
+	uchar reg_x;
+	uchar reg_y;
+	uchar reg_p;
+	uchar reg_s;
 
 	// The current rendered line on screen
-	uint32 s_scanline;
+	uint32 scanline;
 
 	// Number of elapsed cycles
-	uint32 s_cyclecount;
+	uint32 cyclecount;
 
 	// Previous number of elapsed cycles
-	uint32 s_cyclecountold;
+	uint32 cyclecountold;
 
 	// Number of pc engine cycles elapsed since the resetting of the emulated console
-	uint32 s_cycles;
+	uint32 cycles;
 
 	// Value of each of the MMR registers
 	uchar mmr[8];
 
-	IO s_io;
-
-	int32 s_external_control_cpu;
+	IO io;
 
 } struct_hard_pce;
 
@@ -215,14 +207,8 @@ void dump_pce_cpu_environment();
   * Exported variables
   **/
 
-extern struct_hard_pce hard_pce;
+extern struct_hard_pce PCE;
 // The global structure for all hardware variables
-
-#define zp_base RAM
-// pointer to the beginning of the Zero Page area
-
-#define sp_base (RAM + 0x100)
-// pointer to the beginning of the Stack Area
 
 extern uchar *IOAREA;
 // physical address on emulator machine of the IO area (fake address as it has to be handled specially)
@@ -237,34 +223,33 @@ extern uchar *PageW[8];
 extern uchar *ROMMapW[256];
 // physical address on emulator machine of each of the 256 banks
 
-#define RAM   hard_pce.RAM
-#define SaveRAM  hard_pce.SaveRAM
-#define SuperRAM hard_pce.SuperRAM
-#define ExtraRAM hard_pce.ExtraRAM
-#define SPRAM hard_pce.SPRAM
-#define VRAM hard_pce.VRAM
-#define VRAM2 hard_pce.VRAM2
-#define VRAMS hard_pce.VRAMS
-#define plane_converted hard_pce.plane_converted
-#define sprite_converted hard_pce.sprite_converted
-#define Palette hard_pce.Pal
+#define RAM   PCE.RAM
+#define SaveRAM  PCE.SaveRAM
+#define SuperRAM PCE.SuperRAM
+#define ExtraRAM PCE.ExtraRAM
+#define SPRAM PCE.SPRAM
+#define VRAM PCE.VRAM
+// #define VRAM2 hard_PCE.VRAM2
+// #define VRAMS hard_PCE.VRAMS
+extern uchar *VRAM2, *VRAMS;
+#define scanline PCE.scanline
+#define Palette PCE.Palette
+#define mmr PCE.mmr
+#define io PCE.io
+#define cyclecount PCE.cyclecount
+#define cyclecountold PCE.cyclecountold
 
-#define mmr hard_pce.mmr
-#define scanline hard_pce.s_scanline
-#define io hard_pce.s_io
-#define cyclecount hard_pce.s_cyclecount
-#define cyclecountold hard_pce.s_cyclecountold
 
 #define TimerPeriod 1097
 // Base period for the timer
 
 // registers:
-#define reg_pc hard_pce.s_reg_pc
-#define reg_a  hard_pce.s_reg_a
-#define reg_x  hard_pce.s_reg_x
-#define reg_y  hard_pce.s_reg_y
-#define reg_p  hard_pce.s_reg_p
-#define reg_s  hard_pce.s_reg_s
+#define reg_pc PCE.reg_pc
+#define reg_a  PCE.reg_a
+#define reg_x  PCE.reg_x
+#define reg_y  PCE.reg_y
+#define reg_p  PCE.reg_p
+#define reg_s  PCE.reg_s
 // These are the main h6280 register, reg_p is the flag register
 
 
