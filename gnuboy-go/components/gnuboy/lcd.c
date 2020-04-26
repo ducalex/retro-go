@@ -1,5 +1,3 @@
-#pragma GCC optimize ("O3")
-
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>

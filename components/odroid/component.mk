@@ -8,3 +8,5 @@
 #
 
 COMPONENT_ADD_INCLUDEDIRS := .
+
+CFLAGS += -O3

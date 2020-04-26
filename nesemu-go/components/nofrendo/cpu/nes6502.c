@@ -1,5 +1,3 @@
-#pragma GCC optimize ("O3")
-
 /*
 ** Nofrendo (c) 1998-2000 Matthew Conte (matt@conte.com)
 **
@@ -25,8 +23,6 @@
 ** $Id: nes6502.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
-
-#pragma GCC optimize ("O3")
 
 #include <noftypes.h>
 #include "nes6502.h"

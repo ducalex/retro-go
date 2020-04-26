@@ -1,5 +1,3 @@
-#pragma GCC optimize ("O3")
-
 #include "stdlib.h"
 #include "esp_attr.h"
 

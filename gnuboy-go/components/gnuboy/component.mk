@@ -7,4 +7,4 @@
 # please read the ESP-IDF documents if you need to do this.
 #
 
-CFLAGS += -DIS_LITTLE_ENDIAN
+CFLAGS += -O3 -DIS_LITTLE_ENDIAN

@@ -1,5 +1,3 @@
-#pragma GCC optimize ("O3")
-
 #include "odroid_display.h"
 #include "odroid_settings.h"
 #include "odroid_system.h"

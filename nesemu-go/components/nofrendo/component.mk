@@ -10,4 +10,4 @@
 COMPONENT_ADD_INCLUDEDIRS := cpu libsnss nes sndhrdw .
 COMPONENT_SRCDIRS := cpu libsnss nes sndhrdw mappers .
 
-CFLAGS += -Wno-error=char-subscripts -Wno-error=attributes
+CFLAGS += -O3 -Wno-error=char-subscripts -Wno-error=attributes

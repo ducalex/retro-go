@@ -10,6 +10,5 @@
 COMPONENT_ADD_INCLUDEDIRS := . ./includes ./engine ./netplay
 COMPONENT_SRCDIRS := . engine
 
-CFLAGS += -DLSB_FIRST=1 -Wno-all -Wno-error
+CFLAGS += -Ofast -DLSB_FIRST=1 -Wno-all -Wno-error
 CPPFLAGS += -DLSB_FIRST=1 -Wno-all -Wno-error
-CXXFLAGS += -DLSB_FIRST=1 -Wno-all -Wno-error

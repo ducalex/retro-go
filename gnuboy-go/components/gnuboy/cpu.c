@@ -1,5 +1,3 @@
-#pragma GCC optimize ("O3")
-
 #include "defs.h"
 #include "regs.h"
 #include "hw.h"
