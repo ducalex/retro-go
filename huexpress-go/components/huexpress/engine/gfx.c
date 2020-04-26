@@ -261,23 +261,22 @@ load_gfx_context(int slot_number)
 static inline void
 render_lines(int min_line, int max_line)
 {
-	MESSAGE_DEBUG("render lines %3d - %3d\n", min_line, max_line);
+	if (skipFrames == 0 && UCount == 0)  // Either we're in frameskip = 0 or we're in the frame to draw
+	{
+		save_gfx_context(1);
+		load_gfx_context(0);
 
-	save_gfx_context(1);
-
-	load_gfx_context(0);
-
-	if (!UCount) {				//Either we're in frameskip = 0 or we're in the frame to draw
 		if (SpriteON && SPONSwitch)
+		{
 			RefreshSpriteExact(min_line, max_line - 1, 0);
-
-		RefreshLine(min_line, max_line - 1);
-
-		if (SpriteON && SPONSwitch)
+			RefreshLine(min_line, max_line - 1);
 			RefreshSpriteExact(min_line, max_line - 1, 1);
-	}
+		}
+		else
+			RefreshLine(min_line, max_line - 1);
 
-	load_gfx_context(1);
+		load_gfx_context(1);
+	}
 
 	gfx_need_redraw = 0;
 }
@@ -363,9 +362,7 @@ Loop6502()
 				// && scanline > io.vdc_min_display)
 				// We got render things before being on the second line
 
-				if (skipFrames == 0) {
-                	render_lines(last_display_counter, display_counter);
-				}
+				render_lines(last_display_counter, display_counter);
 
 				last_display_counter = display_counter;
 			}
@@ -375,9 +372,7 @@ Loop6502()
 		if (scanline == 14 + 242) {
 			save_gfx_context(0);
 
-			if (skipFrames == 0) {
-            	render_lines(last_display_counter, display_counter);
-			}
+			render_lines(last_display_counter, display_counter);
 
 			if (gfx_need_video_mode_change) {
 				gfx_need_video_mode_change = 0;
@@ -390,9 +385,6 @@ Loop6502()
 			if (!UCount)
 				RefreshScreen();
 
-			/*@-preproc */
-#warning "place this better"
-			/*@=preproc */
 			if (CheckSprites())
 				io.vdc_status |= VDC_SpHit;
 			else

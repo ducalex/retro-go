@@ -141,6 +141,8 @@ void osd_gfx_put_image_normal(void)
         skipFrames--;
     }
 
+    // UCount = skipFrames  ? 1 : 0;
+
     // odroid_audio_submit(pcm.buf, pcm.pos >> 1);
 
     odroid_system_stats_tick(!drawFrame, fullFrame);

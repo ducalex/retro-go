@@ -4,7 +4,6 @@
 
 #include "pce.h"
 #include "cleantypes.h"
-#include "sound.h"
 
 
 typedef struct {
@@ -56,29 +55,6 @@ extern int ScrollYDiff;
 extern int oldScrollX;
 extern int oldScrollY;
 extern int oldScrollYDiff;
-
-// extern uint32 spr_init_pos[1024];
-// cooked initial position of sprite
-
-extern int frame;
-// number of frame displayed
-
-extern int sprite_usespbg;
-
-//extern void (*PutSpriteMaskedFunction)(byte *P,byte *C,unsigned   long *C2,byte *R,int h,int inc,byte *M,byte pr);
-// the general function for *masked
-
-//extern void (*PutSpriteMakeMaskedFunction)(byte *P,byte *C,unsigned   long *C2,byte *R,int h,int inc,byte *M,byte pr);
-// the general function for *makemasked*
-
-//extern void PutSpriteM(byte *P,byte *C,unsigned   long *C2,byte *R,int h,int inc,byte *M,byte pr);
-// the exact function
-
-//extern void PutSpriteMakeMask(byte *P,byte *C,unsigned    long *C2,byte *R,int h,int inc,byte *M,byte pr);
-// the exact function
-
-//extern void PutSprite(byte *P,byte *C,unsigned    long *C2,byte *R,int h,int inc);
-// the simplified function
 
 #define FC_W     io.screen_w
 #define FC_H     256

@@ -41,18 +41,6 @@ uchar *ROM = NULL;
 int ROM_size;
 // the number of block of 0x2000 bytes in the rom
 
-/*
- * nb_joy no more used
- * uchar nb_joy = 1;
- * number of input to poll
- */
-
-int Country;
-/* Is this^ initialised anywhere ?
- * You may try to play with if some games don't want to start
- * it could be useful on some cases
- */
-
 int IPeriod;
 // Number of cycle between two interruption calls
 
@@ -72,9 +60,6 @@ uchar debug_on_beginning = 0;
 // Do we have to set a bp on the reset IP
 
 int scroll = 0;
-
-volatile char key_delay = 0;
-// delay to avoid too many key strokes
 
 const char *joymap_reverse[J_MAX] = {
 	"UP", "DOWN", "LEFT", "RIGHT",
@@ -210,9 +195,6 @@ InitPCE(char *name)
 	io.screen_w = 256;
 
 	uint32 CRC = CRC_buffer(ROM, ROM_size * 0x2000);
-
-	/* I'm doing it only here 'coz LoadCard set
-	   true_file_name       */
 
 	NO_ROM = 0xFFFF;
 

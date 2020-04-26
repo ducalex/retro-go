@@ -37,9 +37,6 @@ int InitPCE(char *name);
 void TrashPCE();
 int RunPCE(void);
 
-extern char volatile key_delay;
-// are we allowed to press another 'COMMAND' key ?
-
 extern char cart_name[PCE_PATH_MAX];
 // the name of the rom to load
 
@@ -51,16 +48,15 @@ extern uchar debug_on_beginning;
 // Do we have to set a bp on the reset IP
 
 struct host_sound {
-	int stereo;
-	int signed_sound;
-	uint32 freq;
-	uint16 sample_size;
+	uint stereo;
+	uint freq;
+	uint sample_size;
 };
 
 struct host_machine {
 	struct host_sound sound;
-	bool want_fullscreen_aspect;
-	uchar video_driver;
+	uint want_fullscreen_aspect;
+	uint video_driver;
 };
 
 extern struct host_machine host;

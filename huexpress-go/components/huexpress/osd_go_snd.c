@@ -61,7 +61,6 @@ void osd_snd_set_volume(uchar v)
 int osd_snd_init_sound()
 {
     host.sound.stereo = true;
-    host.sound.signed_sound = false;
     host.sound.freq = AUDIO_SAMPLE_RATE;
     host.sound.sample_size = 1;
 

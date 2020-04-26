@@ -20,7 +20,6 @@
 
 
 #include "sprite.h"
-
 #include "utils.h"
 
 
@@ -38,6 +37,8 @@ uchar BGONSwitch = 1;
 uchar SPONSwitch = 1;
 // Do we have to draw sprites ?
 
+uchar sprite_usespbg = 0;
+
 // uint32 spr_init_pos[1024];
 // cooked initial position of sprite
 
@@ -48,10 +49,7 @@ int oldScrollYDiff;
 
 // Actual memory area where the gfx functions are drawing sprites and tiles
 uchar *SPM_raw;//[XBUF_WIDTH * XBUF_HEIGHT];
-/*static*/ uchar *SPM;// = SPM_raw + XBUF_WIDTH * 64 + 32;
-
-int frame = 0;
-// number of frame displayed
+uchar *SPM;// = SPM_raw + XBUF_WIDTH * 64 + 32;
 
 /*
 	Hit Chesk Sprite#0 and others
@@ -89,7 +87,7 @@ CheckSprites(void)
         Return:nothing but update VRAMS
 
 *****************************************************************************/
-void
+static inline void
 sp2pixel(int no)
 {
     uint32 M;
@@ -124,7 +122,7 @@ sp2pixel(int no)
 }
 
 
-void
+static inline void
 PutSpriteHflipMakeMask(uchar * P, uchar * C, uchar * C2, uchar * R,
     int16 h, int16 inc, uchar * M, uchar pr)
 {
@@ -213,7 +211,7 @@ PutSpriteHflipMakeMask(uchar * P, uchar * C, uchar * C2, uchar * R,
 }
 
 
-void
+static inline void
 PutSpriteHflipM(uchar * P, uchar * C, uchar * C2, uchar * R, int16 h,
                 int16 inc, uchar * M, uchar pr)
 {
@@ -272,7 +270,7 @@ PutSpriteHflipM(uchar * P, uchar * C, uchar * C2, uchar * R, int16 h,
 }
 
 
-void
+static inline void
 PutSpriteHflip(uchar * P, uchar * C, uchar * C2, uchar * R, int16 h,
     int16 inc)
 {
@@ -342,7 +340,7 @@ PutSpriteHflip(uchar * P, uchar * C, uchar * C2, uchar * R, int16 h,
         Return:nothing, but updates VRAM2
 
 *****************************************************************************/
-void
+static inline void
 plane2pixel(int no)
 {
     uint32 M;
@@ -366,11 +364,13 @@ plane2pixel(int no)
         M = C[16];
         TRACE("C[16]=%02X\n", M);
         L |= ((M & 0x88) >> 1)
-            | ((M & 0x44) << 8) | ((M & 0x22) << 17) | ((M & 0x11) << 26);
+            | ((M & 0x44) << 8) | ((M & 0x22) << 17)
+            | ((M & 0x11) << 26);
         M = C[17];
         TRACE("C[17]=%02X\n", M);
         L |= ((M & 0x88))
-            | ((M & 0x44) << 9) | ((M & 0x22) << 18) | ((M & 0x11) << 27);
+            | ((M & 0x44) << 9) | ((M & 0x22) << 18)
+            | ((M & 0x11) << 27);
         /* C2[0] = L;                        //37261504 */
         C2[0] = L & 0xff;
         C2[1] = (L >> 8) & 0xff;
@@ -393,7 +393,6 @@ plane2pixel(int no)
 void
 RefreshScreen(void)
 {
-    frame += UPeriod + 1;
     /*
        {
        char* spr = SPRAM;
@@ -420,7 +419,7 @@ RefreshScreen(void)
        }
      */
 
-    (*osd_gfx_driver_list[host.video_driver].draw) ();
+    (*osd_gfx_driver_list[host.video_driver].draw)();
 
 #if ENABLE_TRACING_GFX
     /*
@@ -518,8 +517,7 @@ RefreshLine(int Y1, int Y2)
             x = ScrollX / 8;
             y &= io.bg_h - 1;
             for (X1 = 0; X1 < XW; X1++, x++, PP += 8) {
-                uchar *R, *P, *C;
-                uchar *C2;
+                uchar *R, *P, *C, *C2;
                 int no, i;
                 x &= io.bg_w - 1;
 
@@ -532,19 +530,18 @@ RefreshLine(int Y1, int Y2)
 
                 R = &Palette[(no >> 12) * 16];
 
-#if ENABLE_TRACING_GFX
-                // Old code was only no &= 0xFFF
-                if ((no & 0xFFF) > 0x800) {
-                    TRACE("GFX: Access to an invalid VRAM area "
+                if (no > 0x800) {
+                    MESSAGE_DEBUG("GFX: Access to an invalid VRAM area "
                         "(tile pattern 0x%04x).\n", no);
                 }
-#endif
+
                 no &= 0x7FF;
 
                 if (plane_converted[no] == 0) {
                     plane_converted[no] = 1;
                     plane2pixel(no);
                 }
+
                 C2 = (VRAM2 + (no * 8 + offset) * 4);
                 C = VRAM + (no * 32 + offset * 2);
                 P = PP;
@@ -564,7 +561,7 @@ RefreshLine(int Y1, int Y2)
                     if (J & 0x20)
                         P[2] = PAL((L >> 20) & 15);
                     if (J & 0x10)
-                        P[3] = PAL((L >> 28));
+                        P[3] = PAL((L >> 28) & 15);
                     if (J & 0x08)
                         P[4] = PAL((L) & 15);
                     if (J & 0x04)
@@ -584,10 +581,6 @@ RefreshLine(int Y1, int Y2)
         }
     }
 }
-
-
-#define	SPBG	0x80
-#define	CGX		0x100
 
 
 /*****************************************************************************
@@ -662,85 +655,6 @@ PutSprite(uchar * P, uchar * C, uchar * C2, uchar * R, int16 h, int16 inc)
 }
 
 
-void
-PutSpriteHandleFull(uchar * P, uchar * C, uchar * C2, uchar * R,
-	int16 h, int16 inc)
-{
-	uint16 J;
-	uint32 L;
-
-	int16 i;
-	for (i = 0; i < h; i++, C += inc, C2 += inc, P += XBUF_WIDTH) {
-		J = (C[0] + (C[1] << 8)) | (C[32] + (C[33] << 8)) | (C[64]
-			+ (C[65] << 8)) | (C[96] + (C[97] << 8));
-#if 0
-		J = ((uint16 *) C)[0] | ((uint16 *) C)[16] | ((uint16 *) C)[32]
-			| ((uint16 *) C)[48];
-#endif
-		if (!J)
-			continue;
-		if (J == 65535) {
-			L = C2[1];			//sp2pixel(C+1);
-
-			P[0] = PAL((L >> 4) & 15);
-			P[1] = PAL((L >> 12) & 15);
-			P[2] = PAL((L >> 20) & 15);
-			P[3] = PAL((L >> 28));
-			P[4] = PAL((L) & 15);
-			P[5] = PAL((L >> 8) & 15);
-			P[6] = PAL((L >> 16) & 15);
-			P[7] = PAL((L >> 24) & 15);
-			L = C2[0];			//sp2pixel(C);
-			P[8] = PAL((L >> 4) & 15);
-			P[9] = PAL((L >> 12) & 15);
-			P[10] = PAL((L >> 20) & 15);
-			P[11] = PAL((L >> 28));
-			P[12] = PAL((L) & 15);
-			P[13] = PAL((L >> 8) & 15);
-			P[14] = PAL((L >> 16) & 15);
-			P[15] = PAL((L >> 24) & 15);
-
-			return;
-		}
-
-		L = C2[1];				//sp2pixel(C+1);
-		if (J & 0x8000)
-			P[0] = PAL((L >> 4) & 15);
-		if (J & 0x4000)
-			P[1] = PAL((L >> 12) & 15);
-		if (J & 0x2000)
-			P[2] = PAL((L >> 20) & 15);
-		if (J & 0x1000)
-			P[3] = PAL((L >> 28));
-		if (J & 0x0800)
-			P[4] = PAL((L) & 15);
-		if (J & 0x0400)
-			P[5] = PAL((L >> 8) & 15);
-		if (J & 0x0200)
-			P[6] = PAL((L >> 16) & 15);
-		if (J & 0x0100)
-			P[7] = PAL((L >> 24) & 15);
-		L = C2[0];				//sp2pixel(C);
-		if (J & 0x80)
-			P[8] = PAL((L >> 4) & 15);
-		if (J & 0x40)
-			P[9] = PAL((L >> 12) & 15);
-		if (J & 0x20)
-			P[10] = PAL((L >> 20) & 15);
-		if (J & 0x10)
-			P[11] = PAL((L >> 28));
-		if (J & 0x08)
-			P[12] = PAL((L) & 15);
-		if (J & 0x04)
-			P[13] = PAL((L >> 8) & 15);
-		if (J & 0x02)
-			P[14] = PAL((L >> 16) & 15);
-		if (J & 0x01)
-			P[15] = PAL((L >> 24) & 15);
-	}
-}
-
-
 /*****************************************************************************
 
 		Function:	PutSpriteM
@@ -757,7 +671,7 @@ PutSpriteHandleFull(uchar * P, uchar * C, uchar * C2, uchar * R,
 			Return:
 
 *****************************************************************************/
-void
+static inline void
 PutSpriteM(uchar * P, uchar * C, uchar * C2, uchar * R, int16 h, int16 inc,
 	uchar * M, uchar pr)
 {
@@ -788,7 +702,7 @@ PutSpriteM(uchar * P, uchar * C, uchar * C2, uchar * R, int16 h, int16 inc,
 		if ((J & 0x2000) && M[2] <= pr)
 			P[2] = PAL((L >> 20) & 15);
 		if ((J & 0x1000) && M[3] <= pr)
-			P[3] = PAL((L >> 28));
+			P[3] = PAL((L >> 28) & 15);
 		if ((J & 0x0800) && M[4] <= pr)
 			P[4] = PAL((L) & 15);
 		if ((J & 0x0400) && M[5] <= pr)
@@ -806,7 +720,7 @@ PutSpriteM(uchar * P, uchar * C, uchar * C2, uchar * R, int16 h, int16 inc,
 		if ((J & 0x20) && M[10] <= pr)
 			P[10] = PAL((L >> 20) & 15);
 		if ((J & 0x10) && M[11] <= pr)
-			P[11] = PAL((L >> 28));
+			P[11] = PAL((L >> 28) & 15);
 		if ((J & 0x08) && M[12] <= pr)
 			P[12] = PAL((L) & 15);
 		if ((J & 0x04) && M[13] <= pr)
@@ -818,7 +732,7 @@ PutSpriteM(uchar * P, uchar * C, uchar * C2, uchar * R, int16 h, int16 inc,
 	}
 }
 
-void
+static inline void
 PutSpriteMakeMask(uchar * P, uchar * C, uchar * C2, uchar * R, int16 h,
 	int16 inc, uchar * M, uchar pr)
 {
@@ -874,7 +788,7 @@ PutSpriteMakeMask(uchar * P, uchar * C, uchar * C2, uchar * R, int16 h,
 			M[2] = pr;
 		}
 		if (J & 0x1000) {
-			P[3] = PAL((L >> 28));
+			P[3] = PAL((L >> 28) & 15);
 			M[3] = pr;
 		}
 		if (J & 0x0800) {
@@ -908,7 +822,7 @@ PutSpriteMakeMask(uchar * P, uchar * C, uchar * C2, uchar * R, int16 h,
 			M[10] = pr;
 		}
 		if (J & 0x10) {
-			P[11] = PAL((L >> 28));
+			P[11] = PAL((L >> 28) & 15);
 			M[11] = pr;
 		}
 		if (J & 0x08) {
@@ -1072,11 +986,3 @@ RefreshSpriteExact(int Y1, int Y2, uchar bg)
         }
     }
 }
-
-
-char tmp_str[10];
-extern int vheight;
-extern char *sbuf[];
-int sprite_usespbg = 0;
-
-
