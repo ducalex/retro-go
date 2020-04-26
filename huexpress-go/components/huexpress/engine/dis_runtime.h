@@ -1,6 +1,6 @@
 /****************************************************************************
  dis.h
- 
+
  Data for TG Disassembler
  ****************************************************************************/
 
@@ -8,7 +8,6 @@
 #include "h6280.h"
 #include "globals.h"
 #include "bp.h"
-#include "bios.h"
 
 /* addressing modes: */
 
@@ -541,7 +540,7 @@ operation optable_runtime[256] = {
 	,							/* $FA */
 	{handle_bp15, AM_IMPL, "BPF"}
 	,							/* $FB */
-	{handle_bios, AM_IMPL, "???"}
+	{NULL, AM_IMPL, "???"} // handle_bios
 	,							/* $FC */
 	{sbc_absx, AM_ABSX, "SBC"}
 	,							/* $FD */

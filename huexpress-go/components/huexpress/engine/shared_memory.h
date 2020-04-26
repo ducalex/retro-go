@@ -8,9 +8,6 @@
 
 #define PSG_DIRECT_ACCESS_BUFSIZE 1024
 
-#define SHM_HANDLE       0x25679
-#define SHM_ROM_HANDLE   0x25680
-
 typedef union {
 #if defined(WORDS_BIGENDIAN)
 	struct {
@@ -93,43 +90,6 @@ typedef struct tagIO {
 	/* IRQ */
 	uchar irq_mask, irq_status;
 
-	/* CDROM extention */
-	int32 backup, adpcm_firstread;
-	uchar cd_port_1800;
-	uchar cd_port_1801;
-	uchar cd_port_1802;
-	uchar cd_port_1804;
-
-	/* Adpcm related variables */
-	pair adpcm_ptr;
-	uint16 adpcm_rptr, adpcm_wptr;
-	uint16 adpcm_dmaptr;
-	uchar adpcm_rate;
-	uint32 adpcm_pptr;			/* to know where to begin playing adpcm (in nibbles) */
-	uint32 adpcm_psize;			/* to know how many 4-bit samples to play */
-
-	/* Arcade Card variables */
-	uint32 ac_base[4];			/* base address for AC ram accessing */
-	uint16 ac_offset[4];		/* offset address for AC ram accessing */
-	uint16 ac_incr[4];			/* incrment value after read or write accordingly to the control bit */
-
-	uchar ac_control[4];		/* bit 7: unused
-								 * bit 6: only $1AX6 hits will add offset to base
-								 * bit 5 + bit 6: either hit to $1AX6 or $1AXA will add offset to base
-								 * bit 4: auto increment offset if 0, and auto
-								 *        increment base if 1
-								 * bit 3: unknown
-								 * bit 2: unknown
-								 * bit 1: use offset address in the effective address
-								 *   computation
-								 * bit 0: apply autoincrement if set
-								 */
-	uint32 ac_shift;
-	uchar ac_shiftbits;			/* number of bits to shift by */
-
-/*        uchar  ac_unknown3; */
-	uchar ac_unknown4;
-
 	/* Remanence latch */
 	uchar io_buffer;
 
@@ -139,16 +99,11 @@ typedef struct {
 	uchar RAM[0x8000];
 	uchar *PCM; //[0x10000]
 	uchar WRAM[0x2000];
-	uchar *VRAM; //[VRAMSIZE]
+	uchar VRAM[VRAMSIZE];
 	uchar *VRAM2; //[VRAMSIZE];
 	uchar *VRAMS; //[VRAMSIZE];
 	uchar vchange[VRAMSIZE / 32];
 	uchar vchanges[VRAMSIZE / 128];
-
-	uchar cd_extra_mem[0x10];//[0x10000];
-	uchar cd_extra_super_mem[0x10];//[0x30000];
-	uchar ac_extra_mem[0x10];//[0x200000];
-	uchar cd_sector_buffer[0x10];//[0x2000];
 
 	uint32 s_scanline;
 

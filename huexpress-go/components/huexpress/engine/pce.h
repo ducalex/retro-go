@@ -4,13 +4,8 @@
 
 #include "config.h"
 
-#if defined(__linux__) || defined(__APPLE__)
-#include <limits.h>
-#endif
-
 #include "sys_dep.h"
 #include "hard_pce.h"
-#include "cheat.h"
 #include "debug.h"
 #include "gfx.h"
 
@@ -19,18 +14,6 @@
 
 #include "cleantypes.h"
 
-
-#if defined(__linux__)
-#include <sys/param.h>
-#include <sys/types.h>
-#include <sys/ioctl.h>
-#include <linux/cdrom.h>
-#elif defined(FREEBSD)
-#include <sys/param.h>
-#include <sys/types.h>
-#include <sys/ioctl.h>
-#endif
-
 #include "h6280.h"
 #include "globals.h"
 #include "interupt.h"
@@ -38,21 +21,15 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "cd.h"
 
 
 #define SERVER_HOSTNAME_MAX_SIZE 256
 
-uint32 CRC_file(char *);
-uchar CartInit(char* name);
 int CartLoad(char *name);
 int ResetPCE();
 int32 InitMachine(void);
 void TrashMachine(void);
 int32 Joysticks(void);
-uint32 msf2nb_sect(uchar min, uchar sec, uchar fra);
-void fill_cd_info();
-void nb_sect2msf(uint32 lsn, uchar * min, uchar * sec, uchar * frm);
 void delete_file_tmp(char *name, int dummy, int dummy2);
 uchar TimerInt();
 
@@ -60,13 +37,8 @@ void init_log_file();
 int InitPCE(char *name);
 void TrashPCE();
 int RunPCE(void);
-void pce_cd_read_sector(void);
-void issue_ADPCM_dma(void);
 
 void SetPalette(void);
-
-
-char *search_possible_syscard();
 
 extern FILE *out_snd;
 // The file used to put sound into
@@ -81,39 +53,8 @@ extern char short_cart_name[PCE_PATH_MAX];
 // Just the filename without the extension (with a dot)
 // you just have to add your own extension...
 
-extern char short_iso_name[PCE_PATH_MAX];
-// Added for ISO save support
-
-extern char cdsystem_path[PCE_PATH_MAX];
-// The path of the cdsystem to launch automaticaly
-
-extern char sav_path[PCE_PATH_MAX];
-// The place where to keep saved games
-// currently a subdir a the EXE path named 'SAV'
-
-extern char video_path[PCE_PATH_MAX];
-// The place where to keep output pictures
-
-extern char ISO_filename[PCE_PATH_MAX];
-// the name of the ISO file
-
 extern char cart_name[PCE_PATH_MAX];
 // the name of the rom to load
-
-extern char initial_path[PCE_PATH_MAX];
-// initial path for rom seeking
-
-extern char sav_basepath[PCE_PATH_MAX];
-// base path for saved games
-
-extern char tmp_basepath[PCE_PATH_MAX];
-// base path for temporary operations
-
-extern char log_filename[PCE_PATH_MAX];
-// filename of the log
-
-extern char config_basepath[PCE_PATH_MAX];
-// ~/.huexpress/
 
 extern uchar populus;
 
@@ -125,7 +66,6 @@ extern uchar *PopRAM;
 
 extern const uint32 PopRAMsize;
 // I don't really know if it must be 0x8000 or 0x10000
-
 
 extern char *server_hostname;
 // Name of the server to connect to
@@ -146,23 +86,12 @@ extern uchar US_encoded_card;
 extern uchar debug_on_beginning;
 // Do we have to set a bp on the reset IP
 
-extern uchar CD_emulation;
-// Do we handle CDs
-
-extern uchar CDBIOS_replace[0x4d][2];
-// Used to know what byte do we have replaced
-
-extern uchar use_eagle;
-// Do we use eagle ?
-
 extern uint32 timer_60;
 // how many times do the interrupt have been called
 
-extern const uchar bcdbin[0x100];
+extern uchar bcdbin[0x100];
 
-extern const uchar binbcd[0x100];
-
-extern uint32 pce_cd_sectoraddy;
+extern uchar binbcd[0x100];
 
 struct host_sound {
 	int stereo;
@@ -178,16 +107,8 @@ struct host_machine {
 extern struct host_machine host;
 
 struct hugo_options {
-	int want_fullscreen;
 	int want_fullscreen_aspect;
-	int configure_joypads;
-	int want_arcade_card_emulation;
 	int want_supergraphx_emulation;
-	int want_television_size_emulation;
-	uint16 window_size;
-	uint32 want_snd_freq;
-	uint32 wanted_hardware_format;
-	char resource_location[PCE_PATH_MAX];
 #if defined(ENABLE_NETPLAY)
 	netplay_type want_netplay;
 	char server_hostname[SERVER_HOSTNAME_MAX_SIZE];
@@ -197,60 +118,7 @@ struct hugo_options {
 
 extern struct hugo_options option;
 
-typedef struct {
-
-	uint32 offset;
-
-	uchar new_val;
-
-} PatchEntry;
-
-typedef struct {
-
-	uint32 StartTime;
-	uint32 Duration;
-	char data[32];
-
-} SubtitleEntry;
-
-
-typedef enum {
-	HCD_SOURCE_REGULAR_FILE,
-	HCD_SOURCE_CD_TRACK
-} hcd_source_type;
-
-typedef struct {
-	uchar beg_min;
-	uchar beg_sec;
-	uchar beg_fra;
-
-	uchar type;
-
-	uint32 beg_lsn;
-	uint32 length;
-
-	hcd_source_type source_type;
-	char filename[256];
-
-	uint32 patch_number;
-	uint32 subtitle_number;
-
-	uchar subtitle_synchro_type;
-
-	PatchEntry *patch;
-	SubtitleEntry *subtitle;
-
-} Track;
-
-extern Track CD_track[0x100];
-
-extern uchar nb_max_track;
-
 extern uchar video_driver;
-
-extern uchar use_scanline;
-
-extern uchar minimum_bios_hooking;
 
 #if !defined(MIN)
 #define MIN(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
@@ -319,13 +187,6 @@ extern uchar can_write_debug;
 #include "config.h"
 
 #include "sprite.h"
-
-#include "hcd.h"
-
-
-#if defined(SEAL_SOUND)
-#include </djgpp/audio/include/audio.h>	// SEAL include
-#endif							/* SEAL sound */
 
 #include <time.h>
 

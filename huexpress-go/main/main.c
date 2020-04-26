@@ -21,14 +21,6 @@ void app_main(void)
 
     char *romFile = odroid_system_get_path(NULL, ODROID_PATH_ROM_FILE);
 
-    strcpy(config_basepath, "/sd/odroid/data/pce");
-    strcpy(tmp_basepath, "");
-    strcpy(video_path, "");
-    strcpy(ISO_filename, "");
-    strcpy(sav_basepath,"/sd/odroid/data");
-    strcpy(sav_path, "pce");
-    strcpy(log_filename,"");
-
 	// Initialise the host machine
 	osd_init_machine();
 	osd_init_input();

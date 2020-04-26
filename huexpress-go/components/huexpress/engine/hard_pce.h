@@ -49,12 +49,11 @@ void IO_write(uint16 A, uchar V);
 uchar IO_read(uint16 A);
 void bank_set(uchar P, uchar V);
 
-extern void (*write_memory_function) (uint16, uchar);
-extern uchar(*read_memory_function) (uint16);
+uchar read_memory_simple(uint16);
+void write_memory_simple(uint16, uchar);
 
-#define Wr6502(A,V) ((*write_memory_function)((A),(V)))
-
-#define Rd6502(A) ((*read_memory_function)(A))
+#define Wr6502(A,V) (write_memory_simple((A),(V)))
+#define Rd6502(A) (read_memory_simple(A))
 
 void dump_pce_cpu_environment();
 
@@ -68,7 +67,7 @@ void dump_pce_cpu_environment();
   * Exported variables
   **/
 
-extern struct_hard_pce *hard_pce;
+extern struct_hard_pce hard_pce;
 // The global structure for all hardware variables
 
 #define io (*p_io)
@@ -119,31 +118,6 @@ extern uint32 *p_scanline;
 extern uchar *PCM;
 // The ADPCM array (0x10000 bytes)
 
-//! A pointer to know where we're currently reading data in the cd buffer
-extern uchar *cd_sector_buffer;
-
-//! The real buffer into which data are written from the cd and in which we
-//! takes data to gives it back throught the cd ports
-extern uchar *cd_read_buffer;
-
-//! extra ram provided by the system CD card
-extern uchar *cd_extra_mem;
-
-//! extra ram provided by the super system CD card
-extern uchar *cd_extra_super_mem;
-
-//! extra ram provided by the Arcade card
-extern uchar *ac_extra_mem;
-
-//! remaining useful data in cd_read_buffer
-extern uint32 pce_cd_read_datacnt;
-
-//! number of sectors we must still read on cd
-extern uchar cd_sectorcnt;
-
-//! number of the current command of the cd interface
-extern uchar pce_cd_curcmd;
-
 extern uchar *zp_base;
 // pointer to the beginning of the Zero Page area
 
@@ -156,17 +130,14 @@ extern uchar *mmr;
 extern uchar *IOAREA;
 // physical address on emulator machine of the IO area (fake address as it has to be handled specially)
 
-//!
+extern uchar *TRAPRAM;
+// False "ram"s in which you can read/write (to homogeneize writes into RAM, BRAM, ... as well as in rom) but the result isn't coherent
+
 extern uchar *PageR[8];
 extern uchar *ROMMapR[256];
 
 extern uchar *PageW[8];
 extern uchar *ROMMapW[256];
-
-//! False "ram"s in which you can read/write (to homogeneize writes into RAM, BRAM, ... as well as in rom) but the result isn't coherent
-extern uchar *trap_ram_read;
-extern uchar *trap_ram_write;
-
 // physical address on emulator machine of each of the 256 banks
 
 #define cyclecount (*p_cyclecount)
@@ -241,12 +212,6 @@ enum _VDC_REG {
 #define	NODATA	   0xff
 #define	ENABLE	   1
 #define	DISABLE	   0
-
-#define AC_ENABLE_OFFSET_BASE_6 0x40
-#define AC_ENABLE_OFFSET_BASE_A 0x20
-#define AC_INCREMENT_BASE 0x10
-#define AC_USE_OFFSET 0x02
-#define AC_ENABLE_INC 0x01
 
 #ifdef MY_INLINE_bank_set
 

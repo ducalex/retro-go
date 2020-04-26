@@ -294,7 +294,7 @@ osd_gfx_savepict()
 		return 0xFFFF;
 
 	do {
-		snprintf(filename, PATH_MAX, filename_base, video_path, tmp);
+		snprintf(filename, PATH_MAX, filename_base, tmp_basepath, tmp);
 	} while (file_exists(filename) && ++tmp < 0xFFFF);
 
 	frame_buffer =

@@ -23,6 +23,9 @@
 #define WIFI_BROADCAST_ADDR "192.168.4.255"
 #define WIFI_NETPLAY_PORT 1234
 
+// Test to skip the network task and semaphores
+#define NETPLAY_SYNCHRONOUS_TEST
+
 static netplay_status_t netplay_status = NETPLAY_STATUS_NOT_INIT;
 static netplay_mode_t netplay_mode = NETPLAY_MODE_NONE;
 static netplay_callback_t netplay_callback = NULL;
@@ -228,7 +231,11 @@ static void netplay_task()
     {
         memset(&packet, 0, sizeof(netplay_packet_t));
 
+    #ifdef NETPLAY_SYNCHRONOUS_TEST
+        if (!(rx_sock || client_sock) || netplay_status != NETPLAY_STATUS_HANDSHAKE)
+    #else
         if (!(rx_sock || client_sock) || netplay_status < NETPLAY_STATUS_HANDSHAKE)
+    #endif
         {
             vTaskDelay(pdMS_TO_TICKS(100));
             continue;
@@ -539,6 +546,26 @@ void odroid_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
         send_packet(remote_player->id, NETPLAY_PACKET_SYNC_REQ, 0, data_in, data_len);
     }
 
+#ifdef NETPLAY_SYNCHRONOUS_TEST
+    if (netplay_mode == NETPLAY_MODE_HOST)
+    {
+        do {
+            recv(rx_sock, &packet, sizeof packet, 0); // ACK
+        } while (packet.cmd != NETPLAY_PACKET_SYNC_ACK);
+        // send_packet(remote_player->id, NETPLAY_PACKET_SYNC_DONE, packet.arg, 0, 0);
+    }
+    else
+    {
+        do {
+            recv(rx_sock, &packet, sizeof packet, 0); // REQ
+        } while (packet.cmd != NETPLAY_PACKET_SYNC_REQ);
+        send_packet(remote_player->id, NETPLAY_PACKET_SYNC_ACK, 0, data_in, data_len);
+        // recv(rx_sock, &packet, sizeof packet, 0); // DONE
+    }
+
+    memcpy(&remote_player->sync_data, packet.data, packet.data_len);
+    memcpy(data_out, remote_player->sync_data, data_len);
+#else
     // wait to receive/send NETPLAY_PACKET_SYNC_DONE
     if (xSemaphoreTake(netplay_sync, 10000 / portTICK_PERIOD_MS) != pdPASS)
     {
@@ -555,6 +582,7 @@ void odroid_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
                     local_player->sync_data, sizeof(local_player->sync_data));
         xSemaphoreTake(netplay_sync, 1000 / portTICK_PERIOD_MS);
     }
+#endif
 
     sync_time += get_elapsed_time_since(start_time);
 

@@ -118,23 +118,17 @@ static inline void *rg_alloc(size_t size, uint32_t caps)
 
      if (!ptr)
      {
-          if ((caps & MALLOC_CAP_DMA))
-          {
-               printf("        - INFO: CAPS not met and DMA was requested, aborting.\n");
-          }
-          else
-          {
-               printf("        - INFO: CAPS not met, trying removing SPIRAM|INTERNAL caps\n");
-               ptr = heap_caps_calloc(1, size, caps & ~(MALLOC_CAP_SPIRAM|MALLOC_CAP_INTERNAL));
-          }
-     }
+          size_t availaible = heap_caps_get_largest_free_block(caps);
 
-     if (!ptr)
-     {
-          printf("        - ERROR: Memory allocation failed\n");
-          // This could fail, but let's try
-          odroid_system_panic("Memory allocation failed!");
-          abort();
+          // Loosen the caps and try again
+          ptr = heap_caps_calloc(1, size, caps & ~(MALLOC_CAP_SPIRAM|MALLOC_CAP_INTERNAL));
+          if (!ptr)
+          {
+               printf("RG_ALLOC: *** Memory allocation failed ***\n");
+               odroid_system_panic("Memory allocation failed!");
+          }
+
+          printf("RG_ALLOC: *** CAPS not fully met (req: %d, available: %d) ***\n", size, availaible);
      }
 
      return ptr;

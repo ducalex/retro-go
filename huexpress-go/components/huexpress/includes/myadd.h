@@ -18,7 +18,6 @@
 #define MY_h6280_exe_go // ***
 #define MY_INLINE // ***
 
-//#define MY_REALLOC_MEMORY_SIDEARMS
 //#define MY_PCENGINE_LOGGING
 #define MY_LOG_CPU_NOT_INLINED // Slower without?!
 

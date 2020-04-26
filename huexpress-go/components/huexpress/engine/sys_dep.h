@@ -6,7 +6,6 @@
  */
 
 #include "cleantypes.h"
-#include "sys_cd.h"
 #include "sys_inp.h"
 #include "sys_gfx.h"
 #include "sys_misc.h"

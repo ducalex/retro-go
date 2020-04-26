@@ -10,8 +10,6 @@ int osd_init_machine(void)
 #if 0
 
 int netplay_mode;
-char initial_path[PATH_MAX] = "";
-// prefered path for for searching
 
 uchar* osd_gfx_buffer = NULL;
 

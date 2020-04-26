@@ -57,7 +57,7 @@ extern int oldScrollX;
 extern int oldScrollY;
 extern int oldScrollYDiff;
 
-extern uint32 spr_init_pos[1024];
+// extern uint32 spr_init_pos[1024];
 // cooked initial position of sprite
 
 extern char exact_putspritem;

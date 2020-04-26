@@ -43,28 +43,13 @@
  * Log stuff
  *****************************************************************************/
 
-char log_filename[PCE_PATH_MAX];
-// real filename of the logging file
-// it thus also includes full path on advanced system
-
 void
 Log(const char *format, ...)
 {
-	//FILE *log_file;
-	char buf[256];
-
 	va_list ap;
 	va_start (ap, format);
-	vsprintf (buf, format, ap);
+	vprintf (format, ap);
 	va_end (ap);
-
-    printf(buf);
-	//if (!(log_file = fopen (log_filename, "at")))
-	//	return;
-    //
-	//fprintf (log_file, buf);
-	//fflush (log_file);
-	//fclose (log_file);
 }
 
 

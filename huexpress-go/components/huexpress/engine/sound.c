@@ -100,7 +100,7 @@ InitSound(void)
       printf("wanted.size = %d\n",wanted.size);
       wanted.callback = sdl_fill_audio;
       wanted.userdata = main_buf;//NULL;
-      
+
       if (SDL_OpenAudio(&wanted,&obtained) < 0) {
 		  printf("Couldn't Open SDL Audio: %s\n",SDL_GetError());
 #endif // !SDL_mixer

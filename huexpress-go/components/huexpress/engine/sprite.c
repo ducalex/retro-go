@@ -38,7 +38,7 @@ uchar BGONSwitch = 1;
 uchar SPONSwitch = 1;
 // Do we have to draw sprites ?
 
-uint32 spr_init_pos[1024];
+// uint32 spr_init_pos[1024];
 // cooked initial position of sprite
 
 void (*RefreshSprite) (int Y1, int Y2, uchar bg);

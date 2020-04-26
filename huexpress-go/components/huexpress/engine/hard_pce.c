@@ -26,18 +26,13 @@
 #include "utils.h"
 #include "hard_pce.h"
 #include "pce.h"
-#if defined(BSD_CD_HARDWARE_SUPPORT)
-#include "pcecd.h"
-#else
-	// nothing yet on purpose
-#endif
 
 /**
   * Variables declaration
   * cf explanations in the header file
   **/
 
-struct_hard_pce *hard_pce;
+struct_hard_pce hard_pce;
 
 uchar *RAM;
 
@@ -58,22 +53,15 @@ uchar *PCM;
 // I/O
 IO *p_io;
 
-// CD
-uchar * cd_read_buffer;
-uchar *cd_sector_buffer;
-uchar *cd_extra_mem;
-uchar *cd_extra_super_mem;
-uchar *ac_extra_mem;
-
-uint32 pce_cd_read_datacnt;
-uchar cd_sectorcnt;
-uchar pce_cd_curcmd;
+// Dummy buffer
+uchar NULLRAM[0x2002];
 
 // Memory
 uchar *zp_base;
 uchar *sp_base;
 uchar *mmr;
 uchar *IOAREA;
+uchar *TRAPRAM;
 
 // Interruption
 uint32 *p_cyclecount;
@@ -82,7 +70,6 @@ uint32 *p_cyclecountold;
 //const uint32 TimerPeriod = 1097;
 
 // registers
-
 uint32 reg_pc_;
 uchar reg_a_;
 uchar reg_x_;
@@ -96,29 +83,9 @@ uchar *PageW[8];
 uchar *ROMMapR[256];
 uchar *ROMMapW[256];
 
-uchar *trap_ram_read;
-uchar *trap_ram_write;
-
 // Miscellaneous
 uint32 *p_cycles;
 int32 *p_external_control_cpu;
-
-/**
-  * Predeclaration of access functions
-**/
-uchar read_memory_simple(uint16);
-uchar read_memory_sf2(uint16);
-uchar read_memory_arcade_card(uint16);
-
-void write_memory_simple(uint16, uchar);
-void write_memory_arcade_card(uint16, uchar);
-
-
-//! Function to write into memory. Defaulted to the basic one
-void (*write_memory_function) (uint16, uchar) = write_memory_simple;
-
-//! Function to read from memory. Defaulted to the basic one
-uchar(*read_memory_function) (uint16) = read_memory_simple;
 
 void
 hard_reset_io(void)
@@ -134,51 +101,38 @@ hard_reset_io(void)
 void
 hard_init(void)
 {
-	trap_ram_read = rg_alloc(0x2000, MEM_FAST);
-	trap_ram_write = rg_alloc(0x2000, MEM_FAST);
-	IOAREA = rg_alloc(0x2000, MEM_FAST);
+	memset(&hard_pce, 0x00, sizeof(struct_hard_pce));
+	memset(&hard_pce.vchange, 1, sizeof(hard_pce.vchange));
+	memset(&hard_pce.vchanges, 1, sizeof(hard_pce.vchanges));
 
-	hard_pce = (struct_hard_pce *) rg_alloc(sizeof(struct_hard_pce), MEM_FAST);
-    hard_pce->PCM   = (uchar *)rg_alloc(0x10000, MEM_SLOW);
-    hard_pce->VRAM  = (uchar *)rg_alloc(VRAMSIZE, MEM_SLOW);
-    hard_pce->VRAM2 = (uchar *)rg_alloc(VRAMSIZE, MEM_SLOW);
-    hard_pce->VRAMS = (uchar *)rg_alloc(VRAMSIZE, MEM_SLOW);
+    hard_pce.VRAM2 = (uchar *)rg_alloc(VRAMSIZE, MEM_FAST);
+    hard_pce.VRAMS = (uchar *)rg_alloc(VRAMSIZE, MEM_SLOW);
 
-	RAM = hard_pce->RAM;
-	PCM = hard_pce->PCM;
-	WRAM = hard_pce->WRAM;
-	VRAM = hard_pce->VRAM;
-	VRAM2 = hard_pce->VRAM2;
-	VRAMS = hard_pce->VRAMS;
-	vchange = hard_pce->vchange;
-	vchanges = hard_pce->vchanges;
+	TRAPRAM = &NULLRAM[0];
+	IOAREA = &NULLRAM[1];
 
-	cd_extra_mem = hard_pce->cd_extra_mem;
-	cd_extra_super_mem = hard_pce->cd_extra_super_mem;
-	ac_extra_mem = hard_pce->ac_extra_mem;
-	cd_sector_buffer = hard_pce->cd_sector_buffer;
+	RAM = hard_pce.RAM;
+	PCM = hard_pce.PCM;
+	WRAM = hard_pce.WRAM;
+	VRAM = hard_pce.VRAM;
+	VRAM2 = hard_pce.VRAM2;
+	VRAMS = hard_pce.VRAMS;
+	vchange = hard_pce.vchange;
+	vchanges = hard_pce.vchanges;
 
-	SPRAM = hard_pce->SPRAM;
-	Pal = hard_pce->Pal;
+	SPRAM = hard_pce.SPRAM;
+	Pal = hard_pce.Pal;
 
-	p_scanline = &hard_pce->s_scanline;
+	p_scanline = &hard_pce.s_scanline;
 
-	p_cyclecount = &hard_pce->s_cyclecount;
-	p_cyclecountold = &hard_pce->s_cyclecountold;
+	p_cyclecount = &hard_pce.s_cyclecount;
+	p_cyclecountold = &hard_pce.s_cyclecountold;
 
-	p_cycles = &hard_pce->s_cycles;
+	p_cycles = &hard_pce.s_cycles;
 
-	mmr = hard_pce->mmr;
+	mmr = hard_pce.mmr;
 
-	p_io = &hard_pce->s_io;
-
-	if ((option.want_arcade_card_emulation) && (CD_emulation > 0)) {
-		read_memory_function = read_memory_arcade_card;
-		write_memory_function = write_memory_arcade_card;
-	} else {
-		read_memory_function = read_memory_simple;
-		write_memory_function = write_memory_simple;
-	}
+	p_io = &hard_pce.s_io;
 }
 
 /**
@@ -187,9 +141,8 @@ hard_init(void)
 void
 hard_term(void)
 {
-	free(hard_pce);
-	free(trap_ram_read);
-	free(trap_ram_write);
+	free(hard_pce.VRAM2);
+	free(hard_pce.VRAMS);
 }
 
 /**
@@ -470,123 +423,14 @@ IO_read_raw(uint16 A)
         }
         break;
 
+    case 0x1A00:
     case 0x1AC0:
-        switch (A & 15) {
-        case 0:
-            return (uchar) (io.ac_shift);
-        case 1:
-            return (uchar) (io.ac_shift >> 8);
-        case 2:
-            return (uchar) (io.ac_shift >> 16);
-        case 3:
-            return (uchar) (io.ac_shift >> 24);
-        case 4:
-            return io.ac_shiftbits;
-        case 5:
-            return io.ac_unknown4;
-        case 14:
-            return (uchar) (option.
-                            want_arcade_card_emulation ? 0x10 : NODATA);
-        case 15:
-            return (uchar) (option.
-                            want_arcade_card_emulation ? 0x51 : NODATA);
-        default:
-            Log("Unknown Arcade card port access : 0x%04X\n", A);
-        }
+        Log("Arcade Card not supported : 0x%04X\n", A);
         break;
 
-    case 0x1A00:
-        {
-            uchar ac_port = (uchar) ((A >> 4) & 3);
-            switch (A & 15) {
-            case 0:
-            case 1:
-                /*
-                 * switch (io.ac_control[ac_port] & (AC_USE_OFFSET | AC_USE_BASE))
-                 * {
-                 * case 0:
-                 * return ac_extra_mem[0];
-                 * case AC_USE_OFFSET:
-                 * ret = ac_extra_mem[io.ac_offset[ac_port]];
-                 * if (!(io.ac_control[ac_port] & AC_INCREMENT_BASE))
-                 * io.ac_offset[ac_port]+=io.ac_incr[ac_port];
-                 * return ret;
-                 * case AC_USE_BASE:
-                 * ret = ac_extra_mem[io.ac_base[ac_port]];
-                 * if (io.ac_control[ac_port] & AC_INCREMENT_BASE)
-                 * io.ac_base[ac_port]+=io.ac_incr[ac_port];
-                 * return ret;
-                 * default:
-                 * ret = ac_extra_mem[io.ac_base[ac_port] + io.ac_offset[ac_port]];
-                 * if (io.ac_control[ac_port] & AC_INCREMENT_BASE)
-                 * io.ac_base[ac_port]+=io.ac_incr[ac_port];
-                 * else
-                 * io.ac_offset[ac_port]+=io.ac_incr[ac_port];
-                 * return ret;
-                 * }
-                 * return 0;
-                 */
-
-
-#if ENABLE_TRACING_CD
-                printf
-                    ("Reading from AC main port. ac_port = %d. %suse offset. %sincrement. %sincrement base\n",
-                     ac_port,
-                     io.ac_control[ac_port] & AC_USE_OFFSET ? "" : "not ",
-                     io.ac_control[ac_port] & AC_ENABLE_INC ? "" : "not ",
-                     io.
-                     ac_control[ac_port] & AC_INCREMENT_BASE ? "" :
-                     "not ");
-#endif
-                if (io.ac_control[ac_port] & AC_USE_OFFSET)
-                    ret = ac_extra_mem[((io.ac_base[ac_port] +
-                                         io.ac_offset[ac_port]) &
-                                        0x1fffff)];
-                else
-                    ret = ac_extra_mem[((io.ac_base[ac_port]) & 0x1fffff)];
-
-                if (io.ac_control[ac_port] & AC_ENABLE_INC) {
-                    if (io.ac_control[ac_port] & AC_INCREMENT_BASE)
-                        io.ac_base[ac_port] =
-                            (io.ac_base[ac_port] +
-                             io.ac_incr[ac_port]) & 0xffffff;
-                    else
-                        io.ac_offset[ac_port] = (uint16)
-                            ((io.ac_offset[ac_port] +
-                              io.ac_incr[ac_port]) & 0xffff);
-                }
-#if ENABLE_TRACING_CD
-                printf
-                    ("Returned 0x%02x. now, base = 0x%x. offset = 0x%x, increment = 0x%x\n",
-                     ret, io.ac_base[ac_port], io.ac_offset[ac_port],
-                     io.ac_incr[ac_port]);
-#endif
-                return ret;
-
-
-            case 2:
-                return (uchar) (io.ac_base[ac_port]);
-            case 3:
-                return (uchar) (io.ac_base[ac_port] >> 8);
-            case 4:
-                return (uchar) (io.ac_base[ac_port] >> 16);
-            case 5:
-                return (uchar) (io.ac_offset[ac_port]);
-            case 6:
-                return (uchar) (io.ac_offset[ac_port] >> 8);
-            case 7:
-                return (uchar) (io.ac_incr[ac_port]);
-            case 8:
-                return (uchar) (io.ac_incr[ac_port] >> 8);
-            case 9:
-                return io.ac_control[ac_port];
-            default:
-                Log("Unknown Arcade card port access : 0x%04X\n", A);
-            }
-            break;
-        }
     case 0x1800:                // CD-ROM extention
-        return pce_cd_handle_read_1800(A);
+		// Log("CD Emulation not implemented : 0x%04X\n", A);
+		return 0;
     }
     return NODATA;
 }
@@ -663,7 +507,7 @@ bank_set(uchar P, uchar V)
 }
 #endif
 
-void
+IRAM_ATTR void
 write_memory_simple(uint16 A, uchar V)
 {
 	if (PageW[A >> 13] == IOAREA)
@@ -672,64 +516,10 @@ write_memory_simple(uint16 A, uchar V)
 		PageW[A >> 13][A] = V;
 }
 
-void
-write_memory_sf2(uint16 A, uchar V)
-{
-	if (PageW[A >> 13] == IOAREA)
-		IO_write(A, V);
-	else
-		/* support for SF2CE silliness */
-	if ((A & 0x1ffc) == 0x1ff0) {
-		int i;
-
-		ROMMapR[0x40] = ROMMapR[0] + 0x80000;
-		ROMMapR[0x40] += (A & 3) * 0x80000;
-
-		for (i = 0x41; i <= 0x7f; i++) {
-			ROMMapR[i] = ROMMapR[i - 1] + 0x2000;
-			// This could be slightly sped up by setting a fixed RAMMapW
-			ROMMapW[i] = ROMMapW[i - 1] + 0x2000;
-		}
-	} else
-		PageW[A >> 13][A] = V;
-}
-
-void
-write_memory_arcade_card(uint16 A, uchar V)
-{
-	if ((mmr[A >> 13] >= 0x40) && (mmr[A >> 13] <= 0x43)) {
-		/*
-		   #if ENABLE_TRACING_CD
-		   fprintf(stderr, "writing 0x%02x to AC pseudo bank (%d)\n", V, mmr[A >> 13] - 0x40);
-		   #endif
-		 */
-		IO_write((uint16) (0x1A00 + ((mmr[A >> 13] - 0x40) << 4)), V);
-	} else if (PageW[A >> 13] == IOAREA)
-		IO_write(A, V);
-	else
-		PageW[A >> 13][A] = V;
-}
-
-uchar
+IRAM_ATTR uchar
 read_memory_simple(uint16 A)
 {
 	if (PageR[A >> 13] != IOAREA)
-		return PageR[A >> 13][A];
-	else
-		return IO_read(A);
-}
-
-uchar
-read_memory_arcade_card(uint16 A)
-{
-	if ((mmr[A >> 13] >= 0x40) && (mmr[A >> 13] <= 0x43)) {
-		/*
-		   #if ENABLE_TRACING_CD
-		   fprintf(stderr, "reading AC pseudo bank (%d)\n", mmr[A >> 13] - 0x40);
-		   #endif
-		 */
-		return IO_read((uint16) (0x1A00 + ((mmr[A >> 13] - 0x40) << 4)));
-	} else if (PageR[A >> 13] != IOAREA)
 		return PageR[A >> 13][A];
 	else
 		return IO_read(A);

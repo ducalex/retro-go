@@ -43,12 +43,6 @@ typedef struct {
 	uint16 cr;
 } gfx_context;
 
-
-//extern SDL_Surface *physical_screen;
-//extern SDL_Rect physical_screen_rect;
-//extern SDL_Color olay_cmap[256];
-
-extern int video_dump_flag;
 extern int gfx_need_video_mode_change;
 
 void calc_fullscreen_aspect(unsigned short physical_screen_width,
@@ -65,22 +59,9 @@ void save_gfx_context(int slot_number);
 // void load_gfx_context(int slot_number);
 void gfx_init();
 
-// #define save_gfx_context(slot_number) save_gfx_context_(slot_number)
-// #define load_gfx_context(slot_number) load_gfx_context_(slot_number)
-
-int start_dump_video();
-void stop_dump_video();
-void dump_video_frame();
-
-void dump_rgb_frame(char *output_buffer);
-
 extern int UCount;
 extern int gfx_need_redraw;
 
 uchar Loop6502();
-
-#if ENABLE_TRACING_GFX
-void gfx_debug_printf(char *format, ...);
-#endif
 
 #endif

@@ -21,6 +21,7 @@ uchar* XBuf = NULL;
 uchar* osd_gfx_buffer = NULL;
 
 static uint frameTime = 0;
+static uint startTime = 0;
 uint skipFrames = 0;
 
 extern uchar *SPM_raw, *SPM;
@@ -35,18 +36,18 @@ static inline void set_current_fb(int i)
     osd_gfx_buffer = frames[current_fb].buffer;
 
     for (int i = 0; i < 240; i++) {
-        memset(osd_gfx_buffer + i * XBUF_WIDTH, Pal[0], 336);
-        memset(SPM + i * XBUF_WIDTH, 0, 336);
+        memset(osd_gfx_buffer + i * XBUF_WIDTH, Pal[0], io.screen_w);
+        memset(SPM + i * XBUF_WIDTH, 0, io.screen_w);
     }
 }
+
 
 int osd_gfx_init(void)
 {
     printf("%s: (%dx%d)\n", __func__, io.screen_w, io.screen_h);
 
-    forceVideoRefresh = true;
     frameTime = get_frame_time(60);
-
+    startTime = get_elapsed_time();
     framebuffers[0] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
     framebuffers[1] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
     SPM_raw         = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
@@ -72,6 +73,7 @@ int osd_gfx_init_normal_mode(void)
     set_current_fb(0);
     SetPalette();
 
+    forceVideoRefresh = true;
     gfx_init_done = true;
     return true;
 }
@@ -81,21 +83,25 @@ void osd_gfx_put_image_normal(void)
 {
     if (!gfx_init_done) return;
 
-    uint startTime = get_elapsed_time();
     bool drawFrame = !skipFrames;
-    bool fullFrame = false;
+    bool fullFrame = true;
 
     if (drawFrame)
     {
-        fullFrame = odroid_display_queue_update(&frames[current_fb], NULL) == SCREEN_UPDATE_FULL;
+        // xQueueSend(videoTaskQueue, &current_fb, portMAX_DELAY);
+        odroid_display_queue_update(&frames[current_fb], NULL);
         set_current_fb(!current_fb);
     }
+
+    // For reference pelle7's performance with fixed frameskip = 2 (default/minimum) vs retro-go same settings:
+    // Soldier Blade: 41-53 emulated fps / 15-17 real fps             retro-go: 55-67 emulated / 18-21 real
+    // Raiden:        38-47 emulated fps / 12-15 real fps             retro-go: 48-58 emulated / 15-19 real
 
     // See if we need to skip a frame to keep up
     if (skipFrames == 0)
     {
-        skipFrames = 1;
-        if (get_elapsed_time_since(startTime) > frameTime) skipFrames = 1;
+        skipFrames += 1;
+        if (get_elapsed_time_since(startTime) > frameTime) skipFrames += 1;
         if (speedupEnabled) skipFrames += speedupEnabled * 2.5;
     }
     else if (skipFrames > 0)
@@ -106,6 +112,8 @@ void osd_gfx_put_image_normal(void)
     // odroid_audio_submit(pcm.buf, pcm.pos >> 1);
 
     odroid_system_stats_tick(!drawFrame, fullFrame);
+
+    startTime = get_elapsed_time();
 }
 
 
