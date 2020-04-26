@@ -4,7 +4,7 @@
 
 #include "pce.h"
 #include "cleantypes.h"
-#include "mix.h"
+#include "sound.h"
 
 
 typedef struct {
@@ -92,16 +92,10 @@ extern void (*RefreshSprite) (int Y1, int Y2, uchar bg);
 #define H_FLIP  0x0800
 extern uchar *SPM;
 
-#ifdef MY_INLINE_SPRITE
-#include "sprite_ops_define.h"
-#else
 extern void RefreshSpriteExact(int Y1, int Y2, uchar bg);
 // The true refreshing function
 extern void RefreshLine(int Y1, int Y2);
-#endif
-#ifndef MY_INLINE_SPRITE_CheckSprites
 extern int32 CheckSprites(void);
-#endif
 extern void RefreshScreen(void);
 
 #endif

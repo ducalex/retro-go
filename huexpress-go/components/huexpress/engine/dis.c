@@ -17,7 +17,7 @@
 
 #include "dis.h"
 
-#ifndef MY_EXCLUDE
+#if 0
 
 /* Way to accedate to the PC Engine memory
 

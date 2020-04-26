@@ -30,18 +30,12 @@ int ResetPCE();
 int32 InitMachine(void);
 void TrashMachine(void);
 int32 Joysticks(void);
-void delete_file_tmp(char *name, int dummy, int dummy2);
 uchar TimerInt();
+void SetPalette(void);
 
-void init_log_file();
 int InitPCE(char *name);
 void TrashPCE();
 int RunPCE(void);
-
-void SetPalette(void);
-
-extern FILE *out_snd;
-// The file used to put sound into
 
 extern char volatile key_delay;
 // are we allowed to press another 'COMMAND' key ?
@@ -120,6 +114,8 @@ extern struct hugo_options option;
 
 extern uchar video_driver;
 
+extern int scroll;
+
 #if !defined(MIN)
 #define MIN(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
 #define MAX(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
@@ -190,94 +186,6 @@ extern uchar can_write_debug;
 
 #include <time.h>
 
-#ifdef SOUND
-#include "sound.h"
-#endif							// SOUND
-
-#ifdef MY_VDC_VARS
-
-extern pair IO_VDC_00_MAWR ;
-extern pair IO_VDC_01_MARR ;
-extern pair IO_VDC_02_VWR  ;
-extern pair IO_VDC_03_vdc3 ;
-extern pair IO_VDC_04_vdc4 ;
-extern pair IO_VDC_05_CR   ;
-extern pair IO_VDC_06_RCR  ;
-extern pair IO_VDC_07_BXR  ;
-extern pair IO_VDC_08_BYR  ;
-extern pair IO_VDC_09_MWR  ;
-extern pair IO_VDC_0A_HSR  ;
-extern pair IO_VDC_0B_HDR  ;
-extern pair IO_VDC_0C_VPR  ;
-extern pair IO_VDC_0D_VDW  ;
-extern pair IO_VDC_0E_VCR  ;
-extern pair IO_VDC_0F_DCR  ;
-extern pair IO_VDC_10_SOUR ;
-extern pair IO_VDC_11_DISTR;
-extern pair IO_VDC_12_LENR ;
-extern pair IO_VDC_13_SATB ;
-extern pair IO_VDC_14      ;
-extern pair *IO_VDC_active_ref;
-
-#define IO_VDC_reset { \
-    IO_VDC_00_MAWR.W=0; \
-    IO_VDC_01_MARR.W=0; \
-    IO_VDC_02_VWR.W=0; \
-    IO_VDC_03_vdc3.W=0; \
-    IO_VDC_04_vdc4.W=0; \
-    IO_VDC_05_CR.W=0; \
-    IO_VDC_06_RCR.W=0; \
-    IO_VDC_07_BXR.W=0; \
-    IO_VDC_08_BYR.W=0; \
-    IO_VDC_09_MWR.W=0; \
-    IO_VDC_0A_HSR.W=0; \
-    IO_VDC_0B_HDR.W=0; \
-    IO_VDC_0C_VPR.W=0; \
-    IO_VDC_0D_VDW.W=0; \
-    IO_VDC_0E_VCR.W=0; \
-    IO_VDC_0F_DCR.W=0; \
-    IO_VDC_10_SOUR.W=0; \
-    IO_VDC_11_DISTR.W=0; \
-    IO_VDC_12_LENR.W=0; \
-    IO_VDC_13_SATB.W=0; \
-    IO_VDC_14.W=0; \
-    IO_VDC_active_ref = &IO_VDC_00_MAWR; \
-    }
-
-#define IO_VDC_active_set(value_) { \
-    io.vdc_reg = value_; \
-    switch(io.vdc_reg) { \
-    case 0x00: IO_VDC_active_ref = &IO_VDC_00_MAWR; break; \
-    case 0x01: IO_VDC_active_ref = &IO_VDC_01_MARR; break; \
-    case 0x02: IO_VDC_active_ref = &IO_VDC_02_VWR; break; \
-    case 0x03: IO_VDC_active_ref = &IO_VDC_03_vdc3; break; \
-    case 0x04: IO_VDC_active_ref = &IO_VDC_04_vdc4; break; \
-    case 0x05: IO_VDC_active_ref = &IO_VDC_05_CR; break; \
-    case 0x06: IO_VDC_active_ref = &IO_VDC_06_RCR; break; \
-    case 0x07: IO_VDC_active_ref = &IO_VDC_07_BXR; break; \
-    case 0x08: IO_VDC_active_ref = &IO_VDC_08_BYR; break; \
-    case 0x09: IO_VDC_active_ref = &IO_VDC_09_MWR; break; \
-    case 0x0A: IO_VDC_active_ref = &IO_VDC_0A_HSR; break; \
-    case 0x0B: IO_VDC_active_ref = &IO_VDC_0B_HDR; break; \
-    case 0x0C: IO_VDC_active_ref = &IO_VDC_0C_VPR; break; \
-    case 0x0D: IO_VDC_active_ref = &IO_VDC_0D_VDW; break; \
-    case 0x0E: IO_VDC_active_ref = &IO_VDC_0E_VCR; break; \
-    case 0x0F: IO_VDC_active_ref = &IO_VDC_0F_DCR; break; \
-    case 0x10: IO_VDC_active_ref = &IO_VDC_10_SOUR; break; \
-    case 0x11: IO_VDC_active_ref = &IO_VDC_11_DISTR; break; \
-    case 0x12: IO_VDC_active_ref = &IO_VDC_12_LENR; break; \
-    case 0x13: IO_VDC_active_ref = &IO_VDC_13_SATB; break; \
-    case 0x14: IO_VDC_active_ref = &IO_VDC_14; break; \
-    default: \
-        printf("Reg invalid: 0x%0X\n", io.vdc_reg); \
-        abort(); \
-    } \
-    }
-
-#define IO_VDC_active (*IO_VDC_active_ref)
-
-#else
-
 #define IO_VDC_00_MAWR  io.VDC[MAWR]
 #define IO_VDC_01_MARR  io.VDC[MARR]
 #define IO_VDC_02_VWR   io.VDC[VWR]
@@ -300,10 +208,6 @@ extern pair *IO_VDC_active_ref;
 #define IO_VDC_13_SATB  io.VDC[SATB]
 #define IO_VDC_14       io.VDC[0x14]
 
-#define IO_VDC_reset {}
-#define IO_VDC_active_set(value_) io.vdc_reg = value_;
 #define IO_VDC_active io.VDC[io.vdc_reg]
-
-#endif
 
 #endif

@@ -33,8 +33,8 @@ struct pcm pcm;
 
 int16_t* audioBuffer;
 
-static odroid_video_frame update1 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, NULL, NULL, 0};
-static odroid_video_frame update2 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, NULL, NULL, 0};
+static odroid_video_frame update1 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, -1, NULL, NULL, 0};
+static odroid_video_frame update2 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, -1, NULL, NULL, 0};
 static odroid_video_frame *currentUpdate = &update1;
 
 static bool fullFrame = false;

@@ -24,8 +24,8 @@ static char* romData;
 static size_t romSize;
 
 static uint16_t myPalette[64];
-static odroid_video_frame update1 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 0x3F, NULL, myPalette, 0};
-static odroid_video_frame update2 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 0x3F, NULL, myPalette, 0};
+static odroid_video_frame update1 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 0x3F, -1, NULL, myPalette, 0};
+static odroid_video_frame update2 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 0x3F, -1, NULL, myPalette, 0};
 static odroid_video_frame *currentUpdate = &update1;
 
 static void (*audio_callback)(void *buffer, int length) = NULL;

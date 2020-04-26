@@ -11,7 +11,7 @@ typedef struct op {
 /* A bit modified to include Break Points  : "BP?" at $?B */
 /* Beware, the name does import, invalid opcodes got "???" as name or are BP */
 
-operation optable[256] = {
+const operation optable[256] = {
 	{AM_IMPL, "BRK"},			/* $00 */
 	{AM_ZPINDX, "ORA"},			/* $01 */
 	{AM_IMPL, "SXY"},			/* $02 */
@@ -273,7 +273,7 @@ operation optable[256] = {
 
 /* number of bytes per instruction in each addressing mode */
 
-mode_struct addr_info[MAX_MODES] = {
+const mode_struct addr_info[MAX_MODES] = {
 	{1, &(implicit)},			/* implicit              */
 	{2, &(immed)},				/* immediate             */
 	{2, &(relative)},			/* relative              */

@@ -91,8 +91,6 @@ void
 hard_reset_io(void)
 {
     memset(&io, 0, sizeof(IO));
-
-    IO_VDC_reset
 }
 
 /**
@@ -267,7 +265,7 @@ int return_value_mask_tab_1400[4] = {
 
 
 //! Returns the useful value mask depending on port value
-static int
+static inline int
 return_value_mask(uint16 A)
 {
 	if (A < 0x400)				// VDC
@@ -435,62 +433,511 @@ IO_read_raw(uint16 A)
     return NODATA;
 }
 
-//! Adds the io_buffer feature
+
 IRAM_ATTR inline uchar
 IO_read(uint16 A)
 {
-	int mask;
-	uchar temporary_return_value;
+	uchar temporary_return_value = IO_read_raw(A);
 
-	if ((A < 0x800) || (A >= 0x1800))	// latch isn't affected out of the 0x800 - 0x1800 range
-		return IO_read_raw(A);
+	if ((A < 0x800) || (A >= 0x1800))
+		return temporary_return_value;
 
-	mask = return_value_mask(A);
-
-	temporary_return_value = IO_read_raw(A);
-
-	io.io_buffer = temporary_return_value | (io.io_buffer & ~mask);
+	io.io_buffer = temporary_return_value | (io.io_buffer & ~return_value_mask(A));
 
 	return io.io_buffer;
 }
 
-#if defined(TEST_ROM_RELOCATED)
-extern uchar *ROM;
+
+IRAM_ATTR inline void
+IO_write(uint16 A, uchar V)
+{
+    //printf("w%04x,%02x ",A&0x3FFF,V);
+
+    if ((A >= 0x800) && (A < 0x1800))   // We keep the io buffer value
+        io.io_buffer = V;
+
+#ifndef FINAL_RELEASE
+    if ((A & 0x1F00) == 0x1A00)
+        Log("AC Write %02x at %04x\n", V, A);
 #endif
 
-#ifndef MY_INLINE_bank_set
+    switch (A & 0x1F00) {
+    case 0x0000:                /* VDC */
+        switch (A & 3) {
+        case 0:
+            io.vdc_reg = V & 31;
+            return;
+        case 1:
+            return;
+        case 2:
+            //printf("vdc_l%d,%02x ",io.vdc_reg,V);
+            switch (io.vdc_reg) {
+            case VWR:           /* Write to video */
+                io.vdc_ratch = V;
+                return;
+            case HDR:           /* Horizontal Definition */
+                {
+                    typeof(io.screen_w) old_value = io.screen_w;
+                    io.screen_w = (V + 1) * 8;
+
+                    if (io.screen_w == old_value)
+                        break;
+
+                    // (*init_normal_mode[video_driver]) ();
+                    gfx_need_video_mode_change = 1;
+                    {
+                        uint32 x, y =
+                            (WIDTH - io.screen_w) / 2 - 512 * WIDTH;
+                        for (x = 0; x < 1024; x++) {
+                            // spr_init_pos[x] = y;
+                            y += WIDTH;
+                        }
+                    }
+                }
+                break;
+
+            case MWR:           /* size of the virtual background screen */
+                {
+                    static uchar bgw[] = { 32, 64, 128, 128 };
+                    io.bg_h = (V & 0x40) ? 64 : 32;
+                    io.bg_w = bgw[(V >> 4) & 3];
+                }
+                break;
+
+            case BYR:           /* Vertical screen offset */
+                /*
+                   if (IO_VDC_08_BYR.B.l == V)
+                   return;
+                 */
+
+                save_gfx_context(0);
+
+                if (!scroll) {
+                    oldScrollX = ScrollX;
+                    oldScrollY = ScrollY;
+                    oldScrollYDiff = ScrollYDiff;
+                }
+                IO_VDC_08_BYR.B.l = V;
+                scroll = 1;
+                ScrollYDiff = scanline - 1;
+                ScrollYDiff -= IO_VDC_0C_VPR.B.h + IO_VDC_0C_VPR.B.l;
+
+#if ENABLE_TRACING_DEEP_GFX
+                TRACE("ScrollY = %d (l), ", ScrollY);
+#endif
+                return;
+            case BXR:           /* Horizontal screen offset */
+
+                /*
+                   if (IO_VDC_07_BXR.B.l == V)
+                   return;
+                 */
+
+                save_gfx_context(0);
+
+                if (!scroll) {
+                    oldScrollX = ScrollX;
+                    oldScrollY = ScrollY;
+                    oldScrollYDiff = ScrollYDiff;
+                }
+                IO_VDC_07_BXR.B.l = V;
+                scroll = 1;
+                return;
+
+            case CR:
+                if (IO_VDC_active.B.l == V)
+                    return;
+                save_gfx_context(0);
+                IO_VDC_active.B.l = V;
+                return;
+
+            case VCR:
+                IO_VDC_active.B.l = V;
+                gfx_need_video_mode_change = 1;
+                return;
+
+            case HSR:
+                IO_VDC_active.B.l = V;
+                gfx_need_video_mode_change = 1;
+                return;
+
+            case VPR:
+                IO_VDC_active.B.l = V;
+                gfx_need_video_mode_change = 1;
+                return;
+
+            case VDW:
+                IO_VDC_active.B.l = V;
+                gfx_need_video_mode_change = 1;
+                return;
+            }
+
+            IO_VDC_active.B.l = V;
+            // all others reg just need to get the value, without additional stuff
+
+#if ENABLE_TRACING_DEEP_GFX
+            TRACE("VDC[%02x]=0x%02x, ", io.vdc_reg, V);
+#endif
+
+#ifndef FINAL_RELEASE
+            if (io.vdc_reg > 19) {
+                fprintf(stderr, "ignore write lo vdc%d,%02x\n", io.vdc_reg,
+                        V);
+            }
+#endif
+
+            return;
+        case 3:
+            switch (io.vdc_reg) {
+            case VWR:           /* Write to mem */
+                /* Writing to hi byte actually perform the action */
+                VRAM[IO_VDC_00_MAWR.W * 2] = io.vdc_ratch;
+                VRAM[IO_VDC_00_MAWR.W * 2 + 1] = V;
+
+                vchange[IO_VDC_00_MAWR.W / 16] = 1;
+                vchanges[IO_VDC_00_MAWR.W / 64] = 1;
+
+                IO_VDC_00_MAWR.W += io.vdc_inc;
+
+                /* vdc_ratch shouldn't be reset between writes */
+                // io.vdc_ratch = 0;
+                return;
+
+            case VCR:
+                IO_VDC_active.B.h = V;
+                gfx_need_video_mode_change = 1;
+                return;
+
+            case HSR:
+                IO_VDC_active.B.h = V;
+                gfx_need_video_mode_change = 1;
+                return;
+
+            case VPR:
+                IO_VDC_active.B.h = V;
+                gfx_need_video_mode_change = 1;
+                return;
+
+            case VDW:           /* screen height */
+                IO_VDC_active.B.h = V;
+                gfx_need_video_mode_change = 1;
+                return;
+
+            case LENR:          /* DMA transfert */
+
+                IO_VDC_12_LENR.B.h = V;
+
+                {               // black-- 's code
+
+                    int sourcecount = (IO_VDC_0F_DCR.W & 8) ? -1 : 1;
+                    int destcount = (IO_VDC_0F_DCR.W & 4) ? -1 : 1;
+
+                    int source = IO_VDC_10_SOUR.W * 2;
+                    int dest = IO_VDC_11_DISTR.W * 2;
+
+                    int i;
+
+                    for (i = 0; i < (IO_VDC_12_LENR.W + 1) * 2; i++) {
+                        *(VRAM + dest) = *(VRAM + source);
+                        dest += destcount;
+                        source += sourcecount;
+                    }
+
+                    /*
+                       IO_VDC_10_SOUR.W = source;
+                       IO_VDC_11_DISTR.W = dest;
+                     */
+                    // Erich Kitzmuller fix follows
+                    IO_VDC_10_SOUR.W = source / 2;
+                    IO_VDC_11_DISTR.W = dest / 2;
+
+                }
+
+                IO_VDC_12_LENR.W = 0xFFFF;
+
+                memset(vchange, 1, VRAMSIZE / 32);
+                memset(vchanges, 1, VRAMSIZE / 128);
+
+
+                /* TODO: check whether this flag can be ignored */
+                io.vdc_status |= VDC_DMAfinish;
+
+                return;
+
+            case CR:            /* Auto increment size */
+                {
+                    static uchar incsize[] = { 1, 32, 64, 128 };
+                    /*
+                       if (IO_VDC_05_CR.B.h == V)
+                       return;
+                     */
+                    save_gfx_context(0);
+
+                    io.vdc_inc = incsize[(V >> 3) & 3];
+                    IO_VDC_05_CR.B.h = V;
+                }
+                break;
+            case HDR:           /* Horizontal display end */
+                /* TODO : well, maybe we should implement it */
+                //io.screen_w = (io.VDC_ratch[HDR]+1)*8;
+                //TRACE0("HDRh\n");
+#if ENABLE_TRACING_DEEP_GFX
+                TRACE("VDC[HDR].h = %d, ", V);
+#endif
+                break;
+
+            case BYR:           /* Vertical screen offset */
+
+                /*
+                   if (IO_VDC_08_BYR.B.h == (V & 1))
+                   return;
+                 */
+
+                save_gfx_context(0);
+
+                if (!scroll) {
+                    oldScrollX = ScrollX;
+                    oldScrollY = ScrollY;
+                    oldScrollYDiff = ScrollYDiff;
+                }
+                IO_VDC_08_BYR.B.h = V & 1;
+                scroll = 1;
+                ScrollYDiff = scanline - 1;
+                ScrollYDiff -= IO_VDC_0C_VPR.B.h + IO_VDC_0C_VPR.B.l;
+#if ENABLE_TRACING_GFX
+                if (ScrollYDiff < 0)
+                    TRACE("ScrollYDiff went negative when substraction VPR.h/.l (%d,%d)\n",
+                        IO_VDC_0C_VPR.B.h, IO_VDC_0C_VPR.B.l);
+#endif
+
+#if ENABLE_TRACING_DEEP_GFX
+                TRACE("ScrollY = %d (h), ", ScrollY);
+#endif
+
+                return;
+
+            case SATB:          /* DMA from VRAM to SATB */
+                IO_VDC_13_SATB.B.h = V;
+                io.vdc_satb = 1;
+                io.vdc_status &= ~VDC_SATBfinish;
+                return;
+
+            case BXR:           /* Horizontal screen offset */
+
+                if (IO_VDC_07_BXR.B.h == (V & 3))
+                    return;
+
+                save_gfx_context(0);
+
+                if (!scroll) {
+                    oldScrollX = ScrollX;
+                    oldScrollY = ScrollY;
+                    oldScrollYDiff = ScrollYDiff;
+                }
+
+                IO_VDC_07_BXR.B.h = V & 3;
+                scroll = 1;
+                return;
+            }
+            IO_VDC_active.B.h = V;
+
+#ifndef FINAL_RELEASE
+            if (io.vdc_reg > 19) {
+                fprintf(stderr, "ignore write hi vdc%d,%02x\n", io.vdc_reg,
+                        V);
+            }
+#endif
+
+            return;
+        }
+        break;
+
+    case 0x0400:                /* VCE */
+        switch (A & 7) {
+        case 0:
+            /*TRACE("VCE 0, V=%X\n", V); */
+            return;
+
+            /* Choose color index */
+        case 2:
+            io.vce_reg.B.l = V;
+            return;
+        case 3:
+            io.vce_reg.B.h = V & 1;
+            return;
+
+            /* Set RGB components for current choosen color */
+        case 4:
+            io.VCE[io.vce_reg.W].B.l = V;
+            {
+                uchar c;
+                int i, n;
+                n = io.vce_reg.W;
+                c = io.VCE[n].W >> 1;
+                if (n == 0) {
+                    for (i = 0; i < 256; i += 16)
+                        Pal[i] = c;
+                } else if (n & 15)
+                    Pal[n] = c;
+            }
+            return;
+
+        case 5:
+            io.VCE[io.vce_reg.W].B.h = V;
+            {
+                uchar c;
+                int i, n;
+                n = io.vce_reg.W;
+                c = io.VCE[n].W >> 1;
+                if (n == 0) {
+                    for (i = 0; i < 256; i += 16)
+                        Pal[i] = c;
+                } else if (n & 15)
+                    Pal[n] = c;
+            }
+            io.vce_reg.W = (io.vce_reg.W + 1) & 0x1FF;
+            return;
+        }
+        break;
+
+
+    case 0x0800:                /* PSG */
+
+        switch (A & 15) {
+
+            /* Select PSG channel */
+        case 0:
+            io.psg_ch = V & 7;
+            return;
+
+            /* Select global volume */
+        case 1:
+            io.psg_volume = V;
+            return;
+
+            /* Frequency setting, 8 lower bits */
+        case 2:
+            io.PSG[io.psg_ch][2] = V;
+            break;
+
+            /* Frequency setting, 4 upper bits */
+        case 3:
+            io.PSG[io.psg_ch][3] = V & 15;
+            break;
+
+        case 4:
+            io.PSG[io.psg_ch][4] = V;
+#if ENABLE_TRACING_AUDIO
+            if ((V & 0xC0) == 0x40)
+                io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] = 0;
+#endif
+            break;
+
+            /* Set channel specific volume */
+        case 5:
+            io.PSG[io.psg_ch][5] = V;
+            break;
+
+            /* Put a value into the waveform or direct audio buffers */
+        case 6:
+            if (io.PSG[io.psg_ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS) {
+                io.psg_da_data[io.psg_ch][io.psg_da_index[io.psg_ch]] = V;
+                io.psg_da_index[io.psg_ch] =
+                    (io.psg_da_index[io.psg_ch] + 1) & 0x3FF;
+                if (io.psg_da_count[io.psg_ch]++ >
+                    (PSG_DIRECT_ACCESS_BUFSIZE - 1)) {
+                    if (!io.psg_channel_disabled[io.psg_ch])
+                        MESSAGE_INFO
+                            ("Audio being put into the direct access buffer faster than it's being played.\n");
+                    io.psg_da_count[io.psg_ch] = 0;
+                }
+            } else {
+                io.wave[io.psg_ch][io.PSG[io.psg_ch][PSG_DATA_INDEX_REG]] =
+                    V;
+                io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] =
+                    (io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] + 1) & 0x1F;
+            }
+            break;
+
+        case 7:
+            io.PSG[io.psg_ch][7] = V;
+            break;
+
+        case 8:
+            io.psg_lfo_freq = V;
+            break;
+
+        case 9:
+            io.psg_lfo_ctrl = V;
+            break;
+
+#ifdef EXTRA_CHECKING
+        default:
+            fprintf(stderr, "ignored PSG write\n");
+#endif
+        }
+        return;
+
+    case 0x0c00:                /* timer */
+        //TRACE("Timer Access: A=%X,V=%X\n", A, V);
+        switch (A & 1) {
+        case 0:
+            io.timer_reload = V & 127;
+            return;
+        case 1:
+            V &= 1;
+            if (V && !io.timer_start)
+                io.timer_counter = io.timer_reload;
+            io.timer_start = V;
+            return;
+        }
+        break;
+
+    case 0x1000:                /* joypad */
+//              TRACE("V=%02X\n", V);
+        io.joy_select = V & 1;
+        //io.joy_select = V;
+        if (V & 2)
+            io.joy_counter = 0;
+        return;
+
+    case 0x1400:                /* IRQ */
+        switch (A & 15) {
+        case 2:
+            io.irq_mask = V;    /*TRACE("irq_mask = %02X\n", V); */
+            return;
+        case 3:
+            io.irq_status = (io.irq_status & ~TIRQ) | (V & 0xF8);
+            return;
+        }
+        break;
+
+    case 0x1A00:
+		Log("Arcade Card not supported : %d into 0x%04X\n", V, A);
+        break;
+
+    case 0x1800:                /* CD-ROM extention */
+		// Log("CD Emulation not implemented : %d 0x%04X\n", V, A);
+        break;
+    }
+#ifndef FINAL_RELEASE
+    fprintf(stderr,
+            "ignore I/O write %04x,%02x\tBase adress of port %X\nat PC = %04X\n",
+            A, V, A & 0x1CC0,
+            reg_pc);
+#endif
+//          DebugDumpTrace(4, 1);
+}
+
 /**
   * Change bank setting
   **/
-void
+IRAM_ATTR void
 bank_set(uchar P, uchar V)
 {
-
 #if ENABLE_TRACING
 	if (V >= 0x40 && V <= 0x43)
 		TRACE("AC pseudo bank switching !!! (mmr[%d] = %d)\n", P, V);
-#endif
-
-#if defined(TEST_ROM_RELOCATED)
-	if ((P >= 2) && ((V < 0x68) || (V >= 0x88))) {
-		int physical_bank = mmr[reg_pc >> 13];
-		if (physical_bank >= 0x68)
-			physical_bank -= 0x68;
-		printf
-			("Relocation error PC = 0x%04x (logical bank 0x%0x(0x%02x), physical bank 0x%0x(0x%02x), offset 0x%04x, global offset 0x%x)\nBank %x into MMR %d\nPatching into BRK\n",
-			 reg_pc, mmr[reg_pc >> 13], mmr[reg_pc >> 13], physical_bank,
-			 physical_bank, reg_pc & 0x1FFF,
-			 physical_bank * 0x2000 + (reg_pc & 0x1FFF), V, P);
-		if (V >= 0x80) {
-			printf("Not a physical bank, aborting patching\n");
-		} else {
-			V += 0x68;
-			patch_rom(cart_name,
-					  physical_bank * 0x2000 + (reg_pc & 0x1FFF), 0);
-			ROM[physical_bank * 0x2000 + (reg_pc & 0x1FFF)] = 0;
-		}
-	}
-	fprintf(stderr, "Bank set MMR[%d]=%02x at %04x\n", P, V, reg_pc);
 #endif
 
 	mmr[P] = V;
@@ -501,11 +948,7 @@ bank_set(uchar P, uchar V)
 		PageR[P] = ROMMapR[V] - P * 0x2000;
 		PageW[P] = ROMMapW[V] - P * 0x2000;
 	}
-#ifdef MY_PCENGINE_LOGGING
-	printf("%s: %d,%d -> %X\n", __func__, P, V, PageR[P]);
-#endif
 }
-#endif
 
 IRAM_ATTR void
 write_memory_simple(uint16 A, uchar V)
@@ -525,8 +968,7 @@ read_memory_simple(uint16 A)
 		return IO_read(A);
 }
 
-#ifndef MY_EXCLUDE
-
+#if 0
 static char opcode_long_buffer[256];
 static uint16 opcode_long_position;
 

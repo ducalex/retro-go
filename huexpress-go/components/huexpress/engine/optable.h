@@ -4,8 +4,6 @@
 #include "cleantypes.h"
 #include "followop.h"
 
-#ifndef MY_EXCLUDE
-
 /* addressing modes: */
 
 #define AM_IMPL      0			/* implicit              */
@@ -45,9 +43,8 @@ typedef struct op_debug {
 	 uint16(*following_IP) (uint16);
 } operation_debug;
 
-extern operation_debug optable_debug[256];
+extern const operation_debug optable_debug[256];
 
-extern mode_struct_debug addr_info_debug[MAX_MODES];
-#endif
+extern const mode_struct_debug addr_info_debug[MAX_MODES];
 
 #endif

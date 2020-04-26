@@ -11,6 +11,7 @@
 #include "gfx.h"
 #include "pce.h"
 #include "utils.h"
+#include "myadd.h"
 
 #ifdef MY_INLINE
 #define imm_operand(addr) ((uchar) (PageR[(unsigned short int)(addr >> 13)][addr]))
@@ -351,205 +352,69 @@ dump_pce_core()
 // (2) An unknown hardware access is performed
 // (3) <ESC> key is hit
 
-#ifndef MY_h6280_exe_go
-
 void
 exe_go(void)
 {
-  	gfx_init();
-	//int err = 0;
-	uchar I;
+    gfx_init();
+    uchar I;
 
-#if defined(KERNEL_DEBUG)
-	uint16 old_reg_pc;
-#endif
+    uint32 CycleNew = 0;
+    uint32 cycles = 0;
 
-	// err is set on a 'trap':
-	while (true) {
+// Slower!
+//#undef reg_pc
+  //  WORD_ALIGNED_ATTR uint16 reg_pc = reg_pc_;
+
+//#undef reg_a
+ //   uchar reg_a = 0;
+
+    while (true) {
       ODROID_DEBUG_PERF_START2(debug_perf_total)
 
-//    Log("Pc = %04x : %s\n", reg_pc, optable_runtime[Page[reg_pc>>13][reg_pc]].opname);
-
-#ifdef KERNEL_DEBUG
-/*
-      if (reg_pc<0xE000)
-      {
-      Log("PC = %04X (%02X), A = %02X, X = %02X, Y = %02X, P = %02X\n",
-          reg_pc,
-          Page[reg_pc>>13][reg_pc],
-          reg_a,
-          reg_x,
-          reg_y,
-          reg_p);
-
-      {
-        int i;
-        for (i=0xF0; i<256; i++)
-          Log("%02X",get_8bit_zp(i));
-        Log("\n");
-      }
-
-      }
-*/
-#endif
-
-		/*
-		   {
-		   static char in_rom = 0;
-		   if (reg_pc == 0x3800) in_rom = 1;
-
-		   if (in_rom)
-		   Log("PC = %04X\n",reg_pc, in_rom);
-
-		   if (reg_pc == 0x3837)
-		   {
-		   int i;
-		   for (i = 0; i < 8; i++)
-		   Log("tmm[%d] = %d\n",i,mmr[i]);
-		   for (i = 0xE000; i < 0xFFFE; i++)
-		   Log("%02x%s",Page[i>>13][i],i & 0xf?"":"\n");
-		   }
-
-		   if (reg_pc >= 0xE000)
-		   in_rom = 0;
-
-		   if (reg_pc == 0x4000)
-		   {
-		   int i;
-		   for (i = 0; i < 8; i++)
-		   Log("tmm[%d] = %d\n",i,mmr[i]);
-		   for (i = 0x68; i < 0x7F; i++)
-		   {
-		   int x;
-		   Log("bank %d :",i);
-		   for (x = 0; x < 20; x++)
-		   Log("%02X",ROMMap[i][x]);
-		   Log("\n");
-		   }
-		   }
-
-		   }
-		 */
-
-#if defined(KERNEL_DEBUG)
-		old_reg_pc = reg_pc;
-#endif
-
-#if defined(OPCODE_LOGGING)
-#if defined(SDL)
-		extern Uint8 *key;
-
-		// if (!key[SDLK_F11])
-#endif
-		if (0xC7A8 == reg_pc) {
-			uchar offset = PageR[reg_pc >> 13][reg_pc + 1];
-			Log("C7A8 !! %02X\n", offset);
-			Log("zp[%02X] = %02X\n", offset,
-				get_8bit_addr(get_16bit_zp(offset)));
-		}
-		uint8 rr = PageR[reg_pc >> 13][reg_pc];
-		Log("[%04X] (%02X, %-4s) (%02X,%02X,%02X) (%02X,%02X) {%02X,%04X} {%02X}\n", reg_pc, rr, optable_runtime[rr].opname, reg_a, reg_x, reg_y, reg_s, reg_p, get_8bit_addr(get_16bit_zp(0)), get_16bit_zp(0), get_8bit_zp(0x48));
-#endif
-
       ODROID_DEBUG_PERF_START2(debug_perf_part1)
-
+      while (cycles<=455)
+      {
 #ifdef USE_INSTR_SWITCH
         #include "h6280_instr_switch.h"
 #else
-		/*err =*/ (*optable_runtime[PageR[reg_pc >> 13][reg_pc]].func_exe) ();
+        /*err =*/ (*optable_runtime[PageR[reg_pc >> 13][reg_pc]].func_exe) ();
 #endif
+      }
 
       ODROID_DEBUG_PERF_INCR2(debug_perf_part1, ODROID_DEBUG_PERF_CPU)
 
-#if defined(KERNEL_DEBUG)
+        // HSYNC stuff - count cycles:
+        /*if (cycles > 455) */ {
+            CycleNew += cycles;
+            // cycles -= 455;
+            // scanline++;
 
-		if (mmr[2] == 0x69) {
-			static int old_4062 = -1;
-			if (PageR[0x4062 >> 13][0x4062] != old_4062) {
-				Log("[0x4062] changed from 0x%02x to 0x%02x\n", old_4062,
-					PageR[0x4062 >> 13][0x4062]);
-				old_4062 = PageR[0x4062 >> 13][0x4062];
-			}
-		}
+            // Log("Calling periodic handler\n");
 
-		if (reg_pc < 0x2000) {
-			fprintf(stderr, "PC in I/O area [0x%04x] referer = 0x%04x\n",
-					reg_pc, old_reg_pc);
-			Log("PC in I/O area [0x%04x] referer = 0x%04x\n", reg_pc,
-				old_reg_pc);
-		}
-/*
-	if ((reg_pc >= 0x2000) && (reg_pc < 0x4000))
-	  {
-		 fprintf(stderr, "PC in RAM [0x%04x] *PC = 0x%02x referer = 0x%04x\n", reg_pc, Page[reg_pc>>13][reg_pc], old_reg_pc);
-		 Log("PC in RAM [0x%04x] *PC = 0x%02x referer = 0x%04x\n", reg_pc, Page[reg_pc>>13][reg_pc], old_reg_pc);
-	  }
-*/
-		if (err) {
-			dump_pce_core();
-			/*
-			   int i;
-			   fprintf(stderr,"Err was set, PC = 0x04%x\n", reg_pc);
-			   for (i = -15; i < 15; i++)
-			   {
-			   fprintf(stderr,"%02x ", Page[(reg_pc+i)>>13][reg_pc+i]);
-			   }
-			 */
-		}
-#endif
-
-		// err = (*optable[Page[reg_pc>>13][reg_pc]].func_exe)();
-
-		// TIMER stuff:
-//  if (tiq_flag) {
-//     tiq_flag = 0;
-//     if (!(reg_p & FL_I)) int_tiq();
-//  }
-
-		// HSYNC stuff - count cycles:
-		if (cycles > 455) {
-
-/*
-      Log("Horizontal sync, cycles = %d, cycleNew = %d\n",
-          cycles,
-          CycleNew);
-*/
-			CycleNew += cycles;
-			cycles -= 455;
-			// scanline++;
-
-			// Log("Calling periodic handler\n");
-
-			I = Loop6502();		/* Call the periodic handler */
+            I = Loop6502();     /* Call the periodic handler */
 
             ODROID_DEBUG_PERF_START2(debug_perf_int)
-			// _ICount += _IPeriod;
-			/* Reset the cycle counter */
-			cycles = 0;
+            // _ICount += _IPeriod;
+            /* Reset the cycle counter */
+            cycles = 0;
 
-			// Log("Requested interrupt is %d\n",I);
+            // Log("Requested interrupt is %d\n",I);
 
-			if (I == INT_QUIT) {
-#if !defined(FINAL_RELEASE)
-				fprintf(stderr,
-						"Normal exit of the cpu loop (INT_QUIT interruption caught)\n");
-#endif
-				return;			/* Exit if INT_QUIT     */
-			}
-			if (I)
-				Int6502(I);		/* Interrupt if needed  */
+            /* if (I == INT_QUIT) return; */
 
-			if ((unsigned int) (CycleNew - cyclecountold) >
-				(unsigned int) TimerPeriod * 2)
+            if (I)
+                Int6502(I);     /* Interrupt if needed  */
 
-				cyclecountold = CycleNew;
+            if ((unsigned int) (CycleNew - cyclecountold) >
+                (unsigned int) TimerPeriod * 2) cyclecountold = CycleNew;
+
             ODROID_DEBUG_PERF_INCR2(debug_perf_int, ODROID_DEBUG_PERF_INT)
-		} else {
+        } /*else*/ {
             ODROID_DEBUG_PERF_START2(debug_perf_int2)
-			if (CycleNew - cyclecountold >= TimerPeriod) {
-				cyclecountold += TimerPeriod;
+            if (CycleNew - cyclecountold >= TimerPeriod) {
+                cyclecountold += TimerPeriod;
 #ifdef MY_INLINE
-				if (io.timer_start) {
+                if (io.timer_start) {
                     io.timer_counter--;
                     if (io.timer_counter > 128) {
                         io.timer_counter = io.timer_reload;
@@ -560,20 +425,14 @@ exe_go(void)
                     } else I = INT_NONE;
                 } else I = INT_NONE;
 #else
-				I = TimerInt();
+                I = TimerInt();
 #endif
-				if (I)
-					Int6502(I);
-			}
+                if (I)
+                    Int6502(I);
+            }
             ODROID_DEBUG_PERF_INCR2(debug_perf_int2, ODROID_DEBUG_PERF_INT2)
-		}
-		ODROID_DEBUG_PERF_INCR2(debug_perf_total, ODROID_DEBUG_PERF_TOTAL)
-	}
-	MESSAGE_ERROR("Abnormal exit from the cpu loop\n");
+        }
+        ODROID_DEBUG_PERF_INCR2(debug_perf_total, ODROID_DEBUG_PERF_TOTAL)
+    }
+    MESSAGE_ERROR("Abnormal exit from the cpu loop\n");
 }
-
-#else
-
-#include "h6280_exe_go.h"
-
-#endif

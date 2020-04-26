@@ -11,7 +11,7 @@
 
 #include "view_inf.h"
 
-#ifndef MY_EXCLUDE
+#if 0
 
 /* Variable section */
 
@@ -33,11 +33,11 @@ void (*info_display[MAX_PAGES]) () =
     display_satb5, display_satb6, display_satb7, display_satb8};
 
 #else
-	
-void (*info_display[MAX_PAGES])();	
-	
+
+void (*info_display[MAX_PAGES])();
+
 #endif
-	
+
 uchar nb_choices[MAX_PAGES] = { 11,
   12
 };
@@ -222,7 +222,7 @@ display_reg ()
   return;
 }
 
-void 
+void
 display_satb(uchar number_page, uchar index_low, uchar index_mid, uchar index_hi)
 {
  int i;
@@ -237,61 +237,61 @@ display_satb(uchar number_page, uchar index_low, uchar index_mid, uchar index_hi
                 (((SPR*)SPRAM)[i].x&1023)-32,
                 (((SPR*)SPRAM)[i].y&1023)-64,
                 ((SPR*)SPRAM)[i].no << 5);
- 	textoutshadow(screen,font,tmp_buf,blit_x,blit_y+8+16*(i+1-index_low),(i&1?3:255),2,1,1); 
- 	sprintf(tmp_buf,"PRI=%c:PAL=%02d: FLX=%c: FLY=%c:", 
-                ((((SPR*)SPRAM)[i].atr >> 7) & 1?'X':'O'), 
-                ((SPR*)SPRAM)[i].atr & 0xF, 
-                ((((SPR*)SPRAM)[i].atr >> 11) & 1?'X':'O'), 
-                ((((SPR*)SPRAM)[i].atr >> 15) & 1?'X':'O')); 
-        switch ((((SPR*)SPRAM)[i].atr>>12) & 3) 
-          { 
-           case 00: 
-                strcat(tmp_buf,"16x"); 
-                break; 
-           case 01: 
-                strcat(tmp_buf,"32x"); 
-                break; 
-           default: 
-                strcat(tmp_buf,"64x"); 
-         } 
-         if ((((SPR*)SPRAM)[i].atr>>8)&1) 
-           strcat(tmp_buf,"32"); 
-         else 
-           strcat(tmp_buf,"16"); 
- 	textoutshadow(screen,font,tmp_buf,blit_x,blit_y+16+16*(i+1-index_low),(i&1?3:255),2,1,1); 
-    } 
- for (i=index_mid; i<index_hi; i++) 
-    { 
- 	sprintf(tmp_buf,"#%02d: X=%4d : Y=%4d :PTN@0X%04X", 
-                i, 
-                (((SPR*)SPRAM)[i].x&1023)-32, 
-                (((SPR*)SPRAM)[i].y&1023)-64, 
-                ((SPR*)SPRAM)[i].no << 5); 
- 	textoutshadow(screen,font,tmp_buf,blit_x,blit_y+16+8+16*(i+1-index_low),(i&1?3:255),2,1,1); 
- 	sprintf(tmp_buf,"PRI=%c:PAL=%02d: FLX=%c: FLY=%c:", 
-                ((((SPR*)SPRAM)[i].atr >> 7) & 1?'X':'O'), 
-                ((SPR*)SPRAM)[i].atr & 0xF, 
-                ((((SPR*)SPRAM)[i].atr >> 11) & 1?'X':'O'), 
-                ((((SPR*)SPRAM)[i].atr >> 15) & 1?'X':'O')); 
-        switch ((((SPR*)SPRAM)[i].atr>>12) & 3) 
-          { 
-           case 00: 
-                strcat(tmp_buf,"16x"); 
-                break; 
-           case 01: 
-                strcat(tmp_buf,"32x"); 
-                break; 
-           default: 
-                strcat(tmp_buf,"64x"); 
-         } 
-         if ((((SPR*)SPRAM)[i].atr>>8)&1) 
-           strcat(tmp_buf,"32"); 
-         else 
-           strcat(tmp_buf,"16"); 
- 	textoutshadow(screen,font,tmp_buf,blit_x,blit_y+32+16*(i+1-index_low),(i&1?3:255),2,1,1); 
-    } 
- sprintf(tmp_buf,"                 PAGE %d/%d",page+1,MAX_PAGES); 
- textoutshadow(screen,font,tmp_buf,blit_x,blit_y+10*19,3,2,1,1); 
+ 	textoutshadow(screen,font,tmp_buf,blit_x,blit_y+8+16*(i+1-index_low),(i&1?3:255),2,1,1);
+ 	sprintf(tmp_buf,"PRI=%c:PAL=%02d: FLX=%c: FLY=%c:",
+                ((((SPR*)SPRAM)[i].atr >> 7) & 1?'X':'O'),
+                ((SPR*)SPRAM)[i].atr & 0xF,
+                ((((SPR*)SPRAM)[i].atr >> 11) & 1?'X':'O'),
+                ((((SPR*)SPRAM)[i].atr >> 15) & 1?'X':'O'));
+        switch ((((SPR*)SPRAM)[i].atr>>12) & 3)
+          {
+           case 00:
+                strcat(tmp_buf,"16x");
+                break;
+           case 01:
+                strcat(tmp_buf,"32x");
+                break;
+           default:
+                strcat(tmp_buf,"64x");
+         }
+         if ((((SPR*)SPRAM)[i].atr>>8)&1)
+           strcat(tmp_buf,"32");
+         else
+           strcat(tmp_buf,"16");
+ 	textoutshadow(screen,font,tmp_buf,blit_x,blit_y+16+16*(i+1-index_low),(i&1?3:255),2,1,1);
+    }
+ for (i=index_mid; i<index_hi; i++)
+    {
+ 	sprintf(tmp_buf,"#%02d: X=%4d : Y=%4d :PTN@0X%04X",
+                i,
+                (((SPR*)SPRAM)[i].x&1023)-32,
+                (((SPR*)SPRAM)[i].y&1023)-64,
+                ((SPR*)SPRAM)[i].no << 5);
+ 	textoutshadow(screen,font,tmp_buf,blit_x,blit_y+16+8+16*(i+1-index_low),(i&1?3:255),2,1,1);
+ 	sprintf(tmp_buf,"PRI=%c:PAL=%02d: FLX=%c: FLY=%c:",
+                ((((SPR*)SPRAM)[i].atr >> 7) & 1?'X':'O'),
+                ((SPR*)SPRAM)[i].atr & 0xF,
+                ((((SPR*)SPRAM)[i].atr >> 11) & 1?'X':'O'),
+                ((((SPR*)SPRAM)[i].atr >> 15) & 1?'X':'O'));
+        switch ((((SPR*)SPRAM)[i].atr>>12) & 3)
+          {
+           case 00:
+                strcat(tmp_buf,"16x");
+                break;
+           case 01:
+                strcat(tmp_buf,"32x");
+                break;
+           default:
+                strcat(tmp_buf,"64x");
+         }
+         if ((((SPR*)SPRAM)[i].atr>>8)&1)
+           strcat(tmp_buf,"32");
+         else
+           strcat(tmp_buf,"16");
+ 	textoutshadow(screen,font,tmp_buf,blit_x,blit_y+32+16*(i+1-index_low),(i&1?3:255),2,1,1);
+    }
+ sprintf(tmp_buf,"                 PAGE %d/%d",page+1,MAX_PAGES);
+ textoutshadow(screen,font,tmp_buf,blit_x,blit_y+10*19,3,2,1,1);
  }
 
 void
@@ -403,7 +403,7 @@ key_info ()
 void
 view_info ()
 {
-#if defined(ALLEGRO)	
+#if defined(ALLEGRO)
   out = 0;
 
   do

@@ -1,6 +1,3 @@
-/* modified bsd pce cd hardware support (old one) */
-#define BSD_CD_HARDWARE_SUPPORT 1
-
 /* Trace settings for debug purposes */
 #define ENABLE_TRACING 0
 #define ENABLE_TRACING_AUDIO 0
@@ -8,7 +5,6 @@
 #define ENABLE_TRACING_CD 0
 #define ENABLE_TRACING_CD_2 0
 #define ENABLE_TRACING_GFX 0
-#define ENABLE_TRACING_SDL 0
 #define ENABLE_TRACING_DEEP_GFX 0
 #define ENABLE_TRACING_SPRITE 0
 #define ENABLE_TRACING_SND 0
@@ -35,42 +31,6 @@
 
 /* for hugo developers working on netplay emulation */
 #undef NETPLAY_DEBUG
-
-/* Name of package */
-#undef PACKAGE
-
-/* Define to the address where bug reports for this package should be sent. */
-#undef PACKAGE_BUGREPORT
-
-/* directory in which data are located */
-#undef PACKAGE_DATA_DIR
-
-/* Define to the full name of this package. */
-#undef PACKAGE_NAME
-
-/* Define to the full name and version of this package. */
-#undef PACKAGE_STRING
-
-/* Define to the one symbol short name of this package. */
-#undef PACKAGE_TARNAME
-
-/* defined if user wants SDL as library */
-//#define SDL 1
-
-/* defined if user wants SDL_mixer as library */
-//#define SDL_mixer 1
-
-/* defined if user wants open memory openness */
-#undef SHARED_MEMORY
-
-/* Define to 1 if you have the ANSI C header files. */
-#define STDC_HEADERS 1
-
-/* defined if rom are expected to be patched to run from bank 0x68 */
-#undef TEST_ROM_RELOCATED
-
-/* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
-#define TIME_WITH_SYS_TIME 1
 
 /* Define to 1 if your processor stores words with the most significant byte
    first (like Motorola and SPARC, unlike Intel and VAX). */

@@ -1,8 +1,6 @@
 #ifndef _GFX_H_
 #define _GFX_H_
 
-//#include <SDL.h>
-
 #include "sys_dep.h"
 
 

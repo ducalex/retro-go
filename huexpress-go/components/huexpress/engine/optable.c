@@ -1,13 +1,11 @@
 #include "optable.h"
 #include "dis.h"
 
-#ifdef MY_EXCLUDE
-#else
-
+#if 0
 /* A bit modified to include Break Points  : "BP?" at $?B */
 /* Beware, the name does matter, invalid opcodes got "???" as name or are BP */
 
-operation_debug optable_debug[256] = {
+const operation_debug optable_debug[256] = {
 	{AM_IMPL, "BRK", &follow_straight}
 	,							/* $00 */
 	{AM_ZPINDX, "ORA", &follow_straight}
@@ -524,7 +522,7 @@ operation_debug optable_debug[256] = {
 
 /* number of bytes per instruction in each addressing mode */
 
-mode_struct_debug addr_info_debug[MAX_MODES] = {
+const mode_struct_debug addr_info_debug[MAX_MODES] = {
 	{1, &(implicit)}
 	,							/* implicit              */
 	{2, &(immed)}

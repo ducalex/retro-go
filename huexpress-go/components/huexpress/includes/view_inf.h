@@ -8,8 +8,6 @@
 #include "pce.h"
 #include "cleantypes.h"
 
-#ifndef MY_EXCLUDE
-
 void view_info();
 // Display pages of infos on hardware
 
@@ -45,6 +43,5 @@ void display_satb8();
 
 void display_pattern();
 // Display pattern in Vram
-#endif
 
 #endif

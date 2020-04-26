@@ -28,26 +28,6 @@ void wait_next_vsync();
 //! CRC predefined array
 extern const unsigned long TAB_CONST[256];
 
-#if defined(WIN32)
-#include <stdio.h>
-#include <windows.h>
-
-// Dummy declarations to fool our implementation of shared memory
-typedef int key_t;
-#define IPC_CREAT 0
-#define IPC_EXCL  0
-#define IPC_RMID  0
-
-int shmget(key_t, int, int);
-char* shmat(int, int, int);
-int shmctl(int, int, int);
-
-#if !defined(unix)
-#define htons(arg) (((arg) >> 8) | (((arg) & 0xFF) << 8))
-#endif
-
-#endif
-
 void patch_rom(char* filename, int offset, uchar value);
 
 char *strupr(char *s);

@@ -57,7 +57,7 @@ Op6502 (register unsigned A)
   return __AUX;
 };
 
-#else 
+#else
        */
 
 uchar
@@ -67,7 +67,7 @@ Op6502(unsigned int A)
 }
 
 /*
-#endif 
+#endif
         */
 
 void
@@ -252,7 +252,7 @@ cvtnum(char *string)
 
 }
 
-#ifndef MY_EXCLUDE
+#if 0
 
 /*****************************************************************************
 

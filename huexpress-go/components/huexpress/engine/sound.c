@@ -1,414 +1,302 @@
-/***************************************************************************/
-/*                                                                         */
-/*                         Sound Source File                               */
-/*                                                                         */
-/*     Initialisation, shuting down and PC Engine generation of sound      */
-/*                                                                         */
-/***************************************************************************/
-
-/* Header */
-
+#include "osd_machine.h"
 #include "sound.h"
 
-#if 0
+extern int BaseClock;
 
-#include <SDL_audio.h>
-
-#include "utils.h"
-#include "osd_sdl_music.h"
-
-
-SDL_AudioSpec wanted;			/* For SDL Audio */
-extern void sdl_fill_audio(void *data, Uint8 * stream, int len);
-
-/* Variables definition */
-
-uchar sound_driver = 3;
-// 0 =-� No sound driver
-// 1 =-� Allegro sound driver
-// 2 =-� Seal sound driver
-// 3 =-� SDL/SDL_Mixer driver
-
-char MP3_playing = 0;
-// is MP3 playing ?
-
-char *sbuf[6];
-// the buffer where the "DATA-TO-SEND-TO-THE-SOUND-CARD" go
-// one for each channel
-
-char *adpcmbuf;
-// the buffer filled with adpcm data
-
-uchar new_adpcm_play = 0;
-// Have we begun a new adpcm sample (i.e. must be reset adpcm index/prev value)
-
-uchar main_buf[SBUF_SIZE_BYTE];
-// the mixed buffer, may be removed later for hard mixing...
-
-uint32 CycleOld;
-uint32 CycleNew;
-// indicates the last time music has been "released"
-
-/* TODO */
-int BaseClock = 7170000;
-// int BaseClock = 8992000;
-// the freq of the internal PC Engine CPU
-// the sound use a kind of "relative" frequency
-// I think there's a pb with this value that cause troubles with some cd sync
-
-uint32 ds_nChannels = 1;
-// mono or stereo, to remove later
-
-uint32 dwNewPos;
-
-uint32 AdpcmFilledBuf = 0;
-// Size (in nibbles) of adpcm buf that has been filled with new data
-
-uchar *big_buf;
-
-uchar gen_vol = 255;
-
-uint32 sbuf_size = 10 * 1024;
-
-
-/* Functions definition */
-
-int
-InitSound(void)
+static inline int
+mseq(uint32 * rand_val)
 {
-	for (silent = 0; silent < 6; silent++)
-		sbuf[silent] = (char *) calloc(sizeof(char), SBUF_SIZE_BYTE);
-
-	adpcmbuf = (char *) calloc(sizeof(char), SBUF_SIZE_BYTE);
-
-	silent = 1;
-
-	if (smode == 0)				// No sound
-		return 1;
-
-/* SDL Audio / Mixer Begin */
-/*
-#if !defined(SDL_mixer)
-	  SDL_AudioSpec obtained;
-      Log ("Initialisation of SDL sound... ");
-      wanted.freq = option.want_snd_freq; // Frequency
-      printf("Frequency = %d\n", option.want_snd_freq);
-      wanted.format = AUDIO_U8; // Unsigned 8 bits
-      wanted.channels = 1; // Mono
-      wanted.samples = 512; //SBUF_SIZE_BYTE;
-      wanted.size = SBUF_SIZE_BYTE;
-      printf("wanted.size = %d\n",wanted.size);
-      wanted.callback = sdl_fill_audio;
-      wanted.userdata = main_buf;//NULL;
-
-      if (SDL_OpenAudio(&wanted,&obtained) < 0) {
-		  printf("Couldn't Open SDL Audio: %s\n",SDL_GetError());
-#endif // !SDL_mixer
-      if (Mix_OpenAudio(option.want_snd_freq,AUDIO_U8,1,512) < 0) {
-		  printf("Couldn't Open SDL Mixer: %s\n",Mix_GetError());
-
-	return FALSE;
-      }
-
-#if !defined(SDL_mixer)
-      Log ("OK\nObtained frequency = %d\n",obtained.freq);
-      SDL_PauseAudio(0);
-#endif
-
-      silent=0;
-	  Mix_Resume(-1);
-	  */
-	silent = 0;
-
-/* End of SDL Audio / Mixer */
-
-	return 0;
+    if (*rand_val & 0x00080000) {
+        *rand_val = ((*rand_val ^ 0x0004) << 1) + 1;
+        return 1;
+    } else {
+        *rand_val <<= 1;
+        return 0;
+    }
 }
 
 
 void
-TrashSound(void)
-{								/* Shut down sound  */
-	uchar dum;
+WriteBuffer(char *buf, int ch, unsigned dwSize)
+{
+    static uint32 fixed_n[6] = { 0, 0, 0, 0, 0, 0 };
+    uint32 fixed_inc;
+    static uint32 k[6] = { 0, 0, 0, 0, 0, 0 };
+    static uint32 t;            // used to know how much we got to advance in the ring buffer
+    static uint32 r[6];
+    static uint32 rand_val[6] = { 0, 0, 0, 0, 0x51F631E4, 0x51F631E4 }; // random seed for 'noise' generation
+    uint16 dwPos = 0;
+    int32 vol;
+    uint32 Tp;
+    static signed char vol_tbl[32] = {
+        /*
+         * Funky stuff everywhere!  I'm quite sure there was a reason to use an array
+         * of constant values divided by constant values and having the host machine figure
+         * it all out . . . that's why I'm leaving the original formula here within the
+         * comment.
+         *    100 / 256, 451 / 256, 508 / 256, 573 / 256, 646 / 256, 728 / 256,
+         *    821 / 256, 925 / 256,
+         *    1043 / 256, 1175 / 256, 1325 / 256, 1493 / 256, 1683 / 256, 1898 / 256,
+         *    2139 / 256, 2411 / 256,
+         *    2718 / 256, 3064 / 256, 3454 / 256, 3893 / 256, 4388 / 256, 4947 / 256,
+         *    5576 / 256, 6285 / 256,
+         *    7085 / 256, 7986 / 256, 9002 / 256, 10148 / 256, 11439 / 256, 12894 / 256,
+         *    14535 / 256, 16384 / 256
+         */
+        0, 1, 1, 2, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17,
+            19, 21, 24, 27, 31, 35, 39, 44, 50, 56, 64
+    };
+    uint16 lbal, rbal;
+    signed char sample;
 
-	if (!silent) {
-		for (dum = 0; dum < 6; dum++)
-			free(sbuf[dum]);
+    if (!(io.PSG[ch][PSG_DDA_REG] & PSG_DDA_ENABLE)
+        || io.psg_channel_disabled[ch]) {
+        /*
+         * There is no audio to be played on this channel.
+         */
+        fixed_n[ch] = 0;
+        memset(buf, 0, dwSize * host.sound.sample_size);
+        return;
+    }
 
-		free(adpcmbuf);
+    if ((io.PSG[ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS)
+        || io.psg_da_count[ch]) {
+        /*
+         * There is 'direct access' audio to be played.
+         */
+        static uint32 da_index[6] = { 0, 0, 0, 0, 0, 0 };
+        uint16 index = da_index[ch] >> 16;
 
-		silent = 1;
-	}
+        /*
+         * For this direct audio stuff there is no frequency provided via PSG registers 3
+         * and 4.  I'm not sure if this is normal behaviour or if it's something wrong in
+         * the emulation but I'm leaning toward the former.
+         *
+         * The 0x1FF divisor is completely arbitrary.  I adjusted it by listening to the voices
+         * in Street Fighter 2 CE.  If anyone has information to improve my "seat of the pants"
+         * calculations then by all means *does finger quotes* "throw me a frikkin` bone here".
+         *
+         * See the big comment in the final else clause for an explanation of this value
+         * to the best of my knowledge.
+         */
+        fixed_inc = ((uint32) (3580000 / host.sound.freq) << 16) / 0x1FF;
+
+        /*
+         * Volume handling changed 2-24-03.
+         * I believe io.psg_volume should only be used to compute the final sample
+         * volume after all the buffers have been mixed together.  Alright, it's what
+         * other people have already stated, and I believe them :)
+         */
+
+        if (host.sound.stereo) {
+            /*
+             * We multiply the 4-bit balance values by 1.1 to get a result from (0..16.5).
+             * This multiplied by the 5-bit channel volume (0..31) gives us a result of
+             * (0..511).
+             */
+            lbal =
+                ((io.PSG[ch][5] >> 4) * 1.1) *
+                (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME);
+            rbal =
+                ((io.PSG[ch][5] & 0x0F) * 1.1) *
+                (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME);
+        } else {
+            /*
+             * Use an average of the two channels for mono.
+             */
+            lbal =
+                ((((io.PSG[ch][5] >> 4) * 1.1) *
+                  (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME)) +
+                 (((io.PSG[ch][5] & 0x0F) * 1.1) *
+                  (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME))) / 2;
+        }
+
+        while ((dwPos < dwSize) && io.psg_da_count[ch]) {
+            /*
+             * Make our sample data signed (-16..15) and then increment a non-negative
+             * result otherwise a sample with a value of 10000b will not be reproduced,
+             * which I do not believe is the correct behaviour.  Plus the increment
+             * insures matching values on both sides of the wave.
+             */
+            if ((sample = io.psg_da_data[ch][index] - 16) >= 0)
+                sample++;
+
+            /*
+             * Left channel, or main channel in mono mode.  Multiply our sample value
+             * (-16..16) by our balance (0..511) and then divide by 64 to get a final
+             * 8-bit output sample of (-127..127)
+             */
+
+//#define MY_SOUND_1(va_) *buf++ = (char) ((int32) (sample * va_) >> 6);
+#define MY_SOUND_1(va_) *buf++ = (char) ((int32) (sample * va_) >> 6);
+            //
+            MY_SOUND_1(lbal)
+
+            if (host.sound.stereo) {
+                /*
+                 * Same as above but for right channel.
+                 */
+                MY_SOUND_1(rbal)
+                dwPos += 2;
+            } else {
+                dwPos++;
+            }
+
+            da_index[ch] += fixed_inc;
+            da_index[ch] &= 0x3FFFFFF;  /* (1023 << 16) + 0xFFFF */
+            if ((da_index[ch] >> 16) != index) {
+                index = da_index[ch] >> 16;
+                io.psg_da_count[ch]--;
+            }
+        }
+
+        if ((dwPos != dwSize)
+            && (io.PSG[ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS)) {
+            memset(buf, 0, (dwSize - dwPos)*host.sound.sample_size);
+            return;
+        }
+    }
+
+    if ((ch > 3) && (io.PSG[ch][7] & 0x80)) {
+        uint32 Np = (io.PSG[ch][7] & 0x1F);
+
+        /*
+         * PSG Noise generation, for nifty little effects like space ships taking off or blowing up.
+         * Only available to PSG channels 5 and 6.
+         */
+//                      if (ds_nChannels == 2) // STEREO DISABLED
+//                      {
+//                              lvol = ((io.psg_volume>>3)&0x1E) + (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME) + ((io.PSG[ch][5]>>3)&0x1E);
+//                              lvol = lvol-60;
+//                              if (lvol < 0) lvol = 0;
+//                              lvol = vol_tbl[lvol];
+//                              rvol = ((io.psg_volume<<1)&0x1E) + (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME) + ((io.PSG[ch][5]<<1)&0x1E);
+//                              rvol = rvol-60;
+//                              if (rvol < 0) rvol = 0;
+//                              rvol = vol_tbl[rvol];
+//                              for (dwPos = 0; dwPos < dwSize; dwPos += 2)
+//                              {
+//                                      k[ch] += 3000+Np*512;
+//                                      t = k[ch] / (DWORD) host.sound.freq;
+//                                      if (t >= 1)
+//                                      {
+//                                              r[ch] = mseq(&rand_val[ch]);
+//                                              k[ch] -= host.sound.freq * t;
+//                                      }
+//                                      *buf++ = (WORD)((r[ch] ? 10*702 : -10*702)*lvol/64);
+//                                      *buf++ = (WORD)((r[ch] ? 10*702 : -10*702)*rvol/64);
+//                              }
+//                      }
+//                      else  // MONO
+
+        vol =
+            MAX((io.psg_volume >> 3) & 0x1E,
+                (io.psg_volume << 1) & 0x1E) +
+            (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME) +
+            MAX((io.PSG[ch][5] >> 3) & 0x1E, (io.PSG[ch][5] << 1) & 0x1E);
+        //average sound level
+
+        if ((vol -= 60) < 0)
+            vol = 0;
+
+        vol = vol_tbl[vol];
+        // get cooked volume
+
+        while (dwPos < dwSize) {
+            k[ch] += 3000 + Np * 512;
+
+            if ((t = (k[ch] / (uint32) host.sound.freq)) >= 1) {
+                r[ch] = mseq(&rand_val[ch]);
+                k[ch] -= host.sound.freq * t;
+            }
+
+            //*buf++ = (signed char) ((r[ch] ? 10 * 702 : -10 * 702) * vol / 256 / 16);   // Level 0
+            *buf++ = (signed char) ((r[ch] ? 10 * 702 : -10 * 702) * vol / 256 / 16);   // Level 0
+
+            //sbuf[ch][dum++] = (WORD)((r[ch] ? 10*702 : -10*702)*lvol/64/256);
+            //*buf++ = (r[ch] ? 32 : -32) * lvol / 24;
+            dwPos++;
+        }
+    } else
+        if ((Tp =
+             (io.PSG[ch][PSG_FREQ_LSB_REG] +
+              (io.PSG[ch][PSG_FREQ_MSB_REG] << 8))) == 0) {
+        /*
+         * 12-bit pseudo frequency value stored in PSG registers 2 (all 8 bits) and 3
+         * (lower nibble).  If we get to this point and the value is 0 then there's no
+         * sound to be played.
+         *
+         * dwPos will either be 0 as initialized at the beginning of the function or a value
+         * left over from the direct audio stuff.  If left over then buf will already be at
+         * (buf + dwPos) from the beginning of the function.
+         */
+        memset(buf, 0, dwSize * host.sound.sample_size);
+    } else {
+        /*
+         * Thank god for well commented code!  The original line of code read:
+         * fixed_inc = ((uint32) (3.2 * 1118608 / host.sound.freq) << 16) / Tp;
+         * and had nary a comment to be found.  It took a little head scratching to get
+         * it figured out.  The 3.2 * 1118608 comes out to 3574595.6 which is obviously
+         * meant to represent the 3.58mhz cpu clock speed used in the pc engine to
+         * decrement the sound 'frequency'.  I haven't figured out why the original
+         * author had the two numbers multiplied together to get the odd value instead of
+         * just using 3580000.  I did some checking and the value will compute the same
+         * using either value divided by any standard soundcard samplerate.  The
+         * host.sound.freq is our soundcard's samplerate which is quite a bit slower than
+         * the pce's cpu (3580000 vs. 22050/44100 typically).
+         *
+         * Taken from the PSG doc written by Paul Clifford (paul@plasma.demon.co.uk)
+         * <in reference to the 12 bit frequency value in PSG registers 2 and 3>
+         * "For waveform output, a copy of this value is, in effect, decremented 3,580,000
+         *  times a second until zero is reached.  When this happens the PSG advances an
+         *  internal pointer into the channel's waveform buffer by one."
+         *
+         * So all we need to do to emulate original pc engine behaviour is take our soundcard's
+         * sampling rate into consideration with regard to the 3580000 effective pc engine
+         * samplerate.  We use 16.16 fixed arithmetic for speed.
+         */
+        fixed_inc = ((uint32) (3580000 / host.sound.freq) << 16) / Tp;
+
+        if (host.sound.stereo) {
+            /*
+             * See the direct audio code above if you're curious why we're multiplying by 1.1
+             */
+            lbal =
+                ((io.PSG[ch][5] >> 4) * 1.1) *
+                (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME);
+            rbal =
+                ((io.PSG[ch][5] & 0x0F) * 1.1) *
+                (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME);
+        } else {
+            lbal =
+                ((((io.PSG[ch][5] >> 4) * 1.1) *
+                  (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME)) +
+                 (((io.PSG[ch][5] & 0x0F) * 1.1) *
+                  (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME))) / 2;
+        }
+
+        while (dwPos < dwSize) {
+            /*
+             * See the direct audio stuff a little above for an explanation of everything
+             * within this loop.
+             */
+            if ((sample =
+                 (io.wave[ch][io.PSG[ch][PSG_DATA_INDEX_REG]] - 16)) >= 0)
+                sample++;
+//#define MY_SOUND_2(va_) *buf++ = (char) ((Sint16) (sample * va_) >> 6);
+#define MY_SOUND_2(va_) *buf++ = (char) ((Sint16) (sample * va_) >> 6);
+            MY_SOUND_2(lbal)
+
+            if (host.sound.stereo) {
+                MY_SOUND_2(rbal)
+                dwPos += 2;
+            } else {
+                dwPos++;
+            }
+
+            fixed_n[ch] += fixed_inc;
+            fixed_n[ch] &= 0x1FFFFF;    /* (31 << 16) + 0xFFFF */
+            io.PSG[ch][PSG_DATA_INDEX_REG] = fixed_n[ch] >> 16;
+        }
+    }
 }
-
-
-void
-write_psg(int ch)
-{
-	uint32 Cycle;
-
-	if (CycleNew != CycleOld) {
-		Cycle = CycleNew - CycleOld;
-		CycleOld = CycleNew;
-
-		dwNewPos = (unsigned) ((float) (host.sound.freq) * (float) Cycle
-							   / (float) BaseClock);
-		// in fact, size of the data to write
-
-	};
-
-
-#if ENABLE_TRACING_AUDIO
-	TRACE("AUDIO: New Position: %d\n", dwNewPos);
-#endif
-
-/*  SDL makes clipping automagicaly
- *  if (sound_driver == 3) {
-	if (dwNewPos > wanted.size) {
-		dwNewPos = wanted.size;
-		fprintf(stderr, "overrun: %d\n",dwNewPos);
-	}
-  }
-*/
-	if (sound_driver == 2)		// || sound_driver == 3) /* Added 3 (SDL) */
-	{
-		if (dwNewPos > (uint32) host.sound.freq * SOUND_BUF_MS / 1000) {
-#if ENABLE_TRACING_AUDIO
-			TRACE("AUDIO: Sound buffer overrun\n");
-#endif
-			dwNewPos = host.sound.freq * SOUND_BUF_MS / 1000;
-			// Ask it to fill the buffer
-		} else if (sound_driver == 1) {
-#if ENABLE_TRACING_AUDIO
-			TRACE("AUDIO: dwNewPos = %d / %d\n", dwNewPos, sbuf_size);
-#endif
-			if (dwNewPos > sbuf_size) {
-#if ENABLE_TRACING_AUDIO
-				TRACE("AUDIO: Sound buffer overrun\n");
-#endif
-				dwNewPos = sbuf_size;
-				// Ask it to fill the buffer
-			}
-#if ENABLE_TRACING_AUDIO
-			TRACE("AUDIO: After correction, dwNewPos = %d\n", dwNewPos);
-#endif
-		}
-	}
-
-	Log("Buffer %d will be filled\n", ch);
-	WriteBuffer(&sbuf[ch][0], ch, dwNewPos * ds_nChannels);
-	// write DATA 'til dwNewPos
-
-#if ENABLE_TRACING_AUDIO
-	TRACE("AUDIO: Buffer %d has been filled\n", ch);
-#endif
-
-
-};
-
-
-/* TODO : doesn't support repeat mode for now */
-void
-write_adpcm(void)
-{
-	uint32 Cycle;
-	uint32 AdpcmUsedNibbles;
-
-	static char index;
-	static int32 previousValue;
-
-	if (CycleNew != CycleOld) {
-		Cycle = CycleNew - CycleOld;
-		CycleOld = CycleNew;
-
-		dwNewPos = (unsigned) ((float) (host.sound.freq) * (float) Cycle
-							   / (float) BaseClock);
-		// in fact, size of the data to write
-	};
-
-	AdpcmFilledBuf = dwNewPos;
-
-	if (new_adpcm_play) {
-		index = 0;
-		previousValue = 0;
-	}
-
-	if (AdpcmFilledBuf > io.adpcm_psize)
-		AdpcmFilledBuf = io.adpcm_psize;
-
-	AdpcmUsedNibbles
-		= WriteBufferAdpcm8(adpcmbuf, io.adpcm_pptr, AdpcmFilledBuf,
-							&index, &previousValue);
-
-	io.adpcm_pptr += AdpcmUsedNibbles;
-	io.adpcm_pptr &= 0x1FFFF;
-
-	if (AdpcmUsedNibbles)
-		io.adpcm_psize -= AdpcmUsedNibbles;
-	else
-		io.adpcm_psize = 0;
-
-	/* If we haven't played even a nibbles, it problably mean we won't ever be
-	 * able to play one, so we stop the adpcm playing
-	 */
-
-#if ENABLE_TRACING_AUDIO
-//  Log("size = %d\n", io.adpcm_psize);
-#endif
-
-};
-
-//! file for dumping audio
-static FILE *audio_output_file = NULL;
-
-//! Size (in byte) of audio data dumped
-static int sound_dump_length;
-
-//! Cycle of the last sound output
-static uint32 sound_dump_last_cycle;
-
-//! Start the audio dump process
-//! return 1 if audio dumping began, else 0
-int
-start_dump_audio(void)
-{
-	char audio_output_filename[PATH_MAX];
-	struct tm *tm_current_time;
-	time_t time_t_current_time;
-
-	if (audio_output_file != NULL)
-		return 0;
-
-	time(&time_t_current_time);
-	tm_current_time = localtime(&time_t_current_time);
-
-	snprintf(audio_output_filename, PATH_MAX,
-			 "%saudio-%04d-%02d-%02d %02d-%02d-%02d.wav", video_path,
-			 tm_current_time->tm_year + 1900, tm_current_time->tm_mon + 1,
-			 tm_current_time->tm_mday, tm_current_time->tm_hour,
-			 tm_current_time->tm_min, tm_current_time->tm_sec);
-
-	audio_output_file = fopen(audio_output_filename, "wb");
-
-	sound_dump_length = 0;
-
-	fwrite("RIFF\145\330\073\0WAVEfmt ", 16, 1, audio_output_file);
-	putc(0x10, audio_output_file);	// size
-	putc(0x00, audio_output_file);
-	putc(0x00, audio_output_file);
-	putc(0x00, audio_output_file);
-	putc(1, audio_output_file);	// PCM data
-	putc(0, audio_output_file);
-
-	if (host.sound.stereo)
-		putc(2, audio_output_file);	// stereo
-	else
-		putc(1, audio_output_file);	// mono
-
-	putc(0, audio_output_file);
-
-	putc(host.sound.freq, audio_output_file);	// frequency
-	putc(host.sound.freq >> 8, audio_output_file);
-	putc(host.sound.freq >> 16, audio_output_file);
-	putc(host.sound.freq >> 24, audio_output_file);
-
-	if (host.sound.stereo) {
-		putc(host.sound.freq << 1, audio_output_file);	// size of data per second
-		putc(host.sound.freq >> 7, audio_output_file);
-		putc(host.sound.freq >> 15, audio_output_file);
-		putc(host.sound.freq >> 23, audio_output_file);
-	} else {
-		putc(host.sound.freq, audio_output_file);	// size of data per second
-		putc(host.sound.freq >> 8, audio_output_file);
-		putc(host.sound.freq >> 16, audio_output_file);
-		putc(host.sound.freq >> 24, audio_output_file);
-	}
-
-	if (host.sound.stereo)
-		putc(2, audio_output_file);	// byte per sample
-	else
-		putc(1, audio_output_file);
-	putc(0, audio_output_file);
-
-	putc(8, audio_output_file);	// 8 bits
-	putc(0, audio_output_file);
-
-	fwrite("data\377\377\377\377", 1, 9, audio_output_file);
-	osd_gfx_set_message("Audio dumping on");
-
-	return (audio_output_file != NULL ? 1 : 0);
-}
-
-
-void
-stop_dump_audio(void)
-{
-	uint32 dum;
-
-	if (audio_output_file == NULL)
-		return;
-
-	dum = sound_dump_length + 0x2C;	// Total file size, header is 0x2C long
-	fseek(audio_output_file, 4, SEEK_SET);
-	putc(dum, audio_output_file);
-	putc(dum >> 8, audio_output_file);
-	putc(dum >> 16, audio_output_file);
-	putc(dum >> 24, audio_output_file);
-
-	dum = sound_dump_length;	// Audio stream size
-	fseek(audio_output_file, 0x28, SEEK_SET);
-	putc(dum, audio_output_file);
-	putc(dum >> 8, audio_output_file);
-	putc(dum >> 16, audio_output_file);
-	putc(dum >> 24, audio_output_file);
-
-	fclose(audio_output_file);
-
-	osd_gfx_set_message("Audio dumping off");
-}
-
-
-void
-dump_audio_chunck(uchar * content, int length)
-{
-	int cycle;
-	int real_length;
-
-	real_length = 0;
-
-	if (audio_output_file == NULL)
-		return;
-
-	if (CycleNew != sound_dump_last_cycle) {
-		cycle = CycleNew - sound_dump_last_cycle;
-		sound_dump_last_cycle = CycleNew;
-
-		real_length = (unsigned) ((float) (host.sound.freq) * (float) cycle
-								  / (float) BaseClock);
-		// in fact, size of the data to write
-	};
-
-	printf("given length = %5d\treal length = %5d\n", length, real_length);
-
-	if (real_length > length)
-		real_length = length;
-
-	fwrite(content, real_length, 1, audio_output_file);
-
-	sound_dump_length += real_length;
-}
-#else
-
-
-uchar gen_vol = 255;
-int BaseClock = 7170000;
-//uint32 CycleOld;
-//uint32 CycleNew;
-uchar new_adpcm_play = 0;
-uint32 AdpcmFilledBuf = 0;
-
-
-
-
-
-#endif

@@ -164,6 +164,7 @@ void app_main(void)
     update1.stride  = update2.stride  = bitmap.pitch;
     update1.pixel_size = update2.pixel_size = 1;
     update1.pixel_mask = update2.pixel_mask = PIXEL_MASK;
+    update1.pixel_clear = update2.pixel_clear = -1;
     update1.pal_shift_mask = update2.pal_shift_mask = PAL_SHIFT_MASK;
     update1.palette = &palettes[0]; update2.palette = &palettes[1];
     update1.buffer += bitmap.viewport.x;

@@ -481,7 +481,7 @@ bilinear_filter(uint16_t *line_buffer, short top, short left, short width, short
 
 static inline void
 write_rect(void *buffer, uint16_t *palette, short left, short top, short width, short height,
-           short stride, short pixel_size, uint8_t pixel_mask)
+           short stride, short pixel_size, uint8_t pixel_mask, short pixel_clear)
 {
     short actual_left = ((SCREEN_WIDTH * left) + (x_inc - 1)) / x_inc;
     short actual_top = ((SCREEN_HEIGHT * top) + (y_inc - 1)) / y_inc;
@@ -536,8 +536,6 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
             for (short x = 0, x_acc = ix_acc; x < width;)
             {
                 if (palette == NULL) {
-                    // uint16_t sample = ((uint16_t*)buffer)[x];
-                    // line_buffer[line_buffer_index++] = sample << 8 | sample >> 8;
                     line_buffer[line_buffer_index++] = ((uint16_t*)buffer)[x];
                 } else {
                     line_buffer[line_buffer_index++] = palette[((uint8_t*)buffer)[x] & pixel_mask];
@@ -548,6 +546,11 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
                     ++x;
                     x_acc -= SCREEN_WIDTH;
                 }
+            }
+
+            if (pixel_clear > -1) {
+                // if (pixel_clear > -1) ((uint16_t*)buffer)[x] = pixel_clear;
+                memset((uint8_t*)buffer, pixel_clear, width);
             }
 
             if (!screen_line_is_empty[++screen_y]) {
@@ -858,7 +861,7 @@ void IRAM_ATTR odroid_display_write_frame(odroid_video_frame *frame)
         if (diff->width > 0) {
             write_rect(frame->buffer + (y * frame->stride) + (diff->left * frame->pixel_size),
                         frame->palette, diff->left, y, diff->width, diff->repeat, frame->stride,
-                        frame->pixel_size, frame->pixel_mask);
+                        frame->pixel_size, frame->pixel_mask, frame->pixel_clear);
         }
         y += diff->repeat;
     }

@@ -213,21 +213,4 @@ enum _VDC_REG {
 #define	ENABLE	   1
 #define	DISABLE	   0
 
-#ifdef MY_INLINE_bank_set
-
-// uchar P, uchar V
-#define bank_set(P, V) \
-    { \
-    mmr[P] = V; \
-    if (ROMMapR[V] == IOAREA) { \
-        PageR[P] = IOAREA; \
-        PageW[P] = IOAREA; \
-    } else { \
-        PageR[P] = ROMMapR[V] - P * 0x2000; \
-        PageW[P] = ROMMapW[V] - P * 0x2000; \
-    } }
-    //if (P == 7) printf("%s: bank_set: %d,%d -> %X (%X)\n", __func__, P, V, PageR[P], ROMMapR[V]);
-
-#endif
-
 #endif

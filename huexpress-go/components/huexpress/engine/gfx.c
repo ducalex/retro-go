@@ -57,16 +57,6 @@ SetPalette(void)
 		rgb_map[i].g = (i & 0xe0);
 		rgb_map[i].b = (i & 0x03) << 6;
 	}
-
-#if defined(SDL)
-	for (i = 0; i < 255; i++) {
-		int r, g, b;
-		r = (i & 0x1C) << 3;
-		g = (i & 0xe0);
-		b = (i & 0x03) << 6;
-	}
-#endif
-
 }
 
 

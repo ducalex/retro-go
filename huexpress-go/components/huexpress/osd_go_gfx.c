@@ -6,6 +6,7 @@
 /*	ducalex                              */
 /*****************************************/
 
+#include <freertos/FreeRTOS.h>
 #include <odroid_system.h>
 #include <string.h>
 #include "osd_gfx.h"
@@ -14,6 +15,7 @@
 static uint16_t mypalette[256];
 static uint8_t *framebuffers[2];
 static odroid_video_frame frames[2];
+static odroid_video_frame *curFrame;
 static uint8_t current_fb = 0;
 static bool gfx_init_done = false;
 
@@ -27,6 +29,8 @@ uint skipFrames = 0;
 extern uchar *SPM_raw, *SPM;
 extern uchar *Pal;
 
+static QueueHandle_t videoTaskQueue;
+
 #define COLOR_RGB(r,g,b) ( (((r)<<12)&0xf800) + (((g)<<7)&0x07e0) + (((b)<<1)&0x001f) )
 
 static inline void set_current_fb(int i)
@@ -34,11 +38,32 @@ static inline void set_current_fb(int i)
     current_fb = i & 1;
     XBuf = framebuffers[current_fb];
     osd_gfx_buffer = frames[current_fb].buffer;
+    curFrame = &frames[current_fb];
 
     for (int i = 0; i < 240; i++) {
-        memset(osd_gfx_buffer + i * XBUF_WIDTH, Pal[0], io.screen_w);
+        // memset(osd_gfx_buffer + i * XBUF_WIDTH, Pal[0], io.screen_w);
         memset(SPM + i * XBUF_WIDTH, 0, io.screen_w);
     }
+}
+
+
+static void videoTask(void *arg)
+{
+    videoTaskQueue = xQueueCreate(1, sizeof(void*));
+    odroid_video_frame *frame;
+
+    while(1)
+    {
+        xQueueReceive(videoTaskQueue, &frame, portMAX_DELAY);
+        curFrame->pixel_clear = Pal[0];
+        odroid_display_queue_update(frame, NULL);
+    }
+
+    videoTaskQueue = NULL;
+
+    vTaskDelete(NULL);
+
+    while (1) {}
 }
 
 
@@ -53,6 +78,7 @@ int osd_gfx_init(void)
     SPM_raw         = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
     SPM = SPM_raw + XBUF_WIDTH * 64 + 32;
 
+    xTaskCreatePinnedToCore(&videoTask, "videoTask", 3072, NULL, 5, NULL, 1);
     return true;
 }
 
@@ -64,6 +90,7 @@ int osd_gfx_init_normal_mode(void)
 	frames[0].stride = XBUF_WIDTH;
 	frames[0].pixel_size = 1;
 	frames[0].pixel_mask = 0xFF;
+    frames[0].pixel_clear = 0;
 	frames[0].palette = mypalette;
 	frames[1] = frames[0];
 
@@ -79,6 +106,7 @@ int osd_gfx_init_normal_mode(void)
 }
 
 
+
 void osd_gfx_put_image_normal(void)
 {
     if (!gfx_init_done) return;
@@ -88,20 +116,20 @@ void osd_gfx_put_image_normal(void)
 
     if (drawFrame)
     {
-        // xQueueSend(videoTaskQueue, &current_fb, portMAX_DELAY);
-        odroid_display_queue_update(&frames[current_fb], NULL);
+        xQueueSend(videoTaskQueue, &curFrame, portMAX_DELAY);
         set_current_fb(!current_fb);
     }
 
     // For reference pelle7's performance with fixed frameskip = 2 (default/minimum) vs retro-go same settings:
-    // Soldier Blade: 41-53 emulated fps / 15-17 real fps             retro-go: 55-67 emulated / 18-21 real
-    // Raiden:        38-47 emulated fps / 12-15 real fps             retro-go: 48-58 emulated / 15-19 real
+    // Soldier Blade: 41-53 emulated fps / 15-17 real fps             retro-go: 58-71 emulated / 19-22 real
+    // Raiden:        38-47 emulated fps / 12-15 real fps             retro-go: 53-60 emulated / 17-21 real
 
     // See if we need to skip a frame to keep up
     if (skipFrames == 0)
     {
-        skipFrames += 1;
-        if (get_elapsed_time_since(startTime) > frameTime) skipFrames += 1;
+        // UPeriod = 100;
+        skipFrames = 2;
+        // if (get_elapsed_time_since(startTime) > frameTime) skipFrames += 1;
         if (speedupEnabled) skipFrames += speedupEnabled * 2.5;
     }
     else if (skipFrames > 0)

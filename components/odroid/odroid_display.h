@@ -52,6 +52,7 @@ typedef struct {
     short stride;      // In bytes
     short pixel_size;  // In bytes
     short pixel_mask;  // Put 0xFF if no palette
+    short pixel_clear; // Set each pixel to this value after reading it (-1 to disable)
     void *buffer;      // Should match pixel_size
     uint16_t *palette; //
     uint8_t pal_shift_mask;
