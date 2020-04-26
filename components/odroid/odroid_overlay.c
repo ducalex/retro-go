@@ -441,7 +441,7 @@ bool speedup_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t eve
 
 int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options)
 {
-    odroid_audio_clear_buffer();
+    odroid_audio_mute(true);
     wait_all_keys_released();
 
     odroid_dialog_choice_t options[12] = {
@@ -459,6 +459,7 @@ int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options)
 
     int r = odroid_overlay_dialog("Options", options, 0);
 
+    odroid_audio_mute(false);
     return r;
 }
 
@@ -482,7 +483,7 @@ int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options)
 
 int odroid_overlay_game_menu()
 {
-    odroid_audio_clear_buffer();
+    odroid_audio_mute(true);
     wait_all_keys_released();
 
     odroid_dialog_choice_t choices[] = {
@@ -509,6 +510,8 @@ int odroid_overlay_game_menu()
         case 40: odroid_netplay_quick_start(); break;
         case 50: odroid_system_switch_app(0); break;
     }
+
+    odroid_audio_mute(false);
 
     return r;
 }

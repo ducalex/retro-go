@@ -29,6 +29,7 @@ uint skipFrames = 0;
 extern uchar *SPM_raw, *SPM;
 
 static QueueHandle_t videoTaskQueue;
+extern QueueHandle_t audioSyncQueue;
 
 #define COLOR_RGB(r,g,b) ( (((r)<<12)&0xf800) + (((g)<<7)&0x07e0) + (((b)<<1)&0x001f) )
 
@@ -107,7 +108,6 @@ int osd_gfx_init_normal_mode(void)
 }
 
 
-
 void osd_gfx_put_image_normal(void)
 {
     if (!gfx_init_done) return;
@@ -121,16 +121,19 @@ void osd_gfx_put_image_normal(void)
         set_current_fb(!current_fb);
     }
 
-    // For reference pelle7's performance with fixed frameskip = 2 (default/minimum) vs retro-go same settings:
-    // Soldier Blade: 41-53 emulated fps / 15-17 real fps             retro-go: 58-80 emulated / 20-23 real
-    // Raiden:        38-47 emulated fps / 12-15 real fps             retro-go: 52-60 emulated / 17-21 real
+    // This should probably be in machine.c
+    int delay = (int)frameTime - get_elapsed_time_since(startTime);
+    if (delay > 5000)
+    {
+        usleep(delay);
+    }
 
     // See if we need to skip a frame to keep up
     if (skipFrames == 0)
     {
         // UPeriod = 100;
-        skipFrames = 2;
-        // if (get_elapsed_time_since(startTime) > frameTime) skipFrames += 1;
+        skipFrames = 1;
+        if (delay < 0) skipFrames += 1;
         if (speedupEnabled) skipFrames += speedupEnabled * 2.5;
     }
     else if (skipFrames > 0)

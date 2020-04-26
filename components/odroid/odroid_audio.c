@@ -2,16 +2,17 @@
 
 
 #include "freertos/FreeRTOS.h"
+#include "unistd.h"
 #include "esp_system.h"
 #include "driver/i2s.h"
 #include "driver/rtc_io.h"
-
 
 
 #define I2S_NUM (I2S_NUM_0)
 
 static int audioSink = ODROID_AUDIO_SINK_SPEAKER;
 static int audioSampleRate = 0;
+static bool audioMuted = 0;
 static float volumePercent = 1.0f;
 static odroid_volume_level volumeLevel = ODROID_VOLUME_LEVEL3;
 static int volumeLevels[] = {0, 60, 125, 187, 250, 375, 500, 750, 1000};
@@ -142,7 +143,12 @@ void IRAM_ATTR odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
 {
     short currentAudioSampleCount = frameCount * 2;
 
-    if (audioSink == ODROID_AUDIO_SINK_SPEAKER)
+    if (audioMuted)
+    {
+        // Simulate i2s_write_bytes delay
+        usleep((audioSampleRate * 1000) / currentAudioSampleCount);
+    }
+    else if (audioSink == ODROID_AUDIO_SINK_SPEAKER)
     {
         // Convert for built in DAC
         for (short i = 0; i < currentAudioSampleCount; i += 2)
@@ -258,9 +264,10 @@ int odroid_audio_sample_rate_get()
     return audioSampleRate;
 }
 
-void odroid_audio_clear_buffer()
+void odroid_audio_mute(bool mute)
 {
-    if (audioSampleRate) {
+    audioMuted = mute;
+    if (mute && audioSampleRate) {
 	    i2s_zero_dma_buffer(I2S_NUM);
     }
 }

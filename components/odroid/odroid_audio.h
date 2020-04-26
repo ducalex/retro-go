@@ -1,6 +1,7 @@
 #pragma once
 
 #include "odroid_settings.h"
+#include "stdbool.h"
 
 typedef enum
 {
@@ -25,4 +26,4 @@ ODROID_AUDIO_SINK odroid_audio_get_sink();
 void odroid_audio_terminate();
 void odroid_audio_submit(short* stereoAudioBuffer, int frameCount);
 int odroid_audio_sample_rate_get();
-void odroid_audio_clear_buffer();
+void odroid_audio_mute(bool mute);
