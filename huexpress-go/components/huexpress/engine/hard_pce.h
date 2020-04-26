@@ -12,8 +12,14 @@
 
 #include <stdio.h>
 
+#include "defs.h"
 #include "config.h"
 #include "cleantypes.h"
+
+#define RAMSIZE            0x2000
+#define VRAMSIZE           0x10000
+
+#define PSG_DIRECT_ACCESS_BUFSIZE 1024
 
 #define PSG_VOICE_REG           0	/* voice index */
 
@@ -37,31 +43,190 @@
 #define PSG_NOISE_REG           7
 #define PSG_NOISE_ENABLE        0x80	/* bit 7 */
 
+// CPU Flags:
+#define FL_N 0x80
+#define FL_V 0x40
+#define FL_T 0x20
+#define FL_B 0x10
+#define FL_D 0x08
+#define FL_I 0x04
+#define FL_Z 0x02
+#define FL_C 0x01
+
+// Main structures
+typedef union {
+#if defined(WORDS_BIGENDIAN)
+	struct {
+		uchar h, l;
+	} B;
+#else
+	struct {
+		uchar l, h;
+	} B;
+#endif
+	uint16 W;
+} pair;
+
+/* The structure containing all variables relatives to Input and Output */
+typedef struct {
+	/* VCE */
+	pair VCE[0x200];			/* palette info */
+	pair vce_reg;				/* currently selected color */
+	uchar vce_ratch;			/* temporary value to keep track of the first byte
+								 * when setting a 16 bits value with two byte access
+								 */
+	/* VDC */
+	pair VDC[32];				/* value of each VDC register */
+	uint16 vdc_inc;				/* VRAM pointer increment once accessed */
+	uint16 vdc_raster_count;	/* unused as far as I know */
+	uchar vdc_reg;				/* currently selected VDC register */
+	uchar vdc_status;			/* current VCD status (end of line, end of screen, ...) */
+	uchar vdc_ratch;			/* temporary value to keep track of the first byte
+								 * when setting a 16 bits value with two byte access
+								 */
+	uchar vdc_satb;				/* boolean which keeps track of the need to copy
+								 * the SATB from VRAM to internal SATB
+								 */
+	uchar vdc_pendvsync;		/* unsure, set if a end of screen IRQ is waiting */
+	int32 bg_h;					/* number of tiles vertically in virtual screen */
+	int32 bg_w;					/* number of tiles horizontaly in virtual screen */
+	int32 screen_w;				/* size of real screen in pixels */
+	int32 screen_h;				/* size of real screen in pixels */
+	int32 scroll_y;
+	int32 minline;
+	int32 maxline;
+
+	uint16 vdc_min_display;		// First scanline of active display
+	uint16 vdc_max_display;		// Last scanline of active display
+
+	/* joypad */
+	uchar JOY[16];				/* value of pressed button/direct for each pad
+								 * (why 16 ? 5 should be enough for everyone :)
+								 */
+	uchar joy_select;			/* used to know what nibble we must return */
+	uchar joy_counter;			/* current addressed joypad */
+
+	/* PSG */
+	uchar PSG[6][8], wave[6][32];
+	// PSG STRUCTURE
+	// 0 : dda_out
+	// 2 : freq (lo byte)  | In reality it's a divisor
+	// 3 : freq (hi byte)  | 3.7 Mhz / freq => true snd freq
+	// 4 : dda_ctrl
+	//     000XXXXX
+	//     ^^  ^
+	//     ||  ch. volume
+	//     ||
+	//     |direct access (everything at byte 0)
+	//     |
+	//    enable
+	// 5 : pan (left vol = hi nibble, right vol = low nibble)
+	// 6 : wave ringbuffer index
+	// 7 : noise data for channels 5 and 6
+
+	uchar psg_ch, psg_volume, psg_lfo_freq, psg_lfo_ctrl;
+
+	uchar psg_da_data[6][PSG_DIRECT_ACCESS_BUFSIZE];
+	uint16 psg_da_index[6], psg_da_count[6];
+	int psg_channel_disabled[6];
+
+	/* TIMER */
+	uchar timer_reload, timer_start, timer_counter;
+
+	/* IRQ */
+	uchar irq_mask, irq_status;
+
+	/* Remanence latch */
+	uchar io_buffer;
+
+} IO;
+
+typedef struct {
+	uchar RAM[RAMSIZE];
+
+	// Extra RAM for SuperGraphx
+	uchar *SuperRAM; // 0x6000
+
+	// Extra RAM contained on the HuCard (Populous)
+	uchar *ExtraRAM;
+
+	// Backup RAM
+	uchar SaveRAM[0x800];
+
+	// Video mem
+	// 0x10000 bytes on coregraphx, the double on supergraphx I think
+	// contain information about the sprites position/status, information
+	// about the pattern and palette to use for each tile, and patterns
+	// for use in sprite/tile rendering
+	uchar VRAM[VRAMSIZE];
+
+	// These are array to keep in memory the result of the linearisation of
+	// PCE sprites and tiles
+	uchar *VRAM2; // [VRAMSIZE];
+	uchar *VRAMS; // [VRAMSIZE];
+
+	// These array are boolean array to know if we must update the
+	// corresponding linear sprite representation in VRAM2 and VRAMS or not
+	// if (sprite_converted[5] == 0) 6th pattern in VRAM2 must be updated
+	bool plane_converted[VRAMSIZE / 32];
+	bool sprite_converted[VRAMSIZE / 128];
+
+	// SPRAM = sprite RAM
+	// The pc engine got a function to transfert a piece VRAM toward the inner
+	// gfx cpu sprite memory from where data will be grabbed to render sprites
+	uint16 SPRAM[64 * 4];
+
+	// PCE->PC Palette convetion array
+	// Each of the 512 available PCE colors (333 RGB -> 512 colors)
+	// got a correspondancy in the 256 fixed colors palette
+	uchar Pal[512];
+
+	// CPU Registers
+	uint16 s_reg_pc;
+	uchar s_reg_a;
+	uchar s_reg_x;
+	uchar s_reg_y;
+	uchar s_reg_p;
+	uchar s_reg_s;
+
+	// The current rendered line on screen
+	uint32 s_scanline;
+
+	// Number of elapsed cycles
+	uint32 s_cyclecount;
+
+	// Previous number of elapsed cycles
+	uint32 s_cyclecountold;
+
+	// Number of pc engine cycles elapsed since the resetting of the emulated console
+	uint32 s_cycles;
+
+	// Value of each of the MMR registers
+	uchar mmr[8];
+
+	IO s_io;
+
+	int32 s_external_control_cpu;
+
+} struct_hard_pce;
+
 /**
   * Exported functions to access hardware
   **/
 
 void hard_init(void);
-void hard_reset_io(void);
+void hard_reset(void);
 void hard_term(void);
 
 void IO_write(uint16 A, uchar V);
 uchar IO_read(uint16 A);
+uchar IO_TimerInt();
 void bank_set(uchar P, uchar V);
 
-uchar read_memory_simple(uint16);
-void write_memory_simple(uint16, uchar);
-
-#define Wr6502(A,V) (write_memory_simple((A),(V)))
-#define Rd6502(A) (read_memory_simple(A))
+#define Wr6502(A,V) (put_8bit_addr((A),(V)))
+#define Rd6502(A) (get_8bit_addr(A))
 
 void dump_pce_cpu_environment();
-
-/**
-  * Global structure for all hardware variables
-  **/
-
-#include "shared_memory.h"
 
 /**
   * Exported variables
@@ -70,62 +235,11 @@ void dump_pce_cpu_environment();
 extern struct_hard_pce hard_pce;
 // The global structure for all hardware variables
 
-#define io (*p_io)
-
-extern IO *p_io;
-// the global I/O status
-
-extern uchar *RAM;
-// mem where variables are stocked (well, RAM... )
-// in reality, only 0x2000 bytes are used in a coregraphx and 0x8000 only
-// in a supergraphx
-
-extern uchar *WRAM;
-// extra backup memory
-// This memory lies in Interface Unit or eventually in RGB adaptator
-
-extern uchar *VRAM;
-// Video mem
-// 0x10000 bytes on coregraphx, the double on supergraphx I think
-// contain information about the sprites position/status, information
-// about the pattern and palette to use for each tile, and patterns
-// for use in sprite/tile rendering
-
-extern uint16 *SPRAM;
-// SPRAM = sprite RAM
-// The pc engine got a function to transfert a piece VRAM toward the inner
-// gfx cpu sprite memory from where data will be grabbed to render sprites
-
-extern uchar *Pal;
-// PCE->PC Palette convetion array
-// Each of the 512 available PCE colors (333 RGB -> 512 colors)
-// got a correspondancy in the 256 fixed colors palette
-
-extern uchar *VRAM2, *VRAMS;
-// These are array to keep in memory the result of the linearisation of
-// PCE sprites and tiles
-
-extern uchar *vchange, *vchanges;
-// These array are boolean array to know if we must update the
-// corresponding linear sprite representation in VRAM2 and VRAMS or not
-// if (vchanges[5] != 0) 6th pattern in VRAM2 must be updated
-
-#define scanline (*p_scanline)
-
-extern uint32 *p_scanline;
-// The current rendered line on screen
-
-extern uchar *PCM;
-// The ADPCM array (0x10000 bytes)
-
-extern uchar *zp_base;
+#define zp_base RAM
 // pointer to the beginning of the Zero Page area
 
-extern uchar *sp_base;
+#define sp_base (RAM + 0x100)
 // pointer to the beginning of the Stack Area
-
-extern uchar *mmr;
-// Value of each of the MMR registers
 
 extern uchar *IOAREA;
 // physical address on emulator machine of the IO area (fake address as it has to be handled specially)
@@ -140,46 +254,37 @@ extern uchar *PageW[8];
 extern uchar *ROMMapW[256];
 // physical address on emulator machine of each of the 256 banks
 
-#define cyclecount (*p_cyclecount)
+#define RAM   hard_pce.RAM
+#define SaveRAM  hard_pce.SaveRAM
+#define SuperRAM hard_pce.SuperRAM
+#define ExtraRAM hard_pce.ExtraRAM
+#define SPRAM hard_pce.SPRAM
+#define VRAM hard_pce.VRAM
+#define VRAM2 hard_pce.VRAM2
+#define VRAMS hard_pce.VRAMS
+#define plane_converted hard_pce.plane_converted
+#define sprite_converted hard_pce.sprite_converted
+#define Palette hard_pce.Pal
 
-extern uint32 *p_cyclecount;
-// Number of elapsed cycles
-
-#define cyclecountold (*p_cyclecountold)
-
-extern uint32 *p_cyclecountold;
-// Previous number of elapsed cycles
-
-#define external_control_cpu (*p_external_control_cpu)
-
-extern int32 *p_external_control_cpu;
+#define mmr hard_pce.mmr
+#define scanline hard_pce.s_scanline
+#define io hard_pce.s_io
+#define cyclecount hard_pce.s_cyclecount
+#define cyclecountold hard_pce.s_cyclecountold
+extern uint32 cycles;
 
 #define TimerPeriod 1097
-// extern const uint32 TimerPeriod;
 // Base period for the timer
 
 // registers:
-
-#define reg_pc reg_pc_
-#define reg_a reg_a_
-#define reg_x reg_x_
-#define reg_y reg_y_
-#define reg_p reg_p_
-#define reg_s reg_s_
-
-extern uint32 reg_pc;
-extern uchar reg_a;
-extern uchar reg_x;
-extern uchar reg_y;
-extern uchar reg_p;
-extern uchar reg_s;
-
+#define reg_pc hard_pce.s_reg_pc
+#define reg_a  hard_pce.s_reg_a
+#define reg_x  hard_pce.s_reg_x
+#define reg_y  hard_pce.s_reg_y
+#define reg_p  hard_pce.s_reg_p
+#define reg_s  hard_pce.s_reg_s
 // These are the main h6280 register, reg_p is the flag register
 
-#define cycles (*p_cycles)
-extern uint32 *p_cycles;
-
-// Number of pc engine cycles elapsed since the resetting of the emulated console
 
 /**
   * Definitions to ease writing
@@ -213,4 +318,6 @@ enum _VDC_REG {
 #define	ENABLE	   1
 #define	DISABLE	   0
 
+extern mode_struct addr_info[];
+extern operation optable[];
 #endif

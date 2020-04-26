@@ -1,10 +1,5 @@
 {
-#ifdef ODROID_DEBUG_PERF_CPU_ALL_INSTR
-         ODROID_DEBUG_PERF_START()
-#endif
-    ODROID_DEBUG_PERF_START2(my_perf_mem_access)
     uint8_t cmd = PageR[reg_pc >> 13][reg_pc];
-    ODROID_DEBUG_PERF_INCR2(my_perf_mem_access, ODROID_DEBUG_PERF_MEM_ACCESS1)
 
     /*
     static int _my_counter = 0;
@@ -1439,7 +1434,4 @@
         _OPCODE_bbs_(0x80)
         break;
    }
-#ifdef ODROID_DEBUG_PERF_CPU_ALL_INSTR
-         ODROID_DEBUG_PERF_INCR(0x0100 + (uint16_t)cmd)
-#endif
 }

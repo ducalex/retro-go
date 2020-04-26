@@ -7,6 +7,7 @@
 #define H6280_H_
 
 #include "cleantypes.h"
+#include "hard_pce.h"
 
 /********************************************/
 /* function parameters:                     */
@@ -17,6 +18,7 @@
 
 extern void exe_instruct(void);
 extern void exe_go(void);
+extern void dump_pce_core();
 
 extern int adc_abs(void);
 extern int adc_absx(void);
@@ -252,6 +254,9 @@ extern int txa(void);
 extern int txs(void);
 extern int tya(void);
 
+extern operation optable_runtime[256];
+extern uchar flnz_list[256];
+
 #define INT_NONE        0		/* No interrupt required      */
 #define INT_IRQ         1		/* Standard IRQ interrupt     */
 #define INT_NMI         2		/* Non-maskable interrupt     */
@@ -266,18 +271,55 @@ extern int tya(void);
 #define	VEC_IRQ2	0xFFF6
 #define	VEC_BRK		0xFFF6
 
-extern uchar flnz_list[256];
-//extern uchar *flnz_list;
+
+#define AM_IMPL      0			/* implicit              */
+#define AM_IMMED     1			/* immediate             */
+#define AM_REL       2			/* relative              */
+#define AM_ZP        3			/* zero page             */
+#define AM_ZPX       4			/* zero page, x          */
+#define AM_ZPY       5			/* zero page, y          */
+#define AM_ZPIND     6			/* zero page indirect    */
+#define AM_ZPINDX    7			/* zero page indirect, x */
+#define AM_ZPINDY    8			/* zero page indirect, y */
+#define AM_ABS       9			/* absolute              */
+#define AM_ABSX     10			/* absolute, x           */
+#define AM_ABSY     11			/* absolute, y           */
+#define AM_ABSIND   12			/* absolute indirect     */
+#define AM_ABSINDX  13			/* absolute indirect     */
+#define AM_PSREL    14			/* pseudo-relative       */
+#define AM_TST_ZP   15			/* special 'TST' addressing mode  */
+#define AM_TST_ABS  16			/* special 'TST' addressing mode  */
+#define AM_TST_ZPX  17			/* special 'TST' addressing mode  */
+#define AM_TST_ABSX 18			/* special 'TST' addressing mode  */
+#define AM_XFER     19			/* special 7-byte transfer addressing mode  */
+
+#define MAX_MODES  (AM_XFER + 1)
 
 #define flnz_list_get(num) flnz_list[num]
-//#define flnz_list_get(num) (num==0?FL_Z:num>=0x80?FL_N:0)
+#define get_8bit_addr_(addr) get_8bit_addr(addr)
 
-uchar imm_operand_(uint16 addr);
-void put_8bit_zp_(uchar zp_addr, uchar byte);
-uchar get_8bit_zp_(uchar zp_addr);
-uint16 get_16bit_zp_(uchar zp_addr);
-uint16 get_16bit_addr_(uint16 addr);
-void put_8bit_addr_(uint16 addr, uchar byte);
-uchar get_8bit_addr_(uint16 addr);
+
+static inline uchar
+get_8bit_addr(uint16 addr)
+{
+	register unsigned short int memreg = addr >> 13;
+
+	if (PageR[memreg] == IOAREA)
+		return IO_read(addr);
+	else
+		return PageR[memreg][addr];
+}
+
+static inline void
+put_8bit_addr(uint16 addr, uchar byte)
+{
+	register unsigned int memreg = addr >> 13;
+
+	if (PageW[memreg] == IOAREA) {
+		IO_write(addr, byte);
+	} else {
+		PageW[memreg][addr] = byte;
+	}
+}
 
 #endif

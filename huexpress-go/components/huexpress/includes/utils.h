@@ -16,9 +16,7 @@
 #ifndef _UTILS_C
 #define _UTILS_C
 
-
 #include "cleantypes.h"
-
 
 void Log(const char *, ...);
 
@@ -28,21 +26,12 @@ void wait_next_vsync();
 //! CRC predefined array
 extern const unsigned long TAB_CONST[256];
 
-void patch_rom(char* filename, int offset, uchar value);
-
-char *strupr(char *s);
-#if !defined(FREEBSD) && !defined(__cplusplus)
-char *strcasestr (const char *s1, const char *s2);
-#endif
-
-#if !defined(WIN32)
-int stricmp (char *s1, char *s2);
-#endif
-
-void get_directory_from_filename(char*);
-void wipe_directory(char*);
 int file_exists(char*);
 long file_size(char* file_name);
 
-
+static inline int
+one_bit_set(uchar arg)
+{
+	return (arg != 0) && ((-arg & arg) == arg);
+}
 #endif

@@ -34,6 +34,11 @@
 
 #define MESSAGE_ERROR(x...) printf("!! " x)
 #define MESSAGE_INFO(x...) printf(" * " x)
+#ifndef FINAL_RELEASE
+#define MESSAGE_DEBUG(x...) printf(" ~ " x)
+#else
+#define MESSAGE_DEBUG(x...) {}
+#endif
 
 typedef struct {
 	uint16 position;

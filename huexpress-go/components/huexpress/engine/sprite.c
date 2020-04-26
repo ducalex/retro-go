@@ -41,8 +41,6 @@ uchar SPONSwitch = 1;
 // uint32 spr_init_pos[1024];
 // cooked initial position of sprite
 
-void (*RefreshSprite) (int Y1, int Y2, uchar bg);
-
 int ScrollYDiff;
 int oldScrollX;
 int oldScrollY;
@@ -422,7 +420,7 @@ RefreshScreen(void)
        }
      */
 
-    (*osd_gfx_driver_list[video_driver].draw) ();
+    (*osd_gfx_driver_list[host.video_driver].draw) ();
 
 #if ENABLE_TRACING_GFX
     /*
@@ -489,7 +487,6 @@ RefreshScreen(void)
 void
 RefreshLine(int Y1, int Y2)
 {
-    ODROID_DEBUG_PERF_START2(debug_perf_part_refr)
     int X1, XW, Line;
     int x, y, h, offset;
 
@@ -533,7 +530,7 @@ RefreshLine(int Y1, int Y2)
                 no = ((uint16 *) VRAM)[x + y * io.bg_w];
 #endif
 
-                R = &Pal[(no >> 12) * 16];
+                R = &Palette[(no >> 12) * 16];
 
 #if ENABLE_TRACING_GFX
                 // Old code was only no &= 0xFFF
@@ -544,8 +541,8 @@ RefreshLine(int Y1, int Y2)
 #endif
                 no &= 0x7FF;
 
-                if (vchange[no]) {
-                    vchange[no] = 0;
+                if (plane_converted[no] == 0) {
+                    plane_converted[no] = 1;
                     plane2pixel(no);
                 }
                 C2 = (VRAM2 + (no * 8 + offset) * 4);
@@ -586,7 +583,6 @@ RefreshLine(int Y1, int Y2)
                 h = 8;
         }
     }
-    ODROID_DEBUG_PERF_INCR2(debug_perf_part_refr, ODROID_DEBUG_PERF_SPRITE_RefreshLine)
 }
 
 
@@ -948,7 +944,6 @@ PutSpriteMakeMask(uchar * P, uchar * C, uchar * C2, uchar * R, int16 h,
 void
 RefreshSpriteExact(int Y1, int Y2, uchar bg)
 {
-    ODROID_DEBUG_PERF_START2(debug_perf_part1)
     int n;
     SPR *spr;
 
@@ -999,8 +994,8 @@ RefreshSpriteExact(int Y1, int Y2, uchar bg)
 
         uchar* R = &SPal[(atr & 15) * 16];
         for (i = 0; i < cgy * 2 + cgx + 1; i++) {
-            if (vchanges[no + i]) {
-                vchanges[no + i] = 0;
+            if (sprite_converted[no + i] == 0) {
+                sprite_converted[no + i] = 1;
                 sp2pixel(no + i);
             }
             if (!cgx)
@@ -1076,7 +1071,6 @@ RefreshSpriteExact(int Y1, int Y2, uchar bg)
             y_sum += 16;
         }
     }
-    ODROID_DEBUG_PERF_INCR2(debug_perf_part1, ODROID_DEBUG_PERF_SPRITE_RefreshSpriteExact)
 }
 
 

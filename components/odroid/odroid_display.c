@@ -506,9 +506,6 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
 
     for (short y = 0, screen_y = screen_top; y < height;)
     {
-        uint16_t* line_buffer = spi_get_buffer();
-
-        short line_buffer_index = 0;
         short lines_to_copy = lines_per_buffer;
 
         if (lines_to_copy > screen_bottom - screen_y)
@@ -523,6 +520,14 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
                                          screen_line_is_empty[screen_y + lines_to_copy]))
                 --lines_to_copy;
         }
+
+        if (lines_to_copy == 0)
+        {
+            break;
+        }
+
+        uint16_t *line_buffer = spi_get_buffer();
+        uint16_t  line_buffer_index = 0;
 
         for (short i = 0; i < lines_to_copy; ++i)
         {

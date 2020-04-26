@@ -12,7 +12,6 @@
 /*									    */
 /****************************************************************************/
 
-#include "globals.h"
 #include "debug.h"
 #include "h6280.h"
 
@@ -131,32 +130,22 @@ handle_bp(int nb_bp)
 int
 handle_bp(int nb_bp)
 {
-
-#ifndef FINAL_RELEASE
 	if (reg_pc != Bp_list[nb_bp].position)
-		fprintf(stderr,
-				"there's a problem, the breakpoint hasn't been correctly hit\n");
+		MESSAGE_DEBUG("there's a problem, the breakpoint hasn't been correctly hit\n");
 	else
-		fprintf(stderr, "The breakpoint %d has been correctly hit\n",
-				nb_bp);
+		MESSAGE_DEBUG("The breakpoint %d has been correctly hit\n", nb_bp);
 
-	fprintf(stderr, "After Breakpoint, position is %X\n", reg_pc);
-#endif
+	MESSAGE_DEBUG("After Breakpoint, position is %X\n", reg_pc);
 
 	disass_menu(reg_pc);
 	// And call the disassembler
 
-#ifndef FINAL_RELEASE
-	fprintf(stderr, "After the disassembly function, the position is %X\n",
-			reg_pc);
-#endif
+	MESSAGE_DEBUG("After the disassembly function, the position is %X\n", reg_pc);
 
 	if ((get_8bit_addr_(reg_pc) & 0x0F) == 0x0B) {	// We only look here for Bp since PC or bp status can have changed
 
-#ifndef FINAL_RELEASE
-		fprintf(stderr, "run trick: a bp has been asked to be put at %X\n",
+		MESSAGE_DEBUG("run trick: a bp has been asked to be put at %X\n",
 				reg_pc);
-#endif
 
 		Wr6502(reg_pc, Bp_list[get_8bit_addr_(reg_pc) >> 4].original_op);
 		// Replace the opcode in the rom
@@ -189,9 +178,7 @@ handle_bp14()
 	Bp_list[14].flag = NOT_USED;
 	// This BP is no more used
 
-#ifndef FINAL_RELEASE
-	fprintf(stderr, "We're restoring bp at %X\n", Bp_pos_to_restore);
-#endif
+	MESSAGE_DEBUG("We're restoring bp at %X\n", Bp_pos_to_restore);
 
 	toggle_user_breakpoint(Bp_pos_to_restore);
 	// We set another Bp at the location we just left

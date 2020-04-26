@@ -1,9 +1,6 @@
 /* Trace settings for debug purposes */
 #define ENABLE_TRACING 0
 #define ENABLE_TRACING_AUDIO 0
-#define ENABLE_TRACING_BIOS 0
-#define ENABLE_TRACING_CD 0
-#define ENABLE_TRACING_CD_2 0
 #define ENABLE_TRACING_GFX 0
 #define ENABLE_TRACING_DEEP_GFX 0
 #define ENABLE_TRACING_SPRITE 0

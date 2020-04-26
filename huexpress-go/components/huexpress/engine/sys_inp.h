@@ -81,9 +81,7 @@ typedef enum {
 	J_PAD_START = J_PI
 } joymap;
 
-extern const char *joymap_reverse[J_MAX];
-
-/* 
+/*
  * input_config
  *
  * Definition of the type representating an input configuration
@@ -91,7 +89,7 @@ extern const char *joymap_reverse[J_MAX];
 
 /*
  * local_input means the input data can be read locally and need not been relayed
- * server_input means the data 
+ * server_input means the data
  */
 
 typedef enum { LOCAL_PROTOCOL, LAN_PROTOCOL,

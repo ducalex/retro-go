@@ -27,7 +27,6 @@ static uint startTime = 0;
 uint skipFrames = 0;
 
 extern uchar *SPM_raw, *SPM;
-extern uchar *Pal;
 
 static QueueHandle_t videoTaskQueue;
 
@@ -41,7 +40,7 @@ static inline void set_current_fb(int i)
     curFrame = &frames[current_fb];
 
     for (int i = 0; i < 240; i++) {
-        // memset(osd_gfx_buffer + i * XBUF_WIDTH, Pal[0], io.screen_w);
+        // memset(osd_gfx_buffer + i * XBUF_WIDTH, Palette[0], io.screen_w);
         memset(SPM + i * XBUF_WIDTH, 0, io.screen_w);
     }
 }
@@ -55,7 +54,7 @@ static void videoTask(void *arg)
     while(1)
     {
         xQueueReceive(videoTaskQueue, &frame, portMAX_DELAY);
-        curFrame->pixel_clear = Pal[0];
+        frame->pixel_clear = Palette[0];
         odroid_display_queue_update(frame, NULL);
     }
 
@@ -69,8 +68,6 @@ static void videoTask(void *arg)
 
 int osd_gfx_init(void)
 {
-    printf("%s: (%dx%d)\n", __func__, io.screen_w, io.screen_h);
-
     frameTime = get_frame_time(60);
     startTime = get_elapsed_time();
     framebuffers[0] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
@@ -85,7 +82,11 @@ int osd_gfx_init(void)
 
 int osd_gfx_init_normal_mode(void)
 {
-	frames[0].width = io.screen_w;
+    printf("%s: (%dx%d)\n", __func__, io.screen_w, io.screen_h);
+
+    int crop_w = MAX(0, io.screen_w - ODROID_SCREEN_WIDTH);
+
+	frames[0].width = io.screen_w - crop_w;
 	frames[0].height = io.screen_h;
 	frames[0].stride = XBUF_WIDTH;
 	frames[0].pixel_size = 1;
@@ -94,8 +95,8 @@ int osd_gfx_init_normal_mode(void)
 	frames[0].palette = mypalette;
 	frames[1] = frames[0];
 
-	frames[0].buffer = framebuffers[0] + 32 + 64 * XBUF_WIDTH;
-	frames[1].buffer = framebuffers[1] + 32 + 64 * XBUF_WIDTH;
+	frames[0].buffer = framebuffers[0] + 32 + 64 * XBUF_WIDTH + (crop_w / 2);
+	frames[1].buffer = framebuffers[1] + 32 + 64 * XBUF_WIDTH + (crop_w / 2);
 
     set_current_fb(0);
     SetPalette();
@@ -121,8 +122,8 @@ void osd_gfx_put_image_normal(void)
     }
 
     // For reference pelle7's performance with fixed frameskip = 2 (default/minimum) vs retro-go same settings:
-    // Soldier Blade: 41-53 emulated fps / 15-17 real fps             retro-go: 58-71 emulated / 19-22 real
-    // Raiden:        38-47 emulated fps / 12-15 real fps             retro-go: 53-60 emulated / 17-21 real
+    // Soldier Blade: 41-53 emulated fps / 15-17 real fps             retro-go: 58-80 emulated / 20-23 real
+    // Raiden:        38-47 emulated fps / 12-15 real fps             retro-go: 52-60 emulated / 17-21 real
 
     // See if we need to skip a frame to keep up
     if (skipFrames == 0)

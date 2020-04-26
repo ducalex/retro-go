@@ -108,11 +108,11 @@
     if (reg_p & FL_T) { \
         uchar tmp; \
         _OPCODE_adc( get_8bit_zp(reg_x), zp_operand(reg_pc + 1), tmp) \
-        put_8bit_zp(reg_x, tmp); \ 
+        put_8bit_zp(reg_x, tmp); \
         /* put_8bit_zp(reg_x, adc(get_8bit_zp(reg_x), zp_operand(reg_pc + 1))); */ \
         cycles += 7; \
     } else { \
-        _OPCODE_adc( reg_a, zp_operand(reg_pc + 1), reg_a) \ 
+        _OPCODE_adc( reg_a, zp_operand(reg_pc + 1), reg_a) \
         /* reg_a = adc(reg_a, zp_operand(reg_pc + 1)); */ \
         cycles += 4; \
     } \

@@ -4,6 +4,8 @@
 
 #include "config.h"
 
+#include "odroid_system.h"
+
 #include "sys_dep.h"
 #include "hard_pce.h"
 #include "debug.h"
@@ -15,22 +17,20 @@
 #include "cleantypes.h"
 
 #include "h6280.h"
-#include "globals.h"
 #include "interupt.h"
 
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 
 #define SERVER_HOSTNAME_MAX_SIZE 256
 
-int CartLoad(char *name);
+int LoadCard(char *name);
+int LoadState(char *name);
+int SaveState(char *name);
 int ResetPCE();
-int32 InitMachine(void);
-void TrashMachine(void);
-int32 Joysticks(void);
-uchar TimerInt();
 void SetPalette(void);
 
 int InitPCE(char *name);
@@ -40,52 +40,15 @@ int RunPCE(void);
 extern char volatile key_delay;
 // are we allowed to press another 'COMMAND' key ?
 
-extern volatile uint32 message_delay;
-// if different of zero, we must display the message pointed by pmessage
-
-extern char short_cart_name[PCE_PATH_MAX];
-// Just the filename without the extension (with a dot)
-// you just have to add your own extension...
-
 extern char cart_name[PCE_PATH_MAX];
 // the name of the rom to load
 
-extern uchar populus;
-
-extern uchar *PopRAM;
-// Now dynamicaly allocated
-// ( size of popRAMsize bytes )
-// If someone could explain me why we need it
-// the version I have works well without this trick
-
-extern const uint32 PopRAMsize;
-// I don't really know if it must be 0x8000 or 0x10000
-
 extern char *server_hostname;
-// Name of the server to connect to
-
-extern int32 smode;
-// what sound card type should we use? (0 means the silent one,
-// my favorite : the fastest!!! ; and -1 means AUTODETECT;
-// later will avoid autodetection if wanted)
-
-extern char silent;
-// use sound?
 
 extern int BaseClock, UPeriod;
 
-extern uchar US_encoded_card;
-// Do we have to swap even and odd bytes in the rom
-
 extern uchar debug_on_beginning;
 // Do we have to set a bp on the reset IP
-
-extern uint32 timer_60;
-// how many times do the interrupt have been called
-
-extern uchar bcdbin[0x100];
-
-extern uchar binbcd[0x100];
 
 struct host_sound {
 	int stereo;
@@ -96,23 +59,11 @@ struct host_sound {
 
 struct host_machine {
 	struct host_sound sound;
+	bool want_fullscreen_aspect;
+	uchar video_driver;
 };
 
 extern struct host_machine host;
-
-struct hugo_options {
-	int want_fullscreen_aspect;
-	int want_supergraphx_emulation;
-#if defined(ENABLE_NETPLAY)
-	netplay_type want_netplay;
-	char server_hostname[SERVER_HOSTNAME_MAX_SIZE];
-	uchar local_input_mapping[5];
-#endif
-};
-
-extern struct hugo_options option;
-
-extern uchar video_driver;
 
 extern int scroll;
 
@@ -122,8 +73,6 @@ extern int scroll;
 #endif
 
 // Video related defines
-
-extern uchar can_write_debug;
 
 #define SpHitON    (IO_VDC_05_CR.W&0x01)
 #define OverON     (IO_VDC_05_CR.W&0x02)
@@ -183,8 +132,6 @@ extern uchar can_write_debug;
 #include "config.h"
 
 #include "sprite.h"
-
-#include <time.h>
 
 #define IO_VDC_00_MAWR  io.VDC[MAWR]
 #define IO_VDC_01_MARR  io.VDC[MARR]

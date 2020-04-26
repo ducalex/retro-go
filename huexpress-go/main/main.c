@@ -17,24 +17,19 @@ static int  sramSaveTimer = 0;
 // --- MAIN
 
 
-static bool SaveState(char *pathName)
+static bool save_state(char *pathName)
 {
-    // return state_save(pathName) == 0;
-    return true;
+    return SaveState(pathName) == 0;
 }
 
 
-static bool LoadState(char *pathName)
+static bool load_state(char *pathName)
 {
-    ResetPCE();
-    // if (state_load(pathName) != 0)
-    // {
-    //     emu_reset();
-
-    //     if (saveSRAM) sram_load();
-
-    //     return false;
-    // }
+    if (LoadState(pathName) != 0)
+    {
+        ResetPCE();
+        return false;
+    }
     return true;
 }
 
@@ -44,13 +39,15 @@ void app_main(void)
     printf("huexpress (%s-%s).\n", COMPILEDATE, GITREV);
 
     odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    odroid_system_emu_init(&LoadState, &SaveState, NULL);
+    odroid_system_emu_init(&load_state, &save_state, NULL);
 
     char *romFile = odroid_system_get_path(NULL, ODROID_PATH_ROM_FILE);
 
 	// Initialise the host machine
 	osd_init_machine();
 	osd_init_input();
+
+    host.want_fullscreen_aspect = false;
 
     InitPCE(romFile);
 

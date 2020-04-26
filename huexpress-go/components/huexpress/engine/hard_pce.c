@@ -34,48 +34,9 @@
 
 struct_hard_pce hard_pce;
 
-uchar *RAM;
-
-// Video
-uint16 *SPRAM;
-uchar *VRAM2;
-uchar *VRAMS;
-uchar *Pal;
-uchar *vchange;
-uchar *vchanges;
-uchar *WRAM;
-uchar *VRAM;
-uint32 *p_scanline;
-
-// Audio
-uchar *PCM;
-
-// I/O
-IO *p_io;
-
-// Dummy buffer
-uchar NULLRAM[0x2002];
-
 // Memory
-uchar *zp_base;
-uchar *sp_base;
-uchar *mmr;
 uchar *IOAREA;
 uchar *TRAPRAM;
-
-// Interruption
-uint32 *p_cyclecount;
-uint32 *p_cyclecountold;
-
-//const uint32 TimerPeriod = 1097;
-
-// registers
-uint32 reg_pc_;
-uchar reg_a_;
-uchar reg_x_;
-uchar reg_y_;
-uchar reg_p_;
-uchar reg_s_;
 
 // Mapping
 uchar *PageR[8];
@@ -83,14 +44,26 @@ uchar *PageW[8];
 uchar *ROMMapR[256];
 uchar *ROMMapW[256];
 
-// Miscellaneous
-uint32 *p_cycles;
-int32 *p_external_control_cpu;
+uint32 cycles = 0;
+
+static const uint8 SaveRAM_Header[8] = { 'H', 'U', 'B', 'M', 0x00, 0x88, 0x10, 0x80 };
 
 void
-hard_reset_io(void)
+hard_reset(void)
 {
-    memset(&io, 0, sizeof(IO));
+	// Preserve our pointers
+    uchar *superram = SuperRAM;
+    uchar *extraram = ExtraRAM;
+    uchar *vram2 = VRAM2;
+    uchar *vrams = VRAMS;
+
+    memset(&hard_pce, 0x00, sizeof(struct_hard_pce));
+    memcpy(&SaveRAM, SaveRAM_Header, sizeof(SaveRAM_Header));
+
+    SuperRAM = superram;
+    ExtraRAM = extraram;
+    VRAM2 = vram2;
+    VRAMS = vrams;
 }
 
 /**
@@ -99,38 +72,12 @@ hard_reset_io(void)
 void
 hard_init(void)
 {
-	memset(&hard_pce, 0x00, sizeof(struct_hard_pce));
-	memset(&hard_pce.vchange, 1, sizeof(hard_pce.vchange));
-	memset(&hard_pce.vchanges, 1, sizeof(hard_pce.vchanges));
+    VRAMS = (uchar *)rg_alloc(VRAMSIZE, MEM_FAST);
+    VRAM2 = (uchar *)rg_alloc(VRAMSIZE, MEM_FAST);
+	TRAPRAM = (uchar *)rg_alloc(0x2004, MEM_FAST);
+	IOAREA = TRAPRAM + 4;
 
-    hard_pce.VRAM2 = (uchar *)rg_alloc(VRAMSIZE, MEM_FAST);
-    hard_pce.VRAMS = (uchar *)rg_alloc(VRAMSIZE, MEM_SLOW);
-
-	TRAPRAM = &NULLRAM[0];
-	IOAREA = &NULLRAM[1];
-
-	RAM = hard_pce.RAM;
-	PCM = hard_pce.PCM;
-	WRAM = hard_pce.WRAM;
-	VRAM = hard_pce.VRAM;
-	VRAM2 = hard_pce.VRAM2;
-	VRAMS = hard_pce.VRAMS;
-	vchange = hard_pce.vchange;
-	vchanges = hard_pce.vchanges;
-
-	SPRAM = hard_pce.SPRAM;
-	Pal = hard_pce.Pal;
-
-	p_scanline = &hard_pce.s_scanline;
-
-	p_cyclecount = &hard_pce.s_cyclecount;
-	p_cyclecountold = &hard_pce.s_cyclecountold;
-
-	p_cycles = &hard_pce.s_cycles;
-
-	mmr = hard_pce.mmr;
-
-	p_io = &hard_pce.s_io;
+    hard_reset();
 }
 
 /**
@@ -139,8 +86,9 @@ hard_init(void)
 void
 hard_term(void)
 {
-	free(hard_pce.VRAM2);
-	free(hard_pce.VRAMS);
+	free(TRAPRAM);
+	free(VRAM2);
+	free(VRAMS);
 }
 
 /**
@@ -303,11 +251,6 @@ IO_read_raw(uint16 A)
 {
     uchar ret;
 
-#ifndef FINAL_RELEASE
-    if ((A & 0x1F00) == 0x1A00)
-        Log("AC Read at %04x\n", A);
-#endif
-
     switch (A & 0x1FC0) {
     case 0x0000:                /* VDC */
         switch (A & 3) {
@@ -439,6 +382,8 @@ IO_read(uint16 A)
 {
 	uchar temporary_return_value = IO_read_raw(A);
 
+    MESSAGE_DEBUG("IO Read %02x at %04x\n", temporary_return_value, A);
+
 	if ((A < 0x800) || (A >= 0x1800))
 		return temporary_return_value;
 
@@ -451,15 +396,10 @@ IO_read(uint16 A)
 IRAM_ATTR inline void
 IO_write(uint16 A, uchar V)
 {
-    //printf("w%04x,%02x ",A&0x3FFF,V);
+    MESSAGE_DEBUG("IO Write %02x at %04x\n", V, A);
 
     if ((A >= 0x800) && (A < 0x1800))   // We keep the io buffer value
         io.io_buffer = V;
-
-#ifndef FINAL_RELEASE
-    if ((A & 0x1F00) == 0x1A00)
-        Log("AC Write %02x at %04x\n", V, A);
-#endif
 
     switch (A & 0x1F00) {
     case 0x0000:                /* VDC */
@@ -483,7 +423,7 @@ IO_write(uint16 A, uchar V)
                     if (io.screen_w == old_value)
                         break;
 
-                    // (*init_normal_mode[video_driver]) ();
+                    // (*init_normal_mode[host.video_driver]) ();
                     gfx_need_video_mode_change = 1;
                     {
                         uint32 x, y =
@@ -579,12 +519,9 @@ IO_write(uint16 A, uchar V)
             TRACE("VDC[%02x]=0x%02x, ", io.vdc_reg, V);
 #endif
 
-#ifndef FINAL_RELEASE
             if (io.vdc_reg > 19) {
-                fprintf(stderr, "ignore write lo vdc%d,%02x\n", io.vdc_reg,
-                        V);
+                MESSAGE_DEBUG("ignore write lo vdc%d,%02x\n", io.vdc_reg, V);
             }
-#endif
 
             return;
         case 3:
@@ -594,8 +531,8 @@ IO_write(uint16 A, uchar V)
                 VRAM[IO_VDC_00_MAWR.W * 2] = io.vdc_ratch;
                 VRAM[IO_VDC_00_MAWR.W * 2 + 1] = V;
 
-                vchange[IO_VDC_00_MAWR.W / 16] = 1;
-                vchanges[IO_VDC_00_MAWR.W / 64] = 1;
+                plane_converted[IO_VDC_00_MAWR.W / 16] = 0;
+                sprite_converted[IO_VDC_00_MAWR.W / 64] = 0;
 
                 IO_VDC_00_MAWR.W += io.vdc_inc;
 
@@ -655,9 +592,8 @@ IO_write(uint16 A, uchar V)
 
                 IO_VDC_12_LENR.W = 0xFFFF;
 
-                memset(vchange, 1, VRAMSIZE / 32);
-                memset(vchanges, 1, VRAMSIZE / 128);
-
+                memset(plane_converted, 0, sizeof(plane_converted));
+                memset(sprite_converted, 0, sizeof(sprite_converted));
 
                 /* TODO: check whether this flag can be ignored */
                 io.vdc_status |= VDC_DMAfinish;
@@ -741,12 +677,9 @@ IO_write(uint16 A, uchar V)
             }
             IO_VDC_active.B.h = V;
 
-#ifndef FINAL_RELEASE
             if (io.vdc_reg > 19) {
-                fprintf(stderr, "ignore write hi vdc%d,%02x\n", io.vdc_reg,
-                        V);
+                MESSAGE_DEBUG("ignore write hi vdc%d,%02x\n", io.vdc_reg, V);
             }
-#endif
 
             return;
         }
@@ -776,9 +709,9 @@ IO_write(uint16 A, uchar V)
                 c = io.VCE[n].W >> 1;
                 if (n == 0) {
                     for (i = 0; i < 256; i += 16)
-                        Pal[i] = c;
+                        Palette[i] = c;
                 } else if (n & 15)
-                    Pal[n] = c;
+                    Palette[n] = c;
             }
             return;
 
@@ -791,9 +724,9 @@ IO_write(uint16 A, uchar V)
                 c = io.VCE[n].W >> 1;
                 if (n == 0) {
                     for (i = 0; i < 256; i += 16)
-                        Pal[i] = c;
+                        Palette[i] = c;
                 } else if (n & 15)
-                    Pal[n] = c;
+                    Palette[n] = c;
             }
             io.vce_reg.W = (io.vce_reg.W + 1) & 0x1FF;
             return;
@@ -920,13 +853,26 @@ IO_write(uint16 A, uchar V)
 		// Log("CD Emulation not implemented : %d 0x%04X\n", V, A);
         break;
     }
-#ifndef FINAL_RELEASE
-    fprintf(stderr,
-            "ignore I/O write %04x,%02x\tBase adress of port %X\nat PC = %04X\n",
-            A, V, A & 0x1CC0,
-            reg_pc);
-#endif
-//          DebugDumpTrace(4, 1);
+
+    MESSAGE_DEBUG("ignore I/O write %04x,%02x\tBase adress of port %X\nat PC = %04X\n",
+            A, V, A & 0x1CC0, reg_pc);
+}
+
+IRAM_ATTR inline uchar
+IO_TimerInt()
+{
+	if (io.timer_start) {
+		io.timer_counter--;
+		if (io.timer_counter > 128) {
+			io.timer_counter = io.timer_reload;
+
+			if (!(io.irq_mask & TIRQ)) {
+				io.irq_status |= TIRQ;
+				return INT_TIMER;
+			}
+		}
+	}
+	return INT_NONE;
 }
 
 /**
@@ -935,10 +881,9 @@ IO_write(uint16 A, uchar V)
 IRAM_ATTR void
 bank_set(uchar P, uchar V)
 {
-#if ENABLE_TRACING
-	if (V >= 0x40 && V <= 0x43)
-		TRACE("AC pseudo bank switching !!! (mmr[%d] = %d)\n", P, V);
-#endif
+	if (V >= 0x40 && V <= 0x43) {
+		MESSAGE_DEBUG("AC pseudo bank switching !!! (mmr[%d] = %d)\n", P, V);
+    }
 
 	mmr[P] = V;
 	if (ROMMapR[V] == IOAREA) {
@@ -948,24 +893,6 @@ bank_set(uchar P, uchar V)
 		PageR[P] = ROMMapR[V] - P * 0x2000;
 		PageW[P] = ROMMapW[V] - P * 0x2000;
 	}
-}
-
-IRAM_ATTR void
-write_memory_simple(uint16 A, uchar V)
-{
-	if (PageW[A >> 13] == IOAREA)
-		IO_write(A, V);
-	else
-		PageW[A >> 13][A] = V;
-}
-
-IRAM_ATTR uchar
-read_memory_simple(uint16 A)
-{
-	if (PageR[A >> 13] != IOAREA)
-		return PageR[A >> 13][A];
-	else
-		return IO_read(A);
 }
 
 #if 0

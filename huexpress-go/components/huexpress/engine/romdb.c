@@ -16,7 +16,6 @@
 #include <stdlib.h>
 
 #include "utils.h"
-#include "myadd.h"
 
 // Known NEC PC-Engine HuCards: 323
 // Known NEC PC-Engine CD-ROMs: 438
@@ -336,7 +335,7 @@ const struct rom_database kKnownRoms[KNOWN_ROM_COUNT] = {
 {0xFAA6E187, "Puzzle Boy", "TELENET", __ID, __DATE, JAP},
 {0x965C95B3, "Puzznic", "Taito", "TP02011", "06-29-1990", JAP},
 {0xF2E6856D, "Quiz Toukou Shashin", __PUBLISHER, __ID, __DATE, JAP},
-{0x91CE5156, "R-Type", "Hudson", __ID, __DATE, USA | US_ENCODED},
+{0x91CE5156, "R-Type", "Hudson", __ID, __DATE, USA}, //  | US_ENCODED
 {0x45FC8CB9, "R-Type", "Tai Sang", __ID, __DATE, JAP},
 {0xCEC3D28A, "R-Type Part-1", "Hudson", __ID, __DATE, JAP},
 {0xF207ECAE, "R-Type Part-2", "Hudson", __ID, __DATE, JAP},

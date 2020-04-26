@@ -33,6 +33,7 @@
 #define TRACE(x...)
 #endif
 
+extern int skipFrames;
 
 typedef struct {
 	uchar r, g, b;
@@ -87,7 +88,7 @@ calc_fullscreen_aspect(unsigned short physical_screen_width,
 		exit(0);
 	}
 
-	if (option.want_fullscreen_aspect) {
+	if (host.want_fullscreen_aspect) {
 		float physical_screen_ratio, pce_ratio;
 		int new_size;
 
@@ -175,7 +176,7 @@ change_pce_screen_height()
 	//TRACE("GFX: %d lines to render\n", io.screen_h);
 #endif
 
-	(*osd_gfx_driver_list[video_driver].mode) ();
+	(*osd_gfx_driver_list[host.video_driver].mode) ();
 }
 
 gfx_context saved_gfx_context[MAX_GFX_CONTEXT_SLOT_NUMBER];
@@ -260,9 +261,7 @@ load_gfx_context(int slot_number)
 static inline void
 render_lines(int min_line, int max_line)
 {
-#if !defined(FINAL_RELEASE)
-	//printf("render lines %3d - %3d in %s\n", min_line, max_line, __FILE__);
-#endif
+	MESSAGE_DEBUG("render lines %3d - %3d\n", min_line, max_line);
 
 	save_gfx_context(1);
 
@@ -292,7 +291,6 @@ render_lines(int min_line, int max_line)
 inline uchar
 Loop6502()
 {
-    ODROID_DEBUG_PERF_START2(debug_perf_part1)
 	static int display_counter = 0;
 	static int last_display_counter = 0;
 	static int satb_dma_counter = 0;
@@ -387,10 +385,8 @@ Loop6502()
 			}
 
 			if (osd_keyboard())
-			{
-			    ODROID_DEBUG_PERF_INCR2(debug_perf_part1, ODROID_DEBUG_PERF_LOOP6502)
 				return INT_QUIT;
-            }
+
 			if (!UCount)
 				RefreshScreen();
 
@@ -460,10 +456,8 @@ Loop6502()
 	if (return_value == INT_IRQ) {
 		if (!(io.irq_mask & IRQ1)) {
 			io.irq_status |= IRQ1;
-			ODROID_DEBUG_PERF_INCR2(debug_perf_part1, ODROID_DEBUG_PERF_LOOP6502)
 			return return_value;
 		}
 	}
-    ODROID_DEBUG_PERF_INCR2(debug_perf_part1, ODROID_DEBUG_PERF_LOOP6502)
 	return INT_NONE;
 }

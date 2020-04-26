@@ -41,7 +41,7 @@ extern uchar SPONSwitch;
 /* Do we have to draw sprites ? */
 
 #define	PAL(c)	R[c]
-#define	SPal	(Pal+256)
+#define	SPal	(Palette+256)
 
 #define	MinLine	io.minline
 #define	MaxLine	io.maxline
@@ -59,9 +59,6 @@ extern int oldScrollYDiff;
 
 // extern uint32 spr_init_pos[1024];
 // cooked initial position of sprite
-
-extern char exact_putspritem;
-// do we use a slow but precise function to draw certain sprites
 
 extern int frame;
 // number of frame displayed
@@ -83,18 +80,15 @@ extern int sprite_usespbg;
 //extern void PutSprite(byte *P,byte *C,unsigned    long *C2,byte *R,int h,int inc);
 // the simplified function
 
-extern void (*RefreshSprite) (int Y1, int Y2, uchar bg);
-// The pointer toward the used function
-
 #define FC_W     io.screen_w
 #define FC_H     256
 #define V_FLIP  0x8000
 #define H_FLIP  0x0800
 extern uchar *SPM;
 
-extern void RefreshSpriteExact(int Y1, int Y2, uchar bg);
 // The true refreshing function
 extern void RefreshLine(int Y1, int Y2);
+extern void RefreshSpriteExact(int Y1, int Y2, uchar bg);
 extern int32 CheckSprites(void);
 extern void RefreshScreen(void);
 

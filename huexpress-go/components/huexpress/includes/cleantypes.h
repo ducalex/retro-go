@@ -20,7 +20,8 @@
 #ifndef __CLEANTYPES_H
 #define __CLEANTYPES_H
 
-#include "myadd.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 /*
  * Set datatype sizes
