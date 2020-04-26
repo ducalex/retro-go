@@ -424,7 +424,7 @@ static bool scaling_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
     }
 
     if (displayScalingMode == ODROID_DISPLAY_SCALING_NONE) strcpy(option->value, "Off  ");
-    if (displayScalingMode == ODROID_DISPLAY_SCALING_SCALE) strcpy(option->value, "Scale");
+    if (displayScalingMode == ODROID_DISPLAY_SCALING_FIT)  strcpy(option->value, "Fit ");
     if (displayScalingMode == ODROID_DISPLAY_SCALING_FILL) strcpy(option->value, "Full ");
 
     return event == ODROID_DIALOG_ENTER;

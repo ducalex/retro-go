@@ -830,7 +830,7 @@ static void videoTask(void *arg)
             if (displayScalingMode == ODROID_DISPLAY_SCALING_FILL) {
                 odroid_display_set_scale(update->width, update->height, 4.f / 3.f);
             }
-            else if (displayScalingMode == ODROID_DISPLAY_SCALING_SCALE) {
+            else if (displayScalingMode == ODROID_DISPLAY_SCALING_FIT) {
                 odroid_display_set_scale(update->width, update->height, -1);
             }
             else {
