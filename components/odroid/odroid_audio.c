@@ -13,6 +13,7 @@
 static int audioSink = ODROID_AUDIO_SINK_SPEAKER;
 static int audioSampleRate = 0;
 static bool audioMuted = 0;
+static bool audioInitialized = 0;
 static float volumePercent = 1.0f;
 static odroid_volume_level volumeLevel = ODROID_VOLUME_LEVEL3;
 static int volumeLevels[] = {0, 60, 125, 187, 250, 375, 500, 750, 1000};
@@ -47,6 +48,7 @@ void odroid_audio_init(int sample_rate)
     volumeLevel = odroid_settings_Volume_get();
     audioSink = odroid_settings_AudioSink_get();
     audioSampleRate = sample_rate;
+    audioInitialized = true;
 
     printf("%s: sink=%d, sample_rate=%d\n", __func__, audioSink, sample_rate);
 
@@ -98,27 +100,10 @@ void odroid_audio_init(int sample_rate)
         };
         i2s_set_pin(I2S_NUM, &pin_config);
 
-
         // Disable internal amp
-        esp_err_t err;
-
-        err = gpio_set_direction(GPIO_NUM_25, GPIO_MODE_OUTPUT);
-        if (err != ESP_OK)
-        {
-            abort();
-        }
-
-        err = gpio_set_direction(GPIO_NUM_26, GPIO_MODE_DISABLE);
-        if (err != ESP_OK)
-        {
-            abort();
-        }
-
-        err = gpio_set_level(GPIO_NUM_25, 0);
-        if (err != ESP_OK)
-        {
-            abort();
-        }
+        gpio_set_direction(GPIO_NUM_25, GPIO_MODE_OUTPUT);
+        gpio_set_direction(GPIO_NUM_26, GPIO_MODE_DISABLE);
+        gpio_set_level(GPIO_NUM_25, 0);
     }
     else
     {
@@ -130,10 +115,12 @@ void odroid_audio_init(int sample_rate)
 
 void odroid_audio_terminate()
 {
-    i2s_zero_dma_buffer(I2S_NUM);
-    //i2s_stop(I2S_NUM);
-    //i2s_start(I2S_NUM);
-    i2s_driver_uninstall(I2S_NUM);
+    if (audioInitialized)
+    {
+        i2s_zero_dma_buffer(I2S_NUM);
+        i2s_driver_uninstall(I2S_NUM);
+        audioInitialized = false;
+    }
 
     gpio_reset_pin(GPIO_NUM_25);
     gpio_reset_pin(GPIO_NUM_26);
@@ -246,12 +233,11 @@ void odroid_audio_set_sink(ODROID_AUDIO_SINK sink)
     odroid_settings_AudioSink_set(sink);
     audioSink = sink;
 
-    if (audioSampleRate == 0)
+    if (audioSampleRate > 0)
     {
-        return;
+        odroid_audio_terminate();
+        odroid_audio_init(audioSampleRate);
     }
-    odroid_audio_terminate();
-    odroid_audio_init(audioSampleRate);
 }
 
 ODROID_AUDIO_SINK odroid_audio_get_sink()
@@ -267,7 +253,9 @@ int odroid_audio_sample_rate_get()
 void odroid_audio_mute(bool mute)
 {
     audioMuted = mute;
-    if (mute && audioSampleRate) {
+
+    if (mute && audioInitialized)
+    {
 	    i2s_zero_dma_buffer(I2S_NUM);
     }
 }
