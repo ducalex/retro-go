@@ -1,352 +1,207 @@
-/***************************************************************************/
-/*                                                                         */
-/*                       Debugging Source File                             */
-/*                                                                         */
-/*  Functions are here to help developpers making cool games and/or help   */
-/*  hackers modifying (i.e. changing sprites, fonts, translating, putting  */
-/*  training, ...) existing games                                          */
-/*                                                                         */
-/*  First intended to help Dave Shadoff with his open source game          */
-/*  Now helps me and others to emulate CDs                                 */
-/*                                                                         */
-/***************************************************************************/
+/****************************************************************************/
+/*                                                                          */
+/*	          Source file for handling Bp in core kernel                */
+/*									    */
+/* For the user Bp, we just give the hand to the user                       */
+/* For the GIVE_HAND_BP, we make it disappear and we give hand to user      */
+/* For the RESTORE_BP, we set again the User BP placed old_user_bp in the   */
+/* list then we make the current BP to disappear then set IP,...            */
+/*                                                                          */
+/* There are certainly a lot of improvement to do, If you got any idea :    */
+/*           Zeograd@caramail.com                                           */
+/*									    */
+/****************************************************************************/
+
+#include "h6280.h"
 #include "debug.h"
-
-uint16 Bp_pos_to_restore;
-
-// Used in RESTORE_BP to know where we must restore a BP
 
 Breakpoint Bp_list[MAX_BP];
 
-// Set of breakpoints
-
-uchar save_background = 1;
-
-
-#ifdef ALLEGRO
-
-// If set, means we got to preserve the true display
-// If not, we just go ahead e.g. for stepping
-
-PALETTE save_pal;
-
-// The true palette
-
-BITMAP *save_bg;
-
-// The true display
-
-
-#endif
-
-/* Way to accedate to the PC Engine memory */
-/*
-#if defined(MSDOS) || defined(WIN32)
-
-uchar
-Op6502 (register unsigned A)
-{
-  register char __AUX;
-
-  __asm__ __volatile__ ("movl _PageR (, %%eax, 4), %%ecx "
-			"movb (%%edx, %%ecx), %%al "
-                        :"=a" (__AUX)
-                        :"d" (A),
-			"a" (A >> 13):"%ebx", "%ecx");
-
-  return __AUX;
-};
-
-#else
-       */
-
-uchar
-Op6502(unsigned int A)
-{
-	return (PageR[A >> 13][A]);
-}
-
-/*
-#endif
-        */
-
-void
-disass_menu()
-{
-
-#ifdef ALLEGRO
-	if (save_background)
-	{
-
-		save_bg = create_bitmap(vwidth, vheight);
-
-		blit(screen, save_bg, 0, 0, 0, 0, vwidth, vheight);
-
-		get_palette(save_pal);
-
-	}
-#endif
-
-	disassemble(reg_pc);
-
-#ifdef ALLEGRO
-	if (save_background)
-	{
-
-		set_palette(save_pal);
-
-		blit(save_bg, screen, 0, 0, 0, 0, vwidth, vheight);
-
-		destroy_bitmap(save_bg);
-
-	}
-#endif
-	return;
-
-};
-
-
-/*****************************************************************************
-
-    Function:  toggle_user_breakpoint
-
-    Description: set a breakpoint at the specified address if don't exist
-	              or unset it if existant
-    Parameters: unsigned short where, a PCE-style address
-    Return: 0 on error
-	         1 on success
-
-*****************************************************************************/
+int handle_bp(int nb_bp);
 
 int
-toggle_user_breakpoint(uint16 where)
+handle_bp0()
 {
+	return handle_bp(0);
+}
 
-	uchar dum;
+int
+handle_bp1()
+{
+	return handle_bp(1);
+}
 
-	for (dum = 0; dum < MAX_USER_BP; dum++)
-	{
+int
+handle_bp2()
+{
+	return handle_bp(2);
+}
+
+int
+handle_bp3()
+{
+	return handle_bp(3);
+}
+
+int
+handle_bp4()
+{
+	return handle_bp(4);
+}
+
+int
+handle_bp5()
+{
+	return handle_bp(5);
+}
+
+int
+handle_bp6()
+{
+	return handle_bp(6);
+}
+
+int
+handle_bp7()
+{
+	return handle_bp(7);
+}
+
+int
+handle_bp8()
+{
+	return handle_bp(8);
+}
+
+int
+handle_bp9()
+{
+	return handle_bp(9);
+}
+
+int
+handle_bp10()
+{
+	return handle_bp(10);
+}
+
+int
+handle_bp11()
+{
+	return handle_bp(11);
+}
+
+int
+handle_bp12()
+{
+	return handle_bp(12);
+}
+
+int
+handle_bp13()
+{
+	return handle_bp(13);
+}
 
 
-		if ((Bp_list[dum].position == where)
-			&& (Bp_list[dum].flag != NOT_USED))
-		{						//Already set, unset it and put the right opcode
+#if 1
 
-			Bp_list[dum].flag = NOT_USED;
+int
+handle_bp14()
+{
+    return handle_bp(13);
+}
 
-			Wr6502(where, Bp_list[dum].original_op);
+int
+handle_bp15()
+{
+    return handle_bp(13);
+}
 
-			return 1;
+int
+handle_bp(int nb_bp)
+{
+    printf("handle_bp: not implemented\n");
+    abort();
+    return 0;
+}
 
-		}
 
+#else
 
-		if (Bp_list[dum].flag == NOT_USED)
+int
+handle_bp(int nb_bp)
+{
+	if (reg_pc != Bp_list[nb_bp].position)
+		MESSAGE_DEBUG("there's a problem, the breakpoint hasn't been correctly hit\n");
+	else
+		MESSAGE_DEBUG("The breakpoint %d has been correctly hit\n", nb_bp);
 
-			break;
+	MESSAGE_DEBUG("After Breakpoint, position is %X\n", reg_pc);
 
+	disass_menu(reg_pc);
+	// And call the disassembler
+
+	MESSAGE_DEBUG("After the disassembly function, the position is %X\n", reg_pc);
+
+	if ((get_8bit_addr(reg_pc) & 0x0F) == 0x0B) {	// We only look here for Bp since PC or bp status can have changed
+
+		MESSAGE_DEBUG("run trick: a bp has been asked to be put at %X\n",
+				reg_pc);
+
+		Write8(reg_pc, Bp_list[get_8bit_addr(reg_pc) >> 4].original_op);
+		// Replace the opcode in the rom
+
+		Bp_list[get_8bit_addr(reg_pc) >> 4].flag = BP_NOT_USED;
+		// Temporary, the breakpoint disappears
+		// to be replaced by the restore_bp
+
+		Bp_pos_to_restore = reg_pc;
+		// We know we must restore a breakpoint at this point
+
+		set_bp_following(reg_pc, RESTORE_BP);
+		// since we call this after disassembly call, we handle correctly
+		// any changes in reg value e.g.
 
 	}
 
-	if (dum == MAX_USER_BP)
-
-		return 0;
-
-
-	Bp_list[dum].flag = ENABLED;
-
-	Bp_list[dum].position = where;
-
-	Bp_list[dum].original_op = Op6502(where);
-
-
-	Wr6502(where, (uchar) (0xB + 0x10 * dum));
-
-	// Put an invalid opcode
-
-	return 1;
+	return 0;
 
 }
 
-
-/*****************************************************************************
-
-    Function:  display_debug_help
-
-    Description: display help on debugging
-    Parameters: none
-    Return: nothing
-
-*****************************************************************************/
-
-void
-display_debug_help()
+int
+handle_bp14()
 {
-	// TODO: Display help
-	// "F2 - TOGGLE BREAKPOINT"
-	// "R  - RAM EDITOR"
-	// "Z  - VIEW ZERO PAGE"
-	// "F5 - SET PC TO CURRENT POS"
-	// "F6 - NOP CURRENT INSTRUCTION"
-	// "F7 - TRACE TROUGHT INSTRUCTIONS"
-	// "F8 - STEP TROUGHT INSTRUCTIONS"
-	return;
-}
+	// We must restore the Bp_to_restore Breakpoint
+	Write8(reg_pc, Bp_list[14].original_op);
 
+	// Replace the opcode in the rom
 
-/*****************************************************************************
+	Bp_list[14].flag = BP_NOT_USED;
+	// This BP is no more used
 
-    Function:  cvt_num
+	MESSAGE_DEBUG("We're restoring bp at %X\n", Bp_pos_to_restore);
 
-    Description: convert a hexa string without prefix "0x" into a number
-    Parameters: char* string, the string to convert
-    Return: -1 on error else the given number
-
-	 directly taken from Dave Shadoff emulator TGSIM*
-
-*****************************************************************************/
-uint32
-cvtnum(char *string)
-{
-
-	uint32 value = 0;
-
-	char *c = string;
-
-
-	while (*c != '\0') {
-
-
-		value *= 16;
-
-
-		if ((*c >= '0') && (*c <= '9')) {
-
-			value += (*c - '0');
-
-
-		} else if ((*c >= 'A') && (*c <= 'F')) {
-
-			value += (*c - 'A' + 10);
-
-
-		} else if ((*c >= 'a') && (*c <= 'f')) {
-
-			value += (*c - 'a' + 10);
-
-
-		} else {
-
-
-			return (-1);
-
-		}
-
-
-		c++;
-
-	}
-
-
-	return (value);
-
-}
-
-#if 0
-
-/*****************************************************************************
-
-    Function: set_bp_following
-
-    Description: very tricky function, set a bp to the next IP, must handle
-       correctly jump, ret,...
-                 Well, the trick isn't in a 10 line function ;)
-                 but in the optable.following_IP funcs
-    Parameters: uint16 where, the current address
-                uchar nb, the nb of the breakpoint to set
-    Return: nothing
-
-*****************************************************************************/
-void
-set_bp_following(uint16 where, uchar nb)
-{
-
-	uint16 next_pos;
-
-	uchar op = Op6502(where);
-
-
-	next_pos = (*optable_debug[op].following_IP) (where);
-
-
-	Bp_list[nb].position = next_pos;
-
-
-	Bp_list[nb].flag = ENABLED;
-
-
-	Bp_list[nb].original_op = Op6502(next_pos);
-
-
-	Wr6502(next_pos, (uchar) (0xB + 0x10 * nb));
-
-
-	return;
-
-}
-#endif
-
-/*****************************************************************************
-
-    Function:  change_value
-
-    Description: change the value
-    Parameters: int X, int Y : position on screen
-                uchar lenght : # of characters allowed
-    Return: the new value in int pointed by result
-
-*****************************************************************************/
-uchar
-change_value(int X, int Y, uchar length, uint32 * result)
-{
-#ifdef ALLEGRO
-	char index = 0;
-
-	char value[9] = "\0\0\0\0\0\0\0\0";
-
-	int ch;
-
-
-	do {
-		rectfill(screen, X, Y, X + 16, Y + 9, -15);
-		textout(screen, font, value, X, Y + 1, -1);
-		ch = osd_readkey();
-
-		// first switch by scancode
-		switch (ch >> 8) {
-		case KEY_ESC:
-			return 0;
-		case KEY_ENTER:
-			*result = cvtnum(value);
-			return 1;
-		case KEY_BACKSPACE:
-			if (index)
-				value[--index] = 0;
-			break;
-		}
-
-		// Now by ascii code
-		switch (ch & 0xff) {
-		case '0' ... '9':
-		case 'a' ... 'f':
-		case 'A' ... 'F':
-			if (index < length)
-				value[index++] = toupper(ch & 0xff);
-			break;
-		}
-	}
-	while (1);
-#endif
+	toggle_user_breakpoint(Bp_pos_to_restore);
+	// We set another Bp at the location we just left
 
 	return 0;
 }
+
+int
+handle_bp15()
+{
+	// We must make it disappear and call the disassembler
+
+	Write8(reg_pc, Bp_list[15].original_op);
+	// Replace the opcode in the rom
+
+	Bp_list[15].flag = BP_NOT_USED;
+	// This breakpoint is no more used
+
+	disass_menu(reg_pc);
+
+	return 0;
+}
+
+#endif

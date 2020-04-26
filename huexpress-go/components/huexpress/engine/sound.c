@@ -1,5 +1,5 @@
-#include "osd_machine.h"
 #include "sound.h"
+#include "osd.h"
 
 extern int BaseClock;
 

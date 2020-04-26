@@ -1,8 +1,8 @@
 #ifndef _GFX_H_
 #define _GFX_H_
 
-#include "sys_dep.h"
-
+#include "sprite.h"
+#include "osd.h"
 
 #define	WIDTH	(360+64)
 #define	HEIGHT	256
@@ -17,19 +17,10 @@
 #define XBUF_WIDTH 	(536 + 32 + 32)
 #define	XBUF_HEIGHT	(240 + 64 + 64)
 
-#include "sprite.h"
 
 #define textoutshadow(bmp,f,s,x,y,color1,color2,offsetx,offsety) { textout(bmp,f,s,x+offsetx,y+offsety,color2); textout(bmp,f,s,x,y,color1); }
 // Just a little define to avoid too many keystrokes ;)
 
-/*
- * generic_rect - Used to keep calc_fullscreen_aspect gfx lib independant.  Currently
- *   used to remap values to an SDL_Rect structure.
- */
-struct generic_rect {
-	unsigned short start_x, start_y;
-	unsigned short end_x, end_y;
-};
 
 typedef struct {
 	//typeof(IO_VDC_07_BXR.W) scroll_x;
@@ -43,11 +34,6 @@ typedef struct {
 
 extern int gfx_need_video_mode_change;
 
-void calc_fullscreen_aspect(unsigned short physical_screen_width,
-							unsigned short physical_screen_height,
-							struct generic_rect *rect,
-							unsigned short pce_screen_width,
-							unsigned short pce_screen_height);
 void change_pce_screen_height();
 
 #define MAX_GFX_CONTEXT_SLOT_NUMBER 2

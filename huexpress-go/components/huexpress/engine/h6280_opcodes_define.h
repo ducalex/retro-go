@@ -1,5 +1,3 @@
-#ifdef MY_INLINE_h6280_opcodes
-
 // #define _OPCODE_
 
 #define _OPCODE_adc(acc_,val_, rc_)                                                \
@@ -433,5 +431,3 @@
         | ((temp & imm) ? 0 : FL_Z); \
     cycles += cycles_add; \
     reg_pc += reg_pc_add; }
-
-#endif

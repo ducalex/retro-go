@@ -7,16 +7,13 @@
 #define _INCLUDE_DIS_H
 
 #include "format.h"
+#include "hard_pce.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <math.h>
 #include <errno.h>
-
-#include "optable.h"
-#include "view_zp.h"
-
 
 /* Some defines */
 

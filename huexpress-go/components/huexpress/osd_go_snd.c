@@ -1,5 +1,7 @@
-#include "odroid_system.h"
-#include "osd_snd.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <odroid_system.h>
+#include "osd.h"
 
 #define AUDIO_SAMPLE_RATE 22050
 #define AUDIO_BUFFER_SIZE 2048

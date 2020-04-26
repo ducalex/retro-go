@@ -1,4 +1,3 @@
-// pce.h
 #ifndef _INCLUDE_PCE_H
 #define _INCLUDE_PCE_H
 
@@ -6,19 +5,16 @@
 
 #include "odroid_system.h"
 
-#include "sys_dep.h"
-#include "hard_pce.h"
-#include "debug.h"
+#include "osd.h"
 #include "gfx.h"
-
-#define WIDTH   (360+64)
-#define HEIGHT  256
+#include "hard_pce.h"
 
 #include "cleantypes.h"
 
 #include "h6280.h"
 #include "interupt.h"
 
+#include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,9 +40,6 @@ extern char *server_hostname;
 
 extern int BaseClock, UPeriod;
 
-extern uchar debug_on_beginning;
-// Do we have to set a bp on the reset IP
-
 struct host_sound {
 	uint stereo;
 	uint freq;
@@ -55,13 +48,14 @@ struct host_sound {
 
 struct host_machine {
 	struct host_sound sound;
-	uint want_fullscreen_aspect;
 	uint video_driver;
 };
 
 extern struct host_machine host;
 
 extern int scroll;
+
+extern bool PCERunning;
 
 #if !defined(MIN)
 #define MIN(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })

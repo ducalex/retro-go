@@ -12,7 +12,6 @@
 
 #include <stdio.h>
 
-#include "defs.h"
 #include "config.h"
 #include "cleantypes.h"
 
@@ -43,40 +42,27 @@
 #define PSG_NOISE_REG           7
 #define PSG_NOISE_ENABLE        0x80	/* bit 7 */
 
-// CPU Flags:
-#define FL_N 0x80
-#define FL_V 0x40
-#define FL_T 0x20
-#define FL_B 0x10
-#define FL_D 0x08
-#define FL_I 0x04
-#define FL_Z 0x02
-#define FL_C 0x01
-
-// Main structures
 typedef union {
+	struct {
 #if defined(WORDS_BIGENDIAN)
-	struct {
 		uchar h, l;
-	} B;
 #else
-	struct {
 		uchar l, h;
-	} B;
 #endif
+	} B;
 	uint16 W;
-} pair;
+} Word;
 
 /* The structure containing all variables relatives to Input and Output */
 typedef struct {
 	/* VCE */
-	pair VCE[0x200];			/* palette info */
-	pair vce_reg;				/* currently selected color */
+	Word VCE[0x200];			/* palette info */
+	Word vce_reg;				/* currently selected color */
 	uchar vce_ratch;			/* temporary value to keep track of the first byte
 								 * when setting a 16 bits value with two byte access
 								 */
 	/* VDC */
-	pair VDC[32];				/* value of each VDC register */
+	Word VDC[32];				/* value of each VDC register */
 	uint16 vdc_inc;				/* VRAM pointer increment once accessed */
 	uint16 vdc_raster_count;	/* unused as far as I know */
 	uchar vdc_reg;				/* currently selected VDC register */
@@ -220,11 +206,8 @@ void hard_term(void);
 
 void IO_write(uint16 A, uchar V);
 uchar IO_read(uint16 A);
-uchar IO_TimerInt();
+uchar TimerInt();
 void bank_set(uchar P, uchar V);
-
-#define Wr6502(A,V) (put_8bit_addr((A),(V)))
-#define Rd6502(A) (get_8bit_addr(A))
 
 void dump_pce_cpu_environment();
 
@@ -271,7 +254,6 @@ extern uchar *ROMMapW[256];
 #define io hard_pce.s_io
 #define cyclecount hard_pce.s_cyclecount
 #define cyclecountold hard_pce.s_cyclecountold
-extern uint32 cycles;
 
 #define TimerPeriod 1097
 // Base period for the timer
@@ -318,6 +300,44 @@ enum _VDC_REG {
 #define	ENABLE	   1
 #define	DISABLE	   0
 
-extern mode_struct addr_info[];
-extern operation optable[];
+static inline uchar
+Read8(uint16 addr)
+{
+	register uchar *page = PageR[addr >> 13];
+
+	if (page == IOAREA)
+		return IO_read(addr);
+	else
+		return page[addr];
+}
+
+static inline void
+Write8(uint16 addr, uchar byte)
+{
+	register uchar *page = PageW[addr >> 13];
+
+	if (page == IOAREA)
+		IO_write(addr, byte);
+	else
+		page[addr] = byte;
+}
+
+static inline uint16
+Read16(uint16 addr)
+{
+	register unsigned int memreg = addr >> 13;
+
+	uint16 ret_16bit = PageR[memreg][addr];
+	memreg = (++addr) >> 13;
+	ret_16bit += (uint16) (PageR[memreg][addr] << 8);
+
+	return (ret_16bit);
+}
+
+static inline void
+Write16(uint16 addr, uint16 word)
+{
+
+}
+
 #endif

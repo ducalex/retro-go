@@ -66,7 +66,7 @@ forward_one_line()
 
 	op = get_8bit_addr(init_pos);
 	if ((op & 0xF) == 0xB) {
-		if (Bp_list[op >> 4].flag == NOT_USED)
+		if (Bp_list[op >> 4].flag == BP_NOT_USED)
 			init_pos++;
 		else
 			op = Bp_list[op >> 4].original_op;
@@ -106,8 +106,8 @@ backward_one_line()
 			op = get_8bit_addr(temp_pos);
 
 			if ((op & 0xF) == 0xB) {	// It's a breakpoint, we replace it and set the bp_color variable
-				if ((Bp_list[op >> 4].flag == ENABLED) ||
-					(Bp_list[op >> 4].flag == DISABLED))
+				if ((Bp_list[op >> 4].flag == BP_ENABLED) ||
+					(Bp_list[op >> 4].flag == BP_DISABLED))
 					op = Bp_list[op >> 4].original_op;
 			}
 
@@ -207,19 +207,19 @@ dis_key()
 			tmp_buf[index - 1] = 0;
 
 			// Just in case :
-			if (Bp_list[GIVE_HAND_BP].flag != NOT_USED) {
-				_Wr6502(Bp_list[GIVE_HAND_BP].position,
+			if (Bp_list[GIVE_HAND_BP].flag != BP_NOT_USED) {
+				_Write8(Bp_list[GIVE_HAND_BP].position,
 						Bp_list[GIVE_HAND_BP].original_op);
-				Bp_list[GIVE_HAND_BP].flag = NOT_USED;
+				Bp_list[GIVE_HAND_BP].flag = BP_NOT_USED;
 			}
 
 			save_background = 0;
 
-			Bp_list[GIVE_HAND_BP].flag = ENABLED;
+			Bp_list[GIVE_HAND_BP].flag = BP_ENABLED;
 			Bp_list[GIVE_HAND_BP].position = cvtnum(tmp_buf);
 			Bp_list[GIVE_HAND_BP].original_op = Op6502(cvtnum(tmp_buf));
 
-			_Wr6502(cvtnum(tmp_buf), 0xB + 0x10 * GIVE_HAND_BP);
+			_Write8(cvtnum(tmp_buf), 0xB + 0x10 * GIVE_HAND_BP);
 			// Put an invalid opcode
 		}
 		return 1;
@@ -227,19 +227,19 @@ dis_key()
 	case KEY_F4:				/* F4 */
 
 		// Just in case :
-		if (Bp_list[GIVE_HAND_BP].flag != NOT_USED) {
-			_Wr6502(Bp_list[GIVE_HAND_BP].position,
+		if (Bp_list[GIVE_HAND_BP].flag != BP_NOT_USED) {
+			_Write8(Bp_list[GIVE_HAND_BP].position,
 					Bp_list[GIVE_HAND_BP].original_op);
-			Bp_list[GIVE_HAND_BP].flag = NOT_USED;
+			Bp_list[GIVE_HAND_BP].flag = BP_NOT_USED;
 		}
 
 		save_background = 0;
 
-		Bp_list[GIVE_HAND_BP].flag = ENABLED;
+		Bp_list[GIVE_HAND_BP].flag = BP_ENABLED;
 		Bp_list[GIVE_HAND_BP].position = selected_position;
 		Bp_list[GIVE_HAND_BP].original_op = Op6502(selected_position);
 
-		_Wr6502(selected_position, 0xB + 0x10 * GIVE_HAND_BP);
+		_Write8(selected_position, 0xB + 0x10 * GIVE_HAND_BP);
 		// Put an invalid opcode
 
 		return 1;
@@ -259,17 +259,17 @@ dis_key()
 			for (dum = 0;
 				 dum < addr_info_debug[optable_debug[op].addr_mode].size;
 				 dum++)
-				Wr6502(selected_position + dum, 0xEA);
+				Write8(selected_position + dum, 0xEA);
 
 		}
 		return 0;
 
 	case KEY_F7:				/* F7 */
 		// Just in case :
-		if (Bp_list[GIVE_HAND_BP].flag != NOT_USED) {
-			_Wr6502(Bp_list[GIVE_HAND_BP].position,
+		if (Bp_list[GIVE_HAND_BP].flag != BP_NOT_USED) {
+			_Write8(Bp_list[GIVE_HAND_BP].position,
 					Bp_list[GIVE_HAND_BP].original_op);
-			Bp_list[GIVE_HAND_BP].flag = NOT_USED;
+			Bp_list[GIVE_HAND_BP].flag = BP_NOT_USED;
 		}
 
 		running_mode = TRACING;
@@ -281,10 +281,10 @@ dis_key()
 
 	case KEY_F8:				/* F8 */
 		// Just in case :
-		if (Bp_list[GIVE_HAND_BP].flag != NOT_USED) {
-			_Wr6502(Bp_list[GIVE_HAND_BP].position,
+		if (Bp_list[GIVE_HAND_BP].flag != BP_NOT_USED) {
+			_Write8(Bp_list[GIVE_HAND_BP].position,
 					Bp_list[GIVE_HAND_BP].original_op);
-			Bp_list[GIVE_HAND_BP].flag = NOT_USED;
+			Bp_list[GIVE_HAND_BP].flag = BP_NOT_USED;
 		}
 
 		running_mode = STEPPING;
@@ -381,9 +381,9 @@ disassemble()
 
 			op = Op6502(position);
 			if ((op & 0xF) == 0xB) {	// It's a breakpoint, we replace it and set the bp_* variable
-				if (Bp_list[op >> 4].flag == ENABLED)
+				if (Bp_list[op >> 4].flag == BP_ENABLED)
 					bp_actived = 1;
-				else if (Bp_list[op >> 4].flag == DISABLED)
+				else if (Bp_list[op >> 4].flag == BP_DISABLED)
 					bp_disabled = 1;
 				else
 					break;

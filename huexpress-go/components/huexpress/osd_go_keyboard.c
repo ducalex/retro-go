@@ -7,8 +7,8 @@
 /*****************************************/
 
 #include <odroid_input.h>
-#include "osd_keyboard.h"
 #include "hard_pce.h"
+#include "osd.h"
 
 
 int osd_init_input(void)

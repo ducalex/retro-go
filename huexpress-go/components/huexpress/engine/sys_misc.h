@@ -9,6 +9,9 @@
  * to have their own section :)
  */
 
+// declaration of the actual callback to call 60 times a second
+uint32 interrupt_60hz(uint32, void*);
+
   /*
    * osd_init_machine
    *

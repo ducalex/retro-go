@@ -60,68 +60,6 @@ SetPalette(void)
 	}
 }
 
-
-/*!
- * calc_fullscreen_aspect:
- * Generic utility that takes the width x height of the current output screen
- * and sets up a gfx lib independent struct generic_rect (gfx.h) with the
- * aspect-correct scaling values, provided option.want_fullscreen_aspect
- * has been set in the config or via the command line.
- */
-void
-calc_fullscreen_aspect(unsigned short physical_screen_width,
-	unsigned short physical_screen_height, struct generic_rect *rect,
-	unsigned short pce_screen_width, unsigned short pce_screen_height)
-{
-	/*
-	 * Routine not called often so extra sanity checks pose no penalty.
-	 */
-	if (physical_screen_height == 0) {
-		printf
-			("calc_fullscreen_aspect: physical_screen_height is 0!	Aborting . . .\n");
-		exit(0);
-	}
-
-	if (pce_screen_width == 0) {
-		printf
-			("calc_fullscreen_aspect: pce_screen_width is 0!	Aborting . . .\n");
-		exit(0);
-	}
-
-	if (host.want_fullscreen_aspect) {
-		float physical_screen_ratio, pce_ratio;
-		int new_size;
-
-		physical_screen_ratio
-			= (float) physical_screen_width / physical_screen_height;
-
-		pce_ratio
-			= (pce_screen_width / physical_screen_ratio) / pce_screen_height;
-
-		if (pce_ratio < 1.0) {
-			new_size = (int) (physical_screen_width * pce_ratio);
-
-			(*rect).start_x
-				= (unsigned short int)((physical_screen_width - new_size) / 2);
-			(*rect).start_y = 0;
-			(*rect).end_x = (unsigned short int) new_size;
-			(*rect).end_y = physical_screen_height;
-		} else {
-			new_size = (int) (physical_screen_height / pce_ratio);
-
-			(*rect).start_x = 0;
-			(*rect).start_y
-				= (unsigned short int)((physical_screen_height - new_size) / 2);
-			(*rect).end_x = physical_screen_width;
-			(*rect).end_y = (unsigned short int) new_size;
-		}
-	} else {
-		(*rect).start_x = (*rect).start_y = 0;
-		(*rect).end_x = physical_screen_width;
-		(*rect).end_y = physical_screen_height;
-	}
-}
-
 //! Computes the new screen height and eventually change the screen mode
 void
 change_pce_screen_height()
@@ -253,27 +191,26 @@ load_gfx_context(int slot_number)
 		slot_number, ScrollX, ScrollY, ScrollYDiff, IO_VDC_05_CR.W);
 }
 
-//! render lines
+//! Render lines
 /*
-	render lines into the buffer from min_line to max_line, inclusive
-				Refresh* draw things from min to max line given, with max exclusive
+	render lines into the buffer from min_line to max_line (inclusive)
 */
 static inline void
 render_lines(int min_line, int max_line)
 {
-	if (skipFrames == 0 && UCount == 0)  // Either we're in frameskip = 0 or we're in the frame to draw
+	if (skipFrames == 0 && UCount == 0) // Check for frameskip
 	{
 		save_gfx_context(1);
 		load_gfx_context(0);
 
 		if (SpriteON && SPONSwitch)
 		{
-			RefreshSpriteExact(min_line, max_line - 1, 0);
-			RefreshLine(min_line, max_line - 1);
-			RefreshSpriteExact(min_line, max_line - 1, 1);
+			RefreshSpriteExact(min_line, max_line + 1, 0);
+			RefreshLine(min_line, max_line + 1);
+			RefreshSpriteExact(min_line, max_line + 1, 1);
 		}
 		else
-			RefreshLine(min_line, max_line - 1);
+			RefreshLine(min_line, max_line + 1);
 
 		load_gfx_context(1);
 	}

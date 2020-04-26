@@ -3,7 +3,7 @@
 
 /*
  * Gfx section
- * 
+ *
  * Certainly one of the most important one, this one deals with all what can
  * be displayed.
  */
@@ -34,7 +34,7 @@ typedef struct {
 	void (*shut) (void);
 } osd_gfx_driver;
 
-  /* 
+  /*
    * osd_gfx_driver
    *
    * List of all driver (plug in) which can be used to render graphics
@@ -49,18 +49,11 @@ extern osd_gfx_driver osd_gfx_driver_list[];
    */
 void osd_gfx_set_color(uchar index, uchar r, uchar g, uchar b);
 
-  /*
-   * osd_gfx_savepict
-   *
-   * Saves the current screen bitmap, returns the numerical part of the
-   * resulting filename
-   */
-uint16 osd_gfx_savepict(void);
 
-	/*
-	 * osd_gfx_set_message
-	 *
-	 * Display a message
-	 */
-void osd_gfx_set_message(char *message);
+int osd_gfx_init();
+void osd_gfx_blit();
+int osd_gfx_init_normal_mode();
+void osd_gfx_put_image_normal();
+void osd_gfx_shut_normal_mode();
+
 #endif

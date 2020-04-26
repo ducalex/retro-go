@@ -27,8 +27,8 @@
 /* Header section */
 
 #include "pce.h"
+#include "debug.h"
 #include "utils.h"
-
 #include "romdb.h"
 
 /* Variable section */
@@ -56,10 +56,9 @@ char *server_hostname = NULL;
 uint16 NO_ROM;
 // Number of the ROM in the database or 0xFFFF if unknown
 
-uchar debug_on_beginning = 0;
-// Do we have to set a bp on the reset IP
-
 int scroll = 0;
+
+bool PCERunning = false;
 
 const char *joymap_reverse[J_MAX] = {
 	"UP", "DOWN", "LEFT", "RIGHT",
@@ -159,14 +158,7 @@ ResetPCE()
 
 	reg_s = 0xFF;
 
-	reg_pc = Op6502(VEC_RESET) + 256 * Op6502(VEC_RESET + 1);
-
-	if (debug_on_beginning) {
-		Bp_list[GIVE_HAND_BP].position = reg_pc;
-		Bp_list[GIVE_HAND_BP].original_op = Op6502(reg_pc);
-		Bp_list[GIVE_HAND_BP].flag = ENABLED;
-		Wr6502(reg_pc, 0xB + 0x10 * GIVE_HAND_BP);
-	}
+	reg_pc = Read8(VEC_RESET) + 256 * Read8(VEC_RESET + 1);
 
 	return 0;
 }
@@ -278,28 +270,57 @@ InitPCE(char *name)
 	}
 
 	if (NO_ROM != 0xFFFF) {
-		MESSAGE_INFO("Rom Name: %s\n",
-			(kKnownRoms[NO_ROM].Name) ? kKnownRoms[NO_ROM].Name : "Unknown");
-		MESSAGE_INFO("Publisher: %s\n",
-			(kKnownRoms[NO_ROM].Publisher) ? kKnownRoms[NO_ROM].Publisher : "Unknown");
+		MESSAGE_INFO("Rom Name: %s\n", kKnownRoms[NO_ROM].Name);
+		MESSAGE_INFO("Publisher: %s\n", kKnownRoms[NO_ROM].Publisher);
+
+		if (kKnownRoms[NO_ROM].Flags & POPULOUS) {
+			MESSAGE_INFO("Special Rom: Populous detected!\n");
+			if (!ExtraRAM)
+				ExtraRAM = (uchar*)rg_alloc(0x8000, MEM_FAST);
+
+			ROMMapR[0x40] = ExtraRAM;
+			ROMMapR[0x41] = ExtraRAM + 0x2000;
+			ROMMapR[0x42] = ExtraRAM + 0x4000;
+			ROMMapR[0x43] = ExtraRAM + 0x6000;
+
+			ROMMapW[0x40] = ExtraRAM;
+			ROMMapW[0x41] = ExtraRAM + 0x2000;
+			ROMMapW[0x42] = ExtraRAM + 0x4000;
+			ROMMapW[0x43] = ExtraRAM + 0x6000;
+		}
+
+		if (kKnownRoms[NO_ROM].Flags & CD_SYSTEM) {
+			uint16 offset = 0;
+			uchar new_val = 0;
+
+			switch(kKnownRoms[NO_ROM].CRC) {
+				case 0X3F9F95A4:
+					// CD-ROM SYSTEM VER. 1.00
+					offset = 56254;
+					new_val = 17;
+					break;
+				case 0X52520BC6:
+				case 0X283B74E0:
+					// CD-ROM SYSTEM VER. 2.00
+					// CD-ROM SYSTEM VER. 2.10
+					offset = 51356;
+					new_val = 128;
+					break;
+				case 0XDD35451D:
+				case 0XE6F16616:
+					// CD ROM 2 SYSTEM 3.0
+					// SUPER CD-ROM2 SYSTEM VER. 3.00
+					// SUPER CD-ROM2 SYSTEM VER. 3.00
+					offset = 51401;
+					new_val = 128;
+					break;
+			}
+
+			if (offset > 0)
+				ROMMapW[0xE1][offset & 0x1fff] = new_val;
+		}
 	} else {
 		MESSAGE_ERROR("Unknown ROM\n");
-	}
-
-	if ((NO_ROM != 0xFFFF) && (kKnownRoms[NO_ROM].Flags & POPULOUS)) {
-		MESSAGE_INFO("Special Rom: Populous detected!\n");
-		if (!ExtraRAM && !(ExtraRAM = (uchar*)rg_alloc(0x8000, MEM_SLOW)))
-			perror("Populous: Not enough memory!");
-
-		ROMMapW[0x40] = ExtraRAM;
-		ROMMapW[0x41] = ExtraRAM + 0x2000;
-		ROMMapW[0x42] = ExtraRAM + 0x4000;
-		ROMMapW[0x43] = ExtraRAM + 0x6000;
-
-		ROMMapR[0x40] = ExtraRAM;
-		ROMMapR[0x41] = ExtraRAM + 0x2000;
-		ROMMapR[0x42] = ExtraRAM + 0x4000;
-		ROMMapR[0x43] = ExtraRAM + 0x6000;
 	}
 
 	// Backup RAM
@@ -311,54 +332,17 @@ InitPCE(char *name)
 
 	// supergraphx
 	if (SuperRAM) {
-		ROMMapW[0xF9] = SuperRAM;
-		ROMMapW[0xFA] = SuperRAM + 0x2000;
-		ROMMapW[0xFB] = SuperRAM + 0x4000;
-
 		ROMMapR[0xF9] = SuperRAM;
 		ROMMapR[0xFA] = SuperRAM + 0x2000;
 		ROMMapR[0xFB] = SuperRAM + 0x4000;
-	}
 
-	/*
-	   #warning REMOVE ME
-	   // ROMMapR[0xFC] = RAM + 0x6000;
-	   ROMMapW[0xFC] = NULL;
-	 */
+		ROMMapW[0xF9] = SuperRAM;
+		ROMMapW[0xFA] = SuperRAM + 0x2000;
+		ROMMapW[0xFB] = SuperRAM + 0x4000;
+	}
 
 	ROMMapR[0xFF] = IOAREA;
 	ROMMapW[0xFF] = IOAREA;
-
-	if ((NO_ROM != 0xFFFF) && (kKnownRoms[NO_ROM].Flags & CD_SYSTEM)) {
-		uint16 offset = 0;
-		uchar new_val = 0;
-
-		switch(kKnownRoms[NO_ROM].CRC) {
-			case 0X3F9F95A4:
-				// CD-ROM SYSTEM VER. 1.00
-				offset = 56254;
-				new_val = 17;
-				break;
-			case 0X52520BC6:
-			case 0X283B74E0:
-				// CD-ROM SYSTEM VER. 2.00
-				// CD-ROM SYSTEM VER. 2.10
-				offset = 51356;
-				new_val = 128;
-				break;
-			case 0XDD35451D:
-			case 0XE6F16616:
-				// CD ROM 2 SYSTEM 3.0
-				// SUPER CD-ROM2 SYSTEM VER. 3.00
-				// SUPER CD-ROM2 SYSTEM VER. 3.00
-				offset = 51401;
-				new_val = 128;
-				break;
-		}
-
-		if (offset > 0)
-			ROMMapW[0xE1][offset & 0x1fff] = new_val;
-	}
 
 	return 0;
 }

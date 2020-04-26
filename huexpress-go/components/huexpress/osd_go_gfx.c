@@ -7,10 +7,11 @@
 /*****************************************/
 
 #include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
 #include <odroid_system.h>
 #include <string.h>
-#include "osd_gfx.h"
 #include "utils.h"
+#include "osd.h"
 
 static uint16_t mypalette[256];
 static uint8_t *framebuffers[2];

@@ -1,10 +1,33 @@
-#ifndef _INCLUDE_SYS_INP_H
-#define _INCLUDE_SYS_INP_H
+#ifndef _INCLUDE_SYS_KBD_H
+#define _INCLUDE_SYS_KBD_H
 
 #include "cleantypes.h"
 #if defined(ENABLE_NETPLAY)
 #include "SDL_net.h"
 #endif
+
+#include "pce.h"
+
+#define JOY_A       0x01
+#define JOY_B       0x02
+#define JOY_SELECT  0x04
+#define JOY_RUN     0x08
+#define JOY_UP      0x10
+#define JOY_RIGHT   0x20
+#define JOY_DOWN    0x40
+#define JOY_LEFT    0x80
+
+typedef struct
+{
+	Sint16 axis[4];
+	Sint16 button[16];
+} js_status;
+
+extern char auto_fire_A[5];
+/* Is auto fire on */
+
+extern char auto_fire_B[5];
+/* Is auto fire on */
 
 /*
  * Input section

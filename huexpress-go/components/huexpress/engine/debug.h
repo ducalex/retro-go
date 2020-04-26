@@ -1,13 +1,11 @@
-#ifndef _INCLUDE_DEBUG_H
-#define _INCLUDE_DEBUG_H
+#ifndef INCLUDE_DEBUG_H
+#define INCLUDE_DEBUG_H
 
-#include <stdio.h>
-
-#include "config.h"
-#include "pce.h"
-#include "dis.h"
-#include "optable.h"
-#include "osd_gfx.h"
+#if ENABLE_TRACING
+#define TRACE(x...) printf("DD " x)
+#else
+#define TRACE(x...)
+#endif
 
 #define  MAX_BP        16
 // Max number of breakpoints
@@ -22,23 +20,9 @@
 // Place in the list of the breakpoint used in stepping...
 
 // Some defines for the flag value
-#define NOT_USED   0
-#define ENABLED    1
-#define DISABLED   2
-
-#if ENABLE_TRACING
-#define TRACE(x...) printf("DD " x)
-#else
-#define TRACE(x...)
-#endif
-
-#define MESSAGE_ERROR(x...) printf("!! " x)
-#define MESSAGE_INFO(x...) printf(" * " x)
-#ifndef FINAL_RELEASE
-#define MESSAGE_DEBUG(x...) printf(" ~ " x)
-#else
-#define MESSAGE_DEBUG(x...) {}
-#endif
+#define BP_NOT_USED   0
+#define BP_ENABLED    1
+#define BP_DISABLED   2
 
 typedef struct {
 	uint16 position;
@@ -52,27 +36,21 @@ extern uint16 Bp_pos_to_restore;
 extern Breakpoint Bp_list[MAX_BP];
 // The list of all breakpoints
 
-extern uchar save_background;
-// Do we have to preserve the background
-
-uchar Op6502(unsigned int A);
-
-void disass_menu();
-// Kind of front end for the true disassemble function
-
-int toggle_user_breakpoint(uint16);
-// Toggle the breakpoint at the specified address
-
-void display_debug_help();
-// Display a help screen
-
-uint32 cvtnum(char *string);
-// Convert a hexa string into a number
-
-void set_bp_following(uint16 where, uchar nb);
-// Set a bp at the location that follows a given address
-
-uchar change_value(int X, int Y, uchar length, uint32 * result);
-// Wait for user to enter a value and display in on screen
+int handle_bp0();
+int handle_bp1();
+int handle_bp2();
+int handle_bp3();
+int handle_bp4();
+int handle_bp5();
+int handle_bp6();
+int handle_bp7();
+int handle_bp8();
+int handle_bp9();
+int handle_bp10();
+int handle_bp11();
+int handle_bp12();
+int handle_bp13();
+int handle_bp14();
+int handle_bp15();
 
 #endif

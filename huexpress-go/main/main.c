@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "pce.h"
+#include "osd.h"
 
 #define APP_ID 40
 
@@ -46,8 +47,6 @@ void app_main(void)
 	// Initialise the host machine
 	osd_init_machine();
 	osd_init_input();
-
-    host.want_fullscreen_aspect = false;
 
     InitPCE(romFile);
 

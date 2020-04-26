@@ -8,7 +8,6 @@
 
 
 #include "romdb.h"
-#include "debug.h"
 
 #if defined(__linux__) || defined(__APPLE__)
 #include <limits.h>

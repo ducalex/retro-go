@@ -1,8 +1,8 @@
 #include "h6280.h"
 #include "interupt.h"
-#include "bp.h"
+#include "debug.h"
 
-// const
+// const DRAM_ATTR
 uchar binbcd[0x100] = {
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,
 	0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
@@ -16,7 +16,7 @@ uchar binbcd[0x100] = {
 	0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99,
 };
 
-// const
+// const DRAM_ATTR
 uchar bcdbin[0x100] = {
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0, 0, 0, 0,
 		0, 0,
@@ -921,8 +921,7 @@ int
 brek(void)
 {
 #if defined(KERNEL_DEBUG)
-    fprintf(stderr, "BRK opcode has been hit [PC = 0x%04x] at %s(%d)\n",
-            reg_pc, __FILE__, __LINE__);
+    MESSAGE_ERROR("BRK opcode has been hit [PC = 0x%04x] at %s(%d)\n", reg_pc);
 #endif
     push_16bit(reg_pc + 2);
     reg_p &= ~FL_T;
@@ -2913,7 +2912,6 @@ tam(void)
 
     for (i = 0; i < 8; i++) {
         if (bitfld & (1 << i)) {
-            mmr[i] = reg_a;
             bank_set(i, reg_a);
         }
     }
@@ -3799,7 +3797,7 @@ operation optable_runtime[256] = {
 	,							/* $FA */
 	{handle_bp15, AM_IMPL, "BPF"}
 	,							/* $FB */
-	{NULL, AM_IMPL, "???"} // handle_bios
+	{halt, AM_IMPL, "???"} // handle_bios
 	,							/* $FC */
 	{sbc_absx, AM_ABSX, "SBC"}
 	,							/* $FD */

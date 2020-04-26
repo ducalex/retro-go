@@ -343,12 +343,10 @@ PutSpriteHflip(uchar * P, uchar * C, uchar * C2, uchar * R, int16 h,
 static inline void
 plane2pixel(int no)
 {
-    uint32 M;
+    uint32 M, L, i;
     uchar *C = VRAM + no * 32;
     uchar *C2 = VRAM2 + no * 8 * 4;
-    uint32 L;
 
-    int16 i;
     TRACE("Planing tile %d\n", no);
     for (i = 0; i < 8; i++, C += 2, C2 += 4) {
         M = C[0];
@@ -393,84 +391,11 @@ plane2pixel(int no)
 void
 RefreshScreen(void)
 {
-    /*
-       {
-       char* spr = SPRAM;
-       uint32 CRC = -1;
-       int index;
-       for (index = 0; index < 64 * sizeof(SPR); index++) {
-       spr[index] ^= CRC;
-       CRC >>= 8;
-       CRC ^= TAB_CONST[spr[index]];
-       }
-       Log("frame %d : CRC = %X\n", frame, CRC);
-
-       {
-       char* spr = ((uint16*)VRAM) + 2048;
-       uint32 CRC = -1;
-       int index;
-       for (index = 0; index < 64 * sizeof(SPR); index++) {
-       char tmp = spr[index];
-       tmp ^= CRC;
-       CRC >>= 8;
-       CRC ^= TAB_CONST[tmp];
-       }
-       Log("frame %d : CRC VRAM[2048-] = %X\n", frame, CRC);
-       }
-     */
-
     (*osd_gfx_driver_list[host.video_driver].draw)();
 
-#if ENABLE_TRACING_GFX
-    /*
-       Log("VRAM: %02x%02x%02x%02x %02x%02x%02x%02x\n",
-       VRAM[0],
-       VRAM[1],
-       VRAM[2],
-       VRAM[3],
-       VRAM[4],
-       VRAM[5],
-       VRAM[6],
-       VRAM[7]);
-     */
-    {
-        int index;
-        uchar tmp_data;
-        uint32 CRC = 0xFFFFFFFF;
-
-        for (index = 0; index < 0x10000; index++) {
-            tmp_data = VRAM2[index];
-            tmp_data ^= CRC;
-            CRC >>= 8;
-            CRC ^= TAB_CONST[tmp_data];
-        }
-        Log("VRAM2 CRC = %08x\n", ~CRC);
-
-        for (index = 0; index < 0x10000; index++) {
-            if (VRAM2[index] != 0)
-                Log("%04X:%08X\n", index, VRAM2[index]);
-        }
-    }
-
-    /*
-       {
-       int index;
-       uchar tmp_data;
-       unsigned int CRC = 0xFFFFFFFF;
-
-       for (index = 0; index < 256; index++) {
-       tmp_data = zp_base[index];
-       tmp_data ^= CRC;
-       CRC >>= 8;
-       CRC ^= TAB_CONST[tmp_data];
-       }
-       Log("ZP CRC = %08x\n", ~CRC);
-       }
-     */
-#endif
-    //memset(osd_gfx_buffer, Pal[0], 240 * XBUF_WIDTH);
-    // We don't clear the part out of reach of the screen blitter
-    //memset(SPM, 0, 240 * XBUF_WIDTH);
+    // We don't clear the parts out of reach of the screen blitter
+    // memset(osd_gfx_buffer, Pal[0], 240 * XBUF_WIDTH);
+    // memset(SPM, 0, 240 * XBUF_WIDTH);
 }
 
 
@@ -483,14 +408,13 @@ RefreshScreen(void)
 		Return: nothing
 
 *****************************************************************************/
-void
+IRAM_ATTR void
 RefreshLine(int Y1, int Y2)
 {
     int X1, XW, Line;
     int x, y, h, offset;
 
     uchar *PP;
-    Y2++;
 
 #if ENABLE_TRACING_GFX
     if (Y1 == 0) {
@@ -501,84 +425,86 @@ RefreshLine(int Y1, int Y2)
         Y1, Y2, ScrollX, ScrollY, ScrollYDiff);
 #endif
 
+    if (!(ScreenON && BGONSwitch)) {
+        return;
+    }
+
     PP = osd_gfx_buffer + XBUF_WIDTH * Y1;
 
-    if (ScreenON && BGONSwitch) {
-        y = Y1 + ScrollY - ScrollYDiff;
-        offset = y & 7;
-        h = 8 - offset;
-        if (h > Y2 - Y1)
-            h = Y2 - Y1;
-        y >>= 3;
-        PP -= ScrollX & 7;
-        XW = io.screen_w / 8 + 1;
+    y = Y1 + ScrollY - ScrollYDiff;
+    offset = y & 7;
+    h = 8 - offset;
+    if (h > Y2 - Y1)
+        h = Y2 - Y1;
+    y >>= 3;
+    PP -= ScrollX & 7;
+    XW = io.screen_w / 8 + 1;
 
-        for (Line = Y1; Line < Y2; y++) {
-            x = ScrollX / 8;
-            y &= io.bg_h - 1;
-            for (X1 = 0; X1 < XW; X1++, x++, PP += 8) {
-                uchar *R, *P, *C, *C2;
-                int no, i;
-                x &= io.bg_w - 1;
+    for (Line = Y1; Line < Y2; y++) {
+        x = ScrollX / 8;
+        y &= io.bg_h - 1;
+        for (X1 = 0; X1 < XW; X1++, x++, PP += 8) {
+            uchar *R, *P, *C, *C2;
+            int no, i;
+            x &= io.bg_w - 1;
 
 #if defined(WORDS_BIGENDIAN)
-                no = VRAM[(x + y * io.bg_w) << 1]
-                    + (VRAM[((x + y * io.bg_w) << 1) + 1] << 8);
+            no = VRAM[(x + y * io.bg_w) << 1]
+                + (VRAM[((x + y * io.bg_w) << 1) + 1] << 8);
 #else
-                no = ((uint16 *) VRAM)[x + y * io.bg_w];
+            no = ((uint16 *) VRAM)[x + y * io.bg_w];
 #endif
 
-                R = &Palette[(no >> 12) * 16];
+            R = &Palette[(no >> 12) * 16];
 
-                if (no > 0x800) {
-                    MESSAGE_DEBUG("GFX: Access to an invalid VRAM area "
-                        "(tile pattern 0x%04x).\n", no);
-                }
-
-                no &= 0x7FF;
-
-                if (plane_converted[no] == 0) {
-                    plane_converted[no] = 1;
-                    plane2pixel(no);
-                }
-
-                C2 = (VRAM2 + (no * 8 + offset) * 4);
-                C = VRAM + (no * 32 + offset * 2);
-                P = PP;
-                for (i = 0; i < h; i++, P += XBUF_WIDTH, C2 += 4, C += 2) {
-                    uint32 L;
-                    uint16 J;
-                    J = (C[0] | C[1] | C[16] | C[17]);
-                    if (!J)
-                        continue;
-
-                    L = C2[0] + (C2[1] << 8) + (C2[2] << 16)
-                        + (C2[3] << 24);
-                    if (J & 0x80)
-                        P[0] = PAL((L >> 4) & 15);
-                    if (J & 0x40)
-                        P[1] = PAL((L >> 12) & 15);
-                    if (J & 0x20)
-                        P[2] = PAL((L >> 20) & 15);
-                    if (J & 0x10)
-                        P[3] = PAL((L >> 28) & 15);
-                    if (J & 0x08)
-                        P[4] = PAL((L) & 15);
-                    if (J & 0x04)
-                        P[5] = PAL((L >> 8) & 15);
-                    if (J & 0x02)
-                        P[6] = PAL((L >> 16) & 15);
-                    if (J & 0x01)
-                        P[7] = PAL((L >> 24) & 15);
-                }
+            if (no > 0x800) {
+                MESSAGE_DEBUG("GFX: Access to an invalid VRAM area "
+                    "(tile pattern 0x%04x).\n", no);
             }
-            Line += h;
-            PP += XBUF_WIDTH * h - XW * 8;
-            offset = 0;
-            h = Y2 - Line;
-            if (h > 8)
-                h = 8;
+
+            no &= 0x7FF;
+
+            if (plane_converted[no] == 0) {
+                plane_converted[no] = 1;
+                plane2pixel(no);
+            }
+
+            C2 = (VRAM2 + (no * 8 + offset) * 4);
+            C = VRAM + (no * 32 + offset * 2);
+            P = PP;
+            for (i = 0; i < h; i++, P += XBUF_WIDTH, C2 += 4, C += 2) {
+                uint32 L;
+                uint16 J;
+                J = (C[0] | C[1] | C[16] | C[17]);
+                if (!J)
+                    continue;
+
+                L = C2[0] + (C2[1] << 8) + (C2[2] << 16)
+                    + (C2[3] << 24);
+                if (J & 0x80)
+                    P[0] = PAL((L >> 4) & 15);
+                if (J & 0x40)
+                    P[1] = PAL((L >> 12) & 15);
+                if (J & 0x20)
+                    P[2] = PAL((L >> 20) & 15);
+                if (J & 0x10)
+                    P[3] = PAL((L >> 28) & 15);
+                if (J & 0x08)
+                    P[4] = PAL((L) & 15);
+                if (J & 0x04)
+                    P[5] = PAL((L >> 8) & 15);
+                if (J & 0x02)
+                    P[6] = PAL((L >> 16) & 15);
+                if (J & 0x01)
+                    P[7] = PAL((L >> 24) & 15);
+            }
         }
+        Line += h;
+        PP += XBUF_WIDTH * h - XW * 8;
+        offset = 0;
+        h = Y2 - Line;
+        if (h > 8)
+            h = 8;
     }
 }
 
@@ -597,7 +523,7 @@ RefreshLine(int Y1, int Y2)
 		Return: nothing
 
 *****************************************************************************/
-void
+static inline void
 PutSprite(uchar * P, uchar * C, uchar * C2, uchar * R, int16 h, int16 inc)
 {
 	uint16 J;
@@ -855,14 +781,11 @@ PutSpriteMakeMask(uchar * P, uchar * C, uchar * C2, uchar * R, int16 h,
 		Return: absolutly nothing
 
 *****************************************************************************/
-void
+IRAM_ATTR void
 RefreshSpriteExact(int Y1, int Y2, uchar bg)
 {
     int n;
     SPR *spr;
-
-    /* TEST */
-    Y2++;
 
     spr = (SPR *) SPRAM + 63;
 

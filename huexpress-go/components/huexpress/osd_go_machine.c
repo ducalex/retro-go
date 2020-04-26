@@ -1,4 +1,4 @@
-#include "osd_machine.h"
+#include "osd.h"
 
 
 int osd_init_machine(void)

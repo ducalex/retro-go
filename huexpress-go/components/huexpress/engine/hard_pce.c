@@ -23,8 +23,9 @@
 /*                                                                         */
 /***************************************************************************/
 
-#include "utils.h"
 #include "hard_pce.h"
+#include "debug.h"
+#include "utils.h"
 #include "pce.h"
 
 /**
@@ -43,8 +44,6 @@ uchar *PageR[8];
 uchar *PageW[8];
 uchar *ROMMapR[256];
 uchar *ROMMapW[256];
-
-uint32 cycles = 0;
 
 static const uint8 SaveRAM_Header[8] = { 'H', 'U', 'B', 'M', 0x00, 0x88, 0x10, 0x80 };
 
@@ -95,7 +94,8 @@ hard_term(void)
  * Functions to access PCE hardware
  **/
 
-int return_value_mask_tab_0002[32] = {
+// const DRAM_ATTR
+uchar return_value_mask_tab_0002[32] = {
 	0xFF,
 	0xFF,
 	0xFF,
@@ -131,7 +131,8 @@ int return_value_mask_tab_0002[32] = {
 	0xFF
 };
 
-int return_value_mask_tab_0003[32] = {
+// const DRAM_ATTR
+uchar return_value_mask_tab_0003[32] = {
 	0xFF,
 	0xFF,
 	0xFF,
@@ -167,8 +168,8 @@ int return_value_mask_tab_0003[32] = {
 	0xFF
 };
 
-
-int return_value_mask_tab_0400[8] = {
+// const DRAM_ATTR
+uchar return_value_mask_tab_0400[8] = {
 	0xFF,
 	0x00,
 	0xFF,
@@ -179,7 +180,8 @@ int return_value_mask_tab_0400[8] = {
 	0xFF						/* unused */
 };
 
-int return_value_mask_tab_0800[16] = {
+// const DRAM_ATTR
+uchar return_value_mask_tab_0800[16] = {
 	0x03,
 	0xFF,
 	0xFF,
@@ -199,12 +201,14 @@ int return_value_mask_tab_0800[16] = {
 	0xFF
 };
 
-int return_value_mask_tab_0c00[2] = {
+// const DRAM_ATTR
+uchar return_value_mask_tab_0c00[2] = {
 	0x7F,
 	0x01
 };
 
-int return_value_mask_tab_1400[4] = {
+// const DRAM_ATTR
+uchar return_value_mask_tab_1400[4] = {
 	0xFF,
 	0xFF,
 	0x03,
@@ -213,7 +217,7 @@ int return_value_mask_tab_1400[4] = {
 
 
 //! Returns the useful value mask depending on port value
-static inline int
+static inline uchar
 return_value_mask(uint16 A)
 {
 	if (A < 0x400)				// VDC
@@ -859,7 +863,7 @@ IO_write(uint16 A, uchar V)
 }
 
 IRAM_ATTR inline uchar
-IO_TimerInt()
+TimerInt()
 {
 	if (io.timer_start) {
 		io.timer_counter--;
@@ -912,14 +916,14 @@ get_opcode_long()
 
 	int i;
 
-	opcode = Rd6502(opcode_long_position);
+	opcode = Read8(opcode_long_position);
 
 	size = addr_info_debug[optable_debug[opcode].addr_mode].size;
 
 	opbuf[0] = opcode;
 	opcode_long_position++;
 	for (i = 1; i < size; i++)
-		opbuf[i] = Rd6502(opcode_long_position++);
+		opbuf[i] = Read8(opcode_long_position++);
 
 	/* This line is the real 'meat' of the disassembler: */
 

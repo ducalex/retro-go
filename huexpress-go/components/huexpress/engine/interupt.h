@@ -6,7 +6,7 @@
 #ifndef INTERUPT_H_
 #define INTERUPT_H_
 
-#include "defs.h"
+#include "cleantypes.h"
 
 // definition of which bits correspond
 // to which interrupt-request:

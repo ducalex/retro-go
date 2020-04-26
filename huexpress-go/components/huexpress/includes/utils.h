@@ -18,6 +18,14 @@
 
 #include "cleantypes.h"
 
+#define MESSAGE_ERROR(x...) Log("!! " x)
+#define MESSAGE_INFO(x...) Log(" * " x)
+#ifndef FINAL_RELEASE
+#define MESSAGE_DEBUG(x...) Log(" ~ " x)
+#else
+#define MESSAGE_DEBUG(x...) {}
+#endif
+
 void Log(const char *, ...);
 
 //! Wait for the current 60th of sec to be elapsed
