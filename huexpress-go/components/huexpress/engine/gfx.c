@@ -1,27 +1,5 @@
-/*
- *	This program is free software; you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation; either version 2 of the License, or
- *	(at your option) any later version.
- *
- *	This program is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
- *	GNU Library General Public License for more details.
- *
- *	You should have received a copy of the GNU General Public License
- *	along with this program; if not, write to the Free Software
- *	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- */
-
-/********************************************************************/
-/*					 Generic Graphic source file					*/
-/*																	*/
-/*			 Adapted by Zeograd (Olivier Jolly) for using Allegro	*/
-/*																	*/
-/********************************************************************/
-
-
+// gfx.c - VDC General emulation
+//
 #include "pce.h"
 #include "utils.h"
 #include "config.h"
@@ -35,11 +13,17 @@
 
 extern int skipFrames;
 
-typedef struct {
-	uchar r, g, b;
-} rgb_map_struct;
+gfx_context saved_gfx_context[MAX_GFX_CONTEXT_SLOT_NUMBER];
 
-rgb_map_struct rgb_map[256];
+//! Whether we need to draw pending lines
+int gfx_need_redraw;
+
+//! Frame to skip before the next frame to render
+int UCount = 0;
+
+//! Whether we should change video mode after drawing the current frame
+int gfx_need_video_mode_change = 0;
+
 
 void
 SetPalette(void)
@@ -47,16 +31,10 @@ SetPalette(void)
 	uchar i;
 
 	osd_gfx_set_color(255, 0x3f, 0x3f, 0x3f);
-	rgb_map[255].r = 255;
-	rgb_map[255].b = 255;
-	rgb_map[255].g = 255;
 
 	for (i = 0; i < 255; i++) {
 		osd_gfx_set_color(i, (i & 0x1C) << 1, (i & 0xe0) >> 2,
 			(i & 0x03) << 4);
-		rgb_map[i].r = (i & 0x1C) << 3;
-		rgb_map[i].g = (i & 0xe0);
-		rgb_map[i].b = (i & 0x03) << 6;
 	}
 }
 
@@ -117,22 +95,15 @@ change_pce_screen_height()
 	(*osd_gfx_driver_list[host.video_driver].mode) ();
 }
 
-gfx_context saved_gfx_context[MAX_GFX_CONTEXT_SLOT_NUMBER];
-
-//! Whether we need to draw pending lines
-int gfx_need_redraw;
-
-//! Frame to skip before the next frame to render
-int UCount = 0;
-
-//! Whether we should change video mode after drawing the current frame
-int gfx_need_video_mode_change = 0;
-
 void gfx_init()
 {
     UCount = 0;
     gfx_need_video_mode_change = 0;
     gfx_need_redraw = 0;
+
+	// Sprite memory
+	VRAMS = VRAMS ?: (uchar *)rg_alloc(VRAMSIZE, MEM_FAST);
+	VRAM2 = VRAM2 ?: (uchar *)rg_alloc(VRAMSIZE, MEM_FAST);
     memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
 }
 

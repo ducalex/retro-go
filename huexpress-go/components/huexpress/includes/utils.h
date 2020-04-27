@@ -34,9 +34,6 @@ void wait_next_vsync();
 //! CRC predefined array
 extern const unsigned long TAB_CONST[256];
 
-int file_exists(char*);
-long file_size(char* file_name);
-
 static inline int
 one_bit_set(uchar arg)
 {

@@ -1,20 +1,8 @@
-/****************************************************************************
- h6280.h
- Function protoypes for simulated execution routines
- ****************************************************************************/
-
 #ifndef H6280_H_
 #define H6280_H_
 
 #include "cleantypes.h"
 #include "hard_pce.h"
-
-/********************************************/
-/* function parameters:                     */
-/* --------------------                     */
-/* - address (16-bit unsigned),             */
-/* - pointer to buffer @ program counter    */
-/********************************************/
 
 extern void exe_instruct(void);
 extern void exe_go(void);
@@ -23,8 +11,7 @@ extern void dump_cpu_registers();
 typedef struct op {
    int (*func_exe)(void);
    int16  addr_mode;
-   const char * opname;
-//   short int filler[3];   // force align to power-of-2 (?)
+   const char opname[4];
 } operation;
 
 extern operation optable_runtime[256];
@@ -39,20 +26,28 @@ extern operation optable_runtime[256];
 #define FL_Z 0x02
 #define FL_C 0x01
 
+// Interrupts
 #define INT_NONE        0		/* No interrupt required      */
 #define INT_IRQ         1		/* Standard IRQ interrupt     */
 #define INT_NMI         2		/* Non-maskable interrupt     */
 #define INT_QUIT        3		/* Exit the emulation         */
-#define	INT_TIMER       4
-#define	INT_IRQ2        8
+#define INT_TIMER       4
+#define INT_IRQ2        8
 
+// Interrupt flags
+#define FL_IRQ2    0x01
+#define FL_IRQ1    0x02
+#define FL_TIQ     0x04
+
+// Vectors
 #define	VEC_RESET	0xFFFE
 #define	VEC_NMI		0xFFFC
 #define	VEC_TIMER	0xFFFA
 #define	VEC_IRQ		0xFFF8
-#define	VEC_IRQ2	0xFFF6
+#define	VEC_IRQ2	   0xFFF6
 #define	VEC_BRK		0xFFF6
 
+// Addressing modes
 #define AM_IMPL      0			/* implicit              */
 #define AM_IMMED     1			/* immediate             */
 #define AM_REL       2			/* relative              */

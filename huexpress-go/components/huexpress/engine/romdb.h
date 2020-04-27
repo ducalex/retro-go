@@ -29,9 +29,9 @@
 
 struct rom_database {
 	uint32      CRC;
-	char		Name[255];
-	char		Publisher[64];
-	char		ID[64];
+	char		Name[128];
+	char		Publisher[32];
+	char		ID[32];
 	char		Date[16];
 	uint32      Flags;
 };

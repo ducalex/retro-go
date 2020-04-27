@@ -1,12 +1,3 @@
-/***************************************************************************/
-/*                                                                         */
-/*                         HARDware PCEngine                               */
-/*                                                                         */
-/* This header deals with definition of structure and functions used to    */
-/* handle the pc engine hardware in itself (RAM, IO ports, ...) which were */
-/* previously found in PCE.h                                               */
-/*                                                                         */
-/***************************************************************************/
 #ifndef _INCLUDE_HARD_PCE_H
 #define _INCLUDE_HARD_PCE_H
 
@@ -19,26 +10,18 @@
 #define VRAMSIZE           0x10000
 
 #define PSG_DIRECT_ACCESS_BUFSIZE 1024
-
 #define PSG_VOICE_REG           0	/* voice index */
-
 #define PSG_VOLUME_REG          1	/* master volume */
-
 #define PSG_FREQ_LSB_REG        2	/* lower 8 bits of 12 bit frequency */
-
 #define PSG_FREQ_MSB_REG        3	/* actually most significant nibble */
-
 #define PSG_DDA_REG             4
 #define PSG_DDA_ENABLE          0x80	/* bit 7 */
 #define PSG_DDA_DIRECT_ACCESS   0x40	/* bit 6 */
 #define PSG_DDA_VOICE_VOLUME    0x1F	/* bits 0-4 */
-
 #define PSG_BALANCE_REG         5
 #define PSG_BALANCE_LEFT        0xF0	/* bits 4-7 */
 #define PSG_BALANCE_RIGHT       0x0F	/* bits 0-3 */
-
 #define PSG_DATA_INDEX_REG      6
-
 #define PSG_NOISE_REG           7
 #define PSG_NOISE_ENABLE        0x80	/* bit 7 */
 
@@ -146,11 +129,6 @@ typedef struct {
 	// for use in sprite/tile rendering
 	uchar VRAM[VRAMSIZE];
 
-	// These are array to keep in memory the result of the linearisation of
-	// PCE sprites and tiles
-	uchar *VRAM2; // [VRAMSIZE];
-	uchar *VRAMS; // [VRAMSIZE];
-
 	// SPRAM = sprite RAM
 	// The pc engine got a function to transfert a piece VRAM toward the inner
 	// gfx cpu sprite memory from where data will be grabbed to render sprites
@@ -172,18 +150,22 @@ typedef struct {
 	// The current rendered line on screen
 	uint32 scanline;
 
-	// Number of elapsed cycles
+	// Total number of elapsed cycles
 	uint32 cyclecount;
 
 	// Previous number of elapsed cycles
 	uint32 cyclecountold;
 
-	// Number of pc engine cycles elapsed since the resetting of the emulated console
+	// Total number of elapsed cycles in the current frame
 	uint32 cycles;
 
 	// Value of each of the MMR registers
 	uchar mmr[8];
 
+	//
+	uint32 scroll;
+
+	// IO Registers
 	IO io;
 
 } struct_hard_pce;
@@ -213,7 +195,7 @@ extern struct_hard_pce PCE;
 extern uchar *IOAREA;
 // physical address on emulator machine of the IO area (fake address as it has to be handled specially)
 
-extern uchar *TRAPRAM;
+extern uchar TRAPRAM[0x2004];
 // False "ram"s in which you can read/write (to homogeneize writes into RAM, BRAM, ... as well as in rom) but the result isn't coherent
 
 extern uchar *PageR[8];
@@ -229,9 +211,6 @@ extern uchar *ROMMapW[256];
 #define ExtraRAM PCE.ExtraRAM
 #define SPRAM PCE.SPRAM
 #define VRAM PCE.VRAM
-// #define VRAM2 hard_PCE.VRAM2
-// #define VRAMS hard_PCE.VRAMS
-extern uchar *VRAM2, *VRAMS;
 #define scanline PCE.scanline
 #define Palette PCE.Palette
 #define mmr PCE.mmr

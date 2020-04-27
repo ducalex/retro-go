@@ -105,36 +105,3 @@ wait_next_vsync()
 	if ((lasttime + deltatime) < curtime)
 		lasttime = curtime;
 }
-
-
-/*!
- * file_exists : Check whether a file exists. If doesn't involve much checking (like read/write access,
- * whether it is a symbolic link or a directory, ...)
- * @param name_to_check Name of the file to check for existence
- * @return 0 if the file doesn't exist, else non null value
- */
-int
-file_exists(char* name_to_check)
-{
-	struct stat stat_buffer;
-	return !stat(name_to_check, &stat_buffer);
-}
-
-
-/*!
- * file_size : Open a file and determine it's size
- * @param file_name Name of file to check size of
- * @return 0 if file doesn't exist, else size
- */
-long
-file_size(char* file_name)
-{
-	FILE* f = fopen(file_name, "rb");
-	long position;
-	if (f == NULL)
-		return 0;
-	fseek(f, 0, SEEK_END);
-	position = ftell(f);
-	fclose(f);
-	return position;
-}

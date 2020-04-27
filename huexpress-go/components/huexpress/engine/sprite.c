@@ -18,7 +18,8 @@
  *		Alexander von Gluck IV, kallisti5@unixzen.com
  */
 
-
+// sprice.c - VDC Sprite emulation
+//
 #include "sprite.h"
 #include "utils.h"
 
@@ -30,6 +31,9 @@
 #define TRACE(x...)
 #endif
 
+// These are array to keep in memory the result of the linearisation of
+// PCE sprites and tiles
+uchar *VRAM2, *VRAMS;
 
 // These array are boolean array to know if we must update the
 // corresponding linear sprite representation in VRAM2 and VRAMS or not

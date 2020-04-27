@@ -19,21 +19,6 @@
 
 #if 0
 
-/* Way to accedate to the PC Engine memory
-
-uchar Op6502(register unsigned A) { register char __AUX;
-               __asm__ __volatile__ ("
-	movl _Page(,%%eax,4),%%ecx
-	movb (%%edx,%%ecx),%%al"
-                : "=a" (__AUX)
-                :  "d" (A) , "a" (A>>13)
-                : "%ebx" , "%ecx" );
-               return __AUX; };
-
-// disabled 'coz of integration in debug.c
-
-*/
-
 /* GLOBALS */
 
 uchar opbuf[OPBUF_SIZE];
@@ -161,7 +146,7 @@ dis_key()
 	switch (ch >> 8) {
 	case KEY_DOWN:
 		selected_position +=
-			addr_info_debug[optable_debug[Op6502(selected_position)].
+			addr_info_debug[optable_debug[Read8(selected_position)].
 							addr_mode].size;
 		forward_one_line();
 		return 0;
@@ -217,7 +202,7 @@ dis_key()
 
 			Bp_list[GIVE_HAND_BP].flag = BP_ENABLED;
 			Bp_list[GIVE_HAND_BP].position = cvtnum(tmp_buf);
-			Bp_list[GIVE_HAND_BP].original_op = Op6502(cvtnum(tmp_buf));
+			Bp_list[GIVE_HAND_BP].original_op = Read8(cvtnum(tmp_buf));
 
 			_Write8(cvtnum(tmp_buf), 0xB + 0x10 * GIVE_HAND_BP);
 			// Put an invalid opcode
@@ -237,7 +222,7 @@ dis_key()
 
 		Bp_list[GIVE_HAND_BP].flag = BP_ENABLED;
 		Bp_list[GIVE_HAND_BP].position = selected_position;
-		Bp_list[GIVE_HAND_BP].original_op = Op6502(selected_position);
+		Bp_list[GIVE_HAND_BP].original_op = Read8(selected_position);
 
 		_Write8(selected_position, 0xB + 0x10 * GIVE_HAND_BP);
 		// Put an invalid opcode
@@ -251,7 +236,7 @@ dis_key()
 	case KEY_F6:				/* F6 */
 		{
 			char dum;
-			uchar op = Op6502(selected_position);
+			uchar op = Read8(selected_position);
 
 			if ((op & 0xF) == 0xB)
 				op = Bp_list[op >> 4].original_op;
@@ -379,7 +364,7 @@ disassemble()
 			bp_actived = 0;
 			bp_disabled = 0;
 
-			op = Op6502(position);
+			op = Read8(position);
 			if ((op & 0xF) == 0xB) {	// It's a breakpoint, we replace it and set the bp_* variable
 				if (Bp_list[op >> 4].flag == BP_ENABLED)
 					bp_actived = 1;
@@ -401,7 +386,7 @@ disassemble()
 			opbuf[0] = op;
 			position++;
 			for (i = 1; i < size; i++)
-				opbuf[i] = Op6502(position++);
+				opbuf[i] = Read8(position++);
 
 			/* This line is the real 'meat' of the disassembler: */
 

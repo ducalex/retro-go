@@ -1,5 +1,4 @@
 #include "h6280.h"
-#include "interupt.h"
 #include "debug.h"
 
 // const DRAM_ATTR

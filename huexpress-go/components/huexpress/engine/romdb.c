@@ -7,13 +7,8 @@
  */
 
 
-#include "romdb.h"
-
-#if defined(__linux__) || defined(__APPLE__)
-#include <limits.h>
-#endif
 #include <stdlib.h>
-
+#include "romdb.h"
 #include "utils.h"
 
 // Known NEC PC-Engine HuCards: 323

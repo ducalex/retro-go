@@ -1,7 +1,7 @@
+// sound.c - Sound emulation
+//
 #include "sound.h"
 #include "osd.h"
-
-extern int BaseClock;
 
 static inline int
 mseq(uint32 * rand_val)

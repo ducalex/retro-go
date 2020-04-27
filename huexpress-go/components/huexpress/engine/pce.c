@@ -38,35 +38,20 @@ struct host_machine host;
 uchar *ROM = NULL;
 // ROM = the same thing as the ROM file (w/o header)
 
-int ROM_size;
+uint ROM_size, ROM_crc, ROM_idx;
 // the number of block of 0x2000 bytes in the rom
 
-int IPeriod;
-// Number of cycle between two interruption calls
+const int scanlines_per_frame = 263;
+//
 
-int scanlines_per_frame = 263;
+const int BaseClock = 7800000;
+//
 
-int BaseClock = 7170000;
-
-char cart_name[PCE_PATH_MAX];
-// Name of the file containing the ROM
-
-char *server_hostname = NULL;
-
-uint16 NO_ROM;
-// Number of the ROM in the database or 0xFFFF if unknown
-
-int scroll = 0;
+const int IPeriod = 494;
+// BaseClock / (scanlines_per_frame * 60);
 
 bool PCERunning = false;
-
-const char *joymap_reverse[J_MAX] = {
-	"UP", "DOWN", "LEFT", "RIGHT",
-	"I", "II", "SELECT", "RUN",
-	"AUTOI", "AUTOII", "PI", "PII",
-	"PSELECT", "PRUN", "PAUTOI", "PAUTOII",
-	"PXAXIS", "PYAXIS"
-};
+//
 
 int UPeriod = 0;
 // Number of frame to skip
@@ -85,14 +70,15 @@ int
 LoadCard(char *name)
 {
 	MESSAGE_INFO("Opening %s...\n", name);
-	strcpy(cart_name, name);
 
 	if (ROM != NULL) {
 		free(ROM);
 	}
 
-	// Load PCE, we always load a PCE even with a cd (syscard)
 	FILE *fp = fopen(name, "rb");
+	if (fp == NULL)
+		return -1;
+
 	// find file size
 	fseek(fp, 0, SEEK_END);
 	int fsize = ftell(fp);
@@ -103,20 +89,30 @@ LoadCard(char *name)
 
 	// read ROM
 	ROM = (uchar *)rg_alloc(fsize, MEM_SLOW);
-	ROM_size = fsize / 0x2000;
 	fread(ROM, 1, fsize, fp);
 
 	fclose(fp);
+
+	ROM_size = fsize / 0x2000;
+	ROM_crc = CRC_buffer(ROM, ROM_size * 0x2000);
+	ROM_idx = 0xFFFF;
 
 	return 0;
 }
 
 
-int
-ResetPCE()
+void
+ResetPCE(bool hard)
 {
-	hard_reset();
+	// Zero reset RAM and all IO/sound
+	if (hard) {
+		hard_reset();
+	}
 
+	// Reset sprite cache
+	memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
+
+	// Reset IO lines
 	scanline = 0;
 	io.vdc_status = 0;
 	io.vdc_inc = 1;
@@ -140,10 +136,12 @@ ResetPCE()
 
 	io.screen_h = 224;
 
+	// Reset sound generator values
 	for (int i = 0; i < 6; i++) {
 		io.PSG[i][4] = 0x80;
 	}
 
+	// Reset memory banking
 	bank_set(7, 0x00);
 	bank_set(6, 0x05);
 	bank_set(5, 0x04);
@@ -153,83 +151,43 @@ ResetPCE()
 	bank_set(1, 0xF8);
 	bank_set(0, 0xFF);
 
+	// Reset CPU
 	reg_a = reg_x = reg_y = 0x00;
 	reg_p = FL_TIQ;
-
 	reg_s = 0xFF;
-
-	reg_pc = Read8(VEC_RESET) + 256 * Read8(VEC_RESET + 1);
-
-	return 0;
+	reg_pc = Read16(VEC_RESET);
 }
 
 
 int
 InitPCE(char *name)
 {
-	int i = 0, local_us_encoded_card = 0, ROMmask;
+	int i = 0, local_us_encoded_card = 0;
 
 	if (LoadCard(name))
 		return 1;
 
-	// Set the base frequency
-	BaseClock = 7800000;
-
-	// Set the interruption period
-	IPeriod = BaseClock / (scanlines_per_frame * 60);
-
+	gfx_init();
 	hard_init();
 
-	/* TEST */
-	io.screen_h = 224;
-	/* TEST */
-	io.screen_w = 256;
-
-	for (i = 0; i < 0xFF; i++) {
-		ROMMapR[i] = TRAPRAM;
-		ROMMapW[i] = TRAPRAM;
-	}
-
-	// Backup RAM
-	ROMMapR[0xF7] = SaveRAM;
-	ROMMapW[0xF7] = SaveRAM;
-
-	ROMMapR[0xF8] = RAM;
-	ROMMapW[0xF8] = RAM;
-
-	// supergraphx
-	if (SuperRAM) {
-		ROMMapR[0xF9] = ROMMapW[0xF9] = SuperRAM;
-		ROMMapR[0xFA] = ROMMapW[0xFA] = SuperRAM + 0x2000;
-		ROMMapR[0xFB] = ROMMapW[0xFB] = SuperRAM + 0x4000;
-	}
-
-	ROMMapR[0xFF] = IOAREA;
-	ROMMapW[0xFF] = IOAREA;
-
-
-	uint32 CRC = CRC_buffer(ROM, ROM_size * 0x2000);
-
-	NO_ROM = 0xFFFF;
-
 	for (int index = 0; index < KNOWN_ROM_COUNT; index++) {
-		if (CRC == kKnownRoms[index].CRC) {
-			NO_ROM = index;
+		if (ROM_crc == kKnownRoms[index].CRC) {
+			ROM_idx = index;
 			break;
 		}
 	}
 
-	if (NO_ROM == 0xFFFF)
+	if (ROM_idx == 0xFFFF)
 	{
-		MESSAGE_INFO("ROM not in database: CRC=%lx\n", CRC);
+		MESSAGE_INFO("ROM not in database: CRC=%lx\n", ROM_crc);
 	}
 	else
 	{
-		MESSAGE_INFO("Rom Name: %s\n", kKnownRoms[NO_ROM].Name);
-		MESSAGE_INFO("Publisher: %s\n", kKnownRoms[NO_ROM].Publisher);
+		MESSAGE_INFO("Rom Name: %s\n", kKnownRoms[ROM_idx].Name);
+		MESSAGE_INFO("Publisher: %s\n", kKnownRoms[ROM_idx].Publisher);
 
 		// US Encrypted
-		if ((kKnownRoms[NO_ROM].Flags & US_ENCODED) || ROM[0x1FFF] < 0xE0)
+		if ((kKnownRoms[ROM_idx].Flags & US_ENCODED) || ROM[0x1FFF] < 0xE0)
 		{
 			MESSAGE_INFO("This rom is probably US encrypted, decrypting...\n");
 
@@ -250,66 +208,95 @@ InitPCE(char *name)
 		}
 
 		// For example with Devil Crush 512Ko
-		if (kKnownRoms[NO_ROM].Flags & TWO_PART_ROM)
+		if (kKnownRoms[ROM_idx].Flags & TWO_PART_ROM)
 			ROM_size = 0x30;
 
 		// Hu Card with onboard RAM
-		if (kKnownRoms[NO_ROM].Flags & POPULOUS)
+		if (kKnownRoms[ROM_idx].Flags & POPULOUS)
 		{
 			MESSAGE_INFO("Special Rom: Populous detected!\n");
 			if (!ExtraRAM)
 				ExtraRAM = (uchar*)rg_alloc(0x8000, MEM_FAST);
-
-			ROMMapR[0x40] = ROMMapW[0x40] = ExtraRAM;
-			ROMMapR[0x41] = ROMMapW[0x41] = ExtraRAM + 0x2000;
-			ROMMapR[0x42] = ROMMapW[0x42] = ExtraRAM + 0x4000;
-			ROMMapR[0x43] = ROMMapW[0x43] = ExtraRAM + 0x6000;
 		}
 	}
 
-
-	ROMmask = 1;
-	while (ROMmask < ROM_size)
-		ROMmask <<= 1;
-	ROMmask--;
-
-	MESSAGE_DEBUG("ROMmask=%02X, ROM_size=%02X\n", ROMmask, ROM_size);
-
-	for (i = 0; i < 0x80; i++) {
-		if (ROM_size == 0x30) {
-			switch (i & 0x70) {
-			case 0x00:
-			case 0x10:
-			case 0x50:
-				ROMMapR[i] = ROM + (i & ROMmask) * 0x2000;
-				break;
-			case 0x20:
-			case 0x60:
-				ROMMapR[i] = ROM + ((i - 0x20) & ROMmask) * 0x2000;
-				break;
-			case 0x30:
-			case 0x70:
-				ROMMapR[i] = ROM + ((i - 0x10) & ROMmask) * 0x2000;
-				break;
-			case 0x40:
-				ROMMapR[i] = ROM + ((i - 0x20) & ROMmask) * 0x2000;
-				break;
-			}
-		} else {
-			ROMMapR[i] = ROM + (i & ROMmask) * 0x2000;
-		}
+	for (int i = 0; i < 0xFF; i++) {
+		ROMMapR[i] = TRAPRAM;
+		ROMMapW[i] = TRAPRAM;
 	}
+
+	// Hu Card with onboard RAM (Populous)
+	if (ExtraRAM) {
+		ROMMapR[0x40] = ROMMapW[0x40] = ExtraRAM;
+		ROMMapR[0x41] = ROMMapW[0x41] = ExtraRAM + 0x2000;
+		ROMMapR[0x42] = ROMMapW[0x42] = ExtraRAM + 0x4000;
+		ROMMapR[0x43] = ROMMapW[0x43] = ExtraRAM + 0x6000;
+	}
+
+	// Backup RAM
+	ROMMapR[0xF7] = SaveRAM;
+	ROMMapW[0xF7] = SaveRAM;
+
+    // Main RAM
+	ROMMapR[0xF8] = RAM;
+	ROMMapW[0xF8] = RAM;
+
+	// Supergraphx
+	if (SuperRAM) {
+		ROMMapR[0xF9] = ROMMapW[0xF9] = SuperRAM;
+		ROMMapR[0xFA] = ROMMapW[0xFA] = SuperRAM + 0x2000;
+		ROMMapR[0xFB] = ROMMapW[0xFB] = SuperRAM + 0x4000;
+	}
+
+    // IO Area
+	ROMMapR[0xFF] = IOAREA;
+	ROMMapW[0xFF] = IOAREA;
+
+    // Game ROM
+    if (ROM && ROM_size) {
+        int ROMmask = 1;
+        while (ROMmask < ROM_size)
+            ROMmask <<= 1;
+        ROMmask--;
+
+        MESSAGE_DEBUG("ROMmask=%02X, ROM_size=%02X\n", ROMmask, ROM_size);
+
+        for (int i = 0; i < 0x80; i++) {
+            if (ROM_size == 0x30) {
+                switch (i & 0x70) {
+                case 0x00:
+                case 0x10:
+                case 0x50:
+                    ROMMapR[i] = ROM + (i & ROMmask) * 0x2000;
+                    break;
+                case 0x20:
+                case 0x60:
+                    ROMMapR[i] = ROM + ((i - 0x20) & ROMmask) * 0x2000;
+                    break;
+                case 0x30:
+                case 0x70:
+                    ROMMapR[i] = ROM + ((i - 0x10) & ROMmask) * 0x2000;
+                    break;
+                case 0x40:
+                    ROMMapR[i] = ROM + ((i - 0x20) & ROMmask) * 0x2000;
+                    break;
+                }
+            } else {
+                ROMMapR[i] = ROM + (i & ROMmask) * 0x2000;
+            }
+        }
+    }
+
+	ResetPCE(false);
 
 	return 0;
 }
 
 
-int
+void
 RunPCE(void)
 {
-	if (!ResetPCE())
-		exe_go();
-	return 1;
+	exe_go();
 }
 
 
@@ -319,6 +306,15 @@ LoadState(char *name)
 	MESSAGE_INFO("Loading state from %s...\n", name);
 
 	FILE *fp = fopen(name, "rb");
+	if (fp == NULL)
+		return -1;
+
+	fread(&PCE, sizeof(PCE), 1, fp);
+
+	for (int i = 0 i < 8; i++) {
+		bank_set(i, mmr[i]);
+	}
+
 	fclose(fp);
 
 	return 0;
@@ -331,6 +327,11 @@ SaveState(char *name)
 	MESSAGE_INFO("Saving state to %s...\n", name);
 
 	FILE *fp = fopen(name, "wb");
+	if (fp == NULL)
+		return -1;
+
+	fwrite(&PCE, sizeof(PCE), 1, fp);
+
 	fclose(fp);
 
 	return 0;
@@ -343,13 +344,9 @@ TrashPCE()
 	// Set volume to zero
 	io.psg_volume = 0;
 
-	if (ROM)
-		free(ROM);
-
-	if (ExtraRAM)
-		free(ExtraRAM);
+	if (VRAMS) free(VRAMS);
+	if (VRAM2) free(VRAM2);
+	if (ROM) free(ROM);
 
 	hard_term();
-
-	return;
 }

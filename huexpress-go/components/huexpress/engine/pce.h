@@ -1,18 +1,14 @@
 #ifndef _INCLUDE_PCE_H
 #define _INCLUDE_PCE_H
 
-#include "config.h"
-
 #include "odroid_system.h"
 
+#include "config.h"
+#include "h6280.h"
 #include "osd.h"
 #include "gfx.h"
 #include "hard_pce.h"
-
 #include "cleantypes.h"
-
-#include "h6280.h"
-#include "interupt.h"
 
 #include <string.h>
 #include <stdarg.h>
@@ -20,25 +16,19 @@
 #include <stdlib.h>
 #include <time.h>
 
-
-#define SERVER_HOSTNAME_MAX_SIZE 256
-
 int LoadCard(char *name);
 int LoadState(char *name);
 int SaveState(char *name);
-int ResetPCE();
 void SetPalette(void);
-
-int InitPCE(char *name);
+void ResetPCE(bool);
+void RunPCE(void);
 void TrashPCE();
-int RunPCE(void);
+int InitPCE(char *name);
 
-extern char cart_name[PCE_PATH_MAX];
-// the name of the rom to load
-
-extern char *server_hostname;
-
-extern int BaseClock, UPeriod;
+extern const int BaseClock;
+extern const int IPeriod;
+extern int UPeriod;
+extern bool PCERunning;
 
 struct host_sound {
 	uint stereo;
@@ -53,9 +43,6 @@ struct host_machine {
 
 extern struct host_machine host;
 
-extern int scroll;
-
-extern bool PCERunning;
 
 #if !defined(MIN)
 #define MIN(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })

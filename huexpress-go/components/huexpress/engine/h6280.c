@@ -1,10 +1,8 @@
-//  h6280.c - Execute CPU instructions
+//  h6280.c - CPU Emulation
 //
-
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "interupt.h"
 #include "hard_pce.h"
 #include "gfx.h"
 #include "pce.h"
@@ -123,7 +121,6 @@ static uint32 cycles = 0;
 IRAM_ATTR void
 exe_go(void)
 {
-    gfx_init();
     uchar I;
 
 	// Temp variables used by CPU instructions

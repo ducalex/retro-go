@@ -17,11 +17,6 @@
 #define XBUF_WIDTH 	(536 + 32 + 32)
 #define	XBUF_HEIGHT	(240 + 64 + 64)
 
-
-#define textoutshadow(bmp,f,s,x,y,color1,color2,offsetx,offsety) { textout(bmp,f,s,x+offsetx,y+offsety,color2); textout(bmp,f,s,x,y,color1); }
-// Just a little define to avoid too many keystrokes ;)
-
-
 typedef struct {
 	//typeof(IO_VDC_07_BXR.W) scroll_x;
 	//typeof(IO_VDC_08_BYR.W) scroll_y;

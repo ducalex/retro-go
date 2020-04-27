@@ -28,7 +28,7 @@ static bool load_state(char *pathName)
 {
     if (LoadState(pathName) != 0)
     {
-        ResetPCE();
+        ResetPCE(1);
         return false;
     }
     return true;
@@ -52,6 +52,11 @@ void app_main(void)
 
 	osd_gfx_init();
 	osd_snd_init_sound();
+
+    if (odroid_system_get_start_action() == ODROID_START_ACTION_RESUME)
+    {
+        // odroid_system_emu_load_state(0);
+    }
 
     RunPCE();
 

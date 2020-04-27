@@ -41,6 +41,9 @@ typedef struct
 
 extern sprite_cache_t SPR_CACHE;
 
+extern uchar *VRAM2, *VRAMS;
+/* these contain linear representations that we can draw */
+
 extern uchar BGONSwitch;
 /* do we have to draw background ? */
 

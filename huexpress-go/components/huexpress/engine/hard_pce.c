@@ -1,28 +1,5 @@
-/*
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU Library General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- */
-
-/***************************************************************************/
-/*                                                                         */
-/*                         HARDware PCEngine                               */
-/*                                                                         */
-/* This source file implements all functions relatives to pc engine inner  */
-/* hardware (memory access e.g.)                                           */
-/*                                                                         */
-/***************************************************************************/
-
+// hard_pce.c - Memory/IO/Timer emulation
+//
 #include "hard_pce.h"
 #include "debug.h"
 #include "utils.h"
@@ -35,11 +12,9 @@
 
 struct_hard_pce PCE;
 
-// Memory
-uchar *IOAREA;
-uchar *TRAPRAM;
-
-uchar *VRAM2, *VRAMS;
+// This memory is only to trap unmapped areas
+uchar TRAPRAM[0x2004];
+uchar *IOAREA = TRAPRAM + 4;
 
 // Mapping
 uchar *PageR[8];
@@ -47,24 +22,20 @@ uchar *PageW[8];
 uchar *ROMMapR[256];
 uchar *ROMMapW[256];
 
-static const uint8 SaveRAM_Header[8] = { 'H', 'U', 'B', 'M', 0x00, 0x88, 0x10, 0x80 };
+const uint8 SaveRAM_Header[8] = { 'H', 'U', 'B', 'M', 0x00, 0x88, 0x10, 0x80 };
+
 
 void
 hard_reset(void)
 {
-	// Preserve our pointers
     uchar *superram = SuperRAM;
     uchar *extraram = ExtraRAM;
-    uchar *vram2 = VRAM2;
-    uchar *vrams = VRAMS;
 
     memset(&PCE, 0x00, sizeof(PCE));
     memcpy(&SaveRAM, SaveRAM_Header, sizeof(SaveRAM_Header));
 
     SuperRAM = superram;
     ExtraRAM = extraram;
-    VRAM2 = vram2;
-    VRAMS = vrams;
 }
 
 /**
@@ -73,11 +44,6 @@ hard_reset(void)
 void
 hard_init(void)
 {
-    VRAMS = PCE.VRAMS = (uchar *)rg_alloc(VRAMSIZE, MEM_FAST);
-    VRAM2 = PCE.VRAM2 = (uchar *)rg_alloc(VRAMSIZE, MEM_FAST);
-	TRAPRAM = (uchar *)rg_alloc(0x2004, MEM_FAST);
-	IOAREA = TRAPRAM + 4;
-
     hard_reset();
 }
 
@@ -87,9 +53,8 @@ hard_init(void)
 void
 hard_term(void)
 {
-	free(TRAPRAM);
-	free(VRAM2);
-	free(VRAMS);
+	if (ExtraRAM) free(ExtraRAM);
+	if (SuperRAM) free(SuperRAM);
 }
 
 /**
@@ -203,20 +168,6 @@ uchar return_value_mask_tab_0800[16] = {
 	0xFF
 };
 
-// const DRAM_ATTR
-uchar return_value_mask_tab_0c00[2] = {
-	0x7F,
-	0x01
-};
-
-// const DRAM_ATTR
-uchar return_value_mask_tab_1400[4] = {
-	0xFF,
-	0xFF,
-	0x03,
-	0x03
-};
-
 
 //! Returns the useful value mask depending on port value
 static inline uchar
@@ -228,8 +179,8 @@ return_value_mask(uint16 A)
 			return return_value_mask_tab_0002[io.vdc_reg];
 		} else if ((A & 0x3) == 0x03) {
 			return return_value_mask_tab_0003[io.vdc_reg];
-		} else
-			return 0xFF;
+		}
+		return 0xFF;
 	}
 
 	if (A < 0x800)				// VCE
@@ -239,13 +190,13 @@ return_value_mask(uint16 A)
 		return return_value_mask_tab_0800[A & 0x0F];
 
 	if (A < 0x1000)				/* Timer */
-		return return_value_mask_tab_0c00[A & 0x01];
+		return (A & 1) ? 0x01 : 0x7F;
 
 	if (A < 0x1400)				/* Joystick / IO port */
 		return 0xFF;
 
 	if (A < 0x1800)				/* Interruption acknowledgement */
-		return return_value_mask_tab_1400[A & 0x03];
+		return (A & 2) ? 0x03 : 0xFF;
 
 	/* We don't know for higher ports */
 	return 0xFF;
@@ -458,13 +409,13 @@ IO_write(uint16 A, uchar V)
 
                 save_gfx_context(0);
 
-                if (!scroll) {
+                if (!PCE.scroll) {
                     oldScrollX = ScrollX;
                     oldScrollY = ScrollY;
                     oldScrollYDiff = ScrollYDiff;
                 }
                 IO_VDC_08_BYR.B.l = V;
-                scroll = 1;
+                PCE.scroll = 1;
                 ScrollYDiff = scanline - 1;
                 ScrollYDiff -= IO_VDC_0C_VPR.B.h + IO_VDC_0C_VPR.B.l;
 
@@ -481,13 +432,13 @@ IO_write(uint16 A, uchar V)
 
                 save_gfx_context(0);
 
-                if (!scroll) {
+                if (!PCE.scroll) {
                     oldScrollX = ScrollX;
                     oldScrollY = ScrollY;
                     oldScrollYDiff = ScrollYDiff;
                 }
                 IO_VDC_07_BXR.B.l = V;
-                scroll = 1;
+                PCE.scroll = 1;
                 return;
 
             case CR:
@@ -636,13 +587,13 @@ IO_write(uint16 A, uchar V)
 
                 save_gfx_context(0);
 
-                if (!scroll) {
+                if (!PCE.scroll) {
                     oldScrollX = ScrollX;
                     oldScrollY = ScrollY;
                     oldScrollYDiff = ScrollYDiff;
                 }
                 IO_VDC_08_BYR.B.h = V & 1;
-                scroll = 1;
+                PCE.scroll = 1;
                 ScrollYDiff = scanline - 1;
                 ScrollYDiff -= IO_VDC_0C_VPR.B.h + IO_VDC_0C_VPR.B.l;
 #if ENABLE_TRACING_GFX
@@ -670,14 +621,14 @@ IO_write(uint16 A, uchar V)
 
                 save_gfx_context(0);
 
-                if (!scroll) {
+                if (!PCE.scroll) {
                     oldScrollX = ScrollX;
                     oldScrollY = ScrollY;
                     oldScrollYDiff = ScrollYDiff;
                 }
 
                 IO_VDC_07_BXR.B.h = V & 3;
-                scroll = 1;
+                PCE.scroll = 1;
                 return;
             }
             IO_VDC_active.B.h = V;
