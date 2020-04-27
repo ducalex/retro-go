@@ -51,7 +51,6 @@ uchar sprite_usespbg = 0;
 int ScrollYDiff;
 int oldScrollX;
 int oldScrollY;
-int oldScrollYDiff;
 
 // Actual memory area where the gfx functions are drawing sprites and tiles
 uchar *SPM_raw;//[XBUF_WIDTH * XBUF_HEIGHT];

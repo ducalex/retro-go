@@ -97,7 +97,6 @@ typedef struct {
 
 	uchar psg_da_data[6][PSG_DIRECT_ACCESS_BUFSIZE];
 	uint16 psg_da_index[6], psg_da_count[6];
-	int psg_channel_disabled[6];
 
 	/* TIMER */
 	uchar timer_reload, timer_start, timer_counter;
@@ -148,22 +147,19 @@ typedef struct {
 	uchar reg_s;
 
 	// The current rendered line on screen
-	uint32 scanline;
+	uint32 Scanline;
+
+	// Total number of elapsed cycles in the current scanline
+	uint32 Cycles;
 
 	// Total number of elapsed cycles
-	uint32 cyclecount;
+	uint32 TotalCycles;
 
 	// Previous number of elapsed cycles
-	uint32 cyclecountold;
-
-	// Total number of elapsed cycles in the current frame
-	uint32 cycles;
+	uint32 PrevTotalCycles;
 
 	// Value of each of the MMR registers
-	uchar mmr[8];
-
-	//
-	uint32 scroll;
+	uchar MMR[8];
 
 	// IO Registers
 	IO io;
@@ -205,32 +201,30 @@ extern uchar *PageW[8];
 extern uchar *ROMMapW[256];
 // physical address on emulator machine of each of the 256 banks
 
-#define RAM   PCE.RAM
-#define SaveRAM  PCE.SaveRAM
+#define RAM PCE.RAM
+#define SaveRAM PCE.SaveRAM
 #define SuperRAM PCE.SuperRAM
 #define ExtraRAM PCE.ExtraRAM
 #define SPRAM PCE.SPRAM
 #define VRAM PCE.VRAM
-#define scanline PCE.scanline
+#define Scanline PCE.Scanline
 #define Palette PCE.Palette
-#define mmr PCE.mmr
+#define Cycles PCE.Cycles
+#define TotalCycles PCE.TotalCycles
+#define PrevTotalCycles PCE.PrevTotalCycles
+#define MMR PCE.MMR
 #define io PCE.io
-#define cyclecount PCE.cyclecount
-#define cyclecountold PCE.cyclecountold
-
 
 #define TimerPeriod 1097
 // Base period for the timer
 
-// registers:
 #define reg_pc PCE.reg_pc
 #define reg_a  PCE.reg_a
 #define reg_x  PCE.reg_x
 #define reg_y  PCE.reg_y
 #define reg_p  PCE.reg_p
 #define reg_s  PCE.reg_s
-// These are the main h6280 register, reg_p is the flag register
-
+// H6280 CPU registers
 
 /**
   * Definitions to ease writing
@@ -261,8 +255,6 @@ enum _VDC_REG {
 };
 
 #define	NODATA	   0xff
-#define	ENABLE	   1
-#define	DISABLE	   0
 
 static inline uchar
 Read8(uint16 addr)

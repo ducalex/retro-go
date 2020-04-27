@@ -229,9 +229,9 @@ Loop6502()
 			&& ((IO_VDC_06_RCR.W & 0x3FF) <= 0x146)) {
 			uint16 temp_rcr = (uint16) ((IO_VDC_06_RCR.W & 0x3FF) - 0x40);
 
-			if (scanline
+			if (Scanline
 				== (temp_rcr + IO_VDC_0C_VPR.B.l + IO_VDC_0C_VPR.B.h) % 263) {
-				// printf("\n---------------------\nRASTER HIT (%d)\n----------------------\n", scanline);
+				// printf("\n---------------------\nRASTER HIT (%d)\n----------------------\n", Scanline);
 				io.vdc_status |= VDC_RasHit;
 				return_value = INT_IRQ;
 			}
@@ -244,14 +244,13 @@ Loop6502()
 
 	// Rendering of tiles / sprites
 
-	if (scanline < 14) {
+	if (Scanline < 14) {
 		gfx_need_redraw = 0;
-	} else if (scanline < 14 + 242) {
-		if (scanline == 14) {
+	} else if (Scanline < 14 + 242) {
+		if (Scanline == 14) {
 			last_display_counter = 0;
 			display_counter = 0;
 			ScrollYDiff = 0;
-			oldScrollYDiff = 0;
 
 			// Signal that we've left the VBlank area
 			io.vdc_status &= ~VDC_InVBlank;
@@ -260,7 +259,7 @@ Loop6502()
 				io.vdc_status);
 		}
 
-		if (scanline == io.vdc_min_display) {
+		if (Scanline == io.vdc_min_display) {
 			gfx_need_redraw = 0;
 
 			save_gfx_context(0);
@@ -268,10 +267,10 @@ Loop6502()
 			TRACE("GFX: FORCED SAVE OF GFX CONTEXT\n");
 		}
 
-		if ((scanline >= io.vdc_min_display)
-			&& (scanline <= io.vdc_max_display)) {
+		if ((Scanline >= io.vdc_min_display)
+			&& (Scanline <= io.vdc_max_display)) {
 			if (gfx_need_redraw) {
-				// && scanline > io.vdc_min_display)
+				// && Scanline > io.vdc_min_display)
 				// We got render things before being on the second line
 
 				render_lines(last_display_counter, display_counter);
@@ -280,8 +279,8 @@ Loop6502()
 			}
 			display_counter++;
 		}
-	} else if (scanline < 14 + 242 + 4) {
-		if (scanline == 14 + 242) {
+	} else if (Scanline < 14 + 242 + 4) {
+		if (Scanline == 14 + 242) {
 			save_gfx_context(0);
 
 			render_lines(last_display_counter, display_counter);
@@ -346,10 +345,10 @@ Loop6502()
 
 	// Incrementing the scanline
 
-	scanline++;
+	Scanline++;
 
-	if (scanline >= 263)
-		scanline = 0;
+	if (Scanline >= 263)
+		Scanline = 0;
 
 	if ((return_value != INT_IRQ) && io.vdc_pendvsync) {
 		io.vdc_status |= VDC_InVBlank;

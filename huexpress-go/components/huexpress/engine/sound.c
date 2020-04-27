@@ -49,8 +49,7 @@ WriteBuffer(char *buf, int ch, unsigned dwSize)
     uint16 lbal, rbal;
     signed char sample;
 
-    if (!(io.PSG[ch][PSG_DDA_REG] & PSG_DDA_ENABLE)
-        || io.psg_channel_disabled[ch]) {
+    if (!(io.PSG[ch][PSG_DDA_REG] & PSG_DDA_ENABLE)) {
         /*
          * There is no audio to be played on this channel.
          */

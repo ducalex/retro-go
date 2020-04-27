@@ -2879,11 +2879,6 @@ tai(void)
     len = get_16bit_addr(reg_pc + 5);
     alternate = 0;
 
-#if ENABLE_TRACING_CD && defined(INLINED_ACCESSORS)
-    fprintf(stderr, "Transfert from bank 0x%02x to bank 0x%02x\n",
-            mmr[from >> 13], mmr[to >> 13]);
-#endif
-
     cycles += (6 * len) + 17;
     while (len-- != 0) {
         put_8bit_addr(to++, get_8bit_addr(from + alternate));
@@ -2951,11 +2946,6 @@ tdd(void)
     to = get_16bit_addr(reg_pc + 3);
     len = get_16bit_addr(reg_pc + 5);
 
-#if ENABLE_TRACING_CD && defined(INLINED_ACCESSORS)
-    fprintf(stderr, "Transfert from bank 0x%02x to bank 0x%02x\n",
-            mmr[from >> 13], mmr[to >> 13]);
-#endif
-
     cycles += (6 * len) + 17;
     while (len-- != 0) {
         put_8bit_addr(to--, get_8bit_addr(from--));
@@ -2974,11 +2964,6 @@ tia(void)
     to = get_16bit_addr(reg_pc + 3);
     len = get_16bit_addr(reg_pc + 5);
     alternate = 0;
-
-#if ENABLE_TRACING_CD && defined(INLINED_ACCESSORS)
-    fprintf(stderr, "Transfert from bank 0x%02x to bank 0x%02x\n",
-            mmr[from >> 13], mmr[to >> 13]);
-#endif
 
     cycles += (6 * len) + 17;
     while (len-- != 0) {
@@ -2999,11 +2984,6 @@ tii(void)
     to = get_16bit_addr(reg_pc + 3);
     len = get_16bit_addr(reg_pc + 5);
 
-#if ENABLE_TRACING_CD && defined(INLINED_ACCESSORS)
-    fprintf(stderr, "Transfert from bank 0x%02x to bank 0x%02x\n",
-            mmr[from >> 13], mmr[to >> 13]);
-#endif
-
     cycles += (6 * len) + 17;
     while (len-- != 0) {
         put_8bit_addr(to++, get_8bit_addr(from++));
@@ -3021,11 +3001,6 @@ tin(void)
     from = get_16bit_addr(reg_pc + 1);
     to = get_16bit_addr(reg_pc + 3);
     len = get_16bit_addr(reg_pc + 5);
-
-#if ENABLE_TRACING_CD && defined(INLINED_ACCESSORS)
-    fprintf(stderr, "Transfert from bank 0x%02x to bank 0x%02x\n",
-            mmr[from >> 13], mmr[to >> 13]);
-#endif
 
     cycles += (6 * len) + 17;
     while (len-- != 0) {
@@ -3053,7 +3028,7 @@ tma(void)
 
     for (i = 0; i < 8; i++) {
         if (bitfld & (1 << i)) {
-            reg_a = mmr[i];
+            reg_a = MMR[i];
         }
     }
     reg_p &= ~FL_T;

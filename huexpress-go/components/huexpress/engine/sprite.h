@@ -63,10 +63,6 @@ extern uchar SPONSwitch;
 
 extern int ScrollYDiff;
 
-extern int oldScrollX;
-extern int oldScrollY;
-extern int oldScrollYDiff;
-
 #define FC_W     io.screen_w
 #define FC_H     256
 #define V_FLIP  0x8000

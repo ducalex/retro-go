@@ -8,7 +8,7 @@ Retro-Go is composed of a launcher and several emulators.
 - Sega Master System
 - Sega Game Gear
 - Colecovision
-- PC Engine (Soon!)
+- PC Engine
 
 ### Compared to other similar projects for the ODROID-GO, Retro-Go brings:
 - In-game menu

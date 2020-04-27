@@ -409,14 +409,8 @@ IO_write(uint16 A, uchar V)
 
                 save_gfx_context(0);
 
-                if (!PCE.scroll) {
-                    oldScrollX = ScrollX;
-                    oldScrollY = ScrollY;
-                    oldScrollYDiff = ScrollYDiff;
-                }
                 IO_VDC_08_BYR.B.l = V;
-                PCE.scroll = 1;
-                ScrollYDiff = scanline - 1;
+                ScrollYDiff = Scanline - 1;
                 ScrollYDiff -= IO_VDC_0C_VPR.B.h + IO_VDC_0C_VPR.B.l;
 
 #if ENABLE_TRACING_DEEP_GFX
@@ -432,13 +426,7 @@ IO_write(uint16 A, uchar V)
 
                 save_gfx_context(0);
 
-                if (!PCE.scroll) {
-                    oldScrollX = ScrollX;
-                    oldScrollY = ScrollY;
-                    oldScrollYDiff = ScrollYDiff;
-                }
                 IO_VDC_07_BXR.B.l = V;
-                PCE.scroll = 1;
                 return;
 
             case CR:
@@ -586,15 +574,8 @@ IO_write(uint16 A, uchar V)
                  */
 
                 save_gfx_context(0);
-
-                if (!PCE.scroll) {
-                    oldScrollX = ScrollX;
-                    oldScrollY = ScrollY;
-                    oldScrollYDiff = ScrollYDiff;
-                }
                 IO_VDC_08_BYR.B.h = V & 1;
-                PCE.scroll = 1;
-                ScrollYDiff = scanline - 1;
+                ScrollYDiff = Scanline - 1;
                 ScrollYDiff -= IO_VDC_0C_VPR.B.h + IO_VDC_0C_VPR.B.l;
 #if ENABLE_TRACING_GFX
                 if (ScrollYDiff < 0)
@@ -621,14 +602,7 @@ IO_write(uint16 A, uchar V)
 
                 save_gfx_context(0);
 
-                if (!PCE.scroll) {
-                    oldScrollX = ScrollX;
-                    oldScrollY = ScrollY;
-                    oldScrollYDiff = ScrollYDiff;
-                }
-
                 IO_VDC_07_BXR.B.h = V & 3;
-                PCE.scroll = 1;
                 return;
             }
             IO_VDC_active.B.h = V;
@@ -733,16 +707,13 @@ IO_write(uint16 A, uchar V)
                 io.psg_da_data[io.psg_ch][io.psg_da_index[io.psg_ch]] = V;
                 io.psg_da_index[io.psg_ch] =
                     (io.psg_da_index[io.psg_ch] + 1) & 0x3FF;
-                if (io.psg_da_count[io.psg_ch]++ >
-                    (PSG_DIRECT_ACCESS_BUFSIZE - 1)) {
-                    if (!io.psg_channel_disabled[io.psg_ch])
-                        MESSAGE_INFO
-                            ("Audio being put into the direct access buffer faster than it's being played.\n");
+                if (io.psg_da_count[io.psg_ch]++ > (PSG_DIRECT_ACCESS_BUFSIZE - 1)) {
+                        MESSAGE_INFO("Audio being put into the direct "
+                                     "access buffer faster than it's being played.\n");
                     io.psg_da_count[io.psg_ch] = 0;
                 }
             } else {
-                io.wave[io.psg_ch][io.PSG[io.psg_ch][PSG_DATA_INDEX_REG]] =
-                    V;
+                io.wave[io.psg_ch][io.PSG[io.psg_ch][PSG_DATA_INDEX_REG]] = V;
                 io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] =
                     (io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] + 1) & 0x1F;
             }
@@ -837,9 +808,9 @@ TimerInt()
 IRAM_ATTR void
 bank_set(uchar P, uchar V)
 {
-    MESSAGE_DEBUG("Bank switching (mmr[%d] = %d)\n", P, V);
+    MESSAGE_DEBUG("Bank switching (MMR[%d] = %d)\n", P, V);
 
-	mmr[P] = V;
+	MMR[P] = V;
 	if (ROMMapR[V] == IOAREA) {
 		PageR[P] = IOAREA;
 		PageW[P] = IOAREA;
@@ -900,7 +871,7 @@ dump_pce_cpu_environment()
 	Log("S = 0x%02x\n", reg_s);
 
 	for (i = 0; i < 8; i++) {
-		Log("MMR[%d] = 0x%02x\n", i, mmr[i]);
+		Log("MMR[%d] = 0x%02x\n", i, MMR[i]);
 	}
 
 	opcode_long_position = reg_pc & 0xE000;

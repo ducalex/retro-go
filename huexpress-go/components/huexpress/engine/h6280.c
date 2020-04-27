@@ -38,6 +38,8 @@ DRAM_ATTR const uchar flnz_list[256] = {
 
 #define OP_CALL_THROUGH_LOOKUP (*optable_runtime[opcode].func_exe)();
 
+#define cycles Cycles
+
 // pointer to the beginning of the Zero Page area
 #define zp_base (RAM)
 
@@ -74,8 +76,6 @@ push_16bit(uint16 addr)
 	*(sp_base + reg_s--) = (uchar) (addr >> 8);
 	*(sp_base + reg_s--) = (uchar) (addr & 0xFF);
 }
-
-static uint32 cycles = 0;
 
 #include "h6280_opcodes.h"
 #include "h6280_opcodes_define.h"
@@ -127,8 +127,6 @@ exe_go(void)
     uchar temp, temp1, temp2;
     uint16 addr, from, to, len, alternate;
 
-	cycles = 0;
-	cyclecount = 0;
 	PCERunning = 1;
 
     while (true) // PCERunning
@@ -430,7 +428,7 @@ exe_go(void)
 
 				for (uchar i = 0; i < 8; i++) {
 					if (temp & (1 << i)) {
-						reg_a = mmr[i];
+						reg_a = MMR[i];
 					}
 				}
 				reg_p &= ~FL_T;
@@ -665,13 +663,6 @@ exe_go(void)
 				_OPCODE_rmb_(0x80)
 				break;
 			case 0x78: // {sei, AM_IMPL, "SEI"}
-				#ifdef DUMP_ON_SEI
-					int i;
-					Log("MMR[7]\n");
-					for (i = 0xE000; i < 0xE100; i++) {
-						Log("%02X ", get_8bit_addr(i));
-					}
-				#endif
 				reg_p = (reg_p | FL_I) & ~FL_T;
 				reg_pc++;
 				cycles += 2;
@@ -1154,9 +1145,9 @@ exe_go(void)
 
         // HSYNC stuff - count cycles:
         /*if (cycles > 455) */ {
-            cyclecount += cycles;
+            TotalCycles += cycles;
             // cycles -= 455;
-            // scanline++;
+            // Scanline++;
 
             // Log("Calling periodic handler\n");
 
@@ -1173,12 +1164,12 @@ exe_go(void)
             if (I)
                 Int6502(I);     /* Interrupt if needed  */
 
-            if ((uint) (cyclecount - cyclecountold) > (uint) TimerPeriod * 2)
-				cyclecountold = cyclecount;
+            if (TotalCycles - PrevTotalCycles > TimerPeriod * 2)
+				PrevTotalCycles = TotalCycles;
 
         } /*else*/ {
-            if (cyclecount - cyclecountold >= TimerPeriod) {
-                cyclecountold += TimerPeriod;
+            if (TotalCycles - PrevTotalCycles >= TimerPeriod) {
+                PrevTotalCycles += TimerPeriod;
                 if ((I = TimerInt()))
                     Int6502(I);
             }
@@ -1203,7 +1194,7 @@ dump_cpu_registers()
 	Log("S = 0x%02x\n", reg_s);
 
 	for (i = 0; i < 8; i++) {
-		Log("MMR[%d] = 0x%02x\n", i, mmr[i]);
+		Log("MMR[%d] = 0x%02x\n", i, MMR[i]);
 	}
 
 	// TODO: Add zero page dump

@@ -113,7 +113,6 @@ ResetPCE(bool hard)
 	memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
 
 	// Reset IO lines
-	scanline = 0;
 	io.vdc_status = 0;
 	io.vdc_inc = 1;
 	io.minline = 0;
@@ -156,6 +155,12 @@ ResetPCE(bool hard)
 	reg_p = FL_TIQ;
 	reg_s = 0xFF;
 	reg_pc = Read16(VEC_RESET);
+
+	// Counters
+	Scanline = 0;
+	Cycles = 0;
+	TotalCycles = 0;
+	PrevTotalCycles = 0;
 }
 
 
@@ -310,12 +315,14 @@ LoadState(char *name)
 		return -1;
 
 	fread(&PCE, sizeof(PCE), 1, fp);
-
-	for (int i = 0 i < 8; i++) {
-		bank_set(i, mmr[i]);
-	}
-
+	fread(&saved_gfx_context, sizeof(saved_gfx_context), 1, fp);
 	fclose(fp);
+
+	memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
+
+	for (int i = 0; i < 8; i++) {
+		bank_set(i, MMR[i]);
+	}
 
 	return 0;
 }
@@ -330,7 +337,9 @@ SaveState(char *name)
 	if (fp == NULL)
 		return -1;
 
+
 	fwrite(&PCE, sizeof(PCE), 1, fp);
+	fwrite(&saved_gfx_context, sizeof(saved_gfx_context), 1, fp);
 
 	fclose(fp);
 

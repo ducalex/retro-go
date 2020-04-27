@@ -1,20 +1,20 @@
 #ifndef _INCLUDE_PCE_H
 #define _INCLUDE_PCE_H
 
+#include <string.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
 #include "odroid_system.h"
 
 #include "config.h"
 #include "h6280.h"
 #include "osd.h"
 #include "gfx.h"
-#include "hard_pce.h"
 #include "cleantypes.h"
-
-#include <string.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
+#include "hard_pce.h"
 
 int LoadCard(char *name);
 int LoadState(char *name);
