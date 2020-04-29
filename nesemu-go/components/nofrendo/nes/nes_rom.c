@@ -190,54 +190,6 @@ static int rom_loadrom(unsigned char **rom, rominfo_t *rominfo)
    return 0;
 }
 
-static FILE *rom_findrom(const char *filename, rominfo_t *rominfo)
-{
-   FILE *fp;
-
-   ASSERT(rominfo);
-
-   if (NULL == filename)
-      return NULL;
-
-   /* Make a copy of the name so we can extend it */
-   osd_fullname(rominfo->filename, filename);
-
-   fp = _fopen(rominfo->filename, "rb");
-   if (NULL == fp)
-   {
-      /* Didn't find the file?  Maybe the .NES extension was omitted */
-      if (NULL == strrchr(rominfo->filename, '.'))
-         strncat(rominfo->filename, ".nes", PATH_MAX - strlen(rominfo->filename));
-
-      /* this will either return NULL or a valid file pointer */
-      fp = _fopen(rominfo->filename, "rb");
-   }
-
-   return fp;
-}
-
-/* return 0 if this *is* an iNES file */
-int rom_checkmagic(const char *filename)
-{
-   inesheader_t head;
-   rominfo_t rominfo;
-   FILE *fp;
-
-   fp = rom_findrom(filename, &rominfo);
-   if (NULL == fp)
-      return -1;
-
-   _fread(&head, 1, sizeof(head), fp);
-
-   _fclose(fp);
-
-   if (0 == memcmp(head.ines_magic, ROM_INES_MAGIC, 4))
-      /* not an iNES file */
-      return 0;
-
-   return -1;
-}
-
 static int rom_getheader(unsigned char **rom, rominfo_t *rominfo)
 {
    inesheader_t head;

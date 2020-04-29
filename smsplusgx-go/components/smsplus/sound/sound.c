@@ -1,4 +1,3 @@
-//#pragma GCC optimize ("O3")
 /******************************************************************************
  *  Sega Master System / GameGear Emulator
  *  Copyright (C) 1998-2007  Charles MacDonald
@@ -24,19 +23,18 @@
  ******************************************************************************/
 
 #include "shared.h"
-#include "config.h"
 
 snd_t snd;
 static int16 **fm_buffer;
 static int16 **psg_buffer;
-int *smptab;
+int smptab[313];
 int smptab_len;
 
 
 int sound_init(void)
 {
-  uint8 *fmbuf = NULL;
-  uint8 *psgbuf = NULL;
+  // FM_Context fmbuf;
+  SN76489_Context psgbuf;
   int restore_sound = 0;
   int i;
 
@@ -52,13 +50,9 @@ int sound_init(void)
   {
     restore_sound = 1;
 
-    psgbuf = malloc(SN76489_GetContextSize());
-    if (!psgbuf) abort();
-
-    memcpy (psgbuf, SN76489_GetContextPtr(0),SN76489_GetContextSize());
+    memcpy(&psgbuf, SN76489_GetContextPtr(0), SN76489_GetContextSize());
 #if 0
-    fmbuf = malloc(FM_GetContextSize());
-    FM_GetContext(fmbuf);
+    FM_GetContext(&fmbuf);
 #endif
   }
 
@@ -89,20 +83,11 @@ int sound_init(void)
   snd.buffer_size = snd.sample_count * 2;
   printf("%s: snd.buffer_size=%d\n", __func__, snd.buffer_size);
 
-  /* Free sample buffer position table if previously allocated */
-  if(smptab)
-  {
-    free(smptab);
-    smptab = NULL;
-  }
-
   /* Prepare incremental info */
   snd.done_so_far = 0;
   smptab_len = (sms.display == DISPLAY_NTSC) ? 262 : 313;
-  smptab = malloc(smptab_len * sizeof(int));
-  if (!smptab) abort();
 
-  for (i = 0; i < smptab_len; i++)
+  for(i = 0; i < smptab_len; i++)
   {
     double calc = (snd.sample_count * i);
     calc = calc / (double)smptab_len;
@@ -112,20 +97,17 @@ int sound_init(void)
   /* Allocate emulated sound streams */
   for(i = 0; i < STREAM_MAX; i++)
   {
-    snd.stream[i] = malloc(snd.buffer_size);
+    snd.stream[i] = calloc(snd.buffer_size, 1);
     if(!snd.stream[i]) abort();
-    memset(snd.stream[i], 0, snd.buffer_size);
   }
 
-#ifndef NGC
   /* Allocate sound output streams */
-  snd.output[0] = malloc(snd.buffer_size);
-  snd.output[1] = malloc(snd.buffer_size);
+  snd.output[0] = calloc(snd.buffer_size, 1);
+  snd.output[1] = calloc(snd.buffer_size, 1);
   if(!snd.output[0] || !snd.output[1]) abort();
-#endif
 
   /* Set up buffer pointers */
-  fm_buffer = (int16 **)&snd.stream[STREAM_FM_MO];
+  // fm_buffer = (int16 **)&snd.stream[STREAM_FM_MO];
   psg_buffer = (int16 **)&snd.stream[STREAM_PSG_L];
 
   /* Set up SN76489 emulation */
@@ -140,10 +122,8 @@ int sound_init(void)
   /* Restore YM2413 register settings */
   if(restore_sound)
   {
-    memcpy (SN76489_GetContextPtr (0),psgbuf,SN76489_GetContextSize ());
-    //FM_SetContext(fmbuf);
-    free(fmbuf);
-    free(psgbuf);
+    memcpy(SN76489_GetContextPtr(0), &psgbuf, SN76489_GetContextSize());
+    //FM_SetContext(&fmbuf);
   }
 
   /* Inform other functions that we can use sound */
@@ -170,7 +150,6 @@ void sound_shutdown(void)
     }
   }
 
-#ifndef NGC
   /* Free sound output buffers */
   for(i = 0; i < 2; i++)
   {
@@ -180,7 +159,6 @@ void sound_shutdown(void)
       snd.output[i] = NULL;
     }
   }
-#endif
 
   /* Shut down SN76489 emulation */
   SN76489_Shutdown();
@@ -209,7 +187,8 @@ void sound_reset(void)
 
 void sound_update(int line)
 {
-  int16 *fm[2], *psg[2];
+  int16 *psg[2];
+  // int16 *fm[2];
 
   if(!snd.enabled)
     return;
@@ -219,8 +198,8 @@ void sound_update(int line)
   {
     psg[0] = psg_buffer[0] + snd.done_so_far;
     psg[1] = psg_buffer[1] + snd.done_so_far;
-    fm[0]  = fm_buffer[0] + snd.done_so_far;
-    fm[1]  = fm_buffer[1] + snd.done_so_far;
+    // fm[0]  = fm_buffer[0] + snd.done_so_far;
+    // fm[1]  = fm_buffer[1] + snd.done_so_far;
 
     /* Generate SN76489 sample data */
     SN76489_Update(0, psg, snd.sample_count - snd.done_so_far);
@@ -245,8 +224,8 @@ void sound_update(int line)
     /* Do a tiny bit */
     psg[0] = psg_buffer[0] + snd.done_so_far;
     psg[1] = psg_buffer[1] + snd.done_so_far;
-    fm[0]  = fm_buffer[0] + snd.done_so_far;
-    fm[1]  = fm_buffer[1] + snd.done_so_far;
+    // fm[0]  = fm_buffer[0] + snd.done_so_far;
+    // fm[1]  = fm_buffer[1] + snd.done_so_far;
 
     /* Generate SN76489 sample data */
     SN76489_Update(0, psg, tinybit);
@@ -314,5 +293,6 @@ void fmunit_detect_w(int data)
 void fmunit_write(int offset, int data)
 {
   if(!snd.enabled || !sms.use_fm) return;
-  abort(); //FM_Write(offset, data);
+  printf("fmunit_write: FM Not supported write %02x at %04x\n", data, offset);
+  // FM_Write(offset, data);
 }

@@ -37,7 +37,10 @@
 #define  NES_SCREEN_WIDTH     256
 #define  NES_SCREEN_HEIGHT    240
 
+#define  NES_RAMSIZE 0x800
+
 #define  MAX_MEM_HANDLERS     32
+#define  LAST_MEMORY_HANDLER  { -1, -1, NULL }
 
 typedef enum
 {
@@ -68,6 +71,10 @@ typedef struct nes_s
    /* video buffer */
    bitmap_t *vidbuf;
 
+   /* Memory */
+   uint8 ram[NES_RAMSIZE];
+
+   /* Misc */
    region_t region;
    short overscan;
 
@@ -87,15 +94,10 @@ typedef struct nes_s
 } nes_t;
 
 
-/* temp hack */
-extern nes_t *nes_getcontextptr(void);
-
 /* Function prototypes */
-extern void nes_getcontext(nes_t *machine);
-extern void nes_setcontext(nes_t *machine);
-
 extern nes_t *nes_create(region_t region);
-extern void nes_destroy(nes_t **machine);
+extern nes_t *nes_getptr(void);
+extern void nes_destroy();
 extern int nes_insertcart(const char *filename, nes_t *machine);
 extern void nes_setregion(region_t region, nes_t *machine);
 extern void nes_emulate(void);
@@ -105,7 +107,5 @@ extern void nes_togglepause(void);
 
 extern void nes_nmi(void);
 extern void nes_irq(void);
-
-extern void nes_compatibility_hacks(void);
 
 #endif /* _NES_H_ */

@@ -147,11 +147,6 @@ void apu_getcontext(apu_t *dest_apu)
    *dest_apu = apu;
 }
 
-apu_t* apu_getcontextptr()
-{
-   return &apu;
-}
-
 void apu_setchan(int chan, bool enabled)
 {
    if (enabled)
@@ -1051,11 +1046,9 @@ apu_t *apu_create(double base_freq, int sample_rate, int refresh_rate, int sampl
    apu_t *temp_apu;
    int channel;
 
-   temp_apu = malloc(sizeof(apu_t));
+   temp_apu = calloc(sizeof(apu_t), 1);
    if (NULL == temp_apu)
       return NULL;
-
-   memset(temp_apu, 0, sizeof(apu_t));
 
    /* set the update routine */
    temp_apu->process = apu_process;

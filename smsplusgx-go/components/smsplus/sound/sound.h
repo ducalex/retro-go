@@ -28,10 +28,10 @@
 enum {
   STREAM_PSG_L, /* PSG left channel */
   STREAM_PSG_R, /* PSG right channel */
-  STREAM_FM_MO, /* YM2413 melody channel */
-  STREAM_FM_RO, /* YM2413 rhythm channel */
+  // STREAM_FM_MO, /* YM2413 melody channel */
+  // STREAM_FM_RO, /* YM2413 rhythm channel */
   STREAM_MAX    /* Total # of sound streams */
-};  
+};
 
 /* Sound emulation structure */
 typedef struct

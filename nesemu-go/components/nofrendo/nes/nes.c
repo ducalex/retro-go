@@ -48,46 +48,22 @@
 // #define  NES_SCANLINE_CYCLES  (1364.0 / NES_CLOCK_DIVIDER)
 // #define  NES_FIQ_PERIOD       (NES_MASTER_CLOCK / NES_CLOCK_DIVIDER / 60)
 
-static const int NES_RAMSIZE = (0x800);
 
 static nes_t nes;
 
-/* TODO: just asking for problems -- please remove */
-nes_t *nes_getcontextptr(void)
+nes_t *nes_getptr(void)
 {
    return &nes;
 }
 
-void nes_getcontext(nes_t *machine)
-{
-   apu_getcontext(nes.apu);
-   ppu_getcontext(nes.ppu);
-   nes6502_getcontext(nes.cpu);
-   mmc_getcontext(nes.mmc);
-
-   *machine = nes;
-}
-
-void nes_setcontext(nes_t *machine)
-{
-   ASSERT(machine);
-
-   apu_setcontext(machine->apu);
-   ppu_setcontext(machine->ppu);
-   nes6502_setcontext(machine->cpu);
-   mmc_setcontext(machine->mmc);
-
-   nes = *machine;
-}
-
 static uint8 IRAM_ATTR ram_read(uint32 address)
 {
-   return nes.cpu->mem_page[0][address & (NES_RAMSIZE - 1)];
+   return nes.ram[address & (NES_RAMSIZE - 1)];
 }
 
 static void IRAM_ATTR ram_write(uint32 address, uint8 value)
 {
-   nes.cpu->mem_page[0][address & (NES_RAMSIZE - 1)] = value;
+   nes.ram[address & (NES_RAMSIZE - 1)] = value;
 }
 
 static void write_protect(uint32 address, uint8 value)
@@ -105,7 +81,6 @@ static uint8 read_protect(uint32 address)
    return 0xFF;
 }
 
-#define  LAST_MEMORY_HANDLER  { -1, -1, NULL }
 /* read/write handlers for standard NES */
 static nes6502_memread default_readhandler[] =
 {
@@ -239,15 +214,6 @@ static void build_address_handlers(nes_t *machine)
    machine->writehandler[num_handlers].write_func = NULL;
    num_handlers++;
    ASSERT(num_handlers <= MAX_MEM_HANDLERS);
-}
-
-void nes_compatibility_hacks(void)
-{
-   // Disable the Frame Counter interrupt
-   // apu_getcontextptr()->fc.disable_irq =
-   //       nes.rominfo->checksum == 0xDBB3BC30 || // Teenage Mutant Ninja Turtles 3 (USA)
-   //       nes.rominfo->checksum == 0x0639E88E || // Felix the cat (USA)
-   //       nes.rominfo->checksum == 0x150908E5;   // Tetris 2 + Bombliss (J)
 }
 
 /* raise an IRQ */
@@ -398,25 +364,14 @@ void nes_reset(int reset_type)
    nofrendo_notify("NES %s", (SOFT_RESET == reset_type) ? "reset" : "powered on");
 }
 
-void nes_destroy(nes_t **machine)
+void nes_destroy()
 {
-   if (*machine)
-   {
-      rom_free(&(*machine)->rominfo);
-      mmc_destroy(&(*machine)->mmc);
-      ppu_destroy(&(*machine)->ppu);
-      apu_destroy(&(*machine)->apu);
-      bmp_destroy(&(*machine)->vidbuf);
-      if ((*machine)->cpu)
-      {
-         if ((*machine)->cpu->mem_page[0])
-            free((*machine)->cpu->mem_page[0]);
-         free((*machine)->cpu);
-      }
-
-      free(*machine);
-      *machine = NULL;
-   }
+   rom_free(nes.rominfo);
+   mmc_destroy(nes.mmc);
+   ppu_destroy(nes.ppu);
+   apu_destroy(nes.apu);
+   bmp_destroy(nes.vidbuf);
+   free(nes.cpu);
 }
 
 void nes_poweroff(void)
@@ -461,14 +416,17 @@ int nes_insertcart(const char *filename, nes_t *machine)
 
    // nes_setregion();
 
-   nes_setcontext(machine);
+   apu_setcontext(machine->apu);
+   ppu_setcontext(machine->ppu);
+   nes6502_setcontext(machine->cpu);
+   mmc_setcontext(machine->mmc);
 
    nes_reset(HARD_RESET);
 
    return 0;
 
 _fail:
-   nes_destroy(&machine);
+   nes_destroy();
    return -1;
 }
 
@@ -476,12 +434,11 @@ _fail:
 /* Initialize NES CPU, hardware, etc. */
 nes_t *nes_create(region_t region)
 {
-   nes_t *machine;
    sndinfo_t osd_sound;
+   nes_t *machine;
 
-   machine = calloc(sizeof(nes_t), 1);
-   if (NULL == machine)
-      return NULL;
+   machine = &nes;
+   memset(machine, 0, sizeof(nes_t));
 
    // https://wiki.nesdev.com/w/index.php/Cycle_reference_chart
    if (region == NES_PAL)
@@ -517,11 +474,8 @@ nes_t *nes_create(region_t region)
    if (NULL == machine->cpu)
       goto _fail;
 
-   /* allocate 2kB RAM */
-   machine->cpu->mem_page[0] = malloc(NES_RAMSIZE);
-   if (NULL == machine->cpu->mem_page[0])
-      goto _fail;
-
+   /* Memory */
+   machine->cpu->mem_page[0] = &machine->ram;
    machine->cpu->read_handler = machine->readhandler;
    machine->cpu->write_handler = machine->writehandler;
 
@@ -539,6 +493,6 @@ nes_t *nes_create(region_t region)
    return machine;
 
 _fail:
-   nes_destroy(&machine);
+   nes_destroy();
    return NULL;
 }

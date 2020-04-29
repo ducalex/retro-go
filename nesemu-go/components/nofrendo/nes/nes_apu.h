@@ -242,7 +242,6 @@ extern "C" {
 /* Function prototypes */
 extern void apu_setcontext(apu_t *src_apu);
 extern void apu_getcontext(apu_t *dest_apu);
-extern apu_t* apu_getcontextptr();
 
 extern void apu_setparams(double base_freq, int sample_rate, int refresh_rate, int sample_bits);
 extern apu_t *apu_create(double base_freq, int sample_rate, int refresh_rate, int sample_bits);

@@ -71,6 +71,7 @@ char* odroid_system_get_path(char *romPath, emu_path_type_t type);
 void odroid_system_spi_lock_acquire(spi_lock_res_t);
 void odroid_system_spi_lock_release(spi_lock_res_t);
 
+/* helpers */
 
 static inline uint get_frame_time(uint refresh_rate)
 {
@@ -91,50 +92,13 @@ static inline uint get_elapsed_time_since(uint start)
      return get_elapsed_time() - start;
 }
 
-
-// Perhaps the following functions shouldn't be inline, it's not performance-critical?
-
 #define MEM_ANY   0
 #define MEM_SLOW  MALLOC_CAP_SPIRAM
 #define MEM_FAST  MALLOC_CAP_INTERNAL
 #define MEM_DMA   MALLOC_CAP_DMA
 #define MEM_8BIT  MALLOC_CAP_8BIT
 #define MEM_32BIT MALLOC_CAP_32BIT
+// #define rg_alloc(...)  rg_alloc_(..., __FILE__, __FUNCTION__)
 
-static inline void *rg_alloc(size_t size, uint32_t caps)
-{
-     void *ptr;
-
-     if (!(caps & MALLOC_CAP_32BIT))
-     {
-          caps |= MALLOC_CAP_8BIT;
-     }
-
-     ptr = heap_caps_calloc(1, size, caps);
-
-     printf("RG_ALLOC: SIZE: %u  [SPIRAM: %u; 32BIT: %u; DMA: %u]  PTR: %p\n",
-               size, (caps & MALLOC_CAP_SPIRAM) != 0, (caps & MALLOC_CAP_32BIT) != 0,
-               (caps & MALLOC_CAP_DMA) != 0, ptr);
-
-     if (!ptr)
-     {
-          size_t availaible = heap_caps_get_largest_free_block(caps);
-
-          // Loosen the caps and try again
-          ptr = heap_caps_calloc(1, size, caps & ~(MALLOC_CAP_SPIRAM|MALLOC_CAP_INTERNAL));
-          if (!ptr)
-          {
-               printf("RG_ALLOC: *** Memory allocation failed ***\n");
-               odroid_system_panic("Memory allocation failed!");
-          }
-
-          printf("RG_ALLOC: *** CAPS not fully met (req: %d, available: %d) ***\n", size, availaible);
-     }
-
-     return ptr;
-}
-
-static inline void rg_free(void *ptr)
-{
-     return heap_caps_free(ptr);
-}
+void *rg_alloc(size_t size, uint32_t caps);
+void rg_free(void *ptr);

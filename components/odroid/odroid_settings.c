@@ -42,15 +42,13 @@ char* odroid_settings_string_get(const char *key, char *default_value)
     esp_err_t err = nvs_get_str(my_handle, key, NULL, &required_size);
     if (err == ESP_OK)
     {
-        char* value = malloc(required_size);
-        if (!value) abort();
+        char* value = rg_alloc(required_size, MEM_ANY);
 
         esp_err_t err = nvs_get_str(my_handle, key, value, &required_size);
-        if (err != ESP_OK) abort();
-
-        result = value;
-
-        // printf("%s: key='%s' value='%s'\n", __func__, key, result);
+        if (err == ESP_OK)
+        {
+            result = value;
+        }
     }
 
     if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)

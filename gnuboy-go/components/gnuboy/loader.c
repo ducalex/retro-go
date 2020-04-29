@@ -389,25 +389,6 @@ void loader_unload()
 	ram.sbank = romfile = sramfile = saveprefix = 0;
 }
 
-/* basename/dirname like function */
-static char *base(char *s)
-{
-	char *p;
-	p = (char *) strrchr((unsigned char)s, '/');
-	if (p) return p+1;
-	return s;
-}
-
-static char *ldup(char *s)
-{
-	int i;
-	char *n, *p;
-	p = n = malloc(strlen(s));
-	for (i = 0; s[i]; i++) if (isalnum((unsigned char)s[i])) *(p++) = tolower((unsigned char)s[i]);
-	*p = 0;
-	return n;
-}
-
 void loader_init(char *s)
 {
 	romfile = s;

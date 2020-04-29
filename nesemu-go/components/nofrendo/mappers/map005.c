@@ -43,7 +43,7 @@ static void map5_hblank(int vblank)
 {
    UNUSED(vblank);
 
-   if (irq.counter == nes_getcontextptr()->scanline)
+   if (irq.counter == nes_getptr()->scanline)
    {
       if (true == irq.enabled)
       {

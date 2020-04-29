@@ -27,13 +27,13 @@
 #define BACKLIGHT_DUTY_MAX 0x1fff
 
 #define SPI_TRANSACTION_COUNT (5)
-#define SPI_TRANSACTION_BUFFER_LENGTH (SPI_MAX_DMA_LEN / 2) // 16bit words
+#define SPI_TRANSACTION_BUFFER_LENGTH (6 * 320) // (SPI_MAX_DMA_LEN / 2) // 16bit words
 
 // Maximum amount of change (percent) in a frame before we trigger a full transfer
 // instead of a partial update (faster). This also allows us to stop the diff early!
 #define FULL_UPDATE_THRESHOLD (0.6f) // 0.4f
 
-static uint16_t* spi_buffers[SPI_TRANSACTION_COUNT];
+static DMA_ATTR uint16_t spi_buffers[SPI_TRANSACTION_COUNT][SPI_TRANSACTION_BUFFER_LENGTH];
 static QueueHandle_t spi_queue;
 static QueueHandle_t spi_buffer_queue;
 static SemaphoreHandle_t spi_count_semaphore;
@@ -84,7 +84,7 @@ typedef struct {
 #define MADCTL_MH 0x04
 #define TFT_RGB_BGR 0x08
 
-DRAM_ATTR static const ili_init_cmd_t ili_sleep_cmds[] = {
+static DRAM_ATTR const ili_init_cmd_t ili_sleep_cmds[] = {
     {TFT_CMD_SWRESET, {0}, 0x80},
     {TFT_CMD_DISPLAY_OFF, {0}, 0x80},
     {TFT_CMD_SLEEP, {0}, 0x80},
@@ -93,7 +93,7 @@ DRAM_ATTR static const ili_init_cmd_t ili_sleep_cmds[] = {
 
 
 // 2.4" LCD
-DRAM_ATTR static const ili_init_cmd_t ili_init_cmds[] = {
+static DRAM_ATTR const ili_init_cmd_t ili_init_cmds[] = {
     // VCI=2.8V
     //************* Start Initial Sequence **********//
     {TFT_CMD_SWRESET, {0}, 0x80},
@@ -1005,8 +1005,6 @@ static void spi_initialize()
 
     for (short x = 0; x < SPI_TRANSACTION_COUNT; x++)
     {
-        spi_buffers[x] = heap_caps_malloc(SPI_TRANSACTION_BUFFER_LENGTH * 2, MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
-        if (!spi_buffers[x]) abort();
         spi_put_buffer(spi_buffers[x]);
 
         void* param = &trans[x];

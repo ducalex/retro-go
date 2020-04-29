@@ -373,7 +373,10 @@ static SNSS_RETURN_CODE
 SNSS_ReadBaseBlock (SNSS_FILE *snssFile)
 {
    char* blockBytes = malloc(BASE_BLOCK_LENGTH);
-   if (!blockBytes) abort();
+   if (!blockBytes)
+   {
+      return SNSS_OUT_OF_MEMORY;
+   }
 
    SnssBlockHeader header;
 
@@ -423,7 +426,10 @@ SNSS_WriteBaseBlock (SNSS_FILE *snssFile)
    SNSS_RETURN_CODE returnCode;
 
    char* blockBytes = malloc(BASE_BLOCK_LENGTH);
-   if (!blockBytes) abort();
+   if (!blockBytes)
+   {
+      return SNSS_OUT_OF_MEMORY;
+   }
 
    unsigned short tempShort;
 
@@ -591,7 +597,7 @@ SNSS_WriteSramBlock (SNSS_FILE *snssFile)
 static SNSS_RETURN_CODE
 SNSS_ReadMapperBlock (SNSS_FILE *snssFile)
 {
-   char *blockBytes;
+   char blockBytes[0x8 + 0x10 + 0x80];
    int i;
    SnssBlockHeader header;
 
@@ -600,14 +606,8 @@ SNSS_ReadMapperBlock (SNSS_FILE *snssFile)
       return SNSS_READ_FAILED;
    }
 
-   if ((blockBytes = (char *) malloc(0x8 + 0x10 + 0x80)) == NULL)
+   if (fread (&blockBytes, MIN (sizeof(blockBytes), header.blockLength), 1, snssFile->fp) != 1)
    {
-      return SNSS_OUT_OF_MEMORY;
-   }
-
-   if (fread (blockBytes, MIN (0x8 + 0x10 + 0x80, header.blockLength), 1, snssFile->fp) != 1)
-   {
-      free(blockBytes);
       return SNSS_READ_FAILED;
    }
 
@@ -624,8 +624,6 @@ SNSS_ReadMapperBlock (SNSS_FILE *snssFile)
    }
 
    memcpy (&snssFile->mapperBlock.extraData.mapperData, &blockBytes[0x18], 0x80);
-
-   free (blockBytes);
 
    return SNSS_OK;
 }

@@ -75,7 +75,7 @@ void nofrendo_refresh()
 void nofrendo_stop(void)
 {
    nes_poweroff();
-   nes_destroy(&console);
+   nes_destroy();
 
    // osd_shutdown();
    // vid_shutdown();

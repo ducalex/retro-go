@@ -9,10 +9,6 @@ typedef signed char int8;
 typedef signed short int int16;
 typedef signed long int int32;
 
-#ifdef NGC
-#include "osd.h"
-#endif
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -24,7 +20,6 @@ typedef signed long int int32;
 //#include <zlib.h>
 #include <esp_attr.h>
 
-#ifndef NGC
 #ifndef PATH_MAX
 #ifdef  MAX_PATH
 #define PATH_MAX    MAX_PATH
@@ -32,7 +27,9 @@ typedef signed long int int32;
 #define PATH_MAX    1024
 #endif
 #endif
-#endif
+
+#undef PATH_MAX
+#define PATH_MAX 255
 
 #include "z80.h"
 #include "sms.h"
@@ -49,7 +46,7 @@ typedef signed long int int32;
 #include "system.h"
 #include "error.h"
 #include "loadrom.h"
-#include "config.h"
+// #include "config.h"
 #include "state.h"
 
 #endif /* _SHARED_H_ */

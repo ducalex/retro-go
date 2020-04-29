@@ -168,7 +168,7 @@ uint odroid_system_get_start_action()
 char* odroid_system_get_path(char *_romPath, emu_path_type_t type)
 {
     char* fileName = strstr(_romPath ?: romPath, ODROID_BASE_PATH_ROMS);
-    char *buffer = malloc(256); // Lazy arbitrary length...
+    char *buffer = rg_alloc(256, MEM_ANY); // Lazy arbitrary length...
 
     if (!fileName || strlen(fileName) < 4)
     {
@@ -405,4 +405,44 @@ void IRAM_ATTR odroid_system_spi_lock_release(spi_lock_res_t owner)
         xSemaphoreGive(spiMutex);
         spiMutexOwner = SPI_LOCK_ANY;
     }
+}
+
+/* helpers */
+
+void *rg_alloc(size_t size, uint32_t caps)
+{
+     void *ptr;
+
+     if (!(caps & MALLOC_CAP_32BIT))
+     {
+          caps |= MALLOC_CAP_8BIT;
+     }
+
+     ptr = heap_caps_calloc(1, size, caps);
+
+     printf("RG_ALLOC: SIZE: %u  [SPIRAM: %u; 32BIT: %u; DMA: %u]  PTR: %p\n",
+               size, (caps & MALLOC_CAP_SPIRAM) != 0, (caps & MALLOC_CAP_32BIT) != 0,
+               (caps & MALLOC_CAP_DMA) != 0, ptr);
+
+     if (!ptr)
+     {
+          size_t availaible = heap_caps_get_largest_free_block(caps);
+
+          // Loosen the caps and try again
+          ptr = heap_caps_calloc(1, size, caps & ~(MALLOC_CAP_SPIRAM|MALLOC_CAP_INTERNAL));
+          if (!ptr)
+          {
+               printf("RG_ALLOC: *** Memory allocation failed ***\n");
+               odroid_system_panic("Memory allocation failed!");
+          }
+
+          printf("RG_ALLOC: *** CAPS not fully met (req: %d, available: %d) ***\n", size, availaible);
+     }
+
+     return ptr;
+}
+
+void rg_free(void *ptr)
+{
+     return heap_caps_free(ptr);
 }

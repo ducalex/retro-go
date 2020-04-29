@@ -363,9 +363,9 @@ void set_config()
 #endif
 }
 
-int load_rom (char *filename)
+int load_rom(char *filename)
 {
-  cart.rom = malloc(0x200000);
+  cart.rom = rg_alloc(0x200000, MEM_SLOW);
 
   int actual_size = odroid_sdcard_copy_file_to_memory(filename, cart.rom, 0x200000);
   if (actual_size <= 0)
