@@ -6,13 +6,11 @@
 #include "cpu.h"
 #include "hw.h"
 #include "regs.h"
-#include "rc.h"
 #include "noise.h"
 
 #include <esp_attr.h>
-#include "freertos/FreeRTOS.h"
 
-static const byte DRAM_ATTR dmgwave[16] =
+static const byte dmgwave[16] =
 {
 	0xac, 0xdd, 0xda, 0x48,
 	0x36, 0x02, 0xcf, 0x16,
@@ -20,7 +18,7 @@ static const byte DRAM_ATTR dmgwave[16] =
 	0xac, 0xdd, 0xda, 0x48
 };
 
-static const byte DRAM_ATTR cgbwave[16] =
+static const byte cgbwave[16] =
 {
 	0x00, 0xff, 0x00, 0xff,
 	0x00, 0xff, 0x00, 0xff,
@@ -28,7 +26,7 @@ static const byte DRAM_ATTR cgbwave[16] =
 	0x00, 0xff, 0x00, 0xff,
 };
 
-static const byte DRAM_ATTR sqwave[4][8] =
+static DRAM_ATTR const byte sqwave[4][8] =
 {
 	{  0, 0,-1, 0, 0, 0, 0, 0 },
 	{  0,-1,-1, 0, 0, 0, 0, 0 },
@@ -36,7 +34,7 @@ static const byte DRAM_ATTR sqwave[4][8] =
 	{ -1, 0, 0,-1,-1,-1,-1,-1 }
 };
 
-static const int DRAM_ATTR freqtab[8] =
+static DRAM_ATTR const int freqtab[8] =
 {
 	(1<<14)*2,
 	(1<<14),
@@ -57,38 +55,33 @@ struct snd snd;
 #define S3 (snd.ch[2])
 #define S4 (snd.ch[3])
 
-rcvar_t sound_exports[] =
-{
-	RCV_END
-};
 
-
-inline static void s1_freq_d(int d)
+static inline void s1_freq_d(int d)
 {
 	if (RATE > (d<<4)) S1.freq = 0;
 	else S1.freq = (RATE << 17)/d;
 }
 
-inline static void s1_freq()
+static inline void s1_freq()
 {
 	s1_freq_d(2048 - (((R_NR14&7)<<8) + R_NR13));
 }
 
-inline static void s2_freq()
+static inline void s2_freq()
 {
 	int d = 2048 - (((R_NR24&7)<<8) + R_NR23);
 	if (RATE > (d<<4)) S2.freq = 0;
 	else S2.freq = (RATE << 17)/d;
 }
 
-inline static void s3_freq()
+static inline void s3_freq()
 {
 	int d = 2048 - (((R_NR34&7)<<8) + R_NR33);
 	if (RATE > (d<<3)) S3.freq = 0;
 	else S3.freq = (RATE << 21)/d;
 }
 
-inline static void s4_freq()
+static inline void s4_freq()
 {
 	S4.freq = (freqtab[R_NR43&7] >> (R_NR43 >> 4)) * RATE;
 	if (S4.freq >> 18) S4.freq = 1<<18;
@@ -299,7 +292,7 @@ byte sound_read(byte r)
 	return REG(r);
 }
 
-void s1_init()
+static inline void s1_init()
 {
 	S1.swcnt = 0;
 	S1.swfreq = ((R_NR14&7)<<8) + R_NR13;
@@ -313,7 +306,7 @@ void s1_init()
 	S1.encnt = 0;
 }
 
-void s2_init()
+static inline void s2_init()
 {
 	S2.envol = R_NR22 >> 4;
 	S2.endir = (R_NR22>>3) & 1;
@@ -325,7 +318,7 @@ void s2_init()
 	S2.encnt = 0;
 }
 
-void s3_init()
+static inline void s3_init()
 {
 	int i;
 	if (!S3.on) S3.pos = 0;
@@ -335,7 +328,7 @@ void s3_init()
 		ram.hi[i+0x30] = 0x13 ^ ram.hi[i+0x31];
 }
 
-void s4_init()
+static inline void s4_init()
 {
 	S4.envol = R_NR42 >> 4;
 	S4.endir = (R_NR42>>3) & 1;

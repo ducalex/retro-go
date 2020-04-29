@@ -50,7 +50,7 @@ void IRAM_ATTR stat_trigger()
  */
  /* FIXME: function now will only lower vblank interrupt, description
 does not match anymore */
-static void IRAM_ATTR stat_change(int stat)
+static void inline stat_change(int stat)
 {
 	stat &= 3;
 	R_STAT = (R_STAT & 0x7C) | stat;

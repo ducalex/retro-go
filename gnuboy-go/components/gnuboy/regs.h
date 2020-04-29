@@ -1,4 +1,3 @@
-
 #ifndef __REGS_H__
 #define __REGS_H__
 
@@ -22,12 +21,10 @@
 #define RI_SVBK  0x70
 
 
-
 /* Interrupts flags */
 
 #define RI_IF    0x0F
 #define RI_IE    0xFF
-
 
 
 
@@ -116,7 +113,6 @@
 
 
 
-
 /* LCDC */
 
 #define R_LCDC  REG(RI_LCDC)
@@ -172,10 +168,4 @@
 #define R_NR52 REG(RI_NR52)
 
 
-
 #endif
-
-
-
-
-

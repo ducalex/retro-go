@@ -240,7 +240,7 @@ void cpu_reset()
 /* cnt - time to emulate, expressed in 2MHz units in
 	single-speed and 4MHz units in double speed mode
 */
-inline void timer_advance(int cnt)
+static inline void timer_advance(int cnt)
 {
 	cpu.div += (cnt << 1);
 
@@ -272,7 +272,7 @@ inline void timer_advance(int cnt)
 /* cnt - time to emulate, expressed in 2MHz units in
 	single-speed and 4MHz units in double speed mode
 */
-inline void serial_advance(int cnt)
+static inline void serial_advance(int cnt)
 {
 	if (cpu.serial > 0)
 	{
@@ -292,14 +292,14 @@ inline void serial_advance(int cnt)
 	Will call lcdc_trans() if CPU emulation catched up or
 	went ahead of LCDC, so that lcd never falls	behind
 */
-inline void lcdc_advance(int cnt)
+static inline void lcdc_advance(int cnt)
 {
 	cpu.lcdc -= cnt;
 	if (cpu.lcdc <= 0) lcdc_trans();
 }
 
 /* cnt - time to emulate, expressed in 2MHz units */
-inline void sound_advance(int cnt)
+static inline void sound_advance(int cnt)
 {
 	cpu.sound += cnt;
 }

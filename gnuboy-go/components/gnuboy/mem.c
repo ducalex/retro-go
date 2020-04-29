@@ -84,7 +84,7 @@ void IRAM_ATTR mem_updatemap()
  * byte value to be written.
  */
 
-inline void ioreg_write(byte r, byte b)
+static inline void ioreg_write(byte r, byte b)
 {
 	if (!hw.cgb)
 	{
@@ -218,7 +218,7 @@ inline void ioreg_write(byte r, byte b)
 }
 
 
-inline byte ioreg_read(byte r)
+static inline byte ioreg_read(byte r)
 {
 	switch(r)
 	{
@@ -275,7 +275,7 @@ inline byte ioreg_read(byte r)
  * and a byte value written to the address.
  */
 
-inline void mbc_write(int a, byte b)
+static inline void mbc_write(int a, byte b)
 {
 	byte ha = (a >> 12);
 

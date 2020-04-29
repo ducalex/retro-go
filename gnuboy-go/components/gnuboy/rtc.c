@@ -4,17 +4,10 @@
 #include "defs.h"
 #include "mem.h"
 #include "rtc.h"
-#include "rc.h"
 
 struct rtc rtc;
 
 static int syncrtc = 1;
-
-rcvar_t rtc_exports[] =
-{
-	RCV_BOOL("syncrtc", &syncrtc),
-	RCV_END
-};
 
 
 void rtc_latch(byte b)

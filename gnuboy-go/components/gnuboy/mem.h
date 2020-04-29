@@ -50,24 +50,23 @@ extern struct ram ram;
 void mem_updatemap();
 void mem_write(word a, byte b);
 byte mem_read(word a);
-// void mbc_write(int a, byte b);
 void mbc_reset();
 
-inline static byte readb(word a)
+static inline byte readb(word a)
 {
 	byte *p = mbc.rmap[a>>12];
 	if (p) return p[a];
 	return mem_read(a);
 }
 
-inline static void writeb(word a, byte b)
+static inline void writeb(word a, byte b)
 {
 	byte *p = mbc.wmap[a>>12];
 	if (p) p[a] = b;
 	else mem_write(a, b);
 }
 
-inline static word readw(word a)
+static inline word readw(word a)
 {
 #ifdef IS_LITTLE_ENDIAN
 	if ((a & 0xFFF) == 0xFFF)
@@ -83,7 +82,7 @@ inline static word readw(word a)
 	return mem_read(a) | (mem_read(a + 1) << 8);
 }
 
-inline static void writew(word a, word w)
+static inline void writew(word a, word w)
 {
 #ifdef IS_LITTLE_ENDIAN
 	if ((a & 0xFFF) == 0xFFF)

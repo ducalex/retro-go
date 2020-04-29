@@ -10,16 +10,12 @@
 #include "hw.h"
 #include "lcd.h"
 #include "rtc.h"
-#include "rc.h"
 #include "sound.h"
 
 #include "esp_heap_caps.h"
-#include "esp_system.h"
-
 #include "odroid_system.h"
-#include "odroid_display.h"
 
-static int mbc_table[256] =
+static const byte mbc_table[256] =
 {
 	0, 1, 1, 1, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 3,
 	3, 3, 3, 3, 0, 0, 0, 0, 0, 5, 5, 5, MBC_RUMBLE, MBC_RUMBLE, MBC_RUMBLE, 0,
@@ -42,21 +38,21 @@ static int mbc_table[256] =
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, MBC_HUC3, MBC_HUC1
 };
 
-static int rtc_table[256] =
+static const byte rtc_table[256] =
 {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
 	1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0
 };
 
-static int batt_table[256] =
+static const byte batt_table[256] =
 {
 	0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0,
 	1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0,
 	0
 };
 
-static int romsize_table[256] =
+static const short romsize_table[256] =
 {
 	2, 4, 8, 16, 32, 64, 128, 256, 512,
 	0, 0, 0, 0, 0, 0, 0, 0,
@@ -72,7 +68,7 @@ static int romsize_table[256] =
 	/* 0, 0, 72, 80, 96  -- actual values but bad to use these! */
 };
 
-static int ramsize_table[256] =
+static const byte ramsize_table[256] =
 {
 	1, 1, 1, 4, 16,
 	4 /* FIXME - what value should this be?! */
@@ -86,21 +82,17 @@ static char *sramfile=NULL;
 static char *rtcfile=NULL;
 static char *saveprefix=NULL;
 
-static char *savename=NULL;
-static char *savedir=NULL;
-
-static int saveslot=0;
-
 static int forcebatt=0, nobatt=0;
 static int forcedmg=0, gbamode=0;
 
 static int memfill = 0, memrand = -1;
 
 
-static void initmem(void *mem, int size)
+static inline void initmem(void *mem, int size)
 {
 	memset(mem, 0xff /*memfill*/, size);
 }
+
 
 static byte *loadfile(FILE *f, int *len)
 {
@@ -115,30 +107,6 @@ static byte *loadfile(FILE *f, int *len)
 	}
 	*len = l;
 	return d;
-}
-
-static byte *inf_buf;
-static int inf_pos, inf_len;
-
-static void inflate_callback(byte b)
-{
-	if (inf_pos >= inf_len)
-	{
-		inf_len += 512;
-		inf_buf = realloc(inf_buf, inf_len);
-		if (!inf_buf) die("out of memory inflating file @ %d bytes\n", inf_pos);
-	}
-	inf_buf[inf_pos++] = b;
-}
-
-
-static byte *decompress(byte *data, int *len)
-{
-	// if (data[0] == 0x1f && data[1] == 0x8b)
-	// 	return gunzip(data, len);
-	// if(data[0] == 0xFD && !memcmp(data+1, "7zXZ", 4))
-	// 	return do_unxz(data, len);
-	return data;
 }
 
 
@@ -399,17 +367,3 @@ void loader_init(char *s)
 	rtc_load();
 	// sram_load();
 }
-
-rcvar_t loader_exports[] =
-{
-	RCV_STRING("savedir", &savedir),
-	RCV_STRING("savename", &savename),
-	RCV_INT("saveslot", &saveslot),
-	RCV_BOOL("forcebatt", &forcebatt),
-	RCV_BOOL("nobatt", &nobatt),
-	RCV_BOOL("forcedmg", &forcedmg),
-	RCV_BOOL("gbamode", &gbamode),
-	RCV_INT("memfill", &memfill),
-	RCV_INT("memrand", &memrand),
-	RCV_END
-};

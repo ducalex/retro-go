@@ -1,11 +1,7 @@
-
-
 #ifndef __FB_H__
 #define __FB_H__
 
-
 #include "defs.h"
-
 
 
 struct fb
@@ -29,7 +25,3 @@ extern struct fb fb;
 
 
 #endif
-
-
-
-

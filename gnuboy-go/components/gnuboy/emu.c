@@ -8,8 +8,6 @@
 #include "mem.h"
 #include "lcd.h"
 #include "rtc.h"
-#include "rc.h"
-#include "esp_system.h"
 
 
 static int framelen = 16743;

@@ -5,12 +5,10 @@
 #include "cpu.h"
 #include "mem.h"
 #include "regs.h"
-#include "rc.h"
-
 #include "cpuregs.h"
-#ifndef GNUBOY_DISABLE_DEBUG_DISASSEMBLE
 
-static char *mnemonic_table[256] =
+
+static const char *mnemonic_table[256] =
 {
 	"NOP",
 	"LD BC,%w",
@@ -270,7 +268,7 @@ static char *mnemonic_table[256] =
 	"RST 38h"
 };
 
-static char *cb_mnemonic_table[256] =
+static const char *cb_mnemonic_table[256] =
 {
 	"RLC B",
 	"RLC C",
@@ -530,7 +528,7 @@ static char *cb_mnemonic_table[256] =
 	"SET 7,A"
 };
 
-static byte operand_count[256] =
+static const byte operand_count[256] =
 {
 	1, 3, 1, 1, 1, 1, 2, 1, 3, 1, 1, 1, 1, 1, 2, 1,
 	1, 3, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1,
@@ -550,7 +548,6 @@ static byte operand_count[256] =
 	2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 3, 1, 1, 1, 2, 1
 };
 
-#endif /* GNUBOY_DISABLE_DEBUG_DISASSEMBLE */
 
 /* replace with a real interactive debugger eventually... */
 
@@ -558,10 +555,6 @@ int debug_trace = 0;
 
 void debug_disassemble(addr a, int c)
 {
-#ifdef GNUBOY_DISABLE_DEBUG_DISASSEMBLE
-	(void) a; /* avoid warning about unused parameter */
-	(void) c; /* avoid warning about unused parameter */
-#else /* i.e. ifndef GNUBOY_DISABLE_DEBUG_DISASSEMBLE */
 	static int i, j, k;
 	static byte code;
 	static byte ops[3];
@@ -573,7 +566,7 @@ void debug_disassemble(addr a, int c)
 	{
 		k = 0;
 		opaddr = a;
-		code = ops[k++] = readb(a); a++;
+		code = ops[k++] = readb(a++);
 		if (code != 0xCB)
 		{
 			pattern = mnemonic_table[code];
@@ -582,7 +575,7 @@ void debug_disassemble(addr a, int c)
 		}
 		else
 		{
-			code = ops[k++] = readb(a); a++;
+			code = ops[k++] = readb(a++);
 			pattern = cb_mnemonic_table[code];
 		}
 		i = j = 0;
@@ -594,23 +587,20 @@ void debug_disassemble(addr a, int c)
 				{
 				case 'B':
 				case 'b':
-					ops[k] = readb(a); a++;
-					j += sprintf(mnemonic + j,
-						"%02Xh", ops[k++]);
+					ops[k] = readb(a++);
+					j += sprintf(mnemonic + j, "%02Xh", ops[k++]);
 					break;
 				case 'W':
 				case 'w':
-					ops[k] = readb(a); a++;
-					ops[k+1] = readb(a); a++;
-					j += sprintf(mnemonic + j, "%04Xh",
-						((ops[k+1] << 8) | ops[k]));
+					ops[k] = readb(a++);
+					ops[k+1] = readb(a++);
+					j += sprintf(mnemonic + j, "%04Xh", ((ops[k+1] << 8) | ops[k]));
 					k += 2;
 					break;
 				case 'O':
 				case 'o':
-					ops[k] = readb(a); a++;
-					j += sprintf(mnemonic + j, "%+d",
-						(n8)(ops[k++]));
+					ops[k] = readb(a++);
+					j += sprintf(mnemonic + j, "%+d", (n8)(ops[k++]));
 					break;
 				}
 				i++;
@@ -655,6 +645,5 @@ void debug_disassemble(addr a, int c)
 		fflush(stdout);
 		c--;
 	}
-#endif /* GNUBOY_DISABLE_DEBUG_DISASSEMBLE */
 }
 

@@ -151,7 +151,6 @@ struct svar svars[] =
 	END
 };
 
-//byte buf[4096];
 
 void loadstate(FILE *f)
 {

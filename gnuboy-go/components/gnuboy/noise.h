@@ -1,4 +1,3 @@
-
 #ifndef __NOISE_H__
 #define __NOISE_H__
 

@@ -8,7 +8,6 @@
 #include "hw.h"
 #include "mem.h"
 #include "lcd.h"
-#include "rc.h"
 #include "fb.h"
 
 #include "palettes.h"
@@ -658,7 +657,7 @@ void IRAM_ATTR pal_write_dmg(byte i, byte mapnum, byte d)
 	}
 }
 
-static void pal_detect_dmg()
+static inline void pal_detect_dmg()
 {
     uint8_t infoIdx = 0;
 	uint8_t checksum = 0;
