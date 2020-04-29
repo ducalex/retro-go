@@ -1,5 +1,3 @@
-#pragma GCC optimize ("O3")
-
 /******************************************************************************
  *  Sega Master System / GameGear Emulator
  *  Copyright (C) 1998-2007  Charles MacDonald
@@ -26,7 +24,7 @@
 
 int text_counter;               /* Text offset counter */
 
-extern const uint8 mc_lookup[16][256][8];    /* Expand BD, PG data into 8-bit pixels (MC) */
+static uint8 mc_lookup[16][256][8];    /* Expand BD, PG data into 8-bit pixels (MC) */
 static uint8 tms_lookup[16][256][2];   /* Expand BD, PG data into 8-bit pixels (G1,G2) */
 static uint8 tms_obj_lut[16*256];      /* Look up priority between SG and display pixels */
 static uint8 txt_lookup[256][2];       /* Expand BD, PG data into 8-bit pixels (TX) */
@@ -339,7 +337,6 @@ void make_tms_tables(void)
         txt_lookup[bd][1] = fg;
     }
 
-#if 0
     /* Multicolor lookup table */
     for(bd = 0; bd < 16; bd++)
     {
@@ -361,7 +358,6 @@ void make_tms_tables(void)
             }
         }
     }
-#endif
 
     /* Make bitmap data expansion table */
     memset(bp_expand, 0, sizeof(bp_expand));

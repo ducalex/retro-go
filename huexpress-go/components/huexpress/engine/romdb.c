@@ -22,13 +22,6 @@
 
 
 const struct rom_database kKnownRoms[KNOWN_ROM_COUNT] = {
-{0x3F9F95A4, "[BIOS] CD-ROM System (v1.0)", "NEC", __ID, __DATE, JAP | CD_SYSTEM},
-{0x52520BC6, "[BIOS] CD-ROM System (v2.0)", "NEC", __ID, __DATE, JAP | CD_SYSTEM},
-{0x283B74E0, "[BIOS] CD-ROM System (v2.1)", "NEC", __ID, __DATE, JAP | CD_SYSTEM},
-{0x51A12D90, "[BIOS] Games Express CD Card", "Games Express", __ID, __DATE, JAP | CD_SYSTEM},
-{0x6D9A73EF, "[BIOS] Super CD-ROM System (v3.0)", "NEC", "PCE-SC1", __DATE, JAP | CD_SYSTEM},
-{0x2B5B75FE, "[BIOS] TurboGrafx CD Super System Card (v3.0)", "NEC", __ID, __DATE, USA | CD_SYSTEM},
-{0xFF2A5EC3, "[BIOS] TurboGrafx CD System Card (v2.0)", "NEC", __ID, __DATE, USA | CD_SYSTEM},
 {0xFDE08D6D, "1943 Kai", "CAPCOM", "NX91002", "03-22-1991", JAP},
 {0x73614660, "21 Emon - Mezase Hotel Ou!!", "NEC", __ID, __DATE, JAP},
 {0x8E71D4F3, "Adventure Island", "Hudson", __ID, __DATE, JAP},

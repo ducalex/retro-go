@@ -25,15 +25,15 @@
 #define JAP          0x8000
 
 // Known Rom Count (from kKnownRoms)
-#define KNOWN_ROM_COUNT 428
+#define KNOWN_ROM_COUNT 421
 
 struct rom_database {
-	uint32      CRC;
-	char		Name[128];
-	char		Publisher[32];
-	char		ID[32];
-	char		Date[16];
-	uint32      Flags;
+	const uint32    CRC;
+	const char		*Name;
+	const char		*Publisher;
+	const char		*ID;
+	const char		*Date;
+	const uint32    Flags;
 };
 
 extern const struct rom_database kKnownRoms[KNOWN_ROM_COUNT];

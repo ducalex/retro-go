@@ -1,4 +1,3 @@
-#pragma GCC optimize ("O3")
 /******************************************************************************
  *  Sega Master System / GameGear Emulator
  *  Copyright (C) 1998-2007  Charles MacDonald

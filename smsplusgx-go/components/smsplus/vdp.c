@@ -1,4 +1,3 @@
-#pragma GCC optimize ("O3")
 /******************************************************************************
  *  Sega Master System / GameGear Emulator
  *  Copyright (C) 1998-2007  Charles MacDonald
@@ -39,7 +38,7 @@
   bg_name_dirty[name] |= (1 << ((addr >> 2) & 7));  \
 }
 #else
-#define MARK_BG_DIRTY(addr) 
+#define MARK_BG_DIRTY(addr)
 #endif
 
 /* VDP context */
