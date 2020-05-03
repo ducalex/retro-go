@@ -1,11 +1,6 @@
 #ifndef _INCLUDE_SYS_KBD_H
 #define _INCLUDE_SYS_KBD_H
 
-#include "cleantypes.h"
-#if defined(ENABLE_NETPLAY)
-#include "SDL_net.h"
-#endif
-
 #include "pce.h"
 
 #define JOY_A       0x01
@@ -16,18 +11,6 @@
 #define JOY_RIGHT   0x20
 #define JOY_DOWN    0x40
 #define JOY_LEFT    0x80
-
-typedef struct
-{
-	Sint16 axis[4];
-	Sint16 button[16];
-} js_status;
-
-extern char auto_fire_A[5];
-/* Is auto fire on */
-
-extern char auto_fire_B[5];
-/* Is auto fire on */
 
 /*
  * Input section
@@ -44,6 +27,23 @@ extern char auto_fire_B[5];
  */
 int osd_keyboard(void);
 
+  /*
+   * osd_keypressed
+   *
+   * Behaves like kbhit, returning 0 is case no key have been pressed and a
+   * non zero value if there's any key that can be read from osd_readkey
+   */
+char osd_keypressed(void);
+
+  /*
+   * osd_readkey
+   *
+   * Return info concerning the first keystroke, lower byte is the ascii code
+   * while the higher byte contains the scancode of the key.
+   * Once called, discard the value in the keystroke buffer
+   */
+uint16 osd_readkey(void);
+
 /*!
  * Initialize the input services
  * \return 1 if the initialization failed
@@ -56,7 +56,6 @@ int osd_init_input(void);
  */
 void osd_shutdown_input(void);
 
-#if defined(ENABLE_NETPLAY)
 /*!
  * Initialize the netplay support
  * \return 1 if the initialization failed
@@ -68,135 +67,5 @@ int osd_init_netplay(void);
  * Shutdown netplay support
  */
 void osd_shutdown_netplay(void);
-#endif
-
-/*!
- * Number of the input configuration
- */
-extern uchar current_config;
-
-/*
- * joymap
- *
- *
- */
-typedef enum {
-	J_UP = 0,
-	J_DOWN,
-	J_LEFT,
-	J_RIGHT,
-	J_I,
-	J_II,
-	J_SELECT,
-	J_RUN,
-	J_AUTOI,
-	J_AUTOII,
-	J_PI,
-	J_PII,
-	J_PSELECT,
-	J_PRUN,
-	J_PAUTOI,
-	J_PAUTOII,
-	J_PXAXIS,
-	J_PYAXIS,
-	J_MAX,
-
-	J_PAD_START = J_PI
-} joymap;
-
-/*
- * input_config
- *
- * Definition of the type representating an input configuration
- */
-
-/*
- * local_input means the input data can be read locally and need not been relayed
- * server_input means the data
- */
-
-typedef enum { LOCAL_PROTOCOL, LAN_PROTOCOL,
-		INTERNET_PROTOCOL } netplay_type;
-
-typedef struct {
-
-	//! Mouse device, 0 for none
-	uchar mousedev;
-
-	//! Joypad device, 0 for none
-	uchar joydev;
-
-	//! whether autofire is set
-	uchar autoI;
-	uchar autoII;
-
-	//! whether autofire triggered event
-	uchar firedI;
-	uchar firedII;
-
-	//! mapping for joypad and keyboard
-	//! J_UP to J_PAD_START (excluded) are for use with the keyboard, others are
-	//! for the joypad
-	uint16 joy_mapping[J_MAX];
-
-} individual_input_config;
-
-typedef struct {
-	individual_input_config individual_config[5];
-} input_config;
-
-/*
- * config
- *
- * The array of input configuration settings
- */
-extern input_config config[16];
-
-/* defines for input type field */
-
-#define NONE      0
-
-#define KEYBOARD1 1
-#define KEYBOARD2 2
-#define KEYBOARD3 3
-#define KEYBOARD4 4
-#define KEYBOARD5 5
-
-#define JOYPAD1  11
-#define JOYPAD2  12
-#define JOYPAD3  13
-#define JOYPAD4  14
-
-#define MOUSE1   20
-#define MOUSE2   21
-
-#define SYNAPLINK 255
-
-	/*
-	 * The associated prototypes for common input functions
-	 */
-
-/* for nothing */
-uint16 noinput();
-
-/* for keyboard/gamepad input */
-uint16 input1();
-uint16 input2();
-uint16 input3();
-uint16 input4();
-uint16 input5();
-
-/* for joypad */
-uint16 joypad1();
-uint16 joypad2();
-uint16 joypad3();
-uint16 joypad4();
-
-/* for mouse */
-uint16 mouse1();
-uint16 mouse2();
-
-/* for synaptic link */
-uint16 synaplink();
 
 #endif

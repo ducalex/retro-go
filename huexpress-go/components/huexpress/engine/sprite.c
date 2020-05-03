@@ -460,7 +460,7 @@ RefreshLine(int Y1, int Y2)
             no = ((uint16 *) VRAM)[x + y * io.bg_w];
 #endif
 
-            R = &Palette[(no >> 12) * 16];
+            R = &Palette[(no >> 8) & 0x1F0];
 
             if (no > 0x800) {
                 MESSAGE_DEBUG("GFX: Access to an invalid VRAM area "
@@ -796,7 +796,7 @@ RefreshSpriteExact(int Y1, int Y2, uchar bg)
 
 #if ENABLE_TRACING_GFX
         /*
-           Log("Sprite 0x%02X : X = %d, Y = %d, atr = 0x%04X, no = 0x%03X\n",
+           TRACE("Sprite 0x%02X : X = %d, Y = %d, atr = 0x%04X, no = 0x%03X\n",
            n,
            x,
            y,
@@ -809,12 +809,11 @@ RefreshSpriteExact(int Y1, int Y2, uchar bg)
         cgy = (atr >> 12) & 3;
         cgy |= cgy >> 1;
         no = (no >> 1) & ~(cgy * 2 + cgx);
-        if (y >= Y2 || y + (cgy + 1) * 16 < Y1 || x >= FC_W
+        if (y >= Y2 || y + (cgy + 1) * 16 < Y1 || x >= io.screen_w
             || x + (cgx + 1) * 16 < 0) {
             continue;
         }
 
-        uchar* R = &SPal[(atr & 15) * 16];
         for (i = 0; i < cgy * 2 + cgx + 1; i++) {
             if (SPR_CACHE.Sprites[no + i] == 0) {
                 SPR_CACHE.Sprites[no + i] = 1;
@@ -823,6 +822,8 @@ RefreshSpriteExact(int Y1, int Y2, uchar bg)
             if (!cgx)
                 i++;
         }
+
+        uchar* R = &Palette[256 + ((atr & 15) << 4)];
         uchar* C = VRAM + (no * 128);
         uchar* C2 = VRAMS + (no * 32) * 4;  /* TEST */
         pos = XBUF_WIDTH * (y + 0) + x;

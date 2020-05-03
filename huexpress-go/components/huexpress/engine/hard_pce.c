@@ -1,7 +1,6 @@
 // hard_pce.c - Memory/IO/Timer emulation
 //
 #include "hard_pce.h"
-#include "debug.h"
 #include "utils.h"
 #include "pce.h"
 
@@ -22,19 +21,17 @@ uchar *PageW[8];
 uchar *ROMMapR[256];
 uchar *ROMMapW[256];
 
-const uint8 SaveRAM_Header[8] = { 'H', 'U', 'B', 'M', 0x00, 0x88, 0x10, 0x80 };
+const uint8 BackupRAM_Header[8] = { 'H', 'U', 'B', 'M', 0x00, 0x88, 0x10, 0x80 };
 
 
 void
 hard_reset(void)
 {
-    uchar *superram = SuperRAM;
     uchar *extraram = ExtraRAM;
 
     memset(&PCE, 0x00, sizeof(PCE));
-    memcpy(&SaveRAM, SaveRAM_Header, sizeof(SaveRAM_Header));
+    memcpy(&BackupRAM, BackupRAM_Header, sizeof(BackupRAM_Header));
 
-    SuperRAM = superram;
     ExtraRAM = extraram;
 }
 
@@ -54,140 +51,84 @@ void
 hard_term(void)
 {
 	if (ExtraRAM) free(ExtraRAM);
-	if (SuperRAM) free(SuperRAM);
 }
+
+/**
+  *  Write current hardware state to file pointer
+  **/
+void
+hard_save_state(void *buffer, size_t len)
+{
+
+}
+
+/**
+  *  Read current hardware state from file pointer
+  **/
+void
+hard_load_state(void *buffer, size_t len)
+{
+
+}
+
 
 /**
  * Functions to access PCE hardware
  **/
-
-// const DRAM_ATTR
-uchar return_value_mask_tab_0002[32] = {
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,						/* unused */
-	0xFF,						/* unused */
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,						/* 8 */
-	0xFF,
-	0x1F,						/* A */
-	0x7F,
-	0x1F,						/* C */
-	0xFF,
-	0xFF,						/* E */
-	0x1F,
-	0xFF,						/* 10 */
-	0xFF,
-	/* No data for remaining reg, assuming 0xFF */
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF
-};
-
-// const DRAM_ATTR
-uchar return_value_mask_tab_0003[32] = {
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,						/* unused */
-	0xFF,						/* unused */
-	0x1F,
-	0x03,
-	0x03,
-	0x01,						/* 8 *//* ?? */
-	0x00,
-	0x7F,						/* A */
-	0x7F,
-	0xFF,						/* C */
-	0x01,
-	0x00,						/* E */
-	0x00,
-	0xFF,						/* 10 */
-	0xFF,
-	/* No data for remaining reg, assuming 0xFF */
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF
-};
-
-// const DRAM_ATTR
-uchar return_value_mask_tab_0400[8] = {
-	0xFF,
-	0x00,
-	0xFF,
-	0x01,
-	0xFF,
-	0x01,
-	0xFF,						/* unused */
-	0xFF						/* unused */
-};
-
-// const DRAM_ATTR
-uchar return_value_mask_tab_0800[16] = {
-	0x03,
-	0xFF,
-	0xFF,
-	0x0F,
-	0xDF,
-	0xFF,
-	0x1F,
-	0x9F,
-	0xFF,
-	0x83,
-	/* No data for remainig reg, assuming 0xFF */
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF,
-	0xFF
-};
 
 
 //! Returns the useful value mask depending on port value
 static inline uchar
 return_value_mask(uint16 A)
 {
-	if (A < 0x400)				// VDC
-	{
+	if (A < 0x400) {			/* VDC */
 		if ((A & 0x3) == 0x02) {
-			return return_value_mask_tab_0002[io.vdc_reg];
+            switch (io.vdc_reg) {
+                case 0xA: return 0x1F;
+                case 0xB: return 0x7F;
+                case 0xC: return 0x1F;
+                case 0xF: return 0x1F;
+                default:  return 0xFF;
+            }
 		} else if ((A & 0x3) == 0x03) {
-			return return_value_mask_tab_0003[io.vdc_reg];
+            switch (io.vdc_reg) {
+                case 0x5: return 0x1F;
+                case 0x6: return 0x03;
+                case 0x7: return 0x03;
+                case 0x8: return 0x01;
+                case 0x9: return 0x00;
+                case 0xA: return 0x7F;
+                case 0xB: return 0x7F;
+                case 0xC: return 0xFF;
+                case 0xD: return 0x01;
+                case 0xE: return 0x00;
+                case 0xF: return 0x00;
+                default:  return 0xFF;
+            }
 		}
 		return 0xFF;
 	}
 
-	if (A < 0x800)				// VCE
-		return return_value_mask_tab_0400[A & 0x07];
+	if (A < 0x800) {			/* VCE */
+        switch (A & 0x07) {
+            case 0x1: return 0x03;
+            case 0x3: return 0x01;
+            case 0x5: return 0x01;
+            default:  return 0xFF;
+        }
+    }
 
-	if (A < 0xC00)				/* PSG */
-		return return_value_mask_tab_0800[A & 0x0F];
+	if (A < 0xC00) {			/* PSG */
+        switch (A & 0x0F) {
+            case 0x0: return 0x00;
+            case 0x3: return 0x0F;
+            case 0x4: return 0xDF;
+            case 0x6: return 0x1F;
+            case 0x7: return 0x9F;
+            case 0x9: return 0x83;
+            default:  return 0xFF;
+        }
+    }
 
 	if (A < 0x1000)				/* Timer */
 		return (A & 1) ? 0x01 : 0x7F;
@@ -247,6 +188,7 @@ IO_read_raw(uint16 A)
             return io.VCE[io.vce_reg.W++].B.h;
         }
         break;
+
     case 0x0800:                /* PSG */
         switch (A & 15) {
         case 0:
@@ -280,6 +222,7 @@ IO_read_raw(uint16 A)
             return NODATA;
         }
         break;
+
     case 0x0c00:                /* timer */
         return io.timer_counter;
 
@@ -306,7 +249,6 @@ IO_read_raw(uint16 A)
         }
         break;
 
-
     case 0x18C0:                // Memory management ?
         switch (A & 15) {
         case 5:
@@ -328,8 +270,9 @@ IO_read_raw(uint16 A)
 
     case 0x1800:                // CD-ROM extention
 		MESSAGE_INFO("CD Emulation not implemented : 0x%04X\n", A);
-		return 0;
+		break;
     }
+
     return NODATA;
 }
 
@@ -663,7 +606,6 @@ IO_write(uint16 A, uchar V)
         }
         break;
 
-
     case 0x0800:                /* PSG */
 
         switch (A & 15) {
@@ -754,9 +696,7 @@ IO_write(uint16 A, uchar V)
         break;
 
     case 0x1000:                /* joypad */
-//              TRACE("V=%02X\n", V);
         io.joy_select = V & 1;
-        //io.joy_select = V;
         if (V & 2)
             io.joy_counter = 0;
         return;
@@ -774,11 +714,11 @@ IO_write(uint16 A, uchar V)
 
     case 0x1A00:                /* Arcade Card */
 		MESSAGE_INFO("Arcade Card not supported : %d into 0x%04X\n", V, A);
-        break;
+        return;
 
     case 0x1800:                /* CD-ROM extention */
 		MESSAGE_INFO("CD Emulation not implemented : %d 0x%04X\n", V, A);
-        break;
+        return;
     }
 
     MESSAGE_DEBUG("ignore I/O write %04x,%02x\tBase adress of port %X\nat PC = %04X\n",
@@ -817,70 +757,6 @@ bank_set(uchar P, uchar V)
 	} else {
 		PageR[P] = ROMMapR[V] - P * 0x2000;
 		PageW[P] = ROMMapW[V] - P * 0x2000;
-	}
+    }
 }
 
-#if 0
-static char opcode_long_buffer[256];
-static uint16 opcode_long_position;
-
-char *
-get_opcode_long()
-{
-	//! size of data used by the current opcode
-	int size;
-
-	uchar opcode;
-
-	//! Buffer of opcode data, maximum is 7 (for xfer opcodes)
-	uchar opbuf[7];
-
-	int i;
-
-	opcode = Read8(opcode_long_position);
-
-	size = addr_info_debug[optable_debug[opcode].addr_mode].size;
-
-	opbuf[0] = opcode;
-	opcode_long_position++;
-	for (i = 1; i < size; i++)
-		opbuf[i] = Read8(opcode_long_position++);
-
-	/* This line is the real 'meat' of the disassembler: */
-
-	(*addr_info_debug[optable_debug[opcode].addr_mode].func)	/* function      */
-		(opcode_long_buffer, opcode_long_position - size, opbuf, optable_debug[opcode].opname);	/* parm's passed */
-
-	return opcode_long_buffer;
-
-}
-
-void
-dump_pce_cpu_environment()
-{
-
-	int i;
-
-	Log("Dumping PCE cpu environement\n");
-
-	Log("PC = 0x%04x\n", reg_pc);
-	Log("A = 0x%02x\n", reg_a);
-	Log("X = 0x%02x\n", reg_x);
-	Log("Y = 0x%02x\n", reg_y);
-	Log("P = 0x%02x\n", reg_p);
-	Log("S = 0x%02x\n", reg_s);
-
-	for (i = 0; i < 8; i++) {
-		Log("MMR[%d] = 0x%02x\n", i, MMR[i]);
-	}
-
-	opcode_long_position = reg_pc & 0xE000;
-
-	while (opcode_long_position <= reg_pc) {
-		Log("%04X: %s\n", opcode_long_position, get_opcode_long());
-	}
-
-	Log("--------------------------------------------------------\n");
-
-}
-#endif

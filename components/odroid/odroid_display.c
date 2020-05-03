@@ -143,7 +143,7 @@ static inline uint16_t* spi_get_buffer()
 {
     uint16_t* buffer;
 
-    if (xQueueReceive(spi_buffer_queue, &buffer, 1000 / portTICK_RATE_MS) != pdTRUE)
+    if (xQueueReceive(spi_buffer_queue, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
     {
         abort();
     }
@@ -153,7 +153,7 @@ static inline uint16_t* spi_get_buffer()
 
 static inline void spi_put_buffer(uint16_t* buffer)
 {
-    if (xQueueSend(spi_buffer_queue, &buffer, 1000 / portTICK_RATE_MS) != pdTRUE)
+    if (xQueueSend(spi_buffer_queue, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
     {
         abort();
     }
@@ -182,8 +182,10 @@ static inline void spi_put_transaction(spi_transaction_t* t)
 
     odroid_system_spi_lock_acquire(SPI_LOCK_DISPLAY);
 
-    esp_err_t ret = spi_device_queue_trans(spi, t, portMAX_DELAY);
-    assert(ret==ESP_OK);
+    if (spi_device_queue_trans(spi, t, pdMS_TO_TICKS(2500)) != ESP_OK)
+    {
+        abort();
+    }
 
     xSemaphoreGive(spi_count_semaphore);
 }

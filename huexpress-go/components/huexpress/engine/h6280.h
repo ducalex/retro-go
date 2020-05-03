@@ -69,9 +69,7 @@ extern operation optable_runtime[256];
 #define AM_TST_ABSX 18			/* special 'TST' addressing mode  */
 #define AM_XFER     19			/* special 7-byte transfer addressing mode  */
 
-#define MAX_MODES  (AM_XFER + 1)
 
-#define flnz_list_get(num) flnz_list[num]
 #define get_8bit_addr(addr) Read8(addr)
 #define put_8bit_addr(addr, byte) Write8(addr, byte)
 #define get_16bit_addr(addr) Read16(addr)

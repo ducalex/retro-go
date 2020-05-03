@@ -1,9 +1,8 @@
 #ifndef _INCLUDE_HARD_PCE_H
 #define _INCLUDE_HARD_PCE_H
 
-#include <stdio.h>
-
 #include "config.h"
+#include "stddef.h"
 #include "cleantypes.h"
 
 #define RAMSIZE            0x2000
@@ -112,14 +111,11 @@ typedef struct {
 typedef struct {
 	uchar RAM[RAMSIZE];
 
-	// Extra RAM for SuperGraphx
-	uchar *SuperRAM; // 0x6000
-
 	// Extra RAM contained on the HuCard (Populous)
 	uchar *ExtraRAM;
 
 	// Backup RAM
-	uchar SaveRAM[0x800];
+	uchar BackupRAM[BRAMSIZE];
 
 	// Video mem
 	// 0x10000 bytes on coregraphx, the double on supergraphx I think
@@ -147,10 +143,10 @@ typedef struct {
 	uchar reg_s;
 
 	// The current rendered line on screen
-	uint32 Scanline;
+	uint16 Scanline;
 
 	// Total number of elapsed cycles in the current scanline
-	uint32 Cycles;
+	uint16 Cycles;
 
 	// Total number of elapsed cycles
 	uint32 TotalCycles;
@@ -174,12 +170,10 @@ void hard_init(void);
 void hard_reset(void);
 void hard_term(void);
 
-void IO_write(uint16 A, uchar V);
+void  IO_write(uint16 A, uchar V);
 uchar IO_read(uint16 A);
 uchar TimerInt();
-void bank_set(uchar P, uchar V);
-
-void dump_pce_cpu_environment();
+void  bank_set(uchar P, uchar V);
 
 /**
   * Exported variables
@@ -202,8 +196,7 @@ extern uchar *ROMMapW[256];
 // physical address on emulator machine of each of the 256 banks
 
 #define RAM PCE.RAM
-#define SaveRAM PCE.SaveRAM
-#define SuperRAM PCE.SuperRAM
+#define BackupRAM PCE.BackupRAM
 #define ExtraRAM PCE.ExtraRAM
 #define SPRAM PCE.SPRAM
 #define VRAM PCE.VRAM
@@ -256,10 +249,11 @@ enum _VDC_REG {
 
 #define	NODATA	   0xff
 
+
 static inline uchar
 Read8(uint16 addr)
 {
-	register uchar *page = PageR[addr >> 13];
+	uchar *page = PageR[addr >> 13];
 
 	if (page == IOAREA)
 		return IO_read(addr);
@@ -270,7 +264,7 @@ Read8(uint16 addr)
 static inline void
 Write8(uint16 addr, uchar byte)
 {
-	register uchar *page = PageW[addr >> 13];
+	uchar *page = PageW[addr >> 13];
 
 	if (page == IOAREA)
 		IO_write(addr, byte);
@@ -281,19 +275,26 @@ Write8(uint16 addr, uchar byte)
 static inline uint16
 Read16(uint16 addr)
 {
-	register unsigned int memreg = addr >> 13;
+#ifdef WORDS_BIGENDIAN
+	uchar memreg = addr >> 13;
 
 	uint16 ret_16bit = PageR[memreg][addr];
 	memreg = (++addr) >> 13;
 	ret_16bit += (uint16) (PageR[memreg][addr] << 8);
 
 	return (ret_16bit);
+#else
+	return (*((uint16*)(PageR[addr >> 13] + (addr))));
+#endif
 }
 
 static inline void
 Write16(uint16 addr, uint16 word)
 {
-
+#ifdef WORDS_BIGENDIAN
+#else
+	*((uint16*)(PageR[addr >> 13] + (addr))) = word;
+#endif
 }
 
 #endif

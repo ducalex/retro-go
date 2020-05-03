@@ -36,16 +36,14 @@
 struct host_machine host;
 
 uchar *ROM = NULL;
-// ROM = the same thing as the ROM file (w/o header)
 
 uint ROM_size, ROM_crc, ROM_idx;
-// the number of block of 0x2000 bytes in the rom
 
-const int scanlines_per_frame = 263;
-//
+const uint ScanlinesPerFrame = 263;
+const uint BaseClock = 7800000;
+const uint IPeriod = 494; // BaseClock / (ScanlinesPerFrame * 60);
 
-const int BaseClock = 7800000;
-//
+const char *SAVESTATE_HEADER = "PCE_V001";
 
 const int IPeriod = 494;
 // BaseClock / (scanlines_per_frame * 60);
@@ -239,19 +237,12 @@ InitPCE(char *name)
 	}
 
 	// Backup RAM
-	ROMMapR[0xF7] = SaveRAM;
-	ROMMapW[0xF7] = SaveRAM;
+	ROMMapR[0xF7] = BackupRAM;
+	ROMMapW[0xF7] = BackupRAM;
 
     // Main RAM
 	ROMMapR[0xF8] = RAM;
 	ROMMapW[0xF8] = RAM;
-
-	// Supergraphx
-	if (SuperRAM) {
-		ROMMapR[0xF9] = ROMMapW[0xF9] = SuperRAM;
-		ROMMapR[0xFA] = ROMMapW[0xFA] = SuperRAM + 0x2000;
-		ROMMapR[0xFB] = ROMMapW[0xFB] = SuperRAM + 0x4000;
-	}
 
     // IO Area
 	ROMMapR[0xFF] = IOAREA;
