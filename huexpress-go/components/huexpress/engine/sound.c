@@ -3,6 +3,31 @@
 #include "sound.h"
 #include "osd.h"
 
+static signed char vol_tbl[32] = {
+    /*
+        * Funky stuff everywhere!  I'm quite sure there was a reason to use an array
+        * of constant values divided by constant values and having the host machine figure
+        * it all out . . . that's why I'm leaving the original formula here within the
+        * comment.
+        *    100 / 256, 451 / 256, 508 / 256, 573 / 256, 646 / 256, 728 / 256,
+        *    821 / 256, 925 / 256,
+        *    1043 / 256, 1175 / 256, 1325 / 256, 1493 / 256, 1683 / 256, 1898 / 256,
+        *    2139 / 256, 2411 / 256,
+        *    2718 / 256, 3064 / 256, 3454 / 256, 3893 / 256, 4388 / 256, 4947 / 256,
+        *    5576 / 256, 6285 / 256,
+        *    7085 / 256, 7986 / 256, 9002 / 256, 10148 / 256, 11439 / 256, 12894 / 256,
+        *    14535 / 256, 16384 / 256
+        */
+    0, 1, 1, 2, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17,
+        19, 21, 24, 27, 31, 35, 39, 44, 50, 56, 64
+};
+
+static uint32 da_index[6];
+static uint32 fixed_n[6];
+static uint32 rand_val[6]; // Noise seed
+static uint32 k[6];
+static uint32 r[6];
+
 static inline int
 mseq(uint32 * rand_val)
 {
@@ -16,36 +41,40 @@ mseq(uint32 * rand_val)
 }
 
 
-void
-WriteBuffer(char *buf, int ch, unsigned dwSize)
+int
+snd_init()
 {
-    static uint32 fixed_n[6] = { 0, 0, 0, 0, 0, 0 };
+    memset(&da_index, 0, sizeof(da_index));
+    memset(&fixed_n, 0, sizeof(fixed_n));
+    memset(&rand_val, 0, sizeof(rand_val));
+    memset(&k, 0, sizeof(k));
+    memset(&r, 0, sizeof(r));
+
+    rand_val[4] = 0x51F631E4;
+    rand_val[5] = 0x51F631E4;
+
+    osd_snd_init();
+
+    return 0;
+}
+
+
+void
+snd_term()
+{
+    osd_snd_shutdown();
+}
+
+
+void
+psg_update(char *buf, int ch, unsigned dwSize)
+{
     uint32 fixed_inc;
-    static uint32 k[6] = { 0, 0, 0, 0, 0, 0 };
-    static uint32 t;            // used to know how much we got to advance in the ring buffer
-    static uint32 r[6];
-    static uint32 rand_val[6] = { 0, 0, 0, 0, 0x51F631E4, 0x51F631E4 }; // random seed for 'noise' generation
+    uint32 t;            // used to know how much we got to advance in the ring buffer
     uint16 dwPos = 0;
     int32 vol;
     uint32 Tp;
-    static signed char vol_tbl[32] = {
-        /*
-         * Funky stuff everywhere!  I'm quite sure there was a reason to use an array
-         * of constant values divided by constant values and having the host machine figure
-         * it all out . . . that's why I'm leaving the original formula here within the
-         * comment.
-         *    100 / 256, 451 / 256, 508 / 256, 573 / 256, 646 / 256, 728 / 256,
-         *    821 / 256, 925 / 256,
-         *    1043 / 256, 1175 / 256, 1325 / 256, 1493 / 256, 1683 / 256, 1898 / 256,
-         *    2139 / 256, 2411 / 256,
-         *    2718 / 256, 3064 / 256, 3454 / 256, 3893 / 256, 4388 / 256, 4947 / 256,
-         *    5576 / 256, 6285 / 256,
-         *    7085 / 256, 7986 / 256, 9002 / 256, 10148 / 256, 11439 / 256, 12894 / 256,
-         *    14535 / 256, 16384 / 256
-         */
-        0, 1, 1, 2, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17,
-            19, 21, 24, 27, 31, 35, 39, 44, 50, 56, 64
-    };
+
     uint16 lbal, rbal;
     signed char sample;
 
@@ -58,12 +87,10 @@ WriteBuffer(char *buf, int ch, unsigned dwSize)
         return;
     }
 
-    if ((io.PSG[ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS)
-        || io.psg_da_count[ch]) {
+    if ((io.PSG[ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS) || io.psg_da_count[ch]) {
         /*
          * There is 'direct access' audio to be played.
          */
-        static uint32 da_index[6] = { 0, 0, 0, 0, 0, 0 };
         uint16 index = da_index[ch] >> 16;
 
         /*
@@ -126,18 +153,14 @@ WriteBuffer(char *buf, int ch, unsigned dwSize)
              * 8-bit output sample of (-127..127)
              */
 
-//#define MY_SOUND_1(va_) *buf++ = (char) ((int32) (sample * va_) >> 6);
-#define MY_SOUND_1(va_) *buf++ = (char) ((int32) (sample * va_) >> 6);
-            //
-            MY_SOUND_1(lbal)
+            *buf++ = (char) ((int32) (sample * lbal) >> 6);
+            dwPos++;
 
             if (host.sound.stereo) {
                 /*
                  * Same as above but for right channel.
                  */
-                MY_SOUND_1(rbal)
-                dwPos += 2;
-            } else {
+                *buf++ = (char) ((int32) (sample * rbal) >> 6);
                 dwPos++;
             }
 
@@ -209,17 +232,13 @@ WriteBuffer(char *buf, int ch, unsigned dwSize)
                 k[ch] -= host.sound.freq * t;
             }
 
-            //*buf++ = (signed char) ((r[ch] ? 10 * 702 : -10 * 702) * vol / 256 / 16);   // Level 0
             *buf++ = (signed char) ((r[ch] ? 10 * 702 : -10 * 702) * vol / 256 / 16);   // Level 0
+            dwPos++;
 
             //sbuf[ch][dum++] = (WORD)((r[ch] ? 10*702 : -10*702)*lvol/64/256);
             //*buf++ = (r[ch] ? 32 : -32) * lvol / 24;
-            dwPos++;
         }
-    } else
-        if ((Tp =
-             (io.PSG[ch][PSG_FREQ_LSB_REG] +
-              (io.PSG[ch][PSG_FREQ_MSB_REG] << 8))) == 0) {
+    } else if ((Tp = (io.PSG[ch][PSG_FREQ_LSB_REG] + (io.PSG[ch][PSG_FREQ_MSB_REG] << 8))) == 0) {
         /*
          * 12-bit pseudo frequency value stored in PSG registers 2 (all 8 bits) and 3
          * (lower nibble).  If we get to this point and the value is 0 then there's no
@@ -279,17 +298,14 @@ WriteBuffer(char *buf, int ch, unsigned dwSize)
              * See the direct audio stuff a little above for an explanation of everything
              * within this loop.
              */
-            if ((sample =
-                 (io.wave[ch][io.PSG[ch][PSG_DATA_INDEX_REG]] - 16)) >= 0)
+            if ((sample = (io.wave[ch][io.PSG[ch][PSG_DATA_INDEX_REG]] - 16)) >= 0)
                 sample++;
-//#define MY_SOUND_2(va_) *buf++ = (char) ((Sint16) (sample * va_) >> 6);
-#define MY_SOUND_2(va_) *buf++ = (char) ((Sint16) (sample * va_) >> 6);
-            MY_SOUND_2(lbal)
+
+            *buf++ = (char) ((Sint16) (sample * lbal) >> 6);
+            dwPos++;
 
             if (host.sound.stereo) {
-                MY_SOUND_2(rbal)
-                dwPos += 2;
-            } else {
+                *buf++ = (char) ((Sint16) (sample * rbal) >> 6);
                 dwPos++;
             }
 

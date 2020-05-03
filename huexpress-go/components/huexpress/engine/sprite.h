@@ -39,33 +39,15 @@ typedef struct
 
 extern sprite_cache_t SPR_CACHE;
 
+extern uchar *SPM;
+
 extern uchar *VRAM2, *VRAMS;
 /* these contain linear representations that we can draw */
 
-extern uchar BGONSwitch;
-/* do we have to draw background ? */
-
-extern uchar SPONSwitch;
-/* Do we have to draw sprites ? */
-
-#define	PAL(c)	R[c]
-#define	SPal	(Palette+256)
-
-#define	MinLine	io.minline
-#define	MaxLine	io.maxline
-
-//#define ScrollX   io.scroll_x
-//#define ScrollY io.scroll_y
-#define	ScrollX	IO_VDC_07_BXR.W
-#define	ScrollY	IO_VDC_08_BYR.W
-
 extern int ScrollYDiff;
 
-#define FC_W     io.screen_w
-#define FC_H     256
 #define V_FLIP  0x8000
 #define H_FLIP  0x0800
-extern uchar *SPM;
 
 // The true refreshing function
 extern void RefreshLine(int Y1, int Y2);

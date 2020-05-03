@@ -31,6 +31,8 @@
 #define TRACE(x...)
 #endif
 
+#define	PAL(c)	R[c]
+
 // These are array to keep in memory the result of the linearisation of
 // PCE sprites and tiles
 uchar *VRAM2, *VRAMS;
@@ -40,17 +42,9 @@ uchar *VRAM2, *VRAMS;
 // if (SPR_CACHE.Sprites[5] == 0) 6th pattern in VRAM2 must be updated
 sprite_cache_t SPR_CACHE;
 
-uchar BGONSwitch = 1;
-// do we have to draw background ?
-
-uchar SPONSwitch = 1;
-// Do we have to draw sprites ?
-
 uchar sprite_usespbg = 0;
 
 int ScrollYDiff;
-int oldScrollX;
-int oldScrollY;
 
 // Actual memory area where the gfx functions are drawing sprites and tiles
 uchar *SPM_raw;//[XBUF_WIDTH * XBUF_HEIGHT];
@@ -393,10 +387,10 @@ plane2pixel(int no)
         Return: nothing
 
 *****************************************************************************/
-void
+IRAM_ATTR void
 RefreshScreen(void)
 {
-    (*osd_gfx_driver_list[host.video_driver].draw)();
+    osd_gfx_blit();
 
     // We don't clear the parts out of reach of the screen blitter
     // memset(osd_gfx_buffer, Pal[0], 240 * XBUF_WIDTH);

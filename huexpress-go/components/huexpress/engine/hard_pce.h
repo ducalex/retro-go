@@ -7,22 +7,9 @@
 
 #define RAMSIZE            0x2000
 #define VRAMSIZE           0x10000
-
-#define PSG_DIRECT_ACCESS_BUFSIZE 1024
-#define PSG_VOICE_REG           0	/* voice index */
-#define PSG_VOLUME_REG          1	/* master volume */
-#define PSG_FREQ_LSB_REG        2	/* lower 8 bits of 12 bit frequency */
-#define PSG_FREQ_MSB_REG        3	/* actually most significant nibble */
-#define PSG_DDA_REG             4
-#define PSG_DDA_ENABLE          0x80	/* bit 7 */
-#define PSG_DDA_DIRECT_ACCESS   0x40	/* bit 6 */
-#define PSG_DDA_VOICE_VOLUME    0x1F	/* bits 0-4 */
-#define PSG_BALANCE_REG         5
-#define PSG_BALANCE_LEFT        0xF0	/* bits 4-7 */
-#define PSG_BALANCE_RIGHT       0x0F	/* bits 0-3 */
-#define PSG_DATA_INDEX_REG      6
-#define PSG_NOISE_REG           7
-#define PSG_NOISE_ENABLE        0x80	/* bit 7 */
+#define BRAMSIZE           0x800
+#define PSG_DA_BUFSIZE     1024
+#define PSG_CHANNELS       6
 
 typedef union {
 	struct {
@@ -33,49 +20,42 @@ typedef union {
 #endif
 	} B;
 	uint16 W;
-} Word;
+} UWord;
 
 /* The structure containing all variables relatives to Input and Output */
 typedef struct {
 	/* VCE */
-	Word VCE[0x200];			/* palette info */
-	Word vce_reg;				/* currently selected color */
-	uchar vce_ratch;			/* temporary value to keep track of the first byte
-								 * when setting a 16 bits value with two byte access
-								 */
+	UWord VCE[0x200];			/* palette info */
+	UWord vce_reg;				/* currently selected color */
+
 	/* VDC */
-	Word VDC[32];				/* value of each VDC register */
-	uint16 vdc_inc;				/* VRAM pointer increment once accessed */
-	uint16 vdc_raster_count;	/* unused as far as I know */
+	UWord VDC[16];				/* value of each VDC register */
+	uchar vdc_inc;				/* VRAM pointer increment once accessed */
 	uchar vdc_reg;				/* currently selected VDC register */
 	uchar vdc_status;			/* current VCD status (end of line, end of screen, ...) */
 	uchar vdc_ratch;			/* temporary value to keep track of the first byte
 								 * when setting a 16 bits value with two byte access
 								 */
 	uchar vdc_satb;				/* boolean which keeps track of the need to copy
-								 * the SATB from VRAM to internal SATB
+								 * the SATB from VRAM to internal SATB through DMA
 								 */
+	uchar vdc_satb_counter; 	/* DMA finished interrupt delay counter */
 	uchar vdc_pendvsync;		/* unsure, set if a end of screen IRQ is waiting */
-	int32 bg_h;					/* number of tiles vertically in virtual screen */
-	int32 bg_w;					/* number of tiles horizontaly in virtual screen */
-	int32 screen_w;				/* size of real screen in pixels */
-	int32 screen_h;				/* size of real screen in pixels */
-	int32 scroll_y;
-	int32 minline;
-	int32 maxline;
-
-	uint16 vdc_min_display;		// First scanline of active display
-	uint16 vdc_max_display;		// Last scanline of active display
+	uchar bg_h;					/* number of tiles vertically in virtual screen */
+	uchar bg_w;					/* number of tiles horizontaly in virtual screen */
+	uint16 screen_w;			/* size of real screen in pixels */
+	uint16 screen_h;			/* size of real screen in pixels */
+	uint16 vdc_minline;			/* First scanline of active display */
+	uint16 vdc_maxline;			/* Last scanline of active display */
 
 	/* joypad */
-	uchar JOY[16];				/* value of pressed button/direct for each pad
-								 * (why 16 ? 5 should be enough for everyone :)
-								 */
+	uchar JOY[8];				/* value of pressed button/direct for each pad */
 	uchar joy_select;			/* used to know what nibble we must return */
 	uchar joy_counter;			/* current addressed joypad */
 
 	/* PSG */
-	uchar PSG[6][8], wave[6][32];
+	uchar PSG[PSG_CHANNELS][8];
+	uchar wave[PSG_CHANNELS][32];
 	// PSG STRUCTURE
 	// 0 : dda_out
 	// 2 : freq (lo byte)  | In reality it's a divisor
@@ -94,8 +74,9 @@ typedef struct {
 
 	uchar psg_ch, psg_volume, psg_lfo_freq, psg_lfo_ctrl;
 
-	uchar psg_da_data[6][PSG_DIRECT_ACCESS_BUFSIZE];
-	uint16 psg_da_index[6], psg_da_count[6];
+	uchar psg_da_data[PSG_CHANNELS][PSG_DA_BUFSIZE];
+	uint16 psg_da_index[PSG_CHANNELS];
+	uint16 psg_da_count[PSG_CHANNELS];
 
 	/* TIMER */
 	uchar timer_reload, timer_start, timer_counter;
@@ -166,9 +147,12 @@ typedef struct {
   * Exported functions to access hardware
   **/
 
-void hard_init(void);
+int  hard_init(void);
 void hard_reset(void);
 void hard_term(void);
+
+void hard_save_state(void *buffer, size_t len);
+void hard_load_state(void *buffer, size_t len);
 
 void  IO_write(uint16 A, uchar V);
 uchar IO_read(uint16 A);
@@ -182,17 +166,14 @@ void  bank_set(uchar P, uchar V);
 extern struct_hard_pce PCE;
 // The global structure for all hardware variables
 
-extern uchar *IOAREA;
-// physical address on emulator machine of the IO area (fake address as it has to be handled specially)
-
-extern uchar TRAPRAM[0x2004];
-// False "ram"s in which you can read/write (to homogeneize writes into RAM, BRAM, ... as well as in rom) but the result isn't coherent
+extern uchar *IOAREA, *TRAPRAM;
+// Regions of the memory map that we need to trap. Normally games do not read or write to these areas.
 
 extern uchar *PageR[8];
-extern uchar *ROMMapR[256];
+extern uchar *MemoryMapR[256];
 
 extern uchar *PageW[8];
-extern uchar *ROMMapW[256];
+extern uchar *MemoryMapW[256];
 // physical address on emulator machine of each of the 256 banks
 
 #define RAM PCE.RAM
@@ -208,16 +189,65 @@ extern uchar *ROMMapW[256];
 #define MMR PCE.MMR
 #define io PCE.io
 
-#define TimerPeriod 1097
-// Base period for the timer
+#define IO_VDC_REG        io.VDC
+#define IO_VDC_REG_ACTIVE io.VDC[io.vdc_reg]
 
+// H6280 CPU registers
 #define reg_pc PCE.reg_pc
 #define reg_a  PCE.reg_a
 #define reg_x  PCE.reg_x
 #define reg_y  PCE.reg_y
 #define reg_p  PCE.reg_p
 #define reg_s  PCE.reg_s
-// H6280 CPU registers
+
+#define SATBIntON  (IO_VDC_REG[DCR].W&0x01)
+#define DMAIntON   (IO_VDC_REG[DCR].W&0x02)
+
+#define SpHitON    (IO_VDC_REG[CR].W&0x01)
+#define OverON     (IO_VDC_REG[CR].W&0x02)
+#define RasHitON   (IO_VDC_REG[CR].W&0x04)
+#define VBlankON   (IO_VDC_REG[CR].W&0x08)
+#define SpriteON   (IO_VDC_REG[CR].W&0x40)
+#define ScreenON   (IO_VDC_REG[CR].W&0x80)
+
+#define	ScrollX	(IO_VDC_REG[BXR].W)
+#define	ScrollY	(IO_VDC_REG[BYR].W)
+#define	Control (IO_VDC_REG[CR].W)
+
+#define VDC_CR     0x01
+#define VDC_OR     0x02
+#define VDC_RR     0x04
+#define VDC_DS     0x08
+#define VDC_DV     0x10
+#define VDC_VD     0x20
+#define VDC_BSY    0x40
+#define VDC_SpHit       VDC_CR
+#define VDC_Over        VDC_OR
+#define VDC_RasHit      VDC_RR
+#define VDC_InVBlank    VDC_VD
+#define VDC_DMAfinish   VDC_DV
+#define VDC_SATBfinish  VDC_DS
+
+#define TimerPeriod 1097 // Base period for the timer
+
+#define IRQ2    1
+#define IRQ1    2
+#define TIRQ    4
+
+#define PSG_VOICE_REG           0	/* voice index */
+#define PSG_VOLUME_REG          1	/* master volume */
+#define PSG_FREQ_LSB_REG        2	/* lower 8 bits of 12 bit frequency */
+#define PSG_FREQ_MSB_REG        3	/* actually most significant nibble */
+#define PSG_DDA_REG             4
+#define PSG_DDA_ENABLE          0x80	/* bit 7 */
+#define PSG_DDA_DIRECT_ACCESS   0x40	/* bit 6 */
+#define PSG_DDA_VOICE_VOLUME    0x1F	/* bits 0-4 */
+#define PSG_BALANCE_REG         5
+#define PSG_BALANCE_LEFT        0xF0	/* bits 4-7 */
+#define PSG_BALANCE_RIGHT       0x0F	/* bits 0-3 */
+#define PSG_DATA_INDEX_REG      6
+#define PSG_NOISE_REG           7
+#define PSG_NOISE_ENABLE        0x80	/* bit 7 */
 
 /**
   * Definitions to ease writing

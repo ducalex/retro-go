@@ -18,23 +18,15 @@
 
 #include "cleantypes.h"
 
-#define MESSAGE_ERROR(x...) Log("!! " x)
-#define MESSAGE_INFO(x...) Log(" * " x)
+#define MESSAGE_ERROR(x...) osd_log("!! " x)
+#define MESSAGE_INFO(x...) osd_log(" * " x)
 #ifndef FINAL_RELEASE
-#define MESSAGE_DEBUG(x...) Log(" ~ " x)
+#define MESSAGE_DEBUG(x...) osd_log(" ~ " x)
 #else
 #define MESSAGE_DEBUG(x...) {}
 #endif
 
-void Log(const char *, ...);
-
-//! Wait for the current 60th of sec to be elapsed
-void wait_next_vsync();
-
-//! CRC predefined array
-extern const unsigned long TAB_CONST[256];
-
-static inline int
+static inline bool
 one_bit_set(uchar arg)
 {
 	return (arg != 0) && ((-arg & arg) == arg);

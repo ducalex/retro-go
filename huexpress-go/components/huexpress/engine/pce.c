@@ -27,7 +27,6 @@
 /* Header section */
 
 #include "pce.h"
-#include "debug.h"
 #include "utils.h"
 #include "romdb.h"
 
@@ -45,15 +44,34 @@ const uint IPeriod = 494; // BaseClock / (ScanlinesPerFrame * 60);
 
 const char *SAVESTATE_HEADER = "PCE_V001";
 
-const int IPeriod = 494;
-// BaseClock / (scanlines_per_frame * 60);
+static svar_t svars[] =
+{
+	// Memory and arrays
+	SVAR_A("RAM ", &RAM, RAMSIZE),
+	SVAR_A("BRAM", &BackupRAM, BRAMSIZE),
+	SVAR_A("VRAM", &VRAM, VRAMSIZE),
+	SVAR_A("SPRAM", &VRAM, VRAMSIZE),
+	SVAR_A("PAL", &Palette, 512),
+	SVAR_A("MMR", &MMR, 8),
 
-bool PCERunning = false;
-//
+	// CPU registers
+	SVAR_2("CPU.PC", &reg_pc),
+	SVAR_1("CPU.A", &reg_a),
+	SVAR_1("CPU.X", &reg_x),
+	SVAR_1("CPU.Y", &reg_y),
+	SVAR_1("CPU.P", &reg_p),
+	SVAR_1("CPU.S", &reg_s),
 
-int UPeriod = 0;
-// Number of frame to skip
+	// Counters
+	SVAR_2("Scanline", &Scanline),
+	SVAR_2("Cycles", &Cycles),
+	SVAR_2("TCycles", &TotalCycles),
+	SVAR_2("PTCycles", &PrevTotalCycles),
 
+	// IO
+
+	SVAR_END
+};
 
 /*****************************************************************************
 
@@ -67,15 +85,19 @@ int UPeriod = 0;
 int
 LoadCard(char *name)
 {
-	MESSAGE_INFO("Opening %s...\n", name);
-
 	if (ROM != NULL) {
-		free(ROM);
+		free(ROM); ROM = NULL;
 	}
 
+	MESSAGE_INFO("Opening %s...\n", name);
+
 	FILE *fp = fopen(name, "rb");
+
 	if (fp == NULL)
+	{
+		MESSAGE_ERROR("Failed to open %s!\n", name);
 		return -1;
+	}
 
 	// find file size
 	fseek(fp, 0, SEEK_END);
@@ -87,6 +109,12 @@ LoadCard(char *name)
 
 	// read ROM
 	ROM = (uchar *)rg_alloc(fsize, MEM_SLOW);
+	if (ROM == NULL)
+	{
+		MESSAGE_ERROR("Failed to allocate ROM buffer!\n");
+		return -1;
+	}
+
 	fread(ROM, 1, fsize, fp);
 
 	fclose(fp);
@@ -94,84 +122,6 @@ LoadCard(char *name)
 	ROM_size = fsize / 0x2000;
 	ROM_crc = CRC_buffer(ROM, ROM_size * 0x2000);
 	ROM_idx = 0xFFFF;
-
-	return 0;
-}
-
-
-void
-ResetPCE(bool hard)
-{
-	// Zero reset RAM and all IO/sound
-	if (hard) {
-		hard_reset();
-	}
-
-	// Reset sprite cache
-	memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
-
-	// Reset IO lines
-	io.vdc_status = 0;
-	io.vdc_inc = 1;
-	io.minline = 0;
-	io.maxline = 255;
-	io.irq_mask = 0;
-	io.psg_volume = 0;
-	io.psg_ch = 0;
-
-	/* TEST */
-	io.screen_w = 255;
-	/* TEST normally 256 */
-
-	/* TEST */
-	// io.screen_h = 214;
-	/* TEST */
-
-	/* TEST */
-	//  io.screen_h = 240;
-	/* TEST */
-
-	io.screen_h = 224;
-
-	// Reset sound generator values
-	for (int i = 0; i < 6; i++) {
-		io.PSG[i][4] = 0x80;
-	}
-
-	// Reset memory banking
-	bank_set(7, 0x00);
-	bank_set(6, 0x05);
-	bank_set(5, 0x04);
-	bank_set(4, 0x03);
-	bank_set(3, 0x02);
-	bank_set(2, 0x01);
-	bank_set(1, 0xF8);
-	bank_set(0, 0xFF);
-
-	// Reset CPU
-	reg_a = reg_x = reg_y = 0x00;
-	reg_p = FL_TIQ;
-	reg_s = 0xFF;
-	reg_pc = Read16(VEC_RESET);
-
-	// Counters
-	Scanline = 0;
-	Cycles = 0;
-	TotalCycles = 0;
-	PrevTotalCycles = 0;
-}
-
-
-int
-InitPCE(char *name)
-{
-	int i = 0, local_us_encoded_card = 0;
-
-	if (LoadCard(name))
-		return 1;
-
-	gfx_init();
-	hard_init();
 
 	for (int index = 0; index < KNOWN_ROM_COUNT; index++) {
 		if (ROM_crc == kKnownRoms[index].CRC) {
@@ -223,67 +173,77 @@ InitPCE(char *name)
 		}
 	}
 
-	for (int i = 0; i < 0xFF; i++) {
-		ROMMapR[i] = TRAPRAM;
-		ROMMapW[i] = TRAPRAM;
-	}
-
 	// Hu Card with onboard RAM (Populous)
 	if (ExtraRAM) {
-		ROMMapR[0x40] = ROMMapW[0x40] = ExtraRAM;
-		ROMMapR[0x41] = ROMMapW[0x41] = ExtraRAM + 0x2000;
-		ROMMapR[0x42] = ROMMapW[0x42] = ExtraRAM + 0x4000;
-		ROMMapR[0x43] = ROMMapW[0x43] = ExtraRAM + 0x6000;
+		MemoryMapR[0x40] = MemoryMapW[0x40] = ExtraRAM;
+		MemoryMapR[0x41] = MemoryMapW[0x41] = ExtraRAM + 0x2000;
+		MemoryMapR[0x42] = MemoryMapW[0x42] = ExtraRAM + 0x4000;
+		MemoryMapR[0x43] = MemoryMapW[0x43] = ExtraRAM + 0x6000;
 	}
 
-	// Backup RAM
-	ROMMapR[0xF7] = BackupRAM;
-	ROMMapW[0xF7] = BackupRAM;
-
-    // Main RAM
-	ROMMapR[0xF8] = RAM;
-	ROMMapW[0xF8] = RAM;
-
-    // IO Area
-	ROMMapR[0xFF] = IOAREA;
-	ROMMapW[0xFF] = IOAREA;
-
     // Game ROM
-    if (ROM && ROM_size) {
-        int ROMmask = 1;
-        while (ROMmask < ROM_size)
-            ROMmask <<= 1;
-        ROMmask--;
+	int ROMmask = 1;
+	while (ROMmask < ROM_size)
+		ROMmask <<= 1;
+	ROMmask--;
 
-        MESSAGE_DEBUG("ROMmask=%02X, ROM_size=%02X\n", ROMmask, ROM_size);
+	MESSAGE_INFO("ROMmask=%02X, ROM_size=%02X\n", ROMmask, ROM_size);
 
-        for (int i = 0; i < 0x80; i++) {
-            if (ROM_size == 0x30) {
-                switch (i & 0x70) {
-                case 0x00:
-                case 0x10:
-                case 0x50:
-                    ROMMapR[i] = ROM + (i & ROMmask) * 0x2000;
-                    break;
-                case 0x20:
-                case 0x60:
-                    ROMMapR[i] = ROM + ((i - 0x20) & ROMmask) * 0x2000;
-                    break;
-                case 0x30:
-                case 0x70:
-                    ROMMapR[i] = ROM + ((i - 0x10) & ROMmask) * 0x2000;
-                    break;
-                case 0x40:
-                    ROMMapR[i] = ROM + ((i - 0x20) & ROMmask) * 0x2000;
-                    break;
-                }
-            } else {
-                ROMMapR[i] = ROM + (i & ROMmask) * 0x2000;
-            }
-        }
-    }
+	for (int i = 0; i < 0x80; i++) {
+		if (ROM_size == 0x30) {
+			switch (i & 0x70) {
+			case 0x00:
+			case 0x10:
+			case 0x50:
+				MemoryMapR[i] = ROM + (i & ROMmask) * 0x2000;
+				break;
+			case 0x20:
+			case 0x60:
+				MemoryMapR[i] = ROM + ((i - 0x20) & ROMmask) * 0x2000;
+				break;
+			case 0x30:
+			case 0x70:
+				MemoryMapR[i] = ROM + ((i - 0x10) & ROMmask) * 0x2000;
+				break;
+			case 0x40:
+				MemoryMapR[i] = ROM + ((i - 0x20) & ROMmask) * 0x2000;
+				break;
+			}
+		} else {
+			MemoryMapR[i] = ROM + (i & ROMmask) * 0x2000;
+		}
+	}
 
-	ResetPCE(false);
+	return 0;
+}
+
+
+void
+ResetPCE(bool hard)
+{
+	hard_reset();
+}
+
+
+int
+InitPCE(char *name)
+{
+	if (osd_init_input())
+		return 1;
+
+	if (gfx_init())
+		return 1;
+
+	if (snd_init())
+		return 1;
+
+	if (hard_init())
+		return 1;
+
+	if (LoadCard(name))
+		return 1;
+
+	ResetPCE(0);
 
 	return 0;
 }
@@ -301,12 +261,21 @@ LoadState(char *name)
 {
 	MESSAGE_INFO("Loading state from %s...\n", name);
 
+	char *buffer[1024];
+
 	FILE *fp = fopen(name, "rb");
 	if (fp == NULL)
 		return -1;
 
-	fread(&PCE, sizeof(PCE), 1, fp);
-	fread(&saved_gfx_context, sizeof(saved_gfx_context), 1, fp);
+	fread(&buffer, sizeof(SAVESTATE_HEADER), 1, fp);
+
+	if (memcmp(SAVESTATE_HEADER, buffer, sizeof(SAVESTATE_HEADER)) != 0)
+	{
+		goto load_failed;
+	}
+
+	// fread(&PCE, sizeof(PCE), 1, fp);
+	// fread(&saved_gfx_context, sizeof(saved_gfx_context), 1, fp);
 	fclose(fp);
 
 	memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
@@ -316,6 +285,10 @@ LoadState(char *name)
 	}
 
 	return 0;
+
+load_failed:
+	fclose(fp);
+	return -1;
 }
 
 
@@ -328,9 +301,11 @@ SaveState(char *name)
 	if (fp == NULL)
 		return -1;
 
+	fwrite(&SAVESTATE_HEADER, sizeof(SAVESTATE_HEADER), 1, fp);
 
-	fwrite(&PCE, sizeof(PCE), 1, fp);
-	fwrite(&saved_gfx_context, sizeof(saved_gfx_context), 1, fp);
+	// hard_save_state(fp);
+	// gfx_save_state(fp);
+	// snd_save_state(fp);
 
 	fclose(fp);
 
@@ -339,14 +314,11 @@ SaveState(char *name)
 
 
 void
-TrashPCE()
+ShutdownPCE()
 {
-	// Set volume to zero
-	io.psg_volume = 0;
-
-	if (VRAMS) free(VRAMS);
-	if (VRAM2) free(VRAM2);
-	if (ROM) free(ROM);
-
+	gfx_term();
+	snd_term();
 	hard_term();
+
+	exit(0);
 }

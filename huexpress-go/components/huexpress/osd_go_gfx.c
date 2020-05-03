@@ -20,12 +20,8 @@ static odroid_video_frame *curFrame;
 static uint8_t current_fb = 0;
 static bool gfx_init_done = false;
 
-uchar* XBuf = NULL;
 uchar* osd_gfx_buffer = NULL;
-
-static uint frameTime = 0;
-static uint startTime = 0;
-uint skipFrames = 0;
+uint osd_skipFrames = 0;
 
 extern uchar *SPM_raw, *SPM;
 
@@ -37,7 +33,6 @@ extern QueueHandle_t audioSyncQueue;
 static inline void set_current_fb(int i)
 {
     current_fb = i & 1;
-    XBuf = framebuffers[current_fb];
     osd_gfx_buffer = frames[current_fb].buffer;
     curFrame = &frames[current_fb];
 
@@ -57,6 +52,7 @@ static void videoTask(void *arg)
     {
         xQueueReceive(videoTaskQueue, &frame, portMAX_DELAY);
         frame->pixel_clear = Palette[0];
+        // odroid_display_queue_update(frame, frame == &frames[0] ? &frames[1] : &frames[0]);
         odroid_display_queue_update(frame, NULL);
     }
 
@@ -68,28 +64,29 @@ static void videoTask(void *arg)
 }
 
 
-int osd_gfx_init(void)
+void osd_gfx_init(void)
 {
-    frameTime = get_frame_time(60);
-    startTime = get_elapsed_time();
     framebuffers[0] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
     framebuffers[1] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
     SPM_raw         = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
     SPM = SPM_raw + XBUF_WIDTH * 64 + 32;
 
-    xTaskCreatePinnedToCore(&videoTask, "videoTask", 3072, NULL, 5, NULL, 1);
-    return true;
+    // UPeriod = 1;
+
+    // xTaskCreatePinnedToCore(&videoTask, "videoTask", 3072, NULL, 5, NULL, 1);
 }
 
 
-int osd_gfx_init_normal_mode(void)
+void osd_gfx_set_mode(short width, short height)
 {
-    printf("%s: (%dx%d)\n", __func__, io.screen_w, io.screen_h);
+    printf("%s: (%dx%d)\n", __func__, width, height);
 
-    int crop_w = MAX(0, io.screen_w - ODROID_SCREEN_WIDTH);
+    int crop_w = MAX(0, width - ODROID_SCREEN_WIDTH);
 
-	frames[0].width = io.screen_w - crop_w;
-	frames[0].height = io.screen_h;
+    // Should we consider vdc_minline/vdc_maxline to offset?
+
+	frames[0].width = width - crop_w;
+	frames[0].height = height;
 	frames[0].stride = XBUF_WIDTH;
 	frames[0].pixel_size = 1;
 	frames[0].pixel_mask = 0xFF;
@@ -101,58 +98,46 @@ int osd_gfx_init_normal_mode(void)
 	frames[1].buffer = framebuffers[1] + 32 + 64 * XBUF_WIDTH + (crop_w / 2);
 
     set_current_fb(0);
-    SetPalette();
 
     forceVideoRefresh = true;
     gfx_init_done = true;
-    return true;
 }
 
 
-void osd_gfx_put_image_normal(void)
+void osd_gfx_blit(void)
 {
     if (!gfx_init_done) return;
 
-    bool drawFrame = !skipFrames;
+    bool drawFrame = !osd_skipFrames;
     bool fullFrame = true;
 
     if (drawFrame)
     {
-        xQueueSend(videoTaskQueue, &curFrame, portMAX_DELAY);
+        // xQueueSend(videoTaskQueue, &curFrame, portMAX_DELAY);
+        curFrame->pixel_clear = Palette[0];
+        odroid_display_queue_update(curFrame, NULL);
         set_current_fb(!current_fb);
     }
 
-    // This should probably be in machine.c
-    int delay = (int)frameTime - get_elapsed_time_since(startTime);
-    if (delay > 5000)
-    {
-        usleep(delay);
-    }
-
     // See if we need to skip a frame to keep up
-    if (skipFrames == 0)
+    if (osd_skipFrames == 0)
     {
-        // UPeriod = 100;
-        skipFrames = 1;
-        if (delay < 0) skipFrames += 1;
-        if (speedupEnabled) skipFrames += speedupEnabled * 2.5;
-    }
-    else if (skipFrames > 0)
-    {
-        skipFrames--;
-    }
+        osd_skipFrames++;
 
-    // UCount = skipFrames  ? 1 : 0;
+        if (speedupEnabled) osd_skipFrames += speedupEnabled * 2.5;
+    }
+    else if (osd_skipFrames > 0)
+    {
+        osd_skipFrames--;
+    }
 
     // odroid_audio_submit(pcm.buf, pcm.pos >> 1);
 
     odroid_system_stats_tick(!drawFrame, fullFrame);
-
-    startTime = get_elapsed_time();
 }
 
 
-void osd_gfx_shut_normal_mode(void)
+void osd_gfx_shutdown(void)
 {
     printf("%s: \n", __func__);
 }
@@ -172,13 +157,3 @@ void osd_gfx_set_color(uchar index, uchar r, uchar g, uchar b)
     }
     mypalette[index] = col;
 }
-
-
-osd_gfx_driver osd_gfx_driver_list[1] = {
-    {
-        osd_gfx_init,
-        osd_gfx_init_normal_mode,
-        osd_gfx_put_image_normal,
-        osd_gfx_shut_normal_mode
-    }
-};

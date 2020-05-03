@@ -28,7 +28,7 @@ static bool load_state(char *pathName)
 {
     if (LoadState(pathName) != 0)
     {
-        ResetPCE(1);
+        ResetPCE(false);
         return false;
     }
     return true;
@@ -44,14 +44,7 @@ void app_main(void)
 
     char *romFile = odroid_system_get_path(NULL, ODROID_PATH_ROM_FILE);
 
-	// Initialise the host machine
-	osd_init_machine();
-	osd_init_input();
-
     InitPCE(romFile);
-
-	osd_gfx_init();
-	osd_snd_init_sound();
 
     if (odroid_system_get_start_action() == ODROID_START_ACTION_RESUME)
     {

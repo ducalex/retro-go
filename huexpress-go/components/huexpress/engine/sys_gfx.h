@@ -22,38 +22,14 @@
    */
 extern uchar *osd_gfx_buffer;
 
-   /*
-    * osd_gfx_driver
-    *
-    * Structure defining an entry for a useable graphical plug in in Hu-Go!
-    */
-typedef struct {
-	int (*init) (void);
-	int (*mode) (void);
-	void (*draw) (void);
-	void (*shut) (void);
-} osd_gfx_driver;
 
-  /*
-   * osd_gfx_driver
-   *
-   * List of all driver (plug in) which can be used to render graphics
-   */
-extern osd_gfx_driver osd_gfx_driver_list[];
+extern uint osd_skipFrames;
 
 
-  /*
-   * osd_gfx_set_color
-   *
-   * Set the 'index' color to components r,b,g
-   */
-void osd_gfx_set_color(uchar index, uchar r, uchar g, uchar b);
-
-
-int osd_gfx_init();
+void osd_gfx_init();
+void osd_gfx_shutdown();
 void osd_gfx_blit();
-int osd_gfx_init_normal_mode();
-void osd_gfx_put_image_normal();
-void osd_gfx_shut_normal_mode();
+void osd_gfx_set_mode(short width, short height);
+void osd_gfx_set_color(uchar index, uchar r, uchar g, uchar b);
 
 #endif

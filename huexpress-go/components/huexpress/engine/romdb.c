@@ -11,6 +11,9 @@
 #include "romdb.h"
 #include "utils.h"
 
+//! CRC predefined array
+extern const unsigned long TAB_CONST[256];
+
 // Known NEC PC-Engine HuCards: 323
 // Known NEC PC-Engine CD-ROMs: 438
 // Known NEC TurboGrafx-16 HuCards: 96

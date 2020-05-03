@@ -13,7 +13,7 @@
 
 int osd_init_input(void)
 {
-
+    return 0;
 }
 
 int osd_keyboard(void)

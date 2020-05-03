@@ -4,9 +4,6 @@
 #include "sprite.h"
 #include "osd.h"
 
-#define	WIDTH	(360+64)
-#define	HEIGHT	256
-
 // The extra 32's and 64's are linked to the way the sprite are blitted on screen, which can overlap to near memory
 // If only one pixel is drawn in the screen, the whole sprite is written, which can eventually overlap unexpected area
 // A sharper way of doing would probably reduce the amount of needed data from 220kb to 128kb (eventually smaller if restricting
@@ -14,31 +11,28 @@
 // XBUF_WIDTH = 536 + 32 + 32
 // XBUG_HEIGHT = 240 + 64 + 64
 
-#define XBUF_WIDTH 	(536 + 32 + 32)
+#define XBUF_WIDTH 	(360 + 32 + 32)
 #define	XBUF_HEIGHT	(240 + 64 + 64)
 
 typedef struct {
-	//typeof(IO_VDC_07_BXR.W) scroll_x;
-	//typeof(IO_VDC_08_BYR.W) scroll_y;
-	uint16 scroll_x;
-	uint16 scroll_y;
-	int scroll_y_diff;
-	//typeof(IO_VDC_05_CR.W) cr;
-	uint16 cr;
+	int16 scroll_x;
+	int16 scroll_y;
+	int16 scroll_y_diff;
+	int16 control;
 } gfx_context;
 
-extern int gfx_need_video_mode_change;
+extern bool gfx_need_video_mode_change;
 
-#define MAX_GFX_CONTEXT_SLOT_NUMBER 2
-extern gfx_context saved_gfx_context[MAX_GFX_CONTEXT_SLOT_NUMBER];
+int  gfx_init();
+void gfx_term();
+void gfx_save_context(char slot_number);
+void gfx_load_context(char slot_number);
+char gfx_loop();
 
-void save_gfx_context(int slot_number);
-// void load_gfx_context(int slot_number);
-void gfx_init();
+void gfx_save_state(void *buffer, size_t len);
+void gfx_load_state(void *buffer, size_t len);
 
 extern int UCount;
-extern int gfx_need_redraw;
-
-uchar Loop6502();
+extern int UPeriod;
 
 #endif
