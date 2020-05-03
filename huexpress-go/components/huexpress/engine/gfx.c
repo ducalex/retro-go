@@ -336,8 +336,8 @@ gfx_loop()
 #else
 				memcpy(SPRAM, VRAM + IO_VDC_REG[SATB].W * 2, 64 * 8);
 #endif
-				io.vdc_satb = 1;
-				// io.vdc_satb = 0;
+				// io.vdc_satb = 1;
+				io.vdc_satb = 0;
 				io.vdc_status &= ~VDC_SATBfinish;
 
 				// Mark satb dma end interuption to happen in 4 scanlines

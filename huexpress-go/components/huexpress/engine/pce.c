@@ -12,63 +12,44 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program; if not, write to the Free Software
  *	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ *
+ *  Created  1998 by BERO bero@geocities.co.jp
+ *  Modified 1998 by hmmx hmmx@geocities.co.jp
+ *	Modified 1999-2005 by Zeograd (Olivier Jolly) zeograd@zeograd.com
+ *	Modified 2011-2013 by Alexander von Gluck kallisti5@unixzen.com
  */
 
-/************************************************************************/
-/*   'Portable' PC-Engine Emulator Source file							*/
-/*                                                                      */
-/*	1998 by BERO bero@geocities.co.jp                                   */
-/*                                                                      */
-/*  Modified 1998 by hmmx hmmx@geocities.co.jp                          */
-/*	Modified 1999-2005 by Zeograd (Olivier Jolly) zeograd@zeograd.com   */
-/*	Modified 2011-2013 by Alexander von Gluck kallisti5@unixzen.com     */
-/************************************************************************/
-
-/* Header section */
-
+// pce.c - Entry file to start/stop/reset/save emulation
+//
 #include "pce.h"
 #include "utils.h"
 #include "romdb.h"
 
-/* Variable section */
-
 struct host_machine host;
-
-uchar *ROM = NULL;
-
-uint ROM_size, ROM_crc, ROM_idx;
 
 const uint ScanlinesPerFrame = 263;
 const uint BaseClock = 7800000;
 const uint IPeriod = 494; // BaseClock / (ScanlinesPerFrame * 60);
-
 const char *SAVESTATE_HEADER = "PCE_V001";
 
-static svar_t svars[] =
+const svar_t SaveStateVars[] =
 {
-	// Memory and arrays
-	SVAR_A("RAM ", &RAM, RAMSIZE),
-	SVAR_A("BRAM", &BackupRAM, BRAMSIZE),
-	SVAR_A("VRAM", &VRAM, VRAMSIZE),
-	SVAR_A("SPRAM", &VRAM, VRAMSIZE),
-	SVAR_A("PAL", &Palette, 512),
-	SVAR_A("MMR", &MMR, 8),
+	// Arrays
+	SVAR_A("RAM ", RAM),    SVAR_A("BRAM", BackupRAM),
+	SVAR_A("VRAM", VRAM),   SVAR_A("SPRAM", SPRAM),
+	SVAR_A("PAL", Palette), SVAR_A("MMR", MMR),
 
 	// CPU registers
-	SVAR_2("CPU.PC", &reg_pc),
-	SVAR_1("CPU.A", &reg_a),
-	SVAR_1("CPU.X", &reg_x),
-	SVAR_1("CPU.Y", &reg_y),
-	SVAR_1("CPU.P", &reg_p),
-	SVAR_1("CPU.S", &reg_s),
+	SVAR_2("CPU.PC", reg_pc), SVAR_1("CPU.A", reg_a),
+	SVAR_1("CPU.X", reg_x),   SVAR_1("CPU.Y", reg_y),
+	SVAR_1("CPU.P", reg_p),   SVAR_1("CPU.S", reg_s),
 
 	// Counters
-	SVAR_2("Scanline", &Scanline),
-	SVAR_2("Cycles", &Cycles),
-	SVAR_2("TCycles", &TotalCycles),
-	SVAR_2("PTCycles", &PrevTotalCycles),
+	SVAR_2("Scanline", Scanline), SVAR_2("TCycles", TotalCycles),
+	SVAR_2("PTCycles", PrevTotalCycles), SVAR_2("Cycles", Cycles),
 
 	// IO
+	SVAR_A("IO", io),
 
 	SVAR_END
 };
@@ -109,6 +90,8 @@ LoadCard(char *name)
 
 	// read ROM
 	ROM = (uchar *)rg_alloc(fsize, MEM_SLOW);
+	ROMSIZE = fsize / 0x2000;
+
 	if (ROM == NULL)
 	{
 		MESSAGE_ERROR("Failed to allocate ROM buffer!\n");
@@ -119,28 +102,27 @@ LoadCard(char *name)
 
 	fclose(fp);
 
-	ROM_size = fsize / 0x2000;
-	ROM_crc = CRC_buffer(ROM, ROM_size * 0x2000);
-	ROM_idx = 0xFFFF;
+	uint32 CRC = CRC_buffer(ROM, ROMSIZE * 0x2000);
+	uint16 IDX = 0xFFFF;
 
 	for (int index = 0; index < KNOWN_ROM_COUNT; index++) {
-		if (ROM_crc == kKnownRoms[index].CRC) {
-			ROM_idx = index;
+		if (CRC == kKnownRoms[index].CRC) {
+			IDX = index;
 			break;
 		}
 	}
 
-	if (ROM_idx == 0xFFFF)
+	if (IDX == 0xFFFF)
 	{
-		MESSAGE_INFO("ROM not in database: CRC=%lx\n", ROM_crc);
+		MESSAGE_INFO("ROM not in database: CRC=%lx\n", CRC);
 	}
 	else
 	{
-		MESSAGE_INFO("Rom Name: %s\n", kKnownRoms[ROM_idx].Name);
-		MESSAGE_INFO("Publisher: %s\n", kKnownRoms[ROM_idx].Publisher);
+		MESSAGE_INFO("Rom Name: %s\n", kKnownRoms[IDX].Name);
+		MESSAGE_INFO("Publisher: %s\n", kKnownRoms[IDX].Publisher);
 
 		// US Encrypted
-		if ((kKnownRoms[ROM_idx].Flags & US_ENCODED) || ROM[0x1FFF] < 0xE0)
+		if ((kKnownRoms[IDX].Flags & US_ENCODED) || ROM[0x1FFF] < 0xE0)
 		{
 			MESSAGE_INFO("This rom is probably US encrypted, decrypting...\n");
 
@@ -149,7 +131,7 @@ LoadCard(char *name)
 				1, 9, 5, 13, 3, 11, 7, 15
 			};
 
-			for (uint32 x = 0; x < ROM_size * 0x2000; x++) {
+			for (uint32 x = 0; x < ROMSIZE * 0x2000; x++) {
 				uchar temp = ROM[x] & 15;
 
 				ROM[x] &= ~0x0F;
@@ -161,11 +143,11 @@ LoadCard(char *name)
 		}
 
 		// For example with Devil Crush 512Ko
-		if (kKnownRoms[ROM_idx].Flags & TWO_PART_ROM)
-			ROM_size = 0x30;
+		if (kKnownRoms[IDX].Flags & TWO_PART_ROM)
+			ROMSIZE = 0x30;
 
 		// Hu Card with onboard RAM
-		if (kKnownRoms[ROM_idx].Flags & POPULOUS)
+		if (kKnownRoms[IDX].Flags & POPULOUS)
 		{
 			MESSAGE_INFO("Special Rom: Populous detected!\n");
 			if (!ExtraRAM)
@@ -182,35 +164,35 @@ LoadCard(char *name)
 	}
 
     // Game ROM
-	int ROMmask = 1;
-	while (ROMmask < ROM_size)
-		ROMmask <<= 1;
-	ROMmask--;
+	int ROM_MASK = 1;
+	while (ROM_MASK < ROMSIZE)
+		ROM_MASK <<= 1;
+	ROM_MASK--;
 
-	MESSAGE_INFO("ROMmask=%02X, ROM_size=%02X\n", ROMmask, ROM_size);
+	MESSAGE_INFO("ROMmask=%02X, ROMSIZE=%02X\n", ROM_MASK, ROMSIZE);
 
 	for (int i = 0; i < 0x80; i++) {
-		if (ROM_size == 0x30) {
+		if (ROMSIZE == 0x30) {
 			switch (i & 0x70) {
 			case 0x00:
 			case 0x10:
 			case 0x50:
-				MemoryMapR[i] = ROM + (i & ROMmask) * 0x2000;
+				MemoryMapR[i] = ROM + (i & ROM_MASK) * 0x2000;
 				break;
 			case 0x20:
 			case 0x60:
-				MemoryMapR[i] = ROM + ((i - 0x20) & ROMmask) * 0x2000;
+				MemoryMapR[i] = ROM + ((i - 0x20) & ROM_MASK) * 0x2000;
 				break;
 			case 0x30:
 			case 0x70:
-				MemoryMapR[i] = ROM + ((i - 0x10) & ROMmask) * 0x2000;
+				MemoryMapR[i] = ROM + ((i - 0x10) & ROM_MASK) * 0x2000;
 				break;
 			case 0x40:
-				MemoryMapR[i] = ROM + ((i - 0x20) & ROMmask) * 0x2000;
+				MemoryMapR[i] = ROM + ((i - 0x20) & ROM_MASK) * 0x2000;
 				break;
 			}
 		} else {
-			MemoryMapR[i] = ROM + (i & ROMmask) * 0x2000;
+			MemoryMapR[i] = ROM + (i & ROM_MASK) * 0x2000;
 		}
 	}
 
@@ -274,15 +256,14 @@ LoadState(char *name)
 		goto load_failed;
 	}
 
-	// fread(&PCE, sizeof(PCE), 1, fp);
-	// fread(&saved_gfx_context, sizeof(saved_gfx_context), 1, fp);
+	for (int i = 0; SaveStateVars[i].len > 0; i++)
+	{
+
+	}
+
 	fclose(fp);
 
-	memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
-
-	for (int i = 0; i < 8; i++) {
-		bank_set(i, MMR[i]);
-	}
+	ResetPCE(0);
 
 	return 0;
 
@@ -303,6 +284,10 @@ SaveState(char *name)
 
 	fwrite(&SAVESTATE_HEADER, sizeof(SAVESTATE_HEADER), 1, fp);
 
+	for (int i = 0; SaveStateVars[i].len > 0; i++)
+	{
+
+	}
 	// hard_save_state(fp);
 	// gfx_save_state(fp);
 	// snd_save_state(fp);

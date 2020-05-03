@@ -29,7 +29,7 @@ typedef struct {
 	UWord vce_reg;				/* currently selected color */
 
 	/* VDC */
-	UWord VDC[16];				/* value of each VDC register */
+	UWord VDC[32];				/* value of each VDC register */
 	uchar vdc_inc;				/* VRAM pointer increment once accessed */
 	uchar vdc_reg;				/* currently selected VDC register */
 	uchar vdc_status;			/* current VCD status (end of line, end of screen, ...) */
@@ -90,6 +90,7 @@ typedef struct {
 } IO;
 
 typedef struct {
+	// Main memory
 	uchar RAM[RAMSIZE];
 
 	// Extra RAM contained on the HuCard (Populous)
@@ -109,6 +110,12 @@ typedef struct {
 	// The pc engine got a function to transfert a piece VRAM toward the inner
 	// gfx cpu sprite memory from where data will be grabbed to render sprites
 	uint16 SPRAM[64 * 4];
+
+	// ROM memory
+	uchar *ROM;
+
+	// ROM size in 0x2000 blocks
+	uint16 ROMSIZE;
 
 	// PCE->PC Palette convetion array
 	// Each of the 512 available PCE colors (333 RGB -> 512 colors)
@@ -181,6 +188,8 @@ extern uchar *MemoryMapW[256];
 #define ExtraRAM PCE.ExtraRAM
 #define SPRAM PCE.SPRAM
 #define VRAM PCE.VRAM
+#define ROM PCE.ROM
+#define ROMSIZE PCE.ROMSIZE
 #define Scanline PCE.Scanline
 #define Palette PCE.Palette
 #define Cycles PCE.Cycles

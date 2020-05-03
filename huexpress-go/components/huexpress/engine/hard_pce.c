@@ -13,10 +13,9 @@ struct_hard_pce PCE;
 
 // Since no read or write should occur we can point our
 // trap ram to vram to save some internal memory
-uchar *IOAREA = &VRAM[0xA000];
-uchar *TRAPRAM = &VRAM[0xC000];
+uchar *IOAREA, *TRAPRAM;
 
-// Mapping
+// Memory Mapping
 uchar *PageR[8];
 uchar *PageW[8];
 uchar *MemoryMapR[256];
@@ -35,6 +34,7 @@ hard_reset(void)
 
     memset(&PCE, 0, sizeof(PCE));
 	memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
+
     memcpy(&BackupRAM, BackupRAM_Header, sizeof(BackupRAM_Header));
 
     ExtraRAM = extraram;
@@ -48,7 +48,7 @@ hard_reset(void)
 	io.screen_h = 240; // 224
 
 	// Reset sound generator values
-	for (int i = 0; i < 6; i++) {
+	for (int i = 0; i < PSG_CHANNELS; i++) {
 		io.PSG[i][4] = 0x80;
 	}
 
@@ -75,6 +75,9 @@ hard_reset(void)
 int
 hard_init(void)
 {
+    TRAPRAM = &VRAM[0x8000];
+    IOAREA  = &VRAM[0xA000];
+
 	for (int i = 0; i < 0xFF; i++) {
 		MemoryMapR[i] = TRAPRAM;
 		MemoryMapW[i] = TRAPRAM;
@@ -86,6 +89,8 @@ hard_init(void)
     MemoryMapW[0xF8] = RAM;
     MemoryMapR[0xFF] = IOAREA;
     MemoryMapW[0xFF] = IOAREA;
+
+    // hard_reset();
 
     return 0;
 }
@@ -193,7 +198,7 @@ return_value_mask(uint16 A)
 static inline uchar
 IO_read_raw(uint16 A)
 {
-    uchar ret;
+    uchar ret, ofs;
 
     switch (A & 0x1FC0) {
     case 0x0000:                /* VDC */
@@ -250,13 +255,10 @@ IO_read_raw(uint16 A)
         case 5:
             return io.PSG[io.psg_ch][5];
         case 6:
-            {
-                int ofs = io.PSG[io.psg_ch][PSG_DATA_INDEX_REG];
-                io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] =
-                    (uchar) ((io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] +
-                              1) & 31);
-                return io.wave[io.psg_ch][ofs];
-            }
+            ofs = io.PSG[io.psg_ch][PSG_DATA_INDEX_REG];
+            io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] =
+                (uchar) ((io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] + 1) & 31);
+            return io.wave[io.psg_ch][ofs];
         case 7:
             return io.PSG[io.psg_ch][7];
 
@@ -264,8 +266,6 @@ IO_read_raw(uint16 A)
             return io.psg_lfo_freq;
         case 9:
             return io.psg_lfo_ctrl;
-        default:
-            return NODATA;
         }
         break;
 
@@ -347,6 +347,9 @@ IO_write(uint16 A, uchar V)
     if ((A >= 0x800) && (A < 0x1800))   // We keep the io buffer value
         io.io_buffer = V;
 
+    uchar bgw[] = { 32, 64, 128, 128 };
+    uchar incsize[] = { 1, 32, 64, 128 };
+
     switch (A & 0x1F00) {
     case 0x0000:                /* VDC */
         switch (A & 3) {
@@ -356,77 +359,70 @@ IO_write(uint16 A, uchar V)
         case 1:
             return;
         case 2:
+#if ENABLE_TRACING_DEEP_GFX
+            TRACE("VDC[%02x]=0x%02x, ", io.vdc_reg, V);
+#endif
             switch (io.vdc_reg) {
             case VWR:           /* Write to video */
                 io.vdc_ratch = V;
-                return;
+                break;
+
             case HDR:           /* Horizontal Definition */
                 if (io.screen_w != ((V + 1) * 8)) {
                     io.screen_w = (V + 1) * 8;
                     gfx_need_video_mode_change = 1;
                 }
-                return;
+                IO_VDC_REG_ACTIVE.B.l = V;
+                break;
 
             case MWR:           /* size of the virtual background screen */
-                {
-                    uchar bgw[] = { 32, 64, 128, 128 };
-                    io.bg_h = (V & 0x40) ? 64 : 32;
-                    io.bg_w = bgw[(V >> 4) & 3];
-                }
-                return;
+                io.bg_h = (V & 0x40) ? 64 : 32;
+                io.bg_w = bgw[(V >> 4) & 3];
+                IO_VDC_REG_ACTIVE.B.l = V;
+                break;
 
             case BYR:           /* Vertical screen offset */
                 /*
                    if (IO_VDC_REG[BYR].B.l == V)
                    return;
                  */
-
                 gfx_save_context(0);
 
                 IO_VDC_REG[BYR].B.l = V;
                 ScrollYDiff = Scanline - 1;
                 ScrollYDiff -= IO_VDC_REG[VPR].B.h + IO_VDC_REG[VPR].B.l;
-
 #if ENABLE_TRACING_DEEP_GFX
                 TRACE("ScrollY = %d (l), ", ScrollY);
 #endif
-                return;
+                break;
 
             case BXR:           /* Horizontal screen offset */
-
                 /*
                    if (IO_VDC_REG[BXR].B.l == V)
                    return;
                  */
-
                 gfx_save_context(0);
+
                 IO_VDC_REG[BXR].B.l = V;
-                return;
+                break;
 
             case CR:
                 if (IO_VDC_REG_ACTIVE.B.l == V)
-                    return;
+                    break;
+
                 gfx_save_context(0);
                 IO_VDC_REG_ACTIVE.B.l = V;
-                return;
+                break;
 
             case VCR:
             case HSR:
             case VPR:
             case VDW:
-                IO_VDC_REG_ACTIVE.B.l = V;
                 gfx_need_video_mode_change = 1;
-                return;
+            default:
+                IO_VDC_REG_ACTIVE.B.l = V;
+                break;
             }
-
-#if ENABLE_TRACING_DEEP_GFX
-            TRACE("VDC[%02x]=0x%02x, ", io.vdc_reg, V);
-#endif
-
-            if (io.vdc_reg > 19) {
-                MESSAGE_DEBUG("ignore write lo vdc%d,%02x\n", io.vdc_reg, V);
-            }
-
             return;
         case 3:
             switch (io.vdc_reg) {
@@ -457,16 +453,13 @@ IO_write(uint16 A, uchar V)
                 IO_VDC_REG[LENR].B.h = V;
 
                 {               // black-- 's code
-
                     int sourcecount = (IO_VDC_REG[DCR].W & 8) ? -1 : 1;
                     int destcount = (IO_VDC_REG[DCR].W & 4) ? -1 : 1;
 
                     int source = IO_VDC_REG[SOUR].W * 2;
                     int dest = IO_VDC_REG[DISTR].W * 2;
 
-                    int i;
-
-                    for (i = 0; i < (IO_VDC_REG[LENR].W + 1) * 2; i++) {
+                    for (int  i = 0; i < (IO_VDC_REG[LENR].W + 1) * 2; i++) {
                         *(VRAM + dest) = *(VRAM + source);
                         dest += destcount;
                         source += sourcecount;
@@ -479,7 +472,6 @@ IO_write(uint16 A, uchar V)
                     // Erich Kitzmuller fix follows
                     IO_VDC_REG[SOUR].W = source / 2;
                     IO_VDC_REG[DISTR].W = dest / 2;
-
                 }
 
                 IO_VDC_REG[LENR].W = 0xFFFF;
@@ -488,22 +480,19 @@ IO_write(uint16 A, uchar V)
 
                 /* TODO: check whether this flag can be ignored */
                 io.vdc_status |= VDC_DMAfinish;
-
                 return;
 
             case CR:            /* Auto increment size */
-                {
-                    uchar incsize[] = { 1, 32, 64, 128 };
-                    /*
-                       if (IO_VDC_REG[CR].B.h == V)
-                       return;
-                     */
-                    gfx_save_context(0);
+                /*
+                    if (IO_VDC_REG[CR].B.h == V)
+                    return;
+                    */
+                gfx_save_context(0);
 
-                    io.vdc_inc = incsize[(V >> 3) & 3];
-                    IO_VDC_REG[CR].B.h = V;
-                }
+                io.vdc_inc = incsize[(V >> 3) & 3];
+                IO_VDC_REG[CR].B.h = V;
                 return;
+
             case HDR:           /* Horizontal display end */
                 /* TODO : well, maybe we should implement it */
                 //io.screen_w = (io.VDC_ratch[HDR]+1)*8;
@@ -514,12 +503,10 @@ IO_write(uint16 A, uchar V)
                 return;
 
             case BYR:           /* Vertical screen offset */
-
                 /*
                    if (IO_VDC_REG[BYR].B.h == (V & 1))
                    return;
                  */
-
                 gfx_save_context(0);
                 IO_VDC_REG[BYR].B.h = V & 1;
                 ScrollYDiff = Scanline - 1;
@@ -533,7 +520,6 @@ IO_write(uint16 A, uchar V)
 #if ENABLE_TRACING_DEEP_GFX
                 TRACE("ScrollY = %d (h), ", ScrollY);
 #endif
-
                 return;
 
             case SATB:          /* DMA from VRAM to SATB */
@@ -543,20 +529,14 @@ IO_write(uint16 A, uchar V)
                 return;
 
             case BXR:           /* Horizontal screen offset */
-
-                if (IO_VDC_REG[BXR].B.h == (V & 3))
-                    return;
-
-                gfx_save_context(0);
-
-                IO_VDC_REG[BXR].B.h = V & 3;
+                if (IO_VDC_REG[BXR].B.h != (V & 3)) {
+                    gfx_save_context(0);
+                    IO_VDC_REG[BXR].B.h = V & 3;
+                }
                 return;
             }
-            IO_VDC_REG_ACTIVE.B.h = V;
 
-            if (io.vdc_reg > 19) {
-                MESSAGE_DEBUG("ignore write hi vdc%d,%02x\n", io.vdc_reg, V);
-            }
+            IO_VDC_REG_ACTIVE.B.h = V;
 
             return;
         }

@@ -54,10 +54,10 @@ typedef struct
 	void *ptr;
 } svar_t;
 
-#define SVAR_1(k, p) { 1, k, p }
-#define SVAR_2(k, p) { 2, k, p }
-#define SVAR_4(k, p) { 4, k, p }
-#define SVAR_A(k, p, l) { l, k, p }
+#define SVAR_1(k, v) { 1, k, &v }
+#define SVAR_2(k, v) { 2, k, &v }
+#define SVAR_4(k, v) { 4, k, &v }
+#define SVAR_A(k, v) { sizeof(v), k, &v }
 #define SVAR_END { 0, "\0\0\0\0", 0 }
 
 
