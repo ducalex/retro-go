@@ -30,46 +30,59 @@ struct host_machine host;
 const uint ScanlinesPerFrame = 263;
 const uint BaseClock = 7800000;
 const uint IPeriod = 494; // BaseClock / (ScanlinesPerFrame * 60);
-const char *SAVESTATE_HEADER = "PCE_V001";
+const char SAVESTATE_HEADER[8] = "PCE_V001";
 
+/**
+ * Describes what is saved in a save state. Changing the order will break
+ * previous saves so add a place holder if necessary. Eventually we could use
+ * the keys to make order irrelevant...
+ */
 const svar_t SaveStateVars[] =
 {
 	// Arrays
-	SVAR_A("RAM ", RAM),    SVAR_A("BRAM", BackupRAM),
-	SVAR_A("VRAM", VRAM),   SVAR_A("SPRAM", SPRAM),
-	SVAR_A("PAL", Palette), SVAR_A("MMR", MMR),
+	SVAR_A("RAM", RAM),       SVAR_A("BRAM", BackupRAM), SVAR_A("VRAM", VRAM),
+	SVAR_A("SPRAM", SPRAM),   SVAR_A("PAL", Palette),    SVAR_A("MMR", MMR),
 
 	// CPU registers
-	SVAR_2("CPU.PC", reg_pc), SVAR_1("CPU.A", reg_a),
-	SVAR_1("CPU.X", reg_x),   SVAR_1("CPU.Y", reg_y),
-	SVAR_1("CPU.P", reg_p),   SVAR_1("CPU.S", reg_s),
+	SVAR_2("CPU.PC", reg_pc), SVAR_1("CPU.A", reg_a),    SVAR_1("CPU.X", reg_x),
+	SVAR_1("CPU.Y", reg_y),   SVAR_1("CPU.P", reg_p),    SVAR_1("CPU.S", reg_s),
 
 	// Counters
-	SVAR_2("Scanline", Scanline), SVAR_2("TCycles", TotalCycles),
-	SVAR_2("PTCycles", PrevTotalCycles), SVAR_2("Cycles", Cycles),
+	SVAR_2("Scanline", Scanline),              SVAR_2("Cycles", Cycles),
+	SVAR_4("TotalCycles", TotalCycles),        SVAR_4("PrevTCycles", PrevTotalCycles),
+
+	// PSG
+	SVAR_A("PSG", io.PSG),                     SVAR_A("PSG_WAVE", io.PSG_WAVE),
+	SVAR_A("psg_da_data", io.psg_da_data),     SVAR_A("psg_da_count", io.psg_da_count),
+	SVAR_A("psg_da_index", io.psg_da_index),   SVAR_1("psg_ch", io.psg_ch),
+	SVAR_1("psg_volume", io.psg_volume),       SVAR_1("psg_lfo_freq", io.psg_lfo_freq),
+	SVAR_1("psg_lfo_ctrl", io.psg_lfo_ctrl),
 
 	// IO
-	SVAR_A("IO", io),
+	SVAR_A("VCE", io.VCE),                     SVAR_2("vce_reg", io.vce_reg),
+
+	SVAR_A("VDC", io.VDC),                     SVAR_1("vdc_inc", io.vdc_inc),
+	SVAR_1("vdc_reg", io.vdc_reg),             SVAR_1("vdc_status", io.vdc_status),
+	SVAR_1("vdc_ratch", io.vdc_ratch),         SVAR_1("vdc_satb", io.vdc_satb),
+	SVAR_1("vdc_satb_c", io.vdc_satb_counter), SVAR_1("vdc_pendvsync", io.vdc_pendvsync),
+	SVAR_2("vdc_minline", io.vdc_minline),     SVAR_2("vdc_maxline", io.vdc_maxline),
+	SVAR_2("screen_w", io.screen_w),           SVAR_2("screen_h", io.screen_h),
+	SVAR_2("bg_w", io.bg_w),                   SVAR_2("bg_h", io.bg_h),
+
+	SVAR_1("timer_reload", io.timer_reload),   SVAR_1("timer_start", io.timer_start),
+	SVAR_1("timer_counter", io.timer_counter), SVAR_1("irq_mask", io.irq_mask),
+	SVAR_1("irq_status", io.irq_status),
 
 	SVAR_END
 };
 
-/*****************************************************************************
 
-		Function: LoadCard
-
-		Description: load a card
-		Parameters: char* name (the filename to load)
-		Return: -1 on error else 0
-
-*****************************************************************************/
+/**
+ * Load card into memory and set its memory map
+ */
 int
 LoadCard(char *name)
 {
-	if (ROM != NULL) {
-		free(ROM); ROM = NULL;
-	}
-
 	MESSAGE_INFO("Opening %s...\n", name);
 
 	FILE *fp = fopen(name, "rb");
@@ -78,6 +91,10 @@ LoadCard(char *name)
 	{
 		MESSAGE_ERROR("Failed to open %s!\n", name);
 		return -1;
+	}
+
+	if (ROM != NULL) {
+		free(ROM);
 	}
 
 	// find file size
@@ -200,6 +217,9 @@ LoadCard(char *name)
 }
 
 
+/**
+ * Reset the emulator
+ */
 void
 ResetPCE(bool hard)
 {
@@ -207,6 +227,9 @@ ResetPCE(bool hard)
 }
 
 
+/**
+ * Initialize the emulator (allocate memory, call osd_init* functions)
+ */
 int
 InitPCE(char *name)
 {
@@ -231,6 +254,9 @@ InitPCE(char *name)
 }
 
 
+/**
+ * Start the emulation
+ */
 void
 RunPCE(void)
 {
@@ -238,41 +264,53 @@ RunPCE(void)
 }
 
 
+/**
+ * Load saved state
+ */
 int
 LoadState(char *name)
 {
 	MESSAGE_INFO("Loading state from %s...\n", name);
 
-	char *buffer[1024];
+	char buffer[512];
 
 	FILE *fp = fopen(name, "rb");
 	if (fp == NULL)
 		return -1;
 
-	fread(&buffer, sizeof(SAVESTATE_HEADER), 1, fp);
+	fread(&buffer, 8, 1, fp);
 
-	if (memcmp(SAVESTATE_HEADER, buffer, sizeof(SAVESTATE_HEADER)) != 0)
+	if (memcmp(&buffer, SAVESTATE_HEADER, 8) != 0)
 	{
-		goto load_failed;
+		MESSAGE_ERROR("Loading state failed: Header mismatch\n");
+		fclose(fp);
+		return -1;
 	}
 
 	for (int i = 0; SaveStateVars[i].len > 0; i++)
 	{
-
+		MESSAGE_INFO("Loading %s (%d)\n", SaveStateVars[i].key, SaveStateVars[i].len);
+		fread(SaveStateVars[i].ptr, SaveStateVars[i].len, 1, fp);
 	}
 
-	fclose(fp);
+	for(int i = 0; i < 8; i++)
+	{
+		bank_set(i, MMR[i]);
+	}
 
-	ResetPCE(0);
+	memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
+
+	osd_gfx_set_mode(io.screen_w, io.screen_h);
+
+	fclose(fp);
 
 	return 0;
-
-load_failed:
-	fclose(fp);
-	return -1;
 }
 
 
+/**
+ * Save current state
+ */
 int
 SaveState(char *name)
 {
@@ -282,15 +320,13 @@ SaveState(char *name)
 	if (fp == NULL)
 		return -1;
 
-	fwrite(&SAVESTATE_HEADER, sizeof(SAVESTATE_HEADER), 1, fp);
+	fwrite(SAVESTATE_HEADER, sizeof(SAVESTATE_HEADER), 1, fp);
 
 	for (int i = 0; SaveStateVars[i].len > 0; i++)
 	{
-
+		MESSAGE_INFO("Saving %s (%d)\n", SaveStateVars[i].key, SaveStateVars[i].len);
+		fwrite(SaveStateVars[i].ptr, SaveStateVars[i].len, 1, fp);
 	}
-	// hard_save_state(fp);
-	// gfx_save_state(fp);
-	// snd_save_state(fp);
 
 	fclose(fp);
 
@@ -298,6 +334,9 @@ SaveState(char *name)
 }
 
 
+/**
+ * Cleanup and quit (not used in retro-go)
+ */
 void
 ShutdownPCE()
 {

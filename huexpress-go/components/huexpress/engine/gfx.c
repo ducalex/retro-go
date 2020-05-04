@@ -16,9 +16,6 @@ static gfx_context saved_gfx_context[4];
 //! Whether we need to draw pending lines
 static bool gfx_need_redraw = 0;
 
-//! Whether we should change video mode after drawing the current frame
-bool gfx_need_video_mode_change = 0;
-
 //! Frame to skip before the next frame to render
 int UCount = 0;
 
@@ -30,8 +27,8 @@ static int last_display_counter = 0;
 
 
 //! Computes the new screen height and eventually change the screen mode
-static inline void
-change_pce_screen_height()
+void
+gfx_change_video_mode()
 {
 	//! minimal theorical line where to begin drawing
 	int min_display;
@@ -84,15 +81,12 @@ change_pce_screen_height()
 #endif
 
 	osd_gfx_set_mode(io.screen_w, io.screen_h);
-
-	gfx_need_video_mode_change = 0;
 }
 
 
 int
 gfx_init()
 {
-    gfx_need_video_mode_change = 0;
     gfx_need_redraw = 0;
     UCount = 0;
 
@@ -122,20 +116,6 @@ gfx_term()
 	if (VRAM2) free(VRAM2);
 
 	osd_gfx_shutdown();
-}
-
-
-void
-gfx_save_state(void *buffer, size_t len)
-{
-
-}
-
-
-void
-gfx_load_state(void *buffer, size_t len)
-{
-
 }
 
 
@@ -300,8 +280,9 @@ gfx_loop()
 
 			render_lines(last_display_counter, display_counter);
 
-			if (gfx_need_video_mode_change) {
-				change_pce_screen_height();
+			if (io.vdc_mode_chg) {
+				gfx_change_video_mode();
+				io.vdc_mode_chg = 0;
 			}
 
 			if (osd_keyboard())

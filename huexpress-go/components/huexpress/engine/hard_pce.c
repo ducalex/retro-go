@@ -104,24 +104,6 @@ hard_term(void)
 	if (ExtraRAM) free(ExtraRAM);
 }
 
-/**
-  *  Write current hardware state to file pointer
-  **/
-void
-hard_save_state(void *buffer, size_t len)
-{
-
-}
-
-/**
-  *  Read current hardware state from file pointer
-  **/
-void
-hard_load_state(void *buffer, size_t len)
-{
-
-}
-
 
 /**
  * Functions to access PCE hardware
@@ -258,7 +240,7 @@ IO_read_raw(uint16 A)
             ofs = io.PSG[io.psg_ch][PSG_DATA_INDEX_REG];
             io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] =
                 (uchar) ((io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] + 1) & 31);
-            return io.wave[io.psg_ch][ofs];
+            return io.PSG_WAVE[io.psg_ch][ofs];
         case 7:
             return io.PSG[io.psg_ch][7];
 
@@ -370,7 +352,7 @@ IO_write(uint16 A, uchar V)
             case HDR:           /* Horizontal Definition */
                 if (io.screen_w != ((V + 1) * 8)) {
                     io.screen_w = (V + 1) * 8;
-                    gfx_need_video_mode_change = 1;
+                    io.vdc_mode_chg = 1;
                 }
                 IO_VDC_REG_ACTIVE.B.l = V;
                 break;
@@ -418,7 +400,7 @@ IO_write(uint16 A, uchar V)
             case HSR:
             case VPR:
             case VDW:
-                gfx_need_video_mode_change = 1;
+                io.vdc_mode_chg = 1;
             default:
                 IO_VDC_REG_ACTIVE.B.l = V;
                 break;
@@ -445,7 +427,7 @@ IO_write(uint16 A, uchar V)
             case VPR:
             case VDW:
                 IO_VDC_REG_ACTIVE.B.h = V;
-                gfx_need_video_mode_change = 1;
+                io.vdc_mode_chg = 1;
                 return;
 
             case LENR:          /* DMA transfert */
@@ -639,7 +621,7 @@ IO_write(uint16 A, uchar V)
                     io.psg_da_count[io.psg_ch] = 0;
                 }
             } else {
-                io.wave[io.psg_ch][io.PSG[io.psg_ch][PSG_DATA_INDEX_REG]] = V;
+                io.PSG_WAVE[io.psg_ch][io.PSG[io.psg_ch][PSG_DATA_INDEX_REG]] = V;
                 io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] =
                     (io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] + 1) & 0x1F;
             }

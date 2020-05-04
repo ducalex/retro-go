@@ -49,8 +49,8 @@ extern struct host_machine host;
 
 typedef struct
 {
-	int len;
-	char key[8];
+	uint len;
+	char key[16];
 	void *ptr;
 } svar_t;
 

@@ -48,7 +48,7 @@ void app_main(void)
 
     if (odroid_system_get_start_action() == ODROID_START_ACTION_RESUME)
     {
-        // odroid_system_emu_load_state(0);
+        odroid_system_emu_load_state(0);
     }
 
     RunPCE();

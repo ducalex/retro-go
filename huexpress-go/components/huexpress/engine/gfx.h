@@ -21,16 +21,12 @@ typedef struct {
 	int16 control;
 } gfx_context;
 
-extern bool gfx_need_video_mode_change;
-
 int  gfx_init();
 void gfx_term();
+void gfx_change_video_mode();
 void gfx_save_context(char slot_number);
 void gfx_load_context(char slot_number);
 char gfx_loop();
-
-void gfx_save_state(void *buffer, size_t len);
-void gfx_load_state(void *buffer, size_t len);
 
 extern int UCount;
 extern int UPeriod;

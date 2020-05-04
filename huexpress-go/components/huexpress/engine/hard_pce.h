@@ -41,8 +41,9 @@ typedef struct {
 								 */
 	uchar vdc_satb_counter; 	/* DMA finished interrupt delay counter */
 	uchar vdc_pendvsync;		/* unsure, set if a end of screen IRQ is waiting */
-	uchar bg_h;					/* number of tiles vertically in virtual screen */
-	uchar bg_w;					/* number of tiles horizontaly in virtual screen */
+	uchar vdc_mode_chg;         /* Video mode change needed at next frame */
+	uint16 bg_w;				/* number of tiles horizontaly in virtual screen */
+	uint16 bg_h;				/* number of tiles vertically in virtual screen */
 	uint16 screen_w;			/* size of real screen in pixels */
 	uint16 screen_h;			/* size of real screen in pixels */
 	uint16 vdc_minline;			/* First scanline of active display */
@@ -55,7 +56,7 @@ typedef struct {
 
 	/* PSG */
 	uchar PSG[PSG_CHANNELS][8];
-	uchar wave[PSG_CHANNELS][32];
+	uchar PSG_WAVE[PSG_CHANNELS][32];
 	// PSG STRUCTURE
 	// 0 : dda_out
 	// 2 : freq (lo byte)  | In reality it's a divisor
@@ -157,9 +158,6 @@ typedef struct {
 int  hard_init(void);
 void hard_reset(void);
 void hard_term(void);
-
-void hard_save_state(void *buffer, size_t len);
-void hard_load_state(void *buffer, size_t len);
 
 void  IO_write(uint16 A, uchar V);
 uchar IO_read(uint16 A);

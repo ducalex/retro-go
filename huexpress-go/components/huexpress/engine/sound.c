@@ -298,7 +298,7 @@ psg_update(char *buf, int ch, unsigned dwSize)
              * See the direct audio stuff a little above for an explanation of everything
              * within this loop.
              */
-            if ((sample = (io.wave[ch][io.PSG[ch][PSG_DATA_INDEX_REG]] - 16)) >= 0)
+            if ((sample = (io.PSG_WAVE[ch][io.PSG[ch][PSG_DATA_INDEX_REG]] - 16)) >= 0)
                 sample++;
 
             *buf++ = (char) ((Sint16) (sample * lbal) >> 6);
