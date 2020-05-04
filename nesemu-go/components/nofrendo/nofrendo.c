@@ -30,7 +30,6 @@
 #include <noftypes.h>
 #include <nofrendo.h>
 #include <event.h>
-#include <log.h>
 #include <osd.h>
 #include <nes.h>
 
@@ -46,25 +45,42 @@ static void timer_isr(void)
    nofrendo_ticks++;
 }
 
-void nofrendo_notify(const char *format, ...)
-{
-   static char buffer[512];
-   va_list args;
-   va_start(args, format);
-
-   // Display on screen
-   // gui_sendmsg();
-
-   // Display on stdout
-   vsprintf(buffer, format, args);
-   printf(" * %s \n", buffer);
-
-   va_end(args);
-}
-
-//    apu_setchan(chan, chan_enabled[chan]);
+// apu_setchan(chan, chan_enabled[chan]);
 // apu_setfilter(filter_type);
 
+void nofrendo_printf(int type, const char *prefix, const char *format, ...)
+{
+   static char buffer[512];
+   va_list arg;
+   va_start(arg, format);
+   vsprintf(buffer, format, arg);
+
+   if (type > 0) {
+      // gui_sendmsg();
+   }
+
+   if (prefix) {
+
+   }
+
+   osd_logprint(0, buffer);
+
+   va_end(arg);
+}
+
+void nofrendo_assert(int expr, int line, const char *file, char *msg)
+{
+   if (expr)
+      return;
+
+   if (NULL != msg)
+      MESSAGE_ERROR("ASSERT: line %d of %s, %s\n", line, file, msg);
+   else
+      MESSAGE_ERROR("ASSERT: line %d of %s\n", line, file);
+
+   asm("break.n 1");
+//   exit(-1);
+}
 
 void nofrendo_refresh()
 {
@@ -76,18 +92,13 @@ void nofrendo_stop(void)
 {
    nes_poweroff();
    nes_destroy();
-
-   // osd_shutdown();
+   osd_shutdown();
    // vid_shutdown();
-   log_shutdown();
 }
 
 int nofrendo_start(const char *filename, int region)
 {
    event_init();
-
-   if (log_init())
-      return -1;
 
    if (osd_init())
       return -1;
@@ -109,15 +120,14 @@ int nofrendo_start(const char *filename, int region)
 
    if (NULL == console)
    {
-      log_printf("Failed to create NES instance.\n");
+      MESSAGE_ERROR("Failed to create NES instance.\n");
       return -1;
    }
 
    if (nes_insertcart(filename, console))
    {
-      log_printf("Failed to insert NES cart.\n");
-      // odroid_system_panic("Unable to load NES ROM.");
-      return -1;
+      MESSAGE_ERROR("Failed to insert NES cart.\n");
+      return -2;
    }
 
    nes_emulate();

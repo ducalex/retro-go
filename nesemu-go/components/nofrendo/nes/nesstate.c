@@ -29,15 +29,9 @@
 #include <nofrendo.h>
 #include <nesstate.h>
 #include <nes.h>
-#include <log.h>
 #include <osd.h>
 #include <libsnss.h>
 #include "nes6502.h"
-
-#include "odroid_sdcard.h"
-#include "odroid_settings.h"
-#include "odroid_overlay.h"
-#include "odroid_display.h"
 
 extern nes6502_context cpu;
 
@@ -54,7 +48,7 @@ void state_setslot(int slot)
        && slot <= LAST_STATE_SLOT)
    {
       state_slot = slot;
-      nofrendo_notify("State slot set to %d", slot);
+      MESSAGE_INFO("State slot set to %d\n", slot);
    }
 }
 

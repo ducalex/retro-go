@@ -27,12 +27,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <noftypes.h>
+#include <nofrendo.h>
 #include <bitmap.h>
 #include <nes.h>
 
 bitmap_t *bmp_create(int width, int height, int overdraw)
 {
-   printf("bmp_create: width=%d, height=%d, overdraw=%d\n", width, height, overdraw);
+   MESSAGE_INFO("bmp_create: width=%d, height=%d, overdraw=%d\n", width, height, overdraw);
 
    bitmap_t *bitmap = malloc(sizeof(bitmap_t) + (sizeof(uint8 *) * height));
    if (bitmap == NULL)

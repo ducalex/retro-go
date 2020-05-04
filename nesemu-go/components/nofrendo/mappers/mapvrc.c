@@ -3,14 +3,14 @@
 **
 **
 ** This program is free software; you can redistribute it and/or
-** modify it under the terms of version 2 of the GNU Library General 
+** modify it under the terms of version 2 of the GNU Library General
 ** Public License as published by the Free Software Foundation.
 **
-** This program is distributed in the hope that it will be useful, 
+** This program is distributed in the hope that it will be useful,
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
-** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
-** Library General Public License for more details.  To obtain a 
-** copy of the GNU Library General Public License, write to the Free 
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+** Library General Public License for more details.  To obtain a
+** copy of the GNU Library General Public License, write to the Free
 ** Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 **
 ** Any permitted reproduction of these routines, in whole or in part,
@@ -26,7 +26,7 @@
 #include <noftypes.h>
 #include <nes_mmc.h>
 #include <nes.h>
-#include <log.h>
+#include <nofrendo.h>
 
 #define VRC_VBANK(bank, value, high) \
 { \
@@ -58,7 +58,7 @@ static void map21_write(uint32 address, uint8 value)
    switch (address)
    {
    case 0x8000:
-      if (select_c000) 
+      if (select_c000)
          mmc_bankrom(8, 0xC000,value);
       else
          mmc_bankrom(8, 0x8000,value);
@@ -71,19 +71,19 @@ static void map21_write(uint32 address, uint8 value)
          ppu_mirror(0, 1, 0, 1); /* vertical */
          break;
 
-      case 1: 
+      case 1:
          ppu_mirror(0, 0, 1, 1); /* horizontal */
          break;
 
-      case 2: 
-         ppu_mirror(0, 0, 0, 0); 
+      case 2:
+         ppu_mirror(0, 0, 0, 0);
          break;
 
-      case 3: 
-         ppu_mirror(1, 1, 1, 1); 
+      case 3:
+         ppu_mirror(1, 1, 1, 1);
          break;
 
-      default: 
+      default:
          break;
       }
       break;
@@ -150,9 +150,7 @@ static void map21_write(uint32 address, uint8 value)
       break;
 
    default:
-#ifdef NOFRENDO_DEBUG
-      log_printf("wrote $%02X to $%04X", value, address);
-#endif
+      MESSAGE_DEBUG("wrote $%02X to $%04X", value, address);
       break;
    }
 }
@@ -160,13 +158,13 @@ static void map21_write(uint32 address, uint8 value)
 static void map22_write(uint32 address, uint8 value)
 {
    int reg = address >> 12;
-   
+
    switch (reg)
    {
    case 0x8:
       mmc_bankrom(8, 0x8000, value);
       break;
-   
+
    case 0xA:
       mmc_bankrom(8, 0xA000, value);
       break;
@@ -178,7 +176,7 @@ static void map22_write(uint32 address, uint8 value)
          ppu_mirror(0, 1, 0, 1); /* vertical */
          break;
 
-      case 1: 
+      case 1:
          ppu_mirror(0, 0, 1, 1); /* horizontal */
          break;
 
@@ -220,7 +218,7 @@ static void map23_write(uint32 address, uint8 value)
    case 0xAFFF:
       mmc_bankrom(8, 0xA000, value);
       break;
-   
+
    case 0x9000:
    case 0x9004:
    case 0x9008:
@@ -230,7 +228,7 @@ static void map23_write(uint32 address, uint8 value)
          ppu_mirror(0, 1, 0, 1); /* vertical */
          break;
 
-      case 1: 
+      case 1:
          ppu_mirror(0, 0, 1, 1); /* horizontal */
          break;
 
@@ -273,12 +271,12 @@ static void map23_write(uint32 address, uint8 value)
    case 0xE003:
    case 0xE00C: VRC_VBANK(7,value,1); break;
 
-   case 0xF000: 
+   case 0xF000:
       irq.latch &= 0xF0;
       irq.latch |= (value & 0x0F);
       break;
 
-   case 0xF004: 
+   case 0xF004:
       irq.latch &= 0x0F;
       irq.latch |= ((value & 0x0F) << 4);
       break;
@@ -294,14 +292,12 @@ static void map23_write(uint32 address, uint8 value)
       break;
 
    default:
-#ifdef NOFRENDO_DEBUG
-      log_printf("wrote $%02X to $%04X",value,address);
-#endif
+      MESSAGE_DEBUG("wrote $%02X to $%04X",value,address);
       break;
    }
 }
 
-static void vrc_hblank(int vblank) 
+static void vrc_hblank(int vblank)
 {
    UNUSED(vblank);
 

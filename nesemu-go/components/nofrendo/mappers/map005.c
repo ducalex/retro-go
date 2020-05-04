@@ -26,7 +26,7 @@
 #include <noftypes.h>
 #include <nes_mmc.h>
 #include <nes.h>
-#include <log.h>
+#include <nofrendo.h>
 
 /* TODO: there's lots of info about this mapper now;
 ** let's implement it correctly/completely
@@ -197,9 +197,7 @@ static void map5_write(uint32 address, uint8 value)
       break;
 
    default:
-#ifdef NOFRENDO_DEBUG
-      log_printf("unknown mmc5 write: $%02X to $%04X\n", value, address);
-#endif /* NOFRENDO_DEBUG */
+      MESSAGE_DEBUG("Unknown mmc5 write: $%02X to $%04X\n", value, address);
       break;
    }
 }
@@ -214,9 +212,7 @@ static uint8 map5_read(uint32 address)
    }
    else
    {
-#ifdef NOFRENDO_DEBUG
-      log_printf("invalid MMC5 read: $%04X", address);
-#endif
+      MESSAGE_DEBUG("Invalid MMC5 read: $%04X", address);
       return 0xFF;
    }
 }

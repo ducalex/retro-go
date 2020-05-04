@@ -66,58 +66,6 @@ typedef enum
 
 #include <string.h>
 #include <stdlib.h>
-#include <log.h>
-
-#ifdef NOFRENDO_DEBUG
-
-#define  ASSERT(expr)      log_assert((int) (expr), __LINE__, __FILE__, NULL)
-#define  ASSERT_MSG(msg)   log_assert(false, __LINE__, __FILE__, (msg))
-
-#else /* !NOFRENDO_DEBUG */
-
-#define  ASSERT(expr)
-#define  ASSERT_MSG(msg)
-
-#endif /* !NOFRENDO_DEBUG */
+#include <stdint.h>
 
 #endif /* _TYPES_H_ */
-
-/*
-** $Log: noftypes.h,v $
-** Revision 1.1  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.15  2000/11/05 16:37:18  matt
-** rolled rgb.h into bitmap.h
-**
-** Revision 1.14  2000/10/17 03:22:16  matt
-** safe UNUSED
-**
-** Revision 1.13  2000/10/10 13:58:14  matt
-** stroustrup squeezing his way in the door
-**
-** Revision 1.12  2000/10/10 13:03:54  matt
-** Mr. Clean makes a guest appearance
-**
-** Revision 1.11  2000/08/11 01:44:05  matt
-** cosmeses
-**
-** Revision 1.10  2000/07/31 04:28:47  matt
-** one million cleanups
-**
-** Revision 1.9  2000/07/24 04:30:17  matt
-** ASSERTs should have been calling log_shutdown
-**
-** Revision 1.8  2000/07/17 01:52:28  matt
-** made sure last line of all source files is a newline
-**
-** Revision 1.7  2000/07/04 04:46:44  matt
-** moved INLINE define from osd.h
-**
-** Revision 1.6  2000/06/09 15:12:25  matt
-** initial revision
-**
-*/

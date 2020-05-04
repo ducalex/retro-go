@@ -31,7 +31,20 @@
 #define  APP_STRING     "Nofrendo"
 #define  APP_VERSION    "2.0"
 
+// #define NOFRENDO_DEBUG 1
+
 #include <nes.h>
+#include <bitmap.h>
+
+#ifdef NOFRENDO_DEBUG
+#define ASSERT(expr)        nofrendo_assert((int) (expr), __LINE__, __FILE__, NULL)
+#define MESSAGE_DEBUG(x...) nofrendo_printf(0, __FUNCTION__, "> " x)
+#else
+#define ASSERT(expr)
+#define MESSAGE_DEBUG(x...)
+#endif
+#define MESSAGE_INFO(x...)  nofrendo_printf(1, NULL, "* " x)
+#define MESSAGE_ERROR(x...) nofrendo_printf(2, NULL, "!! " x)
 
 extern nes_t *console;
 extern bitmap_t *primary_buffer;
@@ -39,6 +52,7 @@ extern bitmap_t *primary_buffer;
 extern int nofrendo_start(const char *filename, int region);
 extern void nofrendo_stop(void);
 extern void nofrendo_refresh(void);
-extern void nofrendo_notify(const char *format, ...);
+extern void nofrendo_printf(int type, const char *prefix, const char *format, ...);
+extern void nofrendo_assert(int expr, int line, const char *file, char *msg);
 
 #endif /* !_NOFRENDO_H_ */

@@ -32,7 +32,6 @@
 #include "nes_mmc.h"
 #include "nes_ppu.h"
 #include "nes.h"
-#include <log.h>
 #include <osd.h>
 #include <rom/crc.h>
 
@@ -59,7 +58,7 @@ static void rom_savesram(rominfo_t *rominfo)
       {
          fwrite(rominfo->sram, SRAM_BANK_LENGTH, rominfo->sram_banks, fp);
          fclose(fp);
-         log_printf("Wrote battery RAM to %s.\n", fn);
+         MESSAGE_INFO("Wrote battery RAM to %s.\n", fn);
       }
    }
 }
@@ -82,7 +81,7 @@ static void rom_loadsram(rominfo_t *rominfo)
       {
          fread(rominfo->sram, SRAM_BANK_LENGTH, rominfo->sram_banks, fp);
          fclose(fp);
-         log_printf("Read battery RAM from %s.\n", fn);
+         MESSAGE_INFO("Read battery RAM from %s.\n", fn);
       }
    }
 }
@@ -101,7 +100,7 @@ static int rom_getheader(unsigned char **rom, rominfo_t *rominfo)
 
    if (memcmp(head.ines_magic, ROM_INES_MAGIC, 4))
    {
-      printf("rom_getheader: %s is not a valid ROM image\n", rominfo->filename);
+      MESSAGE_ERROR("%s is not a valid ROM image\n", rominfo->filename);
       return -1;
    }
 
@@ -199,9 +198,9 @@ rominfo_t *rom_load(const char *filename)
    // rominfo->checksum = crc32_le(0, rom + 16, filesize - 16);
    // rominfo->checksum = crc32_le(0, rom, filesize);
 
-   printf("rom_load: filename='%s'\n", rominfo->filename);
-   printf("rom_load: filesize=%d\n", filesize);
-   printf("rom_load: checksum='%08X'\n", rominfo->checksum);
+   MESSAGE_INFO("rom_load: filename='%s'\n", rominfo->filename);
+   MESSAGE_INFO("rom_load: filesize=%d\n", filesize);
+   MESSAGE_INFO("rom_load: checksum='%08X'\n", rominfo->checksum);
 
    /* Get the header and stick it into rominfo struct */
 	if (rom_getheader(&rom_ptr, rominfo))
@@ -210,8 +209,7 @@ rominfo_t *rom_load(const char *filename)
    /* Make sure we really support the mapper */
    if (false == mmc_peek(rominfo->mapper_number))
    {
-      nofrendo_notify("Mapper %d not yet implemented", rominfo->mapper_number);
-      printf("rom_load: Mapper %d not yet implemented\n", rominfo->mapper_number);
+      MESSAGE_ERROR("Mapper %d not yet implemented\n", rominfo->mapper_number);
       goto _fail;
    }
 
@@ -221,7 +219,7 @@ rominfo_t *rom_load(const char *filename)
    rominfo->sram = calloc(SRAM_BANK_LENGTH, rominfo->sram_banks);
    if (NULL == rominfo->sram)
    {
-      printf("Could not allocate space for battery RAM");
+      MESSAGE_ERROR("Could not allocate space for battery RAM\n");
       goto _fail;
    }
 
@@ -229,7 +227,7 @@ rominfo_t *rom_load(const char *filename)
    {
       memcpy(rominfo->sram + TRAINER_OFFSET, rom_ptr, TRAINER_LENGTH);
       rom_ptr += TRAINER_LENGTH;
-      nofrendo_notify("Read in trainer at $7000\n");
+      MESSAGE_INFO("Read in trainer at $7000\n");
    }
 
    rominfo->rom = rom_ptr;
@@ -245,20 +243,19 @@ rominfo_t *rom_load(const char *filename)
       rominfo->vram = calloc(VRAM_BANK_LENGTH, rominfo->vram_banks);
       if (NULL == rominfo->vram)
       {
-         printf("Could not allocate space for VRAM");
+         MESSAGE_ERROR("Could not allocate space for VRAM\n");
          goto _fail;
       }
    }
 
    // rom_loadsram(rominfo);
 
-   nofrendo_notify("ROM loaded: %s", rom_getinfo(rominfo));
+   MESSAGE_INFO("ROM loaded: %s", rom_getinfo(rominfo));
 
    return rominfo;
 
 _fail:
-   nofrendo_notify("ROM not loaded.");
-   printf("rom_load: Rom loading failed\n");
+   MESSAGE_ERROR("ROM loading failed\n");
    rom_free(&rominfo);
    return NULL;
 }

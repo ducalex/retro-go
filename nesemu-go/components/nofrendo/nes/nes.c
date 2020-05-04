@@ -28,7 +28,6 @@
 #include <stdlib.h>
 #include <noftypes.h>
 #include <nes6502.h>
-#include <log.h>
 #include <osd.h>
 #include <nes.h>
 #include <nes_apu.h>
@@ -361,7 +360,7 @@ void nes_reset(int reset_type)
    nes.scanline = 241;
    nes.cycles = 0;
 
-   nofrendo_notify("NES %s", (SOFT_RESET == reset_type) ? "reset" : "powered on");
+   MESSAGE_INFO("NES %s\n", (SOFT_RESET == reset_type) ? "reset" : "powered on");
 }
 
 void nes_destroy()
@@ -447,7 +446,7 @@ nes_t *nes_create(region_t region)
       machine->scanlines = 312;
       machine->overscan = 0;
       machine->cycles_per_line = 341.f * 5 / 16;
-      printf("nes_create: System region: PAL\n");
+      MESSAGE_INFO("System region: PAL\n");
    }
    else
    {
@@ -455,7 +454,7 @@ nes_t *nes_create(region_t region)
       machine->scanlines = 262;
       machine->overscan = 8;
       machine->cycles_per_line = 341.f * 4 / 12;
-      printf("nes_create: System region: NTSC\n");
+      MESSAGE_INFO("System region: NTSC\n");
    }
 
    machine->region = region;

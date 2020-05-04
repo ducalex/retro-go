@@ -28,10 +28,10 @@
 #include <esp_attr.h>
 
 #include <noftypes.h>
+#include <nofrendo.h>
 #include <nes_ppu.h>
 #include <nes.h>
 #include <nes6502.h>
-#include <log.h>
 #include <nes_mmc.h>
 #include <bitmap.h>
 #include <nesinput.h>
@@ -367,8 +367,8 @@ uint8 IRAM_ATTR ppu_read(uint32 address)
       if ((ppu.bg_on || ppu.obj_on) && !ppu.vram_accessible)
       {
          ppu.vdata_latch = 0xFF;
-         //log_printf("VRAM read at $%04X, scanline %d\n",
-        //            ppu.vaddr, nes_getptr()->scanline);
+         MESSAGE_DEBUG("VRAM read at $%04X, scanline %d\n",
+                        ppu.vaddr, nes_getptr()->scanline);
       }
       else
       {
@@ -480,8 +480,8 @@ void IRAM_ATTR ppu_write(uint32 address, uint8 value)
          /* VRAM only accessible during scanlines 241-260 */
          if ((ppu.bg_on || ppu.obj_on) && !ppu.vram_accessible)
          {
-            log_printf("VRAM write to $%04X, scanline %d\n",
-                       ppu.vaddr, nes_getptr()->scanline);
+            MESSAGE_DEBUG("VRAM write to $%04X, scanline %d\n",
+                           ppu.vaddr, nes_getptr()->scanline);
             PPU_MEM(ppu.vaddr) = 0xFF; /* corrupt */
          }
          else

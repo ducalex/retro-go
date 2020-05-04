@@ -4,10 +4,10 @@
 */
 
 #include <noftypes.h>
+#include <nofrendo.h>
 #include <nes_mmc.h>
 #include <nes_ppu.h>
 #include <nes.h>
-#include <string.h>
 
 static uint8 reg5000;
 static uint8 reg5100;
@@ -67,7 +67,7 @@ static uint8 map162_reg_read(uint32 address)
       return trigger ? reg5300 : 0;
 
    default:
-      log_printf("mapper 162: untrapped read to $%04X\n", address);
+      MESSAGE_ERROR("mapper 162: untrapped read to $%04X\n", address);
       return 0x04;
    }
 }
@@ -109,7 +109,7 @@ static void map162_reg_write(uint32 address, uint8 value)
       break;
 
    default:
-      log_printf("mapper 162: untrapped write $%02X to $%04X\n", value, address);
+      MESSAGE_ERROR("mapper 162: untrapped write $%02X to $%04X\n", value, address);
    }
 }
 

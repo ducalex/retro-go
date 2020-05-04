@@ -26,7 +26,7 @@
 #include <noftypes.h>
 #include <nes_mmc.h>
 #include <nes.h>
-#include <log.h>
+#include <nofrendo.h>
 
 static struct
 {
@@ -118,43 +118,39 @@ static void map64_write(uint32 address, uint8 value)
          break;
 
       default:
-#ifdef NOFRENDO_DEBUG
-         log_printf("mapper 64: unknown command #%d", command & 0xF);
-#endif
+         MESSAGE_DEBUG("mapper 64: unknown command #%d", command & 0xF);
          break;
       }
       break;
-   
+
    case 0xA000:
       if (value & 1)
          ppu_mirror(0, 0, 1, 1);
       else
          ppu_mirror(0, 1, 0, 1);
       break;
-   
+
    case 0xC000:
       //irq.counter = value;
       irq.latch = value;
       break;
-   
+
    case 0xC001:
       //irq.latch = value;
       irq.reset = true;
       break;
-   
+
    case 0xE000:
       //irq.counter = irq.latch;
       irq.enabled = false;
       break;
-   
+
    case 0xE001:
       irq.enabled = true;
       break;
-   
+
    default:
-#ifdef NOFRENDO_DEBUG
-      log_printf("mapper 64: Wrote $%02X to $%04X", value, address);
-#endif
+      MESSAGE_DEBUG("mapper 64: Wrote $%02X to $%04X", value, address);
       break;
    }
 

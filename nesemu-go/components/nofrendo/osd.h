@@ -96,4 +96,7 @@ extern void osd_getinput(void);
 /* get rom data */
 extern size_t osd_getromdata(unsigned char **data);
 
+/* Log output */
+extern void osd_logprint(int type, char *message);
+
 #endif /* _OSD_H_ */

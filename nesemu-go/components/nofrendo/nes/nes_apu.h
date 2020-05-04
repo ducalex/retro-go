@@ -224,8 +224,8 @@ typedef struct apu_s
 
    struct {
       uint8 state;
-      uint step;
-      uint cycles;
+      uint32 step;
+      uint32 cycles;
       bool irq_occurred;
       bool disable_irq;
    } fc;

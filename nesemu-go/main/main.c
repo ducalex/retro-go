@@ -6,7 +6,6 @@
 #include <noftypes.h>
 #include <bitmap.h>
 #include <event.h>
-#include <log.h>
 #include <nes.h>
 #include <nesinput.h>
 #include <nes/nesstate.h>
@@ -219,14 +218,13 @@ void osd_loadstate()
    set_overscan(odroid_settings_app_int32_get(NVS_KEY_OVERSCAN, 1));
 }
 
-int osd_logprint(const char *string)
+void osd_logprint(int type, char *string)
 {
-   return printf("%s", string);
+   printf("%s", string);
 }
 
 int osd_init()
 {
-   log_chain_logfunc(osd_logprint);
    return 0;
 }
 
@@ -381,17 +379,24 @@ void app_main(void)
       odroid_system_panic("ROM file loading failed!");
    }
 
-   int region = NES_NTSC;
+   int region, ret;
+
    switch(odroid_settings_Region_get())
    {
       case ODROID_REGION_AUTO: region = NES_AUTO; break;
       case ODROID_REGION_NTSC: region = NES_NTSC; break;
       case ODROID_REGION_PAL:  region = NES_PAL;  break;
+      default: region = NES_NTSC; break;
    }
 
-   printf("NoFrendo start!\n");
-   nofrendo_start(romPath, region);
+   printf("Nofrendo start!\n");
 
-   printf("NoFrendo died.\n");
-   abort();
+   ret = nofrendo_start(romPath, region);
+
+   switch (ret)
+   {
+      case -1: odroid_system_panic("Init failed.\n");
+      case -2: odroid_system_panic("Unsupported ROM.\n");
+      default: odroid_system_panic("Nofrendo died!\n");
+   }
 }

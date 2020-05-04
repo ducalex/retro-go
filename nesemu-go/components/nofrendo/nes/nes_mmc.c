@@ -25,9 +25,9 @@
 
 #include <string.h>
 #include <noftypes.h>
+#include <nofrendo.h>
 #include <nes6502.h>
 #include <libsnss.h>
-#include <log.h>
 #include "nes_ppu.h"
 #include "nes_mmc.h"
 #include "nes_rom.h"
@@ -100,7 +100,7 @@ void mmc_bankvrom(int size, uint32 address, int bank)
       break;
 
    default:
-      printf("invalid CHR bank size %d\n", size);
+      MESSAGE_ERROR("Invalid CHR bank size %d\n", size);
       //abort();
       break;
    }
@@ -154,7 +154,7 @@ void mmc_bankrom(int size, uint32 address, int bank)
       break;
 
    default:
-      printf("invalid PRG bank size %d\n", size);
+      MESSAGE_ERROR("Invalid PRG bank size %d\n", size);
       //abort();
       break;
    }
@@ -179,7 +179,7 @@ bool mmc_peek(int map_num)
 
 static void mmc_setpages(void)
 {
-   printf("setting up mapper %d\n", mmc.intf->number);
+   MESSAGE_INFO("Setting up mapper %d\n", mmc.intf->number);
 
    /* Switch PRG and CHR into CPU space */
    mmc_bankrom(16, 0x8000, 0);
@@ -212,7 +212,7 @@ void mmc_reset(void)
    if (mmc.intf->init)
       mmc.intf->init();
 
-   log_printf("reset memory mapper\n");
+   MESSAGE_INFO("Reset memory mapper\n");
 }
 
 
@@ -255,7 +255,7 @@ mmc_t *mmc_create(rominfo_t *rominfo)
 
    mmc_setcontext(temp);
 
-   log_printf("created memory mapper: %s\n", (*map_ptr)->name);
+   MESSAGE_INFO("Created memory mapper: %s\n", (*map_ptr)->name);
 
    return temp;
 }

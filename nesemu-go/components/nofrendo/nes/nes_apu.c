@@ -25,7 +25,7 @@
 
 #include <string.h>
 #include <noftypes.h>
-#include <log.h>
+#include <nofrendo.h>
 #include <nes.h>
 #include <nes_apu.h>
 #include "nes6502.h"

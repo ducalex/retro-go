@@ -325,7 +325,7 @@ typedef struct _SNSS_FILE
       SnssMapperBlock mapperBlock;
       SnssControllersBlock contBlock;
       SnssSoundBlock soundBlock;
-   }
+   };
 } SNSS_FILE;
 
 #ifdef __cplusplus
