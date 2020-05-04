@@ -127,6 +127,8 @@ void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_
         odroid_system_panic("Invalid ROM Path!");
     }
 
+    printf("odroid_system_emu_init: romPath='%s'\n", romPath);
+
     // Read some of the ROM to derive a unique id
     if (!odroid_sdcard_copy_file_to_memory(romPath, buffer, sizeof(buffer)))
     {
