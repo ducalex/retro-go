@@ -36,10 +36,10 @@
 #define  MMC_8KROM         (mmc.cart->rom_banks * 2)
 #define  MMC_16KROM        (mmc.cart->rom_banks)
 #define  MMC_32KROM        (mmc.cart->rom_banks / 2)
-#define  MMC_8KVROM        (mmc.cart->vrom_banks)
-#define  MMC_4KVROM        (mmc.cart->vrom_banks * 2)
-#define  MMC_2KVROM        (mmc.cart->vrom_banks * 4)
-#define  MMC_1KVROM        (mmc.cart->vrom_banks * 8)
+#define  MMC_8KVROM        (mmc.vrom_banks)
+#define  MMC_4KVROM        (mmc.vrom_banks * 2)
+#define  MMC_2KVROM        (mmc.vrom_banks * 4)
+#define  MMC_1KVROM        (mmc.vrom_banks * 8)
 
 #define  MMC_LAST8KROM     (MMC_8KROM - 1)
 #define  MMC_LAST16KROM    (MMC_16KROM - 1)
@@ -73,33 +73,30 @@ void mmc_bankvrom(int size, uint32 address, int bank)
 {
    // printf("mmc_bankvrom: Addr: 0x%x Size: 0x%x Bank:%d\n", address, size, bank);
 
-   if (0 == mmc.cart->vrom_banks)
-      return;
-
    switch (size)
    {
    case 1:
       if (bank == MMC_LASTBANK)
          bank = MMC_LAST1KVROM;
-      ppu_setpage(1, address >> 10, &mmc.cart->vrom[(bank % MMC_1KVROM) << 10] - address);
+      ppu_setpage(1, address >> 10, &mmc.vrom[(bank % MMC_1KVROM) << 10] - address);
       break;
 
    case 2:
       if (bank == MMC_LASTBANK)
          bank = MMC_LAST2KVROM;
-      ppu_setpage(2, address >> 10, &mmc.cart->vrom[(bank % MMC_2KVROM) << 11] - address);
+      ppu_setpage(2, address >> 10, &mmc.vrom[(bank % MMC_2KVROM) << 11] - address);
       break;
 
    case 4:
       if (bank == MMC_LASTBANK)
          bank = MMC_LAST4KVROM;
-      ppu_setpage(4, address >> 10, &mmc.cart->vrom[(bank % MMC_4KVROM) << 12] - address);
+      ppu_setpage(4, address >> 10, &mmc.vrom[(bank % MMC_4KVROM) << 12] - address);
       break;
 
    case 8:
       if (bank == MMC_LASTBANK)
          bank = MMC_LAST8KVROM;
-      ppu_setpage(8, 0, &mmc.cart->vrom[(bank % MMC_8KVROM) << 13]);
+      ppu_setpage(8, 0, &mmc.vrom[(bank % MMC_8KVROM) << 13]);
       break;
 
    default:
@@ -128,7 +125,6 @@ void mmc_bankrom(int size, uint32 address, int bank)
          mmc_cpu.mem_page[page] = &mmc.cart->rom[(bank % MMC_8KROM) << 13];
          mmc_cpu.mem_page[page + 1] = mmc_cpu.mem_page[page] + 0x1000;
       }
-
       break;
 
    case 16:
@@ -202,15 +198,7 @@ static void mmc_setpages(void)
          ppu_mirror(0, 0, 1, 1);
    }
 
-   /* if we have no VROM, switch in VRAM */
-   /* TODO: fix this hack implementation */
-   if (0 == mmc.cart->vrom_banks)
-   {
-      ASSERT(mmc.cart->vram);
-
-      ppu_setpage(8, 0, mmc.cart->vram);
-      ppu_mirrorhipages();
-   }
+   // ppu_mirrorhipages();
 }
 
 /* Mapper initialization routine */
@@ -251,6 +239,17 @@ mmc_t *mmc_create(rominfo_t *rominfo)
 
    temp->intf = *map_ptr;
    temp->cart = rominfo;
+
+   if (rominfo->vrom_banks)
+   {
+      temp->vrom = rominfo->vrom;
+      temp->vrom_banks = rominfo->vrom_banks;
+   }
+   else
+   {
+      temp->vrom = rominfo->vram;
+      temp->vrom_banks = rominfo->vram_banks;
+   }
 
    mmc_setcontext(temp);
 

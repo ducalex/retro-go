@@ -29,6 +29,25 @@
 #include <unistd.h>
 #include <osd.h>
 
+#define  ROM_FLAG_BATTERY     0x01
+#define  ROM_FLAG_TRAINER     0x02
+#define  ROM_FLAG_FOURSCREEN  0x04
+#define  ROM_FLAG_VERSUS      0x08
+
+#define  ROM_FOURSCREEN    0x08
+#define  ROM_TRAINER       0x04
+#define  ROM_BATTERY       0x02
+#define  ROM_MIRRORTYPE    0x01
+#define  ROM_INES_MAGIC    "NES\x1A"
+
+#define  TRAINER_OFFSET    0x1000
+#define  TRAINER_LENGTH    0x200
+
+#define  ROM_BANK_LENGTH   0x4000
+#define  VROM_BANK_LENGTH  0x2000
+#define  SRAM_BANK_LENGTH  0x0400
+#define  VRAM_BANK_LENGTH  0x2000
+
 typedef struct inesheader_s
 {
    uint8 ines_magic[4]    ;
@@ -45,11 +64,6 @@ typedef enum
    MIRROR_HORIZ   = 0,
    MIRROR_VERT    = 1
 } mirror_t;
-
-#define  ROM_FLAG_BATTERY     0x01
-#define  ROM_FLAG_TRAINER     0x02
-#define  ROM_FLAG_FOURSCREEN  0x04
-#define  ROM_FLAG_VERSUS      0x08
 
 typedef struct rominfo_s
 {

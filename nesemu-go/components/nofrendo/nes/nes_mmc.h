@@ -52,7 +52,7 @@ typedef struct mapintf_s
    char *name;
    void (*init)(void);
    void (*vblank)(void);
-   void (*hblank)(int vblank);
+   void (*hblank)(int scanline);
    void (*get_state)(SnssMapperBlock *state);
    void (*set_state)(SnssMapperBlock *state);
    map_memread *mem_read;
@@ -65,6 +65,8 @@ typedef struct mmc_s
 {
    mapintf_t *intf;
    rominfo_t *cart;  /* link it back to the cart */
+   uint8 *vrom;
+   uint8  vrom_banks;
 } mmc_t;
 
 extern rominfo_t *mmc_getinfo(void);

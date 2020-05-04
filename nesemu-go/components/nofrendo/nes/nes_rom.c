@@ -53,22 +53,6 @@
 #define  _fread(B,N,L,F)   fread((B),(N),(L),(F))
 #endif
 
-#define  ROM_FOURSCREEN    0x08
-#define  ROM_TRAINER       0x04
-#define  ROM_BATTERY       0x02
-#define  ROM_MIRRORTYPE    0x01
-#define  ROM_INES_MAGIC    "NES\x1A"
-
-#define  TRAINER_OFFSET    0x1000
-#define  TRAINER_LENGTH    0x200
-#define  VRAM_LENGTH       0x2000
-
-#define  ROM_BANK_LENGTH   0x4000
-#define  VROM_BANK_LENGTH  0x2000
-
-#define  SRAM_BANK_LENGTH  0x0400
-#define  VRAM_BANK_LENGTH  0x2000
-
 /* Save battery-backed RAM */
 static void rom_savesram(rominfo_t *rominfo)
 {
@@ -113,81 +97,6 @@ static void rom_loadsram(rominfo_t *rominfo)
          log_printf("Read battery RAM from %s.\n", fn);
       }
    }
-}
-
-/* Allocate space for SRAM */
-static int rom_allocsram(rominfo_t *rominfo)
-{
-   /* Load up SRAM */
-   rominfo->sram = calloc(SRAM_BANK_LENGTH, rominfo->sram_banks);
-   if (NULL == rominfo->sram)
-   {
-      printf("Could not allocate space for battery RAM");
-      return -1;
-   }
-   return 0;
-}
-
-/* If there's a trainer, load it in at $7000 */
-static void rom_loadtrainer(unsigned char **rom, rominfo_t *rominfo)
-{
-   ASSERT(rom);
-   ASSERT(rominfo);
-
-   if (rominfo->flags & ROM_FLAG_TRAINER)
-   {
-//      fread(rominfo->sram + TRAINER_OFFSET, TRAINER_LENGTH, 1, fp);
-      memcpy(rominfo->sram + TRAINER_OFFSET, *rom, TRAINER_LENGTH);
-      *rom += TRAINER_LENGTH;
-      log_printf("Read in trainer at $7000\n");
-   }
-}
-
-static int rom_loadrom(unsigned char **rom, rominfo_t *rominfo)
-{
-   ASSERT(rom);
-   ASSERT(rominfo);
-
-   /* Allocate ROM space, and load it up! */
-/*
-   rominfo->rom = malloc((rominfo->rom_banks * ROM_BANK_LENGTH));
-   if (NULL == rominfo->rom)
-   {
-      gui_sendmsg(GUI_RED, "Could not allocate space for ROM image");
-      return -1;
-   }
-   _fread(rominfo->rom, ROM_BANK_LENGTH, rominfo->rom_banks, fp);
-*/
-   rominfo->rom = *rom;
-   *rom += ROM_BANK_LENGTH * rominfo->rom_banks;
-
-
-   /* If there's VROM, allocate and stuff it in */
-   if (rominfo->vrom_banks)
-   {
-/*
-      rominfo->vrom = malloc((rominfo->vrom_banks * VROM_BANK_LENGTH));
-      if (NULL == rominfo->vrom)
-      {
-         gui_sendmsg(GUI_RED, "Could not allocate space for VROM");
-         return -1;
-      }
-      _fread(rominfo->vrom, VROM_BANK_LENGTH, rominfo->vrom_banks, fp);
-*/
-      rominfo->vrom = *rom;
-      *rom += VROM_BANK_LENGTH * rominfo->vrom_banks;
-   }
-   else
-   {
-      rominfo->vram = calloc(VRAM_LENGTH, 1);
-      if (NULL == rominfo->vram)
-      {
-         printf("Could not allocate space for VRAM");
-         return -1;
-      }
-   }
-
-   return 0;
 }
 
 static int rom_getheader(unsigned char **rom, rominfo_t *rominfo)
@@ -285,7 +194,7 @@ char *rom_getinfo(rominfo_t *rominfo)
 rominfo_t *rom_load(const char *filename)
 {
    rominfo_t *rominfo;
-   unsigned char *rom;
+   unsigned char *rom, *rom_ptr;
    size_t filesize;
 
    rominfo = calloc(sizeof(rominfo_t), 1);
@@ -296,6 +205,8 @@ rominfo_t *rom_load(const char *filename)
    if (NULL == rom)
       goto _fail;
 
+   rom_ptr = rom;
+
    strncpy(rominfo->filename, filename, sizeof(rominfo->filename));
    // rominfo->checksum = crc32_le(0, rom + 16, filesize - 16);
    // rominfo->checksum = crc32_le(0, rom, filesize);
@@ -305,7 +216,7 @@ rominfo_t *rom_load(const char *filename)
    printf("rom_load: checksum='%08X'\n", rominfo->checksum);
 
    /* Get the header and stick it into rominfo struct */
-	if (rom_getheader(&rom, rominfo))
+	if (rom_getheader(&rom_ptr, rominfo))
       goto _fail;
 
    /* Make sure we really support the mapper */
@@ -318,15 +229,38 @@ rominfo_t *rom_load(const char *filename)
 
    /* iNES format doesn't tell us if we need SRAM, so
    ** we have to always allocate it -- bleh!
-   ** UNIF, TAKE ME AWAY!  AAAAAAAAAA!!!
    */
-   if (rom_allocsram(rominfo))
+   rominfo->sram = calloc(SRAM_BANK_LENGTH, rominfo->sram_banks);
+   if (NULL == rominfo->sram)
+   {
+      printf("Could not allocate space for battery RAM");
       goto _fail;
+   }
 
-   rom_loadtrainer(&rom, rominfo);
+   if (rominfo->flags & ROM_FLAG_TRAINER)
+   {
+      memcpy(rominfo->sram + TRAINER_OFFSET, rom_ptr, TRAINER_LENGTH);
+      rom_ptr += TRAINER_LENGTH;
+      nofrendo_notify("Read in trainer at $7000\n");
+   }
 
-	if (rom_loadrom(&rom, rominfo))
-      goto _fail;
+   rominfo->rom = rom_ptr;
+   rom_ptr += ROM_BANK_LENGTH * rominfo->rom_banks;
+
+   if (rominfo->vrom_banks)
+   {
+      rominfo->vrom = rom_ptr;
+      rom_ptr += VROM_BANK_LENGTH * rominfo->vrom_banks;
+   }
+   else
+   {
+      rominfo->vram = calloc(VRAM_BANK_LENGTH, rominfo->vram_banks);
+      if (NULL == rominfo->vram)
+      {
+         printf("Could not allocate space for VRAM");
+         goto _fail;
+      }
+   }
 
    // rom_loadsram(rominfo);
 
