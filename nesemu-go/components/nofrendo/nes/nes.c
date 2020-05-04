@@ -256,7 +256,7 @@ static void inline nes_renderframe(bool draw_flag)
       }
 
       if (mapintf->hblank)
-         mapintf->hblank(nes.scanline >= 241);
+         mapintf->hblank(nes.scanline);
 
       elapsed_cycles = nes6502_execute(nes.cycles);
       apu_fc_advance(elapsed_cycles);

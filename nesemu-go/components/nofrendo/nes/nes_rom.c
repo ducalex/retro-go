@@ -23,7 +23,6 @@
 ** $Id: nes_rom.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
-/* TODO: make this a generic ROM loading routine */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -41,17 +40,6 @@
 /* Max length for displayed filename */
 #define  ROM_DISP_MAXLEN   20
 
-
-#ifdef ZLIB
-#include <zlib.h>
-#define  _fopen            gzopen
-#define  _fclose           gzclose
-#define  _fread(B,N,L,F)   gzread((F),(B),(L)*(N))
-#else
-#define  _fopen            fopen
-#define  _fclose           fclose
-#define  _fread(B,N,L,F)   fread((B),(N),(L),(F))
-#endif
 
 /* Save battery-backed RAM */
 static void rom_savesram(rominfo_t *rominfo)

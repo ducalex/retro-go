@@ -33,21 +33,21 @@
 #include "nes_rom.h"
 #include "mmc_list.h"
 
-#define  MMC_8KROM         (mmc.cart->rom_banks * 2)
-#define  MMC_16KROM        (mmc.cart->rom_banks)
-#define  MMC_32KROM        (mmc.cart->rom_banks / 2)
-#define  MMC_8KVROM        (mmc.vrom_banks)
-#define  MMC_4KVROM        (mmc.vrom_banks * 2)
-#define  MMC_2KVROM        (mmc.vrom_banks * 4)
-#define  MMC_1KVROM        (mmc.vrom_banks * 8)
+#define  MMC_8KPRG         (mmc.prg_banks * 2)
+#define  MMC_16KPRG        (mmc.prg_banks)
+#define  MMC_32KPRG        (mmc.prg_banks / 2)
+#define  MMC_8KCHR         (mmc.chr_banks)
+#define  MMC_4KCHR         (mmc.chr_banks * 2)
+#define  MMC_2KCHR         (mmc.chr_banks * 4)
+#define  MMC_1KCHR         (mmc.chr_banks * 8)
 
-#define  MMC_LAST8KROM     (MMC_8KROM - 1)
-#define  MMC_LAST16KROM    (MMC_16KROM - 1)
-#define  MMC_LAST32KROM    (MMC_32KROM - 1)
-#define  MMC_LAST8KVROM    (MMC_8KVROM - 1)
-#define  MMC_LAST4KVROM    (MMC_4KVROM - 1)
-#define  MMC_LAST2KVROM    (MMC_2KVROM - 1)
-#define  MMC_LAST1KVROM    (MMC_1KVROM - 1)
+#define  MMC_LAST8KPRG     (MMC_8KPRG - 1)
+#define  MMC_LAST16KPRG    (MMC_16KPRG - 1)
+#define  MMC_LAST32KPRG    (MMC_32KPRG - 1)
+#define  MMC_LAST8KCHR     (MMC_8KCHR - 1)
+#define  MMC_LAST4KCHR     (MMC_4KCHR - 1)
+#define  MMC_LAST2KCHR     (MMC_2KCHR - 1)
+#define  MMC_LAST1KCHR     (MMC_1KCHR - 1)
 
 static mmc_t mmc;
 
@@ -77,30 +77,30 @@ void mmc_bankvrom(int size, uint32 address, int bank)
    {
    case 1:
       if (bank == MMC_LASTBANK)
-         bank = MMC_LAST1KVROM;
-      ppu_setpage(1, address >> 10, &mmc.vrom[(bank % MMC_1KVROM) << 10] - address);
+         bank = MMC_LAST1KCHR;
+      ppu_setpage(1, address >> 10, &mmc.chr[(bank % MMC_1KCHR) << 10] - address);
       break;
 
    case 2:
       if (bank == MMC_LASTBANK)
-         bank = MMC_LAST2KVROM;
-      ppu_setpage(2, address >> 10, &mmc.vrom[(bank % MMC_2KVROM) << 11] - address);
+         bank = MMC_LAST2KCHR;
+      ppu_setpage(2, address >> 10, &mmc.chr[(bank % MMC_2KCHR) << 11] - address);
       break;
 
    case 4:
       if (bank == MMC_LASTBANK)
-         bank = MMC_LAST4KVROM;
-      ppu_setpage(4, address >> 10, &mmc.vrom[(bank % MMC_4KVROM) << 12] - address);
+         bank = MMC_LAST4KCHR;
+      ppu_setpage(4, address >> 10, &mmc.chr[(bank % MMC_4KCHR) << 12] - address);
       break;
 
    case 8:
       if (bank == MMC_LASTBANK)
-         bank = MMC_LAST8KVROM;
-      ppu_setpage(8, 0, &mmc.vrom[(bank % MMC_8KVROM) << 13]);
+         bank = MMC_LAST8KCHR;
+      ppu_setpage(8, 0, &mmc.chr[(bank % MMC_8KCHR) << 13]);
       break;
 
    default:
-      printf("invalid VROM bank size %d\n", size);
+      printf("invalid CHR bank size %d\n", size);
       //abort();
       break;
    }
@@ -119,20 +119,20 @@ void mmc_bankrom(int size, uint32 address, int bank)
    {
    case 8:
       if (bank == MMC_LASTBANK)
-         bank = MMC_LAST8KROM;
+         bank = MMC_LAST8KPRG;
       {
          int page = address >> NES6502_BANKSHIFT;
-         mmc_cpu.mem_page[page] = &mmc.cart->rom[(bank % MMC_8KROM) << 13];
+         mmc_cpu.mem_page[page] = &mmc.prg[(bank % MMC_8KPRG) << 13];
          mmc_cpu.mem_page[page + 1] = mmc_cpu.mem_page[page] + 0x1000;
       }
       break;
 
    case 16:
       if (bank == MMC_LASTBANK)
-         bank = MMC_LAST16KROM;
+         bank = MMC_LAST16KPRG;
       {
          int page = address >> NES6502_BANKSHIFT;
-         mmc_cpu.mem_page[page] = &mmc.cart->rom[(bank % MMC_16KROM) << 14];
+         mmc_cpu.mem_page[page] = &mmc.prg[(bank % MMC_16KPRG) << 14];
          mmc_cpu.mem_page[page + 1] = mmc_cpu.mem_page[page] + 0x1000;
          mmc_cpu.mem_page[page + 2] = mmc_cpu.mem_page[page] + 0x2000;
          mmc_cpu.mem_page[page + 3] = mmc_cpu.mem_page[page] + 0x3000;
@@ -141,9 +141,9 @@ void mmc_bankrom(int size, uint32 address, int bank)
 
    case 32:
       if (bank == MMC_LASTBANK)
-         bank = MMC_LAST32KROM;
+         bank = MMC_LAST32KPRG;
 
-      mmc_cpu.mem_page[8] = &mmc.cart->rom[(bank % MMC_32KROM) << 15];
+      mmc_cpu.mem_page[8] = &mmc.prg[(bank % MMC_32KPRG) << 15];
       mmc_cpu.mem_page[9] = mmc_cpu.mem_page[8] + 0x1000;
       mmc_cpu.mem_page[10] = mmc_cpu.mem_page[8] + 0x2000;
       mmc_cpu.mem_page[11] = mmc_cpu.mem_page[8] + 0x3000;
@@ -154,7 +154,7 @@ void mmc_bankrom(int size, uint32 address, int bank)
       break;
 
    default:
-      printf("invalid ROM bank size %d\n", size);
+      printf("invalid PRG bank size %d\n", size);
       //abort();
       break;
    }
@@ -181,7 +181,7 @@ static void mmc_setpages(void)
 {
    printf("setting up mapper %d\n", mmc.intf->number);
 
-   /* Switch ROM into CPU space, set VROM/VRAM (done for ALL ROMs) */
+   /* Switch PRG and CHR into CPU space */
    mmc_bankrom(16, 0x8000, 0);
    mmc_bankrom(16, 0xC000, MMC_LASTBANK);
    mmc_bankvrom(8, 0x0000, 0);
@@ -239,16 +239,18 @@ mmc_t *mmc_create(rominfo_t *rominfo)
 
    temp->intf = *map_ptr;
    temp->cart = rominfo;
+   temp->prg = rominfo->rom;
+   temp->prg_banks = rominfo->rom_banks;
 
    if (rominfo->vrom_banks)
    {
-      temp->vrom = rominfo->vrom;
-      temp->vrom_banks = rominfo->vrom_banks;
+      temp->chr = rominfo->vrom;
+      temp->chr_banks = rominfo->vrom_banks;
    }
    else
    {
-      temp->vrom = rominfo->vram;
-      temp->vrom_banks = rominfo->vram_banks;
+      temp->chr = rominfo->vram;
+      temp->chr_banks = rominfo->vram_banks;
    }
 
    mmc_setcontext(temp);
@@ -257,101 +259,3 @@ mmc_t *mmc_create(rominfo_t *rominfo)
 
    return temp;
 }
-
-
-/*
-** $Log: nes_mmc.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.4  2000/11/21 13:28:40  matt
-** take care to zero allocated mem
-**
-** Revision 1.3  2000/10/27 12:55:58  matt
-** nes6502 now uses 4kB banks across the boards
-**
-** Revision 1.2  2000/10/25 00:23:16  matt
-** makefiles updated for new directory structure
-**
-** Revision 1.1  2000/10/24 12:20:28  matt
-** changed directory structure
-**
-** Revision 1.28  2000/10/22 19:17:24  matt
-** mapper cleanups galore
-**
-** Revision 1.27  2000/10/22 15:02:32  matt
-** simplified mirroring
-**
-** Revision 1.26  2000/10/21 19:38:56  matt
-** that two year old crap code *was* flushed
-**
-** Revision 1.25  2000/10/21 19:26:59  matt
-** many more cleanups
-**
-** Revision 1.24  2000/10/17 03:22:57  matt
-** cleaning up rom module
-**
-** Revision 1.23  2000/10/10 13:58:15  matt
-** stroustrup squeezing his way in the door
-**
-** Revision 1.22  2000/08/16 02:51:55  matt
-** random cleanups
-**
-** Revision 1.21  2000/07/31 04:27:59  matt
-** one million cleanups
-**
-** Revision 1.20  2000/07/25 02:25:53  matt
-** safer xxx_destroy calls
-**
-** Revision 1.19  2000/07/23 15:11:45  matt
-** removed unused variables
-**
-** Revision 1.18  2000/07/15 23:50:03  matt
-** migrated state get/set from nes_mmc.c to state.c
-**
-** Revision 1.17  2000/07/11 03:15:09  melanson
-** Added support for mappers 16, 34, and 231
-**
-** Revision 1.16  2000/07/10 05:27:41  matt
-** cleaned up mapper-specific callbacks
-**
-** Revision 1.15  2000/07/10 03:02:49  matt
-** minor change on loading state
-**
-** Revision 1.14  2000/07/06 17:38:49  matt
-** replaced missing string.h include
-**
-** Revision 1.13  2000/07/06 02:47:11  matt
-** mapper addition madness
-**
-** Revision 1.12  2000/07/05 05:04:15  matt
-** added more mappers
-**
-** Revision 1.11  2000/07/04 23:12:58  matt
-** brand spankin' new mapper interface implemented
-**
-** Revision 1.10  2000/07/04 04:56:36  matt
-** modifications for new SNSS
-**
-** Revision 1.9  2000/06/29 14:17:18  matt
-** uses snsslib now
-**
-** Revision 1.8  2000/06/29 03:09:24  matt
-** modified to support new snss code
-**
-** Revision 1.7  2000/06/26 04:57:54  matt
-** bugfix - irqs/mmcstate not cleared on reset
-**
-** Revision 1.6  2000/06/23 11:01:10  matt
-** updated for new external sound interface
-**
-** Revision 1.5  2000/06/20 04:04:57  matt
-** hacked to use new external soundchip struct
-**
-** Revision 1.4  2000/06/09 15:12:26  matt
-** initial revision
-**
-*/

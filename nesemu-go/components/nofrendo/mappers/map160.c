@@ -76,9 +76,9 @@ static void map160_write(uint32 address, uint8 value)
 #endif /* NOFRENDO_DEBUG */
 }
 
-static void map160_hblank(int vblank)
+static void map160_hblank(int scanline)
 {
-   if (!vblank)
+   if (scanline < 241)
    {
       if (ppu_enabled() && irq.enabled)
       {

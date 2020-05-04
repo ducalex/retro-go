@@ -65,8 +65,8 @@ typedef struct mmc_s
 {
    mapintf_t *intf;
    rominfo_t *cart;  /* link it back to the cart */
-   uint8 *vrom;
-   uint8  vrom_banks;
+   uint8 *prg, *chr;
+   uint8 prg_banks, chr_banks;
 } mmc_t;
 
 extern rominfo_t *mmc_getinfo(void);
@@ -86,64 +86,3 @@ extern bool mmc_peek(int map_num);
 extern void mmc_reset(void);
 
 #endif /* _NES_MMC_H_ */
-
-/*
-** $Log: nes_mmc.h,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.2  2000/10/25 00:23:16  matt
-** makefiles updated for new directory structure
-**
-** Revision 1.1  2000/10/24 12:20:28  matt
-** changed directory structure
-**
-** Revision 1.18  2000/10/22 19:17:24  matt
-** mapper cleanups galore
-**
-** Revision 1.17  2000/10/21 19:26:59  matt
-** many more cleanups
-**
-** Revision 1.16  2000/10/17 03:22:58  matt
-** cleaning up rom module
-**
-** Revision 1.15  2000/10/10 13:58:15  matt
-** stroustrup squeezing his way in the door
-**
-** Revision 1.14  2000/07/31 04:27:59  matt
-** one million cleanups
-**
-** Revision 1.13  2000/07/25 02:25:53  matt
-** safer xxx_destroy calls
-**
-** Revision 1.12  2000/07/17 01:52:28  matt
-** made sure last line of all source files is a newline
-**
-** Revision 1.11  2000/07/15 23:50:03  matt
-** migrated state get/set from nes_mmc.c to state.c
-**
-** Revision 1.10  2000/07/11 02:38:01  matt
-** added setcontext() routine
-**
-** Revision 1.9  2000/07/10 05:27:41  matt
-** cleaned up mapper-specific callbacks
-**
-** Revision 1.8  2000/07/04 23:12:58  matt
-** brand spankin' new mapper interface implemented
-**
-** Revision 1.7  2000/07/04 04:56:36  matt
-** modifications for new SNSS
-**
-** Revision 1.6  2000/06/29 14:17:18  matt
-** uses snsslib now
-**
-** Revision 1.5  2000/06/29 03:09:24  matt
-** modified to support new snss code
-**
-** Revision 1.4  2000/06/09 15:12:26  matt
-** initial revision
-**
-*/

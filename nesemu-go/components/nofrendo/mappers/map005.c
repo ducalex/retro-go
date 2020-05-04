@@ -39,11 +39,9 @@ static struct
 } irq;
 
 /* MMC5 - Castlevania III, etc */
-static void map5_hblank(int vblank)
+static void map5_hblank(int scanline)
 {
-   UNUSED(vblank);
-
-   if (irq.counter == nes_getptr()->scanline)
+   if (irq.counter == scanline)
    {
       if (true == irq.enabled)
       {

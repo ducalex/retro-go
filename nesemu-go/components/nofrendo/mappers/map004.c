@@ -150,9 +150,9 @@ static void map4_write(uint32 address, uint8 value)
       irq.counter = irq.latch;
 }
 
-static void map4_hblank(int vblank)
+static void map4_hblank(int scanline)
 {
-   if (vblank)
+   if (scanline >= 241)
       return;
 
    if (ppu_enabled())
