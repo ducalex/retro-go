@@ -3,14 +3,14 @@
 **
 **
 ** This program is free software; you can redistribute it and/or
-** modify it under the terms of version 2 of the GNU Library General 
+** modify it under the terms of version 2 of the GNU Library General
 ** Public License as published by the Free Software Foundation.
 **
-** This program is distributed in the hope that it will be useful, 
+** This program is distributed in the hope that it will be useful,
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
-** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
-** Library General Public License for more details.  To obtain a 
-** copy of the GNU Library General Public License, write to the Free 
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+** Library General Public License for more details.  To obtain a
+** copy of the GNU Library General Public License, write to the Free
 ** Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 **
 ** Any permitted reproduction of these routines, in whole or in part,
@@ -30,9 +30,6 @@
 #define _NES6502_H_
 
 #include <noftypes.h>
-
-/* Define this to enable decimal mode in ADC / SBC (not needed in NES) */
-/*#define  NES6502_DECIMAL*/
 
 #define  NES6502_NUMBANKS  16
 #define  NES6502_BANKSHIFT 12
@@ -80,8 +77,8 @@ typedef struct
 {
    uint8 *mem_page[NES6502_NUMBANKS];  /* memory page pointers */
 
-   nes6502_memread *read_handler;
-   nes6502_memwrite *write_handler;
+   nes6502_memread *read_handlers;
+   nes6502_memwrite *write_handlers;
 
    uint32 pc_reg;
    uint8 a_reg, p_reg;
@@ -89,11 +86,11 @@ typedef struct
    uint8 s_reg;
 
    uint8 jammed;  /* is processor jammed? */
-   
+
    uint8 int_pending, int_latency;
 
    int32 total_cycles, burn_cycles;
-} nes6502_context;
+} nes6502_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -105,71 +102,17 @@ extern int nes6502_execute(int total_cycles);
 extern void nes6502_nmi(void);
 extern void nes6502_irq(void);
 extern uint8 nes6502_getbyte(uint32 address);
+extern void nes6502_putbyte(uint32 address, uint8 value);
 extern uint32 nes6502_getcycles(bool reset_flag);
 extern void nes6502_burn(int cycles);
 extern void nes6502_release(void);
 
 /* Context get/set */
-extern void nes6502_setcontext(nes6502_context *cpu);
-extern void nes6502_getcontext(nes6502_context *cpu);
+extern void nes6502_setcontext(nes6502_t *cpu);
+extern void nes6502_getcontext(nes6502_t *cpu);
 
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
 
 #endif /* _NES6502_H_ */
-
-/*
-** $Log: nes6502.h,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:39  neil
-** blah
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.17  2000/11/13 00:57:39  matt
-** trying to add 1-instruction interrupt latency... and failing.
-**
-** Revision 1.16  2000/10/27 12:53:36  matt
-** banks are always 4kB now
-**
-** Revision 1.15  2000/10/10 13:58:14  matt
-** stroustrup squeezing his way in the door
-**
-** Revision 1.14  2000/09/15 03:42:32  matt
-** nes6502_release to release current timeslice
-**
-** Revision 1.13  2000/09/11 03:55:32  matt
-** cosmetics
-**
-** Revision 1.12  2000/09/08 11:54:48  matt
-** optimize
-**
-** Revision 1.11  2000/09/07 21:58:18  matt
-** api change for nes6502_burn, optimized core
-**
-** Revision 1.10  2000/09/07 01:34:55  matt
-** nes6502_init deprecated, moved flag regs to separate vars
-**
-** Revision 1.9  2000/08/28 12:53:44  matt
-** fixes for disassembler
-**
-** Revision 1.8  2000/08/28 01:46:15  matt
-** moved some of them defines around, cleaned up jamming code
-**
-** Revision 1.7  2000/08/16 04:56:37  matt
-** accurate CPU jamming, added dead page emulation
-**
-** Revision 1.6  2000/07/30 04:32:00  matt
-** now emulates the NES frame IRQ
-**
-** Revision 1.5  2000/07/17 01:52:28  matt
-** made sure last line of all source files is a newline
-**
-** Revision 1.4  2000/06/09 15:12:25  matt
-** initial revision
-**
-*/

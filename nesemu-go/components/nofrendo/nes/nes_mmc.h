@@ -49,7 +49,7 @@ typedef struct
 typedef struct mapintf_s
 {
    int number;
-   char *name;
+   const char *name;
    void (*init)(void);
    void (*vblank)(void);
    void (*hblank)(int scanline);

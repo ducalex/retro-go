@@ -19,7 +19,7 @@
 **
 ** map228.c
 **
-** Mapper #228
+** Mapper 228 interface (Cheetahmen II)
 ** Implementation by ducalex
 **
 */

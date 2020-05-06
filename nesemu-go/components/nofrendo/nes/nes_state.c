@@ -17,23 +17,23 @@
 ** must bear this legend.
 **
 **
-** nesstate.c
+** nes_state.c
 **
 ** state saving/loading
-** $Id: nesstate.c,v 1.2 2001/04/27 14:37:11 neil Exp $
+** $Id: nes_state.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <noftypes.h>
 #include <nofrendo.h>
-#include <nesstate.h>
+#include <nes_state.h>
 #include <nes.h>
 #include <osd.h>
 #include <libsnss.h>
 #include "nes6502.h"
 
-extern nes6502_context cpu;
+extern nes6502_t cpu;
 
 #define  FIRST_STATE_SLOT  0
 #define  LAST_STATE_SLOT   9
@@ -513,25 +513,3 @@ _error:
    SNSS_CloseFile(&snssFile);
    abort();
 }
-
-/*
-** $Log: nesstate.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.4  2000/11/11 14:52:33  matt
-** states finally bleepin' work again
-**
-** Revision 1.3  2000/11/09 14:07:28  matt
-** state load fixed, state save mostly fixed
-**
-** Revision 1.2  2000/10/25 00:23:16  matt
-** makefiles updated for new directory structure
-**
-** Revision 1.1  2000/10/24 12:20:28  matt
-** initial revision
-**
-*/

@@ -28,8 +28,8 @@
 #include <nofrendo.h>
 #include <nes.h>
 #include <nes_apu.h>
-#include <nesinput.h>
-#include <nesstate.h>
+#include <nes_input.h>
+#include <nes_state.h>
 
 /* standard keyboard input */
 static nesinput_t kb_input = { INP_JOYPAD0, 0 };

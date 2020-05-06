@@ -42,6 +42,11 @@
 #define  MAX_MEM_HANDLERS     32
 #define  LAST_MEMORY_HANDLER  { -1, -1, NULL }
 
+#define  NES_CLOCK_DIVIDER    12
+#define  NES_MASTER_CLOCK     (236250000 / 11)
+#define  NES_SCANLINE_CYCLES  (1364.0 / NES_CLOCK_DIVIDER)
+#define  NES_FIQ_PERIOD       (NES_MASTER_CLOCK / NES_CLOCK_DIVIDER / 60)
+
 typedef enum
 {
    NES_AUTO,
@@ -59,20 +64,22 @@ enum
 typedef struct nes_s
 {
    /* hardware things */
-   nes6502_context *cpu;
-   nes6502_memread readhandler[MAX_MEM_HANDLERS];
-   nes6502_memwrite writehandler[MAX_MEM_HANDLERS];
-
+   nes6502_t *cpu;
    ppu_t *ppu;
    apu_t *apu;
    mmc_t *mmc;
    rominfo_t *rominfo;
 
-   /* video buffer */
-   bitmap_t *vidbuf;
+   /* Memory map handlers */
+   nes6502_memread read_handlers[MAX_MEM_HANDLERS];
+   nes6502_memwrite write_handlers[MAX_MEM_HANDLERS];
+   uint8 *mem_pages[16];
 
    /* Memory */
    uint8 ram[NES_RAMSIZE];
+
+   /* video buffer */
+   bitmap_t *vidbuf;
 
    /* Misc */
    region_t region;

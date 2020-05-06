@@ -7,8 +7,9 @@
 #include <bitmap.h>
 #include <event.h>
 #include <nes.h>
-#include <nesinput.h>
-#include <nes/nesstate.h>
+#include <nes_input.h>
+#include <nes_state.h>
+#include <nes_input.h>
 #include <osd.h>
 #include "sdkconfig.h"
 
@@ -180,7 +181,7 @@ static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
 
    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
       odroid_settings_Palette_set(pal);
-      ppu_setnpal(nes_getptr()->ppu, pal);
+      ppu_setnpal(pal);
       odroid_display_queue_update(currentUpdate, NULL);
       odroid_display_queue_update(currentUpdate, NULL);
    }
@@ -214,7 +215,7 @@ void osd_loadstate()
    }
 
    ppu_limitsprites(odroid_settings_int32_get(NVS_KEY_LIMIT_SPRITES, 1));
-   ppu_setnpal(nes_getptr()->ppu, odroid_settings_Palette_get());
+   ppu_setnpal(odroid_settings_Palette_get());
    set_overscan(odroid_settings_app_int32_get(NVS_KEY_OVERSCAN, 1));
 }
 

@@ -111,7 +111,7 @@ void mmc_bankrom(int size, uint32 address, int bank)
 {
    // printf("mmc_bankrom: Addr: 0x%x Size: 0x%x Bank:%d\n", address, size, bank);
 
-   nes6502_context mmc_cpu;
+   nes6502_t mmc_cpu;
 
    nes6502_getcontext(&mmc_cpu);
 
@@ -187,16 +187,11 @@ static void mmc_setpages(void)
    mmc_bankvrom(8, 0x0000, 0);
 
    if (mmc.cart->flags & ROM_FLAG_FOURSCREEN)
-   {
       ppu_mirror(0, 1, 2, 3);
-   }
+   else if (MIRROR_VERT == mmc.cart->mirror)
+      ppu_mirror(0, 1, 0, 1);
    else
-   {
-      if (MIRROR_VERT == mmc.cart->mirror)
-         ppu_mirror(0, 1, 0, 1);
-      else
-         ppu_mirror(0, 0, 1, 1);
-   }
+      ppu_mirror(0, 0, 1, 1);
 
    // ppu_mirrorhipages();
 }
@@ -207,14 +202,12 @@ void mmc_reset(void)
    mmc_setpages();
 
    ppu_setlatchfunc(NULL);
-   ppu_setvromswitch(NULL);
 
    if (mmc.intf->init)
       mmc.intf->init();
 
    MESSAGE_INFO("Reset memory mapper\n");
 }
-
 
 void mmc_destroy(mmc_t **nes_mmc)
 {

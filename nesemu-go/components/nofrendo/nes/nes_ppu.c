@@ -30,11 +30,11 @@
 #include <noftypes.h>
 #include <nofrendo.h>
 #include <nes_ppu.h>
+#include <nes_input.h>
 #include <nes.h>
 #include <nes6502.h>
 #include <nes_mmc.h>
 #include <bitmap.h>
-#include <nesinput.h>
 
 /* static const palette_t nes_palettes[PPU_PAL_COUNT] */
 #include "palettes.h"
@@ -146,12 +146,11 @@ ppu_t *ppu_create(void)
       return NULL;
 
    temp->latchfunc = NULL;
-   temp->vromswitch = NULL;
    temp->vram_present = false;
    temp->drawsprites = true;
    temp->limitsprites = true;
 
-   ppu_setnpal(temp, 0); // Set default palette
+   ppu_setpal(temp, (rgb_t*)nes_palettes[0].data); // Set default palette
 
    return temp;
 }
@@ -186,6 +185,12 @@ void ppu_setpage(int size, int page_num, uint8 *location)
    }
 }
 
+/* bleh, for snss */
+uint8 *ppu_getpage(int page)
+{
+   return ppu.page[page];
+}
+
 /* make sure $3000-$3F00 mirrors $2000-$2F00 */
 void ppu_mirrorhipages(void)
 {
@@ -205,12 +210,6 @@ void ppu_mirror(int nt1, int nt2, int nt3, int nt4)
    ppu.page[13] = ppu.page[9] - 0x1000;
    ppu.page[14] = ppu.page[10] - 0x1000;
    ppu.page[15] = ppu.page[11] - 0x1000;
-}
-
-/* bleh, for snss */
-uint8 *ppu_getpage(int page)
-{
-   return ppu.page[page];
 }
 
 /* reset state of ppu */
@@ -245,7 +244,7 @@ INLINE void ppu_setstrike(int x_loc)
    }
 }
 
-static void ppu_oamdma(uint8 value)
+INLINE void ppu_oamdma(uint8 value)
 {
    uint32 cpu_address;
    uint8 oam_loc;
@@ -283,62 +282,8 @@ static void ppu_oamdma(uint8 value)
    nes6502_release();
 }
 
-/* TODO: this isn't the PPU! */
-void IRAM_ATTR ppu_writehigh(uint32 address, uint8 value)
-{
-   switch (address)
-   {
-   case PPU_OAMDMA:
-      ppu_oamdma(value);
-      break;
-
-   case PPU_JOY0:
-      /* VS system VROM switching - bleh!*/
-      if (ppu.vromswitch)
-         ppu.vromswitch(value);
-
-      /* see if we need to strobe them joypads */
-      value &= 1;
-
-      if (0 == value && ppu.strobe)
-         input_strobe();
-
-      ppu.strobe = value;
-      break;
-
-   default:
-      break;
-   }
-}
-
-/* TODO: this isn't the PPU! */
-uint8 IRAM_ATTR ppu_readhigh(uint32 address)
-{
-   uint8 value;
-
-   switch (address)
-   {
-   case PPU_JOY0:
-      value = input_get(INP_JOYPAD0);
-      break;
-
-   case PPU_JOY1:
-      /* TODO: better input handling */
-      value = input_get(INP_ZAPPER | INP_JOYPAD1
-                        /*| INP_ARKANOID*/
-                        /*| INP_POWERPAD*/);
-      break;
-
-   default:
-      value = 0xFF;
-      break;
-   }
-
-   return value;
-}
-
 /* Read from $2000-$2007 */
-uint8 IRAM_ATTR ppu_read(uint32 address)
+IRAM_ATTR uint8 ppu_read(uint32 address)
 {
    uint8 value;
 
@@ -396,9 +341,15 @@ uint8 IRAM_ATTR ppu_read(uint32 address)
    return value;
 }
 
-/* Write to $2000-$2007 */
-void IRAM_ATTR ppu_write(uint32 address, uint8 value)
+/* Write to $2000-$2007 and $4014 */
+IRAM_ATTR void ppu_write(uint32 address, uint8 value)
 {
+   // Special case for the one $4000 address...
+   if (address == PPU_OAMDMA) {
+      ppu_oamdma(value);
+      return;
+   }
+
    /* write goes into ppu latch... */
    ppu.latch = value;
 
@@ -522,7 +473,7 @@ void IRAM_ATTR ppu_write(uint32 address, uint8 value)
 ** Note that we set it up 3 times so that we flip bits on the primary
 ** NES buffer for priorities
 */
-static void ppu_buildpalette(ppu_t *src_ppu, rgb_t *pal)
+INLINE void ppu_buildpalette(ppu_t *src_ppu, rgb_t *pal)
 {
    int i;
 
@@ -555,9 +506,9 @@ void ppu_setpal(ppu_t *src_ppu, rgb_t *pal)
    osd_setpalette(src_ppu->curpal);
 }
 
-void ppu_setnpal(ppu_t *src_ppu, int n)
+void ppu_setnpal(int n)
 {
-   ppu_setpal(src_ppu, (rgb_t*)nes_palettes[n % PPU_PAL_COUNT].data);
+   ppu_setpal(&ppu, (rgb_t*)nes_palettes[n % PPU_PAL_COUNT].data);
 }
 
 palette_t *ppu_getnpal(int n)
@@ -568,11 +519,6 @@ palette_t *ppu_getnpal(int n)
 void ppu_setlatchfunc(ppulatchfunc_t func)
 {
    ppu.latchfunc = func;
-}
-
-void ppu_setvromswitch(ppuvromswitch_t func)
-{
-   ppu.vromswitch = func;
 }
 
 /* rendering routines */
@@ -595,7 +541,7 @@ INLINE void draw_bgtile(uint8 *surface, uint8 pat1, uint8 pat2,
 INLINE int draw_oamtile(uint8 *surface, uint8 attrib, uint8 pat1,
                         uint8 pat2, const uint8 *col_tbl, bool check_strike)
 {
-   int strike_pixel = -1;
+   int i, strike_pixel = -1;
    uint32 color = ((pat2 & 0xAA) << 8) | ((pat2 & 0x55) << 1)
                   | ((pat1 & 0xAA) << 7) | (pat1 & 0x55);
 
@@ -693,7 +639,7 @@ INLINE int draw_oamtile(uint8 *surface, uint8 attrib, uint8 pat1,
    return strike_pixel;
 }
 
-static void IRAM_ATTR ppu_renderbg(uint8 *vidbuf)
+INLINE void ppu_renderbg(uint8 *vidbuf)
 {
    uint8 *bmp_ptr, *data_ptr, *tile_ptr, *attrib_ptr;
    uint32 refresh_vaddr, bg_offset, attrib_base;
@@ -784,7 +730,7 @@ typedef struct obj_s
 } obj_t;
 
 /* TODO: fetch valid OAM a scanline before, like the Real Thing */
-static void IRAM_ATTR ppu_renderoam(uint8 *vidbuf, int scanline)
+INLINE void ppu_renderoam(uint8 *vidbuf, int scanline)
 {
    uint8 *buf_ptr;
    uint32 vram_offset;
@@ -897,7 +843,7 @@ static void IRAM_ATTR ppu_renderoam(uint8 *vidbuf, int scanline)
 
 /* Fake rendering a line */
 /* This is needed for sprite 0 hits when we're skipping drawing a frame */
-static void IRAM_ATTR ppu_fakeoam(int scanline)
+INLINE void ppu_fakeoam(int scanline)
 {
    uint8 *data_ptr;
    obj_t *sprite_ptr;
@@ -1005,12 +951,12 @@ static void IRAM_ATTR ppu_fakeoam(int scanline)
    }
 }
 
-bool ppu_enabled(void)
+IRAM_ATTR bool ppu_enabled(void)
 {
    return (ppu.bg_on || ppu.obj_on);
 }
 
-static void IRAM_ATTR ppu_renderscanline(bitmap_t *bmp, int scanline, bool draw_flag)
+INLINE void ppu_renderscanline(bitmap_t *bmp, int scanline, bool draw_flag)
 {
    uint8 *buf = bmp->line[scanline];
 
@@ -1038,8 +984,7 @@ static void IRAM_ATTR ppu_renderscanline(bitmap_t *bmp, int scanline, bool draw_
       ppu_fakeoam(scanline);
 }
 
-
-void IRAM_ATTR ppu_endscanline(int scanline)
+IRAM_ATTR void ppu_endscanline(int scanline)
 {
    /* modify vram address at end of scanline */
    if (scanline < 240 && (ppu.bg_on || ppu.obj_on))
@@ -1073,13 +1018,13 @@ void IRAM_ATTR ppu_endscanline(int scanline)
    }
 }
 
-void IRAM_ATTR ppu_checknmi(void)
+IRAM_ATTR void ppu_checknmi(void)
 {
    if (ppu.ctrl0 & PPU_CTRL0F_NMI)
       nes_nmi();
 }
 
-void IRAM_ATTR ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag)
+IRAM_ATTR void ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag)
 {
    if (scanline < 240)
    {
@@ -1102,8 +1047,7 @@ void IRAM_ATTR ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag)
    }
 }
 
-/*
-bool ppu_checkzapperhit(bitmap_t *bmp, int x, int y)
+IRAM_ATTR bool ppu_checkzapperhit(bitmap_t *bmp, int x, int y)
 {
    uint8 pixel = bmp->line[y][x] & 0x3F;
 
@@ -1112,7 +1056,6 @@ bool ppu_checkzapperhit(bitmap_t *bmp, int x, int y)
 
    return false;
 }
-*/
 
 /*************************************************/
 /* TODO: all this stuff should go somewhere else */
@@ -1162,9 +1105,8 @@ INLINE void draw_deadsprite(bitmap_t *bmp, int x, int y, int height)
    }
 }
 
-
 /* Stuff for the OAM viewer */
-static void IRAM_ATTR draw_sprite(bitmap_t *bmp, int x, int y, uint8 tile_num, uint8 attrib)
+INLINE void draw_sprite(bitmap_t *bmp, int x, int y, uint8 tile_num, uint8 attrib)
 {
    int line, height;
    int col_high, vram_adr;
@@ -1259,145 +1201,3 @@ void ppu_dumppattern(bitmap_t *bmp, int table_num, int x_loc, int y_loc, int col
       y_loc += 8;
    }
 }
-
-/*
-** $Log: nes_ppu.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.14  2000/11/29 12:58:23  matt
-** timing/fiq fixes
-**
-** Revision 1.13  2000/11/27 19:36:15  matt
-** more timing fixes
-**
-** Revision 1.12  2000/11/26 15:51:13  matt
-** frame IRQ emulation
-**
-** Revision 1.11  2000/11/25 20:30:39  matt
-** scanline emulation simplifications/timing fixes
-**
-** Revision 1.10  2000/11/24 14:56:02  matt
-** fixed a long-standing sprite 0 strike bug
-**
-** Revision 1.9  2000/11/20 13:23:17  matt
-** PPU fixes
-**
-** Revision 1.8  2000/11/19 13:47:30  matt
-** problem with frame irqs fixed
-**
-** Revision 1.7  2000/11/19 13:40:19  matt
-** more accurate ppu behavior
-**
-** Revision 1.6  2000/11/14 12:09:37  matt
-** only generate the palette once, please
-**
-** Revision 1.5  2000/11/11 14:51:43  matt
-** context get/set fixed
-**
-** Revision 1.4  2000/11/09 12:35:50  matt
-** fixed timing problem with VRAM reads/writes
-**
-** Revision 1.3  2000/11/05 16:35:41  matt
-** rolled rgb.h into bitmap.h
-**
-** Revision 1.2  2000/10/27 12:55:03  matt
-** palette generating functions now take *this pointers
-**
-** Revision 1.1  2000/10/24 12:20:28  matt
-** changed directory structure
-**
-** Revision 1.33  2000/10/23 15:53:08  matt
-** better system handling
-**
-** Revision 1.32  2000/10/22 15:02:32  matt
-** simplified mirroring
-**
-** Revision 1.31  2000/10/21 21:36:04  matt
-** ppu cleanups / fixes
-**
-** Revision 1.30  2000/10/21 19:26:59  matt
-** many more cleanups
-**
-** Revision 1.29  2000/10/10 13:58:15  matt
-** stroustrup squeezing his way in the door
-**
-** Revision 1.28  2000/10/08 17:54:32  matt
-** reject VRAM access out of VINT period
-**
-** Revision 1.27  2000/09/15 04:58:07  matt
-** simplifying and optimizing APU core
-**
-** Revision 1.26  2000/09/08 11:57:29  matt
-** no more nes_fiq
-**
-** Revision 1.25  2000/09/07 21:57:31  matt
-** api change
-**
-** Revision 1.24  2000/07/31 04:27:59  matt
-** one million cleanups
-**
-** Revision 1.23  2000/07/30 06:13:12  matt
-** default to no FIQs on startup
-**
-** Revision 1.22  2000/07/30 04:32:32  matt
-** emulation of the NES frame IRQ
-**
-** Revision 1.21  2000/07/25 02:25:53  matt
-** safer xxx_destroy calls
-**
-** Revision 1.20  2000/07/23 15:12:43  matt
-** removed unused variables, changed INLINE
-**
-** Revision 1.19  2000/07/21 04:50:39  matt
-** moved palette calls out of nofrendo.c and into ppu_create
-**
-** Revision 1.18  2000/07/17 05:12:55  matt
-** nes_ppu.c is no longer a scary place to be-- cleaner & faster
-**
-** Revision 1.17  2000/07/17 01:52:28  matt
-** made sure last line of all source files is a newline
-**
-** Revision 1.16  2000/07/11 04:42:39  matt
-** updated for new screen dimension defines
-**
-** Revision 1.15  2000/07/10 19:10:16  matt
-** should bomb out now if a game tries to write to VROM
-**
-** Revision 1.14  2000/07/10 05:28:30  matt
-** moved joypad/oam dma from apu to ppu
-**
-** Revision 1.13  2000/07/10 03:03:16  matt
-** added ppu_getcontext() routine
-**
-** Revision 1.12  2000/07/09 03:46:05  matt
-** using pitch instead of width...
-**
-** Revision 1.11  2000/07/06 16:42:40  matt
-** better palette setting interface
-**
-** Revision 1.10  2000/07/05 22:49:25  matt
-** changed mmc2 (punchout) tile-access switching
-**
-** Revision 1.9  2000/07/04 23:13:26  matt
-** added an irq line drawing debug feature hack
-**
-** Revision 1.8  2000/06/26 04:58:08  matt
-** accuracy changes
-**
-** Revision 1.7  2000/06/22 02:13:49  matt
-** more accurate emulation of $2002
-**
-** Revision 1.6  2000/06/20 20:42:47  matt
-** accuracy changes
-**
-** Revision 1.5  2000/06/20 00:05:12  matt
-** tested and verified STAT quirk, added code
-**
-** Revision 1.4  2000/06/09 15:12:26  matt
-** initial revision
-**
-*/

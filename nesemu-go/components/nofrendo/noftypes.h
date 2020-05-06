@@ -29,16 +29,8 @@
 /* Define this if running on little-endian (x86) systems */
 #define  HOST_LITTLE_ENDIAN
 
-#ifdef __GNUC__
-#define  INLINE      static inline
+#define  INLINE      static inline __attribute__((__always_inline__))
 #define  ZERO_LENGTH 0
-#elif defined(WIN32)
-#define  INLINE      static __inline
-#define  ZERO_LENGTH 0
-#else /* crapintosh? */
-#define  INLINE      static
-#define  ZERO_LENGTH 1
-#endif
 
 /* quell stupid compiler warnings */
 #define  UNUSED(x)   ((x) = (x))

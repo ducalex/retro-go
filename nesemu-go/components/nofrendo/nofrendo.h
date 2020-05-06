@@ -31,10 +31,15 @@
 #define  APP_STRING     "Nofrendo"
 #define  APP_VERSION    "2.0"
 
-// #define NOFRENDO_DEBUG 1
+/* Configuration */
 
-#include <nes.h>
-#include <bitmap.h>
+/* Enable debugging messages */
+// #define NOFRENDO_DEBUG
+
+/* Enable live dissassembler */
+// #define  NES6502_DISASM
+
+/* End configuration */
 
 #ifdef NOFRENDO_DEBUG
 #define ASSERT(expr)        nofrendo_assert((int) (expr), __LINE__, __FILE__, NULL)
@@ -45,6 +50,9 @@
 #endif
 #define MESSAGE_INFO(x...)  nofrendo_printf(1, NULL, "* " x)
 #define MESSAGE_ERROR(x...) nofrendo_printf(2, NULL, "!! " x)
+
+#include <nes.h>
+#include <bitmap.h>
 
 extern nes_t *console;
 extern bitmap_t *primary_buffer;
