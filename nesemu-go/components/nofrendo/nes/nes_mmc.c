@@ -28,10 +28,10 @@
 #include <nofrendo.h>
 #include <nes6502.h>
 #include <libsnss.h>
+#include <mappers.h>
 #include "nes_ppu.h"
 #include "nes_mmc.h"
 #include "nes_rom.h"
-#include "mmc_list.h"
 
 #define  MMC_8KPRG         (mmc.prg_banks * 2)
 #define  MMC_16KPRG        (mmc.prg_banks)
@@ -71,8 +71,6 @@ void mmc_getcontext(mmc_t *dest_mmc)
 /* VROM bankswitching */
 void mmc_bankvrom(int size, uint32 address, int bank)
 {
-   // printf("mmc_bankvrom: Addr: 0x%x Size: 0x%x Bank:%d\n", address, size, bank);
-
    switch (size)
    {
    case 1:
@@ -109,48 +107,41 @@ void mmc_bankvrom(int size, uint32 address, int bank)
 /* ROM bankswitching */
 void mmc_bankrom(int size, uint32 address, int bank)
 {
-   // printf("mmc_bankrom: Addr: 0x%x Size: 0x%x Bank:%d\n", address, size, bank);
-
-   nes6502_t mmc_cpu;
-
-   nes6502_getcontext(&mmc_cpu);
+   int page = address >> NES6502_BANKSHIFT;
+   uint8 *base;
 
    switch (size)
    {
    case 8:
       if (bank == MMC_LASTBANK)
          bank = MMC_LAST8KPRG;
-      {
-         int page = address >> NES6502_BANKSHIFT;
-         mmc_cpu.mem_page[page] = &mmc.prg[(bank % MMC_8KPRG) << 13];
-         mmc_cpu.mem_page[page + 1] = mmc_cpu.mem_page[page] + 0x1000;
-      }
+      base = &mmc.prg[(bank % MMC_8KPRG) << 13];
+      nes6502_setpage(page + 0, base);
+      nes6502_setpage(page + 1, base + 0x1000);
       break;
 
    case 16:
       if (bank == MMC_LASTBANK)
          bank = MMC_LAST16KPRG;
-      {
-         int page = address >> NES6502_BANKSHIFT;
-         mmc_cpu.mem_page[page] = &mmc.prg[(bank % MMC_16KPRG) << 14];
-         mmc_cpu.mem_page[page + 1] = mmc_cpu.mem_page[page] + 0x1000;
-         mmc_cpu.mem_page[page + 2] = mmc_cpu.mem_page[page] + 0x2000;
-         mmc_cpu.mem_page[page + 3] = mmc_cpu.mem_page[page] + 0x3000;
-      }
+      base = &mmc.prg[(bank % MMC_16KPRG) << 14];
+      nes6502_setpage(page + 0, base);
+      nes6502_setpage(page + 1, base + 0x1000);
+      nes6502_setpage(page + 2, base + 0x2000);
+      nes6502_setpage(page + 3, base + 0x3000);
       break;
 
    case 32:
       if (bank == MMC_LASTBANK)
          bank = MMC_LAST32KPRG;
-
-      mmc_cpu.mem_page[8] = &mmc.prg[(bank % MMC_32KPRG) << 15];
-      mmc_cpu.mem_page[9] = mmc_cpu.mem_page[8] + 0x1000;
-      mmc_cpu.mem_page[10] = mmc_cpu.mem_page[8] + 0x2000;
-      mmc_cpu.mem_page[11] = mmc_cpu.mem_page[8] + 0x3000;
-      mmc_cpu.mem_page[12] = mmc_cpu.mem_page[8] + 0x4000;
-      mmc_cpu.mem_page[13] = mmc_cpu.mem_page[8] + 0x5000;
-      mmc_cpu.mem_page[14] = mmc_cpu.mem_page[8] + 0x6000;
-      mmc_cpu.mem_page[15] = mmc_cpu.mem_page[8] + 0x7000;
+      base = &mmc.prg[(bank % MMC_32KPRG) << 15];
+      nes6502_setpage(page + 0, base);
+      nes6502_setpage(page + 1, base + 0x1000);
+      nes6502_setpage(page + 2, base + 0x2000);
+      nes6502_setpage(page + 3, base + 0x3000);
+      nes6502_setpage(page + 1, base + 0x4000);
+      nes6502_setpage(page + 2, base + 0x5000);
+      nes6502_setpage(page + 3, base + 0x6000);
+      nes6502_setpage(page + 3, base + 0x7000);
       break;
 
    default:
@@ -158,23 +149,21 @@ void mmc_bankrom(int size, uint32 address, int bank)
       //abort();
       break;
    }
-
-   nes6502_setcontext(&mmc_cpu);
 }
 
 /* Check to see if this mapper is supported */
-bool mmc_peek(int map_num)
+mapintf_t *mmc_peek(int map_num)
 {
    mapintf_t **map_ptr = mappers;
 
    while (NULL != *map_ptr)
    {
       if ((*map_ptr)->number == map_num)
-         return true;
+         return *map_ptr;
       map_ptr++;
    }
 
-   return false;
+   return NULL;
 }
 
 static void mmc_setpages(void)
@@ -212,25 +201,29 @@ void mmc_reset(void)
 void mmc_destroy(mmc_t **nes_mmc)
 {
    if (*nes_mmc)
+   {
       free(*nes_mmc);
+      *nes_mmc = NULL;
+   }
 }
 
 mmc_t *mmc_create(rominfo_t *rominfo)
 {
+   mapintf_t *map_ptr;
    mmc_t *temp;
-   mapintf_t **map_ptr;
 
-   for (map_ptr = mappers; (*map_ptr)->number != rominfo->mapper_number; map_ptr++)
+   map_ptr = mmc_peek(rominfo->mapper_number);
+   if (NULL == map_ptr)
    {
-      if (NULL == *map_ptr)
-         return NULL; /* Should *never* happen */
+      MESSAGE_ERROR("Unsupported mapper %d\n", rominfo->mapper_number);
+      return NULL;
    }
 
-   temp = calloc(sizeof(mmc_t), 1);
+   temp  = calloc(sizeof(mmc_t), 1);
    if (NULL == temp)
       return NULL;
 
-   temp->intf = *map_ptr;
+   temp->intf = map_ptr;
    temp->cart = rominfo;
    temp->prg = rominfo->rom;
    temp->prg_banks = rominfo->rom_banks;
@@ -248,7 +241,7 @@ mmc_t *mmc_create(rominfo_t *rominfo)
 
    mmc_setcontext(temp);
 
-   MESSAGE_INFO("Created memory mapper: %s\n", (*map_ptr)->name);
+   MESSAGE_INFO("Created memory mapper: %s\n", map_ptr->name);
 
    return temp;
 }

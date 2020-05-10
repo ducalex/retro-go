@@ -1043,29 +1043,31 @@ void apu_setparams(double base_freq, int sample_rate, int refresh_rate, int samp
 /* Initializes emulated sound hardware, creates waveforms/voices */
 apu_t *apu_create(double base_freq, int sample_rate, int refresh_rate, int sample_bits)
 {
-   apu_t *temp_apu;
-   int channel;
+   apu_t *temp;
 
-   temp_apu = calloc(sizeof(apu_t), 1);
-   if (NULL == temp_apu)
-      return NULL;
+   temp = &apu;
+   // temp = malloc(sizeof(apu_t));
+   // if (NULL == temp)
+   //    return NULL;
+
+   memset(temp, 0, sizeof(apu_t));
 
    /* set the update routine */
-   temp_apu->process = apu_process;
-   temp_apu->ext = NULL;
+   temp->process = apu_process;
+   temp->ext = NULL;
 
-   apu_setcontext(temp_apu);
+   // apu_setcontext(temp);
 
    apu_setparams(base_freq, sample_rate, refresh_rate, sample_bits);
 
-   for (channel = 0; channel < 6; channel++)
-      apu_setchan(channel, true);
+   for (int i = 0; i < 6; i++)
+      apu_setchan(i, true);
 
    apu_setfilter(APU_FILTER_WEIGHTED);
 
-   apu_getcontext(temp_apu);
+   // apu_getcontext(temp);
 
-   return temp_apu;
+   return temp;
 }
 
 void apu_destroy(apu_t **src_apu)
@@ -1074,7 +1076,8 @@ void apu_destroy(apu_t **src_apu)
    {
       if ((*src_apu)->ext && NULL != (*src_apu)->ext->shutdown)
          (*src_apu)->ext->shutdown();
-      free(*src_apu);
+      if (*src_apu != &apu)
+         free(*src_apu);
       *src_apu = NULL;
    }
 }

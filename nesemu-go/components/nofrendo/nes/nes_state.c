@@ -70,7 +70,7 @@ int save_baseblock(nes_t *state, SNSS_FILE *snssFile)
    snssFile->baseBlock.reg2000 = state->ppu->ctrl0;
    snssFile->baseBlock.reg2001 = state->ppu->ctrl1;
 
-   memcpy(snssFile->baseBlock.cpuRam, state->cpu->mem_page[0], 0x800);
+   memcpy(snssFile->baseBlock.cpuRam, state->cpu->ram, 0x800);
    memcpy(snssFile->baseBlock.spriteRam, state->ppu->oam, 0x100);
    memcpy(snssFile->baseBlock.ppuRam, state->ppu->nametab, 0x1000);
 
@@ -206,11 +206,9 @@ int save_mapperblock(nes_t *state, SNSS_FILE *snssFile)
        return -1;
     }
 
-   nes6502_getcontext(state->cpu);
-
    /* TODO: snss spec should be updated, using 4kB ROM pages.. */
    for (i = 0; i < 4; i++)
-      snssFile->mapperBlock.prgPages[i] = (state->cpu->mem_page[(i + 4) * 2] - state->rominfo->rom) >> 13;
+      snssFile->mapperBlock.prgPages[i] = (nes6502_getpage((i + 4) * 2) - state->rominfo->rom) >> 13;
 
    if (state->rominfo->vrom_banks)
    {
@@ -248,7 +246,7 @@ void load_baseblock(nes_t *state, SNSS_FILE *snssFile)
    state->ppu->ctrl0 = snssFile->baseBlock.reg2000;
    state->ppu->ctrl1 = snssFile->baseBlock.reg2001;
 
-   memcpy(state->cpu->mem_page[0], snssFile->baseBlock.cpuRam, 0x800);
+   memcpy(state->cpu->ram, snssFile->baseBlock.cpuRam, 0x800);
    memcpy(state->ppu->oam, snssFile->baseBlock.spriteRam, 0x100);
    memcpy(state->ppu->nametab, snssFile->baseBlock.ppuRam, 0x1000);
    memcpy(state->ppu->palette, snssFile->baseBlock.palette, 0x20);

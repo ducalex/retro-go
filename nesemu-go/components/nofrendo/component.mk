@@ -7,7 +7,7 @@
 # please read the ESP-IDF documents if you need to do this.
 #
 
-COMPONENT_ADD_INCLUDEDIRS := cpu libsnss nes sndhrdw .
-COMPONENT_SRCDIRS := cpu libsnss nes sndhrdw mappers .
+COMPONENT_ADD_INCLUDEDIRS := cpu libsnss nes mappers .
+COMPONENT_SRCDIRS := cpu libsnss nes mappers .
 
 CFLAGS += -O3 -Wno-error=char-subscripts -Wno-error=attributes

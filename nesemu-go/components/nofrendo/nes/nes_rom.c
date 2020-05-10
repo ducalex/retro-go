@@ -207,7 +207,7 @@ rominfo_t *rom_load(const char *filename)
       goto _fail;
 
    /* Make sure we really support the mapper */
-   if (false == mmc_peek(rominfo->mapper_number))
+   if (NULL == mmc_peek(rominfo->mapper_number))
    {
       MESSAGE_ERROR("Mapper %d not yet implemented\n", rominfo->mapper_number);
       goto _fail;

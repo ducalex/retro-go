@@ -141,9 +141,12 @@ ppu_t *ppu_create(void)
 {
    ppu_t *temp;
 
-   temp = calloc(sizeof(ppu_t), 1);
-   if (NULL == temp)
-      return NULL;
+   temp = &ppu;
+   // temp = malloc(sizeof(ppu_t));
+   // if (NULL == temp)
+   //    return NULL;
+
+   memset(temp, 0, sizeof(ppu_t));
 
    temp->latchfunc = NULL;
    temp->vram_present = false;
@@ -159,7 +162,8 @@ void ppu_destroy(ppu_t **src_ppu)
 {
    if (*src_ppu)
    {
-      free(*src_ppu);
+      if (*src_ppu != &ppu)
+         free(*src_ppu);
       *src_ppu = NULL;
    }
 }
@@ -240,7 +244,7 @@ INLINE void ppu_setstrike(int x_loc)
       ppu.strikeflag = true;
 
       /* 3 pixels per cpu cycle */
-      ppu.strike_cycle = nes6502_getcycles(false) + (x_loc / 3);
+      ppu.strike_cycle = nes6502_getcycles() + (x_loc / 3);
    }
 }
 
@@ -295,7 +299,7 @@ IRAM_ATTR uint8 ppu_read(uint32 address)
 
       if (ppu.strikeflag)
       {
-         if (nes6502_getcycles(false) >= ppu.strike_cycle)
+         if (nes6502_getcycles() >= ppu.strike_cycle)
             value |= PPU_STATF_STRIKE;
       }
 

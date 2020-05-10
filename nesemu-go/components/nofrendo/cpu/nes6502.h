@@ -75,7 +75,7 @@ typedef struct
 
 typedef struct
 {
-   uint8 *mem_page[NES6502_NUMBANKS];  /* memory page pointers */
+   uint8 *mem_pages[NES6502_NUMBANKS];  /* memory page pointers */
 
    nes6502_memread *read_handlers;
    nes6502_memwrite *write_handlers;
@@ -84,6 +84,8 @@ typedef struct
    uint8 a_reg, p_reg;
    uint8 x_reg, y_reg;
    uint8 s_reg;
+
+   uint8 *ram; /* shortcut to page 0 (zero page + stack) */
 
    uint8 jammed;  /* is processor jammed? */
 
@@ -101,11 +103,17 @@ extern void nes6502_reset(void);
 extern int nes6502_execute(int total_cycles);
 extern void nes6502_nmi(void);
 extern void nes6502_irq(void);
-extern uint8 nes6502_getbyte(uint32 address);
-extern void nes6502_putbyte(uint32 address, uint8 value);
-extern uint32 nes6502_getcycles(bool reset_flag);
+extern uint32 nes6502_getcycles();
 extern void nes6502_burn(int cycles);
 extern void nes6502_release(void);
+
+extern uint8 nes6502_getbyte(uint16 address);
+extern void nes6502_putbyte(uint16 address, uint8 value);
+extern uint8 *nes6502_getpage(uint16 page);
+extern void nes6502_setpage(uint16 page, uint8 *ptr);
+
+extern nes6502_t *nes6502_create(void *ram);
+extern void nes6502_destroy(nes6502_t **src_cpu);
 
 /* Context get/set */
 extern void nes6502_setcontext(nes6502_t *cpu);

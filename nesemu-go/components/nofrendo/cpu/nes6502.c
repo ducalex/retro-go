@@ -23,7 +23,6 @@
 ** $Id: nes6502.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
-
 #include <noftypes.h>
 #include <nofrendo.h>
 #include <esp_attr.h>
@@ -34,16 +33,12 @@
 static nes6502_t cpu;
 static int remaining_cycles = 0;
 
-/* memory region pointers */
-static uint8 *ram = NULL, *stack = NULL;
-static uint8 null_page[NES6502_BANKSIZE];
-
 
 // #define NES6502_TESTOPS
 #define  NES6502_JUMPTABLE
 
 
-#define  ADD_CYCLES(x) \
+#define ADD_CYCLES(x) \
 { \
    remaining_cycles -= (x); \
    cpu.total_cycles += (x); \
@@ -67,13 +62,13 @@ static uint8 null_page[NES6502_BANKSIZE];
 /* Immediate */
 #define IMMEDIATE_BYTE(value) \
 { \
-   value = bank_readbyte(PC++); \
+   value = fast_readbyte(PC++); \
 }
 
 /* Absolute */
 #define ABSOLUTE_ADDR(address) \
 { \
-   address = bank_readword(PC); \
+   address = fast_readword(PC); \
    PC += 2; \
 }
 
@@ -237,8 +232,8 @@ static uint8 null_page[NES6502_BANKSIZE];
 
 
 /* Stack push/pull */
-#define  PUSH(value)             stack[S--] = (uint8) (value)
-#define  PULL()                  stack[++S]
+#define PUSH(value)             cpu.ram[STACK_OFFSET + S--] = (uint8) (value)
+#define PULL()                  cpu.ram[STACK_OFFSET + ++S]
 
 
 /*
@@ -254,7 +249,7 @@ static uint8 null_page[NES6502_BANKSIZE];
 */
 
 /* Scatter flags to separate variables */
-#define  SCATTER_FLAGS(value) \
+#define SCATTER_FLAGS(value) \
 { \
    n_flag = (value) & N_FLAG; \
    v_flag = (value) & V_FLAG; \
@@ -266,7 +261,7 @@ static uint8 null_page[NES6502_BANKSIZE];
 }
 
 /* Combine flags into flag register */
-#define  COMBINE_FLAGS() \
+#define COMBINE_FLAGS() \
 ( \
    (n_flag & N_FLAG) \
    | (v_flag ? V_FLAG : 0) \
@@ -279,7 +274,7 @@ static uint8 null_page[NES6502_BANKSIZE];
 )
 
 /* Set N and Z flags based on given value */
-#define  SET_NZ_FLAGS(value)     n_flag = z_flag = (value);
+#define SET_NZ_FLAGS(value)     n_flag = z_flag = (value);
 
 /* For BCC, BCS, BEQ, BMI, BNE, BPL, BVC, BVS */
 #define RELATIVE_BRANCH(condition) \
@@ -301,7 +296,7 @@ static uint8 null_page[NES6502_BANKSIZE];
 
 #define JUMP(address) \
 { \
-   PC = bank_readword((address)); \
+   PC = fast_readword((address)); \
 }
 
 /*
@@ -632,10 +627,10 @@ static uint8 null_page[NES6502_BANKSIZE];
 
 #define JMP_INDIRECT() \
 { \
-   temp = bank_readword(PC); \
+   temp = fast_readword(PC); \
    /* bug in crossing page boundaries */ \
    if (0xFF == (temp & 0xFF)) \
-      PC = (bank_readbyte(temp & 0xFF00) << 8) | bank_readbyte(temp); \
+      PC = (fast_readbyte(temp & 0xFF00) << 8) | fast_readbyte(temp); \
    else \
       JUMP(temp); \
    ADD_CYCLES(5); \
@@ -1029,13 +1024,13 @@ static uint8 null_page[NES6502_BANKSIZE];
    ADD_CYCLES(2); \
 }
 
-#define  DECLARE_LOCAL_REGS() \
+#define DECLARE_LOCAL_REGS() \
    uint32 PC; \
    uint8 A, X, Y, S; \
    uint8 n_flag, v_flag, b_flag; \
    uint8 d_flag, i_flag, z_flag, c_flag;
 
-#define  GET_GLOBAL_REGS() \
+#define GET_GLOBAL_REGS() \
 { \
    PC = cpu.pc_reg; \
    A = cpu.a_reg; \
@@ -1045,7 +1040,7 @@ static uint8 null_page[NES6502_BANKSIZE];
    S = cpu.s_reg; \
 }
 
-#define  STORE_LOCAL_REGS() \
+#define STORE_LOCAL_REGS() \
 { \
    cpu.pc_reg = PC; \
    cpu.a_reg = A; \
@@ -1059,152 +1054,138 @@ static uint8 null_page[NES6502_BANKSIZE];
 ** Zero-page helper macros
 */
 
-#define  ZP_READBYTE(addr)          (ram[(addr)])
-#define  ZP_WRITEBYTE(addr, value)  (ram[(addr)] = (uint8) (value))
-#define  ZP_READWORD(addr)          (*(uint16 *)(ram + (addr)))
+#define ZP_READBYTE(addr)          (cpu.ram[(addr)])
+#define ZP_WRITEBYTE(addr, value)  (cpu.ram[(addr)] = (uint8) (value))
 
-#ifndef HOST_LITTLE_ENDIAN
-#undef   ZP_READWORD
-#define  ZP_READWORD(addr) bank_readword(addr)
-#endif
-
-INLINE uint8 bank_readbyte(uint32 address)
-{
-   return cpu.mem_page[(address) >> NES6502_BANKSHIFT][(address) & NES6502_BANKMASK];
-}
-
-INLINE void bank_writebyte(uint32 address, uint8 value)
-{
-   cpu.mem_page[(address) >> NES6502_BANKSHIFT][(address) & NES6502_BANKMASK] = value;
-}
-
-INLINE uint32 bank_readword(register uint32 address)
-{
-   /* technically, this should fail if the address is $xFFF, but
-   ** any code that does this would be suspect anyway, as it would
-   ** be fetching a word across page boundaries, which only would
-   ** make sense if the banks were physically consecutive.
-   */
 #ifdef HOST_LITTLE_ENDIAN
-   return (uint32) (*(uint16 *)(cpu.mem_page[address >> NES6502_BANKSHIFT] + (address & NES6502_BANKMASK)));
+#define ZP_READWORD(addr)          (*(uint16 *)(cpu.ram + (addr)))
 #else
-   uint32 x = (uint32) *(uint16 *)(cpu.mem_page[address >> NES6502_BANKSHIFT] + (address & NES6502_BANKMASK));
-   return (x << 8) | (x >> 8);
+#define ZP_READWORD(addr)          fast_readword(addr)
 #endif
+
+/* read a byte from mapped memory, ignoring unmapped/IO areas (for speed) */
+INLINE uint8 fast_readbyte(uint32 address)
+{
+   uint8 *page = cpu.mem_pages[address >> NES6502_BANKSHIFT];
+   return (page == NULL) ? 0xFF : page[address & NES6502_BANKMASK];
 }
 
-/* read a byte of 6502 memory */
+/* read a word from mapped memory, ignoring unmapped/IO areas (for speed) */
+INLINE uint32 fast_readword(uint32 address)
+{
+   return fast_readbyte(address + 1) << 8 | fast_readbyte(address);
+}
+
+/* read a byte of 6502 memory space */
 INLINE uint8 mem_readbyte(uint32 address)
 {
-   nes6502_memread *mr;
+   uint8 *page = cpu.mem_pages[address >> NES6502_BANKSHIFT];
 
-   /* TODO: following 2 cases are N2A03-specific */
+   /* RAM */
    if (address < 0x2000)
    {
-      /* RAM */
-      return ram[address & 0x7FF];
+      return page[address & 0x7FF];
    }
-   else if (address < 0x8000)
+
+   /* Special memory handlers */
+   if (address < 0x8000) // Assume anything beyond 0x8000 is mapped below
    {
-      /* check memory range handlers */
-      for (mr = cpu.read_handlers; mr->min_range != NULL; mr++)
+      for (nes6502_memread *mr = cpu.read_handlers; mr->read_func != NULL; mr++)
       {
          if (address >= mr->min_range && address <= mr->max_range)
             return mr->read_func(address);
       }
    }
 
-   /* return paged memory */
-   return cpu.mem_page[address >> NES6502_BANKSHIFT][address & NES6502_BANKMASK];
+   /* Unmapped region */
+   if (page == NULL)
+   {
+      MESSAGE_DEBUG("Read unmapped region: $%4X\n", address);
+      return 0xFF;
+   }
+
+   /* Paged memory */
+   return page[address & 0xFFF];
 }
 
-/* write a byte of data to 6502 memory */
+/* write a byte of data to 6502 memory space */
 INLINE void mem_writebyte(uint32 address, uint8 value)
 {
-   nes6502_memwrite *mw;
+   uint8 *page = cpu.mem_pages[address >> NES6502_BANKSHIFT];
 
    /* RAM */
    if (address < 0x2000)
    {
-      ram[address & 0x7FF] = value;
+      page[address & 0x7FF] = value;
       return;
    }
-   /* check memory range handlers */
-   else
+
+   /* Special memory handlers */
+   for (nes6502_memwrite *mw = cpu.write_handlers; mw->write_func != NULL; mw++)
    {
-      for (mw = cpu.write_handlers; mw->min_range != NULL; mw++)
+      if (address >= mw->min_range && address <= mw->max_range)
       {
-         if (address >= mw->min_range && address <= mw->max_range)
-         {
-            mw->write_func(address, value);
-            return;
-         }
+         mw->write_func(address, value);
+         return;
       }
    }
 
-   /* write to paged memory */
-   cpu.mem_page[address >> NES6502_BANKSHIFT][address & NES6502_BANKMASK] = value;
+   /* Unmapped region */
+   if (page == NULL)
+   {
+      MESSAGE_DEBUG("Write to unmapped region: $%2X to $%4X\n", address, value);
+      return;
+   }
+
+   /* Paged memory */
+   page[address & 0xFFF] = value;
+}
+
+/* Get byte from cpu address space */
+IRAM_ATTR uint8 nes6502_getbyte(uint16 address)
+{
+   return mem_readbyte(address);
+}
+
+/* Write byte to cpu address space */
+IRAM_ATTR void nes6502_putbyte(uint16 address, uint8 value)
+{
+   mem_writebyte(address, value);
+}
+
+/* Set 4KB memory page */
+IRAM_ATTR void nes6502_setpage(uint16 page, uint8 *ptr)
+{
+   cpu.mem_pages[page] = ptr;
+   cpu.ram = cpu.mem_pages[0];
+}
+
+/* Get 4KB memory page */
+IRAM_ATTR uint8 *nes6502_getpage(uint16 page)
+{
+   return cpu.mem_pages[page];
 }
 
 /* set the current context */
 void nes6502_setcontext(nes6502_t *context)
 {
-   int loop;
-
    ASSERT(context);
 
    cpu = *context;
-
-   /* set dead page for all pages not pointed at anything */
-   for (loop = 0; loop < NES6502_NUMBANKS; loop++)
-   {
-      if (NULL == cpu.mem_page[loop])
-         cpu.mem_page[loop] = null_page;
-   }
-
-   ram = cpu.mem_page[0];  /* quick zero-page/RAM references */
-   stack = ram + STACK_OFFSET;
 }
 
 /* get the current context */
 void nes6502_getcontext(nes6502_t *context)
 {
-   int loop;
-
    ASSERT(context);
 
    *context = cpu;
-
-   /* reset dead pages to null */
-   for (loop = 0; loop < NES6502_NUMBANKS; loop++)
-   {
-      if (null_page == context->mem_page[loop])
-         context->mem_page[loop] = NULL;
-   }
-}
-
-/* DMA a byte of data from ROM */
-IRAM_ATTR uint8 nes6502_getbyte(uint32 address)
-{
-   // return mem_readbyte(address);
-   return bank_readbyte(address);
-}
-
-IRAM_ATTR void nes6502_putbyte(uint32 address, uint8 value)
-{
-   // mem_writebyte(address, value);
-   bank_writebyte(address, value);
 }
 
 /* get number of elapsed cycles */
-IRAM_ATTR uint32 nes6502_getcycles(bool reset_flag)
+IRAM_ATTR uint32 nes6502_getcycles()
 {
-   uint32 cycles = cpu.total_cycles;
-
-   if (reset_flag)
-      cpu.total_cycles = 0;
-
-   return cycles;
+   return cpu.total_cycles;
 }
 
 #define MIN(a,b)    (((a) < (b)) ? (a) : (b))
@@ -1221,14 +1202,14 @@ IRAM_ATTR uint32 nes6502_getcycles(bool reset_flag)
 #define OPCODE_NEXT \
    if (remaining_cycles <= 0) break; \
    DISASSEMBLE; \
-   goto *opcode_table[bank_readbyte(PC++)];
+   goto *opcode_table[fast_readbyte(PC++)];
 
 #else /* !NES6502_JUMPTABLE */
 
 #define OPCODE(xx, x...)  case 0x##xx: x; break;
 #define OPCODE_NEXT \
    DISASSEMBLE;  \
-   switch (bank_readbyte(PC++))
+   switch (fast_readbyte(PC++))
 
 #endif /* !NES6502_JUMPTABLE */
 
@@ -1601,7 +1582,7 @@ void nes6502_reset(void)
    cpu.p_reg = Z_FLAG | R_FLAG | I_FLAG;     /* Reserved bit always 1 */
    cpu.int_pending = 0;                      /* No pending interrupts */
    cpu.int_latency = 0;                      /* No latent interrupts */
-   cpu.pc_reg = bank_readword(RESET_VECTOR); /* Fetch reset vector */
+   cpu.pc_reg = fast_readword(RESET_VECTOR); /* Fetch reset vector */
    cpu.burn_cycles = RESET_CYCLES;
    cpu.jammed = false;
 }
@@ -1642,13 +1623,41 @@ IRAM_ATTR void nes6502_irq(void)
 }
 
 /* Set dead cycle period */
-void nes6502_burn(int cycles)
+IRAM_ATTR void nes6502_burn(int cycles)
 {
    cpu.burn_cycles += cycles;
 }
 
 /* Release our timeslice */
-void nes6502_release(void)
+IRAM_ATTR void nes6502_release(void)
 {
    remaining_cycles = 0;
+}
+
+/* Create a nes6502 object */
+nes6502_t *nes6502_create(void *ram)
+{
+   nes6502_t *temp;
+
+   temp = &cpu;
+   // temp = malloc(sizeof(nes6502_t));
+   // if (NULL == temp)
+   //    return NULL;
+
+   memset(temp, 0, sizeof(nes6502_t));
+
+   nes6502_setpage(0, ram);
+   nes6502_setpage(1, ram);
+
+   return temp;
+}
+
+/* Destroy a nes6502 object */
+void nes6502_destroy(nes6502_t **src_cpu)
+{
+   if (*src_cpu)
+   {
+      free(*src_cpu);
+      *src_cpu = NULL;
+   }
 }
