@@ -200,7 +200,7 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
 
     if (*crc > 1)
     {
-        sprintf(buf_crc, "%X", *crc);
+        sprintf(buf_crc, "%08X", *crc);
 
         // /sd/romart/gbc/0/08932754.png
         // /sd/romart/gbc/Super Mario.png
