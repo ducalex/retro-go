@@ -27,6 +27,7 @@ static uint16_t myPalette[64];
 static odroid_video_frame update1 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 0x3F, -1, NULL, myPalette, 0};
 static odroid_video_frame update2 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 0x3F, -1, NULL, myPalette, 0};
 static odroid_video_frame *currentUpdate = &update1;
+static odroid_video_frame *previousUpdate = NULL;
 
 static void (*audio_callback)(void *buffer, int length) = NULL;
 static int16_t *audioBuffer;
@@ -279,14 +280,13 @@ void osd_setpalette(rgb_t *pal)
 
 void IRAM_ATTR osd_blitscreen(bitmap_t *bmp)
 {
-   odroid_video_frame *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
-
    currentUpdate->buffer = bmp->line[overscan];
    currentUpdate->stride = bmp->pitch;
 
    fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
 
-   currentUpdate = previousUpdate;
+   previousUpdate = currentUpdate;
+   currentUpdate = (currentUpdate == &update1) ? &update2 : &update1;
 }
 
 void osd_getinput(void)

@@ -119,10 +119,6 @@ INLINE void renderframe(bool draw_flag)
    int elapsed_cycles;
    mapintf_t *mapintf = nes.mmc->intf;
 
-   // Swap buffers (We may not be done blitting the current one)
-   nes.vidbuf = (nes.vidbuf == framebuffers[1])
-      ? framebuffers[0] : framebuffers[1];
-
    while (nes.scanline != nes.scanlines)
    {
       nes.cycles += nes.cycles_per_line;
@@ -180,6 +176,7 @@ void nes_emulate(void)
       if (drawFrame)
       {
          osd_blitscreen(nes.vidbuf);
+         nes.vidbuf = (nes.vidbuf == framebuffers[1]) ? framebuffers[0] : framebuffers[1];
       }
 
       if (skipFrames == 0)
@@ -227,6 +224,7 @@ void nes_reset(int reset_type)
    mmc_reset();
    nes6502_reset();
 
+   nes.vidbuf = framebuffers[0];
    nes.scanline = 241;
    nes.cycles = 0;
 

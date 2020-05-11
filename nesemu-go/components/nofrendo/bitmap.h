@@ -35,13 +35,13 @@ typedef struct rgb_s
 
 typedef struct bitmap_s
 {
-   int width, height, pitch;
-   bool hardware;             /* is data a hardware region? */
+   short width, height, pitch;
    uint8 *data;               /* protected */
    uint8 *line[ZERO_LENGTH];  /* will hold line pointers */
 } bitmap_t;
 
-extern bitmap_t *bmp_create(int width, int height, int overdraw);
+extern bitmap_t *bmp_create(short width, short height, short overdraw);
+extern void bmp_clear(bitmap_t *bitmap, uint8 color);
 extern void bmp_destroy(bitmap_t **bitmap);
 
 #endif /* _BITMAP_H_ */

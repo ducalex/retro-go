@@ -23,15 +23,13 @@
 ** $Id: bitmap.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <noftypes.h>
 #include <nofrendo.h>
 #include <bitmap.h>
 #include <nes.h>
 
-bitmap_t *bmp_create(int width, int height, int overdraw)
+bitmap_t *bmp_create(short width, short height, short overdraw)
 {
    MESSAGE_INFO("bmp_create: width=%d, height=%d, overdraw=%d\n", width, height, overdraw);
 
@@ -43,17 +41,20 @@ bitmap_t *bmp_create(int width, int height, int overdraw)
    if (data == NULL)
       return NULL;
 
-   bitmap->hardware = false;
    bitmap->height = height;
    bitmap->width = width;
    bitmap->data = data;
    bitmap->pitch = width + (overdraw * 2);
-   bitmap->line[0] = bitmap->data + overdraw;
 
-   for (int i = 1; i < height; i++)
-      bitmap->line[i] = bitmap->line[i - 1] + bitmap->pitch;
+   for (int i = 0; i < height; i++)
+      bitmap->line[i] = bitmap->data + (bitmap->pitch * i) + overdraw;
 
    return bitmap;
+}
+
+void bmp_clear(bitmap_t *bitmap, uint8 color)
+{
+   memset(bitmap->data, color, bitmap->pitch * bitmap->height);
 }
 
 /* Deallocate space for a bitmap structure */
@@ -61,7 +62,7 @@ void bmp_destroy(bitmap_t **bitmap)
 {
    if (*bitmap)
    {
-      if ((*bitmap)->data && false == (*bitmap)->hardware)
+      if ((*bitmap)->data)
          free((*bitmap)->data);
       free(*bitmap);
       *bitmap = NULL;
