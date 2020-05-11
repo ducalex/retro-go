@@ -259,7 +259,7 @@ INLINE void ppu_oamdma(uint8 value)
    oam_loc = ppu.oam_addr;
    do
    {
-      ppu.oam[oam_loc++] = nes6502_getbyte(cpu_address++);
+      ppu.oam[oam_loc++] = nes_getbyte(cpu_address++);
    }
    while (oam_loc != ppu.oam_addr);
 
@@ -269,16 +269,16 @@ INLINE void ppu_oamdma(uint8 value)
    if ((ppu.oam_addr >> 2) & 1)
    {
       for (oam_loc = 4; oam_loc < 8; oam_loc++)
-         ppu.oam[oam_loc] = nes6502_getbyte(cpu_address++);
+         ppu.oam[oam_loc] = nes_getbyte(cpu_address++);
       cpu_address += 248;
       for (oam_loc = 0; oam_loc < 4; oam_loc++)
-         ppu.oam[oam_loc] = nes6502_getbyte(cpu_address++);
+         ppu.oam[oam_loc] = nes_getbyte(cpu_address++);
    }
    /* Even address in $2003 */
    else
    {
       for (oam_loc = 0; oam_loc < 8; oam_loc++)
-         ppu.oam[oam_loc] = nes6502_getbyte(cpu_address++);
+         ppu.oam[oam_loc] = nes_getbyte(cpu_address++);
    }
 
    /* make the CPU spin for DMA cycles */
@@ -1025,7 +1025,7 @@ IRAM_ATTR void ppu_endscanline(int scanline)
 IRAM_ATTR void ppu_checknmi(void)
 {
    if (ppu.ctrl0 & PPU_CTRL0F_NMI)
-      nes_nmi();
+      nes6502_nmi();
 }
 
 IRAM_ATTR void ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag)

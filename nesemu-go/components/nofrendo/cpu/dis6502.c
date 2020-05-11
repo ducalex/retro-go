@@ -3,14 +3,14 @@
 **
 **
 ** This program is free software; you can redistribute it and/or
-** modify it under the terms of version 2 of the GNU Library General 
+** modify it under the terms of version 2 of the GNU Library General
 ** Public License as published by the Free Software Foundation.
 **
-** This program is distributed in the hope that it will be useful, 
+** This program is distributed in the hope that it will be useful,
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
-** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
-** Library General Public License for more details.  To obtain a 
-** copy of the GNU Library General Public License, write to the Free 
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+** Library General Public License for more details.  To obtain a
+** copy of the GNU Library General Public License, write to the Free
 ** Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 **
 ** Any permitted reproduction of these routines, in whole or in part,
@@ -25,27 +25,28 @@
 
 #include <stdio.h>
 #include <noftypes.h>
+#include <nes.h>
 #include "nes6502.h"
 #include "dis6502.h"
 
 #ifdef NES6502_DEBUG
 
 /* addressing modes */
-enum 
-{ 
-   _imp, 
-   _acc, 
-   _rel, 
-   _imm, 
-   _abs, 
-   _abs_x, 
-   _abs_y, 
-   _zero, 
-   _zero_x, 
-   _zero_y, 
-   _ind, 
-   _ind_x, 
-   _ind_y 
+enum
+{
+   _imp,
+   _acc,
+   _rel,
+   _imm,
+   _abs,
+   _abs_x,
+   _abs_y,
+   _zero,
+   _zero_x,
+   _zero_y,
+   _ind,
+   _ind_x,
+   _ind_y
 };
 
 /* keep a filthy local copy of PC to
@@ -140,7 +141,7 @@ static int dis_show_code(char *buf, int optype)
    switch (optype)
    {
    case _imp:
-   case _acc: 
+   case _acc:
       dest += sprintf(dest, "      ");
       break;
 
@@ -168,7 +169,7 @@ static int dis_show_code(char *buf, int optype)
 static int dis_show_op(char *buf, char *opstr, int optype)
 {
    char *dest = buf;
-   
+
    dest += dis_show_code(dest, optype);
    dest += sprintf(dest, "%s ", opstr);
 
@@ -305,7 +306,7 @@ char *nes6502_disasm(uint32 PC, uint8 P, uint8 A, uint8 X, uint8 Y, uint8 S)
    case 0x5d: op = "eor"; type = _abs_x;  break;
    case 0x5e: op = "lsr"; type = _abs_x;  break;
    case 0x5f: op = "sre"; type = _abs_x;  break;
- 
+
    case 0x60: op = "rts"; type = _imp;    break;
    case 0x61: op = "adc"; type = _ind_x;  break;
    case 0x62: op = "jam"; type = _imp;    break;

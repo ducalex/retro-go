@@ -173,7 +173,7 @@ static void map5_hblank(int scanline)
 
       if (scanline == irq.scanline)
       {
-         if (irq.enabled) nes_irq();
+         if (irq.enabled) nes6502_irq();
          irq.status |= IRQ_PENDING;
       }
    }

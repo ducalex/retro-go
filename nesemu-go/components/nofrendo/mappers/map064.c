@@ -51,7 +51,7 @@ static void map64_hblank(int scanline)
          irq.counter = irq.latch;
 
          if (true == irq.enabled)
-            nes_irq();
+            nes6502_irq();
 
          irq.reset = true;
       }
@@ -216,7 +216,7 @@ mapintf_t map64_intf =
 ** stroustrup squeezing his way in the door
 **
 ** Revision 1.4  2000/07/10 13:51:25  matt
-** using generic nes_irq() routine now
+** using generic nes6502_irq() routine now
 **
 ** Revision 1.3  2000/07/10 05:29:03  matt
 ** cleaned up some mirroring issues

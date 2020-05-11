@@ -89,7 +89,7 @@ static void map42_hblank (int vblank)
      if (irq.counter >= 0x6000)
      {
        /* Trigger the IRQ */
-       nes_irq ();
+       nes6502_irq ();
 
        /* Reset the counter */
        map42_irq_reset ();

@@ -63,29 +63,12 @@
 
 typedef struct
 {
-   uint32 min_range, max_range;
-   uint8 (*read_func)(uint32 address);
-} nes6502_memread;
-
-typedef struct
-{
-   uint32 min_range, max_range;
-   void (*write_func)(uint32 address, uint8 value);
-} nes6502_memwrite;
-
-typedef struct
-{
-   uint8 *mem_pages[NES6502_NUMBANKS];  /* memory page pointers */
-
-   nes6502_memread *read_handlers;
-   nes6502_memwrite *write_handlers;
-
    uint32 pc_reg;
    uint8 a_reg, p_reg;
    uint8 x_reg, y_reg;
    uint8 s_reg;
 
-   uint8 *ram; /* shortcut to page 0 (zero page + stack) */
+   mem_map_t *mem;
 
    uint8 jammed;  /* is processor jammed? */
 
@@ -112,7 +95,7 @@ extern void nes6502_putbyte(uint16 address, uint8 value);
 extern uint8 *nes6502_getpage(uint16 page);
 extern void nes6502_setpage(uint16 page, uint8 *ptr);
 
-extern nes6502_t *nes6502_create(void *ram);
+extern nes6502_t *nes6502_create(mem_map_t *mem);
 extern void nes6502_destroy(nes6502_t **src_cpu);
 
 /* Context get/set */

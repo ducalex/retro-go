@@ -52,11 +52,6 @@
 #define MESSAGE_ERROR(x...) nofrendo_printf(2, NULL, "!! " x)
 
 #include <nes.h>
-#include <bitmap.h>
-
-extern nes_t *console;
-extern bitmap_t *primary_buffer;
-
 extern int nofrendo_start(const char *filename, int region);
 extern void nofrendo_stop(void);
 extern void nofrendo_refresh(void);

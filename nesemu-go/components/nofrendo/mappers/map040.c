@@ -57,7 +57,7 @@ static void map40_hblank(int vblank)
       irq.counter--;
       if (0 == irq.counter)
       {
-         nes_irq();
+         nes6502_irq();
          irq.enabled = false;
       }
    }
@@ -152,7 +152,7 @@ mapintf_t map40_intf =
 ** rounded out a bunch more mapper interfaces
 **
 ** Revision 1.3  2000/07/10 13:51:25  matt
-** using generic nes_irq() routine now
+** using generic nes6502_irq() routine now
 **
 ** Revision 1.2  2000/07/06 02:48:43  matt
 ** clearly labelled structure members

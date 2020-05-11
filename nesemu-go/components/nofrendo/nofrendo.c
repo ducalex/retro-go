@@ -34,10 +34,6 @@
 #include <nes.h>
 
 
-bitmap_t *primary_buffer;
-nes_t *console;
-
-
 /* our happy little timer ISR */
 volatile int nofrendo_ticks = 0;
 static void timer_isr(void)
@@ -84,7 +80,7 @@ void nofrendo_assert(int expr, int line, const char *file, char *msg)
 
 void nofrendo_refresh()
 {
-   // osd_blitscreen(primary_buffer);
+   // osd_blitscreen
 }
 
 /* End the current context */
@@ -116,15 +112,13 @@ int nofrendo_start(const char *filename, int region)
          region = NES_NTSC;
    }
 
-   console = nes_create(region);
-
-   if (NULL == console)
+   if (!nes_create(region))
    {
       MESSAGE_ERROR("Failed to create NES instance.\n");
       return -1;
    }
 
-   if (nes_insertcart(filename, console))
+   if (nes_insertcart(filename))
    {
       MESSAGE_ERROR("Failed to insert NES cart.\n");
       return -2;

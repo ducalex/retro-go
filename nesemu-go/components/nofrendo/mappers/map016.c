@@ -3,14 +3,14 @@
 **
 **
 ** This program is free software; you can redistribute it and/or
-** modify it under the terms of version 2 of the GNU Library General 
+** modify it under the terms of version 2 of the GNU Library General
 ** Public License as published by the Free Software Foundation.
 **
-** This program is distributed in the hope that it will be useful, 
+** This program is distributed in the hope that it will be useful,
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
-** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
-** Library General Public License for more details.  To obtain a 
-** copy of the GNU Library General Public License, write to the Free 
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+** Library General Public License for more details.  To obtain a
+** copy of the GNU Library General Public License, write to the Free
 ** Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 **
 ** Any permitted reproduction of these routines, in whole or in part,
@@ -66,33 +66,33 @@ static void map16_write(uint32 address, uint8 value)
          case 0:
             ppu_mirror(0, 0, 1, 1); /* horizontal */
             break;
-      
+
          case 1:
             ppu_mirror(0, 1, 0, 1); /* vertical */
             break;
-      
+
          case 2:
             ppu_mirror(0, 0, 0, 0);
             break;
-      
+
          case 3:
             ppu_mirror(1, 1, 1, 1);
             break;
          }
          break;
-   
+
       case 0xA:
          irq.enabled = (value & 1) ? true : false;
          break;
- 
+
       case 0xB:
          irq.counter = (irq.counter & 0xFF00) | value;
          break;
-   
+
       case 0xC:
          irq.counter = (value << 8) | (irq.counter & 0xFF);
          break;
-   
+
       case 0xD:
          /* eeprom I/O port? */
          break;
@@ -109,7 +109,7 @@ static void map16_hblank(int vblank)
       if (irq.counter)
       {
          if (0 == --irq.counter)
-            nes_irq();
+            nes6502_irq();
       }
    }
 }
@@ -136,7 +136,7 @@ static map_memwrite map16_memwrite[] =
    {     -1,     -1, NULL }
 };
 
-mapintf_t map16_intf = 
+mapintf_t map16_intf =
 {
    16, /* mapper number */
    "Bandai", /* mapper name */

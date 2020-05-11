@@ -84,7 +84,7 @@ static void map160_hblank(int scanline)
          if (0 == irq.counter && false == irq.expired)
          {
             irq.expired = true;
-            nes_irq();
+            nes6502_irq();
          }
          else
          {

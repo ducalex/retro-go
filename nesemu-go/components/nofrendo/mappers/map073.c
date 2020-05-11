@@ -73,7 +73,7 @@ static void map73_hblank (int vblank)
        irq.counter &= 0xFFFF;
 
        /* Trigger the IRQ */
-       nes_irq ();
+       nes6502_irq ();
 
        /* Shut off IRQ counter */
        irq.enabled = false;

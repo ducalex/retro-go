@@ -132,7 +132,7 @@ void apu_fc_advance(int cycles)
          apu.fc.irq_occurred = true;
 
          if (!apu.fc.disable_irq)
-            nes_irq();
+            nes6502_irq();
       }
    }
 }
@@ -584,7 +584,7 @@ INLINE int32 apu_dmc(void)
 
          if (7 == delta_bit)
          {
-            apu.dmc.cur_byte = nes6502_getbyte(apu.dmc.address);
+            apu.dmc.cur_byte = nes_getbyte(apu.dmc.address);
 
             /* steal a cycle from CPU*/
             nes6502_burn(1);
@@ -609,7 +609,7 @@ INLINE int32 apu_dmc(void)
                if (apu.dmc.irq_gen)
                {
                   apu.dmc.irq_occurred = true;
-                  nes_irq();
+                  nes6502_irq();
                }
 
                /* bodge for timestamp queue */
@@ -1189,7 +1189,7 @@ void apu_setext(apu_t *src_apu, apuext_t *ext)
 ** irqs are not supported in NSF playing mode
 **
 ** Revision 1.22  2000/07/10 13:54:32  matt
-** using generic nes_irq() now
+** using generic nes6502_irq() now
 **
 ** Revision 1.21  2000/07/10 05:29:34  matt
 ** moved joypad/oam dma from apu to ppu

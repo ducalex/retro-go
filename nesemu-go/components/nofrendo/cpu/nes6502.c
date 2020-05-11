@@ -32,7 +32,7 @@
 /* internal CPU context */
 static nes6502_t cpu;
 static int remaining_cycles = 0;
-
+static uint8 *zp, *stack;
 
 // #define NES6502_TESTOPS
 #define  NES6502_JUMPTABLE
@@ -232,8 +232,8 @@ static int remaining_cycles = 0;
 
 
 /* Stack push/pull */
-#define PUSH(value)             cpu.ram[STACK_OFFSET + S--] = (uint8) (value)
-#define PULL()                  cpu.ram[STACK_OFFSET + ++S]
+#define PUSH(value)             stack[S--] = (uint8) (value)
+#define PULL()                  stack[++S]
 
 
 /*
@@ -1054,11 +1054,11 @@ static int remaining_cycles = 0;
 ** Zero-page helper macros
 */
 
-#define ZP_READBYTE(addr)          (cpu.ram[(addr)])
-#define ZP_WRITEBYTE(addr, value)  (cpu.ram[(addr)] = (uint8) (value))
+#define ZP_READBYTE(addr)          (zp[(addr)])
+#define ZP_WRITEBYTE(addr, value)  (zp[(addr)] = (uint8) (value))
 
 #ifdef HOST_LITTLE_ENDIAN
-#define ZP_READWORD(addr)          (*(uint16 *)(cpu.ram + (addr)))
+#define ZP_READWORD(addr)          (*(uint16 *)(zp + (addr)))
 #else
 #define ZP_READWORD(addr)          fast_readword(addr)
 #endif
@@ -1066,7 +1066,7 @@ static int remaining_cycles = 0;
 /* read a byte from mapped memory, ignoring unmapped/IO areas (for speed) */
 INLINE uint8 fast_readbyte(uint32 address)
 {
-   uint8 *page = cpu.mem_pages[address >> NES6502_BANKSHIFT];
+   uint8 *page = cpu.mem->pages[address >> NES6502_BANKSHIFT];
    return (page == NULL) ? 0xFF : page[address & NES6502_BANKMASK];
 }
 
@@ -1079,7 +1079,7 @@ INLINE uint32 fast_readword(uint32 address)
 /* read a byte of 6502 memory space */
 INLINE uint8 mem_readbyte(uint32 address)
 {
-   uint8 *page = cpu.mem_pages[address >> NES6502_BANKSHIFT];
+   uint8 *page = cpu.mem->pages[address >> NES6502_BANKSHIFT];
 
    /* RAM */
    if (address < 0x2000)
@@ -1090,7 +1090,7 @@ INLINE uint8 mem_readbyte(uint32 address)
    /* Special memory handlers */
    if (address < 0x8000) // Assume anything beyond 0x8000 is mapped below
    {
-      for (nes6502_memread *mr = cpu.read_handlers; mr->read_func != NULL; mr++)
+      for (mem_read_handler_t *mr = cpu.mem->read_handlers; mr->read_func != NULL; mr++)
       {
          if (address >= mr->min_range && address <= mr->max_range)
             return mr->read_func(address);
@@ -1105,13 +1105,13 @@ INLINE uint8 mem_readbyte(uint32 address)
    }
 
    /* Paged memory */
-   return page[address & 0xFFF];
+   return page[address & NES6502_BANKMASK];
 }
 
 /* write a byte of data to 6502 memory space */
 INLINE void mem_writebyte(uint32 address, uint8 value)
 {
-   uint8 *page = cpu.mem_pages[address >> NES6502_BANKSHIFT];
+   uint8 *page = cpu.mem->pages[address >> NES6502_BANKSHIFT];
 
    /* RAM */
    if (address < 0x2000)
@@ -1121,7 +1121,7 @@ INLINE void mem_writebyte(uint32 address, uint8 value)
    }
 
    /* Special memory handlers */
-   for (nes6502_memwrite *mw = cpu.write_handlers; mw->write_func != NULL; mw++)
+   for (mem_write_handler_t *mw = cpu.mem->write_handlers; mw->write_func != NULL; mw++)
    {
       if (address >= mw->min_range && address <= mw->max_range)
       {
@@ -1138,7 +1138,7 @@ INLINE void mem_writebyte(uint32 address, uint8 value)
    }
 
    /* Paged memory */
-   page[address & 0xFFF] = value;
+   page[address & NES6502_BANKMASK] = value;
 }
 
 /* Get byte from cpu address space */
@@ -1156,14 +1156,15 @@ IRAM_ATTR void nes6502_putbyte(uint16 address, uint8 value)
 /* Set 4KB memory page */
 IRAM_ATTR void nes6502_setpage(uint16 page, uint8 *ptr)
 {
-   cpu.mem_pages[page] = ptr;
-   cpu.ram = cpu.mem_pages[0];
+   cpu.mem->pages[page] = ptr;
+   zp    = cpu.mem->pages[0];
+   stack = cpu.mem->pages[0] + STACK_OFFSET;
 }
 
 /* Get 4KB memory page */
 IRAM_ATTR uint8 *nes6502_getpage(uint16 page)
 {
-   return cpu.mem_pages[page];
+   return cpu.mem->pages[page];
 }
 
 /* set the current context */
@@ -1226,6 +1227,9 @@ IRAM_ATTR int nes6502_execute(int timeslice_cycles)
    uint32 temp, addr; /* for macros */
    uint8 btemp, baddr; /* for macros */
    uint8 data;
+
+   // zp    = cpu.mem->pages[0];
+   // stack = cpu.mem->pages[0] + STACK_OFFSET;
 
    DECLARE_LOCAL_REGS();
    GET_GLOBAL_REGS();
@@ -1635,7 +1639,7 @@ IRAM_ATTR void nes6502_release(void)
 }
 
 /* Create a nes6502 object */
-nes6502_t *nes6502_create(void *ram)
+nes6502_t *nes6502_create(mem_map_t *mem)
 {
    nes6502_t *temp;
 
@@ -1645,9 +1649,8 @@ nes6502_t *nes6502_create(void *ram)
    //    return NULL;
 
    memset(temp, 0, sizeof(nes6502_t));
+   temp->mem = mem;
 
-   nes6502_setpage(0, ram);
-   nes6502_setpage(1, ram);
 
    return temp;
 }

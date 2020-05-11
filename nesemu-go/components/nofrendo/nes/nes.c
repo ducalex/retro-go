@@ -27,21 +27,19 @@
 #include <string.h>
 #include <stdlib.h>
 #include <noftypes.h>
-#include <nes6502.h>
-#include <osd.h>
-#include <nes.h>
-#include <nes_apu.h>
-#include <nes_ppu.h>
-#include <nes_rom.h>
-#include <nes_mmc.h>
 #include <nofrendo.h>
 #include <nes_input.h>
-#include <nes_state.h>
+#include <osd.h>
+#include <nes.h>
 
 #include <esp_attr.h>
 #include <odroid_system.h>
 
+static bitmap_t *framebuffers[2];
 static nes_t nes;
+
+extern bool fullFrame;
+
 
 nes_t *nes_getptr(void)
 {
@@ -55,96 +53,75 @@ IRAM_ATTR void write_protect(uint32 address, uint8 value)
    UNUSED(value);
 }
 
-IRAM_ATTR uint8 sram_read(uint32 address)
-{
-   if (nes.rominfo->sram)
-      return nes.rominfo->sram[address & 0x1FFF];
-   return 0xFF;
-}
-
-IRAM_ATTR void sram_write(uint32 address, uint8 value)
-{
-   if (nes.rominfo->sram)
-      nes.rominfo->sram[address & 0x1FFF] = value;
-}
-
 /* read/write handlers for standard NES */
-static nes6502_memread default_readhandler[] =
+static mem_read_handler_t read_handlers[] =
 {
    { 0x2000, 0x3FFF, ppu_read   },
    { 0x4000, 0x4015, apu_read   },
    { 0x4016, 0x4017, input_read },
-   { 0x6000, 0x7FFF, sram_read  },
    LAST_MEMORY_HANDLER
 };
 
-static nes6502_memwrite default_writehandler[] =
+static mem_write_handler_t write_handlers[] =
 {
    { 0x2000, 0x3FFF, ppu_write   },
    { 0x4014, 0x4014, ppu_write   },
    { 0x4016, 0x4016, input_write },
    { 0x4000, 0x4017, apu_write   },
-   { 0x6000, 0x7FFF, sram_write  },
    { 0x8000, 0xFFFF, write_protect},
    LAST_MEMORY_HANDLER
 };
 
-static void build_address_handlers(nes_t *machine)
+INLINE void build_memory_map()
 {
-   ASSERT(machine);
-
    int num_read_handlers = 0, num_write_handlers = 0;
-   mapintf_t *intf = machine->mmc->intf;
+   mapintf_t *intf = nes.mmc->intf;
 
-   memset(machine->read_handlers, 0, sizeof(machine->read_handlers));
-   memset(machine->write_handlers, 0, sizeof(machine->write_handlers));
+   memset(&nes.mem, 0, sizeof(nes.mem));
 
+   // Memory pages
+   nes6502_setpage(0, nes.ram);
+   nes6502_setpage(1, nes.ram);
+   nes6502_setpage(6, nes.rominfo->sram);
+   nes6502_setpage(7, nes.rominfo->sram + 0x1000);
+
+   // Special MMC handlers
    for (int i = 0, rc = 0, wc = 0; i < MAX_MEM_HANDLERS; i++)
    {
       if (intf->mem_read && intf->mem_read[rc].read_func)
-         memcpy(&machine->read_handlers[num_read_handlers++], &intf->mem_read[rc++],
-               sizeof(nes6502_memread));
+         memcpy(&nes.mem.read_handlers[num_read_handlers++], &intf->mem_read[rc++],
+               sizeof(mem_read_handler_t));
 
       if (intf->mem_write && intf->mem_write[wc].write_func)
-         memcpy(&machine->write_handlers[num_write_handlers++], &intf->mem_write[wc++],
-               sizeof(nes6502_memwrite));
+         memcpy(&nes.mem.write_handlers[num_write_handlers++], &intf->mem_write[wc++],
+               sizeof(mem_write_handler_t));
    }
 
+   // Special IO handlers
    for (int i = 0, rc = 0, wc = 0; i < MAX_MEM_HANDLERS; i++)
    {
-      if (default_readhandler[rc].read_func)
-         memcpy(&machine->read_handlers[num_read_handlers++], &default_readhandler[rc++],
-               sizeof(nes6502_memread));
+      if (read_handlers[rc].read_func)
+         memcpy(&nes.mem.read_handlers[num_read_handlers++], &read_handlers[rc++],
+               sizeof(mem_read_handler_t));
 
-      if (default_writehandler[wc].write_func)
-         memcpy(&machine->write_handlers[num_write_handlers++], &default_writehandler[wc++],
-               sizeof(nes6502_memwrite));
+      if (write_handlers[wc].write_func)
+         memcpy(&nes.mem.write_handlers[num_write_handlers++], &write_handlers[wc++],
+               sizeof(mem_write_handler_t));
    }
 
    ASSERT(num_read_handlers <= MAX_MEM_HANDLERS);
    ASSERT(num_write_handlers <= MAX_MEM_HANDLERS);
 }
 
-/* raise an IRQ */
-IRAM_ATTR void nes_irq(void)
-{
-#ifdef NOFRENDO_DEBUG
-   if (nes.scanline <= NES_SCREEN_HEIGHT)
-      memset(nes.vidbuf->line[nes.scanline - 1], GUI_RED, NES_SCREEN_WIDTH);
-#endif /* NOFRENDO_DEBUG */
-
-   nes6502_irq();
-}
-
-IRAM_ATTR void nes_nmi(void)
-{
-   nes6502_nmi();
-}
-
+/* Emulate one frame and render if draw_flag is true */
 INLINE void renderframe(bool draw_flag)
 {
    int elapsed_cycles;
    mapintf_t *mapintf = nes.mmc->intf;
+
+   // Swap buffers (We may not be done blitting the current one)
+   nes.vidbuf = (nes.vidbuf == framebuffers[1])
+      ? framebuffers[0] : framebuffers[1];
 
    while (nes.scanline != nes.scanlines)
    {
@@ -176,20 +153,7 @@ INLINE void renderframe(bool draw_flag)
    }
 
    nes.scanline = 0;
-
-   if (draw_flag)
-   {
-      /* Swap buffer to primary */
-      bitmap_t *temp = primary_buffer;
-      primary_buffer = nes.vidbuf;
-      nes.vidbuf = temp;
-
-      /* Flush buffer to screen */
-      osd_blitscreen(primary_buffer);
-   }
 }
-
-extern bool fullFrame;
 
 /* main emulation loop */
 void nes_emulate(void)
@@ -197,8 +161,6 @@ void nes_emulate(void)
    const int audioSamples = nes.apu->sample_rate / nes.refresh_rate;
    const int frameTime = get_frame_time(nes.refresh_rate);
    uint skipFrames = 0;
-
-   primary_buffer = bmp_create(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 8);
 
    // Discard the garbage frames
    renderframe(1);
@@ -215,6 +177,11 @@ void nes_emulate(void)
       osd_getinput();
       renderframe(drawFrame);
 
+      if (drawFrame)
+      {
+         osd_blitscreen(nes.vidbuf);
+      }
+
       if (skipFrames == 0)
       {
          if (get_elapsed_time_since(startTime) > frameTime) skipFrames = 1;
@@ -225,7 +192,8 @@ void nes_emulate(void)
          skipFrames--;
       }
 
-      if (!speedupEnabled) {
+      if (!speedupEnabled)
+      {
          osd_audioframe(audioSamples);
       }
 
@@ -233,7 +201,7 @@ void nes_emulate(void)
    }
 }
 
-static void mem_reset(uint8 *buffer, int length, int reset_type)
+INLINE void mem_reset(uint8 *buffer, int length, int reset_type)
 {
    if (!buffer) return;
 
@@ -251,7 +219,7 @@ static void mem_reset(uint8 *buffer, int length, int reset_type)
 /* Reset NES hardware */
 void nes_reset(int reset_type)
 {
-   mem_reset(nes.cpu->ram, NES_RAMSIZE, reset_type);
+   mem_reset(nes.ram, NES_RAMSIZE, reset_type);
    mem_reset(nes.rominfo->vram, 0x2000 * nes.rominfo->vram_banks, reset_type);
 
    apu_reset();
@@ -267,12 +235,14 @@ void nes_reset(int reset_type)
 
 void nes_destroy()
 {
-   rom_free(nes.rominfo);
-   mmc_destroy(nes.mmc);
-   ppu_destroy(nes.ppu);
-   apu_destroy(nes.apu);
-   bmp_destroy(nes.vidbuf);
-   nes6502_destroy(nes.cpu);
+   rom_free(&nes.rominfo);
+   mmc_destroy(&nes.mmc);
+   ppu_destroy(&nes.ppu);
+   apu_destroy(&nes.apu);
+   bmp_destroy(&framebuffers[0]);
+   bmp_destroy(&framebuffers[1]);
+   nes6502_destroy(&nes.cpu);
+   memset(&nes, 0, sizeof(nes));
 }
 
 void nes_poweroff(void)
@@ -286,27 +256,27 @@ void nes_togglepause(void)
 }
 
 /* insert a cart into the NES */
-int nes_insertcart(const char *filename, nes_t *machine)
+int nes_insertcart(const char *filename)
 {
    /* rom file */
-   machine->rominfo = rom_load(filename);
-   if (NULL == machine->rominfo)
+   nes.rominfo = rom_load(filename);
+   if (NULL == nes.rominfo)
       goto _fail;
 
    /* mapper */
-   machine->mmc = mmc_create(machine->rominfo);
-   if (NULL == machine->mmc)
+   nes.mmc = mmc_create(nes.rominfo);
+   if (NULL == nes.mmc)
       goto _fail;
 
    /* if there's VRAM, let the PPU know */
-   machine->ppu->vram_present = (NULL != machine->rominfo->vram);
+   nes.ppu->vram_present = (NULL != nes.rominfo->vram);
 
-   build_address_handlers(machine);
+   build_memory_map();
 
-   nes6502_setcontext(machine->cpu);
-   apu_setcontext(machine->apu);
-   ppu_setcontext(machine->ppu);
-   mmc_setcontext(machine->mmc);
+   nes6502_setcontext(nes.cpu);
+   apu_setcontext(nes.apu);
+   ppu_setcontext(nes.ppu);
+   mmc_setcontext(nes.mmc);
 
    nes_reset(HARD_RESET);
 
@@ -316,7 +286,6 @@ _fail:
    nes_destroy();
    return -1;
 }
-
 
 /* Initialize NES CPU, hardware, etc. */
 nes_t *nes_create(region_t region)
@@ -350,20 +319,16 @@ nes_t *nes_create(region_t region)
    machine->poweroff = false;
    machine->pause = false;
 
-   /* bitmap */
-   /* 8 pixel overdraw */
-   machine->vidbuf = bmp_create(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 8);
-   if (NULL == machine->vidbuf)
+   /* Framebuffers */
+   framebuffers[0] = bmp_create(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 8);
+   framebuffers[1] = bmp_create(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 8);
+   if (NULL == framebuffers[0] || NULL == framebuffers[1])
       goto _fail;
 
    /* cpu */
-   machine->cpu = nes6502_create(machine->ram);
+   machine->cpu = nes6502_create(&machine->mem);
    if (NULL == machine->cpu)
       goto _fail;
-
-   /* Memory */
-   machine->cpu->read_handlers = machine->read_handlers;
-   machine->cpu->write_handlers = machine->write_handlers;
 
    /* apu */
    osd_getsoundinfo(&osd_sound);

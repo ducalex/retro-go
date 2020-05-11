@@ -140,7 +140,7 @@ static void map85_hblank(int vblank)
       if (++irq.counter > 0xFF)
       {
          irq.counter = irq.latch;
-         nes_irq();
+         nes6502_irq();
 
          //return;
       }
@@ -219,7 +219,7 @@ mapintf_t map85_intf =
 ** rounded out a bunch more mapper interfaces
 **
 ** Revision 1.3  2000/07/10 13:51:25  matt
-** using generic nes_irq() routine now
+** using generic nes6502_irq() routine now
 **
 ** Revision 1.2  2000/07/10 05:29:03  matt
 ** cleaned up some mirroring issues

@@ -49,7 +49,7 @@ static void map24_hblank(int vblank)
       if (256 == ++irq.counter)
       {
          irq.counter = irq.latch;
-         nes_irq();
+         nes6502_irq();
          //irq.enabled = false;
          irq.enabled = irq.wait_state;
       }
@@ -218,7 +218,7 @@ mapintf_t map24_intf =
 ** rounded out a bunch more mapper interfaces
 **
 ** Revision 1.4  2000/07/10 13:51:25  matt
-** using generic nes_irq() routine now
+** using generic nes6502_irq() routine now
 **
 ** Revision 1.3  2000/07/10 05:29:03  matt
 ** cleaned up some mirroring issues
