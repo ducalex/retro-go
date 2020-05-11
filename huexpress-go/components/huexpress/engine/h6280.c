@@ -363,7 +363,7 @@ exe_go(void)
 				OPCODE(0xFF, bbs(7));          // {bbs7, AM_PSREL, "BBS7"}
 
 				default:
-					MESSAGE_ERROR("Opcode 0x%02X not supported!", opcode);
+					MESSAGE_ERROR("Opcode 0x%02X not supported!\n", opcode);
 					// abort() ?
 					break;
 			}

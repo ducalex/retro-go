@@ -47,13 +47,13 @@ const struct rom_database kKnownRoms[KNOWN_ROM_COUNT] = {
 {0x4A3DF3CA, "Barunba", "Namco", "NC90003", "04-27-1990", JAP},
 {0x106BB7B2, "Batman", "SUNSOFT", "SS90003", "10-12-1990", JAP},
 {0x59E44F45, "Battle Lode Runner", "Hudson", "HS93054", "02-10-1993", JAP},
-{0xE70B01AF, "Battle Royale", __PUBLISHER, __ID, __DATE, USA | US_ENCODED},
+{0xE70B01AF, "Battle Royale", __PUBLISHER, __ID, __DATE, USA}, // | US_ENCODED
 {0xE439F299, "Be Ball", "Hudson", "HC90028", "03-30-1990", JAP},
 {0xE1A73797, "Benkei Gaiden", "SUNSOFT", "SS89002", "12-22-1989", JAP},
 {0xC9626A43, "Benkei Gaiden", __PUBLISHER, __ID, __DATE, JAP},
 {0x34893891, "Bikkuriman World", __PUBLISHER, __ID, __DATE, JAP},
 {0x2841FD1E, "Bikkuriman World", __PUBLISHER, __ID, __DATE, JAP},
-{0xB4A1B0F6, "Blazing Lazers", "Hudson", "TGX030010", __DATE, USA | US_ENCODED | TWO_PART_ROM},
+{0xB4A1B0F6, "Blazing Lazers", "Hudson", "TGX030010", __DATE, USA | TWO_PART_ROM}, //  | US_ENCODED
 {0x958BCD09, "Blodia", "Hudson", "HC90027", "03-23-1990", JAP},
 {0x37BAF6BC, "Bloody Wolf", "DATA EAST", "TGX040037", __DATE, USA},
 {0xFFD92458, "Bodycon Quest II", __PUBLISHER, __ID, __DATE, JAP},
@@ -76,7 +76,7 @@ const struct rom_database kKnownRoms[KNOWN_ROM_COUNT] = {
 {0xD233C05A, "Burning Angels", "Naxat", "NX90008", "12-07-1990", JAP},
 {0xD0C250CA, "Busou Keiji - Cyber Cross", "FACE", "FA01-002", "06-23-1989", JAP},
 {0x8DC0D85F, "Cadash", "Taito", "TP02015", "01-18-1991", JAP},
-{0xBB0B3AEF, "Cadash", __PUBLISHER, __ID, __DATE, USA | US_ENCODED},
+{0xBB0B3AEF, "Cadash", __PUBLISHER, __ID, __DATE, USA}, //  | US_ENCODED
 {0x9EDC0AEA, "Champion Wrestler", "Taito", "TPO2014", "12-14-1990", JAP},
 {0x15EE889A, "Champions Forever Boxing", "NEC", "TGX040077", __DATE, USA},
 {0x8CD13E9A, "Chew Man Fu", "Hudson", "TGX020035", __DATE, USA},
