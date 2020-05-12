@@ -186,7 +186,7 @@ int save_soundblock(nes_t *state, SNSS_FILE *snssFile)
    snssFile->soundBlock.soundRegisters[0x12] = state->apu->dmc.regs[2];
    snssFile->soundBlock.soundRegisters[0x13] = state->apu->dmc.regs[3];
    /* control */
-   snssFile->soundBlock.soundRegisters[0x15] = state->apu->enable_reg;
+   snssFile->soundBlock.soundRegisters[0x15] = state->apu->control_reg;
 
    return 0;
 }
@@ -430,7 +430,6 @@ int state_load(char* fn)
 
    unsigned int i;
    nes_t *machine;
-   nes_t nes;
 
    /* get our machine's context pointer */
    machine = nes_getptr();

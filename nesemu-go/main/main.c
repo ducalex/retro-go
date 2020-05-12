@@ -190,13 +190,7 @@ static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
    return event == ODROID_DIALOG_ENTER;
 }
 
-
-void osd_fullname(char *fullname, const char *shortname)
-{
-   strncpy(fullname, shortname, PATH_MAX);
-}
-
-char *osd_newextension(char *string, char *ext)
+char *osd_newextension(char *string, const char *ext)
 {
    return string;
 }
@@ -250,12 +244,6 @@ void osd_audioframe(int audioSamples)
    }
 
    odroid_audio_submit(audioBuffer, audioSamples);
-}
-
-void osd_getsoundinfo(sndinfo_t *info)
-{
-   info->sample_rate = AUDIO_SAMPLE_RATE;
-   info->bps = 16;
 }
 
 /*
@@ -385,7 +373,7 @@ void app_main(void)
 
    printf("Nofrendo start!\n");
 
-   ret = nofrendo_start(romPath, region);
+   ret = nofrendo_start(romPath, region, AUDIO_SAMPLE_RATE);
 
    switch (ret)
    {

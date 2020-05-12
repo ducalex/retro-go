@@ -38,10 +38,12 @@
 #define NES_SCREEN_WIDTH     256
 #define NES_SCREEN_HEIGHT    240
 
-#define NES_CLOCK_DIVIDER    12
-#define NES_MASTER_CLOCK     (236250000 / 11)
-#define NES_SCANLINE_CYCLES  (1364.0 / NES_CLOCK_DIVIDER)
-#define NES_FIQ_PERIOD       (NES_MASTER_CLOCK / NES_CLOCK_DIVIDER / 60)
+#define NES_CPU_CLOCK_NTSC    1789772.72727
+#define NES_CPU_CLOCK_PAL     1662607.03125
+#define NES_REFRESH_RATE_NTSC 60
+#define NES_REFRESH_RATE_PAL  50
+#define NES_SCANLINES_NTSC    262
+#define NES_SCANLINES_PAL     312
 
 typedef enum
 {
@@ -93,7 +95,7 @@ typedef struct nes_s
 
 /* Function prototypes */
 extern nes_t *nes_getptr(void);
-extern int  nes_init(region_t region);
+extern int  nes_init(region_t region, int sample_rate);
 extern void nes_shutdown(void);
 extern int  nes_insertcart(const char *filename);
 extern void nes_emulate(void);

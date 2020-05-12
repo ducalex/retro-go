@@ -53,8 +53,7 @@ static void rom_savesram(rominfo_t *rominfo)
       strncpy(fn, rominfo->filename, PATH_MAX);
       osd_newextension(fn, ".sav");
 
-      fp = fopen(fn, "wb");
-      if (NULL != fp)
+      if ((fp = fopen(fn, "wb")))
       {
          fwrite(rominfo->sram, SRAM_BANK_LENGTH, rominfo->sram_banks, fp);
          fclose(fp);
@@ -76,8 +75,7 @@ static void rom_loadsram(rominfo_t *rominfo)
       strncpy(fn, rominfo->filename, PATH_MAX);
       osd_newextension(fn, ".sav");
 
-      fp = fopen(fn, "rb");
-      if (NULL != fp)
+      if ((fp = fopen(fn, "rb")))
       {
          fread(rominfo->sram, SRAM_BANK_LENGTH, rominfo->sram_banks, fp);
          fclose(fp);

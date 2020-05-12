@@ -32,24 +32,24 @@
 
 #include <esp_attr.h>
 
-#define  APU_OVERSAMPLE
-#define  APU_VOLUME_DECAY(x)  ((x) -= ((x) >> 7))
+#define APU_OVERSAMPLE
+#define APU_VOLUME_DECAY(x)  ((x) -= ((x) >> 7))
 
 /* the following seem to be the correct (empirically determined)
 ** relative volumes between the sound channels
 */
-#define  APU_RECTANGLE_OUTPUT(channel) (apu.rectangle[channel].output_vol)
-#define  APU_TRIANGLE_OUTPUT           (apu.triangle.output_vol + (apu.triangle.output_vol >> 2))
-#define  APU_NOISE_OUTPUT              ((apu.noise.output_vol + apu.noise.output_vol + apu.noise.output_vol) >> 2)
-#define  APU_DMC_OUTPUT                ((apu.dmc.output_vol + apu.dmc.output_vol + apu.dmc.output_vol) >> 2)
+#define APU_RECTANGLE_OUTPUT(channel) (apu.rectangle[channel].output_vol)
+#define APU_TRIANGLE_OUTPUT           (apu.triangle.output_vol + (apu.triangle.output_vol >> 2))
+#define APU_NOISE_OUTPUT              ((apu.noise.output_vol + apu.noise.output_vol + apu.noise.output_vol) >> 2)
+#define APU_DMC_OUTPUT                ((apu.dmc.output_vol + apu.dmc.output_vol + apu.dmc.output_vol) >> 2)
 
 /* active APU */
 static apu_t apu;
 
 /* look up table madness */
 static int32 decay_lut[16];
-static int vbl_lut[32];
-static int trilength_lut[128];
+static int32 vbl_lut[32];
+static int32 trilength_lut[128];
 
 /* noise lookups for both modes */
 #ifndef REALTIME_NOISE
@@ -57,13 +57,8 @@ static int8 noise_long_lut[APU_NOISE_32K];
 static int8 noise_short_lut[APU_NOISE_93];
 #endif /* !REALTIME_NOISE */
 
-
-#define NES_CPU_CLOCK 1789772
-static int cycles_per_sample = 0;
-
-
 /* vblank length table used for rectangles, triangle, noise */
-static const uint8 vbl_length[32] =
+DRAM_ATTR static const uint8 vbl_length[32] =
 {
     5, 127,
    10,   1,
@@ -84,37 +79,30 @@ static const uint8 vbl_length[32] =
 };
 
 /* frequency limit of rectangle channels */
-static const int freq_limit[8] =
+DRAM_ATTR static const int16 freq_limit[8] =
 {
    0x3FF, 0x555, 0x666, 0x71C, 0x787, 0x7C1, 0x7E0, 0x7F0
 };
 
 /* noise frequency lookup table */
-static const int noise_freq[16] =
+DRAM_ATTR static const int16 noise_freq[16] =
 {
      4,    8,   16,   32,   64,   96,  128,  160,
    202,  254,  380,  508,  762, 1016, 2034, 4068
 };
 
 /* DMC transfer freqs */
-const int dmc_clocks[16] =
+DRAM_ATTR static const int16 dmc_clocks[16] =
 {
    428, 380, 340, 320, 286, 254, 226, 214,
    190, 160, 142, 128, 106,  85,  72,  54
 };
 
 /* ratios of pos/neg pulse for rectangle waves */
-static const int duty_flip[4] = { 2, 4, 8, 12 };
+DRAM_ATTR static const int16 duty_flip[4] = { 2, 4, 8, 12 };
 
 
-static void apu_fc_set(uint8 value)
-{
-   apu.fc.state = value;
-   apu.fc.cycles = 0; // 3-4 cpu cycles before reset
-   apu.fc.irq_occurred = false;
-}
-
-void apu_fc_advance(int cycles)
+IRAM_ATTR void apu_fc_advance(int cycles)
 {
    // https://wiki.nesdev.com/w/index.php/APU_Frame_Counter
    const int int_period = 4 * 7457;
@@ -139,20 +127,22 @@ void apu_fc_advance(int cycles)
 
 void apu_setcontext(apu_t *src_apu)
 {
+   ASSERT(src_apu);
    apu = *src_apu;
 }
 
 void apu_getcontext(apu_t *dest_apu)
 {
+   ASSERT(dest_apu);
    *dest_apu = apu;
 }
 
 void apu_setchan(int chan, bool enabled)
 {
    if (enabled)
-      apu.mix_enable |= (1 << chan);
+      apu.chan_enable |= (1 << chan);
    else
-      apu.mix_enable &= ~(1 << chan);
+      apu.chan_enable &= ~(1 << chan);
 }
 
 /* emulation of the 15-bit shift register the
@@ -656,8 +646,8 @@ IRAM_ATTR void apu_write(uint32 address, uint8 value)
       apu.rectangle[chan].regs[0] = value;
       apu.rectangle[chan].volume = value & 0x0F;
       apu.rectangle[chan].env_delay = decay_lut[value & 0x0F];
-      apu.rectangle[chan].holdnote = (value & 0x20) ? true : false;
-      apu.rectangle[chan].fixed_envelope = (value & 0x10) ? true : false;
+      apu.rectangle[chan].holdnote = (value >> 5) & 1;
+      apu.rectangle[chan].fixed_envelope = (value >> 4) & 1;
       apu.rectangle[chan].duty_flip = duty_flip[value >> 6];
       break;
 
@@ -665,10 +655,10 @@ IRAM_ATTR void apu_write(uint32 address, uint8 value)
    case APU_WRB1:
       chan = (address & 4) >> 2;
       apu.rectangle[chan].regs[1] = value;
-      apu.rectangle[chan].sweep_on = (value & 0x80) ? true : false;
+      apu.rectangle[chan].sweep_on = (value >> 7) & 1;
       apu.rectangle[chan].sweep_shifts = value & 7;
       apu.rectangle[chan].sweep_delay = decay_lut[(value >> 4) & 7];
-      apu.rectangle[chan].sweep_inc = (value & 0x08) ? true : false;
+      apu.rectangle[chan].sweep_inc = (value >> 3) & 1;
       apu.rectangle[chan].freq_limit = freq_limit[value & 7];
       break;
 
@@ -692,7 +682,7 @@ IRAM_ATTR void apu_write(uint32 address, uint8 value)
    /* triangle */
    case APU_WRC0:
       apu.triangle.regs[0] = value;
-      apu.triangle.holdnote = (value & 0x80) ? true : false;
+      apu.triangle.holdnote = (value >> 7) & 1;
 
       if (false == apu.triangle.counter_started && apu.triangle.vbl_length)
          apu.triangle.linear_length = trilength_lut[value & 0x7F];
@@ -730,8 +720,8 @@ IRAM_ATTR void apu_write(uint32 address, uint8 value)
    case APU_WRD0:
       apu.noise.regs[0] = value;
       apu.noise.env_delay = decay_lut[value & 0x0F];
-      apu.noise.holdnote = (value & 0x20) ? true : false;
-      apu.noise.fixed_envelope = (value & 0x10) ? true : false;
+      apu.noise.holdnote = (value >> 5) & 1;
+      apu.noise.fixed_envelope = (value >> 4) & 1;
       apu.noise.volume = value & 0x0F;
       break;
 
@@ -749,7 +739,7 @@ IRAM_ATTR void apu_write(uint32 address, uint8 value)
          shift_register15(noise_short_lut, APU_NOISE_93);
          apu.noise.cur_pos = 0;
       }
-      apu.noise.short_sample = (value & 0x80) ? true : false;
+      apu.noise.short_sample = (value >> 7) & 1;
 #endif /* !REALTIME_NOISE */
       break;
 
@@ -763,7 +753,7 @@ IRAM_ATTR void apu_write(uint32 address, uint8 value)
    case APU_WRE0:
       apu.dmc.regs[0] = value;
       apu.dmc.freq = dmc_clocks[value & 0x0F];
-      apu.dmc.looping = (value & 0x40) ? true : false;
+      apu.dmc.looping = (value >> 6) & 1;
 
       if (value & 0x80)
       {
@@ -797,8 +787,8 @@ IRAM_ATTR void apu_write(uint32 address, uint8 value)
 
    case APU_SMASK:
       /* bodge for timestamp queue */
-      apu.dmc.enabled = (value & 0x10) ? true : false;
-      apu.enable_reg = value;
+      apu.dmc.enabled = (value >> 4) & 1;
+      apu.control_reg = value;
 
       for (chan = 0; chan < 2; chan++)
       {
@@ -850,7 +840,9 @@ IRAM_ATTR void apu_write(uint32 address, uint8 value)
       break;
 
    case APU_FRAME_IRQ: /* frame IRQ control */
-      apu_fc_set(value);
+      apu.fc.state = value;
+      apu.fc.cycles = 0; // 3-4 cpu cycles before reset
+      apu.fc.irq_occurred = false;
       break;
 
       /* unused, but they get hit in some mem-clear loops */
@@ -904,45 +896,31 @@ IRAM_ATTR uint8 apu_read(uint32 address)
    return value;
 }
 
-#define CLIP_OUTPUT16(out) \
-{ \
-   /*out <<= 1;*/ \
-   if (out > 0x7FFF) \
-      out = 0x7FFF; \
-   else if (out < -0x8000) \
-      out = -0x8000; \
-}
-
 IRAM_ATTR void apu_process(void *buffer, int num_samples)
 {
    static int32 prev_sample = 0;
 
    int16 *buf16;
-   uint8 *buf8;
 
    if (NULL != buffer)
    {
-      /* bleh */
-      apu.buffer = buffer;
-
       buf16 = (int16 *) buffer;
-      buf8 = (uint8 *) buffer;
 
       while (num_samples--)
       {
          int32 next_sample, accum = 0;
 
-         if (apu.mix_enable & 0x01)
+         if (apu.chan_enable & 0x01)
             accum += apu_rectangle_0();
-         if (apu.mix_enable & 0x02)
+         if (apu.chan_enable & 0x02)
             accum += apu_rectangle_1();
-         if (apu.mix_enable & 0x04)
+         if (apu.chan_enable & 0x04)
             accum += apu_triangle();
-         if (apu.mix_enable & 0x08)
+         if (apu.chan_enable & 0x08)
             accum += apu_noise();
-         if (apu.mix_enable & 0x10)
+         if (apu.chan_enable & 0x10)
             accum += apu_dmc();
-         if (apu.ext && (apu.mix_enable & 0x20))
+         if (apu.ext && (apu.chan_enable & 0x20))
             accum += apu.ext->process();
 
          /* do any filtering */
@@ -962,16 +940,16 @@ IRAM_ATTR void apu_process(void *buffer, int num_samples)
          }
 
          /* do clipping */
-         CLIP_OUTPUT16(accum);
+         if (accum > 0x7FFF)
+            accum = 0x7FFF;
+         else if (accum < -0x8000)
+            accum = -0x8000;
 
-         /* signed 16-bit output, unsigned 8-bit */
-         if (16 == apu.sample_bits)
-            *buf16++ = (int16) accum;
-         else
-            *buf8++ = (accum >> 8) ^ 0x80;
+         /* signed 16-bit output */
+         *buf16++ = (int16) accum;
 
          // Advance frame counter
-         // apu_fc_advance(cycles_per_sample);
+         // apu_fc_advance(apu.cycle_rate);
       }
    }
 }
@@ -1021,9 +999,11 @@ void apu_build_luts(int num_samples)
 }
 
 /* Initializes emulated sound hardware, creates waveforms/voices */
-apu_t *apu_create(double base_freq, int sample_rate, int refresh_rate, int sample_bits)
+apu_t *apu_create(int region, int sample_rate)
 {
    apu_t *temp;
+   short refresh_rate;
+   float cpu_clock;
 
    temp = &apu;
    // temp = malloc(sizeof(apu_t));
@@ -1032,25 +1012,24 @@ apu_t *apu_create(double base_freq, int sample_rate, int refresh_rate, int sampl
 
    memset(temp, 0, sizeof(apu_t));
 
+   if (region == NES_PAL)
+   {
+      refresh_rate = NES_REFRESH_RATE_PAL;
+      cpu_clock = NES_CPU_CLOCK_PAL;
+   }
+   else
+   {
+      refresh_rate = NES_REFRESH_RATE_NTSC;
+      cpu_clock = NES_CPU_CLOCK_NTSC;
+   }
+
    temp->sample_rate = sample_rate;
-   temp->refresh_rate = refresh_rate;
-   temp->sample_bits = sample_bits;
-   temp->num_samples = sample_rate / refresh_rate;
-   temp->base_freq = base_freq ?: APU_BASEFREQ;
-   temp->cycle_rate = (float) (temp->base_freq / sample_rate);
+   temp->cycle_rate = (float) (cpu_clock / sample_rate);
+   temp->chan_enable = 0xFF;
+   temp->filter_type = APU_FILTER_WEIGHTED;
    temp->ext = NULL;
 
-   cycles_per_sample = NES_CPU_CLOCK / temp->sample_rate;
-
-   /* build various lookup tables for apu */
-   apu_build_luts(temp->num_samples);
-
-   apu_reset();
-
-   for (int i = 0; i < 6; i++)
-      apu_setchan(i, true);
-
-   apu_setfilter(APU_FILTER_WEIGHTED);
+   apu_build_luts(sample_rate / refresh_rate);
 
    return temp;
 }

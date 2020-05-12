@@ -511,7 +511,7 @@ void ppu_setnpal(int n)
    ppu_setpal(&ppu, (rgb_t*)nes_palettes[n % PPU_PAL_COUNT].data);
 }
 
-palette_t *ppu_getnpal(int n)
+const palette_t *ppu_getnpal(int n)
 {
    return &nes_palettes[n % PPU_PAL_COUNT];
 }
@@ -541,7 +541,7 @@ INLINE void draw_bgtile(uint8 *surface, uint8 pat1, uint8 pat2,
 INLINE int draw_oamtile(uint8 *surface, uint8 attrib, uint8 pat1,
                         uint8 pat2, const uint8 *col_tbl, bool check_strike)
 {
-   int i, strike_pixel = -1;
+   int strike_pixel = -1;
    uint32 color = ((pat2 & 0xAA) << 8) | ((pat2 & 0x55) << 1)
                   | ((pat1 & 0xAA) << 7) | (pat1 & 0x55);
 

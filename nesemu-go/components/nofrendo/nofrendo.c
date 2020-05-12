@@ -92,7 +92,7 @@ void nofrendo_stop(void)
    // vid_shutdown();
 }
 
-int nofrendo_start(const char *filename, int region)
+int nofrendo_start(const char *filename, int region, int sample_rate)
 {
    event_init();
 
@@ -112,7 +112,7 @@ int nofrendo_start(const char *filename, int region)
          region = NES_NTSC;
    }
 
-   if (!nes_init(region))
+   if (!nes_init(region, sample_rate))
    {
       MESSAGE_ERROR("Failed to create NES instance.\n");
       return -1;

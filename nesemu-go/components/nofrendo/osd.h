@@ -56,21 +56,6 @@
 #include <noftypes.h>
 #include <bitmap.h>
 
-typedef struct vidinfo_s
-{
-   short default_width, default_height;
-} vidinfo_t;
-
-typedef struct sndinfo_s
-{
-   int sample_rate;
-   int bps;
-} sndinfo_t;
-
-/* get info */
-extern void osd_getvideoinfo(vidinfo_t *info);
-extern void osd_getsoundinfo(sndinfo_t *info);
-
 /* video */
 extern void osd_setpalette(rgb_t *pal);
 extern void osd_blitscreen(bitmap_t *bmp);
@@ -82,12 +67,11 @@ extern void osd_audioframe(int nsamples);
 extern int osd_init(void);
 extern void osd_shutdown(void);
 extern int osd_main(int argc, char *argv[]);
-extern void osd_loadstate();
+extern void osd_loadstate(void);
 extern void osd_event(int event);
 
 /* filename manipulation */
-extern void osd_fullname(char *fullname, const char *shortname);
-extern char *osd_newextension(char *string, char *ext);
+extern char *osd_newextension(char *string, const char *ext);
 
 /* input */
 extern void osd_getinput(void);

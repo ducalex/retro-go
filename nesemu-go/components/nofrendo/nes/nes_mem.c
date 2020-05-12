@@ -31,7 +31,6 @@
 #include <nes.h>
 
 #include <esp_attr.h>
-#include <odroid_system.h>
 
 static mem_t mem;
 

@@ -145,7 +145,7 @@ extern void ppu_write(uint32 address, uint8 value);
 /* rendering */
 extern void ppu_setpal(ppu_t *ppu, rgb_t *pal);
 extern void ppu_setnpal(int n);
-extern palette_t *ppu_getnpal(int n);
+extern const palette_t *ppu_getnpal(int n);
 
 /* bleh */
 extern void ppu_dumppattern(bitmap_t *bmp, int table_num, int x_loc, int y_loc, int col);

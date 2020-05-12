@@ -56,8 +56,6 @@
 #define  APU_NOISE_32K  0x7FFF
 #define  APU_NOISE_93   93
 
-#define  APU_BASEFREQ   1789772.7272727272727272
-
 
 /* channel structures */
 /* As much data as possible is precalculated,
@@ -175,18 +173,6 @@ enum
    APU_FILTER_WEIGHTED
 };
 
-typedef struct
-{
-   uint32 min_range, max_range;
-   uint8 (*read_func)(uint32 address);
-} apu_memread;
-
-typedef struct
-{
-   uint32 min_range, max_range;
-   void (*write_func)(uint32 address, uint8 value);
-} apu_memwrite;
-
 /* external sound chip stuff */
 typedef struct apuext_s
 {
@@ -194,8 +180,6 @@ typedef struct apuext_s
    void  (*shutdown)(void);
    void  (*reset)(void);
    int32 (*process)(void);
-   apu_memread *mem_read;
-   apu_memwrite *mem_write;
 } apuext_t;
 
 
@@ -205,20 +189,13 @@ typedef struct apu_s
    triangle_t triangle;
    noise_t noise;
    dmc_t dmc;
-   uint8 enable_reg;
+   uint8 control_reg;
 
-   void *buffer; /* pointer to output buffer */
-   int num_samples;
+   uint8 chan_enable;
+   uint8 filter_type;
 
-   uint8 mix_enable;
-   int filter_type;
-
-   double base_freq;
    float cycle_rate;
-
    int sample_rate;
-   int sample_bits;
-   int refresh_rate;
 
    struct {
       uint8 state;
@@ -238,7 +215,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 /* Function prototypes */
-extern apu_t *apu_create(double base_freq, int sample_rate, int refresh_rate, int sample_bits);
+extern apu_t *apu_create(int region, int sample_rate);
 extern void apu_destroy(apu_t *apu);
 extern void apu_setcontext(apu_t *src_apu);
 extern void apu_getcontext(apu_t *dest_apu);

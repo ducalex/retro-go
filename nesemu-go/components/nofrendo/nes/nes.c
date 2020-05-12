@@ -207,25 +207,23 @@ void nes_shutdown(void)
 }
 
 /* Initialize NES CPU, hardware, etc. */
-int nes_init(region_t region)
+int nes_init(region_t region, int sample_rate)
 {
-   sndinfo_t osd_sound;
-
    memset(&nes, 0, sizeof(nes_t));
 
    // https://wiki.nesdev.com/w/index.php/Cycle_reference_chart
    if (region == NES_PAL)
    {
-      nes.refresh_rate = 50;
-      nes.scanlines = 312;
+      nes.refresh_rate = NES_REFRESH_RATE_PAL;
+      nes.scanlines = NES_SCANLINES_PAL;
       nes.overscan = 0;
       nes.cycles_per_line = 341.f * 5 / 16;
       MESSAGE_INFO("System region: PAL\n");
    }
    else
    {
-      nes.refresh_rate = 60;
-      nes.scanlines = 262;
+      nes.refresh_rate = NES_REFRESH_RATE_NTSC;
+      nes.scanlines = NES_SCANLINES_NTSC;
       nes.overscan = 8;
       nes.cycles_per_line = 341.f * 4 / 12;
       MESSAGE_INFO("System region: NTSC\n");
@@ -253,8 +251,7 @@ int nes_init(region_t region)
       goto _fail;
 
    /* apu */
-   osd_getsoundinfo(&osd_sound);
-   nes.apu = apu_create(0, osd_sound.sample_rate, nes.refresh_rate, osd_sound.bps);
+   nes.apu = apu_create(region, sample_rate);
    if (NULL == nes.apu)
       goto _fail;
 

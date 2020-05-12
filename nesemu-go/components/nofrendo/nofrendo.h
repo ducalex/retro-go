@@ -52,7 +52,7 @@
 #define MESSAGE_ERROR(x...) nofrendo_printf(2, NULL, "!! " x)
 
 #include <nes.h>
-extern int nofrendo_start(const char *filename, int region);
+extern int nofrendo_start(const char *filename, int region, int sample_rate);
 extern void nofrendo_stop(void);
 extern void nofrendo_refresh(void);
 extern void nofrendo_printf(int type, const char *prefix, const char *format, ...);
