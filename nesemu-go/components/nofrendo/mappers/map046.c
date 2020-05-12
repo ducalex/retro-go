@@ -114,10 +114,10 @@ static void map46_getstate (SnssMapperBlock *state)
   return;
 }
 
-static map_memwrite map46_memwrite [] =
+static mem_write_handler_t map46_memwrite [] =
 {
    { 0x6000, 0xFFFF, map46_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 mapintf_t map46_intf =

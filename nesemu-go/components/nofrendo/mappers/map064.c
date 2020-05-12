@@ -169,10 +169,10 @@ static void map64_init(void)
    irq.reset = irq.enabled = false;
 }
 
-static map_memwrite map64_memwrite[] =
+static mem_write_handler_t map64_memwrite[] =
 {
    { 0x8000, 0xFFFF, map64_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 mapintf_t map64_intf =

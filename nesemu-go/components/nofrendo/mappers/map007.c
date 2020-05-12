@@ -44,10 +44,10 @@ static void map7_init(void)
    mmc_bankrom(32, 0x8000, 0);
 }
 
-static map_memwrite map7_memwrite[] =
+static mem_write_handler_t map7_memwrite[] =
 {
    { 0x8000, 0xFFFF, map7_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 mapintf_t map7_intf =

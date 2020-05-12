@@ -158,14 +158,10 @@ ppu_t *ppu_create(void)
    return temp;
 }
 
-void ppu_destroy(ppu_t **src_ppu)
+void ppu_destroy(ppu_t *src_ppu)
 {
-   if (*src_ppu)
-   {
-      if (*src_ppu != &ppu)
-         free(*src_ppu);
-      *src_ppu = NULL;
-   }
+   if (src_ppu && src_ppu != &ppu)
+      free(src_ppu);
 }
 
 void ppu_setpage(int size, int page_num, uint8 *location)
@@ -259,7 +255,7 @@ INLINE void ppu_oamdma(uint8 value)
    oam_loc = ppu.oam_addr;
    do
    {
-      ppu.oam[oam_loc++] = nes_getbyte(cpu_address++);
+      ppu.oam[oam_loc++] = mem_getbyte(cpu_address++);
    }
    while (oam_loc != ppu.oam_addr);
 
@@ -269,16 +265,16 @@ INLINE void ppu_oamdma(uint8 value)
    if ((ppu.oam_addr >> 2) & 1)
    {
       for (oam_loc = 4; oam_loc < 8; oam_loc++)
-         ppu.oam[oam_loc] = nes_getbyte(cpu_address++);
+         ppu.oam[oam_loc] = mem_getbyte(cpu_address++);
       cpu_address += 248;
       for (oam_loc = 0; oam_loc < 4; oam_loc++)
-         ppu.oam[oam_loc] = nes_getbyte(cpu_address++);
+         ppu.oam[oam_loc] = mem_getbyte(cpu_address++);
    }
    /* Even address in $2003 */
    else
    {
       for (oam_loc = 0; oam_loc < 8; oam_loc++)
-         ppu.oam[oam_loc] = nes_getbyte(cpu_address++);
+         ppu.oam[oam_loc] = mem_getbyte(cpu_address++);
    }
 
    /* make the CPU spin for DMA cycles */
@@ -1051,7 +1047,7 @@ IRAM_ATTR void ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag)
    }
 }
 
-IRAM_ATTR bool ppu_checkzapperhit(bitmap_t *bmp, int x, int y)
+bool ppu_checkzapperhit(bitmap_t *bmp, int x, int y)
 {
    uint8 pixel = bmp->line[y][x] & 0x3F;
 

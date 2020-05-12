@@ -26,27 +26,16 @@
 #ifndef _NES_MMC_H_
 #define _NES_MMC_H_
 
+typedef struct mapintf_s mapintf_t;
+typedef struct mmc_s mmc_t;
+
 #include <noftypes.h>
 #include <libsnss.h>
 #include <nes_apu.h>
-#include "nes_rom.h"
+#include <nes_rom.h>
+#include <nes_mem.h>
 
-#define  MMC_LASTBANK      -1
-
-typedef struct
-{
-   uint32 min_range, max_range;
-   uint8 (*read_func)(uint32 address);
-} map_memread;
-
-typedef struct
-{
-   uint32 min_range, max_range;
-   void (*write_func)(uint32 address, uint8 value);
-} map_memwrite;
-
-
-typedef struct mapintf_s
+struct mapintf_s
 {
    int number;
    const char *name;
@@ -55,19 +44,20 @@ typedef struct mapintf_s
    void (*hblank)(int scanline);
    void (*get_state)(SnssMapperBlock *state);
    void (*set_state)(SnssMapperBlock *state);
-   map_memread *mem_read;
-   map_memwrite *mem_write;
+   mem_read_handler_t *mem_read;
+   mem_write_handler_t *mem_write;
    apuext_t *sound_ext;
-} mapintf_t;
+};
 
-
-typedef struct mmc_s
+struct mmc_s
 {
    mapintf_t *intf;
    rominfo_t *cart;  /* link it back to the cart */
    uint8 *prg, *chr;
    uint8 prg_banks, chr_banks;
-} mmc_t;
+};
+
+#define MMC_LASTBANK      -1
 
 extern rominfo_t *mmc_getinfo(void);
 
@@ -76,7 +66,7 @@ extern void mmc_bankrom(int size, uint32 address, int bank);
 
 /* Prototypes */
 extern mmc_t *mmc_create(rominfo_t *rominfo);
-extern void mmc_destroy(mmc_t **nes_mmc);
+extern void mmc_destroy(mmc_t *nes_mmc);
 
 extern void mmc_getcontext(mmc_t *dest_mmc);
 extern void mmc_setcontext(mmc_t *src_mmc);

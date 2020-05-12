@@ -31,11 +31,6 @@
 
 #include <noftypes.h>
 
-#define  NES6502_NUMBANKS  16
-#define  NES6502_BANKSHIFT 12
-#define  NES6502_BANKSIZE  (0x10000 / NES6502_NUMBANKS)
-#define  NES6502_BANKMASK  (NES6502_BANKSIZE - 1)
-
 /* P (flag) register bitmasks */
 #define  N_FLAG         0x80
 #define  V_FLAG         0x40
@@ -68,7 +63,7 @@ typedef struct
    uint8 x_reg, y_reg;
    uint8 s_reg;
 
-   mem_map_t *mem;
+   mem_t *mem;
 
    uint8 jammed;  /* is processor jammed? */
 
@@ -90,15 +85,8 @@ extern uint32 nes6502_getcycles();
 extern void nes6502_burn(int cycles);
 extern void nes6502_release(void);
 
-extern uint8 nes6502_getbyte(uint16 address);
-extern void nes6502_putbyte(uint16 address, uint8 value);
-extern uint8 *nes6502_getpage(uint16 page);
-extern void nes6502_setpage(uint16 page, uint8 *ptr);
-
-extern nes6502_t *nes6502_create(mem_map_t *mem);
-extern void nes6502_destroy(nes6502_t **src_cpu);
-
-/* Context get/set */
+extern nes6502_t *nes6502_create(mem_t *mem);
+extern void nes6502_destroy(nes6502_t *src_cpu);
 extern void nes6502_setcontext(nes6502_t *cpu);
 extern void nes6502_getcontext(nes6502_t *cpu);
 

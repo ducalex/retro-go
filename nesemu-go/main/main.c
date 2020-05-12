@@ -29,7 +29,6 @@ static odroid_video_frame update2 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 
 static odroid_video_frame *currentUpdate = &update1;
 static odroid_video_frame *previousUpdate = NULL;
 
-static void (*audio_callback)(void *buffer, int length) = NULL;
 static int16_t *audioBuffer;
 
 static odroid_gamepad_state joystick1;
@@ -232,7 +231,7 @@ int osd_init()
 
 void osd_shutdown()
 {
-	audio_callback = NULL;
+   //
 }
 
 /*
@@ -240,7 +239,7 @@ void osd_shutdown()
 */
 void osd_audioframe(int audioSamples)
 {
-   audio_callback(audioBuffer, audioSamples); //get audio data
+   apu_process(audioBuffer, audioSamples); //get audio data
 
    //16 bit mono -> 32-bit (16 bit r+l)
    for (int i = audioSamples - 1; i >= 0; --i)
@@ -251,12 +250,6 @@ void osd_audioframe(int audioSamples)
    }
 
    odroid_audio_submit(audioBuffer, audioSamples);
-}
-
-void osd_setsound(void (*playfunc)(void *buffer, int length))
-{
-   //Indicates we should call playfunc() to get more data.
-   audio_callback = playfunc;
 }
 
 void osd_getsoundinfo(sndinfo_t *info)
@@ -358,7 +351,7 @@ void app_main(void)
    odroid_system_emu_init(&LoadState, &SaveState, &netplay_callback);
 
    audioBuffer = rg_alloc(AUDIO_SAMPLE_RATE / 50 * 4, MEM_DMA);
-   romData     = rg_alloc(1024 * 1024, MEM_ANY);
+   romData     = rg_alloc(0x200000, MEM_ANY);
 
    char *romPath = odroid_system_get_path(NULL, ODROID_PATH_ROM_FILE);
 
@@ -366,12 +359,12 @@ void app_main(void)
    if (strcasecmp(romPath + (strlen(romPath) - 4), ".zip") == 0)
    {
       printf("app_main ROM: Reading compressed file: %s\n", romPath);
-      romSize = odroid_sdcard_unzip_file_to_memory(romPath, romData, 1024 * 1024);
+      romSize = odroid_sdcard_unzip_file_to_memory(romPath, romData, 0x200000);
    }
    else
    {
       printf("app_main ROM: Reading file: %s\n", romPath);
-      romSize = odroid_sdcard_copy_file_to_memory(romPath, romData, 1024 * 1024);
+      romSize = odroid_sdcard_copy_file_to_memory(romPath, romData, 0x200000);
    }
 
    printf("app_main ROM: romSize=%d\n", romSize);

@@ -584,7 +584,7 @@ INLINE int32 apu_dmc(void)
 
          if (7 == delta_bit)
          {
-            apu.dmc.cur_byte = nes_getbyte(apu.dmc.address);
+            apu.dmc.cur_byte = mem_getbyte(apu.dmc.address);
 
             /* steal a cycle from CPU*/
             nes6502_burn(1);
@@ -643,7 +643,7 @@ INLINE int32 apu_dmc(void)
 }
 
 
-void IRAM_ATTR apu_write(uint32 address, uint8 value)
+IRAM_ATTR void apu_write(uint32 address, uint8 value)
 {
    int chan;
 
@@ -864,7 +864,7 @@ void IRAM_ATTR apu_write(uint32 address, uint8 value)
 }
 
 /* Read from $4000-$4017 */
-uint8 IRAM_ATTR apu_read(uint32 address)
+IRAM_ATTR uint8 apu_read(uint32 address)
 {
    uint8 value;
 
@@ -913,7 +913,7 @@ uint8 IRAM_ATTR apu_read(uint32 address)
       out = -0x8000; \
 }
 
-void IRAM_ATTR apu_process(void *buffer, int num_samples)
+IRAM_ATTR void apu_process(void *buffer, int num_samples)
 {
    static int32 prev_sample = 0;
 
@@ -1020,26 +1020,6 @@ void apu_build_luts(int num_samples)
 #endif /* !REALTIME_NOISE */
 }
 
-void apu_setparams(double base_freq, int sample_rate, int refresh_rate, int sample_bits)
-{
-   apu.sample_rate = sample_rate;
-   apu.refresh_rate = refresh_rate;
-   apu.sample_bits = sample_bits;
-   apu.num_samples = sample_rate / refresh_rate;
-   if (0 == base_freq)
-      apu.base_freq = APU_BASEFREQ;
-   else
-      apu.base_freq = base_freq;
-   apu.cycle_rate = (float) (apu.base_freq / sample_rate);
-
-   cycles_per_sample = NES_CPU_CLOCK / apu.sample_rate;
-
-   /* build various lookup tables for apu */
-   apu_build_luts(apu.num_samples);
-
-   apu_reset();
-}
-
 /* Initializes emulated sound hardware, creates waveforms/voices */
 apu_t *apu_create(double base_freq, int sample_rate, int refresh_rate, int sample_bits)
 {
@@ -1052,33 +1032,37 @@ apu_t *apu_create(double base_freq, int sample_rate, int refresh_rate, int sampl
 
    memset(temp, 0, sizeof(apu_t));
 
-   /* set the update routine */
-   temp->process = apu_process;
+   temp->sample_rate = sample_rate;
+   temp->refresh_rate = refresh_rate;
+   temp->sample_bits = sample_bits;
+   temp->num_samples = sample_rate / refresh_rate;
+   temp->base_freq = base_freq ?: APU_BASEFREQ;
+   temp->cycle_rate = (float) (temp->base_freq / sample_rate);
    temp->ext = NULL;
 
-   // apu_setcontext(temp);
+   cycles_per_sample = NES_CPU_CLOCK / temp->sample_rate;
 
-   apu_setparams(base_freq, sample_rate, refresh_rate, sample_bits);
+   /* build various lookup tables for apu */
+   apu_build_luts(temp->num_samples);
+
+   apu_reset();
 
    for (int i = 0; i < 6; i++)
       apu_setchan(i, true);
 
    apu_setfilter(APU_FILTER_WEIGHTED);
 
-   // apu_getcontext(temp);
-
    return temp;
 }
 
-void apu_destroy(apu_t **src_apu)
+void apu_destroy(apu_t *src_apu)
 {
-   if (*src_apu)
+   if (src_apu)
    {
-      if ((*src_apu)->ext && NULL != (*src_apu)->ext->shutdown)
-         (*src_apu)->ext->shutdown();
-      if (*src_apu != &apu)
-         free(*src_apu);
-      *src_apu = NULL;
+      if (src_apu->ext && src_apu->ext->shutdown)
+         src_apu->ext->shutdown();
+      if (src_apu != &apu)
+         free(src_apu);
    }
 }
 
@@ -1092,148 +1076,3 @@ void apu_setext(apu_t *src_apu, apuext_t *ext)
    if (src_apu->ext && NULL != src_apu->ext->init)
       src_apu->ext->init();
 }
-
-/*
-** $Log: nes_apu.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.6  2000/12/08 02:36:14  matt
-** bye bye apu queue (for now)
-**
-** Revision 1.5  2000/11/27 19:33:53  matt
-** no special treatment for nsf
-**
-** Revision 1.4  2000/11/25 20:29:17  matt
-** weighted filter is now default
-**
-** Revision 1.3  2000/11/21 13:28:19  matt
-** take care to zero allocated mem
-**
-** Revision 1.2  2000/10/28 15:20:59  matt
-** irq callbacks in nes_apu
-**
-** Revision 1.1  2000/10/24 12:19:59  matt
-** changed directory structure
-**
-** Revision 1.44  2000/10/23 17:53:06  matt
-** set ptr to NULL after freeing
-**
-** Revision 1.43  2000/10/17 11:56:42  matt
-** selectable apu base frequency
-**
-** Revision 1.42  2000/10/13 12:16:01  matt
-** macro-ized the stuff that should be removed
-**
-** Revision 1.41  2000/10/10 13:58:18  matt
-** stroustrup squeezing his way in the door
-**
-** Revision 1.40  2000/10/03 11:56:20  matt
-** better support for optional sound ext routines
-**
-** Revision 1.39  2000/09/27 12:26:03  matt
-** changed sound accumulators back to floats
-**
-** Revision 1.38  2000/09/18 02:12:55  matt
-** more optimizations
-**
-** Revision 1.37  2000/09/15 13:38:40  matt
-** changes for optimized apu core
-**
-** Revision 1.36  2000/09/15 04:58:07  matt
-** simplifying and optimizing APU core
-**
-** Revision 1.35  2000/09/07 21:57:14  matt
-** api change
-**
-** Revision 1.34  2000/08/16 05:01:01  matt
-** small buglet fixed
-**
-** Revision 1.33  2000/08/15 12:38:04  matt
-** removed debug output
-**
-** Revision 1.32  2000/08/15 12:36:51  matt
-** calling apu_process with buffer=NULL causes silent emulation of APU
-**
-** Revision 1.31  2000/08/11 02:27:21  matt
-** general cleanups, plus apu_setparams routine
-**
-** Revision 1.30  2000/07/31 04:32:52  matt
-** fragsize problem fixed, perhaps
-**
-** Revision 1.29  2000/07/30 04:32:59  matt
-** no more apu_getcyclerate hack
-**
-** Revision 1.28  2000/07/28 03:15:46  matt
-** accuracy changes for rectangle frequency sweeps
-**
-** Revision 1.27  2000/07/27 02:49:50  matt
-** eccentricity in sweeping hardware now emulated correctly
-**
-** Revision 1.26  2000/07/25 02:25:14  matt
-** safer apu_destroy
-**
-** Revision 1.25  2000/07/23 15:10:54  matt
-** hacks for win32
-**
-** Revision 1.24  2000/07/17 01:52:31  matt
-** made sure last line of all source files is a newline
-**
-** Revision 1.23  2000/07/10 19:24:55  matt
-** irqs are not supported in NSF playing mode
-**
-** Revision 1.22  2000/07/10 13:54:32  matt
-** using generic nes6502_irq() now
-**
-** Revision 1.21  2000/07/10 05:29:34  matt
-** moved joypad/oam dma from apu to ppu
-**
-** Revision 1.20  2000/07/09 03:49:31  matt
-** apu irqs now draw an irq line (bleh)
-**
-** Revision 1.19  2000/07/04 04:53:26  matt
-** minor changes, sound amplification
-**
-** Revision 1.18  2000/07/03 02:18:53  matt
-** much better external module exporting
-**
-** Revision 1.17  2000/06/26 11:01:55  matt
-** made triangle a tad quieter
-**
-** Revision 1.16  2000/06/26 05:10:33  matt
-** fixed cycle rate generation accuracy
-**
-** Revision 1.15  2000/06/26 05:00:37  matt
-** cleanups
-**
-** Revision 1.14  2000/06/23 11:06:24  matt
-** more faithful mixing of channels
-**
-** Revision 1.13  2000/06/23 03:29:27  matt
-** cleaned up external sound inteface
-**
-** Revision 1.12  2000/06/20 00:08:39  matt
-** bugfix to rectangle wave
-**
-** Revision 1.11  2000/06/13 13:48:58  matt
-** fixed triangle write latency for fixed point apu cycle rate
-**
-** Revision 1.10  2000/06/12 01:14:36  matt
-** minor change to clipping extents
-**
-** Revision 1.9  2000/06/09 20:00:56  matt
-** fixed noise hiccup in NSF player mode
-**
-** Revision 1.8  2000/06/09 16:49:02  matt
-** removed all floating point from sound generation
-**
-** Revision 1.7  2000/06/09 15:12:28  matt
-** initial revision
-**
-*/

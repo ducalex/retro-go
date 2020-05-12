@@ -479,20 +479,20 @@ static void map5_setstate(SnssMapperBlock *state)
    //
 }
 
-static map_memwrite map5_memwrite[] =
+static mem_write_handler_t map5_memwrite[] =
 {
    // { 0x5000, 0x50FF, map5_write }, // sound
    { 0x5100, 0x5BFF, map5_write },
    { 0x5C00, 0x5FFF, map5_exram_write },
    { 0x8000, 0xFFFF, map5_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
-static map_memread map5_memread[] =
+static mem_read_handler_t map5_memread[] =
 {
    { 0x5100, 0x5BFF, map5_read },
    { 0x5C00, 0x5FFF, map5_exram_read },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 mapintf_t map5_intf =

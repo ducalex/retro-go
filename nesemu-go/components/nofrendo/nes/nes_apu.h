@@ -220,8 +220,6 @@ typedef struct apu_s
    int sample_bits;
    int refresh_rate;
 
-   void (*process)(void *buffer, int num_samples);
-
    struct {
       uint8 state;
       uint32 step;
@@ -240,12 +238,10 @@ extern "C" {
 #endif /* __cplusplus */
 
 /* Function prototypes */
+extern apu_t *apu_create(double base_freq, int sample_rate, int refresh_rate, int sample_bits);
+extern void apu_destroy(apu_t *apu);
 extern void apu_setcontext(apu_t *src_apu);
 extern void apu_getcontext(apu_t *dest_apu);
-
-extern void apu_setparams(double base_freq, int sample_rate, int refresh_rate, int sample_bits);
-extern apu_t *apu_create(double base_freq, int sample_rate, int refresh_rate, int sample_bits);
-extern void apu_destroy(apu_t **apu);
 
 extern void apu_process(void *buffer, int num_samples);
 extern void apu_reset(void);
@@ -264,94 +260,3 @@ extern void apu_fc_advance(int cycles);
 #endif /* __cplusplus */
 
 #endif /* _NES_APU_H_ */
-
-/*
-** $Log: nes_apu.h,v $
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.3  2000/12/08 02:36:14  matt
-** bye bye apu queue (for now)
-**
-** Revision 1.2  2000/10/28 15:20:59  matt
-** irq callbacks in nes_apu
-**
-** Revision 1.1  2000/10/24 12:19:59  matt
-** changed directory structure
-**
-** Revision 1.28  2000/10/17 11:56:42  matt
-** selectable apu base frequency
-**
-** Revision 1.27  2000/10/10 13:58:18  matt
-** stroustrup squeezing his way in the door
-**
-** Revision 1.26  2000/09/28 23:20:58  matt
-** bye bye, fixed point
-**
-** Revision 1.25  2000/09/27 12:26:03  matt
-** changed sound accumulators back to floats
-**
-** Revision 1.24  2000/09/18 02:12:55  matt
-** more optimizations
-**
-** Revision 1.23  2000/09/15 13:38:40  matt
-** changes for optimized apu core
-**
-** Revision 1.22  2000/09/15 04:58:07  matt
-** simplifying and optimizing APU core
-**
-** Revision 1.21  2000/08/11 02:27:21  matt
-** general cleanups, plus apu_setparams routine
-**
-** Revision 1.20  2000/07/30 04:32:59  matt
-** no more apu_getcyclerate hack
-**
-** Revision 1.19  2000/07/27 02:49:50  matt
-** eccentricity in sweeping hardware now emulated correctly
-**
-** Revision 1.18  2000/07/25 02:25:15  matt
-** safer apu_destroy
-**
-** Revision 1.17  2000/07/23 15:10:54  matt
-** hacks for win32
-**
-** Revision 1.16  2000/07/23 00:48:15  neil
-** Win32 SDL
-**
-** Revision 1.15  2000/07/17 01:52:31  matt
-** made sure last line of all source files is a newline
-**
-** Revision 1.14  2000/07/11 02:39:26  matt
-** added setcontext() routine
-**
-** Revision 1.13  2000/07/10 05:29:34  matt
-** moved joypad/oam dma from apu to ppu
-**
-** Revision 1.12  2000/07/04 04:54:48  matt
-** minor changes that helped with MAME
-**
-** Revision 1.11  2000/07/03 02:18:53  matt
-** much better external module exporting
-**
-** Revision 1.10  2000/06/26 05:00:37  matt
-** cleanups
-**
-** Revision 1.9  2000/06/23 03:29:28  matt
-** cleaned up external sound inteface
-**
-** Revision 1.8  2000/06/20 04:06:16  matt
-** migrated external sound definition to apu module
-**
-** Revision 1.7  2000/06/20 00:07:35  matt
-** added convenience members to apu_t struct
-**
-** Revision 1.6  2000/06/09 16:49:02  matt
-** removed all floating point from sound generation
-**
-** Revision 1.5  2000/06/09 15:12:28  matt
-** initial revision
-**
-*/

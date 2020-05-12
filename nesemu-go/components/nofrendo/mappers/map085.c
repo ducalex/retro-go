@@ -148,10 +148,10 @@ static void map85_hblank(int vblank)
    }
 }
 
-static map_memwrite map85_memwrite[] =
+static mem_write_handler_t map85_memwrite[] =
 {
    { 0x8000, 0xFFFF, map85_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 static void map85_init(void)

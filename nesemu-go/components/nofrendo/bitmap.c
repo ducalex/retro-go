@@ -58,13 +58,12 @@ void bmp_clear(bitmap_t *bitmap, uint8 color)
 }
 
 /* Deallocate space for a bitmap structure */
-void bmp_destroy(bitmap_t **bitmap)
+void bmp_free(bitmap_t *bitmap)
 {
-   if (*bitmap)
+   if (bitmap)
    {
-      if ((*bitmap)->data)
-         free((*bitmap)->data);
-      free(*bitmap);
-      *bitmap = NULL;
+      if (bitmap->data)
+         free(bitmap->data);
+      free(bitmap);
    }
 }

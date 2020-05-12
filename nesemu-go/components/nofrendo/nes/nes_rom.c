@@ -256,26 +256,22 @@ rominfo_t *rom_load(const char *filename)
 
 _fail:
    MESSAGE_ERROR("ROM loading failed\n");
-   rom_free(&rominfo);
+   rom_free(rominfo);
    return NULL;
 }
 
 /* Free a ROM */
-void rom_free(rominfo_t **rominfo)
+void rom_free(rominfo_t *rominfo)
 {
-   if (NULL == *rominfo)
-      return;
+   if (rominfo)
+   {
+      rom_savesram(rominfo);
 
-   rom_savesram(*rominfo);
+      if (rominfo->sram) free(rominfo->sram);
+      if (rominfo->rom)  free(rominfo->rom);
+      if (rominfo->vrom) free(rominfo->vrom);
+      if (rominfo->vram) free(rominfo->vram);
 
-   if ((*rominfo)->sram)
-      free((*rominfo)->sram);
-   if ((*rominfo)->rom)
-      free((*rominfo)->rom);
-   if ((*rominfo)->vrom)
-      free((*rominfo)->vrom);
-   if ((*rominfo)->vram)
-      free((*rominfo)->vram);
-
-   free(*rominfo);
+      free(rominfo);
+   }
 }

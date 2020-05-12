@@ -47,10 +47,10 @@ static void map87_write (uint32 address, uint8 value)
   return;
 }
 
-static map_memwrite map87_memwrite [] =
+static mem_write_handler_t map87_memwrite [] =
 {
    { 0x6000, 0x7FFF, map87_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 mapintf_t map87_intf =

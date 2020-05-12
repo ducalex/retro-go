@@ -73,7 +73,6 @@ esp_err_t odroid_sdcard_open()
 	return ret;
 }
 
-
 esp_err_t odroid_sdcard_close()
 {
     esp_err_t ret = esp_vfs_fat_sdmmc_unmount();
@@ -85,53 +84,65 @@ esp_err_t odroid_sdcard_close()
     return ret;
 }
 
-
 size_t odroid_sdcard_get_filesize(const char* path)
 {
     assert(sdcardOpen == true);
 
-    FILE* f = fopen(path, "rb");
-    if (f)
+    odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
+
+    size_t ret = 0;
+    FILE* f;
+
+    if ((f = fopen(path, "rb")))
     {
         fseek(f, 0, SEEK_END);
-        size_t ret = ftell(f);
+        ret = ftell(f);
         fclose(f);
-        return ret;
     }
+    else
+        printf("odroid_sdcard_get_filesize: fopen failed.\n");
 
-    printf("odroid_sdcard_get_filesize: fopen failed.\n");
-    return 0;
+    odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
+
+    return ret;
 }
 
 size_t odroid_sdcard_copy_file_to_memory(const char* path, void* buf, size_t buf_size)
 {
     assert(sdcardOpen == true);
 
-    FILE* f = fopen(path, "rb");
-    if (f)
+    odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
+
+    size_t block_size = MIN(4096, buf_size);
+    size_t ret = 0, count = 0;
+    FILE* f;
+
+    if ((f = fopen(path, "rb")))
     {
-        size_t BLOCK_SIZE = MIN(4096, buf_size);
-        size_t ret = 0, count = 0;
         do {
-            count = fread(buf + ret, 1, BLOCK_SIZE, f);
+            count = fread(buf + ret, 1, block_size, f);
             ret += count;
-        } while (count == BLOCK_SIZE && ret < buf_size);
+        } while (count == block_size && ret < buf_size);
 
         fclose(f);
-        return ret;
     }
+    else
+        printf("%s: fopen failed. path='%s'\n", __func__, path);
 
-    printf("%s: fopen failed. path='%s'\n", __func__, path);
-    return 0;
+    odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
+
+    return ret;
 }
 
 size_t odroid_sdcard_unzip_file_to_memory(const char* path, void* buf, size_t buf_size)
 {
     assert(sdcardOpen == true);
 
-    size_t ret = 0;
+    odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
+    size_t ret = 0;
     mz_zip_archive zip_archive;
+
     memset(&zip_archive, 0, sizeof(zip_archive));
 
     if (mz_zip_reader_init_file(&zip_archive, path, 0))
@@ -148,6 +159,8 @@ size_t odroid_sdcard_unzip_file_to_memory(const char* path, void* buf, size_t bu
         }
         mz_zip_reader_end(&zip_archive);
     }
+
+    odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
 
     return ret;
 }

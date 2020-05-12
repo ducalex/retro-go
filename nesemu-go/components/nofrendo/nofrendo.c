@@ -36,10 +36,10 @@
 
 /* our happy little timer ISR */
 volatile int nofrendo_ticks = 0;
-static void timer_isr(void)
-{
-   nofrendo_ticks++;
-}
+// static void timer_isr(void)
+// {
+//    nofrendo_ticks++;
+// }
 
 // apu_setchan(chan, chan_enabled[chan]);
 // apu_setfilter(filter_type);
@@ -87,7 +87,7 @@ void nofrendo_refresh()
 void nofrendo_stop(void)
 {
    nes_poweroff();
-   nes_destroy();
+   nes_shutdown();
    osd_shutdown();
    // vid_shutdown();
 }
@@ -112,13 +112,13 @@ int nofrendo_start(const char *filename, int region)
          region = NES_NTSC;
    }
 
-   if (!nes_create(region))
+   if (!nes_init(region))
    {
       MESSAGE_ERROR("Failed to create NES instance.\n");
       return -1;
    }
 
-   if (nes_insertcart(filename))
+   if (!nes_insertcart(filename))
    {
       MESSAGE_ERROR("Failed to insert NES cart.\n");
       return -2;

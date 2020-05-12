@@ -59,7 +59,6 @@ rominfo_t *mmc_getinfo(void)
 void mmc_setcontext(mmc_t *src_mmc)
 {
    ASSERT(src_mmc);
-
    mmc = *src_mmc;
 }
 
@@ -107,7 +106,7 @@ void mmc_bankvrom(int size, uint32 address, int bank)
 /* ROM bankswitching */
 void mmc_bankrom(int size, uint32 address, int bank)
 {
-   int page = address >> NES6502_BANKSHIFT;
+   int page = address >> MEM_PAGESHIFT;
    uint8 *base;
 
    switch (size)
@@ -116,32 +115,32 @@ void mmc_bankrom(int size, uint32 address, int bank)
       if (bank == MMC_LASTBANK)
          bank = MMC_LAST8KPRG;
       base = &mmc.prg[(bank % MMC_8KPRG) << 13];
-      nes6502_setpage(page + 0, base);
-      nes6502_setpage(page + 1, base + 0x1000);
+      mem_setpage(page + 0, base);
+      mem_setpage(page + 1, base + 0x1000);
       break;
 
    case 16:
       if (bank == MMC_LASTBANK)
          bank = MMC_LAST16KPRG;
       base = &mmc.prg[(bank % MMC_16KPRG) << 14];
-      nes6502_setpage(page + 0, base);
-      nes6502_setpage(page + 1, base + 0x1000);
-      nes6502_setpage(page + 2, base + 0x2000);
-      nes6502_setpage(page + 3, base + 0x3000);
+      mem_setpage(page + 0, base);
+      mem_setpage(page + 1, base + 0x1000);
+      mem_setpage(page + 2, base + 0x2000);
+      mem_setpage(page + 3, base + 0x3000);
       break;
 
    case 32:
       if (bank == MMC_LASTBANK)
          bank = MMC_LAST32KPRG;
       base = &mmc.prg[(bank % MMC_32KPRG) << 15];
-      nes6502_setpage(page + 0, base);
-      nes6502_setpage(page + 1, base + 0x1000);
-      nes6502_setpage(page + 2, base + 0x2000);
-      nes6502_setpage(page + 3, base + 0x3000);
-      nes6502_setpage(page + 1, base + 0x4000);
-      nes6502_setpage(page + 2, base + 0x5000);
-      nes6502_setpage(page + 3, base + 0x6000);
-      nes6502_setpage(page + 3, base + 0x7000);
+      mem_setpage(page + 0, base);
+      mem_setpage(page + 1, base + 0x1000);
+      mem_setpage(page + 2, base + 0x2000);
+      mem_setpage(page + 3, base + 0x3000);
+      mem_setpage(page + 1, base + 0x4000);
+      mem_setpage(page + 2, base + 0x5000);
+      mem_setpage(page + 3, base + 0x6000);
+      mem_setpage(page + 3, base + 0x7000);
       break;
 
    default:
@@ -198,13 +197,10 @@ void mmc_reset(void)
    MESSAGE_INFO("Reset memory mapper\n");
 }
 
-void mmc_destroy(mmc_t **nes_mmc)
+void mmc_destroy(mmc_t *nes_mmc)
 {
-   if (*nes_mmc)
-   {
-      free(*nes_mmc);
-      *nes_mmc = NULL;
-   }
+   if (nes_mmc)
+      free(nes_mmc);
 }
 
 mmc_t *mmc_create(rominfo_t *rominfo)
@@ -219,9 +215,11 @@ mmc_t *mmc_create(rominfo_t *rominfo)
       return NULL;
    }
 
-   temp  = calloc(sizeof(mmc_t), 1);
-   if (NULL == temp)
-      return NULL;
+   temp = &mmc;
+   memset(temp, 0, sizeof(mmc_t));
+   // temp  = calloc(sizeof(mmc_t), 1);
+   // if (NULL == temp)
+   //    return NULL;
 
    temp->intf = map_ptr;
    temp->cart = rominfo;
@@ -238,8 +236,6 @@ mmc_t *mmc_create(rominfo_t *rominfo)
       temp->chr = rominfo->vram;
       temp->chr_banks = rominfo->vram_banks;
    }
-
-   mmc_setcontext(temp);
 
    MESSAGE_INFO("Created memory mapper: %s\n", map_ptr->name);
 

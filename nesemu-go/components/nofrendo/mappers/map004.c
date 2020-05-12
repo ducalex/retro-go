@@ -198,10 +198,10 @@ static void map4_init(void)
    vrombase = 0x0000;
 }
 
-static map_memwrite map4_memwrite[] =
+static mem_write_handler_t map4_memwrite[] =
 {
    { 0x8000, 0xFFFF, map4_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 mapintf_t map4_intf =

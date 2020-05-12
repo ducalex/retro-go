@@ -102,10 +102,10 @@ static void map160_init(void)
    irq.latch_c003 = irq.latch_c005 = 0;
 }
 
-static map_memwrite map160_memwrite[] =
+static mem_write_handler_t map160_memwrite[] =
 {
    { 0x8000, 0xFFFF, map160_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 mapintf_t map160_intf =

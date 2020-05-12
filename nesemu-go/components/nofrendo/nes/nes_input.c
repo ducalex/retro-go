@@ -37,33 +37,6 @@ static int active_entries = 0, strobe = 0;
 /* read counters */
 static int pad0_readcount, pad1_readcount, ppad_readcount, ark_readcount;
 
-IRAM_ATTR void input_write(uint32 address, uint8 value)
-{
-   ASSERT(address == INP_JOY0);
-
-   value &= 1;
-
-   if (0 == value && strobe)
-      input_strobe();
-
-   strobe = value;
-}
-
-IRAM_ATTR uint8 input_read(uint32 address)
-{
-   switch (address)
-   {
-   case INP_JOY0:
-      return input_get(INP_JOYPAD0);
-
-   case INP_JOY1:
-      return input_get(INP_ZAPPER | INP_JOYPAD1);
-
-   default:
-      return 0xFF;
-   }
-}
-
 INLINE int retrieve_type(int type)
 {
    int i, value = 0;
@@ -79,12 +52,23 @@ INLINE int retrieve_type(int type)
    return value;
 }
 
-/* return input state for all types indicated (can be ORed together) */
-IRAM_ATTR uint8 input_get(int types)
+IRAM_ATTR void input_write(uint32 address, uint8 value)
+{
+   ASSERT(address == INP_JOY0);
+
+   value &= 1;
+
+   if (0 == value && strobe)
+      input_strobe();
+
+   strobe = value;
+}
+
+IRAM_ATTR uint8 input_read(uint32 address)
 {
    uint8 retval = 0, value = 0;
 
-   if (types & INP_JOYPAD0)
+   if (address == INP_JOY0)
    {
       value = (uint8) retrieve_type(INP_JOYPAD0);
 
@@ -98,8 +82,7 @@ IRAM_ATTR uint8 input_get(int types)
       /* return (0x40 | value) due to bus conflicts */
       retval |= (0x40 | ((value >> pad0_readcount++) & 1));
    }
-
-   if (types & INP_JOYPAD1)
+   else if (address == INP_JOY1)
    {
       value = (uint8) retrieve_type(INP_JOYPAD1);
 
@@ -112,11 +95,12 @@ IRAM_ATTR uint8 input_get(int types)
 
       /* return (0x40 | value) due to bus conflicts */
       retval |= (0x40 | ((value >> pad1_readcount++) & 1));
-   }
 
-   if (types & INP_ZAPPER)
-   {
       retval |= retrieve_type(INP_ZAPPER);
+   }
+   else
+   {
+      retval = 0xFF;
    }
 
    return retval;

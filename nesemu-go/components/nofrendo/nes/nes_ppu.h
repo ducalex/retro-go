@@ -132,7 +132,7 @@ extern void ppu_endscanline(int scanline);
 extern void ppu_checknmi();
 
 extern ppu_t *ppu_create(void);
-extern void ppu_destroy(ppu_t **ppu);
+extern void ppu_destroy(ppu_t *ppu);
 extern void ppu_setlatchfunc(ppulatchfunc_t func);
 
 extern void ppu_getcontext(ppu_t *dest_ppu);

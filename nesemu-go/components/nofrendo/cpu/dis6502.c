@@ -62,12 +62,12 @@ static char disasm_buf[256];
 
 static uint8 dis_op8(void)
 {
-   return (nes6502_getbyte(pc_reg + 1));
+   return (mem_getbyte(pc_reg + 1));
 }
 
 static uint16 dis_op16(void)
 {
-   return (nes6502_getbyte(pc_reg + 1) + (nes6502_getbyte(pc_reg + 2) << 8));
+   return (mem_getbyte(pc_reg + 1) + (mem_getbyte(pc_reg + 2) << 8));
 }
 
 static int dis_show_ind(char *buf)
@@ -136,7 +136,7 @@ static int dis_show_relative(char *buf)
 
 static int dis_show_code(char *buf, int optype)
 {
-   char *dest = buf + sprintf(buf, "%02X ", nes6502_getbyte(pc_reg));
+   char *dest = buf + sprintf(buf, "%02X ", mem_getbyte(pc_reg));
 
    switch (optype)
    {
@@ -152,14 +152,14 @@ static int dis_show_code(char *buf, int optype)
    case _zero_y:
    case _ind_y:
    case _ind_x:
-      dest += sprintf(dest, "%02X    ", nes6502_getbyte(pc_reg + 1));
+      dest += sprintf(dest, "%02X    ", mem_getbyte(pc_reg + 1));
       break;
 
    case _abs:
    case _abs_x:
    case _abs_y:
    case _ind:
-      dest += sprintf(dest, "%02X %02X ", nes6502_getbyte(pc_reg + 1), nes6502_getbyte(pc_reg + 2));
+      dest += sprintf(dest, "%02X %02X ", mem_getbyte(pc_reg + 1), mem_getbyte(pc_reg + 2));
       break;
    }
 
@@ -203,7 +203,7 @@ char *nes6502_disasm(uint32 PC, uint8 P, uint8 A, uint8 X, uint8 Y, uint8 S)
 
    buf += sprintf(buf, "%04X: ", pc_reg);
 
-   switch (nes6502_getbyte(pc_reg))
+   switch (mem_getbyte(pc_reg))
    {
    case 0x00: op = "brk"; type = _imp;    break;
    case 0x01: op = "ora"; type = _ind_x;  break;

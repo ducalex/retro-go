@@ -3,14 +3,14 @@
 **
 **
 ** This program is free software; you can redistribute it and/or
-** modify it under the terms of version 2 of the GNU Library General 
+** modify it under the terms of version 2 of the GNU Library General
 ** Public License as published by the Free Software Foundation.
 **
-** This program is distributed in the hope that it will be useful, 
+** This program is distributed in the hope that it will be useful,
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
-** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
-** Library General Public License for more details.  To obtain a 
-** copy of the GNU Library General Public License, write to the Free 
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+** Library General Public License for more details.  To obtain a
+** copy of the GNU Library General Public License, write to the Free
 ** Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 **
 ** Any permitted reproduction of these routines, in whole or in part,
@@ -121,10 +121,10 @@ static void map18_write(uint32 address, uint8 value)
    case 0xF000:
       if(value&0x01) irq.enabled=true;
       break;
-   case 0xF001: 
+   case 0xF001:
       irq.enabled=value&0x01;
       break;
-   case 0xF002: 
+   case 0xF002:
       switch(value&0x03)
       {
       case 0:  ppu_mirror(0, 0, 1, 1); break;
@@ -140,10 +140,10 @@ static void map18_write(uint32 address, uint8 value)
 }
 
 
-static map_memwrite map18_memwrite[] =
+static mem_write_handler_t map18_memwrite[] =
 {
    { 0x8000, 0xFFFF, map18_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 static void map18_getstate(SnssMapperBlock *state)

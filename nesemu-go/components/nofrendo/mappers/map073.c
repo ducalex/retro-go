@@ -135,10 +135,10 @@ static void map73_getstate (SnssMapperBlock *state)
   return;
 }
 
-static map_memwrite map73_memwrite [] =
+static mem_write_handler_t map73_memwrite [] =
 {
    { 0x8000, 0xFFFF, map73_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 mapintf_t map73_intf =

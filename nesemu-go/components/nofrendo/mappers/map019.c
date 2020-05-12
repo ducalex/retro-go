@@ -3,14 +3,14 @@
 **
 **
 ** This program is free software; you can redistribute it and/or
-** modify it under the terms of version 2 of the GNU Library General 
+** modify it under the terms of version 2 of the GNU Library General
 ** Public License as published by the Free Software Foundation.
 **
-** This program is distributed in the hope that it will be useful, 
+** This program is distributed in the hope that it will be useful,
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
-** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
-** Library General Public License for more details.  To obtain a 
-** copy of the GNU Library General Public License, write to the Free 
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+** Library General Public License for more details.  To obtain a
+** copy of the GNU Library General Public License, write to the Free
 ** Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 **
 ** Any permitted reproduction of these routines, in whole or in part,
@@ -59,7 +59,7 @@ static void map19_write(uint32 address, uint8 value)
       irq.counter &= ~0xFF;
       irq.counter |= value;
       break;
-   
+
    case 0xB:
       irq.counter = ((value & 0x7F) << 8) | (irq.counter & 0xFF);
       irq.enabled = (value & 0x80) ? true : false;
@@ -90,11 +90,11 @@ static void map19_write(uint32 address, uint8 value)
    case 0x1D:
       mmc_bankrom(8, 0xA000, value);
       break;
-   
+
    case 0x1E:
       mmc_bankrom(8, 0xC000, value);
       break;
-   
+
    default:
       break;
    }
@@ -114,11 +114,11 @@ static void map19_setstate(SnssMapperBlock *state)
    irq.enabled = state->extraData.mapper19.irqCounterEnabled;
 }
 
-static map_memwrite map19_memwrite[] =
+static mem_write_handler_t map19_memwrite[] =
 {
    { 0x5000, 0x5FFF, map19_write },
    { 0x8000, 0xFFFF, map19_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 mapintf_t map19_intf =

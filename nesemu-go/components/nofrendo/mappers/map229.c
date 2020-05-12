@@ -76,10 +76,10 @@ static void map229_write (uint32 address, uint8 value)
   return;
 }
 
-static map_memwrite map229_memwrite [] =
+static mem_write_handler_t map229_memwrite [] =
 {
    { 0x8000, 0xFFFF, map229_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 mapintf_t map229_intf =

@@ -3,14 +3,14 @@
 **
 **
 ** This program is free software; you can redistribute it and/or
-** modify it under the terms of version 2 of the GNU Library General 
+** modify it under the terms of version 2 of the GNU Library General
 ** Public License as published by the Free Software Foundation.
 **
-** This program is distributed in the hope that it will be useful, 
+** This program is distributed in the hope that it will be useful,
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
-** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
-** Library General Public License for more details.  To obtain a 
-** copy of the GNU Library General Public License, write to the Free 
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+** Library General Public License for more details.  To obtain a
+** copy of the GNU Library General Public License, write to the Free
 ** Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 **
 ** Any permitted reproduction of these routines, in whole or in part,
@@ -34,27 +34,27 @@ static void map32_write(uint32 address, uint8 value)
 {
    switch (address >> 12)
    {
-   case 0x08: 
+   case 0x08:
       if (select_c000)
          mmc_bankrom(8, 0xC000, value);
       else
          mmc_bankrom(8, 0x8000, value);
       break;
 
-   case 0x09: 
+   case 0x09:
       if (value & 1)
          ppu_mirror(0, 0, 1, 1); /* horizontal */
       else
          ppu_mirror(0, 1, 0, 1); /* vertical */
-   
+
       select_c000 = (value & 0x02);
       break;
 
-   case 0x0A: 
-      mmc_bankrom(8, 0xA000, value); 
+   case 0x0A:
+      mmc_bankrom(8, 0xA000, value);
       break;
 
-   case 0x0B: 
+   case 0x0B:
       {
          int loc = (address & 0x07) << 10;
          mmc_bankvrom(1, loc, value);
@@ -66,10 +66,10 @@ static void map32_write(uint32 address, uint8 value)
    }
 }
 
-static map_memwrite map32_memwrite[] =
+static mem_write_handler_t map32_memwrite[] =
 {
    { 0x8000, 0xFFFF, map32_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 mapintf_t map32_intf =

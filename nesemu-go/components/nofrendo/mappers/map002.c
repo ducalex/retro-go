@@ -42,10 +42,10 @@ static void map2_write(uint32 address, uint8 value)
    mmc_bankrom(16, 0x8000, value);
 }
 
-static map_memwrite map2_memwrite[] =
+static mem_write_handler_t map2_memwrite[] =
 {
    { 0x8000, 0xFFFF, map2_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 mapintf_t map2_intf =

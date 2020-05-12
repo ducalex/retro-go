@@ -128,12 +128,12 @@ static void map16_setstate(SnssMapperBlock *state)
    irq.enabled = state->extraData.mapper16.irqCounterEnabled;
 }
 
-static map_memwrite map16_memwrite[] =
+static mem_write_handler_t map16_memwrite[] =
 {
    { 0x6000, 0x600D, map16_write },
    { 0x7FF0, 0x7FFD, map16_write },
    { 0x8000, 0x800D, map16_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 mapintf_t map16_intf =

@@ -134,18 +134,18 @@ static void map162_reg_write(uint32 address, uint8 value)
    }
 }
 
-static map_memwrite map162_memwrite[] =
+static mem_write_handler_t map162_memwrite[] =
 {
    {0x5000, 0x5FFF, map162_reg_write},
    // {0x6000, 0x7FFF, map162_ram_write},
-   {-1, -1, NULL}
+   LAST_MEMORY_HANDLER
 };
 
-static map_memwrite map162_memread[] =
+static mem_read_handler_t map162_memread[] =
 {
    {0x5000, 0x5FFF, map162_reg_read},
    // {0x6000, 0x7FFF, map162_ram_read},
-   {-1, -1, NULL}
+   LAST_MEMORY_HANDLER
 };
 
 mapintf_t map162_intf =

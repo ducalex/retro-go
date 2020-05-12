@@ -128,11 +128,11 @@ static void map41_getstate (SnssMapperBlock *state)
   return;
 }
 
-static map_memwrite map41_memwrite [] =
+static mem_write_handler_t map41_memwrite [] =
 {
    { 0x6000, 0x67FF, map41_low_write },
    { 0x8000, 0xFFFF, map41_high_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 mapintf_t map41_intf =

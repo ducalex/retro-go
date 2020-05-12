@@ -75,17 +75,17 @@ static void map228_write(uint32 address, uint8 value)
     }
 }
 
-static map_memwrite map228_memwrite [] =
+static mem_write_handler_t map228_memwrite [] =
 {
     { 0x8000, 0xFFFF, map228_write },
     { 0x4020, 0x5FFF, map228_write },
-    {     -1,     -1, NULL }
+    LAST_MEMORY_HANDLER
 };
 
-static map_memread map228_memread [] =
+static mem_read_handler_t map228_memread [] =
 {
     { 0x4020, 0x5FFF, map228_read },
-    {     -1,     -1, NULL }
+    LAST_MEMORY_HANDLER
 };
 
 mapintf_t map228_intf =

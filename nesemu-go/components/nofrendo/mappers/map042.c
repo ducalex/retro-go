@@ -150,10 +150,10 @@ static void map42_getstate (SnssMapperBlock *state)
   return;
 }
 
-static map_memwrite map42_memwrite [] =
+static mem_write_handler_t map42_memwrite [] =
 {
    { 0xE000, 0xFFFF, map42_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 mapintf_t map42_intf =

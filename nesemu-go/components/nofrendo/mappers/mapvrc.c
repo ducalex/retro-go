@@ -315,22 +315,22 @@ static void vrc_hblank(int vblank)
 
 
 
-static map_memwrite map21_memwrite[] =
+static mem_write_handler_t map21_memwrite[] =
 {
    { 0x8000, 0xFFFF, map21_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
-static map_memwrite map22_memwrite[] =
+static mem_write_handler_t map22_memwrite[] =
 {
    { 0x8000, 0xFFFF, map22_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
-static map_memwrite map23_memwrite[] =
+static mem_write_handler_t map23_memwrite[] =
 {
    { 0x8000, 0xFFFF, map23_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 static void map21_getstate(SnssMapperBlock *state)

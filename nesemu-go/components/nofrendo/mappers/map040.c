@@ -99,10 +99,10 @@ static void map40_setstate(SnssMapperBlock *state)
    irq.enabled = state->extraData.mapper40.irqCounterEnabled;
 }
 
-static map_memwrite map40_memwrite[] =
+static mem_write_handler_t map40_memwrite[] =
 {
    { 0x8000, 0xFFFF, map40_write },
-   {     -1,     -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 mapintf_t map40_intf =

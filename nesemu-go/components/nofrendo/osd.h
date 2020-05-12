@@ -77,7 +77,6 @@ extern void osd_blitscreen(bitmap_t *bmp);
 
 /* audio */
 extern void osd_audioframe(int nsamples);
-extern void osd_setsound(void (*playfunc)(void *buffer, int size));
 
 /* init / shutdown */
 extern int osd_init(void);
