@@ -229,7 +229,7 @@ static void ili_data(const uint8_t *data, size_t len)
 
 //This function is called (in irq context!) just before a transmission starts. It will
 //set the D/C line to the value indicated in the user field.
-static void IRAM_ATTR ili_spi_pre_transfer_callback(spi_transaction_t *t)
+static IRAM_ATTR void ili_spi_pre_transfer_callback(spi_transaction_t *t)
 {
     gpio_set_level(LCD_PIN_NUM_DC, (int)t->user & 0x01);
 }
@@ -859,7 +859,7 @@ static void videoTask(void *arg)
     while (1) {}
 }
 
-void IRAM_ATTR odroid_display_write_frame(odroid_video_frame *frame)
+IRAM_ATTR void odroid_display_write_frame(odroid_video_frame *frame)
 {
     for (short y = 0; y < frame->height;)
     {
@@ -874,7 +874,7 @@ void IRAM_ATTR odroid_display_write_frame(odroid_video_frame *frame)
     }
 }
 
-short IRAM_ATTR odroid_display_queue_update(odroid_video_frame *frame, odroid_video_frame *previousFrame)
+IRAM_ATTR short odroid_display_queue_update(odroid_video_frame *frame, odroid_video_frame *previousFrame)
 {
     // uint startTime = xthal_get_ccount();
     bool doPartialUpdate = previousFrame != NULL && !forceVideoRefresh;

@@ -346,10 +346,12 @@ void app_main(void)
             skipFrames--;
         }
 
-        if (!speedupEnabled) {
+        // Tick before submitting audio/syncing
+        odroid_system_tick(!drawFrame, fullFrame, get_elapsed_time_since(startTime));
+
+        if (!speedupEnabled)
+        {
             odroid_audio_submit(pcm.buf, pcm.pos >> 1);
         }
-
-        odroid_system_stats_tick(!drawFrame, fullFrame);
     }
 }

@@ -29,7 +29,8 @@ static odroid_video_frame update2 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 
 static odroid_video_frame *currentUpdate = &update1;
 static odroid_video_frame *previousUpdate = NULL;
 
-static int16_t *audioBuffer;
+static int16_t *audioBuffer = NULL;
+static int16_t pendingSamples = 0;
 
 static odroid_gamepad_state joystick1;
 static odroid_gamepad_state joystick2;
@@ -39,7 +40,9 @@ static odroid_gamepad_state *remoteJoystick = &joystick2;
 static uint overscan = 0;
 static bool netplay = false;
 
-bool fullFrame = 0;
+static bool fullFrame = 0;
+static uint lastSyncTime = 0;
+static uint frames = 0;
 // --- MAIN
 
 
@@ -228,6 +231,23 @@ void osd_shutdown()
    //
 }
 
+// Sleep until it's time for next frame
+void osd_wait_for_vsync()
+{
+   // Tick before submitting audio/syncing
+   odroid_system_tick(!frames, fullFrame, get_elapsed_time_since(lastSyncTime));
+
+   // Use audio to throttle emulation
+   if (pendingSamples)
+   {
+      odroid_audio_submit(audioBuffer, pendingSamples);
+   }
+
+   lastSyncTime = get_elapsed_time();
+   pendingSamples = 0;
+   frames = 0;
+}
+
 /*
 ** Audio
 */
@@ -243,7 +263,7 @@ void osd_audioframe(int audioSamples)
       audioBuffer[i*2+1] = sample;
    }
 
-   odroid_audio_submit(audioBuffer, audioSamples);
+   pendingSamples = audioSamples;
 }
 
 /*
@@ -259,12 +279,13 @@ void osd_setpalette(rgb_t *pal)
    forceVideoRefresh = true;
 }
 
-void IRAM_ATTR osd_blitscreen(bitmap_t *bmp)
+IRAM_ATTR void osd_blitscreen(bitmap_t *bmp)
 {
    currentUpdate->buffer = bmp->line[overscan];
    currentUpdate->stride = bmp->pitch;
 
    fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
+   frames++;
 
    previousUpdate = currentUpdate;
    currentUpdate = (currentUpdate == &update1) ? &update2 : &update1;

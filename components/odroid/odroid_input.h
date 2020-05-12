@@ -53,6 +53,4 @@ odroid_gamepad_state odroid_input_read_raw();
 bool odroid_input_key_is_pressed(int key);
 void odroid_input_wait_for_key(int key, bool pressed);
 
-void odroid_input_battery_init();
 odroid_battery_state odroid_input_battery_read();
-void odroid_input_battery_monitor_enabled_set(int value);

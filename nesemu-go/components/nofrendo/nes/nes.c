@@ -35,8 +35,6 @@
 static bitmap_t *framebuffers[2];
 static nes_t nes;
 
-extern bool fullFrame;
-
 
 nes_t *nes_getptr(void)
 {
@@ -123,7 +121,7 @@ void nes_emulate(void)
          osd_audioframe(audioSamples);
       }
 
-      odroid_system_stats_tick(!drawFrame, fullFrame);
+      osd_wait_for_vsync();
    }
 }
 

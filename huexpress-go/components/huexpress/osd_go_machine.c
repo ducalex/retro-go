@@ -22,7 +22,7 @@ void osd_log(const char *format, ...)
 void osd_wait_next_vsync(void)
 {
 	const double deltatime = (1000000.0 / 60.0);
-	static double lasttime, curtime, sleep;
+	static double lasttime, curtime, prevtime, sleep;
 	struct timeval tp;
 
 	gettimeofday(&tp, NULL);
@@ -42,8 +42,11 @@ void osd_wait_next_vsync(void)
 		osd_skipFrames++;
 	}
 
+    odroid_system_tick(!osd_blitFrames, true, (uint)(curtime - prevtime));
+	osd_blitFrames = 0;
+
 	gettimeofday(&tp, NULL);
-	curtime = tp.tv_sec * 1000000.0 + tp.tv_usec;
+	curtime = prevtime = tp.tv_sec * 1000000.0 + tp.tv_usec;
 	lasttime += deltatime;
 
 	if ((lasttime + deltatime) < curtime)

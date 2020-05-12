@@ -30,7 +30,7 @@ static void wait_all_keys_released()
 void odroid_overlay_init()
 {
 	if (!overlay_buffer) {
-        overlay_buffer = (uint16_t *)heap_caps_calloc_prefer(2, 320 * 16, 2, MALLOC_CAP_SPIRAM, MALLOC_CAP_8BIT);
+        overlay_buffer = (uint16_t *)rg_alloc(ODROID_SCREEN_WIDTH * 16 * 2, MEM_SLOW);
     }
     odroid_overlay_set_font_size(odroid_settings_int32_get(NVS_KEY_FONTSIZE, 1));
 }
@@ -195,8 +195,8 @@ void odroid_overlay_draw_dialog(const char *header, odroid_dialog_choice_t *opti
         box_height += ODROID_FONT_HEIGHT + 4;
     }
 
-    int x = (320 - box_width) / 2;
-    int y = (240 - box_height) / 2;
+    int x = (ODROID_SCREEN_WIDTH - box_width) / 2;
+    int y = (ODROID_SCREEN_HEIGHT - box_height) / 2;
 
     // odroid_overlay_draw_fill_rect(x + 5, y + box_height + 1, box_width, 4, box_shadow_color); // Bottom
     // odroid_overlay_draw_fill_rect(x + box_width + 1, y + 5, 4, box_height, box_shadow_color); // Rright
@@ -441,9 +441,6 @@ bool speedup_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t eve
 
 int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options)
 {
-    odroid_audio_mute(true);
-    wait_all_keys_released();
-
     odroid_dialog_choice_t options[12] = {
         {0, "Brightness", "50%",  1, &brightness_update_cb},
         {1, "Volume    ", "50%",  1, &volume_update_cb},
@@ -457,10 +454,33 @@ int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options)
         memcpy(options + options_count, extra_options, (extra_options_count + 1) * sizeof(odroid_dialog_choice_t));
     }
 
-    int r = odroid_overlay_dialog("Options", options, 0);
+    return odroid_overlay_dialog("Options", options, 0);
+}
 
-    odroid_audio_mute(false);
-    return r;
+static void draw_game_status_bar()
+{
+    int width = ODROID_SCREEN_WIDTH, height = 16;
+    int pad_text = (height - ODROID_FONT_HEIGHT) / 2;
+    char bottom[40], header[40];
+    char *path, *name;
+    runtime_stats_t stats;
+
+    stats = odroid_system_get_stats();
+    path = odroid_system_get_path(NULL, ODROID_PATH_ROM_FILE);
+    // name = odroid_sdcard_get_filename(path);
+    name = path + strlen(ODROID_BASE_PATH_ROMS);
+
+    snprintf(header, 40, "FPS: %.0f (%.0f) / BUSY: %.0f%%",
+        stats.totalFPS, stats.skippedFPS, stats.busyPercent);
+    snprintf(bottom, 40, "%s", path ? name : "N/A");
+
+    free(path);
+
+    odroid_overlay_draw_fill_rect(0, 0, width, height, C_BLACK);
+    odroid_overlay_draw_fill_rect(0, ODROID_SCREEN_HEIGHT - height, width, height, C_BLACK);
+    odroid_overlay_draw_text(0, pad_text, width, header, C_LIGHT_GRAY, C_BLACK);
+    odroid_overlay_draw_text(0, ODROID_SCREEN_HEIGHT - height + pad_text, width, bottom, C_LIGHT_GRAY, C_BLACK);
+    odroid_overlay_draw_battery(width - 26, 3);
 }
 
 int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options)
@@ -478,14 +498,19 @@ int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options)
         memcpy(options + options_count, extra_options, (extra_options_count + 1) * sizeof(odroid_dialog_choice_t));
     }
 
-    return odroid_overlay_settings_menu(options);
+    odroid_audio_mute(true);
+    wait_all_keys_released();
+    draw_game_status_bar();
+
+    int r = odroid_overlay_settings_menu(options);
+
+    odroid_audio_mute(false);
+
+    return r;
 }
 
 int odroid_overlay_game_menu()
 {
-    odroid_audio_mute(true);
-    wait_all_keys_released();
-
     odroid_dialog_choice_t choices[] = {
         // {0, "Continue", "",  1, NULL},
         {10, "Save & Continue", "",  1, NULL},
@@ -499,6 +524,10 @@ int odroid_overlay_game_menu()
         {50, "Quit", "", 1, NULL},
         ODROID_DIALOG_CHOICE_LAST
     };
+
+    odroid_audio_mute(true);
+    wait_all_keys_released();
+    draw_game_status_bar();
 
     int r = odroid_overlay_dialog("Retro-Go", choices, 0);
 

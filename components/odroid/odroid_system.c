@@ -4,6 +4,7 @@
 #include "esp_heap_caps.h"
 #include "esp_partition.h"
 #include "esp_ota_ops.h"
+#include "esp_task_wdt.h"
 #include "esp_system.h"
 #include "esp_event.h"
 #include "driver/rtc_io.h"
@@ -22,16 +23,12 @@ static state_handler_t saveState;
 static state_handler_t resetState;
 
 static SemaphoreHandle_t spiMutex;
-static int16_t spiMutexOwner;
+static spi_lock_res_t spiMutexOwner;
+static runtime_stats_t statistics;
+static runtime_counters_t counters;
 
-static struct {
-    uint total;
-    uint skipped;
-    uint full;
-    uint resetTime;
-} frameCounter;
+static void odroid_system_monitor_task(void *arg);
 
-static void odroid_system_stats_task(void *arg);
 
 static void odroid_system_gpio_init()
 {
@@ -65,7 +62,6 @@ void odroid_system_init(int appId, int sampleRate)
     odroid_overlay_init();
     odroid_system_gpio_init();
     odroid_input_gamepad_init();
-    odroid_input_battery_init();
     odroid_audio_init(sampleRate);
 
     //sdcard init must be before LCD init
@@ -75,7 +71,7 @@ void odroid_system_init(int appId, int sampleRate)
 
     if (esp_reset_reason() == ESP_RST_PANIC)
     {
-        odroid_system_panic("The application crashed");
+        odroid_system_panic("The application crashed!");
     }
 
     if (esp_reset_reason() != ESP_RST_SW)
@@ -101,7 +97,10 @@ void odroid_system_init(int appId, int sampleRate)
         odroid_settings_StartAction_set(ODROID_START_ACTION_RESUME);
     }
 
-    xTaskCreate(&odroid_system_stats_task, "statistics", 2048, NULL, 7, NULL);
+    xTaskCreate(&odroid_system_monitor_task, "sysmon", 2048, NULL, 7, NULL);
+
+    // esp_task_wdt_init(5, true);
+    // esp_task_wdt_add(xTaskGetCurrentTaskHandle());
 
     printf("odroid_system_init: System ready!\n");
 }
@@ -174,7 +173,7 @@ char* odroid_system_get_path(char *_romPath, emu_path_type_t type)
 
     if (!fileName || strlen(fileName) < 4)
     {
-        odroid_system_panic("Invalid ROM path");
+        odroid_system_panic("Invalid ROM path!");
     }
 
     fileName += strlen(ODROID_BASE_PATH_ROMS);
@@ -217,7 +216,10 @@ char* odroid_system_get_path(char *_romPath, emu_path_type_t type)
 bool odroid_system_emu_load_state(int slot)
 {
     if (!romPath || !loadState)
-        odroid_system_panic("Emulator not initialized");
+    {
+        printf("%s: No game/emulator loaded...\n", __func__);
+        return false;
+    }
 
     printf("odroid_system_emu_load_state: Loading state %d.\n", slot);
 
@@ -242,11 +244,13 @@ bool odroid_system_emu_load_state(int slot)
 bool odroid_system_emu_save_state(int slot)
 {
     if (!romPath || !saveState)
-        odroid_system_panic("Emulator not initialized");
+    {
+        printf("%s: No game/emulator loaded...\n", __func__);
+        return false;
+    }
 
     printf("odroid_system_emu_save_state: Saving state %d.\n", slot);
 
-    odroid_input_battery_monitor_enabled_set(0);
     odroid_system_set_led(1);
     odroid_display_show_hourglass();
     odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
@@ -256,7 +260,6 @@ bool odroid_system_emu_save_state(int slot)
 
     odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
     odroid_system_set_led(0);
-    odroid_input_battery_monitor_enabled_set(1);
 
     if (!success)
     {
@@ -349,26 +352,50 @@ void odroid_system_set_led(int value)
     gpio_set_level(GPIO_NUM_2, value);
 }
 
-static void odroid_system_stats_task(void *arg)
+static void odroid_system_monitor_task(void *arg)
 {
+    bool led_state = false;
+
     while (1)
     {
-        float seconds = (float)get_elapsed_time_since(frameCounter.resetTime) / 1000000.f;
-        float fps = frameCounter.total / seconds;
+        float seconds = (get_elapsed_time_since(counters.resetTime) / 1000000.f);
+        statistics.battery = odroid_input_battery_read();
+        statistics.busyPercent = ((counters.busyTime / 1000000.f) / seconds) * 100.f;
+        statistics.skippedFPS = counters.skippedFrames / seconds;
+        statistics.totalFPS = counters.totalFrames / seconds;
+        // To do get the actual game refresh rate somehow
+        statistics.emulatedSpeed = statistics.totalFPS / 60 * 100.f;
 
-        odroid_battery_state battery = odroid_input_battery_read();
+        if (statistics.lastTickTime > 0 && seconds > 1)
+        {
+            // printf("WATCHDOG: Last emulation tick was %ds ago\n", seconds);
+            // odroid_system_panic("The application froze!");
+        }
 
-        printf("HEAP:%d+%d, FPS:%f (SKIP:%d, PART:%d, FULL:%d), BATTERY:%d\n",
+        if (statistics.battery.percentage < 2)
+        {
+            led_state = !led_state;
+            odroid_system_set_led(led_state);
+        }
+        else if (led_state)
+        {
+            led_state = false;
+            odroid_system_set_led(led_state);
+        }
+
+        printf("HEAP:%d+%d, BUSY:%.4f, FPS:%.4f (SKIP:%d, PART:%d, FULL:%d), BATTERY:%d\n",
             heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
             heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024,
-            fps,
-            frameCounter.skipped,
-            frameCounter.total - frameCounter.full - frameCounter.skipped,
-            frameCounter.full,
-            battery.millivolts);
+            statistics.busyPercent,
+            statistics.totalFPS,
+            counters.skippedFrames,
+            counters.totalFrames - counters.fullFrames - counters.skippedFrames,
+            counters.fullFrames,
+            statistics.battery.millivolts);
 
-        frameCounter.total = frameCounter.skipped = frameCounter.full = 0;
-        frameCounter.resetTime = get_elapsed_time();
+        counters.totalFrames = counters.skippedFrames = counters.fullFrames = 0;
+        counters.busyTime = 0;
+        counters.resetTime = get_elapsed_time();
 
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
@@ -376,14 +403,22 @@ static void odroid_system_stats_task(void *arg)
     vTaskDelete(NULL);
 }
 
-void IRAM_ATTR odroid_system_stats_tick(bool frameSkipped, bool fullFrame)
+IRAM_ATTR void odroid_system_tick(uint skippedFrame, uint fullFrame, uint busyTime)
 {
-    if (frameSkipped) frameCounter.skipped++;
-    else if (fullFrame) frameCounter.full++;
-    frameCounter.total++;
+    if (skippedFrame) counters.skippedFrames++;
+    else if (fullFrame) counters.fullFrames++;
+    counters.totalFrames++;
+    counters.busyTime += busyTime;
+
+    statistics.lastTickTime = get_elapsed_time();
 }
 
-void IRAM_ATTR odroid_system_spi_lock_acquire(spi_lock_res_t owner)
+runtime_stats_t odroid_system_get_stats()
+{
+    return statistics;
+}
+
+IRAM_ATTR void odroid_system_spi_lock_acquire(spi_lock_res_t owner)
 {
     if (owner == spiMutexOwner)
     {
@@ -400,7 +435,7 @@ void IRAM_ATTR odroid_system_spi_lock_acquire(spi_lock_res_t owner)
     }
 }
 
-void IRAM_ATTR odroid_system_spi_lock_release(spi_lock_res_t owner)
+IRAM_ATTR void odroid_system_spi_lock_release(spi_lock_res_t owner)
 {
     if (owner == spiMutexOwner || owner == SPI_LOCK_ANY)
     {

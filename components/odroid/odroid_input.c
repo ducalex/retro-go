@@ -13,9 +13,6 @@
 static volatile bool input_task_is_running = false;
 static odroid_gamepad_state gamepad_state;
 static SemaphoreHandle_t xSemaphore;
-
-static bool battery_task_is_running = false;
-static bool battery_monitor_enabled = true;
 static esp_adc_cal_characteristics_t adc_chars;
 
 odroid_gamepad_state odroid_input_read_raw()
@@ -201,52 +198,20 @@ void odroid_input_wait_for_key(int key, bool pressed)
     }
 }
 
-static void odroid_battery_task()
-{
-    battery_task_is_running = true;
-
-    bool led_state = false;
-
-    while (battery_task_is_running)
-    {
-        if (battery_monitor_enabled)
-        {
-            if (odroid_input_battery_read().percentage < 2)
-            {
-                led_state = !led_state;
-                odroid_system_set_led(led_state);
-            }
-            else if (led_state)
-            {
-                led_state = false;
-                odroid_system_set_led(led_state);
-            }
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(500));
-    }
-
-    vTaskDelete(NULL);
-}
-
-void odroid_input_battery_init()
-{
-    if (battery_task_is_running) abort();
-
-    adc1_config_width(ADC_WIDTH_12Bit);
-    adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_11db);
-
-    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_11db, ADC_WIDTH_BIT_12, 1100, &adc_chars);
-
-    xTaskCreatePinnedToCore(&odroid_battery_task, "battery_task", 1024, NULL, 5, NULL, 1);
-}
-
 odroid_battery_state odroid_input_battery_read()
 {
     static float adcValue = 0.0f;
 
     short sampleCount = 4;
     float adcSample = 0.0f;
+
+    // ADC not initialized
+    if (adc_chars.vref == 0)
+    {
+        adc1_config_width(ADC_WIDTH_12Bit);
+        adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_11db);
+        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_11db, ADC_WIDTH_BIT_12, 1100, &adc_chars);
+    }
 
     for (int i = 0; i < sampleCount; ++i)
     {
@@ -282,9 +247,4 @@ odroid_battery_state odroid_input_battery_read()
     };
 
     return out_state;
-}
-
-void odroid_input_battery_monitor_enabled_set(int value)
-{
-    battery_monitor_enabled = value;
 }

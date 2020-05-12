@@ -22,7 +22,7 @@
    */
 extern uchar *osd_gfx_buffer;
 
-
+extern uint osd_blitFrames;
 extern uint osd_skipFrames;
 
 

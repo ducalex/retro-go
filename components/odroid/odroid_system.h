@@ -49,6 +49,26 @@ typedef enum
      SPI_LOCK_DISPLAY = 2,
 } spi_lock_res_t;
 
+typedef struct
+{
+     uint totalFrames;
+     uint skippedFrames;
+     uint fullFrames;
+     uint busyTime;
+     uint resetTime;
+} runtime_counters_t;
+
+typedef struct
+{
+     odroid_battery_state battery;
+     float partialFPS;
+     float skippedFPS;
+     float totalFPS;
+     float emulatedSpeed;
+     float busyPercent;
+     uint lastTickTime;
+} runtime_stats_t;
+
 void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t netplay_cb);
 bool odroid_system_emu_save_state(int slot);
 bool odroid_system_emu_load_state(int slot);
@@ -65,8 +85,9 @@ void odroid_system_switch_app(int app);
 void odroid_system_reload_app();
 void odroid_system_set_boot_app(int slot);
 void odroid_system_set_led(int value);
-void odroid_system_stats_tick(bool frameSkipped, bool fullFrame);
 char* odroid_system_get_path(char *romPath, emu_path_type_t type);
+void odroid_system_tick(uint skippedFrame, uint fullFrame, uint busyTime);
+runtime_stats_t odroid_system_get_stats();
 
 void odroid_system_spi_lock_acquire(spi_lock_res_t);
 void odroid_system_spi_lock_release(spi_lock_res_t);

@@ -1,12 +1,10 @@
-#include "odroid_audio.h"
-
-
 #include "freertos/FreeRTOS.h"
+#include "odroid_audio.h"
+#include "string.h"
 #include "unistd.h"
 #include "esp_system.h"
 #include "driver/i2s.h"
 #include "driver/rtc_io.h"
-
 
 #define I2S_NUM (I2S_NUM_0)
 
@@ -126,86 +124,72 @@ void odroid_audio_terminate()
     gpio_reset_pin(GPIO_NUM_26);
 }
 
-void IRAM_ATTR odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
+IRAM_ATTR void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
 {
-    short currentAudioSampleCount = frameCount * 2;
+    size_t sampleCount = frameCount * 2;
+    size_t bufferSize = sampleCount * sizeof(int16_t);
+    size_t written = 0;
+    int32_t sample, dac0, dac1;
 
     if (audioMuted)
     {
         // Simulate i2s_write_bytes delay
-        usleep((audioSampleRate * 1000) / currentAudioSampleCount);
+        usleep((audioSampleRate * 1000) / sampleCount);
+        return;
+    }
+
+    if (volumePercent == 0.0f)
+    {
+        // No need to even loop, just clear the buffer
+        memset(stereoAudioBuffer, 0, bufferSize);
     }
     else if (audioSink == ODROID_AUDIO_SINK_SPEAKER)
     {
-        // Convert for built in DAC
-        for (short i = 0; i < currentAudioSampleCount; i += 2)
+        for (short i = 0; i < sampleCount; i += 2)
         {
-            uint16_t dac0;
-            uint16_t dac1;
+            // Down mix stero to mono
+            sample = stereoAudioBuffer[i] + stereoAudioBuffer[i + 1];
+            sample >>= 1;
 
-            if (volumePercent == 0.0f)
+            // Normalize
+            const float sn = (float)sample / 0x8000;
+
+            // Scale
+            const int magnitude = 127 + 127;
+            const float range = magnitude * sn * volumePercent;
+
+            // Convert to differential output
+            if (range > 127)
             {
-                // Disable amplifier
-                dac0 = 0;
-                dac1 = 0;
+                dac1 = (range - 127);
+                dac0 = 127;
+            }
+            else if (range < -127)
+            {
+                dac1  = (range + 127);
+                dac0 = -127;
             }
             else
             {
-                // Down mix stero to mono
-                int32_t sample = stereoAudioBuffer[i];
-                sample += stereoAudioBuffer[i + 1];
-                sample >>= 1;
-
-                // Normalize
-                const float sn = (float)sample / 0x8000;
-
-                // Scale
-                const int magnitude = 127 + 127;
-                const float range = magnitude  * sn * volumePercent;
-
-                // Convert to differential output
-                if (range > 127)
-                {
-                    dac1 = (range - 127);
-                    dac0 = 127;
-                }
-                else if (range < -127)
-                {
-                    dac1  = (range + 127);
-                    dac0 = -127;
-                }
-                else
-                {
-                    dac1 = 0;
-                    dac0 = range;
-                }
-
-                dac0 += 0x80;
-                dac1 = 0x80 - dac1;
-
-                dac0 <<= 8;
-                dac1 <<= 8;
+                dac1 = 0;
+                dac0 = range;
             }
 
-            stereoAudioBuffer[i] = (int16_t)dac1;
-            stereoAudioBuffer[i + 1] = (int16_t)dac0;
-        }
+            dac0 += 0x80;
+            dac1 = 0x80 - dac1;
 
-        int len = currentAudioSampleCount * sizeof(int16_t);
-        int count = i2s_write_bytes(I2S_NUM, (const char *)stereoAudioBuffer, len, portMAX_DELAY);
-        if (count != len)
-        {
-            printf("i2s_write_bytes: count (%d) != len (%d)\n", count, len);
-            abort();
+            dac0 <<= 8;
+            dac1 <<= 8;
+
+            stereoAudioBuffer[i] = (short)dac1;
+            stereoAudioBuffer[i + 1] = (short)dac0;
         }
     }
     else if (audioSink == ODROID_AUDIO_SINK_DAC)
     {
-        int len = currentAudioSampleCount * sizeof(int16_t);
-
-        for (short i = 0; i < currentAudioSampleCount; ++i)
+        for (short i = 0; i < sampleCount; ++i)
         {
-            int sample = stereoAudioBuffer[i] * volumePercent;
+            sample = stereoAudioBuffer[i] * volumePercent;
 
             if (sample > 32767)
                 sample = 32767;
@@ -214,16 +198,16 @@ void IRAM_ATTR odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
 
             stereoAudioBuffer[i] = (short)sample;
         }
-
-        int count = i2s_write_bytes(I2S_NUM, (const char *)stereoAudioBuffer, len, portMAX_DELAY);
-        if (count != len)
-        {
-            printf("i2s_write_bytes: count (%d) != len (%d)\n", count, len);
-            abort();
-        }
     }
     else
     {
+        abort();
+    }
+
+    i2s_write(I2S_NUM, (const char *)stereoAudioBuffer, bufferSize, &written, 1000);
+    if (written == 0) // Anything > 0 is fine
+    {
+        printf("odroid_audio_submit: i2s_write failed.\n");
         abort();
     }
 }

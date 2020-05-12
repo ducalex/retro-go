@@ -63,14 +63,14 @@ extern void osd_blitscreen(bitmap_t *bmp);
 /* audio */
 extern void osd_audioframe(int nsamples);
 
-/* init / shutdown */
+/* control */
 extern int osd_init(void);
 extern void osd_shutdown(void);
-extern int osd_main(int argc, char *argv[]);
 extern void osd_loadstate(void);
 extern void osd_event(int event);
+extern void osd_wait_for_vsync(void);
 
-/* filename manipulation */
+/* utilities */
 extern char *osd_newextension(char *string, const char *ext);
 
 /* input */

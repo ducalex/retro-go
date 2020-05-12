@@ -22,6 +22,7 @@ static bool gfx_init_done = false;
 
 uchar* osd_gfx_buffer = NULL;
 uint osd_skipFrames = 0;
+uint osd_blitFrames = 0;
 
 extern uchar *SPM_raw, *SPM;
 
@@ -117,6 +118,7 @@ void osd_gfx_blit(void)
         curFrame->pixel_clear = Palette[0];
         odroid_display_queue_update(curFrame, NULL);
         set_current_fb(!current_fb);
+        osd_blitFrames++;
     }
 
     // See if we need to skip a frame to keep up
@@ -130,10 +132,6 @@ void osd_gfx_blit(void)
     {
         osd_skipFrames--;
     }
-
-    // odroid_audio_submit(pcm.buf, pcm.pos >> 1);
-
-    odroid_system_stats_tick(!drawFrame, fullFrame);
 }
 
 
