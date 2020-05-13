@@ -56,7 +56,7 @@ void odroid_overlay_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, ch
     }
 
     for (int i = 0; i < (width / ODROID_FONT_WIDTH); i++) {
-        char *bitmap = font8x8_basic[(i < text_len) ? text[i] : ' '];
+        const char *bitmap = font8x8_basic[(i < text_len) ? text[i] : ' '];
         for (int y = 0; y < 8; y++) {
             int offset = x_offset + (width * (y * multi));
             for (int x = 0; x < 8; x++) {
@@ -155,7 +155,7 @@ void odroid_overlay_draw_dialog(const char *header, odroid_dialog_choice_t *opti
 
     int box_color = C_NAVY;
     int box_border_color = C_DIM_GRAY;
-    int box_shadow_color = C_BLACK;
+    // int box_shadow_color = C_BLACK;
     int box_text_color = C_WHITE;
 
     char row_format[16] = " %s ";
@@ -211,7 +211,7 @@ void odroid_overlay_draw_dialog(const char *header, odroid_dialog_choice_t *opti
     {
         int pad = (0.5f * (width - strlen(header)) * ODROID_FONT_WIDTH);
         odroid_overlay_draw_rect(x, y, box_width - 8, ODROID_FONT_HEIGHT + 4, (ODROID_FONT_HEIGHT + 4 / 2), box_color);
-        odroid_overlay_draw_text(x + pad, y, 0, header, box_text_color, box_color);
+        odroid_overlay_draw_text(x + pad, y, 0, (char*)header, box_text_color, box_color);
         y += ODROID_FONT_HEIGHT + 4;
     }
 

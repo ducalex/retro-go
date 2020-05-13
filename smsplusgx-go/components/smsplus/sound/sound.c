@@ -25,7 +25,7 @@
 #include "shared.h"
 
 snd_t snd;
-static int16 **fm_buffer;
+// static int16 **fm_buffer;
 static int16 **psg_buffer;
 int smptab[313];
 int smptab_len;

@@ -376,7 +376,7 @@ int load_rom(char *filename)
   if (strcasecmp(filename + (strlen(filename) - 4), ".col") == 0)
   {
       option.console = 6;
-      coleco.rom = ColecoVision_BIOS;
+      coleco.rom = (uint8*)ColecoVision_BIOS;
   }
 
   cart.size = (actual_size < 0x4000) ? 0x4000 : actual_size;

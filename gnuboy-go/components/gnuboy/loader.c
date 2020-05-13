@@ -79,34 +79,16 @@ static FILE* fpRomFile = NULL;
 
 static char *romfile=NULL;
 static char *sramfile=NULL;
-static char *rtcfile=NULL;
+// static char *rtcfile=NULL;
 static char *saveprefix=NULL;
 
 static int forcebatt=0, nobatt=0;
 static int forcedmg=0, gbamode=0;
 
-static int memfill = 0, memrand = -1;
-
 
 static inline void initmem(void *mem, int size)
 {
-	memset(mem, 0xff /*memfill*/, size);
-}
-
-
-static byte *loadfile(FILE *f, int *len)
-{
-	fseek(f, 0, SEEK_END);
-	int l = ftell(f);
-	byte *d = (byte*)malloc(l);
-
-	fseek(f, 0, SEEK_SET);
-	if (fread((void *)d, (size_t) l, 1, f) != 1)
-	{
-		l = 0;
-	}
-	*len = l;
-	return d;
+	memset(mem, 0xff, size);
 }
 
 
@@ -321,8 +303,8 @@ int state_load(char *name)
 
 void rtc_save()
 {
-	FILE *f;
 	if (!rtc.batt) return;
+	// FILE *f;
 	// if (!(f = fopen(rtcfile, "wb"))) return;
 	// rtc_save_internal(f);
 	// fclose(f);
@@ -330,8 +312,8 @@ void rtc_save()
 
 void rtc_load()
 {
-	FILE *f;
 	if (!rtc.batt) return;
+	// FILE *f;
 	// if (!(f = fopen(rtcfile, "r"))) return;
 	// rtc_load_internal(f);
 	// fclose(f);
@@ -354,7 +336,8 @@ void loader_unload()
 	}
 
 	mbc.type = mbc.romsize = mbc.ramsize = mbc.batt = 0;
-	ram.sbank = romfile = sramfile = saveprefix = 0;
+	romfile = sramfile = saveprefix = NULL;
+	// ram.sbank = NULL;
 }
 
 void loader_init(char *s)

@@ -14,7 +14,7 @@ static int framelen = 16743;
 static int framecount;
 
 
-void die(char *fmt, ...)
+void die(const char *fmt, ...)
 {
 	va_list ap;
 

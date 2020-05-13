@@ -552,7 +552,6 @@ IRAM_ATTR void render_bg_sms(int line)
   uint32 atex_mask;
   uint32 *cache_ptr;
   uint32 *linebuf_ptr = (uint32 *)&linebuf[0 - shift];
-  uint8* ctp;
 
   /* Draw first column (clipped) */
   if(shift)

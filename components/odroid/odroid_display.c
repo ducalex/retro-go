@@ -250,7 +250,7 @@ static void spi_task(void *arg)
 
         if ((int)t->user & 0x80)
         {
-            spi_put_buffer(t->tx_buffer);
+            spi_put_buffer((uint16_t*)t->tx_buffer);
         }
 
         if (xQueueSend(spi_queue, &t, portMAX_DELAY) != pdPASS)
@@ -493,10 +493,10 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
     short actual_height = actual_bottom - actual_top;
     short screen_top = y_origin + actual_top;
     short screen_left = x_origin + actual_left;
-    short screen_right = screen_left + actual_width;
+    // short screen_right = screen_left + actual_width;
     short screen_bottom = screen_top + actual_height;
     short ix_acc = (x_inc * actual_left) % SCREEN_WIDTH;
-    short iy_acc = (y_inc * actual_top) % SCREEN_HEIGHT;
+    // short iy_acc = (y_inc * actual_top) % SCREEN_HEIGHT;
     short lines_per_buffer = SPI_TRANSACTION_BUFFER_LENGTH / actual_width;
 
     if (actual_width == 0 || actual_height == 0)
@@ -755,8 +755,6 @@ static void generate_filter_structures(short width, short height)
 
     for (short x = 0, screen_x = x_origin; x < width; ++screen_x)
     {
-        short repeat = ++frame_filter_columns[x].repeat;
-
         x_acc += x_inc;
         while (x_acc >= SCREEN_WIDTH) {
             ++x;
@@ -972,7 +970,7 @@ void odroid_display_show_hourglass()
         (SCREEN_HEIGHT / 2) - (image_hourglass_empty_black_48dp.height / 2),
         image_hourglass_empty_black_48dp.width,
         image_hourglass_empty_black_48dp.height,
-        image_hourglass_empty_black_48dp.pixel_data);
+        (uint16_t*)image_hourglass_empty_black_48dp.pixel_data);
 }
 
 int8_t odroid_display_backlight_get()

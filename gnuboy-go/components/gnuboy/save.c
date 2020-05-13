@@ -298,7 +298,7 @@ void savestate(FILE *f)
 	//byte* ptr = (byte*)(0x3f800000 + 0x300000 + (0xbe7a & 0x1fff));
 	//printf("savesate: watch = 0x%x, 0x%x, 0x%x, 0x%x\n", *ptr, *(ptr+1), *(ptr+2), *(ptr+3));
 
-	byte* tmp = ram.sbank;
+	byte* tmp = (byte*)ram.sbank;
 	for (int j = 0; j < srl; ++j)
 	{
 		memcpy(buf, (void*)tmp, 4096);

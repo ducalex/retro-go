@@ -154,7 +154,7 @@ void mmc_bankrom(int size, uint32 address, int bank)
 /* Check to see if this mapper is supported */
 mapintf_t *mmc_peek(int map_num)
 {
-   mapintf_t **map_ptr = mappers;
+   mapintf_t **map_ptr = (mapintf_t **)mappers;
 
    while (NULL != *map_ptr)
    {

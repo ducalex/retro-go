@@ -57,7 +57,7 @@ static byte pix[8];
 
 
 __attribute__((optimize("unroll-loops")))
-static const byte* IRAM_ATTR get_patpix(int i, int x)
+static byte* IRAM_ATTR get_patpix(int i, int x)
 {
 	const int index = i & 0x3ff; // 1024 entries
 	const int rotation = i >> 10; // / 1024;
@@ -118,6 +118,11 @@ static const byte* IRAM_ATTR get_patpix(int i, int x)
 	return pix;
 }
 
+static const short wraptable[64] =
+{
+	0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,-32
+};
 
 static inline void tilebuf()
 {
@@ -125,12 +130,7 @@ static inline void tilebuf()
 	int base;
 	byte *tilemap, *attrmap;
 	int *tilebuf;
-	short *wrap;
-	static const short wraptable[64] =
-	{
-		0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
-		0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,-32
-	};
+	short const *wrap;
 
 	base = ((R_LCDC&0x08)?0x1C00:0x1800) + (T<<5) + S;
 	tilemap = lcd.vbank[0] + base;
@@ -659,9 +659,9 @@ void IRAM_ATTR pal_write_dmg(byte i, byte mapnum, byte d)
 
 static inline void pal_detect_dmg()
 {
+	const uint16_t* bgp, *obp0, *obp1;
     uint8_t infoIdx = 0;
 	uint8_t checksum = 0;
-	uint16_t* bgp, *obp0, *obp1;
 
 	// Calculate the checksum over 16 title bytes.
 	for (int i = 0; i < 16; i++)

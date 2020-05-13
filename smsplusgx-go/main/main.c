@@ -41,7 +41,7 @@ static odroid_gamepad_state *remoteJoystick = &joystick2;
 
 // --- MAIN
 
-
+#if 0
 static void netplay_callback(netplay_event_t event, void *arg)
 {
    bool new_netplay;
@@ -78,6 +78,7 @@ static void netplay_callback(netplay_event_t event, void *arg)
       remoteJoystick = &joystick2;
    }
 }
+#endif
 
 static bool SaveState(char *pathName)
 {
@@ -166,7 +167,8 @@ void app_main(void)
     update1.pixel_mask = update2.pixel_mask = PIXEL_MASK;
     update1.pixel_clear = update2.pixel_clear = -1;
     update1.pal_shift_mask = update2.pal_shift_mask = PAL_SHIFT_MASK;
-    update1.palette = &palettes[0]; update2.palette = &palettes[1];
+    update1.palette = (uint16_t*)&palettes[0];
+    update2.palette = (uint16_t*)&palettes[1];
     update1.buffer += bitmap.viewport.x;
     update2.buffer += bitmap.viewport.x;
 

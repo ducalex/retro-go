@@ -54,7 +54,7 @@ void sys_checkdir(char *path, int wr);
 void sys_sanitize(char *s);
 void sys_initpath(char *exe);
 void doevents();
-void die(char *fmt, ...);
+void die(const char *fmt, ...);
 
 #ifndef GNUBOY_NO_PRINTF
 #define debug_printf_init()
@@ -107,7 +107,7 @@ void refresh_4_4x(un32 *dest, byte *src, un32 *pal, int cnt);
 /* debug.c */
 void debug_disassemble(addr a, int c);
 
-void die(char *fmt, ...);
+void die(const char *fmt, ...);
 
 
 #endif

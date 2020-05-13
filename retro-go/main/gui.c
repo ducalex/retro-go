@@ -54,7 +54,7 @@ int gui_themes_count = 12;
 static uint16_t *cover_buffer;
 
 
-const retro_emulator_file_t *gui_list_selected_file(retro_emulator_t *emu)
+retro_emulator_file_t *gui_list_selected_file(retro_emulator_t *emu)
 {
     if (emu->roms.count == 0 || emu->roms.selected > emu->roms.count) {
         return NULL;
@@ -142,7 +142,7 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
         cover_buffer = (uint16_t*)malloc(200 * 200 * 2);
     }
 
-    const retro_emulator_file_t *file = gui_list_selected_file(emu);
+    retro_emulator_file_t *file = gui_list_selected_file(emu);
     uint32_t *crc = &file->checksum;
     char path[128], path2[128], buf_crc[10];
     FILE *fp;

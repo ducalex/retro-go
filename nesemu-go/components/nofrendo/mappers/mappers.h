@@ -58,7 +58,7 @@ static const mapintf_t *mappers[] =
     &map2_intf,
     &map3_intf,
     &map4_intf,
-    &map5_intf, // &map5new_intf,
+    &map5_intf,
     &map7_intf,
     &map8_intf,
     &map9_intf,

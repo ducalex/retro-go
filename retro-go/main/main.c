@@ -134,7 +134,7 @@ void retro_loop()
 
             if (!emu->initialized)
             {
-                odroid_overlay_draw_text(58, 35, 320 - 58, "Loading directory...", C_WHITE, C_BLACK);
+                odroid_overlay_draw_text(58, 35, 320 - 58, (char*)"Loading directory...", C_WHITE, C_BLACK);
                 emulators_init_emu(emu);
             }
 

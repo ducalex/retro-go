@@ -82,7 +82,6 @@ int system_save_state(void *mem)
 void system_load_state(void *mem)
 {
   int i;
-  uint8 *buf;
 
   printf("%s: sizeof sms=%d\n", __func__, sizeof(sms));
   printf("%s: sizeof vdp=%d\n", __func__, sizeof(vdp));

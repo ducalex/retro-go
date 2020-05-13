@@ -30,7 +30,7 @@ static netplay_status_t netplay_status = NETPLAY_STATUS_NOT_INIT;
 static netplay_mode_t netplay_mode = NETPLAY_MODE_NONE;
 static netplay_callback_t netplay_callback = NULL;
 static SemaphoreHandle_t netplay_sync;
-static bool netplay_available = false;
+// static bool netplay_available = false;
 
 static netplay_player_t players[MAX_PLAYERS];
 static netplay_player_t *local_player;
@@ -57,8 +57,8 @@ static void network_cleanup()
     if (server_sock) close(server_sock);
     if (client_sock) close(client_sock);
 
-    rx_sock = tx_sock = NULL;
-    server_sock = client_sock = NULL;
+    rx_sock = tx_sock = 0;
+    server_sock = client_sock = 0;
     memset(&local_if, 0, sizeof(local_if));
 }
 
@@ -150,7 +150,7 @@ static inline bool receive_packet(netplay_packet_t *packet, int timeout)
 
 static inline void send_packet(uint32_t dest, uint8_t cmd, uint8_t arg, void *data, uint8_t data_len)
 {
-    netplay_packet_t packet = {local_player->id, cmd, arg, data_len};
+    netplay_packet_t packet = {local_player->id, cmd, arg, data_len, {}};
     size_t len = sizeof(packet) - sizeof(packet.data) + data_len;
 
     if (data_len > 0)
@@ -193,7 +193,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
 
         case SYSTEM_EVENT_AP_STAIPASSIGNED:
             send_packet(event->event_info.ap_staipassigned.ip.addr, NETPLAY_PACKET_INFO,
-                                       NULL, local_player, sizeof(netplay_player_t));
+                                       0, (void*)local_player, sizeof(netplay_player_t));
             set_status(NETPLAY_STATUS_HANDSHAKE);
             break;
 
@@ -300,7 +300,7 @@ static void netplay_task()
                 }
                 else
                 {
-                    send_packet(packet_from->id, NETPLAY_PACKET_INFO, 1, local_player, sizeof(netplay_player_t));
+                    send_packet(packet_from->id, NETPLAY_PACKET_INFO, 1, (void*)local_player, sizeof(netplay_player_t));
                 }
                 break;
 
@@ -379,12 +379,12 @@ bool odroid_netplay_quick_start()
 #ifdef ENABLE_NETPLAY
     const char *status_msg = "Initializing...";
     const char *screen_msg = NULL;
-    short timeout = 100;
+    // short timeout = 100;
     odroid_gamepad_state joystick;
 
     odroid_display_clear(0);
 
-    const odroid_dialog_choice_t choices[] = {
+    odroid_dialog_choice_t choices[] = {
         {1, "Host Game (P1)", "", 1, NULL},
         {2, "Find Game (P2)", "", 1, NULL},
         ODROID_DIALOG_CHOICE_LAST
@@ -543,7 +543,7 @@ void odroid_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
 
     if (netplay_mode == NETPLAY_MODE_HOST)
     {
-        send_packet(remote_player->id, NETPLAY_PACKET_SYNC_REQ, 0, data_in, data_len);
+        send_packet(remote_player->id, NETPLAY_PACKET_SYNC_REQ, 0, (void*)data_in, data_len);
     }
 
 #ifdef NETPLAY_SYNCHRONOUS_TEST
@@ -559,7 +559,7 @@ void odroid_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
         do {
             recv(rx_sock, &packet, sizeof packet, 0); // REQ
         } while (packet.cmd != NETPLAY_PACKET_SYNC_REQ);
-        send_packet(remote_player->id, NETPLAY_PACKET_SYNC_ACK, 0, data_in, data_len);
+        send_packet(remote_player->id, NETPLAY_PACKET_SYNC_ACK, 0, (void*)data_in, data_len);
         // recv(rx_sock, &packet, sizeof packet, 0); // DONE
     }
 

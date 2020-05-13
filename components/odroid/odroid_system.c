@@ -20,7 +20,6 @@ static uint startAction = 0;
 static char *romPath = NULL;
 static state_handler_t loadState;
 static state_handler_t saveState;
-static state_handler_t resetState;
 
 static SemaphoreHandle_t spiMutex;
 static spi_lock_res_t spiMutexOwner;
@@ -87,7 +86,7 @@ void odroid_system_init(int appId, int sampleRate)
             (ODROID_SCREEN_HEIGHT - image_sdcard_red_48dp.height) / 2,
             image_sdcard_red_48dp.width,
             image_sdcard_red_48dp.height,
-            image_sdcard_red_48dp.pixel_data);
+            (uint16_t*)image_sdcard_red_48dp.pixel_data);
         odroid_system_halt();
     }
 
@@ -354,23 +353,31 @@ void odroid_system_set_led(int value)
 
 static void odroid_system_monitor_task(void *arg)
 {
+    runtime_counters_t current;
     bool led_state = false;
+    float tickTime = 0;
 
     while (1)
     {
-        float seconds = (get_elapsed_time_since(counters.resetTime) / 1000000.f);
+        // Make a copy and reset counters immediately because processing could take 1-2ms
+        current = counters;
+        counters.totalFrames = counters.fullFrames = 0;
+        counters.skippedFrames = counters.busyTime = 0;
+        counters.resetTime = get_elapsed_time();
+
+        tickTime = (counters.resetTime - current.resetTime);
         statistics.battery = odroid_input_battery_read();
-        statistics.busyPercent = ((counters.busyTime / 1000000.f) / seconds) * 100.f;
-        statistics.skippedFPS = counters.skippedFrames / seconds;
-        statistics.totalFPS = counters.totalFrames / seconds;
+        statistics.busyPercent = current.busyTime / tickTime * 100.f;
+        statistics.skippedFPS = current.skippedFrames / (tickTime / 1000000.f);
+        statistics.totalFPS = current.totalFrames / (tickTime / 1000000.f);
         // To do get the actual game refresh rate somehow
         statistics.emulatedSpeed = statistics.totalFPS / 60 * 100.f;
 
-        if (statistics.lastTickTime > 0 && seconds > 1)
-        {
+        // if (statistics.lastTickTime > 0 && tickTime > 1000000.f)
+        // {
             // printf("WATCHDOG: Last emulation tick was %ds ago\n", seconds);
             // odroid_system_panic("The application froze!");
-        }
+        // }
 
         if (statistics.battery.percentage < 2)
         {
@@ -388,14 +395,10 @@ static void odroid_system_monitor_task(void *arg)
             heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024,
             statistics.busyPercent,
             statistics.totalFPS,
-            counters.skippedFrames,
-            counters.totalFrames - counters.fullFrames - counters.skippedFrames,
-            counters.fullFrames,
+            current.skippedFrames,
+            current.totalFrames - current.fullFrames - current.skippedFrames,
+            current.fullFrames,
             statistics.battery.millivolts);
-
-        counters.totalFrames = counters.skippedFrames = counters.fullFrames = 0;
-        counters.busyTime = 0;
-        counters.resetTime = get_elapsed_time();
 
         vTaskDelay(pdMS_TO_TICKS(1000));
     }

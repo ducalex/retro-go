@@ -78,7 +78,7 @@ void emulators_init_emu(retro_emulator_t *emu)
 
         while ((in_file = readdir(dir)))
         {
-            char *ext = odroid_sdcard_get_extension(in_file->d_name);
+            const char *ext = odroid_sdcard_get_extension(in_file->d_name);
 
             if (!ext) continue;
 
@@ -141,7 +141,7 @@ void emulators_init()
 
 void emulators_start_emu(retro_emulator_t *emu)
 {
-    const retro_emulator_file_t *file = gui_list_selected_file(emu);
+    retro_emulator_file_t *file = gui_list_selected_file(emu);
     printf("Starting game: %s\n", file->path);
 
     odroid_settings_RomFilePath_set(file->path);

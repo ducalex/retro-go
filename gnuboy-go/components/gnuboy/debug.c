@@ -560,7 +560,7 @@ void debug_disassemble(addr a, int c)
 	static byte ops[3];
 	static int opaddr;
 	static char mnemonic[256];
-	static char *pattern;
+	static const char *pattern;
 
 	while (c > 0)
 	{

@@ -11,10 +11,7 @@
 
 #define AUDIO_SAMPLE_RATE 22050
 
-static bool netplay = false;
-
-static bool saveSRAM = false;
-static int  sramSaveTimer = 0;
+// static bool netplay = false;
 // --- MAIN
 
 
