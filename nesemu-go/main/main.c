@@ -183,12 +183,12 @@ static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
 
    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
       odroid_settings_Palette_set(pal);
-      ppu_setnpal(pal);
+      ppu_setpalnum(pal);
       odroid_display_queue_update(currentUpdate, NULL);
       odroid_display_queue_update(currentUpdate, NULL);
    }
 
-   sprintf(option->value, "%.7s", ppu_getnpal(pal)->name);
+   sprintf(option->value, "%.7s", ppu_getpalnum(pal)->name);
    return event == ODROID_DIALOG_ENTER;
 }
 
@@ -211,7 +211,7 @@ void osd_loadstate()
    }
 
    ppu_limitsprites(odroid_settings_int32_get(NVS_KEY_LIMIT_SPRITES, 1));
-   ppu_setnpal(odroid_settings_Palette_get());
+   ppu_setpalnum(odroid_settings_Palette_get());
    set_overscan(odroid_settings_app_int32_get(NVS_KEY_OVERSCAN, 1));
 }
 

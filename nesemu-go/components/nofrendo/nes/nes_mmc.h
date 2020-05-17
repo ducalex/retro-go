@@ -29,11 +29,11 @@
 typedef struct mapintf_s mapintf_t;
 typedef struct mmc_s mmc_t;
 
-#include <noftypes.h>
+#include <nofrendo.h>
 #include <libsnss.h>
-#include <nes_apu.h>
-#include <nes_rom.h>
-#include <nes_mem.h>
+#include "nes_apu.h"
+#include "nes_rom.h"
+#include "nes_mem.h"
 
 struct mapintf_s
 {
@@ -61,6 +61,7 @@ struct mmc_s
 
 extern rominfo_t *mmc_getinfo(void);
 
+extern void mmc_bankwram(int size, uint32 address, int bank);
 extern void mmc_bankvrom(int size, uint32 address, int bank);
 extern void mmc_bankrom(int size, uint32 address, int bank);
 

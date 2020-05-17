@@ -70,17 +70,34 @@
 /* Predefined input palette count */
 #define  PPU_PAL_COUNT        6
 
+/* Some mappers need to hook into the PPU's internals */
+typedef void (*ppu_latchfunc_t)(uint32 address, uint8 value);
+typedef uint8 (*ppu_vreadfunc_t)(uint32 address, uint8 value);
 
-/* some mappers do *dumb* things */
-typedef void (*ppulatchfunc_t)(uint32 address, uint8 value);
+typedef struct
+{
+   uint8 y_loc;
+   uint8 tile;
+   uint8 attr;
+   uint8 x_loc;
+} ppu_obj_t;
 
 typedef struct ppu_s
 {
-   /* big nasty memory chunks */
+   /* We always have 4 nametables */
    uint8 nametab[0x1000];
+
+   /* Sprite memory */
    uint8 oam[256];
+
+   /* Internal palette */
    uint8 palette[32];
+
+   /* VRAM (CHR RAM/ROM) paging */
    uint8 *page[16];
+
+   /* Framebuffer palette */
+   rgb_t curpal[256];
 
    /* hardware registers */
    uint8 ctrl0, ctrl1, stat, oam_addr;
@@ -89,8 +106,7 @@ typedef struct ppu_s
    int vaddr_inc;
    uint32 tile_nametab;
 
-   uint8 obj_height;
-   uint32 obj_base, bg_base;
+   uint32 obj_height, obj_base, bg_base;
 
    bool bg_on, obj_on;
    bool obj_mask, bg_mask;
@@ -101,10 +117,8 @@ typedef struct ppu_s
    uint32 strike_cycle;
 
    /* callbacks for naughty mappers */
-   ppulatchfunc_t latchfunc;
-
-   /* copy of our current palette */
-   rgb_t curpal[256];
+   ppu_latchfunc_t latchfunc;
+   ppu_vreadfunc_t vreadfunc;
 
    bool vram_accessible;
    bool vram_present;
@@ -133,7 +147,8 @@ extern void ppu_checknmi();
 
 extern ppu_t *ppu_create(void);
 extern void ppu_destroy(ppu_t *ppu);
-extern void ppu_setlatchfunc(ppulatchfunc_t func);
+extern void ppu_setlatchfunc(ppu_latchfunc_t func);
+extern void ppu_setvreadfunc(ppu_vreadfunc_t func);
 
 extern void ppu_getcontext(ppu_t *dest_ppu);
 extern void ppu_setcontext(ppu_t *src_ppu);
@@ -143,9 +158,9 @@ extern uint8 ppu_read(uint32 address);
 extern void ppu_write(uint32 address, uint8 value);
 
 /* rendering */
-extern void ppu_setpal(ppu_t *ppu, rgb_t *pal);
-extern void ppu_setnpal(int n);
-extern const palette_t *ppu_getnpal(int n);
+extern void ppu_setpalette(ppu_t *ppu, rgb_t *pal);
+extern void ppu_setpalnum(int n);
+extern const palette_t *ppu_getpalnum(int n);
 
 /* bleh */
 extern void ppu_dumppattern(bitmap_t *bmp, int table_num, int x_loc, int y_loc, int col);

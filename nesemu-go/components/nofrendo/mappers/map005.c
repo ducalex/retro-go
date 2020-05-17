@@ -350,9 +350,9 @@ static uint8 map5_read(uint32 address)
    }
 }
 
-static uint8 map5_vram_read(uint32 address)
+static uint8 map5_vram_read(uint32 address, uint8 value)
 {
-   return 0xFF; //ppu_vram_read(address);
+   return 0xFF;
 }
 
 static uint8 map5_exram_read(uint32 address)
@@ -374,7 +374,13 @@ static void map5_init(void)
 {
    rominfo_t *cart = mmc_getinfo();
 
-   cart->sram = realloc(cart->sram, 0x10000);
+   if (cart->sram)
+   {
+      free(cart->sram);
+   }
+
+   cart->sram = malloc(0x10000);
+   mmc_bankwram(8, 0x6000, 0);
 
    irq.scanline = irq.enabled = 0;
    irq.status = 0;
@@ -402,7 +408,7 @@ static void map5_init(void)
    nametable_fill();
    nametable_update(0);
 
-   // ppu_setvramhook(map5_vram_read);
+   ppu_setvreadfunc(map5_vram_read);
 }
 
 static void map5_getstate(SnssMapperBlock *state)

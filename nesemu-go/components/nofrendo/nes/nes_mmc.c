@@ -24,7 +24,6 @@
 */
 
 #include <string.h>
-#include <noftypes.h>
 #include <nofrendo.h>
 #include <nes6502.h>
 #include <libsnss.h>
@@ -51,6 +50,7 @@
 
 static mmc_t mmc;
 
+
 rominfo_t *mmc_getinfo(void)
 {
    return mmc.cart;
@@ -68,7 +68,71 @@ void mmc_getcontext(mmc_t *dest_mmc)
    *dest_mmc = mmc;
 }
 
-/* VROM bankswitching */
+/* Map a pointer into the address space */
+void mmc_bankptr(int size, uint32 address, int bank, uint8 *ptr)
+{
+   int page = address >> MEM_PAGESHIFT;
+   uint8 *base;
+
+   if (ptr == NULL)
+   {
+      MESSAGE_ERROR("MMC: Invalid pointer! Addr: $%04X Bank: %d Size: %d\n", address, bank, size);
+      abort();
+   }
+
+   switch (size)
+   {
+   case 8:
+      if (bank == MMC_LASTBANK)
+         bank = MMC_LAST8KPRG;
+      base = ptr + ((bank % MMC_8KPRG) << 13);
+      mem_setpage(page + 0, base);
+      mem_setpage(page + 1, base + 0x1000);
+      break;
+
+   case 16:
+      if (bank == MMC_LASTBANK)
+         bank = MMC_LAST16KPRG;
+      base = ptr + ((bank % MMC_16KPRG) << 14);
+      mem_setpage(page + 0, base);
+      mem_setpage(page + 1, base + 0x1000);
+      mem_setpage(page + 2, base + 0x2000);
+      mem_setpage(page + 3, base + 0x3000);
+      break;
+
+   case 32:
+      if (bank == MMC_LASTBANK)
+         bank = MMC_LAST32KPRG;
+      base = ptr + ((bank % MMC_32KPRG) << 15);
+      mem_setpage(page + 0, base);
+      mem_setpage(page + 1, base + 0x1000);
+      mem_setpage(page + 2, base + 0x2000);
+      mem_setpage(page + 3, base + 0x3000);
+      mem_setpage(page + 1, base + 0x4000);
+      mem_setpage(page + 2, base + 0x5000);
+      mem_setpage(page + 3, base + 0x6000);
+      mem_setpage(page + 3, base + 0x7000);
+      break;
+
+   default:
+      MESSAGE_ERROR("MMC: Invalid bank size! Addr: $%04X Bank: %d Size: %d\n", address, bank, size);
+      abort();
+   }
+}
+
+/* PRG-ROM bankswitching */
+void mmc_bankrom(int size, uint32 address, int bank)
+{
+   mmc_bankptr(size, address, bank, mmc.prg);
+}
+
+/* PRG-RAM bankswitching */
+void mmc_bankwram(int size, uint32 address, int bank)
+{
+   mmc_bankptr(size, address, bank, mmc.cart->sram);
+}
+
+/* CHR-ROM bankswitching */
 void mmc_bankvrom(int size, uint32 address, int bank)
 {
    switch (size)
@@ -98,56 +162,8 @@ void mmc_bankvrom(int size, uint32 address, int bank)
       break;
 
    default:
-      MESSAGE_ERROR("Invalid CHR bank size %d\n", size);
-      //abort();
-      break;
-   }
-}
-
-/* ROM bankswitching */
-void mmc_bankrom(int size, uint32 address, int bank)
-{
-   int page = address >> MEM_PAGESHIFT;
-   uint8 *base;
-
-   switch (size)
-   {
-   case 8:
-      if (bank == MMC_LASTBANK)
-         bank = MMC_LAST8KPRG;
-      base = &mmc.prg[(bank % MMC_8KPRG) << 13];
-      mem_setpage(page + 0, base);
-      mem_setpage(page + 1, base + 0x1000);
-      break;
-
-   case 16:
-      if (bank == MMC_LASTBANK)
-         bank = MMC_LAST16KPRG;
-      base = &mmc.prg[(bank % MMC_16KPRG) << 14];
-      mem_setpage(page + 0, base);
-      mem_setpage(page + 1, base + 0x1000);
-      mem_setpage(page + 2, base + 0x2000);
-      mem_setpage(page + 3, base + 0x3000);
-      break;
-
-   case 32:
-      if (bank == MMC_LASTBANK)
-         bank = MMC_LAST32KPRG;
-      base = &mmc.prg[(bank % MMC_32KPRG) << 15];
-      mem_setpage(page + 0, base);
-      mem_setpage(page + 1, base + 0x1000);
-      mem_setpage(page + 2, base + 0x2000);
-      mem_setpage(page + 3, base + 0x3000);
-      mem_setpage(page + 1, base + 0x4000);
-      mem_setpage(page + 2, base + 0x5000);
-      mem_setpage(page + 3, base + 0x6000);
-      mem_setpage(page + 3, base + 0x7000);
-      break;
-
-   default:
-      MESSAGE_ERROR("Invalid PRG bank size %d\n", size);
-      //abort();
-      break;
+      MESSAGE_ERROR("MMC: Invalid CHR bank size %d\n", size);
+      abort();
    }
 }
 
@@ -168,14 +184,8 @@ mapintf_t *mmc_peek(int map_num)
 
 static void mmc_setpages(void)
 {
-   MESSAGE_INFO("Setting up mapper %d\n", mmc.intf->number);
-
-   /* Switch SRAM into CPU space */
-   if (mmc.cart->sram)
-   {
-      mem_setpage(6, mmc.cart->sram);
-      mem_setpage(7, mmc.cart->sram + 0x1000);
-   }
+   /* Switch Save RAM into CPU space */
+   mmc_bankwram(8, 0x6000, 0);
 
    /* Switch PRG and CHR into CPU space */
    mmc_bankrom(16, 0x8000, 0);
@@ -202,7 +212,7 @@ void mmc_reset(void)
    if (mmc.intf->init)
       mmc.intf->init();
 
-   MESSAGE_INFO("Reset memory mapper\n");
+   MESSAGE_INFO("MMC: Mapper %s (%d) ready!\n", mmc.intf->name, mmc.intf->number);
 }
 
 void mmc_destroy(mmc_t *nes_mmc)
@@ -219,7 +229,7 @@ mmc_t *mmc_create(rominfo_t *rominfo)
    map_ptr = mmc_peek(rominfo->mapper_number);
    if (NULL == map_ptr)
    {
-      MESSAGE_ERROR("Unsupported mapper %d\n", rominfo->mapper_number);
+      MESSAGE_ERROR("MMC: Unsupported mapper %d\n", rominfo->mapper_number);
       return NULL;
    }
 
@@ -238,14 +248,14 @@ mmc_t *mmc_create(rominfo_t *rominfo)
    {
       temp->chr = rominfo->vrom;
       temp->chr_banks = rominfo->vrom_banks;
+      MESSAGE_INFO("MMC: Using CHR-ROM/VROM (%d banks)\n", rominfo->vrom_banks);
    }
    else
    {
       temp->chr = rominfo->vram;
       temp->chr_banks = rominfo->vram_banks;
+      MESSAGE_INFO("MMC: Using CHR-RAM/VRAM (%d banks)\n", rominfo->vram_banks);
    }
-
-   MESSAGE_INFO("Created memory mapper: %s\n", map_ptr->name);
 
    return temp;
 }
