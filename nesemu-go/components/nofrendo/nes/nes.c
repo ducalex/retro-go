@@ -24,7 +24,6 @@
 */
 
 #include <string.h>
-#include <noftypes.h>
 #include <nofrendo.h>
 #include <nes_input.h>
 #include <osd.h>

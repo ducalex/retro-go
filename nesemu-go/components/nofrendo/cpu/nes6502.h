@@ -29,7 +29,7 @@
 #ifndef _NES6502_H_
 #define _NES6502_H_
 
-#include <noftypes.h>
+#include <nofrendo.h>
 
 /* P (flag) register bitmasks */
 #define  N_FLAG         0x80

@@ -26,7 +26,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <noftypes.h>
 #include <nofrendo.h>
 #include "nes_rom.h"
 #include "nes_mmc.h"

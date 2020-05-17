@@ -24,7 +24,6 @@
 **
 */
 
-#include <noftypes.h>
 #include <nofrendo.h>
 #include <nes_mmc.h>
 #include <nes_ppu.h>

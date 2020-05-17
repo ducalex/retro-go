@@ -23,14 +23,12 @@
 ** $Id: nes_apu.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
-#include <string.h>
-#include <noftypes.h>
 #include <nofrendo.h>
-#include <nes.h>
-#include <nes_apu.h>
-#include "nes6502.h"
+#include <nes6502.h>
+#include "nes_apu.h"
 
 #include <esp_attr.h>
+#include <string.h>
 
 #define APU_OVERSAMPLE
 #define APU_VOLUME_DECAY(x)  ((x) -= ((x) >> 7))

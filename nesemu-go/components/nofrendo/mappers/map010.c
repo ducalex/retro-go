@@ -23,11 +23,11 @@
 ** $Id: map010.c,v 1.0 2018/07/07
 */
 
-#include <string.h>
-#include <noftypes.h>
+#include <nofrendo.h>
 #include <nes_mmc.h>
 #include <nes_ppu.h>
 #include <libsnss.h>
+#include <string.h>
 
 static uint8 latch[2];
 static uint8 regs[4];

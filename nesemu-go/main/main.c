@@ -2,8 +2,7 @@
 #include "odroid_system.h"
 
 #include <string.h>
-#include <stdint.h>
-#include <noftypes.h>
+#include <nofrendo.h>
 #include <bitmap.h>
 #include <event.h>
 #include <nes.h>

@@ -23,10 +23,9 @@
 ** $Id: nes_input.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
-#include <noftypes.h>
 #include <nofrendo.h>
-#include <nes_input.h>
 #include <esp_attr.h>
+#include "nes_input.h"
 
 /* TODO: make a linked list of inputs sources, so they
 **       can be removed if need be

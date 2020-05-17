@@ -23,9 +23,9 @@
 ** $Id: nes6502.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
-#include <noftypes.h>
 #include <nofrendo.h>
 #include <esp_attr.h>
+#include <string.h>
 #include "nes6502.h"
 #include "dis6502.h"
 

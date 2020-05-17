@@ -27,7 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <noftypes.h>
+#include <string.h>
 #include <nofrendo.h>
 #include <event.h>
 #include <osd.h>

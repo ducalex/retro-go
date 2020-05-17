@@ -26,8 +26,6 @@
 #ifndef _BITMAP_H_
 #define _BITMAP_H_
 
-#include <noftypes.h>
-
 typedef struct rgb_s
 {
    uint8 r, g, b;
@@ -37,7 +35,7 @@ typedef struct bitmap_s
 {
    short width, height, pitch;
    uint8 *data;               /* protected */
-   uint8 *line[ZERO_LENGTH];  /* will hold line pointers */
+   uint8 *line[0];            /* will hold line pointers */
 } bitmap_t;
 
 extern bitmap_t *bmp_create(short width, short height, short overdraw);

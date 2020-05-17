@@ -26,7 +26,7 @@
 #ifndef _NES_H_
 #define _NES_H_
 
-#include <noftypes.h>
+#include <nofrendo.h>
 #include <nes_apu.h>
 #include <nes_ppu.h>
 #include <nes_mmc.h>

@@ -23,7 +23,6 @@
 ** $Id: event.c,v 1.3 2001/04/27 14:37:11 neil Exp $
 */
 
-#include <noftypes.h>
 #include <event.h>
 #include <nofrendo.h>
 #include <nes.h>

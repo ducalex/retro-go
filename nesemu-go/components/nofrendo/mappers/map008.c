@@ -23,7 +23,7 @@
 ** $Id: map008.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
-#include <noftypes.h>
+#include <nofrendo.h>
 #include <nes_mmc.h>
 
 /* mapper 8: FFE F3xxx -- what the hell uses this? */

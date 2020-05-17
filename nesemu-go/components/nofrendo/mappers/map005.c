@@ -25,16 +25,12 @@
 */
 
 #include <string.h>
-#include <noftypes.h>
 #include <nofrendo.h>
 #include <nes_mmc.h>
 #include <nes.h>
 
 static uint8 prg_mode;
 static uint8 chr_mode;
-static uint8 exram_mode;
-static uint8 prgram_protect1;
-static uint8 prgram_protect2;
 static uint8 nametable_mapping;
 static uint8 multiplication[2];
 
@@ -48,6 +44,19 @@ static uint16 chr_upper_bits;
 #define SPLIT_RIGHT 0x40
 #define SPLIT_TILE 0x1F
 
+static struct
+{
+   uint8 *data;
+   uint8 mode;
+} exram;
+
+static struct
+{
+   uint8 *data;
+   uint8 mode;
+   uint8 protect1;
+   uint8 protect2;
+} prgram;
 
 static struct
 {
@@ -69,12 +78,29 @@ static struct
    uint8 tile;
 } fill_mode;
 
-static uint8 *ExRAM;
 
-
-static uint8 *get_nametable(int n)
+static inline uint8 *get_nametable(int n)
 {
    return nes_getptr()->ppu->nametab + (0x400 * n);
+}
+
+static void prg_setbank(int size, uint32 address, int bank)
+{
+   bool rom = (bank & 0x80);
+
+   bank &= 0x7F;
+
+   if (size == 32) bank >>= 2;
+   if (size == 16) bank >>= 1;
+
+   if (rom)
+   {
+      mmc_bankrom(size, address, bank);
+   }
+   else
+   {
+      mmc_bankwram(size, address, bank);
+   }
 }
 
 static void prg_update()
@@ -82,25 +108,25 @@ static void prg_update()
    switch (prg_mode)
    {
    case 0: /* 1x32K */
-      mmc_bankrom(32, 0x8000, prg_banks[0] >> 2);
+      prg_setbank(32, 0x8000, prg_banks[0]);
       break;
 
    case 1: /* 2x16K */
-      mmc_bankrom(16, 0x8000, prg_banks[1] >> 1); // Could also be RAM
-      mmc_bankrom(16, 0xC000, prg_banks[3] >> 1);
+      prg_setbank(16, 0x8000, prg_banks[1]);
+      prg_setbank(16, 0xC000, prg_banks[3]);
       break;
 
    case 2: /* 1x16K+2x8K */
-      mmc_bankrom(16, 0x8000, prg_banks[1] >> 1); // Could also be RAM
-      mmc_bankrom(8, 0xC000, prg_banks[2]);       // Could also be RAM
-      mmc_bankrom(8, 0xE000, prg_banks[3]);
+      prg_setbank(16, 0x8000, prg_banks[1]);
+      prg_setbank(8, 0xC000, prg_banks[2]);
+      prg_setbank(8, 0xE000, prg_banks[3]);
       break;
 
    case 3: /* 4x8K */
-      mmc_bankrom(8, 0x8000, prg_banks[0]); // Could also be RAM
-      mmc_bankrom(8, 0xA000, prg_banks[1]); // Could also be RAM
-      mmc_bankrom(8, 0xC000, prg_banks[2]); // Could also be RAM
-      mmc_bankrom(8, 0xE000, prg_banks[3]);
+      prg_setbank(8, 0x8000, prg_banks[0]);
+      prg_setbank(8, 0xA000, prg_banks[1]);
+      prg_setbank(8, 0xC000, prg_banks[2]);
+      prg_setbank(8, 0xE000, prg_banks[3]);
       break;
    }
 }
@@ -129,12 +155,6 @@ static void chr_update(int reg)
       mmc_bankvrom(1, 7 * 0x400, chr_banks[reg < 8 ? 7 : 11]);
       break;
    }
-}
-
-static inline void prg_switch(int reg, int value)
-{
-   prg_banks[reg] = value & 0x7F;
-   prg_update();
 }
 
 static inline void chr_switch(int reg, int value)
@@ -200,20 +220,20 @@ static void map5_write(uint32 address, uint8 value)
    case 0x5102:
       /* PRG RAM Protect 1 */
       /* Allow write = 0b10 */
-      prgram_protect1 = value & 3;
+      prgram.protect1 = value & 3;
       prg_update();
       break;
 
    case 0x5103:
       /* PRG RAM Protect 2 */
       /* Allow write = 0b01 */
-      prgram_protect2 = value & 3;
+      prgram.protect2 = value & 3;
       prg_update();
       break;
 
    case 0x5104:
       /* Extended RAM mode */
-      exram_mode = value & 3;
+      exram.mode = value & 3;
       break;
 
    case 0x5105:
@@ -242,7 +262,8 @@ static void map5_write(uint32 address, uint8 value)
    case 0x5116:
    case 0x5117:
       /* PRG Bankswitching */
-      prg_switch(address - 0x5114, value);
+      prg_banks[address - 0x5114] = value;
+      prg_update();
       break;
 
    case 0x5120:
@@ -329,119 +350,31 @@ static uint8 map5_read(uint32 address)
    }
 }
 
+static uint8 map5_vram_read(uint32 address)
+{
+   return 0xFF; //ppu_vram_read(address);
+}
+
 static uint8 map5_exram_read(uint32 address)
 {
-   if (!ExRAM) ExRAM = get_nametable(2);
-   return ExRAM[address & 0x3FF];
+   if (!exram.data) exram.data = get_nametable(2);
+   return exram.data[address - 0x5C00];
 }
 
 static void map5_exram_write(uint32 address, uint8 value)
 {
-   if (exram_mode != 3) {
-      if (!ExRAM) ExRAM = get_nametable(2);
-      ExRAM[address & 0x3FF] = value;
+   if (exram.mode != 3)
+   {
+      if (!exram.data) exram.data = get_nametable(2);
+      exram.data[address - 0x5C00] = value;
    }
 }
-
-
-
-uint8 MapperReadVRAM(uint32 address)
-{
-   #if 0
-   bool isNtFetch = address >= 0x2000 && address <= 0x2FFF && (address & 0x3FF) < 0x3C0;
-   if(isNtFetch)
-   {
-      //Nametable data, not an attribute fetch
-      _splitInSplitRegion = false;
-      _splitTileNumber++;
-
-      if(_ppuInFrame) {
-         UpdateChrBanks(false);
-      } else if(_needInFrame) {
-         _needInFrame = false;
-         _ppuInFrame = true;
-         UpdateChrBanks(false);
-      }
-   }
-
-   DetectScanlineStart(address);
-
-   _ppuIdleCounter = 3;
-   _lastPpuReadAddr = address;
-
-   if (exram_mode <= 1 && _ppuInFrame)
-   {
-      if((vert_split.mode & SPLIT_ENABLED))
-      {
-         uint16_t verticalSplitScroll = (_verticalSplitScroll + _scanlineCounter) % 240;
-         if(addr >= 0x2000) {
-         if(isNtFetch) {
-         uint8_t tileNumber = (_splitTileNumber + 2) % 42;
-         if(tileNumber <= 32 && ((_verticalSplitRightSide && tileNumber >= _verticalSplitDelimiterTile) || (!_verticalSplitRightSide && tileNumber < _verticalSplitDelimiterTile))) {
-         //Split region (for next 3 fetches, attribute + 2x tile data)
-         _splitInSplitRegion = true;
-         _splitTile = ((verticalSplitScroll & 0xF8) << 2) | tileNumber;
-         return InternalReadRam(0x5C00 + _splitTile);
-         } else {
-         //Outside of split region (or sprite data), result can get modified by ex ram mode code below
-         _splitInSplitRegion = false;
-         }
-         } else if(_splitInSplitRegion) {
-         return InternalReadRam(0x5FC0 | ((_splitTile & 0x380) >> 4) | ((_splitTile & 0x1F) >> 2));
-         }
-         } else if(_splitInSplitRegion) {
-         //CHR tile fetches for split region
-         return _chrRom[(_verticalSplitBank % (GetCHRPageCount() / 4)) * 0x1000 + (((addr & ~0x07) | (verticalSplitScroll & 0x07)) & 0xFFF)];
-         }
-      }
-
-      if(exram_mode == 1 && (_splitTileNumber < 32 || _splitTileNumber >= 40))
-      {
-         //"In Mode 1, nametable fetches are processed normally, and can come from CIRAM nametables, fill mode, or even Expansion RAM, but attribute fetches are replaced by data from Expansion RAM."
-         //"Each byte of Expansion RAM is used to enhance the tile at the corresponding address in every nametable"
-
-         //When fetching NT data, we set a flag and then alter the VRAM values read by the PPU on the following 3 cycles (palette, tile low/high byte)
-         if(isNtFetch) {
-            //Nametable fetches
-            _exAttributeLastNametableFetch = addr & 0x03FF;
-            _exAttrLastFetchCounter = 3;
-         } else if(_exAttrLastFetchCounter > 0) {
-            //Attribute fetches
-            _exAttrLastFetchCounter--;
-            switch(_exAttrLastFetchCounter) {
-            case 2:
-            {
-            //PPU palette fetch
-            //Check work ram (expansion ram) to see which tile/palette to use
-            //Use InternalReadRam to bypass the fact that the ram is supposed to be write-only in mode 0/1
-            uint8_t value = InternalReadRam(0x5C00 + _exAttributeLastNametableFetch);
-
-            //"The pattern fetches ignore the standard CHR banking bits, and instead use the top two bits of $5130 and the bottom 6 bits from Expansion RAM to choose a 4KB bank to select the tile from."
-            _exAttrSelectedChrBank = ((value & 0x3F) | (_chrUpperBits << 6)) % (_chrRomSize / 0x1000);
-
-            //Return a byte containing the same palette 4 times - this allows the PPU to select the right palette no matter the shift value
-            uint8_t palette = (value & 0xC0) >> 6;
-            return palette | palette << 2 | palette << 4 | palette << 6;
-            }
-
-            case 1:
-            case 0:
-            //PPU tile data fetch (high byte & low byte)
-            return _chrRom[_exAttrSelectedChrBank * 0x1000 + (addr & 0xFFF)];
-            }
-         }
-      }
-   }
-
-   return InternalReadVRAM(address);
-   #endif
-   return 0xFF;
-}
-
 
 static void map5_init(void)
 {
-   int last_bank = mmc_getinfo()->rom_banks * 2 - 1;
+   rominfo_t *cart = mmc_getinfo();
+
+   cart->sram = realloc(cart->sram, 0x10000);
 
    irq.scanline = irq.enabled = 0;
    irq.status = 0;
@@ -457,8 +390,9 @@ static void map5_init(void)
 
    chr_upper_bits = 0;
 
+   int last_bank = cart->rom_banks * 2 - 1;
    for (int i = 0; i < 4; i++)
-      prg_banks[i] = last_bank;
+      prg_banks[i] = last_bank | 0x80;
 
    for (int i = 0; i < 8; i++)
       chr_banks[i] = i;
@@ -467,6 +401,8 @@ static void map5_init(void)
    chr_update(-1);
    nametable_fill();
    nametable_update(0);
+
+   // ppu_setvramhook(map5_vram_read);
 }
 
 static void map5_getstate(SnssMapperBlock *state)

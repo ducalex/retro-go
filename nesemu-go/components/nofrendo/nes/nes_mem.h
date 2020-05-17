@@ -26,7 +26,7 @@
 #ifndef _NES_MEM_H_
 #define _NES_MEM_H_
 
-#include <noftypes.h>
+#include <nofrendo.h>
 
 #define MEM_PAGEBITS  4
 #define MEM_PAGESHIFT (16 - MEM_PAGEBITS)

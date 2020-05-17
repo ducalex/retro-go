@@ -26,34 +26,7 @@
 #ifndef _OSD_H_
 #define _OSD_H_
 
-#include <limits.h>
-#ifndef  PATH_MAX
-#define  PATH_MAX    512
-#endif /* PATH_MAX */
-
-#ifdef __GNUC__
-#define  __PACKED__  __attribute__ ((packed))
-
-#ifdef __DJGPP__
-#define  PATH_SEP    '\\'
-#else /* !__DJGPP__ */
-#define  PATH_SEP    '/'
-#endif /* !__DJGPP__ */
-
-#elif defined(WIN32)
-#define  __PACKED__
-#define  PATH_SEP    '\\'
-#else /* !defined(WIN32) && !__GNUC__ */
-#define  __PACKED__
-#define  PATH_SEP    ':'
-#endif /* !defined(WIN32) && !__GNUC__ */
-
-#if !defined(WIN32) && !defined(__DJGPP__)
-#define stricmp strcasecmp
-#endif /* !WIN32 && !__DJGPP__ */
-
-
-#include <noftypes.h>
+#include <nofrendo.h>
 #include <bitmap.h>
 
 /* video */

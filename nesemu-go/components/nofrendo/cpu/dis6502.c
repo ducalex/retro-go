@@ -24,7 +24,7 @@
 */
 
 #include <stdio.h>
-#include <noftypes.h>
+#include <nofrendo.h>
 #include <nes.h>
 #include "nes6502.h"
 #include "dis6502.h"

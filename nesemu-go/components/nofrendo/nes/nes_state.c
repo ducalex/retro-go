@@ -25,13 +25,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <noftypes.h>
 #include <nofrendo.h>
-#include <nes_state.h>
-#include <nes.h>
-#include <osd.h>
+#include <nes6502.h>
 #include <libsnss.h>
-#include "nes6502.h"
+#include <osd.h>
+#include "nes_state.h"
 
 extern nes6502_t cpu;
 
