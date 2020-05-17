@@ -170,6 +170,13 @@ static void mmc_setpages(void)
 {
    MESSAGE_INFO("Setting up mapper %d\n", mmc.intf->number);
 
+   /* Switch SRAM into CPU space */
+   if (mmc.cart->sram)
+   {
+      mem_setpage(6, mmc.cart->sram);
+      mem_setpage(7, mmc.cart->sram + 0x1000);
+   }
+
    /* Switch PRG and CHR into CPU space */
    mmc_bankrom(16, 0x8000, 0);
    mmc_bankrom(16, 0xC000, MMC_LASTBANK);

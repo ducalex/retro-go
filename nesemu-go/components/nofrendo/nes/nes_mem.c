@@ -61,31 +61,10 @@ static mem_write_handler_t write_handlers[] =
    LAST_MEMORY_HANDLER
 };
 
-/* Set 4KB memory page */
-IRAM_ATTR void mem_setpage(uint16 page, uint8 *ptr)
-{
-   mem.pages[page] = ptr;
-
-   if (!MEM_PAGE_HAS_HANDLERS(mem.pages_read[page]))
-   {
-      mem.pages_read[page] = ptr;
-   }
-
-   if (!MEM_PAGE_HAS_HANDLERS(mem.pages_write[page]))
-   {
-      mem.pages_write[page] = ptr;
-   }
-}
-
-/* Get 4KB memory page */
-uint8 *mem_getpage(uint16 page)
-{
-   return mem.pages[page];
-}
-
-void mem_setmapper(mapintf_t *intf)
+void mem_refresh()
 {
    int num_read_handlers = 0, num_write_handlers = 0;
+   mapintf_t *intf = mem.mapper;
 
    memset(&mem.read_handlers, 0, sizeof(mem.read_handlers));
    memset(&mem.write_handlers, 0, sizeof(mem.write_handlers));
@@ -139,6 +118,28 @@ void mem_setmapper(mapintf_t *intf)
 
    ASSERT(num_read_handlers <= MEM_HANDLERS_MAX);
    ASSERT(num_write_handlers <= MEM_HANDLERS_MAX);
+}
+
+/* Set 4KB memory page */
+IRAM_ATTR void mem_setpage(uint16 page, uint8 *ptr)
+{
+   mem.pages[page] = ptr;
+
+   if (!MEM_PAGE_HAS_HANDLERS(mem.pages_read[page]))
+   {
+      mem.pages_read[page] = ptr;
+   }
+
+   if (!MEM_PAGE_HAS_HANDLERS(mem.pages_write[page]))
+   {
+      mem.pages_write[page] = ptr;
+   }
+}
+
+/* Get 4KB memory page */
+uint8 *mem_getpage(uint16 page)
+{
+   return mem.pages[page];
 }
 
 /* read a byte of 6502 memory space */
@@ -218,17 +219,17 @@ IRAM_ATTR uint32 mem_getword(uint32 address)
 
 void mem_reset()
 {
-   memset(&mem.ram, 0, MEM_RAMSIZE);
+   memset(&mem.pages, 0, sizeof(mem.pages));
+   memset(&mem.ram, 0, sizeof(mem.ram));
+   mem_setpage(0, mem.ram);
+   mem_setpage(1, mem.ram);
+   mem_refresh();
 }
 
 mem_t *mem_create()
 {
    memset(&mem, 0, sizeof(mem));
-
-   mem_setpage(0, mem.ram);
-   mem_setpage(1, mem.ram);
-   mem_setmapper(NULL);
-
+   mem_reset();
    return &mem;
 }
 

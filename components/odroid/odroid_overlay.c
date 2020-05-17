@@ -7,6 +7,7 @@
 #include "stdlib.h"
 #include "string.h"
 #include "stdio.h"
+#include "math.h"
 
 static uint16_t *overlay_buffer = NULL;
 static const char *NVS_KEY_FONTSIZE = "FontSize";
@@ -471,7 +472,7 @@ static void draw_game_status_bar()
     name = path + strlen(ODROID_BASE_PATH_ROMS);
 
     snprintf(header, 40, "FPS: %.0f (%.0f) / BUSY: %.0f%%",
-        stats.totalFPS, stats.skippedFPS, stats.busyPercent);
+        round(stats.totalFPS), round(stats.skippedFPS), round(stats.busyPercent));
     snprintf(bottom, 40, "%s", path ? name : "N/A");
 
     free(path);

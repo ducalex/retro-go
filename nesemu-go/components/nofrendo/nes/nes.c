@@ -148,6 +148,8 @@ int nes_insertcart(const char *filename)
    if (NULL == nes.mmc)
       goto _fail;
 
+   nes.mem->mapper = nes.mmc->intf;
+
    /* if there's VRAM, let the PPU know */
    nes.ppu->vram_present = (NULL != nes.rominfo->vram);
 
@@ -156,10 +158,6 @@ int nes_insertcart(const char *filename)
    ppu_setcontext(nes.ppu);
    mmc_setcontext(nes.mmc);
    // mem_setcontext(nes.mmc);
-
-   mem_setpage(6, nes.rominfo->sram);
-   mem_setpage(7, nes.rominfo->sram + 0x1000);
-   mem_setmapper(nes.mmc->intf);
 
    nes_reset(HARD_RESET);
 

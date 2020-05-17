@@ -1,6 +1,7 @@
 #include "freertos/FreeRTOS.h"
 #include "odroid_image_sdcard.h"
 #include "odroid_system.h"
+#include "esp_freertos_hooks.h"
 #include "esp_heap_caps.h"
 #include "esp_partition.h"
 #include "esp_ota_ops.h"
@@ -373,11 +374,26 @@ static void odroid_system_monitor_task(void *arg)
         // To do get the actual game refresh rate somehow
         statistics.emulatedSpeed = statistics.totalFPS / 60 * 100.f;
 
-        // if (statistics.lastTickTime > 0 && tickTime > 1000000.f)
-        // {
+    #if (configGENERATE_RUN_TIME_STATS == 1)
+        TaskStatus_t pxTaskStatusArray[16];
+        uint ulTotalTime = 0;
+        uint uxArraySize = uxTaskGetSystemState(pxTaskStatusArray, 16, &ulTotalTime);
+        ulTotalTime /= 100UL;
+
+        for (x = 0; x < uxArraySize; x++)
+        {
+            if (pxTaskStatusArray[x].xHandle == xTaskGetIdleTaskHandleForCPU(0))
+                statistics.idleTimeCPU0 = 100 - (pxTaskStatusArray[x].ulRunTimeCounter / ulTotalTime);
+            if (pxTaskStatusArray[x].xHandle == xTaskGetIdleTaskHandleForCPU(1))
+                statistics.idleTimeCPU1 = 100 - (pxTaskStatusArray[x].ulRunTimeCounter / ulTotalTime);
+        }
+    #endif
+
+        if (statistics.lastTickTime > 0 && tickTime > 1000000.f)
+        {
             // printf("WATCHDOG: Last emulation tick was %ds ago\n", seconds);
             // odroid_system_panic("The application froze!");
-        // }
+        }
 
         if (statistics.battery.percentage < 2)
         {

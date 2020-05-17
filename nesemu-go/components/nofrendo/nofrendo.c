@@ -78,11 +78,6 @@ void nofrendo_assert(int expr, int line, const char *file, char *msg)
 //   exit(-1);
 }
 
-void nofrendo_refresh()
-{
-   // osd_blitscreen
-}
-
 /* End the current context */
 void nofrendo_stop(void)
 {

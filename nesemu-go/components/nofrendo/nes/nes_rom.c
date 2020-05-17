@@ -158,7 +158,7 @@ char *rom_getinfo(rominfo_t *rominfo)
       strcpy(info, romname);
    }
 
-   sprintf(temp, " [%d] %dk/%dk %c", rominfo->mapper_number,
+   sprintf(temp, " [%d] %dK/%dK %c", rominfo->mapper_number,
            rominfo->rom_banks * 16, rominfo->vrom_banks * 8,
            (rominfo->mirror == MIRROR_VERT) ? 'V' : 'H');
 
@@ -248,7 +248,7 @@ rominfo_t *rom_load(const char *filename)
 
    // rom_loadsram(rominfo);
 
-   MESSAGE_INFO("ROM loaded: %s", rom_getinfo(rominfo));
+   MESSAGE_INFO("ROM loaded: %s\n", rom_getinfo(rominfo));
 
    return rominfo;
 

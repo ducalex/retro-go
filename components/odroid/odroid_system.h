@@ -67,6 +67,8 @@ typedef struct
      float emulatedSpeed;
      float busyPercent;
      uint lastTickTime;
+     uint idleTimeCPU0;
+     uint idleTimeCPU1;
 } runtime_stats_t;
 
 void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t netplay_cb);

@@ -818,7 +818,7 @@ void odroid_display_set_scale(short width, short height, float new_ratio)
            x_inc, y_inc, x_scale, y_scale, x_origin, y_origin);
 }
 
-static void videoTask(void *arg)
+static void display_task(void *arg)
 {
     videoTaskQueue = xQueueCreate(1, sizeof(void*));
 
@@ -1058,8 +1058,8 @@ void odroid_display_init()
 	printf("     - calling backlight_init.\n");
     backlight_init();
 
-	printf("     - starting videoTask.\n");
-    xTaskCreatePinnedToCore(&videoTask, "videoTask", 4096, NULL, 5, NULL, 1);
+	printf("     - starting display_task.\n");
+    xTaskCreatePinnedToCore(&display_task, "display_task", 4096, NULL, 5, NULL, 1);
 
     printf("     - done.\n");
 }

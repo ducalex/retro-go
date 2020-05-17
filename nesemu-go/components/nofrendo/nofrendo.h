@@ -54,7 +54,6 @@
 #include <nes.h>
 extern int nofrendo_start(const char *filename, int region, int sample_rate);
 extern void nofrendo_stop(void);
-extern void nofrendo_refresh(void);
 extern void nofrendo_printf(int type, const char *prefix, const char *format, ...);
 extern void nofrendo_assert(int expr, int line, const char *file, char *msg);
 

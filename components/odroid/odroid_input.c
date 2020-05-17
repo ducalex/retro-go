@@ -66,7 +66,7 @@ odroid_gamepad_state odroid_input_read_raw()
     return state;
 }
 
-static void odroid_input_task(void *arg)
+static void input_task(void *arg)
 {
     input_task_is_running = true;
 
@@ -148,7 +148,7 @@ void odroid_input_gamepad_init()
 	gpio_set_direction(ODROID_GAMEPAD_IO_VOLUME, GPIO_MODE_INPUT);
 
     // Start background polling
-    xTaskCreatePinnedToCore(&odroid_input_task, "odroid_input_task", 1024 * 2, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(&input_task, "input_task", 2048, NULL, 5, NULL, 1);
 
   	printf("odroid_input_gamepad_init done.\n");
 }
