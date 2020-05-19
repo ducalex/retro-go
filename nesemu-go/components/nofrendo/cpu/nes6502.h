@@ -53,9 +53,6 @@
 #define  NMI_MASK       0x01
 #define  IRQ_MASK       0x02
 
-/* Stack is located on 6502 page 1 */
-#define  STACK_OFFSET   0x0100
-
 typedef struct
 {
    uint32 pc_reg;
@@ -63,7 +60,7 @@ typedef struct
    uint8 x_reg, y_reg;
    uint8 s_reg;
 
-   mem_t *mem;
+   uint8 *zp, *stack;
 
    uint8 jammed;  /* is processor jammed? */
 

@@ -50,17 +50,14 @@
 
 #undef  PATH_MAX
 #define PATH_MAX  512
+#undef  PATH_SEP
+#define PATH_SEP  '/'
 
 #ifndef __PACKED__
 #define __PACKED__  __attribute__ ((packed))
 #endif
 
-#ifndef PATH_SEP
-#define PATH_SEP    '/'
-#endif
-
 #define INLINE              static inline __attribute__((__always_inline__))
-#define ZERO_LENGTH 0
 
 #ifdef NOFRENDO_DEBUG
 #define UNUSED(x)

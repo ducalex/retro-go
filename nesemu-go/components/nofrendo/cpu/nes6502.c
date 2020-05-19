@@ -32,7 +32,7 @@
 /* internal CPU context */
 static nes6502_t cpu;
 static int remaining_cycles = 0;
-static uint8 *zp, *stack;
+static mem_t *mem;
 
 // #define NES6502_TESTOPS
 #define NES6502_JUMPTABLE
@@ -65,7 +65,7 @@ static uint8 *zp, *stack;
 /* Immediate */
 #define IMMEDIATE_BYTE(value) \
 { \
-   value = fast_readbyte(PC++); \
+   value = readbyte(PC++); \
 }
 
 /* Absolute */
@@ -235,8 +235,8 @@ static uint8 *zp, *stack;
 
 
 /* Stack push/pull */
-#define PUSH(value)             stack[S--] = (uint8) (value)
-#define PULL()                  stack[++S]
+#define PUSH(value)             cpu.stack[S--] = (uint8) (value)
+#define PULL()                  cpu.stack[++S]
 
 
 /*
@@ -633,7 +633,7 @@ static uint8 *zp, *stack;
    temp = readword(PC); \
    /* bug in crossing page boundaries */ \
    if (0xFF == (temp & 0xFF)) \
-      PC = (fast_readbyte(temp & 0xFF00) << 8) | fast_readbyte(temp); \
+      PC = (readbyte(temp & 0xFF00) << 8) | readbyte(temp); \
    else \
       JUMP(temp); \
    ADD_CYCLES(5); \
@@ -1057,15 +1057,9 @@ static uint8 *zp, *stack;
 ** Zero-page helper macros
 */
 
-#define ZP_READBYTE(addr)          (zp[(addr)])
-#define ZP_WRITEBYTE(addr, value)  (zp[(addr)] = (uint8) (value))
-#define ZP_READWORD(addr)          PAGE_READWORD(zp, addr)
-
-#ifdef HOST_LITTLE_ENDIAN
-#define PAGE_READWORD(page, addr)  (*(uint16 *)((page) + (addr)))
-#else
-#define PAGE_READWORD(page, addr)  (page[(addr) + 1] << 8 | page[(addr)])
-#endif
+#define ZP_READBYTE(addr)          (cpu.zp[(addr)])
+#define ZP_WRITEBYTE(addr, value)  (cpu.zp[(addr)] = (uint8) (value))
+#define ZP_READWORD(addr)          PAGE_READWORD(cpu.zp, addr)
 
 /*
 ** Memory-related macros
@@ -1083,53 +1077,33 @@ static uint8 *zp, *stack;
 
 #ifdef NES6502_FASTMEM
 
-INLINE uint8 fast_readbyte(uint32 address)
-{
-   uint8 *page = cpu.mem->pages[address >> MEM_PAGESHIFT];
-   return page ? page[address & MEM_PAGEMASK] : 0xFF;
-}
-
 INLINE uint8 readbyte(uint32 address)
 {
-   uint8 *page = cpu.mem->pages_read[address >> MEM_PAGESHIFT];
-
-   if (MEM_PAGE_IS_VALID_PTR(page))
-   {
-      if (address < 0x2000) return page[address & MEM_RAMMASK];
-      else                  return page[address & MEM_PAGEMASK];
+   if (address < 0x2000 || address >= 0x8000) {
+      return mem->pages[address >> MEM_PAGESHIFT][address];
    }
    return mem_getbyte(address);
 }
 
-INLINE void writebyte(uint32 address, uint8 value)
-{
-   uint8 *page = cpu.mem->pages_write[address >> MEM_PAGESHIFT];
-
-   if (MEM_PAGE_IS_VALID_PTR(page))
-   {
-      if (address < 0x2000) page[address & MEM_RAMMASK] = value;
-      else                  page[address & MEM_PAGEMASK] = value;
-   }
-   else
-      mem_putbyte(address, value);
-}
-
 INLINE uint32 readword(uint32 address)
 {
-   uint8 *page = cpu.mem->pages_read[address >> MEM_PAGESHIFT];
-
-   if (MEM_PAGE_IS_VALID_PTR(page))
-   {
-      if (address < 0x2000) return PAGE_READWORD(page, address & MEM_RAMMASK);
-      else                  return PAGE_READWORD(page, address & MEM_PAGEMASK);
+   if (address < 0x2000 || address >= 0x8000) {
+      return PAGE_READWORD(mem->pages[address >> MEM_PAGESHIFT], address);
    }
+   return mem_getword(address);
+}
 
-   return mem_getword(address + 1);
+INLINE void writebyte(uint32 address, uint8 value)
+{
+   if (address < 0x2000) {
+      mem->ram[address & 0x7FF] = value;
+   } else {
+      mem_putbyte(address, value);
+   }
 }
 
 #else /* !NES6502_FASTMEM */
 
-#define fast_readbyte(a) mem_getbyte(a)
 #define writebyte(a, v) mem_putbyte(a, v)
 #define readbyte(a) mem_getbyte(a)
 #define readword(a) mem_getword(a)
@@ -1150,14 +1124,14 @@ INLINE uint32 readword(uint32 address)
 #define OPCODE_NEXT \
    if (remaining_cycles <= 0) break; \
    DISASSEMBLE; \
-   goto *opcode_table[fast_readbyte(PC++)];
+   goto *opcode_table[readbyte(PC++)];
 
 #else /* !NES6502_JUMPTABLE */
 
 #define OPCODE(xx, x...)  case 0x##xx: x; break;
 #define OPCODE_NEXT \
    DISASSEMBLE;  \
-   switch (fast_readbyte(PC++))
+   switch (readbyte(PC++))
 
 #endif /* !NES6502_JUMPTABLE */
 
@@ -1169,9 +1143,6 @@ void nes6502_setcontext(nes6502_t *context)
 {
    ASSERT(context);
    cpu = *context;
-
-   zp    = cpu.mem->pages[0];
-   stack = cpu.mem->pages[0] + STACK_OFFSET;
 }
 
 /* get the current context */
@@ -1199,9 +1170,6 @@ IRAM_ATTR int nes6502_execute(int timeslice_cycles)
    uint32 temp, addr; /* for macros */
    uint8 btemp, baddr; /* for macros */
    uint8 data;
-
-   // zp    = cpu.mem->pages[0];
-   // stack = cpu.mem->pages[0] + STACK_OFFSET;
 
    DECLARE_LOCAL_REGS();
    GET_GLOBAL_REGS();
@@ -1555,10 +1523,10 @@ IRAM_ATTR int nes6502_execute(int timeslice_cycles)
 /* Issue a CPU Reset */
 void nes6502_reset(void)
 {
-   cpu.p_reg = Z_FLAG | R_FLAG | I_FLAG;     /* Reserved bit always 1 */
-   cpu.int_pending = 0;                      /* No pending interrupts */
-   cpu.int_latency = 0;                      /* No latent interrupts */
-   cpu.pc_reg = readword(RESET_VECTOR);  /* Fetch reset vector */
+   cpu.p_reg = Z_FLAG | R_FLAG | I_FLAG;  /* Reserved bit always 1 */
+   cpu.int_pending = 0;                   /* No pending interrupts */
+   cpu.int_latency = 0;                   /* No latent interrupts */
+   cpu.pc_reg = readword(RESET_VECTOR);   /* Fetch reset vector */
    cpu.burn_cycles = RESET_CYCLES;
    cpu.jammed = false;
 }
@@ -1611,7 +1579,7 @@ IRAM_ATTR void nes6502_release(void)
 }
 
 /* Create a nes6502 object */
-nes6502_t *nes6502_create(mem_t *mem)
+nes6502_t *nes6502_create(mem_t *_mem)
 {
    nes6502_t *temp;
 
@@ -1621,8 +1589,11 @@ nes6502_t *nes6502_create(mem_t *mem)
    //    return NULL;
 
    memset(temp, 0, sizeof(nes6502_t));
-   temp->mem = mem;
 
+   cpu.zp    = _mem->ram + 0x000; // Page 0
+   cpu.stack = _mem->ram + 0x100; // Page 1
+
+   mem = _mem; // For FASTMEM
 
    return temp;
 }

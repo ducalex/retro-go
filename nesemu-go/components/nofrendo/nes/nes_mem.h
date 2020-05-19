@@ -28,14 +28,12 @@
 
 #include <nofrendo.h>
 
-#define MEM_PAGEBITS  4
+#define MEM_PAGEBITS  5
 #define MEM_PAGESHIFT (16 - MEM_PAGEBITS)
 #define MEM_PAGECOUNT (1 << MEM_PAGEBITS)
 #define MEM_PAGESIZE  (0x10000 / MEM_PAGECOUNT)
-#define MEM_PAGEMASK  (MEM_PAGESIZE - 1)
 
 #define MEM_RAMSIZE   0x800
-#define MEM_RAMMASK   0x7FF
 
 // This is kind of a hack, but for speed...
 #define MEM_PAGE_USE_HANDLERS ((uint8*)1)

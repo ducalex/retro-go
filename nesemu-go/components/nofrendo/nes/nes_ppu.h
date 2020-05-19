@@ -100,21 +100,19 @@ typedef struct ppu_s
    rgb_t curpal[256];
 
    /* hardware registers */
-   uint8 ctrl0, ctrl1, stat, oam_addr;
-   uint32 vaddr, vaddr_latch;
-   int tile_xofs, flipflop;
-   int vaddr_inc;
-   uint32 tile_nametab;
+   uint8 ctrl0, ctrl1, stat, oam_addr, base_nametab;
+   uint8 latch, vdata_latch, tile_xofs, flipflop;
+   int32 vaddr, vaddr_latch, vaddr_inc;
 
-   uint32 obj_height, obj_base, bg_base;
-
-   bool bg_on, obj_on;
+   int32 obj_height, obj_base, bg_base;
    bool obj_mask, bg_mask;
-
-   uint8 latch, vdata_latch;
+   bool bg_on, obj_on;
 
    bool strikeflag;
    uint32 strike_cycle;
+
+   // Last or currently rendering scanline
+   int scanline;
 
    /* callbacks for naughty mappers */
    ppu_latchfunc_t latchfunc;
@@ -142,7 +140,7 @@ extern uint8 *ppu_getpage(int page);
 extern void ppu_reset();
 extern bool ppu_enabled(void);
 extern void ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag);
-extern void ppu_endscanline(int scanline);
+extern void ppu_endscanline();
 extern void ppu_checknmi();
 
 extern ppu_t *ppu_create(void);

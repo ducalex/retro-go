@@ -342,7 +342,7 @@ IRAM_ATTR void ppu_write(uint32 address, uint8 value)
       ppu.bg_base = (value & PPU_CTRL0F_BGADDR) ? 0x1000 : 0;
       ppu.obj_base = (value & PPU_CTRL0F_OBJADDR) ? 0x1000 : 0;
       ppu.vaddr_inc = (value & PPU_CTRL0F_ADDRINC) ? 32 : 1;
-      ppu.tile_nametab = value & PPU_CTRL0F_NAMETAB;
+      ppu.base_nametab = value & PPU_CTRL0F_NAMETAB;
 
       /* Mask out bits 10 & 11 in the ppu latch */
       ppu.vaddr_latch &= ~0x0C00;
@@ -613,7 +613,7 @@ INLINE void draw_oamtile(uint8 *surface, uint8 attrib, uint32 pattern, const uin
 INLINE void ppu_renderbg(uint8 *vidbuf)
 {
    uint8 *bmp_ptr;
-   uint32 refresh_vaddr, tile_addr, bg_offset, attrib_base, attrib_addr;
+   int32 refresh_vaddr, tile_addr, bg_offset, attrib_base, attrib_addr;
    uint8 tile_index, tile_num, x_tile, y_tile, col_high, attrib, attrib_shift;
 
    /* draw a line of transparent background color if bg is disabled */
@@ -680,9 +680,11 @@ INLINE void ppu_renderbg(uint8 *vidbuf)
    /* Blank left hand column if need be */
    if (ppu.bg_mask)
    {
-      uint32 bg_clear = FULLBG | FULLBG << 8 | FULLBG << 16 | FULLBG << 24;
-      ((uint32 *) vidbuf)[0] = bg_clear;
-      ((uint32 *) vidbuf)[1] = bg_clear;
+      for (int i = 0; i < 8; i++)
+      {
+         vidbuf[i] = FULLBG;
+      }
+      // memset(vidbuf, 8, FULLBG);
    }
 }
 
@@ -780,10 +782,10 @@ IRAM_ATTR bool ppu_enabled(void)
    return (ppu.bg_on || ppu.obj_on);
 }
 
-IRAM_ATTR void ppu_endscanline(int scanline)
+IRAM_ATTR void ppu_endscanline(void)
 {
    /* modify vram address at end of scanline */
-   if (scanline < 240 && (ppu.bg_on || ppu.obj_on))
+   if (ppu.scanline < 240 && (ppu.bg_on || ppu.obj_on))
    {
       int ytile;
 
@@ -822,6 +824,8 @@ IRAM_ATTR void ppu_checknmi(void)
 
 IRAM_ATTR void ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag)
 {
+   ppu.scanline = scanline;
+
    if (scanline < 240)
    {
       /* Lower the Max Sprite per scanline flag */

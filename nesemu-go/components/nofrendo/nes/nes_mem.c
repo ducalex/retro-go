@@ -119,26 +119,33 @@ void mem_refresh()
    ASSERT(num_write_handlers <= MEM_HANDLERS_MAX);
 }
 
-/* Set 4KB memory page */
+/* Set 2KB memory page */
 IRAM_ATTR void mem_setpage(uint16 page, uint8 *ptr)
 {
-   mem.pages[page] = ptr;
+   mem.pages[page] = ptr - (page * MEM_PAGESIZE);
 
    if (!MEM_PAGE_HAS_HANDLERS(mem.pages_read[page]))
    {
-      mem.pages_read[page] = ptr;
+      mem.pages_read[page] = mem.pages[page];
    }
 
    if (!MEM_PAGE_HAS_HANDLERS(mem.pages_write[page]))
    {
-      mem.pages_write[page] = ptr;
+      mem.pages_write[page] = mem.pages[page];
    }
 }
 
-/* Get 4KB memory page */
+/* Get 2KB memory page */
 uint8 *mem_getpage(uint16 page)
 {
-   return mem.pages[page];
+   uint8 *page_ptr = mem.pages[page];
+
+   if (MEM_PAGE_IS_VALID_PTR(page_ptr))
+   {
+      return page_ptr + (page * MEM_PAGESIZE);
+   }
+
+   return page_ptr;
 }
 
 /* read a byte of 6502 memory space */
@@ -163,15 +170,10 @@ IRAM_ATTR uint8 mem_getbyte(uint32 address)
       MESSAGE_DEBUG("Read unmapped region: $%4X\n", address);
       return 0xFF;
    }
-   /* RAM */
-   else if (address < 0x2000)
-   {
-      return page[address & MEM_RAMMASK];
-   }
    /* Paged memory */
    else
    {
-      return page[address & MEM_PAGEMASK];
+      return page[address];
    }
 }
 
@@ -199,15 +201,10 @@ IRAM_ATTR void mem_putbyte(uint32 address, uint8 value)
    {
       MESSAGE_DEBUG("Write to unmapped region: $%2X to $%4X\n", address, value);
    }
-   /* RAM */
-   else if (address < 0x2000)
-   {
-      page[address & MEM_RAMMASK] = value;
-   }
    /* Paged memory */
    else
    {
-      page[address & MEM_PAGEMASK] = value;
+      page[address] = value;
    }
 }
 
@@ -221,7 +218,9 @@ void mem_reset()
    memset(&mem.pages, 0, sizeof(mem.pages));
    memset(&mem.ram, 0, sizeof(mem.ram));
    mem_setpage(0, mem.ram);
-   mem_setpage(1, mem.ram);
+   mem_setpage(1, mem.ram); // $800 - $FFF mirror
+   mem_setpage(2, mem.ram); // $1000 - $07FF mirror
+   mem_setpage(3, mem.ram); // $1800 - $1FFF mirror
    mem_refresh();
 }
 
