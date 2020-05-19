@@ -997,18 +997,12 @@ void apu_build_luts(int num_samples)
 }
 
 /* Initializes emulated sound hardware, creates waveforms/voices */
-apu_t *apu_create(int region, int sample_rate)
+apu_t *apu_init(int region, int sample_rate)
 {
-   apu_t *temp;
+   memset(&apu, 0, sizeof(apu_t));
+
    short refresh_rate;
    float cpu_clock;
-
-   temp = &apu;
-   // temp = malloc(sizeof(apu_t));
-   // if (NULL == temp)
-   //    return NULL;
-
-   memset(temp, 0, sizeof(apu_t));
 
    if (region == NES_PAL)
    {
@@ -1021,35 +1015,28 @@ apu_t *apu_create(int region, int sample_rate)
       cpu_clock = NES_CPU_CLOCK_NTSC;
    }
 
-   temp->sample_rate = sample_rate;
-   temp->cycle_rate = (float) (cpu_clock / sample_rate);
-   temp->chan_enable = 0xFF;
-   temp->filter_type = APU_FILTER_WEIGHTED;
-   temp->ext = NULL;
+   apu.sample_rate = sample_rate;
+   apu.cycle_rate = (float) (cpu_clock / sample_rate);
+   apu.chan_enable = 0xFF;
+   apu.filter_type = APU_FILTER_WEIGHTED;
+   apu.ext = NULL;
 
    apu_build_luts(sample_rate / refresh_rate);
 
-   return temp;
+   return &apu;
 }
 
-void apu_destroy(apu_t *src_apu)
+void apu_shutdown()
 {
-   if (src_apu)
-   {
-      if (src_apu->ext && src_apu->ext->shutdown)
-         src_apu->ext->shutdown();
-      if (src_apu != &apu)
-         free(src_apu);
-   }
+   if (apu.ext && apu.ext->shutdown)
+      apu.ext->shutdown();
 }
 
-void apu_setext(apu_t *src_apu, apuext_t *ext)
+void apu_setext(apuext_t *ext)
 {
-   ASSERT(src_apu);
-
-   src_apu->ext = ext;
+   apu.ext = ext;
 
    /* initialize it */
-   if (src_apu->ext && NULL != src_apu->ext->init)
-      src_apu->ext->init();
+   if (apu.ext && NULL != apu.ext->init)
+      apu.ext->init();
 }

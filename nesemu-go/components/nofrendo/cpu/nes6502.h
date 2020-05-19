@@ -78,12 +78,12 @@ extern void nes6502_reset(void);
 extern int nes6502_execute(int total_cycles);
 extern void nes6502_nmi(void);
 extern void nes6502_irq(void);
-extern uint32 nes6502_getcycles();
+extern uint32 nes6502_getcycles(void);
 extern void nes6502_burn(int cycles);
 extern void nes6502_release(void);
 
-extern nes6502_t *nes6502_create(mem_t *mem);
-extern void nes6502_destroy(nes6502_t *src_cpu);
+extern nes6502_t *nes6502_init(mem_t *mem);
+extern void nes6502_shutdown(void);
 extern void nes6502_setcontext(nes6502_t *cpu);
 extern void nes6502_getcontext(nes6502_t *cpu);
 

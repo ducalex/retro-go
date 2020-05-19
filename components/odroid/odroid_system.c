@@ -1,17 +1,18 @@
-#include "freertos/FreeRTOS.h"
+#include <freertos/FreeRTOS.h>
+#include <esp_freertos_hooks.h>
+#include <esp_heap_caps.h>
+#include <esp_partition.h>
+#include <esp_ota_ops.h>
+#include <esp_task_wdt.h>
+#include <esp_system.h>
+#include <esp_event.h>
+#include <driver/rtc_io.h>
+#include <rom/crc.h>
+#include <string.h>
+#include <stdio.h>
+
 #include "odroid_image_sdcard.h"
 #include "odroid_system.h"
-#include "esp_freertos_hooks.h"
-#include "esp_heap_caps.h"
-#include "esp_partition.h"
-#include "esp_ota_ops.h"
-#include "esp_task_wdt.h"
-#include "esp_system.h"
-#include "esp_event.h"
-#include "driver/rtc_io.h"
-#include "rom/crc.h"
-#include "string.h"
-#include "stdio.h"
 
 int8_t speedupEnabled = 0;
 
@@ -374,6 +375,9 @@ static void odroid_system_monitor_task(void *arg)
         // To do get the actual game refresh rate somehow
         statistics.emulatedSpeed = statistics.totalFPS / 60 * 100.f;
 
+        statistics.freeMemoryInt = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+        statistics.freeMemoryExt = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+
     #if (configGENERATE_RUN_TIME_STATS == 1)
         TaskStatus_t pxTaskStatusArray[16];
         uint ulTotalTime = 0;
@@ -407,8 +411,8 @@ static void odroid_system_monitor_task(void *arg)
         }
 
         printf("HEAP:%d+%d, BUSY:%.4f, FPS:%.4f (SKIP:%d, PART:%d, FULL:%d), BATTERY:%d\n",
-            heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
-            heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024,
+            statistics.freeMemoryInt / 1024,
+            statistics.freeMemoryExt / 1024,
             statistics.busyPercent,
             statistics.totalFPS,
             current.skippedFrames,

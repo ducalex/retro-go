@@ -458,18 +458,14 @@ int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options)
     return odroid_overlay_dialog("Options", options, 0);
 }
 
-static void draw_game_status_bar()
+static void draw_game_status_bar(runtime_stats_t stats)
 {
     int width = ODROID_SCREEN_WIDTH, height = 16;
     int pad_text = (height - ODROID_FONT_HEIGHT) / 2;
     char bottom[40], header[40];
-    char *path, *name;
-    runtime_stats_t stats;
 
-    stats = odroid_system_get_stats();
-    path = odroid_system_get_path(NULL, ODROID_PATH_ROM_FILE);
-    // name = odroid_sdcard_get_filename(path);
-    name = path + strlen(ODROID_BASE_PATH_ROMS);
+    char *path = odroid_system_get_path(NULL, ODROID_PATH_ROM_FILE);
+    char *name = path + strlen(ODROID_BASE_PATH_ROMS);
 
     snprintf(header, 40, "FPS: %.0f (%.0f) / BUSY: %.0f%%",
         round(stats.totalFPS), round(stats.skippedFPS), round(stats.busyPercent));
@@ -499,9 +495,12 @@ int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options)
         memcpy(options + options_count, extra_options, (extra_options_count + 1) * sizeof(odroid_dialog_choice_t));
     }
 
+    // Collect stats before freezing emulation with wait_all_keys_released()
+    runtime_stats_t stats = odroid_system_get_stats();
+
     odroid_audio_mute(true);
     wait_all_keys_released();
-    draw_game_status_bar();
+    draw_game_status_bar(stats);
 
     int r = odroid_overlay_settings_menu(options);
 
@@ -526,9 +525,12 @@ int odroid_overlay_game_menu()
         ODROID_DIALOG_CHOICE_LAST
     };
 
+    // Collect stats before freezing emulation with wait_all_keys_released()
+    runtime_stats_t stats = odroid_system_get_stats();
+
     odroid_audio_mute(true);
     wait_all_keys_released();
-    draw_game_status_bar();
+    draw_game_status_bar(stats);
 
     int r = odroid_overlay_dialog("Retro-Go", choices, 0);
 

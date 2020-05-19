@@ -122,29 +122,21 @@ void ppu_getcontext(ppu_t *dest_ppu)
 
 ppu_t *ppu_create(void)
 {
-   ppu_t *temp;
+   memset(&ppu, 0, sizeof(ppu_t));
 
-   temp = &ppu;
-   // temp = malloc(sizeof(ppu_t));
-   // if (NULL == temp)
-   //    return NULL;
+   ppu.latchfunc = NULL;
+   ppu.vram_present = false;
+   ppu.drawsprites = true;
+   ppu.limitsprites = true;
 
-   memset(temp, 0, sizeof(ppu_t));
+   ppu_setpalette((rgb_t*)nes_palettes[0].data); // Set default palette
 
-   temp->latchfunc = NULL;
-   temp->vram_present = false;
-   temp->drawsprites = true;
-   temp->limitsprites = true;
-
-   ppu_setpalette(temp, (rgb_t*)nes_palettes[0].data); // Set default palette
-
-   return temp;
+   return &ppu;
 }
 
-void ppu_destroy(ppu_t *src_ppu)
+void ppu_shutdown()
 {
-   if (src_ppu && src_ppu != &ppu)
-      free(src_ppu);
+   //
 }
 
 void ppu_setpage(int size, int page_num, uint8 *location)
@@ -453,34 +445,31 @@ IRAM_ATTR void ppu_write(uint32 address, uint8 value)
 ** Note that we set it up 3 times so that we flip bits on the primary
 ** NES buffer for priorities
 */
-void ppu_setpalette(ppu_t *src_ppu, rgb_t *pal)
+void ppu_setpalette(rgb_t *pal)
 {
    int i;
 
    /* Set it up 3 times, for sprite priority/BG transparency trickery */
    for (i = 0; i < 64; i++)
    {
-      src_ppu->curpal[i].r = src_ppu->curpal[i + 64].r
-                           = src_ppu->curpal[i + 128].r = pal[i].r;
-      src_ppu->curpal[i].g = src_ppu->curpal[i + 64].g
-                           = src_ppu->curpal[i + 128].g = pal[i].g;
-      src_ppu->curpal[i].b = src_ppu->curpal[i + 64].b
-                           = src_ppu->curpal[i + 128].b = pal[i].b;
+      ppu.curpal[i].r = ppu.curpal[i + 64].r = ppu.curpal[i + 128].r = pal[i].r;
+      ppu.curpal[i].g = ppu.curpal[i + 64].g = ppu.curpal[i + 128].g = pal[i].g;
+      ppu.curpal[i].b = ppu.curpal[i + 64].b = ppu.curpal[i + 128].b = pal[i].b;
    }
 
    for (i = 0; i < GUI_TOTALCOLORS; i++)
    {
-      src_ppu->curpal[i + 192].r = gui_pal[i].r;
-      src_ppu->curpal[i + 192].g = gui_pal[i].g;
-      src_ppu->curpal[i + 192].b = gui_pal[i].b;
+      ppu.curpal[i + 192].r = gui_pal[i].r;
+      ppu.curpal[i + 192].g = gui_pal[i].g;
+      ppu.curpal[i + 192].b = gui_pal[i].b;
    }
 
-   osd_setpalette(src_ppu->curpal);
+   osd_setpalette(&ppu.curpal);
 }
 
 void ppu_setpalnum(int n)
 {
-   ppu_setpalette(&ppu, (rgb_t*)nes_palettes[n % PPU_PAL_COUNT].data);
+   ppu_setpalette((rgb_t*)nes_palettes[n % PPU_PAL_COUNT].data);
 }
 
 const palette_t *ppu_getpalnum(int n)

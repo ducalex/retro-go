@@ -71,7 +71,7 @@ INLINE void renderframe(bool draw_flag)
       apu_fc_advance(elapsed_cycles);
       nes.cycles -= elapsed_cycles;
 
-      ppu_endscanline(nes.scanline);
+      ppu_endscanline();
       nes.scanline++;
    }
 
@@ -143,7 +143,7 @@ int nes_insertcart(const char *filename)
       goto _fail;
 
    /* mapper */
-   nes.mmc = mmc_create(nes.rominfo);
+   nes.mmc = mmc_init(nes.rominfo);
    if (NULL == nes.mmc)
       goto _fail;
 
@@ -151,12 +151,6 @@ int nes_insertcart(const char *filename)
 
    /* if there's VRAM, let the PPU know */
    nes.ppu->vram_present = (NULL != nes.rominfo->vram);
-
-   nes6502_setcontext(nes.cpu);
-   apu_setcontext(nes.apu);
-   ppu_setcontext(nes.ppu);
-   mmc_setcontext(nes.mmc);
-   // mem_setcontext(nes.mmc);
 
    nes_reset(HARD_RESET);
 
@@ -191,11 +185,11 @@ void nes_reset(reset_type_t reset_type)
 /* Shutdown NES */
 void nes_shutdown(void)
 {
-   mmc_destroy(nes.mmc);
-   mem_destroy(nes.mem);
-   ppu_destroy(nes.ppu);
-   apu_destroy(nes.apu);
-   nes6502_destroy(nes.cpu);
+   mmc_shutdown();
+   mem_shutdown();
+   ppu_shutdown();
+   apu_shutdown();
+   nes6502_shutdown();
    rom_free(nes.rominfo);
    bmp_free(framebuffers[0]);
    bmp_free(framebuffers[1]);
@@ -241,17 +235,17 @@ int nes_init(region_t region, int sample_rate)
       goto _fail;
 
    /* cpu */
-   nes.cpu = nes6502_create(nes.mem);
+   nes.cpu = nes6502_init(nes.mem);
    if (NULL == nes.cpu)
       goto _fail;
 
    /* apu */
-   nes.apu = apu_create(region, sample_rate);
+   nes.apu = apu_init(region, sample_rate);
    if (NULL == nes.apu)
       goto _fail;
 
    /* ppu */
-   nes.ppu = ppu_create();
+   nes.ppu = ppu_init();
    if (NULL == nes.ppu)
       goto _fail;
 

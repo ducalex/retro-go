@@ -66,8 +66,8 @@ extern void mmc_bankvrom(int size, uint32 address, int bank);
 extern void mmc_bankrom(int size, uint32 address, int bank);
 
 /* Prototypes */
-extern mmc_t *mmc_create(rominfo_t *rominfo);
-extern void mmc_destroy(mmc_t *nes_mmc);
+extern mmc_t *mmc_init(rominfo_t *rominfo);
+extern void mmc_shutdown();
 
 extern void mmc_getcontext(mmc_t *dest_mmc);
 extern void mmc_setcontext(mmc_t *src_mmc);

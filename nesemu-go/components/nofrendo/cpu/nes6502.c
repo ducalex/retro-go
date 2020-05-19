@@ -1579,28 +1579,20 @@ IRAM_ATTR void nes6502_release(void)
 }
 
 /* Create a nes6502 object */
-nes6502_t *nes6502_create(mem_t *_mem)
+nes6502_t *nes6502_init(mem_t *_mem)
 {
-   nes6502_t *temp;
-
-   temp = &cpu;
-   // temp = malloc(sizeof(nes6502_t));
-   // if (NULL == temp)
-   //    return NULL;
-
-   memset(temp, 0, sizeof(nes6502_t));
+   memset(&cpu, 0, sizeof(nes6502_t));
 
    cpu.zp    = _mem->ram + 0x000; // Page 0
    cpu.stack = _mem->ram + 0x100; // Page 1
 
    mem = _mem; // For FASTMEM
 
-   return temp;
+   return &cpu;
 }
 
 /* Destroy a nes6502 object */
-void nes6502_destroy(nes6502_t *src_cpu)
+void nes6502_shutdown(void)
 {
-   if (src_cpu)
-      free(src_cpu);
+   //
 }

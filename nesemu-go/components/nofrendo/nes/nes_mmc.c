@@ -25,8 +25,6 @@
 
 #include <string.h>
 #include <nofrendo.h>
-#include <nes6502.h>
-#include <libsnss.h>
 #include <mappers.h>
 #include "nes_ppu.h"
 #include "nes_mmc.h"
@@ -39,14 +37,6 @@
 #define  MMC_4KCHR         (mmc.chr_banks * 2)
 #define  MMC_2KCHR         (mmc.chr_banks * 4)
 #define  MMC_1KCHR         (mmc.chr_banks * 8)
-
-#define  MMC_LAST8KPRG     (MMC_8KPRG - 1)
-#define  MMC_LAST16KPRG    (MMC_16KPRG - 1)
-#define  MMC_LAST32KPRG    (MMC_32KPRG - 1)
-#define  MMC_LAST8KCHR     (MMC_8KCHR - 1)
-#define  MMC_LAST4KCHR     (MMC_4KCHR - 1)
-#define  MMC_LAST2KCHR     (MMC_2KCHR - 1)
-#define  MMC_LAST1KCHR     (MMC_1KCHR - 1)
 
 static mmc_t mmc;
 
@@ -72,7 +62,7 @@ void mmc_getcontext(mmc_t *dest_mmc)
 void mmc_bankptr(int size, uint32 address, int bank, uint8 *ptr)
 {
    int page = address >> MEM_PAGESHIFT;
-   uint8 *base;
+   uint8 *base = ptr;
 
    if (ptr == NULL)
    {
@@ -83,21 +73,15 @@ void mmc_bankptr(int size, uint32 address, int bank, uint8 *ptr)
    switch (size)
    {
    case 8:
-      if (bank == MMC_LASTBANK)
-         bank = MMC_LAST8KPRG;
-      base = ptr + ((bank % MMC_8KPRG) << 13);
+      base += (bank == MMC_LASTBANK ? MMC_8KPRG - 1 : bank % MMC_8KPRG) << 13;
       break;
 
    case 16:
-      if (bank == MMC_LASTBANK)
-         bank = MMC_LAST16KPRG;
-      base = ptr + ((bank % MMC_16KPRG) << 14);
+      base += (bank == MMC_LASTBANK ? MMC_16KPRG - 1 : bank % MMC_16KPRG) << 14;
       break;
 
    case 32:
-      if (bank == MMC_LASTBANK)
-         bank = MMC_LAST32KPRG;
-      base = ptr + ((bank % MMC_32KPRG) << 15);
+      base += (bank == MMC_LASTBANK ? MMC_32KPRG - 1 : bank % MMC_32KPRG) << 15;
       break;
 
    default:
@@ -130,25 +114,25 @@ void mmc_bankvrom(int size, uint32 address, int bank)
    {
    case 1:
       if (bank == MMC_LASTBANK)
-         bank = MMC_LAST1KCHR;
+         bank = MMC_1KCHR - 1;
       ppu_setpage(1, address >> 10, &mmc.chr[(bank % MMC_1KCHR) << 10] - address);
       break;
 
    case 2:
       if (bank == MMC_LASTBANK)
-         bank = MMC_LAST2KCHR;
+         bank = MMC_2KCHR - 1;
       ppu_setpage(2, address >> 10, &mmc.chr[(bank % MMC_2KCHR) << 11] - address);
       break;
 
    case 4:
       if (bank == MMC_LASTBANK)
-         bank = MMC_LAST4KCHR;
+         bank = MMC_4KCHR - 1;
       ppu_setpage(4, address >> 10, &mmc.chr[(bank % MMC_4KCHR) << 12] - address);
       break;
 
    case 8:
       if (bank == MMC_LASTBANK)
-         bank = MMC_LAST8KCHR;
+         bank = MMC_8KCHR - 1;
       ppu_setpage(8, 0, &mmc.chr[(bank % MMC_8KCHR) << 13]);
       break;
 
@@ -208,47 +192,38 @@ void mmc_reset(void)
    MESSAGE_INFO("MMC: Mapper %s (%d) ready!\n", mmc.intf->name, mmc.intf->number);
 }
 
-void mmc_destroy(mmc_t *nes_mmc)
+void mmc_shutdown()
 {
-   if (nes_mmc)
-      free(nes_mmc);
+
 }
 
-mmc_t *mmc_create(rominfo_t *rominfo)
+mmc_t *mmc_init(rominfo_t *rominfo)
 {
-   mapintf_t *map_ptr;
-   mmc_t *temp;
+   memset(&mmc, 0, sizeof(mmc_t));
 
-   map_ptr = mmc_peek(rominfo->mapper_number);
-   if (NULL == map_ptr)
+   mmc.intf = mmc_peek(rominfo->mapper_number);
+   if (NULL == mmc.intf)
    {
       MESSAGE_ERROR("MMC: Unsupported mapper %d\n", rominfo->mapper_number);
       return NULL;
    }
 
-   temp = &mmc;
-   memset(temp, 0, sizeof(mmc_t));
-   // temp  = calloc(sizeof(mmc_t), 1);
-   // if (NULL == temp)
-   //    return NULL;
-
-   temp->intf = map_ptr;
-   temp->cart = rominfo;
-   temp->prg = rominfo->rom;
-   temp->prg_banks = rominfo->rom_banks;
+   mmc.cart = rominfo;
+   mmc.prg = rominfo->rom;
+   mmc.prg_banks = rominfo->rom_banks;
 
    if (rominfo->vrom_banks)
    {
-      temp->chr = rominfo->vrom;
-      temp->chr_banks = rominfo->vrom_banks;
+      mmc.chr = rominfo->vrom;
+      mmc.chr_banks = rominfo->vrom_banks;
       MESSAGE_INFO("MMC: Using CHR-ROM/VROM (%d banks)\n", rominfo->vrom_banks);
    }
    else
    {
-      temp->chr = rominfo->vram;
-      temp->chr_banks = rominfo->vram_banks;
+      mmc.chr = rominfo->vram;
+      mmc.chr_banks = rominfo->vram_banks;
       MESSAGE_INFO("MMC: Using CHR-RAM/VRAM (%d banks)\n", rominfo->vram_banks);
    }
 
-   return temp;
+   return &mmc;
 }

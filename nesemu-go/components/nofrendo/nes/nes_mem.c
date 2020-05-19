@@ -231,7 +231,7 @@ mem_t *mem_create()
    return &mem;
 }
 
-void mem_destroy(mem_t *mem)
+void mem_shutdown()
 {
    //
 }

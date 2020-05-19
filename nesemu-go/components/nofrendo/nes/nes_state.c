@@ -31,8 +31,6 @@
 #include <osd.h>
 #include "nes_state.h"
 
-extern nes6502_t cpu;
-
 #define  FIRST_STATE_SLOT  0
 #define  LAST_STATE_SLOT   9
 
@@ -50,7 +48,7 @@ void state_setslot(int slot)
    }
 }
 
-int save_baseblock(nes_t *state, SNSS_FILE *snssFile)
+static int save_baseblock(nes_t *state, SNSS_FILE *snssFile)
 {
    int i;
 
@@ -90,7 +88,7 @@ int save_baseblock(nes_t *state, SNSS_FILE *snssFile)
    return 0;
 }
 
-bool save_vramblock(nes_t *state, SNSS_FILE *snssFile)
+static bool save_vramblock(nes_t *state, SNSS_FILE *snssFile)
 {
    ASSERT(state);
 
@@ -112,7 +110,7 @@ bool save_vramblock(nes_t *state, SNSS_FILE *snssFile)
    return 0;
 }
 
-int save_sramblock(nes_t *state, SNSS_FILE *snssFile)
+static int save_sramblock(nes_t *state, SNSS_FILE *snssFile)
 {
    int i;
    bool written = false;
@@ -154,7 +152,7 @@ int save_sramblock(nes_t *state, SNSS_FILE *snssFile)
    return 0;
 }
 
-int save_soundblock(nes_t *state, SNSS_FILE *snssFile)
+static int save_soundblock(nes_t *state, SNSS_FILE *snssFile)
 {
    ASSERT(state);
 
@@ -189,7 +187,7 @@ int save_soundblock(nes_t *state, SNSS_FILE *snssFile)
    return 0;
 }
 
-int save_mapperblock(nes_t *state, SNSS_FILE *snssFile)
+static int save_mapperblock(nes_t *state, SNSS_FILE *snssFile)
 {
    int i;
    ASSERT(state);
@@ -226,7 +224,7 @@ int save_mapperblock(nes_t *state, SNSS_FILE *snssFile)
    return 0;
 }
 
-void load_baseblock(nes_t *state, SNSS_FILE *snssFile)
+static void load_baseblock(nes_t *state, SNSS_FILE *snssFile)
 {
    int i;
 
@@ -276,7 +274,7 @@ void load_baseblock(nes_t *state, SNSS_FILE *snssFile)
    ppu_write(PPU_VADDR, (uint8) (state->ppu->vaddr & 0xFF));
 }
 
-void load_vramblock(nes_t *state, SNSS_FILE *snssFile)
+static void load_vramblock(nes_t *state, SNSS_FILE *snssFile)
 {
    ASSERT(state);
 
@@ -284,7 +282,7 @@ void load_vramblock(nes_t *state, SNSS_FILE *snssFile)
    memcpy(state->rominfo->vram, snssFile->vramBlock.vram, snssFile->vramBlock.vramSize);
 }
 
-void load_sramblock(nes_t *state, SNSS_FILE *snssFile)
+static void load_sramblock(nes_t *state, SNSS_FILE *snssFile)
 {
    ASSERT(state);
 
@@ -292,13 +290,13 @@ void load_sramblock(nes_t *state, SNSS_FILE *snssFile)
    memcpy(state->rominfo->sram, snssFile->sramBlock.sram, snssFile->sramBlock.sramSize);
 }
 
-void load_controllerblock(nes_t *state, SNSS_FILE *snssFile)
+static void load_controllerblock(nes_t *state, SNSS_FILE *snssFile)
 {
    UNUSED(state);
    UNUSED(snssFile);
 }
 
-void load_soundblock(nes_t *state, SNSS_FILE *snssFile)
+static void load_soundblock(nes_t *state, SNSS_FILE *snssFile)
 {
    int i;
 
@@ -313,7 +311,7 @@ void load_soundblock(nes_t *state, SNSS_FILE *snssFile)
 }
 
 /* TODO: magic numbers galore */
-void load_mapperblock(nes_t *state, SNSS_FILE *snssFile)
+static void load_mapperblock(nes_t *state, SNSS_FILE *snssFile)
 {
    int i;
 

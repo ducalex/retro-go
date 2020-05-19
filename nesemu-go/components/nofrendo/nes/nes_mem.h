@@ -78,8 +78,8 @@ typedef struct
    mapintf_t *mapper;
 } mem_t;
 
-extern mem_t *mem_create();
-extern void mem_destroy(mem_t *mem);
+extern mem_t *mem_create(void);
+extern void mem_shutdown(void);
 extern void mem_reset(void);
 extern void mem_setmapper(mapintf_t *intf);
 extern void mem_setpage(uint16 page, uint8 *ptr);

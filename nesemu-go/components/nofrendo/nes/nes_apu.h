@@ -215,15 +215,15 @@ extern "C" {
 #endif /* __cplusplus */
 
 /* Function prototypes */
-extern apu_t *apu_create(int region, int sample_rate);
-extern void apu_destroy(apu_t *apu);
+extern apu_t *apu_init(int region, int sample_rate);
+extern void apu_shutdown(void);
 extern void apu_setcontext(apu_t *src_apu);
 extern void apu_getcontext(apu_t *dest_apu);
 
 extern void apu_process(void *buffer, int num_samples);
 extern void apu_reset(void);
 
-extern void apu_setext(apu_t *apu, apuext_t *ext);
+extern void apu_setext(apuext_t *ext);
 extern void apu_setfilter(int filter_type);
 extern void apu_setchan(int chan, bool enabled);
 

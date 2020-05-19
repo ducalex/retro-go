@@ -137,14 +137,14 @@ extern void ppu_setpage(int size, int page_num, uint8 *location);
 extern uint8 *ppu_getpage(int page);
 
 /* Control */
-extern void ppu_reset();
+extern void ppu_reset(void);
 extern bool ppu_enabled(void);
 extern void ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag);
-extern void ppu_endscanline();
-extern void ppu_checknmi();
+extern void ppu_endscanline(void);
+extern void ppu_checknmi(void);
 
-extern ppu_t *ppu_create(void);
-extern void ppu_destroy(ppu_t *ppu);
+extern ppu_t *ppu_init(void);
+extern void ppu_shutdown(void);
 extern void ppu_setlatchfunc(ppu_latchfunc_t func);
 extern void ppu_setvreadfunc(ppu_vreadfunc_t func);
 
@@ -156,7 +156,7 @@ extern uint8 ppu_read(uint32 address);
 extern void ppu_write(uint32 address, uint8 value);
 
 /* rendering */
-extern void ppu_setpalette(ppu_t *ppu, rgb_t *pal);
+extern void ppu_setpalette(rgb_t *pal);
 extern void ppu_setpalnum(int n);
 extern const palette_t *ppu_getpalnum(int n);
 

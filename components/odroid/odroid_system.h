@@ -49,6 +49,13 @@ typedef enum
      SPI_LOCK_DISPLAY = 2,
 } spi_lock_res_t;
 
+typedef struct {
+    short nsamples;
+    short count;
+    float avg;
+    float last;
+} avgr_t;
+
 typedef struct
 {
      uint totalFrames;
@@ -67,6 +74,8 @@ typedef struct
      float emulatedSpeed;
      float busyPercent;
      uint lastTickTime;
+     uint freeMemoryInt;
+     uint freeMemoryExt;
      uint idleTimeCPU0;
      uint idleTimeCPU1;
 } runtime_stats_t;
