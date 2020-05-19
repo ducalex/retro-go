@@ -46,7 +46,7 @@ INLINE void renderframe(bool draw_flag)
    int elapsed_cycles;
    mapintf_t *mapintf = nes.mmc->intf;
 
-   while (nes.scanline != nes.scanlines)
+   while (nes.scanline < nes.scanlines_per_frame)
    {
       nes.cycles += nes.cycles_per_line;
 
@@ -58,7 +58,8 @@ INLINE void renderframe(bool draw_flag)
          elapsed_cycles = nes6502_execute(7);
          nes.cycles -= elapsed_cycles;
 
-         ppu_checknmi();
+         if (nes.ppu->ctrl0 & PPU_CTRL0F_NMI)
+            nes6502_nmi();
 
          if (mapintf->vblank)
             mapintf->vblank();
@@ -204,7 +205,7 @@ int nes_init(region_t region, int sample_rate)
    if (region == NES_PAL)
    {
       nes.refresh_rate = NES_REFRESH_RATE_PAL;
-      nes.scanlines = NES_SCANLINES_PAL;
+      nes.scanlines_per_frame = NES_SCANLINES_PAL;
       nes.overscan = 0;
       nes.cycles_per_line = 341.f * 5 / 16;
       MESSAGE_INFO("System region: PAL\n");
@@ -212,7 +213,7 @@ int nes_init(region_t region, int sample_rate)
    else
    {
       nes.refresh_rate = NES_REFRESH_RATE_NTSC;
-      nes.scanlines = NES_SCANLINES_NTSC;
+      nes.scanlines_per_frame = NES_SCANLINES_NTSC;
       nes.overscan = 8;
       nes.cycles_per_line = 341.f * 4 / 12;
       MESSAGE_INFO("System region: NTSC\n");
@@ -245,7 +246,7 @@ int nes_init(region_t region, int sample_rate)
       goto _fail;
 
    /* ppu */
-   nes.ppu = ppu_init();
+   nes.ppu = ppu_init(region);
    if (NULL == nes.ppu)
       goto _fail;
 

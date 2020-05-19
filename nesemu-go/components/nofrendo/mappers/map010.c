@@ -105,7 +105,7 @@ static void map10_init(void)
    memset(regs, 0, sizeof(regs));
 
    mmc_bankrom(16, 0x8000, 0);
-   mmc_bankrom(16, 0xC000, (mmc_getinfo()->rom_banks) - 1);
+   mmc_bankrom(16, 0xC000, MMC_LASTBANK);
 
    latch[0] = 0xFE;
    latch[1] = 0xFE;

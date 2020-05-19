@@ -24,7 +24,6 @@
 */
 
 #include <string.h>
-#include <stdlib.h>
 #include <esp_attr.h>
 #include <nofrendo.h>
 #include <nes6502.h>
@@ -120,25 +119,6 @@ void ppu_getcontext(ppu_t *dest_ppu)
    dest_ppu->page[15] = dest_ppu->page[11] - 0x1000;
 }
 
-ppu_t *ppu_create(void)
-{
-   memset(&ppu, 0, sizeof(ppu_t));
-
-   ppu.latchfunc = NULL;
-   ppu.vram_present = false;
-   ppu.drawsprites = true;
-   ppu.limitsprites = true;
-
-   ppu_setpalette((rgb_t*)nes_palettes[0].data); // Set default palette
-
-   return &ppu;
-}
-
-void ppu_shutdown()
-{
-   //
-}
-
 void ppu_setpage(int size, int page_num, uint8 *location)
 {
    /* deliberately fall through */
@@ -199,21 +179,6 @@ void ppu_reset()
 
    ppu.latch = 0;
    ppu.vram_accessible = true;
-}
-
-/* we render a scanline of graphics first so we know exactly
-** where the sprite 0 strike is going to occur (in terms of
-** cpu cycles), using the relation that 3 pixels == 1 cpu cycle
-*/
-INLINE void ppu_setstrike(int x_loc)
-{
-   if (false == ppu.strikeflag)
-   {
-      ppu.strikeflag = true;
-
-      /* 3 pixels per cpu cycle */
-      ppu.strike_cycle = nes6502_getcycles() + (x_loc / 3);
-   }
 }
 
 INLINE void ppu_oamdma(uint8 value)
@@ -488,7 +453,7 @@ void ppu_setvreadfunc(ppu_vreadfunc_t func)
 }
 
 /* rendering routines */
-INLINE uint32 get_patpix(uint32 tile_addr)
+INLINE uint16 get_patpix(uint16 tile_addr)
 {
    uint8 pat1 = PPU_MEM_READ(tile_addr);
    uint8 pat2 = PPU_MEM_READ(tile_addr + 8);
@@ -496,7 +461,7 @@ INLINE uint32 get_patpix(uint32 tile_addr)
         | ((pat1 & 0xAA) << 7) | (pat1 & 0x55);
 }
 
-INLINE void build_tile_colors(bool flip, uint32 pattern, uint8 *colors)
+INLINE void build_tile_colors(bool flip, uint16 pattern, uint8 *colors)
 {
    /* swap pixels around if our tile is flipped */
    if (flip)
@@ -523,9 +488,17 @@ INLINE void build_tile_colors(bool flip, uint32 pattern, uint8 *colors)
    }
 }
 
-INLINE void check_strike(uint8 *surface, uint8 attrib, uint32 pattern)
+/* we render a scanline of graphics first so we know exactly
+** where the sprite 0 strike is going to occur (in terms of
+** cpu cycles), using the relation that 3 pixels == 1 cpu cycle
+*/
+INLINE void check_strike(uint8 *surface, uint8 attrib, uint16 pattern)
 {
    uint8 colors[8];
+
+   /* Flag already set */
+   if (ppu.strikeflag)
+      return;
 
    /* sprite is 100% transparent */
    if (0 == pattern)
@@ -533,26 +506,19 @@ INLINE void check_strike(uint8 *surface, uint8 attrib, uint32 pattern)
 
    build_tile_colors(attrib & OAMF_HFLIP, pattern, colors);
 
-   /* check for solid sprite pixel overlapping solid bg pixel */
-   if (colors[0] && (!surface || BG_SOLID(surface[0])))
-      ppu_setstrike(0);
-   else if (colors[1] && (!surface || BG_SOLID(surface[1])))
-      ppu_setstrike(1);
-   else if (colors[2] && (!surface || BG_SOLID(surface[2])))
-      ppu_setstrike(2);
-   else if (colors[3] && (!surface || BG_SOLID(surface[3])))
-      ppu_setstrike(3);
-   else if (colors[4] && (!surface || BG_SOLID(surface[4])))
-      ppu_setstrike(4);
-   else if (colors[5] && (!surface || BG_SOLID(surface[5])))
-      ppu_setstrike(5);
-   else if (colors[6] && (!surface || BG_SOLID(surface[6])))
-      ppu_setstrike(6);
-   else if (colors[7] && (!surface || BG_SOLID(surface[7])))
-      ppu_setstrike(7);
+   for (int i = 0; i < 8; i++)
+   {
+      if (colors[i] && (!surface || BG_SOLID(surface[i])))
+      {
+         /* 3 pixels per cpu cycle */
+         ppu.strike_cycle = nes6502_getcycles() + (i / 3);
+         ppu.strikeflag = true;
+         return;
+      }
+   }
 }
 
-INLINE void draw_bgtile(uint8 *surface, uint32 pattern, const uint8 *colors)
+INLINE void draw_bgtile(uint8 *surface, uint16 pattern, const uint8 *colors)
 {
    *surface++ = colors[(pattern >> 14) & 3];
    *surface++ = colors[(pattern >> 6) & 3];
@@ -564,7 +530,7 @@ INLINE void draw_bgtile(uint8 *surface, uint32 pattern, const uint8 *colors)
    *surface   = colors[pattern & 3];
 }
 
-INLINE void draw_oamtile(uint8 *surface, uint8 attrib, uint32 pattern, const uint8 *col_tbl)
+INLINE void draw_oamtile(uint8 *surface, uint8 attrib, uint16 pattern, const uint8 *col_tbl)
 {
    uint8 colors[8];
 
@@ -669,11 +635,7 @@ INLINE void ppu_renderbg(uint8 *vidbuf)
    /* Blank left hand column if need be */
    if (ppu.bg_mask)
    {
-      for (int i = 0; i < 8; i++)
-      {
-         vidbuf[i] = FULLBG;
-      }
-      // memset(vidbuf, 8, FULLBG);
+      memset(vidbuf, FULLBG, 8);
    }
 }
 
@@ -771,7 +733,12 @@ IRAM_ATTR bool ppu_enabled(void)
    return (ppu.bg_on || ppu.obj_on);
 }
 
-IRAM_ATTR void ppu_endscanline(void)
+IRAM_ATTR bool ppu_inframe(void)
+{
+   return (ppu.scanline < 240);
+}
+
+IRAM_ATTR void ppu_endscanline()
 {
    /* modify vram address at end of scanline */
    if (ppu.scanline < 240 && (ppu.bg_on || ppu.obj_on))
@@ -805,16 +772,11 @@ IRAM_ATTR void ppu_endscanline(void)
    }
 }
 
-IRAM_ATTR void ppu_checknmi(void)
-{
-   if (ppu.ctrl0 & PPU_CTRL0F_NMI)
-      nes6502_nmi();
-}
-
 IRAM_ATTR void ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag)
 {
    ppu.scanline = scanline;
 
+   // Draw visible line
    if (scanline < 240)
    {
       /* Lower the Max Sprite per scanline flag */
@@ -838,12 +800,14 @@ IRAM_ATTR void ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag)
       /* TODO: fetch obj data 1 scanline before */
       ppu_renderoam(bmp->line[scanline], scanline, ppu.drawsprites && draw_flag);
    }
-   else if (241 == scanline)
+   // Vertical Blank
+   else if (scanline == 241)
    {
       ppu.stat |= PPU_STATF_VBLANK;
       ppu.vram_accessible = true;
    }
-   else if (261 == scanline)
+   // End of frame
+   else if (scanline == ppu.scanlines_per_frame - 1)
    {
       ppu.stat &= ~PPU_STATF_VBLANK;
       ppu.strikeflag = false;
@@ -860,6 +824,24 @@ bool ppu_checkzapperhit(bitmap_t *bmp, int x, int y)
       return true;
 
    return false;
+}
+
+ppu_t *ppu_init(int region)
+{
+   memset(&ppu, 0, sizeof(ppu_t));
+
+   ppu.drawsprites = true;
+   ppu.limitsprites = true;
+   ppu.scanlines_per_frame = (region == NES_PAL) ? NES_SCANLINES_PAL : NES_SCANLINES_NTSC;
+
+   ppu_setpalette((rgb_t*)nes_palettes[0].data); // Set default palette
+
+   return &ppu;
+}
+
+void ppu_shutdown()
+{
+   //
 }
 
 

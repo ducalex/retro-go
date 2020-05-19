@@ -59,21 +59,18 @@ struct mmc_s
 
 #define MMC_LASTBANK      -1
 
-extern rominfo_t *mmc_getinfo(void);
-
 extern void mmc_bankwram(int size, uint32 address, int bank);
 extern void mmc_bankvrom(int size, uint32 address, int bank);
 extern void mmc_bankrom(int size, uint32 address, int bank);
 
-/* Prototypes */
 extern mmc_t *mmc_init(rominfo_t *rominfo);
-extern void mmc_shutdown();
+extern void mmc_shutdown(void);
+extern void mmc_reset(void);
+
+extern mapintf_t *mmc_peek(int map_num);
+extern rominfo_t *mmc_getinfo(void);
 
 extern void mmc_getcontext(mmc_t *dest_mmc);
 extern void mmc_setcontext(mmc_t *src_mmc);
-
-extern mapintf_t *mmc_peek(int map_num);
-
-extern void mmc_reset(void);
 
 #endif /* _NES_MMC_H_ */

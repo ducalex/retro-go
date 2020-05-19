@@ -54,9 +54,6 @@ static void map162_init(void)
    mmc_bankvrom(4, 0x0000, 0);
    mmc_bankvrom(4, 0x1000, 0);
    sync();
-
-   //
-   // mmc_getinfo()->vrom_banks = 0xFF;
 }
 
 static void map162_hblank(int scanline)

@@ -80,7 +80,7 @@ typedef struct nes_s
 
    /* Timing stuff */
    short refresh_rate;
-   short scanlines;
+   short scanlines_per_frame;
    float cycles_per_line;
 
    short scanline;
