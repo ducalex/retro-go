@@ -34,7 +34,7 @@ static bool load_state(char *pathName)
 
 void app_main(void)
 {
-    printf("Huexpress (%s-%s).\n", COMPILEDATE, GITREV);
+    printf("HuExpress-go (%s-%s).\n", COMPILEDATE, GITREV);
 
     odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     odroid_system_emu_init(&load_state, &save_state, NULL);
@@ -50,6 +50,6 @@ void app_main(void)
 
     RunPCE();
 
-    printf("Huexpress died.\n");
+    printf("HuExpress died.\n");
     abort();
 }

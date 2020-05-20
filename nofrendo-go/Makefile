@@ -3,7 +3,7 @@
 # project subdirectory.
 #
 
-PROJECT_NAME := nesemu-go
+PROJECT_NAME := nofrendo-go
 EXTRA_COMPONENT_DIRS := ../components
 
 CPPFLAGS += -DENABLE_NETPLAY

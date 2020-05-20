@@ -353,7 +353,7 @@ void osd_getinput(void)
 
 void app_main(void)
 {
-	printf("Nofrendo (%s-%s).\n", COMPILEDATE, GITREV);
+	printf("Nofrendo-go (%s-%s).\n", COMPILEDATE, GITREV);
 
    odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
    odroid_system_emu_init(&LoadState, &SaveState, &netplay_callback);

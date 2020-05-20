@@ -28,7 +28,7 @@ static bool load_state(char *pathName)
 
 void app_main(void)
 {
-    printf("Handy (%s-%s).\n", COMPILEDATE, GITREV);
+    printf("Handy-go (%s-%s).\n", COMPILEDATE, GITREV);
 
     odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     odroid_system_emu_init(&load_state, &save_state, NULL);

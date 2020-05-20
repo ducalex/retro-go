@@ -38,6 +38,8 @@ static uint16 prg_banks[4];
 static uint16 chr_banks[12];
 static uint16 chr_upper_bits;
 
+static nes_t *nes;
+
 #define IN_FRAME    0x40
 #define IRQ_PENDING 0x80
 #define SPLIT_ENABLED 0x80
@@ -60,7 +62,9 @@ static struct
 
 static struct
 {
-   uint8 mode;
+   uint8 enabled;
+   uint8 rightside;
+   uint8 delimiter;
    uint8 scroll;
    uint8 bank;
 } vert_split;
@@ -79,9 +83,9 @@ static struct
 } fill_mode;
 
 
-static inline uint8 *get_nametable(int n)
+INLINE uint8 *get_nametable(int n)
 {
-   return nes_getptr()->ppu->nametab + (0x400 * n);
+   return nes->ppu->nametab + (0x400 * n);
 }
 
 static void prg_setbank(int size, uint32 address, int bank)
@@ -131,8 +135,18 @@ static void prg_update()
    }
 }
 
-static void chr_update(int reg)
+static void chr_update()
 {
+   bool largeSprites = nes->ppu->obj_height == 16;
+
+   if (!largeSprites)
+   {
+      //Using 8x8 sprites resets the last written to bank logic
+      lastChr = 0;
+   }
+
+	bool chrA = !largeSprites || (_splitTileNumber >= 32 && _splitTileNumber < 40) || (scanline > 240 && lastChr <= 0x5127);
+
    switch (chr_mode)
    {
    case 0: /* 8K */
@@ -145,22 +159,22 @@ static void chr_update(int reg)
       break;
 
    case 3: /* 1K */
-      mmc_bankvrom(1, 0 * 0x400, chr_banks[reg < 8 ? 0 : 8]);
-      mmc_bankvrom(1, 1 * 0x400, chr_banks[reg < 8 ? 1 : 9]);
-      mmc_bankvrom(1, 2 * 0x400, chr_banks[reg < 8 ? 2 : 10]);
-      mmc_bankvrom(1, 3 * 0x400, chr_banks[reg < 8 ? 3 : 11]);
-      mmc_bankvrom(1, 4 * 0x400, chr_banks[reg < 8 ? 4 : 8]);
-      mmc_bankvrom(1, 5 * 0x400, chr_banks[reg < 8 ? 5 : 9]);
-      mmc_bankvrom(1, 6 * 0x400, chr_banks[reg < 8 ? 6 : 10]);
-      mmc_bankvrom(1, 7 * 0x400, chr_banks[reg < 8 ? 7 : 11]);
+      mmc_bankvrom(1, 0 * 0x400, chr_banks[chrA ? 0 : 8]);
+      mmc_bankvrom(1, 1 * 0x400, chr_banks[chrA ? 1 : 9]);
+      mmc_bankvrom(1, 2 * 0x400, chr_banks[chrA ? 2 : 10]);
+      mmc_bankvrom(1, 3 * 0x400, chr_banks[chrA ? 3 : 11]);
+      mmc_bankvrom(1, 4 * 0x400, chr_banks[chrA ? 4 : 8]);
+      mmc_bankvrom(1, 5 * 0x400, chr_banks[chrA ? 5 : 9]);
+      mmc_bankvrom(1, 6 * 0x400, chr_banks[chrA ? 6 : 10]);
+      mmc_bankvrom(1, 7 * 0x400, chr_banks[chrA ? 7 : 11]);
       break;
    }
 }
 
-static inline void chr_switch(int reg, int value)
+INLINE void chr_switch(int reg, int value)
 {
    chr_banks[reg] = value | chr_upper_bits;
-   // chr_update(reg);
+   // chr_update();
 
    if (reg >= 8) {
       mmc_bankvrom(1, 0x1000 + (reg - 8) * 0x400, chr_banks[reg]);
@@ -169,20 +183,22 @@ static inline void chr_switch(int reg, int value)
    }
 }
 
-static inline void nametable_update(uint8 value)
+INLINE void nametable_update(uint8 value)
 {
    nametable_mapping = value;
    ppu_mirror(value & 3, (value >> 2) & 3, (value >> 4) & 3, value >> 6);
 }
 
-static inline void nametable_fill()
+INLINE void nametable_fill()
 {
    memset(get_nametable(3), fill_mode.tile, 32 * 30); // 32 tiles per row, 30 rows
    memset(get_nametable(3) + 32 * 30, (fill_mode.color | fill_mode.color << 2 | fill_mode.color << 4 | fill_mode.color << 6), 64);
 }
 
-static void map5_hblank(int scanline)
+static void map5_hblank(int _scanline)
 {
+   scanline = _scanline;
+
    if (scanline >= 241)
    {
       irq.status &= ~IN_FRAME; // (IN_FRAME|IRQ_PENDING)
@@ -214,7 +230,7 @@ static void map5_write(uint32 address, uint8 value)
    case 0x5101:
       /* CHR mode */
       chr_mode = value & 3;
-      chr_update(-1);
+      chr_update();
       break;
 
    case 0x5102:
@@ -279,6 +295,7 @@ static void map5_write(uint32 address, uint8 value)
    case 0x512A:
    case 0x512B:
       /* CHR Bankswitching */
+      lastChr = address;
       chr_switch(address - 0x5120, value);
       break;
 
@@ -289,7 +306,9 @@ static void map5_write(uint32 address, uint8 value)
 
    case 0x5200:
       /* Vertical Split Mode */
-      vert_split.mode = value;
+      vert_split.enabled   = (value >> 7) & 1;
+      vert_split.rightside = (value >> 6) & 1;
+      vert_split.delimiter = (value & 0x1F);
       break;
 
    case 0x5201:
@@ -299,7 +318,7 @@ static void map5_write(uint32 address, uint8 value)
 
    case 0x5202:
       /* Vertical Split Bank */
-      vert_split.bank = value;
+      vert_split.bank = value % (nes->mmc->chr_banks * 2);
       break;
 
    case 0x5203:
@@ -352,12 +371,11 @@ static uint8 map5_read(uint32 address)
 
 static uint8 map5_vram_read(uint32 address, uint8 value)
 {
-   return 0xFF;
+   return value;
 }
 
 static uint8 map5_exram_read(uint32 address)
 {
-   if (!exram.data) exram.data = get_nametable(2);
    return exram.data[address - 0x5C00];
 }
 
@@ -365,22 +383,23 @@ static void map5_exram_write(uint32 address, uint8 value)
 {
    if (exram.mode != 3)
    {
-      if (!exram.data) exram.data = get_nametable(2);
       exram.data[address - 0x5C00] = value;
    }
 }
 
 static void map5_init(void)
 {
-   rominfo_t *cart = mmc_getinfo();
+   nes = nes_getptr();
 
-   if (cart->sram)
-   {
-      free(cart->sram);
-   }
+   // if (nes->rominfo->sram)
+   // {
+   //    free(nes->rominfo->sram);
+   // }
 
-   cart->sram = malloc(0x10000);
-   mmc_bankwram(8, 0x6000, 0);
+   // nes->rominfo->sram = malloc(0x10000);
+   // mmc_bankwram(8, 0x6000, 0);
+
+   exram.data = get_nametable(2);
 
    irq.scanline = irq.enabled = 0;
    irq.status = 0;
@@ -396,15 +415,14 @@ static void map5_init(void)
 
    chr_upper_bits = 0;
 
-   int last_bank = cart->rom_banks * 2 - 1;
    for (int i = 0; i < 4; i++)
-      prg_banks[i] = last_bank | 0x80;
+      prg_banks[i] = MMC_LASTBANK;
 
    for (int i = 0; i < 8; i++)
       chr_banks[i] = i;
 
    prg_update();
-   chr_update(-1);
+   chr_update();
    nametable_fill();
    nametable_update(0);
 

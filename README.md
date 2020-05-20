@@ -1,5 +1,5 @@
 # Description
-Retro-Go is composed of a launcher and several emulators.
+Retro-Go is a launcher and framework to run emulators on the ODROID-GO. It comes with many emulators!
 
 ### Supported systems:
 - NES
@@ -94,7 +94,7 @@ _Note: It is possible to use esp-idf 3.2 but changes to sdkconfig will be necess
 
 # Acknowledgements
 - The NES/GBC/SMS emulators were originally from the "Triforce" fork of the [official Go-Play firmware](https://github.com/othercrashoverride/go-play).
-- The PC Engine emulator was first ported to the GO by [pelle7](https://github.com/pelle7/odroid-go-pcengine-huexpress/).
+- The [HuExpress](https://github.com/kallisti5/huexpress) (PCE) emulator was first ported to the GO by [pelle7](https://github.com/pelle7/odroid-go-pcengine-huexpress/).
 - The Lynx emulator is an adaptation of the [libretro-handy](https://github.com/libretro/libretro-handy).
 - The aesthetics of the launcher were inspired (copied) from [pelle7's go-emu](https://github.com/pelle7/odroid-go-emu-launcher).
 - [miniz](https://github.com/richgel999/miniz) For zipped ROM and zlib API

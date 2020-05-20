@@ -234,7 +234,7 @@ static bool advanced_settings_cb(odroid_dialog_choice_t *option, odroid_dialog_e
 
 void app_main(void)
 {
-    printf("gnuboy (%s-%s).\n", COMPILEDATE, GITREV);
+    printf("gnuboy-go (%s-%s).\n", COMPILEDATE, GITREV);
 
     // Init all the console hardware
     odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);

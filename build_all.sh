@@ -20,7 +20,7 @@ make -j 6 || exit
 
 echo ""
 echo "Building the NES emulator"
-cd ../nesemu-go
+cd ../nofrendo-go
 rm -f build/main/*
 make -j 6 || exit
 
