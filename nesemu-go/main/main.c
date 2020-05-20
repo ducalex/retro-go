@@ -28,8 +28,8 @@ static odroid_video_frame update2 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 
 static odroid_video_frame *currentUpdate = &update1;
 static odroid_video_frame *previousUpdate = NULL;
 
-static int16_t *audioBuffer = NULL;
-static int16_t pendingSamples = 0;
+DMA_ATTR static int16_t audioBuffer[AUDIO_SAMPLE_RATE / 50 * 2];
+DMA_ATTR static int16_t pendingSamples = 0;
 
 static odroid_gamepad_state joystick1;
 static odroid_gamepad_state joystick2;
@@ -358,7 +358,6 @@ void app_main(void)
    odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
    odroid_system_emu_init(&LoadState, &SaveState, &netplay_callback);
 
-   audioBuffer = rg_alloc(AUDIO_SAMPLE_RATE / 50 * 4, MEM_DMA);
    romData     = rg_alloc(0x200000, MEM_ANY);
 
    char *romPath = odroid_system_get_path(NULL, ODROID_PATH_ROM_FILE);
