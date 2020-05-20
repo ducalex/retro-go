@@ -4,10 +4,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "pce.h"
-#include "osd.h"
+#include "handy.h"
 
-#define APP_ID 40
+#define APP_ID 50
 
 #define AUDIO_SAMPLE_RATE 22050
 
@@ -17,39 +16,34 @@
 
 static bool save_state(char *pathName)
 {
-    return SaveState(pathName) == 0;
+    return true;
 }
 
 
 static bool load_state(char *pathName)
 {
-    if (LoadState(pathName) != 0)
-    {
-        ResetPCE(false);
-        return false;
-    }
     return true;
 }
 
 
 void app_main(void)
 {
-    printf("Huexpress (%s-%s).\n", COMPILEDATE, GITREV);
+    printf("Handy (%s-%s).\n", COMPILEDATE, GITREV);
 
     odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     odroid_system_emu_init(&load_state, &save_state, NULL);
 
     char *romFile = odroid_system_get_path(NULL, ODROID_PATH_ROM_FILE);
 
-    InitPCE(romFile);
+    // Init emulator
 
     if (odroid_system_get_start_action() == ODROID_START_ACTION_RESUME)
     {
         odroid_system_emu_load_state(0);
     }
 
-    RunPCE();
+    // Start emulation
 
-    printf("Huexpress died.\n");
+    printf("Handy died.\n");
     abort();
 }

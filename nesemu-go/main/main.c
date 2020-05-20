@@ -353,12 +353,12 @@ void osd_getinput(void)
 
 void app_main(void)
 {
-	printf("nesemu (%s-%s).\n", COMPILEDATE, GITREV);
+	printf("Nofrendo (%s-%s).\n", COMPILEDATE, GITREV);
 
    odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
    odroid_system_emu_init(&LoadState, &SaveState, &netplay_callback);
 
-   romData     = rg_alloc(0x200000, MEM_ANY);
+   romData = rg_alloc(0x200000, MEM_ANY);
 
    char *romPath = odroid_system_get_path(NULL, ODROID_PATH_ROM_FILE);
 
