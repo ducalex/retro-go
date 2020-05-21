@@ -73,15 +73,15 @@ void mmc_bankptr(int size, uint32 address, int bank, uint8 *ptr)
    switch (size)
    {
    case 8:
-      base += (bank == MMC_LASTBANK ? MMC_8KPRG - 1 : bank % MMC_8KPRG) << 13;
+      base += ((bank >= 0 ? bank : MMC_8KPRG + bank) % MMC_8KPRG) << 13;
       break;
 
    case 16:
-      base += (bank == MMC_LASTBANK ? MMC_16KPRG - 1 : bank % MMC_16KPRG) << 14;
+      base += ((bank >= 0 ? bank : MMC_16KPRG + bank) % MMC_16KPRG) << 14;
       break;
 
    case 32:
-      base += (bank == MMC_LASTBANK ? MMC_32KPRG - 1 : bank % MMC_32KPRG) << 15;
+      base += ((bank >= 0 ? bank : MMC_32KPRG + bank) % MMC_32KPRG) << 15;
       break;
 
    default:
@@ -113,27 +113,23 @@ void mmc_bankvrom(int size, uint32 address, int bank)
    switch (size)
    {
    case 1:
-      if (bank == MMC_LASTBANK)
-         bank = MMC_1KCHR - 1;
-      ppu_setpage(1, address >> 10, &mmc.chr[(bank % MMC_1KCHR) << 10] - address);
+      bank = (bank >= 0 ? bank : MMC_1KCHR + bank) % MMC_1KCHR;
+      ppu_setpage(1, address >> 10, &mmc.chr[bank << 10] - address);
       break;
 
    case 2:
-      if (bank == MMC_LASTBANK)
-         bank = MMC_2KCHR - 1;
-      ppu_setpage(2, address >> 10, &mmc.chr[(bank % MMC_2KCHR) << 11] - address);
+      bank = (bank >= 0 ? bank : MMC_2KCHR + bank) % MMC_2KCHR;
+      ppu_setpage(2, address >> 10, &mmc.chr[bank << 11] - address);
       break;
 
    case 4:
-      if (bank == MMC_LASTBANK)
-         bank = MMC_4KCHR - 1;
-      ppu_setpage(4, address >> 10, &mmc.chr[(bank % MMC_4KCHR) << 12] - address);
+      bank = (bank >= 0 ? bank : MMC_4KCHR + bank) % MMC_4KCHR;
+      ppu_setpage(4, address >> 10, &mmc.chr[bank << 12] - address);
       break;
 
    case 8:
-      if (bank == MMC_LASTBANK)
-         bank = MMC_8KCHR - 1;
-      ppu_setpage(8, 0, &mmc.chr[(bank % MMC_8KCHR) << 13]);
+      bank = (bank >= 0 ? bank : MMC_8KCHR + bank) % MMC_8KCHR;
+      ppu_setpage(8, 0, &mmc.chr[bank << 13]);
       break;
 
    default:
