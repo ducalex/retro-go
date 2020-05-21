@@ -167,9 +167,9 @@ uint odroid_system_get_start_action()
     return startAction;
 }
 
-char* odroid_system_get_path(char *_romPath, emu_path_type_t type)
+char* odroid_system_get_path_for(char *romPath, emu_path_type_t type)
 {
-    char* fileName = strstr(_romPath ?: romPath, ODROID_BASE_PATH_ROMS);
+    char* fileName = strstr(romPath, ODROID_BASE_PATH_ROMS);
     char *buffer = rg_alloc(256, MEM_ANY); // Lazy arbitrary length...
 
     if (!fileName || strlen(fileName) < 4)
@@ -188,6 +188,12 @@ char* odroid_system_get_path(char *_romPath, emu_path_type_t type)
             strcpy(buffer, ODROID_BASE_PATH_SAVES);
             strcat(buffer, fileName);
             strcat(buffer, ".sav");
+            break;
+
+        case ODROID_PATH_SAVE_TEMP:
+            strcpy(buffer, ODROID_BASE_PATH_SAVES);
+            strcat(buffer, fileName);
+            strcat(buffer, ".tmp");
             break;
 
         case ODROID_PATH_SAVE_SRAM:
@@ -214,6 +220,11 @@ char* odroid_system_get_path(char *_romPath, emu_path_type_t type)
     return buffer;
 }
 
+char* odroid_system_get_path(emu_path_type_t type)
+{
+    return odroid_system_get_path_for(romPath, type);
+}
+
 bool odroid_system_emu_load_state(int slot)
 {
     if (!romPath || !loadState)
@@ -227,7 +238,7 @@ bool odroid_system_emu_load_state(int slot)
     odroid_display_show_hourglass();
     odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
-    char *pathName = odroid_system_get_path(NULL, ODROID_PATH_SAVE_STATE);
+    char *pathName = odroid_system_get_path(ODROID_PATH_SAVE_STATE);
     bool success = (*loadState)(pathName);
 
     odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
@@ -256,8 +267,20 @@ bool odroid_system_emu_save_state(int slot)
     odroid_display_show_hourglass();
     odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
-    char *pathName = odroid_system_get_path(NULL, ODROID_PATH_SAVE_STATE);
-    bool success = (*saveState)(pathName);
+    char *tempName = odroid_system_get_path(ODROID_PATH_SAVE_TEMP);
+    char *saveName = odroid_system_get_path(ODROID_PATH_SAVE_STATE);
+
+    rename(saveName, tempName);
+
+    bool success = (*saveState)(saveName);
+
+    if (!success)
+    {
+        unlink(saveName);
+        rename(tempName, saveName);
+    }
+
+    unlink(tempName);
 
     odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
     odroid_system_set_led(0);
@@ -268,7 +291,8 @@ bool odroid_system_emu_save_state(int slot)
         odroid_overlay_alert("Save failed");
     }
 
-    free(pathName);
+    free(tempName);
+    free(saveName);
 
     return success;
 }

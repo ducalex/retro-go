@@ -342,9 +342,8 @@ void loader_unload()
 
 void loader_init(char *s)
 {
-	romfile = s;
-
-	sramfile = odroid_system_get_path(romfile, ODROID_PATH_SAVE_SRAM);
+	romfile  = odroid_system_get_path(ODROID_PATH_ROM_FILE);
+	sramfile = odroid_system_get_path(ODROID_PATH_SAVE_SRAM);
 
 	rom_load();
 	rtc_load();

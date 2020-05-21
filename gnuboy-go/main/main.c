@@ -247,8 +247,7 @@ void app_main(void)
     saveSRAM = odroid_settings_app_int32_get(NVS_KEY_SAVE_SRAM, 0);
 
     // Load ROM
-    char *romPath = odroid_system_get_path(NULL, ODROID_PATH_ROM_FILE);
-    loader_init(romPath);
+    loader_init(NULL);
 
     // RTC
     memset(&rtc, 0, sizeof(rtc));

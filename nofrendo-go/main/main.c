@@ -360,7 +360,7 @@ void app_main(void)
 
    romData = rg_alloc(0x200000, MEM_ANY);
 
-   char *romPath = odroid_system_get_path(NULL, ODROID_PATH_ROM_FILE);
+   char *romPath = odroid_system_get_path(ODROID_PATH_ROM_FILE);
 
    // Load ROM
    if (strcasecmp(romPath + (strlen(romPath) - 4), ".zip") == 0)
