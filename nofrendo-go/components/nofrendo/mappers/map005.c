@@ -40,6 +40,9 @@ static uint16 chr_upper_bits;
 
 static nes_t *nes;
 
+static int16 split_tile, split_tile_number, split_region;
+static int16 scanline;
+
 #define IN_FRAME    0x40
 #define IRQ_PENDING 0x80
 #define SPLIT_ENABLED 0x80
@@ -137,15 +140,7 @@ static void prg_update()
 
 static void chr_update()
 {
-   bool largeSprites = nes->ppu->obj_height == 16;
-
-   if (!largeSprites)
-   {
-      //Using 8x8 sprites resets the last written to bank logic
-      lastChr = 0;
-   }
-
-	bool chrA = !largeSprites || (_splitTileNumber >= 32 && _splitTileNumber < 40) || (scanline > 240 && lastChr <= 0x5127);
+   bool large_spr = nes->ppu->obj_height == 16;
 
    switch (chr_mode)
    {
@@ -159,14 +154,14 @@ static void chr_update()
       break;
 
    case 3: /* 1K */
-      mmc_bankvrom(1, 0 * 0x400, chr_banks[chrA ? 0 : 8]);
-      mmc_bankvrom(1, 1 * 0x400, chr_banks[chrA ? 1 : 9]);
-      mmc_bankvrom(1, 2 * 0x400, chr_banks[chrA ? 2 : 10]);
-      mmc_bankvrom(1, 3 * 0x400, chr_banks[chrA ? 3 : 11]);
-      mmc_bankvrom(1, 4 * 0x400, chr_banks[chrA ? 4 : 8]);
-      mmc_bankvrom(1, 5 * 0x400, chr_banks[chrA ? 5 : 9]);
-      mmc_bankvrom(1, 6 * 0x400, chr_banks[chrA ? 6 : 10]);
-      mmc_bankvrom(1, 7 * 0x400, chr_banks[chrA ? 7 : 11]);
+      mmc_bankvrom(1, 0 * 0x400, chr_banks[large_spr ? 8  : 0]);
+      mmc_bankvrom(1, 1 * 0x400, chr_banks[large_spr ? 9  : 1]);
+      mmc_bankvrom(1, 2 * 0x400, chr_banks[large_spr ? 10 : 2]);
+      mmc_bankvrom(1, 3 * 0x400, chr_banks[large_spr ? 11 : 3]);
+      mmc_bankvrom(1, 4 * 0x400, chr_banks[large_spr ? 8  : 4]);
+      mmc_bankvrom(1, 5 * 0x400, chr_banks[large_spr ? 9  : 5]);
+      mmc_bankvrom(1, 6 * 0x400, chr_banks[large_spr ? 10 : 6]);
+      mmc_bankvrom(1, 7 * 0x400, chr_banks[large_spr ? 11 : 7]);
       break;
    }
 }
@@ -295,7 +290,6 @@ static void map5_write(uint32 address, uint8 value)
    case 0x512A:
    case 0x512B:
       /* CHR Bankswitching */
-      lastChr = address;
       chr_switch(address - 0x5120, value);
       break;
 
@@ -371,6 +365,23 @@ static uint8 map5_read(uint32 address)
 
 static uint8 map5_vram_read(uint32 address, uint8 value)
 {
+   bool is_nt_read = false, is_nt_attr_read = false;
+
+   if (address >= 0x2000 && address <= 0x2FFF)
+   {
+      is_nt_read = (address & 0x3FF) < (30 * 32);
+      is_nt_attr_read = !is_nt_read;
+   }
+
+
+   if (exram.mode <= 1 && scanline < 240)
+   {
+      if (vert_split.enabled)
+      {
+         short scroll = (vert_split.scroll + scanline) % 240;
+      }
+   }
+
    return value;
 }
 
@@ -409,6 +420,8 @@ static void map5_init(void)
 
    fill_mode.color = 0xFF;
    fill_mode.tile = 0xFF;
+
+   scanline = 241;
 
    prg_mode = 3;
    chr_mode = 3;

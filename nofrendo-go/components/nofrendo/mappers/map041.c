@@ -29,7 +29,6 @@
 #include <nofrendo.h>
 #include <nes_mmc.h>
 #include <nes.h>
-#include <libsnss.h>
 
 static uint8 register_low;
 static uint8 register_high;

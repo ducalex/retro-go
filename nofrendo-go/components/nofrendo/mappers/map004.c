@@ -25,7 +25,6 @@
 
 #include <nofrendo.h>
 #include <nes_mmc.h>
-#include <libsnss.h>
 
 static struct
 {

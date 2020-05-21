@@ -29,7 +29,6 @@
 #include <nofrendo.h>
 #include <nes_mmc.h>
 #include <nes.h>
-#include <libsnss.h>
 
 static uint8 prg_low_bank;
 static uint8 chr_low_bank;

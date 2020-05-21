@@ -26,7 +26,6 @@
 #include <nofrendo.h>
 #include <nes_mmc.h>
 #include <nes.h>
-#include <libsnss.h>
 
 #define  MAP40_IRQ_PERIOD  (4096 / 113.666666)
 

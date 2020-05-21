@@ -29,7 +29,6 @@
 #include <nofrendo.h>
 #include <nes_mmc.h>
 #include <nes.h>
-#include <libsnss.h>
 
 /************************/
 /* Mapper #229: 31 in 1 */

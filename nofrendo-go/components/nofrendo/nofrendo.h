@@ -59,6 +59,9 @@
 
 #define INLINE              static inline __attribute__((__always_inline__))
 
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+
 #ifdef NOFRENDO_DEBUG
 #define UNUSED(x)
 #define ASSERT(expr)        nofrendo_assert((int) (expr), __LINE__, __FILE__, NULL)

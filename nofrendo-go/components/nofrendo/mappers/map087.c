@@ -28,7 +28,6 @@
 #include <nofrendo.h>
 #include <nes_mmc.h>
 #include <nes.h>
-#include <libsnss.h>
 
 /******************************************/
 /* Mapper #87 write handler ($6000-$7FFF) */

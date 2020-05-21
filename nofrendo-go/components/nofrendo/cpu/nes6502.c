@@ -35,10 +35,8 @@ static int remaining_cycles = 0;
 static mem_t *mem;
 
 #define NES6502_JUMPTABLE
-// #define NES6502_FASTMEM
+#define NES6502_FASTMEM
 
-
-#define MIN(a,b)    (((a) < (b)) ? (a) : (b))
 
 #define ADD_CYCLES(x) \
 { \
@@ -1061,9 +1059,8 @@ static mem_t *mem;
 #define PAGE_READWORD(page, addr)  (page[(addr) + 1] << 8 | page[(addr)])
 #endif
 
-#define readbyte(a) mem_getbyte(a)
 #define readword(a) mem_getword(a)
-#define writebyte(a, v) mem_putbyte(a, v)
+#define readbyte(a) mem_getbyte(a)
 
 /*
 ** Middle man for faster albeit unsafe/innacurate/unchecked memory access.
@@ -1077,19 +1074,29 @@ INLINE uint8 fast_readbyte(uint16 address)
    return mem->pages[address >> MEM_PAGESHIFT][address];
 }
 
-INLINE uint16 fast_readword(uint16 address)
+INLINE uint16 fast_readword(uint32 address)
 {
-   if ((address & MEM_PAGEMASK) == MEM_PAGEMASK) // Page cross
+   if ((address & MEM_PAGEMASK) != MEM_PAGEMASK) // Page cross
    {
-      return fast_readbyte(address + 1) << 8 | fast_readbyte(address);
+      return PAGE_READWORD(mem->pages[address >> MEM_PAGESHIFT], address);
    }
-   return PAGE_READWORD(mem->pages[address >> MEM_PAGESHIFT], address);
+   return mem_getword(address);
+}
+
+INLINE void writebyte(uint32 address, uint8 value)
+{
+   if (address < 0x2000) {
+      mem->ram[address & 0x7FF] = value;
+   } else {
+      mem_putbyte(address, value);
+   }
 }
 
 #else /* !NES6502_FASTMEM */
 
-#define fast_readbyte(a) readbyte(a)
-#define fast_readword(a) readword(a)
+#define fast_readbyte(a) mem_getbyte(a)
+#define fast_readword(a) mem_getword(a)
+#define writebyte(a, v) mem_putbyte(a, v)
 
 #endif /* !NES6502_FASTMEM */
 
