@@ -7,5 +7,8 @@
 # please read the ESP-IDF documents if you need to do this.
 #
 
-CFLAGS += -O3 -DLSB_FIRST=1 -Wno-all -Wno-error
-CXXFLAGS += -O3 -DLSB_FIRST=1 -Wno-all -Wno-error
+COMPONENT_ADD_INCLUDEDIRS := .
+COMPONENT_SRCDIRS := .
+
+CFLAGS += -O3 -DLSB_FIRST=1 -Wall -Wno-comment -Wno-error=comment
+CXXFLAGS += -O3 -DLSB_FIRST=1 -Wall -Wno-comment -Wno-error=comment

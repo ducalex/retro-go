@@ -53,7 +53,7 @@
 #include "system.h"
 #include "cart.h"
 //#include "zlib.h"
-#include "scrc32.h"
+#include "rom/crc.h"
 
 CCart::CCart(UBYTE *gamedata,ULONG gamesize)
 {
@@ -66,8 +66,7 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
    mCartRAM=FALSE;
    mHeaderLess=0;
    mEEPROMType=0;
-   mCRC32=0;
-   mCRC32=crc32(mCRC32,gamedata,gamesize);
+   mCRC32=crc32_le(0,gamedata,gamesize);
 
    // Open up the file
 
@@ -121,7 +120,8 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
 
    // Set the filetypes
 
-   CTYPE banktype0,banktype1;
+   CTYPE banktype0 = UNUSED;
+   CTYPE banktype1 = UNUSED;
 
    switch(header.page_size_bank0) {
       case 0x000:
@@ -222,7 +222,7 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
    memset(mCartBank1A, DEFAULT_CART_CONTENTS, bank1size);
    if(bank0size==1) bank0size=0;// workaround ...
    if(bank1size==1) bank1size=0;// workaround ...
-   
+
    memcpy(
          mCartBank0,
          gamedata+(headersize),
@@ -462,7 +462,7 @@ void CCart::Poke0A(UBYTE data)
 {
 	if(mWriteEnableBank0) {
        ULONG address=(mShifter<<mShiftCount0)+(mCounter&mCountMask0);
-       mCartBank0A[address&mMaskBank0]=data;		
+       mCartBank0A[address&mMaskBank0]=data;
 	}
 	if(!mStrobe) {
        mCounter++;
@@ -486,7 +486,7 @@ void CCart::Poke1A(UBYTE data)
 {
 	if(mWriteEnableBank1) {
        ULONG address=(mShifter<<mShiftCount1)+(mCounter&mCountMask1);
-       mCartBank1A[address&mMaskBank1]=data;		
+       mCartBank1A[address&mMaskBank1]=data;
 	}
 	if(!mStrobe) {
        mCounter++;
@@ -510,7 +510,7 @@ UBYTE CCart::Peek0(void)
 UBYTE CCart::Peek0A(void)
 {
 	ULONG address=(mShifter<<mShiftCount0)+(mCounter&mCountMask0);
-	UBYTE data=mCartBank0A[address&mMaskBank0];		
+	UBYTE data=mCartBank0A[address&mMaskBank0];
 
 	if(!mStrobe) {
        mCounter++;
@@ -536,7 +536,7 @@ UBYTE CCart::Peek1(void)
 UBYTE CCart::Peek1A(void)
 {
 	ULONG address=(mShifter<<mShiftCount1)+(mCounter&mCountMask1);
-	UBYTE data=mCartBank1A[address&mMaskBank1];		
+	UBYTE data=mCartBank1A[address&mMaskBank1];
 
 	if(!mStrobe) {
        mCounter++;

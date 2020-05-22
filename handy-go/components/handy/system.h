@@ -46,8 +46,8 @@
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
-#pragma inline_depth (255)
-#pragma inline_recursion (on)
+// #pragma inline_depth (255)
+// #pragma inline_recursion (on)
 
 #ifdef _LYNXDBG
 

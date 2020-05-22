@@ -6,8 +6,6 @@
 # in the build directory. This behaviour is entirely configurable,
 # please read the ESP-IDF documents if you need to do this.
 #
-COMPILEDATE:=\"$(shell date "+%Y%m%d")\"
-GITREV:=\"$(shell git rev-parse HEAD | cut -b 1-10)\"
 
-CFLAGS += -Ofast -DCOMPILEDATE="$(COMPILEDATE)" -DGITREV="$(GITREV)"
-CPPFLAGS += -Ofast -DCOMPILEDATE="$(COMPILEDATE)" -DGITREV="$(GITREV)"
+CFLAGS += -Ofast  -DPROJECT_VER='"$(PROJECT_VER)"'
+CPPFLAGS += -Ofast  -DPROJECT_VER='"$(PROJECT_VER)"'

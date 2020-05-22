@@ -90,12 +90,12 @@ void CMikie::BlowOut(void)
    for(loop=0;loop<16;loop++) mPalette[loop].Index=loop;
    for(loop=0;loop<4096;loop++) mColourMap[loop]=0;
 
-   mikbuf.set_sample_rate(HANDY_AUDIO_SAMPLE_FREQ, 60);
-   mikbuf.clock_rate(HANDY_SYSTEM_FREQ / 4);
-   mikbuf.bass_freq(60);
-   miksynth.volume(0.50);
-   miksynth.treble_eq(0);
-	
+   // mikbuf.set_sample_rate(HANDY_AUDIO_SAMPLE_FREQ, 60);
+   // mikbuf.clock_rate(HANDY_SYSTEM_FREQ / 4);
+   // mikbuf.bass_freq(60);
+   // miksynth.volume(0.50);
+   // miksynth.treble_eq(0);
+
    Reset();
 }
 
@@ -369,13 +369,13 @@ bool CMikie::ContextSave(LSS_FILE *fp)
    if(!lss_write(&mAudioInputComparator,sizeof(ULONG),1,fp)) return 0;
    if(!lss_write(&mTimerStatusFlags,sizeof(ULONG),1,fp)) return 0;
    if(!lss_write(&mTimerInterruptMask,sizeof(ULONG),1,fp)) return 0;
-   
+
    if(!lss_write(mPalette,sizeof(TPALETTE),16,fp)) return 0;
-   
+
    if(!lss_write(&mIODAT,sizeof(ULONG),1,fp)) return 0;
    if(!lss_write(&mIODAT_REST_SIGNAL,sizeof(ULONG),1,fp)) return 0;
    if(!lss_write(&mIODIR,sizeof(ULONG),1,fp)) return 0;
-   
+
    if(!lss_write(&mDISPCTL_DMAEnable,sizeof(ULONG),1,fp)) return 0;
    if(!lss_write(&mDISPCTL_Flip,sizeof(ULONG),1,fp)) return 0;
    if(!lss_write(&mDISPCTL_FourColour,sizeof(ULONG),1,fp)) return 0;
@@ -806,8 +806,8 @@ void CMikie::ComLynxRxData(int data)
       if(!mUART_Rx_waiting) mUART_RX_COUNTDOWN=UART_RX_TIME_PERIOD;
 
       // Receive the byte
-      mUART_Rx_input_queue[mUART_Rx_input_ptr]=data;
-      mUART_Rx_input_ptr=(++mUART_Rx_input_ptr)%UART_MAX_RX_QUEUE;
+      mUART_Rx_input_queue[mUART_Rx_input_ptr++]=data;
+      mUART_Rx_input_ptr %= UART_MAX_RX_QUEUE;
       mUART_Rx_waiting++;
       TRACE_MIKIE2("ComLynxRxData() - input ptr=%02d waiting=%02d",mUART_Rx_input_ptr,mUART_Rx_waiting);
    } else {
@@ -825,7 +825,8 @@ void CMikie::ComLynxTxLoopback(int data)
       if(!mUART_Rx_waiting) mUART_RX_COUNTDOWN=UART_RX_TIME_PERIOD;
 
       // Receive the byte - INSERT into front of queue
-      mUART_Rx_output_ptr=(--mUART_Rx_output_ptr)%UART_MAX_RX_QUEUE;
+      mUART_Rx_output_ptr--;
+      mUART_Rx_output_ptr %= UART_MAX_RX_QUEUE;
       mUART_Rx_input_queue[mUART_Rx_output_ptr]=data;
       mUART_Rx_waiting++;
       TRACE_MIKIE2("ComLynxTxLoopback() - input ptr=%02d waiting=%02d",mUART_Rx_input_ptr,mUART_Rx_waiting);
@@ -872,14 +873,14 @@ void CMikie::DisplaySetAttributes(ULONG Rotate,ULONG Format,ULONG Pitch,UBYTE* (
          break;
       case MIKIE_PIXEL_FORMAT_16BPP_555:
          for(Spot.Index=0;Spot.Index<4096;Spot.Index++) {
-            mColourMap[Spot.Index]=((Spot.Colours.Red<<11)&0x7800) | (Spot.Colours.Red<<7)&0x0400;
+            mColourMap[Spot.Index]=((Spot.Colours.Red<<11)&0x7800) | ((Spot.Colours.Red<<7)&0x0400);
             mColourMap[Spot.Index]|=((Spot.Colours.Green<<6)&0x03c0) | ((Spot.Colours.Green<<2)&0x0020);
             mColourMap[Spot.Index]|=((Spot.Colours.Blue<<1)&0x001e) | ((Spot.Colours.Blue>>3)&0x0001);
          }
          break;
       case MIKIE_PIXEL_FORMAT_16BPP_565:
          for(Spot.Index=0;Spot.Index<4096;Spot.Index++) {
-            mColourMap[Spot.Index]=((Spot.Colours.Red<<12)&0xf000) | (Spot.Colours.Red<<8)&0x0800;
+            mColourMap[Spot.Index]=((Spot.Colours.Red<<12)&0xf000) | ((Spot.Colours.Red<<8)&0x0800);
             mColourMap[Spot.Index]|=((Spot.Colours.Green<<7)&0x0780) | ((Spot.Colours.Green<<3)&0x0060);
             mColourMap[Spot.Index]|=((Spot.Colours.Blue<<1)&0x001e) | ((Spot.Colours.Blue>>3)&0x0001);
          }
@@ -1263,9 +1264,9 @@ ULONG CMikie::DisplayEndOfFrame(void)
 
    if(gCPUWakeupTime) {
       gCPUWakeupTime = 0;
-      ClearCPUSleep();   
+      ClearCPUSleep();
    }
-	
+
    // Set the timer status flag
    if(mTimerInterruptMask&0x04) {
       TRACE_MIKIE0("Update() - TIMER2 IRQ Triggered (Frame Timer)");
@@ -1311,8 +1312,8 @@ ULONG CMikie::DisplayEndOfFrame(void)
          break;
    }
 
-   mikbuf.end_frame((gSystemCycleCount - gAudioLastUpdateCycle) / 4);
-   gAudioBufferPointer = mikbuf.read_samples((blip_sample_t*) gAudioBuffer, HANDY_AUDIO_BUFFER_SIZE / 2) * 2;
+   // mikbuf.end_frame((gSystemCycleCount - gAudioLastUpdateCycle) / 4);
+   // gAudioBufferPointer = mikbuf.read_samples((blip_sample_t*) gAudioBuffer, HANDY_AUDIO_BUFFER_SIZE / 2) * 2;
 
    return 0;
 }
@@ -2596,9 +2597,9 @@ UBYTE CMikie::Peek(ULONG addr)
 
 inline void CMikie::Update(void)
 {
-   SLONG divide;
-   SLONG decval;
-   ULONG tmp;
+   SLONG divide = 0;
+   SLONG decval = 0;
+   ULONG tmp = 0;
    ULONG mikie_work_done=0;
 
    //
@@ -2880,8 +2881,8 @@ inline void CMikie::Update(void)
             if(!mUART_RX_COUNTDOWN) {
                // Fetch a byte from the input queue
                if(mUART_Rx_waiting>0) {
-                  mUART_RX_DATA=mUART_Rx_input_queue[mUART_Rx_output_ptr];
-                  mUART_Rx_output_ptr=(++mUART_Rx_output_ptr)%UART_MAX_RX_QUEUE;
+                  mUART_RX_DATA = mUART_Rx_input_queue[mUART_Rx_output_ptr++];
+                  mUART_Rx_output_ptr %= UART_MAX_RX_QUEUE;
                   mUART_Rx_waiting--;
                   TRACE_MIKIE2("Update() - RX Byte output ptr=%02d waiting=%02d",mUART_Rx_output_ptr,mUART_Rx_waiting);
                } else {
@@ -3727,12 +3728,12 @@ inline void CMikie::UpdateSound(void)
    static int last_rsample = 0;
 
    if(cur_lsample != last_lsample) {
-      miksynth.offset_inline((gSystemCycleCount - gAudioLastUpdateCycle) / 4, cur_lsample - last_lsample, mikbuf.left());
+      // miksynth.offset_inline((gSystemCycleCount - gAudioLastUpdateCycle) / 4, cur_lsample - last_lsample, mikbuf.left());
       last_lsample = cur_lsample;
    }
 
    if(cur_rsample != last_rsample) {
-      miksynth.offset_inline((gSystemCycleCount - gAudioLastUpdateCycle) / 4, cur_rsample - last_rsample, mikbuf.right());
+      // miksynth.offset_inline((gSystemCycleCount - gAudioLastUpdateCycle) / 4, cur_rsample - last_rsample, mikbuf.right());
       last_rsample = cur_rsample;
    }
 }

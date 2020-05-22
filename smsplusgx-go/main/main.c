@@ -115,7 +115,8 @@ void system_manage_sram(uint8 *sram, int slot, int mode)
 
 void app_main(void)
 {
-    printf("SMSPlusGX-go (%s-%s).\n", COMPILEDATE, GITREV);
+    printf("\n========================================\n\n");
+    printf("SMSPlusGX-go (%s).\n", PROJECT_VER);
 
     // Init all the console hardware
     odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);

@@ -8,4 +8,4 @@
 #
 COMPILEDATE:=\"$(shell date "+%Y-%m-%d")\"
 GITREV:=\"$(shell git rev-parse HEAD | cut -b 1-10)\"
-CFLAGS += -DCOMPILEDATE="$(COMPILEDATE)" -DGITREV="$(GITREV)"
+CFLAGS += -DPROJECT_VER='"$(PROJECT_VER)"' -DCOMPILEDATE="$(COMPILEDATE)" -DGITREV="$(GITREV)"
