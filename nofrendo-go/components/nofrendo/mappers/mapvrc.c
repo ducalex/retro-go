@@ -27,6 +27,13 @@
 #include <nes_mmc.h>
 #include <nes.h>
 
+// Shouldn't that be packed? (It wasn't packed in SNSS...)
+typedef struct
+{
+   unsigned char irqCounter;
+   unsigned char irqCounterEnabled;
+} mapper21Data;
+
 #define VRC_VBANK(bank, value, high) \
 { \
    if ((high)) \
@@ -332,16 +339,16 @@ static mem_write_handler_t map23_memwrite[] =
    LAST_MEMORY_HANDLER
 };
 
-static void map21_getstate(SnssMapperBlock *state)
+static void map21_getstate(void *state)
 {
-   state->extraData.mapper21.irqCounter = irq.counter;
-   state->extraData.mapper21.irqCounterEnabled = irq.enabled;
+   ((mapper21Data*)state)->irqCounter = irq.counter;
+   ((mapper21Data*)state)->irqCounterEnabled = irq.enabled;
 }
 
-static void map21_setstate(SnssMapperBlock *state)
+static void map21_setstate(void *state)
 {
-   irq.counter = state->extraData.mapper21.irqCounter;
-   irq.enabled = state->extraData.mapper21.irqCounterEnabled;
+   irq.counter = ((mapper21Data*)state)->irqCounter;
+   irq.enabled = ((mapper21Data*)state)->irqCounterEnabled;
 }
 
 mapintf_t map21_intf =

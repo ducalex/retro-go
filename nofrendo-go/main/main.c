@@ -164,6 +164,7 @@ static bool advanced_settings_cb(odroid_dialog_choice_t *option, odroid_dialog_e
          {1, "Region", "Auto", 1, &region_update_cb},
          {2, "Overscan", "Auto", 1, &overscan_update_cb},
          {3, "Sprite limit", "On ", 1, &sprite_limit_cb},
+         {4, "Left column", "Normal/Black/Crop ", 1, &leftcol_update_cb},
          // {4, "", "", 1, NULL},
          //{0, "Reset all", "", 1, NULL},
          ODROID_DIALOG_CHOICE_LAST
@@ -353,7 +354,8 @@ void osd_getinput(void)
 
 void app_main(void)
 {
-	printf("Nofrendo-go (%s-%s).\n", COMPILEDATE, GITREV);
+   printf("\n========================================\n\n");
+	printf("Nofrendo-go (%s)\n", PROJECT_VER);
 
    odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
    odroid_system_emu_init(&LoadState, &SaveState, &netplay_callback);

@@ -109,29 +109,6 @@ static void map73_write (uint32 address, uint8 value)
   return;
 }
 
-/****************************************************/
-/* Shove extra mapper information into a SNSS block */
-/****************************************************/
-static void map73_setstate (SnssMapperBlock *state)
-{
-  /* TODO: Store SNSS information */
-  UNUSED (state);
-
-  /* Done */
-  return;
-}
-
-/*****************************************************/
-/* Pull extra mapper information out of a SNSS block */
-/*****************************************************/
-static void map73_getstate (SnssMapperBlock *state)
-{
-  /* TODO: Retrieve SNSS information */
-  UNUSED (state);
-
-  /* Done */
-  return;
-}
 
 static mem_write_handler_t map73_memwrite [] =
 {
@@ -146,8 +123,8 @@ mapintf_t map73_intf =
    map73_init,                       /* Initialization routine */
    NULL,                             /* VBlank callback */
    map73_hblank,                     /* HBlank callback */
-   map73_getstate,                   /* Get state (SNSS) */
-   map73_setstate,                   /* Set state (SNSS) */
+   NULL,                             /* Get state (SNSS) */
+   NULL,                             /* Set state (SNSS) */
    NULL,                             /* Memory read structure */
    map73_memwrite,                   /* Memory write structure */
    NULL                              /* External sound device */

@@ -27,6 +27,13 @@
 #include <nes_mmc.h>
 #include <nes.h>
 
+// Shouldn't that be packed? (It wasn't packed in SNSS...)
+typedef struct
+{
+   unsigned char irqCounter;
+   unsigned char irqCounterEnabled;
+} mapper40Data;
+
 #define  MAP40_IRQ_PERIOD  (4096 / 113.666666)
 
 static struct
@@ -85,16 +92,16 @@ static void map40_write(uint32 address, uint8 value)
    }
 }
 
-static void map40_getstate(SnssMapperBlock *state)
+static void map40_getstate(void *state)
 {
-   state->extraData.mapper40.irqCounter = irq.counter;
-   state->extraData.mapper40.irqCounterEnabled = irq.enabled;
+   ((mapper40Data*)state)->irqCounter = irq.counter;
+   ((mapper40Data*)state)->irqCounterEnabled = irq.enabled;
 }
 
-static void map40_setstate(SnssMapperBlock *state)
+static void map40_setstate(void *state)
 {
-   irq.counter = state->extraData.mapper40.irqCounter;
-   irq.enabled = state->extraData.mapper40.irqCounterEnabled;
+   irq.counter = ((mapper40Data*)state)->irqCounter;
+   irq.enabled = ((mapper40Data*)state)->irqCounterEnabled;
 }
 
 static mem_write_handler_t map40_memwrite[] =

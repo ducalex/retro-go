@@ -31,6 +31,16 @@
 static uint8 latch[2];
 static uint8 regs[4];
 
+// Shouldn't that be packed? (It wasn't packed in SNSS...)
+typedef struct
+{
+   unsigned char latch[2];
+   unsigned char lastB000Write;
+   unsigned char lastC000Write;
+   unsigned char lastD000Write;
+   unsigned char lastE000Write;
+} mapper9Data;
+
 /* Used when tile $FD/$FE is accessed */
 static void mmc9_latchfunc(uint32 address, uint8 value)
 {
@@ -114,24 +124,24 @@ static void map9_init(void)
    ppu_setlatchfunc(mmc9_latchfunc);
 }
 
-static void map9_getstate(SnssMapperBlock *state)
+static void map9_getstate(void *state)
 {
-   state->extraData.mapper9.latch[0] = latch[0];
-   state->extraData.mapper9.latch[1] = latch[1];
-   state->extraData.mapper9.lastB000Write = regs[0];
-   state->extraData.mapper9.lastC000Write = regs[1];
-   state->extraData.mapper9.lastD000Write = regs[2];
-   state->extraData.mapper9.lastE000Write = regs[3];
+   ((mapper9Data*)state)->latch[0] = latch[0];
+   ((mapper9Data*)state)->latch[1] = latch[1];
+   ((mapper9Data*)state)->lastB000Write = regs[0];
+   ((mapper9Data*)state)->lastC000Write = regs[1];
+   ((mapper9Data*)state)->lastD000Write = regs[2];
+   ((mapper9Data*)state)->lastE000Write = regs[3];
 }
 
-static void map9_setstate(SnssMapperBlock *state)
+static void map9_setstate(void *state)
 {
-   latch[0] = state->extraData.mapper9.latch[0];
-   latch[1] = state->extraData.mapper9.latch[1];
-   regs[0] = state->extraData.mapper9.lastB000Write;
-   regs[1] = state->extraData.mapper9.lastC000Write;
-   regs[2] = state->extraData.mapper9.lastD000Write;
-   regs[3] = state->extraData.mapper9.lastE000Write;
+   latch[0] = ((mapper9Data*)state)->latch[0];
+   latch[1] = ((mapper9Data*)state)->latch[1];
+   regs[0]  = ((mapper9Data*)state)->lastB000Write;
+   regs[1]  = ((mapper9Data*)state)->lastC000Write;
+   regs[2]  = ((mapper9Data*)state)->lastD000Write;
+   regs[3]  = ((mapper9Data*)state)->lastE000Write;
 }
 
 static mem_write_handler_t map9_memwrite[] =

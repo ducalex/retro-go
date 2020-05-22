@@ -27,6 +27,14 @@
 #include <nes_mmc.h>
 #include <nes_ppu.h>
 
+// Shouldn't that be packed? (It wasn't packed in SNSS...)
+typedef struct
+{
+   unsigned char irqCounterLowByte;
+   unsigned char irqCounterHighByte;
+   unsigned char irqCounterEnabled;
+} mapper19Data;
+
 /* TODO: shouldn't there be an h-blank IRQ handler??? */
 
 /* Special mirroring macro for mapper 19 */
@@ -100,18 +108,18 @@ static void map19_write(uint32 address, uint8 value)
    }
 }
 
-static void map19_getstate(SnssMapperBlock *state)
+static void map19_getstate(void *state)
 {
-   state->extraData.mapper19.irqCounterLowByte = irq.counter & 0xFF;
-   state->extraData.mapper19.irqCounterHighByte = irq.counter >> 8;
-   state->extraData.mapper19.irqCounterEnabled = irq.enabled;
+   ((mapper19Data*)state)->irqCounterLowByte = irq.counter & 0xFF;
+   ((mapper19Data*)state)->irqCounterHighByte = irq.counter >> 8;
+   ((mapper19Data*)state)->irqCounterEnabled = irq.enabled;
 }
 
-static void map19_setstate(SnssMapperBlock *state)
+static void map19_setstate(void *state)
 {
-   irq.counter = (state->extraData.mapper19.irqCounterHighByte << 8)
-                       | state->extraData.mapper19.irqCounterLowByte;
-   irq.enabled = state->extraData.mapper19.irqCounterEnabled;
+   irq.counter = (((mapper19Data*)state)->irqCounterHighByte << 8)
+                       | ((mapper19Data*)state)->irqCounterLowByte;
+   irq.enabled = ((mapper19Data*)state)->irqCounterEnabled;
 }
 
 static mem_write_handler_t map19_memwrite[] =

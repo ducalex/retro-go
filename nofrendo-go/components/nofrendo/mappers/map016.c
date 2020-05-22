@@ -34,6 +34,14 @@ static struct
    bool enabled;
 } irq;
 
+// Shouldn't that be packed? (It wasn't packed in SNSS...)
+typedef struct
+{
+   unsigned char irqCounterLowByte;
+   unsigned char irqCounterHighByte;
+   unsigned char irqCounterEnabled;
+} mapper16Data;
+
 /* mapper 16: Bandai */
 
 static void map16_init(void)
@@ -114,18 +122,18 @@ static void map16_hblank(int vblank)
    }
 }
 
-static void map16_getstate(SnssMapperBlock *state)
+static void map16_getstate(void *state)
 {
-   state->extraData.mapper16.irqCounterLowByte = irq.counter & 0xFF;
-   state->extraData.mapper16.irqCounterHighByte = irq.counter >> 8;
-   state->extraData.mapper16.irqCounterEnabled = irq.enabled;
+   ((mapper16Data*)state)->irqCounterLowByte = irq.counter & 0xFF;
+   ((mapper16Data*)state)->irqCounterHighByte = irq.counter >> 8;
+   ((mapper16Data*)state)->irqCounterEnabled = irq.enabled;
 }
 
-static void map16_setstate(SnssMapperBlock *state)
+static void map16_setstate(void *state)
 {
-   irq.counter = (state->extraData.mapper16.irqCounterHighByte << 8)
-                       | state->extraData.mapper16.irqCounterLowByte;
-   irq.enabled = state->extraData.mapper16.irqCounterEnabled;
+   irq.counter = (((mapper16Data*)state)->irqCounterHighByte << 8)
+                       | ((mapper16Data*)state)->irqCounterLowByte;
+   irq.enabled = ((mapper16Data*)state)->irqCounterEnabled;
 }
 
 static mem_write_handler_t map16_memwrite[] =

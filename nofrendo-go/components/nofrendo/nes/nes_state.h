@@ -28,8 +28,15 @@
 
 #include <nes.h>
 
+typedef struct
+{
+   uint8  type[4];
+   uint32 blockVersion;
+   uint32 blockLength;
+} SnssBlockHeader;
+
 extern void state_setslot(int slot);
-int state_load(char* fn);
-int state_save(char* fn);
+extern int state_load(char* fn);
+extern int state_save(char* fn);
 
 #endif /* _NESSTATE_H_ */

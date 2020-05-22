@@ -111,12 +111,6 @@ void ppu_getcontext(ppu_t *dest_ppu)
    dest_ppu->page[9]  = dest_ppu->nametab + ((ppu.page[9] - ppu.nametab) & ~0x3FF);
    dest_ppu->page[10] = dest_ppu->nametab + ((ppu.page[10] - ppu.nametab) & ~0x3FF);
    dest_ppu->page[11] = dest_ppu->nametab + ((ppu.page[11] - ppu.nametab) & ~0x3FF);
-
-   // Setup $3000-$3EFF -> $2000-2EFF mirror
-   dest_ppu->page[12] = dest_ppu->page[8] - 0x1000;
-   dest_ppu->page[13] = dest_ppu->page[9] - 0x1000;
-   dest_ppu->page[14] = dest_ppu->page[10] - 0x1000;
-   dest_ppu->page[15] = dest_ppu->page[11] - 0x1000;
 }
 
 void ppu_setpage(int size, int page_num, uint8 *location)

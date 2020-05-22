@@ -19,490 +19,424 @@
 **
 ** nes_state.c
 **
-** state saving/loading
+** State saving/loading
 ** $Id: nes_state.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
-#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <nofrendo.h>
+#include <byteswap.h>
 #include <nes6502.h>
-#include <libsnss.h>
-#include <osd.h>
 #include "nes_state.h"
 
-#define  FIRST_STATE_SLOT  0
-#define  LAST_STATE_SLOT   9
+#define _fread(buffer, size) {                       \
+   if (fread(buffer, size, 1, file) != 1)            \
+   {                                                 \
+      MESSAGE_ERROR("state_load: fread failed.\n");  \
+      goto _error;                                   \
+   }                                                 \
+}
 
-static int state_slot = FIRST_STATE_SLOT;
+#define _fwrite(buffer, size) {                      \
+   if (fwrite(buffer, size, 1, file) != 1)           \
+   {                                                 \
+      MESSAGE_ERROR("state_save: fwrite failed.\n"); \
+      goto _error;                                   \
+   }                                                 \
+}
+
+#ifdef IS_LITTLE_ENDIAN
+   #define swap16(x) __bswap_16(x)
+   #define swap32(x) __bswap_32(x)
+#else
+   #define swap16(x) (x)
+   #define swap32(x) (x)
+#endif
+
+static int save_slot = 0;
+
 
 /* Set the state-save slot to use (0 - 9) */
 void state_setslot(int slot)
 {
-   /* Don't send a message if we're already at that slot */
-   if (state_slot != slot && slot >= FIRST_STATE_SLOT
-       && slot <= LAST_STATE_SLOT)
+   if (save_slot != slot && slot >= 0 && slot <= 9)
    {
-      state_slot = slot;
-      MESSAGE_INFO("State slot set to %d\n", slot);
+      save_slot = slot;
+      MESSAGE_INFO("Save slot changed to %d\n", slot);
    }
 }
 
-static int save_baseblock(nes_t *state, SNSS_FILE *snssFile)
+int state_save(char* fn)
 {
-   int i;
+   uint8 buffer[512];
+   uint8 numberOfBlocks = 0;
+   nes_t *machine;
+   FILE *file;
+   uint16 i, temp;
 
-   ASSERT(state);
+   /* get the pointer to our NES machine context */
+   machine = nes_getptr();
 
-   nes6502_getcontext(state->cpu);
-   ppu_getcontext(state->ppu);
+   if (!(file = fopen(fn, "wb")))
+   {
+       MESSAGE_ERROR("state_save: file '%s' could not be opened.\n", fn);
+       return -1; //goto _error;
+   }
 
-   snssFile->baseBlock.regA = state->cpu->a_reg;
-   snssFile->baseBlock.regX = state->cpu->x_reg;
-   snssFile->baseBlock.regY = state->cpu->y_reg;
-   snssFile->baseBlock.regFlags = state->cpu->p_reg;
-   snssFile->baseBlock.regStack = state->cpu->s_reg;
-   snssFile->baseBlock.regPc = state->cpu->pc_reg;
-   snssFile->baseBlock.reg2000 = state->ppu->ctrl0;
-   snssFile->baseBlock.reg2001 = state->ppu->ctrl1;
+   MESSAGE_INFO("state_save: file '%s' opened.\n", fn);
 
-   memcpy(snssFile->baseBlock.cpuRam, state->mem->ram, 0x800);
-   memcpy(snssFile->baseBlock.spriteRam, state->ppu->oam, 0x100);
-   memcpy(snssFile->baseBlock.ppuRam, state->ppu->nametab, 0x1000);
+   _fwrite("SNSS\x00\x00\x00\x05", 8);
 
+
+   /****************************************************/
+
+   MESSAGE_INFO("  - Saving base block\n");
+
+   // SnssBlockHeader
+   _fwrite("BASR\x00\x00\x00\x01\x00\x00\x19\x31", 12);
+   numberOfBlocks++;
+
+   buffer[0] = machine->cpu->a_reg;
+   buffer[1] = machine->cpu->x_reg;
+   buffer[2] = machine->cpu->y_reg;
+   buffer[3] = machine->cpu->p_reg;
+   buffer[4] = machine->cpu->s_reg;
+   temp = swap16(machine->cpu->pc_reg);
+   buffer[5] = ((uint8*)&temp)[0];
+   buffer[6] = ((uint8*)&temp)[1];
+   buffer[7] = machine->ppu->ctrl0;
+   buffer[8] = machine->ppu->ctrl1;
+
+   _fwrite(&buffer, 9);
+
+   _fwrite(machine->mem->ram, 0x800);
+   _fwrite(machine->ppu->oam, 0x100);
+   _fwrite(machine->ppu->nametab, 0x1000);
 
    /* Mask off priority color bits */
    for (i = 0; i < 32; i++)
    {
-      snssFile->baseBlock.palette[i] = state->ppu->palette[i] & 0x3F;
+      buffer[i] = machine->ppu->palette[i] & 0x3F;
    }
 
-   snssFile->baseBlock.mirrorState[0] = (state->ppu->page[8] + 0x2000 - state->ppu->nametab) / 0x400;
-   snssFile->baseBlock.mirrorState[1] = (state->ppu->page[9] + 0x2400 - state->ppu->nametab) / 0x400;
-   snssFile->baseBlock.mirrorState[2] = (state->ppu->page[10] + 0x2800 - state->ppu->nametab) / 0x400;
-   snssFile->baseBlock.mirrorState[3] = (state->ppu->page[11] + 0x2C00 - state->ppu->nametab) / 0x400;
-   snssFile->baseBlock.vramAddress = state->ppu->vaddr;
-   snssFile->baseBlock.spriteRamAddress = state->ppu->oam_addr;
-   snssFile->baseBlock.tileXOffset = state->ppu->tile_xofs;
+   buffer[32] = (machine->ppu->page[8] + 0x2000 - machine->ppu->nametab) / 0x400;
+   buffer[33] = (machine->ppu->page[9] + 0x2400 - machine->ppu->nametab) / 0x400;
+   buffer[34] = (machine->ppu->page[10] + 0x2800 - machine->ppu->nametab) / 0x400;
+   buffer[35] = (machine->ppu->page[11] + 0x2C00 - machine->ppu->nametab) / 0x400;
+   temp = swap16(machine->ppu->vaddr);
+   buffer[36] = ((uint8*)&temp)[0];
+   buffer[37] = ((uint8*)&temp)[1];
+   buffer[38] = machine->ppu->oam_addr;
+   buffer[39] = machine->ppu->tile_xofs;
 
-   return 0;
-}
+   _fwrite(&buffer, 40);
 
-static bool save_vramblock(nes_t *state, SNSS_FILE *snssFile)
-{
-   ASSERT(state);
 
-   if (NULL == state->rominfo->vram)
+   /****************************************************/
+
+   if (machine->rominfo->vram)
    {
-       printf("save_vramblock: NULL == state->rominfo->vram\n");
-       return -1;
-  }
+      MESSAGE_INFO("  - Saving VRAM block\n");
 
-   if (state->rominfo->vram_banks > 2)
-   {
-      printf("save_vramblock: too many VRAM banks: %d\n", state->rominfo->vram_banks);
-      return -1;
+      // SnssBlockHeader
+      _fwrite("VRAM\x00\x00\x00\x01\x00\x00\x20\x00", 12);
+      numberOfBlocks++;
+
+      _fwrite(machine->rominfo->vram, 0x2000);
    }
 
-   snssFile->vramBlock.vramSize = VRAM_8K * state->rominfo->vram_banks;
 
-   memcpy(snssFile->vramBlock.vram, state->rominfo->vram, snssFile->vramBlock.vramSize);
-   return 0;
-}
+   /****************************************************/
 
-static int save_sramblock(nes_t *state, SNSS_FILE *snssFile)
-{
-   int i;
-   bool written = false;
-   int sram_length;
-
-   ASSERT(state);
-
-   sram_length = state->rominfo->sram_banks * SRAM_1K;
-
-   /* Check to see if any SRAM was written to */
-   for (i = 0; i < sram_length; i++)
+   if (machine->rominfo->sram)
    {
-      if (state->rominfo->sram[i])
+      MESSAGE_INFO("  - Saving SRAM block\n");
+
+      // Byte 13 = SRAM enabled (unused)
+      // Length is always $2001
+      // SnssBlockHeader
+      _fwrite("SRAM\x00\x00\x00\x01\x00\x00\x20\x01\x01", 13);
+      numberOfBlocks++;
+
+      _fwrite(machine->rominfo->sram, 0x2000);
+   }
+
+
+   /****************************************************/
+
+   MESSAGE_INFO("  - Saving sound block\n");
+
+   // SnssBlockHeader
+   _fwrite("SOUN\x00\x00\x00\x01\x00\x00\x00\x16", 12);
+   numberOfBlocks++;
+
+   buffer[0x00] = machine->apu->rectangle[0].regs[0];
+   buffer[0x01] = machine->apu->rectangle[0].regs[1];
+   buffer[0x02] = machine->apu->rectangle[0].regs[2];
+   buffer[0x03] = machine->apu->rectangle[0].regs[3];
+   buffer[0x04] = machine->apu->rectangle[1].regs[0];
+   buffer[0x05] = machine->apu->rectangle[1].regs[1];
+   buffer[0x06] = machine->apu->rectangle[1].regs[2];
+   buffer[0x07] = machine->apu->rectangle[1].regs[3];
+   buffer[0x08] = machine->apu->triangle.regs[0];
+   buffer[0x0A] = machine->apu->triangle.regs[1];
+   buffer[0x0B] = machine->apu->triangle.regs[2];
+   buffer[0X0C] = machine->apu->noise.regs[0];
+   buffer[0X0E] = machine->apu->noise.regs[1];
+   buffer[0x0F] = machine->apu->noise.regs[2];
+   buffer[0x10] = machine->apu->dmc.regs[0];
+   buffer[0x11] = machine->apu->dmc.regs[1];
+   buffer[0x12] = machine->apu->dmc.regs[2];
+   buffer[0x13] = machine->apu->dmc.regs[3];
+   buffer[0x15] = machine->apu->control_reg;
+
+   _fwrite(&buffer, 0x16);
+
+
+   /****************************************************/
+
+   if (machine->mmc->intf->number > 0)
+   {
+      MESSAGE_INFO("  - Saving mapper block\n");
+
+      // SnssBlockHeader
+      _fwrite("MPRD\x00\x00\x00\x01\x00\x00\x00\x98", 12);
+      numberOfBlocks++;
+
+      uint8 state[0x80];
+      uint16 temp;
+
+      /* TODO: snss spec should be updated, using 4kB ROM pages.. */
+      for (i = 0; i < 4; i++)
       {
-         written = true;
-         break;
+         temp = swap16((mem_getpage((i + 4) * 4) - machine->rominfo->rom) >> 13);
+         buffer[(i * 2) + 0] = ((uint8 *) &temp)[0];
+         buffer[(i * 2) + 1] = ((uint8 *) &temp)[1];
       }
-   }
-
-   if (false == written)
-   {
-      // The SRAM is empty, no need to save it to the file
-      return -1;
-   }
-
-   if (state->rominfo->sram_banks > 8)
-   {
-      printf("save_sramblock: Unsupported number of SRAM banks: %d\n", state->rominfo->sram_banks);
-      return -1;
-   }
-
-   snssFile->sramBlock.sramSize = SRAM_1K * state->rominfo->sram_banks;
-
-   /* TODO: this should not always be true!! */
-   snssFile->sramBlock.sramEnabled = true;
-
-   memcpy(snssFile->sramBlock.sram, state->rominfo->sram, snssFile->sramBlock.sramSize);
-
-   return 0;
-}
-
-static int save_soundblock(nes_t *state, SNSS_FILE *snssFile)
-{
-   ASSERT(state);
-
-   apu_getcontext(state->apu);
-
-   /* rect 0 */
-   snssFile->soundBlock.soundRegisters[0x00] = state->apu->rectangle[0].regs[0];
-   snssFile->soundBlock.soundRegisters[0x01] = state->apu->rectangle[0].regs[1];
-   snssFile->soundBlock.soundRegisters[0x02] = state->apu->rectangle[0].regs[2];
-   snssFile->soundBlock.soundRegisters[0x03] = state->apu->rectangle[0].regs[3];
-   /* rect 1 */
-   snssFile->soundBlock.soundRegisters[0x04] = state->apu->rectangle[1].regs[0];
-   snssFile->soundBlock.soundRegisters[0x05] = state->apu->rectangle[1].regs[1];
-   snssFile->soundBlock.soundRegisters[0x06] = state->apu->rectangle[1].regs[2];
-   snssFile->soundBlock.soundRegisters[0x07] = state->apu->rectangle[1].regs[3];
-   /* triangle */
-   snssFile->soundBlock.soundRegisters[0x08] = state->apu->triangle.regs[0];
-   snssFile->soundBlock.soundRegisters[0x0A] = state->apu->triangle.regs[1];
-   snssFile->soundBlock.soundRegisters[0x0B] = state->apu->triangle.regs[2];
-   /* noise */
-   snssFile->soundBlock.soundRegisters[0X0C] = state->apu->noise.regs[0];
-   snssFile->soundBlock.soundRegisters[0X0E] = state->apu->noise.regs[1];
-   snssFile->soundBlock.soundRegisters[0x0F] = state->apu->noise.regs[2];
-   /* dmc */
-   snssFile->soundBlock.soundRegisters[0x10] = state->apu->dmc.regs[0];
-   snssFile->soundBlock.soundRegisters[0x11] = state->apu->dmc.regs[1];
-   snssFile->soundBlock.soundRegisters[0x12] = state->apu->dmc.regs[2];
-   snssFile->soundBlock.soundRegisters[0x13] = state->apu->dmc.regs[3];
-   /* control */
-   snssFile->soundBlock.soundRegisters[0x15] = state->apu->control_reg;
-
-   return 0;
-}
-
-static int save_mapperblock(nes_t *state, SNSS_FILE *snssFile)
-{
-   int i;
-   ASSERT(state);
-
-   mmc_getcontext(state->mmc);
-
-   /* TODO: filthy hack in snss standard */
-   /* We don't need to write mapper state for mapper 0 */
-   if (0 == state->mmc->intf->number)
-   {
-       printf("save_mapperblock: 0 == state->mmc->intf->number\n");
-       return -1;
-    }
-
-   /* TODO: snss spec should be updated, using 4kB ROM pages.. */
-   for (i = 0; i < 4; i++)
-      snssFile->mapperBlock.prgPages[i] = (mem_getpage((i + 4) * 4) - state->rominfo->rom) >> 13;
-
-   if (state->rominfo->vrom_banks)
-   {
-      for (i = 0; i < 8; i++)
-         snssFile->mapperBlock.chrPages[i] = (ppu_getpage(i) - state->rominfo->vrom + (i * 0x400)) >> 10;
-   }
-   else
-   {
-      /* bleh! slight hack */
-      for (i = 0; i < 8; i++)
-         snssFile->mapperBlock.chrPages[i] = i;
-   }
-
-   if (state->mmc->intf->get_state)
-      state->mmc->intf->get_state(&snssFile->mapperBlock);
-
-   return 0;
-}
-
-static void load_baseblock(nes_t *state, SNSS_FILE *snssFile)
-{
-   int i;
-
-   ASSERT(state);
-
-   nes6502_getcontext(state->cpu);
-   ppu_getcontext(state->ppu);
-
-   state->cpu->a_reg = snssFile->baseBlock.regA;
-   state->cpu->x_reg = snssFile->baseBlock.regX;
-   state->cpu->y_reg = snssFile->baseBlock.regY;
-   state->cpu->p_reg = snssFile->baseBlock.regFlags;
-   state->cpu->s_reg = snssFile->baseBlock.regStack;
-   state->cpu->pc_reg = snssFile->baseBlock.regPc;
-   state->ppu->ctrl0 = snssFile->baseBlock.reg2000;
-   state->ppu->ctrl1 = snssFile->baseBlock.reg2001;
-
-   memcpy(state->mem->ram, snssFile->baseBlock.cpuRam, 0x800);
-   memcpy(state->ppu->oam, snssFile->baseBlock.spriteRam, 0x100);
-   memcpy(state->ppu->nametab, snssFile->baseBlock.ppuRam, 0x1000);
-   memcpy(state->ppu->palette, snssFile->baseBlock.palette, 0x20);
-
-   /* TODO: argh, this is to handle nofrendo's filthy sprite priority method */
-   for (i = 0; i < 8; i++)
-      state->ppu->palette[i << 2] = state->ppu->palette[0] | 0x80;//BG_TRANS_MASK;
-
-   for (i = 0; i < 4; i++)
-   {
-      state->ppu->page[i + 8] = state->ppu->page[i + 12] =
-         state->ppu->nametab + (snssFile->baseBlock.mirrorState[i] * 0x400) - (0x2000 + (i * 0x400));
-   }
-
-   state->ppu->vaddr = snssFile->baseBlock.vramAddress;
-   state->ppu->oam_addr = snssFile->baseBlock.spriteRamAddress;
-   state->ppu->tile_xofs = snssFile->baseBlock.tileXOffset;
-
-   /* do some extra handling */
-   state->ppu->flipflop = 0;
-   state->ppu->strikeflag = false;
-
-   nes6502_setcontext(state->cpu);
-   ppu_setcontext(state->ppu);
-
-   ppu_write(PPU_CTRL0, state->ppu->ctrl0);
-   ppu_write(PPU_CTRL1, state->ppu->ctrl1);
-   ppu_write(PPU_VADDR, (uint8) (state->ppu->vaddr >> 8));
-   ppu_write(PPU_VADDR, (uint8) (state->ppu->vaddr & 0xFF));
-}
-
-static void load_vramblock(nes_t *state, SNSS_FILE *snssFile)
-{
-   ASSERT(state);
-
-   ASSERT(snssFile->vramBlock.vramSize <= VRAM_8K); /* can't handle more than this! */
-   memcpy(state->rominfo->vram, snssFile->vramBlock.vram, snssFile->vramBlock.vramSize);
-}
-
-static void load_sramblock(nes_t *state, SNSS_FILE *snssFile)
-{
-   ASSERT(state);
-
-   ASSERT(snssFile->sramBlock.sramSize <= SRAM_8K); /* can't handle more than this! */
-   memcpy(state->rominfo->sram, snssFile->sramBlock.sram, snssFile->sramBlock.sramSize);
-}
-
-static void load_controllerblock(nes_t *state, SNSS_FILE *snssFile)
-{
-   UNUSED(state);
-   UNUSED(snssFile);
-}
-
-static void load_soundblock(nes_t *state, SNSS_FILE *snssFile)
-{
-   int i;
-
-   ASSERT(state);
-
-    apu_reset();
-
-    for (i = 0; i < SOUND_BLOCK_LENGTH; i++)
-    {
-          apu_write(0x4000 + i, snssFile->soundBlock.soundRegisters[i]);
-    }
-}
-
-/* TODO: magic numbers galore */
-static void load_mapperblock(nes_t *state, SNSS_FILE *snssFile)
-{
-   int i;
-
-   ASSERT(state);
-
-   mmc_getcontext(state->mmc);
-
-   for (i = 0; i < 4; i++)
-      mmc_bankrom(8, 0x8000 + (i * 0x2000), snssFile->mapperBlock.prgPages[i]);
-
-   if (state->rominfo->vrom_banks)
-   {
-      for (i = 0; i < 8; i++)
-         mmc_bankvrom(1, i * 0x400, snssFile->mapperBlock.chrPages[i]);
-   }
-   else
-   {
-      ASSERT(state->rominfo->vram);
 
       for (i = 0; i < 8; i++)
-         ppu_setpage(1, i, state->rominfo->vram);
+      {
+         temp = (machine->rominfo->vrom_banks) ?
+            ((ppu_getpage(i) - machine->rominfo->vrom + (i * 0x400)) >> 10) : (i);
+         temp = swap16(temp);
+         buffer[8 + (i * 2) + 0] = ((uint8 *) &temp)[0];
+         buffer[8 + (i * 2) + 1] = ((uint8 *) &temp)[1];
+      }
+
+      if (machine->mmc->intf->get_state)
+      {
+         machine->mmc->intf->get_state(&state);
+         memcpy(buffer + 0x18, state, 0x80);
+      }
+
+      _fwrite(&buffer, 0x98);
    }
 
-   if (state->mmc->intf->set_state)
-      state->mmc->intf->set_state(&snssFile->mapperBlock);
 
-   mmc_setcontext(state->mmc);
-}
+   /****************************************************/
 
+   // Update number of blocks
+   fseek(file, 7, SEEK_SET);
+   fwrite(&numberOfBlocks, 1, 1, file);
 
-int state_save(char* fn)
-{
-   SNSS_FILE *snssFile;
-   SNSS_RETURN_CODE status;
+   fclose(file);
 
-   nes_t *machine;
+   MESSAGE_INFO("state_save: Game %d saved!\n", save_slot);
 
-   /* get the pointer to our NES machine context */
-   machine = nes_getptr();
-   ASSERT(machine);
-
-   printf("state_save: fn='%s'\n", fn);
-
-   /* open our state file for writing */
-   status = SNSS_OpenFile(&snssFile, fn, SNSS_OPEN_WRITE);
-   if (SNSS_OK != status)
-      return -1;
-
-   printf("state_save: SNSS_OpenFile OK\n");
-
-   /* now get all of our blocks */
-   if (0 == save_baseblock(machine, snssFile))
-   {
-      status = SNSS_WriteBlock(snssFile, SNSS_BASR);
-      if (SNSS_OK != status)
-         goto _error;
-      printf("  - save_baseblock OK\n");
-   }
-
-   if (0 == save_vramblock(machine, snssFile))
-   {
-      status = SNSS_WriteBlock(snssFile, SNSS_VRAM);
-      if (SNSS_OK != status)
-         goto _error;
-      printf("  - save_vramblock OK\n");
-   }
-
-   if (0 == save_sramblock(machine, snssFile))
-   {
-      status = SNSS_WriteBlock(snssFile, SNSS_SRAM);
-      if (SNSS_OK != status)
-         goto _error;
-      printf("  - save_sramblock OK\n");
-   }
-
-   if (0 == save_soundblock(machine, snssFile))
-   {
-      status = SNSS_WriteBlock(snssFile, SNSS_SOUN);
-      if (SNSS_OK != status)
-         goto _error;
-      printf("  - save_soundblock OK\n");
-   }
-
-   if (0 == save_mapperblock(machine, snssFile))
-   {
-      status = SNSS_WriteBlock(snssFile, SNSS_MPRD);
-      if (SNSS_OK != status)
-         goto _error;
-      printf("  - save_mapperblock OK\n");
-   }
-
-   /* close the file, we're done */
-   status = SNSS_CloseFile(&snssFile);
-   if (SNSS_OK != status)
-      goto _error;
-
-   printf("state_save: Game %d saved\n", state_slot);
    return 0;
 
 _error:
-   printf("state_save: Failed: %s\n", SNSS_GetErrorString(status));
-   SNSS_CloseFile(&snssFile);
+   MESSAGE_ERROR("state_save: Save failed!\n");
+   fclose(file);
    return -1;
 }
 
-
 int state_load(char* fn)
 {
-   SNSS_FILE *snssFile;
-   SNSS_RETURN_CODE status;
-   SNSS_BLOCK_TYPE block_type;
-
-   unsigned int i;
+   uint8 buffer[512];
+   FILE *file;
    nes_t *machine;
+   int blk, i;
 
-   /* get our machine's context pointer */
+   uint32 numberOfBlocks;
+   uint32 blockVersion;
+   uint32 blockLength;
+   uint32 nextBlock = 8;
+
    machine = nes_getptr();
 
-   ASSERT(machine);
-
-   /* open our file for reading */
-   status = SNSS_OpenFile(&snssFile, fn, SNSS_OPEN_READ);
-   if (SNSS_OK != status)
+   if (!(file = fopen(fn, "rb")))
    {
-       printf("state_load: file '%s' could not be opened.\n", fn);
+       MESSAGE_ERROR("state_load: file '%s' could not be opened.\n", fn);
        return -1; //goto _error;
   }
 
-   printf("state_load: file '%s' opened.\n", fn);
+   _fread(buffer, 8);
 
-   /* iterate through all present blocks */
-   printf("state_load: snssFile->headerBlock.numberOfBlocks=%d\n", snssFile->headerBlock.numberOfBlocks);
-
-   for (i = 0; i < snssFile->headerBlock.numberOfBlocks; i++)
+   if (memcmp(buffer, "SNSS", 4) != 0)
    {
-      status = SNSS_GetNextBlockType(&block_type, snssFile);
-      if (SNSS_OK != status)
-         goto _error;
+      MESSAGE_ERROR("state_load: file '%s' is not a save file.\n", fn);
+      goto _error;
+   }
 
-      status = SNSS_ReadBlock(snssFile, block_type);
-      if (SNSS_OK != status)
-         goto _error;
+   numberOfBlocks = swap32(*((uint32*)&buffer[4]));
 
-      switch (block_type)
+   MESSAGE_INFO("state_load: file '%s' opened, blocks=%d.\n", fn, numberOfBlocks);
+
+   for (blk = 0; blk < numberOfBlocks; blk++)
+   {
+      fseek(file, nextBlock, SEEK_SET);
+      _fread(buffer, 12);
+
+      blockVersion = swap32(*((uint32*)&buffer[4]));
+      blockLength = swap32(*((uint32*)&buffer[8]));
+
+      nextBlock += 12 + blockLength;
+
+      /****************************************************/
+
+      if (memcmp(buffer, "BASR", 4) == 0)
       {
-      case SNSS_BASR:
-         printf("  - load_baseblock\n");
-         load_baseblock(machine, snssFile);
-         break;
+         MESSAGE_INFO("  - Found base block\n");
 
-      case SNSS_VRAM:
-         printf("  - load_vramblock\n");
-         load_vramblock(machine, snssFile);
-         break;
+         _fread(buffer, 9);
 
-      case SNSS_SRAM:
-         printf("  - load_sramblock\n");
-         load_sramblock(machine, snssFile);
-         break;
+         machine->cpu->a_reg = buffer[0x0];
+         machine->cpu->x_reg = buffer[0x1];
+         machine->cpu->y_reg = buffer[0x2];
+         machine->cpu->p_reg = buffer[0x3];
+         machine->cpu->s_reg = buffer[0x4];
+         machine->cpu->pc_reg = swap16(*((uint16*)&buffer[0x5]));
+         machine->ppu->ctrl0 = buffer[0x7];
+         machine->ppu->ctrl1 = buffer[0x8];
 
-      case SNSS_MPRD:
-         printf("  - load_mapperblock\n");
-         load_mapperblock(machine, snssFile);
-         break;
+         _fread(machine->mem->ram, 0x800);
+         _fread(machine->ppu->oam, 0x100);
+         _fread(machine->ppu->nametab, 0x1000);
+         _fread(machine->ppu->palette, 0x20);
 
-      case SNSS_CNTR:
-         printf("  - load_controllerblock\n");
-         load_controllerblock(machine, snssFile);
-         break;
+         /* TODO: argh, this is to handle nofrendo's filthy sprite priority method */
+         for (i = 0; i < 8; i++)
+            machine->ppu->palette[i << 2] = machine->ppu->palette[0] | 0x80; // BG_TRANS;
 
-      case SNSS_SOUN:
-         printf("  - load_soundblock\n");
-         load_soundblock(machine, snssFile);
-         break;
+         _fread(buffer, 8);
 
-      case SNSS_UNKNOWN_BLOCK:
-      default:
-         printf("  - unknown SNSS block type\n");
-         break;
+         for (i = 0; i < 4; i++)
+         {
+            machine->ppu->page[i + 8] = machine->ppu->page[i + 12] =
+               machine->ppu->nametab + (buffer[i] * 0x400) - (0x2000 + (i * 0x400));
+         }
+
+         ppu_mirrorhipages();
+
+         machine->ppu->vaddr = swap16(*((uint16*)&buffer[0x4]));
+         machine->ppu->oam_addr = buffer[0x6];
+         machine->ppu->tile_xofs = buffer[0x7];
+
+         /* do some extra handling */
+         machine->ppu->flipflop = 0;
+         machine->ppu->strikeflag = false;
+
+         ppu_write(PPU_CTRL0, machine->ppu->ctrl0);
+         ppu_write(PPU_CTRL1, machine->ppu->ctrl1);
+         ppu_write(PPU_VADDR, machine->ppu->vaddr >> 8);
+         ppu_write(PPU_VADDR, machine->ppu->vaddr & 0xFF);
+      }
+
+
+      /****************************************************/
+
+      else if (memcmp(buffer, "VRAM", 4) == 0)
+      {
+         MESSAGE_INFO("  - Found VRAM block\n");
+
+         if (machine->rominfo->vram == NULL)
+         {
+            MESSAGE_ERROR("rominfo says no vram!\n");
+            continue;
+         }
+
+         _fread(machine->rominfo->vram, MIN(blockLength, 0x4000)); // Max 16K
+      }
+
+
+      /****************************************************/
+
+      else if (memcmp(buffer, "SRAM", 4) == 0)
+      {
+         MESSAGE_INFO("  - Found SRAM block\n");
+
+         if (machine->rominfo->sram == NULL)
+         {
+            MESSAGE_ERROR("rominfo says no sram!\n");
+            continue;
+         }
+
+         _fread(buffer, 1); // SRAM enabled (always true)
+         _fread(machine->rominfo->sram, MIN(blockLength - 1, 0x2000)); // Max 8K
+      }
+
+
+      /****************************************************/
+
+      else if (memcmp(buffer, "MPRD", 4) == 0)
+      {
+         MESSAGE_INFO("  - Found mapper block\n");
+
+         _fread(buffer, blockLength);
+
+         for (i = 0; i < 4; i++)
+            mmc_bankrom(8, 0x8000 + (i * 0x2000), swap16(((uint16*)buffer)[i]));
+
+         if (machine->rominfo->vrom_banks)
+         {
+            for (i = 0; i < 8; i++)
+               mmc_bankvrom(1, i * 0x400, swap16(((uint16*)buffer)[4 + i]));
+         }
+         else if (machine->rominfo->vram)
+         {
+            for (i = 0; i < 8; i++)
+               ppu_setpage(1, i, machine->rominfo->vram);
+         }
+
+         if (machine->mmc->intf->set_state)
+            machine->mmc->intf->set_state(buffer + 0x18);
+      }
+
+
+      /****************************************************/
+
+      else if (memcmp(buffer, "SOUN", 4) == 0)
+      {
+         MESSAGE_INFO("  - Found sound block\n");
+
+         _fread(buffer, 0x16);
+
+         apu_reset();
+
+         for (i = 0; i < 0x16; i++)
+            apu_write(0x4000 + i, buffer[i]);
+      }
+
+
+      /****************************************************/
+
+      else
+      {
+         MESSAGE_ERROR("Found unknown block type!\n");
       }
    }
 
    /* close file, we're done */
-   status = SNSS_CloseFile(&snssFile);
+   fclose(file);
 
-   printf("state_load: Game %d restored\n", state_slot);
+   MESSAGE_INFO("state_load: Game %d restored\n", save_slot);
 
    return 0;
 
 _error:
-   printf("state_load: Failed: %s\n", SNSS_GetErrorString(status));
-   SNSS_CloseFile(&snssFile);
-   abort();
+   MESSAGE_ERROR("state_load: Load failed!\n");
+   fclose(file);
+   // abort();
+   return -1;
 }

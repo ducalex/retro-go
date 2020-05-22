@@ -41,7 +41,7 @@
 // #define  NES6502_DISASM
 
 /* Define this if running on little-endian (x86) systems */
-#define HOST_LITTLE_ENDIAN
+#define IS_LITTLE_ENDIAN
 
 /* End configuration */
 

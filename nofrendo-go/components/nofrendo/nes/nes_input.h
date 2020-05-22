@@ -48,19 +48,6 @@
 #define  INP_JOYPAD1       0x0002
 #define  INP_ZAPPER        0x0004
 
-/* upper byte is what's returned in D4, lower is D3 */
-#define  INP_PPAD_1        0x0002
-#define  INP_PPAD_2        0x0001
-#define  INP_PPAD_3        0x0200
-#define  INP_PPAD_4        0x0100
-#define  INP_PPAD_5        0x0004
-#define  INP_PPAD_6        0x0010
-#define  INP_PPAD_7        0x0080
-#define  INP_PPAD_8        0x0800
-#define  INP_PPAD_9        0x0008
-#define  INP_PPAD_10       0x0020
-#define  INP_PPAD_11       0x0040
-#define  INP_PPAD_12       0x0400
 
 enum
 {
@@ -78,7 +65,6 @@ typedef struct nesinput_s
 
 extern void input_register(nesinput_t *input);
 extern void input_event(nesinput_t *input, int state, int value);
-extern void input_strobe(void);
 
 uint8 input_read(uint32 address);
 void input_write(uint32 address, uint8 value);

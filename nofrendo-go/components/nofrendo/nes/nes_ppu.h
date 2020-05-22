@@ -138,8 +138,9 @@ extern uint8 *ppu_getpage(int page);
 
 /* Control */
 extern ppu_t *ppu_init(int region);
-extern void ppu_shutdown(void);
+extern void ppu_refresh(void);
 extern void ppu_reset(void);
+extern void ppu_shutdown(void);
 extern bool ppu_enabled(void);
 extern bool ppu_inframe(void);
 extern void ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag);

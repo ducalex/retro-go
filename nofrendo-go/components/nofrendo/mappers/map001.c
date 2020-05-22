@@ -56,6 +56,14 @@ static uint8 regs[4];
 static int bank_select;
 static uint8 lastreg;
 
+// Shouldn't that be packed? (It wasn't packed in SNSS...)
+typedef struct
+{
+   unsigned char registers[4];
+   unsigned char latch;
+   unsigned char numberOfBits;
+} mapper1Data;
+
 static void map1_write(uint32 address, uint8 value)
 {
    int regnum = (address >> 13) - 4;
@@ -160,25 +168,25 @@ static void map1_init(void)
    map1_write(0x8000, 0x80);
 }
 
-static void map1_getstate(SnssMapperBlock *state)
+static void map1_getstate(void *state)
 {
-   state->extraData.mapper1.registers[0] = regs[0];
-   state->extraData.mapper1.registers[1] = regs[1];
-   state->extraData.mapper1.registers[2] = regs[2];
-   state->extraData.mapper1.registers[3] = regs[3];
-   state->extraData.mapper1.latch = latch;
-   state->extraData.mapper1.numberOfBits = bitcount;
+   ((mapper1Data*)state)->registers[0] = regs[0];
+   ((mapper1Data*)state)->registers[1] = regs[1];
+   ((mapper1Data*)state)->registers[2] = regs[2];
+   ((mapper1Data*)state)->registers[3] = regs[3];
+   ((mapper1Data*)state)->latch = latch;
+   ((mapper1Data*)state)->numberOfBits = bitcount;
 }
 
 
-static void map1_setstate(SnssMapperBlock *state)
+static void map1_setstate(void *state)
 {
-   regs[1] = state->extraData.mapper1.registers[0];
-   regs[1] = state->extraData.mapper1.registers[1];
-   regs[2] = state->extraData.mapper1.registers[2];
-   regs[3] = state->extraData.mapper1.registers[3];
-   latch = state->extraData.mapper1.latch;
-   bitcount = state->extraData.mapper1.numberOfBits;
+   regs[1]  = ((mapper1Data*)state)->registers[0];
+   regs[1]  = ((mapper1Data*)state)->registers[1];
+   regs[2]  = ((mapper1Data*)state)->registers[2];
+   regs[3]  = ((mapper1Data*)state)->registers[3];
+   latch    = ((mapper1Data*)state)->latch;
+   bitcount = ((mapper1Data*)state)->numberOfBits;
 }
 
 static mem_write_handler_t map1_memwrite[] =

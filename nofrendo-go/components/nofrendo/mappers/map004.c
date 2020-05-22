@@ -36,6 +36,15 @@ static uint8 reg;
 static uint8 command;
 static uint16 vrombase;
 
+// Shouldn't that be packed? (It wasn't packed in SNSS...)
+typedef struct
+{
+   unsigned char irqCounter;
+   unsigned char irqLatchCounter;
+   unsigned char irqCounterEnabled;
+   unsigned char last8000Write;
+} mapper4Data;
+
 /* mapper 4: MMC3 */
 static void map4_write(uint32 address, uint8 value)
 {
@@ -172,20 +181,20 @@ static void map4_hblank(int scanline)
    }
 }
 
-static void map4_getstate(SnssMapperBlock *state)
+static void map4_getstate(void *state)
 {
-   state->extraData.mapper4.irqCounter = irq.counter;
-   state->extraData.mapper4.irqLatchCounter = irq.latch;
-   state->extraData.mapper4.irqCounterEnabled = irq.enabled;
-   state->extraData.mapper4.last8000Write = command;
+   ((mapper4Data*)state)->irqCounter = irq.counter;
+   ((mapper4Data*)state)->irqLatchCounter = irq.latch;
+   ((mapper4Data*)state)->irqCounterEnabled = irq.enabled;
+   ((mapper4Data*)state)->last8000Write = command;
 }
 
-static void map4_setstate(SnssMapperBlock *state)
+static void map4_setstate(void *state)
 {
-   irq.counter = state->extraData.mapper4.irqCounter;
-   irq.latch = state->extraData.mapper4.irqLatchCounter;
-   irq.enabled = state->extraData.mapper4.irqCounterEnabled;
-   command = state->extraData.mapper4.last8000Write;
+   irq.counter = ((mapper4Data*)state)->irqCounter;
+   irq.latch = ((mapper4Data*)state)->irqLatchCounter;
+   irq.enabled = ((mapper4Data*)state)->irqCounterEnabled;
+   command = ((mapper4Data*)state)->last8000Write;
 }
 
 static void map4_init(void)

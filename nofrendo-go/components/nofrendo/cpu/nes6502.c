@@ -1053,7 +1053,7 @@ static mem_t *mem;
 ** Memory-related macros
 */
 
-#ifdef HOST_LITTLE_ENDIAN
+#ifdef IS_LITTLE_ENDIAN
 #define PAGE_READWORD(page, addr)  (*(uint16 *)((page) + (addr)))
 #else
 #define PAGE_READWORD(page, addr)  (page[(addr) + 1] << 8 | page[(addr)])

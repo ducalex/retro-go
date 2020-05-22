@@ -102,30 +102,6 @@ static void map41_high_write (uint32 address, uint8 value)
   return;
 }
 
-/****************************************************/
-/* Shove extra mapper information into a SNSS block */
-/****************************************************/
-static void map41_setstate (SnssMapperBlock *state)
-{
-  /* TODO: Store SNSS information */
-  UNUSED (state);
-
-  /* Done */
-  return;
-}
-
-/*****************************************************/
-/* Pull extra mapper information out of a SNSS block */
-/*****************************************************/
-static void map41_getstate (SnssMapperBlock *state)
-{
-  /* TODO: Retrieve SNSS information */
-  UNUSED (state);
-
-  /* Done */
-  return;
-}
-
 static mem_write_handler_t map41_memwrite [] =
 {
    { 0x6000, 0x67FF, map41_low_write },
@@ -140,8 +116,8 @@ mapintf_t map41_intf =
    map41_init,                       /* Initialization routine */
    NULL,                             /* VBlank callback */
    NULL,                             /* HBlank callback */
-   map41_getstate,                   /* Get state (SNSS) */
-   map41_setstate,                   /* Set state (SNSS) */
+   NULL,                             /* Get state (SNSS) */
+   NULL,                             /* Set state (SNSS) */
    NULL,                             /* Memory read structure */
    map41_memwrite,                   /* Memory write structure */
    NULL                              /* External sound device */

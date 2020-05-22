@@ -128,30 +128,6 @@ static void map50_write (uint32 address, uint8 value)
   return;
 }
 
-/****************************************************/
-/* Shove extra mapper information into a SNSS block */
-/****************************************************/
-static void map50_setstate (SnssMapperBlock *state)
-{
-  /* TODO: Store SNSS information */
-  UNUSED (state);
-
-  /* Done */
-  return;
-}
-
-/*****************************************************/
-/* Pull extra mapper information out of a SNSS block */
-/*****************************************************/
-static void map50_getstate (SnssMapperBlock *state)
-{
-  /* TODO: Retrieve SNSS information */
-  UNUSED (state);
-
-  /* Done */
-  return;
-}
-
 static mem_write_handler_t map50_memwrite [] =
 {
    { 0x4000, 0x5FFF, map50_write },
@@ -165,8 +141,8 @@ mapintf_t map50_intf =
    map50_init,                       /* Initialization routine */
    NULL,                             /* VBlank callback */
    map50_hblank,                     /* HBlank callback */
-   map50_getstate,                   /* Get state (SNSS) */
-   map50_setstate,                   /* Set state (SNSS) */
+   NULL,                             /* Get state (SNSS) */
+   NULL,                             /* Set state (SNSS) */
    NULL,                             /* Memory read structure */
    map50_memwrite,                   /* Memory write structure */
    NULL                              /* External sound device */

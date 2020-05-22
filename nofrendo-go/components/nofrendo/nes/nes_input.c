@@ -58,7 +58,12 @@ IRAM_ATTR void input_write(uint32 address, uint8 value)
    value &= 1;
 
    if (0 == value && strobe)
-      input_strobe();
+   {
+      pad0_readcount = 0;
+      pad1_readcount = 0;
+      ppad_readcount = 0;
+      ark_readcount = 0;
+   }
 
    strobe = value;
 }
@@ -122,12 +127,4 @@ void input_event(nesinput_t *input, int state, int value)
       input->data |= value;   /* OR it in */
    else /* break state */
       input->data &= ~value;  /* mask it out */
-}
-
-void input_strobe(void)
-{
-   pad0_readcount = 0;
-   pad1_readcount = 0;
-   ppad_readcount = 0;
-   ark_readcount = 0;
 }

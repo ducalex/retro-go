@@ -33,6 +33,13 @@ static struct
    int latch, wait_state;
 } irq;
 
+// Shouldn't that be packed? (It wasn't packed in SNSS...)
+typedef struct
+{
+   unsigned char irqCounter;
+   unsigned char irqCounterEnabled;
+} mapper24Data;
+
 static void map24_init(void)
 {
    irq.counter = irq.enabled = 0;
@@ -149,16 +156,16 @@ static void map24_write(uint32 address, uint8 value)
    }
 }
 
-static void map24_getstate(SnssMapperBlock *state)
+static void map24_getstate(void *state)
 {
-   state->extraData.mapper24.irqCounter = irq.counter;
-   state->extraData.mapper24.irqCounterEnabled = irq.enabled;
+   ((mapper24Data*)state)->irqCounter = irq.counter;
+   ((mapper24Data*)state)->irqCounterEnabled = irq.enabled;
 }
 
-static void map24_setstate(SnssMapperBlock *state)
+static void map24_setstate(void *state)
 {
-   irq.counter = state->extraData.mapper24.irqCounter;
-   irq.enabled = state->extraData.mapper24.irqCounterEnabled;
+   irq.counter = ((mapper24Data*)state)->irqCounter;
+   irq.enabled = ((mapper24Data*)state)->irqCounterEnabled;
 }
 
 static mem_write_handler_t map24_memwrite[] =

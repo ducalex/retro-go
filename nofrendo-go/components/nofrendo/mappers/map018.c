@@ -27,6 +27,14 @@
 #include <nes_mmc.h>
 #include <nes_ppu.h>
 
+// Shouldn't that be packed? (It wasn't packed in SNSS...)
+typedef struct
+{
+   unsigned char irqCounterLowByte;
+   unsigned char irqCounterHighByte;
+   unsigned char irqCounterEnabled;
+} mapper18Data;
+
 /* mapper 18: Jaleco SS8806 */
 #define  VRC_PBANK(bank, value, high) \
 do { \
@@ -146,18 +154,18 @@ static mem_write_handler_t map18_memwrite[] =
    LAST_MEMORY_HANDLER
 };
 
-static void map18_getstate(SnssMapperBlock *state)
+static void map18_getstate(void *state)
 {
-   state->extraData.mapper18.irqCounterLowByte = irq.counter & 0xFF;
-   state->extraData.mapper18.irqCounterHighByte = irq.counter >> 8;
-   state->extraData.mapper18.irqCounterEnabled = irq.enabled;
+   ((mapper18Data*)state)->irqCounterLowByte = irq.counter & 0xFF;
+   ((mapper18Data*)state)->irqCounterHighByte = irq.counter >> 8;
+   ((mapper18Data*)state)->irqCounterEnabled = irq.enabled;
 }
 
-static void map18_setstate(SnssMapperBlock *state)
+static void map18_setstate(void *state)
 {
-   irq.counter = (state->extraData.mapper18.irqCounterHighByte << 8)
-                       | state->extraData.mapper18.irqCounterLowByte;
-   irq.enabled = state->extraData.mapper18.irqCounterEnabled;
+   irq.counter = (((mapper18Data*)state)->irqCounterHighByte << 8)
+                       | ((mapper18Data*)state)->irqCounterLowByte;
+   irq.enabled = ((mapper18Data*)state)->irqCounterEnabled;
 }
 
 mapintf_t map18_intf =

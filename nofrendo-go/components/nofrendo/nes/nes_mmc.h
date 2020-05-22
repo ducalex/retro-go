@@ -30,7 +30,7 @@ typedef struct mapintf_s mapintf_t;
 typedef struct mmc_s mmc_t;
 
 #include <nofrendo.h>
-#include <libsnss.h>
+#include "nes_state.h"
 #include "nes_apu.h"
 #include "nes_rom.h"
 #include "nes_mem.h"
@@ -42,8 +42,8 @@ struct mapintf_s
    void (*init)(void);
    void (*vblank)(void);
    void (*hblank)(int scanline);
-   void (*get_state)(SnssMapperBlock *state);
-   void (*set_state)(SnssMapperBlock *state);
+   void (*get_state)(void *state); // State is a 128 bytes buffer
+   void (*set_state)(void *state); // State is a 128 bytes buffer
    mem_read_handler_t *mem_read;
    mem_write_handler_t *mem_write;
    apuext_t *sound_ext;
@@ -64,8 +64,9 @@ extern void mmc_bankvrom(int size, uint32 address, int bank);
 extern void mmc_bankrom(int size, uint32 address, int bank);
 
 extern mmc_t *mmc_init(rominfo_t *rominfo);
-extern void mmc_shutdown(void);
+extern void mmc_refresh(void);
 extern void mmc_reset(void);
+extern void mmc_shutdown(void);
 
 extern mapintf_t *mmc_peek(int map_num);
 extern rominfo_t *mmc_getinfo(void);
