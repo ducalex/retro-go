@@ -1,5 +1,5 @@
 #include <freertos/FreeRTOS.h>
-#include "odroid_system.h"
+#include <odroid_system.h>
 
 #include <string.h>
 #include <nofrendo.h>
@@ -10,7 +10,6 @@
 #include <nes_state.h>
 #include <nes_input.h>
 #include <osd.h>
-#include "sdkconfig.h"
 
 #define APP_ID 10
 
@@ -18,6 +17,7 @@
 
 #define NVS_KEY_LIMIT_SPRITES "limitspr"
 #define NVS_KEY_OVERSCAN "overscan"
+#define NVS_KEY_CROPLEFT "cropleft"
 
 static char* romData;
 static size_t romSize;
@@ -36,8 +36,9 @@ static odroid_gamepad_state joystick2;
 static odroid_gamepad_state *localJoystick = &joystick1;
 static odroid_gamepad_state *remoteJoystick = &joystick2;
 
-static uint overscan = 0;
-static bool netplay = false;
+static bool overscan = true;
+static bool cropleft = false;
+static bool netplay  = false;
 
 static bool fullFrame = 0;
 static uint lastSyncTime = 0;
@@ -102,12 +103,6 @@ static bool LoadState(char *pathName)
 }
 
 
-static void set_overscan(bool enabled)
-{
-   overscan = enabled ? nes_getptr()->overscan : 0;
-   update1.height = update2.height = NES_SCREEN_HEIGHT - (overscan * 2);
-}
-
 static bool sprite_limit_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
    int val = odroid_settings_int32_get(NVS_KEY_LIMIT_SPRITES, 1);
@@ -115,7 +110,7 @@ static bool sprite_limit_cb(odroid_dialog_choice_t *option, odroid_dialog_event_
    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
       val = val ? 0 : 1;
       odroid_settings_int32_set(NVS_KEY_LIMIT_SPRITES, val);
-      ppu_limitsprites(val);
+      ppu_setopt(PPU_LIMIT_SPRITES, val);
    }
 
    strcpy(option->value, val ? "On " : "Off");
@@ -125,15 +120,27 @@ static bool sprite_limit_cb(odroid_dialog_choice_t *option, odroid_dialog_event_
 
 static bool overscan_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
-   int val = odroid_settings_app_int32_get(NVS_KEY_OVERSCAN, 1);
-
    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
-      val = val ? 0 : 1;
-      odroid_settings_app_int32_set(NVS_KEY_OVERSCAN, val);
-      set_overscan(val);
+      overscan = !overscan;
+      forceVideoRefresh = true;
+      odroid_settings_app_int32_set(NVS_KEY_OVERSCAN, overscan);
    }
 
-   strcpy(option->value, val ? "Auto" : "Off ");
+   strcpy(option->value, overscan ? "Auto" : "Off ");
+
+   return event == ODROID_DIALOG_ENTER;
+}
+
+static bool cropleft_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+{
+   if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
+      cropleft = !cropleft;
+      forceVideoRefresh = true;
+      odroid_settings_app_int32_set(NVS_KEY_CROPLEFT, cropleft);
+   }
+
+   if (cropleft == 0) strcpy(option->value, "Off ");
+   if (cropleft == 1) strcpy(option->value, "Auto");
 
    return event == ODROID_DIALOG_ENTER;
 }
@@ -164,7 +171,7 @@ static bool advanced_settings_cb(odroid_dialog_choice_t *option, odroid_dialog_e
          {1, "Region", "Auto", 1, &region_update_cb},
          {2, "Overscan", "Auto", 1, &overscan_update_cb},
          {3, "Sprite limit", "On ", 1, &sprite_limit_cb},
-         // {4, "Left column", "Normal/Black/Crop ", 1, &leftcol_update_cb},
+         {4, "Crop left", "Off ", 1, &cropleft_update_cb},
          // {4, "", "", 1, NULL},
          //{0, "Reset all", "", 1, NULL},
          ODROID_DIALOG_CHOICE_LAST
@@ -184,12 +191,12 @@ static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
 
    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
       odroid_settings_Palette_set(pal);
-      ppu_setpalnum(pal);
+      ppu_setopt(PPU_PALETTE_RGB, pal);
       odroid_display_queue_update(currentUpdate, NULL);
       odroid_display_queue_update(currentUpdate, NULL);
    }
 
-   sprintf(option->value, "%.7s", ppu_getpalnum(pal)->name);
+   sprintf(option->value, "%.7s", ppu_getpalette(pal)->name);
    return event == ODROID_DIALOG_ENTER;
 }
 
@@ -211,9 +218,10 @@ void osd_loadstate()
       odroid_system_emu_load_state(0);
    }
 
-   ppu_limitsprites(odroid_settings_int32_get(NVS_KEY_LIMIT_SPRITES, 1));
-   ppu_setpalnum(odroid_settings_Palette_get());
-   set_overscan(odroid_settings_app_int32_get(NVS_KEY_OVERSCAN, 1));
+   ppu_setopt(PPU_LIMIT_SPRITES, odroid_settings_int32_get(NVS_KEY_LIMIT_SPRITES, 1));
+   ppu_setopt(PPU_PALETTE_RGB, odroid_settings_Palette_get());
+   overscan = odroid_settings_app_int32_get(NVS_KEY_OVERSCAN, 1);
+   cropleft = odroid_settings_app_int32_get(NVS_KEY_CROPLEFT, 0);
 }
 
 void osd_logprint(int type, char *string)
@@ -281,8 +289,15 @@ void osd_setpalette(rgb_t *pal)
 
 IRAM_ATTR void osd_blitscreen(bitmap_t *bmp)
 {
-   currentUpdate->buffer = bmp->line[overscan];
+   nes_t *nes = nes_getptr();
+
+   int crop_v = (overscan) ? nes->overscan : 0;
+   int crop_l = (cropleft && !(nes->ppu->ctrl1 & PPU_CTRL1F_OBJMASK)) ? 8 : 0;
+
+   currentUpdate->buffer = bmp->line[crop_v] + crop_l;
    currentUpdate->stride = bmp->pitch;
+   currentUpdate->width  = bmp->width - crop_l;
+   currentUpdate->height = bmp->height - (crop_v * 2);
 
    fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
    frames++;

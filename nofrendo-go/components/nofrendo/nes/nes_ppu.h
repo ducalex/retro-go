@@ -74,6 +74,15 @@
 typedef void (*ppu_latchfunc_t)(uint32 address, uint8 value);
 typedef uint8 (*ppu_vreadfunc_t)(uint32 address, uint8 value);
 
+typedef enum
+{
+   PPU_DRAW_SPRITES,
+   PPU_DRAW_BACKGROUND,
+   PPU_LIMIT_SPRITES,
+   PPU_PALETTE_RGB,
+   PPU_OPTIONS_COUNT,
+} ppu_option_t;
+
 typedef struct
 {
    uint8 y_loc;
@@ -120,8 +129,9 @@ typedef struct ppu_s
 
    bool vram_accessible;
    bool vram_present;
-   bool drawsprites;
-   bool limitsprites;
+
+   /* Misc runtime options */
+   int options[16];
 } ppu_t;
 
 typedef struct
@@ -143,8 +153,8 @@ extern void ppu_reset(void);
 extern void ppu_shutdown(void);
 extern bool ppu_enabled(void);
 extern bool ppu_inframe(void);
-extern void ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag);
-extern void ppu_endscanline(void);
+extern void ppu_setopt(ppu_option_t n, int val);
+extern int  ppu_getopt(ppu_option_t n);
 
 extern void ppu_setlatchfunc(ppu_latchfunc_t func);
 extern void ppu_setvreadfunc(ppu_vreadfunc_t func);
@@ -156,16 +166,15 @@ extern void ppu_setcontext(ppu_t *src_ppu);
 extern uint8 ppu_read(uint32 address);
 extern void ppu_write(uint32 address, uint8 value);
 
-/* rendering */
+/* Rendering */
+extern void ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag);
+extern void ppu_endscanline(void);
 extern void ppu_setpalette(rgb_t *pal);
-extern void ppu_setpalnum(int n);
-extern const palette_t *ppu_getpalnum(int n);
+extern const palette_t *ppu_getpalette(int n);
 
-/* bleh */
+/* Debugging */
 extern void ppu_dumppattern(bitmap_t *bmp, int table_num, int x_loc, int y_loc, int col);
 extern void ppu_dumpoam(bitmap_t *bmp, int x_loc, int y_loc);
-extern void ppu_displaysprites(bool display);
-extern void ppu_limitsprites(bool limit);
 
 /* PPU debug drawing */
 #define  GUI_FIRSTENTRY 192

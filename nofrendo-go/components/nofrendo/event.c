@@ -144,56 +144,56 @@ static void func_event_state_slot_9(int code)
 
 static void func_event_toggle_channel_0(int code)
 {
-   // if (INP_STATE_MAKE == code)
-   //    toggle_chan(0);
+   if (INP_STATE_MAKE == code)
+      apu_setopt(APU_CHANNEL1_EN, !apu_getopt(APU_CHANNEL1_EN));
 }
 
 static void func_event_toggle_channel_1(int code)
 {
-   // if (INP_STATE_MAKE == code)
-   //    toggle_chan(1);
+   if (INP_STATE_MAKE == code)
+      apu_setopt(APU_CHANNEL2_EN, !apu_getopt(APU_CHANNEL2_EN));
 }
 
 static void func_event_toggle_channel_2(int code)
 {
-   // if (INP_STATE_MAKE == code)
-   //    toggle_chan(2);
+   if (INP_STATE_MAKE == code)
+      apu_setopt(APU_CHANNEL3_EN, !apu_getopt(APU_CHANNEL3_EN));
 }
 
 static void func_event_toggle_channel_3(int code)
 {
-   // if (INP_STATE_MAKE == code)
-   //    toggle_chan(3);
+   if (INP_STATE_MAKE == code)
+      apu_setopt(APU_CHANNEL4_EN, !apu_getopt(APU_CHANNEL4_EN));
 }
 
 static void func_event_toggle_channel_4(int code)
 {
-   // if (INP_STATE_MAKE == code)
-   //    toggle_chan(4);
+   if (INP_STATE_MAKE == code)
+      apu_setopt(APU_CHANNEL5_EN, !apu_getopt(APU_CHANNEL5_EN));
 }
 
 static void func_event_toggle_channel_5(int code)
 {
-   // if (INP_STATE_MAKE == code)
-   //    toggle_chan(5);
+   if (INP_STATE_MAKE == code)
+      apu_setopt(APU_CHANNEL6_EN, !apu_getopt(APU_CHANNEL6_EN));
 }
 
 static void func_event_set_filter_0(int code)
 {
    if (INP_STATE_MAKE == code)
-      apu_setfilter(0);
+      apu_setopt(APU_FILTER_TYPE, 0);
 }
 
 static void func_event_set_filter_1(int code)
 {
    if (INP_STATE_MAKE == code)
-      apu_setfilter(1);
+      apu_setopt(APU_FILTER_TYPE, 1);
 }
 
 static void func_event_set_filter_2(int code)
 {
    if (INP_STATE_MAKE == code)
-      apu_setfilter(2);
+      apu_setopt(APU_FILTER_TYPE, 2);
 }
 
 static void func_event_joypad1_a(int code)

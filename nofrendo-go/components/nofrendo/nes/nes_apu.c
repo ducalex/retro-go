@@ -41,6 +41,9 @@
 #define APU_NOISE_OUTPUT              ((apu.noise.output_vol + apu.noise.output_vol + apu.noise.output_vol) >> 2)
 #define APU_DMC_OUTPUT                ((apu.dmc.output_vol + apu.dmc.output_vol + apu.dmc.output_vol) >> 2)
 
+/* Runtime settings */
+#define OPT(n) (apu.options[(n)])
+
 /* active APU */
 static apu_t apu;
 
@@ -133,14 +136,6 @@ void apu_getcontext(apu_t *dest_apu)
 {
    ASSERT(dest_apu);
    *dest_apu = apu;
-}
-
-void apu_setchan(int chan, bool enabled)
-{
-   if (enabled)
-      apu.chan_enable |= (1 << chan);
-   else
-      apu.chan_enable &= ~(1 << chan);
 }
 
 /* emulation of the 15-bit shift register the
@@ -908,25 +903,25 @@ IRAM_ATTR void apu_process(void *buffer, int num_samples)
       {
          int32 next_sample, accum = 0;
 
-         if (apu.chan_enable & 0x01)
+         if (OPT(APU_CHANNEL1_EN))
             accum += apu_rectangle_0();
-         if (apu.chan_enable & 0x02)
+         if (OPT(APU_CHANNEL2_EN))
             accum += apu_rectangle_1();
-         if (apu.chan_enable & 0x04)
+         if (OPT(APU_CHANNEL3_EN))
             accum += apu_triangle();
-         if (apu.chan_enable & 0x08)
+         if (OPT(APU_CHANNEL4_EN))
             accum += apu_noise();
-         if (apu.chan_enable & 0x10)
+         if (OPT(APU_CHANNEL5_EN))
             accum += apu_dmc();
-         if (apu.ext && (apu.chan_enable & 0x20))
+         if (apu.ext && OPT(APU_CHANNEL6_EN))
             accum += apu.ext->process();
 
          /* do any filtering */
-         if (APU_FILTER_NONE != apu.filter_type)
+         if (APU_FILTER_NONE != OPT(APU_FILTER_TYPE))
          {
             next_sample = accum;
 
-            if (APU_FILTER_LOWPASS == apu.filter_type)
+            if (APU_FILTER_LOWPASS == OPT(APU_FILTER_TYPE))
             {
                accum += prev_sample;
                accum >>= 1;
@@ -950,12 +945,6 @@ IRAM_ATTR void apu_process(void *buffer, int num_samples)
          // apu_fc_advance(apu.cycle_rate);
       }
    }
-}
-
-/* set the filter type */
-void apu_setfilter(int filter_type)
-{
-   apu.filter_type = filter_type;
 }
 
 void apu_reset(void)
@@ -996,6 +985,23 @@ void apu_build_luts(int num_samples)
 #endif /* !REALTIME_NOISE */
 }
 
+void apu_setopt(apu_option_t n, int val)
+{
+   // Some options need special care
+   switch (n)
+   {
+      default:
+      break;
+   }
+
+   apu.options[n] = val;
+}
+
+int apu_getopt(apu_option_t n)
+{
+   return apu.options[n];
+}
+
 /* Initializes emulated sound hardware, creates waveforms/voices */
 apu_t *apu_init(int region, int sample_rate)
 {
@@ -1017,9 +1023,15 @@ apu_t *apu_init(int region, int sample_rate)
 
    apu.sample_rate = sample_rate;
    apu.cycle_rate = (float) (cpu_clock / sample_rate);
-   apu.chan_enable = 0xFF;
-   apu.filter_type = APU_FILTER_WEIGHTED;
    apu.ext = NULL;
+
+   apu_setopt(APU_FILTER_TYPE, APU_FILTER_WEIGHTED);
+   apu_setopt(APU_CHANNEL1_EN, true);
+   apu_setopt(APU_CHANNEL2_EN, true);
+   apu_setopt(APU_CHANNEL3_EN, true);
+   apu_setopt(APU_CHANNEL4_EN, true);
+   apu_setopt(APU_CHANNEL5_EN, true);
+   apu_setopt(APU_CHANNEL6_EN, true);
 
    apu_build_luts(sample_rate / refresh_rate);
 

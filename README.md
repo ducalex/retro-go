@@ -49,25 +49,23 @@ Retro-Go is a launcher and framework to run emulators on the ODROID-GO. It comes
 
 
 # Game covers/artwork
-Retro-Go supports both RAW565 and PNG formats for cover art.
+The preferred cover art format is 8bit PNG with a resolution of less than 200x200 and I 
+recommend post-processing with [pngquant](https://pngquant.org/). Retro-Go is also 
+backwards-compatible with the official RAW565 Go-Play romart pack that you may already have.
 
 A premade PNG romart pack is available in the assets folder of this repository.
 
-Retro-Go is also compatible with the Go-Play romart pack that you may already have.
-
-
 ## Adding missing artwork
-The simplest method is to create a PNG file named like your rom (minus the extension) and place it in `/romart/emu/<my rom name>.png`
+The simplest method to add missing artwork is to create a PNG file named like your rom 
+(minus the extension) and place it in `/romart/emu/<my rom name>.png`
 
 Example:  
 /roms/nes/Super Mario.nes  
 /romart/nes/Super Mario.png  
 
-Important: The file must be at most 200x200px.
-
 ## CRC cache
 Retro-Go caches some data to speed up cover art discovery and display.
-If you have any problem the first step is to clear the cache located in /odroid/cache.
+If you have any problem the first step is to delete the /odroid/cache folder.
 
 
 # Known issues
@@ -75,15 +73,14 @@ If you have any problem the first step is to clear the cache located in /odroid/
 
 
 # Future plans
-- CMake support
+- CMake support (esp-idf 4.0)
 - Rewind
 - Netplay (In progress)
 
 
 # Compilation
-The official esp-idf version 3.3 is required and you should apply the following patch:
-
-- [Improve SD card compatibility](https://github.com/OtherCrashOverride/esp-idf/commit/a83e557538a033e25c376eedac79663c9b7b75da)
+The official esp-idf version 3.3 is required and it is recommended to apply the 
+`esp-idf-sdcard-compat.diff` patch located in the assets folder.
 
 _Note: It is possible to use esp-idf 3.2 but changes to sdkconfig will be necessary._
 
@@ -93,12 +90,13 @@ _Note: It is possible to use esp-idf 3.2 but changes to sdkconfig will be necess
 
 
 # Acknowledgements
-- The NES/GBC/SMS emulators were originally from the "Triforce" fork of the [official Go-Play firmware](https://github.com/othercrashoverride/go-play).
+- The NES/GBC/SMS emulators and base library were originally from the "Triforce" fork of the [official Go-Play firmware](https://github.com/othercrashoverride/go-play) by crashoverride, Nemo1984, and many others.
 - The [HuExpress](https://github.com/kallisti5/huexpress) (PCE) emulator was first ported to the GO by [pelle7](https://github.com/pelle7/odroid-go-pcengine-huexpress/).
-- The Lynx emulator is an adaptation of the [libretro-handy](https://github.com/libretro/libretro-handy).
+- The Lynx emulator is an adaptation of [libretro-handy](https://github.com/libretro/libretro-handy).
 - The aesthetics of the launcher were inspired (copied) from [pelle7's go-emu](https://github.com/pelle7/odroid-go-emu-launcher).
 - [miniz](https://github.com/richgel999/miniz) For zipped ROM and zlib API
 - [luPng](https://github.com/jansol/LuPng) For basic PNG decoding
+- PCE cover art is from Christian_Haitian.
 
 
 # License

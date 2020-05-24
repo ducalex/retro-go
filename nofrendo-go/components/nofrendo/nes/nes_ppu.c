@@ -50,6 +50,9 @@
 /* Full BG color */
 #define  FULLBG               (ppu.palette[0] | BG_TRANS)
 
+/* Runtime settings */
+#define OPT(n) (ppu.options[(n)])
+
 /* the NES PPU */
 static ppu_t ppu;
 
@@ -75,16 +78,6 @@ INLINE uint8 PPU_MEM_READ(uint32 x)
       return ppu.page[x >> 10][x];
 }
 #endif
-
-void ppu_displaysprites(bool display)
-{
-   ppu.drawsprites = display;
-}
-
-void ppu_limitsprites(bool limit)
-{
-   ppu.limitsprites = limit;
-}
 
 void ppu_setcontext(ppu_t *src_ppu)
 {
@@ -426,14 +419,30 @@ void ppu_setpalette(rgb_t *pal)
    osd_setpalette(&ppu.curpal);
 }
 
-void ppu_setpalnum(int n)
-{
-   ppu_setpalette((rgb_t*)nes_palettes[n % PPU_PAL_COUNT].data);
-}
-
-const palette_t *ppu_getpalnum(int n)
+const palette_t *ppu_getpalette(int n)
 {
    return &nes_palettes[n % PPU_PAL_COUNT];
+}
+
+void ppu_setopt(ppu_option_t n, int val)
+{
+   // Some options need special care
+   switch (n)
+   {
+      case PPU_PALETTE_RGB:
+      ppu_setpalette((rgb_t*)nes_palettes[n % PPU_PAL_COUNT].data);
+      break;
+
+      default:
+      break;
+   }
+
+   ppu.options[n] = val;
+}
+
+int ppu_getopt(ppu_option_t n)
+{
+   return ppu.options[n];
 }
 
 void ppu_setlatchfunc(ppu_latchfunc_t func)
@@ -707,7 +716,7 @@ INLINE void ppu_renderoam(uint8 *vidbuf, int scanline, bool draw)
          ppu.palette + 16 + ((sprite->attr & 3) << 2));
 
       /* maximum of 8 sprites per scanline */
-      if (ppu.limitsprites && ++count == PPU_MAXSPRITE)
+      if (OPT(PPU_LIMIT_SPRITES) && ++count == PPU_MAXSPRITE)
       {
          ppu.stat |= PPU_STATF_MAXSPRITE;
          break;
@@ -788,11 +797,11 @@ IRAM_ATTR void ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag)
          }
       }
 
-      if (draw_flag)
+      if (draw_flag && OPT(PPU_DRAW_BACKGROUND))
          ppu_renderbg(bmp->line[scanline]);
 
       /* TODO: fetch obj data 1 scanline before */
-      ppu_renderoam(bmp->line[scanline], scanline, ppu.drawsprites && draw_flag);
+      ppu_renderoam(bmp->line[scanline], scanline, draw_flag && OPT(PPU_DRAW_SPRITES));
    }
    // Vertical Blank
    else if (scanline == 241)
@@ -824,11 +833,12 @@ ppu_t *ppu_init(int region)
 {
    memset(&ppu, 0, sizeof(ppu_t));
 
-   ppu.drawsprites = true;
-   ppu.limitsprites = true;
-   ppu.scanlines_per_frame = (region == NES_PAL) ? NES_SCANLINES_PAL : NES_SCANLINES_NTSC;
+   ppu_setopt(PPU_DRAW_BACKGROUND, true);
+   ppu_setopt(PPU_DRAW_SPRITES, true);
+   ppu_setopt(PPU_LIMIT_SPRITES, true);
+   ppu_setopt(PPU_PALETTE_RGB, 0);
 
-   ppu_setpalette((rgb_t*)nes_palettes[0].data); // Set default palette
+   ppu.scanlines_per_frame = (region == NES_PAL) ? NES_SCANLINES_PAL : NES_SCANLINES_NTSC;
 
    return &ppu;
 }

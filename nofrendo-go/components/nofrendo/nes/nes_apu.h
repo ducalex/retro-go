@@ -182,6 +182,16 @@ typedef struct apuext_s
    int32 (*process)(void);
 } apuext_t;
 
+typedef enum
+{
+   APU_FILTER_TYPE,
+   APU_CHANNEL1_EN,
+   APU_CHANNEL2_EN,
+   APU_CHANNEL3_EN,
+   APU_CHANNEL4_EN,
+   APU_CHANNEL5_EN,
+   APU_CHANNEL6_EN,
+} apu_option_t;
 
 typedef struct apu_s
 {
@@ -190,9 +200,6 @@ typedef struct apu_s
    noise_t noise;
    dmc_t dmc;
    uint8 control_reg;
-
-   uint8 chan_enable;
-   uint8 filter_type;
 
    float cycle_rate;
    int sample_rate;
@@ -207,6 +214,9 @@ typedef struct apu_s
 
    /* external sound chip */
    apuext_t *ext;
+
+   /* Misc runtime options */
+   int options[16];
 } apu_t;
 
 
@@ -219,16 +229,16 @@ extern apu_t *apu_init(int region, int sample_rate);
 extern void apu_refresh(void);
 extern void apu_reset(void);
 extern void apu_shutdown(void);
+extern void apu_setext(apuext_t *ext);
+
+extern void apu_setopt(apu_option_t n, int val);
+extern int  apu_getopt(apu_option_t n);
 
 extern void apu_setcontext(apu_t *src_apu);
 extern void apu_getcontext(apu_t *dest_apu);
 
 extern void apu_process(void *buffer, int num_samples);
 extern void apu_fc_advance(int cycles);
-
-extern void apu_setext(apuext_t *ext);
-extern void apu_setfilter(int filter_type);
-extern void apu_setchan(int chan, bool enabled);
 
 extern uint8 apu_read(uint32 address);
 extern void apu_write(uint32 address, uint8 value);
