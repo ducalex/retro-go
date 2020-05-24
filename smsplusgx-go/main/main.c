@@ -127,7 +127,7 @@ void app_main(void)
     audioBuffer    = rg_alloc(AUDIO_BUFFER_LENGTH * 2 * 2, MEM_DMA);
 
     // Load ROM
-    char *romPath = odroid_system_get_path(ODROID_PATH_ROM_FILE);
+    const char *romPath = odroid_system_get_rom_path();
     load_rom(romPath);
 
     system_reset_config();

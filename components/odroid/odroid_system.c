@@ -152,11 +152,6 @@ uint odroid_system_get_app_id()
     return applicationId;
 }
 
-void odroid_system_set_game_id(int _gameId)
-{
-    gameId = _gameId;
-}
-
 uint odroid_system_get_game_id()
 {
     return gameId;
@@ -167,10 +162,15 @@ uint odroid_system_get_start_action()
     return startAction;
 }
 
-char* odroid_system_get_path_for(char *romPath, emu_path_type_t type)
+const char* odroid_system_get_rom_path()
 {
-    char* fileName = strstr(romPath, ODROID_BASE_PATH_ROMS);
-    char *buffer = rg_alloc(256, MEM_ANY); // Lazy arbitrary length...
+    return romPath;
+}
+
+char* odroid_system_get_path(emu_path_type_t type, char *_romPath)
+{
+    char *fileName = strstr(_romPath ?: romPath, ODROID_BASE_PATH_ROMS);
+    char buffer[256];
 
     if (!fileName || strlen(fileName) < 4)
     {
@@ -190,16 +190,20 @@ char* odroid_system_get_path_for(char *romPath, emu_path_type_t type)
             strcat(buffer, ".sav");
             break;
 
-        case ODROID_PATH_SAVE_TEMP:
+        case ODROID_PATH_SAVE_BACK:
             strcpy(buffer, ODROID_BASE_PATH_SAVES);
             strcat(buffer, fileName);
-            strcat(buffer, ".tmp");
+            strcat(buffer, ".sav.bak");
             break;
 
         case ODROID_PATH_SAVE_SRAM:
             strcpy(buffer, ODROID_BASE_PATH_SAVES);
             strcat(buffer, fileName);
             strcat(buffer, ".sram");
+            break;
+
+        case ODROID_PATH_TEMP_FILE:
+            sprintf(buffer, "%s/%X%X.tmp", ODROID_BASE_PATH_TEMP, get_elapsed_time(), rand());
             break;
 
         case ODROID_PATH_ROM_FILE:
@@ -217,12 +221,7 @@ char* odroid_system_get_path_for(char *romPath, emu_path_type_t type)
             abort();
     }
 
-    return buffer;
-}
-
-char* odroid_system_get_path(emu_path_type_t type)
-{
-    return odroid_system_get_path_for(romPath, type);
+    return strdup(buffer);
 }
 
 bool odroid_system_emu_load_state(int slot)
@@ -238,7 +237,7 @@ bool odroid_system_emu_load_state(int slot)
     odroid_display_show_hourglass();
     odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
-    char *pathName = odroid_system_get_path(ODROID_PATH_SAVE_STATE);
+    char *pathName = odroid_system_get_path(ODROID_PATH_SAVE_STATE, romPath);
     bool success = (*loadState)(pathName);
 
     odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
@@ -267,17 +266,21 @@ bool odroid_system_emu_save_state(int slot)
     odroid_display_show_hourglass();
     odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
-    char *tempName = odroid_system_get_path(ODROID_PATH_SAVE_TEMP);
-    char *saveName = odroid_system_get_path(ODROID_PATH_SAVE_STATE);
+    char *saveName = odroid_system_get_path(ODROID_PATH_SAVE_STATE, romPath);
+    char *backName = odroid_system_get_path(ODROID_PATH_SAVE_BACK, romPath);
+    char *tempName = odroid_system_get_path(ODROID_PATH_TEMP_FILE, romPath);
 
-    rename(saveName, tempName);
+    bool success = false;
 
-    bool success = (*saveState)(saveName);
-
-    if (!success)
+    if ((*saveState)(tempName))
     {
-        unlink(saveName);
-        rename(tempName, saveName);
+        rename(saveName, backName);
+
+        if (rename(tempName, saveName) == 0)
+        {
+            unlink(backName);
+            success = true;
+        }
     }
 
     unlink(tempName);
@@ -291,8 +294,9 @@ bool odroid_system_emu_save_state(int slot)
         odroid_overlay_alert("Save failed");
     }
 
-    free(tempName);
     free(saveName);
+    free(backName);
+    free(tempName);
 
     return success;
 }

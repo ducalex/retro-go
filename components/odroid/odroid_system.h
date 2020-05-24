@@ -27,6 +27,7 @@ typedef struct
 
 #define ODROID_BASE_PATH_ROMS      SD_BASE_PATH "/roms"
 #define ODROID_BASE_PATH_SAVES     SD_BASE_PATH "/odroid/data"
+#define ODROID_BASE_PATH_TEMP      SD_BASE_PATH "/odroid/data" // temp
 #define ODROID_BASE_PATH_ROMART    SD_BASE_PATH "/romart"
 #define ODROID_BASE_PATH_CRC_CACHE SD_BASE_PATH "/odroid/cache/crc"
 
@@ -36,8 +37,9 @@ typedef enum
      ODROID_PATH_SAVE_STATE_1,
      ODROID_PATH_SAVE_STATE_2,
      ODROID_PATH_SAVE_STATE_3,
-     ODROID_PATH_SAVE_TEMP,
+     ODROID_PATH_SAVE_BACK,
      ODROID_PATH_SAVE_SRAM,
+     ODROID_PATH_TEMP_FILE,
      ODROID_PATH_ROM_FILE,
      ODROID_PATH_ART_FILE,
      ODROID_PATH_CRC_CACHE,
@@ -88,8 +90,9 @@ void odroid_system_init(int app_id, int sampleRate);
 uint odroid_system_get_app_id();
 void odroid_system_set_app_id(int appId);
 uint odroid_system_get_game_id();
-void odroid_system_set_game_id(int gameId);
 uint odroid_system_get_start_action();
+const char* odroid_system_get_rom_path();
+char* odroid_system_get_path(emu_path_type_t type, char *romPath);
 void odroid_system_panic(const char *reason);
 void odroid_system_halt();
 void odroid_system_sleep();
@@ -97,8 +100,6 @@ void odroid_system_switch_app(int app);
 void odroid_system_reload_app();
 void odroid_system_set_boot_app(int slot);
 void odroid_system_set_led(int value);
-char* odroid_system_get_path_for(char *romPath, emu_path_type_t type);
-char* odroid_system_get_path(emu_path_type_t type);
 void odroid_system_tick(uint skippedFrame, uint fullFrame, uint busyTime);
 runtime_stats_t odroid_system_get_stats();
 

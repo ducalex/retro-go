@@ -18,13 +18,13 @@
 #include "sprite.h"
 #include "romdb.h"
 
-int LoadCard(char *name);
 int LoadState(char *name);
 int SaveState(char *name);
 void ResetPCE(bool);
 void RunPCE(void);
 void ShutdownPCE();
-int InitPCE(char *name);
+int InitPCE(const char *name);
+int LoadCard(const char *name);
 
 extern const uint BaseClock;
 extern const uint IPeriod;

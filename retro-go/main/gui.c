@@ -147,7 +147,7 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
     char path[128], path2[128], buf_crc[10];
     FILE *fp;
 
-    char *cache_path = odroid_system_get_path_for(file->path, ODROID_PATH_CRC_CACHE);
+    char *cache_path = odroid_system_get_path(ODROID_PATH_CRC_CACHE, file->path);
 
     if (*crc == 0)
     {

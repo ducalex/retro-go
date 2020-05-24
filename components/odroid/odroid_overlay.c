@@ -464,14 +464,11 @@ static void draw_game_status_bar(runtime_stats_t stats)
     int pad_text = (height - ODROID_FONT_HEIGHT) / 2;
     char bottom[40], header[40];
 
-    char *path = odroid_system_get_path(ODROID_PATH_ROM_FILE);
-    char *name = path + strlen(ODROID_BASE_PATH_ROMS);
+    const char *romPath = odroid_system_get_rom_path();
 
     snprintf(header, 40, "FPS: %.0f (%.0f) / BUSY: %.0f%%",
         round(stats.totalFPS), round(stats.skippedFPS), round(stats.busyPercent));
-    snprintf(bottom, 40, "%s", path ? name : "N/A");
-
-    free(path);
+    snprintf(bottom, 40, "%s", romPath ? (romPath + strlen(ODROID_BASE_PATH_ROMS)) : "N/A");
 
     odroid_overlay_draw_fill_rect(0, 0, width, height, C_BLACK);
     odroid_overlay_draw_fill_rect(0, ODROID_SCREEN_HEIGHT - height, width, height, C_BLACK);

@@ -183,7 +183,7 @@ void retro_loop()
                 if (emu->roms.selected < emu->roms.count)
                 {
                     char *rom_path = gui_list_selected_file(emu)->path;
-                    char *save_path = odroid_system_get_path_for(rom_path, ODROID_PATH_SAVE_STATE);
+                    char *save_path = odroid_system_get_path(ODROID_PATH_SAVE_STATE, rom_path);
                     bool has_save = access(save_path, F_OK) != -1;
 
                     odroid_dialog_choice_t choices[] = {

@@ -81,7 +81,7 @@ const svar_t SaveStateVars[] =
  * Load card into memory and set its memory map
  */
 int
-LoadCard(char *name)
+LoadCard(const char *name)
 {
 	MESSAGE_INFO("Opening %s...\n", name);
 
@@ -231,7 +231,7 @@ ResetPCE(bool hard)
  * Initialize the emulator (allocate memory, call osd_init* functions)
  */
 int
-InitPCE(char *name)
+InitPCE(const char *name)
 {
 	if (osd_init_input())
 		return 1;

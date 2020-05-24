@@ -363,7 +363,7 @@ void set_config()
 #endif
 }
 
-int load_rom(char *filename)
+int load_rom(const char *filename)
 {
   cart.rom = rg_alloc(0x200000, MEM_SLOW);
 

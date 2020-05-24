@@ -40,9 +40,9 @@ void app_main(void)
     odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     odroid_system_emu_init(&load_state, &save_state, NULL);
 
-    char *romFile = odroid_system_get_path(ODROID_PATH_ROM_FILE);
+    const char *romPath = odroid_system_get_rom_path();
 
-    InitPCE(romFile);
+    InitPCE(romPath);
 
     if (odroid_system_get_start_action() == ODROID_START_ACTION_RESUME)
     {
