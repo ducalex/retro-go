@@ -4,33 +4,23 @@
 #include "lcd.h"
 #include "cpu.h"
 #include "mem.h"
-#include "cpuregs.h"
+#include "sound.h"
 #include "cpucore.h"
-
-
-struct cpu cpu;
 
 
 #define ZFLAG(n) ( (n) ? 0 : FZ )
 #define HFLAG(n) ( (n) ? 0 : FH )
 #define CFLAG(n) ( (n) ? 0 : FC )
 
-
 #define PUSH(w) ( (SP -= 2), (writew(SP, (w))) )
-#define POP(w) ( ((w) = readw(SP)), (SP += 2) )
-
+#define POP(w)  ( ((w) = readw(SP)), (SP += 2) )
 
 #define FETCH (readb(PC++))
 
-
-#define INC(r) { ((r)++); \
-F = (F & (FL|FC)) | incflag_table[(r)]; }
-
-#define DEC(r) { ((r)--); \
-F = (F & (FL|FC)) | decflag_table[(r)]; }
+#define INC(r) { ((r)++); F = (F & (FL|FC)) | incflag_table[(r)]; }
+#define DEC(r) { ((r)--); F = (F & (FL|FC)) | decflag_table[(r)]; }
 
 #define INCW(r) ( (r)++ )
-
 #define DECW(r) ( (r)-- )
 
 #define ADD(n) { \
@@ -71,14 +61,9 @@ F = FN \
 | ((un8)(-(n8)HB(acc)) << 4); \
 A = LB(acc); }
 
-#define AND(n) { A &= (n); \
-F = ZFLAG(A) | FH; }
-
-#define XOR(n) { A ^= (n); \
-F = ZFLAG(A); }
-
-#define OR(n) { A |= (n); \
-F = ZFLAG(A); }
+#define AND(n) { A &= (n); F = ZFLAG(A) | FH; }
+#define XOR(n) { A ^= (n); F = ZFLAG(A); }
+#define OR(n)  { A |= (n); F = ZFLAG(A); }
 
 #define RLCA(r) { (r) = ((r)>>7) | ((r)<<1); \
 F = (((r)&0x01)<<4); }
@@ -98,8 +83,8 @@ F = LB(acc); }
 
 #define RLC(r) { RLCA(r); F |= ZFLAG(r); }
 #define RRC(r) { RRCA(r); F |= ZFLAG(r); }
-#define RL(r) { RLA(r); F |= ZFLAG(r); }
-#define RR(r) { RRA(r); F |= ZFLAG(r); }
+#define RL(r)  { RLA(r); F |= ZFLAG(r); }
+#define RR(r)  { RRA(r); F |= ZFLAG(r); }
 
 #define SLA(r) { \
 LB(acc) = (((r)&0x80)>>3); \
@@ -121,7 +106,6 @@ F = ZFLAG((r)) | LB(acc); }
 F |= (FH|FN); }
 
 #define SCF { F = (F & (FZ)) | FC; }
-
 #define CCF { F = (F & (FZ|FC)) ^ FC; }
 
 #define SWAP(r) { \
@@ -180,17 +164,15 @@ case (base)+7: b = A; \
 label: op(b); break;
 
 
-
-
 #define JR ( PC += 1+(n8)readb(PC) )
 #define JP ( PC = readw(PC) )
 
 #define CALL ( PUSH(PC+2), JP )
 
-#define NOJR ( clen--, PC++ )
-#define NOJP ( clen--, PC+=2 )
+#define NOJR   ( clen--,  PC++ )
+#define NOJP   ( clen--,  PC+=2 )
 #define NOCALL ( clen-=3, PC+=2 )
-#define NORET ( clen-=3 )
+#define NORET  ( clen-=3 )
 
 #define RST(n) { PUSH(PC); PC = (n); }
 
@@ -203,11 +185,12 @@ label: op(b); break;
 #define COND_EXEC_INT(i, n) if (IF & IE & i) { DI; PUSH(PC); IF &= ~i; PC = 0x40+((n)<<3); clen = 5; goto _skip; }
 
 
+struct cpu cpu;
 
 
 /* A:
 	Set lcdc ahead of cpu by 19us (matches minimal hblank duration according
-	to some docs). Value from cpu.lcdc (when positive) is used to drive CPU,
+	to some docs). Value from lcd.cycles (when positive) is used to drive CPU,
 	setting some ahead-time at startup is necessary to begin emulation.
 */
 
@@ -218,10 +201,9 @@ void cpu_reset()
 	cpu.halt = 0;
 	cpu.div = 0;
 	cpu.timer = 0;
-	cpu.serial = 0;
 	/* set lcdc ahead of cpu by 19us; see A */
-	/* FIXME: leave value at 0, use lcdc_trans() to actually send lcdc ahead */
-	cpu.lcdc = 40;
+	/* FIXME: leave value at 0, use lcd_emulate() to actually send lcdc ahead */
+	lcd.cycles = 40;
 
 	IME = 0;
 	IMA = 0;
@@ -274,14 +256,14 @@ static inline void timer_advance(int cnt)
 */
 static inline void serial_advance(int cnt)
 {
-	if (cpu.serial > 0)
+	if (hw.serial > 0)
 	{
-		cpu.serial -= cnt;
-		if (cpu.serial <= 0)
+		hw.serial -= cnt;
+		if (hw.serial <= 0)
 		{
 			R_SB = 0xFF;
 			R_SC &= 0x7f;
-			cpu.serial = 0;
+			hw.serial = 0;
 			hw_interrupt(IF_SERIAL, IF_SERIAL);
 			hw_interrupt(0, IF_SERIAL);
 		}
@@ -289,19 +271,19 @@ static inline void serial_advance(int cnt)
 }
 
 /* cnt - time to emulate, expressed in 2MHz units
-	Will call lcdc_trans() if CPU emulation catched up or
+	Will call lcd_emulate() if CPU emulation catched up or
 	went ahead of LCDC, so that lcd never falls	behind
 */
 static inline void lcdc_advance(int cnt)
 {
-	cpu.lcdc -= cnt;
-	if (cpu.lcdc <= 0) lcdc_trans();
+	lcd.cycles -= cnt;
+	if (lcd.cycles <= 0) lcd_emulate();
 }
 
 /* cnt - time to emulate, expressed in 2MHz units */
 static inline void sound_advance(int cnt)
 {
-	cpu.sound += cnt;
+	snd.cycles += cnt;
 }
 
 /* cnt - time to emulate, expressed in 2MHz units */
@@ -330,7 +312,7 @@ int IRAM_ATTR cpu_emulate(int cycles)
 	byte op, cbop, b;
 	// word temp;
 	int temp;
-	static union reg acc;
+	static cpu_reg_t acc;
 
 next:
 	/* Skip idle cycles */
@@ -816,7 +798,7 @@ next:
 		break;
 
 	default:
-		die(
+		emu_die(
 			"invalid opcode 0x%02X at address 0x%04X, rombank = %d\n",
 			op, (PC-1) & 0xffff, mbc.rombank);
 		break;

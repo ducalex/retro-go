@@ -1,7 +1,6 @@
 #include <string.h>
 
 #include "defs.h"
-#include "pcm.h"
 #include "sound.h"
 #include "cpu.h"
 #include "hw.h"
@@ -142,10 +141,9 @@ void sound_off()
 void sound_reset()
 {
 	memset(&snd, 0, sizeof snd);
-	if (pcm.hz) snd.rate = (1<<21) / pcm.hz;//(1<<21) / pcm.hz;
-	else snd.rate = 0;
 	memcpy(WAVE, hw.cgb ? cgbwave : dmgwave, 16);
-	memcpy(ram.hi+0x30, WAVE, 16);
+	memcpy(ram.hi + 0x30, WAVE, 16);
+	if (pcm.hz) snd.rate = (1<<21) / pcm.hz;
 	sound_off();
 	R_NR52 = 0xF1;
 }
@@ -155,9 +153,9 @@ void IRAM_ATTR sound_mix()
 {
 	int s, l, r, f, n;
 
-	if (!RATE || cpu.sound < RATE) return;
+	if (!RATE || snd.cycles < RATE) return;
 
-	for (; cpu.sound >= RATE; cpu.sound -= RATE)
+	for (; snd.cycles >= RATE; snd.cycles -= RATE)
 	{
 		l = r = 0;
 
@@ -274,10 +272,10 @@ void IRAM_ATTR sound_mix()
 			}
 			else if (pcm.stereo)
 			{
-				pcm.buf[pcm.pos++] = (int16_t)l; //+128;
-				pcm.buf[pcm.pos++] = (int16_t)r; //+128;
+				pcm.buf[pcm.pos++] = (n16)l; //+128;
+				pcm.buf[pcm.pos++] = (n16)r; //+128;
 			}
-			else pcm.buf[pcm.pos++] = (int16_t)((l+r)>>1); //+128;
+			else pcm.buf[pcm.pos++] = (n16)((l+r)>>1); //+128;
 		}
 	}
 	R_NR52 = (R_NR52&0xf0) | S1.on | (S2.on<<1) | (S3.on<<2) | (S4.on<<3);

@@ -90,6 +90,18 @@ static inline void ioreg_write(byte r, byte b)
 	{
 		switch (r)
 		{
+		case RI_BGP:
+			pal_write_dmg(0, 0, b);
+			pal_write_dmg(8, 1, b);
+			break;
+		case RI_OBP0:
+			pal_write_dmg(64, 2, b);
+			break;
+		case RI_OBP1:
+			pal_write_dmg(72, 3, b);
+			break;
+
+		// These don't exist on DMG:
 		case RI_VBK:
 		case RI_BCPS:
 		case RI_OCPS:
@@ -115,23 +127,10 @@ static inline void ioreg_write(byte r, byte b)
 	case RI_SCX:
 	case RI_WY:
 	case RI_WX:
-		REG(r) = b;
-		break;
 	case RI_BGP:
-		if (R_BGP == b) break;
-		pal_write_dmg(0, 0, b);
-		pal_write_dmg(8, 1, b);
-		R_BGP = b;
-		break;
 	case RI_OBP0:
-		if (R_OBP0 == b) break;
-		pal_write_dmg(64, 2, b);
-		R_OBP0 = b;
-		break;
 	case RI_OBP1:
-		if (R_OBP1 == b) break;
-		pal_write_dmg(72, 3, b);
-		R_OBP1 = b;
+		REG(r) = b;
 		break;
 	case RI_IF:
 	case RI_IE:
@@ -143,9 +142,9 @@ static inline void ioreg_write(byte r, byte b)
 		break;
 	case RI_SC:
 		if ((b & 0x81) == 0x81)
-			cpu.serial = 1952; // 8 * 122us;
+			hw.serial = 1952; // 8 * 122us;
 		else
-			cpu.serial = 0;
+			hw.serial = 0;
 		R_SC = b; /* & 0x7f; */
 		break;
 	case RI_SB:

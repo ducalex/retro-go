@@ -1,10 +1,9 @@
+#include "stdarg.h"
 #include "defs.h"
 #include "regs.h"
 #include "hw.h"
 #include "cpu.h"
 #include "sound.h"
-#include "stdarg.h"
-#include "stdio.h"
 #include "mem.h"
 #include "lcd.h"
 #include "rtc.h"
@@ -14,7 +13,7 @@ static int framelen = 16743;
 static int framecount;
 
 
-void die(const char *fmt, ...)
+void emu_die(const char *fmt, ...)
 {
 	va_list ap;
 
@@ -54,7 +53,7 @@ void emu_reset()
 */
 void emu_step()
 {
-	cpu_emulate(cpu.lcdc);
+	cpu_emulate(lcd.cycles);
 }
 
 
@@ -81,8 +80,8 @@ void emu_run()
 	void *timer = sys_timer();
 	int delay;
 
-	vid_begin();
-	lcd_begin();
+	// vid_begin();
+	// lcd_begin();
 	for (;;)
 	{
 		/* FRAME BEGIN */
@@ -102,20 +101,20 @@ void emu_run()
 
 		/* VBLANK BEGIN */
 
-		vid_end();
+		// vid_end();
 		rtc_tick();
 		sound_mix();
 		/* pcm_submit() introduces delay, if it fails we use
 		sys_sleep() instead */
-		if (!pcm_submit())
+		// if (!pcm_submit())
 		{
 			delay = framelen - sys_elapsed(timer);
 			sys_sleep(delay);
 			sys_elapsed(timer);
 		}
 		doevents();
-		vid_begin();
-		if (framecount) { if (!--framecount) die("finished\n"); }
+		// vid_begin();
+		if (framecount) { if (!--framecount) emu_die("finished\n"); }
 
 		if (!(R_LCDC & 0x80)) {
 			/* LCDC operation stopped */

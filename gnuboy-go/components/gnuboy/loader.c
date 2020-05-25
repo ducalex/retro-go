@@ -173,8 +173,8 @@ int rom_load()
 
 	memcpy(&rom.checksum, header + 0x014E, 2);
 
-	if (!mbc.romsize) die("unknown ROM size %02X\n", header[0x0148]);
-	if (!mbc.ramsize) die("unknown SRAM size %02X\n", header[0x0149]);
+	if (!mbc.romsize) emu_die("unknown ROM size %02X\n", header[0x0148]);
+	if (!mbc.ramsize) emu_die("unknown SRAM size %02X\n", header[0x0149]);
 
 	const char* mbcName;
 	switch (mbc.type)
@@ -291,7 +291,6 @@ int state_load(char *name)
 		loadstate(f);
 		rtc_load_internal(f);
 		fclose(f);
-		vram_dirty();
 		pal_dirty();
 		sound_dirty();
 		mem_updatemap();

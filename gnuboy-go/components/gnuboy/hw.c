@@ -144,7 +144,9 @@ void IRAM_ATTR pad_set(byte k, int st)
 
 void hw_reset()
 {
-	hw.ilines = hw.pad = 0;
+	hw.ilines = 0;
+	hw.serial = 0;
+	hw.pad = 0;
 
 	memset(ram.hi, 0, sizeof ram.hi);
 

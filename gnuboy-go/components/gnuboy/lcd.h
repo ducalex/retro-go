@@ -3,6 +3,9 @@
 
 #include "defs.h"
 
+#define GB_WIDTH (160)
+#define GB_HEIGHT (144)
+
 struct vissprite
 {
 	short pat;
@@ -10,7 +13,6 @@ struct vissprite
 	short v;
 	byte pal;
 	byte pri;
-	//byte pad[2]; //6
 };
 
 struct scan
@@ -41,28 +43,35 @@ struct lcd
 		struct obj obj[40];
 	} oam;
 	byte pal[128];
+
+	int cycles;
+};
+
+struct fb
+{
+	byte *ptr;
+	int w, h;
+	int pelsize;
+	int pitch;
+	int byteorder;
+	int enabled;
 };
 
 extern struct lcd lcd;
 extern struct scan scan;
+extern struct fb fb;
 
-
-void lcd_begin();
 void lcd_reset();
-void lcd_refreshline();
+void lcd_emulate();
+
+void lcdc_change(byte b);
+void stat_trigger();
+
 void pal_write(byte i, byte b);
 void pal_write_dmg(byte i, byte mapnum, byte d);
 void pal_dirty();
 void pal_set_dmg(int palette);
 int  pal_get_dmg();
 int  pal_count_dmg();
-void vram_write(word a, byte b);
-void vram_dirty();
-
-/* lcdc.c */
-void lcdc_trans();
-void lcdc_change(byte b);
-void stat_trigger();
-
 
 #endif

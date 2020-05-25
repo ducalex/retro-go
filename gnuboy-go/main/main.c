@@ -6,11 +6,9 @@
 #include "../components/gnuboy/loader.h"
 #include "../components/gnuboy/hw.h"
 #include "../components/gnuboy/lcd.h"
-#include "../components/gnuboy/fb.h"
 #include "../components/gnuboy/cpu.h"
 #include "../components/gnuboy/mem.h"
 #include "../components/gnuboy/sound.h"
-#include "../components/gnuboy/pcm.h"
 #include "../components/gnuboy/regs.h"
 #include "../components/gnuboy/rtc.h"
 #include "../components/gnuboy/defs.h"
@@ -104,8 +102,6 @@ void run_to_vblank(bool draw)
     rtc_tick();
 
     sound_mix();
-
-    // pcm_submit();
 
     if (!(R_LCDC & 0x80)) {
         /* LCDC operation stopped */
@@ -259,10 +255,8 @@ void app_main(void)
   	fb.h = GB_HEIGHT;
   	fb.pelsize = 2;
   	fb.pitch = fb.w * fb.pelsize;
-  	fb.indexed = 0;
   	fb.ptr = currentUpdate->buffer;
   	fb.enabled = 1;
-  	fb.dirty = 0;
     fb.byteorder = 1;
 
     // Audio
@@ -274,8 +268,6 @@ void app_main(void)
   	pcm.pos = 0;
 
     emu_reset();
-
-    lcd_begin();
 
     pal_set_dmg(odroid_settings_Palette_get());
 

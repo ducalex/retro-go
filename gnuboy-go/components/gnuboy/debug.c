@@ -5,7 +5,6 @@
 #include "cpu.h"
 #include "mem.h"
 #include "regs.h"
-#include "cpuregs.h"
 
 
 static const char *mnemonic_table[256] =

@@ -1,6 +1,7 @@
 #ifndef __SOUND_H__
 #define __SOUND_H__
 
+#include "defs.h"
 
 struct sndchan
 {
@@ -19,9 +20,20 @@ struct snd
 	int rate;
 	struct sndchan ch[4];
 	byte wave[16];
+	int cycles;
 };
 
 
+struct pcm
+{
+	int hz, len;
+	int stereo;
+	n16* buf;
+	int pos;
+};
+
+
+extern struct pcm pcm;
 extern struct snd snd;
 
 void sound_write(byte r, byte b);

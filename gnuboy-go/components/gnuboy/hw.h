@@ -26,6 +26,7 @@ struct hw
 	byte pad;
 	int cgb, gba;
 	int hdma;
+	int serial;
 };
 
 
@@ -37,5 +38,6 @@ void hw_hdma_cmd(byte c);
 void hw_reset();
 void pad_set(byte k, int st);
 void pad_refresh();
+void hw_interrupt(byte i, byte mask);
 
 #endif

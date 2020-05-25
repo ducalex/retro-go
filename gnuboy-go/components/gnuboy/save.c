@@ -5,14 +5,12 @@
 
 #include "defs.h"
 #include "cpu.h"
-#include "cpuregs.h"
 #include "hw.h"
 #include "regs.h"
 #include "lcd.h"
 #include "rtc.h"
 #include "mem.h"
 #include "sound.h"
-
 
 
 #ifdef IS_LITTLE_ENDIAN
@@ -56,8 +54,8 @@ struct svar svars[] =
 	I4("halt", &cpu.halt),
 	I4("div ", &cpu.div),
 	I4("tim ", &cpu.timer),
-	I4("lcdc", &cpu.lcdc),
-	I4("snd ", &cpu.sound),
+	I4("lcdc", &lcd.cycles),
+	I4("snd ", &snd.cycles),
 
 	I1("ints", &hw.ilines),
 	I1("pad ", &hw.pad),
