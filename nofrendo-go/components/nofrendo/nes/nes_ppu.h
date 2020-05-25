@@ -108,13 +108,13 @@ typedef struct ppu_s
    /* Framebuffer palette */
    rgb_t curpal[256];
 
-   /* hardware registers */
+   /* Hardware registers */
    uint8 ctrl0, ctrl1, stat, oam_addr, base_nametab;
    uint8 latch, vdata_latch, tile_xofs, flipflop;
    int32 vaddr, vaddr_latch, vaddr_inc;
 
    int32 obj_height, obj_base, bg_base;
-   bool obj_mask, bg_mask;
+   bool left_bg_on, left_obj_on;
    bool bg_on, obj_on;
 
    bool strikeflag;
@@ -123,7 +123,10 @@ typedef struct ppu_s
    int scanline;
    int scanlines_per_frame;
 
-   /* callbacks for naughty mappers */
+   /* Bleh. Determine if left column can be cropped/blanked */
+   int left_bg_counter;
+
+   /* Callbacks for naughty mappers */
    ppu_latchfunc_t latchfunc;
    ppu_vreadfunc_t vreadfunc;
 

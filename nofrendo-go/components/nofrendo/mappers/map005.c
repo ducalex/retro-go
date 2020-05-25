@@ -442,12 +442,12 @@ static void map5_init(void)
    ppu_setvreadfunc(map5_vram_read);
 }
 
-static void map5_getstate(SnssMapperBlock *state)
+static void map5_getstate(void *state)
 {
    //
 }
 
-static void map5_setstate(SnssMapperBlock *state)
+static void map5_setstate(void *state)
 {
    //
 }

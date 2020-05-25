@@ -874,21 +874,31 @@ IRAM_ATTR void odroid_display_write_frame(odroid_video_frame *frame)
 
 IRAM_ATTR short odroid_display_queue_update(odroid_video_frame *frame, odroid_video_frame *previousFrame)
 {
-    // uint startTime = xthal_get_ccount();
+    static int prev_width = 0, prev_height = 0;
     bool doPartialUpdate = previousFrame != NULL && !forceVideoRefresh;
 
     short linesChanged = 0;
 
-    if (doPartialUpdate)
+    if (frame)
     {
-        linesChanged = frame_diff(frame, previousFrame);
-    }
-    else if (frame)
-    {
-        frame->diff[0].left = 0;
-        frame->diff[0].width = frame->width;
-        frame->diff[0].repeat = frame->height;
-        linesChanged = frame->height;
+        if (frame->width != prev_width || frame->height != prev_height)
+        {
+            prev_width = frame->width;
+            prev_height = frame->height;
+            forceVideoRefresh = true;
+        }
+
+        if (doPartialUpdate)
+        {
+            linesChanged = frame_diff(frame, previousFrame);
+        }
+        else
+        {
+            frame->diff[0].left = 0;
+            frame->diff[0].width = frame->width;
+            frame->diff[0].repeat = frame->height;
+            linesChanged = frame->height;
+        }
     }
 
     // if (linesChanged > 0)
@@ -896,8 +906,12 @@ IRAM_ATTR short odroid_display_queue_update(odroid_video_frame *frame, odroid_vi
         xQueueSend(videoTaskQueue, &frame, portMAX_DELAY);
     }
 
-    if (linesChanged == frame->height) return SCREEN_UPDATE_FULL;
-    if (linesChanged == 0) return SCREEN_UPDATE_EMPTY;
+    if (linesChanged == frame->height)
+        return SCREEN_UPDATE_FULL;
+
+    if (linesChanged == 0)
+        return SCREEN_UPDATE_EMPTY;
+
     return SCREEN_UPDATE_PARTIAL;
 }
 

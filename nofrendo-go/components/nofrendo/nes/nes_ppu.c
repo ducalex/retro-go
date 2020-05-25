@@ -298,8 +298,8 @@ IRAM_ATTR void ppu_write(uint32 address, uint8 value)
 
       ppu.obj_on = (value & PPU_CTRL1F_OBJON) ? true : false;
       ppu.bg_on = (value & PPU_CTRL1F_BGON) ? true : false;
-      ppu.obj_mask = (value & PPU_CTRL1F_OBJMASK) ? false : true;
-      ppu.bg_mask = (value & PPU_CTRL1F_BGMASK) ? false : true;
+      ppu.left_obj_on = (value & PPU_CTRL1F_OBJMASK) ? true : false;
+      ppu.left_bg_on = (value & PPU_CTRL1F_BGMASK) ? true : false;
       break;
 
    case PPU_OAMADDR:
@@ -636,9 +636,10 @@ INLINE void ppu_renderbg(uint8 *vidbuf)
    }
 
    /* Blank left hand column if need be */
-   if (ppu.bg_mask)
+   if (!ppu.left_bg_on)
    {
       memset(vidbuf, FULLBG, 8);
+      ppu.left_bg_counter++;
    }
 }
 
@@ -724,7 +725,7 @@ INLINE void ppu_renderoam(uint8 *vidbuf, int scanline, bool draw)
    }
 
    /* Restore lefthand column */
-   if (ppu.obj_mask)
+   if (!ppu.left_obj_on)
    {
       ((int32 *) vidbuf)[0] = savecol1;
       ((int32 *) vidbuf)[1] = savecol2;
@@ -788,14 +789,14 @@ IRAM_ATTR void ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag)
       /* start scanline - transfer ppu latch into vaddr */
       if (ppu.bg_on || ppu.obj_on)
       {
-         if (0 == scanline)
+         if (scanline == 0)
             ppu.vaddr = ppu.vaddr_latch;
          else
-         {
-            ppu.vaddr &= ~0x041F;
-            ppu.vaddr |= (ppu.vaddr_latch & 0x041F);
-         }
+            ppu.vaddr = (ppu.vaddr & ~0x041F) | (ppu.vaddr_latch & 0x041F);
       }
+
+      if (scanline == 0)
+         ppu.left_bg_counter = 0;
 
       if (draw_flag && OPT(PPU_DRAW_BACKGROUND))
          ppu_renderbg(bmp->line[scanline]);
