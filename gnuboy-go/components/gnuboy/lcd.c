@@ -576,6 +576,14 @@ static inline void lcd_renderline()
 	WT = (LY - WY) >> 3;
 	WV = (LY - WY) & 7;
 
+	// Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
+	// This is a hack, the real problem is  elsewhere
+	if ((R_LCDC & 0x20) && WT > 12)
+	{
+		printf("WT=%d\n", WT);
+		WT %= 12;
+	}
+
 	spr_enum();
 	tilebuf();
 
