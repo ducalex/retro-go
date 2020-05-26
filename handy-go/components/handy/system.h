@@ -49,17 +49,25 @@
 // #pragma inline_depth (255)
 // #pragma inline_recursion (on)
 
-#ifdef _LYNXDBG
+#include <cstdint>
 
-//#ifdef _DEBUG
-//#define new DEBUG_NEW
-//#undef THIS_FILE
-//static char THIS_FILE[] = __FILE__;
-//#endif
+typedef int8_t SBYTE;
+typedef uint8_t UBYTE;
+typedef int16_t SWORD;
+typedef uint16_t UWORD;
+typedef int32_t SLONG;
+typedef uint32_t ULONG;
 
+#ifndef TRUE
+#define TRUE	true
 #endif
 
-#include "machine.h"
+#ifndef FALSE
+#define FALSE	false
+#endif
+
+#include "lynxbase.h"
+#include "errorinterface.h"
 
 #define HANDY_SYSTEM_FREQ                       16000000
 #define HANDY_TIMER_FREQ                        20
@@ -88,35 +96,6 @@
 //
 // Define the global variable list
 //
-
-#ifdef SYSTEM_CPP
-ULONG   gSystemCycleCount=0;
-ULONG   gNextTimerEvent=0;
-ULONG   gCPUWakeupTime=0;
-ULONG   gIRQEntryCycle=0;
-ULONG   gCPUBootAddress=0;
-ULONG   gBreakpointHit=FALSE;
-ULONG   gSingleStepMode=FALSE;
-ULONG   gSingleStepModeSprites=FALSE;
-ULONG   gSystemIRQ=FALSE;
-ULONG   gSystemNMI=FALSE;
-ULONG   gSystemCPUSleep=FALSE;
-ULONG   gSystemCPUSleep_Saved=FALSE;
-ULONG   gSystemHalt=FALSE;
-ULONG   gThrottleMaxPercentage=100;
-ULONG   gThrottleLastTimerCount=0;
-ULONG   gThrottleNextCycleCheckpoint=0;
-
-volatile ULONG gTimerCount=0;
-
-ULONG   gAudioEnabled=FALSE;
-UBYTE   gAudioBuffer[HANDY_AUDIO_BUFFER_SIZE];
-ULONG   gAudioBufferPointer=0;
-ULONG   gAudioLastUpdateCycle=0;
-
-CErrorInterface *gError=NULL;
-#else
-
 extern ULONG    gSystemCycleCount;
 extern ULONG    gNextTimerEvent;
 extern ULONG    gCPUWakeupTime;
@@ -133,16 +112,15 @@ extern ULONG    gSystemHalt;
 extern ULONG    gThrottleMaxPercentage;
 extern ULONG    gThrottleLastTimerCount;
 extern ULONG    gThrottleNextCycleCheckpoint;
-
-extern volatile ULONG gTimerCount;
+extern ULONG    gEndOfFrame;
+extern ULONG    gTimerCount;
 
 extern ULONG    gAudioEnabled;
-extern UBYTE    gAudioBuffer[HANDY_AUDIO_BUFFER_SIZE];
+extern UBYTE    *gAudioBuffer;
 extern ULONG    gAudioBufferPointer;
 extern ULONG    gAudioLastUpdateCycle;
 
 extern CErrorInterface *gError;
-#endif
 
 typedef struct lssfile
 {
@@ -168,7 +146,6 @@ class CSystem;
 // Now pull in the parts that build the system
 //
 #include "lynxbase.h"
-//#include "memfault.h"
 #include "ram.h"
 #include "rom.h"
 #include "memmap.h"
@@ -177,8 +154,6 @@ class CSystem;
 #include "susie.h"
 #include "mikie.h"
 #include "c65c02.h"
-
-#include <stdint.h>
 
 #define TOP_START   0xfc00
 #define TOP_MASK    0x03ff
@@ -243,6 +218,26 @@ class CSystem : public CSystemBase
          //         fprintf(stderr, "end sys update\n");
       }
 
+      inline void UpdateFrame(void)
+      {
+         gEndOfFrame = FALSE;
+
+         while(gEndOfFrame != TRUE)
+         {
+            if(gSystemCycleCount>=gNextTimerEvent)
+            {
+               mMikie->Update();
+            }
+
+            mCpu->Update();
+
+            if(gSystemCPUSleep)
+            {
+               gSystemCycleCount=gNextTimerEvent;
+            }
+         }
+      }
+
       //
       // We MUST have separate CPU & RAM peek & poke handlers as all CPU accesses must
       // go thru the address generator at $FFF9
@@ -256,41 +251,20 @@ class CSystem : public CSystemBase
       //
       // CPU
       //
-      inline void  Poke_CPU(ULONG addr, UBYTE data) { mMemoryHandlers[addr]->Poke(addr,data);};
-      inline UBYTE Peek_CPU(ULONG addr) { return mMemoryHandlers[addr]->Peek(addr);};
-      inline void  PokeW_CPU(ULONG addr,UWORD data) { mMemoryHandlers[addr]->Poke(addr,data&0xff);addr++;mMemoryHandlers[addr]->Poke(addr,data>>8);};
-      inline UWORD PeekW_CPU(ULONG addr) {return ((mMemoryHandlers[addr]->Peek(addr))+(mMemoryHandlers[addr]->Peek(addr+1)<<8));};
-
-      //
-      // RAM
-      //
-      inline void  Poke_RAM(ULONG addr, UBYTE data) { mRam->Poke(addr,data);};
-      inline UBYTE Peek_RAM(ULONG addr) { return mRam->Peek(addr);};
-      inline void  PokeW_RAM(ULONG addr,UWORD data) { mRam->Poke(addr,data&0xff);addr++;mRam->Poke(addr,data>>8);};
-      inline UWORD PeekW_RAM(ULONG addr) {return ((mRam->Peek(addr))+(mRam->Peek(addr+1)<<8));};
-
-      // High level cart access for debug etc
-
-      inline void  Poke_CART(ULONG addr, UBYTE data) {mCart->Poke(addr,data);};
-      inline UBYTE Peek_CART(ULONG addr) {return mCart->Peek(addr);};
-      inline void  CartBank(EMMODE bank) {mCart->BankSelect(bank);};
-      inline ULONG CartSize(void) {return mCart->ObjectSize();};
-      inline const char* CartGetName(void) { return mCart->CartGetName();};
-      inline const char* CartGetManufacturer(void) { return mCart->CartGetManufacturer();};
-      inline ULONG CartGetRotate(void) {return mCart->CartGetRotate();};
-
-      // Low level cart access for Suzy, Mikey
-
-      inline void  Poke_CARTB0(UBYTE data) {mCart->Poke0(data);};
-      inline void  Poke_CARTB1(UBYTE data) {mCart->Poke1(data);};
-      inline void  Poke_CARTB0A(UBYTE data) {mCart->Poke0A(data);};
-      inline void  Poke_CARTB1A(UBYTE data) {mCart->Poke1A(data);};
-      inline UBYTE Peek_CARTB0(void) {return mCart->Peek0();}
-      inline UBYTE Peek_CARTB1(void) {return mCart->Peek1();}
-      inline UBYTE Peek_CARTB0A(void) {return mCart->Peek0A();}
-      inline UBYTE Peek_CARTB1A(void) {return mCart->Peek1A();}
-      inline void  CartAddressStrobe(bool strobe) {mCart->CartAddressStrobe(strobe);};
-      inline void  CartAddressData(bool data) {mCart->CartAddressData(data);};
+      inline void  Poke_CPU(ULONG addr, UBYTE data) {
+         if (addr < 0xFC00)
+            mRam->Poke(addr,data);
+         else
+            mMemoryHandlers[addr & 0x3FF]->Poke(addr,data);
+      };
+      inline UBYTE Peek_CPU(ULONG addr) {
+         if (addr < 0xFC00)
+            return mRam->Peek(addr);
+         else
+            return mMemoryHandlers[addr & 0x3FF]->Peek(addr);
+      };
+      inline void  PokeW_CPU(ULONG addr,UWORD data) { Poke_CPU(addr, data&0xff); Poke_CPU(addr + 1, data >> 8); };
+      inline UWORD PeekW_CPU(ULONG addr) { return ((Peek_CPU(addr))+(Peek_CPU(addr+1)<<8)); };
 
       // Low level CPU access
 
@@ -326,7 +300,7 @@ class CSystem : public CSystemBase
 
    public:
       ULONG         mCycleCountBreakpoint;
-      CLynxBase     *mMemoryHandlers[SYSTEM_SIZE];
+      CLynxBase     *mMemoryHandlers[0x400];
       CCart         *mCart;
       CRom          *mRom;
       CMemMap       *mMemMap;

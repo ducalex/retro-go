@@ -169,15 +169,19 @@ const char* odroid_system_get_rom_path()
 
 char* odroid_system_get_path(emu_path_type_t type, char *_romPath)
 {
-    char *fileName = strstr(_romPath ?: romPath, ODROID_BASE_PATH_ROMS);
+    char *fileName = _romPath ?: romPath;
     char buffer[256];
+
+    if (strstr(fileName, ODROID_BASE_PATH_ROMS))
+    {
+        fileName = strstr(fileName, ODROID_BASE_PATH_ROMS);
+        fileName += strlen(ODROID_BASE_PATH_ROMS);
+    }
 
     if (!fileName || strlen(fileName) < 4)
     {
         odroid_system_panic("Invalid ROM path!");
     }
-
-    fileName += strlen(ODROID_BASE_PATH_ROMS);
 
     switch (type)
     {

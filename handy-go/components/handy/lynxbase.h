@@ -52,6 +52,8 @@ class CLynxBase
       virtual UWORD	PeekW(ULONG addr) {return 0;};
       virtual void	BankSelect(EMMODE newbank){};
       virtual ULONG	ObjectSize(void) {return 1;};
+      virtual ULONG	ReadCycle(void) {return 5;};
+      virtual ULONG	WriteCycle(void) {return 5;};
 
 };
 

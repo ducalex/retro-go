@@ -49,12 +49,40 @@
 //                                                                          //
 //////////////////////////////////////////////////////////////////////////////
 
-#define SYSTEM_CPP
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "system.h"
+
+//
+// Define the global variable list
+//
+ULONG   gSystemCycleCount=0;
+ULONG   gNextTimerEvent=0;
+ULONG   gCPUWakeupTime=0;
+ULONG   gIRQEntryCycle=0;
+ULONG   gCPUBootAddress=0;
+ULONG   gBreakpointHit=FALSE;
+ULONG   gSingleStepMode=FALSE;
+ULONG   gSingleStepModeSprites=FALSE;
+ULONG   gSystemIRQ=FALSE;
+ULONG   gSystemNMI=FALSE;
+ULONG   gSystemCPUSleep=FALSE;
+ULONG   gSystemCPUSleep_Saved=FALSE;
+ULONG   gSystemHalt=FALSE;
+ULONG   gThrottleMaxPercentage=100;
+ULONG   gThrottleLastTimerCount=0;
+ULONG   gThrottleNextCycleCheckpoint=0;
+ULONG   gEndOfFrame=0;
+ULONG   gTimerCount=0;
+
+ULONG   gAudioEnabled=FALSE;
+UBYTE   *gAudioBuffer;//[HANDY_AUDIO_BUFFER_SIZE];
+ULONG   gAudioBufferPointer=0;
+ULONG   gAudioLastUpdateCycle=0;
+
+CErrorInterface *gError=NULL;
+
 
 extern void lynx_decrypt(unsigned char * result, const unsigned char * encrypted, const int length);
 
@@ -87,58 +115,6 @@ int lss_printf(LSS_FILE *fp, const char *str)
    return copysize;
 }
 
-void _splitpath(const char* path, char* drv, char* dir, char* name, char* ext)
-{
-   const char* end; /* end of processed string */
-   const char* p;   /* search pointer */
-   const char* s;   /* copy pointer */
-
-   /* extract drive name */
-   if (path[0] && path[1]==':') {
-      if (drv) {
-         *drv++ = *path++;
-         *drv++ = *path++;
-         *drv = '\0';
-      }
-   } else if (drv)
-      *drv = '\0';
-
-   /* search for end of string or stream separator */
-   for(end=path; *end && *end!=':'; )
-      end++;
-
-   /* search for begin of file extension */
-   for(p=end; p>path && *--p!='\\' && *p!='/'; )
-      if (*p == '.') {
-         end = p;
-         break;
-      }
-
-   if (ext)
-      for(s=end; (*ext=*s++); )
-         ext++;
-
-   /* search for end of directory name */
-   for(p=end; p>path; )
-      if (*--p=='\\' || *p=='/') {
-         p++;
-         break;
-      }
-
-   if (name) {
-      for(s=p; s<end; )
-         *name++ = *s++;
-
-      *name = '\0';
-   }
-
-   if (dir) {
-      for(s=path; s<p; )
-         *dir++ = *s++;
-
-      *dir = '\0';
-   }
-}
 
 CSystem::CSystem(const char* gamefile, const char* romfile, bool useEmu)
  : mCart(NULL),
@@ -158,36 +134,28 @@ CSystem::CSystem(const char* gamefile, const char* romfile, bool useEmu)
 
    // Select the default filetype
    UBYTE *filememory=NULL;
-   UBYTE *howardmemory=NULL;
    ULONG filesize=0;
-   ULONG howardsize=0;
 
    mFileType=HANDY_FILETYPE_ILLEGAL;
-   if(strcmp(gamefile,"")==0) {
-      // No file
-      filesize=0;
-      filememory=NULL;
-   }
-   else {
-      // Open the file and load the file
-      FILE *fp;
+   // Open the file and load the file
+   FILE *fp;
 
-      // Open the cartridge file for reading
-      if((fp=fopen(gamefile,"rb"))==NULL) {
-         fprintf(stderr, "Invalid Cart.\n");
-      }
-
+   // Open the cartridge file for reading
+   if((fp=fopen(gamefile,"rb"))!=NULL) {
       // How big is the file ??
       fseek(fp,0,SEEK_END);
       filesize=ftell(fp);
       fseek(fp,0,SEEK_SET);
       filememory=(UBYTE*) new UBYTE[filesize];
 
-      if(fread(filememory,sizeof(char),filesize,fp)!=filesize) {
+      if(fread(filememory, 1, filesize,fp)!=filesize) {
          fprintf(stderr, "Invalid Cart (filesize).\n");
       }
 
       fclose(fp);
+   } else {
+      fprintf(stderr, "Invalid Cart.\n");
+      // abort();
    }
 
    // Now try and determine the filetype we have opened
@@ -213,50 +181,11 @@ CSystem::CSystem(const char* gamefile, const char* romfile, bool useEmu)
 
    // Create the system objects that we'll use
 
-   // Attempt to load the cartridge errors caught above here...
-
-   mRom = new CRom(romfile,useEmu);
-
-   // An exception from this will be caught by the level above
-   mEEPROM = new CEEPROM();
-
    switch(mFileType) {
       case HANDY_FILETYPE_RAW:
       case HANDY_FILETYPE_LNX:
          mCart = new CCart(filememory,filesize);
-         if(mCart->CartHeaderLess()) {
-            // veryvery strange Howard Check CANNOT work, as there are two different loader-less card types...
-            // unclear HOW this should do anything useful...
-            FILE *fp;
-            char drive[3],dir[256],cartgo[256];
-            mFileType=HANDY_FILETYPE_HOMEBREW;
-            _splitpath(romfile,drive,dir,NULL,NULL);
-            strcpy(cartgo,drive);
-            strcat(cartgo,dir);
-            strcat(cartgo,"howard.o");
-
-            // Open the howard file for reading
-            if((fp=fopen(cartgo,"rb"))==NULL) {
-               fprintf(stderr, "Invalid Cart.\n");
-            }
-
-            // How big is the file ??
-            fseek(fp,0,SEEK_END);
-            howardsize=ftell(fp);
-            fseek(fp,0,SEEK_SET);
-            howardmemory=(UBYTE*) new UBYTE[filesize];
-
-            if(fread(howardmemory,sizeof(char),howardsize,fp)!=howardsize) {
-               fprintf(stderr, "Invalid Cart.\n");
-            }
-
-            fclose(fp);
-
-            // Pass it to RAM to load
-            mRam = new CRam(howardmemory,howardsize);
-         } else {
-            mRam = new CRam(0,0);
-         }
+         mRam = new CRam(0,0);
          break;
       case HANDY_FILETYPE_HOMEBREW:
          mCart = new CCart(0,0);
@@ -265,10 +194,15 @@ CSystem::CSystem(const char* gamefile, const char* romfile, bool useEmu)
       case HANDY_FILETYPE_SNAPSHOT:
       case HANDY_FILETYPE_ILLEGAL:
       default:
+         // abort() ?
          mCart = new CCart(0,0);
          mRam = new CRam(0,0);
          break;
    }
+
+   mEEPROM = new CEEPROM();
+
+   mRom = new CRom(mFileType == HANDY_FILETYPE_HOMEBREW);
 
    // These can generate exceptions
 
@@ -289,17 +223,12 @@ CSystem::CSystem(const char* gamefile, const char* romfile, bool useEmu)
    Reset();
 
    if(filememory) delete[] filememory;
-   if(howardmemory) delete[] howardmemory;
-   mEEPROM->SetEEPROMType(mCart->mEEPROMType);
-
-   {
-      char eepromfile[1024];
-      strncpy(eepromfile, gamefile,1024-10);
-      strcat(eepromfile,".eeprom");
-      mEEPROM->SetFilename(eepromfile);
-      printf("filename %d %s %s\n",mCart->mEEPROMType,gamefile,eepromfile);
-      mEEPROM->Load();
-   }
+   mEEPROM->SetEEPROMType(mCart->CartGetEEPROMType());
+   char eepromfile[512];
+   strncpy(eepromfile, gamefile,512-10);
+   strcat(eepromfile, ".eeprom");
+   mEEPROM->SetFilename(eepromfile);
+   mEEPROM->Load();
 }
 
 void CSystem::SaveEEPROM(void)
@@ -415,8 +344,8 @@ void CSystem::Reset(void)
 
    gAudioBufferPointer=0;
    gAudioLastUpdateCycle=0;
-//	memset(gAudioBuffer,128,HANDY_AUDIO_BUFFER_SIZE); // only for unsigned 8bit
-	memset(gAudioBuffer,0,HANDY_AUDIO_BUFFER_SIZE); // for unsigned 8/16 bit
+   //	memset(gAudioBuffer,128,HANDY_AUDIO_BUFFER_SIZE); // only for unsigned 8bit
+   // memset(gAudioBuffer,0,HANDY_AUDIO_BUFFER_SIZE); // for unsigned 8/16 bit
 
 #ifdef _LYNXDBG
    gSystemHalt=TRUE;
@@ -425,7 +354,6 @@ void CSystem::Reset(void)
    mMemMap->Reset();
    mCart->Reset();
    mEEPROM->Reset();
-   mRom->Reset();
    mRam->Reset();
    mMikie->Reset();
    mSusie->Reset();
@@ -441,29 +369,7 @@ void CSystem::Reset(void)
       regs.PC=(UWORD)gCPUBootAddress;
       mCpu->SetRegs(regs);
    } else {
-      if(!mRom->mValid) {
-	     mMikie->PresetForHomebrew();
-         mRom->mWriteEnable=true;
-
-         mRom->Poke(0xFE00+0,0x8d);
-         mRom->Poke(0xFE00+1,0x97);
-         mRom->Poke(0xFE00+2,0xfd);
-         mRom->Poke(0xFE00+3,0x60);// RTS
-
-         mRom->Poke(0xFE19+0,0x8d);
-         mRom->Poke(0xFE19+1,0x97);
-         mRom->Poke(0xFE19+2,0xfd);
-          
-         mRom->Poke(0xFE4A+0,0x8d);
-         mRom->Poke(0xFE4A+1,0x97);
-         mRom->Poke(0xFE4A+2,0xfd);          
-
-         mRom->Poke(0xFF80+0,0x8d);
-         mRom->Poke(0xFF80+1,0x97);
-         mRom->Poke(0xFF80+2,0xfd);          
-
-         mRom->mWriteEnable=false;
-      }
+      mMikie->PresetForHomebrew();
    }
 }
 
@@ -520,7 +426,6 @@ bool CSystem::ContextSave(LSS_FILE *fp)
    // Save other device contexts
    if(!mMemMap->ContextSave(fp)) status=0;
    if(!mCart->ContextSave(fp)) status=0;
-   //if(!mRom->ContextSave(fp)) status=0; We no longer save the system ROM
    if(!mRam->ContextSave(fp)) status=0;
    if(!mMikie->ContextSave(fp)) status=0;
    if(!mSusie->ContextSave(fp)) status=0;
@@ -584,13 +489,7 @@ bool CSystem::ContextLoad(LSS_FILE *fp)
       if(!lss_read(&gAudioLastUpdateCycle,sizeof(ULONG),1,fp)) status=0;
 
       if(!mMemMap->ContextLoad(fp)) status=0;
-      // Legacy support
-      if(legacy) {
-         if(!mCart->ContextLoadLegacy(fp)) status=0;
-         if(!mRom->ContextLoad(fp)) status=0;
-      } else {
-         if(!mCart->ContextLoad(fp)) status=0;
-      }
+      if(!mCart->ContextLoad(fp)) status=0;
       if(!mRam->ContextLoad(fp)) status=0;
       if(!mMikie->ContextLoad(fp)) status=0;
       if(!mSusie->ContextLoad(fp)) status=0;

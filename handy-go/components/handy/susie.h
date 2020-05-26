@@ -71,6 +71,8 @@ class CSystem;
 
 #define LINE_END		0x80
 
+#define SPR_RDWR_CYC	3
+
 //
 // Define button values
 //
@@ -100,7 +102,7 @@ enum {sprite_background_shadow=0,
 
 // Define register typdefs
 
-typedef struct 
+typedef struct
 {
    union
    {
@@ -352,8 +354,6 @@ class CSusie : public CLynxBase
       ULONG	PaintSprites(void);
 
    private:
-      void	DoMathDivide(void);
-      void	DoMathMultiply(void);
       ULONG	LineInit(ULONG voff);
       ULONG	LineGetPixel(void);
       ULONG	LineGetBits(ULONG bits);

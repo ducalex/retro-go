@@ -73,6 +73,8 @@ class CSystem;
 #define MIKIE_START	0xfd00
 #define MIKIE_SIZE	0x100
 
+#define DMA_RDWR_CYC	4
+
 //
 // Define counter types and defines
 //
@@ -175,9 +177,9 @@ enum
 {
    MIKIE_PIXEL_FORMAT_8BPP=0,
    MIKIE_PIXEL_FORMAT_16BPP_555,
+   MIKIE_PIXEL_FORMAT_16BPP_555_BE,
    MIKIE_PIXEL_FORMAT_16BPP_565,
-   MIKIE_PIXEL_FORMAT_24BPP,
-   MIKIE_PIXEL_FORMAT_32BPP,
+   MIKIE_PIXEL_FORMAT_16BPP_565_BE
 };
 
 // #include <blip/Stereo_Buffer.h>
@@ -199,11 +201,8 @@ class CMikie : public CLynxBase
 
       UBYTE	Peek(ULONG addr);
       void	Poke(ULONG addr,UBYTE data);
-      ULONG	ReadCycle(void) {return 5;};
-      ULONG	WriteCycle(void) {return 5;};
       ULONG	ObjectSize(void) {return MIKIE_SIZE;};
       void	PresetForHomebrew(void);
-      ULONG	GetLfsrNext(ULONG current);
 
       void	ComLynxCable(int status);
       void	ComLynxRxData(int data);
@@ -237,7 +236,7 @@ class CMikie : public CLynxBase
       ULONG		mTimerInterruptMask;
 
       TPALETTE	mPalette[16];
-      ULONG		mColourMap[4096];
+      UWORD		mColourMap[4096];
 
       ULONG		mIODAT;
       ULONG		mIODIR;
@@ -405,7 +404,7 @@ class CMikie : public CLynxBase
       ULONG		mAUDIO_3_WAVESHAPER;
 
       SBYTE		mAUDIO_OUTPUT[4];
-      UBYTE           mAUDIO_ATTEN[4];
+      UBYTE    mAUDIO_ATTEN[4];
       ULONG		mSTEREO;
       ULONG		mPAN;
 
@@ -426,16 +425,16 @@ class CMikie : public CLynxBase
       ULONG		mUART_PARITY_ENABLE;
       ULONG		mUART_PARITY_EVEN;
 
-      int			mUART_CABLE_PRESENT;
+      SLONG		mUART_CABLE_PRESENT;
       void		(*mpUART_TX_CALLBACK)(int data,ULONG objref);
       ULONG		mUART_TX_CALLBACK_OBJECT;
 
-      int			mUART_Rx_input_queue[UART_MAX_RX_QUEUE];
-      unsigned int mUART_Rx_input_ptr;
-      unsigned int mUART_Rx_output_ptr;
-      int			mUART_Rx_waiting;
-      int			mUART_Rx_framing_error;
-      int			mUART_Rx_overun_error;
+      SLONG		mUART_Rx_input_queue[UART_MAX_RX_QUEUE];
+      ULONG 	mUART_Rx_input_ptr;
+      ULONG 	mUART_Rx_output_ptr;
+      SLONG		mUART_Rx_waiting;
+      SLONG		mUART_Rx_framing_error;
+      SLONG		mUART_Rx_overun_error;
 
       //
       // Screen related
@@ -451,7 +450,7 @@ class CMikie : public CLynxBase
       ULONG		mDisplayRotate;
       ULONG		mDisplayFormat;
       ULONG		mDisplayPitch;
-      UBYTE*		(*mpDisplayCallback)(ULONG objref);
+      UBYTE*	(*mpDisplayCallback)(ULONG objref);
       ULONG		mDisplayCallbackObject;
 };
 

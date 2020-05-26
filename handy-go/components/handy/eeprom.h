@@ -47,13 +47,13 @@ public:
 
    void SetFilename(char* f){strcpy(filename,f);};
    char* GetFilename(void){ return filename;};
-   
+
    void Load(void);
    void Save(void);
 
 private:
-   char filename[1024];
-    
+   char filename[256];
+
    void UpdateEeprom(UWORD cnt);
    UBYTE type; // 0 ... no eeprom
 

@@ -45,42 +45,58 @@
 #ifndef ROM_H
 #define ROM_H
 
-#define ROM_SIZE				0x200
+#define ROM_SIZE		   		0x200
 #define ROM_ADDR_MASK			0x01ff
 #define DEFAULT_ROM_CONTENTS	0x88
 
-#define BROM_START		0xfe00
+#define BROM_START	0xfe00
 #define BROM_SIZE		0x200
 #define VECTOR_START	0xfffa
-#define VECTOR_SIZE		0x6
+#define VECTOR_SIZE	0x6
 
 class CRom : public CLynxBase
 {
-
-   // Function members
-
    public:
-      CRom(const char *romfile,bool useEmu);
-
-   public:
-      void	Reset(void);
-      bool	ContextSave(FILE *fp);
-      bool	ContextLoad(LSS_FILE *fp);
-
-      void	Poke(ULONG addr,UBYTE data) { if(mWriteEnable) mRomData[addr&ROM_ADDR_MASK]=data;};
-      UBYTE	Peek(ULONG addr) { return(mRomData[addr&ROM_ADDR_MASK]);};
-      ULONG	ReadCycle(void) {return 5;};
-      ULONG	WriteCycle(void) {return 5;};
-      ULONG	ObjectSize(void) {return ROM_SIZE;};
-
-      // Data members
-
-   public:
-      bool	mWriteEnable;
-      bool	mValid;
-   private:
       UBYTE	mRomData[ROM_SIZE];
-      char	mFileName[1024];
+
+      CRom(bool isHomebrew)
+      {
+         memset(mRomData, DEFAULT_ROM_CONTENTS, ROM_SIZE);
+
+         if (!isHomebrew)
+         {
+            mRomData[0x00] = 0x8d;
+            mRomData[0x01] = 0x97;
+            mRomData[0x02] = 0xfd;
+            mRomData[0x03] = 0x60; // RTS
+
+            mRomData[0x19] = 0x8d;
+            mRomData[0x20] = 0x97;
+            mRomData[0x21] = 0xfd;
+
+            mRomData[0x4A] = 0x8d;
+            mRomData[0x4B] = 0x97;
+            mRomData[0x4C] = 0xfd;
+
+            mRomData[0x180] = 0x8d;
+            mRomData[0x181] = 0x97;
+            mRomData[0x182] = 0xfd;
+         }
+
+         // Vectors
+         mRomData[0x1F8] = 0x00;
+         mRomData[0x1F9] = 0x80;
+         mRomData[0x1FA] = 0x00;
+         mRomData[0x1FB] = 0x30;
+         mRomData[0x1FC] = 0x80;
+         mRomData[0x1FD] = 0xFF;
+         mRomData[0x1FE] = 0x80;
+         mRomData[0x1FF] = 0xFF;
+      };
+
+      void  Poke(ULONG addr,UBYTE data) {};
+      UBYTE Peek(ULONG addr) {return mRomData[addr&ROM_ADDR_MASK];};
+      ULONG ObjectSize(void) {return ROM_SIZE;};
 };
 
 #endif

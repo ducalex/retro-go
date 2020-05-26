@@ -596,10 +596,16 @@ static inline int frame_diff(odroid_video_frame *frame, odroid_video_frame *prev
 {
     uint8_t pixel_mask = frame->pixel_mask;
     odroid_line_diff *out_diff = frame->diff;
-    bool use_u32bit = frame->palette == NULL;
+    bool use_u32bit = false;
 
+    // If there's no palette we compare all the bits
+    if (frame->palette == NULL)
+    {
+        pixel_mask = 0xFF;
+        use_u32bit = true;
+    }
     // If the palette didn't change we can speed up things by avoiding pixel_diff()
-    if (frame->palette == prevFrame->palette
+    else if (frame->palette == prevFrame->palette
          || memcmp(frame->palette, prevFrame->palette, (pixel_mask + 1) * 2) == 0)
     {
         pixel_mask |= frame->pal_shift_mask;
@@ -875,8 +881,6 @@ IRAM_ATTR void odroid_display_write_frame(odroid_video_frame *frame)
 IRAM_ATTR short odroid_display_queue_update(odroid_video_frame *frame, odroid_video_frame *previousFrame)
 {
     static int prev_width = 0, prev_height = 0;
-    bool doPartialUpdate = previousFrame != NULL && !forceVideoRefresh;
-
     short linesChanged = 0;
 
     if (frame)
@@ -888,7 +892,7 @@ IRAM_ATTR short odroid_display_queue_update(odroid_video_frame *frame, odroid_vi
             forceVideoRefresh = true;
         }
 
-        if (doPartialUpdate)
+        if (previousFrame && !forceVideoRefresh)
         {
             linesChanged = frame_diff(frame, previousFrame);
         }

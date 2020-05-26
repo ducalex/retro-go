@@ -9,6 +9,7 @@ Retro-Go is a launcher and framework to run emulators on the ODROID-GO. It comes
 - Sega Game Gear
 - Colecovision
 - PC Engine
+- Lynx
 
 ### Compared to other similar projects for the ODROID-GO, Retro-Go brings:
 - In-game menu

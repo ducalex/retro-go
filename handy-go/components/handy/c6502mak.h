@@ -48,9 +48,9 @@
 
 #define	xIMMEDIATE()			{mOperand=mPC;mPC++;}
 #define	xABSOLUTE()				{mOperand=CPU_PEEKW(mPC);mPC+=2;}
-#define xZEROPAGE()				{mOperand=CPU_PEEK(mPC);mPC++;}
-#define xZEROPAGE_X()			{mOperand=CPU_PEEK(mPC)+mX;mPC++;mOperand&=0xff;}
-#define xZEROPAGE_Y()			{mOperand=CPU_PEEK(mPC)+mY;mPC++;mOperand&=0xff;}
+#define xZEROPAGE()				{mOperand=CPU_PEEK_RAM(mPC);mPC++;}
+#define xZEROPAGE_X()			{mOperand=CPU_PEEK_RAM(mPC)+mX;mPC++;mOperand&=0xff;}
+#define xZEROPAGE_Y()			{mOperand=CPU_PEEK_RAM(mPC)+mY;mPC++;mOperand&=0xff;}
 #define xABSOLUTE_X()			{mOperand=CPU_PEEKW(mPC);mPC+=2;mOperand+=mX;mOperand&=0xffff;}
 #define	xABSOLUTE_Y()			{mOperand=CPU_PEEKW(mPC);mPC+=2;mOperand+=mY;mOperand&=0xffff;}
 #define xINDIRECT_ABSOLUTE_X()	{mOperand=CPU_PEEKW(mPC);mPC+=2;mOperand+=mX;mOperand&=0xffff;mOperand=CPU_PEEKW(mOperand);}
@@ -69,10 +69,10 @@
 #define SET_Z(m)				{ mZ=!(m); }
 #define SET_N(m)				{ mN=(m)&0x80; }
 #define SET_NZ(m)				{ mZ=!(m); mN=(m)&0x80; }
-#define PULL(m)					{ mSP++; mSP&=0xff; m=CPU_PEEK(mSP+0x0100); }
-#define PUSH(m)					{ CPU_POKE(0x0100+mSP,m); mSP--; mSP&=0xff; }
+#define PULL(m)					{ mSP++; mSP&=0xff; m=CPU_PEEK_RAM(mSP+0x0100); }
+#define PUSH(m)					{ CPU_POKE_RAM(0x0100+mSP,m); mSP--; mSP&=0xff; }
 //
-// Opcode execution 
+// Opcode execution
 //
 
 //#define	xADC()\

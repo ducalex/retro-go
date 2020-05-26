@@ -2,8 +2,6 @@
 // Lynx 3wire EEPROM Class                                                  //
 //////////////////////////////////////////////////////////////////////////////
 
-#define EEPROM_CPP
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

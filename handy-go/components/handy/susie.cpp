@@ -44,9 +44,6 @@
 //                                                                          //
 //////////////////////////////////////////////////////////////////////////////
 
-#define SUSIE_CPP
-
-//#include <crtdbg.h>
 //#define TRACE_SUSIE
 
 #include <stdio.h>
@@ -60,14 +57,9 @@
 // As the Susie sprite engine only ever sees system RAM
 // wa can access this directly without the hassle of
 // going through the system object, much faster
-//
-//#define RAM_PEEK(m)			(mSystem.Peek_RAM((m)))
-//#define RAM_POKE(m1,m2)		(mSystem.Poke_RAM((m1),(m2)))
-//#define RAM_PEEKW(m)			(mSystem.PeekW_RAM((m)))
-
-#define RAM_PEEK(m)				(mRamPointer[(m)])
+#define RAM_PEEK(m)			(mRamPointer[(m)])
 #define RAM_PEEKW(m)			(mRamPointer[(m)]+(mRamPointer[(m)+1]<<8))
-#define RAM_POKE(m1,m2)			{mRamPointer[(m1)]=(m2);}
+#define RAM_POKE(m1,m2)		{mRamPointer[(m1)]=(m2);}
 
 ULONG cycles_used=0;
 
@@ -358,94 +350,6 @@ bool CSusie::ContextLoad(LSS_FILE *fp)
 
    return 1;
 }
-
-
-void CSusie::DoMathMultiply(void)
-{
-   mSPRSYS_Mathbit=FALSE;
-
-   // Multiplies with out sign or accumulate take 44 ticks to complete.
-   // Multiplies with sign and accumulate take 54 ticks to complete.
-   //
-   //    AB                                    EFGH
-   //  * CD                                  /   NP
-   // -------                            -----------
-   //  EFGH                                    ABCD
-   // Accumulate in JKLM         Remainder in (JK)LM
-   //
-
-
-   ULONG result;
-
-   // Basic multiply is ALWAYS unsigned, sign conversion is done later
-   result=(ULONG)mMATHABCD.Words.AB*(ULONG)mMATHABCD.Words.CD;
-   mMATHEFGH.Long=result;
-
-   if(mSPRSYS_SignedMath) {
-      TRACE_SUSIE0("DoMathMultiply() - SIGNED");
-      // Add the sign bits, only >0 is +ve result
-      mMATHEFGH_sign=mMATHAB_sign+mMATHCD_sign;
-      if(!mMATHEFGH_sign) {
-         mMATHEFGH.Long^=0xffffffff;
-         mMATHEFGH.Long++;
-      }
-   } else {
-      TRACE_SUSIE0("DoMathMultiply() - UNSIGNED");
-   }
-
-   TRACE_SUSIE2("DoMathMultiply() AB=$%04x * CD=$%04x",mMATHABCD.Words.AB,mMATHABCD.Words.CD);
-
-   // Check overflow, if B31 has changed from 1->0 then its overflow time
-   if(mSPRSYS_Accumulate) {
-      TRACE_SUSIE0("DoMathMultiply() - ACCUMULATED JKLM+=EFGH");
-      ULONG tmp=mMATHJKLM.Long+mMATHEFGH.Long;
-      // Let sign change indicate overflow
-      if((tmp&0x80000000)!=(mMATHJKLM.Long&0x80000000)) {
-         TRACE_SUSIE0("DoMathMultiply() - OVERFLOW DETECTED");
-         //			mSPRSYS_Mathbit=TRUE;
-      } else {
-         //			mSPRSYS_Mathbit=FALSE;
-      }
-      // Save accumulated result
-      mMATHJKLM.Long=tmp;
-   }
-
-   TRACE_SUSIE1("DoMathMultiply() Results (raw - no sign) Result=$%08x",result);
-   TRACE_SUSIE1("DoMathMultiply() Results (Multi) EFGH=$%08x",mMATHEFGH.Long);
-   TRACE_SUSIE1("DoMathMultiply() Results (Accum) JKLM=$%08x",mMATHJKLM.Long);
-}
-
-void CSusie::DoMathDivide(void)
-{
-   mSPRSYS_Mathbit=FALSE;
-
-   //
-   // Divides take 176 + 14*N ticks
-   // (N is the number of most significant zeros in the divisor.)
-   //
-   //    AB                                    EFGH
-   //  * CD                                  /   NP
-   // -------                            -----------
-   //  EFGH                                    ABCD
-   // Accumulate in JKLM         Remainder in (JK)LM
-   //
-
-   // Divide is ALWAYS unsigned arithmetic...
-   if(mMATHNP.Long) {
-      TRACE_SUSIE0("DoMathDivide() - UNSIGNED");
-      mMATHABCD.Long=mMATHEFGH.Long/mMATHNP.Long;
-      mMATHJKLM.Long=mMATHEFGH.Long%mMATHNP.Long;
-   } else {
-      TRACE_SUSIE0("DoMathDivide() - DIVIDE BY ZERO ERROR");
-      mMATHABCD.Long=0xffffffff;
-      mMATHJKLM.Long=0;
-      mSPRSYS_Mathbit=TRUE;
-   }
-   TRACE_SUSIE2("DoMathDivide() EFGH=$%08x / NP=%04x",mMATHEFGH.Long,mMATHNP.Long);
-   TRACE_SUSIE1("DoMathDivide() Results (div) ABCD=$%08x",mMATHABCD.Long);
-   TRACE_SUSIE1("DoMathDivide() Results (mod) JKLM=$%08x",mMATHJKLM.Long);
-}
-
 
 ULONG CSusie::PaintSprites(void)
 {
@@ -769,14 +673,13 @@ ULONG CSusie::PaintSprites(void)
 
             TRACE_SUSIE1("PaintSprites() Render status %d",render);
 
-            static int pixel_height=0;
-            static int pixel_width=0;
-            static int pixel=0;
-            static int hoff=0,voff=0;
-            static int hloop=0,vloop=0;
-            static bool onscreen=0;
-            static int vquadoff=0;
-            static int hquadoff=0;
+            int pixel_height=0;
+            int pixel_width=0;
+            int pixel=0;
+            int hoff=0,voff=0;
+            int hloop=0,vloop=0;
+            bool onscreen=0;
+            int vquadoff=0,hquadoff=0;
 
             if(render) {
                // Set the vertical position & offset
@@ -832,7 +735,7 @@ ULONG CSusie::PaintSprites(void)
 
                         // Zero/Force the horizontal scaling accumulator
                         if(hsign==1) mHSIZACUM.Word=mHSIZOFF.Word;
-						else mHSIZACUM.Word=0;
+						      else mHSIZACUM.Word=0;
 
                         // Take the sign of the first quad (0) as the basic
                         // sign, all other quads drawing in the other direction
@@ -844,7 +747,6 @@ ULONG CSusie::PaintSprites(void)
 
                         // Initialise our line
                         LineInit(voff);
-                        onscreen=FALSE;
 
                         // Now render an individual destination line
                         while((pixel=LineGetPixel())!=LINE_END) {
@@ -858,7 +760,7 @@ ULONG CSusie::PaintSprites(void)
                               if(hoff>=0 && hoff<SCREEN_WIDTH) {
                                  ProcessPixel(hoff,pixel);
                                  onscreen = TRUE;
-								 everonscreen=TRUE;
+								         everonscreen=TRUE;
                               } else {
                                  if(onscreen) break;
                               }
@@ -943,9 +845,9 @@ ULONG CSusie::PaintSprites(void)
 
          // Perform Sprite debugging if required, single step on sprite draw
          if(gSingleStepModeSprites) {
-            char message[256];
-            sprintf(message,"CSusie:PaintSprites() - Rendered Sprite %03d",sprcount);
-            if(!gError->Warning(message)) gSingleStepModeSprites=0;
+            // char message[256];
+            // sprintf(message,"CSusie:PaintSprites() - Rendered Sprite %03d",sprcount);
+            // if(!gError->Warning(message)) gSingleStepModeSprites=0;
          }
       } else {
          TRACE_SUSIE0("PaintSprites() mSPRCTL1.Bits.SkipSprite==TRUE");
@@ -1677,7 +1579,47 @@ void CSusie::Poke(ULONG addr,UBYTE data)
                mMATHAB_sign=1;
             }
          }
-         DoMathMultiply();
+
+         TRACE_SUSIE2("DoMathMultiply() AB=$%04x * CD=$%04x",mMATHABCD.Words.AB,mMATHABCD.Words.CD);
+
+         mSPRSYS_Mathbit=FALSE;
+
+         // Multiplies with out sign or accumulate take 44 ticks to complete.
+         // Multiplies with sign and accumulate take 54 ticks to complete.
+         //
+         //    AB                                    EFGH
+         //  * CD                                  /   NP
+         // -------                            -----------
+         //  EFGH                                    ABCD
+         // Accumulate in JKLM         Remainder in (JK)LM
+         //
+
+         // Basic multiply is ALWAYS unsigned, sign conversion is done later
+         mMATHEFGH.Long=(ULONG)mMATHABCD.Words.AB*(ULONG)mMATHABCD.Words.CD;
+
+         if(mSPRSYS_SignedMath) {
+            // Add the sign bits, only >0 is +ve result
+            mMATHEFGH_sign=mMATHAB_sign+mMATHCD_sign;
+            if(!mMATHEFGH_sign) {
+               mMATHEFGH.Long^=0xffffffff;
+               mMATHEFGH.Long++;
+            }
+         }
+
+         // Check overflow, if B31 has changed from 1->0 then its overflow time
+         if(mSPRSYS_Accumulate) {
+            TRACE_SUSIE0("DoMathMultiply() - ACCUMULATED JKLM+=EFGH");
+            ULONG tmp=mMATHJKLM.Long+mMATHEFGH.Long;
+            // Let sign change indicate overflow
+            if((tmp&0x80000000)!=(mMATHJKLM.Long&0x80000000)) {
+               TRACE_SUSIE0("DoMathMultiply() - OVERFLOW DETECTED");
+               // mSPRSYS_Mathbit=TRUE;
+            }
+            // Save accumulated result
+            mMATHJKLM.Long=tmp;
+         }
+         TRACE_SUSIE1("DoMathMultiply() Results (Multi) EFGH=$%08x",mMATHEFGH.Long);
+         TRACE_SUSIE1("DoMathMultiply() Results (Accum) JKLM=$%08x",mMATHJKLM.Long);
          break;
 
       case (MATHP&0xff):
@@ -1707,7 +1649,29 @@ void CSusie::Poke(ULONG addr,UBYTE data)
       case (MATHE&0xff):
          mMATHEFGH.Bytes.E=data;
          TRACE_SUSIE2("Poke(MATHE,%02x) at PC=$%04x",data,mSystem.mCpu->GetPC());
-         DoMathDivide();
+         //
+         // Divides take 176 + 14*N ticks
+         // (N is the number of most significant zeros in the divisor.)
+         //
+         //    AB                                    EFGH
+         //  * CD                                  /   NP
+         // -------                            -----------
+         //  EFGH                                    ABCD
+         // Accumulate in JKLM         Remainder in (JK)LM
+         //
+
+         // Divide is ALWAYS unsigned arithmetic...
+         if(mMATHNP.Long) {
+            TRACE_SUSIE0("DoMathDivide() - UNSIGNED");
+            mMATHABCD.Long=mMATHEFGH.Long/mMATHNP.Long;
+            mMATHJKLM.Long=mMATHEFGH.Long%mMATHNP.Long;
+            mSPRSYS_Mathbit=FALSE;
+         } else {
+            TRACE_SUSIE0("DoMathDivide() - DIVIDE BY ZERO ERROR");
+            mMATHABCD.Long=0xffffffff;
+            mMATHJKLM.Long=0;
+            mSPRSYS_Mathbit=TRUE;
+         }
          break;
 
       case (MATHM&0xff):
@@ -1731,7 +1695,7 @@ void CSusie::Poke(ULONG addr,UBYTE data)
          break;
 
       case (SPRCTL0&0xff):
-         mSPRCTL0_Type=data&0x0007;
+         // mSPRCTL0_Type=data&0x0007;
          mSPRCTL0_Vflip=data&0x0010;
          mSPRCTL0_Hflip=data&0x0020;
          mSPRCTL0_PixelBits=((data&0x00c0)>>6)+1;
@@ -1780,18 +1744,18 @@ void CSusie::Poke(ULONG addr,UBYTE data)
 
       case (RCART0&0xff):
          if(mSystem.mCart->CartGetAudin() && mSystem.mMikie->SwitchAudInValue()){
-           mSystem.Poke_CARTB0A(data);
+           mSystem.mCart->Poke0A(data);
          }else{
-           mSystem.Poke_CARTB0(data);
+           mSystem.mCart->Poke0(data);
          }
          mSystem.mEEPROM->ProcessEepromCounter(mSystem.mCart->GetCounterValue());
          TRACE_SUSIE2("Poke(RCART0,%02x) at PC=$%04x",data,mSystem.mCpu->GetPC());
          break;
       case (RCART1&0xff):
         if(mSystem.mCart->CartGetAudin() && mSystem.mMikie->SwitchAudInValue()){
-           mSystem.Poke_CARTB1A(data);
+           mSystem.mCart->Poke1A(data);
         }else{
-            mSystem.Poke_CARTB1(data);
+           mSystem.mCart->Poke1(data);
          }
          mSystem.mEEPROM->ProcessEepromCounter(mSystem.mCart->GetCounterValue());
          TRACE_SUSIE2("Poke(RCART1,%02x) at PC=$%04x",data,mSystem.mCpu->GetPC());
@@ -2120,18 +2084,18 @@ UBYTE CSusie::Peek(ULONG addr)
 
       case (RCART0&0xff):
          if(mSystem.mCart->CartGetAudin() && mSystem.mMikie->SwitchAudInValue()){
-            retval=mSystem.Peek_CARTB0A();
+            retval=mSystem.mCart->Peek0A();
          }else{
-            retval=mSystem.Peek_CARTB0();
+            retval=mSystem.mCart->Peek0();
          }
          mSystem.mEEPROM->ProcessEepromCounter(mSystem.mCart->GetCounterValue());
          //			TRACE_SUSIE2("Peek(RCART0)=$%02x at PC=$%04x",retval,mSystem.mCpu->GetPC());
          return retval;
       case (RCART1&0xff):
          if(mSystem.mCart->CartGetAudin() && mSystem.mMikie->SwitchAudInValue()){
-            retval=mSystem.Peek_CARTB1A();
+            retval=mSystem.mCart->Peek1A();
          }else{
-           retval=mSystem.Peek_CARTB1();
+           retval=mSystem.mCart->Peek1();
          }
          mSystem.mEEPROM->ProcessEepromCounter(mSystem.mCart->GetCounterValue());
          //			TRACE_SUSIE2("Peek(RCART1)=$%02x at PC=$%04x",retval,mSystem.mCpu->GetPC());

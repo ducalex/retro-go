@@ -84,7 +84,7 @@ enum CTYPE {UNUSED,C64K,C128K,C256K,C512K,C1024K};
 
 #define CART_NO_ROTATE		0
 #define CART_ROTATE_LEFT	1
-#define	CART_ROTATE_RIGHT	2
+#define CART_ROTATE_RIGHT	2
 
 typedef struct
 {
@@ -95,7 +95,7 @@ typedef struct
    UBYTE   cartname[32];
    UBYTE   manufname[16];
    UBYTE   rotation;
-   UBYTE   aud_bits; 
+   UBYTE   aud_bits;
    UBYTE   eeprom;
    UBYTE   spare[3];
 }LYNX_HEADER;
@@ -126,11 +126,11 @@ class CCart : public CLynxBase
       void	BankSelect(EMMODE newbank) {mBank=newbank;}
       ULONG	ObjectSize(void) {return (mBank==bank0)?mMaskBank0+1:mMaskBank1+1;};
 
-      const char*	CartGetName(void) { return mName;};
-      const char*	CartGetManufacturer(void) { return mManufacturer; };
-      ULONG	CartGetRotate(void) { return mRotation;};
-      bool	CartGetAudin(void) { return mAudinFlag;};
-      int		CartHeaderLess(void) { return mHeaderLess;};
+      const char*	CartGetName(void) { return (const char*)mFileHeader.cartname;};
+      const char*	CartGetManufacturer(void) { return (const char*)mFileHeader.manufname; };
+      ULONG	CartGetRotate(void) {return (mFileHeader.rotation > 2) ? CART_NO_ROTATE : mFileHeader.rotation;};
+      bool	CartGetAudin(void) { return mFileHeader.aud_bits&0x01;};
+      UBYTE	CartGetEEPROMType(void) { return mFileHeader.eeprom;};
       ULONG	CRC32(void) { return mCRC32; };
 
       // Access for the lynx itself, it has no idea of address etc as this is done by the
@@ -147,32 +147,26 @@ class CCart : public CLynxBase
       UBYTE	Peek1A(void);
 
       void SetShifterValue(UBYTE a){mShifter=a; mCounter=0;}; // for fake bios
-   inline ULONG GetCounterValue(void)
-   {
-      return mCounter;
-   }; // for eeprom
+      inline ULONG GetCounterValue(void) {return mCounter;}; // for eeprom
+
       // Data members
 
    public:
-      ULONG	mWriteEnableBank0;
       ULONG	mWriteEnableBank1;
-      ULONG	mCartRAM;
-      ULONG	mMaskBank0;
-      ULONG	mMaskBank1;
-      UBYTE     mEEPROMType;
 
    private:
-      EMMODE	mBank;
+      EMMODE mBank;
+      ULONG  mCartRAM;
 
+      ULONG  mMaskBank0;
+      ULONG  mMaskBank1;
       UBYTE	*mCartBank0;
       UBYTE	*mCartBank1;
       UBYTE	*mCartBank0A;
       UBYTE	*mCartBank1A;
-      char	mName[33];
-      char	mManufacturer[17];
-      ULONG	mRotation;
-      bool      mAudinFlag;
-      int	mHeaderLess;
+
+      LYNX_HEADER mFileHeader;
+      ULONG	      mCRC32;
 
       ULONG	mCounter;
       ULONG	mShifter;
@@ -184,8 +178,7 @@ class CCart : public CLynxBase
       ULONG	mShiftCount1;
       ULONG	mCountMask1;
 
-      ULONG	mCRC32;
-
+      ULONG	mDummy;
 };
 
 #endif

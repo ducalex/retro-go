@@ -42,9 +42,6 @@
 //                                                                          //
 //////////////////////////////////////////////////////////////////////////////
 
-#define CART_CPP
-
-//#include <crtdbg.h>
 //#define   TRACE_CART
 
 #include <stdlib.h>
@@ -52,78 +49,56 @@
 #include <string.h>
 #include "system.h"
 #include "cart.h"
-//#include "zlib.h"
 #include "rom/crc.h"
+
+#define CART_INC_COUNTER() {if(!mStrobe) mCounter = (mCounter + 1) & 0x07ff;}
 
 CCart::CCart(UBYTE *gamedata,ULONG gamesize)
 {
    int headersize=0
    TRACE_CART1("CCart() called with %s",gamefile);
-   LYNX_HEADER	header;
 
-   mWriteEnableBank0=FALSE;
    mWriteEnableBank1=FALSE;
    mCartRAM=FALSE;
-   mHeaderLess=0;
-   mEEPROMType=0;
    mCRC32=crc32_le(0,gamedata,gamesize);
+   mBank=bank0;
 
    // Open up the file
-
-   if(gamesize) {
+   if (gamesize > sizeof(LYNX_HEADER)) {
       // Checkout the header bytes
-      memcpy(&header,gamedata,sizeof(LYNX_HEADER));
+      memcpy(&mFileHeader,gamedata,sizeof(LYNX_HEADER));
 
 #ifdef MSB_FIRST
-      header.page_size_bank0 = ((header.page_size_bank0>>8) | (header.page_size_bank0<<8));
-      header.page_size_bank1 = ((header.page_size_bank1>>8) | (header.page_size_bank1<<8));
-      header.version         = ((header.version>>8) | (header.version<<8));
+      mFileHeader.page_size_bank0 = ((mFileHeader.page_size_bank0>>8) | (mFileHeader.page_size_bank0<<8));
+      mFileHeader.page_size_bank1 = ((mFileHeader.page_size_bank1>>8) | (mFileHeader.page_size_bank1<<8));
+      mFileHeader.version         = ((mFileHeader.version>>8) | (mFileHeader.version<<8));
 #endif
       // Sanity checks on the header
 
-      if(header.magic[0]!='L' || header.magic[1]!='Y' || header.magic[2]!='N' || header.magic[3]!='X' || header.version!=1) {
-        memset(&header,0,sizeof(LYNX_HEADER));
+      if(mFileHeader.magic[0]!='L' || mFileHeader.magic[1]!='Y' || mFileHeader.magic[2]!='N'
+         || mFileHeader.magic[3]!='X' || mFileHeader.version!=1) {
+
         fprintf(stderr, "Invalid cart (no header?).\nGuessing a ROM layout...\n");
-        strncpy((char*)&header.cartname,"NO HEADER",32);
-        strncpy((char*)&header.manufname,"HANDY",16);
-        header.page_size_bank0=gamesize>>8;// Hard workaround...
+        strncpy((char*)&mFileHeader.cartname,"NO HEADER",32);
+        strncpy((char*)&mFileHeader.manufname,"HANDY",16);
+        mFileHeader.page_size_bank0=gamesize>>8;// Hard workaround...
       } else {
          headersize=sizeof(LYNX_HEADER);
       }
 
-      // Setup name & manufacturer
+      // As this is a cartridge boot unset the boot address
 
-      strncpy(mName,(char*)&header.cartname,32);
-      strncpy(mManufacturer,(char*)&header.manufname,16);
-
-      // Setup rotation
-
-      mRotation=header.rotation;
-      if(mRotation!=CART_NO_ROTATE && mRotation!=CART_ROTATE_LEFT && mRotation!=CART_ROTATE_RIGHT) mRotation=CART_NO_ROTATE;
-      mAudinFlag=(header.aud_bits&0x01) ;
-      mEEPROMType=header.eeprom;
+      gCPUBootAddress=0;
    } else {
-      header.page_size_bank0=0x000;
-      header.page_size_bank1=0x000;
-
-      // Setup name & manufacturer
-
-      strcpy(mName,"<No cart loaded>");
-      strcpy(mManufacturer,"<No cart loaded>");
-
-      // Setup rotation
-
-      mAudinFlag=false;
-      mRotation=CART_NO_ROTATE;
+      memset(&mFileHeader,0,sizeof(LYNX_HEADER));
    }
-
 
    // Set the filetypes
 
    CTYPE banktype0 = UNUSED;
    CTYPE banktype1 = UNUSED;
 
-   switch(header.page_size_bank0) {
+   switch(mFileHeader.page_size_bank0) {
       case 0x000:
          banktype0=UNUSED;
          mMaskBank0=0;
@@ -160,7 +135,7 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
    }
    TRACE_CART1("CCart() - Bank0 = $%06x",mMaskBank0);
 
-   switch(header.page_size_bank1) {
+   switch(mFileHeader.page_size_bank1) {
       case 0x000:
          banktype1=UNUSED;
          mMaskBank1=0;
@@ -204,10 +179,6 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
    mCartBank0A = (UBYTE*) new UBYTE[mMaskBank0+1];
    mCartBank1A = (UBYTE*) new UBYTE[mMaskBank1+1];
 
-   // Set default bank
-
-   mBank=bank0;
-
    // Initialiase
 
    // TODO: the following code to read the banks is not very nice .. should be reworked
@@ -223,58 +194,24 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
    if(bank0size==1) bank0size=0;// workaround ...
    if(bank1size==1) bank1size=0;// workaround ...
 
-   memcpy(
-         mCartBank0,
-         gamedata+(headersize),
-         bank0size);
-   cartsize = cartsize < bank0size ? 0 : cartsize - bank0size;
+   memcpy(mCartBank0, gamedata+(headersize), bank0size);
+   cartsize = __max(0, cartsize - bank0size);
 
-   memcpy(
-         mCartBank1,
-         gamedata+(headersize + bank0size),
-         cartsize < bank1size ? cartsize : bank1size);
-   cartsize = cartsize < bank1size ? 0 : cartsize - bank1size;
+   memcpy(mCartBank1, gamedata+(headersize+bank0size), __min(cartsize, bank1size));
+   cartsize = __max(0, cartsize - bank1size);
 
-   if(mAudinFlag){// TODO clean up code
-      memcpy(
-            mCartBank0A,
-            gamedata+(headersize+ bank0size + bank1size),
-            cartsize < bank0size ? cartsize : bank0size);
-      cartsize = cartsize < bank0size ? 0 : cartsize - bank0size;
+   if(CartGetAudin()){// TODO clean up code
+      memcpy(mCartBank0A, gamedata+(headersize+bank0size+bank1size),
+         __min(cartsize, bank0size));
+      cartsize = __max(0, cartsize - bank0size);
 
-      memcpy(
-            mCartBank1A,
-            gamedata+(headersize + bank0size + bank1size + bank0size),
-            cartsize < bank1size ? cartsize : bank1size);
-      cartsize = cartsize < bank1size ? 0 : cartsize - bank1size;
+      memcpy(mCartBank1A, gamedata+(headersize+bank0size+bank1size+bank0size),
+            __min(cartsize, bank1size));
+      cartsize = __max(0, cartsize - bank1size);
    }
 
    if(bank0size==0) bank0size=1;// workaround ...
    if(bank1size==0) bank1size=1;// workaround ...
-
-   // Copy the cart banks from the image
-   if(gamesize) {
-      // As this is a cartridge boot unset the boot address
-
-      gCPUBootAddress=0;
-
-      //
-      // Check if this is a headerless cart, either 410 (EPYX_HEADER_NEW) or 512 (EPYX_HEADER_OLD) zeros
-      //
-      mHeaderLess=EPYX_HEADER_OLD;// old EPYX Type
-      for(int loop=0; loop<EPYX_HEADER_OLD; loop++) {
-         if(mCartBank0[loop&mMaskBank0]!=0x00) {
-            if(loop<EPYX_HEADER_NEW) {
-               mHeaderLess=0;// less than 410 zeros -> invalid
-               break;
-            } else {
-               mHeaderLess=EPYX_HEADER_NEW;// at least 410 -> new EPYX type
-               break;
-            }
-         }
-      }
-      TRACE_CART1("CCart() - mHeaderLess=%d",mHeaderLess);
-   }
 
    // Dont allow an empty Bank1 - Use it for shadow SRAM/EEPROM
    if(banktype1==UNUSED) {
@@ -302,7 +239,6 @@ CCart::~CCart()
    delete[] mCartBank1A;
 }
 
-
 void CCart::Reset(void)
 {
    TRACE_CART0("Reset()");
@@ -325,7 +261,7 @@ bool CCart::ContextSave(LSS_FILE *fp)
    if(!lss_write(&mShiftCount1,sizeof(ULONG),1,fp)) return 0;
    if(!lss_write(&mCountMask1,sizeof(ULONG),1,fp)) return 0;
    if(!lss_write(&mBank,sizeof(EMMODE),1,fp)) return 0;
-   if(!lss_write(&mWriteEnableBank0,sizeof(ULONG),1,fp)) return 0;
+   if(!lss_write(&mDummy,sizeof(ULONG),1,fp)) return 0;
    if(!lss_write(&mWriteEnableBank1,sizeof(ULONG),1,fp)) return 0;
 
    if(!lss_write(&mCartRAM,sizeof(ULONG),1,fp)) return 0;
@@ -339,7 +275,7 @@ bool CCart::ContextSave(LSS_FILE *fp)
 bool CCart::ContextLoad(LSS_FILE *fp)
 {
    TRACE_CART0("ContextLoad()");
-   char teststr[100]="XXXXXXXXXXXXXXXXXX";
+   char teststr[32]="XXXXXXXXXXXXXXXXXX";
    if(!lss_read(teststr,sizeof(char),18,fp)) return 0;
    if(strcmp(teststr,"CCart::ContextSave")!=0) return 0;
    if(!lss_read(&mCounter,sizeof(ULONG),1,fp)) return 0;
@@ -351,7 +287,7 @@ bool CCart::ContextLoad(LSS_FILE *fp)
    if(!lss_read(&mShiftCount1,sizeof(ULONG),1,fp)) return 0;
    if(!lss_read(&mCountMask1,sizeof(ULONG),1,fp)) return 0;
    if(!lss_read(&mBank,sizeof(EMMODE),1,fp)) return 0;
-   if(!lss_read(&mWriteEnableBank0,sizeof(ULONG),1,fp)) return 0;
+   if(!lss_read(&mDummy,sizeof(ULONG),1,fp)) return 0;
    if(!lss_read(&mWriteEnableBank1,sizeof(ULONG),1,fp)) return 0;
 
    if(!lss_read(&mCartRAM,sizeof(ULONG),1,fp)) return 0;
@@ -363,58 +299,6 @@ bool CCart::ContextLoad(LSS_FILE *fp)
    }
    return 1;
 }
-
-bool CCart::ContextLoadLegacy(LSS_FILE *fp)
-{
-   TRACE_CART0("ContextLoadLegacy()");
-   strcpy(mName,"<** IMAGE **>");
-   strcpy(mManufacturer,"<** RESTORED **>");
-   char teststr[100]="XXXXXXXXXXXXXXXXXX";
-   if(!lss_read(teststr,sizeof(char),18,fp)) return 0;
-   if(strcmp(teststr,"CCart::ContextSave")!=0) return 0;
-   if(!lss_read(&mRotation,sizeof(ULONG),1,fp)) return 0;
-   if(!lss_read(&mHeaderLess,sizeof(ULONG),1,fp)) return 0;
-   if(!lss_read(&mCounter,sizeof(ULONG),1,fp)) return 0;
-   if(!lss_read(&mShifter,sizeof(ULONG),1,fp)) return 0;
-   if(!lss_read(&mAddrData,sizeof(ULONG),1,fp)) return 0;
-   if(!lss_read(&mStrobe,sizeof(ULONG),1,fp)) return 0;
-   if(!lss_read(&mShiftCount0,sizeof(ULONG),1,fp)) return 0;
-   if(!lss_read(&mCountMask0,sizeof(ULONG),1,fp)) return 0;
-   if(!lss_read(&mShiftCount1,sizeof(ULONG),1,fp)) return 0;
-   if(!lss_read(&mCountMask1,sizeof(ULONG),1,fp)) return 0;
-   if(!lss_read(&mBank,sizeof(EMMODE),1,fp)) return 0;
-
-   if(!lss_read(&mMaskBank0,sizeof(ULONG),1,fp)) return 0;
-   if(!lss_read(&mMaskBank1,sizeof(ULONG),1,fp)) return 0;
-
-   delete[] mCartBank0;
-   delete[] mCartBank1;
-   mCartBank0 = new UBYTE[mMaskBank0+1];
-   mCartBank1 = new UBYTE[mMaskBank1+1];
-   if(!lss_read(mCartBank0,sizeof(UBYTE),mMaskBank0+1,fp)) return 0;
-   if(!lss_read(mCartBank1,sizeof(UBYTE),mMaskBank1+1,fp)) return 0;
-   return 1;
-}
-
-inline void CCart::Poke(ULONG addr, UBYTE data)
-{
-   if(mBank==bank0) {
-      if(mWriteEnableBank0) mCartBank0[addr&mMaskBank0]=data;
-   } else {
-      if(mWriteEnableBank1) mCartBank1[addr&mMaskBank1]=data;
-   }
-}
-
-
-inline UBYTE CCart::Peek(ULONG addr)
-{
-   if(mBank==bank0) {
-      return(mCartBank0[addr&mMaskBank0]);
-   } else {
-      return(mCartBank1[addr&mMaskBank1]);
-   }
-}
-
 
 void CCart::CartAddressStrobe(bool strobe)
 {
@@ -445,29 +329,30 @@ void CCart::CartAddressData(bool data)
    mAddrData=data;
 }
 
+inline void CCart::Poke(ULONG addr, UBYTE data)
+{
+   if(mBank==bank1 && mWriteEnableBank1) {
+      mCartBank1[addr&mMaskBank1]=data;
+   }
+}
+
+inline UBYTE CCart::Peek(ULONG addr)
+{
+   if(mBank==bank0) {
+      return(mCartBank0[addr&mMaskBank0]);
+   } else {
+      return(mCartBank1[addr&mMaskBank1]);
+   }
+}
 
 void CCart::Poke0(UBYTE data)
 {
-   if(mWriteEnableBank0) {
-      ULONG address=(mShifter<<mShiftCount0)+(mCounter&mCountMask0);
-      mCartBank0[address&mMaskBank0]=data;
-   }
-   if(!mStrobe) {
-      mCounter++;
-      mCounter&=0x07ff;
-   }
+   CART_INC_COUNTER();
 }
 
 void CCart::Poke0A(UBYTE data)
 {
-	if(mWriteEnableBank0) {
-       ULONG address=(mShifter<<mShiftCount0)+(mCounter&mCountMask0);
-       mCartBank0A[address&mMaskBank0]=data;
-	}
-	if(!mStrobe) {
-       mCounter++;
-       mCounter&=0x07ff;
-	}
+	CART_INC_COUNTER();
 }
 
 void CCart::Poke1(UBYTE data)
@@ -476,10 +361,7 @@ void CCart::Poke1(UBYTE data)
       ULONG address=(mShifter<<mShiftCount1)+(mCounter&mCountMask1);
       mCartBank1[address&mMaskBank1]=data;
    }
-   if(!mStrobe) {
-      mCounter++;
-      mCounter&=0x07ff;
-   }
+   CART_INC_COUNTER();
 }
 
 void CCart::Poke1A(UBYTE data)
@@ -488,10 +370,7 @@ void CCart::Poke1A(UBYTE data)
        ULONG address=(mShifter<<mShiftCount1)+(mCounter&mCountMask1);
        mCartBank1A[address&mMaskBank1]=data;
 	}
-	if(!mStrobe) {
-       mCounter++;
-       mCounter&=0x07ff;
-	}
+	CART_INC_COUNTER();
 }
 
 UBYTE CCart::Peek0(void)
@@ -499,10 +378,7 @@ UBYTE CCart::Peek0(void)
    ULONG address=(mShifter<<mShiftCount0)+(mCounter&mCountMask0);
    UBYTE data=mCartBank0[address&mMaskBank0];
 
-   if(!mStrobe) {
-      mCounter++;
-      mCounter&=0x07ff;
-   }
+   CART_INC_COUNTER();
 
    return data;
 }
@@ -512,10 +388,7 @@ UBYTE CCart::Peek0A(void)
 	ULONG address=(mShifter<<mShiftCount0)+(mCounter&mCountMask0);
 	UBYTE data=mCartBank0A[address&mMaskBank0];
 
-	if(!mStrobe) {
-       mCounter++;
-       mCounter&=0x07ff;
-	}
+	CART_INC_COUNTER();
 
 	return data;
 }
@@ -525,10 +398,7 @@ UBYTE CCart::Peek1(void)
    ULONG address=(mShifter<<mShiftCount1)+(mCounter&mCountMask1);
    UBYTE data=mCartBank1[address&mMaskBank1];
 
-   if(!mStrobe) {
-      mCounter++;
-      mCounter&=0x07ff;
-   }
+   CART_INC_COUNTER();
 
    return data;
 }
@@ -538,10 +408,7 @@ UBYTE CCart::Peek1A(void)
 	ULONG address=(mShifter<<mShiftCount1)+(mCounter&mCountMask1);
 	UBYTE data=mCartBank1A[address&mMaskBank1];
 
-	if(!mStrobe) {
-       mCounter++;
-       mCounter&=0x07ff;
-	}
+	CART_INC_COUNTER();
 
 	return data;
 }

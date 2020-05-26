@@ -7,6 +7,12 @@ rm -f build/main/* # Force rebuild main to update date
 make -j 6 || exit
 
 echo ""
+echo "Building the NES emulator"
+cd ../nofrendo-go
+rm -f build/main/*
+make -j 6 || exit
+
+echo ""
 echo "Building the Gameboy emulator"
 cd ../gnuboy-go
 rm -f build/main/*
@@ -19,14 +25,14 @@ rm -f build/main/*
 make -j 6 || exit
 
 echo ""
-echo "Building the NES emulator"
-cd ../nofrendo-go
+echo "Building the SMS/Gamegear/Coleco emulator"
+cd ../smsplusgx-go
 rm -f build/main/*
 make -j 6 || exit
 
 echo ""
-echo "Building the SMS/Gamegear/Coleco emulator"
-cd ../smsplusgx-go
+echo "Building the Lynx emulator"
+cd ../handy-go
 rm -f build/main/*
 make -j 6 || exit
 
