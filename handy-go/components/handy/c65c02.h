@@ -208,7 +208,7 @@ class C65C02
       {
          TRACE_CPU0("ContextLoad()");
          int mPS;
-         char teststr[100]="XXXXXXXXXXXXXXXXXX";
+         char teststr[32]="XXXXXXXXXXXXXXXXXX";
          if(!lss_read(teststr,sizeof(char),18,fp)) return 0;
          if(strcmp(teststr,"C6502::ContextSave")!=0) return 0;
          if(!lss_read(&mA,sizeof(ULONG),1,fp)) return 0;

@@ -49,7 +49,6 @@
 #ifndef MIKIE_H
 #define MIKIE_H
 
-//#include <crtdbg.h>
 //#define	TRACE_MIKIE
 
 #ifdef TRACE_MIKIE
@@ -94,49 +93,15 @@ class CSystem;
 #define SCREEN_TIMER	0x02
 
 #define LINE_WIDTH		160
-#define	LINE_SIZE		80
+#define LINE_SIZE		80
 
 #define UART_TX_INACTIVE	0x80000000
 #define UART_RX_INACTIVE	0x80000000
 #define UART_BREAK_CODE		0x00008000
-#define	UART_MAX_RX_QUEUE	32
+#define UART_MAX_RX_QUEUE	32
 #define UART_TX_TIME_PERIOD	(11)
 #define UART_RX_TIME_PERIOD	(11)
 #define UART_RX_NEXT_DELAY	(44)
-
-typedef struct
-{
-   UBYTE	backup;
-   UBYTE	count;
-   UBYTE	controlA;
-   UBYTE	controlB;
-   bool	linkedlastcarry;
-}MTIMER;
-
-typedef struct
-{
-   union
-   {
-      struct
-      {
-#ifdef MSB_FIRST
-         UBYTE unused:4;
-         UBYTE Colour:1;
-         UBYTE FourColour:1;
-         UBYTE Flip:1;
-         UBYTE DMAEnable:1;
-#else
-
-         UBYTE DMAEnable:1;
-         UBYTE Flip:1;
-         UBYTE FourColour:1;
-         UBYTE Colour:1;
-         UBYTE unused:4;
-#endif
-      }Bits;
-      UBYTE Byte;
-   };
-}TDISPCTL;
 
 typedef struct
 {
@@ -176,24 +141,15 @@ enum
 enum
 {
    MIKIE_PIXEL_FORMAT_8BPP=0,
-   MIKIE_PIXEL_FORMAT_16BPP_555,
-   MIKIE_PIXEL_FORMAT_16BPP_555_BE,
    MIKIE_PIXEL_FORMAT_16BPP_565,
    MIKIE_PIXEL_FORMAT_16BPP_565_BE
 };
-
-// #include <blip/Stereo_Buffer.h>
-
-// typedef Blip_Synth<blip_good_quality, 256 * 4> Synth;
 
 class CMikie : public CLynxBase
 {
    public:
       CMikie(CSystem& parent);
       ~CMikie();
-
-      // Synth miksynth;
-      // Stereo_Buffer mikbuf;
 
       bool	ContextSave(LSS_FILE *fp);
       bool	ContextLoad(LSS_FILE *fp);
@@ -209,21 +165,16 @@ class CMikie : public CLynxBase
       void	ComLynxTxLoopback(int data);
       void	ComLynxTxCallback(void (*function)(int data,ULONG objref),ULONG objref);
 
-      void	DisplaySetAttributes(ULONG Rotate, ULONG Format, ULONG Pitch, UBYTE* (*DisplayCallback)(ULONG objref),ULONG objref);
-
-      void	BlowOut(void);
-
-      ULONG	DisplayRenderLine(void);
-      ULONG	DisplayEndOfFrame(void);
-
-      inline void SetCPUSleep(void) {gSystemCPUSleep=TRUE;};
-      inline void ClearCPUSleep(void) {gSystemCPUSleep=FALSE;gSystemCPUSleep_Saved=FALSE;};
-
+      void	DisplaySetAttributes(ULONG Rotate, ULONG Format, ULONG Pitch);
 
       void Update(void);
-      inline void UpdateSound(void);
       inline bool SwitchAudInDir(void){ return(mIODIR&0x10);};
       inline bool SwitchAudInValue(void){ return (mIODAT&0x10);};
+
+   private:
+      inline void UpdateSound(void);
+      ULONG	DisplayRenderLine(void);
+      void	BlowOut(void);
 
    private:
       CSystem		&mSystem;
@@ -440,7 +391,6 @@ class CMikie : public CLynxBase
       // Screen related
       //
 
-      UBYTE		*mpDisplayBits;
       UBYTE		*mpDisplayCurrent;
       UBYTE		*mpRamPointer;
       ULONG		mLynxLine;
@@ -450,8 +400,6 @@ class CMikie : public CLynxBase
       ULONG		mDisplayRotate;
       ULONG		mDisplayFormat;
       ULONG		mDisplayPitch;
-      UBYTE*	(*mpDisplayCallback)(ULONG objref);
-      ULONG		mDisplayCallbackObject;
 };
 
 

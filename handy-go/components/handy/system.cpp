@@ -80,8 +80,7 @@ ULONG   gAudioEnabled=FALSE;
 UBYTE   *gAudioBuffer;//[HANDY_AUDIO_BUFFER_SIZE];
 ULONG   gAudioBufferPointer=0;
 ULONG   gAudioLastUpdateCycle=0;
-
-CErrorInterface *gError=NULL;
+UBYTE   *gPrimaryFrameBuffer=NULL;
 
 
 extern void lynx_decrypt(unsigned char * result, const unsigned char * encrypted, const int length);
@@ -116,7 +115,7 @@ int lss_printf(LSS_FILE *fp, const char *str)
 }
 
 
-CSystem::CSystem(const char* gamefile, const char* romfile, bool useEmu)
+CSystem::CSystem(const char* gamefile)
  : mCart(NULL),
    mRom(NULL),
    mMemMap(NULL),
@@ -126,11 +125,8 @@ CSystem::CSystem(const char* gamefile, const char* romfile, bool useEmu)
    mSusie(NULL),
    mEEPROM(NULL)
 {
-
-#ifdef _LYNXDBG
    mpDebugCallback=NULL;
    mDebugCallbackObject=0;
-#endif
 
    // Select the default filetype
    UBYTE *filememory=NULL;
@@ -167,7 +163,6 @@ CSystem::CSystem(const char* gamefile, const char* romfile, bool useEmu)
 
       if(!strcmp(&clip[6],"BS93")) mFileType=HANDY_FILETYPE_HOMEBREW;
       else if(!strcmp(&clip[0],"LYNX")) mFileType=HANDY_FILETYPE_LNX;
-      else if(!strcmp(&clip[0],LSS_VERSION_OLD)) mFileType=HANDY_FILETYPE_SNAPSHOT;
       else if(filesize==128*1024 || filesize==256*1024 || filesize==512*1024) {
          fprintf(stderr, "Invalid Cart (type). but 128/256/512k size -> set to RAW and try to load raw rom image\n");
          mFileType=HANDY_FILETYPE_RAW;
@@ -191,7 +186,6 @@ CSystem::CSystem(const char* gamefile, const char* romfile, bool useEmu)
          mCart = new CCart(0,0);
          mRam = new CRam(filememory,filesize);
          break;
-      case HANDY_FILETYPE_SNAPSHOT:
       case HANDY_FILETYPE_ILLEGAL:
       default:
          // abort() ?
@@ -199,6 +193,9 @@ CSystem::CSystem(const char* gamefile, const char* romfile, bool useEmu)
          mRam = new CRam(0,0);
          break;
    }
+
+   if(filememory) delete[] filememory;
+
 
    mEEPROM = new CEEPROM();
 
@@ -222,10 +219,9 @@ CSystem::CSystem(const char* gamefile, const char* romfile, bool useEmu)
 
    Reset();
 
-   if(filememory) delete[] filememory;
    mEEPROM->SetEEPROMType(mCart->CartGetEEPROMType());
-   char eepromfile[512];
-   strncpy(eepromfile, gamefile,512-10);
+   char eepromfile[256];
+   strncpy(eepromfile, gamefile,256-10);
    strcat(eepromfile, ".eeprom");
    mEEPROM->SetFilename(eepromfile);
    mEEPROM->Load();
@@ -248,20 +244,6 @@ CSystem::~CSystem()
    if(mMikie!=NULL) delete mMikie;
    if(mSusie!=NULL) delete mSusie;
    if(mMemMap!=NULL) delete mMemMap;
-}
-
-bool CSystem::IsZip(char *filename)
-{
-   UBYTE buf[2];
-   FILE *fp;
-
-   if((fp=fopen(filename,"rb"))!=NULL) {
-      fread(buf, 2, 1, fp);
-      fclose(fp);
-      return(memcmp(buf,"PK",2)==0);
-   }
-   if(fp)fclose(fp);
-   return FALSE;
 }
 
 void CSystem::HLE_BIOS_FE00(void)
@@ -360,32 +342,14 @@ void CSystem::Reset(void)
    mCpu->Reset();
 
    // Homebrew hashup
+   mMikie->PresetForHomebrew();
 
    if(mFileType==HANDY_FILETYPE_HOMEBREW) {
-      mMikie->PresetForHomebrew();
-
       C6502_REGS regs;
       mCpu->GetRegs(regs);
       regs.PC=(UWORD)gCPUBootAddress;
       mCpu->SetRegs(regs);
-   } else {
-      mMikie->PresetForHomebrew();
    }
-}
-
-size_t CSystem::ContextSize()
-{
-   LSS_FILE fp;
-   const int max_size = 0x40000 + HANDY_AUDIO_BUFFER_SIZE;
-
-   fp.memptr = (UBYTE *) malloc(max_size);
-   fp.index = 0;
-   fp.index_limit = max_size;
-
-   ContextSave(&fp);
-
-   free(fp.memptr);
-   return fp.index;
 }
 
 bool CSystem::ContextSave(LSS_FILE *fp)
@@ -441,23 +405,18 @@ bool CSystem::ContextLoad(LSS_FILE *fp)
 
    fp->index=0;
 
-   char teststr[100];
+   char teststr[32];
    // Check identifier
    if(!lss_read(teststr,sizeof(char),4,fp)) status=0;
    teststr[4]=0;
 
-   if(strcmp(teststr,LSS_VERSION)==0 || strcmp(teststr,LSS_VERSION_OLD)==0) {
-      bool legacy=FALSE;
-      if(strcmp(teststr,LSS_VERSION_OLD)==0) {
-         legacy=TRUE;
-      } else {
-         ULONG checksum;
-         // Read CRC32 and check against the CART for a match
-         lss_read(&checksum,sizeof(ULONG),1,fp);
-         if(mCart->CRC32()!=checksum) {
-            fprintf(stderr, "[handy]LSS Snapshot CRC does not match the loaded cartridge image, aborting load.\n");
-            return 0;
-         }
+   if(strcmp(teststr,LSS_VERSION)==0) {
+      ULONG checksum;
+      // Read CRC32 and check against the CART for a match
+      lss_read(&checksum,sizeof(ULONG),1,fp);
+      if(mCart->CRC32()!=checksum) {
+         fprintf(stderr, "[handy]LSS Snapshot CRC does not match the loaded cartridge image, aborting load.\n");
+         return 0;
       }
 
       // Check our block header
@@ -519,7 +478,7 @@ void CSystem::DebugTrace(int address)
          C6502_REGS regs;
          char linetext[1024];
          // Register dump
-         GetRegs(regs);
+         mCpu->GetRegs(regs);
          sprintf(linetext,"PC=$%04x SP=$%02x PS=0x%02x A=0x%02x X=0x%02x Y=0x%02x",regs.PC,regs.SP, regs.PS,regs.A,regs.X,regs.Y);
          strcat(message,linetext);
          count=strlen(message);

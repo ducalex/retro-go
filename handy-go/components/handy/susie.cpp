@@ -261,7 +261,7 @@ bool CSusie::ContextLoad(LSS_FILE *fp)
 {
    TRACE_SUSIE0("ContextLoad()");
 
-   char teststr[100]="XXXXXXXXXXXXXXXXXXX";
+   char teststr[32]="XXXXXXXXXXXXXXXXXXX";
    if(!lss_read(teststr,sizeof(char),19,fp)) return 0;
    if(strcmp(teststr,"CSusie::ContextSave")!=0) return 0;
 
@@ -846,8 +846,8 @@ ULONG CSusie::PaintSprites(void)
          // Perform Sprite debugging if required, single step on sprite draw
          if(gSingleStepModeSprites) {
             // char message[256];
-            // sprintf(message,"CSusie:PaintSprites() - Rendered Sprite %03d",sprcount);
-            // if(!gError->Warning(message)) gSingleStepModeSprites=0;
+            //sprintf("CSusie:PaintSprites() - Rendered Sprite %03d\n",sprcount);
+            //SingleStepModeSprites=0;
          }
       } else {
          TRACE_SUSIE0("PaintSprites() mSPRCTL1.Bits.SkipSprite==TRUE");
@@ -870,7 +870,7 @@ ULONG CSusie::PaintSprites(void)
          // Stop the system, otherwise we may just come straight back in.....
          gSystemHalt=TRUE;
          // Display warning message
-         gError->Warning("CSusie:PaintSprites(): Single draw sprite limit exceeded (>4096). The SCB is most likely looped back on itself. Reset/Exit is recommended");
+         printf("CSusie:PaintSprites(): Single draw sprite limit exceeded (>4096). The SCB is most likely looped back on itself. Reset/Exit is recommended\n");
          // Signal error to the caller
          return 0;
       }
@@ -1192,7 +1192,7 @@ inline ULONG CSusie::LineInit(ULONG voff)
    // Set the line base address for use in the calls to pixel painting
 
    if(voff>101) {
-      gError->Warning("CSusie::LineInit() Out of bounds (voff)");
+      printf("CSusie::LineInit() Out of bounds (voff)\n");
       voff=0;
    }
 

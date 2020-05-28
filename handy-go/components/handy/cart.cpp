@@ -73,6 +73,7 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
       mFileHeader.page_size_bank1 = ((mFileHeader.page_size_bank1>>8) | (mFileHeader.page_size_bank1<<8));
       mFileHeader.version         = ((mFileHeader.version>>8) | (mFileHeader.version<<8));
 #endif
+
       // Sanity checks on the header
 
       if(mFileHeader.magic[0]!='L' || mFileHeader.magic[1]!='Y' || mFileHeader.magic[2]!='N'
@@ -93,38 +94,28 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
       memset(&mFileHeader,0,sizeof(LYNX_HEADER));
    }
 
-   // Set the filetypes
-
-   CTYPE banktype0 = UNUSED;
-   CTYPE banktype1 = UNUSED;
-
    switch(mFileHeader.page_size_bank0) {
       case 0x000:
-         banktype0=UNUSED;
          mMaskBank0=0;
          mShiftCount0=0;
          mCountMask0=0;
          break;
       case 0x100:
-         banktype0=C64K;
          mMaskBank0=0x00ffff;
          mShiftCount0=8;
          mCountMask0=0x0ff;
          break;
       case 0x200:
-         banktype0=C128K;
          mMaskBank0=0x01ffff;
          mShiftCount0=9;
          mCountMask0=0x1ff;
          break;
       case 0x400:
-         banktype0=C256K;
          mMaskBank0=0x03ffff;
          mShiftCount0=10;
          mCountMask0=0x3ff;
          break;
       case 0x800:
-         banktype0=C512K;
          mMaskBank0=0x07ffff;
          mShiftCount0=11;
          mCountMask0=0x7ff;
@@ -137,31 +128,29 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
 
    switch(mFileHeader.page_size_bank1) {
       case 0x000:
-         banktype1=UNUSED;
-         mMaskBank1=0;
-         mShiftCount1=0;
-         mCountMask1=0;
+         // Dont allow an empty Bank1 - Use it for shadow SRAM/EEPROM
+         mMaskBank1=0x00ffff;
+         mShiftCount1=8;
+         mCountMask1=0x0ff;
+         mWriteEnableBank1=TRUE;
+         mCartRAM=TRUE;
          break;
       case 0x100:
-         banktype1=C64K;
          mMaskBank1=0x00ffff;
          mShiftCount1=8;
          mCountMask1=0x0ff;
          break;
       case 0x200:
-         banktype1=C128K;
          mMaskBank1=0x01ffff;
          mShiftCount1=9;
          mCountMask1=0x1ff;
          break;
       case 0x400:
-         banktype1=C256K;
          mMaskBank1=0x03ffff;
          mShiftCount1=10;
          mCountMask1=0x3ff;
          break;
       case 0x800:
-         banktype1=C512K;
          mMaskBank1=0x07ffff;
          mShiftCount1=11;
          mCountMask1=0x7ff;
@@ -176,21 +165,17 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
 
    mCartBank0 = (UBYTE*) new UBYTE[mMaskBank0+1];
    mCartBank1 = (UBYTE*) new UBYTE[mMaskBank1+1];
-   mCartBank0A = (UBYTE*) new UBYTE[mMaskBank0+1];
-   mCartBank1A = (UBYTE*) new UBYTE[mMaskBank1+1];
+   mCartBank0A = NULL;
+   mCartBank1A = NULL;
 
-   // Initialiase
+   memset(mCartBank0, DEFAULT_CART_CONTENTS, mMaskBank0+1);
+   memset(mCartBank1, DEFAULT_CART_CONTENTS, mMaskBank1+1);
 
    // TODO: the following code to read the banks is not very nice .. should be reworked
    // TODO: actually its dangerous, if more than one bank is used ... (only homebrews)
    int cartsize = __max(0, int(gamesize - headersize));
    int bank0size = __min(cartsize, (int)(mMaskBank0+1));
    int bank1size = __min(cartsize, (int)(mMaskBank1+1));
-
-   memset(mCartBank0, DEFAULT_CART_CONTENTS, bank0size);
-   memset(mCartBank1, DEFAULT_CART_CONTENTS, bank1size);
-   memset(mCartBank0A, DEFAULT_CART_CONTENTS, bank0size);
-   memset(mCartBank1A, DEFAULT_CART_CONTENTS, bank1size);
    if(bank0size==1) bank0size=0;// workaround ...
    if(bank1size==1) bank1size=0;// workaround ...
 
@@ -201,6 +186,11 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
    cartsize = __max(0, cartsize - bank1size);
 
    if(CartGetAudin()){// TODO clean up code
+      mCartBank0A = (UBYTE*) new UBYTE[mMaskBank0+1];
+      mCartBank1A = (UBYTE*) new UBYTE[mMaskBank1+1];
+      memset(mCartBank0A, DEFAULT_CART_CONTENTS, mMaskBank0+1);
+      memset(mCartBank1A, DEFAULT_CART_CONTENTS, mMaskBank1+1);
+
       memcpy(mCartBank0A, gamedata+(headersize+bank0size+bank1size),
          __min(cartsize, bank0size));
       cartsize = __max(0, cartsize - bank0size);
@@ -209,34 +199,15 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
             __min(cartsize, bank1size));
       cartsize = __max(0, cartsize - bank1size);
    }
-
-   if(bank0size==0) bank0size=1;// workaround ...
-   if(bank1size==0) bank1size=1;// workaround ...
-
-   // Dont allow an empty Bank1 - Use it for shadow SRAM/EEPROM
-   if(banktype1==UNUSED) {
-      // Delete the single byte allocated  earlier
-      delete[] mCartBank1;
-      // Allocate some new memory for us
-      TRACE_CART0("CCart() - Bank1 being converted to 64K SRAM");
-      banktype1=C64K;
-      mMaskBank1=0x00ffff;
-      mShiftCount1=8;
-      mCountMask1=0x0ff;
-      mCartBank1 = (UBYTE*) new UBYTE[mMaskBank1+1];
-      memset(mCartBank1, DEFAULT_RAM_CONTENTS, mMaskBank1+1);
-      mWriteEnableBank1=TRUE;
-      mCartRAM=TRUE;
-   }
 }
 
 CCart::~CCart()
 {
    TRACE_CART0("~CCart()");
-   delete[] mCartBank0;
-   delete[] mCartBank1;
-   delete[] mCartBank0A;
-   delete[] mCartBank1A;
+   if (mCartBank0) delete[] mCartBank0;
+   if (mCartBank1) delete[] mCartBank1;
+   if (mCartBank0A) delete[] mCartBank0A;
+   if (mCartBank1A) delete[] mCartBank1A;
 }
 
 void CCart::Reset(void)
@@ -366,7 +337,7 @@ void CCart::Poke1(UBYTE data)
 
 void CCart::Poke1A(UBYTE data)
 {
-	if(mWriteEnableBank1) {
+	if(mWriteEnableBank1 && mCartBank1A) {
        ULONG address=(mShifter<<mShiftCount1)+(mCounter&mCountMask1);
        mCartBank1A[address&mMaskBank1]=data;
 	}
@@ -386,7 +357,7 @@ UBYTE CCart::Peek0(void)
 UBYTE CCart::Peek0A(void)
 {
 	ULONG address=(mShifter<<mShiftCount0)+(mCounter&mCountMask0);
-	UBYTE data=mCartBank0A[address&mMaskBank0];
+	UBYTE data=mCartBank0A?mCartBank0A[address&mMaskBank0]:0xFF;
 
 	CART_INC_COUNTER();
 
@@ -406,7 +377,7 @@ UBYTE CCart::Peek1(void)
 UBYTE CCart::Peek1A(void)
 {
 	ULONG address=(mShifter<<mShiftCount1)+(mCounter&mCountMask1);
-	UBYTE data=mCartBank1A[address&mMaskBank1];
+	UBYTE data=mCartBank1A?mCartBank1A[address&mMaskBank1]:0xFF;
 
 	CART_INC_COUNTER();
 

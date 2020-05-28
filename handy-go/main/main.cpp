@@ -16,7 +16,7 @@ extern "C" {
 #define PIXEL_MASK 0xFF
 #define PAL_SHIFT_MASK 0x00
 
-DMA_ATTR static char audioBuffer[AUDIO_BUFFER_LENGTH * 2 * 2];
+DMA_ATTR static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
 static odroid_video_frame update1;
 static odroid_video_frame update2;
@@ -44,20 +44,6 @@ static bool load_state(char *pathName)
 }
 
 
-static UBYTE* lynx_display_callback(ULONG objref)
-{
-    bool fullFrame = false;
-
-    fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
-    previousUpdate = currentUpdate;
-    currentUpdate = (currentUpdate == &update1) ? &update2 : &update1;
-
-    odroid_system_tick(0, fullFrame, get_elapsed_time_since(startTime));
-
-    return (UBYTE*)currentUpdate->buffer + currentUpdate->stride;
-}
-
-
 extern "C" void app_main(void)
 {
     printf("\n========================================\n\n");
@@ -78,13 +64,11 @@ extern "C" void app_main(void)
     const char *romFile = odroid_system_get_rom_path();
 
     // Init emulator
-    lynx = new CSystem(romFile, "", true);
-    lynx->DisplaySetAttributes(
-        MIKIE_NO_ROTATE,
-        MIKIE_PIXEL_FORMAT_16BPP_565_BE,
-        HANDY_SCREEN_WIDTH * 2,
-        lynx_display_callback,
-        0);
+    lynx = new CSystem(romFile);
+    lynx->DisplaySetAttributes(MIKIE_NO_ROTATE, MIKIE_PIXEL_FORMAT_16BPP_565_BE, update1.stride);
+
+    gAudioBuffer = (UBYTE*)&audioBuffer;
+    gAudioEnabled = 0;
 
     if (odroid_system_get_start_action() == ODROID_START_ACTION_RESUME)
     {
@@ -93,6 +77,7 @@ extern "C" void app_main(void)
 
     odroid_gamepad_state joystick;
     ULONG buttons;
+    bool fullFrame;
 
     // Start emulation
     while (1)
@@ -105,6 +90,8 @@ extern "C" void app_main(void)
         else if (joystick.values[ODROID_INPUT_VOLUME]) {
             odroid_overlay_game_settings_menu(NULL);
         }
+
+        gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer + currentUpdate->stride;
 
         startTime = get_elapsed_time();
         buttons = 0;
@@ -121,6 +108,19 @@ extern "C" void app_main(void)
         lynx->SetButtonData(buttons);
 
         lynx->UpdateFrame();
+
+        fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
+        previousUpdate = currentUpdate;
+        currentUpdate = (currentUpdate == &update1) ? &update2 : &update1;
+
+        odroid_system_tick(0, fullFrame, get_elapsed_time_since(startTime));
+
+        if (!speedupEnabled)
+        {
+            // memset(&audioBuffer + (gAudioBufferPointer / 2), 0, sizeof(audioBuffer) - gAudioBufferPointer);
+            odroid_audio_submit(audioBuffer, AUDIO_SAMPLE_RATE / 60);
+            gAudioBufferPointer = 0;
+        }
     }
 
     printf("Handy died.\n");

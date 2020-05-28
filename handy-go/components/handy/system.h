@@ -67,21 +67,23 @@ typedef uint32_t ULONG;
 #endif
 
 #include "lynxbase.h"
-#include "errorinterface.h"
 
 #define HANDY_SYSTEM_FREQ                       16000000
 #define HANDY_TIMER_FREQ                        20
-#define HANDY_AUDIO_SAMPLE_FREQ                 48000
+#define HANDY_AUDIO_SAMPLE_FREQ                 22050 // 48000
 #define HANDY_AUDIO_SAMPLE_PERIOD               (HANDY_SYSTEM_FREQ/HANDY_AUDIO_SAMPLE_FREQ)
 #define HANDY_AUDIO_WAVESHAPER_TABLE_LENGTH     0x200000
+
+// for one frame of 16bit stereo
+#define HANDY_AUDIO_BUFFER_SIZE                 ((HANDY_AUDIO_SAMPLE_FREQ/60+1)*2*2)
 
 #ifdef SDL_PATCH
 //#define HANDY_AUDIO_BUFFER_SIZE               4096    // Needed for SDL 8bit MONO
 //#define HANDY_AUDIO_BUFFER_SIZE               8192    // Needed for SDL STEREO 8bit
-#define HANDY_AUDIO_BUFFER_SIZE                 16384   // Needed for SDL STEREO 16bit
+//#define HANDY_AUDIO_BUFFER_SIZE                 16384   // Needed for SDL STEREO 16bit
 #else
 //#define HANDY_AUDIO_BUFFER_SIZE               (HANDY_AUDIO_SAMPLE_FREQ/4)
-#define HANDY_AUDIO_BUFFER_SIZE                 (HANDY_AUDIO_SAMPLE_FREQ)
+//#define HANDY_AUDIO_BUFFER_SIZE                 (HANDY_AUDIO_SAMPLE_FREQ)
 #endif
 
 
@@ -119,8 +121,7 @@ extern ULONG    gAudioEnabled;
 extern UBYTE    *gAudioBuffer;
 extern ULONG    gAudioBufferPointer;
 extern ULONG    gAudioLastUpdateCycle;
-
-extern CErrorInterface *gError;
+extern UBYTE    *gPrimaryFrameBuffer;
 
 typedef struct lssfile
 {
@@ -160,15 +161,13 @@ class CSystem;
 #define TOP_SIZE    0x400
 #define SYSTEM_SIZE 65536
 
-#define LSS_VERSION_OLD "LSS2"
 #define LSS_VERSION     "LSS3"
 
 class CSystem : public CSystemBase
 {
    public:
-      CSystem(const char* gamefile, const char* romfile,bool useEmu);
+      CSystem(const char* gamefile);
       ~CSystem();
-    void SaveEEPROM(void);
 
    public:
       void HLE_BIOS_FE00(void);
@@ -176,10 +175,9 @@ class CSystem : public CSystemBase
       void HLE_BIOS_FE4A(void);
       void HLE_BIOS_FF80(void);
       void Reset(void);
-      size_t ContextSize(void);
       bool ContextSave(LSS_FILE *fp);
       bool ContextLoad(LSS_FILE *fp);
-      bool IsZip(char *filename);
+      void SaveEEPROM(void);
 
       inline void Update(void)
       {
@@ -231,6 +229,16 @@ class CSystem : public CSystemBase
 
             mCpu->Update();
 
+         #ifdef _LYNXDBG
+                  // Check breakpoint
+                  static ULONG lastcycle=0;
+                  if(lastcycle<mCycleCountBreakpoint && gSystemCycleCount>=mCycleCountBreakpoint) gBreakpointHit=TRUE;
+                  lastcycle=gSystemCycleCount;
+
+                  // Check single step mode
+                  if(gSingleStepMode) gBreakpointHit=TRUE;
+         #endif
+
             if(gSystemCPUSleep)
             {
                gSystemCycleCount=gNextTimerEvent;
@@ -239,49 +247,25 @@ class CSystem : public CSystemBase
       }
 
       //
-      // We MUST have separate CPU & RAM peek & poke handlers as all CPU accesses must
-      // go thru the address generator at $FFF9
-      //
-      // BUT, Mikie video refresh & Susie see the whole system as RAM
-      //
-      // Complete and utter wankers, its taken me 1 week to find the 2 lines
-      // in all the documentation that mention this fact, the mother of all
-      // bugs has been found and FIXED.......
-
-      //
       // CPU
       //
       inline void  Poke_CPU(ULONG addr, UBYTE data) {
-         if (addr < 0xFC00)
-            mRam->Poke(addr,data);
-         else
-            mMemoryHandlers[addr & 0x3FF]->Poke(addr,data);
+         if (addr < 0xFC00) mRam->Poke(addr,data);
+         else mMemoryHandlers[addr & 0x3FF]->Poke(addr,data);
       };
       inline UBYTE Peek_CPU(ULONG addr) {
-         if (addr < 0xFC00)
-            return mRam->Peek(addr);
-         else
-            return mMemoryHandlers[addr & 0x3FF]->Peek(addr);
+         if (addr < 0xFC00) return mRam->Peek(addr);
+         return mMemoryHandlers[addr & 0x3FF]->Peek(addr);
       };
       inline void  PokeW_CPU(ULONG addr,UWORD data) { Poke_CPU(addr, data&0xff); Poke_CPU(addr + 1, data >> 8); };
       inline UWORD PeekW_CPU(ULONG addr) { return ((Peek_CPU(addr))+(Peek_CPU(addr+1)<<8)); };
 
-      // Low level CPU access
-
-      void   SetRegs(C6502_REGS &regs) {mCpu->SetRegs(regs);};
-      void   GetRegs(C6502_REGS &regs) {mCpu->GetRegs(regs);};
-
       // Mikey system interfacing
 
-      void   DisplaySetAttributes(ULONG Rotate,ULONG Format,ULONG Pitch,UBYTE* (*DisplayCallback)(ULONG objref),ULONG objref) { mMikie->DisplaySetAttributes(Rotate,Format,Pitch,DisplayCallback,objref); };
-
+      void   DisplaySetAttributes(ULONG Rotate,ULONG Format,ULONG Pitch) { mMikie->DisplaySetAttributes(Rotate,Format,Pitch); };
       void   ComLynxCable(int status) { mMikie->ComLynxCable(status); };
       void   ComLynxRxData(int data)  { mMikie->ComLynxRxData(data); };
       void   ComLynxTxCallback(void (*function)(int data,ULONG objref),ULONG objref) { mMikie->ComLynxTxCallback(function,objref); };
-
-      // Suzy system interfacing
-
-      ULONG  PaintSprites(void) {return mSusie->PaintSprites();};
 
       // Miscellaneous
 
@@ -289,14 +273,13 @@ class CSystem : public CSystemBase
       ULONG  GetButtonData(void) {return mSusie->GetButtonData();};
       void   SetCycleBreakpoint(ULONG breakpoint) {mCycleCountBreakpoint=breakpoint;};
       UBYTE* GetRamPointer(void) {return mRam->GetRamPointer();};
-#ifdef _LYNXDBG
+
+      // Debygging
+
       void   DebugTrace(int address);
-
       void   DebugSetCallback(void (*function)(ULONG objref, char *message),ULONG objref);
-
       void   (*mpDebugCallback)(ULONG objref, char *message);
       ULONG  mDebugCallbackObject;
-#endif
 
    public:
       ULONG         mCycleCountBreakpoint;

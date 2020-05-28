@@ -107,7 +107,7 @@ bool CMemMap::ContextSave(LSS_FILE *fp)
 
 bool CMemMap::ContextLoad(LSS_FILE *fp)
 {
-   char teststr[100]="XXXXXXXXXXXXXXXXXXXX";
+   char teststr[32]="XXXXXXXXXXXXXXXXXXXX";
 
    // First put everything to a known state
    Reset();

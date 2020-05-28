@@ -85,7 +85,7 @@ bool CEEPROM::ContextSave(LSS_FILE *fp)
 
 bool CEEPROM::ContextLoad(LSS_FILE *fp)
 {
-   char teststr[100]="XXXXXXXXXXXXXXXXXXXX";
+   char teststr[32]="XXXXXXXXXXXXXXXXXXXX";
    if(!lss_read(teststr,sizeof(char),20,fp)) return 0;
    teststr[20]=0;
    if(strcmp(teststr,"CEEPROM::ContextSave")!=0) return 0;

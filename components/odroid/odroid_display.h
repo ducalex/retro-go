@@ -40,6 +40,13 @@ typedef enum
     ODROID_DISPLAY_FILTER_COUNT = 4,
 } odroid_display_filter;
 
+typedef enum
+{
+   ODROID_PIXEL_FORMAT_565_BE = 0,  // 16bit 565 big endian (prefered for our lcd)
+   ODROID_PIXEL_FORMAT_565_LE,      // 16bit 565 little endian
+} odroid_pixel_format;
+
+
 typedef struct {
     short left;
     short width;
@@ -47,14 +54,14 @@ typedef struct {
 } odroid_line_diff;
 
 typedef struct {
-    short width;       // In px
-    short height;      // In px
-    short stride;      // In bytes
-    short pixel_size;  // In bytes
-    short pixel_mask;  // Put 0xFF if no palette
-    short pixel_clear; // Set each pixel to this value after reading it (-1 to disable)
-    void *buffer;      // Should match pixel_size
-    uint16_t *palette; //
+    int width;          // In px
+    int height;         // In px
+    int stride;         // In bytes
+    int pixel_size;     // In bytes
+    int pixel_mask;     // Unused if no palette
+    int pixel_clear;    // Clear each pixel to this value after reading it (-1 to disable)
+    void *buffer;       // Should be at least height*stride bytes
+    void *palette;      //
     uint8_t pal_shift_mask;
     odroid_line_diff diff[240];
 } odroid_video_frame;
@@ -77,4 +84,3 @@ void odroid_display_drain_spi();
 void odroid_display_write(short left, short top, short width, short height, uint16_t* bufferLE);
 void odroid_display_clear(uint16_t colorLE);
 void odroid_display_show_hourglass();
-

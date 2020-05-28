@@ -85,6 +85,10 @@ static struct
    uint8 tile;
 } fill_mode;
 
+struct mapper5Data
+{
+   unsigned char dummy; /* needed for some compilers; remove if any members are added */
+};
 
 INLINE uint8 *get_nametable(int n)
 {
@@ -369,19 +373,91 @@ static uint8 map5_vram_read(uint32 address, uint8 value)
 
    if (address >= 0x2000 && address <= 0x2FFF)
    {
+      // Nametable fetch vs attr fetch
       is_nt_read = (address & 0x3FF) < (30 * 32);
       is_nt_attr_read = !is_nt_read;
    }
 
+   if (is_nt_read)
+   {
+      split_region = false;
+      split_tile_number++;
+   }
 
+// Reference: https://github.com/SourMesen/Mesen/blob/master/Core/MMC5.h
+#if 0
    if (exram.mode <= 1 && scanline < 240)
    {
       if (vert_split.enabled)
       {
          short scroll = (vert_split.scroll + scanline) % 240;
+         if (address >= 0x2000)
+         {
+            if (is_nt_read)
+            {
+               uint8 tile_number = (split_tile_number + 2) % 42;
+               if (tile_number <= 32 && ((vert_split.rightside && tile_number >= vert_split.delimiter)
+                     || (!vert_split.rightside && tile_number < vert_split.delimiter)))
+               {
+                  // Split region (for next 3 fetches, attribute + 2x tile data)
+                  split_region = true;
+                  split_tile = ((vscroll & 0xF8) << 2) | tile_number;
+                  return exram.data[split_tile];
+               }
+               else
+               {
+                  // Outside of split region (or sprite data), result can get modified by ex ram mode code below
+                  split_region = false;
+               }
+            }
+            else if (split_region)
+            {
+               return exram.data[(0x5FC0 | ((split_tile & 0x380) >> 4) | ((split_tile & 0x1F) >> 2)) - 0x5C00];
+            }
+         }
+         else if (split_region)
+         {
+            // CHR tile fetches for split region
+            return nes->mmc->chr[vert_split.bank * 0x1000 + (((address & ~0x07) | (vscroll & 0x07)) & 0xFFF)];
+         }
+      }
+
+
+      if (exram.mode == 1 && (split_tile_number < 32 || split_tile_number >= 40))
+      {
+         //"In Mode 1, nametable fetches are processed normally, and can come from CIRAM nametables, fill mode, or even Expansion RAM, but attribute fetches are replaced by data from Expansion RAM."
+         //"Each byte of Expansion RAM is used to enhance the tile at the corresponding address in every nametable"
+
+         //When fetching NT data, we set a flag and then alter the VRAM values read by the PPU on the following 3 cycles (palette, tile low/high byte)
+         if (is_nt_read)
+         {
+            _exAttributeLastNametableFetch = address & 0x03FF;
+            _exAttrLastFetchCounter = 3;
+         }
+         else if (_exAttrLastFetchCounter > 0)
+         {
+            _exAttrLastFetchCounter--;
+
+            if (_exAttrLastFetchCounter == 2)
+            {
+               // PPU palette fetch from expansion ram
+               uint8 value = exram.data[_exAttributeLastNametableFetch];
+               uint8 palette = (value & 0xC0) >> 6;
+
+               //"The pattern fetches ignore the standard CHR banking bits, and instead use the top two bits of $5130 and the bottom 6 bits from Expansion RAM to choose a 4KB bank to select the tile from."
+               _exAttrSelectedChrBank = ((value & 0x3F) | (chr_upper_bits >> 2)) % (nes->mmc->chr_banks * 2);
+
+               return palette | palette << 2 | palette << 4 | palette << 6;
+            }
+            else
+            {
+               //PPU tile data fetch (high byte & low byte)
+               return nes->mmc->chr[_exAttrSelectedChrBank * 0x1000 + (address & 0xFFF)];
+            }
+         }
       }
    }
-
+#endif
    return value;
 }
 
