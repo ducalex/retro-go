@@ -163,6 +163,8 @@ void CSusie::Reset(void)
 
    mJOYSTICK.Byte=0;
    mSWITCHES.Byte=0;
+
+   cycles_used = 0;
 }
 
 bool CSusie::ContextSave(LSS_FILE *fp)
@@ -553,8 +555,8 @@ ULONG CSusie::PaintSprites(void)
          int screen_v_start=(SWORD)mVOFF.Word;
          int screen_v_end=(SWORD)mVOFF.Word+SCREEN_HEIGHT;
 
-         int world_h_mid=screen_h_start+(SCREEN_WIDTH/2);
-         int world_v_mid=screen_v_start+(SCREEN_HEIGHT/2);
+         int world_h_mid=screen_h_start+0x8000+(SCREEN_WIDTH/2);
+         int world_v_mid=screen_v_start+0x8000+(SCREEN_HEIGHT/2);
 
          TRACE_SUSIE2("PaintSprites() screen_h_start $%04x screen_h_end $%04x",screen_h_start,screen_h_end);
          TRACE_SUSIE2("PaintSprites() screen_v_start $%04x screen_v_end $%04x",screen_v_start,screen_v_end);
@@ -563,6 +565,9 @@ ULONG CSusie::PaintSprites(void)
          bool superclip=FALSE;
          int quadrant=0;
          int hsign,vsign;
+
+         int vquadflip[4]={1,0,3,2};
+         int hquadflip[4]={3,2,1,0};
 
          if(mSPRCTL1_StartLeft) {
             if(mSPRCTL1_StartUp) quadrant=2;
@@ -747,25 +752,191 @@ ULONG CSusie::PaintSprites(void)
 
                         // Initialise our line
                         LineInit(voff);
+                        onscreen=FALSE;
 
-                        // Now render an individual destination line
-                        while((pixel=LineGetPixel())!=LINE_END) {
-                           // This is allowed to update every pixel
-                           mHSIZACUM.Word+=mSPRHSIZ.Word;
-                           pixel_width=mHSIZACUM.Byte.High;
-                           mHSIZACUM.Byte.High=0;
+                        ULONG pixel = mLinePixel; // Much faster
+                        switch(mSPRCTL0_Type)
+                        {
+                              case sprite_background_shadow:
+                                 #define PROCESS_PIXEL \
+                                 WritePixel(hoff,pixel); \
+                                 if(!mSPRCOLL_Collide && !mSPRSYS_NoCollide && pixel!=0x0e) \
+                                 { \
+                                    WriteCollision(hoff,mSPRCOLL_Number); \
+                                 }
+                                 #define EndWhile EndWhile01a
+                                 #define HOFF_SIGN LoopContinue01a
+                                 #define LoopContinue LoopContinue01a
 
-                           for(hloop=0; hloop<pixel_width; hloop++) {
-                              // Draw if onscreen but break loop on transition to offscreen
-                              if(hoff>=0 && hoff<SCREEN_WIDTH) {
-                                 ProcessPixel(hoff,pixel);
-                                 onscreen = TRUE;
-								         everonscreen=TRUE;
-                              } else {
-                                 if(onscreen) break;
-                              }
-                              hoff+=hsign;
-                           }
+                                 #include "susie_pixel_loop.h"
+                                 break;
+                              case sprite_background_noncollide:
+                                 #undef PROCESS_PIXEL
+                                 #define PROCESS_PIXEL WritePixel(hoff,pixel);
+
+                                 #undef EndWhile
+                                 #undef LoopContinue
+                                 #define EndWhile EndWhile02a
+                                 #define LoopContinue LoopContinue02a
+                                 #include "susie_pixel_loop.h"
+                                 break;
+                              case sprite_noncollide:
+                                 #undef PROCESS_PIXEL
+                                 #define PROCESS_PIXEL if(pixel!=0x00) WritePixel(hoff,pixel);
+
+                                 #undef EndWhile
+                                 #undef LoopContinue
+                                 #define EndWhile EndWhile03a
+                                 #define LoopContinue LoopContinue03a
+                                 #include "susie_pixel_loop.h"
+                                 break;
+                              case sprite_boundary:
+                                 #undef PROCESS_PIXEL
+                                 #define PROCESS_PIXEL \
+                                 if(pixel!=0x00 && pixel!=0x0f) \
+                                 { \
+                                    WritePixel(hoff,pixel); \
+                                 } \
+                                 if(pixel!=0x00) \
+                                 { \
+                                    if(!mSPRCOLL_Collide && !mSPRSYS_NoCollide) \
+                                    { \
+                                       ULONG collision=ReadCollision(hoff); \
+                                       if(collision>mCollision) \
+                                       { \
+                                          mCollision=collision; \
+                                       } \
+                                       { \
+                                          WriteCollision(hoff,mSPRCOLL_Number); \
+                                       } \
+                                    } \
+                                 }
+
+                                 #undef EndWhile
+                                 #undef LoopContinue
+                                 #define EndWhile EndWhile04a
+                                 #define LoopContinue LoopContinue04a
+                                 #include "susie_pixel_loop.h"
+                                 break;
+                              case sprite_normal:
+                                 #undef PROCESS_PIXEL
+                                 #define PROCESS_PIXEL \
+                                 if(pixel!=0x00) \
+                                 { \
+                                    WritePixel(hoff,pixel); \
+                                    if(!mSPRCOLL_Collide && !mSPRSYS_NoCollide) \
+                                    { \
+                                       ULONG collision=ReadCollision(hoff); \
+                                       if(collision>mCollision) \
+                                       { \
+                                          mCollision=collision; \
+                                       } \
+                                       { \
+                                          WriteCollision(hoff,mSPRCOLL_Number); \
+                                       } \
+                                    } \
+                                 }
+
+                                 #undef EndWhile
+                                 #undef LoopContinue
+                                 #define EndWhile EndWhile05a
+                                 #define LoopContinue LoopContinue05a
+                                 #include "susie_pixel_loop.h"
+                                 break;
+                              case sprite_boundary_shadow:
+                                 #undef PROCESS_PIXEL
+                                 #define PROCESS_PIXEL \
+                                 if(pixel!=0x00 && pixel!=0x0e && pixel!=0x0f) \
+                                 { \
+                                    WritePixel(hoff,pixel); \
+                                 } \
+                                 if(pixel!=0x00 && pixel!=0x0e) \
+                                 { \
+                                    if(!mSPRCOLL_Collide && !mSPRSYS_NoCollide) \
+                                    { \
+                                       ULONG collision=ReadCollision(hoff); \
+                                       if(collision>mCollision) \
+                                       { \
+                                          mCollision=collision; \
+                                       } \
+                                       { \
+                                          WriteCollision(hoff,mSPRCOLL_Number); \
+                                       } \
+                                    } \
+                                 }
+
+                                 #undef EndWhile
+                                 #undef LoopContinue
+                                 #define EndWhile EndWhile06a
+                                 #define LoopContinue LoopContinue06a
+                                 #include "susie_pixel_loop.h"
+                                 break;
+                              case sprite_shadow:
+                                 #undef PROCESS_PIXEL
+                                 #define PROCESS_PIXEL \
+                                 if(pixel!=0x00) \
+                                 { \
+                                    WritePixel(hoff,pixel); \
+                                 } \
+                                 if(pixel!=0x00 && pixel!=0x0e) \
+                                 { \
+                                    if(!mSPRCOLL_Collide && !mSPRSYS_NoCollide) \
+                                    { \
+                                       ULONG collision=ReadCollision(hoff); \
+                                       if(collision>mCollision) \
+                                       { \
+                                          mCollision=collision; \
+                                       } \
+                                       { \
+                                          WriteCollision(hoff,mSPRCOLL_Number); \
+                                       } \
+                                    } \
+                                 }
+
+                                 #undef EndWhile
+                                 #undef LoopContinue
+                                 #define EndWhile EndWhile07a
+                                 #define LoopContinue LoopContinue07a
+                                 #include "susie_pixel_loop.h"
+                                 break;
+                              case sprite_xor_shadow:
+                                 #undef PROCESS_PIXEL
+                                 #define PROCESS_PIXEL \
+                                 if(pixel!=0x00) \
+                                 { \
+                                    WritePixel(hoff,ReadPixel(hoff)^pixel); \
+                                 } \
+                                 if(pixel!=0x00 && pixel!=0x0e) \
+                                 { \
+                                    if(!mSPRCOLL_Collide && !mSPRSYS_NoCollide && pixel!=0x0e) \
+                                    { \
+                                       ULONG collision=ReadCollision(hoff); \
+                                       if(collision>mCollision) \
+                                       { \
+                                          mCollision=collision; \
+                                       } \
+                                       { \
+                                          WriteCollision(hoff,mSPRCOLL_Number); \
+                                       } \
+                                    } \
+                                 }
+
+                                 #undef EndWhile
+                                 #undef LoopContinue
+                                 #define EndWhile EndWhile08a
+                                 #define LoopContinue LoopContinue08a
+                                 #include "susie_pixel_loop.h"
+                                 break;
+                              default:
+                                 #undef PROCESS_PIXEL
+                                 #define PROCESS_PIXEL
+
+                                 #undef EndWhile
+                                 #undef LoopContinue
+                                 #define EndWhile EndWhile09a
+                                 #define LoopContinue LoopContinue09a
+                                 #include "susie_pixel_loop.h"
+                                 break;
                         }
                      }
                      voff+=vsign;
@@ -881,197 +1052,6 @@ ULONG CSusie::PaintSprites(void)
    //	cycles_used>>=2;
 
    return cycles_used;
-}
-
-//
-// Collision code modified by KW 22/11/98
-// Collision buffer cler added if there is no
-// apparent collision, I have a gut feeling this
-// is the wrong solution to the inv07.com bug but
-// it seems to work OK.
-//
-// Shadow-------------------------------|
-// Boundary-Shadow--------------------| |
-// Normal---------------------------| | |
-// Boundary-----------------------| | | |
-// Background-Shadow------------| | | | |
-// Background-No Collision----| | | | | |
-// Non-Collideable----------| | | | | | |
-// Exclusive-or-Shadow----| | | | | | | |
-//                        | | | | | | | |
-//                        1 1 1 1 0 1 0 1   F is opaque
-//                        0 0 0 0 1 1 0 0   E is collideable
-//                        0 0 1 1 0 0 0 0   0 is opaque and collideable
-//                        1 0 0 0 1 1 1 1   allow collision detect
-//                        1 0 0 1 1 1 1 1   allow coll. buffer access
-//                        1 0 0 0 0 0 0 0   exclusive-or the data
-//
-
-inline void CSusie::ProcessPixel(ULONG hoff,ULONG pixel)
-{
-   switch(mSPRCTL0_Type) {
-      // BACKGROUND SHADOW
-      // 1   F is opaque
-      // 0   E is collideable
-      // 1   0 is opaque and collideable
-      // 0   allow collision detect
-      // 1   allow coll. buffer access
-      // 0   exclusive-or the data
-      case sprite_background_shadow:
-         WritePixel(hoff,pixel);
-         if(!mSPRCOLL_Collide && !mSPRSYS_NoCollide && pixel!=0x0e) {
-            WriteCollision(hoff,mSPRCOLL_Number);
-         }
-         break;
-
-         // BACKGROUND NOCOLLIDE
-         // 1   F is opaque
-         // 0   E is collideable
-         // 1   0 is opaque and collideable
-         // 0   allow collision detect
-         // 0   allow coll. buffer access
-         // 0   exclusive-or the data
-      case sprite_background_noncollide:
-         WritePixel(hoff,pixel);
-         break;
-
-         // NOCOLLIDE
-         // 1   F is opaque
-         // 0   E is collideable
-         // 0   0 is opaque and collideable
-         // 0   allow collision detect
-         // 0   allow coll. buffer access
-         // 0   exclusive-or the data
-      case sprite_noncollide:
-         if(pixel!=0x00) WritePixel(hoff,pixel);
-         break;
-
-         // BOUNDARY
-         // 0   F is opaque
-         // 1   E is collideable
-         // 0   0 is opaque and collideable
-         // 1   allow collision detect
-         // 1   allow coll. buffer access
-         // 0   exclusive-or the data
-      case sprite_boundary:
-         if(pixel!=0x00 && pixel!=0x0f) {
-            WritePixel(hoff,pixel);
-         }
-         if(pixel!=0x00) {
-            if(!mSPRCOLL_Collide && !mSPRSYS_NoCollide) {
-               int collision=ReadCollision(hoff);
-               if(collision>mCollision) {
-                  mCollision=collision;
-               }
-               // 01/05/00 V0.7	if(mSPRCOLL_Number>collision)
-               {
-                  WriteCollision(hoff,mSPRCOLL_Number);
-               }
-            }
-         }
-         break;
-
-         // NORMAL
-         // 1   F is opaque
-         // 1   E is collideable
-         // 0   0 is opaque and collideable
-         // 1   allow collision detect
-         // 1   allow coll. buffer access
-         // 0   exclusive-or the data
-      case sprite_normal:
-         if(pixel!=0x00) {
-            WritePixel(hoff,pixel);
-            if(!mSPRCOLL_Collide && !mSPRSYS_NoCollide) {
-               int collision=ReadCollision(hoff);
-               if(collision>mCollision) {
-                  mCollision=collision;
-               }
-               // 01/05/00 V0.7	if(mSPRCOLL_Number>collision)
-               {
-                  WriteCollision(hoff,mSPRCOLL_Number);
-               }
-            }
-         }
-         break;
-
-         // BOUNDARY_SHADOW
-         // 0   F is opaque
-         // 0   E is collideable
-         // 0   0 is opaque and collideable
-         // 1   allow collision detect
-         // 1   allow coll. buffer access
-         // 0   exclusive-or the data
-      case sprite_boundary_shadow:
-         if(pixel!=0x00 && pixel!=0x0e && pixel!=0x0f) {
-            WritePixel(hoff,pixel);
-         }
-         if(pixel!=0x00 && pixel!=0x0e) {
-            if(!mSPRCOLL_Collide && !mSPRSYS_NoCollide) {
-               int collision=ReadCollision(hoff);
-               if(collision>mCollision) {
-                  mCollision=collision;
-               }
-               // 01/05/00 V0.7	if(mSPRCOLL_Number>collision)
-               {
-                  WriteCollision(hoff,mSPRCOLL_Number);
-               }
-            }
-         }
-         break;
-
-         // SHADOW
-         // 1   F is opaque
-         // 0   E is collideable
-         // 0   0 is opaque and collideable
-         // 1   allow collision detect
-         // 1   allow coll. buffer access
-         // 0   exclusive-or the data
-      case sprite_shadow:
-         if(pixel!=0x00) {
-            WritePixel(hoff,pixel);
-         }
-         if(pixel!=0x00 && pixel!=0x0e) {
-            if(!mSPRCOLL_Collide && !mSPRSYS_NoCollide) {
-               int collision=ReadCollision(hoff);
-               if(collision>mCollision) {
-                  mCollision=collision;
-               }
-               // 01/05/00 V0.7	if(mSPRCOLL_Number>collision)
-               {
-                  WriteCollision(hoff,mSPRCOLL_Number);
-               }
-            }
-         }
-         break;
-
-         // XOR SHADOW
-         // 1   F is opaque
-         // 0   E is collideable
-         // 0   0 is opaque and collideable
-         // 1   allow collision detect
-         // 1   allow coll. buffer access
-         // 1   exclusive-or the data
-      case sprite_xor_shadow:
-         if(pixel!=0x00) {
-            WritePixel(hoff,ReadPixel(hoff)^pixel);
-         }
-         if(pixel!=0x00 && pixel!=0x0e) {
-            if(!mSPRCOLL_Collide && !mSPRSYS_NoCollide && pixel!=0x0e) {
-               int collision=ReadCollision(hoff);
-               if(collision>mCollision) {
-                  mCollision=collision;
-               }
-               // 01/05/00 V0.7	if(mSPRCOLL_Number>collision)
-               {
-                  WriteCollision(hoff,mSPRCOLL_Number);
-               }
-            }
-         }
-         break;
-      default:
-         //			_asm int 3;
-         break;
-   }
 }
 
 inline void CSusie::WritePixel(ULONG hoff,ULONG pixel)
@@ -1206,69 +1186,6 @@ inline ULONG CSusie::LineInit(ULONG voff)
    return offset;
 }
 
-inline ULONG CSusie::LineGetPixel()
-{
-   if(!mLineRepeatCount) {
-      // Normal sprites fetch their counts on a packet basis
-      if(mLineType!=line_abs_literal) {
-         ULONG literal=LineGetBits(1);
-         if(literal) mLineType=line_literal;
-		 else mLineType=line_packed;
-      }
-
-      // Pixel store is empty what should we do
-      switch(mLineType) {
-         case line_abs_literal:
-            // This means end of line for us
-            mLinePixel=LINE_END;
-            return mLinePixel;		// SPEEDUP
-         case line_literal:
-            mLineRepeatCount=LineGetBits(4);
-            mLineRepeatCount++;
-            break;
-         case line_packed:
-            //
-            // From reading in between the lines only a packed line with
-            // a zero size i.e 0b00000 as a header is allowable as a packet end
-            //
-            mLineRepeatCount=LineGetBits(4);
-            if(!mLineRepeatCount) {
-               mLinePixel=LINE_END;
-            } else {
-               mLinePixel=mPenIndex[LineGetBits(mSPRCTL0_PixelBits)];
-            }
-            mLineRepeatCount++;
-            break;
-         default:
-            return 0;
-      }
-
-   }
-
-   if(mLinePixel!=LINE_END) {
-      mLineRepeatCount--;
-
-      switch(mLineType) {
-         case line_abs_literal:
-            mLinePixel=LineGetBits(mSPRCTL0_PixelBits);
-            // Check the special case of a zero in the last pixel
-            if(!mLineRepeatCount && !mLinePixel)
-               mLinePixel=LINE_END;
-            else
-               mLinePixel=mPenIndex[mLinePixel];
-            break;
-         case line_literal:
-            mLinePixel=mPenIndex[LineGetBits(mSPRCTL0_PixelBits)];
-            break;
-         case line_packed:
-            break;
-         default:
-            return 0;
-      }
-   }
-
-   return mLinePixel;
-}
 
 inline ULONG CSusie::LineGetBits(ULONG bits)
 {

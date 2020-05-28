@@ -342,9 +342,8 @@ void CSystem::Reset(void)
    mCpu->Reset();
 
    // Homebrew hashup
-   mMikie->PresetForHomebrew();
-
    if(mFileType==HANDY_FILETYPE_HOMEBREW) {
+      mMikie->PresetForHomebrew();
       C6502_REGS regs;
       mCpu->GetRegs(regs);
       regs.PC=(UWORD)gCPUBootAddress;
