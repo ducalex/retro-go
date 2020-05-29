@@ -50,6 +50,9 @@ static int dmg_selected_pal = 0;
 static byte *vdest;
 static byte pix[8];
 
+// Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
+int enable_window_offset_hack = 0;
+
 
 /**
  * Drawing routines
@@ -578,10 +581,9 @@ static inline void lcd_renderline()
 
 	// Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
 	// This is a hack, the real problem is elsewhere
-	if ((R_LCDC & 0x20) && WT > 12)
+	if (enable_window_offset_hack && (R_LCDC & 0x20))
 	{
-		// printf("WT=%d\n", WT);
-		// WT %= 12;
+		WT %= 12;
 	}
 
 	spr_enum();

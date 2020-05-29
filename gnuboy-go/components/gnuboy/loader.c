@@ -12,7 +12,6 @@
 #include "rtc.h"
 #include "sound.h"
 
-#include "esp_heap_caps.h"
 #include "odroid_system.h"
 
 static const byte mbc_table[256] =
@@ -74,7 +73,6 @@ static const byte ramsize_table[256] =
 	4 /* FIXME - what value should this be?! */
 };
 
-
 static FILE* fpRomFile = NULL;
 
 static char *romfile=NULL;
@@ -86,19 +84,13 @@ static int forcebatt=0, nobatt=0;
 static int forcedmg=0, gbamode=0;
 
 
-static inline void initmem(void *mem, int size)
-{
-	memset(mem, 0xff, size);
-}
-
-
 int IRAM_ATTR rom_loadbank(short bank)
 {
 	const size_t BANK_SIZE = 0x4000;
 	const size_t OFFSET = bank * BANK_SIZE;
 
 	printf("bank_load: loading bank %d.\n", bank);
-	rom.bank[bank] = (byte*)heap_caps_malloc(BANK_SIZE, MALLOC_CAP_SPIRAM);
+	rom.bank[bank] = (byte*)malloc(BANK_SIZE);
 	if (rom.bank[bank] == NULL) {
 		while (true) {
 			uint8_t i = esp_random() & 0xFF;
@@ -109,10 +101,6 @@ int IRAM_ATTR rom_loadbank(short bank)
 				break;
 			}
 		}
-	}
-
-	if (rom.bank[bank] == NULL) {
-		odroid_system_panic("Out of memory");
 	}
 
 	// Make sure no transaction is running
@@ -195,25 +183,35 @@ int rom_load()
 		mbcName, mbc.romsize, rom.length / 1024, mbc.ramsize, mbc.ramsize * 8);
 
 	// SRAM
-	ram.sbank = heap_caps_malloc_prefer(8192 * mbc.ramsize, MALLOC_CAP_INTERNAL, MALLOC_CAP_SPIRAM);
+	ram.sbank = rg_alloc(8192 * mbc.ramsize, MEM_FAST);
 	ram.sram_dirty = 0;
 
-	initmem(ram.sbank, 8192 * mbc.ramsize);
-	initmem(ram.ibank, 4096 * 8);
+	memset(ram.sbank, 0xff, 8192 * mbc.ramsize);
+	memset(ram.ibank, 0xff, 4096 * 8);
 
 	mbc.rombank = 1;
 	mbc.rambank = 0;
 
 	int preload = mbc.romsize < 64 ? mbc.romsize : 64;
 
-	if (strncmp(rom.name, "RAYMAN", 6) == 0) {
+	// RAYMAN stutters too much if we don't fully preload it
+	if (strncmp(rom.name, "RAYMAN", 6) == 0)
+	{
 		printf("loader: Special preloading for Rayman 1/2\n");
 		preload = mbc.romsize - 8;
 	}
 
 	printf("loader: Preloading the first %d banks\n", preload);
-	for (int i = 1; i < preload; i++) {
+	for (int i = 1; i < preload; i++)
+	{
 		rom_loadbank(i);
+	}
+
+	// Apply game-specific hacks
+	if (strncmp(rom.name, "SIREN GB2 ", 11) == 0 || strncmp(rom.name, "DONKEY KONG", 11) == 0)
+	{
+		printf("loader: HACK: Window offset hack enabled\n");
+		enable_window_offset_hack = 1;
 	}
 
 	return 0;

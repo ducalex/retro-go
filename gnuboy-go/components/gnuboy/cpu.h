@@ -52,7 +52,7 @@ struct cpu
 	int timer, div;
 };
 
-extern int debug_trace;
+extern int enable_disassembler;
 extern struct cpu cpu;
 
 void cpu_reset();

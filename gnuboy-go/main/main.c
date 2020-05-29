@@ -41,9 +41,7 @@ static uint skipFrames = 0;
 static bool netplay = false;
 
 static bool saveSRAM = false;
-static int  sramSaveTimer = 0;
-
-extern int debug_trace;
+static int  saveSRAM_Timer = 0;
 // --- MAIN
 
 
@@ -317,11 +315,11 @@ void app_main(void)
         {
             if (ram.sram_dirty)
             {
-                sramSaveTimer = 90;
+                saveSRAM_Timer = 90;
                 ram.sram_dirty = 0;
             }
 
-            if (sramSaveTimer > 0 && --sramSaveTimer == 0)
+            if (saveSRAM_Timer > 0 && --saveSRAM_Timer == 0)
             {
                 // TO DO: Try compressing the sram file, it might reduce stuttering
                 sram_save();

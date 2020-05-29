@@ -29,11 +29,11 @@ struct odroid_dialog_choice {
     int  id;
     char label[32];
     char value[16];
-    int8_t enabled;
+    int  enabled;
     bool (*update_cb)(odroid_dialog_choice_t *, odroid_dialog_event_t);
 };
 
-#define ODROID_DIALOG_CHOICE_LAST {0x0F0F0F0F, "LAST", "LAST", 0xFF, NULL}
+#define ODROID_DIALOG_CHOICE_LAST {0x0F0F0F0F, "LAST", "LAST", 0xFFFF, NULL}
 
 extern odroid_menu_state_t odroid_menu_state;
 

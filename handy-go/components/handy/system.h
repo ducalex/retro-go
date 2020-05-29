@@ -116,6 +116,7 @@ extern ULONG    gThrottleLastTimerCount;
 extern ULONG    gThrottleNextCycleCheckpoint;
 extern ULONG    gEndOfFrame;
 extern ULONG    gTimerCount;
+extern ULONG    gRenderFrame;
 
 extern ULONG    gAudioEnabled;
 extern UBYTE    *gAudioBuffer;
@@ -216,9 +217,10 @@ class CSystem : public CSystemBase
          //         fprintf(stderr, "end sys update\n");
       }
 
-      inline void UpdateFrame(void)
+      inline void UpdateFrame(bool draw)
       {
          gEndOfFrame = FALSE;
+         gRenderFrame = draw;
 
          while(gEndOfFrame != TRUE)
          {

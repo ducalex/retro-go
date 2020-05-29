@@ -550,7 +550,7 @@ static const byte operand_count[256] =
 
 /* replace with a real interactive debugger eventually... */
 
-int debug_trace = 0;
+int enable_disassembler = 0;
 
 void debug_disassemble(addr a, int c)
 {

@@ -332,7 +332,9 @@ next:
 	}
 	IME = IMA;
 
-	if (debug_trace) debug_disassemble(PC, 1);
+	if (enable_disassembler)
+		debug_disassemble(PC, 1);
+
 	op = FETCH;
 	clen = cycles_table[op];
 

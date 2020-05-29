@@ -16,7 +16,7 @@ extern "C" {
 #define PIXEL_MASK 0xFF
 #define PAL_SHIFT_MASK 0x00
 
-DMA_ATTR static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
+static DMA_ATTR short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
 static odroid_video_frame update1;
 static odroid_video_frame update2;
@@ -24,9 +24,6 @@ static odroid_video_frame *currentUpdate = &update1;
 static odroid_video_frame *previousUpdate = &update2;
 
 static CSystem *lynx = NULL;
-
-static uint startTime = 0;
-static uint frameTime = 16667;
 // static bool netplay = false;
 // --- MAIN
 
@@ -67,6 +64,7 @@ extern "C" void app_main(void)
     lynx = new CSystem(romFile);
     lynx->DisplaySetAttributes(MIKIE_NO_ROTATE, MIKIE_PIXEL_FORMAT_16BPP_565_BE, update1.stride);
 
+    gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer + currentUpdate->stride;
     gAudioBuffer = (UBYTE*)&audioBuffer;
     gAudioEnabled = 0;
 
@@ -76,8 +74,10 @@ extern "C" void app_main(void)
     }
 
     odroid_gamepad_state joystick;
-    ULONG buttons;
-    bool fullFrame;
+
+    uint frameTime = get_frame_time(60);
+    uint skipFrames = 0;
+    bool fullFrame = 0;
 
     // Start emulation
     while (1)
@@ -88,13 +88,17 @@ extern "C" void app_main(void)
             odroid_overlay_game_menu();
         }
         else if (joystick.values[ODROID_INPUT_VOLUME]) {
-            odroid_overlay_game_settings_menu(NULL);
+            odroid_dialog_choice_t options[] = {
+                {100, "Rotation", "Off  ", 0, NULL},
+                ODROID_DIALOG_CHOICE_LAST
+            };
+            odroid_overlay_game_settings_menu(options);
         }
 
-        gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer + currentUpdate->stride;
+        uint startTime = get_elapsed_time();
+        bool drawFrame = !skipFrames;
 
-        startTime = get_elapsed_time();
-        buttons = 0;
+        ULONG buttons = 0;
 
     	if (joystick.values[ODROID_INPUT_UP])     buttons |= BUTTON_UP;
     	if (joystick.values[ODROID_INPUT_DOWN])   buttons |= BUTTON_DOWN;
@@ -107,13 +111,28 @@ extern "C" void app_main(void)
 
         lynx->SetButtonData(buttons);
 
-        lynx->UpdateFrame();
+        lynx->UpdateFrame(drawFrame);
 
-        fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
-        previousUpdate = currentUpdate;
-        currentUpdate = (currentUpdate == &update1) ? &update2 : &update1;
+        if (drawFrame)
+        {
+            fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
+            previousUpdate = currentUpdate;
+            currentUpdate = (currentUpdate == &update1) ? &update2 : &update1;
+            gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer + currentUpdate->stride;
+        }
 
-        odroid_system_tick(0, fullFrame, get_elapsed_time_since(startTime));
+        // See if we need to skip a frame to keep up
+        if (skipFrames == 0)
+        {
+            if (get_elapsed_time_since(startTime) > frameTime) skipFrames = 1;
+            if (speedupEnabled) skipFrames += speedupEnabled * 2.5;
+        }
+        else if (skipFrames > 0)
+        {
+            skipFrames--;
+        }
+
+        odroid_system_tick(!drawFrame, fullFrame, get_elapsed_time_since(startTime));
 
         if (!speedupEnabled)
         {

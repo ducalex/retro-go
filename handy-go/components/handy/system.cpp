@@ -75,6 +75,7 @@ ULONG   gThrottleLastTimerCount=0;
 ULONG   gThrottleNextCycleCheckpoint=0;
 ULONG   gEndOfFrame=0;
 ULONG   gTimerCount=0;
+ULONG   gRenderFrame=1;
 
 ULONG   gAudioEnabled=FALSE;
 UBYTE   *gAudioBuffer;//[HANDY_AUDIO_BUFFER_SIZE];

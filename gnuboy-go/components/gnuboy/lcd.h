@@ -61,6 +61,8 @@ extern struct lcd lcd;
 extern struct scan scan;
 extern struct fb fb;
 
+extern int enable_window_offset_hack;
+
 void lcd_reset();
 void lcd_emulate();
 
