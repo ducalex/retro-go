@@ -16,7 +16,6 @@
 #include "cleantypes.h"
 #include "hard_pce.h"
 #include "sprite.h"
-#include "romdb.h"
 
 int LoadState(char *name);
 int SaveState(char *name);

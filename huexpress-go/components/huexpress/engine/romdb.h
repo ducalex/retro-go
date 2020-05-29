@@ -25,7 +25,8 @@
 #define JAP          0x8000
 
 // Known Rom Count (from kKnownRoms)
-#define KNOWN_ROM_COUNT 421
+// #define KNOWN_ROM_COUNT 421
+#define KNOWN_ROM_COUNT 10
 
 struct rom_database {
 	const uint32    CRC;
@@ -38,8 +39,8 @@ struct rom_database {
 
 extern const struct rom_database kKnownRoms[KNOWN_ROM_COUNT];
 
+extern const unsigned long TAB_CONST[256];
 
-unsigned long filesize(FILE * F);
 uint32 CRC_buffer(uchar *buffer, int size);
 
 #endif /* _ROMDB_H */
