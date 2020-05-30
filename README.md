@@ -101,8 +101,8 @@ _Note: It is possible to use esp-idf 3.2 but changes to sdkconfig will be necess
 
 
 # License
-This project is licensed under the GPLv2. Respective copyrights apply to each emulator.
-For the rest:
+This project is licensed under the GPLv2. Some components are also available under the MIT license. 
+Respective copyrights apply to each component. For the rest:
 ```
 Retro-Go: Retro emulation for the ODROID-GO
 Copyright (C) 2020 Alex Duchesne
