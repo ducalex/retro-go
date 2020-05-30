@@ -5,7 +5,7 @@
 typedef enum
 {
     ODROID_START_ACTION_RESUME = 0,
-    ODROID_START_ACTION_RESTART,
+    ODROID_START_ACTION_NEWGAME,
     ODROID_START_ACTION_NETPLAY
 } ODROID_START_ACTION;
 
@@ -24,8 +24,8 @@ typedef enum
 
 void odroid_settings_init();
 
-int32_t odroid_settings_VRef_get();
-void odroid_settings_VRef_set(int32_t value);
+int32_t odroid_settings_FontSize_get();
+void odroid_settings_FontSize_set(int32_t);
 
 int32_t odroid_settings_Volume_get();
 void odroid_settings_Volume_set(int32_t value);
@@ -38,6 +38,9 @@ void odroid_settings_DataSlot_set(int32_t value);
 
 int32_t odroid_settings_Backlight_get();
 void odroid_settings_Backlight_set(int32_t value);
+
+int32_t odroid_settings_StartupApp_get();
+void odroid_settings_StartupApp_set(int32_t value);
 
 ODROID_START_ACTION odroid_settings_StartAction_get();
 void odroid_settings_StartAction_set(ODROID_START_ACTION value);
@@ -56,6 +59,8 @@ void odroid_settings_DisplayScaling_set(int32_t value);
 
 int32_t odroid_settings_DisplayFilter_get();
 void odroid_settings_DisplayFilter_set(int32_t value);
+
+/*** Generic functions ***/
 
 void odroid_settings_string_set(const char *key, char *value);
 char* odroid_settings_string_get(const char *key, char *default_value);

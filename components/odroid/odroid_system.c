@@ -92,12 +92,6 @@ void odroid_system_init(int appId, int sampleRate)
         odroid_system_halt();
     }
 
-    startAction = odroid_settings_StartAction_get();
-    if (startAction == ODROID_START_ACTION_RESTART)
-    {
-        odroid_settings_StartAction_set(ODROID_START_ACTION_RESUME);
-    }
-
     xTaskCreate(&odroid_system_monitor_task, "sysmon", 2048, NULL, 7, NULL);
 
     // esp_task_wdt_init(5, true);
@@ -119,6 +113,18 @@ void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_
     if (netplay_cb != NULL)
     {
         odroid_netplay_pre_init(netplay_cb);
+    }
+
+    if (odroid_settings_StartupApp_get() == 0)
+    {
+        // Only boot this emu once, next time will return to launcher
+        odroid_system_set_boot_app(0);
+    }
+
+    startAction = odroid_settings_StartAction_get();
+    if (startAction == ODROID_START_ACTION_NEWGAME)
+    {
+        odroid_settings_StartAction_set(ODROID_START_ACTION_RESUME);
     }
 
     romPath = odroid_settings_RomFilePath_get();
@@ -333,7 +339,7 @@ void odroid_system_set_boot_app(int slot)
     // Do not overwrite the boot sector for nothing
     const esp_partition_t* boot_partition = esp_ota_get_boot_partition();
 
-    if (partition != NULL && partition != boot_partition)
+    if (partition != NULL) //  && partition != boot_partition
     {
         esp_err_t err = esp_ota_set_boot_partition(partition);
         if (err != ESP_OK)

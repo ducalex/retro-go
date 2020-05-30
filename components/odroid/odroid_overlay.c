@@ -10,7 +10,6 @@
 #include "math.h"
 
 static uint16_t *overlay_buffer = NULL;
-static const char *NVS_KEY_FONTSIZE = "FontSize";
 
 short ODROID_FONT_WIDTH = 8;
 short ODROID_FONT_HEIGHT = 8;
@@ -33,7 +32,7 @@ void odroid_overlay_init()
 	if (!overlay_buffer) {
         overlay_buffer = (uint16_t *)rg_alloc(ODROID_SCREEN_WIDTH * 16 * 2, MEM_SLOW);
     }
-    odroid_overlay_set_font_size(odroid_settings_int32_get(NVS_KEY_FONTSIZE, 1));
+    odroid_overlay_set_font_size(odroid_settings_FontSize_get());
 }
 
 void odroid_overlay_set_font_size(int factor)
@@ -41,9 +40,7 @@ void odroid_overlay_set_font_size(int factor)
     factor = factor < 1 ? 1 : factor;
     factor = factor > 3 ? 3 : factor;
     ODROID_FONT_HEIGHT = 8 * factor;
-    if (factor != odroid_settings_int32_get(NVS_KEY_FONTSIZE, 0)) {
-        odroid_settings_int32_set(NVS_KEY_FONTSIZE, factor);
-    }
+    odroid_settings_FontSize_set(factor);
 }
 
 void odroid_overlay_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, char *text, uint16_t color, uint16_t color_bg)

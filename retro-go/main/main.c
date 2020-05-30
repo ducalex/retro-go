@@ -26,7 +26,7 @@ static void redraw_screen()
 
 static bool font_size_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
-    int font_size = odroid_settings_int32_get("FontSize", 1);
+    int font_size = odroid_settings_FontSize_get();
     if (event == ODROID_DIALOG_PREV) {
         if (--font_size < 1) font_size = 2;
         odroid_overlay_set_font_size(font_size);
@@ -48,6 +48,17 @@ static bool hide_empty_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t 
         odroid_settings_int32_set("ShowEmpty", show_empty);
     }
     strcpy(option->value, show_empty ? "Yes" : "No");
+    return event == ODROID_DIALOG_ENTER;
+}
+
+static bool startup_app_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+{
+    int startup_app = odroid_settings_StartupApp_get();
+    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
+        startup_app = startup_app ? 0 : 1;
+        odroid_settings_StartupApp_set(startup_app);
+    }
+    strcpy(option->value, startup_app == 0 ? "Launcher" : "LastUsed");
     return event == ODROID_DIALOG_ENTER;
 }
 
@@ -199,7 +210,7 @@ void retro_loop()
                         break;
                     }
                     else if (sel == 1) {
-                        odroid_settings_StartAction_set(ODROID_START_ACTION_RESTART);
+                        odroid_settings_StartAction_set(ODROID_START_ACTION_NEWGAME);
                         break;
                     }
                     else if (sel == 2) {
@@ -251,6 +262,8 @@ void retro_loop()
                     {0, "Font size", "Small", 1, &font_size_cb},
                     {0, "Show cover", "Yes", 1, &show_cover_cb},
                     {0, "Show empty", "Yes", 1, &hide_empty_cb},
+                    {0, "---", "", -1, NULL},
+                    {0, "Startup app", "Last", 1, &startup_app_cb},
                     ODROID_DIALOG_CHOICE_LAST
                 };
                 odroid_overlay_settings_menu(choices);

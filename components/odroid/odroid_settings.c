@@ -11,11 +11,13 @@ static const char* NvsKey_VRef = "VRef";
 static const char* NvsKey_DataSlot = "DataSlot";
 static const char* NvsKey_Backlight = "Backlight";
 static const char* NvsKey_StartAction = "StartAction";
+static const char* NvsKey_StartupApp = "StartupApp";
 static const char* NvsKey_Scaling = "Scaling";
 static const char* NvsKey_AudioSink = "AudioSink";
 static const char* NvsKey_Palette = "Palette";
 static const char* NvsKey_Region = "Region";
 static const char* NvsKey_DispFilter = "DispFilter";
+static const char* NvsKey_FontSize = "FontSize";
 
 static nvs_handle my_handle;
 
@@ -112,6 +114,16 @@ void odroid_settings_app_int32_set(const char *key, int32_t value)
 }
 
 
+int32_t odroid_settings_FontSize_get()
+{
+    return odroid_settings_int32_get(NvsKey_FontSize, 1);
+}
+void odroid_settings_FontSize_set(int32_t value)
+{
+    odroid_settings_int32_set(NvsKey_FontSize, value);
+}
+
+
 char* odroid_settings_RomFilePath_get()
 {
     return odroid_settings_string_get(NvsKey_RomFilePath, NULL);
@@ -119,16 +131,6 @@ char* odroid_settings_RomFilePath_get()
 void odroid_settings_RomFilePath_set(char* value)
 {
     odroid_settings_string_set(NvsKey_RomFilePath, value);
-}
-
-
-int32_t odroid_settings_VRef_get()
-{
-	return odroid_settings_int32_get(NvsKey_VRef, 1100);
-}
-void odroid_settings_VRef_set(int32_t value)
-{
-    odroid_settings_int32_set(NvsKey_VRef, value);
 }
 
 
@@ -171,6 +173,15 @@ void odroid_settings_StartAction_set(ODROID_START_ACTION value)
     odroid_settings_int32_set(NvsKey_StartAction, value);
 }
 
+
+int32_t odroid_settings_StartupApp_get()
+{
+    return odroid_settings_int32_get(NvsKey_StartupApp, 1);
+}
+void odroid_settings_StartupApp_set(int32_t value)
+{
+    odroid_settings_int32_set(NvsKey_StartupApp, value);
+}
 
 
 int32_t odroid_settings_DataSlot_get()
