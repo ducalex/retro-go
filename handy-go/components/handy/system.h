@@ -70,12 +70,11 @@ typedef uint32_t ULONG;
 
 #define HANDY_SYSTEM_FREQ                       16000000
 #define HANDY_TIMER_FREQ                        20
-#define HANDY_AUDIO_SAMPLE_FREQ                 22050 // 48000
+#define HANDY_AUDIO_SAMPLE_FREQ                 32000 // 48000
 #define HANDY_AUDIO_SAMPLE_PERIOD               (HANDY_SYSTEM_FREQ/HANDY_AUDIO_SAMPLE_FREQ)
-#define HANDY_AUDIO_WAVESHAPER_TABLE_LENGTH     0x200000
 
-// for one frame of 16bit stereo
-#define HANDY_AUDIO_BUFFER_SIZE                 ((HANDY_AUDIO_SAMPLE_FREQ/60+1)*2*2)
+// for a bit over one frame of 16bit stereo
+#define HANDY_AUDIO_BUFFER_SIZE                 ((HANDY_AUDIO_SAMPLE_FREQ/60+25)*4)
 
 #ifdef SDL_PATCH
 //#define HANDY_AUDIO_BUFFER_SIZE               4096    // Needed for SDL 8bit MONO

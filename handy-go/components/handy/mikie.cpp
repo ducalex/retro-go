@@ -862,13 +862,6 @@ void CMikie::DisplaySetAttributes(ULONG Rotate,ULONG Format,ULONG Pitch)
    TPALETTE Spot;
 
    switch(mDisplayFormat) {
-      case MIKIE_PIXEL_FORMAT_8BPP:
-         for(Spot.Index=0;Spot.Index<4096;Spot.Index++) {
-            mColourMap[Spot.Index]=(Spot.Colours.Red<<4)&0xe0;
-            mColourMap[Spot.Index]|=(Spot.Colours.Green<<1)&0x1c;
-            mColourMap[Spot.Index]|=(Spot.Colours.Blue>>2)&0x03;
-         }
-         break;
       case MIKIE_PIXEL_FORMAT_16BPP_565:
          for(Spot.Index=0;Spot.Index<4096;Spot.Index++) {
             mColourMap[Spot.Index]=((Spot.Colours.Red<<12)&0xf000) | ((Spot.Colours.Red<<8)&0x0800);
@@ -948,11 +941,7 @@ inline ULONG CMikie::DisplayRenderLine(void)
       // Make any necessary adjustment for rotation
       switch(mDisplayRotate) {
          case MIKIE_ROTATE_L:
-            if (mDisplayFormat == MIKIE_PIXEL_FORMAT_8BPP) {
-               mpDisplayCurrent+=1*(HANDY_SCREEN_HEIGHT-1);
-            } else {
-               mpDisplayCurrent+=2*(HANDY_SCREEN_HEIGHT-1);
-            }
+            mpDisplayCurrent+=2*(HANDY_SCREEN_HEIGHT-1);
             break;
          case MIKIE_ROTATE_R:
             mpDisplayCurrent += (mDisplayPitch*(HANDY_SCREEN_WIDTH-1));
@@ -974,6 +963,8 @@ inline ULONG CMikie::DisplayRenderLine(void)
       // Cycle hit for a 80 RAM access in rendering a line
       work_done+=(80+100)*DMA_RDWR_CYC;
 
+      if (!gRenderFrame) return work_done;
+
       // Mikie screen DMA can only see the system RAM....
       // (Step through bitmap, line at a time)
 
@@ -982,120 +973,61 @@ inline ULONG CMikie::DisplayRenderLine(void)
 
       switch(mDisplayRotate) {
          case MIKIE_NO_ROTATE:
-            if(mDisplayFormat==MIKIE_PIXEL_FORMAT_8BPP) {
-               for(loop=0;loop<SCREEN_WIDTH/2;loop++) {
-                  source=mpRamPointer[mLynxAddr];
-                  if(mDISPCTL_Flip) {
-                     mLynxAddr--;
-                     WRITEBYTE(source&0x0f);
-                     bitmap_tmp+=sizeof(UBYTE);
-                     WRITEBYTE(source>>4);
-                     bitmap_tmp+=sizeof(UBYTE);
-                  } else {
-                     mLynxAddr++;
-                     WRITEBYTE(source>>4);
-                     bitmap_tmp+=sizeof(UBYTE);
-                     WRITEBYTE(source&0x0f);
-                     bitmap_tmp+=sizeof(UBYTE);
-                  }
-               }
-            } else { // 16 bits
-               for(loop=0;loop<SCREEN_WIDTH/2;loop++) {
-                  source=mpRamPointer[mLynxAddr];
-                  if(mDISPCTL_Flip) {
-                     mLynxAddr--;
-                     WRITEWORD(source&0x0f);
-                     bitmap_tmp+=sizeof(UWORD);
-                     WRITEWORD(source>>4);
-                     bitmap_tmp+=sizeof(UWORD);
-                  } else {
-                     mLynxAddr++;
-                     WRITEWORD(source>>4);
-                     bitmap_tmp+=sizeof(UWORD);
-                     WRITEWORD(source&0x0f);
-                     bitmap_tmp+=sizeof(UWORD);
-                  }
+            for(loop=0;loop<SCREEN_WIDTH/2;loop++) {
+               source=mpRamPointer[mLynxAddr];
+               if(mDISPCTL_Flip) {
+                  mLynxAddr--;
+                  WRITEWORD(source&0x0f);
+                  bitmap_tmp+=sizeof(UWORD);
+                  WRITEWORD(source>>4);
+                  bitmap_tmp+=sizeof(UWORD);
+               } else {
+                  mLynxAddr++;
+                  WRITEWORD(source>>4);
+                  bitmap_tmp+=sizeof(UWORD);
+                  WRITEWORD(source&0x0f);
+                  bitmap_tmp+=sizeof(UWORD);
                }
             }
             mpDisplayCurrent+=mDisplayPitch;
             break;
          case MIKIE_ROTATE_L:
-            if(mDisplayFormat==MIKIE_PIXEL_FORMAT_8BPP) {
-               for(loop=0;loop<SCREEN_WIDTH/2;loop++) {
-                  source=mpRamPointer[mLynxAddr];
-                  if(mDISPCTL_Flip) {
-                     mLynxAddr--;
-                     WRITEBYTE(source&0x0f);
-                     bitmap_tmp+=mDisplayPitch;
-                     WRITEBYTE(source>>4);
-                     bitmap_tmp+=mDisplayPitch;
-                  } else {
-                     mLynxAddr++;
-                     WRITEBYTE(source>>4);
-                     bitmap_tmp+=mDisplayPitch;
-                     WRITEBYTE(source&0x0f);
-                     bitmap_tmp+=mDisplayPitch;
-                  }
+            for(loop=0;loop<SCREEN_WIDTH/2;loop++) {
+               source=mpRamPointer[mLynxAddr];
+               if(mDISPCTL_Flip) {
+                  mLynxAddr--;
+                  WRITEWORD(source&0x0f);
+                  bitmap_tmp+=mDisplayPitch;
+                  WRITEWORD(source>>4);
+                  bitmap_tmp+=mDisplayPitch;
+               } else {
+                  mLynxAddr++;
+                  WRITEWORD(source>>4);
+                  bitmap_tmp+=mDisplayPitch;
+                  WRITEWORD(source&0x0f);
+                  bitmap_tmp+=mDisplayPitch;
                }
-               mpDisplayCurrent-=sizeof(UBYTE);
-            } else { // 16 bits
-               for(loop=0;loop<SCREEN_WIDTH/2;loop++) {
-                  source=mpRamPointer[mLynxAddr];
-                  if(mDISPCTL_Flip) {
-                     mLynxAddr--;
-                     WRITEWORD(source&0x0f);
-                     bitmap_tmp+=mDisplayPitch;
-                     WRITEWORD(source>>4);
-                     bitmap_tmp+=mDisplayPitch;
-                  } else {
-                     mLynxAddr++;
-                     WRITEWORD(source>>4);
-                     bitmap_tmp+=mDisplayPitch;
-                     WRITEWORD(source&0x0f);
-                     bitmap_tmp+=mDisplayPitch;
-                  }
-               }
-               mpDisplayCurrent-=sizeof(UWORD);
             }
+            mpDisplayCurrent-=sizeof(UWORD);
             break;
          case MIKIE_ROTATE_R:
-            if(mDisplayFormat==MIKIE_PIXEL_FORMAT_8BPP) {
-               for(loop=0;loop<SCREEN_WIDTH/2;loop++) {
-                  source=mpRamPointer[mLynxAddr];
-                  if(mDISPCTL_Flip) {
-                     mLynxAddr--;
-                     WRITEBYTE(source&0x0f);
-                     bitmap_tmp-=mDisplayPitch;
-                     WRITEBYTE(source>>4);
-                     bitmap_tmp-=mDisplayPitch;
-                  } else {
-                     mLynxAddr++;
-                     WRITEBYTE(source>>4);
-                     bitmap_tmp-=mDisplayPitch;
-                     WRITEBYTE(source&0x0f);
-                     bitmap_tmp-=mDisplayPitch;
-                  }
+            for(loop=0;loop<SCREEN_WIDTH/2;loop++) {
+               source=mpRamPointer[mLynxAddr];
+               if(mDISPCTL_Flip) {
+                  mLynxAddr--;
+                  WRITEWORD(source&0x0f);
+                  bitmap_tmp-=mDisplayPitch;
+                  WRITEWORD(source>>4);
+                  bitmap_tmp-=mDisplayPitch;
+               } else {
+                  mLynxAddr++;
+                  WRITEWORD(source>>4);
+                  bitmap_tmp-=mDisplayPitch;
+                  WRITEWORD(source&0x0f);
+                  bitmap_tmp-=mDisplayPitch;
                }
-               mpDisplayCurrent+=sizeof(UBYTE);
-            } else { // 16 bits
-               for(loop=0;loop<SCREEN_WIDTH/2;loop++) {
-                  source=mpRamPointer[mLynxAddr];
-                  if(mDISPCTL_Flip) {
-                     mLynxAddr--;
-                     WRITEWORD(source&0x0f);
-                     bitmap_tmp-=mDisplayPitch;
-                     WRITEWORD(source>>4);
-                     bitmap_tmp-=mDisplayPitch;
-                  } else {
-                     mLynxAddr++;
-                     WRITEWORD(source>>4);
-                     bitmap_tmp-=mDisplayPitch;
-                     WRITEWORD(source&0x0f);
-                     bitmap_tmp-=mDisplayPitch;
-                  }
-               }
-               mpDisplayCurrent+=sizeof(UWORD);
             }
+            mpDisplayCurrent+=sizeof(UWORD);
             break;
          default:
             break;
@@ -3098,334 +3030,7 @@ inline void CMikie::Update(void)
    // If sound is enabled then update the sound subsystem
    //
    if(gAudioEnabled) {
-      //
-      // Audio 0
-      //
-      //				if(mAUDIO_0_ENABLE_COUNT && !mAUDIO_0_TIMER_DONE && mAUDIO_0_VOLUME && mAUDIO_0_BKUP)
-      if(mAUDIO_0_ENABLE_COUNT && (mAUDIO_0_ENABLE_RELOAD || !mAUDIO_0_TIMER_DONE)) {
-         decval=0;
-
-         if(mAUDIO_0_LINKING==0x07) {
-            if(mTIM_7_BORROW_OUT) decval=1;
-               mAUDIO_0_LAST_LINK_CARRY=mTIM_7_BORROW_OUT;
-         } else {
-            // Ordinary clocked mode as opposed to linked mode
-            // 16MHz clock downto 1us == cyclecount >> 4
-            divide=(4+mAUDIO_0_LINKING);
-            decval=(gSystemCycleCount-mAUDIO_0_LAST_COUNT)>>divide;
-         }
-
-         if(decval) {
-            mAUDIO_0_LAST_COUNT+=decval<<divide;
-            mAUDIO_0_CURRENT-=decval;
-            if(mAUDIO_0_CURRENT&0x80000000) {
-               // Set carry out
-               mAUDIO_0_BORROW_OUT=TRUE;
-
-               // Reload if neccessary
-               if(mAUDIO_0_ENABLE_RELOAD) {
-                  mAUDIO_0_CURRENT+=mAUDIO_0_BKUP+1;
-                  if(mAUDIO_0_CURRENT&0x80000000) mAUDIO_0_CURRENT=0;
-               } else {
-                  // Set timer done
-                  mAUDIO_0_TIMER_DONE=TRUE;
-                  mAUDIO_0_CURRENT=0;
-               }
-
-               //
-               // Update audio circuitry
-               //
-               if(mAUDIO_0_BKUP || mAUDIO_0_LINKING)
-                  mAUDIO_0_WAVESHAPER=GetLfsrNext(mAUDIO_0_WAVESHAPER);
-
-               if(mAUDIO_0_INTEGRATE_ENABLE) {
-                  SLONG temp=mAUDIO_OUTPUT[0];
-                  if(mAUDIO_0_WAVESHAPER&0x0001) temp+=mAUDIO_0_VOLUME;
-                  else temp-=mAUDIO_0_VOLUME;
-                  if(temp>127) temp=127;
-                  if(temp<-128) temp=-128;
-                  mAUDIO_OUTPUT[0]=(SBYTE)temp;
-               } else {
-                  if(mAUDIO_0_WAVESHAPER&0x0001) mAUDIO_OUTPUT[0]=mAUDIO_0_VOLUME;
-                  else mAUDIO_OUTPUT[0]=-mAUDIO_0_VOLUME;
-               }
-            } else {
-               mAUDIO_0_BORROW_OUT=FALSE;
-            }
-            // Set carry in as we did a count
-            mAUDIO_0_BORROW_IN=TRUE;
-         } else {
-            // Clear carry in as we didn't count
-            mAUDIO_0_BORROW_IN=FALSE;
-            // Clear carry out
-            mAUDIO_0_BORROW_OUT=FALSE;
-         }
-
-         // Prediction for next timer event cycle number
-
-         if(mAUDIO_0_LINKING!=7) {
-            // Sometimes timeupdates can be >2x rollover in which case
-            // then CURRENT may still be negative and we can use it to
-            // calc the next timer value, we just want another update ASAP
-            tmp=(mAUDIO_0_CURRENT&0x80000000)?1:((mAUDIO_0_CURRENT+1)<<divide);
-            tmp+=gSystemCycleCount;
-            if(tmp<gNextTimerEvent) {
-               gNextTimerEvent=tmp;
-               TRACE_MIKIE1("Update() - AUDIO 0 Set NextTimerEvent = %012d",gNextTimerEvent);
-            }
-         }
-         //					TRACE_MIKIE1("Update() - mAUDIO_0_CURRENT = %012d",mAUDIO_0_CURRENT);
-         //					TRACE_MIKIE1("Update() - mAUDIO_0_BKUP    = %012d",mAUDIO_0_BKUP);
-         //					TRACE_MIKIE1("Update() - mAUDIO_0_LASTCNT = %012d",mAUDIO_0_LAST_COUNT);
-         //					TRACE_MIKIE1("Update() - mAUDIO_0_LINKING = %012d",mAUDIO_0_LINKING);
-      }
-
-      //
-      // Audio 1
-      //
-      //				if(mAUDIO_1_ENABLE_COUNT && !mAUDIO_1_TIMER_DONE && mAUDIO_1_VOLUME && mAUDIO_1_BKUP)
-      if(mAUDIO_1_ENABLE_COUNT && (mAUDIO_1_ENABLE_RELOAD || !mAUDIO_1_TIMER_DONE)) {
-         decval=0;
-
-         if(mAUDIO_1_LINKING==0x07) {
-            if(mAUDIO_0_BORROW_OUT) decval=1;
-            mAUDIO_1_LAST_LINK_CARRY=mAUDIO_0_BORROW_OUT;
-         } else {
-            // Ordinary clocked mode as opposed to linked mode
-            // 16MHz clock downto 1us == cyclecount >> 4
-            divide=(4+mAUDIO_1_LINKING);
-            decval=(gSystemCycleCount-mAUDIO_1_LAST_COUNT)>>divide;
-         }
-
-         if(decval) {
-            mAUDIO_1_LAST_COUNT+=decval<<divide;
-            mAUDIO_1_CURRENT-=decval;
-            if(mAUDIO_1_CURRENT&0x80000000) {
-               // Set carry out
-               mAUDIO_1_BORROW_OUT=TRUE;
-
-               // Reload if neccessary
-               if(mAUDIO_1_ENABLE_RELOAD) {
-                  mAUDIO_1_CURRENT+=mAUDIO_1_BKUP+1;
-                  if(mAUDIO_1_CURRENT&0x80000000) mAUDIO_1_CURRENT=0;
-               } else {
-                  // Set timer done
-                  mAUDIO_1_TIMER_DONE=TRUE;
-                  mAUDIO_1_CURRENT=0;
-               }
-
-               //
-               // Update audio circuitry
-               //
-               if(mAUDIO_1_BKUP || mAUDIO_1_LINKING)
-                  mAUDIO_1_WAVESHAPER=GetLfsrNext(mAUDIO_1_WAVESHAPER);
-
-               if(mAUDIO_1_INTEGRATE_ENABLE) {
-                  SLONG temp=mAUDIO_OUTPUT[1];
-                  if(mAUDIO_1_WAVESHAPER&0x0001) temp+=mAUDIO_1_VOLUME;
-                  else temp-=mAUDIO_1_VOLUME;
-                  if(temp>127) temp=127;
-                  if(temp<-128) temp=-128;
-                  mAUDIO_OUTPUT[1]=(SBYTE)temp;
-               } else {
-                  if(mAUDIO_1_WAVESHAPER&0x0001) mAUDIO_OUTPUT[1]=mAUDIO_1_VOLUME;
-                  else mAUDIO_OUTPUT[1]=-mAUDIO_1_VOLUME;
-               }
-            } else {
-               mAUDIO_1_BORROW_OUT=FALSE;
-            }
-            // Set carry in as we did a count
-            mAUDIO_1_BORROW_IN=TRUE;
-         } else {
-            // Clear carry in as we didn't count
-            mAUDIO_1_BORROW_IN=FALSE;
-            // Clear carry out
-            mAUDIO_1_BORROW_OUT=FALSE;
-         }
-
-         // Prediction for next timer event cycle number
-
-         if(mAUDIO_1_LINKING!=7) {
-            // Sometimes timeupdates can be >2x rollover in which case
-            // then CURRENT may still be negative and we can use it to
-            // calc the next timer value, we just want another update ASAP
-            tmp=(mAUDIO_1_CURRENT&0x80000000)?1:((mAUDIO_1_CURRENT+1)<<divide);
-            tmp+=gSystemCycleCount;
-            if(tmp<gNextTimerEvent) {
-               gNextTimerEvent=tmp;
-               TRACE_MIKIE1("Update() - AUDIO 1 Set NextTimerEvent = %012d",gNextTimerEvent);
-            }
-         }
-         //					TRACE_MIKIE1("Update() - mAUDIO_1_CURRENT = %012d",mAUDIO_1_CURRENT);
-         //					TRACE_MIKIE1("Update() - mAUDIO_1_BKUP    = %012d",mAUDIO_1_BKUP);
-         //					TRACE_MIKIE1("Update() - mAUDIO_1_LASTCNT = %012d",mAUDIO_1_LAST_COUNT);
-         //					TRACE_MIKIE1("Update() - mAUDIO_1_LINKING = %012d",mAUDIO_1_LINKING);
-      }
-
-      //
-      // Audio 2
-      //
-      //				if(mAUDIO_2_ENABLE_COUNT && !mAUDIO_2_TIMER_DONE && mAUDIO_2_VOLUME && mAUDIO_2_BKUP)
-      if(mAUDIO_2_ENABLE_COUNT && (mAUDIO_2_ENABLE_RELOAD || !mAUDIO_2_TIMER_DONE)) {
-         decval=0;
-
-         if(mAUDIO_2_LINKING==0x07) {
-            if(mAUDIO_1_BORROW_OUT) decval=1;
-            mAUDIO_2_LAST_LINK_CARRY=mAUDIO_1_BORROW_OUT;
-         } else {
-            // Ordinary clocked mode as opposed to linked mode
-            // 16MHz clock downto 1us == cyclecount >> 4
-            divide=(4+mAUDIO_2_LINKING);
-            decval=(gSystemCycleCount-mAUDIO_2_LAST_COUNT)>>divide;
-         }
-
-         if(decval) {
-            mAUDIO_2_LAST_COUNT+=decval<<divide;
-            mAUDIO_2_CURRENT-=decval;
-            if(mAUDIO_2_CURRENT&0x80000000) {
-               // Set carry out
-               mAUDIO_2_BORROW_OUT=TRUE;
-
-               // Reload if neccessary
-               if(mAUDIO_2_ENABLE_RELOAD) {
-                  mAUDIO_2_CURRENT+=mAUDIO_2_BKUP+1;
-                  if(mAUDIO_2_CURRENT&0x80000000) mAUDIO_2_CURRENT=0;
-               } else {
-                  // Set timer done
-                  mAUDIO_2_TIMER_DONE=TRUE;
-                  mAUDIO_2_CURRENT=0;
-               }
-
-               //
-               // Update audio circuitry
-               //
-               if(mAUDIO_2_BKUP || mAUDIO_2_LINKING)
-                  mAUDIO_2_WAVESHAPER=GetLfsrNext(mAUDIO_2_WAVESHAPER);
-
-               if(mAUDIO_2_INTEGRATE_ENABLE) {
-                  SLONG temp=mAUDIO_OUTPUT[2];
-                  if(mAUDIO_2_WAVESHAPER&0x0001) temp+=mAUDIO_2_VOLUME;
-                  else temp-=mAUDIO_2_VOLUME;
-                  if(temp>127) temp=127;
-                  if(temp<-128) temp=-128;
-                  mAUDIO_OUTPUT[2]=(SBYTE)temp;
-               } else {
-                  if(mAUDIO_2_WAVESHAPER&0x0001) mAUDIO_OUTPUT[2]=mAUDIO_2_VOLUME;
-                  else mAUDIO_OUTPUT[2]=-mAUDIO_2_VOLUME;
-               }
-            } else {
-               mAUDIO_2_BORROW_OUT=FALSE;
-            }
-            // Set carry in as we did a count
-            mAUDIO_2_BORROW_IN=TRUE;
-         } else {
-            // Clear carry in as we didn't count
-            mAUDIO_2_BORROW_IN=FALSE;
-            // Clear carry out
-            mAUDIO_2_BORROW_OUT=FALSE;
-         }
-
-         // Prediction for next timer event cycle number
-
-         if(mAUDIO_2_LINKING!=7) {
-            // Sometimes timeupdates can be >2x rollover in which case
-            // then CURRENT may still be negative and we can use it to
-            // calc the next timer value, we just want another update ASAP
-            tmp=(mAUDIO_2_CURRENT&0x80000000)?1:((mAUDIO_2_CURRENT+1)<<divide);
-            tmp+=gSystemCycleCount;
-            if(tmp<gNextTimerEvent) {
-               gNextTimerEvent=tmp;
-               TRACE_MIKIE1("Update() - AUDIO 2 Set NextTimerEvent = %012d",gNextTimerEvent);
-            }
-         }
-         //					TRACE_MIKIE1("Update() - mAUDIO_2_CURRENT = %012d",mAUDIO_2_CURRENT);
-         //					TRACE_MIKIE1("Update() - mAUDIO_2_BKUP    = %012d",mAUDIO_2_BKUP);
-         //					TRACE_MIKIE1("Update() - mAUDIO_2_LASTCNT = %012d",mAUDIO_2_LAST_COUNT);
-         //					TRACE_MIKIE1("Update() - mAUDIO_2_LINKING = %012d",mAUDIO_2_LINKING);
-      }
-
-      //
-      // Audio 3
-      //
-      //				if(mAUDIO_3_ENABLE_COUNT && !mAUDIO_3_TIMER_DONE && mAUDIO_3_VOLUME && mAUDIO_3_BKUP)
-      if(mAUDIO_3_ENABLE_COUNT && (mAUDIO_3_ENABLE_RELOAD || !mAUDIO_3_TIMER_DONE)) {
-         decval=0;
-
-         if(mAUDIO_3_LINKING==0x07) {
-            if(mAUDIO_2_BORROW_OUT) decval=1;
-            mAUDIO_3_LAST_LINK_CARRY=mAUDIO_2_BORROW_OUT;
-         } else {
-            // Ordinary clocked mode as opposed to linked mode
-            // 16MHz clock downto 1us == cyclecount >> 4
-            divide=(4+mAUDIO_3_LINKING);
-            decval=(gSystemCycleCount-mAUDIO_3_LAST_COUNT)>>divide;
-         }
-
-         if(decval) {
-            mAUDIO_3_LAST_COUNT+=decval<<divide;
-            mAUDIO_3_CURRENT-=decval;
-            if(mAUDIO_3_CURRENT&0x80000000) {
-               // Set carry out
-               mAUDIO_3_BORROW_OUT=TRUE;
-
-               // Reload if neccessary
-               if(mAUDIO_3_ENABLE_RELOAD) {
-                  mAUDIO_3_CURRENT+=mAUDIO_3_BKUP+1;
-                  if(mAUDIO_3_CURRENT&0x80000000) mAUDIO_3_CURRENT=0;
-               } else {
-                  // Set timer done
-                  mAUDIO_3_TIMER_DONE=TRUE;
-                  mAUDIO_3_CURRENT=0;
-               }
-
-               //
-               // Update audio circuitry
-               //
-               if(mAUDIO_3_BKUP || mAUDIO_3_LINKING)
-                  mAUDIO_3_WAVESHAPER=GetLfsrNext(mAUDIO_3_WAVESHAPER);
-
-               if(mAUDIO_3_INTEGRATE_ENABLE) {
-                  SLONG temp=mAUDIO_OUTPUT[3];
-                  if(mAUDIO_3_WAVESHAPER&0x0001) temp+=mAUDIO_3_VOLUME;
-                  else temp-=mAUDIO_3_VOLUME;
-                  if(temp>127) temp=127;
-                  if(temp<-128) temp=-128;
-                  mAUDIO_OUTPUT[3]=(SBYTE)temp;
-               } else {
-                  if(mAUDIO_3_WAVESHAPER&0x0001) mAUDIO_OUTPUT[3]=mAUDIO_3_VOLUME;
-                  else mAUDIO_OUTPUT[3]=-mAUDIO_3_VOLUME;
-               }
-            } else {
-               mAUDIO_3_BORROW_OUT=FALSE;
-            }
-            // Set carry in as we did a count
-            mAUDIO_3_BORROW_IN=TRUE;
-         } else {
-            // Clear carry in as we didn't count
-            mAUDIO_3_BORROW_IN=FALSE;
-            // Clear carry out
-            mAUDIO_3_BORROW_OUT=FALSE;
-         }
-
-         // Prediction for next timer event cycle number
-
-         if(mAUDIO_3_LINKING!=7) {
-            // Sometimes timeupdates can be >2x rollover in which case
-            // then CURRENT may still be negative and we can use it to
-            // calc the next timer value, we just want another update ASAP
-            tmp=(mAUDIO_3_CURRENT&0x80000000)?1:((mAUDIO_3_CURRENT+1)<<divide);
-            tmp+=gSystemCycleCount;
-            if(tmp<gNextTimerEvent) {
-               gNextTimerEvent=tmp;
-               TRACE_MIKIE1("Update() - AUDIO 3 Set NextTimerEvent = %012d",gNextTimerEvent);
-            }
-         }
-         //					TRACE_MIKIE1("Update() - mAUDIO_3_CURRENT = %012d",mAUDIO_3_CURRENT);
-         //					TRACE_MIKIE1("Update() - mAUDIO_3_BKUP    = %012d",mAUDIO_3_BKUP);
-         //					TRACE_MIKIE1("Update() - mAUDIO_3_LASTCNT = %012d",mAUDIO_3_LAST_COUNT);
-         //					TRACE_MIKIE1("Update() - mAUDIO_3_LINKING = %012d",mAUDIO_3_LINKING);
-      }
-
+      UpdateCalcSound();
       UpdateSound();
    }
 
@@ -3441,6 +3046,340 @@ inline void CMikie::Update(void)
    // counter for any work done within the Update() function, gSystemCycleCounter
    // cannot be updated until this point otherwise it screws up the counters.
    gSystemCycleCount+=mikie_work_done;
+}
+
+inline void CMikie::UpdateCalcSound(void)
+{
+   SLONG divide = 0;
+   SLONG decval = 0;
+   ULONG tmp = 0;
+   //
+   // Audio 0
+   //
+   //				if(mAUDIO_0_ENABLE_COUNT && !mAUDIO_0_TIMER_DONE && mAUDIO_0_VOLUME && mAUDIO_0_BKUP)
+   if(mAUDIO_0_ENABLE_COUNT && (mAUDIO_0_ENABLE_RELOAD || !mAUDIO_0_TIMER_DONE)) {
+      decval=0;
+
+      if(mAUDIO_0_LINKING==0x07) {
+         if(mTIM_7_BORROW_OUT) decval=1;
+            mAUDIO_0_LAST_LINK_CARRY=mTIM_7_BORROW_OUT;
+      } else {
+         // Ordinary clocked mode as opposed to linked mode
+         // 16MHz clock downto 1us == cyclecount >> 4
+         divide=(4+mAUDIO_0_LINKING);
+         decval=(gSystemCycleCount-mAUDIO_0_LAST_COUNT)>>divide;
+      }
+
+      if(decval) {
+         mAUDIO_0_LAST_COUNT+=decval<<divide;
+         mAUDIO_0_CURRENT-=decval;
+         if(mAUDIO_0_CURRENT&0x80000000) {
+            // Set carry out
+            mAUDIO_0_BORROW_OUT=TRUE;
+
+            // Reload if neccessary
+            if(mAUDIO_0_ENABLE_RELOAD) {
+               mAUDIO_0_CURRENT+=mAUDIO_0_BKUP+1;
+               if(mAUDIO_0_CURRENT&0x80000000) mAUDIO_0_CURRENT=0;
+            } else {
+               // Set timer done
+               mAUDIO_0_TIMER_DONE=TRUE;
+               mAUDIO_0_CURRENT=0;
+            }
+
+            //
+            // Update audio circuitry
+            //
+            if(mAUDIO_0_BKUP || mAUDIO_0_LINKING)
+               mAUDIO_0_WAVESHAPER=GetLfsrNext(mAUDIO_0_WAVESHAPER);
+
+            if(mAUDIO_0_INTEGRATE_ENABLE) {
+               SLONG temp=mAUDIO_OUTPUT[0];
+               if(mAUDIO_0_WAVESHAPER&0x0001) temp+=mAUDIO_0_VOLUME;
+               else temp-=mAUDIO_0_VOLUME;
+               if(temp>127) temp=127;
+               if(temp<-128) temp=-128;
+               mAUDIO_OUTPUT[0]=(SBYTE)temp;
+            } else {
+               if(mAUDIO_0_WAVESHAPER&0x0001) mAUDIO_OUTPUT[0]=mAUDIO_0_VOLUME;
+               else mAUDIO_OUTPUT[0]=-mAUDIO_0_VOLUME;
+            }
+         } else {
+            mAUDIO_0_BORROW_OUT=FALSE;
+         }
+         // Set carry in as we did a count
+         mAUDIO_0_BORROW_IN=TRUE;
+      } else {
+         // Clear carry in as we didn't count
+         mAUDIO_0_BORROW_IN=FALSE;
+         // Clear carry out
+         mAUDIO_0_BORROW_OUT=FALSE;
+      }
+
+      // Prediction for next timer event cycle number
+
+      if(mAUDIO_0_LINKING!=7) {
+         // Sometimes timeupdates can be >2x rollover in which case
+         // then CURRENT may still be negative and we can use it to
+         // calc the next timer value, we just want another update ASAP
+         tmp=(mAUDIO_0_CURRENT&0x80000000)?1:((mAUDIO_0_CURRENT+1)<<divide);
+         tmp+=gSystemCycleCount;
+         if(tmp<gNextTimerEvent) {
+            gNextTimerEvent=tmp;
+            TRACE_MIKIE1("Update() - AUDIO 0 Set NextTimerEvent = %012d",gNextTimerEvent);
+         }
+      }
+      //					TRACE_MIKIE1("Update() - mAUDIO_0_CURRENT = %012d",mAUDIO_0_CURRENT);
+      //					TRACE_MIKIE1("Update() - mAUDIO_0_BKUP    = %012d",mAUDIO_0_BKUP);
+      //					TRACE_MIKIE1("Update() - mAUDIO_0_LASTCNT = %012d",mAUDIO_0_LAST_COUNT);
+      //					TRACE_MIKIE1("Update() - mAUDIO_0_LINKING = %012d",mAUDIO_0_LINKING);
+   }
+
+   //
+   // Audio 1
+   //
+   //				if(mAUDIO_1_ENABLE_COUNT && !mAUDIO_1_TIMER_DONE && mAUDIO_1_VOLUME && mAUDIO_1_BKUP)
+   if(mAUDIO_1_ENABLE_COUNT && (mAUDIO_1_ENABLE_RELOAD || !mAUDIO_1_TIMER_DONE)) {
+      decval=0;
+
+      if(mAUDIO_1_LINKING==0x07) {
+         if(mAUDIO_0_BORROW_OUT) decval=1;
+         mAUDIO_1_LAST_LINK_CARRY=mAUDIO_0_BORROW_OUT;
+      } else {
+         // Ordinary clocked mode as opposed to linked mode
+         // 16MHz clock downto 1us == cyclecount >> 4
+         divide=(4+mAUDIO_1_LINKING);
+         decval=(gSystemCycleCount-mAUDIO_1_LAST_COUNT)>>divide;
+      }
+
+      if(decval) {
+         mAUDIO_1_LAST_COUNT+=decval<<divide;
+         mAUDIO_1_CURRENT-=decval;
+         if(mAUDIO_1_CURRENT&0x80000000) {
+            // Set carry out
+            mAUDIO_1_BORROW_OUT=TRUE;
+
+            // Reload if neccessary
+            if(mAUDIO_1_ENABLE_RELOAD) {
+               mAUDIO_1_CURRENT+=mAUDIO_1_BKUP+1;
+               if(mAUDIO_1_CURRENT&0x80000000) mAUDIO_1_CURRENT=0;
+            } else {
+               // Set timer done
+               mAUDIO_1_TIMER_DONE=TRUE;
+               mAUDIO_1_CURRENT=0;
+            }
+
+            //
+            // Update audio circuitry
+            //
+            if(mAUDIO_1_BKUP || mAUDIO_1_LINKING)
+               mAUDIO_1_WAVESHAPER=GetLfsrNext(mAUDIO_1_WAVESHAPER);
+
+            if(mAUDIO_1_INTEGRATE_ENABLE) {
+               SLONG temp=mAUDIO_OUTPUT[1];
+               if(mAUDIO_1_WAVESHAPER&0x0001) temp+=mAUDIO_1_VOLUME;
+               else temp-=mAUDIO_1_VOLUME;
+               if(temp>127) temp=127;
+               if(temp<-128) temp=-128;
+               mAUDIO_OUTPUT[1]=(SBYTE)temp;
+            } else {
+               if(mAUDIO_1_WAVESHAPER&0x0001) mAUDIO_OUTPUT[1]=mAUDIO_1_VOLUME;
+               else mAUDIO_OUTPUT[1]=-mAUDIO_1_VOLUME;
+            }
+         } else {
+            mAUDIO_1_BORROW_OUT=FALSE;
+         }
+         // Set carry in as we did a count
+         mAUDIO_1_BORROW_IN=TRUE;
+      } else {
+         // Clear carry in as we didn't count
+         mAUDIO_1_BORROW_IN=FALSE;
+         // Clear carry out
+         mAUDIO_1_BORROW_OUT=FALSE;
+      }
+
+      // Prediction for next timer event cycle number
+
+      if(mAUDIO_1_LINKING!=7) {
+         // Sometimes timeupdates can be >2x rollover in which case
+         // then CURRENT may still be negative and we can use it to
+         // calc the next timer value, we just want another update ASAP
+         tmp=(mAUDIO_1_CURRENT&0x80000000)?1:((mAUDIO_1_CURRENT+1)<<divide);
+         tmp+=gSystemCycleCount;
+         if(tmp<gNextTimerEvent) {
+            gNextTimerEvent=tmp;
+            TRACE_MIKIE1("Update() - AUDIO 1 Set NextTimerEvent = %012d",gNextTimerEvent);
+         }
+      }
+      //					TRACE_MIKIE1("Update() - mAUDIO_1_CURRENT = %012d",mAUDIO_1_CURRENT);
+      //					TRACE_MIKIE1("Update() - mAUDIO_1_BKUP    = %012d",mAUDIO_1_BKUP);
+      //					TRACE_MIKIE1("Update() - mAUDIO_1_LASTCNT = %012d",mAUDIO_1_LAST_COUNT);
+      //					TRACE_MIKIE1("Update() - mAUDIO_1_LINKING = %012d",mAUDIO_1_LINKING);
+   }
+
+   //
+   // Audio 2
+   //
+   //				if(mAUDIO_2_ENABLE_COUNT && !mAUDIO_2_TIMER_DONE && mAUDIO_2_VOLUME && mAUDIO_2_BKUP)
+   if(mAUDIO_2_ENABLE_COUNT && (mAUDIO_2_ENABLE_RELOAD || !mAUDIO_2_TIMER_DONE)) {
+      decval=0;
+
+      if(mAUDIO_2_LINKING==0x07) {
+         if(mAUDIO_1_BORROW_OUT) decval=1;
+         mAUDIO_2_LAST_LINK_CARRY=mAUDIO_1_BORROW_OUT;
+      } else {
+         // Ordinary clocked mode as opposed to linked mode
+         // 16MHz clock downto 1us == cyclecount >> 4
+         divide=(4+mAUDIO_2_LINKING);
+         decval=(gSystemCycleCount-mAUDIO_2_LAST_COUNT)>>divide;
+      }
+
+      if(decval) {
+         mAUDIO_2_LAST_COUNT+=decval<<divide;
+         mAUDIO_2_CURRENT-=decval;
+         if(mAUDIO_2_CURRENT&0x80000000) {
+            // Set carry out
+            mAUDIO_2_BORROW_OUT=TRUE;
+
+            // Reload if neccessary
+            if(mAUDIO_2_ENABLE_RELOAD) {
+               mAUDIO_2_CURRENT+=mAUDIO_2_BKUP+1;
+               if(mAUDIO_2_CURRENT&0x80000000) mAUDIO_2_CURRENT=0;
+            } else {
+               // Set timer done
+               mAUDIO_2_TIMER_DONE=TRUE;
+               mAUDIO_2_CURRENT=0;
+            }
+
+            //
+            // Update audio circuitry
+            //
+            if(mAUDIO_2_BKUP || mAUDIO_2_LINKING)
+               mAUDIO_2_WAVESHAPER=GetLfsrNext(mAUDIO_2_WAVESHAPER);
+
+            if(mAUDIO_2_INTEGRATE_ENABLE) {
+               SLONG temp=mAUDIO_OUTPUT[2];
+               if(mAUDIO_2_WAVESHAPER&0x0001) temp+=mAUDIO_2_VOLUME;
+               else temp-=mAUDIO_2_VOLUME;
+               if(temp>127) temp=127;
+               if(temp<-128) temp=-128;
+               mAUDIO_OUTPUT[2]=(SBYTE)temp;
+            } else {
+               if(mAUDIO_2_WAVESHAPER&0x0001) mAUDIO_OUTPUT[2]=mAUDIO_2_VOLUME;
+               else mAUDIO_OUTPUT[2]=-mAUDIO_2_VOLUME;
+            }
+         } else {
+            mAUDIO_2_BORROW_OUT=FALSE;
+         }
+         // Set carry in as we did a count
+         mAUDIO_2_BORROW_IN=TRUE;
+      } else {
+         // Clear carry in as we didn't count
+         mAUDIO_2_BORROW_IN=FALSE;
+         // Clear carry out
+         mAUDIO_2_BORROW_OUT=FALSE;
+      }
+
+      // Prediction for next timer event cycle number
+
+      if(mAUDIO_2_LINKING!=7) {
+         // Sometimes timeupdates can be >2x rollover in which case
+         // then CURRENT may still be negative and we can use it to
+         // calc the next timer value, we just want another update ASAP
+         tmp=(mAUDIO_2_CURRENT&0x80000000)?1:((mAUDIO_2_CURRENT+1)<<divide);
+         tmp+=gSystemCycleCount;
+         if(tmp<gNextTimerEvent) {
+            gNextTimerEvent=tmp;
+            TRACE_MIKIE1("Update() - AUDIO 2 Set NextTimerEvent = %012d",gNextTimerEvent);
+         }
+      }
+      //					TRACE_MIKIE1("Update() - mAUDIO_2_CURRENT = %012d",mAUDIO_2_CURRENT);
+      //					TRACE_MIKIE1("Update() - mAUDIO_2_BKUP    = %012d",mAUDIO_2_BKUP);
+      //					TRACE_MIKIE1("Update() - mAUDIO_2_LASTCNT = %012d",mAUDIO_2_LAST_COUNT);
+      //					TRACE_MIKIE1("Update() - mAUDIO_2_LINKING = %012d",mAUDIO_2_LINKING);
+   }
+
+   //
+   // Audio 3
+   //
+   //				if(mAUDIO_3_ENABLE_COUNT && !mAUDIO_3_TIMER_DONE && mAUDIO_3_VOLUME && mAUDIO_3_BKUP)
+   if(mAUDIO_3_ENABLE_COUNT && (mAUDIO_3_ENABLE_RELOAD || !mAUDIO_3_TIMER_DONE)) {
+      decval=0;
+
+      if(mAUDIO_3_LINKING==0x07) {
+         if(mAUDIO_2_BORROW_OUT) decval=1;
+         mAUDIO_3_LAST_LINK_CARRY=mAUDIO_2_BORROW_OUT;
+      } else {
+         // Ordinary clocked mode as opposed to linked mode
+         // 16MHz clock downto 1us == cyclecount >> 4
+         divide=(4+mAUDIO_3_LINKING);
+         decval=(gSystemCycleCount-mAUDIO_3_LAST_COUNT)>>divide;
+      }
+
+      if(decval) {
+         mAUDIO_3_LAST_COUNT+=decval<<divide;
+         mAUDIO_3_CURRENT-=decval;
+         if(mAUDIO_3_CURRENT&0x80000000) {
+            // Set carry out
+            mAUDIO_3_BORROW_OUT=TRUE;
+
+            // Reload if neccessary
+            if(mAUDIO_3_ENABLE_RELOAD) {
+               mAUDIO_3_CURRENT+=mAUDIO_3_BKUP+1;
+               if(mAUDIO_3_CURRENT&0x80000000) mAUDIO_3_CURRENT=0;
+            } else {
+               // Set timer done
+               mAUDIO_3_TIMER_DONE=TRUE;
+               mAUDIO_3_CURRENT=0;
+            }
+
+            //
+            // Update audio circuitry
+            //
+            if(mAUDIO_3_BKUP || mAUDIO_3_LINKING)
+               mAUDIO_3_WAVESHAPER=GetLfsrNext(mAUDIO_3_WAVESHAPER);
+
+            if(mAUDIO_3_INTEGRATE_ENABLE) {
+               SLONG temp=mAUDIO_OUTPUT[3];
+               if(mAUDIO_3_WAVESHAPER&0x0001) temp+=mAUDIO_3_VOLUME;
+               else temp-=mAUDIO_3_VOLUME;
+               if(temp>127) temp=127;
+               if(temp<-128) temp=-128;
+               mAUDIO_OUTPUT[3]=(SBYTE)temp;
+            } else {
+               if(mAUDIO_3_WAVESHAPER&0x0001) mAUDIO_OUTPUT[3]=mAUDIO_3_VOLUME;
+               else mAUDIO_OUTPUT[3]=-mAUDIO_3_VOLUME;
+            }
+         } else {
+            mAUDIO_3_BORROW_OUT=FALSE;
+         }
+         // Set carry in as we did a count
+         mAUDIO_3_BORROW_IN=TRUE;
+      } else {
+         // Clear carry in as we didn't count
+         mAUDIO_3_BORROW_IN=FALSE;
+         // Clear carry out
+         mAUDIO_3_BORROW_OUT=FALSE;
+      }
+
+      // Prediction for next timer event cycle number
+
+      if(mAUDIO_3_LINKING!=7) {
+         // Sometimes timeupdates can be >2x rollover in which case
+         // then CURRENT may still be negative and we can use it to
+         // calc the next timer value, we just want another update ASAP
+         tmp=(mAUDIO_3_CURRENT&0x80000000)?1:((mAUDIO_3_CURRENT+1)<<divide);
+         tmp+=gSystemCycleCount;
+         if(tmp<gNextTimerEvent) {
+            gNextTimerEvent=tmp;
+            TRACE_MIKIE1("Update() - AUDIO 3 Set NextTimerEvent = %012d",gNextTimerEvent);
+         }
+      }
+      //					TRACE_MIKIE1("Update() - mAUDIO_3_CURRENT = %012d",mAUDIO_3_CURRENT);
+      //					TRACE_MIKIE1("Update() - mAUDIO_3_BKUP    = %012d",mAUDIO_3_BKUP);
+      //					TRACE_MIKIE1("Update() - mAUDIO_3_LASTCNT = %012d",mAUDIO_3_LAST_COUNT);
+      //					TRACE_MIKIE1("Update() - mAUDIO_3_LINKING = %012d",mAUDIO_3_LINKING);
+   }
 }
 
 inline void CMikie::UpdateSound(void)
@@ -3472,16 +3411,15 @@ inline void CMikie::UpdateSound(void)
       }
    }
 
-   static int last_lsample = 0;
-   static int last_rsample = 0;
+   SWORD sample_l = (cur_lsample << 5);
+   SWORD sample_r = (cur_rsample << 5);
 
-   if(cur_lsample != last_lsample) {
-      // miksynth.offset_inline((gSystemCycleCount - gAudioLastUpdateCycle) / 4, cur_lsample - last_lsample, mikbuf.left());
-      last_lsample = cur_lsample;
-   }
-
-   if(cur_rsample != last_rsample) {
-      // miksynth.offset_inline((gSystemCycleCount - gAudioLastUpdateCycle) / 4, cur_rsample - last_rsample, mikbuf.right());
-      last_rsample = cur_rsample;
+   int samples = (gSystemCycleCount-gAudioLastUpdateCycle)/HANDY_AUDIO_SAMPLE_PERIOD;
+   for(; samples > 0; --samples)
+   {
+      *(SWORD *) &(gAudioBuffer[gAudioBufferPointer+0]) = sample_l;
+      *(SWORD *) &(gAudioBuffer[gAudioBufferPointer+2]) = sample_r;
+      gAudioBufferPointer = (gAudioBufferPointer + 4) % HANDY_AUDIO_BUFFER_SIZE;
+      gAudioLastUpdateCycle += HANDY_AUDIO_SAMPLE_PERIOD;
    }
 }

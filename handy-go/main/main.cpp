@@ -10,13 +10,13 @@ extern "C" {
 
 #define APP_ID 50
 
-#define AUDIO_SAMPLE_RATE 22050
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 1)
+#define AUDIO_SAMPLE_RATE 32000
+#define AUDIO_BUFFER_LENGTH ((AUDIO_SAMPLE_RATE / 60 + 25) * 2)
 
 #define PIXEL_MASK 0xFF
 #define PAL_SHIFT_MASK 0x00
 
-static DMA_ATTR short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
+static DMA_ATTR short audioBuffer[AUDIO_BUFFER_LENGTH];
 
 static odroid_video_frame update1;
 static odroid_video_frame update2;
@@ -66,7 +66,7 @@ extern "C" void app_main(void)
 
     gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer + currentUpdate->stride;
     gAudioBuffer = (UBYTE*)&audioBuffer;
-    gAudioEnabled = 0;
+    gAudioEnabled = 1;
 
     if (odroid_system_get_start_action() == ODROID_START_ACTION_RESUME)
     {
@@ -136,8 +136,7 @@ extern "C" void app_main(void)
 
         if (!speedupEnabled)
         {
-            // memset(&audioBuffer + (gAudioBufferPointer / 2), 0, sizeof(audioBuffer) - gAudioBufferPointer);
-            odroid_audio_submit(audioBuffer, AUDIO_SAMPLE_RATE / 60);
+            odroid_audio_submit(audioBuffer, gAudioBufferPointer / 4);
             gAudioBufferPointer = 0;
         }
     }

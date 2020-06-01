@@ -140,8 +140,7 @@ enum
 
 enum
 {
-   MIKIE_PIXEL_FORMAT_8BPP=0,
-   MIKIE_PIXEL_FORMAT_16BPP_565,
+   MIKIE_PIXEL_FORMAT_16BPP_565=0,
    MIKIE_PIXEL_FORMAT_16BPP_565_BE
 };
 
@@ -173,6 +172,7 @@ class CMikie : public CLynxBase
 
    private:
       inline void UpdateSound(void);
+      inline void UpdateCalcSound(void);
       ULONG	DisplayRenderLine(void);
       void	BlowOut(void);
 
