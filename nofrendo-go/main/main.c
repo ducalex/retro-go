@@ -37,7 +37,7 @@ static odroid_gamepad_state *localJoystick = &joystick1;
 static odroid_gamepad_state *remoteJoystick = &joystick2;
 
 static bool overscan = true;
-static bool autocrop = false;
+static uint autocrop = false;
 static bool netplay  = false;
 
 static bool fullFrame = 0;
@@ -132,12 +132,20 @@ static bool overscan_update_cb(odroid_dialog_choice_t *option, odroid_dialog_eve
 
 static bool autocrop_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
+   int val = autocrop;
+   int max = 2;
+
+   if (event == ODROID_DIALOG_PREV) val = val > 0 ? val - 1 : max;
+   if (event == ODROID_DIALOG_NEXT) val = val < max ? val + 1 : 0;
+
    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
-      autocrop = !autocrop;
+      autocrop = val;
       odroid_settings_app_int32_set(NVS_KEY_AUTOCROP, autocrop);
    }
 
-   strcpy(option->value, autocrop ? "Auto" : "Off ");
+   if (val == 0) strcpy(option->value, "Off ");
+   if (val == 1) strcpy(option->value, "Left");
+   if (val == 2) strcpy(option->value, "Both");
 
    return event == ODROID_DIALOG_ENTER;
 }
@@ -167,7 +175,7 @@ static bool advanced_settings_cb(odroid_dialog_choice_t *option, odroid_dialog_e
       odroid_dialog_choice_t options[] = {
          {1, "Region      ", "Auto", 1, &region_update_cb},
          {2, "Overscan    ", "Auto", 1, &overscan_update_cb},
-         {4, "Cropping    ", "Off ", 1, &autocrop_update_cb},
+         {4, "Auto crop   ", "Off ", 1, &autocrop_update_cb},
          {3, "Sprite limit", "On  ", 1, &sprite_limit_cb},
          ODROID_DIALOG_CHOICE_LAST
       };
@@ -288,7 +296,7 @@ IRAM_ATTR void osd_blitscreen(bitmap_t *bmp)
 
    int crop_v = (overscan) ? nes->overscan : 0;
    int crop_l = (autocrop && nes->ppu->left_bg_counter > 210) ? 8 : 0;
-   int crop_r = 0; // (autocrop && crop_l) ? 8 : 0;
+   int crop_r = (autocrop == 2 && crop_l) ? 8 : 0;
 
    currentUpdate->buffer = bmp->line[crop_v] + crop_l;
    currentUpdate->stride = bmp->pitch;
