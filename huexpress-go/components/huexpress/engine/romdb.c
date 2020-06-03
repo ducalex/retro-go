@@ -18,6 +18,7 @@
 
 
 const struct rom_database kKnownRoms[KNOWN_ROM_COUNT] = {
+{0x00000000, "Unknown", __PUBLISHER, __ID, __DATE, JAP},
 // {0xFDE08D6D, "1943 Kai", "CAPCOM", "NX91002", "03-22-1991", JAP},
 // {0x73614660, "21 Emon - Mezase Hotel Ou!!", "NEC", __ID, __DATE, JAP},
 // {0x8E71D4F3, "Adventure Island", "Hudson", __ID, __DATE, JAP},
@@ -458,6 +459,5 @@ CRC_buffer(uchar *buffer, int size)
 		CRC ^= TAB_CONST[b];
 	}
 	CRC = ~CRC;
-	MESSAGE_INFO("CRC = 0X%lX\n",CRC);
 	return CRC;
 }

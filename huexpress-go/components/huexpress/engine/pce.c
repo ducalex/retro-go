@@ -120,7 +120,13 @@ LoadCard(const char *name)
 	fclose(fp);
 
 	uint32 CRC = CRC_buffer(ROM, ROMSIZE * 0x2000);
-	uint16 IDX = 0xFFFF;
+	uint16 IDX = 0;
+	uint32 ROM_MASK = 1;
+
+	while (ROM_MASK < ROMSIZE) ROM_MASK <<= 1;
+	ROM_MASK--;
+
+	MESSAGE_INFO("Rom Info: SIZE=%02X, CRC=%08x, MMU MASK=%02X\n", ROM_MASK, ROMSIZE, CRC);
 
 	for (int index = 0; index < KNOWN_ROM_COUNT; index++) {
 		if (CRC == kKnownRoms[index].CRC) {
@@ -129,47 +135,41 @@ LoadCard(const char *name)
 		}
 	}
 
-	if (IDX == 0xFFFF)
+	MESSAGE_INFO("Game Name: %s\n", kKnownRoms[IDX].Name);
+	MESSAGE_INFO("Game Publisher: %s\n", kKnownRoms[IDX].Publisher);
+	MESSAGE_INFO("Game Region: %s\n", (kKnownRoms[IDX].Flags & JAP) ? "Japan" : "USA");
+
+	// US Encrypted
+	if ((kKnownRoms[IDX].Flags & US_ENCODED) || ROM[0x1FFF] < 0xE0)
 	{
-		MESSAGE_INFO("ROM not in database: CRC=%lx\n", CRC);
+		MESSAGE_INFO("This rom is probably US encrypted, decrypting...\n");
+
+		uchar inverted_nibble[16] = {
+			0, 8, 4, 12, 2, 10, 6, 14,
+			1, 9, 5, 13, 3, 11, 7, 15
+		};
+
+		for (uint32 x = 0; x < ROMSIZE * 0x2000; x++) {
+			uchar temp = ROM[x] & 15;
+
+			ROM[x] &= ~0x0F;
+			ROM[x] |= inverted_nibble[ROM[x] >> 4];
+
+			ROM[x] &= ~0xF0;
+			ROM[x] |= inverted_nibble[temp] << 4;
+		}
 	}
-	else
+
+	// For example with Devil Crush 512Ko
+	if (kKnownRoms[IDX].Flags & TWO_PART_ROM)
+		ROMSIZE = 0x30;
+
+	// Hu Card with onboard RAM
+	if (kKnownRoms[IDX].Flags & POPULOUS)
 	{
-		MESSAGE_INFO("Rom Name: %s\n", kKnownRoms[IDX].Name);
-		MESSAGE_INFO("Publisher: %s\n", kKnownRoms[IDX].Publisher);
-
-		// US Encrypted
-		if ((kKnownRoms[IDX].Flags & US_ENCODED) || ROM[0x1FFF] < 0xE0)
-		{
-			MESSAGE_INFO("This rom is probably US encrypted, decrypting...\n");
-
-			uchar inverted_nibble[16] = {
-				0, 8, 4, 12, 2, 10, 6, 14,
-				1, 9, 5, 13, 3, 11, 7, 15
-			};
-
-			for (uint32 x = 0; x < ROMSIZE * 0x2000; x++) {
-				uchar temp = ROM[x] & 15;
-
-				ROM[x] &= ~0x0F;
-				ROM[x] |= inverted_nibble[ROM[x] >> 4];
-
-				ROM[x] &= ~0xF0;
-				ROM[x] |= inverted_nibble[temp] << 4;
-			}
-		}
-
-		// For example with Devil Crush 512Ko
-		if (kKnownRoms[IDX].Flags & TWO_PART_ROM)
-			ROMSIZE = 0x30;
-
-		// Hu Card with onboard RAM
-		if (kKnownRoms[IDX].Flags & POPULOUS)
-		{
-			MESSAGE_INFO("Special Rom: Populous detected!\n");
-			if (!ExtraRAM)
-				ExtraRAM = (uchar*)rg_alloc(0x8000, MEM_FAST);
-		}
+		MESSAGE_INFO("Special Rom: Populous detected!\n");
+		if (!ExtraRAM)
+			ExtraRAM = (uchar*)rg_alloc(0x8000, MEM_FAST);
 	}
 
 	// Hu Card with onboard RAM (Populous)
@@ -181,12 +181,6 @@ LoadCard(const char *name)
 	}
 
     // Game ROM
-	int ROM_MASK = 1;
-	while (ROM_MASK < ROMSIZE)
-		ROM_MASK <<= 1;
-	ROM_MASK--;
-
-	MESSAGE_INFO("ROMmask=%02X, ROMSIZE=%02X\n", ROM_MASK, ROMSIZE);
 
 	for (int i = 0; i < 0x80; i++) {
 		if (ROMSIZE == 0x30) {
