@@ -406,6 +406,10 @@ static void odroid_system_monitor_task(void *arg)
         counters.resetTime = get_elapsed_time();
 
         tickTime = (counters.resetTime - current.resetTime);
+
+        if (current.busyTime > tickTime)
+            current.busyTime = tickTime;
+
         statistics.battery = odroid_input_battery_read();
         statistics.busyPercent = current.busyTime / tickTime * 100.f;
         statistics.skippedFPS = current.skippedFrames / (tickTime / 1000000.f);

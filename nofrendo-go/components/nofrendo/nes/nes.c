@@ -29,8 +29,6 @@
 #include <osd.h>
 #include <nes.h>
 
-#include <odroid_system.h>
-
 static bitmap_t *framebuffers[2];
 static nes_t nes;
 
@@ -40,8 +38,8 @@ nes_t *nes_getptr(void)
    return &nes;
 }
 
-/* Emulate one frame and render if draw_flag is true */
-INLINE void renderframe(bool draw_flag)
+/* Emulate one frame */
+INLINE void renderframe()
 {
    int elapsed_cycles;
    mapintf_t *mapintf = nes.mmc->intf;
@@ -50,7 +48,7 @@ INLINE void renderframe(bool draw_flag)
    {
       nes.cycles += nes.cycles_per_line;
 
-      ppu_scanline(nes.vidbuf, nes.scanline, draw_flag);
+      ppu_scanline(nes.vidbuf, nes.scanline, nes.drawframe);
 
       if (nes.scanline == 241)
       {
@@ -83,43 +81,25 @@ INLINE void renderframe(bool draw_flag)
 void nes_emulate(void)
 {
    const int audioSamples = nes.apu->sample_rate / nes.refresh_rate;
-   const int frameTime = get_frame_time(nes.refresh_rate);
-   uint skipFrames = 0;
 
    // Discard the garbage frames
-   renderframe(1);
-   renderframe(1);
+   renderframe();
+   renderframe();
 
    osd_loadstate();
 
    while (false == nes.poweroff)
    {
-      uint startTime = get_elapsed_time();
-      bool drawFrame = !skipFrames;
-
       osd_getinput();
-      renderframe(drawFrame);
+      renderframe();
 
-      if (drawFrame)
+      if (nes.drawframe)
       {
          osd_blitscreen(nes.vidbuf);
          nes.vidbuf = (nes.vidbuf == framebuffers[1]) ? framebuffers[0] : framebuffers[1];
       }
 
-      if (skipFrames == 0)
-      {
-         if (get_elapsed_time_since(startTime) > frameTime) skipFrames = 1;
-         if (speedupEnabled) skipFrames += speedupEnabled * 2;
-      }
-      else if (skipFrames > 0)
-      {
-         skipFrames--;
-      }
-
-      if (!speedupEnabled)
-      {
-         osd_audioframe(audioSamples);
-      }
+      osd_audioframe(audioSamples);
 
       osd_wait_for_vsync();
    }
@@ -223,6 +203,7 @@ int nes_init(region_t region, int sample_rate)
    nes.autoframeskip = true;
    nes.poweroff = false;
    nes.pause = false;
+   nes.drawframe = true;
 
    /* Framebuffers */
    framebuffers[0] = bmp_create(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 8);

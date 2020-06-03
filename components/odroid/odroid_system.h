@@ -65,6 +65,7 @@ typedef struct
      uint skippedFrames;
      uint fullFrames;
      uint busyTime;
+     uint realTime;
      uint resetTime;
 } runtime_counters_t;
 

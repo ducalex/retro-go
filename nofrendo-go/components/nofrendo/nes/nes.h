@@ -90,6 +90,7 @@ typedef struct nes_s
    bool autoframeskip;
    bool poweroff;
    bool pause;
+   bool drawframe;
 
 } nes_t;
 

@@ -41,8 +41,9 @@ static uint autocrop = false;
 static bool netplay  = false;
 
 static bool fullFrame = 0;
-static uint lastSyncTime = 0;
-static uint frames = 0;
+static uint frameTime = 0;
+
+static nes_t *nes;
 // --- MAIN
 
 
@@ -225,6 +226,9 @@ void osd_loadstate()
    ppu_setopt(PPU_PALETTE_RGB, odroid_settings_Palette_get());
    overscan = odroid_settings_app_int32_get(NVS_KEY_OVERSCAN, 1);
    autocrop = odroid_settings_app_int32_get(NVS_KEY_AUTOCROP, 0);
+
+   nes = nes_getptr();
+   frameTime = get_frame_time(nes->refresh_rate);
 }
 
 void osd_logprint(int type, char *string)
@@ -245,18 +249,34 @@ void osd_shutdown()
 // Sleep until it's time for next frame
 void osd_wait_for_vsync()
 {
+   static uint skipFrames = 0;
+   static uint lastSyncTime = 0;
+
+   uint elapsed = get_elapsed_time_since(lastSyncTime);
+
+   if (skipFrames == 0)
+   {
+      if (elapsed > frameTime) skipFrames = 1;
+      if (speedupEnabled) skipFrames += speedupEnabled * 2;
+   }
+   else if (skipFrames > 0)
+   {
+      skipFrames--;
+   }
+
    // Tick before submitting audio/syncing
-   odroid_system_tick(!frames, fullFrame, get_elapsed_time_since(lastSyncTime));
+   odroid_system_tick(!nes->drawframe, fullFrame, elapsed);
+
+   nes->drawframe = (skipFrames == 0);
 
    // Use audio to throttle emulation
    if (pendingSamples)
    {
       odroid_audio_submit(audioBuffer, pendingSamples);
+      pendingSamples = 0;
    }
 
    lastSyncTime = get_elapsed_time();
-   pendingSamples = 0;
-   frames = 0;
 }
 
 /*
@@ -264,6 +284,9 @@ void osd_wait_for_vsync()
 */
 void osd_audioframe(int audioSamples)
 {
+   if (speedupEnabled)
+      return;
+
    apu_process(audioBuffer, audioSamples); //get audio data
 
    //16 bit mono -> 32-bit (16 bit r+l)
@@ -292,8 +315,6 @@ void osd_setpalette(rgb_t *pal)
 
 IRAM_ATTR void osd_blitscreen(bitmap_t *bmp)
 {
-   nes_t *nes = nes_getptr();
-
    int crop_v = (overscan) ? nes->overscan : 0;
    int crop_l = (autocrop && nes->ppu->left_bg_counter > 210) ? 8 : 0;
    int crop_r = (autocrop == 2 && crop_l) ? 8 : 0;
@@ -304,7 +325,6 @@ IRAM_ATTR void osd_blitscreen(bitmap_t *bmp)
    currentUpdate->height = bmp->height - (crop_v * 2);
 
    fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
-   frames++;
 
    previousUpdate = currentUpdate;
    currentUpdate = (currentUpdate == &update1) ? &update2 : &update1;
