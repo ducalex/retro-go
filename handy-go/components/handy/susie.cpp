@@ -53,16 +53,6 @@
 #include "susie.h"
 #include "lynxdef.h"
 
-//
-// As the Susie sprite engine only ever sees system RAM
-// wa can access this directly without the hassle of
-// going through the system object, much faster
-#define RAM_PEEK(m)			(mRamPointer[(m)])
-#define RAM_PEEKW(m)			(mRamPointer[(m)]+(mRamPointer[(m)+1]<<8))
-#define RAM_POKE(m1,m2)		{mRamPointer[(m1)]=(m2);}
-
-ULONG cycles_used=0;
-
 CSusie::CSusie(CSystem& parent)
    :mSystem(parent)
 {
@@ -163,8 +153,6 @@ void CSusie::Reset(void)
 
    mJOYSTICK.Byte=0;
    mSWITCHES.Byte=0;
-
-   cycles_used = 0;
 }
 
 bool CSusie::ContextSave(LSS_FILE *fp)
@@ -376,9 +364,11 @@ ULONG CSusie::PaintSprites(void)
       return 0;
    }
 
-   cycles_used=0;
+   //ULONG       mPenIndex[16];
+   mCycles=0;
 
-   do {
+   while (1)
+   {
       TRACE_SUSIE1("PaintSprites() ************ Rendering Sprite %03d ************",sprcount);
 
       everonscreen=0;// everon has to be reset for every sprite, thus line was moved inside this loop
@@ -429,7 +419,7 @@ ULONG CSusie::PaintSprites(void)
       TRACE_SUSIE1("PaintSprites() SCBNEXT $%04x",mSCBNEXT.Word);
       mTMPADR.Word+=2;
 
-      cycles_used+=5*SPR_RDWR_CYC;
+      mCycles+=5*SPR_RDWR_CYC;
 
       // Initialise the collision depositary
 
@@ -456,7 +446,7 @@ ULONG CSusie::PaintSprites(void)
          TRACE_SUSIE1("PaintSprites() VPOSSTRT $%04x",mVPOSSTRT.Word);
          mTMPADR.Word+=2;
 
-         cycles_used+=6*SPR_RDWR_CYC;
+         mCycles+=6*SPR_RDWR_CYC;
 
          bool enable_sizing  = FALSE;
          bool enable_stretch = FALSE;
@@ -476,7 +466,7 @@ ULONG CSusie::PaintSprites(void)
                mSPRVSIZ.Word=RAM_PEEKW(mTMPADR.Word);	// Sprite Verticalal size
                mTMPADR.Word+=2;
 
-               cycles_used+=4*SPR_RDWR_CYC;
+               mCycles+=4*SPR_RDWR_CYC;
                break;
 
             case 2:
@@ -494,7 +484,7 @@ ULONG CSusie::PaintSprites(void)
                mSTRETCH.Word=RAM_PEEKW(mTMPADR.Word);	// Sprite stretch
                mTMPADR.Word+=2;
 
-               cycles_used+=6*SPR_RDWR_CYC;
+               mCycles+=6*SPR_RDWR_CYC;
                break;
 
             case 3:
@@ -517,7 +507,7 @@ ULONG CSusie::PaintSprites(void)
                mTILT.Word=RAM_PEEKW(mTMPADR.Word);		// Sprite tilt
                mTMPADR.Word+=2;
 
-               cycles_used+=8*SPR_RDWR_CYC;
+               mCycles+=8*SPR_RDWR_CYC;
                break;
 
             default:
@@ -540,7 +530,7 @@ ULONG CSusie::PaintSprites(void)
                mPenIndex[(loop*2)+1]=data_tmp&0x0f;
             }
             // Increment cycle count for the reads
-            cycles_used+=8*SPR_RDWR_CYC;
+            mCycles+=8*SPR_RDWR_CYC;
          }
 
          // Now we can start painting
@@ -566,15 +556,10 @@ ULONG CSusie::PaintSprites(void)
          int quadrant=0;
          int hsign,vsign;
 
-         int vquadflip[4]={1,0,3,2};
-         int hquadflip[4]={3,2,1,0};
-
          if(mSPRCTL1_StartLeft) {
-            if(mSPRCTL1_StartUp) quadrant=2;
-			else quadrant=3;
+            if(mSPRCTL1_StartUp) quadrant=2; else quadrant=3;
          } else {
-            if(mSPRCTL1_StartUp) quadrant=1;
-			else quadrant=0;
+            if(mSPRCTL1_StartUp) quadrant=1; else quadrant=0;
          }
          TRACE_SUSIE1("PaintSprites() Quadrant=%d",quadrant);
 
@@ -647,8 +632,8 @@ ULONG CSusie::PaintSprites(void)
                // the hflip, vflip bits & negative tilt to be able to work correctly
                //
                int	modquad=quadrant;
-               static const int vquadflip[4]={1,0,3,2};
-               static const int hquadflip[4]={3,2,1,0};
+               static int vquadflip[4]={1,0,3,2};
+               static int hquadflip[4]={3,2,1,0};
 
                if(mSPRCTL0_Vflip) modquad=vquadflip[modquad];
                if(mSPRCTL0_Hflip) modquad=hquadflip[modquad];
@@ -658,16 +643,16 @@ ULONG CSusie::PaintSprites(void)
 
                switch(modquad) {
                   case 3:
-                     if((sprite_h>=screen_h_start || sprite_h<=world_h_mid) && (sprite_v<screen_v_end    || sprite_v>=world_v_mid)) render=TRUE;
+                     if((sprite_h>=screen_h_start || sprite_h<world_h_mid) && (sprite_v<screen_v_end   || sprite_v>world_v_mid)) render=TRUE;
                      break;
                   case 2:
-                     if((sprite_h>=screen_h_start || sprite_h<=world_h_mid) && (sprite_v>=screen_v_start || sprite_v<=world_v_mid)) render=TRUE;
+                     if((sprite_h>=screen_h_start || sprite_h<world_h_mid) && (sprite_v>=screen_v_start || sprite_v<world_v_mid)) render=TRUE;
                      break;
                   case 1:
-                     if((sprite_h<screen_h_end    || sprite_h>=world_h_mid) && (sprite_v>=screen_v_start || sprite_v<=world_v_mid)) render=TRUE;
+                     if((sprite_h<screen_h_end   || sprite_h>world_h_mid) && (sprite_v>=screen_v_start || sprite_v<world_v_mid)) render=TRUE;
                      break;
                   default:
-                     if((sprite_h<screen_h_end    || sprite_h>=world_h_mid) && (sprite_v<screen_v_end    || sprite_v>=world_v_mid)) render=TRUE;
+                     if((sprite_h<screen_h_end   || sprite_h>world_h_mid) && (sprite_v<screen_v_end   || sprite_v>world_v_mid)) render=TRUE;
                      break;
                }
             } else {
@@ -680,13 +665,14 @@ ULONG CSusie::PaintSprites(void)
 
             int pixel_height=0;
             int pixel_width=0;
-            int pixel=0;
+            static int pixel=0;
             int hoff=0,voff=0;
             int hloop=0,vloop=0;
             bool onscreen=0;
-            int vquadoff=0,hquadoff=0;
+            static int vquadoff=0;
+            static int hquadoff=0;
 
-            if(render) {
+            if(render) { //  && gRenderFrame
                // Set the vertical position & offset
                voff=(SWORD)mVPOSSTRT.Word-screen_v_start;
 
@@ -695,7 +681,7 @@ ULONG CSusie::PaintSprites(void)
 
                // Perform the SIZOFF
                if(vsign==1) mVSIZACUM.Word=mVSIZOFF.Word;
-			   else mVSIZACUM.Word=0;
+               else mVSIZACUM.Word=0;
 
                // Take the sign of the first quad (0) as the basic
                // sign, all other quads drawing in the other direction
@@ -740,7 +726,7 @@ ULONG CSusie::PaintSprites(void)
 
                         // Zero/Force the horizontal scaling accumulator
                         if(hsign==1) mHSIZACUM.Word=mHSIZOFF.Word;
-						      else mHSIZACUM.Word=0;
+                        else mHSIZACUM.Word=0;
 
                         // Take the sign of the first quad (0) as the basic
                         // sign, all other quads drawing in the other direction
@@ -758,16 +744,18 @@ ULONG CSusie::PaintSprites(void)
                         switch(mSPRCTL0_Type)
                         {
                               case sprite_background_shadow:
+                                 #undef PROCESS_PIXEL
                                  #define PROCESS_PIXEL \
                                  WritePixel(hoff,pixel); \
                                  if(!mSPRCOLL_Collide && !mSPRSYS_NoCollide && pixel!=0x0e) \
                                  { \
                                     WriteCollision(hoff,mSPRCOLL_Number); \
                                  }
-                                 #define EndWhile EndWhile01a
-                                 #define HOFF_SIGN LoopContinue01a
-                                 #define LoopContinue LoopContinue01a
 
+                                 #undef EndWhile
+                                 #undef LoopContinue
+                                 #define EndWhile EndWhile01b
+                                 #define LoopContinue LoopContinue01b
                                  #include "susie_pixel_loop.h"
                                  break;
                               case sprite_background_noncollide:
@@ -776,8 +764,8 @@ ULONG CSusie::PaintSprites(void)
 
                                  #undef EndWhile
                                  #undef LoopContinue
-                                 #define EndWhile EndWhile02a
-                                 #define LoopContinue LoopContinue02a
+                                 #define EndWhile EndWhile02b
+                                 #define LoopContinue LoopContinue02b
                                  #include "susie_pixel_loop.h"
                                  break;
                               case sprite_noncollide:
@@ -786,8 +774,8 @@ ULONG CSusie::PaintSprites(void)
 
                                  #undef EndWhile
                                  #undef LoopContinue
-                                 #define EndWhile EndWhile03a
-                                 #define LoopContinue LoopContinue03a
+                                 #define EndWhile EndWhile03b
+                                 #define LoopContinue LoopContinue03b
                                  #include "susie_pixel_loop.h"
                                  break;
                               case sprite_boundary:
@@ -814,8 +802,8 @@ ULONG CSusie::PaintSprites(void)
 
                                  #undef EndWhile
                                  #undef LoopContinue
-                                 #define EndWhile EndWhile04a
-                                 #define LoopContinue LoopContinue04a
+                                 #define EndWhile EndWhile04b
+                                 #define LoopContinue LoopContinue04b
                                  #include "susie_pixel_loop.h"
                                  break;
                               case sprite_normal:
@@ -839,8 +827,8 @@ ULONG CSusie::PaintSprites(void)
 
                                  #undef EndWhile
                                  #undef LoopContinue
-                                 #define EndWhile EndWhile05a
-                                 #define LoopContinue LoopContinue05a
+                                 #define EndWhile EndWhile05b
+                                 #define LoopContinue LoopContinue05b
                                  #include "susie_pixel_loop.h"
                                  break;
                               case sprite_boundary_shadow:
@@ -867,8 +855,8 @@ ULONG CSusie::PaintSprites(void)
 
                                  #undef EndWhile
                                  #undef LoopContinue
-                                 #define EndWhile EndWhile06a
-                                 #define LoopContinue LoopContinue06a
+                                 #define EndWhile EndWhile06b
+                                 #define LoopContinue LoopContinue06b
                                  #include "susie_pixel_loop.h"
                                  break;
                               case sprite_shadow:
@@ -895,8 +883,8 @@ ULONG CSusie::PaintSprites(void)
 
                                  #undef EndWhile
                                  #undef LoopContinue
-                                 #define EndWhile EndWhile07a
-                                 #define LoopContinue LoopContinue07a
+                                 #define EndWhile EndWhile07b
+                                 #define LoopContinue LoopContinue07b
                                  #include "susie_pixel_loop.h"
                                  break;
                               case sprite_xor_shadow:
@@ -923,8 +911,8 @@ ULONG CSusie::PaintSprites(void)
 
                                  #undef EndWhile
                                  #undef LoopContinue
-                                 #define EndWhile EndWhile08a
-                                 #define LoopContinue LoopContinue08a
+                                 #define EndWhile EndWhile08b
+                                 #define LoopContinue LoopContinue08b
                                  #include "susie_pixel_loop.h"
                                  break;
                               default:
@@ -933,8 +921,8 @@ ULONG CSusie::PaintSprites(void)
 
                                  #undef EndWhile
                                  #undef LoopContinue
-                                 #define EndWhile EndWhile09a
-                                 #define LoopContinue LoopContinue09a
+                                 #define EndWhile EndWhile09b
+                                 #define LoopContinue LoopContinue09b
                                  #include "susie_pixel_loop.h"
                                  break;
                         }
@@ -1008,7 +996,7 @@ ULONG CSusie::PaintSprites(void)
             UWORD coldep=mSCBADR.Word+mCOLLOFF.Word;
             UBYTE coldat=RAM_PEEK(coldep);
             if(!everonscreen) coldat|=0x80;
-			else coldat&=0x7f;
+            else coldat&=0x7f;
             RAM_POKE(coldep,coldat);
             TRACE_SUSIE0("PaintSprites() EVERON IS ACTIVE");
             TRACE_SUSIE2("PaintSprites() Wrote $%02x to SCB collision depositary at $%04x",coldat,coldep);
@@ -1045,186 +1033,12 @@ ULONG CSusie::PaintSprites(void)
          // Signal error to the caller
          return 0;
       }
-   } while(1);
-
+   }
    // Fudge factor to fix many flickering issues, also the keypress
    // problem with Hard Drivin and the strange pause in Dirty Larry.
-   //	cycles_used>>=2;
-
-   return cycles_used;
+   //   mCycles>>=2;
+   return mCycles;
 }
-
-inline void CSusie::WritePixel(ULONG hoff,ULONG pixel)
-{
-   ULONG scr_addr=mLineBaseAddress+(hoff/2);
-
-   UBYTE dest=RAM_PEEK(scr_addr);
-   if(!(hoff&0x01)) {
-      // Upper nibble screen write
-      dest&=0x0f;
-      dest|=pixel<<4;
-   } else {
-      // Lower nibble screen write
-      dest&=0xf0;
-      dest|=pixel;
-   }
-   RAM_POKE(scr_addr,dest);
-
-   // Increment cycle count for the read/modify/write
-   cycles_used+=2*SPR_RDWR_CYC;
-}
-
-inline ULONG CSusie::ReadPixel(ULONG hoff)
-{
-   ULONG scr_addr=mLineBaseAddress+(hoff/2);
-
-   ULONG data=RAM_PEEK(scr_addr);
-   if(!(hoff&0x01)) {
-      // Upper nibble read
-      data>>=4;
-   } else {
-      // Lower nibble read
-      data&=0x0f;
-   }
-
-   // Increment cycle count for the read/modify/write
-   cycles_used+=SPR_RDWR_CYC;
-
-   return data;
-}
-
-inline void CSusie::WriteCollision(ULONG hoff,ULONG pixel)
-{
-   ULONG col_addr=mLineCollisionAddress+(hoff/2);
-
-   UBYTE dest=RAM_PEEK(col_addr);
-   if(!(hoff&0x01)) {
-      // Upper nibble screen write
-      dest&=0x0f;
-      dest|=pixel<<4;
-   } else {
-      // Lower nibble screen write
-      dest&=0xf0;
-      dest|=pixel;
-   }
-   RAM_POKE(col_addr,dest);
-
-   // Increment cycle count for the read/modify/write
-   cycles_used+=2*SPR_RDWR_CYC;
-}
-
-inline ULONG CSusie::ReadCollision(ULONG hoff)
-{
-   ULONG col_addr=mLineCollisionAddress+(hoff/2);
-
-   ULONG data=RAM_PEEK(col_addr);
-   if(!(hoff&0x01)) {
-      // Upper nibble read
-      data>>=4;
-   } else {
-      // Lower nibble read
-      data&=0x0f;
-   }
-
-   // Increment cycle count for the read/modify/write
-   cycles_used+=SPR_RDWR_CYC;
-
-   return data;
-}
-
-
-inline ULONG CSusie::LineInit(ULONG voff)
-{
-   //	TRACE_SUSIE0("LineInit()");
-
-   mLineShiftReg=0;
-   mLineShiftRegCount=0;
-   mLineRepeatCount=0;
-   mLinePixel=0;
-   mLineType=line_error;
-   mLinePacketBitsLeft=0xffff;
-
-   // Initialise the temporary pointer
-
-   mTMPADR=mSPRDLINE;
-
-   // First read the Offset to the next line
-
-   ULONG offset=LineGetBits(8);
-   //	TRACE_SUSIE1("LineInit() Offset=%04x",offset);
-
-   // Specify the MAXIMUM number of bits in this packet, it
-   // can terminate early but can never use more than this
-   // without ending the current packet, we count down in LineGetBits()
-
-   mLinePacketBitsLeft=(offset-1)*8;
-
-   // Literals are a special case and get their count set on a line basis
-
-   if(mSPRCTL1_Literal) {
-      mLineType=line_abs_literal;
-      mLineRepeatCount=((offset-1)*8)/mSPRCTL0_PixelBits;
-      // Why is this necessary, is this compensating for the 1,1 offset bug
-      //		mLineRepeatCount--;
-   }
-   //	TRACE_SUSIE1("LineInit() mLineRepeatCount=$%04x",mLineRepeatCount);
-
-   // Set the line base address for use in the calls to pixel painting
-
-   if(voff>101) {
-      printf("CSusie::LineInit() Out of bounds (voff)\n");
-      voff=0;
-   }
-
-   mLineBaseAddress=mVIDBAS.Word+(voff*(SCREEN_WIDTH/2));
-   mLineCollisionAddress=mCOLLBAS.Word+(voff*(SCREEN_WIDTH/2));
-   //	TRACE_SUSIE1("LineInit() mLineBaseAddress=$%04x",mLineBaseAddress);
-   //	TRACE_SUSIE1("LineInit() mLineCollisionAddress=$%04x",mLineCollisionAddress);
-
-   // Return the offset to the next line
-
-   return offset;
-}
-
-
-inline ULONG CSusie::LineGetBits(ULONG bits)
-{
-   ULONG retval;
-
-   // Sanity, not really needed
-   // if(bits>32) return 0;
-
-   // Only return data IF there is enought bits left in the packet
-
-   if(mLinePacketBitsLeft<=bits) return 0;// <= fixes issues with polygones "demo006"
-
-   // Make sure shift reg has enough bits to fulfil the request
-
-   if(mLineShiftRegCount<bits) {
-      // This assumes data comes into LSB and out of MSB
-      //		mLineShiftReg&=0x000000ff;	// Has no effect
-      mLineShiftReg<<=24;
-      mLineShiftReg|=RAM_PEEK(mTMPADR.Word++)<<16;
-      mLineShiftReg|=RAM_PEEK(mTMPADR.Word++)<<8;
-      mLineShiftReg|=RAM_PEEK(mTMPADR.Word++);
-
-      mLineShiftRegCount+=24;
-
-      // Increment cycle count for the read
-      cycles_used+=3*SPR_RDWR_CYC;
-   }
-
-   // Extract the return value
-   retval=mLineShiftReg>>(mLineShiftRegCount-bits);
-   retval&=(1<<bits)-1;
-
-   // Update internal vars;
-   mLineShiftRegCount-=bits;
-   mLinePacketBitsLeft-=bits;
-
-   return retval;
-}
-
 
 void CSusie::Poke(ULONG addr,UBYTE data)
 {
@@ -1566,6 +1380,8 @@ void CSusie::Poke(ULONG addr,UBYTE data)
       case (MATHE&0xff):
          mMATHEFGH.Bytes.E=data;
          TRACE_SUSIE2("Poke(MATHE,%02x) at PC=$%04x",data,mSystem.mCpu->GetPC());
+         mSPRSYS_Mathbit=FALSE;
+
          //
          // Divides take 176 + 14*N ticks
          // (N is the number of most significant zeros in the divisor.)
@@ -1582,7 +1398,7 @@ void CSusie::Poke(ULONG addr,UBYTE data)
             TRACE_SUSIE0("DoMathDivide() - UNSIGNED");
             mMATHABCD.Long=mMATHEFGH.Long/mMATHNP.Long;
             mMATHJKLM.Long=mMATHEFGH.Long%mMATHNP.Long;
-            mSPRSYS_Mathbit=FALSE;
+            // mSPRSYS_Mathbit=FALSE;
          } else {
             TRACE_SUSIE0("DoMathDivide() - DIVIDE BY ZERO ERROR");
             mMATHABCD.Long=0xffffffff;

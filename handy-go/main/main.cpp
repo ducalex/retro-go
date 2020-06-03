@@ -124,7 +124,7 @@ extern "C" void app_main(void)
         // See if we need to skip a frame to keep up
         if (skipFrames == 0)
         {
-            if (get_elapsed_time_since(startTime) > frameTime) skipFrames = 1;
+            if (get_elapsed_time_since(startTime) > frameTime) skipFrames += 1;
             if (speedupEnabled) skipFrames += speedupEnabled * 2.5;
         }
         else if (skipFrames > 0)
@@ -134,7 +134,7 @@ extern "C" void app_main(void)
 
         odroid_system_tick(!drawFrame, fullFrame, get_elapsed_time_since(startTime));
 
-        if (!speedupEnabled)
+        if (!speedupEnabled && gAudioBufferPointer > 0)
         {
             odroid_audio_submit(audioBuffer, gAudioBufferPointer / 4);
             gAudioBufferPointer = 0;

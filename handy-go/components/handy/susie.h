@@ -332,6 +332,35 @@ typedef struct
 }TMATHNP;
 
 
+//
+// As the Susie sprite engine only ever sees system RAM
+// wa can access this directly without the hassle of
+// going through the system object, much faster
+//
+#define RAM_PEEK(m)             (mRamPointer[(m)])
+#define RAM_PEEKW(m)            (mRamPointer[(m)]+(mRamPointer[(m)+1]<<8))
+#define RAM_POKE(m1,m2)         {mRamPointer[(m1)]=(m2);}
+
+#define MY_GET_BITS(retval_bits, bits) \
+     /* ULONG retval_bits; */ \
+   if(mLinePacketBitsLeft<=bits) retval_bits = 0; \
+   else \
+   { \
+   if(mLineShiftRegCount<bits) \
+   { \
+      mLineShiftReg<<=24; \
+      mLineShiftReg|=RAM_PEEK(mTMPADR.Word++)<<16; \
+      mLineShiftReg|=RAM_PEEK(mTMPADR.Word++)<<8; \
+      mLineShiftReg|=RAM_PEEK(mTMPADR.Word++); \
+      mLineShiftRegCount+=24; \
+      mCycles+=3*SPR_RDWR_CYC; \
+   } \
+   retval_bits=mLineShiftReg>>(mLineShiftRegCount-bits); \
+   retval_bits&=(1<<bits)-1; \
+   mLineShiftRegCount-=bits; \
+   mLinePacketBitsLeft-=bits; \
+   }
+
 class CSusie : public CLynxBase
 {
    public:
@@ -354,18 +383,118 @@ class CSusie : public CLynxBase
       ULONG	PaintSprites(void);
 
    private:
-      ULONG	LineInit(ULONG voff);
-      ULONG	LineGetPixel(void);
-      ULONG	LineGetBits(ULONG bits);
+      inline ULONG LineInit(ULONG voff) {
+         //   TRACE_SUSIE0("LineInit()");
+         mLineShiftReg=0;
+         mLineShiftRegCount=0;
+         mLineRepeatCount=0;
+         mLinePixel=0;
+         mLineType=line_error;
+         mLinePacketBitsLeft=0xffff;
 
-      void	ProcessPixel(ULONG hoff,ULONG pixel);
-      void	WritePixel(ULONG hoff,ULONG pixel);
-      ULONG	ReadPixel(ULONG hoff);
-      void	WriteCollision(ULONG hoff,ULONG pixel);
-      ULONG	ReadCollision(ULONG hoff);
+         // Initialise the temporary pointer
+
+         mTMPADR=mSPRDLINE;
+
+         // First read the Offset to the next line
+         ULONG offset;
+         MY_GET_BITS(offset,8)
+         //   TRACE_SUSIE1("LineInit() Offset=%04x",offset);
+
+         // Specify the MAXIMUM number of bits in this packet, it
+         // can terminate early but can never use more than this
+         // without ending the current packet, we count down in LineGetBits()
+
+         mLinePacketBitsLeft=(offset-1)*8;
+
+         // Literals are a special case and get their count set on a line basis
+
+         if(mSPRCTL1_Literal)
+         {
+            mLineType=line_abs_literal;
+            mLineRepeatCount=((offset-1)*8)/mSPRCTL0_PixelBits;
+            // Why is this necessary, is this compensating for the 1,1 offset bug
+            //        mLineRepeatCount--;
+         }
+         //   TRACE_SUSIE1("LineInit() mLineRepeatCount=$%04x",mLineRepeatCount);
+
+         // Set the line base address for use in the calls to pixel painting
+
+         if(voff>101)
+         {
+            printf("CSusie::LineInit() Out of bounds (voff)\n");
+            voff=0;
+         }
+
+         mLineBaseAddress=mVIDBAS.Word+(voff*(SCREEN_WIDTH/2));
+         mLineCollisionAddress=mCOLLBAS.Word+(voff*(SCREEN_WIDTH/2));
+         //   TRACE_SUSIE1("LineInit() mLineBaseAddress=$%04x",mLineBaseAddress);
+         //   TRACE_SUSIE1("LineInit() mLineCollisionAddress=$%04x",mLineCollisionAddress);
+
+         // Return the offset to the next line
+         return offset;
+   };
+
+   inline void WritePixel(ULONG hoff,ULONG pixel) {
+      ULONG scr_addr=mLineBaseAddress+(hoff>>1);
+      UBYTE dest=RAM_PEEK(scr_addr);
+
+      if(!(hoff&0x01)) {
+         // Upper nibble screen write
+         dest&=0x0f;
+         dest|=pixel<<4;
+      } else {
+         // Lower nibble screen write
+         dest&=0xf0;
+         dest|=pixel;
+      }
+      RAM_POKE(scr_addr,dest);
+
+      // Increment cycle count for the read/modify/write
+      mCycles+=2*SPR_RDWR_CYC;
+   }
+
+   inline ULONG ReadPixel(ULONG hoff) {
+      UBYTE data=RAM_PEEK(mLineBaseAddress+(hoff>>1));
+
+      // Increment cycle count for the read/modify/write
+      mCycles+=SPR_RDWR_CYC;
+
+      return (hoff&1) ? (data&0xf) : (data>>4);
+   }
+
+   inline void WriteCollision(ULONG hoff,ULONG pixel) {
+      ULONG col_addr=mLineCollisionAddress+(hoff>>1);
+      UBYTE dest=RAM_PEEK(col_addr);
+
+      if(!(hoff&0x01)) {
+         // Upper nibble screen write
+         dest&=0x0f;
+         dest|=pixel<<4;
+      } else {
+         // Lower nibble screen write
+         dest&=0xf0;
+         dest|=pixel;
+      }
+      RAM_POKE(col_addr,dest);
+
+      // Increment cycle count for the read/modify/write
+      mCycles+=2*SPR_RDWR_CYC;
+   }
+
+   inline ULONG ReadCollision(ULONG hoff) {
+      UBYTE data=RAM_PEEK(mLineCollisionAddress+(hoff>>1));
+
+      // Increment cycle count for the read/modify/write
+      mCycles+=SPR_RDWR_CYC;
+
+      return (hoff&1) ? (data&0xf) : (data>>4);
+   }
 
    private:
-      CSystem&	mSystem;
+      CSystem&		mSystem;
+
+      ULONG			mCycles;
 
       UUWORD		mTMPADR;		// ENG
       UUWORD		mTILTACUM;		// ENG
@@ -397,44 +526,44 @@ class CSusie : public CLynxBase
       TMATHEFGH	mMATHEFGH;		// ENG
       TMATHJKLM	mMATHJKLM;		// ENG
       TMATHNP		mMATHNP;		// ENG
-      int			mMATHAB_sign;
-      int			mMATHCD_sign;
-      int			mMATHEFGH_sign;
+      SLONG			mMATHAB_sign;
+      SLONG			mMATHCD_sign;
+      SLONG			mMATHEFGH_sign;
 
-      int			mSPRCTL0_Type;			// SCB
-      int			mSPRCTL0_Vflip;
-      int			mSPRCTL0_Hflip;
-      int			mSPRCTL0_PixelBits;
+      SLONG			mSPRCTL0_Type;			// SCB
+      SLONG			mSPRCTL0_Vflip;
+      SLONG			mSPRCTL0_Hflip;
+      SLONG			mSPRCTL0_PixelBits;
 
-      int			mSPRCTL1_StartLeft;		// SCB
-      int			mSPRCTL1_StartUp;
-      int			mSPRCTL1_SkipSprite;
-      int			mSPRCTL1_ReloadPalette;
-      int			mSPRCTL1_ReloadDepth;
-      int			mSPRCTL1_Sizing;
-      int			mSPRCTL1_Literal;
+      SLONG			mSPRCTL1_StartLeft;		// SCB
+      SLONG			mSPRCTL1_StartUp;
+      SLONG			mSPRCTL1_SkipSprite;
+      SLONG			mSPRCTL1_ReloadPalette;
+      SLONG			mSPRCTL1_ReloadDepth;
+      SLONG			mSPRCTL1_Sizing;
+      SLONG	      mSPRCTL1_Literal;
 
-      int			mSPRCOLL_Number;		//CPU
-      int			mSPRCOLL_Collide;
+      SLONG			mSPRCOLL_Number;		//CPU
+      SLONG			mSPRCOLL_Collide;
 
-      int			mSPRSYS_StopOnCurrent;	//CPU
-      int			mSPRSYS_LeftHand;
-      int			mSPRSYS_VStretch;
-      int			mSPRSYS_NoCollide;
-      int			mSPRSYS_Accumulate;
-      int			mSPRSYS_SignedMath;
-      int			mSPRSYS_Status;
-      int			mSPRSYS_UnsafeAccess;
-      int			mSPRSYS_LastCarry;
-      int			mSPRSYS_Mathbit;
-      int			mSPRSYS_MathInProgress;
+      SLONG			mSPRSYS_StopOnCurrent;	//CPU
+      SLONG			mSPRSYS_LeftHand;
+      SLONG			mSPRSYS_VStretch;
+      SLONG			mSPRSYS_NoCollide;
+      SLONG			mSPRSYS_Accumulate;
+      SLONG			mSPRSYS_SignedMath;
+      SLONG			mSPRSYS_Status;
+      SLONG			mSPRSYS_UnsafeAccess;
+      SLONG			mSPRSYS_LastCarry;
+      SLONG			mSPRSYS_Mathbit;
+      SLONG			mSPRSYS_MathInProgress;
 
       ULONG		mSUZYBUSEN;		// CPU
 
       TSPRINIT	mSPRINIT;		// CPU
 
       ULONG		mSPRGO;			// CPU
-      int			mEVERON;
+      SLONG		mEVERON;
 
       UBYTE		mPenIndex[16];	// SCB
 
@@ -447,7 +576,7 @@ class CSusie : public CLynxBase
       ULONG		mLinePixel;
       ULONG		mLinePacketBitsLeft;
 
-      int			mCollision;
+      SLONG		mCollision;
 
       UBYTE		*mRamPointer;
 

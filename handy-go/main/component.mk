@@ -7,5 +7,5 @@
 # please read the ESP-IDF documents if you need to do this.
 #
 
-CFLAGS += -DPROJECT_VER='"$(PROJECT_VER)"' -Wall -Wno-comment -Wno-error=comment
-CXXFLAGS += -DPROJECT_VER='"$(PROJECT_VER)"' -Wall -Wno-comment -Wno-error=comment
+CFLAGS += -Ofast -DPROJECT_VER='"$(PROJECT_VER)"' -Wall -Wno-comment -Wno-error=comment
+CXXFLAGS += -Ofast -DPROJECT_VER='"$(PROJECT_VER)"' -Wall -Wno-comment -Wno-error=comment
