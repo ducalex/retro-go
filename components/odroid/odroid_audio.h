@@ -3,23 +3,12 @@
 #include "odroid_settings.h"
 #include "stdbool.h"
 
-typedef enum
-{
-    ODROID_VOLUME_LEVEL0 = 0,
-    ODROID_VOLUME_LEVEL1,
-    ODROID_VOLUME_LEVEL2,
-    ODROID_VOLUME_LEVEL3,
-    ODROID_VOLUME_LEVEL4,
-    ODROID_VOLUME_LEVEL5,
-    ODROID_VOLUME_LEVEL6,
-    ODROID_VOLUME_LEVEL7,
-    ODROID_VOLUME_LEVEL8,
-    ODROID_VOLUME_LEVEL_COUNT,
-} odroid_volume_level;
+#define ODROID_AUDIO_VOLUME_MIN 0
+#define ODROID_AUDIO_VOLUME_MAX 9 // (sizeof(volumeLevels) / sizeof(float) - 1)
+#define ODROID_AUDIO_VOLUME_DEFAULT (ODROID_AUDIO_VOLUME_MAX/2)
 
-
-odroid_volume_level odroid_audio_volume_get();
-void odroid_audio_volume_set(odroid_volume_level value);
+int odroid_audio_volume_get();
+void odroid_audio_volume_set(int levwl);
 void odroid_audio_init(int sample_rate);
 void odroid_audio_set_sink(ODROID_AUDIO_SINK sink);
 ODROID_AUDIO_SINK odroid_audio_get_sink();

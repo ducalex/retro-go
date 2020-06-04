@@ -342,9 +342,10 @@ void odroid_overlay_alert(const char *text)
 static bool volume_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
     int8_t level = odroid_audio_volume_get();
-    int8_t max = ODROID_VOLUME_LEVEL_COUNT - 1;
+    int8_t min = ODROID_AUDIO_VOLUME_MIN;
+    int8_t max = ODROID_AUDIO_VOLUME_MAX;
 
-    if (event == ODROID_DIALOG_PREV && level > 0) {
+    if (event == ODROID_DIALOG_PREV && level > min) {
         odroid_audio_volume_set(--level);
     }
 

@@ -136,7 +136,7 @@ void odroid_settings_RomFilePath_set(char* value)
 
 int32_t odroid_settings_Volume_get()
 {
-    return odroid_settings_int32_get(NvsKey_Volume, ODROID_VOLUME_LEVEL3);
+    return odroid_settings_int32_get(NvsKey_Volume, ODROID_AUDIO_VOLUME_DEFAULT);
 }
 void odroid_settings_Volume_set(int32_t value)
 {
