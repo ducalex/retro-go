@@ -187,7 +187,7 @@ static bool advanced_settings_cb(odroid_dialog_choice_t *option, odroid_dialog_e
 
 static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
-   int pal = odroid_settings_Palette_get();
+   int pal = ppu_getopt(PPU_PALETTE_RGB);
    int max = PPU_PAL_COUNT - 1;
 
    if (event == ODROID_DIALOG_PREV) pal = pal > 0 ? pal - 1 : max;

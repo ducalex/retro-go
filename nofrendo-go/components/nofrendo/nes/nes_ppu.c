@@ -430,7 +430,7 @@ void ppu_setopt(ppu_option_t n, int val)
    switch (n)
    {
       case PPU_PALETTE_RGB:
-      ppu_setpalette((rgb_t*)nes_palettes[n % PPU_PAL_COUNT].data);
+      ppu_setpalette((rgb_t*)nes_palettes[val % PPU_PAL_COUNT].data);
       break;
 
       default:
