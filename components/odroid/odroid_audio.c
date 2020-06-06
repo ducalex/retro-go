@@ -52,22 +52,18 @@ void odroid_audio_init(int sample_rate)
     if (audioSink == ODROID_AUDIO_SINK_SPEAKER)
     {
         i2s_config_t i2s_config = {
-            //.mode = I2S_MODE_MASTER | I2S_MODE_TX,                                  // Only TX
-            .mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN,
+            .mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN,          // Only TX
             .sample_rate = audioSampleRate,
             .bits_per_sample = 16,
             .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,                           //2-channels
             .communication_format = I2S_COMM_FORMAT_I2S_MSB,
-            //.communication_format = I2S_COMM_FORMAT_PCM,
-            .dma_buf_count = 8,
-            //.dma_buf_len = 1472 / 2,  // (368samples * 2ch * 2(short)) = 1472
-            .dma_buf_len = 534,  // (416samples * 2ch * 2(short)) = 1664
+            .dma_buf_count = 2,
+            .dma_buf_len = 580, // 580 stereo 16bit samples (32000 / 55fps) = 2320 bytes
             .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,                                //Interrupt level 1
             .use_apll = 0 //1
         };
 
         i2s_driver_install(I2S_NUM, &i2s_config, 0, NULL);
-
         i2s_set_pin(I2S_NUM, NULL);
         i2s_set_dac_mode(/*I2S_DAC_CHANNEL_LEFT_EN*/ I2S_DAC_CHANNEL_BOTH_EN);
     }
@@ -79,14 +75,11 @@ void odroid_audio_init(int sample_rate)
             .bits_per_sample = 16,
             .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,                           //2-channels
             .communication_format = I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB,
-            .dma_buf_count = 8,
-            //.dma_buf_len = 1472 / 2,  // (368samples * 2ch * 2(short)) = 1472
-            .dma_buf_len = 534,  // (416samples * 2ch * 2(short)) = 1664
+            .dma_buf_count = 2,
+            .dma_buf_len = 580, // 580 stereo 16bit samples (32000 / 55fps) = 2320 bytes
             .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,                                //Interrupt level 1
             .use_apll = 1
         };
-
-        i2s_driver_install(I2S_NUM, &i2s_config, 0, NULL);
 
         i2s_pin_config_t pin_config = {
             .bck_io_num = 4,
@@ -94,6 +87,8 @@ void odroid_audio_init(int sample_rate)
             .data_out_num = 15,
             .data_in_num = -1                                                       //Not used
         };
+
+        i2s_driver_install(I2S_NUM, &i2s_config, 0, NULL);
         i2s_set_pin(I2S_NUM, &pin_config);
 
         // Disable internal amp
@@ -107,6 +102,8 @@ void odroid_audio_init(int sample_rate)
     }
 
     odroid_audio_volume_set(volumeLevel);
+
+    printf("%s: I2S init done. clock=%f\n", __func__, i2s_get_clk(I2S_NUM));
 }
 
 void odroid_audio_terminate()
@@ -128,6 +125,12 @@ IRAM_ATTR void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
     size_t bufferSize = sampleCount * sizeof(int16_t);
     size_t written = 0;
     float volumePercent = volumeLevels[volumeLevel];
+
+    if (bufferSize == 0)
+    {
+        printf("%s: Empty buffer?\n", __func__);
+        return;
+    }
 
     if (audioMuted)
     {
@@ -210,6 +213,11 @@ IRAM_ATTR void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
         printf("odroid_audio_submit: i2s_write failed.\n");
         abort();
     }
+}
+
+bool odroid_audio_is_playing()
+{
+    return false;
 }
 
 void odroid_audio_set_sink(ODROID_AUDIO_SINK sink)

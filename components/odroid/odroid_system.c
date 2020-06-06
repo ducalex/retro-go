@@ -417,8 +417,10 @@ static void odroid_system_monitor_task(void *arg)
         // To do get the actual game refresh rate somehow
         statistics.emulatedSpeed = statistics.totalFPS / 60 * 100.f;
 
-        statistics.freeMemoryInt = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
-        statistics.freeMemoryExt = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+        statistics.freeMemoryInt = heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
+        statistics.freeMemoryExt = heap_caps_get_free_size(MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
+        statistics.freeBlockInt = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
+        statistics.freeBlockExt = heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
 
     #if (configGENERATE_RUN_TIME_STATS == 1)
         TaskStatus_t pxTaskStatusArray[16];
@@ -452,9 +454,11 @@ static void odroid_system_monitor_task(void *arg)
             odroid_system_set_led(led_state);
         }
 
-        printf("HEAP:%d+%d, BUSY:%.4f, FPS:%.4f (SKIP:%d, PART:%d, FULL:%d), BATTERY:%d\n",
+        printf("HEAP:%d+%d (%d+%d), BUSY:%.4f, FPS:%.4f (SKIP:%d, PART:%d, FULL:%d), BATTERY:%d\n",
             statistics.freeMemoryInt / 1024,
             statistics.freeMemoryExt / 1024,
+            statistics.freeBlockInt / 1024,
+            statistics.freeBlockExt / 1024,
             statistics.busyPercent,
             statistics.totalFPS,
             current.skippedFrames,
@@ -522,10 +526,6 @@ void *rg_alloc(size_t size, uint32_t caps)
 
      ptr = heap_caps_calloc(1, size, caps);
 
-     printf("RG_ALLOC: SIZE: %u  [SPIRAM: %u; 32BIT: %u; DMA: %u]  PTR: %p\n",
-               size, (caps & MALLOC_CAP_SPIRAM) != 0, (caps & MALLOC_CAP_32BIT) != 0,
-               (caps & MALLOC_CAP_DMA) != 0, ptr);
-
      if (!ptr)
      {
           size_t availaible = heap_caps_get_largest_free_block(caps);
@@ -540,6 +540,10 @@ void *rg_alloc(size_t size, uint32_t caps)
 
           printf("RG_ALLOC: *** CAPS not fully met (req: %d, available: %d) ***\n", size, availaible);
      }
+
+     printf("RG_ALLOC: SIZE: %u  [SPIRAM: %u; 32BIT: %u; DMA: %u]  PTR: %p\n",
+               size, (caps & MALLOC_CAP_SPIRAM) != 0, (caps & MALLOC_CAP_32BIT) != 0,
+               (caps & MALLOC_CAP_DMA) != 0, ptr);
 
      return ptr;
 }

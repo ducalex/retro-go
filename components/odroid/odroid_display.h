@@ -60,6 +60,7 @@ typedef struct {
     int pixel_size;     // In bytes
     int pixel_mask;     // Unused if no palette
     int pixel_clear;    // Clear each pixel to this value after reading it (-1 to disable)
+    // int rotation;       // Rotation
     void *buffer;       // Should be at least height*stride bytes
     void *palette;      //
     uint8_t pal_shift_mask;

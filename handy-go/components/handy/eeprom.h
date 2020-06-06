@@ -20,7 +20,7 @@ class CEEPROM : public CLynxBase
    // Function members
 
 public:
-   CEEPROM();
+   CEEPROM(UBYTE type);
    ~CEEPROM();
 
    bool ContextSave(LSS_FILE *fp);

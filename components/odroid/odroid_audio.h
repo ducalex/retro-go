@@ -5,7 +5,7 @@
 
 #define ODROID_AUDIO_VOLUME_MIN 0
 #define ODROID_AUDIO_VOLUME_MAX 9 // (sizeof(volumeLevels) / sizeof(float) - 1)
-#define ODROID_AUDIO_VOLUME_DEFAULT (ODROID_AUDIO_VOLUME_MAX/2)
+#define ODROID_AUDIO_VOLUME_DEFAULT (ODROID_AUDIO_VOLUME_MAX/3)
 
 int odroid_audio_volume_get();
 void odroid_audio_volume_set(int levwl);

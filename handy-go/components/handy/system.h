@@ -70,19 +70,19 @@ typedef uint32_t ULONG;
 
 #define HANDY_SYSTEM_FREQ                       16000000
 #define HANDY_TIMER_FREQ                        20
-#define HANDY_AUDIO_SAMPLE_FREQ                 32000 // 48000
+#define HANDY_AUDIO_SAMPLE_FREQ                 24000 // 48000
 #define HANDY_AUDIO_SAMPLE_PERIOD               (HANDY_SYSTEM_FREQ/HANDY_AUDIO_SAMPLE_FREQ)
 
 // for a bit over one frame of 16bit stereo
-#define HANDY_AUDIO_BUFFER_SIZE                 ((HANDY_AUDIO_SAMPLE_FREQ/60+25)*4)
+#define HANDY_AUDIO_BUFFER_LENGTH               ((HANDY_AUDIO_SAMPLE_FREQ/60+25)*2)
 
 #ifdef SDL_PATCH
 //#define HANDY_AUDIO_BUFFER_SIZE               4096    // Needed for SDL 8bit MONO
 //#define HANDY_AUDIO_BUFFER_SIZE               8192    // Needed for SDL STEREO 8bit
-//#define HANDY_AUDIO_BUFFER_SIZE                 16384   // Needed for SDL STEREO 16bit
+//#define HANDY_AUDIO_BUFFER_SIZE               16384   // Needed for SDL STEREO 16bit
 #else
 //#define HANDY_AUDIO_BUFFER_SIZE               (HANDY_AUDIO_SAMPLE_FREQ/4)
-//#define HANDY_AUDIO_BUFFER_SIZE                 (HANDY_AUDIO_SAMPLE_FREQ)
+//#define HANDY_AUDIO_BUFFER_SIZE               (HANDY_AUDIO_SAMPLE_FREQ)
 #endif
 
 
@@ -118,21 +118,27 @@ extern ULONG    gTimerCount;
 extern ULONG    gRenderFrame;
 
 extern ULONG    gAudioEnabled;
-extern UBYTE    *gAudioBuffer;
+extern SWORD    *gAudioBuffer;
 extern ULONG    gAudioBufferPointer;
 extern ULONG    gAudioLastUpdateCycle;
 extern UBYTE    *gPrimaryFrameBuffer;
 
-typedef struct lssfile
-{
-   UBYTE *memptr;
-   ULONG index;
-   ULONG index_limit;
-} LSS_FILE;
+// typedef struct lssfile
+// {
+//    UBYTE *memptr;
+//    ULONG index;
+//    ULONG index_limit;
+// } LSS_FILE;
 
-int lss_read(void* dest, int varsize, int varcount, LSS_FILE *fp);
-int lss_write(void* src, int varsize, int varcount, LSS_FILE *fp);
-int lss_printf(LSS_FILE *fp, const char *str);
+// int lss_read(void* dest, int varsize, int varcount, LSS_FILE *fp);
+// int lss_write(void* src, int varsize, int varcount, LSS_FILE *fp);
+// int lss_printf(LSS_FILE *fp, const char *str);
+
+#define LSS_FILE FILE
+#define lss_read(d, vs, vc, fp) (fread(d, vs, vc, fp) > 0)
+#define lss_write(s, vs, vc, fp) (fwrite(s, vs, vc, fp) > 0)
+#define lss_printf(fp, str) (fputs(str, fp) >= 0)
+
 
 //
 // Define the interfaces before we start pulling in the classes
@@ -148,8 +154,6 @@ class CSystem;
 //
 #include "lynxbase.h"
 #include "ram.h"
-#include "rom.h"
-#include "memmap.h"
 #include "cart.h"
 #include "eeprom.h"
 #include "susie.h"
@@ -166,7 +170,7 @@ class CSystem;
 class CSystem : public CSystemBase
 {
    public:
-      CSystem(const char* gamefile);
+      CSystem(const char* gamefile, long displayformat, long samplerate);
       ~CSystem();
 
    public:
@@ -251,19 +255,68 @@ class CSystem : public CSystemBase
       // CPU
       //
       inline void  Poke_CPU(ULONG addr, UBYTE data) {
-         if (addr < 0xFC00) mRam->Poke(addr,data);
-         else mMemoryHandlers[addr & 0x3FF]->Poke(addr,data);
+         if (addr < 0xFC00) {             // 0000-FBFF Always RAM
+            // mRamPointer[addr] = data;
+            // return;
+         }
+         else if (addr == 0xFFF9) {       // MMU
+            mMemMapReg = data;
+            return;
+         }
+         else if ((addr >> 8) == 0xFC) {  // FC00-FCFF Susie area
+            if ((mMemMapReg & 0x1) == 0) {
+               mSusie->Poke(addr, data);
+               return;
+            }
+         }
+         else if ((addr >> 8) == 0xFD) {  // FD00-FDFF Mikie area
+            if ((mMemMapReg & 0x2) == 0) {
+               mMikie->Poke(addr, data);
+               return;
+            }
+         }
+         else if (addr < 0xFFF8) {        // FE00-FFF7 Bios ROM
+             if ((mMemMapReg & 0x4) == 0)
+               return;
+         }
+         else {                           // FFFA-FFFF Vector area
+            if ((mMemMapReg & 0x8) == 0)
+               return;
+         }
+
+         mRamPointer[addr] = data;
       };
       inline UBYTE Peek_CPU(ULONG addr) {
-         if (addr < 0xFC00) return mRam->Peek(addr);
-         return mMemoryHandlers[addr & 0x3FF]->Peek(addr);
+         if (addr < 0xFC00) {             // 0000-FBFF Always RAM
+            // return mRamPointer[addr];
+         }
+         else if (addr == 0xFFF9) {
+            return mMemMapReg;
+         }
+         else if ((addr >> 8) == 0xFC) {  // FC00-FCFF Susie area
+            if ((mMemMapReg & 0x1) == 0)
+               return mSusie->Peek(addr);
+         }
+         else if ((addr >> 8) == 0xFD) {  // FD00-FDFF Mikie area
+            if ((mMemMapReg & 0x2) == 0)
+               return mMikie->Peek(addr);
+         }
+         else if (addr < 0xFFF8) {        // FE00-FFF7 Bios ROM
+            if ((mMemMapReg & 0x4) == 0)
+               return mBiosRom[addr & 0x1FF];
+         }
+         else {                           // FFFA-FFFF Vector area
+            if ((mMemMapReg & 0x8) == 0)
+               return mBiosVectors[addr - 0xFFFA];
+         }
+
+         return mRamPointer[addr];
       };
       inline void  PokeW_CPU(ULONG addr,UWORD data) { Poke_CPU(addr, data&0xff); Poke_CPU(addr + 1, data >> 8); };
       inline UWORD PeekW_CPU(ULONG addr) { return ((Peek_CPU(addr))+(Peek_CPU(addr+1)<<8)); };
 
       // Mikey system interfacing
 
-      void   DisplaySetAttributes(ULONG Rotate,ULONG Format,ULONG Pitch) { mMikie->DisplaySetAttributes(Rotate,Format,Pitch); };
       void   ComLynxCable(int status) { mMikie->ComLynxCable(status); };
       void   ComLynxRxData(int data)  { mMikie->ComLynxRxData(data); };
       void   ComLynxTxCallback(void (*function)(int data,ULONG objref),ULONG objref) { mMikie->ComLynxTxCallback(function,objref); };
@@ -284,10 +337,7 @@ class CSystem : public CSystemBase
 
    public:
       ULONG         mCycleCountBreakpoint;
-      CLynxBase     *mMemoryHandlers[0x400];
       CCart         *mCart;
-      CRom          *mRom;
-      CMemMap       *mMemMap;
       CRam          *mRam;
       C65C02        *mCpu;
       CMikie        *mMikie;
@@ -295,6 +345,11 @@ class CSystem : public CSystemBase
       CEEPROM       *mEEPROM;
 
       ULONG         mFileType;
+
+      UBYTE         mMemMapReg;
+      UBYTE         *mRamPointer;
+      UBYTE         mBiosVectors[0x8];
+      UBYTE         mBiosRom[0x200];
 };
 
 #endif

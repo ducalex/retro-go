@@ -41,8 +41,8 @@
 #define  PPU_MEM_WRITE(x,v)   (ppu.page[(x) >> 10][(x)] = (v))
 
 /* Background (color 0) and solid sprite pixel flags */
-#define  BG_TRANS             0x80
-#define  SP_PIXEL             0x40
+#define  BG_TRANS             (0x80)
+#define  SP_PIXEL             (0x40)
 #define  BG_CLEAR(V)          ((V) & BG_TRANS)
 #define  BG_SOLID(V)          (0 == BG_CLEAR(V))
 #define  SP_CLEAR(V)          (0 == ((V) & SP_PIXEL))
@@ -51,7 +51,7 @@
 #define  FULLBG               (ppu.palette[0] | BG_TRANS)
 
 /* Runtime settings */
-#define OPT(n) (ppu.options[(n)])
+#define OPT(n)                (ppu.options[(n)])
 
 /* the NES PPU */
 static ppu_t ppu;

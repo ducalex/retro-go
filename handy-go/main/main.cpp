@@ -10,13 +10,10 @@ extern "C" {
 
 #define APP_ID 50
 
-#define AUDIO_SAMPLE_RATE 32000
-#define AUDIO_BUFFER_LENGTH ((AUDIO_SAMPLE_RATE / 60 + 25) * 2)
+#define AUDIO_SAMPLE_RATE   (HANDY_AUDIO_SAMPLE_FREQ)
+#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 40)
 
-#define PIXEL_MASK 0xFF
-#define PAL_SHIFT_MASK 0x00
-
-static DMA_ATTR short audioBuffer[AUDIO_BUFFER_LENGTH];
+static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
 static odroid_video_frame update1;
 static odroid_video_frame update2;
@@ -30,14 +27,33 @@ static CSystem *lynx = NULL;
 
 static bool save_state(char *pathName)
 {
-    return true;
+    bool ret = false;
+    FILE *fp;
+
+    if ((fp = fopen(pathName, "wb")))
+    {
+        ret = lynx->ContextSave(fp);
+        fclose(fp);
+    }
+
+    return ret;
 }
 
 
 static bool load_state(char *pathName)
 {
-    lynx->Reset();
-    return true;
+    bool ret = false;
+    FILE *fp;
+
+    if ((fp = fopen(pathName, "rb")))
+    {
+        ret = lynx->ContextLoad(fp);
+        fclose(fp);
+    }
+
+    if (!ret) lynx->Reset();
+
+    return ret;
 }
 
 
@@ -61,11 +77,10 @@ extern "C" void app_main(void)
     const char *romFile = odroid_system_get_rom_path();
 
     // Init emulator
-    lynx = new CSystem(romFile);
-    lynx->DisplaySetAttributes(MIKIE_NO_ROTATE, MIKIE_PIXEL_FORMAT_16BPP_565_BE, update1.stride);
+    lynx = new CSystem(romFile, MIKIE_PIXEL_FORMAT_16BPP_565_BE, AUDIO_SAMPLE_RATE);
 
     gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer + currentUpdate->stride;
-    gAudioBuffer = (UBYTE*)&audioBuffer;
+    gAudioBuffer = (SWORD*)&audioBuffer;
     gAudioEnabled = 1;
 
     if (odroid_system_get_start_action() == ODROID_START_ACTION_RESUME)
@@ -75,7 +90,7 @@ extern "C" void app_main(void)
 
     odroid_gamepad_state joystick;
 
-    uint frameTime = get_frame_time(60);
+    float sampleTime = AUDIO_SAMPLE_RATE / 1000000.f;
     uint skipFrames = 0;
     bool fullFrame = 0;
 
@@ -106,8 +121,8 @@ extern "C" void app_main(void)
     	if (joystick.values[ODROID_INPUT_RIGHT])  buttons |= BUTTON_RIGHT;
     	if (joystick.values[ODROID_INPUT_A])      buttons |= BUTTON_A;
     	if (joystick.values[ODROID_INPUT_B])      buttons |= BUTTON_B;
-    	if (joystick.values[ODROID_INPUT_START])  buttons |= BUTTON_PAUSE; // BUTTON_OPT1
-    	if (joystick.values[ODROID_INPUT_SELECT]) buttons |= BUTTON_OPT2;
+    	if (joystick.values[ODROID_INPUT_START])  buttons |= BUTTON_OPT2; // BUTTON_PAUSE
+    	if (joystick.values[ODROID_INPUT_SELECT]) buttons |= BUTTON_OPT1;
 
         lynx->SetButtonData(buttons);
 
@@ -124,7 +139,8 @@ extern "C" void app_main(void)
         // See if we need to skip a frame to keep up
         if (skipFrames == 0)
         {
-            if (get_elapsed_time_since(startTime) > frameTime) skipFrames += 1;
+            // The Lynx uses a variable framerate so we use the count of generated audio samples as reference instead
+            if (get_elapsed_time_since(startTime) > ((gAudioBufferPointer/2) * sampleTime)) skipFrames += 1;
             if (speedupEnabled) skipFrames += speedupEnabled * 2.5;
         }
         else if (skipFrames > 0)
@@ -134,9 +150,9 @@ extern "C" void app_main(void)
 
         odroid_system_tick(!drawFrame, fullFrame, get_elapsed_time_since(startTime));
 
-        if (!speedupEnabled && gAudioBufferPointer > 0)
+        if (!speedupEnabled)
         {
-            odroid_audio_submit(audioBuffer, gAudioBufferPointer / 4);
+            odroid_audio_submit(gAudioBuffer, gAudioBufferPointer >> 1);
             gAudioBufferPointer = 0;
         }
     }

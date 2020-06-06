@@ -8,8 +8,8 @@
 
 #define APP_ID 30
 
-#define AUDIO_SAMPLE_RATE (32000)
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 1)
+#define AUDIO_SAMPLE_RATE   (32000)
+#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
 
 #define SMS_WIDTH 256
 #define SMS_HEIGHT 192
@@ -20,7 +20,7 @@
 #define PIXEL_MASK 0x1F
 #define PAL_SHIFT_MASK 0x80
 
-static uint32_t* audioBuffer;
+static uint32_t audioBuffer[AUDIO_BUFFER_LENGTH];
 
 static uint16_t palettes[2][32];
 static odroid_video_frame update1;
@@ -122,9 +122,8 @@ void app_main(void)
     odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     odroid_system_emu_init(&LoadState, &SaveState, NULL);
 
-    update1.buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_ANY);
-    update2.buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_ANY);
-    audioBuffer    = rg_alloc(AUDIO_BUFFER_LENGTH * 2 * 2, MEM_DMA);
+    update1.buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
+    update2.buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
 
     // Load ROM
     const char *romPath = odroid_system_get_rom_path();

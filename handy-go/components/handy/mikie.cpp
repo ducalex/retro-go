@@ -67,7 +67,7 @@ static inline ULONG GetLfsrNext(ULONG current)
    //
    // If the index is a combination of Current LFSR+Feedback the
    // table will give the next value.
-#if 1
+#if 0
    ULONG result = 0;
    if (current & (1<<12)) result ^= (current>>7)&1;
    if (current & (1<<13)) result ^= (current>>0)&1;
@@ -106,30 +106,21 @@ void CMikie::BlowOut(void)
 }
 
 
-   CMikie::CMikie(CSystem& parent)
+CMikie::CMikie(CSystem& parent, ULONG displayformat, ULONG samplerate)
 :mSystem(parent)
 {
    TRACE_MIKIE0("CMikie()");
 
    mpDisplayCurrent=NULL;
    mpRamPointer=NULL;
-
-   mDisplayRotate=MIKIE_BAD_MODE;
-   mDisplayFormat=MIKIE_PIXEL_FORMAT_16BPP_565;
+   mDisplayFormat=displayformat;
+   mAudioSampleRate=samplerate;
+   mDisplayPitch=HANDY_SCREEN_WIDTH * 2;
 
    mUART_CABLE_PRESENT=FALSE;
    mpUART_TX_CALLBACK=NULL;
 
-   int loop;
-   for(loop=0;loop<16;loop++) mPalette[loop].Index=loop;
-   for(loop=0;loop<4096;loop++) mColourMap[loop]=0;
-
-   // mikbuf.set_sample_rate(HANDY_AUDIO_SAMPLE_FREQ, 60);
-   // mikbuf.clock_rate(HANDY_SYSTEM_FREQ / 4);
-   // mikbuf.bass_freq(60);
-   // miksynth.volume(0.50);
-   // miksynth.treble_eq(0);
-
+   BuildPalette();
    Reset();
 }
 
@@ -849,38 +840,23 @@ void CMikie::ComLynxTxCallback(void (*function)(int data,ULONG objref),ULONG obj
 }
 
 
-void CMikie::DisplaySetAttributes(ULONG Rotate,ULONG Format,ULONG Pitch)
+void CMikie::BuildPalette()
 {
-   mDisplayRotate=Rotate;
-   mDisplayFormat=Format;
-   mDisplayPitch=Pitch;
-   mpDisplayCurrent=NULL;
-
    //
    // Calculate the colour lookup tabes for the relevant mode
    //
    TPALETTE Spot;
 
-   switch(mDisplayFormat) {
-      case MIKIE_PIXEL_FORMAT_16BPP_565:
-         for(Spot.Index=0;Spot.Index<4096;Spot.Index++) {
-            mColourMap[Spot.Index]=((Spot.Colours.Red<<12)&0xf000) | ((Spot.Colours.Red<<8)&0x0800);
-            mColourMap[Spot.Index]|=((Spot.Colours.Green<<7)&0x0780) | ((Spot.Colours.Green<<3)&0x0060);
-            mColourMap[Spot.Index]|=((Spot.Colours.Blue<<1)&0x001e) | ((Spot.Colours.Blue>>3)&0x0001);
-         }
-         break;
-      case MIKIE_PIXEL_FORMAT_16BPP_565_BE:
-         for(Spot.Index=0;Spot.Index<4096;Spot.Index++) {
-            mColourMap[Spot.Index]=((Spot.Colours.Red<<12)&0xf000) | ((Spot.Colours.Red<<8)&0x0800);
-            mColourMap[Spot.Index]|=((Spot.Colours.Green<<7)&0x0780) | ((Spot.Colours.Green<<3)&0x0060);
-            mColourMap[Spot.Index]|=((Spot.Colours.Blue<<1)&0x001e) | ((Spot.Colours.Blue>>3)&0x0001);
-            mColourMap[Spot.Index] = mColourMap[Spot.Index] << 8 | mColourMap[Spot.Index] >> 8;
-         }
-         break;
-      default:
-         printf("CMikie::SetScreenAttributes() - Unrecognised display format\n");
-         for(Spot.Index=0;Spot.Index<4096;Spot.Index++) mColourMap[Spot.Index]=0;
-         break;
+   for(Spot.Index=0;Spot.Index<4096;Spot.Index++) {
+      mColourMap[Spot.Index]=((Spot.Colours.Red<<12)&0xf000) | ((Spot.Colours.Red<<8)&0x0800);
+      mColourMap[Spot.Index]|=((Spot.Colours.Green<<7)&0x0780) | ((Spot.Colours.Green<<3)&0x0060);
+      mColourMap[Spot.Index]|=((Spot.Colours.Blue<<1)&0x001e) | ((Spot.Colours.Blue>>3)&0x0001);
+   }
+
+   if (mDisplayFormat == MIKIE_PIXEL_FORMAT_16BPP_565_BE) {
+      for(int i=0;i<4096;i++) {
+         mColourMap[i] = mColourMap[i] << 8 | mColourMap[i] >> 8;
+      }
    }
 
    // Reset screen related counters/vars
@@ -895,12 +871,10 @@ void CMikie::DisplaySetAttributes(ULONG Rotate,ULONG Format,ULONG Pitch)
    gNextTimerEvent=gSystemCycleCount;
 }
 
-#define WRITEBYTE(i) *(bitmap_tmp)=(UBYTE)mColourMap[mPalette[(i)].Index];
-#define WRITEWORD(i) *((UWORD*)(bitmap_tmp))=(UWORD)mColourMap[mPalette[(i)].Index];
 
 inline ULONG CMikie::DisplayRenderLine(void)
 {
-   UBYTE *bitmap_tmp=NULL;
+   UWORD *bitmap_tmp=NULL;
    ULONG source,loop;
    ULONG work_done=0;
 
@@ -937,19 +911,6 @@ inline ULONG CMikie::DisplayRenderLine(void)
 
       // Reset frame buffer pointer to top of screen
       mpDisplayCurrent = gPrimaryFrameBuffer;
-
-      // Make any necessary adjustment for rotation
-      switch(mDisplayRotate) {
-         case MIKIE_ROTATE_L:
-            mpDisplayCurrent+=2*(HANDY_SCREEN_HEIGHT-1);
-            break;
-         case MIKIE_ROTATE_R:
-            mpDisplayCurrent += (mDisplayPitch*(HANDY_SCREEN_WIDTH-1));
-            break;
-         case MIKIE_NO_ROTATE:
-         default:
-            break;
-      }
    }
 
    // Decrement line counter logic
@@ -969,69 +930,21 @@ inline ULONG CMikie::DisplayRenderLine(void)
       // (Step through bitmap, line at a time)
 
       // Assign the temporary pointer;
-      bitmap_tmp=mpDisplayCurrent;
+      bitmap_tmp=(UWORD*)mpDisplayCurrent;
 
-      switch(mDisplayRotate) {
-         case MIKIE_NO_ROTATE:
-            for(loop=0;loop<SCREEN_WIDTH/2;loop++) {
-               source=mpRamPointer[mLynxAddr];
-               if(mDISPCTL_Flip) {
-                  mLynxAddr--;
-                  WRITEWORD(source&0x0f);
-                  bitmap_tmp+=sizeof(UWORD);
-                  WRITEWORD(source>>4);
-                  bitmap_tmp+=sizeof(UWORD);
-               } else {
-                  mLynxAddr++;
-                  WRITEWORD(source>>4);
-                  bitmap_tmp+=sizeof(UWORD);
-                  WRITEWORD(source&0x0f);
-                  bitmap_tmp+=sizeof(UWORD);
-               }
-            }
-            mpDisplayCurrent+=mDisplayPitch;
-            break;
-         case MIKIE_ROTATE_L:
-            for(loop=0;loop<SCREEN_WIDTH/2;loop++) {
-               source=mpRamPointer[mLynxAddr];
-               if(mDISPCTL_Flip) {
-                  mLynxAddr--;
-                  WRITEWORD(source&0x0f);
-                  bitmap_tmp+=mDisplayPitch;
-                  WRITEWORD(source>>4);
-                  bitmap_tmp+=mDisplayPitch;
-               } else {
-                  mLynxAddr++;
-                  WRITEWORD(source>>4);
-                  bitmap_tmp+=mDisplayPitch;
-                  WRITEWORD(source&0x0f);
-                  bitmap_tmp+=mDisplayPitch;
-               }
-            }
-            mpDisplayCurrent-=sizeof(UWORD);
-            break;
-         case MIKIE_ROTATE_R:
-            for(loop=0;loop<SCREEN_WIDTH/2;loop++) {
-               source=mpRamPointer[mLynxAddr];
-               if(mDISPCTL_Flip) {
-                  mLynxAddr--;
-                  WRITEWORD(source&0x0f);
-                  bitmap_tmp-=mDisplayPitch;
-                  WRITEWORD(source>>4);
-                  bitmap_tmp-=mDisplayPitch;
-               } else {
-                  mLynxAddr++;
-                  WRITEWORD(source>>4);
-                  bitmap_tmp-=mDisplayPitch;
-                  WRITEWORD(source&0x0f);
-                  bitmap_tmp-=mDisplayPitch;
-               }
-            }
-            mpDisplayCurrent+=sizeof(UWORD);
-            break;
-         default:
-            break;
+      for(loop=0;loop<SCREEN_WIDTH/2;loop++) {
+         source=mpRamPointer[mLynxAddr];
+         if(mDISPCTL_Flip) {
+            mLynxAddr--;
+            *(bitmap_tmp++)=mColourMap[mPalette[(source&0x0f)].Index];
+            *(bitmap_tmp++)=mColourMap[mPalette[(source>>4)].Index];
+         } else {
+            mLynxAddr++;
+            *(bitmap_tmp++)=mColourMap[mPalette[(source>>4)].Index];
+            *(bitmap_tmp++)=mColourMap[mPalette[(source&0x0f)].Index];
+         }
       }
+      mpDisplayCurrent+=mDisplayPitch;
    }
    return work_done;
 }
@@ -2475,13 +2388,9 @@ inline void CMikie::Update(void)
             }
 
             TRACE_MIKIE0("Update() - Frame end");
-            gEndOfFrame = TRUE;
 
-            // Reinitialise the screen buffer pointer
             mpDisplayCurrent = gPrimaryFrameBuffer;
-
-            // mikbuf.end_frame((gSystemCycleCount - gAudioLastUpdateCycle) / 4);
-            // gAudioBufferPointer = mikbuf.read_samples((blip_sample_t*) gAudioBuffer, HANDY_AUDIO_BUFFER_SIZE / 2) * 2;
+            gEndOfFrame = TRUE;
 
          } else {
             mTIM_2_BORROW_OUT=FALSE;
@@ -3056,13 +2965,14 @@ inline void CMikie::UpdateCalcSound(void)
    //
    // Audio 0
    //
-   //				if(mAUDIO_0_ENABLE_COUNT && !mAUDIO_0_TIMER_DONE && mAUDIO_0_VOLUME && mAUDIO_0_BKUP)
-   if(mAUDIO_0_ENABLE_COUNT && (mAUDIO_0_ENABLE_RELOAD || !mAUDIO_0_TIMER_DONE)) {
+   // if(mAUDIO_0_ENABLE_COUNT && (mAUDIO_0_ENABLE_RELOAD || !mAUDIO_0_TIMER_DONE))
+   if(mAUDIO_0_ENABLE_COUNT && (mAUDIO_0_ENABLE_RELOAD || !mAUDIO_0_TIMER_DONE) && mAUDIO_0_VOLUME && mAUDIO_0_BKUP)
+   {
       decval=0;
 
       if(mAUDIO_0_LINKING==0x07) {
          if(mTIM_7_BORROW_OUT) decval=1;
-            mAUDIO_0_LAST_LINK_CARRY=mTIM_7_BORROW_OUT;
+         mAUDIO_0_LAST_LINK_CARRY=mTIM_7_BORROW_OUT;
       } else {
          // Ordinary clocked mode as opposed to linked mode
          // 16MHz clock downto 1us == cyclecount >> 4
@@ -3090,8 +3000,7 @@ inline void CMikie::UpdateCalcSound(void)
             //
             // Update audio circuitry
             //
-            if(mAUDIO_0_BKUP || mAUDIO_0_LINKING)
-               mAUDIO_0_WAVESHAPER=GetLfsrNext(mAUDIO_0_WAVESHAPER);
+            mAUDIO_0_WAVESHAPER=GetLfsrNext(mAUDIO_0_WAVESHAPER);
 
             if(mAUDIO_0_INTEGRATE_ENABLE) {
                SLONG temp=mAUDIO_OUTPUT[0];
@@ -3138,8 +3047,9 @@ inline void CMikie::UpdateCalcSound(void)
    //
    // Audio 1
    //
-   //				if(mAUDIO_1_ENABLE_COUNT && !mAUDIO_1_TIMER_DONE && mAUDIO_1_VOLUME && mAUDIO_1_BKUP)
-   if(mAUDIO_1_ENABLE_COUNT && (mAUDIO_1_ENABLE_RELOAD || !mAUDIO_1_TIMER_DONE)) {
+   // if(mAUDIO_1_ENABLE_COUNT && (mAUDIO_1_ENABLE_RELOAD || !mAUDIO_1_TIMER_DONE)) {
+   if(mAUDIO_1_ENABLE_COUNT && (mAUDIO_1_ENABLE_RELOAD || !mAUDIO_1_TIMER_DONE) && mAUDIO_1_VOLUME && mAUDIO_1_BKUP)
+   {
       decval=0;
 
       if(mAUDIO_1_LINKING==0x07) {
@@ -3172,8 +3082,7 @@ inline void CMikie::UpdateCalcSound(void)
             //
             // Update audio circuitry
             //
-            if(mAUDIO_1_BKUP || mAUDIO_1_LINKING)
-               mAUDIO_1_WAVESHAPER=GetLfsrNext(mAUDIO_1_WAVESHAPER);
+            mAUDIO_1_WAVESHAPER=GetLfsrNext(mAUDIO_1_WAVESHAPER);
 
             if(mAUDIO_1_INTEGRATE_ENABLE) {
                SLONG temp=mAUDIO_OUTPUT[1];
@@ -3220,8 +3129,9 @@ inline void CMikie::UpdateCalcSound(void)
    //
    // Audio 2
    //
-   //				if(mAUDIO_2_ENABLE_COUNT && !mAUDIO_2_TIMER_DONE && mAUDIO_2_VOLUME && mAUDIO_2_BKUP)
-   if(mAUDIO_2_ENABLE_COUNT && (mAUDIO_2_ENABLE_RELOAD || !mAUDIO_2_TIMER_DONE)) {
+   // if(mAUDIO_2_ENABLE_COUNT && (mAUDIO_2_ENABLE_RELOAD || !mAUDIO_2_TIMER_DONE))
+   if(mAUDIO_2_ENABLE_COUNT && (mAUDIO_2_ENABLE_RELOAD || !mAUDIO_2_TIMER_DONE) && mAUDIO_2_VOLUME && mAUDIO_2_BKUP)
+   {
       decval=0;
 
       if(mAUDIO_2_LINKING==0x07) {
@@ -3254,8 +3164,7 @@ inline void CMikie::UpdateCalcSound(void)
             //
             // Update audio circuitry
             //
-            if(mAUDIO_2_BKUP || mAUDIO_2_LINKING)
-               mAUDIO_2_WAVESHAPER=GetLfsrNext(mAUDIO_2_WAVESHAPER);
+            mAUDIO_2_WAVESHAPER=GetLfsrNext(mAUDIO_2_WAVESHAPER);
 
             if(mAUDIO_2_INTEGRATE_ENABLE) {
                SLONG temp=mAUDIO_OUTPUT[2];
@@ -3302,8 +3211,9 @@ inline void CMikie::UpdateCalcSound(void)
    //
    // Audio 3
    //
-   //				if(mAUDIO_3_ENABLE_COUNT && !mAUDIO_3_TIMER_DONE && mAUDIO_3_VOLUME && mAUDIO_3_BKUP)
-   if(mAUDIO_3_ENABLE_COUNT && (mAUDIO_3_ENABLE_RELOAD || !mAUDIO_3_TIMER_DONE)) {
+   // if(mAUDIO_3_ENABLE_COUNT && (mAUDIO_3_ENABLE_RELOAD || !mAUDIO_3_TIMER_DONE))
+   if(mAUDIO_3_ENABLE_COUNT && (mAUDIO_3_ENABLE_RELOAD || !mAUDIO_3_TIMER_DONE) && mAUDIO_3_VOLUME && mAUDIO_3_BKUP)
+   {
       decval=0;
 
       if(mAUDIO_3_LINKING==0x07) {
@@ -3336,8 +3246,7 @@ inline void CMikie::UpdateCalcSound(void)
             //
             // Update audio circuitry
             //
-            if(mAUDIO_3_BKUP || mAUDIO_3_LINKING)
-               mAUDIO_3_WAVESHAPER=GetLfsrNext(mAUDIO_3_WAVESHAPER);
+            mAUDIO_3_WAVESHAPER=GetLfsrNext(mAUDIO_3_WAVESHAPER);
 
             if(mAUDIO_3_INTEGRATE_ENABLE) {
                SLONG temp=mAUDIO_OUTPUT[3];
@@ -3384,11 +3293,13 @@ inline void CMikie::UpdateCalcSound(void)
 
 inline void CMikie::UpdateSound(void)
 {
+   int samples = (gSystemCycleCount-gAudioLastUpdateCycle)/HANDY_AUDIO_SAMPLE_PERIOD;
+   if (samples == 0) return;
+
    int cur_lsample = 0;
    int cur_rsample = 0;
-   int x;
 
-   for(x = 0; x < 4; x++){
+   for(int x = 0; x < 4; x++){
       /// Assumption (seems there is no documentation for the Attenuation registers)
       /// a) they are linear from $0 to $f - checked!
       /// b) an attenuation of $0 is equal to channel OFF (bits in mSTEREO not set) - checked!
@@ -3414,12 +3325,11 @@ inline void CMikie::UpdateSound(void)
    SWORD sample_l = (cur_lsample << 5);
    SWORD sample_r = (cur_rsample << 5);
 
-   int samples = (gSystemCycleCount-gAudioLastUpdateCycle)/HANDY_AUDIO_SAMPLE_PERIOD;
    for(; samples > 0; --samples)
    {
-      *(SWORD *) &(gAudioBuffer[gAudioBufferPointer+0]) = sample_l;
-      *(SWORD *) &(gAudioBuffer[gAudioBufferPointer+2]) = sample_r;
-      gAudioBufferPointer = (gAudioBufferPointer + 4) % HANDY_AUDIO_BUFFER_SIZE;
+      gAudioBuffer[gAudioBufferPointer++] = sample_l;
+      gAudioBuffer[gAudioBufferPointer++] = sample_r;
+      gAudioBufferPointer %= HANDY_AUDIO_BUFFER_LENGTH;
       gAudioLastUpdateCycle += HANDY_AUDIO_SAMPLE_PERIOD;
    }
 }

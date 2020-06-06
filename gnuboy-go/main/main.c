@@ -17,9 +17,8 @@
 
 #define APP_ID 20
 
-#define AUDIO_SAMPLE_RATE (32000)
-// Note: Magic number obtained by adjusting until audio buffer overflows stop.
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 10 + 1)
+#define AUDIO_SAMPLE_RATE   (32000)
+#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
 
 #define GB_WIDTH (160)
 #define GB_HEIGHT (144)
@@ -29,7 +28,7 @@
 struct fb fb;
 struct pcm pcm;
 
-int16_t* audioBuffer;
+static int16_t audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
 static odroid_video_frame update1 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, -1, NULL, NULL, 0, {}};
 static odroid_video_frame update2 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, -1, NULL, NULL, 0, {}};
@@ -237,7 +236,6 @@ void app_main(void)
 
     update1.buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
     update2.buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
-    audioBuffer    = rg_alloc(AUDIO_BUFFER_LENGTH * 2 * 2, MEM_DMA);
 
     saveSRAM = odroid_settings_app_int32_get(NVS_KEY_SAVE_SRAM, 0);
 
@@ -261,8 +259,8 @@ void app_main(void)
     memset(&pcm, 0, sizeof(pcm));
     pcm.hz = AUDIO_SAMPLE_RATE;
   	pcm.stereo = 1;
-  	pcm.len = AUDIO_BUFFER_LENGTH; // count of 16bit samples (x2 for stereo)
-  	pcm.buf = audioBuffer;
+  	pcm.len = AUDIO_BUFFER_LENGTH * 2; // count of 16bit samples (x2 for stereo)
+  	pcm.buf = &audioBuffer;
   	pcm.pos = 0;
 
     emu_reset();

@@ -78,7 +78,7 @@ ULONG   gTimerCount=0;
 ULONG   gRenderFrame=1;
 
 ULONG   gAudioEnabled=FALSE;
-UBYTE   *gAudioBuffer;//[HANDY_AUDIO_BUFFER_SIZE];
+SWORD   *gAudioBuffer;//[HANDY_AUDIO_BUFFER_SIZE];
 ULONG   gAudioBufferPointer=0;
 ULONG   gAudioLastUpdateCycle=0;
 UBYTE   *gPrimaryFrameBuffer=NULL;
@@ -86,6 +86,7 @@ UBYTE   *gPrimaryFrameBuffer=NULL;
 
 extern void lynx_decrypt(unsigned char * result, const unsigned char * encrypted, const int length);
 
+#if 0
 int lss_read(void* dest, int varsize, int varcount, LSS_FILE *fp)
 {
    ULONG copysize;
@@ -114,12 +115,11 @@ int lss_printf(LSS_FILE *fp, const char *str)
    fp->index+=copysize;
    return copysize;
 }
+#endif
 
 
-CSystem::CSystem(const char* gamefile)
+CSystem::CSystem(const char* gamefile, long displayformat, long samplerate)
  : mCart(NULL),
-   mRom(NULL),
-   mMemMap(NULL),
    mRam(NULL),
    mCpu(NULL),
    mMikie(NULL),
@@ -197,35 +197,46 @@ CSystem::CSystem(const char* gamefile)
 
    if(filememory) delete[] filememory;
 
+   memset(mBiosRom, 0x88, sizeof(mBiosRom));
+   if (mFileType != HANDY_FILETYPE_HOMEBREW) {
+      mBiosRom[0x00] = 0x8d;
+      mBiosRom[0x01] = 0x97;
+      mBiosRom[0x02] = 0xfd;
+      mBiosRom[0x03] = 0x60; // RTS
 
-   mEEPROM = new CEEPROM();
+      mBiosRom[0x19] = 0x8d;
+      mBiosRom[0x20] = 0x97;
+      mBiosRom[0x21] = 0xfd;
 
-   mRom = new CRom(mFileType == HANDY_FILETYPE_HOMEBREW);
+      mBiosRom[0x4A] = 0x8d;
+      mBiosRom[0x4B] = 0x97;
+      mBiosRom[0x4C] = 0xfd;
 
-   // These can generate exceptions
+      mBiosRom[0x180] = 0x8d;
+      mBiosRom[0x181] = 0x97;
+      mBiosRom[0x182] = 0xfd;
+   }
 
-   mMikie = new CMikie(*this);
+   // Vectors
+   mBiosVectors[0] = 0x00;
+   mBiosVectors[1] = 0x30;
+   mBiosVectors[2] = 0x80;
+   mBiosVectors[3] = 0xFF;
+   mBiosVectors[4] = 0x80;
+   mBiosVectors[5] = 0xFF;
+
+   mRamPointer = mRam->GetRamPointer();
+   mMemMapReg = 0x00;
+
+   mMikie = new CMikie(*this, displayformat, samplerate);
    mSusie = new CSusie(*this);
-
-   // Instantiate the memory map handler
-
-   mMemMap = new CMemMap(*this);
-
-   // Now the handlers are set we can instantiate the CPU as is will use handlers on reset
-
    mCpu = new C65C02(*this);
+   mEEPROM = new CEEPROM(mCart->CartGetEEPROMType());
 
    // Now init is complete do a reset, this will cause many things to be reset twice
    // but what the hell, who cares, I don't.....
 
    Reset();
-
-   mEEPROM->SetEEPROMType(mCart->CartGetEEPROMType());
-   char eepromfile[256];
-   strncpy(eepromfile, gamefile,256-10);
-   strcat(eepromfile, ".eeprom");
-   mEEPROM->SetFilename(eepromfile);
-   mEEPROM->Load();
 }
 
 void CSystem::SaveEEPROM(void)
@@ -239,12 +250,10 @@ CSystem::~CSystem()
 
    if(mEEPROM!=NULL) delete mEEPROM;
    if(mCart!=NULL) delete mCart;
-   if(mRom!=NULL) delete mRom;
    if(mRam!=NULL) delete mRam;
    if(mCpu!=NULL) delete mCpu;
    if(mMikie!=NULL) delete mMikie;
    if(mSusie!=NULL) delete mSusie;
-   if(mMemMap!=NULL) delete mMemMap;
 }
 
 void CSystem::HLE_BIOS_FE00(void)
@@ -260,11 +269,11 @@ void CSystem::HLE_BIOS_FE19(void)
 {
    // (not) initial jump from reset vector
    // Clear full 64k memory!
-   mRam->Clear();
+   memset(mRamPointer, 0x00, RAM_SIZE);
 
    // Set Load adresse to $200 ($05,$06)
-   mRam->Poke(0x0005,0x00);
-   mRam->Poke(0x0006,0x02);
+   Poke_CPU(0x0005,0x00);
+   Poke_CPU(0x0006,0x02);
    // Call to $FE00
    mCart->SetShifterValue(0);
    // Fallthrou $FE4A
@@ -273,7 +282,7 @@ void CSystem::HLE_BIOS_FE19(void)
 
 void CSystem::HLE_BIOS_FE4A(void)
 {
-   UWORD addr=mRam->Peek(0x0005) | (mRam->Peek(0x0006)<<8);
+   UWORD addr=PeekW_CPU(0x0005);
 
    // Load from Cart (loader blocks)
    unsigned char buff[256];// maximum 5 blocks
@@ -334,7 +343,6 @@ void CSystem::Reset(void)
    gSystemHalt=TRUE;
 #endif
 
-   mMemMap->Reset();
    mCart->Reset();
    mEEPROM->Reset();
    mRam->Reset();
@@ -356,7 +364,7 @@ bool CSystem::ContextSave(LSS_FILE *fp)
 {
    bool status=1;
 
-   fp->index = 0;
+   // fp->index = 0;
    if(!lss_printf(fp, LSS_VERSION)) status=0;
 
    // Save ROM CRC
@@ -382,13 +390,13 @@ bool CSystem::ContextSave(LSS_FILE *fp)
    if(!lss_write(&gThrottleLastTimerCount,sizeof(ULONG),1,fp)) status=0;
    if(!lss_write(&gThrottleNextCycleCheckpoint,sizeof(ULONG),1,fp)) status=0;
 
-   ULONG tmp=gTimerCount;
-   if(!lss_write(&tmp,sizeof(ULONG),1,fp)) status=0;
+   if(!lss_write(&gTimerCount,sizeof(ULONG),1,fp)) status=0;
 
    if(!lss_write(&gAudioLastUpdateCycle,sizeof(ULONG),1,fp)) status=0;
 
+   if(!lss_write(&mMemMapReg,sizeof(UBYTE),1,fp)) status=0;
+
    // Save other device contexts
-   if(!mMemMap->ContextSave(fp)) status=0;
    if(!mCart->ContextSave(fp)) status=0;
    if(!mRam->ContextSave(fp)) status=0;
    if(!mMikie->ContextSave(fp)) status=0;
@@ -403,7 +411,7 @@ bool CSystem::ContextLoad(LSS_FILE *fp)
 {
    bool status=1;
 
-   fp->index=0;
+   // fp->index=0;
 
    char teststr[32];
    // Check identifier
@@ -441,13 +449,12 @@ bool CSystem::ContextLoad(LSS_FILE *fp)
       if(!lss_read(&gThrottleLastTimerCount,sizeof(ULONG),1,fp)) status=0;
       if(!lss_read(&gThrottleNextCycleCheckpoint,sizeof(ULONG),1,fp)) status=0;
 
-      ULONG tmp;
-      if(!lss_read(&tmp,sizeof(ULONG),1,fp)) status=0;
-      gTimerCount=tmp;
+      if(!lss_read(&gTimerCount,sizeof(ULONG),1,fp)) status=0;
 
       if(!lss_read(&gAudioLastUpdateCycle,sizeof(ULONG),1,fp)) status=0;
 
-      if(!mMemMap->ContextLoad(fp)) status=0;
+      if(!lss_read(&mMemMapReg,sizeof(UBYTE),1,fp)) status=0;
+
       if(!mCart->ContextLoad(fp)) status=0;
       if(!mRam->ContextLoad(fp)) status=0;
       if(!mMikie->ContextLoad(fp)) status=0;

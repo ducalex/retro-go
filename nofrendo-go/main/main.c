@@ -13,7 +13,8 @@
 
 #define APP_ID 10
 
-#define AUDIO_SAMPLE_RATE   32000
+#define AUDIO_SAMPLE_RATE   (32000)
+#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
 
 #define NVS_KEY_LIMIT_SPRITES "limitspr"
 #define NVS_KEY_OVERSCAN "overscan"
@@ -28,8 +29,8 @@ static odroid_video_frame update2 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 
 static odroid_video_frame *currentUpdate = &update1;
 static odroid_video_frame *previousUpdate = NULL;
 
-DMA_ATTR static int16_t audioBuffer[AUDIO_SAMPLE_RATE / 50 * 2];
-DMA_ATTR static int16_t pendingSamples = 0;
+static int16_t audioBuffer[AUDIO_BUFFER_LENGTH * 2];
+static int16_t pendingSamples = 0;
 
 static odroid_gamepad_state joystick1;
 static odroid_gamepad_state joystick2;

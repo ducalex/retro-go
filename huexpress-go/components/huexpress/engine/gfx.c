@@ -115,6 +115,8 @@ gfx_term()
 	if (VRAMS) free(VRAMS);
 	if (VRAM2) free(VRAM2);
 
+	VRAMS = VRAM2 = NULL;
+
 	osd_gfx_shutdown();
 }
 

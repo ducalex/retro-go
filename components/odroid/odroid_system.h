@@ -80,6 +80,8 @@ typedef struct
      uint lastTickTime;
      uint freeMemoryInt;
      uint freeMemoryExt;
+     uint freeBlockInt;
+     uint freeBlockExt;
      uint idleTimeCPU0;
      uint idleTimeCPU1;
 } runtime_stats_t;

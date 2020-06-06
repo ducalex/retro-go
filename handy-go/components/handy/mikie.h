@@ -147,7 +147,7 @@ enum
 class CMikie : public CLynxBase
 {
    public:
-      CMikie(CSystem& parent);
+      CMikie(CSystem& parent, ULONG displayformat, ULONG samplerate);
       ~CMikie();
 
       bool	ContextSave(LSS_FILE *fp);
@@ -164,7 +164,7 @@ class CMikie : public CLynxBase
       void	ComLynxTxLoopback(int data);
       void	ComLynxTxCallback(void (*function)(int data,ULONG objref),ULONG objref);
 
-      void	DisplaySetAttributes(ULONG Rotate, ULONG Format, ULONG Pitch);
+      void	BuildPalette(void);
 
       void Update(void);
       inline bool SwitchAudInDir(void){ return(mIODIR&0x10);};
@@ -397,7 +397,7 @@ class CMikie : public CLynxBase
       ULONG		mLynxLineDMACounter;
       ULONG		mLynxAddr;
 
-      ULONG		mDisplayRotate;
+      ULONG		mAudioSampleRate;
       ULONG		mDisplayFormat;
       ULONG		mDisplayPitch;
 };
