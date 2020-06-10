@@ -88,7 +88,7 @@ typedef struct {
 	/* Remanence latch */
 	uchar io_buffer;
 
-} IO;
+} IO_t;
 
 typedef struct {
 	// Main memory
@@ -145,11 +145,12 @@ typedef struct {
 
 	// Value of each of the MMR registers
 	uchar MMR[8];
+	uchar SF2; // Street Fighter 2 Mapper
 
 	// IO Registers
-	IO io;
+	IO_t IO;
 
-} hard_pce_t;
+} PCE_t;
 
 /**
   * Exported functions to access hardware
@@ -168,7 +169,7 @@ void  bank_set(uchar P, uchar V);
   * Exported variables
   **/
 
-extern hard_pce_t PCE;
+extern PCE_t PCE;
 // The global structure for all hardware variables
 
 extern uchar *IOAREA, *TRAPRAM;
@@ -193,7 +194,8 @@ extern uchar *MemoryMapW[256];
 #define TotalCycles PCE.TotalCycles
 #define PrevTotalCycles PCE.PrevTotalCycles
 #define MMR PCE.MMR
-#define io PCE.io
+#define SF2 PCE.SF2
+#define io PCE.IO
 
 #define IO_VDC_REG        io.VDC
 #define IO_VDC_REG_ACTIVE io.VDC[io.vdc_reg]

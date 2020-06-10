@@ -9,10 +9,11 @@
   * cf explanations in the header file
   **/
 
-hard_pce_t PCE;
+PCE_t PCE;
 
-// Since no read or write should occur we can point our
-// trap ram to vram to save some internal memory
+// We used to point to VRAM to save memory but some games
+// seem to write to that area for some reason...
+uchar NULLRAM[0x2004];
 uchar *IOAREA, *TRAPRAM;
 
 // Memory Mapping
@@ -21,8 +22,6 @@ uchar *PageW[8];
 uchar *MemoryMapR[256];
 uchar *MemoryMapW[256];
 
-const uint8 BackupRAM_Header[8] = { 'H', 'U', 'B', 'M', 0x00, 0x88, 0x10, 0x80 };
-
 
 /**
   * Reset the hardware
@@ -30,16 +29,24 @@ const uint8 BackupRAM_Header[8] = { 'H', 'U', 'B', 'M', 0x00, 0x88, 0x10, 0x80 }
 void
 hard_reset(void)
 {
-    uchar *extraram = ExtraRAM;
+    memset(&RAM, 0, sizeof(RAM));
+    memset(&BackupRAM, 0, sizeof(BackupRAM));
+    memset(&VRAM, 0, sizeof(VRAM));
+    memset(&SPRAM, 0, sizeof(SPRAM));
+    memset(&Palette, 0, sizeof(Palette));
+    memset(&io, 0, sizeof(io));
+    memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
 
-    memset(&PCE, 0, sizeof(PCE));
-	memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
+    // Backup RAM header, some games check for this
+    memcpy(&BackupRAM, "HUBM\x00\x88\x10\x80", 8);
 
-    memcpy(&BackupRAM, BackupRAM_Header, sizeof(BackupRAM_Header));
+    Scanline = 0;
+    Cycles = 0;
+    TotalCycles = 0;
+    PrevTotalCycles = 0;
+    SF2 = 0;
 
-    ExtraRAM = extraram;
-
-	// Reset IO lines
+ 	// Reset IO lines
 	io.vdc_status = 0;
 	io.vdc_inc = 1;
 	io.vdc_minline = 0;
@@ -69,14 +76,15 @@ hard_reset(void)
     reg_pc = Read16(VEC_RESET);
 }
 
+
 /**
   * Initialize the hardware
   **/
 int
 hard_init(void)
 {
-    TRAPRAM = &VRAM[0x8000];
-    IOAREA  = &VRAM[0xA000];
+    TRAPRAM = NULLRAM + 0; // &VRAM[0x8000];
+    IOAREA  = NULLRAM + 4; // &VRAM[0xA000];
 
 	for (int i = 0; i < 0xFF; i++) {
 		MemoryMapR[i] = TRAPRAM;
@@ -94,6 +102,7 @@ hard_init(void)
 
     return 0;
 }
+
 
 /**
   * Terminate the hardware
@@ -175,6 +184,7 @@ return_value_mask(uint16 A)
 	/* We don't know for higher ports */
 	return 0xFF;
 }
+
 
 /* read */
 static inline uchar
@@ -681,11 +691,32 @@ IO_write(uint16 A, uchar V)
     case 0x1800:                /* CD-ROM extention */
 		MESSAGE_INFO("CD Emulation not implemented : %d 0x%04X\n", V, A);
         return;
+
+    case 0x1F00:                /* Street Fighter 2 Mapper */
+        if (ROMSIZE < 0xC0) {
+            // We can't rely on CRC because rom hacks and homebews using the SF2 mapper exist
+            break;
+        }
+        if (SF2 != (A & 3)) {
+            SF2 = A & 3;
+            uchar *base = ROM + SF2 * (512 * 1024);
+            for (int i = 0x40; i < 0x80; i++)
+            {
+                MemoryMapR[i] = base + i * 0x2000;
+            }
+            for (int i = 0; i < 8; i++)
+            {
+                if (MMR[i] >= 0x40 && MMR[i] < 0x80)
+                    bank_set(i, MMR[i]);
+            }
+        }
+        return;
     }
 
-    MESSAGE_DEBUG("ignore I/O write %04x,%02x\tBase adress of port %X\nat PC = %04X\n",
+    MESSAGE_DEBUG("ignore I/O write %04x,%02x\tBase address of port %X\nat PC = %04X\n",
             A, V, A & 0x1CC0, reg_pc);
 }
+
 
 IRAM_ATTR inline uchar
 TimerInt()
@@ -704,6 +735,7 @@ TimerInt()
 	return INT_NONE;
 }
 
+
 /**
   * Change bank setting
   **/
@@ -713,11 +745,6 @@ bank_set(uchar P, uchar V)
     MESSAGE_DEBUG("Bank switching (MMR[%d] = %d)\n", P, V);
 
 	MMR[P] = V;
-	if (MemoryMapR[V] == IOAREA) {
-		PageR[P] = IOAREA;
-		PageW[P] = IOAREA;
-	} else {
-		PageR[P] = MemoryMapR[V] - P * 0x2000;
-		PageW[P] = MemoryMapW[V] - P * 0x2000;
-	}
+    PageR[P] = (MemoryMapR[V] == IOAREA) ? (IOAREA) : (MemoryMapR[V] - P * 0x2000);
+    PageW[P] = (MemoryMapW[V] == IOAREA) ? (IOAREA) : (MemoryMapW[V] - P * 0x2000);
 }

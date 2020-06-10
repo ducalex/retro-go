@@ -126,7 +126,7 @@ LoadCard(const char *name)
 	while (ROM_MASK < ROMSIZE) ROM_MASK <<= 1;
 	ROM_MASK--;
 
-	MESSAGE_INFO("Rom Info: SIZE=%02X, CRC=%08x, MMU MASK=%02X\n", ROMSIZE, CRC, ROM_MASK);
+	MESSAGE_INFO("Rom Info: SIZE=%03X, CRC=%08x, MMU MASK=%03X\n", ROMSIZE, CRC, ROM_MASK);
 
 	for (int index = 0; index < KNOWN_ROM_COUNT; index++) {
 		if (CRC == kKnownRoms[index].CRC) {
@@ -164,24 +164,7 @@ LoadCard(const char *name)
 	if (kKnownRoms[IDX].Flags & TWO_PART_ROM)
 		ROMSIZE = 0x30;
 
-	// Hu Card with onboard RAM
-	if (kKnownRoms[IDX].Flags & POPULOUS)
-	{
-		MESSAGE_INFO("Special Rom: Populous detected!\n");
-		if (!ExtraRAM)
-			ExtraRAM = (uchar*)rg_alloc(0x8000, MEM_FAST);
-	}
-
-	// Hu Card with onboard RAM (Populous)
-	if (ExtraRAM) {
-		MemoryMapR[0x40] = MemoryMapW[0x40] = ExtraRAM;
-		MemoryMapR[0x41] = MemoryMapW[0x41] = ExtraRAM + 0x2000;
-		MemoryMapR[0x42] = MemoryMapW[0x42] = ExtraRAM + 0x4000;
-		MemoryMapR[0x43] = MemoryMapW[0x43] = ExtraRAM + 0x6000;
-	}
-
     // Game ROM
-
 	for (int i = 0; i < 0x80; i++) {
 		if (ROMSIZE == 0x30) {
 			switch (i & 0x70) {
@@ -205,7 +188,21 @@ LoadCard(const char *name)
 		} else {
 			MemoryMapR[i] = ROM + (i & ROM_MASK) * 0x2000;
 		}
+		MemoryMapW[i] = TRAPRAM;
 	}
+
+	// Always allocate extra RAM if size <= 512K (Populous and some homebrews)
+	if (ROMSIZE <= 0x40) {
+		ExtraRAM = ExtraRAM ?: (uchar*)rg_alloc(0x8000, MEM_FAST);
+		MemoryMapR[0x40] = MemoryMapW[0x40] = ExtraRAM;
+		MemoryMapR[0x41] = MemoryMapW[0x41] = ExtraRAM + 0x2000;
+		MemoryMapR[0x42] = MemoryMapW[0x42] = ExtraRAM + 0x4000;
+		MemoryMapR[0x43] = MemoryMapW[0x43] = ExtraRAM + 0x6000;
+	}
+
+    // Mapper for roms >= 1.5MB (SF2, homebrews)
+    if (ROMSIZE >= 0xC0)
+        MemoryMapW[0x00] = IOAREA;
 
 	return 0;
 }
