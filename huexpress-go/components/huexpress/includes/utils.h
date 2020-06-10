@@ -16,8 +16,6 @@
 #ifndef _UTILS_C
 #define _UTILS_C
 
-#include "cleantypes.h"
-
 #define MESSAGE_ERROR(x...) osd_log("!! " x)
 #define MESSAGE_INFO(x...) osd_log(" * " x)
 #ifndef FINAL_RELEASE
@@ -26,9 +24,9 @@
 #define MESSAGE_DEBUG(x...) {}
 #endif
 
-static inline bool
-one_bit_set(uchar arg)
-{
-	return (arg != 0) && ((-arg & arg) == arg);
-}
+#if !defined(MIN)
+#define MIN(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
+#define MAX(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
+#endif
+
 #endif

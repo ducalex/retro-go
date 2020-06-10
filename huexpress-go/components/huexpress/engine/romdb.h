@@ -10,8 +10,7 @@
 
 
 #include <stdio.h>
-
-#include "cleantypes.h"
+#include <cleantypes.h>
 
 
 // Rom Flags

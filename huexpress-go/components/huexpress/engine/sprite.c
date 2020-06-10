@@ -21,7 +21,7 @@
 // sprice.c - VDC Sprite emulation
 //
 #include "sprite.h"
-#include "utils.h"
+#include "pce.h"
 
 
 #undef TRACE

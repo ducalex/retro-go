@@ -1,7 +1,6 @@
 #ifndef _SPRITE_H_
 #define _SPRITE_H_
 
-#include "pce.h"
 #include "cleantypes.h"
 
 typedef struct {

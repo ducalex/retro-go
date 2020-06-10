@@ -6,7 +6,6 @@
 #include "hard_pce.h"
 #include "gfx.h"
 #include "pce.h"
-#include "utils.h"
 
 // pointer to the beginning of the Zero Page area
 #define zp_base (RAM)

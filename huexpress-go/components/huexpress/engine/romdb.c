@@ -9,7 +9,6 @@
 
 #include <stdlib.h>
 #include "romdb.h"
-#include "utils.h"
 
 
 #define __ID		"Unknown"

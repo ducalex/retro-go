@@ -4,8 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "pce.h"
-#include "osd.h"
+#include <osd.h>
 
 #define APP_ID 40
 

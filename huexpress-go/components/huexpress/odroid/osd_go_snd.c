@@ -1,7 +1,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <odroid_system.h>
-#include "osd.h"
+#include <osd.h>
 
 #define AUDIO_SAMPLE_RATE   (22050)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 1)

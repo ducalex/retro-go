@@ -8,7 +8,7 @@
 #
 
 COMPONENT_ADD_INCLUDEDIRS := . ./includes ./engine ./netplay
-COMPONENT_SRCDIRS := . engine
+COMPONENT_SRCDIRS := . engine odroid
 
 CFLAGS += -Ofast -DLSB_FIRST=1 -Wno-all -Wno-error
 CPPFLAGS += -DLSB_FIRST=1 -Wno-all -Wno-error

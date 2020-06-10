@@ -1,7 +1,7 @@
 // sound.c - Sound emulation
 //
 #include "sound.h"
-#include "osd.h"
+#include "pce.h"
 
 static signed char vol_tbl[32] = {
     /*
@@ -301,11 +301,11 @@ psg_update(char *buf, int ch, unsigned dwSize)
             if ((sample = (io.PSG_WAVE[ch][io.PSG[ch][PSG_DATA_INDEX_REG]] - 16)) >= 0)
                 sample++;
 
-            *buf++ = (char) ((Sint16) (sample * lbal) >> 6);
+            *buf++ = (char) ((int16) (sample * lbal) >> 6);
             dwPos++;
 
             if (host.sound.stereo) {
-                *buf++ = (char) ((Sint16) (sample * rbal) >> 6);
+                *buf++ = (char) ((int16) (sample * rbal) >> 6);
                 dwPos++;
             }
 

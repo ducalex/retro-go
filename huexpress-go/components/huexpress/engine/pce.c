@@ -22,7 +22,6 @@
 // pce.c - Entry file to start/stop/reset/save emulation
 //
 #include "pce.h"
-#include "utils.h"
 #include "romdb.h"
 
 struct host_machine host;

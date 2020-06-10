@@ -7,15 +7,17 @@
 #include <stdlib.h>
 #include <stddef.h>
 
-#include "odroid_system.h"
+#include <odroid_system.h>
 
-#include "config.h"
-#include "h6280.h"
-#include "osd.h"
-#include "gfx.h"
-#include "cleantypes.h"
+#include <cleantypes.h>
+#include <config.h>
+#include <utils.h>
+#include <osd.h>
+
 #include "hard_pce.h"
+#include "h6280.h"
 #include "sprite.h"
+#include "gfx.h"
 
 int LoadState(char *name);
 int SaveState(char *name);
@@ -58,11 +60,5 @@ typedef struct
 #define SVAR_4(k, v) { 4, k, &v }
 #define SVAR_A(k, v) { sizeof(v), k, &v }
 #define SVAR_END { 0, "\0\0\0\0", 0 }
-
-
-#if !defined(MIN)
-#define MIN(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
-#define MAX(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
-#endif
 
 #endif

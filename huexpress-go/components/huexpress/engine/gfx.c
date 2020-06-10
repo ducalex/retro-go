@@ -1,7 +1,6 @@
 // gfx.c - VDC General emulation
 //
 #include "pce.h"
-#include "utils.h"
 #include "config.h"
 
 #undef TRACE

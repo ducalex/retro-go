@@ -1,7 +1,6 @@
 // hard_pce.c - Memory/IO/Timer emulation
 //
 #include "hard_pce.h"
-#include "utils.h"
 #include "pce.h"
 
 /**

@@ -2,7 +2,6 @@
 #define _GFX_H_
 
 #include "sprite.h"
-#include "osd.h"
 
 // The extra 32's and 64's are linked to the way the sprite are blitted on screen, which can overlap to near memory
 // If only one pixel is drawn in the screen, the whole sprite is written, which can eventually overlap unexpected area

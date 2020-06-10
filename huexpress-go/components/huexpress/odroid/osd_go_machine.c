@@ -7,7 +7,8 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "osd.h"
+#include <odroid_system.h>
+#include <osd.h>
 
 
 void osd_log(const char *format, ...)

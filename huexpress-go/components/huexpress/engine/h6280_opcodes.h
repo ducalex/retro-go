@@ -1,5 +1,8 @@
 #include "h6280.h"
 
+typedef signed char SBYTE;
+typedef unsigned char UBYTE;
+
 // flag-value table (for speed)
 static const DRAM_ATTR uchar flnz_list[0x100] = {
 	FL_Z, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	// 00-0F
@@ -56,12 +59,18 @@ static const DRAM_ATTR uchar bcdbin[0x100] = {
 
 #define OPCODE_FUNC static void inline __attribute__((__always_inline__)) __attribute__((flatten))
 
+static inline bool
+one_bit_set(UBYTE arg)
+{
+	return (arg != 0) && ((-arg & arg) == arg);
+}
+
 //
 // Temp variables used by opcodes
 // Globals for easy access while debugging but also save some stack
 //
 
-static uchar temp, temp1, zp_addr, imm_addr;
+static uint8 temp, temp1, zp_addr, imm_addr;
 static uint16 temp_addr, from, to, len, alternate;
 
 //
@@ -72,7 +81,7 @@ static inline uchar
 adc(uchar acc, uchar val)
 {
     int16 sig = (SBYTE) acc;
-    uint16 usig = (uchar) acc;
+    uint16 usig = (UBYTE) acc;
     uint16 temp;
 
     if (!(reg_p & FL_D)) {      /* binary mode */
@@ -81,8 +90,8 @@ adc(uchar acc, uchar val)
             sig++;
         }
         sig += (SBYTE) val;
-        usig += (uchar) val;
-        acc = (uchar) (usig & 0xFF);
+        usig += (UBYTE) val;
+        acc = (UBYTE) (usig & 0xFF);
 
         reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z | FL_C))
             | (((sig > 127) || (sig < -128)) ? FL_V : 0)
@@ -120,7 +129,7 @@ adc(uchar acc, uchar val)
 OPCODE_FUNC sbc(uchar val)
 {
     int16 sig = (SBYTE) reg_a;
-    uint16 usig = (uchar) reg_a;
+    uint16 usig = (UBYTE) reg_a;
     int16 temp;
 
     if (!(reg_p & FL_D)) {      /* binary mode */
@@ -129,8 +138,8 @@ OPCODE_FUNC sbc(uchar val)
             sig--;
         }
         sig -= (SBYTE) val;
-        usig -= (uchar) val;
-        reg_a = (uchar) (usig & 0xFF);
+        usig -= (UBYTE) val;
+        reg_a = (UBYTE) (usig & 0xFF);
         reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z | FL_C))
             | (((sig > 127) || (sig < -128)) ? FL_V : 0)
             | ((usig > 255) ? 0 : FL_C)
@@ -746,7 +755,7 @@ OPCODE_FUNC cmp_abs(void)
 
     reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
         | ((reg_a < temp) ? 0 : FL_C)
-        | flnz_list[(uchar) (reg_a - temp)];
+        | flnz_list[(UBYTE) (reg_a - temp)];
     reg_pc += 3;
     Cycles += 5;
 }
@@ -757,7 +766,7 @@ OPCODE_FUNC cmp_absx(void)
 
     reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
         | ((reg_a < temp) ? 0 : FL_C)
-        | flnz_list[(uchar) (reg_a - temp)];
+        | flnz_list[(UBYTE) (reg_a - temp)];
     reg_pc += 3;
     Cycles += 5;
 }
@@ -768,7 +777,7 @@ OPCODE_FUNC cmp_absy(void)
 
     reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
         | ((reg_a < temp) ? 0 : FL_C)
-        | flnz_list[(uchar) (reg_a - temp)];
+        | flnz_list[(UBYTE) (reg_a - temp)];
     reg_pc += 3;
     Cycles += 5;
 }
@@ -779,7 +788,7 @@ OPCODE_FUNC cmp_imm(void)
 
     reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
         | ((reg_a < temp) ? 0 : FL_C)
-        | flnz_list[(uchar) (reg_a - temp)];
+        | flnz_list[(UBYTE) (reg_a - temp)];
     reg_pc += 2;
     Cycles += 2;
 }
@@ -790,7 +799,7 @@ OPCODE_FUNC cmp_zp(void)
 
     reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
         | ((reg_a < temp) ? 0 : FL_C)
-        | flnz_list[(uchar) (reg_a - temp)];
+        | flnz_list[(UBYTE) (reg_a - temp)];
     reg_pc += 2;
     Cycles += 4;
 }
@@ -801,7 +810,7 @@ OPCODE_FUNC cmp_zpx(void)
 
     reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
         | ((reg_a < temp) ? 0 : FL_C)
-        | flnz_list[(uchar) (reg_a - temp)];
+        | flnz_list[(UBYTE) (reg_a - temp)];
     reg_pc += 2;
     Cycles += 4;
 }
@@ -812,7 +821,7 @@ OPCODE_FUNC cmp_zpind(void)
 
     reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
         | ((reg_a < temp) ? 0 : FL_C)
-        | flnz_list[(uchar) (reg_a - temp)];
+        | flnz_list[(UBYTE) (reg_a - temp)];
     reg_pc += 2;
     Cycles += 7;
 }
@@ -823,7 +832,7 @@ OPCODE_FUNC cmp_zpindx(void)
 
     reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
         | ((reg_a < temp) ? 0 : FL_C)
-        | flnz_list[(uchar) (reg_a - temp)];
+        | flnz_list[(UBYTE) (reg_a - temp)];
     reg_pc += 2;
     Cycles += 7;
 }
@@ -834,7 +843,7 @@ OPCODE_FUNC cmp_zpindy(void)
 
     reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
         | ((reg_a < temp) ? 0 : FL_C)
-        | flnz_list[(uchar) (reg_a - temp)];
+        | flnz_list[(UBYTE) (reg_a - temp)];
     reg_pc += 2;
     Cycles += 7;
 }
@@ -845,7 +854,7 @@ OPCODE_FUNC cpx_abs(void)
 
     reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
         | ((reg_x < temp) ? 0 : FL_C)
-        | flnz_list[(uchar) (reg_x - temp)];
+        | flnz_list[(UBYTE) (reg_x - temp)];
     reg_pc += 3;
     Cycles += 5;
 }
@@ -856,7 +865,7 @@ OPCODE_FUNC cpx_imm(void)
 
     reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
         | ((reg_x < temp) ? 0 : FL_C)
-        | flnz_list[(uchar) (reg_x - temp)];
+        | flnz_list[(UBYTE) (reg_x - temp)];
     reg_pc += 2;
     Cycles += 2;
 }
@@ -867,7 +876,7 @@ OPCODE_FUNC cpx_zp(void)
 
     reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
         | ((reg_x < temp) ? 0 : FL_C)
-        | flnz_list[(uchar) (reg_x - temp)];
+        | flnz_list[(UBYTE) (reg_x - temp)];
     reg_pc += 2;
     Cycles += 4;
 }
@@ -878,7 +887,7 @@ OPCODE_FUNC cpy_abs(void)
 
     reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
         | ((reg_y < temp) ? 0 : FL_C)
-        | flnz_list[(uchar) (reg_y - temp)];
+        | flnz_list[(UBYTE) (reg_y - temp)];
     reg_pc += 3;
     Cycles += 5;
 }
@@ -889,7 +898,7 @@ OPCODE_FUNC cpy_imm(void)
 
     reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
         | ((reg_y < temp) ? 0 : FL_C)
-        | flnz_list[(uchar) (reg_y - temp)];
+        | flnz_list[(UBYTE) (reg_y - temp)];
     reg_pc += 2;
     Cycles += 2;
 }
@@ -900,7 +909,7 @@ OPCODE_FUNC cpy_zp(void)
 
     reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
         | ((reg_y < temp) ? 0 : FL_C)
-        | flnz_list[(uchar) (reg_y - temp)];
+        | flnz_list[(UBYTE) (reg_y - temp)];
     reg_pc += 2;
     Cycles += 4;
 }
