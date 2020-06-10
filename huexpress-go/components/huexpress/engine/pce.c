@@ -126,7 +126,7 @@ LoadCard(const char *name)
 	while (ROM_MASK < ROMSIZE) ROM_MASK <<= 1;
 	ROM_MASK--;
 
-	MESSAGE_INFO("Rom Info: SIZE=%02X, CRC=%08x, MMU MASK=%02X\n", ROM_MASK, ROMSIZE, CRC);
+	MESSAGE_INFO("Rom Info: SIZE=%02X, CRC=%08x, MMU MASK=%02X\n", ROMSIZE, CRC, ROM_MASK);
 
 	for (int index = 0; index < KNOWN_ROM_COUNT; index++) {
 		if (CRC == kKnownRoms[index].CRC) {

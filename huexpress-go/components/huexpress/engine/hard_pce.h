@@ -149,7 +149,7 @@ typedef struct {
 	// IO Registers
 	IO io;
 
-} struct_hard_pce;
+} hard_pce_t;
 
 /**
   * Exported functions to access hardware
@@ -168,16 +168,15 @@ void  bank_set(uchar P, uchar V);
   * Exported variables
   **/
 
-extern struct_hard_pce PCE;
+extern hard_pce_t PCE;
 // The global structure for all hardware variables
 
 extern uchar *IOAREA, *TRAPRAM;
 // Regions of the memory map that we need to trap. Normally games do not read or write to these areas.
 
 extern uchar *PageR[8];
-extern uchar *MemoryMapR[256];
-
 extern uchar *PageW[8];
+extern uchar *MemoryMapR[256];
 extern uchar *MemoryMapW[256];
 // physical address on emulator machine of each of the 256 banks
 
@@ -283,8 +282,6 @@ enum _VDC_REG {
 	LENR,						/* 12 *//* Length of DMA transfert */
 	SATB						/* 13 *//* Adress of SATB */
 };
-
-#define	NODATA	   0xff
 
 
 static inline uchar

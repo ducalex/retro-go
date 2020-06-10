@@ -79,7 +79,7 @@ extern "C" void app_main(void)
     // Init emulator
     lynx = new CSystem(romFile, MIKIE_PIXEL_FORMAT_16BPP_565_BE, AUDIO_SAMPLE_RATE);
 
-    gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer + currentUpdate->stride;
+    gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;
     gAudioBuffer = (SWORD*)&audioBuffer;
     gAudioEnabled = 1;
 
@@ -133,7 +133,7 @@ extern "C" void app_main(void)
             fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
             previousUpdate = currentUpdate;
             currentUpdate = (currentUpdate == &update1) ? &update2 : &update1;
-            gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer + currentUpdate->stride;
+            gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;
         }
 
         // See if we need to skip a frame to keep up

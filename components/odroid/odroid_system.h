@@ -140,3 +140,9 @@ static inline uint get_elapsed_time_since(uint start)
 
 void *rg_alloc(size_t size, uint32_t caps);
 void rg_free(void *ptr);
+
+void rg_perf_init(void);
+void rg_perf_reset(void);
+void rg_perf_print(void);
+void rg_perf_func_enter(void *func_ptr, char *func_name);
+void rg_perf_func_leave(void);

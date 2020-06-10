@@ -485,26 +485,30 @@ static inline void
 write_rect(void *buffer, uint16_t *palette, short left, short top, short width, short height,
            short stride, short pixel_size, uint8_t pixel_mask, short pixel_clear)
 {
-    short actual_left = ((SCREEN_WIDTH * left) + (x_inc - 1)) / x_inc;
-    short actual_top = ((SCREEN_HEIGHT * top) + (y_inc - 1)) / y_inc;
-    short actual_right = ((SCREEN_WIDTH * (left + width)) + (x_inc - 1)) / x_inc;
-    short actual_bottom = ((SCREEN_HEIGHT * (top + height)) + (y_inc - 1)) / y_inc;
-    short actual_width = actual_right - actual_left;
-    short actual_height = actual_bottom - actual_top;
-    short screen_top = y_origin + actual_top;
-    short screen_left = x_origin + actual_left;
-    // short screen_right = screen_left + actual_width;
-    short screen_bottom = screen_top + actual_height;
-    short ix_acc = (x_inc * actual_left) % SCREEN_WIDTH;
-    // short iy_acc = (y_inc * actual_top) % SCREEN_HEIGHT;
-    short lines_per_buffer = SPI_TRANSACTION_BUFFER_LENGTH / actual_width;
+    short scaled_left = ((SCREEN_WIDTH * left) + (x_inc - 1)) / x_inc;
+    short scaled_top = ((SCREEN_HEIGHT * top) + (y_inc - 1)) / y_inc;
+    short scaled_right = ((SCREEN_WIDTH * (left + width)) + (x_inc - 1)) / x_inc;
+    short scaled_bottom = ((SCREEN_HEIGHT * (top + height)) + (y_inc - 1)) / y_inc;
+    short scaled_width = scaled_right - scaled_left;
+    short scaled_height = scaled_bottom - scaled_top;
+    short screen_top = y_origin + scaled_top;
+    short screen_left = x_origin + scaled_left;
+    // short screen_right = screen_left + scaled_width;
+    short screen_bottom = screen_top + scaled_height;
+    short ix_acc = (x_inc * scaled_left) % SCREEN_WIDTH;
+    short lines_per_buffer = SPI_TRANSACTION_BUFFER_LENGTH / scaled_width;
 
-    if (actual_width == 0 || actual_height == 0)
+    if (scaled_width <= 0 || scaled_height <= 0)
     {
         return;
     }
 
-    send_reset_drawing(screen_left, screen_top, actual_width, actual_height);
+    if (screen_bottom > SCREEN_HEIGHT)
+    {
+        screen_bottom = SCREEN_HEIGHT;
+    }
+
+    send_reset_drawing(screen_left, screen_top, scaled_width, scaled_height);
 
     for (short y = 0, screen_y = screen_top; y < height;)
     {
@@ -536,8 +540,8 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
             if (screen_line_is_empty[screen_y] && i > 0)
             {
                 uint16_t *buffer = &line_buffer[line_buffer_index];
-                memcpy(buffer, buffer - actual_width, actual_width * 2);
-                line_buffer_index += actual_width;
+                memcpy(buffer, buffer - scaled_width, scaled_width * 2);
+                line_buffer_index += scaled_width;
             }
             else
             for (short x = 0, x_acc = ix_acc; x < width;)
@@ -568,12 +572,12 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
 
         if (displayFilterMode && displayScalingMode)
         {
-            bilinear_filter(line_buffer, screen_y - lines_to_copy, actual_left, actual_width, lines_to_copy,
+            bilinear_filter(line_buffer, screen_y - lines_to_copy, scaled_left, scaled_width, lines_to_copy,
                             displayFilterMode & ODROID_DISPLAY_FILTER_LINEAR_X,
                             displayFilterMode & ODROID_DISPLAY_FILTER_LINEAR_Y);
         }
 
-        send_continue_line(line_buffer, actual_width, lines_to_copy);
+        send_continue_line(line_buffer, scaled_width, lines_to_copy);
     }
 }
 
@@ -759,7 +763,7 @@ static void generate_filter_structures(short width, short height)
     short x_acc = (x_inc * x_origin) % SCREEN_WIDTH;
     short y_acc = (y_inc * y_origin) % SCREEN_HEIGHT;
 
-    for (short x = 0, screen_x = x_origin; x < width; ++screen_x)
+    for (short x = 0, screen_x = x_origin; x < width && screen_x < SCREEN_WIDTH; ++screen_x)
     {
         x_acc += x_inc;
         while (x_acc >= SCREEN_WIDTH) {
@@ -768,7 +772,7 @@ static void generate_filter_structures(short width, short height)
         }
     }
 
-    for (short y = 0, screen_y = y_origin; y < height; ++screen_y)
+    for (short y = 0, screen_y = y_origin; y < height && screen_y < SCREEN_HEIGHT; ++screen_y)
     {
         short repeat = ++frame_filter_lines[y].repeat;
 
@@ -809,13 +813,20 @@ void odroid_display_set_scale(short width, short height, float new_ratio)
     short new_width = SCREEN_HEIGHT * new_ratio;
     short new_height = SCREEN_HEIGHT;
 
+    if (new_width > SCREEN_WIDTH)
+    {
+        printf("new_width too large: %d, reducing new_height to maintain ratio.\n", new_width);
+        new_height = SCREEN_HEIGHT * (SCREEN_WIDTH / (float)new_width);
+        new_width = SCREEN_WIDTH;
+    }
+
     float x_scale = new_width / (float)width;
     float y_scale = new_height / (float)height;
 
     x_inc = SCREEN_WIDTH / x_scale;
     y_inc = SCREEN_HEIGHT / y_scale;
-    x_origin = (SCREEN_WIDTH - new_width) / 2.f;
-    y_origin = (SCREEN_HEIGHT - new_height) / 2.f;
+    x_origin = (SCREEN_WIDTH - new_width) / 2;
+    y_origin = (SCREEN_HEIGHT - new_height) / 2;
 
     generate_filter_structures(width, height);
 

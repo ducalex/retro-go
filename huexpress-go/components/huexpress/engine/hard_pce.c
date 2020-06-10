@@ -9,7 +9,7 @@
   * cf explanations in the header file
   **/
 
-struct_hard_pce PCE;
+hard_pce_t PCE;
 
 // Since no read or write should occur we can point our
 // trap ram to vram to save some internal memory
@@ -301,7 +301,8 @@ IO_read_raw(uint16 A)
 		break;
     }
 
-    return NODATA;
+    // Open bus
+    return 0xFF;
 }
 
 
