@@ -113,10 +113,10 @@ typedef struct {
 	uint16 SPRAM[64 * 4];
 
 	// ROM memory
-	uchar *ROM;
+	uchar *ROM, *ROM_PTR;
 
 	// ROM size in 0x2000 blocks
-	uint16 ROMSIZE;
+	uint16 ROM_SIZE;
 
 	// PCE->PC Palette convetion array
 	// Each of the 512 available PCE colors (333 RGB -> 512 colors)
@@ -187,7 +187,8 @@ extern uchar *MemoryMapW[256];
 #define SPRAM PCE.SPRAM
 #define VRAM PCE.VRAM
 #define ROM PCE.ROM
-#define ROMSIZE PCE.ROMSIZE
+#define ROM_PTR PCE.ROM_PTR
+#define ROM_SIZE PCE.ROM_SIZE
 #define Scanline PCE.Scanline
 #define Palette PCE.Palette
 #define Cycles PCE.Cycles

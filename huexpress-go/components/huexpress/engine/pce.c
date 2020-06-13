@@ -23,6 +23,7 @@
 //
 #include "pce.h"
 #include "romdb.h"
+#include "rom/crc.h"
 
 struct host_machine host;
 
@@ -82,6 +83,8 @@ const svar_t SaveStateVars[] =
 int
 LoadCard(const char *name)
 {
+	int fsize, offset;
+
 	MESSAGE_INFO("Opening %s...\n", name);
 
 	FILE *fp = fopen(name, "rb");
@@ -98,15 +101,13 @@ LoadCard(const char *name)
 
 	// find file size
 	fseek(fp, 0, SEEK_END);
-	int fsize = ftell(fp);
-
-	// ajust var if header present
-	fseek(fp, fsize & 0x1fff, SEEK_SET);
-	fsize &= ~0x1fff;
+	fsize = ftell(fp);
+	offset = fsize & 0x1fff;
 
 	// read ROM
 	ROM = (uchar *)rg_alloc(fsize, MEM_SLOW);
-	ROMSIZE = fsize / 0x2000;
+	ROM_SIZE = (fsize - offset) / 0x2000;
+	ROM_PTR = ROM + offset;
 
 	if (ROM == NULL)
 	{
@@ -114,32 +115,32 @@ LoadCard(const char *name)
 		return -1;
 	}
 
+	fseek(fp, 0, SEEK_SET);
 	fread(ROM, 1, fsize, fp);
 
 	fclose(fp);
 
-	uint32 CRC = CRC_buffer(ROM, ROMSIZE * 0x2000);
+	uint32 CRC = crc32_le(0, ROM, fsize);
 	uint16 IDX = 0;
 	uint32 ROM_MASK = 1;
 
-	while (ROM_MASK < ROMSIZE) ROM_MASK <<= 1;
+	while (ROM_MASK < ROM_SIZE) ROM_MASK <<= 1;
 	ROM_MASK--;
 
-	MESSAGE_INFO("Rom Info: SIZE=%03X, CRC=%08x, MMU MASK=%03X\n", ROMSIZE, CRC, ROM_MASK);
+	MESSAGE_INFO("ROM LOADED: OFFSET=%d, BANKS=%d, MASK=%03X, CRC=%08X\n", offset, ROM_SIZE, ROM_MASK, CRC);
 
 	for (int index = 0; index < KNOWN_ROM_COUNT; index++) {
-		if (CRC == kKnownRoms[index].CRC) {
+		if (CRC == romFlags[index].CRC) {
 			IDX = index;
 			break;
 		}
 	}
 
-	MESSAGE_INFO("Game Name: %s\n", kKnownRoms[IDX].Name);
-	MESSAGE_INFO("Game Publisher: %s\n", kKnownRoms[IDX].Publisher);
-	MESSAGE_INFO("Game Region: %s\n", (kKnownRoms[IDX].Flags & JAP) ? "Japan" : "USA");
+	MESSAGE_INFO("Game Name: %s\n", romFlags[IDX].Name);
+	MESSAGE_INFO("Game Region: %s\n", (romFlags[IDX].Flags & JAP) ? "Japan" : "USA");
 
 	// US Encrypted
-	if ((kKnownRoms[IDX].Flags & US_ENCODED) || ROM[0x1FFF] < 0xE0)
+	if ((romFlags[IDX].Flags & US_ENCODED) || ROM_PTR[0x1FFF] < 0xE0)
 	{
 		MESSAGE_INFO("This rom is probably US encrypted, decrypting...\n");
 
@@ -148,50 +149,50 @@ LoadCard(const char *name)
 			1, 9, 5, 13, 3, 11, 7, 15
 		};
 
-		for (uint32 x = 0; x < ROMSIZE * 0x2000; x++) {
-			uchar temp = ROM[x] & 15;
+		for (uint32 x = 0; x < ROM_SIZE * 0x2000; x++) {
+			uchar temp = ROM_PTR[x] & 15;
 
-			ROM[x] &= ~0x0F;
-			ROM[x] |= inverted_nibble[ROM[x] >> 4];
+			ROM_PTR[x] &= ~0x0F;
+			ROM_PTR[x] |= inverted_nibble[ROM_PTR[x] >> 4];
 
-			ROM[x] &= ~0xF0;
-			ROM[x] |= inverted_nibble[temp] << 4;
+			ROM_PTR[x] &= ~0xF0;
+			ROM_PTR[x] |= inverted_nibble[temp] << 4;
 		}
 	}
 
 	// For example with Devil Crush 512Ko
-	if (kKnownRoms[IDX].Flags & TWO_PART_ROM)
-		ROMSIZE = 0x30;
+	if (romFlags[IDX].Flags & TWO_PART_ROM)
+		ROM_SIZE = 0x30;
 
     // Game ROM
 	for (int i = 0; i < 0x80; i++) {
-		if (ROMSIZE == 0x30) {
+		if (ROM_SIZE == 0x30) {
 			switch (i & 0x70) {
 			case 0x00:
 			case 0x10:
 			case 0x50:
-				MemoryMapR[i] = ROM + (i & ROM_MASK) * 0x2000;
+				MemoryMapR[i] = ROM_PTR + (i & ROM_MASK) * 0x2000;
 				break;
 			case 0x20:
 			case 0x60:
-				MemoryMapR[i] = ROM + ((i - 0x20) & ROM_MASK) * 0x2000;
+				MemoryMapR[i] = ROM_PTR + ((i - 0x20) & ROM_MASK) * 0x2000;
 				break;
 			case 0x30:
 			case 0x70:
-				MemoryMapR[i] = ROM + ((i - 0x10) & ROM_MASK) * 0x2000;
+				MemoryMapR[i] = ROM_PTR + ((i - 0x10) & ROM_MASK) * 0x2000;
 				break;
 			case 0x40:
-				MemoryMapR[i] = ROM + ((i - 0x20) & ROM_MASK) * 0x2000;
+				MemoryMapR[i] = ROM_PTR + ((i - 0x20) & ROM_MASK) * 0x2000;
 				break;
 			}
 		} else {
-			MemoryMapR[i] = ROM + (i & ROM_MASK) * 0x2000;
+			MemoryMapR[i] = ROM_PTR + (i & ROM_MASK) * 0x2000;
 		}
 		MemoryMapW[i] = TRAPRAM;
 	}
 
 	// Always allocate extra RAM if size <= 512K (Populous and some homebrews)
-	if (ROMSIZE <= 0x40) {
+	if (ROM_SIZE <= 0x40) {
 		ExtraRAM = ExtraRAM ?: (uchar*)rg_alloc(0x8000, MEM_FAST);
 		MemoryMapR[0x40] = MemoryMapW[0x40] = ExtraRAM;
 		MemoryMapR[0x41] = MemoryMapW[0x41] = ExtraRAM + 0x2000;
@@ -200,7 +201,7 @@ LoadCard(const char *name)
 	}
 
     // Mapper for roms >= 1.5MB (SF2, homebrews)
-    if (ROMSIZE >= 0xC0)
+    if (ROM_SIZE >= 192)
         MemoryMapW[0x00] = IOAREA;
 
 	return 0;

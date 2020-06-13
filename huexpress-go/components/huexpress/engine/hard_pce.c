@@ -692,13 +692,13 @@ IO_write(uint16 A, uchar V)
         return;
 
     case 0x1F00:                /* Street Fighter 2 Mapper */
-        if (ROMSIZE < 0xC0) {
+        if (ROM_SIZE < 0xC0) {
             // We can't rely on CRC because rom hacks and homebews using the SF2 mapper exist
             break;
         }
         if (SF2 != (A & 3)) {
             SF2 = A & 3;
-            uchar *base = ROM + SF2 * (512 * 1024);
+            uchar *base = ROM_PTR + SF2 * (512 * 1024);
             for (int i = 0x40; i < 0x80; i++)
             {
                 MemoryMapR[i] = base + i * 0x2000;
