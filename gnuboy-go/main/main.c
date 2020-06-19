@@ -18,9 +18,9 @@
 #define APP_ID 20
 
 #define AUDIO_SAMPLE_RATE   (32000)
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
+#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 15 + 1)
 
-#define GB_WIDTH (160)
+#define GB_WIDTH  (160)
 #define GB_HEIGHT (144)
 
 #define NVS_KEY_SAVE_SRAM "sram"
