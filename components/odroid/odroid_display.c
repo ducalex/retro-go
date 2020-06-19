@@ -308,6 +308,8 @@ static void send_reset_drawing(short left, short top, short width, short height)
 
     // Memory write continue
     if (height > 1) ili_cmd(0x3C);
+
+    // printf("LCD DRAW: left:%d top:%d width:%d height:%d\n", left, top, width, height);
 }
 
 static void send_continue_line(uint16_t *line, int width, int lineCount)
@@ -498,7 +500,7 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
     short ix_acc = (x_inc * scaled_left) % SCREEN_WIDTH;
     short lines_per_buffer = SPI_TRANSACTION_BUFFER_LENGTH / scaled_width;
 
-    if (scaled_width <= 0 || scaled_height <= 0)
+    if (scaled_width < 1 || scaled_height < 1)
     {
         return;
     }
@@ -527,7 +529,7 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
                 --lines_to_copy;
         }
 
-        if (lines_to_copy == 0)
+        if (lines_to_copy < 1)
         {
             break;
         }
@@ -800,6 +802,8 @@ void odroid_display_reset_scale(short width, short height)
     y_origin = (SCREEN_HEIGHT - height) / 2;
 
     generate_filter_structures(width, height);
+
+    printf("LCD SCALE: %dx%d => SCALING DISABLED\n", width, height);
 }
 
 void odroid_display_set_scale(short width, short height, float new_ratio)
@@ -815,7 +819,7 @@ void odroid_display_set_scale(short width, short height, float new_ratio)
 
     if (new_width > SCREEN_WIDTH)
     {
-        printf("new_width too large: %d, reducing new_height to maintain ratio.\n", new_width);
+        printf("LCD SCALE: new_width too large: %d, reducing new_height to maintain ratio.\n", new_width);
         new_height = SCREEN_HEIGHT * (SCREEN_WIDTH / (float)new_width);
         new_width = SCREEN_WIDTH;
     }
@@ -830,7 +834,7 @@ void odroid_display_set_scale(short width, short height, float new_ratio)
 
     generate_filter_structures(width, height);
 
-    printf("%dx%d@%.3f => %dx%d@%.3f x_inc:%d y_inc:%d x_scale:%.3f y_scale:%.3f x_origin:%d y_origin:%d\n",
+    printf("LCD SCALE: %dx%d@%.3f => %dx%d@%.3f x_inc:%d y_inc:%d x_scale:%.3f y_scale:%.3f x_origin:%d y_origin:%d\n",
            width, height, old_ratio, new_width, new_height, new_ratio,
            x_inc, y_inc, x_scale, y_scale, x_origin, y_origin);
 }
@@ -850,7 +854,7 @@ static void display_task(void *arg)
         if (forceVideoRefresh)
         {
             if (displayScalingMode == ODROID_DISPLAY_SCALING_FILL) {
-                odroid_display_set_scale(update->width, update->height, 4.f / 3.f);
+                odroid_display_set_scale(update->width, update->height, SCREEN_WIDTH / (float)SCREEN_HEIGHT);
             }
             else if (displayScalingMode == ODROID_DISPLAY_SCALING_FIT) {
                 odroid_display_set_scale(update->width, update->height, -1);

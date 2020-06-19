@@ -82,11 +82,12 @@ void osd_gfx_set_mode(short width, short height)
     printf("%s: (%dx%d)\n", __func__, width, height);
 
     int crop_w = MAX(0, width - ODROID_SCREEN_WIDTH);
+    int crop_h = MAX(0, height - ODROID_SCREEN_HEIGHT);
 
     // Should we consider vdc_minline/vdc_maxline to offset?
 
 	frames[0].width = width - crop_w;
-	frames[0].height = height;
+	frames[0].height = height - crop_h;
 	frames[0].stride = XBUF_WIDTH;
 	frames[0].pixel_size = 1;
 	frames[0].pixel_mask = 0xFF;
@@ -94,8 +95,8 @@ void osd_gfx_set_mode(short width, short height)
 	frames[0].palette = mypalette;
 	frames[1] = frames[0];
 
-	frames[0].buffer = framebuffers[0] + 32 + 64 * XBUF_WIDTH + (crop_w / 2);
-	frames[1].buffer = framebuffers[1] + 32 + 64 * XBUF_WIDTH + (crop_w / 2);
+	frames[0].buffer = framebuffers[0] + 32 + 64 * XBUF_WIDTH + (crop_w / 2) + (crop_h / 2) * XBUF_WIDTH;
+	frames[1].buffer = framebuffers[1] + 32 + 64 * XBUF_WIDTH + (crop_w / 2) + (crop_h / 2) * XBUF_WIDTH;
 
     set_current_fb(0);
 
