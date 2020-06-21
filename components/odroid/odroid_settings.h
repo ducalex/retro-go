@@ -60,6 +60,9 @@ void odroid_settings_DisplayScaling_set(int32_t value);
 int32_t odroid_settings_DisplayFilter_get();
 void odroid_settings_DisplayFilter_set(int32_t value);
 
+int32_t odroid_settings_DisplayRotation_get();
+void odroid_settings_DisplayRotation_set(int32_t value);
+
 /*** Generic functions ***/
 
 void odroid_settings_string_set(const char *key, char *value);

@@ -17,6 +17,7 @@ static const char* NvsKey_AudioSink = "AudioSink";
 static const char* NvsKey_Palette = "Palette";
 static const char* NvsKey_Region = "Region";
 static const char* NvsKey_DispFilter = "DispFilter";
+static const char* NvsKey_DispRotation = "DispRotate";
 static const char* NvsKey_FontSize = "FontSize";
 
 static nvs_handle my_handle;
@@ -226,9 +227,19 @@ void odroid_settings_DisplayScaling_set(int32_t value)
 
 int32_t odroid_settings_DisplayFilter_get()
 {
-    return odroid_settings_app_int32_get(NvsKey_DispFilter, ODROID_DISPLAY_FILTER_NONE);
+    return odroid_settings_app_int32_get(NvsKey_DispFilter, ODROID_DISPLAY_FILTER_OFF);
 }
 void odroid_settings_DisplayFilter_set(int32_t value)
 {
     odroid_settings_app_int32_set(NvsKey_DispFilter, value);
+}
+
+
+int32_t odroid_settings_DisplayRotation_get()
+{
+    return odroid_settings_app_int32_get(NvsKey_DispRotation, ODROID_DISPLAY_ROTATION_OFF);
+}
+void odroid_settings_DisplayRotation_set(int32_t value)
+{
+    odroid_settings_app_int32_set(NvsKey_DispRotation, value);
 }

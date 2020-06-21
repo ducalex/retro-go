@@ -43,11 +43,13 @@ static spi_device_handle_t spi;
 static QueueHandle_t videoTaskQueue;
 
 static int8_t backlightLevels[] = {10, 25, 50, 75, 100};
-static int8_t backlightLevel = ODROID_BACKLIGHT_LEVEL2;
 
-volatile int8_t displayScalingMode = ODROID_DISPLAY_SCALING_FILL;
-volatile int8_t displayFilterMode = ODROID_DISPLAY_FILTER_NONE;
-volatile int8_t forceVideoRefresh = true;
+static odroid_display_backlight_t backlightLevel = ODROID_BACKLIGHT_LEVEL2;
+static odroid_display_rotation_t rotationMode = ODROID_DISPLAY_ROTATION_OFF;
+static odroid_display_scaling_t scalingMode = ODROID_DISPLAY_SCALING_FILL;
+static odroid_display_filter_t filterMode = ODROID_DISPLAY_FILTER_OFF;
+
+static int8_t forceVideoRefresh = true;
 
 static short x_inc = SCREEN_WIDTH;
 static short y_inc = SCREEN_HEIGHT;
@@ -61,8 +63,7 @@ typedef struct {
     int8_t repeat : 6; // How many times the line or column is repeated by the scaler or filter
 } frame_filter_cap_t;
 
-static frame_filter_cap_t frame_filter_columns[256];
-static frame_filter_cap_t frame_filter_lines[240];
+static frame_filter_cap_t frame_filter_lines[256];
 
 /*
  The ILI9341 needs a bunch of command/argument values to be initialized. They are stored in this struct.
@@ -139,191 +140,8 @@ static DRAM_ATTR const ili_init_cmd_t ili_init_cmds[] = {
 };
 
 
-static inline uint16_t* spi_get_buffer()
-{
-    uint16_t* buffer;
-
-    if (xQueueReceive(spi_buffer_queue, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
-    {
-        abort();
-    }
-
-    return buffer;
-}
-
-static inline void spi_put_buffer(uint16_t* buffer)
-{
-    if (xQueueSend(spi_buffer_queue, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
-    {
-        abort();
-    }
-}
-
-static inline spi_transaction_t* spi_get_transaction()
-{
-    spi_transaction_t* t;
-
-    xQueueReceive(spi_queue, &t, portMAX_DELAY);
-
-    memset(t, 0, sizeof(*t));
-
-    return t;
-}
-
-static inline void spi_put_transaction(spi_transaction_t* t)
-{
-    t->rx_buffer = NULL;
-    t->rxlength = t->length;
-
-    if (t->flags & SPI_TRANS_USE_TXDATA)
-    {
-        t->flags |= SPI_TRANS_USE_RXDATA;
-    }
-
-    odroid_system_spi_lock_acquire(SPI_LOCK_DISPLAY);
-
-    if (spi_device_queue_trans(spi, t, pdMS_TO_TICKS(2500)) != ESP_OK)
-    {
-        abort();
-    }
-
-    xSemaphoreGive(spi_count_semaphore);
-}
-
-//Send a command to the ILI9341.
-static void ili_cmd(const uint8_t cmd)
-{
-    spi_transaction_t* t = spi_get_transaction();
-
-    t->length = 8;                     //Command is 8 bits
-    t->tx_data[0] = cmd;               //The data is the cmd itself
-    t->user = (void*)0;                //D/C needs to be set to 0
-    t->flags = SPI_TRANS_USE_TXDATA;
-
-    spi_put_transaction(t);
-}
-
-//Send data to the ILI9341.
-static void ili_data(const uint8_t *data, size_t len)
-{
-    if (len < 1) return;
-
-    spi_transaction_t* t = spi_get_transaction();
-
-    t->length = len * 8;               // Len is in bytes, transaction length is in bits.
-    t->user = (void*)1;                // D/C needs to be set to 1
-
-    if (len < 5)
-    {
-        for (short i = 0; i < len; ++i)
-        {
-            t->tx_data[i] = data[i];
-        }
-        t->flags = SPI_TRANS_USE_TXDATA;
-    }
-    else
-        t->tx_buffer = data;
-
-    spi_put_transaction(t);
-}
-
-//This function is called (in irq context!) just before a transmission starts. It will
-//set the D/C line to the value indicated in the user field.
-static IRAM_ATTR void ili_spi_pre_transfer_callback(spi_transaction_t *t)
-{
-    gpio_set_level(LCD_PIN_NUM_DC, (int)t->user & 0x01);
-}
-
-static void spi_task(void *arg)
-{
-    spi_transaction_t* t;
-
-    while (1)
-    {
-        // Wait for a transaction to be queued
-        xSemaphoreTake(spi_count_semaphore, portMAX_DELAY);
-
-        if (spi_device_get_trans_result(spi, &t, portMAX_DELAY) != ESP_OK)
-        {
-            abort();
-        }
-
-        if ((int)t->user & 0x80)
-        {
-            spi_put_buffer((uint16_t*)t->tx_buffer);
-        }
-
-        if (xQueueSend(spi_queue, &t, portMAX_DELAY) != pdPASS)
-        {
-            abort();
-        }
-
-        // if (uxQueueSpacesAvailable(spi_queue) == 0)
-        if (uxQueueMessagesWaiting(spi_count_semaphore) == 0)
-        {
-            odroid_system_spi_lock_release(SPI_LOCK_DISPLAY);
-        }
-    }
-
-    vTaskDelete(NULL);
-}
-
-static void send_reset_drawing(short left, short top, short width, short height)
-{
-    static short last_left = -1;
-    static short last_right = -1;
-    static short last_top = -1;
-    static short last_bottom = -1;
-
-    short right = left + width - 1;
-    short bottom = SCREEN_HEIGHT - 1;
-
-    // odroid_display_drain_spi();
-
-    if (height == 1)
-    {
-        if (last_right > right) right = last_right;
-        else right = SCREEN_WIDTH - 1;
-    }
-    if (left != last_left || right != last_right)
-    {
-        const uint8_t data[] = { left >> 8, left & 0xff, right >> 8, right & 0xff };
-        ili_cmd(0x2A);
-        ili_data(data, (right != last_right) ?  4 : 2);
-        last_left = left;
-        last_right = right;
-    }
-
-    if (top != last_top || bottom != last_bottom)
-    {
-        const uint8_t data[] = { top >> 8, top & 0xff, bottom >> 8, bottom & 0xff };
-        ili_cmd(0x2B);
-        ili_data(data, (bottom != last_bottom) ? 4 : 2);
-        last_top = top;
-        last_bottom = bottom;
-    }
-
-    // Memory write
-    ili_cmd(0x2C);
-
-    // Memory write continue
-    if (height > 1) ili_cmd(0x3C);
-
-    // printf("LCD DRAW: left:%d top:%d width:%d height:%d\n", left, top, width, height);
-}
-
-static void send_continue_line(uint16_t *line, int width, int lineCount)
-{
-    spi_transaction_t* t = spi_get_transaction();
-    t->length = width * 2 * lineCount * 8;
-    t->tx_buffer = line;
-    t->user = (void*)0x81;
-    t->flags = 0;
-
-    spi_put_transaction(t);
-}
-
-static void backlight_init()
+static void
+backlight_init()
 {
     // Initial backlight percent
     int percent = backlightLevels[backlightLevel % ODROID_BACKLIGHT_LEVEL_COUNT];
@@ -360,14 +178,16 @@ static void backlight_init()
     ledc_fade_func_install(0);
 }
 
-static void backlight_deinit()
+static void
+backlight_deinit()
 {
     ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0, 100);
     ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_WAIT_DONE);
     ledc_fade_func_uninstall();
 }
 
-static void backlight_percentage_set(int value)
+static void
+backlight_percentage_set(int value)
 {
     int duty = BACKLIGHT_DUTY_MAX * (value * 0.01f);
 
@@ -375,7 +195,102 @@ static void backlight_percentage_set(int value)
     ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
 }
 
-static void ili9341_init()
+static inline uint16_t*
+spi_get_buffer()
+{
+    uint16_t* buffer;
+
+    if (xQueueReceive(spi_buffer_queue, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
+    {
+        abort();
+    }
+
+    return buffer;
+}
+
+static inline void
+spi_put_buffer(uint16_t* buffer)
+{
+    if (xQueueSend(spi_buffer_queue, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
+    {
+        abort();
+    }
+}
+
+static inline spi_transaction_t*
+spi_get_transaction()
+{
+    spi_transaction_t* t;
+
+    xQueueReceive(spi_queue, &t, portMAX_DELAY);
+
+    memset(t, 0, sizeof(*t));
+
+    return t;
+}
+
+static inline void
+spi_put_transaction(spi_transaction_t* t)
+{
+    t->rx_buffer = NULL;
+    t->rxlength = t->length;
+
+    if (t->flags & SPI_TRANS_USE_TXDATA)
+    {
+        t->flags |= SPI_TRANS_USE_RXDATA;
+    }
+
+    odroid_system_spi_lock_acquire(SPI_LOCK_DISPLAY);
+
+    if (spi_device_queue_trans(spi, t, pdMS_TO_TICKS(2500)) != ESP_OK)
+    {
+        abort();
+    }
+
+    xSemaphoreGive(spi_count_semaphore);
+}
+
+//Send a command to the ILI9341.
+static inline void
+ili9341_cmd(const uint8_t cmd)
+{
+    spi_transaction_t* t = spi_get_transaction();
+
+    t->length = 8;                     //Command is 8 bits
+    t->tx_data[0] = cmd;               //The data is the cmd itself
+    t->user = (void*)0;                //D/C needs to be set to 0
+    t->flags = SPI_TRANS_USE_TXDATA;
+
+    spi_put_transaction(t);
+}
+
+//Send data to the ILI9341.
+static inline void
+ili9341_data(const uint8_t *data, size_t len)
+{
+    if (len < 1) return;
+
+    spi_transaction_t* t = spi_get_transaction();
+
+    t->length = len * 8;               // Len is in bytes, transaction length is in bits.
+    t->user = (void*)1;                // D/C needs to be set to 1
+
+    if (len < 5)
+    {
+        for (short i = 0; i < len; ++i)
+        {
+            t->tx_data[i] = data[i];
+        }
+        t->flags = SPI_TRANS_USE_TXDATA;
+    }
+    else
+        t->tx_buffer = data;
+
+    spi_put_transaction(t);
+}
+
+static void
+ili9341_init()
 {
     short cmd = 0;
 
@@ -386,14 +301,15 @@ static void ili9341_init()
     //Send all the commands
     while (ili_init_cmds[cmd].databytes != 0xff)
     {
-        ili_cmd(ili_init_cmds[cmd].cmd);
-        ili_data(ili_init_cmds[cmd].data, ili_init_cmds[cmd].databytes & 0x7f);
+        ili9341_cmd(ili_init_cmds[cmd].cmd);
+        ili9341_data(ili_init_cmds[cmd].data, ili_init_cmds[cmd].databytes & 0x7f);
         //     vTaskDelay(pdMS_TO_TICKS(10));
         cmd++;
     }
 }
 
-static void ili9341_deinit()
+static void
+ili9341_deinit()
 {
     backlight_deinit();
 
@@ -401,8 +317,8 @@ static void ili9341_deinit()
     short cmd = 0;
     while (ili_sleep_cmds[cmd].databytes != 0xff)
     {
-        ili_cmd(ili_sleep_cmds[cmd].cmd);
-        ili_data(ili_sleep_cmds[cmd].data, ili_sleep_cmds[cmd].databytes & 0x7f);
+        ili9341_cmd(ili_sleep_cmds[cmd].cmd);
+        ili9341_data(ili_sleep_cmds[cmd].data, ili_sleep_cmds[cmd].databytes & 0x7f);
         cmd++;
     }
 
@@ -411,7 +327,153 @@ static void ili9341_deinit()
     rtc_gpio_set_level(LCD_PIN_NUM_BCKL, 0);
 }
 
-static uint16_t Blend(uint16_t a, uint16_t b)
+//This function is called (in irq context!) just before a transmission starts. It will
+//set the D/C line to the value indicated in the user field.
+IRAM_ATTR static void
+spi_pre_transfer_callback(spi_transaction_t *t)
+{
+    gpio_set_level(LCD_PIN_NUM_DC, (int)t->user & 0x01);
+}
+
+IRAM_ATTR static void
+spi_task(void *arg)
+{
+    spi_transaction_t* t;
+
+    while (1)
+    {
+        // Wait for a transaction to be queued
+        xSemaphoreTake(spi_count_semaphore, portMAX_DELAY);
+
+        if (spi_device_get_trans_result(spi, &t, portMAX_DELAY) != ESP_OK)
+        {
+            abort();
+        }
+
+        if ((int)t->user & 0x80)
+        {
+            spi_put_buffer((uint16_t*)t->tx_buffer);
+        }
+
+        if (xQueueSend(spi_queue, &t, portMAX_DELAY) != pdPASS)
+        {
+            abort();
+        }
+
+        // if (uxQueueSpacesAvailable(spi_queue) == 0)
+        if (uxQueueMessagesWaiting(spi_count_semaphore) == 0)
+        {
+            odroid_system_spi_lock_release(SPI_LOCK_DISPLAY);
+        }
+    }
+
+    vTaskDelete(NULL);
+}
+
+static void
+spi_initialize()
+{
+    spi_queue = xQueueCreate(SPI_TRANSACTION_COUNT, sizeof(void*));
+    spi_buffer_queue = xQueueCreate(SPI_TRANSACTION_COUNT, sizeof(void*));
+    spi_count_semaphore = xSemaphoreCreateCounting(SPI_TRANSACTION_COUNT, 0);
+
+    for (short x = 0; x < SPI_TRANSACTION_COUNT; x++)
+    {
+        spi_put_buffer(spi_buffers[x]);
+
+        void* param = &trans[x];
+        xQueueSend(spi_queue, &param, portMAX_DELAY);
+    }
+
+    spi_bus_config_t buscfg;
+	memset(&buscfg, 0, sizeof(buscfg));
+
+    buscfg.miso_io_num = SPI_PIN_NUM_MISO;
+    buscfg.mosi_io_num = SPI_PIN_NUM_MOSI;
+    buscfg.sclk_io_num = SPI_PIN_NUM_CLK;
+    buscfg.quadwp_io_num = -1;
+    buscfg.quadhd_io_num = -1;
+
+    spi_device_interface_config_t devcfg;
+	memset(&devcfg, 0, sizeof(devcfg));
+
+    devcfg.clock_speed_hz = SPI_MASTER_FREQ_40M;    //80Mhz causes glitches unfortunately
+    devcfg.mode = 0;                                //SPI mode 0
+    devcfg.spics_io_num = SPI_PIN_NUM_CS;           //CS pin
+    devcfg.queue_size = SPI_TRANSACTION_COUNT;      //We want to be able to queue 7 transactions at a time
+    devcfg.pre_cb = spi_pre_transfer_callback;      //Specify pre-transfer callback to handle D/C line
+    devcfg.flags = SPI_DEVICE_NO_DUMMY;             //SPI_DEVICE_HALFDUPLEX;
+
+    //Initialize the SPI bus
+    spi_bus_initialize(HSPI_HOST, &buscfg, 1);
+    //assert(ret==ESP_OK);
+
+    //Attach the LCD to the SPI bus
+    spi_bus_add_device(HSPI_HOST, &devcfg, &spi);
+    //assert(ret==ESP_OK);
+
+    xTaskCreatePinnedToCore(&spi_task, "spi_task", 1024 + 768, NULL, 5, NULL, 1);
+}
+
+static void
+send_reset_drawing(short left, short top, short width, short height)
+{
+    static short last_left = -1;
+    static short last_right = -1;
+    static short last_top = -1;
+    static short last_bottom = -1;
+
+    short right = left + width - 1;
+    short bottom = SCREEN_HEIGHT - 1;
+
+    // odroid_display_drain_spi();
+
+    if (height == 1)
+    {
+        if (last_right > right) right = last_right;
+        else right = SCREEN_WIDTH - 1;
+    }
+    if (left != last_left || right != last_right)
+    {
+        const uint8_t data[] = { left >> 8, left & 0xff, right >> 8, right & 0xff };
+        ili9341_cmd(0x2A);
+        ili9341_data(data, (right != last_right) ?  4 : 2);
+        last_left = left;
+        last_right = right;
+    }
+
+    if (top != last_top || bottom != last_bottom)
+    {
+        const uint8_t data[] = { top >> 8, top & 0xff, bottom >> 8, bottom & 0xff };
+        ili9341_cmd(0x2B);
+        ili9341_data(data, (bottom != last_bottom) ? 4 : 2);
+        last_top = top;
+        last_bottom = bottom;
+    }
+
+    // Memory write
+    ili9341_cmd(0x2C);
+
+    // Memory write continue
+    if (height > 1) ili9341_cmd(0x3C);
+
+    // printf("LCD DRAW: left:%d top:%d width:%d height:%d\n", left, top, width, height);
+}
+
+static inline void
+send_continue_line(uint16_t *line, int width, int lineCount)
+{
+    spi_transaction_t* t = spi_get_transaction();
+    t->length = width * 2 * lineCount * 8;
+    t->tx_buffer = line;
+    t->user = (void*)0x81;
+    t->flags = 0;
+
+    spi_put_transaction(t);
+}
+
+static inline uint16_t
+Blend(uint16_t a, uint16_t b)
 {
     a = a << 8 | a >> 8;
     b = b << 8 | b >> 8;
@@ -522,7 +584,7 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
         }
 
         // The vertical filter requires a block to start and end with unscaled lines
-        if (displayFilterMode & ODROID_DISPLAY_FILTER_LINEAR_Y)
+        if (filterMode & ODROID_DISPLAY_FILTER_LINEAR_Y)
         {
             while (lines_to_copy > 1 && (screen_line_is_empty[screen_y + lines_to_copy - 1] ||
                                          screen_line_is_empty[screen_y + lines_to_copy]))
@@ -572,11 +634,11 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
             }
         }
 
-        if (displayFilterMode && displayScalingMode)
+        if (filterMode && scalingMode)
         {
             bilinear_filter(line_buffer, screen_y - lines_to_copy, scaled_left, scaled_width, lines_to_copy,
-                            displayFilterMode & ODROID_DISPLAY_FILTER_LINEAR_X,
-                            displayFilterMode & ODROID_DISPLAY_FILTER_LINEAR_Y);
+                            filterMode & ODROID_DISPLAY_FILTER_LINEAR_X,
+                            filterMode & ODROID_DISPLAY_FILTER_LINEAR_Y);
         }
 
         send_continue_line(line_buffer, scaled_width, lines_to_copy);
@@ -598,7 +660,8 @@ pixel_diff(uint8_t pixel1, uint8_t pixel2, uint16_t *palette1, uint16_t *palette
     return palette1[p1] != palette2[p2];
 }
 
-static inline int frame_diff(odroid_video_frame *frame, odroid_video_frame *prevFrame)
+static inline int
+frame_diff(odroid_video_frame *frame, odroid_video_frame *prevFrame)
 {
     uint8_t pixel_mask = frame->pixel_mask;
     odroid_line_diff *out_diff = frame->diff;
@@ -688,7 +751,7 @@ static inline int frame_diff(odroid_video_frame *frame, odroid_video_frame *prev
         }
     }
 
-    if (displayScalingMode && displayFilterMode != ODROID_DISPLAY_FILTER_NONE)
+    if (scalingMode && filterMode != ODROID_DISPLAY_FILTER_OFF)
     {
         // printf("\nFRAME BEGIN\n");
         for (short y = 0; y < frame->height; ++y)
@@ -756,9 +819,9 @@ static inline int frame_diff(odroid_video_frame *frame, odroid_video_frame *prev
     return lines_changed;
 }
 
-static void generate_filter_structures(short width, short height)
+static void
+generate_filter_structures(short width, short height)
 {
-    memset(frame_filter_columns, 0, sizeof frame_filter_columns);
     memset(frame_filter_lines,   0, sizeof frame_filter_lines);
     memset(screen_line_is_empty, 0, sizeof screen_line_is_empty);
 
@@ -791,55 +854,10 @@ static void generate_filter_structures(short width, short height)
     }
 
     frame_filter_lines[0].start = frame_filter_lines[height-1].stop  = true;
-    frame_filter_columns[0].start = frame_filter_columns[width-1].stop = true;
 }
 
-void odroid_display_reset_scale(short width, short height)
-{
-    x_inc = SCREEN_WIDTH;
-    y_inc = SCREEN_HEIGHT;
-    x_origin = (SCREEN_WIDTH - width) / 2;
-    y_origin = (SCREEN_HEIGHT - height) / 2;
-
-    generate_filter_structures(width, height);
-
-    printf("LCD SCALE: %dx%d => SCALING DISABLED\n", width, height);
-}
-
-void odroid_display_set_scale(short width, short height, float new_ratio)
-{
-    float old_ratio = width/(float)height;
-
-    if (new_ratio <= 0) {
-        new_ratio = width/(float)height;
-    }
-
-    short new_width = SCREEN_HEIGHT * new_ratio;
-    short new_height = SCREEN_HEIGHT;
-
-    if (new_width > SCREEN_WIDTH)
-    {
-        printf("LCD SCALE: new_width too large: %d, reducing new_height to maintain ratio.\n", new_width);
-        new_height = SCREEN_HEIGHT * (SCREEN_WIDTH / (float)new_width);
-        new_width = SCREEN_WIDTH;
-    }
-
-    float x_scale = new_width / (float)width;
-    float y_scale = new_height / (float)height;
-
-    x_inc = SCREEN_WIDTH / x_scale;
-    y_inc = SCREEN_HEIGHT / y_scale;
-    x_origin = (SCREEN_WIDTH - new_width) / 2;
-    y_origin = (SCREEN_HEIGHT - new_height) / 2;
-
-    generate_filter_structures(width, height);
-
-    printf("LCD SCALE: %dx%d@%.3f => %dx%d@%.3f x_inc:%d y_inc:%d x_scale:%.3f y_scale:%.3f x_origin:%d y_origin:%d\n",
-           width, height, old_ratio, new_width, new_height, new_ratio,
-           x_inc, y_inc, x_scale, y_scale, x_origin, y_origin);
-}
-
-static void display_task(void *arg)
+IRAM_ATTR static void
+display_task(void *arg)
 {
     videoTaskQueue = xQueueCreate(1, sizeof(void*));
 
@@ -853,19 +871,30 @@ static void display_task(void *arg)
 
         if (forceVideoRefresh)
         {
-            if (displayScalingMode == ODROID_DISPLAY_SCALING_FILL) {
-                odroid_display_set_scale(update->width, update->height, SCREEN_WIDTH / (float)SCREEN_HEIGHT);
+            if (scalingMode == ODROID_DISPLAY_SCALING_FILL) {
+                odroid_display_set_scale(update->width, update->height, SCREEN_WIDTH / (double)SCREEN_HEIGHT);
             }
-            else if (displayScalingMode == ODROID_DISPLAY_SCALING_FIT) {
-                odroid_display_set_scale(update->width, update->height, -1);
+            else if (scalingMode == ODROID_DISPLAY_SCALING_FIT) {
+                odroid_display_set_scale(update->width, update->height, update->width / (double)update->height);
             }
             else {
-                odroid_display_reset_scale(update->width, update->height);
+                odroid_display_set_scale(update->width, update->height, 0.0);
             }
             odroid_display_clear(C_BLACK);
         }
 
-        odroid_display_write_frame(update);
+        for (short y = 0; y < update->height;)
+        {
+            odroid_line_diff *diff = &update->diff[y];
+
+            if (diff->width > 0) {
+                write_rect(update->buffer + (y * update->stride) + (diff->left * update->pixel_size),
+                           update->palette, diff->left, y, diff->width, diff->repeat, update->stride,
+                           update->pixel_size, update->pixel_mask, update->pixel_clear);
+            }
+            y += diff->repeat;
+        }
+
         forceVideoRefresh = false;
 
         xQueueReceive(videoTaskQueue, &update, portMAX_DELAY);
@@ -878,22 +907,94 @@ static void display_task(void *arg)
     while (1) {}
 }
 
-IRAM_ATTR void odroid_display_write_frame(odroid_video_frame *frame)
+void odroid_display_set_scale(short width, short height, double new_ratio)
 {
-    for (short y = 0; y < frame->height;)
-    {
-        odroid_line_diff *diff = &frame->diff[y];
+    short new_width = width;
+    short new_height = height;
+    double x_scale = 1.0;
+    double y_scale = 1.0;
 
-        if (diff->width > 0) {
-            write_rect(frame->buffer + (y * frame->stride) + (diff->left * frame->pixel_size),
-                        frame->palette, diff->left, y, diff->width, diff->repeat, frame->stride,
-                        frame->pixel_size, frame->pixel_mask, frame->pixel_clear);
+    if (new_ratio > 0.0)
+    {
+        new_width = SCREEN_HEIGHT * new_ratio;
+        new_height = SCREEN_HEIGHT;
+
+        if (new_width > SCREEN_WIDTH)
+        {
+            printf("LCD SCALE: new_width too large: %d, reducing new_height to maintain ratio.\n", new_width);
+            new_height = SCREEN_HEIGHT * (SCREEN_WIDTH / (double)new_width);
+            new_width = SCREEN_WIDTH;
         }
-        y += diff->repeat;
+
+        x_scale = new_width / (double)width;
+        y_scale = new_height / (double)height;
     }
+
+    x_inc = SCREEN_WIDTH / x_scale;
+    y_inc = SCREEN_HEIGHT / y_scale;
+    x_origin = (SCREEN_WIDTH - new_width) / 2;
+    y_origin = (SCREEN_HEIGHT - new_height) / 2;
+
+    generate_filter_structures(width, height);
+
+    printf("LCD SCALE: %dx%d@%.3f => %dx%d@%.3f x_inc:%d y_inc:%d x_scale:%.3f y_scale:%.3f x_origin:%d y_origin:%d\n",
+           width, height, width/(double)height, new_width, new_height, new_ratio,
+           x_inc, y_inc, x_scale, y_scale, x_origin, y_origin);
 }
 
-IRAM_ATTR short odroid_display_queue_update(odroid_video_frame *frame, odroid_video_frame *previousFrame)
+odroid_display_scaling_t odroid_display_get_scaling_mode(void)
+{
+    return scalingMode;
+}
+
+void odroid_display_set_scaling_mode(odroid_display_scaling_t mode)
+{
+    odroid_settings_DisplayScaling_set(mode);
+    scalingMode = mode;
+    forceVideoRefresh = true;
+}
+
+odroid_display_filter_t odroid_display_get_filter_mode(void)
+{
+    return filterMode;
+}
+
+void odroid_display_set_filter_mode(odroid_display_filter_t mode)
+{
+    odroid_settings_DisplayFilter_set(mode);
+    filterMode = mode;
+    forceVideoRefresh = true;
+}
+
+odroid_display_rotation_t odroid_display_get_rotation(void)
+{
+    return rotationMode;
+}
+
+void odroid_display_set_rotation(odroid_display_rotation_t rotation)
+{
+    rotationMode = rotation;
+    forceVideoRefresh = true;
+}
+
+odroid_display_backlight_t odroid_display_get_backlight()
+{
+    return backlightLevel;
+}
+
+void odroid_display_set_backlight(odroid_display_backlight_t level)
+{
+    odroid_settings_Backlight_set(level);
+    backlight_percentage_set(backlightLevels[level]);
+    backlightLevel = level;
+}
+
+void odroid_display_force_refresh(void)
+{
+    forceVideoRefresh = true;
+}
+
+IRAM_ATTR short odroid_display_update(odroid_video_frame *frame, odroid_video_frame *previousFrame)
 {
     static int prev_width = 0, prev_height = 0;
     short linesChanged = 0;
@@ -1006,79 +1107,12 @@ void odroid_display_show_hourglass()
         (uint16_t*)image_hourglass_empty_black_48dp.pixel_data);
 }
 
-int8_t odroid_display_backlight_get()
-{
-    return backlightLevel;
-}
-
-void odroid_display_backlight_set(int8_t level)
-{
-    if (level < 0)
-    {
-        printf("odroid_display_backlight_set: level out of range (%d)\n", level);
-        level = 0;
-    }
-    else if (level >= ODROID_BACKLIGHT_LEVEL_COUNT)
-    {
-        printf("odroid_display_backlight_set: level out of range (%d)\n", level);
-        level = ODROID_BACKLIGHT_LEVEL_COUNT - 1;
-    }
-
-    odroid_settings_Backlight_set(level);
-
-    backlightLevel = level;
-    backlight_percentage_set(backlightLevels[level]);
-}
-
-static void spi_initialize()
-{
-    spi_queue = xQueueCreate(SPI_TRANSACTION_COUNT, sizeof(void*));
-    spi_buffer_queue = xQueueCreate(SPI_TRANSACTION_COUNT, sizeof(void*));
-    spi_count_semaphore = xSemaphoreCreateCounting(SPI_TRANSACTION_COUNT, 0);
-
-    for (short x = 0; x < SPI_TRANSACTION_COUNT; x++)
-    {
-        spi_put_buffer(spi_buffers[x]);
-
-        void* param = &trans[x];
-        xQueueSend(spi_queue, &param, portMAX_DELAY);
-    }
-
-    spi_bus_config_t buscfg;
-	memset(&buscfg, 0, sizeof(buscfg));
-
-    buscfg.miso_io_num = SPI_PIN_NUM_MISO;
-    buscfg.mosi_io_num = SPI_PIN_NUM_MOSI;
-    buscfg.sclk_io_num = SPI_PIN_NUM_CLK;
-    buscfg.quadwp_io_num = -1;
-    buscfg.quadhd_io_num = -1;
-
-    spi_device_interface_config_t devcfg;
-	memset(&devcfg, 0, sizeof(devcfg));
-
-    devcfg.clock_speed_hz = SPI_MASTER_FREQ_40M;    //80Mhz causes glitches unfortunately
-    devcfg.mode = 0;                                //SPI mode 0
-    devcfg.spics_io_num = SPI_PIN_NUM_CS;           //CS pin
-    devcfg.queue_size = SPI_TRANSACTION_COUNT;      //We want to be able to queue 7 transactions at a time
-    devcfg.pre_cb = ili_spi_pre_transfer_callback;  //Specify pre-transfer callback to handle D/C line
-    devcfg.flags = SPI_DEVICE_NO_DUMMY;             //SPI_DEVICE_HALFDUPLEX;
-
-    //Initialize the SPI bus
-    spi_bus_initialize(HSPI_HOST, &buscfg, 1);
-    //assert(ret==ESP_OK);
-
-    //Attach the LCD to the SPI bus
-    spi_bus_add_device(HSPI_HOST, &devcfg, &spi);
-    //assert(ret==ESP_OK);
-
-    xTaskCreatePinnedToCore(&spi_task, "spi_task", 1024 + 768, NULL, 5, NULL, 1);
-}
-
 void odroid_display_init()
 {
     backlightLevel = odroid_settings_Backlight_get();
-    displayScalingMode = odroid_settings_DisplayScaling_get();
-    displayFilterMode = odroid_settings_DisplayFilter_get();
+    scalingMode = odroid_settings_DisplayScaling_get();
+    filterMode = odroid_settings_DisplayFilter_get();
+    rotationMode = odroid_settings_DisplayRotation_get();
 
     printf("LCD: Initialisation sequence:\n");
 

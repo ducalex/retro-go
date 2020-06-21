@@ -63,9 +63,9 @@ static void netplay_callback(netplay_event_t event, void *arg)
          }
          else if (!netplay && new_netplay)
          {
-            displayScalingMode = ODROID_DISPLAY_SCALING_FILL;
-            displayFilterMode = ODROID_DISPLAY_FILTER_NONE;
-            forceVideoRefresh = true;
+            // displayScalingMode = ODROID_DISPLAY_SCALING_FILL;
+            // displayFilterMode = ODROID_DISPLAY_FILTER_NONE;
+            // forceVideoRefresh = true;
             nes_reset(ZERO_RESET);
          }
 
@@ -311,7 +311,7 @@ void osd_setpalette(rgb_t *pal)
       uint16_t c = (pal[i].b>>3) + ((pal[i].g>>2)<<5) + ((pal[i].r>>3)<<11);
       myPalette[i] = (c>>8) | ((c&0xff)<<8);
    }
-   forceVideoRefresh = true;
+   odroid_display_force_refresh();
 }
 
 IRAM_ATTR void osd_blitscreen(bitmap_t *bmp)

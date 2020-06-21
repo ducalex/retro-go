@@ -100,7 +100,7 @@ void osd_gfx_set_mode(short width, short height)
 
     set_current_fb(0);
 
-    forceVideoRefresh = true;
+    odroid_display_force_refresh();
     gfx_init_done = true;
 }
 

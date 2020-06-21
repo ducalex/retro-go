@@ -315,7 +315,7 @@ int odroid_overlay_dialog(const char *header, odroid_dialog_choice_t *options, i
 
     odroid_input_wait_for_key(last_key, false);
 
-    forceVideoRefresh = true;
+    odroid_display_force_refresh();
 
     return sel < 0 ? sel : options[sel].id;
 }
@@ -359,15 +359,15 @@ static bool volume_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event
 
 static bool brightness_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
-    int8_t level = odroid_display_backlight_get();
+    int8_t level = odroid_display_get_backlight();
     int8_t max = ODROID_BACKLIGHT_LEVEL_COUNT - 1;
 
     if (event == ODROID_DIALOG_PREV && level > 0) {
-        odroid_display_backlight_set(--level);
+        odroid_display_set_backlight(--level);
     }
 
     if (event == ODROID_DIALOG_NEXT && level < max) {
-        odroid_display_backlight_set(++level);
+        odroid_display_set_backlight(++level);
     }
 
     sprintf(option->value, "%d/%d", level + 1, max + 1);
@@ -390,21 +390,21 @@ static bool audio_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_
 static bool filter_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
     int8_t max = ODROID_DISPLAY_FILTER_COUNT - 1;
-    int8_t prev = displayFilterMode;
+    int8_t mode = odroid_display_get_filter_mode();
+    int8_t prev = mode;
 
-    if (event == ODROID_DIALOG_PREV && --displayFilterMode < 0) displayFilterMode = max; // 0;
-    if (event == ODROID_DIALOG_NEXT && ++displayFilterMode > max) displayFilterMode = 0; // max;
+    if (event == ODROID_DIALOG_PREV && --mode < 0) mode = max; // 0;
+    if (event == ODROID_DIALOG_NEXT && ++mode > max) mode = 0; // max;
 
-    if (displayFilterMode != prev)
+    if (mode != prev)
     {
-        odroid_settings_DisplayFilter_set(displayFilterMode);
-        forceVideoRefresh = true;
+        odroid_display_set_filter_mode(mode);
     }
 
-    if (displayFilterMode == ODROID_DISPLAY_FILTER_NONE)     strcpy(option->value, "Off  ");
-    if (displayFilterMode == ODROID_DISPLAY_FILTER_LINEAR_X) strcpy(option->value, "Horiz");
-    if (displayFilterMode == ODROID_DISPLAY_FILTER_LINEAR_Y) strcpy(option->value, "Vert ");
-    if (displayFilterMode == ODROID_DISPLAY_FILTER_BILINEAR) strcpy(option->value, "Both ");
+    if (mode == ODROID_DISPLAY_FILTER_OFF)     strcpy(option->value, "Off  ");
+    if (mode == ODROID_DISPLAY_FILTER_LINEAR_X) strcpy(option->value, "Horiz");
+    if (mode == ODROID_DISPLAY_FILTER_LINEAR_Y) strcpy(option->value, "Vert ");
+    if (mode == ODROID_DISPLAY_FILTER_BILINEAR) strcpy(option->value, "Both ");
 
     return event == ODROID_DIALOG_ENTER;
 }
@@ -412,19 +412,19 @@ static bool filter_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event
 static bool scaling_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
     int8_t max = ODROID_DISPLAY_SCALING_COUNT - 1;
-    int8_t prev = displayScalingMode;
+    int8_t mode = odroid_display_get_scaling_mode();
+    int8_t prev = mode;
 
-    if (event == ODROID_DIALOG_PREV && --displayScalingMode < 0) displayScalingMode =  max; // 0;
-    if (event == ODROID_DIALOG_NEXT && ++displayScalingMode > max) displayScalingMode = 0;  // max;
+    if (event == ODROID_DIALOG_PREV && --mode < 0) mode =  max; // 0;
+    if (event == ODROID_DIALOG_NEXT && ++mode > max) mode = 0;  // max;
 
-    if (displayScalingMode != prev) {
-        odroid_settings_DisplayScaling_set(displayScalingMode);
-        forceVideoRefresh = true;
+    if (mode != prev) {
+        odroid_display_set_scaling_mode(mode);
     }
 
-    if (displayScalingMode == ODROID_DISPLAY_SCALING_NONE) strcpy(option->value, "Off  ");
-    if (displayScalingMode == ODROID_DISPLAY_SCALING_FIT)  strcpy(option->value, "Fit ");
-    if (displayScalingMode == ODROID_DISPLAY_SCALING_FILL) strcpy(option->value, "Full ");
+    if (mode == ODROID_DISPLAY_SCALING_OFF) strcpy(option->value, "Off  ");
+    if (mode == ODROID_DISPLAY_SCALING_FIT)  strcpy(option->value, "Fit ");
+    if (mode == ODROID_DISPLAY_SCALING_FILL) strcpy(option->value, "Full ");
 
     return event == ODROID_DIALOG_ENTER;
 }
