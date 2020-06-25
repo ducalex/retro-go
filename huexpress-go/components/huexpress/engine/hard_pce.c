@@ -59,14 +59,14 @@ hard_reset(void)
 	}
 
 	// Reset memory banking
-    bank_set(7, 0x00);
-    bank_set(6, 0x05);
-    bank_set(5, 0x04);
-    bank_set(4, 0x03);
-    bank_set(3, 0x02);
-    bank_set(2, 0x01);
-    bank_set(1, 0xF8);
-    bank_set(0, 0xFF);
+    BankSet(7, 0x00);
+    BankSet(6, 0x05);
+    BankSet(5, 0x04);
+    BankSet(4, 0x03);
+    BankSet(3, 0x02);
+    BankSet(2, 0x01);
+    BankSet(1, 0xF8);
+    BankSet(0, 0xFF);
 
 	// Reset CPU
 	reg_a = reg_x = reg_y = 0x00;
@@ -692,11 +692,25 @@ IO_write(uint16 A, uchar V)
         return;
 
     case 0x1F00:                /* Street Fighter 2 Mapper */
-        if (ROM_SIZE < 0xC0) {
-            // We can't rely on CRC because rom hacks and homebews using the SF2 mapper exist
-            break;
-        }
-        if (SF2 != (A & 3)) {
+        Cart_write(A, V); // This is a hack, we shouldn't go through IO_Write at all...
+        return;
+    }
+
+    MESSAGE_DEBUG("ignore I/O write %04x,%02x\tBase address of port %X\nat PC = %04X\n",
+            A, V, A & 0x1CC0, reg_pc);
+}
+
+
+IRAM_ATTR inline void
+Cart_write(uint16 A, uchar V)
+{
+    MESSAGE_DEBUG("Cart Write %02x at %04x\n", V, A);
+
+    // SF2 Mapper
+    if (A >= 0xFFF0 && ROM_SIZE >= 0xC0)
+    {
+        if (SF2 != (A & 3))
+        {
             SF2 = A & 3;
             uchar *base = ROM_PTR + SF2 * (512 * 1024);
             for (int i = 0x40; i < 0x80; i++)
@@ -706,44 +720,8 @@ IO_write(uint16 A, uchar V)
             for (int i = 0; i < 8; i++)
             {
                 if (MMR[i] >= 0x40 && MMR[i] < 0x80)
-                    bank_set(i, MMR[i]);
+                    BankSet(i, MMR[i]);
             }
         }
-        return;
     }
-
-    MESSAGE_DEBUG("ignore I/O write %04x,%02x\tBase address of port %X\nat PC = %04X\n",
-            A, V, A & 0x1CC0, reg_pc);
-}
-
-
-IRAM_ATTR inline uchar
-TimerInt()
-{
-	if (io.timer_start) {
-		io.timer_counter--;
-		if (io.timer_counter > 128) {
-			io.timer_counter = io.timer_reload;
-
-			if (!(io.irq_mask & TIRQ)) {
-				io.irq_status |= TIRQ;
-				return INT_TIMER;
-			}
-		}
-	}
-	return INT_NONE;
-}
-
-
-/**
-  * Change bank setting
-  **/
-IRAM_ATTR void
-bank_set(uchar P, uchar V)
-{
-    MESSAGE_DEBUG("Bank switching (MMR[%d] = %d)\n", P, V);
-
-	MMR[P] = V;
-    PageR[P] = (MemoryMapR[V] == IOAREA) ? (IOAREA) : (MemoryMapR[V] - P * 0x2000);
-    PageW[P] = (MemoryMapW[V] == IOAREA) ? (IOAREA) : (MemoryMapW[V] - P * 0x2000);
 }

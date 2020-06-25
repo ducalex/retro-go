@@ -286,7 +286,7 @@ LoadState(char *name)
 
 	for(int i = 0; i < 8; i++)
 	{
-		bank_set(i, MMR[i]);
+		BankSet(i, MMR[i]);
 	}
 
 	memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));

@@ -3,6 +3,7 @@
 
 #include "config.h"
 #include "stddef.h"
+#include "utils.h"
 #include "cleantypes.h"
 
 #define RAMSIZE            0x2000
@@ -160,10 +161,9 @@ int  hard_init(void);
 void hard_reset(void);
 void hard_term(void);
 
+void  Cart_write(uint16 A, uchar V);
 void  IO_write(uint16 A, uchar V);
 uchar IO_read(uint16 A);
-uchar TimerInt();
-void  bank_set(uchar P, uchar V);
 
 /**
   * Exported variables
@@ -287,6 +287,10 @@ enum _VDC_REG {
 };
 
 
+/**
+ * Inlined Memory Functions
+ */
+
 static inline uchar
 Read8(uint16 addr)
 {
@@ -332,6 +336,37 @@ Write16(uint16 addr, uint16 word)
 #else
 	*((uint16*)(PageR[addr >> 13] + (addr))) = word;
 #endif
+}
+
+static inline void
+BankSet(uchar P, uchar V)
+{
+    MESSAGE_DEBUG("Bank switching (MMR[%d] = %d)\n", P, V);
+
+	MMR[P] = V;
+    PageR[P] = (MemoryMapR[V] == IOAREA) ? (IOAREA) : (MemoryMapR[V] - P * 0x2000);
+    PageW[P] = (MemoryMapW[V] == IOAREA) ? (IOAREA) : (MemoryMapW[V] - P * 0x2000);
+}
+
+
+/**
+  * Inlined HW Functions
+  */
+static inline uchar
+TimerInt()
+{
+	if (io.timer_start) {
+		io.timer_counter--;
+		if (io.timer_counter > 128) {
+			io.timer_counter = io.timer_reload;
+
+			if (!(io.irq_mask & TIRQ)) {
+				io.irq_status |= TIRQ;
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 #endif

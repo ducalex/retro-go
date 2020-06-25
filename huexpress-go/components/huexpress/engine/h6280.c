@@ -394,8 +394,8 @@ exe_go(void)
 		// } else {
 			if (TotalCycles - PrevTotalCycles >= TimerPeriod) {
 				PrevTotalCycles += TimerPeriod;
-				if ((I = TimerInt()))
-					Int6502(I);
+				if (TimerInt())
+					Int6502(INT_TIMER);
 			}
 		// }
     }

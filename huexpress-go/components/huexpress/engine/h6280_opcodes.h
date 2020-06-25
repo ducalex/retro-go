@@ -2140,7 +2140,7 @@ OPCODE_FUNC tam(void)
 
     for (int i = 0; i < 8; i++) {
         if (bitfld & (1 << i)) {
-            bank_set(i, reg_a);
+            BankSet(i, reg_a);
         }
     }
 
