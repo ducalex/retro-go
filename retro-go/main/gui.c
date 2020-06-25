@@ -143,17 +143,18 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
     }
 
     retro_emulator_file_t *file = gui_list_selected_file(emu);
-    uint32_t *crc = &file->checksum;
     char path[128], path2[128], buf_crc[10];
     FILE *fp;
 
     char *cache_path = odroid_system_get_path(ODROID_PATH_CRC_CACHE, file->path);
 
-    if (*crc == 0)
+    if (file->checksum == 0)
     {
+        file->missing_cover = 0;
+
         if ((fp = fopen(cache_path, "rb")) != NULL)
         {
-            fread(crc, 4, 1, fp);
+            fread(&file->checksum, 4, 1, fp);
             fclose(fp);
         }
         else if ((fp = fopen(file->path, "rb")) != NULL)
@@ -181,26 +182,26 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
 
             if (!abort)
             {
-                *crc = crc_tmp;
+                file->checksum = crc_tmp;
                 if ((fp = fopen(cache_path, "wb")) != NULL)
                 {
-                    fwrite(crc, 4, 1, fp);
+                    fwrite(&file->checksum, 4, 1, fp);
                     fclose(fp);
                 }
             }
         }
         else
         {
-            *crc = 1;
+            file->checksum = 1;
         }
         odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" ", C_RED, C_BLACK);
     }
 
     free(cache_path);
 
-    if (*crc > 1)
+    if (file->checksum > 1 && file->missing_cover == 0)
     {
-        sprintf(buf_crc, "%08X", *crc);
+        sprintf(buf_crc, "%08X", file->checksum);
 
         // /sd/romart/gbc/0/08932754.png
         // /sd/romart/gbc/Super Mario.png
@@ -239,9 +240,8 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
             fclose(fp);
             return;
         }
-
-        *crc = 1;
     }
 
     odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"No art found", C_RED, C_BLACK);
+    file->missing_cover = true;
 }

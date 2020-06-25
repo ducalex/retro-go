@@ -191,10 +191,12 @@ void retro_loop()
         } else {
             if (joystick.values[ODROID_INPUT_A]) {
                 last_key = ODROID_INPUT_A;
-                if (emu->roms.selected < emu->roms.count)
+                redraw = true;
+
+                retro_emulator_file_t *file = gui_list_selected_file(emu);
+                if (file)
                 {
-                    char *rom_path = gui_list_selected_file(emu)->path;
-                    char *save_path = odroid_system_get_path(ODROID_PATH_SAVE_STATE, rom_path);
+                    char *save_path = odroid_system_get_path(ODROID_PATH_SAVE_STATE, file->path);
                     bool has_save = access(save_path, F_OK) != -1;
 
                     odroid_dialog_choice_t choices[] = {
@@ -223,8 +225,32 @@ void retro_loop()
                         break;
                     }
                     free(save_path);
-                    redraw = true;
                     // continue;
+                }
+            }
+            else if (joystick.values[ODROID_INPUT_B]) {
+                last_key = ODROID_INPUT_B;
+                redraw = true;
+
+                retro_emulator_file_t *file = gui_list_selected_file(emu);
+                if (file && file->checksum != 0)
+                {
+                    odroid_dialog_choice_t choices[] = {
+                        {0, "File", "...", 1, NULL},
+                        {0, "Type", "N/A", 1, NULL},
+                        {0, "Size", "0", 1, NULL},
+                        {0, "CRC32", "00000000", 1, NULL},
+                        {0, "---", "", -1, NULL},
+                        {1, "Close", "", 1, NULL},
+                        ODROID_DIALOG_CHOICE_LAST
+                    };
+
+                    sprintf(choices[0].value, "%.24s", file->name);
+                    sprintf(choices[1].value, "%s", file->ext);
+                    sprintf(choices[2].value, "%d KB", odroid_sdcard_get_filesize(file->path) / 1024);
+                    sprintf(choices[3].value, "%08X", file->checksum);
+
+                    odroid_overlay_dialog("Properties", choices, -1);
                 }
             }
             else if (joystick.values[ODROID_INPUT_SELECT]) {

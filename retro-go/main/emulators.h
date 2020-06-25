@@ -9,6 +9,7 @@ typedef struct {
     char ext[8];
     char path[128];
     uint32_t checksum;
+    bool missing_cover;
 } retro_emulator_file_t;
 
 typedef struct {

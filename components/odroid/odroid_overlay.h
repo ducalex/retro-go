@@ -28,7 +28,7 @@ typedef struct odroid_dialog_choice odroid_dialog_choice_t;
 struct odroid_dialog_choice {
     int  id;
     char label[32];
-    char value[16];
+    char value[32];
     int  enabled;
     bool (*update_cb)(odroid_dialog_choice_t *, odroid_dialog_event_t);
 };

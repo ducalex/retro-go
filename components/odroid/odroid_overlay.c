@@ -147,7 +147,7 @@ static int get_dialog_items_count(odroid_dialog_choice_t *options)
 
 void odroid_overlay_draw_dialog(const char *header, odroid_dialog_choice_t *options, int sel)
 {
-    int width = header ? strlen(header) : 8;
+    int width = 8;
     int padding = 0;
     int len = 0;
 
@@ -156,6 +156,7 @@ void odroid_overlay_draw_dialog(const char *header, odroid_dialog_choice_t *opti
     // int box_shadow_color = C_BLACK;
     int box_text_color = C_WHITE;
 
+    char header_string[32] = "";
     char row_format[16] = " %s ";
     char row_format_kv[16] = " %s: %s ";
     char rows[16][32];
@@ -190,6 +191,15 @@ void odroid_overlay_draw_dialog(const char *header, odroid_dialog_choice_t *opti
 
     if (header)
     {
+        if (strlen(header) > 32)
+            sprintf(header_string, "%.29s...", header);
+        else
+            strcpy(header_string, header);
+
+        if (strlen(header_string) > width) {
+            width = strlen(header_string);
+            box_width = (ODROID_FONT_WIDTH * width) + 12;
+        }
         box_height += ODROID_FONT_HEIGHT + 4;
     }
 
@@ -207,9 +217,9 @@ void odroid_overlay_draw_dialog(const char *header, odroid_dialog_choice_t *opti
 
     if (header)
     {
-        int pad = (0.5f * (width - strlen(header)) * ODROID_FONT_WIDTH);
+        int pad = (0.5f * (width - strlen(header_string)) * ODROID_FONT_WIDTH);
         odroid_overlay_draw_rect(x, y, box_width - 8, ODROID_FONT_HEIGHT + 4, (ODROID_FONT_HEIGHT + 4 / 2), box_color);
-        odroid_overlay_draw_text(x + pad, y, 0, (char*)header, box_text_color, box_color);
+        odroid_overlay_draw_text(x + pad, y, 0, header_string, box_text_color, box_color);
         y += ODROID_FONT_HEIGHT + 4;
     }
 
@@ -226,8 +236,8 @@ void odroid_overlay_draw_dialog(const char *header, odroid_dialog_choice_t *opti
 int odroid_overlay_dialog(const char *header, odroid_dialog_choice_t *options, int selected)
 {
     int options_count = get_dialog_items_count(options);
-    int sel = selected;
-    int sel_old = selected;
+    int sel = selected < 0 ? (options_count + selected) : selected;
+    int sel_old = sel;
     int last_key = -1;
     bool select = false;
     odroid_gamepad_state joystick;
