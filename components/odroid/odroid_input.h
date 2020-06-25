@@ -47,10 +47,10 @@ typedef struct
 
 void odroid_input_gamepad_init();
 void odroid_input_gamepad_terminate();
+long odroid_input_gamepad_last_polled();
 void odroid_input_gamepad_read(odroid_gamepad_state* out_state);
-uint16_t odroid_input_gamepad_read_masked();
-odroid_gamepad_state odroid_input_read_raw();
 bool odroid_input_key_is_pressed(int key);
 void odroid_input_wait_for_key(int key, bool pressed);
 
+odroid_gamepad_state odroid_input_gamepad_read_raw();
 odroid_battery_state odroid_input_battery_read();

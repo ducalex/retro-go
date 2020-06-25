@@ -3,6 +3,12 @@
 #include "odroid_settings.h"
 #include "stdbool.h"
 
+typedef enum
+{
+    ODROID_AUDIO_SINK_SPEAKER = 0,
+    ODROID_AUDIO_SINK_DAC
+} ODROID_AUDIO_SINK;
+
 #define ODROID_AUDIO_VOLUME_MIN 0
 #define ODROID_AUDIO_VOLUME_MAX 9 // (sizeof(volumeLevels) / sizeof(float) - 1)
 #define ODROID_AUDIO_VOLUME_DEFAULT (ODROID_AUDIO_VOLUME_MAX/3)

@@ -14,45 +14,25 @@ static volatile bool input_task_is_running = false;
 static odroid_gamepad_state gamepad_state;
 static SemaphoreHandle_t xSemaphore;
 static esp_adc_cal_characteristics_t adc_chars;
+static uint32_t last_gamepad_read = 0;
 
-odroid_gamepad_state odroid_input_read_raw()
+odroid_gamepad_state odroid_input_gamepad_read_raw()
 {
     odroid_gamepad_state state = {0};
+    memset(&state, 0, sizeof(state));
 
     int joyX = adc1_get_raw(ODROID_GAMEPAD_IO_X);
     int joyY = adc1_get_raw(ODROID_GAMEPAD_IO_Y);
 
     if (joyX > 2048 + 1024)
-    {
         state.values[ODROID_INPUT_LEFT] = 1;
-        state.values[ODROID_INPUT_RIGHT] = 0;
-    }
     else if (joyX > 1024)
-    {
-        state.values[ODROID_INPUT_LEFT] = 0;
         state.values[ODROID_INPUT_RIGHT] = 1;
-    }
-    else
-    {
-        state.values[ODROID_INPUT_LEFT] = 0;
-        state.values[ODROID_INPUT_RIGHT] = 0;
-    }
 
     if (joyY > 2048 + 1024)
-    {
         state.values[ODROID_INPUT_UP] = 1;
-        state.values[ODROID_INPUT_DOWN] = 0;
-    }
     else if (joyY > 1024)
-    {
-        state.values[ODROID_INPUT_UP] = 0;
         state.values[ODROID_INPUT_DOWN] = 1;
-    }
-    else
-    {
-        state.values[ODROID_INPUT_UP] = 0;
-        state.values[ODROID_INPUT_DOWN] = 0;
-    }
 
     state.values[ODROID_INPUT_SELECT] = !(gpio_get_level(ODROID_GAMEPAD_IO_SELECT));
     state.values[ODROID_INPUT_START] = !(gpio_get_level(ODROID_GAMEPAD_IO_START));
@@ -78,7 +58,7 @@ static void input_task(void *arg)
     while (input_task_is_running)
     {
         // Read hardware
-        odroid_gamepad_state state = odroid_input_read_raw();
+        odroid_gamepad_state state = odroid_input_gamepad_read_raw();
 
         for(int i = 0; i < ODROID_INPUT_MAX; ++i)
 		{
@@ -113,7 +93,6 @@ static void input_task(void *arg)
 
         xSemaphoreGive(xSemaphore);
 
-        // delay
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 
@@ -123,7 +102,7 @@ static void input_task(void *arg)
 
 void odroid_input_gamepad_init()
 {
-    if (input_task_is_running) abort();
+    assert(input_task_is_running == false);
 
     xSemaphore = xSemaphoreCreateMutex();
 
@@ -158,15 +137,22 @@ void odroid_input_gamepad_terminate()
     input_task_is_running = false;
 }
 
+long odroid_input_gamepad_last_polled()
+{
+    if (last_gamepad_read)
+        return 0;
+    return get_elapsed_time_since(last_gamepad_read);
+}
+
 void odroid_input_gamepad_read(odroid_gamepad_state* out_state)
 {
-    if (!input_task_is_running) abort();
+    assert(input_task_is_running == true);
 
     xSemaphoreTake(xSemaphore, portMAX_DELAY);
-
     *out_state = gamepad_state;
-
     xSemaphoreGive(xSemaphore);
+
+    last_gamepad_read = get_elapsed_time();
 }
 
 bool odroid_input_key_is_pressed(int key)
@@ -188,12 +174,8 @@ bool odroid_input_key_is_pressed(int key)
 
 void odroid_input_wait_for_key(int key, bool pressed)
 {
-	while (true)
+	while (odroid_input_key_is_pressed(key) != pressed)
     {
-        if (odroid_input_key_is_pressed(key) == pressed)
-        {
-            break;
-        }
         vTaskDelay(1);
     }
 }

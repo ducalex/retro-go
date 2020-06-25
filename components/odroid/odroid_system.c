@@ -337,7 +337,7 @@ void odroid_system_set_boot_app(int slot)
         ESP_PARTITION_SUBTYPE_APP_OTA_MIN + slot,
         NULL);
     // Do not overwrite the boot sector for nothing
-    const esp_partition_t* boot_partition = esp_ota_get_boot_partition();
+    // const esp_partition_t* boot_partition = esp_ota_get_boot_partition();
 
     if (partition != NULL) //  && partition != boot_partition
     {
@@ -437,10 +437,10 @@ static void odroid_system_monitor_task(void *arg)
         }
     #endif
 
-        if (statistics.lastTickTime > 0 && tickTime > 1000000.f)
+        // Applications should never stop polling input. If they do, they're probably unresponsive...
+        if (odroid_input_gamepad_last_polled() > 6000000)
         {
-            // printf("WATCHDOG: Last emulation tick was %ds ago\n", seconds);
-            // odroid_system_panic("The application froze!");
+            odroid_system_panic("Application is unresponsive!");
         }
 
         if (statistics.battery.percentage < 2)

@@ -4,21 +4,23 @@
 #include "string.h"
 
 static const char* NvsNamespace = "Odroid";
-
-static const char* NvsKey_RomFilePath = "RomFilePath";
-static const char* NvsKey_Volume = "Volume";
-static const char* NvsKey_VRef = "VRef";
-static const char* NvsKey_DataSlot = "DataSlot";
-static const char* NvsKey_Backlight = "Backlight";
-static const char* NvsKey_StartAction = "StartAction";
-static const char* NvsKey_StartupApp = "StartupApp";
-static const char* NvsKey_Scaling = "Scaling";
-static const char* NvsKey_AudioSink = "AudioSink";
-static const char* NvsKey_Palette = "Palette";
-static const char* NvsKey_Region = "Region";
-static const char* NvsKey_DispFilter = "DispFilter";
+// Global
+static const char* NvsKey_RomFilePath  = "RomFilePath";
+static const char* NvsKey_StartAction  = "StartAction";
+static const char* NvsKey_DataSlot     = "DataSlot";
+static const char* NvsKey_Backlight    = "Backlight";
+static const char* NvsKey_AudioSink    = "AudioSink";
+static const char* NvsKey_Volume       = "Volume";
+static const char* NvsKey_StartupApp   = "StartupApp";
+static const char* NvsKey_FontSize     = "FontSize";
+// Per-app
+static const char* NvsKey_Region       = "Region";
+static const char* NvsKey_Palette      = "Palette";
+static const char* NvsKey_DispScaling  = "DispScale";
+static const char* NvsKey_DispFilter   = "DispFilter";
 static const char* NvsKey_DispRotation = "DispRotate";
-static const char* NvsKey_FontSize = "FontSize";
+static const char* NvsKey_DispOverscan = "Overscan";
+static const char* NvsKey_SpriteLimit  = "SpriteL";
 
 static nvs_handle my_handle;
 
@@ -145,11 +147,11 @@ void odroid_settings_Volume_set(int32_t value)
 }
 
 
-ODROID_AUDIO_SINK odroid_settings_AudioSink_get()
+int32_t odroid_settings_AudioSink_get()
 {
     return odroid_settings_int32_get(NvsKey_AudioSink, ODROID_AUDIO_SINK_SPEAKER);
 }
-void odroid_settings_AudioSink_set(ODROID_AUDIO_SINK value)
+void odroid_settings_AudioSink_set(int32_t value)
 {
     odroid_settings_int32_set(NvsKey_AudioSink, value);
 }
@@ -205,6 +207,16 @@ void odroid_settings_Palette_set(int32_t value)
 }
 
 
+int32_t odroid_settings_SpriteLimit_get()
+{
+    return odroid_settings_app_int32_get(NvsKey_SpriteLimit, 1);
+}
+void odroid_settings_SpriteLimit_set(int32_t value)
+{
+    odroid_settings_app_int32_set(NvsKey_SpriteLimit, value);
+}
+
+
 ODROID_REGION odroid_settings_Region_get()
 {
     return odroid_settings_app_int32_get(NvsKey_Region, ODROID_REGION_AUTO);
@@ -217,11 +229,11 @@ void odroid_settings_Region_set(ODROID_REGION value)
 
 int32_t odroid_settings_DisplayScaling_get()
 {
-    return odroid_settings_app_int32_get(NvsKey_Scaling, ODROID_DISPLAY_SCALING_FILL);
+    return odroid_settings_app_int32_get(NvsKey_DispScaling, ODROID_DISPLAY_SCALING_FILL);
 }
 void odroid_settings_DisplayScaling_set(int32_t value)
 {
-    odroid_settings_app_int32_set(NvsKey_Scaling, value);
+    odroid_settings_app_int32_set(NvsKey_DispScaling, value);
 }
 
 
@@ -242,4 +254,14 @@ int32_t odroid_settings_DisplayRotation_get()
 void odroid_settings_DisplayRotation_set(int32_t value)
 {
     odroid_settings_app_int32_set(NvsKey_DispRotation, value);
+}
+
+
+int32_t odroid_settings_DisplayOverscan_get()
+{
+    return odroid_settings_app_int32_get(NvsKey_DispOverscan, 1);
+}
+void odroid_settings_DisplayOverscan_set(int32_t value)
+{
+    odroid_settings_app_int32_set(NvsKey_DispOverscan, value);
 }

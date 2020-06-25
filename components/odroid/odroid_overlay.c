@@ -10,6 +10,7 @@
 #include "math.h"
 
 static uint16_t *overlay_buffer = NULL;
+static int dialog_open_depth = 0;
 
 short ODROID_FONT_WIDTH = 8;
 short ODROID_FONT_HEIGHT = 8;
@@ -242,6 +243,8 @@ int odroid_overlay_dialog(const char *header, odroid_dialog_choice_t *options, i
     bool select = false;
     odroid_gamepad_state joystick;
 
+    dialog_open_depth++;
+
     odroid_overlay_draw_dialog(header, options, sel);
 
     wait_all_keys_released();
@@ -327,6 +330,8 @@ int odroid_overlay_dialog(const char *header, odroid_dialog_choice_t *options, i
 
     odroid_display_force_refresh();
 
+    dialog_open_depth--;
+
     return sel < 0 ? sel : options[sel].id;
 }
 
@@ -347,6 +352,11 @@ void odroid_overlay_alert(const char *text)
         ODROID_DIALOG_CHOICE_LAST
     };
     odroid_overlay_dialog(text, choices, 0);
+}
+
+bool odroid_overlay_dialog_is_open(void)
+{
+    return dialog_open_depth > 0;
 }
 
 static bool volume_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)

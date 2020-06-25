@@ -48,6 +48,7 @@ void odroid_overlay_draw_dialog(const char *header, odroid_dialog_choice_t *opti
 int odroid_overlay_dialog(const char *header, odroid_dialog_choice_t *options, int selected_initial);
 int odroid_overlay_confirm(const char *text, bool yes_selected);
 void odroid_overlay_alert(const char *text);
+bool odroid_overlay_dialog_is_open(void);
 
 int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options);
 int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options);

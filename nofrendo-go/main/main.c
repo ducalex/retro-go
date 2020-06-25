@@ -16,8 +16,6 @@
 #define AUDIO_SAMPLE_RATE   (32000)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
 
-#define NVS_KEY_LIMIT_SPRITES "limitspr"
-#define NVS_KEY_OVERSCAN "overscan"
 #define NVS_KEY_AUTOCROP "autocrop"
 
 static char* romData;
@@ -107,11 +105,11 @@ static bool LoadState(char *pathName)
 
 static bool sprite_limit_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
-   int val = odroid_settings_int32_get(NVS_KEY_LIMIT_SPRITES, 1);
+   int val = odroid_settings_SpriteLimit_get();
 
    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
       val = val ? 0 : 1;
-      odroid_settings_int32_set(NVS_KEY_LIMIT_SPRITES, val);
+      odroid_settings_SpriteLimit_set(val);
       ppu_setopt(PPU_LIMIT_SPRITES, val);
    }
 
@@ -124,7 +122,7 @@ static bool overscan_update_cb(odroid_dialog_choice_t *option, odroid_dialog_eve
 {
    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
       overscan = !overscan;
-      odroid_settings_app_int32_set(NVS_KEY_OVERSCAN, overscan);
+      odroid_settings_DisplayOverscan_set(overscan);
    }
 
    strcpy(option->value, overscan ? "Auto" : "Off ");
@@ -223,9 +221,9 @@ void osd_loadstate()
       odroid_system_emu_load_state(0);
    }
 
-   ppu_setopt(PPU_LIMIT_SPRITES, odroid_settings_int32_get(NVS_KEY_LIMIT_SPRITES, 1));
+   ppu_setopt(PPU_LIMIT_SPRITES, odroid_settings_SpriteLimit_get());
    ppu_setopt(PPU_PALETTE_RGB, odroid_settings_Palette_get());
-   overscan = odroid_settings_app_int32_get(NVS_KEY_OVERSCAN, 1);
+   overscan = odroid_settings_DisplayOverscan_get();
    autocrop = odroid_settings_app_int32_get(NVS_KEY_AUTOCROP, 0);
 
    nes = nes_getptr();
