@@ -139,8 +139,9 @@ void odroid_input_gamepad_terminate()
 
 long odroid_input_gamepad_last_polled()
 {
-    if (last_gamepad_read)
+    if (!last_gamepad_read)
         return 0;
+
     return get_elapsed_time_since(last_gamepad_read);
 }
 

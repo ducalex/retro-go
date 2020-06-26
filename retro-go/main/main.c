@@ -238,6 +238,7 @@ void retro_loop()
                     odroid_dialog_choice_t choices[] = {
                         {0, "File", "...", 1, NULL},
                         {0, "Type", "N/A", 1, NULL},
+                        {0, "Folder", "...", 1, NULL},
                         {0, "Size", "0", 1, NULL},
                         {0, "CRC32", "00000000", 1, NULL},
                         {0, "---", "", -1, NULL},
@@ -247,8 +248,9 @@ void retro_loop()
 
                     sprintf(choices[0].value, "%.24s", file->name);
                     sprintf(choices[1].value, "%s", file->ext);
-                    sprintf(choices[2].value, "%d KB", odroid_sdcard_get_filesize(file->path) / 1024);
-                    sprintf(choices[3].value, "%08X", file->checksum);
+                    sprintf(choices[2].value, "%.*s", strlen(file->path)-strlen(file->name)-strlen(file->ext)-2, file->path);
+                    sprintf(choices[3].value, "%d KB", odroid_sdcard_get_filesize(file->path) / 1024);
+                    sprintf(choices[4].value, "%08X", file->checksum);
 
                     odroid_overlay_dialog("Properties", choices, -1);
                 }
