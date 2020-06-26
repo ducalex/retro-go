@@ -1,13 +1,12 @@
-#include "odroid_input.h"
-#include "odroid_settings.h"
-#include "odroid_system.h"
-
 #include <freertos/FreeRTOS.h>
 #include <driver/i2c.h>
 #include <driver/gpio.h>
 #include <driver/adc.h>
 #include <esp_adc_cal.h>
 #include <string.h>
+
+#include "odroid_system.h"
+#include "odroid_input.h"
 
 #define BATT_VOLTAGE_FULL        (4.2f)
 #define BATT_VOLTAGE_EMPTY       (3.5f)

@@ -1,5 +1,4 @@
-#include "odroid_system.h"
-
+#include <odroid_system.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,9 +1,9 @@
-#include "freertos/FreeRTOS.h"
-#include "string.h"
-#include "unistd.h"
-#include "esp_system.h"
-#include "driver/i2s.h"
-#include "driver/rtc_io.h"
+#include <freertos/FreeRTOS.h>
+#include <driver/rtc_io.h>
+#include <driver/i2s.h>
+#include <esp_system.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "odroid_system.h"
 #include "odroid_audio.h"

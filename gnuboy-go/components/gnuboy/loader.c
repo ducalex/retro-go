@@ -12,7 +12,7 @@
 #include "rtc.h"
 #include "sound.h"
 
-#include "odroid_system.h"
+#include <odroid_system.h>
 
 static const byte mbc_table[256] =
 {

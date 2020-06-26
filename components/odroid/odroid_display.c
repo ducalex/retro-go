@@ -1,18 +1,15 @@
-#include "odroid_display.h"
-#include "odroid_settings.h"
-#include "odroid_system.h"
-#include "odroid_colors.h"
-#include "odroid_image_hourglass.h"
-
-#include "freertos/FreeRTOS.h"
-#include "esp_system.h"
-#include "esp_event.h"
-#include "driver/gpio.h"
-#include "driver/spi_master.h"
-#include "driver/ledc.h"
-#include "driver/rtc_io.h"
-
+#include <freertos/FreeRTOS.h>
+#include <esp_system.h>
+#include <esp_event.h>
+#include <driver/gpio.h>
+#include <driver/spi_master.h>
+#include <driver/ledc.h>
+#include <driver/rtc_io.h>
 #include <string.h>
+
+#include "odroid_system.h"
+#include "odroid_display.h"
+#include "odroid_image_hourglass.h"
 
 #define SCREEN_WIDTH  ODROID_SCREEN_WIDTH
 #define SCREEN_HEIGHT ODROID_SCREEN_HEIGHT

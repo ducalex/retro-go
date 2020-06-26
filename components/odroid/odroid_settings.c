@@ -1,7 +1,8 @@
-#include "odroid_settings.h"
+#include <nvs_flash.h>
+#include <string.h>
+
 #include "odroid_system.h"
-#include "nvs_flash.h"
-#include "string.h"
+#include "odroid_settings.h"
 
 static const char* NvsNamespace = "Odroid";
 // Global

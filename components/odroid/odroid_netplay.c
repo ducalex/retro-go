@@ -1,16 +1,17 @@
-#include "freertos/FreeRTOS.h"
-#include "lwip/ip_addr.h"
-#include "esp_system.h"
-#include "esp_event_loop.h"
-#include "esp_wifi.h"
-#include "esp_log.h"
-#include "string.h"
-#include "unistd.h"
-#include <netdb.h>
+#include <freertos/FreeRTOS.h>
+#include <lwip/ip_addr.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <esp_system.h>
+#include <esp_event_loop.h>
+#include <esp_wifi.h>
+#include <esp_log.h>
+#include <string.h>
+#include <unistd.h>
+#include <netdb.h>
 
 #include "odroid_system.h"
+#include "odroid_netplay.h"
 
 #define NETPLAY_VERSION 0x01
 #define MAX_PLAYERS 8

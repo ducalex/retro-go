@@ -1,6 +1,5 @@
 #pragma once
 
-#include "odroid_colors.h"
 #include "stdbool.h"
 #include "stdint.h"
 

@@ -1,5 +1,10 @@
 #pragma once
 
+#include <esp_system.h>
+#include <esp_heap_caps.h>
+#include <esp_timer.h>
+#include <stdbool.h>
+
 #include "odroid_audio.h"
 #include "odroid_display.h"
 #include "odroid_input.h"
@@ -7,10 +12,6 @@
 #include "odroid_netplay.h"
 #include "odroid_sdcard.h"
 #include "odroid_settings.h"
-#include "esp_system.h"
-#include "esp_heap_caps.h"
-#include "esp_timer.h"
-#include "stdbool.h"
 
 // GPIO Allocations
 #define ODROID_PIN_LED            GPIO_NUM_2

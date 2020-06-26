@@ -1,7 +1,7 @@
 #pragma once
 
+#include <odroid_input.h>
 #include "emulators.h"
-#include "odroid_input.h"
 
 void gui_header_draw(retro_emulator_t *emu);
 void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick);

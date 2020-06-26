@@ -1,13 +1,14 @@
-#include "odroid_overlay.h"
-#include "odroid_font8x8.h"
+#include <esp_heap_caps.h>
+#include <esp_system.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <math.h>
+
 #include "odroid_system.h"
-#include "esp_heap_caps.h"
-#include "esp_system.h"
-#include "unistd.h"
-#include "stdlib.h"
-#include "string.h"
-#include "stdio.h"
-#include "math.h"
+#include "odroid_font8x8.h"
+#include "odroid_overlay.h"
 
 static uint16_t *overlay_buffer = NULL;
 static int dialog_open_depth = 0;

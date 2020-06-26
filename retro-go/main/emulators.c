@@ -1,17 +1,14 @@
-#include "odroid_settings.h"
-#include "odroid_display.h"
-#include "odroid_system.h"
-#include "odroid_sdcard.h"
-#include "bitmaps/all.h"
-#include "emulators.h"
-#include "gui.h"
-
 #include <esp_partition.h>
 #include <esp_system.h>
 #include <sys/stat.h>
 #include <string.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <odroid_system.h>
+
+#include "bitmaps/all.h"
+#include "emulators.h"
+#include "gui.h"
 
 retro_emulators_t emulators_stack;
 retro_emulators_t *emulators = &emulators_stack;

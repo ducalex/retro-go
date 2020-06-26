@@ -1,6 +1,5 @@
 #pragma once
 
-#include "odroid_settings.h"
 #include "stdbool.h"
 
 typedef enum

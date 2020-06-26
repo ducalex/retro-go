@@ -1,10 +1,10 @@
-#include "freertos/FreeRTOS.h"
-#include "esp_system.h"
-#include "esp_event.h"
-#include "esp_err.h"
+#include <freertos/FreeRTOS.h>
+#include <odroid_system.h>
+#include <esp_system.h>
+#include <esp_event.h>
+#include <esp_err.h>
 
 #include "../components/smsplus/shared.h"
-#include "odroid_system.h"
 
 #define APP_ID 30
 

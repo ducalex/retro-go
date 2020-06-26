@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "odroid_colors.h"
 
 #define ODROID_SCREEN_WIDTH  320
 #define ODROID_SCREEN_HEIGHT 240

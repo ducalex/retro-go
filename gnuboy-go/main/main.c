@@ -1,7 +1,8 @@
-#include "freertos/FreeRTOS.h"
-#include "esp_system.h"
-#include "esp_task_wdt.h"
-#include "string.h"
+#include <freertos/FreeRTOS.h>
+#include <esp_system.h>
+#include <esp_task_wdt.h>
+#include <odroid_system.h>
+#include <string.h>
 
 #include "../components/gnuboy/loader.h"
 #include "../components/gnuboy/hw.h"
@@ -12,8 +13,6 @@
 #include "../components/gnuboy/regs.h"
 #include "../components/gnuboy/rtc.h"
 #include "../components/gnuboy/defs.h"
-
-#include "odroid_system.h"
 
 #define APP_ID 20
 
