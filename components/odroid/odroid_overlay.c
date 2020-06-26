@@ -74,7 +74,7 @@ void odroid_overlay_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, ch
 
 void odroid_overlay_draw_rect(int x, int y, int width, int height, int border, uint16_t color)
 {
-    if (width == 0 || height == 0)
+    if (width == 0 || height == 0 || border == 0)
         return;
 
     int pixels = (width > height ? width : height) * border;
@@ -153,7 +153,7 @@ void odroid_overlay_draw_dialog(const char *header, odroid_dialog_choice_t *opti
     int len = 0;
 
     int row_margin = 1;
-    int row_height = ODROID_FONT_HEIGHT + row_margin;
+    int row_height = ODROID_FONT_HEIGHT + row_margin * 2;
 
     int box_color = C_NAVY;
     int box_border_color = C_DIM_GRAY;
@@ -233,11 +233,9 @@ void odroid_overlay_draw_dialog(const char *header, odroid_dialog_choice_t *opti
         color = options[i].enabled == 1 ? box_text_color : C_GRAY;
         fg = (i == sel) ? box_color : color;
         bg = (i == sel) ? color : box_color;
-        odroid_overlay_draw_text(x, y, width * ODROID_FONT_WIDTH, rows[i], fg, bg);
+        odroid_overlay_draw_rect(x, y, width * ODROID_FONT_WIDTH, row_height, row_margin, bg);
+        odroid_overlay_draw_text(x, y + row_margin, width * ODROID_FONT_WIDTH, rows[i], fg, bg);
         y += row_height;
-
-        if (row_margin)
-            odroid_overlay_draw_rect(x, y - row_margin, box_width - 8, 1, row_margin, box_color);
     }
 }
 
