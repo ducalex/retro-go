@@ -130,6 +130,11 @@ static inline uint get_elapsed_time_since(uint start)
      return get_elapsed_time() - start;
 }
 
+#undef MIN
+#define MIN(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
+#undef MAX
+#define MAX(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
+
 #define MEM_ANY   0
 #define MEM_SLOW  MALLOC_CAP_SPIRAM
 #define MEM_FAST  MALLOC_CAP_INTERNAL

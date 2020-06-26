@@ -213,20 +213,18 @@ odroid_battery_state odroid_input_battery_read()
         adcValue /= 2.0f;
     }
 
+    const float VoltageFull  = 4.2f;
+    const float VoltageEmpty = 3.5f;
+    const float VoltageRange = VoltageFull - VoltageEmpty;
 
-    // Vo = (Vs * R2) / (R1 + R2)
-    // Vs = Vo / R2 * (R1 + R2)
+    // Voltage divider
     const float R1 = 10000;
     const float R2 = 10000;
-    const float Vo = adcValue;
-    const float Vs = (Vo / R2 * (R1 + R2));
-
-    const float FullVoltage = 4.2f;
-    const float EmptyVoltage = 3.5f;
+    const float Vs = (adcValue / R2 * (R1 + R2));
 
     odroid_battery_state out_state = {
         .millivolts = (int)(Vs * 1000),
-        .percentage = (int)((Vs - EmptyVoltage) / (FullVoltage - EmptyVoltage) * 100.0f),
+        .percentage = MIN(100, MAX(0, (int)((Vs - VoltageEmpty) / VoltageRange * 100.0f))),
     };
 
     return out_state;

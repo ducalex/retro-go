@@ -59,8 +59,10 @@
 
 #define INLINE              static inline __attribute__((__always_inline__))
 
-#define MIN(x, y) (((x) < (y)) ? (x) : (y))
-#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#if !defined(MIN)
+#define MIN(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
+#define MAX(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
+#endif
 
 #ifdef NOFRENDO_DEBUG
 #define UNUSED(x)
