@@ -2,27 +2,30 @@
 #include "odroid_settings.h"
 #include "odroid_system.h"
 
-#include "freertos/FreeRTOS.h"
-#include "driver/i2c.h"
-#include "driver/gpio.h"
-#include "driver/adc.h"
-#include "esp_adc_cal.h"
-
+#include <freertos/FreeRTOS.h>
+#include <driver/i2c.h>
+#include <driver/gpio.h>
+#include <driver/adc.h>
+#include <esp_adc_cal.h>
 #include <string.h>
 
+#define BATT_VOLTAGE_FULL        (4.2f)
+#define BATT_VOLTAGE_EMPTY       (3.5f)
+#define BATT_DIVIDER_R1          (10000)
+#define BATT_DIVIDER_R2          (10000)
+
 static volatile bool input_task_is_running = false;
+static volatile uint last_gamepad_read = 0;
 static odroid_gamepad_state gamepad_state;
 static SemaphoreHandle_t xSemaphore;
-static esp_adc_cal_characteristics_t adc_chars;
-static uint32_t last_gamepad_read = 0;
 
 odroid_gamepad_state odroid_input_gamepad_read_raw()
 {
     odroid_gamepad_state state = {0};
     memset(&state, 0, sizeof(state));
 
-    int joyX = adc1_get_raw(ODROID_GAMEPAD_IO_X);
-    int joyY = adc1_get_raw(ODROID_GAMEPAD_IO_Y);
+    int joyX = adc1_get_raw(ODROID_PIN_GAMEPAD_X);
+    int joyY = adc1_get_raw(ODROID_PIN_GAMEPAD_Y);
 
     if (joyX > 2048 + 1024)
         state.values[ODROID_INPUT_LEFT] = 1;
@@ -34,14 +37,14 @@ odroid_gamepad_state odroid_input_gamepad_read_raw()
     else if (joyY > 1024)
         state.values[ODROID_INPUT_DOWN] = 1;
 
-    state.values[ODROID_INPUT_SELECT] = !(gpio_get_level(ODROID_GAMEPAD_IO_SELECT));
-    state.values[ODROID_INPUT_START] = !(gpio_get_level(ODROID_GAMEPAD_IO_START));
+    state.values[ODROID_INPUT_SELECT] = !(gpio_get_level(ODROID_PIN_GAMEPAD_SELECT));
+    state.values[ODROID_INPUT_START] = !(gpio_get_level(ODROID_PIN_GAMEPAD_START));
 
-    state.values[ODROID_INPUT_A] = !(gpio_get_level(ODROID_GAMEPAD_IO_A));
-    state.values[ODROID_INPUT_B] = !(gpio_get_level(ODROID_GAMEPAD_IO_B));
+    state.values[ODROID_INPUT_A] = !(gpio_get_level(ODROID_PIN_GAMEPAD_A));
+    state.values[ODROID_INPUT_B] = !(gpio_get_level(ODROID_PIN_GAMEPAD_B));
 
-    state.values[ODROID_INPUT_MENU] = !(gpio_get_level(ODROID_GAMEPAD_IO_MENU));
-    state.values[ODROID_INPUT_VOLUME] = !(gpio_get_level(ODROID_GAMEPAD_IO_VOLUME));
+    state.values[ODROID_INPUT_MENU] = !(gpio_get_level(ODROID_PIN_GAMEPAD_MENU));
+    state.values[ODROID_INPUT_VOLUME] = !(gpio_get_level(ODROID_PIN_GAMEPAD_VOLUME));
 
     return state;
 }
@@ -106,25 +109,25 @@ void odroid_input_gamepad_init()
 
     xSemaphore = xSemaphoreCreateMutex();
 
-	gpio_set_direction(ODROID_GAMEPAD_IO_SELECT, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(ODROID_GAMEPAD_IO_SELECT, GPIO_PULLUP_ONLY);
+	gpio_set_direction(ODROID_PIN_GAMEPAD_SELECT, GPIO_MODE_INPUT);
+	gpio_set_pull_mode(ODROID_PIN_GAMEPAD_SELECT, GPIO_PULLUP_ONLY);
 
-	gpio_set_direction(ODROID_GAMEPAD_IO_START, GPIO_MODE_INPUT);
+	gpio_set_direction(ODROID_PIN_GAMEPAD_START, GPIO_MODE_INPUT);
 
-	gpio_set_direction(ODROID_GAMEPAD_IO_A, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(ODROID_GAMEPAD_IO_A, GPIO_PULLUP_ONLY);
+	gpio_set_direction(ODROID_PIN_GAMEPAD_A, GPIO_MODE_INPUT);
+	gpio_set_pull_mode(ODROID_PIN_GAMEPAD_A, GPIO_PULLUP_ONLY);
 
-    gpio_set_direction(ODROID_GAMEPAD_IO_B, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(ODROID_GAMEPAD_IO_B, GPIO_PULLUP_ONLY);
+    gpio_set_direction(ODROID_PIN_GAMEPAD_B, GPIO_MODE_INPUT);
+	gpio_set_pull_mode(ODROID_PIN_GAMEPAD_B, GPIO_PULLUP_ONLY);
 
 	adc1_config_width(ADC_WIDTH_12Bit);
-    adc1_config_channel_atten(ODROID_GAMEPAD_IO_X, ADC_ATTEN_11db);
-	adc1_config_channel_atten(ODROID_GAMEPAD_IO_Y, ADC_ATTEN_11db);
+    adc1_config_channel_atten(ODROID_PIN_GAMEPAD_X, ADC_ATTEN_11db);
+	adc1_config_channel_atten(ODROID_PIN_GAMEPAD_Y, ADC_ATTEN_11db);
 
-	gpio_set_direction(ODROID_GAMEPAD_IO_MENU, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(ODROID_GAMEPAD_IO_MENU, GPIO_PULLUP_ONLY);
+	gpio_set_direction(ODROID_PIN_GAMEPAD_MENU, GPIO_MODE_INPUT);
+	gpio_set_pull_mode(ODROID_PIN_GAMEPAD_MENU, GPIO_PULLUP_ONLY);
 
-	gpio_set_direction(ODROID_GAMEPAD_IO_VOLUME, GPIO_MODE_INPUT);
+	gpio_set_direction(ODROID_PIN_GAMEPAD_VOLUME, GPIO_MODE_INPUT);
 
     // Start background polling
     xTaskCreatePinnedToCore(&input_task, "input_task", 2048, NULL, 5, NULL, 1);
@@ -183,6 +186,7 @@ void odroid_input_wait_for_key(int key, bool pressed)
 
 odroid_battery_state odroid_input_battery_read()
 {
+    static esp_adc_cal_characteristics_t adc_chars;
     static float adcValue = 0.0f;
 
     short sampleCount = 4;
@@ -202,7 +206,6 @@ odroid_battery_state odroid_input_battery_read()
     }
     adcSample /= sampleCount;
 
-
     if (adcValue == 0.0f)
     {
         adcValue = adcSample;
@@ -213,18 +216,12 @@ odroid_battery_state odroid_input_battery_read()
         adcValue /= 2.0f;
     }
 
-    const float VoltageFull  = 4.2f;
-    const float VoltageEmpty = 3.5f;
-    const float VoltageRange = VoltageFull - VoltageEmpty;
-
-    // Voltage divider
-    const float R1 = 10000;
-    const float R2 = 10000;
-    const float Vs = (adcValue / R2 * (R1 + R2));
+    const float Vs = (adcValue / BATT_DIVIDER_R2 * (BATT_DIVIDER_R1 + BATT_DIVIDER_R2));
+    const float Vconst = MAX(BATT_VOLTAGE_EMPTY, MIN(Vs, BATT_VOLTAGE_FULL));
 
     odroid_battery_state out_state = {
         .millivolts = (int)(Vs * 1000),
-        .percentage = MIN(100, MAX(0, (int)((Vs - VoltageEmpty) / VoltageRange * 100.0f))),
+        .percentage = (int)((Vconst - BATT_VOLTAGE_EMPTY) / (BATT_VOLTAGE_FULL - BATT_VOLTAGE_EMPTY) * 100.0f),
     };
 
     return out_state;

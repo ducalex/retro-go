@@ -1,8 +1,7 @@
-#include "odroid_sdcard.h"
-#include "odroid_system.h"
-#include "esp_vfs_fat.h"
-#include "driver/sdmmc_host.h"
-#include "driver/sdspi_host.h"
+#include <driver/sdmmc_host.h>
+#include <driver/sdspi_host.h>
+#include <esp_vfs_fat.h>
+#include <esp_err.h>
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
@@ -10,17 +9,13 @@
 #include <ctype.h>
 #include <errno.h>
 
+#include "odroid_system.h"
+#include "odroid_sdcard.h"
 #include "../miniz/miniz.h"
-
-#define SPI_PIN_NUM_MISO GPIO_NUM_19
-#define SPI_PIN_NUM_MOSI GPIO_NUM_23
-#define SPI_PIN_NUM_CLK  GPIO_NUM_18
-#define SPI_PIN_NUM_CS   GPIO_NUM_22
 
 static bool sdcardOpen = false;
 
-
-esp_err_t odroid_sdcard_open()
+bool odroid_sdcard_open()
 {
     esp_err_t ret;
 
@@ -37,10 +32,10 @@ esp_err_t odroid_sdcard_open()
         host.max_freq_khz = SDMMC_FREQ_DEFAULT;
 
     	sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
-    	slot_config.gpio_miso = SPI_PIN_NUM_MISO;
-    	slot_config.gpio_mosi = SPI_PIN_NUM_MOSI;
-    	slot_config.gpio_sck  = SPI_PIN_NUM_CLK;
-    	slot_config.gpio_cs = SPI_PIN_NUM_CS;
+    	slot_config.gpio_miso = ODROID_PIN_SD_MISO;
+    	slot_config.gpio_mosi = ODROID_PIN_SD_MOSI;
+    	slot_config.gpio_sck  = ODROID_PIN_SD_CLK;
+    	slot_config.gpio_cs = ODROID_PIN_SD_CS;
     	//slot_config.dma_channel = 2;
 
     	// Options for mounting the filesystem.
@@ -58,7 +53,7 @@ esp_err_t odroid_sdcard_open()
     	// Please check its source code and implement error recovery when developing
     	// production applications.
     	sdmmc_card_t* card;
-    	ret = esp_vfs_fat_sdmmc_mount(SD_BASE_PATH, &host, &slot_config, &mount_config, &card);
+    	ret = esp_vfs_fat_sdmmc_mount(ODROID_BASE_PATH, &host, &slot_config, &mount_config, &card);
 
     	if (ret == ESP_OK)
         {
@@ -70,10 +65,10 @@ esp_err_t odroid_sdcard_open()
         }
     }
 
-	return ret;
+	return ret == ESP_OK;
 }
 
-esp_err_t odroid_sdcard_close()
+bool odroid_sdcard_close()
 {
     esp_err_t ret = esp_vfs_fat_sdmmc_unmount();
     if (ret != ESP_OK)
@@ -81,7 +76,7 @@ esp_err_t odroid_sdcard_close()
         printf("odroid_sdcard_close: esp_vfs_fat_sdmmc_unmount failed (%d)\n", ret);
     }
     sdcardOpen = false;
-    return ret;
+    return ret == ESP_OK;
 }
 
 size_t odroid_sdcard_get_filesize(const char* path)
@@ -199,7 +194,7 @@ int odroid_sdcard_mkdir(char *dir)
             tmp[len - 1] = 0;
         }
 
-        for (char *p = tmp + strlen(SD_BASE_PATH) + 1; *p; p++) {
+        for (char *p = tmp + strlen(ODROID_BASE_PATH) + 1; *p; p++) {
             if (*p == '/') {
                 *p = 0;
                 printf("odroid_sdcard_mkdir: Creating %s\n", tmp);

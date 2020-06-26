@@ -33,22 +33,22 @@ static void odroid_system_monitor_task(void *arg);
 
 static void odroid_system_gpio_init()
 {
-    rtc_gpio_deinit(ODROID_GAMEPAD_IO_MENU);
+    rtc_gpio_deinit(ODROID_PIN_GAMEPAD_MENU);
     //rtc_gpio_deinit(GPIO_NUM_14);
 
     // Blue LED
-    gpio_set_direction(GPIO_NUM_2, GPIO_MODE_OUTPUT);
-    gpio_set_level(GPIO_NUM_2, 0);
+    gpio_set_direction(ODROID_PIN_LED, GPIO_MODE_OUTPUT);
+    gpio_set_level(ODROID_PIN_LED, 0);
 
     // Disable LCD CD to prevent garbage
-    gpio_set_direction(GPIO_NUM_5, GPIO_MODE_OUTPUT);
-    gpio_set_level(GPIO_NUM_5, 1);
+    gpio_set_direction(ODROID_PIN_LCD_CS, GPIO_MODE_OUTPUT);
+    gpio_set_level(ODROID_PIN_LCD_CS, 1);
 
     // Disable speaker to prevent hiss/pops
-    gpio_set_direction(GPIO_NUM_25, GPIO_MODE_INPUT);
-    gpio_set_direction(GPIO_NUM_26, GPIO_MODE_INPUT);
-    gpio_set_level(GPIO_NUM_25, 0);
-    gpio_set_level(GPIO_NUM_26, 0);
+    gpio_set_direction(ODROID_PIN_DAC1, GPIO_MODE_INPUT);
+    gpio_set_direction(ODROID_PIN_DAC2, GPIO_MODE_INPUT);
+    gpio_set_level(ODROID_PIN_DAC1, 0);
+    gpio_set_level(ODROID_PIN_DAC2, 0);
 }
 
 void odroid_system_init(int appId, int sampleRate)
@@ -66,7 +66,7 @@ void odroid_system_init(int appId, int sampleRate)
     odroid_audio_init(sampleRate);
 
     //sdcard init must be before LCD init
-    esp_err_t sd_init = odroid_sdcard_open();
+    bool sd_init = odroid_sdcard_open();
 
     odroid_display_init();
 
@@ -81,7 +81,7 @@ void odroid_system_init(int appId, int sampleRate)
         odroid_display_show_hourglass();
     }
 
-    if (sd_init != ESP_OK)
+    if (!sd_init)
     {
         odroid_display_clear(C_WHITE);
         odroid_display_write((ODROID_SCREEN_WIDTH - image_sdcard_red_48dp.width) / 2,
@@ -368,6 +368,15 @@ void odroid_system_panic(const char *reason)
     odroid_system_switch_app(0);
 }
 
+void odroid_system_unresponsive(const char *reason)
+{
+    printf(" *** APP UNRESPONSIVE: %s *** \n", reason);
+
+    // if (odroid_overlay_confirm("App Unresponsive. Reboot?", 1)) {
+        odroid_system_switch_app(0);
+    // }
+}
+
 void odroid_system_halt()
 {
     printf("odroid_system_halt: Halting system!\n");
@@ -388,7 +397,7 @@ void odroid_system_sleep()
 
 void odroid_system_set_led(int value)
 {
-    gpio_set_level(GPIO_NUM_2, value);
+    gpio_set_level(ODROID_PIN_LED, value);
 }
 
 static void odroid_system_monitor_task(void *arg)
@@ -438,9 +447,9 @@ static void odroid_system_monitor_task(void *arg)
     #endif
 
         // Applications should never stop polling input. If they do, they're probably unresponsive...
-        if (odroid_input_gamepad_last_polled() > 6000000)
+        if (statistics.lastTickTime > 0 && odroid_input_gamepad_last_polled() > 10000000)
         {
-            odroid_system_panic("Application is unresponsive!");
+            odroid_system_unresponsive("Input timeout");
         }
 
         if (statistics.battery.percentage < 2)

@@ -14,13 +14,6 @@
 
 #include <string.h>
 
-#define SPI_PIN_NUM_MISO  GPIO_NUM_19
-#define SPI_PIN_NUM_MOSI  GPIO_NUM_23
-#define SPI_PIN_NUM_CLK   GPIO_NUM_18
-#define SPI_PIN_NUM_CS    GPIO_NUM_5
-#define LCD_PIN_NUM_DC    GPIO_NUM_21
-#define LCD_PIN_NUM_BCKL  GPIO_NUM_14
-
 #define SCREEN_WIDTH  ODROID_SCREEN_WIDTH
 #define SCREEN_HEIGHT ODROID_SCREEN_HEIGHT
 
@@ -164,7 +157,7 @@ backlight_init()
     //set the duty for initialization.(duty range is 0 ~ ((2**bit_num)-1)
     ledc_channel.duty = BACKLIGHT_DUTY_MAX * (percent * 0.01f);
     //GPIO number
-    ledc_channel.gpio_num = LCD_PIN_NUM_BCKL;
+    ledc_channel.gpio_num = ODROID_PIN_LCD_BCKL;
     //GPIO INTR TYPE, as an example, we enable fade_end interrupt here.
     ledc_channel.intr_type = LEDC_INTR_FADE_END;
     //set LEDC mode, from ledc_mode_t
@@ -295,7 +288,7 @@ ili9341_init()
     short cmd = 0;
 
     //Initialize non-SPI GPIOs
-    gpio_set_direction(LCD_PIN_NUM_DC, GPIO_MODE_OUTPUT);
+    gpio_set_direction(ODROID_PIN_LCD_DC, GPIO_MODE_OUTPUT);
     //gpio_set_direction(LCD_PIN_NUM_BCKL, GPIO_MODE_OUTPUT);
 
     //Send all the commands
@@ -322,9 +315,9 @@ ili9341_deinit()
         cmd++;
     }
 
-    rtc_gpio_init(LCD_PIN_NUM_BCKL);
-    rtc_gpio_set_direction(LCD_PIN_NUM_BCKL, RTC_GPIO_MODE_OUTPUT_ONLY);
-    rtc_gpio_set_level(LCD_PIN_NUM_BCKL, 0);
+    rtc_gpio_init(ODROID_PIN_LCD_BCKL);
+    rtc_gpio_set_direction(ODROID_PIN_LCD_BCKL, RTC_GPIO_MODE_OUTPUT_ONLY);
+    rtc_gpio_set_level(ODROID_PIN_LCD_BCKL, 0);
 }
 
 //This function is called (in irq context!) just before a transmission starts. It will
@@ -332,7 +325,7 @@ ili9341_deinit()
 IRAM_ATTR static void
 spi_pre_transfer_callback(spi_transaction_t *t)
 {
-    gpio_set_level(LCD_PIN_NUM_DC, (int)t->user & 0x01);
+    gpio_set_level(ODROID_PIN_LCD_DC, (int)t->user & 0x01);
 }
 
 IRAM_ATTR static void
@@ -388,9 +381,9 @@ spi_initialize()
     spi_bus_config_t buscfg;
 	memset(&buscfg, 0, sizeof(buscfg));
 
-    buscfg.miso_io_num = SPI_PIN_NUM_MISO;
-    buscfg.mosi_io_num = SPI_PIN_NUM_MOSI;
-    buscfg.sclk_io_num = SPI_PIN_NUM_CLK;
+    buscfg.miso_io_num = ODROID_PIN_LCD_MISO;
+    buscfg.mosi_io_num = ODROID_PIN_LCD_MOSI;
+    buscfg.sclk_io_num = ODROID_PIN_LCD_CLK;
     buscfg.quadwp_io_num = -1;
     buscfg.quadhd_io_num = -1;
 
@@ -399,7 +392,7 @@ spi_initialize()
 
     devcfg.clock_speed_hz = SPI_MASTER_FREQ_40M;    //80Mhz causes glitches unfortunately
     devcfg.mode = 0;                                //SPI mode 0
-    devcfg.spics_io_num = SPI_PIN_NUM_CS;           //CS pin
+    devcfg.spics_io_num = ODROID_PIN_LCD_CS;        //CS pin
     devcfg.queue_size = SPI_TRANSACTION_COUNT;      //We want to be able to queue 7 transactions at a time
     devcfg.pre_cb = spi_pre_transfer_callback;      //Specify pre-transfer callback to handle D/C line
     devcfg.flags = SPI_DEVICE_NO_DUMMY;             //SPI_DEVICE_HALFDUPLEX;

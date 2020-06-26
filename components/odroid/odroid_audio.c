@@ -1,10 +1,12 @@
 #include "freertos/FreeRTOS.h"
-#include "odroid_audio.h"
 #include "string.h"
 #include "unistd.h"
 #include "esp_system.h"
 #include "driver/i2s.h"
 #include "driver/rtc_io.h"
+
+#include "odroid_system.h"
+#include "odroid_audio.h"
 
 #define I2S_NUM (I2S_NUM_0)
 
@@ -92,9 +94,9 @@ void odroid_audio_init(int sample_rate)
         i2s_set_pin(I2S_NUM, &pin_config);
 
         // Disable internal amp
-        gpio_set_direction(GPIO_NUM_25, GPIO_MODE_OUTPUT);
-        gpio_set_direction(GPIO_NUM_26, GPIO_MODE_DISABLE);
-        gpio_set_level(GPIO_NUM_25, 0);
+        gpio_set_direction(ODROID_PIN_DAC1, GPIO_MODE_OUTPUT);
+        gpio_set_direction(ODROID_PIN_DAC2, GPIO_MODE_DISABLE);
+        gpio_set_level(ODROID_PIN_DAC1, 0);
     }
     else
     {
@@ -115,8 +117,8 @@ void odroid_audio_terminate()
         audioInitialized = false;
     }
 
-    gpio_reset_pin(GPIO_NUM_25);
-    gpio_reset_pin(GPIO_NUM_26);
+    gpio_reset_pin(ODROID_PIN_DAC1);
+    gpio_reset_pin(ODROID_PIN_DAC2);
 }
 
 IRAM_ATTR void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
