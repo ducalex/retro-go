@@ -48,6 +48,8 @@ Retro-Go is a launcher and framework to run emulators on the ODROID-GO. It comes
 | Menu    | Game menu (save/quit)  |
 | Volume  | Options menu  |
 
+Note: If you are stuck in an emulator, hold MENU while powering up the device to return to the launcher.
+
 
 # Game covers/artwork
 The preferred cover art format is 8bit PNG with a resolution of less than 200x200 and I 
