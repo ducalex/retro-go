@@ -133,6 +133,11 @@ uint8 *ppu_getpage(int page)
    return ppu.page[page];
 }
 
+uint8 *ppu_getnametable(int table)
+{
+   return ppu.nametab + (0x400 * (table % 4));
+}
+
 /* make sure $3000-$3F00 mirrors $2000-$2F00 */
 void ppu_mirrorhipages(void)
 {

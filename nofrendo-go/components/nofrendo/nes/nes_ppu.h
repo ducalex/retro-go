@@ -93,7 +93,7 @@ typedef struct
 
 typedef struct ppu_s
 {
-   /* We always have 4 nametables */
+   /* The NES has only 2 nametables, but we allocate 4 for mappers to use */
    uint8 nametab[0x1000];
 
    /* Sprite memory */
@@ -148,6 +148,7 @@ extern void ppu_mirrorhipages(void);
 extern void ppu_mirror(int nt1, int nt2, int nt3, int nt4);
 extern void ppu_setpage(int size, int page_num, uint8 *location);
 extern uint8 *ppu_getpage(int page);
+extern uint8 *ppu_getnametable(int table);
 
 /* Control */
 extern ppu_t *ppu_init(int region);

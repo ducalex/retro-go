@@ -36,17 +36,6 @@ typedef struct
 } mapper19Data;
 
 /* TODO: shouldn't there be an h-blank IRQ handler??? */
-
-/* Special mirroring macro for mapper 19 */
-#define N_BANK1(table, value) \
-{ \
-   if ((value) < 0xE0) \
-      ppu_setpage(1, (table) + 8, &mmc_getinfo()->vrom[((value) % (mmc_getinfo()->vrom_banks * 8)) << 10] - (0x2000 + ((table) << 10))); \
-   else \
-      ppu_setpage(1, (table) + 8, &mmc_getinfo()->vram[((value) & 7) << 10] - (0x2000 + ((table) << 10))); \
-   ppu_mirrorhipages(); \
-}
-
 static struct
 {
    int counter, enabled;
@@ -57,7 +46,7 @@ static void map19_init(void)
    irq.counter = irq.enabled = 0;
 }
 
-/* mapper 19: Namcot 106 */
+/* mapper 19: Namco 129/163 */
 static void map19_write(uint32 address, uint8 value)
 {
    int reg = address >> 11;
@@ -87,8 +76,14 @@ static void map19_write(uint32 address, uint8 value)
    case 0x18:
    case 0x19:
    case 0x1A:
-   case 0x1B:
-      N_BANK1(reg & 3, value);
+   case 0x1B: {
+      rominfo_t *cart = mmc_getinfo();
+      if (value < 0xE0)
+         ppu_setpage(1, (reg & 3) + 8, &cart->vrom[(value % (cart->vrom_banks * 8)) << 10] - (0x2000 + ((reg & 3) << 10)));
+      else
+         ppu_setpage(1, (reg & 3) + 8, ppu_getnametable(value & 1) - (0x2000 + ((reg & 3) << 10)));
+      ppu_mirrorhipages();
+      }
       break;
 
    case 0x1C:
@@ -132,7 +127,7 @@ static mem_write_handler_t map19_memwrite[] =
 mapintf_t map19_intf =
 {
    19, /* mapper number */
-   "Namcot 106", /* mapper name */
+   "Namco 129/163", /* mapper name */
    map19_init, /* init routine */
    NULL, /* vblank callback */
    NULL, /* hblank callback */
