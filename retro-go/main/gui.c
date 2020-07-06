@@ -64,6 +64,10 @@ retro_emulator_file_t *gui_list_selected_file(retro_emulator_t *emu)
 
 bool gui_list_handle_input(retro_emulator_t *emu, odroid_gamepad_state *joystick, int *last_key)
 {
+    if (emu->roms.count == 0 || emu->roms.selected > emu->roms.count) {
+        return false;
+    }
+
     int selected = emu->roms.selected;
     if (joystick->values[ODROID_INPUT_UP]) {
         *last_key = ODROID_INPUT_UP;
@@ -120,12 +124,26 @@ void gui_list_draw(retro_emulator_t *emu, int theme_)
 
     odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" ", C_RED, C_BLACK);
 
+    int color, entry, y;
+    char text[64];
+
     for (int i = 0; i < lines; i++) {
-        int entry = emu->roms.selected + i - (lines / 2);
-        int y = LIST_Y_OFFSET + i * LIST_LINE_HEIGHT;
-        char *text = (entry >= 0 && entry < emu->roms.count) ? emu->roms.files[entry].name : (char *)" ";
-        uint16_t fg_color = (entry == emu->roms.selected) ? theme.list_highlight : theme.list_foreground;
-        odroid_overlay_draw_text(LIST_X_OFFSET, y, LIST_WIDTH, text, fg_color, (int)(gradient * i) << theme.list_background);
+        entry = emu->roms.selected + i - (lines / 2);
+        color = (entry == emu->roms.selected) ? theme.list_highlight : theme.list_foreground;
+        y = LIST_Y_OFFSET + i * LIST_LINE_HEIGHT;
+
+        text[0] = '\0';
+
+        if (entry >= 0 && entry < emu->roms.count) {
+            snprintf(text, 64, emu->roms.files[entry].name);
+        }
+        else if (emu->roms.count == 0) {
+            if (i == 1) sprintf(text, "No roms found!");
+            else if (i == 4) sprintf(text, "Place roms in folder: /roms/%s", emu->dirname);
+            else if (i == 6) sprintf(text, "With file extension: .%s", emu->ext);
+        }
+
+        odroid_overlay_draw_text(LIST_X_OFFSET, y, LIST_WIDTH, text, color, (int)(gradient * i) << theme.list_background);
     }
 }
 

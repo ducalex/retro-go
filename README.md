@@ -39,6 +39,7 @@ Retro-Go is a launcher and framework to run emulators on the ODROID-GO. It comes
 | Select  | Previous emulator |
 | Start   | Next emulator |
 | A       | Start game |
+| B       | File properties |
 | Left    | Page up |
 | Right   | Page down |
 

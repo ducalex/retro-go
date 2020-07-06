@@ -12,6 +12,7 @@
 
 static int audioSink = ODROID_AUDIO_SINK_SPEAKER;
 static int audioSampleRate = 0;
+static int audioFilter = 0;
 static bool audioMuted = 0;
 static bool audioInitialized = 0;
 static int volumeLevel = ODROID_AUDIO_VOLUME_DEFAULT;
@@ -121,6 +122,11 @@ void odroid_audio_terminate()
     gpio_reset_pin(ODROID_PIN_DAC2);
 }
 
+static inline void filter_samples(short* samples, int count)
+{
+
+}
+
 IRAM_ATTR void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
 {
     size_t sampleCount = frameCount * 2;
@@ -207,6 +213,11 @@ IRAM_ATTR void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
     else
     {
         abort();
+    }
+
+    if (audioFilter)
+    {
+        filter_samples(stereoAudioBuffer, bufferSize);
     }
 
     i2s_write(I2S_NUM, (const short *)stereoAudioBuffer, bufferSize, &written, 1000);
