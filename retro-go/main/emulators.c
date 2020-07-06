@@ -41,7 +41,7 @@ static int file_sort_comparator(const void *p, const void *q)
 {
     retro_emulator_file_t *l = (retro_emulator_file_t*)p;
     retro_emulator_file_t *r = (retro_emulator_file_t*)q;
-    return strcmp(l->name, r->name);
+    return strcasecmp(l->name, r->name);
 }
 
 void emulators_init_emu(retro_emulator_t *emu)
