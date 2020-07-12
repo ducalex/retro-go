@@ -1118,7 +1118,7 @@ INLINE void writebyte(uint32 address, uint8 value)
 
 #else /* !NES6502_JUMPTABLE */
 
-#define OPCODE(xx, x...)  case 0x##xx: x; break;
+#define OPCODE(xx, x...)  case xx: x; break;
 #define OPCODE_NEXT \
    DISASSEMBLE;  \
    switch (fast_readbyte(PC++))
@@ -1168,38 +1168,38 @@ IRAM_ATTR int nes6502_execute(int timeslice_cycles)
 
    DRAM_ATTR static const void *opcode_table[256] =
    {
-      &&op00, &&op01, &&op02, &&op03, &&op04, &&op05, &&op06, &&op07,
-      &&op08, &&op09, &&op0A, &&op0B, &&op0C, &&op0D, &&op0E, &&op0F,
-      &&op10, &&op11, &&op12, &&op13, &&op14, &&op15, &&op16, &&op17,
-      &&op18, &&op19, &&op1A, &&op1B, &&op1C, &&op1D, &&op1E, &&op1F,
-      &&op20, &&op21, &&op22, &&op23, &&op24, &&op25, &&op26, &&op27,
-      &&op28, &&op29, &&op2A, &&op2B, &&op2C, &&op2D, &&op2E, &&op2F,
-      &&op30, &&op31, &&op32, &&op33, &&op34, &&op35, &&op36, &&op37,
-      &&op38, &&op39, &&op3A, &&op3B, &&op3C, &&op3D, &&op3E, &&op3F,
-      &&op40, &&op41, &&op42, &&op43, &&op44, &&op45, &&op46, &&op47,
-      &&op48, &&op49, &&op4A, &&op4B, &&op4C, &&op4D, &&op4E, &&op4F,
-      &&op50, &&op51, &&op52, &&op53, &&op54, &&op55, &&op56, &&op57,
-      &&op58, &&op59, &&op5A, &&op5B, &&op5C, &&op5D, &&op5E, &&op5F,
-      &&op60, &&op61, &&op62, &&op63, &&op64, &&op65, &&op66, &&op67,
-      &&op68, &&op69, &&op6A, &&op6B, &&op6C, &&op6D, &&op6E, &&op6F,
-      &&op70, &&op71, &&op72, &&op73, &&op74, &&op75, &&op76, &&op77,
-      &&op78, &&op79, &&op7A, &&op7B, &&op7C, &&op7D, &&op7E, &&op7F,
-      &&op80, &&op81, &&op82, &&op83, &&op84, &&op85, &&op86, &&op87,
-      &&op88, &&op89, &&op8A, &&op8B, &&op8C, &&op8D, &&op8E, &&op8F,
-      &&op90, &&op91, &&op92, &&op93, &&op94, &&op95, &&op96, &&op97,
-      &&op98, &&op99, &&op9A, &&op9B, &&op9C, &&op9D, &&op9E, &&op9F,
-      &&opA0, &&opA1, &&opA2, &&opA3, &&opA4, &&opA5, &&opA6, &&opA7,
-      &&opA8, &&opA9, &&opAA, &&opAB, &&opAC, &&opAD, &&opAE, &&opAF,
-      &&opB0, &&opB1, &&opB2, &&opB3, &&opB4, &&opB5, &&opB6, &&opB7,
-      &&opB8, &&opB9, &&opBA, &&opBB, &&opBC, &&opBD, &&opBE, &&opBF,
-      &&opC0, &&opC1, &&opC2, &&opC3, &&opC4, &&opC5, &&opC6, &&opC7,
-      &&opC8, &&opC9, &&opCA, &&opCB, &&opCC, &&opCD, &&opCE, &&opCF,
-      &&opD0, &&opD1, &&opD2, &&opD3, &&opD4, &&opD5, &&opD6, &&opD7,
-      &&opD8, &&opD9, &&opDA, &&opDB, &&opDC, &&opDD, &&opDE, &&opDF,
-      &&opE0, &&opE1, &&opE2, &&opE3, &&opE4, &&opE5, &&opE6, &&opE7,
-      &&opE8, &&opE9, &&opEA, &&opEB, &&opEC, &&opED, &&opEE, &&opEF,
-      &&opF0, &&opF1, &&opF2, &&opF3, &&opF4, &&opF5, &&opF6, &&opF7,
-      &&opF8, &&opF9, &&opFA, &&opFB, &&opFC, &&opFD, &&opFE, &&opFF
+      &&op0x00, &&op0x01, &&op0x02, &&op0x03, &&op0x04, &&op0x05, &&op0x06, &&op0x07,
+      &&op0x08, &&op0x09, &&op0x0A, &&op0x0B, &&op0x0C, &&op0x0D, &&op0x0E, &&op0x0F,
+      &&op0x10, &&op0x11, &&op0x12, &&op0x13, &&op0x14, &&op0x15, &&op0x16, &&op0x17,
+      &&op0x18, &&op0x19, &&op0x1A, &&op0x1B, &&op0x1C, &&op0x1D, &&op0x1E, &&op0x1F,
+      &&op0x20, &&op0x21, &&op0x22, &&op0x23, &&op0x24, &&op0x25, &&op0x26, &&op0x27,
+      &&op0x28, &&op0x29, &&op0x2A, &&op0x2B, &&op0x2C, &&op0x2D, &&op0x2E, &&op0x2F,
+      &&op0x30, &&op0x31, &&op0x32, &&op0x33, &&op0x34, &&op0x35, &&op0x36, &&op0x37,
+      &&op0x38, &&op0x39, &&op0x3A, &&op0x3B, &&op0x3C, &&op0x3D, &&op0x3E, &&op0x3F,
+      &&op0x40, &&op0x41, &&op0x42, &&op0x43, &&op0x44, &&op0x45, &&op0x46, &&op0x47,
+      &&op0x48, &&op0x49, &&op0x4A, &&op0x4B, &&op0x4C, &&op0x4D, &&op0x4E, &&op0x4F,
+      &&op0x50, &&op0x51, &&op0x52, &&op0x53, &&op0x54, &&op0x55, &&op0x56, &&op0x57,
+      &&op0x58, &&op0x59, &&op0x5A, &&op0x5B, &&op0x5C, &&op0x5D, &&op0x5E, &&op0x5F,
+      &&op0x60, &&op0x61, &&op0x62, &&op0x63, &&op0x64, &&op0x65, &&op0x66, &&op0x67,
+      &&op0x68, &&op0x69, &&op0x6A, &&op0x6B, &&op0x6C, &&op0x6D, &&op0x6E, &&op0x6F,
+      &&op0x70, &&op0x71, &&op0x72, &&op0x73, &&op0x74, &&op0x75, &&op0x76, &&op0x77,
+      &&op0x78, &&op0x79, &&op0x7A, &&op0x7B, &&op0x7C, &&op0x7D, &&op0x7E, &&op0x7F,
+      &&op0x80, &&op0x81, &&op0x82, &&op0x83, &&op0x84, &&op0x85, &&op0x86, &&op0x87,
+      &&op0x88, &&op0x89, &&op0x8A, &&op0x8B, &&op0x8C, &&op0x8D, &&op0x8E, &&op0x8F,
+      &&op0x90, &&op0x91, &&op0x92, &&op0x93, &&op0x94, &&op0x95, &&op0x96, &&op0x97,
+      &&op0x98, &&op0x99, &&op0x9A, &&op0x9B, &&op0x9C, &&op0x9D, &&op0x9E, &&op0x9F,
+      &&op0xA0, &&op0xA1, &&op0xA2, &&op0xA3, &&op0xA4, &&op0xA5, &&op0xA6, &&op0xA7,
+      &&op0xA8, &&op0xA9, &&op0xAA, &&op0xAB, &&op0xAC, &&op0xAD, &&op0xAE, &&op0xAF,
+      &&op0xB0, &&op0xB1, &&op0xB2, &&op0xB3, &&op0xB4, &&op0xB5, &&op0xB6, &&op0xB7,
+      &&op0xB8, &&op0xB9, &&op0xBA, &&op0xBB, &&op0xBC, &&op0xBD, &&op0xBE, &&op0xBF,
+      &&op0xC0, &&op0xC1, &&op0xC2, &&op0xC3, &&op0xC4, &&op0xC5, &&op0xC6, &&op0xC7,
+      &&op0xC8, &&op0xC9, &&op0xCA, &&op0xCB, &&op0xCC, &&op0xCD, &&op0xCE, &&op0xCF,
+      &&op0xD0, &&op0xD1, &&op0xD2, &&op0xD3, &&op0xD4, &&op0xD5, &&op0xD6, &&op0xD7,
+      &&op0xD8, &&op0xD9, &&op0xDA, &&op0xDB, &&op0xDC, &&op0xDD, &&op0xDE, &&op0xDF,
+      &&op0xE0, &&op0xE1, &&op0xE2, &&op0xE3, &&op0xE4, &&op0xE5, &&op0xE6, &&op0xE7,
+      &&op0xE8, &&op0xE9, &&op0xEA, &&op0xEB, &&op0xEC, &&op0xED, &&op0xEE, &&op0xEF,
+      &&op0xF0, &&op0xF1, &&op0xF2, &&op0xF3, &&op0xF4, &&op0xF5, &&op0xF6, &&op0xF7,
+      &&op0xF8, &&op0xF9, &&op0xFA, &&op0xFB, &&op0xFC, &&op0xFD, &&op0xFE, &&op0xFF
    };
 
 #endif /* NES6502_JUMPTABLE */
@@ -1229,277 +1229,277 @@ IRAM_ATTR int nes6502_execute(int timeslice_cycles)
       /* Fetch and execute instruction */
       OPCODE_NEXT
       {
-      OPCODE(00, BRK());                                          /* BRK */
-      OPCODE(01, ORA(6, INDIR_X_BYTE));                           /* ORA ($nn,X) */
-      OPCODE(02, JAM());                                          /* JAM */
-      OPCODE(03, SLO(8, INDIR_X, writebyte, addr));               /* SLO ($nn,X) */
-      OPCODE(04, DOP(3));                                         /* NOP $nn */
-      OPCODE(05, ORA(3, ZERO_PAGE_BYTE));                         /* ORA $nn */
-      OPCODE(06, ASL(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* ASL $nn */
-      OPCODE(07, SLO(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* SLO $nn */
-      OPCODE(08, PHP());                                          /* PHP */
-      OPCODE(09, ORA(2, IMMEDIATE_BYTE));                         /* ORA #$nn */
-      OPCODE(0A, ASL_A());                                        /* ASL A */
-      OPCODE(0B, ANC(2, IMMEDIATE_BYTE));                         /* ANC #$nn */
-      OPCODE(0C, TOP());                                          /* NOP $nnnn */
-      OPCODE(0D, ORA(4, ABSOLUTE_BYTE));                          /* ORA $nnnn */
-      OPCODE(0E, ASL(6, ABSOLUTE, writebyte, addr));              /* ASL $nnnn */
-      OPCODE(0F, SLO(6, ABSOLUTE, writebyte, addr));              /* SLO $nnnn */
+      OPCODE(0x00, BRK());                                          /* BRK */
+      OPCODE(0x01, ORA(6, INDIR_X_BYTE));                           /* ORA ($nn,X) */
+      OPCODE(0x02, JAM());                                          /* JAM */
+      OPCODE(0x03, SLO(8, INDIR_X, writebyte, addr));               /* SLO ($nn,X) */
+      OPCODE(0x04, DOP(3));                                         /* NOP $nn */
+      OPCODE(0x05, ORA(3, ZERO_PAGE_BYTE));                         /* ORA $nn */
+      OPCODE(0x06, ASL(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* ASL $nn */
+      OPCODE(0x07, SLO(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* SLO $nn */
+      OPCODE(0x08, PHP());                                          /* PHP */
+      OPCODE(0x09, ORA(2, IMMEDIATE_BYTE));                         /* ORA #$nn */
+      OPCODE(0x0A, ASL_A());                                        /* ASL A */
+      OPCODE(0x0B, ANC(2, IMMEDIATE_BYTE));                         /* ANC #$nn */
+      OPCODE(0x0C, TOP());                                          /* NOP $nnnn */
+      OPCODE(0x0D, ORA(4, ABSOLUTE_BYTE));                          /* ORA $nnnn */
+      OPCODE(0x0E, ASL(6, ABSOLUTE, writebyte, addr));              /* ASL $nnnn */
+      OPCODE(0x0F, SLO(6, ABSOLUTE, writebyte, addr));              /* SLO $nnnn */
 
-      OPCODE(10, BPL());                                          /* BPL $nnnn */
-      OPCODE(11, ORA(5, INDIR_Y_BYTE_READ));                      /* ORA ($nn),Y */
-      OPCODE(12, JAM());                                          /* JAM */
-      OPCODE(13, SLO(8, INDIR_Y, writebyte, addr));               /* SLO ($nn),Y */
-      OPCODE(14, DOP(4));                                         /* NOP $nn,X */
-      OPCODE(15, ORA(4, ZP_IND_X_BYTE));                          /* ORA $nn,X */
-      OPCODE(16, ASL(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* ASL $nn,X */
-      OPCODE(17, SLO(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* SLO $nn,X */
-      OPCODE(18, CLC());                                          /* CLC */
-      OPCODE(19, ORA(4, ABS_IND_Y_BYTE_READ));                    /* ORA $nnnn,Y */
-      OPCODE(1A, NOP());                                          /* NOP */
-      OPCODE(1B, SLO(7, ABS_IND_Y, writebyte, addr));             /* SLO $nnnn,Y */
-      OPCODE(1C, TOP());                                          /* NOP $nnnn,X */
-      OPCODE(1D, ORA(4, ABS_IND_X_BYTE_READ));                    /* ORA $nnnn,X */
-      OPCODE(1E, ASL(7, ABS_IND_X, writebyte, addr));              /* ASL $nnnn,X */
-      OPCODE(1F, SLO(7, ABS_IND_X, writebyte, addr));              /* SLO $nnnn,X */
+      OPCODE(0x10, BPL());                                          /* BPL $nnnn */
+      OPCODE(0x11, ORA(5, INDIR_Y_BYTE_READ));                      /* ORA ($nn),Y */
+      OPCODE(0x12, JAM());                                          /* JAM */
+      OPCODE(0x13, SLO(8, INDIR_Y, writebyte, addr));               /* SLO ($nn),Y */
+      OPCODE(0x14, DOP(4));                                         /* NOP $nn,X */
+      OPCODE(0x15, ORA(4, ZP_IND_X_BYTE));                          /* ORA $nn,X */
+      OPCODE(0x16, ASL(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* ASL $nn,X */
+      OPCODE(0x17, SLO(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* SLO $nn,X */
+      OPCODE(0x18, CLC());                                          /* CLC */
+      OPCODE(0x19, ORA(4, ABS_IND_Y_BYTE_READ));                    /* ORA $nnnn,Y */
+      OPCODE(0x1A, NOP());                                          /* NOP */
+      OPCODE(0x1B, SLO(7, ABS_IND_Y, writebyte, addr));             /* SLO $nnnn,Y */
+      OPCODE(0x1C, TOP());                                          /* NOP $nnnn,X */
+      OPCODE(0x1D, ORA(4, ABS_IND_X_BYTE_READ));                    /* ORA $nnnn,X */
+      OPCODE(0x1E, ASL(7, ABS_IND_X, writebyte, addr));              /* ASL $nnnn,X */
+      OPCODE(0x1F, SLO(7, ABS_IND_X, writebyte, addr));              /* SLO $nnnn,X */
 
-      OPCODE(20, JSR());                                          /* JSR $nnnn */
-      OPCODE(21, AND(6, INDIR_X_BYTE));                           /* AND ($nn,X) */
-      OPCODE(22, JAM());                                          /* JAM */
-      OPCODE(23, RLA(8, INDIR_X, writebyte, addr));               /* RLA ($nn,X) */
-      OPCODE(24, BIT(3, ZERO_PAGE_BYTE));                         /* BIT $nn */
-      OPCODE(25, AND(3, ZERO_PAGE_BYTE));                         /* AND $nn */
-      OPCODE(26, ROL(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* ROL $nn */
-      OPCODE(27, RLA(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* RLA $nn */
-      OPCODE(28, PLP());                                          /* PLP */
-      OPCODE(29, AND(2, IMMEDIATE_BYTE));                         /* AND #$nn */
-      OPCODE(2A, ROL_A());                                        /* ROL A */
-      OPCODE(2B, ANC(2, IMMEDIATE_BYTE));                         /* ANC #$nn */
-      OPCODE(2C, BIT(4, ABSOLUTE_BYTE));                          /* BIT $nnnn */
-      OPCODE(2D, AND(4, ABSOLUTE_BYTE));                          /* AND $nnnn */
-      OPCODE(2E, ROL(6, ABSOLUTE, writebyte, addr));              /* ROL $nnnn */
-      OPCODE(2F, RLA(6, ABSOLUTE, writebyte, addr));              /* RLA $nnnn */
+      OPCODE(0x20, JSR());                                          /* JSR $nnnn */
+      OPCODE(0x21, AND(6, INDIR_X_BYTE));                           /* AND ($nn,X) */
+      OPCODE(0x22, JAM());                                          /* JAM */
+      OPCODE(0x23, RLA(8, INDIR_X, writebyte, addr));               /* RLA ($nn,X) */
+      OPCODE(0x24, BIT(3, ZERO_PAGE_BYTE));                         /* BIT $nn */
+      OPCODE(0x25, AND(3, ZERO_PAGE_BYTE));                         /* AND $nn */
+      OPCODE(0x26, ROL(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* ROL $nn */
+      OPCODE(0x27, RLA(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* RLA $nn */
+      OPCODE(0x28, PLP());                                          /* PLP */
+      OPCODE(0x29, AND(2, IMMEDIATE_BYTE));                         /* AND #$nn */
+      OPCODE(0x2A, ROL_A());                                        /* ROL A */
+      OPCODE(0x2B, ANC(2, IMMEDIATE_BYTE));                         /* ANC #$nn */
+      OPCODE(0x2C, BIT(4, ABSOLUTE_BYTE));                          /* BIT $nnnn */
+      OPCODE(0x2D, AND(4, ABSOLUTE_BYTE));                          /* AND $nnnn */
+      OPCODE(0x2E, ROL(6, ABSOLUTE, writebyte, addr));              /* ROL $nnnn */
+      OPCODE(0x2F, RLA(6, ABSOLUTE, writebyte, addr));              /* RLA $nnnn */
 
-      OPCODE(30, BMI());                                          /* BMI $nnnn */
-      OPCODE(31, AND(5, INDIR_Y_BYTE_READ));                      /* AND ($nn),Y */
-      OPCODE(32, JAM());                                          /* JAM */
-      OPCODE(33, RLA(8, INDIR_Y, writebyte, addr));               /* RLA ($nn),Y */
-      OPCODE(34, DOP(4));                                         /* NOP */
-      OPCODE(35, AND(4, ZP_IND_X_BYTE));                          /* AND $nn,X */
-      OPCODE(36, ROL(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* ROL $nn,X */
-      OPCODE(37, RLA(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* RLA $nn,X */
-      OPCODE(38, SEC());                                          /* SEC */
-      OPCODE(39, AND(4, ABS_IND_Y_BYTE_READ));                    /* AND $nnnn,Y */
-      OPCODE(3A, NOP());                                          /* NOP */
-      OPCODE(3B, RLA(7, ABS_IND_Y, writebyte, addr));             /* RLA $nnnn,Y */
-      OPCODE(3C, TOP());                                          /* NOP $nnnn,X */
-      OPCODE(3D, AND(4, ABS_IND_X_BYTE_READ));                    /* AND $nnnn,X */
-      OPCODE(3E, ROL(7, ABS_IND_X, writebyte, addr));             /* ROL $nnnn,X */
-      OPCODE(3F, RLA(7, ABS_IND_X, writebyte, addr));             /* RLA $nnnn,X */
+      OPCODE(0x30, BMI());                                          /* BMI $nnnn */
+      OPCODE(0x31, AND(5, INDIR_Y_BYTE_READ));                      /* AND ($nn),Y */
+      OPCODE(0x32, JAM());                                          /* JAM */
+      OPCODE(0x33, RLA(8, INDIR_Y, writebyte, addr));               /* RLA ($nn),Y */
+      OPCODE(0x34, DOP(4));                                         /* NOP */
+      OPCODE(0x35, AND(4, ZP_IND_X_BYTE));                          /* AND $nn,X */
+      OPCODE(0x36, ROL(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* ROL $nn,X */
+      OPCODE(0x37, RLA(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* RLA $nn,X */
+      OPCODE(0x38, SEC());                                          /* SEC */
+      OPCODE(0x39, AND(4, ABS_IND_Y_BYTE_READ));                    /* AND $nnnn,Y */
+      OPCODE(0x3A, NOP());                                          /* NOP */
+      OPCODE(0x3B, RLA(7, ABS_IND_Y, writebyte, addr));             /* RLA $nnnn,Y */
+      OPCODE(0x3C, TOP());                                          /* NOP $nnnn,X */
+      OPCODE(0x3D, AND(4, ABS_IND_X_BYTE_READ));                    /* AND $nnnn,X */
+      OPCODE(0x3E, ROL(7, ABS_IND_X, writebyte, addr));             /* ROL $nnnn,X */
+      OPCODE(0x3F, RLA(7, ABS_IND_X, writebyte, addr));             /* RLA $nnnn,X */
 
-      OPCODE(40, RTI());                                          /* RTI */
-      OPCODE(41, EOR(6, INDIR_X_BYTE));                           /* EOR ($nn,X) */
-      OPCODE(42, JAM());                                          /* JAM */
-      OPCODE(43, SRE(8, INDIR_X, writebyte, addr));               /* SRE ($nn,X) */
-      OPCODE(45, EOR(3, ZERO_PAGE_BYTE));                         /* EOR $nn */
-      OPCODE(46, LSR(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* LSR $nn */
-      OPCODE(47, SRE(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* SRE $nn */
-      OPCODE(48, PHA());                                          /* PHA */
-      OPCODE(49, EOR(2, IMMEDIATE_BYTE));                         /* EOR #$nn */
-      OPCODE(4A, LSR_A());                                        /* LSR A */
-      OPCODE(4B, ASR(2, IMMEDIATE_BYTE));                         /* ASR #$nn */
-      OPCODE(4C, JMP_ABSOLUTE());                                 /* JMP $nnnn */
-      OPCODE(4D, EOR(4, ABSOLUTE_BYTE));                          /* EOR $nnnn */
-      OPCODE(4E, LSR(6, ABSOLUTE, writebyte, addr));              /* LSR $nnnn */
-      OPCODE(4F, SRE(6, ABSOLUTE, writebyte, addr));              /* SRE $nnnn */
+      OPCODE(0x40, RTI());                                          /* RTI */
+      OPCODE(0x41, EOR(6, INDIR_X_BYTE));                           /* EOR ($nn,X) */
+      OPCODE(0x42, JAM());                                          /* JAM */
+      OPCODE(0x43, SRE(8, INDIR_X, writebyte, addr));               /* SRE ($nn,X) */
+      OPCODE(0x45, EOR(3, ZERO_PAGE_BYTE));                         /* EOR $nn */
+      OPCODE(0x46, LSR(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* LSR $nn */
+      OPCODE(0x47, SRE(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* SRE $nn */
+      OPCODE(0x48, PHA());                                          /* PHA */
+      OPCODE(0x49, EOR(2, IMMEDIATE_BYTE));                         /* EOR #$nn */
+      OPCODE(0x4A, LSR_A());                                        /* LSR A */
+      OPCODE(0x4B, ASR(2, IMMEDIATE_BYTE));                         /* ASR #$nn */
+      OPCODE(0x4C, JMP_ABSOLUTE());                                 /* JMP $nnnn */
+      OPCODE(0x4D, EOR(4, ABSOLUTE_BYTE));                          /* EOR $nnnn */
+      OPCODE(0x4E, LSR(6, ABSOLUTE, writebyte, addr));              /* LSR $nnnn */
+      OPCODE(0x4F, SRE(6, ABSOLUTE, writebyte, addr));              /* SRE $nnnn */
 
-      OPCODE(50, BVC());                                          /* BVC $nnnn */
-      OPCODE(51, EOR(5, INDIR_Y_BYTE_READ));                      /* EOR ($nn),Y */
-      OPCODE(52, JAM());                                          /* JAM */
-      OPCODE(53, SRE(8, INDIR_Y, writebyte, addr));               /* SRE ($nn),Y */
-      OPCODE(55, EOR(4, ZP_IND_X_BYTE));                          /* EOR $nn,X */
-      OPCODE(54, DOP(4));                                         /* NOP $nn,X */
-      OPCODE(56, LSR(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* LSR $nn,X */
-      OPCODE(57, SRE(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* SRE $nn,X */
-      OPCODE(58, CLI());                                          /* CLI */
-      OPCODE(59, EOR(4, ABS_IND_Y_BYTE_READ));                    /* EOR $nnnn,Y */
-      OPCODE(5B, SRE(7, ABS_IND_Y, writebyte, addr));             /* SRE $nnnn,Y */
-      OPCODE(5A, NOP());                                          /* NOP */
-      OPCODE(5C, TOP());                                          /* NOP $nnnn,X */
-      OPCODE(5D, EOR(4, ABS_IND_X_BYTE_READ));                    /* EOR $nnnn,X */
-      OPCODE(5E, LSR(7, ABS_IND_X, writebyte, addr));             /* LSR $nnnn,X */
-      OPCODE(5F, SRE(7, ABS_IND_X, writebyte, addr));             /* SRE $nnnn,X */
+      OPCODE(0x50, BVC());                                          /* BVC $nnnn */
+      OPCODE(0x51, EOR(5, INDIR_Y_BYTE_READ));                      /* EOR ($nn),Y */
+      OPCODE(0x52, JAM());                                          /* JAM */
+      OPCODE(0x53, SRE(8, INDIR_Y, writebyte, addr));               /* SRE ($nn),Y */
+      OPCODE(0x55, EOR(4, ZP_IND_X_BYTE));                          /* EOR $nn,X */
+      OPCODE(0x54, DOP(4));                                         /* NOP $nn,X */
+      OPCODE(0x56, LSR(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* LSR $nn,X */
+      OPCODE(0x57, SRE(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* SRE $nn,X */
+      OPCODE(0x58, CLI());                                          /* CLI */
+      OPCODE(0x59, EOR(4, ABS_IND_Y_BYTE_READ));                    /* EOR $nnnn,Y */
+      OPCODE(0x5B, SRE(7, ABS_IND_Y, writebyte, addr));             /* SRE $nnnn,Y */
+      OPCODE(0x5A, NOP());                                          /* NOP */
+      OPCODE(0x5C, TOP());                                          /* NOP $nnnn,X */
+      OPCODE(0x5D, EOR(4, ABS_IND_X_BYTE_READ));                    /* EOR $nnnn,X */
+      OPCODE(0x5E, LSR(7, ABS_IND_X, writebyte, addr));             /* LSR $nnnn,X */
+      OPCODE(0x5F, SRE(7, ABS_IND_X, writebyte, addr));             /* SRE $nnnn,X */
 
-      OPCODE(60, RTS());                                          /* RTS */
-      OPCODE(61, ADC(6, INDIR_X_BYTE));                           /* ADC ($nn,X) */
-      OPCODE(62, JAM());                                          /* JAM */
-      OPCODE(63, RRA(8, INDIR_X, writebyte, addr));               /* RRA ($nn,X) */
-      OPCODE(44, DOP(3));                                         /* NOP $nn */
-      OPCODE(64, DOP(3));                                         /* NOP $nn */
-      OPCODE(65, ADC(3, ZERO_PAGE_BYTE));                         /* ADC $nn */
-      OPCODE(66, ROR(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* ROR $nn */
-      OPCODE(67, RRA(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* RRA $nn */
-      OPCODE(68, PLA());                                          /* PLA */
-      OPCODE(69, ADC(2, IMMEDIATE_BYTE));                         /* ADC #$nn */
-      OPCODE(6A, ROR_A());                                        /* ROR A */
-      OPCODE(6B, ARR(2, IMMEDIATE_BYTE));                         /* ARR #$nn */
-      OPCODE(6C, JMP_INDIRECT());                                 /* JMP ($nnnn) */
-      OPCODE(6D, ADC(4, ABSOLUTE_BYTE));                          /* ADC $nnnn */
-      OPCODE(6E, ROR(6, ABSOLUTE, writebyte, addr));              /* ROR $nnnn */
-      OPCODE(6F, RRA(6, ABSOLUTE, writebyte, addr));              /* RRA $nnnn */
+      OPCODE(0x60, RTS());                                          /* RTS */
+      OPCODE(0x61, ADC(6, INDIR_X_BYTE));                           /* ADC ($nn,X) */
+      OPCODE(0x62, JAM());                                          /* JAM */
+      OPCODE(0x63, RRA(8, INDIR_X, writebyte, addr));               /* RRA ($nn,X) */
+      OPCODE(0x44, DOP(3));                                         /* NOP $nn */
+      OPCODE(0x64, DOP(3));                                         /* NOP $nn */
+      OPCODE(0x65, ADC(3, ZERO_PAGE_BYTE));                         /* ADC $nn */
+      OPCODE(0x66, ROR(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* ROR $nn */
+      OPCODE(0x67, RRA(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* RRA $nn */
+      OPCODE(0x68, PLA());                                          /* PLA */
+      OPCODE(0x69, ADC(2, IMMEDIATE_BYTE));                         /* ADC #$nn */
+      OPCODE(0x6A, ROR_A());                                        /* ROR A */
+      OPCODE(0x6B, ARR(2, IMMEDIATE_BYTE));                         /* ARR #$nn */
+      OPCODE(0x6C, JMP_INDIRECT());                                 /* JMP ($nnnn) */
+      OPCODE(0x6D, ADC(4, ABSOLUTE_BYTE));                          /* ADC $nnnn */
+      OPCODE(0x6E, ROR(6, ABSOLUTE, writebyte, addr));              /* ROR $nnnn */
+      OPCODE(0x6F, RRA(6, ABSOLUTE, writebyte, addr));              /* RRA $nnnn */
 
-      OPCODE(70, BVS());                                          /* BVS $nnnn */
-      OPCODE(71, ADC(5, INDIR_Y_BYTE_READ));                      /* ADC ($nn),Y */
-      OPCODE(72, JAM());                                          /* JAM */
-      OPCODE(73, RRA(8, INDIR_Y, writebyte, addr));               /* RRA ($nn),Y */
-      OPCODE(74, DOP(4));                                         /* NOP $nn,X */
-      OPCODE(75, ADC(4, ZP_IND_X_BYTE));                          /* ADC $nn,X */
-      OPCODE(76, ROR(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* ROR $nn,X */
-      OPCODE(77, RRA(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* RRA $nn,X */
-      OPCODE(78, SEI());                                          /* SEI */
-      OPCODE(79, ADC(4, ABS_IND_Y_BYTE_READ));                    /* ADC $nnnn,Y */
-      OPCODE(7A, NOP());                                          /* NOP */
-      OPCODE(7B, RRA(7, ABS_IND_Y, writebyte, addr));             /* RRA $nnnn,Y */
-      OPCODE(7C, TOP());                                          /* NOP $nnnn,X */
-      OPCODE(7D, ADC(4, ABS_IND_X_BYTE_READ));                    /* ADC $nnnn,X */
-      OPCODE(7E, ROR(7, ABS_IND_X, writebyte, addr));             /* ROR $nnnn,X */
-      OPCODE(7F, RRA(7, ABS_IND_X, writebyte, addr));             /* RRA $nnnn,X */
+      OPCODE(0x70, BVS());                                          /* BVS $nnnn */
+      OPCODE(0x71, ADC(5, INDIR_Y_BYTE_READ));                      /* ADC ($nn),Y */
+      OPCODE(0x72, JAM());                                          /* JAM */
+      OPCODE(0x73, RRA(8, INDIR_Y, writebyte, addr));               /* RRA ($nn),Y */
+      OPCODE(0x74, DOP(4));                                         /* NOP $nn,X */
+      OPCODE(0x75, ADC(4, ZP_IND_X_BYTE));                          /* ADC $nn,X */
+      OPCODE(0x76, ROR(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* ROR $nn,X */
+      OPCODE(0x77, RRA(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* RRA $nn,X */
+      OPCODE(0x78, SEI());                                          /* SEI */
+      OPCODE(0x79, ADC(4, ABS_IND_Y_BYTE_READ));                    /* ADC $nnnn,Y */
+      OPCODE(0x7A, NOP());                                          /* NOP */
+      OPCODE(0x7B, RRA(7, ABS_IND_Y, writebyte, addr));             /* RRA $nnnn,Y */
+      OPCODE(0x7C, TOP());                                          /* NOP $nnnn,X */
+      OPCODE(0x7D, ADC(4, ABS_IND_X_BYTE_READ));                    /* ADC $nnnn,X */
+      OPCODE(0x7E, ROR(7, ABS_IND_X, writebyte, addr));             /* ROR $nnnn,X */
+      OPCODE(0x7F, RRA(7, ABS_IND_X, writebyte, addr));             /* RRA $nnnn,X */
 
-      OPCODE(80, DOP(2));                                         /* NOP #$nn */
-      OPCODE(81, STA(6, INDIR_X_ADDR, writebyte, addr));          /* STA ($nn,X) */
-      OPCODE(82, DOP(2));                                         /* NOP #$nn */
-      OPCODE(83, SAX(6, INDIR_X_ADDR, writebyte, addr));          /* SAX ($nn,X) */
-      OPCODE(84, STY(3, ZERO_PAGE_ADDR, ZP_WRITEBYTE, baddr));    /* STY $nn */
-      OPCODE(85, STA(3, ZERO_PAGE_ADDR, ZP_WRITEBYTE, baddr));    /* STA $nn */
-      OPCODE(86, STX(3, ZERO_PAGE_ADDR, ZP_WRITEBYTE, baddr));    /* STX $nn */
-      OPCODE(87, SAX(3, ZERO_PAGE_ADDR, ZP_WRITEBYTE, baddr));    /* SAX $nn */
-      OPCODE(88, DEY());                                          /* DEY */
-      OPCODE(89, DOP(2));                                         /* NOP #$nn */
-      OPCODE(8A, TXA());                                          /* TXA */
-      OPCODE(8B, ANE(2, IMMEDIATE_BYTE));                         /* ANE #$nn */
-      OPCODE(8C, STY(4, ABSOLUTE_ADDR, writebyte, addr));         /* STY $nnnn */
-      OPCODE(8D, STA(4, ABSOLUTE_ADDR, writebyte, addr));         /* STA $nnnn */
-      OPCODE(8E, STX(4, ABSOLUTE_ADDR, writebyte, addr));         /* STX $nnnn */
-      OPCODE(8F, SAX(4, ABSOLUTE_ADDR, writebyte, addr));         /* SAX $nnnn */
+      OPCODE(0x80, DOP(2));                                         /* NOP #$nn */
+      OPCODE(0x81, STA(6, INDIR_X_ADDR, writebyte, addr));          /* STA ($nn,X) */
+      OPCODE(0x82, DOP(2));                                         /* NOP #$nn */
+      OPCODE(0x83, SAX(6, INDIR_X_ADDR, writebyte, addr));          /* SAX ($nn,X) */
+      OPCODE(0x84, STY(3, ZERO_PAGE_ADDR, ZP_WRITEBYTE, baddr));    /* STY $nn */
+      OPCODE(0x85, STA(3, ZERO_PAGE_ADDR, ZP_WRITEBYTE, baddr));    /* STA $nn */
+      OPCODE(0x86, STX(3, ZERO_PAGE_ADDR, ZP_WRITEBYTE, baddr));    /* STX $nn */
+      OPCODE(0x87, SAX(3, ZERO_PAGE_ADDR, ZP_WRITEBYTE, baddr));    /* SAX $nn */
+      OPCODE(0x88, DEY());                                          /* DEY */
+      OPCODE(0x89, DOP(2));                                         /* NOP #$nn */
+      OPCODE(0x8A, TXA());                                          /* TXA */
+      OPCODE(0x8B, ANE(2, IMMEDIATE_BYTE));                         /* ANE #$nn */
+      OPCODE(0x8C, STY(4, ABSOLUTE_ADDR, writebyte, addr));         /* STY $nnnn */
+      OPCODE(0x8D, STA(4, ABSOLUTE_ADDR, writebyte, addr));         /* STA $nnnn */
+      OPCODE(0x8E, STX(4, ABSOLUTE_ADDR, writebyte, addr));         /* STX $nnnn */
+      OPCODE(0x8F, SAX(4, ABSOLUTE_ADDR, writebyte, addr));         /* SAX $nnnn */
 
-      OPCODE(90, BCC());                                          /* BCC $nnnn */
-      OPCODE(91, STA(6, INDIR_Y_ADDR, writebyte, addr));          /* STA ($nn),Y */
-      OPCODE(92, JAM());                                          /* JAM */
-      OPCODE(93, SHA(6, INDIR_Y_ADDR, writebyte, addr));          /* SHA ($nn),Y */
-      OPCODE(94, STY(4, ZP_IND_X_ADDR, ZP_WRITEBYTE, baddr));     /* STY $nn,X */
-      OPCODE(95, STA(4, ZP_IND_X_ADDR, ZP_WRITEBYTE, baddr));     /* STA $nn,X */
-      OPCODE(96, STX(4, ZP_IND_Y_ADDR, ZP_WRITEBYTE, baddr));     /* STX $nn,Y */
-      OPCODE(97, SAX(4, ZP_IND_Y_ADDR, ZP_WRITEBYTE, baddr));     /* SAX $nn,Y */
-      OPCODE(98, TYA());                                          /* TYA */
-      OPCODE(99, STA(5, ABS_IND_Y_ADDR, writebyte, addr));        /* STA $nnnn,Y */
-      OPCODE(9A, TXS());                                          /* TXS */
-      OPCODE(9B, SHS(5, ABS_IND_Y_ADDR, writebyte, addr));        /* SHS $nnnn,Y */
-      OPCODE(9C, SHY(5, ABS_IND_X_ADDR, writebyte, addr));        /* SHY $nnnn,X */
-      OPCODE(9D, STA(5, ABS_IND_X_ADDR, writebyte, addr));        /* STA $nnnn,X */
-      OPCODE(9E, SHX(5, ABS_IND_Y_ADDR, writebyte, addr));        /* SHX $nnnn,Y */
-      OPCODE(9F, SHA(5, ABS_IND_Y_ADDR, writebyte, addr));        /* SHA $nnnn,Y */
+      OPCODE(0x90, BCC());                                          /* BCC $nnnn */
+      OPCODE(0x91, STA(6, INDIR_Y_ADDR, writebyte, addr));          /* STA ($nn),Y */
+      OPCODE(0x92, JAM());                                          /* JAM */
+      OPCODE(0x93, SHA(6, INDIR_Y_ADDR, writebyte, addr));          /* SHA ($nn),Y */
+      OPCODE(0x94, STY(4, ZP_IND_X_ADDR, ZP_WRITEBYTE, baddr));     /* STY $nn,X */
+      OPCODE(0x95, STA(4, ZP_IND_X_ADDR, ZP_WRITEBYTE, baddr));     /* STA $nn,X */
+      OPCODE(0x96, STX(4, ZP_IND_Y_ADDR, ZP_WRITEBYTE, baddr));     /* STX $nn,Y */
+      OPCODE(0x97, SAX(4, ZP_IND_Y_ADDR, ZP_WRITEBYTE, baddr));     /* SAX $nn,Y */
+      OPCODE(0x98, TYA());                                          /* TYA */
+      OPCODE(0x99, STA(5, ABS_IND_Y_ADDR, writebyte, addr));        /* STA $nnnn,Y */
+      OPCODE(0x9A, TXS());                                          /* TXS */
+      OPCODE(0x9B, SHS(5, ABS_IND_Y_ADDR, writebyte, addr));        /* SHS $nnnn,Y */
+      OPCODE(0x9C, SHY(5, ABS_IND_X_ADDR, writebyte, addr));        /* SHY $nnnn,X */
+      OPCODE(0x9D, STA(5, ABS_IND_X_ADDR, writebyte, addr));        /* STA $nnnn,X */
+      OPCODE(0x9E, SHX(5, ABS_IND_Y_ADDR, writebyte, addr));        /* SHX $nnnn,Y */
+      OPCODE(0x9F, SHA(5, ABS_IND_Y_ADDR, writebyte, addr));        /* SHA $nnnn,Y */
 
-      OPCODE(A0, LDY(2, IMMEDIATE_BYTE));                         /* LDY #$nn */
-      OPCODE(A1, LDA(6, INDIR_X_BYTE));                           /* LDA ($nn,X) */
-      OPCODE(A2, LDX(2, IMMEDIATE_BYTE));                         /* LDX #$nn */
-      OPCODE(A3, LAX(6, INDIR_X_BYTE));                           /* LAX ($nn,X) */
-      OPCODE(A4, LDY(3, ZERO_PAGE_BYTE));                         /* LDY $nn */
-      OPCODE(A5, LDA(3, ZERO_PAGE_BYTE));                         /* LDA $nn */
-      OPCODE(A6, LDX(3, ZERO_PAGE_BYTE));                         /* LDX $nn */
-      OPCODE(A7, LAX(3, ZERO_PAGE_BYTE));                         /* LAX $nn */
-      OPCODE(A8, TAY());                                          /* TAY */
-      OPCODE(A9, LDA(2, IMMEDIATE_BYTE));                         /* LDA #$nn */
-      OPCODE(AA, TAX());                                          /* TAX */
-      OPCODE(AB, LXA(2, IMMEDIATE_BYTE));                         /* LXA #$nn */
-      OPCODE(AC, LDY(4, ABSOLUTE_BYTE));                          /* LDY $nnnn */
-      OPCODE(AD, LDA(4, ABSOLUTE_BYTE));                          /* LDA $nnnn */
-      OPCODE(AE, LDX(4, ABSOLUTE_BYTE));                          /* LDX $nnnn */
-      OPCODE(AF, LAX(4, ABSOLUTE_BYTE));                          /* LAX $nnnn */
+      OPCODE(0xA0, LDY(2, IMMEDIATE_BYTE));                         /* LDY #$nn */
+      OPCODE(0xA1, LDA(6, INDIR_X_BYTE));                           /* LDA ($nn,X) */
+      OPCODE(0xA2, LDX(2, IMMEDIATE_BYTE));                         /* LDX #$nn */
+      OPCODE(0xA3, LAX(6, INDIR_X_BYTE));                           /* LAX ($nn,X) */
+      OPCODE(0xA4, LDY(3, ZERO_PAGE_BYTE));                         /* LDY $nn */
+      OPCODE(0xA5, LDA(3, ZERO_PAGE_BYTE));                         /* LDA $nn */
+      OPCODE(0xA6, LDX(3, ZERO_PAGE_BYTE));                         /* LDX $nn */
+      OPCODE(0xA7, LAX(3, ZERO_PAGE_BYTE));                         /* LAX $nn */
+      OPCODE(0xA8, TAY());                                          /* TAY */
+      OPCODE(0xA9, LDA(2, IMMEDIATE_BYTE));                         /* LDA #$nn */
+      OPCODE(0xAA, TAX());                                          /* TAX */
+      OPCODE(0xAB, LXA(2, IMMEDIATE_BYTE));                         /* LXA #$nn */
+      OPCODE(0xAC, LDY(4, ABSOLUTE_BYTE));                          /* LDY $nnnn */
+      OPCODE(0xAD, LDA(4, ABSOLUTE_BYTE));                          /* LDA $nnnn */
+      OPCODE(0xAE, LDX(4, ABSOLUTE_BYTE));                          /* LDX $nnnn */
+      OPCODE(0xAF, LAX(4, ABSOLUTE_BYTE));                          /* LAX $nnnn */
 
-      OPCODE(B0, BCS());                                          /* BCS $nnnn */
-      OPCODE(B1, LDA(5, INDIR_Y_BYTE_READ));                      /* LDA ($nn),Y */
-      OPCODE(B2, JAM());                                          /* JAM */
-      OPCODE(B3, LAX(5, INDIR_Y_BYTE_READ));                      /* LAX ($nn),Y */
-      OPCODE(B4, LDY(4, ZP_IND_X_BYTE));                          /* LDY $nn,X */
-      OPCODE(B5, LDA(4, ZP_IND_X_BYTE));                          /* LDA $nn,X */
-      OPCODE(B6, LDX(4, ZP_IND_Y_BYTE));                          /* LDX $nn,Y */
-      OPCODE(B7, LAX(4, ZP_IND_Y_BYTE));                          /* LAX $nn,Y */
-      OPCODE(B8, CLV());                                          /* CLV */
-      OPCODE(B9, LDA(4, ABS_IND_Y_BYTE_READ));                    /* LDA $nnnn,Y */
-      OPCODE(BA, TSX());                                          /* TSX */
-      OPCODE(BB, LAS(4, ABS_IND_Y_BYTE_READ));                    /* LAS $nnnn,Y */
-      OPCODE(BC, LDY(4, ABS_IND_X_BYTE_READ));                    /* LDY $nnnn,X */
-      OPCODE(BD, LDA(4, ABS_IND_X_BYTE_READ));                    /* LDA $nnnn,X */
-      OPCODE(BE, LDX(4, ABS_IND_Y_BYTE_READ));                    /* LDX $nnnn,Y */
-      OPCODE(BF, LAX(4, ABS_IND_Y_BYTE_READ));                    /* LAX $nnnn,Y */
+      OPCODE(0xB0, BCS());                                          /* BCS $nnnn */
+      OPCODE(0xB1, LDA(5, INDIR_Y_BYTE_READ));                      /* LDA ($nn),Y */
+      OPCODE(0xB2, JAM());                                          /* JAM */
+      OPCODE(0xB3, LAX(5, INDIR_Y_BYTE_READ));                      /* LAX ($nn),Y */
+      OPCODE(0xB4, LDY(4, ZP_IND_X_BYTE));                          /* LDY $nn,X */
+      OPCODE(0xB5, LDA(4, ZP_IND_X_BYTE));                          /* LDA $nn,X */
+      OPCODE(0xB6, LDX(4, ZP_IND_Y_BYTE));                          /* LDX $nn,Y */
+      OPCODE(0xB7, LAX(4, ZP_IND_Y_BYTE));                          /* LAX $nn,Y */
+      OPCODE(0xB8, CLV());                                          /* CLV */
+      OPCODE(0xB9, LDA(4, ABS_IND_Y_BYTE_READ));                    /* LDA $nnnn,Y */
+      OPCODE(0xBA, TSX());                                          /* TSX */
+      OPCODE(0xBB, LAS(4, ABS_IND_Y_BYTE_READ));                    /* LAS $nnnn,Y */
+      OPCODE(0xBC, LDY(4, ABS_IND_X_BYTE_READ));                    /* LDY $nnnn,X */
+      OPCODE(0xBD, LDA(4, ABS_IND_X_BYTE_READ));                    /* LDA $nnnn,X */
+      OPCODE(0xBE, LDX(4, ABS_IND_Y_BYTE_READ));                    /* LDX $nnnn,Y */
+      OPCODE(0xBF, LAX(4, ABS_IND_Y_BYTE_READ));                    /* LAX $nnnn,Y */
 
-      OPCODE(C0, CPY(2, IMMEDIATE_BYTE));                         /* CPY #$nn */
-      OPCODE(C1, CMP(6, INDIR_X_BYTE));                           /* CMP ($nn,X) */
-      OPCODE(C2, DOP(2));                                         /* NOP #$nn */
-      OPCODE(C3, DCP(8, INDIR_X, writebyte, addr));               /* DCP ($nn,X) */
-      OPCODE(C4, CPY(3, ZERO_PAGE_BYTE));                         /* CPY $nn */
-      OPCODE(C5, CMP(3, ZERO_PAGE_BYTE));                         /* CMP $nn */
-      OPCODE(C6, DEC(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* DEC $nn */
-      OPCODE(C7, DCP(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* DCP $nn */
-      OPCODE(C8, INY());                                          /* INY */
-      OPCODE(C9, CMP(2, IMMEDIATE_BYTE));                         /* CMP #$nn */
-      OPCODE(CA, DEX());                                          /* DEX */
-      OPCODE(CB, SBX(2, IMMEDIATE_BYTE));                         /* SBX #$nn */
-      OPCODE(CC, CPY(4, ABSOLUTE_BYTE));                          /* CPY $nnnn */
-      OPCODE(CD, CMP(4, ABSOLUTE_BYTE));                          /* CMP $nnnn */
-      OPCODE(CE, DEC(6, ABSOLUTE, writebyte, addr));              /* DEC $nnnn */
-      OPCODE(CF, DCP(6, ABSOLUTE, writebyte, addr));              /* DCP $nnnn */
+      OPCODE(0xC0, CPY(2, IMMEDIATE_BYTE));                         /* CPY #$nn */
+      OPCODE(0xC1, CMP(6, INDIR_X_BYTE));                           /* CMP ($nn,X) */
+      OPCODE(0xC2, DOP(2));                                         /* NOP #$nn */
+      OPCODE(0xC3, DCP(8, INDIR_X, writebyte, addr));               /* DCP ($nn,X) */
+      OPCODE(0xC4, CPY(3, ZERO_PAGE_BYTE));                         /* CPY $nn */
+      OPCODE(0xC5, CMP(3, ZERO_PAGE_BYTE));                         /* CMP $nn */
+      OPCODE(0xC6, DEC(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* DEC $nn */
+      OPCODE(0xC7, DCP(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* DCP $nn */
+      OPCODE(0xC8, INY());                                          /* INY */
+      OPCODE(0xC9, CMP(2, IMMEDIATE_BYTE));                         /* CMP #$nn */
+      OPCODE(0xCA, DEX());                                          /* DEX */
+      OPCODE(0xCB, SBX(2, IMMEDIATE_BYTE));                         /* SBX #$nn */
+      OPCODE(0xCC, CPY(4, ABSOLUTE_BYTE));                          /* CPY $nnnn */
+      OPCODE(0xCD, CMP(4, ABSOLUTE_BYTE));                          /* CMP $nnnn */
+      OPCODE(0xCE, DEC(6, ABSOLUTE, writebyte, addr));              /* DEC $nnnn */
+      OPCODE(0xCF, DCP(6, ABSOLUTE, writebyte, addr));              /* DCP $nnnn */
 
-      OPCODE(D0, BNE());                                          /* BNE $nnnn */
-      OPCODE(D1, CMP(5, INDIR_Y_BYTE_READ));                      /* CMP ($nn),Y */
-      OPCODE(D2, JAM());                                          /* JAM */
-      OPCODE(D3, DCP(8, INDIR_Y, writebyte, addr));               /* DCP ($nn),Y */
-      OPCODE(D4, DOP(4));                                         /* NOP $nn,X */
-      OPCODE(D5, CMP(4, ZP_IND_X_BYTE));                          /* CMP $nn,X */
-      OPCODE(D6, DEC(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* DEC $nn,X */
-      OPCODE(D7, DCP(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* DCP $nn,X */
-      OPCODE(D8, CLD());                                          /* CLD */
-      OPCODE(D9, CMP(4, ABS_IND_Y_BYTE_READ));                    /* CMP $nnnn,Y */
-      OPCODE(DA, NOP());                                          /* NOP */
-      OPCODE(DB, DCP(7, ABS_IND_Y, writebyte, addr));             /* DCP $nnnn,Y */
-      OPCODE(DC, TOP());                                          /* NOP $nnnn,X */
-      OPCODE(DD, CMP(4, ABS_IND_X_BYTE_READ));                    /* CMP $nnnn,X */
-      OPCODE(DE, DEC(7, ABS_IND_X, writebyte, addr));             /* DEC $nnnn,X */
-      OPCODE(DF, DCP(7, ABS_IND_X, writebyte, addr));             /* DCP $nnnn,X */
+      OPCODE(0xD0, BNE());                                          /* BNE $nnnn */
+      OPCODE(0xD1, CMP(5, INDIR_Y_BYTE_READ));                      /* CMP ($nn),Y */
+      OPCODE(0xD2, JAM());                                          /* JAM */
+      OPCODE(0xD3, DCP(8, INDIR_Y, writebyte, addr));               /* DCP ($nn),Y */
+      OPCODE(0xD4, DOP(4));                                         /* NOP $nn,X */
+      OPCODE(0xD5, CMP(4, ZP_IND_X_BYTE));                          /* CMP $nn,X */
+      OPCODE(0xD6, DEC(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* DEC $nn,X */
+      OPCODE(0xD7, DCP(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* DCP $nn,X */
+      OPCODE(0xD8, CLD());                                          /* CLD */
+      OPCODE(0xD9, CMP(4, ABS_IND_Y_BYTE_READ));                    /* CMP $nnnn,Y */
+      OPCODE(0xDA, NOP());                                          /* NOP */
+      OPCODE(0xDB, DCP(7, ABS_IND_Y, writebyte, addr));             /* DCP $nnnn,Y */
+      OPCODE(0xDC, TOP());                                          /* NOP $nnnn,X */
+      OPCODE(0xDD, CMP(4, ABS_IND_X_BYTE_READ));                    /* CMP $nnnn,X */
+      OPCODE(0xDE, DEC(7, ABS_IND_X, writebyte, addr));             /* DEC $nnnn,X */
+      OPCODE(0xDF, DCP(7, ABS_IND_X, writebyte, addr));             /* DCP $nnnn,X */
 
-      OPCODE(E0, CPX(2, IMMEDIATE_BYTE));                         /* CPX #$nn */
-      OPCODE(E1, SBC(6, INDIR_X_BYTE));                           /* SBC ($nn,X) */
-      OPCODE(E2, DOP(2));                                         /* NOP #$nn */
-      OPCODE(E3, ISB(8, INDIR_X, writebyte, addr));               /* ISB ($nn,X) */
-      OPCODE(E4, CPX(3, ZERO_PAGE_BYTE));                         /* CPX $nn */
-      OPCODE(E5, SBC(3, ZERO_PAGE_BYTE));                         /* SBC $nn */
-      OPCODE(E6, INC(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* INC $nn */
-      OPCODE(E7, ISB(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* ISB $nn */
-      OPCODE(E8, INX());                                          /* INX */
-      OPCODE(E9, SBC(2, IMMEDIATE_BYTE));                         /* SBC #$nn */
-      OPCODE(EB, SBC(2, IMMEDIATE_BYTE));                         /* USBC #$nn */
-      OPCODE(EA, NOP());                                          /* NOP */
-      OPCODE(EC, CPX(4, ABSOLUTE_BYTE));                          /* CPX $nnnn */
-      OPCODE(ED, SBC(4, ABSOLUTE_BYTE));                          /* SBC $nnnn */
-      OPCODE(EE, INC(6, ABSOLUTE, writebyte, addr));              /* INC $nnnn */
-      OPCODE(EF, ISB(6, ABSOLUTE, writebyte, addr));              /* ISB $nnnn */
+      OPCODE(0xE0, CPX(2, IMMEDIATE_BYTE));                         /* CPX #$nn */
+      OPCODE(0xE1, SBC(6, INDIR_X_BYTE));                           /* SBC ($nn,X) */
+      OPCODE(0xE2, DOP(2));                                         /* NOP #$nn */
+      OPCODE(0xE3, ISB(8, INDIR_X, writebyte, addr));               /* ISB ($nn,X) */
+      OPCODE(0xE4, CPX(3, ZERO_PAGE_BYTE));                         /* CPX $nn */
+      OPCODE(0xE5, SBC(3, ZERO_PAGE_BYTE));                         /* SBC $nn */
+      OPCODE(0xE6, INC(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* INC $nn */
+      OPCODE(0xE7, ISB(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* ISB $nn */
+      OPCODE(0xE8, INX());                                          /* INX */
+      OPCODE(0xE9, SBC(2, IMMEDIATE_BYTE));                         /* SBC #$nn */
+      OPCODE(0xEB, SBC(2, IMMEDIATE_BYTE));                         /* USBC #$nn */
+      OPCODE(0xEA, NOP());                                          /* NOP */
+      OPCODE(0xEC, CPX(4, ABSOLUTE_BYTE));                          /* CPX $nnnn */
+      OPCODE(0xED, SBC(4, ABSOLUTE_BYTE));                          /* SBC $nnnn */
+      OPCODE(0xEE, INC(6, ABSOLUTE, writebyte, addr));              /* INC $nnnn */
+      OPCODE(0xEF, ISB(6, ABSOLUTE, writebyte, addr));              /* ISB $nnnn */
 
-      OPCODE(F0, BEQ());                                          /* BEQ $nnnn */
-      OPCODE(F1, SBC(5, INDIR_Y_BYTE_READ));                      /* SBC ($nn),Y */
-      OPCODE(F2, JAM());                                          /* JAM */
-      OPCODE(F3, ISB(8, INDIR_Y, writebyte, addr));               /* ISB ($nn),Y */
-      OPCODE(F4, DOP(4));                                         /* NOP ($nn,X) */
-      OPCODE(F5, SBC(4, ZP_IND_X_BYTE));                          /* SBC $nn,X */
-      OPCODE(F6, INC(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* INC $nn,X */
-      OPCODE(F7, ISB(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* ISB $nn,X */
-      OPCODE(F8, SED());                                          /* SED */
-      OPCODE(F9, SBC(4, ABS_IND_Y_BYTE_READ));                    /* SBC $nnnn,Y */
-      OPCODE(FA, NOP());                                          /* NOP */
-      OPCODE(FB, ISB(7, ABS_IND_Y, writebyte, addr));             /* ISB $nnnn,Y */
-      OPCODE(FC, TOP());                                          /* NOP $nnnn,X */
-      OPCODE(FD, SBC(4, ABS_IND_X_BYTE_READ));                    /* SBC $nnnn,X */
-      OPCODE(FE, INC(7, ABS_IND_X, writebyte, addr));             /* INC $nnnn,X */
-      OPCODE(FF, ISB(7, ABS_IND_X, writebyte, addr));             /* ISB $nnnn,X */
+      OPCODE(0xF0, BEQ());                                          /* BEQ $nnnn */
+      OPCODE(0xF1, SBC(5, INDIR_Y_BYTE_READ));                      /* SBC ($nn),Y */
+      OPCODE(0xF2, JAM());                                          /* JAM */
+      OPCODE(0xF3, ISB(8, INDIR_Y, writebyte, addr));               /* ISB ($nn),Y */
+      OPCODE(0xF4, DOP(4));                                         /* NOP ($nn,X) */
+      OPCODE(0xF5, SBC(4, ZP_IND_X_BYTE));                          /* SBC $nn,X */
+      OPCODE(0xF6, INC(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* INC $nn,X */
+      OPCODE(0xF7, ISB(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* ISB $nn,X */
+      OPCODE(0xF8, SED());                                          /* SED */
+      OPCODE(0xF9, SBC(4, ABS_IND_Y_BYTE_READ));                    /* SBC $nnnn,Y */
+      OPCODE(0xFA, NOP());                                          /* NOP */
+      OPCODE(0xFB, ISB(7, ABS_IND_Y, writebyte, addr));             /* ISB $nnnn,Y */
+      OPCODE(0xFC, TOP());                                          /* NOP $nnnn,X */
+      OPCODE(0xFD, SBC(4, ABS_IND_X_BYTE_READ));                    /* SBC $nnnn,X */
+      OPCODE(0xFE, INC(7, ABS_IND_X, writebyte, addr));             /* INC $nnnn,X */
+      OPCODE(0xFF, ISB(7, ABS_IND_X, writebyte, addr));             /* ISB $nnnn,X */
       }
    }
 
