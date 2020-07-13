@@ -203,13 +203,6 @@ rominfo_t *rom_load(const char *filename)
 	if (rom_getheader(&rom_ptr, rominfo))
       goto _fail;
 
-   /* Make sure we really support the mapper */
-   if (NULL == mmc_peek(rominfo->mapper_number))
-   {
-      MESSAGE_ERROR("Mapper %d not yet implemented\n", rominfo->mapper_number);
-      goto _fail;
-   }
-
    /* iNES format doesn't tell us if we need SRAM, so
    ** we have to always allocate it -- bleh!
    */

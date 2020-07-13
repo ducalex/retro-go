@@ -28,12 +28,13 @@
 
 static struct
 {
-   int counter, latch;
-   bool enabled, reset;
+   uint8 counter;
+   uint8 latch;
+   uint8 enabled;
 } irq;
 
 static uint8 reg;
-static uint8 command;
+static uint8 reg8000;
 static uint16 vrombase;
 
 // Shouldn't that be packed? (It wasn't packed in SNSS...)
@@ -51,21 +52,13 @@ static void map4_write(uint32 address, uint8 value)
    switch (address & 0xE001)
    {
    case 0x8000:
-      command = value;
-      vrombase = (command & 0x80) ? 0x1000 : 0x0000;
-
-      if (reg != (value & 0x40))
-      {
-         if (value & 0x40)
-            mmc_bankrom(8, 0x8000, (mmc_getinfo()->rom_banks * 2) - 2);
-         else
-            mmc_bankrom(8, 0xC000, (mmc_getinfo()->rom_banks * 2) - 2);
-      }
-      reg = value & 0x40;
+      reg8000 = value;
+      vrombase = (value & 0x80) ? 0x1000 : 0x0000;
+      mmc_bankrom(8, (value & 0x40) ? 0x8000 : 0xC000, -2);
       break;
 
    case 0x8001:
-      switch (command & 0x07)
+      switch (reg8000 & 0x07)
       {
       case 0:
          value &= 0xFE;
@@ -96,7 +89,7 @@ static void map4_write(uint32 address, uint8 value)
          break;
 
       case 6:
-         mmc_bankrom(8, (command & 0x40) ? 0xC000 : 0x8000, value);
+         mmc_bankrom(8, (reg8000 & 0x40) ? 0xC000 : 0x8000, value);
          break;
 
       case 7:
@@ -122,57 +115,43 @@ static void map4_write(uint32 address, uint8 value)
       break;
 
    case 0xC000:
-      irq.latch = value;
-//      if (irq.reset)
-//         irq.counter = irq.latch;
+      irq.latch = value - 1;
       break;
 
    case 0xC001:
-      irq.reset = true;
-      irq.counter = irq.latch;
+      irq.counter = 0; // Trigger reload
       break;
 
    case 0xE000:
       irq.enabled = false;
-//      if (irq.reset)
-//         irq.counter = irq.latch;
       break;
 
    case 0xE001:
       irq.enabled = true;
-//      if (irq.reset)
-//         irq.counter = irq.latch;
       break;
 
    default:
       MESSAGE_DEBUG("map004: unhandled write: address=%p, value=0x%x\n", (void*)address, value);
       break;
    }
-
-   if (true == irq.reset)
-      irq.counter = irq.latch;
 }
 
 static void map4_hblank(int scanline)
 {
-   if (scanline >= 241)
-      return;
-
-   if (ppu_enabled())
+   if (scanline < 241 && ppu_enabled())
    {
-      if (irq.counter >= 0)
+      if (irq.counter == 0)
       {
-         irq.reset = false;
+         irq.counter = irq.latch;
+      }
+      else
+      {
          irq.counter--;
+      }
 
-         if (irq.counter < 0)
-         {
-            if (irq.enabled)
-            {
-               irq.reset = true;
-               nes6502_irq();
-            }
-         }
+      if (irq.enabled && irq.counter == 0)
+      {
+         nes6502_irq();
       }
    }
 }
@@ -182,7 +161,7 @@ static void map4_getstate(void *state)
    ((mapper4Data*)state)->irqCounter = irq.counter;
    ((mapper4Data*)state)->irqLatchCounter = irq.latch;
    ((mapper4Data*)state)->irqCounterEnabled = irq.enabled;
-   ((mapper4Data*)state)->last8000Write = command;
+   ((mapper4Data*)state)->last8000Write = reg8000;
 }
 
 static void map4_setstate(void *state)
@@ -190,15 +169,14 @@ static void map4_setstate(void *state)
    irq.counter = ((mapper4Data*)state)->irqCounter;
    irq.latch = ((mapper4Data*)state)->irqLatchCounter;
    irq.enabled = ((mapper4Data*)state)->irqCounterEnabled;
-   command = ((mapper4Data*)state)->last8000Write;
+   map4_write(0x8000, ((mapper4Data*)state)->last8000Write);
 }
 
 static void map4_init(void)
 {
    irq.counter = irq.latch = 0;
-   irq.enabled = irq.reset = false;
-   reg = command = 0;
-   vrombase = 0x0000;
+   irq.enabled = false;
+   reg = reg8000 = vrombase = 0;
 }
 
 static mem_write_handler_t map4_memwrite[] =
@@ -220,58 +198,3 @@ mapintf_t map4_intf =
    map4_memwrite, /* memory write structure */
    NULL /* external sound device */
 };
-
-/*
-** $Log: map004.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.2  2000/11/26 15:40:49  matt
-** hey, it actually works now
-**
-** Revision 1.1  2000/10/24 12:19:32  matt
-** changed directory structure
-**
-** Revision 1.12  2000/10/23 15:53:27  matt
-** suppressed warnings
-**
-** Revision 1.11  2000/10/22 19:17:46  matt
-** mapper cleanups galore
-**
-** Revision 1.10  2000/10/22 15:03:13  matt
-** simplified mirroring
-**
-** Revision 1.9  2000/10/21 19:33:38  matt
-** many more cleanups
-**
-** Revision 1.8  2000/10/10 13:58:17  matt
-** stroustrup squeezing his way in the door
-**
-** Revision 1.7  2000/10/08 18:05:44  matt
-** kept old version around, just in case....
-**
-** Revision 1.6  2000/07/15 23:52:19  matt
-** rounded out a bunch more mapper interfaces
-**
-** Revision 1.5  2000/07/10 13:51:25  matt
-** using generic nes6502_irq() routine now
-**
-** Revision 1.4  2000/07/10 05:29:03  matt
-** cleaned up some mirroring issues
-**
-** Revision 1.3  2000/07/06 02:48:43  matt
-** clearly labelled structure members
-**
-** Revision 1.2  2000/07/05 05:04:39  matt
-** minor modifications
-**
-** Revision 1.1  2000/07/04 23:11:45  matt
-** initial revision
-**
-*/

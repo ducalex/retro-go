@@ -185,7 +185,7 @@ void mmc_reset(void)
    if (mmc.intf->init)
       mmc.intf->init();
 
-   MESSAGE_INFO("MMC: Mapper %s (%d) ready!\n", mmc.intf->name, mmc.intf->number);
+   MESSAGE_INFO("MMC: Mapper %s (iNES %03d) ready!\n", mmc.intf->name, mmc.intf->number);
 }
 
 void mmc_shutdown()
@@ -200,7 +200,7 @@ mmc_t *mmc_init(rominfo_t *rominfo)
    mmc.intf = mmc_peek(rominfo->mapper_number);
    if (NULL == mmc.intf)
    {
-      MESSAGE_ERROR("MMC: Unsupported mapper %d\n", rominfo->mapper_number);
+      MESSAGE_ERROR("MMC: Unsupported mapper %03d\n", rominfo->mapper_number);
       return NULL;
    }
 
