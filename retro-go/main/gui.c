@@ -15,15 +15,18 @@
 #define IMAGE_BANNER_WIDTH  (272)
 #define IMAGE_BANNER_HEIGHT (32)
 
-#define CRC_WIDTH    (96)
-#define CRC_X_OFFSET (320 - CRC_WIDTH)
+#define CRC_WIDTH    (104)
+#define CRC_X_OFFSET (ODROID_SCREEN_WIDTH - CRC_WIDTH)
 #define CRC_Y_OFFSET (35)
 
-#define LIST_WIDTH       (320)
-#define LIST_LINE_COUNT  ((240 - LIST_Y_OFFSET) / LIST_LINE_HEIGHT)
+#define LIST_WIDTH       (ODROID_SCREEN_WIDTH)
+#define LIST_LINE_COUNT  ((ODROID_SCREEN_HEIGHT - LIST_Y_OFFSET) / LIST_LINE_HEIGHT)
 #define LIST_LINE_HEIGHT (ODROID_FONT_HEIGHT)
 #define LIST_X_OFFSET    (0)
 #define LIST_Y_OFFSET    (48 + LIST_LINE_HEIGHT)
+
+#define COVER_MAX_HEIGHT (200)
+#define COVER_MAX_WIDTH  (200)
 
 typedef struct  {
     uint16_t list_background;
@@ -156,12 +159,8 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
         return;
     }
 
-    if (!cover_buffer) {
-        cover_buffer = (uint16_t*)malloc(200 * 200 * 2);
-    }
-
     retro_emulator_file_t *file = gui_list_selected_file(emu);
-    char path[128], path2[128], buf_crc[10];
+    char path[128], path2[128], path3[128], buf_crc[10];
     FILE *fp;
 
     char *cache_path = odroid_system_get_path(ODROID_PATH_CRC_CACHE, file->path);
@@ -177,7 +176,7 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
         }
         else if ((fp = fopen(file->path, "rb")) != NULL)
         {
-            odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"       CRC32", C_GREEN, C_BLACK);
+            odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"        CRC32", C_GREEN, C_BLACK);
 
             fseek(fp, emu->crc_offset, SEEK_SET);
             int buf_size = 32768;
@@ -219,47 +218,60 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
 
     if (file->checksum > 1 && file->missing_cover == 0)
     {
+        const int cover_buffer_length = 1024 * 1024 / 2;
+        uint16_t cover_width = 0, cover_height = 0;
+
+        if (!cover_buffer) {
+            cover_buffer = (uint16_t*)malloc(cover_buffer_length);
+        }
+
         sprintf(buf_crc, "%08X", file->checksum);
 
         // /sd/romart/gbc/0/08932754.png
         // /sd/romart/gbc/Super Mario.png
         sprintf(path, "%s/%s/%c/%s.png", ODROID_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
         sprintf(path2, "%s/%s/%s.png", ODROID_BASE_PATH_ROMART, emu->dirname, file->name);
+
+        // /sd/romart/gbc/0/08932754.art
+        sprintf(path3, "%s/%s/%c/%s.art", ODROID_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
+
         LuImage *img;
         if ((img = luPngReadFile(path)) || (img = luPngReadFile(path2)))
         {
-            if (img->width <= 200 && img->height <= 200) {
-                for (int p = 0, i = 0; i < img->dataSize; i += 3) {
-                    uint8_t r = img->data[i];
-                    uint8_t g = img->data[i + 1];
-                    uint8_t b = img->data[i + 2];
-                    cover_buffer[p++] = ((r / 8) << 11) | ((g / 4) << 5) | (b / 8);
-                }
-                odroid_display_write(320 - img->width, 240 - img->height, img->width, img->height, cover_buffer);
-            } else {
-                odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"Art too large", C_ORANGE, C_BLACK);
+            for (int p = 0, i = 0; i < img->dataSize && p < cover_buffer_length; i += 3) {
+                uint8_t r = img->data[i];
+                uint8_t g = img->data[i + 1];
+                uint8_t b = img->data[i + 2];
+                cover_buffer[p++] = ((r / 8) << 11) | ((g / 4) << 5) | (b / 8);
             }
+            cover_width = img->width;
+            cover_height = img->height;
             luImageRelease(img, NULL);
-            return;
+        }
+        else if ((fp = fopen(path3, "rb")) != NULL)
+        {
+            fread(&cover_width, 2, 1, fp);
+            fread(&cover_height, 2, 1, fp);
+            fread(cover_buffer, 2, cover_buffer_length, fp);
+            fclose(fp);
         }
 
-        // /sd/romart/gbc/0/08932754.art
-        sprintf(path, "%s/%s/%c/%s.art", ODROID_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
-        if ((fp = fopen(path, "rb")) != NULL)
+        if (cover_width > 0 && cover_height > 0)
         {
-            uint16_t width, height;
-            fread(&width, 2, 1, fp);
-            fread(&height, 2, 1, fp);
-            if (width <= 320 && height <= 176)
+            int height = MIN(cover_height, COVER_MAX_HEIGHT);
+            int width = MIN(cover_width, COVER_MAX_WIDTH);
+
+            if (cover_height > COVER_MAX_HEIGHT || cover_width > COVER_MAX_WIDTH)
             {
-                fread(cover_buffer, 2, width * height, fp);
-                odroid_display_write(320 - width, 240 - height, width, height, cover_buffer);
+                odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"Art too large", C_ORANGE, C_BLACK);
             }
-            fclose(fp);
+
+            odroid_display_write_rect(320 - width, 240 - height, width, height, cover_width, cover_buffer);
+            file->missing_cover = false;
             return;
         }
     }
 
-    odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"No art found", C_RED, C_BLACK);
+    odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" No art found", C_RED, C_BLACK);
     file->missing_cover = true;
 }

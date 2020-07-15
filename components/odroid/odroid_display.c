@@ -1038,7 +1038,7 @@ void odroid_display_drain_spi()
     }
 }
 
-void odroid_display_write(short left, short top, short width, short height, uint16_t* buffer)
+void odroid_display_write_rect(short left, short top, short width, short height, short stride, uint16_t* buffer)
 {
     odroid_display_drain_spi();
 
@@ -1053,16 +1053,28 @@ void odroid_display_write(short left, short top, short width, short height, uint
         if (y + lines_per_buffer > height)
             lines_per_buffer = height - y;
 
-        for (short i = 0; i < width * lines_per_buffer; ++i)
+        for (int line = 0; line < lines_per_buffer; ++line)
         {
-            uint16_t pixel = buffer[y * width + i];
-            line_buffer[i] = pixel << 8 | pixel >> 8;
+            int ipos = (y + line) * stride;
+            int opos = line * width;
+
+            for (short i = 0; i < width; ++i)
+            {
+                uint16_t pixel = buffer[ipos + i];
+                line_buffer[opos + i] = pixel << 8 | pixel >> 8;
+            }
         }
 
         send_continue_line(line_buffer, width, lines_per_buffer);
     }
 
     odroid_display_drain_spi();
+}
+
+// Same as odroid_display_write_rect but stride is assumed to be width (for backwards compat)
+void odroid_display_write(short left, short top, short width, short height, uint16_t* buffer)
+{
+    odroid_display_write_rect(left, top, width, height, width, buffer);
 }
 
 void odroid_display_clear(uint16_t color)
