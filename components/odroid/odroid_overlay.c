@@ -45,15 +45,11 @@ void odroid_overlay_set_font_size(int factor)
     odroid_settings_FontSize_set(factor);
 }
 
-void odroid_overlay_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, char *text, uint16_t color, uint16_t color_bg)
+int odroid_overlay_draw_text_line(uint16_t x_pos, uint16_t y_pos, uint16_t width, char *text, uint16_t color, uint16_t color_bg)
 {
     int x_offset = 0;
     int multi = ODROID_FONT_HEIGHT / 8;
     int text_len = strlen(text);
-
-    if (width < 1) {
-        width = text_len * ODROID_FONT_WIDTH;
-    }
 
     for (int i = 0; i < (width / ODROID_FONT_WIDTH); i++) {
         const char *bitmap = font8x8_basic[(i < text_len) ? text[i] : ' '];
@@ -71,6 +67,39 @@ void odroid_overlay_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, ch
     }
 
     odroid_display_write(x_pos, y_pos, width, ODROID_FONT_HEIGHT, overlay_buffer);
+
+    return ODROID_FONT_HEIGHT;
+}
+
+int odroid_overlay_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, char *text, uint16_t color, uint16_t color_bg)
+{
+    int text_len = strlen(text);
+    int height = 0;
+
+    if (text == NULL || text_len == 0) {
+        text = " ";
+    }
+
+    if (width < 1) {
+        width = text_len * ODROID_FONT_WIDTH;
+    }
+
+    if (width > (ODROID_SCREEN_WIDTH - x_pos)) {
+        width = (ODROID_SCREEN_WIDTH - x_pos);
+    }
+
+    int line_len = width / ODROID_FONT_WIDTH;
+    char buffer[line_len + 1];
+
+    for (int pos = 0; pos < text_len;)
+    {
+        sprintf(buffer, "%.*s", line_len, text + pos);
+        if (strchr(buffer, '\n')) *(strchr(buffer, '\n')) = 0;
+        height += odroid_overlay_draw_text_line(x_pos, y_pos + height, width, buffer, color, color_bg);
+        pos += strlen(buffer);
+    }
+
+    return height;
 }
 
 void odroid_overlay_draw_rect(int x, int y, int width, int height, int border, uint16_t color)
@@ -149,24 +178,23 @@ static int get_dialog_items_count(odroid_dialog_choice_t *options)
 
 void odroid_overlay_draw_dialog(const char *header, odroid_dialog_choice_t *options, int sel)
 {
-    int width = 8;
+    int width = header ? strlen(header) : 8;
     int padding = 0;
     int len = 0;
 
     int row_margin = 1;
     int row_height = ODROID_FONT_HEIGHT + row_margin * 2;
 
+    int box_width = 64;
+    int box_height = 64;
+    int box_padding = 6;
     int box_color = C_NAVY;
     int box_border_color = C_DIM_GRAY;
-    // int box_shadow_color = C_BLACK;
     int box_text_color = C_WHITE;
 
-    char header_string[32] = "";
-    char row_format[16] = " %s ";
-    char row_format_kv[16] = " %s: %s ";
-    char rows[16][32];
-
     int options_count = get_dialog_items_count(options);
+
+    char *rows = malloc(options_count * 256);
 
     for (int i = 0; i < options_count; i++)
     {
@@ -176,68 +204,59 @@ void odroid_overlay_draw_dialog(const char *header, odroid_dialog_choice_t *opti
         }
     }
 
-    sprintf(row_format_kv, " %%-%ds: %%s ", padding);
-
     for (int i = 0; i < options_count; i++)
     {
         if (options[i].update_cb != NULL) {
             options[i].update_cb(&options[i], ODROID_DIALOG_INIT);
         }
         if (options[i].value[0]) {
-            len = sprintf(rows[i], row_format_kv, options[i].label, options[i].value);
+            len = sprintf(rows + i * 256, " %*s: %s ", -padding, options[i].label, options[i].value);
         } else {
-            len = sprintf(rows[i], row_format, options[i].label);
+            len = sprintf(rows + i * 256, " %s ", options[i].label);
         }
         width = len > width ? len : width;
     }
 
-    int box_width = (ODROID_FONT_WIDTH * width) + 12;
-    int box_height = (row_height * options_count) + 12;
+    if (width > 32) width = 32;
+
+    box_width = (ODROID_FONT_WIDTH * width) + box_padding * 2;
+    box_height = (row_height * options_count) + box_padding * 2;
+
+    int box_x = (ODROID_SCREEN_WIDTH - box_width) / 2;
+    int box_y = (ODROID_SCREEN_HEIGHT - box_height) / 2;
+
+    int x = box_x;
+    int y = box_y;
+
+    x += box_padding;
+    y += box_padding;
 
     if (header)
     {
-        if (strlen(header) > 32)
-            sprintf(header_string, "%.29s...", header);
-        else
-            strcpy(header_string, header);
-
-        if (strlen(header_string) > width) {
-            width = strlen(header_string);
-            box_width = (ODROID_FONT_WIDTH * width) + 12;
-        }
-        box_height += row_height + 4;
-    }
-
-    int x = (ODROID_SCREEN_WIDTH - box_width) / 2;
-    int y = (ODROID_SCREEN_HEIGHT - box_height) / 2;
-
-    // odroid_overlay_draw_fill_rect(x + 5, y + box_height + 1, box_width, 4, box_shadow_color); // Bottom
-    // odroid_overlay_draw_fill_rect(x + box_width + 1, y + 5, 4, box_height, box_shadow_color); // Rright
-
-    odroid_overlay_draw_rect(x, y, box_width, box_height, 6, box_color);
-    odroid_overlay_draw_rect(x - 1, y - 1, box_width + 2, box_height + 2, 1, box_border_color);
-
-    x += 6;
-    y += 6;
-
-    if (header)
-    {
-        int pad = (0.5f * (width - strlen(header_string)) * ODROID_FONT_WIDTH);
+        int pad = (0.5f * (width - strlen(header)) * ODROID_FONT_WIDTH);
         odroid_overlay_draw_rect(x, y, box_width - 8, row_height + 4, (row_height + 4 / 2), box_color);
-        odroid_overlay_draw_text(x + pad, y, 0, header_string, box_text_color, box_color);
+        odroid_overlay_draw_text(x + pad, y, 0, header, box_text_color, box_color);
         y += row_height + 4;
     }
 
-    uint16_t fg, bg, color;
+    uint16_t fg, bg, color, inner_width = box_width - (box_padding * 2);
     for (int i = 0; i < options_count; i++)
     {
         color = options[i].enabled == 1 ? box_text_color : C_GRAY;
         fg = (i == sel) ? box_color : color;
         bg = (i == sel) ? color : box_color;
-        odroid_overlay_draw_rect(x, y, width * ODROID_FONT_WIDTH, row_height, row_margin, bg);
-        odroid_overlay_draw_text(x, y + row_margin, width * ODROID_FONT_WIDTH, rows[i], fg, bg);
+        row_height = odroid_overlay_draw_text(x, y + row_margin, inner_width, rows + i * 256, fg, bg);
+        row_height += row_margin * 2;
+        odroid_overlay_draw_rect(x, y, inner_width, row_height, row_margin, bg);
         y += row_height;
     }
+
+    box_height = y - box_y + box_padding;
+
+    odroid_overlay_draw_rect(box_x, box_y, box_width, box_height, box_padding, box_color);
+    odroid_overlay_draw_rect(box_x - 1, box_y - 1, box_width + 2, box_height + 2, 1, box_border_color);
+
+    free(rows);
 }
 
 int odroid_overlay_dialog(const char *header, odroid_dialog_choice_t *options, int selected)

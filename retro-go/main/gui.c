@@ -138,7 +138,7 @@ void gui_list_draw(retro_emulator_t *emu, int theme_)
         text[0] = '\0';
 
         if (entry >= 0 && entry < emu->roms.count) {
-            snprintf(text, 64, emu->roms.files[entry].name);
+            sprintf(text, "%.40s", emu->roms.files[entry].name);
         }
         else if (emu->roms.count == 0) {
             if (i == 1) sprintf(text, "No roms found!");

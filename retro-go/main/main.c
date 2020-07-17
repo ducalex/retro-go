@@ -57,7 +57,7 @@ static bool startup_app_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t
         startup_app = startup_app ? 0 : 1;
         odroid_settings_StartupApp_set(startup_app);
     }
-    strcpy(option->value, startup_app == 0 ? "Launcher" : "LastUsed");
+    strcpy(option->value, startup_app == 0 ? "Launcher" : "Previous");
     return event == ODROID_DIALOG_ENTER;
 }
 
@@ -245,7 +245,7 @@ void retro_loop()
                         ODROID_DIALOG_CHOICE_LAST
                     };
 
-                    sprintf(choices[0].value, "%.24s", file->name);
+                    sprintf(choices[0].value, "%.127s", file->name);
                     sprintf(choices[1].value, "%s", file->ext);
                     sprintf(choices[2].value, "%.*s", strlen(file->path)-strlen(file->name)-strlen(file->ext)-2, file->path);
                     sprintf(choices[3].value, "%d KB", odroid_sdcard_get_filesize(file->path) / 1024);

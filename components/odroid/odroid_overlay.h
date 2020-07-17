@@ -26,8 +26,8 @@ typedef struct odroid_dialog_choice odroid_dialog_choice_t;
 
 struct odroid_dialog_choice {
     int  id;
-    char label[32];
-    char value[32];
+    const char *label;
+    char value[128];
     int  enabled;
     bool (*update_cb)(odroid_dialog_choice_t *, odroid_dialog_event_t);
 };
@@ -38,7 +38,7 @@ extern odroid_menu_state_t odroid_menu_state;
 
 void odroid_overlay_init();
 void odroid_overlay_set_font_size(int factor);
-void odroid_overlay_draw_text(uint16_t x, uint16_t y, uint16_t width, char *text, uint16_t color, uint16_t color_bg);
+int  odroid_overlay_draw_text(uint16_t x, uint16_t y, uint16_t width, char *text, uint16_t color, uint16_t color_bg);
 void odroid_overlay_draw_rect(int x, int y, int width, int height, int border, uint16_t color);
 void odroid_overlay_draw_fill_rect(int x, int y, int width, int height, uint16_t color);
 void odroid_overlay_draw_battery(int x, int y);
