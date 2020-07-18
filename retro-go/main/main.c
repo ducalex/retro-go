@@ -229,7 +229,6 @@ void retro_loop()
             }
             else if (joystick.values[ODROID_INPUT_B]) {
                 last_key = ODROID_INPUT_B;
-                redraw = true;
 
                 retro_emulator_file_t *file = gui_list_selected_file(emu);
                 if (file && file->checksum != 0)
@@ -253,6 +252,8 @@ void retro_loop()
 
                     odroid_overlay_dialog("Properties", choices, -1);
                 }
+                selected_emu_last = -1;
+                redraw = true;
             }
             else if (joystick.values[ODROID_INPUT_SELECT]) {
                 last_key = ODROID_INPUT_SELECT;

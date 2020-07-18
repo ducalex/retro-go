@@ -32,7 +32,7 @@ static void wait_all_keys_released()
 void odroid_overlay_init()
 {
 	if (!overlay_buffer) {
-        overlay_buffer = (uint16_t *)rg_alloc(ODROID_SCREEN_WIDTH * 16 * 2, MEM_SLOW);
+        overlay_buffer = (uint16_t *)rg_alloc(ODROID_SCREEN_WIDTH * 32 * 2, MEM_SLOW);
     }
     odroid_overlay_set_font_size(odroid_settings_FontSize_get());
 }
@@ -45,7 +45,7 @@ void odroid_overlay_set_font_size(int factor)
     odroid_settings_FontSize_set(factor);
 }
 
-int odroid_overlay_draw_text_line(uint16_t x_pos, uint16_t y_pos, uint16_t width, char *text, uint16_t color, uint16_t color_bg)
+int odroid_overlay_draw_text_line(uint16_t x_pos, uint16_t y_pos, uint16_t width, const char *text, uint16_t color, uint16_t color_bg)
 {
     int x_offset = 0;
     int multi = ODROID_FONT_HEIGHT / 8;
@@ -71,14 +71,16 @@ int odroid_overlay_draw_text_line(uint16_t x_pos, uint16_t y_pos, uint16_t width
     return ODROID_FONT_HEIGHT;
 }
 
-int odroid_overlay_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, char *text, uint16_t color, uint16_t color_bg)
+int odroid_overlay_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, const char *text, uint16_t color, uint16_t color_bg)
 {
-    int text_len = strlen(text);
+    int text_len = 1;
     int height = 0;
 
-    if (text == NULL || text_len == 0) {
+    if (text == NULL || text[0] == 0) {
         text = " ";
     }
+
+    text_len = strlen(text);
 
     if (width < 1) {
         width = text_len * ODROID_FONT_WIDTH;
@@ -220,16 +222,13 @@ void odroid_overlay_draw_dialog(const char *header, odroid_dialog_choice_t *opti
     if (width > 32) width = 32;
 
     box_width = (ODROID_FONT_WIDTH * width) + box_padding * 2;
-    box_height = (row_height * options_count) + box_padding * 2;
+    box_height = (row_height * options_count) + (header ? row_height + 4 : 0) + box_padding * 2;
 
     int box_x = (ODROID_SCREEN_WIDTH - box_width) / 2;
     int box_y = (ODROID_SCREEN_HEIGHT - box_height) / 2;
 
-    int x = box_x;
-    int y = box_y;
-
-    x += box_padding;
-    y += box_padding;
+    int x = box_x + box_padding;
+    int y = box_y + box_padding;
 
     if (header)
     {
