@@ -54,16 +54,9 @@ theme_t gui_themes[] = {
 int gui_themes_count = 12;
 
 
-static uint16_t *cover_buffer;
+static size_t gp_buffer_size = 256 * 1024;
+static void  *gp_buffer = NULL;
 
-
-retro_emulator_file_t *gui_list_selected_file(retro_emulator_t *emu)
-{
-    if (emu->roms.count == 0 || emu->roms.selected > emu->roms.count) {
-        return NULL;
-    }
-    return &emu->roms.files[emu->roms.selected];
-}
 
 bool gui_list_handle_input(retro_emulator_t *emu, odroid_gamepad_state *joystick, int *last_key)
 {
@@ -155,18 +148,22 @@ void gui_list_draw(retro_emulator_t *emu, int theme_)
 // So it's kind of pointless. The solution would be preloading I think.
 void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
 {
-    if (emu->roms.count == 0 || emu->roms.selected > emu->roms.count) {
+    retro_emulator_file_t *file = emu_get_selected_file(emu);
+    char path1[128], path2[128], path3[128], buf_crc[10];
+    FILE *fp, *fp2;
+
+    if (file == NULL) {
         return;
     }
 
-    retro_emulator_file_t *file = gui_list_selected_file(emu);
-    char path[128], path2[128], path3[128], buf_crc[10];
-    FILE *fp;
-
-    char *cache_path = odroid_system_get_path(ODROID_PATH_CRC_CACHE, file->path);
+    if (!gp_buffer) {
+        gp_buffer = malloc(gp_buffer_size);
+    }
 
     if (file->checksum == 0)
     {
+        char *cache_path = odroid_system_get_path(ODROID_PATH_CRC_CACHE, file->path);
+
         file->missing_cover = 0;
 
         if ((fp = fopen(cache_path, "rb")) != NULL)
@@ -178,65 +175,56 @@ void gui_cover_draw(retro_emulator_t *emu, odroid_gamepad_state *joystick)
         {
             odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"        CRC32", C_GREEN, C_BLACK);
 
-            fseek(fp, emu->crc_offset, SEEK_SET);
-            int buf_size = 32768;
+            uint32_t chunk_size = 32768;
             uint32_t crc_tmp = 0;
-            bool abort = false;
+            uint32_t count = 0;
 
+            fseek(fp, emu->crc_offset, SEEK_SET);
             while (true)
             {
                 odroid_input_gamepad_read(joystick);
-                abort = joystick->bitmask > 0;
-                if (abort) break;
-                int count = fread(cover_buffer, 1, buf_size, fp);
-                crc_tmp = crc32_le(crc_tmp, (const uint8_t*)cover_buffer, count);
-                if (count != buf_size)
+                if (joystick->bitmask > 0) break;
+
+                count = fread(gp_buffer, 1, chunk_size, fp);
+                if (count == 0) break;
+
+                crc_tmp = crc32_le(crc_tmp, gp_buffer, count);
+                if (count < chunk_size) break;
+            }
+
+            if (feof(fp))
+            {
+                file->checksum = crc_tmp;
+                if ((fp2 = fopen(cache_path, "wb")) != NULL)
                 {
-                    break;
+                    fwrite(&file->checksum, 4, 1, fp2);
+                    fclose(fp2);
                 }
             }
             fclose(fp);
-
-            if (!abort)
-            {
-                file->checksum = crc_tmp;
-                if ((fp = fopen(cache_path, "wb")) != NULL)
-                {
-                    fwrite(&file->checksum, 4, 1, fp);
-                    fclose(fp);
-                }
-            }
         }
         else
         {
             file->checksum = 1;
         }
-        odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" ", C_RED, C_BLACK);
+        free(cache_path);
     }
 
-    free(cache_path);
+    odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" ", C_RED, C_BLACK);
 
     if (file->checksum > 1 && file->missing_cover == 0)
     {
-        const int cover_buffer_length = 1024 * 1024 / 2;
+        uint16_t *cover_buffer = (uint16_t*)gp_buffer;
+        const int cover_buffer_length = gp_buffer_size / 2;
         uint16_t cover_width = 0, cover_height = 0;
 
-        if (!cover_buffer) {
-            cover_buffer = (uint16_t*)malloc(cover_buffer_length);
-        }
-
         sprintf(buf_crc, "%08X", file->checksum);
-
-        // /sd/romart/gbc/0/08932754.png
-        // /sd/romart/gbc/Super Mario.png
-        sprintf(path, "%s/%s/%c/%s.png", ODROID_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
+        sprintf(path1, "%s/%s/%c/%s.png", ODROID_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
         sprintf(path2, "%s/%s/%s.png", ODROID_BASE_PATH_ROMART, emu->dirname, file->name);
-
-        // /sd/romart/gbc/0/08932754.art
         sprintf(path3, "%s/%s/%c/%s.art", ODROID_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
 
         LuImage *img;
-        if ((img = luPngReadFile(path)) || (img = luPngReadFile(path2)))
+        if ((img = luPngReadFile(path1)) || (img = luPngReadFile(path2)))
         {
             for (int p = 0, i = 0; i < img->dataSize && p < cover_buffer_length; i += 3) {
                 uint8_t r = img->data[i];

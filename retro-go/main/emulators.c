@@ -44,6 +44,19 @@ static int file_sort_comparator(const void *p, const void *q)
     return strcasecmp(l->name, r->name);
 }
 
+retro_emulator_t *emu_get_selected(void)
+{
+    return &emulators->entries[emulators->selected];
+}
+
+retro_emulator_file_t *emu_get_selected_file(retro_emulator_t *emu)
+{
+    if (emu->roms.count == 0 || emu->roms.selected > emu->roms.count) {
+        return NULL;
+    }
+    return &emu->roms.files[emu->roms.selected];
+}
+
 void emulators_init_emu(retro_emulator_t *emu)
 {
     if (emu->initialized)
@@ -56,6 +69,10 @@ void emulators_init_emu(retro_emulator_t *emu)
     emu->initialized = true;
 
     char path[128];
+    char keyBuffer[16];
+
+    sprintf(keyBuffer, "Sel.%s", emu->dirname);
+    emu->roms.selected = odroid_settings_int32_get(keyBuffer, 0);
 
     odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
@@ -71,6 +88,7 @@ void emulators_init_emu(retro_emulator_t *emu)
     DIR* dir = opendir(path);
     if (dir)
     {
+        char *selected_file = odroid_settings_RomFilePath_get();
         struct dirent* in_file;
 
         while ((in_file = readdir(dir)))
@@ -94,30 +112,25 @@ void emulators_init_emu(retro_emulator_t *emu)
             file->checksum = 0;
         }
 
-        closedir(dir);
-    }
+        if (emu->roms.count > 0)
+        {
+            qsort((void*)emu->roms.files, emu->roms.count, sizeof(retro_emulator_file_t), file_sort_comparator);
 
-    if (emu->roms.count > 0)
-    {
-        qsort((void*)emu->roms.files, emu->roms.count, sizeof(retro_emulator_file_t), file_sort_comparator);
+            // for (int i = 0; i < emu->roms.count; ++i) {
+            //     if (selected_file && strcmp(file->path, selected_file) == 0) {
+            //         emu->roms.selected = emu->roms.count - 1;
+            //         break;
+            //     }
+            // }
 
-        char *selected_file = odroid_settings_RomFilePath_get();
-        if (selected_file) {
-            if (strlen(selected_file) > strlen(emu->ext)+1 &&
-                strcasecmp(emu->ext, &selected_file[strlen(selected_file)-strlen(emu->ext)]) == 0) {
-                for (int i = 0;i < emu->roms.count; i++) {
-                    if (strcmp(emu->roms.files[i].path, selected_file) == 0) {
-                        emu->roms.selected = i;
-                        break;
-                    }
-                }
+            if (emu->roms.selected > emu->roms.count - 1)
+            {
+                emu->roms.selected = emu->roms.count - 1;
             }
-            free(selected_file);
         }
-    }
 
-    if (emu->roms.selected > emu->roms.count - 1) {
-        emu->roms.selected = 0;
+        free(selected_file);
+        closedir(dir);
     }
 
     odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
@@ -134,12 +147,20 @@ void emulators_init()
     add_emulator("PC Engine", "pce", "pce", "huexpress", 0, logo_pce, header_pce);
     add_emulator("Atari Lynx", "lnx", "lnx", "handy", 0, logo_lnx, header_lnx);
     // add_emulator("Atari 2600", "a26", "a26", "stella", 0, logo_a26, header_a26);
+
+    emulators->selected = odroid_settings_int32_get("SelectedEmu", 0);
 }
 
 void emulators_start_emu(retro_emulator_t *emu)
 {
-    retro_emulator_file_t *file = gui_list_selected_file(emu);
+    retro_emulator_file_t *file = emu_get_selected_file(emu);
+    char keyBuffer[16];
+
     printf("Starting game: %s\n", file->path);
+
+    sprintf(keyBuffer, "Sel.%s", emu->dirname);
+    odroid_settings_int32_set(keyBuffer, emu->roms.selected);
+    odroid_settings_int32_set("SelectedEmu", emulators->selected);
 
     odroid_settings_RomFilePath_set(file->path);
     odroid_system_switch_app(emu->partition);

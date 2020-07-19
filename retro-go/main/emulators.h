@@ -30,11 +30,14 @@ typedef struct {
 
 typedef struct {
     retro_emulator_t entries[16];
-    uint8_t count;
+    int count;
+    int selected;
 } retro_emulators_t;
 
 void emulators_init();
 void emulators_init_emu(retro_emulator_t *emu);
 void emulators_start_emu(retro_emulator_t *emu);
+retro_emulator_file_t *emu_get_selected_file(retro_emulator_t *emu);
+retro_emulator_t *emu_get_selected(void);
 
 extern retro_emulators_t *emulators;
