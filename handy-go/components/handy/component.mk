@@ -10,5 +10,5 @@
 COMPONENT_ADD_INCLUDEDIRS := .
 COMPONENT_SRCDIRS := .
 
-CFLAGS += -Ofast -DLSB_FIRST=1 -Wall -Wno-comment -Wno-error=comment
-CXXFLAGS += -Ofast -DLSB_FIRST=1 -Wall -Wno-comment -Wno-error=comment
+CFLAGS += -Ofast -Wall -Wno-comment -Wno-error=comment
+CXXFLAGS += -Ofast -Wall -Wno-comment -Wno-error=comment

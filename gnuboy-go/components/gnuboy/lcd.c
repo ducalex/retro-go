@@ -477,7 +477,7 @@ static inline void spr_enum()
 			VS[l].x = 160;
 		}
 
-		memcpy(VS, ts, sizeof(VS));
+		memcpy(VS, ts, sizeof(ts));
 	}
 }
 

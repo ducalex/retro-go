@@ -31,11 +31,11 @@ extern uchar *osd_gfx_buffer;
 extern uint osd_blitFrames;
 extern uint osd_skipFrames;
 
-void osd_gfx_init();
-void osd_gfx_shutdown();
-void osd_gfx_blit();
-void osd_gfx_set_mode(short width, short height);
-void osd_gfx_set_color(uchar index, uchar r, uchar g, uchar b);
+extern void osd_gfx_init();
+extern void osd_gfx_shutdown();
+extern void osd_gfx_blit();
+extern void osd_gfx_set_mode(short width, short height);
+extern void osd_gfx_set_color(uchar index, uchar r, uchar g, uchar b);
 
 
 /*
@@ -60,7 +60,7 @@ void osd_gfx_set_color(uchar index, uchar r, uchar g, uchar b);
  * \return 1 if we must quit the emulation
  * \return 0 else
  */
-int osd_keyboard(void);
+extern int osd_keyboard(void);
 
   /*
    * osd_keypressed
@@ -68,7 +68,7 @@ int osd_keyboard(void);
    * Behaves like kbhit, returning 0 is case no key have been pressed and a
    * non zero value if there's any key that can be read from osd_readkey
    */
-char osd_keypressed(void);
+extern char osd_keypressed(void);
 
   /*
    * osd_readkey
@@ -77,29 +77,29 @@ char osd_keypressed(void);
    * while the higher byte contains the scancode of the key.
    * Once called, discard the value in the keystroke buffer
    */
-uint16 osd_readkey(void);
+extern uint16 osd_readkey(void);
 
 /*!
  * Initialize the input services
  */
-int osd_init_input(void);
+extern int osd_init_input(void);
 
 /*!
  * Shutdown input services
  */
-void osd_shutdown_input(void);
+extern void osd_shutdown_input(void);
 
 /*!
  * Initialize the netplay support
  * \return 1 if the initialization failed
  * \return 0 on success
  */
-int osd_init_netplay(void);
+extern int osd_init_netplay(void);
 
 /*!
  * Shutdown netplay support
  */
-void osd_shutdown_netplay(void);
+extern void osd_shutdown_netplay(void);
 
 
 
@@ -116,14 +116,14 @@ void osd_shutdown_netplay(void);
 	 *
 	 * Allocates ressources to output sound
 	 */
-void osd_snd_init();
+extern void osd_snd_init();
 
 	/*
 	 * osd_snd_shutdown
 	 *
 	 * Frees all sound ressources allocated in osd_snd_init
 	 */
-void osd_snd_shutdown();
+extern void osd_snd_shutdown();
 
 
 
@@ -137,7 +137,7 @@ void osd_snd_shutdown();
  */
 
 // declaration of the actual callback to call 60 times a second
-uint32 interrupt_60hz(uint32, void*);
+extern uint32 interrupt_60hz(uint32, void*);
 
   /*
    * osd_wait_next_vsync
@@ -145,14 +145,14 @@ uint32 interrupt_60hz(uint32, void*);
    * Emulation speed throttling. It will sleep or skip frames in order to
    * maintain full speed emulation.
    */
-void osd_wait_next_vsync(void);
+extern void osd_wait_next_vsync(void);
 
   /*
    * osd_log
    *
    * Logging function, printf-style arguments
    */
-void osd_log(const char *, ...);
+extern void osd_log(const char *, ...);
 
 
 #endif

@@ -36,7 +36,7 @@ static uint8 reg5200;
 static uint8 reg5300;
 static uint8 trigger;
 
-static void sync()
+static void map162_sync()
 {
    uint8 bank = (reg5200 & 0x3) << 4 | (reg5000 & 0xF);
    mmc_bankrom(32, 0x8000, bank);
@@ -53,7 +53,7 @@ static void map162_init(void)
    trigger = 0;
    mmc_bankvrom(4, 0x0000, 0);
    mmc_bankvrom(4, 0x1000, 0);
-   sync();
+   map162_sync();
 }
 
 static void map162_hblank(int scanline)
@@ -99,7 +99,7 @@ static void map162_reg_write(uint32 address, uint8 value)
       {
          mmc_bankvrom(8, 0x0000, 0);
       }
-      sync();
+      map162_sync();
       break;
 
    case 0x5100:
@@ -118,7 +118,7 @@ static void map162_reg_write(uint32 address, uint8 value)
 
    case 0x5200:
       reg5200 = value;
-      sync();
+      map162_sync();
       break;
 
    case 0x5300:

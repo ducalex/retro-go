@@ -313,11 +313,7 @@ gfx_loop()
 
 			/* VRAM to SATB DMA */
 			if (io.vdc_satb == 1 || IO_VDC_REG[DCR].W & 0x0010) {
-#if defined(WORDS_BIGENDIAN)
-				swab(VRAM + IO_VDC_REG[SATB].W * 2, SPRAM, 64 * 8);
-#else
 				memcpy(SPRAM, VRAM + IO_VDC_REG[SATB].W * 2, 64 * 8);
-#endif
 				// io.vdc_satb = 1;
 				io.vdc_satb = 0;
 				io.vdc_status &= ~VDC_SATBfinish;

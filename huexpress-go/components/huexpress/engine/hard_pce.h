@@ -14,11 +14,7 @@
 
 typedef union {
 	struct {
-#if defined(WORDS_BIGENDIAN)
-		uchar h, l;
-#else
 		uchar l, h;
-#endif
 	} B;
 	uint16 W;
 } UWord;
@@ -316,32 +312,19 @@ Write8(uint16 addr, uchar byte)
 static inline uint16
 Read16(uint16 addr)
 {
-#ifdef WORDS_BIGENDIAN
-	uchar memreg = addr >> 13;
-
-	uint16 ret_16bit = PageR[memreg][addr];
-	memreg = (++addr) >> 13;
-	ret_16bit += (uint16) (PageR[memreg][addr] << 8);
-
-	return (ret_16bit);
-#else
 	return (*((uint16*)(PageR[addr >> 13] + (addr))));
-#endif
 }
 
 static inline void
 Write16(uint16 addr, uint16 word)
 {
-#ifdef WORDS_BIGENDIAN
-#else
 	*((uint16*)(PageR[addr >> 13] + (addr))) = word;
-#endif
 }
 
 static inline void
 BankSet(uchar P, uchar V)
 {
-    MESSAGE_DEBUG("Bank switching (MMR[%d] = %d)\n", P, V);
+    // MESSAGE_DEBUG("Bank switching (MMR[%d] = %d)\n", P, V);
 
 	MMR[P] = V;
     PageR[P] = (MemoryMapR[V] == IOAREA) ? (IOAREA) : (MemoryMapR[V] - P * 0x2000);

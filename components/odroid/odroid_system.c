@@ -58,7 +58,7 @@ void odroid_system_init(int appId, int sampleRate)
     const esp_app_desc_t *app = esp_ota_get_app_description();
 
     printf("\n==================================================\n");
-    printf("%s (%s / %s)\n", app->project_name, app->date, app->version);
+    printf("%s %s (%s)\n", app->project_name, app->version, app->date);
     printf("==================================================\n\n");
 
     printf("odroid_system_init: %d KB free\n", esp_get_free_heap_size() / 1024);

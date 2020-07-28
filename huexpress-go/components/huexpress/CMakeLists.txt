@@ -1,3 +1,5 @@
 set(COMPONENT_SRCDIRS ". engine odroid")
-set(COMPONENT_ADD_INCLUDEDIRS ". ./includes ./engine ./netplay")
+set(COMPONENT_ADD_INCLUDEDIRS ". includes engine netplay")
+set(COMPONENT_REQUIRES "odroid")
 register_component()
+component_compile_options(-Ofast -Wno-all -Wno-error -Wno-sequence-point)

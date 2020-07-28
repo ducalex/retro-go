@@ -25,7 +25,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <nofrendo.h>
-#include <byteswap.h>
 #include <nes6502.h>
 #include "nes_state.h"
 
@@ -46,8 +45,15 @@
 }
 
 #ifdef IS_LITTLE_ENDIAN
-   #define swap16(x) __bswap_16(x)
-   #define swap32(x) __bswap_32(x)
+   static inline uint16_t swap16(uint16_t x)
+   {
+      return (x << 8) | (x >> 8);
+   }
+
+   static inline uint32_t swap32(uint32_t x)
+   {
+      return ((x>>24)&0xff) | ((x<<8)&0xff0000) | ((x>>8)&0xff00) | ((x<<24)&0xff000000);
+   }
 #else
    #define swap16(x) (x)
    #define swap32(x) (x)

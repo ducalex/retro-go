@@ -7,8 +7,8 @@
 # please read the ESP-IDF documents if you need to do this.
 #
 
-COMPONENT_ADD_INCLUDEDIRS := . ./includes ./engine ./netplay
+COMPONENT_ADD_INCLUDEDIRS := . includes engine netplay
 COMPONENT_SRCDIRS := . engine odroid
 
-CFLAGS += -Ofast -DLSB_FIRST=1 -Wno-all -Wno-error
-CPPFLAGS += -DLSB_FIRST=1 -Wno-all -Wno-error
+CFLAGS += -Ofast -Wno-all -Wno-error
+CPPFLAGS += -Wno-all -Wno-error

@@ -386,7 +386,7 @@ int load_rom(const char *filename)
   if ((cart.size / 512) & 1)
   {
     cart.size -= 512;
-    memcpy(cart.rom, cart.rom + 512, cart.size);
+    memmove(cart.rom, cart.rom + 512, cart.size);
   }
 
   cart.pages = cart.size / 0x4000;

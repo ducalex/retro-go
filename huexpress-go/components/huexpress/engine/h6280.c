@@ -60,7 +60,7 @@ static inline void push_16bit(uint16 addr)
 #define Int6502(Type)                                       \
 {                                                           \
 	MESSAGE_DEBUG("Requested interrupt is %d\n", Type);     \
-    uint16 J;                                               \
+    uint16 J = 0;                                           \
     if ((Type == INT_NMI) || (!(reg_p & FL_I))) {           \
         Cycles += 7;                                        \
         push_16bit(reg_pc);                                 \

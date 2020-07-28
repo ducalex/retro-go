@@ -75,7 +75,7 @@ psg_update(char *buf, int ch, unsigned dwSize)
     int32 vol;
     uint32 Tp;
 
-    uint16 lbal, rbal;
+    uint16 lbal = 0, rbal = 0;
     signed char sample;
 
     if (!(io.PSG[ch][PSG_DDA_REG] & PSG_DDA_ENABLE)) {

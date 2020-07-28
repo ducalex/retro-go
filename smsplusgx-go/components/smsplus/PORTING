@@ -47,7 +47,7 @@
      /* Input parameters */
      int sample_rate;
      int fps;
-     uint32 psg_clock; 
+     uint32 psg_clock;
      uint32 fm_clock;
      int fm_which;
      void (*mixer_callback)(int16 **stream, int16 **output, int length);
@@ -117,7 +117,7 @@
     // Change some parameter later on
     snd.fm_which       = SND_YM2413;
     sound_init();
-    
+
     // Update code
     system_frame();
     osd_play_stream_stereo( snd.output, snd.buffer_size );
@@ -172,7 +172,7 @@
  I'm not sure the 8-bit pixel to 16-bit pixel conversion function
  in 'render.c' is endian safe.
 
- You need to either define or not define 'LSB_FIRST' in your makefile,
+ You need to either define or not define 'IS_LITTLE_ENDIAN' in your makefile,
  depending on your needs.
 
  1.) Graphics
@@ -413,7 +413,7 @@
  9.) Other notes on porting
  --------------------------
 
- - Please read the license first. 
+ - Please read the license first.
 
  - You must release the source code to your port in accordance with the GPL.
 

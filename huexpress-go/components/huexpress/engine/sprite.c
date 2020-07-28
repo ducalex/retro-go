@@ -447,12 +447,7 @@ RefreshLine(int Y1, int Y2)
             int no, i;
             x &= io.bg_w - 1;
 
-#if defined(WORDS_BIGENDIAN)
-            no = VRAM[(x + y * io.bg_w) << 1]
-                + (VRAM[((x + y * io.bg_w) << 1) + 1] << 8);
-#else
             no = ((uint16 *) VRAM)[x + y * io.bg_w];
-#endif
 
             R = &Palette[(no >> 8) & 0x1F0];
 
@@ -530,13 +525,8 @@ PutSprite(uchar * P, uchar * C, uchar * C2, uchar * R, int16 h, int16 inc)
 
 	int16 i;
 	for (i = 0; i < h; i++, C += inc, C2 += inc * 4, P += XBUF_WIDTH) {
-#if defined(WORDS_BIGENDIAN)
-		J = (C[0] + (C[1] << 8)) | (C[32] + (C[33] << 8))
-			| (C[64] + (C[65] << 8)) | (C[96] + (C[97] << 8));
-#else
 		J = ((uint16 *) C)[0] | ((uint16 *) C)[16]
 			| ((uint16 *) C)[32] | ((uint16 *) C)[48];
-#endif
 
 		if (!J)
 			continue;

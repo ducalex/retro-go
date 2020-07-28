@@ -29,15 +29,6 @@
 /* for hugo developers working on netplay emulation */
 #undef NETPLAY_DEBUG
 
-/* Define to 1 if your processor stores words with the most significant byte
-   first (like Motorola and SPARC, unlike Intel and VAX). */
-#if defined(__POWERPC__)
-#define WORDS_BIGENDIAN 1
-#else
-#undef WORDS_BIGENDIAN
-#endif
-// #define WORDS_BIGENDIAN 1
-
 /* Define to empty if `const' does not conform to ANSI C. */
 // #undef const
 
