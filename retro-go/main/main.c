@@ -313,11 +313,7 @@ void retro_loop()
 
 void app_main(void)
 {
-    printf("\n========================================\n\n");
-    printf("Retro-Go (%s).\n", PROJECT_VER);
-
     odroid_system_init(0, 32000);
     odroid_display_clear(0);
-
     retro_loop();
 }

@@ -4,6 +4,7 @@ echo ""
 echo "Building the launcher"
 cd retro-go
 rm -f build/main/* # Force rebuild main to update date
+rm -f build/odroid/* # Force rebuild main to update date
 make -j 6 || exit
 
 echo ""

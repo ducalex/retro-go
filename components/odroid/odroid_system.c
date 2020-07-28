@@ -7,6 +7,7 @@
 #include <esp_system.h>
 #include <esp_event.h>
 #include <esp_panic.h>
+#include <esp_sleep.h>
 #include <driver/rtc_io.h>
 #include <rom/crc.h>
 #include <string.h>
@@ -54,6 +55,12 @@ static void odroid_system_gpio_init()
 
 void odroid_system_init(int appId, int sampleRate)
 {
+    const esp_app_desc_t *app = esp_ota_get_app_description();
+
+    printf("\n==================================================\n");
+    printf("%s (%s / %s)\n", app->project_name, app->date, app->version);
+    printf("==================================================\n\n");
+
     printf("odroid_system_init: %d KB free\n", esp_get_free_heap_size() / 1024);
 
     spiMutex = xSemaphoreCreateMutex();
@@ -98,7 +105,7 @@ void odroid_system_init(int appId, int sampleRate)
     // esp_task_wdt_init(5, true);
     // esp_task_wdt_add(xTaskGetCurrentTaskHandle());
 
-    printf("odroid_system_init: System ready!\n");
+    printf("odroid_system_init: System ready!\n\n");
 }
 
 void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t netplay_cb)

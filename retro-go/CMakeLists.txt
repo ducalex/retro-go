@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.5)
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+set(EXTRA_COMPONENT_DIRS "../components")
+string(TIMESTAMP TODAY "%Y-%m-%d")
+add_definitions(-DCOMPILEDATE="${TODAY}")
+add_definitions(-DGITREV="n/a")
+project(retro-go)

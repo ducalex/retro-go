@@ -7,5 +7,5 @@
 # please read the ESP-IDF documents if you need to do this.
 #
 
-CFLAGS += -Ofast  -DPROJECT_VER='"$(PROJECT_VER)"'
-CPPFLAGS += -Ofast  -DPROJECT_VER='"$(PROJECT_VER)"'
+CFLAGS += -Ofast
+CPPFLAGS += -Ofast

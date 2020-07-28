@@ -69,7 +69,7 @@ void emulators_init_emu(retro_emulator_t *emu)
     emu->initialized = true;
 
     char path[128];
-    char keyBuffer[16];
+    char keyBuffer[24];
 
     sprintf(keyBuffer, "Sel.%s", emu->dirname);
     emu->roms.selected = odroid_settings_int32_get(keyBuffer, 0);

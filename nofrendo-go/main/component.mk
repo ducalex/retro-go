@@ -7,4 +7,4 @@
 # please read the ESP-IDF documents if you need to do this.
 #
 
-CFLAGS += -O3 -DPROJECT_VER='"$(PROJECT_VER)"'
+CFLAGS += -O3

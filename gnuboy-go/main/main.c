@@ -226,10 +226,6 @@ static bool advanced_settings_cb(odroid_dialog_choice_t *option, odroid_dialog_e
 
 void app_main(void)
 {
-    printf("\n========================================\n\n");
-    printf("gnuboy-go (%s).\n", PROJECT_VER);
-
-    // Init all the console hardware
     odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     odroid_system_emu_init(&LoadState, &SaveState, &netplay_callback);
 

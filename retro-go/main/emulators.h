@@ -14,7 +14,7 @@ typedef struct {
 
 typedef struct {
     char system_name[64];
-    char dirname[32];
+    char dirname[16];
     char ext[8];
     uint16_t crc_offset;
     uint16_t partition;

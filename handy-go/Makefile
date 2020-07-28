@@ -4,7 +4,6 @@
 #
 
 PROJECT_NAME := handy-go
-PROJECT_VER  := $(shell date "+%Y%m%d")-$(shell git rev-parse HEAD | cut -b 1-10)
 
 EXTRA_COMPONENT_DIRS := ../components
 
