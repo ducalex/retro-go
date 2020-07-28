@@ -27,9 +27,6 @@ void odroid_settings_Volume_set(int32_t value);
 char* odroid_settings_RomFilePath_get();
 void odroid_settings_RomFilePath_set(char* value);
 
-int32_t odroid_settings_DataSlot_get();
-void odroid_settings_DataSlot_set(int32_t value);
-
 int32_t odroid_settings_Backlight_get();
 void odroid_settings_Backlight_set(int32_t value);
 

@@ -8,7 +8,6 @@ static const char* NvsNamespace = "Odroid";
 // Global
 static const char* NvsKey_RomFilePath  = "RomFilePath";
 static const char* NvsKey_StartAction  = "StartAction";
-static const char* NvsKey_DataSlot     = "DataSlot";
 static const char* NvsKey_Backlight    = "Backlight";
 static const char* NvsKey_AudioSink    = "AudioSink";
 static const char* NvsKey_Volume       = "Volume";
@@ -37,7 +36,7 @@ void odroid_settings_init()
     }
 
 	err = nvs_open(NvsNamespace, NVS_READWRITE, &my_handle);
-	if (err != ESP_OK) abort();
+	assert(err == ESP_OK);
 }
 
 char* odroid_settings_string_get(const char *key, char *default_value)
@@ -68,40 +67,46 @@ char* odroid_settings_string_get(const char *key, char *default_value)
 void odroid_settings_string_set(const char *key, char *value)
 {
     // To do: Check if value is same and avoid overwrite
-    esp_err_t err = nvs_set_str(my_handle, key, value);
-    if (err != ESP_OK) abort();
-
+    esp_err_t ret = nvs_set_str(my_handle, key, value);
     nvs_commit(my_handle);
+
+    if (ret != ESP_OK)
+    {
+        printf("%s: key='%s' err=%d\n", __func__, key, ret);
+    }
 }
 
 int32_t odroid_settings_int32_get(const char *key, int32_t default_value)
 {
-    int result = default_value;
+    int current = default_value;
+    esp_err_t ret = ESP_OK;
 
-    esp_err_t err = nvs_get_i32(my_handle, key, &result);
-    if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
+    ret = nvs_get_i32(my_handle, key, &current);
+
+    if (ret != ESP_OK && ret != ESP_ERR_NVS_NOT_FOUND)
     {
-        printf("%s: key='%s' err=%d\n", __func__, key, err);
+        printf("%s: key='%s' err=%d\n", __func__, key, ret);
     }
-    return result;
+
+    return current;
 }
 
 void odroid_settings_int32_set(const char *key, int32_t value)
 {
-    int32_t current = 0;
-    esp_err_t err = ESP_OK;
-    // Don't wear the flash for nothing if we can avoid it
-    if (nvs_get_i32(my_handle, key, &current) != ESP_OK || current != value)
+    esp_err_t ret = ESP_OK;
+
+    if (odroid_settings_int32_get(key, 0) != value)
     {
-        err = nvs_set_i32(my_handle, key, value);
+        ret = nvs_set_i32(my_handle, key, value);
         nvs_commit(my_handle);
     }
 
-    if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
+    if (ret != ESP_OK)
     {
-        printf("%s: key='%s' err=%d\n", __func__, key, err);
+        printf("%s: key='%s' err=%d\n", __func__, key, ret);
     }
 }
+
 
 int32_t odroid_settings_app_int32_get(const char *key, int32_t default_value)
 {
@@ -185,16 +190,6 @@ int32_t odroid_settings_StartupApp_get()
 void odroid_settings_StartupApp_set(int32_t value)
 {
     odroid_settings_int32_set(NvsKey_StartupApp, value);
-}
-
-
-int32_t odroid_settings_DataSlot_get()
-{
-    return odroid_settings_app_int32_get(NvsKey_DataSlot, -1);
-}
-void odroid_settings_DataSlot_set(int32_t value)
-{
-    odroid_settings_app_int32_set(NvsKey_DataSlot, value);
 }
 
 
