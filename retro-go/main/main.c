@@ -14,7 +14,7 @@ static retro_emulator_t *emu = NULL;
 
 static bool show_empty = true;
 static int  show_cover = 1;
- int  scroll_mode = 0;
+static int  scroll_mode = 0;
 static int  selected_emu = 0;
 static int  theme = 0;
 

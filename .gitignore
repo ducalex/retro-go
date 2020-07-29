@@ -2,4 +2,5 @@
 .vscode/
 build/
 *.fw
+*.exe
 sdkconfig.old

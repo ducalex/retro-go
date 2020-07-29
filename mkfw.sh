@@ -1,15 +1,22 @@
 #!/bin/bash
-# To build the .fw you need the mkfw tool, get it from one of these sources:
-# - https://github.com/OtherCrashOverride/odroid-go-firmware
-# - https://github.com/ducalex/odroid-go-multi-firmware
-#
+
 # Notes:
 # - Enabling netplay in an emulator increases its size by ~350KB
 # - Keep at least 32KB free in a partition for future updates
 # - Partitions must be 64K aligned
 
-mkfw="../odroid-go-multi-firmware/tools/mkfw/mkfw"
+basedir="$(dirname "$(readlink -f "$0")")"
+mkfw="./tools/mkfw/mkfw"
+
 release=`date +%Y%m%d`;
+
+if [ ! -f "$mkfw" ]; then
+	echo "Building mkfw..."
+	cd "`dirname "$mkfw"`"
+	make
+fi
+
+cd "$basedir"
 
 $mkfw "Retro-Go ($release)" assets/tile.raw \
 	0  16  524288  frontend   retro-go/build/retro-go.bin         \

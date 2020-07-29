@@ -73,20 +73,17 @@ If you have any problem the first step is to delete the /odroid/cache folder.
 
 
 # Known issues
-- Sound distortion in NES with volume above 5
+An up to date list of incompatible/broken games can be found on the ODROID-GO forums.
 
 
 # Future plans
-- CMake support (esp-idf 4.0)
 - Rewind
 - Netplay (In progress)
 
 
 # Compilation
-The official esp-idf version 3.3 is required and it is recommended to apply the 
-`esp-idf-sdcard-compat.diff` patch located in the assets folder.
-
-_Note: It is possible to use esp-idf 3.2 but changes to sdkconfig will be necessary._
+The official esp-idf version 3.3 or 4.0 is required and it is recommended to apply the 
+sdcard-fix patch located in the tools folder. Both make and cmake are supported.
 
 ## Build Steps:
 1. Build all subprojects: `./build_all.sh`
@@ -101,6 +98,7 @@ _Note: It is possible to use esp-idf 3.2 but changes to sdkconfig will be necess
 - [miniz](https://github.com/richgel999/miniz) For zipped ROM and zlib API
 - [luPng](https://github.com/jansol/LuPng) For basic PNG decoding
 - PCE cover art is from Christian_Haitian.
+- mkfw tool by crashoverride
 
 
 # License
