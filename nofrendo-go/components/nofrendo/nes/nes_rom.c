@@ -192,7 +192,7 @@ rominfo_t *rom_load(const char *filename)
    rom_ptr = rom;
 
    strncpy(rominfo->filename, filename, sizeof(rominfo->filename));
-   // rominfo->checksum = crc32_le(0, rom + 16, filesize - 16);
+   rominfo->checksum = crc32_le(0, rom + 16, filesize - 16);
    // rominfo->checksum = crc32_le(0, rom, filesize);
 
    MESSAGE_INFO("rom_load: filename='%s'\n", rominfo->filename);

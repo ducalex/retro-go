@@ -115,6 +115,22 @@ void nes_togglepause(void)
    nes.pause ^= true;
 }
 
+void nes_setcompathacks(void)
+{
+   // Hack to fix many MMC3 games with status bar vertical aligment issues
+   // The issue is that the CPU and PPU aren't running in sync
+   // if (nes.region == NES_NTSC && nes.rominfo->mapper_number == 4)
+   if (nes.rominfo->checksum == 0xD8578BFD || // Zen Intergalactic
+       nes.rominfo->checksum == 0x2E6301ED || // Super Mario Bros 3
+       nes.rominfo->checksum == 0x5ED6F221 || // Kirby's Adventure
+       nes.rominfo->checksum == 0xD273B409 || // Power Blade 2
+       nes.rominfo->checksum == 0x1D2D93FF)   // GI Joe
+   {
+      nes.cycles_per_line += 2.5;
+      MESSAGE_INFO("Enabled MMC3 Timing Hack\n");
+   }
+}
+
 /* insert a cart into the NES */
 int nes_insertcart(const char *filename)
 {
@@ -132,6 +148,9 @@ int nes_insertcart(const char *filename)
 
    /* if there's VRAM, let the PPU know */
    nes.ppu->vram_present = (NULL != nes.rominfo->vram);
+
+   nes_setregion(nes.region);
+   nes_setcompathacks();
 
    nes_reset(HARD_RESET);
 
@@ -176,14 +195,13 @@ void nes_shutdown(void)
    bmp_free(framebuffers[1]);
 }
 
-/* Initialize NES CPU, hardware, etc. */
-int nes_init(region_t region, int sample_rate)
+/* Setup region-dependant timings */
+void nes_setregion(region_t region)
 {
-   memset(&nes, 0, sizeof(nes_t));
-
    // https://wiki.nesdev.com/w/index.php/Cycle_reference_chart
    if (region == NES_PAL)
    {
+      nes.region = NES_PAL;
       nes.refresh_rate = NES_REFRESH_RATE_PAL;
       nes.scanlines_per_frame = NES_SCANLINES_PAL;
       nes.overscan = 0;
@@ -192,14 +210,22 @@ int nes_init(region_t region, int sample_rate)
    }
    else
    {
+      nes.region = NES_NTSC;
       nes.refresh_rate = NES_REFRESH_RATE_NTSC;
       nes.scanlines_per_frame = NES_SCANLINES_NTSC;
       nes.overscan = 8;
       nes.cycles_per_line = 341.f * 4 / 12;
       MESSAGE_INFO("System region: NTSC\n");
    }
+}
 
-   nes.region = region;
+/* Initialize NES CPU, hardware, etc. */
+int nes_init(region_t region, int sample_rate)
+{
+   memset(&nes, 0, sizeof(nes_t));
+
+   nes_setregion(region);
+
    nes.autoframeskip = true;
    nes.poweroff = false;
    nes.pause = false;
