@@ -403,12 +403,12 @@ void app_main(void)
    if (strcasecmp(romPath + (strlen(romPath) - 4), ".zip") == 0)
    {
       printf("app_main ROM: Reading compressed file: %s\n", romPath);
-      romSize = odroid_sdcard_unzip_file_to_memory(romPath, romData, 0x200000);
+      romSize = odroid_sdcard_unzip_file(romPath, romData, 0x200000);
    }
    else
    {
       printf("app_main ROM: Reading file: %s\n", romPath);
-      romSize = odroid_sdcard_copy_file_to_memory(romPath, romData, 0x200000);
+      romSize = odroid_sdcard_read_file(romPath, romData, 0x200000);
    }
 
    printf("app_main ROM: romSize=%d\n", romSize);

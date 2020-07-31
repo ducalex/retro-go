@@ -1,110 +1,173 @@
-#include <nvs_flash.h>
 #include <string.h>
 
 #include "odroid_system.h"
 #include "odroid_settings.h"
 
-static const char* NvsNamespace = "Odroid";
-// Global
-static const char* NvsKey_RomFilePath  = "RomFilePath";
-static const char* NvsKey_StartAction  = "StartAction";
-static const char* NvsKey_Backlight    = "Backlight";
-static const char* NvsKey_AudioSink    = "AudioSink";
-static const char* NvsKey_Volume       = "Volume";
-static const char* NvsKey_StartupApp   = "StartupApp";
-static const char* NvsKey_FontSize     = "FontSize";
-// Per-app
-static const char* NvsKey_Region       = "Region";
-static const char* NvsKey_Palette      = "Palette";
-static const char* NvsKey_DispScaling  = "DispScale";
-static const char* NvsKey_DispFilter   = "DispFilter";
-static const char* NvsKey_DispRotation = "DispRotate";
-static const char* NvsKey_DispOverscan = "Overscan";
-static const char* NvsKey_SpriteLimit  = "SpriteL";
+#define USE_CONFIG_FILE 1
 
-static nvs_handle my_handle;
+// Global
+static const char* Key_RomFilePath  = "RomFilePath";
+static const char* Key_StartAction  = "StartAction";
+static const char* Key_Backlight    = "Backlight";
+static const char* Key_AudioSink    = "AudioSink";
+static const char* Key_Volume       = "Volume";
+static const char* Key_StartupApp   = "StartupApp";
+static const char* Key_FontSize     = "FontSize";
+// Per-app
+static const char* Key_Region       = "Region";
+static const char* Key_Palette      = "Palette";
+static const char* Key_DispScaling  = "DispScale";
+static const char* Key_DispFilter   = "DispFilter";
+static const char* Key_DispRotation = "DispRotate";
+static const char* Key_DispOverscan = "Overscan";
+static const char* Key_SpriteLimit  = "SpriteL";
+
+#ifdef USE_CONFIG_FILE
+    #include <cJSON.h>
+
+    static const char* config_file  = "/sd/odroid/retro-go.json";
+    static cJSON *root = NULL;
+
+    static inline void json_set(const char *key, cJSON *value)
+    {
+        cJSON *obj = cJSON_GetObjectItem(root, key);
+        if (obj == NULL)
+            cJSON_AddItemToObject(root, key, value);
+        else
+            cJSON_ReplaceItemInObject(root, key, value);
+    }
+#else
+    #include <nvs_flash.h>
+
+    static const char* NvsNamespace = "Odroid";
+    static nvs_handle my_handle = NULL;
+#endif
 
 void odroid_settings_init()
 {
+#ifdef USE_CONFIG_FILE
+    size_t size = odroid_sdcard_get_filesize(config_file);
+    void *buffer = calloc(1, size + 1);
+    if (buffer)
+    {
+        odroid_sdcard_read_file(config_file, buffer, size);
+        root = cJSON_Parse(buffer);
+        free(buffer);
+    }
+    if (!root)
+    {
+        printf("odroid_system_init: Failed to load JSON config file!\n");
+        root = cJSON_CreateObject();
+    }
+#else
     esp_err_t err = nvs_flash_init();
-    if (err != ESP_OK) {
+    if (err != ESP_OK)
+    {
         nvs_flash_erase();
-        if (nvs_flash_init() != ESP_OK) {
-            printf("odroid_system_init: Failed to init NVS");
+        if (nvs_flash_init() != ESP_OK)
+        {
+            printf("odroid_system_init: Failed to init NVS!\n");
             abort();
         }
     }
-
 	err = nvs_open(NvsNamespace, NVS_READWRITE, &my_handle);
-	assert(err == ESP_OK);
+	if (err != ESP_OK)
+    {
+        printf("odroid_system_init: Failed to open NVS!\n");
+    }
+#endif
+}
+
+void odroid_settings_commit()
+{
+#ifdef USE_CONFIG_FILE
+    char *buffer = cJSON_Print(root);
+    if (buffer)
+    {
+        odroid_sdcard_write_file(config_file, buffer, strlen(buffer) + 1);
+        free(buffer);
+    }
+#else
+    nvs_commit(my_handle);
+#endif
+}
+
+void odroid_settings_reset()
+{
+#ifdef USE_CONFIG_FILE
+    cJSON_free(root);
+    root = cJSON_CreateObject();
+    odroid_settings_commit();
+#else
+    //
+#endif
 }
 
 char* odroid_settings_string_get(const char *key, char *default_value)
 {
-    char* result = default_value;
-
+#ifdef USE_CONFIG_FILE
+    cJSON *obj = cJSON_GetObjectItem(root, key);
+    if (obj != NULL && obj->valuestring != NULL)
+    {
+        return strdup(obj->valuestring); // stdup to be compatible with old nvs impl. below
+    }
+#else
     size_t required_size;
     esp_err_t err = nvs_get_str(my_handle, key, NULL, &required_size);
     if (err == ESP_OK)
     {
-        char* value = rg_alloc(required_size, MEM_ANY);
+        char* buffer = rg_alloc(required_size, MEM_ANY);
 
-        esp_err_t err = nvs_get_str(my_handle, key, value, &required_size);
+        esp_err_t err = nvs_get_str(my_handle, key, buffer, &required_size);
         if (err == ESP_OK)
         {
-            result = value;
+            return buffer;
         }
     }
-
     if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
     {
         printf("%s: key='%s' err=%d\n", __func__, key, err);
     }
-
-    return result;
+#endif
+    return default_value;
 }
 
 void odroid_settings_string_set(const char *key, char *value)
 {
-    // To do: Check if value is same and avoid overwrite
-    esp_err_t ret = nvs_set_str(my_handle, key, value);
-    nvs_commit(my_handle);
-
-    if (ret != ESP_OK)
-    {
+#ifdef USE_CONFIG_FILE
+    json_set(key, cJSON_CreateString(value));
+#else
+    if (nvs_set_str(my_handle, key, value) != ESP_OK)
         printf("%s: key='%s' err=%d\n", __func__, key, ret);
-    }
+#endif
+    odroid_settings_commit();
 }
 
 int32_t odroid_settings_int32_get(const char *key, int32_t default_value)
 {
-    int current = default_value;
-    esp_err_t ret = ESP_OK;
-
-    ret = nvs_get_i32(my_handle, key, &current);
-
+#ifdef USE_CONFIG_FILE
+    cJSON *obj = cJSON_GetObjectItem(root, key);
+    return obj ? obj->valueint : default_value;
+#else
+    int value = default_value;
+    esp_err_t ret = nvs_get_i32(my_handle, key, &value);
     if (ret != ESP_OK && ret != ESP_ERR_NVS_NOT_FOUND)
-    {
         printf("%s: key='%s' err=%d\n", __func__, key, ret);
-    }
-
-    return current;
+    return value;
+#endif
 }
 
 void odroid_settings_int32_set(const char *key, int32_t value)
 {
-    esp_err_t ret = ESP_OK;
-
-    if (odroid_settings_int32_get(key, ~value) != value)
-    {
-        ret = nvs_set_i32(my_handle, key, value);
-        nvs_commit(my_handle);
-    }
-
-    if (ret != ESP_OK)
-    {
+    if (odroid_settings_int32_get(key, ~value) == value)
+        return; // Do nothing
+#ifdef USE_CONFIG_FILE
+    json_set(key, cJSON_CreateNumber(value));
+#else
+    if (nvs_set_i32(my_handle, key, value) != ESP_OK)
         printf("%s: key='%s' err=%d\n", __func__, key, ret);
-    }
+#endif
+    odroid_settings_commit();
 }
 
 
@@ -125,139 +188,139 @@ void odroid_settings_app_int32_set(const char *key, int32_t value)
 
 int32_t odroid_settings_FontSize_get()
 {
-    return odroid_settings_int32_get(NvsKey_FontSize, 1);
+    return odroid_settings_int32_get(Key_FontSize, 1);
 }
 void odroid_settings_FontSize_set(int32_t value)
 {
-    odroid_settings_int32_set(NvsKey_FontSize, value);
+    odroid_settings_int32_set(Key_FontSize, value);
 }
 
 
 char* odroid_settings_RomFilePath_get()
 {
-    return odroid_settings_string_get(NvsKey_RomFilePath, NULL);
+    return odroid_settings_string_get(Key_RomFilePath, NULL);
 }
 void odroid_settings_RomFilePath_set(char* value)
 {
-    odroid_settings_string_set(NvsKey_RomFilePath, value);
+    odroid_settings_string_set(Key_RomFilePath, value);
 }
 
 
 int32_t odroid_settings_Volume_get()
 {
-    return odroid_settings_int32_get(NvsKey_Volume, ODROID_AUDIO_VOLUME_DEFAULT);
+    return odroid_settings_int32_get(Key_Volume, ODROID_AUDIO_VOLUME_DEFAULT);
 }
 void odroid_settings_Volume_set(int32_t value)
 {
-    odroid_settings_int32_set(NvsKey_Volume, value);
+    odroid_settings_int32_set(Key_Volume, value);
 }
 
 
 int32_t odroid_settings_AudioSink_get()
 {
-    return odroid_settings_int32_get(NvsKey_AudioSink, ODROID_AUDIO_SINK_SPEAKER);
+    return odroid_settings_int32_get(Key_AudioSink, ODROID_AUDIO_SINK_SPEAKER);
 }
 void odroid_settings_AudioSink_set(int32_t value)
 {
-    odroid_settings_int32_set(NvsKey_AudioSink, value);
+    odroid_settings_int32_set(Key_AudioSink, value);
 }
 
 
 int32_t odroid_settings_Backlight_get()
 {
-    return odroid_settings_int32_get(NvsKey_Backlight, 2);
+    return odroid_settings_int32_get(Key_Backlight, 2);
 }
 void odroid_settings_Backlight_set(int32_t value)
 {
-    odroid_settings_int32_set(NvsKey_Backlight, value);
+    odroid_settings_int32_set(Key_Backlight, value);
 }
 
 
 ODROID_START_ACTION odroid_settings_StartAction_get()
 {
-    return odroid_settings_int32_get(NvsKey_StartAction, 0);
+    return odroid_settings_int32_get(Key_StartAction, 0);
 }
 void odroid_settings_StartAction_set(ODROID_START_ACTION value)
 {
-    odroid_settings_int32_set(NvsKey_StartAction, value);
+    odroid_settings_int32_set(Key_StartAction, value);
 }
 
 
 int32_t odroid_settings_StartupApp_get()
 {
-    return odroid_settings_int32_get(NvsKey_StartupApp, 1);
+    return odroid_settings_int32_get(Key_StartupApp, 1);
 }
 void odroid_settings_StartupApp_set(int32_t value)
 {
-    odroid_settings_int32_set(NvsKey_StartupApp, value);
+    odroid_settings_int32_set(Key_StartupApp, value);
 }
 
 
 int32_t odroid_settings_Palette_get()
 {
-    return odroid_settings_app_int32_get(NvsKey_Palette, 0);
+    return odroid_settings_app_int32_get(Key_Palette, 0);
 }
 void odroid_settings_Palette_set(int32_t value)
 {
-    odroid_settings_app_int32_set(NvsKey_Palette, value);
+    odroid_settings_app_int32_set(Key_Palette, value);
 }
 
 
 int32_t odroid_settings_SpriteLimit_get()
 {
-    return odroid_settings_app_int32_get(NvsKey_SpriteLimit, 1);
+    return odroid_settings_app_int32_get(Key_SpriteLimit, 1);
 }
 void odroid_settings_SpriteLimit_set(int32_t value)
 {
-    odroid_settings_app_int32_set(NvsKey_SpriteLimit, value);
+    odroid_settings_app_int32_set(Key_SpriteLimit, value);
 }
 
 
 ODROID_REGION odroid_settings_Region_get()
 {
-    return odroid_settings_app_int32_get(NvsKey_Region, ODROID_REGION_AUTO);
+    return odroid_settings_app_int32_get(Key_Region, ODROID_REGION_AUTO);
 }
 void odroid_settings_Region_set(ODROID_REGION value)
 {
-    odroid_settings_app_int32_set(NvsKey_Region, value);
+    odroid_settings_app_int32_set(Key_Region, value);
 }
 
 
 int32_t odroid_settings_DisplayScaling_get()
 {
-    return odroid_settings_app_int32_get(NvsKey_DispScaling, ODROID_DISPLAY_SCALING_FILL);
+    return odroid_settings_app_int32_get(Key_DispScaling, ODROID_DISPLAY_SCALING_FILL);
 }
 void odroid_settings_DisplayScaling_set(int32_t value)
 {
-    odroid_settings_app_int32_set(NvsKey_DispScaling, value);
+    odroid_settings_app_int32_set(Key_DispScaling, value);
 }
 
 
 int32_t odroid_settings_DisplayFilter_get()
 {
-    return odroid_settings_app_int32_get(NvsKey_DispFilter, ODROID_DISPLAY_FILTER_OFF);
+    return odroid_settings_app_int32_get(Key_DispFilter, ODROID_DISPLAY_FILTER_OFF);
 }
 void odroid_settings_DisplayFilter_set(int32_t value)
 {
-    odroid_settings_app_int32_set(NvsKey_DispFilter, value);
+    odroid_settings_app_int32_set(Key_DispFilter, value);
 }
 
 
 int32_t odroid_settings_DisplayRotation_get()
 {
-    return odroid_settings_app_int32_get(NvsKey_DispRotation, ODROID_DISPLAY_ROTATION_OFF);
+    return odroid_settings_app_int32_get(Key_DispRotation, ODROID_DISPLAY_ROTATION_OFF);
 }
 void odroid_settings_DisplayRotation_set(int32_t value)
 {
-    odroid_settings_app_int32_set(NvsKey_DispRotation, value);
+    odroid_settings_app_int32_set(Key_DispRotation, value);
 }
 
 
 int32_t odroid_settings_DisplayOverscan_get()
 {
-    return odroid_settings_app_int32_get(NvsKey_DispOverscan, 1);
+    return odroid_settings_app_int32_get(Key_DispOverscan, 1);
 }
 void odroid_settings_DisplayOverscan_set(int32_t value)
 {
-    odroid_settings_app_int32_set(NvsKey_DispOverscan, value);
+    odroid_settings_app_int32_set(Key_DispOverscan, value);
 }

@@ -16,7 +16,9 @@ typedef enum
     ODROID_REGION_PAL
 } ODROID_REGION;
 
-void odroid_settings_init();
+void odroid_settings_init(void);
+void odroid_settings_reset(void);
+void odroid_settings_commit(void);
 
 int32_t odroid_settings_FontSize_get();
 void odroid_settings_FontSize_set(int32_t);

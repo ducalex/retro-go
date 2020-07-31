@@ -267,12 +267,19 @@ void retro_loop()
                     {0, "Commit", GITREV, 1, NULL},
                     {0, "", "", -1, NULL},
                     {1, "Reboot to firmware", "", 1, NULL},
+                    {2, "Reset settings", "", 1, NULL},
                     {0, "Close", "", 1, NULL},
                     ODROID_DIALOG_CHOICE_LAST
                 };
-                int sel = odroid_overlay_dialog("Retro-Go", choices, 4);
+                int sel = odroid_overlay_dialog("Retro-Go", choices, -1);
                 if (sel == 1) {
                     odroid_system_switch_app(-16);
+                }
+                else if (sel == 2) {
+                    if (odroid_overlay_confirm("Reset all settings?", false) == 1) {
+                        odroid_settings_reset();
+                        esp_restart();
+                    }
                 }
                 selected_emu_last = -1;
                 redraw = true;

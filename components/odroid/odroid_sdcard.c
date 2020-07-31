@@ -17,55 +17,47 @@ static bool sdcardOpen = false;
 
 bool odroid_sdcard_open()
 {
-    esp_err_t ret;
-
     if (sdcardOpen)
     {
         printf("odroid_sdcard_open: already open.\n");
-        ret = ESP_FAIL;
+        return false;
     }
-    else
+
+    sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+    host.slot = HSPI_HOST; // HSPI_HOST;
+    //host.max_freq_khz = SDMMC_FREQ_HIGHSPEED; //10000000;
+    host.max_freq_khz = SDMMC_FREQ_DEFAULT;
+
+    sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
+    slot_config.gpio_miso = ODROID_PIN_SD_MISO;
+    slot_config.gpio_mosi = ODROID_PIN_SD_MOSI;
+    slot_config.gpio_sck  = ODROID_PIN_SD_CLK;
+    slot_config.gpio_cs = ODROID_PIN_SD_CS;
+    //slot_config.dma_channel = 2;
+
+    // Options for mounting the filesystem.
+    // If format_if_mount_failed is set to true, SD card will be partitioned and
+    // formatted in case when mounting fails.
+    esp_vfs_fat_sdmmc_mount_config_t mount_config;
+    memset(&mount_config, 0, sizeof(mount_config));
+
+    mount_config.format_if_mount_failed = false;
+    mount_config.max_files = 5;
+
+
+    // Use settings defined above to initialize SD card and mount FAT filesystem.
+    // Note: esp_vfs_fat_sdmmc_mount is an all-in-one convenience function.
+    // Please check its source code and implement error recovery when developing
+    // production applications.
+    esp_err_t ret = esp_vfs_fat_sdmmc_mount(ODROID_BASE_PATH, &host, &slot_config, &mount_config, NULL);
+    sdcardOpen = (ret == ESP_OK);
+
+    if (ret != ESP_OK)
     {
-        sdmmc_host_t host = SDSPI_HOST_DEFAULT();
-    	host.slot = HSPI_HOST; // HSPI_HOST;
-    	//host.max_freq_khz = SDMMC_FREQ_HIGHSPEED; //10000000;
-        host.max_freq_khz = SDMMC_FREQ_DEFAULT;
-
-    	sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
-    	slot_config.gpio_miso = ODROID_PIN_SD_MISO;
-    	slot_config.gpio_mosi = ODROID_PIN_SD_MOSI;
-    	slot_config.gpio_sck  = ODROID_PIN_SD_CLK;
-    	slot_config.gpio_cs = ODROID_PIN_SD_CS;
-    	//slot_config.dma_channel = 2;
-
-    	// Options for mounting the filesystem.
-    	// If format_if_mount_failed is set to true, SD card will be partitioned and
-    	// formatted in case when mounting fails.
-    	esp_vfs_fat_sdmmc_mount_config_t mount_config;
-        memset(&mount_config, 0, sizeof(mount_config));
-
-    	mount_config.format_if_mount_failed = false;
-    	mount_config.max_files = 5;
-
-
-    	// Use settings defined above to initialize SD card and mount FAT filesystem.
-    	// Note: esp_vfs_fat_sdmmc_mount is an all-in-one convenience function.
-    	// Please check its source code and implement error recovery when developing
-    	// production applications.
-    	sdmmc_card_t* card;
-    	ret = esp_vfs_fat_sdmmc_mount(ODROID_BASE_PATH, &host, &slot_config, &mount_config, &card);
-
-    	if (ret == ESP_OK)
-        {
-            sdcardOpen = true;
-        }
-        else
-        {
-            printf("odroid_sdcard_open: esp_vfs_fat_sdmmc_mount failed (%d)\n", ret);
-        }
+        printf("odroid_sdcard_open: esp_vfs_fat_sdmmc_mount failed (%d)\n", ret);
     }
 
-	return ret == ESP_OK;
+	return sdcardOpen;
 }
 
 bool odroid_sdcard_close()
@@ -81,7 +73,11 @@ bool odroid_sdcard_close()
 
 size_t odroid_sdcard_get_filesize(const char* path)
 {
-    assert(sdcardOpen == true);
+    if (!sdcardOpen)
+    {
+        printf("%s: SD Card not initialized\n", __func__);
+        return 0;
+    }
 
     odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
@@ -102,23 +98,22 @@ size_t odroid_sdcard_get_filesize(const char* path)
     return ret;
 }
 
-size_t odroid_sdcard_copy_file_to_memory(const char* path, void* buf, size_t buf_size)
+size_t odroid_sdcard_read_file(const char* path, void* buf, size_t buf_size)
 {
-    assert(sdcardOpen == true);
+    if (!sdcardOpen)
+    {
+        printf("%s: SD Card not initialized\n", __func__);
+        return 0;
+    }
 
     odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
-    size_t block_size = MIN(4096, buf_size);
-    size_t ret = 0, count = 0;
+    size_t count = 0;
     FILE* f;
 
     if ((f = fopen(path, "rb")))
     {
-        do {
-            count = fread(buf + ret, 1, block_size, f);
-            ret += count;
-        } while (count == block_size && ret < buf_size);
-
+        count = fread(buf, 1, buf_size, f);
         fclose(f);
     }
     else
@@ -126,12 +121,42 @@ size_t odroid_sdcard_copy_file_to_memory(const char* path, void* buf, size_t buf
 
     odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
 
-    return ret;
+    return count;
 }
 
-size_t odroid_sdcard_unzip_file_to_memory(const char* path, void* buf, size_t buf_size)
+size_t odroid_sdcard_write_file(const char* path, void* buf, size_t buf_size)
 {
-    assert(sdcardOpen == true);
+    if (!sdcardOpen)
+    {
+        printf("%s: SD Card not initialized\n", __func__);
+        return 0;
+    }
+
+    odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
+
+    size_t count = 0;
+    FILE* f;
+
+    if ((f = fopen(path, "wb")))
+    {
+        count = fwrite(buf, 1, buf_size, f);
+        fclose(f);
+    }
+    else
+        printf("%s: fopen failed. path='%s'\n", __func__, path);
+
+    odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
+
+    return count;
+}
+
+size_t odroid_sdcard_unzip_file(const char* path, void* buf, size_t buf_size)
+{
+    if (!sdcardOpen)
+    {
+        printf("%s: SD Card not initialized\n", __func__);
+        return 0;
+    }
 
     odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 

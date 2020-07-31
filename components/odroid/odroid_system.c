@@ -67,15 +67,15 @@ void odroid_system_init(int appId, int sampleRate)
     spiMutexOwner = -1;
     applicationId = appId;
 
+    // sdcard init must be before odroid_display_init()
+    // and odroid_settings_init() if JSON is used
+    bool sd_init = odroid_sdcard_open();
+
     odroid_settings_init();
     odroid_overlay_init();
     odroid_system_gpio_init();
     odroid_input_gamepad_init();
     odroid_audio_init(sampleRate);
-
-    //sdcard init must be before LCD init
-    bool sd_init = odroid_sdcard_open();
-
     odroid_display_init();
 
     if (esp_reset_reason() == ESP_RST_PANIC)
@@ -144,7 +144,7 @@ void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_
     printf("odroid_system_emu_init: romPath='%s'\n", romPath);
 
     // Read some of the ROM to derive a unique id
-    if (!odroid_sdcard_copy_file_to_memory(romPath, buffer, sizeof(buffer)))
+    if (!odroid_sdcard_read_file(romPath, buffer, sizeof(buffer)))
     {
         odroid_system_panic("ROM File not found!");
     }
