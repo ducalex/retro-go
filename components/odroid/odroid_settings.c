@@ -95,7 +95,7 @@ void odroid_settings_int32_set(const char *key, int32_t value)
 {
     esp_err_t ret = ESP_OK;
 
-    if (odroid_settings_int32_get(key, 0) != value)
+    if (odroid_settings_int32_get(key, ~value) != value)
     {
         ret = nvs_set_i32(my_handle, key, value);
         nvs_commit(my_handle);

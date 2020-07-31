@@ -175,8 +175,8 @@ static bool advanced_settings_cb(odroid_dialog_choice_t *option, odroid_dialog_e
       odroid_dialog_choice_t options[] = {
          {1, "Region      ", "Auto", 1, &region_update_cb},
          {2, "Overscan    ", "Auto", 1, &overscan_update_cb},
-         {4, "Auto crop   ", "Off ", 1, &autocrop_update_cb},
-         {3, "Sprite limit", "On  ", 1, &sprite_limit_cb},
+         {3, "Auto crop   ", "Off ", 1, &autocrop_update_cb},
+         {4, "Sprite limit", "On  ", 1, &sprite_limit_cb},
          ODROID_DIALOG_CHOICE_LAST
       };
       odroid_overlay_dialog("Advanced", options, 0);
