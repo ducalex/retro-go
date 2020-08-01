@@ -7,5 +7,5 @@
 # please read the ESP-IDF documents if you need to do this.
 #
 
-CFLAGS += -Ofast -Wall -Wno-comment -Wno-error=comment
-CXXFLAGS += -Ofast -Wall -Wno-comment -Wno-error=comment
+CFLAGS += -Wall -Wno-comment -Wno-error=comment
+CXXFLAGS += -Wall -Wno-comment -Wno-error=comment

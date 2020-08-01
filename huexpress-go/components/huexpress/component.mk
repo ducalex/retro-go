@@ -10,5 +10,4 @@
 COMPONENT_ADD_INCLUDEDIRS := . includes engine netplay
 COMPONENT_SRCDIRS := . engine odroid
 
-CFLAGS += -Ofast -Wno-all -Wno-error
-CPPFLAGS += -Wno-all -Wno-error
+CFLAGS += -O3 -Wno-all -Wno-error
