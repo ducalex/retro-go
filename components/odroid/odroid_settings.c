@@ -84,7 +84,7 @@ void odroid_settings_commit()
     char *buffer = cJSON_Print(root);
     if (buffer)
     {
-        odroid_sdcard_write_file(config_file, buffer, strlen(buffer) + 1);
+        odroid_sdcard_write_file(config_file, buffer, strlen(buffer));
         free(buffer);
     }
 #else
