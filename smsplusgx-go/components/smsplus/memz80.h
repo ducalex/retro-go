@@ -39,8 +39,6 @@ extern void sms_port_w(uint16 port, uint8 data);
 extern uint8 sms_port_r(uint16 port);
 extern void smsj_port_w(uint16 port, uint8 data);
 extern uint8 smsj_port_r(uint16 port);
-extern void md_port_w(uint16 port, uint8 data);
-extern uint8 md_port_r(uint16 port);
 extern void tms_port_w(uint16 port, uint8 data);
 extern uint8 tms_port_r(uint16 port);
 extern void coleco_port_w(uint16 port, uint8 data);

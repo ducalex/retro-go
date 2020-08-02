@@ -94,7 +94,6 @@ extern uint8 vdp_counter_r(int offset);
 extern uint8 vdp_read(int offset);
 extern void vdp_write(int offset, uint8 data);
 extern void gg_vdp_write(int offset, uint8 data);
-extern void md_vdp_write(int offset, uint8 data);
 extern void tms_write(int offset, int data);
 
 #endif /* _VDP_H_ */

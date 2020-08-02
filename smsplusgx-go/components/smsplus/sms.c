@@ -167,19 +167,6 @@ void sms_init(void)
       cpu_readport16 = ggms_port_r;
       data_bus_pullup = 0xFF;
       break;
-
-    case CONSOLE_GEN:
-    case CONSOLE_MD:
-      cpu_writeport16 = md_port_w;
-      cpu_readport16 = md_port_r;
-      break;
-
-    case CONSOLE_GENPBC:
-    case CONSOLE_MDPBC:
-      cpu_writeport16 = md_port_w;
-      cpu_readport16 = md_port_r;
-      data_bus_pullup = 0xFF;
-      break;
   }
 }
 

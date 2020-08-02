@@ -368,7 +368,6 @@ uint8 pio_port_r(int offset)
       /* RESET and /CONT */
       temp |= 0x30;
       if (input.system & INPUT_RESET) temp &= ~0x10;
-      if(IS_MD) temp &= ~0x20;
 
       break;
   }

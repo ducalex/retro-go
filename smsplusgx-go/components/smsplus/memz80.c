@@ -337,64 +337,6 @@ uint8 ggms_port_r(uint16 port)
 }
 
 /*--------------------------------------------------------------------------*/
-/* MegaDrive / Genesis port handlers                                        */
-/*--------------------------------------------------------------------------*/
-
-void md_port_w(uint16 port, uint8 data)
-{
-  switch(port & 0xC1)
-  {
-    case 0x00:
-      /* No memory control register */
-      return;
-
-    case 0x01:
-      pio_ctrl_w(data);
-      return;
-
-    case 0x40:
-    case 0x41:
-      psg_write(data);
-      return;
-
-    case 0x80:
-    case 0x81:
-      md_vdp_write(port, data);
-      return;
-  }
-}
-
-
-uint8 md_port_r(uint16 port)
-{
-  switch(port & 0xC0)
-  {
-    case 0x00:
-      return z80_read_unmapped();
-
-    case 0x40:
-      return vdp_counter_r(port);
-
-    case 0x80:
-      return vdp_read(port);
-
-    case 0xC0:
-      switch(port)
-      {
-        case 0xC0:
-        case 0xC1:
-        case 0xDC:
-        case 0xDD:
-          return pio_port_r(port);
-      }
-      return z80_read_unmapped();
-  }
-
-  /* Just to please the compiler */
-  return -1;
-}
-
-/*--------------------------------------------------------------------------*/
 /* SG1000,SC3000,SF7000 port handlers                                       */
 /*--------------------------------------------------------------------------*/
 

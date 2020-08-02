@@ -69,22 +69,15 @@ enum {
 
   CONSOLE_GG      = 0x40,
   CONSOLE_GGMS    = 0x41,
-
-  CONSOLE_MD      = 0x80,
-  CONSOLE_MDPBC   = 0x81,
-  CONSOLE_GEN     = 0x82,
-  CONSOLE_GENPBC  = 0x83
 };
 
 #define HWTYPE_TMS  CONSOLE_COLECO
 #define HWTYPE_SMS  CONSOLE_SMS
 #define HWTYPE_GG   CONSOLE_GG
-#define HWTYPE_MD   CONSOLE_MD
 
 #define IS_TMS    (sms.console & HWTYPE_TMS)
 #define IS_SMS    (sms.console & HWTYPE_SMS)
 #define IS_GG     (sms.console & HWTYPE_GG)
-#define IS_MD     (sms.console & HWTYPE_MD)
 
 enum {
   TERRITORY_DOMESTIC  = 0,
