@@ -151,8 +151,7 @@ extern sms_t sms;
 extern bios_t bios;
 extern slot_t slot;
 extern t_coleco coleco;
-extern uint8 dummy_write[0x400];
-extern uint8 dummy_read[0x400];
+extern uint8 dummy_memory[0x400];
 
 /* Function prototypes */
 extern void sms_init(void);

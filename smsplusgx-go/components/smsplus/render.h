@@ -33,12 +33,8 @@
 
 extern void (*render_bg)(int line);
 extern void (*render_obj)(int line);
+extern const uint8 *vc_table[3];
 extern uint8 *linebuf;
-extern uint8 sms_cram_expand_table[4];
-extern uint8 gg_cram_expand_table[16];
-//extern uint8 bg_name_dirty[0x200];
-//extern uint16 bg_name_list[0x200];
-//extern uint16 bg_list_index;
 
 extern void render_shutdown(void);
 extern void render_init(void);

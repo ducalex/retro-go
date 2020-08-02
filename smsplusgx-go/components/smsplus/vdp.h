@@ -84,16 +84,23 @@ typedef struct
 /* Global data */
 extern vdp_t vdp;
 extern uint8 hc_256[228];
+extern const uint8 *vc_table[3];
 
 /* Function prototypes */
 extern void vdp_init(void);
 extern void vdp_shutdown(void);
 extern void vdp_reset(void);
-extern void viewport_check(void);
-extern uint8 vdp_counter_r(int offset);
 extern uint8 vdp_read(int offset);
 extern void vdp_write(int offset, uint8 data);
 extern void gg_vdp_write(int offset, uint8 data);
 extern void tms_write(int offset, int data);
+
+static inline uint8 vdp_counter_r(int offset)
+{
+    if (offset & 1)  /* V Counter */
+      return sms.hlatch;
+    else /* H Counter -- return previously latched values or ZERO */
+      return vc_table[vdp.extended][z80_get_elapsed_cycles() / CYCLES_PER_LINE];
+}
 
 #endif /* _VDP_H_ */

@@ -34,8 +34,7 @@ slot_t slot;
 /* Colecovision support */
 t_coleco coleco;
 
-uint8 dummy_write[0x400];
-uint8 dummy_read[0x400];
+uint8 dummy_memory[0x400];
 
 static void writemem_mapper_none(int offset, int data)
 {
@@ -185,9 +184,8 @@ void sms_reset(void)
   z80_set_irq_line (0, CLEAR_LINE);
 
   /* clear SMS context */
-  memset(dummy_write,data_bus_pullup, sizeof(dummy_write));
-  memset(dummy_read,data_bus_pullup, sizeof(dummy_read));
-  memset(sms.wram,0, sizeof(sms.wram));
+  memset(dummy_memory, data_bus_pullup, sizeof(dummy_memory));
+  memset(sms.wram, 0, sizeof(sms.wram));
   sms.paused    = 0x00;
   sms.save      = 0x00;
   sms.fm_detect = 0x00;
@@ -210,14 +208,14 @@ void sms_reset(void)
       for(i = 0x00; i < 0x08; i++)
       {
         cpu_readmap[i]  = &coleco.rom[i << 10];
-        cpu_writemap[i] = dummy_write;
+        cpu_writemap[i] = dummy_memory;
       }
 
       /* $2000-$5FFF mapped to expansion */
       for(i = 0x08; i < 0x18; i++)
       {
-        cpu_readmap[i]  = dummy_read;
-        cpu_writemap[i] = dummy_write;
+        cpu_readmap[i]  = dummy_memory;
+        cpu_writemap[i] = dummy_memory;
       }
 
       /* $6000-$7FFF mapped to RAM (1K mirrored) */
@@ -231,7 +229,7 @@ void sms_reset(void)
       for(i = 0x20; i < 0x40; i++)
       {
         cpu_readmap[i]  = &cart.rom[(i&0x1F) << 10];
-        cpu_writemap[i] = dummy_write;
+        cpu_writemap[i] = dummy_memory;
       }
 
       /* reset I/O */
@@ -250,7 +248,7 @@ void sms_reset(void)
       for(i = 0x00; i < 0x20; i++)
       {
         cpu_readmap[i]  = &cart.rom[i << 10];
-        cpu_writemap[i] = dummy_write;
+        cpu_writemap[i] = dummy_memory;
       }
 
       /* $8000-$BFFF mapped to external RAM (lower 16K) */
@@ -301,7 +299,7 @@ void sms_reset(void)
       for(i = 0x00; i <= 0x2F; i++)
       {
         cpu_readmap[i]  = &slot.rom[(i & 0x1F) << 10];
-        cpu_writemap[i] = dummy_write;
+        cpu_writemap[i] = dummy_memory;
       }
 
       /* enable internal RAM at $C000-$FFFF (8k mirrored) */
@@ -447,7 +445,7 @@ void mapper_16k_w(int address, int data)
         for(i = 0x20; i <= 0x2F; i++)
         {
           cpu_readmap[i] = &slot.rom[(page << 14) | ((i & 0x0F) << 10)];
-          cpu_writemap[i] = dummy_write;
+          cpu_writemap[i] = dummy_memory;
         }
       }
 
@@ -511,7 +509,7 @@ void mapper_16k_w(int address, int data)
           for(i = 0x28; i <= 0x2F; i++)
           {
             cpu_readmap[i] = &slot.rom[((slot.fcr[3] % slot.pages) << 14) | ((i & 0x0F) << 10)];
-            cpu_writemap[i] = dummy_write;
+            cpu_writemap[i] = dummy_memory;
           }
         }
       }

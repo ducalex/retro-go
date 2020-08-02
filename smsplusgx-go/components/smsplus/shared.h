@@ -44,7 +44,6 @@ typedef signed long int int32;
 #include "fmintf.h"
 #include "sound.h"
 #include "system.h"
-#include "error.h"
 #include "loadrom.h"
 // #include "config.h"
 #include "state.h"

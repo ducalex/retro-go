@@ -108,8 +108,8 @@ void memctrl_w(uint8 data)
       uint8 i;
       for(i = 0x00; i <= 0x2F; i++)
       {
-        cpu_readmap[i]  = dummy_read;
-        cpu_writemap[i] = dummy_write;
+        cpu_readmap[i]  = dummy_memory;
+        cpu_writemap[i] = dummy_memory;
       }
     }
   }

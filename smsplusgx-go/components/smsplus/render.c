@@ -23,14 +23,7 @@
  ******************************************************************************/
 
 #include "shared.h"
-
-//#include "sms_ntsc.h"
-
-/*** NTSC Filters ***/
-//extern sms_ntsc_t sms_ntsc;
-
-/*** Vertical Counter Tables ***/
-extern const uint8 * vc_table[2][3];
+#include "hvc.h"
 
 struct
 {
@@ -48,13 +41,8 @@ void (*render_obj)(int line) = NULL;
 uint8 *linebuf;
 
 /* Pixel 8-bit color tables */
-uint8 sms_cram_expand_table[4];
-uint8 gg_cram_expand_table[16];
-
-/* Dirty pattern info */
-//uint8 bg_name_dirty[0x200];     /* 1= This pattern is dirty */
-//uint16 bg_name_list[0x200];     /* List of modified pattern indices */
-//uint16 bg_list_index;           /* # of modified patterns in list */
+static uint8 sms_cram_expand_table[4];
+static uint8 gg_cram_expand_table[16];
 
 /* Internal buffer for drawing non 8-bit displays */
 static uint8 internal_buffer[0x200];
@@ -62,27 +50,15 @@ static uint8 internal_buffer[0x200];
 /* Precalculated pixel table */
 static uint16 pixel[PALETTE_SIZE];
 
-//static uint8* bg_pattern_cache = ESP32_PSRAM + 0x300000; //[0x20000];/* Cached and flipped patterns */
-
+/* Region-specific drawing area */
+static int active_scanlines;
+static int active_border[3];
+const uint8 *vc_table[3];
 
 static uint8 object_index_count;
 
-/* Top Border area height */
-static DRAM_ATTR const uint8 active_border[2][3] =
-{
-  {24, 8,  0},  /* NTSC VDP */
-  {48, 32, 24}  /*  PAL VDP */
-};
-
-/* Active Scan Area height */
-static DRAM_ATTR  const uint16 active_range[2] =
-{
-  243, /* NTSC VDP */
-  294  /*  PAL VDP */
-};
-
 /* CRAM palette in TMS compatibility mode */
-static DRAM_ATTR const uint8 tms_crom[] =
+static const uint8 tms_crom[] =
 {
   0x00, 0x00, 0x08, 0x0C,
   0x10, 0x30, 0x01, 0x3C,
@@ -91,7 +67,7 @@ static DRAM_ATTR const uint8 tms_crom[] =
 };
 
 /* original TMS palette for SG-1000 & Colecovision */
-static DRAM_ATTR  const uint8 tms_palette[16*3][3] =
+static const uint8 tms_palette[16*3][3] =
 {
   /* from Sean Young (http://www.smspower.org/dev/docs/tms9918a.txt) */
   {  0,  0,  0},
@@ -149,7 +125,7 @@ static DRAM_ATTR  const uint8 tms_palette[16*3][3] =
 };
 
 /* Attribute expansion table */
-static DRAM_ATTR const uint32 atex[4] =
+static uint32 atex[4] =
 {
   0x00000000,
   0x10101010,
@@ -163,18 +139,16 @@ static const uint8 *lut; // )[0x10000];
 /* Bitplane to packed pixel LUT */
 static const uint32 *bp_lut; // 0x10000
 
-static void parse_satb(int line);
-static void update_bg_pattern_cache(void);
-static inline void remap_8_to_16(int line);
+static inline void parse_satb(int line);
 
 
 
 /* Macros to access memory 32-bits at a time (from MAME's drawgfx.c) */
-#define ALIGN_DWORD 0
+// ESP32 supports unaligned access
+// #define ALIGN_DWORD 0
 
 #ifdef ALIGN_DWORD
-
-static __inline__ uint32 read_dword(void *address)
+static inline uint32 read_dword(void *address)
 {
   if ((uint32)address & 3)
   {
@@ -194,8 +168,7 @@ static __inline__ uint32 read_dword(void *address)
     return *(uint32 *)address;
 }
 
-
-static __inline__ void write_dword(void *address, uint32 data)
+static inline void write_dword(void *address, uint32 data)
 {
   if ((uint32)address & 3)
   {
@@ -354,12 +327,6 @@ void render_reset(void)
     palette_sync(i);
   }
 
-  /* Invalidate pattern cache */
-  //memset(bg_name_dirty, 0, sizeof(bg_name_dirty));
-  //memset(bg_name_list, 0, sizeof(bg_name_list));
-  //bg_list_index = 0;
-  //memset(bg_pattern_cache, 0, 0x20000 /*sizeof(bg_pattern_cache)*/);
-
   /* Pick default render routine */
   if (vdp.reg[0] & 4)
   {
@@ -372,6 +339,27 @@ void render_reset(void)
     render_bg = render_bg_tms;
     render_obj = render_obj_tms;
     //printf("%s: render_bg = render_bg_tms, render_obj = render_obj_tms\n", __func__);
+  }
+
+  if (sms.display == 0) // NTSC
+  {
+    active_scanlines = 243;
+    active_border[0] = 24;
+    active_border[1] = 8;
+    active_border[2] = 0;
+    vc_table[0] = vc_ntsc_192;
+    vc_table[1] = vc_ntsc_224;
+    vc_table[2] = vc_ntsc_240;
+  }
+  else // PAL
+  {
+    active_scanlines = 293;
+    active_border[0] = 48;
+    active_border[1] = 32;
+    active_border[2] = 24;
+    vc_table[0] = vc_pal_192;
+    vc_table[1] = vc_pal_224;
+    vc_table[2] = vc_pal_240;
   }
 }
 
@@ -394,9 +382,9 @@ IRAM_ATTR void render_line(int line)
   prev_line = line;
 
   /* Ensure we're within the VDP active area (incl. overscan) */
-  int top_border = active_border[sms.display][vdp.extended];
+  int top_border = active_border[vdp.extended];
   int vline = (line + top_border) % vdp.lpf;
-  if (vline >= active_range[sms.display]) return;
+  if (vline >= active_scanlines) return;
 
   /* adjust for Game Gear screen */
   top_border = top_border + (vdp.height - bitmap.viewport.h) / 2;
@@ -437,9 +425,6 @@ IRAM_ATTR void render_line(int line)
       if (overscan)
         linebuf += 14;
 
-      /* Update pattern cache */
-      update_bg_pattern_cache();
-
       /* Draw background */
       render_bg(line);
 
@@ -447,7 +432,7 @@ IRAM_ATTR void render_line(int line)
       render_obj(line);
 
       /* Blank leftmost column of display */
-      if((vdp.reg[0] & 0x20) && (IS_SMS || IS_MD))
+      if((vdp.reg[0] & 0x20) && IS_SMS)
         memset(linebuf, BACKDROP_COLOR, 8);
 
       /* Horizontal borders */
@@ -471,6 +456,7 @@ IRAM_ATTR void render_line(int line)
   else
     parse_line(line);
 
+#if 0
   /* LightGun mark */
   if (sms.device[0] == DEVICE_LIGHTGUN)
   {
@@ -489,48 +475,38 @@ IRAM_ATTR void render_line(int line)
       }
     }
   }
+#endif
 
   /* Only draw lines within the video output range ! */
-  if (view)
+  if (view && !skip_render)
   {
     /* adjust output line */
     if (!overscan)
       vline -= top_border;
 
-    if (!skip_render) {
-    //if (option.ntsc)
-    //  sms_ntsc_blit(&sms_ntsc, ( SMS_NTSC_IN_T const * )pixel, internal_buffer, bitmap.viewport.w + 2*bitmap.viewport.x, vline);
-    //else
-      remap_8_to_16(vline);
-    }
+    memcpy(
+      bitmap.data + (vline * bitmap.pitch),
+      internal_buffer,
+      bitmap.viewport.w + 2*bitmap.viewport.x
+    );
   }
 }
 
-uint8 data[8];
-static IRAM_ATTR void* tile_get(short attr, short line)
+static uint8 data[8];
+
+__attribute__((optimize("unroll-loops")))
+static inline void* tile_get(short attr, short line)
 {
     // ---p cvhn nnnn nnnn
     const uint16 name = attr & 0x1ff;
 
-    // uint16 y = line & 7;
-    // if (attr & 0x400)
-    // {
-    //     y = (y ^ 7);
-    // }
-
     const uint16 y = (attr & 0x400) ? (line ^ 7) : line;
 
     const uint16* ptr = &vdp.vram[(name << 5) | (y << 2) | (0)];
-    const uint16 bp01 = *ptr++;
-    const uint16 bp23 = *ptr;
-    const uint32 temp = (bp_lut[bp01] >> 2) | (bp_lut[bp23]);
+    const uint32 temp = (bp_lut[*ptr] >> 2) | (bp_lut[*(ptr+1)]);
 
     for(short x = 0; x < 8; x++)
-    {
-        const uint8 c = (temp >> (x << 2)) & 0x0F;
-        const short index = (attr & 0x200) ? (x ^ 7) : x;
-        data[index] = (c);
-    }
+        data[(attr & 0x200) ? (x ^ 7) : x] = (temp >> (x << 2)) & 0x0F;
 
     return data;
 }
@@ -584,47 +560,13 @@ IRAM_ATTR void render_bg_sms(int line)
     /* Expand priority and palette bits */
     atex_mask = atex[(attr >> 11) & 3];
 
-#if 0
-    /* Point to a line of pattern data in cache */
-    cache_ptr = (uint32 *)&bg_pattern_cache[((attr & 0x7FF) << 6) | (v_row)];
-#else
-    // ---p cvhn nnnn nnnn
-
-    // uint8 data[8];
-    // uint16 name = attr & 0x1ff;
-    //
-    // uint16 y = line & 7;
-    // if (attr & 0x400)
-    // {
-    //     y = (y ^ 7);
-    // }
-    //
-    // uint16 bp01 = *(uint16 *)&vdp.vram[(name << 5) | (y << 2) | (0)];
-    // uint16 bp23 = *(uint16 *)&vdp.vram[(name << 5) | (y << 2) | (2)];
-    // uint32 temp = (bp_lut[bp01] >> 2) | (bp_lut[bp23]);
-    //
-    // uint8 rot = (attr >> (1 + 8)) & 0x03;
-    // for(short x = 0; x < 8; x++)
-    // {
-    //     uint8 c = (temp >> (x << 2)) & 0x0F;
-    //     short index = (attr & 0x2000) ? (x ^ 7) : x;
-    //     data[index] = (c);
-    //
-    //   //dst[0x08000 | (y << 3) | (x ^ 7)] = (c);
-    //   //dst[0x10000 | ((y ^ 7) << 3) | (x)] = (c);
-    //   //dst[0x18000 | ((y ^ 7) << 3) | (x ^ 7)] = (c);
-    // }
-
     cache_ptr = tile_get(attr, v_row >> 3);
 
-#endif
     /* Copy the left half, adding the attribute bits in */
     write_dword( &linebuf_ptr[(column << 1)] , read_dword( &cache_ptr[0] ) | (atex_mask));
 
     /* Copy the right half, adding the attribute bits in */
     write_dword( &linebuf_ptr[(column << 1) | (1)], read_dword( &cache_ptr[1] ) | (atex_mask));
-
-
   }
 
   /* Draw last column (clipped) */
@@ -644,14 +586,8 @@ IRAM_ATTR void render_bg_sms(int line)
     uint8* ptr = (uint8*)tile_get(attr, v_row >> 3);
     for(x = 0; x < shift; x++)
     {
-#if 0
-      c = bg_pattern_cache[((attr & 0x7FF) << 6) | (v_row) | (x)];
+      c = *(ptr + x);
       p[x] = ((c) | (a));
-#else
-     c = *(ptr + x);
-     p[x] = ((c) | (a));
-#endif
-
     }
   }
 }
@@ -710,12 +646,7 @@ IRAM_ATTR void render_obj_sms(int line)
     /* Draw double size sprite */
     if(vdp.reg[1] & 0x01)
     {
-#if 0
-      /* Retrieve tile data from cached nametable */
-      cache_ptr = (uint8 *)&bg_pattern_cache[(n << 6) | ((yp >> 1) << 3)];
-#else
       cache_ptr = tile_get(n, yp >> 1);
-#endif
 
       /* Draw sprite line (at 1/2 dot rate) */
       for(x = start; x < end; x+=2)
@@ -744,12 +675,7 @@ IRAM_ATTR void render_obj_sms(int line)
     }
     else /* Regular size sprite (8x8 / 8x16) */
     {
-#if 0
-      /* Retrieve tile data from cached nametable */
-      cache_ptr = (uint8 *)&bg_pattern_cache[(n << 6) | (yp << 3)];
-#else
       cache_ptr = tile_get(n, yp);
-#endif
 
       /* Draw sprite line */
       for(x = start; x < end; x++)
@@ -845,7 +771,7 @@ void palette_sync(int index)
 }
 
 
-static IRAM_ATTR void parse_satb(int line)
+static inline void parse_satb(int line)
 {
   /* Pointer to sprite attribute table */
   uint8 *st = (uint8 *)&vdp.vram[vdp.satb];
@@ -854,7 +780,7 @@ static IRAM_ATTR void parse_satb(int line)
   int i = 0;
 
   /* Line counter value */
-  int vc = vc_table[sms.display][vdp.extended][line];
+  int vc = vc_table[vdp.extended][line];
 
   /* Sprite height (8x8 by default) */
   int yp;
@@ -910,81 +836,6 @@ static IRAM_ATTR void parse_satb(int line)
       ++object_index_count;
     }
   }
-}
-
-static IRAM_ATTR void update_bg_pattern_cache(void)
-{
-#if 1
-    return;
-#else
-  int i;
-  uint8 x, y;
-  uint16 name;
-
-  if(!bg_list_index) return;
-
-  for(i = 0; i < bg_list_index; i++)
-  {
-    name = bg_name_list[i];
-    bg_name_list[i] = 0;
-
-    for(y = 0; y < 8; y++)
-    {
-      if(bg_name_dirty[name] & (1 << y))
-      {
-        uint8 *dst = &bg_pattern_cache[name << 6];
-
-        uint16 bp01 = *(uint16 *)&vdp.vram[(name << 5) | (y << 2) | (0)];
-        uint16 bp23 = *(uint16 *)&vdp.vram[(name << 5) | (y << 2) | (2)];
-        uint32 temp = (bp_lut[bp01] >> 2) | (bp_lut[bp23]);
-
-        for(x = 0; x < 8; x++)
-        {
-          uint8 c = (temp >> (x << 2)) & 0x0F;
-          dst[0x00000 | (y << 3) | (x)] = (c);
-          dst[0x08000 | (y << 3) | (x ^ 7)] = (c);
-          dst[0x10000 | ((y ^ 7) << 3) | (x)] = (c);
-          dst[0x18000 | ((y ^ 7) << 3) | (x ^ 7)] = (c);
-        }
-      }
-    }
-    bg_name_dirty[name] = 0;
-  }
-  bg_list_index = 0;
-#endif
-}
-
-static inline void remap_8_to_16(int line)
-{
-    //printf("%s: line=%d\n", __func__, line);
-
-  //int i;
-  //uint16 *p = (uint16 *)&bitmap.data[(line * bitmap.pitch)];
-#if 0
-  //int width = bitmap.width;// + 2*bitmap.viewport.x;
-  int width = bitmap.viewport.w + 2*bitmap.viewport.x;
-
-  for(i = 0; i < width; i++)
-  {
-    p[i] = pixel[ internal_buffer[i] & PIXEL_MASK ];
-  }
- #else
-    // //uint16* dst = p + bitmap.viewport.x;
-    // uint8* src = internal_buffer + bitmap.viewport.x;
-    //  for(int x = 0; x < bitmap.viewport.w; ++x)
-    //  {
-    //    *(p++) = pixel[ *(src++) & PIXEL_MASK ];
-    //  }
-
-    uint8* dst = (uint8*)bitmap.data + (line * bitmap.pitch); // + bitmap.viewport.x;
-    // uint8* src = internal_buffer + bitmap.viewport.x;
-    // for(int x = 0; x < bitmap.viewport.w; ++x)
-    // {
-    //     *(dst++) = *(src++) & PIXEL_MASK;
-    // }
-    int width = bitmap.viewport.w + 2*bitmap.viewport.x;
-    memcpy(dst, internal_buffer, width);
- #endif
 }
 
 void render_copy_palette(uint16* palette)

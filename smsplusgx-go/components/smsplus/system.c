@@ -146,7 +146,6 @@ void system_reset_config()
 
 void system_init2(void)
 {
-  error_init();
   sms_init();
   pio_init();
   vdp_init();
@@ -161,7 +160,6 @@ void system_shutdown(void)
   vdp_shutdown();
   render_shutdown();
   sound_shutdown();
-  error_shutdown();
 }
 
 void system_reset(void)
