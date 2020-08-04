@@ -30,16 +30,17 @@
 /* mapper 7: AOROM */
 static void map7_write(uint32 address, uint8 value)
 {
-   int mirror = (value >> 4) & 1;
-   int bank = (value & 0x7);
+   mmc_bankrom(32, 0x8000, value & 0xF);
 
-   mmc_bankrom(32, 0x8000, bank);
-   ppu_mirror(mirror, mirror, mirror, mirror);
+   if (value & 0x10)
+      ppu_mirror(1, 1, 1, 1);
+   else
+      ppu_mirror(0, 0, 0, 0);
 }
 
 static void map7_init(void)
 {
-   mmc_bankrom(32, 0x8000, 0);
+   map7_write(0x8000, 0);
 }
 
 static mem_write_handler_t map7_memwrite[] =

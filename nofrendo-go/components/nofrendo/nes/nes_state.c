@@ -125,10 +125,10 @@ int state_save(char* fn)
       buffer[i] = machine->ppu->palette[i] & 0x3F;
    }
 
-   buffer[32] = (machine->ppu->page[8] + 0x2000 - machine->ppu->nametab) / 0x400;
-   buffer[33] = (machine->ppu->page[9] + 0x2400 - machine->ppu->nametab) / 0x400;
-   buffer[34] = (machine->ppu->page[10] + 0x2800 - machine->ppu->nametab) / 0x400;
-   buffer[35] = (machine->ppu->page[11] + 0x2C00 - machine->ppu->nametab) / 0x400;
+   buffer[32] = machine->ppu->nt1;
+   buffer[33] = machine->ppu->nt2;
+   buffer[34] = machine->ppu->nt3;
+   buffer[35] = machine->ppu->nt4;
    temp = swap16(machine->ppu->vaddr);
    buffer[36] = ((uint8*)&temp)[0];
    buffer[37] = ((uint8*)&temp)[1];
@@ -327,14 +327,6 @@ int state_load(char* fn)
 
          _fread(buffer, 8);
 
-         for (i = 0; i < 4; i++)
-         {
-            machine->ppu->page[i + 8] = machine->ppu->page[i + 12] =
-               machine->ppu->nametab + (buffer[i] * 0x400) - (0x2000 + (i * 0x400));
-         }
-
-         ppu_mirrorhipages();
-
          machine->ppu->vaddr = swap16(*((uint16*)&buffer[0x4]));
          machine->ppu->oam_addr = buffer[0x6];
          machine->ppu->tile_xofs = buffer[0x7];
@@ -343,6 +335,7 @@ int state_load(char* fn)
          machine->ppu->flipflop = 0;
          machine->ppu->strikeflag = false;
 
+         ppu_mirror(buffer[0], buffer[1], buffer[2], buffer[3]);
          ppu_write(PPU_CTRL0, machine->ppu->ctrl0);
          ppu_write(PPU_CTRL1, machine->ppu->ctrl1);
          ppu_write(PPU_VADDR, machine->ppu->vaddr >> 8);

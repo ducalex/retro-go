@@ -83,27 +83,13 @@ void ppu_setcontext(ppu_t *src_ppu)
 {
    ASSERT(src_ppu);
    ppu = *src_ppu;
-
-   // Translate the source name table addresses to local pointers
-   ppu.page[8]  = ppu.nametab + ((src_ppu->page[8] - src_ppu->nametab) & ~0x3FF);
-   ppu.page[9]  = ppu.nametab + ((src_ppu->page[9] - src_ppu->nametab) & ~0x3FF);
-   ppu.page[10] = ppu.nametab + ((src_ppu->page[10] - src_ppu->nametab) & ~0x3FF);
-   ppu.page[11] = ppu.nametab + ((src_ppu->page[11] - src_ppu->nametab) & ~0x3FF);
-
-   // Setup $3000-$3EFF -> $2000-2EFF mirror
-   ppu_mirrorhipages();
+   ppu_mirror(ppu.nt1, ppu.nt2, ppu.nt3, ppu.nt4);
 }
 
 void ppu_getcontext(ppu_t *dest_ppu)
 {
    ASSERT(dest_ppu);
    *dest_ppu = ppu;
-
-   // Translate the local pointers to generic nametable addresses
-   dest_ppu->page[8]  = dest_ppu->nametab + ((ppu.page[8] - ppu.nametab) & ~0x3FF);
-   dest_ppu->page[9]  = dest_ppu->nametab + ((ppu.page[9] - ppu.nametab) & ~0x3FF);
-   dest_ppu->page[10] = dest_ppu->nametab + ((ppu.page[10] - ppu.nametab) & ~0x3FF);
-   dest_ppu->page[11] = dest_ppu->nametab + ((ppu.page[11] - ppu.nametab) & ~0x3FF);
 }
 
 void ppu_setpage(int size, int page_num, uint8 *location)
@@ -135,31 +121,31 @@ uint8 *ppu_getpage(int page)
 
 uint8 *ppu_getnametable(int table)
 {
-   return ppu.nametab + (0x400 * (table % 4));
+   return ppu.nametab + (0x400 * (table & 3));
 }
 
-/* make sure $3000-$3F00 mirrors $2000-$2F00 */
-void ppu_mirrorhipages(void)
+void ppu_mirror(int nt1, int nt2, int nt3, int nt4)
 {
+   ppu.nt1 = nt1 & 0x3; ppu.nt2 = nt2 & 0x3;
+   ppu.nt3 = nt3 & 0x3; ppu.nt4 = nt4 & 0x3;
+
+   ppu.page[8]  = ppu.nametab + (ppu.nt1 * 0x400) - 0x2000;
+   ppu.page[9]  = ppu.nametab + (ppu.nt2 * 0x400) - 0x2400;
+   ppu.page[10] = ppu.nametab + (ppu.nt3 * 0x400) - 0x2800;
+   ppu.page[11] = ppu.nametab + (ppu.nt4 * 0x400) - 0x2C00;
+
+   /* make sure $3000-$3F00 mirrors $2000-$2F00 */
    ppu.page[12] = ppu.page[8] - 0x1000;
    ppu.page[13] = ppu.page[9] - 0x1000;
    ppu.page[14] = ppu.page[10] - 0x1000;
    ppu.page[15] = ppu.page[11] - 0x1000;
 }
 
-void ppu_mirror(int nt1, int nt2, int nt3, int nt4)
-{
-   ppu.page[8]  = ppu.nametab + ((nt1 & 0xFF) << 10) - 0x2000;
-   ppu.page[9]  = ppu.nametab + ((nt2 & 0xFF) << 10) - 0x2400;
-   ppu.page[10] = ppu.nametab + ((nt3 & 0xFF) << 10) - 0x2800;
-   ppu.page[11] = ppu.nametab + ((nt4 & 0xFF) << 10) - 0x2C00;
-   ppu_mirrorhipages();
-}
-
 /* reset state of ppu */
 void ppu_reset()
 {
-   memset(ppu.oam, 0, 256);
+   memset(ppu.nametab, 0, sizeof(ppu.nametab));
+   memset(ppu.oam, 0, sizeof(ppu.oam));
 
    ppu.ctrl0 = 0;
    ppu.ctrl1 = PPU_CTRL1F_OBJON | PPU_CTRL1F_BGON;
@@ -291,7 +277,7 @@ IRAM_ATTR void ppu_write(uint32 address, uint8 value)
       ppu.bg_base = (value & PPU_CTRL0F_BGADDR) ? 0x1000 : 0;
       ppu.obj_base = (value & PPU_CTRL0F_OBJADDR) ? 0x1000 : 0;
       ppu.vaddr_inc = (value & PPU_CTRL0F_ADDRINC) ? 32 : 1;
-      ppu.base_nametab = value & PPU_CTRL0F_NAMETAB;
+      ppu.nametab_base = (value & PPU_CTRL0F_NAMETAB);
 
       /* Mask out bits 10 & 11 in the ppu latch */
       ppu.vaddr_latch &= ~0x0C00;

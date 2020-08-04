@@ -94,7 +94,7 @@ typedef struct
 typedef struct ppu_s
 {
    /* The NES has only 2 nametables, but we allocate 4 for mappers to use */
-   uint8 nametab[0x1000];
+   uint8 nametab[0x400 * 4];
 
    /* Sprite memory */
    uint8 oam[256];
@@ -109,9 +109,10 @@ typedef struct ppu_s
    rgb_t curpal[256];
 
    /* Hardware registers */
-   uint8 ctrl0, ctrl1, stat, oam_addr, base_nametab;
+   uint8 ctrl0, ctrl1, stat, oam_addr, nametab_base;
    uint8 latch, vdata_latch, tile_xofs, flipflop;
    int32 vaddr, vaddr_latch, vaddr_inc;
+   uint8 nt1, nt2, nt3, nt4;
 
    int32 obj_height, obj_base, bg_base;
    bool left_bg_on, left_obj_on;
@@ -144,7 +145,6 @@ typedef struct
 } palette_t;
 
 /* Mirroring / Paging */
-extern void ppu_mirrorhipages(void);
 extern void ppu_mirror(int nt1, int nt2, int nt3, int nt4);
 extern void ppu_setpage(int size, int page_num, uint8 *location);
 extern uint8 *ppu_getpage(int page);

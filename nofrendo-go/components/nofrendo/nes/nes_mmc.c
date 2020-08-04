@@ -171,8 +171,6 @@ static void mmc_setpages(void)
       ppu_mirror(0, 1, 0, 1);
    else
       ppu_mirror(0, 0, 1, 1);
-
-   // ppu_mirrorhipages();
 }
 
 /* Mapper initialization routine */

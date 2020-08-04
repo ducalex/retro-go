@@ -90,11 +90,6 @@ struct mapper5Data
    unsigned char dummy; /* needed for some compilers; remove if any members are added */
 };
 
-INLINE uint8 *get_nametable(int n)
-{
-   return nes->ppu->nametab + (0x400 * n);
-}
-
 static void prg_setbank(int size, uint32 address, int bank)
 {
    bool rom = (bank & 0x80);
@@ -190,8 +185,8 @@ INLINE void nametable_update(uint8 value)
 
 INLINE void nametable_fill()
 {
-   memset(get_nametable(3), fill_mode.tile, 32 * 30); // 32 tiles per row, 30 rows
-   memset(get_nametable(3) + 32 * 30, (fill_mode.color | fill_mode.color << 2 | fill_mode.color << 4 | fill_mode.color << 6), 64);
+   memset(ppu_getnametable(3), fill_mode.tile, 32 * 30); // 32 tiles per row, 30 rows
+   memset(ppu_getnametable(3) + 32 * 30, (fill_mode.color | fill_mode.color << 2 | fill_mode.color << 4 | fill_mode.color << 6), 64);
 }
 
 static void map5_hblank(int _scanline)
@@ -486,7 +481,7 @@ static void map5_init(void)
    // nes->rominfo->sram = malloc(0x10000);
    // mmc_bankwram(8, 0x6000, 0);
 
-   exram.data = get_nametable(2);
+   exram.data = ppu_getnametable(2);
 
    irq.scanline = irq.enabled = 0;
    irq.status = 0;
