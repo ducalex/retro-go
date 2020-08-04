@@ -53,41 +53,29 @@ static void writemem_mapper_sega(int offset, int data)
 static void writemem_mapper_codies(int offset, int data)
 {
   if (offset == 0x0000)
-  {
     mapper_16k_w(1,data);
-    return;
-  }
-  if (offset == 0x4000)
-  {
+  else if (offset == 0x4000)
     mapper_16k_w(2,data);
-    return;
-  }
-  if (offset == 0x8000)
-  {
+  else if (offset == 0x8000)
     mapper_16k_w(3,data);
-    return;
-  }
-  cpu_writemap[offset >> 10][offset & 0x03FF] = data;
+  else
+    cpu_writemap[offset >> 10][offset & 0x03FF] = data;
 }
 
 static void writemem_mapper_korea_msx(int offset, int data)
 {
   if (offset <= 0x0003)
-  {
     mapper_8k_w(offset,data);
-    return;
-  }
-  cpu_writemap[offset >> 10][offset & 0x03FF] = data;
+  else
+    cpu_writemap[offset >> 10][offset & 0x03FF] = data;
 }
 
 static void writemem_mapper_korea(int offset, int data)
 {
   if (offset == 0xA000)
-  {
     mapper_16k_w(3,data);
-    return;
-  }
-  cpu_writemap[offset >> 10][offset & 0x03FF] = data;
+  else
+    cpu_writemap[offset >> 10][offset & 0x03FF] = data;
 }
 
 
@@ -119,11 +107,7 @@ void mapper_reset(void)
 
 void sms_init(void)
 {
-  z80_init(0,0,0,sms_irq_callback);
-
-  /* Default: open bus */
-  data_bus_pullup   = 0x00;
-  data_bus_pulldown = 0x00;
+  z80_init(0, 0, 0, sms_irq_callback);
 
   /* Initialize port handlers */
   printf("%s: sms.console= %#04x\n", __func__, sms.console);
@@ -147,6 +131,7 @@ void sms_init(void)
     case CONSOLE_SMS:
       cpu_writeport16 = sms_port_w;
       cpu_readport16 = sms_port_r;
+      data_bus_pullup = 0x00;
       break;
 
     case CONSOLE_SMS2:
@@ -181,7 +166,7 @@ void sms_reset(void)
   /* reset Z80 state */
   z80_reset();
   z80_reset_cycle_count();
-  z80_set_irq_line (0, CLEAR_LINE);
+  z80_set_irq_line(0, CLEAR_LINE);
 
   /* clear SMS context */
   memset(dummy_memory, data_bus_pullup, sizeof(dummy_memory));

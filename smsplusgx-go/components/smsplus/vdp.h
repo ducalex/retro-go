@@ -83,7 +83,7 @@ typedef struct
 
 /* Global data */
 extern vdp_t vdp;
-extern uint8 hc_256[228];
+extern const uint8 hc_256[228];
 extern const uint8 *vc_table[3];
 
 /* Function prototypes */

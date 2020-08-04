@@ -26,16 +26,13 @@
 
 /* Pull-up resistors on data bus */
 uint8 data_bus_pullup   = 0x00;
-uint8 data_bus_pulldown = 0x00;
 
 /* Read unmapped memory */
 uint8 z80_read_unmapped(void)
 {
-  int pc = Z80.pc.w.l;
-  uint8 data;
-  pc = (pc - 1) & 0xFFFF;
-  data = cpu_readmap[pc >> 13][pc & 0x03FF];
-  return ((data | data_bus_pullup) & ~data_bus_pulldown);
+  uint16 pc = (Z80.pc.w.l - 1) & 0xFFFF;
+  uint8 data = cpu_readmap[pc >> 13][pc & 0x03FF];
+  return (data | data_bus_pullup);
 }
 
 /* Port $3E (Memory Control Port) */

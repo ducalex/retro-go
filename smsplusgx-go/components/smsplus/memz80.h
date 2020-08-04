@@ -27,7 +27,6 @@
 
 /* Global data */
 extern uint8 data_bus_pullup;
-extern uint8 data_bus_pulldown;
 
 /* Function prototypes */
 extern uint8 z80_read_unmapped(void);
@@ -37,8 +36,6 @@ extern void ggms_port_w(uint16 port, uint8 data);
 extern uint8 ggms_port_r(uint16 port);
 extern void sms_port_w(uint16 port, uint8 data);
 extern uint8 sms_port_r(uint16 port);
-extern void smsj_port_w(uint16 port, uint8 data);
-extern uint8 smsj_port_r(uint16 port);
 extern void tms_port_w(uint16 port, uint8 data);
 extern uint8 tms_port_r(uint16 port);
 extern void coleco_port_w(uint16 port, uint8 data);

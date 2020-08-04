@@ -107,12 +107,6 @@ static bool LoadState(char *pathName)
     return true;
 }
 
-void system_manage_sram(uint8 *sram, int slot, int mode)
-{
-    // printf("system_manage_sram\n");
-    // sram_load();
-}
-
 void app_main(void)
 {
     odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
