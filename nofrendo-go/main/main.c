@@ -433,8 +433,8 @@ void app_main(void)
 
    switch (ret)
    {
-      case -1: odroid_system_panic("Init failed.\n");
-      case -2: odroid_system_panic("Unsupported ROM.\n");
-      default: odroid_system_panic("Nofrendo died!\n");
+      case -1: odroid_system_panic("Init failed.");
+      case -2: odroid_system_panic("Unsupported ROM.");
+      default: odroid_system_panic("Nofrendo died!");
    }
 }

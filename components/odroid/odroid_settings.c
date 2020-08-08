@@ -137,7 +137,8 @@ void odroid_settings_string_set(const char *key, char *value)
 #ifdef USE_CONFIG_FILE
     json_set(key, cJSON_CreateString(value));
 #else
-    if (nvs_set_str(my_handle, key, value) != ESP_OK)
+    esp_err_t ret = nvs_set_str(my_handle, key, value);
+    if (ret != ESP_OK)
         printf("%s: key='%s' err=%d\n", __func__, key, ret);
 #endif
     odroid_settings_commit();
@@ -164,7 +165,8 @@ void odroid_settings_int32_set(const char *key, int32_t value)
 #ifdef USE_CONFIG_FILE
     json_set(key, cJSON_CreateNumber(value));
 #else
-    if (nvs_set_i32(my_handle, key, value) != ESP_OK)
+    esp_err_t ret = nvs_set_i32(my_handle, key, value);
+    if (ret != ESP_OK)
         printf("%s: key='%s' err=%d\n", __func__, key, ret);
 #endif
     odroid_settings_commit();
