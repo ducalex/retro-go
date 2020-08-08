@@ -5,11 +5,12 @@
 #include <stdbool.h>
 
 typedef struct {
-    char name[96];
+    char name[128];
     char ext[8];
-    char path[128];
+    char folder[32];
     uint32_t checksum;
     bool missing_cover;
+    void *emulator;
 } retro_emulator_file_t;
 
 typedef struct {
@@ -18,26 +19,15 @@ typedef struct {
     char ext[8];
     uint16_t crc_offset;
     uint16_t partition;
-    uint16_t* image_logo;
-    uint16_t* image_header;
     struct {
         retro_emulator_file_t *files;
-        int selected;
         int count;
     } roms;
     bool initialized;
 } retro_emulator_t;
 
-typedef struct {
-    retro_emulator_t entries[16];
-    int count;
-    int selected;
-} retro_emulators_t;
-
 void emulators_init();
-void emulators_init_emu(retro_emulator_t *emu);
-void emulators_start_emu(retro_emulator_t *emu);
-retro_emulator_file_t *emu_get_selected_file(retro_emulator_t *emu);
-retro_emulator_t *emu_get_selected(void);
-
-extern retro_emulators_t *emulators;
+void emulator_init(retro_emulator_t *emu);
+void emulator_start(retro_emulator_file_t *file, bool load_state);
+char *emulator_get_file_path(retro_emulator_file_t *file);
+retro_emulator_file_t *emulator_get_file(retro_emulator_t *emu, int index);

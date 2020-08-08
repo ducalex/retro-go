@@ -10,8 +10,8 @@
 #include "emulators.h"
 #include "gui.h"
 
-retro_emulators_t emulators_stack;
-retro_emulators_t *emulators = &emulators_stack;
+static retro_emulator_t emulators[16];
+static int emulators_count = 0;
 
 static void add_emulator(const char *system, const char *dirname, const char* ext, const char *part,
                           uint16_t crc_offset, const void *logo, const void *header)
@@ -23,56 +23,42 @@ static void add_emulator(const char *system, const char *dirname, const char* ex
         return;
     }
 
-    retro_emulator_t *p = &emulators->entries[emulators->count++];
+    retro_emulator_t *p = &emulators[emulators_count++];
     strcpy(p->system_name, system);
     strcpy(p->dirname, dirname);
     strcpy(p->ext, ext);
     p->partition = partition->subtype - ESP_PARTITION_SUBTYPE_APP_OTA_MIN;
-    p->roms.selected = 0;
     p->roms.count = 0;
     p->roms.files = NULL;
-    p->image_logo = (uint16_t *)logo;
-    p->image_header = (uint16_t *)header;
     p->initialized = false;
     p->crc_offset = crc_offset;
+
+    gui_add_tab(dirname, logo, header, p, NULL);
+}
+
+retro_emulator_file_t *emulator_get_file(retro_emulator_t *emu, int index)
+{
+    if (emu->roms.count == 0 || index > emu->roms.count) {
+        return NULL;
+    }
+    return &emu->roms.files[index];
 }
 
 static int file_sort_comparator(const void *p, const void *q)
 {
-    retro_emulator_file_t *l = (retro_emulator_file_t*)p;
-    retro_emulator_file_t *r = (retro_emulator_file_t*)q;
-    return strcasecmp(l->name, r->name);
+    return strcasecmp(((retro_emulator_file_t*)p)->name, ((retro_emulator_file_t*)q)->name);
 }
 
-retro_emulator_t *emu_get_selected(void)
-{
-    return &emulators->entries[emulators->selected];
-}
-
-retro_emulator_file_t *emu_get_selected_file(retro_emulator_t *emu)
-{
-    if (emu->roms.count == 0 || emu->roms.selected > emu->roms.count) {
-        return NULL;
-    }
-    return &emu->roms.files[emu->roms.selected];
-}
-
-void emulators_init_emu(retro_emulator_t *emu)
+void emulator_init(retro_emulator_t *emu)
 {
     if (emu->initialized)
-    {
         return;
-    }
-
-    printf("emulators_init_emu: Initializing %s\n", emu->system_name);
 
     emu->initialized = true;
 
-    char path[128];
-    char keyBuffer[24];
+    printf("Retro-Go: Initializing emulator '%s'\n", emu->system_name);
 
-    sprintf(keyBuffer, "Sel.%s", emu->dirname);
-    emu->roms.selected = odroid_settings_int32_get(keyBuffer, 0);
+    char path[128];
 
     odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
@@ -105,28 +91,17 @@ void emulators_init_emu(retro_emulator_t *emu)
                     (emu->roms.count + 100) * sizeof(retro_emulator_file_t));
             }
             retro_emulator_file_t *file = &emu->roms.files[emu->roms.count++];
-            sprintf(file->path, "%s/%s", path, in_file->d_name);
+            strcpy(file->folder, path);
             strcpy(file->name, in_file->d_name);
             strcpy(file->ext, ext);
             file->name[strlen(file->name)-strlen(ext)-1] = 0;
+            file->emulator = (void*)emu;
             file->checksum = 0;
         }
 
         if (emu->roms.count > 0)
         {
             qsort((void*)emu->roms.files, emu->roms.count, sizeof(retro_emulator_file_t), file_sort_comparator);
-
-            // for (int i = 0; i < emu->roms.count; ++i) {
-            //     if (selected_file && strcmp(file->path, selected_file) == 0) {
-            //         emu->roms.selected = emu->roms.count - 1;
-            //         break;
-            //     }
-            // }
-
-            if (emu->roms.selected > emu->roms.count - 1)
-            {
-                emu->roms.selected = emu->roms.count - 1;
-            }
         }
 
         free(selected_file);
@@ -134,6 +109,25 @@ void emulators_init_emu(retro_emulator_t *emu)
     }
 
     odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
+}
+
+char *emulator_get_file_path(retro_emulator_file_t *file)
+{
+    if (file == NULL) return NULL;
+    char buffer[256];
+    sprintf(buffer, "%s/%s.%s", file->folder, file->name, file->ext);
+    return strdup(buffer);
+}
+
+void emulator_start(retro_emulator_file_t *file, bool load_state)
+{
+    char *path = emulator_get_file_path(file);
+    assert(path != NULL);
+
+    printf("Retro-Go: Starting game: %s\n", path);
+    odroid_settings_StartAction_set(load_state ? ODROID_START_ACTION_RESUME : ODROID_START_ACTION_NEWGAME);
+    odroid_settings_RomFilePath_set(path);
+    odroid_system_switch_app(((retro_emulator_t *)file->emulator)->partition);
 }
 
 void emulators_init()
@@ -147,21 +141,4 @@ void emulators_init()
     add_emulator("PC Engine", "pce", "pce", "huexpress", 0, logo_pce, header_pce);
     add_emulator("Atari Lynx", "lnx", "lnx", "handy", 0, logo_lnx, header_lnx);
     // add_emulator("Atari 2600", "a26", "a26", "stella", 0, logo_a26, header_a26);
-
-    emulators->selected = odroid_settings_int32_get("SelectedEmu", 0);
-}
-
-void emulators_start_emu(retro_emulator_t *emu)
-{
-    retro_emulator_file_t *file = emu_get_selected_file(emu);
-    char keyBuffer[16];
-
-    printf("Starting game: %s\n", file->path);
-
-    sprintf(keyBuffer, "Sel.%s", emu->dirname);
-    odroid_settings_int32_set(keyBuffer, emu->roms.selected);
-    odroid_settings_int32_set("SelectedEmu", emulators->selected);
-
-    odroid_settings_RomFilePath_set(file->path);
-    odroid_system_switch_app(emu->partition);
 }

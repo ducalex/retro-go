@@ -6,23 +6,11 @@
 #include <unistd.h>
 
 #include "emulators.h"
+#include "favorites.h"
 #include "gui.h"
-
-extern int gui_themes_count;
-
-static retro_emulator_t *emu = NULL;
 
 static bool show_empty = true;
 static int  show_cover = 1;
-static int  scroll_mode = 0;
-static int  selected_emu = 0;
-static int  theme = 0;
-
-static void redraw_screen()
-{
-    gui_header_draw(emu);
-    gui_list_draw(emu, theme);
-}
 
 static bool font_size_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
@@ -30,12 +18,12 @@ static bool font_size_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t e
     if (event == ODROID_DIALOG_PREV) {
         if (--font_size < 1) font_size = 2;
         odroid_overlay_set_font_size(font_size);
-        redraw_screen();
+        gui_redraw();
     }
     if (event == ODROID_DIALOG_NEXT) {
         if (++font_size > 2) font_size = 1;
         odroid_overlay_set_font_size(font_size);
-        redraw_screen();
+        gui_redraw();
     }
     strcpy(option->value, font_size > 1 ? "Large" : "Small");
     return event == ODROID_DIALOG_ENTER;
@@ -82,88 +70,66 @@ static bool color_shift_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t
 {
     int max = gui_themes_count - 1;
     if (event == ODROID_DIALOG_PREV) {
-        if (--theme < 0) theme = max;
-        odroid_settings_int32_set("Theme", theme);
-        redraw_screen();
+        if (--gui.theme < 0) gui.theme = max;
+        odroid_settings_int32_set("Theme", gui.theme);
+        gui_redraw();
     }
     if (event == ODROID_DIALOG_NEXT) {
-        if (++theme > max) theme = 0;
-        odroid_settings_int32_set("Theme", theme);
-        redraw_screen();
+        if (++gui.theme > max) gui.theme = 0;
+        odroid_settings_int32_set("Theme", gui.theme);
+        gui_redraw();
     }
-    sprintf(option->value, "%d/%d", theme + 1, max + 1);
-    return event == ODROID_DIALOG_ENTER;
-}
-
-static bool scroll_mode_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
-{
-    if (event == ODROID_DIALOG_PREV && --scroll_mode < 0) scroll_mode = 2;
-    if (event == ODROID_DIALOG_NEXT && ++scroll_mode > 2) scroll_mode = 0;
-
-    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
-        odroid_settings_int32_set("ScrollMode", scroll_mode);
-    }
-
-    if (scroll_mode == 0) sprintf(option->value, "Letter   ");
-    if (scroll_mode == 1) sprintf(option->value, "Half Page");
-    if (scroll_mode == 2) sprintf(option->value, "Full Page");
-
+    sprintf(option->value, "%d/%d", gui.theme + 1, max + 1);
     return event == ODROID_DIALOG_ENTER;
 }
 
 void retro_loop()
 {
+    tab_t *tab = gui_get_current_tab();
     int debounce = 0;
     int last_key = -1;
-    int selected_emu_last = -1;
+    int selected_tab_last = -1;
     int idle_counter = 0;
-    bool redraw = true;
 
     show_empty   = odroid_settings_int32_get("ShowEmpty", 1);
     show_cover   = odroid_settings_int32_get("ShowCover", 1);
-    scroll_mode  = odroid_settings_int32_get("ScrollMode", 0);
-    theme        = odroid_settings_int32_get("Theme", 0);
-
-    emulators_init();
+    gui.theme    = odroid_settings_int32_get("Theme", 0);
+    gui.selected = odroid_settings_int32_get("SelectedTab", 0);
 
     while (true)
     {
-        if (emulators->selected != selected_emu_last)
+        if (gui.selected != selected_tab_last)
         {
-            int dir = emulators->selected - selected_emu_last;
+            int dir = gui.selected - selected_tab_last;
 
-            if (emulators->selected >= emulators->count) emulators->selected = 0;
-            if (emulators->selected < 0) emulators->selected = emulators->count - 1;
+            if (gui.selected >= gui.tabcount) gui.selected = 0;
+            if (gui.selected < 0) gui.selected = gui.tabcount - 1;
 
-            emu = &emulators->entries[emulators->selected];
+            tab = gui_get_current_tab();
 
-            if (!emu->initialized)
+            gui_draw_header(tab);
+
+            if (!tab->initialized)
             {
-                odroid_overlay_draw_text(58, 35, 320 - 58, (char*)"Loading directory...", C_WHITE, C_BLACK);
-                emulators_init_emu(emu);
+                gui_init_tab(tab);
             }
 
-            if (!show_empty && emu->roms.count == 0)
+            if (!show_empty && tab->listbox.length == 0)
             {
-                emulators->selected += dir;
+                gui.selected += dir;
                 continue;
             }
 
-            gui_header_draw(emu);
+            gui_draw_subtext(tab);
+            gui_draw_list(tab);
+            // gui_save_tab(tab);
 
-            selected_emu_last = emulators->selected;
-            redraw = true;
+            selected_tab_last = gui.selected;
         }
 
-        if (redraw || idle_counter % 100 == 0)
+        if (idle_counter % 100 == 0)
         {
             odroid_overlay_draw_battery(320 - 26, 3);
-        }
-
-        if (redraw)
-        {
-            gui_list_draw(emu, theme);
-            redraw = false;
         }
 
         odroid_gamepad_state joystick;
@@ -171,7 +137,7 @@ void retro_loop()
 
         if (show_cover && idle_counter == (show_cover == 1 ? 8 : 1))
         {
-            gui_cover_draw(emu, &joystick);
+            gui_draw_cover(emulator_get_file(tab->arg, tab->listbox.cursor), &joystick);
         }
 
         if (last_key >= 0) {
@@ -185,12 +151,12 @@ void retro_loop()
         } else {
             if (joystick.values[ODROID_INPUT_A]) {
                 last_key = ODROID_INPUT_A;
-                redraw = true;
 
-                retro_emulator_file_t *file = emu_get_selected_file(emu);
+                retro_emulator_file_t *file = emulator_get_file(tab->arg, tab->listbox.cursor);
                 if (file)
                 {
-                    char *save_path = odroid_system_get_path(ODROID_PATH_SAVE_STATE, file->path);
+                    char *file_path = emulator_get_file_path(file);
+                    char *save_path = odroid_system_get_path(ODROID_PATH_SAVE_STATE, file_path);
                     bool has_save = access(save_path, F_OK) != -1;
 
                     odroid_dialog_choice_t choices[] = {
@@ -201,39 +167,35 @@ void retro_loop()
                     };
                     int sel = odroid_overlay_dialog(NULL, choices, has_save ? 0 : 1);
 
-                    if (sel == 0) {
-                        odroid_settings_StartAction_set(ODROID_START_ACTION_RESUME);
-                        break;
-                    }
-                    else if (sel == 1) {
-                        odroid_settings_StartAction_set(ODROID_START_ACTION_NEWGAME);
-                        break;
+                    if (sel == 0 || sel == 1) {
+                        gui_save_tab(tab);
+                        emulator_start(file, sel == 0);
                     }
                     else if (sel == 2) {
                         if (odroid_overlay_confirm("Delete savestate?", false) == 1) {
                             unlink(save_path);
                         }
                     }
-                    else if (sel == 3) {
-                        odroid_settings_StartAction_set(ODROID_START_ACTION_NETPLAY);
-                        break;
-                    }
+                    free(file_path);
                     free(save_path);
-                    // continue;
+
+                    gui_redraw();
                 }
             }
             else if (joystick.values[ODROID_INPUT_B]) {
                 last_key = ODROID_INPUT_B;
 
-                retro_emulator_file_t *file = emu_get_selected_file(emu);
-                if (file && file->checksum != 0)
+                retro_emulator_file_t *file = emulator_get_file(tab->arg, tab->listbox.cursor);
+                if (file)
                 {
+                    char *file_path = emulator_get_file_path(file);
+
                     odroid_dialog_choice_t choices[] = {
                         {0, "File", "...", 1, NULL},
                         {0, "Type", "N/A", 1, NULL},
                         {0, "Folder", "...", 1, NULL},
                         {0, "Size", "0", 1, NULL},
-                        {0, "CRC32", "00000000", 1, NULL},
+                        {0, "CRC32", "N/A", 1, NULL},
                         {0, "---", "", -1, NULL},
                         {1, "Close", "", 1, NULL},
                         ODROID_DIALOG_CHOICE_LAST
@@ -241,24 +203,27 @@ void retro_loop()
 
                     sprintf(choices[0].value, "%.127s", file->name);
                     sprintf(choices[1].value, "%s", file->ext);
-                    sprintf(choices[2].value, "%.*s", strlen(file->path)-strlen(file->name)-strlen(file->ext)-2, file->path);
-                    sprintf(choices[3].value, "%d KB", odroid_sdcard_get_filesize(file->path) / 1024);
-                    sprintf(choices[4].value, "%08X", file->checksum);
+                    sprintf(choices[2].value, "%s", file->folder);
+                    sprintf(choices[3].value, "%d KB", odroid_sdcard_get_filesize(file_path) / 1024);
+                    if (file->checksum > 1) {
+                        sprintf(choices[4].value, "%08X", file->checksum);
+                    }
 
                     odroid_overlay_dialog("Properties", choices, -1);
+                    free(file_path);
+
+                    gui_redraw();
                 }
-                selected_emu_last = -1;
-                redraw = true;
             }
             else if (joystick.values[ODROID_INPUT_SELECT]) {
                 last_key = ODROID_INPUT_SELECT;
                 debounce = -10;
-                emulators->selected--;
+                gui.selected--;
             }
             else if (joystick.values[ODROID_INPUT_START]) {
                 last_key = ODROID_INPUT_START;
                 debounce = -10;
-                emulators->selected++;
+                gui.selected++;
             }
             else if (joystick.values[ODROID_INPUT_MENU]) {
                 last_key = ODROID_INPUT_MENU;
@@ -281,8 +246,7 @@ void retro_loop()
                         esp_restart();
                     }
                 }
-                selected_emu_last = -1;
-                redraw = true;
+                gui_redraw();
             }
             else if (joystick.values[ODROID_INPUT_VOLUME]) {
                 last_key = ODROID_INPUT_VOLUME;
@@ -297,11 +261,10 @@ void retro_loop()
                     ODROID_DIALOG_CHOICE_LAST
                 };
                 odroid_overlay_settings_menu(choices);
-                selected_emu_last = -1;
-                redraw = true;
+                gui_redraw();
             }
-            else if (gui_list_handle_input(emu, &joystick, &last_key)) {
-                redraw = true;
+            else if (gui_handle_input(tab, &joystick, &last_key)) {
+                gui_draw_list(tab);
             }
         }
 
@@ -313,14 +276,15 @@ void retro_loop()
 
         usleep(15 * 1000UL);
     }
-
-    emulators_start_emu(emu);
 }
-
 
 void app_main(void)
 {
     odroid_system_init(0, 32000);
     odroid_display_clear(0);
+
+    emulators_init();
+    favorites_init();
+
     retro_loop();
 }

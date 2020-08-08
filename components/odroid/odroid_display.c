@@ -1038,7 +1038,7 @@ void odroid_display_drain_spi()
     }
 }
 
-void odroid_display_write_rect(short left, short top, short width, short height, short stride, uint16_t* buffer)
+void odroid_display_write_rect(short left, short top, short width, short height, short stride, const uint16_t* buffer)
 {
     odroid_display_drain_spi();
 
@@ -1072,7 +1072,7 @@ void odroid_display_write_rect(short left, short top, short width, short height,
 }
 
 // Same as odroid_display_write_rect but stride is assumed to be width (for backwards compat)
-void odroid_display_write(short left, short top, short width, short height, uint16_t* buffer)
+void odroid_display_write(short left, short top, short width, short height, const uint16_t* buffer)
 {
     odroid_display_write_rect(left, top, width, height, width, buffer);
 }
