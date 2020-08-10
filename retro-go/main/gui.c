@@ -53,13 +53,18 @@ static char str_buffer[128];
 
 retro_gui_t gui;
 
+void gui_event(gui_event_t event, tab_t *tab)
+{
+    if (tab->event_handler)
+        (*tab->event_handler)(event, tab);
+}
 
 tab_t *gui_add_tab(const char *name, const void *logo, const void *header, void *arg, void *event_handler)
 {
     tab_t *tab = calloc(1, sizeof(tab_t));
 
     sprintf(tab->name, "%s", name);
-    sprintf(tab->subtext, "Loading...");
+    sprintf(tab->status, "Loading...");
 
     tab->event_handler = event_handler;
     tab->img_header = header;
@@ -77,26 +82,12 @@ void gui_init_tab(tab_t *tab)
         return;
 
     tab->initialized = true;
-    tab->subtext[0] = 0;
+    // tab->status[0] = 0;
 
     sprintf(str_buffer, "Sel.%.11s", tab->name);
     tab->listbox.cursor = odroid_settings_int32_get(str_buffer, 0);
 
-    if (tab->event_handler)
-        (*tab->event_handler)(TAB_INIT, tab);
-
-    if (tab->arg) {
-        retro_emulator_t *emu = (retro_emulator_t *)tab->arg;
-        emulator_init(emu);
-        sprintf(tab->subtext, "Games: %d", emu->roms.count);
-        tab->listbox.length = emu->roms.count;
-
-        // if (emu->roms.count == 0) {
-        //     if (i == 1) sprintf(text, "No roms found!");
-        //     else if (i == 4) sprintf(text, "Place roms in folder: /roms/%s", emu->dirname);
-        //     else if (i == 6) sprintf(text, "With file extension: .%s", emu->ext);
-        // }
-    }
+    gui_event(TAB_INIT, tab);
 
     tab->listbox.cursor = MIN(tab->listbox.cursor, tab->listbox.length -1);
     tab->listbox.cursor = MAX(tab->listbox.cursor, 0);
@@ -127,59 +118,67 @@ tab_t *gui_get_tab(int index)
 
 listbox_item_t *gui_get_selected_item(tab_t *tab)
 {
+    listbox_t *list = &tab->listbox;
+
+    if (list->cursor >= 0 && list->cursor < list->length)
+        return &list->items[list->cursor];
+
     return NULL;
 }
 
-bool gui_handle_input(tab_t *tab, odroid_gamepad_state *joystick, int *last_key)
+void gui_scroll_tab(tab_t *tab, scroll_mode_t mode)
 {
-    retro_emulator_t *emu = (retro_emulator_t *)tab->arg;
     listbox_t *list = &tab->listbox;
 
-    if (emu == NULL || list->length == 0 || list->cursor > list->length) {
-        return false;
+    if (list->length == 0 || list->cursor > list->length) {
+        return;
     }
 
-    int selected = list->cursor;
-    if (joystick->values[ODROID_INPUT_UP]) {
-        *last_key = ODROID_INPUT_UP;
-        selected--;
+    int cur_cursor = list->cursor;
+    int old_cursor = list->cursor;
+
+    if (mode == LINE_UP) {
+        cur_cursor--;
     }
-    else if (joystick->values[ODROID_INPUT_DOWN]) {
-        *last_key = ODROID_INPUT_DOWN;
-        selected++;
+    else if (mode == LINE_DOWN) {
+        cur_cursor++;
     }
-    else if (joystick->values[ODROID_INPUT_LEFT]) {
-        *last_key = ODROID_INPUT_LEFT;
-        char st = ((char*)emu->roms.files[selected].name)[0];
+    else if (mode == PAGE_UP) {
+        char st = ((char*)list->items[cur_cursor].text)[0];
         int max = LIST_LINE_COUNT - 2;
-        while (--selected > 0 && max-- > 0)
+        while (--cur_cursor > 0 && max-- > 0)
         {
-           if (st != ((char*)emu->roms.files[selected].name)[0]) break;
+           if (st != ((char*)list->items[cur_cursor].text)[0]) break;
         }
     }
-    else if (joystick->values[ODROID_INPUT_RIGHT]) {
-        *last_key = ODROID_INPUT_RIGHT;
-        char st = ((char*)emu->roms.files[selected].name)[0];
+    else if (mode == PAGE_DOWN) {
+        char st = ((char*)list->items[cur_cursor].text)[0];
         int max = LIST_LINE_COUNT - 2;
-        while (++selected < list->length-1 && max-- > 0)
+        while (++cur_cursor < list->length-1 && max-- > 0)
         {
-           if (st != ((char*)emu->roms.files[selected].name)[0]) break;
+           if (st != ((char*)list->items[cur_cursor].text)[0]) break;
         }
     }
 
-    if (selected < 0) selected = list->length - 1;
-    if (selected >= list->length) selected = 0;
+    if (cur_cursor < 0) cur_cursor = list->length - 1;
+    if (cur_cursor >= list->length) cur_cursor = 0;
 
-    bool changed = list->cursor != selected;
-    list->cursor = selected;
-    return changed;
+    list->cursor = cur_cursor;
+
+    if (cur_cursor != old_cursor)
+    {
+        gui_draw_list(tab);
+        gui_event(TAB_SCROLL, tab);
+    }
 }
 
 void gui_redraw()
 {
     tab_t *tab = gui_get_current_tab();
     gui_draw_header(tab);
+    gui_draw_status(tab);
     gui_draw_list(tab);
+    gui_event(TAB_REDRAW, tab);
 }
 
 void gui_draw_navbar()
@@ -202,18 +201,16 @@ void gui_draw_header(tab_t *tab)
 
     if (tab->img_header)
         odroid_display_write(x_pos, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, tab->img_header);
-
-    odroid_overlay_draw_battery(ODROID_SCREEN_WIDTH - 26, 3);
-    gui_draw_subtext(tab);
 }
 
-void gui_draw_subtext(tab_t *tab)
+void gui_draw_status(tab_t *tab)
 {
+    odroid_overlay_draw_battery(ODROID_SCREEN_WIDTH - 27, 3);
     odroid_overlay_draw_text(
         IMAGE_LOGO_WIDTH + 11,
         IMAGE_BANNER_HEIGHT + 3,
         ODROID_SCREEN_WIDTH,
-        tab->subtext,
+        tab->status,
         C_WHITE,
         C_BLACK
     );
@@ -226,7 +223,6 @@ void gui_draw_list(tab_t *tab)
     theme_t *theme = &gui_themes[gui.theme % gui_themes_count];
 
     listbox_t *list = &tab->listbox;
-    retro_emulator_t *emu = (retro_emulator_t *)tab->arg;
 
     odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" ", C_RED, C_BLACK);
 
@@ -234,7 +230,7 @@ void gui_draw_list(tab_t *tab)
         int entry = list->cursor + i - (lines / 2);
 
         if (entry >= 0 && entry < list->length) {
-            sprintf(str_buffer, "%.*s", columns, emu->roms.files[entry].name);
+            sprintf(str_buffer, "%.*s", columns, list->items[entry].text);
         } else {
             str_buffer[0] = '\0';
         }
@@ -250,76 +246,22 @@ void gui_draw_list(tab_t *tab)
     }
 }
 
-void gui_draw_cover(retro_emulator_file_t *file, odroid_gamepad_state *joystick)
+void gui_draw_cover(retro_emulator_file_t *file)
 {
     retro_emulator_t *emu = (retro_emulator_t *)file->emulator;
 
-    char path1[128], path2[128], path3[128], buf_crc[10];
-    FILE *fp, *fp2;
-
-    if (!gp_buffer) {
+    if (gp_buffer == NULL)
         gp_buffer = malloc(gp_buffer_size);
-    }
 
-    if (file->checksum == 0)
-    {
-        char *file_path = emulator_get_file_path(file);
-        char *cache_path = odroid_system_get_path(ODROID_PATH_CRC_CACHE, file_path);
-
-        file->missing_cover = 0;
-
-        if ((fp = fopen(cache_path, "rb")) != NULL)
-        {
-            fread(&file->checksum, 4, 1, fp);
-            fclose(fp);
-        }
-        else if ((fp = fopen(file_path, "rb")) != NULL)
-        {
-            odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"        CRC32", C_GREEN, C_BLACK);
-
-            uint32_t chunk_size = 32768;
-            uint32_t crc_tmp = 0;
-            uint32_t count = 0;
-
-            fseek(fp, emu->crc_offset, SEEK_SET);
-            while (true)
-            {
-                odroid_input_gamepad_read(joystick);
-                if (joystick->bitmask > 0) break;
-
-                count = fread(gp_buffer, 1, chunk_size, fp);
-                if (count == 0) break;
-
-                crc_tmp = crc32_le(crc_tmp, gp_buffer, count);
-                if (count < chunk_size) break;
-            }
-
-            if (feof(fp))
-            {
-                file->checksum = crc_tmp;
-                if ((fp2 = fopen(cache_path, "wb")) != NULL)
-                {
-                    fwrite(&file->checksum, 4, 1, fp2);
-                    fclose(fp2);
-                }
-            }
-            fclose(fp);
-        }
-        else
-        {
-            file->checksum = 1;
-        }
-        free(cache_path);
-        free(file_path);
-    }
+    uint16_t *cover_buffer = (uint16_t*)gp_buffer;
+    const int cover_buffer_length = gp_buffer_size / 2;
+    uint16_t cover_width = 0, cover_height = 0;
 
     odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" ", C_RED, C_BLACK);
 
-    if (file->checksum > 1 && file->missing_cover == 0)
+    if (file->checksum > 0 && file->missing_cover == 0)
     {
-        uint16_t *cover_buffer = (uint16_t*)gp_buffer;
-        const int cover_buffer_length = gp_buffer_size / 2;
-        uint16_t cover_width = 0, cover_height = 0;
+        char path1[128], path2[128], path3[128], buf_crc[10];
 
         sprintf(buf_crc, "%08X", file->checksum);
         sprintf(path1, "%s/%s/%c/%s.png", ODROID_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
@@ -327,6 +269,8 @@ void gui_draw_cover(retro_emulator_file_t *file, odroid_gamepad_state *joystick)
         sprintf(path3, "%s/%s/%c/%s.art", ODROID_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
 
         LuImage *img;
+        FILE *fp;
+
         if ((img = luPngReadFile(path1)) || (img = luPngReadFile(path2)))
         {
             for (int p = 0, i = 0; i < img->dataSize && p < cover_buffer_length; i += 3) {
@@ -353,16 +297,78 @@ void gui_draw_cover(retro_emulator_file_t *file, odroid_gamepad_state *joystick)
             int width = MIN(cover_width, COVER_MAX_WIDTH);
 
             if (cover_height > COVER_MAX_HEIGHT || cover_width > COVER_MAX_WIDTH)
-            {
                 odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"Art too large", C_ORANGE, C_BLACK);
-            }
 
             odroid_display_write_rect(320 - width, 240 - height, width, height, cover_width, cover_buffer);
-            file->missing_cover = false;
             return;
         }
     }
 
     odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" No art found", C_RED, C_BLACK);
-    file->missing_cover = true;
+    file->missing_cover = 1;
+}
+
+void gui_crc32_file(retro_emulator_file_t *file)
+{
+    retro_emulator_t *emu = (retro_emulator_t *)file->emulator;
+
+    if (file->checksum > 0)
+        return;
+
+    FILE *fp, *fp2;
+
+    if (gp_buffer == NULL)
+        gp_buffer = malloc(gp_buffer_size);
+
+    char *file_path = emulator_get_file_path(file);
+    char *cache_path = odroid_system_get_path(ODROID_PATH_CRC_CACHE, file_path);
+
+    file->missing_cover = 0;
+
+    if ((fp = fopen(cache_path, "rb")) != NULL)
+    {
+        fread(&file->checksum, 4, 1, fp);
+        fclose(fp);
+    }
+    else if ((fp = fopen(file_path, "rb")) != NULL)
+    {
+        odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"        CRC32", C_GREEN, C_BLACK);
+
+        uint32_t chunk_size = 32768;
+        uint32_t crc_tmp = 0;
+        uint32_t count = 0;
+
+        fseek(fp, emu->crc_offset, SEEK_SET);
+        while (true)
+        {
+            odroid_input_gamepad_read(&gui.joystick);
+            if (gui.joystick.bitmask > 0) break;
+
+            count = fread(gp_buffer, 1, chunk_size, fp);
+            if (count == 0) break;
+
+            crc_tmp = crc32_le(crc_tmp, gp_buffer, count);
+            if (count < chunk_size) break;
+        }
+
+        if (feof(fp))
+        {
+            file->checksum = crc_tmp;
+            if ((fp2 = fopen(cache_path, "wb")) != NULL)
+            {
+                fwrite(&file->checksum, 4, 1, fp2);
+                fclose(fp2);
+            }
+        }
+        fclose(fp);
+    }
+    else
+    {
+        file->checksum = 1;
+    }
+
+    free(cache_path);
+    free(file_path);
+
+    odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" ", C_RED, C_BLACK);
 }

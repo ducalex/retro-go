@@ -30,4 +30,3 @@ void emulators_init();
 void emulator_init(retro_emulator_t *emu);
 void emulator_start(retro_emulator_file_t *file, bool load_state);
 char *emulator_get_file_path(retro_emulator_file_t *file);
-retro_emulator_file_t *emulator_get_file(retro_emulator_t *emu, int index);

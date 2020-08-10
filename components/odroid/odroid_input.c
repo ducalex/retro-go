@@ -164,12 +164,7 @@ bool odroid_input_key_is_pressed(int key)
     odroid_input_gamepad_read(&joystick);
 
     if (key == ODROID_INPUT_ANY) {
-        for (int i = 0; i < ODROID_INPUT_MAX; i++) {
-            if (joystick.values[i] == true) {
-                return true;
-            }
-        }
-        return false;
+        return joystick.bitmask > 0 ? 1 : 0;
     }
 
     return joystick.values[key];

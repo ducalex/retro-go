@@ -18,8 +18,7 @@ enum
 
 	ODROID_INPUT_MAX,
 
-    ODROID_INPUT_ANY = 0xF0,
-    ODROID_INPUT_ALL = 0xF1,
+    ODROID_INPUT_ANY,
 };
 
 typedef struct
