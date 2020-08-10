@@ -1,5 +1,4 @@
 #include <odroid_system.h>
-#include <rom/crc.h>
 #include <stdio.h>
 #include <string.h>
 #include <dirent.h>
@@ -93,8 +92,10 @@ void gui_init_tab(tab_t *tab)
     tab->listbox.cursor = MAX(tab->listbox.cursor, 0);
 }
 
-void gui_save_tab(tab_t *tab)
+void gui_save_current_tab()
 {
+    tab_t *tab = gui_get_current_tab();
+
     sprintf(str_buffer, "Sel.%.11s", tab->name);
     odroid_settings_int32_set(str_buffer, tab->listbox.cursor);
     odroid_settings_int32_set("SelectedTab", gui.selected);
@@ -102,18 +103,7 @@ void gui_save_tab(tab_t *tab)
 
 tab_t *gui_get_current_tab()
 {
-    return gui_get_tab(gui.selected);
-}
-
-tab_t *gui_get_tab(int index)
-{
-    if (index < 0)
-        index = gui.tabcount + index;
-
-    if (index >= 0 && index < gui.tabcount)
-        return gui.tabs[index];
-
-    return NULL;
+    return (gui.selected < gui.tabcount) ? gui.tabs[gui.selected] : NULL;
 }
 
 listbox_item_t *gui_get_selected_item(tab_t *tab)
@@ -126,7 +116,46 @@ listbox_item_t *gui_get_selected_item(tab_t *tab)
     return NULL;
 }
 
-void gui_scroll_tab(tab_t *tab, scroll_mode_t mode)
+static int list_comparator(const void *p, const void *q)
+{
+    return strcasecmp(((listbox_item_t*)p)->text, ((listbox_item_t*)q)->text);
+}
+
+void gui_sort_list(tab_t *tab, int sort_mode)
+{
+    if (tab->listbox.length == 0)
+        return;
+
+    qsort((void*)tab->listbox.items, tab->listbox.length, sizeof(listbox_item_t), list_comparator);
+}
+
+void gui_resize_list(tab_t *tab, int new_size)
+{
+    int cur_size = tab->listbox.length;
+
+    if (new_size == cur_size)
+        return;
+
+    if (new_size == 0)
+    {
+        free(tab->listbox.items);
+        tab->listbox.items = NULL;
+    }
+    else
+    {
+        tab->listbox.items = realloc(tab->listbox.items, new_size * sizeof(listbox_item_t));
+        for (int i = cur_size; i < new_size; i++)
+            memset(&tab->listbox.items[i], 0, sizeof(listbox_item_t));
+    }
+
+    tab->listbox.length = new_size;
+    tab->listbox.cursor = MIN(tab->listbox.cursor, tab->listbox.length -1);
+    tab->listbox.cursor = MAX(tab->listbox.cursor, 0);
+
+    printf("gui_resize_list: Resized list '%s' from %d to %d items\n", tab->name, cur_size, new_size);
+}
+
+void gui_scroll_list(tab_t *tab, scroll_mode_t mode)
 {
     listbox_t *list = &tab->listbox;
 
@@ -167,6 +196,7 @@ void gui_scroll_tab(tab_t *tab, scroll_mode_t mode)
 
     if (cur_cursor != old_cursor)
     {
+        gui_draw_notice(" ", C_BLACK);
         gui_draw_list(tab);
         gui_event(TAB_SCROLL, tab);
     }
@@ -203,13 +233,19 @@ void gui_draw_header(tab_t *tab)
         odroid_display_write(x_pos, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, tab->img_header);
 }
 
+// void gui_draw_notice(tab_t *tab)
+void gui_draw_notice(const char *text, uint16_t color)
+{
+    odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, text, color, C_BLACK);
+}
+
 void gui_draw_status(tab_t *tab)
 {
     odroid_overlay_draw_battery(ODROID_SCREEN_WIDTH - 27, 3);
     odroid_overlay_draw_text(
         IMAGE_LOGO_WIDTH + 11,
         IMAGE_BANNER_HEIGHT + 3,
-        ODROID_SCREEN_WIDTH,
+        128,
         tab->status,
         C_WHITE,
         C_BLACK
@@ -223,8 +259,6 @@ void gui_draw_list(tab_t *tab)
     theme_t *theme = &gui_themes[gui.theme % gui_themes_count];
 
     listbox_t *list = &tab->listbox;
-
-    odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" ", C_RED, C_BLACK);
 
     for (int i = 0; i < lines; i++) {
         int entry = list->cursor + i - (lines / 2);
@@ -256,8 +290,6 @@ void gui_draw_cover(retro_emulator_file_t *file)
     uint16_t *cover_buffer = (uint16_t*)gp_buffer;
     const int cover_buffer_length = gp_buffer_size / 2;
     uint16_t cover_width = 0, cover_height = 0;
-
-    odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" ", C_RED, C_BLACK);
 
     if (file->checksum > 0 && file->missing_cover == 0)
     {
@@ -297,78 +329,13 @@ void gui_draw_cover(retro_emulator_file_t *file)
             int width = MIN(cover_width, COVER_MAX_WIDTH);
 
             if (cover_height > COVER_MAX_HEIGHT || cover_width > COVER_MAX_WIDTH)
-                odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"Art too large", C_ORANGE, C_BLACK);
+                gui_draw_notice("Art too large", C_ORANGE);
 
             odroid_display_write_rect(320 - width, 240 - height, width, height, cover_width, cover_buffer);
             return;
         }
     }
 
-    odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" No art found", C_RED, C_BLACK);
+    gui_draw_notice(" No art found", C_RED);
     file->missing_cover = 1;
-}
-
-void gui_crc32_file(retro_emulator_file_t *file)
-{
-    retro_emulator_t *emu = (retro_emulator_t *)file->emulator;
-
-    if (file->checksum > 0)
-        return;
-
-    FILE *fp, *fp2;
-
-    if (gp_buffer == NULL)
-        gp_buffer = malloc(gp_buffer_size);
-
-    char *file_path = emulator_get_file_path(file);
-    char *cache_path = odroid_system_get_path(ODROID_PATH_CRC_CACHE, file_path);
-
-    file->missing_cover = 0;
-
-    if ((fp = fopen(cache_path, "rb")) != NULL)
-    {
-        fread(&file->checksum, 4, 1, fp);
-        fclose(fp);
-    }
-    else if ((fp = fopen(file_path, "rb")) != NULL)
-    {
-        odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)"        CRC32", C_GREEN, C_BLACK);
-
-        uint32_t chunk_size = 32768;
-        uint32_t crc_tmp = 0;
-        uint32_t count = 0;
-
-        fseek(fp, emu->crc_offset, SEEK_SET);
-        while (true)
-        {
-            odroid_input_gamepad_read(&gui.joystick);
-            if (gui.joystick.bitmask > 0) break;
-
-            count = fread(gp_buffer, 1, chunk_size, fp);
-            if (count == 0) break;
-
-            crc_tmp = crc32_le(crc_tmp, gp_buffer, count);
-            if (count < chunk_size) break;
-        }
-
-        if (feof(fp))
-        {
-            file->checksum = crc_tmp;
-            if ((fp2 = fopen(cache_path, "wb")) != NULL)
-            {
-                fwrite(&file->checksum, 4, 1, fp2);
-                fclose(fp2);
-            }
-        }
-        fclose(fp);
-    }
-    else
-    {
-        file->checksum = 1;
-    }
-
-    free(cache_path);
-    free(file_path);
-
-    odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, (char*)" ", C_RED, C_BLACK);
 }

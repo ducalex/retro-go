@@ -9,8 +9,10 @@
 #include "favorites.h"
 #include "gui.h"
 
-static bool show_empty = true;
-static int  show_cover = 1;
+#define KEY_SELECTED_TAB  "SelectedTab"
+#define KEY_GUI_THEME     "ColorTheme"
+#define KEY_SHOW_EMPTY    "ShowEmptyTabs"
+#define KEY_SHOW_COVER    "ShowGameCover"
 
 static bool font_size_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
@@ -32,10 +34,10 @@ static bool font_size_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t e
 static bool hide_empty_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
     if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
-        show_empty = !show_empty;
-        odroid_settings_int32_set("ShowEmpty", show_empty);
+        gui.show_empty = !gui.show_empty;
+        odroid_settings_int32_set(KEY_SHOW_EMPTY, gui.show_empty);
     }
-    strcpy(option->value, show_empty ? "Yes" : "No");
+    strcpy(option->value, gui.show_empty ? "Yes" : "No");
     return event == ODROID_DIALOG_ENTER;
 }
 
@@ -53,16 +55,16 @@ static bool startup_app_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t
 static bool show_cover_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
     if (event == ODROID_DIALOG_PREV) {
-        if (--show_cover < 0) show_cover = 2;
-        odroid_settings_int32_set("ShowCover", show_cover);
+        if (--gui.show_cover < 0) gui.show_cover = 2;
+        odroid_settings_int32_set(KEY_SHOW_COVER, gui.show_cover);
     }
     if (event == ODROID_DIALOG_NEXT) {
-        if (++show_cover > 2) show_cover = 0;
-        odroid_settings_int32_set("ShowCover", show_cover);
+        if (++gui.show_cover > 2) gui.show_cover = 0;
+        odroid_settings_int32_set(KEY_SHOW_COVER, gui.show_cover);
     }
-    if (show_cover == 0) strcpy(option->value, "No");
-    if (show_cover == 1) strcpy(option->value, "Slow");
-    if (show_cover == 2) strcpy(option->value, "Fast");
+    if (gui.show_cover == 0) strcpy(option->value, "No");
+    if (gui.show_cover == 1) strcpy(option->value, "Slow");
+    if (gui.show_cover == 2) strcpy(option->value, "Fast");
     return event == ODROID_DIALOG_ENTER;
 }
 
@@ -71,12 +73,12 @@ static bool color_shift_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t
     int max = gui_themes_count - 1;
     if (event == ODROID_DIALOG_PREV) {
         if (--gui.theme < 0) gui.theme = max;
-        odroid_settings_int32_set("Theme", gui.theme);
+        odroid_settings_int32_set(KEY_GUI_THEME, gui.theme);
         gui_redraw();
     }
     if (event == ODROID_DIALOG_NEXT) {
         if (++gui.theme > max) gui.theme = 0;
-        odroid_settings_int32_set("Theme", gui.theme);
+        odroid_settings_int32_set(KEY_GUI_THEME, gui.theme);
         gui_redraw();
     }
     sprintf(option->value, "%d/%d", gui.theme + 1, max + 1);
@@ -90,10 +92,10 @@ void retro_loop()
     int last_key = -1;
     int selected_tab_last = -1;
 
-    show_empty   = odroid_settings_int32_get("ShowEmpty", 1);
-    show_cover   = odroid_settings_int32_get("ShowCover", 1);
-    gui.theme    = odroid_settings_int32_get("Theme", 0);
-    gui.selected = odroid_settings_int32_get("SelectedTab", 0);
+    gui.selected   = odroid_settings_int32_get(KEY_SELECTED_TAB, 0);
+    gui.theme      = odroid_settings_int32_get(KEY_GUI_THEME, 0);
+    gui.show_empty = odroid_settings_int32_get(KEY_SHOW_EMPTY, 1);
+    gui.show_cover = odroid_settings_int32_get(KEY_SHOW_COVER, 1);
 
     while (true)
     {
@@ -115,13 +117,12 @@ void retro_loop()
                 gui_draw_list(tab);
             }
 
-            if (!show_empty && tab->listbox.length == 0)
+            // To do remove flicker by not always redrawing above...
+            if (!gui.show_empty && tab->listbox.length == 0)
             {
                 gui.selected += dir;
                 continue;
             }
-
-            // gui_save_tab(tab);
 
             selected_tab_last = gui.selected;
         }
@@ -193,16 +194,16 @@ void retro_loop()
                 gui.selected++;
             }
             else if (last_key == ODROID_INPUT_UP) {
-                gui_scroll_tab(tab, LINE_UP);
+                gui_scroll_list(tab, LINE_UP);
             }
             else if (last_key == ODROID_INPUT_DOWN) {
-                gui_scroll_tab(tab, LINE_DOWN);
+                gui_scroll_list(tab, LINE_DOWN);
             }
             else if (last_key == ODROID_INPUT_LEFT) {
-                gui_scroll_tab(tab, PAGE_UP);
+                gui_scroll_list(tab, PAGE_UP);
             }
             else if (last_key == ODROID_INPUT_RIGHT) {
-                gui_scroll_tab(tab, PAGE_DOWN);
+                gui_scroll_list(tab, PAGE_DOWN);
             }
             else if (last_key == ODROID_INPUT_A) {
                 gui_event(KEY_PRESS_A, tab);

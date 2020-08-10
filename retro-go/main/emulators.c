@@ -4,10 +4,12 @@
 #include <string.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <rom/crc.h>
 #include <odroid_system.h>
 
 #include "bitmaps/all.h"
 #include "emulators.h"
+#include "favorites.h"
 #include "gui.h"
 
 static retro_emulator_t emulators[16];
@@ -16,108 +18,63 @@ static int emulators_count = 0;
 static void event_handler(gui_event_t event, tab_t *tab)
 {
     retro_emulator_t *emu = (retro_emulator_t *)tab->arg;
-    listbox_item_t *item = gui_get_selected_item(tab);;
-    retro_emulator_file_t *file;
+    listbox_item_t *item = gui_get_selected_item(tab);
+    retro_emulator_file_t *file = (retro_emulator_file_t *)(item ? item->arg : NULL);
 
     if (event == TAB_INIT)
     {
         emulator_init(emu);
 
-        sprintf(tab->status, "Games: %d", emu->roms.count);
-
         if (emu->roms.count > 0)
         {
-            tab->listbox.length = emu->roms.count;
-            tab->listbox.items = calloc(tab->listbox.length, sizeof(listbox_item_t));
+            sprintf(tab->status, "Games: %d", emu->roms.count);
+            gui_resize_list(tab, emu->roms.count);
 
             for (int i = 0; i < emu->roms.count; i++)
             {
                 strcpy(tab->listbox.items[i].text, emu->roms.files[i].name);
                 tab->listbox.items[i].arg = &emu->roms.files[i];
             }
+
+            gui_sort_list(tab, 0);
         }
         else
         {
-            tab->listbox.length = 8;
+            sprintf(tab->status, "No games");
+            gui_resize_list(tab, 8);
             tab->listbox.cursor = 2;
-            tab->listbox.items = calloc(tab->listbox.length, sizeof(listbox_item_t));
             sprintf(tab->listbox.items[1].text, "No roms found!");
             sprintf(tab->listbox.items[4].text, "Place roms in folder: /roms/%s", emu->dirname);
             sprintf(tab->listbox.items[6].text, "With file extension: .%s", emu->ext);
         }
     }
 
-    // File-specific events
-    file = (retro_emulator_file_t *)(item ? item->arg : NULL);
-
+    /* The rest of the events require a file to be selected */
     if (file == NULL)
         return;
 
-    // if (show_cover && idle_counter == (show_cover == 1 ? 8 : 1))
-
-    if (event == TAB_REDRAW || gui.idle_counter == 8)
-        gui_draw_cover(file);
-
     if (event == KEY_PRESS_A)
     {
-        char *file_path = emulator_get_file_path(file);
-        char *save_path = odroid_system_get_path(ODROID_PATH_SAVE_STATE, file_path);
-        bool has_save = access(save_path, F_OK) != -1;
-
-        odroid_dialog_choice_t choices[] = {
-            {0, "Resume game", "", has_save, NULL},
-            {1, "New game", "", 1, NULL},
-            {2, "Delete save", "", has_save, NULL},
-            ODROID_DIALOG_CHOICE_LAST
-        };
-        int sel = odroid_overlay_dialog(NULL, choices, has_save ? 0 : 1);
-
-        if (sel == 0 || sel == 1) {
-            gui_save_tab(tab);
-            emulator_start(file, sel == 0);
-        }
-        else if (sel == 2) {
-            if (odroid_overlay_confirm("Delete savestate?", false) == 1) {
-                unlink(save_path);
-            }
-        }
-        free(file_path);
-        free(save_path);
-
+        emulator_show_file_menu(file);
         gui_redraw();
     }
     else if (event == KEY_PRESS_B)
     {
-        char *file_path = emulator_get_file_path(file);
-
-        odroid_dialog_choice_t choices[] = {
-            {0, "File", "...", 1, NULL},
-            {0, "Type", "N/A", 1, NULL},
-            {0, "Folder", "...", 1, NULL},
-            {0, "Size", "0", 1, NULL},
-            {0, "CRC32", "N/A", 1, NULL},
-            {0, "---", "", -1, NULL},
-            {1, "Close", "", 1, NULL},
-            ODROID_DIALOG_CHOICE_LAST
-        };
-
-        sprintf(choices[0].value, "%.127s", file->name);
-        sprintf(choices[1].value, "%s", file->ext);
-        sprintf(choices[2].value, "%s", file->folder);
-        sprintf(choices[3].value, "%d KB", odroid_sdcard_get_filesize(file_path) / 1024);
-        if (file->checksum > 1) {
-            sprintf(choices[4].value, "%08X", file->checksum);
-        }
-
-        odroid_overlay_dialog("Properties", choices, -1);
-        free(file_path);
-
+        emulator_show_file_info(file);
         gui_redraw();
     }
     else if (event == TAB_IDLE)
     {
         if (file->checksum == 0)
-            gui_crc32_file(file);
+            emulator_crc32_file(file);
+
+        if (gui.show_cover && gui.idle_counter == (gui.show_cover == 1 ? 8 : 1))
+            gui_draw_cover(file);
+    }
+    else if (event == TAB_REDRAW)
+    {
+        if (gui.show_cover)
+            gui_draw_cover(file);
     }
 }
 
@@ -142,11 +99,6 @@ static void add_emulator(const char *system, const char *dirname, const char* ex
     p->crc_offset = crc_offset;
 
     gui_add_tab(dirname, logo, header, p, event_handler);
-}
-
-static int file_sort_comparator(const void *p, const void *q)
-{
-    return strcasecmp(((retro_emulator_file_t*)p)->name, ((retro_emulator_file_t*)q)->name);
 }
 
 void emulator_init(retro_emulator_t *emu)
@@ -196,12 +148,8 @@ void emulator_init(retro_emulator_t *emu)
             strcpy(file->ext, ext);
             file->name[strlen(file->name)-strlen(ext)-1] = 0;
             file->emulator = (void*)emu;
+            file->crc_offset = emu->crc_offset;
             file->checksum = 0;
-        }
-
-        if (emu->roms.count > 0)
-        {
-            qsort((void*)emu->roms.files, emu->roms.count, sizeof(retro_emulator_file_t), file_sort_comparator);
         }
 
         free(selected_file);
@@ -211,18 +159,167 @@ void emulator_init(retro_emulator_t *emu)
     odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
 }
 
-char *emulator_get_file_path(retro_emulator_file_t *file)
+const char *emu_get_file_path(retro_emulator_file_t *file)
 {
+    static char buffer[192];
     if (file == NULL) return NULL;
-    char buffer[256];
     sprintf(buffer, "%s/%s.%s", file->folder, file->name, file->ext);
-    return strdup(buffer);
+    return (const char*)&buffer;
+}
+
+bool emulator_build_file_object(const char *path, retro_emulator_file_t *file)
+{
+    const char *name = odroid_sdcard_get_filename(path);
+    const char *ext = odroid_sdcard_get_extension(path);
+
+    if (ext == NULL || name == NULL)
+        return false;
+
+    memset(file, 0, sizeof(retro_emulator_file_t));
+    strncpy(file->folder, path, strlen(path)-strlen(name)-1);
+    strncpy(file->name, name, strlen(name)-strlen(ext)-1);
+    strcpy(file->ext, ext);
+
+    const char *dirname = odroid_sdcard_get_filename(file->folder);
+
+    for (int i = 0; i < emulators_count; ++i)
+    {
+        if (strcmp(emulators[i].dirname, dirname) == 0)
+        {
+            file->crc_offset = emulators[i].crc_offset;
+            file->emulator = &emulators[i];
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void emulator_crc32_file(retro_emulator_file_t *file)
+{
+    if (file == NULL || file->checksum > 0)
+        return;
+
+    const int chunk_size = 32768;
+    char *file_path = emu_get_file_path(file);
+    char *cache_path = odroid_system_get_path(ODROID_PATH_CRC_CACHE, file_path);
+    FILE *fp, *fp2;
+
+    file->missing_cover = 0;
+
+    if ((fp = fopen(cache_path, "rb")) != NULL)
+    {
+        fread(&file->checksum, 4, 1, fp);
+        fclose(fp);
+    }
+    else if ((fp = fopen(file_path, "rb")) != NULL)
+    {
+        void *buffer = malloc(chunk_size);
+        uint32_t crc_tmp = 0;
+        uint32_t count = 0;
+
+        gui_draw_notice("        CRC32", C_GREEN);
+
+        fseek(fp, file->crc_offset, SEEK_SET);
+        while (true)
+        {
+            odroid_input_gamepad_read(&gui.joystick);
+            if (gui.joystick.bitmask > 0) break;
+
+            count = fread(buffer, 1, chunk_size, fp);
+            if (count == 0) break;
+
+            crc_tmp = crc32_le(crc_tmp, buffer, count);
+            if (count < chunk_size) break;
+        }
+
+        free(buffer);
+
+        if (feof(fp))
+        {
+            file->checksum = crc_tmp;
+            if ((fp2 = fopen(cache_path, "wb")) != NULL)
+            {
+                fwrite(&file->checksum, 4, 1, fp2);
+                fclose(fp2);
+            }
+        }
+        fclose(fp);
+    }
+    else
+    {
+        file->checksum = 1;
+    }
+
+    free(cache_path);
+
+    gui_draw_notice(" ", C_RED);
+}
+
+void emulator_show_file_info(retro_emulator_file_t *file)
+{
+    odroid_dialog_choice_t choices[] = {
+        {0, "File", "...", 1, NULL},
+        {0, "Type", "N/A", 1, NULL},
+        {0, "Folder", "...", 1, NULL},
+        {0, "Size", "0", 1, NULL},
+        {0, "CRC32", "N/A", 1, NULL},
+        {0, "---", "", -1, NULL},
+        {1, "Close", "", 1, NULL},
+        ODROID_DIALOG_CHOICE_LAST
+    };
+
+    sprintf(choices[0].value, "%.127s", file->name);
+    sprintf(choices[1].value, "%s", file->ext);
+    sprintf(choices[2].value, "%s", file->folder);
+    sprintf(choices[3].value, "%d KB", odroid_sdcard_get_filesize(emu_get_file_path(file)) / 1024);
+    if (file->checksum > 1) {
+        sprintf(choices[4].value, "%08X", file->checksum);
+    }
+
+    odroid_overlay_dialog("Properties", choices, -1);
+}
+
+void emulator_show_file_menu(retro_emulator_file_t *file)
+{
+    char *save_path = odroid_system_get_path(ODROID_PATH_SAVE_STATE, emu_get_file_path(file));
+    bool has_save = access(save_path, F_OK) != -1;
+    bool is_fav = favorite_find(file) != NULL;
+
+    odroid_dialog_choice_t choices[] = {
+        {0, "Resume game ", "", has_save, NULL},
+        {1, "New game    ", "", 1, NULL},
+        {0, "------------", "", -1, NULL},
+        {3, is_fav ? "Del favorite" : "Add favorite", "", 1, NULL},
+        {2, "Delete save ", "", has_save, NULL},
+        ODROID_DIALOG_CHOICE_LAST
+    };
+    int sel = odroid_overlay_dialog(NULL, choices, has_save ? 0 : 1);
+
+    if (sel == 0 || sel == 1) {
+        emulator_start(file, sel == 0);
+    }
+    else if (sel == 2) {
+        if (odroid_overlay_confirm("Delete savestate?", false) == 1) {
+            unlink(save_path);
+        }
+    }
+    else if (sel == 3) {
+        if (is_fav)
+            favorite_remove(file);
+        else
+            favorite_add(file);
+    }
+
+    free(save_path);
 }
 
 void emulator_start(retro_emulator_file_t *file, bool load_state)
 {
-    char *path = emulator_get_file_path(file);
+    char *path = emu_get_file_path(file);
     assert(path != NULL);
+
+    gui_save_current_tab();
 
     printf("Retro-Go: Starting game: %s\n", path);
     odroid_settings_StartAction_set(load_state ? ODROID_START_ACTION_RESUME : ODROID_START_ACTION_NEWGAME);

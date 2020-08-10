@@ -129,7 +129,10 @@ char* odroid_settings_string_get(const char *key, char *default_value)
         printf("%s: key='%s' err=%d\n", __func__, key, err);
     }
 #endif
-    return default_value;
+    if (default_value != NULL)
+        return strdup(default_value);
+
+    return NULL;
 }
 
 void odroid_settings_string_set(const char *key, char *value)

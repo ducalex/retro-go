@@ -64,6 +64,8 @@ typedef struct {
     int tabcount;
     int selected;
     int theme;
+    int show_empty;
+    int show_cover;
     int idle_counter;
     int last_key;
     odroid_gamepad_state joystick;
@@ -73,18 +75,20 @@ extern retro_gui_t gui;
 extern int gui_themes_count;
 
 tab_t *gui_add_tab(const char *name, const void *logo, const void *header, void *arg, void *event_handler);
-void   gui_init_tab(tab_t *tab);
-void   gui_save_tab(tab_t *tab);
-void   gui_scroll_tab(tab_t *tab, scroll_mode_t mode);
-tab_t *gui_get_current_tab();
-tab_t *gui_get_tab(int index);
-void   gui_event(gui_event_t event, tab_t *tab);
-listbox_item_t *gui_get_selected_item(tab_t *tab);
+void gui_init_tab(tab_t *tab);
+void gui_scroll_list(tab_t *tab, scroll_mode_t mode);
+void gui_resize_list(tab_t *tab, int new_size);
+void gui_sort_list(tab_t *tab, int sort_mode);
+void gui_save_current_tab(void);
 
+listbox_item_t *gui_get_selected_item(tab_t *tab);
+tab_t *gui_get_current_tab();
+
+void gui_event(gui_event_t event, tab_t *tab);
 void gui_redraw(void);
 void gui_draw_navbar(void);
 void gui_draw_header(tab_t *tab);
 void gui_draw_status(tab_t *tab);
 void gui_draw_list(tab_t *tab);
+void gui_draw_notice(const char *text, uint16_t color);
 void gui_draw_cover(retro_emulator_file_t *file);
-void gui_crc32_file(retro_emulator_file_t *file);
