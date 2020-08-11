@@ -181,9 +181,9 @@ const char* odroid_system_get_rom_path()
     return romPath;
 }
 
-char* odroid_system_get_path(emu_path_type_t type, char *_romPath)
+char* odroid_system_get_path(emu_path_type_t type, const char *_romPath)
 {
-    char *fileName = _romPath ?: romPath;
+    const char *fileName = _romPath ?: romPath;
     char buffer[256];
 
     if (strstr(fileName, ODROID_BASE_PATH_ROMS))

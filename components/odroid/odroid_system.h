@@ -124,7 +124,7 @@ void odroid_system_set_app_id(int appId);
 uint odroid_system_get_game_id();
 uint odroid_system_get_start_action();
 const char* odroid_system_get_rom_path();
-char* odroid_system_get_path(emu_path_type_t type, char *romPath);
+char* odroid_system_get_path(emu_path_type_t type, const char *romPath);
 void odroid_system_panic(const char *reason);
 void odroid_system_unresponsive(const char *reason);
 void odroid_system_halt();

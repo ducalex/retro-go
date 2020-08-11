@@ -13,6 +13,8 @@ static favorite_t *favorites;
 static int favorites_count = 0;
 static tab_t *fav_tab;
 
+static void favorites_load();
+
 static void event_handler(gui_event_t event, tab_t *tab)
 {
     listbox_item_t *item = gui_get_selected_item(tab);
@@ -51,68 +53,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
     }
 }
 
-bool favorite_add(retro_emulator_file_t *file)
-{
-    // There's always one free slot at the end
-    favorite_t *favorite = &favorites[favorites_count++];
-
-    sprintf(favorite->path, "%s/%s.%s", file->folder, file->name, file->ext);
-    favorite->removed = false;
-
-    favorites_save();
-    favorites_load();
-
-    return true;
-}
-
-favorite_t *favorite_find(retro_emulator_file_t *file)
-{
-    for (int i = 0; i < favorites_count; i++)
-    {
-        if (favorites[i].file.emulator == file->emulator
-            && strcmp(favorites[i].file.name, file->name) == 0)
-        {
-            return &favorites[i];
-        }
-    }
-
-    return NULL;
-}
-
-bool favorite_remove(retro_emulator_file_t *file)
-{
-    favorite_t *favorite = favorite_find(file);
-
-    if (favorite == NULL)
-        return false;
-
-    favorite->removed = true;
-
-    // Lazy lazy lazy
-    favorites_save();
-    favorites_load();
-
-    return true;
-}
-
-void favorites_save()
-{
-    char *buffer = calloc(favorites_count, 128);
-
-    for (int i = 0; i < favorites_count; i++)
-    {
-        if (!favorites[i].removed) {
-            strcat(buffer, favorites[i].path);
-            strcat(buffer, "\n");
-        }
-    }
-
-    odroid_settings_string_set(KEY_FAVORITES, buffer);
-
-    free(buffer);
-}
-
-void favorites_load()
+static void favorites_load()
 {
     char *favorites_str = odroid_settings_string_get(KEY_FAVORITES, "");
     char *temp_ptr = favorites_str;
@@ -161,6 +102,67 @@ void favorites_load()
 
     gui_resize_list(fav_tab, favorites_count);
     gui_sort_list(fav_tab, 0);
+}
+
+static void favorites_save()
+{
+    char *buffer = calloc(favorites_count, 128);
+
+    for (int i = 0; i < favorites_count; i++)
+    {
+        if (!favorites[i].removed) {
+            strcat(buffer, favorites[i].path);
+            strcat(buffer, "\n");
+        }
+    }
+
+    odroid_settings_string_set(KEY_FAVORITES, buffer);
+
+    free(buffer);
+}
+
+favorite_t *favorite_find(retro_emulator_file_t *file)
+{
+    for (int i = 0; i < favorites_count; i++)
+    {
+        if (favorites[i].file.emulator == file->emulator
+            && strcmp(favorites[i].file.name, file->name) == 0)
+        {
+            return &favorites[i];
+        }
+    }
+
+    return NULL;
+}
+
+bool favorite_add(retro_emulator_file_t *file)
+{
+    // There's always one free slot at the end
+    favorite_t *favorite = &favorites[favorites_count++];
+
+    sprintf(favorite->path, "%s/%s.%s", file->folder, file->name, file->ext);
+    favorite->removed = false;
+
+    favorites_save();
+    favorites_load();
+
+    return true;
+}
+
+bool favorite_remove(retro_emulator_file_t *file)
+{
+    favorite_t *favorite = favorite_find(file);
+
+    if (favorite == NULL)
+        return false;
+
+    favorite->removed = true;
+
+    // Lazy lazy lazy
+    favorites_save();
+    favorites_load();
+
+    return true;
 }
 
 void favorites_init()

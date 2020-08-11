@@ -27,7 +27,7 @@ int32_t odroid_settings_Volume_get();
 void odroid_settings_Volume_set(int32_t value);
 
 char* odroid_settings_RomFilePath_get();
-void odroid_settings_RomFilePath_set(char* value);
+void odroid_settings_RomFilePath_set(const char* value);
 
 int32_t odroid_settings_Backlight_get();
 void odroid_settings_Backlight_set(int32_t value);
@@ -64,8 +64,8 @@ void odroid_settings_DisplayOverscan_set(int32_t value);
 
 /*** Generic functions ***/
 
-void odroid_settings_string_set(const char *key, char *value);
-char* odroid_settings_string_get(const char *key, char *default_value);
+void odroid_settings_string_set(const char *key, const char *value);
+char* odroid_settings_string_get(const char *key, const char *default_value);
 
 int32_t odroid_settings_int32_get(const char *key, int32_t value_default);
 void odroid_settings_int32_set(const char *key, int32_t value);

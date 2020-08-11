@@ -103,7 +103,7 @@ void odroid_settings_reset()
 #endif
 }
 
-char* odroid_settings_string_get(const char *key, char *default_value)
+char* odroid_settings_string_get(const char *key, const char *default_value)
 {
 #ifdef USE_CONFIG_FILE
     cJSON *obj = cJSON_GetObjectItem(root, key);
@@ -135,7 +135,7 @@ char* odroid_settings_string_get(const char *key, char *default_value)
     return NULL;
 }
 
-void odroid_settings_string_set(const char *key, char *value)
+void odroid_settings_string_set(const char *key, const char *value)
 {
 #ifdef USE_CONFIG_FILE
     json_set(key, cJSON_CreateString(value));
@@ -205,7 +205,7 @@ char* odroid_settings_RomFilePath_get()
 {
     return odroid_settings_string_get(Key_RomFilePath, NULL);
 }
-void odroid_settings_RomFilePath_set(char* value)
+void odroid_settings_RomFilePath_set(const char* value)
 {
     odroid_settings_string_set(Key_RomFilePath, value);
 }

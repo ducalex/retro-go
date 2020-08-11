@@ -201,7 +201,7 @@ void emulator_crc32_file(retro_emulator_file_t *file)
         return;
 
     const int chunk_size = 32768;
-    char *file_path = emu_get_file_path(file);
+    const char *file_path = emu_get_file_path(file);
     char *cache_path = odroid_system_get_path(ODROID_PATH_CRC_CACHE, file_path);
     FILE *fp, *fp2;
 
@@ -273,8 +273,13 @@ void emulator_show_file_info(retro_emulator_file_t *file)
     sprintf(choices[1].value, "%s", file->ext);
     sprintf(choices[2].value, "%s", file->folder);
     sprintf(choices[3].value, "%d KB", odroid_sdcard_get_filesize(emu_get_file_path(file)) / 1024);
-    if (file->checksum > 1) {
-        sprintf(choices[4].value, "%08X", file->checksum);
+
+    if (file->checksum > 1)
+    {
+        if (file->crc_offset)
+            sprintf(choices[4].value, "%08X (%d)", file->checksum, file->crc_offset);
+        else
+            sprintf(choices[4].value, "%08X", file->checksum);
     }
 
     odroid_overlay_dialog("Properties", choices, -1);
@@ -316,7 +321,7 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
 
 void emulator_start(retro_emulator_file_t *file, bool load_state)
 {
-    char *path = emu_get_file_path(file);
+    const char *path = emu_get_file_path(file);
     assert(path != NULL);
 
     gui_save_current_tab();
