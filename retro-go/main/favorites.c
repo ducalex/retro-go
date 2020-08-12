@@ -68,14 +68,6 @@ static void favorites_load()
     favorites = calloc(favorites_count + 1, sizeof(favorite_t));
     gui_resize_list(fav_tab, favorites_count);
 
-    if (favorites_count == 0)
-    {
-        sprintf(fav_tab->status, "No favorites");
-        return;
-    }
-
-    sprintf(fav_tab->status, "Favorites: %d", favorites_count);
-
     char *token = strtok(favorites_str, "\n");
     int pos = 0;
 
@@ -100,8 +92,21 @@ static void favorites_load()
         token = strtok(NULL, "\n");
     }
 
-    gui_resize_list(fav_tab, favorites_count);
-    gui_sort_list(fav_tab, 0);
+    if (favorites_count > 0)
+    {
+        sprintf(fav_tab->status, "Favorites: %d", favorites_count);
+        gui_resize_list(fav_tab, favorites_count);
+        gui_sort_list(fav_tab, 0);
+    }
+    else
+    {
+        sprintf(fav_tab->status, "No favorites");
+        gui_resize_list(fav_tab, 8);
+        fav_tab->listbox.cursor = 4;
+        sprintf(fav_tab->listbox.items[1].text, "Welcome to Retro-Go!");
+        sprintf(fav_tab->listbox.items[3].text, "You have no favorites.");
+        sprintf(fav_tab->listbox.items[5].text, "Use SELECT and START to navigate.");
+    }
 }
 
 static void favorites_save()
