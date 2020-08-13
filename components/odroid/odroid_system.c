@@ -472,7 +472,7 @@ static void odroid_system_monitor_task(void *arg)
     #endif
 
         // Applications should never stop polling input. If they do, they're probably unresponsive...
-        if (statistics.lastTickTime > 0 && odroid_input_gamepad_last_polled() > 10000000)
+        if (statistics.lastTickTime > 0 && odroid_input_gamepad_last_polled() > 5000000)
         {
             RG_PANIC("Input timeout");
         }

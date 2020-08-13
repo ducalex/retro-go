@@ -41,10 +41,10 @@ static odroid_display_filter_t filterMode = ODROID_DISPLAY_FILTER_OFF;
 
 static int8_t forceVideoRefresh = true;
 
-static short x_inc = SCREEN_WIDTH;
-static short y_inc = SCREEN_HEIGHT;
-static short x_origin = 0;
-static short y_origin = 0;
+static int x_inc = SCREEN_WIDTH;
+static int y_inc = SCREEN_HEIGHT;
+static int x_origin = 0;
+static int y_origin = 0;
 static int8_t screen_line_is_empty[SCREEN_HEIGHT];
 
 typedef struct {
@@ -613,12 +613,11 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
                 }
             }
 
-            if (pixel_clear > -1) {
-                // if (pixel_clear > -1) ((uint16_t*)buffer)[x] = pixel_clear;
-                memset((uint8_t*)buffer, pixel_clear, width);
-            }
-
             if (!screen_line_is_empty[++screen_y]) {
+                if (pixel_clear > -1) {
+                    // if (pixel_clear > -1) ((uint16_t*)buffer)[x] = pixel_clear;
+                    memset((uint8_t*)buffer, pixel_clear, width);
+                }
                 buffer += stride;
                 ++y;
             }
