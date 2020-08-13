@@ -22,7 +22,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
 
     if (event == TAB_INIT)
     {
-        favorites_load();
+        // favorites_load();
     }
 
     if (file == NULL)
@@ -173,4 +173,7 @@ bool favorite_remove(retro_emulator_file_t *file)
 void favorites_init()
 {
     fav_tab = gui_add_tab("favorites", (void*)&favorites_count, NULL, NULL, event_handler);
+
+    // We must load favorites now because other tabs depend on it for menu items
+    favorites_load();
 }
