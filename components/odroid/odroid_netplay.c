@@ -96,20 +96,17 @@ static void network_setup(tcpip_adapter_if_t tcpip_if)
 
     if (bind(rx_sock, (struct sockaddr *)&rx_addr, sizeof rx_addr) < 0)
     {
-        printf("netplay: bind() failed\n");
-        abort();
+        RG_PANIC("netplay: bind() failed");
     }
 
     // if (bind(server_sock, (struct sockaddr *)&rx_addr, sizeof rx_addr) < 0)
     // {
-    //     printf("netplay: bind() failed\n");
-    //     abort();
+    //     RG_PANIC("netplay: bind() failed");
     // }
 
     // if (listen(server_sock, 2) < 0)
     // {
-    //     printf("netplay: listen() failed\n");
-    //     abort();
+    //     RG_PANIC("netplay: listen() failed");
     // }
 }
 
@@ -500,8 +497,7 @@ bool odroid_netplay_start(netplay_mode_t mode)
     }
     else
     {
-        printf("netplay: Error: Unknown mode!\n");
-        abort();
+        RG_PANIC("netplay: Error: Unknown mode!");
     }
 
     return ret == ESP_OK;

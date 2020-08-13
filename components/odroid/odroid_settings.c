@@ -66,14 +66,13 @@ void odroid_settings_init()
         nvs_flash_erase();
         if (nvs_flash_init() != ESP_OK)
         {
-            printf("odroid_system_init: Failed to init NVS!\n");
-            abort();
+            RG_PANIC("Failed to init NVS!");
         }
     }
 	err = nvs_open(NvsNamespace, NVS_READWRITE, &my_handle);
 	if (err != ESP_OK)
     {
-        printf("odroid_system_init: Failed to open NVS!\n");
+        RG_PANIC("Failed to open NVS!");
     }
 #endif
 }

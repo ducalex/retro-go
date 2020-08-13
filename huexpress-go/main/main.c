@@ -47,6 +47,5 @@ void app_main(void)
 
     RunPCE();
 
-    printf("HuExpress died.\n");
-    abort();
+    RG_PANIC("HuExpress died.");
 }

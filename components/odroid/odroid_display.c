@@ -192,7 +192,7 @@ spi_get_buffer()
 
     if (xQueueReceive(spi_buffer_queue, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
     {
-        abort();
+        RG_PANIC("display");
     }
 
     return buffer;
@@ -203,7 +203,7 @@ spi_put_buffer(uint16_t* buffer)
 {
     if (xQueueSend(spi_buffer_queue, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
     {
-        abort();
+        RG_PANIC("display");
     }
 }
 
@@ -234,7 +234,7 @@ spi_put_transaction(spi_transaction_t* t)
 
     if (spi_device_queue_trans(spi, t, pdMS_TO_TICKS(2500)) != ESP_OK)
     {
-        abort();
+        RG_PANIC("display");
     }
 
     xSemaphoreGive(spi_count_semaphore);
@@ -337,7 +337,7 @@ spi_task(void *arg)
 
         if (spi_device_get_trans_result(spi, &t, portMAX_DELAY) != ESP_OK)
         {
-            abort();
+            RG_PANIC("display");
         }
 
         if ((int)t->user & 0x80)
@@ -347,7 +347,7 @@ spi_task(void *arg)
 
         if (xQueueSend(spi_queue, &t, portMAX_DELAY) != pdPASS)
         {
-            abort();
+            RG_PANIC("display");
         }
 
         // if (uxQueueSpacesAvailable(spi_queue) == 0)

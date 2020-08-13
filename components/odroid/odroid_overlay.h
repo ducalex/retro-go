@@ -55,3 +55,4 @@ int odroid_overlay_game_menu();
 
 extern short ODROID_FONT_WIDTH;
 extern short ODROID_FONT_HEIGHT;
+extern int8_t speedupEnabled;

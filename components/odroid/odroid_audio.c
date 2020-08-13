@@ -101,7 +101,7 @@ void odroid_audio_init(int sample_rate)
     }
     else
     {
-        abort();
+        RG_PANIC("Audio Sink Unknown");
     }
 
     odroid_audio_volume_set(volumeLevel);
@@ -212,7 +212,7 @@ IRAM_ATTR void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
     }
     else
     {
-        abort();
+        RG_PANIC("Audio Sink Unknown");
     }
 
     if (audioFilter)
@@ -223,8 +223,7 @@ IRAM_ATTR void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
     i2s_write(I2S_NUM, (const short *)stereoAudioBuffer, bufferSize, &written, 1000);
     if (written == 0) // Anything > 0 is fine
     {
-        printf("odroid_audio_submit: i2s_write failed.\n");
-        abort();
+        RG_PANIC("i2s_write failed.");
     }
 }
 

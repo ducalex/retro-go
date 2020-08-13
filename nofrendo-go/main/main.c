@@ -414,7 +414,7 @@ void app_main(void)
    printf("app_main ROM: romSize=%d\n", romSize);
    if (romSize <= 0)
    {
-      odroid_system_panic("ROM file loading failed!");
+      RG_PANIC("ROM file loading failed!");
    }
 
    int region, ret;
@@ -433,8 +433,8 @@ void app_main(void)
 
    switch (ret)
    {
-      case -1: odroid_system_panic("Init failed.");
-      case -2: odroid_system_panic("Unsupported ROM.");
-      default: odroid_system_panic("Nofrendo died!");
+      case -1: RG_PANIC("Init failed.");
+      case -2: RG_PANIC("Unsupported ROM.");
+      default: RG_PANIC("Nofrendo died!");
    }
 }

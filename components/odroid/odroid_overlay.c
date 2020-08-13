@@ -16,6 +16,9 @@ static int dialog_open_depth = 0;
 short ODROID_FONT_WIDTH = 8;
 short ODROID_FONT_HEIGHT = 8;
 
+// To do: move this out
+int8_t speedupEnabled = 0;
+
 static void wait_all_keys_released()
 {
     odroid_gamepad_state joystick;

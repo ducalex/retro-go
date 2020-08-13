@@ -16,7 +16,9 @@
 #include "odroid_image_sdcard.h"
 #include "odroid_system.h"
 
-int8_t speedupEnabled = 0;
+// This is a direct pointer to rtc slow ram which isn't cleared on
+// panic. We don't use this region so we can point anywhere in it.
+static panic_trace_t *panicTrace = (void *)0x50001000;
 
 static uint applicationId = 0;
 static uint gameId = 0;
@@ -80,7 +82,10 @@ void odroid_system_init(int appId, int sampleRate)
 
     if (esp_reset_reason() == ESP_RST_PANIC)
     {
-        odroid_system_panic("The application crashed!");
+        if (panicTrace->magicWord == PANIC_TRACE_MAGIC)
+            odroid_system_panic_dialog(panicTrace->message);
+        else
+            odroid_system_panic_dialog("Reason unknown");
     }
 
     if (esp_reset_reason() != ESP_RST_SW)
@@ -104,6 +109,8 @@ void odroid_system_init(int appId, int sampleRate)
 
     // esp_task_wdt_init(5, true);
     // esp_task_wdt_add(xTaskGetCurrentTaskHandle());
+
+    panicTrace->magicWord = 0;
 
     printf("odroid_system_init: System ready!\n\n");
 }
@@ -138,7 +145,7 @@ void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_
     romPath = odroid_settings_RomFilePath_get();
     if (!romPath || strlen(romPath) < 4)
     {
-        odroid_system_panic("Invalid ROM Path!");
+        RG_PANIC("Invalid ROM Path!");
     }
 
     printf("odroid_system_emu_init: romPath='%s'\n", romPath);
@@ -146,7 +153,7 @@ void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_
     // Read some of the ROM to derive a unique id
     if (!odroid_sdcard_read_file(romPath, buffer, sizeof(buffer)))
     {
-        odroid_system_panic("ROM File not found!");
+        RG_PANIC("ROM File not found!");
     }
 
     gameId = crc32_le(0, buffer, sizeof(buffer));
@@ -194,7 +201,7 @@ char* odroid_system_get_path(emu_path_type_t type, const char *_romPath)
 
     if (!fileName || strlen(fileName) < 4)
     {
-        odroid_system_panic("Invalid ROM path!");
+        RG_PANIC("Invalid ROM path!");
     }
 
     switch (type)
@@ -236,7 +243,7 @@ char* odroid_system_get_path(emu_path_type_t type, const char *_romPath)
             break;
 
         default:
-            abort();
+            RG_PANIC("Unknown Type");
     }
 
     return strdup(buffer);
@@ -352,37 +359,47 @@ void odroid_system_set_boot_app(int slot)
         esp_err_t err = esp_ota_set_boot_partition(partition);
         if (err != ESP_OK)
         {
-            printf("odroid_system_set_boot_app: esp_ota_set_boot_partition failed.\n");
-            abort();
+            RG_PANIC("esp_ota_set_boot_partition failed.\n");
         }
     }
 }
 
-void odroid_system_panic(const char *reason)
+void odroid_system_panic(const char *reason, const char *function, const char *file)
 {
-    printf(" *** PANIC: %s *** \n", reason);
+    printf("*** PANIC: %s\n  *** FUNCTION: %s\n  *** FILE: %s\n", reason, function, file);
 
-    // Here we should stop unecessary tasks
+    strcpy(panicTrace->message, reason);
+    strcpy(panicTrace->file, file);
+    strcpy(panicTrace->function, function);
+
+    panicTrace->magicWord = PANIC_TRACE_MAGIC;
+
+    abort();
+}
+
+void odroid_system_panic_dialog(const char *reason)
+{
+    printf(" *** PREVIOUS PANIC: %s *** \n", reason);
+
+    // Clear the trace to avoid a boot loop
+    panicTrace->magicWord = 0;
 
     odroid_audio_terminate();
 
     // In case we panicked from inside a dialog
     odroid_system_spi_lock_release(SPI_LOCK_ANY);
 
+    // Blue screen of death!
     odroid_display_clear(C_BLUE);
 
-    odroid_overlay_alert(reason);
+    odroid_dialog_choice_t choices[] = {
+        {0, reason, "", -1, NULL},
+        {1, "OK", "", 1, NULL},
+        ODROID_DIALOG_CHOICE_LAST
+    };
+    odroid_overlay_dialog("The application crashed!", choices, 1);
 
     odroid_system_switch_app(0);
-}
-
-void odroid_system_unresponsive(const char *reason)
-{
-    printf(" *** APP UNRESPONSIVE: %s *** \n", reason);
-
-    // if (odroid_overlay_confirm("App Unresponsive. Reboot?", 1)) {
-        odroid_system_switch_app(0);
-    // }
 }
 
 void odroid_system_halt()
@@ -457,7 +474,7 @@ static void odroid_system_monitor_task(void *arg)
         // Applications should never stop polling input. If they do, they're probably unresponsive...
         if (statistics.lastTickTime > 0 && odroid_input_gamepad_last_polled() > 10000000)
         {
-            odroid_system_unresponsive("Input timeout");
+            RG_PANIC("Input timeout");
         }
 
         if (statistics.battery.percentage < 2)
@@ -516,8 +533,7 @@ IRAM_ATTR void odroid_system_spi_lock_acquire(spi_lock_res_t owner)
     }
     else
     {
-        printf("SPI Mutex Lock Acquisition failed!\n");
-        abort();
+        RG_PANIC("SPI Mutex Lock Acquisition failed!");
     }
 }
 
@@ -551,8 +567,7 @@ void *rg_alloc(size_t size, uint32_t caps)
           ptr = heap_caps_calloc(1, size, caps & ~(MALLOC_CAP_SPIRAM|MALLOC_CAP_INTERNAL));
           if (!ptr)
           {
-               printf("RG_ALLOC: *** Memory allocation failed ***\n");
-               odroid_system_panic("Memory allocation failed!");
+               RG_PANIC("Memory allocation failed!");
           }
 
           printf("RG_ALLOC: *** CAPS not fully met (req: %d, available: %d) ***\n", size, availaible);

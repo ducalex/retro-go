@@ -109,14 +109,12 @@ int IRAM_ATTR rom_loadbank(short bank)
 	// Load the 16K page
 	if (fseek(fpRomFile, OFFSET, SEEK_SET))
 	{
-		printf("bank_load: fseek failed. OFFSET=%d\n", OFFSET);
-		odroid_system_panic("ROM fseek failed");
+		RG_PANIC("ROM fseek failed");
 	}
 
 	if (fread(rom.bank[bank], BANK_SIZE, 1, fpRomFile) < 1)
 	{
-		printf("bank_load: fread failed. bank=%d\n", bank);
-		odroid_system_panic("ROM fread failed");
+		RG_PANIC("ROM fread failed");
 	}
 
 	odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
@@ -132,8 +130,7 @@ int rom_load()
 	fpRomFile = fopen(romfile, "rb");
 	if (fpRomFile == NULL)
 	{
-		printf("loader: fopen failed.\n");
-		odroid_system_panic("ROM fopen failed");
+		RG_PANIC("ROM fopen failed");
 	}
 
 	rom_loadbank(0);

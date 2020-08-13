@@ -47,8 +47,6 @@
 #define ODROID_BASE_PATH_ROMART    ODROID_BASE_PATH "/romart"
 #define ODROID_BASE_PATH_CRC_CACHE ODROID_BASE_PATH "/odroid/cache/crc"
 
-extern int8_t speedupEnabled;
-
 typedef bool (*state_handler_t)(char *pathName);
 
 typedef struct
@@ -115,6 +113,18 @@ typedef struct
      uint idleTimeCPU1;
 } runtime_stats_t;
 
+typedef struct
+{
+     uint magicWord;
+     uint errorCode;
+     char message[128];
+     char function[128];
+     char file[128];
+     uint backtrace[32];
+} panic_trace_t;
+
+#define PANIC_TRACE_MAGIC 0x12345678
+
 void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t netplay_cb);
 bool odroid_system_emu_save_state(int slot);
 bool odroid_system_emu_load_state(int slot);
@@ -125,8 +135,8 @@ uint odroid_system_get_game_id();
 uint odroid_system_get_start_action();
 const char* odroid_system_get_rom_path();
 char* odroid_system_get_path(emu_path_type_t type, const char *romPath);
-void odroid_system_panic(const char *reason);
-void odroid_system_unresponsive(const char *reason);
+void odroid_system_panic_dialog(const char *reason);
+void odroid_system_panic(const char *reason, const char *file, const char *function);
 void odroid_system_halt();
 void odroid_system_sleep();
 void odroid_system_switch_app(int app);
@@ -164,6 +174,8 @@ static inline uint get_elapsed_time_since(uint start)
 #define MIN(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
 #undef MAX
 #define MAX(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
+
+#define RG_PANIC(x) odroid_system_panic(x, __FUNCTION__, __FILE__)
 
 #define MEM_ANY   0
 #define MEM_SLOW  MALLOC_CAP_SPIRAM

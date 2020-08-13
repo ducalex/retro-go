@@ -154,6 +154,5 @@ extern "C" void app_main(void)
         }
     }
 
-    printf("Handy died.\n");
-    abort();
+    RG_PANIC("Handy died.");
 }
