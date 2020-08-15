@@ -25,7 +25,7 @@ struct scan scan;
 #define VS (scan.vs) /* vissprites */
 #define NS (scan.ns)
 
-#define LY (scan.l) /* line */
+#define SL (scan.l) /* line */
 #define SX (scan.x) /* screen position */
 #define SY (scan.y)
 #define S (scan.s) /* tilemap position */
@@ -418,13 +418,13 @@ static inline void spr_enum()
 
 	for (i = 40; i; i--, o++)
 	{
-		if (LY >= o->y || LY + 16 < o->y)
+		if (SL >= o->y || SL + 16 < o->y)
 			continue;
-		if (LY + 8 >= o->y && !(R_LCDC & 0x04))
+		if (SL + 8 >= o->y && !(R_LCDC & 0x04))
 			continue;
 
 		VS[NS].x = (int)o->x - 8;
-		v = LY - (int)o->y + 16;
+		v = SL - (int)o->y + 16;
 
 		if (hw.cgb)
 		{
@@ -565,19 +565,19 @@ static inline void lcd_renderline()
 	if (!(R_LCDC & 0x80))
 		return; /* should not happen... */
 
-	LY = R_LY;
+	SL = R_LY;
 	SX = R_SCX;
-	SY = (R_SCY + LY) & 0xff;
+	SY = (R_SCY + SL) & 0xff;
 	S = SX >> 3;
 	T = SY >> 3;
 	U = SX & 7;
 	V = SY & 7;
 
 	WX = R_WX - 7;
-	if (WY>LY || WY<0 || WY>143 || WX<-7 || WX>160 || !(R_LCDC&0x20))
+	if (WY>SL || WY<0 || WY>143 || WX<-7 || WX>160 || !(R_LCDC&0x20))
 		WX = 160;
-	WT = (LY - WY) >> 3;
-	WV = (LY - WY) & 7;
+	WT = (SL - WY) >> 3;
+	WV = (SL - WY) & 7;
 
 	// Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
 	// This is a hack, the real problem is elsewhere
@@ -810,7 +810,7 @@ void IRAM_ATTR lcdc_change(byte b)
 	{
 		R_LY = 0;
 		stat_change(2);
-		C = 40;  // Correct value seems to be 38
+		CYCLES = 40;  // Correct value seems to be 38
 		lcd_beginframe();
 	}
 }
