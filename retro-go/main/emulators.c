@@ -7,9 +7,9 @@
 #include <rom/crc.h>
 #include <odroid_system.h>
 
-#include "bitmaps/all.h"
 #include "emulators.h"
 #include "favorites.h"
+#include "bitmaps.h"
 #include "gui.h"
 
 static retro_emulator_t emulators[16];
@@ -42,10 +42,10 @@ static void event_handler(gui_event_t event, tab_t *tab)
         {
             sprintf(tab->status, "No games");
             gui_resize_list(tab, 8);
-            tab->listbox.cursor = 2;
-            sprintf(tab->listbox.items[1].text, "No roms found!");
-            sprintf(tab->listbox.items[4].text, "Place roms in folder: /roms/%s", emu->dirname);
-            sprintf(tab->listbox.items[6].text, "With file extension: .%s", emu->ext);
+            tab->listbox.cursor = 3;
+            sprintf(tab->listbox.items[0].text, "No roms found!");
+            sprintf(tab->listbox.items[2].text, "Place roms in folder: /roms/%s", emu->dirname);
+            sprintf(tab->listbox.items[4].text, "With file extension: .%s", emu->ext);
         }
     }
 

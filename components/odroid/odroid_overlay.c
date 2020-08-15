@@ -101,7 +101,8 @@ int odroid_overlay_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, con
         sprintf(buffer, "%.*s", line_len, text + pos);
         if (strchr(buffer, '\n')) *(strchr(buffer, '\n')) = 0;
         height += odroid_overlay_draw_text_line(x_pos, y_pos + height, width, buffer, color, color_bg);
-        pos += strlen(buffer) ?: 1; // Always inc at least 1
+        pos += strlen(buffer);
+        if (*(text + pos) == 0 || *(text + pos) == '\n') pos++;
     }
 
     return height;

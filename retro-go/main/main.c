@@ -153,8 +153,9 @@ void retro_loop()
             if (last_key == ODROID_INPUT_MENU) {
                 odroid_dialog_choice_t choices[] = {
                     {0, "Build", "", 1, NULL},
-                    {0, "Date", "", 1, NULL},
-                    {0, "Type", "n/a", 1, NULL},
+                    {0, "Date ", "", 1, NULL},
+                    {0, "Type ", "n/a", 1, NULL},
+                    {0, "By   ", "ducalex", 1, NULL},
                     {0, "", "", -1, NULL},
                     {1, "Reboot to firmware", "", 1, NULL},
                     {2, "Reset settings", "", 1, NULL},

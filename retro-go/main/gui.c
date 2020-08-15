@@ -72,6 +72,8 @@ tab_t *gui_add_tab(const char *name, const void *logo, const void *header, void 
 
     gui.tabs[gui.tabcount++] = tab;
 
+    printf("gui_add_tab: Tab '%s' added at index %d\n", tab->name, gui.tabcount - 1);
+
     return tab;
 }
 

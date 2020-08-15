@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 #include "favorites.h"
+#include "bitmaps.h"
 #include "gui.h"
 
 #define KEY_FAVORITES "Favorites"
@@ -22,7 +23,8 @@ static void event_handler(gui_event_t event, tab_t *tab)
 
     if (event == TAB_INIT)
     {
-        // favorites_load();
+        // I know this happens twice, this is needed for now...
+        favorites_load();
     }
 
     if (file == NULL)
@@ -101,11 +103,11 @@ static void favorites_load()
     else
     {
         sprintf(fav_tab->status, "No favorites");
-        gui_resize_list(fav_tab, 8);
-        fav_tab->listbox.cursor = 4;
-        sprintf(fav_tab->listbox.items[1].text, "Welcome to Retro-Go!");
-        sprintf(fav_tab->listbox.items[3].text, "You have no favorites.");
-        sprintf(fav_tab->listbox.items[5].text, "Use SELECT and START to navigate.");
+        gui_resize_list(fav_tab, 6);
+        sprintf(fav_tab->listbox.items[0].text, "Welcome to Retro-Go!");
+        sprintf(fav_tab->listbox.items[2].text, "You have no favorites.");
+        sprintf(fav_tab->listbox.items[4].text, "Use SELECT and START to navigate.");
+        fav_tab->listbox.cursor = 3;
     }
 }
 
@@ -172,7 +174,7 @@ bool favorite_remove(retro_emulator_file_t *file)
 
 void favorites_init()
 {
-    fav_tab = gui_add_tab("favorites", (void*)&favorites_count, NULL, NULL, event_handler);
+    fav_tab = gui_add_tab("favorites", &logo_fav, NULL, NULL, event_handler);
 
     // We must load favorites now because other tabs depend on it for menu items
     favorites_load();
