@@ -1,4 +1,5 @@
 #include <odroid_system.h>
+#include <esp_ota_ops.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -151,14 +152,25 @@ void retro_loop()
 
             if (last_key == ODROID_INPUT_MENU) {
                 odroid_dialog_choice_t choices[] = {
-                    {0, "Date", COMPILEDATE, 1, NULL},
-                    {0, "Commit", GITREV, 1, NULL},
+                    {0, "Build", "", 1, NULL},
+                    {0, "Date", "", 1, NULL},
+                    {0, "Type", "n/a", 1, NULL},
                     {0, "", "", -1, NULL},
                     {1, "Reboot to firmware", "", 1, NULL},
                     {2, "Reset settings", "", 1, NULL},
                     {0, "Close", "", 1, NULL},
                     ODROID_DIALOG_CHOICE_LAST
                 };
+
+                const esp_app_desc_t *app = esp_ota_get_app_description();
+                sprintf(choices[0].value, "%.30s", app->version);
+                sprintf(choices[1].value, "%s %.5s", app->date, app->time);
+                #ifdef RETRO_GO_RELEASE
+                    sprintf(choices[2].value, "%s", "Release");
+                #else
+                    sprintf(choices[2].value, "%s", "Test");
+                #endif
+
                 int sel = odroid_overlay_dialog("Retro-Go", choices, -1);
                 if (sel == 1) {
                     odroid_system_switch_app(-16);
