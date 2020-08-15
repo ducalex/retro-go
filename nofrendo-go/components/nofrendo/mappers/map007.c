@@ -33,7 +33,7 @@ static void map7_write(uint32 address, uint8 value)
    mmc_bankrom(32, 0x8000, value & 0xF);
 
    if (value & 0x10)
-      ppu_mirror(1, 1, 1, 1);
+      ppu_mirror(1, 0, 1, 1);
    else
       ppu_mirror(0, 0, 0, 0);
 }
