@@ -27,13 +27,15 @@
 #include <nes_mmc.h>
 #include <nes_ppu.h>
 
+static int is_battletoads = 0;
+
 /* mapper 7: AOROM */
 static void map7_write(uint32 address, uint8 value)
 {
    mmc_bankrom(32, 0x8000, value & 0xF);
 
    if (value & 0x10)
-      ppu_mirror(1, 0, 1, 1);
+      ppu_mirror(1, is_battletoads ? 0 : 1, 1, 1);
    else
       ppu_mirror(0, 0, 0, 0);
 }
@@ -41,6 +43,12 @@ static void map7_write(uint32 address, uint8 value)
 static void map7_init(void)
 {
    map7_write(0x8000, 0);
+
+   if (nes_getptr()->rominfo->checksum == 0x279710DC)
+   {
+      is_battletoads = 1;
+      MESSAGE_INFO("Enabled Battletoads mirroring hack\n");
+   }
 }
 
 static mem_write_handler_t map7_memwrite[] =

@@ -32,7 +32,7 @@ static bool font_size_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t e
     return event == ODROID_DIALOG_ENTER;
 }
 
-static bool hide_empty_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+static bool show_empty_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
     if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
         gui.show_empty = !gui.show_empty;
@@ -190,7 +190,7 @@ void retro_loop()
                     {0, "Color theme", "1/10", 1, &color_shift_cb},
                     {0, "Font size", "Small", 1, &font_size_cb},
                     {0, "Show cover", "Yes", 1, &show_cover_cb},
-                    {0, "Show empty", "Yes", 1, &hide_empty_cb},
+                    {0, "Show empty", "Yes", 1, &show_empty_cb},
                     {0, "---", "", -1, NULL},
                     {0, "Startup app", "Last", 1, &startup_app_cb},
                     ODROID_DIALOG_CHOICE_LAST

@@ -123,8 +123,7 @@ void nes_setcompathacks(void)
    if (nes.rominfo->checksum == 0xD8578BFD || // Zen Intergalactic
        nes.rominfo->checksum == 0x2E6301ED || // Super Mario Bros 3
        nes.rominfo->checksum == 0x5ED6F221 || // Kirby's Adventure
-       nes.rominfo->checksum == 0xD273B409 || // Power Blade 2
-       nes.rominfo->checksum == 0x1D2D93FF)   // GI Joe
+       nes.rominfo->checksum == 0xD273B409)   // Power Blade 2
    {
       nes.cycles_per_line += 2.5;
       MESSAGE_INFO("Enabled MMC3 Timing Hack\n");
