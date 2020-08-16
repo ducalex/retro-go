@@ -3,4 +3,5 @@
 build/
 *.exe
 sdkconfig.old
+sdkconfig
 retro-go_20*.*

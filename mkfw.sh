@@ -8,7 +8,11 @@
 basedir="$(dirname "$(readlink -f "$0")")"
 mkfw="./tools/mkfw/mkfw"
 
-release=`date +%Y%m%d`;
+release="$(git describe --tags --abbrev=5 --dirty)"
+
+if [ -z "$release" ]; then
+	release=`date +%Y%m%d`;
+fi
 
 if [ ! -f "$mkfw" ]; then
 	echo "Building mkfw..."

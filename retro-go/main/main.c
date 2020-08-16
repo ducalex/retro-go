@@ -49,7 +49,7 @@ static bool startup_app_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t
         startup_app = startup_app ? 0 : 1;
         odroid_settings_StartupApp_set(startup_app);
     }
-    strcpy(option->value, startup_app == 0 ? "Launcher" : "Previous");
+    strcpy(option->value, startup_app == 0 ? "Launcher" : "LastUsed");
     return event == ODROID_DIALOG_ENTER;
 }
 
@@ -152,10 +152,9 @@ void retro_loop()
 
             if (last_key == ODROID_INPUT_MENU) {
                 odroid_dialog_choice_t choices[] = {
-                    {0, "Build", "", 1, NULL},
-                    {0, "Date ", "", 1, NULL},
-                    {0, "Type ", "n/a", 1, NULL},
-                    {0, "By   ", "ducalex", 1, NULL},
+                    {0, "Ver.", "build string", 1, NULL},
+                    {0, "Date", "", 1, NULL},
+                    {0, "By", "ducalex", 1, NULL},
                     {0, "", "", -1, NULL},
                     {1, "Reboot to firmware", "", 1, NULL},
                     {2, "Reset settings", "", 1, NULL},
@@ -166,11 +165,9 @@ void retro_loop()
                 const esp_app_desc_t *app = esp_ota_get_app_description();
                 sprintf(choices[0].value, "%.30s", app->version);
                 sprintf(choices[1].value, "%s %.5s", app->date, app->time);
-                #ifdef RETRO_GO_RELEASE
-                    sprintf(choices[2].value, "%s", "Release");
-                #else
-                    sprintf(choices[2].value, "%s", "Test");
-                #endif
+
+                if (strstr(app->version, "-0-") == strrchr(app->version, '-') - 2)
+                    sprintf(strstr(choices[0].value, "-0-") , " (%s)", strrchr(app->version, '-') + 1);
 
                 int sel = odroid_overlay_dialog("Retro-Go", choices, -1);
                 if (sel == 1) {

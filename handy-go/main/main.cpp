@@ -59,6 +59,7 @@ static bool load_state(char *pathName)
 
 extern "C" void app_main(void)
 {
+    heap_caps_malloc_extmem_enable(32 * 1024);
     odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     odroid_system_emu_init(&load_state, &save_state, NULL);
 

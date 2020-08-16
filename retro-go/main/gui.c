@@ -223,16 +223,17 @@ void gui_draw_navbar()
 
 void gui_draw_header(tab_t *tab)
 {
-    int x_pos = IMAGE_LOGO_WIDTH + 1;
-    int y_pos = IMAGE_BANNER_HEIGHT;
+    int x_pos = IMAGE_LOGO_WIDTH;
+    int y_pos = IMAGE_LOGO_HEIGHT;
 
-    odroid_overlay_draw_fill_rect(x_pos, 0, ODROID_SCREEN_WIDTH - y_pos, LIST_Y_OFFSET, C_BLACK);
+    odroid_overlay_draw_fill_rect(x_pos, 0, ODROID_SCREEN_WIDTH - x_pos, LIST_Y_OFFSET, C_BLACK);
+    odroid_overlay_draw_fill_rect(0, y_pos, ODROID_SCREEN_WIDTH, LIST_Y_OFFSET - y_pos, C_BLACK);
 
     if (tab->img_logo)
         odroid_display_write(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, tab->img_logo);
 
     if (tab->img_header)
-        odroid_display_write(x_pos, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, tab->img_header);
+        odroid_display_write(x_pos + 1, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, tab->img_header);
 }
 
 // void gui_draw_notice(tab_t *tab)
