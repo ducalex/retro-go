@@ -38,6 +38,9 @@
 #define ODROID_PIN_SD_MOSI        ODROID_PIN_SPI_MOSI
 #define ODROID_PIN_SD_CLK         ODROID_PIN_SPI_CLK
 #define ODROID_PIN_SD_CS          GPIO_NUM_22
+#define ODROID_PIN_NES_CLOCK      0
+#define ODROID_PIN_NES_DATA       0
+#define ODROID_PIN_NES_LATCH      0
 
 // SD Card Paths
 #define ODROID_BASE_PATH "/sd"
@@ -98,7 +101,7 @@ typedef struct
 
 typedef struct
 {
-     odroid_battery_state battery;
+     odroid_battery_state_t battery;
      float partialFPS;
      float skippedFPS;
      float totalFPS;

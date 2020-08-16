@@ -29,9 +29,9 @@ struct pcm pcm;
 
 static int16_t audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
-static odroid_video_frame update1 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, -1, NULL, NULL, 0, {}};
-static odroid_video_frame update2 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, -1, NULL, NULL, 0, {}};
-static odroid_video_frame *currentUpdate = &update1;
+static odroid_video_frame_t update1 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, -1, NULL, NULL, 0, {}};
+static odroid_video_frame_t update2 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, -1, NULL, NULL, 0, {}};
+static odroid_video_frame_t *currentUpdate = &update1;
 
 static bool fullFrame = false;
 static uint skipFrames = 0;
@@ -86,7 +86,7 @@ void run_to_vblank(bool draw)
     /* VBLANK BEGIN */
     if (draw)
     {
-        odroid_video_frame *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
+        odroid_video_frame_t *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
 
         fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
 
@@ -275,8 +275,8 @@ void app_main(void)
 
     while (true)
     {
-        odroid_gamepad_state joystick;
-        odroid_input_gamepad_read(&joystick);
+        odroid_gamepad_state_t joystick;
+        odroid_input_read_gamepad(&joystick);
 
         if (joystick.values[ODROID_INPUT_MENU]) {
             odroid_overlay_game_menu();

@@ -378,7 +378,7 @@ bool odroid_netplay_quick_start()
     const char *status_msg = "Initializing...";
     const char *screen_msg = NULL;
     // short timeout = 100;
-    odroid_gamepad_state joystick;
+    odroid_gamepad_state_t joystick;
 
     odroid_display_clear(0);
 
@@ -438,7 +438,7 @@ bool odroid_netplay_quick_start()
             screen_msg = status_msg;
         }
 
-        odroid_input_gamepad_read(&joystick);
+        odroid_input_read_gamepad(&joystick);
 
         if (joystick.values[ODROID_INPUT_B]) break;
 

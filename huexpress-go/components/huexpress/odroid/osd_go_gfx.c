@@ -14,8 +14,8 @@
 
 static uint16_t mypalette[256];
 static uint8_t *framebuffers[2];
-static odroid_video_frame frames[2];
-static odroid_video_frame *curFrame;
+static odroid_video_frame_t frames[2];
+static odroid_video_frame_t *curFrame;
 static uint8_t current_fb = 0;
 static bool gfx_init_done = false;
 
@@ -46,7 +46,7 @@ static inline void set_current_fb(int i)
 static void videoTask(void *arg)
 {
     videoTaskQueue = xQueueCreate(1, sizeof(void*));
-    odroid_video_frame *frame;
+    odroid_video_frame_t *frame;
 
     while(1)
     {

@@ -650,10 +650,10 @@ pixel_diff(uint8_t pixel1, uint8_t pixel2, uint16_t *palette1, uint16_t *palette
 }
 
 static inline int
-frame_diff(odroid_video_frame *frame, odroid_video_frame *prevFrame)
+frame_diff(odroid_video_frame_t *frame, odroid_video_frame_t *prevFrame)
 {
     uint8_t pixel_mask = frame->pixel_mask;
-    odroid_line_diff *out_diff = frame->diff;
+    odroid_line_diff_t *out_diff = frame->diff;
     bool use_u32bit = false;
 
     // If there's no palette we compare all the bits
@@ -850,7 +850,7 @@ display_task(void *arg)
 {
     videoTaskQueue = xQueueCreate(1, sizeof(void*));
 
-    odroid_video_frame *update;
+    odroid_video_frame_t *update;
 
     while(1)
     {
@@ -874,7 +874,7 @@ display_task(void *arg)
 
         for (short y = 0; y < update->height;)
         {
-            odroid_line_diff *diff = &update->diff[y];
+            odroid_line_diff_t *diff = &update->diff[y];
 
             if (diff->width > 0) {
                 write_rect(update->buffer + (y * update->stride) + (diff->left * update->pixel_size),
@@ -983,7 +983,7 @@ void odroid_display_force_refresh(void)
     forceVideoRefresh = true;
 }
 
-IRAM_ATTR short odroid_display_update(odroid_video_frame *frame, odroid_video_frame *previousFrame)
+IRAM_ATTR short odroid_display_update(odroid_video_frame_t *frame, odroid_video_frame_t *previousFrame)
 {
     static int prev_width = 0, prev_height = 0;
     short linesChanged = 0;

@@ -19,7 +19,7 @@ The network stack will need to be tuned somewhat to reduce latency further, but 
 
 # Emulation synchronization NES/SMS
 
-- odroid_netplay_sync() is called immediately after reading the input (odroid_input_gamepad_read) in the emulation loop.
+- odroid_netplay_sync() is called immediately after reading the input (odroid_input_read_gamepad) in the emulation loop.
 - If the player is the host:
   - The player broadcasts a NETPLAY_PACKET_SYNC_REQ (with data field set to its joystick).
   - It waits to receive a NETPLAY_PACKET_SYNC_ACK from each player.
@@ -35,7 +35,7 @@ The network stack will need to be tuned somewhat to reduce latency further, but 
 
 # Emulation synchronization Game Boy/Game Gear
 
-It will likely be the similar as above but, instead of odroid_gamepad_state, serial registers will be exchanged through odroid_netplay_sync(). Though at the moment Game Gear is very low priority and was never requested.
+It will likely be the similar as above but, instead of odroid_gamepad_state_t, serial registers will be exchanged through odroid_netplay_sync(). Though at the moment Game Gear is very low priority and was never requested.
 
 
 # State exchange

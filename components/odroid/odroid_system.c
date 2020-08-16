@@ -60,7 +60,7 @@ void odroid_system_init(int appId, int sampleRate)
     const esp_app_desc_t *app = esp_ota_get_app_description();
 
     printf("\n==================================================\n");
-    printf("%s %s (%s)\n", app->project_name, app->version, app->date);
+    printf("%s %s (%s %s)\n", app->project_name, app->version, app->date, app->time);
     printf("==================================================\n\n");
 
     printf("odroid_system_init: %d KB free\n", esp_get_free_heap_size() / 1024);
@@ -76,7 +76,7 @@ void odroid_system_init(int appId, int sampleRate)
     odroid_settings_init();
     odroid_overlay_init();
     odroid_system_gpio_init();
-    odroid_input_gamepad_init();
+    odroid_input_init();
     odroid_audio_init(sampleRate);
     odroid_display_init();
 
@@ -444,7 +444,7 @@ static void odroid_system_monitor_task(void *arg)
         if (current.busyTime > tickTime)
             current.busyTime = tickTime;
 
-        statistics.battery = odroid_input_battery_read();
+        statistics.battery = odroid_input_read_battery();
         statistics.busyPercent = current.busyTime / tickTime * 100.f;
         statistics.skippedFPS = current.skippedFrames / (tickTime / 1000000.f);
         statistics.totalFPS = current.totalFrames / (tickTime / 1000000.f);
@@ -472,7 +472,7 @@ static void odroid_system_monitor_task(void *arg)
     #endif
 
         // Applications should never stop polling input. If they do, they're probably unresponsive...
-        if (statistics.lastTickTime > 0 && odroid_input_gamepad_last_polled() > 5000000)
+        if (statistics.lastTickTime > 0 && odroid_input_gamepad_last_read() > 5000000)
         {
             RG_PANIC("Input timeout");
         }

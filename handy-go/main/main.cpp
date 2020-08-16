@@ -15,10 +15,10 @@ extern "C" {
 
 static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
-static odroid_video_frame update1;
-static odroid_video_frame update2;
-static odroid_video_frame *currentUpdate = &update1;
-static odroid_video_frame *previousUpdate = &update2;
+static odroid_video_frame_t update1;
+static odroid_video_frame_t update2;
+static odroid_video_frame_t *currentUpdate = &update1;
+static odroid_video_frame_t *previousUpdate = &update2;
 
 static CSystem *lynx = NULL;
 // static bool netplay = false;
@@ -85,7 +85,7 @@ extern "C" void app_main(void)
         odroid_system_emu_load_state(0);
     }
 
-    odroid_gamepad_state joystick;
+    odroid_gamepad_state_t joystick;
 
     float sampleTime = AUDIO_SAMPLE_RATE / 1000000.f;
     uint skipFrames = 0;
@@ -94,7 +94,7 @@ extern "C" void app_main(void)
     // Start emulation
     while (1)
     {
-        odroid_input_gamepad_read(&joystick);
+        odroid_input_read_gamepad(&joystick);
 
         if (joystick.values[ODROID_INPUT_MENU]) {
             odroid_overlay_game_menu();

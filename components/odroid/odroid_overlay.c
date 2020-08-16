@@ -21,11 +21,11 @@ int8_t speedupEnabled = 0;
 
 static void wait_all_keys_released()
 {
-    odroid_gamepad_state joystick;
+    odroid_gamepad_state_t joystick;
     bool pressed = false;
     do {
         pressed = false;
-        odroid_input_gamepad_read(&joystick);
+        odroid_input_read_gamepad(&joystick);
         for (int i = 0; i < ODROID_INPUT_MAX; i++) {
             pressed = pressed || joystick.values[i];
         }
@@ -147,7 +147,7 @@ void odroid_overlay_draw_fill_rect(int x, int y, int width, int height, uint16_t
 
 void odroid_overlay_draw_battery(int x_pos, int y_pos)
 {
-    uint16_t percentage = odroid_input_battery_read().percentage;
+    uint16_t percentage = odroid_input_read_battery().percentage;
     uint16_t color_fill = C_FOREST_GREEN;
     uint16_t color_border = C_SILVER;
     uint16_t color_empty = C_BLACK;
@@ -269,7 +269,7 @@ int odroid_overlay_dialog(const char *header, odroid_dialog_choice_t *options, i
     int sel_old = sel;
     int last_key = -1;
     bool select = false;
-    odroid_gamepad_state joystick;
+    odroid_gamepad_state_t joystick;
 
     dialog_open_depth++;
 
@@ -279,7 +279,7 @@ int odroid_overlay_dialog(const char *header, odroid_dialog_choice_t *options, i
 
     while (1)
     {
-        odroid_input_gamepad_read(&joystick);
+        odroid_input_read_gamepad(&joystick);
         if (last_key >= 0) {
             if (!joystick.values[last_key]) {
                 last_key = -1;

@@ -22,18 +22,18 @@ static char* romData;
 static size_t romSize;
 
 static uint16_t myPalette[64];
-static odroid_video_frame update1 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 0x3F, -1, NULL, myPalette, 0, {}};
-static odroid_video_frame update2 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 0x3F, -1, NULL, myPalette, 0, {}};
-static odroid_video_frame *currentUpdate = &update1;
-static odroid_video_frame *previousUpdate = NULL;
+static odroid_video_frame_t update1 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 0x3F, -1, NULL, myPalette, 0, {}};
+static odroid_video_frame_t update2 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 0x3F, -1, NULL, myPalette, 0, {}};
+static odroid_video_frame_t *currentUpdate = &update1;
+static odroid_video_frame_t *previousUpdate = NULL;
 
 static int16_t audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 static int16_t pendingSamples = 0;
 
-static odroid_gamepad_state joystick1;
-static odroid_gamepad_state joystick2;
-static odroid_gamepad_state *localJoystick = &joystick1;
-static odroid_gamepad_state *remoteJoystick = &joystick2;
+static odroid_gamepad_state_t joystick1;
+static odroid_gamepad_state_t joystick2;
+static odroid_gamepad_state_t *localJoystick = &joystick1;
+static odroid_gamepad_state_t *remoteJoystick = &joystick2;
 
 static bool overscan = true;
 static uint autocrop = false;
@@ -342,7 +342,7 @@ void osd_getinput(void)
    static uint16 previous = 0xffff;
    uint16 b = 0, changed = 0;
 
-   odroid_input_gamepad_read(localJoystick);
+   odroid_input_read_gamepad(localJoystick);
 
    if (localJoystick->values[ODROID_INPUT_MENU]) {
       odroid_overlay_game_menu();
@@ -357,7 +357,7 @@ void osd_getinput(void)
    }
 
    if (netplay) {
-      odroid_netplay_sync(localJoystick, remoteJoystick, sizeof(odroid_gamepad_state));
+      odroid_netplay_sync(localJoystick, remoteJoystick, sizeof(odroid_gamepad_state_t));
    }
 
 	if (!joystick1.values[ODROID_INPUT_START])  b |= (1 << 0);

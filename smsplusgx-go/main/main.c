@@ -23,9 +23,9 @@
 static uint32_t audioBuffer[AUDIO_BUFFER_LENGTH];
 
 static uint16_t palettes[2][32];
-static odroid_video_frame update1;
-static odroid_video_frame update2;
-static odroid_video_frame *currentUpdate = &update1;
+static odroid_video_frame_t update1;
+static odroid_video_frame_t update2;
+static odroid_video_frame_t *currentUpdate = &update1;
 
 static uint skipFrames = 0;
 
@@ -34,10 +34,10 @@ static bool netplay = false;
 static bool consoleIsGG = false;
 static bool consoleIsSMS = false;
 
-static odroid_gamepad_state joystick1;
-static odroid_gamepad_state joystick2;
-static odroid_gamepad_state *localJoystick = &joystick1;
-static odroid_gamepad_state *remoteJoystick = &joystick2;
+static odroid_gamepad_state_t joystick1;
+static odroid_gamepad_state_t joystick2;
+static odroid_gamepad_state_t *localJoystick = &joystick1;
+static odroid_gamepad_state_t *remoteJoystick = &joystick2;
 
 // --- MAIN
 
@@ -168,7 +168,7 @@ void app_main(void)
 
     while (true)
     {
-        odroid_input_gamepad_read(localJoystick);
+        odroid_input_read_gamepad(localJoystick);
 
         if (localJoystick->values[ODROID_INPUT_MENU]) {
             odroid_overlay_game_menu();
@@ -182,7 +182,7 @@ void app_main(void)
 
         if (netplay)
         {
-            odroid_netplay_sync(localJoystick, remoteJoystick, sizeof(odroid_gamepad_state));
+            odroid_netplay_sync(localJoystick, remoteJoystick, sizeof(odroid_gamepad_state_t));
         }
 
         input.pad[0] = 0x00;
@@ -280,7 +280,7 @@ void app_main(void)
 
         if (drawFrame)
         {
-            odroid_video_frame *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
+            odroid_video_frame_t *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
 
             render_copy_palette(currentUpdate->palette);
 

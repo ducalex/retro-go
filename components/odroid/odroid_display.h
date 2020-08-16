@@ -60,7 +60,7 @@ typedef struct {
     short left;
     short width;
     short repeat;
-} odroid_line_diff;
+} odroid_line_diff_t;
 
 typedef struct {
     int width;          // In px
@@ -72,8 +72,8 @@ typedef struct {
     void *buffer;       // Should be at least height*stride bytes
     void *palette;      //
     uint8_t pal_shift_mask;
-    odroid_line_diff diff[256];
-} odroid_video_frame;
+    odroid_line_diff_t diff[256];
+} odroid_video_frame_t;
 
 void odroid_display_init();
 void odroid_display_deinit();
@@ -84,7 +84,7 @@ void odroid_display_clear(uint16_t colorLE);
 void odroid_display_show_hourglass();
 void odroid_display_force_refresh(void);
 void odroid_display_set_scale(short width, short height, double aspect_ratio);
-short odroid_display_update(odroid_video_frame *frame, odroid_video_frame *previousFrame);
+short odroid_display_update(odroid_video_frame_t *frame, odroid_video_frame_t *previousFrame);
 #define odroid_display_queue_update(x...) odroid_display_update(x)
 
 odroid_display_backlight_t odroid_display_get_backlight();

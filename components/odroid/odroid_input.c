@@ -15,12 +15,12 @@
 
 static volatile bool input_task_is_running = false;
 static volatile uint last_gamepad_read = 0;
-static odroid_gamepad_state gamepad_state;
+static odroid_gamepad_state_t gamepad_state;
 static SemaphoreHandle_t xSemaphore;
 
-odroid_gamepad_state odroid_input_gamepad_read_raw()
+static inline odroid_gamepad_state_t console_gamepad_read()
 {
-    odroid_gamepad_state state = {0};
+    odroid_gamepad_state_t state = {0};
     memset(&state, 0, sizeof(state));
 
     int joyX = adc1_get_raw(ODROID_PIN_GAMEPAD_X);
@@ -48,6 +48,16 @@ odroid_gamepad_state odroid_input_gamepad_read_raw()
     return state;
 }
 
+static inline odroid_gamepad_state_t external_gamepad_read()
+{
+    odroid_gamepad_state_t state = {0};
+    memset(&state, 0, sizeof(state));
+
+    // NES / SNES shift register
+
+    return state;
+}
+
 static void input_task(void *arg)
 {
     input_task_is_running = true;
@@ -60,7 +70,7 @@ static void input_task(void *arg)
     while (input_task_is_running)
     {
         // Read hardware
-        odroid_gamepad_state state = odroid_input_gamepad_read_raw();
+        odroid_gamepad_state_t state = console_gamepad_read();
 
         for(int i = 0; i < ODROID_INPUT_MAX; ++i)
 		{
@@ -102,7 +112,7 @@ static void input_task(void *arg)
     vTaskDelete(NULL);
 }
 
-void odroid_input_gamepad_init()
+void odroid_input_init()
 {
     assert(input_task_is_running == false);
 
@@ -131,15 +141,15 @@ void odroid_input_gamepad_init()
     // Start background polling
     xTaskCreatePinnedToCore(&input_task, "input_task", 2048, NULL, 5, NULL, 1);
 
-  	printf("odroid_input_gamepad_init done.\n");
+  	printf("odroid_input_init done.\n");
 }
 
-void odroid_input_gamepad_terminate()
+void odroid_input_terminate()
 {
     input_task_is_running = false;
 }
 
-long odroid_input_gamepad_last_polled()
+long odroid_input_gamepad_last_read()
 {
     if (!last_gamepad_read)
         return 0;
@@ -147,7 +157,7 @@ long odroid_input_gamepad_last_polled()
     return get_elapsed_time_since(last_gamepad_read);
 }
 
-void odroid_input_gamepad_read(odroid_gamepad_state* out_state)
+void odroid_input_read_gamepad(odroid_gamepad_state_t* out_state)
 {
     assert(input_task_is_running == true);
 
@@ -158,10 +168,17 @@ void odroid_input_gamepad_read(odroid_gamepad_state* out_state)
     last_gamepad_read = get_elapsed_time();
 }
 
-bool odroid_input_key_is_pressed(int key)
+odroid_gamepad_state_t odroid_input_read_gamepad_()
 {
-    odroid_gamepad_state joystick;
-    odroid_input_gamepad_read(&joystick);
+    odroid_gamepad_state_t out_state;
+    odroid_input_read_gamepad(&out_state);
+    return out_state;
+}
+
+bool odroid_input_key_is_pressed(odroid_gamepad_key_t key)
+{
+    odroid_gamepad_state_t joystick;
+    odroid_input_read_gamepad(&joystick);
 
     if (key == ODROID_INPUT_ANY) {
         return joystick.bitmask > 0 ? 1 : 0;
@@ -170,7 +187,7 @@ bool odroid_input_key_is_pressed(int key)
     return joystick.values[key];
 }
 
-void odroid_input_wait_for_key(int key, bool pressed)
+void odroid_input_wait_for_key(odroid_gamepad_key_t key, bool pressed)
 {
 	while (odroid_input_key_is_pressed(key) != pressed)
     {
@@ -178,7 +195,7 @@ void odroid_input_wait_for_key(int key, bool pressed)
     }
 }
 
-odroid_battery_state odroid_input_battery_read()
+odroid_battery_state_t odroid_input_read_battery()
 {
     static esp_adc_cal_characteristics_t adc_chars;
     static float adcValue = 0.0f;
@@ -213,7 +230,7 @@ odroid_battery_state odroid_input_battery_read()
     const float Vs = (adcValue / BATT_DIVIDER_R2 * (BATT_DIVIDER_R1 + BATT_DIVIDER_R2));
     const float Vconst = MAX(BATT_VOLTAGE_EMPTY, MIN(Vs, BATT_VOLTAGE_FULL));
 
-    odroid_battery_state out_state = {
+    odroid_battery_state_t out_state = {
         .millivolts = (int)(Vs * 1000),
         .percentage = (int)((Vconst - BATT_VOLTAGE_EMPTY) / (BATT_VOLTAGE_FULL - BATT_VOLTAGE_EMPTY) * 100.0f),
     };

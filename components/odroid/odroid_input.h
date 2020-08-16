@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-enum
+typedef enum
 {
 	ODROID_INPUT_UP = 0,
     ODROID_INPUT_RIGHT,
@@ -19,26 +19,25 @@ enum
 	ODROID_INPUT_MAX,
 
     ODROID_INPUT_ANY,
-};
+} odroid_gamepad_key_t;
 
 typedef struct
 {
     uint8_t values[ODROID_INPUT_MAX];
     uint16_t bitmask;
-} odroid_gamepad_state;
+} odroid_gamepad_state_t;
 
 typedef struct
 {
 	int millivolts;
 	int percentage;
-} odroid_battery_state;
+} odroid_battery_state_t;
 
-void odroid_input_gamepad_init();
-void odroid_input_gamepad_terminate();
-long odroid_input_gamepad_last_polled();
-void odroid_input_gamepad_read(odroid_gamepad_state* out_state);
-bool odroid_input_key_is_pressed(int key);
-void odroid_input_wait_for_key(int key, bool pressed);
-
-odroid_gamepad_state odroid_input_gamepad_read_raw();
-odroid_battery_state odroid_input_battery_read();
+void odroid_input_init();
+void odroid_input_terminate();
+long odroid_input_gamepad_last_read();
+bool odroid_input_key_is_pressed(odroid_gamepad_key_t key);
+void odroid_input_wait_for_key(odroid_gamepad_key_t key, bool pressed);
+void odroid_input_read_gamepad(odroid_gamepad_state_t* out_state);
+odroid_gamepad_state_t odroid_input_read_gamepad_();
+odroid_battery_state_t odroid_input_read_battery();
