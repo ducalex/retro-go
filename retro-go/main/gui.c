@@ -302,7 +302,7 @@ void gui_draw_cover(retro_emulator_file_t *file)
 
         sprintf(buf_crc, "%08X", file->checksum);
         sprintf(path1, "%s/%s/%c/%s.png", ODROID_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
-        sprintf(path2, "%s/%s/%s.png", ODROID_BASE_PATH_ROMART, emu->dirname, file->name);
+        sprintf(path2, "%s/%s/%.96s.png", ODROID_BASE_PATH_ROMART, emu->dirname, file->name);
         sprintf(path3, "%s/%s/%c/%s.art", ODROID_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
 
         LuImage *img;
