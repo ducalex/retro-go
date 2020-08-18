@@ -35,10 +35,6 @@
 #include <rom/crc.h>
 
 
-/* Max length for displayed filename */
-#define  ROM_DISP_MAXLEN   20
-
-
 /* Save battery-backed RAM */
 static void rom_savesram(rominfo_t *rominfo)
 {
@@ -56,7 +52,7 @@ static void rom_savesram(rominfo_t *rominfo)
       {
          fwrite(rominfo->sram, SRAM_BANK_LENGTH, rominfo->sram_banks, fp);
          fclose(fp);
-         MESSAGE_INFO("Wrote battery RAM to %s.\n", fn);
+         MESSAGE_INFO("ROM: Wrote battery RAM to %s.\n", fn);
       }
    }
 }
@@ -78,7 +74,7 @@ static void rom_loadsram(rominfo_t *rominfo)
       {
          fread(rominfo->sram, SRAM_BANK_LENGTH, rominfo->sram_banks, fp);
          fclose(fp);
-         MESSAGE_INFO("Read battery RAM from %s.\n", fn);
+         MESSAGE_INFO("ROM: Read battery RAM from %s.\n", fn);
       }
    }
 }
@@ -97,7 +93,7 @@ static int rom_getheader(unsigned char **rom, rominfo_t *rominfo)
 
    if (memcmp(head.ines_magic, ROM_INES_MAGIC, 4))
    {
-      MESSAGE_ERROR("%s is not a valid ROM image\n", rominfo->filename);
+      MESSAGE_ERROR("ROM: %s is not a valid ROM image\n", rominfo->filename);
       return -1;
    }
 
@@ -133,47 +129,6 @@ static int rom_getheader(unsigned char **rom, rominfo_t *rominfo)
    return 0;
 }
 
-/* Build the info string for ROM display */
-char *rom_getinfo(rominfo_t *rominfo)
-{
-   static char info[PATH_MAX + 1];
-   char romname[PATH_MAX + 1], temp[PATH_MAX + 1];
-
-   /* Look to see if we were given a path along with filename */
-   /* TODO: strip extensions */
-   if (strrchr(rominfo->filename, PATH_SEP))
-      strncpy(romname, strrchr(rominfo->filename, PATH_SEP) + 1, PATH_MAX);
-   else
-      strncpy(romname, rominfo->filename, PATH_MAX);
-
-   /* If our filename is too long, truncate our displayed filename */
-   if (strlen(romname) > ROM_DISP_MAXLEN)
-   {
-      strncpy(info, romname, ROM_DISP_MAXLEN - 3);
-      strcpy(info + (ROM_DISP_MAXLEN - 3), "...");
-   }
-   else
-   {
-      strcpy(info, romname);
-   }
-
-   sprintf(temp, " [%d] %dK/%dK %c", rominfo->mapper_number,
-           rominfo->rom_banks * 16, rominfo->vrom_banks * 8,
-           (rominfo->mirror == MIRROR_VERT) ? 'V' : 'H');
-
-   /* Stick it on there! */
-   strncat(info, temp, PATH_MAX - strlen(info));
-
-   if (rominfo->flags & ROM_FLAG_BATTERY)
-      strncat(info, "B", PATH_MAX - strlen(info));
-   if (rominfo->flags & ROM_FLAG_TRAINER)
-      strncat(info, "T", PATH_MAX - strlen(info));
-   if (rominfo->flags & ROM_FLAG_FOURSCREEN)
-      strncat(info, "4", PATH_MAX - strlen(info));
-
-   return info;
-}
-
 /* Load a ROM image into memory */
 rominfo_t *rom_load(const char *filename)
 {
@@ -191,17 +146,26 @@ rominfo_t *rom_load(const char *filename)
 
    rom_ptr = rom;
 
-   strncpy(rominfo->filename, filename, sizeof(rominfo->filename));
+   strncpy(rominfo->filename, filename, sizeof(rominfo->filename) - 1);
    rominfo->checksum = crc32_le(0, rom + 16, filesize - 16);
    // rominfo->checksum = crc32_le(0, rom, filesize);
 
-   MESSAGE_INFO("rom_load: filename='%s'\n", rominfo->filename);
-   MESSAGE_INFO("rom_load: filesize=%d\n", filesize);
-   MESSAGE_INFO("rom_load: checksum='%08X'\n", rominfo->checksum);
+   MESSAGE_INFO("ROM: Loading '%s'\n", rominfo->filename);
+   MESSAGE_INFO("ROM: Size:   %d\n", filesize);
+   MESSAGE_INFO("ROM: CRC32:  %08X\n", rominfo->checksum);
 
    /* Get the header and stick it into rominfo struct */
 	if (rom_getheader(&rom_ptr, rominfo))
       goto _fail;
+
+   MESSAGE_INFO("ROM: Header: Mapper:%d, PRG:%dK, CHR:%dK, Mirror:%c, Flags: %c%c%c\n",
+      rominfo->mapper_number,
+      rominfo->rom_banks * 16, rominfo->vrom_banks * 8,
+      (rominfo->mirror == MIRROR_VERT) ? 'V' : 'H',
+      (rominfo->flags & ROM_FLAG_BATTERY) ? 'B' : '-',
+      (rominfo->flags & ROM_FLAG_TRAINER) ? 'T' : '-',
+      (rominfo->flags & ROM_FLAG_FOURSCREEN) ? '4' : '-'
+   );
 
    /* iNES format doesn't tell us if we need SRAM, so
    ** we have to always allocate it -- bleh!
@@ -209,7 +173,7 @@ rominfo_t *rom_load(const char *filename)
    rominfo->sram = calloc(SRAM_BANK_LENGTH, rominfo->sram_banks);
    if (NULL == rominfo->sram)
    {
-      MESSAGE_ERROR("Could not allocate space for battery RAM\n");
+      MESSAGE_ERROR("ROM: Could not allocate space for battery RAM\n");
       goto _fail;
    }
 
@@ -217,7 +181,7 @@ rominfo_t *rom_load(const char *filename)
    {
       memcpy(rominfo->sram + TRAINER_OFFSET, rom_ptr, TRAINER_LENGTH);
       rom_ptr += TRAINER_LENGTH;
-      MESSAGE_INFO("Read in trainer at $7000\n");
+      MESSAGE_INFO("ROM: Read in trainer at $7000\n");
    }
 
    rominfo->rom = rom_ptr;
@@ -233,19 +197,19 @@ rominfo_t *rom_load(const char *filename)
       rominfo->vram = calloc(VRAM_BANK_LENGTH, rominfo->vram_banks);
       if (NULL == rominfo->vram)
       {
-         MESSAGE_ERROR("Could not allocate space for VRAM\n");
+         MESSAGE_ERROR("ROM: Could not allocate space for VRAM\n");
          goto _fail;
       }
    }
 
    // rom_loadsram(rominfo);
 
-   MESSAGE_INFO("ROM loaded: %s\n", rom_getinfo(rominfo));
+   MESSAGE_INFO("ROM: Loading done.\n");
 
    return rominfo;
 
 _fail:
-   MESSAGE_ERROR("ROM loading failed\n");
+   MESSAGE_ERROR("ROM: Loading failed.\n");
    rom_free(rominfo);
    return NULL;
 }

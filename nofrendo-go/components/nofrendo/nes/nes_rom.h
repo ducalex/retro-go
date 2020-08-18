@@ -89,7 +89,6 @@ typedef struct rominfo_s
 
 extern rominfo_t *rom_load(const char *filename);
 extern void rom_free(rominfo_t *rominfo);
-extern char *rom_getinfo(rominfo_t *rominfo);
 
 
 #endif /* _NES_ROM_H_ */
