@@ -2,7 +2,7 @@
 
 typedef struct {
     char name[64];
-    char path[128];
+    char path[168];
     int  removed;
     retro_emulator_file_t file;
 } favorite_t;
