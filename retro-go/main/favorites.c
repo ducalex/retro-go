@@ -99,6 +99,7 @@ static void favorites_load()
         sprintf(fav_tab->status, "Favorites: %d", favorites_count);
         gui_resize_list(fav_tab, favorites_count);
         gui_sort_list(fav_tab, 0);
+        fav_tab->is_empty = false;
     }
     else
     {
@@ -108,6 +109,7 @@ static void favorites_load()
         sprintf(fav_tab->listbox.items[2].text, "You have no favorites.");
         sprintf(fav_tab->listbox.items[4].text, "Use SELECT and START to navigate.");
         fav_tab->listbox.cursor = 3;
+        fav_tab->is_empty = true;
     }
 }
 

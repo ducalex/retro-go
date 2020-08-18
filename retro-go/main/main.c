@@ -86,6 +86,11 @@ static bool color_shift_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t
     return event == ODROID_DIALOG_ENTER;
 }
 
+static inline bool tab_enabled(tab_t *tab)
+{
+    return gui.show_empty || (tab->initialized && !tab->is_empty);
+}
+
 void retro_loop()
 {
     tab_t *tab = gui_get_current_tab();
@@ -109,17 +114,23 @@ void retro_loop()
 
             tab = gui_get_current_tab();
 
-            gui_redraw();
-
             if (!tab->initialized)
             {
+                gui_redraw();
                 gui_init_tab(tab);
-                gui_draw_status(tab);
-                gui_draw_list(tab);
+
+                if (tab_enabled(tab))
+                {
+                    gui_draw_status(tab);
+                    gui_draw_list(tab);
+                }
+            }
+            else if (tab_enabled(tab))
+            {
+                gui_redraw();
             }
 
-            // To do remove flicker by not always redrawing above...
-            if (!gui.show_empty && tab->listbox.length == 0)
+            if (!tab_enabled(tab))
             {
                 gui.selected += dir;
                 continue;

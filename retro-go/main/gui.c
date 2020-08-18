@@ -68,6 +68,8 @@ tab_t *gui_add_tab(const char *name, const void *logo, const void *header, void 
     tab->event_handler = event_handler;
     tab->img_header = header;
     tab->img_logo = logo ?: (void*)tab;
+    tab->initialized = false;
+    tab->is_empty = false;
     tab->arg = arg;
 
     gui.tabs[gui.tabcount++] = tab;

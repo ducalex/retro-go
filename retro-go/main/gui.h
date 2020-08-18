@@ -2,6 +2,7 @@
 
 #include <odroid_input.h>
 #include "emulators.h"
+#include "stdbool.h"
 
 typedef enum {
     KEY_PRESS_A,
@@ -51,9 +52,8 @@ typedef struct {
     char status[64];
     const void *img_logo;
     const void *img_header;
-    int position;
-    int initialized;
-    int enabled;
+    bool initialized;
+    bool is_empty;
     void *arg;
     listbox_t listbox;
     gui_event_handler_t event_handler;
