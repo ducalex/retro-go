@@ -460,7 +460,6 @@ static const funcptr tablename[0x100] = {  \
   prefix##_f8,prefix##_f9,prefix##_fa,prefix##_fb,prefix##_fc,prefix##_fd,prefix##_fe,prefix##_ff  \
 }
 
-PROTOTYPES(Z80op,op);
 PROTOTYPES(Z80cb,cb);
 PROTOTYPES(Z80dd,dd);
 PROTOTYPES(Z80ed,ed);
@@ -2037,6 +2036,298 @@ OP(illegal,1) {
       cpu_getactivecpu(), cpu_readop((PCD-1)&0xffff), cpu_readop(PCD));
 #endif
 }
+
+/**********************************************************
+ * main opcodes
+ **********************************************************/
+OP(op,00) {                                                                                                } /* NOP              */
+OP(op,01) { BC = ARG16();                                                                                  } /* LD   BC,w        */
+OP(op,02) { WM( BC, A ); WZ_L = (BC + 1) & 0xFF;  WZ_H = A;                                        } /* LD   (BC),A      */
+OP(op,03) { BC++;                                                                                          } /* INC  BC          */
+OP(op,04) { B = INC(B);                                                                                    } /* INC  B           */
+OP(op,05) { B = DEC(B);                                                                                    } /* DEC  B           */
+OP(op,06) { B = ARG();                                                                                     } /* LD   B,n         */
+OP(op,07) { RLCA;                                                                                          } /* RLCA             */
+
+OP(op,08) { EX_AF;                                                                                         } /* EX   AF,AF'      */
+OP(op,09) { ADD16(hl, bc);                                                                                 } /* ADD  HL,BC       */
+OP(op,0a) { A = RM( BC ); WZ=BC+1;                                                                     } /* LD   A,(BC)      */
+OP(op,0b) { BC--;                                                                                          } /* DEC  BC          */
+OP(op,0c) { C = INC(C);                                                                                    } /* INC  C           */
+OP(op,0d) { C = DEC(C);                                                                                    } /* DEC  C           */
+OP(op,0e) { C = ARG();                                                                                     } /* LD   C,n         */
+OP(op,0f) { RRCA;                                                                                          } /* RRCA             */
+
+OP(op,10) { B--; JR_COND( B, 0x10 );                                                                       } /* DJNZ o           */
+OP(op,11) { DE = ARG16();                                                                                  } /* LD   DE,w        */
+OP(op,12) { WM( DE, A ); WZ_L = (DE + 1) & 0xFF;  WZ_H = A;                                        } /* LD   (DE),A      */
+OP(op,13) { DE++;                                                                                          } /* INC  DE          */
+OP(op,14) { D = INC(D);                                                                                    } /* INC  D           */
+OP(op,15) { D = DEC(D);                                                                                    } /* DEC  D           */
+OP(op,16) { D = ARG();                                                                                     } /* LD   D,n         */
+OP(op,17) { RLA;                                                                                           } /* RLA              */
+
+OP(op,18) { JR();                                                                                          } /* JR   o           */
+OP(op,19) { ADD16(hl, de);                                                                                 } /* ADD  HL,DE       */
+OP(op,1a) { A = RM( DE ); WZ=DE+1;                                                                     } /* LD   A,(DE)      */
+OP(op,1b) { DE--;                                                                                          } /* DEC  DE          */
+OP(op,1c) { E = INC(E);                                                                                    } /* INC  E           */
+OP(op,1d) { E = DEC(E);                                                                                    } /* DEC  E           */
+OP(op,1e) { E = ARG();                                                                                     } /* LD   E,n         */
+OP(op,1f) { RRA;                                                                                           } /* RRA              */
+
+OP(op,20) { JR_COND( !(F & ZF), 0x20 );                                                                    } /* JR   NZ,o        */
+OP(op,21) { HL = ARG16();                                                                                  } /* LD   HL,w        */
+OP(op,22) { EA = ARG16(); WM16( EA, &Z80.hl ); WZ = EA+1;                                              } /* LD   (w),HL      */
+OP(op,23) { HL++;                                                                                          } /* INC  HL          */
+OP(op,24) { H = INC(H);                                                                                    } /* INC  H           */
+OP(op,25) { H = DEC(H);                                                                                    } /* DEC  H           */
+OP(op,26) { H = ARG();                                                                                     } /* LD   H,n         */
+OP(op,27) { DAA;                                                                                           } /* DAA              */
+
+OP(op,28) { JR_COND( F & ZF, 0x28 );                                                                       } /* JR   Z,o         */
+OP(op,29) { ADD16(hl, hl);                                                                                 } /* ADD  HL,HL       */
+OP(op,2a) { EA = ARG16(); RM16( EA, &Z80.hl ); WZ = EA+1;                                              } /* LD   HL,(w)      */
+OP(op,2b) { HL--;                                                                                          } /* DEC  HL          */
+OP(op,2c) { L = INC(L);                                                                                    } /* INC  L           */
+OP(op,2d) { L = DEC(L);                                                                                    } /* DEC  L           */
+OP(op,2e) { L = ARG();                                                                                     } /* LD   L,n         */
+OP(op,2f) { A ^= 0xff; F = (F&(SF|ZF|PF|CF))|HF|NF|(A&(YF|XF));                                            } /* CPL              */
+
+OP(op,30) { JR_COND( !(F & CF), 0x30 );                                                                    } /* JR   NC,o        */
+OP(op,31) { SP = ARG16();                                                                                  } /* LD   SP,w        */
+OP(op,32) { EA = ARG16(); WM( EA, A ); WZ_L=(EA+1)&0xFF;WZ_H=A;                                    } /* LD   (w),A       */
+OP(op,33) { SP++;                                                                                          } /* INC  SP          */
+OP(op,34) { WM( HL, INC(RM(HL)) );                                                                         } /* INC  (HL)        */
+OP(op,35) { WM( HL, DEC(RM(HL)) );                                                                         } /* DEC  (HL)        */
+OP(op,36) { WM( HL, ARG() );                                                                               } /* LD   (HL),n      */
+OP(op,37) { F = (F & (SF|ZF|YF|XF|PF)) | CF | (A & (YF|XF));                                               } /* SCF              */
+
+OP(op,38) { JR_COND( F & CF, 0x38 );                                                                       } /* JR   C,o         */
+OP(op,39) { ADD16(hl, sp);                                                                                 } /* ADD  HL,SP       */
+OP(op,3a) { EA = ARG16(); A = RM( EA ); WZ = EA+1;                                                     } /* LD   A,(w)       */
+OP(op,3b) { SP--;                                                                                          } /* DEC  SP          */
+OP(op,3c) { A = INC(A);                                                                                    } /* INC  A           */
+OP(op,3d) { A = DEC(A);                                                                                    } /* DEC  A           */
+OP(op,3e) { A = ARG();                                                                                     } /* LD   A,n         */
+OP(op,3f) { F = ((F&(SF|ZF|YF|XF|PF|CF))|((F&CF)<<4)|(A&(YF|XF)))^CF;                                      } /* CCF              */
+
+OP(op,40) {                                                                                                } /* LD   B,B         */
+OP(op,41) { B = C;                                                                                         } /* LD   B,C         */
+OP(op,42) { B = D;                                                                                         } /* LD   B,D         */
+OP(op,43) { B = E;                                                                                         } /* LD   B,E         */
+OP(op,44) { B = H;                                                                                         } /* LD   B,H         */
+OP(op,45) { B = L;                                                                                         } /* LD   B,L         */
+OP(op,46) { B = RM(HL);                                                                                    } /* LD   B,(HL)      */
+OP(op,47) { B = A;                                                                                         } /* LD   B,A         */
+
+OP(op,48) { C = B;                                                                                         } /* LD   C,B         */
+OP(op,49) {                                                                                                } /* LD   C,C         */
+OP(op,4a) { C = D;                                                                                         } /* LD   C,D         */
+OP(op,4b) { C = E;                                                                                         } /* LD   C,E         */
+OP(op,4c) { C = H;                                                                                         } /* LD   C,H         */
+OP(op,4d) { C = L;                                                                                         } /* LD   C,L         */
+OP(op,4e) { C = RM(HL);                                                                                    } /* LD   C,(HL)      */
+OP(op,4f) { C = A;                                                                                         } /* LD   C,A         */
+
+OP(op,50) { D = B;                                                                                         } /* LD   D,B         */
+OP(op,51) { D = C;                                                                                         } /* LD   D,C         */
+OP(op,52) {                                                                                                } /* LD   D,D         */
+OP(op,53) { D = E;                                                                                         } /* LD   D,E         */
+OP(op,54) { D = H;                                                                                         } /* LD   D,H         */
+OP(op,55) { D = L;                                                                                         } /* LD   D,L         */
+OP(op,56) { D = RM(HL);                                                                                    } /* LD   D,(HL)      */
+OP(op,57) { D = A;                                                                                         } /* LD   D,A         */
+
+OP(op,58) { E = B;                                                                                         } /* LD   E,B         */
+OP(op,59) { E = C;                                                                                         } /* LD   E,C         */
+OP(op,5a) { E = D;                                                                                         } /* LD   E,D         */
+OP(op,5b) {                                                                                                } /* LD   E,E         */
+OP(op,5c) { E = H;                                                                                         } /* LD   E,H         */
+OP(op,5d) { E = L;                                                                                         } /* LD   E,L         */
+OP(op,5e) { E = RM(HL);                                                                                    } /* LD   E,(HL)      */
+OP(op,5f) { E = A;                                                                                         } /* LD   E,A         */
+
+OP(op,60) { H = B;                                                                                         } /* LD   H,B         */
+OP(op,61) { H = C;                                                                                         } /* LD   H,C         */
+OP(op,62) { H = D;                                                                                         } /* LD   H,D         */
+OP(op,63) { H = E;                                                                                         } /* LD   H,E         */
+OP(op,64) {                                                                                                } /* LD   H,H         */
+OP(op,65) { H = L;                                                                                         } /* LD   H,L         */
+OP(op,66) { H = RM(HL);                                                                                    } /* LD   H,(HL)      */
+OP(op,67) { H = A;                                                                                         } /* LD   H,A         */
+
+OP(op,68) { L = B;                                                                                         } /* LD   L,B         */
+OP(op,69) { L = C;                                                                                         } /* LD   L,C         */
+OP(op,6a) { L = D;                                                                                         } /* LD   L,D         */
+OP(op,6b) { L = E;                                                                                         } /* LD   L,E         */
+OP(op,6c) { L = H;                                                                                         } /* LD   L,H         */
+OP(op,6d) {                                                                                                } /* LD   L,L         */
+OP(op,6e) { L = RM(HL);                                                                                    } /* LD   L,(HL)      */
+OP(op,6f) { L = A;                                                                                         } /* LD   L,A         */
+
+OP(op,70) { WM( HL, B );                                                                                   } /* LD   (HL),B      */
+OP(op,71) { WM( HL, C );                                                                                   } /* LD   (HL),C      */
+OP(op,72) { WM( HL, D );                                                                                   } /* LD   (HL),D      */
+OP(op,73) { WM( HL, E );                                                                                   } /* LD   (HL),E      */
+OP(op,74) { WM( HL, H );                                                                                   } /* LD   (HL),H      */
+OP(op,75) { WM( HL, L );                                                                                   } /* LD   (HL),L      */
+OP(op,76) { ENTER_HALT;                                                                                    } /* HALT             */
+OP(op,77) { WM( HL, A );                                                                                   } /* LD   (HL),A      */
+
+OP(op,78) { A = B;                                                                                         } /* LD   A,B         */
+OP(op,79) { A = C;                                                                                         } /* LD   A,C         */
+OP(op,7a) { A = D;                                                                                         } /* LD   A,D         */
+OP(op,7b) { A = E;                                                                                         } /* LD   A,E         */
+OP(op,7c) { A = H;                                                                                         } /* LD   A,H         */
+OP(op,7d) { A = L;                                                                                         } /* LD   A,L         */
+OP(op,7e) { A = RM(HL);                                                                                    } /* LD   A,(HL)      */
+OP(op,7f) {                                                                                                } /* LD   A,A         */
+
+OP(op,80) { ADD(B);                                                                                        } /* ADD  A,B         */
+OP(op,81) { ADD(C);                                                                                        } /* ADD  A,C         */
+OP(op,82) { ADD(D);                                                                                        } /* ADD  A,D         */
+OP(op,83) { ADD(E);                                                                                        } /* ADD  A,E         */
+OP(op,84) { ADD(H);                                                                                        } /* ADD  A,H         */
+OP(op,85) { ADD(L);                                                                                        } /* ADD  A,L         */
+OP(op,86) { ADD(RM(HL));                                                                                   } /* ADD  A,(HL)      */
+OP(op,87) { ADD(A);                                                                                        } /* ADD  A,A         */
+
+OP(op,88) { ADC(B);                                                                                        } /* ADC  A,B         */
+OP(op,89) { ADC(C);                                                                                        } /* ADC  A,C         */
+OP(op,8a) { ADC(D);                                                                                        } /* ADC  A,D         */
+OP(op,8b) { ADC(E);                                                                                        } /* ADC  A,E         */
+OP(op,8c) { ADC(H);                                                                                        } /* ADC  A,H         */
+OP(op,8d) { ADC(L);                                                                                        } /* ADC  A,L         */
+OP(op,8e) { ADC(RM(HL));                                                                                   } /* ADC  A,(HL)      */
+OP(op,8f) { ADC(A);                                                                                        } /* ADC  A,A         */
+
+OP(op,90) { SUB(B);                                                                                        } /* SUB  B           */
+OP(op,91) { SUB(C);                                                                                        } /* SUB  C           */
+OP(op,92) { SUB(D);                                                                                        } /* SUB  D           */
+OP(op,93) { SUB(E);                                                                                        } /* SUB  E           */
+OP(op,94) { SUB(H);                                                                                        } /* SUB  H           */
+OP(op,95) { SUB(L);                                                                                        } /* SUB  L           */
+OP(op,96) { SUB(RM(HL));                                                                                   } /* SUB  (HL)        */
+OP(op,97) { SUB(A);                                                                                        } /* SUB  A           */
+
+OP(op,98) { SBC(B);                                                                                        } /* SBC  A,B         */
+OP(op,99) { SBC(C);                                                                                        } /* SBC  A,C         */
+OP(op,9a) { SBC(D);                                                                                        } /* SBC  A,D         */
+OP(op,9b) { SBC(E);                                                                                        } /* SBC  A,E         */
+OP(op,9c) { SBC(H);                                                                                        } /* SBC  A,H         */
+OP(op,9d) { SBC(L);                                                                                        } /* SBC  A,L         */
+OP(op,9e) { SBC(RM(HL));                                                                                   } /* SBC  A,(HL)      */
+OP(op,9f) { SBC(A);                                                                                        } /* SBC  A,A         */
+
+OP(op,a0) { AND(B);                                                                                        } /* AND  B           */
+OP(op,a1) { AND(C);                                                                                        } /* AND  C           */
+OP(op,a2) { AND(D);                                                                                        } /* AND  D           */
+OP(op,a3) { AND(E);                                                                                        } /* AND  E           */
+OP(op,a4) { AND(H);                                                                                        } /* AND  H           */
+OP(op,a5) { AND(L);                                                                                        } /* AND  L           */
+OP(op,a6) { AND(RM(HL));                                                                                   } /* AND  (HL)        */
+OP(op,a7) { AND(A);                                                                                        } /* AND  A           */
+
+OP(op,a8) { XOR(B);                                                                                        } /* XOR  B           */
+OP(op,a9) { XOR(C);                                                                                        } /* XOR  C           */
+OP(op,aa) { XOR(D);                                                                                        } /* XOR  D           */
+OP(op,ab) { XOR(E);                                                                                        } /* XOR  E           */
+OP(op,ac) { XOR(H);                                                                                        } /* XOR  H           */
+OP(op,ad) { XOR(L);                                                                                        } /* XOR  L           */
+OP(op,ae) { XOR(RM(HL));                                                                                   } /* XOR  (HL)        */
+OP(op,af) { XOR(A);                                                                                        } /* XOR  A           */
+
+OP(op,b0) { OR(B);                                                                                         } /* OR   B           */
+OP(op,b1) { OR(C);                                                                                         } /* OR   C           */
+OP(op,b2) { OR(D);                                                                                         } /* OR   D           */
+OP(op,b3) { OR(E);                                                                                         } /* OR   E           */
+OP(op,b4) { OR(H);                                                                                         } /* OR   H           */
+OP(op,b5) { OR(L);                                                                                         } /* OR   L           */
+OP(op,b6) { OR(RM(HL));                                                                                    } /* OR   (HL)        */
+OP(op,b7) { OR(A);                                                                                         } /* OR   A           */
+
+OP(op,b8) { CP(B);                                                                                         } /* CP   B           */
+OP(op,b9) { CP(C);                                                                                         } /* CP   C           */
+OP(op,ba) { CP(D);                                                                                         } /* CP   D           */
+OP(op,bb) { CP(E);                                                                                         } /* CP   E           */
+OP(op,bc) { CP(H);                                                                                         } /* CP   H           */
+OP(op,bd) { CP(L);                                                                                         } /* CP   L           */
+OP(op,be) { CP(RM(HL));                                                                                    } /* CP   (HL)        */
+OP(op,bf) { CP(A);                                                                                         } /* CP   A           */
+
+OP(op,c0) { RET_COND( !(F & ZF), 0xc0 );                                                                   } /* RET  NZ          */
+OP(op,c1) { POP( bc );                                                                                     } /* POP  BC          */
+OP(op,c2) { JP_COND( !(F & ZF) );                                                                          } /* JP   NZ,a        */
+OP(op,c3) { JP;                                                                                            } /* JP   a           */
+OP(op,c4) { CALL_COND( !(F & ZF), 0xc4 );                                                                  } /* CALL NZ,a        */
+OP(op,c5) { PUSH( bc );                                                                                    } /* PUSH BC          */
+OP(op,c6) { ADD(ARG());                                                                                    } /* ADD  A,n         */
+OP(op,c7) { RST(0x00);                                                                                     } /* RST  0           */
+
+OP(op,c8) { RET_COND( F & ZF, 0xc8 );                                                                      } /* RET  Z           */
+OP(op,c9) { POP( pc ); WZ=PCD;                                                                         } /* RET              */
+OP(op,ca) { JP_COND( F & ZF );                                                                             } /* JP   Z,a         */
+OP(op,cb) { R++; EXEC(cb,ROP());                                                                           } /* **** CB xx       */
+OP(op,cc) { CALL_COND( F & ZF, 0xcc );                                                                     } /* CALL Z,a         */
+OP(op,cd) { CALL();                                                                                        } /* CALL a           */
+OP(op,ce) { ADC(ARG());                                                                                    } /* ADC  A,n         */
+OP(op,cf) { RST(0x08);                                                                                     } /* RST  1           */
+
+OP(op,d0) { RET_COND( !(F & CF), 0xd0 );                                                                   } /* RET  NC          */
+OP(op,d1) { POP( de );                                                                                     } /* POP  DE          */
+OP(op,d2) { JP_COND( !(F & CF) );                                                                          } /* JP   NC,a        */
+OP(op,d3) { unsigned n = ARG() | (A << 8); OUT( n, A ); WZ_L = ((n & 0xff) + 1) & 0xff;  WZ_H = A; } /* OUT  (n),A       */
+OP(op,d4) { CALL_COND( !(F & CF), 0xd4 );                                                                  } /* CALL NC,a        */
+OP(op,d5) { PUSH( de );                                                                                    } /* PUSH DE          */
+OP(op,d6) { SUB(ARG());                                                                                    } /* SUB  n           */
+OP(op,d7) { RST(0x10);                                                                                     } /* RST  2           */
+
+OP(op,d8) { RET_COND( F & CF, 0xd8 );                                                                      } /* RET  C           */
+OP(op,d9) { EXX;                                                                                           } /* EXX              */
+OP(op,da) { JP_COND( F & CF );                                                                             } /* JP   C,a         */
+OP(op,db) { unsigned n = ARG() | (A << 8); A = IN( n ); WZ = n + 1;                                    } /* IN   A,(n)       */
+OP(op,dc) { CALL_COND( F & CF, 0xdc );                                                                     } /* CALL C,a         */
+OP(op,dd) { R++; EXEC(dd,ROP());                                                                           } /* **** DD xx       */
+OP(op,de) { SBC(ARG());                                                                                    } /* SBC  A,n         */
+OP(op,df) { RST(0x18);                                                                                     } /* RST  3           */
+
+OP(op,e0) { RET_COND( !(F & PF), 0xe0 );                                                                   } /* RET  PO          */
+OP(op,e1) { POP( hl );                                                                                     } /* POP  HL          */
+OP(op,e2) { JP_COND( !(F & PF) );                                                                          } /* JP   PO,a        */
+OP(op,e3) { EXSP( hl );                                                                                    } /* EX   HL,(SP)     */
+OP(op,e4) { CALL_COND( !(F & PF), 0xe4 );                                                                  } /* CALL PO,a        */
+OP(op,e5) { PUSH( hl );                                                                                    } /* PUSH HL          */
+OP(op,e6) { AND(ARG());                                                                                    } /* AND  n           */
+OP(op,e7) { RST(0x20);                                                                                     } /* RST  4           */
+
+OP(op,e8) { RET_COND( F & PF, 0xe8 );                                                                      } /* RET  PE          */
+OP(op,e9) { PC = HL;                                                                                       } /* JP   (HL)        */
+OP(op,ea) { JP_COND( F & PF );                                                                             } /* JP   PE,a        */
+OP(op,eb) { EX_DE_HL;                                                                                      } /* EX   DE,HL       */
+OP(op,ec) { CALL_COND( F & PF, 0xec );                                                                     } /* CALL PE,a        */
+OP(op,ed) { R++; EXEC(ed,ROP());                                                                           } /* **** ED xx       */
+OP(op,ee) { XOR(ARG());                                                                                    } /* XOR  n           */
+OP(op,ef) { RST(0x28);                                                                                     } /* RST  5           */
+
+OP(op,f0) { RET_COND( !(F & SF), 0xf0 );                                                                   } /* RET  P           */
+OP(op,f1) { POP( af );                                                                                     } /* POP  AF          */
+OP(op,f2) { JP_COND( !(F & SF) );                                                                          } /* JP   P,a         */
+OP(op,f3) { IFF1 = IFF2 = 0;                                                                               } /* DI               */
+OP(op,f4) { CALL_COND( !(F & SF), 0xf4 );                                                                  } /* CALL P,a         */
+OP(op,f5) { PUSH( af );                                                                                    } /* PUSH AF          */
+OP(op,f6) { OR(ARG());                                                                                     } /* OR   n           */
+OP(op,f7) { RST(0x30);                                                                                     } /* RST  6           */
+
+OP(op,f8) { RET_COND( F & SF, 0xf8 );                                                                      } /* RET  M           */
+OP(op,f9) { SP = HL;                                                                                       } /* LD   SP,HL       */
+OP(op,fa) { JP_COND(F & SF);                                                                               } /* JP   M,a         */
+OP(op,fb) { EI;                                                                                            } /* EI               */
+OP(op,fc) { CALL_COND( F & SF, 0xfc );                                                                     } /* CALL M,a         */
+OP(op,fd) { R++; EXEC(fd,ROP());                                                                           } /* **** FD xx       */
+OP(op,fe) { CP(ARG());                                                                                     } /* CP   n           */
+OP(op,ff) { RST(0x38);                                                                                     } /* RST  7           */
+
 /**********************************************************
  * IX register related opcodes (DD prefix)
  **********************************************************/
@@ -2917,299 +3208,6 @@ OP(ed,fc) { illegal_2();                                      } /* DB   ED      
 OP(ed,fd) { illegal_2();                                      } /* DB   ED      */
 OP(ed,fe) { illegal_2();                                      } /* DB   ED      */
 OP(ed,ff) { illegal_2();                                      } /* DB   ED      */
-
-
-/**********************************************************
- * main opcodes
- **********************************************************/
-OP(op,00) {                                                                                                } /* NOP              */
-OP(op,01) { BC = ARG16();                                                                                  } /* LD   BC,w        */
-OP(op,02) { WM( BC, A ); WZ_L = (BC + 1) & 0xFF;  WZ_H = A;                                        } /* LD   (BC),A      */
-OP(op,03) { BC++;                                                                                          } /* INC  BC          */
-OP(op,04) { B = INC(B);                                                                                    } /* INC  B           */
-OP(op,05) { B = DEC(B);                                                                                    } /* DEC  B           */
-OP(op,06) { B = ARG();                                                                                     } /* LD   B,n         */
-OP(op,07) { RLCA;                                                                                          } /* RLCA             */
-
-OP(op,08) { EX_AF;                                                                                         } /* EX   AF,AF'      */
-OP(op,09) { ADD16(hl, bc);                                                                                 } /* ADD  HL,BC       */
-OP(op,0a) { A = RM( BC ); WZ=BC+1;                                                                     } /* LD   A,(BC)      */
-OP(op,0b) { BC--;                                                                                          } /* DEC  BC          */
-OP(op,0c) { C = INC(C);                                                                                    } /* INC  C           */
-OP(op,0d) { C = DEC(C);                                                                                    } /* DEC  C           */
-OP(op,0e) { C = ARG();                                                                                     } /* LD   C,n         */
-OP(op,0f) { RRCA;                                                                                          } /* RRCA             */
-
-OP(op,10) { B--; JR_COND( B, 0x10 );                                                                       } /* DJNZ o           */
-OP(op,11) { DE = ARG16();                                                                                  } /* LD   DE,w        */
-OP(op,12) { WM( DE, A ); WZ_L = (DE + 1) & 0xFF;  WZ_H = A;                                        } /* LD   (DE),A      */
-OP(op,13) { DE++;                                                                                          } /* INC  DE          */
-OP(op,14) { D = INC(D);                                                                                    } /* INC  D           */
-OP(op,15) { D = DEC(D);                                                                                    } /* DEC  D           */
-OP(op,16) { D = ARG();                                                                                     } /* LD   D,n         */
-OP(op,17) { RLA;                                                                                           } /* RLA              */
-
-OP(op,18) { JR();                                                                                          } /* JR   o           */
-OP(op,19) { ADD16(hl, de);                                                                                 } /* ADD  HL,DE       */
-OP(op,1a) { A = RM( DE ); WZ=DE+1;                                                                     } /* LD   A,(DE)      */
-OP(op,1b) { DE--;                                                                                          } /* DEC  DE          */
-OP(op,1c) { E = INC(E);                                                                                    } /* INC  E           */
-OP(op,1d) { E = DEC(E);                                                                                    } /* DEC  E           */
-OP(op,1e) { E = ARG();                                                                                     } /* LD   E,n         */
-OP(op,1f) { RRA;                                                                                           } /* RRA              */
-
-OP(op,20) { JR_COND( !(F & ZF), 0x20 );                                                                    } /* JR   NZ,o        */
-OP(op,21) { HL = ARG16();                                                                                  } /* LD   HL,w        */
-OP(op,22) { EA = ARG16(); WM16( EA, &Z80.hl ); WZ = EA+1;                                              } /* LD   (w),HL      */
-OP(op,23) { HL++;                                                                                          } /* INC  HL          */
-OP(op,24) { H = INC(H);                                                                                    } /* INC  H           */
-OP(op,25) { H = DEC(H);                                                                                    } /* DEC  H           */
-OP(op,26) { H = ARG();                                                                                     } /* LD   H,n         */
-OP(op,27) { DAA;                                                                                           } /* DAA              */
-
-OP(op,28) { JR_COND( F & ZF, 0x28 );                                                                       } /* JR   Z,o         */
-OP(op,29) { ADD16(hl, hl);                                                                                 } /* ADD  HL,HL       */
-OP(op,2a) { EA = ARG16(); RM16( EA, &Z80.hl ); WZ = EA+1;                                              } /* LD   HL,(w)      */
-OP(op,2b) { HL--;                                                                                          } /* DEC  HL          */
-OP(op,2c) { L = INC(L);                                                                                    } /* INC  L           */
-OP(op,2d) { L = DEC(L);                                                                                    } /* DEC  L           */
-OP(op,2e) { L = ARG();                                                                                     } /* LD   L,n         */
-OP(op,2f) { A ^= 0xff; F = (F&(SF|ZF|PF|CF))|HF|NF|(A&(YF|XF));                                            } /* CPL              */
-
-OP(op,30) { JR_COND( !(F & CF), 0x30 );                                                                    } /* JR   NC,o        */
-OP(op,31) { SP = ARG16();                                                                                  } /* LD   SP,w        */
-OP(op,32) { EA = ARG16(); WM( EA, A ); WZ_L=(EA+1)&0xFF;WZ_H=A;                                    } /* LD   (w),A       */
-OP(op,33) { SP++;                                                                                          } /* INC  SP          */
-OP(op,34) { WM( HL, INC(RM(HL)) );                                                                         } /* INC  (HL)        */
-OP(op,35) { WM( HL, DEC(RM(HL)) );                                                                         } /* DEC  (HL)        */
-OP(op,36) { WM( HL, ARG() );                                                                               } /* LD   (HL),n      */
-OP(op,37) { F = (F & (SF|ZF|YF|XF|PF)) | CF | (A & (YF|XF));                                               } /* SCF              */
-
-OP(op,38) { JR_COND( F & CF, 0x38 );                                                                       } /* JR   C,o         */
-OP(op,39) { ADD16(hl, sp);                                                                                 } /* ADD  HL,SP       */
-OP(op,3a) { EA = ARG16(); A = RM( EA ); WZ = EA+1;                                                     } /* LD   A,(w)       */
-OP(op,3b) { SP--;                                                                                          } /* DEC  SP          */
-OP(op,3c) { A = INC(A);                                                                                    } /* INC  A           */
-OP(op,3d) { A = DEC(A);                                                                                    } /* DEC  A           */
-OP(op,3e) { A = ARG();                                                                                     } /* LD   A,n         */
-OP(op,3f) { F = ((F&(SF|ZF|YF|XF|PF|CF))|((F&CF)<<4)|(A&(YF|XF)))^CF;                                      } /* CCF              */
-
-OP(op,40) {                                                                                                } /* LD   B,B         */
-OP(op,41) { B = C;                                                                                         } /* LD   B,C         */
-OP(op,42) { B = D;                                                                                         } /* LD   B,D         */
-OP(op,43) { B = E;                                                                                         } /* LD   B,E         */
-OP(op,44) { B = H;                                                                                         } /* LD   B,H         */
-OP(op,45) { B = L;                                                                                         } /* LD   B,L         */
-OP(op,46) { B = RM(HL);                                                                                    } /* LD   B,(HL)      */
-OP(op,47) { B = A;                                                                                         } /* LD   B,A         */
-
-OP(op,48) { C = B;                                                                                         } /* LD   C,B         */
-OP(op,49) {                                                                                                } /* LD   C,C         */
-OP(op,4a) { C = D;                                                                                         } /* LD   C,D         */
-OP(op,4b) { C = E;                                                                                         } /* LD   C,E         */
-OP(op,4c) { C = H;                                                                                         } /* LD   C,H         */
-OP(op,4d) { C = L;                                                                                         } /* LD   C,L         */
-OP(op,4e) { C = RM(HL);                                                                                    } /* LD   C,(HL)      */
-OP(op,4f) { C = A;                                                                                         } /* LD   C,A         */
-
-OP(op,50) { D = B;                                                                                         } /* LD   D,B         */
-OP(op,51) { D = C;                                                                                         } /* LD   D,C         */
-OP(op,52) {                                                                                                } /* LD   D,D         */
-OP(op,53) { D = E;                                                                                         } /* LD   D,E         */
-OP(op,54) { D = H;                                                                                         } /* LD   D,H         */
-OP(op,55) { D = L;                                                                                         } /* LD   D,L         */
-OP(op,56) { D = RM(HL);                                                                                    } /* LD   D,(HL)      */
-OP(op,57) { D = A;                                                                                         } /* LD   D,A         */
-
-OP(op,58) { E = B;                                                                                         } /* LD   E,B         */
-OP(op,59) { E = C;                                                                                         } /* LD   E,C         */
-OP(op,5a) { E = D;                                                                                         } /* LD   E,D         */
-OP(op,5b) {                                                                                                } /* LD   E,E         */
-OP(op,5c) { E = H;                                                                                         } /* LD   E,H         */
-OP(op,5d) { E = L;                                                                                         } /* LD   E,L         */
-OP(op,5e) { E = RM(HL);                                                                                    } /* LD   E,(HL)      */
-OP(op,5f) { E = A;                                                                                         } /* LD   E,A         */
-
-OP(op,60) { H = B;                                                                                         } /* LD   H,B         */
-OP(op,61) { H = C;                                                                                         } /* LD   H,C         */
-OP(op,62) { H = D;                                                                                         } /* LD   H,D         */
-OP(op,63) { H = E;                                                                                         } /* LD   H,E         */
-OP(op,64) {                                                                                                } /* LD   H,H         */
-OP(op,65) { H = L;                                                                                         } /* LD   H,L         */
-OP(op,66) { H = RM(HL);                                                                                    } /* LD   H,(HL)      */
-OP(op,67) { H = A;                                                                                         } /* LD   H,A         */
-
-OP(op,68) { L = B;                                                                                         } /* LD   L,B         */
-OP(op,69) { L = C;                                                                                         } /* LD   L,C         */
-OP(op,6a) { L = D;                                                                                         } /* LD   L,D         */
-OP(op,6b) { L = E;                                                                                         } /* LD   L,E         */
-OP(op,6c) { L = H;                                                                                         } /* LD   L,H         */
-OP(op,6d) {                                                                                                } /* LD   L,L         */
-OP(op,6e) { L = RM(HL);                                                                                    } /* LD   L,(HL)      */
-OP(op,6f) { L = A;                                                                                         } /* LD   L,A         */
-
-OP(op,70) { WM( HL, B );                                                                                   } /* LD   (HL),B      */
-OP(op,71) { WM( HL, C );                                                                                   } /* LD   (HL),C      */
-OP(op,72) { WM( HL, D );                                                                                   } /* LD   (HL),D      */
-OP(op,73) { WM( HL, E );                                                                                   } /* LD   (HL),E      */
-OP(op,74) { WM( HL, H );                                                                                   } /* LD   (HL),H      */
-OP(op,75) { WM( HL, L );                                                                                   } /* LD   (HL),L      */
-OP(op,76) { ENTER_HALT;                                                                                    } /* HALT             */
-OP(op,77) { WM( HL, A );                                                                                   } /* LD   (HL),A      */
-
-OP(op,78) { A = B;                                                                                         } /* LD   A,B         */
-OP(op,79) { A = C;                                                                                         } /* LD   A,C         */
-OP(op,7a) { A = D;                                                                                         } /* LD   A,D         */
-OP(op,7b) { A = E;                                                                                         } /* LD   A,E         */
-OP(op,7c) { A = H;                                                                                         } /* LD   A,H         */
-OP(op,7d) { A = L;                                                                                         } /* LD   A,L         */
-OP(op,7e) { A = RM(HL);                                                                                    } /* LD   A,(HL)      */
-OP(op,7f) {                                                                                                } /* LD   A,A         */
-
-OP(op,80) { ADD(B);                                                                                        } /* ADD  A,B         */
-OP(op,81) { ADD(C);                                                                                        } /* ADD  A,C         */
-OP(op,82) { ADD(D);                                                                                        } /* ADD  A,D         */
-OP(op,83) { ADD(E);                                                                                        } /* ADD  A,E         */
-OP(op,84) { ADD(H);                                                                                        } /* ADD  A,H         */
-OP(op,85) { ADD(L);                                                                                        } /* ADD  A,L         */
-OP(op,86) { ADD(RM(HL));                                                                                   } /* ADD  A,(HL)      */
-OP(op,87) { ADD(A);                                                                                        } /* ADD  A,A         */
-
-OP(op,88) { ADC(B);                                                                                        } /* ADC  A,B         */
-OP(op,89) { ADC(C);                                                                                        } /* ADC  A,C         */
-OP(op,8a) { ADC(D);                                                                                        } /* ADC  A,D         */
-OP(op,8b) { ADC(E);                                                                                        } /* ADC  A,E         */
-OP(op,8c) { ADC(H);                                                                                        } /* ADC  A,H         */
-OP(op,8d) { ADC(L);                                                                                        } /* ADC  A,L         */
-OP(op,8e) { ADC(RM(HL));                                                                                   } /* ADC  A,(HL)      */
-OP(op,8f) { ADC(A);                                                                                        } /* ADC  A,A         */
-
-OP(op,90) { SUB(B);                                                                                        } /* SUB  B           */
-OP(op,91) { SUB(C);                                                                                        } /* SUB  C           */
-OP(op,92) { SUB(D);                                                                                        } /* SUB  D           */
-OP(op,93) { SUB(E);                                                                                        } /* SUB  E           */
-OP(op,94) { SUB(H);                                                                                        } /* SUB  H           */
-OP(op,95) { SUB(L);                                                                                        } /* SUB  L           */
-OP(op,96) { SUB(RM(HL));                                                                                   } /* SUB  (HL)        */
-OP(op,97) { SUB(A);                                                                                        } /* SUB  A           */
-
-OP(op,98) { SBC(B);                                                                                        } /* SBC  A,B         */
-OP(op,99) { SBC(C);                                                                                        } /* SBC  A,C         */
-OP(op,9a) { SBC(D);                                                                                        } /* SBC  A,D         */
-OP(op,9b) { SBC(E);                                                                                        } /* SBC  A,E         */
-OP(op,9c) { SBC(H);                                                                                        } /* SBC  A,H         */
-OP(op,9d) { SBC(L);                                                                                        } /* SBC  A,L         */
-OP(op,9e) { SBC(RM(HL));                                                                                   } /* SBC  A,(HL)      */
-OP(op,9f) { SBC(A);                                                                                        } /* SBC  A,A         */
-
-OP(op,a0) { AND(B);                                                                                        } /* AND  B           */
-OP(op,a1) { AND(C);                                                                                        } /* AND  C           */
-OP(op,a2) { AND(D);                                                                                        } /* AND  D           */
-OP(op,a3) { AND(E);                                                                                        } /* AND  E           */
-OP(op,a4) { AND(H);                                                                                        } /* AND  H           */
-OP(op,a5) { AND(L);                                                                                        } /* AND  L           */
-OP(op,a6) { AND(RM(HL));                                                                                   } /* AND  (HL)        */
-OP(op,a7) { AND(A);                                                                                        } /* AND  A           */
-
-OP(op,a8) { XOR(B);                                                                                        } /* XOR  B           */
-OP(op,a9) { XOR(C);                                                                                        } /* XOR  C           */
-OP(op,aa) { XOR(D);                                                                                        } /* XOR  D           */
-OP(op,ab) { XOR(E);                                                                                        } /* XOR  E           */
-OP(op,ac) { XOR(H);                                                                                        } /* XOR  H           */
-OP(op,ad) { XOR(L);                                                                                        } /* XOR  L           */
-OP(op,ae) { XOR(RM(HL));                                                                                   } /* XOR  (HL)        */
-OP(op,af) { XOR(A);                                                                                        } /* XOR  A           */
-
-OP(op,b0) { OR(B);                                                                                         } /* OR   B           */
-OP(op,b1) { OR(C);                                                                                         } /* OR   C           */
-OP(op,b2) { OR(D);                                                                                         } /* OR   D           */
-OP(op,b3) { OR(E);                                                                                         } /* OR   E           */
-OP(op,b4) { OR(H);                                                                                         } /* OR   H           */
-OP(op,b5) { OR(L);                                                                                         } /* OR   L           */
-OP(op,b6) { OR(RM(HL));                                                                                    } /* OR   (HL)        */
-OP(op,b7) { OR(A);                                                                                         } /* OR   A           */
-
-OP(op,b8) { CP(B);                                                                                         } /* CP   B           */
-OP(op,b9) { CP(C);                                                                                         } /* CP   C           */
-OP(op,ba) { CP(D);                                                                                         } /* CP   D           */
-OP(op,bb) { CP(E);                                                                                         } /* CP   E           */
-OP(op,bc) { CP(H);                                                                                         } /* CP   H           */
-OP(op,bd) { CP(L);                                                                                         } /* CP   L           */
-OP(op,be) { CP(RM(HL));                                                                                    } /* CP   (HL)        */
-OP(op,bf) { CP(A);                                                                                         } /* CP   A           */
-
-OP(op,c0) { RET_COND( !(F & ZF), 0xc0 );                                                                   } /* RET  NZ          */
-OP(op,c1) { POP( bc );                                                                                     } /* POP  BC          */
-OP(op,c2) { JP_COND( !(F & ZF) );                                                                          } /* JP   NZ,a        */
-OP(op,c3) { JP;                                                                                            } /* JP   a           */
-OP(op,c4) { CALL_COND( !(F & ZF), 0xc4 );                                                                  } /* CALL NZ,a        */
-OP(op,c5) { PUSH( bc );                                                                                    } /* PUSH BC          */
-OP(op,c6) { ADD(ARG());                                                                                    } /* ADD  A,n         */
-OP(op,c7) { RST(0x00);                                                                                     } /* RST  0           */
-
-OP(op,c8) { RET_COND( F & ZF, 0xc8 );                                                                      } /* RET  Z           */
-OP(op,c9) { POP( pc ); WZ=PCD;                                                                         } /* RET              */
-OP(op,ca) { JP_COND( F & ZF );                                                                             } /* JP   Z,a         */
-OP(op,cb) { R++; EXEC(cb,ROP());                                                                           } /* **** CB xx       */
-OP(op,cc) { CALL_COND( F & ZF, 0xcc );                                                                     } /* CALL Z,a         */
-OP(op,cd) { CALL();                                                                                        } /* CALL a           */
-OP(op,ce) { ADC(ARG());                                                                                    } /* ADC  A,n         */
-OP(op,cf) { RST(0x08);                                                                                     } /* RST  1           */
-
-OP(op,d0) { RET_COND( !(F & CF), 0xd0 );                                                                   } /* RET  NC          */
-OP(op,d1) { POP( de );                                                                                     } /* POP  DE          */
-OP(op,d2) { JP_COND( !(F & CF) );                                                                          } /* JP   NC,a        */
-OP(op,d3) { unsigned n = ARG() | (A << 8); OUT( n, A ); WZ_L = ((n & 0xff) + 1) & 0xff;  WZ_H = A; } /* OUT  (n),A       */
-OP(op,d4) { CALL_COND( !(F & CF), 0xd4 );                                                                  } /* CALL NC,a        */
-OP(op,d5) { PUSH( de );                                                                                    } /* PUSH DE          */
-OP(op,d6) { SUB(ARG());                                                                                    } /* SUB  n           */
-OP(op,d7) { RST(0x10);                                                                                     } /* RST  2           */
-
-OP(op,d8) { RET_COND( F & CF, 0xd8 );                                                                      } /* RET  C           */
-OP(op,d9) { EXX;                                                                                           } /* EXX              */
-OP(op,da) { JP_COND( F & CF );                                                                             } /* JP   C,a         */
-OP(op,db) { unsigned n = ARG() | (A << 8); A = IN( n ); WZ = n + 1;                                    } /* IN   A,(n)       */
-OP(op,dc) { CALL_COND( F & CF, 0xdc );                                                                     } /* CALL C,a         */
-OP(op,dd) { R++; EXEC(dd,ROP());                                                                           } /* **** DD xx       */
-OP(op,de) { SBC(ARG());                                                                                    } /* SBC  A,n         */
-OP(op,df) { RST(0x18);                                                                                     } /* RST  3           */
-
-OP(op,e0) { RET_COND( !(F & PF), 0xe0 );                                                                   } /* RET  PO          */
-OP(op,e1) { POP( hl );                                                                                     } /* POP  HL          */
-OP(op,e2) { JP_COND( !(F & PF) );                                                                          } /* JP   PO,a        */
-OP(op,e3) { EXSP( hl );                                                                                    } /* EX   HL,(SP)     */
-OP(op,e4) { CALL_COND( !(F & PF), 0xe4 );                                                                  } /* CALL PO,a        */
-OP(op,e5) { PUSH( hl );                                                                                    } /* PUSH HL          */
-OP(op,e6) { AND(ARG());                                                                                    } /* AND  n           */
-OP(op,e7) { RST(0x20);                                                                                     } /* RST  4           */
-
-OP(op,e8) { RET_COND( F & PF, 0xe8 );                                                                      } /* RET  PE          */
-OP(op,e9) { PC = HL;                                                                                       } /* JP   (HL)        */
-OP(op,ea) { JP_COND( F & PF );                                                                             } /* JP   PE,a        */
-OP(op,eb) { EX_DE_HL;                                                                                      } /* EX   DE,HL       */
-OP(op,ec) { CALL_COND( F & PF, 0xec );                                                                     } /* CALL PE,a        */
-OP(op,ed) { R++; EXEC(ed,ROP());                                                                           } /* **** ED xx       */
-OP(op,ee) { XOR(ARG());                                                                                    } /* XOR  n           */
-OP(op,ef) { RST(0x28);                                                                                     } /* RST  5           */
-
-OP(op,f0) { RET_COND( !(F & SF), 0xf0 );                                                                   } /* RET  P           */
-OP(op,f1) { POP( af );                                                                                     } /* POP  AF          */
-OP(op,f2) { JP_COND( !(F & SF) );                                                                          } /* JP   P,a         */
-OP(op,f3) { IFF1 = IFF2 = 0;                                                                               } /* DI               */
-OP(op,f4) { CALL_COND( !(F & SF), 0xf4 );                                                                  } /* CALL P,a         */
-OP(op,f5) { PUSH( af );                                                                                    } /* PUSH AF          */
-OP(op,f6) { OR(ARG());                                                                                     } /* OR   n           */
-OP(op,f7) { RST(0x30);                                                                                     } /* RST  6           */
-
-OP(op,f8) { RET_COND( F & SF, 0xf8 );                                                                      } /* RET  M           */
-OP(op,f9) { SP = HL;                                                                                       } /* LD   SP,HL       */
-OP(op,fa) { JP_COND(F & SF);                                                                               } /* JP   M,a         */
-OP(op,fb) { EI;                                                                                            } /* EI               */
-OP(op,fc) { CALL_COND( F & SF, 0xfc );                                                                     } /* CALL M,a         */
-OP(op,fd) { R++; EXEC(fd,ROP());                                                                           } /* **** FD xx       */
-OP(op,fe) { CP(ARG());                                                                                     } /* CP   n           */
-OP(op,ff) { RST(0x38);                                                                                     } /* RST  7           */
-
 
 static void take_interrupt(void)
 {
