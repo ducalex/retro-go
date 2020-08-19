@@ -68,7 +68,6 @@ void odroid_audio_init(int sample_rate)
 
         i2s_driver_install(I2S_NUM, &i2s_config, 0, NULL);
         i2s_set_pin(I2S_NUM, NULL);
-        i2s_set_dac_mode(/*I2S_DAC_CHANNEL_LEFT_EN*/ I2S_DAC_CHANNEL_BOTH_EN);
     }
     else if (audioSink == ODROID_AUDIO_SINK_DAC)
     {
@@ -85,9 +84,9 @@ void odroid_audio_init(int sample_rate)
         };
 
         i2s_pin_config_t pin_config = {
-            .bck_io_num = 4,
-            .ws_io_num = 12,
-            .data_out_num = 15,
+            .bck_io_num = ODROID_PIN_I2S_DAC_BCK,
+            .ws_io_num = ODROID_PIN_I2S_DAC_WS,
+            .data_out_num = ODROID_PIN_I2S_DAC_DATA,
             .data_in_num = -1                                                       //Not used
         };
 

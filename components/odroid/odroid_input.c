@@ -4,6 +4,7 @@
 #include <driver/adc.h>
 #include <esp_adc_cal.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "odroid_system.h"
 #include "odroid_input.h"
@@ -15,6 +16,7 @@
 
 static volatile bool input_task_is_running = false;
 static volatile uint last_gamepad_read = 0;
+static volatile uint use_external_gamepad = 0;
 static odroid_gamepad_state_t gamepad_state;
 static SemaphoreHandle_t xSemaphore;
 
@@ -53,53 +55,58 @@ static inline odroid_gamepad_state_t external_gamepad_read()
     odroid_gamepad_state_t state = {0};
     memset(&state, 0, sizeof(state));
 
+    // Unfortunately the GO doesn't bring out enough GPIO for both ext DAC and controller...
+    if (odroid_audio_get_sink() != ODROID_AUDIO_SINK_DAC)
+    {
     // NES / SNES shift register
+    }
 
     return state;
 }
 
 static void input_task(void *arg)
 {
-    input_task_is_running = true;
-
     uint8_t debounce[ODROID_INPUT_MAX];
+    uint8_t debounce_level = 0x03; // 0x0f
 
     // Initialize debounce state
     memset(debounce, 0xFF, ODROID_INPUT_MAX);
 
+    input_task_is_running = true;
+
     while (input_task_is_running)
     {
-        // Read hardware
+        // Read internal controller
         odroid_gamepad_state_t state = console_gamepad_read();
 
-        for(int i = 0; i < ODROID_INPUT_MAX; ++i)
-		{
-            // Shift current values
-			debounce[i] <<= 1;
-		}
+        // Read external controller
+        if (use_external_gamepad)
+        {
+            odroid_gamepad_state_t ext_state = external_gamepad_read();
+            for (int i = 0; i < ODROID_INPUT_MAX; ++i)
+            {
+                state.values[i] |= ext_state.values[i];
+            }
+        }
 
-        // Debounce
         xSemaphoreTake(xSemaphore, portMAX_DELAY);
 
-        gamepad_state.bitmask = 0;
-
-        for(int i = 0; i < ODROID_INPUT_MAX; ++i)
+        for (int i = 0; i < ODROID_INPUT_MAX; ++i)
 		{
-            debounce[i] |= state.values[i] ? 1 : 0;
-            uint8_t val = debounce[i] & 0x03; //0x0f;
-            switch (val) {
-                case 0x00:
-                    gamepad_state.values[i] = 0;
-                    break;
+            // Debounce
+            debounce[i] = (debounce[i] << 1) | (state.values[i] & 1);
 
-                case 0x03: //0x0f:
-                    gamepad_state.values[i] = 1;
-                    gamepad_state.bitmask |= 1 << i;
-                    break;
+            uint8_t val = debounce[i] & debounce_level;
 
-                default:
-                    // ignore
-                    break;
+            if (val == debounce_level) // Pressed
+            {
+                gamepad_state.values[i] = 1;
+                gamepad_state.bitmask |= 1 << i;
+            }
+            else if (val == 0x00) // Released
+            {
+                gamepad_state.values[i] = 0;
+                gamepad_state.bitmask &= ~(1 << i);
             }
 		}
 
