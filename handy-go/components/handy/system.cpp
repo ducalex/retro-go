@@ -422,10 +422,10 @@ bool CSystem::ContextLoad(LSS_FILE *fp)
       ULONG checksum;
       // Read CRC32 and check against the CART for a match
       lss_read(&checksum,sizeof(ULONG),1,fp);
-      if(mCart->CRC32()!=checksum) {
-         fprintf(stderr, "[handy]LSS Snapshot CRC does not match the loaded cartridge image, aborting load.\n");
-         return 0;
-      }
+      // if(mCart->CRC32()!=checksum) {
+      //    fprintf(stderr, "[handy]LSS Snapshot CRC does not match the loaded cartridge image, aborting load.\n");
+      //    return 0;
+      // }
 
       // Check our block header
       if(!lss_read(teststr,sizeof(char),20,fp)) status=0;

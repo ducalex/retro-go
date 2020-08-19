@@ -21,8 +21,6 @@
  ******************************************************************************/
 
 #include <odroid_system.h>
-#include <rom/crc.h>
-
 #include "coleco_bios.h"
 #include "shared.h"
 

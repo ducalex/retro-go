@@ -6,10 +6,9 @@
 #include <esp_task_wdt.h>
 #include <esp_system.h>
 #include <esp_event.h>
-#include <esp_panic.h>
+// #include <esp_panic.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-#include <rom/crc.h>
 #include <string.h>
 #include <stdio.h>
 

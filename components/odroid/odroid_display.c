@@ -1108,6 +1108,13 @@ void odroid_display_show_hourglass()
         (uint16_t*)image_hourglass_empty_black_48dp.pixel_data);
 }
 
+void odroid_display_deinit()
+{
+    // Here we should stop SPI and display tasks
+    // Then:
+    ili9341_deinit();
+}
+
 void odroid_display_init()
 {
     backlightLevel = odroid_settings_Backlight_get();

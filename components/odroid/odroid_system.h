@@ -5,6 +5,12 @@
 #include <esp_timer.h>
 #include <stdbool.h>
 
+#if defined(ESP_IDF_VERSION_MAJOR) && ESP_IDF_VERSION_MAJOR >= 4
+#include <esp32/rom/crc.h>
+#else
+#include <rom/crc.h>
+#endif
+
 #include "odroid_audio.h"
 #include "odroid_display.h"
 #include "odroid_input.h"
@@ -43,7 +49,7 @@
 #define ODROID_PIN_NES_LATCH      0
 
 // SD Card Paths
-#define ODROID_BASE_PATH "/sd"
+#define ODROID_BASE_PATH           "/sd"
 #define ODROID_BASE_PATH_ROMS      ODROID_BASE_PATH "/roms"
 #define ODROID_BASE_PATH_SAVES     ODROID_BASE_PATH "/odroid/data"
 #define ODROID_BASE_PATH_TEMP      ODROID_BASE_PATH "/odroid/data" // temp

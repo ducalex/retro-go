@@ -4,7 +4,6 @@
 #include <string.h>
 #include <dirent.h>
 #include <unistd.h>
-#include <rom/crc.h>
 #include <odroid_system.h>
 
 #include "emulators.h"

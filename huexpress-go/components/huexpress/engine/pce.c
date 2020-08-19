@@ -23,7 +23,6 @@
 //
 #include "pce.h"
 #include "romdb.h"
-#include "rom/crc.h"
 
 struct host_machine host;
 

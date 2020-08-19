@@ -49,7 +49,6 @@
 #include <string.h>
 #include "system.h"
 #include "cart.h"
-#include "rom/crc.h"
 
 #define CART_INC_COUNTER() {if(!mStrobe) mCounter = (mCounter + 1) & 0x07ff;}
 
@@ -60,7 +59,8 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
 
    mWriteEnableBank1=FALSE;
    mCartRAM=FALSE;
-   mCRC32=crc32_le(0,gamedata,gamesize);
+   mCRC32=0;
+   // mCRC32=crc32_le(0,gamedata,gamesize);
    mBank=bank0;
 
    // Open up the file
