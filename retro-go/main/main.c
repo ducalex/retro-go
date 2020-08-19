@@ -88,7 +88,17 @@ static bool color_shift_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t
 
 static inline bool tab_enabled(tab_t *tab)
 {
-    return gui.show_empty || (tab->initialized && !tab->is_empty);
+    int disabled_tabs = 0;
+
+    if (gui.show_empty)
+        return true;
+
+    // If all tabs are disabled then we always return true, otherwise it's an endless loop
+    for (int i = 0; i < gui.tabcount; ++i)
+        if (gui.tabs[i]->initialized && gui.tabs[i]->is_empty)
+            disabled_tabs++;
+
+    return (disabled_tabs == gui.tabcount) || (tab->initialized && !tab->is_empty);
 }
 
 void retro_loop()
@@ -107,12 +117,9 @@ void retro_loop()
     {
         if (gui.selected != selected_tab_last)
         {
-            int dir = gui.selected - selected_tab_last;
+            int direction = (gui.selected - selected_tab_last) < 0 ? -1 : 1;
 
-            if (gui.selected >= gui.tabcount) gui.selected = 0;
-            if (gui.selected < 0) gui.selected = gui.tabcount - 1;
-
-            tab = gui_get_current_tab();
+            tab = gui_set_current_tab(gui.selected);
 
             if (!tab->initialized)
             {
@@ -132,7 +139,7 @@ void retro_loop()
 
             if (!tab_enabled(tab))
             {
-                gui.selected += dir;
+                gui.selected += direction;
                 continue;
             }
 

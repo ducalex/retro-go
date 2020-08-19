@@ -4,7 +4,7 @@
 
 bool odroid_sdcard_open();
 bool odroid_sdcard_close();
-int odroid_sdcard_mkdir(char *dir);
+int odroid_sdcard_mkdir(const char *dir);
 size_t odroid_sdcard_read_file(const char* path, void* buf, size_t buf_size);
 size_t odroid_sdcard_unzip_file(const char* path, void* buf, size_t buf_size);
 size_t odroid_sdcard_write_file(const char* path, void* buf, size_t buf_size);

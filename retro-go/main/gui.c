@@ -96,6 +96,28 @@ void gui_init_tab(tab_t *tab)
     tab->listbox.cursor = MAX(tab->listbox.cursor, 0);
 }
 
+tab_t *gui_get_tab(int index)
+{
+    return (index >= 0 && index < gui.tabcount) ? gui.tabs[index] : NULL;
+}
+
+tab_t *gui_get_current_tab()
+{
+    return gui_get_tab(gui.selected);
+}
+
+tab_t *gui_set_current_tab(int index)
+{
+    index %= gui.tabcount;
+
+    if (index < 0)
+        index += gui.tabcount;
+
+    gui.selected = index;
+
+    return gui_get_tab(gui.selected);
+}
+
 void gui_save_current_tab()
 {
     tab_t *tab = gui_get_current_tab();
@@ -103,11 +125,6 @@ void gui_save_current_tab()
     sprintf(str_buffer, "Sel.%.11s", tab->name);
     odroid_settings_int32_set(str_buffer, tab->listbox.cursor);
     odroid_settings_int32_set("SelectedTab", gui.selected);
-}
-
-tab_t *gui_get_current_tab()
-{
-    return (gui.selected < gui.tabcount) ? gui.tabs[gui.selected] : NULL;
 }
 
 listbox_item_t *gui_get_selected_item(tab_t *tab)

@@ -75,14 +75,16 @@ extern retro_gui_t gui;
 extern int gui_themes_count;
 
 tab_t *gui_add_tab(const char *name, const void *logo, const void *header, void *arg, void *event_handler);
+tab_t *gui_get_tab(int index);
+tab_t *gui_get_current_tab();
+tab_t *gui_set_current_tab(int index);
 void gui_init_tab(tab_t *tab);
-void gui_scroll_list(tab_t *tab, scroll_mode_t mode);
-void gui_resize_list(tab_t *tab, int new_size);
-void gui_sort_list(tab_t *tab, int sort_mode);
 void gui_save_current_tab(void);
 
+void gui_sort_list(tab_t *tab, int sort_mode);
+void gui_scroll_list(tab_t *tab, scroll_mode_t mode);
+void gui_resize_list(tab_t *tab, int new_size);
 listbox_item_t *gui_get_selected_item(tab_t *tab);
-tab_t *gui_get_current_tab();
 
 void gui_event(gui_event_t event, tab_t *tab);
 void gui_redraw(void);

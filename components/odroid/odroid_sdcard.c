@@ -197,7 +197,7 @@ const char* odroid_sdcard_get_extension(const char* path)
     return ext ? ext + 1 : NULL;
 }
 
-int odroid_sdcard_mkdir(char *dir)
+int odroid_sdcard_mkdir(const char *dir)
 {
     assert(sdcardOpen == true);
 
@@ -211,24 +211,22 @@ int odroid_sdcard_mkdir(char *dir)
             return 0;
         }
 
-        char tmp[128];
-        size_t len = strlen(tmp);
+        char temp[255];
+        strncpy(temp, dir, sizeof(temp) - 1);
 
-        strcpy(tmp, dir);
-        if (tmp[len - 1] == '/') {
-            tmp[len - 1] = 0;
-        }
-
-        for (char *p = tmp + strlen(ODROID_BASE_PATH) + 1; *p; p++) {
+        for (char *p = temp + strlen(ODROID_BASE_PATH) + 1; *p; p++) {
             if (*p == '/') {
                 *p = 0;
-                printf("odroid_sdcard_mkdir: Creating %s\n", tmp);
-                mkdir(tmp, 0777);
+                if (strlen(temp) > 0) {
+                    printf("odroid_sdcard_mkdir: Creating %s\n", temp);
+                    mkdir(temp, 0777);
+                }
                 *p = '/';
+                while (*(p+1) == '/') p++;
             }
         }
 
-        ret = mkdir(tmp, 0777);
+        ret = mkdir(temp, 0777);
     }
 
     if (ret == 0)
