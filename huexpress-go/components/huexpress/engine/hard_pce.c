@@ -410,7 +410,9 @@ IO_write(uint16 A, uchar V)
             case HSR:
             case VPR:
             case VDW:
+                IO_VDC_REG_ACTIVE.B.l = V;
                 io.vdc_mode_chg = 1;
+                break;
             default:
                 IO_VDC_REG_ACTIVE.B.l = V;
                 break;

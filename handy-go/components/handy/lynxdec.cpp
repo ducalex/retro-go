@@ -229,7 +229,7 @@ int decrypt_frame(unsigned char * result,
                   const unsigned char * public_mod,
                   const int length)
 {
-   int i, j;
+   int i;
    int blocks;
    int accumulator;
    unsigned char* rptr = result;

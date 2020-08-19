@@ -94,7 +94,6 @@ void ppu_getcontext(ppu_t *dest_ppu)
 
 void ppu_setpage(int size, int page_num, uint8 *location)
 {
-   /* deliberately fall through */
    switch (size)
    {
    case 8:
@@ -102,11 +101,14 @@ void ppu_setpage(int size, int page_num, uint8 *location)
       ppu.page[page_num++] = location;
       ppu.page[page_num++] = location;
       ppu.page[page_num++] = location;
+      // fall through
    case 4:
       ppu.page[page_num++] = location;
       ppu.page[page_num++] = location;
+      // fall through
    case 2:
       ppu.page[page_num++] = location;
+      // fall through
    case 1:
       ppu.page[page_num++] = location;
       break;
@@ -407,7 +409,7 @@ void ppu_setpalette(rgb_t *pal)
       ppu.curpal[i + 192].b = gui_pal[i].b;
    }
 
-   osd_setpalette(&ppu.curpal);
+   osd_setpalette((rgb_t *)&ppu.curpal);
 }
 
 const palette_t *ppu_getpalette(int n)

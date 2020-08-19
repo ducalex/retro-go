@@ -452,6 +452,10 @@ static uint8 map5_vram_read(uint32 address, uint8 value)
          }
       }
    }
+#else
+   // Silence warnings for now
+   (void)is_nt_attr_read;
+   (void)split_tile;
 #endif
    return value;
 }

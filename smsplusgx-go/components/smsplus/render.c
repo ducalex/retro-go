@@ -502,7 +502,7 @@ static inline void* tile_get(short attr, short line)
 
     const uint16 y = (attr & 0x400) ? (line ^ 7) : line;
 
-    const uint16* ptr = &vdp.vram[(name << 5) | (y << 2) | (0)];
+    const uint16* ptr = (uint16*)&vdp.vram[(name << 5) | (y << 2) | (0)];
     const uint32 temp = (bp_lut[*ptr] >> 2) | (bp_lut[*(ptr+1)]);
 
     for(short x = 0; x < 8; x++)

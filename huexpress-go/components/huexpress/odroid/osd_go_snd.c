@@ -20,7 +20,7 @@ audioTask(void *arg)
 
     while (1)
     {
-        short *p = &audioBuffer;
+        short *p = (short *)&audioBuffer;
 
         for (int i = 0; i < AUDIO_CHANNELS; i++)
         {

@@ -327,7 +327,8 @@ bool odroid_system_emu_save_state(int slot)
 
 void odroid_system_reload_app()
 {
-    //
+    // FIX ME: Ensure the boot loader points to us
+    esp_restart();
 }
 
 void odroid_system_switch_app(int app)

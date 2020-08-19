@@ -448,7 +448,7 @@ ULONG CSusie::PaintSprites(void)
 
          mCycles+=6*SPR_RDWR_CYC;
 
-         bool enable_sizing  = FALSE;
+         // bool enable_sizing  = FALSE;
          bool enable_stretch = FALSE;
          bool enable_tilt    = FALSE;
 
@@ -458,7 +458,7 @@ ULONG CSusie::PaintSprites(void)
          switch(mSPRCTL1_ReloadDepth) {
             case 1:
                TRACE_SUSIE0("PaintSprites() Sizing Enabled");
-               enable_sizing=TRUE;
+               // enable_sizing=TRUE;
 
                mSPRHSIZ.Word=RAM_PEEKW(mTMPADR.Word);	// Sprite Horizontal size
                mTMPADR.Word+=2;
@@ -472,7 +472,7 @@ ULONG CSusie::PaintSprites(void)
             case 2:
                TRACE_SUSIE0("PaintSprites() Sizing Enabled");
                TRACE_SUSIE0("PaintSprites() Stretch Enabled");
-               enable_sizing=TRUE;
+               // enable_sizing=TRUE;
                enable_stretch=TRUE;
 
                mSPRHSIZ.Word=RAM_PEEKW(mTMPADR.Word);	// Sprite Horizontal size
@@ -491,7 +491,7 @@ ULONG CSusie::PaintSprites(void)
                TRACE_SUSIE0("PaintSprites() Sizing Enabled");
                TRACE_SUSIE0("PaintSprites() Stretch Enabled");
                TRACE_SUSIE0("PaintSprites() Tilt Enabled");
-               enable_sizing=TRUE;
+               // enable_sizing=TRUE;
                enable_stretch=TRUE;
                enable_tilt=TRUE;
 
@@ -665,9 +665,10 @@ ULONG CSusie::PaintSprites(void)
 
             int pixel_height=0;
             int pixel_width=0;
-            static int pixel=0;
+            // static int pixel=0;
             int hoff=0,voff=0;
-            int hloop=0,vloop=0;
+            // int hloop=0;
+            int vloop=0;
             bool onscreen=0;
             static int vquadoff=0;
             static int hquadoff=0;

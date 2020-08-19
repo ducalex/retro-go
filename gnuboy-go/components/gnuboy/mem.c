@@ -241,7 +241,8 @@ static inline byte ioreg_read(byte r)
 	case RI_WX:
 	case RI_IE:
 	case RI_IF:
-		return REG(r);
+	//	return REG(r);
+	// CGB-specific registers
 	case RI_VBK:
 	case RI_BCPS:
 	case RI_OCPS:
@@ -254,7 +255,8 @@ static inline byte ioreg_read(byte r)
 	case RI_HDMA3:
 	case RI_HDMA4:
 	case RI_HDMA5:
-		if (hw.cgb) return REG(r);
+		// if (hw.cgb) return REG(r);
+		return REG(r);
 	default:
 		if (r >= 0x10 && r < 0x40) {
 			return sound_read(r);

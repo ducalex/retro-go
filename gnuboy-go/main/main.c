@@ -255,7 +255,7 @@ void app_main(void)
     pcm.hz = AUDIO_SAMPLE_RATE;
   	pcm.stereo = 1;
   	pcm.len = AUDIO_BUFFER_LENGTH * 2; // count of 16bit samples (x2 for stereo)
-  	pcm.buf = &audioBuffer;
+  	pcm.buf = (n16*)&audioBuffer;
   	pcm.pos = 0;
 
     emu_reset();
