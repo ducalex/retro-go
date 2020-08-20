@@ -23,29 +23,24 @@ static SemaphoreHandle_t xSemaphore;
 static inline odroid_gamepad_state_t console_gamepad_read()
 {
     odroid_gamepad_state_t state = {0};
-    memset(&state, 0, sizeof(state));
 
     int joyX = adc1_get_raw(ODROID_PIN_GAMEPAD_X);
     int joyY = adc1_get_raw(ODROID_PIN_GAMEPAD_Y);
 
-    if (joyX > 2048 + 1024)
-        state.values[ODROID_INPUT_LEFT] = 1;
-    else if (joyX > 1024)
-        state.values[ODROID_INPUT_RIGHT] = 1;
+    state.values[ODROID_INPUT_UP]   = (joyY > 2048 + 1024);
+    state.values[ODROID_INPUT_DOWN] = (joyY < 2048 + 1024) && (joyY > 1024);
 
-    if (joyY > 2048 + 1024)
-        state.values[ODROID_INPUT_UP] = 1;
-    else if (joyY > 1024)
-        state.values[ODROID_INPUT_DOWN] = 1;
+    state.values[ODROID_INPUT_LEFT]  = (joyX > 2048 + 1024);
+    state.values[ODROID_INPUT_RIGHT] = (joyX < 2048 + 1024) && (joyX > 1024);
 
-    state.values[ODROID_INPUT_SELECT] = !(gpio_get_level(ODROID_PIN_GAMEPAD_SELECT));
-    state.values[ODROID_INPUT_START] = !(gpio_get_level(ODROID_PIN_GAMEPAD_START));
+    state.values[ODROID_INPUT_MENU] = !gpio_get_level(ODROID_PIN_GAMEPAD_MENU);
+    state.values[ODROID_INPUT_VOLUME] = !gpio_get_level(ODROID_PIN_GAMEPAD_VOLUME);
 
-    state.values[ODROID_INPUT_A] = !(gpio_get_level(ODROID_PIN_GAMEPAD_A));
-    state.values[ODROID_INPUT_B] = !(gpio_get_level(ODROID_PIN_GAMEPAD_B));
+    state.values[ODROID_INPUT_SELECT] = !gpio_get_level(ODROID_PIN_GAMEPAD_SELECT);
+    state.values[ODROID_INPUT_START] = !gpio_get_level(ODROID_PIN_GAMEPAD_START);
 
-    state.values[ODROID_INPUT_MENU] = !(gpio_get_level(ODROID_PIN_GAMEPAD_MENU));
-    state.values[ODROID_INPUT_VOLUME] = !(gpio_get_level(ODROID_PIN_GAMEPAD_VOLUME));
+    state.values[ODROID_INPUT_A] = !gpio_get_level(ODROID_PIN_GAMEPAD_A);
+    state.values[ODROID_INPUT_B] = !gpio_get_level(ODROID_PIN_GAMEPAD_B);
 
     return state;
 }
@@ -53,12 +48,11 @@ static inline odroid_gamepad_state_t console_gamepad_read()
 static inline odroid_gamepad_state_t external_gamepad_read()
 {
     odroid_gamepad_state_t state = {0};
-    memset(&state, 0, sizeof(state));
 
     // Unfortunately the GO doesn't bring out enough GPIO for both ext DAC and controller...
     if (odroid_audio_get_sink() != ODROID_AUDIO_SINK_DAC)
     {
-    // NES / SNES shift register
+        // NES / SNES shift register
     }
 
     return state;
@@ -125,25 +119,24 @@ void odroid_input_init()
 
     xSemaphore = xSemaphoreCreateMutex();
 
-	gpio_set_direction(ODROID_PIN_GAMEPAD_SELECT, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(ODROID_PIN_GAMEPAD_SELECT, GPIO_PULLUP_ONLY);
-
-	gpio_set_direction(ODROID_PIN_GAMEPAD_START, GPIO_MODE_INPUT);
-
-	gpio_set_direction(ODROID_PIN_GAMEPAD_A, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(ODROID_PIN_GAMEPAD_A, GPIO_PULLUP_ONLY);
-
-    gpio_set_direction(ODROID_PIN_GAMEPAD_B, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(ODROID_PIN_GAMEPAD_B, GPIO_PULLUP_ONLY);
-
 	adc1_config_width(ADC_WIDTH_12Bit);
     adc1_config_channel_atten(ODROID_PIN_GAMEPAD_X, ADC_ATTEN_11db);
 	adc1_config_channel_atten(ODROID_PIN_GAMEPAD_Y, ADC_ATTEN_11db);
 
 	gpio_set_direction(ODROID_PIN_GAMEPAD_MENU, GPIO_MODE_INPUT);
 	gpio_set_pull_mode(ODROID_PIN_GAMEPAD_MENU, GPIO_PULLUP_ONLY);
+    gpio_set_direction(ODROID_PIN_GAMEPAD_VOLUME, GPIO_MODE_INPUT);
+	// gpio_set_pull_mode(ODROID_PIN_GAMEPAD_VOLUME, GPIO_PULLUP_ONLY);
 
-	gpio_set_direction(ODROID_PIN_GAMEPAD_VOLUME, GPIO_MODE_INPUT);
+	gpio_set_direction(ODROID_PIN_GAMEPAD_SELECT, GPIO_MODE_INPUT);
+	gpio_set_pull_mode(ODROID_PIN_GAMEPAD_SELECT, GPIO_PULLUP_ONLY);
+	gpio_set_direction(ODROID_PIN_GAMEPAD_START, GPIO_MODE_INPUT);
+	// gpio_set_direction(ODROID_PIN_GAMEPAD_START, GPIO_PULLUP_ONLY);
+
+	gpio_set_direction(ODROID_PIN_GAMEPAD_A, GPIO_MODE_INPUT);
+	gpio_set_pull_mode(ODROID_PIN_GAMEPAD_A, GPIO_PULLUP_ONLY);
+    gpio_set_direction(ODROID_PIN_GAMEPAD_B, GPIO_MODE_INPUT);
+	gpio_set_pull_mode(ODROID_PIN_GAMEPAD_B, GPIO_PULLUP_ONLY);
 
     // Start background polling
     xTaskCreatePinnedToCore(&input_task, "input_task", 2048, NULL, 5, NULL, 1);

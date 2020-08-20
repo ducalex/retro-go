@@ -21,15 +21,7 @@ int8_t speedupEnabled = 0;
 
 static void wait_all_keys_released()
 {
-    odroid_gamepad_state_t joystick;
-    bool pressed = false;
-    do {
-        pressed = false;
-        odroid_input_read_gamepad(&joystick);
-        for (int i = 0; i < ODROID_INPUT_MAX; i++) {
-            pressed = pressed || joystick.values[i];
-        }
-    } while (pressed);
+    while (odroid_input_key_is_pressed(ODROID_INPUT_ANY));
 }
 
 void odroid_overlay_init()

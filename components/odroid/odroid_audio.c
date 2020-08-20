@@ -1,5 +1,4 @@
 #include <freertos/FreeRTOS.h>
-#include <driver/rtc_io.h>
 #include <driver/i2s.h>
 #include <esp_system.h>
 #include <string.h>
