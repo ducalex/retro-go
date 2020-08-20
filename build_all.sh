@@ -1,9 +1,9 @@
 #!/bin/bash
 
-BUILD_CMD="make -j 6"
+BUILD_CMD="make -j 6 app"
 CLEAN_CMD="make clean"
-# BUILD_CMD="idf.py build"
-# CLEAN_CMD="idf.py clean"
+# BUILD_CMD="idf.py app"
+# CLEAN_CMD="idf.py fullclean"
 
 echo ""
 echo "Building the launcher"

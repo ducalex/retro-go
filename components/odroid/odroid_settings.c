@@ -13,7 +13,7 @@ static const char* Key_AudioSink    = "AudioSink";
 static const char* Key_Volume       = "Volume";
 static const char* Key_StartupApp   = "StartupApp";
 static const char* Key_FontSize     = "FontSize";
-static const char* Key_RetroGoVer   = "RetroGoVer";
+// static const char* Key_RetroGoVer   = "RetroGoVer";
 // Per-app
 static const char* Key_Region       = "Region";
 static const char* Key_Palette      = "Palette";
@@ -22,7 +22,7 @@ static const char* Key_DispFilter   = "DispFilter";
 static const char* Key_DispRotation = "DistRotation";
 static const char* Key_DispOverscan = "DispOverscan";
 static const char* Key_SpriteLimit  = "SpriteLimit";
-static const char* Key_AudioFilter  = "AudioFilter";
+// static const char* Key_AudioFilter  = "AudioFilter";
 
 static int unsaved_changes = 0;
 
