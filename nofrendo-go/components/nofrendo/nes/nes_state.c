@@ -297,6 +297,8 @@ int state_load(char* fn)
       blockVersion = swap32(*((uint32*)&buffer[4]));
       blockLength = swap32(*((uint32*)&buffer[8]));
 
+      UNUSED(blockVersion);
+
       nextBlock += 12 + blockLength;
 
       /****************************************************/

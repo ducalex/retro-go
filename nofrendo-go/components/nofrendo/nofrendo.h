@@ -38,9 +38,12 @@
 // #define NOFRENDO_DEBUG
 
 /* Enable live dissassembler */
-// #define  NES6502_DISASM
+// #define NES6502_DISASM
 
-/* Define this if running on little-endian (x86) systems */
+/* Save/load a game's SRAM from disk */
+// #define USE_SRAM_FILE
+
+/* Undef this if running on big-endian (68k) systems */
 #define IS_LITTLE_ENDIAN
 
 /* End configuration */

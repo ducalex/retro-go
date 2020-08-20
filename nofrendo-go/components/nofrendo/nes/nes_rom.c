@@ -35,6 +35,8 @@
 #include <osd.h>
 
 
+#ifdef USE_SRAM_FILE
+
 /* Save battery-backed RAM */
 static void rom_savesram(rominfo_t *rominfo)
 {
@@ -78,6 +80,7 @@ static void rom_loadsram(rominfo_t *rominfo)
       }
    }
 }
+#endif
 
 static int rom_getheader(unsigned char **rom, rominfo_t *rominfo)
 {
@@ -202,7 +205,9 @@ rominfo_t *rom_load(const char *filename)
       }
    }
 
-   // rom_loadsram(rominfo);
+#ifdef USE_SRAM_FILE
+   rom_loadsram(rominfo);
+#endif
 
    MESSAGE_INFO("ROM: Loading done.\n");
 
@@ -219,8 +224,9 @@ void rom_free(rominfo_t *rominfo)
 {
    if (rominfo)
    {
+   #ifdef USE_SRAM_FILE
       rom_savesram(rominfo);
-
+   #endif
       if (rominfo->sram) free(rominfo->sram);
       if (rominfo->rom)  free(rominfo->rom);
       if (rominfo->vrom) free(rominfo->vrom);
