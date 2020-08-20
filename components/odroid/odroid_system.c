@@ -139,6 +139,7 @@ void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_
     if (startAction == ODROID_START_ACTION_NEWGAME)
     {
         odroid_settings_StartAction_set(ODROID_START_ACTION_RESUME);
+        odroid_settings_commit();
     }
 
     romPath = odroid_settings_RomFilePath_get();

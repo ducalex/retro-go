@@ -493,7 +493,11 @@ int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options)
         memcpy(options + options_count, extra_options, (extra_options_count + 1) * sizeof(odroid_dialog_choice_t));
     }
 
-    return odroid_overlay_dialog("Options", options, 0);
+    int ret = odroid_overlay_dialog("Options", options, 0);
+
+    odroid_settings_commit();
+
+    return ret;
 }
 
 static void draw_game_status_bar(runtime_stats_t stats)

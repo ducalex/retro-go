@@ -301,6 +301,7 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
     int sel = odroid_overlay_dialog(NULL, choices, has_save ? 0 : 1);
 
     if (sel == 0 || sel == 1) {
+        gui_save_current_tab();
         emulator_start(file, sel == 0);
     }
     else if (sel == 2) {
@@ -323,11 +324,12 @@ void emulator_start(retro_emulator_file_t *file, bool load_state)
     const char *path = emu_get_file_path(file);
     assert(path != NULL);
 
-    gui_save_current_tab();
-
     printf("Retro-Go: Starting game: %s\n", path);
+
     odroid_settings_StartAction_set(load_state ? ODROID_START_ACTION_RESUME : ODROID_START_ACTION_NEWGAME);
     odroid_settings_RomFilePath_set(path);
+    odroid_settings_commit();
+
     odroid_system_switch_app(((retro_emulator_t *)file->emulator)->partition);
 }
 

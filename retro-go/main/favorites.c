@@ -126,7 +126,7 @@ static void favorites_save()
     }
 
     odroid_settings_string_set(KEY_FAVORITES, buffer);
-
+    odroid_settings_commit();
     free(buffer);
 }
 

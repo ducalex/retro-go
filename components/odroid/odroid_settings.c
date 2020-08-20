@@ -3,7 +3,7 @@
 #include "odroid_system.h"
 #include "odroid_settings.h"
 
-#define USE_CONFIG_FILE 1
+#define USE_CONFIG_FILE
 
 // Global
 static const char* Key_RomFilePath  = "RomFilePath";
@@ -13,14 +13,18 @@ static const char* Key_AudioSink    = "AudioSink";
 static const char* Key_Volume       = "Volume";
 static const char* Key_StartupApp   = "StartupApp";
 static const char* Key_FontSize     = "FontSize";
+static const char* Key_RetroGoVer   = "RetroGoVer";
 // Per-app
 static const char* Key_Region       = "Region";
 static const char* Key_Palette      = "Palette";
-static const char* Key_DispScaling  = "DispScale";
+static const char* Key_DispScaling  = "DispScaling";
 static const char* Key_DispFilter   = "DispFilter";
-static const char* Key_DispRotation = "DispRotate";
-static const char* Key_DispOverscan = "Overscan";
-static const char* Key_SpriteLimit  = "SpriteL";
+static const char* Key_DispRotation = "DistRotation";
+static const char* Key_DispOverscan = "DispOverscan";
+static const char* Key_SpriteLimit  = "SpriteLimit";
+static const char* Key_AudioFilter  = "AudioFilter";
+
+static int unsaved_changes = 0;
 
 #ifdef USE_CONFIG_FILE
     #include <cJSON.h>
@@ -79,16 +83,20 @@ void odroid_settings_init()
 
 void odroid_settings_commit()
 {
-#ifdef USE_CONFIG_FILE
-    char *buffer = cJSON_Print(root);
-    if (buffer)
+    if (unsaved_changes > 0)
     {
-        odroid_sdcard_write_file(config_file, buffer, strlen(buffer));
-        free(buffer);
-    }
+#ifdef USE_CONFIG_FILE
+        char *buffer = cJSON_Print(root);
+        if (buffer)
+        {
+            odroid_sdcard_write_file(config_file, buffer, strlen(buffer));
+            free(buffer);
+        }
 #else
-    nvs_commit(my_handle);
+        nvs_commit(my_handle);
 #endif
+        unsaved_changes = 0;
+    }
 }
 
 void odroid_settings_reset()
@@ -96,9 +104,12 @@ void odroid_settings_reset()
 #ifdef USE_CONFIG_FILE
     cJSON_free(root);
     root = cJSON_CreateObject();
+    unsaved_changes++;
     odroid_settings_commit();
 #else
-    //
+    // nvs_flash_deinit()
+    // nvs_flash_erase()
+    // odroid_settings_init();
 #endif
 }
 
@@ -143,7 +154,7 @@ void odroid_settings_string_set(const char *key, const char *value)
     if (ret != ESP_OK)
         printf("%s: key='%s' err=%d\n", __func__, key, ret);
 #endif
-    odroid_settings_commit();
+    unsaved_changes++;
 }
 
 int32_t odroid_settings_int32_get(const char *key, int32_t default_value)
@@ -171,7 +182,7 @@ void odroid_settings_int32_set(const char *key, int32_t value)
     if (ret != ESP_OK)
         printf("%s: key='%s' err=%d\n", __func__, key, ret);
 #endif
-    odroid_settings_commit();
+    unsaved_changes++;
 }
 
 
