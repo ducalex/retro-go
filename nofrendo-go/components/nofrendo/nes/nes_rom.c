@@ -105,19 +105,11 @@ static int rom_getheader(unsigned char **rom, rominfo_t *rominfo)
    /* iNES assumptions */
    rominfo->sram_banks = 8; /* 1kB banks, so 8KB */
    rominfo->vram_banks = 1; /* 8kB banks, so 8KB */
-   rominfo->mirror = (head.rom_type & ROM_MIRRORTYPE) ? MIRROR_VERT : MIRROR_HORIZ;
-   rominfo->flags = 0;
-   if (head.rom_type & ROM_BATTERY)
-      rominfo->flags |= ROM_FLAG_BATTERY;
-   if (head.rom_type & ROM_TRAINER)
-      rominfo->flags |= ROM_FLAG_TRAINER;
-   if (head.rom_type & ROM_FOURSCREEN)
-      rominfo->flags |= ROM_FLAG_FOURSCREEN;
+   rominfo->flags = head.rom_type;
+   rominfo->mapper_number = head.rom_type >> 4;
+
    if (head.mapper_hinybble & 1)
       rominfo->flags |= ROM_FLAG_VERSUS;
-
-   /* TODO: fourscreen a mirroring type? */
-   rominfo->mapper_number = head.rom_type >> 4;
 
    if (head.reserved2 == 0)
    {
@@ -164,7 +156,7 @@ rominfo_t *rom_load(const char *filename)
    MESSAGE_INFO("ROM: Header: Mapper:%d, PRG:%dK, CHR:%dK, Mirror:%c, Flags: %c%c%c\n",
       rominfo->mapper_number,
       rominfo->rom_banks * 16, rominfo->vrom_banks * 8,
-      (rominfo->mirror == MIRROR_VERT) ? 'V' : 'H',
+      (rominfo->flags & ROM_FLAG_VERTICAL) ? 'V' : 'H',
       (rominfo->flags & ROM_FLAG_BATTERY) ? 'B' : '-',
       (rominfo->flags & ROM_FLAG_TRAINER) ? 'T' : '-',
       (rominfo->flags & ROM_FLAG_FOURSCREEN) ? '4' : '-'

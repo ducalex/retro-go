@@ -17,142 +17,122 @@
 ** must bear this legend.
 **
 **
-** map1.c
+** map001.c
 **
-** mapper 1 interface
-** $Id: map001.c,v 1.2 2001/04/27 14:37:11 neil Exp $
+** Mapper 1 interface
+** New implementation by ducalex
+**
 */
 
 #include <nofrendo.h>
 #include <nes_mmc.h>
 #include <nes_ppu.h>
 #include <string.h>
-#define ppu_mirror(a,b,c,d) ppu_setnametables(a,b,c,d)
 
-/* TODO: WRAM enable ala Mark Knibbs:
-   ==================================
-The SNROM board uses 8K CHR-RAM. The CHR-RAM is paged (i.e. it can be split
-into two 4Kbyte pages).
-
-The CRA16 line of the MMC1 is connected to the /CS1 pin of the WRAM. THIS MEANS
-THAT THE WRAM CAN BE ENABLED OR DISABLED ACCORDING TO THE STATE OF THE CRA16
-LINE. The CRA16 line corresponds to bit 4 of MMC1 registers 1 & 2.
-
-The WRAM is enabled when the CRA16 line is low, and disabled when CRA16 is
-high. This has implications when CHR page size is 4K, if the two page numbers
-set have different CRA16 states (e.g. reg 1 bit 4 = 0, reg 2 bit 4 = 1). Then
-the WRAM will be enabled and disabled depending on what CHR address is being
-accessed.
-
-When CHR page size is 8K, bit 4 of MMC1 register 1 (and not register 2, because
-page size is 8K) controls whether the WRAM is enabled or not. It must be low
-to be enabled. When the WRAM is disabled, reading from and writing to it will
-not be possible.
-*/
-
-/* TODO: roll this into something... */
-static int bitcount = 0;
-static uint8 latch = 0;
 static uint8 regs[4];
-static int bank_select;
-static uint8 lastreg;
+static uint8 bitcount = 0;
+static uint8 latch = 0;
 
 // Shouldn't that be packed? (It wasn't packed in SNSS...)
 typedef struct
 {
-   unsigned char registers[4];
-   unsigned char latch;
-   unsigned char numberOfBits;
+   uint8 regs[4];
+   uint8 bitcount;
+   uint8 latch;
 } mapper1Data;
+
+static void update_mirror()
+{
+   switch (regs[0] & 3)
+   {
+      case 0: ppu_setmirroring(PPU_MIRROR_SCR0); break;
+      case 1: ppu_setmirroring(PPU_MIRROR_SCR1); break;
+      case 2: ppu_setmirroring(PPU_MIRROR_VERT); break;
+      case 3: ppu_setmirroring(PPU_MIRROR_HORI); break;
+   }
+}
+
+static void update_chr()
+{
+   if (regs[0] & 0x10)
+   {
+      mmc_bankvrom(4, 0x0000, regs[1]);
+      mmc_bankvrom(4, 0x1000, regs[2]);
+   }
+   else
+   {
+      mmc_bankvrom(8, 0x0000, regs[1] >> 1);
+   }
+}
+
+static void update_prg()
+{
+   int prg_reg = regs[3] & 0xF;
+   int mode = (regs[0] >> 2) & 3;
+
+   if (mmc_getinfo()->rom_banks == 0x20)
+      prg_reg += regs[1] & 0x10;
+
+   // switch 32 KB at $8000, ignoring low bit of bank number
+   if (0 == mode || 1 == mode)
+   {
+      mmc_bankrom(32, 0x8000, prg_reg >> 1);
+   }
+   // fix first bank at $8000 and switch 16 KB bank at $C000
+   else if (mode == 2)
+   {
+      mmc_bankrom(16, 0x8000, 0);
+      mmc_bankrom(16, 0xC000, prg_reg);
+   }
+   // fix last bank at $C000 and switch 16 KB bank at $8000
+   else if (mode == 3)
+   {
+      mmc_bankrom(16, 0x8000, prg_reg);
+      mmc_bankrom(16, 0xC000, -1);
+   }
+}
 
 static void map1_write(uint32 address, uint8 value)
 {
-   int regnum = (address >> 13) - 4;
+   // MESSAGE_INFO("MMC1 write: $%02X to $%04X\n", value, address);
 
+   // Reset
    if (value & 0x80)
    {
       regs[0] |= 0x0C;
       bitcount = 0;
       latch = 0;
+      update_prg();
       return;
    }
 
-   if (lastreg != regnum)
-   {
-      bitcount = 0;
-      latch = 0;
-      lastreg = regnum;
-   }
-   //lastreg = regnum;
-
+   // Serial data in
    latch |= ((value & 1) << bitcount++);
 
    /* 5 bit registers */
    if (5 != bitcount)
       return;
 
+   // Only matters on fifth write
+   int regnum = (address >> 13) & 0x3;
+
    regs[regnum] = latch;
-   value = latch;
    bitcount = 0;
    latch = 0;
 
    switch (regnum)
    {
-   case 0:
-      {
-         if (0 == (value & 2))
-         {
-            int mirror = value & 1;
-            ppu_mirror(mirror, mirror, mirror, mirror);
-         }
-         else
-         {
-            if (value & 1)
-               ppu_mirror(0, 0, 1, 1);
-            else
-               ppu_mirror(0, 1, 0, 1);
-         }
-      }
-      break;
+      // Register 0: Control
+      case 0: update_mirror(); update_prg(); update_chr(); break;
 
-   case 1:
-      if (regs[0] & 0x10)
-         mmc_bankvrom(4, 0x0000, value);
-      else
-         mmc_bankvrom(8, 0x0000, value >> 1);
-      break;
+      // Register 1: CHR bank 0
+      case 1: update_chr(); update_prg(); break;
 
-   case 2:
-      if (regs[0] & 0x10)
-         mmc_bankvrom(4, 0x1000, value);
-      break;
+      // Register 2: CHR bank 1
+      case 2: update_chr(); break;
 
-   case 3:
-      if (mmc_getinfo()->rom_banks == 0x20)
-      {
-         bank_select = (regs[1] & 0x10) ? 0 : 0x10;
-      }
-      else if (mmc_getinfo()->rom_banks == 0x40)
-      {
-         if (regs[0] & 0x10)
-            bank_select = (regs[1] & 0x10) | ((regs[2] & 0x10) << 1);
-         else
-            bank_select = (regs[1] & 0x10) << 1;
-      }
-      else
-      {
-         bank_select = 0;
-      }
-
-      if (0 == (regs[0] & 0x08))
-         mmc_bankrom(32, 0x8000, ((regs[3] >> 1) + (bank_select >> 1)));
-      else if (regs[0] & 0x04)
-         mmc_bankrom(16, 0x8000, ((regs[3] & 0xF) + bank_select));
-      else
-         mmc_bankrom(16, 0xC000, ((regs[3] & 0xF) + bank_select));
-
-   default:
-      break;
+      // Register 3: PRG bank
+      case 3: update_prg(); break;
    }
 }
 
@@ -161,33 +141,34 @@ static void map1_init(void)
    bitcount = 0;
    latch = 0;
 
-   memset(regs, 0, sizeof(regs));
+   regs[0] = 0x1F;
+   regs[1] = 0x00;
+   regs[2] = 0x00;
+   regs[3] = 0x00;
 
-   if (mmc_getinfo()->rom_banks == 0x20)
-      mmc_bankrom(16, 0xC000, 0x0F);
-
-   map1_write(0x8000, 0x80);
+   update_mirror();
+   update_chr();
+   update_prg();
 }
 
 static void map1_getstate(void *state)
 {
-   ((mapper1Data*)state)->registers[0] = regs[0];
-   ((mapper1Data*)state)->registers[1] = regs[1];
-   ((mapper1Data*)state)->registers[2] = regs[2];
-   ((mapper1Data*)state)->registers[3] = regs[3];
+   ((mapper1Data*)state)->regs[0] = regs[0];
+   ((mapper1Data*)state)->regs[1] = regs[1];
+   ((mapper1Data*)state)->regs[2] = regs[2];
+   ((mapper1Data*)state)->regs[3] = regs[3];
    ((mapper1Data*)state)->latch = latch;
-   ((mapper1Data*)state)->numberOfBits = bitcount;
+   ((mapper1Data*)state)->bitcount = bitcount;
 }
-
 
 static void map1_setstate(void *state)
 {
-   regs[1]  = ((mapper1Data*)state)->registers[0];
-   regs[1]  = ((mapper1Data*)state)->registers[1];
-   regs[2]  = ((mapper1Data*)state)->registers[2];
-   regs[3]  = ((mapper1Data*)state)->registers[3];
+   regs[0]  = ((mapper1Data*)state)->regs[0];
+   regs[1]  = ((mapper1Data*)state)->regs[1];
+   regs[2]  = ((mapper1Data*)state)->regs[2];
+   regs[3]  = ((mapper1Data*)state)->regs[3];
    latch    = ((mapper1Data*)state)->latch;
-   bitcount = ((mapper1Data*)state)->numberOfBits;
+   bitcount = ((mapper1Data*)state)->bitcount;
 }
 
 static mem_write_handler_t map1_memwrite[] =
@@ -209,43 +190,3 @@ mapintf_t map1_intf =
    map1_memwrite, /* memory write structure */
    NULL /* external sound device */
 };
-
-/*
-** $Log: map001.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.1  2000/10/24 12:19:32  matt
-** changed directory structure
-**
-** Revision 1.8  2000/10/22 19:46:50  matt
-** mirroring bugfix
-**
-** Revision 1.7  2000/10/22 19:17:46  matt
-** mapper cleanups galore
-**
-** Revision 1.6  2000/10/22 15:03:13  matt
-** simplified mirroring
-**
-** Revision 1.5  2000/10/21 19:33:38  matt
-** many more cleanups
-**
-** Revision 1.4  2000/07/15 23:52:19  matt
-** rounded out a bunch more mapper interfaces
-**
-** Revision 1.3  2000/07/10 05:29:03  matt
-** cleaned up some mirroring issues
-**
-** Revision 1.2  2000/07/06 02:48:43  matt
-** clearly labelled structure members
-**
-** Revision 1.1  2000/07/04 23:11:45  matt
-** initial revision
-**
-*/

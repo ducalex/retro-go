@@ -167,10 +167,10 @@ static void mmc_setpages(void)
 
    if (mmc.cart->flags & ROM_FLAG_FOURSCREEN)
       ppu_setmirroring(PPU_MIRROR_FOUR);
-   else if (MIRROR_VERT == mmc.cart->mirror)
-      ppu_setmirroring(PPU_MIRROR_HORI);
-   else
+   else if (mmc.cart->flags & ROM_FLAG_VERTICAL)
       ppu_setmirroring(PPU_MIRROR_VERT);
+   else
+      ppu_setmirroring(PPU_MIRROR_HORI);
 }
 
 /* Mapper initialization routine */

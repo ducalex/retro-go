@@ -29,16 +29,15 @@
 #include <unistd.h>
 #include <osd.h>
 
-#define  ROM_FLAG_BATTERY     0x01
-#define  ROM_FLAG_TRAINER     0x02
-#define  ROM_FLAG_FOURSCREEN  0x04
-#define  ROM_FLAG_VERSUS      0x08
+#define  ROM_INES_MAGIC       "NES\x1A"
 
-#define  ROM_FOURSCREEN    0x08
-#define  ROM_TRAINER       0x04
-#define  ROM_BATTERY       0x02
-#define  ROM_MIRRORTYPE    0x01
-#define  ROM_INES_MAGIC    "NES\x1A"
+#define  ROM_FLAG_FOURSCREEN  0x08
+#define  ROM_FLAG_TRAINER     0x04
+#define  ROM_FLAG_BATTERY     0x02
+#define  ROM_FLAG_VERTICAL    0x01
+
+// non-ines flags
+#define  ROM_FLAG_VERSUS      0x100
 
 #define  TRAINER_OFFSET    0x1000
 #define  TRAINER_LENGTH    0x200
@@ -59,12 +58,6 @@ typedef struct inesheader_s
    uint32 reserved2       ;
 } inesheader_t;
 
-typedef enum
-{
-   MIRROR_HORIZ   = 0,
-   MIRROR_VERT    = 1
-} mirror_t;
-
 typedef struct rominfo_s
 {
    /* pointers to ROM and VROM */
@@ -78,9 +71,8 @@ typedef struct rominfo_s
    int sram_banks, vram_banks;
 
    int mapper_number;
-   mirror_t mirror;
 
-   uint8 flags;
+   uint16 flags;
 
    char filename[PATH_MAX + 1];
    uint32 checksum;
