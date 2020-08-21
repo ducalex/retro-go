@@ -27,8 +27,8 @@
 #define _NESINPUT_H_
 
 /* Registers */
-#define  INP_JOY0          0x4016
-#define  INP_JOY1          0x4017
+#define  INP_REG_JOY0      0x4016
+#define  INP_REG_JOY1      0x4017
 
 /* NES control pad bitmasks */
 #define  INP_PAD_A         0x01
@@ -40,33 +40,32 @@
 #define  INP_PAD_LEFT      0x40
 #define  INP_PAD_RIGHT     0x80
 
-#define  INP_ZAPPER_HIT    0x00
-#define  INP_ZAPPER_MISS   0x08
-#define  INP_ZAPPER_TRIG   0x10
+#define  INP_ZAPPER_HIT    0x01
+#define  INP_ZAPPER_MISS   0x02
+#define  INP_ZAPPER_TRIG   0x04
 
-#define  INP_JOYPAD0       0x0001
-#define  INP_JOYPAD1       0x0002
-#define  INP_ZAPPER        0x0004
-
-
-enum
+typedef enum
 {
-   INP_STATE_BREAK,
-   INP_STATE_MAKE
-};
+   INP_JOYPAD0,
+   INP_JOYPAD1,
+   INP_JOYPAD2,
+   INP_JOYPAD3,
+   INP_ZAPPER,
+   INP_TYPE_MAX,
+} nesinput_type_t;
 
-typedef struct nesinput_s
+typedef struct
 {
-   int type;
-   int data;
+   uint8 connected;
+   uint8 state;
+   uint8 reads;
 } nesinput_t;
 
-#define  MAX_CONTROLLERS   8
+extern void input_connect(nesinput_type_t input);
+extern void input_disconnect(nesinput_type_t input);
+extern void input_update(nesinput_type_t input, uint8 state);
 
-extern void input_register(nesinput_t *input);
-extern void input_event(nesinput_t *input, int state, int value);
-
-uint8 input_read(uint32 address);
-void input_write(uint32 address, uint8 value);
+extern uint8 input_read(uint32 address);
+extern void input_write(uint32 address, uint8 value);
 
 #endif /* _NESINPUT_H_ */

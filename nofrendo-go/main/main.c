@@ -4,7 +4,6 @@
 #include <string.h>
 #include <nofrendo.h>
 #include <bitmap.h>
-#include <event.h>
 #include <nes.h>
 #include <nes_input.h>
 #include <nes_state.h>
@@ -237,6 +236,8 @@ void osd_logprint(int type, char *string)
 
 int osd_init()
 {
+   input_connect(INP_JOYPAD0);
+   input_connect(INP_JOYPAD1);
    return 0;
 }
 
@@ -331,23 +332,16 @@ IRAM_ATTR void osd_blitscreen(bitmap_t *bmp)
 
 void osd_getinput(void)
 {
-	static const int events[] = {
-      event_joypad1_start, event_joypad1_select, event_joypad1_up, event_joypad1_right,
-      event_joypad1_down, event_joypad1_left, event_joypad1_a, event_joypad1_b,
-      event_joypad2_start, event_joypad2_select, event_joypad2_up, event_joypad2_right,
-      event_joypad2_down, event_joypad2_left, event_joypad2_a, event_joypad2_b
-	};
-   static const int events_count = sizeof(events) / sizeof(int);
-
-   static uint16 previous = 0xffff;
-   uint16 b = 0, changed = 0;
+   uint16 pad0 = 0, pad1 = 0;
 
    odroid_input_read_gamepad(localJoystick);
 
-   if (localJoystick->values[ODROID_INPUT_MENU]) {
+   if (localJoystick->values[ODROID_INPUT_MENU])
+   {
       odroid_overlay_game_menu();
    }
-   else if (localJoystick->values[ODROID_INPUT_VOLUME]) {
+   else if (localJoystick->values[ODROID_INPUT_VOLUME])
+   {
       odroid_dialog_choice_t options[] = {
             {100, "Palette", "Default", 1, &palette_update_cb},
             {101, "More...", "", 1, &advanced_settings_cb},
@@ -356,37 +350,30 @@ void osd_getinput(void)
       odroid_overlay_game_settings_menu(options);
    }
 
-   if (netplay) {
+   if (netplay)
+   {
       odroid_netplay_sync(localJoystick, remoteJoystick, sizeof(odroid_gamepad_state_t));
+      if (joystick2.values[ODROID_INPUT_START])  pad1 |= INP_PAD_START;
+      if (joystick2.values[ODROID_INPUT_SELECT]) pad1 |= INP_PAD_SELECT;
+      if (joystick2.values[ODROID_INPUT_UP])     pad1 |= INP_PAD_UP;
+      if (joystick2.values[ODROID_INPUT_RIGHT])  pad1 |= INP_PAD_RIGHT;
+      if (joystick2.values[ODROID_INPUT_DOWN])   pad1 |= INP_PAD_DOWN;
+      if (joystick2.values[ODROID_INPUT_LEFT])   pad1 |= INP_PAD_LEFT;
+      if (joystick2.values[ODROID_INPUT_A])      pad1 |= INP_PAD_A;
+      if (joystick2.values[ODROID_INPUT_B])      pad1 |= INP_PAD_B;
+      input_update(INP_JOYPAD1, pad1);
    }
 
-	if (!joystick1.values[ODROID_INPUT_START])  b |= (1 << 0);
-	if (!joystick1.values[ODROID_INPUT_SELECT]) b |= (1 << 1);
-	if (!joystick1.values[ODROID_INPUT_UP])     b |= (1 << 2);
-	if (!joystick1.values[ODROID_INPUT_RIGHT])  b |= (1 << 3);
-	if (!joystick1.values[ODROID_INPUT_DOWN])   b |= (1 << 4);
-	if (!joystick1.values[ODROID_INPUT_LEFT])   b |= (1 << 5);
-	if (!joystick1.values[ODROID_INPUT_A])      b |= (1 << 6);
-	if (!joystick1.values[ODROID_INPUT_B])      b |= (1 << 7);
-	if (!joystick2.values[ODROID_INPUT_START])  b |= (1 << 8);
-	if (!joystick2.values[ODROID_INPUT_SELECT]) b |= (1 << 9);
-	if (!joystick2.values[ODROID_INPUT_UP])     b |= (1 << 10);
-	if (!joystick2.values[ODROID_INPUT_RIGHT])  b |= (1 << 11);
-	if (!joystick2.values[ODROID_INPUT_DOWN])   b |= (1 << 12);
-	if (!joystick2.values[ODROID_INPUT_LEFT])   b |= (1 << 13);
-	if (!joystick2.values[ODROID_INPUT_A])      b |= (1 << 14);
-	if (!joystick2.values[ODROID_INPUT_B])      b |= (1 << 15);
+	if (joystick1.values[ODROID_INPUT_START])  pad0 |= INP_PAD_START;
+	if (joystick1.values[ODROID_INPUT_SELECT]) pad0 |= INP_PAD_SELECT;
+	if (joystick1.values[ODROID_INPUT_UP])     pad0 |= INP_PAD_UP;
+	if (joystick1.values[ODROID_INPUT_RIGHT])  pad0 |= INP_PAD_RIGHT;
+	if (joystick1.values[ODROID_INPUT_DOWN])   pad0 |= INP_PAD_DOWN;
+	if (joystick1.values[ODROID_INPUT_LEFT])   pad0 |= INP_PAD_LEFT;
+	if (joystick1.values[ODROID_INPUT_A])      pad0 |= INP_PAD_A;
+	if (joystick1.values[ODROID_INPUT_B])      pad0 |= INP_PAD_B;
 
-   changed = b ^ previous;
-   previous = b;
-
-	for (int x = 0; x < events_count; x++) {
-		if (changed & 1) {
-         event_raise(events[x], (b & 1) ? INP_STATE_BREAK : INP_STATE_MAKE);
-		}
-		changed >>= 1;
-		b >>= 1;
-	}
+   input_update(INP_JOYPAD0, pad0);
 }
 
 

@@ -29,7 +29,6 @@
 #include <stdarg.h>
 #include <string.h>
 #include <nofrendo.h>
-#include <event.h>
 #include <osd.h>
 #include <nes.h>
 
@@ -89,8 +88,6 @@ void nofrendo_stop(void)
 
 int nofrendo_start(const char *filename, int region, int sample_rate)
 {
-   event_init();
-
    if (osd_init())
       return -1;
 

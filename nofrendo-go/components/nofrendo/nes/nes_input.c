@@ -27,42 +27,20 @@
 #include <esp_attr.h>
 #include "nes_input.h"
 
-/* TODO: make a linked list of inputs sources, so they
-**       can be removed if need be
-*/
-static nesinput_t *nes_input[MAX_CONTROLLERS];
-static int active_entries = 0, strobe = 0;
-
-/* read counters */
-static int pad0_readcount, pad1_readcount, ppad_readcount, ark_readcount;
-
-INLINE int retrieve_type(int type)
-{
-   int i, value = 0;
-
-   for (i = 0; i < active_entries; i++)
-   {
-      if (nes_input[i]) {
-         if (type == nes_input[i]->type)
-            value |= nes_input[i]->data;
-      }
-   }
-
-   return value;
-}
+static nesinput_t nes_inputs[INP_TYPE_MAX];
+static int strobe = 0;
 
 IRAM_ATTR void input_write(uint32 address, uint8 value)
 {
-   ASSERT(address == INP_JOY0);
+   if (address != INP_REG_JOY0)
+      return;
 
    value &= 1;
 
    if (0 == value && strobe)
    {
-      pad0_readcount = 0;
-      pad1_readcount = 0;
-      ppad_readcount = 0;
-      ark_readcount = 0;
+      for (int i = 0; i < INP_TYPE_MAX; ++i)
+         nes_inputs[i].reads = 0;
    }
 
    strobe = value;
@@ -72,9 +50,9 @@ IRAM_ATTR uint8 input_read(uint32 address)
 {
    uint8 retval = 0, value = 0;
 
-   if (address == INP_JOY0)
+   if (address == INP_REG_JOY0)
    {
-      value = (uint8) retrieve_type(INP_JOYPAD0);
+      value = nes_inputs[INP_JOYPAD0].state;
 
       /* mask out left/right simultaneous keypresses */
       if ((value & INP_PAD_UP) && (value & INP_PAD_DOWN))
@@ -84,11 +62,11 @@ IRAM_ATTR uint8 input_read(uint32 address)
          value &= ~(INP_PAD_LEFT | INP_PAD_RIGHT);
 
       /* return (0x40 | value) due to bus conflicts */
-      retval |= (0x40 | ((value >> pad0_readcount++) & 1));
+      retval |= (0x40 | ((value >> nes_inputs[INP_JOYPAD0].reads++) & 1));
    }
-   else if (address == INP_JOY1)
+   else if (address == INP_REG_JOY1)
    {
-      value = (uint8) retrieve_type(INP_JOYPAD1);
+      value = nes_inputs[INP_JOYPAD1].state;
 
       /* mask out left/right simultaneous keypresses */
       if ((value & INP_PAD_UP) && (value & INP_PAD_DOWN))
@@ -98,9 +76,9 @@ IRAM_ATTR uint8 input_read(uint32 address)
          value &= ~(INP_PAD_LEFT | INP_PAD_RIGHT);
 
       /* return (0x40 | value) due to bus conflicts */
-      retval |= (0x40 | ((value >> pad1_readcount++) & 1));
+      retval |= (0x40 | ((value >> nes_inputs[INP_JOYPAD1].reads++) & 1));
 
-      retval |= retrieve_type(INP_ZAPPER);
+      retval |= nes_inputs[INP_ZAPPER].state;
    }
    else
    {
@@ -110,21 +88,23 @@ IRAM_ATTR uint8 input_read(uint32 address)
    return retval;
 }
 
-/* register an input type */
-void input_register(nesinput_t *input)
+void input_connect(nesinput_type_t input)
 {
-   ASSERT(input);
+   ASSERT(input < INP_TYPE_MAX);
 
-   nes_input[active_entries] = input;
-   active_entries++;
+   nes_inputs[input].connected = true;
 }
 
-void input_event(nesinput_t *input, int state, int value)
+void input_disconnect(nesinput_type_t input)
 {
-   ASSERT(input);
+   ASSERT(input < INP_TYPE_MAX);
 
-   if (state == INP_STATE_MAKE)
-      input->data |= value;   /* OR it in */
-   else /* break state */
-      input->data &= ~value;  /* mask it out */
+   nes_inputs[input].connected = false;
+}
+
+void input_update(nesinput_type_t input, uint8 state)
+{
+   ASSERT(input < INP_TYPE_MAX);
+
+   nes_inputs[input].state = state;
 }
