@@ -103,9 +103,9 @@ static void map4_write(uint32 address, uint8 value)
       if (0 == (mmc_getinfo()->flags & ROM_FLAG_FOURSCREEN))
       {
          if (value & 1)
-            ppu_mirror(0, 0, 1, 1); /* horizontal */
+            ppu_setmirroring(PPU_MIRROR_HORI);
          else
-            ppu_mirror(0, 1, 0, 1); /* vertical */
+            ppu_setmirroring(PPU_MIRROR_VERT);
       }
       break;
 

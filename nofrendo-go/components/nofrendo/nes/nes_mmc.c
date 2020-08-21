@@ -166,11 +166,11 @@ static void mmc_setpages(void)
    mmc_bankvrom(8, 0x0000, 0);
 
    if (mmc.cart->flags & ROM_FLAG_FOURSCREEN)
-      ppu_mirror(0, 1, 2, 3);
+      ppu_setmirroring(PPU_MIRROR_FOUR);
    else if (MIRROR_VERT == mmc.cart->mirror)
-      ppu_mirror(0, 1, 0, 1);
+      ppu_setmirroring(PPU_MIRROR_HORI);
    else
-      ppu_mirror(0, 0, 1, 1);
+      ppu_setmirroring(PPU_MIRROR_VERT);
 }
 
 /* Mapper initialization routine */
@@ -182,8 +182,6 @@ void mmc_reset(void)
 
    if (mmc.intf->init)
       mmc.intf->init();
-
-   MESSAGE_INFO("MMC: Mapper %s (iNES %03d) ready!\n", mmc.intf->name, mmc.intf->number);
 }
 
 void mmc_shutdown()
@@ -202,22 +200,27 @@ mmc_t *mmc_init(rominfo_t *rominfo)
       return NULL;
    }
 
+   MESSAGE_INFO("MMC: Mapper %s (iNES %03d)\n", mmc.intf->name, mmc.intf->number);
+
    mmc.cart = rominfo;
    mmc.prg = rominfo->rom;
    mmc.prg_banks = rominfo->rom_banks;
+
+   MESSAGE_INFO("MMC: PRG-ROM: %d banks\n", rominfo->rom_banks);
 
    if (rominfo->vrom_banks)
    {
       mmc.chr = rominfo->vrom;
       mmc.chr_banks = rominfo->vrom_banks;
-      MESSAGE_INFO("MMC: Using CHR-ROM/VROM (%d banks)\n", rominfo->vrom_banks);
+      MESSAGE_INFO("MMC: CHR-ROM: %d banks\n", rominfo->vrom_banks);
    }
    else
    {
       mmc.chr = rominfo->vram;
       mmc.chr_banks = rominfo->vram_banks;
-      MESSAGE_INFO("MMC: Using CHR-RAM/VRAM (%d banks)\n", rominfo->vram_banks);
+      MESSAGE_INFO("MMC: CHR-RAM: %d banks\n", rominfo->vrom_banks);
    }
+
 
    return &mmc;
 }

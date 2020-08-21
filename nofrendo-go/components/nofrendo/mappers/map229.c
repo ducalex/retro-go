@@ -67,8 +67,8 @@ static void map229_write (uint32 address, uint8 value)
   }
 
   /* A5: mirroring (low = vertical, high = horizontal) */
-  if (address & 0x20) ppu_mirror(0, 0, 1, 1);
-  else                ppu_mirror(0, 1, 0, 1);
+  if (address & 0x20) ppu_setmirroring(PPU_MIRROR_HORI);
+  else                ppu_setmirroring(PPU_MIRROR_VERT);
 
   /* Done */
   return;

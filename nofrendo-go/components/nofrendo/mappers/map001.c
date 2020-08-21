@@ -27,6 +27,7 @@
 #include <nes_mmc.h>
 #include <nes_ppu.h>
 #include <string.h>
+#define ppu_mirror(a,b,c,d) ppu_setnametables(a,b,c,d)
 
 /* TODO: WRAM enable ala Mark Knibbs:
    ==================================

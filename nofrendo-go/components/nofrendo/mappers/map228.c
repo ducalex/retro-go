@@ -47,9 +47,9 @@ static void update(uint32 address, uint8 value)
     mmc_bankvrom(8, 0x0000, vbank);
 
     if ((address & 0x2000) == 0) {
-        ppu_mirror(0, 1, 0, 1); /* vertical */
+        ppu_setmirroring(PPU_MIRROR_VERT);
     } else {
-        ppu_mirror(0, 0, 1, 1); /* horizontal */
+        ppu_setmirroring(PPU_MIRROR_HORI);
     }
 }
 

@@ -83,6 +83,15 @@ typedef enum
    PPU_OPTIONS_COUNT,
 } ppu_option_t;
 
+typedef enum
+{
+   PPU_MIRROR_HORI,
+   PPU_MIRROR_VERT,
+   PPU_MIRROR_SCR0,
+   PPU_MIRROR_SCR1,
+   PPU_MIRROR_FOUR,
+} ppu_mirror_t;
+
 typedef struct
 {
    uint8 y_loc;
@@ -145,10 +154,11 @@ typedef struct
 } palette_t;
 
 /* Mirroring / Paging */
-extern void ppu_mirror(int nt1, int nt2, int nt3, int nt4);
 extern void ppu_setpage(int size, int page_num, uint8 *location);
-extern uint8 *ppu_getpage(int page);
-extern uint8 *ppu_getnametable(int table);
+extern void ppu_setnametables(int nt1, int nt2, int nt3, int nt4);
+extern void ppu_setmirroring(ppu_mirror_t type);
+extern uint8 *ppu_getpage(int page_num);
+extern uint8 *ppu_getnametable(int nt);
 
 /* Control */
 extern ppu_t *ppu_init(int region);

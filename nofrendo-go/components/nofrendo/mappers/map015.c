@@ -42,9 +42,9 @@ static void map15_write(uint32 address, uint8 value)
       mmc_bankrom(8, 0xE000, ((bank + 1) << 1) + (swap ^ 1));
 
       if (value & 0x40)
-         ppu_mirror(0, 0, 1, 1); /* horizontal */
+         ppu_setmirroring(PPU_MIRROR_HORI);
       else
-         ppu_mirror(0, 1, 0, 1); /* vertical */
+         ppu_setmirroring(PPU_MIRROR_VERT);
       break;
 
    case 1:
@@ -74,9 +74,9 @@ static void map15_write(uint32 address, uint8 value)
       mmc_bankrom(8, 0xE000, (bank << 1) + (swap ^ 1));
 
       if (value & 0x40)
-         ppu_mirror(0, 0, 1, 1); /* horizontal */
+         ppu_setmirroring(PPU_MIRROR_HORI);
       else
-         ppu_mirror(0, 1, 0, 1); /* vertical */
+         ppu_setmirroring(PPU_MIRROR_VERT);
       break;
 
    default:

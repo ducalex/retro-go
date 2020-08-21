@@ -76,8 +76,8 @@ static void map41_low_write (uint32 address, uint8 value)
   register_low = (uint8) (address & 0x3F);
   mmc_bankrom (32, 0x8000, register_low & 0x07);
   map41_set_chr ();
-  if (register_low & 0x20) ppu_mirror(0, 0, 1, 1); /* horizontal */
-  else                     ppu_mirror(0, 1, 0, 1); /* vertical */
+  if (register_low & 0x20) ppu_setmirroring(PPU_MIRROR_HORI);
+  else                     ppu_setmirroring(PPU_MIRROR_VERT);
 
   /* Done */
   return;

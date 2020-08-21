@@ -107,8 +107,8 @@ static void map42_write (uint32 address, uint8 value)
                break;
 
     /* Register 1: mirroring */
-    case 0x01: if (value & 0x08) ppu_mirror(0, 0, 1, 1); /* horizontal */
-               else              ppu_mirror(0, 1, 0, 1); /* vertical   */
+    case 0x01: if (value & 0x08) ppu_setmirroring(PPU_MIRROR_HORI);
+               else              ppu_setmirroring(PPU_MIRROR_VERT);
                break;
 
     /* Register 2: IRQ */

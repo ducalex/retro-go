@@ -124,9 +124,9 @@ static void map64_write(uint32 address, uint8 value)
 
    case 0xA000:
       if (value & 1)
-         ppu_mirror(0, 0, 1, 1);
+         ppu_setmirroring(PPU_MIRROR_HORI);
       else
-         ppu_mirror(0, 1, 0, 1);
+         ppu_setmirroring(PPU_MIRROR_VERT);
       break;
 
    case 0xC000:

@@ -91,21 +91,10 @@ static void map85_write(uint32 address, uint8 value)
       {
          switch (value & 3)
          {
-         case 0:
-            ppu_mirror(0, 1, 0, 1); /* vertical */
-            break;
-
-         case 1:
-            ppu_mirror(0, 0, 1, 1); /* horizontal */
-            break;
-
-         case 2:
-            ppu_mirror(0, 0, 0, 0);
-            break;
-
-         case 3:
-            ppu_mirror(1, 1, 1, 1);
-            break;
+         case 0: ppu_setmirroring(PPU_MIRROR_VERT); break;
+         case 1: ppu_setmirroring(PPU_MIRROR_HORI); break;
+         case 2: ppu_setmirroring(PPU_MIRROR_SCR0); break;
+         case 3: ppu_setmirroring(PPU_MIRROR_SCR1); break;
          }
       }
       break;

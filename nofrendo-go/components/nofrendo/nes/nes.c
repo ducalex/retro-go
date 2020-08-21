@@ -126,7 +126,7 @@ void nes_setcompathacks(void)
        nes.rominfo->checksum == 0xD273B409)   // Power Blade 2
    {
       nes.cycles_per_line += 2.5;
-      MESSAGE_INFO("Enabled MMC3 Timing Hack\n");
+      MESSAGE_INFO("NES: Enabled MMC3 Timing Hack\n");
    }
 }
 
@@ -178,7 +178,7 @@ void nes_reset(reset_type_t reset_type)
    nes.scanline = 241;
    nes.cycles = 0;
 
-   MESSAGE_INFO("NES %s\n", (SOFT_RESET == reset_type) ? "reset" : "powered on");
+   MESSAGE_INFO("NES: System reset (%s)\n", (SOFT_RESET == reset_type) ? "soft" : "hard");
 }
 
 /* Shutdown NES */
@@ -205,7 +205,7 @@ void nes_setregion(region_t region)
       nes.scanlines_per_frame = NES_SCANLINES_PAL;
       nes.overscan = 0;
       nes.cycles_per_line = 341.f * 5 / 16;
-      MESSAGE_INFO("System region: PAL\n");
+      MESSAGE_INFO("NES: System region: PAL\n");
    }
    else
    {
@@ -214,7 +214,7 @@ void nes_setregion(region_t region)
       nes.scanlines_per_frame = NES_SCANLINES_NTSC;
       nes.overscan = 8;
       nes.cycles_per_line = 341.f * 4 / 12;
-      MESSAGE_INFO("System region: NTSC\n");
+      MESSAGE_INFO("NES: System region: NTSC\n");
    }
 }
 

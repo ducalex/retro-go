@@ -77,27 +77,12 @@ static void map24_write(uint32 address, uint8 value)
    case 0xB003:
       switch (value & 0x0C)
       {
-      case 0x00:
-         ppu_mirror(0, 1, 0, 1); /* vertical */
-         break;
-
-      case 0x04:
-         ppu_mirror(0, 0, 1, 1); /* horizontal */
-         break;
-
-      case 0x08:
-         ppu_mirror(0, 0, 0, 0);
-         break;
-
-      case 0x0C:
-         ppu_mirror(1, 1, 1, 1);
-         break;
-
-      default:
-         break;
+         case 0x0: ppu_setmirroring(PPU_MIRROR_VERT); break;
+         case 0x4: ppu_setmirroring(PPU_MIRROR_HORI); break;
+         case 0x8: ppu_setmirroring(PPU_MIRROR_SCR0); break;
+         case 0xC: ppu_setmirroring(PPU_MIRROR_SCR1); break;
       }
       break;
-
 
    case 0xC000:
       mmc_bankrom(8, 0xC000, value);

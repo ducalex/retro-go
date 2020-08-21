@@ -83,7 +83,7 @@ void ppu_setcontext(ppu_t *src_ppu)
 {
    ASSERT(src_ppu);
    ppu = *src_ppu;
-   ppu_mirror(ppu.nt1, ppu.nt2, ppu.nt3, ppu.nt4);
+   ppu_setnametables(ppu.nt1, ppu.nt2, ppu.nt3, ppu.nt4);
 }
 
 void ppu_getcontext(ppu_t *dest_ppu)
@@ -126,7 +126,7 @@ uint8 *ppu_getnametable(int table)
    return ppu.nametab + (0x400 * (table & 3));
 }
 
-void ppu_mirror(int nt1, int nt2, int nt3, int nt4)
+void ppu_setnametables(int nt1, int nt2, int nt3, int nt4)
 {
    ppu.nt1 = nt1 & 0x3; ppu.nt2 = nt2 & 0x3;
    ppu.nt3 = nt3 & 0x3; ppu.nt4 = nt4 & 0x3;
@@ -141,6 +141,18 @@ void ppu_mirror(int nt1, int nt2, int nt3, int nt4)
    ppu.page[13] = ppu.page[9] - 0x1000;
    ppu.page[14] = ppu.page[10] - 0x1000;
    ppu.page[15] = ppu.page[11] - 0x1000;
+}
+
+void ppu_setmirroring(ppu_mirror_t type)
+{
+   switch (type)
+   {
+      case PPU_MIRROR_SCR0: ppu_setnametables(0, 0, 0, 0); break;
+      case PPU_MIRROR_SCR1: ppu_setnametables(1, 1, 1, 1); break;
+      case PPU_MIRROR_FOUR: ppu_setnametables(0, 1, 2, 3); break;
+      case PPU_MIRROR_VERT: ppu_setnametables(0, 1, 0, 1); break;
+      case PPU_MIRROR_HORI: ppu_setnametables(0, 0, 1, 1); break;
+   }
 }
 
 /* reset state of ppu */

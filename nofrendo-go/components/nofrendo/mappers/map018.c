@@ -135,11 +135,10 @@ static void map18_write(uint32 address, uint8 value)
    case 0xF002:
       switch(value&0x03)
       {
-      case 0:  ppu_mirror(0, 0, 1, 1); break;
-      case 1:  ppu_mirror(0, 1, 0, 1); break;
-      case 2:  ppu_mirror(1,1,1,1);break;
-      case 3:  ppu_mirror(1,1,1,1);break; // should this be zero?
-      default: break;
+      case 0: ppu_setmirroring(PPU_MIRROR_HORI); break;
+      case 1: ppu_setmirroring(PPU_MIRROR_VERT); break;
+      case 2: ppu_setmirroring(PPU_MIRROR_SCR1); break;
+      case 3: ppu_setmirroring(PPU_MIRROR_SCR1); break; // should this be zero?
       }
       break;
    default:

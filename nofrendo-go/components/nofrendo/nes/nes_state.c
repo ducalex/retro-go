@@ -337,7 +337,7 @@ int state_load(char* fn)
          machine->ppu->flipflop = 0;
          machine->ppu->strikeflag = false;
 
-         ppu_mirror(buffer[0], buffer[1], buffer[2], buffer[3]);
+         ppu_setnametables(buffer[0], buffer[1], buffer[2], buffer[3]);
          ppu_write(PPU_CTRL0, machine->ppu->ctrl0);
          ppu_write(PPU_CTRL1, machine->ppu->ctrl1);
          ppu_write(PPU_VADDR, machine->ppu->vaddr >> 8);

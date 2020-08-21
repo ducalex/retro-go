@@ -47,9 +47,9 @@ static void map75_write(uint32 address, uint8 value)
       mmc_bankvrom(4, 0x1000, ((hibits & 0x04) << 2) | latch[1]);
 
       if (value & 1)
-         ppu_mirror(0, 1, 0, 1); /* vert */
+         ppu_setmirroring(PPU_MIRROR_VERT);
       else
-         ppu_mirror(0, 0, 1, 1); /* horiz */
+         ppu_setmirroring(PPU_MIRROR_HORI);
 
       break;
 

@@ -35,9 +35,9 @@ static void map93_write(uint32 address, uint8 value)
    mmc_bankrom(16, 0x8000, value >> 4);
 
    if (value & 1)
-      ppu_mirror(0, 1, 0, 1); /* vert */
+      ppu_setmirroring(PPU_MIRROR_VERT);
    else
-      ppu_mirror(0, 0, 1, 1); /* horiz */
+      ppu_setmirroring(PPU_MIRROR_HORI);
 }
 
 static mem_write_handler_t map93_memwrite[] =

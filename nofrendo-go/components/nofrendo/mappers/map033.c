@@ -74,9 +74,9 @@ static void map33_write(uint32 address, uint8 value)
       case 1:
          /* this doesn't seem to work just right */
          if (value & 1)
-            ppu_mirror(0, 0, 1, 1); /* horizontal */
+            ppu_setmirroring(PPU_MIRROR_HORI);
          else
-            ppu_mirror(0, 1, 0, 1);
+            ppu_setmirroring(PPU_MIRROR_VERT);
          break;
 
       default:

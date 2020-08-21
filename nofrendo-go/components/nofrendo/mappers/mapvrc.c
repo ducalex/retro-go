@@ -73,24 +73,10 @@ static void map21_write(uint32 address, uint8 value)
    case 0x9000:
       switch (value & 3)
       {
-      case 0:
-         ppu_mirror(0, 1, 0, 1); /* vertical */
-         break;
-
-      case 1:
-         ppu_mirror(0, 0, 1, 1); /* horizontal */
-         break;
-
-      case 2:
-         ppu_mirror(0, 0, 0, 0);
-         break;
-
-      case 3:
-         ppu_mirror(1, 1, 1, 1);
-         break;
-
-      default:
-         break;
+         case 0: ppu_setmirroring(PPU_MIRROR_VERT); break;
+         case 1: ppu_setmirroring(PPU_MIRROR_HORI); break;
+         case 2: ppu_setmirroring(PPU_MIRROR_SCR0); break;
+         case 3: ppu_setmirroring(PPU_MIRROR_SCR1); break;
       }
       break;
    case 0x9002: select_c000=(value&0x02)>>1; break;
@@ -178,21 +164,10 @@ static void map22_write(uint32 address, uint8 value)
    case 0x9:
       switch (value & 3)
       {
-      case 0:
-         ppu_mirror(0, 1, 0, 1); /* vertical */
-         break;
-
-      case 1:
-         ppu_mirror(0, 0, 1, 1); /* horizontal */
-         break;
-
-      case 2:
-         ppu_mirror(1, 1, 1, 1);
-         break;
-
-      case 3:
-         ppu_mirror(0, 0, 0, 0);
-         break;
+         case 0: ppu_setmirroring(PPU_MIRROR_VERT); break;
+         case 1: ppu_setmirroring(PPU_MIRROR_HORI); break;
+         case 2: ppu_setmirroring(PPU_MIRROR_SCR0); break;
+         case 3: ppu_setmirroring(PPU_MIRROR_SCR1); break;
       }
       break;
 
@@ -230,21 +205,10 @@ static void map23_write(uint32 address, uint8 value)
    case 0x9008:
       switch(value & 3)
       {
-      case 0:
-         ppu_mirror(0, 1, 0, 1); /* vertical */
-         break;
-
-      case 1:
-         ppu_mirror(0, 0, 1, 1); /* horizontal */
-         break;
-
-      case 2:
-         ppu_mirror(0, 0, 0, 0);
-         break;
-
-      case 3:
-         ppu_mirror(1, 1, 1, 1);
-         break;
+         case 0: ppu_setmirroring(PPU_MIRROR_VERT); break;
+         case 1: ppu_setmirroring(PPU_MIRROR_HORI); break;
+         case 2: ppu_setmirroring(PPU_MIRROR_SCR0); break;
+         case 3: ppu_setmirroring(PPU_MIRROR_SCR1); break;
       }
       break;
 

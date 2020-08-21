@@ -180,7 +180,7 @@ INLINE void chr_switch(int reg, int value)
 INLINE void nametable_update(uint8 value)
 {
    nametable_mapping = value;
-   ppu_mirror(value & 3, (value >> 2) & 3, (value >> 4) & 3, value >> 6);
+   ppu_setnametables(value & 3, (value >> 2) & 3, (value >> 4) & 3, value >> 6);
 }
 
 INLINE void nametable_fill()

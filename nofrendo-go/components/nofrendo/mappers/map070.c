@@ -46,14 +46,16 @@ static void map70_write(uint32 address, uint8 value)
    if (mmc_getinfo()->flags & ROM_FLAG_FOURSCREEN)
    {
       if (value & 0x80)
-         ppu_mirror(0, 0, 1, 1); /* horiz */
+         ppu_setmirroring(PPU_MIRROR_HORI);
       else
-         ppu_mirror(0, 1, 0, 1); /* vert */
+         ppu_setmirroring(PPU_MIRROR_VERT);
    }
    else
    {
-      int mirror = (value & 0x80) >> 7;
-      ppu_mirror(mirror, mirror, mirror, mirror);
+      if (value & 0x80)
+         ppu_setmirroring(PPU_MIRROR_SCR1);
+      else
+         ppu_setmirroring(PPU_MIRROR_SCR0);
    }
 }
 
