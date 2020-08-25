@@ -62,7 +62,7 @@ void odroid_system_init(int appId, int sampleRate)
     printf("%s %s (%s %s)\n", app->project_name, app->version, app->date, app->time);
     printf("==================================================\n\n");
 
-    printf("odroid_system_init: %d KB free\n", esp_get_free_heap_size() / 1024);
+    printf("%s: %d KB free\n", __func__, esp_get_free_heap_size() / 1024);
 
     spiMutex = xSemaphoreCreateMutex();
     spiMutexOwner = -1;
@@ -111,7 +111,7 @@ void odroid_system_init(int appId, int sampleRate)
 
     panicTrace->magicWord = 0;
 
-    printf("odroid_system_init: System ready!\n\n");
+    printf("%s: System ready!\n\n", __func__);
 }
 
 void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t netplay_cb)
@@ -148,7 +148,7 @@ void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_
         RG_PANIC("Invalid ROM Path!");
     }
 
-    printf("odroid_system_emu_init: romPath='%s'\n", romPath);
+    printf("%s: romPath='%s'\n", __func__, romPath);
 
     // Read some of the ROM to derive a unique id
     if (!odroid_sdcard_read_file(romPath, buffer, sizeof(buffer)))
@@ -160,7 +160,7 @@ void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_
     loadState = load;
     saveState = save;
 
-    printf("odroid_system_emu_init: Init done. GameId=%08X\n", gameId);
+    printf("%s: Init done. GameId=%08X\n", __func__, gameId);
 }
 
 void odroid_system_set_app_id(int _appId)
@@ -257,7 +257,7 @@ bool odroid_system_emu_load_state(int slot)
         return false;
     }
 
-    printf("odroid_system_emu_load_state: Loading state %d.\n", slot);
+    printf("%s: Loading state %d.\n", __func__, slot);
 
     odroid_display_show_hourglass();
     odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
@@ -285,7 +285,7 @@ bool odroid_system_emu_save_state(int slot)
         return false;
     }
 
-    printf("odroid_system_emu_save_state: Saving state %d.\n", slot);
+    printf("%s: Saving state %d.\n", __func__, slot);
 
     odroid_system_set_led(1);
     odroid_display_show_hourglass();
@@ -334,7 +334,7 @@ void odroid_system_reload_app()
 
 void odroid_system_switch_app(int app)
 {
-    printf("odroid_system_switch_app: Switching to app %d.\n", app);
+    printf("%s: Switching to app %d.\n", __func__, app);
 
     odroid_display_clear(0);
     odroid_display_show_hourglass();
@@ -348,21 +348,17 @@ void odroid_system_switch_app(int app)
 
 void odroid_system_set_boot_app(int slot)
 {
-    const esp_partition_t* partition = esp_partition_find_first(
-        ESP_PARTITION_TYPE_APP,
-        ESP_PARTITION_SUBTYPE_APP_OTA_MIN + slot,
-        NULL);
-    // Do not overwrite the boot sector for nothing
-    // const esp_partition_t* boot_partition = esp_ota_get_boot_partition();
+    if (slot < 0) slot = ESP_PARTITION_SUBTYPE_APP_FACTORY;
+    else slot = slot + ESP_PARTITION_SUBTYPE_APP_OTA_MIN;
 
-    if (partition != NULL) //  && partition != boot_partition
+    const esp_partition_t* partition = esp_partition_find_first(ESP_PARTITION_TYPE_APP, slot, NULL);
+
+    if (partition == NULL || esp_ota_set_boot_partition(partition) != ESP_OK)
     {
-        esp_err_t err = esp_ota_set_boot_partition(partition);
-        if (err != ESP_OK)
-        {
-            RG_PANIC("esp_ota_set_boot_partition failed.\n");
-        }
+        RG_PANIC("Unable to set boot app!");
     }
+
+    printf("%s: Boot partition set to %d '%s'\n", __func__, slot, partition->label);
 }
 
 void odroid_system_panic(const char *reason, const char *function, const char *file)
@@ -405,14 +401,14 @@ void odroid_system_panic_dialog(const char *reason)
 
 void odroid_system_halt()
 {
-    printf("odroid_system_halt: Halting system!\n");
+    printf("%s: Halting system!\n", __func__);
     vTaskSuspendAll();
     while (1);
 }
 
 void odroid_system_sleep()
 {
-    printf("odroid_system_sleep: Entered.\n");
+    printf("%s: Going to sleep!\n", __func__);
 
     // Wait for button release
     odroid_input_wait_for_key(ODROID_INPUT_MENU, false);

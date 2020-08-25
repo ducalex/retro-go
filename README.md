@@ -13,6 +13,7 @@ Retro-Go is a launcher and framework to run emulators on the ODROID-GO. It comes
 
 ### Compared to other similar projects for the ODROID-GO, Retro-Go brings:
 - In-game menu
+- Favorites support
 - GB RTC adjust and save
 - GB GBC colorization palettes
 - More scaling options
@@ -86,8 +87,8 @@ The official esp-idf version 3.3 or 4.0 is required and it is recommended to app
 sdcard-fix patch located in the tools folder. Both make and cmake are supported.
 
 ## Build Steps:
-1. Build all subprojects: `./build_all.sh`
-2. Create .fw file: `./mkfw.sh`
+1. Build all subprojects: `python build_all.py` or `python build_all.py make` (legacy)
+2. Create .fw file: `python mkfw.py`
 
 
 # Acknowledgements

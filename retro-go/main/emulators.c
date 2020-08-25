@@ -335,13 +335,13 @@ void emulator_start(retro_emulator_file_t *file, bool load_state)
 
 void emulators_init()
 {
-    add_emulator("Nintendo Entertainment System", "nes", "nes", "nofrendo", 16, logo_nes, header_nes);
-    add_emulator("Nintendo Gameboy", "gb", "gb", "gnuboy", 0, logo_gb, header_gb);
-    add_emulator("Nintendo Gameboy Color", "gbc", "gbc", "gnuboy", 0, logo_gbc, header_gbc);
-    add_emulator("Sega Master System", "sms", "sms", "smsplusgx", 0, logo_sms, header_sms);
-    add_emulator("Sega Game Gear", "gg", "gg", "smsplusgx", 0, logo_gg, header_gg);
-    add_emulator("ColecoVision", "col", "col", "smsplusgx", 0, logo_col, header_col);
-    add_emulator("PC Engine", "pce", "pce", "huexpress", 0, logo_pce, header_pce);
-    add_emulator("Atari Lynx", "lnx", "lnx", "handy", 0, logo_lnx, header_lnx);
-    // add_emulator("Atari 2600", "a26", "a26", "stella", 0, logo_a26, header_a26);
+    add_emulator("Nintendo Entertainment System", "nes", "nes", "nofrendo-go", 16, logo_nes, header_nes);
+    add_emulator("Nintendo Gameboy", "gb", "gb", "gnuboy-go", 0, logo_gb, header_gb);
+    add_emulator("Nintendo Gameboy Color", "gbc", "gbc", "gnuboy-go", 0, logo_gbc, header_gbc);
+    add_emulator("Sega Master System", "sms", "sms", "smsplusgx-go", 0, logo_sms, header_sms);
+    add_emulator("Sega Game Gear", "gg", "gg", "smsplusgx-go", 0, logo_gg, header_gg);
+    add_emulator("ColecoVision", "col", "col", "smsplusgx-go", 0, logo_col, header_col);
+    add_emulator("PC Engine", "pce", "pce", "huexpress-go", 0, logo_pce, header_pce);
+    add_emulator("Atari Lynx", "lnx", "lnx", "handy-go", 0, logo_lnx, header_lnx);
+    // add_emulator("Atari 2600", "a26", "a26", "stella-go", 0, logo_a26, header_a26);
 }
