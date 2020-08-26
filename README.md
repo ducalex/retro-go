@@ -86,9 +86,16 @@ An up to date list of incompatible/broken games can be found on the ODROID-GO fo
 The official esp-idf version 3.3 or 4.0 is required and it is recommended to apply the 
 sdcard-fix patch located in the tools folder. Both make and cmake are supported.
 
-## Build Steps:
-1. Build all subprojects: `python build_all.py` or `python build_all.py make` (legacy)
-2. Create .fw file: `python mkfw.py`
+## Build everything and generate .fw:
+1. `python rg_tool.py release` or `python rg_tool.py release --use-make` (legacy make system)
+
+For a smaller build you can also specify which apps you want, for example the launcher + nes/gameboy only:
+1. `python rg_tool.py release retro-go nofrendo-go gnuboy-go`
+
+## Build, flash, and monitor individual apps for faster development:
+1. Build app: `python rg_tool.py build nofrendo-go`
+2. Then flash and monitor: `python rg_tool.py --offset=0x100000 --port=COM3 flashmon nofrendo-go`
+* Offset is required only if you use my multi-firmware, in which case it is displayed in the boot menu.
 
 
 # Acknowledgements
@@ -99,7 +106,6 @@ sdcard-fix patch located in the tools folder. Both make and cmake are supported.
 - [miniz](https://github.com/richgel999/miniz) For zipped ROM and zlib API
 - [luPng](https://github.com/jansol/LuPng) For basic PNG decoding
 - PCE cover art is from Christian_Haitian.
-- mkfw tool by crashoverride
 
 
 # License

@@ -1,13 +1,15 @@
-# This file contains a list of Retro-Go's sub-projects. It is used by build_all.py, flashmon.py,
-# and mkfw.py to derive flash offsets and a partition table.
-
+# Important: This file is now exec() in the global scope
 # Notes:
 # - Enabling netplay in an emulator increases its size by ~350KB
 # - Keep at least 32KB free in a partition for future updates
 # - Partitions must be 64K aligned
 
-PROJECTS = {
- # Project name    Sub, Size
+PROJECT_NAME = "Retro-Go"
+PROJECT_VER  = shell_exec("git describe --tags --abbrev=5 --dirty")
+PROJECT_TILE = "assets/tile.raw"
+PROJECT_APPS = {
+  # Note: Size will be adjusted if needed but flashmon needs accurate values to work correctly
+  # Project name   Sub, Size
   'retro-go':     [16,  524288],
   'nofrendo-go':  [17,  458752],
   'gnuboy-go':    [18,  458752],
