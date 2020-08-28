@@ -17,18 +17,19 @@
 
 static bool font_size_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
-    int font_size = odroid_settings_FontSize_get();
-    if (event == ODROID_DIALOG_PREV) {
-        if (--font_size < 1) font_size = 2;
-        odroid_overlay_set_font_size(font_size);
+    int font_size = odroid_overlay_get_font_size();
+    if (event == ODROID_DIALOG_PREV && font_size > 8) {
+        odroid_overlay_set_font_size(font_size -= 4);
         gui_redraw();
     }
-    if (event == ODROID_DIALOG_NEXT) {
-        if (++font_size > 2) font_size = 1;
-        odroid_overlay_set_font_size(font_size);
+    if (event == ODROID_DIALOG_NEXT && font_size < 16) {
+        odroid_overlay_set_font_size(font_size += 4);
         gui_redraw();
     }
-    strcpy(option->value, font_size > 1 ? "Large" : "Small");
+    sprintf(option->value, "%d", font_size);
+    if (font_size ==  8) strcpy(option->value, "Small ");
+    if (font_size == 12) strcpy(option->value, "Medium");
+    if (font_size == 16) strcpy(option->value, "Large ");
     return event == ODROID_DIALOG_ENTER;
 }
 

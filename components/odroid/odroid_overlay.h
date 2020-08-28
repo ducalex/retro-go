@@ -37,7 +37,9 @@ struct odroid_dialog_choice {
 extern odroid_menu_state_t odroid_menu_state;
 
 void odroid_overlay_init();
-void odroid_overlay_set_font_size(int factor);
+void odroid_overlay_set_font_size(int size);
+int  odroid_overlay_get_font_size();
+int  odroid_overlay_get_font_width();
 int  odroid_overlay_draw_text(uint16_t x, uint16_t y, uint16_t width, const char *text, uint16_t color, uint16_t color_bg);
 void odroid_overlay_draw_rect(int x, int y, int width, int height, int border, uint16_t color);
 void odroid_overlay_draw_fill_rect(int x, int y, int width, int height, uint16_t color);
@@ -53,6 +55,4 @@ int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options);
 int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options);
 int odroid_overlay_game_menu();
 
-extern short ODROID_FONT_WIDTH;
-extern short ODROID_FONT_HEIGHT;
 extern int8_t speedupEnabled;

@@ -203,7 +203,7 @@ void odroid_settings_app_int32_set(const char *key, int32_t value)
 
 int32_t odroid_settings_FontSize_get()
 {
-    return odroid_settings_int32_get(Key_FontSize, 1);
+    return odroid_settings_int32_get(Key_FontSize, 8);
 }
 void odroid_settings_FontSize_set(int32_t value)
 {

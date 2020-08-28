@@ -11,59 +11,59 @@
 #include "odroid_overlay.h"
 
 static uint16_t *overlay_buffer = NULL;
-static int dialog_open_depth = 0;
-
-short ODROID_FONT_WIDTH = 8;
-short ODROID_FONT_HEIGHT = 8;
+static short dialog_open_depth = 0;
+static short font_size = 8;
 
 // To do: move this out
 int8_t speedupEnabled = 0;
 
-static void wait_all_keys_released()
-{
-    while (odroid_input_key_is_pressed(ODROID_INPUT_ANY));
-}
-
 void odroid_overlay_init()
 {
-	if (!overlay_buffer) {
-        overlay_buffer = (uint16_t *)rg_alloc(ODROID_SCREEN_WIDTH * 32 * 2, MEM_SLOW);
-    }
+    overlay_buffer = (uint16_t *)rg_alloc(ODROID_SCREEN_WIDTH * 32 * 2, MEM_SLOW);
     odroid_overlay_set_font_size(odroid_settings_FontSize_get());
 }
 
-void odroid_overlay_set_font_size(int factor)
+void odroid_overlay_set_font_size(int size)
 {
-    factor = factor < 1 ? 1 : factor;
-    factor = factor > 3 ? 3 : factor;
-    ODROID_FONT_HEIGHT = 8 * factor;
-    odroid_settings_FontSize_set(factor);
+    font_size = MAX(8, MIN(32, size));
+    odroid_settings_FontSize_set(font_size);
+}
+
+int odroid_overlay_get_font_size()
+{
+    return font_size;
+}
+
+int odroid_overlay_get_font_width()
+{
+    return 8;
 }
 
 int odroid_overlay_draw_text_line(uint16_t x_pos, uint16_t y_pos, uint16_t width, const char *text, uint16_t color, uint16_t color_bg)
 {
+    int font_height = odroid_overlay_get_font_size();
+    int font_width = odroid_overlay_get_font_width();
     int x_offset = 0;
-    int multi = ODROID_FONT_HEIGHT / 8;
+    float scale = (float)font_height / 8;
     int text_len = strlen(text);
 
-    for (int i = 0; i < (width / ODROID_FONT_WIDTH); i++) {
-        const char *bitmap = font8x8_basic[(i < text_len) ? text[i] : ' '];
-        for (int y = 0; y < 8; y++) {
-            int offset = x_offset + (width * (y * multi));
-            for (int x = 0; x < 8; x++) {
-                uint16_t pixel = (bitmap[y] & 1 << x) ? color : color_bg;
-                overlay_buffer[offset + x] = pixel;
-                if (multi > 1) {
-                    overlay_buffer[offset + x + width] = pixel;
-                }
+    for (int i = 0; i < (width / font_width); i++)
+    {
+        const char *glyph = font8x8_basic[(i < text_len) ? text[i] : ' '];
+        for (int y = 0; y < font_height; y++)
+        {
+            int offset = x_offset + (width * y);
+            for (int x = 0; x < 8; x++)
+            {
+                overlay_buffer[offset + x] = (glyph[(int)(y/scale)] & 1 << x) ? color : color_bg;
             }
         }
-        x_offset += ODROID_FONT_WIDTH;
+        x_offset += font_width;
     }
 
-    odroid_display_write(x_pos, y_pos, width, ODROID_FONT_HEIGHT, overlay_buffer);
+    odroid_display_write(x_pos, y_pos, width, font_height, overlay_buffer);
 
-    return ODROID_FONT_HEIGHT;
+    return font_height;
 }
 
 int odroid_overlay_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, const char *text, uint16_t color, uint16_t color_bg)
@@ -78,14 +78,14 @@ int odroid_overlay_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, con
     text_len = strlen(text);
 
     if (width < 1) {
-        width = text_len * ODROID_FONT_WIDTH;
+        width = text_len * odroid_overlay_get_font_width();
     }
 
     if (width > (ODROID_SCREEN_WIDTH - x_pos)) {
         width = (ODROID_SCREEN_WIDTH - x_pos);
     }
 
-    int line_len = width / ODROID_FONT_WIDTH;
+    int line_len = width / odroid_overlay_get_font_width();
     char buffer[line_len + 1];
 
     for (int pos = 0; pos < text_len;)
@@ -181,7 +181,7 @@ void odroid_overlay_draw_dialog(const char *header, odroid_dialog_choice_t *opti
     int len = 0;
 
     int row_margin = 1;
-    int row_height = ODROID_FONT_HEIGHT + row_margin * 2;
+    int row_height = odroid_overlay_get_font_size() + row_margin * 2;
 
     int box_width = 64;
     int box_height = 64;
@@ -217,7 +217,7 @@ void odroid_overlay_draw_dialog(const char *header, odroid_dialog_choice_t *opti
 
     if (width > 32) width = 32;
 
-    box_width = (ODROID_FONT_WIDTH * width) + box_padding * 2;
+    box_width = (odroid_overlay_get_font_width() * width) + box_padding * 2;
     box_height = (row_height * options_count) + (header ? row_height + 4 : 0) + box_padding * 2;
 
     int box_x = (ODROID_SCREEN_WIDTH - box_width) / 2;
@@ -228,7 +228,7 @@ void odroid_overlay_draw_dialog(const char *header, odroid_dialog_choice_t *opti
 
     if (header)
     {
-        int pad = (0.5f * (width - strlen(header)) * ODROID_FONT_WIDTH);
+        int pad = (0.5f * (width - strlen(header)) * odroid_overlay_get_font_width());
         odroid_overlay_draw_rect(x, y, box_width - 8, row_height + 4, (row_height + 4 / 2), box_color);
         odroid_overlay_draw_text(x + pad, y, 0, header, box_text_color, box_color);
         y += row_height + 4;
@@ -267,7 +267,7 @@ int odroid_overlay_dialog(const char *header, odroid_dialog_choice_t *options, i
 
     odroid_overlay_draw_dialog(header, options, sel);
 
-    wait_all_keys_released();
+    while (odroid_input_key_is_pressed(ODROID_INPUT_ANY));
 
     while (1)
     {
@@ -503,7 +503,7 @@ int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options)
 static void draw_game_status_bar(runtime_stats_t stats)
 {
     int width = ODROID_SCREEN_WIDTH, height = 16;
-    int pad_text = (height - ODROID_FONT_HEIGHT) / 2;
+    int pad_text = (height - odroid_overlay_get_font_size()) / 2;
     char bottom[40], header[40];
 
     const char *romPath = odroid_system_get_rom_path();
@@ -538,7 +538,7 @@ int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options)
     runtime_stats_t stats = odroid_system_get_stats();
 
     odroid_audio_mute(true);
-    wait_all_keys_released();
+    while (odroid_input_key_is_pressed(ODROID_INPUT_ANY));
     draw_game_status_bar(stats);
 
     int r = odroid_overlay_settings_menu(options);
@@ -568,7 +568,7 @@ int odroid_overlay_game_menu()
     runtime_stats_t stats = odroid_system_get_stats();
 
     odroid_audio_mute(true);
-    wait_all_keys_released();
+    while (odroid_input_key_is_pressed(ODROID_INPUT_ANY));
     draw_game_status_bar(stats);
 
     int r = odroid_overlay_dialog("Retro-Go", choices, 0);

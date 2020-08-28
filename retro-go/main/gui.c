@@ -19,8 +19,9 @@
 #define CRC_Y_OFFSET (35)
 
 #define LIST_WIDTH       (ODROID_SCREEN_WIDTH)
+#define LIST_HEIGHT      (ODROID_SCREEN_HEIGHT - LIST_Y_OFFSET)
 #define LIST_LINE_COUNT  ((ODROID_SCREEN_HEIGHT - LIST_Y_OFFSET) / LIST_LINE_HEIGHT)
-#define LIST_LINE_HEIGHT (ODROID_FONT_HEIGHT)
+#define LIST_LINE_HEIGHT (odroid_overlay_get_font_size())
 #define LIST_X_OFFSET    (0)
 #define LIST_Y_OFFSET    (48 + LIST_LINE_HEIGHT)
 
@@ -277,10 +278,9 @@ void gui_draw_status(tab_t *tab)
 
 void gui_draw_list(tab_t *tab)
 {
+    int columns = LIST_WIDTH / odroid_overlay_get_font_width();
     int lines = LIST_LINE_COUNT;
-    int columns = LIST_WIDTH / ODROID_FONT_WIDTH;
     theme_t *theme = &gui_themes[gui.theme % gui_themes_count];
-
     listbox_t *list = &tab->listbox;
 
     for (int i = 0; i < lines; i++) {
