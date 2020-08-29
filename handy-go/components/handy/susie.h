@@ -66,9 +66,6 @@ class CSystem;
 #define SUSIE_START		0xfc00
 #define SUSIE_SIZE		0x100
 
-#define SCREEN_WIDTH	160
-#define SCREEN_HEIGHT	102
-
 #define LINE_END		0x80
 
 #define SPR_RDWR_CYC	3
@@ -426,8 +423,8 @@ class CSusie : public CLynxBase
             voff=0;
          }
 
-         mLineBaseAddress=mVIDBAS.Word+(voff*(SCREEN_WIDTH/2));
-         mLineCollisionAddress=mCOLLBAS.Word+(voff*(SCREEN_WIDTH/2));
+         mLineBaseAddress=mVIDBAS.Word+(voff*(HANDY_SCREEN_WIDTH/2));
+         mLineCollisionAddress=mCOLLBAS.Word+(voff*(HANDY_SCREEN_WIDTH/2));
          //   TRACE_SUSIE1("LineInit() mLineBaseAddress=$%04x",mLineBaseAddress);
          //   TRACE_SUSIE1("LineInit() mLineCollisionAddress=$%04x",mLineCollisionAddress);
 

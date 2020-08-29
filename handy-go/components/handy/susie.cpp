@@ -541,12 +541,12 @@ ULONG CSusie::PaintSprites(void)
          // Setup screen start end variables
 
          int screen_h_start=(SWORD)mHOFF.Word;
-         int screen_h_end=(SWORD)mHOFF.Word+SCREEN_WIDTH;
+         int screen_h_end=(SWORD)mHOFF.Word+HANDY_SCREEN_WIDTH;
          int screen_v_start=(SWORD)mVOFF.Word;
-         int screen_v_end=(SWORD)mVOFF.Word+SCREEN_HEIGHT;
+         int screen_v_end=(SWORD)mVOFF.Word+HANDY_SCREEN_HEIGHT;
 
-         int world_h_mid=screen_h_start+0x8000+(SCREEN_WIDTH/2);
-         int world_v_mid=screen_v_start+0x8000+(SCREEN_HEIGHT/2);
+         int world_h_mid=screen_h_start+0x8000+(HANDY_SCREEN_WIDTH/2);
+         int world_v_mid=screen_v_start+0x8000+(HANDY_SCREEN_HEIGHT/2);
 
          TRACE_SUSIE2("PaintSprites() screen_h_start $%04x screen_h_end $%04x",screen_h_start,screen_h_end);
          TRACE_SUSIE2("PaintSprites() screen_v_start $%04x screen_v_end $%04x",screen_v_start,screen_v_end);
@@ -715,11 +715,11 @@ ULONG CSusie::PaintSprites(void)
                   // Draw one horizontal line of the sprite
                   for(vloop=0;vloop<pixel_height;vloop++) {
                      // Early bailout if the sprite has moved off screen, terminate quad
-                     if(vsign==1 && voff>=SCREEN_HEIGHT)	break;
+                     if(vsign==1 && voff>=HANDY_SCREEN_HEIGHT)	break;
                      if(vsign==-1 && voff<0)	break;
 
                      // Only allow the draw to take place if the line is visible
-                     if(voff>=0 && voff<SCREEN_HEIGHT) {
+                     if(voff>=0 && voff<HANDY_SCREEN_HEIGHT) {
                         // Work out the horizontal pixel start position, start + tilt
                         mHPOSSTRT.Word+=((SWORD)mTILTACUM.Word>>8);
                         mTILTACUM.Byte.High=0;

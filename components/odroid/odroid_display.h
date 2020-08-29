@@ -50,9 +50,9 @@ typedef enum
 typedef enum
 {
    ODROID_DISPLAY_ROTATION_OFF = 0,
-   ODROID_DISPLAY_ROTATION_90,
-   ODROID_DISPLAY_ROTATION_180,
-   ODROID_DISPLAY_ROTATION_270,
+   ODROID_DISPLAY_ROTATION_AUTO,
+   ODROID_DISPLAY_ROTATION_LEFT,
+   ODROID_DISPLAY_ROTATION_RIGHT,
    ODROID_DISPLAY_ROTATION_COUNT,
 } odroid_display_rotation_t;
 
@@ -84,8 +84,7 @@ void odroid_display_clear(uint16_t colorLE);
 void odroid_display_show_hourglass();
 void odroid_display_force_refresh(void);
 void odroid_display_set_scale(short width, short height, double aspect_ratio);
-short odroid_display_update(odroid_video_frame_t *frame, odroid_video_frame_t *previousFrame);
-#define odroid_display_queue_update(x...) odroid_display_update(x)
+short odroid_display_queue_update(odroid_video_frame_t *frame, odroid_video_frame_t *previousFrame);
 
 odroid_display_backlight_t odroid_display_get_backlight();
 void odroid_display_set_backlight(odroid_display_backlight_t level);

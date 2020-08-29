@@ -21,9 +21,98 @@ static odroid_video_frame_t *currentUpdate = &update1;
 static odroid_video_frame_t *previousUpdate = &update2;
 
 static CSystem *lynx = NULL;
+
+static short dpad_mapped_up;
+static short dpad_mapped_down;
+static short dpad_mapped_left;
+static short dpad_mapped_right;
 // static bool netplay = false;
 // --- MAIN
 
+static void set_rotation()
+{
+    int rotation = (int)odroid_display_get_rotation();
+
+    if (rotation == ODROID_DISPLAY_ROTATION_AUTO)
+    {
+        rotation = ODROID_DISPLAY_ROTATION_OFF;
+
+        switch (lynx->mCart->CRC32())
+        {
+            case 0x97501709: // Centipede
+            case 0x0271B6E9: // Lexis
+            case 0x006FD398: // NFL Football
+            case 0xBCD10C3A: // Raiden
+                rotation = ODROID_DISPLAY_ROTATION_LEFT;
+                break;
+            case 0x7F0EC7AD: // Gauntlet
+            case 0xAC564BAA: // Gauntlet - The Third Encounter
+            case 0xA53649F1: // Klax
+                rotation = ODROID_DISPLAY_ROTATION_RIGHT;
+                break;
+            default:
+                if (lynx->mCart->CartGetRotate() == CART_ROTATE_LEFT)
+                    rotation = ODROID_DISPLAY_ROTATION_LEFT;
+                if (lynx->mCart->CartGetRotate() == CART_ROTATE_RIGHT)
+                    rotation = ODROID_DISPLAY_ROTATION_RIGHT;
+        }
+    }
+
+    switch(rotation)
+    {
+        case ODROID_DISPLAY_ROTATION_LEFT:
+            update1.width = update2.width = HANDY_SCREEN_HEIGHT;
+            update1.height = update2.height = HANDY_SCREEN_WIDTH;
+            lynx->mMikie->SetRotation(MIKIE_ROTATE_L);
+            dpad_mapped_up    = BUTTON_RIGHT;
+            dpad_mapped_down  = BUTTON_LEFT;
+            dpad_mapped_left  = BUTTON_UP;
+            dpad_mapped_right = BUTTON_DOWN;
+            break;
+        case ODROID_DISPLAY_ROTATION_RIGHT:
+            update1.width = update2.width = HANDY_SCREEN_HEIGHT;
+            update1.height = update2.height = HANDY_SCREEN_WIDTH;
+            lynx->mMikie->SetRotation(MIKIE_ROTATE_R);
+            dpad_mapped_up    = BUTTON_LEFT;
+            dpad_mapped_down  = BUTTON_RIGHT;
+            dpad_mapped_left  = BUTTON_DOWN;
+            dpad_mapped_right = BUTTON_UP;
+            break;
+        default:
+            update1.width = update2.width = HANDY_SCREEN_WIDTH;
+            update1.height = update2.height = HANDY_SCREEN_HEIGHT;
+            lynx->mMikie->SetRotation(MIKIE_NO_ROTATE);
+            dpad_mapped_up    = BUTTON_UP;
+            dpad_mapped_down  = BUTTON_DOWN;
+            dpad_mapped_left  = BUTTON_LEFT;
+            dpad_mapped_right = BUTTON_RIGHT;
+            break;
+    }
+}
+
+
+static bool rotation_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+{
+    int rotation = (int)odroid_display_get_rotation();
+
+    if (event == ODROID_DIALOG_PREV) {
+        if (--rotation < 0) rotation = ODROID_DISPLAY_ROTATION_COUNT - 1;
+        odroid_display_set_rotation((odroid_display_rotation_t)rotation);
+        set_rotation();
+    }
+    if (event == ODROID_DIALOG_NEXT) {
+        if (++rotation > ODROID_DISPLAY_ROTATION_COUNT - 1) rotation = 0;
+        odroid_display_set_rotation((odroid_display_rotation_t)rotation);
+        set_rotation();
+    }
+
+    strcpy(option->value, "Off  ");
+    if (rotation == ODROID_DISPLAY_ROTATION_AUTO)  strcpy(option->value, "Auto ");
+    if (rotation == ODROID_DISPLAY_ROTATION_LEFT)  strcpy(option->value, "Left ");
+    if (rotation == ODROID_DISPLAY_ROTATION_RIGHT) strcpy(option->value, "Right");
+
+    return event == ODROID_DIALOG_ENTER;
+}
 
 static bool save_state(char *pathName)
 {
@@ -64,7 +153,7 @@ extern "C" void app_main(void)
     odroid_system_emu_init(&load_state, &save_state, NULL);
 
     update1.width = update2.width = HANDY_SCREEN_WIDTH;
-    update1.height = update2.height = HANDY_SCREEN_HEIGHT + 2;
+    update1.height = update2.height = HANDY_SCREEN_WIDTH;
     update1.stride = update2.stride = HANDY_SCREEN_WIDTH * 2;
     update1.pixel_size = update2.pixel_size = 2;
     update1.pixel_clear = update2.pixel_clear = -1;
@@ -86,6 +175,8 @@ extern "C" void app_main(void)
         odroid_system_emu_load_state(0);
     }
 
+    set_rotation();
+
     odroid_gamepad_state_t joystick;
 
     float sampleTime = AUDIO_SAMPLE_RATE / 1000000.f;
@@ -102,7 +193,7 @@ extern "C" void app_main(void)
         }
         else if (joystick.values[ODROID_INPUT_VOLUME]) {
             odroid_dialog_choice_t options[] = {
-                {100, "Rotation", "Off  ", 0, NULL},
+                {100, "Rotation", "Auto", 1, &rotation_cb},
                 ODROID_DIALOG_CHOICE_LAST
             };
             odroid_overlay_game_settings_menu(options);
@@ -113,10 +204,10 @@ extern "C" void app_main(void)
 
         ULONG buttons = 0;
 
-    	if (joystick.values[ODROID_INPUT_UP])     buttons |= BUTTON_UP;
-    	if (joystick.values[ODROID_INPUT_DOWN])   buttons |= BUTTON_DOWN;
-    	if (joystick.values[ODROID_INPUT_LEFT])   buttons |= BUTTON_LEFT;
-    	if (joystick.values[ODROID_INPUT_RIGHT])  buttons |= BUTTON_RIGHT;
+    	if (joystick.values[ODROID_INPUT_UP])     buttons |= dpad_mapped_up;
+    	if (joystick.values[ODROID_INPUT_DOWN])   buttons |= dpad_mapped_down;
+    	if (joystick.values[ODROID_INPUT_LEFT])   buttons |= dpad_mapped_left;
+    	if (joystick.values[ODROID_INPUT_RIGHT])  buttons |= dpad_mapped_right;
     	if (joystick.values[ODROID_INPUT_A])      buttons |= BUTTON_A;
     	if (joystick.values[ODROID_INPUT_B])      buttons |= BUTTON_B;
     	if (joystick.values[ODROID_INPUT_START])  buttons |= BUTTON_OPT2; // BUTTON_PAUSE

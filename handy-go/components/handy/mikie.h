@@ -167,12 +167,14 @@ class CMikie : public CLynxBase
       void	BuildPalette(void);
 
       void Update(void);
+      void SetRotation(UBYTE data) {mDisplayRotate_Pending = data;};
       inline bool SwitchAudInDir(void){ return(mIODIR&0x10);};
       inline bool SwitchAudInValue(void){ return (mIODAT&0x10);};
 
    private:
       inline void UpdateSound(void);
       inline void UpdateCalcSound(void);
+      inline void ResetDisplayPtr();
       ULONG	DisplayRenderLine(void);
       void	BlowOut(void);
 
@@ -185,6 +187,8 @@ class CMikie : public CLynxBase
       ULONG		mAudioInputComparator;
       ULONG		mTimerStatusFlags;
       ULONG		mTimerInterruptMask;
+      UBYTE    mDisplayRotate;
+      UBYTE    mDisplayRotate_Pending;
 
       TPALETTE	mPalette[16];
       UWORD		mColourMap[4096];

@@ -323,7 +323,7 @@ void odroid_settings_DisplayFilter_set(int32_t value)
 
 int32_t odroid_settings_DisplayRotation_get()
 {
-    return odroid_settings_app_int32_get(Key_DispRotation, ODROID_DISPLAY_ROTATION_OFF);
+    return odroid_settings_app_int32_get(Key_DispRotation, ODROID_DISPLAY_ROTATION_AUTO);
 }
 void odroid_settings_DisplayRotation_set(int32_t value)
 {

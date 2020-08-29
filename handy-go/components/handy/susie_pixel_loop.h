@@ -91,7 +91,7 @@
       for(int hloop=0;hloop<pixel_width;hloop++)
       {
          // Draw if onscreen but break loop on transition to offscreen
-         if(hoff>=0 && hoff<SCREEN_WIDTH)
+         if(hoff>=0 && hoff<HANDY_SCREEN_WIDTH)
          {
             //ProcessPixel(hoff,pixel);
             PROCESS_PIXEL

@@ -962,6 +962,7 @@ odroid_display_rotation_t odroid_display_get_rotation(void)
 
 void odroid_display_set_rotation(odroid_display_rotation_t rotation)
 {
+    odroid_settings_DisplayRotation_set(rotation);
     rotationMode = rotation;
     forceVideoRefresh = true;
 }
@@ -983,7 +984,7 @@ void odroid_display_force_refresh(void)
     forceVideoRefresh = true;
 }
 
-IRAM_ATTR short odroid_display_update(odroid_video_frame_t *frame, odroid_video_frame_t *previousFrame)
+IRAM_ATTR short odroid_display_queue_update(odroid_video_frame_t *frame, odroid_video_frame_t *previousFrame)
 {
     static int prev_width = 0, prev_height = 0;
     short linesChanged = 0;

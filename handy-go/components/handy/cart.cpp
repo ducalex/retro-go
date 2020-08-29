@@ -44,6 +44,7 @@
 
 //#define   TRACE_CART
 
+#include <odroid_system.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -60,7 +61,6 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
    mWriteEnableBank1=FALSE;
    mCartRAM=FALSE;
    mCRC32=0;
-   // mCRC32=crc32_le(0,gamedata,gamesize);
    mBank=bank0;
 
    // Open up the file
@@ -85,6 +85,8 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
         mFileHeader.page_size_bank0=gamesize>>8;// Hard workaround...
       } else {
          headersize=sizeof(LYNX_HEADER);
+         mCRC32=crc32_le(0, gamedata+headersize, gamesize-headersize);
+         printf("Cart '%s' loaded, CRC32=%08X\n", mFileHeader.cartname, mCRC32);
       }
 
       // As this is a cartridge boot unset the boot address

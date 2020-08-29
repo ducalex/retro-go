@@ -871,6 +871,26 @@ void CMikie::BuildPalette()
    gNextTimerEvent=gSystemCycleCount;
 }
 
+inline void CMikie::ResetDisplayPtr()
+{
+   if (mDisplayRotate != mDisplayRotate_Pending)
+   {
+      mDisplayRotate = mDisplayRotate_Pending;
+   }
+
+   switch(mDisplayRotate)
+   {
+      case MIKIE_ROTATE_L:
+         mpDisplayCurrent=gPrimaryFrameBuffer+(mDisplayPitch*(HANDY_SCREEN_WIDTH-1));
+         break;
+      case MIKIE_ROTATE_R:
+         mpDisplayCurrent=gPrimaryFrameBuffer+mDisplayPitch-(((HANDY_SCREEN_WIDTH-HANDY_SCREEN_HEIGHT))*2)-2;
+         break;
+      default:
+         mpDisplayCurrent=gPrimaryFrameBuffer;
+         break;
+   }
+}
 
 inline ULONG CMikie::DisplayRenderLine(void)
 {
@@ -910,7 +930,7 @@ inline ULONG CMikie::DisplayRenderLine(void)
       mLynxLineDMACounter=102;
 
       // Reset frame buffer pointer to top of screen
-      mpDisplayCurrent = gPrimaryFrameBuffer;
+      ResetDisplayPtr();
    }
 
    // Decrement line counter logic
@@ -932,19 +952,76 @@ inline ULONG CMikie::DisplayRenderLine(void)
       // Assign the temporary pointer;
       bitmap_tmp=(UWORD*)mpDisplayCurrent;
 
-      for(loop=0;loop<SCREEN_WIDTH/2;loop++) {
-         source=mpRamPointer[mLynxAddr];
-         if(mDISPCTL_Flip) {
-            mLynxAddr--;
-            *(bitmap_tmp++)=mColourMap[mPalette[(source&0x0f)].Index];
-            *(bitmap_tmp++)=mColourMap[mPalette[(source>>4)].Index];
-         } else {
-            mLynxAddr++;
-            *(bitmap_tmp++)=mColourMap[mPalette[(source>>4)].Index];
-            *(bitmap_tmp++)=mColourMap[mPalette[(source&0x0f)].Index];
-         }
-      }
-      mpDisplayCurrent+=mDisplayPitch;
+		switch(mDisplayRotate)
+		{
+         case MIKIE_ROTATE_L:
+            for(loop=0;loop<HANDY_SCREEN_WIDTH/2;loop++)
+            {
+               source=mpRamPointer[mLynxAddr];
+               if(mDISPCTL_Flip)
+               {
+                  mLynxAddr--;
+                  *(bitmap_tmp)=mColourMap[mPalette[source&0x0f].Index];
+                  bitmap_tmp-=HANDY_SCREEN_WIDTH;
+                  *(bitmap_tmp)=mColourMap[mPalette[source>>4].Index];
+                  bitmap_tmp-=HANDY_SCREEN_WIDTH;
+               }
+               else
+               {
+                  mLynxAddr++;
+                  if (bitmap_tmp >= (UWORD*)(gPrimaryFrameBuffer))
+                  *(bitmap_tmp)=mColourMap[mPalette[source>>4].Index];
+                  bitmap_tmp-=HANDY_SCREEN_WIDTH;
+                  if (bitmap_tmp >= (UWORD*)(gPrimaryFrameBuffer))
+                  *(bitmap_tmp)=mColourMap[mPalette[source&0x0f].Index];
+                  bitmap_tmp-=HANDY_SCREEN_WIDTH;
+               }
+            }
+            mpDisplayCurrent+=sizeof(UWORD);
+				break;
+			case MIKIE_ROTATE_R:
+            for(loop=0;loop<HANDY_SCREEN_WIDTH/2;loop++)
+            {
+               source=mpRamPointer[mLynxAddr];
+               if(mDISPCTL_Flip)
+               {
+                  mLynxAddr--;
+                  *(bitmap_tmp)=mColourMap[mPalette[source&0x0f].Index];
+                  bitmap_tmp+=HANDY_SCREEN_WIDTH;
+                  *(bitmap_tmp)=mColourMap[mPalette[source>>4].Index];
+                  bitmap_tmp+=HANDY_SCREEN_WIDTH;
+               }
+               else
+               {
+                  mLynxAddr++;
+                  *(bitmap_tmp)=mColourMap[mPalette[source>>4].Index];
+                  bitmap_tmp+=HANDY_SCREEN_WIDTH;
+                  *(bitmap_tmp)=mColourMap[mPalette[source&0x0f].Index];
+                  bitmap_tmp+=HANDY_SCREEN_WIDTH;
+               }
+            }
+            mpDisplayCurrent-=sizeof(UWORD);
+				break;
+			default:
+            for(loop=0;loop<HANDY_SCREEN_WIDTH/2;loop++)
+            {
+               source=mpRamPointer[mLynxAddr];
+               if(mDISPCTL_Flip)
+               {
+                  mLynxAddr--;
+                  *(bitmap_tmp++)=mColourMap[mPalette[source&0x0f].Index];
+                  *(bitmap_tmp++)=mColourMap[mPalette[source>>4].Index];
+               }
+               else
+               {
+                  mLynxAddr++;
+                  *(bitmap_tmp++)=mColourMap[mPalette[source>>4].Index];
+                  *(bitmap_tmp++)=mColourMap[mPalette[source&0x0f].Index];
+               }
+            }
+            mpDisplayCurrent+=mDisplayPitch;
+            break;
+		}
    }
    return work_done;
 }
@@ -2389,7 +2466,8 @@ inline void CMikie::Update(void)
 
             TRACE_MIKIE0("Update() - Frame end");
 
-            mpDisplayCurrent = gPrimaryFrameBuffer;
+            ResetDisplayPtr();
+
             gEndOfFrame = TRUE;
 
          } else {
