@@ -354,6 +354,8 @@ void CMikie::Reset(void)
 
    mUART_PARITY_ENABLE=0;
    mUART_PARITY_EVEN=0;
+
+   ResetDisplayPtr();
 }
 
 

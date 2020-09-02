@@ -28,7 +28,7 @@ Retro-Go is a launcher and framework to run emulators on the ODROID-GO. It comes
 - And more!
 
 # Screenshot
-![Preview](https://raw.githubusercontent.com/ducalex/retro-go/master/assets/screenshot.jpg)
+![Preview](https://raw.githubusercontent.com/ducalex/retro-go/master/screenshot.jpg)
 
 # Key Mappings
 

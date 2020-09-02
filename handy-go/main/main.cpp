@@ -31,7 +31,7 @@ static short dpad_mapped_right;
 
 static void set_rotation()
 {
-    int rotation = (int)odroid_display_get_rotation();
+    odroid_display_rotation_t rotation = odroid_display_get_rotation();
 
     if (rotation == ODROID_DISPLAY_ROTATION_AUTO)
     {
