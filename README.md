@@ -54,9 +54,9 @@ Note: If you are stuck in an emulator, hold MENU while powering up the device to
 
 
 # Game covers/artwork
-The preferred cover art format is 8bit PNG with a resolution of less than 200x200 and I 
-recommend post-processing with [pngquant](https://pngquant.org/). Retro-Go is also 
-backwards-compatible with the official RAW565 Go-Play romart pack that you may already have.
+The preferred cover art format is 8bit PNG with a resolution of 168x168 and I recommend post-processing 
+with [pngquant](https://pngquant.org/). Retro-Go is also backwards-compatible with the official RAW565 
+Go-Play romart pack that you may already have.
 
 A premade PNG romart pack is available in the assets folder of this repository.
 

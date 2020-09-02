@@ -25,8 +25,8 @@
 #define LIST_X_OFFSET    (0)
 #define LIST_Y_OFFSET    (48 + LIST_LINE_HEIGHT)
 
-#define COVER_MAX_HEIGHT (200)
-#define COVER_MAX_WIDTH  (200)
+#define COVER_MAX_HEIGHT (184)
+#define COVER_MAX_WIDTH  (184)
 
 theme_t gui_themes[] = {
     {0, C_GRAY, C_WHITE, C_AQUA},
