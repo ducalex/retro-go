@@ -151,7 +151,7 @@ void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_
     printf("%s: romPath='%s'\n", __func__, romPath);
 
     // Read some of the ROM to derive a unique id
-    if (!odroid_sdcard_read_file(romPath, buffer, sizeof(buffer)))
+    if (odroid_sdcard_read_file(romPath, buffer, sizeof(buffer)) < 0)
     {
         RG_PANIC("ROM File not found!");
     }

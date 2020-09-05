@@ -50,10 +50,10 @@ static int unsaved_changes = 0;
 void odroid_settings_init()
 {
 #ifdef USE_CONFIG_FILE
-    size_t size = odroid_sdcard_get_filesize(config_file);
-    void *buffer = calloc(1, size + 1);
-    if (buffer)
+    int size = odroid_sdcard_get_filesize(config_file);
+    if (size > 0)
     {
+        void *buffer = rg_alloc(size, MEM_ANY);
         odroid_sdcard_read_file(config_file, buffer, size);
         root = cJSON_Parse(buffer);
         free(buffer);

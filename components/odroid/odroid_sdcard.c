@@ -15,12 +15,18 @@
 
 static bool sdcardOpen = false;
 
-bool odroid_sdcard_open()
+#define SDCARD_ACCESS_BEGIN() { \
+    if (!sdcardOpen) RG_PANIC("SD Card not initialized"); \
+    odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD); \
+}
+#define SDCARD_ACCESS_END() odroid_system_spi_lock_release(SPI_LOCK_SDCARD)
+
+int odroid_sdcard_open()
 {
     if (sdcardOpen)
     {
         printf("odroid_sdcard_open: already open.\n");
-        return false;
+        return -1;
     }
 
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
@@ -57,10 +63,10 @@ bool odroid_sdcard_open()
         printf("odroid_sdcard_open: esp_vfs_fat_sdmmc_mount failed (%d)\n", ret);
     }
 
-	return sdcardOpen;
+	return (ret == ESP_OK) ? 0 : -1;
 }
 
-bool odroid_sdcard_close()
+int odroid_sdcard_close()
 {
     esp_err_t ret = esp_vfs_fat_sdmmc_unmount();
     if (ret != ESP_OK)
@@ -68,47 +74,14 @@ bool odroid_sdcard_close()
         printf("odroid_sdcard_close: esp_vfs_fat_sdmmc_unmount failed (%d)\n", ret);
     }
     sdcardOpen = false;
-    return ret == ESP_OK;
+    return (ret == ESP_OK) ? 0 : -1;
 }
 
-size_t odroid_sdcard_get_filesize(const char* path)
+int odroid_sdcard_read_file(const char* path, void* buf, size_t buf_size)
 {
-    if (!sdcardOpen)
-    {
-        printf("%s: SD Card not initialized\n", __func__);
-        return 0;
-    }
+    SDCARD_ACCESS_BEGIN();
 
-    odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
-
-    size_t ret = 0;
-    FILE* f;
-
-    if ((f = fopen(path, "rb")))
-    {
-        fseek(f, 0, SEEK_END);
-        ret = ftell(f);
-        fclose(f);
-    }
-    else
-        printf("odroid_sdcard_get_filesize: fopen failed.\n");
-
-    odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
-
-    return ret;
-}
-
-size_t odroid_sdcard_read_file(const char* path, void* buf, size_t buf_size)
-{
-    if (!sdcardOpen)
-    {
-        printf("%s: SD Card not initialized\n", __func__);
-        return 0;
-    }
-
-    odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
-
-    size_t count = 0;
+    int count = -1;
     FILE* f;
 
     if ((f = fopen(path, "rb")))
@@ -119,22 +92,16 @@ size_t odroid_sdcard_read_file(const char* path, void* buf, size_t buf_size)
     else
         printf("%s: fopen failed. path='%s'\n", __func__, path);
 
-    odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
+    SDCARD_ACCESS_END();
 
     return count;
 }
 
-size_t odroid_sdcard_write_file(const char* path, void* buf, size_t buf_size)
+int odroid_sdcard_write_file(const char* path, void* buf, size_t buf_size)
 {
-    if (!sdcardOpen)
-    {
-        printf("%s: SD Card not initialized\n", __func__);
-        return 0;
-    }
+    SDCARD_ACCESS_BEGIN();
 
-    odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
-
-    size_t count = 0;
+    int count = -1;
     FILE* f;
 
     if ((f = fopen(path, "wb")))
@@ -145,22 +112,16 @@ size_t odroid_sdcard_write_file(const char* path, void* buf, size_t buf_size)
     else
         printf("%s: fopen failed. path='%s'\n", __func__, path);
 
-    odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
+    SDCARD_ACCESS_END();
 
     return count;
 }
 
-size_t odroid_sdcard_unzip_file(const char* path, void* buf, size_t buf_size)
+int odroid_sdcard_unzip_file(const char* path, void* buf, size_t buf_size)
 {
-    if (!sdcardOpen)
-    {
-        printf("%s: SD Card not initialized\n", __func__);
-        return 0;
-    }
+    SDCARD_ACCESS_BEGIN();
 
-    odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
-
-    size_t ret = 0;
+    int count = -1;
     mz_zip_archive zip_archive;
 
     memset(&zip_archive, 0, sizeof(zip_archive));
@@ -174,32 +135,81 @@ size_t odroid_sdcard_unzip_file(const char* path, void* buf, size_t buf_size)
             printf("%s: Extracting file %s\n", __func__, file_stat.m_filename);
             if (mz_zip_reader_extract_to_mem(&zip_archive, 0, buf, buf_size, 0))
             {
-                ret = file_stat.m_uncomp_size;
+                count = file_stat.m_uncomp_size;
             }
         }
         mz_zip_reader_end(&zip_archive);
     }
 
-    odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
+    SDCARD_ACCESS_END();
+
+    return count;
+}
+
+int odroid_sdcard_list(const char* path, char *out_files, size_t *out_count)
+{
+    SDCARD_ACCESS_BEGIN();
+
+    // Maybe we should replace out_files by a struct that contains the packed list + an index to allow
+    // n-addressing. We'd still maintain the benefits of no custom free needed and reduced alloc overhead.
+
+    int ret = -1;
+
+    DIR* dir = opendir(path);
+    if (dir)
+    {
+        char *buffer = NULL;
+        size_t bufsize = 0;
+        size_t bufpos = 0;
+        size_t count = 0;
+        struct dirent* file;
+
+        while ((file = readdir(dir)))
+        {
+            size_t len = strlen(file->d_name) + 1;
+
+            if (len < 2) continue;
+
+            if ((bufsize - bufpos) < len)
+            {
+                bufsize += 1024;
+                buffer = realloc(buffer, bufsize);
+            }
+
+            memcpy(buffer + bufpos, &file->d_name, len);
+            bufpos += len;
+            count++;
+        }
+
+        buffer = realloc(buffer, bufpos + 1);
+        buffer[bufpos] = 0;
+
+        closedir(dir);
+        ret = 0;
+
+        if (out_files) *out_files = buffer;
+        if (out_count) *out_count = count;
+    }
+
+    SDCARD_ACCESS_END();
 
     return ret;
 }
 
-const char* odroid_sdcard_get_filename(const char* path)
+int odroid_sdcard_unlink(const char* path)
 {
-    const char *name = strrchr(path, '/');
-    return name ? name + 1 : NULL;
-}
+    SDCARD_ACCESS_BEGIN();
 
-const char* odroid_sdcard_get_extension(const char* path)
-{
-    const char *ext = strrchr(path, '.');
-    return ext ? ext + 1 : NULL;
+    int ret = unlink(path);
+
+    SDCARD_ACCESS_END();
+
+    return ret;
 }
 
 int odroid_sdcard_mkdir(const char *dir)
 {
-    assert(sdcardOpen == true);
+    SDCARD_ACCESS_BEGIN();
 
     int ret = mkdir(dir, 0777);
 
@@ -234,5 +244,40 @@ int odroid_sdcard_mkdir(const char *dir)
         printf("odroid_sdcard_mkdir: Folder created %s\n", dir);
     }
 
+    SDCARD_ACCESS_END();
+
     return ret;
+}
+
+int odroid_sdcard_get_filesize(const char* path)
+{
+    SDCARD_ACCESS_BEGIN();
+
+    int ret = -1;
+    FILE* f;
+
+    if ((f = fopen(path, "rb")))
+    {
+        fseek(f, 0, SEEK_END);
+        ret = ftell(f);
+        fclose(f);
+    }
+    else
+        printf("odroid_sdcard_get_filesize: fopen failed.\n");
+
+    SDCARD_ACCESS_END();
+
+    return ret;
+}
+
+const char* odroid_sdcard_get_filename(const char* path)
+{
+    const char *name = strrchr(path, '/');
+    return name ? name + 1 : NULL;
+}
+
+const char* odroid_sdcard_get_extension(const char* path)
+{
+    const char *ext = strrchr(path, '.');
+    return ext ? ext + 1 : NULL;
 }

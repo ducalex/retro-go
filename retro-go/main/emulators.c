@@ -1,10 +1,6 @@
 #include <esp_partition.h>
-#include <esp_system.h>
-#include <sys/stat.h>
-#include <string.h>
-#include <dirent.h>
-#include <unistd.h>
 #include <odroid_system.h>
+#include <string.h>
 
 #include "emulators.h"
 #include "favorites.h"
@@ -112,8 +108,8 @@ void emulator_init(retro_emulator_t *emu)
     printf("Retro-Go: Initializing emulator '%s'\n", emu->system_name);
 
     char path[128];
-
-    odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
+    char *files = NULL;
+    size_t count = 0;
 
     sprintf(path, ODROID_BASE_PATH_CRC_CACHE "/%s", emu->dirname);
     odroid_sdcard_mkdir(path);
@@ -124,38 +120,35 @@ void emulator_init(retro_emulator_t *emu)
     sprintf(path, ODROID_BASE_PATH_ROMS "/%s", emu->dirname);
     odroid_sdcard_mkdir(path);
 
-    DIR* dir = opendir(path);
-    if (dir)
+    if (odroid_sdcard_list(path, &files, &count) == 0)
     {
-        struct dirent* in_file;
+        emu->roms.files = rg_alloc(count * sizeof(retro_emulator_file_t), MEM_ANY);
+        emu->roms.count = 0;
 
-        while ((in_file = readdir(dir)))
+        char *ptr = files;
+        for (int i = 0; i < count; ++i)
         {
-            const char *ext = odroid_sdcard_get_extension(in_file->d_name);
+            const char *name = ptr;
+            const char *ext = odroid_sdcard_get_extension(ptr);
+            size_t name_len = strlen(name);
 
-            if (!ext) continue;
+            // Advance pointer to next entry
+            ptr += name_len + 1;
 
-            if (strcasecmp(emu->ext, ext) != 0 && strcasecmp("zip", ext) != 0)
+            if (!ext || strcasecmp(emu->ext, ext) != 0) //  && strcasecmp("zip", ext) != 0
                 continue;
 
-            if (emu->roms.count % 100 == 0) {
-                emu->roms.files = (retro_emulator_file_t *)realloc(emu->roms.files,
-                    (emu->roms.count + 100) * sizeof(retro_emulator_file_t));
-            }
             retro_emulator_file_t *file = &emu->roms.files[emu->roms.count++];
             strcpy(file->folder, path);
-            strcpy(file->name, in_file->d_name);
+            strcpy(file->name, name);
             strcpy(file->ext, ext);
-            file->name[strlen(file->name)-strlen(ext)-1] = 0;
+            file->name[name_len-strlen(ext)-1] = 0;
             file->emulator = (void*)emu;
             file->crc_offset = emu->crc_offset;
             file->checksum = 0;
         }
-
-        closedir(dir);
     }
-
-    odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
+    free(files);
 }
 
 const char *emu_get_file_path(retro_emulator_file_t *file)
@@ -287,7 +280,7 @@ void emulator_show_file_info(retro_emulator_file_t *file)
 void emulator_show_file_menu(retro_emulator_file_t *file)
 {
     char *save_path = odroid_system_get_path(ODROID_PATH_SAVE_STATE, emu_get_file_path(file));
-    bool has_save = access(save_path, F_OK) != -1;
+    bool has_save = odroid_sdcard_get_filesize(save_path) > 0;
     bool is_fav = favorite_find(file) != NULL;
 
     odroid_dialog_choice_t choices[] = {
@@ -306,7 +299,7 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
     }
     else if (sel == 2) {
         if (odroid_overlay_confirm("Delete savestate?", false) == 1) {
-            unlink(save_path);
+            odroid_sdcard_unlink(save_path);
         }
     }
     else if (sel == 3) {
