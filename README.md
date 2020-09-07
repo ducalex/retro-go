@@ -53,24 +53,25 @@ Retro-Go is a launcher and framework to run emulators on the ODROID-GO. It comes
 Note: If you are stuck in an emulator, hold MENU while powering up the device to return to the launcher.
 
 
-# Game covers/artwork
+# Game covers
 The preferred cover art format is 8bit PNG with a resolution of 168x168 and I recommend post-processing 
 with [pngquant](https://pngquant.org/). Retro-Go is also backwards-compatible with the official RAW565 
 Go-Play romart pack that you may already have.
 
-A premade PNG romart pack is available in the assets folder of this repository.
+For a quick start you can copy the folder `covers` of this repository to the root of your sdcard and 
+rename it `romart`.
 
-## Adding missing artwork
-The simplest method to add missing artwork is to create a PNG file named like your rom 
-(minus the extension) and place it in `/romart/emu/<my rom name>.png`
+## Adding missing covers
+First identify the CRC32 of your game (in the launcher press B). Now, let's assume that the CRC32 of your
+nes game is ABCDE123, you must place the file (format described above) at: `sdcard:/romart/nes/A/ABCDE123.png`.
 
-Example:  
-/roms/nes/Super Mario.nes  
-/romart/nes/Super Mario.png  
+_Note: If you need to compute the CRC32 outside of retro-go, please be mindful that certain systems 
+skip the file header in their CRC calculation (eg NES skips 16 bytes and Lynx skips 64 bytes). 
+The number must also be zero padded to be 8 chars._
 
 ## CRC cache
 Retro-Go caches some data to speed up cover art discovery and display.
-If you have any problem the first step is to delete the /odroid/cache folder.
+If you have any problem the first step is to delete the `sdcard:/odroid/cache` folder.
 
 
 # Known issues

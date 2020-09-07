@@ -316,17 +316,16 @@ void gui_draw_cover(retro_emulator_file_t *file)
 
     if (file->checksum > 0 && file->missing_cover == 0)
     {
-        char path1[128], path2[128], path3[128], buf_crc[10];
+        char path1[128], path2[128], buf_crc[10];
 
         sprintf(buf_crc, "%08X", file->checksum);
         sprintf(path1, "%s/%s/%c/%s.png", ODROID_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
-        sprintf(path2, "%s/%s/%.96s.png", ODROID_BASE_PATH_ROMART, emu->dirname, file->name);
-        sprintf(path3, "%s/%s/%c/%s.art", ODROID_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
+        sprintf(path2, "%s/%s/%c/%s.art", ODROID_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
 
         LuImage *img;
         FILE *fp;
 
-        if ((img = luPngReadFile(path1)) || (img = luPngReadFile(path2)))
+        if ((img = luPngReadFile(path1)))
         {
             for (int p = 0, i = 0; i < img->dataSize && p < cover_buffer_length; i += 3) {
                 uint8_t r = img->data[i];
@@ -338,7 +337,7 @@ void gui_draw_cover(retro_emulator_file_t *file)
             cover_height = img->height;
             luImageRelease(img, NULL);
         }
-        else if ((fp = fopen(path3, "rb")) != NULL)
+        else if ((fp = fopen(path2, "rb")))
         {
             fread(&cover_width, 2, 1, fp);
             fread(&cover_height, 2, 1, fp);
