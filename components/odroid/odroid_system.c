@@ -12,7 +12,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "odroid_image_sdcard.h"
+#include "bitmaps/image_sdcard.h"
 #include "odroid_system.h"
 
 // This is a direct pointer to rtc slow ram which isn't cleared on
@@ -70,7 +70,7 @@ void odroid_system_init(int appId, int sampleRate)
 
     // sdcard init must be before odroid_display_init()
     // and odroid_settings_init() if JSON is used
-    bool sd_init = odroid_sdcard_open();
+    bool sd_init = (odroid_sdcard_open() == 0);
 
     odroid_settings_init();
     odroid_overlay_init();
@@ -96,11 +96,11 @@ void odroid_system_init(int appId, int sampleRate)
     if (!sd_init)
     {
         odroid_display_clear(C_WHITE);
-        odroid_display_write((ODROID_SCREEN_WIDTH - image_sdcard_red_48dp.width) / 2,
-            (ODROID_SCREEN_HEIGHT - image_sdcard_red_48dp.height) / 2,
-            image_sdcard_red_48dp.width,
-            image_sdcard_red_48dp.height,
-            (uint16_t*)image_sdcard_red_48dp.pixel_data);
+        odroid_display_write((ODROID_SCREEN_WIDTH - image_sdcard.width) / 2,
+            (ODROID_SCREEN_HEIGHT - image_sdcard.height) / 2,
+            image_sdcard.width,
+            image_sdcard.height,
+            (uint16_t*)image_sdcard.pixel_data);
         odroid_system_halt();
     }
 
@@ -110,6 +110,11 @@ void odroid_system_init(int appId, int sampleRate)
     // esp_task_wdt_add(xTaskGetCurrentTaskHandle());
 
     panicTrace->magicWord = 0;
+
+    #ifdef ENABLE_PROFILING
+        printf("%s: Profiling has been enabled at compile time!\n", __func__);
+        rg_profiler_init();
+    #endif
 
     printf("%s: System ready!\n\n", __func__);
 }
@@ -425,8 +430,9 @@ void odroid_system_set_led(int value)
 static void odroid_system_monitor_task(void *arg)
 {
     runtime_counters_t current;
-    bool led_state = false;
+    bool letState = false;
     float tickTime = 0;
+    uint loops = 0;
 
     while (1)
     {
@@ -476,13 +482,13 @@ static void odroid_system_monitor_task(void *arg)
 
         if (statistics.battery.percentage < 2)
         {
-            led_state = !led_state;
-            odroid_system_set_led(led_state);
+            letState = !letState;
+            odroid_system_set_led(letState);
         }
-        else if (led_state)
+        else if (letState)
         {
-            led_state = false;
-            odroid_system_set_led(led_state);
+            letState = false;
+            odroid_system_set_led(letState);
         }
 
         printf("HEAP:%d+%d (%d+%d), BUSY:%.4f, FPS:%.4f (SKIP:%d, PART:%d, FULL:%d), BATTERY:%d\n",
@@ -497,7 +503,15 @@ static void odroid_system_monitor_task(void *arg)
             current.fullFrames,
             statistics.battery.millivolts);
 
+        #ifdef ENABLE_PROFILING
+            if ((loops % 30) == 0)
+            {
+                rg_profiler_print();
+            }
+        #endif
+
         vTaskDelay(pdMS_TO_TICKS(1000));
+        loops++;
     }
 
     vTaskDelete(NULL);
@@ -524,7 +538,7 @@ IRAM_ATTR void odroid_system_spi_lock_acquire(spi_lock_res_t owner)
     {
         return;
     }
-    else if (xSemaphoreTake(spiMutex, 10000 / portTICK_RATE_MS) == pdPASS)
+    else if (xSemaphoreTake(spiMutex, pdMS_TO_TICKS(10000)) == pdPASS)
     {
         spiMutexOwner = owner;
     }
@@ -551,28 +565,29 @@ void *rg_alloc(size_t size, uint32_t caps)
 
      if (!(caps & MALLOC_CAP_32BIT))
      {
-          caps |= MALLOC_CAP_8BIT;
+        caps |= MALLOC_CAP_8BIT;
      }
 
      ptr = heap_caps_calloc(1, size, caps);
 
+     printf("RG_ALLOC: SIZE: %u  [SPIRAM: %u; 32BIT: %u; DMA: %u]  PTR: %p\n",
+            size, (caps & MALLOC_CAP_SPIRAM) != 0, (caps & MALLOC_CAP_32BIT) != 0,
+            (caps & MALLOC_CAP_DMA) != 0, ptr);
+
      if (!ptr)
      {
-          size_t availaible = heap_caps_get_largest_free_block(caps);
+        size_t availaible = heap_caps_get_largest_free_block(caps);
 
-          // Loosen the caps and try again
-          ptr = heap_caps_calloc(1, size, caps & ~(MALLOC_CAP_SPIRAM|MALLOC_CAP_INTERNAL));
-          if (!ptr)
-          {
-               RG_PANIC("Memory allocation failed!");
-          }
+        // Loosen the caps and try again
+        ptr = heap_caps_calloc(1, size, caps & ~(MALLOC_CAP_SPIRAM|MALLOC_CAP_INTERNAL));
+        if (!ptr)
+        {
+            printf("RG_ALLOC: ^-- Allocation failed! (available: %d)\n", availaible);
+            RG_PANIC("Memory allocation failed!");
+        }
 
-          printf("RG_ALLOC: *** CAPS not fully met (req: %d, available: %d) ***\n", size, availaible);
+        printf("RG_ALLOC: ^-- CAPS not fully met! (available: %d)\n", availaible);
      }
-
-     printf("RG_ALLOC: SIZE: %u  [SPIRAM: %u; 32BIT: %u; DMA: %u]  PTR: %p\n",
-               size, (caps & MALLOC_CAP_SPIRAM) != 0, (caps & MALLOC_CAP_32BIT) != 0,
-               (caps & MALLOC_CAP_DMA) != 0, ptr);
 
      return ptr;
 }

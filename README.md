@@ -53,7 +53,7 @@ Retro-Go is a launcher and framework to run emulators on the ODROID-GO. It comes
 Note: If you are stuck in an emulator, hold MENU while powering up the device to return to the launcher.
 
 
-# Game covers
+# Game covers 
 The preferred cover art format is 8bit PNG with a resolution of 168x168 and I recommend post-processing 
 with [pngquant](https://pngquant.org/). Retro-Go is also backwards-compatible with the official RAW565 
 Go-Play romart pack that you may already have.
@@ -88,14 +88,13 @@ The official esp-idf version 3.3 or 4.0 is required and it is recommended to app
 sdcard-fix patch located in the tools folder. Both make and cmake are supported.
 
 ## Build everything and generate .fw:
-1. `python rg_tool.py release` or `python rg_tool.py release --use-make` (legacy make system)
+1. `python rg_tool.py build-fw` or `python rg_tool.py build-fw --use-make` (legacy make system)
 
 For a smaller build you can also specify which apps you want, for example the launcher + nes/gameboy only:
-1. `python rg_tool.py release retro-go nofrendo-go gnuboy-go`
+1. `python rg_tool.py build-fw retro-go nofrendo-go gnuboy-go`
 
 ## Build, flash, and monitor individual apps for faster development:
-1. Build app: `python rg_tool.py build nofrendo-go`
-2. Then flash and monitor: `python rg_tool.py --offset=0x100000 --port=COM3 flashmon nofrendo-go`
+1. `python rg_tool.py run nofrendo-go --offset=0x100000 --port=COM3`
 * Offset is required only if you use my multi-firmware, in which case it is displayed in the boot menu.
 
 

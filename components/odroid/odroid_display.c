@@ -9,7 +9,7 @@
 
 #include "odroid_system.h"
 #include "odroid_display.h"
-#include "odroid_image_hourglass.h"
+#include "bitmaps/image_hourglass.h"
 
 #define SCREEN_WIDTH  ODROID_SCREEN_WIDTH
 #define SCREEN_HEIGHT ODROID_SCREEN_HEIGHT
@@ -1102,11 +1102,11 @@ void odroid_display_clear(uint16_t color)
 
 void odroid_display_show_hourglass()
 {
-    odroid_display_write((SCREEN_WIDTH / 2) - (image_hourglass_empty_black_48dp.width / 2),
-        (SCREEN_HEIGHT / 2) - (image_hourglass_empty_black_48dp.height / 2),
-        image_hourglass_empty_black_48dp.width,
-        image_hourglass_empty_black_48dp.height,
-        (uint16_t*)image_hourglass_empty_black_48dp.pixel_data);
+    odroid_display_write((SCREEN_WIDTH / 2) - (image_hourglass.width / 2),
+        (SCREEN_HEIGHT / 2) - (image_hourglass.height / 2),
+        image_hourglass.width,
+        image_hourglass.height,
+        (uint16_t*)image_hourglass.pixel_data);
 }
 
 void odroid_display_deinit()

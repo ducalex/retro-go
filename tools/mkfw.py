@@ -5,7 +5,7 @@ def readfile(filepath):
     with open(filepath, "rb") as f: return f.read()
 
 if len(sys.argv) < 4:
-    exit("usage: mkfw.py output_file description tile <type subtype length label binary> [, ...]")
+    exit("usage: mkfw.py output_file description tile <type subtype length label binfile> [, ...]")
 
 fw_name = sys.argv[1]
 
@@ -31,7 +31,7 @@ while pos < len(sys.argv):
 
     size = max(length, math.ceil(len(data) / 0x10000) * 0x10000)
     if size > length:
-        print(" > WARNING: Partition will be expanded by %d bytes" % (size - length))
+        print(" > WARNING: Partition smaller than file (+%d bytes), increasing length to %d" % (len(data) - length, size))
 
     fw_data += struct.pack("<BBxx16sIII", partype, subtype, label.encode(), 0, size, len(data))
     fw_data += data

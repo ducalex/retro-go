@@ -16,7 +16,8 @@
 static bool sdcardOpen = false;
 
 #define SDCARD_ACCESS_BEGIN() { \
-    if (!sdcardOpen) RG_PANIC("SD Card not initialized"); \
+    /* if (!sdcardOpen) RG_PANIC("SD Card not initialized"); */ \
+    if (!sdcardOpen) { printf("SD Card not initialized\n"); return -1; } \
     odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD); \
 }
 #define SDCARD_ACCESS_END() odroid_system_spi_lock_release(SPI_LOCK_SDCARD)
@@ -61,9 +62,10 @@ int odroid_sdcard_open()
     if (ret != ESP_OK)
     {
         printf("odroid_sdcard_open: esp_vfs_fat_sdmmc_mount failed (%d)\n", ret);
+        return -1;
     }
 
-	return (ret == ESP_OK) ? 0 : -1;
+    return 0;
 }
 
 int odroid_sdcard_close()
@@ -146,7 +148,7 @@ int odroid_sdcard_unzip_file(const char* path, void* buf, size_t buf_size)
     return count;
 }
 
-int odroid_sdcard_list(const char* path, char *out_files, size_t *out_count)
+int odroid_sdcard_list(const char* path, char **out_files, size_t *out_count)
 {
     SDCARD_ACCESS_BEGIN();
 

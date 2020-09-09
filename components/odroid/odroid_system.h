@@ -14,8 +14,9 @@
 #include "odroid_audio.h"
 #include "odroid_display.h"
 #include "odroid_input.h"
-#include "odroid_overlay.h"
 #include "odroid_netplay.h"
+#include "odroid_overlay.h"
+#include "odroid_profiler.h"
 #include "odroid_sdcard.h"
 #include "odroid_settings.h"
 
@@ -187,6 +188,12 @@ static inline uint get_elapsed_time_since(uint start)
 #undef MAX
 #define MAX(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
 
+#ifdef __cplusplus
+#define EXTERN_C extern "C"
+#else
+#define EXTERN_C
+#endif
+
 #define RG_PANIC(x) odroid_system_panic(x, __FUNCTION__, __FILE__)
 
 #define MEM_ANY   0
@@ -199,9 +206,3 @@ static inline uint get_elapsed_time_since(uint start)
 
 void *rg_alloc(size_t size, uint32_t caps);
 void rg_free(void *ptr);
-
-void rg_perf_init(void);
-void rg_perf_reset(void);
-void rg_perf_print(void);
-void rg_perf_func_enter(void *func_ptr, char *func_name);
-void rg_perf_func_leave(void);

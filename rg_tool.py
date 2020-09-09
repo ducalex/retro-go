@@ -94,13 +94,19 @@ def monitor_app(target, port):
 
 parser = argparse.ArgumentParser(description="Retro-Go build tool")
 parser.add_argument(
-    "command", choices=["build", "clean", "release", "mkfw", "flash", "flashmon", "monitor"],
+    "command", choices=["build-fw", "build", "clean", "flash", "monitor", "run"],
 )
 parser.add_argument(
     "targets", nargs="*", default="all", choices=["all"] + list(PROJECT_APPS.keys())
 )
 parser.add_argument(
     "--use-make", action="store_const", const=True, help="Use legacy make build system"
+)
+parser.add_argument(
+    "--profile", action="store_const", const=True, help="Build with profiling enabled"
+)
+parser.add_argument(
+    "--debug", action="store_const", const=True, help="Build with debugging enabled"
 )
 parser.add_argument(
     "--port", default="COM3", help="Serial port to use for flash and monitor"
@@ -113,26 +119,35 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
+
 command = args.command
 targets = args.targets if not "all" in args.targets else PROJECT_APPS.keys()
 
-if command == "clean" or command == "release":
+
+if command == "build-fw":
     for target in targets:
         clean_app(target)
+        build_app(target, args.use_make)
+    build_firmware(targets)
 
-if command == "build" or command == "release":
+if command == "build":
     for target in targets:
         build_app(target, args.use_make)
 
-if command == "release" or command == "mkfw":
-    build_firmware(targets)
-
-if command == "flash" or command == "flashmon":
+if command == "clean":
     for target in targets:
-        offset = find_app(target, args.offset, args.app_offset)
-        flash_app(target, args.port, offset)
+        clean_app(target)
 
-if command == "monitor" or command == "flashmon":
+if command == "flash":
+    for target in targets:
+        flash_app(target, args.port, find_app(target, args.offset, args.app_offset))
+
+if command == "monitor":
+    monitor_app(targets[0], args.port)
+
+if command == "run":
+    build_app(targets[0], args.use_make)
+    flash_app(targets[0], args.port, find_app(targets[0], args.offset, args.app_offset))
     monitor_app(targets[0], args.port)
 
 

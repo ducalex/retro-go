@@ -1,3 +1,5 @@
+#pragma once
+
 /* GIMP RGBA C-Source image dump (Untitled.c) */
 /* This image is based on a free icon from https://icons8.com/icons/set/micro-sd */
 
@@ -6,7 +8,7 @@ static const struct {
   unsigned int 	 height;
   unsigned int 	 bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */
   unsigned char	 pixel_data[48 * 48 * 2 + 1];
-} image_sdcard_red_48dp = {
+} image_sdcard = {
   48, 48, 2,
   "\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377"
   "\377\377\377\377\377\377}\377Y\376\266\375\226\375\226\375\226\375\226\375"

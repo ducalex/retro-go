@@ -120,7 +120,7 @@ void emulator_init(retro_emulator_t *emu)
     sprintf(path, ODROID_BASE_PATH_ROMS "/%s", emu->dirname);
     odroid_sdcard_mkdir(path);
 
-    if (odroid_sdcard_list(path, &files, &count) == 0)
+    if (odroid_sdcard_list(path, &files, &count) == 0 && count > 0)
     {
         emu->roms.files = rg_alloc(count * sizeof(retro_emulator_file_t), MEM_ANY);
         emu->roms.count = 0;

@@ -6,8 +6,8 @@
 #include <stdio.h>
 #include <math.h>
 
+#include "bitmaps/font_basic.h"
 #include "odroid_system.h"
-#include "odroid_font8x8.h"
 #include "odroid_overlay.h"
 
 static uint16_t *overlay_buffer = NULL;
