@@ -104,17 +104,17 @@ void odroid_system_init(int appId, int sampleRate)
         odroid_system_halt();
     }
 
+    #ifdef ENABLE_PROFILING
+        printf("%s: Profiling has been enabled at compile time!\n", __func__);
+        rg_profiler_init();
+    #endif
+
     xTaskCreate(&odroid_system_monitor_task, "sysmon", 2048, NULL, 7, NULL);
 
     // esp_task_wdt_init(5, true);
     // esp_task_wdt_add(xTaskGetCurrentTaskHandle());
 
     panicTrace->magicWord = 0;
-
-    #ifdef ENABLE_PROFILING
-        printf("%s: Profiling has been enabled at compile time!\n", __func__);
-        rg_profiler_init();
-    #endif
 
     printf("%s: System ready!\n\n", __func__);
 }
@@ -504,9 +504,11 @@ static void odroid_system_monitor_task(void *arg)
             statistics.battery.millivolts);
 
         #ifdef ENABLE_PROFILING
-            if ((loops % 30) == 0)
+            if ((loops % 10) == 0)
             {
+                rg_profiler_stop();
                 rg_profiler_print();
+                rg_profiler_start();
             }
         #endif
 

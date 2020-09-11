@@ -1,5 +1,6 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
+#include <string.h>
 #include <stdio.h>
 
 #include "odroid_system.h"
@@ -9,7 +10,11 @@
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=28205
 
 static profile_t *profile;
-static volatile bool profile_lock;
+static SemaphoreHandle_t lock;
+static bool enabled = false;
+
+#define LOCK_PROFILE()   xSemaphoreTake(lock, pdMS_TO_TICKS(10000)); // {while(lock);lock=true;}
+#define UNLOCK_PROFILE() xSemaphoreGive(lock);                       // {lock = false;}
 
 NO_PROFILE static inline profile_frame_t *find_frame(void *this_fn, void *call_site)
 {
@@ -35,21 +40,25 @@ NO_PROFILE static inline profile_frame_t *find_frame(void *this_fn, void *call_s
 
 NO_PROFILE void rg_profiler_init(void)
 {
-    printf("%s: Initializing profile...\n", __func__);
+    printf("%s: Allocating profile...\n", __func__);
     profile = rg_alloc(sizeof(profile_t), MEM_SLOW);
+    lock = xSemaphoreCreateMutex();
+}
+
+NO_PROFILE void rg_profiler_start(void)
+{
+    LOCK_PROFILE();
+
+    memset(profile, 0, sizeof(profile_t));
     profile->time_started = get_elapsed_time();
+    enabled = true;
+
+    UNLOCK_PROFILE();
 }
 
-NO_PROFILE void rg_profiler_free(void)
+NO_PROFILE void rg_profiler_stop(void)
 {
-    // free(call_stack);
-    free(profile);
-    profile = NULL;
-}
-
-NO_PROFILE static int list_comparator(const void *p, const void *q)
-{
-    return ((profile_frame_t*)q)->run_time - ((profile_frame_t*)p)->run_time;
+    enabled = false;
 }
 
 NO_PROFILE void rg_profiler_print(void)
@@ -57,31 +66,26 @@ NO_PROFILE void rg_profiler_print(void)
     if (!profile)
         return;
 
-    // xSemaphoreTake(profile_lock, pdMS_TO_TICKS(10000));
-    profile_lock = true;
+    LOCK_PROFILE();
 
-    uint32_t time_running = get_elapsed_time_since(profile->time_started);
-
-    // probably should use a mutex here
-    qsort(profile->frames, profile->total_frames, sizeof(profile_frame_t), list_comparator);
+    printf("RGP:BEGIN %d %d\n", profile->total_frames, get_elapsed_time_since(profile->time_started));
 
     for (int i = 0; i < profile->total_frames; ++i)
     {
         profile_frame_t *frame = &profile->frames[i];
 
         printf(
-            "%p\t%p\t%d\t%d\t%.0f%%\n",
+            "RGP:FRAME %p\t%p\t%u\t%u\n",
             frame->caller_ptr,
             frame->func_ptr,
             frame->num_calls,
-            frame->run_time,
-            (float)frame->run_time / time_running * 100
+            frame->run_time
         );
     }
 
-    printf("Profile frames: %d, total time: %d\n", profile->total_frames, time_running);
+    printf("RGP:END\n");
 
-    profile_lock = false;
+    UNLOCK_PROFILE();
 }
 
 NO_PROFILE void rg_profiler_push(char *section_name)
@@ -96,10 +100,10 @@ NO_PROFILE void rg_profiler_pop(void)
 
 NO_PROFILE void __cyg_profile_func_enter(void *this_fn, void *call_site)
 {
-    if (!profile)
+    if (!enabled)
         return;
 
-    while (profile_lock);
+    LOCK_PROFILE();
 
     profile_frame_t *fn = find_frame(this_fn, call_site);
 
@@ -109,17 +113,24 @@ NO_PROFILE void __cyg_profile_func_enter(void *this_fn, void *call_site)
 
     fn->enter_time = get_elapsed_time();
     fn->num_calls++;
+
+    UNLOCK_PROFILE();
 }
 
 NO_PROFILE void __cyg_profile_func_exit(void *this_fn, void *call_site)
 {
-    if (!profile)
+    if (!enabled)
         return;
 
-    while (profile_lock);
+    LOCK_PROFILE();
 
     profile_frame_t *fn = find_frame(this_fn, call_site);
 
-    fn->run_time += get_elapsed_time_since(fn->enter_time);
+    // Ignore if profiler was disabled when function entered
+    if (fn->enter_time != 0)
+        fn->run_time += get_elapsed_time_since(fn->enter_time);
+
     fn->enter_time = 0;
+
+    UNLOCK_PROFILE();
 }
