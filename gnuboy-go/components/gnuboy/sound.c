@@ -45,6 +45,7 @@ static DRAM_ATTR const int freqtab[8] =
 	(1<<14)/7
 };
 
+struct pcm pcm;
 struct snd snd;
 
 #define RATE (snd.rate)
@@ -341,12 +342,6 @@ static inline void s4_init()
 
 void IRAM_ATTR sound_write(byte r, byte b)
 {
-#if 0
-	static void *timer;
-	if (!timer) timer = sys_timer();
-	printf("write %02X: %02X @ %d\n", r, b, sys_elapsed(timer));
-#endif
-
 	if (!(R_NR52 & 128) && r != RI_NR52) return;
 	if ((r & 0xF0) == 0x30)
 	{

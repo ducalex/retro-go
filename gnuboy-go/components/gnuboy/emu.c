@@ -1,3 +1,4 @@
+#include "stdbool.h"
 #include "stdarg.h"
 #include "defs.h"
 #include "regs.h"
@@ -8,34 +9,19 @@
 #include "lcd.h"
 #include "rtc.h"
 
-
-static int framelen = 16743;
-static int framecount;
-
-
-void emu_die(const char *fmt, ...)
-{
-	va_list ap;
-
-	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	va_end(ap);
-	abort();
-}
+#include "esp_attr.h"
 
 
 void emu_init()
 {
-
+	emu_reset();
 }
-
 
 /*
  * emu_reset is called to initialize the state of the emulated
  * system. It should set cpu registers, hardware registers, etc. to
  * their appropriate values at powerup time.
  */
-
 void emu_reset()
 {
 	hw_reset();
@@ -44,18 +30,6 @@ void emu_reset()
 	mbc_reset();
 	sound_reset();
 }
-
-
-
-
-/* emu_step()
-	make CPU catch up with LCDC
-*/
-void emu_step()
-{
-	cpu_emulate(lcd.cycles);
-}
-
 
 /*
 	Time intervals throughout the code, unless otherwise noted, are
@@ -75,60 +49,54 @@ void emu_step()
 		visible lines x144 = 32832 dsc (15.66ms)
 		vblank lines x10 = 2280 dsc (1.08ms)
 */
-void emu_run()
+void IRAM_ATTR emu_run(bool draw)
 {
-	void *timer = sys_timer();
-	int delay;
+    fb.enabled = draw;
+    pcm.pos = 0;
 
-	// vid_begin();
-	// lcd_begin();
-	for (;;)
-	{
-		/* FRAME BEGIN */
+    /* FIXME: djudging by the time specified this was intended
+    to emulate through vblank phase which is handled at the
+    end of the loop. */
+    cpu_emulate(2280);
 
-		/* FIXME: djudging by the time specified this was intended
-		to emulate through vblank phase which is handled at the
-		end of the loop. */
-		cpu_emulate(2280);
+    /* FIXME: R_LY >= 0; comparsion to zero can also be removed
+    altogether, R_LY is always 0 at this point */
+    while (R_LY > 0 && R_LY < 144) {
+        /* Step through visible line scanning phase */
+        cpu_emulate(lcd.cycles);
+    }
 
-		/* FIXME: R_LY >= 0; comparsion to zero can also be removed
-		altogether, R_LY is always 0 at this point */
-		while (R_LY > 0 && R_LY < 144)
-		{
-			/* Step through visible line scanning phase */
-			emu_step();
-		}
+    /* VBLANK BEGIN */
+    if (draw && fb.blit_func) {
+		(fb.blit_func)();
+    }
 
-		/* VBLANK BEGIN */
+	// sys_vsync();
 
-		// vid_end();
-		rtc_tick();
-		sound_mix();
-		/* pcm_submit() introduces delay, if it fails we use
-		sys_sleep() instead */
-		// if (!pcm_submit())
-		{
-			delay = framelen - sys_elapsed(timer);
-			sys_sleep(delay);
-			sys_elapsed(timer);
-		}
-		doevents();
-		// vid_begin();
-		if (framecount) { if (!--framecount) emu_die("finished\n"); }
+    rtc_tick();
 
-		if (!(R_LCDC & 0x80)) {
-			/* LCDC operation stopped */
-			/* FIXME: djudging by the time specified, this is
-			intended to emulate through visible line scanning
-			phase, even though we are already at vblank here */
-			cpu_emulate(32832);
-		}
+	sound_mix();
 
-		while (R_LY > 0) {
-			/* Step through vblank phase */
-			emu_step();
-		}
-		/* VBLANK END */
-		/* FRAME END */
-	}
+    if (!(R_LCDC & 0x80)) {
+        /* LCDC operation stopped */
+        /* FIXME: djudging by the time specified, this is
+        intended to emulate through visible line scanning
+        phase, even though we are already at vblank here */
+        cpu_emulate(32832);
+    }
+
+    while (R_LY > 0) {
+        /* Step through vblank phase */
+        cpu_emulate(lcd.cycles);
+    }
+}
+
+void emu_die(const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	abort();
 }

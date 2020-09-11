@@ -12,14 +12,12 @@
 struct hw hw;
 
 
-
 /*
  * hw_interrupt changes the virtual interrupt lines included in the
  * specified mask to the values the corresponding bits in i take, and
  * in doing so, raises the appropriate bit of R_IF for any interrupt
  * lines that transition from low to high.
  */
-
 void IRAM_ATTR hw_interrupt(byte i, byte mask)
 {
 	i &= mask;
@@ -40,7 +38,6 @@ void IRAM_ATTR hw_interrupt(byte i, byte mask)
  * continues running during this mode of dma, so no special tricks to
  * stall the cpu are necessary.
  */
-
 void IRAM_ATTR hw_dma(byte b)
 {
 	addr a = ((addr)b) << 8;
@@ -49,13 +46,8 @@ void IRAM_ATTR hw_dma(byte b)
 }
 
 
-
 void IRAM_ATTR hw_hdma_cmd(byte c)
 {
-	int cnt;
-	addr sa;
-	int da;
-
 	/* Begin or cancel HDMA */
 	if ((hw.hdma|c) & 0x80)
 	{
@@ -65,9 +57,9 @@ void IRAM_ATTR hw_hdma_cmd(byte c)
 	}
 
 	/* Perform GDMA */
-	sa = ((addr)R_HDMA1 << 8) | (R_HDMA2&0xf0);
-	da = 0x8000 | ((int)(R_HDMA3&0x1f) << 8) | (R_HDMA4&0xf0);
-	cnt = ((int)c)+1;
+	int sa = ((addr)R_HDMA1 << 8) | (R_HDMA2&0xf0);
+	int da = 0x8000 | ((int)(R_HDMA3&0x1f) << 8) | (R_HDMA4&0xf0);
+	int cnt = ((int)c)+1;
 	/* FIXME - this should use cpu time! */
 	/*cpu_timers(102 * cnt);*/
 	cnt <<= 4;
@@ -83,13 +75,10 @@ void IRAM_ATTR hw_hdma_cmd(byte c)
 
 void IRAM_ATTR hw_hdma()
 {
-	int cnt;
-	addr sa;
-	int da;
+	int sa = ((addr)R_HDMA1 << 8) | (R_HDMA2&0xf0);
+	int da = 0x8000 | ((int)(R_HDMA3&0x1f) << 8) | (R_HDMA4&0xf0);
+	int cnt = 16;
 
-	sa = ((addr)R_HDMA1 << 8) | (R_HDMA2&0xf0);
-	da = 0x8000 | ((int)(R_HDMA3&0x1f) << 8) | (R_HDMA4&0xf0);
-	cnt = 16;
 	while (cnt--)
 		writeb(da++, readb(sa++));
 	R_HDMA1 = sa >> 8;
@@ -106,17 +95,13 @@ void IRAM_ATTR hw_hdma()
  * the appropriate interrupts (by quickly raising and lowering the
  * interrupt line) if a transition has been made.
  */
-
 void IRAM_ATTR pad_refresh()
 {
-	byte oldp1;
-	oldp1 = R_P1;
+	byte oldp1 = R_P1;
 	R_P1 &= 0x30;
 	R_P1 |= 0xc0;
-	if (!(R_P1 & 0x10))
-		R_P1 |= (hw.pad & 0x0F);
-	if (!(R_P1 & 0x20))
-		R_P1 |= (hw.pad >> 4);
+	if (!(R_P1 & 0x10)) R_P1 |= (hw.pad & 0x0F);
+	if (!(R_P1 & 0x20)) R_P1 |= (hw.pad >> 4);
 	R_P1 ^= 0x0F;
 	if (oldp1 & ~R_P1 & 0x0F)
 	{

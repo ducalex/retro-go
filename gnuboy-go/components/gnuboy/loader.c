@@ -130,7 +130,7 @@ int rom_load()
 	fpRomFile = fopen(romfile, "rb");
 	if (fpRomFile == NULL)
 	{
-		RG_PANIC("ROM fopen failed");
+		emu_die("ROM fopen failed");
 	}
 
 	rom_loadbank(0);
@@ -158,8 +158,8 @@ int rom_load()
 
 	memcpy(&rom.checksum, header + 0x014E, 2);
 
-	if (!mbc.romsize) emu_die("unknown ROM size %02X\n", header[0x0148]);
-	if (!mbc.ramsize) emu_die("unknown SRAM size %02X\n", header[0x0149]);
+	if (!mbc.romsize) emu_die("ROM size == 0");
+	if (!mbc.ramsize) emu_die("SRAM size == 0");
 
 	const char* mbcName;
 	switch (mbc.type)

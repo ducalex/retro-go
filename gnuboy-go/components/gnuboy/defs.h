@@ -12,7 +12,6 @@ typedef signed int n32;
 typedef un16 word;
 typedef word addr;
 
-
 #ifdef IS_LITTLE_ENDIAN
 #define LO 0
 #define HI 1
@@ -28,16 +27,14 @@ typedef word addr;
 #include <malloc.h>
 #include <math.h>
 
-void sys_sleep(int us);
-void *sys_timer();
-int  sys_elapsed(void *in_ptr);
-
-void doevents();
+/* Implemented by the port */
+extern void sys_vsync(void);
+extern void sys_panic(char *);
 
 /* emu.c */
+void emu_init();
 void emu_reset();
-void emu_run();
-void emu_step();
+void emu_run(_Bool draw);
 void emu_die(const char *fmt, ...);
 
 /* save.c */

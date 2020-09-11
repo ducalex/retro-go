@@ -19,13 +19,7 @@
 #define AUDIO_SAMPLE_RATE   (32000)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 15 + 1)
 
-#define GB_WIDTH  (160)
-#define GB_HEIGHT (144)
-
 #define NVS_KEY_SAVE_SRAM "sram"
-
-struct fb fb;
-struct pcm pcm;
 
 static int16_t audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
@@ -65,52 +59,15 @@ static void netplay_callback(netplay_event_t event, void *arg)
 }
 
 
-void run_to_vblank(bool draw)
+static inline void screen_blit(void)
 {
-    fb.enabled = draw;
-    pcm.pos = 0;
+    odroid_video_frame_t *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
 
-    /* FIXME: djudging by the time specified this was intended
-    to emulate through vblank phase which is handled at the
-    end of the loop. */
-    cpu_emulate(2280);
+    fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
 
-    /* FIXME: R_LY >= 0; comparsion to zero can also be removed
-    altogether, R_LY is always 0 at this point */
-    while (R_LY > 0 && R_LY < 144)
-    {
-        /* Step through visible line scanning phase */
-        emu_step();
-    }
-
-    /* VBLANK BEGIN */
-    if (draw)
-    {
-        odroid_video_frame_t *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
-
-        fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
-
-        // swap buffers
-        currentUpdate = previousUpdate;
-        fb.ptr = currentUpdate->buffer;
-    }
-
-    rtc_tick();
-
-    sound_mix();
-
-    if (!(R_LCDC & 0x80)) {
-        /* LCDC operation stopped */
-        /* FIXME: djudging by the time specified, this is
-        intended to emulate through visible line scanning
-        phase, even though we are already at vblank here */
-        cpu_emulate(32832);
-    }
-
-    while (R_LY > 0) {
-        /* Step through vblank phase */
-        emu_step();
-    }
+    // swap buffers
+    currentUpdate = previousUpdate;
+    fb.ptr = currentUpdate->buffer;
 }
 
 
@@ -149,7 +106,7 @@ static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
     if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
         odroid_settings_Palette_set(pal);
         pal_set_dmg(pal);
-        run_to_vblank(true);
+        emu_run(true);
     }
 
     if (pal == 0) strcpy(option->value, "GBC");
@@ -244,11 +201,12 @@ void app_main(void)
     memset(&fb, 0, sizeof(fb));
     fb.w = GB_WIDTH;
   	fb.h = GB_HEIGHT;
-  	fb.pelsize = 2;
-  	fb.pitch = fb.w * fb.pelsize;
+  	fb.pixelsize = 2;
+  	fb.pitch = fb.w * fb.pixelsize;
   	fb.ptr = currentUpdate->buffer;
   	fb.enabled = 1;
     fb.byteorder = 1;
+    fb.blit_func = &screen_blit;
 
     // Audio
     memset(&pcm, 0, sizeof(pcm));
@@ -258,7 +216,7 @@ void app_main(void)
   	pcm.buf = (n16*)&audioBuffer;
   	pcm.pos = 0;
 
-    emu_reset();
+    emu_init();
 
     pal_set_dmg(odroid_settings_Palette_get());
 
@@ -302,7 +260,7 @@ void app_main(void)
         pad_set(PAD_A, joystick.values[ODROID_INPUT_A]);
         pad_set(PAD_B, joystick.values[ODROID_INPUT_B]);
 
-        run_to_vblank(drawFrame);
+        emu_run(drawFrame);
 
         if (saveSRAM)
         {

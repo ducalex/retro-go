@@ -12,6 +12,7 @@
 
 #include "palettes.h"
 
+struct fb fb;
 struct lcd lcd;
 struct scan scan;
 
@@ -59,7 +60,7 @@ int enable_window_offset_hack = 0;
  */
 
 __attribute__((optimize("unroll-loops")))
-static byte* IRAM_ATTR get_patpix(int i, int x)
+static inline byte* get_patpix(int i, int x)
 {
 	const int index = i & 0x3ff; // 1024 entries
 	const int rotation = (i >> 10) & 3; // / 1024;
@@ -236,20 +237,13 @@ static inline void bg_scan()
 	dest += 8-U;
 	cnt -= 8-U;
 
-	if (cnt <= 0) return;
-
-	while (cnt >= 8)
+	while (cnt >= 0)
 	{
 		src = get_patpix(*(tile++), V);
 		memcpy(dest, src, 8);
 		dest += 8;
 		cnt -= 8;
 	}
-
-	if (cnt <= 0) return;
-
-	src = get_patpix(*tile, V);
-	memcpy(dest, src, cnt);
 }
 
 static inline void wnd_scan()
@@ -262,20 +256,13 @@ static inline void wnd_scan()
 	tile = WND;
 	dest = BUF + WX;
 
-	if (cnt <= 0) return;
-
-	while (cnt >= 8)
+	while (cnt >= 0)
 	{
 		src = get_patpix(*(tile++), WV);
 		memcpy(dest, src, 8);
 		dest += 8;
 		cnt -= 8;
 	}
-
-	if (cnt <= 0) return;
-
-	src = get_patpix(*tile, WV);
-	memcpy(dest, src, cnt);
 }
 
 static inline void blendcpy(byte *dest, byte *src, byte b, int cnt)
@@ -367,18 +354,13 @@ static inline void bg_scan_color()
 	dest += 8-U;
 	cnt -= 8-U;
 
-	if (cnt <= 0) return;
-
-	while (cnt >= 8)
+	while (cnt >= 0)
 	{
 		src = get_patpix(*(tile++), V);
 		blendcpy(dest, src, *(tile++), 8);
 		dest += 8;
 		cnt -= 8;
 	}
-
-	src = get_patpix(*(tile++), V);
-	blendcpy(dest, src, *(tile++), cnt);
 }
 
 static inline void wnd_scan_color()
@@ -393,16 +375,13 @@ static inline void wnd_scan_color()
 	tile = WND;
 	dest = BUF + WX;
 
-	while (cnt >= 8)
+	while (cnt >= 0)
 	{
 		src = get_patpix(*(tile++), WV);
 		blendcpy(dest, src, *(tile++), 8);
 		dest += 8;
 		cnt -= 8;
 	}
-
-	src = get_patpix(*(tile++), WV);
-	blendcpy(dest, src, *(tile++), cnt);
 }
 
 static inline void spr_enum()
@@ -503,16 +482,17 @@ static inline void spr_scan()
 		if (x >= 160 || x <= -8)
 			continue;
 
+		src = get_patpix(vs->pat, vs->v);
+		dest = BUF;
+
 		if (x < 0)
 		{
-			src = get_patpix(vs->pat, vs->v) - x;
-			dest = BUF;
+			src -= x;
 			i = 8 + x;
 		}
 		else
 		{
-			src = get_patpix(vs->pat, vs->v);
-			dest = BUF + x;
+			dest += x;
 			if (x > 152) i = 160 - x;
 			else i = 8;
 		}
@@ -645,7 +625,7 @@ static inline void pal_detect_dmg()
 	// Calculate the checksum over 16 title bytes.
 	for (int i = 0; i < 16; i++)
 	{
-		checksum += mem_read(0x0134 + i);
+		checksum += readb(0x0134 + i);
 	}
 
 	// Check if the checksum is in the list.
@@ -659,7 +639,7 @@ static inline void pal_detect_dmg()
 			if (idx > 0x40) {
 				// No idea how that works. But it works.
 				for (size_t i = idx - 0x41, j = 0; i < sizeof(colorization_disambig_chars); i += 14, j += 14) {
-					if (mem_read(0x0137) == colorization_disambig_chars[i]) {
+					if (readb(0x0137) == colorization_disambig_chars[i]) {
 						infoIdx += j;
 						break;
 					}

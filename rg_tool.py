@@ -20,6 +20,8 @@ def read_file(filepath):
     with open(filepath, "rb") as f: return f.read()
 def shell_exec(cmd):
     return subprocess.check_output(cmd, shell=True).decode().rstrip()
+def debug_print(text):
+    print("\033[0;33m%s\033[0m" % text)
 
 os.chdir(PRJ_PATH)
 
@@ -56,9 +58,6 @@ def find_symbol(elf_file, addr):
     return symbols_cache[addr]
 
 
-def flags_changed():
-    return os.getenv("RGP_PREV")
-
 def analyze_profile(frames):
     flatten = False
     tree = dict()
@@ -78,11 +77,11 @@ def analyze_profile(frames):
     for key, branch in tree_sorted:
         branch_leafs = list(branch.values())
         if branch_leafs[0][3] >= 1000: # 1ms or more
-            print("%-32s%dms" % (branch_leafs[0][1].name, branch_leafs[0][3] / 1000))
+            debug_print("%-32s%dms" % (branch_leafs[0][1].name, branch_leafs[0][3] / 1000))
             for caller, callee, num_calls, run_time in branch_leafs[1:]:
-                print("%-32s%dms" % ("    " + callee.name, run_time / 1000))
+                debug_print("%-32s%dms" % ("    " + callee.name, run_time / 1000))
             if not flatten:
-                print()
+                debug_print("")
 
 
 def build_firmware(targets):
@@ -191,7 +190,7 @@ def monitor_app(target, port, baudrate=115200):
                     for addr in re.findall(r"0x4[0-9a-fA-F]{7}", line):
                         symbol = find_symbol(elf, addr)
                         if symbol and "??:" not in symbol.source:
-                            print("\033[0;33m%s\033[0m" % symbol)
+                            debug_print(symbol)
             else:
                 line_bytes += byte
         else:
@@ -201,6 +200,7 @@ def monitor_app(target, port, baudrate=115200):
 
 parser = argparse.ArgumentParser(description="Retro-Go build tool")
 parser.add_argument(
+# To do: Learn to use subcommands instead...
     "command", choices=["build-fw", "build", "clean", "flash", "monitor", "run"],
 )
 parser.add_argument(
@@ -210,13 +210,13 @@ parser.add_argument(
     "--use-make", action="store_const", const=True, help="Use legacy make build system"
 )
 parser.add_argument(
-    "--netplay", action="store_const", const=True, help="Build with netplay enabled"
+    "--with-netplay", action="store_const", const=True, help="Build with netplay enabled"
 )
 parser.add_argument(
-    "--profile", action="store_const", const=True, help="Build with profiling enabled"
+    "--with-profiling", action="store_const", const=True, help="Build with profiling enabled"
 )
 parser.add_argument(
-    "--debug", action="store_const", const=True, help="Build with debugging enabled"
+    "--with-debugging", action="store_const", const=True, help="Build with debugging enabled"
 )
 parser.add_argument(
     "--port", default="COM3", help="Serial port to use for flash and monitor"
@@ -237,12 +237,12 @@ targets = args.targets if "all" not in args.targets else PROJECT_APPS.keys()
 if command == "build-fw":
     for target in targets:
         clean_app(target)
-        build_app(target, args.use_make, args.debug, args.profile)
+        build_app(target, args.use_make, args.with_debugging, args.with_profiling)
     build_firmware(targets)
 
 if command == "build":
     for target in targets:
-        build_app(target, args.use_make, args.debug, args.profile)
+        build_app(target, args.use_make, args.with_debugging, args.with_profiling)
 
 if command == "clean":
     for target in targets:
@@ -256,7 +256,7 @@ if command == "monitor":
     monitor_app(targets[0], args.port)
 
 if command == "run":
-    build_app(targets[0], args.use_make, args.debug, args.profile)
+    build_app(targets[0], args.use_make, args.with_debugging, args.with_profiling)
     flash_app(targets[0], args.port, find_app(targets[0], args.offset, args.app_offset))
     monitor_app(targets[0], args.port)
 

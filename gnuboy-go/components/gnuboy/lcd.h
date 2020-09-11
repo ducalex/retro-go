@@ -51,10 +51,11 @@ struct fb
 {
 	byte *ptr;
 	int w, h;
-	int pelsize;
+	int pixelsize;
 	int pitch;
 	int byteorder;
 	int enabled;
+	void (*blit_func)();
 };
 
 extern struct lcd lcd;
