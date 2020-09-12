@@ -103,15 +103,17 @@ NO_PROFILE void __cyg_profile_func_enter(void *this_fn, void *call_site)
     if (!enabled)
         return;
 
+    uint32_t now = get_elapsed_time();
+
     LOCK_PROFILE();
 
     profile_frame_t *fn = find_frame(this_fn, call_site);
 
-    // Recursion
+    // Recursion will need a real stack, this is absurd
     if (fn->enter_time != 0)
-        fn->run_time += get_elapsed_time_since(fn->enter_time);
+        fn->run_time += now - fn->enter_time;
 
-    fn->enter_time = get_elapsed_time();
+    fn->enter_time = get_elapsed_time(); // not now, because we delayed execution
     fn->num_calls++;
 
     UNLOCK_PROFILE();
@@ -122,13 +124,15 @@ NO_PROFILE void __cyg_profile_func_exit(void *this_fn, void *call_site)
     if (!enabled)
         return;
 
+    uint32_t now = get_elapsed_time();
+
     LOCK_PROFILE();
 
     profile_frame_t *fn = find_frame(this_fn, call_site);
 
     // Ignore if profiler was disabled when function entered
     if (fn->enter_time != 0)
-        fn->run_time += get_elapsed_time_since(fn->enter_time);
+        fn->run_time += now - fn->enter_time;
 
     fn->enter_time = 0;
 

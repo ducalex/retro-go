@@ -44,6 +44,23 @@ class Symbol:
             text += "\ninlined by %s" % str(self.inlined)
         return text.replace("\n", "\n  ")
 
+
+class CallBranch:
+    def __init__(self, name, parent=None):
+        self.name = name
+        self.parent = parent
+        self.run_time = 0;
+        self.children = dict()
+
+    def add_frame(self, caller, callee, num_calls, run_time):
+        if callee.hash not in self.children:
+            self.children[callee.hash] = [caller, callee, num_calls, run_time]
+        else:
+            self.children[callee.hash][2] += num_calls
+            self.children[callee.hash][3] += run_time
+        self.run_time += run_time
+
+
 def find_symbol(elf_file, addr):
     try:
         if addr not in symbols_cache:
@@ -59,29 +76,31 @@ def find_symbol(elf_file, addr):
 
 
 def analyze_profile(frames):
-    flatten = False
+    flatten = True # False is currently not working correctly
     tree = dict()
 
     for caller, callee, num_calls, run_time in frames:
-        branch = callee.hash if flatten else caller.hash
+        branch = '*' if flatten else caller.name + "@" + os.path.basename(caller.source)
         if branch not in tree:
-            tree[branch] = dict()
-        if callee.hash not in tree[branch]:
-            tree[branch][callee.hash] = [caller, callee, num_calls, run_time]
-        else:
-            tree[branch][callee.hash][2] += num_calls
-            tree[branch][callee.hash][3] += run_time
+            tree[branch] = CallBranch(branch, caller)
+        tree[branch].add_frame(caller, callee, num_calls, run_time)
 
-    tree_sorted = sorted(tree.items(), key=lambda x: list(x[1].values())[0][3], reverse=True)
+    tree_sorted = sorted(tree.values(), key=lambda x: x.run_time, reverse=True)
 
-    for key, branch in tree_sorted:
-        branch_leafs = list(branch.values())
-        if branch_leafs[0][3] >= 1000: # 1ms or more
-            debug_print("%-32s%dms" % (branch_leafs[0][1].name, branch_leafs[0][3] / 1000))
-            for caller, callee, num_calls, run_time in branch_leafs[1:]:
-                debug_print("%-32s%dms" % ("    " + callee.name, run_time / 1000))
-            if not flatten:
-                debug_print("")
+    for branch in tree_sorted:
+        if branch.run_time < 100_000:
+            continue
+
+        debug_print("%-68s %dms" % (branch.name, branch.run_time / 1000))
+        children = sorted(branch.children.values(), key=lambda x: x[3], reverse=True)
+
+        for caller, callee, num_calls, run_time in children:
+            if run_time < 10_000:
+                continue
+            debug_print("    %-32s %-20s %-10d %dms"
+                % (callee.name, os.path.basename(callee.source), num_calls, run_time / 1000))
+
+        debug_print("")
 
 
 def build_firmware(targets):
