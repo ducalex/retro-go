@@ -138,6 +138,12 @@ def build_app(target, use_make=False, with_debugging=False, with_profiling=False
         subprocess.run(["make", "-j", "6", "app"], shell=True, check=True)
     else:
         subprocess.run(["idf.py", "app"], shell=True, check=True)
+
+    print("Patching esp_image_header_t to skip sha256 on boot...")
+    with open("build/" + target + ".bin", "r+b") as fp:
+        fp.seek(23)
+        fp.write(b"\0")
+
     print("Done.\n")
 
 
