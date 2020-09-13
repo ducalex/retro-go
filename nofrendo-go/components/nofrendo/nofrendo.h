@@ -44,7 +44,7 @@
 // #define USE_SRAM_FILE
 
 /* Undef this if running on big-endian (68k) systems */
-#define IS_LITTLE_ENDIAN
+// #define IS_LITTLE_ENDIAN
 
 /* End configuration */
 

@@ -134,6 +134,7 @@ def build_app(target, use_make=False, with_debugging=False, with_profiling=False
     os.chdir(os.path.join(PRJ_PATH, target))
     os.putenv("ENABLE_PROFILING", "1" if with_profiling else "0")
     os.putenv("ENABLE_DEBUGGING", "1" if with_debugging else "0")
+    os.putenv("ENABLE_NETPLAY", "0")
     if use_make:
         subprocess.run(["make", "-j", "6", "app"], shell=True, check=True)
     else:
@@ -190,37 +191,52 @@ def monitor_app(target, port, baudrate=115200):
 
     line_bytes = b''
     while 1:
-        if mon.in_waiting > 0:
-            byte = mon.read()
-            sys.stdout.buffer.write(byte) # byte.decode()
-            if byte == b"\n":
-                line = line_bytes.decode(errors="ignore").rstrip()
-                line_bytes = b''
-                # check for profile data
-                if line.startswith("RGP:BEGIN"):
-                    profile_frames.clear()
-                elif line.startswith("RGP:END"):
-                    analyze_profile(profile_frames)
-                elif line.startswith("RGP:FRAME"):
-                    m = re.match(r"^RGP:FRAME ([x0-9a-f]+)\s([x0-9a-f]+)\s(\d+)\s(\d+)", line)
-                    if m:
-                        profile_frames.append([
-                            find_symbol(elf, m.group(1)),
-                            find_symbol(elf, m.group(2)),
-                            int(m.group(3)),
-                            int(m.group(4)),
-                        ])
-                # check for symbol addresses
-                else:
-                    for addr in re.findall(r"0x4[0-9a-fA-F]{7}", line):
-                        symbol = find_symbol(elf, addr)
-                        if symbol and "??:" not in symbol.source:
-                            debug_print(symbol)
-            else:
-                line_bytes += byte
-        else:
+        if mon.in_waiting == 0:
             sys.stdout.flush()
             time.sleep(0.010)
+            continue
+
+        byte = mon.read()
+
+        if byte != b"\n":
+            sys.stdout.buffer.write(byte) # byte.decode()
+            line_bytes += byte
+        else:
+            line = line_bytes.decode(errors="ignore").rstrip()
+            line_bytes = b''
+
+            # check for debug data meant to be analyzed, not displayed
+            m = re.match(r"^RGD:([A-Z0-9]+):([A-Z0-9]+)\s*(.*)$", line)
+            if m:
+                rg_debug_ns  = m.group(1)
+                rg_debug_cmd = m.group(2)
+                rg_debug_arg = m.group(3)
+
+                sys.stdout.buffer.write(b"\r") # Clear the line
+
+                if rg_debug_ns == "PROF":
+                    if rg_debug_cmd == "BEGIN":
+                        profile_frames.clear()
+                    if rg_debug_cmd == "END":
+                        analyze_profile(profile_frames)
+                    if rg_debug_cmd == "DATA":
+                        m = re.match(r"([x0-9a-f]+)\s([x0-9a-f]+)\s(\d+)\s(\d+)", rg_debug_arg)
+                        if m:
+                            profile_frames.append([
+                                find_symbol(elf, m.group(1)),
+                                find_symbol(elf, m.group(2)),
+                                int(m.group(3)),
+                                int(m.group(4)),
+                            ])
+                    continue
+
+            sys.stdout.buffer.write(b"\n")
+
+            # check for symbol addresses
+            for addr in re.findall(r"0x4[0-9a-fA-F]{7}", line):
+                symbol = find_symbol(elf, addr)
+                if symbol and "??:" not in symbol.source:
+                    debug_print(symbol)
 
 
 parser = argparse.ArgumentParser(description="Retro-Go build tool")
@@ -233,6 +249,9 @@ parser.add_argument(
 )
 parser.add_argument(
     "--use-make", action="store_const", const=True, help="Use legacy make build system"
+)
+parser.add_argument(
+    "--compact-fw", action="store_const", const=True, help="Ignore the partition sizes set in rg_config.py when building .fw"
 )
 parser.add_argument(
     "--with-netplay", action="store_const", const=True, help="Build with netplay enabled"

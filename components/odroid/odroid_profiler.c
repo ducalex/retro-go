@@ -9,6 +9,9 @@
 // Note this profiler might be inaccurate because of:
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=28205
 
+// We also need to add multi-core support. Currently it's not an issue
+// because all our profiled code runs on the same core.
+
 static profile_t *profile;
 static SemaphoreHandle_t lock;
 static bool enabled = false;
@@ -26,10 +29,10 @@ NO_PROFILE static inline profile_frame_t *find_frame(void *this_fn, void *call_s
         {
             profile->total_frames = MAX(profile->total_frames, i + 1);
             frame->func_ptr = this_fn;
-            frame->caller_ptr = call_site;
+            // frame->caller_ptr = call_site;
         }
 
-        if (frame->func_ptr == this_fn && frame->caller_ptr == call_site)
+        if (frame->func_ptr == this_fn) // && frame->caller_ptr == call_site)
         {
             return frame;
         }
@@ -68,14 +71,14 @@ NO_PROFILE void rg_profiler_print(void)
 
     LOCK_PROFILE();
 
-    printf("RGP:BEGIN %d %d\n", profile->total_frames, get_elapsed_time_since(profile->time_started));
+    printf("RGD:PROF:BEGIN %d %d\n", profile->total_frames, get_elapsed_time_since(profile->time_started));
 
     for (int i = 0; i < profile->total_frames; ++i)
     {
         profile_frame_t *frame = &profile->frames[i];
 
         printf(
-            "RGP:FRAME %p\t%p\t%u\t%u\n",
+            "RGD:PROF:DATA %p\t%p\t%u\t%u\n",
             frame->caller_ptr,
             frame->func_ptr,
             frame->num_calls,
@@ -83,7 +86,7 @@ NO_PROFILE void rg_profiler_print(void)
         );
     }
 
-    printf("RGP:END\n");
+    printf("RGD:PROF:END\n");
 
     UNLOCK_PROFILE();
 }

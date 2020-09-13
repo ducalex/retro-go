@@ -10,4 +10,4 @@
 COMPONENT_ADD_INCLUDEDIRS := cpu nes mappers .
 COMPONENT_SRCDIRS := cpu nes mappers .
 
-CFLAGS += -O3 -Wno-error=char-subscripts -Wno-error=attributes
+CFLAGS += -O3 -DIS_LITTLE_ENDIAN -Wno-error=char-subscripts -Wno-error=attributes
