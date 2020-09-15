@@ -16,9 +16,6 @@
 #define FINAL_RELEASE 1
 //#undef FINAL_RELEASE
 
-/* defined if inlined accessors should be used */
-#undef INLINED_ACCESSORS
-
 /* for hugo developers working on the input subsystem */
 #undef INPUT_DEBUG
 

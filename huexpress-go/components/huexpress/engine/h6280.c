@@ -17,11 +17,7 @@
 #define OPCODE(n, f) case n: f; break;
 
 // Addressing modes:
-static inline uchar // Don't want addr evaluated twice
-imm_operand(uint16 addr)
-{
-	return PageR[(addr) >> 13][(addr)];
-}
+#define imm_operand(addr)  ({uint16 x = addr; PageR[x >> 13][x];})
 #define abs_operand(x)     get_8bit_addr(get_16bit_addr(x))
 #define absx_operand(x)    get_8bit_addr(get_16bit_addr(x)+reg_x)
 #define absy_operand(x)    get_8bit_addr(get_16bit_addr(x)+reg_y)
@@ -37,23 +33,14 @@ imm_operand(uint16 addr)
 
 // Zero page access
 #define get_8bit_zp(zp_addr) (*(zp_base + (zp_addr)))
+#define get_16bit_zp(zp_addr) ({uchar x = zp_addr; get_8bit_zp(x) | get_8bit_zp(x + 1) << 8;})
 #define put_8bit_zp(zp_addr, byte) (*(zp_base + (zp_addr)) = (byte))
-// #define get_16bit_zp(zp_addr) (*((uint16*)(zp_base + (zp_addr))))
-static inline uint16
-get_16bit_zp(uchar zp_addr) // Don't want addr evaluated twice
-{
-	return (*(zp_base + zp_addr) | (*(zp_base + (zp_addr + 1)) << 8));
-}
 
 // Stack access
 #define push_8bit(byte) (*(sp_base + reg_s--) = (byte))
+#define push_16bit(addr) ({uint16 x = addr; push_8bit(x >> 8); push_8bit(x & 0xFF);})
 #define pull_8bit() (*(sp_base + ++reg_s))
 #define pull_16bit() (pull_8bit() | pull_8bit() << 8)
-static inline void push_16bit(uint16 addr)
-{
-	push_8bit(addr >> 8);
-	push_8bit(addr & 0xFF);
-}
 
 #include "h6280_opcodes.h"
 

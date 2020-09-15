@@ -157,7 +157,6 @@ int  hard_init(void);
 void hard_reset(void);
 void hard_term(void);
 
-void  Cart_write(uint16 A, uchar V);
 void  IO_write(uint16 A, uchar V);
 uchar IO_read(uint16 A);
 

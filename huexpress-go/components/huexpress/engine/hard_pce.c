@@ -185,83 +185,94 @@ return_value_mask(uint16 A)
 }
 
 
-/* read */
-static inline uchar
-IO_read_raw(uint16 A)
+static inline void
+Cart_write(uint16 A, uchar V)
 {
-    uchar ret, ofs;
+    MESSAGE_DEBUG("Cart Write %02x at %04x\n", V, A);
+
+    // SF2 Mapper
+    if (A >= 0xFFF0 && ROM_SIZE >= 0xC0)
+    {
+        if (SF2 != (A & 3))
+        {
+            SF2 = A & 3;
+            uchar *base = ROM_PTR + SF2 * (512 * 1024);
+            for (int i = 0x40; i < 0x80; i++)
+            {
+                MemoryMapR[i] = base + i * 0x2000;
+            }
+            for (int i = 0; i < 8; i++)
+            {
+                if (MMR[i] >= 0x40 && MMR[i] < 0x80)
+                    BankSet(i, MMR[i]);
+            }
+        }
+    }
+}
+
+
+
+IRAM_ATTR inline uchar
+IO_read(uint16 A)
+{
+    uchar ret = 0xFF; // Open Bus
+    uchar ofs;
 
     switch (A & 0x1FC0) {
     case 0x0000:                /* VDC */
         switch (A & 3) {
         case 0:
-#if ENABLE_TRACING_DEEP_GFX
-            TRACE("Returning vdc_status = 0x%02x\n",
-                io.vdc_status);
-#endif
             ret = io.vdc_status;
             io.vdc_status = 0;  //&=VDC_InVBlank;//&=~VDC_BSY;
-#if ENABLE_TRACING_DEEP_GFX
-            TRACE("$0000 returns %02X\n", ret);
-#endif
-            return ret;
+            break;
         case 1:
-            return 0;
+            ret = 0;
+            break;
         case 2:
             if (io.vdc_reg == VRR)
-                return VRAM[IO_VDC_REG[MARR].W * 2];
+                ret = VRAM[IO_VDC_REG[MARR].W * 2];
             else
-                return IO_VDC_REG_ACTIVE.B.l;
+                ret = IO_VDC_REG_ACTIVE.B.l;
+            break;
         case 3:
             if (io.vdc_reg == VRR) {
                 ret = VRAM[IO_VDC_REG[MARR].W * 2 + 1];
                 IO_VDC_REG[MARR].W += io.vdc_inc;
-                return ret;
             } else
-                return IO_VDC_REG_ACTIVE.B.h;
+                ret = IO_VDC_REG_ACTIVE.B.h;
+            break;
         }
         break;
 
     case 0x0400:                /* VCE */
         switch (A & 7) {
-        case 4:
-            return io.VCE[io.vce_reg.W].B.l;
-        case 5:
-            return io.VCE[io.vce_reg.W++].B.h;
+        case 4: ret = io.VCE[io.vce_reg.W].B.l;   break;
+        case 5: ret = io.VCE[io.vce_reg.W++].B.h; break;
         }
         break;
 
     case 0x0800:                /* PSG */
         switch (A & 15) {
-        case 0:
-            return io.psg_ch;
-        case 1:
-            return io.psg_volume;
-        case 2:
-            return io.PSG[io.psg_ch][2];
-        case 3:
-            return io.PSG[io.psg_ch][3];
-        case 4:
-            return io.PSG[io.psg_ch][4];
-        case 5:
-            return io.PSG[io.psg_ch][5];
+        case 0: ret = io.psg_ch; break;
+        case 1: ret = io.psg_volume; break;
+        case 2: ret = io.PSG[io.psg_ch][2]; break;
+        case 3: ret = io.PSG[io.psg_ch][3]; break;
+        case 4: ret = io.PSG[io.psg_ch][4]; break;
+        case 5: ret = io.PSG[io.psg_ch][5]; break;
         case 6:
             ofs = io.PSG[io.psg_ch][PSG_DATA_INDEX_REG];
-            io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] =
-                (uchar) ((io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] + 1) & 31);
-            return io.PSG_WAVE[io.psg_ch][ofs];
-        case 7:
-            return io.PSG[io.psg_ch][7];
-
-        case 8:
-            return io.psg_lfo_freq;
-        case 9:
-            return io.psg_lfo_ctrl;
+            io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] = (uchar) ((io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] + 1) & 31);
+            ret = io.PSG_WAVE[io.psg_ch][ofs];
+            break;
+        case 7: ret = io.PSG[io.psg_ch][7]; break;
+        case 8: ret = io.psg_lfo_freq; break;
+        case 9: ret = io.psg_lfo_ctrl; break;
         }
         break;
 
     case 0x0c00:                /* timer */
-        return io.timer_counter;
+        ret = io.timer_counter;
+        break;
 
     case 0x1000:                /* joypad */
         ret = io.JOY[io.joy_counter] ^ 0xff;
@@ -271,32 +282,35 @@ IO_read_raw(uint16 A)
             ret &= 15;
             io.joy_counter = (uchar) ((io.joy_counter + 1) % 5);
         }
-
-        /* return ret | Country; *//* country 0:JPN 1<<6=US */
-        return ret | 0x30;      // those 2 bits are always on, bit 6 = 0 (Jap), bit 7 = 0 (Attached cd)
+        ret |= 0x30; // those 2 bits are always on, bit 6 = 0 (Jap), bit 7 = 0 (Attached cd)
+        break;
 
     case 0x1400:                /* IRQ */
         switch (A & 15) {
         case 2:
-            return io.irq_mask;
+            ret = io.irq_mask;
+            break;
         case 3:
             ret = io.irq_status;
             io.irq_status = 0;
-            return ret;
+            break;
         }
         break;
 
     case 0x18C0:                // Memory management ?
         switch (A & 15) {
-        case 5:
         case 1:
-            return 0xAA;
+        case 5:
+            ret = 0xAA;
+            break;
         case 2:
         case 6:
-            return 0x55;
+            ret = 0x55;
+            break;
         case 3:
         case 7:
-            return 0x03;
+            ret = 0x03;
+            break;
         }
         break;
 
@@ -310,22 +324,12 @@ IO_read_raw(uint16 A)
 		break;
     }
 
-    // Open bus
-    return 0xFF;
-}
-
-
-IRAM_ATTR inline uchar
-IO_read(uint16 A)
-{
-	uchar temporary_return_value = IO_read_raw(A);
-
-    MESSAGE_DEBUG("IO Read %02x at %04x\n", temporary_return_value, A);
+    MESSAGE_DEBUG("IO Read %02x at %04x\n", ret, A);
 
 	if ((A < 0x800) || (A >= 0x1800))
-		return temporary_return_value;
+		return ret;
 
-	io.io_buffer = temporary_return_value | (io.io_buffer & ~return_value_mask(A));
+	io.io_buffer = ret | (io.io_buffer & ~return_value_mask(A));
 
 	return io.io_buffer;
 }
@@ -700,30 +704,4 @@ IO_write(uint16 A, uchar V)
 
     MESSAGE_DEBUG("ignore I/O write %04x,%02x\tBase address of port %X\nat PC = %04X\n",
             A, V, A & 0x1CC0, reg_pc);
-}
-
-
-IRAM_ATTR inline void
-Cart_write(uint16 A, uchar V)
-{
-    MESSAGE_DEBUG("Cart Write %02x at %04x\n", V, A);
-
-    // SF2 Mapper
-    if (A >= 0xFFF0 && ROM_SIZE >= 0xC0)
-    {
-        if (SF2 != (A & 3))
-        {
-            SF2 = A & 3;
-            uchar *base = ROM_PTR + SF2 * (512 * 1024);
-            for (int i = 0x40; i < 0x80; i++)
-            {
-                MemoryMapR[i] = base + i * 0x2000;
-            }
-            for (int i = 0; i < 8; i++)
-            {
-                if (MMR[i] >= 0x40 && MMR[i] < 0x80)
-                    BankSet(i, MMR[i]);
-            }
-        }
-    }
 }
