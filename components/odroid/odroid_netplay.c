@@ -3,7 +3,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <esp_system.h>
-#include <esp_event_loop.h>
+#include <esp_event.h>
 #include <esp_wifi.h>
 #include <esp_log.h>
 #include <string.h>
@@ -40,9 +40,7 @@ static netplay_player_t *remote_player; // This only works in 2 player mode
 static tcpip_adapter_ip_info_t local_if;
 static wifi_config_t wifi_config;
 
-static int server_sock, client_sock; // TCP
-static int rx_sock, tx_sock; // UDP
-static struct sockaddr_in rx_addr, tx_addr;
+static int rx_sock, tx_sock;
 
 
 static void dummy_netplay_callback(netplay_event_t event, void *arg)
@@ -55,11 +53,8 @@ static void network_cleanup()
 {
     if (rx_sock) close(rx_sock);
     if (tx_sock) close(tx_sock);
-    if (server_sock) close(server_sock);
-    if (client_sock) close(client_sock);
 
     rx_sock = tx_sock = 0;
-    server_sock = client_sock = 0;
     memset(&local_if, 0, sizeof(local_if));
 }
 
@@ -69,6 +64,8 @@ static void network_setup(tcpip_adapter_if_t tcpip_if)
     tcpip_adapter_get_ip_info(tcpip_if, &local_if);
 
     int player_id = ((local_if.ip.addr >> 24) & 0xF) - 1;
+    struct sockaddr_in rx_addr;
+    int bc_val = 1;
 
     local_player = &players[player_id];
     local_player->id = player_id;
@@ -82,32 +79,17 @@ static void network_setup(tcpip_adapter_if_t tcpip_if)
     rx_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     rx_addr.sin_port = htons(WIFI_NETPLAY_PORT);
 
-    tx_addr.sin_family = AF_INET;
-    tx_addr.sin_addr.s_addr = inet_addr(WIFI_BROADCAST_ADDR);
-    tx_addr.sin_port = htons(WIFI_NETPLAY_PORT);
-
     rx_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     tx_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     assert(rx_sock > 0 && tx_sock > 0);
 
-    // server_sock = socket(AF_INET, SOCK_STREAM, 0);
-    // client_sock = socket(AF_INET, SOCK_STREAM, 0);
-    // assert(client_sock > 0 && server_sock > 0);
+    setsockopt(rx_sock, SOL_SOCKET, SO_BROADCAST, &bc_val, sizeof bc_val);
+    setsockopt(tx_sock, SOL_SOCKET, SO_BROADCAST, &bc_val, sizeof bc_val);
 
     if (bind(rx_sock, (struct sockaddr *)&rx_addr, sizeof rx_addr) < 0)
     {
         RG_PANIC("netplay: bind() failed");
     }
-
-    // if (bind(server_sock, (struct sockaddr *)&rx_addr, sizeof rx_addr) < 0)
-    // {
-    //     RG_PANIC("netplay: bind() failed");
-    // }
-
-    // if (listen(server_sock, 2) < 0)
-    // {
-    //     RG_PANIC("netplay: listen() failed");
-    // }
 }
 
 
@@ -150,6 +132,7 @@ static inline void send_packet(uint32_t dest, uint8_t cmd, uint8_t arg, void *da
 {
     netplay_packet_t packet = {local_player->id, cmd, arg, data_len, {}};
     size_t len = sizeof(packet) - sizeof(packet.data) + data_len;
+    struct sockaddr_in tx_addr;
 
     if (data_len > 0)
     {
@@ -158,10 +141,14 @@ static inline void send_packet(uint32_t dest, uint8_t cmd, uint8_t arg, void *da
 
     if (dest < MAX_PLAYERS)
     {
+        tx_addr.sin_family = AF_INET;
+        tx_addr.sin_port = htons(WIFI_NETPLAY_PORT);
         tx_addr.sin_addr.s_addr = players[dest].ip_addr;
     }
     else
     {
+        tx_addr.sin_family = AF_INET;
+        tx_addr.sin_port = htons(WIFI_NETPLAY_PORT);
         tx_addr.sin_addr.s_addr = dest;
     }
 
@@ -170,51 +157,46 @@ static inline void send_packet(uint32_t dest, uint8_t cmd, uint8_t arg, void *da
         printf("netplay: [Error] sendto() failed\n");
         // stop network
     }
-    // return send(client_sock, &packet, len, 0) >= 0;
 }
 
-
-static esp_err_t event_handler(void *ctx, system_event_t *event)
+static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
-    switch (event->event_id)
+    if (event_base == WIFI_EVENT)
     {
-        case SYSTEM_EVENT_AP_START:
+        if (event_id == WIFI_EVENT_AP_START)
+        {
             network_setup(TCPIP_ADAPTER_IF_AP);
             set_status(NETPLAY_STATUS_LISTENING);
-            break;
-
-        case SYSTEM_EVENT_STA_START:
-        case SYSTEM_EVENT_AP_STACONNECTED:
-        case SYSTEM_EVENT_STA_CONNECTED:
+        }
+        else if (event_id == WIFI_EVENT_AP_STOP || event_id == WIFI_EVENT_STA_STOP)
+        {
+            set_status(NETPLAY_STATUS_STOPPED);
+        }
+        else if (event_id == WIFI_EVENT_STA_CONNECTED || event_id == WIFI_EVENT_AP_STACONNECTED)
+        {
             set_status(NETPLAY_STATUS_CONNECTING);
-            break;
-
-        case SYSTEM_EVENT_AP_STAIPASSIGNED:
-            send_packet(event->event_info.ap_staipassigned.ip.addr, NETPLAY_PACKET_INFO,
-                                       0, (void*)local_player, sizeof(netplay_player_t));
-            set_status(NETPLAY_STATUS_HANDSHAKE);
-            break;
-
-        case SYSTEM_EVENT_STA_GOT_IP:
+        }
+        else if (event_id == WIFI_EVENT_AP_STADISCONNECTED || event_id == WIFI_EVENT_STA_DISCONNECTED)
+        {
+            set_status(NETPLAY_STATUS_DISCONNECTED);
+        }
+    }
+    else if (event_base == IP_EVENT)
+    {
+        if (event_id == IP_EVENT_STA_GOT_IP)
+        {
             network_setup(TCPIP_ADAPTER_IF_STA);
             set_status(NETPLAY_STATUS_HANDSHAKE);
-            break;
+        }
+        else if (event_id == IP_EVENT_AP_STAIPASSIGNED)
+        {
+            ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
 
-        case SYSTEM_EVENT_AP_STADISCONNECTED:
-        case SYSTEM_EVENT_STA_DISCONNECTED:
-            set_status(NETPLAY_STATUS_DISCONNECTED);
-            break;
-
-        case SYSTEM_EVENT_AP_STOP:
-        case SYSTEM_EVENT_STA_STOP:
-            set_status(NETPLAY_STATUS_STOPPED);
-            break;
-
-        default:
-            return ESP_OK;
+            send_packet(event->ip_info.ip.addr, NETPLAY_PACKET_INFO,
+                                       0, (void*)local_player, sizeof(netplay_player_t));
+            set_status(NETPLAY_STATUS_HANDSHAKE);
+        }
     }
-
-    return ESP_OK;
 }
 
 
@@ -230,9 +212,9 @@ static void netplay_task()
         memset(&packet, 0, sizeof(netplay_packet_t));
 
     #ifdef NETPLAY_SYNCHRONOUS_TEST
-        if (!(rx_sock || client_sock) || netplay_status != NETPLAY_STATUS_HANDSHAKE)
+        if (!rx_sock || netplay_status != NETPLAY_STATUS_HANDSHAKE)
     #else
-        if (!(rx_sock || client_sock) || netplay_status < NETPLAY_STATUS_HANDSHAKE)
+        if (!rx_sock || netplay_status < NETPLAY_STATUS_HANDSHAKE)
     #endif
         {
             vTaskDelay(pdMS_TO_TICKS(100));
@@ -353,11 +335,14 @@ static void netplay_init()
 
         tcpip_adapter_init();
 
+        esp_event_loop_create_default();
+
         wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
         ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+        ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
+        ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
         ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE)); // Improves latency a lot
         ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-        ESP_ERROR_CHECK(esp_event_loop_init(&event_handler, NULL));
 
         xTaskCreatePinnedToCore(&netplay_task, "netplay_task", 4096, NULL, 7, NULL, 1);
     }
@@ -410,7 +395,6 @@ bool odroid_netplay_quick_start()
                 status_msg = "Exchanging info...";
                 break;
 
-            case NETPLAY_STATUS_TCPCONNECT:
             case NETPLAY_STATUS_CONNECTING:
                 status_msg = "Connecting...";
                 break;

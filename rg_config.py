@@ -1,6 +1,6 @@
 # Important: This file is now exec() in the global scope
 # Notes:
-# - Enabling netplay in an emulator increases its size by ~350KB
+# - Enabling netplay in an emulator increases its size by ~350KB (~450KB in esp-idf 4.0)
 # - Enabling profiling in an emulator increases its size by ~75KB (without no-inline)
 # - Keep at least 32KB free in a partition for future updates
 # - Partitions must be 64K aligned
