@@ -285,6 +285,32 @@ enum _VDC_REG {
 /**
  * Inlined Memory Functions
  */
+#if 1
+
+#define Read8(addr) ({							\
+	uint16 a = (addr);							\
+	uchar *page = PageR[a >> 13]; 				\
+	(page == IOAREA) ? IO_read(a) : page[a]; 	\
+})
+
+#define Write8(addr, byte) {					\
+	uint16 a = (addr), b = (byte); 				\
+	uchar *page = PageW[a >> 13]; 				\
+	if (page == IOAREA) IO_write(a, b); 		\
+	else page[a] = b;							\
+}
+
+#define Read16(addr) ({							\
+	uint16 a = (addr); 							\
+	*((uint16*)(PageR[a >> 13] + a));			\
+})
+
+#define Write16(addr, word) {					\
+	uint16 a = (addr), w = (word); 				\
+	*((uint16*)(PageR[a >> 13] + a)) = w;		\
+}
+
+#else
 
 static inline uchar
 Read8(uint16 addr)
@@ -320,6 +346,8 @@ Write16(uint16 addr, uint16 word)
 	*((uint16*)(PageR[addr >> 13] + (addr))) = word;
 }
 
+#endif
+
 static inline void
 BankSet(uchar P, uchar V)
 {
@@ -329,7 +357,6 @@ BankSet(uchar P, uchar V)
     PageR[P] = (MemoryMapR[V] == IOAREA) ? (IOAREA) : (MemoryMapR[V] - P * 0x2000);
     PageW[P] = (MemoryMapW[V] == IOAREA) ? (IOAREA) : (MemoryMapW[V] - P * 0x2000);
 }
-
 
 /**
   * Inlined HW Functions

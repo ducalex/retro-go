@@ -28,18 +28,6 @@ static uint32 rand_val[6]; // Noise seed
 static uint32 k[6];
 static uint32 r[6];
 
-static inline int
-mseq(uint32 * rand_val)
-{
-    if (*rand_val & 0x00080000) {
-        *rand_val = ((*rand_val ^ 0x0004) << 1) + 1;
-        return 1;
-    } else {
-        *rand_val <<= 1;
-        return 0;
-    }
-}
-
 
 int
 snd_init()
@@ -228,7 +216,14 @@ psg_update(char *buf, int ch, unsigned dwSize)
             k[ch] += 3000 + Np * 512;
 
             if ((t = (k[ch] / (uint32) host.sound.freq)) >= 1) {
-                r[ch] = mseq(&rand_val[ch]);
+                // mseq
+                if (rand_val[ch] & 0x00080000) {
+                    rand_val[ch] = ((rand_val[ch] ^ 0x0004) << 1) + 1;
+                    r[ch] = 1;
+                } else {
+                    rand_val[ch] <<= 1;
+                    r[ch] = 0;
+                }
                 k[ch] -= host.sound.freq * t;
             }
 

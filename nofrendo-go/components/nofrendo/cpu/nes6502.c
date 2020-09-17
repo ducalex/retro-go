@@ -1069,28 +1069,9 @@ static mem_t *mem;
 
 #ifdef NES6502_FASTMEM
 
-INLINE uint8 fast_readbyte(uint16 address)
-{
-   return mem->pages[address >> MEM_PAGESHIFT][address];
-}
-
-INLINE uint16 fast_readword(uint32 address)
-{
-   if ((address & MEM_PAGEMASK) != MEM_PAGEMASK) // Page cross
-   {
-      return PAGE_READWORD(mem->pages[address >> MEM_PAGESHIFT], address);
-   }
-   return mem_getword(address);
-}
-
-INLINE void writebyte(uint32 address, uint8 value)
-{
-   if (address < 0x2000) {
-      mem->ram[address & 0x7FF] = value;
-   } else {
-      mem_putbyte(address, value);
-   }
-}
+#define fast_readbyte(a) ({uint16 _a = (a); mem->pages[_a >> MEM_PAGESHIFT][_a];})
+#define fast_readword(a) ({uint16 _a = (a); ((_a & MEM_PAGEMASK) != MEM_PAGEMASK) ? PAGE_READWORD(mem->pages[_a >> MEM_PAGESHIFT], _a) : mem_getword(_a);})
+#define writebyte(a, v)  {uint16 _a = (a), _v = (v); if (_a < 0x2000) mem->ram[_a & 0x7FF] = _v; else mem_putbyte(_a, _v);}
 
 #else /* !NES6502_FASTMEM */
 

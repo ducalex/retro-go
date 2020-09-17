@@ -42,7 +42,7 @@
 #define pull_8bit() (*(sp_base + ++reg_s))
 #define pull_16bit() (pull_8bit() | pull_8bit() << 8)
 
-#include "h6280_opcodes.h"
+#include "h6280_instr.h"
 
 #define Int6502(Type)                                       \
 {                                                           \

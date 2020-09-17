@@ -22,6 +22,8 @@ enum {
   Z80_TABLE_xycb,
   Z80_TABLE_ex  /* cycles counts for taken jr/jp/call and interrupt latency (rst opcodes) */
 };
+#define Z80_TABLE_dd  Z80_TABLE_xy
+#define Z80_TABLE_fd  Z80_TABLE_xy
 
 /****************************************************************************/
 /* The Z80 registers. HALT is set to 1 when the CPU is halted, the refresh  */

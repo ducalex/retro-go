@@ -21,7 +21,7 @@ macro(rg_setup_compile_options)
 
     if($ENV{ENABLE_PROFILING})
         # Still debating whether -fno-inline is necessary or not...
-        component_compile_options(-DENABLE_PROFILING -fno-inline -finstrument-functions)
+        component_compile_options(-DENABLE_PROFILING -finstrument-functions)
     endif()
 
     if($ENV{ENABLE_DEBUGGING})

@@ -56,6 +56,18 @@ int enable_window_offset_hack = 0;
 
 
 /**
+ * Helper macros
+ */
+
+#define priused(attr) ({un32 *a = (un32*)(attr); (int)((a[0]|a[1]|a[2]|a[3]|a[4]|a[5]|a[6]|a[7])&0x80808080);})
+
+#define blendcpy(dest, src, b, cnt) {					\
+	byte *s = (src), *d = (dest), _b = (b), c = (cnt); 	\
+	while(c--) *(d + c) = *(s + c) | _b; 				\
+}
+
+
+/**
  * Drawing routines
  */
 
@@ -263,17 +275,6 @@ static inline void wnd_scan()
 		dest += 8;
 		cnt -= 8;
 	}
-}
-
-static inline void blendcpy(byte *dest, byte *src, byte b, int cnt)
-{
-	while (cnt--) *(dest++) = *(src++) | b;
-}
-
-static inline int priused(void *attr)
-{
-	un32 *a = attr;
-	return (int)((a[0]|a[1]|a[2]|a[3]|a[4]|a[5]|a[6]|a[7])&0x80808080);
 }
 
 static inline void bg_scan_pri()

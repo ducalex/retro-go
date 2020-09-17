@@ -55,37 +55,10 @@ struct snd snd;
 #define S3 (snd.ch[2])
 #define S4 (snd.ch[3])
 
-
-static inline void s1_freq_d(int d)
-{
-	if (RATE > (d<<4)) S1.freq = 0;
-	else S1.freq = (RATE << 17)/d;
-}
-
-static inline void s1_freq()
-{
-	s1_freq_d(2048 - (((R_NR14&7)<<8) + R_NR13));
-}
-
-static inline void s2_freq()
-{
-	int d = 2048 - (((R_NR24&7)<<8) + R_NR23);
-	if (RATE > (d<<4)) S2.freq = 0;
-	else S2.freq = (RATE << 17)/d;
-}
-
-static inline void s3_freq()
-{
-	int d = 2048 - (((R_NR34&7)<<8) + R_NR33);
-	if (RATE > (d<<3)) S3.freq = 0;
-	else S3.freq = (RATE << 21)/d;
-}
-
-static inline void s4_freq()
-{
-	S4.freq = (freqtab[R_NR43&7] >> (R_NR43 >> 4)) * RATE;
-	if (S4.freq >> 18) S4.freq = 1<<18;
-}
+#define s1_freq() {int d = 2048 - (((R_NR14&7)<<8) + R_NR13); S1.freq = (RATE > (d<<4)) ? 0 : (RATE << 17)/d;}
+#define s2_freq() {int d = 2048 - (((R_NR24&7)<<8) + R_NR23); S2.freq = (RATE > (d<<4)) ? 0 : (RATE << 17)/d;}
+#define s3_freq() {int d = 2048 - (((R_NR34&7)<<8) + R_NR33); S3.freq = (RATE > (d<<3)) ? 0 : (RATE << 21)/d;}
+#define s4_freq() {S4.freq = (freqtab[R_NR43&7] >> (R_NR43 >> 4)) * RATE; if (S4.freq >> 18) S4.freq = 1<<18;}
 
 void sound_dirty()
 {
@@ -187,7 +160,8 @@ void IRAM_ATTR sound_mix()
 					S1.swfreq = f;
 					R_NR13 = f;
 					R_NR14 = (R_NR14 & 0xF8) | (f>>8);
-					s1_freq_d(2048 - f);
+					// s1_freq_d(2048 - f);
+					s1_freq();
 				}
 			}
 			s <<= 2;

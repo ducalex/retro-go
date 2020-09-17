@@ -95,7 +95,7 @@ extern void vdp_write(int offset, uint8 data);
 extern void gg_vdp_write(int offset, uint8 data);
 extern void tms_write(int offset, int data);
 
-static inline uint8 vdp_counter_r(int offset)
+static inline uint8 vdp_counter_read(int offset)
 {
     if (offset & 1)  /* V Counter */
       return sms.hlatch;

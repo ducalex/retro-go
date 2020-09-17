@@ -181,7 +181,7 @@ uint8 sms_port_r(uint16 port)
       return z80_read_unmapped();
 
     case 0x40:
-      return vdp_counter_r(port);
+      return vdp_counter_read(port);
 
     case 0x80:
       return vdp_read(port);
@@ -243,7 +243,7 @@ uint8 gg_port_r(uint16 port)
       return z80_read_unmapped();
 
     case 0x40:
-      return vdp_counter_r(port);
+      return vdp_counter_read(port);
 
     case 0x80:
       return vdp_read(port);
@@ -312,7 +312,7 @@ uint8 ggms_port_r(uint16 port)
       return z80_read_unmapped();
 
     case 0x40:
-      return vdp_counter_r(port);
+      return vdp_counter_read(port);
 
     case 0x80:
       return vdp_read(port);

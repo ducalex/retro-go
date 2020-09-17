@@ -31,8 +31,4 @@
 
 #define PCE_PATH_MAX 192
 
-/* Define to `__inline__' or `__inline' if that's what the C compiler
-   calls it, or to nothing if 'inline' is not supported under any name.  */
-// #ifndef __cplusplus
-// #undef inline
-// #endif
+#define INLINE static inline __attribute__((__always_inline__))
