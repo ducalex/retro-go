@@ -193,6 +193,7 @@ render_lines(int min_line, int max_line)
 
 		// Temp hack
 		if (max_line == 239) max_line = 240;
+
 		if (SpriteON)
 		{
 			RefreshSpriteExact(min_line, max_line, 0); // max_line + 1
@@ -251,11 +252,8 @@ gfx_loop()
 	//  else
 	//      printf("Raster disabled\n");
 
-	// Rendering of tiles / sprites
-
-	if (Scanline < 14) {
-		gfx_need_redraw = 0;
-	} else if (Scanline < 14 + 242) {
+	/* Drawing area */
+	if (Scanline >= 14 && Scanline <= 255) {
 		if (Scanline == 14) {
 			last_display_counter = 0;
 			display_counter = 0;
@@ -264,7 +262,7 @@ gfx_loop()
 			// Signal that we've left the VBlank area
 			io.vdc_status &= ~VDC_InVBlank;
 
-			TRACE("Cleaning VBlank bit from vdc_status (now, 0x%02x)",
+			TRACE_GFX("Cleaning VBlank bit from vdc_status (now, 0x%02x)",
 				io.vdc_status);
 		}
 
@@ -273,7 +271,7 @@ gfx_loop()
 
 			gfx_save_context(0);
 
-			TRACE("GFX: FORCED SAVE OF GFX CONTEXT\n");
+			TRACE_GFX("GFX: FORCED SAVE OF GFX CONTEXT\n");
 		}
 
 		if (Scanline >= io.vdc_minline && Scanline <= io.vdc_maxline) {
@@ -287,70 +285,71 @@ gfx_loop()
 			}
 			display_counter++;
 		}
-	} else if (Scanline < 14 + 242 + 4) {
-		if (Scanline == 14 + 242) {
-			gfx_save_context(0);
+	}
+	/* V Blank trigger line */
+	else if (Scanline == 256) {
+		gfx_save_context(0);
 
-			render_lines(last_display_counter, display_counter);
+		render_lines(last_display_counter, display_counter);
 
-			if (io.vdc_mode_chg) {
-				gfx_change_video_mode();
-				io.vdc_mode_chg = 0;
-			}
+		if (io.vdc_mode_chg) {
+			gfx_change_video_mode();
+			io.vdc_mode_chg = 0;
+		}
 
-			if (osd_keyboard())
-				return INT_QUIT;
+		if (osd_keyboard())
+			return INT_QUIT;
 
-			if (!UCount)
-				RefreshScreen();
+		if (!UCount)
+			RefreshScreen();
 
 		if (sprite_hit_check())
 			io.vdc_status |= VDC_SpHit;
 		else
 			io.vdc_status &= ~VDC_SpHit;
 
-			if (!UCount) {
+		if (!UCount) {
 #if defined(ENABLE_NETPLAY)
-				if (option.want_netplay != INTERNET_PROTOCOL) {
-					/* When in internet protocol mode, it's the server which is in charge of throlling */
-					osd_wait_next_vsync();
-				}
-#else
+			if (option.want_netplay != INTERNET_PROTOCOL) {
+				/* When in internet protocol mode, it's the server which is in charge of throlling */
 				osd_wait_next_vsync();
+			}
+#else
+			osd_wait_next_vsync();
 #endif							/* NETPLAY_ENABLE */
-				UCount = UPeriod;
-			} else {
-				UCount--;
-			}
-
-			/* VRAM to SATB DMA */
-			if (io.vdc_satb == 1 || IO_VDC_REG[DCR].W & 0x0010) {
-				memcpy(SPRAM, VRAM + IO_VDC_REG[SATB].W * 2, 64 * 8);
-				// io.vdc_satb = 1;
-				io.vdc_satb = 0;
-				io.vdc_status &= ~VDC_SATBfinish;
-
-				// Mark satb dma end interuption to happen in 4 scanlines
-				io.vdc_satb_counter = 4;
-			}
-
-			if (return_value == INT_IRQ)
-				io.vdc_pendvsync = 1;
-			else {
-				if (VBlankON) {
-					io.vdc_status |= VDC_InVBlank;
-					return_value = INT_IRQ;
-				}
-			}
+			UCount = UPeriod;
+		} else {
+			UCount--;
 		}
 
-	} else {
-		//Three last lines of ntsc scanlining
+		/* VRAM to SATB DMA */
+		if (io.vdc_satb == 1 || IO_VDC_REG[DCR].W & 0x0010) {
+			memcpy(SPRAM, VRAM + IO_VDC_REG[SATB].W * 2, 64 * 8);
+			// io.vdc_satb = 1;
+			io.vdc_satb = 0;
+			io.vdc_status &= ~VDC_SATBfinish;
+
+			// Mark satb dma end interuption to happen in 4 scanlines
+			io.vdc_satb_counter = 4;
+		}
+
+		if (return_value == INT_IRQ)
+			io.vdc_pendvsync = 1;
+		else {
+			if (VBlankON) {
+				io.vdc_status |= VDC_InVBlank;
+				return_value = INT_IRQ;
+			}
+		}
+	}
+	/* V Blank area */
+	else {
+		gfx_need_redraw = 0;
 	}
 
 	Scanline++;
 
-	if (Scanline >= 263)
+	if (Scanline > 262)
 		Scanline = 0;
 
 	if ((return_value != INT_IRQ) && io.vdc_pendvsync) {
