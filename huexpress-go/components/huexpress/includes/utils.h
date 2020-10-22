@@ -18,10 +18,40 @@
 
 #define MESSAGE_ERROR(x...) osd_log("!! " x)
 #define MESSAGE_INFO(x...) osd_log(" * " x)
-#ifndef FINAL_RELEASE
+#if DEBUG_ENABLED
 #define MESSAGE_DEBUG(x...) osd_log(" ~ " x)
 #else
 #define MESSAGE_DEBUG(x...) {}
+#endif
+
+#if ENABLE_SPR_TRACING
+#define TRACE_SPR(x...) osd_log(" & (SPR) " x)
+#else
+#define TRACE_SPR(x...) {}
+#endif
+
+#if ENABLE_GFX_TRACING
+#define TRACE_GFX(x...) osd_log(" & (GFX) " x)
+#else
+#define TRACE_GFX(x...) {}
+#endif
+
+#if ENABLE_GFX2_TRACING
+#define TRACE_GFX2(x...) osd_log(" & (GFX2) " x)
+#else
+#define TRACE_GFX2(x...) {}
+#endif
+
+#if ENABLE_IO_TRACING
+#define TRACE_IO(x...) osd_log(" & (IO) " x)
+#else
+#define TRACE_IO(x...) {}
+#endif
+
+#if ENABLE_CPU_TRACING
+#define TRACE_CPU(x...) osd_log(" & (CPU) " x)
+#else
+#define TRACE_CPU(x...) {}
 #endif
 
 #if !defined(MIN)

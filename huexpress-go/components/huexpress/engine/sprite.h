@@ -51,7 +51,6 @@ extern int ScrollYDiff;
 // The true refreshing function
 extern void RefreshLine(int Y1, int Y2);
 extern void RefreshSpriteExact(int Y1, int Y2, uchar bg);
-extern int32 CheckSprites(void);
 extern void RefreshScreen(void);
 
 #endif

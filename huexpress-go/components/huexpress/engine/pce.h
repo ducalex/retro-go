@@ -35,8 +35,8 @@ struct host_machine {
 
 	struct {
 		int frameSkip;
-		#define BGONSwitch 1
-		#define SPONSwitch 1
+		int bgEnabled;
+		int fgEnabled;
 	} options;
 
 	struct {

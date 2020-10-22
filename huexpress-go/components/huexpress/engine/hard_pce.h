@@ -351,7 +351,7 @@ Write16(uint16 addr, uint16 word)
 static inline void
 BankSet(uchar P, uchar V)
 {
-    // MESSAGE_DEBUG("Bank switching (MMR[%d] = %d)\n", P, V);
+    TRACE_IO("Bank switching (MMR[%d] = %d)\n", P, V);
 
 	MMR[P] = V;
     PageR[P] = (MemoryMapR[V] == IOAREA) ? (IOAREA) : (MemoryMapR[V] - P * 0x2000);

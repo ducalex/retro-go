@@ -188,7 +188,7 @@ return_value_mask(uint16 A)
 static inline void
 Cart_write(uint16 A, uchar V)
 {
-    MESSAGE_DEBUG("Cart Write %02x at %04x\n", V, A);
+    TRACE_IO("Cart Write %02x at %04x\n", V, A);
 
     // SF2 Mapper
     if (A >= 0xFFF0 && ROM_SIZE >= 0xC0)
@@ -324,7 +324,7 @@ IO_read(uint16 A)
 		break;
     }
 
-    MESSAGE_DEBUG("IO Read %02x at %04x\n", ret, A);
+    TRACE_IO("IO Read %02x at %04x\n", ret, A);
 
 	if ((A < 0x800) || (A >= 0x1800))
 		return ret;
@@ -338,7 +338,7 @@ IO_read(uint16 A)
 IRAM_ATTR inline void
 IO_write(uint16 A, uchar V)
 {
-    MESSAGE_DEBUG("IO Write %02x at %04x\n", V, A);
+    TRACE_IO("IO Write %02x at %04x\n", V, A);
 
     if ((A >= 0x800) && (A < 0x1800))   // We keep the io buffer value
         io.io_buffer = V;
@@ -355,9 +355,7 @@ IO_write(uint16 A, uchar V)
         case 1:
             return;
         case 2:
-#if ENABLE_TRACING_DEEP_GFX
-            TRACE("VDC[%02x]=0x%02x, ", io.vdc_reg, V);
-#endif
+            TRACE_GFX2("VDC[%02x]=0x%02x\n", io.vdc_reg, V);
             switch (io.vdc_reg) {
             case VWR:           /* Write to video */
                 io.vdc_ratch = V;
@@ -387,9 +385,7 @@ IO_write(uint16 A, uchar V)
                 IO_VDC_REG[BYR].B.l = V;
                 ScrollYDiff = Scanline - 1;
                 ScrollYDiff -= IO_VDC_REG[VPR].B.h + IO_VDC_REG[VPR].B.l;
-#if ENABLE_TRACING_DEEP_GFX
-                TRACE("ScrollY = %d (l), ", ScrollY);
-#endif
+                TRACE_GFX2("ScrollY = %d (l)\n", ScrollY);
                 break;
 
             case BXR:           /* Horizontal screen offset */
@@ -495,9 +491,7 @@ IO_write(uint16 A, uchar V)
                 /* TODO : well, maybe we should implement it */
                 //io.screen_w = (io.VDC_ratch[HDR]+1)*8;
                 //TRACE0("HDRh\n");
-#if ENABLE_TRACING_DEEP_GFX
-                TRACE("VDC[HDR].h = %d, ", V);
-#endif
+                TRACE_GFX2("VDC[HDR].h = %d\n", V);
                 return;
 
             case BYR:           /* Vertical screen offset */
@@ -509,15 +503,11 @@ IO_write(uint16 A, uchar V)
                 IO_VDC_REG[BYR].B.h = V & 1;
                 ScrollYDiff = Scanline - 1;
                 ScrollYDiff -= IO_VDC_REG[VPR].B.h + IO_VDC_REG[VPR].B.l;
-#if ENABLE_TRACING_GFX
                 if (ScrollYDiff < 0)
-                    TRACE("ScrollYDiff went negative when substraction VPR.h/.l (%d,%d)\n",
+                    TRACE_GFX("ScrollYDiff went negative when substraction VPR.h/.l (%d,%d)\n",
                         IO_VDC_REG[VPR].B.h, IO_VDC_REG[VPR].B.l);
-#endif
 
-#if ENABLE_TRACING_DEEP_GFX
-                TRACE("ScrollY = %d (h), ", ScrollY);
-#endif
+                TRACE_GFX2("ScrollY = %d (h)\n", ScrollY);
                 return;
 
             case SATB:          /* DMA from VRAM to SATB */
@@ -614,10 +604,10 @@ IO_write(uint16 A, uchar V)
 
         case 4:
             io.PSG[io.psg_ch][4] = V;
-#if ENABLE_TRACING_AUDIO
-            if ((V & 0xC0) == 0x40)
-                io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] = 0;
-#endif
+// #if DEBUG_AUDIO
+//             if ((V & 0xC0) == 0x40)
+//                 io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] = 0;
+// #endif
             return;
 
             /* Set channel specific volume */

@@ -24,13 +24,6 @@
 #include "pce.h"
 
 
-#undef TRACE
-#if ENABLE_TRACING_SPRITE
-#define TRACE(x...) printf("TraceSprite: " x)
-#else
-#define TRACE(x...)
-#endif
-
 #define	PAL(c)	R[c]
 
 // These are array to keep in memory the result of the linearisation of
@@ -49,32 +42,6 @@ int ScrollYDiff;
 // Actual memory area where the gfx functions are drawing sprites and tiles
 uchar *SPM_raw;//[XBUF_WIDTH * XBUF_HEIGHT];
 uchar *SPM;// = SPM_raw + XBUF_WIDTH * 64 + 32;
-
-/*
-	Hit Chesk Sprite#0 and others
-*/
-int32
-CheckSprites(void)
-{
-	int i, x0, y0, w0, h0, x, y, w, h;
-	SPR *spr;
-
-	spr = (SPR *) SPRAM;
-	x0 = spr->x;
-	y0 = spr->y;
-	w0 = (((spr->atr >> 8) & 1) + 1) * 16;
-	h0 = (((spr->atr >> 12) & 3) + 1) * 16;
-	spr++;
-	for (i = 1; i < 64; i++, spr++) {
-		x = spr->x;
-		y = spr->y;
-		w = (((spr->atr >> 8) & 1) + 1) * 16;
-		h = (((spr->atr >> 12) & 3) + 1) * 16;
-		if ((x < x0 + w0) && (x + w > x0) && (y < y0 + h0) && (y + h > y0))
-			return 1;
-	}
-	return 0;
-}
 
 
 /*****************************************************************************
@@ -346,25 +313,25 @@ plane2pixel(int no)
     uchar *C = VRAM + no * 32;
     uchar *C2 = VRAM2 + no * 8 * 4;
 
-    TRACE("Planing tile %d\n", no);
+    TRACE_SPR("Planing tile %d\n", no);
     for (i = 0; i < 8; i++, C += 2, C2 += 4) {
         M = C[0];
-        TRACE("C[0]=%02X\n", M);
+        TRACE_SPR("C[0]=%02X\n", M);
         L = ((M & 0x88) >> 3)
             | ((M & 0x44) << 6) | ((M & 0x22) << 15)
             | ((M & 0x11) << 24);
         M = C[1];
-        TRACE("C[1]=%02X\n", M);
+        TRACE_SPR("C[1]=%02X\n", M);
         L |= ((M & 0x88) >> 2)
             | ((M & 0x44) << 7) | ((M & 0x22) << 16)
             | ((M & 0x11) << 25);
         M = C[16];
-        TRACE("C[16]=%02X\n", M);
+        TRACE_SPR("C[16]=%02X\n", M);
         L |= ((M & 0x88) >> 1)
             | ((M & 0x44) << 8) | ((M & 0x22) << 17)
             | ((M & 0x11) << 26);
         M = C[17];
-        TRACE("C[17]=%02X\n", M);
+        TRACE_SPR("C[17]=%02X\n", M);
         L |= ((M & 0x88))
             | ((M & 0x44) << 9) | ((M & 0x22) << 18)
             | ((M & 0x11) << 27);
@@ -373,7 +340,7 @@ plane2pixel(int no)
         C2[1] = (L >> 8) & 0xff;
         C2[2] = (L >> 16) & 0xff;
         C2[3] = (L >> 24) & 0xff;
-        TRACE("L=%04X\n", L);
+        TRACE_SPR("L=%04X\n", L);
     }
 }
 
@@ -415,20 +382,16 @@ RefreshLine(int Y1, int Y2)
 
     uchar *PP;
 
-#if ENABLE_TRACING_GFX
     if (Y1 == 0) {
-        TRACE("\n= %d =================================================\n",
-            frame);
+        MESSAGE_INFO("\n=================================================\n");
     }
-    TRACE("Rendering lines %3d - %3d\tScroll: (%3d,%3d,%3d)\n",
-        Y1, Y2, ScrollX, ScrollY, ScrollYDiff);
-#endif
 
-    if (!(ScreenON && BGONSwitch)) {
+    MESSAGE_INFO("Rendering lines %3d - %3d\tScroll: (%3d,%3d,%3d)\n",
+        Y1, Y2, ScrollX, ScrollY, ScrollYDiff);
+
+    if (!ScreenON || Y1 == Y2) {
         return;
     }
-
-    PP = osd_gfx_buffer + XBUF_WIDTH * Y1;
 
     y = Y1 + ScrollY - ScrollYDiff;
     offset = y & 7;
@@ -436,7 +399,8 @@ RefreshLine(int Y1, int Y2)
     if (h > Y2 - Y1)
         h = Y2 - Y1;
     y >>= 3;
-    PP -= ScrollX & 7;
+
+    PP = (osd_gfx_buffer + XBUF_WIDTH * Y1) - (ScrollX & 7);
     XW = io.screen_w / 8 + 1;
 
     for (Line = Y1; Line < Y2; y++) {
@@ -452,8 +416,7 @@ RefreshLine(int Y1, int Y2)
             R = &Palette[(no >> 8) & 0x1F0];
 
             if (no > 0x800) {
-                MESSAGE_DEBUG("GFX: Access to an invalid VRAM area "
-                    "(tile pattern 0x%04x).\n", no);
+                //  MESSAGE_DEBUG("GFX: Access to an invalid VRAM area (tile pattern 0x%04x).\n", no);
             }
 
             no &= 0x7FF;
@@ -778,16 +741,8 @@ RefreshSpriteExact(int Y1, int Y2, uchar bg)
         // 4095 is for supergraphx only
         // no = (unsigned int)(spr->no & 4095);
 
-#if ENABLE_TRACING_GFX
-        /*
-           TRACE("Sprite 0x%02X : X = %d, Y = %d, atr = 0x%04X, no = 0x%03X\n",
-           n,
-           x,
-           y,
-           atr,
-           (unsigned long)no);
-         */
-#endif
+        TRACE_GFX("Sprite 0x%02X : X = %d, Y = %d, atr = 0x%04X, no = 0x%03X\n",
+                    n, x,y, atr, (unsigned long)no);
 
         cgx = (atr >> 8) & 1;
         cgy = (atr >> 12) & 3;

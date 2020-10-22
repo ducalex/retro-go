@@ -3,13 +3,6 @@
 #include "pce.h"
 #include "config.h"
 
-#undef TRACE
-#if ENABLE_TRACING_GFX
-#define TRACE(x...) printf("TraceGfx: " x)
-#else
-#define TRACE(x...)
-#endif
-
 static gfx_context saved_gfx_context[4];
 
 //! Whether we need to draw pending lines
@@ -24,6 +17,31 @@ int UPeriod = 0;
 static int display_counter = 0;
 static int last_display_counter = 0;
 
+/*
+	Hit Check Sprite#0 and others
+*/
+static inline int32
+sprite_hit_check(void)
+{
+	int i, x0, y0, w0, h0, x, y, w, h;
+	SPR *spr;
+
+	spr = (SPR *) SPRAM;
+	x0 = spr->x;
+	y0 = spr->y;
+	w0 = (((spr->atr >> 8) & 1) + 1) * 16;
+	h0 = (((spr->atr >> 12) & 3) + 1) * 16;
+	spr++;
+	for (i = 1; i < 64; i++, spr++) {
+		x = spr->x;
+		y = spr->y;
+		w = (((spr->atr >> 8) & 1) + 1) * 16;
+		h = (((spr->atr >> 12) & 3) + 1) * 16;
+		if ((x < x0 + w0) && (x + w > x0) && (y < y0 + h0) && (y + h > y0))
+			return 1;
+	}
+	return 0;
+}
 
 //! Computes the new screen height and eventually change the screen mode
 void
@@ -42,12 +60,9 @@ gfx_change_video_mode()
 	int temp_vdw = (int) IO_VDC_REG[VDW].W;
 	int temp_vcr = (int) IO_VDC_REG[VCR].W;
 
-#if ENABLE_TRACING_GFX
-	TRACE("GFX: Changing pce screen mode\n"
+	TRACE_GFX("GFX: Changing pce screen mode\n"
 		" VDS = %04x VSW = %04x VDW = %04x VCR = %04x\n",
 		 temp_vds, temp_vsw, temp_vdw, temp_vcr);
-	// getchar();
-#endif
 
 	if (temp_vdw == 0)
 		return;
@@ -60,10 +75,8 @@ gfx_change_video_mode()
 		max_display = cur_display;
 		cur_display += 3 + temp_vcr;
 
-#if ENABLE_TRACING_GFX
-		TRACE("GFX: Adding vdw to the height of graphics,"
+		TRACE_GFX("GFX: Adding vdw to the height of graphics,"
 			" cur_display = %d\n", cur_display);
-#endif
 	}
 
 	min_display = (min_display > 14 ? min_display : 14);
@@ -75,9 +88,7 @@ gfx_change_video_mode()
 	//! Number of lines to render
 	io.screen_h = max_display - min_display + 1;
 
-#if ENABLE_TRACING_GFX
-	//TRACE("GFX: %d lines to render\n", io.screen_h);
-#endif
+	//TRACE_GFX("GFX: %d lines to render\n", io.screen_h);
 
 	osd_gfx_set_mode(io.screen_w, io.screen_h);
 }
@@ -142,7 +153,7 @@ gfx_save_context(char slot_number)
 	context->scroll_y_diff = ScrollYDiff;
 	context->control = Control;
 
-	TRACE("Saving context %d, scroll = (%d,%d,%d), CR = 0x%02d\n",
+	TRACE_GFX("Saving context %d, scroll = (%d,%d,%d), CR = 0x%02d\n",
 		slot_number, ScrollX, ScrollY, ScrollYDiff, Control);
 }
 
@@ -161,7 +172,7 @@ gfx_load_context(char slot_number)
 	ScrollYDiff = context->scroll_y_diff;
 	Control = context->control;
 
-	TRACE("Restoring context %d, scroll = (%d,%d,%d), CR = 0x%02d\n",
+	TRACE_GFX("Restoring context %d, scroll = (%d,%d,%d), CR = 0x%02d\n",
 		slot_number, ScrollX, ScrollY, ScrollYDiff, Control);
 }
 
@@ -178,10 +189,11 @@ render_lines(int min_line, int max_line)
 		gfx_save_context(1);
 		gfx_load_context(0);
 
+		// To do: enforce host.options.bgEnabled and fgEnabled
+
 		// Temp hack
 		if (max_line == 239) max_line = 240;
-
-		if (SpriteON && SPONSwitch)
+		if (SpriteON)
 		{
 			RefreshSpriteExact(min_line, max_line, 0); // max_line + 1
 			RefreshLine(min_line, max_line); // max_line + 1
@@ -292,10 +304,10 @@ gfx_loop()
 			if (!UCount)
 				RefreshScreen();
 
-			if (CheckSprites())
-				io.vdc_status |= VDC_SpHit;
-			else
-				io.vdc_status &= ~VDC_SpHit;
+		if (sprite_hit_check())
+			io.vdc_status |= VDC_SpHit;
+		else
+			io.vdc_status &= ~VDC_SpHit;
 
 			if (!UCount) {
 #if defined(ENABLE_NETPLAY)
@@ -335,8 +347,6 @@ gfx_loop()
 	} else {
 		//Three last lines of ntsc scanlining
 	}
-
-	// Incrementing the scanline
 
 	Scanline++;
 

@@ -654,9 +654,7 @@ OPCODE_FUNC bra(void)
 
 OPCODE_FUNC brk(void)
 {
-#if defined(KERNEL_DEBUG)
-    MESSAGE_ERROR("BRK opcode has been hit [PC = 0x%04x] at %s(%d)\n", reg_pc);
-#endif
+    MESSAGE_DEBUG("BRK opcode has been hit [PC = 0x%04x] at %s(%d)\n", reg_pc);
     reg_p &= ~FL_T;
     push_16bit(reg_pc + 2);
     push_8bit(reg_p | FL_B);
@@ -2130,14 +2128,6 @@ OPCODE_FUNC tam(void)
 {
     uchar bitfld = imm_operand(reg_pc + 1);
 
-#if defined(KERNEL_DEBUG)
-    if (bitfld == 0) {
-        MESSAGE_ERROR("TAM with argument 0\n");
-    } else if (!one_bit_set(bitfld)) {
-        MESSAGE_ERROR("TAM with unusual argument 0x%02x\n", bitfld);
-    }
-#endif
-
     for (int i = 0; i < 8; i++) {
         if (bitfld & (1 << i)) {
             BankSet(i, reg_a);
@@ -2226,14 +2216,6 @@ OPCODE_FUNC tin(void)
 OPCODE_FUNC tma(void)
 {
     uchar bitfld = imm_operand(reg_pc + 1);
-
-#if defined(KERNEL_DEBUG)
-    if (bitfld == 0) {
-        MESSAGE_ERROR("TMA with argument 0\n");
-    } else if (!one_bit_set(bitfld)) {
-        MESSAGE_ERROR("TMA with unusual argument 0x%02x\n", bitfld);
-    }
-#endif
 
     for (int i = 0; i < 8; i++) {
         if (bitfld & (1 << i)) {

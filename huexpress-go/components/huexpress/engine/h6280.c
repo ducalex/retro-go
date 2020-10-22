@@ -46,7 +46,7 @@
 
 #define Int6502(Type)                                       \
 {                                                           \
-	MESSAGE_DEBUG("Requested interrupt is %d\n", Type);     \
+	TRACE_CPU("Requested interrupt is %d\n", Type);     	\
     uint16 J = 0;                                           \
     if ((Type == INT_NMI) || (!(reg_p & FL_I))) {           \
         Cycles += 7;                                        \
@@ -369,7 +369,6 @@ exe_go(void)
 			/* Reset the cycle counter */
 			// Cycles = 0;
 
-			// MESSAGE_DEBUG("Calling periodic handler\n");
 			if ((I = gfx_loop()))
 				Int6502(I);     /* Interrupt if needed  */
 
