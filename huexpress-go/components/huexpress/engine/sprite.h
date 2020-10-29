@@ -19,15 +19,15 @@ typedef struct {
  *          1 -> 32 pixels
  * bit 11 : horizontal flip
  *          0 -> normal shape
- *          1 -> must be draw horizontaly flipped
- * bit 13-12 : heigth
+ *          1 -> must be draw horizontally flipped
+ * bit 13-12 : height
  *          00 -> 16 pixels
  *          01 -> 32 pixels
  *          10 -> 48 pixels
  *          11 -> 64 pixels
  * bit 15 : vertical flip
  *          0 -> normal shape
- *          1 -> must be drawn verticaly flipped
+ *          1 -> must be drawn vertically flipped
  */
 
 typedef struct

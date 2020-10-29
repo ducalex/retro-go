@@ -34,7 +34,6 @@ hard_reset(void)
     memset(&SPRAM, 0, sizeof(SPRAM));
     memset(&Palette, 0, sizeof(Palette));
     memset(&io, 0, sizeof(io));
-    memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
 
     // Backup RAM header, some games check for this
     memcpy(&BackupRAM, "HUBM\x00\x88\x10\x80", 8);
@@ -470,7 +469,7 @@ IO_write(uint16 A, uchar V)
 
                 IO_VDC_REG[LENR].W = 0xFFFF;
 
-                memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
+                gfx_clear_cache();
 
                 /* TODO: check whether this flag can be ignored */
                 io.vdc_status |= VDC_DMAfinish;

@@ -33,7 +33,7 @@ extern QueueHandle_t audioSyncQueue;
 static inline void set_current_fb(int i)
 {
     current_fb = i & 1;
-    osd_gfx_buffer = frames[current_fb].buffer;
+    osd_gfx_buffer = framebuffers[current_fb];
     curFrame = &frames[current_fb];
 
     for (int i = 0; i < 240; i++) {
@@ -71,6 +71,10 @@ void osd_gfx_init(void)
     SPM_raw         = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
     SPM = SPM_raw + XBUF_WIDTH * 64 + 32;
 
+    // We never de-allocate them, so we don't care about the malloc pointer
+    framebuffers[0] += XBUF_WIDTH * 64 + 32;
+    framebuffers[1] += XBUF_WIDTH * 64 + 32;
+
     // UPeriod = 1;
 
     // xTaskCreatePinnedToCore(&videoTask, "videoTask", 3072, NULL, 5, NULL, 1);
@@ -81,13 +85,15 @@ void osd_gfx_set_mode(short width, short height)
 {
     printf("%s: (%dx%d)\n", __func__, width, height);
 
-    int crop_w = MAX(0, width - ODROID_SCREEN_WIDTH);
-    int crop_h = MAX(0, height - ODROID_SCREEN_HEIGHT);
+    int crop_h = MAX(0, width - ODROID_SCREEN_WIDTH);
+    int crop_v = MAX(0, height - ODROID_SCREEN_HEIGHT);
 
     // Should we consider vdc_minline/vdc_maxline to offset?
 
-	frames[0].width = width - crop_w;
-	frames[0].height = height - crop_h;
+    printf("%s: Cropping H: %d V: %d\n", __func__, crop_h, crop_v);
+
+	frames[0].width = width - crop_h;
+	frames[0].height = height - crop_v;
 	frames[0].stride = XBUF_WIDTH;
 	frames[0].pixel_size = 1;
 	frames[0].pixel_mask = 0xFF;
@@ -95,8 +101,8 @@ void osd_gfx_set_mode(short width, short height)
 	frames[0].palette = mypalette;
 	frames[1] = frames[0];
 
-	frames[0].buffer = framebuffers[0] + 32 + 64 * XBUF_WIDTH + (crop_w / 2) + (crop_h / 2) * XBUF_WIDTH;
-	frames[1].buffer = framebuffers[1] + 32 + 64 * XBUF_WIDTH + (crop_w / 2) + (crop_h / 2) * XBUF_WIDTH;
+	frames[0].buffer = framebuffers[0] + (crop_v / 2) * XBUF_WIDTH + (crop_h / 2);
+	frames[1].buffer = framebuffers[1] + (crop_v / 2) * XBUF_WIDTH + (crop_h / 2);
 
     set_current_fb(0);
 

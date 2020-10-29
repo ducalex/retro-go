@@ -163,7 +163,7 @@ LoadCard(const char *name)
 	if (romFlags[IDX].Flags & TWO_PART_ROM)
 		ROM_SIZE = 0x30;
 
-    // Game ROM
+	// Game ROM
 	for (int i = 0; i < 0x80; i++) {
 		if (ROM_SIZE == 0x30) {
 			switch (i & 0x70) {
@@ -199,9 +199,9 @@ LoadCard(const char *name)
 		MemoryMapR[0x43] = MemoryMapW[0x43] = ExtraRAM + 0x6000;
 	}
 
-    // Mapper for roms >= 1.5MB (SF2, homebrews)
-    if (ROM_SIZE >= 192)
-        MemoryMapW[0x00] = IOAREA;
+	// Mapper for roms >= 1.5MB (SF2, homebrews)
+	if (ROM_SIZE >= 192)
+		MemoryMapW[0x00] = IOAREA;
 
 	return 0;
 }
@@ -213,6 +213,7 @@ LoadCard(const char *name)
 void
 ResetPCE(bool hard)
 {
+	gfx_clear_cache();
 	hard_reset();
 }
 
@@ -288,7 +289,7 @@ LoadState(char *name)
 		BankSet(i, MMR[i]);
 	}
 
-	memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
+	gfx_clear_cache();
 
 	osd_gfx_set_mode(io.screen_w, io.screen_h);
 

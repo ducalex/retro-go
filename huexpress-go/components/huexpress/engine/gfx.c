@@ -97,13 +97,15 @@ gfx_change_video_mode()
 int
 gfx_init()
 {
-    gfx_need_redraw = 0;
-    UCount = 0;
+	gfx_need_redraw = 0;
+	UCount = 0;
 
 	// Sprite memory
 	VRAMS = VRAMS ?: (uchar *)rg_alloc(VRAMSIZE, MEM_FAST);
 	VRAM2 = VRAM2 ?: (uchar *)rg_alloc(VRAMSIZE, MEM_FAST);
     memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
+
+	gfx_clear_cache();
 
 	osd_gfx_init();
 
@@ -116,6 +118,13 @@ gfx_init()
 	}
 
 	return 0;
+}
+
+
+void
+gfx_clear_cache()
+{
+	memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
 }
 
 
@@ -181,7 +190,7 @@ gfx_load_context(char slot_number)
 /*
 	render lines into the buffer from min_line to max_line (inclusive)
 */
-static inline void
+static inline bool
 render_lines(int min_line, int max_line)
 {
 	if (osd_skipFrames == 0 && UCount == 0) // Check for frameskip
@@ -199,14 +208,18 @@ render_lines(int min_line, int max_line)
 			RefreshSpriteExact(min_line, max_line, 0); // max_line + 1
 			RefreshLine(min_line, max_line); // max_line + 1
 			RefreshSpriteExact(min_line, max_line, 1);  // max_line + 1
-		}
-		else
+		// }
+		// else if (min_line == 0 && max_line == 240) {
+		// 	printf("Skipping render_lines!\n");
+		// 	return false;
+		} else
 			RefreshLine(min_line, max_line); // max_line + 1
 
 		gfx_load_context(1);
 	}
 
 	gfx_need_redraw = 0;
+	return true;
 }
 
 
@@ -250,9 +263,9 @@ gfx_loop()
 		}
 	}
 	//  else
-	//      printf("Raster disabled\n");
+	//		printf("Raster disabled\n");
 
-	/* Drawing area */
+	/* Visible area */
 	if (Scanline >= 14 && Scanline <= 255) {
 		if (Scanline == 14) {
 			last_display_counter = 0;
@@ -290,7 +303,7 @@ gfx_loop()
 	else if (Scanline == 256) {
 		gfx_save_context(0);
 
-		render_lines(last_display_counter, display_counter);
+		bool blit = render_lines(last_display_counter, display_counter);
 
 		if (io.vdc_mode_chg) {
 			gfx_change_video_mode();
@@ -300,7 +313,7 @@ gfx_loop()
 		if (osd_keyboard())
 			return INT_QUIT;
 
-		if (!UCount)
+		if (!UCount && blit)
 			RefreshScreen();
 
 		if (sprite_hit_check())
