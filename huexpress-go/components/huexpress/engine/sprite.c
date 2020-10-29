@@ -383,10 +383,10 @@ RefreshLine(int Y1, int Y2)
     uchar *PP;
 
     if (Y1 == 0) {
-        MESSAGE_INFO("\n=================================================\n");
+        TRACE_GFX("\n=================================================\n");
     }
 
-    MESSAGE_INFO("Rendering lines %3d - %3d\tScroll: (%3d,%3d,%3d)\n",
+    TRACE_GFX("Rendering lines %3d - %3d\tScroll: (%3d,%3d,%3d)\n",
         Y1, Y2, ScrollX, ScrollY, ScrollYDiff);
 
     if (!ScreenON || Y1 == Y2) {
