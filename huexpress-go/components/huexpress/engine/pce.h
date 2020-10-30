@@ -9,7 +9,6 @@
 
 #include <odroid_system.h>
 
-#include <cleantypes.h>
 #include <config.h>
 #include <utils.h>
 #include <osd.h>

@@ -100,7 +100,6 @@ tile2pixel(int no)
 					uchar *PAL (address of the palette of this sprite)
 					int h (the number of line to draw)
 					int inc (the value to increment the sprite buffer)
-					uchar *M (mask priority)
 					uchar pr (priority to compare against M)
 					bool hflip (flip tile horizontally)
 					bool update_mask (update priority mask)
@@ -712,9 +711,9 @@ gfx_loop()
 			osd_gfx_blit();
 		}
 
-#if defined(ENABLE_NETPLAY)
+#ifdef ENABLE_NETPLAY
 		if (option.want_netplay != INTERNET_PROTOCOL) {
-			/* When in internet protocol mode, it's the server which is in charge of throlling */
+			/* When in internet protocol mode, it's the server which is in charge of throttling */
 			osd_wait_next_vsync();
 		}
 #else

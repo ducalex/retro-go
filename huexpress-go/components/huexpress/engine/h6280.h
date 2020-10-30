@@ -1,7 +1,6 @@
 #ifndef H6280_H_
 #define H6280_H_
 
-#include "cleantypes.h"
 #include "hard_pce.h"
 
 extern void exe_go(void);

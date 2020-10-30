@@ -4,7 +4,6 @@
 #include "config.h"
 #include "stddef.h"
 #include "utils.h"
-#include "cleantypes.h"
 
 #define PSG_DA_BUFSIZE     1024
 #define PSG_CHANNELS       6

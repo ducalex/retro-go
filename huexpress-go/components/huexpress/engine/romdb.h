@@ -1,7 +1,7 @@
 #ifndef _ROMFLAGS_H
 #define _ROMFLAGS_H
 
-#include <cleantypes.h>
+#include <utils.h>
 
 #define TWO_PART_ROM 0x0001
 #define US_ENCODED   0x0010

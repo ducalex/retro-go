@@ -12,11 +12,11 @@
 #include <string.h>
 #include <osd.h>
 
-static uint16_t mypalette[256];
-static uint8_t *framebuffers[2];
+static uint16 mypalette[256];
+static uint8 *framebuffers[2];
 static odroid_video_frame_t frames[2];
 static odroid_video_frame_t *curFrame;
-static uint8_t current_fb = 0;
+static uint8 current_fb = 0;
 static bool gfx_init_done = false;
 
 uchar* osd_gfx_buffer = NULL;
@@ -138,7 +138,7 @@ void osd_gfx_shutdown(void)
 
 void osd_gfx_set_color(uchar index, uchar r, uchar g, uchar b)
 {
-    uint16_t col;
+    uint16 col;
     if (index == 255)
     {
         col = 0xffff;

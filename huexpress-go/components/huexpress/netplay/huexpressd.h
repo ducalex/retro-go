@@ -44,7 +44,7 @@
  * (Byte 11-15  : 2nd digest if any)
  * (...)
  * Last byte (6 + 5 * number of digest sent) : Checksum on previous bytes (algorithm described in an almost past future)
- * 
+ *
  * -- Now, it's time to ... hmmm... let's see. Oh, yeah, checksum algorithm.
  *
  * It's mean to be quick and easy, not a real error checking
@@ -56,7 +56,7 @@
 
 #include <SDL_net.h>
 #include "config.h"
-#include "cleantypes.h"
+#include "utils.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -87,7 +87,7 @@ extern "C"
     IPaddress address;
     char allocated_slots;
   } allocation_request_type;
-  
+
   typedef enum
   { UNIDENTIFIED, WAITING, READY } client_status_type;
 
