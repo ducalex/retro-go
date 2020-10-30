@@ -6,9 +6,6 @@
 #include "utils.h"
 #include "cleantypes.h"
 
-#define RAMSIZE            0x2000
-#define VRAMSIZE           0x10000
-#define BRAMSIZE           0x800
 #define PSG_DA_BUFSIZE     1024
 #define PSG_CHANNELS       6
 
@@ -89,22 +86,18 @@ typedef struct {
 
 typedef struct {
 	// Main memory
-	uchar RAM[RAMSIZE];
+	uchar RAM[0x2000];
 
 	// Extra RAM contained on the HuCard (Populous)
 	uchar *ExtraRAM;
 
 	// Backup RAM
-	uchar BackupRAM[BRAMSIZE];
+	uchar BackupRAM[0x800];
 
-	// Video mem
-	// 0x10000 bytes on coregraphx, the double on supergraphx I think
-	// contain information about the sprites position/status, information
-	// about the pattern and palette to use for each tile, and patterns
-	// for use in sprite/tile rendering
-	uchar VRAM[VRAMSIZE];
+	// Video RAM
+	uchar VRAM[0x10000];
 
-	// SPRAM = sprite RAM
+	// Sprite RAM
 	// The pc engine got a function to transfert a piece VRAM toward the inner
 	// gfx cpu sprite memory from where data will be grabbed to render sprites
 	uint16 SPRAM[64 * 4];
@@ -115,9 +108,12 @@ typedef struct {
 	// ROM size in 0x2000 blocks
 	uint16 ROM_SIZE;
 
+	// ROM crc
+	uint32 ROM_CRC;
+
 	// PCE->PC Palette convetion array
 	// Each of the 512 available PCE colors (333 RGB -> 512 colors)
-	// got a correspondancy in the 256 fixed colors palette
+	// got a correspondance in the 256 fixed colors palette
 	uchar Palette[512];
 
 	// CPU Registers
@@ -164,17 +160,18 @@ uchar IO_read(uint16 A);
   * Exported variables
   **/
 
-extern PCE_t PCE;
 // The global structure for all hardware variables
+extern PCE_t PCE;
 
+// Regions of the memory map that we need to trap.
+// Normally games do not read reach this.
 extern uchar *IOAREA, *TRAPRAM;
-// Regions of the memory map that we need to trap. Normally games do not read or write to these areas.
 
+// physical address on emulator machine of each of the 256 banks
 extern uchar *PageR[8];
 extern uchar *PageW[8];
 extern uchar *MemoryMapR[256];
 extern uchar *MemoryMapW[256];
-// physical address on emulator machine of each of the 256 banks
 
 #define RAM PCE.RAM
 #define BackupRAM PCE.BackupRAM
@@ -183,6 +180,7 @@ extern uchar *MemoryMapW[256];
 #define VRAM PCE.VRAM
 #define ROM PCE.ROM
 #define ROM_PTR PCE.ROM_PTR
+#define ROM_CRC PCE.ROM_CRC
 #define ROM_SIZE PCE.ROM_SIZE
 #define Scanline PCE.Scanline
 #define Palette PCE.Palette
@@ -351,11 +349,11 @@ Write16(uint16 addr, uint16 word)
 static inline void
 BankSet(uchar P, uchar V)
 {
-    TRACE_IO("Bank switching (MMR[%d] = %d)\n", P, V);
+	TRACE_IO("Bank switching (MMR[%d] = %d)\n", P, V);
 
 	MMR[P] = V;
-    PageR[P] = (MemoryMapR[V] == IOAREA) ? (IOAREA) : (MemoryMapR[V] - P * 0x2000);
-    PageW[P] = (MemoryMapW[V] == IOAREA) ? (IOAREA) : (MemoryMapW[V] - P * 0x2000);
+	PageR[P] = (MemoryMapR[V] == IOAREA) ? (IOAREA) : (MemoryMapR[V] - P * 0x2000);
+	PageW[P] = (MemoryMapW[V] == IOAREA) ? (IOAREA) : (MemoryMapW[V] - P * 0x2000);
 }
 
 /**

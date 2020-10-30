@@ -4,7 +4,6 @@
 #include "cleantypes.h"
 #include "hard_pce.h"
 
-extern void exe_instruct(void);
 extern void exe_go(void);
 extern void dump_cpu_registers();
 
@@ -12,9 +11,9 @@ typedef struct op {
    int (*func_exe)(void);
    int16  addr_mode;
    const char opname[4];
-} operation;
+} operation_t;
 
-extern operation optable_runtime[256];
+extern operation_t optable_runtime[256];
 
 // CPU Flags:
 #define FL_N 0x80

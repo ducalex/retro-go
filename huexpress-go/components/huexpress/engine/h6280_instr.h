@@ -80,2342 +80,2393 @@ static uint16 temp_addr, from, to, len, alternate;
 static inline uchar
 adc(uchar acc, uchar val)
 {
-    int16 sig = (SBYTE) acc;
-    uint16 usig = (UBYTE) acc;
-    uint16 temp;
+	int16 sig = (SBYTE)acc;
+	uint16 usig = (UBYTE)acc;
+	uint16 temp;
 
-    if (!(reg_p & FL_D)) {      /* binary mode */
-        if (reg_p & FL_C) {
-            usig++;
-            sig++;
-        }
-        sig += (SBYTE) val;
-        usig += (UBYTE) val;
-        acc = (UBYTE) (usig & 0xFF);
+	if (!(reg_p & FL_D))
+	{ /* binary mode */
+		if (reg_p & FL_C)
+		{
+			usig++;
+			sig++;
+		}
+		sig += (SBYTE)val;
+		usig += (UBYTE)val;
+		acc = (UBYTE)(usig & 0xFF);
 
-        reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z | FL_C))
-            | (((sig > 127) || (sig < -128)) ? FL_V : 0)
-            | ((usig > 255) ? FL_C : 0)
-            | flnz_list[acc];
+		reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z | FL_C)) | (((sig > 127) || (sig < -128)) ? FL_V : 0) | ((usig > 255) ? FL_C : 0) | flnz_list[acc];
+	}
+	else
+	{ /* decimal mode */
 
-    } else {                    /* decimal mode */
+		// treatment of out-of-range accumulator
+		// and operand values (non-BCD) is not
+		// adequately defined.  Nor is overflow
+		// flag treatment.
 
-        // treatment of out-of-range accumulator
-        // and operand values (non-BCD) is not
-        // adequately defined.  Nor is overflow
-        // flag treatment.
+		// Zeo : rewrote using bcdbin and binbcd arrays to boost code speed and fix
+		// residual bugs
 
-        // Zeo : rewrote using bcdbin and binbcd arrays to boost code speed and fix
-        // residual bugs
+		temp = bcdbin[usig] + bcdbin[val];
 
-        temp = bcdbin[usig] + bcdbin[val];
+		if (reg_p & FL_C)
+		{
+			temp++;
+		}
 
-        if (reg_p & FL_C) {
-            temp++;
-        }
+		acc = binbcd[temp];
 
-        acc = binbcd[temp];
+		reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp > 99) ? FL_C : 0) | flnz_list[acc];
 
-        reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-            | ((temp > 99) ? FL_C : 0)
-            | flnz_list[acc];
+		Cycles++; /* decimal mode takes an extra cycle */
+	}
 
-        Cycles++;               /* decimal mode takes an extra cycle */
-    }
-
-    return acc;
+	return acc;
 }
 
 OPCODE_FUNC sbc(uchar val)
 {
-    int16 sig = (SBYTE) reg_a;
-    uint16 usig = (UBYTE) reg_a;
-    int16 temp;
+	int16 sig = (SBYTE)reg_a;
+	uint16 usig = (UBYTE)reg_a;
+	int16 temp;
 
-    if (!(reg_p & FL_D)) {      /* binary mode */
-        if (!(reg_p & FL_C)) {
-            usig--;
-            sig--;
-        }
-        sig -= (SBYTE) val;
-        usig -= (UBYTE) val;
-        reg_a = (UBYTE) (usig & 0xFF);
-        reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z | FL_C))
-            | (((sig > 127) || (sig < -128)) ? FL_V : 0)
-            | ((usig > 255) ? 0 : FL_C)
-            | flnz_list[reg_a]; /* FL_N, FL_Z */
+	if (!(reg_p & FL_D))
+	{ /* binary mode */
+		if (!(reg_p & FL_C))
+		{
+			usig--;
+			sig--;
+		}
+		sig -= (SBYTE)val;
+		usig -= (UBYTE)val;
+		reg_a = (UBYTE)(usig & 0xFF);
+		reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z | FL_C)) | (((sig > 127) || (sig < -128)) ? FL_V : 0) | ((usig > 255) ? 0 : FL_C) | flnz_list[reg_a]; /* FL_N, FL_Z */
+	}
+	else
+	{ /* decimal mode */
 
-    } else {                    /* decimal mode */
+		// treatment of out-of-range accumulator
+		// and operand values (non-bcd) is not
+		// adequately defined.  Nor is overflow
+		// flag treatment.
 
-        // treatment of out-of-range accumulator
-        // and operand values (non-bcd) is not
-        // adequately defined.  Nor is overflow
-        // flag treatment.
+		temp = (int16)(bcdbin[usig] - bcdbin[val]);
 
-        temp = (int16) (bcdbin[usig] - bcdbin[val]);
+		if (!(reg_p & FL_C))
+		{
+			temp--;
+		}
 
-        if (!(reg_p & FL_C)) {
-            temp--;
-        }
+		reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp < 0) ? 0 : FL_C);
 
-        reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-            | ((temp < 0) ? 0 : FL_C);
+		while (temp < 0)
+		{
+			temp += 100;
+		}
 
-        while (temp < 0) {
-            temp += 100;
-        }
+		reg_a = binbcd[temp];
+		chk_flnz_8bit(reg_a);
 
-        reg_a = binbcd[temp];
-        chk_flnz_8bit(reg_a);
-
-        Cycles++;               /* decimal mode takes an extra cycle */
-    }
+		Cycles++; /* decimal mode takes an extra cycle */
+	}
 }
 
 OPCODE_FUNC adc_abs(void)
 {
-    // if flag 'T' is set, use zero-page address specified by register 'X'
-    // as the accumulator...
+	// if flag 'T' is set, use zero-page address specified by register 'X'
+	// as the accumulator...
 
-    if (reg_p & FL_T) {
-        put_8bit_zp(reg_x, adc(get_8bit_zp(reg_x), abs_operand(reg_pc + 1)));
-        Cycles += 8;
-    } else {
-        reg_a = adc(reg_a, abs_operand(reg_pc + 1));
-        Cycles += 5;
-    }
-    reg_pc += 3;
+	if (reg_p & FL_T)
+	{
+		put_8bit_zp(reg_x, adc(get_8bit_zp(reg_x), abs_operand(reg_pc + 1)));
+		Cycles += 8;
+	}
+	else
+	{
+		reg_a = adc(reg_a, abs_operand(reg_pc + 1));
+		Cycles += 5;
+	}
+	reg_pc += 3;
 }
 
 OPCODE_FUNC adc_absx(void)
 {
-    if (reg_p & FL_T) {
-        put_8bit_zp(reg_x, adc(get_8bit_zp(reg_x), absx_operand(reg_pc + 1)));
-        Cycles += 8;
-    } else {
-        reg_a = adc(reg_a, absx_operand(reg_pc + 1));
-        Cycles += 5;
-    }
-    reg_pc += 3;
+	if (reg_p & FL_T)
+	{
+		put_8bit_zp(reg_x, adc(get_8bit_zp(reg_x), absx_operand(reg_pc + 1)));
+		Cycles += 8;
+	}
+	else
+	{
+		reg_a = adc(reg_a, absx_operand(reg_pc + 1));
+		Cycles += 5;
+	}
+	reg_pc += 3;
 }
 
 OPCODE_FUNC adc_absy(void)
 {
-    if (reg_p & FL_T) {
-        put_8bit_zp(reg_x, adc(get_8bit_zp(reg_x), absy_operand(reg_pc + 1)));
-        Cycles += 8;
-    } else {
-        reg_a = adc(reg_a, absy_operand(reg_pc + 1));
-        Cycles += 5;
-    }
-    reg_pc += 3;
+	if (reg_p & FL_T)
+	{
+		put_8bit_zp(reg_x, adc(get_8bit_zp(reg_x), absy_operand(reg_pc + 1)));
+		Cycles += 8;
+	}
+	else
+	{
+		reg_a = adc(reg_a, absy_operand(reg_pc + 1));
+		Cycles += 5;
+	}
+	reg_pc += 3;
 }
 
 OPCODE_FUNC adc_imm(void)
 {
-    if (reg_p & FL_T) {
-        put_8bit_zp(reg_x, adc(get_8bit_zp(reg_x), imm_operand(reg_pc + 1)));
-        Cycles += 5;
-    } else {
-        reg_a = adc(reg_a, imm_operand(reg_pc + 1));
-        Cycles += 2;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		put_8bit_zp(reg_x, adc(get_8bit_zp(reg_x), imm_operand(reg_pc + 1)));
+		Cycles += 5;
+	}
+	else
+	{
+		reg_a = adc(reg_a, imm_operand(reg_pc + 1));
+		Cycles += 2;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC adc_zp(void)
 {
-    if (reg_p & FL_T) {
-        put_8bit_zp(reg_x, adc(get_8bit_zp(reg_x), zp_operand(reg_pc + 1)));
-        Cycles += 7;
-    } else {
-        reg_a = adc(reg_a, zp_operand(reg_pc + 1));
-        Cycles += 4;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		put_8bit_zp(reg_x, adc(get_8bit_zp(reg_x), zp_operand(reg_pc + 1)));
+		Cycles += 7;
+	}
+	else
+	{
+		reg_a = adc(reg_a, zp_operand(reg_pc + 1));
+		Cycles += 4;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC adc_zpx(void)
 {
-    if (reg_p & FL_T) {
-        put_8bit_zp(reg_x, adc(get_8bit_zp(reg_x), zpx_operand(reg_pc + 1)));
-        Cycles += 7;
-    } else {
-        reg_a = adc(reg_a, zpx_operand(reg_pc + 1));
-        Cycles += 4;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		put_8bit_zp(reg_x, adc(get_8bit_zp(reg_x), zpx_operand(reg_pc + 1)));
+		Cycles += 7;
+	}
+	else
+	{
+		reg_a = adc(reg_a, zpx_operand(reg_pc + 1));
+		Cycles += 4;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC adc_zpind(void)
 {
-    if (reg_p & FL_T) {
-        put_8bit_zp(reg_x, adc(get_8bit_zp(reg_x), zpind_operand(reg_pc + 1)));
-        Cycles += 10;
-    } else {
-        reg_a = adc(reg_a, zpind_operand(reg_pc + 1));
-        Cycles += 7;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		put_8bit_zp(reg_x, adc(get_8bit_zp(reg_x), zpind_operand(reg_pc + 1)));
+		Cycles += 10;
+	}
+	else
+	{
+		reg_a = adc(reg_a, zpind_operand(reg_pc + 1));
+		Cycles += 7;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC adc_zpindx(void)
 {
-    if (reg_p & FL_T) {
-        put_8bit_zp(reg_x, adc(get_8bit_zp(reg_x), zpindx_operand(reg_pc + 1)));
-        Cycles += 10;
-    } else {
-        reg_a = adc(reg_a, zpindx_operand(reg_pc + 1));
-        Cycles += 7;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		put_8bit_zp(reg_x, adc(get_8bit_zp(reg_x), zpindx_operand(reg_pc + 1)));
+		Cycles += 10;
+	}
+	else
+	{
+		reg_a = adc(reg_a, zpindx_operand(reg_pc + 1));
+		Cycles += 7;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC adc_zpindy(void)
 {
-    if (reg_p & FL_T) {
-        put_8bit_zp(reg_x, adc(get_8bit_zp(reg_x), zpindy_operand(reg_pc + 1)));
-        Cycles += 10;
-    } else {
-        reg_a = adc(reg_a, zpindy_operand(reg_pc + 1));
-        Cycles += 7;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		put_8bit_zp(reg_x, adc(get_8bit_zp(reg_x), zpindy_operand(reg_pc + 1)));
+		Cycles += 10;
+	}
+	else
+	{
+		reg_a = adc(reg_a, zpindy_operand(reg_pc + 1));
+		Cycles += 7;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC and_abs(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp &= abs_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 8;
-    } else {
-        reg_a &= abs_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 5;
-    }
-    reg_pc += 3;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp &= abs_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 8;
+	}
+	else
+	{
+		reg_a &= abs_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 5;
+	}
+	reg_pc += 3;
 }
 
 OPCODE_FUNC and_absx(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp &= absx_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 8;
-    } else {
-        reg_a &= absx_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 5;
-    }
-    reg_pc += 3;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp &= absx_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 8;
+	}
+	else
+	{
+		reg_a &= absx_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 5;
+	}
+	reg_pc += 3;
 }
 
 OPCODE_FUNC and_absy(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp &= absy_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 8;
-    } else {
-        reg_a &= absy_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 5;
-    }
-    reg_pc += 3;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp &= absy_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 8;
+	}
+	else
+	{
+		reg_a &= absy_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 5;
+	}
+	reg_pc += 3;
 }
 
 OPCODE_FUNC and_imm(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp &= imm_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 5;
-    } else {
-        reg_a &= imm_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 2;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp &= imm_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 5;
+	}
+	else
+	{
+		reg_a &= imm_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 2;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC and_zp(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp &= zp_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 7;
-    } else {
-        reg_a &= zp_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 4;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp &= zp_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 7;
+	}
+	else
+	{
+		reg_a &= zp_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 4;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC and_zpx(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp &= zpx_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 7;
-    } else {
-        reg_a &= zpx_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 4;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp &= zpx_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 7;
+	}
+	else
+	{
+		reg_a &= zpx_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 4;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC and_zpind(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp &= zpind_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 10;
-    } else {
-        reg_a &= zpind_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 7;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp &= zpind_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 10;
+	}
+	else
+	{
+		reg_a &= zpind_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 7;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC and_zpindx(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp &= zpindx_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 10;
-    } else {
-        reg_a &= zpindx_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 7;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp &= zpindx_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 10;
+	}
+	else
+	{
+		reg_a &= zpindx_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 7;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC and_zpindy(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp &= zpindy_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 10;
-    } else {
-        reg_a &= zpindy_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 7;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp &= zpindy_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 10;
+	}
+	else
+	{
+		reg_a &= zpindy_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 7;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC asl_a(void)
 {
-    temp = reg_a;
-    reg_a <<= 1;
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp & 0x80) ? FL_C : 0)
-        | flnz_list[reg_a];
-    reg_pc++;
-    Cycles += 2;
+	temp = reg_a;
+	reg_a <<= 1;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp & 0x80) ? FL_C : 0) | flnz_list[reg_a];
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC asl_abs(void)
 {
-    temp_addr = get_16bit_addr(reg_pc + 1);
-    temp1 = get_8bit_addr(temp_addr);
-    temp = temp1 << 1;
+	temp_addr = get_16bit_addr(reg_pc + 1);
+	temp1 = get_8bit_addr(temp_addr);
+	temp = temp1 << 1;
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp1 & 0x80) ? FL_C : 0)
-        | flnz_list[temp];
-    put_8bit_addr(temp_addr, temp);
-    reg_pc += 3;
-    Cycles += 7;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
+	put_8bit_addr(temp_addr, temp);
+	reg_pc += 3;
+	Cycles += 7;
 }
 
 OPCODE_FUNC asl_absx(void)
 {
-    temp_addr = get_16bit_addr(reg_pc + 1) + reg_x;
-    temp1 = get_8bit_addr(temp_addr);
-    temp = temp1 << 1;
+	temp_addr = get_16bit_addr(reg_pc + 1) + reg_x;
+	temp1 = get_8bit_addr(temp_addr);
+	temp = temp1 << 1;
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp1 & 0x80) ? FL_C : 0)
-        | flnz_list[temp];
-    put_8bit_addr(temp_addr, temp);
-    reg_pc += 3;
-    Cycles += 7;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
+	put_8bit_addr(temp_addr, temp);
+	reg_pc += 3;
+	Cycles += 7;
 }
 
 OPCODE_FUNC asl_zp(void)
 {
-    zp_addr = imm_operand(reg_pc + 1);
-    temp1 = get_8bit_zp(zp_addr);
-    temp = temp1 << 1;
+	zp_addr = imm_operand(reg_pc + 1);
+	temp1 = get_8bit_zp(zp_addr);
+	temp = temp1 << 1;
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp1 & 0x80) ? FL_C : 0)
-        | flnz_list[temp];
-    put_8bit_zp(zp_addr, temp);
-    reg_pc += 2;
-    Cycles += 6;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
+	put_8bit_zp(zp_addr, temp);
+	reg_pc += 2;
+	Cycles += 6;
 }
 
 OPCODE_FUNC asl_zpx(void)
 {
-    zp_addr = imm_operand(reg_pc + 1) + reg_x;
-    temp1 = get_8bit_zp(zp_addr);
-    temp = temp1 << 1;
+	zp_addr = imm_operand(reg_pc + 1) + reg_x;
+	temp1 = get_8bit_zp(zp_addr);
+	temp = temp1 << 1;
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp1 & 0x80) ? FL_C : 0)
-        | flnz_list[temp];
-    put_8bit_zp(zp_addr, temp);
-    reg_pc += 2;
-    Cycles += 6;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
+	put_8bit_zp(zp_addr, temp);
+	reg_pc += 2;
+	Cycles += 6;
 }
 
 OPCODE_FUNC bbr(uint8 bit)
 {
-    reg_p &= ~FL_T;
-    if (zp_operand(reg_pc + 1) & (1 << bit)) {
-        reg_pc += 3;
-        Cycles += 6;
-    } else {
-        reg_pc += (SBYTE) imm_operand(reg_pc + 2) + 3;
-        Cycles += 8;
-    }
+	reg_p &= ~FL_T;
+	if (zp_operand(reg_pc + 1) & (1 << bit))
+	{
+		reg_pc += 3;
+		Cycles += 6;
+	}
+	else
+	{
+		reg_pc += (SBYTE)imm_operand(reg_pc + 2) + 3;
+		Cycles += 8;
+	}
 }
 
 OPCODE_FUNC bbs(uint8 bit)
 {
-    reg_p &= ~FL_T;
-    if (zp_operand(reg_pc + 1) & (1 << bit)) {
-        reg_pc += (SBYTE) imm_operand(reg_pc + 2) + 3;
-        Cycles += 8;
-    } else {
-        reg_pc += 3;
-        Cycles += 6;
-    }
+	reg_p &= ~FL_T;
+	if (zp_operand(reg_pc + 1) & (1 << bit))
+	{
+		reg_pc += (SBYTE)imm_operand(reg_pc + 2) + 3;
+		Cycles += 8;
+	}
+	else
+	{
+		reg_pc += 3;
+		Cycles += 6;
+	}
 }
 
 OPCODE_FUNC bcc(void)
 {
-    reg_p &= ~FL_T;
-    if (reg_p & FL_C) {
-        reg_pc += 2;
-        Cycles += 2;
-    } else {
-        reg_pc += (SBYTE) imm_operand(reg_pc + 1) + 2;
-        Cycles += 4;
-    }
+	reg_p &= ~FL_T;
+	if (reg_p & FL_C)
+	{
+		reg_pc += 2;
+		Cycles += 2;
+	}
+	else
+	{
+		reg_pc += (SBYTE)imm_operand(reg_pc + 1) + 2;
+		Cycles += 4;
+	}
 }
 
 OPCODE_FUNC bcs(void)
 {
-    reg_p &= ~FL_T;
-    if (reg_p & FL_C) {
-        reg_pc += (SBYTE) imm_operand(reg_pc + 1) + 2;
-        Cycles += 4;
-    } else {
-        reg_pc += 2;
-        Cycles += 2;
-    }
+	reg_p &= ~FL_T;
+	if (reg_p & FL_C)
+	{
+		reg_pc += (SBYTE)imm_operand(reg_pc + 1) + 2;
+		Cycles += 4;
+	}
+	else
+	{
+		reg_pc += 2;
+		Cycles += 2;
+	}
 }
 
 OPCODE_FUNC beq(void)
 {
-    reg_p &= ~FL_T;
-    if (reg_p & FL_Z) {
-        reg_pc += (SBYTE) imm_operand(reg_pc + 1) + 2;
-        Cycles += 4;
-    } else {
-        reg_pc += 2;
-        Cycles += 2;
-    }
+	reg_p &= ~FL_T;
+	if (reg_p & FL_Z)
+	{
+		reg_pc += (SBYTE)imm_operand(reg_pc + 1) + 2;
+		Cycles += 4;
+	}
+	else
+	{
+		reg_pc += 2;
+		Cycles += 2;
+	}
 }
 
 OPCODE_FUNC bit_abs(void)
 {
-    temp = abs_operand(reg_pc + 1);
-    reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z))
-        | (temp & (FL_N | FL_V))
-        | ((reg_a & temp) ? 0 : FL_Z);
-    reg_pc += 3;
-    Cycles += 5;
+	temp = abs_operand(reg_pc + 1);
+	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp & (FL_N | FL_V)) | ((reg_a & temp) ? 0 : FL_Z);
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC bit_absx(void)
 {
-    temp = absx_operand(reg_pc + 1);
-    reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z))
-        | (temp & (FL_N | FL_V))
-        | ((reg_a & temp) ? 0 : FL_Z);
-    reg_pc += 3;
-    Cycles += 5;
+	temp = absx_operand(reg_pc + 1);
+	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp & (FL_N | FL_V)) | ((reg_a & temp) ? 0 : FL_Z);
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC bit_imm(void)
 {
-    // orig code (Eyes/Lichty said immediate mode did not affect
-    //            'N' and 'V' flags):
-    //reg_p = (reg_p & ~(FL_T|FL_Z))
-    //    | ((reg_a & imm_operand(reg_pc+1)) ? 0:FL_Z);
+	// orig code (Eyes/Lichty said immediate mode did not affect
+	//            'N' and 'V' flags):
+	//reg_p = (reg_p & ~(FL_T|FL_Z))
+	//    | ((reg_a & imm_operand(reg_pc+1)) ? 0:FL_Z);
 
-    temp = imm_operand(reg_pc + 1);
-    reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z))
-        | (temp & (FL_N | FL_V))
-        | ((reg_a & temp) ? 0 : FL_Z);
-    reg_pc += 2;
-    Cycles += 2;
+	temp = imm_operand(reg_pc + 1);
+	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp & (FL_N | FL_V)) | ((reg_a & temp) ? 0 : FL_Z);
+	reg_pc += 2;
+	Cycles += 2;
 }
 
 OPCODE_FUNC bit_zp(void)
 {
-    temp = zp_operand(reg_pc + 1);
-    reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z))
-        | (temp & (FL_N | FL_V))
-        | ((reg_a & temp) ? 0 : FL_Z);
-    reg_pc += 2;
-    Cycles += 4;
+	temp = zp_operand(reg_pc + 1);
+	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp & (FL_N | FL_V)) | ((reg_a & temp) ? 0 : FL_Z);
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC bit_zpx(void)
 {
-    temp = zpx_operand(reg_pc + 1);
-    reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z))
-        | (temp & (FL_N | FL_V))
-        | ((reg_a & temp) ? 0 : FL_Z);
-    reg_pc += 2;
-    Cycles += 4;
+	temp = zpx_operand(reg_pc + 1);
+	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp & (FL_N | FL_V)) | ((reg_a & temp) ? 0 : FL_Z);
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC bmi(void)
 {
-    reg_p &= ~FL_T;
-    if (reg_p & FL_N) {
-        reg_pc += (SBYTE) imm_operand(reg_pc + 1) + 2;
-        Cycles += 4;
-    } else {
-        reg_pc += 2;
-        Cycles += 2;
-    }
+	reg_p &= ~FL_T;
+	if (reg_p & FL_N)
+	{
+		reg_pc += (SBYTE)imm_operand(reg_pc + 1) + 2;
+		Cycles += 4;
+	}
+	else
+	{
+		reg_pc += 2;
+		Cycles += 2;
+	}
 }
 
 OPCODE_FUNC bne(void)
 {
-    reg_p &= ~FL_T;
-    if (reg_p & FL_Z) {
-        reg_pc += 2;
-        Cycles += 2;
-    } else {
-        reg_pc += (SBYTE) imm_operand(reg_pc + 1) + 2;
-        Cycles += 4;
-    }
+	reg_p &= ~FL_T;
+	if (reg_p & FL_Z)
+	{
+		reg_pc += 2;
+		Cycles += 2;
+	}
+	else
+	{
+		reg_pc += (SBYTE)imm_operand(reg_pc + 1) + 2;
+		Cycles += 4;
+	}
 }
 
 OPCODE_FUNC bpl(void)
 {
-    reg_p &= ~FL_T;
-    if (reg_p & FL_N) {
-        reg_pc += 2;
-        Cycles += 2;
-    } else {
-        reg_pc += (SBYTE) imm_operand(reg_pc + 1) + 2;
-        Cycles += 4;
-    }
+	reg_p &= ~FL_T;
+	if (reg_p & FL_N)
+	{
+		reg_pc += 2;
+		Cycles += 2;
+	}
+	else
+	{
+		reg_pc += (SBYTE)imm_operand(reg_pc + 1) + 2;
+		Cycles += 4;
+	}
 }
 
 OPCODE_FUNC bra(void)
 {
-    reg_p &= ~FL_T;
-    reg_pc += (SBYTE) imm_operand(reg_pc + 1) + 2;
-    Cycles += 4;
+	reg_p &= ~FL_T;
+	reg_pc += (SBYTE)imm_operand(reg_pc + 1) + 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC brk(void)
 {
-    MESSAGE_DEBUG("BRK opcode has been hit [PC = 0x%04x] at %s(%d)\n", reg_pc);
-    reg_p &= ~FL_T;
-    push_16bit(reg_pc + 2);
-    push_8bit(reg_p | FL_B);
-    reg_p = (reg_p & ~FL_D) | FL_I;
-    reg_pc = get_16bit_addr(VEC_BRK);
-    Cycles += 8;
+	MESSAGE_DEBUG("BRK opcode has been hit [PC = 0x%04x] at %s(%d)\n", reg_pc);
+	reg_p &= ~FL_T;
+	push_16bit(reg_pc + 2);
+	push_8bit(reg_p | FL_B);
+	reg_p = (reg_p & ~FL_D) | FL_I;
+	reg_pc = get_16bit_addr(VEC_BRK);
+	Cycles += 8;
 }
 
 OPCODE_FUNC bsr(void)
 {
-    reg_p &= ~FL_T;
-    push_16bit(reg_pc + 1);
-    reg_pc += (SBYTE) imm_operand(reg_pc + 1) + 2;
-    Cycles += 8;
+	reg_p &= ~FL_T;
+	push_16bit(reg_pc + 1);
+	reg_pc += (SBYTE)imm_operand(reg_pc + 1) + 2;
+	Cycles += 8;
 }
 
 OPCODE_FUNC bvc(void)
 {
-    reg_p &= ~FL_T;
-    if (reg_p & FL_V) {
-        reg_pc += 2;
-        Cycles += 2;
-    } else {
-        reg_pc += (SBYTE) imm_operand(reg_pc + 1) + 2;
-        Cycles += 4;
-    }
+	reg_p &= ~FL_T;
+	if (reg_p & FL_V)
+	{
+		reg_pc += 2;
+		Cycles += 2;
+	}
+	else
+	{
+		reg_pc += (SBYTE)imm_operand(reg_pc + 1) + 2;
+		Cycles += 4;
+	}
 }
 
 OPCODE_FUNC bvs(void)
 {
-    reg_p &= ~FL_T;
-    if (reg_p & FL_V) {
-        reg_pc += (SBYTE) imm_operand(reg_pc + 1) + 2;
-        Cycles += 4;
-    } else {
-        reg_pc += 2;
-        Cycles += 2;
-    }
+	reg_p &= ~FL_T;
+	if (reg_p & FL_V)
+	{
+		reg_pc += (SBYTE)imm_operand(reg_pc + 1) + 2;
+		Cycles += 4;
+	}
+	else
+	{
+		reg_pc += 2;
+		Cycles += 2;
+	}
 }
 
 OPCODE_FUNC cla(void)
 {
-    reg_p &= ~FL_T;
-    reg_a = 0;
-    reg_pc++;
-    Cycles += 2;
+	reg_p &= ~FL_T;
+	reg_a = 0;
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC clc(void)
 {
-    reg_p &= ~(FL_T | FL_C);
-    reg_pc++;
-    Cycles += 2;
+	reg_p &= ~(FL_T | FL_C);
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC cld(void)
 {
-    reg_p &= ~(FL_T | FL_D);
-    reg_pc++;
-    Cycles += 2;
+	reg_p &= ~(FL_T | FL_D);
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC cli(void)
 {
-    reg_p &= ~(FL_T | FL_I);
-    reg_pc++;
-    Cycles += 2;
+	reg_p &= ~(FL_T | FL_I);
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC clv(void)
 {
-    reg_p &= ~(FL_V | FL_T);
-    reg_pc++;
-    Cycles += 2;
+	reg_p &= ~(FL_V | FL_T);
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC clx(void)
 {
-    reg_p &= ~FL_T;
-    reg_x = 0;
-    reg_pc++;
-    Cycles += 2;
+	reg_p &= ~FL_T;
+	reg_x = 0;
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC cly(void)
 {
-    reg_p &= ~FL_T;
-    reg_y = 0;
-    reg_pc++;
-    Cycles += 2;
+	reg_p &= ~FL_T;
+	reg_y = 0;
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC cmp_abs(void)
 {
-    temp = abs_operand(reg_pc + 1);
+	temp = abs_operand(reg_pc + 1);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((reg_a < temp) ? 0 : FL_C)
-        | flnz_list[(UBYTE) (reg_a - temp)];
-    reg_pc += 3;
-    Cycles += 5;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_a < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_a - temp)];
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC cmp_absx(void)
 {
-    temp = absx_operand(reg_pc + 1);
+	temp = absx_operand(reg_pc + 1);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((reg_a < temp) ? 0 : FL_C)
-        | flnz_list[(UBYTE) (reg_a - temp)];
-    reg_pc += 3;
-    Cycles += 5;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_a < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_a - temp)];
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC cmp_absy(void)
 {
-    temp = absy_operand(reg_pc + 1);
+	temp = absy_operand(reg_pc + 1);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((reg_a < temp) ? 0 : FL_C)
-        | flnz_list[(UBYTE) (reg_a - temp)];
-    reg_pc += 3;
-    Cycles += 5;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_a < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_a - temp)];
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC cmp_imm(void)
 {
-    temp = imm_operand(reg_pc + 1);
+	temp = imm_operand(reg_pc + 1);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((reg_a < temp) ? 0 : FL_C)
-        | flnz_list[(UBYTE) (reg_a - temp)];
-    reg_pc += 2;
-    Cycles += 2;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_a < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_a - temp)];
+	reg_pc += 2;
+	Cycles += 2;
 }
 
 OPCODE_FUNC cmp_zp(void)
 {
-    temp = zp_operand(reg_pc + 1);
+	temp = zp_operand(reg_pc + 1);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((reg_a < temp) ? 0 : FL_C)
-        | flnz_list[(UBYTE) (reg_a - temp)];
-    reg_pc += 2;
-    Cycles += 4;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_a < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_a - temp)];
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC cmp_zpx(void)
 {
-    temp = zpx_operand(reg_pc + 1);
+	temp = zpx_operand(reg_pc + 1);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((reg_a < temp) ? 0 : FL_C)
-        | flnz_list[(UBYTE) (reg_a - temp)];
-    reg_pc += 2;
-    Cycles += 4;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_a < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_a - temp)];
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC cmp_zpind(void)
 {
-    temp = zpind_operand(reg_pc + 1);
+	temp = zpind_operand(reg_pc + 1);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((reg_a < temp) ? 0 : FL_C)
-        | flnz_list[(UBYTE) (reg_a - temp)];
-    reg_pc += 2;
-    Cycles += 7;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_a < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_a - temp)];
+	reg_pc += 2;
+	Cycles += 7;
 }
 
 OPCODE_FUNC cmp_zpindx(void)
 {
-    temp = zpindx_operand(reg_pc + 1);
+	temp = zpindx_operand(reg_pc + 1);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((reg_a < temp) ? 0 : FL_C)
-        | flnz_list[(UBYTE) (reg_a - temp)];
-    reg_pc += 2;
-    Cycles += 7;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_a < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_a - temp)];
+	reg_pc += 2;
+	Cycles += 7;
 }
 
 OPCODE_FUNC cmp_zpindy(void)
 {
-    temp = zpindy_operand(reg_pc + 1);
+	temp = zpindy_operand(reg_pc + 1);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((reg_a < temp) ? 0 : FL_C)
-        | flnz_list[(UBYTE) (reg_a - temp)];
-    reg_pc += 2;
-    Cycles += 7;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_a < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_a - temp)];
+	reg_pc += 2;
+	Cycles += 7;
 }
 
 OPCODE_FUNC cpx_abs(void)
 {
-    temp = abs_operand(reg_pc + 1);
+	temp = abs_operand(reg_pc + 1);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((reg_x < temp) ? 0 : FL_C)
-        | flnz_list[(UBYTE) (reg_x - temp)];
-    reg_pc += 3;
-    Cycles += 5;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_x < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_x - temp)];
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC cpx_imm(void)
 {
-    temp = imm_operand(reg_pc + 1);
+	temp = imm_operand(reg_pc + 1);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((reg_x < temp) ? 0 : FL_C)
-        | flnz_list[(UBYTE) (reg_x - temp)];
-    reg_pc += 2;
-    Cycles += 2;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_x < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_x - temp)];
+	reg_pc += 2;
+	Cycles += 2;
 }
 
 OPCODE_FUNC cpx_zp(void)
 {
-    temp = zp_operand(reg_pc + 1);
+	temp = zp_operand(reg_pc + 1);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((reg_x < temp) ? 0 : FL_C)
-        | flnz_list[(UBYTE) (reg_x - temp)];
-    reg_pc += 2;
-    Cycles += 4;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_x < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_x - temp)];
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC cpy_abs(void)
 {
-    temp = abs_operand(reg_pc + 1);
+	temp = abs_operand(reg_pc + 1);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((reg_y < temp) ? 0 : FL_C)
-        | flnz_list[(UBYTE) (reg_y - temp)];
-    reg_pc += 3;
-    Cycles += 5;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_y < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_y - temp)];
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC cpy_imm(void)
 {
-    temp = imm_operand(reg_pc + 1);
+	temp = imm_operand(reg_pc + 1);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((reg_y < temp) ? 0 : FL_C)
-        | flnz_list[(UBYTE) (reg_y - temp)];
-    reg_pc += 2;
-    Cycles += 2;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_y < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_y - temp)];
+	reg_pc += 2;
+	Cycles += 2;
 }
 
 OPCODE_FUNC cpy_zp(void)
 {
-    temp = zp_operand(reg_pc + 1);
+	temp = zp_operand(reg_pc + 1);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((reg_y < temp) ? 0 : FL_C)
-        | flnz_list[(UBYTE) (reg_y - temp)];
-    reg_pc += 2;
-    Cycles += 4;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_y < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_y - temp)];
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC dec_a(void)
 {
-    --reg_a;
-    chk_flnz_8bit(reg_a);
-    reg_pc++;
-    Cycles += 2;
+	--reg_a;
+	chk_flnz_8bit(reg_a);
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC dec_abs(void)
 {
-    temp_addr = get_16bit_addr(reg_pc + 1);
-    temp = get_8bit_addr(temp_addr) - 1;
-    chk_flnz_8bit(temp);
-    put_8bit_addr(temp_addr, temp);
-    reg_pc += 3;
-    Cycles += 7;
+	temp_addr = get_16bit_addr(reg_pc + 1);
+	temp = get_8bit_addr(temp_addr) - 1;
+	chk_flnz_8bit(temp);
+	put_8bit_addr(temp_addr, temp);
+	reg_pc += 3;
+	Cycles += 7;
 }
 
 OPCODE_FUNC dec_absx(void)
 {
-    temp_addr = get_16bit_addr(reg_pc + 1) + reg_x;
-    temp = get_8bit_addr(temp_addr) - 1;
-    chk_flnz_8bit(temp);
-    put_8bit_addr(temp_addr, temp);
-    reg_pc += 3;
-    Cycles += 7;
+	temp_addr = get_16bit_addr(reg_pc + 1) + reg_x;
+	temp = get_8bit_addr(temp_addr) - 1;
+	chk_flnz_8bit(temp);
+	put_8bit_addr(temp_addr, temp);
+	reg_pc += 3;
+	Cycles += 7;
 }
 
 OPCODE_FUNC dec_zp(void)
 {
-    zp_addr = imm_operand(reg_pc + 1);
-    temp = get_8bit_zp(zp_addr) - 1;
-    chk_flnz_8bit(temp);
-    put_8bit_zp(zp_addr, temp);
-    reg_pc += 2;
-    Cycles += 6;
+	zp_addr = imm_operand(reg_pc + 1);
+	temp = get_8bit_zp(zp_addr) - 1;
+	chk_flnz_8bit(temp);
+	put_8bit_zp(zp_addr, temp);
+	reg_pc += 2;
+	Cycles += 6;
 }
 
 OPCODE_FUNC dec_zpx(void)
 {
-    zp_addr = imm_operand(reg_pc + 1) + reg_x;
-    temp = get_8bit_zp(zp_addr) - 1;
-    chk_flnz_8bit(temp);
-    put_8bit_zp(zp_addr, temp);
-    reg_pc += 2;
-    Cycles += 6;
+	zp_addr = imm_operand(reg_pc + 1) + reg_x;
+	temp = get_8bit_zp(zp_addr) - 1;
+	chk_flnz_8bit(temp);
+	put_8bit_zp(zp_addr, temp);
+	reg_pc += 2;
+	Cycles += 6;
 }
 
 OPCODE_FUNC dex(void)
 {
-    --reg_x;
-    chk_flnz_8bit(reg_x);
-    reg_pc++;
-    Cycles += 2;
+	--reg_x;
+	chk_flnz_8bit(reg_x);
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC dey(void)
 {
-    --reg_y;
-    chk_flnz_8bit(reg_y);
-    reg_pc++;
-    Cycles += 2;
+	--reg_y;
+	chk_flnz_8bit(reg_y);
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC eor_abs(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp ^= abs_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 8;
-    } else {
-        reg_a ^= abs_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 5;
-    }
-    reg_pc += 3;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp ^= abs_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 8;
+	}
+	else
+	{
+		reg_a ^= abs_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 5;
+	}
+	reg_pc += 3;
 }
 
 OPCODE_FUNC eor_absx(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp ^= absx_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 8;
-    } else {
-        reg_a ^= absx_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 5;
-    }
-    reg_pc += 3;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp ^= absx_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 8;
+	}
+	else
+	{
+		reg_a ^= absx_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 5;
+	}
+	reg_pc += 3;
 }
 
 OPCODE_FUNC eor_absy(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp ^= absy_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 8;
-    } else {
-        reg_a ^= absy_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 5;
-    }
-    reg_pc += 3;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp ^= absy_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 8;
+	}
+	else
+	{
+		reg_a ^= absy_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 5;
+	}
+	reg_pc += 3;
 }
 
 OPCODE_FUNC eor_imm(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp ^= imm_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 5;
-    } else {
-        reg_a ^= imm_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 2;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp ^= imm_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 5;
+	}
+	else
+	{
+		reg_a ^= imm_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 2;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC eor_zp(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp ^= zp_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 7;
-    } else {
-        reg_a ^= zp_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 4;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp ^= zp_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 7;
+	}
+	else
+	{
+		reg_a ^= zp_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 4;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC eor_zpx(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp ^= zpx_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 7;
-    } else {
-        reg_a ^= zpx_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 4;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp ^= zpx_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 7;
+	}
+	else
+	{
+		reg_a ^= zpx_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 4;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC eor_zpind(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp ^= zpind_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 10;
-    } else {
-        reg_a ^= zpind_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 7;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp ^= zpind_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 10;
+	}
+	else
+	{
+		reg_a ^= zpind_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 7;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC eor_zpindx(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp ^= zpindx_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 10;
-    } else {
-        reg_a ^= zpindx_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 7;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp ^= zpindx_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 10;
+	}
+	else
+	{
+		reg_a ^= zpindx_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 7;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC eor_zpindy(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp ^= zpindy_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 10;
-    } else {
-        reg_a ^= zpindy_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 7;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp ^= zpindy_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 10;
+	}
+	else
+	{
+		reg_a ^= zpindy_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 7;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC halt(void)
 {
-    return;
+	return;
 }
 
 OPCODE_FUNC inc_a(void)
 {
-    ++reg_a;
-    chk_flnz_8bit(reg_a);
-    reg_pc++;
-    Cycles += 2;
+	++reg_a;
+	chk_flnz_8bit(reg_a);
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC inc_abs(void)
 {
-    temp_addr = get_16bit_addr(reg_pc + 1);
-    temp = get_8bit_addr(temp_addr) + 1;
-    chk_flnz_8bit(temp);
-    put_8bit_addr(temp_addr, temp);
-    reg_pc += 3;
-    Cycles += 7;
+	temp_addr = get_16bit_addr(reg_pc + 1);
+	temp = get_8bit_addr(temp_addr) + 1;
+	chk_flnz_8bit(temp);
+	put_8bit_addr(temp_addr, temp);
+	reg_pc += 3;
+	Cycles += 7;
 }
 
 OPCODE_FUNC inc_absx(void)
 {
-    temp_addr = get_16bit_addr(reg_pc + 1) + reg_x;
-    temp = get_8bit_addr(temp_addr) + 1;
-    chk_flnz_8bit(temp);
-    put_8bit_addr(temp_addr, temp);
-    reg_pc += 3;
-    Cycles += 7;
+	temp_addr = get_16bit_addr(reg_pc + 1) + reg_x;
+	temp = get_8bit_addr(temp_addr) + 1;
+	chk_flnz_8bit(temp);
+	put_8bit_addr(temp_addr, temp);
+	reg_pc += 3;
+	Cycles += 7;
 }
 
 OPCODE_FUNC inc_zp(void)
 {
-    zp_addr = imm_operand(reg_pc + 1);
-    temp = get_8bit_zp(zp_addr) + 1;
-    chk_flnz_8bit(temp);
-    put_8bit_zp(zp_addr, temp);
-    reg_pc += 2;
-    Cycles += 6;
+	zp_addr = imm_operand(reg_pc + 1);
+	temp = get_8bit_zp(zp_addr) + 1;
+	chk_flnz_8bit(temp);
+	put_8bit_zp(zp_addr, temp);
+	reg_pc += 2;
+	Cycles += 6;
 }
 
 OPCODE_FUNC inc_zpx(void)
 {
-    zp_addr = imm_operand(reg_pc + 1) + reg_x;
-    temp = get_8bit_zp(zp_addr) + 1;
-    chk_flnz_8bit(temp);
-    put_8bit_zp(zp_addr, temp);
-    reg_pc += 2;
-    Cycles += 6;
+	zp_addr = imm_operand(reg_pc + 1) + reg_x;
+	temp = get_8bit_zp(zp_addr) + 1;
+	chk_flnz_8bit(temp);
+	put_8bit_zp(zp_addr, temp);
+	reg_pc += 2;
+	Cycles += 6;
 }
 
 OPCODE_FUNC inx(void)
 {
-    ++reg_x;
-    chk_flnz_8bit(reg_x);
-    reg_pc++;
-    Cycles += 2;
+	++reg_x;
+	chk_flnz_8bit(reg_x);
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC iny(void)
 {
-    ++reg_y;
-    chk_flnz_8bit(reg_y);
-    reg_pc++;
-    Cycles += 2;
+	++reg_y;
+	chk_flnz_8bit(reg_y);
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC jmp(void)
 {
-    reg_p &= ~FL_T;
-    reg_pc = get_16bit_addr(reg_pc + 1);
-    Cycles += 4;
+	reg_p &= ~FL_T;
+	reg_pc = get_16bit_addr(reg_pc + 1);
+	Cycles += 4;
 }
 
 OPCODE_FUNC jmp_absind(void)
 {
-    reg_p &= ~FL_T;
-    reg_pc = get_16bit_addr(get_16bit_addr(reg_pc + 1));
-    Cycles += 7;
+	reg_p &= ~FL_T;
+	reg_pc = get_16bit_addr(get_16bit_addr(reg_pc + 1));
+	Cycles += 7;
 }
 
 OPCODE_FUNC jmp_absindx(void)
 {
-    reg_p &= ~FL_T;
-    reg_pc = get_16bit_addr(get_16bit_addr(reg_pc + 1) + reg_x);
-    Cycles += 7;
+	reg_p &= ~FL_T;
+	reg_pc = get_16bit_addr(get_16bit_addr(reg_pc + 1) + reg_x);
+	Cycles += 7;
 }
 
 OPCODE_FUNC jsr(void)
 {
-    reg_p &= ~FL_T;
-    push_16bit(reg_pc + 2);
-    reg_pc = get_16bit_addr(reg_pc + 1);
-    Cycles += 7;
+	reg_p &= ~FL_T;
+	push_16bit(reg_pc + 2);
+	reg_pc = get_16bit_addr(reg_pc + 1);
+	Cycles += 7;
 }
 
 OPCODE_FUNC lda_abs(void)
 {
-    reg_a = abs_operand(reg_pc + 1);
-    chk_flnz_8bit(reg_a);
-    reg_pc += 3;
-    Cycles += 5;
+	reg_a = abs_operand(reg_pc + 1);
+	chk_flnz_8bit(reg_a);
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC lda_absx(void)
 {
-    reg_a = absx_operand(reg_pc + 1);
-    chk_flnz_8bit(reg_a);
-    reg_pc += 3;
-    Cycles += 5;
+	reg_a = absx_operand(reg_pc + 1);
+	chk_flnz_8bit(reg_a);
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC lda_absy(void)
 {
-    reg_a = absy_operand(reg_pc + 1);
-    chk_flnz_8bit(reg_a);
-    reg_pc += 3;
-    Cycles += 5;
+	reg_a = absy_operand(reg_pc + 1);
+	chk_flnz_8bit(reg_a);
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC lda_imm(void)
 {
-    reg_a = imm_operand(reg_pc + 1);
-    chk_flnz_8bit(reg_a);
-    reg_pc += 2;
-    Cycles += 2;
+	reg_a = imm_operand(reg_pc + 1);
+	chk_flnz_8bit(reg_a);
+	reg_pc += 2;
+	Cycles += 2;
 }
 
 OPCODE_FUNC lda_zp(void)
 {
-    reg_a = zp_operand(reg_pc + 1);
-    chk_flnz_8bit(reg_a);
-    reg_pc += 2;
-    Cycles += 4;
+	reg_a = zp_operand(reg_pc + 1);
+	chk_flnz_8bit(reg_a);
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC lda_zpx(void)
 {
-    reg_a = zpx_operand(reg_pc + 1);
-    chk_flnz_8bit(reg_a);
-    reg_pc += 2;
-    Cycles += 4;
+	reg_a = zpx_operand(reg_pc + 1);
+	chk_flnz_8bit(reg_a);
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC lda_zpind(void)
 {
-    reg_a = zpind_operand(reg_pc + 1);
-    chk_flnz_8bit(reg_a);
-    reg_pc += 2;
-    Cycles += 7;
+	reg_a = zpind_operand(reg_pc + 1);
+	chk_flnz_8bit(reg_a);
+	reg_pc += 2;
+	Cycles += 7;
 }
 
 OPCODE_FUNC lda_zpindx(void)
 {
-    reg_a = zpindx_operand(reg_pc + 1);
-    chk_flnz_8bit(reg_a);
-    reg_pc += 2;
-    Cycles += 7;
+	reg_a = zpindx_operand(reg_pc + 1);
+	chk_flnz_8bit(reg_a);
+	reg_pc += 2;
+	Cycles += 7;
 }
 
 OPCODE_FUNC lda_zpindy(void)
 {
-    reg_a = zpindy_operand(reg_pc + 1);
-    chk_flnz_8bit(reg_a);
-    reg_pc += 2;
-    Cycles += 7;
+	reg_a = zpindy_operand(reg_pc + 1);
+	chk_flnz_8bit(reg_a);
+	reg_pc += 2;
+	Cycles += 7;
 }
 
 OPCODE_FUNC ldx_abs(void)
 {
-    reg_x = abs_operand(reg_pc + 1);
-    chk_flnz_8bit(reg_x);
-    reg_pc += 3;
-    Cycles += 5;
+	reg_x = abs_operand(reg_pc + 1);
+	chk_flnz_8bit(reg_x);
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC ldx_absy(void)
 {
-    reg_x = absy_operand(reg_pc + 1);
-    chk_flnz_8bit(reg_x);
-    reg_pc += 3;
-    Cycles += 5;
+	reg_x = absy_operand(reg_pc + 1);
+	chk_flnz_8bit(reg_x);
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC ldx_imm(void)
 {
-    reg_x = imm_operand(reg_pc + 1);
-    chk_flnz_8bit(reg_x);
-    reg_pc += 2;
-    Cycles += 2;
+	reg_x = imm_operand(reg_pc + 1);
+	chk_flnz_8bit(reg_x);
+	reg_pc += 2;
+	Cycles += 2;
 }
 
 OPCODE_FUNC ldx_zp(void)
 {
-    reg_x = zp_operand(reg_pc + 1);
-    chk_flnz_8bit(reg_x);
-    reg_pc += 2;
-    Cycles += 4;
+	reg_x = zp_operand(reg_pc + 1);
+	chk_flnz_8bit(reg_x);
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC ldx_zpy(void)
 {
-    reg_x = zpy_operand(reg_pc + 1);
-    chk_flnz_8bit(reg_x);
-    reg_pc += 2;
-    Cycles += 4;
+	reg_x = zpy_operand(reg_pc + 1);
+	chk_flnz_8bit(reg_x);
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC ldy_abs(void)
 {
-    reg_y = abs_operand(reg_pc + 1);
-    chk_flnz_8bit(reg_y);
-    reg_pc += 3;
-    Cycles += 5;
+	reg_y = abs_operand(reg_pc + 1);
+	chk_flnz_8bit(reg_y);
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC ldy_absx(void)
 {
-    reg_y = absx_operand(reg_pc + 1);
-    chk_flnz_8bit(reg_y);
-    reg_pc += 3;
-    Cycles += 5;
+	reg_y = absx_operand(reg_pc + 1);
+	chk_flnz_8bit(reg_y);
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC ldy_imm(void)
 {
-    reg_y = imm_operand(reg_pc + 1);
-    chk_flnz_8bit(reg_y);
-    reg_pc += 2;
-    Cycles += 2;
+	reg_y = imm_operand(reg_pc + 1);
+	chk_flnz_8bit(reg_y);
+	reg_pc += 2;
+	Cycles += 2;
 }
 
 OPCODE_FUNC ldy_zp(void)
 {
-    reg_y = zp_operand(reg_pc + 1);
-    chk_flnz_8bit(reg_y);
-    reg_pc += 2;
-    Cycles += 4;
+	reg_y = zp_operand(reg_pc + 1);
+	chk_flnz_8bit(reg_y);
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC ldy_zpx(void)
 {
-    reg_y = zpx_operand(reg_pc + 1);
-    chk_flnz_8bit(reg_y);
-    reg_pc += 2;
-    Cycles += 4;
+	reg_y = zpx_operand(reg_pc + 1);
+	chk_flnz_8bit(reg_y);
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC lsr_a(void)
 {
-    temp = reg_a;
-    reg_a /= 2;
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp & 1) ? FL_C : 0)
-        | flnz_list[reg_a];
-    reg_pc++;
-    Cycles += 2;
+	temp = reg_a;
+	reg_a /= 2;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp & 1) ? FL_C : 0) | flnz_list[reg_a];
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC lsr_abs(void)
 {
-    temp_addr = get_16bit_addr(reg_pc + 1);
-    temp1 = get_8bit_addr(temp_addr);
-    temp = temp1 / 2;
+	temp_addr = get_16bit_addr(reg_pc + 1);
+	temp1 = get_8bit_addr(temp_addr);
+	temp = temp1 / 2;
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp1 & 1) ? FL_C : 0)
-        | flnz_list[temp];
-    put_8bit_addr(temp_addr, temp);
-    reg_pc += 3;
-    Cycles += 7;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 1) ? FL_C : 0) | flnz_list[temp];
+	put_8bit_addr(temp_addr, temp);
+	reg_pc += 3;
+	Cycles += 7;
 }
 
 OPCODE_FUNC lsr_absx(void)
 {
-    temp_addr = get_16bit_addr(reg_pc + 1) + reg_x;
-    temp1 = get_8bit_addr(temp_addr);
-    temp = temp1 / 2;
+	temp_addr = get_16bit_addr(reg_pc + 1) + reg_x;
+	temp1 = get_8bit_addr(temp_addr);
+	temp = temp1 / 2;
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp1 & 1) ? FL_C : 0)
-        | flnz_list[temp];
-    put_8bit_addr(temp_addr, temp);
-    reg_pc += 3;
-    Cycles += 7;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 1) ? FL_C : 0) | flnz_list[temp];
+	put_8bit_addr(temp_addr, temp);
+	reg_pc += 3;
+	Cycles += 7;
 }
 
 OPCODE_FUNC lsr_zp(void)
 {
-    zp_addr = imm_operand(reg_pc + 1);
-    temp1 = get_8bit_zp(zp_addr);
-    temp = temp1 / 2;
+	zp_addr = imm_operand(reg_pc + 1);
+	temp1 = get_8bit_zp(zp_addr);
+	temp = temp1 / 2;
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp1 & 1) ? FL_C : 0)
-        | flnz_list[temp];
-    put_8bit_zp(zp_addr, temp);
-    reg_pc += 2;
-    Cycles += 6;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 1) ? FL_C : 0) | flnz_list[temp];
+	put_8bit_zp(zp_addr, temp);
+	reg_pc += 2;
+	Cycles += 6;
 }
 
 OPCODE_FUNC lsr_zpx(void)
 {
-    zp_addr = imm_operand(reg_pc + 1) + reg_x;
-    temp1 = get_8bit_zp(zp_addr);
-    temp = temp1 / 2;
+	zp_addr = imm_operand(reg_pc + 1) + reg_x;
+	temp1 = get_8bit_zp(zp_addr);
+	temp = temp1 / 2;
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp1 & 1) ? FL_C : 0)
-        | flnz_list[temp];
-    put_8bit_zp(zp_addr, temp);
-    reg_pc += 2;
-    Cycles += 6;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 1) ? FL_C : 0) | flnz_list[temp];
+	put_8bit_zp(zp_addr, temp);
+	reg_pc += 2;
+	Cycles += 6;
 }
 
 OPCODE_FUNC nop(void)
 {
-    reg_p &= ~FL_T;
-    reg_pc++;
-    Cycles += 2;
+	reg_p &= ~FL_T;
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC ora_abs(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp |= abs_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 8;
-    } else {
-        reg_a |= abs_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 5;
-    }
-    reg_pc += 3;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp |= abs_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 8;
+	}
+	else
+	{
+		reg_a |= abs_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 5;
+	}
+	reg_pc += 3;
 }
 
 OPCODE_FUNC ora_absx(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp |= absx_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 8;
-    } else {
-        reg_a |= absx_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 5;
-    }
-    reg_pc += 3;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp |= absx_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 8;
+	}
+	else
+	{
+		reg_a |= absx_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 5;
+	}
+	reg_pc += 3;
 }
 
 OPCODE_FUNC ora_absy(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp |= absy_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 8;
-    } else {
-        reg_a |= absy_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 5;
-    }
-    reg_pc += 3;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp |= absy_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 8;
+	}
+	else
+	{
+		reg_a |= absy_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 5;
+	}
+	reg_pc += 3;
 }
 
 OPCODE_FUNC ora_imm(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp |= imm_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 5;
-    } else {
-        reg_a |= imm_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 2;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp |= imm_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 5;
+	}
+	else
+	{
+		reg_a |= imm_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 2;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC ora_zp(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp |= zp_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 7;
-    } else {
-        reg_a |= zp_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 4;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp |= zp_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 7;
+	}
+	else
+	{
+		reg_a |= zp_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 4;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC ora_zpx(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp |= zpx_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 7;
-    } else {
-        reg_a |= zpx_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 4;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp |= zpx_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 7;
+	}
+	else
+	{
+		reg_a |= zpx_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 4;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC ora_zpind(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp |= zpind_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 10;
-    } else {
-        reg_a |= zpind_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 7;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp |= zpind_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 10;
+	}
+	else
+	{
+		reg_a |= zpind_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 7;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC ora_zpindx(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp |= zpindx_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 10;
-    } else {
-        reg_a |= zpindx_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 7;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp |= zpindx_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 10;
+	}
+	else
+	{
+		reg_a |= zpindx_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 7;
+	}
+	reg_pc += 2;
 }
 
 OPCODE_FUNC ora_zpindy(void)
 {
-    if (reg_p & FL_T) {
-        temp = get_8bit_zp(reg_x);
-        temp |= zpindy_operand(reg_pc + 1);
-        chk_flnz_8bit(temp);
-        put_8bit_zp(reg_x, temp);
-        Cycles += 10;
-    } else {
-        reg_a |= zpindy_operand(reg_pc + 1);
-        chk_flnz_8bit(reg_a);
-        Cycles += 7;
-    }
-    reg_pc += 2;
+	if (reg_p & FL_T)
+	{
+		temp = get_8bit_zp(reg_x);
+		temp |= zpindy_operand(reg_pc + 1);
+		chk_flnz_8bit(temp);
+		put_8bit_zp(reg_x, temp);
+		Cycles += 10;
+	}
+	else
+	{
+		reg_a |= zpindy_operand(reg_pc + 1);
+		chk_flnz_8bit(reg_a);
+		Cycles += 7;
+	}
+	reg_pc += 2;
 }
-
 
 OPCODE_FUNC pha(void)
 {
-    reg_p &= ~FL_T;
-    push_8bit(reg_a);
-    reg_pc++;
-    Cycles += 3;
+	reg_p &= ~FL_T;
+	push_8bit(reg_a);
+	reg_pc++;
+	Cycles += 3;
 }
 
 OPCODE_FUNC php(void)
 {
-    reg_p &= ~FL_T;
-    push_8bit(reg_p);
-    reg_pc++;
-    Cycles += 3;
+	reg_p &= ~FL_T;
+	push_8bit(reg_p);
+	reg_pc++;
+	Cycles += 3;
 }
 
 OPCODE_FUNC phx(void)
 {
-    reg_p &= ~FL_T;
-    push_8bit(reg_x);
-    reg_pc++;
-    Cycles += 3;
+	reg_p &= ~FL_T;
+	push_8bit(reg_x);
+	reg_pc++;
+	Cycles += 3;
 }
 
 OPCODE_FUNC phy(void)
 {
-    reg_p &= ~FL_T;
-    push_8bit(reg_y);
-    reg_pc++;
-    Cycles += 3;
+	reg_p &= ~FL_T;
+	push_8bit(reg_y);
+	reg_pc++;
+	Cycles += 3;
 }
 
 OPCODE_FUNC pla(void)
 {
-    reg_a = pull_8bit();
-    chk_flnz_8bit(reg_a);
-    reg_pc++;
-    Cycles += 4;
+	reg_a = pull_8bit();
+	chk_flnz_8bit(reg_a);
+	reg_pc++;
+	Cycles += 4;
 }
 
 OPCODE_FUNC plp(void)
 {
-    reg_p = pull_8bit();
-    reg_pc++;
-    Cycles += 4;
+	reg_p = pull_8bit();
+	reg_pc++;
+	Cycles += 4;
 }
 
 OPCODE_FUNC plx(void)
 {
-    reg_x = pull_8bit();
-    chk_flnz_8bit(reg_x);
-    reg_pc++;
-    Cycles += 4;
+	reg_x = pull_8bit();
+	chk_flnz_8bit(reg_x);
+	reg_pc++;
+	Cycles += 4;
 }
 
 OPCODE_FUNC ply(void)
 {
-    reg_y = pull_8bit();
-    chk_flnz_8bit(reg_y);
-    reg_pc++;
-    Cycles += 4;
+	reg_y = pull_8bit();
+	chk_flnz_8bit(reg_y);
+	reg_pc++;
+	Cycles += 4;
 }
 
 OPCODE_FUNC rmb(uint8 bit)
 {
-    temp = imm_operand(reg_pc + 1);
-    reg_p &= ~FL_T;
-    put_8bit_zp(temp, get_8bit_zp(temp) & (~(1 << bit)));
-    reg_pc += 2;
-    Cycles += 7;
+	temp = imm_operand(reg_pc + 1);
+	reg_p &= ~FL_T;
+	put_8bit_zp(temp, get_8bit_zp(temp) & (~(1 << bit)));
+	reg_pc += 2;
+	Cycles += 7;
 }
 
 OPCODE_FUNC rol_a(void)
 {
-    temp = reg_a;
-    reg_a = (reg_a << 1) + (reg_p & FL_C);
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp & 0x80) ? FL_C : 0)
-        | flnz_list[reg_a];
-    reg_pc++;
-    Cycles += 2;
+	temp = reg_a;
+	reg_a = (reg_a << 1) + (reg_p & FL_C);
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp & 0x80) ? FL_C : 0) | flnz_list[reg_a];
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC rol_abs(void)
 {
-    temp_addr = get_16bit_addr(reg_pc + 1);
-    temp1 = get_8bit_addr(temp_addr);
-    temp = (temp1 << 1) + (reg_p & FL_C);
+	temp_addr = get_16bit_addr(reg_pc + 1);
+	temp1 = get_8bit_addr(temp_addr);
+	temp = (temp1 << 1) + (reg_p & FL_C);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp1 & 0x80) ? FL_C : 0)
-        | flnz_list[temp];
-    Cycles += 7;
-    put_8bit_addr(temp_addr, temp);
-    reg_pc += 3;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
+	Cycles += 7;
+	put_8bit_addr(temp_addr, temp);
+	reg_pc += 3;
 }
 
 OPCODE_FUNC rol_absx(void)
 {
-    temp_addr = get_16bit_addr(reg_pc + 1) + reg_x;
-    temp1 = get_8bit_addr(temp_addr);
-    temp = (temp1 << 1) + (reg_p & FL_C);
+	temp_addr = get_16bit_addr(reg_pc + 1) + reg_x;
+	temp1 = get_8bit_addr(temp_addr);
+	temp = (temp1 << 1) + (reg_p & FL_C);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp1 & 0x80) ? FL_C : 0)
-        | flnz_list[temp];
-    Cycles += 7;
-    put_8bit_addr(temp_addr, temp);
-    reg_pc += 3;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
+	Cycles += 7;
+	put_8bit_addr(temp_addr, temp);
+	reg_pc += 3;
 }
 
 OPCODE_FUNC rol_zp(void)
 {
-    zp_addr = imm_operand(reg_pc + 1);
-    temp1 = get_8bit_zp(zp_addr);
-    temp = (temp1 << 1) + (reg_p & FL_C);
+	zp_addr = imm_operand(reg_pc + 1);
+	temp1 = get_8bit_zp(zp_addr);
+	temp = (temp1 << 1) + (reg_p & FL_C);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp1 & 0x80) ? FL_C : 0)
-        | flnz_list[temp];
-    put_8bit_zp(zp_addr, temp);
-    reg_pc += 2;
-    Cycles += 6;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
+	put_8bit_zp(zp_addr, temp);
+	reg_pc += 2;
+	Cycles += 6;
 }
 
 OPCODE_FUNC rol_zpx(void)
 {
-    zp_addr = imm_operand(reg_pc + 1) + reg_x;
-    temp1 = get_8bit_zp(zp_addr);
-    temp = (temp1 << 1) + (reg_p & FL_C);
+	zp_addr = imm_operand(reg_pc + 1) + reg_x;
+	temp1 = get_8bit_zp(zp_addr);
+	temp = (temp1 << 1) + (reg_p & FL_C);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp1 & 0x80) ? FL_C : 0)
-        | flnz_list[temp];
-    put_8bit_zp(zp_addr, temp);
-    reg_pc += 2;
-    Cycles += 6;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
+	put_8bit_zp(zp_addr, temp);
+	reg_pc += 2;
+	Cycles += 6;
 }
 
 OPCODE_FUNC ror_a(void)
 {
-    temp = reg_a;
-    reg_a = (reg_a >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp & 0x01) ? FL_C : 0)
-        | flnz_list[reg_a];
-    reg_pc++;
-    Cycles += 2;
+	temp = reg_a;
+	reg_a = (reg_a >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp & 0x01) ? FL_C : 0) | flnz_list[reg_a];
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC ror_abs(void)
 {
-    temp_addr = get_16bit_addr(reg_pc + 1);
-    temp1 = get_8bit_addr(temp_addr);
-    temp = (temp1 >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
+	temp_addr = get_16bit_addr(reg_pc + 1);
+	temp1 = get_8bit_addr(temp_addr);
+	temp = (temp1 >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp1 & 0x01) ? FL_C : 0)
-        | flnz_list[temp];
-    Cycles += 7;
-    put_8bit_addr(temp_addr, temp);
-    reg_pc += 3;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x01) ? FL_C : 0) | flnz_list[temp];
+	Cycles += 7;
+	put_8bit_addr(temp_addr, temp);
+	reg_pc += 3;
 }
 
 OPCODE_FUNC ror_absx(void)
 {
-    temp_addr = get_16bit_addr(reg_pc + 1) + reg_x;
-    temp1 = get_8bit_addr(temp_addr);
-    temp = (temp1 >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
+	temp_addr = get_16bit_addr(reg_pc + 1) + reg_x;
+	temp1 = get_8bit_addr(temp_addr);
+	temp = (temp1 >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp1 & 0x01) ? FL_C : 0)
-        | flnz_list[temp];
-    Cycles += 7;
-    put_8bit_addr(temp_addr, temp);
-    reg_pc += 3;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x01) ? FL_C : 0) | flnz_list[temp];
+	Cycles += 7;
+	put_8bit_addr(temp_addr, temp);
+	reg_pc += 3;
 }
 
 OPCODE_FUNC ror_zp(void)
 {
-    zp_addr = imm_operand(reg_pc + 1);
-    temp1 = get_8bit_zp(zp_addr);
-    temp = (temp1 >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
+	zp_addr = imm_operand(reg_pc + 1);
+	temp1 = get_8bit_zp(zp_addr);
+	temp = (temp1 >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp1 & 0x01) ? FL_C : 0)
-        | flnz_list[temp];
-    put_8bit_zp(zp_addr, temp);
-    reg_pc += 2;
-    Cycles += 6;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x01) ? FL_C : 0) | flnz_list[temp];
+	put_8bit_zp(zp_addr, temp);
+	reg_pc += 2;
+	Cycles += 6;
 }
 
 OPCODE_FUNC ror_zpx(void)
 {
-    zp_addr = imm_operand(reg_pc + 1) + reg_x;
-    temp1 = get_8bit_zp(zp_addr);
-    temp = (temp1 >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
+	zp_addr = imm_operand(reg_pc + 1) + reg_x;
+	temp1 = get_8bit_zp(zp_addr);
+	temp = (temp1 >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
 
-    reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C))
-        | ((temp1 & 0x01) ? FL_C : 0)
-        | flnz_list[temp];
-    put_8bit_zp(zp_addr, temp);
-    reg_pc += 2;
-    Cycles += 6;
+	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x01) ? FL_C : 0) | flnz_list[temp];
+	put_8bit_zp(zp_addr, temp);
+	reg_pc += 2;
+	Cycles += 6;
 }
 
 OPCODE_FUNC rti(void)
 {
-    /* FL_B reset in RTI */
-    reg_p = pull_8bit() & ~FL_B;
-    reg_pc = pull_16bit();
-    Cycles += 7;
+	/* FL_B reset in RTI */
+	reg_p = pull_8bit() & ~FL_B;
+	reg_pc = pull_16bit();
+	Cycles += 7;
 }
 
 OPCODE_FUNC rts(void)
 {
-    reg_p &= ~FL_T;
-    reg_pc = pull_16bit() + 1;
-    Cycles += 7;
+	reg_p &= ~FL_T;
+	reg_pc = pull_16bit() + 1;
+	Cycles += 7;
 }
 
 OPCODE_FUNC sax(void)
 {
-    temp = reg_x;
-    reg_p &= ~FL_T;
-    reg_x = reg_a;
-    reg_a = temp;
-    reg_pc++;
-    Cycles += 3;
+	temp = reg_x;
+	reg_p &= ~FL_T;
+	reg_x = reg_a;
+	reg_a = temp;
+	reg_pc++;
+	Cycles += 3;
 }
 
 OPCODE_FUNC say(void)
 {
-    temp = reg_y;
-    reg_p &= ~FL_T;
-    reg_y = reg_a;
-    reg_a = temp;
-    reg_pc++;
-    Cycles += 3;
+	temp = reg_y;
+	reg_p &= ~FL_T;
+	reg_y = reg_a;
+	reg_a = temp;
+	reg_pc++;
+	Cycles += 3;
 }
 
 OPCODE_FUNC sbc_abs(void)
 {
-    sbc(abs_operand(reg_pc + 1));
-    reg_pc += 3;
-    Cycles += 5;
+	sbc(abs_operand(reg_pc + 1));
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC sbc_absx(void)
 {
-    sbc(absx_operand(reg_pc + 1));
-    reg_pc += 3;
-    Cycles += 5;
+	sbc(absx_operand(reg_pc + 1));
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC sbc_absy(void)
 {
-    sbc(absy_operand(reg_pc + 1));
-    reg_pc += 3;
-    Cycles += 5;
+	sbc(absy_operand(reg_pc + 1));
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC sbc_imm(void)
 {
-    sbc(imm_operand(reg_pc + 1));
-    reg_pc += 2;
-    Cycles += 2;
+	sbc(imm_operand(reg_pc + 1));
+	reg_pc += 2;
+	Cycles += 2;
 }
 
 OPCODE_FUNC sbc_zp(void)
 {
-    sbc(zp_operand(reg_pc + 1));
-    reg_pc += 2;
-    Cycles += 4;
+	sbc(zp_operand(reg_pc + 1));
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC sbc_zpx(void)
 {
-    sbc(zpx_operand(reg_pc + 1));
-    reg_pc += 2;
-    Cycles += 4;
+	sbc(zpx_operand(reg_pc + 1));
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC sbc_zpind(void)
 {
-    sbc(zpind_operand(reg_pc + 1));
-    reg_pc += 2;
-    Cycles += 7;
+	sbc(zpind_operand(reg_pc + 1));
+	reg_pc += 2;
+	Cycles += 7;
 }
 
 OPCODE_FUNC sbc_zpindx(void)
 {
-    sbc(zpindx_operand(reg_pc + 1));
-    reg_pc += 2;
-    Cycles += 7;
+	sbc(zpindx_operand(reg_pc + 1));
+	reg_pc += 2;
+	Cycles += 7;
 }
 
 OPCODE_FUNC sbc_zpindy(void)
 {
-    sbc(zpindy_operand(reg_pc + 1));
-    reg_pc += 2;
-    Cycles += 7;
+	sbc(zpindy_operand(reg_pc + 1));
+	reg_pc += 2;
+	Cycles += 7;
 }
 
 OPCODE_FUNC sec(void)
 {
-    reg_p = (reg_p | FL_C) & ~FL_T;
-    reg_pc++;
-    Cycles += 2;
+	reg_p = (reg_p | FL_C) & ~FL_T;
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC sed(void)
 {
-    reg_p = (reg_p | FL_D) & ~FL_T;
-    reg_pc++;
-    Cycles += 2;
+	reg_p = (reg_p | FL_D) & ~FL_T;
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC sei(void)
 {
-    reg_p = (reg_p | FL_I) & ~FL_T;
-    reg_pc++;
-    Cycles += 2;
+	reg_p = (reg_p | FL_I) & ~FL_T;
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC set(void)
 {
-    reg_p |= FL_T;
-    reg_pc++;
-    Cycles += 2;
+	reg_p |= FL_T;
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC smb(uint8 bit)
 {
-    temp = imm_operand(reg_pc + 1);
-    reg_p &= ~FL_T;
-    put_8bit_zp(temp, get_8bit_zp(temp) | (1 << bit));
-    reg_pc += 2;
-    Cycles += 7;
+	temp = imm_operand(reg_pc + 1);
+	reg_p &= ~FL_T;
+	put_8bit_zp(temp, get_8bit_zp(temp) | (1 << bit));
+	reg_pc += 2;
+	Cycles += 7;
 }
 
 OPCODE_FUNC st0(void)
 {
-    reg_p &= ~FL_T;
-    IO_write(0, imm_operand(reg_pc + 1));
-    reg_pc += 2;
-    Cycles += 4;
+	reg_p &= ~FL_T;
+	IO_write(0, imm_operand(reg_pc + 1));
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC st1(void)
 {
-    reg_p &= ~FL_T;
-    IO_write(2, imm_operand(reg_pc + 1));
-    reg_pc += 2;
-    Cycles += 4;
+	reg_p &= ~FL_T;
+	IO_write(2, imm_operand(reg_pc + 1));
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC st2(void)
 {
-    reg_p &= ~FL_T;
-    IO_write(3, imm_operand(reg_pc + 1));
-    reg_pc += 2;
-    Cycles += 4;
+	reg_p &= ~FL_T;
+	IO_write(3, imm_operand(reg_pc + 1));
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC sta_abs(void)
 {
-    reg_p &= ~FL_T;
-    put_8bit_addr(get_16bit_addr(reg_pc + 1), reg_a);
-    reg_pc += 3;
-    Cycles += 5;
+	reg_p &= ~FL_T;
+	put_8bit_addr(get_16bit_addr(reg_pc + 1), reg_a);
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC sta_absx(void)
 {
-    reg_p &= ~FL_T;
-    put_8bit_addr(get_16bit_addr(reg_pc + 1) + reg_x, reg_a);
-    reg_pc += 3;
-    Cycles += 5;
+	reg_p &= ~FL_T;
+	put_8bit_addr(get_16bit_addr(reg_pc + 1) + reg_x, reg_a);
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC sta_absy(void)
 {
-    reg_p &= ~FL_T;
-    put_8bit_addr(get_16bit_addr(reg_pc + 1) + reg_y, reg_a);
-    reg_pc += 3;
-    Cycles += 5;
+	reg_p &= ~FL_T;
+	put_8bit_addr(get_16bit_addr(reg_pc + 1) + reg_y, reg_a);
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC sta_zp(void)
 {
-    reg_p &= ~FL_T;
-    put_8bit_zp(imm_operand(reg_pc + 1), reg_a);
-    reg_pc += 2;
-    Cycles += 4;
+	reg_p &= ~FL_T;
+	put_8bit_zp(imm_operand(reg_pc + 1), reg_a);
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC sta_zpx(void)
 {
-    reg_p &= ~FL_T;
-    put_8bit_zp(imm_operand(reg_pc + 1) + reg_x, reg_a);
-    reg_pc += 2;
-    Cycles += 4;
+	reg_p &= ~FL_T;
+	put_8bit_zp(imm_operand(reg_pc + 1) + reg_x, reg_a);
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC sta_zpind(void)
 {
-    reg_p &= ~FL_T;
-    put_8bit_addr(get_16bit_zp(imm_operand(reg_pc + 1)), reg_a);
-    reg_pc += 2;
-    Cycles += 7;
+	reg_p &= ~FL_T;
+	put_8bit_addr(get_16bit_zp(imm_operand(reg_pc + 1)), reg_a);
+	reg_pc += 2;
+	Cycles += 7;
 }
 
 OPCODE_FUNC sta_zpindx(void)
 {
-    reg_p &= ~FL_T;
-    put_8bit_addr(get_16bit_zp(imm_operand(reg_pc + 1) + reg_x), reg_a);
-    reg_pc += 2;
-    Cycles += 7;
+	reg_p &= ~FL_T;
+	put_8bit_addr(get_16bit_zp(imm_operand(reg_pc + 1) + reg_x), reg_a);
+	reg_pc += 2;
+	Cycles += 7;
 }
 
 OPCODE_FUNC sta_zpindy(void)
 {
-    reg_p &= ~FL_T;
-    put_8bit_addr(get_16bit_zp(imm_operand(reg_pc + 1)) + reg_y, reg_a);
-    reg_pc += 2;
-    Cycles += 7;
+	reg_p &= ~FL_T;
+	put_8bit_addr(get_16bit_zp(imm_operand(reg_pc + 1)) + reg_y, reg_a);
+	reg_pc += 2;
+	Cycles += 7;
 }
 
 OPCODE_FUNC stx_abs(void)
 {
-    reg_p &= ~FL_T;
-    put_8bit_addr(get_16bit_addr(reg_pc + 1), reg_x);
-    reg_pc += 3;
-    Cycles += 5;
+	reg_p &= ~FL_T;
+	put_8bit_addr(get_16bit_addr(reg_pc + 1), reg_x);
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC stx_zp(void)
 {
-    reg_p &= ~FL_T;
-    put_8bit_zp(imm_operand(reg_pc + 1), reg_x);
-    reg_pc += 2;
-    Cycles += 4;
+	reg_p &= ~FL_T;
+	put_8bit_zp(imm_operand(reg_pc + 1), reg_x);
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC stx_zpy(void)
 {
-    reg_p &= ~FL_T;
-    put_8bit_zp(imm_operand(reg_pc + 1) + reg_y, reg_x);
-    reg_pc += 2;
-    Cycles += 4;
+	reg_p &= ~FL_T;
+	put_8bit_zp(imm_operand(reg_pc + 1) + reg_y, reg_x);
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC sty_abs(void)
 {
-    reg_p &= ~FL_T;
-    put_8bit_addr(get_16bit_addr(reg_pc + 1), reg_y);
-    reg_pc += 3;
-    Cycles += 5;
+	reg_p &= ~FL_T;
+	put_8bit_addr(get_16bit_addr(reg_pc + 1), reg_y);
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC sty_zp(void)
 {
-    reg_p &= ~FL_T;
-    put_8bit_zp(imm_operand(reg_pc + 1), reg_y);
-    reg_pc += 2;
-    Cycles += 4;
+	reg_p &= ~FL_T;
+	put_8bit_zp(imm_operand(reg_pc + 1), reg_y);
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC sty_zpx(void)
 {
-    reg_p &= ~FL_T;
-    put_8bit_zp(imm_operand(reg_pc + 1) + reg_x, reg_y);
-    reg_pc += 2;
-    Cycles += 4;
+	reg_p &= ~FL_T;
+	put_8bit_zp(imm_operand(reg_pc + 1) + reg_x, reg_y);
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC stz_abs(void)
 {
-    reg_p &= ~FL_T;
-    put_8bit_addr(get_16bit_addr(reg_pc + 1), 0);
-    reg_pc += 3;
-    Cycles += 5;
+	reg_p &= ~FL_T;
+	put_8bit_addr(get_16bit_addr(reg_pc + 1), 0);
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC stz_absx(void)
 {
-    reg_p &= ~FL_T;
-    put_8bit_addr((get_16bit_addr(reg_pc + 1) + reg_x), 0);
-    reg_pc += 3;
-    Cycles += 5;
+	reg_p &= ~FL_T;
+	put_8bit_addr((get_16bit_addr(reg_pc + 1) + reg_x), 0);
+	reg_pc += 3;
+	Cycles += 5;
 }
 
 OPCODE_FUNC stz_zp(void)
 {
-    reg_p &= ~FL_T;
-    put_8bit_zp(imm_operand(reg_pc + 1), 0);
-    reg_pc += 2;
-    Cycles += 4;
+	reg_p &= ~FL_T;
+	put_8bit_zp(imm_operand(reg_pc + 1), 0);
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC stz_zpx(void)
 {
-    reg_p &= ~FL_T;
-    put_8bit_zp(imm_operand(reg_pc + 1) + reg_x, 0);
-    reg_pc += 2;
-    Cycles += 4;
+	reg_p &= ~FL_T;
+	put_8bit_zp(imm_operand(reg_pc + 1) + reg_x, 0);
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC sxy(void)
 {
-    temp = reg_y;
-    reg_p &= ~FL_T;
-    reg_y = reg_x;
-    reg_x = temp;
-    reg_pc++;
-    Cycles += 3;
+	temp = reg_y;
+	reg_p &= ~FL_T;
+	reg_y = reg_x;
+	reg_x = temp;
+	reg_pc++;
+	Cycles += 3;
 }
 
 OPCODE_FUNC tai(void)
 {
-    reg_p &= ~FL_T;
-    from = get_16bit_addr(reg_pc + 1);
-    to = get_16bit_addr(reg_pc + 3);
-    len = get_16bit_addr(reg_pc + 5);
-    alternate = 0;
+	reg_p &= ~FL_T;
+	from = get_16bit_addr(reg_pc + 1);
+	to = get_16bit_addr(reg_pc + 3);
+	len = get_16bit_addr(reg_pc + 5);
+	alternate = 0;
 
-    Cycles += (6 * len) + 17;
-    while (len-- != 0) {
-        put_8bit_addr(to++, get_8bit_addr(from + alternate));
-        alternate ^= 1;
-    }
-    reg_pc += 7;
+	Cycles += (6 * len) + 17;
+	while (len-- != 0)
+	{
+		put_8bit_addr(to++, get_8bit_addr(from + alternate));
+		alternate ^= 1;
+	}
+	reg_pc += 7;
 }
 
 OPCODE_FUNC tam(void)
 {
-    uchar bitfld = imm_operand(reg_pc + 1);
+	uchar bitfld = imm_operand(reg_pc + 1);
 
-    for (int i = 0; i < 8; i++) {
-        if (bitfld & (1 << i)) {
-            BankSet(i, reg_a);
-        }
-    }
+	for (int i = 0; i < 8; i++)
+	{
+		if (bitfld & (1 << i))
+		{
+			BankSet(i, reg_a);
+		}
+	}
 
-    reg_p &= ~FL_T;
-    reg_pc += 2;
-    Cycles += 5;
+	reg_p &= ~FL_T;
+	reg_pc += 2;
+	Cycles += 5;
 }
 
 OPCODE_FUNC tax(void)
 {
-    reg_x = reg_a;
-    chk_flnz_8bit(reg_a);
-    reg_pc++;
-    Cycles += 2;
+	reg_x = reg_a;
+	chk_flnz_8bit(reg_a);
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC tay(void)
 {
-    reg_y = reg_a;
-    chk_flnz_8bit(reg_a);
-    reg_pc++;
-    Cycles += 2;
+	reg_y = reg_a;
+	chk_flnz_8bit(reg_a);
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC tdd(void)
 {
-    reg_p &= ~FL_T;
-    from = get_16bit_addr(reg_pc + 1);
-    to = get_16bit_addr(reg_pc + 3);
-    len = get_16bit_addr(reg_pc + 5);
+	reg_p &= ~FL_T;
+	from = get_16bit_addr(reg_pc + 1);
+	to = get_16bit_addr(reg_pc + 3);
+	len = get_16bit_addr(reg_pc + 5);
 
-    Cycles += (6 * len) + 17;
-    while (len-- != 0) {
-        put_8bit_addr(to--, get_8bit_addr(from--));
-    }
-    reg_pc += 7;
+	Cycles += (6 * len) + 17;
+	while (len-- != 0)
+	{
+		put_8bit_addr(to--, get_8bit_addr(from--));
+	}
+	reg_pc += 7;
 }
 
 OPCODE_FUNC tia(void)
 {
-    reg_p &= ~FL_T;
-    from = get_16bit_addr(reg_pc + 1);
-    to = get_16bit_addr(reg_pc + 3);
-    len = get_16bit_addr(reg_pc + 5);
-    alternate = 0;
+	reg_p &= ~FL_T;
+	from = get_16bit_addr(reg_pc + 1);
+	to = get_16bit_addr(reg_pc + 3);
+	len = get_16bit_addr(reg_pc + 5);
+	alternate = 0;
 
-    Cycles += (6 * len) + 17;
-    while (len-- != 0) {
-        put_8bit_addr(to + alternate, get_8bit_addr(from++));
-        alternate ^= 1;
-    }
-    reg_pc += 7;
+	Cycles += (6 * len) + 17;
+	while (len-- != 0)
+	{
+		put_8bit_addr(to + alternate, get_8bit_addr(from++));
+		alternate ^= 1;
+	}
+	reg_pc += 7;
 }
 
 OPCODE_FUNC tii(void)
 {
-    reg_p &= ~FL_T;
-    from = get_16bit_addr(reg_pc + 1);
-    to = get_16bit_addr(reg_pc + 3);
-    len = get_16bit_addr(reg_pc + 5);
+	reg_p &= ~FL_T;
+	from = get_16bit_addr(reg_pc + 1);
+	to = get_16bit_addr(reg_pc + 3);
+	len = get_16bit_addr(reg_pc + 5);
 
-    Cycles += (6 * len) + 17;
-    while (len-- != 0) {
-        put_8bit_addr(to++, get_8bit_addr(from++));
-    }
-    reg_pc += 7;
+	Cycles += (6 * len) + 17;
+	while (len-- != 0)
+	{
+		put_8bit_addr(to++, get_8bit_addr(from++));
+	}
+	reg_pc += 7;
 }
 
 OPCODE_FUNC tin(void)
 {
-    reg_p &= ~FL_T;
-    from = get_16bit_addr(reg_pc + 1);
-    to = get_16bit_addr(reg_pc + 3);
-    len = get_16bit_addr(reg_pc + 5);
+	reg_p &= ~FL_T;
+	from = get_16bit_addr(reg_pc + 1);
+	to = get_16bit_addr(reg_pc + 3);
+	len = get_16bit_addr(reg_pc + 5);
 
-    Cycles += (6 * len) + 17;
-    while (len-- != 0) {
-        put_8bit_addr(to, get_8bit_addr(from++));
-    }
-    reg_pc += 7;
+	Cycles += (6 * len) + 17;
+	while (len-- != 0)
+	{
+		put_8bit_addr(to, get_8bit_addr(from++));
+	}
+	reg_pc += 7;
 }
 
 OPCODE_FUNC tma(void)
 {
-    uchar bitfld = imm_operand(reg_pc + 1);
+	uchar bitfld = imm_operand(reg_pc + 1);
 
-    for (int i = 0; i < 8; i++) {
-        if (bitfld & (1 << i)) {
-            reg_a = MMR[i];
-        }
-    }
-    reg_p &= ~FL_T;
-    reg_pc += 2;
-    Cycles += 4;
+	for (int i = 0; i < 8; i++)
+	{
+		if (bitfld & (1 << i))
+		{
+			reg_a = MMR[i];
+		}
+	}
+	reg_p &= ~FL_T;
+	reg_pc += 2;
+	Cycles += 4;
 }
 
 OPCODE_FUNC trb_abs(void)
 {
-    temp_addr = get_16bit_addr(reg_pc + 1);
-    temp = get_8bit_addr(temp_addr);
-    temp1 = (~reg_a) & temp;
+	temp_addr = get_16bit_addr(reg_pc + 1);
+	temp = get_8bit_addr(temp_addr);
+	temp1 = (~reg_a) & temp;
 
-    reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z))
-        | (temp1 & (FL_N | FL_V))
-        | ((temp & reg_a) ? 0 : FL_Z);
-    put_8bit_addr(temp_addr, temp1);
-    reg_pc += 3;
-    Cycles += 7;
+	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp1 & (FL_N | FL_V)) | ((temp & reg_a) ? 0 : FL_Z);
+	put_8bit_addr(temp_addr, temp1);
+	reg_pc += 3;
+	Cycles += 7;
 }
 
 OPCODE_FUNC trb_zp(void)
 {
-    zp_addr = imm_operand(reg_pc + 1);
-    temp = get_8bit_zp(zp_addr);
-    temp1 = (~reg_a) & temp;
+	zp_addr = imm_operand(reg_pc + 1);
+	temp = get_8bit_zp(zp_addr);
+	temp1 = (~reg_a) & temp;
 
-    reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z))
-        | (temp1 & (FL_N | FL_V))
-        | ((temp & reg_a) ? 0 : FL_Z);
-    put_8bit_zp(zp_addr, temp1);
-    reg_pc += 2;
-    Cycles += 6;
+	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp1 & (FL_N | FL_V)) | ((temp & reg_a) ? 0 : FL_Z);
+	put_8bit_zp(zp_addr, temp1);
+	reg_pc += 2;
+	Cycles += 6;
 }
 
 OPCODE_FUNC tsb_abs(void)
 {
-    temp_addr = get_16bit_addr(reg_pc + 1);
-    temp = get_8bit_addr(temp_addr);
-    temp1 = reg_a | temp;
+	temp_addr = get_16bit_addr(reg_pc + 1);
+	temp = get_8bit_addr(temp_addr);
+	temp1 = reg_a | temp;
 
-    reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z))
-        | (temp1 & (FL_N | FL_V))
-        | ((temp & reg_a) ? 0 : FL_Z);
-    put_8bit_addr(temp_addr, temp1);
-    reg_pc += 3;
-    Cycles += 7;
+	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp1 & (FL_N | FL_V)) | ((temp & reg_a) ? 0 : FL_Z);
+	put_8bit_addr(temp_addr, temp1);
+	reg_pc += 3;
+	Cycles += 7;
 }
 
 OPCODE_FUNC tsb_zp(void)
 {
-    zp_addr = imm_operand(reg_pc + 1);
-    temp = get_8bit_zp(zp_addr);
-    temp1 = reg_a | temp;
+	zp_addr = imm_operand(reg_pc + 1);
+	temp = get_8bit_zp(zp_addr);
+	temp1 = reg_a | temp;
 
-    reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z))
-        | (temp1 & (FL_N | FL_V))
-        | ((temp & reg_a) ? 0 : FL_Z);
-    put_8bit_zp(zp_addr, temp1);
-    reg_pc += 2;
-    Cycles += 6;
+	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp1 & (FL_N | FL_V)) | ((temp & reg_a) ? 0 : FL_Z);
+	put_8bit_zp(zp_addr, temp1);
+	reg_pc += 2;
+	Cycles += 6;
 }
 
 OPCODE_FUNC tstins_abs(void)
 {
-    imm_addr = imm_operand(reg_pc + 1);
-    temp = abs_operand(reg_pc + 2);
+	imm_addr = imm_operand(reg_pc + 1);
+	temp = abs_operand(reg_pc + 2);
 
-    reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z))
-        | (temp & (FL_N | FL_V))
-        | ((temp & imm_addr) ? 0 : FL_Z);
-    reg_pc += 4;
-    Cycles += 8;
+	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp & (FL_N | FL_V)) | ((temp & imm_addr) ? 0 : FL_Z);
+	reg_pc += 4;
+	Cycles += 8;
 }
 
 OPCODE_FUNC tstins_absx(void)
 {
-    imm_addr = imm_operand(reg_pc + 1);
-    temp = absx_operand(reg_pc + 2);
+	imm_addr = imm_operand(reg_pc + 1);
+	temp = absx_operand(reg_pc + 2);
 
-    reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z))
-        | (temp & (FL_N | FL_V))
-        | ((temp & imm_addr) ? 0 : FL_Z);
-    reg_pc += 4;
-    Cycles += 8;
+	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp & (FL_N | FL_V)) | ((temp & imm_addr) ? 0 : FL_Z);
+	reg_pc += 4;
+	Cycles += 8;
 }
 
 OPCODE_FUNC tstins_zp(void)
 {
-    imm_addr = imm_operand(reg_pc + 1);
-    temp = zp_operand(reg_pc + 2);
+	imm_addr = imm_operand(reg_pc + 1);
+	temp = zp_operand(reg_pc + 2);
 
-    reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z))
-        | (temp & (FL_N | FL_V))
-        | ((temp & imm_addr) ? 0 : FL_Z);
-    reg_pc += 3;
-    Cycles += 7;
+	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp & (FL_N | FL_V)) | ((temp & imm_addr) ? 0 : FL_Z);
+	reg_pc += 3;
+	Cycles += 7;
 }
 
 OPCODE_FUNC tstins_zpx(void)
 {
-    imm_addr = imm_operand(reg_pc + 1);
-    temp = zpx_operand(reg_pc + 2);
+	imm_addr = imm_operand(reg_pc + 1);
+	temp = zpx_operand(reg_pc + 2);
 
-    reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z))
-        | (temp & (FL_N | FL_V))
-        | ((temp & imm_addr) ? 0 : FL_Z);
-    reg_pc += 3;
-    Cycles += 7;
+	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp & (FL_N | FL_V)) | ((temp & imm_addr) ? 0 : FL_Z);
+	reg_pc += 3;
+	Cycles += 7;
 }
-
 
 OPCODE_FUNC tsx(void)
 {
-    reg_x = reg_s;
-    chk_flnz_8bit(reg_s);
-    reg_pc++;
-    Cycles += 2;
+	reg_x = reg_s;
+	chk_flnz_8bit(reg_s);
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC txa(void)
 {
-    reg_a = reg_x;
-    chk_flnz_8bit(reg_x);
-    reg_pc++;
-    Cycles += 2;
+	reg_a = reg_x;
+	chk_flnz_8bit(reg_x);
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC txs(void)
 {
-    reg_p &= ~FL_T;
-    reg_s = reg_x;
-    reg_pc++;
-    Cycles += 2;
+	reg_p &= ~FL_T;
+	reg_s = reg_x;
+	reg_pc++;
+	Cycles += 2;
 }
 
 OPCODE_FUNC tya(void)
 {
-    reg_a = reg_y;
-    chk_flnz_8bit(reg_y);
-    reg_pc++;
-    Cycles += 2;
+	reg_a = reg_y;
+	chk_flnz_8bit(reg_y);
+	reg_pc++;
+	Cycles += 2;
 }
 
 // perform machine operations for IRQ2:
 
 OPCODE_FUNC int_irq2(void)
 {
-    if ((io.irq_mask & FL_IRQ2) != 0) { // interrupt disabled
-        }
-//if ((irq_register & FL_IRQ2) == 0) {   // interrupt disabled ?
-//   return 0;
-//}
-    push_16bit(reg_pc);
-    push_8bit(reg_p);
-    reg_p = (reg_p & ~FL_D) | FL_I;
-    reg_pc = get_16bit_addr(VEC_IRQ2);
-    Cycles += 7;
+	if ((io.irq_mask & FL_IRQ2) != 0)
+	{ // interrupt disabled
+	}
+	//if ((irq_register & FL_IRQ2) == 0) {   // interrupt disabled ?
+	//   return 0;
+	//}
+	push_16bit(reg_pc);
+	push_8bit(reg_p);
+	reg_p = (reg_p & ~FL_D) | FL_I;
+	reg_pc = get_16bit_addr(VEC_IRQ2);
+	Cycles += 7;
 }
 
 // perform machine operations for IRQ1 (video interrupt):
 
 OPCODE_FUNC int_irq1(void)
 {
-    if ((io.irq_mask & FL_IRQ1) != 0) { // interrupt disabled
-        }
-//if ((irq_register & FL_IRQ1) == 0) {   // interrupt disabled ?
-//   return 0;
-//}
-    push_16bit(reg_pc);
-    push_8bit(reg_p);
-    reg_p = (reg_p & ~FL_D) | FL_I;
-    reg_pc = get_16bit_addr(VEC_IRQ);
-    Cycles += 7;
+	if ((io.irq_mask & FL_IRQ1) != 0)
+	{ // interrupt disabled
+	}
+	//if ((irq_register & FL_IRQ1) == 0) {   // interrupt disabled ?
+	//   return 0;
+	//}
+	push_16bit(reg_pc);
+	push_8bit(reg_p);
+	reg_p = (reg_p & ~FL_D) | FL_I;
+	reg_pc = get_16bit_addr(VEC_IRQ);
+	Cycles += 7;
 }
 
 // perform machine operations for timer interrupt:
 
 OPCODE_FUNC int_tiq(void)
 {
-    if ((io.irq_mask & FL_TIQ) != 0) {  // interrupt disabled
-        }
-//if ((irq_register & FL_TIQ) == 0) {   // interrupt disabled ?
-//   return 0;
-//}
-    push_16bit(reg_pc);
-    push_8bit(reg_p);
-    reg_p = (reg_p & ~FL_D) | FL_I;
-    reg_pc = get_16bit_addr(VEC_TIMER);
-    Cycles += 7;
+	if ((io.irq_mask & FL_TIQ) != 0)
+	{ // interrupt disabled
+	}
+	//if ((irq_register & FL_TIQ) == 0) {   // interrupt disabled ?
+	//   return 0;
+	//}
+	push_16bit(reg_pc);
+	push_8bit(reg_p);
+	reg_p = (reg_p & ~FL_D) | FL_I;
+	reg_pc = get_16bit_addr(VEC_TIMER);
+	Cycles += 7;
 }
-
 
 #if 0
 /* now define table contents: */
-operation optable_runtime[256] = {
+operation_t optable_runtime[256] = {
 	{brek, AM_IMMED, "BRK"}
 	,							/* $00 */
 	{ora_zpindx, AM_ZPINDX, "ORA"}

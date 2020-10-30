@@ -26,9 +26,6 @@
 
 struct host_machine host;
 
-const uint ScanlinesPerFrame = 263;
-const uint BaseClock = 7800000;
-const uint IPeriod = 494; // BaseClock / (ScanlinesPerFrame * 60);
 const char SAVESTATE_HEADER[8] = "PCE_V001";
 
 /**
@@ -105,8 +102,6 @@ LoadCard(const char *name)
 
 	// read ROM
 	ROM = (uchar *)rg_alloc(fsize, MEM_SLOW);
-	ROM_SIZE = (fsize - offset) / 0x2000;
-	ROM_PTR = ROM + offset;
 
 	if (ROM == NULL)
 	{
@@ -119,17 +114,21 @@ LoadCard(const char *name)
 
 	fclose(fp);
 
-	uint32 CRC = crc32_le(0, ROM, fsize);
+	ROM_SIZE = (fsize - offset) / 0x2000;
+	ROM_PTR = ROM + offset;
+	ROM_CRC = crc32_le(0, ROM, fsize);
+
 	uint16 IDX = 0;
 	uint32 ROM_MASK = 1;
 
 	while (ROM_MASK < ROM_SIZE) ROM_MASK <<= 1;
 	ROM_MASK--;
 
-	MESSAGE_INFO("ROM LOADED: OFFSET=%d, BANKS=%d, MASK=%03X, CRC=%08X\n", offset, ROM_SIZE, ROM_MASK, CRC);
+	MESSAGE_INFO("ROM LOADED: OFFSET=%d, BANKS=%d, MASK=%03X, CRC=%08X\n",
+		offset, ROM_SIZE, ROM_MASK, ROM_CRC);
 
 	for (int index = 0; index < KNOWN_ROM_COUNT; index++) {
-		if (CRC == romFlags[index].CRC) {
+		if (ROM_CRC == romFlags[index].CRC) {
 			IDX = index;
 			break;
 		}

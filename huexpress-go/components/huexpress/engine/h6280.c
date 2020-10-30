@@ -44,45 +44,42 @@
 
 #include "h6280_instr.h"
 
-#define Int6502(Type)                                       \
-{                                                           \
-	TRACE_CPU("Requested interrupt is %d\n", Type);     	\
-    uint16 J = 0;                                           \
-    if ((Type == INT_NMI) || (!(reg_p & FL_I))) {           \
-        Cycles += 7;                                        \
-        push_16bit(reg_pc);                                 \
-        push_8bit(reg_p);                                   \
-        reg_p = (reg_p & ~FL_D);                            \
-        if (Type == INT_NMI) {                              \
-            J = VEC_NMI;                                    \
-        } else {                                            \
-            reg_p |= FL_I;                                  \
-            switch (Type) {                                 \
-            case INT_IRQ:                                   \
-                J = VEC_IRQ;                                \
-                break;                                      \
-            case INT_IRQ2:                                  \
-                J = VEC_IRQ2;                               \
-                break;                                      \
-            case INT_TIMER:                                 \
-                J = VEC_TIMER;                              \
-                break;                                      \
-            }                                               \
-        }                                                   \
-        reg_pc = get_16bit_addr((uint16) J);                \
-    }                                                       \
-}
+#define Int6502(Type)                                   \
+	{                                                   \
+		TRACE_CPU("Requested interrupt is %d\n", Type); \
+		uint16 J = 0;                                   \
+		if ((Type == INT_NMI) || (!(reg_p & FL_I)))     \
+		{                                               \
+			Cycles += 7;                                \
+			push_16bit(reg_pc);                         \
+			push_8bit(reg_p);                           \
+			reg_p = (reg_p & ~FL_D);                    \
+			if (Type == INT_NMI)                        \
+			{                                           \
+				J = VEC_NMI;                            \
+			}                                           \
+			else                                        \
+			{                                           \
+				reg_p |= FL_I;                          \
+				switch (Type)                           \
+				{                                       \
+				case INT_IRQ:                           \
+					J = VEC_IRQ;                        \
+					break;                              \
+				case INT_IRQ2:                          \
+					J = VEC_IRQ2;                       \
+					break;                              \
+				case INT_TIMER:                         \
+					J = VEC_TIMER;                      \
+					break;                              \
+				}                                       \
+			}                                           \
+			reg_pc = get_16bit_addr((uint16)J);         \
+		}                                               \
+	}
 
-
-// Execute instructions as a machine would, including all
-// important (known) interrupts, hardware functions, and
-// actual video display on the hardware
-//
-// Until the following happens:
-// (1) An unknown instruction is to be executed
-// (2) An unknown hardware access is performed
-// (3) <ESC> key is hit
-
+// CPU emulation loop. It performs most of the actual emulation
+// Including interupts and graphics.
 __attribute__((flatten)) IRAM_ATTR void
 exe_go(void)
 {
@@ -355,36 +352,22 @@ exe_go(void)
 			}
 		}
 
-		// HSYNC stuff - count cycles:
-		// if (Cycles > 455) {
-			TotalCycles += Cycles;
-			Cycles -= 455;
-			// Scanline++;
+		TotalCycles += Cycles;
+		Cycles -= 455;
 
-			// Overflow
-			// if (TotalCycles < PrevTotalCycles)
-			// 	PrevTotalCycles +=
+		if ((I = gfx_loop()))
+			Int6502(I);     /* Interrupt if needed  */
 
-			// _ICount += _IPeriod;
-			/* Reset the cycle counter */
-			// Cycles = 0;
+		if (TotalCycles - PrevTotalCycles > TimerPeriod * 2)
+			PrevTotalCycles = TotalCycles;
 
-			if ((I = gfx_loop()))
-				Int6502(I);     /* Interrupt if needed  */
-
-			// if (I == INT_QUIT) return;
-
-			if (TotalCycles - PrevTotalCycles > TimerPeriod * 2)
-				PrevTotalCycles = TotalCycles;
-
-		// } else {
-			if (TotalCycles - PrevTotalCycles >= TimerPeriod) {
-				PrevTotalCycles += TimerPeriod;
-				if (TimerInt())
-					Int6502(INT_TIMER);
-			}
-		// }
+		if (TotalCycles - PrevTotalCycles >= TimerPeriod) {
+			PrevTotalCycles += TimerPeriod;
+			if (TimerInt())
+				Int6502(INT_TIMER);
+		}
     }
+
     MESSAGE_ERROR("Abnormal exit from the cpu loop\n");
 }
 

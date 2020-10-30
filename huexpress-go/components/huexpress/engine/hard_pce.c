@@ -44,20 +44,20 @@ hard_reset(void)
     PrevTotalCycles = 0;
     SF2 = 0;
 
- 	// Reset IO lines
-	io.vdc_status = 0;
-	io.vdc_inc = 1;
-	io.vdc_minline = 0;
-	io.vdc_maxline = 255;
-	io.screen_w = 256; // 255
-	io.screen_h = 240; // 224
+     // Reset IO lines
+    io.vdc_status = 0;
+    io.vdc_inc = 1;
+    io.vdc_minline = 0;
+    io.vdc_maxline = 255;
+    io.screen_w = 256; // 255
+    io.screen_h = 240; // 224
 
-	// Reset sound generator values
-	for (int i = 0; i < PSG_CHANNELS; i++) {
-		io.PSG[i][4] = 0x80;
-	}
+    // Reset sound generator values
+    for (int i = 0; i < PSG_CHANNELS; i++) {
+        io.PSG[i][4] = 0x80;
+    }
 
-	// Reset memory banking
+    // Reset memory banking
     BankSet(7, 0x00);
     BankSet(6, 0x05);
     BankSet(5, 0x04);
@@ -67,10 +67,10 @@ hard_reset(void)
     BankSet(1, 0xF8);
     BankSet(0, 0xFF);
 
-	// Reset CPU
-	reg_a = reg_x = reg_y = 0x00;
-	reg_p = FL_TIQ;
-	reg_s = 0xFF;
+    // Reset CPU
+    reg_a = reg_x = reg_y = 0x00;
+    reg_p = FL_TIQ;
+    reg_s = 0xFF;
     reg_pc = Read16(VEC_RESET);
 }
 
@@ -84,10 +84,10 @@ hard_init(void)
     TRAPRAM = NULLRAM + 0; // &VRAM[0x8000];
     IOAREA  = NULLRAM + 4; // &VRAM[0xA000];
 
-	for (int i = 0; i < 0xFF; i++) {
-		MemoryMapR[i] = TRAPRAM;
-		MemoryMapW[i] = TRAPRAM;
-	}
+    for (int i = 0; i < 0xFF; i++) {
+        MemoryMapR[i] = TRAPRAM;
+        MemoryMapW[i] = TRAPRAM;
+    }
 
     MemoryMapR[0xF7] = BackupRAM;
     MemoryMapW[0xF7] = BackupRAM;
@@ -108,7 +108,7 @@ hard_init(void)
 void
 hard_term(void)
 {
-	if (ExtraRAM) free(ExtraRAM);
+    if (ExtraRAM) free(ExtraRAM);
 }
 
 
@@ -121,8 +121,8 @@ hard_term(void)
 static inline uchar
 return_value_mask(uint16 A)
 {
-	if (A < 0x400) {			/* VDC */
-		if ((A & 0x3) == 0x02) {
+    if (A < 0x400) {            /* VDC */
+        if ((A & 0x3) == 0x02) {
             switch (io.vdc_reg) {
                 case 0xA: return 0x1F;
                 case 0xB: return 0x7F;
@@ -130,7 +130,7 @@ return_value_mask(uint16 A)
                 case 0xF: return 0x1F;
                 default:  return 0xFF;
             }
-		} else if ((A & 0x3) == 0x03) {
+        } else if ((A & 0x3) == 0x03) {
             switch (io.vdc_reg) {
                 case 0x5: return 0x1F;
                 case 0x6: return 0x03;
@@ -145,11 +145,11 @@ return_value_mask(uint16 A)
                 case 0xF: return 0x00;
                 default:  return 0xFF;
             }
-		}
-		return 0xFF;
-	}
+        }
+        return 0xFF;
+    }
 
-	if (A < 0x800) {			/* VCE */
+    if (A < 0x800) {            /* VCE */
         switch (A & 0x07) {
             case 0x1: return 0x03;
             case 0x3: return 0x01;
@@ -158,7 +158,7 @@ return_value_mask(uint16 A)
         }
     }
 
-	if (A < 0xC00) {			/* PSG */
+    if (A < 0xC00) {            /* PSG */
         switch (A & 0x0F) {
             case 0x0: return 0x00;
             case 0x3: return 0x0F;
@@ -170,17 +170,17 @@ return_value_mask(uint16 A)
         }
     }
 
-	if (A < 0x1000)				/* Timer */
-		return (A & 1) ? 0x01 : 0x7F;
+    if (A < 0x1000)                /* Timer */
+        return (A & 1) ? 0x01 : 0x7F;
 
-	if (A < 0x1400)				/* Joystick / IO port */
-		return 0xFF;
+    if (A < 0x1400)                /* Joystick / IO port */
+        return 0xFF;
 
-	if (A < 0x1800)				/* Interruption acknowledgement */
-		return (A & 2) ? 0x03 : 0xFF;
+    if (A < 0x1800)                /* Interruption acknowledgement */
+        return (A & 2) ? 0x03 : 0xFF;
 
-	/* We don't know for higher ports */
-	return 0xFF;
+    /* We don't know for higher ports */
+    return 0xFF;
 }
 
 
@@ -319,18 +319,18 @@ IO_read(uint16 A)
         break;
 
     case 0x1800:                // CD-ROM extention
-		MESSAGE_INFO("CD Emulation not implemented : 0x%04X\n", A);
-		break;
+        MESSAGE_INFO("CD Emulation not implemented : 0x%04X\n", A);
+        break;
     }
 
     TRACE_IO("IO Read %02x at %04x\n", ret, A);
 
-	if ((A < 0x800) || (A >= 0x1800))
-		return ret;
+    if ((A < 0x800) || (A >= 0x1800))
+        return ret;
 
-	io.io_buffer = ret | (io.io_buffer & ~return_value_mask(A));
+    io.io_buffer = ret | (io.io_buffer & ~return_value_mask(A));
 
-	return io.io_buffer;
+    return io.io_buffer;
 }
 
 
@@ -503,7 +503,7 @@ IO_write(uint16 A, uchar V)
                 ScrollYDiff = Scanline - 1;
                 ScrollYDiff -= IO_VDC_REG[VPR].B.h + IO_VDC_REG[VPR].B.l;
                 if (ScrollYDiff < 0)
-                    TRACE_GFX("ScrollYDiff went negative when substraction VPR.h/.l (%d,%d)\n",
+                    MESSAGE_DEBUG("ScrollYDiff went negative when substraction VPR.h/.l (%d,%d)\n",
                         IO_VDC_REG[VPR].B.h, IO_VDC_REG[VPR].B.l);
 
                 TRACE_GFX2("ScrollY = %d (h)\n", ScrollY);
@@ -679,11 +679,11 @@ IO_write(uint16 A, uchar V)
         break;
 
     case 0x1A00:                /* Arcade Card */
-		MESSAGE_INFO("Arcade Card not supported : %d into 0x%04X\n", V, A);
+        MESSAGE_INFO("Arcade Card not supported : %d into 0x%04X\n", V, A);
         return;
 
     case 0x1800:                /* CD-ROM extention */
-		MESSAGE_INFO("CD Emulation not implemented : %d 0x%04X\n", V, A);
+        MESSAGE_INFO("CD Emulation not implemented : %d 0x%04X\n", V, A);
         return;
 
     case 0x1F00:                /* Street Fighter 2 Mapper */

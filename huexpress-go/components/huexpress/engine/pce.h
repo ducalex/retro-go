@@ -27,9 +27,6 @@ void ShutdownPCE();
 int InitPCE(const char *name);
 int LoadCard(const char *name);
 
-extern const uint BaseClock;
-extern const uint IPeriod;
-
 struct host_machine {
 	bool paused;
 
