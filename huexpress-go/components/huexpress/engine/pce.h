@@ -16,7 +16,6 @@
 
 #include "hard_pce.h"
 #include "h6280.h"
-#include "sprite.h"
 #include "gfx.h"
 
 int LoadState(char *name);

@@ -424,8 +424,8 @@ IO_write(uint16 A, uchar V)
                 VRAM[IO_VDC_REG[MAWR].W * 2] = io.vdc_ratch;
                 VRAM[IO_VDC_REG[MAWR].W * 2 + 1] = V;
 
-                OBJ_CACHE.tile_valid[IO_VDC_REG[MAWR].W / 16] = 0;
-                OBJ_CACHE.sprite_valid[IO_VDC_REG[MAWR].W / 64] = 0;
+                TILE_CACHE[IO_VDC_REG[MAWR].W / 16] = 0;
+                SPR_CACHE[IO_VDC_REG[MAWR].W / 64] = 0;
 
                 IO_VDC_REG[MAWR].W += io.vdc_inc;
 

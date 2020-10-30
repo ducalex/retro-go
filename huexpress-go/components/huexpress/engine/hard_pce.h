@@ -283,7 +283,7 @@ enum _VDC_REG {
 /**
  * Inlined Memory Functions
  */
-#if 1
+#if USE_MEM_MACROS
 
 #define Read8(addr) ({							\
 	uint16 a = (addr);							\

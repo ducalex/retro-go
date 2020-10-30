@@ -23,8 +23,6 @@ uchar* osd_gfx_buffer = NULL;
 uint osd_skipFrames = 0;
 uint osd_blitFrames = 0;
 
-extern uchar *SPM_raw, *SPM;
-
 static QueueHandle_t videoTaskQueue;
 extern QueueHandle_t audioSyncQueue;
 
@@ -35,11 +33,6 @@ static inline void set_current_fb(int i)
     current_fb = i & 1;
     osd_gfx_buffer = framebuffers[current_fb];
     curFrame = &frames[current_fb];
-
-    for (int i = 0; i < 240; i++) {
-        // memset(osd_gfx_buffer + i * XBUF_WIDTH, Palette[0], io.screen_w);
-        memset(SPM + i * XBUF_WIDTH, 0, io.screen_w);
-    }
 }
 
 
@@ -68,14 +61,10 @@ void osd_gfx_init(void)
 {
     framebuffers[0] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
     framebuffers[1] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
-    SPM_raw         = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
-    SPM = SPM_raw + XBUF_WIDTH * 64 + 32;
 
     // We never de-allocate them, so we don't care about the malloc pointer
     framebuffers[0] += XBUF_WIDTH * 64 + 32;
     framebuffers[1] += XBUF_WIDTH * 64 + 32;
-
-    // UPeriod = 1;
 
     // xTaskCreatePinnedToCore(&videoTask, "videoTask", 3072, NULL, 5, NULL, 1);
 }
