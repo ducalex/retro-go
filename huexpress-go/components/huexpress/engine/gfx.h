@@ -18,14 +18,14 @@ typedef struct {
 	int16 scroll_y;
 	int16 scroll_y_diff;
 	int16 control;
-} gfx_context;
+} gfx_context_t;
 
 int  gfx_init();
 void gfx_term();
 void gfx_clear_cache();
 void gfx_change_video_mode();
 void gfx_save_context(char slot_number);
-void gfx_load_context(char slot_number);
+// void gfx_load_context(char slot_number);
 char gfx_loop();
 
 extern int UCount;

@@ -3,7 +3,7 @@
 #include "pce.h"
 #include "config.h"
 
-static gfx_context saved_gfx_context[4];
+static gfx_context_t saved_gfx_context[4];
 
 //! Whether we need to draw pending lines
 static bool gfx_need_redraw = 0;
@@ -100,10 +100,7 @@ gfx_init()
 	gfx_need_redraw = 0;
 	UCount = 0;
 
-	// Sprite memory
-	VRAMS = VRAMS ?: (uchar *)rg_alloc(VRAMSIZE, MEM_FAST);
-	VRAM2 = VRAM2 ?: (uchar *)rg_alloc(VRAMSIZE, MEM_FAST);
-    memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
+	OBJ_CACHE.data = (uchar *)rg_alloc(VRAMSIZE, MEM_FAST);
 
 	gfx_clear_cache();
 
@@ -124,17 +121,18 @@ gfx_init()
 void
 gfx_clear_cache()
 {
-	memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
+	memset(&OBJ_CACHE.sprite_valid, 0, sizeof(OBJ_CACHE.sprite_valid));
+	memset(&OBJ_CACHE.tile_valid, 0, sizeof(OBJ_CACHE.tile_valid));
 }
 
 
 void
 gfx_term()
 {
-	if (VRAMS) free(VRAMS);
-	if (VRAM2) free(VRAM2);
-
-	VRAMS = VRAM2 = NULL;
+	if (OBJ_CACHE.data) {
+		free(OBJ_CACHE.data);
+		OBJ_CACHE.data = NULL;
+	}
 
 	osd_gfx_shutdown();
 }
@@ -143,7 +141,7 @@ gfx_term()
 IRAM_ATTR void
 gfx_save_context(char slot_number)
 {
-	gfx_context *context;
+	gfx_context_t *context;
 
 	// assert(slot_number < 4);
 
@@ -167,10 +165,10 @@ gfx_save_context(char slot_number)
 }
 
 
-IRAM_ATTR void
+static inline void
 gfx_load_context(char slot_number)
 {
-	gfx_context *context;
+	gfx_context_t *context;
 
 	// assert(slot_number < 4);
 

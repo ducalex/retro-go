@@ -32,16 +32,14 @@ typedef struct {
 
 typedef struct
 {
-	bool Planes[2048];
-	bool Sprites[512];
-} sprite_cache_t;
+	bool sprite_valid[512];
+	bool tile_valid[2048];
+	uchar *data;
+} object_cache_t;
 
-extern sprite_cache_t SPR_CACHE;
+extern object_cache_t OBJ_CACHE;
 
 extern uchar *SPM;
-
-extern uchar *VRAM2, *VRAMS;
-/* these contain linear representations that we can draw */
 
 extern int ScrollYDiff;
 
