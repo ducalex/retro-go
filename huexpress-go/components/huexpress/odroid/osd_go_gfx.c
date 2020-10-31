@@ -15,23 +15,28 @@
 static uint16 mypalette[256];
 static uint8 *framebuffers[2];
 static odroid_video_frame_t frames[2];
-static odroid_video_frame_t *curFrame;
+static odroid_video_frame_t *curFrame, *prevFrame;
 static uint8 current_fb = 0;
 static bool gfx_init_done = false;
 
 uchar* osd_gfx_buffer = NULL;
 uint osd_skipFrames = 0;
 uint osd_blitFrames = 0;
+uint osd_fullFrames = 0;
 
 static QueueHandle_t videoTaskQueue;
 extern QueueHandle_t audioSyncQueue;
 
 #define COLOR_RGB(r,g,b) ( (((r)<<12)&0xf800) + (((g)<<7)&0x07e0) + (((b)<<1)&0x001f) )
 
+// #define USE_PARTIAL_FRAMES
+
+
 static inline void set_current_fb(int i)
 {
     current_fb = i & 1;
     osd_gfx_buffer = framebuffers[current_fb];
+    prevFrame = curFrame;
     curFrame = &frames[current_fb];
 }
 
@@ -86,7 +91,7 @@ void osd_gfx_set_mode(short width, short height)
 	frames[0].stride = XBUF_WIDTH;
 	frames[0].pixel_size = 1;
 	frames[0].pixel_mask = 0xFF;
-    frames[0].pixel_clear = 0;
+    frames[0].pixel_clear = -1;
 	frames[0].palette = mypalette;
 	frames[1] = frames[0];
 
@@ -105,13 +110,17 @@ void osd_gfx_blit(void)
     if (!gfx_init_done) return;
 
     bool drawFrame = !osd_skipFrames;
-    bool fullFrame = true;
 
     if (drawFrame)
     {
         // xQueueSend(videoTaskQueue, &curFrame, portMAX_DELAY);
+#ifndef USE_PARTIAL_FRAMES
         curFrame->pixel_clear = Palette[0];
-        odroid_display_queue_update(curFrame, NULL);
+        prevFrame = NULL;
+#endif
+        if (odroid_display_queue_update(curFrame, prevFrame) == SCREEN_UPDATE_FULL) {
+            osd_fullFrames++;
+        }
         set_current_fb(!current_fb);
         osd_blitFrames++;
     }
@@ -119,8 +128,9 @@ void osd_gfx_blit(void)
     // See if we need to skip a frame to keep up
     if (osd_skipFrames == 0)
     {
+#ifndef USE_PARTIAL_FRAMES
         osd_skipFrames++;
-
+#endif
         if (speedupEnabled) osd_skipFrames += speedupEnabled * 2.5;
     }
     else if (osd_skipFrames > 0)

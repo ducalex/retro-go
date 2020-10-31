@@ -43,9 +43,8 @@ extern bool TILE_CACHE[2048];
 
 // The extra 32's and 64's are linked to the way the sprite are blitted on screen, which can overlap to near memory
 // If only one pixel is drawn in the screen, the whole sprite is written, which can eventually overlap unexpected area
-// A sharper way of doing would probably reduce the amount of needed data from 220kb to 128kb (eventually smaller if restricting
-// games with hi res to be launched)
-#define XBUF_WIDTH 	(360 + 32 + 32) // 536 + 32 + 32
+// This could be fixed at the cost of performance but we don't need the extra memory
+#define XBUF_WIDTH 	(512 + 32 + 32) // Most games only need 360 but as of rg 1.20 we have memory to spare
 #define	XBUF_HEIGHT	(242 + 64 + 64)
 
 int  gfx_init();

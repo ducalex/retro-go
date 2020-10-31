@@ -29,6 +29,7 @@
    */
 extern uchar *osd_gfx_buffer;
 extern uint osd_blitFrames;
+extern uint osd_fullFrames;
 extern uint osd_skipFrames;
 
 extern void osd_gfx_init();

@@ -43,8 +43,9 @@ void osd_wait_next_vsync(void)
 		osd_skipFrames++;
 	}
 
-    odroid_system_tick(!osd_blitFrames, true, (uint)(curtime - prevtime));
+    odroid_system_tick(!osd_blitFrames, osd_fullFrames, (uint)(curtime - prevtime));
 	osd_blitFrames = 0;
+	osd_fullFrames = 0;
 
 	gettimeofday(&tp, NULL);
 	curtime = prevtime = tp.tv_sec * 1000000.0 + tp.tv_usec;
