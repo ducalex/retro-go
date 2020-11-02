@@ -424,6 +424,7 @@ IO_write(uint16 A, uchar V)
                 VRAM[IO_VDC_REG[MAWR].W * 2] = io.vdc_ratch;
                 VRAM[IO_VDC_REG[MAWR].W * 2 + 1] = V;
 
+                /* Perhaps we should restrict to 0x7FF and 0x01FF ? */
                 TILE_CACHE[IO_VDC_REG[MAWR].W / 16] = 0;
                 SPR_CACHE[IO_VDC_REG[MAWR].W / 64] = 0;
 

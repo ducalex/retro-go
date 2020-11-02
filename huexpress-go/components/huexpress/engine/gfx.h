@@ -35,8 +35,8 @@ typedef struct {
 	int16 control;
 } gfx_context_t;
 
-extern bool SPR_CACHE[512];
-extern bool TILE_CACHE[2048];
+extern bool TILE_CACHE[4096];
+extern bool SPR_CACHE[1024];
 
 #define V_FLIP  0x8000
 #define H_FLIP  0x0800

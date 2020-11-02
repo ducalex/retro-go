@@ -14,8 +14,8 @@ static int display_counter = 0;
 static int last_display_counter = 0;
 
 // Cache for linear tiles and sprites. This is basically a decoded VRAM
-bool TILE_CACHE[2048];
-bool SPR_CACHE[512];
+bool TILE_CACHE[4096];
+bool SPR_CACHE[1024];
 uint32 *OBJ_CACHE;
 
 // Sprite priority mask memory
