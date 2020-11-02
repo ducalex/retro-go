@@ -39,6 +39,10 @@ struct host_machine {
 		uint freq;
 		uint sample_size;
 	} sound;
+
+	struct {
+		bool splatterhouse;
+	} hacks;
 };
 
 extern struct host_machine host;

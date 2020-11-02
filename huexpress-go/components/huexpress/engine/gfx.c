@@ -704,8 +704,10 @@ gfx_loop()
 
 		render_lines(last_display_counter, display_counter);
 
-		if (ROM_CRC == 0xD00CA74F && last_display_counter == 0 && display_counter >= 239) {
-			 printf("Splatterhouse hack, skipping blit, scroll = (%d,%d,%d), CR = 0x%02d\n",
+		if (
+			ROM_CRC == 0xD00CA74F && Control == 0x008C && (display_counter - last_display_counter) >= 239
+		) {
+			 printf("Splatterhouse hack, skipping blit, scroll = (%d,%d,%d), CR = 0x%04x\n",
 				 ScrollX, ScrollY, ScrollYDiff, Control);
 		} else {
 			osd_gfx_blit();
