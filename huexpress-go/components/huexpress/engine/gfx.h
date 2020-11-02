@@ -50,7 +50,6 @@ extern bool SPR_CACHE[1024];
 int  gfx_init();
 void gfx_term();
 void gfx_clear_cache();
-void gfx_change_video_mode();
 void gfx_save_context(char slot_number);
 // void gfx_load_context(char slot_number);
 uchar gfx_loop();

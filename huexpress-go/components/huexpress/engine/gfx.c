@@ -258,11 +258,11 @@ draw_tiles(int Y1, int Y2)
 
 			PAL = &Palette[(no >> 8) & 0x1F0];
 
-			if (no > 0x800) {
-				//  MESSAGE_DEBUG("GFX: Access to an invalid VRAM area (tile pattern 0x%04x).\n", no);
+			// PCE only has 2048 tiles so we assume access beyond that is a bug
+			if (no >= 0x800) {
+				MESSAGE_DEBUG("Access to an invalid VRAM area (tile no %d).\n", no);
+				no &= 0x7FF;
 			}
-
-			no &= 0x7FF;
 
 			if (TILE_CACHE[no] == 0) {
 				tile2pixel(no);
@@ -435,9 +435,12 @@ sprite_hit_check(void)
 	return 0;
 }
 
-//! Computes the new screen height and eventually change the screen mode
-void
-gfx_change_video_mode()
+
+/*
+	Computes the new screen height and eventually change the screen mode
+*/
+static inline void
+change_video_mode()
 {
 	uint16 temp_vds = IO_VDC_REG[VPR].B.h;
 	uint16 temp_vsw = IO_VDC_REG[VPR].B.l;
@@ -493,12 +496,10 @@ gfx_init()
 	osd_gfx_init();
 
 	// Build palette
-	osd_gfx_set_color(255, 0x3f, 0x3f, 0x3f);
-
 	for (uchar i = 0; i < 255; i++) {
-		osd_gfx_set_color(i, (i & 0x1C) << 1, (i & 0xe0) >> 2,
-			(i & 0x03) << 4);
+		osd_gfx_set_color(i, (i & 0x1C) << 1, (i & 0xe0) >> 2, (i & 0x03) << 4);
 	}
+	osd_gfx_set_color(255, 0x3f, 0x3f, 0x3f);
 
 	return 0;
 }
@@ -575,7 +576,6 @@ gfx_load_context(char slot_number)
 }
 
 
-//! render_lines
 /*
 	render lines into the buffer from min_line to max_line (inclusive)
 */
@@ -609,7 +609,6 @@ render_lines(int min_line, int max_line)
 }
 
 
-//! gfx_loop
 /*
 	process one scanline
 */
@@ -691,7 +690,7 @@ gfx_loop()
 			return INT_QUIT;
 
 		if (io.vdc_mode_chg) {
-			gfx_change_video_mode();
+			change_video_mode();
 			io.vdc_mode_chg = 0;
 		}
 
