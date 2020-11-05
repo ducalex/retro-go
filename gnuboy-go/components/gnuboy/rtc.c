@@ -7,7 +7,8 @@
 
 struct rtc rtc;
 
-static int syncrtc = 1;
+// Set in the far future for VBA-M support
+#define RT_BASE 1893456000
 
 
 void rtc_latch(byte b)
@@ -18,7 +19,7 @@ void rtc_latch(byte b)
 		rtc.regs[1] = rtc.m;
 		rtc.regs[2] = rtc.h;
 		rtc.regs[3] = rtc.d;
-		rtc.regs[4] = (rtc.d>>9) | (rtc.stop<<6) | (rtc.carry<<7);
+		rtc.regs[4] = rtc.flags;
 		rtc.regs[5] = 0xff;
 		rtc.regs[6] = 0xff;
 		rtc.regs[7] = 0xff;
@@ -29,49 +30,49 @@ void rtc_latch(byte b)
 void rtc_write(byte b)
 {
 	/* printf("write %02X: %02X (%d)\n", rtc.sel, b, b); */
-	if (!(rtc.sel & 8)) return;
-	switch (rtc.sel & 7)
+	switch (rtc.sel & 0xf)
 	{
-	case 0:
-		rtc.s = rtc.regs[0] = b;
-		while (rtc.s >= 60) rtc.s -= 60;
+	case 0x8: // Seconds
+		rtc.regs[0] = b;
+		rtc.s = b % 60;
 		break;
-	case 1:
-		rtc.m = rtc.regs[1] = b;
-		while (rtc.m >= 60) rtc.m -= 60;
+	case 0x9: // Minutes
+		rtc.regs[1] = b;
+		rtc.m = b % 60;
 		break;
-	case 2:
-		rtc.h = rtc.regs[2] = b;
-		while (rtc.h >= 24) rtc.h -= 24;
+	case 0xA: // Hours
+		rtc.regs[2] = b;
+		rtc.h = b % 24;
 		break;
-	case 3:
+	case 0xB: // Days (lower 8 bits)
 		rtc.regs[3] = b;
-		rtc.d = (rtc.d & 0x100) | b;
+		rtc.d = ((rtc.d & 0x100) | b) % 365;
 		break;
-	case 4:
+	case 0xC: // Flags (days upper 1 bit, carry, stop)
 		rtc.regs[4] = b;
-		rtc.d = (rtc.d & 0xff) | ((b&1)<<9);
-		rtc.stop = (b>>6)&1;
-		rtc.carry = (b>>7)&1;
+		rtc.flags = b;
+		rtc.d = ((rtc.d & 0xff) | ((b&1)<<9)) % 365;
 		break;
 	}
 }
 
 void rtc_tick()
 {
-	if (rtc.stop) return;
-	if (++rtc.t == 60)
+	if ((rtc.flags & 0x40))
+		return; // rtc stop
+
+	if (++rtc.ticks >= 60)
 	{
-		if (++rtc.s == 60)
+		if (++rtc.s >= 60)
 		{
-			if (++rtc.m == 60)
+			if (++rtc.m >= 60)
 			{
-				if (++rtc.h == 24)
+				if (++rtc.h >= 24)
 				{
-					if (++rtc.d == 365)
+					if (++rtc.d >= 365)
 					{
 						rtc.d = 0;
-						rtc.carry = 1;
+						rtc.flags |= 0x80;
 					}
 					rtc.h = 0;
 				}
@@ -79,58 +80,46 @@ void rtc_tick()
 			}
 			rtc.s = 0;
 		}
-		rtc.t = 0;
+		rtc.ticks = 0;
 	}
 }
 
-void rtc_save_internal(FILE *f)
+void rtc_save(FILE *f)
 {
-	time_t rt;
+	int64_t rt = RT_BASE + (rtc.s + (rtc.m * 60) + (rtc.h * 3600) + (rtc.d * 86400));
 
-	rt = time(0);
-#ifdef GNUBOY_USE_BINARY_RTC_FILES
-	/* WARNING using binary real time clock files is not portable! */
-	fwrite((const void*)&rtc.carry, sizeof(rtc.carry), 1, f);
-	fwrite((const void*)&rtc.stop, sizeof(rtc.stop), 1, f);
-	fwrite((const void*)&rtc.d, sizeof(rtc.d), 1, f);
-	fwrite((const void*)&rtc.h, sizeof(rtc.h), 1, f);
-	fwrite((const void*)&rtc.m, sizeof(rtc.m), 1, f);
-	fwrite((const void*)&rtc.s, sizeof(rtc.s), 1, f);
-	fwrite((const void*)&rtc.t, sizeof(rtc.t), 1, f);
-	fwrite((const void*)&rt, sizeof(rt), 1, f);
-#else /* GNUBOY_USE_BINARY_RTC_FILES */
-	fprintf(f, "%d %d %d %02d %02d %02d %02d\n%d\n",
-		rtc.carry, rtc.stop, rtc.d, rtc.h, rtc.m, rtc.s, rtc.t, (int)rt);
-#endif /* GNUBOY_USE_BINARY_RTC_FILES */
+	fwrite(&rtc.s, sizeof(rtc.s), 1, f);
+	fwrite(&rtc.m, sizeof(rtc.m), 1, f);
+	fwrite(&rtc.h, sizeof(rtc.h), 1, f);
+	fwrite(&rtc.d, sizeof(rtc.d), 1, f);
+	fwrite(&rtc.flags, sizeof(rtc.flags), 1, f);
+	for (int i = 0; i < 5; i++) {
+		int tmp = rtc.regs[i];
+		fwrite(&tmp, sizeof(tmp), 1, f);
+	}
+	fwrite(&rt, sizeof(rt), 1, f);
 }
 
-void rtc_load_internal(FILE *f)
+void rtc_load(FILE *f)
 {
-	time_t rt = 0;
-#ifdef GNUBOY_USE_BINARY_RTC_FILES
-	/* WARNING using binary real time clock files is not portable! */
-	fread(&rtc.carry, sizeof(rtc.carry), 1, f);
-	fread(&rtc.stop, sizeof(rtc.stop), 1, f);
-	fread(&rtc.d, sizeof(rtc.d), 1, f);
-	fread(&rtc.h, sizeof(rtc.h), 1, f);
-	fread(&rtc.m, sizeof(rtc.m), 1, f);
+	int64_t rt = 0;
+	int tmp;
+
+	// Try to read old format first
+	tmp = fscanf(f, "%d %*d %d %02d %02d %02d %02d\n%*d\n",
+		&rtc.flags, &rtc.d, &rtc.h, &rtc.m, &rtc.s, &rtc.ticks);
+
+	if (tmp >= 5)
+		return;
+
 	fread(&rtc.s, sizeof(rtc.s), 1, f);
-	fread(&rtc.t, sizeof(rtc.t), 1, f);
+	fread(&rtc.m, sizeof(rtc.m), 1, f);
+	fread(&rtc.h, sizeof(rtc.h), 1, f);
+	fread(&rtc.d, sizeof(rtc.d), 1, f);
+	fread(&rtc.flags, sizeof(rtc.flags), 1, f);
+	for (int i = 0; i < 5; i++) {
+		fread(&tmp, sizeof(tmp), 1, f);
+		rtc.regs[i] = tmp;
+	}
 	fread(&rt, sizeof(rt), 1, f);
-#else /* GNUBOY_USE_BINARY_RTC_FILES */
-	fscanf(
-		f, "%d %d %d %02d %02d %02d %02d\n%d\n",
-		&rtc.carry, &rtc.stop, &rtc.d,
-		&rtc.h, &rtc.m, &rtc.s, &rtc.t, (int *)&rt);
-#endif /* GNUBOY_USE_BINARY_RTC_FILES */
-	while (rtc.t >= 60) rtc.t -= 60;
-	while (rtc.s >= 60) rtc.s -= 60;
-	while (rtc.m >= 60) rtc.m -= 60;
-	while (rtc.h >= 24) rtc.h -= 24;
-	while (rtc.d >= 365) rtc.d -= 365;
-	rtc.stop &= 1;
-	rtc.carry &= 1;
-	if (rt) rt = (time(0) - rt) * 60;
-	if (syncrtc) while (rt-- > 0) rtc_tick();
 }
-

@@ -37,10 +37,6 @@ void emu_reset();
 void emu_run(_Bool draw);
 void emu_die(const char *fmt, ...);
 
-/* save.c */
-void savestate(FILE *f);
-void loadstate(FILE *f);
-
 /* debug.c */
 void debug_disassemble(addr a, int c);
 

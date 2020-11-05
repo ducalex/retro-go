@@ -73,6 +73,10 @@ static inline void screen_blit(void)
 
 static bool SaveState(char *pathName)
 {
+    // For convenience we also write the sram to its own file
+    // So that it can be imported in other emulators
+    sram_save();
+
     return state_save(pathName) == 0;
 }
 
