@@ -35,7 +35,7 @@ typedef struct {
 	uchar vdc_satb_counter; 	/* DMA finished interrupt delay counter */
 	uchar vdc_pendvsync;		/* unsure, set if a end of screen IRQ is waiting */
 	uchar vdc_mode_chg;         /* Video mode change needed at next frame */
-	uint16 bg_w;				/* number of tiles horizontaly in virtual screen */
+	uint16 bg_w;				/* number of tiles horizontally in virtual screen */
 	uint16 bg_h;				/* number of tiles vertically in virtual screen */
 	uint16 screen_w;			/* size of real screen in pixels */
 	uint16 screen_h;			/* size of real screen in pixels */
@@ -257,7 +257,7 @@ extern uchar *MemoryMapW[256];
 #define	VRR	2
 enum _VDC_REG {
 	MAWR,						/*  0 *//* Memory Address Write Register */
-	MARR,						/*  1 *//* Memory Adress Read Register */
+	MARR,						/*  1 *//* Memory Address Read Register */
 	VWR,						/*  2 *//* VRAM Read Register / VRAM Write Register */
 	vdc3,						/*  3 */
 	vdc4,						/*  4 */
@@ -275,7 +275,7 @@ enum _VDC_REG {
 	SOUR,						/* 10 *//* Source Address of DMA transfert */
 	DISTR,						/* 11 *//* Destination Address of DMA transfert */
 	LENR,						/* 12 *//* Length of DMA transfert */
-	SATB						/* 13 *//* Adress of SATB */
+	SATB						/* 13 *//* Address of SATB */
 };
 
 

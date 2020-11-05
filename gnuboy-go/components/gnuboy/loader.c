@@ -93,18 +93,18 @@ static char *sramfile=NULL;
 #define NOSAVE { -1, "\0\0\0\0", 0 }
 #define END { 0, "\0\0\0\0", 0 }
 
-struct svar
+typedef struct
 {
 	int len;
 	char key[4];
 	void *ptr;
-};
+} svar_t;
 
 static int ver;
 static int sramblock, iramblock, vramblock;
 static int hiofs, palofs, oamofs, wavofs;
 
-struct svar svars[] =
+static svar_t svars[] =
 {
 	I4("GbSs", &ver),
 
@@ -182,6 +182,7 @@ struct svar svars[] =
 
 	END
 };
+
 
 int IRAM_ATTR rom_loadbank(short bank)
 {
@@ -376,7 +377,7 @@ int state_save(char *name)
 		int vrl = hw.cgb ? 4 : 2;
 		int srl = mbc.ramsize << 1;
 
-		ver = 0x105;
+		ver = 0x106;
 		iramblock = 1;
 		vramblock = 1+irl;
 		sramblock = 1+irl+vrl;
@@ -536,6 +537,7 @@ void loader_unload()
 	romfile = sramfile = NULL;
 	// ram.sbank = NULL;
 }
+
 
 void loader_init(char *s)
 {

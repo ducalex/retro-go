@@ -1,0 +1,64 @@
+{
+	"folders": [
+		{
+			"path": "components"
+		},
+		{
+			"path": "gnuboy-go"
+		},
+		{
+			"path": "handy-go"
+		},
+		{
+			"path": "huexpress-go"
+		},
+		{
+			"path": "nofrendo-go"
+		},
+		{
+			"path": "retro-go"
+		},
+		{
+			"path": "smsplusgx-go"
+		},
+		{
+			"path": ".",
+			"name": "root"
+		}
+	],
+	"settings": {
+		"esp.sdk-path": "C:/Users/alex/Apps/esp-idf/4.0",
+		"esp.tools-path": "C:/Users/alex/Apps/esp-idf/tools/tools/xtensa-esp32-elf/esp-2019r2-8.2.0/xtensa-esp32-elf",
+
+		"git.confirmForcePush": false,
+		"C_Cpp.default.defines": [
+			"PROJECT_VER",
+			"IS_LITTLE_ENDIAN",
+			"INLINE=",
+			"uint=unsigned int",
+		],
+		"C_Cpp.default.includePath": [
+			"${workspaceFolder}/components/**",
+			"${workspaceFolder}/../components/**",
+			"${config:esp.sdk-path}/components/**",
+			"${config:esp.tools-path}/include/**"
+		],
+		"C_Cpp.default.forcedInclude": [
+			"${workspaceFolder}/build/config/sdkconfig.h",
+			"${workspaceFolder}/build/sdkconfig.h",
+		],
+		"C_Cpp.default.compilerPath": "${config:esp.tools-path}/bin/xtensa-esp32-elf-g++.exe",
+		"C_Cpp.default.cStandard": "c11",
+		"C_Cpp.default.cppStandard": "c++11",
+		"C_Cpp.default.intelliSenseMode": "gcc-x64",
+		"cSpell.words": [
+			"huexpress",
+			"nofrendo",
+			"smsplusgx",
+			"supergraphx"
+		],
+		"files.exclude": {
+			"root": true,
+		}
+	}
+}
