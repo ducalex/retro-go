@@ -3,23 +3,11 @@
 #include "sound.h"
 #include "pce.h"
 
-static signed char vol_tbl[32] = {
-    /*
-        * Funky stuff everywhere!  I'm quite sure there was a reason to use an array
-        * of constant values divided by constant values and having the host machine figure
-        * it all out . . . that's why I'm leaving the original formula here within the
-        * comment.
-        *    100 / 256, 451 / 256, 508 / 256, 573 / 256, 646 / 256, 728 / 256,
-        *    821 / 256, 925 / 256,
-        *    1043 / 256, 1175 / 256, 1325 / 256, 1493 / 256, 1683 / 256, 1898 / 256,
-        *    2139 / 256, 2411 / 256,
-        *    2718 / 256, 3064 / 256, 3454 / 256, 3893 / 256, 4388 / 256, 4947 / 256,
-        *    5576 / 256, 6285 / 256,
-        *    7085 / 256, 7986 / 256, 9002 / 256, 10148 / 256, 11439 / 256, 12894 / 256,
-        *    14535 / 256, 16384 / 256
-        */
-    0, 1, 1, 2, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17,
-        19, 21, 24, 27, 31, 35, 39, 44, 50, 56, 64
+static uint8 vol_tbl[32] = {
+    100 >> 8, 451 >> 8, 508 >> 8, 573 >> 8, 646 >> 8, 728 >> 8, 821 >> 8, 925 >> 8,
+    1043 >> 8, 1175 >> 8, 1325 >> 8, 1493 >> 8, 1683 >> 8, 1898 >> 8, 2139 >> 8, 2411 >> 8,
+    2718 >> 8, 3064 >> 8, 3454 >> 8, 3893 >> 8, 4388 >> 8, 4947 >> 8, 5576 >> 8, 6285 >> 8,
+    7085 >> 8, 7986 >> 8, 9002 >> 8, 10148 >> 8, 11439 >> 8, 12894 >> 8, 14535 >> 8, 16384 >> 8
 };
 
 static uint32 da_index[6];
@@ -59,28 +47,37 @@ psg_update(char *buf, int ch, unsigned dwSize)
 {
     uint32 fixed_inc;
     uint32 t;            // used to know how much we got to advance in the ring buffer
-    uint16 dwPos = 0;
-    int32 vol;
     uint32 Tp;
+    uint32 vol;
+    int16 lbal = 0, rbal = 0;
+    int8 sample;
+    char *buf_end = buf + dwSize;
 
-    uint16 lbal = 0, rbal = 0;
-    signed char sample;
+    /*
+    * We multiply the 4-bit balance values by 1.1 to get a result from (0..16.5).
+    * This multiplied by the 5-bit channel volume (0..31) gives us a result of
+    * (0..511).
+    */
+    lbal = ((io.PSG[ch][PSG_BALANCE_REG] >> 4) * 1.1) * (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME);
+    rbal = ((io.PSG[ch][PSG_BALANCE_REG] & 0x0F) * 1.1) * (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME);
 
-    if (!(io.PSG[ch][PSG_DDA_REG] & PSG_DDA_ENABLE)) {
-        /*
-         * There is no audio to be played on this channel.
-         */
-        fixed_n[ch] = 0;
-        memset(buf, 0, dwSize * host.sound.sample_size);
-        return;
+    if (!host.sound.stereo) {
+        lbal = (lbal + rbal) / 2;
     }
 
-    if ((io.PSG[ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS) || io.psg_da_count[ch]) {
-        /*
-         * There is 'direct access' audio to be played.
-         */
-        uint16 index = da_index[ch] >> 16;
+    /*
+    * There is no audio to be played on this channel.
+    */
+    if (!(io.PSG[ch][PSG_DDA_REG] & PSG_DDA_ENABLE)) {
+        fixed_n[ch] = 0;
+        goto pad_and_return;
+    }
 
+    /*
+    * There is 'direct access' audio to be played.
+    */
+    if ((io.PSG[ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS) || io.psg_da_count[ch]) {
+        uint16 index = da_index[ch] >> 16;
         /*
          * For this direct audio stuff there is no frequency provided via PSG registers 3
          * and 4.  I'm not sure if this is normal behaviour or if it's something wrong in
@@ -95,37 +92,7 @@ psg_update(char *buf, int ch, unsigned dwSize)
          */
         fixed_inc = ((uint32) (3580000 / host.sound.freq) << 16) / 0x1FF;
 
-        /*
-         * Volume handling changed 2-24-03.
-         * I believe io.psg_volume should only be used to compute the final sample
-         * volume after all the buffers have been mixed together.  Alright, it's what
-         * other people have already stated, and I believe them :)
-         */
-
-        if (host.sound.stereo) {
-            /*
-             * We multiply the 4-bit balance values by 1.1 to get a result from (0..16.5).
-             * This multiplied by the 5-bit channel volume (0..31) gives us a result of
-             * (0..511).
-             */
-            lbal =
-                ((io.PSG[ch][5] >> 4) * 1.1) *
-                (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME);
-            rbal =
-                ((io.PSG[ch][5] & 0x0F) * 1.1) *
-                (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME);
-        } else {
-            /*
-             * Use an average of the two channels for mono.
-             */
-            lbal =
-                ((((io.PSG[ch][5] >> 4) * 1.1) *
-                  (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME)) +
-                 (((io.PSG[ch][5] & 0x0F) * 1.1) *
-                  (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME))) / 2;
-        }
-
-        while ((dwPos < dwSize) && io.psg_da_count[ch]) {
+        while ((buf < buf_end) && io.psg_da_count[ch]) {
             /*
              * Make our sample data signed (-16..15) and then increment a non-negative
              * result otherwise a sample with a value of 10000b will not be reproduced,
@@ -140,16 +107,10 @@ psg_update(char *buf, int ch, unsigned dwSize)
              * (-16..16) by our balance (0..511) and then divide by 64 to get a final
              * 8-bit output sample of (-127..127)
              */
-
-            *buf++ = (char) ((int32) (sample * lbal) >> 6);
-            dwPos++;
+            *buf++ = (char) ((int16) (sample * lbal) >> 6) / 5;
 
             if (host.sound.stereo) {
-                /*
-                 * Same as above but for right channel.
-                 */
-                *buf++ = (char) ((int32) (sample * rbal) >> 6);
-                dwPos++;
+                *buf++ = (char) ((int16) (sample * rbal) >> 6) / 5;
             }
 
             da_index[ch] += fixed_inc;
@@ -160,63 +121,27 @@ psg_update(char *buf, int ch, unsigned dwSize)
             }
         }
 
-        if ((dwPos != dwSize)
-            && (io.PSG[ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS)) {
-            memset(buf, 0, (dwSize - dwPos)*host.sound.sample_size);
-            return;
+        if (io.PSG[ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS) {
+            goto pad_and_return;
         }
     }
 
-    if ((ch > 3) && (io.PSG[ch][7] & 0x80)) {
-        uint32 Np = (io.PSG[ch][7] & 0x1F);
+    /*
+    * PSG Noise generation (only available to PSG channels 5 and 6).
+    */
+    if ((ch > 3) && (io.PSG[ch][PSG_NOISE_REG] & PSG_NOISE_ENABLE)) {
+        uint32 Np = (io.PSG[ch][PSG_NOISE_REG] & 0x1F);
 
-        /*
-         * PSG Noise generation, for nifty little effects like space ships taking off or blowing up.
-         * Only available to PSG channels 5 and 6.
-         */
-//                      if (ds_nChannels == 2) // STEREO DISABLED
-//                      {
-//                              lvol = ((io.psg_volume>>3)&0x1E) + (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME) + ((io.PSG[ch][5]>>3)&0x1E);
-//                              lvol = lvol-60;
-//                              if (lvol < 0) lvol = 0;
-//                              lvol = vol_tbl[lvol];
-//                              rvol = ((io.psg_volume<<1)&0x1E) + (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME) + ((io.PSG[ch][5]<<1)&0x1E);
-//                              rvol = rvol-60;
-//                              if (rvol < 0) rvol = 0;
-//                              rvol = vol_tbl[rvol];
-//                              for (dwPos = 0; dwPos < dwSize; dwPos += 2)
-//                              {
-//                                      k[ch] += 3000+Np*512;
-//                                      t = k[ch] / (DWORD) host.sound.freq;
-//                                      if (t >= 1)
-//                                      {
-//                                              r[ch] = mseq(&rand_val[ch]);
-//                                              k[ch] -= host.sound.freq * t;
-//                                      }
-//                                      *buf++ = (WORD)((r[ch] ? 10*702 : -10*702)*lvol/64);
-//                                      *buf++ = (WORD)((r[ch] ? 10*702 : -10*702)*rvol/64);
-//                              }
-//                      }
-//                      else  // MONO
+        vol = MAX((io.psg_volume >> 3) & 0x1E, (io.psg_volume << 1) & 0x1E) +
+              (io.PSG[ch][PSG_DDA_REG] & PSG_DDA_VOICE_VOLUME) +
+              MAX((io.PSG[ch][5] >> 3) & 0x1E, (io.PSG[ch][5] << 1) & 0x1E);
 
-        vol =
-            MAX((io.psg_volume >> 3) & 0x1E,
-                (io.psg_volume << 1) & 0x1E) +
-            (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME) +
-            MAX((io.PSG[ch][5] >> 3) & 0x1E, (io.PSG[ch][5] << 1) & 0x1E);
-        //average sound level
+        vol = vol_tbl[MAX(0, vol - 60)];
 
-        if ((vol -= 60) < 0)
-            vol = 0;
-
-        vol = vol_tbl[vol];
-        // get cooked volume
-
-        while (dwPos < dwSize) {
+        while (buf < buf_end) {
             k[ch] += 3000 + Np * 512;
 
-            if ((t = (k[ch] / (uint32) host.sound.freq)) >= 1) {
-                // mseq
+            if ((t = (k[ch] / host.sound.freq)) >= 1) {
                 if (rand_val[ch] & 0x00080000) {
                     rand_val[ch] = ((rand_val[ch] ^ 0x0004) << 1) + 1;
                     r[ch] = 1;
@@ -227,24 +152,15 @@ psg_update(char *buf, int ch, unsigned dwSize)
                 k[ch] -= host.sound.freq * t;
             }
 
-            *buf++ = (signed char) ((r[ch] ? 10 * 702 : -10 * 702) * vol / 256 / 16);   // Level 0
-            dwPos++;
-
-            //sbuf[ch][dum++] = (WORD)((r[ch] ? 10*702 : -10*702)*lvol/64/256);
-            //*buf++ = (r[ch] ? 32 : -32) * lvol / 24;
+            *buf++ = (char) ((r[ch] ? 10 * 702 : -10 * 702) * vol / 4096);
         }
-    } else if ((Tp = (io.PSG[ch][PSG_FREQ_LSB_REG] + (io.PSG[ch][PSG_FREQ_MSB_REG] << 8))) == 0) {
-        /*
-         * 12-bit pseudo frequency value stored in PSG registers 2 (all 8 bits) and 3
-         * (lower nibble).  If we get to this point and the value is 0 then there's no
-         * sound to be played.
-         *
-         * dwPos will either be 0 as initialized at the beginning of the function or a value
-         * left over from the direct audio stuff.  If left over then buf will already be at
-         * (buf + dwPos) from the beginning of the function.
-         */
-        memset(buf, 0, dwSize * host.sound.sample_size);
-    } else {
+        goto pad_and_return;
+    }
+
+    /*
+    * PSG Wave generation.
+    */
+    if ((Tp = io.PSG[ch][PSG_FREQ_LSB_REG] + (io.PSG[ch][PSG_FREQ_MSB_REG] << 8)) > 0) {
         /*
          * Thank god for well commented code!  The original line of code read:
          * fixed_inc = ((uint32) (3.2 * 1118608 / host.sound.freq) << 16) / Tp;
@@ -270,43 +186,25 @@ psg_update(char *buf, int ch, unsigned dwSize)
          */
         fixed_inc = ((uint32) (3580000 / host.sound.freq) << 16) / Tp;
 
-        if (host.sound.stereo) {
-            /*
-             * See the direct audio code above if you're curious why we're multiplying by 1.1
-             */
-            lbal =
-                ((io.PSG[ch][5] >> 4) * 1.1) *
-                (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME);
-            rbal =
-                ((io.PSG[ch][5] & 0x0F) * 1.1) *
-                (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME);
-        } else {
-            lbal =
-                ((((io.PSG[ch][5] >> 4) * 1.1) *
-                  (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME)) +
-                 (((io.PSG[ch][5] & 0x0F) * 1.1) *
-                  (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME))) / 2;
-        }
-
-        while (dwPos < dwSize) {
-            /*
-             * See the direct audio stuff a little above for an explanation of everything
-             * within this loop.
-             */
+        while (buf < buf_end) {
             if ((sample = (io.PSG_WAVE[ch][io.PSG[ch][PSG_DATA_INDEX_REG]] - 16)) >= 0)
                 sample++;
 
             *buf++ = (char) ((int16) (sample * lbal) >> 6);
-            dwPos++;
 
             if (host.sound.stereo) {
                 *buf++ = (char) ((int16) (sample * rbal) >> 6);
-                dwPos++;
             }
 
             fixed_n[ch] += fixed_inc;
             fixed_n[ch] &= 0x1FFFFF;    /* (31 << 16) + 0xFFFF */
             io.PSG[ch][PSG_DATA_INDEX_REG] = fixed_n[ch] >> 16;
         }
+        goto pad_and_return;
+    }
+
+pad_and_return:
+    if (buf < buf_end) {
+        memset(buf, 0, buf_end - buf);
     }
 }
