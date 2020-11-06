@@ -189,8 +189,8 @@ LoadCard(const char *name)
 		MemoryMapW[i] = TRAPRAM;
 	}
 
-	// Always allocate extra RAM if size <= 512K (Populous and some homebrews)
-	if (ROM_SIZE <= 0x40) {
+	// Allocate the card's onboard ram
+	if (romFlags[IDX].Flags & ONBOARD_RAM) {
 		ExtraRAM = ExtraRAM ?: (uchar*)rg_alloc(0x8000, MEM_FAST);
 		MemoryMapR[0x40] = MemoryMapW[0x40] = ExtraRAM;
 		MemoryMapR[0x41] = MemoryMapW[0x41] = ExtraRAM + 0x2000;
