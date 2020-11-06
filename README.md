@@ -88,7 +88,7 @@ The official esp-idf version 3.3 or 4.0 is required and it is recommended to app
 sdcard-fix patch located in the tools folder. Both make and cmake are supported.
 
 ## Build everything and generate .fw:
-1. `python rg_tool.py build-fw` or `python rg_tool.py build-fw --use-make` (legacy make system)
+1. `python rg_tool.py build-fw`
 
 For a smaller build you can also specify which apps you want, for example the launcher + nes/gameboy only:
 1. `python rg_tool.py build-fw retro-go nofrendo-go gnuboy-go`

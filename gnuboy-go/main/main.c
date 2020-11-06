@@ -177,7 +177,7 @@ static bool advanced_settings_cb(odroid_dialog_choice_t *option, odroid_dialog_e
    if (event == ODROID_DIALOG_ENTER) {
       odroid_dialog_choice_t options[] = {
         {101, "Set clock", "00:00", 1, &rtc_update_cb},
-        {102, "Save SRAM", "No", 1, &save_sram_update_cb},
+        {102, "Auto save SRAM", "No", 1, &save_sram_update_cb},
         ODROID_DIALOG_CHOICE_LAST
       };
       odroid_overlay_dialog("Advanced", options, 0);
@@ -270,7 +270,7 @@ void app_main(void)
         {
             if (ram.sram_dirty)
             {
-                saveSRAM_Timer = 90;
+                saveSRAM_Timer = 120; // wait 2 seconds
                 ram.sram_dirty = 0;
             }
 

@@ -128,17 +128,14 @@ def clean_app(target):
         print("Nothing to do.\n")
 
 
-def build_app(target, use_make=False, with_debugging=False, with_profiling=False, with_netplay=False):
+def build_app(target, with_debugging=False, with_profiling=False, with_netplay=False):
     # To do: clean up if any of the flags changed since last build
     print("Building app '%s'" % target)
     os.chdir(os.path.join(PRJ_PATH, target))
     os.putenv("ENABLE_PROFILING", "1" if with_profiling else "0")
     os.putenv("ENABLE_DEBUGGING", "1" if with_debugging else "0")
     os.putenv("ENABLE_NETPLAY", "1" if with_netplay else "0")
-    if use_make:
-        subprocess.run(["make", "-j", "6", "app"], shell=True, check=True)
-    else:
-        subprocess.run(["idf.py", "app"], shell=True, check=True)
+    subprocess.run(["idf.py", "app"], shell=True, check=True)
 
     print("Patching esp_image_header_t to skip sha256 on boot...")
     with open("build/" + target + ".bin", "r+b") as fp:
@@ -248,9 +245,6 @@ parser.add_argument(
     "targets", nargs="*", default="all", choices=["all"] + list(PROJECT_APPS.keys())
 )
 parser.add_argument(
-    "--use-make", action="store_const", const=True, help="Use legacy make build system"
-)
-parser.add_argument(
     "--compact-fw", action="store_const", const=True, help="Ignore the partition sizes set in rg_config.py when building .fw"
 )
 parser.add_argument(
@@ -281,12 +275,12 @@ targets = args.targets if "all" not in args.targets else PROJECT_APPS.keys()
 if command == "build-fw":
     for target in targets:
         clean_app(target)
-        build_app(target, args.use_make, args.with_debugging, args.with_profiling, args.with_netplay)
+        build_app(target, args.with_debugging, args.with_profiling, args.with_netplay)
     build_firmware(targets)
 
 if command == "build":
     for target in targets:
-        build_app(target, args.use_make, args.with_debugging, args.with_profiling, args.with_netplay)
+        build_app(target,args.with_debugging, args.with_profiling, args.with_netplay)
 
 if command == "clean":
     for target in targets:
@@ -300,7 +294,7 @@ if command == "monitor":
     monitor_app(targets[0], args.port)
 
 if command == "run":
-    build_app(targets[0], args.use_make, args.with_debugging, args.with_profiling, args.with_netplay)
+    build_app(targets[0], args.with_debugging, args.with_profiling, args.with_netplay)
     flash_app(targets[0], args.port, find_app(targets[0], args.offset, args.app_offset))
     monitor_app(targets[0], args.port)
 
