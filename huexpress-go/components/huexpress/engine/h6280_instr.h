@@ -1,10 +1,7 @@
 #include "h6280.h"
 
-typedef signed char SBYTE;
-typedef unsigned char UBYTE;
-
 // flag-value table (for speed)
-static const DRAM_ATTR uchar flnz_list[0x100] = {
+static const DRAM_ATTR UBYTE flnz_list[0x100] = {
 	FL_Z, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	// 00-0F
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -31,7 +28,7 @@ static const DRAM_ATTR uchar flnz_list[0x100] = {
 	FL_N, FL_N, FL_N, FL_N, FL_N, FL_N, FL_N, FL_N
 };
 
-static const DRAM_ATTR uchar binbcd[0x100] = {
+static const DRAM_ATTR UBYTE binbcd[0x100] = {
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,
 	0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
 	0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29,
@@ -44,7 +41,7 @@ static const DRAM_ATTR uchar binbcd[0x100] = {
 	0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99,
 };
 
-static const DRAM_ATTR uchar bcdbin[0x100] = {
+static const DRAM_ATTR UBYTE bcdbin[0x100] = {
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0, 0, 0, 0, 0, 0,
 	0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0, 0, 0, 0, 0, 0,
 	0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0, 0, 0, 0, 0, 0,
@@ -70,19 +67,19 @@ one_bit_set(UBYTE arg)
 // Globals for easy access while debugging but also save some stack
 //
 
-static uint8 temp, temp1, zp_addr, imm_addr;
-static uint16 temp_addr, from, to, len, alternate;
+static UBYTE temp, temp1, zp_addr, imm_addr;
+static UWORD temp_addr, from, to, len, alternate;
 
 //
 // Implementation of actual opcodes:
 //
 
-static inline uchar
-adc(uchar acc, uchar val)
+static inline UBYTE
+adc(UBYTE acc, UBYTE val)
 {
-	int16 sig = (SBYTE)acc;
-	uint16 usig = (UBYTE)acc;
-	uint16 temp;
+	SWORD sig = (SBYTE)acc;
+	UWORD usig = (UBYTE)acc;
+	UWORD temp;
 
 	if (!(reg_p & FL_D))
 	{ /* binary mode */
@@ -125,11 +122,11 @@ adc(uchar acc, uchar val)
 	return acc;
 }
 
-OPCODE_FUNC sbc(uchar val)
+OPCODE_FUNC sbc(UBYTE val)
 {
-	int16 sig = (SBYTE)reg_a;
-	uint16 usig = (UBYTE)reg_a;
-	int16 temp;
+	SWORD sig = (SBYTE)reg_a;
+	UWORD usig = (UBYTE)reg_a;
+	SWORD temp;
 
 	if (!(reg_p & FL_D))
 	{ /* binary mode */
@@ -151,7 +148,7 @@ OPCODE_FUNC sbc(uchar val)
 		// adequately defined.  Nor is overflow
 		// flag treatment.
 
-		temp = (int16)(bcdbin[usig] - bcdbin[val]);
+		temp = (SWORD)(bcdbin[usig] - bcdbin[val]);
 
 		if (!(reg_p & FL_C))
 		{
@@ -538,7 +535,7 @@ OPCODE_FUNC asl_zpx(void)
 	Cycles += 6;
 }
 
-OPCODE_FUNC bbr(uint8 bit)
+OPCODE_FUNC bbr(UBYTE bit)
 {
 	reg_p &= ~FL_T;
 	if (zp_operand(reg_pc + 1) & (1 << bit))
@@ -553,7 +550,7 @@ OPCODE_FUNC bbr(uint8 bit)
 	}
 }
 
-OPCODE_FUNC bbs(uint8 bit)
+OPCODE_FUNC bbs(UBYTE bit)
 {
 	reg_p &= ~FL_T;
 	if (zp_operand(reg_pc + 1) & (1 << bit))
@@ -1729,7 +1726,7 @@ OPCODE_FUNC ply(void)
 	Cycles += 4;
 }
 
-OPCODE_FUNC rmb(uint8 bit)
+OPCODE_FUNC rmb(UBYTE bit)
 {
 	temp = imm_operand(reg_pc + 1);
 	reg_p &= ~FL_T;
@@ -1978,7 +1975,7 @@ OPCODE_FUNC set(void)
 	Cycles += 2;
 }
 
-OPCODE_FUNC smb(uint8 bit)
+OPCODE_FUNC smb(UBYTE bit)
 {
 	temp = imm_operand(reg_pc + 1);
 	reg_p &= ~FL_T;
@@ -2184,7 +2181,7 @@ OPCODE_FUNC tai(void)
 
 OPCODE_FUNC tam(void)
 {
-	uchar bitfld = imm_operand(reg_pc + 1);
+	UBYTE bitfld = imm_operand(reg_pc + 1);
 
 	for (int i = 0; i < 8; i++)
 	{
@@ -2279,7 +2276,7 @@ OPCODE_FUNC tin(void)
 
 OPCODE_FUNC tma(void)
 {
-	uchar bitfld = imm_operand(reg_pc + 1);
+	UBYTE bitfld = imm_operand(reg_pc + 1);
 
 	for (int i = 0; i < 8; i++)
 	{

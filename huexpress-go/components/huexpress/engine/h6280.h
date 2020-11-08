@@ -4,11 +4,11 @@
 #include "hard_pce.h"
 
 extern void exe_go(void);
-extern void dump_cpu_registers();
+extern void dump_cpu_registers(void);
 
 typedef struct op {
    int (*func_exe)(void);
-   int16  addr_mode;
+   short addr_mode;
    const char opname[4];
 } operation_t;
 
@@ -71,5 +71,10 @@ extern operation_t optable_runtime[256];
 #define get_8bit_addr(addr) Read8(addr)
 #define put_8bit_addr(addr, byte) Write8(addr, byte)
 #define get_16bit_addr(addr) Read16(addr)
+
+typedef signed char SBYTE;
+typedef unsigned char UBYTE;
+typedef signed short SWORD;
+typedef unsigned short UWORD;
 
 #endif

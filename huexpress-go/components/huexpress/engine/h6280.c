@@ -17,7 +17,7 @@
 #define OPCODE(n, f) case n: f; break;
 
 // Addressing modes:
-#define imm_operand(addr)  ({uint16 x = addr; PageR[x >> 13][x];})
+#define imm_operand(addr)  ({UWORD x = addr; PageR[x >> 13][x];})
 #define abs_operand(x)     get_8bit_addr(get_16bit_addr(x))
 #define absx_operand(x)    get_8bit_addr(get_16bit_addr(x)+reg_x)
 #define absy_operand(x)    get_8bit_addr(get_16bit_addr(x)+reg_y)
@@ -33,12 +33,12 @@
 
 // Zero page access
 #define get_8bit_zp(zp_addr) (*(zp_base + (zp_addr)))
-#define get_16bit_zp(zp_addr) ({uchar x = zp_addr; get_8bit_zp(x) | get_8bit_zp(x + 1) << 8;})
+#define get_16bit_zp(zp_addr) ({UBYTE x = zp_addr; get_8bit_zp(x) | get_8bit_zp(x + 1) << 8;})
 #define put_8bit_zp(zp_addr, byte) (*(zp_base + (zp_addr)) = (byte))
 
 // Stack access
 #define push_8bit(byte) (*(sp_base + reg_s--) = (byte))
-#define push_16bit(addr) ({uint16 x = addr; push_8bit(x >> 8); push_8bit(x & 0xFF);})
+#define push_16bit(addr) ({UWORD x = addr; push_8bit(x >> 8); push_8bit(x & 0xFF);})
 #define pull_8bit() (*(sp_base + ++reg_s))
 #define pull_16bit() (pull_8bit() | pull_8bit() << 8)
 
@@ -47,7 +47,7 @@
 #define Int6502(Type)                                   \
 	{                                                   \
 		TRACE_CPU("Requested interrupt is %d\n", Type); \
-		uint16 J = 0;                                   \
+		UWORD J = 0;                                   \
 		if ((Type == INT_NMI) || (!(reg_p & FL_I)))     \
 		{                                               \
 			Cycles += 7;                                \
@@ -74,7 +74,7 @@
 					break;                              \
 				}                                       \
 			}                                           \
-			reg_pc = get_16bit_addr((uint16)J);         \
+			reg_pc = get_16bit_addr(J);                 \
 		}                                               \
 	}
 
@@ -83,7 +83,7 @@
 __attribute__((flatten)) IRAM_ATTR void
 exe_go(void)
 {
-    uchar I;
+    UBYTE I;
 
 	host.paused = 0;
 
@@ -91,7 +91,7 @@ exe_go(void)
 	{
 		while (Cycles <= 455)
 		{
-			uchar opcode = imm_operand(reg_pc);
+			UBYTE opcode = imm_operand(reg_pc);
 
 			switch (opcode)
 			{
@@ -375,8 +375,6 @@ exe_go(void)
 void
 dump_cpu_registers()
 {
-	int i;
-
 	MESSAGE_INFO("Dumping PCE core\n");
 
 	MESSAGE_INFO("PC = 0x%04x\n", reg_pc);
@@ -386,19 +384,19 @@ dump_cpu_registers()
 	MESSAGE_INFO("P = 0x%02x\n", reg_p);
 	MESSAGE_INFO("S = 0x%02x\n", reg_s);
 
-	for (i = 0; i < 8; i++) {
+	for (int i = 0; i < 8; i++) {
 		MESSAGE_INFO("MMR[%d] = 0x%02x\n", i, MMR[i]);
 	}
 
 	// TODO: Add zero page dump
 
-	for (i = 0x2000; i < 0xFFFF; i++) {
+	for (int i = 0x2000; i < 0xFFFF; i++) {
 
 		if ((i & 0xF) == 0) {
 			MESSAGE_INFO("%04X: ", i);
 		}
 
-		MESSAGE_INFO("%02x ", get_8bit_addr((uint16) i));
+		MESSAGE_INFO("%02x ", get_8bit_addr(i));
 		if ((i & 0xF) == 0xF) {
 			MESSAGE_INFO("\n");
 		}
