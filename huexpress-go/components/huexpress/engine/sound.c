@@ -3,22 +3,22 @@
 #include "sound.h"
 #include "pce.h"
 
-static uint8 vol_tbl[32] = {
+static uint8_t vol_tbl[32] = {
     100 >> 8, 451 >> 8, 508 >> 8, 573 >> 8, 646 >> 8, 728 >> 8, 821 >> 8, 925 >> 8,
     1043 >> 8, 1175 >> 8, 1325 >> 8, 1493 >> 8, 1683 >> 8, 1898 >> 8, 2139 >> 8, 2411 >> 8,
     2718 >> 8, 3064 >> 8, 3454 >> 8, 3893 >> 8, 4388 >> 8, 4947 >> 8, 5576 >> 8, 6285 >> 8,
     7085 >> 8, 7986 >> 8, 9002 >> 8, 10148 >> 8, 11439 >> 8, 12894 >> 8, 14535 >> 8, 16384 >> 8
 };
 
-static uint32 da_index[6];
-static uint32 fixed_n[6];
-static uint32 rand_val[6]; // Noise seed
-static uint32 k[6];
-static uint32 r[6];
+static uint32_t da_index[6];
+static uint32_t fixed_n[6];
+static uint32_t rand_val[6]; // Noise seed
+static uint32_t k[6];
+static uint32_t r[6];
 
 
 int
-snd_init()
+snd_init(void)
 {
     memset(&da_index, 0, sizeof(da_index));
     memset(&fixed_n, 0, sizeof(fixed_n));
@@ -36,22 +36,22 @@ snd_init()
 
 
 void
-snd_term()
+snd_term(void)
 {
     osd_snd_shutdown();
 }
 
 
 void
-psg_update(char *buf, int ch, unsigned dwSize)
+psg_update(int8_t *buf, int ch, size_t dwSize)
 {
-    uint32 fixed_inc;
-    uint32 t;            // used to know how much we got to advance in the ring buffer
-    uint32 Tp;
-    uint32 vol;
-    int16 lbal = 0, rbal = 0;
-    int8 sample;
-    char *buf_end = buf + dwSize;
+    uint32_t fixed_inc;
+    uint32_t t;            // used to know how much we got to advance in the ring buffer
+    uint32_t Tp;
+    uint32_t vol;
+    int16_t lbal = 0, rbal = 0;
+    int8_t sample;
+    int8_t *buf_end = buf + dwSize;
 
     /*
     * We multiply the 4-bit balance values by 1.1 to get a result from (0..16.5).
@@ -77,7 +77,7 @@ psg_update(char *buf, int ch, unsigned dwSize)
     * There is 'direct access' audio to be played.
     */
     if ((io.PSG[ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS) || io.psg_da_count[ch]) {
-        uint16 index = da_index[ch] >> 16;
+        uint16_t index = da_index[ch] >> 16;
         /*
          * For this direct audio stuff there is no frequency provided via PSG registers 3
          * and 4.  I'm not sure if this is normal behaviour or if it's something wrong in
@@ -90,7 +90,7 @@ psg_update(char *buf, int ch, unsigned dwSize)
          * See the big comment in the final else clause for an explanation of this value
          * to the best of my knowledge.
          */
-        fixed_inc = ((uint32) (3580000 / host.sound.freq) << 16) / 0x1FF;
+        fixed_inc = ((uint32_t)(3580000 / host.sound.freq) << 16) / 0x1FF;
 
         while ((buf < buf_end) && io.psg_da_count[ch]) {
             /*
@@ -107,10 +107,10 @@ psg_update(char *buf, int ch, unsigned dwSize)
              * (-16..16) by our balance (0..511) and then divide by 64 to get a final
              * 8-bit output sample of (-127..127)
              */
-            *buf++ = (char) ((int16) (sample * lbal) >> 6) / 5;
+            *buf++ = (int8_t) ((int16_t) (sample * lbal) >> 6) / 5;
 
             if (host.sound.stereo) {
-                *buf++ = (char) ((int16) (sample * rbal) >> 6) / 5;
+                *buf++ = (int8_t) ((int16_t) (sample * rbal) >> 6) / 5;
             }
 
             da_index[ch] += fixed_inc;
@@ -130,7 +130,7 @@ psg_update(char *buf, int ch, unsigned dwSize)
     * PSG Noise generation (only available to PSG channels 5 and 6).
     */
     if ((ch > 3) && (io.PSG[ch][PSG_NOISE_REG] & PSG_NOISE_ENABLE)) {
-        uint32 Np = (io.PSG[ch][PSG_NOISE_REG] & 0x1F);
+        int Np = (io.PSG[ch][PSG_NOISE_REG] & 0x1F);
 
         vol = MAX((io.psg_volume >> 3) & 0x1E, (io.psg_volume << 1) & 0x1E) +
               (io.PSG[ch][PSG_DDA_REG] & PSG_DDA_VOICE_VOLUME) +
@@ -152,7 +152,7 @@ psg_update(char *buf, int ch, unsigned dwSize)
                 k[ch] -= host.sound.freq * t;
             }
 
-            *buf++ = (char) ((r[ch] ? 10 * 702 : -10 * 702) * vol / 4096);
+            *buf++ = (int8_t) ((r[ch] ? 10 * 702 : -10 * 702) * vol / 4096);
         }
         goto pad_and_return;
     }
@@ -163,7 +163,7 @@ psg_update(char *buf, int ch, unsigned dwSize)
     if ((Tp = io.PSG[ch][PSG_FREQ_LSB_REG] + (io.PSG[ch][PSG_FREQ_MSB_REG] << 8)) > 0) {
         /*
          * Thank god for well commented code!  The original line of code read:
-         * fixed_inc = ((uint32) (3.2 * 1118608 / host.sound.freq) << 16) / Tp;
+         * fixed_inc = ((uint32_t) (3.2 * 1118608 / host.sound.freq) << 16) / Tp;
          * and had nary a comment to be found.  It took a little head scratching to get
          * it figured out.  The 3.2 * 1118608 comes out to 3574595.6 which is obviously
          * meant to represent the 3.58mhz cpu clock speed used in the pc engine to
@@ -184,16 +184,16 @@ psg_update(char *buf, int ch, unsigned dwSize)
          * sampling rate into consideration with regard to the 3580000 effective pc engine
          * samplerate.  We use 16.16 fixed arithmetic for speed.
          */
-        fixed_inc = ((uint32) (3580000 / host.sound.freq) << 16) / Tp;
+        fixed_inc = ((uint32_t)(3580000 / host.sound.freq) << 16) / Tp;
 
         while (buf < buf_end) {
             if ((sample = (io.PSG_WAVE[ch][io.PSG[ch][PSG_DATA_INDEX_REG]] - 16)) >= 0)
                 sample++;
 
-            *buf++ = (char) ((int16) (sample * lbal) >> 6);
+            *buf++ = (int8_t) ((int16_t) (sample * lbal) >> 6);
 
             if (host.sound.stereo) {
-                *buf++ = (char) ((int16) (sample * rbal) >> 6);
+                *buf++ = (int8_t) ((int16_t) (sample * rbal) >> 6);
             }
 
             fixed_n[ch] += fixed_inc;

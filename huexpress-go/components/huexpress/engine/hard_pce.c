@@ -3,23 +3,19 @@
 #include "hard_pce.h"
 #include "pce.h"
 
-/**
-  * Variables declaration
-  * cf explanations in the header file
-  **/
-
+// Global struct containing our emulated hardware status
 PCE_t PCE;
 
 // We used to point to VRAM to save memory but some games
 // seem to write to that area for some reason...
-uchar NULLRAM[0x2004];
-uchar *IOAREA, *TRAPRAM;
+uint8_t NULLRAM[0x2004];
+uint8_t *IOAREA, *TRAPRAM;
 
 // Memory Mapping
-uchar *PageR[8];
-uchar *PageW[8];
-uchar *MemoryMapR[256];
-uchar *MemoryMapW[256];
+uint8_t *PageR[8];
+uint8_t *PageW[8];
+uint8_t *MemoryMapR[256];
+uint8_t *MemoryMapW[256];
 
 
 /**
@@ -118,8 +114,8 @@ hard_term(void)
 
 
 //! Returns the useful value mask depending on port value
-static inline uchar
-return_value_mask(uint16 A)
+static inline uint8_t
+return_value_mask(uint16_t A)
 {
     if (A < 0x400) {            /* VDC */
         if ((A & 0x3) == 0x02) {
@@ -185,7 +181,7 @@ return_value_mask(uint16 A)
 
 
 static inline void
-Cart_write(uint16 A, uchar V)
+cart_write(uint16_t A, uint8_t V)
 {
     TRACE_IO("Cart Write %02x at %04x\n", V, A);
 
@@ -195,7 +191,7 @@ Cart_write(uint16 A, uchar V)
         if (SF2 != (A & 3))
         {
             SF2 = A & 3;
-            uchar *base = ROM_PTR + SF2 * (512 * 1024);
+            uint8_t *base = ROM_PTR + SF2 * (512 * 1024);
             for (int i = 0x40; i < 0x80; i++)
             {
                 MemoryMapR[i] = base + i * 0x2000;
@@ -211,18 +207,18 @@ Cart_write(uint16 A, uchar V)
 
 
 
-IRAM_ATTR inline uchar
-IO_read(uint16 A)
+IRAM_ATTR inline uint8_t
+IO_read(uint16_t A)
 {
-    uchar ret = 0xFF; // Open Bus
-    uchar ofs;
+    uint8_t ret = 0xFF; // Open Bus
+    uint8_t ofs;
 
     switch (A & 0x1FC0) {
     case 0x0000:                /* VDC */
         switch (A & 3) {
         case 0:
             ret = io.vdc_status;
-            io.vdc_status = 0;  //&=VDC_InVBlank;//&=~VDC_BSY;
+            io.vdc_status = 0;
             break;
         case 1:
             ret = 0;
@@ -260,7 +256,7 @@ IO_read(uint16 A)
         case 5: ret = io.PSG[io.psg_ch][5]; break;
         case 6:
             ofs = io.PSG[io.psg_ch][PSG_DATA_INDEX_REG];
-            io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] = (uchar) ((io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] + 1) & 31);
+            io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] = (io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] + 1) & 31;
             ret = io.PSG_WAVE[io.psg_ch][ofs];
             break;
         case 7: ret = io.PSG[io.psg_ch][7]; break;
@@ -279,7 +275,7 @@ IO_read(uint16 A)
             ret >>= 4;
         else {
             ret &= 15;
-            io.joy_counter = (uchar) ((io.joy_counter + 1) % 5);
+            io.joy_counter = ((io.joy_counter + 1) % 5);
         }
         ret |= 0x30; // those 2 bits are always on, bit 6 = 0 (Jap), bit 7 = 0 (Attached cd)
         break;
@@ -335,15 +331,15 @@ IO_read(uint16 A)
 
 
 IRAM_ATTR inline void
-IO_write(uint16 A, uchar V)
+IO_write(uint16_t A, uint8_t V)
 {
     TRACE_IO("IO Write %02x at %04x\n", V, A);
 
     if ((A >= 0x800) && (A < 0x1800))   // We keep the io buffer value
         io.io_buffer = V;
 
-    uchar bgw[] = { 32, 64, 128, 128 };
-    uchar incsize[] = { 1, 32, 64, 128 };
+    uint8_t bgw[] = { 32, 64, 128, 128 };
+    uint8_t incsize[] = { 1, 32, 64, 128 };
 
     switch (A & 0x1F00) {
     case 0x0000:                /* VDC */
@@ -382,8 +378,7 @@ IO_write(uint16 A, uchar V)
                 gfx_save_context(0);
 
                 IO_VDC_REG[BYR].B.l = V;
-                ScrollYDiff = Scanline - 1;
-                ScrollYDiff -= IO_VDC_REG[VPR].B.h + IO_VDC_REG[VPR].B.l;
+                ScrollYDiff = Scanline - 1 - (IO_VDC_REG[VPR].B.h + IO_VDC_REG[VPR].B.l);
                 TRACE_GFX2("ScrollY = %d (l)\n", ScrollY);
                 break;
 
@@ -424,9 +419,8 @@ IO_write(uint16 A, uchar V)
                 VRAM[IO_VDC_REG[MAWR].W * 2] = io.vdc_ratch;
                 VRAM[IO_VDC_REG[MAWR].W * 2 + 1] = V;
 
-                /* Perhaps we should restrict to 0x7FF and 0x01FF ? */
-                TILE_CACHE[IO_VDC_REG[MAWR].W / 16] = 0;
-                SPR_CACHE[IO_VDC_REG[MAWR].W / 64] = 0;
+                TILE_CACHE[(IO_VDC_REG[MAWR].W / 16) & 0x7FF] = 0;
+                SPR_CACHE[(IO_VDC_REG[MAWR].W / 64) & 0x1FF] = 0;
 
                 IO_VDC_REG[MAWR].W += io.vdc_inc;
 
@@ -446,28 +440,25 @@ IO_write(uint16 A, uchar V)
 
                 IO_VDC_REG[LENR].B.h = V;
 
-                {               // black-- 's code
-                    int sourcecount = (IO_VDC_REG[DCR].W & 8) ? -1 : 1;
-                    int destcount = (IO_VDC_REG[DCR].W & 4) ? -1 : 1;
+                int sourcecount = (IO_VDC_REG[DCR].W & 8) ? -1 : 1;
+                int destcount = (IO_VDC_REG[DCR].W & 4) ? -1 : 1;
 
-                    int source = IO_VDC_REG[SOUR].W * 2;
-                    int dest = IO_VDC_REG[DISTR].W * 2;
+                int source = IO_VDC_REG[SOUR].W * 2;
+                int dest = IO_VDC_REG[DISTR].W * 2;
 
-                    for (int  i = 0; i < (IO_VDC_REG[LENR].W + 1) * 2; i++) {
-                        *(VRAM + dest) = *(VRAM + source);
-                        dest += destcount;
-                        source += sourcecount;
-                    }
-
-                    /*
-                       IO_VDC_REG[SOUR].W = source;
-                       IO_VDC_REG[DISTR].W = dest;
-                     */
-                    // Erich Kitzmuller fix follows
-                    IO_VDC_REG[SOUR].W = source / 2;
-                    IO_VDC_REG[DISTR].W = dest / 2;
+                for (int i = 0; i < (IO_VDC_REG[LENR].W + 1) * 2; i++) {
+                    *(VRAM + dest) = *(VRAM + source);
+                    dest += destcount;
+                    source += sourcecount;
                 }
 
+                /*
+                    IO_VDC_REG[SOUR].W = source;
+                    IO_VDC_REG[DISTR].W = dest;
+                    */
+                // Erich Kitzmuller fix follows
+                IO_VDC_REG[SOUR].W = source / 2;
+                IO_VDC_REG[DISTR].W = dest / 2;
                 IO_VDC_REG[LENR].W = 0xFFFF;
 
                 gfx_clear_cache();
@@ -548,12 +539,10 @@ IO_write(uint16 A, uchar V)
         case 4:
             io.VCE[io.vce_reg.W].B.l = V;
             {
-                uchar c;
-                int i, n;
-                n = io.vce_reg.W;
-                c = io.VCE[n].W >> 1;
+                uint16_t n = io.vce_reg.W;
+                uint8_t c = io.VCE[n].W >> 1;
                 if (n == 0) {
-                    for (i = 0; i < 256; i += 16)
+                    for (int i = 0; i < 256; i += 16)
                         Palette[i] = c;
                 } else if (n & 15)
                     Palette[n] = c;
@@ -563,12 +552,10 @@ IO_write(uint16 A, uchar V)
         case 5:
             io.VCE[io.vce_reg.W].B.h = V;
             {
-                uchar c;
-                int i, n;
-                n = io.vce_reg.W;
-                c = io.VCE[n].W >> 1;
+                uint16_t n = io.vce_reg.W;
+                uint8_t c = io.VCE[n].W >> 1;
                 if (n == 0) {
-                    for (i = 0; i < 256; i += 16)
+                    for (int i = 0; i < 256; i += 16)
                         Palette[i] = c;
                 } else if (n & 15)
                     Palette[n] = c;
@@ -619,10 +606,9 @@ IO_write(uint16 A, uchar V)
         case 6:
             if (io.PSG[io.psg_ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS) {
                 io.psg_da_data[io.psg_ch][io.psg_da_index[io.psg_ch]] = V;
-                io.psg_da_index[io.psg_ch] =
-                    (io.psg_da_index[io.psg_ch] + 1) & 0x3FF;
+                io.psg_da_index[io.psg_ch] = (io.psg_da_index[io.psg_ch] + 1) & 0x3FF;
                 if (io.psg_da_count[io.psg_ch]++ > (PSG_DA_BUFSIZE - 1)) {
-                        MESSAGE_INFO("Audio being put into the direct "
+                    MESSAGE_DEBUG("Audio being put into the direct "
                                      "access buffer faster than it's being played.\n");
                     io.psg_da_count[io.psg_ch] = 0;
                 }
@@ -688,10 +674,9 @@ IO_write(uint16 A, uchar V)
         return;
 
     case 0x1F00:                /* Street Fighter 2 Mapper */
-        Cart_write(A, V); // This is a hack, we shouldn't go through IO_Write at all...
+        cart_write(A, V); // This is a hack, we shouldn't go through IO_Write at all...
         return;
     }
 
-    MESSAGE_DEBUG("ignore I/O write %04x,%02x\tBase address of port %X\nat PC = %04X\n",
-            A, V, A & 0x1CC0, reg_pc);
+    MESSAGE_DEBUG("ignored I/O write: %04x,%02x at PC = %04X\n", A, V, reg_pc);
 }

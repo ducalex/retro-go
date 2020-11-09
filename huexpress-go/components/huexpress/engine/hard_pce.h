@@ -10,9 +10,9 @@
 
 typedef union {
 	struct {
-		uchar l, h;
+		uint8_t l, h;
 	} B;
-	uint16 W;
+	uint16_t W;
 } UWord;
 
 /* The structure containing all variables relatives to Input and Output */
@@ -23,33 +23,33 @@ typedef struct {
 
 	/* VDC */
 	UWord VDC[32];				/* value of each VDC register */
-	uchar vdc_inc;				/* VRAM pointer increment once accessed */
-	uchar vdc_reg;				/* currently selected VDC register */
-	uchar vdc_status;			/* current VCD status (end of line, end of screen, ...) */
-	uchar vdc_ratch;			/* temporary value to keep track of the first byte
+	uint8_t vdc_inc;			/* VRAM pointer increment once accessed */
+	uint8_t vdc_reg;			/* currently selected VDC register */
+	uint8_t vdc_status;			/* current VCD status (end of line, end of screen, ...) */
+	uint8_t vdc_ratch;			/* temporary value to keep track of the first byte
 								 * when setting a 16 bits value with two byte access
 								 */
-	uchar vdc_satb;				/* boolean which keeps track of the need to copy
+	uint8_t vdc_satb;			/* boolean which keeps track of the need to copy
 								 * the SATB from VRAM to internal SATB through DMA
 								 */
-	uchar vdc_satb_counter; 	/* DMA finished interrupt delay counter */
-	uchar vdc_pendvsync;		/* unsure, set if a end of screen IRQ is waiting */
-	uchar vdc_mode_chg;         /* Video mode change needed at next frame */
-	uint16 bg_w;				/* number of tiles horizontally in virtual screen */
-	uint16 bg_h;				/* number of tiles vertically in virtual screen */
-	uint16 screen_w;			/* size of real screen in pixels */
-	uint16 screen_h;			/* size of real screen in pixels */
-	uint16 vdc_minline;			/* First scanline of active display */
-	uint16 vdc_maxline;			/* Last scanline of active display */
+	uint8_t vdc_satb_counter; 	/* DMA finished interrupt delay counter */
+	uint8_t vdc_pendvsync;		/* unsure, set if a end of screen IRQ is waiting */
+	uint8_t vdc_mode_chg;       /* Video mode change needed at next frame */
+	uint16_t bg_w;				/* number of tiles horizontally in virtual screen */
+	uint16_t bg_h;				/* number of tiles vertically in virtual screen */
+	uint16_t screen_w;			/* size of real screen in pixels */
+	uint16_t screen_h;			/* size of real screen in pixels */
+	uint16_t vdc_minline;		/* First scanline of active display */
+	uint16_t vdc_maxline;		/* Last scanline of active display */
 
 	/* joypad */
-	uchar JOY[8];				/* value of pressed button/direct for each pad */
-	uchar joy_select;			/* used to know what nibble we must return */
-	uchar joy_counter;			/* current addressed joypad */
+	uint8_t JOY[8];				/* value of pressed button/direct for each pad */
+	uint8_t joy_select;			/* used to know what nibble we must return */
+	uint8_t joy_counter;		/* current addressed joypad */
 
 	/* PSG */
-	uchar PSG[PSG_CHANNELS][8];
-	uchar PSG_WAVE[PSG_CHANNELS][32];
+	uint8_t PSG[PSG_CHANNELS][8];
+	uint8_t PSG_WAVE[PSG_CHANNELS][32];
 	// PSG STRUCTURE
 	// 0 : dda_out
 	// 2 : freq (lo byte)  | In reality it's a divisor
@@ -66,78 +66,80 @@ typedef struct {
 	// 6 : wave ringbuffer index
 	// 7 : noise data for channels 5 and 6
 
-	uchar psg_ch, psg_volume, psg_lfo_freq, psg_lfo_ctrl;
+	uint8_t psg_ch, psg_volume, psg_lfo_freq, psg_lfo_ctrl;
 
-	uchar psg_da_data[PSG_CHANNELS][PSG_DA_BUFSIZE];
-	uint16 psg_da_index[PSG_CHANNELS];
-	uint16 psg_da_count[PSG_CHANNELS];
+	uint8_t psg_da_data[PSG_CHANNELS][PSG_DA_BUFSIZE];
+	uint16_t psg_da_index[PSG_CHANNELS];
+	uint16_t psg_da_count[PSG_CHANNELS];
 
 	/* TIMER */
-	uchar timer_reload, timer_start, timer_counter;
+	uint8_t timer_reload, timer_start, timer_counter;
 
 	/* IRQ */
-	uchar irq_mask, irq_status;
+	uint8_t irq_mask, irq_status;
 
 	/* Remanence latch */
-	uchar io_buffer;
+	uint8_t io_buffer;
 
 } IO_t;
 
 typedef struct {
 	// Main memory
-	uchar RAM[0x2000];
+	uint8_t RAM[0x2000];
 
 	// Extra RAM contained on the HuCard (Populous)
-	uchar *ExtraRAM;
+	uint8_t *ExtraRAM;
 
 	// Backup RAM
-	uchar BackupRAM[0x800];
+	uint8_t BackupRAM[0x800];
 
 	// Video RAM
-	uchar VRAM[0x10000];
+	uint8_t VRAM[0x10000];
 
 	// Sprite RAM
 	// The pc engine got a function to transfert a piece VRAM toward the inner
 	// gfx cpu sprite memory from where data will be grabbed to render sprites
-	uint16 SPRAM[64 * 4];
+	uint16_t SPRAM[64 * 4];
 
 	// ROM memory
-	uchar *ROM, *ROM_PTR;
+	uint8_t *ROM, *ROM_PTR;
 
 	// ROM size in 0x2000 blocks
-	uint16 ROM_SIZE;
+	uint16_t ROM_SIZE;
 
 	// ROM crc
-	uint32 ROM_CRC;
+	uint32_t ROM_CRC;
 
 	// PCE->PC Palette convetion array
 	// Each of the 512 available PCE colors (333 RGB -> 512 colors)
 	// got a correspondance in the 256 fixed colors palette
-	uchar Palette[512];
+	uint8_t Palette[512];
 
 	// CPU Registers
-	uint16 reg_pc;
-	uchar reg_a;
-	uchar reg_x;
-	uchar reg_y;
-	uchar reg_p;
-	uchar reg_s;
+	uint16_t reg_pc;
+	uint8_t reg_a;
+	uint8_t reg_x;
+	uint8_t reg_y;
+	uint8_t reg_p;
+	uint8_t reg_s;
 
 	// The current rendered line on screen
-	uint16 Scanline;
+	uint16_t Scanline;
 
 	// Total number of elapsed cycles in the current scanline
-	uint16 Cycles;
+	uint16_t Cycles;
 
 	// Total number of elapsed cycles
-	uint32 TotalCycles;
+	uint32_t TotalCycles;
 
 	// Previous number of elapsed cycles
-	uint32 PrevTotalCycles;
+	uint32_t PrevTotalCycles;
 
 	// Value of each of the MMR registers
-	uchar MMR[8];
-	uchar SF2; // Street Fighter 2 Mapper
+	uint8_t MMR[8];
+
+	// Street Fighter 2 Mapper
+	uint8_t SF2;
 
 	// IO Registers
 	IO_t IO;
@@ -152,8 +154,8 @@ int  hard_init(void);
 void hard_reset(void);
 void hard_term(void);
 
-void  IO_write(uint16 A, uchar V);
-uchar IO_read(uint16 A);
+void IO_write(uint16_t A, uint8_t V);
+uint8_t IO_read(uint16_t A);
 
 /**
   * Exported variables
@@ -164,13 +166,13 @@ extern PCE_t PCE;
 
 // Regions of the memory map that we need to trap.
 // Normally games do not read reach this.
-extern uchar *IOAREA, *TRAPRAM;
+extern uint8_t *IOAREA, *TRAPRAM;
 
 // physical address on emulator machine of each of the 256 banks
-extern uchar *PageR[8];
-extern uchar *PageW[8];
-extern uchar *MemoryMapR[256];
-extern uchar *MemoryMapW[256];
+extern uint8_t *PageR[8];
+extern uint8_t *PageW[8];
+extern uint8_t *MemoryMapR[256];
+extern uint8_t *MemoryMapW[256];
 
 #define RAM PCE.RAM
 #define BackupRAM PCE.BackupRAM
@@ -285,34 +287,34 @@ enum _VDC_REG {
 #if USE_MEM_MACROS
 
 #define Read8(addr) ({							\
-	uint16 a = (addr);							\
-	uchar *page = PageR[a >> 13]; 				\
+	uint16_t a = (addr);							\
+	uint8_t *page = PageR[a >> 13]; 				\
 	(page == IOAREA) ? IO_read(a) : page[a]; 	\
 })
 
 #define Write8(addr, byte) {					\
-	uint16 a = (addr), b = (byte); 				\
-	uchar *page = PageW[a >> 13]; 				\
+	uint16_t a = (addr), b = (byte); 				\
+	uint8_t *page = PageW[a >> 13]; 				\
 	if (page == IOAREA) IO_write(a, b); 		\
 	else page[a] = b;							\
 }
 
 #define Read16(addr) ({							\
-	uint16 a = (addr); 							\
-	*((uint16*)(PageR[a >> 13] + a));			\
+	uint16_t a = (addr); 							\
+	*((uint16_t*)(PageR[a >> 13] + a));			\
 })
 
 #define Write16(addr, word) {					\
-	uint16 a = (addr), w = (word); 				\
-	*((uint16*)(PageR[a >> 13] + a)) = w;		\
+	uint16_t a = (addr), w = (word); 				\
+	*((uint16_t*)(PageR[a >> 13] + a)) = w;		\
 }
 
 #else
 
-static inline uchar
-Read8(uint16 addr)
+static inline uint8_t
+Read8(uint16_t addr)
 {
-	uchar *page = PageR[addr >> 13];
+	uint8_t *page = PageR[addr >> 13];
 
 	if (page == IOAREA)
 		return IO_read(addr);
@@ -321,9 +323,9 @@ Read8(uint16 addr)
 }
 
 static inline void
-Write8(uint16 addr, uchar byte)
+Write8(uint16_t addr, uint8_t byte)
 {
-	uchar *page = PageW[addr >> 13];
+	uint8_t *page = PageW[addr >> 13];
 
 	if (page == IOAREA)
 		IO_write(addr, byte);
@@ -331,22 +333,22 @@ Write8(uint16 addr, uchar byte)
 		page[addr] = byte;
 }
 
-static inline uint16
-Read16(uint16 addr)
+static inline uint16_t
+Read16(uint16_t addr)
 {
-	return (*((uint16*)(PageR[addr >> 13] + (addr))));
+	return (*((uint16_t*)(PageR[addr >> 13] + (addr))));
 }
 
 static inline void
-Write16(uint16 addr, uint16 word)
+Write16(uint16_t addr, uint16_t word)
 {
-	*((uint16*)(PageR[addr >> 13] + (addr))) = word;
+	*((uint16_t*)(PageR[addr >> 13] + (addr))) = word;
 }
 
 #endif
 
 static inline void
-BankSet(uchar P, uchar V)
+BankSet(uint8_t P, uint8_t V)
 {
 	TRACE_IO("Bank switching (MMR[%d] = %d)\n", P, V);
 
@@ -358,7 +360,7 @@ BankSet(uchar P, uchar V)
 /**
   * Inlined HW Functions
   */
-static inline uchar
+static inline bool
 TimerInt()
 {
 	if (io.timer_start) {

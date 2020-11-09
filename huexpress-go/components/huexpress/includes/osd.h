@@ -27,16 +27,16 @@
    * XBuf->line[0] since it's the first byte of the REAL data in this bitmap.
    * Its size must be OSD_GFX_WIDTH * OSD_GFX_HEIGHT
    */
-extern uchar *osd_gfx_buffer;
+extern uint8_t *osd_gfx_buffer;
 extern uint osd_blitFrames;
 extern uint osd_fullFrames;
 extern uint osd_skipFrames;
 
-extern void osd_gfx_init();
-extern void osd_gfx_shutdown();
-extern void osd_gfx_blit();
-extern void osd_gfx_set_mode(short width, short height);
-extern void osd_gfx_set_color(uchar index, uchar r, uchar g, uchar b);
+extern void osd_gfx_init(void);
+extern void osd_gfx_shutdown(void);
+extern void osd_gfx_blit(void);
+extern void osd_gfx_set_mode(int width, int height);
+extern void osd_gfx_set_color(int index, uint8_t r, uint8_t g, uint8_t b);
 
 
 /*
@@ -78,7 +78,7 @@ extern char osd_keypressed(void);
    * while the higher byte contains the scancode of the key.
    * Once called, discard the value in the keystroke buffer
    */
-extern uint16 osd_readkey(void);
+extern int osd_readkey(void);
 
 /*!
  * Initialize the input services
@@ -138,7 +138,7 @@ extern void osd_snd_shutdown();
  */
 
 // declaration of the actual callback to call 60 times a second
-extern uint32 interrupt_60hz(uint32, void*);
+extern int interrupt_60hz(int, void*);
 
   /*
    * osd_wait_next_vsync

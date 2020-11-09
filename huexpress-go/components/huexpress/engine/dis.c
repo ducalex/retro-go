@@ -21,15 +21,15 @@
 
 /* GLOBALS */
 
-uchar opbuf[OPBUF_SIZE];
+uint8_t opbuf[OPBUF_SIZE];
 
-uint16 init_pos;
+uint16_t init_pos;
 // Initial adress to disassemble
 
-uint16 selected_position;
+uint16_t selected_position;
 // Adress user points to
 
-uchar running_mode;
+uint8_t running_mode;
 // the state we are running the cpu:
 // 0 -> plain running
 // 1 -> stepping, going over subroutines
@@ -47,7 +47,7 @@ uchar running_mode;
 void
 forward_one_line()
 {
-	uchar op;
+	uint8_t op;
 
 	op = get_8bit_addr(init_pos);
 	if ((op & 0xF) == 0xB) {
@@ -74,12 +74,12 @@ forward_one_line()
 void
 backward_one_line()
 {
-	char line;
-	uchar Try;
-	uint16 try_pos[MAX_TRY] = { 1, 2, 3, 4, 7 };
-	unsigned short temp_pos = 0;
-	char possible;
-	uchar op, size, i;
+	uint8_t line;
+	uint8_t Try;
+	uint16_t try_pos[MAX_TRY] = { 1, 2, 3, 4, 7 };
+	uint16_t temp_pos = 0;
+	uint8_t possible;
+	uint8_t op, size, i;
 
 	for (Try = 0; Try < MAX_TRY; Try++) {
 		if (init_pos >= try_pos[Try])
@@ -181,7 +181,7 @@ dis_key()
 	case KEY_F3:				/* F3 */
 		{
 			char *tmp_buf = (char *) alloca(20);
-			uchar index = 0;
+			uint8_t index = 0;
 
 			while (osd_keypressed())
 				osd_readkey();
@@ -236,7 +236,7 @@ dis_key()
 	case KEY_F6:				/* F6 */
 		{
 			char dum;
-			uchar op = Read8(selected_position);
+			uint8_t op = Read8(selected_position);
 
 			if ((op & 0xF) == 0xB)
 				op = Bp_list[op >> 4].original_op;
@@ -295,7 +295,7 @@ dis_key()
 
 		{
 			char *tmp_buf = (char *) alloca(20);
-			uchar index = 0;
+			uint8_t index = 0;
 
 			while (osd_keypressed())
 				osd_readkey();
@@ -341,10 +341,10 @@ disassemble()
 #ifdef ALLEGRO
 
 	char linebuf[256];
-	uchar op;
+	uint8_t op;
 	int i, size;
 	char line;
-	uint16 position;
+	uint position;
 	char bp_actived, bp_disabled;
 	char *tmp_buf = (char *) alloca(100);
 
@@ -440,33 +440,33 @@ disassemble()
 /*@ -bufferoverflowhigh */
 
 void
-lineprint1(char *outf, long ctr, uchar * op, char *outstring)
+lineprint1(char *outf, long ctr, uint8_t * op, char *outstring)
 {
 	sprintf(outf, "%02X          %s", *op, outstring);
 }
 
 void
-lineprint2(char *outf, long ctr, uchar * op, char *outstring)
+lineprint2(char *outf, long ctr, uint8_t * op, char *outstring)
 {
 	sprintf(outf, "%02X %02X       %s", *op, *(op + 1), outstring);
 }
 
 void
-lineprint3(char *outf, long ctr, uchar * op, char *outstring)
+lineprint3(char *outf, long ctr, uint8_t * op, char *outstring)
 {
 	sprintf(outf, "%02X %02X %02X    %s", *op, *(op + 1), *(op + 2),
 			outstring);
 }
 
 void
-lineprint4(char *outf, long ctr, uchar * op, char *outstring)
+lineprint4(char *outf, long ctr, uint8_t * op, char *outstring)
 {
 	sprintf(outf, "%02X %02X %02X %02X %s", *op, *(op + 1), *(op + 2),
 			*(op + 3), outstring);
 }
 
 void
-lineprint7(char *outf, long ctr, uchar * op, char *outstring)
+lineprint7(char *outf, long ctr, uint8_t * op, char *outstring)
 {
 	sprintf(outf, "%02X %02X %02X %02X %02X %02X %02X %s",
 			*op, *(op + 1), *(op + 2), *(op + 3), *(op + 4),
@@ -478,7 +478,7 @@ lineprint7(char *outf, long ctr, uchar * op, char *outstring)
 /* look/act as wrappers around lineprint functions */
 
 void
-implicit(char *outf, long ctr, uchar * op, char *str)
+implicit(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 	sprintf(buf, "%-4s", str);
@@ -486,7 +486,7 @@ implicit(char *outf, long ctr, uchar * op, char *str)
 }
 
 void
-immed(char *outf, long ctr, uchar * op, char *str)
+immed(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 	sprintf(buf, "%-4s #$%02X", str, *(op + 1));
@@ -494,7 +494,7 @@ immed(char *outf, long ctr, uchar * op, char *str)
 }
 
 void
-relative(char *outf, long ctr, uchar * op, char *str)
+relative(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 	long newadd;
@@ -511,7 +511,7 @@ relative(char *outf, long ctr, uchar * op, char *str)
 }
 
 void
-ind_zp(char *outf, long ctr, uchar * op, char *str)
+ind_zp(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 	sprintf(buf, "%-4s $%02X", str, *(op + 1));
@@ -519,7 +519,7 @@ ind_zp(char *outf, long ctr, uchar * op, char *str)
 }
 
 void
-ind_zpx(char *outf, long ctr, uchar * op, char *str)
+ind_zpx(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 	sprintf(buf, "%-4s $%02X,X", str, *(op + 1));
@@ -527,7 +527,7 @@ ind_zpx(char *outf, long ctr, uchar * op, char *str)
 }
 
 void
-ind_zpy(char *outf, long ctr, uchar * op, char *str)
+ind_zpy(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 	sprintf(buf, "%-4s $%02X,Y", str, *(op + 1));
@@ -535,7 +535,7 @@ ind_zpy(char *outf, long ctr, uchar * op, char *str)
 }
 
 void
-ind_zpind(char *outf, long ctr, uchar * op, char *str)
+ind_zpind(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 	sprintf(buf, "%-4s ($%02X)", str, *(op + 1));
@@ -543,7 +543,7 @@ ind_zpind(char *outf, long ctr, uchar * op, char *str)
 }
 
 void
-ind_zpix(char *outf, long ctr, uchar * op, char *str)
+ind_zpix(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 	sprintf(buf, "%-4s ($%02X,X)", str, *(op + 1));
@@ -551,7 +551,7 @@ ind_zpix(char *outf, long ctr, uchar * op, char *str)
 }
 
 void
-ind_zpiy(char *outf, long ctr, uchar * op, char *str)
+ind_zpiy(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 	sprintf(buf, "%-4s ($%02X),Y", str, *(op + 1));
@@ -559,7 +559,7 @@ ind_zpiy(char *outf, long ctr, uchar * op, char *str)
 }
 
 void
-absol(char *outf, long ctr, uchar * op, char *str)
+absol(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 	sprintf(buf, "%-4s $%02X%02X", str, *(op + 2), *(op + 1));
@@ -567,7 +567,7 @@ absol(char *outf, long ctr, uchar * op, char *str)
 }
 
 void
-absind(char *outf, long ctr, uchar * op, char *str)
+absind(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 	sprintf(buf, "%-4s ($%02X%02X)", str, *(op + 2), *(op + 1));
@@ -575,7 +575,7 @@ absind(char *outf, long ctr, uchar * op, char *str)
 }
 
 void
-absindx(char *outf, long ctr, uchar * op, char *str)
+absindx(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 	sprintf(buf, "%-4s ($%02X%02X,X)", str, *(op + 2), *(op + 1));
@@ -583,7 +583,7 @@ absindx(char *outf, long ctr, uchar * op, char *str)
 }
 
 void
-absx(char *outf, long ctr, uchar * op, char *str)
+absx(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 	sprintf(buf, "%-4s $%02X%02X,X", str, *(op + 2), *(op + 1));
@@ -591,7 +591,7 @@ absx(char *outf, long ctr, uchar * op, char *str)
 }
 
 void
-absy(char *outf, long ctr, uchar * op, char *str)
+absy(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 	sprintf(buf, "%-4s $%02X%02X,Y", str, *(op + 2), *(op + 1));
@@ -599,7 +599,7 @@ absy(char *outf, long ctr, uchar * op, char *str)
 }
 
 void
-pseudorel(char *outf, long ctr, uchar * op, char *str)
+pseudorel(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 	long newadd;
@@ -616,7 +616,7 @@ pseudorel(char *outf, long ctr, uchar * op, char *str)
 }
 
 void
-tst_zp(char *outf, long ctr, uchar * op, char *str)
+tst_zp(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 
@@ -625,7 +625,7 @@ tst_zp(char *outf, long ctr, uchar * op, char *str)
 }
 
 void
-tst_abs(char *outf, long ctr, uchar * op, char *str)
+tst_abs(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 
@@ -635,7 +635,7 @@ tst_abs(char *outf, long ctr, uchar * op, char *str)
 }
 
 void
-tst_zpx(char *outf, long ctr, uchar * op, char *str)
+tst_zpx(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 
@@ -644,7 +644,7 @@ tst_zpx(char *outf, long ctr, uchar * op, char *str)
 }
 
 void
-tst_absx(char *outf, long ctr, uchar * op, char *str)
+tst_absx(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 
@@ -654,7 +654,7 @@ tst_absx(char *outf, long ctr, uchar * op, char *str)
 }
 
 void
-xfer(char *outf, long ctr, uchar * op, char *str)
+xfer(char *outf, long ctr, uint8_t * op, char *str)
 {
 	char buf[256];
 

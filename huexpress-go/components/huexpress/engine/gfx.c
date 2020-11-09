@@ -3,25 +3,24 @@
 #include "pce.h"
 #include "config.h"
 
-static gfx_context_t saved_gfx_context[4];
-
-//
-int ScrollYDiff;
-
+static gfx_context_t saved_gfx_context[2];
 static bool gfx_need_redraw = 0;
 static bool sprite_usespbg = 0;
 static int display_counter = 0;
 static int last_display_counter = 0;
 
-// Cache for linear tiles and sprites. This is basically a decoded VRAM
-bool TILE_CACHE[4096];
-bool SPR_CACHE[1024];
-uint32 *OBJ_CACHE;
-
 // Sprite priority mask memory
-static uchar *SPM, *SPM_ptr;
+static uint8_t *SPM, *SPM_ptr;
 
-#define PAL(nibble) (PAL[(L >> (nibble * 4)) & 15]);
+// Cache for linear tiles and sprites. This is basically a decoded VRAM
+static uint32_t *OBJ_CACHE;
+bool TILE_CACHE[2048];
+bool SPR_CACHE[512];
+
+//
+int ScrollYDiff;
+
+#define PAL(nibble) (PAL[(L >> ((nibble) * 4)) & 15]);
 
 
 /*****************************************************************************
@@ -36,13 +35,13 @@ static uchar *SPM, *SPM_ptr;
 static inline void
 spr2pixel(int no)
 {
-	uint32 M, L, i;
-	uchar *C = VRAM + no * 128;
-	uint32 *C2 = OBJ_CACHE + no * 32;
+	uint8_t *C = VRAM + no * 128;
+	uint32_t *C2 = OBJ_CACHE + no * 32;
 	// 2 longs -> 16 nibbles => 32 loops for a 16*16 spr
 
 	TRACE_SPR("Planing sprite %d\n", no);
-	for (i = 0; i < 32; i++, C++, C2++) {
+	for (int i = 0; i < 32; i++, C++, C2++) {
+		uint32_t M, L;
 		M = C[0];
 		L = ((M & 0x88) >> 3) | ((M & 0x44) << 6) | ((M & 0x22) << 15) | ((M & 0x11) << 24);
 		M = C[32];
@@ -69,12 +68,12 @@ spr2pixel(int no)
 static inline void
 tile2pixel(int no)
 {
-	uint32 M, L, i;
-	uchar *C = VRAM + no * 32;
-	uint32 *C2 = OBJ_CACHE + no * 8;
+	uint8_t *C = VRAM + no * 32;
+	uint32_t *C2 = OBJ_CACHE + no * 8;
 
 	TRACE_SPR("Planing tile %d\n", no);
-	for (i = 0; i < 8; i++, C += 2, C2++) {
+	for (int i = 0; i < 8; i++, C += 2, C2++) {
+		uint32_t M, L;
 		M = C[0];
 		L = ((M & 0x88) >> 3) | ((M & 0x44) << 6) | ((M & 0x22) << 15) | ((M & 0x11) << 24);
 		M = C[1];
@@ -95,29 +94,29 @@ tile2pixel(int no)
 
 		Description: draw sprite to framebuffer
 		Parameters: int offset (offset in SPM/framebuffer memory to use)
-					uint16 *C (sprite to draw)
-					uint32 *C2 (cached linear sprite)
-					uchar *PAL (address of the palette of this sprite)
+					uint16_t *C (sprite to draw)
+					uint32_t *C2 (cached linear sprite)
+					uint8_t *PAL (address of the palette of this sprite)
 					int h (the number of line to draw)
 					int inc (the value to increment the sprite buffer)
-					uchar pr (priority to compare against M)
+					int pr (priority to compare against M)
 					bool hflip (flip tile horizontally)
 					bool update_mask (update priority mask)
 		Return: nothing
 
 *****************************************************************************/
 static inline void
-draw_sprite(int offset, uint16 *C, uint32 *C2, uchar *PAL, int h, int inc,
-	uchar pr, bool hflip, bool update_mask)
+draw_sprite(int offset, uint16_t *C, uint32_t *C2, uint8_t *PAL, int h, int inc,
+	uint8_t pr, bool hflip, bool update_mask)
 {
-	uchar *P = osd_gfx_buffer + offset;
-	uchar *M = SPM + offset;
+	uint8_t *P = osd_gfx_buffer + offset;
+	uint8_t *M = SPM + offset;
 
-	for (int i = 0; i < h; i++, C = (uint16*)((uchar*)C + inc),
+	for (int i = 0; i < h; i++, C = (uint16_t*)((uint8_t*)C + inc),
 			C2 += inc, P += XBUF_WIDTH, M += XBUF_WIDTH) {
 
-		uint16 J = C[0] | C[16] | C[32] | C[48];
-		uint32 L;
+		uint16_t J = C[0] | C[16] | C[32] | C[48];
+		uint32_t L;
 
 		if (!J)
 			continue;
@@ -219,10 +218,9 @@ draw_sprite(int offset, uint16 *C, uint32 *C2, uchar *PAL, int h, int inc,
 static inline void
 draw_tiles(int Y1, int Y2)
 {
-	int X1, XW, Line;
-	int x, y, h, offset;
-
-	uchar *PP;
+	int XW, no, x, y, h, offset;
+	uint8_t *PP, *PAL, *P, *C;
+	uint32_t *C2;
 
 	if (Y1 == 0) {
 		TRACE_GFX("\n=================================================\n");
@@ -245,24 +243,18 @@ draw_tiles(int Y1, int Y2)
 	PP = (osd_gfx_buffer + XBUF_WIDTH * Y1) - (ScrollX & 7);
 	XW = io.screen_w / 8 + 1;
 
-	for (Line = Y1; Line < Y2; y++) {
+	for (int Line = Y1; Line < Y2; y++) {
 		x = ScrollX / 8;
 		y &= io.bg_h - 1;
-		for (X1 = 0; X1 < XW; X1++, x++, PP += 8) {
-			uchar *PAL, *P, *C;
-			uint32 *C2;
-			uint32 J, L, no, i;
+		for (int X1 = 0; X1 < XW; X1++, x++, PP += 8) {
 			x &= io.bg_w - 1;
 
-			no = ((uint16 *) VRAM)[x + y * io.bg_w];
+			no = ((uint16_t*)VRAM)[x + y * io.bg_w];
 
 			PAL = &Palette[(no >> 8) & 0x1F0];
 
-			// PCE only has 2048 tiles so we assume access beyond that is a bug
-			if (no >= 0x800) {
-				MESSAGE_DEBUG("Access to an invalid VRAM area (tile no %d).\n", no);
-				no &= 0x7FF;
-			}
+			// PCE has max of 2048 tiles
+			no &= 0x7FF;
 
 			if (TILE_CACHE[no] == 0) {
 				tile2pixel(no);
@@ -271,7 +263,8 @@ draw_tiles(int Y1, int Y2)
 			C2 = OBJ_CACHE + (no * 8 + offset);
 			C = VRAM + (no * 32 + offset * 2);
 			P = PP;
-			for (i = 0; i < h; i++, P += XBUF_WIDTH, C2++, C += 2) {
+			for (int i = 0; i < h; i++, P += XBUF_WIDTH, C2++, C += 2) {
+				uint32_t J, L;
 
 				J = C[0] | C[1] | C[16] | C[17];
 
@@ -304,48 +297,44 @@ draw_tiles(int Y1, int Y2)
 		Function: draw_sprites
 
 		Description: draw all sprites between two lines, with the normal method
-		Parameters: int Y1, int Y2 (the 'ordonee' to draw between), uchar bg
+		Parameters: int Y1, int Y2 (the 'ordonee' to draw between), bool bg
 			(do we draw fg or bg sprites)
 		Return: absolutely nothing
 
 *****************************************************************************/
 static inline void
-draw_sprites(int Y1, int Y2, uchar bg)
+draw_sprites(int Y1, int Y2, bool bg)
 {
-	int n, i, j, x, y, no, atr, inc, cgx, cgy;
-	int pos, y_sum, h, t;
-	bool spr_bg, hflip;
-	sprite_t *spr;
+	sprite_t *spr = (sprite_t *)SPRAM + 63;
 
-	spr = (sprite_t *) SPRAM + 63;
-
-	for (n = 0; n < 64; n++, spr--) {
-		atr = spr->atr;
-		spr_bg = (atr >> 7) & 1;
+	for (int n = 0; n < 64; n++, spr--) {
+		int spr_bg = (spr->atr >> 7) & 1;
 
 		if (spr_bg != bg)
 			continue;
 
-		y = (spr->y & 1023) - 64;
-		x = (spr->x & 1023) - 32;
-		no = spr->no & 2047;
-		// 4095 is for supergraphx only
-		// no = (unsigned int)(spr->no & 4095);
+		int y = (spr->y & 1023) - 64;
+		int x = (spr->x & 1023) - 32;
+		int cgx = (spr->atr >> 8) & 1;
+		int cgy = (spr->atr >> 12) & 3;
+		int no = (spr->no & 2047); // 4095 for supergraphx
+		int pos = XBUF_WIDTH * y + x;
+		int inc = 2;
 
 		TRACE_GFX("Sprite 0x%02X : X = %d, Y = %d, atr = 0x%04X, no = 0x%03X\n",
-					n, x,y, atr, (unsigned long)no);
+					n, x, y, spr->atr, (unsigned int)no);
 
-		cgx = (atr >> 8) & 1;
-		cgy = (atr >> 12) & 3;
 		cgy |= cgy >> 1;
 		no = (no >> 1) & ~(cgy * 2 + cgx);
 
-		if (y >= Y2 || y + (cgy + 1) * 16 < Y1 || x >= io.screen_w
-			|| x + (cgx + 1) * 16 < 0) {
+		// PCE has max of 512 sprites
+		no &= 0x1FF;
+
+		if (y >= Y2 || y + (cgy + 1) * 16 < Y1 || x >= io.screen_w || x + (cgx + 1) * 16 < 0) {
 			continue;
 		}
 
-		for (i = 0; i < cgy * 2 + cgx + 1; i++) {
+		for (int i = 0; i < cgy * 2 + cgx + 1; i++) {
 			if (SPR_CACHE[no + i] == 0) {
 				spr2pixel(no + i);
 			}
@@ -353,24 +342,22 @@ draw_sprites(int Y1, int Y2, uchar bg)
 				i++;
 		}
 
-		uchar *R = &Palette[256 + ((atr & 15) << 4)];
-		uchar *C = VRAM + (no * 128);
-		uint32 *C2 = OBJ_CACHE + (no * 32);
+		uint8_t *PAL = &Palette[256 + ((spr->atr & 15) << 4)];
+		uint8_t *C = VRAM + (no * 128);
+		uint32_t *C2 = OBJ_CACHE + (no * 32);
 
-		hflip = (atr & H_FLIP);
-		pos = XBUF_WIDTH * y + x;
-		y_sum = 0;
-		inc = 2;
-
-		if (atr & V_FLIP) {
+		if (spr->atr & V_FLIP) {
 			inc = -2;
 			C += 15 * 2 + cgy * 256;
 			C2 += (15 * 2 + cgy * 64);
 		}
 
-		for (i = 0; i <= cgy; i++) {
-			t = Y1 - y - y_sum;
-			h = 16;
+		for (int i = 0, y_sum = 0; i <= cgy; i++, y_sum += 16) {
+			int h = 16;
+			int t = Y1 - y - y_sum;
+			int pri = (sprite_usespbg || !spr_bg) ? n : 0xFF;
+			int hflip = (spr->atr & H_FLIP) ? 1 : 0;
+
 			if (t > 0) {
 				C += t * inc;
 				C2 += (t * inc);
@@ -381,14 +368,12 @@ draw_sprites(int Y1, int Y2, uchar bg)
 			if (h > Y2 - y - y_sum)
 				h = Y2 - y - y_sum;
 
-			uchar pri = (sprite_usespbg || !spr_bg) ? n : 0xFF;
-
-			for (j = 0; j <= cgx; j++) {
+			for (int j = 0; j <= cgx; j++) {
 				draw_sprite(
 					pos + (hflip ? cgx - j : j) * 16,
-					(uint16*)(C + j * 128),
+					(uint16_t*)(C + j * 128),
 					C2 + j * 32,
-					R,
+					PAL,
 					h,
 					inc,
 					pri,
@@ -397,13 +382,12 @@ draw_sprites(int Y1, int Y2, uchar bg)
 				);
 			}
 
-			if (!spr_bg)
+			if (!bg)
 				sprite_usespbg = 1;
 
 			pos += h * XBUF_WIDTH;
 			C += h * inc + 16 * 7 * inc;
 			C2 += h * inc + 16 * inc;
-			y_sum += 16;
 		}
 	}
 }
@@ -415,20 +399,19 @@ draw_sprites(int Y1, int Y2, uchar bg)
 static inline bool
 sprite_hit_check(void)
 {
-	int i, x0, y0, w0, h0, x, y, w, h;
-	sprite_t *spr;
+	sprite_t *spr = (sprite_t *)SPRAM;
+	int x0 = spr->x;
+	int y0 = spr->y;
+	int w0 = (((spr->atr >> 8) & 1) + 1) * 16;
+	int h0 = (((spr->atr >> 12) & 3) + 1) * 16;
 
-	spr = (sprite_t *) SPRAM;
-	x0 = spr->x;
-	y0 = spr->y;
-	w0 = (((spr->atr >> 8) & 1) + 1) * 16;
-	h0 = (((spr->atr >> 12) & 3) + 1) * 16;
 	spr++;
-	for (i = 1; i < 64; i++, spr++) {
-		x = spr->x;
-		y = spr->y;
-		w = (((spr->atr >> 8) & 1) + 1) * 16;
-		h = (((spr->atr >> 12) & 3) + 1) * 16;
+
+	for (int i = 1; i < 64; i++, spr++) {
+		int x = spr->x;
+		int y = spr->y;
+		int w = (((spr->atr >> 8) & 1) + 1) * 16;
+		int h = (((spr->atr >> 12) & 3) + 1) * 16;
 		if ((x < x0 + w0) && (x + w > x0) && (y < y0 + h0) && (y + h > y0))
 			return 1;
 	}
@@ -440,16 +423,16 @@ sprite_hit_check(void)
 	Computes the new screen height and eventually change the screen mode
 */
 static inline void
-change_video_mode()
+change_video_mode(void)
 {
-	uint16 temp_vds = IO_VDC_REG[VPR].B.h;
-	uint16 temp_vsw = IO_VDC_REG[VPR].B.l;
-	uint16 temp_vdw = IO_VDC_REG[VDW].W;
-	uint16 temp_vcr = IO_VDC_REG[VCR].W;
+	uint16_t temp_vds = IO_VDC_REG[VPR].B.h;
+	uint16_t temp_vsw = IO_VDC_REG[VPR].B.l;
+	uint16_t temp_vdw = IO_VDC_REG[VDW].W;
+	uint16_t temp_vcr = IO_VDC_REG[VCR].W;
 
-	uint16 min_display = temp_vds + temp_vsw;
-	uint16 max_display = min_display;
-	uint16 cur_display = min_display;
+	uint16_t min_display = temp_vds + temp_vsw;
+	uint16_t max_display = min_display;
+	uint16_t cur_display = min_display;
 
 	TRACE_GFX("GFX: Changing pce screen mode\n"
 		" VDS = %04x VSW = %04x VDW = %04x VCR = %04x\n",
@@ -483,7 +466,7 @@ change_video_mode()
 
 
 int
-gfx_init()
+gfx_init(void)
 {
 	gfx_need_redraw = 0;
 
@@ -496,7 +479,7 @@ gfx_init()
 	osd_gfx_init();
 
 	// Build palette
-	for (uchar i = 0; i < 255; i++) {
+	for (int i = 0; i < 255; i++) {
 		osd_gfx_set_color(i, (i & 0x1C) << 1, (i & 0xe0) >> 2, (i & 0x03) << 4);
 	}
 	osd_gfx_set_color(255, 0x3f, 0x3f, 0x3f);
@@ -506,7 +489,7 @@ gfx_init()
 
 
 void
-gfx_clear_cache()
+gfx_clear_cache(void)
 {
 	memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
 	memset(&TILE_CACHE, 0, sizeof(TILE_CACHE));
@@ -514,7 +497,7 @@ gfx_clear_cache()
 
 
 void
-gfx_term()
+gfx_term(void)
 {
 	if (OBJ_CACHE) {
 		free(OBJ_CACHE);
@@ -531,21 +514,17 @@ gfx_term()
 
 
 IRAM_ATTR void
-gfx_save_context(char slot_number)
+gfx_save_context(int slot_number)
 {
-	gfx_context_t *context;
-
-	// assert(slot_number < 4);
+	gfx_context_t *context = &saved_gfx_context[slot_number];
 
 	if (slot_number == 0) {
 		if (gfx_need_redraw == 1) { // Context is already saved + we haven't render the line using it
-			MESSAGE_DEBUG("Cancelled context saving as a previous one wasn't consumed yet\n");
+			// MESSAGE_DEBUG("Cancelled context saving as a previous one wasn't consumed yet\n");
 			return;
-		} else
-			gfx_need_redraw = 1;
+		}
+		gfx_need_redraw = 1;
 	}
-
-	context = saved_gfx_context + slot_number;
 
 	context->scroll_x = ScrollX;
 	context->scroll_y = ScrollY;
@@ -558,13 +537,9 @@ gfx_save_context(char slot_number)
 
 
 static inline void
-gfx_load_context(char slot_number)
+gfx_load_context(int slot_number)
 {
-	gfx_context_t *context;
-
-	// assert(slot_number < 4);
-
-	context = saved_gfx_context + slot_number;
+	gfx_context_t *context = &saved_gfx_context[slot_number];
 
 	ScrollX = context->scroll_x;
 	ScrollY = context->scroll_y;
@@ -595,12 +570,12 @@ render_lines(int min_line, int max_line)
 		sprite_usespbg = 0;
 
 		if (SpriteON)
-			draw_sprites(min_line, max_line, 0); // max_line + 1
+			draw_sprites(min_line, max_line, false); // max_line + 1
 
 		draw_tiles(min_line, max_line); // max_line + 1
 
 		if (SpriteON)
-			draw_sprites(min_line, max_line, 1);  // max_line + 1
+			draw_sprites(min_line, max_line, true);  // max_line + 1
 
 		gfx_load_context(1);
 	}
@@ -612,10 +587,10 @@ render_lines(int min_line, int max_line)
 /*
 	process one scanline
 */
-IRAM_ATTR uchar
-gfx_loop()
+IRAM_ATTR int
+gfx_loop(void)
 {
-	uchar return_value = INT_NONE;
+	int return_value = INT_NONE;
 
 	io.vdc_status &= ~(VDC_RasHit | VDC_SATBfinish);
 
@@ -635,7 +610,7 @@ gfx_loop()
 	if (RasHitON) {
 		if (((IO_VDC_REG[RCR].W & 0x3FF) >= 0x40)
 			&& ((IO_VDC_REG[RCR].W & 0x3FF) <= 0x146)) {
-			uint16 temp_rcr = (uint16) ((IO_VDC_REG[RCR].W & 0x3FF) - 0x40);
+			uint16_t temp_rcr = (uint16_t) ((IO_VDC_REG[RCR].W & 0x3FF) - 0x40);
 
 			if (Scanline == (temp_rcr + IO_VDC_REG[VPR].B.l + IO_VDC_REG[VPR].B.h) % 263) {
 				// printf("\n---------------------\nRASTER HIT (%d)\n----------------------\n", Scanline);
@@ -665,10 +640,8 @@ gfx_loop()
 
 		if (Scanline == io.vdc_minline) {
 			gfx_need_redraw = 0;
-
 			gfx_save_context(0);
-
-			TRACE_GFX("GFX: FORCED SAVE OF GFX CONTEXT\n");
+			// MESSAGE_DEBUG("GFX: FORCED SAVE OF GFX CONTEXT\n");
 		}
 
 		if (Scanline >= io.vdc_minline && Scanline <= io.vdc_maxline) {
@@ -712,14 +685,10 @@ gfx_loop()
 			osd_gfx_blit();
 		}
 
-#ifdef ENABLE_NETPLAY
-		if (option.want_netplay != INTERNET_PROTOCOL) {
-			/* When in internet protocol mode, it's the server which is in charge of throttling */
+		/* When in internet protocol mode, it's the server which is in charge of throttling */
+		if (!host.netplay) {
 			osd_wait_next_vsync();
 		}
-#else
-		osd_wait_next_vsync();
-#endif							/* NETPLAY_ENABLE */
 
 		/* VRAM to SATB DMA */
 		if (io.vdc_satb == 1 || IO_VDC_REG[DCR].W & 0x0010) {

@@ -10,9 +10,9 @@
 #define JAP          0x8000
 
 const struct {
-	const uint32 CRC;
-	const char   *Name;
-	const uint32 Flags;
+	const uint32_t CRC;
+	const char *Name;
+	const uint32_t Flags;
 } romFlags[] = {
 	{0x00000000, "Unknown", JAP},
 	{0xF0ED3094, "Blazing Lazers", USA | TWO_PART_ROM},

@@ -12,14 +12,14 @@
 #include <string.h>
 #include <osd.h>
 
-static uint16 mypalette[256];
-static uint8 *framebuffers[2];
+static uint16_t mypalette[256];
+static uint8_t *framebuffers[2];
 static odroid_video_frame_t frames[2];
 static odroid_video_frame_t *curFrame, *prevFrame;
-static uint8 current_fb = 0;
+static uint8_t current_fb = 0;
 static bool gfx_init_done = false;
 
-uchar* osd_gfx_buffer = NULL;
+uint8_t* osd_gfx_buffer = NULL;
 uint osd_skipFrames = 0;
 uint osd_blitFrames = 0;
 uint osd_fullFrames = 0;
@@ -75,7 +75,7 @@ void osd_gfx_init(void)
 }
 
 
-void osd_gfx_set_mode(short width, short height)
+void osd_gfx_set_mode(int width, int height)
 {
     printf("%s: (%dx%d)\n", __func__, width, height);
 
@@ -146,14 +146,10 @@ void osd_gfx_shutdown(void)
 }
 
 
-void osd_gfx_set_color(uchar index, uchar r, uchar g, uchar b)
+void osd_gfx_set_color(int index, uint8_t r, uint8_t g, uint8_t b)
 {
-    uint16 col;
-    if (index == 255)
-    {
-        col = 0xffff;
-    }
-    else
+    uint16_t col = 0xffff;
+    if (index != 255)
     {
         col = COLOR_RGB(r >> 2, g >> 2, b >> 2);
         col = (col << 8) | (col >> 8);

@@ -81,7 +81,7 @@
 // CPU emulation loop. It performs most of the actual emulation
 // Including interupts and graphics.
 __attribute__((flatten)) IRAM_ATTR void
-exe_go(void)
+h6280_run(void)
 {
     UBYTE I;
 

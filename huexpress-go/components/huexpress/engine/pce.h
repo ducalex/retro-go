@@ -27,6 +27,7 @@ int LoadCard(const char *name);
 
 struct host_machine {
 	bool paused;
+	bool netplay;
 
 	struct {
 		int frameSkip;

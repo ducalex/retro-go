@@ -101,7 +101,7 @@ LoadCard(const char *name)
 	offset = fsize & 0x1fff;
 
 	// read ROM
-	ROM = (uchar *)rg_alloc(fsize, MEM_SLOW);
+	ROM = rg_alloc(fsize, MEM_SLOW);
 
 	if (ROM == NULL)
 	{
@@ -118,8 +118,8 @@ LoadCard(const char *name)
 	ROM_PTR = ROM + offset;
 	ROM_CRC = crc32_le(0, ROM, fsize);
 
-	uint16 IDX = 0;
-	uint32 ROM_MASK = 1;
+	uint IDX = 0;
+	uint ROM_MASK = 1;
 
 	while (ROM_MASK < ROM_SIZE) ROM_MASK <<= 1;
 	ROM_MASK--;
@@ -142,13 +142,13 @@ LoadCard(const char *name)
 	{
 		MESSAGE_INFO("This rom is probably US encrypted, decrypting...\n");
 
-		uchar inverted_nibble[16] = {
+		unsigned char inverted_nibble[16] = {
 			0, 8, 4, 12, 2, 10, 6, 14,
 			1, 9, 5, 13, 3, 11, 7, 15
 		};
 
-		for (uint32 x = 0; x < ROM_SIZE * 0x2000; x++) {
-			uchar temp = ROM_PTR[x] & 15;
+		for (int x = 0; x < ROM_SIZE * 0x2000; x++) {
+			unsigned char temp = ROM_PTR[x] & 15;
 
 			ROM_PTR[x] &= ~0x0F;
 			ROM_PTR[x] |= inverted_nibble[ROM_PTR[x] >> 4];
@@ -191,7 +191,7 @@ LoadCard(const char *name)
 
 	// Allocate the card's onboard ram
 	if (romFlags[IDX].Flags & ONBOARD_RAM) {
-		ExtraRAM = ExtraRAM ?: (uchar*)rg_alloc(0x8000, MEM_FAST);
+		ExtraRAM = ExtraRAM ?: rg_alloc(0x8000, MEM_FAST);
 		MemoryMapR[0x40] = MemoryMapW[0x40] = ExtraRAM;
 		MemoryMapR[0x41] = MemoryMapW[0x41] = ExtraRAM + 0x2000;
 		MemoryMapR[0x42] = MemoryMapW[0x42] = ExtraRAM + 0x4000;
@@ -250,7 +250,7 @@ InitPCE(const char *name)
 void
 RunPCE(void)
 {
-	exe_go();
+	h6280_run();
 }
 
 

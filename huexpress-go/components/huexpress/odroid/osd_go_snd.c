@@ -8,7 +8,7 @@
 #define AUDIO_CHANNELS 6
 
 static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
-static char  chanBuffer[AUDIO_CHANNELS][AUDIO_BUFFER_LENGTH * 2];
+static signed char chanBuffer[AUDIO_CHANNELS][AUDIO_BUFFER_LENGTH * 2];
 
 
 static void
@@ -50,7 +50,7 @@ audioTask(void *arg)
     vTaskDelete(NULL);
 }
 
-void osd_snd_init()
+void osd_snd_init(void)
 {
     host.sound.stereo = true;
     host.sound.freq = AUDIO_SAMPLE_RATE;

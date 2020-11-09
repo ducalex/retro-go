@@ -3,7 +3,8 @@
 
 #include "hard_pce.h"
 
-extern void exe_go(void);
+extern void h6280_run(void);
+extern void h6280_irq(int);
 extern void dump_cpu_registers(void);
 
 typedef struct op {

@@ -27,7 +27,7 @@ int osd_keyboard(void)
 		odroid_overlay_game_settings_menu(NULL);
 	}
 
-    uchar rc = 0;
+    unsigned char rc = 0;
     if (joystick.values[ODROID_INPUT_LEFT]) rc |= JOY_LEFT;
     if (joystick.values[ODROID_INPUT_RIGHT]) rc |= JOY_RIGHT;
     if (joystick.values[ODROID_INPUT_UP]) rc |= JOY_UP;
