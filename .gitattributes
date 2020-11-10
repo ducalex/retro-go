@@ -1,0 +1,3 @@
+*.c linguist-language=C
+*.h linguist-language=C
+handy-go/**/*.h linguist-language=C++
