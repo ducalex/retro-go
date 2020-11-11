@@ -89,14 +89,6 @@ static const DRAM_ATTR UBYTE bcdbin[0x100] = {
 #define pull_16bit() (pull_8bit() | pull_8bit() << 8)
 
 //
-// Temp variables used by opcodes
-// Globals for easy access while debugging but also save some stack
-//
-
-static UBYTE temp, temp1, zp_addr, imm_addr;
-static UWORD temp_addr, from, to, len, alternate;
-
-//
 // Implementation of actual opcodes:
 //
 
@@ -337,7 +329,7 @@ OPCODE_FUNC and_abs(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp &= abs_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -356,7 +348,7 @@ OPCODE_FUNC and_absx(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp &= absx_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -375,7 +367,7 @@ OPCODE_FUNC and_absy(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp &= absy_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -394,7 +386,7 @@ OPCODE_FUNC and_imm(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp &= imm_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -413,7 +405,7 @@ OPCODE_FUNC and_zp(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp &= zp_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -432,7 +424,7 @@ OPCODE_FUNC and_zpx(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp &= zpx_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -451,7 +443,7 @@ OPCODE_FUNC and_zpind(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp &= zpind_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -470,7 +462,7 @@ OPCODE_FUNC and_zpindx(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp &= zpindx_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -489,7 +481,7 @@ OPCODE_FUNC and_zpindy(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp &= zpindy_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -506,7 +498,7 @@ OPCODE_FUNC and_zpindy(void)
 
 OPCODE_FUNC asl_a(void)
 {
-	temp = reg_a;
+	UBYTE temp = reg_a;
 	reg_a <<= 1;
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp & 0x80) ? FL_C : 0) | flnz_list[reg_a];
 	reg_pc++;
@@ -515,9 +507,9 @@ OPCODE_FUNC asl_a(void)
 
 OPCODE_FUNC asl_abs(void)
 {
-	temp_addr = pce_read16(reg_pc + 1);
-	temp1 = pce_read8(temp_addr);
-	temp = temp1 << 1;
+	UWORD temp_addr = pce_read16(reg_pc + 1);
+	UBYTE temp1 = pce_read8(temp_addr);
+	UBYTE temp = temp1 << 1;
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
 	pce_write8(temp_addr, temp);
@@ -527,9 +519,9 @@ OPCODE_FUNC asl_abs(void)
 
 OPCODE_FUNC asl_absx(void)
 {
-	temp_addr = pce_read16(reg_pc + 1) + reg_x;
-	temp1 = pce_read8(temp_addr);
-	temp = temp1 << 1;
+	UWORD temp_addr = pce_read16(reg_pc + 1) + reg_x;
+	UBYTE temp1 = pce_read8(temp_addr);
+	UBYTE temp = temp1 << 1;
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
 	pce_write8(temp_addr, temp);
@@ -539,9 +531,9 @@ OPCODE_FUNC asl_absx(void)
 
 OPCODE_FUNC asl_zp(void)
 {
-	zp_addr = imm_operand(reg_pc + 1);
-	temp1 = get_8bit_zp(zp_addr);
-	temp = temp1 << 1;
+	UBYTE zp_addr = imm_operand(reg_pc + 1);
+	UBYTE temp1 = get_8bit_zp(zp_addr);
+	UBYTE temp = temp1 << 1;
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
 	put_8bit_zp(zp_addr, temp);
@@ -551,9 +543,9 @@ OPCODE_FUNC asl_zp(void)
 
 OPCODE_FUNC asl_zpx(void)
 {
-	zp_addr = imm_operand(reg_pc + 1) + reg_x;
-	temp1 = get_8bit_zp(zp_addr);
-	temp = temp1 << 1;
+	UBYTE zp_addr = imm_operand(reg_pc + 1) + reg_x;
+	UBYTE temp1 = get_8bit_zp(zp_addr);
+	UBYTE temp = temp1 << 1;
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
 	put_8bit_zp(zp_addr, temp);
@@ -638,7 +630,7 @@ OPCODE_FUNC beq(void)
 
 OPCODE_FUNC bit_abs(void)
 {
-	temp = abs_operand(reg_pc + 1);
+	UBYTE temp = abs_operand(reg_pc + 1);
 	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp & (FL_N | FL_V)) | ((reg_a & temp) ? 0 : FL_Z);
 	reg_pc += 3;
 	Cycles += 5;
@@ -646,7 +638,7 @@ OPCODE_FUNC bit_abs(void)
 
 OPCODE_FUNC bit_absx(void)
 {
-	temp = absx_operand(reg_pc + 1);
+	UBYTE temp = absx_operand(reg_pc + 1);
 	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp & (FL_N | FL_V)) | ((reg_a & temp) ? 0 : FL_Z);
 	reg_pc += 3;
 	Cycles += 5;
@@ -654,7 +646,7 @@ OPCODE_FUNC bit_absx(void)
 
 OPCODE_FUNC bit_imm(void)
 {
-	temp = imm_operand(reg_pc + 1);
+	UBYTE temp = imm_operand(reg_pc + 1);
 	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp & (FL_N | FL_V)) | ((reg_a & temp) ? 0 : FL_Z);
 	reg_pc += 2;
 	Cycles += 2;
@@ -662,7 +654,7 @@ OPCODE_FUNC bit_imm(void)
 
 OPCODE_FUNC bit_zp(void)
 {
-	temp = zp_operand(reg_pc + 1);
+	UBYTE temp = zp_operand(reg_pc + 1);
 	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp & (FL_N | FL_V)) | ((reg_a & temp) ? 0 : FL_Z);
 	reg_pc += 2;
 	Cycles += 4;
@@ -670,7 +662,7 @@ OPCODE_FUNC bit_zp(void)
 
 OPCODE_FUNC bit_zpx(void)
 {
-	temp = zpx_operand(reg_pc + 1);
+	UBYTE temp = zpx_operand(reg_pc + 1);
 	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp & (FL_N | FL_V)) | ((reg_a & temp) ? 0 : FL_Z);
 	reg_pc += 2;
 	Cycles += 4;
@@ -831,7 +823,7 @@ OPCODE_FUNC cly(void)
 
 OPCODE_FUNC cmp_abs(void)
 {
-	temp = abs_operand(reg_pc + 1);
+	UBYTE temp = abs_operand(reg_pc + 1);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_a < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_a - temp)];
 	reg_pc += 3;
@@ -840,7 +832,7 @@ OPCODE_FUNC cmp_abs(void)
 
 OPCODE_FUNC cmp_absx(void)
 {
-	temp = absx_operand(reg_pc + 1);
+	UBYTE temp = absx_operand(reg_pc + 1);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_a < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_a - temp)];
 	reg_pc += 3;
@@ -849,7 +841,7 @@ OPCODE_FUNC cmp_absx(void)
 
 OPCODE_FUNC cmp_absy(void)
 {
-	temp = absy_operand(reg_pc + 1);
+	UBYTE temp = absy_operand(reg_pc + 1);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_a < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_a - temp)];
 	reg_pc += 3;
@@ -858,7 +850,7 @@ OPCODE_FUNC cmp_absy(void)
 
 OPCODE_FUNC cmp_imm(void)
 {
-	temp = imm_operand(reg_pc + 1);
+	UBYTE temp = imm_operand(reg_pc + 1);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_a < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_a - temp)];
 	reg_pc += 2;
@@ -867,7 +859,7 @@ OPCODE_FUNC cmp_imm(void)
 
 OPCODE_FUNC cmp_zp(void)
 {
-	temp = zp_operand(reg_pc + 1);
+	UBYTE temp = zp_operand(reg_pc + 1);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_a < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_a - temp)];
 	reg_pc += 2;
@@ -876,7 +868,7 @@ OPCODE_FUNC cmp_zp(void)
 
 OPCODE_FUNC cmp_zpx(void)
 {
-	temp = zpx_operand(reg_pc + 1);
+	UBYTE temp = zpx_operand(reg_pc + 1);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_a < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_a - temp)];
 	reg_pc += 2;
@@ -885,7 +877,7 @@ OPCODE_FUNC cmp_zpx(void)
 
 OPCODE_FUNC cmp_zpind(void)
 {
-	temp = zpind_operand(reg_pc + 1);
+	UBYTE temp = zpind_operand(reg_pc + 1);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_a < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_a - temp)];
 	reg_pc += 2;
@@ -894,7 +886,7 @@ OPCODE_FUNC cmp_zpind(void)
 
 OPCODE_FUNC cmp_zpindx(void)
 {
-	temp = zpindx_operand(reg_pc + 1);
+	UBYTE temp = zpindx_operand(reg_pc + 1);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_a < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_a - temp)];
 	reg_pc += 2;
@@ -903,7 +895,7 @@ OPCODE_FUNC cmp_zpindx(void)
 
 OPCODE_FUNC cmp_zpindy(void)
 {
-	temp = zpindy_operand(reg_pc + 1);
+	UBYTE temp = zpindy_operand(reg_pc + 1);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_a < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_a - temp)];
 	reg_pc += 2;
@@ -912,7 +904,7 @@ OPCODE_FUNC cmp_zpindy(void)
 
 OPCODE_FUNC cpx_abs(void)
 {
-	temp = abs_operand(reg_pc + 1);
+	UBYTE temp = abs_operand(reg_pc + 1);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_x < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_x - temp)];
 	reg_pc += 3;
@@ -921,7 +913,7 @@ OPCODE_FUNC cpx_abs(void)
 
 OPCODE_FUNC cpx_imm(void)
 {
-	temp = imm_operand(reg_pc + 1);
+	UBYTE temp = imm_operand(reg_pc + 1);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_x < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_x - temp)];
 	reg_pc += 2;
@@ -930,7 +922,7 @@ OPCODE_FUNC cpx_imm(void)
 
 OPCODE_FUNC cpx_zp(void)
 {
-	temp = zp_operand(reg_pc + 1);
+	UBYTE temp = zp_operand(reg_pc + 1);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_x < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_x - temp)];
 	reg_pc += 2;
@@ -939,7 +931,7 @@ OPCODE_FUNC cpx_zp(void)
 
 OPCODE_FUNC cpy_abs(void)
 {
-	temp = abs_operand(reg_pc + 1);
+	UBYTE temp = abs_operand(reg_pc + 1);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_y < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_y - temp)];
 	reg_pc += 3;
@@ -948,7 +940,7 @@ OPCODE_FUNC cpy_abs(void)
 
 OPCODE_FUNC cpy_imm(void)
 {
-	temp = imm_operand(reg_pc + 1);
+	UBYTE temp = imm_operand(reg_pc + 1);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_y < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_y - temp)];
 	reg_pc += 2;
@@ -957,7 +949,7 @@ OPCODE_FUNC cpy_imm(void)
 
 OPCODE_FUNC cpy_zp(void)
 {
-	temp = zp_operand(reg_pc + 1);
+	UBYTE temp = zp_operand(reg_pc + 1);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((reg_y < temp) ? 0 : FL_C) | flnz_list[(UBYTE)(reg_y - temp)];
 	reg_pc += 2;
@@ -974,8 +966,8 @@ OPCODE_FUNC dec_a(void)
 
 OPCODE_FUNC dec_abs(void)
 {
-	temp_addr = pce_read16(reg_pc + 1);
-	temp = pce_read8(temp_addr) - 1;
+	UWORD temp_addr = pce_read16(reg_pc + 1);
+	UBYTE temp = pce_read8(temp_addr) - 1;
 	chk_flnz_8bit(temp);
 	pce_write8(temp_addr, temp);
 	reg_pc += 3;
@@ -984,8 +976,8 @@ OPCODE_FUNC dec_abs(void)
 
 OPCODE_FUNC dec_absx(void)
 {
-	temp_addr = pce_read16(reg_pc + 1) + reg_x;
-	temp = pce_read8(temp_addr) - 1;
+	UWORD temp_addr = pce_read16(reg_pc + 1) + reg_x;
+	UBYTE temp = pce_read8(temp_addr) - 1;
 	chk_flnz_8bit(temp);
 	pce_write8(temp_addr, temp);
 	reg_pc += 3;
@@ -994,8 +986,8 @@ OPCODE_FUNC dec_absx(void)
 
 OPCODE_FUNC dec_zp(void)
 {
-	zp_addr = imm_operand(reg_pc + 1);
-	temp = get_8bit_zp(zp_addr) - 1;
+	UBYTE zp_addr = imm_operand(reg_pc + 1);
+	UBYTE temp = get_8bit_zp(zp_addr) - 1;
 	chk_flnz_8bit(temp);
 	put_8bit_zp(zp_addr, temp);
 	reg_pc += 2;
@@ -1004,8 +996,8 @@ OPCODE_FUNC dec_zp(void)
 
 OPCODE_FUNC dec_zpx(void)
 {
-	zp_addr = imm_operand(reg_pc + 1) + reg_x;
-	temp = get_8bit_zp(zp_addr) - 1;
+	UBYTE zp_addr = imm_operand(reg_pc + 1) + reg_x;
+	UBYTE temp = get_8bit_zp(zp_addr) - 1;
 	chk_flnz_8bit(temp);
 	put_8bit_zp(zp_addr, temp);
 	reg_pc += 2;
@@ -1032,7 +1024,7 @@ OPCODE_FUNC eor_abs(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp ^= abs_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -1051,7 +1043,7 @@ OPCODE_FUNC eor_absx(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp ^= absx_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -1070,7 +1062,7 @@ OPCODE_FUNC eor_absy(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp ^= absy_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -1089,7 +1081,7 @@ OPCODE_FUNC eor_imm(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp ^= imm_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -1108,7 +1100,7 @@ OPCODE_FUNC eor_zp(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp ^= zp_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -1127,7 +1119,7 @@ OPCODE_FUNC eor_zpx(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp ^= zpx_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -1146,7 +1138,7 @@ OPCODE_FUNC eor_zpind(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp ^= zpind_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -1165,7 +1157,7 @@ OPCODE_FUNC eor_zpindx(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp ^= zpindx_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -1184,7 +1176,7 @@ OPCODE_FUNC eor_zpindy(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp ^= zpindy_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -1214,8 +1206,8 @@ OPCODE_FUNC inc_a(void)
 
 OPCODE_FUNC inc_abs(void)
 {
-	temp_addr = pce_read16(reg_pc + 1);
-	temp = pce_read8(temp_addr) + 1;
+	UWORD temp_addr = pce_read16(reg_pc + 1);
+	UBYTE temp = pce_read8(temp_addr) + 1;
 	chk_flnz_8bit(temp);
 	pce_write8(temp_addr, temp);
 	reg_pc += 3;
@@ -1224,8 +1216,8 @@ OPCODE_FUNC inc_abs(void)
 
 OPCODE_FUNC inc_absx(void)
 {
-	temp_addr = pce_read16(reg_pc + 1) + reg_x;
-	temp = pce_read8(temp_addr) + 1;
+	UWORD temp_addr = pce_read16(reg_pc + 1) + reg_x;
+	UBYTE temp = pce_read8(temp_addr) + 1;
 	chk_flnz_8bit(temp);
 	pce_write8(temp_addr, temp);
 	reg_pc += 3;
@@ -1234,8 +1226,8 @@ OPCODE_FUNC inc_absx(void)
 
 OPCODE_FUNC inc_zp(void)
 {
-	zp_addr = imm_operand(reg_pc + 1);
-	temp = get_8bit_zp(zp_addr) + 1;
+	UBYTE zp_addr = imm_operand(reg_pc + 1);
+	UBYTE temp = get_8bit_zp(zp_addr) + 1;
 	chk_flnz_8bit(temp);
 	put_8bit_zp(zp_addr, temp);
 	reg_pc += 2;
@@ -1244,8 +1236,8 @@ OPCODE_FUNC inc_zp(void)
 
 OPCODE_FUNC inc_zpx(void)
 {
-	zp_addr = imm_operand(reg_pc + 1) + reg_x;
-	temp = get_8bit_zp(zp_addr) + 1;
+	UBYTE zp_addr = imm_operand(reg_pc + 1) + reg_x;
+	UBYTE temp = get_8bit_zp(zp_addr) + 1;
 	chk_flnz_8bit(temp);
 	put_8bit_zp(zp_addr, temp);
 	reg_pc += 2;
@@ -1451,7 +1443,7 @@ OPCODE_FUNC ldy_zpx(void)
 
 OPCODE_FUNC lsr_a(void)
 {
-	temp = reg_a;
+	UBYTE temp = reg_a;
 	reg_a /= 2;
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp & 1) ? FL_C : 0) | flnz_list[reg_a];
 	reg_pc++;
@@ -1460,9 +1452,9 @@ OPCODE_FUNC lsr_a(void)
 
 OPCODE_FUNC lsr_abs(void)
 {
-	temp_addr = pce_read16(reg_pc + 1);
-	temp1 = pce_read8(temp_addr);
-	temp = temp1 / 2;
+	UWORD temp_addr = pce_read16(reg_pc + 1);
+	UBYTE temp1 = pce_read8(temp_addr);
+	UBYTE temp = temp1 / 2;
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 1) ? FL_C : 0) | flnz_list[temp];
 	pce_write8(temp_addr, temp);
@@ -1472,9 +1464,9 @@ OPCODE_FUNC lsr_abs(void)
 
 OPCODE_FUNC lsr_absx(void)
 {
-	temp_addr = pce_read16(reg_pc + 1) + reg_x;
-	temp1 = pce_read8(temp_addr);
-	temp = temp1 / 2;
+	UWORD temp_addr = pce_read16(reg_pc + 1) + reg_x;
+	UBYTE temp1 = pce_read8(temp_addr);
+	UBYTE temp = temp1 / 2;
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 1) ? FL_C : 0) | flnz_list[temp];
 	pce_write8(temp_addr, temp);
@@ -1484,9 +1476,9 @@ OPCODE_FUNC lsr_absx(void)
 
 OPCODE_FUNC lsr_zp(void)
 {
-	zp_addr = imm_operand(reg_pc + 1);
-	temp1 = get_8bit_zp(zp_addr);
-	temp = temp1 / 2;
+	UBYTE zp_addr = imm_operand(reg_pc + 1);
+	UBYTE temp1 = get_8bit_zp(zp_addr);
+	UBYTE temp = temp1 / 2;
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 1) ? FL_C : 0) | flnz_list[temp];
 	put_8bit_zp(zp_addr, temp);
@@ -1496,9 +1488,9 @@ OPCODE_FUNC lsr_zp(void)
 
 OPCODE_FUNC lsr_zpx(void)
 {
-	zp_addr = imm_operand(reg_pc + 1) + reg_x;
-	temp1 = get_8bit_zp(zp_addr);
-	temp = temp1 / 2;
+	UBYTE zp_addr = imm_operand(reg_pc + 1) + reg_x;
+	UBYTE temp1 = get_8bit_zp(zp_addr);
+	UBYTE temp = temp1 / 2;
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 1) ? FL_C : 0) | flnz_list[temp];
 	put_8bit_zp(zp_addr, temp);
@@ -1517,7 +1509,7 @@ OPCODE_FUNC ora_abs(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp |= abs_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -1536,7 +1528,7 @@ OPCODE_FUNC ora_absx(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp |= absx_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -1555,7 +1547,7 @@ OPCODE_FUNC ora_absy(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp |= absy_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -1574,7 +1566,7 @@ OPCODE_FUNC ora_imm(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp |= imm_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -1593,7 +1585,7 @@ OPCODE_FUNC ora_zp(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp |= zp_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -1612,7 +1604,7 @@ OPCODE_FUNC ora_zpx(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp |= zpx_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -1631,7 +1623,7 @@ OPCODE_FUNC ora_zpind(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp |= zpind_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -1650,7 +1642,7 @@ OPCODE_FUNC ora_zpindx(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp |= zpindx_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -1669,7 +1661,7 @@ OPCODE_FUNC ora_zpindy(void)
 {
 	if (reg_p & FL_T)
 	{
-		temp = get_8bit_zp(reg_x);
+		UBYTE temp = get_8bit_zp(reg_x);
 		temp |= zpindy_operand(reg_pc + 1);
 		chk_flnz_8bit(temp);
 		put_8bit_zp(reg_x, temp);
@@ -1749,7 +1741,7 @@ OPCODE_FUNC ply(void)
 
 OPCODE_FUNC rmb(UBYTE bit)
 {
-	temp = imm_operand(reg_pc + 1);
+	UBYTE temp = imm_operand(reg_pc + 1);
 	reg_p &= ~FL_T;
 	put_8bit_zp(temp, get_8bit_zp(temp) & (~(1 << bit)));
 	reg_pc += 2;
@@ -1758,7 +1750,7 @@ OPCODE_FUNC rmb(UBYTE bit)
 
 OPCODE_FUNC rol_a(void)
 {
-	temp = reg_a;
+	UBYTE temp = reg_a;
 	reg_a = (reg_a << 1) + (reg_p & FL_C);
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp & 0x80) ? FL_C : 0) | flnz_list[reg_a];
 	reg_pc++;
@@ -1767,9 +1759,9 @@ OPCODE_FUNC rol_a(void)
 
 OPCODE_FUNC rol_abs(void)
 {
-	temp_addr = pce_read16(reg_pc + 1);
-	temp1 = pce_read8(temp_addr);
-	temp = (temp1 << 1) + (reg_p & FL_C);
+	UWORD temp_addr = pce_read16(reg_pc + 1);
+	UBYTE temp1 = pce_read8(temp_addr);
+	UBYTE temp = (temp1 << 1) + (reg_p & FL_C);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
 	Cycles += 7;
@@ -1779,9 +1771,9 @@ OPCODE_FUNC rol_abs(void)
 
 OPCODE_FUNC rol_absx(void)
 {
-	temp_addr = pce_read16(reg_pc + 1) + reg_x;
-	temp1 = pce_read8(temp_addr);
-	temp = (temp1 << 1) + (reg_p & FL_C);
+	UWORD temp_addr = pce_read16(reg_pc + 1) + reg_x;
+	UBYTE temp1 = pce_read8(temp_addr);
+	UBYTE temp = (temp1 << 1) + (reg_p & FL_C);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
 	Cycles += 7;
@@ -1791,9 +1783,9 @@ OPCODE_FUNC rol_absx(void)
 
 OPCODE_FUNC rol_zp(void)
 {
-	zp_addr = imm_operand(reg_pc + 1);
-	temp1 = get_8bit_zp(zp_addr);
-	temp = (temp1 << 1) + (reg_p & FL_C);
+	UBYTE zp_addr = imm_operand(reg_pc + 1);
+	UBYTE temp1 = get_8bit_zp(zp_addr);
+	UBYTE temp = (temp1 << 1) + (reg_p & FL_C);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
 	put_8bit_zp(zp_addr, temp);
@@ -1803,9 +1795,9 @@ OPCODE_FUNC rol_zp(void)
 
 OPCODE_FUNC rol_zpx(void)
 {
-	zp_addr = imm_operand(reg_pc + 1) + reg_x;
-	temp1 = get_8bit_zp(zp_addr);
-	temp = (temp1 << 1) + (reg_p & FL_C);
+	UBYTE zp_addr = imm_operand(reg_pc + 1) + reg_x;
+	UBYTE temp1 = get_8bit_zp(zp_addr);
+	UBYTE temp = (temp1 << 1) + (reg_p & FL_C);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
 	put_8bit_zp(zp_addr, temp);
@@ -1815,7 +1807,7 @@ OPCODE_FUNC rol_zpx(void)
 
 OPCODE_FUNC ror_a(void)
 {
-	temp = reg_a;
+	UBYTE temp = reg_a;
 	reg_a = (reg_a >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp & 0x01) ? FL_C : 0) | flnz_list[reg_a];
 	reg_pc++;
@@ -1824,9 +1816,9 @@ OPCODE_FUNC ror_a(void)
 
 OPCODE_FUNC ror_abs(void)
 {
-	temp_addr = pce_read16(reg_pc + 1);
-	temp1 = pce_read8(temp_addr);
-	temp = (temp1 >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
+	UWORD temp_addr = pce_read16(reg_pc + 1);
+	UBYTE temp1 = pce_read8(temp_addr);
+	UBYTE temp = (temp1 >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x01) ? FL_C : 0) | flnz_list[temp];
 	Cycles += 7;
@@ -1836,9 +1828,9 @@ OPCODE_FUNC ror_abs(void)
 
 OPCODE_FUNC ror_absx(void)
 {
-	temp_addr = pce_read16(reg_pc + 1) + reg_x;
-	temp1 = pce_read8(temp_addr);
-	temp = (temp1 >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
+	UWORD temp_addr = pce_read16(reg_pc + 1) + reg_x;
+	UBYTE temp1 = pce_read8(temp_addr);
+	UBYTE temp = (temp1 >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x01) ? FL_C : 0) | flnz_list[temp];
 	Cycles += 7;
@@ -1848,9 +1840,9 @@ OPCODE_FUNC ror_absx(void)
 
 OPCODE_FUNC ror_zp(void)
 {
-	zp_addr = imm_operand(reg_pc + 1);
-	temp1 = get_8bit_zp(zp_addr);
-	temp = (temp1 >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
+	UBYTE zp_addr = imm_operand(reg_pc + 1);
+	UBYTE temp1 = get_8bit_zp(zp_addr);
+	UBYTE temp = (temp1 >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x01) ? FL_C : 0) | flnz_list[temp];
 	put_8bit_zp(zp_addr, temp);
@@ -1860,9 +1852,9 @@ OPCODE_FUNC ror_zp(void)
 
 OPCODE_FUNC ror_zpx(void)
 {
-	zp_addr = imm_operand(reg_pc + 1) + reg_x;
-	temp1 = get_8bit_zp(zp_addr);
-	temp = (temp1 >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
+	UBYTE zp_addr = imm_operand(reg_pc + 1) + reg_x;
+	UBYTE temp1 = get_8bit_zp(zp_addr);
+	UBYTE temp = (temp1 >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x01) ? FL_C : 0) | flnz_list[temp];
 	put_8bit_zp(zp_addr, temp);
@@ -1887,7 +1879,7 @@ OPCODE_FUNC rts(void)
 
 OPCODE_FUNC sax(void)
 {
-	temp = reg_x;
+	UBYTE temp = reg_x;
 	reg_p &= ~FL_T;
 	reg_x = reg_a;
 	reg_a = temp;
@@ -1897,7 +1889,7 @@ OPCODE_FUNC sax(void)
 
 OPCODE_FUNC say(void)
 {
-	temp = reg_y;
+	UBYTE temp = reg_y;
 	reg_p &= ~FL_T;
 	reg_y = reg_a;
 	reg_a = temp;
@@ -1998,7 +1990,7 @@ OPCODE_FUNC set(void)
 
 OPCODE_FUNC smb(UBYTE bit)
 {
-	temp = imm_operand(reg_pc + 1);
+	UBYTE temp = imm_operand(reg_pc + 1);
 	reg_p &= ~FL_T;
 	put_8bit_zp(temp, get_8bit_zp(temp) | (1 << bit));
 	reg_pc += 2;
@@ -2175,7 +2167,7 @@ OPCODE_FUNC stz_zpx(void)
 
 OPCODE_FUNC sxy(void)
 {
-	temp = reg_y;
+	UBYTE temp = reg_y;
 	reg_p &= ~FL_T;
 	reg_y = reg_x;
 	reg_x = temp;
@@ -2186,10 +2178,10 @@ OPCODE_FUNC sxy(void)
 OPCODE_FUNC tai(void)
 {
 	reg_p &= ~FL_T;
-	from = pce_read16(reg_pc + 1);
-	to = pce_read16(reg_pc + 3);
-	len = pce_read16(reg_pc + 5);
-	alternate = 0;
+	UWORD from = pce_read16(reg_pc + 1);
+	UWORD to = pce_read16(reg_pc + 3);
+	UWORD len = pce_read16(reg_pc + 5);
+	UWORD alternate = 0;
 
 	Cycles += (6 * len) + 17;
 	while (len-- != 0)
@@ -2236,9 +2228,9 @@ OPCODE_FUNC tay(void)
 OPCODE_FUNC tdd(void)
 {
 	reg_p &= ~FL_T;
-	from = pce_read16(reg_pc + 1);
-	to = pce_read16(reg_pc + 3);
-	len = pce_read16(reg_pc + 5);
+	UWORD from = pce_read16(reg_pc + 1);
+	UWORD to = pce_read16(reg_pc + 3);
+	UWORD len = pce_read16(reg_pc + 5);
 
 	Cycles += (6 * len) + 17;
 	while (len-- != 0)
@@ -2251,10 +2243,10 @@ OPCODE_FUNC tdd(void)
 OPCODE_FUNC tia(void)
 {
 	reg_p &= ~FL_T;
-	from = pce_read16(reg_pc + 1);
-	to = pce_read16(reg_pc + 3);
-	len = pce_read16(reg_pc + 5);
-	alternate = 0;
+	UWORD from = pce_read16(reg_pc + 1);
+	UWORD to = pce_read16(reg_pc + 3);
+	UWORD len = pce_read16(reg_pc + 5);
+	UWORD alternate = 0;
 
 	Cycles += (6 * len) + 17;
 	while (len-- != 0)
@@ -2268,9 +2260,9 @@ OPCODE_FUNC tia(void)
 OPCODE_FUNC tii(void)
 {
 	reg_p &= ~FL_T;
-	from = pce_read16(reg_pc + 1);
-	to = pce_read16(reg_pc + 3);
-	len = pce_read16(reg_pc + 5);
+	UWORD from = pce_read16(reg_pc + 1);
+	UWORD to = pce_read16(reg_pc + 3);
+	UWORD len = pce_read16(reg_pc + 5);
 
 	Cycles += (6 * len) + 17;
 	while (len-- != 0)
@@ -2283,9 +2275,9 @@ OPCODE_FUNC tii(void)
 OPCODE_FUNC tin(void)
 {
 	reg_p &= ~FL_T;
-	from = pce_read16(reg_pc + 1);
-	to = pce_read16(reg_pc + 3);
-	len = pce_read16(reg_pc + 5);
+	UWORD from = pce_read16(reg_pc + 1);
+	UWORD to = pce_read16(reg_pc + 3);
+	UWORD len = pce_read16(reg_pc + 5);
 
 	Cycles += (6 * len) + 17;
 	while (len-- != 0)
@@ -2313,9 +2305,9 @@ OPCODE_FUNC tma(void)
 
 OPCODE_FUNC trb_abs(void)
 {
-	temp_addr = pce_read16(reg_pc + 1);
-	temp = pce_read8(temp_addr);
-	temp1 = (~reg_a) & temp;
+	UWORD temp_addr = pce_read16(reg_pc + 1);
+	UBYTE temp = pce_read8(temp_addr);
+	UBYTE temp1 = (~reg_a) & temp;
 
 	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp1 & (FL_N | FL_V)) | ((temp & reg_a) ? 0 : FL_Z);
 	pce_write8(temp_addr, temp1);
@@ -2325,9 +2317,9 @@ OPCODE_FUNC trb_abs(void)
 
 OPCODE_FUNC trb_zp(void)
 {
-	zp_addr = imm_operand(reg_pc + 1);
-	temp = get_8bit_zp(zp_addr);
-	temp1 = (~reg_a) & temp;
+	UBYTE zp_addr = imm_operand(reg_pc + 1);
+	UBYTE temp = get_8bit_zp(zp_addr);
+	UBYTE temp1 = (~reg_a) & temp;
 
 	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp1 & (FL_N | FL_V)) | ((temp & reg_a) ? 0 : FL_Z);
 	put_8bit_zp(zp_addr, temp1);
@@ -2337,9 +2329,9 @@ OPCODE_FUNC trb_zp(void)
 
 OPCODE_FUNC tsb_abs(void)
 {
-	temp_addr = pce_read16(reg_pc + 1);
-	temp = pce_read8(temp_addr);
-	temp1 = reg_a | temp;
+	UWORD temp_addr = pce_read16(reg_pc + 1);
+	UBYTE temp = pce_read8(temp_addr);
+	UBYTE temp1 = reg_a | temp;
 
 	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp1 & (FL_N | FL_V)) | ((temp & reg_a) ? 0 : FL_Z);
 	pce_write8(temp_addr, temp1);
@@ -2349,9 +2341,9 @@ OPCODE_FUNC tsb_abs(void)
 
 OPCODE_FUNC tsb_zp(void)
 {
-	zp_addr = imm_operand(reg_pc + 1);
-	temp = get_8bit_zp(zp_addr);
-	temp1 = reg_a | temp;
+	UBYTE zp_addr = imm_operand(reg_pc + 1);
+	UBYTE temp = get_8bit_zp(zp_addr);
+	UBYTE temp1 = reg_a | temp;
 
 	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp1 & (FL_N | FL_V)) | ((temp & reg_a) ? 0 : FL_Z);
 	put_8bit_zp(zp_addr, temp1);
@@ -2361,8 +2353,8 @@ OPCODE_FUNC tsb_zp(void)
 
 OPCODE_FUNC tstins_abs(void)
 {
-	imm_addr = imm_operand(reg_pc + 1);
-	temp = abs_operand(reg_pc + 2);
+	UBYTE imm_addr = imm_operand(reg_pc + 1);
+	UBYTE temp = abs_operand(reg_pc + 2);
 
 	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp & (FL_N | FL_V)) | ((temp & imm_addr) ? 0 : FL_Z);
 	reg_pc += 4;
@@ -2371,8 +2363,8 @@ OPCODE_FUNC tstins_abs(void)
 
 OPCODE_FUNC tstins_absx(void)
 {
-	imm_addr = imm_operand(reg_pc + 1);
-	temp = absx_operand(reg_pc + 2);
+	UBYTE imm_addr = imm_operand(reg_pc + 1);
+	UBYTE temp = absx_operand(reg_pc + 2);
 
 	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp & (FL_N | FL_V)) | ((temp & imm_addr) ? 0 : FL_Z);
 	reg_pc += 4;
@@ -2381,8 +2373,8 @@ OPCODE_FUNC tstins_absx(void)
 
 OPCODE_FUNC tstins_zp(void)
 {
-	imm_addr = imm_operand(reg_pc + 1);
-	temp = zp_operand(reg_pc + 2);
+	UBYTE imm_addr = imm_operand(reg_pc + 1);
+	UBYTE temp = zp_operand(reg_pc + 2);
 
 	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp & (FL_N | FL_V)) | ((temp & imm_addr) ? 0 : FL_Z);
 	reg_pc += 3;
@@ -2391,8 +2383,8 @@ OPCODE_FUNC tstins_zp(void)
 
 OPCODE_FUNC tstins_zpx(void)
 {
-	imm_addr = imm_operand(reg_pc + 1);
-	temp = zpx_operand(reg_pc + 2);
+	UBYTE imm_addr = imm_operand(reg_pc + 1);
+	UBYTE temp = zpx_operand(reg_pc + 2);
 
 	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp & (FL_N | FL_V)) | ((temp & imm_addr) ? 0 : FL_Z);
 	reg_pc += 3;

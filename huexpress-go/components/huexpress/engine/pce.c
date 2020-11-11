@@ -189,7 +189,7 @@ LoadCard(const char *name)
 		} else {
 			MemoryMapR[i] = ROM_PTR + (i & ROM_MASK) * 0x2000;
 		}
-		MemoryMapW[i] = TRAPRAM;
+		MemoryMapW[i] = NULLRAM;
 	}
 
 	// Allocate the card's onboard ram

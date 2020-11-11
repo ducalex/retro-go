@@ -13,7 +13,7 @@
 
 // Timings (we don't support CSH/CSL yet...)
 #define CYCLES_PER_FRAME       (CLOCK_CPU / 60)
-#define CYCLES_PER_LINE        (CYCLES_PER_FRAME / 263)
+#define CYCLES_PER_LINE        (CYCLES_PER_FRAME / 263 + 1)
 #define CYCLES_PER_TIMER_TICK  (1024) // 1097
 
 // Status flags
@@ -173,6 +173,9 @@ typedef struct {
 	// ROM crc
 	uint32_t ROM_CRC;
 
+	// NULLRAM traps read/writes to unmapped areas
+	uint8_t NULLRAM[0x2004];
+
 	// PCE->PC Palette convetion array
 	// Each of the 512 available PCE colors (333 RGB -> 512 colors)
 	// got a correspondance in the 256 fixed colors palette
@@ -183,9 +186,6 @@ typedef struct {
 
 	// Total number of elapsed cycles in the current scanline
 	uint16_t Cycles;
-
-	// Total number of elapsed cycles
-	uint32_t TotalCycles;
 
 	// Value of each of the MMR registers
 	uint8_t MMR[8];
@@ -205,10 +205,6 @@ typedef struct {
 // The global structure for all hardware variables
 extern PCE_t PCE;
 
-// Regions of the memory map that we need to trap.
-// Normally games do not read reach this.
-extern uint8_t *IOAREA, *TRAPRAM;
-
 // physical address on emulator machine of each of the 256 banks
 extern uint8_t *PageR[8];
 extern uint8_t *PageW[8];
@@ -220,6 +216,8 @@ extern uint8_t *MemoryMapW[256];
 #define ExtraRAM PCE.ExtraRAM
 #define SPRAM PCE.SPRAM
 #define VRAM PCE.VRAM
+#define NULLRAM PCE.NULLRAM
+#define IOAREA (NULLRAM + 4)
 #define ROM PCE.ROM
 #define ROM_PTR PCE.ROM_PTR
 #define ROM_CRC PCE.ROM_CRC
@@ -227,8 +225,6 @@ extern uint8_t *MemoryMapW[256];
 #define Scanline PCE.Scanline
 #define Palette PCE.Palette
 #define Cycles PCE.Cycles
-#define TotalCycles PCE.TotalCycles
-#define PrevTotalCycles PCE.PrevTotalCycles
 #define MMR PCE.MMR
 #define SF2 PCE.SF2
 #define io PCE.IO
@@ -263,9 +259,11 @@ void pce_run(void);
 void IO_write(uint16_t A, uint8_t V);
 uint8_t IO_read(uint16_t A);
 
+
 /**
- * Inlined Memory Functions
+ * Inlined Functions
  */
+
 #if USE_MEM_MACROS
 
 #define pce_read8(addr) ({							\
@@ -329,6 +327,7 @@ pce_write16(uint16_t addr, uint16_t word)
 
 #endif
 
+
 static inline void
 pce_bank_set(uint8_t P, uint8_t V)
 {
@@ -339,9 +338,6 @@ pce_bank_set(uint8_t P, uint8_t V)
 	PageW[P] = (MemoryMapW[V] == IOAREA) ? (IOAREA) : (MemoryMapW[V] - P * 0x2000);
 }
 
-/**
-  * Inlined HW Functions
-  */
 static inline void
 pce_timer(int cycles)
 {

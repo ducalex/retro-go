@@ -6,11 +6,6 @@
 // Global struct containing our emulated hardware status
 PCE_t PCE;
 
-// We used to point to VRAM to save memory but some games
-// seem to write to that area for some reason...
-uint8_t NULLRAM[0x2004];
-uint8_t *IOAREA, *TRAPRAM;
-
 // Memory Mapping
 uint8_t *PageR[8];
 uint8_t *PageW[8];
@@ -30,6 +25,7 @@ pce_reset(void)
     memset(&SPRAM, 0, sizeof(SPRAM));
     memset(&Palette, 0, sizeof(Palette));
     memset(&io, 0, sizeof(io));
+    memset(&NULLRAM, 0xFF, sizeof(NULLRAM));
 
     // Backup RAM header, some games check for this
     memcpy(&BackupRAM, "HUBM\x00\x88\x10\x80", 8);
@@ -72,12 +68,9 @@ pce_reset(void)
 int
 pce_init(void)
 {
-    TRAPRAM = NULLRAM + 0; // &VRAM[0x8000];
-    IOAREA  = NULLRAM + 4; // &VRAM[0xA000];
-
     for (int i = 0; i < 0xFF; i++) {
-        MemoryMapR[i] = TRAPRAM;
-        MemoryMapW[i] = TRAPRAM;
+        MemoryMapR[i] = NULLRAM;
+        MemoryMapW[i] = NULLRAM;
     }
 
     MemoryMapR[0xF7] = BackupRAM;

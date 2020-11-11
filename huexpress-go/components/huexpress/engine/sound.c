@@ -90,7 +90,7 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
          * See the big comment in the final else clause for an explanation of this value
          * to the best of my knowledge.
          */
-        fixed_inc = ((uint32_t)(3580000 / host.sound.freq) << 16) / 0x1FF;
+        fixed_inc = ((uint32_t)(CLOCK_PSG / host.sound.freq) << 16) / 0x1FF;
 
         while ((buf < buf_end) && io.psg_da_count[ch]) {
             /*
@@ -184,7 +184,7 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
          * sampling rate into consideration with regard to the 3580000 effective pc engine
          * samplerate.  We use 16.16 fixed arithmetic for speed.
          */
-        fixed_inc = ((uint32_t)(3580000 / host.sound.freq) << 16) / Tp;
+        fixed_inc = ((uint32_t)(CLOCK_PSG / host.sound.freq) << 16) / Tp;
 
         while (buf < buf_end) {
             if ((sample = (io.PSG_WAVE[ch][io.PSG[ch][PSG_DATA_INDEX_REG]] - 16)) >= 0)
