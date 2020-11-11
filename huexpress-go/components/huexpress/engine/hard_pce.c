@@ -22,7 +22,7 @@ uint8_t *MemoryMapW[256];
   * Reset the hardware
   **/
 void
-hard_reset(void)
+pce_reset(void)
 {
     memset(&RAM, 0, sizeof(RAM));
     memset(&BackupRAM, 0, sizeof(BackupRAM));
@@ -36,8 +36,6 @@ hard_reset(void)
 
     Scanline = 0;
     Cycles = 0;
-    TotalCycles = 0;
-    PrevTotalCycles = 0;
     SF2 = 0;
 
      // Reset IO lines
@@ -54,20 +52,17 @@ hard_reset(void)
     }
 
     // Reset memory banking
-    BankSet(7, 0x00);
-    BankSet(6, 0x05);
-    BankSet(5, 0x04);
-    BankSet(4, 0x03);
-    BankSet(3, 0x02);
-    BankSet(2, 0x01);
-    BankSet(1, 0xF8);
-    BankSet(0, 0xFF);
+    pce_bank_set(7, 0x00);
+    pce_bank_set(6, 0x05);
+    pce_bank_set(5, 0x04);
+    pce_bank_set(4, 0x03);
+    pce_bank_set(3, 0x02);
+    pce_bank_set(2, 0x01);
+    pce_bank_set(1, 0xF8);
+    pce_bank_set(0, 0xFF);
 
     // Reset CPU
-    reg_a = reg_x = reg_y = 0x00;
-    reg_p = FL_TIQ;
-    reg_s = 0xFF;
-    reg_pc = Read16(VEC_RESET);
+    h6280_reset();
 }
 
 
@@ -75,7 +70,7 @@ hard_reset(void)
   * Initialize the hardware
   **/
 int
-hard_init(void)
+pce_init(void)
 {
     TRAPRAM = NULLRAM + 0; // &VRAM[0x8000];
     IOAREA  = NULLRAM + 4; // &VRAM[0xA000];
@@ -92,7 +87,7 @@ hard_init(void)
     MemoryMapR[0xFF] = IOAREA;
     MemoryMapW[0xFF] = IOAREA;
 
-    // hard_reset();
+    // pce_reset();
 
     return 0;
 }
@@ -102,9 +97,23 @@ hard_init(void)
   * Terminate the hardware
   **/
 void
-hard_term(void)
+pce_term(void)
 {
     if (ExtraRAM) free(ExtraRAM);
+}
+
+
+/**
+  * Main emulation loop
+  **/
+void
+pce_run(void)
+{
+    host.paused = 0;
+
+    // while (!host.paused) {
+        h6280_run();
+    // }
 }
 
 
@@ -199,7 +208,7 @@ cart_write(uint16_t A, uint8_t V)
             for (int i = 0; i < 8; i++)
             {
                 if (MMR[i] >= 0x40 && MMR[i] < 0x80)
-                    BankSet(i, MMR[i]);
+                    pce_bank_set(i, MMR[i]);
             }
         }
     }
@@ -283,7 +292,7 @@ IO_read(uint16_t A)
     case 0x1400:                /* IRQ */
         switch (A & 15) {
         case 2:
-            ret = io.irq_mask;
+            ret = io.irq_mask | (io.io_buffer & ~INT_MASK);
             break;
         case 3:
             ret = io.irq_status;
@@ -436,8 +445,7 @@ IO_write(uint16_t A, uint8_t V)
                 io.vdc_mode_chg = 1;
                 return;
 
-            case LENR:          /* DMA transfert */
-
+            case LENR:          /* DMA transfer from VRAM to VRAM */
                 IO_VDC_REG[LENR].B.h = V;
 
                 int sourcecount = (IO_VDC_REG[DCR].W & 8) ? -1 : 1;
@@ -452,19 +460,14 @@ IO_write(uint16_t A, uint8_t V)
                     source += sourcecount;
                 }
 
-                /*
-                    IO_VDC_REG[SOUR].W = source;
-                    IO_VDC_REG[DISTR].W = dest;
-                    */
-                // Erich Kitzmuller fix follows
                 IO_VDC_REG[SOUR].W = source / 2;
                 IO_VDC_REG[DISTR].W = dest / 2;
                 IO_VDC_REG[LENR].W = 0xFFFF;
 
                 gfx_clear_cache();
 
-                /* TODO: check whether this flag can be ignored */
-                io.vdc_status |= VDC_DMAfinish;
+                io.vdc_status |= VDC_STAT_DV;
+                io.irq_status |= INT_IRQ1;
                 return;
 
             case CR:            /* Auto increment size */
@@ -504,7 +507,6 @@ IO_write(uint16_t A, uint8_t V)
             case SATB:          /* DMA from VRAM to SATB */
                 IO_VDC_REG[SATB].B.h = V;
                 io.vdc_satb = 1;
-                io.vdc_status &= ~VDC_SATBfinish;
                 return;
 
             case BXR:           /* Horizontal screen offset */
@@ -516,7 +518,6 @@ IO_write(uint16_t A, uint8_t V)
             }
 
             IO_VDC_REG_ACTIVE.B.h = V;
-
             return;
         }
         break;
@@ -637,13 +638,13 @@ IO_write(uint16_t A, uint8_t V)
         //TRACE("Timer Access: A=%X,V=%X\n", A, V);
         switch (A & 1) {
         case 0:
-            io.timer_reload = V & 127;
+            io.timer_reload = (V & 0x7F) + 1;
             return;
         case 1:
             V &= 1;
-            if (V && !io.timer_start)
+            if (V && !io.timer_running)
                 io.timer_counter = io.timer_reload;
-            io.timer_start = V;
+            io.timer_running = V;
             return;
         }
         break;
@@ -657,10 +658,10 @@ IO_write(uint16_t A, uint8_t V)
     case 0x1400:                /* IRQ */
         switch (A & 15) {
         case 2:
-            io.irq_mask = V;    /*TRACE("irq_mask = %02X\n", V); */
+            io.irq_mask = V & INT_MASK;
             return;
         case 3:
-            io.irq_status = (io.irq_status & ~TIRQ) | (V & 0xF8);
+            io.irq_status &= ~INT_TIMER;
             return;
         }
         break;

@@ -587,12 +587,10 @@ render_lines(int min_line, int max_line)
 /*
 	process one scanline
 */
-IRAM_ATTR int
+IRAM_ATTR void
 gfx_loop(void)
 {
-	int return_value = INT_NONE;
-
-	io.vdc_status &= ~(VDC_RasHit | VDC_SATBfinish);
+	// io.irq_status &= INT_TIMER;
 
 	// Count dma delay
 	if (io.vdc_satb_counter > 0) {
@@ -600,29 +598,23 @@ gfx_loop(void)
 		if (--io.vdc_satb_counter == 0) {
 			// dma has just finished
 			if (SATBIntON) {
-				io.vdc_status |= VDC_SATBfinish;
-				return_value = INT_IRQ;
+				io.vdc_status |= VDC_STAT_DS;
+				io.irq_status |= INT_IRQ1;
 			}
 		}
 	}
 
 	// Test raster hit
 	if (RasHitON) {
-		if (((IO_VDC_REG[RCR].W & 0x3FF) >= 0x40)
-			&& ((IO_VDC_REG[RCR].W & 0x3FF) <= 0x146)) {
-			uint16_t temp_rcr = (uint16_t) ((IO_VDC_REG[RCR].W & 0x3FF) - 0x40);
-
-			if (Scanline == (temp_rcr + IO_VDC_REG[VPR].B.l + IO_VDC_REG[VPR].B.h) % 263) {
-				// printf("\n---------------------\nRASTER HIT (%d)\n----------------------\n", Scanline);
-				io.vdc_status |= VDC_RasHit;
-				return_value = INT_IRQ;
+		int raster_hit = (IO_VDC_REG[RCR].W & 0x3FF) - 64;
+		if (raster_hit >= 0 && raster_hit <= 262) {
+			if (Scanline == (raster_hit + IO_VDC_REG[VPR].B.l + IO_VDC_REG[VPR].B.h) % 263) {
+				TRACE_GFX("\n-----------------RASTER HIT (%d)------------------\n", Scanline);
+				io.vdc_status |= VDC_STAT_RR;
+				io.irq_status |= INT_IRQ1;
 			}
-		} else {
-			// printf("Raster counter out of bounds (%d)\n", IO_VDC_REG[RCR].W);
 		}
 	}
-	//  else
-	//		printf("Raster disabled\n");
 
 	/* Visible area */
 	if (Scanline >= 14 && Scanline <= 255) {
@@ -630,12 +622,6 @@ gfx_loop(void)
 			last_display_counter = 0;
 			display_counter = 0;
 			ScrollYDiff = 0;
-
-			// Signal that we've left the VBlank area
-			io.vdc_status &= ~VDC_InVBlank;
-
-			TRACE_GFX("Cleaning VBlank bit from vdc_status (now, 0x%02x)",
-				io.vdc_status);
 		}
 
 		if (Scanline == io.vdc_minline) {
@@ -659,18 +645,17 @@ gfx_loop(void)
 	/* V Blank trigger line */
 	else if (Scanline == 256) {
 
-		if (osd_keyboard())
-			return INT_QUIT;
+		osd_keyboard();
 
 		if (io.vdc_mode_chg) {
 			change_video_mode();
 			io.vdc_mode_chg = 0;
 		}
 
-		if (sprite_hit_check())
-			io.vdc_status |= VDC_SpHit;
-		else
-			io.vdc_status &= ~VDC_SpHit;
+		if (SpHitON && sprite_hit_check()) {
+			io.vdc_status |= VDC_STAT_CR;
+			io.irq_status |= INT_IRQ1;
+		}
 
 		gfx_save_context(0);
 
@@ -692,22 +677,14 @@ gfx_loop(void)
 
 		/* VRAM to SATB DMA */
 		if (io.vdc_satb == 1 || IO_VDC_REG[DCR].W & 0x0010) {
-			memcpy(SPRAM, VRAM + IO_VDC_REG[SATB].W * 2, 64 * 8);
-			// io.vdc_satb = 1;
+			memcpy(SPRAM, VRAM + IO_VDC_REG[SATB].W * 2, 512);
 			io.vdc_satb = 0;
-			io.vdc_status &= ~VDC_SATBfinish;
-
-			// Mark satb dma end interuption to happen in 4 scanlines
-			io.vdc_satb_counter = 4;
+			io.vdc_satb_counter = 4; // Transfer ends in 4 scanlines
 		}
 
-		if (return_value == INT_IRQ)
-			io.vdc_pendvsync = 1;
-		else {
-			if (VBlankON) {
-				io.vdc_status |= VDC_InVBlank;
-				return_value = INT_IRQ;
-			}
+		if (VBlankON) {
+			io.vdc_status |= VDC_STAT_VD;
+			io.irq_status |= INT_IRQ1;
 		}
 	}
 	/* V Blank area */
@@ -719,18 +696,4 @@ gfx_loop(void)
 
 	if (Scanline > 262)
 		Scanline = 0;
-
-	if ((return_value != INT_IRQ) && io.vdc_pendvsync) {
-		io.vdc_status |= VDC_InVBlank;
-		return_value = INT_IRQ;
-		io.vdc_pendvsync = 0;
-	}
-
-	if (return_value == INT_IRQ) {
-		if (!(io.irq_mask & IRQ1)) {
-			io.irq_status |= IRQ1;
-			return return_value;
-		}
-	}
-	return INT_NONE;
 }

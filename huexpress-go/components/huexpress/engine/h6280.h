@@ -3,6 +3,7 @@
 
 #include "hard_pce.h"
 
+extern void h6280_reset(void);
 extern void h6280_run(void);
 extern void h6280_irq(int);
 extern void dump_cpu_registers(void);
@@ -13,38 +14,39 @@ typedef struct op {
    const char opname[4];
 } operation_t;
 
-extern operation_t optable_runtime[256];
+typedef struct {
+	// CPU Registers
+	uint16_t reg_pc;
+	uint8_t reg_a;
+	uint8_t reg_x;
+	uint8_t reg_y;
+	uint8_t reg_p;
+	uint8_t reg_s;
+} h6280_t;
 
 // CPU Flags:
-#define FL_N 0x80
-#define FL_V 0x40
-#define FL_T 0x20
-#define FL_B 0x10
-#define FL_D 0x08
-#define FL_I 0x04
-#define FL_Z 0x02
-#define FL_C 0x01
+#define FL_N       0x80
+#define FL_V       0x40
+#define FL_T       0x20
+#define FL_B       0x10
+#define FL_D       0x08
+#define FL_I       0x04
+#define FL_Z       0x02
+#define FL_C       0x01
 
 // Interrupts
-#define INT_NONE        0		/* No interrupt required      */
-#define INT_IRQ         1		/* Standard IRQ interrupt     */
-#define INT_NMI         2		/* Non-maskable interrupt     */
-#define INT_QUIT        3		/* Exit the emulation         */
-#define INT_TIMER       4
-#define INT_IRQ2        8
-
-// Interrupt flags
-#define FL_IRQ2    0x01
-#define FL_IRQ1    0x02
-#define FL_TIQ     0x04
+#define INT_IRQ2   0x01
+#define INT_IRQ1   0x02
+#define INT_TIMER  0x04
+#define INT_MASK   0x07
 
 // Vectors
-#define	VEC_RESET	0xFFFE
-#define	VEC_NMI		0xFFFC
-#define	VEC_TIMER	0xFFFA
-#define	VEC_IRQ		0xFFF8
-#define	VEC_IRQ2	   0xFFF6
-#define	VEC_BRK		0xFFF6
+#define VEC_RESET  0xFFFE
+#define VEC_NMI    0xFFFC
+#define VEC_TIMER  0xFFFA
+#define VEC_IRQ1   0xFFF8
+#define VEC_IRQ2   0xFFF6
+#define VEC_BRK    0xFFF6
 
 // Addressing modes
 #define AM_IMPL      0			/* implicit              */
@@ -68,14 +70,20 @@ extern operation_t optable_runtime[256];
 #define AM_TST_ABSX 18			/* special 'TST' addressing mode  */
 #define AM_XFER     19			/* special 7-byte transfer addressing mode  */
 
-
-#define get_8bit_addr(addr) Read8(addr)
-#define put_8bit_addr(addr, byte) Write8(addr, byte)
-#define get_16bit_addr(addr) Read16(addr)
+// CPU registers
+#define reg_pc CPU.reg_pc
+#define reg_a  CPU.reg_a
+#define reg_x  CPU.reg_x
+#define reg_y  CPU.reg_y
+#define reg_p  CPU.reg_p
+#define reg_s  CPU.reg_s
 
 typedef signed char SBYTE;
 typedef unsigned char UBYTE;
 typedef signed short SWORD;
 typedef unsigned short UWORD;
+
+extern h6280_t CPU;
+extern operation_t optable_runtime[256];
 
 #endif

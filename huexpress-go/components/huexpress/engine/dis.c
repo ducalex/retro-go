@@ -49,7 +49,7 @@ forward_one_line()
 {
 	uint8_t op;
 
-	op = get_8bit_addr(init_pos);
+	op = pce_read8(init_pos);
 	if ((op & 0xF) == 0xB) {
 		if (Bp_list[op >> 4].flag == BP_NOT_USED)
 			init_pos++;
@@ -88,7 +88,7 @@ backward_one_line()
 		possible = 1;
 
 		while ((line < NB_LINE) && (temp_pos != 0xFFFF)) {
-			op = get_8bit_addr(temp_pos);
+			op = pce_read8(temp_pos);
 
 			if ((op & 0xF) == 0xB) {	// It's a breakpoint, we replace it and set the bp_color variable
 				if ((Bp_list[op >> 4].flag == BP_ENABLED) ||
@@ -101,7 +101,7 @@ backward_one_line()
 			opbuf[0] = op;
 			temp_pos++;
 			for (i = 1; i < size; i++)
-				opbuf[i] = get_8bit_addr(temp_pos++);
+				opbuf[i] = pce_read8(temp_pos++);
 
 			if (((op & 0xF) == 0xB) || (!strcmp(optable_debug[op].opname, "???"))) {	// If it's still a breakpoint, it wasn't set and shouldn't be here
 				possible = 0;
@@ -146,7 +146,7 @@ dis_key()
 	switch (ch >> 8) {
 	case KEY_DOWN:
 		selected_position +=
-			addr_info_debug[optable_debug[Read8(selected_position)].
+			addr_info_debug[optable_debug[pce_read8(selected_position)].
 							addr_mode].size;
 		forward_one_line();
 		return 0;
@@ -193,7 +193,7 @@ dis_key()
 
 			// Just in case :
 			if (Bp_list[GIVE_HAND_BP].flag != BP_NOT_USED) {
-				_Write8(Bp_list[GIVE_HAND_BP].position,
+				_pce_write8(Bp_list[GIVE_HAND_BP].position,
 						Bp_list[GIVE_HAND_BP].original_op);
 				Bp_list[GIVE_HAND_BP].flag = BP_NOT_USED;
 			}
@@ -202,9 +202,9 @@ dis_key()
 
 			Bp_list[GIVE_HAND_BP].flag = BP_ENABLED;
 			Bp_list[GIVE_HAND_BP].position = cvtnum(tmp_buf);
-			Bp_list[GIVE_HAND_BP].original_op = Read8(cvtnum(tmp_buf));
+			Bp_list[GIVE_HAND_BP].original_op = pce_read8(cvtnum(tmp_buf));
 
-			_Write8(cvtnum(tmp_buf), 0xB + 0x10 * GIVE_HAND_BP);
+			_pce_write8(cvtnum(tmp_buf), 0xB + 0x10 * GIVE_HAND_BP);
 			// Put an invalid opcode
 		}
 		return 1;
@@ -213,7 +213,7 @@ dis_key()
 
 		// Just in case :
 		if (Bp_list[GIVE_HAND_BP].flag != BP_NOT_USED) {
-			_Write8(Bp_list[GIVE_HAND_BP].position,
+			_pce_write8(Bp_list[GIVE_HAND_BP].position,
 					Bp_list[GIVE_HAND_BP].original_op);
 			Bp_list[GIVE_HAND_BP].flag = BP_NOT_USED;
 		}
@@ -222,9 +222,9 @@ dis_key()
 
 		Bp_list[GIVE_HAND_BP].flag = BP_ENABLED;
 		Bp_list[GIVE_HAND_BP].position = selected_position;
-		Bp_list[GIVE_HAND_BP].original_op = Read8(selected_position);
+		Bp_list[GIVE_HAND_BP].original_op = pce_read8(selected_position);
 
-		_Write8(selected_position, 0xB + 0x10 * GIVE_HAND_BP);
+		_pce_write8(selected_position, 0xB + 0x10 * GIVE_HAND_BP);
 		// Put an invalid opcode
 
 		return 1;
@@ -236,7 +236,7 @@ dis_key()
 	case KEY_F6:				/* F6 */
 		{
 			char dum;
-			uint8_t op = Read8(selected_position);
+			uint8_t op = pce_read8(selected_position);
 
 			if ((op & 0xF) == 0xB)
 				op = Bp_list[op >> 4].original_op;
@@ -244,7 +244,7 @@ dis_key()
 			for (dum = 0;
 				 dum < addr_info_debug[optable_debug[op].addr_mode].size;
 				 dum++)
-				Write8(selected_position + dum, 0xEA);
+				pce_write8(selected_position + dum, 0xEA);
 
 		}
 		return 0;
@@ -252,7 +252,7 @@ dis_key()
 	case KEY_F7:				/* F7 */
 		// Just in case :
 		if (Bp_list[GIVE_HAND_BP].flag != BP_NOT_USED) {
-			_Write8(Bp_list[GIVE_HAND_BP].position,
+			_pce_write8(Bp_list[GIVE_HAND_BP].position,
 					Bp_list[GIVE_HAND_BP].original_op);
 			Bp_list[GIVE_HAND_BP].flag = BP_NOT_USED;
 		}
@@ -267,7 +267,7 @@ dis_key()
 	case KEY_F8:				/* F8 */
 		// Just in case :
 		if (Bp_list[GIVE_HAND_BP].flag != BP_NOT_USED) {
-			_Write8(Bp_list[GIVE_HAND_BP].position,
+			_pce_write8(Bp_list[GIVE_HAND_BP].position,
 					Bp_list[GIVE_HAND_BP].original_op);
 			Bp_list[GIVE_HAND_BP].flag = BP_NOT_USED;
 		}
@@ -364,7 +364,7 @@ disassemble()
 			bp_actived = 0;
 			bp_disabled = 0;
 
-			op = Read8(position);
+			op = pce_read8(position);
 			if ((op & 0xF) == 0xB) {	// It's a breakpoint, we replace it and set the bp_* variable
 				if (Bp_list[op >> 4].flag == BP_ENABLED)
 					bp_actived = 1;
@@ -386,7 +386,7 @@ disassemble()
 			opbuf[0] = op;
 			position++;
 			for (i = 1; i < size; i++)
-				opbuf[i] = Read8(position++);
+				opbuf[i] = pce_read8(position++);
 
 			/* This line is the real 'meat' of the disassembler: */
 

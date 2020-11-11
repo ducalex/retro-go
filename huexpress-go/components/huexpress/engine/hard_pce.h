@@ -5,8 +5,69 @@
 #include "stddef.h"
 #include "utils.h"
 
-#define PSG_DA_BUFSIZE     1024
-#define PSG_CHANNELS       6
+// System clocks (hz)
+#define CLOCK_MASTER           (21477270)
+#define CLOCK_TIMER            (CLOCK_MASTER / 3)
+#define CLOCK_CPU              (CLOCK_MASTER / 3)
+#define CLOCK_PSG              (CLOCK_MASTER / 6)
+
+// Timings (we don't support CSH/CSL yet...)
+#define CYCLES_PER_FRAME       (CLOCK_CPU / 60)
+#define CYCLES_PER_LINE        (CYCLES_PER_FRAME / 263)
+#define CYCLES_PER_TIMER_TICK  (1024) // 1097
+
+// Status flags
+#define VDC_STAT_CR             0x01 // Sprite Collision
+#define VDC_STAT_OR             0x02 // Sprite Overflow
+#define VDC_STAT_RR             0x04 // Scanline interrupt
+#define VDC_STAT_DS             0x08 // End of VRAM to SATB DMA transfer
+#define VDC_STAT_DV             0x10 // End of VRAM to VRAM DMA transfer
+#define VDC_STAT_VD             0x20 // VBlank
+#define VDC_STAT_BSY            0x40 // DMA Transfer in progress
+
+#define	VRR	2
+enum _VDC_REG {
+	MAWR,						/*  0 *//* Memory Address Write Register */
+	MARR,						/*  1 *//* Memory Address Read Register */
+	VWR,						/*  2 *//* VRAM Read Register / VRAM Write Register */
+	vdc3,						/*  3 */
+	vdc4,						/*  4 */
+	CR,							/*  5 *//* Control Register */
+	RCR,						/*  6 *//* Raster Compare Register */
+	BXR,						/*  7 *//* Horizontal scroll offset */
+	BYR,						/*  8 *//* Vertical scroll offset */
+	MWR,						/*  9 *//* Memory Width Register */
+	HSR,						/*  A *//* Unknown, other horizontal definition */
+	HDR,						/*  B *//* Horizontal Definition */
+	VPR,						/*  C *//* Higher byte = VDS, lower byte = VSW */
+	VDW,						/*  D *//* Vertical Definition */
+	VCR,						/*  E *//* Vertical counter between restarting of display */
+	DCR,						/*  F *//* DMA Control */
+	SOUR,						/* 10 *//* Source Address of DMA transfert */
+	DISTR,						/* 11 *//* Destination Address of DMA transfert */
+	LENR,						/* 12 *//* Length of DMA transfert */
+	SATB						/* 13 *//* Address of SATB */
+};
+
+#define PSG_VOICE_REG           0x00 // voice index
+#define PSG_VOLUME_REG          0x01 // master volume
+#define PSG_FREQ_LSB_REG        0x02 // lower 8 bits of 12 bit frequency
+#define PSG_FREQ_MSB_REG        0x03 // actually most significant nibble
+#define PSG_DDA_REG             0x04
+#define PSG_BALANCE_REG         0x05
+#define PSG_DATA_INDEX_REG      0x06
+#define PSG_NOISE_REG           0x07
+
+#define PSG_DDA_ENABLE          0x80 // bit 7
+#define PSG_DDA_DIRECT_ACCESS   0x40 // bit 6
+#define PSG_DDA_VOICE_VOLUME    0x1F // bits 0-4
+#define PSG_BALANCE_LEFT        0xF0 // bits 4-7
+#define PSG_BALANCE_RIGHT       0x0F // bits 0-3
+#define PSG_NOISE_ENABLE        0x80 // bit 7
+
+#define PSG_DA_BUFSIZE          1024
+#define PSG_CHANNELS            6
+
 
 typedef union {
 	struct {
@@ -14,6 +75,7 @@ typedef union {
 	} B;
 	uint16_t W;
 } UWord;
+
 
 /* The structure containing all variables relatives to Input and Output */
 typedef struct {
@@ -33,7 +95,6 @@ typedef struct {
 								 * the SATB from VRAM to internal SATB through DMA
 								 */
 	uint8_t vdc_satb_counter; 	/* DMA finished interrupt delay counter */
-	uint8_t vdc_pendvsync;		/* unsure, set if a end of screen IRQ is waiting */
 	uint8_t vdc_mode_chg;       /* Video mode change needed at next frame */
 	uint16_t bg_w;				/* number of tiles horizontally in virtual screen */
 	uint16_t bg_h;				/* number of tiles vertically in virtual screen */
@@ -73,7 +134,8 @@ typedef struct {
 	uint16_t psg_da_count[PSG_CHANNELS];
 
 	/* TIMER */
-	uint8_t timer_reload, timer_start, timer_counter;
+	uint8_t timer_running, timer_reload, timer_counter;
+	uint32_t timer_cycles_counter;
 
 	/* IRQ */
 	uint8_t irq_mask, irq_status;
@@ -82,6 +144,7 @@ typedef struct {
 	uint8_t io_buffer;
 
 } IO_t;
+
 
 typedef struct {
 	// Main memory
@@ -115,14 +178,6 @@ typedef struct {
 	// got a correspondance in the 256 fixed colors palette
 	uint8_t Palette[512];
 
-	// CPU Registers
-	uint16_t reg_pc;
-	uint8_t reg_a;
-	uint8_t reg_x;
-	uint8_t reg_y;
-	uint8_t reg_p;
-	uint8_t reg_s;
-
 	// The current rendered line on screen
 	uint16_t Scanline;
 
@@ -131,9 +186,6 @@ typedef struct {
 
 	// Total number of elapsed cycles
 	uint32_t TotalCycles;
-
-	// Previous number of elapsed cycles
-	uint32_t PrevTotalCycles;
 
 	// Value of each of the MMR registers
 	uint8_t MMR[8];
@@ -146,20 +198,9 @@ typedef struct {
 
 } PCE_t;
 
-/**
-  * Exported functions to access hardware
-  **/
 
-int  hard_init(void);
-void hard_reset(void);
-void hard_term(void);
+#include "h6280.h"
 
-void IO_write(uint16_t A, uint8_t V);
-uint8_t IO_read(uint16_t A);
-
-/**
-  * Exported variables
-  **/
 
 // The global structure for all hardware variables
 extern PCE_t PCE;
@@ -195,116 +236,57 @@ extern uint8_t *MemoryMapW[256];
 #define IO_VDC_REG        io.VDC
 #define IO_VDC_REG_ACTIVE io.VDC[io.vdc_reg]
 
-// H6280 CPU registers
-#define reg_pc PCE.reg_pc
-#define reg_a  PCE.reg_a
-#define reg_x  PCE.reg_x
-#define reg_y  PCE.reg_y
-#define reg_p  PCE.reg_p
-#define reg_s  PCE.reg_s
-
-#define SATBIntON  (IO_VDC_REG[DCR].W&0x01)
-#define DMAIntON   (IO_VDC_REG[DCR].W&0x02)
-
-#define SpHitON    (IO_VDC_REG[CR].W&0x01)
-#define OverON     (IO_VDC_REG[CR].W&0x02)
-#define RasHitON   (IO_VDC_REG[CR].W&0x04)
-#define VBlankON   (IO_VDC_REG[CR].W&0x08)
-#define SpriteON   (IO_VDC_REG[CR].W&0x40)
-#define ScreenON   (IO_VDC_REG[CR].W&0x80)
-
 #define	ScrollX	(IO_VDC_REG[BXR].W)
 #define	ScrollY	(IO_VDC_REG[BYR].W)
 #define	Control (IO_VDC_REG[CR].W)
 
-#define VDC_CR     0x01
-#define VDC_OR     0x02
-#define VDC_RR     0x04
-#define VDC_DS     0x08
-#define VDC_DV     0x10
-#define VDC_VD     0x20
-#define VDC_BSY    0x40
-#define VDC_SpHit       VDC_CR
-#define VDC_Over        VDC_OR
-#define VDC_RasHit      VDC_RR
-#define VDC_InVBlank    VDC_VD
-#define VDC_DMAfinish   VDC_DV
-#define VDC_SATBfinish  VDC_DS
+// Interrupt enabled
+#define SATBIntON  (IO_VDC_REG[DCR].W & 0x01)
+#define DMAIntON   (IO_VDC_REG[DCR].W & 0x02)
+#define SpHitON    (IO_VDC_REG[CR].W & 0x01)
+#define OverON     (IO_VDC_REG[CR].W & 0x02)
+#define RasHitON   (IO_VDC_REG[CR].W & 0x04)
+#define VBlankON   (IO_VDC_REG[CR].W & 0x08)
 
-#define TimerPeriod 1097 // Base period for the timer
-
-#define IRQ2    1
-#define IRQ1    2
-#define TIRQ    4
-
-#define PSG_VOICE_REG           0	/* voice index */
-#define PSG_VOLUME_REG          1	/* master volume */
-#define PSG_FREQ_LSB_REG        2	/* lower 8 bits of 12 bit frequency */
-#define PSG_FREQ_MSB_REG        3	/* actually most significant nibble */
-#define PSG_DDA_REG             4
-#define PSG_DDA_ENABLE          0x80	/* bit 7 */
-#define PSG_DDA_DIRECT_ACCESS   0x40	/* bit 6 */
-#define PSG_DDA_VOICE_VOLUME    0x1F	/* bits 0-4 */
-#define PSG_BALANCE_REG         5
-#define PSG_BALANCE_LEFT        0xF0	/* bits 4-7 */
-#define PSG_BALANCE_RIGHT       0x0F	/* bits 0-3 */
-#define PSG_DATA_INDEX_REG      6
-#define PSG_NOISE_REG           7
-#define PSG_NOISE_ENABLE        0x80	/* bit 7 */
+#define SpriteON   (IO_VDC_REG[CR].W & 0x40)
+#define ScreenON   (IO_VDC_REG[CR].W & 0x80)
 
 /**
-  * Definitions to ease writing
-  **/
+ * Exported Functions
+ */
 
-#define	VRR	2
-enum _VDC_REG {
-	MAWR,						/*  0 *//* Memory Address Write Register */
-	MARR,						/*  1 *//* Memory Address Read Register */
-	VWR,						/*  2 *//* VRAM Read Register / VRAM Write Register */
-	vdc3,						/*  3 */
-	vdc4,						/*  4 */
-	CR,							/*  5 *//* Control Register */
-	RCR,						/*  6 *//* Raster Compare Register */
-	BXR,						/*  7 *//* Horizontal scroll offset */
-	BYR,						/*  8 *//* Vertical scroll offset */
-	MWR,						/*  9 *//* Memory Width Register */
-	HSR,						/*  A *//* Unknown, other horizontal definition */
-	HDR,						/*  B *//* Horizontal Definition */
-	VPR,						/*  C *//* Higher byte = VDS, lower byte = VSW */
-	VDW,						/*  D *//* Vertical Definition */
-	VCR,						/*  E *//* Vertical counter between restarting of display */
-	DCR,						/*  F *//* DMA Control */
-	SOUR,						/* 10 *//* Source Address of DMA transfert */
-	DISTR,						/* 11 *//* Destination Address of DMA transfert */
-	LENR,						/* 12 *//* Length of DMA transfert */
-	SATB						/* 13 *//* Address of SATB */
-};
+int  pce_init(void);
+void pce_reset(void);
+void pce_term(void);
+void pce_run(void);
 
+void IO_write(uint16_t A, uint8_t V);
+uint8_t IO_read(uint16_t A);
 
 /**
  * Inlined Memory Functions
  */
 #if USE_MEM_MACROS
 
-#define Read8(addr) ({							\
+#define pce_read8(addr) ({							\
 	uint16_t a = (addr);							\
 	uint8_t *page = PageR[a >> 13]; 				\
 	(page == IOAREA) ? IO_read(a) : page[a]; 	\
 })
 
-#define Write8(addr, byte) {					\
+#define pce_write8(addr, byte) {					\
 	uint16_t a = (addr), b = (byte); 				\
 	uint8_t *page = PageW[a >> 13]; 				\
 	if (page == IOAREA) IO_write(a, b); 		\
 	else page[a] = b;							\
 }
 
-#define Read16(addr) ({							\
+#define pce_read16(addr) ({							\
 	uint16_t a = (addr); 							\
 	*((uint16_t*)(PageR[a >> 13] + a));			\
 })
 
-#define Write16(addr, word) {					\
+#define pce_write16(addr, word) {					\
 	uint16_t a = (addr), w = (word); 				\
 	*((uint16_t*)(PageR[a >> 13] + a)) = w;		\
 }
@@ -312,7 +294,7 @@ enum _VDC_REG {
 #else
 
 static inline uint8_t
-Read8(uint16_t addr)
+pce_read8(uint16_t addr)
 {
 	uint8_t *page = PageR[addr >> 13];
 
@@ -323,7 +305,7 @@ Read8(uint16_t addr)
 }
 
 static inline void
-Write8(uint16_t addr, uint8_t byte)
+pce_write8(uint16_t addr, uint8_t byte)
 {
 	uint8_t *page = PageW[addr >> 13];
 
@@ -334,13 +316,13 @@ Write8(uint16_t addr, uint8_t byte)
 }
 
 static inline uint16_t
-Read16(uint16_t addr)
+pce_read16(uint16_t addr)
 {
 	return (*((uint16_t*)(PageR[addr >> 13] + (addr))));
 }
 
 static inline void
-Write16(uint16_t addr, uint16_t word)
+pce_write16(uint16_t addr, uint16_t word)
 {
 	*((uint16_t*)(PageR[addr >> 13] + (addr))) = word;
 }
@@ -348,7 +330,7 @@ Write16(uint16_t addr, uint16_t word)
 #endif
 
 static inline void
-BankSet(uint8_t P, uint8_t V)
+pce_bank_set(uint8_t P, uint8_t V)
 {
 	TRACE_IO("Bank switching (MMR[%d] = %d)\n", P, V);
 
@@ -360,21 +342,23 @@ BankSet(uint8_t P, uint8_t V)
 /**
   * Inlined HW Functions
   */
-static inline bool
-TimerInt()
+static inline void
+pce_timer(int cycles)
 {
-	if (io.timer_start) {
-		io.timer_counter--;
-		if (io.timer_counter > 128) {
-			io.timer_counter = io.timer_reload;
+	io.timer_cycles_counter -= cycles;
 
-			if (!(io.irq_mask & TIRQ)) {
-				io.irq_status |= TIRQ;
-				return true;
+	// Trigger when it underflows
+	if (io.timer_cycles_counter > CYCLES_PER_TIMER_TICK) {
+		io.timer_cycles_counter += CYCLES_PER_TIMER_TICK;
+		if (io.timer_running) {
+			// Trigger when it underflows from 0
+			if (io.timer_counter > 0x7F) {
+				io.timer_counter = io.timer_reload;
+				io.irq_status |= INT_TIMER;
 			}
+			io.timer_counter--;
 		}
 	}
-	return false;
 }
 
 #endif

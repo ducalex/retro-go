@@ -56,11 +56,37 @@ static const DRAM_ATTR UBYTE bcdbin[0x100] = {
 
 #define OPCODE_FUNC static void inline __attribute__((__always_inline__)) __attribute__((flatten))
 
-static inline bool
-one_bit_set(UBYTE arg)
-{
-	return (arg != 0) && ((-arg & arg) == arg);
-}
+// pointer to the beginning of the Zero Page area
+#define ZP_BASE (RAM)
+
+// pointer to the beginning of the Stack Area
+#define SP_BASE (RAM + 0x100)
+
+// Addressing modes:
+#define imm_operand(addr)  ({UWORD x = addr; PageR[x >> 13][x];})
+#define abs_operand(x)     pce_read8(pce_read16(x))
+#define absx_operand(x)    pce_read8(pce_read16(x)+reg_x)
+#define absy_operand(x)    pce_read8(pce_read16(x)+reg_y)
+#define zp_operand(x)      get_8bit_zp(imm_operand(x))
+#define zpx_operand(x)     get_8bit_zp(imm_operand(x)+reg_x)
+#define zpy_operand(x)     get_8bit_zp(imm_operand(x)+reg_y)
+#define zpind_operand(x)   pce_read8(get_16bit_zp(imm_operand(x)))
+#define zpindx_operand(x)  pce_read8(get_16bit_zp(imm_operand(x)+reg_x))
+#define zpindy_operand(x)  pce_read8(get_16bit_zp(imm_operand(x))+reg_y)
+
+// Flag check (flags 'N' and 'Z'):
+#define chk_flnz_8bit(x) reg_p = ((reg_p & (~(FL_N|FL_T|FL_Z))) | FL_B | flnz_list[x]);
+
+// Zero page access
+#define get_8bit_zp(zp_addr) (*(ZP_BASE + (zp_addr)))
+#define get_16bit_zp(zp_addr) ({UBYTE x = zp_addr; get_8bit_zp(x) | get_8bit_zp(x + 1) << 8;})
+#define put_8bit_zp(zp_addr, byte) (*(ZP_BASE + (zp_addr)) = (byte))
+
+// Stack access
+#define push_8bit(byte) (*(SP_BASE + reg_s--) = (byte))
+#define push_16bit(addr) ({UWORD x = addr; push_8bit(x >> 8); push_8bit(x & 0xFF);})
+#define pull_8bit() (*(SP_BASE + ++reg_s))
+#define pull_16bit() (pull_8bit() | pull_8bit() << 8)
 
 //
 // Temp variables used by opcodes
@@ -489,24 +515,24 @@ OPCODE_FUNC asl_a(void)
 
 OPCODE_FUNC asl_abs(void)
 {
-	temp_addr = get_16bit_addr(reg_pc + 1);
-	temp1 = get_8bit_addr(temp_addr);
+	temp_addr = pce_read16(reg_pc + 1);
+	temp1 = pce_read8(temp_addr);
 	temp = temp1 << 1;
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
-	put_8bit_addr(temp_addr, temp);
+	pce_write8(temp_addr, temp);
 	reg_pc += 3;
 	Cycles += 7;
 }
 
 OPCODE_FUNC asl_absx(void)
 {
-	temp_addr = get_16bit_addr(reg_pc + 1) + reg_x;
-	temp1 = get_8bit_addr(temp_addr);
+	temp_addr = pce_read16(reg_pc + 1) + reg_x;
+	temp1 = pce_read8(temp_addr);
 	temp = temp1 << 1;
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
-	put_8bit_addr(temp_addr, temp);
+	pce_write8(temp_addr, temp);
 	reg_pc += 3;
 	Cycles += 7;
 }
@@ -628,11 +654,6 @@ OPCODE_FUNC bit_absx(void)
 
 OPCODE_FUNC bit_imm(void)
 {
-	// orig code (Eyes/Lichty said immediate mode did not affect
-	//            'N' and 'V' flags):
-	//reg_p = (reg_p & ~(FL_T|FL_Z))
-	//    | ((reg_a & imm_operand(reg_pc+1)) ? 0:FL_Z);
-
 	temp = imm_operand(reg_pc + 1);
 	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp & (FL_N | FL_V)) | ((reg_a & temp) ? 0 : FL_Z);
 	reg_pc += 2;
@@ -714,7 +735,7 @@ OPCODE_FUNC brk(void)
 	push_16bit(reg_pc + 2);
 	push_8bit(reg_p | FL_B);
 	reg_p = (reg_p & ~FL_D) | FL_I;
-	reg_pc = get_16bit_addr(VEC_BRK);
+	reg_pc = pce_read16(VEC_BRK);
 	Cycles += 8;
 }
 
@@ -953,20 +974,20 @@ OPCODE_FUNC dec_a(void)
 
 OPCODE_FUNC dec_abs(void)
 {
-	temp_addr = get_16bit_addr(reg_pc + 1);
-	temp = get_8bit_addr(temp_addr) - 1;
+	temp_addr = pce_read16(reg_pc + 1);
+	temp = pce_read8(temp_addr) - 1;
 	chk_flnz_8bit(temp);
-	put_8bit_addr(temp_addr, temp);
+	pce_write8(temp_addr, temp);
 	reg_pc += 3;
 	Cycles += 7;
 }
 
 OPCODE_FUNC dec_absx(void)
 {
-	temp_addr = get_16bit_addr(reg_pc + 1) + reg_x;
-	temp = get_8bit_addr(temp_addr) - 1;
+	temp_addr = pce_read16(reg_pc + 1) + reg_x;
+	temp = pce_read8(temp_addr) - 1;
 	chk_flnz_8bit(temp);
-	put_8bit_addr(temp_addr, temp);
+	pce_write8(temp_addr, temp);
 	reg_pc += 3;
 	Cycles += 7;
 }
@@ -1193,20 +1214,20 @@ OPCODE_FUNC inc_a(void)
 
 OPCODE_FUNC inc_abs(void)
 {
-	temp_addr = get_16bit_addr(reg_pc + 1);
-	temp = get_8bit_addr(temp_addr) + 1;
+	temp_addr = pce_read16(reg_pc + 1);
+	temp = pce_read8(temp_addr) + 1;
 	chk_flnz_8bit(temp);
-	put_8bit_addr(temp_addr, temp);
+	pce_write8(temp_addr, temp);
 	reg_pc += 3;
 	Cycles += 7;
 }
 
 OPCODE_FUNC inc_absx(void)
 {
-	temp_addr = get_16bit_addr(reg_pc + 1) + reg_x;
-	temp = get_8bit_addr(temp_addr) + 1;
+	temp_addr = pce_read16(reg_pc + 1) + reg_x;
+	temp = pce_read8(temp_addr) + 1;
 	chk_flnz_8bit(temp);
-	put_8bit_addr(temp_addr, temp);
+	pce_write8(temp_addr, temp);
 	reg_pc += 3;
 	Cycles += 7;
 }
@@ -1250,21 +1271,21 @@ OPCODE_FUNC iny(void)
 OPCODE_FUNC jmp(void)
 {
 	reg_p &= ~FL_T;
-	reg_pc = get_16bit_addr(reg_pc + 1);
+	reg_pc = pce_read16(reg_pc + 1);
 	Cycles += 4;
 }
 
 OPCODE_FUNC jmp_absind(void)
 {
 	reg_p &= ~FL_T;
-	reg_pc = get_16bit_addr(get_16bit_addr(reg_pc + 1));
+	reg_pc = pce_read16(pce_read16(reg_pc + 1));
 	Cycles += 7;
 }
 
 OPCODE_FUNC jmp_absindx(void)
 {
 	reg_p &= ~FL_T;
-	reg_pc = get_16bit_addr(get_16bit_addr(reg_pc + 1) + reg_x);
+	reg_pc = pce_read16(pce_read16(reg_pc + 1) + reg_x);
 	Cycles += 7;
 }
 
@@ -1272,7 +1293,7 @@ OPCODE_FUNC jsr(void)
 {
 	reg_p &= ~FL_T;
 	push_16bit(reg_pc + 2);
-	reg_pc = get_16bit_addr(reg_pc + 1);
+	reg_pc = pce_read16(reg_pc + 1);
 	Cycles += 7;
 }
 
@@ -1439,24 +1460,24 @@ OPCODE_FUNC lsr_a(void)
 
 OPCODE_FUNC lsr_abs(void)
 {
-	temp_addr = get_16bit_addr(reg_pc + 1);
-	temp1 = get_8bit_addr(temp_addr);
+	temp_addr = pce_read16(reg_pc + 1);
+	temp1 = pce_read8(temp_addr);
 	temp = temp1 / 2;
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 1) ? FL_C : 0) | flnz_list[temp];
-	put_8bit_addr(temp_addr, temp);
+	pce_write8(temp_addr, temp);
 	reg_pc += 3;
 	Cycles += 7;
 }
 
 OPCODE_FUNC lsr_absx(void)
 {
-	temp_addr = get_16bit_addr(reg_pc + 1) + reg_x;
-	temp1 = get_8bit_addr(temp_addr);
+	temp_addr = pce_read16(reg_pc + 1) + reg_x;
+	temp1 = pce_read8(temp_addr);
 	temp = temp1 / 2;
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 1) ? FL_C : 0) | flnz_list[temp];
-	put_8bit_addr(temp_addr, temp);
+	pce_write8(temp_addr, temp);
 	reg_pc += 3;
 	Cycles += 7;
 }
@@ -1746,25 +1767,25 @@ OPCODE_FUNC rol_a(void)
 
 OPCODE_FUNC rol_abs(void)
 {
-	temp_addr = get_16bit_addr(reg_pc + 1);
-	temp1 = get_8bit_addr(temp_addr);
+	temp_addr = pce_read16(reg_pc + 1);
+	temp1 = pce_read8(temp_addr);
 	temp = (temp1 << 1) + (reg_p & FL_C);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
 	Cycles += 7;
-	put_8bit_addr(temp_addr, temp);
+	pce_write8(temp_addr, temp);
 	reg_pc += 3;
 }
 
 OPCODE_FUNC rol_absx(void)
 {
-	temp_addr = get_16bit_addr(reg_pc + 1) + reg_x;
-	temp1 = get_8bit_addr(temp_addr);
+	temp_addr = pce_read16(reg_pc + 1) + reg_x;
+	temp1 = pce_read8(temp_addr);
 	temp = (temp1 << 1) + (reg_p & FL_C);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x80) ? FL_C : 0) | flnz_list[temp];
 	Cycles += 7;
-	put_8bit_addr(temp_addr, temp);
+	pce_write8(temp_addr, temp);
 	reg_pc += 3;
 }
 
@@ -1803,25 +1824,25 @@ OPCODE_FUNC ror_a(void)
 
 OPCODE_FUNC ror_abs(void)
 {
-	temp_addr = get_16bit_addr(reg_pc + 1);
-	temp1 = get_8bit_addr(temp_addr);
+	temp_addr = pce_read16(reg_pc + 1);
+	temp1 = pce_read8(temp_addr);
 	temp = (temp1 >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x01) ? FL_C : 0) | flnz_list[temp];
 	Cycles += 7;
-	put_8bit_addr(temp_addr, temp);
+	pce_write8(temp_addr, temp);
 	reg_pc += 3;
 }
 
 OPCODE_FUNC ror_absx(void)
 {
-	temp_addr = get_16bit_addr(reg_pc + 1) + reg_x;
-	temp1 = get_8bit_addr(temp_addr);
+	temp_addr = pce_read16(reg_pc + 1) + reg_x;
+	temp1 = pce_read8(temp_addr);
 	temp = (temp1 >> 1) + ((reg_p & FL_C) ? 0x80 : 0);
 
 	reg_p = (reg_p & ~(FL_N | FL_T | FL_Z | FL_C)) | ((temp1 & 0x01) ? FL_C : 0) | flnz_list[temp];
 	Cycles += 7;
-	put_8bit_addr(temp_addr, temp);
+	pce_write8(temp_addr, temp);
 	reg_pc += 3;
 }
 
@@ -2011,7 +2032,7 @@ OPCODE_FUNC st2(void)
 OPCODE_FUNC sta_abs(void)
 {
 	reg_p &= ~FL_T;
-	put_8bit_addr(get_16bit_addr(reg_pc + 1), reg_a);
+	pce_write8(pce_read16(reg_pc + 1), reg_a);
 	reg_pc += 3;
 	Cycles += 5;
 }
@@ -2019,7 +2040,7 @@ OPCODE_FUNC sta_abs(void)
 OPCODE_FUNC sta_absx(void)
 {
 	reg_p &= ~FL_T;
-	put_8bit_addr(get_16bit_addr(reg_pc + 1) + reg_x, reg_a);
+	pce_write8(pce_read16(reg_pc + 1) + reg_x, reg_a);
 	reg_pc += 3;
 	Cycles += 5;
 }
@@ -2027,7 +2048,7 @@ OPCODE_FUNC sta_absx(void)
 OPCODE_FUNC sta_absy(void)
 {
 	reg_p &= ~FL_T;
-	put_8bit_addr(get_16bit_addr(reg_pc + 1) + reg_y, reg_a);
+	pce_write8(pce_read16(reg_pc + 1) + reg_y, reg_a);
 	reg_pc += 3;
 	Cycles += 5;
 }
@@ -2051,7 +2072,7 @@ OPCODE_FUNC sta_zpx(void)
 OPCODE_FUNC sta_zpind(void)
 {
 	reg_p &= ~FL_T;
-	put_8bit_addr(get_16bit_zp(imm_operand(reg_pc + 1)), reg_a);
+	pce_write8(get_16bit_zp(imm_operand(reg_pc + 1)), reg_a);
 	reg_pc += 2;
 	Cycles += 7;
 }
@@ -2059,7 +2080,7 @@ OPCODE_FUNC sta_zpind(void)
 OPCODE_FUNC sta_zpindx(void)
 {
 	reg_p &= ~FL_T;
-	put_8bit_addr(get_16bit_zp(imm_operand(reg_pc + 1) + reg_x), reg_a);
+	pce_write8(get_16bit_zp(imm_operand(reg_pc + 1) + reg_x), reg_a);
 	reg_pc += 2;
 	Cycles += 7;
 }
@@ -2067,7 +2088,7 @@ OPCODE_FUNC sta_zpindx(void)
 OPCODE_FUNC sta_zpindy(void)
 {
 	reg_p &= ~FL_T;
-	put_8bit_addr(get_16bit_zp(imm_operand(reg_pc + 1)) + reg_y, reg_a);
+	pce_write8(get_16bit_zp(imm_operand(reg_pc + 1)) + reg_y, reg_a);
 	reg_pc += 2;
 	Cycles += 7;
 }
@@ -2075,7 +2096,7 @@ OPCODE_FUNC sta_zpindy(void)
 OPCODE_FUNC stx_abs(void)
 {
 	reg_p &= ~FL_T;
-	put_8bit_addr(get_16bit_addr(reg_pc + 1), reg_x);
+	pce_write8(pce_read16(reg_pc + 1), reg_x);
 	reg_pc += 3;
 	Cycles += 5;
 }
@@ -2099,7 +2120,7 @@ OPCODE_FUNC stx_zpy(void)
 OPCODE_FUNC sty_abs(void)
 {
 	reg_p &= ~FL_T;
-	put_8bit_addr(get_16bit_addr(reg_pc + 1), reg_y);
+	pce_write8(pce_read16(reg_pc + 1), reg_y);
 	reg_pc += 3;
 	Cycles += 5;
 }
@@ -2123,7 +2144,7 @@ OPCODE_FUNC sty_zpx(void)
 OPCODE_FUNC stz_abs(void)
 {
 	reg_p &= ~FL_T;
-	put_8bit_addr(get_16bit_addr(reg_pc + 1), 0);
+	pce_write8(pce_read16(reg_pc + 1), 0);
 	reg_pc += 3;
 	Cycles += 5;
 }
@@ -2131,7 +2152,7 @@ OPCODE_FUNC stz_abs(void)
 OPCODE_FUNC stz_absx(void)
 {
 	reg_p &= ~FL_T;
-	put_8bit_addr((get_16bit_addr(reg_pc + 1) + reg_x), 0);
+	pce_write8((pce_read16(reg_pc + 1) + reg_x), 0);
 	reg_pc += 3;
 	Cycles += 5;
 }
@@ -2165,15 +2186,15 @@ OPCODE_FUNC sxy(void)
 OPCODE_FUNC tai(void)
 {
 	reg_p &= ~FL_T;
-	from = get_16bit_addr(reg_pc + 1);
-	to = get_16bit_addr(reg_pc + 3);
-	len = get_16bit_addr(reg_pc + 5);
+	from = pce_read16(reg_pc + 1);
+	to = pce_read16(reg_pc + 3);
+	len = pce_read16(reg_pc + 5);
 	alternate = 0;
 
 	Cycles += (6 * len) + 17;
 	while (len-- != 0)
 	{
-		put_8bit_addr(to++, get_8bit_addr(from + alternate));
+		pce_write8(to++, pce_read8(from + alternate));
 		alternate ^= 1;
 	}
 	reg_pc += 7;
@@ -2187,7 +2208,7 @@ OPCODE_FUNC tam(void)
 	{
 		if (bitfld & (1 << i))
 		{
-			BankSet(i, reg_a);
+			pce_bank_set(i, reg_a);
 		}
 	}
 
@@ -2215,14 +2236,14 @@ OPCODE_FUNC tay(void)
 OPCODE_FUNC tdd(void)
 {
 	reg_p &= ~FL_T;
-	from = get_16bit_addr(reg_pc + 1);
-	to = get_16bit_addr(reg_pc + 3);
-	len = get_16bit_addr(reg_pc + 5);
+	from = pce_read16(reg_pc + 1);
+	to = pce_read16(reg_pc + 3);
+	len = pce_read16(reg_pc + 5);
 
 	Cycles += (6 * len) + 17;
 	while (len-- != 0)
 	{
-		put_8bit_addr(to--, get_8bit_addr(from--));
+		pce_write8(to--, pce_read8(from--));
 	}
 	reg_pc += 7;
 }
@@ -2230,15 +2251,15 @@ OPCODE_FUNC tdd(void)
 OPCODE_FUNC tia(void)
 {
 	reg_p &= ~FL_T;
-	from = get_16bit_addr(reg_pc + 1);
-	to = get_16bit_addr(reg_pc + 3);
-	len = get_16bit_addr(reg_pc + 5);
+	from = pce_read16(reg_pc + 1);
+	to = pce_read16(reg_pc + 3);
+	len = pce_read16(reg_pc + 5);
 	alternate = 0;
 
 	Cycles += (6 * len) + 17;
 	while (len-- != 0)
 	{
-		put_8bit_addr(to + alternate, get_8bit_addr(from++));
+		pce_write8(to + alternate, pce_read8(from++));
 		alternate ^= 1;
 	}
 	reg_pc += 7;
@@ -2247,14 +2268,14 @@ OPCODE_FUNC tia(void)
 OPCODE_FUNC tii(void)
 {
 	reg_p &= ~FL_T;
-	from = get_16bit_addr(reg_pc + 1);
-	to = get_16bit_addr(reg_pc + 3);
-	len = get_16bit_addr(reg_pc + 5);
+	from = pce_read16(reg_pc + 1);
+	to = pce_read16(reg_pc + 3);
+	len = pce_read16(reg_pc + 5);
 
 	Cycles += (6 * len) + 17;
 	while (len-- != 0)
 	{
-		put_8bit_addr(to++, get_8bit_addr(from++));
+		pce_write8(to++, pce_read8(from++));
 	}
 	reg_pc += 7;
 }
@@ -2262,14 +2283,14 @@ OPCODE_FUNC tii(void)
 OPCODE_FUNC tin(void)
 {
 	reg_p &= ~FL_T;
-	from = get_16bit_addr(reg_pc + 1);
-	to = get_16bit_addr(reg_pc + 3);
-	len = get_16bit_addr(reg_pc + 5);
+	from = pce_read16(reg_pc + 1);
+	to = pce_read16(reg_pc + 3);
+	len = pce_read16(reg_pc + 5);
 
 	Cycles += (6 * len) + 17;
 	while (len-- != 0)
 	{
-		put_8bit_addr(to, get_8bit_addr(from++));
+		pce_write8(to, pce_read8(from++));
 	}
 	reg_pc += 7;
 }
@@ -2292,12 +2313,12 @@ OPCODE_FUNC tma(void)
 
 OPCODE_FUNC trb_abs(void)
 {
-	temp_addr = get_16bit_addr(reg_pc + 1);
-	temp = get_8bit_addr(temp_addr);
+	temp_addr = pce_read16(reg_pc + 1);
+	temp = pce_read8(temp_addr);
 	temp1 = (~reg_a) & temp;
 
 	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp1 & (FL_N | FL_V)) | ((temp & reg_a) ? 0 : FL_Z);
-	put_8bit_addr(temp_addr, temp1);
+	pce_write8(temp_addr, temp1);
 	reg_pc += 3;
 	Cycles += 7;
 }
@@ -2316,12 +2337,12 @@ OPCODE_FUNC trb_zp(void)
 
 OPCODE_FUNC tsb_abs(void)
 {
-	temp_addr = get_16bit_addr(reg_pc + 1);
-	temp = get_8bit_addr(temp_addr);
+	temp_addr = pce_read16(reg_pc + 1);
+	temp = pce_read8(temp_addr);
 	temp1 = reg_a | temp;
 
 	reg_p = (reg_p & ~(FL_N | FL_V | FL_T | FL_Z)) | (temp1 & (FL_N | FL_V)) | ((temp & reg_a) ? 0 : FL_Z);
-	put_8bit_addr(temp_addr, temp1);
+	pce_write8(temp_addr, temp1);
 	reg_pc += 3;
 	Cycles += 7;
 }
@@ -2410,54 +2431,18 @@ OPCODE_FUNC tya(void)
 	Cycles += 2;
 }
 
-// perform machine operations for IRQ2:
-
-OPCODE_FUNC int_irq2(void)
+OPCODE_FUNC interrupt(int type)
 {
-	if ((io.irq_mask & FL_IRQ2) != 0)
-	{ // interrupt disabled
-	}
-	//if ((irq_register & FL_IRQ2) == 0) {   // interrupt disabled ?
-	//   return 0;
-	//}
+	TRACE_CPU("CPU interrupt: %d\n", irq);
 	push_16bit(reg_pc);
 	push_8bit(reg_p);
-	reg_p = (reg_p & ~FL_D) | FL_I;
-	reg_pc = get_16bit_addr(VEC_IRQ2);
-	Cycles += 7;
-}
-
-// perform machine operations for IRQ1 (video interrupt):
-
-OPCODE_FUNC int_irq1(void)
-{
-	if ((io.irq_mask & FL_IRQ1) != 0)
-	{ // interrupt disabled
+	reg_p &= ~(FL_D|FL_T);
+	reg_p |= FL_I;
+	if (type & INT_IRQ1) {
+		reg_pc = pce_read16(VEC_IRQ1);
+	} else {
+		reg_pc = pce_read16(VEC_TIMER);
 	}
-	//if ((irq_register & FL_IRQ1) == 0) {   // interrupt disabled ?
-	//   return 0;
-	//}
-	push_16bit(reg_pc);
-	push_8bit(reg_p);
-	reg_p = (reg_p & ~FL_D) | FL_I;
-	reg_pc = get_16bit_addr(VEC_IRQ);
-	Cycles += 7;
-}
-
-// perform machine operations for timer interrupt:
-
-OPCODE_FUNC int_tiq(void)
-{
-	if ((io.irq_mask & FL_TIQ) != 0)
-	{ // interrupt disabled
-	}
-	//if ((irq_register & FL_TIQ) == 0) {   // interrupt disabled ?
-	//   return 0;
-	//}
-	push_16bit(reg_pc);
-	push_8bit(reg_p);
-	reg_p = (reg_p & ~FL_D) | FL_I;
-	reg_pc = get_16bit_addr(VEC_TIMER);
 	Cycles += 7;
 }
 

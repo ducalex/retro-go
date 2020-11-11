@@ -33,6 +33,8 @@ const char SAVESTATE_HEADER[8] = "PCE_V001";
  * previous saves so add a place holder if necessary. Eventually we could use
  * the keys to make order irrelevant...
  */
+static uint32_t dummy;
+
 const svar_t SaveStateVars[] =
 {
 	// Arrays
@@ -45,7 +47,7 @@ const svar_t SaveStateVars[] =
 
 	// Counters
 	SVAR_2("Scanline", Scanline),              SVAR_2("Cycles", Cycles),
-	SVAR_4("TotalCycles", TotalCycles),        SVAR_4("PrevTCycles", PrevTotalCycles),
+	SVAR_4("TotalCycles", dummy),              SVAR_4("PrevTCycles", dummy),
 
 	// PSG
 	SVAR_A("PSG", io.PSG),                     SVAR_A("PSG_WAVE", io.PSG_WAVE),
@@ -60,14 +62,15 @@ const svar_t SaveStateVars[] =
 	SVAR_A("VDC", io.VDC),                     SVAR_1("vdc_inc", io.vdc_inc),
 	SVAR_1("vdc_reg", io.vdc_reg),             SVAR_1("vdc_status", io.vdc_status),
 	SVAR_1("vdc_ratch", io.vdc_ratch),         SVAR_1("vdc_satb", io.vdc_satb),
-	SVAR_1("vdc_satb_c", io.vdc_satb_counter), SVAR_1("vdc_pendvsync", io.vdc_pendvsync),
+	SVAR_1("vdc_satb_c", io.vdc_satb_counter), SVAR_1("vdc_pendvsync", dummy),
 	SVAR_2("vdc_minline", io.vdc_minline),     SVAR_2("vdc_maxline", io.vdc_maxline),
 	SVAR_2("screen_w", io.screen_w),           SVAR_2("screen_h", io.screen_h),
 	SVAR_2("bg_w", io.bg_w),                   SVAR_2("bg_h", io.bg_h),
 
-	SVAR_1("timer_reload", io.timer_reload),   SVAR_1("timer_start", io.timer_start),
-	SVAR_1("timer_counter", io.timer_counter), SVAR_1("irq_mask", io.irq_mask),
-	SVAR_1("irq_status", io.irq_status),
+	SVAR_1("timer_reload", io.timer_reload),   SVAR_1("timer_running", io.timer_running),
+	SVAR_1("timer_counter", io.timer_counter), SVAR_4("timer_next", io.timer_cycles_counter),
+
+	SVAR_1("irq_mask", io.irq_mask),           SVAR_1("irq_status", io.irq_status),
 
 	SVAR_END
 };
@@ -213,7 +216,7 @@ void
 ResetPCE(bool hard)
 {
 	gfx_clear_cache();
-	hard_reset();
+	pce_reset();
 }
 
 
@@ -232,7 +235,7 @@ InitPCE(const char *name)
 	if (snd_init())
 		return 1;
 
-	if (hard_init())
+	if (pce_init())
 		return 1;
 
 	if (LoadCard(name))
@@ -250,7 +253,7 @@ InitPCE(const char *name)
 void
 RunPCE(void)
 {
-	h6280_run();
+	pce_run();
 }
 
 
@@ -285,7 +288,7 @@ LoadState(char *name)
 
 	for(int i = 0; i < 8; i++)
 	{
-		BankSet(i, MMR[i]);
+		pce_bank_set(i, MMR[i]);
 	}
 
 	gfx_clear_cache();
@@ -332,7 +335,7 @@ ShutdownPCE()
 {
 	gfx_term();
 	snd_term();
-	hard_term();
+	pce_term();
 
 	exit(0);
 }

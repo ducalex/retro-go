@@ -57,7 +57,7 @@ extern int ScrollYDiff;
 #define	XBUF_HEIGHT	(242 + 64 + 64)
 
 int gfx_init(void);
-int gfx_loop(void);
+void gfx_loop(void);
 void gfx_term(void);
 void gfx_clear_cache(void);
 void gfx_save_context(int slot_number);

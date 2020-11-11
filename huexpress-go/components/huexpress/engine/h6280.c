@@ -7,89 +7,34 @@
 #include "gfx.h"
 #include "pce.h"
 
-// pointer to the beginning of the Zero Page area
-#define zp_base (RAM)
-
-// pointer to the beginning of the Stack Area
-#define sp_base (RAM + 0x100)
-
 // Make our switch easier to read
 #define OPCODE(n, f) case n: f; break;
 
-// Addressing modes:
-#define imm_operand(addr)  ({UWORD x = addr; PageR[x >> 13][x];})
-#define abs_operand(x)     get_8bit_addr(get_16bit_addr(x))
-#define absx_operand(x)    get_8bit_addr(get_16bit_addr(x)+reg_x)
-#define absy_operand(x)    get_8bit_addr(get_16bit_addr(x)+reg_y)
-#define zp_operand(x)      get_8bit_zp(imm_operand(x))
-#define zpx_operand(x)     get_8bit_zp(imm_operand(x)+reg_x)
-#define zpy_operand(x)     get_8bit_zp(imm_operand(x)+reg_y)
-#define zpind_operand(x)   get_8bit_addr(get_16bit_zp(imm_operand(x)))
-#define zpindx_operand(x)  get_8bit_addr(get_16bit_zp(imm_operand(x)+reg_x))
-#define zpindy_operand(x)  get_8bit_addr(get_16bit_zp(imm_operand(x))+reg_y)
-
-// Flag check (flags 'N' and 'Z'):
-#define chk_flnz_8bit(x) reg_p = ((reg_p & (~(FL_N|FL_T|FL_Z))) | flnz_list[x]);
-
-// Zero page access
-#define get_8bit_zp(zp_addr) (*(zp_base + (zp_addr)))
-#define get_16bit_zp(zp_addr) ({UBYTE x = zp_addr; get_8bit_zp(x) | get_8bit_zp(x + 1) << 8;})
-#define put_8bit_zp(zp_addr, byte) (*(zp_base + (zp_addr)) = (byte))
-
-// Stack access
-#define push_8bit(byte) (*(sp_base + reg_s--) = (byte))
-#define push_16bit(addr) ({UWORD x = addr; push_8bit(x >> 8); push_8bit(x & 0xFF);})
-#define pull_8bit() (*(sp_base + ++reg_s))
-#define pull_16bit() (pull_8bit() | pull_8bit() << 8)
-
 #include "h6280_instr.h"
 
-#define Int6502(Type)                                   \
-	{                                                   \
-		TRACE_CPU("Requested interrupt is %d\n", Type); \
-		UWORD J = 0;                                   \
-		if ((Type == INT_NMI) || (!(reg_p & FL_I)))     \
-		{                                               \
-			Cycles += 7;                                \
-			push_16bit(reg_pc);                         \
-			push_8bit(reg_p);                           \
-			reg_p = (reg_p & ~FL_D);                    \
-			if (Type == INT_NMI)                        \
-			{                                           \
-				J = VEC_NMI;                            \
-			}                                           \
-			else                                        \
-			{                                           \
-				reg_p |= FL_I;                          \
-				switch (Type)                           \
-				{                                       \
-				case INT_IRQ:                           \
-					J = VEC_IRQ;                        \
-					break;                              \
-				case INT_IRQ2:                          \
-					J = VEC_IRQ2;                       \
-					break;                              \
-				case INT_TIMER:                         \
-					J = VEC_TIMER;                      \
-					break;                              \
-				}                                       \
-			}                                           \
-			reg_pc = get_16bit_addr(J);                 \
-		}                                               \
-	}
+
+h6280_t CPU;
+
+
+void
+h6280_reset(void)
+{
+    reg_a = reg_x = reg_y = 0x00;
+    reg_p = (FL_I|FL_B);
+    reg_s = 0xFF;
+    reg_pc = pce_read16(VEC_RESET);
+}
+
 
 // CPU emulation loop. It performs most of the actual emulation
 // Including interupts and graphics.
 __attribute__((flatten)) IRAM_ATTR void
 h6280_run(void)
 {
-    UBYTE I;
-
-	host.paused = 0;
-
-    while (true) // host.paused == false
+    while (true)
 	{
-		while (Cycles <= 455)
+		/* Run for roughly one scanline */
+		while (Cycles <= CYCLES_PER_LINE)
 		{
 			UBYTE opcode = imm_operand(reg_pc);
 
@@ -346,25 +291,22 @@ h6280_run(void)
 				OPCODE(0xFF, bbs(7));          // {bbs7, AM_PSREL, "BBS7"}
 
 				default:
-					MESSAGE_ERROR("Opcode 0x%02X not supported!\n", opcode);
-					// abort() ?
-					break;
+					// Illegal opcodes are treated as NOP
+					MESSAGE_DEBUG("Illegal opcode 0x%02X at pc=0x%04X!\n", opcode, reg_pc);
+					nop();
 			}
 		}
 
-		TotalCycles += Cycles;
-		Cycles -= 455;
+		Cycles -= CYCLES_PER_LINE;
 
-		if ((I = gfx_loop()))
-			Int6502(I);     /* Interrupt if needed  */
+		pce_timer(CYCLES_PER_LINE);
+		gfx_loop();
 
-		if (TotalCycles - PrevTotalCycles > TimerPeriod * 2)
-			PrevTotalCycles = TotalCycles;
+		/* Handle pending interrupts */
+		uint8_t irq = io.irq_status & ~io.irq_mask & INT_MASK;
 
-		if (TotalCycles - PrevTotalCycles >= TimerPeriod) {
-			PrevTotalCycles += TimerPeriod;
-			if (TimerInt())
-				Int6502(INT_TIMER);
+		if ((reg_p & FL_I) == 0 && irq) {
+			interrupt(irq & INT_IRQ1);
 		}
     }
 
@@ -396,7 +338,7 @@ dump_cpu_registers()
 			MESSAGE_INFO("%04X: ", i);
 		}
 
-		MESSAGE_INFO("%02x ", get_8bit_addr(i));
+		MESSAGE_INFO("%02x ", pce_read8(i));
 		if ((i & 0xF) == 0xF) {
 			MESSAGE_INFO("\n");
 		}
