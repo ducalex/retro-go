@@ -9,9 +9,9 @@
 
 #include <odroid_system.h>
 
-#include <config.h>
-#include <utils.h>
-#include <osd.h>
+#include "../includes/config.h"
+#include "../includes/utils.h"
+#include "../includes/osd.h"
 
 #include "hard_pce.h"
 #include "h6280.h"

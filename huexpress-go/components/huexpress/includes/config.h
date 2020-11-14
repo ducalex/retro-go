@@ -14,3 +14,4 @@
 #define PCE_PATH_MAX 192
 
 #define INLINE static inline __attribute__((__always_inline__))
+#define FAST_INLINE static inline __attribute__((__always_inline__)) // __attribute__((flatten))

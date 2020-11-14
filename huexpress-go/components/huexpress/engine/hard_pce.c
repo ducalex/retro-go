@@ -12,6 +12,13 @@ uint8_t *PageW[8];
 uint8_t *MemoryMapR[256];
 uint8_t *MemoryMapW[256];
 
+static const uint8_t bg_w[] = { 32, 64, 128, 128 };
+static const uint8_t bg_h[] = { 32, 64 };
+static const uint8_t vdc_inc[] = { 1, 32, 64, 128 };
+
+#define VDC_INCREMENT(reg) (IO_VDC_REG[reg].W += vdc_inc[(IO_VDC_REG[CR].W >> 11) & 3])
+
+static inline void timer_run(void);
 
 /**
   * Reset the hardware
@@ -30,13 +37,11 @@ pce_reset(void)
     // Backup RAM header, some games check for this
     memcpy(&BackupRAM, "HUBM\x00\x88\x10\x80", 8);
 
-    Scanline = 0;
     Cycles = 0;
     SF2 = 0;
 
      // Reset IO lines
     io.vdc_status = 0;
-    io.vdc_inc = 1;
     io.vdc_minline = 0;
     io.vdc_maxline = 255;
     io.screen_w = 256; // 255
@@ -104,9 +109,19 @@ pce_run(void)
 {
     host.paused = 0;
 
-    // while (!host.paused) {
-        h6280_run();
-    // }
+    while (!host.paused) {
+        osd_keyboard();
+
+        for (Scanline = 0; Scanline < 263; ++Scanline) {
+            Cycles -= CYCLES_PER_LINE;
+            h6280_run();
+            timer_run();
+            gfx_run();
+        }
+
+        osd_gfx_blit();
+        osd_wait_next_vsync();
+    }
 }
 
 
@@ -114,71 +129,23 @@ pce_run(void)
  * Functions to access PCE hardware
  **/
 
-
-//! Returns the useful value mask depending on port value
-static inline uint8_t
-return_value_mask(uint16_t A)
+static inline void
+timer_run(void)
 {
-    if (A < 0x400) {            /* VDC */
-        if ((A & 0x3) == 0x02) {
-            switch (io.vdc_reg) {
-                case 0xA: return 0x1F;
-                case 0xB: return 0x7F;
-                case 0xC: return 0x1F;
-                case 0xF: return 0x1F;
-                default:  return 0xFF;
-            }
-        } else if ((A & 0x3) == 0x03) {
-            switch (io.vdc_reg) {
-                case 0x5: return 0x1F;
-                case 0x6: return 0x03;
-                case 0x7: return 0x03;
-                case 0x8: return 0x01;
-                case 0x9: return 0x00;
-                case 0xA: return 0x7F;
-                case 0xB: return 0x7F;
-                case 0xC: return 0xFF;
-                case 0xD: return 0x01;
-                case 0xE: return 0x00;
-                case 0xF: return 0x00;
-                default:  return 0xFF;
-            }
-        }
-        return 0xFF;
-    }
+	io.timer_cycles_counter -= CYCLES_PER_LINE;
 
-    if (A < 0x800) {            /* VCE */
-        switch (A & 0x07) {
-            case 0x1: return 0x03;
-            case 0x3: return 0x01;
-            case 0x5: return 0x01;
-            default:  return 0xFF;
-        }
-    }
-
-    if (A < 0xC00) {            /* PSG */
-        switch (A & 0x0F) {
-            case 0x0: return 0x00;
-            case 0x3: return 0x0F;
-            case 0x4: return 0xDF;
-            case 0x6: return 0x1F;
-            case 0x7: return 0x9F;
-            case 0x9: return 0x83;
-            default:  return 0xFF;
-        }
-    }
-
-    if (A < 0x1000)                /* Timer */
-        return (A & 1) ? 0x01 : 0x7F;
-
-    if (A < 0x1400)                /* Joystick / IO port */
-        return 0xFF;
-
-    if (A < 0x1800)                /* Interruption acknowledgement */
-        return (A & 2) ? 0x03 : 0xFF;
-
-    /* We don't know for higher ports */
-    return 0xFF;
+	// Trigger when it underflows
+	if (io.timer_cycles_counter > CYCLES_PER_TIMER_TICK) {
+		io.timer_cycles_counter += CYCLES_PER_TIMER_TICK;
+		if (io.timer_running) {
+			// Trigger when it underflows from 0
+			if (io.timer_counter > 0x7F) {
+				io.timer_counter = io.timer_reload;
+				io.irq_status |= INT_TIMER;
+			}
+			io.timer_counter--;
+		}
+	}
 }
 
 
@@ -208,12 +175,15 @@ cart_write(uint16_t A, uint8_t V)
 }
 
 
-
 IRAM_ATTR inline uint8_t
 IO_read(uint16_t A)
 {
     uint8_t ret = 0xFF; // Open Bus
     uint8_t ofs;
+
+    // The last read value in 0800-017FF is read from the io buffer
+    if (A >= 0x800 && A < 0x1800)
+        ret = io.io_buffer;
 
     switch (A & 0x1FC0) {
     case 0x0000:                /* VDC */
@@ -226,15 +196,15 @@ IO_read(uint16_t A)
             ret = 0;
             break;
         case 2:
-            if (io.vdc_reg == VRR)
+            if (io.vdc_reg == VRR)              // // VRAM Read Register (LSB)
                 ret = VRAM[IO_VDC_REG[MARR].W * 2];
             else
                 ret = IO_VDC_REG_ACTIVE.B.l;
             break;
         case 3:
-            if (io.vdc_reg == VRR) {
+            if (io.vdc_reg == VRR) {            // VRAM Read Register (MSB)
                 ret = VRAM[IO_VDC_REG[MARR].W * 2 + 1];
-                IO_VDC_REG[MARR].W += io.vdc_inc;
+                VDC_INCREMENT(MARR);
             } else
                 ret = IO_VDC_REG_ACTIVE.B.h;
             break;
@@ -243,8 +213,13 @@ IO_read(uint16_t A)
 
     case 0x0400:                /* VCE */
         switch (A & 7) {
-        case 4: ret = io.VCE[io.vce_reg.W].B.l;   break;
-        case 5: ret = io.VCE[io.vce_reg.W++].B.h; break;
+        case 0: ret = 0xFF; break; // Write only
+        case 1: ret = 0xFF; break; // Unused
+        case 2: ret = 0xFF; break; // Write only
+        case 3: ret = 0xFF; break; // Write only
+        case 4: ret = io.VCE[io.vce_reg.W].B.l; break; // Color LSB (8 bit)
+        case 5: ret = io.VCE[io.vce_reg.W++].B.h | 0xFE; break; // Color MSB (1 bit)
+        case 6: ret = 0xFF; break; // Unused
         }
         break;
 
@@ -267,8 +242,8 @@ IO_read(uint16_t A)
         }
         break;
 
-    case 0x0c00:                /* timer */
-        ret = io.timer_counter;
+    case 0x0C00:                /* timer */
+        ret = io.timer_counter | (io.io_buffer & ~0x7F);
         break;
 
     case 0x1000:                /* joypad */
@@ -283,7 +258,7 @@ IO_read(uint16_t A)
         break;
 
     case 0x1400:                /* IRQ */
-        switch (A & 15) {
+        switch (A & 3) {
         case 2:
             ret = io.irq_mask | (io.io_buffer & ~INT_MASK);
             break;
@@ -294,21 +269,8 @@ IO_read(uint16_t A)
         }
         break;
 
-    case 0x18C0:                // Memory management ?
-        switch (A & 15) {
-        case 1:
-        case 5:
-            ret = 0xAA;
-            break;
-        case 2:
-        case 6:
-            ret = 0x55;
-            break;
-        case 3:
-        case 7:
-            ret = 0x03;
-            break;
-        }
+    case 0x18C0:                // Super System Card
+        MESSAGE_INFO("Super System Card not supported : 0x%04X\n", A);
         break;
 
     case 0x1A00:                // Arcade Card
@@ -323,12 +285,11 @@ IO_read(uint16_t A)
 
     TRACE_IO("IO Read %02x at %04x\n", ret, A);
 
-    if ((A < 0x800) || (A >= 0x1800))
-        return ret;
+    // The last read value in 0800-017FF is saved in the io buffer
+    if (A >= 0x800 && A < 0x1800)
+        io.io_buffer = ret;
 
-    io.io_buffer = ret | (io.io_buffer & ~return_value_mask(A));
-
-    return io.io_buffer;
+    return ret;
 }
 
 
@@ -337,200 +298,198 @@ IO_write(uint16_t A, uint8_t V)
 {
     TRACE_IO("IO Write %02x at %04x\n", V, A);
 
-    if ((A >= 0x800) && (A < 0x1800))   // We keep the io buffer value
+    // The last write value in 0800-017FF is saved in the io buffer
+    if (A >= 0x800 && A < 0x1800)
         io.io_buffer = V;
 
-    uint8_t bgw[] = { 32, 64, 128, 128 };
-    uint8_t incsize[] = { 1, 32, 64, 128 };
-
     switch (A & 0x1F00) {
-    case 0x0000:                /* VDC */
+    case 0x0000:               /* VDC */
         switch (A & 3) {
-        case 0:
+        case 0: // Latch
             io.vdc_reg = V & 31;
-            return;
-        case 1:
-            return;
-        case 2:
-            TRACE_GFX2("VDC[%02x]=0x%02x\n", io.vdc_reg, V);
-            switch (io.vdc_reg) {
-            case VWR:           /* Write to video */
-                io.vdc_ratch = V;
+            break;
+
+        case 1: // Not used
+            break;
+
+        case 2: // VDC data (LSB)
+            switch (io.vdc_reg & 31) {
+            case MAWR:                          // Memory Address Write Register
                 break;
-
-            case HDR:           /* Horizontal Definition */
-                if (io.screen_w != ((V + 1) * 8)) {
-                    io.screen_w = (V + 1) * 8;
-                    io.vdc_mode_chg = 1;
-                }
-                IO_VDC_REG_ACTIVE.B.l = V;
+            case MARR:                          // Memory Address Read Register
                 break;
-
-            case MWR:           /* size of the virtual background screen */
-                io.bg_h = (V & 0x40) ? 64 : 32;
-                io.bg_w = bgw[(V >> 4) & 3];
-                IO_VDC_REG_ACTIVE.B.l = V;
+            case VWR:                           // VRAM Write Register
                 break;
-
-            case BYR:           /* Vertical screen offset */
-                /*
-                   if (IO_VDC_REG[BYR].B.l == V)
-                   return;
-                 */
-                gfx_save_context(0);
-
-                IO_VDC_REG[BYR].B.l = V;
-                ScrollYDiff = Scanline - 1 - (IO_VDC_REG[VPR].B.h + IO_VDC_REG[VPR].B.l);
-                TRACE_GFX2("ScrollY = %d (l)\n", ScrollY);
+            case vdc3:                          // Unused
                 break;
-
-            case BXR:           /* Horizontal screen offset */
+            case vdc4:                          // Unused
+                break;
+            case CR:                            // Control Register
+                if (IO_VDC_REG_ACTIVE.B.l != V)
+                    gfx_save_context(0);
+                break;
+            case RCR:                           // Raster Compare Register
+                break;
+            case BXR:
                 /*
                    if (IO_VDC_REG[BXR].B.l == V)
                    return;
                  */
                 gfx_save_context(0);
-
-                IO_VDC_REG[BXR].B.l = V;
                 break;
-
-            case CR:
-                if (IO_VDC_REG_ACTIVE.B.l == V)
-                    break;
-
-                gfx_save_context(0);
-                IO_VDC_REG_ACTIVE.B.l = V;
-                break;
-
-            case VCR:
-            case HSR:
-            case VPR:
-            case VDW:
-                IO_VDC_REG_ACTIVE.B.l = V;
-                io.vdc_mode_chg = 1;
-                break;
-            default:
-                IO_VDC_REG_ACTIVE.B.l = V;
-                break;
-            }
-            return;
-        case 3:
-            switch (io.vdc_reg) {
-            case VWR:           /* Write to mem */
-                /* Writing to hi byte actually perform the action */
-                VRAM[IO_VDC_REG[MAWR].W * 2] = io.vdc_ratch;
-                VRAM[IO_VDC_REG[MAWR].W * 2 + 1] = V;
-
-                TILE_CACHE[(IO_VDC_REG[MAWR].W / 16) & 0x7FF] = 0;
-                SPR_CACHE[(IO_VDC_REG[MAWR].W / 64) & 0x1FF] = 0;
-
-                IO_VDC_REG[MAWR].W += io.vdc_inc;
-
-                /* vdc_ratch shouldn't be reset between writes */
-                // io.vdc_ratch = 0;
-                return;
-
-            case VCR:
-            case HSR:
-            case VPR:
-            case VDW:
-                IO_VDC_REG_ACTIVE.B.h = V;
-                io.vdc_mode_chg = 1;
-                return;
-
-            case LENR:          /* DMA transfer from VRAM to VRAM */
-                IO_VDC_REG[LENR].B.h = V;
-
-                int sourcecount = (IO_VDC_REG[DCR].W & 8) ? -1 : 1;
-                int destcount = (IO_VDC_REG[DCR].W & 4) ? -1 : 1;
-
-                int source = IO_VDC_REG[SOUR].W * 2;
-                int dest = IO_VDC_REG[DISTR].W * 2;
-
-                for (int i = 0; i < (IO_VDC_REG[LENR].W + 1) * 2; i++) {
-                    *(VRAM + dest) = *(VRAM + source);
-                    dest += destcount;
-                    source += sourcecount;
-                }
-
-                IO_VDC_REG[SOUR].W = source / 2;
-                IO_VDC_REG[DISTR].W = dest / 2;
-                IO_VDC_REG[LENR].W = 0xFFFF;
-
-                gfx_clear_cache();
-
-                io.vdc_status |= VDC_STAT_DV;
-                io.irq_status |= INT_IRQ1;
-                return;
-
-            case CR:            /* Auto increment size */
+            case BYR:                           // Vertical screen offset
                 /*
-                    if (IO_VDC_REG[CR].B.h == V)
-                    return;
-                    */
-                gfx_save_context(0);
-
-                io.vdc_inc = incsize[(V >> 3) & 3];
-                IO_VDC_REG[CR].B.h = V;
-                return;
-
-            case HDR:           /* Horizontal display end */
-                /* TODO : well, maybe we should implement it */
-                //io.screen_w = (io.VDC_ratch[HDR]+1)*8;
-                //TRACE0("HDRh\n");
-                TRACE_GFX2("VDC[HDR].h = %d\n", V);
-                return;
-
-            case BYR:           /* Vertical screen offset */
-                /*
-                   if (IO_VDC_REG[BYR].B.h == (V & 1))
+                   if (IO_VDC_REG[BYR].B.l == V)
                    return;
                  */
                 gfx_save_context(0);
-                IO_VDC_REG[BYR].B.h = V & 1;
+                ScrollYDiff = Scanline - 1 - (IO_VDC_REG[VPR].B.h + IO_VDC_REG[VPR].B.l);
+                TRACE_GFX2("ScrollY = %d (l)\n", ScrollY);
+                break;
+            case MWR:                           // Memory Width Register
+                io.bg_w = bg_w[(V >> 4) & 3]; // Bits 5-4 select the width
+                io.bg_h = bg_h[(V >> 5) & 1]; // Bit 6 selects the height
+                break;
+            case HSR:
+                io.vdc_mode_chg = 1;
+                break;
+            case HDR:                           // Horizontal Definition
+                V &= 0x7F;
+                if (io.screen_w != ((V + 1) * 8)) {
+                    io.screen_w = (V + 1) * 8;
+                    io.vdc_mode_chg = 1;
+                }
+                break;
+            case VPR:
+            case VDW:
+            case VCR:
+                io.vdc_mode_chg = 1;
+                break;
+            case DCR:                           // DMA Control
+                break;
+            case SOUR:                          // DMA source address
+                break;
+            case DISTR:                         // DMA destination address
+                break;
+            case LENR:                          // DMA transfer from VRAM to VRAM
+                break;
+            case SATB:                          // DMA from VRAM to SATB
+                break;
+            }
+            IO_VDC_REG_ACTIVE.B.l = V;
+            TRACE_GFX2("VDC[%02x].l=0x%02x\n", io.vdc_reg, V);
+            break;
+
+        case 3: // VDC data (MSB)
+        switch (io.vdc_reg & 31) {
+            case MAWR:                          // Memory Address Write Register
+                break;
+            case MARR:                          // Memory Address Read Register
+                break;
+            case VWR:                           // VRAM Write Register
+                VRAM[IO_VDC_REG[MAWR].W * 2] = IO_VDC_REG_ACTIVE.B.l;
+                VRAM[IO_VDC_REG[MAWR].W * 2 + 1] = V;
+                // Invalidate object cache in this region
+                TILE_CACHE[(IO_VDC_REG[MAWR].W / 16) & 0x7FF] = 0;
+                SPR_CACHE[(IO_VDC_REG[MAWR].W / 64) & 0x1FF] = 0;
+
+                VDC_INCREMENT(MAWR);
+                break;
+            case vdc3:                          // Unused
+                break;
+            case vdc4:                          // Unused
+                break;
+            case CR:                            // Control Register
+                if (IO_VDC_REG_ACTIVE.B.h != V)
+                    gfx_save_context(0);
+                break;
+            case RCR:                           // Raster Compare Register
+                IO_VDC_REG_ACTIVE.B.h &= 0x03;
+                break;
+            case BXR:                           // Horizontal screen offset
+                V &= 3;
+                if (IO_VDC_REG_ACTIVE.B.h != V) {
+                    gfx_save_context(0);
+                }
+                break;
+            case BYR:                           // Vertical screen offset
+                gfx_save_context(0);
                 ScrollYDiff = Scanline - 1;
                 ScrollYDiff -= IO_VDC_REG[VPR].B.h + IO_VDC_REG[VPR].B.l;
                 if (ScrollYDiff < 0)
                     MESSAGE_DEBUG("ScrollYDiff went negative when substraction VPR.h/.l (%d,%d)\n",
                         IO_VDC_REG[VPR].B.h, IO_VDC_REG[VPR].B.l);
 
-                TRACE_GFX2("ScrollY = %d (h)\n", ScrollY);
-                return;
+                TRACE_GFX2("ScrollY = %d (h)\n", ScrollY);                break;
+            case MWR:                           // Memory Width Register
+                break;
+            case HSR:
+                io.vdc_mode_chg = 1;
+                break;
+            case HDR:                           // Horizontal Definition
+                /* TODO : well, maybe we should implement it */
+                //io.screen_w = (io.VDC_ratch[HDR]+1)*8;
+                //TRACE0("HDRh\n");
+                TRACE_GFX2("VDC[HDR].h = %d\n", V);
+                break;
+            case VPR:
+            case VDW:
+            case VCR:
+                io.vdc_mode_chg = 1;
+                break;
+            case DCR:                           // DMA Control
+                break;
+            case SOUR:                          // DMA source address
+                break;
+            case DISTR:                         // DMA destination address
+                break;
+            case LENR:                          // DMA transfer from VRAM to VRAM
+                IO_VDC_REG[LENR].B.h = V;
 
-            case SATB:          /* DMA from VRAM to SATB */
-                IO_VDC_REG[SATB].B.h = V;
-                io.vdc_satb = 1;
-                return;
+                uint16_t *vram16 = (uint16_t *)VRAM;
+                int src_inc = (IO_VDC_REG[DCR].W & 8) ? -1 : 1;
+                int dst_inc = (IO_VDC_REG[DCR].W & 4) ? -1 : 1;
 
-            case BXR:           /* Horizontal screen offset */
-                if (IO_VDC_REG[BXR].B.h != (V & 3)) {
-                    gfx_save_context(0);
-                    IO_VDC_REG[BXR].B.h = V & 3;
+                while (IO_VDC_REG[LENR].W != 0xFFFF) {
+                    vram16[IO_VDC_REG[DISTR].W] = vram16[IO_VDC_REG[SOUR].W];
+                    IO_VDC_REG[SOUR].W += src_inc;
+                    IO_VDC_REG[DISTR].W += dst_inc;
+                    IO_VDC_REG[LENR].W -= 1;
                 }
-                return;
-            }
 
+                io.vdc_status |= VDC_STAT_DV;
+                io.irq_status |= INT_IRQ1;
+
+                gfx_clear_cache();
+                return;
+                // break;
+            case SATB:                          // DMA from VRAM to SATB
+                io.vdc_satb = 1;
+                break;
+            }
             IO_VDC_REG_ACTIVE.B.h = V;
-            return;
+            TRACE_GFX2("VDC[%02x].h=0x%02x\n", io.vdc_reg, V);
+            break;
         }
         break;
 
     case 0x0400:                /* VCE */
         switch (A & 7) {
-        case 0:
-            /*TRACE("VCE 0, V=%X\n", V); */
-            return;
+        case 0: // VCE control
+            break;
 
-            /* Choose color index */
-        case 2:
+        case 1: // Not used
+            break;
+
+        case 2: // Color table address (LSB)
             io.vce_reg.B.l = V;
-            return;
-        case 3:
-            io.vce_reg.B.h = V & 1;
-            return;
+            break;
 
-            /* Set RGB components for current choosen color */
-        case 4:
+        case 3: // Color table address (MSB)
+            io.vce_reg.B.h = V & 1;
+            break;
+
+        case 4: // Color table data (LSB)
             io.VCE[io.vce_reg.W].B.l = V;
             {
                 uint16_t n = io.vce_reg.W;
@@ -541,9 +500,9 @@ IO_write(uint16_t A, uint8_t V)
                 } else if (n & 15)
                     Palette[n] = c;
             }
-            return;
+            break;
 
-        case 5:
+        case 5: // Color table data (MSB)
             io.VCE[io.vce_reg.W].B.h = V;
             {
                 uint16_t n = io.vce_reg.W;
@@ -555,33 +514,37 @@ IO_write(uint16_t A, uint8_t V)
                     Palette[n] = c;
             }
             io.vce_reg.W = (io.vce_reg.W + 1) & 0x1FF;
-            return;
+            break;
+
+        case 6: // Not used
+            break;
+
+        case 7: // Not used
+            break;
         }
         break;
 
     case 0x0800:                /* PSG */
-
         switch (A & 15) {
-
             /* Select PSG channel */
         case 0:
             io.psg_ch = V & 7;
-            return;
+            break;
 
             /* Select global volume */
         case 1:
             io.psg_volume = V;
-            return;
+            break;
 
             /* Frequency setting, 8 lower bits */
         case 2:
             io.PSG[io.psg_ch][2] = V;
-            return;
+            break;
 
             /* Frequency setting, 4 upper bits */
         case 3:
             io.PSG[io.psg_ch][3] = V & 15;
-            return;
+            break;
 
         case 4:
             io.PSG[io.psg_ch][4] = V;
@@ -589,12 +552,12 @@ IO_write(uint16_t A, uint8_t V)
 //             if ((V & 0xC0) == 0x40)
 //                 io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] = 0;
 // #endif
-            return;
+            break;
 
             /* Set channel specific volume */
         case 5:
             io.PSG[io.psg_ch][5] = V;
-            return;
+            break;
 
             /* Put a value into the waveform or direct audio buffers */
         case 6:
@@ -611,51 +574,50 @@ IO_write(uint16_t A, uint8_t V)
                 io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] =
                     (io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] + 1) & 0x1F;
             }
-            return;
+            break;
 
         case 7:
             io.PSG[io.psg_ch][7] = V;
-            return;
+            break;
 
         case 8:
             io.psg_lfo_freq = V;
-            return;
+            break;
 
         case 9:
             io.psg_lfo_ctrl = V;
-            return;
+            break;
         }
         break;
 
-    case 0x0c00:                /* timer */
-        //TRACE("Timer Access: A=%X,V=%X\n", A, V);
+    case 0x0c00:                /* Timer */
         switch (A & 1) {
         case 0:
-            io.timer_reload = (V & 0x7F) + 1;
-            return;
+            io.timer_reload = (V & 0x7F); // + 1;
+            break;
         case 1:
             V &= 1;
             if (V && !io.timer_running)
                 io.timer_counter = io.timer_reload;
             io.timer_running = V;
-            return;
+            break;
         }
         break;
 
-    case 0x1000:                /* joypad */
+    case 0x1000:                /* Joypad */
         io.joy_select = V & 1;
         if (V & 2)
             io.joy_counter = 0;
-        return;
+        break;
 
     case 0x1400:                /* IRQ */
-        switch (A & 15) {
+        switch (A & 3) {
         case 2:
             io.irq_mask = V & INT_MASK;
-            return;
+            break;
         case 3:
             io.irq_status &= ~INT_TIMER;
-            return;
+            break;
         }
         break;
 

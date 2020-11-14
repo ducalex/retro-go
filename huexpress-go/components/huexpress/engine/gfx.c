@@ -1,7 +1,6 @@
 // gfx.c - VDC General emulation
 //
 #include "pce.h"
-#include "config.h"
 
 static gfx_context_t saved_gfx_context[2];
 static bool gfx_need_redraw = 0;
@@ -32,7 +31,7 @@ int ScrollYDiff;
 		Return: nothing
 
 *****************************************************************************/
-static inline void
+FAST_INLINE void
 spr2pixel(int no)
 {
 	uint8_t *C = VRAM + no * 128;
@@ -65,7 +64,7 @@ spr2pixel(int no)
 		Return: nothing
 
 *****************************************************************************/
-static inline void
+FAST_INLINE void
 tile2pixel(int no)
 {
 	uint8_t *C = VRAM + no * 32;
@@ -105,7 +104,7 @@ tile2pixel(int no)
 		Return: nothing
 
 *****************************************************************************/
-static inline void
+FAST_INLINE void
 draw_sprite(int offset, uint16_t *C, uint32_t *C2, uint8_t *PAL, int h, int inc,
 	uint8_t pr, bool hflip, bool update_mask)
 {
@@ -215,7 +214,7 @@ draw_sprite(int offset, uint16_t *C, uint32_t *C2, uint8_t *PAL, int h, int inc,
 		Return: nothing
 
 *****************************************************************************/
-static inline void
+FAST_INLINE void
 draw_tiles(int Y1, int Y2)
 {
 	int XW, no, x, y, h, offset;
@@ -302,7 +301,7 @@ draw_tiles(int Y1, int Y2)
 		Return: absolutely nothing
 
 *****************************************************************************/
-static inline void
+FAST_INLINE void
 draw_sprites(int Y1, int Y2, bool bg)
 {
 	sprite_t *spr = (sprite_t *)SPRAM + 63;
@@ -396,7 +395,7 @@ draw_sprites(int Y1, int Y2, bool bg)
 /*
 	Hit Check Sprite#0 and others
 */
-static inline bool
+FAST_INLINE bool
 sprite_hit_check(void)
 {
 	sprite_t *spr = (sprite_t *)SPRAM;
@@ -422,17 +421,13 @@ sprite_hit_check(void)
 /*
 	Computes the new screen height and eventually change the screen mode
 */
-static inline void
+FAST_INLINE void
 change_video_mode(void)
 {
 	uint16_t temp_vds = IO_VDC_REG[VPR].B.h;
 	uint16_t temp_vsw = IO_VDC_REG[VPR].B.l;
 	uint16_t temp_vdw = IO_VDC_REG[VDW].W;
 	uint16_t temp_vcr = IO_VDC_REG[VCR].W;
-
-	uint16_t min_display = temp_vds + temp_vsw;
-	uint16_t max_display = min_display;
-	uint16_t cur_display = min_display;
 
 	TRACE_GFX("GFX: Changing pce screen mode\n"
 		" VDS = %04x VSW = %04x VDW = %04x VCR = %04x\n",
@@ -441,27 +436,79 @@ change_video_mode(void)
 	if (temp_vdw == 0)
 		return;
 
-	while (cur_display < 242 + 14) {
-		cur_display += temp_vdw;
-		max_display = cur_display;
-		cur_display += 3 + temp_vcr;
-
-		TRACE_GFX("GFX: Adding vdw to the height of graphics,"
-			" cur_display = %d\n", cur_display);
-	}
-
-	min_display = MAX(min_display, 14);
-	max_display = MIN(max_display, 242 + 14);
-
-	io.vdc_minline = min_display;
-	io.vdc_maxline = max_display;
-
-	//! Number of lines to render
-	io.screen_h = max_display - min_display + 1;
+	io.vdc_minline = ((temp_vsw & 0x1F)+1+temp_vds+2); //temp_vds + temp_vsw;;
+	io.vdc_maxline = io.vdc_minline + temp_vdw; // + 1
+	io.screen_h = io.vdc_maxline - io.vdc_minline + 1;
 
 	//TRACE_GFX("GFX: %d lines to render\n", io.screen_h);
 
 	osd_gfx_set_mode(io.screen_w, io.screen_h);
+}
+
+
+IRAM_ATTR void
+gfx_save_context(int slot_number)
+{
+	gfx_context_t *context = &saved_gfx_context[slot_number];
+
+	if (slot_number == 0) {
+		if (gfx_need_redraw == 1) { // Context is already saved + we haven't render the line using it
+			// MESSAGE_DEBUG("Cancelled context saving as a previous one wasn't consumed yet\n");
+			return;
+		}
+		gfx_need_redraw = 1;
+	}
+
+	context->scroll_x = ScrollX;
+	context->scroll_y = ScrollY;
+	context->scroll_y_diff = ScrollYDiff;
+	context->control = Control;
+
+	TRACE_GFX("Saving context %d, scroll = (%d,%d,%d), CR = 0x%02d\n",
+		slot_number, ScrollX, ScrollY, ScrollYDiff, Control);
+}
+
+
+FAST_INLINE void
+gfx_load_context(int slot_number)
+{
+	gfx_context_t *context = &saved_gfx_context[slot_number];
+
+	ScrollX = context->scroll_x;
+	ScrollY = context->scroll_y;
+	ScrollYDiff = context->scroll_y_diff;
+	Control = context->control;
+
+	TRACE_GFX("Restoring context %d, scroll = (%d,%d,%d), CR = 0x%02d\n",
+		slot_number, ScrollX, ScrollY, ScrollYDiff, Control);
+}
+
+
+/*
+	render lines into the buffer from min_line to max_line (inclusive)
+*/
+FAST_INLINE void
+render_lines(int min_line, int max_line)
+{
+	if (osd_skipFrames == 0) // Check for frameskip
+	{
+		gfx_save_context(1);
+		gfx_load_context(0);
+
+		sprite_usespbg = 0;
+
+		if (SpriteON)
+			draw_sprites(min_line, max_line, false); // max_line + 1
+
+		draw_tiles(min_line, max_line); // max_line + 1
+
+		if (SpriteON)
+			draw_sprites(min_line, max_line, true);  // max_line + 1
+
+		gfx_load_context(1);
+	}
+
+	gfx_need_redraw = 0;
 }
 
 
@@ -513,85 +560,12 @@ gfx_term(void)
 }
 
 
-IRAM_ATTR void
-gfx_save_context(int slot_number)
-{
-	gfx_context_t *context = &saved_gfx_context[slot_number];
-
-	if (slot_number == 0) {
-		if (gfx_need_redraw == 1) { // Context is already saved + we haven't render the line using it
-			// MESSAGE_DEBUG("Cancelled context saving as a previous one wasn't consumed yet\n");
-			return;
-		}
-		gfx_need_redraw = 1;
-	}
-
-	context->scroll_x = ScrollX;
-	context->scroll_y = ScrollY;
-	context->scroll_y_diff = ScrollYDiff;
-	context->control = Control;
-
-	TRACE_GFX("Saving context %d, scroll = (%d,%d,%d), CR = 0x%02d\n",
-		slot_number, ScrollX, ScrollY, ScrollYDiff, Control);
-}
-
-
-static inline void
-gfx_load_context(int slot_number)
-{
-	gfx_context_t *context = &saved_gfx_context[slot_number];
-
-	ScrollX = context->scroll_x;
-	ScrollY = context->scroll_y;
-	ScrollYDiff = context->scroll_y_diff;
-	Control = context->control;
-
-	TRACE_GFX("Restoring context %d, scroll = (%d,%d,%d), CR = 0x%02d\n",
-		slot_number, ScrollX, ScrollY, ScrollYDiff, Control);
-}
-
-
-/*
-	render lines into the buffer from min_line to max_line (inclusive)
-*/
-static inline void
-render_lines(int min_line, int max_line)
-{
-	if (osd_skipFrames == 0) // Check for frameskip
-	{
-		gfx_save_context(1);
-		gfx_load_context(0);
-
-		// To do: enforce host.options.bgEnabled and fgEnabled
-
-		// Temp hack
-		if (max_line == 239) max_line = 240;
-
-		sprite_usespbg = 0;
-
-		if (SpriteON)
-			draw_sprites(min_line, max_line, false); // max_line + 1
-
-		draw_tiles(min_line, max_line); // max_line + 1
-
-		if (SpriteON)
-			draw_sprites(min_line, max_line, true);  // max_line + 1
-
-		gfx_load_context(1);
-	}
-
-	gfx_need_redraw = 0;
-}
-
-
 /*
 	process one scanline
 */
 IRAM_ATTR void
-gfx_loop(void)
+gfx_run(void)
 {
-	// io.irq_status &= INT_TIMER;
-
 	// Count dma delay
 	if (io.vdc_satb_counter > 0) {
 		// A dma is in progress
@@ -606,13 +580,12 @@ gfx_loop(void)
 
 	// Test raster hit
 	if (RasHitON) {
-		int raster_hit = (IO_VDC_REG[RCR].W & 0x3FF) - 64;
-		if (raster_hit >= 0 && raster_hit <= 262) {
-			if (Scanline == (raster_hit + IO_VDC_REG[VPR].B.l + IO_VDC_REG[VPR].B.h) % 263) {
-				TRACE_GFX("\n-----------------RASTER HIT (%d)------------------\n", Scanline);
-				io.vdc_status |= VDC_STAT_RR;
-				io.irq_status |= INT_IRQ1;
-			}
+		uint raster_hit = (IO_VDC_REG[RCR].W & 0x3FF) - 64;
+		uint current_line = Scanline - io.vdc_minline + 1;
+		if (current_line == raster_hit && raster_hit < 263) {
+			TRACE_GFX("\n-----------------RASTER HIT (%d)------------------\n", Scanline);
+			io.vdc_status |= VDC_STAT_RR;
+			io.irq_status |= INT_IRQ1;
 		}
 	}
 
@@ -644,9 +617,6 @@ gfx_loop(void)
 	}
 	/* V Blank trigger line */
 	else if (Scanline == 256) {
-
-		osd_keyboard();
-
 		if (io.vdc_mode_chg) {
 			change_video_mode();
 			io.vdc_mode_chg = 0;
@@ -660,20 +630,6 @@ gfx_loop(void)
 		gfx_save_context(0);
 
 		render_lines(last_display_counter, display_counter);
-
-		if (
-			ROM_CRC == 0xD00CA74F && Control == 0x008C && (display_counter - last_display_counter) >= 239
-		) {
-			 printf("Splatterhouse hack, skipping blit, scroll = (%d,%d,%d), CR = 0x%04x\n",
-				 ScrollX, ScrollY, ScrollYDiff, Control);
-		} else {
-			osd_gfx_blit();
-		}
-
-		/* When in internet protocol mode, it's the server which is in charge of throttling */
-		if (!host.netplay) {
-			osd_wait_next_vsync();
-		}
 
 		/* VRAM to SATB DMA */
 		if (io.vdc_satb == 1 || IO_VDC_REG[DCR].W & 0x0010) {
@@ -691,9 +647,4 @@ gfx_loop(void)
 	else {
 		gfx_need_redraw = 0;
 	}
-
-	Scanline++;
-
-	if (Scanline > 262)
-		Scanline = 0;
 }

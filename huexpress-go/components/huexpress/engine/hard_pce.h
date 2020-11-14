@@ -25,28 +25,28 @@
 #define VDC_STAT_VD             0x20 // VBlank
 #define VDC_STAT_BSY            0x40 // DMA Transfer in progress
 
-#define	VRR	2
 enum _VDC_REG {
-	MAWR,						/*  0 *//* Memory Address Write Register */
-	MARR,						/*  1 *//* Memory Address Read Register */
-	VWR,						/*  2 *//* VRAM Read Register / VRAM Write Register */
-	vdc3,						/*  3 */
-	vdc4,						/*  4 */
-	CR,							/*  5 *//* Control Register */
-	RCR,						/*  6 *//* Raster Compare Register */
-	BXR,						/*  7 *//* Horizontal scroll offset */
-	BYR,						/*  8 *//* Vertical scroll offset */
-	MWR,						/*  9 *//* Memory Width Register */
-	HSR,						/*  A *//* Unknown, other horizontal definition */
-	HDR,						/*  B *//* Horizontal Definition */
-	VPR,						/*  C *//* Higher byte = VDS, lower byte = VSW */
-	VDW,						/*  D *//* Vertical Definition */
-	VCR,						/*  E *//* Vertical counter between restarting of display */
-	DCR,						/*  F *//* DMA Control */
-	SOUR,						/* 10 *//* Source Address of DMA transfert */
-	DISTR,						/* 11 *//* Destination Address of DMA transfert */
-	LENR,						/* 12 *//* Length of DMA transfert */
-	SATB						/* 13 *//* Address of SATB */
+	MAWR = 0,					/* Memory Address Write Register */
+	MARR = 1,					/* Memory Address Read Register */
+	VRR = 2,					/* VRAM Read Register */
+	VWR = 2,					/* VRAM Write Register */
+	vdc3 = 3,					/* Unused */
+	vdc4 = 4,					/* Unused */
+	CR = 5,						/* Control Register */
+	RCR = 6,					/* Raster Compare Register */
+	BXR = 7,					/* Horizontal scroll offset */
+	BYR = 8,					/* Vertical scroll offset */
+	MWR = 9,					/* Memory Width Register */
+	HSR = 10,					/* Unknown, other horizontal definition */
+	HDR = 11,					/* Horizontal Definition */
+	VPR = 12,					/* Higher byte = VDS, lower byte = VSW */
+	VDW = 13,					/* Vertical Definition */
+	VCR = 14,					/* Vertical counter between restarting of display */
+	DCR = 15,					/* DMA Control */
+	SOUR = 16,					/* Source Address of DMA transfert */
+	DISTR = 17,					/* Destination Address of DMA transfert */
+	LENR = 18,					/* Length of DMA transfert */
+	SATB = 19					/* Address of SATB */
 };
 
 #define PSG_VOICE_REG           0x00 // voice index
@@ -85,12 +85,8 @@ typedef struct {
 
 	/* VDC */
 	UWord VDC[32];				/* value of each VDC register */
-	uint8_t vdc_inc;			/* VRAM pointer increment once accessed */
 	uint8_t vdc_reg;			/* currently selected VDC register */
 	uint8_t vdc_status;			/* current VCD status (end of line, end of screen, ...) */
-	uint8_t vdc_ratch;			/* temporary value to keep track of the first byte
-								 * when setting a 16 bits value with two byte access
-								 */
 	uint8_t vdc_satb;			/* boolean which keeps track of the need to copy
 								 * the SATB from VRAM to internal SATB through DMA
 								 */
@@ -185,7 +181,7 @@ typedef struct {
 	uint16_t Scanline;
 
 	// Total number of elapsed cycles in the current scanline
-	uint16_t Cycles;
+	int16_t Cycles;
 
 	// Value of each of the MMR registers
 	uint8_t MMR[8];
@@ -269,24 +265,24 @@ uint8_t IO_read(uint16_t A);
 #define pce_read8(addr) ({							\
 	uint16_t a = (addr);							\
 	uint8_t *page = PageR[a >> 13]; 				\
-	(page == IOAREA) ? IO_read(a) : page[a]; 	\
+	(page == IOAREA) ? IO_read(a) : page[a]; 	    \
 })
 
 #define pce_write8(addr, byte) {					\
 	uint16_t a = (addr), b = (byte); 				\
 	uint8_t *page = PageW[a >> 13]; 				\
-	if (page == IOAREA) IO_write(a, b); 		\
-	else page[a] = b;							\
+	if (page == IOAREA) IO_write(a, b); 		    \
+	else page[a] = b;							    \
 }
 
 #define pce_read16(addr) ({							\
 	uint16_t a = (addr); 							\
-	*((uint16_t*)(PageR[a >> 13] + a));			\
+	*((uint16_t*)(PageR[a >> 13] + a));			    \
 })
 
 #define pce_write16(addr, word) {					\
 	uint16_t a = (addr), w = (word); 				\
-	*((uint16_t*)(PageR[a >> 13] + a)) = w;		\
+	*((uint16_t*)(PageR[a >> 13] + a)) = w;		    \
 }
 
 #else
@@ -336,25 +332,6 @@ pce_bank_set(uint8_t P, uint8_t V)
 	MMR[P] = V;
 	PageR[P] = (MemoryMapR[V] == IOAREA) ? (IOAREA) : (MemoryMapR[V] - P * 0x2000);
 	PageW[P] = (MemoryMapW[V] == IOAREA) ? (IOAREA) : (MemoryMapW[V] - P * 0x2000);
-}
-
-static inline void
-pce_timer(int cycles)
-{
-	io.timer_cycles_counter -= cycles;
-
-	// Trigger when it underflows
-	if (io.timer_cycles_counter > CYCLES_PER_TIMER_TICK) {
-		io.timer_cycles_counter += CYCLES_PER_TIMER_TICK;
-		if (io.timer_running) {
-			// Trigger when it underflows from 0
-			if (io.timer_counter > 0x7F) {
-				io.timer_counter = io.timer_reload;
-				io.irq_status |= INT_TIMER;
-			}
-			io.timer_counter--;
-		}
-	}
 }
 
 #endif

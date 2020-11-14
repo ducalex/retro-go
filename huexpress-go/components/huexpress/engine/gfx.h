@@ -42,6 +42,13 @@ typedef struct {
 	short control;
 } gfx_context_t;
 
+enum {
+	OBJ_INVALID      = 0,
+	OBJ_VALID_TILE   = 1,
+	OBJ_VALID_SPRITE = 2,
+};
+
+// extern bool OBJ_CACHE_STATUS[512];
 extern bool TILE_CACHE[2048];
 extern bool SPR_CACHE[512];
 
@@ -57,7 +64,7 @@ extern int ScrollYDiff;
 #define	XBUF_HEIGHT	(242 + 64 + 64)
 
 int gfx_init(void);
-void gfx_loop(void);
+void gfx_run(void);
 void gfx_term(void);
 void gfx_clear_cache(void);
 void gfx_save_context(int slot_number);

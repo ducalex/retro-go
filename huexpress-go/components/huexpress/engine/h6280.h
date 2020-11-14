@@ -6,7 +6,8 @@
 extern void h6280_reset(void);
 extern void h6280_run(void);
 extern void h6280_irq(int);
-extern void dump_cpu_registers(void);
+extern void h6280_debug(void);
+extern void h6280_print_state(void);
 
 typedef struct op {
    int (*func_exe)(void);
