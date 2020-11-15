@@ -16,38 +16,41 @@
 #define CYCLES_PER_LINE        (CYCLES_PER_FRAME / 263 + 1)
 #define CYCLES_PER_TIMER_TICK  (1024) // 1097
 
-// Status flags
-#define VDC_STAT_CR             0x01 // Sprite Collision
-#define VDC_STAT_OR             0x02 // Sprite Overflow
-#define VDC_STAT_RR             0x04 // Scanline interrupt
-#define VDC_STAT_DS             0x08 // End of VRAM to SATB DMA transfer
-#define VDC_STAT_DV             0x10 // End of VRAM to VRAM DMA transfer
-#define VDC_STAT_VD             0x20 // VBlank
-#define VDC_STAT_BSY            0x40 // DMA Transfer in progress
+// VDC Status Flags (vdc_status bit)
+typedef enum {
+	VDC_STAT_CR  = 0,	/* Sprite Collision */
+	VDC_STAT_OR  = 1,	/* Sprite Overflow */
+	VDC_STAT_RR  = 2,	/* Scanline interrupt */
+	VDC_STAT_DS  = 3,	/* End of VRAM to SATB DMA transfer */
+	VDC_STAT_DV  = 4,	/* End of VRAM to VRAM DMA transfer */
+	VDC_STAT_VD  = 5,	/* VBlank */
+	VDC_STAT_BSY = 6,	/* DMA Transfer in progress */
+} vdc_stat_t;
 
-enum _VDC_REG {
-	MAWR = 0,					/* Memory Address Write Register */
-	MARR = 1,					/* Memory Address Read Register */
-	VRR = 2,					/* VRAM Read Register */
-	VWR = 2,					/* VRAM Write Register */
-	vdc3 = 3,					/* Unused */
-	vdc4 = 4,					/* Unused */
-	CR = 5,						/* Control Register */
-	RCR = 6,					/* Raster Compare Register */
-	BXR = 7,					/* Horizontal scroll offset */
-	BYR = 8,					/* Vertical scroll offset */
-	MWR = 9,					/* Memory Width Register */
-	HSR = 10,					/* Unknown, other horizontal definition */
-	HDR = 11,					/* Horizontal Definition */
-	VPR = 12,					/* Higher byte = VDS, lower byte = VSW */
-	VDW = 13,					/* Vertical Definition */
-	VCR = 14,					/* Vertical counter between restarting of display */
-	DCR = 15,					/* DMA Control */
-	SOUR = 16,					/* Source Address of DMA transfert */
-	DISTR = 17,					/* Destination Address of DMA transfert */
-	LENR = 18,					/* Length of DMA transfert */
-	SATB = 19					/* Address of SATB */
-};
+// VDC Registers
+typedef enum {
+	MAWR 	= 0,		/* Memory Address Write Register */
+	MARR 	= 1,		/* Memory Address Read Register */
+	VRR 	= 2,		/* VRAM Read Register */
+	VWR 	= 2,		/* VRAM Write Register */
+	vdc3 	= 3,		/* Unused */
+	vdc4 	= 4,		/* Unused */
+	CR 		= 5,		/* Control Register */
+	RCR 	= 6,		/* Raster Compare Register */
+	BXR 	= 7,		/* Horizontal scroll offset */
+	BYR 	= 8,		/* Vertical scroll offset */
+	MWR 	= 9,		/* Memory Width Register */
+	HSR 	= 10,		/* Unknown, other horizontal definition */
+	HDR 	= 11,		/* Horizontal Definition */
+	VPR 	= 12,		/* Higher byte = VDS, lower byte = VSW */
+	VDW 	= 13,		/* Vertical Definition */
+	VCR 	= 14,		/* Vertical counter between restarting of display */
+	DCR 	= 15,		/* DMA Control */
+	SOUR 	= 16,		/* Source Address of DMA transfert */
+	DISTR 	= 17,		/* Destination Address of DMA transfert */
+	LENR 	= 18,		/* Length of DMA transfert */
+	SATB 	= 19		/* Address of SATB */
+} vdc_reg_t;
 
 #define PSG_VOICE_REG           0x00 // voice index
 #define PSG_VOLUME_REG          0x01 // master volume
@@ -92,6 +95,7 @@ typedef struct {
 								 */
 	uint8_t vdc_satb_counter; 	/* DMA finished interrupt delay counter */
 	uint8_t vdc_mode_chg;       /* Video mode change needed at next frame */
+	uint32_t vdc_irq_stack;		/* Pending VDC IRQs (we use it as a stack of 4bit events) */
 	uint16_t bg_w;				/* number of tiles horizontally in virtual screen */
 	uint16_t bg_h;				/* number of tiles vertically in virtual screen */
 	uint16_t screen_w;			/* size of real screen in pixels */
@@ -225,8 +229,10 @@ extern uint8_t *MemoryMapW[256];
 #define SF2 PCE.SF2
 #define io PCE.IO
 
-#define IO_VDC_REG        io.VDC
-#define IO_VDC_REG_ACTIVE io.VDC[io.vdc_reg]
+#define IO_VDC_REG           io.VDC
+#define IO_VDC_REG_ACTIVE    io.VDC[io.vdc_reg]
+#define IO_VDC_STATUS(bit)   ((io.vdc_status >> bit) & 1)
+// #define IO_VDC_REG(x)        io.VDC[x]
 
 #define	ScrollX	(IO_VDC_REG[BXR].W)
 #define	ScrollY	(IO_VDC_REG[BYR].W)

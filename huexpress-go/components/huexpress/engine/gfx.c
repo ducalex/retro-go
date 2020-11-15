@@ -561,31 +561,54 @@ gfx_term(void)
 
 
 /*
+	Raises a VDC IRQ and/or process pending VDC IRQs.
+	More than one interrupt can happen in a single line on real hardware and the cpu
+	would usually receive them one by one. We use an uint32 as a 8 slot buffer.
+*/
+void
+gfx_irq(int type)
+{
+	/* If IRQ, push it on the stack */
+	if (type >= 0) {
+		io.vdc_irq_stack <<= 4;
+		io.vdc_irq_stack |= type & 0xF;
+	}
+
+	/* Pop the first pending vdc interrupt only if io.irq_status is clear */
+	int pos = 28;
+	while (!(io.irq_status & INT_IRQ1) && io.vdc_irq_stack) {
+		if (io.vdc_irq_stack >> pos) {
+			io.vdc_status |= 1 << (io.vdc_irq_stack >> pos);
+			io.vdc_irq_stack &= ~(0xF << pos);
+			io.irq_status |= INT_IRQ1; // Notify the CPU
+		}
+		pos -= 4;
+	}
+}
+
+
+/*
 	process one scanline
 */
 IRAM_ATTR void
 gfx_run(void)
 {
-	// Count dma delay
+	/* DMA Transfer in "progress" */
 	if (io.vdc_satb_counter > 0) {
-		// A dma is in progress
 		if (--io.vdc_satb_counter == 0) {
-			// dma has just finished
 			if (SATBIntON) {
-				io.vdc_status |= VDC_STAT_DS;
-				io.irq_status |= INT_IRQ1;
+				gfx_irq(VDC_STAT_DS);
 			}
 		}
 	}
 
-	// Test raster hit
+	/* Test raster hit */
 	if (RasHitON) {
 		uint raster_hit = (IO_VDC_REG[RCR].W & 0x3FF) - 64;
 		uint current_line = Scanline - io.vdc_minline + 1;
 		if (current_line == raster_hit && raster_hit < 263) {
 			TRACE_GFX("\n-----------------RASTER HIT (%d)------------------\n", Scanline);
-			io.vdc_status |= VDC_STAT_RR;
-			io.irq_status |= INT_IRQ1;
+			gfx_irq(VDC_STAT_RR);
 		}
 	}
 
@@ -605,11 +628,7 @@ gfx_run(void)
 
 		if (Scanline >= io.vdc_minline && Scanline <= io.vdc_maxline) {
 			if (gfx_need_redraw) {
-				// && Scanline > io.vdc_minline)
-				// We got render things before being on the second line
-
 				render_lines(last_display_counter, display_counter);
-
 				last_display_counter = display_counter;
 			}
 			display_counter++;
@@ -623,8 +642,7 @@ gfx_run(void)
 		}
 
 		if (SpHitON && sprite_hit_check()) {
-			io.vdc_status |= VDC_STAT_CR;
-			io.irq_status |= INT_IRQ1;
+			gfx_irq(VDC_STAT_CR);
 		}
 
 		gfx_save_context(0);
@@ -639,12 +657,14 @@ gfx_run(void)
 		}
 
 		if (VBlankON) {
-			io.vdc_status |= VDC_STAT_VD;
-			io.irq_status |= INT_IRQ1;
+			gfx_irq(VDC_STAT_VD);
 		}
 	}
 	/* V Blank area */
 	else {
 		gfx_need_redraw = 0;
 	}
+
+	/* Always call at least once (to handle pending IRQs) */
+	gfx_irq(-1);
 }

@@ -457,8 +457,7 @@ IO_write(uint16_t A, uint8_t V)
                     IO_VDC_REG[LENR].W -= 1;
                 }
 
-                io.vdc_status |= VDC_STAT_DV;
-                io.irq_status |= INT_IRQ1;
+                gfx_irq(VDC_STAT_DV);
 
                 gfx_clear_cache();
                 return;

@@ -66,6 +66,7 @@ extern int ScrollYDiff;
 int gfx_init(void);
 void gfx_run(void);
 void gfx_term(void);
+void gfx_irq(int type);
 void gfx_clear_cache(void);
 void gfx_save_context(int slot_number);
 void gfx_set_scroll_diff(void);
