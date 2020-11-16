@@ -420,7 +420,8 @@ IO_write(uint16_t A, uint8_t V)
                     MESSAGE_DEBUG("ScrollYDiff went negative when substraction VPR.h/.l (%d,%d)\n",
                         IO_VDC_REG[VPR].B.h, IO_VDC_REG[VPR].B.l);
 
-                TRACE_GFX2("ScrollY = %d (h)\n", ScrollY);                break;
+                TRACE_GFX2("ScrollY = %d (h)\n", ScrollY);
+                break;
             case MWR:                           // Memory Width Register
                 break;
             case HSR:

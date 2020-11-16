@@ -436,7 +436,7 @@ change_video_mode(void)
 	if (temp_vdw == 0)
 		return;
 
-	io.vdc_minline = ((temp_vsw & 0x1F)+1+temp_vds+2); //temp_vds + temp_vsw;;
+	io.vdc_minline = temp_vds + temp_vsw;; // ((temp_vsw & 0x1F)+1+temp_vds+2);
 	io.vdc_maxline = io.vdc_minline + temp_vdw; // + 1
 	io.screen_h = io.vdc_maxline - io.vdc_minline + 1;
 
