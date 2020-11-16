@@ -142,9 +142,9 @@ static bool autocrop_update_cb(odroid_dialog_choice_t *option, odroid_dialog_eve
       odroid_settings_app_int32_set(NVS_KEY_AUTOCROP, autocrop);
    }
 
-   if (val == 0) strcpy(option->value, "Off ");
-   if (val == 1) strcpy(option->value, "Left");
-   if (val == 2) strcpy(option->value, "Both");
+   if (val == 0) strcpy(option->value, "Never ");
+   if (val == 1) strcpy(option->value, "Auto  ");
+   if (val == 2) strcpy(option->value, "Always");
 
    return event == ODROID_DIALOG_ENTER;
 }
@@ -172,10 +172,10 @@ static bool advanced_settings_cb(odroid_dialog_choice_t *option, odroid_dialog_e
 {
    if (event == ODROID_DIALOG_ENTER) {
       odroid_dialog_choice_t options[] = {
-         {1, "Region      ", "Auto", 1, &region_update_cb},
-         {2, "Overscan    ", "Auto", 1, &overscan_update_cb},
-         {3, "Auto crop   ", "Off ", 1, &autocrop_update_cb},
-         {4, "Sprite limit", "On  ", 1, &sprite_limit_cb},
+         {1, "Region      ", "Auto ", 1, &region_update_cb},
+         {2, "Overscan    ", "Auto ", 1, &overscan_update_cb},
+         {3, "Crop sides  ", "Never", 1, &autocrop_update_cb},
+         {4, "Sprite limit", "On   ", 1, &sprite_limit_cb},
          ODROID_DIALOG_CHOICE_LAST
       };
       odroid_overlay_dialog("Advanced", options, 0);
@@ -316,12 +316,11 @@ void osd_setpalette(rgb_t *pal)
 IRAM_ATTR void osd_blitscreen(bitmap_t *bmp)
 {
    int crop_v = (overscan) ? nes->overscan : 0;
-   int crop_l = (autocrop && nes->ppu->left_bg_counter > 210) ? 8 : 0;
-   int crop_r = (autocrop == 2 && crop_l) ? 8 : 0;
+   int crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
 
-   currentUpdate->buffer = bmp->line[crop_v] + crop_l;
+   currentUpdate->buffer = bmp->line[crop_v] + crop_h;
    currentUpdate->stride = bmp->pitch;
-   currentUpdate->width  = bmp->width - (crop_l + crop_r);
+   currentUpdate->width  = bmp->width - (crop_h * 2);
    currentUpdate->height = bmp->height - (crop_v * 2);
 
    fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
