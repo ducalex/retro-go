@@ -110,7 +110,7 @@ pce_run(void)
     host.paused = 0;
 
     while (!host.paused) {
-        osd_keyboard();
+        osd_input_read();
 
         for (Scanline = 0; Scanline < 263; ++Scanline) {
             Cycles -= CYCLES_PER_LINE;

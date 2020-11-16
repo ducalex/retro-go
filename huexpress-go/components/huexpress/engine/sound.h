@@ -3,6 +3,6 @@
 
 int  snd_init(void);
 void snd_term(void);
-void psg_update(signed char *buf, int ch, unsigned dwSize);
+void snd_update(short *buffer, unsigned length);
 
 #endif

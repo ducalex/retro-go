@@ -1,4 +1,4 @@
-// gfx.c - VDC General emulation
+// gfx.c - VDC/VCE Emulation
 //
 #include "pce.h"
 
@@ -517,8 +517,8 @@ gfx_init(void)
 {
 	gfx_need_redraw = 0;
 
-	OBJ_CACHE = rg_alloc(0x10000, MEM_FAST);
-    SPM_ptr   = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
+	OBJ_CACHE = osd_alloc(0x10000);
+    SPM_ptr   = osd_alloc(XBUF_WIDTH * XBUF_HEIGHT);
 	SPM	      = SPM_ptr + XBUF_WIDTH * 64 + 32;
 
 	gfx_clear_cache();
@@ -590,7 +590,7 @@ gfx_irq(int type)
 /*
 	process one scanline
 */
-IRAM_ATTR void
+void
 gfx_run(void)
 {
 	/* DMA Transfer in "progress" */

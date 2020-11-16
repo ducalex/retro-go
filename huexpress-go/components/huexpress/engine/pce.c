@@ -1,24 +1,3 @@
-/*
- *	This program is free software; you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation; either version 2 of the License, or
- *	(at your option) any later version.
- *
- *	This program is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
- *	GNU Library General Public License for more details.
- *
- *	You should have received a copy of the GNU General Public License
- *	along with this program; if not, write to the Free Software
- *	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- *
- *  Created  1998 by BERO bero@geocities.co.jp
- *  Modified 1998 by hmmx hmmx@geocities.co.jp
- *	Modified 1999-2005 by Zeograd (Olivier Jolly) zeograd@zeograd.com
- *	Modified 2011-2013 by Alexander von Gluck kallisti5@unixzen.com
- */
-
 // pce.c - Entry file to start/stop/reset/save emulation
 //
 #include "pce.h"
@@ -102,7 +81,7 @@ LoadCard(const char *name)
 	offset = fsize & 0x1fff;
 
 	// read ROM
-	ROM = rg_alloc(fsize, MEM_SLOW);
+	ROM = osd_alloc(fsize);
 
 	if (ROM == NULL)
 	{
@@ -192,7 +171,7 @@ LoadCard(const char *name)
 
 	// Allocate the card's onboard ram
 	if (romFlags[IDX].Flags & ONBOARD_RAM) {
-		ExtraRAM = ExtraRAM ?: rg_alloc(0x8000, MEM_FAST);
+		ExtraRAM = ExtraRAM ?: osd_alloc(0x8000);
 		MemoryMapR[0x40] = MemoryMapW[0x40] = ExtraRAM;
 		MemoryMapR[0x41] = MemoryMapW[0x41] = ExtraRAM + 0x2000;
 		MemoryMapR[0x42] = MemoryMapW[0x42] = ExtraRAM + 0x4000;
@@ -224,7 +203,7 @@ ResetPCE(bool hard)
 int
 InitPCE(const char *name)
 {
-	if (osd_init_input())
+	if (osd_input_init())
 		return 1;
 
 	if (gfx_init())

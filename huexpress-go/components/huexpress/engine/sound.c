@@ -3,7 +3,7 @@
 #include "sound.h"
 #include "pce.h"
 
-static uint8_t vol_tbl[32] = {
+static const uint8_t vol_tbl[32] = {
     100 >> 8, 451 >> 8, 508 >> 8, 573 >> 8, 646 >> 8, 728 >> 8, 821 >> 8, 925 >> 8,
     1043 >> 8, 1175 >> 8, 1325 >> 8, 1493 >> 8, 1683 >> 8, 1898 >> 8, 2139 >> 8, 2411 >> 8,
     2718 >> 8, 3064 >> 8, 3454 >> 8, 3893 >> 8, 4388 >> 8, 4947 >> 8, 5576 >> 8, 6285 >> 8,
@@ -15,34 +15,10 @@ static uint32_t fixed_n[6];
 static uint32_t rand_val[6]; // Noise seed
 static uint32_t k[6];
 static uint32_t r[6];
+static int8_t mix_buffer[48000 / 60 * 2];
 
 
-int
-snd_init(void)
-{
-    memset(&da_index, 0, sizeof(da_index));
-    memset(&fixed_n, 0, sizeof(fixed_n));
-    memset(&rand_val, 0, sizeof(rand_val));
-    memset(&k, 0, sizeof(k));
-    memset(&r, 0, sizeof(r));
-
-    rand_val[4] = 0x51F631E4;
-    rand_val[5] = 0x51F631E4;
-
-    osd_snd_init();
-
-    return 0;
-}
-
-
-void
-snd_term(void)
-{
-    osd_snd_shutdown();
-}
-
-
-void
+FAST_INLINE void
 psg_update(int8_t *buf, int ch, size_t dwSize)
 {
     uint32_t fixed_inc;
@@ -206,5 +182,55 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
 pad_and_return:
     if (buf < buf_end) {
         memset(buf, 0, buf_end - buf);
+    }
+}
+
+
+int
+snd_init(void)
+{
+    memset(&da_index, 0, sizeof(da_index));
+    memset(&fixed_n, 0, sizeof(fixed_n));
+    memset(&rand_val, 0, sizeof(rand_val));
+    memset(&k, 0, sizeof(k));
+    memset(&r, 0, sizeof(r));
+
+    rand_val[4] = 0x51F631E4;
+    rand_val[5] = 0x51F631E4;
+
+    osd_snd_init();
+
+    return 0;
+}
+
+
+void
+snd_term(void)
+{
+    osd_snd_shutdown();
+}
+
+
+void
+snd_update(short *buffer, size_t length)
+{
+    int lvol = (io.psg_volume >> 4);
+    int rvol = (io.psg_volume & 0x0F);
+
+    if (host.sound.stereo) {
+        length *= 2;
+    }
+
+    memset(buffer, 0, length * 2);
+
+    for (int i = 0; i < PSG_CHANNELS; i++)
+    {
+        psg_update(mix_buffer, i, length);
+
+        for (int j = 0; j < length; j += 2)
+        {
+            buffer[j] += mix_buffer[j] * lvol;
+            buffer[j + 1] += mix_buffer[j + 1] * rvol;
+        }
     }
 }

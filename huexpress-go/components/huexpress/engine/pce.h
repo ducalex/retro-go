@@ -9,12 +9,13 @@
 
 #include <odroid_system.h>
 
-#include "../includes/config.h"
-#include "../includes/utils.h"
-#include "../includes/osd.h"
+#include "../config.h"
+#include "utils.h"
+#include "osd.h"
 
 #include "hard_pce.h"
 #include "h6280.h"
+#include "sound.h"
 #include "gfx.h"
 
 int LoadState(char *name);

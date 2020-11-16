@@ -25,7 +25,7 @@ HuExpress authors:
 - Alex von Gluck IV (kallisti5)
 
 Hu-Go! authors:
-- Zeograd
+- Zeograd (Olivier Jolly) zeograd@zeograd.com
 - David Shadoff (new kernel code, ideas, ...)
 - Nyef (cd emulation, ...)
 - Ixion (linux coding, sdl joypad, cd emulation, sound emulation, ...)
@@ -42,7 +42,8 @@ Hu-Go! authors:
 - Zoop & his gf (gfx bug fixes)
 
 Bero's PCE Emulator authors:
-- Bero
+- BERO bero@geocities.co.jp
+- hmmx hmmx@geocities.co.jp
 
 Technical documentation:
 - Charles MacDonald (http://cgfm2.emuviews.com/)

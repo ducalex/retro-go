@@ -1,7 +1,7 @@
 #ifndef _INCLUDE_HARD_PCE_H
 #define _INCLUDE_HARD_PCE_H
 
-#include "config.h"
+#include "../config.h"
 #include "stddef.h"
 #include "utils.h"
 
