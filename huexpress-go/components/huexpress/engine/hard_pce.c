@@ -348,7 +348,7 @@ IO_write(uint16_t A, uint8_t V)
                 break;
             case MWR:                           // Memory Width Register
                 io.bg_w = bg_w[(V >> 4) & 3]; // Bits 5-4 select the width
-                io.bg_h = bg_h[(V >> 5) & 1]; // Bit 6 selects the height
+                io.bg_h = bg_h[(V >> 6) & 1]; // Bit 6 selects the height
                 break;
             case HSR:
                 io.vdc_mode_chg = 1;
