@@ -28,13 +28,13 @@ static odroid_video_frame_t frames[2];
 static odroid_video_frame_t *curFrame, *prevFrame;
 static uint8_t current_fb = 0;
 static bool gfx_init_done = false;
+static bool overscan = false;
+static int current_height, current_width;
 
 uint8_t* osd_gfx_buffer = NULL;
 uint osd_skipFrames = 0;
 uint osd_blitFrames = 0;
 uint osd_fullFrames = 0;
-
-extern QueueHandle_t audioSyncQueue;
 
 #define COLOR_RGB(r,g,b) ( (((r)<<12)&0xf800) + (((g)<<7)&0x07e0) + (((b)<<1)&0x001f) )
 
@@ -57,6 +57,8 @@ void osd_gfx_init(void)
     // We never de-allocate them, so we don't care about the malloc pointer
     framebuffers[0] += XBUF_WIDTH * 64 + 32;
     framebuffers[1] += XBUF_WIDTH * 64 + 32;
+
+    overscan = odroid_settings_DisplayOverscan_get();
 }
 
 
@@ -64,10 +66,11 @@ void osd_gfx_set_mode(int width, int height)
 {
     printf("%s: (%dx%d)\n", __func__, width, height);
 
-    int crop_h = MAX(0, width - ODROID_SCREEN_WIDTH);
-    int crop_v = MAX(0, height - ODROID_SCREEN_HEIGHT);
+    current_width = width;
+    current_height = height;
 
-    // Should we consider vdc_minline/vdc_maxline to offset?
+    int crop_h = MAX(0, width - ODROID_SCREEN_WIDTH);
+    int crop_v = MAX(0, height - ODROID_SCREEN_HEIGHT) + (overscan ? 6 : 0);
 
     printf("%s: Cropping H: %d V: %d\n", __func__, crop_h, crop_v);
 
@@ -146,6 +149,31 @@ void osd_gfx_set_color(int index, uint8_t r, uint8_t g, uint8_t b)
  * Keyboard
  */
 
+static bool overscan_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+{
+    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
+        overscan = !overscan;
+        odroid_settings_DisplayOverscan_set(overscan);
+        osd_gfx_set_mode(current_width, current_height);
+    }
+
+    strcpy(option->value, overscan ? "On " : "Off");
+
+    return event == ODROID_DIALOG_ENTER;
+}
+
+static bool advanced_settings_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+{
+    if (event == ODROID_DIALOG_ENTER) {
+        odroid_dialog_choice_t options[] = {
+            {2, "Overscan    ", "On ", 1, &overscan_update_cb},
+            ODROID_DIALOG_CHOICE_LAST
+        };
+        odroid_overlay_dialog("Advanced", options, 0);
+    }
+    return false;
+}
+
 int osd_input_init(void)
 {
     return 0;
@@ -160,7 +188,11 @@ void osd_input_read(void)
 		odroid_overlay_game_menu();
 	}
 	else if (joystick.values[ODROID_INPUT_VOLUME]) {
-		odroid_overlay_game_settings_menu(NULL);
+        odroid_dialog_choice_t options[] = {
+            {101, "More...", "", 1, &advanced_settings_cb},
+            ODROID_DIALOG_CHOICE_LAST
+        };
+        odroid_overlay_game_settings_menu(options);
 	}
 
     unsigned char rc = 0;
