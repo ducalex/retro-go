@@ -1,8 +1,4 @@
-#include <freertos/FreeRTOS.h>
 #include <odroid_system.h>
-#include <esp_system.h>
-#include <esp_event.h>
-#include <esp_err.h>
 
 #include "../components/smsplus/shared.h"
 
@@ -116,8 +112,9 @@ void app_main(void)
     update2.buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
 
     // Load ROM
-    const char *romPath = odroid_system_get_rom_path();
-    load_rom(romPath);
+    rg_app_desc_t *app = odroid_system_get_app();
+
+    load_rom(app->romPath);
 
     system_reset_config();
 
@@ -145,7 +142,7 @@ void app_main(void)
     // if (consoleIsSMS) odroid_system_set_app_id(APP_ID + 1);
     // if (consoleIsGG)  odroid_system_set_app_id(APP_ID + 2);
 
-    if (odroid_system_get_start_action() == ODROID_START_ACTION_RESUME)
+    if (app->startAction == ODROID_START_ACTION_RESUME)
     {
         odroid_system_emu_load_state(0);
     }
@@ -295,7 +292,7 @@ void app_main(void)
         if (skipFrames == 0)
         {
             if (get_elapsed_time_since(startTime) > frameTime) skipFrames = 1;
-            if (speedupEnabled) skipFrames += speedupEnabled * 2.5;
+            if (app->speedupEnabled) skipFrames += app->speedupEnabled * 2.5;
         }
         else if (skipFrames > 0)
         {
@@ -305,7 +302,7 @@ void app_main(void)
         // Tick before submitting audio/syncing
         odroid_system_tick(!drawFrame, fullFrame, get_elapsed_time_since(startTime));
 
-        if (!speedupEnabled)
+        if (!app->speedupEnabled)
         {
             // Process audio
             for (short i = 0; i < snd.sample_count; i++)

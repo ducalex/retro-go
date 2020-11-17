@@ -1,6 +1,3 @@
-#include <freertos/FreeRTOS.h>
-#include <esp_system.h>
-#include <esp_task_wdt.h>
 #include <odroid_system.h>
 #include <string.h>
 
@@ -220,11 +217,13 @@ void app_main(void)
   	pcm.buf = (n16*)&audioBuffer;
   	pcm.pos = 0;
 
+    rg_app_desc_t *app = odroid_system_get_app();
+
     emu_init();
 
     pal_set_dmg(odroid_settings_Palette_get());
 
-    if (odroid_system_get_start_action() == ODROID_START_ACTION_RESUME)
+    if (app->startAction == ODROID_START_ACTION_RESUME)
     {
         odroid_system_emu_load_state(0);
     }
@@ -284,7 +283,7 @@ void app_main(void)
         if (skipFrames == 0)
         {
             if (get_elapsed_time_since(startTime) > frameTime) skipFrames = 1;
-            if (speedupEnabled) skipFrames += speedupEnabled * 2;
+            if (app->speedupEnabled) skipFrames += app->speedupEnabled * 2;
         }
         else if (skipFrames > 0)
         {
@@ -294,7 +293,7 @@ void app_main(void)
         // Tick before submitting audio/syncing
         odroid_system_tick(!drawFrame, fullFrame, get_elapsed_time_since(startTime));
 
-        if (!speedupEnabled)
+        if (!app->speedupEnabled)
         {
             odroid_audio_submit(pcm.buf, pcm.pos >> 1);
         }

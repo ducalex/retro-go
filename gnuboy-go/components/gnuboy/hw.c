@@ -7,7 +7,6 @@
 #include "lcd.h"
 #include "mem.h"
 
-#include "esp_attr.h"
 
 struct hw hw;
 

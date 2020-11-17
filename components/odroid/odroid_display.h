@@ -3,9 +3,6 @@
 #include <stdint.h>
 #include "odroid_colors.h"
 
-#define ODROID_SCREEN_WIDTH  320
-#define ODROID_SCREEN_HEIGHT 240
-
 typedef enum {
     SCREEN_UPDATE_EMPTY,
     SCREEN_UPDATE_FULL,

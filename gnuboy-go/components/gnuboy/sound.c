@@ -7,8 +7,6 @@
 #include "regs.h"
 #include "noise.h"
 
-#include <esp_attr.h>
-
 static const byte dmgwave[16] =
 {
 	0xac, 0xdd, 0xda, 0x48,

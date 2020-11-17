@@ -9,8 +9,6 @@
 #include "lcd.h"
 #include "rtc.h"
 
-#include "esp_attr.h"
-
 
 void emu_init()
 {

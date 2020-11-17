@@ -7,8 +7,6 @@
 #include "odroid_system.h"
 #include "odroid_audio.h"
 
-#define I2S_NUM (I2S_NUM_0)
-
 static int audioSink = ODROID_AUDIO_SINK_SPEAKER;
 static int audioSampleRate = 0;
 static int audioFilter = 0;
@@ -65,8 +63,8 @@ void odroid_audio_init(int sample_rate)
             .use_apll = 0 //1
         };
 
-        i2s_driver_install(I2S_NUM, &i2s_config, 0, NULL);
-        i2s_set_pin(I2S_NUM, NULL);
+        i2s_driver_install(ODROID_I2S_NUM, &i2s_config, 0, NULL);
+        i2s_set_pin(ODROID_I2S_NUM, NULL);
     }
     else if (audioSink == ODROID_AUDIO_SINK_DAC)
     {
@@ -89,8 +87,8 @@ void odroid_audio_init(int sample_rate)
             .data_in_num = -1                                                       //Not used
         };
 
-        i2s_driver_install(I2S_NUM, &i2s_config, 0, NULL);
-        i2s_set_pin(I2S_NUM, &pin_config);
+        i2s_driver_install(ODROID_I2S_NUM, &i2s_config, 0, NULL);
+        i2s_set_pin(ODROID_I2S_NUM, &pin_config);
 
         // Disable internal amp
         gpio_set_direction(ODROID_PIN_DAC1, GPIO_MODE_OUTPUT);
@@ -104,15 +102,15 @@ void odroid_audio_init(int sample_rate)
 
     odroid_audio_volume_set(volumeLevel);
 
-    printf("%s: I2S init done. clock=%f\n", __func__, i2s_get_clk(I2S_NUM));
+    printf("%s: I2S init done. clock=%f\n", __func__, i2s_get_clk(ODROID_I2S_NUM));
 }
 
 void odroid_audio_terminate()
 {
     if (audioInitialized)
     {
-        i2s_zero_dma_buffer(I2S_NUM);
-        i2s_driver_uninstall(I2S_NUM);
+        i2s_zero_dma_buffer(ODROID_I2S_NUM);
+        i2s_driver_uninstall(ODROID_I2S_NUM);
         audioInitialized = false;
     }
 
@@ -218,7 +216,7 @@ IRAM_ATTR void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
         filter_samples(stereoAudioBuffer, bufferSize);
     }
 
-    i2s_write(I2S_NUM, (const short *)stereoAudioBuffer, bufferSize, &written, 1000);
+    i2s_write(ODROID_I2S_NUM, (const short *)stereoAudioBuffer, bufferSize, &written, 1000);
     if (written == 0) // Anything > 0 is fine
     {
         RG_PANIC("i2s_write failed.");
@@ -258,6 +256,6 @@ void odroid_audio_mute(bool mute)
 
     if (mute && audioInitialized)
     {
-	    i2s_zero_dma_buffer(I2S_NUM);
+	    i2s_zero_dma_buffer(ODROID_I2S_NUM);
     }
 }

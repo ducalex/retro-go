@@ -18,6 +18,7 @@
 #define NVS_KEY_AUTOCROP "autocrop"
 
 static char* romData;
+static uint romCRC32;
 static size_t romSize;
 
 static uint16_t myPalette[64];
@@ -213,9 +214,14 @@ size_t osd_getromdata(unsigned char **data)
    return romSize;
 }
 
+uint osd_getromcrc()
+{
+   return romCRC32;
+}
+
 void osd_loadstate()
 {
-   if (odroid_system_get_start_action() == ODROID_START_ACTION_RESUME)
+   if (odroid_system_get_app()->startAction == ODROID_START_ACTION_RESUME)
    {
       odroid_system_emu_load_state(0);
    }
@@ -256,8 +262,9 @@ void osd_wait_for_vsync()
 
    if (skipFrames == 0)
    {
+      rg_app_desc_t *app = odroid_system_get_app();
       if (elapsed > frameTime) skipFrames = 1;
-      if (speedupEnabled) skipFrames += speedupEnabled * 2;
+      if (app->speedupEnabled) skipFrames += app->speedupEnabled * 2;
    }
    else if (skipFrames > 0)
    {
@@ -284,7 +291,7 @@ void osd_wait_for_vsync()
 */
 void osd_audioframe(int audioSamples)
 {
-   if (speedupEnabled)
+   if (odroid_system_get_app()->speedupEnabled)
       return;
 
    apu_process(audioBuffer, audioSamples); //get audio data
@@ -384,7 +391,7 @@ void app_main(void)
 
    romData = rg_alloc(0x200000, MEM_ANY);
 
-   const char *romPath = odroid_system_get_rom_path();
+   const char *romPath = odroid_system_get_app()->romPath;
 
    // Load ROM
    if (strcasecmp(romPath + (strlen(romPath) - 4), ".zip") == 0)
@@ -403,6 +410,8 @@ void app_main(void)
    {
       RG_PANIC("ROM file loading failed!");
    }
+
+   romCRC32 = crc32_le(0, (const uint8_t*)(romData + 16), romSize - 16);
 
    int region, ret;
 

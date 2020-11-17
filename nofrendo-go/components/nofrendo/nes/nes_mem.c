@@ -29,8 +29,6 @@
 #include <osd.h>
 #include <nes.h>
 
-#include <esp_attr.h>
-
 static mem_t mem;
 
 

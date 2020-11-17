@@ -14,9 +14,6 @@ static uint16_t *overlay_buffer = NULL;
 static short dialog_open_depth = 0;
 static short font_size = 8;
 
-// To do: move this out
-int8_t speedupEnabled = 0;
-
 void odroid_overlay_init()
 {
     overlay_buffer = (uint16_t *)rg_alloc(ODROID_SCREEN_WIDTH * 32 * 2, MEM_SLOW);
@@ -441,7 +438,7 @@ static bool filter_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event
         odroid_display_set_filter_mode(mode);
     }
 
-    if (mode == ODROID_DISPLAY_FILTER_OFF)     strcpy(option->value, "Off  ");
+    if (mode == ODROID_DISPLAY_FILTER_OFF)      strcpy(option->value, "Off  ");
     if (mode == ODROID_DISPLAY_FILTER_LINEAR_X) strcpy(option->value, "Horiz");
     if (mode == ODROID_DISPLAY_FILTER_LINEAR_Y) strcpy(option->value, "Vert ");
     if (mode == ODROID_DISPLAY_FILTER_BILINEAR) strcpy(option->value, "Both ");
@@ -462,7 +459,7 @@ static bool scaling_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
         odroid_display_set_scaling_mode(mode);
     }
 
-    if (mode == ODROID_DISPLAY_SCALING_OFF) strcpy(option->value, "Off  ");
+    if (mode == ODROID_DISPLAY_SCALING_OFF)  strcpy(option->value, "Off  ");
     if (mode == ODROID_DISPLAY_SCALING_FIT)  strcpy(option->value, "Fit ");
     if (mode == ODROID_DISPLAY_SCALING_FILL) strcpy(option->value, "Full ");
 
@@ -471,10 +468,11 @@ static bool scaling_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
 
 bool speedup_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
-    if (event == ODROID_DIALOG_PREV && --speedupEnabled < 0) speedupEnabled = 2;
-    if (event == ODROID_DIALOG_NEXT && ++speedupEnabled > 2) speedupEnabled = 0;
+    rg_app_desc_t *app = odroid_system_get_app();
+    if (event == ODROID_DIALOG_PREV && --app->speedupEnabled < 0) app->speedupEnabled = 2;
+    if (event == ODROID_DIALOG_NEXT && ++app->speedupEnabled > 2) app->speedupEnabled = 0;
 
-    sprintf(option->value, "%dx", speedupEnabled + 1);
+    sprintf(option->value, "%dx", app->speedupEnabled + 1);
     return event == ODROID_DIALOG_ENTER;
 }
 
@@ -506,7 +504,7 @@ static void draw_game_status_bar(runtime_stats_t stats)
     int pad_text = (height - odroid_overlay_get_font_size()) / 2;
     char bottom[40], header[40];
 
-    const char *romPath = odroid_system_get_rom_path();
+    const char *romPath = odroid_system_get_app()->romPath;
 
     snprintf(header, 40, "FPS: %.0f (%.0f) / BUSY: %.0f%%",
         round(stats.totalFPS), round(stats.skippedFPS), round(stats.busyPercent));
@@ -548,6 +546,22 @@ int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options)
     return r;
 }
 
+int odroid_overlay_game_debug_menu(void)
+{
+    odroid_dialog_choice_t options[12] = {
+        {10, "Screen Res", "A", 1, NULL},
+        {10, "Game Res", "B", 1, NULL},
+        {10, "Scaled Res", "C", 1, NULL},
+        {10, "Cheats", "C", 1, NULL},
+        {10, "Rewind", "C", 1, NULL},
+        {10, "Registers", "C", 1, NULL},
+        ODROID_DIALOG_CHOICE_LAST
+    };
+
+    while (odroid_input_key_is_pressed(ODROID_INPUT_ANY));
+    return odroid_overlay_dialog("Debugging", options, 0);
+}
+
 int odroid_overlay_game_menu()
 {
     odroid_dialog_choice_t choices[] = {
@@ -560,7 +574,8 @@ int odroid_overlay_game_menu()
         #else
         // {40, "Netplay", "", 0, NULL},
         #endif
-        {50, "Quit", "", 1, NULL},
+        {50, "Tools", "", 1, NULL},
+        {100, "Quit", "", 1, NULL},
         ODROID_DIALOG_CHOICE_LAST
     };
 
@@ -579,7 +594,8 @@ int odroid_overlay_game_menu()
         case 20: odroid_system_emu_save_state(0); odroid_system_switch_app(0); break;
         case 30: odroid_system_emu_load_state(0); break; // esp_restart();
         case 40: odroid_netplay_quick_start(); break;
-        case 50: odroid_system_switch_app(0); break;
+        case 50: odroid_overlay_game_debug_menu(); break;
+        case 100: odroid_system_switch_app(0); break;
     }
 
     odroid_audio_mute(false);

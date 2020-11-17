@@ -120,7 +120,7 @@ pce_run(void)
         }
 
         osd_gfx_blit();
-        osd_wait_next_vsync();
+        osd_vsync();
     }
 }
 

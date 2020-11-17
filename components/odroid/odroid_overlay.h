@@ -54,5 +54,3 @@ bool odroid_overlay_dialog_is_open(void);
 int odroid_overlay_settings_menu(odroid_dialog_choice_t *extra_options);
 int odroid_overlay_game_settings_menu(odroid_dialog_choice_t *extra_options);
 int odroid_overlay_game_menu();
-
-extern int8_t speedupEnabled;

@@ -1,7 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <esp_attr.h>
 
 #include "defs.h"
 #include "regs.h"

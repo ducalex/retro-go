@@ -36,6 +36,7 @@
 			"IS_LITTLE_ENDIAN",
 			"INLINE=",
 			"uint=unsigned int",
+			"CONFIG_FREERTOS_HZ=100"
 		],
 		"C_Cpp.default.includePath": [
 			"${workspaceFolder}/components/**",

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "stdbool.h"
+#include <stdbool.h>
 
 typedef enum
 {
@@ -15,10 +15,6 @@ typedef enum
     ODROID_AUDIO_FILTER_HIGH_PASS,
     ODROID_AUDIO_FILTER_WEIGHTED,
 } ODROID_AUDIO_FILTER;
-
-#define ODROID_AUDIO_VOLUME_MIN 0
-#define ODROID_AUDIO_VOLUME_MAX 9 // (sizeof(volumeLevels) / sizeof(float) - 1)
-#define ODROID_AUDIO_VOLUME_DEFAULT (ODROID_AUDIO_VOLUME_MAX/3)
 
 int odroid_audio_volume_get();
 void odroid_audio_volume_set(int levwl);

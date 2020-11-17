@@ -3,7 +3,6 @@
 
 
 #include "defs.h"
-#include <esp_attr.h>
 
 /*DRAM_ATTR*/ static const byte noise7[] =
 {

@@ -8,6 +8,9 @@ static bool sprite_usespbg = 0;
 static int display_counter = 0;
 static int last_display_counter = 0;
 
+// Active screen buffer
+static uint8_t* screen_buffer;
+
 // Sprite priority mask memory
 static uint8_t *SPM, *SPM_ptr;
 
@@ -108,7 +111,7 @@ FAST_INLINE void
 draw_sprite(int offset, uint16_t *C, uint32_t *C2, uint8_t *PAL, int h, int inc,
 	uint8_t pr, bool hflip, bool update_mask)
 {
-	uint8_t *P = osd_gfx_buffer + offset;
+	uint8_t *P = screen_buffer + offset;
 	uint8_t *M = SPM + offset;
 
 	for (int i = 0; i < h; i++, C = (uint16_t*)((uint8_t*)C + inc),
@@ -239,7 +242,7 @@ draw_tiles(int Y1, int Y2)
 		h = Y2 - Y1;
 	y >>= 3;
 
-	PP = (osd_gfx_buffer + XBUF_WIDTH * Y1) - (ScrollX & 7);
+	PP = (screen_buffer + XBUF_WIDTH * Y1) - (ScrollX & 7);
 	XW = io.screen_w / 8 + 1;
 
 	for (int Line = Y1; Line < Y2; y++) {
@@ -490,23 +493,20 @@ gfx_load_context(int slot_number)
 FAST_INLINE void
 render_lines(int min_line, int max_line)
 {
-	if (osd_skipFrames == 0) // Check for frameskip
-	{
-		gfx_save_context(1);
-		gfx_load_context(0);
+	gfx_save_context(1);
+	gfx_load_context(0);
 
-		sprite_usespbg = 0;
+	sprite_usespbg = 0;
 
-		if (SpriteON)
-			draw_sprites(min_line, max_line, false); // max_line + 1
+	if (SpriteON)
+		draw_sprites(min_line, max_line, false); // max_line + 1
 
-		draw_tiles(min_line, max_line); // max_line + 1
+	draw_tiles(min_line, max_line); // max_line + 1
 
-		if (SpriteON)
-			draw_sprites(min_line, max_line, true);  // max_line + 1
+	if (SpriteON)
+		draw_sprites(min_line, max_line, true);  // max_line + 1
 
-		gfx_load_context(1);
-	}
+	gfx_load_context(1);
 
 	gfx_need_redraw = 0;
 }
@@ -519,17 +519,11 @@ gfx_init(void)
 
 	OBJ_CACHE = osd_alloc(0x10000);
     SPM_ptr   = osd_alloc(XBUF_WIDTH * XBUF_HEIGHT);
-	SPM	      = SPM_ptr + XBUF_WIDTH * 64 + 32;
+	SPM	      = SPM_ptr + XBUF_WIDTH * 16 + 32;
 
 	gfx_clear_cache();
 
 	osd_gfx_init();
-
-	// Build palette
-	for (int i = 0; i < 255; i++) {
-		osd_gfx_set_color(i, (i & 0x1C) << 1, (i & 0xe0) >> 2, (i & 0x03) << 4);
-	}
-	osd_gfx_set_color(255, 0x3f, 0x3f, 0x3f);
 
 	return 0;
 }
@@ -593,6 +587,8 @@ gfx_irq(int type)
 void
 gfx_run(void)
 {
+	screen_buffer = osd_gfx_framebuffer();
+
 	/* DMA Transfer in "progress" */
 	if (io.vdc_satb_counter > 0) {
 		if (--io.vdc_satb_counter == 0) {
@@ -628,7 +624,11 @@ gfx_run(void)
 
 		if (Scanline >= io.vdc_minline && Scanline <= io.vdc_maxline) {
 			if (gfx_need_redraw) {
-				render_lines(last_display_counter, display_counter);
+				if (screen_buffer) {
+					render_lines(last_display_counter, display_counter);
+				} else {
+					gfx_need_redraw = 0;
+				}
 				last_display_counter = display_counter;
 			}
 			display_counter++;
@@ -647,7 +647,11 @@ gfx_run(void)
 
 		gfx_save_context(0);
 
-		render_lines(last_display_counter, display_counter);
+		if (screen_buffer) {
+			render_lines(last_display_counter, display_counter);
+		} else {
+			gfx_need_redraw = 0;
+		}
 
 		/* VRAM to SATB DMA */
 		if (io.vdc_satb == 1 || IO_VDC_REG[DCR].W & 0x0010) {

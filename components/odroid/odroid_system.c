@@ -19,13 +19,7 @@
 // panic. We don't use this region so we can point anywhere in it.
 static panic_trace_t *panicTrace = (void *)0x50001000;
 
-static uint applicationId = 0;
-static uint gameId = 0;
-static uint startAction = 0;
-static char *romPath = NULL;
-static state_handler_t loadState;
-static state_handler_t saveState;
-
+static rg_app_desc_t currentApp;
 static SemaphoreHandle_t spiMutex;
 static spi_lock_res_t spiMutexOwner;
 static runtime_stats_t statistics;
@@ -64,9 +58,11 @@ void odroid_system_init(int appId, int sampleRate)
 
     printf("%s: %d KB free\n", __func__, esp_get_free_heap_size() / 1024);
 
+    memset(&currentApp, 0, sizeof(currentApp));
+
     spiMutex = xSemaphoreCreateMutex();
     spiMutexOwner = -1;
-    applicationId = appId;
+    currentApp.id = appId;
 
     // sdcard init must be before odroid_display_init()
     // and odroid_settings_init() if JSON is used
@@ -140,62 +136,42 @@ void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_
         odroid_system_set_boot_app(0);
     }
 
-    startAction = odroid_settings_StartAction_get();
-    if (startAction == ODROID_START_ACTION_NEWGAME)
+    currentApp.startAction = odroid_settings_StartAction_get();
+    if (currentApp.startAction == ODROID_START_ACTION_NEWGAME)
     {
         odroid_settings_StartAction_set(ODROID_START_ACTION_RESUME);
         odroid_settings_commit();
     }
 
-    romPath = odroid_settings_RomFilePath_get();
-    if (!romPath || strlen(romPath) < 4)
+    currentApp.romPath = odroid_settings_RomFilePath_get();
+    if (!currentApp.romPath || strlen(currentApp.romPath) < 4)
     {
         RG_PANIC("Invalid ROM Path!");
     }
 
-    printf("%s: romPath='%s'\n", __func__, romPath);
+    printf("%s: romPath='%s'\n", __func__, currentApp.romPath);
 
     // Read some of the ROM to derive a unique id
-    if (odroid_sdcard_read_file(romPath, buffer, sizeof(buffer)) < 0)
+    if (odroid_sdcard_read_file(currentApp.romPath, buffer, sizeof(buffer)) < 0)
     {
         RG_PANIC("ROM File not found!");
     }
 
-    gameId = crc32_le(0, buffer, sizeof(buffer));
-    loadState = load;
-    saveState = save;
+    currentApp.gameId = crc32_le(0, buffer, sizeof(buffer));
+    currentApp.loadState = load;
+    currentApp.saveState = save;
 
-    printf("%s: Init done. GameId=%08X\n", __func__, gameId);
+    printf("%s: Init done. GameId=%08X\n", __func__, currentApp.gameId);
 }
 
-void odroid_system_set_app_id(int _appId)
+rg_app_desc_t *odroid_system_get_app()
 {
-    applicationId = _appId;
-}
-
-uint odroid_system_get_app_id()
-{
-    return applicationId;
-}
-
-uint odroid_system_get_game_id()
-{
-    return gameId;
-}
-
-uint odroid_system_get_start_action()
-{
-    return startAction;
-}
-
-const char* odroid_system_get_rom_path()
-{
-    return romPath;
+    return &currentApp;
 }
 
 char* odroid_system_get_path(emu_path_type_t type, const char *_romPath)
 {
-    const char *fileName = _romPath ?: romPath;
+    const char *fileName = _romPath ?: currentApp.romPath;
     char buffer[256];
 
     if (strstr(fileName, ODROID_BASE_PATH_ROMS))
@@ -256,7 +232,7 @@ char* odroid_system_get_path(emu_path_type_t type, const char *_romPath)
 
 bool odroid_system_emu_load_state(int slot)
 {
-    if (!romPath || !loadState)
+    if (!currentApp.romPath || !currentApp.loadState)
     {
         printf("%s: No game/emulator loaded...\n", __func__);
         return false;
@@ -267,8 +243,8 @@ bool odroid_system_emu_load_state(int slot)
     odroid_display_show_hourglass();
     odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
-    char *pathName = odroid_system_get_path(ODROID_PATH_SAVE_STATE, romPath);
-    bool success = (*loadState)(pathName);
+    char *pathName = odroid_system_get_path(ODROID_PATH_SAVE_STATE, currentApp.romPath);
+    bool success = (*currentApp.loadState)(pathName);
 
     odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
 
@@ -284,7 +260,7 @@ bool odroid_system_emu_load_state(int slot)
 
 bool odroid_system_emu_save_state(int slot)
 {
-    if (!romPath || !saveState)
+    if (!currentApp.romPath || !currentApp.saveState)
     {
         printf("%s: No game/emulator loaded...\n", __func__);
         return false;
@@ -296,13 +272,13 @@ bool odroid_system_emu_save_state(int slot)
     odroid_display_show_hourglass();
     odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
-    char *saveName = odroid_system_get_path(ODROID_PATH_SAVE_STATE, romPath);
-    char *backName = odroid_system_get_path(ODROID_PATH_SAVE_BACK, romPath);
-    char *tempName = odroid_system_get_path(ODROID_PATH_TEMP_FILE, romPath);
+    char *saveName = odroid_system_get_path(ODROID_PATH_SAVE_STATE, currentApp.romPath);
+    char *backName = odroid_system_get_path(ODROID_PATH_SAVE_BACK, currentApp.romPath);
+    char *tempName = odroid_system_get_path(ODROID_PATH_TEMP_FILE, currentApp.romPath);
 
     bool success = false;
 
-    if ((*saveState)(tempName))
+    if ((*currentApp.saveState)(tempName))
     {
         rename(saveName, backName);
 

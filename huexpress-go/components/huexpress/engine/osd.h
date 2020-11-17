@@ -1,36 +1,9 @@
-#ifndef _INCLUDE_OSD_H
-#define _INCLUDE_OSD_H
+// osd.h - This header contains all functions that a port should implement
+//
+#pragma once
 
 #include "pce.h"
 
-/* This header include all functionalities needed to be implemented in order
- * to make a port of Hu-Go! on various platforms
- */
-
-
-/*
- * Gfx section
- *
- * Certainly one of the most important one, this one deals with all what can
- * be displayed.
- */
-extern uint8_t *osd_gfx_buffer;
-extern uint osd_blitFrames;
-extern uint osd_fullFrames;
-extern uint osd_skipFrames;
-
-extern void osd_gfx_init(void);
-extern void osd_gfx_shutdown(void);
-extern void osd_gfx_blit(void);
-extern void osd_gfx_set_mode(int width, int height);
-extern void osd_gfx_set_color(int index, uint8_t r, uint8_t g, uint8_t b);
-
-
-/*
- * Input section
- *
- * This one function part implements the input functionality
- */
 #define JOY_A       0x01
 #define JOY_B       0x02
 #define JOY_SELECT  0x04
@@ -40,47 +13,73 @@ extern void osd_gfx_set_color(int index, uint8_t r, uint8_t g, uint8_t b);
 #define JOY_DOWN    0x40
 #define JOY_LEFT    0x80
 
-/*!
+/**
+ * Init graphics (allocate buffers, etc)
+ */
+extern void osd_gfx_init(void);
+
+/**
+ * Shutdown graphics
+ */
+extern void osd_gfx_shutdown(void);
+
+/**
+ * Blit framebuffer to screen
+ */
+extern void osd_gfx_blit(void);
+
+/**
+ * Return active framebuffer to draw to
+ * or NULL if we can't draw (frameskip, etc)
+ */
+extern uint8_t *osd_gfx_framebuffer(void);
+
+/**
+ * Change video resolution
+ */
+extern void osd_gfx_set_mode(int width, int height);
+
+/**
+ * Init input devices
+ */
+extern int osd_input_init(void);
+
+/**
+ * Shutdown input
+ */
+extern void osd_input_shutdown(void);
+
+/**
  * Read input devices (uses a bitmask of JOY_*)
  * It also handles quit/menu/etc.
  */
 extern void osd_input_read(void);
 
-/*!
- * Initialize the input services
- */
-extern int osd_input_init(void);
-
-/*!
- * Shutdown input services
- */
-extern void osd_shutdown_input(void);
-
-
-/*!
- * Netplay
+/**
+ * Init Netplay
  */
 extern int osd_netplay_init(void);
+
+/**
+ * Shutdown Netplay
+ */
 extern void osd_netplay_shutdown(void);
 
-
-/*
- * Sound section
- * The osd is responsible for calling snd_update() once per frame
+/**
+ * Init sound
  */
 extern void osd_snd_init();
-extern void osd_snd_shutdown();
 
-
-/*
- * Miscellaneous section
+/**
+ * Shutdown sound
  */
+extern void osd_snd_shutdown();
 
 /*
 * Emulation speed throttling. It will sleep or skip frames in order to
-* maintain full speed emulation.
+* maintain full speed emulation. It needs to be netplay-aware as well.
 */
-extern void osd_wait_next_vsync(void);
+extern void osd_vsync(void);
 
 /*
 * Logging function, printf-style arguments
@@ -91,6 +90,3 @@ extern void osd_log(const char *, ...);
 * Malloc function
 */
 extern void* osd_alloc(size_t size);
-
-
-#endif

@@ -23,7 +23,6 @@
 ** $Id: nes_rom.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
-#include <odroid_system.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -142,7 +141,7 @@ rominfo_t *rom_load(const char *filename)
    rom_ptr = rom;
 
    strncpy(rominfo->filename, filename, sizeof(rominfo->filename) - 1);
-   rominfo->checksum = crc32_le(0, rom + 16, filesize - 16);
+   rominfo->checksum = osd_getromcrc();
    // rominfo->checksum = crc32_le(0, rom, filesize);
 
    MESSAGE_INFO("ROM: Loading '%s'\n", rominfo->filename);

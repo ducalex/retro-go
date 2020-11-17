@@ -24,7 +24,6 @@
 */
 
 #include <nofrendo.h>
-#include <esp_attr.h>
 #include <string.h>
 #include "nes6502.h"
 #include "dis6502.h"

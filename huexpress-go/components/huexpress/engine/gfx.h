@@ -42,13 +42,6 @@ typedef struct {
 	short control;
 } gfx_context_t;
 
-enum {
-	OBJ_INVALID      = 0,
-	OBJ_VALID_TILE   = 1,
-	OBJ_VALID_SPRITE = 2,
-};
-
-// extern bool OBJ_CACHE_STATUS[512];
 extern bool TILE_CACHE[2048];
 extern bool SPR_CACHE[512];
 
@@ -57,11 +50,11 @@ extern int ScrollYDiff;
 #define V_FLIP  0x8000
 #define H_FLIP  0x0800
 
-// The extra 32's and 64's are linked to the way the sprite are blitted on screen, which can overlap to near memory
+// The extra 32's are linked to the way the sprite are drawn on screen, which can overlap to near memory
 // If only one pixel is drawn in the screen, the whole sprite is written, which can eventually overlap unexpected area
 // This could be fixed at the cost of performance but we don't need the extra memory
-#define XBUF_WIDTH 	(512 + 32 + 32) // Most games only need 360 but as of rg 1.20 we have memory to spare
-#define	XBUF_HEIGHT	(242 + 64 + 64)
+#define XBUF_WIDTH 	(480 + 32)
+#define	XBUF_HEIGHT	(242 + 32)
 
 int gfx_init(void);
 void gfx_run(void);

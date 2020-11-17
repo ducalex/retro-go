@@ -9,11 +9,6 @@
 #include "odroid_system.h"
 #include "odroid_input.h"
 
-#define BATT_VOLTAGE_FULL        (4.2f)
-#define BATT_VOLTAGE_EMPTY       (3.5f)
-#define BATT_DIVIDER_R1          (10000)
-#define BATT_DIVIDER_R2          (10000)
-
 static volatile bool input_task_is_running = false;
 static volatile uint last_gamepad_read = 0;
 static volatile uint use_external_gamepad = 0;

@@ -24,6 +24,7 @@
 
 static uint16_t mypalette[256];
 static uint8_t *framebuffers[2];
+static uint8_t *screen_buffers[2];
 static odroid_video_frame_t frames[2];
 static odroid_video_frame_t *curFrame, *prevFrame;
 static uint8_t current_fb = 0;
@@ -31,21 +32,44 @@ static bool gfx_init_done = false;
 static bool overscan = false;
 static int current_height, current_width;
 
-uint8_t* osd_gfx_buffer = NULL;
-uint osd_skipFrames = 0;
-uint osd_blitFrames = 0;
-uint osd_fullFrames = 0;
+static uint skipFrames = 0;
+static uint blitFrames = 0;
+static uint fullFrames = 0;
 
 #define COLOR_RGB(r,g,b) ( (((r)<<12)&0xf800) + (((g)<<7)&0x07e0) + (((b)<<1)&0x001f) )
+
+// We center the content vertically and horizontally to allow overflows all around
+#define FB_INTERNAL_OFFSET (((XBUF_HEIGHT - current_height) / 2 + 16) * XBUF_WIDTH + (XBUF_WIDTH - current_width) / 2)
 
 // #define USE_PARTIAL_FRAMES
 
 static inline void set_current_fb(int i)
 {
     current_fb = i & 1;
-    osd_gfx_buffer = framebuffers[current_fb];
     prevFrame = curFrame;
     curFrame = &frames[current_fb];
+}
+
+
+static inline void set_color(int index, uint8_t r, uint8_t g, uint8_t b)
+{
+    uint16_t col = 0xffff;
+    if (index != 255)
+    {
+        col = COLOR_RGB(r >> 2, g >> 2, b >> 2);
+        col = (col << 8) | (col >> 8);
+    }
+    mypalette[index] = col;
+}
+
+
+uint8_t *osd_gfx_framebuffer(void)
+{
+    if (skipFrames == 0) {
+
+        return framebuffers[current_fb] + FB_INTERNAL_OFFSET;
+    }
+    return NULL;
 }
 
 
@@ -54,11 +78,13 @@ void osd_gfx_init(void)
     framebuffers[0] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
     framebuffers[1] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
 
-    // We never de-allocate them, so we don't care about the malloc pointer
-    framebuffers[0] += XBUF_WIDTH * 64 + 32;
-    framebuffers[1] += XBUF_WIDTH * 64 + 32;
-
     overscan = odroid_settings_DisplayOverscan_get();
+
+	// Build palette
+	for (int i = 0; i < 255; i++) {
+		set_color(i, (i & 0x1C) << 1, (i & 0xe0) >> 2, (i & 0x03) << 4);
+	}
+	set_color(255, 0x3f, 0x3f, 0x3f);
 }
 
 
@@ -71,6 +97,7 @@ void osd_gfx_set_mode(int width, int height)
 
     int crop_h = MAX(0, width - ODROID_SCREEN_WIDTH);
     int crop_v = MAX(0, height - ODROID_SCREEN_HEIGHT) + (overscan ? 6 : 0);
+    int crop_offset = (crop_v / 2) * XBUF_WIDTH + (crop_h / 2);
 
     printf("%s: Cropping H: %d V: %d\n", __func__, crop_h, crop_v);
 
@@ -83,8 +110,8 @@ void osd_gfx_set_mode(int width, int height)
 	frames[0].palette = mypalette;
 	frames[1] = frames[0];
 
-	frames[0].buffer = framebuffers[0] + (crop_v / 2) * XBUF_WIDTH + (crop_h / 2);
-	frames[1].buffer = framebuffers[1] + (crop_v / 2) * XBUF_WIDTH + (crop_h / 2);
+	frames[0].buffer = framebuffers[0] + FB_INTERNAL_OFFSET + crop_offset;
+	frames[1].buffer = framebuffers[1] + FB_INTERNAL_OFFSET + crop_offset;
 
     set_current_fb(0);
 
@@ -97,7 +124,7 @@ void osd_gfx_blit(void)
 {
     if (!gfx_init_done) return;
 
-    bool drawFrame = !osd_skipFrames;
+    bool drawFrame = !skipFrames;
 
     if (drawFrame)
     {
@@ -106,23 +133,24 @@ void osd_gfx_blit(void)
         prevFrame = NULL;
 #endif
         if (odroid_display_queue_update(curFrame, prevFrame) == SCREEN_UPDATE_FULL) {
-            osd_fullFrames++;
+            fullFrames++;
         }
         set_current_fb(!current_fb);
-        osd_blitFrames++;
+        blitFrames++;
     }
 
     // See if we need to skip a frame to keep up
-    if (osd_skipFrames == 0)
+    if (skipFrames == 0)
     {
+        rg_app_desc_t *app = odroid_system_get_app();
 #ifndef USE_PARTIAL_FRAMES
-        osd_skipFrames++;
+        skipFrames++;
 #endif
-        if (speedupEnabled) osd_skipFrames += speedupEnabled * 2.5;
+        if (app->speedupEnabled) skipFrames += app->speedupEnabled * 2.5;
     }
-    else if (osd_skipFrames > 0)
+    else if (skipFrames > 0)
     {
-        osd_skipFrames--;
+        skipFrames--;
     }
 }
 
@@ -130,18 +158,6 @@ void osd_gfx_blit(void)
 void osd_gfx_shutdown(void)
 {
     printf("%s: \n", __func__);
-}
-
-
-void osd_gfx_set_color(int index, uint8_t r, uint8_t g, uint8_t b)
-{
-    uint16_t col = 0xffff;
-    if (index != 255)
-    {
-        col = COLOR_RGB(r >> 2, g >> 2, b >> 2);
-        col = (col << 8) | (col >> 8);
-    }
-    mypalette[index] = col;
 }
 
 
@@ -262,7 +278,7 @@ void osd_log(const char *format, ...)
 }
 
 
-void osd_wait_next_vsync(void)
+void osd_vsync(void)
 {
 	const double deltatime = (1000000.0 / 60.0);
 	static double lasttime, curtime, prevtime, sleep;
@@ -282,12 +298,12 @@ void osd_wait_next_vsync(void)
 	}
 	else if (sleep < -8333.0)
 	{
-		osd_skipFrames++;
+		skipFrames++;
 	}
 
-    odroid_system_tick(!osd_blitFrames, osd_fullFrames, (uint)(curtime - prevtime));
-	osd_blitFrames = 0;
-	osd_fullFrames = 0;
+    odroid_system_tick(!blitFrames, fullFrames, (uint)(curtime - prevtime));
+	blitFrames = 0;
+	fullFrames = 0;
 
 	gettimeofday(&tp, NULL);
 	curtime = prevtime = tp.tv_sec * 1000000.0 + tp.tv_usec;

@@ -70,7 +70,7 @@ static void network_setup(tcpip_adapter_if_t tcpip_if)
     local_player = &players[player_id];
     local_player->id = player_id;
     local_player->version = NETPLAY_VERSION;
-    local_player->game_id = odroid_system_get_game_id();
+    local_player->game_id = odroid_system_get_app()->gameId;
     local_player->ip_addr = local_if.ip.addr;
 
     printf("netplay: Local player ID: %d\n", local_player->id);

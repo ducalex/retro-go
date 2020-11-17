@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stddef.h>
+#include <stdint.h>
 
 // All <int> functions return 0 on success, negative value on error.
 // All <char*> functions return pointer on success, NULL on failure. Freeing required.

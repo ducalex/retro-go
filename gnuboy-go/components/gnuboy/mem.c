@@ -1,5 +1,4 @@
 #include "stdlib.h"
-#include "esp_attr.h"
 
 #include "defs.h"
 #include "hw.h"

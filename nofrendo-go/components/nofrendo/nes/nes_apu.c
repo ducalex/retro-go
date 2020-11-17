@@ -27,7 +27,6 @@
 #include <nes6502.h>
 #include "nes_apu.h"
 
-#include <esp_attr.h>
 #include <string.h>
 
 #define APU_OVERSAMPLE

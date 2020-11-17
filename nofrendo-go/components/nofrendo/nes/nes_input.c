@@ -24,7 +24,6 @@
 */
 
 #include <nofrendo.h>
-#include <esp_attr.h>
 #include "nes_input.h"
 
 static nesinput_t nes_inputs[INP_TYPE_MAX];

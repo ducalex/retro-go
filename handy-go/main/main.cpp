@@ -161,16 +161,16 @@ extern "C" void app_main(void)
     update1.buffer = (void*)rg_alloc(update1.stride * update1.height, MEM_FAST);
     update2.buffer = (void*)rg_alloc(update2.stride * update2.height, MEM_FAST);
 
-    const char *romFile = odroid_system_get_rom_path();
+    rg_app_desc_t *app = odroid_system_get_app();
 
     // Init emulator
-    lynx = new CSystem(romFile, MIKIE_PIXEL_FORMAT_16BPP_565_BE, AUDIO_SAMPLE_RATE);
+    lynx = new CSystem(app->romPath, MIKIE_PIXEL_FORMAT_16BPP_565_BE, AUDIO_SAMPLE_RATE);
 
     gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;
     gAudioBuffer = (SWORD*)&audioBuffer;
     gAudioEnabled = 1;
 
-    if (odroid_system_get_start_action() == ODROID_START_ACTION_RESUME)
+    if (app->startAction == ODROID_START_ACTION_RESUME)
     {
         odroid_system_emu_load_state(0);
     }
@@ -230,7 +230,7 @@ extern "C" void app_main(void)
         {
             // The Lynx uses a variable framerate so we use the count of generated audio samples as reference instead
             if (get_elapsed_time_since(startTime) > ((gAudioBufferPointer/2) * sampleTime)) skipFrames += 1;
-            if (speedupEnabled) skipFrames += speedupEnabled * 2.5;
+            if (app->speedupEnabled) skipFrames += app->speedupEnabled * 2.5;
         }
         else if (skipFrames > 0)
         {
@@ -239,7 +239,7 @@ extern "C" void app_main(void)
 
         odroid_system_tick(!drawFrame, fullFrame, get_elapsed_time_since(startTime));
 
-        if (!speedupEnabled)
+        if (!app->speedupEnabled)
         {
             odroid_audio_submit(gAudioBuffer, gAudioBufferPointer >> 1);
             gAudioBufferPointer = 0;

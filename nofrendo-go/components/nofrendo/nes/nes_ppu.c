@@ -24,7 +24,6 @@
 */
 
 #include <string.h>
-#include <esp_attr.h>
 #include <nofrendo.h>
 #include <nes6502.h>
 #include <bitmap.h>

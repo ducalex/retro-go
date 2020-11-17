@@ -122,7 +122,6 @@
  *****************************************************************************/
 #include "shared.h"
 #include "z80.h"
-#include <esp_attr.h>
 
 /* Show debugging messages */
 #define VERBOSE 0

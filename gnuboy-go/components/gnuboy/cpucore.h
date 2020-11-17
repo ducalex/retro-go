@@ -4,7 +4,6 @@
 */
 
 #include "defs.h"
-#include <esp_attr.h>
 
 static DRAM_ATTR const byte cycles_table[256] =
 {

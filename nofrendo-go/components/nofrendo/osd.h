@@ -50,6 +50,8 @@ extern char *osd_newextension(char *string, const char *ext);
 extern void osd_getinput(void);
 
 /* get rom data */
+extern unsigned int osd_getromcrc(void);
+extern unsigned int osd_getromsize(void);
 extern size_t osd_getromdata(unsigned char **data);
 
 /* Log output */
