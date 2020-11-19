@@ -38,14 +38,19 @@ typedef struct {
 typedef struct {
 	short scroll_x;
 	short scroll_y;
-	short scroll_y_diff;
 	short control;
+	short latched;
 } gfx_context_t;
 
 extern bool TILE_CACHE[2048];
 extern bool SPR_CACHE[512];
 
 extern int ScrollYDiff;
+
+#define OBJ_CACHE_INVALIDATE(x) { \
+	TILE_CACHE[((x) / 16) & 0x7FF] = 0; \
+    SPR_CACHE[((x) / 64) & 0x1FF] = 0; \
+}
 
 #define V_FLIP  0x8000
 #define H_FLIP  0x0800
@@ -61,7 +66,7 @@ void gfx_run(void);
 void gfx_term(void);
 void gfx_irq(int type);
 void gfx_clear_cache(void);
-void gfx_save_context(int slot_number);
+void gfx_latch_context(int slot_number);
 void gfx_set_scroll_diff(void);
 
 #endif

@@ -12,12 +12,6 @@ uint8_t *PageW[8];
 uint8_t *MemoryMapR[256];
 uint8_t *MemoryMapW[256];
 
-static const uint8_t bg_w[] = { 32, 64, 128, 128 };
-static const uint8_t bg_h[] = { 32, 64 };
-static const uint8_t vdc_inc[] = { 1, 32, 64, 128 };
-
-#define VDC_INCREMENT(reg) (IO_VDC_REG[reg].W += vdc_inc[(IO_VDC_REG[CR].W >> 11) & 3])
-
 static inline void timer_run(void);
 
 /**
@@ -39,13 +33,6 @@ pce_reset(void)
 
     Cycles = 0;
     SF2 = 0;
-
-     // Reset IO lines
-    io.vdc_status = 0;
-    io.vdc_minline = 0;
-    io.vdc_maxline = 255;
-    io.screen_w = 256; // 255
-    io.screen_h = 240; // 224
 
     // Reset sound generator values
     for (int i = 0; i < PSG_CHANNELS; i++) {
@@ -204,7 +191,7 @@ IO_read(uint16_t A)
         case 3:
             if (io.vdc_reg == VRR) {            // VRAM Read Register (MSB)
                 ret = VRAM[IO_VDC_REG[MARR].W * 2 + 1];
-                VDC_INCREMENT(MARR);
+                IO_VDC_REG_INC(MARR);
             } else
                 ret = IO_VDC_REG_ACTIVE.B.h;
             break;
@@ -327,7 +314,7 @@ IO_write(uint16_t A, uint8_t V)
 
             case CR:                            // Control Register
                 if (IO_VDC_REG_ACTIVE.B.l != V)
-                    gfx_save_context(0);
+                    gfx_latch_context(0);
                 break;
 
             case RCR:                           // Raster Compare Register
@@ -338,7 +325,7 @@ IO_write(uint16_t A, uint8_t V)
                    if (IO_VDC_REG[BXR].B.l == V)
                    return;
                  */
-                gfx_save_context(0);
+                gfx_latch_context(0);
                 break;
 
             case BYR:                           // Vertical screen offset
@@ -346,14 +333,11 @@ IO_write(uint16_t A, uint8_t V)
                    if (IO_VDC_REG[BYR].B.l == V)
                    return;
                  */
-                gfx_save_context(0);
-                ScrollYDiff = Scanline - 1 - (IO_VDC_REG[VPR].B.h + IO_VDC_REG[VPR].B.l);
-                TRACE_GFX2("ScrollY = %d (l)\n", ScrollY);
+                gfx_latch_context(0);
+                ScrollYDiff = Scanline - 1 - IO_VDC_MINLINE;
                 break;
 
             case MWR:                           // Memory Width Register
-                io.bg_w = bg_w[(V >> 4) & 3]; // Bits 5-4 select the width
-                io.bg_h = bg_h[(V >> 6) & 1]; // Bit 6 selects the height
                 break;
 
             case HSR:
@@ -362,10 +346,7 @@ IO_write(uint16_t A, uint8_t V)
 
             case HDR:                           // Horizontal Definition
                 V &= 0x7F;
-                if (io.screen_w != ((V + 1) * 8)) {
-                    io.screen_w = (V + 1) * 8;
-                    io.vdc_mode_chg = 1;
-                }
+                io.vdc_mode_chg = 1;
                 break;
 
             case VPR:
@@ -404,11 +385,8 @@ IO_write(uint16_t A, uint8_t V)
             case VWR:                           // VRAM Write Register
                 VRAM[IO_VDC_REG[MAWR].W * 2] = IO_VDC_REG_ACTIVE.B.l;
                 VRAM[IO_VDC_REG[MAWR].W * 2 + 1] = V;
-                // Invalidate object cache in this region
-                TILE_CACHE[(IO_VDC_REG[MAWR].W / 16) & 0x7FF] = 0;
-                SPR_CACHE[(IO_VDC_REG[MAWR].W / 64) & 0x1FF] = 0;
-
-                VDC_INCREMENT(MAWR);
+                OBJ_CACHE_INVALIDATE(IO_VDC_REG[MAWR].W);
+                IO_VDC_REG_INC(MAWR);
                 break;
 
             case vdc3:                          // Unused
@@ -419,7 +397,7 @@ IO_write(uint16_t A, uint8_t V)
 
             case CR:                            // Control Register
                 if (IO_VDC_REG_ACTIVE.B.h != V)
-                    gfx_save_context(0);
+                    gfx_latch_context(0);
                 break;
 
             case RCR:                           // Raster Compare Register
@@ -429,19 +407,17 @@ IO_write(uint16_t A, uint8_t V)
             case BXR:                           // Horizontal screen offset
                 V &= 3;
                 if (IO_VDC_REG_ACTIVE.B.h != V) {
-                    gfx_save_context(0);
+                    gfx_latch_context(0);
                 }
                 break;
 
             case BYR:                           // Vertical screen offset
-                gfx_save_context(0);
-                ScrollYDiff = Scanline - 1;
-                ScrollYDiff -= IO_VDC_REG[VPR].B.h + IO_VDC_REG[VPR].B.l;
-                if (ScrollYDiff < 0)
+                gfx_latch_context(0);
+                ScrollYDiff = Scanline - 1 - IO_VDC_MINLINE;
+                if (ScrollYDiff < 0) {
                     MESSAGE_DEBUG("ScrollYDiff went negative when substraction VPR.h/.l (%d,%d)\n",
                         IO_VDC_REG[VPR].B.h, IO_VDC_REG[VPR].B.l);
-
-                TRACE_GFX2("ScrollY = %d (h)\n", ScrollY);
+                }
                 break;
 
             case MWR:                           // Memory Width Register
@@ -452,9 +428,6 @@ IO_write(uint16_t A, uint8_t V)
                 break;
 
             case HDR:                           // Horizontal Definition
-                /* TODO : well, maybe we should implement it */
-                //io.screen_w = (io.VDC_ratch[HDR]+1)*8;
-                //TRACE0("HDRh\n");
                 TRACE_GFX2("VDC[HDR].h = %d\n", V);
                 break;
 
@@ -482,19 +455,17 @@ IO_write(uint16_t A, uint8_t V)
 
                 while (IO_VDC_REG[LENR].W != 0xFFFF) {
                     vram16[IO_VDC_REG[DISTR].W] = vram16[IO_VDC_REG[SOUR].W];
+                    OBJ_CACHE_INVALIDATE(IO_VDC_REG[DISTR].W);
                     IO_VDC_REG[SOUR].W += src_inc;
                     IO_VDC_REG[DISTR].W += dst_inc;
                     IO_VDC_REG[LENR].W -= 1;
                 }
 
                 gfx_irq(VDC_STAT_DV);
-
-                gfx_clear_cache();
                 return;
-                // break;
 
             case SATB:                          // DMA from VRAM to SATB
-                io.vdc_satb = 1;
+                io.vdc_satb = DMA_TRANSFER_PENDING;
                 break;
             }
             IO_VDC_REG_ACTIVE.B.h = V;

@@ -90,18 +90,9 @@ typedef struct {
 	UWord VDC[32];				/* value of each VDC register */
 	uint8_t vdc_reg;			/* currently selected VDC register */
 	uint8_t vdc_status;			/* current VCD status (end of line, end of screen, ...) */
-	uint8_t vdc_satb;			/* boolean which keeps track of the need to copy
-								 * the SATB from VRAM to internal SATB through DMA
-								 */
-	uint8_t vdc_satb_counter; 	/* DMA finished interrupt delay counter */
+	uint8_t vdc_satb;			/* DMA transfer status to happen in vblank */
 	uint8_t vdc_mode_chg;       /* Video mode change needed at next frame */
-	uint32_t vdc_irq_stack;		/* Pending VDC IRQs (we use it as a stack of 4bit events) */
-	uint16_t bg_w;				/* number of tiles horizontally in virtual screen */
-	uint16_t bg_h;				/* number of tiles vertically in virtual screen */
-	uint16_t screen_w;			/* size of real screen in pixels */
-	uint16_t screen_h;			/* size of real screen in pixels */
-	uint16_t vdc_minline;		/* First scanline of active display */
-	uint16_t vdc_maxline;		/* Last scanline of active display */
+	uint32_t vdc_irq_queue;		/* Pending VDC IRQs (we use it as a stack of 4bit events) */
 
 	/* joypad */
 	uint8_t JOY[8];				/* value of pressed button/direct for each pad */
@@ -231,12 +222,13 @@ extern uint8_t *MemoryMapW[256];
 
 #define IO_VDC_REG           io.VDC
 #define IO_VDC_REG_ACTIVE    io.VDC[io.vdc_reg]
+#define IO_VDC_REG_INC(reg)  {uint8_t _i[] = {1,32,64,128}; io.VDC[(reg)].W += _i[(io.VDC[CR].W >> 11) & 3];}
 #define IO_VDC_STATUS(bit)   ((io.vdc_status >> bit) & 1)
-// #define IO_VDC_REG(x)        io.VDC[x]
+#define IO_VDC_MINLINE       (IO_VDC_REG[VPR].B.h + IO_VDC_REG[VPR].B.l)
+#define IO_VDC_MAXLINE       (IO_VDC_MINLINE + IO_VDC_REG[VDW].W)
 
-#define	ScrollX	(IO_VDC_REG[BXR].W)
-#define	ScrollY	(IO_VDC_REG[BYR].W)
-#define	Control (IO_VDC_REG[CR].W)
+#define IO_VDC_SCREEN_WIDTH  ((IO_VDC_REG[HDR].B.l + 1) * 8)
+#define IO_VDC_SCREEN_HEIGHT (IO_VDC_REG[VDW].W + 1)
 
 // Interrupt enabled
 #define SATBIntON  (IO_VDC_REG[DCR].W & 0x01)
@@ -248,6 +240,9 @@ extern uint8_t *MemoryMapW[256];
 
 #define SpriteON   (IO_VDC_REG[CR].W & 0x40)
 #define ScreenON   (IO_VDC_REG[CR].W & 0x80)
+
+#define DMA_TRANSFER_COUNTER 0x80
+#define DMA_TRANSFER_PENDING 0x40
 
 /**
  * Exported Functions

@@ -23,9 +23,8 @@ const svar_t SaveStateVars[] =
 	SVAR_2("CPU.PC", reg_pc), SVAR_1("CPU.A", reg_a),    SVAR_1("CPU.X", reg_x),
 	SVAR_1("CPU.Y", reg_y),   SVAR_1("CPU.P", reg_p),    SVAR_1("CPU.S", reg_s),
 
-	// Misc counters
-	SVAR_2("Cycles", Cycles),                  SVAR_4("ScrollYDiff", ScrollYDiff),
-	SVAR_1("SF2", SF2),
+	// Misc
+	SVAR_2("Cycles", Cycles),                  SVAR_1("SF2", SF2),
 
 	// PSG
 	SVAR_A("PSG", io.PSG),                     SVAR_A("PSG_WAVE", io.PSG_WAVE),
@@ -39,10 +38,7 @@ const svar_t SaveStateVars[] =
 
 	SVAR_A("VDC", io.VDC),                     SVAR_1("vdc_reg", io.vdc_reg),
 	SVAR_1("vdc_status", io.vdc_status),       SVAR_1("vdc_satb", io.vdc_satb),
-	SVAR_1("vdc_satb_c", io.vdc_satb_counter), SVAR_2("vdc_minline", io.vdc_minline),
-	SVAR_2("vdc_maxline", io.vdc_maxline),     SVAR_4("vdc_pending", io.vdc_irq_stack),
-	SVAR_2("screen_w", io.screen_w),           SVAR_2("screen_h", io.screen_h),
-	SVAR_2("bg_w", io.bg_w),                   SVAR_2("bg_h", io.bg_h),
+	SVAR_4("vdc_irq_queue", io.vdc_irq_queue),
 
 	SVAR_1("timer_reload", io.timer_reload),   SVAR_1("timer_running", io.timer_running),
 	SVAR_1("timer_counter", io.timer_counter), SVAR_4("timer_next", io.timer_cycles_counter),
@@ -270,7 +266,7 @@ LoadState(char *name)
 
 	gfx_clear_cache();
 
-	osd_gfx_set_mode(io.screen_w, io.screen_h);
+	osd_gfx_set_mode(IO_VDC_SCREEN_WIDTH, IO_VDC_SCREEN_HEIGHT);
 
 	fclose(fp);
 
