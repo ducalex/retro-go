@@ -15,15 +15,28 @@
 #include "bitmaps/image_sdcard.h"
 #include "odroid_system.h"
 
+// On the Odroid-GO the SPI bus is shared between the SD Card and the LCD
+// That isn't the case on other devices, so for performance we disable the mutex
+#if (ODROID_PIN_LCD_MISO == ODROID_PIN_SD_MISO || \
+     ODROID_PIN_LCD_MOSI == ODROID_PIN_SD_MOSI || \
+     ODROID_PIN_LCD_CLK == ODROID_PIN_SD_CLK)
+#define USE_SPI_MUTEX 1
+#else
+#define USE_SPI_MUTEX 0
+#endif
+
 // This is a direct pointer to rtc slow ram which isn't cleared on
 // panic. We don't use this region so we can point anywhere in it.
 static panic_trace_t *panicTrace = (void *)0x50001000;
 
 static rg_app_desc_t currentApp;
-static SemaphoreHandle_t spiMutex;
-static spi_lock_res_t spiMutexOwner;
 static runtime_stats_t statistics;
 static runtime_counters_t counters;
+
+#if USE_SPI_MUTEX
+static SemaphoreHandle_t spiMutex;
+static spi_lock_res_t spiMutexOwner;
+#endif
 
 static void odroid_system_monitor_task(void *arg);
 
@@ -60,8 +73,11 @@ void odroid_system_init(int appId, int sampleRate)
 
     memset(&currentApp, 0, sizeof(currentApp));
 
+    #if USE_SPI_MUTEX
     spiMutex = xSemaphoreCreateMutex();
     spiMutexOwner = -1;
+    #endif
+
     currentApp.id = appId;
 
     // sdcard init must be before odroid_display_init()
@@ -512,6 +528,7 @@ runtime_stats_t odroid_system_get_stats()
 
 IRAM_ATTR void odroid_system_spi_lock_acquire(spi_lock_res_t owner)
 {
+#if USE_SPI_MUTEX
     if (owner == spiMutexOwner)
     {
         return;
@@ -524,15 +541,18 @@ IRAM_ATTR void odroid_system_spi_lock_acquire(spi_lock_res_t owner)
     {
         RG_PANIC("SPI Mutex Lock Acquisition failed!");
     }
+#endif
 }
 
 IRAM_ATTR void odroid_system_spi_lock_release(spi_lock_res_t owner)
 {
+#if USE_SPI_MUTEX
     if (owner == spiMutexOwner || owner == SPI_LOCK_ANY)
     {
         xSemaphoreGive(spiMutex);
         spiMutexOwner = SPI_LOCK_ANY;
     }
+#endif
 }
 
 /* helpers */

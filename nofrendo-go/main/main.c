@@ -41,8 +41,9 @@ static bool netplay  = false;
 
 static bool fullFrame = 0;
 static uint frameTime = 0;
-
 static nes_t *nes;
+
+static rg_app_desc_t *app;
 // --- MAIN
 
 
@@ -262,7 +263,6 @@ void osd_wait_for_vsync()
 
    if (skipFrames == 0)
    {
-      rg_app_desc_t *app = odroid_system_get_app();
       if (elapsed > frameTime) skipFrames = 1;
       if (app->speedupEnabled) skipFrames += app->speedupEnabled * 2;
    }
@@ -389,9 +389,11 @@ void app_main(void)
    odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
    odroid_system_emu_init(&LoadState, &SaveState, &netplay_callback);
 
+   app = odroid_system_get_app();
+
    romData = rg_alloc(0x200000, MEM_ANY);
 
-   const char *romPath = odroid_system_get_app()->romPath;
+   const char *romPath = app->romPath;
 
    // Load ROM
    if (strcasecmp(romPath + (strlen(romPath) - 4), ".zip") == 0)
