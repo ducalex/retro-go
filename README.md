@@ -28,7 +28,7 @@ Retro-Go is a launcher and framework to run emulators on the ODROID-GO. It comes
 - And more!
 
 # Screenshot
-![Preview](https://raw.githubusercontent.com/ducalex/retro-go/master/screenshot.jpg)
+![Preview](screenshot.jpg)
 
 # Key Mappings
 
@@ -85,7 +85,7 @@ An up to date list of incompatible/broken games can be found on the ODROID-GO fo
 
 # Compilation
 The official esp-idf version 3.3 or 4.0 is required and it is recommended to apply the 
-sdcard-fix patch located in the tools folder. Both make and cmake are supported.
+sdcard-fix patch located in the tools folder. Only the cmake build system is supported.
 
 ## Build everything and generate .fw:
 1. `python rg_tool.py build-fw`
@@ -109,23 +109,8 @@ For a smaller build you can also specify which apps you want, for example the la
 
 
 # License
-This project is licensed under the GPLv2. Some components are also available under the MIT license. 
-Respective copyrights apply to each component. For the rest:
-```
-Retro-Go: Retro emulation for the ODROID-GO
-Copyright (C) 2020 Alex Duchesne
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along
-with this program; if not, write to the Free Software Foundation, Inc.,
-51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-```
+Everything in this project is licensed under the [GPLv2 license](COPYING) with the exception of the following components:
+- components/lupng (PNG library, MIT)
+- components/miniz (zlib library, MIT)
+- components/odroid (Retro-Go's shared library, MIT)
+- handy-go/components/handy (Lynx emulator, BSD)
