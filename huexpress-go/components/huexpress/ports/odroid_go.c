@@ -8,7 +8,7 @@
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
-#include <odroid_system.h>
+#include <rg_system.h>
 #include <string.h>
 #include <ctype.h>
 #include <sys/time.h>

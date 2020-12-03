@@ -7,8 +7,8 @@
 #include <driver/rtc_io.h>
 #include <string.h>
 
-#include "odroid_system.h"
-#include "odroid_display.h"
+#include "rg_system.h"
+#include "rg_display.h"
 #include "bitmaps/image_hourglass.h"
 
 #define SCREEN_WIDTH  ODROID_SCREEN_WIDTH

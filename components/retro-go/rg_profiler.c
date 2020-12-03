@@ -3,8 +3,8 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "odroid_system.h"
-#include "odroid_profiler.h"
+#include "rg_system.h"
+#include "rg_profiler.h"
 
 // Note this profiler might be inaccurate because of:
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=28205

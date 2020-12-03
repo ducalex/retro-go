@@ -78,7 +78,7 @@ static void map160_hblank(int scanline)
 {
    if (scanline < 241)
    {
-      if (ppu_enabled() && irq.enabled)
+      if (irq.enabled && ppu_enabled())
       {
          if (0 == irq.counter && false == irq.expired)
          {

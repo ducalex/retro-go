@@ -13,7 +13,7 @@
 #include "cpu.h"
 #include "sound.h"
 
-#include <odroid_system.h>
+#include <rg_system.h>
 
 static const byte mbc_table[256] =
 {
@@ -184,7 +184,7 @@ static svar_t svars[] =
 };
 
 
-int IRAM_ATTR rom_loadbank(short bank)
+int rom_loadbank(short bank)
 {
 	const size_t BANK_SIZE = 0x4000;
 	const size_t OFFSET = bank * BANK_SIZE;

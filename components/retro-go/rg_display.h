@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "odroid_colors.h"
+#include "rg_colors.h"
 
 typedef enum {
     SCREEN_UPDATE_EMPTY,

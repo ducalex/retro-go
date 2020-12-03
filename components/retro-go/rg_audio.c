@@ -4,8 +4,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "odroid_system.h"
-#include "odroid_audio.h"
+#include "rg_system.h"
+#include "rg_audio.h"
 
 static int audioSink = ODROID_AUDIO_SINK_SPEAKER;
 static int audioSampleRate = 0;

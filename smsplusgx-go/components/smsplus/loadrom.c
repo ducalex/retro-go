@@ -20,7 +20,7 @@
  *
  ******************************************************************************/
 
-#include <odroid_system.h>
+#include <rg_system.h>
 #include "coleco_bios.h"
 #include "shared.h"
 

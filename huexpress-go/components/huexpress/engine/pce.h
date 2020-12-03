@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 
-#include <odroid_system.h>
+#include <rg_system.h>
 
 #include "../config.h"
 #include "utils.h"

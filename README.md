@@ -112,5 +112,5 @@ For a smaller build you can also specify which apps you want, for example the la
 Everything in this project is licensed under the [GPLv2 license](COPYING) with the exception of the following components:
 - components/lupng (PNG library, MIT)
 - components/miniz (zlib library, MIT)
-- components/odroid (Retro-Go's shared library, MIT)
+- components/retro-go (Retro-Go's framework, MIT)
 - handy-go/components/handy (Lynx emulator, BSD)

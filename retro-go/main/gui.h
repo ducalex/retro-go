@@ -1,6 +1,6 @@
 #pragma once
 
-#include <odroid_input.h>
+#include <rg_input.h>
 #include "emulators.h"
 #include "stdbool.h"
 

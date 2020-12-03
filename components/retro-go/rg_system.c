@@ -13,7 +13,7 @@
 #include <stdio.h>
 
 #include "bitmaps/image_sdcard.h"
-#include "odroid_system.h"
+#include "rg_system.h"
 
 // On the Odroid-GO the SPI bus is shared between the SD Card and the LCD
 // That isn't the case on other devices, so for performance we disable the mutex

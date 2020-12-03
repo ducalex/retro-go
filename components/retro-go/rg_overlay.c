@@ -7,8 +7,8 @@
 #include <math.h>
 
 #include "bitmaps/font_basic.h"
-#include "odroid_system.h"
-#include "odroid_overlay.h"
+#include "rg_system.h"
+#include "rg_overlay.h"
 
 static uint16_t *overlay_buffer = NULL;
 static short dialog_open_depth = 0;

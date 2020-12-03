@@ -9,8 +9,8 @@
 #include <ctype.h>
 #include <errno.h>
 
-#include "odroid_system.h"
-#include "odroid_sdcard.h"
+#include "rg_system.h"
+#include "rg_sdcard.h"
 #include "../miniz/miniz.h"
 
 static bool sdcardOpen = false;

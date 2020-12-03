@@ -1,6 +1,6 @@
 #pragma once
 
-#include <odroid_sdcard.h>
+#include <rg_sdcard.h>
 #include <stdint.h>
 #include <stdbool.h>
 

@@ -1,4 +1,4 @@
-#include <odroid_system.h>
+#include <rg_system.h>
 #include <string.h>
 
 #include "../components/gnuboy/loader.h"

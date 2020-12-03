@@ -6,8 +6,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "odroid_system.h"
-#include "odroid_input.h"
+#include "rg_system.h"
+#include "rg_input.h"
 
 static volatile bool input_task_is_running = false;
 static volatile uint last_gamepad_read = 0;

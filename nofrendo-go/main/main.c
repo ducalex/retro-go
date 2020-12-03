@@ -1,6 +1,4 @@
-#include <freertos/FreeRTOS.h>
-#include <odroid_system.h>
-
+#include <rg_system.h>
 #include <string.h>
 #include <nofrendo.h>
 #include <bitmap.h>
@@ -320,7 +318,7 @@ void osd_setpalette(rgb_t *pal)
    odroid_display_force_refresh();
 }
 
-IRAM_ATTR void osd_blitscreen(bitmap_t *bmp)
+void osd_blitscreen(bitmap_t *bmp)
 {
    int crop_v = (overscan) ? nes->overscan : 0;
    int crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;

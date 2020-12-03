@@ -1,4 +1,4 @@
-#include <odroid_system.h>
+#include <rg_system.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>

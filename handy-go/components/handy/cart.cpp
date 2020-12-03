@@ -44,7 +44,7 @@
 
 //#define   TRACE_CART
 
-#include <odroid_system.h>
+#include <rg_system.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

@@ -10,8 +10,8 @@
 #include <unistd.h>
 #include <netdb.h>
 
-#include "odroid_system.h"
-#include "odroid_netplay.h"
+#include "rg_system.h"
+#include "rg_netplay.h"
 
 #define NETPLAY_VERSION 0x01
 #define MAX_PLAYERS 8

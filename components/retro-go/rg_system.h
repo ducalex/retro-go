@@ -13,14 +13,14 @@
 
 #include "config.h"
 
-#include "odroid_audio.h"
-#include "odroid_display.h"
-#include "odroid_input.h"
-#include "odroid_netplay.h"
-#include "odroid_overlay.h"
-#include "odroid_profiler.h"
-#include "odroid_sdcard.h"
-#include "odroid_settings.h"
+#include "rg_audio.h"
+#include "rg_display.h"
+#include "rg_input.h"
+#include "rg_netplay.h"
+#include "rg_overlay.h"
+#include "rg_profiler.h"
+#include "rg_sdcard.h"
+#include "rg_settings.h"
 
 typedef bool (*state_handler_t)(char *pathName);
 

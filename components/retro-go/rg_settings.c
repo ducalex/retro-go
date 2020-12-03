@@ -1,7 +1,7 @@
 #include <string.h>
 
-#include "odroid_system.h"
-#include "odroid_settings.h"
+#include "rg_system.h"
+#include "rg_settings.h"
 
 #define USE_CONFIG_FILE
 
