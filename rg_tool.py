@@ -25,7 +25,7 @@ def debug_print(text):
 
 os.chdir(PRJ_PATH)
 
-exec(read_file("rg_config.py"))
+exec(read_file("config.py"))
 
 
 symbols_cache = dict()
