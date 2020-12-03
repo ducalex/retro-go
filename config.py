@@ -7,7 +7,7 @@
 
 PROJECT_NAME = "Retro-Go"
 PROJECT_VER  = shell_exec("git describe --tags --abbrev=5 --dirty")
-PROJECT_TILE = "fw-icon.raw"
+PROJECT_TILE = "retro-go-fw-icon.raw"
 PROJECT_APPS = {
   # Note: Size will be adjusted if needed but flashmon needs accurate values to work correctly
   # Project name   Sub, Size

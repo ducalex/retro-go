@@ -28,7 +28,7 @@ Retro-Go is a launcher and framework to run emulators on the ODROID-GO. It comes
 - And more!
 
 # Screenshot
-![Preview](fw-preview.jpg)
+![Preview](retro-go-preview.jpg)
 
 # Key Mappings
 
@@ -73,13 +73,20 @@ The number must also be zero padded to be 8 chars._
 Retro-Go caches some data to speed up cover art discovery and display.
 If you have any problem the first step is to delete the `sdcard:/odroid/cache` folder.
 
+# Sound quality
+The volume isn't correctly attenuated on the GO, resulting in upper volume levels that are too loud and 
+lower levels that are distorted due to DAC resolution. A quick way to improve the audio is to cut one
+of the speaker wire and add a `10 Ohm (or thereabout)` resistor in series. Soldering is better but not 
+required, twisting the wires tightly will work just fine.
+[A more involved solution can be seen here.](https://wiki.odroid.com/odroid_go/silent_volume)
 
 # Known issues
 An up to date list of incompatible/broken games can be found on the ODROID-GO forums.
 
 
 # Future plans
-- Rewind
+- Rewind  (In progress)
+- Cheats  (In progress)
 - Netplay (In progress)
 
 

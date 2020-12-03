@@ -4,6 +4,7 @@ import math
 import subprocess
 import hashlib
 import shutil
+import shlex
 import serial
 import time
 import sys
@@ -116,6 +117,7 @@ def build_firmware(targets):
         part = PROJECT_APPS[target]
         args += [str(0), str(part[0]), str(part[1]), target, os.path.join(target, "build", target + ".bin")]
 
+    print("Building firmware: %s\n" % shlex.join(args[1:]))
     subprocess.run(args, check=True)
 
 
