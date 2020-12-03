@@ -71,6 +71,9 @@ void odroid_system_init(int appId, int sampleRate)
 
     printf("%s: %d KB free\n", __func__, esp_get_free_heap_size() / 1024);
 
+    // Seed C's pseudo random number generator
+    srand(esp_random());
+
     memset(&currentApp, 0, sizeof(currentApp));
 
     #if USE_SPI_MUTEX

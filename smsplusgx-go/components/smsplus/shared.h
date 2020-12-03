@@ -17,16 +17,7 @@ typedef signed long int int32;
 #include <malloc.h>
 #include <math.h>
 #include <limits.h>
-//#include <zlib.h>
-#include <esp_attr.h>
-
-#ifndef PATH_MAX
-#ifdef  MAX_PATH
-#define PATH_MAX    MAX_PATH
-#else
-#define PATH_MAX    1024
-#endif
-#endif
+#include <rg_attr.h>
 
 #undef PATH_MAX
 #define PATH_MAX 255

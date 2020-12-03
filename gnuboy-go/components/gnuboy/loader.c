@@ -193,7 +193,7 @@ int rom_loadbank(short bank)
 	rom.bank[bank] = (byte*)malloc(BANK_SIZE);
 	if (rom.bank[bank] == NULL) {
 		while (true) {
-			uint8_t i = esp_random() & 0xFF;
+			uint8_t i = rand() & 0xFF;
 			if (rom.bank[i]) {
 				printf("bank_load: reclaiming bank %d.\n", i);
 				rom.bank[bank] = rom.bank[i];

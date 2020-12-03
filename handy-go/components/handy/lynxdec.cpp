@@ -263,27 +263,8 @@ int decrypt_frame(unsigned char * result,
  * time.  the original code was a very rough reverse of the Lynx ROM code, this
  * is much easier to understand.
  */
-void lynx_decrypt(unsigned char * result,
-                  const unsigned char * encrypted,
-                  const int length)
+void lynx_decrypt(unsigned char * result, const unsigned char * encrypted, const int length)
 {
-   int blocks = 0;
-   int read_index = 0;
-
    /* decrypt the first frame of encrypted data */
-   blocks = decrypt_frame(&result[0],
-                          &encrypted[read_index],
-                          /* lynx_public_exp */ 0,
-                          lynx_public_mod,
-                          length);
-
-   ///* adjust the read index */
-   //read_index = 1 + (blocks * length);
-
-   ///* decrypte the second frame of encrypted data */
-   //blocks = decrypt_frame(&result[256],
-   //                       &encrypted[read_index],
-   //                       /* lynx_public_exp */ 0,
-   //                       lynx_public_mod,
-   //                       length);
+   decrypt_frame(&result[0], &encrypted[0], /* lynx_public_exp */ 0, lynx_public_mod, length);
 }

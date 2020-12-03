@@ -21,6 +21,7 @@
 #include "rg_profiler.h"
 #include "rg_sdcard.h"
 #include "rg_settings.h"
+#include "rg_attr.h"
 
 typedef bool (*state_handler_t)(char *pathName);
 
@@ -147,12 +148,6 @@ static inline uint get_elapsed_time_since(uint start)
 #define MIN(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
 #undef MAX
 #define MAX(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
-
-#ifdef __cplusplus
-#define EXTERN_C extern "C"
-#else
-#define EXTERN_C
-#endif
 
 #define RG_PANIC(x) odroid_system_panic(x, __FUNCTION__, __FILE__)
 

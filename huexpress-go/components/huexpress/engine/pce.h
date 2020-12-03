@@ -7,16 +7,15 @@
 #include <stdlib.h>
 #include <stddef.h>
 
-#include <rg_system.h>
-
 #include "../config.h"
 #include "utils.h"
 #include "osd.h"
-
 #include "hard_pce.h"
 #include "h6280.h"
 #include "sound.h"
 #include "gfx.h"
+
+#include <rg_system.h>
 
 int LoadState(char *name);
 int SaveState(char *name);
