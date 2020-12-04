@@ -1,5 +1,4 @@
 extern "C" {
-#include <freertos/FreeRTOS.h>
 #include <rg_system.h>
 #include <stdlib.h>
 #include <stdio.h>

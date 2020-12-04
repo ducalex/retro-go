@@ -1,4 +1,3 @@
-#include <esp_partition.h>
 #include <rg_system.h>
 #include <string.h>
 
@@ -78,18 +77,11 @@ static void event_handler(gui_event_t event, tab_t *tab)
 static void add_emulator(const char *system, const char *dirname, const char* ext, const char *part,
                           uint16_t crc_offset, const void *logo, const void *header)
 {
-    const esp_partition_t *partition = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, part);
-
-    if (partition == NULL)
-    {
-        return;
-    }
-
     retro_emulator_t *p = &emulators[emulators_count++];
     strcpy(p->system_name, system);
+    strcpy(p->partition, part);
     strcpy(p->dirname, dirname);
     strcpy(p->ext, ext);
-    p->partition = partition->subtype - ESP_PARTITION_SUBTYPE_APP_OTA_MIN;
     p->roms.count = 0;
     p->roms.files = NULL;
     p->initialized = false;

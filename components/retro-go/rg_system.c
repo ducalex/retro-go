@@ -141,7 +141,7 @@ void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_
     // If any key is pressed we go back to the menu (recover from ROM crash)
     if (odroid_input_key_is_pressed(ODROID_INPUT_ANY))
     {
-        odroid_system_switch_app(0);
+        odroid_system_switch_app(APP_LAUNCHER);
     }
 
     if (netplay_cb != NULL)
@@ -152,7 +152,7 @@ void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_
     if (odroid_settings_StartupApp_get() == 0)
     {
         // Only boot this emu once, next time will return to launcher
-        odroid_system_set_boot_app(0);
+        odroid_system_set_boot_app(APP_LAUNCHER);
     }
 
     currentApp.startAction = odroid_settings_StartAction_get();
@@ -332,9 +332,9 @@ void odroid_system_reload_app()
     esp_restart();
 }
 
-void odroid_system_switch_app(int app)
+void odroid_system_switch_app(const char *app)
 {
-    printf("%s: Switching to app %d.\n", __func__, app);
+    printf("%s: Switching to app '%s'.\n", __func__, app ? app : "NULL");
 
     odroid_display_clear(0);
     odroid_display_show_hourglass();
@@ -346,19 +346,23 @@ void odroid_system_switch_app(int app)
     esp_restart();
 }
 
-void odroid_system_set_boot_app(int slot)
+void odroid_system_set_boot_app(const char *app)
 {
-    if (slot < 0) slot = ESP_PARTITION_SUBTYPE_APP_FACTORY;
-    else slot = slot + ESP_PARTITION_SUBTYPE_APP_OTA_MIN;
+    const esp_partition_t* partition = esp_partition_find_first(
+            ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, app);
 
-    const esp_partition_t* partition = esp_partition_find_first(ESP_PARTITION_TYPE_APP, slot, NULL);
+    if (partition == NULL)
+    {
+        // RG_PANIC("Application '%s' not found!", app);
+        RG_PANIC("Application not found!");
+    }
 
-    if (partition == NULL || esp_ota_set_boot_partition(partition) != ESP_OK)
+    if (esp_ota_set_boot_partition(partition) != ESP_OK)
     {
         RG_PANIC("Unable to set boot app!");
     }
 
-    printf("%s: Boot partition set to %d '%s'\n", __func__, slot, partition->label);
+    printf("%s: Boot partition set to %d '%s'\n", __func__, partition->subtype, partition->label);
 }
 
 void odroid_system_panic(const char *reason, const char *function, const char *file)
@@ -396,7 +400,7 @@ void odroid_system_panic_dialog(const char *reason)
     };
     odroid_overlay_dialog("The application crashed!", choices, 1);
 
-    odroid_system_switch_app(0);
+    odroid_system_switch_app(APP_LAUNCHER);
 }
 
 void odroid_system_halt()

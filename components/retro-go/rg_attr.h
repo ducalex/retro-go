@@ -23,9 +23,9 @@
 #define FLAT_INLINE static inline __attribute__((__always_inline__)) __attribute__((flatten))
 #endif
 
-#ifndef INLINE
-#define INLINE static inline
-#endif
+// #ifndef INLINE
+// #define INLINE static inline
+// #endif
 
 #ifndef NO_PROFILING
 #define NO_PROFILING __attribute((no_instrument_function))

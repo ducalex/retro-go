@@ -17,10 +17,10 @@ typedef struct {
 
 typedef struct {
     char system_name[64];
+    char partition[16];
     char dirname[16];
     char ext[8];
     uint16_t crc_offset;
-    uint16_t partition;
     struct {
         retro_emulator_file_t *files;
         int count;

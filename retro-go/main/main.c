@@ -190,7 +190,7 @@ void retro_loop()
 
                 int sel = odroid_overlay_dialog("Retro-Go", choices, -1);
                 if (sel == 1) {
-                    odroid_system_switch_app(-16);
+                    odroid_system_switch_app(APP_FACTORY);
                 }
                 else if (sel == 2) {
                     if (odroid_overlay_confirm("Reset all settings?", false) == 1) {

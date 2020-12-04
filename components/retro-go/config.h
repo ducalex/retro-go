@@ -53,3 +53,7 @@
 #define ODROID_BASE_PATH_TEMP      ODROID_BASE_PATH "/odroid/data" // temp
 #define ODROID_BASE_PATH_ROMART    ODROID_BASE_PATH "/romart"
 #define ODROID_BASE_PATH_CRC_CACHE ODROID_BASE_PATH "/odroid/cache/crc"
+
+// Partitions
+#define APP_LAUNCHER           "retro-go"
+#define APP_FACTORY            NULL

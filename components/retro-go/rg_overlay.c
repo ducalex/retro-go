@@ -591,11 +591,11 @@ int odroid_overlay_game_menu()
     switch (r)
     {
         case 10: odroid_system_emu_save_state(0); break;
-        case 20: odroid_system_emu_save_state(0); odroid_system_switch_app(0); break;
+        case 20: odroid_system_emu_save_state(0); odroid_system_switch_app(APP_LAUNCHER); break;
         case 30: odroid_system_emu_load_state(0); break; // esp_restart();
         case 40: odroid_netplay_quick_start(); break;
         case 50: odroid_overlay_game_debug_menu(); break;
-        case 100: odroid_system_switch_app(0); break;
+        case 100: odroid_system_switch_app(APP_LAUNCHER); break;
     }
 
     odroid_audio_mute(false);

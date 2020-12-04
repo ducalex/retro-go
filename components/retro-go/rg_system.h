@@ -112,9 +112,9 @@ void odroid_system_panic_dialog(const char *reason);
 void odroid_system_panic(const char *reason, const char *file, const char *function) __attribute__((noreturn));
 void odroid_system_halt() __attribute__((noreturn));
 void odroid_system_sleep();
-void odroid_system_switch_app(int app) __attribute__((noreturn));
+void odroid_system_switch_app(const char *app) __attribute__((noreturn));
 void odroid_system_reload_app() __attribute__((noreturn));
-void odroid_system_set_boot_app(int slot);
+void odroid_system_set_boot_app(const char *app);
 void odroid_system_set_led(int value);
 void odroid_system_tick(uint skippedFrame, uint fullFrame, uint busyTime);
 rg_app_desc_t* odroid_system_get_app();
@@ -149,6 +149,7 @@ static inline uint get_elapsed_time_since(uint start)
 #undef MAX
 #define MAX(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
 
+// This should really support printf format...
 #define RG_PANIC(x) odroid_system_panic(x, __FUNCTION__, __FILE__)
 
 #define MEM_ANY   0
