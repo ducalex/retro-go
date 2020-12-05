@@ -336,5 +336,6 @@ void emulators_init()
     add_emulator("ColecoVision", "col", "col", "smsplusgx-go", 0, logo_col, header_col);
     add_emulator("PC Engine", "pce", "pce", "huexpress-go", 0, logo_pce, header_pce);
     add_emulator("Atari Lynx", "lnx", "lnx", "handy-go", 64, logo_lnx, header_lnx);
+    // add_emulator("Super Nintendo", "snes", "smc", "snes9x-go", 64, NULL, NULL);
     // add_emulator("Atari 2600", "a26", "a26", "stella-go", 0, logo_a26, header_a26);
 }

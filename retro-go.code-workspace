@@ -22,6 +22,9 @@
 			"path": "smsplusgx-go"
 		},
 		{
+			"path": "snes9x-go"
+		},
+		{
 			"path": ".",
 			"name": "root"
 		}
