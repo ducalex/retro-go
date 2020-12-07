@@ -27,17 +27,38 @@ typedef struct
     uint16_t bitmask;
 } odroid_gamepad_state_t;
 
+typedef union {
+    struct {
+        uint16_t btn_up: 1;
+        uint16_t btn_right: 1;
+        uint16_t btn_down: 1;
+        uint16_t btn_left: 1;
+        uint16_t btn_select: 1;
+        uint16_t btn_start: 1;
+        uint16_t btn_menu: 1;
+        uint16_t btn_volume: 1;
+        uint16_t btn_a: 1;
+        uint16_t btn_b: 1;
+        uint16_t btn_x: 1;
+        uint16_t btn_y: 1;
+        uint16_t btn_1: 1;
+        uint16_t btn_2: 1;
+        uint16_t btn_3: 1;
+        uint16_t btn_4: 1;
+    };
+    uint16_t bitmask;
+} odroid_gamepad_state2_t;
+
 typedef struct
 {
 	int millivolts;
 	int percentage;
 } odroid_battery_state_t;
 
-void odroid_input_init();
-void odroid_input_terminate();
-long odroid_input_gamepad_last_read();
+void odroid_input_init(void);
+void odroid_input_terminate(void);
+long odroid_input_gamepad_last_read(void);
 bool odroid_input_key_is_pressed(odroid_gamepad_key_t key);
 void odroid_input_wait_for_key(odroid_gamepad_key_t key, bool pressed);
-void odroid_input_read_gamepad(odroid_gamepad_state_t* out_state);
-odroid_gamepad_state_t odroid_input_read_gamepad_();
-odroid_battery_state_t odroid_input_read_battery();
+odroid_gamepad_state_t odroid_input_read_gamepad(void);
+odroid_battery_state_t odroid_input_read_battery(void);

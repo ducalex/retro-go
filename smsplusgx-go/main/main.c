@@ -165,7 +165,7 @@ void app_main(void)
 
     while (true)
     {
-        odroid_input_read_gamepad(localJoystick);
+        *localJoystick = odroid_input_read_gamepad();
 
         if (localJoystick->values[ODROID_INPUT_MENU]) {
             odroid_overlay_game_menu();

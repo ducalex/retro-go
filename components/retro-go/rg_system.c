@@ -25,6 +25,8 @@
 #define USE_SPI_MUTEX 0
 #endif
 
+#define SAVE_BUFFER_SIZE (0x40000)
+
 // This is a direct pointer to rtc slow ram which isn't cleared on
 // panic. We don't use this region so we can point anywhere in it.
 static panic_trace_t *panicTrace = (void *)0x50001000;

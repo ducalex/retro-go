@@ -258,7 +258,6 @@ int odroid_overlay_dialog(const char *header, odroid_dialog_choice_t *options, i
     int sel_old = sel;
     int last_key = -1;
     bool select = false;
-    odroid_gamepad_state_t joystick;
 
     dialog_open_depth++;
 
@@ -268,7 +267,8 @@ int odroid_overlay_dialog(const char *header, odroid_dialog_choice_t *options, i
 
     while (1)
     {
-        odroid_input_read_gamepad(&joystick);
+        odroid_gamepad_state_t joystick = odroid_input_read_gamepad();
+
         if (last_key >= 0) {
             if (!joystick.values[last_key]) {
                 last_key = -1;
@@ -557,7 +557,7 @@ int odroid_overlay_game_debug_menu(void)
         {10, "Registers", "C", 1, NULL},
         ODROID_DIALOG_CHOICE_LAST
     };
-    runtime_stats_t stats = odroid_system_get_stats();
+    // runtime_stats_t stats = odroid_system_get_stats();
 
     while (odroid_input_key_is_pressed(ODROID_INPUT_ANY));
     return odroid_overlay_dialog("Debugging", options, 0);

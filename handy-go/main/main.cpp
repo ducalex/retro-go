@@ -176,8 +176,6 @@ extern "C" void app_main(void)
 
     set_rotation();
 
-    odroid_gamepad_state_t joystick;
-
     float sampleTime = AUDIO_SAMPLE_RATE / 1000000.f;
     uint skipFrames = 0;
     bool fullFrame = 0;
@@ -185,7 +183,7 @@ extern "C" void app_main(void)
     // Start emulation
     while (1)
     {
-        odroid_input_read_gamepad(&joystick);
+        odroid_gamepad_state_t joystick = odroid_input_read_gamepad();
 
         if (joystick.values[ODROID_INPUT_MENU]) {
             odroid_overlay_game_menu();

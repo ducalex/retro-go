@@ -223,7 +223,7 @@ void emulator_crc32_file(retro_emulator_file_t *file)
         fseek(fp, file->crc_offset, SEEK_SET);
         while (true)
         {
-            odroid_input_read_gamepad(&gui.joystick);
+            gui.joystick = odroid_input_read_gamepad();
             if (gui.joystick.bitmask > 0) break;
 
             count = fread(buffer, 1, chunk_size, fp);

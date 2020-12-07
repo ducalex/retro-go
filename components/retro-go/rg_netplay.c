@@ -422,7 +422,7 @@ bool odroid_netplay_quick_start()
             screen_msg = status_msg;
         }
 
-        odroid_input_read_gamepad(&joystick);
+        joystick = odroid_input_read_gamepad();
 
         if (joystick.values[ODROID_INPUT_B]) break;
 

@@ -338,7 +338,7 @@ void osd_getinput(void)
 {
    uint16 pad0 = 0, pad1 = 0;
 
-   odroid_input_read_gamepad(localJoystick);
+   *localJoystick = odroid_input_read_gamepad();
 
    if (localJoystick->values[ODROID_INPUT_MENU])
    {

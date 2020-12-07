@@ -197,8 +197,7 @@ int osd_input_init(void)
 
 void osd_input_read(void)
 {
-    odroid_gamepad_state_t joystick;
-    odroid_input_read_gamepad(&joystick);
+    odroid_gamepad_state_t joystick = odroid_input_read_gamepad();
 
 	if (joystick.values[ODROID_INPUT_MENU]) {
 		odroid_overlay_game_menu();

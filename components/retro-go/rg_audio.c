@@ -123,7 +123,7 @@ static inline void filter_samples(short* samples, int count)
 
 }
 
-IRAM_ATTR void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
+void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
 {
     size_t sampleCount = frameCount * 2;
     size_t bufferSize = sampleCount * sizeof(int16_t);
@@ -152,7 +152,7 @@ IRAM_ATTR void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
     {
         for (short i = 0; i < sampleCount; i += 2)
         {
-            // Down mix stero to mono
+            // Down mix stereo to mono
             int32_t sample = (stereoAudioBuffer[i] + stereoAudioBuffer[i + 1]) >> 1;
 
             // Normalize
@@ -228,7 +228,7 @@ bool odroid_audio_is_playing()
     return false;
 }
 
-void odroid_audio_set_sink(ODROID_AUDIO_SINK sink)
+void odroid_audio_set_sink(odroid_audio_sink_t sink)
 {
     odroid_settings_AudioSink_set(sink);
     audioSink = sink;
@@ -240,7 +240,7 @@ void odroid_audio_set_sink(ODROID_AUDIO_SINK sink)
     }
 }
 
-ODROID_AUDIO_SINK odroid_audio_get_sink()
+odroid_audio_sink_t odroid_audio_get_sink()
 {
     return audioSink;
 }

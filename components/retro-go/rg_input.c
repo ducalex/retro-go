@@ -1,8 +1,8 @@
 #include <freertos/FreeRTOS.h>
-#include <driver/i2c.h>
+#include <esp_adc_cal.h>
 #include <driver/gpio.h>
 #include <driver/adc.h>
-#include <esp_adc_cal.h>
+#include <driver/i2c.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -15,7 +15,7 @@ static volatile uint use_external_gamepad = 0;
 static odroid_gamepad_state_t gamepad_state;
 static SemaphoreHandle_t xSemaphore;
 
-static inline odroid_gamepad_state_t console_gamepad_read()
+static inline odroid_gamepad_state_t console_gamepad_read(void)
 {
     odroid_gamepad_state_t state = {0};
 
@@ -40,7 +40,7 @@ static inline odroid_gamepad_state_t console_gamepad_read()
     return state;
 }
 
-static inline odroid_gamepad_state_t external_gamepad_read()
+static inline odroid_gamepad_state_t external_gamepad_read(void)
 {
     odroid_gamepad_state_t state = {0};
 
@@ -108,7 +108,7 @@ static void input_task(void *arg)
     vTaskDelete(NULL);
 }
 
-void odroid_input_init()
+void odroid_input_init(void)
 {
     assert(input_task_is_running == false);
 
@@ -139,12 +139,12 @@ void odroid_input_init()
   	printf("odroid_input_init done.\n");
 }
 
-void odroid_input_terminate()
+void odroid_input_terminate(void)
 {
     input_task_is_running = false;
 }
 
-long odroid_input_gamepad_last_read()
+long odroid_input_gamepad_last_read(void)
 {
     if (!last_gamepad_read)
         return 0;
@@ -152,28 +152,22 @@ long odroid_input_gamepad_last_read()
     return get_elapsed_time_since(last_gamepad_read);
 }
 
-void odroid_input_read_gamepad(odroid_gamepad_state_t* out_state)
+odroid_gamepad_state_t odroid_input_read_gamepad(void)
 {
     assert(input_task_is_running == true);
 
     xSemaphoreTake(xSemaphore, portMAX_DELAY);
-    *out_state = gamepad_state;
+    odroid_gamepad_state_t state = gamepad_state;
     xSemaphoreGive(xSemaphore);
 
     last_gamepad_read = get_elapsed_time();
-}
 
-odroid_gamepad_state_t odroid_input_read_gamepad_()
-{
-    odroid_gamepad_state_t out_state;
-    odroid_input_read_gamepad(&out_state);
-    return out_state;
+    return state;
 }
 
 bool odroid_input_key_is_pressed(odroid_gamepad_key_t key)
 {
-    odroid_gamepad_state_t joystick;
-    odroid_input_read_gamepad(&joystick);
+    odroid_gamepad_state_t joystick = odroid_input_read_gamepad();
 
     if (key == ODROID_INPUT_ANY) {
         return joystick.bitmask > 0 ? 1 : 0;

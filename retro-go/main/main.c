@@ -177,7 +177,7 @@ void retro_loop()
             selected_tab_last = gui.selected;
         }
 
-        odroid_input_read_gamepad(&gui.joystick);
+        gui.joystick = odroid_input_read_gamepad();
 
         if (gui.idle_counter > 0 && gui.joystick.bitmask == 0)
         {
