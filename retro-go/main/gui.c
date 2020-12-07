@@ -47,8 +47,8 @@ theme_t gui_themes[] = {
 };
 int gui_themes_count = 12;
 
-static size_t gp_buffer_size = 256 * 1024;
-static void  *gp_buffer = NULL;
+static size_t img_buffer_length = 300 * 300;
+static uint16_t *img_buffer = NULL;
 static char str_buffer[128];
 
 retro_gui_t gui;
@@ -59,7 +59,7 @@ void gui_event(gui_event_t event, tab_t *tab)
         (*tab->event_handler)(event, tab);
 }
 
-tab_t *gui_add_tab(const char *name, const void *logo, const void *header, void *arg, void *event_handler)
+tab_t *gui_add_tab(const char *name, const binfile_t *logo, const binfile_t *header, void *arg, void *event_handler)
 {
     tab_t *tab = calloc(1, sizeof(tab_t));
 
@@ -68,7 +68,7 @@ tab_t *gui_add_tab(const char *name, const void *logo, const void *header, void 
 
     tab->event_handler = event_handler;
     tab->img_header = header;
-    tab->img_logo = logo ?: (void*)tab;
+    tab->img_logo = logo;
     tab->initialized = false;
     tab->is_empty = false;
     tab->arg = arg;
@@ -234,11 +234,43 @@ void gui_redraw()
     gui_event(TAB_REDRAW, tab);
 }
 
+void gui_draw_png(int x, int y, int width, int height, const binfile_t *file)
+{
+    if (img_buffer == NULL)
+        img_buffer = malloc(img_buffer_length * 2);
+
+    LuImage *img;
+
+    if (file->path) {
+        img = luPngReadFile(file->path);
+    } else {
+        img = luPngReadMem(file->data, file->size, 0);
+    }
+
+    if (img) {
+        for (int p = 0, i = 0; i < img->dataSize && p < img_buffer_length;) {
+            uint8_t r = (img->data[i++] >> 3) & 0x1F;
+            uint8_t g = (img->data[i++] >> 2) & 0x3F;
+            uint8_t b = (img->data[i++] >> 3) & 0x1F;
+            img_buffer[p++] = (r << 11) | (g << 5) | b;
+        }
+
+        width = width > 0 ? MIN(width, img->width) : img->width;
+        height = height > 0 ? MIN(height, img->height) : img->height;
+
+        odroid_display_write(x, y, width, height, img->width * 2, img_buffer);
+
+        luImageRelease(img, NULL);
+    } else {
+        printf("gui_draw_png: Unable to load PNG file!\n");
+    }
+}
+
 void gui_draw_navbar()
 {
     for (int i = 0; i < gui.tabcount; i++)
     {
-        odroid_display_write(i * IMAGE_LOGO_WIDTH, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, gui.tabs[i]->img_logo);
+        odroid_display_write(i * IMAGE_LOGO_WIDTH, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, 0, gui.tabs[i]->img_logo);
     }
 }
 
@@ -251,10 +283,10 @@ void gui_draw_header(tab_t *tab)
     odroid_overlay_draw_fill_rect(0, y_pos, ODROID_SCREEN_WIDTH, LIST_Y_OFFSET - y_pos, C_BLACK);
 
     if (tab->img_logo)
-        odroid_display_write(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, tab->img_logo);
+        gui_draw_png(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, tab->img_logo);
 
     if (tab->img_header)
-        odroid_display_write(x_pos + 1, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, tab->img_header);
+        gui_draw_png(x_pos + 1, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, tab->img_header);
 }
 
 // void gui_draw_notice(tab_t *tab)
@@ -307,11 +339,9 @@ void gui_draw_cover(retro_emulator_file_t *file)
 {
     retro_emulator_t *emu = (retro_emulator_t *)file->emulator;
 
-    if (gp_buffer == NULL)
-        gp_buffer = malloc(gp_buffer_size);
+    if (img_buffer == NULL)
+        img_buffer = malloc(img_buffer_length * 2);
 
-    uint16_t *cover_buffer = (uint16_t*)gp_buffer;
-    const int cover_buffer_length = gp_buffer_size / 2;
     uint16_t cover_width = 0, cover_height = 0;
 
     if (file->checksum > 0 && file->missing_cover == 0)
@@ -327,11 +357,11 @@ void gui_draw_cover(retro_emulator_file_t *file)
 
         if ((img = luPngReadFile(path1)))
         {
-            for (int p = 0, i = 0; i < img->dataSize && p < cover_buffer_length; i += 3) {
+            for (int p = 0, i = 0; i < img->dataSize && p < img_buffer_length; i += 3) {
                 uint8_t r = img->data[i];
                 uint8_t g = img->data[i + 1];
                 uint8_t b = img->data[i + 2];
-                cover_buffer[p++] = ((r / 8) << 11) | ((g / 4) << 5) | (b / 8);
+                img_buffer[p++] = ((r / 8) << 11) | ((g / 4) << 5) | (b / 8);
             }
             cover_width = img->width;
             cover_height = img->height;
@@ -341,7 +371,7 @@ void gui_draw_cover(retro_emulator_file_t *file)
         {
             fread(&cover_width, 2, 1, fp);
             fread(&cover_height, 2, 1, fp);
-            fread(cover_buffer, 2, cover_buffer_length, fp);
+            fread(img_buffer, 2, img_buffer_length, fp);
             fclose(fp);
         }
 
@@ -353,7 +383,7 @@ void gui_draw_cover(retro_emulator_file_t *file)
             if (cover_height > COVER_MAX_HEIGHT || cover_width > COVER_MAX_WIDTH)
                 gui_draw_notice("Art too large", C_ORANGE);
 
-            odroid_display_write_rect(320 - width, 240 - height, width, height, cover_width, cover_buffer);
+            odroid_display_write(320 - width, 240 - height, width, height, cover_width * 2, img_buffer);
             return;
         }
     }

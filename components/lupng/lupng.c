@@ -201,6 +201,13 @@ typedef struct {
     const LuImage *cimg; /* constant pointer version */
 } PngInfoStruct;
 
+typedef struct
+{
+    void *data;
+    size_t size;
+    size_t pos;
+} MemReader;
+
 /* helper macro to output warning via user context of the info struct */
 #define LUPNG_WARN_UC(uc,...) do { if ((uc)->warnProc) { (uc)->warnProc((uc)->warnProcUserPtr, __VA_ARGS__); }} while(0)
 #define LUPNG_WARN(info,...) LUPNG_WARN_UC((info)->userCtx, __VA_ARGS__)
@@ -291,6 +298,24 @@ static void internalPrintf(void *userPtr, const char *fmt, ...)
 static size_t internalFread(void *ptr, size_t size, size_t count, void *userPtr)
 {
     return fread(ptr, size, count, (FILE *)userPtr);
+}
+
+static size_t internalMemFread(void *ptr, size_t size, size_t count, void *userPtr)
+{
+    MemReader *mp = (MemReader*)userPtr;
+    int read_size = size * count;
+    if (read_size > mp->size - mp->pos) {
+        read_size = mp->size - mp->pos;
+    }
+    memcpy(ptr, mp->data + mp->pos, read_size);
+    mp->pos += read_size;
+
+    return read_size / size;
+}
+
+static size_t internalMemFwrite(const void *ptr, size_t size, size_t count, void *userPtr)
+{
+    return 0;
 }
 
 static size_t internalFwrite(const void *ptr, size_t size, size_t count, void *userPtr)
@@ -901,6 +926,18 @@ LuImage *luPngReadFile(const char *filename)
     }
 
     return img;
+}
+
+LuImage *luPngReadMem(const void *data, size_t size, int skipSig)
+{
+    MemReader mp = {.data = (void*)data, .size = size, .pos = 0};
+    LuUserContext userCtx;
+    luUserContextInitDefault(&userCtx);
+    userCtx.readProc = internalMemFread;
+    userCtx.readProcUserPtr = &mp;
+    userCtx.skipSig = skipSig;
+
+    return luPngReadUC(&userCtx);
 }
 
 static LU_INLINE int writeIhdr(PngInfoStruct *info)

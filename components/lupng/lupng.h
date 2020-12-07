@@ -132,6 +132,14 @@ uint8_t *luImageExtractBufAndRelease(LuImage *img, const LuUserContext *userCtx)
 LuImage *luPngReadFile(const char *filename);
 
 /**
+ * Decodes a PNG image from a memory buffer
+ *
+ * @param data the buffer containing the data.
+ * @param size the buffer size.
+ */
+LuImage *luPngReadMem(const void *data, size_t size, int skipSig);
+
+/**
  * Decodes a PNG image with the provided read function into a LuImage struct
  *
  * @param readProc a function pointer to a user-defined function to use for

@@ -15,6 +15,8 @@
 #define KEY_SHOW_EMPTY    "ShowEmptyTabs"
 #define KEY_SHOW_COVER    "ShowGameCover"
 
+bool ftp_server_running = false;
+
 static bool font_size_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
 {
     int font_size = odroid_overlay_get_font_size();
@@ -85,6 +87,34 @@ static bool color_shift_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t
     }
     sprintf(option->value, "%d/%d", gui.theme + 1, max + 1);
     return event == ODROID_DIALOG_ENTER;
+}
+
+static bool ftp_server_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+{
+    if (event == ODROID_DIALOG_ENTER)
+    {
+        odroid_dialog_choice_t choices[] = {
+            {0, "Status", "Running", 1, NULL},
+            {0, "SSID", "retro-go", 1, NULL},
+            {0, "IP", "0.0.0.0", 1, NULL},
+            {0, "---", "", -1, NULL},
+            {1, "Stop Server", "", 1, NULL},
+            ODROID_DIALOG_CHOICE_LAST
+        };
+
+        if (ftp_server_running) {
+            strcpy(choices[0].value, "Running");
+            choices[4].label = "Stop Server";
+        } else {
+            strcpy(choices[0].value, "Stopped");
+            choices[4].label = "Start Server";
+        }
+
+        if (odroid_overlay_dialog("FTP Server", choices, -1) == 1) {
+            // ftp_server_running = !ftp_server_running;
+        }
+    }
+    return false;
 }
 
 static inline bool tab_enabled(tab_t *tab)
@@ -174,6 +204,8 @@ void retro_loop()
                     {0, "Ver.", "build string", 1, NULL},
                     {0, "Date", "", 1, NULL},
                     {0, "By", "ducalex", 1, NULL},
+                    {0, "", "", -1, NULL},
+                    {3, "FTP server", "", 1, &ftp_server_cb},
                     {0, "", "", -1, NULL},
                     {1, "Reboot to firmware", "", 1, NULL},
                     {2, "Reset settings", "", 1, NULL},

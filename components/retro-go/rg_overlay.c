@@ -58,7 +58,7 @@ int odroid_overlay_draw_text_line(uint16_t x_pos, uint16_t y_pos, uint16_t width
         x_offset += font_width;
     }
 
-    odroid_display_write(x_pos, y_pos, width, font_height, overlay_buffer);
+    odroid_display_write(x_pos, y_pos, width, font_height, 0, overlay_buffer);
 
     return font_height;
 }
@@ -107,10 +107,10 @@ void odroid_overlay_draw_rect(int x, int y, int width, int height, int border, u
     {
         overlay_buffer[i] = color;
     }
-    odroid_display_write(x, y, width, border, overlay_buffer); // T
-    odroid_display_write(x, y + height - border, width, border, overlay_buffer); // B
-    odroid_display_write(x, y, border, height, overlay_buffer); // L
-    odroid_display_write(x + width - border, y, border, height, overlay_buffer); // R
+    odroid_display_write(x, y, width, border, 0, overlay_buffer); // T
+    odroid_display_write(x, y + height - border, width, border, 0, overlay_buffer); // B
+    odroid_display_write(x, y, border, height, 0, overlay_buffer); // L
+    odroid_display_write(x + width - border, y, border, height, 0, overlay_buffer); // R
 }
 
 void odroid_overlay_draw_fill_rect(int x, int y, int width, int height, uint16_t color)
@@ -129,7 +129,7 @@ void odroid_overlay_draw_fill_rect(int x, int y, int width, int height, uint16_t
     while (y_pos < y_end)
     {
         int thickness = (y_end - y_pos >= 16) ? 16 : (y_end - y_pos);
-        odroid_display_write(x, y_pos, width, thickness, overlay_buffer);
+        odroid_display_write(x, y_pos, width, thickness, 0, overlay_buffer);
         y_pos += 16;
     }
 }
@@ -557,6 +557,7 @@ int odroid_overlay_game_debug_menu(void)
         {10, "Registers", "C", 1, NULL},
         ODROID_DIALOG_CHOICE_LAST
     };
+    runtime_stats_t stats = odroid_system_get_stats();
 
     while (odroid_input_key_is_pressed(ODROID_INPUT_ANY));
     return odroid_overlay_dialog("Debugging", options, 0);
@@ -571,8 +572,6 @@ int odroid_overlay_game_menu()
         {30, "Reload", "", 1, NULL},
         #ifdef ENABLE_NETPLAY
         {40, "Netplay", "", 1, NULL},
-        #else
-        // {40, "Netplay", "", 0, NULL},
         #endif
         {50, "Tools", "", 1, NULL},
         {100, "Quit", "", 1, NULL},

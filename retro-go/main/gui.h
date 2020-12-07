@@ -1,8 +1,8 @@
 #pragma once
 
 #include <rg_input.h>
+#include <stdbool.h>
 #include "emulators.h"
-#include "stdbool.h"
 
 typedef enum {
     KEY_PRESS_A,
@@ -22,6 +22,12 @@ typedef enum {
     FIRST_ROW,
     LAST_ROW,
 } scroll_mode_t;
+
+typedef struct {
+    size_t size;
+    const char *path;
+    const uint8_t data[];
+} binfile_t;
 
 typedef struct {
     uint16_t list_background;
@@ -50,8 +56,8 @@ typedef void (*gui_event_handler_t)(gui_event_t event, void *arg);
 typedef struct {
     char name[64];
     char status[64];
-    const void *img_logo;
-    const void *img_header;
+    const binfile_t *img_logo;
+    const binfile_t *img_header;
     bool initialized;
     bool is_empty;
     void *arg;
@@ -74,7 +80,7 @@ typedef struct {
 extern retro_gui_t gui;
 extern int gui_themes_count;
 
-tab_t *gui_add_tab(const char *name, const void *logo, const void *header, void *arg, void *event_handler);
+tab_t *gui_add_tab(const char *name, const binfile_t *logo, const binfile_t *header, void *arg, void *event_handler);
 tab_t *gui_get_tab(int index);
 tab_t *gui_get_current_tab();
 tab_t *gui_set_current_tab(int index);
@@ -88,6 +94,7 @@ listbox_item_t *gui_get_selected_item(tab_t *tab);
 
 void gui_event(gui_event_t event, tab_t *tab);
 void gui_redraw(void);
+void gui_draw_png(int x, int y, int width, int height, const binfile_t *file);
 void gui_draw_navbar(void);
 void gui_draw_header(tab_t *tab);
 void gui_draw_status(tab_t *tab);

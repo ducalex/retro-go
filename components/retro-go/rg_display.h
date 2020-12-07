@@ -75,8 +75,7 @@ typedef struct {
 void odroid_display_init();
 void odroid_display_deinit();
 void odroid_display_drain_spi();
-void odroid_display_write(short left, short top, short width, short height, const uint16_t* bufferLE);
-void odroid_display_write_rect(short left, short top, short width, short height, short stride, const uint16_t* bufferLE);
+void odroid_display_write(short left, short top, short width, short height, short stride, const void* bufferLE);
 void odroid_display_clear(uint16_t colorLE);
 void odroid_display_show_hourglass();
 void odroid_display_force_refresh(void);

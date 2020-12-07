@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 #include "favorites.h"
-#include "bitmaps.h"
+#include "images.h"
 #include "gui.h"
 
 #define KEY_FAVORITES "Favorites"

@@ -115,6 +115,7 @@ void odroid_system_init(int appId, int sampleRate)
             (ODROID_SCREEN_HEIGHT - image_sdcard.height) / 2,
             image_sdcard.width,
             image_sdcard.height,
+            image_sdcard.width * 2,
             (uint16_t*)image_sdcard.pixel_data);
         odroid_system_halt();
     }

@@ -3,7 +3,7 @@
 
 #include "emulators.h"
 #include "favorites.h"
-#include "bitmaps.h"
+#include "images.h"
 #include "gui.h"
 
 static retro_emulator_t emulators[16];
@@ -38,7 +38,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
             sprintf(tab->status, "No games");
             gui_resize_list(tab, 8);
             sprintf(tab->listbox.items[0].text, "Place roms in folder: /roms/%s", emu->dirname);
-            sprintf(tab->listbox.items[2].text, "With file extension: .%s", emu->ext);
+            sprintf(tab->listbox.items[2].text, "With file extension: %s", emu->extensions);
             sprintf(tab->listbox.items[4].text, "Use SELECT and START to navigate.");
             tab->listbox.cursor = 3;
             tab->is_empty = true;
@@ -74,14 +74,17 @@ static void event_handler(gui_event_t event, tab_t *tab)
     }
 }
 
-static void add_emulator(const char *system, const char *dirname, const char* ext, const char *part,
-                          uint16_t crc_offset, const void *logo, const void *header)
+static void add_emulator(const char *system, const char *dirname, const char* extensions,
+                         const char *part, uint16_t crc_offset, const binfile_t *logo,
+                         const binfile_t *header)
 {
+    // SHOULD WE HIDE EMU IF PARTITION NOT FOUND ?
+
     retro_emulator_t *p = &emulators[emulators_count++];
     strcpy(p->system_name, system);
     strcpy(p->partition, part);
     strcpy(p->dirname, dirname);
-    strcpy(p->ext, ext);
+    strcpy(p->extensions, extensions);
     p->roms.count = 0;
     p->roms.files = NULL;
     p->initialized = false;
@@ -99,6 +102,7 @@ void emulator_init(retro_emulator_t *emu)
 
     printf("Retro-Go: Initializing emulator '%s'\n", emu->system_name);
 
+    char extensions[128];
     char path[128];
     char *files = NULL;
     size_t count = 0;
@@ -123,11 +127,23 @@ void emulator_init(retro_emulator_t *emu)
             const char *name = ptr;
             const char *ext = odroid_sdcard_get_extension(ptr);
             size_t name_len = strlen(name);
+            bool ext_match = false;
+            strcpy(extensions, emu->extensions);
 
             // Advance pointer to next entry
             ptr += name_len + 1;
 
-            if (!ext || strcasecmp(emu->ext, ext) != 0) //  && strcasecmp("zip", ext) != 0
+            if (!ext)
+                continue;
+
+            char *token = strtok(extensions, " ");
+
+            while (token && !ext_match) {
+                ext_match = strcasecmp(token, ext) == 0;
+                token = strtok(NULL, " ");
+            }
+
+            if (!ext_match)
                 continue;
 
             retro_emulator_file_t *file = &emu->roms.files[emu->roms.count++];
@@ -328,14 +344,16 @@ void emulator_start(retro_emulator_file_t *file, bool load_state)
 
 void emulators_init()
 {
-    add_emulator("Nintendo Entertainment System", "nes", "nes", "nofrendo-go", 16, logo_nes, header_nes);
-    add_emulator("Nintendo Gameboy", "gb", "gb", "gnuboy-go", 0, logo_gb, header_gb);
-    add_emulator("Nintendo Gameboy Color", "gbc", "gbc", "gnuboy-go", 0, logo_gbc, header_gbc);
-    add_emulator("Sega Master System", "sms", "sms", "smsplusgx-go", 0, logo_sms, header_sms);
-    add_emulator("Sega Game Gear", "gg", "gg", "smsplusgx-go", 0, logo_gg, header_gg);
-    add_emulator("ColecoVision", "col", "col", "smsplusgx-go", 0, logo_col, header_col);
-    add_emulator("PC Engine", "pce", "pce", "huexpress-go", 0, logo_pce, header_pce);
-    add_emulator("Atari Lynx", "lnx", "lnx", "handy-go", 64, logo_lnx, header_lnx);
-    // add_emulator("Super Nintendo", "snes", "smc", "snes9x-go", 64, NULL, NULL);
-    // add_emulator("Atari 2600", "a26", "a26", "stella-go", 0, logo_a26, header_a26);
+    add_emulator("Nintendo Entertainment System", "nes", "nes fam", "nofrendo-go", 16, &logo_nes, &header_nes);
+    add_emulator("Nintendo Gameboy",       "gb",   "gb gbc", "gnuboy-go",    0, &logo_gbc, &header_gbc);
+    add_emulator("Nintendo Gameboy Color", "gbc",  "gbc gb", "gnuboy-go",    0, &logo_gbc, &header_gbc);
+    add_emulator("Sega Master System",     "sms",  "sms",    "smsplusgx-go", 0, &logo_sms, &header_sms);
+    add_emulator("Sega Game Gear",         "gg",   "gg",     "smsplusgx-go", 0, &logo_gg,  &header_gg);
+    add_emulator("ColecoVision",           "col",  "col",    "smsplusgx-go", 0, &logo_col, &header_col);
+    add_emulator("PC Engine",              "pce",  "pce",    "huexpress-go", 0, &logo_pce, &header_pce);
+    add_emulator("Atari Lynx",             "lnx",  "lnx",    "handy-go",    64, &logo_lnx, &header_lnx);
+    // add_emulator("Super Nintendo",         "snes", "smc sfc", "snes9x-go", 0, NULL, NULL);
+    // add_emulator("Neo Geo Pocket Color",   "ngp",  "ngp ngc", "neopop-go", 0, NULL, NULL);
+    // add_emulator("MicroPython",            "mpy",  "py mpy",  "micropython", 0, NULL, NULL);
+    // add_emulator("Atari 2600",             "a26",  "a26",     "stella-go", 0, &logo_a26, &header_a26);
 }

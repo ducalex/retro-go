@@ -1038,13 +1038,17 @@ void odroid_display_drain_spi()
     }
 }
 
-void odroid_display_write_rect(short left, short top, short width, short height, short stride, const uint16_t* buffer)
+void odroid_display_write(short left, short top, short width, short height, short stride, const void* buffer)
 {
     odroid_display_drain_spi();
 
     send_reset_drawing(left, top, width, height);
 
     short lines_per_buffer = SPI_TRANSACTION_BUFFER_LENGTH / width;
+
+    if (stride <= 0) {
+        stride = width * 2;
+    }
 
     for (short y = 0; y < height; y += lines_per_buffer)
     {
@@ -1055,13 +1059,12 @@ void odroid_display_write_rect(short left, short top, short width, short height,
 
         for (int line = 0; line < lines_per_buffer; ++line)
         {
-            int ipos = (y + line) * stride;
-            int opos = line * width;
+            const uint16_t *buf = buffer + ((y + line) * stride);
+            size_t opos = line * width;
 
             for (short i = 0; i < width; ++i)
             {
-                uint16_t pixel = buffer[ipos + i];
-                line_buffer[opos + i] = pixel << 8 | pixel >> 8;
+                line_buffer[opos + i] = buf[i] << 8 | buf[i] >> 8;
             }
         }
 
@@ -1069,12 +1072,6 @@ void odroid_display_write_rect(short left, short top, short width, short height,
     }
 
     odroid_display_drain_spi();
-}
-
-// Same as odroid_display_write_rect but stride is assumed to be width (for backwards compat)
-void odroid_display_write(short left, short top, short width, short height, const uint16_t* buffer)
-{
-    odroid_display_write_rect(left, top, width, height, width, buffer);
 }
 
 void odroid_display_clear(uint16_t color)
@@ -1106,6 +1103,7 @@ void odroid_display_show_hourglass()
         (SCREEN_HEIGHT / 2) - (image_hourglass.height / 2),
         image_hourglass.width,
         image_hourglass.height,
+        image_hourglass.width * 2,
         (uint16_t*)image_hourglass.pixel_data);
 }
 
