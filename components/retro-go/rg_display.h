@@ -1,7 +1,6 @@
 #pragma once
 
 #include <stdint.h>
-#include "rg_colors.h"
 
 typedef enum {
     SCREEN_UPDATE_EMPTY,
@@ -12,46 +11,46 @@ typedef enum {
 
 typedef enum
 {
-    ODROID_BACKLIGHT_LEVEL0 = 0,
-    ODROID_BACKLIGHT_LEVEL1 = 1,
-    ODROID_BACKLIGHT_LEVEL2 = 2,
-    ODROID_BACKLIGHT_LEVEL3 = 3,
-    ODROID_BACKLIGHT_LEVEL4 = 4,
-    ODROID_BACKLIGHT_LEVEL_COUNT = 5,
-} odroid_display_backlight_t;
+   PIXEL_FORMAT_565_BE = 0,  // 16bit 565 big endian (prefered for our lcd)
+   PIXEL_FORMAT_565_LE,      // 16bit 565 little endian
+} screen_pixel_format_t;
 
 typedef enum
 {
-    ODROID_DISPLAY_SCALING_OFF = 0,  // No scaling, center image on screen
-    ODROID_DISPLAY_SCALING_FIT,       // Scale and preserve aspect ratio
-    ODROID_DISPLAY_SCALING_FILL,      // Scale and stretch to fill screen
-    ODROID_DISPLAY_SCALING_COUNT
-} odroid_display_scaling_t;
+    RG_BACKLIGHT_LEVEL0 = 0,
+    RG_BACKLIGHT_LEVEL1 = 1,
+    RG_BACKLIGHT_LEVEL2 = 2,
+    RG_BACKLIGHT_LEVEL3 = 3,
+    RG_BACKLIGHT_LEVEL4 = 4,
+    RG_BACKLIGHT_LEVEL_COUNT = 5,
+} display_backlight_t;
 
 typedef enum
 {
-    ODROID_DISPLAY_FILTER_OFF = 0x0,
-    ODROID_DISPLAY_FILTER_LINEAR_X = 0x1,
-    ODROID_DISPLAY_FILTER_LINEAR_Y = 0x2,
-    ODROID_DISPLAY_FILTER_BILINEAR = 0x3,
-    // ODROID_DISPLAY_FILTER_SCANLINE,
-    ODROID_DISPLAY_FILTER_COUNT = 4,
-} odroid_display_filter_t;
+    RG_DISPLAY_SCALING_OFF = 0,  // No scaling, center image on screen
+    RG_DISPLAY_SCALING_FIT,       // Scale and preserve aspect ratio
+    RG_DISPLAY_SCALING_FILL,      // Scale and stretch to fill screen
+    RG_DISPLAY_SCALING_COUNT
+} display_scaling_t;
 
 typedef enum
 {
-   ODROID_PIXEL_FORMAT_565_BE = 0,  // 16bit 565 big endian (prefered for our lcd)
-   ODROID_PIXEL_FORMAT_565_LE,      // 16bit 565 little endian
-} odroid_pixel_format_t;
+    RG_DISPLAY_FILTER_OFF = 0x0,
+    RG_DISPLAY_FILTER_LINEAR_X = 0x1,
+    RG_DISPLAY_FILTER_LINEAR_Y = 0x2,
+    RG_DISPLAY_FILTER_BILINEAR = 0x3,
+    // RG_DISPLAY_FILTER_SCANLINE,
+    RG_DISPLAY_FILTER_COUNT = 4,
+} display_filter_t;
 
 typedef enum
 {
-   ODROID_DISPLAY_ROTATION_OFF = 0,
-   ODROID_DISPLAY_ROTATION_AUTO,
-   ODROID_DISPLAY_ROTATION_LEFT,
-   ODROID_DISPLAY_ROTATION_RIGHT,
-   ODROID_DISPLAY_ROTATION_COUNT,
-} odroid_display_rotation_t;
+   RG_DISPLAY_ROTATION_OFF = 0,
+   RG_DISPLAY_ROTATION_AUTO,
+   RG_DISPLAY_ROTATION_LEFT,
+   RG_DISPLAY_ROTATION_RIGHT,
+   RG_DISPLAY_ROTATION_COUNT,
+} display_rotation_t;
 
 typedef struct {
     short left;
@@ -82,14 +81,14 @@ void odroid_display_force_refresh(void);
 void odroid_display_set_scale(short width, short height, double aspect_ratio);
 short odroid_display_queue_update(odroid_video_frame_t *frame, odroid_video_frame_t *previousFrame);
 
-odroid_display_backlight_t odroid_display_get_backlight();
-void odroid_display_set_backlight(odroid_display_backlight_t level);
+display_backlight_t odroid_display_get_backlight();
+void odroid_display_set_backlight(display_backlight_t level);
 
-odroid_display_scaling_t odroid_display_get_scaling_mode(void);
-void odroid_display_set_scaling_mode(odroid_display_scaling_t mode);
+display_scaling_t odroid_display_get_scaling_mode(void);
+void odroid_display_set_scaling_mode(display_scaling_t mode);
 
-odroid_display_filter_t odroid_display_get_filter_mode(void);
-void odroid_display_set_filter_mode(odroid_display_filter_t mode);
+display_filter_t odroid_display_get_filter_mode(void);
+void odroid_display_set_filter_mode(display_filter_t mode);
 
-odroid_display_rotation_t odroid_display_get_rotation(void);
-void odroid_display_set_rotation(odroid_display_rotation_t rotation);
+display_rotation_t odroid_display_get_rotation(void);
+void odroid_display_set_rotation(display_rotation_t rotation);

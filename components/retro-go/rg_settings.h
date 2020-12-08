@@ -11,10 +11,10 @@ typedef enum
 
 typedef enum
 {
-    ODROID_REGION_AUTO = 0,
-    ODROID_REGION_NTSC,
-    ODROID_REGION_PAL
-} ODROID_REGION;
+    EMU_REGION_AUTO = 0,
+    EMU_REGION_NTSC,
+    EMU_REGION_PAL
+} emu_region_t;
 
 void odroid_settings_init(void);
 void odroid_settings_reset(void);
@@ -41,8 +41,8 @@ void odroid_settings_StartAction_set(ODROID_START_ACTION value);
 int32_t odroid_settings_AudioSink_get();
 void odroid_settings_AudioSink_set(int32_t value);
 
-ODROID_REGION odroid_settings_Region_get();
-void odroid_settings_Region_set(ODROID_REGION value);
+emu_region_t odroid_settings_Region_get();
+void odroid_settings_Region_set(emu_region_t value);
 
 int32_t odroid_settings_Palette_get();
 void odroid_settings_Palette_set(int32_t value);

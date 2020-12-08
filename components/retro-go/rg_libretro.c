@@ -1,0 +1,1 @@
+/* Partial libretro frontend implementation */

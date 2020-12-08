@@ -7,12 +7,12 @@
 #include "rg_system.h"
 #include "rg_audio.h"
 
-static int audioSink = ODROID_AUDIO_SINK_SPEAKER;
+static int audioSink = RG_AUDIO_SINK_SPEAKER;
 static int audioSampleRate = 0;
 static int audioFilter = 0;
 static bool audioMuted = 0;
 static bool audioInitialized = 0;
-static int volumeLevel = ODROID_AUDIO_VOLUME_DEFAULT;
+static int volumeLevel = RG_AUDIO_VOL_DEFAULT;
 static float volumeLevels[] = {0.f, 0.06f, 0.125f, 0.187f, 0.25f, 0.35f, 0.42f, 0.60f, 0.80f, 1.f};
 
 
@@ -23,15 +23,15 @@ int odroid_audio_volume_get()
 
 void odroid_audio_volume_set(int level)
 {
-    if (level < ODROID_AUDIO_VOLUME_MIN)
+    if (level < RG_AUDIO_VOL_MIN)
     {
         printf("odroid_audio_volume_set: level out of range (< 0) (%d)\n", level);
-        level = ODROID_AUDIO_VOLUME_MIN;
+        level = RG_AUDIO_VOL_MIN;
     }
-    else if (level > ODROID_AUDIO_VOLUME_MAX)
+    else if (level > RG_AUDIO_VOL_MAX)
     {
         printf("odroid_audio_volume_set: level out of range (> max) (%d)\n", level);
-        level = ODROID_AUDIO_VOLUME_MAX;
+        level = RG_AUDIO_VOL_MAX;
     }
 
     odroid_settings_Volume_set(level);
@@ -49,7 +49,7 @@ void odroid_audio_init(int sample_rate)
     printf("%s: sink=%d, sample_rate=%d\n", __func__, audioSink, sample_rate);
 
     // NOTE: buffer needs to be adjusted per AUDIO_SAMPLE_RATE
-    if (audioSink == ODROID_AUDIO_SINK_SPEAKER)
+    if (audioSink == RG_AUDIO_SINK_SPEAKER)
     {
         i2s_config_t i2s_config = {
             .mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN,          // Only TX
@@ -63,10 +63,10 @@ void odroid_audio_init(int sample_rate)
             .use_apll = 0 //1
         };
 
-        i2s_driver_install(ODROID_I2S_NUM, &i2s_config, 0, NULL);
-        i2s_set_pin(ODROID_I2S_NUM, NULL);
+        i2s_driver_install(RG_AUDIO_I2S_NUM, &i2s_config, 0, NULL);
+        i2s_set_pin(RG_AUDIO_I2S_NUM, NULL);
     }
-    else if (audioSink == ODROID_AUDIO_SINK_DAC)
+    else if (audioSink == RG_AUDIO_SINK_DAC)
     {
         i2s_config_t i2s_config = {
             .mode = I2S_MODE_MASTER | I2S_MODE_TX,                                  // Only TX
@@ -81,19 +81,19 @@ void odroid_audio_init(int sample_rate)
         };
 
         i2s_pin_config_t pin_config = {
-            .bck_io_num = ODROID_PIN_I2S_DAC_BCK,
-            .ws_io_num = ODROID_PIN_I2S_DAC_WS,
-            .data_out_num = ODROID_PIN_I2S_DAC_DATA,
+            .bck_io_num = RG_GPIO_I2S_DAC_BCK,
+            .ws_io_num = RG_GPIO_I2S_DAC_WS,
+            .data_out_num = RG_GPIO_I2S_DAC_DATA,
             .data_in_num = -1                                                       //Not used
         };
 
-        i2s_driver_install(ODROID_I2S_NUM, &i2s_config, 0, NULL);
-        i2s_set_pin(ODROID_I2S_NUM, &pin_config);
+        i2s_driver_install(RG_AUDIO_I2S_NUM, &i2s_config, 0, NULL);
+        i2s_set_pin(RG_AUDIO_I2S_NUM, &pin_config);
 
         // Disable internal amp
-        gpio_set_direction(ODROID_PIN_DAC1, GPIO_MODE_OUTPUT);
-        gpio_set_direction(ODROID_PIN_DAC2, GPIO_MODE_DISABLE);
-        gpio_set_level(ODROID_PIN_DAC1, 0);
+        gpio_set_direction(RG_GPIO_DAC1, GPIO_MODE_OUTPUT);
+        gpio_set_direction(RG_GPIO_DAC2, GPIO_MODE_DISABLE);
+        gpio_set_level(RG_GPIO_DAC1, 0);
     }
     else
     {
@@ -102,20 +102,20 @@ void odroid_audio_init(int sample_rate)
 
     odroid_audio_volume_set(volumeLevel);
 
-    printf("%s: I2S init done. clock=%f\n", __func__, i2s_get_clk(ODROID_I2S_NUM));
+    printf("%s: I2S init done. clock=%f\n", __func__, i2s_get_clk(RG_AUDIO_I2S_NUM));
 }
 
 void odroid_audio_terminate()
 {
     if (audioInitialized)
     {
-        i2s_zero_dma_buffer(ODROID_I2S_NUM);
-        i2s_driver_uninstall(ODROID_I2S_NUM);
+        i2s_zero_dma_buffer(RG_AUDIO_I2S_NUM);
+        i2s_driver_uninstall(RG_AUDIO_I2S_NUM);
         audioInitialized = false;
     }
 
-    gpio_reset_pin(ODROID_PIN_DAC1);
-    gpio_reset_pin(ODROID_PIN_DAC2);
+    gpio_reset_pin(RG_GPIO_DAC1);
+    gpio_reset_pin(RG_GPIO_DAC2);
 }
 
 static inline void filter_samples(short* samples, int count)
@@ -148,7 +148,7 @@ void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
         // No need to even loop, just clear the buffer
         memset(stereoAudioBuffer, 0, bufferSize);
     }
-    else if (audioSink == ODROID_AUDIO_SINK_SPEAKER)
+    else if (audioSink == RG_AUDIO_SINK_SPEAKER)
     {
         for (short i = 0; i < sampleCount; i += 2)
         {
@@ -191,7 +191,7 @@ void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
             stereoAudioBuffer[i + 1] = (short)dac0;
         }
     }
-    else if (audioSink == ODROID_AUDIO_SINK_DAC)
+    else if (audioSink == RG_AUDIO_SINK_DAC)
     {
         for (short i = 0; i < sampleCount; ++i)
         {
@@ -216,7 +216,7 @@ void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
         filter_samples(stereoAudioBuffer, bufferSize);
     }
 
-    i2s_write(ODROID_I2S_NUM, (const short *)stereoAudioBuffer, bufferSize, &written, 1000);
+    i2s_write(RG_AUDIO_I2S_NUM, (const short *)stereoAudioBuffer, bufferSize, &written, 1000);
     if (written == 0) // Anything > 0 is fine
     {
         RG_PANIC("i2s_write failed.");
@@ -228,7 +228,7 @@ bool odroid_audio_is_playing()
     return false;
 }
 
-void odroid_audio_set_sink(odroid_audio_sink_t sink)
+void odroid_audio_set_sink(audio_sink_t sink)
 {
     odroid_settings_AudioSink_set(sink);
     audioSink = sink;
@@ -240,7 +240,7 @@ void odroid_audio_set_sink(odroid_audio_sink_t sink)
     }
 }
 
-odroid_audio_sink_t odroid_audio_get_sink()
+audio_sink_t odroid_audio_get_sink()
 {
     return audioSink;
 }
@@ -256,6 +256,6 @@ void odroid_audio_mute(bool mute)
 
     if (mute && audioInitialized)
     {
-	    i2s_zero_dma_buffer(ODROID_I2S_NUM);
+	    i2s_zero_dma_buffer(RG_AUDIO_I2S_NUM);
     }
 }

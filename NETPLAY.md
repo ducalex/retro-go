@@ -35,7 +35,7 @@ The network stack will need to be tuned somewhat to reduce latency further, but 
 
 # Emulation synchronization Game Boy/Game Gear
 
-It will likely be the similar as above but, instead of odroid_gamepad_state_t, serial registers will be exchanged through odroid_netplay_sync(). Though at the moment Game Gear is very low priority and was never requested.
+It will likely be the similar as above but, instead of gamepad_state_t, serial registers will be exchanged through odroid_netplay_sync(). Though at the moment Game Gear is very low priority and was never requested.
 
 
 # State exchange

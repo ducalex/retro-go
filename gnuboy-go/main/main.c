@@ -91,20 +91,20 @@ static bool LoadState(char *pathName)
 }
 
 
-static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+static bool palette_update_cb(dialog_choice_t *option, dialog_event_t event)
 {
     int pal = pal_get_dmg();
     int max = pal_count_dmg();
 
-    if (event == ODROID_DIALOG_PREV) {
+    if (event == RG_DIALOG_PREV) {
         pal = pal > 0 ? pal - 1 : max;
     }
 
-    if (event == ODROID_DIALOG_NEXT) {
+    if (event == RG_DIALOG_NEXT) {
         pal = pal < max ? pal + 1 : 0;
     }
 
-    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         odroid_settings_Palette_set(pal);
         pal_set_dmg(pal);
         emu_run(true);
@@ -113,55 +113,55 @@ static bool palette_update_cb(odroid_dialog_choice_t *option, odroid_dialog_even
     if (pal == 0) strcpy(option->value, "GBC");
     else sprintf(option->value, "%d/%d", pal, max);
 
-    return event == ODROID_DIALOG_ENTER;
+    return event == RG_DIALOG_ENTER;
 }
 
-static bool save_sram_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+static bool save_sram_update_cb(dialog_choice_t *option, dialog_event_t event)
 {
-    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         saveSRAM = !saveSRAM;
         odroid_settings_app_int32_set(NVS_KEY_SAVE_SRAM, saveSRAM);
     }
 
     strcpy(option->value, saveSRAM ? "Yes" : "No");
 
-    return event == ODROID_DIALOG_ENTER;
+    return event == RG_DIALOG_ENTER;
 }
 
-static bool rtc_t_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+static bool rtc_t_update_cb(dialog_choice_t *option, dialog_event_t event)
 {
     if (option->id == 'd') {
-        if (event == ODROID_DIALOG_PREV && --rtc.d < 0) rtc.d = 364;
-        if (event == ODROID_DIALOG_NEXT && ++rtc.d > 364) rtc.d = 0;
+        if (event == RG_DIALOG_PREV && --rtc.d < 0) rtc.d = 364;
+        if (event == RG_DIALOG_NEXT && ++rtc.d > 364) rtc.d = 0;
         sprintf(option->value, "%03d", rtc.d);
     }
     if (option->id == 'h') {
-        if (event == ODROID_DIALOG_PREV && --rtc.h < 0) rtc.h = 23;
-        if (event == ODROID_DIALOG_NEXT && ++rtc.h > 23) rtc.h = 0;
+        if (event == RG_DIALOG_PREV && --rtc.h < 0) rtc.h = 23;
+        if (event == RG_DIALOG_NEXT && ++rtc.h > 23) rtc.h = 0;
         sprintf(option->value, "%02d", rtc.h);
     }
     if (option->id == 'm') {
-        if (event == ODROID_DIALOG_PREV && --rtc.m < 0) rtc.m = 59;
-        if (event == ODROID_DIALOG_NEXT && ++rtc.m > 59) rtc.m = 0;
+        if (event == RG_DIALOG_PREV && --rtc.m < 0) rtc.m = 59;
+        if (event == RG_DIALOG_NEXT && ++rtc.m > 59) rtc.m = 0;
         sprintf(option->value, "%02d", rtc.m);
     }
     if (option->id == 's') {
-        if (event == ODROID_DIALOG_PREV && --rtc.s < 0) rtc.s = 59;
-        if (event == ODROID_DIALOG_NEXT && ++rtc.s > 59) rtc.s = 0;
+        if (event == RG_DIALOG_PREV && --rtc.s < 0) rtc.s = 59;
+        if (event == RG_DIALOG_NEXT && ++rtc.s > 59) rtc.s = 0;
         sprintf(option->value, "%02d", rtc.s);
     }
-    return event == ODROID_DIALOG_ENTER;
+    return event == RG_DIALOG_ENTER;
 }
 
-static bool rtc_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+static bool rtc_update_cb(dialog_choice_t *option, dialog_event_t event)
 {
-    if (event == ODROID_DIALOG_ENTER) {
-        static odroid_dialog_choice_t choices[] = {
+    if (event == RG_DIALOG_ENTER) {
+        static dialog_choice_t choices[] = {
             {'d', "Day", "000", 1, &rtc_t_update_cb},
             {'h', "Hour", "00", 1, &rtc_t_update_cb},
             {'m', "Min",  "00", 1, &rtc_t_update_cb},
             {'s', "Sec",  "00", 1, &rtc_t_update_cb},
-            ODROID_DIALOG_CHOICE_LAST
+            RG_DIALOG_CHOICE_LAST
         };
         odroid_overlay_dialog("Set Clock", choices, 0);
     }
@@ -169,13 +169,13 @@ static bool rtc_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t 
     return false;
 }
 
-static bool advanced_settings_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+static bool advanced_settings_cb(dialog_choice_t *option, dialog_event_t event)
 {
-   if (event == ODROID_DIALOG_ENTER) {
-      odroid_dialog_choice_t options[] = {
+   if (event == RG_DIALOG_ENTER) {
+      dialog_choice_t options[] = {
         {101, "Set clock", "00:00", 1, &rtc_update_cb},
         {102, "Auto save SRAM", "No", 1, &save_sram_update_cb},
-        ODROID_DIALOG_CHOICE_LAST
+        RG_DIALOG_CHOICE_LAST
       };
       odroid_overlay_dialog("Advanced", options, 0);
    }
@@ -236,16 +236,16 @@ void app_main(void)
 
     while (true)
     {
-        odroid_gamepad_state_t joystick = odroid_input_read_gamepad();
+        gamepad_state_t joystick = odroid_input_read_gamepad();
 
-        if (joystick.values[ODROID_INPUT_MENU]) {
+        if (joystick.values[GAMEPAD_KEY_MENU]) {
             odroid_overlay_game_menu();
         }
-        else if (joystick.values[ODROID_INPUT_VOLUME]) {
-            odroid_dialog_choice_t options[] = {
+        else if (joystick.values[GAMEPAD_KEY_VOLUME]) {
+            dialog_choice_t options[] = {
                 {100, "Palette", "7/7", !hw.cgb, &palette_update_cb},
                 {101, "More...", "", 1, &advanced_settings_cb},
-                ODROID_DIALOG_CHOICE_LAST
+                RG_DIALOG_CHOICE_LAST
             };
             odroid_overlay_game_settings_menu(options);
         }
@@ -253,14 +253,14 @@ void app_main(void)
         uint startTime = get_elapsed_time();
         bool drawFrame = !skipFrames;
 
-        pad_set(PAD_UP, joystick.values[ODROID_INPUT_UP]);
-        pad_set(PAD_RIGHT, joystick.values[ODROID_INPUT_RIGHT]);
-        pad_set(PAD_DOWN, joystick.values[ODROID_INPUT_DOWN]);
-        pad_set(PAD_LEFT, joystick.values[ODROID_INPUT_LEFT]);
-        pad_set(PAD_SELECT, joystick.values[ODROID_INPUT_SELECT]);
-        pad_set(PAD_START, joystick.values[ODROID_INPUT_START]);
-        pad_set(PAD_A, joystick.values[ODROID_INPUT_A]);
-        pad_set(PAD_B, joystick.values[ODROID_INPUT_B]);
+        pad_set(PAD_UP, joystick.values[GAMEPAD_KEY_UP]);
+        pad_set(PAD_RIGHT, joystick.values[GAMEPAD_KEY_RIGHT]);
+        pad_set(PAD_DOWN, joystick.values[GAMEPAD_KEY_DOWN]);
+        pad_set(PAD_LEFT, joystick.values[GAMEPAD_KEY_LEFT]);
+        pad_set(PAD_SELECT, joystick.values[GAMEPAD_KEY_SELECT]);
+        pad_set(PAD_START, joystick.values[GAMEPAD_KEY_START]);
+        pad_set(PAD_A, joystick.values[GAMEPAD_KEY_A]);
+        pad_set(PAD_B, joystick.values[GAMEPAD_KEY_B]);
 
         emu_run(drawFrame);
 

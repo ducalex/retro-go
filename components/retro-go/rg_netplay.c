@@ -363,14 +363,14 @@ bool odroid_netplay_quick_start()
     const char *status_msg = "Initializing...";
     const char *screen_msg = NULL;
     // short timeout = 100;
-    odroid_gamepad_state_t joystick;
+    gamepad_state_t joystick;
 
     odroid_display_clear(0);
 
-    odroid_dialog_choice_t choices[] = {
+    dialog_choice_t choices[] = {
         {1, "Host Game (P1)", "", 1, NULL},
         {2, "Find Game (P2)", "", 1, NULL},
-        ODROID_DIALOG_CHOICE_LAST
+        RG_DIALOG_CHOICE_LAST
     };
 
     int ret = odroid_overlay_dialog("Netplay", choices, 0);
@@ -424,7 +424,7 @@ bool odroid_netplay_quick_start()
 
         joystick = odroid_input_read_gamepad();
 
-        if (joystick.values[ODROID_INPUT_B]) break;
+        if (joystick.values[GAMEPAD_KEY_B]) break;
 
         vTaskDelay(pdMS_TO_TICKS(10));
     }

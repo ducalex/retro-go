@@ -15,12 +15,12 @@
 #define IMAGE_BANNER_HEIGHT (32)
 
 #define CRC_WIDTH    (104)
-#define CRC_X_OFFSET (ODROID_SCREEN_WIDTH - CRC_WIDTH)
+#define CRC_X_OFFSET (RG_SCREEN_WIDTH - CRC_WIDTH)
 #define CRC_Y_OFFSET (35)
 
-#define LIST_WIDTH       (ODROID_SCREEN_WIDTH)
-#define LIST_HEIGHT      (ODROID_SCREEN_HEIGHT - LIST_Y_OFFSET)
-#define LIST_LINE_COUNT  ((ODROID_SCREEN_HEIGHT - LIST_Y_OFFSET) / LIST_LINE_HEIGHT)
+#define LIST_WIDTH       (RG_SCREEN_WIDTH)
+#define LIST_HEIGHT      (RG_SCREEN_HEIGHT - LIST_Y_OFFSET)
+#define LIST_LINE_COUNT  ((RG_SCREEN_HEIGHT - LIST_Y_OFFSET) / LIST_LINE_HEIGHT)
 #define LIST_LINE_HEIGHT (odroid_overlay_get_font_size())
 #define LIST_X_OFFSET    (0)
 #define LIST_Y_OFFSET    (48 + LIST_LINE_HEIGHT)
@@ -279,8 +279,8 @@ void gui_draw_header(tab_t *tab)
     int x_pos = IMAGE_LOGO_WIDTH;
     int y_pos = IMAGE_LOGO_HEIGHT;
 
-    odroid_overlay_draw_fill_rect(x_pos, 0, ODROID_SCREEN_WIDTH - x_pos, LIST_Y_OFFSET, C_BLACK);
-    odroid_overlay_draw_fill_rect(0, y_pos, ODROID_SCREEN_WIDTH, LIST_Y_OFFSET - y_pos, C_BLACK);
+    odroid_overlay_draw_fill_rect(x_pos, 0, RG_SCREEN_WIDTH - x_pos, LIST_Y_OFFSET, C_BLACK);
+    odroid_overlay_draw_fill_rect(0, y_pos, RG_SCREEN_WIDTH, LIST_Y_OFFSET - y_pos, C_BLACK);
 
     if (tab->img_logo)
         gui_draw_png(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, tab->img_logo);
@@ -297,7 +297,7 @@ void gui_draw_notice(const char *text, uint16_t color)
 
 void gui_draw_status(tab_t *tab)
 {
-    odroid_overlay_draw_battery(ODROID_SCREEN_WIDTH - 27, 3);
+    odroid_overlay_draw_battery(RG_SCREEN_WIDTH - 27, 3);
     odroid_overlay_draw_text(
         IMAGE_LOGO_WIDTH + 11,
         IMAGE_BANNER_HEIGHT + 3,
@@ -349,8 +349,8 @@ void gui_draw_cover(retro_emulator_file_t *file)
         char path1[128], path2[128], buf_crc[10];
 
         sprintf(buf_crc, "%08X", file->checksum);
-        sprintf(path1, "%s/%s/%c/%s.png", ODROID_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
-        sprintf(path2, "%s/%s/%c/%s.art", ODROID_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
+        sprintf(path1, "%s/%s/%c/%s.png", RG_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
+        sprintf(path2, "%s/%s/%c/%s.art", RG_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
 
         LuImage *img;
         FILE *fp;

@@ -36,10 +36,10 @@ int odroid_sdcard_open()
     host.max_freq_khz = SDMMC_FREQ_DEFAULT;
 
     sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
-    slot_config.gpio_miso = ODROID_PIN_SD_MISO;
-    slot_config.gpio_mosi = ODROID_PIN_SD_MOSI;
-    slot_config.gpio_sck  = ODROID_PIN_SD_CLK;
-    slot_config.gpio_cs = ODROID_PIN_SD_CS;
+    slot_config.gpio_miso = RG_GPIO_SD_MISO;
+    slot_config.gpio_mosi = RG_GPIO_SD_MOSI;
+    slot_config.gpio_sck  = RG_GPIO_SD_CLK;
+    slot_config.gpio_cs = RG_GPIO_SD_CS;
     //slot_config.dma_channel = 2;
 
     // Options for mounting the filesystem.
@@ -56,7 +56,7 @@ int odroid_sdcard_open()
     // Note: esp_vfs_fat_sdmmc_mount is an all-in-one convenience function.
     // Please check its source code and implement error recovery when developing
     // production applications.
-    esp_err_t ret = esp_vfs_fat_sdmmc_mount(ODROID_BASE_PATH, &host, &slot_config, &mount_config, NULL);
+    esp_err_t ret = esp_vfs_fat_sdmmc_mount(RG_BASE_PATH, &host, &slot_config, &mount_config, NULL);
     sdcardOpen = (ret == ESP_OK);
 
     if (ret != ESP_OK)
@@ -226,7 +226,7 @@ int odroid_sdcard_mkdir(const char *dir)
         char temp[255];
         strncpy(temp, dir, sizeof(temp) - 1);
 
-        for (char *p = temp + strlen(ODROID_BASE_PATH) + 1; *p; p++) {
+        for (char *p = temp + strlen(RG_BASE_PATH) + 1; *p; p++) {
             if (*p == '/') {
                 *p = 0;
                 if (strlen(temp) > 0) {

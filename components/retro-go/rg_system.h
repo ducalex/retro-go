@@ -38,16 +38,16 @@ typedef struct
 
 typedef enum
 {
-    ODROID_PATH_SAVE_STATE = 0,
-    ODROID_PATH_SAVE_STATE_1,
-    ODROID_PATH_SAVE_STATE_2,
-    ODROID_PATH_SAVE_STATE_3,
-    ODROID_PATH_SAVE_BACK,
-    ODROID_PATH_SAVE_SRAM,
-    ODROID_PATH_TEMP_FILE,
-    ODROID_PATH_ROM_FILE,
-    ODROID_PATH_ART_FILE,
-    ODROID_PATH_CRC_CACHE,
+    EMU_PATH_SAVE_STATE = 0,
+    EMU_PATH_SAVE_STATE_1,
+    EMU_PATH_SAVE_STATE_2,
+    EMU_PATH_SAVE_STATE_3,
+    EMU_PATH_SAVE_BACK,
+    EMU_PATH_SAVE_SRAM,
+    EMU_PATH_TEMP_FILE,
+    EMU_PATH_ROM_FILE,
+    EMU_PATH_ART_FILE,
+    EMU_PATH_CRC_CACHE,
 } emu_path_type_t;
 
 typedef enum
@@ -77,7 +77,7 @@ typedef struct
 
 typedef struct
 {
-    odroid_battery_state_t battery;
+    battery_state_t battery;
     float partialFPS;
     float skippedFPS;
     float totalFPS;
@@ -128,13 +128,11 @@ void odroid_system_spi_lock_release(spi_lock_res_t);
 
 static inline uint get_frame_time(uint refresh_rate)
 {
-    // return (CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ * 1000000) / refresh_rate
     return 1000000 / refresh_rate;
 }
 
 static inline uint get_elapsed_time()
 {
-    // uint now = xthal_get_ccount();
     return (uint)esp_timer_get_time(); // uint is plenty resolution for us
 }
 

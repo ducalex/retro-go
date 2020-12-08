@@ -95,8 +95,8 @@ void osd_gfx_set_mode(int width, int height)
     current_width = width;
     current_height = height;
 
-    int crop_h = MAX(0, width - ODROID_SCREEN_WIDTH);
-    int crop_v = MAX(0, height - ODROID_SCREEN_HEIGHT) + (overscan ? 6 : 0);
+    int crop_h = MAX(0, width - RG_SCREEN_WIDTH);
+    int crop_v = MAX(0, height - RG_SCREEN_HEIGHT) + (overscan ? 6 : 0);
     int crop_offset = (crop_v / 2) * XBUF_WIDTH + (crop_h / 2);
 
     printf("%s: Cropping H: %d V: %d\n", __func__, crop_h, crop_v);
@@ -165,9 +165,9 @@ void osd_gfx_shutdown(void)
  * Keyboard
  */
 
-static bool overscan_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+static bool overscan_update_cb(dialog_choice_t *option, dialog_event_t event)
 {
-    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         overscan = !overscan;
         odroid_settings_DisplayOverscan_set(overscan);
         osd_gfx_set_mode(current_width, current_height);
@@ -175,15 +175,15 @@ static bool overscan_update_cb(odroid_dialog_choice_t *option, odroid_dialog_eve
 
     strcpy(option->value, overscan ? "On " : "Off");
 
-    return event == ODROID_DIALOG_ENTER;
+    return event == RG_DIALOG_ENTER;
 }
 
-static bool advanced_settings_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+static bool advanced_settings_cb(dialog_choice_t *option, dialog_event_t event)
 {
-    if (event == ODROID_DIALOG_ENTER) {
-        odroid_dialog_choice_t options[] = {
+    if (event == RG_DIALOG_ENTER) {
+        dialog_choice_t options[] = {
             {2, "Overscan    ", "On ", 1, &overscan_update_cb},
-            ODROID_DIALOG_CHOICE_LAST
+            RG_DIALOG_CHOICE_LAST
         };
         odroid_overlay_dialog("Advanced", options, 0);
     }
@@ -197,29 +197,29 @@ int osd_input_init(void)
 
 void osd_input_read(void)
 {
-    odroid_gamepad_state_t joystick = odroid_input_read_gamepad();
+    gamepad_state_t joystick = odroid_input_read_gamepad();
 
-	if (joystick.values[ODROID_INPUT_MENU]) {
+	if (joystick.values[GAMEPAD_KEY_MENU]) {
 		odroid_overlay_game_menu();
 	}
-	else if (joystick.values[ODROID_INPUT_VOLUME]) {
-        odroid_dialog_choice_t options[] = {
+	else if (joystick.values[GAMEPAD_KEY_VOLUME]) {
+        dialog_choice_t options[] = {
             {101, "More...", "", 1, &advanced_settings_cb},
-            ODROID_DIALOG_CHOICE_LAST
+            RG_DIALOG_CHOICE_LAST
         };
         odroid_overlay_game_settings_menu(options);
 	}
 
     unsigned char rc = 0;
-    if (joystick.values[ODROID_INPUT_LEFT]) rc |= JOY_LEFT;
-    if (joystick.values[ODROID_INPUT_RIGHT]) rc |= JOY_RIGHT;
-    if (joystick.values[ODROID_INPUT_UP]) rc |= JOY_UP;
-    if (joystick.values[ODROID_INPUT_DOWN]) rc |= JOY_DOWN;
+    if (joystick.values[GAMEPAD_KEY_LEFT]) rc |= JOY_LEFT;
+    if (joystick.values[GAMEPAD_KEY_RIGHT]) rc |= JOY_RIGHT;
+    if (joystick.values[GAMEPAD_KEY_UP]) rc |= JOY_UP;
+    if (joystick.values[GAMEPAD_KEY_DOWN]) rc |= JOY_DOWN;
 
-    if (joystick.values[ODROID_INPUT_A]) rc |= JOY_A;
-    if (joystick.values[ODROID_INPUT_B]) rc |= JOY_B;
-    if (joystick.values[ODROID_INPUT_START]) rc |= JOY_RUN;
-    if (joystick.values[ODROID_INPUT_SELECT]) rc |= JOY_SELECT;
+    if (joystick.values[GAMEPAD_KEY_A]) rc |= JOY_A;
+    if (joystick.values[GAMEPAD_KEY_B]) rc |= JOY_B;
+    if (joystick.values[GAMEPAD_KEY_START]) rc |= JOY_RUN;
+    if (joystick.values[GAMEPAD_KEY_SELECT]) rc |= JOY_SELECT;
 
     io.JOY[0] = rc;
 }

@@ -107,13 +107,13 @@ void emulator_init(retro_emulator_t *emu)
     char *files = NULL;
     size_t count = 0;
 
-    sprintf(path, ODROID_BASE_PATH_CRC_CACHE "/%s", emu->dirname);
+    sprintf(path, RG_BASE_PATH_CRC_CACHE "/%s", emu->dirname);
     odroid_sdcard_mkdir(path);
 
-    sprintf(path, ODROID_BASE_PATH_SAVES "/%s", emu->dirname);
+    sprintf(path, RG_BASE_PATH_SAVES "/%s", emu->dirname);
     odroid_sdcard_mkdir(path);
 
-    sprintf(path, ODROID_BASE_PATH_ROMS "/%s", emu->dirname);
+    sprintf(path, RG_BASE_PATH_ROMS "/%s", emu->dirname);
     odroid_sdcard_mkdir(path);
 
     if (odroid_sdcard_list(path, &files, &count) == 0 && count > 0)
@@ -202,7 +202,7 @@ void emulator_crc32_file(retro_emulator_file_t *file)
 
     const int chunk_size = 32768;
     const char *file_path = emu_get_file_path(file);
-    char *cache_path = odroid_system_get_path(ODROID_PATH_CRC_CACHE, file_path);
+    char *cache_path = odroid_system_get_path(EMU_PATH_CRC_CACHE, file_path);
     FILE *fp, *fp2;
 
     file->missing_cover = 0;
@@ -258,7 +258,7 @@ void emulator_crc32_file(retro_emulator_file_t *file)
 
 void emulator_show_file_info(retro_emulator_file_t *file)
 {
-    odroid_dialog_choice_t choices[] = {
+    dialog_choice_t choices[] = {
         {0, "File", "...", 1, NULL},
         {0, "Type", "N/A", 1, NULL},
         {0, "Folder", "...", 1, NULL},
@@ -266,7 +266,7 @@ void emulator_show_file_info(retro_emulator_file_t *file)
         {0, "CRC32", "N/A", 1, NULL},
         {0, "---", "", -1, NULL},
         {1, "Close", "", 1, NULL},
-        ODROID_DIALOG_CHOICE_LAST
+        RG_DIALOG_CHOICE_LAST
     };
 
     sprintf(choices[0].value, "%.127s", file->name);
@@ -287,19 +287,19 @@ void emulator_show_file_info(retro_emulator_file_t *file)
 
 void emulator_show_file_menu(retro_emulator_file_t *file)
 {
-    char *save_path = odroid_system_get_path(ODROID_PATH_SAVE_STATE, emu_get_file_path(file));
-    char *sram_path = odroid_system_get_path(ODROID_PATH_SAVE_SRAM, emu_get_file_path(file));
+    char *save_path = odroid_system_get_path(EMU_PATH_SAVE_STATE, emu_get_file_path(file));
+    char *sram_path = odroid_system_get_path(EMU_PATH_SAVE_SRAM, emu_get_file_path(file));
     bool has_save = odroid_sdcard_get_filesize(save_path) > 0;
     bool has_sram = odroid_sdcard_get_filesize(sram_path) > 0;
     bool is_fav = favorite_find(file) != NULL;
 
-    odroid_dialog_choice_t choices[] = {
+    dialog_choice_t choices[] = {
         {0, "Resume game ", "", has_save, NULL},
         {1, "New game    ", "", 1, NULL},
         {0, "------------", "", -1, NULL},
         {3, is_fav ? "Del favorite" : "Add favorite", "", 1, NULL},
         {2, "Delete save ", "", has_save || has_sram, NULL},
-        ODROID_DIALOG_CHOICE_LAST
+        RG_DIALOG_CHOICE_LAST
     };
     int sel = odroid_overlay_dialog(NULL, choices, has_save ? 0 : 1);
 

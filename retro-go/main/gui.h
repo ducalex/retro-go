@@ -74,7 +74,7 @@ typedef struct {
     int show_cover;
     int idle_counter;
     int last_key;
-    odroid_gamepad_state_t joystick;
+    gamepad_state_t joystick;
 } retro_gui_t;
 
 extern retro_gui_t gui;

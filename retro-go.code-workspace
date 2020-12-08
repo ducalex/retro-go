@@ -13,6 +13,9 @@
 			"path": "huexpress-go"
 		},
 		{
+			"path": "neopop-go"
+		},
+		{
 			"path": "nofrendo-go"
 		},
 		{
@@ -20,9 +23,6 @@
 		},
 		{
 			"path": "smsplusgx-go"
-		},
-		{
-			"path": "snes9x-go"
 		},
 		{
 			"path": ".",

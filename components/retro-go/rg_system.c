@@ -17,9 +17,9 @@
 
 // On the Odroid-GO the SPI bus is shared between the SD Card and the LCD
 // That isn't the case on other devices, so for performance we disable the mutex
-#if (ODROID_PIN_LCD_MISO == ODROID_PIN_SD_MISO || \
-     ODROID_PIN_LCD_MOSI == ODROID_PIN_SD_MOSI || \
-     ODROID_PIN_LCD_CLK == ODROID_PIN_SD_CLK)
+#if (RG_GPIO_LCD_MISO == RG_GPIO_SD_MISO || \
+     RG_GPIO_LCD_MOSI == RG_GPIO_SD_MOSI || \
+     RG_GPIO_LCD_CLK == RG_GPIO_SD_CLK)
 #define USE_SPI_MUTEX 1
 #else
 #define USE_SPI_MUTEX 0
@@ -45,22 +45,22 @@ static void odroid_system_monitor_task(void *arg);
 
 static void odroid_system_gpio_init()
 {
-    rtc_gpio_deinit(ODROID_PIN_GAMEPAD_MENU);
+    rtc_gpio_deinit(RG_GPIO_GAMEPAD_MENU);
     //rtc_gpio_deinit(GPIO_NUM_14);
 
     // Blue LED
-    gpio_set_direction(ODROID_PIN_LED, GPIO_MODE_OUTPUT);
-    gpio_set_level(ODROID_PIN_LED, 0);
+    gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
+    gpio_set_level(RG_GPIO_LED, 0);
 
     // Disable LCD CD to prevent garbage
-    gpio_set_direction(ODROID_PIN_LCD_CS, GPIO_MODE_OUTPUT);
-    gpio_set_level(ODROID_PIN_LCD_CS, 1);
+    gpio_set_direction(RG_GPIO_LCD_CS, GPIO_MODE_OUTPUT);
+    gpio_set_level(RG_GPIO_LCD_CS, 1);
 
     // Disable speaker to prevent hiss/pops
-    gpio_set_direction(ODROID_PIN_DAC1, GPIO_MODE_INPUT);
-    gpio_set_direction(ODROID_PIN_DAC2, GPIO_MODE_INPUT);
-    gpio_set_level(ODROID_PIN_DAC1, 0);
-    gpio_set_level(ODROID_PIN_DAC2, 0);
+    gpio_set_direction(RG_GPIO_DAC1, GPIO_MODE_INPUT);
+    gpio_set_direction(RG_GPIO_DAC2, GPIO_MODE_INPUT);
+    gpio_set_level(RG_GPIO_DAC1, 0);
+    gpio_set_level(RG_GPIO_DAC2, 0);
 }
 
 void odroid_system_init(int appId, int sampleRate)
@@ -113,8 +113,8 @@ void odroid_system_init(int appId, int sampleRate)
     if (!sd_init)
     {
         odroid_display_clear(C_WHITE);
-        odroid_display_write((ODROID_SCREEN_WIDTH - image_sdcard.width) / 2,
-            (ODROID_SCREEN_HEIGHT - image_sdcard.height) / 2,
+        odroid_display_write((RG_SCREEN_WIDTH - image_sdcard.width) / 2,
+            (RG_SCREEN_HEIGHT - image_sdcard.height) / 2,
             image_sdcard.width,
             image_sdcard.height,
             image_sdcard.width * 2,
@@ -142,9 +142,9 @@ void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_
     uint8_t buffer[0x150];
 
     // If any key is pressed we go back to the menu (recover from ROM crash)
-    if (odroid_input_key_is_pressed(ODROID_INPUT_ANY))
+    if (odroid_input_key_is_pressed(GAMEPAD_KEY_ANY))
     {
-        odroid_system_switch_app(APP_LAUNCHER);
+        odroid_system_switch_app(RG_APP_LAUNCHER);
     }
 
     if (netplay_cb != NULL)
@@ -155,7 +155,7 @@ void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_
     if (odroid_settings_StartupApp_get() == 0)
     {
         // Only boot this emu once, next time will return to launcher
-        odroid_system_set_boot_app(APP_LAUNCHER);
+        odroid_system_set_boot_app(RG_APP_LAUNCHER);
     }
 
     currentApp.startAction = odroid_settings_StartAction_get();
@@ -196,10 +196,10 @@ char* odroid_system_get_path(emu_path_type_t type, const char *_romPath)
     const char *fileName = _romPath ?: currentApp.romPath;
     char buffer[256];
 
-    if (strstr(fileName, ODROID_BASE_PATH_ROMS))
+    if (strstr(fileName, RG_BASE_PATH_ROMS))
     {
-        fileName = strstr(fileName, ODROID_BASE_PATH_ROMS);
-        fileName += strlen(ODROID_BASE_PATH_ROMS);
+        fileName = strstr(fileName, RG_BASE_PATH_ROMS);
+        fileName += strlen(RG_BASE_PATH_ROMS);
     }
 
     if (!fileName || strlen(fileName) < 4)
@@ -209,38 +209,38 @@ char* odroid_system_get_path(emu_path_type_t type, const char *_romPath)
 
     switch (type)
     {
-        case ODROID_PATH_SAVE_STATE:
-        case ODROID_PATH_SAVE_STATE_1:
-        case ODROID_PATH_SAVE_STATE_2:
-        case ODROID_PATH_SAVE_STATE_3:
-            strcpy(buffer, ODROID_BASE_PATH_SAVES);
+        case EMU_PATH_SAVE_STATE:
+        case EMU_PATH_SAVE_STATE_1:
+        case EMU_PATH_SAVE_STATE_2:
+        case EMU_PATH_SAVE_STATE_3:
+            strcpy(buffer, RG_BASE_PATH_SAVES);
             strcat(buffer, fileName);
             strcat(buffer, ".sav");
             break;
 
-        case ODROID_PATH_SAVE_BACK:
-            strcpy(buffer, ODROID_BASE_PATH_SAVES);
+        case EMU_PATH_SAVE_BACK:
+            strcpy(buffer, RG_BASE_PATH_SAVES);
             strcat(buffer, fileName);
             strcat(buffer, ".sav.bak");
             break;
 
-        case ODROID_PATH_SAVE_SRAM:
-            strcpy(buffer, ODROID_BASE_PATH_SAVES);
+        case EMU_PATH_SAVE_SRAM:
+            strcpy(buffer, RG_BASE_PATH_SAVES);
             strcat(buffer, fileName);
             strcat(buffer, ".sram");
             break;
 
-        case ODROID_PATH_TEMP_FILE:
-            sprintf(buffer, "%s/%X%X.tmp", ODROID_BASE_PATH_TEMP, get_elapsed_time(), rand());
+        case EMU_PATH_TEMP_FILE:
+            sprintf(buffer, "%s/%X%X.tmp", RG_BASE_PATH_TEMP, get_elapsed_time(), rand());
             break;
 
-        case ODROID_PATH_ROM_FILE:
-            strcpy(buffer, ODROID_BASE_PATH_ROMS);
+        case EMU_PATH_ROM_FILE:
+            strcpy(buffer, RG_BASE_PATH_ROMS);
             strcat(buffer, fileName);
             break;
 
-        case ODROID_PATH_CRC_CACHE:
-            strcpy(buffer, ODROID_BASE_PATH_CRC_CACHE);
+        case EMU_PATH_CRC_CACHE:
+            strcpy(buffer, RG_BASE_PATH_CRC_CACHE);
             strcat(buffer, fileName);
             strcat(buffer, ".crc");
             break;
@@ -265,7 +265,7 @@ bool odroid_system_emu_load_state(int slot)
     odroid_display_show_hourglass();
     odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
-    char *pathName = odroid_system_get_path(ODROID_PATH_SAVE_STATE, currentApp.romPath);
+    char *pathName = odroid_system_get_path(EMU_PATH_SAVE_STATE, currentApp.romPath);
     bool success = (*currentApp.loadState)(pathName);
 
     odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
@@ -294,9 +294,9 @@ bool odroid_system_emu_save_state(int slot)
     odroid_display_show_hourglass();
     odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
 
-    char *saveName = odroid_system_get_path(ODROID_PATH_SAVE_STATE, currentApp.romPath);
-    char *backName = odroid_system_get_path(ODROID_PATH_SAVE_BACK, currentApp.romPath);
-    char *tempName = odroid_system_get_path(ODROID_PATH_TEMP_FILE, currentApp.romPath);
+    char *saveName = odroid_system_get_path(EMU_PATH_SAVE_STATE, currentApp.romPath);
+    char *backName = odroid_system_get_path(EMU_PATH_SAVE_BACK, currentApp.romPath);
+    char *tempName = odroid_system_get_path(EMU_PATH_TEMP_FILE, currentApp.romPath);
 
     bool success = false;
 
@@ -396,14 +396,14 @@ void odroid_system_panic_dialog(const char *reason)
     // Blue screen of death!
     odroid_display_clear(C_BLUE);
 
-    odroid_dialog_choice_t choices[] = {
+    dialog_choice_t choices[] = {
         {0, reason, "", -1, NULL},
         {1, "OK", "", 1, NULL},
-        ODROID_DIALOG_CHOICE_LAST
+        RG_DIALOG_CHOICE_LAST
     };
     odroid_overlay_dialog("The application crashed!", choices, 1);
 
-    odroid_system_switch_app(APP_LAUNCHER);
+    odroid_system_switch_app(RG_APP_LAUNCHER);
 }
 
 void odroid_system_halt()
@@ -418,7 +418,7 @@ void odroid_system_sleep()
     printf("%s: Going to sleep!\n", __func__);
 
     // Wait for button release
-    odroid_input_wait_for_key(ODROID_INPUT_MENU, false);
+    odroid_input_wait_for_key(GAMEPAD_KEY_MENU, false);
     odroid_audio_terminate();
     vTaskDelay(100);
     esp_deep_sleep_start();
@@ -426,7 +426,7 @@ void odroid_system_sleep()
 
 void odroid_system_set_led(int value)
 {
-    gpio_set_level(ODROID_PIN_LED, value);
+    gpio_set_level(RG_GPIO_LED, value);
 }
 
 static void odroid_system_monitor_task(void *arg)
@@ -569,38 +569,38 @@ IRAM_ATTR void odroid_system_spi_lock_release(spi_lock_res_t owner)
 
 void *rg_alloc(size_t size, uint32_t caps)
 {
-     void *ptr;
+    void *ptr;
 
-     if (!(caps & MALLOC_CAP_32BIT))
-     {
-        caps |= MALLOC_CAP_8BIT;
-     }
+    if (!(caps & MALLOC_CAP_32BIT))
+    {
+    caps |= MALLOC_CAP_8BIT;
+    }
 
-     ptr = heap_caps_calloc(1, size, caps);
+    ptr = heap_caps_calloc(1, size, caps);
 
-     printf("RG_ALLOC: SIZE: %u  [SPIRAM: %u; 32BIT: %u; DMA: %u]  PTR: %p\n",
-            size, (caps & MALLOC_CAP_SPIRAM) != 0, (caps & MALLOC_CAP_32BIT) != 0,
-            (caps & MALLOC_CAP_DMA) != 0, ptr);
+    printf("RG_ALLOC: SIZE: %u  [SPIRAM: %u; 32BIT: %u; DMA: %u]  PTR: %p\n",
+        size, (caps & MALLOC_CAP_SPIRAM) != 0, (caps & MALLOC_CAP_32BIT) != 0,
+        (caps & MALLOC_CAP_DMA) != 0, ptr);
 
-     if (!ptr)
-     {
-        size_t availaible = heap_caps_get_largest_free_block(caps);
+    if (!ptr)
+    {
+    size_t availaible = heap_caps_get_largest_free_block(caps);
 
-        // Loosen the caps and try again
-        ptr = heap_caps_calloc(1, size, caps & ~(MALLOC_CAP_SPIRAM|MALLOC_CAP_INTERNAL));
-        if (!ptr)
-        {
-            printf("RG_ALLOC: ^-- Allocation failed! (available: %d)\n", availaible);
-            RG_PANIC("Memory allocation failed!");
-        }
+    // Loosen the caps and try again
+    ptr = heap_caps_calloc(1, size, caps & ~(MALLOC_CAP_SPIRAM|MALLOC_CAP_INTERNAL));
+    if (!ptr)
+    {
+        printf("RG_ALLOC: ^-- Allocation failed! (available: %d)\n", availaible);
+        RG_PANIC("Memory allocation failed!");
+    }
 
-        printf("RG_ALLOC: ^-- CAPS not fully met! (available: %d)\n", availaible);
-     }
+    printf("RG_ALLOC: ^-- CAPS not fully met! (available: %d)\n", availaible);
+    }
 
-     return ptr;
+    return ptr;
 }
 
 void rg_free(void *ptr)
 {
-     return heap_caps_free(ptr);
+    return heap_caps_free(ptr);
 }

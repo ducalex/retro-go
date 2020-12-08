@@ -11,8 +11,8 @@
 #include "rg_display.h"
 #include "bitmaps/image_hourglass.h"
 
-#define SCREEN_WIDTH  ODROID_SCREEN_WIDTH
-#define SCREEN_HEIGHT ODROID_SCREEN_HEIGHT
+#define SCREEN_WIDTH  RG_SCREEN_WIDTH
+#define SCREEN_HEIGHT RG_SCREEN_HEIGHT
 
 #define BACKLIGHT_DUTY_MAX 0x1fff
 
@@ -34,10 +34,10 @@ static QueueHandle_t videoTaskQueue;
 
 static int8_t backlightLevels[] = {10, 25, 50, 75, 100};
 
-static odroid_display_backlight_t backlightLevel = ODROID_BACKLIGHT_LEVEL2;
-static odroid_display_rotation_t rotationMode = ODROID_DISPLAY_ROTATION_OFF;
-static odroid_display_scaling_t scalingMode = ODROID_DISPLAY_SCALING_FILL;
-static odroid_display_filter_t filterMode = ODROID_DISPLAY_FILTER_OFF;
+static display_backlight_t backlightLevel = RG_BACKLIGHT_LEVEL2;
+static display_rotation_t rotationMode = RG_DISPLAY_ROTATION_OFF;
+static display_scaling_t scalingMode = RG_DISPLAY_SCALING_FILL;
+static display_filter_t filterMode = RG_DISPLAY_FILTER_OFF;
 
 static int8_t forceVideoRefresh = true;
 
@@ -134,7 +134,7 @@ static void
 backlight_init()
 {
     // Initial backlight percent
-    int percent = backlightLevels[backlightLevel % ODROID_BACKLIGHT_LEVEL_COUNT];
+    int percent = backlightLevels[backlightLevel % RG_BACKLIGHT_LEVEL_COUNT];
 
     //configure timer0
     ledc_timer_config_t ledc_timer;
@@ -154,7 +154,7 @@ backlight_init()
     //set the duty for initialization.(duty range is 0 ~ ((2**bit_num)-1)
     ledc_channel.duty = BACKLIGHT_DUTY_MAX * (percent * 0.01f);
     //GPIO number
-    ledc_channel.gpio_num = ODROID_PIN_LCD_BCKL;
+    ledc_channel.gpio_num = RG_GPIO_LCD_BCKL;
     //GPIO INTR TYPE, as an example, we enable fade_end interrupt here.
     ledc_channel.intr_type = LEDC_INTR_FADE_END;
     //set LEDC mode, from ledc_mode_t
@@ -179,6 +179,8 @@ backlight_deinit()
 static void
 backlight_percentage_set(int value)
 {
+    value = MIN(MAX(value, 5), 100);
+
     int duty = BACKLIGHT_DUTY_MAX * (value * 0.01f);
 
     ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty, 10);
@@ -285,7 +287,7 @@ ili9341_init()
     short cmd = 0;
 
     //Initialize non-SPI GPIOs
-    gpio_set_direction(ODROID_PIN_LCD_DC, GPIO_MODE_OUTPUT);
+    gpio_set_direction(RG_GPIO_LCD_DC, GPIO_MODE_OUTPUT);
     //gpio_set_direction(LCD_PIN_NUM_BCKL, GPIO_MODE_OUTPUT);
 
     //Send all the commands
@@ -312,9 +314,9 @@ ili9341_deinit()
         cmd++;
     }
 
-    rtc_gpio_init(ODROID_PIN_LCD_BCKL);
-    rtc_gpio_set_direction(ODROID_PIN_LCD_BCKL, RTC_GPIO_MODE_OUTPUT_ONLY);
-    rtc_gpio_set_level(ODROID_PIN_LCD_BCKL, 0);
+    rtc_gpio_init(RG_GPIO_LCD_BCKL);
+    rtc_gpio_set_direction(RG_GPIO_LCD_BCKL, RTC_GPIO_MODE_OUTPUT_ONLY);
+    rtc_gpio_set_level(RG_GPIO_LCD_BCKL, 0);
 }
 
 //This function is called (in irq context!) just before a transmission starts. It will
@@ -322,7 +324,7 @@ ili9341_deinit()
 IRAM_ATTR static void
 spi_pre_transfer_callback(spi_transaction_t *t)
 {
-    gpio_set_level(ODROID_PIN_LCD_DC, (int)t->user & 0x01);
+    gpio_set_level(RG_GPIO_LCD_DC, (int)t->user & 0x01);
 }
 
 IRAM_ATTR static void
@@ -378,9 +380,9 @@ spi_initialize()
     spi_bus_config_t buscfg;
 	memset(&buscfg, 0, sizeof(buscfg));
 
-    buscfg.miso_io_num = ODROID_PIN_LCD_MISO;
-    buscfg.mosi_io_num = ODROID_PIN_LCD_MOSI;
-    buscfg.sclk_io_num = ODROID_PIN_LCD_CLK;
+    buscfg.miso_io_num = RG_GPIO_LCD_MISO;
+    buscfg.mosi_io_num = RG_GPIO_LCD_MOSI;
+    buscfg.sclk_io_num = RG_GPIO_LCD_CLK;
     buscfg.quadwp_io_num = -1;
     buscfg.quadhd_io_num = -1;
 
@@ -389,7 +391,7 @@ spi_initialize()
 
     devcfg.clock_speed_hz = SPI_MASTER_FREQ_40M;    //80Mhz causes glitches unfortunately
     devcfg.mode = 0;                                //SPI mode 0
-    devcfg.spics_io_num = ODROID_PIN_LCD_CS;        //CS pin
+    devcfg.spics_io_num = RG_GPIO_LCD_CS;        //CS pin
     devcfg.queue_size = SPI_TRANSACTION_COUNT;      //We want to be able to queue 7 transactions at a time
     devcfg.pre_cb = spi_pre_transfer_callback;      //Specify pre-transfer callback to handle D/C line
     devcfg.flags = SPI_DEVICE_NO_DUMMY;             //SPI_DEVICE_HALFDUPLEX;
@@ -574,7 +576,7 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
         }
 
         // The vertical filter requires a block to start and end with unscaled lines
-        if (filterMode & ODROID_DISPLAY_FILTER_LINEAR_Y)
+        if (filterMode & RG_DISPLAY_FILTER_LINEAR_Y)
         {
             while (lines_to_copy > 1 && (screen_line_is_empty[screen_y + lines_to_copy - 1] ||
                                          screen_line_is_empty[screen_y + lines_to_copy]))
@@ -626,8 +628,8 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
         if (filterMode && scalingMode)
         {
             bilinear_filter(line_buffer, screen_y - lines_to_copy, scaled_left, scaled_width, lines_to_copy,
-                            filterMode & ODROID_DISPLAY_FILTER_LINEAR_X,
-                            filterMode & ODROID_DISPLAY_FILTER_LINEAR_Y);
+                            filterMode & RG_DISPLAY_FILTER_LINEAR_X,
+                            filterMode & RG_DISPLAY_FILTER_LINEAR_Y);
         }
 
         send_continue_line(line_buffer, scaled_width, lines_to_copy);
@@ -740,7 +742,7 @@ frame_diff(odroid_video_frame_t *frame, odroid_video_frame_t *prevFrame)
         }
     }
 
-    if (scalingMode && filterMode != ODROID_DISPLAY_FILTER_OFF)
+    if (scalingMode && filterMode != RG_DISPLAY_FILTER_OFF)
     {
         // printf("\nFRAME BEGIN\n");
         for (short y = 0; y < frame->height; ++y)
@@ -860,16 +862,16 @@ display_task(void *arg)
 
         if (forceVideoRefresh)
         {
-            if (scalingMode == ODROID_DISPLAY_SCALING_FILL) {
+            if (scalingMode == RG_DISPLAY_SCALING_FILL) {
                 odroid_display_set_scale(update->width, update->height, SCREEN_WIDTH / (double)SCREEN_HEIGHT);
             }
-            else if (scalingMode == ODROID_DISPLAY_SCALING_FIT) {
+            else if (scalingMode == RG_DISPLAY_SCALING_FIT) {
                 odroid_display_set_scale(update->width, update->height, update->width / (double)update->height);
             }
             else {
                 odroid_display_set_scale(update->width, update->height, 0.0);
             }
-            odroid_display_clear(C_BLACK);
+            odroid_display_clear(0x0000);
         }
 
         for (short y = 0; y < update->height;)
@@ -931,51 +933,51 @@ void odroid_display_set_scale(short width, short height, double new_ratio)
            x_inc, y_inc, x_scale, y_scale, x_origin, y_origin);
 }
 
-odroid_display_scaling_t odroid_display_get_scaling_mode(void)
+display_scaling_t odroid_display_get_scaling_mode(void)
 {
     return scalingMode;
 }
 
-void odroid_display_set_scaling_mode(odroid_display_scaling_t mode)
+void odroid_display_set_scaling_mode(display_scaling_t mode)
 {
     odroid_settings_DisplayScaling_set(mode);
     scalingMode = mode;
     forceVideoRefresh = true;
 }
 
-odroid_display_filter_t odroid_display_get_filter_mode(void)
+display_filter_t odroid_display_get_filter_mode(void)
 {
     return filterMode;
 }
 
-void odroid_display_set_filter_mode(odroid_display_filter_t mode)
+void odroid_display_set_filter_mode(display_filter_t mode)
 {
     odroid_settings_DisplayFilter_set(mode);
     filterMode = mode;
     forceVideoRefresh = true;
 }
 
-odroid_display_rotation_t odroid_display_get_rotation(void)
+display_rotation_t odroid_display_get_rotation(void)
 {
     return rotationMode;
 }
 
-void odroid_display_set_rotation(odroid_display_rotation_t rotation)
+void odroid_display_set_rotation(display_rotation_t rotation)
 {
     odroid_settings_DisplayRotation_set(rotation);
     rotationMode = rotation;
     forceVideoRefresh = true;
 }
 
-odroid_display_backlight_t odroid_display_get_backlight()
+display_backlight_t odroid_display_get_backlight()
 {
     return backlightLevel;
 }
 
-void odroid_display_set_backlight(odroid_display_backlight_t level)
+void odroid_display_set_backlight(display_backlight_t level)
 {
     odroid_settings_Backlight_set(level);
-    backlight_percentage_set(backlightLevels[level]);
+    backlight_percentage_set(backlightLevels[level % RG_BACKLIGHT_LEVEL_COUNT]);
     backlightLevel = level;
 }
 

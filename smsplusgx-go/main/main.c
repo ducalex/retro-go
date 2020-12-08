@@ -30,10 +30,10 @@ static bool netplay = false;
 static bool consoleIsGG = false;
 static bool consoleIsSMS = false;
 
-static odroid_gamepad_state_t joystick1;
-static odroid_gamepad_state_t joystick2;
-static odroid_gamepad_state_t *localJoystick = &joystick1;
-static odroid_gamepad_state_t *remoteJoystick = &joystick2;
+static gamepad_state_t joystick1;
+static gamepad_state_t joystick2;
+static gamepad_state_t *localJoystick = &joystick1;
+static gamepad_state_t *remoteJoystick = &joystick2;
 
 // --- MAIN
 
@@ -167,10 +167,10 @@ void app_main(void)
     {
         *localJoystick = odroid_input_read_gamepad();
 
-        if (localJoystick->values[ODROID_INPUT_MENU]) {
+        if (localJoystick->values[GAMEPAD_KEY_MENU]) {
             odroid_overlay_game_menu();
         }
-        else if (localJoystick->values[ODROID_INPUT_VOLUME]) {
+        else if (localJoystick->values[GAMEPAD_KEY_VOLUME]) {
             odroid_overlay_game_settings_menu(NULL);
         }
 
@@ -179,48 +179,48 @@ void app_main(void)
 
         if (netplay)
         {
-            odroid_netplay_sync(localJoystick, remoteJoystick, sizeof(odroid_gamepad_state_t));
+            odroid_netplay_sync(localJoystick, remoteJoystick, sizeof(gamepad_state_t));
         }
 
         input.pad[0] = 0x00;
         input.pad[1] = 0x00;
         input.system = 0x00;
 
-    	if (localJoystick->values[ODROID_INPUT_UP])    input.pad[0] |= INPUT_UP;
-    	if (localJoystick->values[ODROID_INPUT_DOWN])  input.pad[0] |= INPUT_DOWN;
-    	if (localJoystick->values[ODROID_INPUT_LEFT])  input.pad[0] |= INPUT_LEFT;
-    	if (localJoystick->values[ODROID_INPUT_RIGHT]) input.pad[0] |= INPUT_RIGHT;
-    	if (localJoystick->values[ODROID_INPUT_A])     input.pad[0] |= INPUT_BUTTON2;
-    	if (localJoystick->values[ODROID_INPUT_B])     input.pad[0] |= INPUT_BUTTON1;
-    	if (remoteJoystick->values[ODROID_INPUT_UP])    input.pad[1] |= INPUT_UP;
-    	if (remoteJoystick->values[ODROID_INPUT_DOWN])  input.pad[1] |= INPUT_DOWN;
-    	if (remoteJoystick->values[ODROID_INPUT_LEFT])  input.pad[1] |= INPUT_LEFT;
-    	if (remoteJoystick->values[ODROID_INPUT_RIGHT]) input.pad[1] |= INPUT_RIGHT;
-    	if (remoteJoystick->values[ODROID_INPUT_A])     input.pad[1] |= INPUT_BUTTON2;
-    	if (remoteJoystick->values[ODROID_INPUT_B])     input.pad[1] |= INPUT_BUTTON1;
+    	if (localJoystick->values[GAMEPAD_KEY_UP])    input.pad[0] |= INPUT_UP;
+    	if (localJoystick->values[GAMEPAD_KEY_DOWN])  input.pad[0] |= INPUT_DOWN;
+    	if (localJoystick->values[GAMEPAD_KEY_LEFT])  input.pad[0] |= INPUT_LEFT;
+    	if (localJoystick->values[GAMEPAD_KEY_RIGHT]) input.pad[0] |= INPUT_RIGHT;
+    	if (localJoystick->values[GAMEPAD_KEY_A])     input.pad[0] |= INPUT_BUTTON2;
+    	if (localJoystick->values[GAMEPAD_KEY_B])     input.pad[0] |= INPUT_BUTTON1;
+    	if (remoteJoystick->values[GAMEPAD_KEY_UP])    input.pad[1] |= INPUT_UP;
+    	if (remoteJoystick->values[GAMEPAD_KEY_DOWN])  input.pad[1] |= INPUT_DOWN;
+    	if (remoteJoystick->values[GAMEPAD_KEY_LEFT])  input.pad[1] |= INPUT_LEFT;
+    	if (remoteJoystick->values[GAMEPAD_KEY_RIGHT]) input.pad[1] |= INPUT_RIGHT;
+    	if (remoteJoystick->values[GAMEPAD_KEY_A])     input.pad[1] |= INPUT_BUTTON2;
+    	if (remoteJoystick->values[GAMEPAD_KEY_B])     input.pad[1] |= INPUT_BUTTON1;
 
 		if (consoleIsSMS)
 		{
-			if (localJoystick->values[ODROID_INPUT_START])  input.system |= INPUT_PAUSE;
-			if (localJoystick->values[ODROID_INPUT_SELECT]) input.system |= INPUT_START;
-			if (remoteJoystick->values[ODROID_INPUT_START])  input.system |= INPUT_PAUSE;
-			if (remoteJoystick->values[ODROID_INPUT_SELECT]) input.system |= INPUT_START;
+			if (localJoystick->values[GAMEPAD_KEY_START])  input.system |= INPUT_PAUSE;
+			if (localJoystick->values[GAMEPAD_KEY_SELECT]) input.system |= INPUT_START;
+			if (remoteJoystick->values[GAMEPAD_KEY_START])  input.system |= INPUT_PAUSE;
+			if (remoteJoystick->values[GAMEPAD_KEY_SELECT]) input.system |= INPUT_START;
 		}
 		else if (consoleIsGG)
 		{
-			if (localJoystick->values[ODROID_INPUT_START])  input.system |= INPUT_START;
-			if (localJoystick->values[ODROID_INPUT_SELECT]) input.system |= INPUT_PAUSE;
-			if (remoteJoystick->values[ODROID_INPUT_START])  input.system |= INPUT_START;
-			if (remoteJoystick->values[ODROID_INPUT_SELECT]) input.system |= INPUT_PAUSE;
+			if (localJoystick->values[GAMEPAD_KEY_START])  input.system |= INPUT_START;
+			if (localJoystick->values[GAMEPAD_KEY_SELECT]) input.system |= INPUT_PAUSE;
+			if (remoteJoystick->values[GAMEPAD_KEY_START])  input.system |= INPUT_START;
+			if (remoteJoystick->values[GAMEPAD_KEY_SELECT]) input.system |= INPUT_PAUSE;
 		}
         else // Coleco
         {
             coleco.keypad[0] = 0xff;
             coleco.keypad[1] = 0xff;
 
-            if (localJoystick->values[ODROID_INPUT_SELECT])
+            if (localJoystick->values[GAMEPAD_KEY_SELECT])
             {
-                odroid_input_wait_for_key(ODROID_INPUT_SELECT, false);
+                odroid_input_wait_for_key(GAMEPAD_KEY_SELECT, false);
                 system_reset();
             }
 
@@ -231,7 +231,7 @@ void app_main(void)
                 case 0x32b95be0:    // Frogger
                 case 0x9cc3fabc:    // Alcazar
                 case 0x964db3bc:    // Fraction Fever
-                    if (localJoystick->values[ODROID_INPUT_START])
+                    if (localJoystick->values[GAMEPAD_KEY_START])
                     {
                         coleco.keypad[0] = 10; // *
                     }
@@ -240,32 +240,32 @@ void app_main(void)
                 case 0x1796de5e:    // Boulder Dash
                 case 0x5933ac18:    // Boulder Dash
                 case 0x6e5c4b11:    // Boulder Dash
-                    if (localJoystick->values[ODROID_INPUT_START])
+                    if (localJoystick->values[GAMEPAD_KEY_START])
                     {
                         coleco.keypad[0] = 11; // #
                     }
 
-                    if (localJoystick->values[ODROID_INPUT_START] &&
-                        localJoystick->values[ODROID_INPUT_LEFT])
+                    if (localJoystick->values[GAMEPAD_KEY_START] &&
+                        localJoystick->values[GAMEPAD_KEY_LEFT])
                     {
                         coleco.keypad[0] = 1;
                     }
                     break;
                 case 0x109699e2:    // Dr. Seuss's Fix-Up The Mix-Up Puzzler
                 case 0x614bb621:    // Decathlon
-                    if (localJoystick->values[ODROID_INPUT_START])
+                    if (localJoystick->values[GAMEPAD_KEY_START])
                     {
                         coleco.keypad[0] = 1;
                     }
-                    if (localJoystick->values[ODROID_INPUT_START] &&
-                        localJoystick->values[ODROID_INPUT_LEFT])
+                    if (localJoystick->values[GAMEPAD_KEY_START] &&
+                        localJoystick->values[GAMEPAD_KEY_LEFT])
                     {
                         coleco.keypad[0] = 10; // *
                     }
                     break;
 
                 default:
-                    if (localJoystick->values[ODROID_INPUT_START])
+                    if (localJoystick->values[GAMEPAD_KEY_START])
                     {
                         coleco.keypad[0] = 1;
                     }

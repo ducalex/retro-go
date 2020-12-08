@@ -17,14 +17,14 @@
 
 bool ftp_server_running = false;
 
-static bool font_size_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+static bool font_size_cb(dialog_choice_t *option, dialog_event_t event)
 {
     int font_size = odroid_overlay_get_font_size();
-    if (event == ODROID_DIALOG_PREV && font_size > 8) {
+    if (event == RG_DIALOG_PREV && font_size > 8) {
         odroid_overlay_set_font_size(font_size -= 4);
         gui_redraw();
     }
-    if (event == ODROID_DIALOG_NEXT && font_size < 16) {
+    if (event == RG_DIALOG_NEXT && font_size < 16) {
         odroid_overlay_set_font_size(font_size += 4);
         gui_redraw();
     }
@@ -32,74 +32,74 @@ static bool font_size_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t e
     if (font_size ==  8) strcpy(option->value, "Small ");
     if (font_size == 12) strcpy(option->value, "Medium");
     if (font_size == 16) strcpy(option->value, "Large ");
-    return event == ODROID_DIALOG_ENTER;
+    return event == RG_DIALOG_ENTER;
 }
 
-static bool show_empty_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+static bool show_empty_cb(dialog_choice_t *option, dialog_event_t event)
 {
-    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         gui.show_empty = !gui.show_empty;
         odroid_settings_int32_set(KEY_SHOW_EMPTY, gui.show_empty);
     }
     strcpy(option->value, gui.show_empty ? "Yes" : "No");
-    return event == ODROID_DIALOG_ENTER;
+    return event == RG_DIALOG_ENTER;
 }
 
-static bool startup_app_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+static bool startup_app_cb(dialog_choice_t *option, dialog_event_t event)
 {
     int startup_app = odroid_settings_StartupApp_get();
-    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         startup_app = startup_app ? 0 : 1;
         odroid_settings_StartupApp_set(startup_app);
     }
     strcpy(option->value, startup_app == 0 ? "Launcher" : "LastUsed");
-    return event == ODROID_DIALOG_ENTER;
+    return event == RG_DIALOG_ENTER;
 }
 
-static bool show_cover_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+static bool show_cover_cb(dialog_choice_t *option, dialog_event_t event)
 {
-    if (event == ODROID_DIALOG_PREV) {
+    if (event == RG_DIALOG_PREV) {
         if (--gui.show_cover < 0) gui.show_cover = 2;
         odroid_settings_int32_set(KEY_SHOW_COVER, gui.show_cover);
     }
-    if (event == ODROID_DIALOG_NEXT) {
+    if (event == RG_DIALOG_NEXT) {
         if (++gui.show_cover > 2) gui.show_cover = 0;
         odroid_settings_int32_set(KEY_SHOW_COVER, gui.show_cover);
     }
     if (gui.show_cover == 0) strcpy(option->value, "No");
     if (gui.show_cover == 1) strcpy(option->value, "Slow");
     if (gui.show_cover == 2) strcpy(option->value, "Fast");
-    return event == ODROID_DIALOG_ENTER;
+    return event == RG_DIALOG_ENTER;
 }
 
-static bool color_shift_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+static bool color_shift_cb(dialog_choice_t *option, dialog_event_t event)
 {
     int max = gui_themes_count - 1;
-    if (event == ODROID_DIALOG_PREV) {
+    if (event == RG_DIALOG_PREV) {
         if (--gui.theme < 0) gui.theme = max;
         odroid_settings_int32_set(KEY_GUI_THEME, gui.theme);
         gui_redraw();
     }
-    if (event == ODROID_DIALOG_NEXT) {
+    if (event == RG_DIALOG_NEXT) {
         if (++gui.theme > max) gui.theme = 0;
         odroid_settings_int32_set(KEY_GUI_THEME, gui.theme);
         gui_redraw();
     }
     sprintf(option->value, "%d/%d", gui.theme + 1, max + 1);
-    return event == ODROID_DIALOG_ENTER;
+    return event == RG_DIALOG_ENTER;
 }
 
-static bool ftp_server_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event)
+static bool ftp_server_cb(dialog_choice_t *option, dialog_event_t event)
 {
-    if (event == ODROID_DIALOG_ENTER)
+    if (event == RG_DIALOG_ENTER)
     {
-        odroid_dialog_choice_t choices[] = {
+        dialog_choice_t choices[] = {
             {0, "Status", "Running", 1, NULL},
             {0, "SSID", "retro-go", 1, NULL},
             {0, "IP", "0.0.0.0", 1, NULL},
             {0, "---", "", -1, NULL},
             {1, "Stop Server", "", 1, NULL},
-            ODROID_DIALOG_CHOICE_LAST
+            RG_DIALOG_CHOICE_LAST
         };
 
         if (ftp_server_running) {
@@ -196,11 +196,11 @@ void retro_loop()
                 last_key = -1;
             }
         } else {
-            for (int i = 0; i < ODROID_INPUT_MAX; i++)
+            for (int i = 0; i < GAMEPAD_KEY_MAX; i++)
                 if (gui.joystick.values[i]) last_key = i;
 
-            if (last_key == ODROID_INPUT_MENU) {
-                odroid_dialog_choice_t choices[] = {
+            if (last_key == GAMEPAD_KEY_MENU) {
+                dialog_choice_t choices[] = {
                     {0, "Ver.", "build string", 1, NULL},
                     {0, "Date", "", 1, NULL},
                     {0, "By", "ducalex", 1, NULL},
@@ -210,7 +210,7 @@ void retro_loop()
                     {1, "Reboot to firmware", "", 1, NULL},
                     {2, "Reset settings", "", 1, NULL},
                     {0, "Close", "", 1, NULL},
-                    ODROID_DIALOG_CHOICE_LAST
+                    RG_DIALOG_CHOICE_LAST
                 };
 
                 const esp_app_desc_t *app = esp_ota_get_app_description();
@@ -222,7 +222,7 @@ void retro_loop()
 
                 int sel = odroid_overlay_dialog("Retro-Go", choices, -1);
                 if (sel == 1) {
-                    odroid_system_switch_app(APP_FACTORY);
+                    odroid_system_switch_app(RG_APP_FACTORY);
                 }
                 else if (sel == 2) {
                     if (odroid_overlay_confirm("Reset all settings?", false) == 1) {
@@ -232,8 +232,8 @@ void retro_loop()
                 }
                 gui_redraw();
             }
-            else if (last_key == ODROID_INPUT_VOLUME) {
-                odroid_dialog_choice_t choices[] = {
+            else if (last_key == GAMEPAD_KEY_VOLUME) {
+                dialog_choice_t choices[] = {
                     {0, "---", "", -1, NULL},
                     {0, "Color theme", "1/10", 1, &color_shift_cb},
                     {0, "Font size", "Small", 1, &font_size_cb},
@@ -241,35 +241,35 @@ void retro_loop()
                     {0, "Show empty", "Yes", 1, &show_empty_cb},
                     {0, "---", "", -1, NULL},
                     {0, "Startup app", "Last", 1, &startup_app_cb},
-                    ODROID_DIALOG_CHOICE_LAST
+                    RG_DIALOG_CHOICE_LAST
                 };
                 odroid_overlay_settings_menu(choices);
                 gui_redraw();
             }
-            else if (last_key == ODROID_INPUT_SELECT) {
+            else if (last_key == GAMEPAD_KEY_SELECT) {
                 debounce = -10;
                 gui.selected--;
             }
-            else if (last_key == ODROID_INPUT_START) {
+            else if (last_key == GAMEPAD_KEY_START) {
                 debounce = -10;
                 gui.selected++;
             }
-            else if (last_key == ODROID_INPUT_UP) {
+            else if (last_key == GAMEPAD_KEY_UP) {
                 gui_scroll_list(tab, LINE_UP);
             }
-            else if (last_key == ODROID_INPUT_DOWN) {
+            else if (last_key == GAMEPAD_KEY_DOWN) {
                 gui_scroll_list(tab, LINE_DOWN);
             }
-            else if (last_key == ODROID_INPUT_LEFT) {
+            else if (last_key == GAMEPAD_KEY_LEFT) {
                 gui_scroll_list(tab, PAGE_UP);
             }
-            else if (last_key == ODROID_INPUT_RIGHT) {
+            else if (last_key == GAMEPAD_KEY_RIGHT) {
                 gui_scroll_list(tab, PAGE_DOWN);
             }
-            else if (last_key == ODROID_INPUT_A) {
+            else if (last_key == GAMEPAD_KEY_A) {
                 gui_event(KEY_PRESS_A, tab);
             }
-            else if (last_key == ODROID_INPUT_B) {
+            else if (last_key == GAMEPAD_KEY_B) {
                 gui_event(KEY_PRESS_B, tab);
             }
         }

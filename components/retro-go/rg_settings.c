@@ -223,7 +223,7 @@ void odroid_settings_RomFilePath_set(const char* value)
 
 int32_t odroid_settings_Volume_get()
 {
-    return odroid_settings_int32_get(Key_Volume, ODROID_AUDIO_VOLUME_DEFAULT);
+    return odroid_settings_int32_get(Key_Volume, RG_AUDIO_VOL_DEFAULT);
 }
 void odroid_settings_Volume_set(int32_t value)
 {
@@ -233,7 +233,7 @@ void odroid_settings_Volume_set(int32_t value)
 
 int32_t odroid_settings_AudioSink_get()
 {
-    return odroid_settings_int32_get(Key_AudioSink, ODROID_AUDIO_SINK_SPEAKER);
+    return odroid_settings_int32_get(Key_AudioSink, RG_AUDIO_SINK_SPEAKER);
 }
 void odroid_settings_AudioSink_set(int32_t value)
 {
@@ -291,11 +291,11 @@ void odroid_settings_SpriteLimit_set(int32_t value)
 }
 
 
-ODROID_REGION odroid_settings_Region_get()
+emu_region_t odroid_settings_Region_get()
 {
-    return odroid_settings_app_int32_get(Key_Region, ODROID_REGION_AUTO);
+    return odroid_settings_app_int32_get(Key_Region, EMU_REGION_AUTO);
 }
-void odroid_settings_Region_set(ODROID_REGION value)
+void odroid_settings_Region_set(emu_region_t value)
 {
     odroid_settings_app_int32_set(Key_Region, value);
 }
@@ -303,7 +303,7 @@ void odroid_settings_Region_set(ODROID_REGION value)
 
 int32_t odroid_settings_DisplayScaling_get()
 {
-    return odroid_settings_app_int32_get(Key_DispScaling, ODROID_DISPLAY_SCALING_FILL);
+    return odroid_settings_app_int32_get(Key_DispScaling, RG_DISPLAY_SCALING_FILL);
 }
 void odroid_settings_DisplayScaling_set(int32_t value)
 {
@@ -313,7 +313,7 @@ void odroid_settings_DisplayScaling_set(int32_t value)
 
 int32_t odroid_settings_DisplayFilter_get()
 {
-    return odroid_settings_app_int32_get(Key_DispFilter, ODROID_DISPLAY_FILTER_OFF);
+    return odroid_settings_app_int32_get(Key_DispFilter, RG_DISPLAY_FILTER_OFF);
 }
 void odroid_settings_DisplayFilter_set(int32_t value)
 {
@@ -323,7 +323,7 @@ void odroid_settings_DisplayFilter_set(int32_t value)
 
 int32_t odroid_settings_DisplayRotation_get()
 {
-    return odroid_settings_app_int32_get(Key_DispRotation, ODROID_DISPLAY_ROTATION_AUTO);
+    return odroid_settings_app_int32_get(Key_DispRotation, RG_DISPLAY_ROTATION_AUTO);
 }
 void odroid_settings_DisplayRotation_set(int32_t value)
 {
