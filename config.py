@@ -6,15 +6,19 @@
 # - Partitions must be 64K aligned
 
 PROJECT_NAME = "Retro-Go"
-PROJECT_VER  = shell_exec("git describe --tags --abbrev=5 --dirty")
+PROJECT_VER  = shell_exec("git describe --tags --abbrev=5 --dirty --always")
 PROJECT_TILE = "retro-go-fw-icon.raw"
 PROJECT_APPS = {
   # Note: Size will be adjusted if needed but flashmon needs accurate values to work correctly
   # Project name   Sub, Size
-  'retro-go':     [16,  524288],
-  'nofrendo-go':  [17,  458752],
-  'gnuboy-go':    [18,  458752],
-  'smsplusgx-go': [19,  524288],
-  'huexpress-go': [20,  458752],
-  'handy-go':     [21,  458752],
+  'retro-go':     [0,  393216],
+  'nofrendo-go':  [0,  458752],
+  'gnuboy-go':    [0,  393216],
+  'smsplusgx-go': [0,  458752],
+  'huexpress-go': [0,  458752],
+  'handy-go':     [0,  458752],
+  # 'meteor-go':    [0,  851968],
+  # 'snes9x-go':    [0,  851968],
+  # 'neopop-go':    [0,  720896],
+  # 'mpython-go':   [0,  720896],
 }

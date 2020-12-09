@@ -78,7 +78,11 @@ static void add_emulator(const char *system, const char *dirname, const char* ex
                          const char *part, uint16_t crc_offset, const binfile_t *logo,
                          const binfile_t *header)
 {
-    // SHOULD WE HIDE EMU IF PARTITION NOT FOUND ?
+    if (!odroid_system_find_app(part))
+    {
+        printf("add_emulator: Emulator '%s' (%s) not present, skipping\n", system, part);
+        return;
+    }
 
     retro_emulator_t *p = &emulators[emulators_count++];
     strcpy(p->system_name, system);
@@ -344,16 +348,17 @@ void emulator_start(retro_emulator_file_t *file, bool load_state)
 
 void emulators_init()
 {
-    add_emulator("Nintendo Entertainment System", "nes", "nes fam", "nofrendo-go", 16, &logo_nes, &header_nes);
-    add_emulator("Nintendo Gameboy",       "gb",   "gb gbc", "gnuboy-go",    0, &logo_gbc, &header_gbc);
-    add_emulator("Nintendo Gameboy Color", "gbc",  "gbc gb", "gnuboy-go",    0, &logo_gbc, &header_gbc);
-    add_emulator("Sega Master System",     "sms",  "sms",    "smsplusgx-go", 0, &logo_sms, &header_sms);
-    add_emulator("Sega Game Gear",         "gg",   "gg",     "smsplusgx-go", 0, &logo_gg,  &header_gg);
-    add_emulator("ColecoVision",           "col",  "col",    "smsplusgx-go", 0, &logo_col, &header_col);
-    add_emulator("PC Engine",              "pce",  "pce",    "huexpress-go", 0, &logo_pce, &header_pce);
-    add_emulator("Atari Lynx",             "lnx",  "lnx",    "handy-go",    64, &logo_lnx, &header_lnx);
-    // add_emulator("Super Nintendo",         "snes", "smc sfc", "snes9x-go", 0, NULL, NULL);
-    // add_emulator("Neo Geo Pocket Color",   "ngp",  "ngp ngc", "neopop-go", 0, NULL, NULL);
-    // add_emulator("MicroPython",            "mpy",  "py mpy",  "micropython", 0, NULL, NULL);
-    // add_emulator("Atari 2600",             "a26",  "a26",     "stella-go", 0, &logo_a26, &header_a26);
+    add_emulator("Nintendo Entertainment System", "nes",  "nes fam", "nofrendo-go", 16, &logo_nes, &header_nes);
+    add_emulator("Nintendo Gameboy",              "gb",   "gb gbc",  "gnuboy-go",    0, &logo_gbc, &header_gbc);
+    add_emulator("Nintendo Gameboy Color",        "gbc",  "gbc gb",  "gnuboy-go",    0, &logo_gbc, &header_gbc);
+    add_emulator("Sega Master System",            "sms",  "sms",     "smsplusgx-go", 0, &logo_sms, &header_sms);
+    add_emulator("Sega Game Gear",                "gg",   "gg",      "smsplusgx-go", 0, &logo_gg,  &header_gg);
+    add_emulator("ColecoVision",                  "col",  "col",     "smsplusgx-go", 0, &logo_col, &header_col);
+    add_emulator("PC Engine",                     "pce",  "pce",     "huexpress-go", 0, &logo_pce, &header_pce);
+    add_emulator("Atari Lynx",                    "lnx",  "lnx",     "handy-go",    64, &logo_lnx, &header_lnx);
+    add_emulator("Atari 2600",                    "a26",  "a26",     "stella-go",    0, NULL,      NULL);
+    add_emulator("Nintendo Gameboy Advance",      "gba",  "gba",     "meteor-go",    0, NULL,      NULL);
+    add_emulator("Super Nintendo",                "snes", "smc sfc", "snes9x-go",    0, NULL,      NULL);
+    add_emulator("Neo Geo Pocket Color",          "ngp",  "ngp ngc", "neopop-go",    0, NULL,      NULL);
+    add_emulator("MicroPython",                   "mpy",  "py mpy",  "mpython-go",   0, NULL,      NULL);
 }

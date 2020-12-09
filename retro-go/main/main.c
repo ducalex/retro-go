@@ -227,7 +227,7 @@ void retro_loop()
                 else if (sel == 2) {
                     if (odroid_overlay_confirm("Reset all settings?", false) == 1) {
                         odroid_settings_reset();
-                        odroid_system_reload_app();
+                        odroid_system_restart();
                     }
                 }
                 gui_redraw();

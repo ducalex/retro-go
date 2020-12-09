@@ -110,12 +110,13 @@ void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_
 bool odroid_system_emu_save_state(int slot);
 bool odroid_system_emu_load_state(int slot);
 void odroid_system_panic_dialog(const char *reason);
-void odroid_system_panic(const char *reason, const char *file, const char *function) __attribute__((noreturn));
+void odroid_system_panic(const char *reason, const char *function, const char *file) __attribute__((noreturn));
 void odroid_system_halt() __attribute__((noreturn));
-void odroid_system_sleep();
+void odroid_system_sleep() __attribute__((noreturn));
+void odroid_system_restart() __attribute__((noreturn));
 void odroid_system_switch_app(const char *app) __attribute__((noreturn));
-void odroid_system_reload_app() __attribute__((noreturn));
 void odroid_system_set_boot_app(const char *app);
+bool odroid_system_find_app(const char *app);
 void odroid_system_set_led(int value);
 void odroid_system_tick(uint skippedFrame, uint fullFrame, uint busyTime);
 rg_app_desc_t *odroid_system_get_app();

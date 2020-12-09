@@ -329,7 +329,7 @@ bool odroid_system_emu_save_state(int slot)
     return success;
 }
 
-void odroid_system_reload_app()
+void odroid_system_restart()
 {
     // FIX ME: Ensure the boot loader points to us
     esp_restart();
@@ -347,6 +347,11 @@ void odroid_system_switch_app(const char *app)
 
     odroid_system_set_boot_app(app);
     esp_restart();
+}
+
+bool odroid_system_find_app(const char *app)
+{
+    return esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, app) != NULL;
 }
 
 void odroid_system_set_boot_app(const char *app)
