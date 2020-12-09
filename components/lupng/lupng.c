@@ -313,11 +313,6 @@ static size_t internalMemFread(void *ptr, size_t size, size_t count, void *userP
     return read_size / size;
 }
 
-static size_t internalMemFwrite(const void *ptr, size_t size, size_t count, void *userPtr)
-{
-    return 0;
-}
-
 static size_t internalFwrite(const void *ptr, size_t size, size_t count, void *userPtr)
 {
     return fwrite(ptr, size, count, (FILE *)userPtr);
