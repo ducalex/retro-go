@@ -573,7 +573,7 @@ int odroid_overlay_game_menu(void)
         #ifdef ENABLE_NETPLAY
         {40, "Netplay", "", 1, NULL},
         #endif
-        {50, "Tools", "", 1, NULL},
+        // {50, "Tools", "", 1, NULL},
         {100, "Quit", "", 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };

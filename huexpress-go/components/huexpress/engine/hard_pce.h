@@ -148,7 +148,7 @@ typedef struct {
 	uint8_t BackupRAM[0x800];
 
 	// Video RAM
-	uint8_t VRAM[0x10000];
+	uint16_t VRAM[0x10000 / 2];
 
 	// Sprite RAM
 	// The pc engine got a function to transfert a piece VRAM toward the inner

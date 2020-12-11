@@ -184,13 +184,13 @@ IO_read(uint16_t A)
             break;
         case 2:
             if (io.vdc_reg == VRR)              // // VRAM Read Register (LSB)
-                ret = VRAM[IO_VDC_REG[MARR].W * 2];
+                ret = VRAM[IO_VDC_REG[MARR].W] & 0xFF;
             else
                 ret = IO_VDC_REG_ACTIVE.B.l;
             break;
         case 3:
             if (io.vdc_reg == VRR) {            // VRAM Read Register (MSB)
-                ret = VRAM[IO_VDC_REG[MARR].W * 2 + 1];
+                ret = VRAM[IO_VDC_REG[MARR].W] >> 8;
                 IO_VDC_REG_INC(MARR);
             } else
                 ret = IO_VDC_REG_ACTIVE.B.h;
@@ -383,8 +383,7 @@ IO_write(uint16_t A, uint8_t V)
                 break;
 
             case VWR:                           // VRAM Write Register
-                VRAM[IO_VDC_REG[MAWR].W * 2] = IO_VDC_REG_ACTIVE.B.l;
-                VRAM[IO_VDC_REG[MAWR].W * 2 + 1] = V;
+                VRAM[IO_VDC_REG[MAWR].W] = (V << 8) | IO_VDC_REG_ACTIVE.B.l;
                 OBJ_CACHE_INVALIDATE(IO_VDC_REG[MAWR].W);
                 IO_VDC_REG_INC(MAWR);
                 break;
@@ -449,12 +448,11 @@ IO_write(uint16_t A, uint8_t V)
             case LENR:                          // DMA transfer from VRAM to VRAM
                 IO_VDC_REG[LENR].B.h = V;
 
-                uint16_t *vram16 = (uint16_t *)VRAM;
                 int src_inc = (IO_VDC_REG[DCR].W & 8) ? -1 : 1;
                 int dst_inc = (IO_VDC_REG[DCR].W & 4) ? -1 : 1;
 
                 while (IO_VDC_REG[LENR].W != 0xFFFF) {
-                    vram16[IO_VDC_REG[DISTR].W] = vram16[IO_VDC_REG[SOUR].W];
+                    VRAM[IO_VDC_REG[DISTR].W] = VRAM[IO_VDC_REG[SOUR].W];
                     OBJ_CACHE_INVALIDATE(IO_VDC_REG[DISTR].W);
                     IO_VDC_REG[SOUR].W += src_inc;
                     IO_VDC_REG[DISTR].W += dst_inc;

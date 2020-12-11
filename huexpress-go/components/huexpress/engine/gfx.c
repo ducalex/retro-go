@@ -20,19 +20,13 @@ int ScrollYDiff;
 #define PAL(nibble) (PAL[(L >> ((nibble) * 4)) & 15])
 
 
-/*****************************************************************************
-
-		Function: spr2pixel
-
-		Description: convert a PCE coded sprite into a linear one
-		Parameters: int no,the number of the sprite to convert
-		Return: nothing
-
-*****************************************************************************/
+/*
+	Convert a PCE coded sprite into a linear one
+*/
 static inline void
 spr2pixel(int no)
 {
-	uint8_t *C = VRAM + no * 128;
+	uint8_t *C = (uint8_t *)(VRAM + no * 64);
 	uint32_t *C2 = OBJ_CACHE + no * 32;
 	// 2 longs -> 16 nibbles => 32 loops for a 16*16 spr
 
@@ -53,19 +47,13 @@ spr2pixel(int no)
 }
 
 
-/*****************************************************************************
-
-		Function: tile2pixel
-
-		Description: convert a PCE coded tile into a linear one
-		Parameters: int no, the number of the tile to convert
-		Return: nothing
-
-*****************************************************************************/
+/*
+	Convert a PCE coded tile into a linear one
+*/
 static inline void
 tile2pixel(int no)
 {
-	uint8_t *C = VRAM + no * 32;
+	uint8_t *C = (uint8_t *)(VRAM + no * 16);
 	uint32_t *C2 = OBJ_CACHE + no * 8;
 
 	TRACE_SPR("Planing tile %d\n", no);
@@ -85,16 +73,9 @@ tile2pixel(int no)
 }
 
 
-/*****************************************************************************
-
-		Function: draw_tiles
-
-		Description: draw tiles on screen
-		Parameters: int Y1 (first line)
-					int Y2 (last line)
-		Return: nothing
-
-*****************************************************************************/
+/*
+	Draw background tiles between two lines
+*/
 static void // Do not inline
 draw_tiles(int Y1, int Y2, int scroll_x, int scroll_y)
 {
@@ -130,7 +111,7 @@ draw_tiles(int Y1, int Y2, int scroll_x, int scroll_y)
 		for (int X1 = 0; X1 < XW; X1++, x++, PP += 8) {
 			x &= bg_w - 1;
 
-			no = ((uint16_t*)VRAM)[x + y * bg_w];
+			no = VRAM[x + y * bg_w];
 
 			PAL = &Palette[(no >> 8) & 0x1F0];
 
@@ -142,7 +123,7 @@ draw_tiles(int Y1, int Y2, int scroll_x, int scroll_y)
 			}
 
 			C2 = OBJ_CACHE + (no * 8 + offset);
-			C = VRAM + (no * 32 + offset * 2);
+			C = (uint8_t*)(VRAM + no * 16 + offset);
 			P = PP;
 			for (int i = 0; i < h; i++, P += XBUF_WIDTH, C2++, C += 2) {
 				uint32_t J, L;
@@ -173,21 +154,11 @@ draw_tiles(int Y1, int Y2, int scroll_x, int scroll_y)
 }
 
 
-/*****************************************************************************
-
-		Function: draw_sprite
-
-		Description: draw sprite to framebuffer
-		Parameters: uint8_t *P (framebuffer)
-					uint16_t *C (sprite to draw)
-					uint32_t *C2 (cached linear sprite)
-					int h (the number of line to draw)
-					uint16_t attr (sprite attributes)
-		Return: nothing
-
-*****************************************************************************/
+/*
+	Draw sprite C to framebuffer P
+*/
 static void // Do not inline (take advantage of xtensa's windowed registers)
-draw_sprite(uint8_t *P, uint16_t *C, uint32_t *C2, int h, uint16_t attr)
+draw_sprite(uint8_t *P, uint16_t *C, uint32_t *C2, int height, uint16_t attr)
 {
 	uint8_t *PAL = &Palette[256 + ((attr & 0xF) << 4)];
 
@@ -195,7 +166,7 @@ draw_sprite(uint8_t *P, uint16_t *C, uint32_t *C2, int h, uint16_t attr)
 	int inc = (attr & V_FLIP) ? -1 : 1;
 	int inc2 = inc * 2;
 
-	for (int i = 0; i < h; i++, C += inc, C2 += inc2, P += XBUF_WIDTH) {
+	for (int i = 0; i < height; i++, C += inc, C2 += inc2, P += XBUF_WIDTH) {
 
 		uint16_t J = C[0] | C[16] | C[32] | C[48];
 		uint32_t L;
@@ -249,39 +220,34 @@ draw_sprite(uint8_t *P, uint16_t *C, uint32_t *C2, int h, uint16_t attr)
 }
 
 
-/*****************************************************************************
-
-		Function: draw_sprites
-
-		Description: draw all sprites between two lines
-		Parameters: int Y1 (first line)
-					int Y2 (last line)
-					int priority (0 = draw bg sprites)
-		Return: nothing
-
-*****************************************************************************/
+/*
+	Draw sprites between two lines
+*/
 static void // Do not inline
 draw_sprites(int Y1, int Y2, int priority)
 {
+	// NOTE: At this time we do not respect bg sprites priority over top sprites.
+	// Example: Assume that sprite #2 is priority=0 and sprite #5 is priority=1. If they
+	// overlap then sprite #5 shouldn't be drawn because #2 > #5. But currently it will.
+
 	// We iterate sprites in reverse order because earlier sprites have
 	// higher priority and therefore must overwrite later sprites.
+
 	for (int n = 63; n >= 0; n--) {
 		sprite_t *spr = (sprite_t *)SPRAM + n;
+		uint16_t attr = spr->attr;
 
-		if (((spr->attr >> 7) & 1) != priority)
+		if (((attr >> 7) & 1) != priority)
 			continue;
 
-		int y = (spr->y & 1023) - 64;
-		int x = (spr->x & 1023) - 32;
-		int cgx = (spr->attr >> 8) & 1;
-		int cgy = (spr->attr >> 12) & 3;
+		int y = (spr->y & 0x3FF) - 64;
+		int x = (spr->x & 0x3FF) - 32;
+		int cgx = (attr >> 8) & 1;
+		int cgy = (attr >> 12) & 3;
+		int inc = (attr & V_FLIP) ? -1 : 1;
 		int no = (spr->no & 0x7FF);
-		int inc = (spr->attr & V_FLIP) ? -1 : 1;
-		int inc2 = inc * 2;
-		bool hflip = (spr->attr & H_FLIP);
 
-		TRACE_GFX("Sprite 0x%02X : X = %d, Y = %d, atr = 0x%04X, no = 0x%03X\n",
-					n, x, y, spr->attr, no);
+		TRACE_GFX("Sprite 0x%02X : X = %d, Y = %d, attr = %d, no = %d\n", n, x, y, attr, no);
 
 		cgy |= cgy >> 1;
 		no = (no >> 1) & ~(cgy * 2 + cgx);
@@ -302,41 +268,43 @@ draw_sprites(int Y1, int Y2, int priority)
 		}
 
 		uint8_t *P = screen_buffer + (XBUF_WIDTH * y + x);
-		uint16_t *C = (uint16_t *)VRAM + (no * 64);
+		uint16_t *C = VRAM + (no * 64);
 		uint32_t *C2 = OBJ_CACHE + (no * 32);
 
-		if (spr->attr & V_FLIP) {
-			C += 15 * 2 + cgy * 128;
-			C2 += 15 * 2 + cgy * 64;
+		cgy *= 16;
+
+		if (attr & V_FLIP) {
+			C += 15 * 2 + cgy * 8;
+			C2 += 15 * 2 + cgy * 4;
 		}
 
-		for (int i = 0; i <= cgy; i++) {
+		for (int yy = 0; yy <= cgy; yy += 16) {
+			int t = Y1 - y - yy;
 			int h = 16;
 
-			int t = Y1 - y - (i * 16);
 			if (t > 0) {
 				C += t * inc;
-				C2 += t * inc2;
+				C2 += t * inc * 2;
 				h -= t;
 				P += t * XBUF_WIDTH;
 			}
 
-			if (h > Y2 - y - (i * 16))
-				h = Y2 - y - (i * 16);
+			if (h > Y2 - y - yy)
+				h = Y2 - y - yy;
 
-			if (hflip) {
+			if (attr & H_FLIP) {
 				for (int j = 0; j <= cgx; j++) {
-					draw_sprite(P + (cgx - j) * 16, C + j * 64, C2 + j * 32, h, spr->attr);
+					draw_sprite(P + (cgx - j) * 16, C + j * 64, C2 + j * 32, h, attr);
 				}
 			} else {
 				for (int j = 0; j <= cgx; j++) {
-					draw_sprite(P + j * 16, C + j * 64, C2 + j * 32, h, spr->attr);
+					draw_sprite(P + j * 16, C + j * 64, C2 + j * 32, h, attr);
 				}
 			}
 
 			P += h * XBUF_WIDTH;
-			C += (h * inc) + (16 * 7 * inc);
-			C2 += (h * inc2) + (16 * inc2);
+			C += (h + 16 * 7) * inc;
+			C2 += (h + 16) * (inc * 2);
 		}
 	}
 }
@@ -470,7 +438,7 @@ gfx_irq(int type)
 
 
 /*
-	process one scanline
+	Process one scanline
 */
 void
 gfx_run(void)
@@ -527,7 +495,7 @@ gfx_run(void)
 
 		/* VRAM to SATB DMA */
 		if (io.vdc_satb == DMA_TRANSFER_PENDING || IO_VDC_REG[DCR].W & 0x0010) {
-			memcpy(SPRAM, VRAM + IO_VDC_REG[SATB].W * 2, 512);
+			memcpy(SPRAM, VRAM + IO_VDC_REG[SATB].W, 512);
 			io.vdc_satb = DMA_TRANSFER_COUNTER + 4;
 		}
 
