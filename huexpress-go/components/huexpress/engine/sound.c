@@ -18,7 +18,7 @@ static uint32_t r[6];
 static int8_t mix_buffer[48000 / 60 * 2];
 
 
-FAST_INLINE void
+static inline void
 psg_update(int8_t *buf, int ch, size_t dwSize)
 {
     uint32_t fixed_inc;

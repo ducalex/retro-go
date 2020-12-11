@@ -3,15 +3,11 @@
 #include "pce.h"
 
 static gfx_context_t gfx_context;
-static bool sprite_usespbg = 0;
 static int line_counter = 0;
 static int last_line_counter = 0;
 
 // Active screen buffer
 static uint8_t* screen_buffer;
-
-// Sprite priority mask memory
-static uint8_t *SPM, *SPM_ptr;
 
 // Cache for linear tiles and sprites. This is basically a decoded VRAM
 static uint32_t *OBJ_CACHE;
@@ -21,7 +17,7 @@ bool SPR_CACHE[512];
 //
 int ScrollYDiff;
 
-#define PAL(nibble) (PAL[(L >> ((nibble) * 4)) & 15]);
+#define PAL(nibble) (PAL[(L >> ((nibble) * 4)) & 15])
 
 
 /*****************************************************************************
@@ -33,7 +29,7 @@ int ScrollYDiff;
 		Return: nothing
 
 *****************************************************************************/
-FAST_INLINE void
+static inline void
 spr2pixel(int no)
 {
 	uint8_t *C = VRAM + no * 128;
@@ -66,7 +62,7 @@ spr2pixel(int no)
 		Return: nothing
 
 *****************************************************************************/
-FAST_INLINE void
+static inline void
 tile2pixel(int no)
 {
 	uint8_t *C = VRAM + no * 32;
@@ -94,11 +90,12 @@ tile2pixel(int no)
 		Function: draw_tiles
 
 		Description: draw tiles on screen
-		Parameters: int Y1,int Y2 (lines to draw between)
+		Parameters: int Y1 (first line)
+					int Y2 (last line)
 		Return: nothing
 
 *****************************************************************************/
-FAST_INLINE void
+static void // Do not inline
 draw_tiles(int Y1, int Y2, int scroll_x, int scroll_y)
 {
 	const uint8_t _bg_w[] = { 32, 64, 128, 128 };
@@ -181,30 +178,24 @@ draw_tiles(int Y1, int Y2, int scroll_x, int scroll_y)
 		Function: draw_sprite
 
 		Description: draw sprite to framebuffer
-		Parameters: int offset (offset in SPM/framebuffer memory to use)
+		Parameters: uint8_t *P (framebuffer)
 					uint16_t *C (sprite to draw)
 					uint32_t *C2 (cached linear sprite)
-					uint8_t *PAL (address of the palette of this sprite)
 					int h (the number of line to draw)
-					int inc (the value to increment the sprite buffer)
-					int pr (priority to compare against M)
-					bool hflip (flip tile horizontally)
-					bool update_mask (update priority mask)
+					uint16_t attr (sprite attributes)
 		Return: nothing
 
 *****************************************************************************/
-FAST_INLINE void
-draw_sprite(size_t offset, uint16_t *C, uint32_t *C2, int h, int inc, uint8_t pr, uint16_t attr)
+static void // Do not inline (take advantage of xtensa's windowed registers)
+draw_sprite(uint8_t *P, uint16_t *C, uint32_t *C2, int h, uint16_t attr)
 {
-	uint8_t *P = screen_buffer + offset;
-	uint8_t *M = SPM + offset;
 	uint8_t *PAL = &Palette[256 + ((attr & 0xF) << 4)];
 
-	bool priority = attr & 0x80;
 	bool hflip = attr & H_FLIP;
+	int inc = (attr & V_FLIP) ? -1 : 1;
+	int inc2 = inc * 2;
 
-	for (int i = 0; i < h; i++, C = (uint16_t*)((uint8_t*)C + inc),
-			C2 += inc, P += XBUF_WIDTH, M += XBUF_WIDTH) {
+	for (int i = 0; i < h; i++, C += inc, C2 += inc2, P += XBUF_WIDTH) {
 
 		uint16_t J = C[0] | C[16] | C[32] | C[48];
 		uint32_t L;
@@ -214,84 +205,45 @@ draw_sprite(size_t offset, uint16_t *C, uint32_t *C2, int h, int inc, uint8_t pr
 
 		if (hflip) {
 			L = C2[1];
-			if ((J & 0x8000) && M[15] <= pr) P[15] = PAL(1);
-			if ((J & 0x4000) && M[14] <= pr) P[14] = PAL(3);
-			if ((J & 0x2000) && M[13] <= pr) P[13] = PAL(5);
-			if ((J & 0x1000) && M[12] <= pr) P[12] = PAL(7);
-			if ((J & 0x0800) && M[11] <= pr) P[11] = PAL(0);
-			if ((J & 0x0400) && M[10] <= pr) P[10] = PAL(2);
-			if ((J & 0x0200) && M[9] <= pr)  P[9]  = PAL(4);
-			if ((J & 0x0100) && M[8] <= pr)  P[8]  = PAL(6);
+			if ((J & 0x8000)) P[15] = PAL(1);
+			if ((J & 0x4000)) P[14] = PAL(3);
+			if ((J & 0x2000)) P[13] = PAL(5);
+			if ((J & 0x1000)) P[12] = PAL(7);
+			if ((J & 0x0800)) P[11] = PAL(0);
+			if ((J & 0x0400)) P[10] = PAL(2);
+			if ((J & 0x0200)) P[9]  = PAL(4);
+			if ((J & 0x0100)) P[8]  = PAL(6);
 
 			L = C2[0];
-			if ((J & 0x80) && M[7] <= pr) P[7] = PAL(1);
-			if ((J & 0x40) && M[6] <= pr) P[6] = PAL(3);
-			if ((J & 0x20) && M[5] <= pr) P[5] = PAL(5);
-			if ((J & 0x10) && M[4] <= pr) P[4] = PAL(7);
-			if ((J & 0x08) && M[3] <= pr) P[3] = PAL(0);
-			if ((J & 0x04) && M[2] <= pr) P[2] = PAL(2);
-			if ((J & 0x02) && M[1] <= pr) P[1] = PAL(4);
-			if ((J & 0x01) && M[0] <= pr) P[0] = PAL(6);
+			if ((J & 0x80)) P[7] = PAL(1);
+			if ((J & 0x40)) P[6] = PAL(3);
+			if ((J & 0x20)) P[5] = PAL(5);
+			if ((J & 0x10)) P[4] = PAL(7);
+			if ((J & 0x08)) P[3] = PAL(0);
+			if ((J & 0x04)) P[2] = PAL(2);
+			if ((J & 0x02)) P[1] = PAL(4);
+			if ((J & 0x01)) P[0] = PAL(6);
 		}
 		else {
 			L = C2[1];
-			if ((J & 0x8000) && M[0] <= pr) P[0] = PAL(1);
-			if ((J & 0x4000) && M[1] <= pr) P[1] = PAL(3);
-			if ((J & 0x2000) && M[2] <= pr) P[2] = PAL(5);
-			if ((J & 0x1000) && M[3] <= pr) P[3] = PAL(7);
-			if ((J & 0x0800) && M[4] <= pr) P[4] = PAL(0);
-			if ((J & 0x0400) && M[5] <= pr) P[5] = PAL(2);
-			if ((J & 0x0200) && M[6] <= pr) P[6] = PAL(4);
-			if ((J & 0x0100) && M[7] <= pr) P[7] = PAL(6);
+			if ((J & 0x8000)) P[0] = PAL(1);
+			if ((J & 0x4000)) P[1] = PAL(3);
+			if ((J & 0x2000)) P[2] = PAL(5);
+			if ((J & 0x1000)) P[3] = PAL(7);
+			if ((J & 0x0800)) P[4] = PAL(0);
+			if ((J & 0x0400)) P[5] = PAL(2);
+			if ((J & 0x0200)) P[6] = PAL(4);
+			if ((J & 0x0100)) P[7] = PAL(6);
 
 			L = C2[0];
-			if ((J & 0x80) && M[8] <= pr)  P[8]  = PAL(1);
-			if ((J & 0x40) && M[9] <= pr)  P[9]  = PAL(3);
-			if ((J & 0x20) && M[10] <= pr) P[10] = PAL(5);
-			if ((J & 0x10) && M[11] <= pr) P[11] = PAL(7);
-			if ((J & 0x08) && M[12] <= pr) P[12] = PAL(0);
-			if ((J & 0x04) && M[13] <= pr) P[13] = PAL(2);
-			if ((J & 0x02) && M[14] <= pr) P[14] = PAL(4);
-			if ((J & 0x01) && M[15] <= pr) P[15] = PAL(6);
-		}
-
-		if (priority == 0) {
-			if (hflip) {
-				M[15] = (J & 0x8000) ? pr : 0;
-				M[14] = (J & 0x4000) ? pr : 0;
-				M[13] = (J & 0x2000) ? pr : 0;
-				M[12] = (J & 0x1000) ? pr : 0;
-				M[11] = (J & 0x0800) ? pr : 0;
-				M[10] = (J & 0x0400) ? pr : 0;
-				M[9]  = (J & 0x0200) ? pr : 0;
-				M[8]  = (J & 0x0100) ? pr : 0;
-				M[7]  = (J & 0x0080) ? pr : 0;
-				M[6]  = (J & 0x0040) ? pr : 0;
-				M[5]  = (J & 0x0020) ? pr : 0;
-				M[4]  = (J & 0x0010) ? pr : 0;
-				M[3]  = (J & 0x0008) ? pr : 0;
-				M[2]  = (J & 0x0004) ? pr : 0;
-				M[1]  = (J & 0x0002) ? pr : 0;
-				M[0]  = (J & 0x0001) ? pr : 0;
-			}
-			else {
-				M[0]  = (J & 0x8000) ? pr : 0;
-				M[1]  = (J & 0x4000) ? pr : 0;
-				M[2]  = (J & 0x2000) ? pr : 0;
-				M[3]  = (J & 0x1000) ? pr : 0;
-				M[4]  = (J & 0x0800) ? pr : 0;
-				M[5]  = (J & 0x0400) ? pr : 0;
-				M[6]  = (J & 0x0200) ? pr : 0;
-				M[7]  = (J & 0x0100) ? pr : 0;
-				M[8]  = (J & 0x0080) ? pr : 0;
-				M[9]  = (J & 0x0040) ? pr : 0;
-				M[10] = (J & 0x0020) ? pr : 0;
-				M[11] = (J & 0x0010) ? pr : 0;
-				M[12] = (J & 0x0008) ? pr : 0;
-				M[13] = (J & 0x0004) ? pr : 0;
-				M[14] = (J & 0x0002) ? pr : 0;
-				M[15] = (J & 0x0001) ? pr : 0;
-			}
+			if ((J & 0x80)) P[8]  = PAL(1);
+			if ((J & 0x40)) P[9]  = PAL(3);
+			if ((J & 0x20)) P[10] = PAL(5);
+			if ((J & 0x10)) P[11] = PAL(7);
+			if ((J & 0x08)) P[12] = PAL(0);
+			if ((J & 0x04)) P[13] = PAL(2);
+			if ((J & 0x02)) P[14] = PAL(4);
+			if ((J & 0x01)) P[15] = PAL(6);
 		}
 	}
 }
@@ -301,21 +253,22 @@ draw_sprite(size_t offset, uint16_t *C, uint32_t *C2, int h, int inc, uint8_t pr
 
 		Function: draw_sprites
 
-		Description: draw all sprites between two lines, with the normal method
-		Parameters: int Y1, int Y2 (the 'ordonee' to draw between), bool bg
-			(do we draw fg or bg sprites)
-		Return: absolutely nothing
+		Description: draw all sprites between two lines
+		Parameters: int Y1 (first line)
+					int Y2 (last line)
+					int priority (0 = draw bg sprites)
+		Return: nothing
 
 *****************************************************************************/
-FAST_INLINE void
+static void // Do not inline
 draw_sprites(int Y1, int Y2, int priority)
 {
-	sprite_t *spr = (sprite_t *)SPRAM + 63;
+	// We iterate sprites in reverse order because earlier sprites have
+	// higher priority and therefore must overwrite later sprites.
+	for (int n = 63; n >= 0; n--) {
+		sprite_t *spr = (sprite_t *)SPRAM + n;
 
-	for (int n = 0; n < 64; n++, spr--) {
-		int spr_pr = (spr->attr >> 7) & 1;
-
-		if (spr_pr != priority)
+		if (((spr->attr >> 7) & 1) != priority)
 			continue;
 
 		int y = (spr->y & 1023) - 64;
@@ -323,8 +276,9 @@ draw_sprites(int Y1, int Y2, int priority)
 		int cgx = (spr->attr >> 8) & 1;
 		int cgy = (spr->attr >> 12) & 3;
 		int no = (spr->no & 0x7FF);
-		int pos = XBUF_WIDTH * y + x;
-		int inc = 2;
+		int inc = (spr->attr & V_FLIP) ? -1 : 1;
+		int inc2 = inc * 2;
+		bool hflip = (spr->attr & H_FLIP);
 
 		TRACE_GFX("Sprite 0x%02X : X = %d, Y = %d, atr = 0x%04X, no = 0x%03X\n",
 					n, x, y, spr->attr, no);
@@ -347,49 +301,42 @@ draw_sprites(int Y1, int Y2, int priority)
 				i++;
 		}
 
-		uint8_t *C = VRAM + (no * 128);
+		uint8_t *P = screen_buffer + (XBUF_WIDTH * y + x);
+		uint16_t *C = (uint16_t *)VRAM + (no * 64);
 		uint32_t *C2 = OBJ_CACHE + (no * 32);
 
 		if (spr->attr & V_FLIP) {
-			inc = -2;
-			C += 15 * 2 + cgy * 256;
-			C2 += (15 * 2 + cgy * 64);
+			C += 15 * 2 + cgy * 128;
+			C2 += 15 * 2 + cgy * 64;
 		}
 
-		for (int i = 0, y_sum = 0; i <= cgy; i++, y_sum += 16) {
+		for (int i = 0; i <= cgy; i++) {
 			int h = 16;
-			int t = Y1 - y - y_sum;
-			int pri = (sprite_usespbg || priority == 0) ? n : 0xFF;
-			int hflip = (spr->attr & H_FLIP) ? 1 : 0;
 
+			int t = Y1 - y - (i * 16);
 			if (t > 0) {
 				C += t * inc;
-				C2 += (t * inc);
+				C2 += t * inc2;
 				h -= t;
-				pos += t * XBUF_WIDTH;
+				P += t * XBUF_WIDTH;
 			}
 
-			if (h > Y2 - y - y_sum)
-				h = Y2 - y - y_sum;
+			if (h > Y2 - y - (i * 16))
+				h = Y2 - y - (i * 16);
 
-			for (int j = 0; j <= cgx; j++) {
-				draw_sprite(
-					pos + (hflip ? cgx - j : j) * 16,
-					(uint16_t*)(C + j * 128),
-					C2 + j * 32,
-					h,
-					inc,
-					pri,
-					spr->attr
-				);
+			if (hflip) {
+				for (int j = 0; j <= cgx; j++) {
+					draw_sprite(P + (cgx - j) * 16, C + j * 64, C2 + j * 32, h, spr->attr);
+				}
+			} else {
+				for (int j = 0; j <= cgx; j++) {
+					draw_sprite(P + j * 16, C + j * 64, C2 + j * 32, h, spr->attr);
+				}
 			}
 
-			if (!priority)
-				sprite_usespbg = 1;
-
-			pos += h * XBUF_WIDTH;
-			C += h * inc + 16 * 7 * inc;
-			C2 += h * inc + 16 * inc;
+			P += h * XBUF_WIDTH;
+			C += (h * inc) + (16 * 7 * inc);
+			C2 += (h * inc2) + (16 * inc2);
 		}
 	}
 }
@@ -398,7 +345,7 @@ draw_sprites(int Y1, int Y2, int priority)
 /*
 	Hit Check Sprite#0 and others
 */
-FAST_INLINE bool
+static inline bool
 sprite_hit_check(void)
 {
 	sprite_t *spr = (sprite_t *)SPRAM;
@@ -434,22 +381,16 @@ gfx_latch_context(int force)
 
 
 /*
-	render lines into the buffer from min_line to max_line (inclusive)
+	Render lines into the buffer from min_line to max_line (inclusive)
 */
-FAST_INLINE void
+static inline void
 render_lines(int min_line, int max_line)
 {
 	gfx_context.latched = 0;
-	sprite_usespbg = 0;
 
 	if (!screen_buffer) {
 		return;
 	}
-
-	// This is needed for accurate emulation but it slows things down considerably...
-	// for (int i = min_line; i <= max_line; i++) {
-	// 	memset(SPM + i * XBUF_WIDTH, 0, 320);
-	// }
 
 	// Sprites with priority 0 are drawn behind the tiles
 	if (gfx_context.control & 0x40) {
@@ -472,8 +413,6 @@ int
 gfx_init(void)
 {
 	OBJ_CACHE = osd_alloc(0x10000);
-	SPM_ptr   = osd_alloc(XBUF_WIDTH * XBUF_HEIGHT);
-	SPM	      = SPM_ptr + XBUF_WIDTH * 16 + 32;
 
 	gfx_clear_cache();
 
@@ -497,11 +436,6 @@ gfx_term(void)
 	if (OBJ_CACHE) {
 		free(OBJ_CACHE);
 		OBJ_CACHE = NULL;
-	}
-
-	if (SPM_ptr) {
-		free(SPM_ptr);
-		SPM_ptr = NULL;
 	}
 
 	osd_gfx_shutdown();
