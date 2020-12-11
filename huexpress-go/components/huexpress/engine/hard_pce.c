@@ -21,15 +21,11 @@ void
 pce_reset(void)
 {
     memset(&RAM, 0, sizeof(RAM));
-    memset(&BackupRAM, 0, sizeof(BackupRAM));
     memset(&VRAM, 0, sizeof(VRAM));
     memset(&SPRAM, 0, sizeof(SPRAM));
     memset(&Palette, 0, sizeof(Palette));
     memset(&io, 0, sizeof(io));
     memset(&NULLRAM, 0xFF, sizeof(NULLRAM));
-
-    // Backup RAM header, some games check for this
-    memcpy(&BackupRAM, "HUBM\x00\x88\x10\x80", 8);
 
     Cycles = 0;
     SF2 = 0;
@@ -65,8 +61,6 @@ pce_init(void)
         MemoryMapW[i] = NULLRAM;
     }
 
-    MemoryMapR[0xF7] = BackupRAM;
-    MemoryMapW[0xF7] = BackupRAM;
     MemoryMapR[0xF8] = RAM;
     MemoryMapW[0xF8] = RAM;
     MemoryMapR[0xFF] = IOAREA;
@@ -84,7 +78,7 @@ pce_init(void)
 void
 pce_term(void)
 {
-    if (ExtraRAM) free(ExtraRAM);
+    if (ExRAM) free(ExRAM);
 }
 
 
@@ -147,7 +141,7 @@ cart_write(uint16_t A, uint8_t V)
         if (SF2 != (A & 3))
         {
             SF2 = A & 3;
-            uint8_t *base = ROM_PTR + SF2 * (512 * 1024);
+            uint8_t *base = ROM_DATA + SF2 * (512 * 1024);
             for (int i = 0x40; i < 0x80; i++)
             {
                 MemoryMapR[i] = base + i * 0x2000;

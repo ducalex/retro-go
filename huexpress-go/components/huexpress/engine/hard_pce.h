@@ -141,12 +141,6 @@ typedef struct {
 	// Main memory
 	uint8_t RAM[0x2000];
 
-	// Extra RAM contained on the HuCard (Populous)
-	uint8_t *ExtraRAM;
-
-	// Backup RAM
-	uint8_t BackupRAM[0x800];
-
 	// Video RAM
 	uint16_t VRAM[0x10000 / 2];
 
@@ -155,8 +149,11 @@ typedef struct {
 	// gfx cpu sprite memory from where data will be grabbed to render sprites
 	uint16_t SPRAM[64 * 4];
 
+	// Extra RAM contained on the HuCard (Populous)
+	uint8_t *ExRAM;
+
 	// ROM memory
-	uint8_t *ROM, *ROM_PTR;
+	uint8_t *ROM, *ROM_DATA;
 
 	// ROM size in 0x2000 blocks
 	uint16_t ROM_SIZE;
@@ -203,14 +200,13 @@ extern uint8_t *MemoryMapR[256];
 extern uint8_t *MemoryMapW[256];
 
 #define RAM PCE.RAM
-#define BackupRAM PCE.BackupRAM
-#define ExtraRAM PCE.ExtraRAM
+#define ExRAM PCE.ExRAM
 #define SPRAM PCE.SPRAM
 #define VRAM PCE.VRAM
 #define NULLRAM PCE.NULLRAM
 #define IOAREA (NULLRAM + 4)
 #define ROM PCE.ROM
-#define ROM_PTR PCE.ROM_PTR
+#define ROM_DATA PCE.ROM_DATA
 #define ROM_CRC PCE.ROM_CRC
 #define ROM_SIZE PCE.ROM_SIZE
 #define Scanline PCE.Scanline

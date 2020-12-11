@@ -5,7 +5,7 @@
 
 struct host_machine host;
 
-const char SAVESTATE_HEADER[8] = "PCE_V002";
+const char SAVESTATE_HEADER[8] = "PCE_V003";
 
 /**
  * Describes what is saved in a save state. Changing the order will break
@@ -16,8 +16,8 @@ const char SAVESTATE_HEADER[8] = "PCE_V002";
 const svar_t SaveStateVars[] =
 {
 	// Arrays
-	SVAR_A("RAM", RAM),       SVAR_A("BRAM", BackupRAM), SVAR_A("VRAM", VRAM),
-	SVAR_A("SPRAM", SPRAM),   SVAR_A("PAL", Palette),    SVAR_A("MMR", MMR),
+	SVAR_A("RAM", RAM),       SVAR_A("VRAM", VRAM),      SVAR_A("SPRAM", SPRAM),
+	SVAR_A("PAL", Palette),   SVAR_A("MMR", MMR),
 
 	// CPU registers
 	SVAR_2("CPU.PC", reg_pc), SVAR_1("CPU.A", reg_a),    SVAR_1("CPU.X", reg_x),
@@ -91,7 +91,7 @@ LoadCard(const char *name)
 	fclose(fp);
 
 	ROM_SIZE = (fsize - offset) / 0x2000;
-	ROM_PTR = ROM + offset;
+	ROM_DATA = ROM + offset;
 	ROM_CRC = crc32_le(0, ROM, fsize);
 
 	uint IDX = 0;
@@ -114,7 +114,7 @@ LoadCard(const char *name)
 	MESSAGE_INFO("Game Region: %s\n", (romFlags[IDX].Flags & JAP) ? "Japan" : "USA");
 
 	// US Encrypted
-	if ((romFlags[IDX].Flags & US_ENCODED) || ROM_PTR[0x1FFF] < 0xE0)
+	if ((romFlags[IDX].Flags & US_ENCODED) || ROM_DATA[0x1FFF] < 0xE0)
 	{
 		MESSAGE_INFO("This rom is probably US encrypted, decrypting...\n");
 
@@ -124,13 +124,13 @@ LoadCard(const char *name)
 		};
 
 		for (int x = 0; x < ROM_SIZE * 0x2000; x++) {
-			unsigned char temp = ROM_PTR[x] & 15;
+			unsigned char temp = ROM_DATA[x] & 15;
 
-			ROM_PTR[x] &= ~0x0F;
-			ROM_PTR[x] |= inverted_nibble[ROM_PTR[x] >> 4];
+			ROM_DATA[x] &= ~0x0F;
+			ROM_DATA[x] |= inverted_nibble[ROM_DATA[x] >> 4];
 
-			ROM_PTR[x] &= ~0xF0;
-			ROM_PTR[x] |= inverted_nibble[temp] << 4;
+			ROM_DATA[x] &= ~0xF0;
+			ROM_DATA[x] |= inverted_nibble[temp] << 4;
 		}
 	}
 
@@ -145,33 +145,33 @@ LoadCard(const char *name)
 			case 0x00:
 			case 0x10:
 			case 0x50:
-				MemoryMapR[i] = ROM_PTR + (i & ROM_MASK) * 0x2000;
+				MemoryMapR[i] = ROM_DATA + (i & ROM_MASK) * 0x2000;
 				break;
 			case 0x20:
 			case 0x60:
-				MemoryMapR[i] = ROM_PTR + ((i - 0x20) & ROM_MASK) * 0x2000;
+				MemoryMapR[i] = ROM_DATA + ((i - 0x20) & ROM_MASK) * 0x2000;
 				break;
 			case 0x30:
 			case 0x70:
-				MemoryMapR[i] = ROM_PTR + ((i - 0x10) & ROM_MASK) * 0x2000;
+				MemoryMapR[i] = ROM_DATA + ((i - 0x10) & ROM_MASK) * 0x2000;
 				break;
 			case 0x40:
-				MemoryMapR[i] = ROM_PTR + ((i - 0x20) & ROM_MASK) * 0x2000;
+				MemoryMapR[i] = ROM_DATA + ((i - 0x20) & ROM_MASK) * 0x2000;
 				break;
 			}
 		} else {
-			MemoryMapR[i] = ROM_PTR + (i & ROM_MASK) * 0x2000;
+			MemoryMapR[i] = ROM_DATA + (i & ROM_MASK) * 0x2000;
 		}
 		MemoryMapW[i] = NULLRAM;
 	}
 
 	// Allocate the card's onboard ram
 	if (romFlags[IDX].Flags & ONBOARD_RAM) {
-		ExtraRAM = ExtraRAM ?: osd_alloc(0x8000);
-		MemoryMapR[0x40] = MemoryMapW[0x40] = ExtraRAM;
-		MemoryMapR[0x41] = MemoryMapW[0x41] = ExtraRAM + 0x2000;
-		MemoryMapR[0x42] = MemoryMapW[0x42] = ExtraRAM + 0x4000;
-		MemoryMapR[0x43] = MemoryMapW[0x43] = ExtraRAM + 0x6000;
+		ExRAM = ExRAM ?: osd_alloc(0x8000);
+		MemoryMapR[0x40] = MemoryMapW[0x40] = ExRAM;
+		MemoryMapR[0x41] = MemoryMapW[0x41] = ExRAM + 0x2000;
+		MemoryMapR[0x42] = MemoryMapW[0x42] = ExRAM + 0x4000;
+		MemoryMapR[0x43] = MemoryMapW[0x43] = ExRAM + 0x6000;
 	}
 
 	// Mapper for roms >= 1.5MB (SF2, homebrews)
