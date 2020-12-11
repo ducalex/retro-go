@@ -80,63 +80,6 @@ typedef union {
 } UWord;
 
 
-/* The structure containing all variables relatives to Input and Output */
-typedef struct {
-	/* VCE */
-	UWord VCE[0x200];			/* palette info */
-	UWord vce_reg;				/* currently selected color */
-
-	/* VDC */
-	UWord VDC[32];				/* value of each VDC register */
-	uint8_t vdc_reg;			/* currently selected VDC register */
-	uint8_t vdc_status;			/* current VCD status (end of line, end of screen, ...) */
-	uint8_t vdc_satb;			/* DMA transfer status to happen in vblank */
-	uint8_t vdc_mode_chg;       /* Video mode change needed at next frame */
-	uint32_t vdc_irq_queue;		/* Pending VDC IRQs (we use it as a stack of 4bit events) */
-
-	/* joypad */
-	uint8_t JOY[8];				/* value of pressed button/direct for each pad */
-	uint8_t joy_select;			/* used to know what nibble we must return */
-	uint8_t joy_counter;		/* current addressed joypad */
-
-	/* PSG */
-	uint8_t PSG[PSG_CHANNELS][8];
-	uint8_t PSG_WAVE[PSG_CHANNELS][32];
-	// PSG STRUCTURE
-	// 0 : dda_out
-	// 2 : freq (lo byte)  | In reality it's a divisor
-	// 3 : freq (hi byte)  | 3.7 Mhz / freq => true snd freq
-	// 4 : dda_ctrl
-	//     000XXXXX
-	//     ^^  ^
-	//     ||  ch. volume
-	//     ||
-	//     |direct access (everything at byte 0)
-	//     |
-	//    enable
-	// 5 : pan (left vol = hi nibble, right vol = low nibble)
-	// 6 : wave ringbuffer index
-	// 7 : noise data for channels 5 and 6
-
-	uint8_t psg_ch, psg_volume, psg_lfo_freq, psg_lfo_ctrl;
-
-	uint8_t psg_da_data[PSG_CHANNELS][PSG_DA_BUFSIZE];
-	uint16_t psg_da_index[PSG_CHANNELS];
-	uint16_t psg_da_count[PSG_CHANNELS];
-
-	/* TIMER */
-	uint8_t timer_running, timer_reload, timer_counter;
-	uint32_t timer_cycles_counter;
-
-	/* IRQ */
-	uint8_t irq_mask, irq_status;
-
-	/* Remanence latch */
-	uint8_t io_buffer;
-
-} IO_t;
-
-
 typedef struct {
 	// Main memory
 	uint8_t RAM[0x2000];
@@ -145,8 +88,6 @@ typedef struct {
 	uint16_t VRAM[0x10000 / 2];
 
 	// Sprite RAM
-	// The pc engine got a function to transfert a piece VRAM toward the inner
-	// gfx cpu sprite memory from where data will be grabbed to render sprites
 	uint16_t SPRAM[64 * 4];
 
 	// Extra RAM contained on the HuCard (Populous)
@@ -161,8 +102,9 @@ typedef struct {
 	// ROM crc
 	uint32_t ROM_CRC;
 
-	// NULLRAM traps read/writes to unmapped areas
-	uint8_t NULLRAM[0x2004];
+	// For performance reasons we trap read/writes to unmapped areas:
+	uint8_t IOAREA[0x04];    // This will overflow into NULLRAM
+	uint8_t NULLRAM[0x2000];
 
 	// PCE->PC Palette convetion array
 	// Each of the 512 available PCE colors (333 RGB -> 512 colors)
@@ -181,8 +123,69 @@ typedef struct {
 	// Street Fighter 2 Mapper
 	uint8_t SF2;
 
-	// IO Registers
-	IO_t IO;
+	// Interrupts
+	uint8_t irq_mask, irq_status;
+
+	// Remanence latch
+	uint8_t io_buffer;
+
+	// Timer
+	struct {
+		uint16_t cycles_counter;
+		uint16_t counter;
+		uint16_t reload;
+		uint16_t running;
+	} Timer;
+
+	// Joypad
+	struct {
+		uint8_t regs[8];		/* value of pressed button/direct for each pad */
+		uint8_t nibble;			/* used to know what nibble we must return */
+		uint8_t counter;		/* current addressed joypad */
+	} Joypad;
+
+	// Video Color Encoder
+	struct {
+		UWord regs[0x200];		/* palette info */
+		UWord reg;				/* currently selected color */
+	} VCE;
+
+	// Video Display Controller
+	struct {
+		UWord regs[32];			/* value of each VDC register */
+		uint8_t reg;			/* currently selected VDC register */
+		uint8_t status;			/* current VCD status (end of line, end of screen, ...) */
+		uint8_t satb;			/* DMA transfer status to happen in vblank */
+		uint8_t mode_chg;       /* Video mode change needed at next frame */
+		uint32_t pending_irqs;	/* Pending VDC IRQs (we use it as a stack of 4bit events) */
+	} VDC;
+
+	// Programmable Sound Generator
+	struct {
+		uint8_t regs[PSG_CHANNELS][8];
+		uint8_t wave[PSG_CHANNELS][32];
+		// PSG STRUCTURE
+		// 0 : dda_out
+		// 2 : freq (lo byte)  | In reality it's a divisor
+		// 3 : freq (hi byte)  | 3.7 Mhz / freq => true snd freq
+		// 4 : dda_ctrl
+		//     000XXXXX
+		//     ^^  ^
+		//     ||  ch. volume
+		//     ||
+		//     |direct access (everything at byte 0)
+		//     |
+		//    enable
+		// 5 : pan (left vol = hi nibble, right vol = low nibble)
+		// 6 : wave ringbuffer index
+		// 7 : noise data for channels 5 and 6
+
+		uint8_t ch, volume, lfo_freq, lfo_ctrl;
+
+		uint8_t da_data[PSG_CHANNELS][PSG_DA_BUFSIZE];
+		uint16_t da_index[PSG_CHANNELS];
+		uint16_t da_count[PSG_CHANNELS];
+	} PSG;
 
 } PCE_t;
 
@@ -199,30 +202,15 @@ extern uint8_t *PageW[8];
 extern uint8_t *MemoryMapR[256];
 extern uint8_t *MemoryMapW[256];
 
-#define RAM PCE.RAM
-#define ExRAM PCE.ExRAM
-#define SPRAM PCE.SPRAM
-#define VRAM PCE.VRAM
-#define NULLRAM PCE.NULLRAM
-#define IOAREA (NULLRAM + 4)
-#define ROM PCE.ROM
-#define ROM_DATA PCE.ROM_DATA
-#define ROM_CRC PCE.ROM_CRC
-#define ROM_SIZE PCE.ROM_SIZE
 #define Scanline PCE.Scanline
-#define Palette PCE.Palette
 #define Cycles PCE.Cycles
-#define MMR PCE.MMR
-#define SF2 PCE.SF2
-#define io PCE.IO
 
-#define IO_VDC_REG           io.VDC
-#define IO_VDC_REG_ACTIVE    io.VDC[io.vdc_reg]
-#define IO_VDC_REG_INC(reg)  {uint8_t _i[] = {1,32,64,128}; io.VDC[(reg)].W += _i[(io.VDC[CR].W >> 11) & 3];}
-#define IO_VDC_STATUS(bit)   ((io.vdc_status >> bit) & 1)
+#define IO_VDC_REG           PCE.VDC.regs
+#define IO_VDC_REG_ACTIVE    PCE.VDC.regs[PCE.VDC.reg]
+#define IO_VDC_REG_INC(reg)  {uint8_t _i[] = {1,32,64,128}; PCE.VDC.regs[(reg)].W += _i[(PCE.VDC.regs[CR].W >> 11) & 3];}
+#define IO_VDC_STATUS(bit)   ((PCE.VDC.status >> bit) & 1)
 #define IO_VDC_MINLINE       (IO_VDC_REG[VPR].B.h + IO_VDC_REG[VPR].B.l)
 #define IO_VDC_MAXLINE       (IO_VDC_MINLINE + IO_VDC_REG[VDW].W)
-
 #define IO_VDC_SCREEN_WIDTH  ((IO_VDC_REG[HDR].B.l + 1) * 8)
 #define IO_VDC_SCREEN_HEIGHT (IO_VDC_REG[VDW].W + 1)
 
@@ -262,13 +250,13 @@ uint8_t IO_read(uint16_t A);
 #define pce_read8(addr) ({							\
 	uint16_t a = (addr);							\
 	uint8_t *page = PageR[a >> 13]; 				\
-	(page == IOAREA) ? IO_read(a) : page[a]; 	    \
+	(page == PCE.IOAREA) ? IO_read(a) : page[a]; 	    \
 })
 
 #define pce_write8(addr, byte) {					\
 	uint16_t a = (addr), b = (byte); 				\
 	uint8_t *page = PageW[a >> 13]; 				\
-	if (page == IOAREA) IO_write(a, b); 		    \
+	if (page == PCE.IOAREA) IO_write(a, b); 		    \
 	else page[a] = b;							    \
 }
 
@@ -289,7 +277,7 @@ pce_read8(uint16_t addr)
 {
 	uint8_t *page = PageR[addr >> 13];
 
-	if (page == IOAREA)
+	if (page == PCE.IOAREA)
 		return IO_read(addr);
 	else
 		return page[addr];
@@ -300,7 +288,7 @@ pce_write8(uint16_t addr, uint8_t byte)
 {
 	uint8_t *page = PageW[addr >> 13];
 
-	if (page == IOAREA)
+	if (page == PCE.IOAREA)
 		IO_write(addr, byte);
 	else
 		page[addr] = byte;
@@ -326,9 +314,9 @@ pce_bank_set(uint8_t P, uint8_t V)
 {
 	TRACE_IO("Bank switching (MMR[%d] = %d)\n", P, V);
 
-	MMR[P] = V;
-	PageR[P] = (MemoryMapR[V] == IOAREA) ? (IOAREA) : (MemoryMapR[V] - P * 0x2000);
-	PageW[P] = (MemoryMapW[V] == IOAREA) ? (IOAREA) : (MemoryMapW[V] - P * 0x2000);
+	PCE.MMR[P] = V;
+	PageR[P] = (MemoryMapR[V] == PCE.IOAREA) ? (PCE.IOAREA) : (MemoryMapR[V] - P * 0x2000);
+	PageW[P] = (MemoryMapW[V] == PCE.IOAREA) ? (PCE.IOAREA) : (MemoryMapW[V] - P * 0x2000);
 }
 
 #endif

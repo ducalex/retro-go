@@ -34,8 +34,8 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
     * This multiplied by the 5-bit channel volume (0..31) gives us a result of
     * (0..511).
     */
-    lbal = ((io.PSG[ch][PSG_BALANCE_REG] >> 4) * 1.1) * (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME);
-    rbal = ((io.PSG[ch][PSG_BALANCE_REG] & 0x0F) * 1.1) * (io.PSG[ch][4] & PSG_DDA_VOICE_VOLUME);
+    lbal = ((PCE.PSG.regs[ch][PSG_BALANCE_REG] >> 4) * 1.1) * (PCE.PSG.regs[ch][4] & PSG_DDA_VOICE_VOLUME);
+    rbal = ((PCE.PSG.regs[ch][PSG_BALANCE_REG] & 0x0F) * 1.1) * (PCE.PSG.regs[ch][4] & PSG_DDA_VOICE_VOLUME);
 
     if (!host.sound.stereo) {
         lbal = (lbal + rbal) / 2;
@@ -44,7 +44,7 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
     /*
     * There is no audio to be played on this channel.
     */
-    if (!(io.PSG[ch][PSG_DDA_REG] & PSG_DDA_ENABLE)) {
+    if (!(PCE.PSG.regs[ch][PSG_DDA_REG] & PSG_DDA_ENABLE)) {
         fixed_n[ch] = 0;
         goto pad_and_return;
     }
@@ -52,7 +52,7 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
     /*
     * There is 'direct access' audio to be played.
     */
-    if ((io.PSG[ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS) || io.psg_da_count[ch]) {
+    if ((PCE.PSG.regs[ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS) || PCE.PSG.da_count[ch]) {
         uint16_t index = da_index[ch] >> 16;
         /*
          * For this direct audio stuff there is no frequency provided via PSG registers 3
@@ -68,14 +68,14 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
          */
         fixed_inc = ((uint32_t)(CLOCK_PSG / host.sound.freq) << 16) / 0x1FF;
 
-        while ((buf < buf_end) && io.psg_da_count[ch]) {
+        while ((buf < buf_end) && PCE.PSG.da_count[ch]) {
             /*
              * Make our sample data signed (-16..15) and then increment a non-negative
              * result otherwise a sample with a value of 10000b will not be reproduced,
              * which I do not believe is the correct behaviour.  Plus the increment
              * insures matching values on both sides of the wave.
              */
-            if ((sample = io.psg_da_data[ch][index] - 16) >= 0)
+            if ((sample = PCE.PSG.da_data[ch][index] - 16) >= 0)
                 sample++;
 
             /*
@@ -93,11 +93,11 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
             da_index[ch] &= 0x3FFFFFF;  /* (1023 << 16) + 0xFFFF */
             if ((da_index[ch] >> 16) != index) {
                 index = da_index[ch] >> 16;
-                io.psg_da_count[ch]--;
+                PCE.PSG.da_count[ch]--;
             }
         }
 
-        if (io.PSG[ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS) {
+        if (PCE.PSG.regs[ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS) {
             goto pad_and_return;
         }
     }
@@ -105,12 +105,12 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
     /*
     * PSG Noise generation (only available to PSG channels 5 and 6).
     */
-    if ((ch > 3) && (io.PSG[ch][PSG_NOISE_REG] & PSG_NOISE_ENABLE)) {
-        int Np = (io.PSG[ch][PSG_NOISE_REG] & 0x1F);
+    if ((ch > 3) && (PCE.PSG.regs[ch][PSG_NOISE_REG] & PSG_NOISE_ENABLE)) {
+        int Np = (PCE.PSG.regs[ch][PSG_NOISE_REG] & 0x1F);
 
-        vol = MAX((io.psg_volume >> 3) & 0x1E, (io.psg_volume << 1) & 0x1E) +
-              (io.PSG[ch][PSG_DDA_REG] & PSG_DDA_VOICE_VOLUME) +
-              MAX((io.PSG[ch][5] >> 3) & 0x1E, (io.PSG[ch][5] << 1) & 0x1E);
+        vol = MAX((PCE.PSG.volume >> 3) & 0x1E, (PCE.PSG.volume << 1) & 0x1E) +
+              (PCE.PSG.regs[ch][PSG_DDA_REG] & PSG_DDA_VOICE_VOLUME) +
+              MAX((PCE.PSG.regs[ch][5] >> 3) & 0x1E, (PCE.PSG.regs[ch][5] << 1) & 0x1E);
 
         vol = vol_tbl[MAX(0, vol - 60)];
 
@@ -136,7 +136,7 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
     /*
     * PSG Wave generation.
     */
-    if ((Tp = io.PSG[ch][PSG_FREQ_LSB_REG] + (io.PSG[ch][PSG_FREQ_MSB_REG] << 8)) > 0) {
+    if ((Tp = PCE.PSG.regs[ch][PSG_FREQ_LSB_REG] + (PCE.PSG.regs[ch][PSG_FREQ_MSB_REG] << 8)) > 0) {
         /*
          * Thank god for well commented code!  The original line of code read:
          * fixed_inc = ((uint32_t) (3.2 * 1118608 / host.sound.freq) << 16) / Tp;
@@ -163,7 +163,7 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
         fixed_inc = ((uint32_t)(CLOCK_PSG / host.sound.freq) << 16) / Tp;
 
         while (buf < buf_end) {
-            if ((sample = (io.PSG_WAVE[ch][io.PSG[ch][PSG_DATA_INDEX_REG]] - 16)) >= 0)
+            if ((sample = (PCE.PSG.wave[ch][PCE.PSG.regs[ch][PSG_DATA_INDEX_REG]] - 16)) >= 0)
                 sample++;
 
             *buf++ = (int8_t) ((int16_t) (sample * lbal) >> 6);
@@ -174,7 +174,7 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
 
             fixed_n[ch] += fixed_inc;
             fixed_n[ch] &= 0x1FFFFF;    /* (31 << 16) + 0xFFFF */
-            io.PSG[ch][PSG_DATA_INDEX_REG] = fixed_n[ch] >> 16;
+            PCE.PSG.regs[ch][PSG_DATA_INDEX_REG] = fixed_n[ch] >> 16;
         }
         goto pad_and_return;
     }
@@ -214,8 +214,8 @@ snd_term(void)
 void
 snd_update(short *buffer, size_t length)
 {
-    int lvol = (io.psg_volume >> 4);
-    int rvol = (io.psg_volume & 0x0F);
+    int lvol = (PCE.PSG.volume >> 4);
+    int rvol = (PCE.PSG.volume & 0x0F);
 
     if (host.sound.stereo) {
         length *= 2;

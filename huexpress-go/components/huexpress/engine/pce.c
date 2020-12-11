@@ -16,34 +16,37 @@ const char SAVESTATE_HEADER[8] = "PCE_V003";
 const svar_t SaveStateVars[] =
 {
 	// Arrays
-	SVAR_A("RAM", RAM),       SVAR_A("VRAM", VRAM),      SVAR_A("SPRAM", SPRAM),
-	SVAR_A("PAL", Palette),   SVAR_A("MMR", MMR),
+	SVAR_A("RAM", PCE.RAM),      SVAR_A("VRAM", PCE.VRAM),  SVAR_A("SPRAM", PCE.SPRAM),
+	SVAR_A("PAL", PCE.Palette),  SVAR_A("MMR", PCE.MMR),
 
 	// CPU registers
-	SVAR_2("CPU.PC", reg_pc), SVAR_1("CPU.A", reg_a),    SVAR_1("CPU.X", reg_x),
-	SVAR_1("CPU.Y", reg_y),   SVAR_1("CPU.P", reg_p),    SVAR_1("CPU.S", reg_s),
+	SVAR_2("CPU.PC", reg_pc),    SVAR_1("CPU.A", reg_a),    SVAR_1("CPU.X", reg_x),
+	SVAR_1("CPU.Y", reg_y),      SVAR_1("CPU.P", reg_p),    SVAR_1("CPU.S", reg_s),
 
 	// Misc
-	SVAR_2("Cycles", Cycles),                  SVAR_1("SF2", SF2),
+	SVAR_2("Cycles", Cycles),                   SVAR_1("SF2", PCE.SF2),
+
+	// IRQ
+	SVAR_1("irq_mask", PCE.irq_mask),           SVAR_1("irq_status", PCE.irq_status),
 
 	// PSG
-	SVAR_A("PSG", io.PSG),                     SVAR_A("PSG_WAVE", io.PSG_WAVE),
-	SVAR_A("psg_da_data", io.psg_da_data),     SVAR_A("psg_da_count", io.psg_da_count),
-	SVAR_A("psg_da_index", io.psg_da_index),   SVAR_1("psg_ch", io.psg_ch),
-	SVAR_1("psg_volume", io.psg_volume),       SVAR_1("psg_lfo_freq", io.psg_lfo_freq),
-	SVAR_1("psg_lfo_ctrl", io.psg_lfo_ctrl),
+	SVAR_A("PSG", PCE.PSG.regs),                SVAR_A("PSG_WAVE", PCE.PSG.wave),
+	SVAR_A("psg_da_data", PCE.PSG.da_data),     SVAR_A("psg_da_count", PCE.PSG.da_count),
+	SVAR_A("psg_da_index", PCE.PSG.da_index),   SVAR_1("psg_ch", PCE.PSG.ch),
+	SVAR_1("psg_volume", PCE.PSG.volume),       SVAR_1("psg_lfo_freq", PCE.PSG.lfo_freq),
+	SVAR_1("psg_lfo_ctrl", PCE.PSG.lfo_ctrl),
 
-	// IO
-	SVAR_A("VCE", io.VCE),                     SVAR_2("vce_reg", io.vce_reg),
+	// VCE
+	SVAR_A("vce_regs", PCE.VCE.regs),           SVAR_2("vce_reg", PCE.VCE.reg),
 
-	SVAR_A("VDC", io.VDC),                     SVAR_1("vdc_reg", io.vdc_reg),
-	SVAR_1("vdc_status", io.vdc_status),       SVAR_1("vdc_satb", io.vdc_satb),
-	SVAR_4("vdc_irq_queue", io.vdc_irq_queue),
+	// VDC
+	SVAR_A("vdc_regs", PCE.VDC.regs),           SVAR_1("vdc_reg", PCE.VDC.reg),
+	SVAR_1("vdc_status", PCE.VDC.status),       SVAR_1("vdc_satb", PCE.VDC.satb),
+	SVAR_4("vdc_pending_irqs", PCE.VDC.pending_irqs),
 
-	SVAR_1("timer_reload", io.timer_reload),   SVAR_1("timer_running", io.timer_running),
-	SVAR_1("timer_counter", io.timer_counter), SVAR_4("timer_next", io.timer_cycles_counter),
-
-	SVAR_1("irq_mask", io.irq_mask),           SVAR_1("irq_status", io.irq_status),
+	// Timer
+	SVAR_4("timer_reload", PCE.Timer.reload),   SVAR_4("timer_running", PCE.Timer.running),
+	SVAR_4("timer_counter", PCE.Timer.counter), SVAR_4("timer_next", PCE.Timer.cycles_counter),
 
 	SVAR_END
 };
@@ -67,8 +70,8 @@ LoadCard(const char *name)
 		return -1;
 	}
 
-	if (ROM != NULL) {
-		free(ROM);
+	if (PCE.ROM != NULL) {
+		free(PCE.ROM);
 	}
 
 	// find file size
@@ -77,34 +80,34 @@ LoadCard(const char *name)
 	offset = fsize & 0x1fff;
 
 	// read ROM
-	ROM = osd_alloc(fsize);
+	PCE.ROM = osd_alloc(fsize);
 
-	if (ROM == NULL)
+	if (PCE.ROM == NULL)
 	{
 		MESSAGE_ERROR("Failed to allocate ROM buffer!\n");
 		return -1;
 	}
 
 	fseek(fp, 0, SEEK_SET);
-	fread(ROM, 1, fsize, fp);
+	fread(PCE.ROM, 1, fsize, fp);
 
 	fclose(fp);
 
-	ROM_SIZE = (fsize - offset) / 0x2000;
-	ROM_DATA = ROM + offset;
-	ROM_CRC = crc32_le(0, ROM, fsize);
+	PCE.ROM_SIZE = (fsize - offset) / 0x2000;
+	PCE.ROM_DATA = PCE.ROM + offset;
+	PCE.ROM_CRC = crc32_le(0, PCE.ROM, fsize);
 
 	uint IDX = 0;
 	uint ROM_MASK = 1;
 
-	while (ROM_MASK < ROM_SIZE) ROM_MASK <<= 1;
+	while (ROM_MASK < PCE.ROM_SIZE) ROM_MASK <<= 1;
 	ROM_MASK--;
 
 	MESSAGE_INFO("ROM LOADED: OFFSET=%d, BANKS=%d, MASK=%03X, CRC=%08X\n",
-		offset, ROM_SIZE, ROM_MASK, ROM_CRC);
+		offset, PCE.ROM_SIZE, ROM_MASK, PCE.ROM_CRC);
 
 	for (int index = 0; index < KNOWN_ROM_COUNT; index++) {
-		if (ROM_CRC == romFlags[index].CRC) {
+		if (PCE.ROM_CRC == romFlags[index].CRC) {
 			IDX = index;
 			break;
 		}
@@ -114,7 +117,7 @@ LoadCard(const char *name)
 	MESSAGE_INFO("Game Region: %s\n", (romFlags[IDX].Flags & JAP) ? "Japan" : "USA");
 
 	// US Encrypted
-	if ((romFlags[IDX].Flags & US_ENCODED) || ROM_DATA[0x1FFF] < 0xE0)
+	if ((romFlags[IDX].Flags & US_ENCODED) || PCE.ROM_DATA[0x1FFF] < 0xE0)
 	{
 		MESSAGE_INFO("This rom is probably US encrypted, decrypting...\n");
 
@@ -123,60 +126,60 @@ LoadCard(const char *name)
 			1, 9, 5, 13, 3, 11, 7, 15
 		};
 
-		for (int x = 0; x < ROM_SIZE * 0x2000; x++) {
-			unsigned char temp = ROM_DATA[x] & 15;
+		for (int x = 0; x < PCE.ROM_SIZE * 0x2000; x++) {
+			unsigned char temp = PCE.ROM_DATA[x] & 15;
 
-			ROM_DATA[x] &= ~0x0F;
-			ROM_DATA[x] |= inverted_nibble[ROM_DATA[x] >> 4];
+			PCE.ROM_DATA[x] &= ~0x0F;
+			PCE.ROM_DATA[x] |= inverted_nibble[PCE.ROM_DATA[x] >> 4];
 
-			ROM_DATA[x] &= ~0xF0;
-			ROM_DATA[x] |= inverted_nibble[temp] << 4;
+			PCE.ROM_DATA[x] &= ~0xF0;
+			PCE.ROM_DATA[x] |= inverted_nibble[temp] << 4;
 		}
 	}
 
 	// For example with Devil Crush 512Ko
 	if (romFlags[IDX].Flags & TWO_PART_ROM)
-		ROM_SIZE = 0x30;
+		PCE.ROM_SIZE = 0x30;
 
 	// Game ROM
 	for (int i = 0; i < 0x80; i++) {
-		if (ROM_SIZE == 0x30) {
+		if (PCE.ROM_SIZE == 0x30) {
 			switch (i & 0x70) {
 			case 0x00:
 			case 0x10:
 			case 0x50:
-				MemoryMapR[i] = ROM_DATA + (i & ROM_MASK) * 0x2000;
+				MemoryMapR[i] = PCE.ROM_DATA + (i & ROM_MASK) * 0x2000;
 				break;
 			case 0x20:
 			case 0x60:
-				MemoryMapR[i] = ROM_DATA + ((i - 0x20) & ROM_MASK) * 0x2000;
+				MemoryMapR[i] = PCE.ROM_DATA + ((i - 0x20) & ROM_MASK) * 0x2000;
 				break;
 			case 0x30:
 			case 0x70:
-				MemoryMapR[i] = ROM_DATA + ((i - 0x10) & ROM_MASK) * 0x2000;
+				MemoryMapR[i] = PCE.ROM_DATA + ((i - 0x10) & ROM_MASK) * 0x2000;
 				break;
 			case 0x40:
-				MemoryMapR[i] = ROM_DATA + ((i - 0x20) & ROM_MASK) * 0x2000;
+				MemoryMapR[i] = PCE.ROM_DATA + ((i - 0x20) & ROM_MASK) * 0x2000;
 				break;
 			}
 		} else {
-			MemoryMapR[i] = ROM_DATA + (i & ROM_MASK) * 0x2000;
+			MemoryMapR[i] = PCE.ROM_DATA + (i & ROM_MASK) * 0x2000;
 		}
-		MemoryMapW[i] = NULLRAM;
+		MemoryMapW[i] = PCE.NULLRAM;
 	}
 
 	// Allocate the card's onboard ram
 	if (romFlags[IDX].Flags & ONBOARD_RAM) {
-		ExRAM = ExRAM ?: osd_alloc(0x8000);
-		MemoryMapR[0x40] = MemoryMapW[0x40] = ExRAM;
-		MemoryMapR[0x41] = MemoryMapW[0x41] = ExRAM + 0x2000;
-		MemoryMapR[0x42] = MemoryMapW[0x42] = ExRAM + 0x4000;
-		MemoryMapR[0x43] = MemoryMapW[0x43] = ExRAM + 0x6000;
+		PCE.ExRAM = PCE.ExRAM ?: osd_alloc(0x8000);
+		MemoryMapR[0x40] = MemoryMapW[0x40] = PCE.ExRAM;
+		MemoryMapR[0x41] = MemoryMapW[0x41] = PCE.ExRAM + 0x2000;
+		MemoryMapR[0x42] = MemoryMapW[0x42] = PCE.ExRAM + 0x4000;
+		MemoryMapR[0x43] = MemoryMapW[0x43] = PCE.ExRAM + 0x6000;
 	}
 
 	// Mapper for roms >= 1.5MB (SF2, homebrews)
-	if (ROM_SIZE >= 192)
-		MemoryMapW[0x00] = IOAREA;
+	if (PCE.ROM_SIZE >= 192)
+		MemoryMapW[0x00] = PCE.IOAREA;
 
 	return 0;
 }
@@ -261,7 +264,7 @@ LoadState(char *name)
 
 	for(int i = 0; i < 8; i++)
 	{
-		pce_bank_set(i, MMR[i]);
+		pce_bank_set(i, PCE.MMR[i]);
 	}
 
 	gfx_clear_cache();

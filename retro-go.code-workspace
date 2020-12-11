@@ -12,9 +12,15 @@
 		{
 			"path": "huexpress-go"
 		},
-		{
-			"path": "meteor-go"
-		},
+		// {
+		// 	"path": "meteor-go"
+		// },
+		// {
+		// 	"path": "mpython-go"
+		// },
+		// {
+		// 	"path": "neopop-go"
+		// },
 		{
 			"path": "nofrendo-go"
 		},
@@ -24,6 +30,12 @@
 		{
 			"path": "smsplusgx-go"
 		},
+		// {
+		// 	"path": "snes9x-go"
+		// },
+		// {
+		// 	"path": "stella-go"
+		// },
 		{
 			"path": ".",
 			"name": "root"

@@ -20,19 +20,25 @@ static inline void timer_run(void);
 void
 pce_reset(void)
 {
-    memset(&RAM, 0, sizeof(RAM));
-    memset(&VRAM, 0, sizeof(VRAM));
-    memset(&SPRAM, 0, sizeof(SPRAM));
-    memset(&Palette, 0, sizeof(Palette));
-    memset(&io, 0, sizeof(io));
-    memset(&NULLRAM, 0xFF, sizeof(NULLRAM));
+    memset(&PCE.RAM, 0, sizeof(PCE.RAM));
+    memset(&PCE.VRAM, 0, sizeof(PCE.VRAM));
+    memset(&PCE.SPRAM, 0, sizeof(PCE.SPRAM));
+    memset(&PCE.Palette, 0, sizeof(PCE.Palette));
+    memset(&PCE.VCE, 0, sizeof(PCE.VCE));
+    memset(&PCE.VDC, 0, sizeof(PCE.VDC));
+    memset(&PCE.PSG, 0, sizeof(PCE.PSG));
+    memset(&PCE.Timer, 0, sizeof(PCE.Timer));
+
+    memset(&PCE.NULLRAM, 0xFF, sizeof(PCE.NULLRAM));
+
+    PCE.irq_mask = PCE.irq_status = 0;
+    PCE.SF2 = 0;
 
     Cycles = 0;
-    SF2 = 0;
 
     // Reset sound generator values
     for (int i = 0; i < PSG_CHANNELS; i++) {
-        io.PSG[i][4] = 0x80;
+        PCE.PSG.regs[i][4] = 0x80;
     }
 
     // Reset memory banking
@@ -57,14 +63,14 @@ int
 pce_init(void)
 {
     for (int i = 0; i < 0xFF; i++) {
-        MemoryMapR[i] = NULLRAM;
-        MemoryMapW[i] = NULLRAM;
+        MemoryMapR[i] = PCE.NULLRAM;
+        MemoryMapW[i] = PCE.NULLRAM;
     }
 
-    MemoryMapR[0xF8] = RAM;
-    MemoryMapW[0xF8] = RAM;
-    MemoryMapR[0xFF] = IOAREA;
-    MemoryMapW[0xFF] = IOAREA;
+    MemoryMapR[0xF8] = PCE.RAM;
+    MemoryMapW[0xF8] = PCE.RAM;
+    MemoryMapR[0xFF] = PCE.IOAREA;
+    MemoryMapW[0xFF] = PCE.IOAREA;
 
     // pce_reset();
 
@@ -78,7 +84,8 @@ pce_init(void)
 void
 pce_term(void)
 {
-    if (ExRAM) free(ExRAM);
+    if (PCE.ExRAM) free(PCE.ExRAM);
+    if (PCE.ROM) free(PCE.ROM);
 }
 
 
@@ -113,18 +120,18 @@ pce_run(void)
 static inline void
 timer_run(void)
 {
-	io.timer_cycles_counter -= CYCLES_PER_LINE;
+	PCE.Timer.cycles_counter -= CYCLES_PER_LINE;
 
 	// Trigger when it underflows
-	if (io.timer_cycles_counter > CYCLES_PER_TIMER_TICK) {
-		io.timer_cycles_counter += CYCLES_PER_TIMER_TICK;
-		if (io.timer_running) {
+	if (PCE.Timer.cycles_counter > CYCLES_PER_TIMER_TICK) {
+		PCE.Timer.cycles_counter += CYCLES_PER_TIMER_TICK;
+		if (PCE.Timer.running) {
 			// Trigger when it underflows from 0
-			if (io.timer_counter > 0x7F) {
-				io.timer_counter = io.timer_reload;
-				io.irq_status |= INT_TIMER;
+			if (PCE.Timer.counter > 0x7F) {
+				PCE.Timer.counter = PCE.Timer.reload;
+				PCE.irq_status |= INT_TIMER;
 			}
-			io.timer_counter--;
+			PCE.Timer.counter--;
 		}
 	}
 }
@@ -136,20 +143,20 @@ cart_write(uint16_t A, uint8_t V)
     TRACE_IO("Cart Write %02x at %04x\n", V, A);
 
     // SF2 Mapper
-    if (A >= 0xFFF0 && ROM_SIZE >= 0xC0)
+    if (A >= 0xFFF0 && PCE.ROM_SIZE >= 0xC0)
     {
-        if (SF2 != (A & 3))
+        if (PCE.SF2 != (A & 3))
         {
-            SF2 = A & 3;
-            uint8_t *base = ROM_DATA + SF2 * (512 * 1024);
+            PCE.SF2 = A & 3;
+            uint8_t *base = PCE.ROM_DATA + PCE.SF2 * (512 * 1024);
             for (int i = 0x40; i < 0x80; i++)
             {
                 MemoryMapR[i] = base + i * 0x2000;
             }
             for (int i = 0; i < 8; i++)
             {
-                if (MMR[i] >= 0x40 && MMR[i] < 0x80)
-                    pce_bank_set(i, MMR[i]);
+                if (PCE.MMR[i] >= 0x40 && PCE.MMR[i] < 0x80)
+                    pce_bank_set(i, PCE.MMR[i]);
             }
         }
     }
@@ -164,27 +171,27 @@ IO_read(uint16_t A)
 
     // The last read value in 0800-017FF is read from the io buffer
     if (A >= 0x800 && A < 0x1800)
-        ret = io.io_buffer;
+        ret = PCE.io_buffer;
 
     switch (A & 0x1F00) {
     case 0x0000:                /* VDC */
         switch (A & 3) {
         case 0:
-            ret = io.vdc_status;
-            io.vdc_status = 0;
+            ret = PCE.VDC.status;
+            PCE.VDC.status = 0;
             break;
         case 1:
             ret = 0;
             break;
         case 2:
-            if (io.vdc_reg == VRR)              // // VRAM Read Register (LSB)
-                ret = VRAM[IO_VDC_REG[MARR].W] & 0xFF;
+            if (PCE.VDC.reg == VRR)              // // VRAM Read Register (LSB)
+                ret = PCE.VRAM[IO_VDC_REG[MARR].W] & 0xFF;
             else
                 ret = IO_VDC_REG_ACTIVE.B.l;
             break;
         case 3:
-            if (io.vdc_reg == VRR) {            // VRAM Read Register (MSB)
-                ret = VRAM[IO_VDC_REG[MARR].W] >> 8;
+            if (PCE.VDC.reg == VRR) {            // VRAM Read Register (MSB)
+                ret = PCE.VRAM[IO_VDC_REG[MARR].W] >> 8;
                 IO_VDC_REG_INC(MARR);
             } else
                 ret = IO_VDC_REG_ACTIVE.B.h;
@@ -198,42 +205,42 @@ IO_read(uint16_t A)
         case 1: ret = 0xFF; break; // Unused
         case 2: ret = 0xFF; break; // Write only
         case 3: ret = 0xFF; break; // Write only
-        case 4: ret = io.VCE[io.vce_reg.W].B.l; break; // Color LSB (8 bit)
-        case 5: ret = io.VCE[io.vce_reg.W++].B.h | 0xFE; break; // Color MSB (1 bit)
+        case 4: ret = PCE.VCE.regs[PCE.VCE.reg.W].B.l; break; // Color LSB (8 bit)
+        case 5: ret = PCE.VCE.regs[PCE.VCE.reg.W++].B.h | 0xFE; break; // Color MSB (1 bit)
         case 6: ret = 0xFF; break; // Unused
         }
         break;
 
     case 0x0800:                /* PSG */
         switch (A & 15) {
-        case 0: ret = io.psg_ch; break;
-        case 1: ret = io.psg_volume; break;
-        case 2: ret = io.PSG[io.psg_ch][2]; break;
-        case 3: ret = io.PSG[io.psg_ch][3]; break;
-        case 4: ret = io.PSG[io.psg_ch][4]; break;
-        case 5: ret = io.PSG[io.psg_ch][5]; break;
+        case 0: ret = PCE.PSG.ch; break;
+        case 1: ret = PCE.PSG.volume; break;
+        case 2: ret = PCE.PSG.regs[PCE.PSG.ch][2]; break;
+        case 3: ret = PCE.PSG.regs[PCE.PSG.ch][3]; break;
+        case 4: ret = PCE.PSG.regs[PCE.PSG.ch][4]; break;
+        case 5: ret = PCE.PSG.regs[PCE.PSG.ch][5]; break;
         case 6:
-            ofs = io.PSG[io.psg_ch][PSG_DATA_INDEX_REG];
-            io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] = (io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] + 1) & 31;
-            ret = io.PSG_WAVE[io.psg_ch][ofs];
+            ofs = PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG];
+            PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG] = (PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG] + 1) & 31;
+            ret = PCE.PSG.wave[PCE.PSG.ch][ofs];
             break;
-        case 7: ret = io.PSG[io.psg_ch][7]; break;
-        case 8: ret = io.psg_lfo_freq; break;
-        case 9: ret = io.psg_lfo_ctrl; break;
+        case 7: ret = PCE.PSG.regs[PCE.PSG.ch][7]; break;
+        case 8: ret = PCE.PSG.lfo_freq; break;
+        case 9: ret = PCE.PSG.lfo_ctrl; break;
         }
         break;
 
     case 0x0C00:                /* Timer */
-        ret = io.timer_counter | (io.io_buffer & ~0x7F);
+        ret = PCE.Timer.counter | (PCE.io_buffer & ~0x7F);
         break;
 
     case 0x1000:                /* Joypad */
-        ret = io.JOY[io.joy_counter] ^ 0xff;
-        if (io.joy_select & 1)
+        ret = PCE.Joypad.regs[PCE.Joypad.counter] ^ 0xff;
+        if (PCE.Joypad.nibble & 1)
             ret >>= 4;
         else {
             ret &= 15;
-            io.joy_counter = ((io.joy_counter + 1) % 5);
+            PCE.Joypad.counter = ((PCE.Joypad.counter + 1) % 5);
         }
         ret |= 0x30; // those 2 bits are always on, bit 6 = 0 (Jap), bit 7 = 0 (Attached cd)
         break;
@@ -241,11 +248,11 @@ IO_read(uint16_t A)
     case 0x1400:                /* IRQ */
         switch (A & 3) {
         case 2:
-            ret = io.irq_mask | (io.io_buffer & ~INT_MASK);
+            ret = PCE.irq_mask | (PCE.io_buffer & ~INT_MASK);
             break;
         case 3:
-            ret = io.irq_status;
-            io.irq_status = 0;
+            ret = PCE.irq_status;
+            PCE.irq_status = 0;
             break;
         }
         break;
@@ -264,7 +271,7 @@ IO_read(uint16_t A)
 
     // The last read value in 0800-017FF is saved in the io buffer
     if (A >= 0x800 && A < 0x1800)
-        io.io_buffer = ret;
+        PCE.io_buffer = ret;
 
     return ret;
 }
@@ -277,20 +284,20 @@ IO_write(uint16_t A, uint8_t V)
 
     // The last write value in 0800-017FF is saved in the io buffer
     if (A >= 0x800 && A < 0x1800)
-        io.io_buffer = V;
+        PCE.io_buffer = V;
 
     switch (A & 0x1F00) {
     case 0x0000:                /* VDC */
         switch (A & 3) {
         case 0: // Latch
-            io.vdc_reg = V & 31;
+            PCE.VDC.reg = V & 31;
             return;
 
         case 1: // Not used
             return;
 
         case 2: // VDC data (LSB)
-            switch (io.vdc_reg & 31) {
+            switch (PCE.VDC.reg & 31) {
             case MAWR:                          // Memory Address Write Register
                 break;
 
@@ -335,18 +342,18 @@ IO_write(uint16_t A, uint8_t V)
                 break;
 
             case HSR:
-                io.vdc_mode_chg = 1;
+                PCE.VDC.mode_chg = 1;
                 break;
 
             case HDR:                           // Horizontal Definition
                 V &= 0x7F;
-                io.vdc_mode_chg = 1;
+                PCE.VDC.mode_chg = 1;
                 break;
 
             case VPR:
             case VDW:
             case VCR:
-                io.vdc_mode_chg = 1;
+                PCE.VDC.mode_chg = 1;
                 break;
 
             case DCR:                           // DMA Control
@@ -365,11 +372,11 @@ IO_write(uint16_t A, uint8_t V)
                 break;
             }
             IO_VDC_REG_ACTIVE.B.l = V;
-            TRACE_GFX2("VDC[%02x].l=0x%02x\n", io.vdc_reg, V);
+            TRACE_GFX2("VDC[%02x].l=0x%02x\n", PCE.VDC.reg, V);
             return;
 
         case 3: // VDC data (MSB)
-            switch (io.vdc_reg & 31) {
+            switch (PCE.VDC.reg & 31) {
             case MAWR:                          // Memory Address Write Register
                 break;
 
@@ -377,7 +384,7 @@ IO_write(uint16_t A, uint8_t V)
                 break;
 
             case VWR:                           // VRAM Write Register
-                VRAM[IO_VDC_REG[MAWR].W] = (V << 8) | IO_VDC_REG_ACTIVE.B.l;
+                PCE.VRAM[IO_VDC_REG[MAWR].W] = (V << 8) | IO_VDC_REG_ACTIVE.B.l;
                 OBJ_CACHE_INVALIDATE(IO_VDC_REG[MAWR].W);
                 IO_VDC_REG_INC(MAWR);
                 break;
@@ -417,7 +424,7 @@ IO_write(uint16_t A, uint8_t V)
                 break;
 
             case HSR:
-                io.vdc_mode_chg = 1;
+                PCE.VDC.mode_chg = 1;
                 break;
 
             case HDR:                           // Horizontal Definition
@@ -427,7 +434,7 @@ IO_write(uint16_t A, uint8_t V)
             case VPR:
             case VDW:
             case VCR:
-                io.vdc_mode_chg = 1;
+                PCE.VDC.mode_chg = 1;
                 break;
 
             case DCR:                           // DMA Control
@@ -446,7 +453,7 @@ IO_write(uint16_t A, uint8_t V)
                 int dst_inc = (IO_VDC_REG[DCR].W & 4) ? -1 : 1;
 
                 while (IO_VDC_REG[LENR].W != 0xFFFF) {
-                    VRAM[IO_VDC_REG[DISTR].W] = VRAM[IO_VDC_REG[SOUR].W];
+                    PCE.VRAM[IO_VDC_REG[DISTR].W] = PCE.VRAM[IO_VDC_REG[SOUR].W];
                     OBJ_CACHE_INVALIDATE(IO_VDC_REG[DISTR].W);
                     IO_VDC_REG[SOUR].W += src_inc;
                     IO_VDC_REG[DISTR].W += dst_inc;
@@ -457,11 +464,11 @@ IO_write(uint16_t A, uint8_t V)
                 return;
 
             case SATB:                          // DMA from VRAM to SATB
-                io.vdc_satb = DMA_TRANSFER_PENDING;
+                PCE.VDC.satb = DMA_TRANSFER_PENDING;
                 break;
             }
             IO_VDC_REG_ACTIVE.B.h = V;
-            TRACE_GFX2("VDC[%02x].h=0x%02x\n", io.vdc_reg, V);
+            TRACE_GFX2("VDC[%02x].h=0x%02x\n", PCE.VDC.reg, V);
             return;
         }
         break;
@@ -475,38 +482,38 @@ IO_write(uint16_t A, uint8_t V)
             return;
 
         case 2:                                 // Color table address (LSB)
-            io.vce_reg.B.l = V;
+            PCE.VCE.reg.B.l = V;
             return;
 
         case 3:                                 // Color table address (MSB)
-            io.vce_reg.B.h = V & 1;
+            PCE.VCE.reg.B.h = V & 1;
             return;
 
         case 4:                                 // Color table data (LSB)
-            io.VCE[io.vce_reg.W].B.l = V;
+            PCE.VCE.regs[PCE.VCE.reg.W].B.l = V;
             {
-                uint16_t n = io.vce_reg.W;
-                uint8_t c = io.VCE[n].W >> 1;
+                uint16_t n = PCE.VCE.reg.W;
+                uint8_t c = PCE.VCE.regs[n].W >> 1;
                 if (n == 0) {
                     for (int i = 0; i < 256; i += 16)
-                        Palette[i] = c;
+                        PCE.Palette[i] = c;
                 } else if (n & 15)
-                    Palette[n] = c;
+                    PCE.Palette[n] = c;
             }
             return;
 
         case 5:                                 // Color table data (MSB)
-            io.VCE[io.vce_reg.W].B.h = V;
+            PCE.VCE.regs[PCE.VCE.reg.W].B.h = V;
             {
-                uint16_t n = io.vce_reg.W;
-                uint8_t c = io.VCE[n].W >> 1;
+                uint16_t n = PCE.VCE.reg.W;
+                uint8_t c = PCE.VCE.regs[n].W >> 1;
                 if (n == 0) {
                     for (int i = 0; i < 256; i += 16)
-                        Palette[i] = c;
+                        PCE.Palette[i] = c;
                 } else if (n & 15)
-                    Palette[n] = c;
+                    PCE.Palette[n] = c;
             }
-            io.vce_reg.W = (io.vce_reg.W + 1) & 0x1FF;
+            PCE.VCE.reg.W = (PCE.VCE.reg.W + 1) & 0x1FF;
             return;
 
         case 6:                                 // Not used
@@ -520,59 +527,59 @@ IO_write(uint16_t A, uint8_t V)
     case 0x0800:                /* PSG */
         switch (A & 15) {
         case 0:                                 // Select PSG channel
-            io.psg_ch = V & 7;
+            PCE.PSG.ch = V & 7;
             return;
 
         case 1:                                 // Select global volume
-            io.psg_volume = V;
+            PCE.PSG.volume = V;
             return;
 
         case 2:                                 // Frequency setting, 8 lower bits
-            io.PSG[io.psg_ch][2] = V;
+            PCE.PSG.regs[PCE.PSG.ch][2] = V;
             return;
 
         case 3:                                 // Frequency setting, 4 upper bits
-            io.PSG[io.psg_ch][3] = V & 15;
+            PCE.PSG.regs[PCE.PSG.ch][3] = V & 15;
             return;
 
         case 4:
-            io.PSG[io.psg_ch][4] = V;
+            PCE.PSG.regs[PCE.PSG.ch][4] = V;
             // #if DEBUG_AUDIO
             //             if ((V & 0xC0) == 0x40)
-            //                 io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] = 0;
+            //                 PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG] = 0;
             // #endif
             return;
 
         case 5:                                 // Set channel specific volume
-            io.PSG[io.psg_ch][5] = V;
+            PCE.PSG.regs[PCE.PSG.ch][5] = V;
             return;
 
         case 6:                                 // Put a value into the waveform or direct audio buffers
-            if (io.PSG[io.psg_ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS) {
-                io.psg_da_data[io.psg_ch][io.psg_da_index[io.psg_ch]] = V;
-                io.psg_da_index[io.psg_ch] = (io.psg_da_index[io.psg_ch] + 1) & 0x3FF;
-                if (io.psg_da_count[io.psg_ch]++ > (PSG_DA_BUFSIZE - 1)) {
+            if (PCE.PSG.regs[PCE.PSG.ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS) {
+                PCE.PSG.da_data[PCE.PSG.ch][PCE.PSG.da_index[PCE.PSG.ch]] = V;
+                PCE.PSG.da_index[PCE.PSG.ch] = (PCE.PSG.da_index[PCE.PSG.ch] + 1) & 0x3FF;
+                if (PCE.PSG.da_count[PCE.PSG.ch]++ > (PSG_DA_BUFSIZE - 1)) {
                     MESSAGE_DEBUG("Audio being put into the direct "
                                      "access buffer faster than it's being played.\n");
-                    io.psg_da_count[io.psg_ch] = 0;
+                    PCE.PSG.da_count[PCE.PSG.ch] = 0;
                 }
             } else {
-                io.PSG_WAVE[io.psg_ch][io.PSG[io.psg_ch][PSG_DATA_INDEX_REG]] = V;
-                io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] =
-                    (io.PSG[io.psg_ch][PSG_DATA_INDEX_REG] + 1) & 0x1F;
+                PCE.PSG.wave[PCE.PSG.ch][PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG]] = V;
+                PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG] =
+                    (PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG] + 1) & 0x1F;
             }
             return;
 
         case 7:
-            io.PSG[io.psg_ch][7] = V;
+            PCE.PSG.regs[PCE.PSG.ch][7] = V;
             return;
 
         case 8:
-            io.psg_lfo_freq = V;
+            PCE.PSG.lfo_freq = V;
             return;
 
         case 9:
-            io.psg_lfo_ctrl = V;
+            PCE.PSG.lfo_ctrl = V;
             return;
         }
         break;
@@ -580,30 +587,30 @@ IO_write(uint16_t A, uint8_t V)
     case 0x0C00:                /* Timer */
         switch (A & 1) {
         case 0:
-            io.timer_reload = (V & 0x7F); // + 1;
+            PCE.Timer.reload = (V & 0x7F); // + 1;
             return;
         case 1:
             V &= 1;
-            if (V && !io.timer_running)
-                io.timer_counter = io.timer_reload;
-            io.timer_running = V;
+            if (V && !PCE.Timer.running)
+                PCE.Timer.counter = PCE.Timer.reload;
+            PCE.Timer.running = V;
             return;
         }
         break;
 
     case 0x1000:                /* Joypad */
-        io.joy_select = V & 1;
+        PCE.Joypad.nibble = V & 1;
         if (V & 2)
-            io.joy_counter = 0;
+            PCE.Joypad.counter = 0;
         return;
 
     case 0x1400:                /* IRQ */
         switch (A & 3) {
         case 2:
-            io.irq_mask = V & INT_MASK;
+            PCE.irq_mask = V & INT_MASK;
             break;
         case 3:
-            io.irq_status &= ~INT_TIMER;
+            PCE.irq_status &= ~INT_TIMER;
             break;
         }
         break;

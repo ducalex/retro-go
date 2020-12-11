@@ -57,10 +57,10 @@ static const DRAM_ATTR UBYTE bcdbin[0x100] = {
 #define OPCODE_FUNC static void inline __attribute__((__always_inline__)) __attribute__((flatten))
 
 // pointer to the beginning of the Zero Page area
-#define ZP_BASE (RAM)
+#define ZP_BASE (PCE.RAM)
 
 // pointer to the beginning of the Stack Area
-#define SP_BASE (RAM + 0x100)
+#define SP_BASE (PCE.RAM + 0x100)
 
 // Addressing modes:
 #define imm_operand(addr)  ({UWORD x = addr; PageR[x >> 13][x];})
@@ -2295,7 +2295,7 @@ OPCODE_FUNC tma(void)
 	{
 		if (bitfld & (1 << i))
 		{
-			reg_a = MMR[i];
+			reg_a = PCE.MMR[i];
 		}
 	}
 	reg_p &= ~FL_T;
@@ -2434,13 +2434,13 @@ OPCODE_FUNC interrupt(int type)
 	reg_p &= ~(FL_D|FL_T);
 	reg_p |= FL_I;
 	if (type & INT_IRQ1) {
-		io.irq_status &= ~INT_IRQ1;
+		PCE.irq_status &= ~INT_IRQ1;
 		reg_pc = pce_read16(VEC_IRQ1);
 	} else if (type & INT_IRQ2) {
-		io.irq_status &= ~INT_IRQ2;
+		PCE.irq_status &= ~INT_IRQ2;
 		reg_pc = pce_read16(VEC_IRQ2);
 	} else {
-		io.irq_status &= ~VEC_TIMER;
+		PCE.irq_status &= ~VEC_TIMER;
 		reg_pc = pce_read16(VEC_TIMER);
 	}
 	Cycles += 7;

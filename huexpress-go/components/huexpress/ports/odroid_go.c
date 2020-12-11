@@ -129,7 +129,7 @@ void osd_gfx_blit(void)
     if (drawFrame)
     {
 #ifndef USE_PARTIAL_FRAMES
-        curFrame->pixel_clear = Palette[0];
+        curFrame->pixel_clear = PCE.Palette[0];
         prevFrame = NULL;
 #endif
         if (odroid_display_queue_update(curFrame, prevFrame) == SCREEN_UPDATE_FULL) {
@@ -221,7 +221,7 @@ void osd_input_read(void)
     if (joystick.values[GAMEPAD_KEY_START]) rc |= JOY_RUN;
     if (joystick.values[GAMEPAD_KEY_SELECT]) rc |= JOY_SELECT;
 
-    io.JOY[0] = rc;
+    PCE.Joypad.regs[0] = rc;
 }
 
 

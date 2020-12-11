@@ -26,7 +26,7 @@ int ScrollYDiff;
 static inline void
 spr2pixel(int no)
 {
-	uint8_t *C = (uint8_t *)(VRAM + no * 64);
+	uint8_t *C = (uint8_t *)(PCE.VRAM + no * 64);
 	uint32_t *C2 = OBJ_CACHE + no * 32;
 	// 2 longs -> 16 nibbles => 32 loops for a 16*16 spr
 
@@ -53,7 +53,7 @@ spr2pixel(int no)
 static inline void
 tile2pixel(int no)
 {
-	uint8_t *C = (uint8_t *)(VRAM + no * 16);
+	uint8_t *C = (uint8_t *)(PCE.VRAM + no * 16);
 	uint32_t *C2 = OBJ_CACHE + no * 8;
 
 	TRACE_SPR("Planing tile %d\n", no);
@@ -111,9 +111,9 @@ draw_tiles(int Y1, int Y2, int scroll_x, int scroll_y)
 		for (int X1 = 0; X1 < XW; X1++, x++, PP += 8) {
 			x &= bg_w - 1;
 
-			no = VRAM[x + y * bg_w];
+			no = PCE.VRAM[x + y * bg_w];
 
-			PAL = &Palette[(no >> 8) & 0x1F0];
+			PAL = &PCE.Palette[(no >> 8) & 0x1F0];
 
 			// PCE has max of 2048 tiles
 			no &= 0x7FF;
@@ -123,7 +123,7 @@ draw_tiles(int Y1, int Y2, int scroll_x, int scroll_y)
 			}
 
 			C2 = OBJ_CACHE + (no * 8 + offset);
-			C = (uint8_t*)(VRAM + no * 16 + offset);
+			C = (uint8_t*)(PCE.VRAM + no * 16 + offset);
 			P = PP;
 			for (int i = 0; i < h; i++, P += XBUF_WIDTH, C2++, C += 2) {
 				uint32_t J, L;
@@ -160,7 +160,7 @@ draw_tiles(int Y1, int Y2, int scroll_x, int scroll_y)
 static void // Do not inline (take advantage of xtensa's windowed registers)
 draw_sprite(uint8_t *P, uint16_t *C, uint32_t *C2, int height, uint16_t attr)
 {
-	uint8_t *PAL = &Palette[256 + ((attr & 0xF) << 4)];
+	uint8_t *PAL = &PCE.Palette[256 + ((attr & 0xF) << 4)];
 
 	bool hflip = attr & H_FLIP;
 	int inc = (attr & V_FLIP) ? -1 : 1;
@@ -234,7 +234,7 @@ draw_sprites(int Y1, int Y2, int priority)
 	// higher priority and therefore must overwrite later sprites.
 
 	for (int n = 63; n >= 0; n--) {
-		sprite_t *spr = (sprite_t *)SPRAM + n;
+		sprite_t *spr = (sprite_t *)PCE.SPRAM + n;
 		uint16_t attr = spr->attr;
 
 		if (((attr >> 7) & 1) != priority)
@@ -268,7 +268,7 @@ draw_sprites(int Y1, int Y2, int priority)
 		}
 
 		uint8_t *P = screen_buffer + (XBUF_WIDTH * y + x);
-		uint16_t *C = VRAM + (no * 64);
+		uint16_t *C = PCE.VRAM + (no * 64);
 		uint32_t *C2 = OBJ_CACHE + (no * 32);
 
 		cgy *= 16;
@@ -316,7 +316,7 @@ draw_sprites(int Y1, int Y2, int priority)
 static inline bool
 sprite_hit_check(void)
 {
-	sprite_t *spr = (sprite_t *)SPRAM;
+	sprite_t *spr = (sprite_t *)PCE.SPRAM;
 	int x0 = spr->x;
 	int y0 = spr->y;
 	int w0 = (((spr->attr >> 8) & 1) + 1) * 16;
@@ -420,17 +420,17 @@ gfx_irq(int type)
 {
 	/* If IRQ, push it on the stack */
 	if (type >= 0) {
-		io.vdc_irq_queue <<= 4;
-		io.vdc_irq_queue |= type & 0xF;
+		PCE.VDC.pending_irqs <<= 4;
+		PCE.VDC.pending_irqs |= type & 0xF;
 	}
 
-	/* Pop the first pending vdc interrupt only if io.irq_status is clear */
+	/* Pop the first pending vdc interrupt only if PCE.irq_status is clear */
 	int pos = 28;
-	while (!(io.irq_status & INT_IRQ1) && io.vdc_irq_queue) {
-		if (io.vdc_irq_queue >> pos) {
-			io.vdc_status |= 1 << (io.vdc_irq_queue >> pos);
-			io.vdc_irq_queue &= ~(0xF << pos);
-			io.irq_status |= INT_IRQ1; // Notify the CPU
+	while (!(PCE.irq_status & INT_IRQ1) && PCE.VDC.pending_irqs) {
+		if (PCE.VDC.pending_irqs >> pos) {
+			PCE.VDC.status |= 1 << (PCE.VDC.pending_irqs >> pos);
+			PCE.VDC.pending_irqs &= ~(0xF << pos);
+			PCE.irq_status |= INT_IRQ1; // Notify the CPU
 		}
 		pos -= 4;
 	}
@@ -446,8 +446,8 @@ gfx_run(void)
 	screen_buffer = osd_gfx_framebuffer();
 
 	/* DMA Transfer in "progress" */
-	if (io.vdc_satb > DMA_TRANSFER_COUNTER) {
-		if (--io.vdc_satb == DMA_TRANSFER_COUNTER) {
+	if (PCE.VDC.satb > DMA_TRANSFER_COUNTER) {
+		if (--PCE.VDC.satb == DMA_TRANSFER_COUNTER) {
 			if (SATBIntON) {
 				gfx_irq(VDC_STAT_DS);
 			}
@@ -494,17 +494,17 @@ gfx_run(void)
 		}
 
 		/* VRAM to SATB DMA */
-		if (io.vdc_satb == DMA_TRANSFER_PENDING || IO_VDC_REG[DCR].W & 0x0010) {
-			memcpy(SPRAM, VRAM + IO_VDC_REG[SATB].W, 512);
-			io.vdc_satb = DMA_TRANSFER_COUNTER + 4;
+		if (PCE.VDC.satb == DMA_TRANSFER_PENDING || IO_VDC_REG[DCR].W & 0x0010) {
+			memcpy(PCE.SPRAM, PCE.VRAM + IO_VDC_REG[SATB].W, 512);
+			PCE.VDC.satb = DMA_TRANSFER_COUNTER + 4;
 		}
 
 		/* Frame done, we can now process pending res change. */
-		if (io.vdc_mode_chg && IO_VDC_REG[VCR].W != 0) {
+		if (PCE.VDC.mode_chg && IO_VDC_REG[VCR].W != 0) {
 			TRACE_GFX("Changing mode: VDS = %04x VSW = %04x VDW = %04x VCR = %04x\n",
 				IO_VDC_REG[VPR].B.h, IO_VDC_REG[VPR].B.l,
 				IO_VDC_REG[VDW].W, IO_VDC_REG[VCR].W);
-			io.vdc_mode_chg = 0;
+			PCE.VDC.mode_chg = 0;
 			osd_gfx_set_mode(IO_VDC_SCREEN_WIDTH, IO_VDC_SCREEN_HEIGHT);
 		}
 	}

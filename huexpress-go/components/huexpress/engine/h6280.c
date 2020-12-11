@@ -59,7 +59,7 @@ h6280_run(void)
 	}
 
 	/* Handle pending interrupts (Should be in the loop, but it's too slow) */
-	uint8_t irq = io.irq_status & ~io.irq_mask & INT_MASK;
+	uint8_t irq = PCE.irq_status & ~PCE.irq_mask & INT_MASK;
 	if ((reg_p & FL_I) == 0 && irq) {
 		interrupt(irq);
 	}
@@ -343,7 +343,7 @@ h6280_print_state()
 	MESSAGE_INFO("S = 0x%02x\n", reg_s);
 
 	for (int i = 0; i < 8; i++) {
-		MESSAGE_INFO("MMR[%d] = 0x%02x\n", i, MMR[i]);
+		MESSAGE_INFO("MMR[%d] = 0x%02x\n", i, PCE.MMR[i]);
 	}
 
 	// TODO: Add zero page dump
