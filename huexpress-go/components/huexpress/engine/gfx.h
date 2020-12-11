@@ -12,7 +12,7 @@ typedef struct {
 	short no;
 
 	/* Attributes */
-	short atr;
+	short attr;
 	/*
 		* bit 0-4 : number of the palette to be used
 		* bit 7 : background sprite
