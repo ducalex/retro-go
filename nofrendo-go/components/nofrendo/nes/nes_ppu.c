@@ -114,7 +114,6 @@ void ppu_setpage(int size, int page_num, uint8 *location)
    }
 }
 
-/* bleh, for snss */
 uint8 *ppu_getpage(int page)
 {
    return ppu.page[page];
@@ -574,10 +573,6 @@ INLINE void draw_oamtile(uint8 *surface, uint8 attrib, uint16 pattern, const uin
 
 INLINE void ppu_renderbg(uint8 *vidbuf)
 {
-   uint8 *bmp_ptr;
-   int32 refresh_vaddr, tile_addr, bg_offset, attrib_base, attrib_addr;
-   uint8 tile_index, tile_num, x_tile, y_tile, col_high, attrib, attrib_shift;
-
    /* draw a line of transparent background color if bg is disabled */
    if (false == ppu.bg_on)
    {
@@ -585,25 +580,21 @@ INLINE void ppu_renderbg(uint8 *vidbuf)
       return;
    }
 
-   bmp_ptr = vidbuf - ppu.tile_xofs; /* scroll x */
-   refresh_vaddr = 0x2000 + (ppu.vaddr & 0x0FE0); /* mask out x tile */
-   x_tile = ppu.vaddr & 0x1F;
-   y_tile = (ppu.vaddr >> 5) & 0x1F; /* to simplify calculations */
-   bg_offset = ((ppu.vaddr >> 12) & 7) + ppu.bg_base; /* offset in y tile */
-
-   /* calculate initial values */
-   tile_addr = refresh_vaddr + x_tile; /* pointer to tile index */
-   attrib_base = (refresh_vaddr & 0x2C00) + 0x3C0 + ((y_tile & 0x1C) << 1);
-   attrib_addr = attrib_base + (x_tile >> 2);
-   attrib = PPU_MEM_READ(attrib_addr); attrib_addr++;
-   attrib_shift = (x_tile & 2) + ((y_tile & 2) << 1);
-   col_high = ((attrib >> attrib_shift) & 3) << 2;
+   uint8 *bmp_ptr = vidbuf - ppu.tile_xofs; /* scroll x */
+   uint x_tile = ppu.vaddr & 0x1F;
+   uint refresh_vaddr = 0x2000 + (ppu.vaddr & 0x0FE0); /* mask out x tile */
+   uint bg_offset = ((ppu.vaddr >> 12) & 7) + ppu.bg_base; /* offset in y tile */
+   uint attrib_base = (refresh_vaddr & 0x2C00) + 0x3C0 + (((ppu.vaddr >> 5) & 0x1C) << 1);
+   uint attrib_addr = attrib_base + (x_tile >> 2);
+   uint attrib = PPU_MEM_READ(attrib_addr); attrib_addr++;
+   uint attrib_shift = (x_tile & 2) + (((ppu.vaddr >> 5) & 2) << 1);
+   uint col_high = ((attrib >> attrib_shift) & 3) << 2;
 
    /* ppu fetches 33 tiles */
-   for (tile_num = 0; tile_num < 33; tile_num++)
+   for (int tile_num = 0; tile_num < 33; tile_num++)
    {
       /* Tile number from nametable */
-      tile_index = PPU_MEM_READ(tile_addr); tile_addr++;
+      int tile_index = PPU_MEM_READ(refresh_vaddr + x_tile);
 
       /* Handle $FD/$FE tile VROM switching (PunchOut) */
       if (ppu.latchfunc)
@@ -624,9 +615,6 @@ INLINE void ppu_renderbg(uint8 *vidbuf)
                x_tile = 0;
                refresh_vaddr ^= (1 << 10); /* switch nametable */
                attrib_base ^= (1 << 10);
-
-               /* recalculate pointers */
-               tile_addr = refresh_vaddr;
                attrib_addr = attrib_base;
             }
 
@@ -650,26 +638,21 @@ INLINE void ppu_renderbg(uint8 *vidbuf)
 /* TODO: fetch valid OAM a scanline before, like the Real Thing */
 INLINE void ppu_renderoam(uint8 *vidbuf, int scanline, bool draw)
 {
-   int32 sprite_num, sprite_offset, sprite_height, count;
-   int32 y_offset, tile_addr, sprite_y, savecol1, savecol2;
-   ppu_obj_t *sprite;
-
    if (false == ppu.obj_on)
       return;
 
    /* Save left hand column */
-   savecol1 = ((int32 *) vidbuf)[0];
-   savecol2 = ((int32 *) vidbuf)[1];
+   uint32 savecol1 = ((uint32 *) vidbuf)[0];
+   uint32 savecol2 = ((uint32 *) vidbuf)[1];
 
-   /* Sprite position */
-   sprite_height = ppu.obj_height;
-   sprite_offset = ppu.obj_base;
+   int sprite_height = ppu.obj_height;
+   int sprite_offset = ppu.obj_base;
 
-   sprite = (ppu_obj_t *) ppu.oam;
-
-   for (sprite_num = 0, count = 0; sprite_num < 64; sprite_num++, sprite++)
+   for (int sprite_num = 0, count = 0; sprite_num < 64; sprite_num++)
    {
-      sprite_y = sprite->y_loc + 1;
+      ppu_obj_t *sprite = (ppu_obj_t *)ppu.oam + sprite_num;
+
+      int sprite_y = sprite->y_loc + 1;
 
       /* Check to see if sprite is out of range */
       if ((sprite_y > scanline) || (sprite_y <= (scanline - sprite_height))
@@ -679,6 +662,8 @@ INLINE void ppu_renderoam(uint8 *vidbuf, int scanline, bool draw)
       /* Handle $FD/$FE tile VROM switching (PunchOut) */
       if (ppu.latchfunc)
          ppu.latchfunc(sprite_offset, sprite->tile);
+
+      int tile_addr, y_offset;
 
       /* 8x16 even sprites use $0000, odd use $1000 */
       if (16 == sprite_height)
@@ -717,7 +702,10 @@ INLINE void ppu_renderoam(uint8 *vidbuf, int scanline, bool draw)
          return;
 
       /* Fetch tile and draw it */
-      draw_oamtile(vidbuf + sprite->x_loc, sprite->attr, get_patpix(tile_addr),
+      draw_oamtile(
+         vidbuf + sprite->x_loc,
+         sprite->attr,
+         get_patpix(tile_addr),
          ppu.palette + 16 + ((sprite->attr & 3) << 2));
 
       /* maximum of 8 sprites per scanline */
@@ -731,8 +719,8 @@ INLINE void ppu_renderoam(uint8 *vidbuf, int scanline, bool draw)
    /* Restore lefthand column */
    if (!ppu.left_obj_on)
    {
-      ((int32 *) vidbuf)[0] = savecol1;
-      ((int32 *) vidbuf)[1] = savecol2;
+      ((uint32 *) vidbuf)[0] = savecol1;
+      ((uint32 *) vidbuf)[1] = savecol2;
    }
 }
 
@@ -751,26 +739,21 @@ IRAM_ATTR void ppu_endscanline()
    /* modify vram address at end of scanline */
    if (ppu.scanline < 240 && (ppu.bg_on || ppu.obj_on))
    {
-      int ytile;
-
       /* check for max 3 bit y tile offset */
       if (7 == (ppu.vaddr >> 12))
       {
-         ppu.vaddr &= ~0x7000;      /* clear y tile offset */
-         ytile = (ppu.vaddr >> 5) & 0x1F;
-
-         if (29 == ytile)
+         switch ((ppu.vaddr >> 5) & 0x1F)
          {
-            ppu.vaddr &= ~0x03E0;   /* clear y tile */
-            ppu.vaddr ^= 0x0800;    /* toggle nametable */
-         }
-         else if (31 == ytile)
-         {
-            ppu.vaddr &= ~0x03E0;   /* clear y tile */
-         }
-         else
-         {
-            ppu.vaddr += 0x20;      /* increment y tile */
+            case 29:
+               ppu.vaddr &= ~0x73E0;   /* clear y tile and offset */
+               ppu.vaddr ^= 0x0800;    /* toggle nametable */
+               break;
+            case 31:
+               ppu.vaddr &= ~0x73E0;   /* clear y tile and offset */
+               break;
+            default:
+               ppu.vaddr &= ~0x7000;   /* clear y tile offset */
+               ppu.vaddr += 0x20;      /* increment y tile */
          }
       }
       else
@@ -904,7 +887,6 @@ INLINE void draw_deadsprite(bitmap_t *bmp, int x, int y, int height)
    }
 }
 
-/* Stuff for the OAM viewer */
 INLINE void draw_sprite(bitmap_t *bmp, int x, int y, uint8 tile_num, uint8 attrib)
 {
    int line, height;

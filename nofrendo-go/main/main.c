@@ -26,7 +26,7 @@ static odroid_video_frame_t *currentUpdate = &update1;
 static odroid_video_frame_t *previousUpdate = NULL;
 
 static int16_t audioBuffer[AUDIO_BUFFER_LENGTH * 2];
-static int16_t pendingSamples = 0;
+static int32_t pendingSamples = 0;
 
 static gamepad_state_t joystick1;
 static gamepad_state_t joystick2;
@@ -289,7 +289,7 @@ void osd_wait_for_vsync()
 */
 void osd_audioframe(int audioSamples)
 {
-   if (odroid_system_get_app()->speedupEnabled)
+   if (app->speedupEnabled)
       return;
 
    apu_process(audioBuffer, audioSamples); //get audio data
