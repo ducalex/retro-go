@@ -29,16 +29,7 @@
 
 #include <string.h>
 
-#define APU_OVERSAMPLE
 #define APU_VOLUME_DECAY(x)  ((x) -= ((x) >> 7))
-
-/* the following seem to be the correct (empirically determined)
-** relative volumes between the sound channels
-*/
-#define APU_RECTANGLE_OUTPUT(channel) (apu.rectangle[channel].output_vol)
-#define APU_TRIANGLE_OUTPUT           (apu.triangle.output_vol + (apu.triangle.output_vol >> 2))
-#define APU_NOISE_OUTPUT              ((apu.noise.output_vol + apu.noise.output_vol + apu.noise.output_vol) >> 2)
-#define APU_DMC_OUTPUT                ((apu.dmc.output_vol + apu.dmc.output_vol + apu.dmc.output_vol) >> 2)
 
 /* Runtime settings */
 #define OPT(n) (apu.options[(n)])
@@ -51,14 +42,8 @@ static int32 decay_lut[16];
 static int32 vbl_lut[32];
 static int32 trilength_lut[128];
 
-/* noise lookups for both modes */
-#ifndef REALTIME_NOISE
-static int8 noise_long_lut[APU_NOISE_32K];
-static int8 noise_short_lut[APU_NOISE_93];
-#endif /* !REALTIME_NOISE */
-
 /* vblank length table used for rectangles, triangle, noise */
-DRAM_ATTR static const uint8 vbl_length[32] =
+static const uint8 vbl_length[32] =
 {
     5, 127,
    10,   1,
@@ -79,27 +64,27 @@ DRAM_ATTR static const uint8 vbl_length[32] =
 };
 
 /* frequency limit of rectangle channels */
-DRAM_ATTR static const int16 freq_limit[8] =
+static const int16 freq_limit[8] =
 {
    0x3FF, 0x555, 0x666, 0x71C, 0x787, 0x7C1, 0x7E0, 0x7F0
 };
 
 /* noise frequency lookup table */
-DRAM_ATTR static const int16 noise_freq[16] =
+static const int16 noise_freq[16] =
 {
      4,    8,   16,   32,   64,   96,  128,  160,
    202,  254,  380,  508,  762, 1016, 2034, 4068
 };
 
 /* DMC transfer freqs */
-DRAM_ATTR static const int16 dmc_clocks[16] =
+static const int16 dmc_clocks[16] =
 {
    428, 380, 340, 320, 286, 254, 226, 214,
    190, 160, 142, 128, 106,  85,  72,  54
 };
 
 /* ratios of pos/neg pulse for rectangle waves */
-DRAM_ATTR static const int16 duty_flip[4] = { 2, 4, 8, 12 };
+static const int16 duty_flip[4] = { 2, 4, 8, 12 };
 
 
 IRAM_ATTR void apu_fc_advance(int cycles)
@@ -141,7 +126,6 @@ void apu_getcontext(apu_t *dest_apu)
 ** NES uses to generate pseudo-random series
 ** for the white noise channel
 */
-#ifdef REALTIME_NOISE
 INLINE int8 shift_register15(uint8 xor_tap)
 {
    static int sreg = 0x4000;
@@ -154,38 +138,21 @@ INLINE int8 shift_register15(uint8 xor_tap)
    sreg |= (bit14 << 14);
    return (bit0 ^ 1);
 }
-#else /* !REALTIME_NOISE */
-static void shift_register15(int8 *buf, int count)
-{
-   static int sreg = 0x4000;
-   int bit0, bit1, bit6, bit14;
 
-   if (count == APU_NOISE_93)
-   {
-      while (count--)
-      {
-         bit0 = sreg & 1;
-         bit6 = (sreg & 0x40) >> 6;
-         bit14 = (bit0 ^ bit6);
-         sreg >>= 1;
-         sreg |= (bit14 << 14);
-         *buf++ = bit0 ^ 1;
-      }
-   }
-   else /* 32K noise */
-   {
-      while (count--)
-      {
-         bit0 = sreg & 1;
-         bit1 = (sreg & 2) >> 1;
-         bit14 = (bit0 ^ bit1);
-         sreg >>= 1;
-         sreg |= (bit14 << 14);
-         *buf++ = bit0 ^ 1;
-      }
-   }
+INLINE void apu_build_luts(int num_samples)
+{
+   /* lut used for enveloping and frequency sweeps */
+   for (int i = 0; i < 16; i++)
+      decay_lut[i] = num_samples * (i + 1);
+
+   /* used for note length, based on vblanks and size of audio buffer */
+   for (int i = 0; i < 32; i++)
+      vbl_lut[i] = vbl_length[i] * num_samples;
+
+   /* triangle wave channel's linear length table */
+   for (int i = 0; i < 128; i++)
+      trilength_lut[i] = (int) (0.25 * i * num_samples);
 }
-#endif /* !REALTIME_NOISE */
 
 /* RECTANGLE WAVE
 ** ==============
@@ -194,8 +161,6 @@ static void shift_register15(int8 *buf, int count)
 ** reg2: 8 bits of freq
 ** reg3: 0-2=high freq, 7-4=vbl length counter
 */
-#ifdef APU_OVERSAMPLE
-
 #define  APU_MAKE_RECTANGLE(ch) \
 INLINE int32 apu_rectangle_##ch(void) \
 { \
@@ -204,11 +169,11 @@ INLINE int32 apu_rectangle_##ch(void) \
 \
    APU_VOLUME_DECAY(apu.rectangle[ch].output_vol); \
 \
-   if (false == apu.rectangle[ch].enabled || 0 == apu.rectangle[ch].vbl_length) \
-      return APU_RECTANGLE_OUTPUT(ch); \
+   if (!apu.rectangle[ch].enabled || apu.rectangle[ch].vbl_length == 0) \
+      return apu.rectangle[ch].output_vol; \
 \
    /* vbl length counter */ \
-   if (false == apu.rectangle[ch].holdnote) \
+   if (!apu.rectangle[ch].holdnote) \
       apu.rectangle[ch].vbl_length--; \
 \
    /* envelope decay at a rate of (env_delay + 1) / 240 secs */ \
@@ -227,7 +192,7 @@ INLINE int32 apu_rectangle_##ch(void) \
    if (apu.rectangle[ch].freq < 8 \
        || (false == apu.rectangle[ch].sweep_inc \
            && apu.rectangle[ch].freq > apu.rectangle[ch].freq_limit)) \
-      return APU_RECTANGLE_OUTPUT(ch); \
+      return apu.rectangle[ch].output_vol; \
 \
    /* frequency sweeping at a rate of (sweep_delay + 1) / 120 secs */ \
    if (apu.rectangle[ch].sweep_on && apu.rectangle[ch].sweep_shifts) \
@@ -239,7 +204,7 @@ INLINE int32 apu_rectangle_##ch(void) \
 \
          if (apu.rectangle[ch].sweep_inc) /* ramp up */ \
          { \
-            if (0 == ch) \
+            if (ch == 0) \
                apu.rectangle[ch].freq += ~(apu.rectangle[ch].freq >> apu.rectangle[ch].sweep_shifts); \
             else \
                apu.rectangle[ch].freq -= (apu.rectangle[ch].freq >> apu.rectangle[ch].sweep_shifts); \
@@ -253,7 +218,7 @@ INLINE int32 apu_rectangle_##ch(void) \
 \
    apu.rectangle[ch].accum -= apu.cycle_rate; \
    if (apu.rectangle[ch].accum >= 0) \
-      return APU_RECTANGLE_OUTPUT(ch); \
+      return apu.rectangle[ch].output_vol; \
 \
    if (apu.rectangle[ch].fixed_envelope) \
       output = apu.rectangle[ch].volume << 8; /* fixed volume */ \
@@ -276,86 +241,8 @@ INLINE int32 apu_rectangle_##ch(void) \
    } \
 \
    apu.rectangle[ch].output_vol = total / num_times; \
-   return APU_RECTANGLE_OUTPUT(ch); \
+   return apu.rectangle[ch].output_vol; \
 }
-
-#else /* !APU_OVERSAMPLE */
-#define  APU_MAKE_RECTANGLE(ch) \
-INLINE int32 apu_rectangle_##ch(void) \
-{ \
-   int32 output; \
-\
-   APU_VOLUME_DECAY(apu.rectangle[ch].output_vol); \
-\
-   if (false == apu.rectangle[ch].enabled || 0 == apu.rectangle[ch].vbl_length) \
-      return APU_RECTANGLE_OUTPUT(ch); \
-\
-   /* vbl length counter */ \
-   if (false == apu.rectangle[ch].holdnote) \
-      apu.rectangle[ch].vbl_length--; \
-\
-   /* envelope decay at a rate of (env_delay + 1) / 240 secs */ \
-   apu.rectangle[ch].env_phase -= 4; /* 240/60 */ \
-   while (apu.rectangle[ch].env_phase < 0) \
-   { \
-      apu.rectangle[ch].env_phase += apu.rectangle[ch].env_delay; \
-\
-      if (apu.rectangle[ch].holdnote) \
-         apu.rectangle[ch].env_vol = (apu.rectangle[ch].env_vol + 1) & 0x0F; \
-      else if (apu.rectangle[ch].env_vol < 0x0F) \
-         apu.rectangle[ch].env_vol++; \
-   } \
-\
-   /* TODO: find true relation of freq_limit to register values */ \
-   if (apu.rectangle[ch].freq < 8 || (false == apu.rectangle[ch].sweep_inc && apu.rectangle[ch].freq > apu.rectangle[ch].freq_limit)) \
-      return APU_RECTANGLE_OUTPUT(ch); \
-\
-   /* frequency sweeping at a rate of (sweep_delay + 1) / 120 secs */ \
-   if (apu.rectangle[ch].sweep_on && apu.rectangle[ch].sweep_shifts) \
-   { \
-      apu.rectangle[ch].sweep_phase -= 2; /* 120/60 */ \
-      while (apu.rectangle[ch].sweep_phase < 0) \
-      { \
-         apu.rectangle[ch].sweep_phase += apu.rectangle[ch].sweep_delay; \
-\
-         if (apu.rectangle[ch].sweep_inc) /* ramp up */ \
-         { \
-            if (0 == ch) \
-               apu.rectangle[ch].freq += ~(apu.rectangle[ch].freq >> apu.rectangle[ch].sweep_shifts); \
-            else \
-               apu.rectangle[ch].freq -= (apu.rectangle[ch].freq >> apu.rectangle[ch].sweep_shifts); \
-         } \
-         else /* ramp down */ \
-         { \
-            apu.rectangle[ch].freq += (apu.rectangle[ch].freq >> apu.rectangle[ch].sweep_shifts); \
-         } \
-      } \
-   } \
-\
-   apu.rectangle[ch].accum -= apu.cycle_rate; \
-   if (apu.rectangle[ch].accum >= 0) \
-      return APU_RECTANGLE_OUTPUT(ch); \
-\
-   while (apu.rectangle[ch].accum < 0) \
-   { \
-      apu.rectangle[ch].accum += (apu.rectangle[ch].freq + 1); \
-      apu.rectangle[ch].adder = (apu.rectangle[ch].adder + 1) & 0x0F; \
-   } \
-\
-   if (apu.rectangle[ch].fixed_envelope) \
-      output = apu.rectangle[ch].volume << 8; /* fixed volume */ \
-   else \
-      output = (apu.rectangle[ch].env_vol ^ 0x0F) << 8; \
-\
-   if (0 == apu.rectangle[ch].adder) \
-      apu.rectangle[ch].output_vol = output; \
-   else if (apu.rectangle[ch].adder == apu.rectangle[ch].duty_flip) \
-      apu.rectangle[ch].output_vol = -output; \
-\
-   return APU_RECTANGLE_OUTPUT(ch); \
-}
-
-#endif /* !APU_OVERSAMPLE */
 
 /* generate the functions */
 APU_MAKE_RECTANGLE(0)
@@ -372,8 +259,8 @@ INLINE int32 apu_triangle(void)
 {
    APU_VOLUME_DECAY(apu.triangle.output_vol);
 
-   if (false == apu.triangle.enabled || 0 == apu.triangle.vbl_length)
-      return APU_TRIANGLE_OUTPUT;
+   if (!apu.triangle.enabled || apu.triangle.vbl_length == 0)
+      goto output;
 
    if (apu.triangle.counter_started)
    {
@@ -388,8 +275,8 @@ INLINE int32 apu_triangle(void)
          apu.triangle.counter_started = true;
    }
 
-   if (0 == apu.triangle.linear_length || apu.triangle.freq < 4) /* inaudible */
-      return APU_TRIANGLE_OUTPUT;
+   if (apu.triangle.linear_length == 0 || apu.triangle.freq < 4) /* inaudible */
+      goto output;
 
    apu.triangle.accum -= apu.cycle_rate; \
    while (apu.triangle.accum < 0)
@@ -403,7 +290,8 @@ INLINE int32 apu_triangle(void)
          apu.triangle.output_vol += (2 << 8);
    }
 
-   return APU_TRIANGLE_OUTPUT;
+output:
+   return (apu.triangle.output_vol + (apu.triangle.output_vol >> 2));
 }
 
 
@@ -413,27 +301,19 @@ INLINE int32 apu_triangle(void)
 ** reg2: 7=small(93 byte) sample,3-0=freq lookup
 ** reg3: 7-4=vbl length counter
 */
-/* TODO: AAAAAAAAAAAAAAAAAAAAAAAA!  #ifdef MADNESS! */
 INLINE int32 apu_noise(void)
 {
-   int32 outvol;
-
-#if defined(APU_OVERSAMPLE) && defined(REALTIME_NOISE)
-#else /* !(APU_OVERSAMPLE && REALTIME_NOISE) */
-   int32 noise_bit;
-#endif /* !(APU_OVERSAMPLE && REALTIME_NOISE) */
-#ifdef APU_OVERSAMPLE
-   int num_times;
-   int32 total;
-#endif /* APU_OVERSAMPLE */
+   int32 outvol = 0;
+   int32 num_times = 0;
+   int32 total = 0;
 
    APU_VOLUME_DECAY(apu.noise.output_vol);
 
-   if (false == apu.noise.enabled || 0 == apu.noise.vbl_length)
-      return APU_NOISE_OUTPUT;
+   if (!apu.noise.enabled || apu.noise.vbl_length == 0)
+      goto output;
 
    /* vbl length counter */
-   if (false == apu.noise.holdnote)
+   if (!apu.noise.holdnote)
       apu.noise.vbl_length--;
 
    /* envelope decay at a rate of (env_delay + 1) / 240 secs */
@@ -449,87 +329,29 @@ INLINE int32 apu_noise(void)
    }
 
    apu.noise.accum -= apu.cycle_rate;
-   if (apu.noise.accum >= 0)
-      return APU_NOISE_OUTPUT;
 
-#ifdef APU_OVERSAMPLE
+   if (apu.noise.accum >= 0)
+      goto output;
+
    if (apu.noise.fixed_envelope)
       outvol = apu.noise.volume << 8; /* fixed volume */
    else
       outvol = (apu.noise.env_vol ^ 0x0F) << 8;
-
-   num_times = total = 0;
-#endif /* APU_OVERSAMPLE */
 
    while (apu.noise.accum < 0)
    {
       apu.noise.accum += apu.noise.freq;
 
-#ifdef REALTIME_NOISE
-
-#ifdef APU_OVERSAMPLE
-      if (shift_register15(apu.noise.xor_tap))
-         total += outvol;
-      else
-         total -= outvol;
-
+      total += shift_register15(apu.noise.xor_tap) ? outvol : -outvol;
       num_times++;
-#else /* !APU_OVERSAMPLE */
-      noise_bit = shift_register15(apu.noise.xor_tap);
-#endif /* !APU_OVERSAMPLE */
-
-#else /* !REALTIME_NOISE */
-      apu.noise.cur_pos++;
-
-      if (apu.noise.short_sample)
-      {
-         if (APU_NOISE_93 == apu.noise.cur_pos)
-            apu.noise.cur_pos = 0;
-      }
-      else
-      {
-         if (APU_NOISE_32K == apu.noise.cur_pos)
-            apu.noise.cur_pos = 0;
-      }
-
-#ifdef APU_OVERSAMPLE
-      if (apu.noise.short_sample)
-         noise_bit = noise_short_lut[apu.noise.cur_pos];
-      else
-         noise_bit = noise_long_lut[apu.noise.cur_pos];
-
-      if (noise_bit)
-         total += outvol;
-      else
-         total -= outvol;
-
-      num_times++;
-#endif /* APU_OVERSAMPLE */
-#endif /* !REALTIME_NOISE */
    }
 
-#ifdef APU_OVERSAMPLE
-   apu.noise.output_vol = total / num_times;
-#else /* !APU_OVERSAMPLE */
-   if (apu.noise.fixed_envelope)
-      outvol = apu.noise.volume << 8; /* fixed volume */
-   else
-      outvol = (apu.noise.env_vol ^ 0x0F) << 8;
+   outvol = total / num_times;
 
-#ifndef REALTIME_NOISE
-   if (apu.noise.short_sample)
-      noise_bit = noise_short_lut[apu.noise.cur_pos];
-   else
-      noise_bit = noise_long_lut[apu.noise.cur_pos];
-#endif /* !REALTIME_NOISE */
+   apu.noise.output_vol = outvol;
 
-   if (noise_bit)
-      apu.noise.output_vol = outvol;
-   else
-      apu.noise.output_vol = -outvol;
-#endif /* !APU_OVERSAMPLE */
-
-   return APU_NOISE_OUTPUT;
+output:
+   return ((apu.noise.output_vol + apu.noise.output_vol + apu.noise.output_vol) >> 2);
 }
 
 
@@ -549,8 +371,6 @@ INLINE void apu_dmcreload(void)
 */
 INLINE int32 apu_dmc(void)
 {
-   int delta_bit;
-
    APU_VOLUME_DECAY(apu.dmc.output_vol);
 
    /* only process when channel is alive */
@@ -562,7 +382,7 @@ INLINE int32 apu_dmc(void)
       {
          apu.dmc.accum += apu.dmc.freq;
 
-         delta_bit = (apu.dmc.dma_length & 7) ^ 7;
+         int delta_bit = (apu.dmc.dma_length & 7) ^ 7;
 
          if (7 == delta_bit)
          {
@@ -621,7 +441,7 @@ INLINE int32 apu_dmc(void)
       }
    }
 
-   return APU_DMC_OUTPUT;
+   return ((apu.dmc.output_vol + apu.dmc.output_vol + apu.dmc.output_vol) >> 2);
 }
 
 
@@ -720,19 +540,7 @@ IRAM_ATTR void apu_write(uint32 address, uint8 value)
    case APU_WRD2:
       apu.noise.regs[1] = value;
       apu.noise.freq = noise_freq[value & 0x0F];
-
-#ifdef REALTIME_NOISE
       apu.noise.xor_tap = (value & 0x80) ? 0x40: 0x02;
-#else /* !REALTIME_NOISE */
-      /* detect transition from long->short sample */
-      if ((value & 0x80) && false == apu.noise.short_sample)
-      {
-         /* recalculate short noise buffer */
-         shift_register15(noise_short_lut, APU_NOISE_93);
-         apu.noise.cur_pos = 0;
-      }
-      apu.noise.short_sample = (value >> 7) & 1;
-#endif /* !REALTIME_NOISE */
       break;
 
    case APU_WRD3:
@@ -820,7 +628,7 @@ IRAM_ATTR void apu_write(uint32 address, uint8 value)
 
       if (value & 0x10)
       {
-         if (0 == apu.dmc.dma_length)
+         if (apu.dmc.dma_length == 0)
             apu_dmcreload();
       }
       else
@@ -888,100 +696,70 @@ IRAM_ATTR uint8 apu_read(uint32 address)
    return value;
 }
 
-IRAM_ATTR void apu_process(void *buffer, int num_samples)
+IRAM_ATTR void apu_process(short *buffer, size_t num_samples, bool stereo)
 {
    static int32 prev_sample = 0;
 
-   int16 *buf16;
+   if (!buffer)
+      return;
 
-   if (NULL != buffer)
+   while (num_samples--)
    {
-      buf16 = (int16 *) buffer;
+      int accum = 0;
 
-      while (num_samples--)
+      // if (OPT(APU_CHANNEL1_EN))
+         accum += apu_rectangle_0();
+      // if (OPT(APU_CHANNEL2_EN))
+         accum += apu_rectangle_1();
+      // if (OPT(APU_CHANNEL3_EN))
+         accum += apu_triangle();
+      // if (OPT(APU_CHANNEL4_EN))
+         accum += apu_noise();
+      // if (OPT(APU_CHANNEL5_EN))
+         accum += apu_dmc();
+      if (apu.ext) // && OPT(APU_CHANNEL6_EN))
+         accum += apu.ext->process();
+
+      /* do any filtering */
+      if (OPT(APU_FILTER_TYPE) == APU_FILTER_WEIGHTED)
       {
-         int32 next_sample, accum = 0;
-
-         if (OPT(APU_CHANNEL1_EN))
-            accum += apu_rectangle_0();
-         if (OPT(APU_CHANNEL2_EN))
-            accum += apu_rectangle_1();
-         if (OPT(APU_CHANNEL3_EN))
-            accum += apu_triangle();
-         if (OPT(APU_CHANNEL4_EN))
-            accum += apu_noise();
-         if (OPT(APU_CHANNEL5_EN))
-            accum += apu_dmc();
-         if (apu.ext && OPT(APU_CHANNEL6_EN))
-            accum += apu.ext->process();
-
-         /* do any filtering */
-         if (APU_FILTER_NONE != OPT(APU_FILTER_TYPE))
-         {
-            next_sample = accum;
-
-            if (APU_FILTER_LOWPASS == OPT(APU_FILTER_TYPE))
-            {
-               accum += prev_sample;
-               accum >>= 1;
-            }
-            else
-               accum = (accum + accum + accum + prev_sample) >> 2;
-
-            prev_sample = next_sample;
-         }
-
-         /* do clipping */
-         if (accum > 0x7FFF)
-            accum = 0x7FFF;
-         else if (accum < -0x8000)
-            accum = -0x8000;
-
-         /* signed 16-bit output */
-         *buf16++ = (int16) accum;
-
-         // Advance frame counter
-         // apu_fc_advance(apu.cycle_rate);
+         accum = (accum + accum + accum + prev_sample) >> 2;
       }
+      else if (OPT(APU_FILTER_TYPE) == APU_FILTER_LOWPASS)
+      {
+         accum += prev_sample;
+         accum >>= 1;
+      }
+      prev_sample = accum;
+
+      /* do clipping */
+      if (accum > 0x7FFF)
+         accum = 0x7FFF;
+      else if (accum < -0x8000)
+         accum = -0x8000;
+
+      /* signed 16-bit output */
+      *buffer++ = (int16) accum;
+
+      if (stereo)
+         *buffer++ = (int16) accum;
+
+      // Advance frame counter
+      // apu_fc_advance(apu.cycle_rate);
    }
 }
 
 void apu_reset(void)
 {
-   uint32 address;
-
    /* initialize all channel members */
-   for (address = 0x4000; address <= 0x4013; address++)
-      apu_write(address, 0);
+   for (uint32 addr = 0x4000; addr <= 0x4013; addr++)
+      apu_write(addr, 0);
 
    apu_write(0x4015, 0x00);
    apu_write(0x4017, 0x80); // nesdev wiki says this should be 0, but it seems to work better disabled
 
-   if (apu.ext && NULL != apu.ext->reset)
+   if (apu.ext && apu.ext->reset)
       apu.ext->reset();
-}
-
-void apu_build_luts(int num_samples)
-{
-   int i;
-
-   /* lut used for enveloping and frequency sweeps */
-   for (i = 0; i < 16; i++)
-      decay_lut[i] = num_samples * (i + 1);
-
-   /* used for note length, based on vblanks and size of audio buffer */
-   for (i = 0; i < 32; i++)
-      vbl_lut[i] = vbl_length[i] * num_samples;
-
-   /* triangle wave channel's linear length table */
-   for (i = 0; i < 128; i++)
-      trilength_lut[i] = (int) (0.25 * i * num_samples);
-
-#ifndef REALTIME_NOISE
-   /* generate noise samples */
-   shift_register15(noise_long_lut, APU_NOISE_32K);
-   shift_register15(noise_short_lut, APU_NOISE_93);
-#endif /* !REALTIME_NOISE */
 }
 
 void apu_setopt(apu_option_t n, int val)

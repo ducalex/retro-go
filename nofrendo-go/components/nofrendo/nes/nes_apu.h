@@ -26,10 +26,6 @@
 #ifndef _NES_APU_H_
 #define _NES_APU_H_
 
-
-/* define this for realtime generated noise */
-#define  REALTIME_NOISE
-
 #define  APU_WRA0       0x4000
 #define  APU_WRA1       0x4001
 #define  APU_WRA2       0x4002
@@ -62,7 +58,7 @@
 ** to keep the sample processing as lean as possible
 */
 
-typedef struct rectangle_s
+typedef struct
 {
    uint8 regs[4];
 
@@ -93,7 +89,7 @@ typedef struct rectangle_s
    int duty_flip;
 } rectangle_t;
 
-typedef struct triangle_s
+typedef struct
 {
    uint8 regs[3];
 
@@ -115,7 +111,7 @@ typedef struct triangle_s
 } triangle_t;
 
 
-typedef struct noise_s
+typedef struct
 {
    uint8 regs[3];
 
@@ -132,18 +128,12 @@ typedef struct noise_s
    bool holdnote;
 
    uint8 volume;
+   uint8 xor_tap;
 
    int vbl_length;
-
-#ifdef REALTIME_NOISE
-   uint8 xor_tap;
-#else
-   bool short_sample;
-   int cur_pos;
-#endif /* REALTIME_NOISE */
 } noise_t;
 
-typedef struct dmc_s
+typedef struct
 {
    uint8 regs[4];
 
@@ -174,7 +164,7 @@ enum
 };
 
 /* external sound chip stuff */
-typedef struct apuext_s
+typedef struct
 {
    int   (*init)(void);
    void  (*shutdown)(void);
@@ -193,7 +183,7 @@ typedef enum
    APU_CHANNEL6_EN,
 } apu_option_t;
 
-typedef struct apu_s
+typedef struct
 {
    rectangle_t rectangle[2];
    triangle_t triangle;
@@ -237,7 +227,7 @@ extern int  apu_getopt(apu_option_t n);
 extern void apu_setcontext(apu_t *src_apu);
 extern void apu_getcontext(apu_t *dest_apu);
 
-extern void apu_process(void *buffer, int num_samples);
+extern void apu_process(short *buffer, size_t num_samples, bool stereo);
 extern void apu_fc_advance(int cycles);
 
 extern uint8 apu_read(uint32 address);

@@ -33,6 +33,7 @@
 
 
 /* Configuration */
+/* uncomment option to enable */
 
 /* Enable debugging messages */
 // #define NOFRENDO_DEBUG

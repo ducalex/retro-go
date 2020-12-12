@@ -33,18 +33,12 @@
 extern void osd_setpalette(rgb_t *pal);
 extern void osd_blitscreen(bitmap_t *bmp);
 
-/* audio */
-extern void osd_audioframe(int nsamples);
-
 /* control */
 extern int osd_init(void);
 extern void osd_shutdown(void);
 extern void osd_loadstate(void);
 extern void osd_event(int event);
-extern void osd_wait_for_vsync(void);
-
-/* utilities */
-extern char *osd_newextension(char *string, const char *ext);
+extern void osd_vsync(void);
 
 /* input */
 extern void osd_getinput(void);
