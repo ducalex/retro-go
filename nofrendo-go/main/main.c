@@ -25,8 +25,6 @@ static odroid_video_frame_t update2 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1
 static odroid_video_frame_t *currentUpdate = &update1;
 static odroid_video_frame_t *previousUpdate = NULL;
 
-static int16_t audioBuffer[AUDIO_BUFFER_LENGTH * 2];
-
 static gamepad_state_t joystick1;
 static gamepad_state_t joystick2;
 static gamepad_state_t *localJoystick = &joystick1;
@@ -274,8 +272,7 @@ void osd_vsync()
    // Use audio to throttle emulation
    if (!app->speedupEnabled)
    {
-      apu_process(audioBuffer, samplesPerFrame, true);
-      odroid_audio_submit(audioBuffer, samplesPerFrame);
+      odroid_audio_submit(nes->apu->buffer, nes->apu->samples_per_frame);
    }
 
    lastSyncTime = get_elapsed_time();
@@ -401,7 +398,7 @@ void app_main(void)
 
    printf("Nofrendo start!\n");
 
-   ret = nofrendo_start(romPath, region, AUDIO_SAMPLE_RATE);
+   ret = nofrendo_start(romPath, region, AUDIO_SAMPLE_RATE, true);
 
    switch (ret)
    {

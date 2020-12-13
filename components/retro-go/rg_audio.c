@@ -48,7 +48,8 @@ void odroid_audio_init(int sample_rate)
 
     printf("%s: sink=%d, sample_rate=%d\n", __func__, audioSink, sample_rate);
 
-    // NOTE: buffer needs to be adjusted per AUDIO_SAMPLE_RATE
+    int buffer_length = MIN(sample_rate / 50 + 1, 640);
+
     if (audioSink == RG_AUDIO_SINK_SPEAKER)
     {
         i2s_config_t i2s_config = {
@@ -58,7 +59,7 @@ void odroid_audio_init(int sample_rate)
             .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,                           //2-channels
             .communication_format = I2S_COMM_FORMAT_I2S_MSB,
             .dma_buf_count = 2,
-            .dma_buf_len = 580, // 580 stereo 16bit samples (32000 / 55fps) = 2320 bytes
+            .dma_buf_len = buffer_length, //The unit is stereo samples (4 bytes)
             .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,                                //Interrupt level 1
             .use_apll = 0 //1
         };
@@ -75,7 +76,7 @@ void odroid_audio_init(int sample_rate)
             .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,                           //2-channels
             .communication_format = I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB,
             .dma_buf_count = 2,
-            .dma_buf_len = 580, // 580 stereo 16bit samples (32000 / 55fps) = 2320 bytes
+            .dma_buf_len = buffer_length, //The unit is stereo samples (4 bytes)
             .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,                                //Interrupt level 1
             .use_apll = 1
         };

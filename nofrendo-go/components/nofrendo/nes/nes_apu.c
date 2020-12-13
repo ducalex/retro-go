@@ -696,7 +696,7 @@ IRAM_ATTR uint8 apu_read(uint32 address)
    return value;
 }
 
-IRAM_ATTR void apu_process(short *buffer, size_t num_samples, bool stereo)
+void apu_process(short *buffer, size_t num_samples, bool stereo)
 {
    static int32 prev_sample = 0;
 
@@ -749,6 +749,12 @@ IRAM_ATTR void apu_process(short *buffer, size_t num_samples, bool stereo)
    }
 }
 
+// Run for one frame
+void apu_emulate(void)
+{
+   apu_process(apu.buffer, apu.samples_per_frame, apu.stereo);
+}
+
 void apu_reset(void)
 {
    /* initialize all channel members */
@@ -780,7 +786,7 @@ int apu_getopt(apu_option_t n)
 }
 
 /* Initializes emulated sound hardware, creates waveforms/voices */
-apu_t *apu_init(int region, int sample_rate)
+apu_t *apu_init(int region, int sample_rate, bool stereo)
 {
    memset(&apu, 0, sizeof(apu_t));
 
@@ -799,8 +805,14 @@ apu_t *apu_init(int region, int sample_rate)
    }
 
    apu.sample_rate = sample_rate;
+   apu.samples_per_frame = sample_rate / refresh_rate;
    apu.cycle_rate = (float) (cpu_clock / sample_rate);
+   apu.buffer = (int16*)calloc(apu.samples_per_frame + 1, stereo ? 4 : 2);
+   apu.stereo = stereo;
    apu.ext = NULL;
+
+   if (apu.buffer == NULL)
+      return NULL;
 
    apu_setopt(APU_FILTER_TYPE, APU_FILTER_WEIGHTED);
    apu_setopt(APU_CHANNEL1_EN, true);
@@ -810,7 +822,10 @@ apu_t *apu_init(int region, int sample_rate)
    apu_setopt(APU_CHANNEL5_EN, true);
    apu_setopt(APU_CHANNEL6_EN, true);
 
-   apu_build_luts(sample_rate / refresh_rate);
+   apu_build_luts(apu.samples_per_frame);
+
+   MESSAGE_INFO("APU: Ready! Sample rate = %d, stereo = %d, buffer = %p\n",
+      apu.sample_rate, apu.stereo, apu.buffer);
 
    return &apu;
 }
@@ -819,6 +834,7 @@ void apu_shutdown()
 {
    if (apu.ext && apu.ext->shutdown)
       apu.ext->shutdown();
+   free(apu.buffer);
 }
 
 void apu_setext(apuext_t *ext)

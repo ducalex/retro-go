@@ -191,8 +191,13 @@ typedef struct
    dmc_t dmc;
    uint8 control_reg;
 
+   uint32 sample_rate;
+   uint32 samples_per_frame;
+   bool stereo;
+
+   int16 *buffer;
+
    float cycle_rate;
-   int sample_rate;
 
    struct {
       uint8 state;
@@ -215,11 +220,13 @@ extern "C" {
 #endif /* __cplusplus */
 
 /* Function prototypes */
-extern apu_t *apu_init(int region, int sample_rate);
+extern apu_t *apu_init(int region, int sample_rate, bool stereo);
 extern void apu_refresh(void);
 extern void apu_reset(void);
 extern void apu_shutdown(void);
 extern void apu_setext(apuext_t *ext);
+
+extern void apu_emulate(void);
 
 extern void apu_setopt(apu_option_t n, int val);
 extern int  apu_getopt(apu_option_t n);

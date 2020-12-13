@@ -100,7 +100,7 @@ typedef struct
    uint8 x_loc;
 } ppu_obj_t;
 
-typedef struct ppu_s
+typedef struct
 {
    /* The NES has only 2 nametables, but we allocate 4 for mappers to use */
    uint8 nametab[0x400 * 4];
@@ -116,6 +116,10 @@ typedef struct ppu_s
 
    /* Framebuffer palette */
    rgb_t curpal[256];
+
+   /* Frame buffers */
+   bitmap_t *framebuffers[2];
+   bitmap_t *vidbuf; // Current drawing buffer
 
    /* Hardware registers */
    uint8 ctrl0, ctrl1, stat, oam_addr, nametab_base;

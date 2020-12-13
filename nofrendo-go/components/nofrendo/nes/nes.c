@@ -97,6 +97,10 @@ void nes_emulate(void)
          nes.vidbuf = (nes.vidbuf == framebuffers[1]) ? framebuffers[0] : framebuffers[1];
       }
 
+      apu_emulate();
+
+      // osd_submit_audio(apu.buffer, apu.samples_per_frame);
+
       osd_vsync();
    }
 }
@@ -215,7 +219,7 @@ void nes_setregion(region_t region)
 }
 
 /* Initialize NES CPU, hardware, etc. */
-int nes_init(region_t region, int sample_rate)
+int nes_init(region_t region, int sample_rate, bool stereo)
 {
    memset(&nes, 0, sizeof(nes_t));
 
@@ -243,7 +247,7 @@ int nes_init(region_t region, int sample_rate)
       goto _fail;
 
    /* apu */
-   nes.apu = apu_init(region, sample_rate);
+   nes.apu = apu_init(region, sample_rate, stereo);
    if (NULL == nes.apu)
       goto _fail;
 
