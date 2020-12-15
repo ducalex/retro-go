@@ -43,24 +43,24 @@ static int unsaved_changes = 0;
 #else
     #include <nvs_flash.h>
 
-    static const char* NvsNamespace = "Odroid";
+    static const char* NvsNamespace = "retro-go";
     static nvs_handle my_handle = NULL;
 #endif
 
-void odroid_settings_init()
+void rg_settings_init()
 {
 #ifdef USE_CONFIG_FILE
-    int size = odroid_sdcard_get_filesize(config_file);
+    int size = rg_sdcard_get_filesize(config_file);
     if (size > 0)
     {
         void *buffer = rg_alloc(size, MEM_ANY);
-        odroid_sdcard_read_file(config_file, buffer, size);
+        rg_sdcard_read_file(config_file, buffer, size);
         root = cJSON_Parse(buffer);
         free(buffer);
     }
     if (!root)
     {
-        printf("odroid_system_init: Failed to load JSON config file!\n");
+        printf("rg_system_init: Failed to load JSON config file!\n");
         root = cJSON_CreateObject();
     }
 #else
@@ -81,7 +81,7 @@ void odroid_settings_init()
 #endif
 }
 
-void odroid_settings_commit()
+void rg_settings_commit()
 {
     if (unsaved_changes > 0)
     {
@@ -89,7 +89,7 @@ void odroid_settings_commit()
         char *buffer = cJSON_Print(root);
         if (buffer)
         {
-            odroid_sdcard_write_file(config_file, buffer, strlen(buffer));
+            rg_sdcard_write_file(config_file, buffer, strlen(buffer));
             free(buffer);
         }
 #else
@@ -99,21 +99,21 @@ void odroid_settings_commit()
     }
 }
 
-void odroid_settings_reset()
+void rg_settings_reset()
 {
 #ifdef USE_CONFIG_FILE
     cJSON_free(root);
     root = cJSON_CreateObject();
     unsaved_changes++;
-    odroid_settings_commit();
+    rg_settings_commit();
 #else
     // nvs_flash_deinit()
     // nvs_flash_erase()
-    // odroid_settings_init();
+    // rg_settings_init();
 #endif
 }
 
-char* odroid_settings_string_get(const char *key, const char *default_value)
+char* rg_settings_string_get(const char *key, const char *default_value)
 {
 #ifdef USE_CONFIG_FILE
     cJSON *obj = cJSON_GetObjectItem(root, key);
@@ -145,7 +145,7 @@ char* odroid_settings_string_get(const char *key, const char *default_value)
     return NULL;
 }
 
-void odroid_settings_string_set(const char *key, const char *value)
+void rg_settings_string_set(const char *key, const char *value)
 {
 #ifdef USE_CONFIG_FILE
     json_set(key, cJSON_CreateString(value));
@@ -157,7 +157,7 @@ void odroid_settings_string_set(const char *key, const char *value)
     unsaved_changes++;
 }
 
-int32_t odroid_settings_int32_get(const char *key, int32_t default_value)
+int32_t rg_settings_int32_get(const char *key, int32_t default_value)
 {
 #ifdef USE_CONFIG_FILE
     cJSON *obj = cJSON_GetObjectItem(root, key);
@@ -171,9 +171,9 @@ int32_t odroid_settings_int32_get(const char *key, int32_t default_value)
 #endif
 }
 
-void odroid_settings_int32_set(const char *key, int32_t value)
+void rg_settings_int32_set(const char *key, int32_t value)
 {
-    if (odroid_settings_int32_get(key, ~value) == value)
+    if (rg_settings_int32_get(key, ~value) == value)
         return; // Do nothing
 #ifdef USE_CONFIG_FILE
     json_set(key, cJSON_CreateNumber(value));
@@ -186,156 +186,156 @@ void odroid_settings_int32_set(const char *key, int32_t value)
 }
 
 
-int32_t odroid_settings_app_int32_get(const char *key, int32_t default_value)
+int32_t rg_settings_app_int32_get(const char *key, int32_t default_value)
 {
     char app_key[16];
-    sprintf(app_key, "%.12s.%d", key, odroid_system_get_app()->id);
-    return odroid_settings_int32_get(app_key, default_value);
+    sprintf(app_key, "%.12s.%d", key, rg_system_get_app()->id);
+    return rg_settings_int32_get(app_key, default_value);
 }
 
-void odroid_settings_app_int32_set(const char *key, int32_t value)
+void rg_settings_app_int32_set(const char *key, int32_t value)
 {
     char app_key[16];
-    sprintf(app_key, "%.12s.%d", key, odroid_system_get_app()->id);
-    odroid_settings_int32_set(app_key, value);
+    sprintf(app_key, "%.12s.%d", key, rg_system_get_app()->id);
+    rg_settings_int32_set(app_key, value);
 }
 
 
-int32_t odroid_settings_FontSize_get()
+int32_t rg_settings_FontSize_get()
 {
-    return odroid_settings_int32_get(Key_FontSize, 8);
+    return rg_settings_int32_get(Key_FontSize, 8);
 }
-void odroid_settings_FontSize_set(int32_t value)
+void rg_settings_FontSize_set(int32_t value)
 {
-    odroid_settings_int32_set(Key_FontSize, value);
-}
-
-
-char* odroid_settings_RomFilePath_get()
-{
-    return odroid_settings_string_get(Key_RomFilePath, NULL);
-}
-void odroid_settings_RomFilePath_set(const char* value)
-{
-    odroid_settings_string_set(Key_RomFilePath, value);
+    rg_settings_int32_set(Key_FontSize, value);
 }
 
 
-int32_t odroid_settings_Volume_get()
+char* rg_settings_RomFilePath_get()
 {
-    return odroid_settings_int32_get(Key_Volume, RG_AUDIO_VOL_DEFAULT);
+    return rg_settings_string_get(Key_RomFilePath, NULL);
 }
-void odroid_settings_Volume_set(int32_t value)
+void rg_settings_RomFilePath_set(const char* value)
 {
-    odroid_settings_int32_set(Key_Volume, value);
-}
-
-
-int32_t odroid_settings_AudioSink_get()
-{
-    return odroid_settings_int32_get(Key_AudioSink, RG_AUDIO_SINK_SPEAKER);
-}
-void odroid_settings_AudioSink_set(int32_t value)
-{
-    odroid_settings_int32_set(Key_AudioSink, value);
+    rg_settings_string_set(Key_RomFilePath, value);
 }
 
 
-int32_t odroid_settings_Backlight_get()
+int32_t rg_settings_Volume_get()
 {
-    return odroid_settings_int32_get(Key_Backlight, 2);
+    return rg_settings_int32_get(Key_Volume, RG_AUDIO_VOL_DEFAULT);
 }
-void odroid_settings_Backlight_set(int32_t value)
+void rg_settings_Volume_set(int32_t value)
 {
-    odroid_settings_int32_set(Key_Backlight, value);
-}
-
-
-ODROID_START_ACTION odroid_settings_StartAction_get()
-{
-    return odroid_settings_int32_get(Key_StartAction, 0);
-}
-void odroid_settings_StartAction_set(ODROID_START_ACTION value)
-{
-    odroid_settings_int32_set(Key_StartAction, value);
+    rg_settings_int32_set(Key_Volume, value);
 }
 
 
-int32_t odroid_settings_StartupApp_get()
+int32_t rg_settings_AudioSink_get()
 {
-    return odroid_settings_int32_get(Key_StartupApp, 1);
+    return rg_settings_int32_get(Key_AudioSink, RG_AUDIO_SINK_SPEAKER);
 }
-void odroid_settings_StartupApp_set(int32_t value)
+void rg_settings_AudioSink_set(int32_t value)
 {
-    odroid_settings_int32_set(Key_StartupApp, value);
-}
-
-
-int32_t odroid_settings_Palette_get()
-{
-    return odroid_settings_app_int32_get(Key_Palette, 0);
-}
-void odroid_settings_Palette_set(int32_t value)
-{
-    odroid_settings_app_int32_set(Key_Palette, value);
+    rg_settings_int32_set(Key_AudioSink, value);
 }
 
 
-int32_t odroid_settings_SpriteLimit_get()
+int32_t rg_settings_Backlight_get()
 {
-    return odroid_settings_app_int32_get(Key_SpriteLimit, 1);
+    return rg_settings_int32_get(Key_Backlight, 2);
 }
-void odroid_settings_SpriteLimit_set(int32_t value)
+void rg_settings_Backlight_set(int32_t value)
 {
-    odroid_settings_app_int32_set(Key_SpriteLimit, value);
-}
-
-
-emu_region_t odroid_settings_Region_get()
-{
-    return odroid_settings_app_int32_get(Key_Region, EMU_REGION_AUTO);
-}
-void odroid_settings_Region_set(emu_region_t value)
-{
-    odroid_settings_app_int32_set(Key_Region, value);
+    rg_settings_int32_set(Key_Backlight, value);
 }
 
 
-int32_t odroid_settings_DisplayScaling_get()
+emu_start_action_t rg_settings_StartAction_get()
 {
-    return odroid_settings_app_int32_get(Key_DispScaling, RG_DISPLAY_SCALING_FILL);
+    return rg_settings_int32_get(Key_StartAction, 0);
 }
-void odroid_settings_DisplayScaling_set(int32_t value)
+void rg_settings_StartAction_set(emu_start_action_t value)
 {
-    odroid_settings_app_int32_set(Key_DispScaling, value);
-}
-
-
-int32_t odroid_settings_DisplayFilter_get()
-{
-    return odroid_settings_app_int32_get(Key_DispFilter, RG_DISPLAY_FILTER_OFF);
-}
-void odroid_settings_DisplayFilter_set(int32_t value)
-{
-    odroid_settings_app_int32_set(Key_DispFilter, value);
+    rg_settings_int32_set(Key_StartAction, value);
 }
 
 
-int32_t odroid_settings_DisplayRotation_get()
+int32_t rg_settings_StartupApp_get()
 {
-    return odroid_settings_app_int32_get(Key_DispRotation, RG_DISPLAY_ROTATION_AUTO);
+    return rg_settings_int32_get(Key_StartupApp, 1);
 }
-void odroid_settings_DisplayRotation_set(int32_t value)
+void rg_settings_StartupApp_set(int32_t value)
 {
-    odroid_settings_app_int32_set(Key_DispRotation, value);
+    rg_settings_int32_set(Key_StartupApp, value);
 }
 
 
-int32_t odroid_settings_DisplayOverscan_get()
+int32_t rg_settings_Palette_get()
 {
-    return odroid_settings_app_int32_get(Key_DispOverscan, 1);
+    return rg_settings_app_int32_get(Key_Palette, 0);
 }
-void odroid_settings_DisplayOverscan_set(int32_t value)
+void rg_settings_Palette_set(int32_t value)
 {
-    odroid_settings_app_int32_set(Key_DispOverscan, value);
+    rg_settings_app_int32_set(Key_Palette, value);
+}
+
+
+int32_t rg_settings_SpriteLimit_get()
+{
+    return rg_settings_app_int32_get(Key_SpriteLimit, 1);
+}
+void rg_settings_SpriteLimit_set(int32_t value)
+{
+    rg_settings_app_int32_set(Key_SpriteLimit, value);
+}
+
+
+emu_region_t rg_settings_Region_get()
+{
+    return rg_settings_app_int32_get(Key_Region, EMU_REGION_AUTO);
+}
+void rg_settings_Region_set(emu_region_t value)
+{
+    rg_settings_app_int32_set(Key_Region, value);
+}
+
+
+int32_t rg_settings_DisplayScaling_get()
+{
+    return rg_settings_app_int32_get(Key_DispScaling, RG_DISPLAY_SCALING_FILL);
+}
+void rg_settings_DisplayScaling_set(int32_t value)
+{
+    rg_settings_app_int32_set(Key_DispScaling, value);
+}
+
+
+int32_t rg_settings_DisplayFilter_get()
+{
+    return rg_settings_app_int32_get(Key_DispFilter, RG_DISPLAY_FILTER_OFF);
+}
+void rg_settings_DisplayFilter_set(int32_t value)
+{
+    rg_settings_app_int32_set(Key_DispFilter, value);
+}
+
+
+int32_t rg_settings_DisplayRotation_get()
+{
+    return rg_settings_app_int32_get(Key_DispRotation, RG_DISPLAY_ROTATION_AUTO);
+}
+void rg_settings_DisplayRotation_set(int32_t value)
+{
+    rg_settings_app_int32_set(Key_DispRotation, value);
+}
+
+
+int32_t rg_settings_DisplayOverscan_get()
+{
+    return rg_settings_app_int32_get(Key_DispOverscan, 1);
+}
+void rg_settings_DisplayOverscan_set(int32_t value)
+{
+    rg_settings_app_int32_set(Key_DispOverscan, value);
 }

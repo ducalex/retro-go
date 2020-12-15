@@ -25,8 +25,8 @@
 static uint16_t mypalette[256];
 static uint8_t *framebuffers[2];
 static uint8_t *screen_buffers[2];
-static odroid_video_frame_t frames[2];
-static odroid_video_frame_t *curFrame, *prevFrame;
+static rg_video_frame_t frames[2];
+static rg_video_frame_t *curFrame, *prevFrame;
 static uint8_t current_fb = 0;
 static bool gfx_init_done = false;
 static bool overscan = false;
@@ -78,7 +78,7 @@ void osd_gfx_init(void)
     framebuffers[0] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
     framebuffers[1] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
 
-    overscan = odroid_settings_DisplayOverscan_get();
+    overscan = rg_settings_DisplayOverscan_get();
 
 	// Build palette
 	for (int i = 0; i < 255; i++) {
@@ -115,7 +115,7 @@ void osd_gfx_set_mode(int width, int height)
 
     set_current_fb(0);
 
-    odroid_display_force_refresh();
+    rg_display_force_refresh();
     gfx_init_done = true;
 }
 
@@ -132,7 +132,7 @@ void osd_gfx_blit(void)
         curFrame->pixel_clear = PCE.Palette[0];
         prevFrame = NULL;
 #endif
-        if (odroid_display_queue_update(curFrame, prevFrame) == SCREEN_UPDATE_FULL) {
+        if (rg_display_queue_update(curFrame, prevFrame) == SCREEN_UPDATE_FULL) {
             fullFrames++;
         }
         set_current_fb(!current_fb);
@@ -142,7 +142,7 @@ void osd_gfx_blit(void)
     // See if we need to skip a frame to keep up
     if (skipFrames == 0)
     {
-        rg_app_desc_t *app = odroid_system_get_app();
+        rg_app_desc_t *app = rg_system_get_app();
 #ifndef USE_PARTIAL_FRAMES
         skipFrames++;
 #endif
@@ -169,7 +169,7 @@ static bool overscan_update_cb(dialog_choice_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         overscan = !overscan;
-        odroid_settings_DisplayOverscan_set(overscan);
+        rg_settings_DisplayOverscan_set(overscan);
         osd_gfx_set_mode(current_width, current_height);
     }
 
@@ -185,7 +185,7 @@ static bool advanced_settings_cb(dialog_choice_t *option, dialog_event_t event)
             {2, "Overscan    ", "On ", 1, &overscan_update_cb},
             RG_DIALOG_CHOICE_LAST
         };
-        odroid_overlay_dialog("Advanced", options, 0);
+        rg_gui_dialog("Advanced", options, 0);
     }
     return false;
 }
@@ -197,17 +197,17 @@ int osd_input_init(void)
 
 void osd_input_read(void)
 {
-    gamepad_state_t joystick = odroid_input_read_gamepad();
+    gamepad_state_t joystick = rg_input_read_gamepad();
 
 	if (joystick.values[GAMEPAD_KEY_MENU]) {
-		odroid_overlay_game_menu();
+		rg_gui_game_menu();
 	}
 	else if (joystick.values[GAMEPAD_KEY_VOLUME]) {
         dialog_choice_t options[] = {
             {101, "More...", "", 1, &advanced_settings_cb},
             RG_DIALOG_CHOICE_LAST
         };
-        odroid_overlay_game_settings_menu(options);
+        rg_gui_game_settings_menu(options);
 	}
 
     unsigned char rc = 0;
@@ -243,7 +243,7 @@ audioTask(void *arg)
     while (1)
     {
         snd_update(audioBuffer, AUDIO_BUFFER_LENGTH);
-        odroid_audio_submit(audioBuffer, AUDIO_BUFFER_LENGTH);
+        rg_audio_submit(audioBuffer, AUDIO_BUFFER_LENGTH);
     }
 
     vTaskDelete(NULL);
@@ -260,7 +260,7 @@ void osd_snd_init(void)
 
 void osd_snd_shutdown(void)
 {
-    odroid_audio_stop();
+    rg_audio_stop();
 }
 
 
@@ -300,7 +300,7 @@ void osd_vsync(void)
 		skipFrames++;
 	}
 
-    odroid_system_tick(!blitFrames, fullFrames, (uint)(curtime - prevtime));
+    rg_system_tick(!blitFrames, fullFrames, (uint)(curtime - prevtime));
 	blitFrames = 0;
 	fullFrames = 0;
 

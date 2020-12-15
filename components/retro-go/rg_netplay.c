@@ -70,7 +70,7 @@ static void network_setup(tcpip_adapter_if_t tcpip_if)
     local_player = &players[player_id];
     local_player->id = player_id;
     local_player->version = NETPLAY_VERSION;
-    local_player->game_id = odroid_system_get_app()->gameId;
+    local_player->game_id = rg_system_get_app()->gameId;
     local_player->ip_addr = local_if.ip.addr;
 
     printf("netplay: Local player ID: %d\n", local_player->id);
@@ -349,7 +349,7 @@ static void netplay_init()
 }
 
 
-void odroid_netplay_pre_init(netplay_callback_t callback)
+void rg_netplay_pre_init(netplay_callback_t callback)
 {
     printf("netplay: %s called.\n", __func__);
 
@@ -357,7 +357,7 @@ void odroid_netplay_pre_init(netplay_callback_t callback)
 }
 
 
-bool odroid_netplay_quick_start()
+bool rg_netplay_quick_start()
 {
 #ifdef ENABLE_NETPLAY
     const char *status_msg = "Initializing...";
@@ -365,7 +365,7 @@ bool odroid_netplay_quick_start()
     // short timeout = 100;
     gamepad_state_t joystick;
 
-    odroid_display_clear(0);
+    rg_display_clear(0);
 
     dialog_choice_t choices[] = {
         {1, "Host Game (P1)", "", 1, NULL},
@@ -373,12 +373,12 @@ bool odroid_netplay_quick_start()
         RG_DIALOG_CHOICE_LAST
     };
 
-    int ret = odroid_overlay_dialog("Netplay", choices, 0);
+    int ret = rg_gui_dialog("Netplay", choices, 0);
 
     if (ret == 1)
-        odroid_netplay_start(NETPLAY_MODE_HOST);
+        rg_netplay_start(NETPLAY_MODE_HOST);
     else if (ret == 2)
-        odroid_netplay_start(NETPLAY_MODE_GUEST);
+        rg_netplay_start(NETPLAY_MODE_GUEST);
     else
         return false;
 
@@ -388,7 +388,7 @@ bool odroid_netplay_quick_start()
         {
             case NETPLAY_STATUS_CONNECTED:
                 return remote_player->game_id == local_player->game_id
-                    || odroid_overlay_confirm("ROMs not identical. Continue?", 1);
+                    || rg_gui_confirm("ROMs not identical. Continue?", 1);
                 break;
 
             case NETPLAY_STATUS_HANDSHAKE:
@@ -417,25 +417,25 @@ bool odroid_netplay_quick_start()
 
         if (screen_msg != status_msg)
         {
-            odroid_display_clear(0);
-            odroid_overlay_draw_dialog(status_msg, NULL, 0);
+            rg_display_clear(0);
+            rg_gui_draw_dialog(status_msg, NULL, 0);
             screen_msg = status_msg;
         }
 
-        joystick = odroid_input_read_gamepad();
+        joystick = rg_input_read_gamepad();
 
         if (joystick.values[GAMEPAD_KEY_B]) break;
 
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 
-    odroid_netplay_stop();
+    rg_netplay_stop();
 #endif
     return false;
 }
 
 
-bool odroid_netplay_start(netplay_mode_t mode)
+bool rg_netplay_start(netplay_mode_t mode)
 {
     printf("netplay: %s called.\n", __func__);
 
@@ -447,7 +447,7 @@ bool odroid_netplay_start(netplay_mode_t mode)
     }
     else if (netplay_mode != NETPLAY_MODE_NONE)
     {
-        odroid_netplay_stop();
+        rg_netplay_stop();
     }
 
     memset(&players, 0xFF, sizeof(players));
@@ -488,7 +488,7 @@ bool odroid_netplay_start(netplay_mode_t mode)
 }
 
 
-bool odroid_netplay_stop()
+bool rg_netplay_stop()
 {
     printf("netplay: %s called.\n", __func__);
 
@@ -507,7 +507,7 @@ bool odroid_netplay_stop()
 }
 
 
-void odroid_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
+void rg_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
 {
 #ifdef ENABLE_NETPLAY
     static uint sync_count = 0, sync_time = 0, start_time = 0;
@@ -551,7 +551,7 @@ void odroid_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
     if (xSemaphoreTake(netplay_sync, 10000 / portTICK_PERIOD_MS) != pdPASS)
     {
         printf("netplay: [Error] Lost sync...\n");
-        odroid_netplay_stop();
+        rg_netplay_stop();
         return;
     }
 
@@ -576,13 +576,13 @@ void odroid_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
 }
 
 
-netplay_mode_t odroid_netplay_mode()
+netplay_mode_t rg_netplay_mode()
 {
     return netplay_mode;
 }
 
 
-netplay_status_t odroid_netplay_status()
+netplay_status_t rg_netplay_status()
 {
     return netplay_status;
 }

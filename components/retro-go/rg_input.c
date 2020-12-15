@@ -45,7 +45,7 @@ static inline gamepad_state_t external_gamepad_read(void)
     gamepad_state_t state = {0};
 
     // Unfortunately the GO doesn't bring out enough GPIO for both ext DAC and controller...
-    if (odroid_audio_get_sink() != RG_AUDIO_SINK_DAC)
+    if (rg_audio_get_sink() != RG_AUDIO_SINK_DAC)
     {
         // NES / SNES shift register
     }
@@ -108,7 +108,7 @@ static void input_task(void *arg)
     vTaskDelete(NULL);
 }
 
-void odroid_input_init(void)
+void rg_input_init(void)
 {
     assert(input_task_is_running == false);
 
@@ -136,15 +136,15 @@ void odroid_input_init(void)
     // Start background polling
     xTaskCreatePinnedToCore(&input_task, "input_task", 2048, NULL, 5, NULL, 1);
 
-  	printf("odroid_input_init done.\n");
+  	printf("rg_input_init done.\n");
 }
 
-void odroid_input_terminate(void)
+void rg_input_terminate(void)
 {
     input_task_is_running = false;
 }
 
-long odroid_input_gamepad_last_read(void)
+long rg_input_gamepad_last_read(void)
 {
     if (!last_gamepad_read)
         return 0;
@@ -152,7 +152,7 @@ long odroid_input_gamepad_last_read(void)
     return get_elapsed_time_since(last_gamepad_read);
 }
 
-gamepad_state_t odroid_input_read_gamepad(void)
+gamepad_state_t rg_input_read_gamepad(void)
 {
     assert(input_task_is_running == true);
 
@@ -165,9 +165,9 @@ gamepad_state_t odroid_input_read_gamepad(void)
     return state;
 }
 
-bool odroid_input_key_is_pressed(gamepad_key_t key)
+bool rg_input_key_is_pressed(gamepad_key_t key)
 {
-    gamepad_state_t joystick = odroid_input_read_gamepad();
+    gamepad_state_t joystick = rg_input_read_gamepad();
 
     if (key == GAMEPAD_KEY_ANY) {
         return joystick.bitmask > 0 ? 1 : 0;
@@ -176,15 +176,15 @@ bool odroid_input_key_is_pressed(gamepad_key_t key)
     return joystick.values[key];
 }
 
-void odroid_input_wait_for_key(gamepad_key_t key, bool pressed)
+void rg_input_wait_for_key(gamepad_key_t key, bool pressed)
 {
-	while (odroid_input_key_is_pressed(key) != pressed)
+	while (rg_input_key_is_pressed(key) != pressed)
     {
         vTaskDelay(1);
     }
 }
 
-battery_state_t odroid_input_read_battery()
+battery_state_t rg_input_read_battery()
 {
     static esp_adc_cal_characteristics_t adc_chars;
     static float adcValue = 0.0f;

@@ -15,17 +15,15 @@
 #define KEY_SHOW_EMPTY    "ShowEmptyTabs"
 #define KEY_SHOW_COVER    "ShowGameCover"
 
-bool ftp_server_running = false;
-
 static bool font_size_cb(dialog_choice_t *option, dialog_event_t event)
 {
-    int font_size = odroid_overlay_get_font_size();
+    int font_size = rg_gui_get_font_size();
     if (event == RG_DIALOG_PREV && font_size > 8) {
-        odroid_overlay_set_font_size(font_size -= 4);
+        rg_gui_set_font_size(font_size -= 4);
         gui_redraw();
     }
     if (event == RG_DIALOG_NEXT && font_size < 16) {
-        odroid_overlay_set_font_size(font_size += 4);
+        rg_gui_set_font_size(font_size += 4);
         gui_redraw();
     }
     sprintf(option->value, "%d", font_size);
@@ -39,7 +37,7 @@ static bool show_empty_cb(dialog_choice_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         gui.show_empty = !gui.show_empty;
-        odroid_settings_int32_set(KEY_SHOW_EMPTY, gui.show_empty);
+        rg_settings_int32_set(KEY_SHOW_EMPTY, gui.show_empty);
     }
     strcpy(option->value, gui.show_empty ? "Yes" : "No");
     return event == RG_DIALOG_ENTER;
@@ -47,10 +45,10 @@ static bool show_empty_cb(dialog_choice_t *option, dialog_event_t event)
 
 static bool startup_app_cb(dialog_choice_t *option, dialog_event_t event)
 {
-    int startup_app = odroid_settings_StartupApp_get();
+    int startup_app = rg_settings_StartupApp_get();
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         startup_app = startup_app ? 0 : 1;
-        odroid_settings_StartupApp_set(startup_app);
+        rg_settings_StartupApp_set(startup_app);
     }
     strcpy(option->value, startup_app == 0 ? "Launcher" : "LastUsed");
     return event == RG_DIALOG_ENTER;
@@ -60,11 +58,11 @@ static bool show_cover_cb(dialog_choice_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_PREV) {
         if (--gui.show_cover < 0) gui.show_cover = 2;
-        odroid_settings_int32_set(KEY_SHOW_COVER, gui.show_cover);
+        rg_settings_int32_set(KEY_SHOW_COVER, gui.show_cover);
     }
     if (event == RG_DIALOG_NEXT) {
         if (++gui.show_cover > 2) gui.show_cover = 0;
-        odroid_settings_int32_set(KEY_SHOW_COVER, gui.show_cover);
+        rg_settings_int32_set(KEY_SHOW_COVER, gui.show_cover);
     }
     if (gui.show_cover == 0) strcpy(option->value, "No");
     if (gui.show_cover == 1) strcpy(option->value, "Slow");
@@ -77,44 +75,16 @@ static bool color_shift_cb(dialog_choice_t *option, dialog_event_t event)
     int max = gui_themes_count - 1;
     if (event == RG_DIALOG_PREV) {
         if (--gui.theme < 0) gui.theme = max;
-        odroid_settings_int32_set(KEY_GUI_THEME, gui.theme);
+        rg_settings_int32_set(KEY_GUI_THEME, gui.theme);
         gui_redraw();
     }
     if (event == RG_DIALOG_NEXT) {
         if (++gui.theme > max) gui.theme = 0;
-        odroid_settings_int32_set(KEY_GUI_THEME, gui.theme);
+        rg_settings_int32_set(KEY_GUI_THEME, gui.theme);
         gui_redraw();
     }
     sprintf(option->value, "%d/%d", gui.theme + 1, max + 1);
     return event == RG_DIALOG_ENTER;
-}
-
-static bool ftp_server_cb(dialog_choice_t *option, dialog_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-    {
-        dialog_choice_t choices[] = {
-            {0, "Status", "Running", 1, NULL},
-            {0, "SSID", "retro-go", 1, NULL},
-            {0, "IP", "0.0.0.0", 1, NULL},
-            {0, "---", "", -1, NULL},
-            {1, "Stop Server", "", 1, NULL},
-            RG_DIALOG_CHOICE_LAST
-        };
-
-        if (ftp_server_running) {
-            strcpy(choices[0].value, "Running");
-            choices[4].label = "Stop Server";
-        } else {
-            strcpy(choices[0].value, "Stopped");
-            choices[4].label = "Start Server";
-        }
-
-        if (odroid_overlay_dialog("FTP Server", choices, -1) == 1) {
-            // ftp_server_running = !ftp_server_running;
-        }
-    }
-    return false;
 }
 
 static inline bool tab_enabled(tab_t *tab)
@@ -139,10 +109,10 @@ void retro_loop()
     int last_key = -1;
     int selected_tab_last = -1;
 
-    gui.selected   = odroid_settings_int32_get(KEY_SELECTED_TAB, 0);
-    gui.theme      = odroid_settings_int32_get(KEY_GUI_THEME, 0);
-    gui.show_empty = odroid_settings_int32_get(KEY_SHOW_EMPTY, 1);
-    gui.show_cover = odroid_settings_int32_get(KEY_SHOW_COVER, 1);
+    gui.selected   = rg_settings_int32_get(KEY_SELECTED_TAB, 0);
+    gui.theme      = rg_settings_int32_get(KEY_GUI_THEME, 0);
+    gui.show_empty = rg_settings_int32_get(KEY_SHOW_EMPTY, 1);
+    gui.show_cover = rg_settings_int32_get(KEY_SHOW_COVER, 1);
 
     while (true)
     {
@@ -177,7 +147,7 @@ void retro_loop()
             selected_tab_last = gui.selected;
         }
 
-        gui.joystick = odroid_input_read_gamepad();
+        gui.joystick = rg_input_read_gamepad();
 
         if (gui.idle_counter > 0 && gui.joystick.bitmask == 0)
         {
@@ -205,8 +175,6 @@ void retro_loop()
                     {0, "Date", "", 1, NULL},
                     {0, "By", "ducalex", 1, NULL},
                     {0, "--", "", -1, NULL},
-                    {3, "FTP server", "", 1, &ftp_server_cb},
-                    {0, "--", "", -1, NULL},
                     {1, "Reboot to firmware", "", 1, NULL},
                     {2, "Reset settings", "", 1, NULL},
                     {0, "Close", "", 1, NULL},
@@ -220,14 +188,14 @@ void retro_loop()
                 if (strstr(app->version, "-0-") == strrchr(app->version, '-') - 2)
                     sprintf(strstr(choices[0].value, "-0-") , " (%s)", strrchr(app->version, '-') + 1);
 
-                int sel = odroid_overlay_dialog("Retro-Go", choices, -1);
+                int sel = rg_gui_dialog("Retro-Go", choices, -1);
                 if (sel == 1) {
-                    odroid_system_switch_app(RG_APP_FACTORY);
+                    rg_system_switch_app(RG_APP_FACTORY);
                 }
                 else if (sel == 2) {
-                    if (odroid_overlay_confirm("Reset all settings?", false) == 1) {
-                        odroid_settings_reset();
-                        odroid_system_restart();
+                    if (rg_gui_confirm("Reset all settings?", false) == 1) {
+                        rg_settings_reset();
+                        rg_system_restart();
                     }
                 }
                 gui_redraw();
@@ -243,7 +211,7 @@ void retro_loop()
                     {0, "Startup app", "Last", 1, &startup_app_cb},
                     RG_DIALOG_CHOICE_LAST
                 };
-                odroid_overlay_settings_menu(choices);
+                rg_gui_settings_menu(choices);
                 gui_redraw();
             }
             else if (last_key == GAMEPAD_KEY_SELECT) {
@@ -286,8 +254,8 @@ void retro_loop()
 
 void app_main(void)
 {
-    odroid_system_init(0, 32000);
-    odroid_display_clear(0);
+    rg_system_init(0, 32000);
+    rg_display_clear(0);
 
     emulators_init();
     favorites_init();

@@ -17,7 +17,7 @@
 #include "rg_display.h"
 #include "rg_input.h"
 #include "rg_netplay.h"
-#include "rg_overlay.h"
+#include "rg_gui.h"
 #include "rg_profiler.h"
 #include "rg_sdcard.h"
 #include "rg_settings.h"
@@ -104,28 +104,29 @@ typedef struct
 
 #define PANIC_TRACE_MAGIC 0x12345678
 
-void odroid_system_init(int app_id, int sampleRate);
-char *odroid_system_get_path(emu_path_type_t type, const char *romPath);
-void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t netplay_cb);
-bool odroid_system_emu_save_state(int slot);
-bool odroid_system_emu_load_state(int slot);
-void odroid_system_panic_dialog(const char *reason);
-void odroid_system_panic(const char *reason, const char *function, const char *file) __attribute__((noreturn));
-void odroid_system_halt() __attribute__((noreturn));
-void odroid_system_sleep() __attribute__((noreturn));
-void odroid_system_restart() __attribute__((noreturn));
-void odroid_system_switch_app(const char *app) __attribute__((noreturn));
-void odroid_system_set_boot_app(const char *app);
-bool odroid_system_find_app(const char *app);
-void odroid_system_set_led(int value);
-void odroid_system_tick(uint skippedFrame, uint fullFrame, uint busyTime);
-rg_app_desc_t *odroid_system_get_app();
-runtime_stats_t odroid_system_get_stats();
+void rg_system_init(int app_id, int sampleRate);
+void rg_system_panic_dialog(const char *reason);
+void rg_system_panic(const char *reason, const char *function, const char *file) __attribute__((noreturn));
+void rg_system_halt() __attribute__((noreturn));
+void rg_system_sleep() __attribute__((noreturn));
+void rg_system_restart() __attribute__((noreturn));
+void rg_system_switch_app(const char *app) __attribute__((noreturn));
+void rg_system_set_boot_app(const char *app);
+bool rg_system_find_app(const char *app);
+void rg_system_set_led(int value);
+void rg_system_tick(uint skippedFrame, uint fullFrame, uint busyTime);
+rg_app_desc_t *rg_system_get_app();
+runtime_stats_t rg_system_get_stats();
 
-void odroid_system_spi_lock_acquire(spi_lock_res_t);
-void odroid_system_spi_lock_release(spi_lock_res_t);
+void rg_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t netplay_cb);
+char *rg_emu_get_path(emu_path_type_t type, const char *romPath);
+bool rg_emu_save_state(int slot);
+bool rg_emu_load_state(int slot);
 
-/* helpers */
+void rg_spi_lock_acquire(spi_lock_res_t);
+void rg_spi_lock_release(spi_lock_res_t);
+
+/* Utilities */
 
 static inline uint get_frame_time(uint refresh_rate)
 {
@@ -150,7 +151,7 @@ static inline uint get_elapsed_time_since(uint start)
 #define MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
 
 // This should really support printf format...
-#define RG_PANIC(x) odroid_system_panic(x, __FUNCTION__, __FILE__)
+#define RG_PANIC(x) rg_system_panic(x, __FUNCTION__, __FILE__)
 
 #define MEM_ANY 0
 #define MEM_SLOW MALLOC_CAP_SPIRAM

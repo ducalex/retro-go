@@ -1,5 +1,6 @@
 # Description
-Retro-Go is a launcher and framework to run emulators on the ODROID-GO. It comes with many emulators!
+Retro-Go is a launcher and framework to run emulators on the ODROID-GO and compatible ESP32 devices. 
+It comes with many emulators!
 
 ### Supported systems:
 - NES
@@ -11,7 +12,7 @@ Retro-Go is a launcher and framework to run emulators on the ODROID-GO. It comes
 - PC Engine
 - Lynx
 
-### Compared to other similar projects for the ODROID-GO, Retro-Go brings:
+### Retro-Go features:
 - In-game menu
 - Favorites support
 - GB RTC adjust and save

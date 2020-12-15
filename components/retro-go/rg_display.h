@@ -56,7 +56,7 @@ typedef struct {
     short left;
     short width;
     short repeat;
-} odroid_line_diff_t;
+} rg_line_diff_t;
 
 typedef struct {
     int width;          // In px
@@ -68,27 +68,27 @@ typedef struct {
     void *buffer;       // Should be at least height*stride bytes
     void *palette;      //
     uint8_t pal_shift_mask;
-    odroid_line_diff_t diff[256];
-} odroid_video_frame_t;
+    rg_line_diff_t diff[256];
+} rg_video_frame_t;
 
-void odroid_display_init();
-void odroid_display_deinit();
-void odroid_display_drain_spi();
-void odroid_display_write(short left, short top, short width, short height, short stride, const void* bufferLE);
-void odroid_display_clear(uint16_t colorLE);
-void odroid_display_show_hourglass();
-void odroid_display_force_refresh(void);
-void odroid_display_set_scale(short width, short height, double aspect_ratio);
-short odroid_display_queue_update(odroid_video_frame_t *frame, odroid_video_frame_t *previousFrame);
+void rg_display_init();
+void rg_display_deinit();
+void rg_display_drain_spi();
+void rg_display_write(short left, short top, short width, short height, short stride, const void* bufferLE);
+void rg_display_clear(uint16_t colorLE);
+void rg_display_show_hourglass();
+void rg_display_force_refresh(void);
+void rg_display_set_scale(short width, short height, double aspect_ratio);
+screen_update_t rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *previousFrame);
 
-display_backlight_t odroid_display_get_backlight();
-void odroid_display_set_backlight(display_backlight_t level);
+display_backlight_t rg_display_get_backlight();
+void rg_display_set_backlight(display_backlight_t level);
 
-display_scaling_t odroid_display_get_scaling_mode(void);
-void odroid_display_set_scaling_mode(display_scaling_t mode);
+display_scaling_t rg_display_get_scaling_mode(void);
+void rg_display_set_scaling_mode(display_scaling_t mode);
 
-display_filter_t odroid_display_get_filter_mode(void);
-void odroid_display_set_filter_mode(display_filter_t mode);
+display_filter_t rg_display_get_filter_mode(void);
+void rg_display_set_filter_mode(display_filter_t mode);
 
-display_rotation_t odroid_display_get_rotation(void);
-void odroid_display_set_rotation(display_rotation_t rotation);
+display_rotation_t rg_display_get_rotation(void);
+void rg_display_set_rotation(display_rotation_t rotation);

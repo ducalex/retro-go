@@ -19,9 +19,9 @@
 static uint32_t audioBuffer[AUDIO_BUFFER_LENGTH];
 
 static uint16_t palettes[2][32];
-static odroid_video_frame_t update1;
-static odroid_video_frame_t update2;
-static odroid_video_frame_t *currentUpdate = &update1;
+static rg_video_frame_t update1;
+static rg_video_frame_t update2;
+static rg_video_frame_t *currentUpdate = &update1;
 
 static uint skipFrames = 0;
 
@@ -45,11 +45,11 @@ static void netplay_callback(netplay_event_t event, void *arg)
    switch (event)
    {
       case NETPLAY_EVENT_STATUS_CHANGED:
-         new_netplay = (odroid_netplay_status() == NETPLAY_STATUS_CONNECTED);
+         new_netplay = (rg_netplay_status() == NETPLAY_STATUS_CONNECTED);
 
          if (netplay && !new_netplay)
          {
-            odroid_overlay_alert("Connection lost!");
+            rg_gui_alert("Connection lost!");
          }
          else if (!netplay && new_netplay)
          {
@@ -63,7 +63,7 @@ static void netplay_callback(netplay_event_t event, void *arg)
          break;
    }
 
-   if (netplay && odroid_netplay_mode() == NETPLAY_MODE_GUEST)
+   if (netplay && rg_netplay_mode() == NETPLAY_MODE_GUEST)
    {
       localJoystick = &joystick2;
       remoteJoystick = &joystick1;
@@ -105,14 +105,14 @@ static bool LoadState(char *pathName)
 
 void app_main(void)
 {
-    odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    odroid_system_emu_init(&LoadState, &SaveState, NULL);
+    rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
+    rg_emu_init(&LoadState, &SaveState, NULL);
 
     update1.buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
     update2.buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
 
     // Load ROM
-    rg_app_desc_t *app = odroid_system_get_app();
+    rg_app_desc_t *app = rg_system_get_app();
 
     load_rom(app->romPath);
 
@@ -139,12 +139,12 @@ void app_main(void)
     consoleIsSMS = sms.console == CONSOLE_SMS || sms.console == CONSOLE_SMS2;
     consoleIsGG  = sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS;
 
-    // if (consoleIsSMS) odroid_system_set_app_id(APP_ID + 1);
-    // if (consoleIsGG)  odroid_system_set_app_id(APP_ID + 2);
+    // if (consoleIsSMS) rg_system_set_app_id(APP_ID + 1);
+    // if (consoleIsGG)  rg_system_set_app_id(APP_ID + 2);
 
-    if (app->startAction == ODROID_START_ACTION_RESUME)
+    if (app->startAction == EMU_START_ACTION_RESUME)
     {
-        odroid_system_emu_load_state(0);
+        rg_emu_load_state(0);
     }
 
     update1.width  = update2.width  = bitmap.viewport.w;
@@ -165,13 +165,13 @@ void app_main(void)
 
     while (true)
     {
-        *localJoystick = odroid_input_read_gamepad();
+        *localJoystick = rg_input_read_gamepad();
 
         if (localJoystick->values[GAMEPAD_KEY_MENU]) {
-            odroid_overlay_game_menu();
+            rg_gui_game_menu();
         }
         else if (localJoystick->values[GAMEPAD_KEY_VOLUME]) {
-            odroid_overlay_game_settings_menu(NULL);
+            rg_gui_game_settings_menu(NULL);
         }
 
         uint startTime = get_elapsed_time();
@@ -179,7 +179,7 @@ void app_main(void)
 
         if (netplay)
         {
-            odroid_netplay_sync(localJoystick, remoteJoystick, sizeof(gamepad_state_t));
+            rg_netplay_sync(localJoystick, remoteJoystick, sizeof(gamepad_state_t));
         }
 
         input.pad[0] = 0x00;
@@ -220,7 +220,7 @@ void app_main(void)
 
             if (localJoystick->values[GAMEPAD_KEY_SELECT])
             {
-                odroid_input_wait_for_key(GAMEPAD_KEY_SELECT, false);
+                rg_input_wait_for_key(GAMEPAD_KEY_SELECT, false);
                 system_reset();
             }
 
@@ -277,11 +277,11 @@ void app_main(void)
 
         if (drawFrame)
         {
-            odroid_video_frame_t *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
+            rg_video_frame_t *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
 
             render_copy_palette(currentUpdate->palette);
 
-            fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
+            fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
 
             // Swap buffers
             currentUpdate = previousUpdate;
@@ -300,7 +300,7 @@ void app_main(void)
         }
 
         // Tick before submitting audio/syncing
-        odroid_system_tick(!drawFrame, fullFrame, get_elapsed_time_since(startTime));
+        rg_system_tick(!drawFrame, fullFrame, get_elapsed_time_since(startTime));
 
         if (!app->speedupEnabled)
         {
@@ -310,7 +310,7 @@ void app_main(void)
                 audioBuffer[i] = snd.output[0][i] << 16 | snd.output[1][i];
             }
 
-            odroid_audio_submit((short*)audioBuffer, snd.sample_count);
+            rg_audio_submit((short*)audioBuffer, snd.sample_count);
         }
     }
 }

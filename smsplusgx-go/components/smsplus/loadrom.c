@@ -367,7 +367,7 @@ int load_rom(const char *filename)
   cart.sram = cart.sram ?: rg_alloc(0x8000, MEM_SLOW);
   cart.rom = cart.rom ?: rg_alloc(0x200000, MEM_SLOW);
 
-  int actual_size = odroid_sdcard_read_file(filename, cart.rom, 0x200000);
+  int actual_size = rg_sdcard_read_file(filename, cart.rom, 0x200000);
   if (actual_size <= 0)
   {
       RG_PANIC("ROM file loading failed!");

@@ -20,10 +20,10 @@ static uint romCRC32;
 static size_t romSize;
 
 static uint16_t myPalette[64];
-static odroid_video_frame_t update1 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 0x3F, -1, NULL, myPalette, 0, {}};
-static odroid_video_frame_t update2 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 0x3F, -1, NULL, myPalette, 0, {}};
-static odroid_video_frame_t *currentUpdate = &update1;
-static odroid_video_frame_t *previousUpdate = NULL;
+static rg_video_frame_t update1 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 0x3F, -1, NULL, myPalette, 0, {}};
+static rg_video_frame_t update2 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 0x3F, -1, NULL, myPalette, 0, {}};
+static rg_video_frame_t *currentUpdate = &update1;
+static rg_video_frame_t *previousUpdate = NULL;
 
 static gamepad_state_t joystick1;
 static gamepad_state_t joystick2;
@@ -51,11 +51,11 @@ static void netplay_callback(netplay_event_t event, void *arg)
    switch (event)
    {
       case NETPLAY_EVENT_STATUS_CHANGED:
-         new_netplay = (odroid_netplay_status() == NETPLAY_STATUS_CONNECTED);
+         new_netplay = (rg_netplay_status() == NETPLAY_STATUS_CONNECTED);
 
          if (netplay && !new_netplay)
          {
-            odroid_overlay_alert("Connection lost!");
+            rg_gui_alert("Connection lost!");
          }
          else if (!netplay && new_netplay)
          {
@@ -72,7 +72,7 @@ static void netplay_callback(netplay_event_t event, void *arg)
          break;
    }
 
-   if (netplay && odroid_netplay_mode() == NETPLAY_MODE_GUEST)
+   if (netplay && rg_netplay_mode() == NETPLAY_MODE_GUEST)
    {
       localJoystick = &joystick2;
       remoteJoystick = &joystick1;
@@ -103,11 +103,11 @@ static bool LoadState(char *pathName)
 
 static bool sprite_limit_cb(dialog_choice_t *option, dialog_event_t event)
 {
-   int val = odroid_settings_SpriteLimit_get();
+   int val = rg_settings_SpriteLimit_get();
 
    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
       val = val ? 0 : 1;
-      odroid_settings_SpriteLimit_set(val);
+      rg_settings_SpriteLimit_set(val);
       ppu_setopt(PPU_LIMIT_SPRITES, val);
    }
 
@@ -120,7 +120,7 @@ static bool overscan_update_cb(dialog_choice_t *option, dialog_event_t event)
 {
    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
       overscan = !overscan;
-      odroid_settings_DisplayOverscan_set(overscan);
+      rg_settings_DisplayOverscan_set(overscan);
    }
 
    strcpy(option->value, overscan ? "Auto" : "Off ");
@@ -138,7 +138,7 @@ static bool autocrop_update_cb(dialog_choice_t *option, dialog_event_t event)
 
    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
       autocrop = val;
-      odroid_settings_app_int32_set(NVS_KEY_AUTOCROP, autocrop);
+      rg_settings_app_int32_set(NVS_KEY_AUTOCROP, autocrop);
    }
 
    if (val == 0) strcpy(option->value, "Never ");
@@ -150,14 +150,14 @@ static bool autocrop_update_cb(dialog_choice_t *option, dialog_event_t event)
 
 static bool region_update_cb(dialog_choice_t *option, dialog_event_t event)
 {
-   int val = odroid_settings_Region_get();
+   int val = rg_settings_Region_get();
    int max = 2;
 
    if (event == RG_DIALOG_PREV) val = val > 0 ? val - 1 : max;
    if (event == RG_DIALOG_NEXT) val = val < max ? val + 1 : 0;
 
    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
-      odroid_settings_Region_set(val);
+      rg_settings_Region_set(val);
    }
 
    if (val == EMU_REGION_AUTO) strcpy(option->value, "Auto");
@@ -177,7 +177,7 @@ static bool advanced_settings_cb(dialog_choice_t *option, dialog_event_t event)
          {4, "Sprite limit", "On   ", 1, &sprite_limit_cb},
          RG_DIALOG_CHOICE_LAST
       };
-      odroid_overlay_dialog("Advanced", options, 0);
+      rg_gui_dialog("Advanced", options, 0);
    }
    return false;
 }
@@ -191,10 +191,10 @@ static bool palette_update_cb(dialog_choice_t *option, dialog_event_t event)
    if (event == RG_DIALOG_NEXT) pal = pal < max ? pal + 1 : 0;
 
    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
-      odroid_settings_Palette_set(pal);
+      rg_settings_Palette_set(pal);
       ppu_setopt(PPU_PALETTE_RGB, pal);
-      odroid_display_queue_update(currentUpdate, NULL);
-      odroid_display_queue_update(currentUpdate, NULL);
+      rg_display_queue_update(currentUpdate, NULL);
+      rg_display_queue_update(currentUpdate, NULL);
    }
 
    sprintf(option->value, "%.7s", ppu_getpalette(pal)->name);
@@ -214,15 +214,15 @@ uint osd_getromcrc()
 
 void osd_loadstate()
 {
-   if (odroid_system_get_app()->startAction == ODROID_START_ACTION_RESUME)
+   if (app->startAction == EMU_START_ACTION_RESUME)
    {
-      odroid_system_emu_load_state(0);
+      rg_emu_load_state(0);
    }
 
-   ppu_setopt(PPU_LIMIT_SPRITES, odroid_settings_SpriteLimit_get());
-   ppu_setopt(PPU_PALETTE_RGB, odroid_settings_Palette_get());
-   overscan = odroid_settings_DisplayOverscan_get();
-   autocrop = odroid_settings_app_int32_get(NVS_KEY_AUTOCROP, 0);
+   ppu_setopt(PPU_LIMIT_SPRITES, rg_settings_SpriteLimit_get());
+   ppu_setopt(PPU_PALETTE_RGB, rg_settings_Palette_get());
+   overscan = rg_settings_DisplayOverscan_get();
+   autocrop = rg_settings_app_int32_get(NVS_KEY_AUTOCROP, 0);
 
    nes = nes_getptr();
    frameTime = get_frame_time(nes->refresh_rate);
@@ -265,14 +265,14 @@ void osd_vsync()
    }
 
    // Tick before submitting audio/syncing
-   odroid_system_tick(!nes->drawframe, fullFrame, elapsed);
+   rg_system_tick(!nes->drawframe, fullFrame, elapsed);
 
    nes->drawframe = (skipFrames == 0);
 
    // Use audio to throttle emulation
    if (!app->speedupEnabled)
    {
-      odroid_audio_submit(nes->apu->buffer, nes->apu->samples_per_frame);
+      rg_audio_submit(nes->apu->buffer, nes->apu->samples_per_frame);
    }
 
    lastSyncTime = get_elapsed_time();
@@ -288,7 +288,7 @@ void osd_setpalette(rgb_t *pal)
       uint16_t c = (pal[i].b>>3) + ((pal[i].g>>2)<<5) + ((pal[i].r>>3)<<11);
       myPalette[i] = (c>>8) | ((c&0xff)<<8);
    }
-   odroid_display_force_refresh();
+   rg_display_force_refresh();
 }
 
 void osd_blitscreen(bitmap_t *bmp)
@@ -301,7 +301,7 @@ void osd_blitscreen(bitmap_t *bmp)
    currentUpdate->width  = bmp->width - (crop_h * 2);
    currentUpdate->height = bmp->height - (crop_v * 2);
 
-   fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
+   fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
 
    previousUpdate = currentUpdate;
    currentUpdate = (currentUpdate == &update1) ? &update2 : &update1;
@@ -311,11 +311,11 @@ void osd_getinput(void)
 {
    uint16 pad0 = 0, pad1 = 0;
 
-   *localJoystick = odroid_input_read_gamepad();
+   *localJoystick = rg_input_read_gamepad();
 
    if (localJoystick->values[GAMEPAD_KEY_MENU])
    {
-      odroid_overlay_game_menu();
+      rg_gui_game_menu();
    }
    else if (localJoystick->values[GAMEPAD_KEY_VOLUME])
    {
@@ -324,12 +324,12 @@ void osd_getinput(void)
             {101, "More...", "", 1, &advanced_settings_cb},
             RG_DIALOG_CHOICE_LAST
       };
-      odroid_overlay_game_settings_menu(options);
+      rg_gui_game_settings_menu(options);
    }
 
    if (netplay)
    {
-      odroid_netplay_sync(localJoystick, remoteJoystick, sizeof(gamepad_state_t));
+      rg_netplay_sync(localJoystick, remoteJoystick, sizeof(gamepad_state_t));
       if (joystick2.values[GAMEPAD_KEY_START])  pad1 |= INP_PAD_START;
       if (joystick2.values[GAMEPAD_KEY_SELECT]) pad1 |= INP_PAD_SELECT;
       if (joystick2.values[GAMEPAD_KEY_UP])     pad1 |= INP_PAD_UP;
@@ -357,10 +357,10 @@ void osd_getinput(void)
 void app_main(void)
 {
    heap_caps_malloc_extmem_enable(64 * 1024);
-   odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-   odroid_system_emu_init(&LoadState, &SaveState, &netplay_callback);
+   rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
+   rg_emu_init(&LoadState, &SaveState, &netplay_callback);
 
-   app = odroid_system_get_app();
+   app = rg_system_get_app();
 
    romData = rg_alloc(0x200000, MEM_ANY);
 
@@ -370,12 +370,12 @@ void app_main(void)
    if (strcasecmp(romPath + (strlen(romPath) - 4), ".zip") == 0)
    {
       printf("app_main ROM: Reading compressed file: %s\n", romPath);
-      romSize = odroid_sdcard_unzip_file(romPath, romData, 0x200000);
+      romSize = rg_sdcard_unzip_file(romPath, romData, 0x200000);
    }
    else
    {
       printf("app_main ROM: Reading file: %s\n", romPath);
-      romSize = odroid_sdcard_read_file(romPath, romData, 0x200000);
+      romSize = rg_sdcard_read_file(romPath, romData, 0x200000);
    }
 
    printf("app_main ROM: romSize=%d\n", romSize);
@@ -388,7 +388,7 @@ void app_main(void)
 
    int region, ret;
 
-   switch(odroid_settings_Region_get())
+   switch(rg_settings_Region_get())
    {
       case EMU_REGION_AUTO: region = NES_AUTO; break;
       case EMU_REGION_NTSC: region = NES_NTSC; break;

@@ -40,10 +40,10 @@ static SemaphoreHandle_t spiMutex;
 static spi_lock_res_t spiMutexOwner;
 #endif
 
-static void odroid_system_monitor_task(void *arg);
+static void rg_system_monitor_task(void *arg);
 
 
-static void odroid_system_gpio_init()
+static void rg_system_gpio_init()
 {
     rtc_gpio_deinit(RG_GPIO_GAMEPAD_MENU);
     //rtc_gpio_deinit(GPIO_NUM_14);
@@ -63,7 +63,7 @@ static void odroid_system_gpio_init()
     gpio_set_level(RG_GPIO_DAC2, 0);
 }
 
-void odroid_system_init(int appId, int sampleRate)
+void rg_system_init(int appId, int sampleRate)
 {
     const esp_app_desc_t *app = esp_ota_get_app_description();
 
@@ -73,53 +73,52 @@ void odroid_system_init(int appId, int sampleRate)
 
     printf("%s: %d KB free\n", __func__, esp_get_free_heap_size() / 1024);
 
-    // Seed C's pseudo random number generator
-    srand(esp_random());
-
-    memset(&currentApp, 0, sizeof(currentApp));
-
     #if USE_SPI_MUTEX
     spiMutex = xSemaphoreCreateMutex();
     spiMutexOwner = -1;
     #endif
 
+    // Seed C's pseudo random number generator
+    srand(esp_random());
+
+    memset(&currentApp, 0, sizeof(currentApp));
     currentApp.id = appId;
 
-    // sdcard init must be before odroid_display_init()
-    // and odroid_settings_init() if JSON is used
-    bool sd_init = (odroid_sdcard_open() == 0);
+    // sdcard init must be before rg_display_init()
+    // and rg_settings_init() if JSON is used
+    bool sd_init = (rg_sdcard_mount() == 0);
 
-    odroid_settings_init();
-    odroid_overlay_init();
-    odroid_system_gpio_init();
-    odroid_input_init();
-    odroid_audio_init(sampleRate);
-    odroid_display_init();
+    rg_settings_init();
+    rg_gui_init();
+    rg_system_gpio_init();
+    rg_input_init();
+    rg_audio_init(sampleRate);
+    rg_display_init();
 
     if (esp_reset_reason() == ESP_RST_PANIC)
     {
         if (panicTrace->magicWord == PANIC_TRACE_MAGIC)
-            odroid_system_panic_dialog(panicTrace->message);
+            rg_system_panic_dialog(panicTrace->message);
         else
-            odroid_system_panic_dialog("Reason unknown");
+            rg_system_panic_dialog("Reason unknown");
     }
 
     if (esp_reset_reason() != ESP_RST_SW)
     {
-        odroid_display_clear(0);
-        odroid_display_show_hourglass();
+        rg_display_clear(0);
+        rg_display_show_hourglass();
     }
 
     if (!sd_init)
     {
-        odroid_display_clear(C_WHITE);
-        odroid_display_write((RG_SCREEN_WIDTH - image_sdcard.width) / 2,
+        rg_display_clear(C_WHITE);
+        rg_display_write((RG_SCREEN_WIDTH - image_sdcard.width) / 2,
             (RG_SCREEN_HEIGHT - image_sdcard.height) / 2,
             image_sdcard.width,
             image_sdcard.height,
             image_sdcard.width * 2,
             (uint16_t*)image_sdcard.pixel_data);
-        odroid_system_halt();
+        rg_system_halt();
     }
 
     #ifdef ENABLE_PROFILING
@@ -127,71 +126,57 @@ void odroid_system_init(int appId, int sampleRate)
         rg_profiler_init();
     #endif
 
-    xTaskCreate(&odroid_system_monitor_task, "sysmon", 2048, NULL, 7, NULL);
-
-    // esp_task_wdt_init(5, true);
-    // esp_task_wdt_add(xTaskGetCurrentTaskHandle());
+    xTaskCreate(&rg_system_monitor_task, "sysmon", 2048, NULL, 7, NULL);
 
     panicTrace->magicWord = 0;
 
     printf("%s: System ready!\n\n", __func__);
 }
 
-void odroid_system_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t netplay_cb)
+void rg_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t netplay_cb)
 {
-    uint8_t buffer[0x150];
-
     // If any key is pressed we go back to the menu (recover from ROM crash)
-    if (odroid_input_key_is_pressed(GAMEPAD_KEY_ANY))
+    if (rg_input_key_is_pressed(GAMEPAD_KEY_ANY))
     {
-        odroid_system_switch_app(RG_APP_LAUNCHER);
+        rg_system_switch_app(RG_APP_LAUNCHER);
     }
 
-    if (netplay_cb != NULL)
-    {
-        odroid_netplay_pre_init(netplay_cb);
-    }
-
-    if (odroid_settings_StartupApp_get() == 0)
+    if (rg_settings_StartupApp_get() == 0)
     {
         // Only boot this emu once, next time will return to launcher
-        odroid_system_set_boot_app(RG_APP_LAUNCHER);
+        rg_system_set_boot_app(RG_APP_LAUNCHER);
     }
 
-    currentApp.startAction = odroid_settings_StartAction_get();
-    if (currentApp.startAction == ODROID_START_ACTION_NEWGAME)
+    currentApp.startAction = rg_settings_StartAction_get();
+    if (currentApp.startAction == EMU_START_ACTION_NEWGAME)
     {
-        odroid_settings_StartAction_set(ODROID_START_ACTION_RESUME);
-        odroid_settings_commit();
+        rg_settings_StartAction_set(EMU_START_ACTION_RESUME);
+        rg_settings_commit();
     }
 
-    currentApp.romPath = odroid_settings_RomFilePath_get();
+    currentApp.romPath = rg_settings_RomFilePath_get();
     if (!currentApp.romPath || strlen(currentApp.romPath) < 4)
     {
         RG_PANIC("Invalid ROM Path!");
     }
 
-    printf("%s: romPath='%s'\n", __func__, currentApp.romPath);
-
-    // Read some of the ROM to derive a unique id
-    if (odroid_sdcard_read_file(currentApp.romPath, buffer, sizeof(buffer)) < 0)
+    if (netplay_cb != NULL)
     {
-        RG_PANIC("ROM File not found!");
+        rg_netplay_pre_init(netplay_cb);
     }
 
-    currentApp.gameId = crc32_le(0, buffer, sizeof(buffer));
     currentApp.loadState = load;
     currentApp.saveState = save;
 
-    printf("%s: Init done. GameId=%08X\n", __func__, currentApp.gameId);
+    printf("%s: Init done. romPath='%s'\n", __func__, currentApp.romPath);
 }
 
-rg_app_desc_t *odroid_system_get_app()
+rg_app_desc_t *rg_system_get_app()
 {
     return &currentApp;
 }
 
-char* odroid_system_get_path(emu_path_type_t type, const char *_romPath)
+char* rg_emu_get_path(emu_path_type_t type, const char *_romPath)
 {
     const char *fileName = _romPath ?: currentApp.romPath;
     char buffer[256];
@@ -252,7 +237,7 @@ char* odroid_system_get_path(emu_path_type_t type, const char *_romPath)
     return strdup(buffer);
 }
 
-bool odroid_system_emu_load_state(int slot)
+bool rg_emu_load_state(int slot)
 {
     if (!currentApp.romPath || !currentApp.loadState)
     {
@@ -262,13 +247,13 @@ bool odroid_system_emu_load_state(int slot)
 
     printf("%s: Loading state %d.\n", __func__, slot);
 
-    odroid_display_show_hourglass();
-    odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
+    rg_display_show_hourglass();
+    rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
-    char *pathName = odroid_system_get_path(EMU_PATH_SAVE_STATE, currentApp.romPath);
+    char *pathName = rg_emu_get_path(EMU_PATH_SAVE_STATE, currentApp.romPath);
     bool success = (*currentApp.loadState)(pathName);
 
-    odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
+    rg_spi_lock_release(SPI_LOCK_SDCARD);
 
     if (!success)
     {
@@ -280,7 +265,7 @@ bool odroid_system_emu_load_state(int slot)
     return success;
 }
 
-bool odroid_system_emu_save_state(int slot)
+bool rg_emu_save_state(int slot)
 {
     if (!currentApp.romPath || !currentApp.saveState)
     {
@@ -290,13 +275,13 @@ bool odroid_system_emu_save_state(int slot)
 
     printf("%s: Saving state %d.\n", __func__, slot);
 
-    odroid_system_set_led(1);
-    odroid_display_show_hourglass();
-    odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
+    rg_system_set_led(1);
+    rg_display_show_hourglass();
+    rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
-    char *saveName = odroid_system_get_path(EMU_PATH_SAVE_STATE, currentApp.romPath);
-    char *backName = odroid_system_get_path(EMU_PATH_SAVE_BACK, currentApp.romPath);
-    char *tempName = odroid_system_get_path(EMU_PATH_TEMP_FILE, currentApp.romPath);
+    char *saveName = rg_emu_get_path(EMU_PATH_SAVE_STATE, currentApp.romPath);
+    char *backName = rg_emu_get_path(EMU_PATH_SAVE_BACK, currentApp.romPath);
+    char *tempName = rg_emu_get_path(EMU_PATH_TEMP_FILE, currentApp.romPath);
 
     bool success = false;
 
@@ -313,13 +298,13 @@ bool odroid_system_emu_save_state(int slot)
 
     unlink(tempName);
 
-    odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
-    odroid_system_set_led(0);
+    rg_spi_lock_release(SPI_LOCK_SDCARD);
+    rg_system_set_led(0);
 
     if (!success)
     {
         printf("%s: Save failed!\n", __func__);
-        odroid_overlay_alert("Save failed");
+        rg_gui_alert("Save failed");
     }
 
     free(saveName);
@@ -329,32 +314,32 @@ bool odroid_system_emu_save_state(int slot)
     return success;
 }
 
-void odroid_system_restart()
+void rg_system_restart()
 {
     // FIX ME: Ensure the boot loader points to us
     esp_restart();
 }
 
-void odroid_system_switch_app(const char *app)
+void rg_system_switch_app(const char *app)
 {
     printf("%s: Switching to app '%s'.\n", __func__, app ? app : "NULL");
 
-    odroid_display_clear(0);
-    odroid_display_show_hourglass();
+    rg_display_clear(0);
+    rg_display_show_hourglass();
 
-    odroid_audio_terminate();
-    odroid_sdcard_close();
+    rg_audio_terminate();
+    rg_sdcard_unmount();
 
-    odroid_system_set_boot_app(app);
+    rg_system_set_boot_app(app);
     esp_restart();
 }
 
-bool odroid_system_find_app(const char *app)
+bool rg_system_find_app(const char *app)
 {
     return esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, app) != NULL;
 }
 
-void odroid_system_set_boot_app(const char *app)
+void rg_system_set_boot_app(const char *app)
 {
     const esp_partition_t* partition = esp_partition_find_first(
             ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, app);
@@ -373,7 +358,7 @@ void odroid_system_set_boot_app(const char *app)
     printf("%s: Boot partition set to %d '%s'\n", __func__, partition->subtype, partition->label);
 }
 
-void odroid_system_panic(const char *reason, const char *function, const char *file)
+void rg_system_panic(const char *reason, const char *function, const char *file)
 {
     printf("*** PANIC: %s\n  *** FUNCTION: %s\n  *** FILE: %s\n", reason, function, file);
 
@@ -386,55 +371,55 @@ void odroid_system_panic(const char *reason, const char *function, const char *f
     abort();
 }
 
-void odroid_system_panic_dialog(const char *reason)
+void rg_system_panic_dialog(const char *reason)
 {
     printf(" *** PREVIOUS PANIC: %s *** \n", reason);
 
     // Clear the trace to avoid a boot loop
     panicTrace->magicWord = 0;
 
-    odroid_audio_terminate();
+    rg_audio_terminate();
 
     // In case we panicked from inside a dialog
-    odroid_system_spi_lock_release(SPI_LOCK_ANY);
+    rg_spi_lock_release(SPI_LOCK_ANY);
 
     // Blue screen of death!
-    odroid_display_clear(C_BLUE);
+    rg_display_clear(C_BLUE);
 
     dialog_choice_t choices[] = {
         {0, reason, "", -1, NULL},
         {1, "OK", "", 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
-    odroid_overlay_dialog("The application crashed!", choices, 1);
+    rg_gui_dialog("The application crashed!", choices, 1);
 
-    odroid_system_switch_app(RG_APP_LAUNCHER);
+    rg_system_switch_app(RG_APP_LAUNCHER);
 }
 
-void odroid_system_halt()
+void rg_system_halt()
 {
     printf("%s: Halting system!\n", __func__);
     vTaskSuspendAll();
     while (1);
 }
 
-void odroid_system_sleep()
+void rg_system_sleep()
 {
     printf("%s: Going to sleep!\n", __func__);
 
     // Wait for button release
-    odroid_input_wait_for_key(GAMEPAD_KEY_MENU, false);
-    odroid_audio_terminate();
+    rg_input_wait_for_key(GAMEPAD_KEY_MENU, false);
+    rg_audio_terminate();
     vTaskDelay(100);
     esp_deep_sleep_start();
 }
 
-void odroid_system_set_led(int value)
+void rg_system_set_led(int value)
 {
     gpio_set_level(RG_GPIO_LED, value);
 }
 
-static void odroid_system_monitor_task(void *arg)
+static void rg_system_monitor_task(void *arg)
 {
     runtime_counters_t current;
     bool letState = false;
@@ -454,7 +439,7 @@ static void odroid_system_monitor_task(void *arg)
         if (current.busyTime > tickTime)
             current.busyTime = tickTime;
 
-        statistics.battery = odroid_input_read_battery();
+        statistics.battery = rg_input_read_battery();
         statistics.busyPercent = current.busyTime / tickTime * 100.f;
         statistics.skippedFPS = current.skippedFrames / (tickTime / 1000000.f);
         statistics.totalFPS = current.totalFrames / (tickTime / 1000000.f);
@@ -482,7 +467,7 @@ static void odroid_system_monitor_task(void *arg)
     #endif
 
         // Applications should never stop polling input. If they do, they're probably unresponsive...
-        if (statistics.lastTickTime > 0 && odroid_input_gamepad_last_read() > 5000000)
+        if (statistics.lastTickTime > 0 && rg_input_gamepad_last_read() > 5000000)
         {
             RG_PANIC("Input timeout");
         }
@@ -490,12 +475,12 @@ static void odroid_system_monitor_task(void *arg)
         if (statistics.battery.percentage < 2)
         {
             letState = !letState;
-            odroid_system_set_led(letState);
+            rg_system_set_led(letState);
         }
         else if (letState)
         {
             letState = false;
-            odroid_system_set_led(letState);
+            rg_system_set_led(letState);
         }
 
         printf("HEAP:%d+%d (%d+%d), BUSY:%.4f, FPS:%.4f (SKIP:%d, PART:%d, FULL:%d), BATTERY:%d\n",
@@ -526,7 +511,7 @@ static void odroid_system_monitor_task(void *arg)
     vTaskDelete(NULL);
 }
 
-IRAM_ATTR void odroid_system_tick(uint skippedFrame, uint fullFrame, uint busyTime)
+IRAM_ATTR void rg_system_tick(uint skippedFrame, uint fullFrame, uint busyTime)
 {
     if (skippedFrame) counters.skippedFrames++;
     else if (fullFrame) counters.fullFrames++;
@@ -536,12 +521,12 @@ IRAM_ATTR void odroid_system_tick(uint skippedFrame, uint fullFrame, uint busyTi
     statistics.lastTickTime = get_elapsed_time();
 }
 
-runtime_stats_t odroid_system_get_stats()
+runtime_stats_t rg_system_get_stats()
 {
     return statistics;
 }
 
-IRAM_ATTR void odroid_system_spi_lock_acquire(spi_lock_res_t owner)
+IRAM_ATTR void rg_spi_lock_acquire(spi_lock_res_t owner)
 {
 #if USE_SPI_MUTEX
     if (owner == spiMutexOwner)
@@ -559,7 +544,7 @@ IRAM_ATTR void odroid_system_spi_lock_acquire(spi_lock_res_t owner)
 #endif
 }
 
-IRAM_ATTR void odroid_system_spi_lock_release(spi_lock_res_t owner)
+IRAM_ATTR void rg_spi_lock_release(spi_lock_res_t owner)
 {
 #if USE_SPI_MUTEX
     if (owner == spiMutexOwner || owner == SPI_LOCK_ANY)
@@ -570,7 +555,7 @@ IRAM_ATTR void odroid_system_spi_lock_release(spi_lock_res_t owner)
 #endif
 }
 
-/* helpers */
+/* Utilities */
 
 void *rg_alloc(size_t size, uint32_t caps)
 {

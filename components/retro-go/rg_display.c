@@ -232,7 +232,7 @@ spi_put_transaction(spi_transaction_t* t)
         t->flags |= SPI_TRANS_USE_RXDATA;
     }
 
-    odroid_system_spi_lock_acquire(SPI_LOCK_DISPLAY);
+    rg_spi_lock_acquire(SPI_LOCK_DISPLAY);
 
     if (spi_device_queue_trans(spi, t, pdMS_TO_TICKS(2500)) != ESP_OK)
     {
@@ -355,7 +355,7 @@ spi_task(void *arg)
         // if (uxQueueSpacesAvailable(spi_queue) == 0)
         if (uxQueueMessagesWaiting(spi_count_semaphore) == 0)
         {
-            odroid_system_spi_lock_release(SPI_LOCK_DISPLAY);
+            rg_spi_lock_release(SPI_LOCK_DISPLAY);
         }
     }
 
@@ -418,7 +418,7 @@ send_reset_drawing(short left, short top, short width, short height)
     short right = left + width - 1;
     short bottom = SCREEN_HEIGHT - 1;
 
-    // odroid_display_drain_spi();
+    // rg_display_drain_spi();
 
     if (height == 1)
     {
@@ -652,10 +652,10 @@ pixel_diff(uint8_t pixel1, uint8_t pixel2, uint16_t *palette1, uint16_t *palette
 }
 
 static inline int
-frame_diff(odroid_video_frame_t *frame, odroid_video_frame_t *prevFrame)
+frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFrame)
 {
     uint8_t pixel_mask = frame->pixel_mask;
-    odroid_line_diff_t *out_diff = frame->diff;
+    rg_line_diff_t *out_diff = frame->diff;
     bool use_u32bit = false;
 
     // If there's no palette we compare all the bits
@@ -852,7 +852,7 @@ display_task(void *arg)
 {
     videoTaskQueue = xQueueCreate(1, sizeof(void*));
 
-    odroid_video_frame_t *update;
+    rg_video_frame_t *update;
 
     while(1)
     {
@@ -863,20 +863,20 @@ display_task(void *arg)
         if (forceVideoRefresh)
         {
             if (scalingMode == RG_DISPLAY_SCALING_FILL) {
-                odroid_display_set_scale(update->width, update->height, SCREEN_WIDTH / (double)SCREEN_HEIGHT);
+                rg_display_set_scale(update->width, update->height, SCREEN_WIDTH / (double)SCREEN_HEIGHT);
             }
             else if (scalingMode == RG_DISPLAY_SCALING_FIT) {
-                odroid_display_set_scale(update->width, update->height, update->width / (double)update->height);
+                rg_display_set_scale(update->width, update->height, update->width / (double)update->height);
             }
             else {
-                odroid_display_set_scale(update->width, update->height, 0.0);
+                rg_display_set_scale(update->width, update->height, 0.0);
             }
-            odroid_display_clear(0x0000);
+            rg_display_clear(0x0000);
         }
 
         for (short y = 0; y < update->height;)
         {
-            odroid_line_diff_t *diff = &update->diff[y];
+            rg_line_diff_t *diff = &update->diff[y];
 
             if (diff->width > 0) {
                 write_rect(update->buffer + (y * update->stride) + (diff->left * update->pixel_size),
@@ -898,7 +898,8 @@ display_task(void *arg)
     while (1) {}
 }
 
-void odroid_display_set_scale(short width, short height, double new_ratio)
+void
+rg_display_set_scale(short width, short height, double new_ratio)
 {
     short new_width = width;
     short new_height = height;
@@ -933,60 +934,70 @@ void odroid_display_set_scale(short width, short height, double new_ratio)
            x_inc, y_inc, x_scale, y_scale, x_origin, y_origin);
 }
 
-display_scaling_t odroid_display_get_scaling_mode(void)
+display_scaling_t
+rg_display_get_scaling_mode(void)
 {
     return scalingMode;
 }
 
-void odroid_display_set_scaling_mode(display_scaling_t mode)
+void
+rg_display_set_scaling_mode(display_scaling_t mode)
 {
-    odroid_settings_DisplayScaling_set(mode);
+    rg_settings_DisplayScaling_set(mode);
     scalingMode = mode;
     forceVideoRefresh = true;
 }
 
-display_filter_t odroid_display_get_filter_mode(void)
+display_filter_t
+rg_display_get_filter_mode(void)
 {
     return filterMode;
 }
 
-void odroid_display_set_filter_mode(display_filter_t mode)
+void
+rg_display_set_filter_mode(display_filter_t mode)
 {
-    odroid_settings_DisplayFilter_set(mode);
+    rg_settings_DisplayFilter_set(mode);
     filterMode = mode;
     forceVideoRefresh = true;
 }
 
-display_rotation_t odroid_display_get_rotation(void)
+display_rotation_t
+rg_display_get_rotation(void)
 {
     return rotationMode;
 }
 
-void odroid_display_set_rotation(display_rotation_t rotation)
+void
+rg_display_set_rotation(display_rotation_t rotation)
 {
-    odroid_settings_DisplayRotation_set(rotation);
+    rg_settings_DisplayRotation_set(rotation);
     rotationMode = rotation;
     forceVideoRefresh = true;
 }
 
-display_backlight_t odroid_display_get_backlight()
+display_backlight_t
+rg_display_get_backlight()
 {
     return backlightLevel;
 }
 
-void odroid_display_set_backlight(display_backlight_t level)
+void
+rg_display_set_backlight(display_backlight_t level)
 {
-    odroid_settings_Backlight_set(level);
+    rg_settings_Backlight_set(level);
     backlight_percentage_set(backlightLevels[level % RG_BACKLIGHT_LEVEL_COUNT]);
     backlightLevel = level;
 }
 
-void odroid_display_force_refresh(void)
+void
+rg_display_force_refresh(void)
 {
     forceVideoRefresh = true;
 }
 
-IRAM_ATTR short odroid_display_queue_update(odroid_video_frame_t *frame, odroid_video_frame_t *previousFrame)
+IRAM_ATTR screen_update_t
+rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *previousFrame)
 {
     static int prev_width = 0, prev_height = 0;
     short linesChanged = 0;
@@ -1027,7 +1038,8 @@ IRAM_ATTR short odroid_display_queue_update(odroid_video_frame_t *frame, odroid_
     return SCREEN_UPDATE_PARTIAL;
 }
 
-void odroid_display_drain_spi()
+void
+rg_display_drain_spi()
 {
     if (uxQueueSpacesAvailable(spi_queue)) {
         spi_transaction_t *t[SPI_TRANSACTION_COUNT];
@@ -1040,9 +1052,10 @@ void odroid_display_drain_spi()
     }
 }
 
-void odroid_display_write(short left, short top, short width, short height, short stride, const void* buffer)
+void
+rg_display_write(short left, short top, short width, short height, short stride, const void* buffer)
 {
-    odroid_display_drain_spi();
+    rg_display_drain_spi();
 
     send_reset_drawing(left, top, width, height);
 
@@ -1073,12 +1086,13 @@ void odroid_display_write(short left, short top, short width, short height, shor
         send_continue_line(line_buffer, width, lines_per_buffer);
     }
 
-    odroid_display_drain_spi();
+    rg_display_drain_spi();
 }
 
-void odroid_display_clear(uint16_t color)
+void
+rg_display_clear(uint16_t color)
 {
-    odroid_display_drain_spi();
+    rg_display_drain_spi();
 
     send_reset_drawing(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
@@ -1096,12 +1110,13 @@ void odroid_display_clear(uint16_t color)
         send_continue_line(spi_get_buffer(), SCREEN_WIDTH, lines_per_buffer);
     }
 
-    odroid_display_drain_spi();
+    rg_display_drain_spi();
 }
 
-void odroid_display_show_hourglass()
+void
+rg_display_show_hourglass()
 {
-    odroid_display_write((SCREEN_WIDTH / 2) - (image_hourglass.width / 2),
+    rg_display_write((SCREEN_WIDTH / 2) - (image_hourglass.width / 2),
         (SCREEN_HEIGHT / 2) - (image_hourglass.height / 2),
         image_hourglass.width,
         image_hourglass.height,
@@ -1109,19 +1124,21 @@ void odroid_display_show_hourglass()
         (uint16_t*)image_hourglass.pixel_data);
 }
 
-void odroid_display_deinit()
+void
+rg_display_deinit()
 {
     // Here we should stop SPI and display tasks
     // Then:
     ili9341_deinit();
 }
 
-void odroid_display_init()
+void
+rg_display_init()
 {
-    backlightLevel = odroid_settings_Backlight_get();
-    scalingMode = odroid_settings_DisplayScaling_get();
-    filterMode = odroid_settings_DisplayFilter_get();
-    rotationMode = odroid_settings_DisplayRotation_get();
+    backlightLevel = rg_settings_Backlight_get();
+    scalingMode = rg_settings_DisplayScaling_get();
+    filterMode = rg_settings_DisplayFilter_get();
+    rotationMode = rg_settings_DisplayRotation_get();
 
     printf("LCD: Initialisation sequence:\n");
 

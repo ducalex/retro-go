@@ -21,7 +21,7 @@
 #define LIST_WIDTH       (RG_SCREEN_WIDTH)
 #define LIST_HEIGHT      (RG_SCREEN_HEIGHT - LIST_Y_OFFSET)
 #define LIST_LINE_COUNT  ((RG_SCREEN_HEIGHT - LIST_Y_OFFSET) / LIST_LINE_HEIGHT)
-#define LIST_LINE_HEIGHT (odroid_overlay_get_font_size())
+#define LIST_LINE_HEIGHT (rg_gui_get_font_size())
 #define LIST_X_OFFSET    (0)
 #define LIST_Y_OFFSET    (48 + LIST_LINE_HEIGHT)
 
@@ -89,7 +89,7 @@ void gui_init_tab(tab_t *tab)
     // tab->status[0] = 0;
 
     sprintf(str_buffer, "Sel.%.11s", tab->name);
-    tab->listbox.cursor = odroid_settings_int32_get(str_buffer, 0);
+    tab->listbox.cursor = rg_settings_int32_get(str_buffer, 0);
 
     gui_event(TAB_INIT, tab);
 
@@ -124,9 +124,9 @@ void gui_save_current_tab()
     tab_t *tab = gui_get_current_tab();
 
     sprintf(str_buffer, "Sel.%.11s", tab->name);
-    odroid_settings_int32_set(str_buffer, tab->listbox.cursor);
-    odroid_settings_int32_set("SelectedTab", gui.selected);
-    odroid_settings_commit();
+    rg_settings_int32_set(str_buffer, tab->listbox.cursor);
+    rg_settings_int32_set("SelectedTab", gui.selected);
+    rg_settings_commit();
 }
 
 listbox_item_t *gui_get_selected_item(tab_t *tab)
@@ -258,7 +258,7 @@ void gui_draw_png(int x, int y, int width, int height, const binfile_t *file)
         width = width > 0 ? MIN(width, img->width) : img->width;
         height = height > 0 ? MIN(height, img->height) : img->height;
 
-        odroid_display_write(x, y, width, height, img->width * 2, img_buffer);
+        rg_display_write(x, y, width, height, img->width * 2, img_buffer);
 
         luImageRelease(img, NULL);
     } else {
@@ -270,7 +270,7 @@ void gui_draw_navbar()
 {
     for (int i = 0; i < gui.tabcount; i++)
     {
-        odroid_display_write(i * IMAGE_LOGO_WIDTH, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, 0, gui.tabs[i]->img_logo);
+        rg_display_write(i * IMAGE_LOGO_WIDTH, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, 0, gui.tabs[i]->img_logo);
     }
 }
 
@@ -279,8 +279,8 @@ void gui_draw_header(tab_t *tab)
     int x_pos = IMAGE_LOGO_WIDTH;
     int y_pos = IMAGE_LOGO_HEIGHT;
 
-    odroid_overlay_draw_fill_rect(x_pos, 0, RG_SCREEN_WIDTH - x_pos, LIST_Y_OFFSET, C_BLACK);
-    odroid_overlay_draw_fill_rect(0, y_pos, RG_SCREEN_WIDTH, LIST_Y_OFFSET - y_pos, C_BLACK);
+    rg_gui_draw_fill_rect(x_pos, 0, RG_SCREEN_WIDTH - x_pos, LIST_Y_OFFSET, C_BLACK);
+    rg_gui_draw_fill_rect(0, y_pos, RG_SCREEN_WIDTH, LIST_Y_OFFSET - y_pos, C_BLACK);
 
     if (tab->img_logo)
         gui_draw_png(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, tab->img_logo);
@@ -292,13 +292,13 @@ void gui_draw_header(tab_t *tab)
 // void gui_draw_notice(tab_t *tab)
 void gui_draw_notice(const char *text, uint16_t color)
 {
-    odroid_overlay_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, text, color, C_BLACK);
+    rg_gui_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, text, color, C_BLACK);
 }
 
 void gui_draw_status(tab_t *tab)
 {
-    odroid_overlay_draw_battery(RG_SCREEN_WIDTH - 27, 3);
-    odroid_overlay_draw_text(
+    rg_gui_draw_battery(RG_SCREEN_WIDTH - 27, 3);
+    rg_gui_draw_text(
         IMAGE_LOGO_WIDTH + 11,
         IMAGE_BANNER_HEIGHT + 3,
         128,
@@ -310,7 +310,7 @@ void gui_draw_status(tab_t *tab)
 
 void gui_draw_list(tab_t *tab)
 {
-    int columns = LIST_WIDTH / odroid_overlay_get_font_width();
+    int columns = LIST_WIDTH / rg_gui_get_font_width();
     int lines = LIST_LINE_COUNT;
     theme_t *theme = &gui_themes[gui.theme % gui_themes_count];
     listbox_t *list = &tab->listbox;
@@ -324,7 +324,7 @@ void gui_draw_list(tab_t *tab)
             str_buffer[0] = '\0';
         }
 
-        odroid_overlay_draw_text(
+        rg_gui_draw_text(
             LIST_X_OFFSET,
             LIST_Y_OFFSET + i * LIST_LINE_HEIGHT,
             LIST_WIDTH,
@@ -383,7 +383,7 @@ void gui_draw_cover(retro_emulator_file_t *file)
             if (cover_height > COVER_MAX_HEIGHT || cover_width > COVER_MAX_WIDTH)
                 gui_draw_notice("Art too large", C_ORANGE);
 
-            odroid_display_write(320 - width, 240 - height, width, height, cover_width * 2, img_buffer);
+            rg_display_write(320 - width, 240 - height, width, height, cover_width * 2, img_buffer);
             return;
         }
     }

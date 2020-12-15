@@ -32,16 +32,16 @@ static bool load_state(char *pathName)
 
 void app_main(void)
 {
-    odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    odroid_system_emu_init(&load_state, &save_state, NULL);
+    rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
+    rg_emu_init(&load_state, &save_state, NULL);
 
-    rg_app_desc_t *app = odroid_system_get_app();
+    rg_app_desc_t *app = rg_system_get_app();
 
     InitPCE(app->romPath);
 
-    if (app->startAction == ODROID_START_ACTION_RESUME)
+    if (app->startAction == EMU_START_ACTION_RESUME)
     {
-        odroid_system_emu_load_state(0);
+        rg_emu_load_state(0);
     }
 
     RunPCE();

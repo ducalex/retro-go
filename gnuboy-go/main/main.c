@@ -20,9 +20,9 @@
 
 static int16_t audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
-static odroid_video_frame_t update1 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, -1, NULL, NULL, 0, {}};
-static odroid_video_frame_t update2 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, -1, NULL, NULL, 0, {}};
-static odroid_video_frame_t *currentUpdate = &update1;
+static rg_video_frame_t update1 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, -1, NULL, NULL, 0, {}};
+static rg_video_frame_t update2 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, -1, NULL, NULL, 0, {}};
+static rg_video_frame_t *currentUpdate = &update1;
 
 static bool fullFrame = false;
 static uint skipFrames = 0;
@@ -41,11 +41,11 @@ static void netplay_callback(netplay_event_t event, void *arg)
    switch (event)
    {
       case NETPLAY_EVENT_STATUS_CHANGED:
-        new_netplay = (odroid_netplay_status() == NETPLAY_STATUS_CONNECTED);
+        new_netplay = (rg_netplay_status() == NETPLAY_STATUS_CONNECTED);
 
         if (netplay && !new_netplay)
         {
-            odroid_overlay_alert("Connection lost!");
+            rg_gui_alert("Connection lost!");
         }
         netplay = new_netplay;
         break;
@@ -58,9 +58,9 @@ static void netplay_callback(netplay_event_t event, void *arg)
 
 static inline void screen_blit(void)
 {
-    odroid_video_frame_t *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
+    rg_video_frame_t *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
 
-    fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
+    fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
 
     // swap buffers
     currentUpdate = previousUpdate;
@@ -105,7 +105,7 @@ static bool palette_update_cb(dialog_choice_t *option, dialog_event_t event)
     }
 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
-        odroid_settings_Palette_set(pal);
+        rg_settings_Palette_set(pal);
         pal_set_dmg(pal);
         emu_run(true);
     }
@@ -120,7 +120,7 @@ static bool save_sram_update_cb(dialog_choice_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         saveSRAM = !saveSRAM;
-        odroid_settings_app_int32_set(NVS_KEY_SAVE_SRAM, saveSRAM);
+        rg_settings_app_int32_set(NVS_KEY_SAVE_SRAM, saveSRAM);
     }
 
     strcpy(option->value, saveSRAM ? "Yes" : "No");
@@ -163,7 +163,7 @@ static bool rtc_update_cb(dialog_choice_t *option, dialog_event_t event)
             {'s', "Sec",  "00", 1, &rtc_t_update_cb},
             RG_DIALOG_CHOICE_LAST
         };
-        odroid_overlay_dialog("Set Clock", choices, 0);
+        rg_gui_dialog("Set Clock", choices, 0);
     }
     sprintf(option->value, "%02d:%02d", rtc.h, rtc.m);
     return false;
@@ -177,20 +177,20 @@ static bool advanced_settings_cb(dialog_choice_t *option, dialog_event_t event)
         {102, "Auto save SRAM", "No", 1, &save_sram_update_cb},
         RG_DIALOG_CHOICE_LAST
       };
-      odroid_overlay_dialog("Advanced", options, 0);
+      rg_gui_dialog("Advanced", options, 0);
    }
    return false;
 }
 
 void app_main(void)
 {
-    odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    odroid_system_emu_init(&LoadState, &SaveState, &netplay_callback);
+    rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
+    rg_emu_init(&LoadState, &SaveState, &netplay_callback);
 
     update1.buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
     update2.buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
 
-    saveSRAM = odroid_settings_app_int32_get(NVS_KEY_SAVE_SRAM, 0);
+    saveSRAM = rg_settings_app_int32_get(NVS_KEY_SAVE_SRAM, 0);
 
     // Load ROM
     loader_init(NULL);
@@ -217,15 +217,15 @@ void app_main(void)
   	pcm.buf = (n16*)&audioBuffer;
   	pcm.pos = 0;
 
-    rg_app_desc_t *app = odroid_system_get_app();
+    rg_app_desc_t *app = rg_system_get_app();
 
     emu_init();
 
-    pal_set_dmg(odroid_settings_Palette_get());
+    pal_set_dmg(rg_settings_Palette_get());
 
-    if (app->startAction == ODROID_START_ACTION_RESUME)
+    if (app->startAction == EMU_START_ACTION_RESUME)
     {
-        odroid_system_emu_load_state(0);
+        rg_emu_load_state(0);
     }
     else if (saveSRAM)
     {
@@ -236,10 +236,10 @@ void app_main(void)
 
     while (true)
     {
-        gamepad_state_t joystick = odroid_input_read_gamepad();
+        gamepad_state_t joystick = rg_input_read_gamepad();
 
         if (joystick.values[GAMEPAD_KEY_MENU]) {
-            odroid_overlay_game_menu();
+            rg_gui_game_menu();
         }
         else if (joystick.values[GAMEPAD_KEY_VOLUME]) {
             dialog_choice_t options[] = {
@@ -247,7 +247,7 @@ void app_main(void)
                 {101, "More...", "", 1, &advanced_settings_cb},
                 RG_DIALOG_CHOICE_LAST
             };
-            odroid_overlay_game_settings_menu(options);
+            rg_gui_game_settings_menu(options);
         }
 
         uint startTime = get_elapsed_time();
@@ -290,11 +290,11 @@ void app_main(void)
         }
 
         // Tick before submitting audio/syncing
-        odroid_system_tick(!drawFrame, fullFrame, get_elapsed_time_since(startTime));
+        rg_system_tick(!drawFrame, fullFrame, get_elapsed_time_since(startTime));
 
         if (!app->speedupEnabled)
         {
-            odroid_audio_submit(pcm.buf, pcm.pos >> 1);
+            rg_audio_submit(pcm.buf, pcm.pos >> 1);
         }
     }
 }

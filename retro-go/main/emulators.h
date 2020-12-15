@@ -20,10 +20,10 @@ typedef struct {
     char partition[16];
     char dirname[16];
     char extensions[16];
-    uint16_t crc_offset;
+    size_t crc_offset;
     struct {
         retro_emulator_file_t *files;
-        int count;
+        size_t count;
     } roms;
     bool initialized;
 } retro_emulator_t;

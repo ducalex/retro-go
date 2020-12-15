@@ -16,33 +16,33 @@ static int volumeLevel = RG_AUDIO_VOL_DEFAULT;
 static float volumeLevels[] = {0.f, 0.06f, 0.125f, 0.187f, 0.25f, 0.35f, 0.42f, 0.60f, 0.80f, 1.f};
 
 
-int odroid_audio_volume_get()
+audio_volume_t rg_audio_volume_get()
 {
     return volumeLevel;
 }
 
-void odroid_audio_volume_set(int level)
+void rg_audio_volume_set(audio_volume_t level)
 {
     if (level < RG_AUDIO_VOL_MIN)
     {
-        printf("odroid_audio_volume_set: level out of range (< 0) (%d)\n", level);
+        printf("rg_audio_volume_set: level out of range (< 0) (%d)\n", level);
         level = RG_AUDIO_VOL_MIN;
     }
     else if (level > RG_AUDIO_VOL_MAX)
     {
-        printf("odroid_audio_volume_set: level out of range (> max) (%d)\n", level);
+        printf("rg_audio_volume_set: level out of range (> max) (%d)\n", level);
         level = RG_AUDIO_VOL_MAX;
     }
 
-    odroid_settings_Volume_set(level);
+    rg_settings_Volume_set(level);
 
     volumeLevel = level;
 }
 
-void odroid_audio_init(int sample_rate)
+void rg_audio_init(int sample_rate)
 {
-    volumeLevel = odroid_settings_Volume_get();
-    audioSink = odroid_settings_AudioSink_get();
+    volumeLevel = rg_settings_Volume_get();
+    audioSink = rg_settings_AudioSink_get();
     audioSampleRate = sample_rate;
     audioInitialized = true;
 
@@ -101,12 +101,12 @@ void odroid_audio_init(int sample_rate)
         RG_PANIC("Audio Sink Unknown");
     }
 
-    odroid_audio_volume_set(volumeLevel);
+    rg_audio_volume_set(volumeLevel);
 
     printf("%s: I2S init done. clock=%f\n", __func__, i2s_get_clk(RG_AUDIO_I2S_NUM));
 }
 
-void odroid_audio_terminate()
+void rg_audio_terminate()
 {
     if (audioInitialized)
     {
@@ -124,7 +124,7 @@ static inline void filter_samples(short* samples, int count)
 
 }
 
-void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
+void rg_audio_submit(short* stereoAudioBuffer, int frameCount)
 {
     size_t sampleCount = frameCount * 2;
     size_t bufferSize = sampleCount * sizeof(int16_t);
@@ -224,34 +224,34 @@ void odroid_audio_submit(short* stereoAudioBuffer, int frameCount)
     }
 }
 
-bool odroid_audio_is_playing()
+bool rg_audio_is_playing()
 {
     return false;
 }
 
-void odroid_audio_set_sink(audio_sink_t sink)
+void rg_audio_set_sink(audio_sink_t sink)
 {
-    odroid_settings_AudioSink_set(sink);
+    rg_settings_AudioSink_set(sink);
     audioSink = sink;
 
     if (audioSampleRate > 0)
     {
-        odroid_audio_terminate();
-        odroid_audio_init(audioSampleRate);
+        rg_audio_terminate();
+        rg_audio_init(audioSampleRate);
     }
 }
 
-audio_sink_t odroid_audio_get_sink()
+audio_sink_t rg_audio_get_sink()
 {
     return audioSink;
 }
 
-int odroid_audio_sample_rate_get()
+int rg_audio_sample_rate_get()
 {
     return audioSampleRate;
 }
 
-void odroid_audio_mute(bool mute)
+void rg_audio_mute(bool mute)
 {
     audioMuted = mute;
 

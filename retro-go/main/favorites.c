@@ -57,7 +57,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
 
 static void favorites_load()
 {
-    char *favorites_str = odroid_settings_string_get(KEY_FAVORITES, "");
+    char *favorites_str = rg_settings_string_get(KEY_FAVORITES, "");
     char *temp_ptr = favorites_str;
 
     favorites_count = 0;
@@ -125,8 +125,8 @@ static void favorites_save()
         }
     }
 
-    odroid_settings_string_set(KEY_FAVORITES, buffer);
-    odroid_settings_commit();
+    rg_settings_string_set(KEY_FAVORITES, buffer);
+    rg_settings_commit();
     free(buffer);
 }
 

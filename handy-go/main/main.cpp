@@ -14,10 +14,10 @@ extern "C" {
 
 static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
-static odroid_video_frame_t update1;
-static odroid_video_frame_t update2;
-static odroid_video_frame_t *currentUpdate = &update1;
-static odroid_video_frame_t *previousUpdate = &update2;
+static rg_video_frame_t update1;
+static rg_video_frame_t update2;
+static rg_video_frame_t *currentUpdate = &update1;
+static rg_video_frame_t *previousUpdate = &update2;
 
 static CSystem *lynx = NULL;
 
@@ -30,7 +30,7 @@ static short dpad_mapped_right;
 
 static void set_rotation()
 {
-    display_rotation_t rotation = odroid_display_get_rotation();
+    display_rotation_t rotation = rg_display_get_rotation();
 
     if (rotation == RG_DISPLAY_ROTATION_AUTO)
     {
@@ -92,16 +92,16 @@ static void set_rotation()
 
 static bool rotation_cb(dialog_choice_t *option, dialog_event_t event)
 {
-    int rotation = (int)odroid_display_get_rotation();
+    int rotation = (int)rg_display_get_rotation();
 
     if (event == RG_DIALOG_PREV) {
         if (--rotation < 0) rotation = RG_DISPLAY_ROTATION_COUNT - 1;
-        odroid_display_set_rotation((display_rotation_t)rotation);
+        rg_display_set_rotation((display_rotation_t)rotation);
         set_rotation();
     }
     if (event == RG_DIALOG_NEXT) {
         if (++rotation > RG_DISPLAY_ROTATION_COUNT - 1) rotation = 0;
-        odroid_display_set_rotation((display_rotation_t)rotation);
+        rg_display_set_rotation((display_rotation_t)rotation);
         set_rotation();
     }
 
@@ -148,8 +148,8 @@ static bool load_state(char *pathName)
 extern "C" void app_main(void)
 {
     heap_caps_malloc_extmem_enable(32 * 1024);
-    odroid_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    odroid_system_emu_init(&load_state, &save_state, NULL);
+    rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
+    rg_emu_init(&load_state, &save_state, NULL);
 
     update1.width = update2.width = HANDY_SCREEN_WIDTH;
     update1.height = update2.height = HANDY_SCREEN_WIDTH;
@@ -160,7 +160,7 @@ extern "C" void app_main(void)
     update1.buffer = (void*)rg_alloc(update1.stride * update1.height, MEM_FAST);
     update2.buffer = (void*)rg_alloc(update2.stride * update2.height, MEM_FAST);
 
-    rg_app_desc_t *app = odroid_system_get_app();
+    rg_app_desc_t *app = rg_system_get_app();
 
     // Init emulator
     lynx = new CSystem(app->romPath, MIKIE_PIXEL_FORMAT_16BPP_565_BE, AUDIO_SAMPLE_RATE);
@@ -169,9 +169,9 @@ extern "C" void app_main(void)
     gAudioBuffer = (SWORD*)&audioBuffer;
     gAudioEnabled = 1;
 
-    if (app->startAction == ODROID_START_ACTION_RESUME)
+    if (app->startAction == EMU_START_ACTION_RESUME)
     {
-        odroid_system_emu_load_state(0);
+        rg_emu_load_state(0);
     }
 
     set_rotation();
@@ -183,17 +183,17 @@ extern "C" void app_main(void)
     // Start emulation
     while (1)
     {
-        gamepad_state_t joystick = odroid_input_read_gamepad();
+        gamepad_state_t joystick = rg_input_read_gamepad();
 
         if (joystick.values[GAMEPAD_KEY_MENU]) {
-            odroid_overlay_game_menu();
+            rg_gui_game_menu();
         }
         else if (joystick.values[GAMEPAD_KEY_VOLUME]) {
             dialog_choice_t options[] = {
                 {100, "Rotation", "Auto", 1, &rotation_cb},
                 RG_DIALOG_CHOICE_LAST
             };
-            odroid_overlay_game_settings_menu(options);
+            rg_gui_game_settings_menu(options);
         }
 
         uint startTime = get_elapsed_time();
@@ -216,7 +216,7 @@ extern "C" void app_main(void)
 
         if (drawFrame)
         {
-            fullFrame = odroid_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
+            fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
             previousUpdate = currentUpdate;
             currentUpdate = (currentUpdate == &update1) ? &update2 : &update1;
             gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;
@@ -234,11 +234,11 @@ extern "C" void app_main(void)
             skipFrames--;
         }
 
-        odroid_system_tick(!drawFrame, fullFrame, get_elapsed_time_since(startTime));
+        rg_system_tick(!drawFrame, fullFrame, get_elapsed_time_since(startTime));
 
         if (!app->speedupEnabled)
         {
-            odroid_audio_submit(gAudioBuffer, gAudioBufferPointer >> 1);
+            rg_audio_submit(gAudioBuffer, gAudioBufferPointer >> 1);
             gAudioBufferPointer = 0;
         }
     }

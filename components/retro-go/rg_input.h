@@ -33,10 +33,10 @@ typedef struct
 	int percentage;
 } battery_state_t;
 
-void odroid_input_init(void);
-void odroid_input_terminate(void);
-long odroid_input_gamepad_last_read(void);
-bool odroid_input_key_is_pressed(gamepad_key_t key);
-void odroid_input_wait_for_key(gamepad_key_t key, bool pressed);
-gamepad_state_t odroid_input_read_gamepad(void);
-battery_state_t odroid_input_read_battery(void);
+void rg_input_init(void);
+void rg_input_terminate(void);
+long rg_input_gamepad_last_read(void);
+bool rg_input_key_is_pressed(gamepad_key_t key);
+void rg_input_wait_for_key(gamepad_key_t key, bool pressed);
+gamepad_state_t rg_input_read_gamepad(void);
+battery_state_t rg_input_read_battery(void);

@@ -78,7 +78,7 @@ static void add_emulator(const char *system, const char *dirname, const char* ex
                          const char *part, uint16_t crc_offset, const binfile_t *logo,
                          const binfile_t *header)
 {
-    if (!odroid_system_find_app(part))
+    if (!rg_system_find_app(part))
     {
         printf("add_emulator: Emulator '%s' (%s) not present, skipping\n", system, part);
         return;
@@ -112,15 +112,15 @@ void emulator_init(retro_emulator_t *emu)
     size_t count = 0;
 
     sprintf(path, RG_BASE_PATH_CRC_CACHE "/%s", emu->dirname);
-    odroid_sdcard_mkdir(path);
+    rg_sdcard_mkdir(path);
 
     sprintf(path, RG_BASE_PATH_SAVES "/%s", emu->dirname);
-    odroid_sdcard_mkdir(path);
+    rg_sdcard_mkdir(path);
 
     sprintf(path, RG_BASE_PATH_ROMS "/%s", emu->dirname);
-    odroid_sdcard_mkdir(path);
+    rg_sdcard_mkdir(path);
 
-    if (odroid_sdcard_list(path, &files, &count) == 0 && count > 0)
+    if (rg_sdcard_read_dir(path, &files, &count) == 0 && count > 0)
     {
         emu->roms.files = rg_alloc(count * sizeof(retro_emulator_file_t), MEM_ANY);
         emu->roms.count = 0;
@@ -129,7 +129,7 @@ void emulator_init(retro_emulator_t *emu)
         for (int i = 0; i < count; ++i)
         {
             const char *name = ptr;
-            const char *ext = odroid_sdcard_get_extension(ptr);
+            const char *ext = path_get_extension(ptr);
             size_t name_len = strlen(name);
             bool ext_match = false;
             strcpy(extensions, emu->extensions);
@@ -173,8 +173,8 @@ const char *emu_get_file_path(retro_emulator_file_t *file)
 
 bool emulator_build_file_object(const char *path, retro_emulator_file_t *file)
 {
-    const char *name = odroid_sdcard_get_filename(path);
-    const char *ext = odroid_sdcard_get_extension(path);
+    const char *name = path_get_filename(path);
+    const char *ext = path_get_extension(path);
 
     if (ext == NULL || name == NULL)
         return false;
@@ -184,7 +184,7 @@ bool emulator_build_file_object(const char *path, retro_emulator_file_t *file)
     strncpy(file->name, name, strlen(name)-strlen(ext)-1);
     strcpy(file->ext, ext);
 
-    const char *dirname = odroid_sdcard_get_filename(file->folder);
+    const char *dirname = path_get_filename(file->folder);
 
     for (int i = 0; i < emulators_count; ++i)
     {
@@ -206,7 +206,7 @@ void emulator_crc32_file(retro_emulator_file_t *file)
 
     const int chunk_size = 32768;
     const char *file_path = emu_get_file_path(file);
-    char *cache_path = odroid_system_get_path(EMU_PATH_CRC_CACHE, file_path);
+    char *cache_path = rg_emu_get_path(EMU_PATH_CRC_CACHE, file_path);
     FILE *fp, *fp2;
 
     file->missing_cover = 0;
@@ -227,7 +227,7 @@ void emulator_crc32_file(retro_emulator_file_t *file)
         fseek(fp, file->crc_offset, SEEK_SET);
         while (true)
         {
-            gui.joystick = odroid_input_read_gamepad();
+            gui.joystick = rg_input_read_gamepad();
             if (gui.joystick.bitmask > 0) break;
 
             count = fread(buffer, 1, chunk_size, fp);
@@ -276,7 +276,7 @@ void emulator_show_file_info(retro_emulator_file_t *file)
     sprintf(choices[0].value, "%.127s", file->name);
     sprintf(choices[1].value, "%s", file->ext);
     sprintf(choices[2].value, "%s", file->folder);
-    sprintf(choices[3].value, "%d KB", odroid_sdcard_get_filesize(emu_get_file_path(file)) / 1024);
+    sprintf(choices[3].value, "%d KB", rg_sdcard_get_filesize(emu_get_file_path(file)) / 1024);
 
     if (file->checksum > 1)
     {
@@ -286,15 +286,15 @@ void emulator_show_file_info(retro_emulator_file_t *file)
             sprintf(choices[4].value, "%08X", file->checksum);
     }
 
-    odroid_overlay_dialog("Properties", choices, -1);
+    rg_gui_dialog("Properties", choices, -1);
 }
 
 void emulator_show_file_menu(retro_emulator_file_t *file)
 {
-    char *save_path = odroid_system_get_path(EMU_PATH_SAVE_STATE, emu_get_file_path(file));
-    char *sram_path = odroid_system_get_path(EMU_PATH_SAVE_SRAM, emu_get_file_path(file));
-    bool has_save = odroid_sdcard_get_filesize(save_path) > 0;
-    bool has_sram = odroid_sdcard_get_filesize(sram_path) > 0;
+    char *save_path = rg_emu_get_path(EMU_PATH_SAVE_STATE, emu_get_file_path(file));
+    char *sram_path = rg_emu_get_path(EMU_PATH_SAVE_SRAM, emu_get_file_path(file));
+    bool has_save = rg_sdcard_get_filesize(save_path) > 0;
+    bool has_sram = rg_sdcard_get_filesize(sram_path) > 0;
     bool is_fav = favorite_find(file) != NULL;
 
     dialog_choice_t choices[] = {
@@ -305,19 +305,19 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
         {2, "Delete save ", "", has_save || has_sram, NULL},
         RG_DIALOG_CHOICE_LAST
     };
-    int sel = odroid_overlay_dialog(NULL, choices, has_save ? 0 : 1);
+    int sel = rg_gui_dialog(NULL, choices, has_save ? 0 : 1);
 
     if (sel == 0 || sel == 1) {
         gui_save_current_tab();
         emulator_start(file, sel == 0);
     }
     else if (sel == 2) {
-        if (odroid_overlay_confirm("Delete save file?", false) == 1) {
+        if (rg_gui_confirm("Delete save file?", false) == 1) {
             if (has_save) {
-                odroid_sdcard_unlink(save_path);
+                rg_sdcard_delete(save_path);
             }
             if (has_sram) {
-                odroid_sdcard_unlink(sram_path);
+                rg_sdcard_delete(sram_path);
             }
         }
     }
@@ -339,11 +339,11 @@ void emulator_start(retro_emulator_file_t *file, bool load_state)
 
     printf("Retro-Go: Starting game: %s\n", path);
 
-    odroid_settings_StartAction_set(load_state ? ODROID_START_ACTION_RESUME : ODROID_START_ACTION_NEWGAME);
-    odroid_settings_RomFilePath_set(path);
-    odroid_settings_commit();
+    rg_settings_StartAction_set(load_state ? EMU_START_ACTION_RESUME : EMU_START_ACTION_NEWGAME);
+    rg_settings_RomFilePath_set(path);
+    rg_settings_commit();
 
-    odroid_system_switch_app(((retro_emulator_t *)file->emulator)->partition);
+    rg_system_switch_app(((retro_emulator_t *)file->emulator)->partition);
 }
 
 void emulators_init()

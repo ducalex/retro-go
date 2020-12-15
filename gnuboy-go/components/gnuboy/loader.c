@@ -204,7 +204,7 @@ int rom_loadbank(short bank)
 	}
 
 	// Make sure no transaction is running
-	odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
+	rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
 	// Load the 16K page
 	if (fseek(fpRomFile, OFFSET, SEEK_SET))
@@ -217,7 +217,7 @@ int rom_loadbank(short bank)
 		RG_PANIC("ROM fread failed");
 	}
 
-	odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
+	rg_spi_lock_release(SPI_LOCK_SDCARD);
 
 	return 0;
 }
@@ -322,7 +322,7 @@ int sram_load()
 
 	if (!mbc.batt || !sramfile || !*sramfile) return -1;
 
-	odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
+	rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
 	if ((f = fopen(sramfile, "rb")))
 	{
@@ -333,7 +333,7 @@ int sram_load()
 		ret = 0;
 	}
 
-	odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
+	rg_spi_lock_release(SPI_LOCK_SDCARD);
 	return ret;
 }
 
@@ -345,7 +345,7 @@ int sram_save()
 
 	if (!mbc.batt || !sramfile || !mbc.ramsize) return -1;
 
-	odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD);
+	rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
 	if ((f = fopen(sramfile, "wb")))
 	{
@@ -356,7 +356,7 @@ int sram_save()
 		ret = 0;
 	}
 
-	odroid_system_spi_lock_release(SPI_LOCK_SDCARD);
+	rg_spi_lock_release(SPI_LOCK_SDCARD);
 	return ret;
 }
 
@@ -541,8 +541,8 @@ void loader_unload()
 
 void loader_init(char *s)
 {
-	romfile  = odroid_system_get_path(EMU_PATH_ROM_FILE, 0);
-	sramfile = odroid_system_get_path(EMU_PATH_SAVE_SRAM, 0);
+	romfile  = rg_emu_get_path(EMU_PATH_ROM_FILE, 0);
+	sramfile = rg_emu_get_path(EMU_PATH_SAVE_SRAM, 0);
 
 	rom_load();
 	// sram_load();

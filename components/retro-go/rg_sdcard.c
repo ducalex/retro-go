@@ -18,68 +18,58 @@ static bool sdcardOpen = false;
 #define SDCARD_ACCESS_BEGIN() { \
     /* if (!sdcardOpen) RG_PANIC("SD Card not initialized"); */ \
     if (!sdcardOpen) { printf("SD Card not initialized\n"); return -1; } \
-    odroid_system_spi_lock_acquire(SPI_LOCK_SDCARD); \
+    rg_spi_lock_acquire(SPI_LOCK_SDCARD); \
 }
-#define SDCARD_ACCESS_END() odroid_system_spi_lock_release(SPI_LOCK_SDCARD)
+#define SDCARD_ACCESS_END() rg_spi_lock_release(SPI_LOCK_SDCARD)
 
-int odroid_sdcard_open()
+int rg_sdcard_mount()
 {
     if (sdcardOpen)
     {
-        printf("odroid_sdcard_open: already open.\n");
+        printf("%s: already mounted.\n", __func__);
         return -1;
     }
 
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
-    host.slot = HSPI_HOST; // HSPI_HOST;
-    //host.max_freq_khz = SDMMC_FREQ_HIGHSPEED; //10000000;
-    host.max_freq_khz = SDMMC_FREQ_DEFAULT;
+    host.slot = HSPI_HOST;
+    host.max_freq_khz = SDMMC_FREQ_DEFAULT; // SDMMC_FREQ_26M;
 
     sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
     slot_config.gpio_miso = RG_GPIO_SD_MISO;
     slot_config.gpio_mosi = RG_GPIO_SD_MOSI;
     slot_config.gpio_sck  = RG_GPIO_SD_CLK;
     slot_config.gpio_cs = RG_GPIO_SD_CS;
-    //slot_config.dma_channel = 2;
 
-    // Options for mounting the filesystem.
-    // If format_if_mount_failed is set to true, SD card will be partitioned and
-    // formatted in case when mounting fails.
-    esp_vfs_fat_sdmmc_mount_config_t mount_config;
-    memset(&mount_config, 0, sizeof(mount_config));
+    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
+        .allocation_unit_size = 0,
+        .format_if_mount_failed = 0,
+        .max_files = 5,
+    };
 
-    mount_config.format_if_mount_failed = false;
-    mount_config.max_files = 5;
-
-
-    // Use settings defined above to initialize SD card and mount FAT filesystem.
-    // Note: esp_vfs_fat_sdmmc_mount is an all-in-one convenience function.
-    // Please check its source code and implement error recovery when developing
-    // production applications.
     esp_err_t ret = esp_vfs_fat_sdmmc_mount(RG_BASE_PATH, &host, &slot_config, &mount_config, NULL);
     sdcardOpen = (ret == ESP_OK);
 
     if (ret != ESP_OK)
     {
-        printf("odroid_sdcard_open: esp_vfs_fat_sdmmc_mount failed (%d)\n", ret);
+        printf("%s: esp_vfs_fat_sdmmc_mount failed (%d)\n", __func__, ret);
         return -1;
     }
 
     return 0;
 }
 
-int odroid_sdcard_close()
+int rg_sdcard_unmount()
 {
     esp_err_t ret = esp_vfs_fat_sdmmc_unmount();
     if (ret != ESP_OK)
     {
-        printf("odroid_sdcard_close: esp_vfs_fat_sdmmc_unmount failed (%d)\n", ret);
+        printf("%s: esp_vfs_fat_sdmmc_unmount failed (%d)\n", __func__, ret);
     }
     sdcardOpen = false;
     return (ret == ESP_OK) ? 0 : -1;
 }
 
-int odroid_sdcard_read_file(const char* path, void* buf, size_t buf_size)
+int rg_sdcard_read_file(const char* path, void* buf, size_t buf_size)
 {
     SDCARD_ACCESS_BEGIN();
 
@@ -99,7 +89,7 @@ int odroid_sdcard_read_file(const char* path, void* buf, size_t buf_size)
     return count;
 }
 
-int odroid_sdcard_write_file(const char* path, void* buf, size_t buf_size)
+int rg_sdcard_write_file(const char* path, void* buf, size_t buf_size)
 {
     SDCARD_ACCESS_BEGIN();
 
@@ -119,7 +109,7 @@ int odroid_sdcard_write_file(const char* path, void* buf, size_t buf_size)
     return count;
 }
 
-int odroid_sdcard_unzip_file(const char* path, void* buf, size_t buf_size)
+int rg_sdcard_unzip_file(const char* path, void* buf, size_t buf_size)
 {
     SDCARD_ACCESS_BEGIN();
 
@@ -148,7 +138,7 @@ int odroid_sdcard_unzip_file(const char* path, void* buf, size_t buf_size)
     return count;
 }
 
-int odroid_sdcard_list(const char* path, char **out_files, size_t *out_count)
+int rg_sdcard_read_dir(const char* path, char **out_files, size_t *out_count)
 {
     SDCARD_ACCESS_BEGIN();
 
@@ -198,18 +188,18 @@ int odroid_sdcard_list(const char* path, char **out_files, size_t *out_count)
     return ret;
 }
 
-int odroid_sdcard_unlink(const char* path)
+int rg_sdcard_delete(const char* path)
 {
     SDCARD_ACCESS_BEGIN();
 
-    int ret = unlink(path);
+    int ret = (unlink(path) == 0) ? 0 : rmdir(path);
 
     SDCARD_ACCESS_END();
 
     return ret;
 }
 
-int odroid_sdcard_mkdir(const char *dir)
+int rg_sdcard_mkdir(const char *dir)
 {
     SDCARD_ACCESS_BEGIN();
 
@@ -219,7 +209,7 @@ int odroid_sdcard_mkdir(const char *dir)
     {
         if (errno == EEXIST)
         {
-            printf("odroid_sdcard_mkdir: Folder exists %s\n", dir);
+            printf("%s: Folder exists %s\n", __func__, dir);
             return 0;
         }
 
@@ -230,7 +220,7 @@ int odroid_sdcard_mkdir(const char *dir)
             if (*p == '/') {
                 *p = 0;
                 if (strlen(temp) > 0) {
-                    printf("odroid_sdcard_mkdir: Creating %s\n", temp);
+                    printf("%s: Creating %s\n", __func__, temp);
                     mkdir(temp, 0777);
                 }
                 *p = '/';
@@ -243,7 +233,7 @@ int odroid_sdcard_mkdir(const char *dir)
 
     if (ret == 0)
     {
-        printf("odroid_sdcard_mkdir: Folder created %s\n", dir);
+        printf("%s: Folder created %s\n", __func__, dir);
     }
 
     SDCARD_ACCESS_END();
@@ -251,7 +241,7 @@ int odroid_sdcard_mkdir(const char *dir)
     return ret;
 }
 
-int odroid_sdcard_get_filesize(const char* path)
+int rg_sdcard_get_filesize(const char* path)
 {
     SDCARD_ACCESS_BEGIN();
 
@@ -265,20 +255,22 @@ int odroid_sdcard_get_filesize(const char* path)
         fclose(f);
     }
     else
-        printf("odroid_sdcard_get_filesize: fopen failed.\n");
+        printf("%s: fopen failed.\n", __func__);
 
     SDCARD_ACCESS_END();
 
     return ret;
 }
 
-const char* odroid_sdcard_get_filename(const char* path)
+/* Utilities */
+
+const char* path_get_filename(const char* path)
 {
     const char *name = strrchr(path, '/');
     return name ? name + 1 : NULL;
 }
 
-const char* odroid_sdcard_get_extension(const char* path)
+const char* path_get_extension(const char* path)
 {
     const char *ext = strrchr(path, '.');
     return ext ? ext + 1 : NULL;

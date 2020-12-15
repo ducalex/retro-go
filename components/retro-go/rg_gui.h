@@ -174,21 +174,21 @@ enum colors565
     C_WHITE                    = 0xFFFF,
 };
 
-void odroid_overlay_init(void);
-void odroid_overlay_set_font_size(int size);
-int  odroid_overlay_get_font_size(void);
-int  odroid_overlay_get_font_width(void);
-int  odroid_overlay_draw_text(uint16_t x, uint16_t y, uint16_t width, const char *text, uint16_t color, uint16_t color_bg);
-void odroid_overlay_draw_rect(int x, int y, int width, int height, int border, uint16_t color);
-void odroid_overlay_draw_fill_rect(int x, int y, int width, int height, uint16_t color);
-void odroid_overlay_draw_battery(int x, int y);
-void odroid_overlay_draw_dialog(const char *header, dialog_choice_t *options, int sel);
+void rg_gui_init(void);
+void rg_gui_set_font_size(size_t size);
+size_t rg_gui_get_font_size(void);
+size_t rg_gui_get_font_width(void);
+size_t rg_gui_draw_text(uint16_t x, uint16_t y, uint16_t width, const char *text, uint16_t color, uint16_t color_bg);
+void rg_gui_draw_rect(int x, int y, int width, int height, int border, uint16_t color);
+void rg_gui_draw_fill_rect(int x, int y, int width, int height, uint16_t color);
+void rg_gui_draw_battery(int x, int y);
+void rg_gui_draw_dialog(const char *header, dialog_choice_t *options, int sel);
 
-int odroid_overlay_dialog(const char *header, dialog_choice_t *options, int selected_initial);
-int odroid_overlay_confirm(const char *text, bool yes_selected);
-void odroid_overlay_alert(const char *text);
-bool odroid_overlay_dialog_is_open(void);
+int  rg_gui_dialog(const char *header, dialog_choice_t *options, int selected_initial);
+int  rg_gui_confirm(const char *text, bool yes_selected);
+void rg_gui_alert(const char *text);
+bool rg_gui_dialog_is_open(void);
 
-int odroid_overlay_settings_menu(dialog_choice_t *extra_options);
-int odroid_overlay_game_settings_menu(dialog_choice_t *extra_options);
-int odroid_overlay_game_menu(void);
+int rg_gui_settings_menu(dialog_choice_t *extra_options);
+int rg_gui_game_settings_menu(dialog_choice_t *extra_options);
+int rg_gui_game_menu(void);
