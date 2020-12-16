@@ -10,39 +10,27 @@ static const uint8_t vol_tbl[32] = {
     7085 >> 8, 7986 >> 8, 9002 >> 8, 10148 >> 8, 11439 >> 8, 12894 >> 8, 14535 >> 8, 16384 >> 8
 };
 
-static uint32_t da_index[6];
-static uint32_t fixed_n[6];
-static uint32_t rand_val[6]; // Noise seed
-static uint32_t k[6];
-static uint32_t r[6];
-static int8_t mix_buffer[48000 / 60 * 2];
+static uint32_t da_index[PSG_CHANNELS];
+static uint32_t fixed_n[PSG_CHANNELS];
+static uint32_t noise_k[PSG_CHANNELS];
+static uint32_t noise_rand[PSG_CHANNELS];
+static int32_t noise_level[PSG_CHANNELS];
+
+// The buffer should be signed but it seems to sound better
+// unsigned. I am still reviewing the implementation bellow.
+static uint8_t mix_buffer[48000 / 60 * 2];
+// static int8_t mix_buffer[48000 / 60 * 2];
 
 
 static inline void
 psg_update(int8_t *buf, int ch, size_t dwSize)
 {
-    uint32_t fixed_inc;
-    uint32_t t;            // used to know how much we got to advance in the ring buffer
     uint32_t Tp;
-    uint32_t vol;
-    int16_t lbal = 0, rbal = 0;
-    int8_t sample;
+    int vol, sample;
     int8_t *buf_end = buf + dwSize;
 
     /*
-    * We multiply the 4-bit balance values by 1.1 to get a result from (0..16.5).
-    * This multiplied by the 5-bit channel volume (0..31) gives us a result of
-    * (0..511).
-    */
-    lbal = ((PCE.PSG.regs[ch][PSG_BALANCE_REG] >> 4) * 1.1) * (PCE.PSG.regs[ch][4] & PSG_DDA_VOICE_VOLUME);
-    rbal = ((PCE.PSG.regs[ch][PSG_BALANCE_REG] & 0x0F) * 1.1) * (PCE.PSG.regs[ch][4] & PSG_DDA_VOICE_VOLUME);
-
-    if (!host.sound.stereo) {
-        lbal = (lbal + rbal) / 2;
-    }
-
-    /*
-    * There is no audio to be played on this channel.
+    * Bail if there is no audio to be played on this channel.
     */
     if (!(PCE.PSG.regs[ch][PSG_DDA_REG] & PSG_DDA_ENABLE)) {
         fixed_n[ch] = 0;
@@ -50,10 +38,22 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
     }
 
     /*
+    * We multiply the 4-bit balance values by 1.1 to get a result from (0..16.5).
+    * This multiplied by the 5-bit channel volume (0..31) gives us a result of
+    * (0..511).
+    */
+    int lbal = ((PCE.PSG.regs[ch][5] >> 4) * 1.1) * (PCE.PSG.regs[ch][4] & 0x1F);
+    int rbal = ((PCE.PSG.regs[ch][5] & 0xF) * 1.1) * (PCE.PSG.regs[ch][4] & 0x1F);
+
+    if (!host.sound.stereo) {
+        lbal = (lbal + rbal) / 2;
+    }
+
+    /*
     * There is 'direct access' audio to be played.
     */
     if ((PCE.PSG.regs[ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS) || PCE.PSG.da_count[ch]) {
-        uint16_t index = da_index[ch] >> 16;
+        uint32_t index = da_index[ch] >> 16;
         /*
          * For this direct audio stuff there is no frequency provided via PSG registers 3
          * and 4.  I'm not sure if this is normal behaviour or if it's something wrong in
@@ -66,7 +66,7 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
          * See the big comment in the final else clause for an explanation of this value
          * to the best of my knowledge.
          */
-        fixed_inc = ((uint32_t)(CLOCK_PSG / host.sound.sample_freq) << 16) / 0x1FF;
+        uint32_t fixed_inc = ((CLOCK_PSG / host.sound.sample_freq) << 16) / 0x1FF;
 
         while ((buf < buf_end) && PCE.PSG.da_count[ch]) {
             /*
@@ -79,14 +79,13 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
                 sample++;
 
             /*
-             * Left channel, or main channel in mono mode.  Multiply our sample value
-             * (-16..16) by our balance (0..511) and then divide by 64 to get a final
-             * 8-bit output sample of (-127..127)
+             * Multiply our sample value (-16..16) by our balance (0..511) and then divide
+             * by 64 to get a final 8-bit output sample of (-127..127)
              */
-            *buf++ = (int8_t) ((int16_t) (sample * lbal) >> 6) / 5;
+            *buf++ = (int8_t) (sample * lbal / 64);
 
             if (host.sound.stereo) {
-                *buf++ = (int8_t) ((int16_t) (sample * rbal) >> 6) / 5;
+                *buf++ = (int8_t) (sample * rbal / 64);
             }
 
             da_index[ch] += fixed_inc;
@@ -115,20 +114,20 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
         vol = vol_tbl[MAX(0, vol - 60)];
 
         while (buf < buf_end) {
-            k[ch] += 3000 + Np * 512;
+            noise_k[ch] += 3000 + Np * 512;
 
-            if ((t = (k[ch] / host.sound.sample_freq)) >= 1) {
-                if (rand_val[ch] & 0x00080000) {
-                    rand_val[ch] = ((rand_val[ch] ^ 0x0004) << 1) + 1;
-                    r[ch] = 1;
+            if ((Tp = (noise_k[ch] / host.sound.sample_freq)) >= 1) {
+                if (noise_rand[ch] & 0x00080000) {
+                    noise_rand[ch] = ((noise_rand[ch] ^ 0x0004) << 1) + 1;
+                    noise_level[ch] = -10 * 702;
                 } else {
-                    rand_val[ch] <<= 1;
-                    r[ch] = 0;
+                    noise_rand[ch] <<= 1;
+                    noise_level[ch] = 10 * 702;
                 }
-                k[ch] -= host.sound.sample_freq * t;
+                noise_k[ch] -= host.sound.sample_freq * Tp;
             }
 
-            *buf++ = (int8_t) ((r[ch] ? 10 * 702 : -10 * 702) * vol / 4096);
+            *buf++ = (int8_t) (noise_level[ch] * vol / 4096);
         }
         goto pad_and_return;
     }
@@ -160,16 +159,16 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
          * sampling rate into consideration with regard to the 3580000 effective pc engine
          * samplerate.  We use 16.16 fixed arithmetic for speed.
          */
-        fixed_inc = ((uint32_t)(CLOCK_PSG / host.sound.sample_freq) << 16) / Tp;
+        uint32_t fixed_inc = ((CLOCK_PSG / host.sound.sample_freq) << 16) / Tp;
 
         while (buf < buf_end) {
             if ((sample = (PCE.PSG.wave[ch][PCE.PSG.regs[ch][PSG_DATA_INDEX_REG]] - 16)) >= 0)
                 sample++;
 
-            *buf++ = (int8_t) ((int16_t) (sample * lbal) >> 6);
+            *buf++ = (int8_t) (sample * lbal / 64);
 
             if (host.sound.stereo) {
-                *buf++ = (int8_t) ((int16_t) (sample * rbal) >> 6);
+                *buf++ = (int8_t) (sample * rbal / 64);
             }
 
             fixed_n[ch] += fixed_inc;
@@ -191,12 +190,12 @@ snd_init(void)
 {
     memset(&da_index, 0, sizeof(da_index));
     memset(&fixed_n, 0, sizeof(fixed_n));
-    memset(&rand_val, 0, sizeof(rand_val));
-    memset(&k, 0, sizeof(k));
-    memset(&r, 0, sizeof(r));
 
-    rand_val[4] = 0x51F631E4;
-    rand_val[5] = 0x51F631E4;
+    for (int i = 0; i < PSG_CHANNELS; i++) {
+        noise_rand[i] = 0x51F6310 << i;
+        noise_level[i] = i;
+        noise_k[i] = 0;
+    }
 
     osd_snd_init();
 

@@ -164,24 +164,7 @@ typedef struct {
 	struct {
 		uint8_t regs[PSG_CHANNELS][8];
 		uint8_t wave[PSG_CHANNELS][32];
-		// PSG STRUCTURE
-		// 0 : dda_out
-		// 2 : freq (lo byte)  | In reality it's a divisor
-		// 3 : freq (hi byte)  | 3.7 Mhz / freq => true snd freq
-		// 4 : dda_ctrl
-		//     000XXXXX
-		//     ^^  ^
-		//     ||  ch. volume
-		//     ||
-		//     |direct access (everything at byte 0)
-		//     |
-		//    enable
-		// 5 : pan (left vol = hi nibble, right vol = low nibble)
-		// 6 : wave ringbuffer index
-		// 7 : noise data for channels 5 and 6
-
 		uint8_t ch, volume, lfo_freq, lfo_ctrl;
-
 		uint8_t da_data[PSG_CHANNELS][PSG_DA_BUFSIZE];
 		uint16_t da_index[PSG_CHANNELS];
 		uint16_t da_count[PSG_CHANNELS];

@@ -167,7 +167,7 @@ IRAM_ATTR inline uint8_t
 IO_read(uint16_t A)
 {
     uint8_t ret = 0xFF; // Open Bus
-    uint8_t ofs;
+    uint8_t index;
 
     // The last read value in 0800-017FF is read from the io buffer
     if (A >= 0x800 && A < 0x1800)
@@ -215,16 +215,16 @@ IO_read(uint16_t A)
         switch (A & 15) {
         case 0: ret = PCE.PSG.ch; break;
         case 1: ret = PCE.PSG.volume; break;
-        case 2: ret = PCE.PSG.regs[PCE.PSG.ch][2]; break;
-        case 3: ret = PCE.PSG.regs[PCE.PSG.ch][3]; break;
-        case 4: ret = PCE.PSG.regs[PCE.PSG.ch][4]; break;
-        case 5: ret = PCE.PSG.regs[PCE.PSG.ch][5]; break;
+        case 2: ret = PCE.PSG.regs[PCE.PSG.ch][PSG_FREQ_LSB_REG]; break;
+        case 3: ret = PCE.PSG.regs[PCE.PSG.ch][PSG_FREQ_MSB_REG]; break;
+        case 4: ret = PCE.PSG.regs[PCE.PSG.ch][PSG_DDA_REG]; break;
+        case 5: ret = PCE.PSG.regs[PCE.PSG.ch][PSG_BALANCE_REG]; break;
         case 6:
-            ofs = PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG];
-            PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG] = (PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG] + 1) & 31;
-            ret = PCE.PSG.wave[PCE.PSG.ch][ofs];
+            index = PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG]++;
+            PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG] &= 0x1F;
+            ret = PCE.PSG.wave[PCE.PSG.ch][index];
             break;
-        case 7: ret = PCE.PSG.regs[PCE.PSG.ch][7]; break;
+        case 7: ret = PCE.PSG.regs[PCE.PSG.ch][PSG_NOISE_REG]; break;
         case 8: ret = PCE.PSG.lfo_freq; break;
         case 9: ret = PCE.PSG.lfo_ctrl; break;
         }
@@ -535,43 +535,40 @@ IO_write(uint16_t A, uint8_t V)
             return;
 
         case 2:                                 // Frequency setting, 8 lower bits
-            PCE.PSG.regs[PCE.PSG.ch][2] = V;
+            PCE.PSG.regs[PCE.PSG.ch][PSG_FREQ_LSB_REG] = V;
             return;
 
         case 3:                                 // Frequency setting, 4 upper bits
-            PCE.PSG.regs[PCE.PSG.ch][3] = V & 15;
+            PCE.PSG.regs[PCE.PSG.ch][PSG_FREQ_MSB_REG] = V & 0xF;
             return;
 
         case 4:
-            PCE.PSG.regs[PCE.PSG.ch][4] = V;
-            // #if DEBUG_AUDIO
-            //             if ((V & 0xC0) == 0x40)
-            //                 PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG] = 0;
-            // #endif
+            PCE.PSG.regs[PCE.PSG.ch][PSG_DDA_REG] = V;
             return;
 
         case 5:                                 // Set channel specific volume
-            PCE.PSG.regs[PCE.PSG.ch][5] = V;
+            PCE.PSG.regs[PCE.PSG.ch][PSG_BALANCE_REG] = V;
             return;
 
         case 6:                                 // Put a value into the waveform or direct audio buffers
             if (PCE.PSG.regs[PCE.PSG.ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS) {
-                PCE.PSG.da_data[PCE.PSG.ch][PCE.PSG.da_index[PCE.PSG.ch]] = V;
-                PCE.PSG.da_index[PCE.PSG.ch] = (PCE.PSG.da_index[PCE.PSG.ch] + 1) & 0x3FF;
-                if (PCE.PSG.da_count[PCE.PSG.ch]++ > (PSG_DA_BUFSIZE - 1)) {
-                    MESSAGE_DEBUG("Audio being put into the direct "
-                                     "access buffer faster than it's being played.\n");
+                int index = PCE.PSG.da_index[PCE.PSG.ch]++;
+                if (index <= 0x3FF) {
+                    PCE.PSG.da_data[PCE.PSG.ch][index] = V & 0x1F;
+                } else {
+                    MESSAGE_DEBUG("Audio being put into the direct access buffer "
+                                  "faster than it's being played.\n");
                     PCE.PSG.da_count[PCE.PSG.ch] = 0;
                 }
             } else {
-                PCE.PSG.wave[PCE.PSG.ch][PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG]] = V;
-                PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG] =
-                    (PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG] + 1) & 0x1F;
+                int index = PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG]++;
+                PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG] &= 0x1F;
+                PCE.PSG.wave[PCE.PSG.ch][index] = V & 0x1F;
             }
             return;
 
         case 7:
-            PCE.PSG.regs[PCE.PSG.ch][7] = V;
+            PCE.PSG.regs[PCE.PSG.ch][PSG_NOISE_REG] = V;
             return;
 
         case 8:
