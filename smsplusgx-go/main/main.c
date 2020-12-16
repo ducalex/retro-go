@@ -114,14 +114,12 @@ void app_main(void)
     // Load ROM
     rg_app_desc_t *app = rg_system_get_app();
 
-    load_rom(app->romPath);
-
     system_reset_config();
 
-    sms.use_fm = 0;
-
-	// sms.dummy = framebuffer[0]; //A normal cart shouldn't access this memory ever. Point it to vram just in case.
-	// sms.sram = malloc(SRAM_SIZE);
+    if (!load_rom(app->romPath))
+    {
+        RG_PANIC("ROM file loading failed!");
+    }
 
     bitmap.width = SMS_WIDTH;
     bitmap.height = SMS_HEIGHT;

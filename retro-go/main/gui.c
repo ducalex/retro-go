@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-#include "lupng.h"
+#include <lupng.h>
 #include "gui.h"
 
 #define IMAGE_LOGO_WIDTH    (47)
@@ -59,7 +59,7 @@ void gui_event(gui_event_t event, tab_t *tab)
         (*tab->event_handler)(event, tab);
 }
 
-tab_t *gui_add_tab(const char *name, const binfile_t *logo, const binfile_t *header, void *arg, void *event_handler)
+tab_t *gui_add_tab(const char *name, const rg_file_t *logo, const rg_file_t *header, void *arg, void *event_handler)
 {
     tab_t *tab = calloc(1, sizeof(tab_t));
 
@@ -234,38 +234,6 @@ void gui_redraw()
     gui_event(TAB_REDRAW, tab);
 }
 
-void gui_draw_png(int x, int y, int width, int height, const binfile_t *file)
-{
-    if (img_buffer == NULL)
-        img_buffer = malloc(img_buffer_length * 2);
-
-    LuImage *img;
-
-    if (file->path) {
-        img = luPngReadFile(file->path);
-    } else {
-        img = luPngReadMem(file->data, file->size, 0);
-    }
-
-    if (img) {
-        for (int p = 0, i = 0; i < img->dataSize && p < img_buffer_length;) {
-            uint8_t r = (img->data[i++] >> 3) & 0x1F;
-            uint8_t g = (img->data[i++] >> 2) & 0x3F;
-            uint8_t b = (img->data[i++] >> 3) & 0x1F;
-            img_buffer[p++] = (r << 11) | (g << 5) | b;
-        }
-
-        width = width > 0 ? MIN(width, img->width) : img->width;
-        height = height > 0 ? MIN(height, img->height) : img->height;
-
-        rg_display_write(x, y, width, height, img->width * 2, img_buffer);
-
-        luImageRelease(img, NULL);
-    } else {
-        printf("gui_draw_png: Unable to load PNG file!\n");
-    }
-}
-
 void gui_draw_navbar()
 {
     for (int i = 0; i < gui.tabcount; i++)
@@ -283,10 +251,10 @@ void gui_draw_header(tab_t *tab)
     rg_gui_draw_fill_rect(0, y_pos, RG_SCREEN_WIDTH, LIST_Y_OFFSET - y_pos, C_BLACK);
 
     if (tab->img_logo)
-        gui_draw_png(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, tab->img_logo);
+        rg_gui_draw_png(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, tab->img_logo);
 
     if (tab->img_header)
-        gui_draw_png(x_pos + 1, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, tab->img_header);
+        rg_gui_draw_png(x_pos + 1, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, tab->img_header);
 }
 
 // void gui_draw_notice(tab_t *tab)

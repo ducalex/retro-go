@@ -95,7 +95,7 @@ typedef  unsigned int   uint32;
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <rg_attr.h>
+#include <rg_system.h>
 #include <nes.h>
 
 /* End basic types */

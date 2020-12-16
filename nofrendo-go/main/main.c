@@ -379,7 +379,7 @@ void app_main(void)
    }
 
    printf("app_main ROM: romSize=%d\n", romSize);
-   if (romSize <= 0)
+   if (romSize < 16)
    {
       RG_PANIC("ROM file loading failed!");
    }

@@ -27,6 +27,13 @@ struct dialog_choice_s {
 
 #define RG_DIALOG_CHOICE_LAST {0x0F0F0F0F, "LAST", "LAST", 0xFFFF, NULL}
 
+// rg_file_t is a struct to point to a file either in memory or on disk
+typedef struct {
+    size_t size;
+    const char *path;
+    const uint8_t data[];
+} rg_file_t;
+
 /* -------------------------------------------------------------------------------- */
 /* -- µGUI COLORS                                                                -- */
 /* -- Source: http://www.rapidtables.com/web/color/RGB_Color.htm                 -- */
@@ -183,6 +190,7 @@ void rg_gui_draw_rect(int x, int y, int width, int height, int border, uint16_t 
 void rg_gui_draw_fill_rect(int x, int y, int width, int height, uint16_t color);
 void rg_gui_draw_battery(int x, int y);
 void rg_gui_draw_dialog(const char *header, dialog_choice_t *options, int sel);
+bool rg_gui_draw_png(int x, int y, int width, int height, const rg_file_t *file);
 
 int  rg_gui_dialog(const char *header, dialog_choice_t *options, int selected_initial);
 int  rg_gui_confirm(const char *text, bool yes_selected);

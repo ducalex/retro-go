@@ -48,7 +48,7 @@ void rg_audio_init(int sample_rate)
 
     printf("%s: sink=%d, sample_rate=%d\n", __func__, audioSink, sample_rate);
 
-    int buffer_length = MIN(sample_rate / 50 + 1, 640);
+    int buffer_length = RG_MIN(sample_rate / 50 + 1, 640);
 
     if (audioSink == RG_AUDIO_SINK_SPEAKER)
     {

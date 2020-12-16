@@ -25,8 +25,7 @@ typedef word addr;
 #include <stdlib.h>
 #include <stdarg.h>
 #include <malloc.h>
-#include <rg_attr.h>
-#include <math.h>
+#include <rg_system.h>
 
 /* Implemented by the port */
 extern void sys_vsync(void);

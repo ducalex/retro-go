@@ -152,7 +152,6 @@ CSystem::CSystem(const char* gamefile, long displayformat, long samplerate)
       fclose(fp);
    } else {
       fprintf(stderr, "Invalid Cart.\n");
-      // abort();
    }
 
    // Now try and determine the filetype we have opened
@@ -189,7 +188,6 @@ CSystem::CSystem(const char* gamefile, long displayformat, long samplerate)
          break;
       case HANDY_FILETYPE_ILLEGAL:
       default:
-         // abort() ?
          mCart = new CCart(0,0);
          mRam = new CRam(0,0);
          break;

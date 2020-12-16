@@ -3,6 +3,7 @@
 #include <esp_system.h>
 #include <esp_heap_caps.h>
 #include <esp_timer.h>
+#include <esp_attr.h>
 #include <stdbool.h>
 
 #if defined(ESP_IDF_VERSION_MAJOR) && ESP_IDF_VERSION_MAJOR >= 4
@@ -21,7 +22,6 @@
 #include "rg_profiler.h"
 #include "rg_sdcard.h"
 #include "rg_settings.h"
-#include "rg_attr.h"
 
 typedef bool (*state_handler_t)(char *pathName);
 
@@ -59,14 +59,6 @@ typedef enum
 
 typedef struct
 {
-    short nsamples;
-    short count;
-    float avg;
-    float last;
-} avgr_t;
-
-typedef struct
-{
     uint totalFrames;
     uint skippedFrames;
     uint fullFrames;
@@ -92,18 +84,6 @@ typedef struct
     uint idleTimeCPU1;
 } runtime_stats_t;
 
-typedef struct
-{
-    uint magicWord;
-    uint errorCode;
-    char message[128];
-    char function[128];
-    char file[128];
-    uint backtrace[32];
-} panic_trace_t;
-
-#define PANIC_TRACE_MAGIC 0x12345678
-
 void rg_system_init(int app_id, int sampleRate);
 void rg_system_panic_dialog(const char *reason);
 void rg_system_panic(const char *reason, const char *function, const char *file) __attribute__((noreturn));
@@ -126,32 +106,8 @@ bool rg_emu_load_state(int slot);
 void rg_spi_lock_acquire(spi_lock_res_t);
 void rg_spi_lock_release(spi_lock_res_t);
 
-/* Utilities */
-
-static inline uint get_frame_time(uint refresh_rate)
-{
-    return 1000000 / refresh_rate;
-}
-
-static inline uint get_elapsed_time()
-{
-    return (uint)esp_timer_get_time(); // uint is plenty resolution for us
-}
-
-static inline uint get_elapsed_time_since(uint start)
-{
-    // uint now = get_elapsed_time();
-    // return ((now > start) ? now - start : ((uint64_t)now + (uint64_t)0xffffffff) - start);
-    return get_elapsed_time() - start;
-}
-
-#undef MIN
-#define MIN(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
-#undef MAX
-#define MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
-
-// This should really support printf format...
-#define RG_PANIC(x) rg_system_panic(x, __FUNCTION__, __FILE__)
+void *rg_alloc(size_t size, uint32_t caps);
+void rg_free(void *ptr);
 
 #define MEM_ANY 0
 #define MEM_SLOW MALLOC_CAP_SPIRAM
@@ -159,7 +115,31 @@ static inline uint get_elapsed_time_since(uint start)
 #define MEM_DMA MALLOC_CAP_DMA
 #define MEM_8BIT MALLOC_CAP_8BIT
 #define MEM_32BIT MALLOC_CAP_32BIT
-// #define rg_alloc(...)  rg_alloc_(..., __FILE__, __FUNCTION__)
 
-void *rg_alloc(size_t size, uint32_t caps);
-void rg_free(void *ptr);
+/* Utilities */
+#define get_frame_time(refresh_rate) (uint)(1000000 / (refresh_rate))
+#define get_elapsed_time() (uint)esp_timer_get_time()
+#define get_elapsed_time_since(start) (uint)(esp_timer_get_time() - (start))
+
+#define RG_MIN(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
+#define RG_MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
+
+// This should really support printf format...
+#define RG_PANIC(x) rg_system_panic(x, __FUNCTION__, __FILE__)
+
+// Attributes
+
+#undef PATH_MAX
+#define PATH_MAX 255
+
+#ifndef IRAM_ATTR
+#define IRAM_ATTR
+#endif
+
+#ifndef DRAM_ATTR
+#define DRAM_ATTR
+#endif
+
+#ifndef NO_PROFILING
+#define NO_PROFILING __attribute((no_instrument_function))
+#endif

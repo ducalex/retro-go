@@ -54,3 +54,7 @@
 // Partitions
 #define RG_APP_LAUNCHER        "retro-go"
 #define RG_APP_FACTORY         NULL
+
+// Third party libraries needed for some features
+#define RG_USE_MINIZ          (1)
+#define RG_USE_LUPNG          (1)

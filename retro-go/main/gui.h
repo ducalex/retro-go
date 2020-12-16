@@ -24,12 +24,6 @@ typedef enum {
 } scroll_mode_t;
 
 typedef struct {
-    size_t size;
-    const char *path;
-    const uint8_t data[];
-} binfile_t;
-
-typedef struct {
     uint16_t list_background;
     uint16_t list_standard;
     uint16_t list_selected;
@@ -56,8 +50,8 @@ typedef void (*gui_event_handler_t)(gui_event_t event, void *arg);
 typedef struct {
     char name[64];
     char status[64];
-    const binfile_t *img_logo;
-    const binfile_t *img_header;
+    const rg_file_t *img_logo;
+    const rg_file_t *img_header;
     bool initialized;
     bool is_empty;
     void *arg;
@@ -80,7 +74,10 @@ typedef struct {
 extern retro_gui_t gui;
 extern int gui_themes_count;
 
-tab_t *gui_add_tab(const char *name, const binfile_t *logo, const binfile_t *header, void *arg, void *event_handler);
+#define MIN(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
+#define MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
+
+tab_t *gui_add_tab(const char *name, const rg_file_t *logo, const rg_file_t *header, void *arg, void *event_handler);
 tab_t *gui_get_tab(int index);
 tab_t *gui_get_current_tab();
 tab_t *gui_set_current_tab(int index);
@@ -94,7 +91,6 @@ listbox_item_t *gui_get_selected_item(tab_t *tab);
 
 void gui_event(gui_event_t event, tab_t *tab);
 void gui_redraw(void);
-void gui_draw_png(int x, int y, int width, int height, const binfile_t *file);
 void gui_draw_navbar(void);
 void gui_draw_header(tab_t *tab);
 void gui_draw_status(tab_t *tab);

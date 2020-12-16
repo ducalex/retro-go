@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <lupng.h>
 
 #include "bitmaps/font_basic.h"
 #include "rg_system.h"
@@ -22,7 +23,7 @@ void rg_gui_init(void)
 
 void rg_gui_set_font_size(size_t size)
 {
-    font_size = MAX(8, MIN(32, size));
+    font_size = RG_MAX(8, RG_MIN(32, size));
     rg_settings_FontSize_set(font_size);
 }
 
@@ -129,6 +130,49 @@ void rg_gui_draw_fill_rect(int x, int y, int width, int height, uint16_t color)
         rg_display_write(x, y_pos, width, thickness, 0, overlay_buffer);
         y_pos += 16;
     }
+}
+
+bool rg_gui_draw_png(int x, int y, int width, int height, const rg_file_t *file)
+{
+    LuImage *img;
+
+    if (file->path) {
+        img = luPngReadFile(file->path);
+    } else {
+        img = luPngReadMem(file->data, file->size, 0);
+    }
+
+    if (!img) {
+        printf("%s: Unable to load PNG file!\n", __func__);
+        return false;
+    }
+
+    if (width == 0 || width > img->width) {
+        width = img->width;
+    }
+
+    if (height == 0 || height > img->height) {
+        height = img->height;
+    }
+
+    uint16_t *ptr = (uint16_t *)img->data;
+
+    // Rewrite image to RGB565 and crop if necessary
+    for (int img_y = 0; img_y < height; ++img_y) {
+        for (int img_x = 0; img_x < width; ++img_x) {
+            int offset = (img_y * img->width * 3) + (img_x * 3);
+            int r = (img->data[offset+0] >> 3) & 0x1F;
+            int g = (img->data[offset+1] >> 2) & 0x3F;
+            int b = (img->data[offset+2] >> 3) & 0x1F;
+            *(ptr++) = (r << 11) | (g << 5) | b;
+        }
+    }
+
+    rg_display_write(x, y, width, height, width * 2, img->data);
+
+    luImageRelease(img, NULL);
+
+    return true;
 }
 
 void rg_gui_draw_battery(int x_pos, int y_pos)

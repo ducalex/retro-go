@@ -1,6 +1,6 @@
 <?php
 
-$output = "#include \"gui.h\"\n\n";
+$output = "#include <rg_gui.h>\n\n";
 
 chdir(__DIR__.'/images');
 
@@ -14,7 +14,7 @@ foreach (glob('*.png') as $file) {
     $hexdata = wordwrap(implode(', ', $hex), 100);
     $struct_name = preg_replace('/[^a-z0-9]+/i', '_', basename($file, '.png'));
 
-    $output .= "static const binfile_t $struct_name = {.size = $size, .data = {\n$hexdata\n} };";
+    $output .= "static const rg_file_t $struct_name = {.size = $size, .data = {\n$hexdata\n} };";
     $output .= "\n\n";
 }
 

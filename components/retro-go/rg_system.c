@@ -6,7 +6,6 @@
 #include <esp_task_wdt.h>
 #include <esp_system.h>
 #include <esp_event.h>
-// #include <esp_panic.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
 #include <string.h>
@@ -25,7 +24,15 @@
 #define USE_SPI_MUTEX 0
 #endif
 
-#define SAVE_BUFFER_SIZE (0x40000)
+#define PANIC_TRACE_MAGIC 0x12345678
+
+typedef struct
+{
+    uint magicWord;
+    char message[128];
+    char function[128];
+    char file[128];
+} panic_trace_t;
 
 // This is a direct pointer to rtc slow ram which isn't cleared on
 // panic. We don't use this region so we can point anywhere in it.
@@ -40,10 +47,100 @@ static SemaphoreHandle_t spiMutex;
 static spi_lock_res_t spiMutexOwner;
 #endif
 
-static void rg_system_monitor_task(void *arg);
 
+static void system_monitor_task(void *arg)
+{
+    runtime_counters_t current;
+    bool letState = false;
+    float tickTime = 0;
+    uint loops = 0;
 
-static void rg_system_gpio_init()
+    while (1)
+    {
+        // Make a copy and reset counters immediately because processing could take 1-2ms
+        current = counters;
+        counters.totalFrames = counters.fullFrames = 0;
+        counters.skippedFrames = counters.busyTime = 0;
+        counters.resetTime = get_elapsed_time();
+
+        tickTime = (counters.resetTime - current.resetTime);
+
+        if (current.busyTime > tickTime)
+            current.busyTime = tickTime;
+
+        statistics.battery = rg_input_read_battery();
+        statistics.busyPercent = current.busyTime / tickTime * 100.f;
+        statistics.skippedFPS = current.skippedFrames / (tickTime / 1000000.f);
+        statistics.totalFPS = current.totalFrames / (tickTime / 1000000.f);
+        // To do get the actual game refresh rate somehow
+        statistics.emulatedSpeed = statistics.totalFPS / 60 * 100.f;
+
+        statistics.freeMemoryInt = heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
+        statistics.freeMemoryExt = heap_caps_get_free_size(MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
+        statistics.freeBlockInt = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
+        statistics.freeBlockExt = heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
+
+    #if (configGENERATE_RUN_TIME_STATS == 1)
+        TaskStatus_t pxTaskStatusArray[16];
+        uint ulTotalTime = 0;
+        uint uxArraySize = uxTaskGetSystemState(pxTaskStatusArray, 16, &ulTotalTime);
+        ulTotalTime /= 100UL;
+
+        for (x = 0; x < uxArraySize; x++)
+        {
+            if (pxTaskStatusArray[x].xHandle == xTaskGetIdleTaskHandleForCPU(0))
+                statistics.idleTimeCPU0 = 100 - (pxTaskStatusArray[x].ulRunTimeCounter / ulTotalTime);
+            if (pxTaskStatusArray[x].xHandle == xTaskGetIdleTaskHandleForCPU(1))
+                statistics.idleTimeCPU1 = 100 - (pxTaskStatusArray[x].ulRunTimeCounter / ulTotalTime);
+        }
+    #endif
+
+        // Applications should never stop polling input. If they do, they're probably unresponsive...
+        if (statistics.lastTickTime > 0 && rg_input_gamepad_last_read() > 5000000)
+        {
+            RG_PANIC("Application is unresponsive!");
+        }
+
+        if (statistics.battery.percentage < 2)
+        {
+            letState = !letState;
+            rg_system_set_led(letState);
+        }
+        else if (letState)
+        {
+            letState = false;
+            rg_system_set_led(letState);
+        }
+
+        printf("HEAP:%d+%d (%d+%d), BUSY:%.4f, FPS:%.4f (SKIP:%d, PART:%d, FULL:%d), BATTERY:%d\n",
+            statistics.freeMemoryInt / 1024,
+            statistics.freeMemoryExt / 1024,
+            statistics.freeBlockInt / 1024,
+            statistics.freeBlockExt / 1024,
+            statistics.busyPercent,
+            statistics.totalFPS,
+            current.skippedFrames,
+            current.totalFrames - current.fullFrames - current.skippedFrames,
+            current.fullFrames,
+            statistics.battery.millivolts);
+
+        #ifdef ENABLE_PROFILING
+            if ((loops % 10) == 0)
+            {
+                rg_profiler_stop();
+                rg_profiler_print();
+                rg_profiler_start();
+            }
+        #endif
+
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        loops++;
+    }
+
+    vTaskDelete(NULL);
+}
+
+static void rg_gpio_init()
 {
     rtc_gpio_deinit(RG_GPIO_GAMEPAD_MENU);
     //rtc_gpio_deinit(GPIO_NUM_14);
@@ -67,9 +164,9 @@ void rg_system_init(int appId, int sampleRate)
 {
     const esp_app_desc_t *app = esp_ota_get_app_description();
 
-    printf("\n==================================================\n");
+    printf("\n========================================================\n");
     printf("%s %s (%s %s)\n", app->project_name, app->version, app->date, app->time);
-    printf("==================================================\n\n");
+    printf("========================================================\n\n");
 
     printf("%s: %d KB free\n", __func__, esp_get_free_heap_size() / 1024);
 
@@ -89,8 +186,8 @@ void rg_system_init(int appId, int sampleRate)
     bool sd_init = (rg_sdcard_mount() == 0);
 
     rg_settings_init();
+    rg_gpio_init();
     rg_gui_init();
-    rg_system_gpio_init();
     rg_input_init();
     rg_audio_init(sampleRate);
     rg_display_init();
@@ -126,7 +223,7 @@ void rg_system_init(int appId, int sampleRate)
         rg_profiler_init();
     #endif
 
-    xTaskCreate(&rg_system_monitor_task, "sysmon", 2048, NULL, 7, NULL);
+    xTaskCreate(&system_monitor_task, "sysmon", 2048, NULL, 7, NULL);
 
     panicTrace->magicWord = 0;
 
@@ -417,98 +514,6 @@ void rg_system_sleep()
 void rg_system_set_led(int value)
 {
     gpio_set_level(RG_GPIO_LED, value);
-}
-
-static void rg_system_monitor_task(void *arg)
-{
-    runtime_counters_t current;
-    bool letState = false;
-    float tickTime = 0;
-    uint loops = 0;
-
-    while (1)
-    {
-        // Make a copy and reset counters immediately because processing could take 1-2ms
-        current = counters;
-        counters.totalFrames = counters.fullFrames = 0;
-        counters.skippedFrames = counters.busyTime = 0;
-        counters.resetTime = get_elapsed_time();
-
-        tickTime = (counters.resetTime - current.resetTime);
-
-        if (current.busyTime > tickTime)
-            current.busyTime = tickTime;
-
-        statistics.battery = rg_input_read_battery();
-        statistics.busyPercent = current.busyTime / tickTime * 100.f;
-        statistics.skippedFPS = current.skippedFrames / (tickTime / 1000000.f);
-        statistics.totalFPS = current.totalFrames / (tickTime / 1000000.f);
-        // To do get the actual game refresh rate somehow
-        statistics.emulatedSpeed = statistics.totalFPS / 60 * 100.f;
-
-        statistics.freeMemoryInt = heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
-        statistics.freeMemoryExt = heap_caps_get_free_size(MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
-        statistics.freeBlockInt = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
-        statistics.freeBlockExt = heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
-
-    #if (configGENERATE_RUN_TIME_STATS == 1)
-        TaskStatus_t pxTaskStatusArray[16];
-        uint ulTotalTime = 0;
-        uint uxArraySize = uxTaskGetSystemState(pxTaskStatusArray, 16, &ulTotalTime);
-        ulTotalTime /= 100UL;
-
-        for (x = 0; x < uxArraySize; x++)
-        {
-            if (pxTaskStatusArray[x].xHandle == xTaskGetIdleTaskHandleForCPU(0))
-                statistics.idleTimeCPU0 = 100 - (pxTaskStatusArray[x].ulRunTimeCounter / ulTotalTime);
-            if (pxTaskStatusArray[x].xHandle == xTaskGetIdleTaskHandleForCPU(1))
-                statistics.idleTimeCPU1 = 100 - (pxTaskStatusArray[x].ulRunTimeCounter / ulTotalTime);
-        }
-    #endif
-
-        // Applications should never stop polling input. If they do, they're probably unresponsive...
-        if (statistics.lastTickTime > 0 && rg_input_gamepad_last_read() > 5000000)
-        {
-            RG_PANIC("Input timeout");
-        }
-
-        if (statistics.battery.percentage < 2)
-        {
-            letState = !letState;
-            rg_system_set_led(letState);
-        }
-        else if (letState)
-        {
-            letState = false;
-            rg_system_set_led(letState);
-        }
-
-        printf("HEAP:%d+%d (%d+%d), BUSY:%.4f, FPS:%.4f (SKIP:%d, PART:%d, FULL:%d), BATTERY:%d\n",
-            statistics.freeMemoryInt / 1024,
-            statistics.freeMemoryExt / 1024,
-            statistics.freeBlockInt / 1024,
-            statistics.freeBlockExt / 1024,
-            statistics.busyPercent,
-            statistics.totalFPS,
-            current.skippedFrames,
-            current.totalFrames - current.fullFrames - current.skippedFrames,
-            current.fullFrames,
-            statistics.battery.millivolts);
-
-        #ifdef ENABLE_PROFILING
-            if ((loops % 10) == 0)
-            {
-                rg_profiler_stop();
-                rg_profiler_print();
-                rg_profiler_start();
-            }
-        #endif
-
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        loops++;
-    }
-
-    vTaskDelete(NULL);
 }
 
 IRAM_ATTR void rg_system_tick(uint skippedFrame, uint fullFrame, uint busyTime)

@@ -217,7 +217,7 @@ battery_state_t rg_input_read_battery()
     }
 
     const float Vs = (adcValue / RG_BATT_DIVIDER_R2 * (RG_BATT_DIVIDER_R1 + RG_BATT_DIVIDER_R2));
-    const float Vconst = MAX(RG_BATT_VOLTAGE_EMPTY, MIN(Vs, RG_BATT_VOLTAGE_FULL));
+    const float Vconst = RG_MAX(RG_BATT_VOLTAGE_EMPTY, RG_MIN(Vs, RG_BATT_VOLTAGE_FULL));
 
     battery_state_t out_state = {
         .millivolts = (int)(Vs * 1000),

@@ -438,6 +438,5 @@ int state_load(char* fn)
 _error:
    MESSAGE_ERROR("state_load: Load failed!\n");
    fclose(file);
-   // abort();
    return -1;
 }

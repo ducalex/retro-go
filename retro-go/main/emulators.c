@@ -75,8 +75,8 @@ static void event_handler(gui_event_t event, tab_t *tab)
 }
 
 static void add_emulator(const char *system, const char *dirname, const char* extensions,
-                         const char *part, uint16_t crc_offset, const binfile_t *logo,
-                         const binfile_t *header)
+                         const char *part, uint16_t crc_offset, const rg_file_t *logo,
+                         const rg_file_t *header)
 {
     if (!rg_system_find_app(part))
     {

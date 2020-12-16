@@ -27,7 +27,7 @@ NO_PROFILE static inline profile_frame_t *find_frame(void *this_fn, void *call_s
 
         if (frame->func_ptr == 0)
         {
-            profile->total_frames = MAX(profile->total_frames, i + 1);
+            profile->total_frames = RG_MAX(profile->total_frames, i + 1);
             frame->func_ptr = this_fn;
             // frame->caller_ptr = call_site;
         }

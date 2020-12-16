@@ -13,8 +13,6 @@
 #include "cpu.h"
 #include "sound.h"
 
-#include <rg_system.h>
-
 static const byte mbc_table[256] =
 {
 	0, 1, 1, 1, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 3,
@@ -209,12 +207,12 @@ int rom_loadbank(short bank)
 	// Load the 16K page
 	if (fseek(fpRomFile, OFFSET, SEEK_SET))
 	{
-		RG_PANIC("ROM fseek failed");
+		emu_die("ROM fseek failed");
 	}
 
 	if (fread(rom.bank[bank], BANK_SIZE, 1, fpRomFile) < 1)
 	{
-		RG_PANIC("ROM fread failed");
+		emu_die("ROM fread failed");
 	}
 
 	rg_spi_lock_release(SPI_LOCK_SDCARD);

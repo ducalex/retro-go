@@ -8,28 +8,16 @@
 #include <sys/stat.h>
 #include <ctype.h>
 #include <errno.h>
+#include <miniz.h>
 
 #include "rg_system.h"
 #include "rg_sdcard.h"
-#include "../miniz/miniz.h"
 
-static bool sdcardOpen = false;
-
-#define SDCARD_ACCESS_BEGIN() { \
-    /* if (!sdcardOpen) RG_PANIC("SD Card not initialized"); */ \
-    if (!sdcardOpen) { printf("SD Card not initialized\n"); return -1; } \
-    rg_spi_lock_acquire(SPI_LOCK_SDCARD); \
-}
+#define SDCARD_ACCESS_BEGIN() rg_spi_lock_acquire(SPI_LOCK_SDCARD)
 #define SDCARD_ACCESS_END() rg_spi_lock_release(SPI_LOCK_SDCARD)
 
 int rg_sdcard_mount()
 {
-    if (sdcardOpen)
-    {
-        printf("%s: already mounted.\n", __func__);
-        return -1;
-    }
-
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
     host.slot = HSPI_HOST;
     host.max_freq_khz = SDMMC_FREQ_DEFAULT; // SDMMC_FREQ_26M;
@@ -46,16 +34,18 @@ int rg_sdcard_mount()
         .max_files = 5,
     };
 
-    esp_err_t ret = esp_vfs_fat_sdmmc_mount(RG_BASE_PATH, &host, &slot_config, &mount_config, NULL);
-    sdcardOpen = (ret == ESP_OK);
+    esp_vfs_fat_sdmmc_unmount();
 
-    if (ret != ESP_OK)
+    esp_err_t ret = esp_vfs_fat_sdmmc_mount(RG_BASE_PATH, &host, &slot_config, &mount_config, NULL);
+
+    if (ret == ESP_OK)
     {
-        printf("%s: esp_vfs_fat_sdmmc_mount failed (%d)\n", __func__, ret);
-        return -1;
+        printf("%s: SD Card mounted, freq=%d\n", __func__, 0);
+        return 0;
     }
 
-    return 0;
+    printf("%s: SD Card mounting failed (%d)\n", __func__, ret);
+    return -1;
 }
 
 int rg_sdcard_unmount()
@@ -63,10 +53,10 @@ int rg_sdcard_unmount()
     esp_err_t ret = esp_vfs_fat_sdmmc_unmount();
     if (ret != ESP_OK)
     {
-        printf("%s: esp_vfs_fat_sdmmc_unmount failed (%d)\n", __func__, ret);
+        printf("%s: SD Card unmounting failed (%d)\n", __func__, ret);
+        return -1;
     }
-    sdcardOpen = false;
-    return (ret == ESP_OK) ? 0 : -1;
+    return 0;
 }
 
 int rg_sdcard_read_file(const char* path, void* buf, size_t buf_size)

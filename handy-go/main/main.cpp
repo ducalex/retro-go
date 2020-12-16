@@ -165,6 +165,11 @@ extern "C" void app_main(void)
     // Init emulator
     lynx = new CSystem(app->romPath, MIKIE_PIXEL_FORMAT_16BPP_565_BE, AUDIO_SAMPLE_RATE);
 
+    if (lynx->mFileType == HANDY_FILETYPE_ILLEGAL)
+    {
+        RG_PANIC("ROM loading failed!");
+    }
+
     gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;
     gAudioBuffer = (SWORD*)&audioBuffer;
     gAudioEnabled = 1;
@@ -242,6 +247,4 @@ extern "C" void app_main(void)
             gAudioBufferPointer = 0;
         }
     }
-
-    RG_PANIC("Handy died.");
 }

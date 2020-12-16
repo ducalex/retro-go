@@ -90,7 +90,7 @@ void osd_gfx_init(void)
 
 void osd_gfx_set_mode(int width, int height)
 {
-    printf("%s: (%dx%d)\n", __func__, width, height);
+    printf("%s: Resolution: %dx%d\n", __func__, width, height);
 
     current_width = width;
     current_height = height;

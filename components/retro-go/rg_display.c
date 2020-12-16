@@ -179,7 +179,7 @@ backlight_deinit()
 static void
 backlight_percentage_set(int value)
 {
-    value = MIN(MAX(value, 5), 100);
+    value = RG_MIN(RG_MAX(value, 5), 100);
 
     int duty = BACKLIGHT_DUTY_MAX * (value * 0.01f);
 
@@ -1140,7 +1140,7 @@ rg_display_init()
     filterMode = rg_settings_DisplayFilter_get();
     rotationMode = rg_settings_DisplayRotation_get();
 
-    printf("LCD: Initialisation sequence:\n");
+    printf("%s: Initialization:\n", __func__);
 
     printf("     - calling spi_initialize.\n");
     spi_initialize();
