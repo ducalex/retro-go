@@ -182,7 +182,7 @@ extern "C" void app_main(void)
     set_rotation();
 
     float sampleTime = AUDIO_SAMPLE_RATE / 1000000.f;
-    uint skipFrames = 0;
+    long skipFrames = 0;
     bool fullFrame = 0;
 
     // Start emulation
@@ -201,7 +201,7 @@ extern "C" void app_main(void)
             rg_gui_game_settings_menu(options);
         }
 
-        uint startTime = get_elapsed_time();
+        uint32_t startTime = get_elapsed_time();
         bool drawFrame = !skipFrames;
 
         ULONG buttons = 0;

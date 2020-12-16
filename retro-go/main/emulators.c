@@ -1,5 +1,6 @@
 #include <rg_system.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "emulators.h"
 #include "favorites.h"
@@ -160,7 +161,7 @@ void emulator_init(retro_emulator_t *emu)
             file->checksum = 0;
         }
     }
-    free(files);
+    rg_free(files);
 }
 
 const char *emu_get_file_path(retro_emulator_file_t *file)
@@ -218,7 +219,7 @@ void emulator_crc32_file(retro_emulator_file_t *file)
     }
     else if ((fp = fopen(file_path, "rb")) != NULL)
     {
-        void *buffer = malloc(chunk_size);
+        void *buffer = rg_alloc(chunk_size, MEM_ANY);
         uint32_t crc_tmp = 0;
         uint32_t count = 0;
 
@@ -237,7 +238,7 @@ void emulator_crc32_file(retro_emulator_file_t *file)
             if (count < chunk_size) break;
         }
 
-        free(buffer);
+        rg_free(buffer);
 
         if (feof(fp))
         {
@@ -255,7 +256,7 @@ void emulator_crc32_file(retro_emulator_file_t *file)
         file->checksum = 1;
     }
 
-    free(cache_path);
+    rg_free(cache_path);
 
     gui_draw_notice(" ", C_RED);
 }
@@ -328,14 +329,16 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
             favorite_add(file);
     }
 
-    free(save_path);
-    free(sram_path);
+    rg_free(save_path);
+    rg_free(sram_path);
 }
 
 void emulator_start(retro_emulator_file_t *file, bool load_state)
 {
     const char *path = emu_get_file_path(file);
-    assert(path != NULL);
+
+    if (path == NULL)
+        RG_PANIC("Unable to find file...");
 
     printf("Retro-Go: Starting game: %s\n", path);
 

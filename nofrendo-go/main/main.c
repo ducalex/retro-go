@@ -1,5 +1,6 @@
 #include <rg_system.h>
 #include <string.h>
+#include <stdio.h>
 #include <nofrendo.h>
 #include <bitmap.h>
 #include <nes.h>
@@ -16,7 +17,7 @@
 #define NVS_KEY_AUTOCROP "autocrop"
 
 static char* romData;
-static uint romCRC32;
+static uint32 romCRC32;
 static size_t romSize;
 
 static uint16_t myPalette[64];
@@ -30,14 +31,12 @@ static gamepad_state_t joystick2;
 static gamepad_state_t *localJoystick = &joystick1;
 static gamepad_state_t *remoteJoystick = &joystick2;
 
-static uint samplesPerFrame = 0;
-
 static bool overscan = true;
-static uint autocrop = false;
+static long autocrop = false;
 static bool netplay  = false;
 
 static bool fullFrame = 0;
-static uint frameTime = 0;
+static long frameTime = 0;
 static nes_t *nes;
 
 static rg_app_desc_t *app;
@@ -207,7 +206,7 @@ size_t osd_getromdata(unsigned char **data)
    return romSize;
 }
 
-uint osd_getromcrc()
+uint32 osd_getromcrc()
 {
    return romCRC32;
 }
@@ -226,7 +225,6 @@ void osd_loadstate()
 
    nes = nes_getptr();
    frameTime = get_frame_time(nes->refresh_rate);
-   samplesPerFrame = AUDIO_SAMPLE_RATE / nes->refresh_rate;
 }
 
 void osd_logprint(int type, char *string)
@@ -249,10 +247,10 @@ void osd_shutdown()
 // We've reached vsync. We need to process audio and sleep if we ran too fast
 void osd_vsync()
 {
-   static uint skipFrames = 0;
-   static uint lastSyncTime = 0;
+   static uint32_t skipFrames = 0;
+   static uint32_t lastSyncTime = 0;
 
-   uint elapsed = get_elapsed_time_since(lastSyncTime);
+   int elapsed = get_elapsed_time_since(lastSyncTime);
 
    if (skipFrames == 0)
    {

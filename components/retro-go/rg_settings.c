@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdio.h>
 
 #include "rg_system.h"
 #include "rg_settings.h"
@@ -56,7 +57,7 @@ void rg_settings_init()
         void *buffer = rg_alloc(size, MEM_ANY);
         rg_sdcard_read_file(config_file, buffer, size);
         root = cJSON_Parse(buffer);
-        free(buffer);
+        rg_free(buffer);
     }
     if (!root)
     {
@@ -90,7 +91,7 @@ void rg_settings_commit()
         if (buffer)
         {
             rg_sdcard_write_file(config_file, buffer, strlen(buffer));
-            free(buffer);
+            cJSON_free(buffer);
         }
 #else
         nvs_commit(my_handle);

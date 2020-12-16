@@ -398,9 +398,6 @@ spi_initialize()
 
     //Initialize the SPI bus
     spi_bus_initialize(HSPI_HOST, &buscfg, 1);
-    //assert(ret==ESP_OK);
-
-    //Attach the LCD to the SPI bus
     spi_bus_add_device(HSPI_HOST, &devcfg, &spi);
     //assert(ret==ESP_OK);
 

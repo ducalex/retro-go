@@ -66,7 +66,7 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
          * See the big comment in the final else clause for an explanation of this value
          * to the best of my knowledge.
          */
-        fixed_inc = ((uint32_t)(CLOCK_PSG / host.sound.freq) << 16) / 0x1FF;
+        fixed_inc = ((uint32_t)(CLOCK_PSG / host.sound.sample_freq) << 16) / 0x1FF;
 
         while ((buf < buf_end) && PCE.PSG.da_count[ch]) {
             /*
@@ -117,7 +117,7 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
         while (buf < buf_end) {
             k[ch] += 3000 + Np * 512;
 
-            if ((t = (k[ch] / host.sound.freq)) >= 1) {
+            if ((t = (k[ch] / host.sound.sample_freq)) >= 1) {
                 if (rand_val[ch] & 0x00080000) {
                     rand_val[ch] = ((rand_val[ch] ^ 0x0004) << 1) + 1;
                     r[ch] = 1;
@@ -125,7 +125,7 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
                     rand_val[ch] <<= 1;
                     r[ch] = 0;
                 }
-                k[ch] -= host.sound.freq * t;
+                k[ch] -= host.sound.sample_freq * t;
             }
 
             *buf++ = (int8_t) ((r[ch] ? 10 * 702 : -10 * 702) * vol / 4096);
@@ -139,7 +139,7 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
     if ((Tp = PCE.PSG.regs[ch][PSG_FREQ_LSB_REG] + (PCE.PSG.regs[ch][PSG_FREQ_MSB_REG] << 8)) > 0) {
         /*
          * Thank god for well commented code!  The original line of code read:
-         * fixed_inc = ((uint32_t) (3.2 * 1118608 / host.sound.freq) << 16) / Tp;
+         * fixed_inc = ((uint32_t) (3.2 * 1118608 / host.sound.sample_freq) << 16) / Tp;
          * and had nary a comment to be found.  It took a little head scratching to get
          * it figured out.  The 3.2 * 1118608 comes out to 3574595.6 which is obviously
          * meant to represent the 3.58mhz cpu clock speed used in the pc engine to
@@ -147,7 +147,7 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
          * author had the two numbers multiplied together to get the odd value instead of
          * just using 3580000.  I did some checking and the value will compute the same
          * using either value divided by any standard soundcard samplerate.  The
-         * host.sound.freq is our soundcard's samplerate which is quite a bit slower than
+         * host.sound.sample_freq is our soundcard's samplerate which is quite a bit slower than
          * the pce's cpu (3580000 vs. 22050/44100 typically).
          *
          * Taken from the PSG doc written by Paul Clifford (paul@plasma.demon.co.uk)
@@ -160,7 +160,7 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
          * sampling rate into consideration with regard to the 3580000 effective pc engine
          * samplerate.  We use 16.16 fixed arithmetic for speed.
          */
-        fixed_inc = ((uint32_t)(CLOCK_PSG / host.sound.freq) << 16) / Tp;
+        fixed_inc = ((uint32_t)(CLOCK_PSG / host.sound.sample_freq) << 16) / Tp;
 
         while (buf < buf_end) {
             if ((sample = (PCE.PSG.wave[ch][PCE.PSG.regs[ch][PSG_DATA_INDEX_REG]] - 16)) >= 0)

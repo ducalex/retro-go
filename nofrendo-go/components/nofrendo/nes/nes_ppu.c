@@ -563,14 +563,14 @@ INLINE void ppu_renderbg(uint8 *vidbuf)
    }
 
    uint8 *bmp_ptr = vidbuf - ppu.tile_xofs; /* scroll x */
-   uint x_tile = ppu.vaddr & 0x1F;
-   uint refresh_vaddr = 0x2000 + (ppu.vaddr & 0x0FE0); /* mask out x tile */
-   uint bg_offset = ((ppu.vaddr >> 12) & 7) + ppu.bg_base; /* offset in y tile */
-   uint attrib_base = (refresh_vaddr & 0x2C00) + 0x3C0 + (((ppu.vaddr >> 5) & 0x1C) << 1);
-   uint attrib_addr = attrib_base + (x_tile >> 2);
-   uint attrib = PPU_MEM_READ(attrib_addr); attrib_addr++;
-   uint attrib_shift = (x_tile & 2) + (((ppu.vaddr >> 5) & 2) << 1);
-   uint col_high = ((attrib >> attrib_shift) & 3) << 2;
+   uint32 x_tile = ppu.vaddr & 0x1F;
+   uint32 refresh_vaddr = 0x2000 + (ppu.vaddr & 0x0FE0); /* mask out x tile */
+   uint32 bg_offset = ((ppu.vaddr >> 12) & 7) + ppu.bg_base; /* offset in y tile */
+   uint32 attrib_base = (refresh_vaddr & 0x2C00) + 0x3C0 + (((ppu.vaddr >> 5) & 0x1C) << 1);
+   uint32 attrib_addr = attrib_base + (x_tile >> 2);
+   uint32 attrib = PPU_MEM_READ(attrib_addr); attrib_addr++;
+   uint32 attrib_shift = (x_tile & 2) + (((ppu.vaddr >> 5) & 2) << 1);
+   uint32 col_high = ((attrib >> attrib_shift) & 3) << 2;
 
    /* ppu fetches 33 tiles */
    for (int tile_num = 0; tile_num < 33; tile_num++)

@@ -8,6 +8,7 @@
 #include <esp_event.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
+#include <assert.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -28,7 +29,7 @@
 
 typedef struct
 {
-    uint magicWord;
+    uint32_t magicWord;
     char message[128];
     char function[128];
     char file[128];
@@ -53,7 +54,7 @@ static void system_monitor_task(void *arg)
     runtime_counters_t current;
     bool letState = false;
     float tickTime = 0;
-    uint loops = 0;
+    long loops = 0;
 
     while (1)
     {
@@ -82,8 +83,8 @@ static void system_monitor_task(void *arg)
 
     #if (configGENERATE_RUN_TIME_STATS == 1)
         TaskStatus_t pxTaskStatusArray[16];
-        uint ulTotalTime = 0;
-        uint uxArraySize = uxTaskGetSystemState(pxTaskStatusArray, 16, &ulTotalTime);
+        uint32_t ulTotalTime = 0;
+        uint32_t uxArraySize = uxTaskGetSystemState(pxTaskStatusArray, 16, &ulTotalTime);
         ulTotalTime /= 100UL;
 
         for (x = 0; x < uxArraySize; x++)
@@ -516,7 +517,7 @@ void rg_system_set_led(int value)
     gpio_set_level(RG_GPIO_LED, value);
 }
 
-IRAM_ATTR void rg_system_tick(uint skippedFrame, uint fullFrame, uint busyTime)
+IRAM_ATTR void rg_system_tick(bool skippedFrame, bool fullFrame, long busyTime)
 {
     if (skippedFrame) counters.skippedFrames++;
     else if (fullFrame) counters.fullFrames++;
@@ -562,34 +563,35 @@ IRAM_ATTR void rg_spi_lock_release(spi_lock_res_t owner)
 
 /* Utilities */
 
-void *rg_alloc(size_t size, uint32_t caps)
+void *rg_alloc(size_t size, uint32_t mem_type)
 {
-    void *ptr;
+    uint32_t caps = 0;
 
-    if (!(caps & MALLOC_CAP_32BIT))
-    {
-    caps |= MALLOC_CAP_8BIT;
-    }
+    if (mem_type & MEM_SLOW)  caps |= MALLOC_CAP_SPIRAM;
+    if (mem_type & MEM_FAST)  caps |= MALLOC_CAP_INTERNAL;
+    if (mem_type & MEM_DMA)   caps |= MALLOC_CAP_DMA;
+    if (mem_type & MEM_32BIT) caps |= MALLOC_CAP_32BIT;
+    else caps |= MALLOC_CAP_8BIT;
 
-    ptr = heap_caps_calloc(1, size, caps);
+    void *ptr = heap_caps_calloc(1, size, caps);
 
     printf("RG_ALLOC: SIZE: %u  [SPIRAM: %u; 32BIT: %u; DMA: %u]  PTR: %p\n",
-        size, (caps & MALLOC_CAP_SPIRAM) != 0, (caps & MALLOC_CAP_32BIT) != 0,
-        (caps & MALLOC_CAP_DMA) != 0, ptr);
+            size, (caps & MALLOC_CAP_SPIRAM) != 0, (caps & MALLOC_CAP_32BIT) != 0,
+            (caps & MALLOC_CAP_DMA) != 0, ptr);
 
     if (!ptr)
     {
-    size_t availaible = heap_caps_get_largest_free_block(caps);
+        size_t availaible = heap_caps_get_largest_free_block(caps);
 
-    // Loosen the caps and try again
-    ptr = heap_caps_calloc(1, size, caps & ~(MALLOC_CAP_SPIRAM|MALLOC_CAP_INTERNAL));
-    if (!ptr)
-    {
-        printf("RG_ALLOC: ^-- Allocation failed! (available: %d)\n", availaible);
-        RG_PANIC("Memory allocation failed!");
-    }
+        // Loosen the caps and try again
+        ptr = heap_caps_calloc(1, size, caps & ~(MALLOC_CAP_SPIRAM|MALLOC_CAP_INTERNAL));
+        if (!ptr)
+        {
+            printf("RG_ALLOC: ^-- Allocation failed! (available: %d)\n", availaible);
+            RG_PANIC("Memory allocation failed!");
+        }
 
-    printf("RG_ALLOC: ^-- CAPS not fully met! (available: %d)\n", availaible);
+        printf("RG_ALLOC: ^-- CAPS not fully met! (available: %d)\n", availaible);
     }
 
     return ptr;

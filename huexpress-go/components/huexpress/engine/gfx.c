@@ -456,8 +456,8 @@ gfx_run(void)
 
 	/* Test raster hit */
 	if (RasHitON) {
-		uint raster_hit = (IO_VDC_REG[RCR].W & 0x3FF) - 64;
-		uint current_line = Scanline - IO_VDC_MINLINE + 1;
+		int raster_hit = (IO_VDC_REG[RCR].W & 0x3FF) - 64;
+		int current_line = Scanline - IO_VDC_MINLINE + 1;
 		if (current_line == raster_hit && raster_hit < 263) {
 			TRACE_GFX("\n-----------------RASTER HIT (%d)------------------\n", Scanline);
 			gfx_irq(VDC_STAT_RR);

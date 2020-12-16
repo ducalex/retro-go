@@ -23,7 +23,7 @@ static rg_video_frame_t update1;
 static rg_video_frame_t update2;
 static rg_video_frame_t *currentUpdate = &update1;
 
-static uint skipFrames = 0;
+static long skipFrames = 0;
 
 static bool netplay = false;
 
@@ -172,7 +172,7 @@ void app_main(void)
             rg_gui_game_settings_menu(NULL);
         }
 
-        uint startTime = get_elapsed_time();
+        uint32_t startTime = get_elapsed_time();
         bool drawFrame = !skipFrames;
 
         if (netplay)

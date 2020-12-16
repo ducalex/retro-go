@@ -8,6 +8,7 @@
 #include <esp_log.h>
 #include <string.h>
 #include <unistd.h>
+#include <assert.h>
 #include <netdb.h>
 
 #include "rg_system.h"
@@ -510,7 +511,7 @@ bool rg_netplay_stop()
 void rg_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
 {
 #ifdef ENABLE_NETPLAY
-    static uint sync_count = 0, sync_time = 0, start_time = 0;
+    static uint32_t sync_count = 0, sync_time = 0, start_time = 0;
     static netplay_packet_t packet;
 
     if (netplay_status != NETPLAY_STATUS_CONNECTED)

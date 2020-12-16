@@ -25,7 +25,7 @@ static rg_video_frame_t update2 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, -
 static rg_video_frame_t *currentUpdate = &update1;
 
 static bool fullFrame = false;
-static uint skipFrames = 0;
+static long skipFrames = 0;
 
 static bool netplay = false;
 
@@ -232,8 +232,6 @@ void app_main(void)
         sram_load();
     }
 
-    const int frameTime = get_frame_time(60);
-
     while (true)
     {
         gamepad_state_t joystick = rg_input_read_gamepad();
@@ -250,7 +248,7 @@ void app_main(void)
             rg_gui_game_settings_menu(options);
         }
 
-        uint startTime = get_elapsed_time();
+        uint32_t startTime = get_elapsed_time();
         bool drawFrame = !skipFrames;
 
         pad_set(PAD_UP, joystick.values[GAMEPAD_KEY_UP]);
@@ -281,7 +279,7 @@ void app_main(void)
 
         if (skipFrames == 0)
         {
-            if (get_elapsed_time_since(startTime) > frameTime) skipFrames = 1;
+            if (get_elapsed_time_since(startTime) > get_frame_time(60)) skipFrames = 1;
             if (app->speedupEnabled) skipFrames += app->speedupEnabled * 2;
         }
         else if (skipFrames > 0)

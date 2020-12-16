@@ -1,5 +1,8 @@
 #pragma once
 
+#include <stdbool.h>
+#include <stdint.h>
+
 typedef enum {
     NETPLAY_MODE_NONE,
     NETPLAY_MODE_HOST,

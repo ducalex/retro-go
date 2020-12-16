@@ -97,8 +97,8 @@ LoadCard(const char *name)
 	PCE.ROM_DATA = PCE.ROM + offset;
 	PCE.ROM_CRC = crc32_le(0, PCE.ROM, fsize);
 
-	uint IDX = 0;
-	uint ROM_MASK = 1;
+	uint32_t IDX = 0;
+	uint32_t ROM_MASK = 1;
 
 	while (ROM_MASK < PCE.ROM_SIZE) ROM_MASK <<= 1;
 	ROM_MASK--;

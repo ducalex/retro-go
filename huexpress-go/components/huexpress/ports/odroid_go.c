@@ -32,9 +32,9 @@ static bool gfx_init_done = false;
 static bool overscan = false;
 static int current_height, current_width;
 
-static uint skipFrames = 0;
-static uint blitFrames = 0;
-static uint fullFrames = 0;
+static int skipFrames = 0;
+static int blitFrames = 0;
+static int fullFrames = 0;
 
 #define COLOR_RGB(r,g,b) ( (((r)<<12)&0xf800) + (((g)<<7)&0x07e0) + (((b)<<1)&0x001f) )
 
@@ -252,7 +252,7 @@ audioTask(void *arg)
 void osd_snd_init(void)
 {
     host.sound.stereo = true;
-    host.sound.freq = AUDIO_SAMPLE_RATE;
+    host.sound.sample_freq = AUDIO_SAMPLE_RATE;
     host.sound.sample_size = 1;
 
     xTaskCreatePinnedToCore(&audioTask, "audioTask", 1024 * 2, NULL, 5, NULL, 1);
@@ -300,7 +300,7 @@ void osd_vsync(void)
 		skipFrames++;
 	}
 
-    rg_system_tick(!blitFrames, fullFrames, (uint)(curtime - prevtime));
+    rg_system_tick(blitFrames == 0, fullFrames > 0, (uint32_t)(curtime - prevtime));
 	blitFrames = 0;
 	fullFrames = 0;
 

@@ -21,28 +21,28 @@ void rg_gui_init(void)
     rg_gui_set_font_size(rg_settings_FontSize_get());
 }
 
-void rg_gui_set_font_size(size_t size)
+void rg_gui_set_font_size(int size)
 {
     font_size = RG_MAX(8, RG_MIN(32, size));
     rg_settings_FontSize_set(font_size);
 }
 
-size_t rg_gui_get_font_size(void)
+int rg_gui_get_font_size(void)
 {
     return font_size;
 }
 
-size_t rg_gui_get_font_width(void)
+int rg_gui_get_font_width(void)
 {
     return 8;
 }
 
-size_t rg_gui_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, const char *text, uint16_t color, uint16_t color_bg)
+int rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, uint16_t color, uint16_t color_bg)
 {
-    size_t font_height = rg_gui_get_font_size();
-    size_t font_width = rg_gui_get_font_width();
-    size_t text_len = 1;
-    size_t height = 0;
+    int font_height = rg_gui_get_font_size();
+    int font_width = rg_gui_get_font_width();
+    int text_len = 1;
+    int height = 0;
     float scale = (float)font_height / 8;
 
     if (text == NULL || text[0] == 0) {
@@ -59,7 +59,7 @@ size_t rg_gui_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, const ch
         width = (RG_SCREEN_WIDTH - x_pos);
     }
 
-    size_t line_len = width / font_width;
+    int line_len = width / font_width;
     char buffer[line_len + 1];
 
     for (int pos = 0; pos < text_len;)
@@ -67,8 +67,8 @@ size_t rg_gui_draw_text(uint16_t x_pos, uint16_t y_pos, uint16_t width, const ch
         sprintf(buffer, "%.*s", line_len, text + pos);
         if (strchr(buffer, '\n')) *(strchr(buffer, '\n')) = 0;
 
-        size_t chunk_len = strlen(buffer);
-        size_t x_offset = 0;
+        int chunk_len = strlen(buffer);
+        int x_offset = 0;
 
         for (int i = 0; i < line_len; i++)
         {

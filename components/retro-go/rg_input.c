@@ -5,13 +5,14 @@
 #include <driver/i2c.h>
 #include <string.h>
 #include <unistd.h>
+#include <assert.h>
 
 #include "rg_system.h"
 #include "rg_input.h"
 
 static volatile bool input_task_is_running = false;
-static volatile uint last_gamepad_read = 0;
-static volatile uint use_external_gamepad = 0;
+static volatile bool use_external_gamepad = 0;
+static volatile uint32_t last_gamepad_read = 0;
 static gamepad_state_t gamepad_state;
 static SemaphoreHandle_t xSemaphore;
 

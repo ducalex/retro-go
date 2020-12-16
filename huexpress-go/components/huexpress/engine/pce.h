@@ -36,9 +36,9 @@ struct host_machine {
 	} options;
 
 	struct {
-		uint stereo;
-		uint freq;
-		uint sample_size;
+		size_t sample_size;
+		size_t sample_freq;
+		bool stereo;
 	} sound;
 
 	struct {
@@ -50,7 +50,7 @@ extern struct host_machine host;
 
 typedef struct
 {
-	uint len;
+	size_t len;
 	char key[16];
 	void *ptr;
 } svar_t;

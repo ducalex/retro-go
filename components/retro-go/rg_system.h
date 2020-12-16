@@ -1,10 +1,10 @@
 #pragma once
 
-#include <esp_system.h>
-#include <esp_heap_caps.h>
-#include <esp_timer.h>
+#include <esp_idf_version.h>
 #include <esp_attr.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #if defined(ESP_IDF_VERSION_MAJOR) && ESP_IDF_VERSION_MAJOR >= 4
 #include <esp32/rom/crc.h>
@@ -59,12 +59,12 @@ typedef enum
 
 typedef struct
 {
-    uint totalFrames;
-    uint skippedFrames;
-    uint fullFrames;
-    uint busyTime;
-    uint realTime;
-    uint resetTime;
+    uint32_t totalFrames;
+    uint32_t skippedFrames;
+    uint32_t fullFrames;
+    uint32_t busyTime;
+    uint32_t realTime;
+    uint32_t resetTime;
 } runtime_counters_t;
 
 typedef struct
@@ -75,13 +75,13 @@ typedef struct
     float totalFPS;
     float emulatedSpeed;
     float busyPercent;
-    uint lastTickTime;
-    uint freeMemoryInt;
-    uint freeMemoryExt;
-    uint freeBlockInt;
-    uint freeBlockExt;
-    uint idleTimeCPU0;
-    uint idleTimeCPU1;
+    uint32_t lastTickTime;
+    uint32_t freeMemoryInt;
+    uint32_t freeMemoryExt;
+    uint32_t freeBlockInt;
+    uint32_t freeBlockExt;
+    uint32_t idleTimeCPU0;
+    uint32_t idleTimeCPU1;
 } runtime_stats_t;
 
 void rg_system_init(int app_id, int sampleRate);
@@ -94,7 +94,7 @@ void rg_system_switch_app(const char *app) __attribute__((noreturn));
 void rg_system_set_boot_app(const char *app);
 bool rg_system_find_app(const char *app);
 void rg_system_set_led(int value);
-void rg_system_tick(uint skippedFrame, uint fullFrame, uint busyTime);
+void rg_system_tick(bool skippedFrame, bool fullFrame, long busyTime);
 rg_app_desc_t *rg_system_get_app();
 runtime_stats_t rg_system_get_stats();
 
@@ -109,17 +109,22 @@ void rg_spi_lock_release(spi_lock_res_t);
 void *rg_alloc(size_t size, uint32_t caps);
 void rg_free(void *ptr);
 
-#define MEM_ANY 0
-#define MEM_SLOW MALLOC_CAP_SPIRAM
-#define MEM_FAST MALLOC_CAP_INTERNAL
-#define MEM_DMA MALLOC_CAP_DMA
-#define MEM_8BIT MALLOC_CAP_8BIT
-#define MEM_32BIT MALLOC_CAP_32BIT
+#define MEM_ANY   (0)
+#define MEM_SLOW  (1)
+#define MEM_FAST  (2)
+#define MEM_DMA   (4)
+#define MEM_8BIT  (8)
+#define MEM_32BIT (16)
 
 /* Utilities */
-#define get_frame_time(refresh_rate) (uint)(1000000 / (refresh_rate))
-#define get_elapsed_time() (uint)esp_timer_get_time()
-#define get_elapsed_time_since(start) (uint)(esp_timer_get_time() - (start))
+
+// Functions from esp-idf, we don't include their header but they will be linked
+extern int64_t esp_timer_get_time();
+extern void heap_caps_malloc_extmem_enable(size_t limit);
+
+#define get_frame_time(refresh_rate) (uint32_t)(1000000 / (refresh_rate))
+#define get_elapsed_time() (uint32_t)esp_timer_get_time()
+#define get_elapsed_time_since(start) (uint32_t)(esp_timer_get_time() - (start))
 
 #define RG_MIN(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
 #define RG_MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
