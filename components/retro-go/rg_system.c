@@ -1,15 +1,18 @@
 #include <freertos/FreeRTOS.h>
-#include <esp_freertos_hooks.h>
 #include <esp_heap_caps.h>
 #include <esp_partition.h>
-#include <esp_ota_ops.h>
 #include <esp_task_wdt.h>
+#include <esp_vfs_fat.h>
+#include <esp_ota_ops.h>
 #include <esp_system.h>
 #include <esp_event.h>
 #include <esp_sleep.h>
-#include <driver/rtc_io.h>
+#include <driver/gpio.h>
+#include <sys/stat.h>
 #include <assert.h>
+#include <dirent.h>
 #include <string.h>
+#include <errno.h>
 #include <stdio.h>
 
 #include "bitmaps/image_sdcard.h"
@@ -141,10 +144,54 @@ static void system_monitor_task(void *arg)
     vTaskDelete(NULL);
 }
 
+bool rg_sdcard_mount()
+{
+    sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+    host.slot = HSPI_HOST;
+    host.max_freq_khz = SDMMC_FREQ_DEFAULT; // SDMMC_FREQ_26M;
+
+    sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
+    slot_config.gpio_miso = RG_GPIO_SD_MISO;
+    slot_config.gpio_mosi = RG_GPIO_SD_MOSI;
+    slot_config.gpio_sck  = RG_GPIO_SD_CLK;
+    slot_config.gpio_cs = RG_GPIO_SD_CS;
+
+    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
+        .allocation_unit_size = 0,
+        .format_if_mount_failed = 0,
+        .max_files = 5,
+    };
+
+    esp_vfs_fat_sdmmc_unmount();
+
+    esp_err_t ret = esp_vfs_fat_sdmmc_mount(RG_BASE_PATH, &host, &slot_config, &mount_config, NULL);
+
+    if (ret == ESP_OK)
+    {
+        printf("%s: SD Card mounted, freq=%d\n", __func__, 0);
+        return true;
+    }
+
+    printf("%s: SD Card mounting failed (%d)\n", __func__, ret);
+    return false;
+}
+
+bool rg_sdcard_unmount()
+{
+    esp_err_t ret = esp_vfs_fat_sdmmc_unmount();
+    if (ret == ESP_OK)
+    {
+        printf("%s: SD Card unmounted\n", __func__);
+        return true;
+    }
+    printf("%s: SD Card unmounting failed (%d)\n", __func__, ret);
+    return false;
+}
+
 static void rg_gpio_init()
 {
-    rtc_gpio_deinit(RG_GPIO_GAMEPAD_MENU);
-    //rtc_gpio_deinit(GPIO_NUM_14);
+    // rtc_gpio_deinit(RG_GPIO_GAMEPAD_MENU);
+    // rtc_gpio_deinit(GPIO_NUM_14);
 
     // Blue LED
     gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
@@ -184,7 +231,7 @@ void rg_system_init(int appId, int sampleRate)
 
     // sdcard init must be before rg_display_init()
     // and rg_settings_init() if JSON is used
-    bool sd_init = (rg_sdcard_mount() == 0);
+    bool sd_init = rg_sdcard_mount();
 
     rg_settings_init();
     rg_gpio_init();
@@ -258,9 +305,11 @@ void rg_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t 
         RG_PANIC("Invalid ROM Path!");
     }
 
-    if (netplay_cb != NULL)
+    if (netplay_cb)
     {
-        rg_netplay_pre_init(netplay_cb);
+        #ifdef ENABLE_NETPLAY
+            rg_netplay_init(netplay_cb);
+        #endif
     }
 
     currentApp.loadState = load;
@@ -425,7 +474,7 @@ void rg_system_switch_app(const char *app)
     rg_display_clear(0);
     rg_display_show_hourglass();
 
-    rg_audio_terminate();
+    rg_audio_deinit();
     rg_sdcard_unmount();
 
     rg_system_set_boot_app(app);
@@ -476,7 +525,7 @@ void rg_system_panic_dialog(const char *reason)
     // Clear the trace to avoid a boot loop
     panicTrace->magicWord = 0;
 
-    rg_audio_terminate();
+    rg_audio_deinit();
 
     // In case we panicked from inside a dialog
     rg_spi_lock_release(SPI_LOCK_ANY);
@@ -507,7 +556,7 @@ void rg_system_sleep()
 
     // Wait for button release
     rg_input_wait_for_key(GAMEPAD_KEY_MENU, false);
-    rg_audio_terminate();
+    rg_audio_deinit();
     vTaskDelay(100);
     esp_deep_sleep_start();
 }
@@ -561,7 +610,162 @@ IRAM_ATTR void rg_spi_lock_release(spi_lock_res_t owner)
 #endif
 }
 
-/* Utilities */
+/* File System */
+
+FILE *rg_fopen(const char *filename, const char *mode)
+{
+    rg_spi_lock_acquire(SPI_LOCK_SDCARD);
+    FILE *fp = fopen(filename, mode);
+    if (!fp) {
+        // We release the lock because rg_fclose might not
+        // be called if rg_fopen fails.
+        rg_spi_lock_release(SPI_LOCK_SDCARD);
+    }
+    return fp;
+}
+
+int rg_fread(FILE *fp)
+{
+    int ret = fclose(fp);
+    rg_spi_lock_release(SPI_LOCK_SDCARD);
+    return ret;
+}
+
+int rg_fclose(FILE *fp)
+{
+    int ret = fclose(fp);
+    rg_spi_lock_release(SPI_LOCK_SDCARD);
+    return ret;
+}
+
+bool rg_mkdir(const char *dir)
+{
+    rg_spi_lock_acquire(SPI_LOCK_SDCARD);
+
+    int ret = mkdir(dir, 0777);
+
+    if (ret == -1)
+    {
+        if (errno == EEXIST)
+        {
+            return true;
+        }
+
+        char temp[255];
+        strncpy(temp, dir, sizeof(temp) - 1);
+
+        for (char *p = temp + strlen(RG_BASE_PATH) + 1; *p; p++) {
+            if (*p == '/') {
+                *p = 0;
+                if (strlen(temp) > 0) {
+                    printf("%s: Creating %s\n", __func__, temp);
+                    mkdir(temp, 0777);
+                }
+                *p = '/';
+                while (*(p+1) == '/') p++;
+            }
+        }
+
+        ret = mkdir(temp, 0777);
+    }
+
+    if (ret == 0)
+    {
+        printf("%s: Folder created %s\n", __func__, dir);
+    }
+
+    rg_spi_lock_release(SPI_LOCK_SDCARD);
+
+    return (ret == 0);
+}
+
+bool rg_readdir(const char* path, char **out_files, size_t *out_count)
+{
+    rg_spi_lock_acquire(SPI_LOCK_SDCARD);
+
+    DIR* dir = opendir(path);
+    if (!dir)
+    {
+        rg_spi_lock_release(SPI_LOCK_SDCARD);
+        return false;
+    }
+
+    // TO DO: We should use a struct instead of a packed list of strings
+    char *buffer = NULL;
+    size_t bufsize = 0;
+    size_t bufpos = 0;
+    size_t count = 0;
+    struct dirent* file;
+
+    while ((file = readdir(dir)))
+    {
+        size_t len = strlen(file->d_name) + 1;
+
+        if (len < 2) continue;
+
+        if ((bufsize - bufpos) < len)
+        {
+            bufsize += 1024;
+            buffer = realloc(buffer, bufsize);
+        }
+
+        memcpy(buffer + bufpos, &file->d_name, len);
+        bufpos += len;
+        count++;
+    }
+
+    buffer = realloc(buffer, bufpos + 1);
+    buffer[bufpos] = 0;
+
+    closedir(dir);
+
+    rg_spi_lock_release(SPI_LOCK_SDCARD);
+
+    if (out_files) *out_files = buffer;
+    if (out_count) *out_count = count;
+
+    return true;
+}
+
+bool rg_unlink(const char *path)
+{
+    rg_spi_lock_acquire(SPI_LOCK_SDCARD);
+
+    bool ret = unlink(path) == 0 || rmdir(path) == 0;
+
+    rg_spi_lock_release(SPI_LOCK_SDCARD);
+
+    return ret;
+}
+
+long rg_filesize(const char *path)
+{
+    long ret = -1;
+    FILE* f;
+
+    if ((f = rg_fopen(path, "rb")))
+    {
+        fseek(f, 0, SEEK_END);
+        ret = ftell(f);
+        rg_fclose(f);
+    }
+
+    return ret;
+}
+
+const char* rg_get_filename(const char *path)
+{
+    const char *name = strrchr(path, '/');
+    return name ? name + 1 : NULL;
+}
+
+const char* rg_get_extension(const char *path)
+{
+    const char *ext = strrchr(path, '.');
+    return ext ? ext + 1 : NULL;
+}
+
+/* Memory */
 
 void *rg_alloc(size_t size, uint32_t mem_type)
 {

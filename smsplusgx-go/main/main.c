@@ -25,21 +25,24 @@ static rg_video_frame_t *currentUpdate = &update1;
 
 static long skipFrames = 0;
 
-static bool netplay = false;
-
 static bool consoleIsGG = false;
 static bool consoleIsSMS = false;
 
 static gamepad_state_t joystick1;
-static gamepad_state_t joystick2;
 static gamepad_state_t *localJoystick = &joystick1;
+
+#ifdef ENABLE_NETPLAY
+static gamepad_state_t joystick2;
 static gamepad_state_t *remoteJoystick = &joystick2;
 
+static bool netplay = false;
+#endif
 // --- MAIN
 
-#if 0
+
 static void netplay_callback(netplay_event_t event, void *arg)
 {
+#ifdef ENABLE_NETPLAY
    bool new_netplay;
 
    switch (event)
@@ -73,8 +76,8 @@ static void netplay_callback(netplay_event_t event, void *arg)
       localJoystick = &joystick1;
       remoteJoystick = &joystick2;
    }
-}
 #endif
+}
 
 static bool SaveState(char *pathName)
 {
@@ -106,7 +109,7 @@ static bool LoadState(char *pathName)
 void app_main(void)
 {
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    rg_emu_init(&LoadState, &SaveState, NULL);
+    rg_emu_init(&LoadState, &SaveState, &netplay_callback);
 
     update1.buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
     update2.buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
@@ -175,14 +178,32 @@ void app_main(void)
         uint32_t startTime = get_elapsed_time();
         bool drawFrame = !skipFrames;
 
-        if (netplay)
-        {
-            rg_netplay_sync(localJoystick, remoteJoystick, sizeof(gamepad_state_t));
-        }
-
         input.pad[0] = 0x00;
         input.pad[1] = 0x00;
         input.system = 0x00;
+
+        #ifdef ENABLE_NETPLAY
+        if (netplay)
+        {
+            rg_netplay_sync(localJoystick, remoteJoystick, sizeof(gamepad_state_t));
+            if (remoteJoystick->values[GAMEPAD_KEY_UP])    input.pad[1] |= INPUT_UP;
+            if (remoteJoystick->values[GAMEPAD_KEY_DOWN])  input.pad[1] |= INPUT_DOWN;
+            if (remoteJoystick->values[GAMEPAD_KEY_LEFT])  input.pad[1] |= INPUT_LEFT;
+            if (remoteJoystick->values[GAMEPAD_KEY_RIGHT]) input.pad[1] |= INPUT_RIGHT;
+            if (remoteJoystick->values[GAMEPAD_KEY_A])     input.pad[1] |= INPUT_BUTTON2;
+            if (remoteJoystick->values[GAMEPAD_KEY_B])     input.pad[1] |= INPUT_BUTTON1;
+            if (consoleIsSMS)
+            {
+                if (remoteJoystick->values[GAMEPAD_KEY_START])  input.system |= INPUT_PAUSE;
+                if (remoteJoystick->values[GAMEPAD_KEY_SELECT]) input.system |= INPUT_START;
+            }
+            else if (consoleIsGG)
+            {
+                if (remoteJoystick->values[GAMEPAD_KEY_START])  input.system |= INPUT_START;
+                if (remoteJoystick->values[GAMEPAD_KEY_SELECT]) input.system |= INPUT_PAUSE;
+            }
+        }
+        #endif
 
     	if (localJoystick->values[GAMEPAD_KEY_UP])    input.pad[0] |= INPUT_UP;
     	if (localJoystick->values[GAMEPAD_KEY_DOWN])  input.pad[0] |= INPUT_DOWN;
@@ -190,26 +211,16 @@ void app_main(void)
     	if (localJoystick->values[GAMEPAD_KEY_RIGHT]) input.pad[0] |= INPUT_RIGHT;
     	if (localJoystick->values[GAMEPAD_KEY_A])     input.pad[0] |= INPUT_BUTTON2;
     	if (localJoystick->values[GAMEPAD_KEY_B])     input.pad[0] |= INPUT_BUTTON1;
-    	if (remoteJoystick->values[GAMEPAD_KEY_UP])    input.pad[1] |= INPUT_UP;
-    	if (remoteJoystick->values[GAMEPAD_KEY_DOWN])  input.pad[1] |= INPUT_DOWN;
-    	if (remoteJoystick->values[GAMEPAD_KEY_LEFT])  input.pad[1] |= INPUT_LEFT;
-    	if (remoteJoystick->values[GAMEPAD_KEY_RIGHT]) input.pad[1] |= INPUT_RIGHT;
-    	if (remoteJoystick->values[GAMEPAD_KEY_A])     input.pad[1] |= INPUT_BUTTON2;
-    	if (remoteJoystick->values[GAMEPAD_KEY_B])     input.pad[1] |= INPUT_BUTTON1;
 
 		if (consoleIsSMS)
 		{
 			if (localJoystick->values[GAMEPAD_KEY_START])  input.system |= INPUT_PAUSE;
 			if (localJoystick->values[GAMEPAD_KEY_SELECT]) input.system |= INPUT_START;
-			if (remoteJoystick->values[GAMEPAD_KEY_START])  input.system |= INPUT_PAUSE;
-			if (remoteJoystick->values[GAMEPAD_KEY_SELECT]) input.system |= INPUT_START;
 		}
 		else if (consoleIsGG)
 		{
 			if (localJoystick->values[GAMEPAD_KEY_START])  input.system |= INPUT_START;
 			if (localJoystick->values[GAMEPAD_KEY_SELECT]) input.system |= INPUT_PAUSE;
-			if (remoteJoystick->values[GAMEPAD_KEY_START])  input.system |= INPUT_START;
-			if (remoteJoystick->values[GAMEPAD_KEY_SELECT]) input.system |= INPUT_PAUSE;
 		}
         else // Coleco
         {

@@ -34,7 +34,7 @@ typedef struct
 } battery_state_t;
 
 void rg_input_init(void);
-void rg_input_terminate(void);
+void rg_input_deinit(void);
 long rg_input_gamepad_last_read(void);
 bool rg_input_key_is_pressed(gamepad_key_t key);
 void rg_input_wait_for_key(gamepad_key_t key, bool pressed);

@@ -33,7 +33,7 @@ typedef enum
 } audio_filter_t;
 
 void rg_audio_init(int sample_rate);
-void rg_audio_terminate();
+void rg_audio_deinit();
 void rg_audio_set_sink(audio_sink_t sink);
 audio_sink_t rg_audio_get_sink();
 void rg_audio_volume_set(audio_volume_t level);

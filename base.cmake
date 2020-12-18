@@ -1,6 +1,6 @@
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-set(EXTRA_COMPONENT_DIRS "../components")
-set(SDKCONFIG_DEFAULTS "../base.sdkconfig")
+set(EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/components")
+set(SDKCONFIG_DEFAULTS "${CMAKE_CURRENT_LIST_DIR}/base.sdkconfig")
 
 execute_process(
   COMMAND git describe --tags --abbrev=5 --long --dirty=*

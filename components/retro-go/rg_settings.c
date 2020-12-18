@@ -51,14 +51,20 @@ static int unsaved_changes = 0;
 void rg_settings_init()
 {
 #ifdef USE_CONFIG_FILE
-    int size = rg_sdcard_get_filesize(config_file);
-    if (size > 0)
+    FILE *fp = rg_fopen(config_file, "rb");
+    if (fp)
     {
-        void *buffer = rg_alloc(size, MEM_ANY);
-        rg_sdcard_read_file(config_file, buffer, size);
-        root = cJSON_Parse(buffer);
+        fseek(fp, 0, SEEK_END);
+        size_t size = ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+        char *buffer = rg_alloc(size, MEM_ANY);
+        if (fread(buffer, 1, size, fp)) {
+            root = cJSON_Parse(buffer);
+        }
         rg_free(buffer);
+        rg_fclose(fp);
     }
+
     if (!root)
     {
         printf("rg_system_init: Failed to load JSON config file!\n");
@@ -90,7 +96,12 @@ void rg_settings_commit()
         char *buffer = cJSON_Print(root);
         if (buffer)
         {
-            rg_sdcard_write_file(config_file, buffer, strlen(buffer));
+            FILE *fp = rg_fopen(config_file, "wb");
+            if (fp)
+            {
+                fwrite(buffer, strlen(buffer), 1, fp);
+                rg_fclose(fp);
+            }
             cJSON_free(buffer);
         }
 #else

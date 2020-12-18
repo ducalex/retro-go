@@ -7,7 +7,8 @@
 /*****************************************/
 
 #include <freertos/FreeRTOS.h>
-#include <freertos/queue.h>
+#include <freertos/task.h>
+#include <sys/socket.h>
 #include <rg_system.h>
 #include <string.h>
 #include <ctype.h>
@@ -24,7 +25,6 @@
 
 static uint16_t mypalette[256];
 static uint8_t *framebuffers[2];
-static uint8_t *screen_buffers[2];
 static rg_video_frame_t frames[2];
 static rg_video_frame_t *curFrame, *prevFrame;
 static uint8_t current_fb = 0;
@@ -260,7 +260,7 @@ void osd_snd_init(void)
 
 void osd_snd_shutdown(void)
 {
-    rg_audio_stop();
+    rg_audio_deinit();
 }
 
 

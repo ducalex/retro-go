@@ -248,9 +248,13 @@ const rominfo_t game_list[GAME_DATABASE_CNT] =
 
 };
 
-void set_config()
+void set_rom_config(void)
 {
-  int i;
+  cart.pages = cart.size / 0x4000;
+  cart.loaded = cart.rom != NULL;
+
+  if (!cart.loaded)
+    return;
 
   /* default sms settings */
   cart.mapper = MAPPER_SEGA;
@@ -296,7 +300,7 @@ void set_config()
   sms.gun_offset = 20; /* default offset */
 
   /* retrieve game settings from database */
-  for (i = 0; i < GAME_DATABASE_CNT; i++)
+  for (int i = 0; i < GAME_DATABASE_CNT; i++)
   {
     if (cart.crc == game_list[i].crc)
     {
@@ -322,7 +326,6 @@ void set_config()
   bios.enabled &= 2;
   if (IS_SMS) bios.enabled |= option.use_bios;
 
-#if 1
   /* force settings if AUTO is not set*/
   if (option.console == 1)
     sms.console = CONSOLE_SMS;
@@ -341,6 +344,7 @@ void set_config()
   {
     sms.console = CONSOLE_COLECO;
     cart.mapper = MAPPER_NONE;
+    coleco.rom = (uint8*)ColecoVision_BIOS;
   }
 
   if (option.country == 1) /* USA */
@@ -358,16 +362,30 @@ void set_config()
     sms.display = DISPLAY_NTSC;
     sms.territory = TERRITORY_DOMESTIC;
   }
-#endif
 }
 
 int load_rom(const char *filename)
 {
-  cart.sram = cart.sram ?: rg_alloc(0x8000, MEM_SLOW);
-  cart.rom = cart.rom ?: rg_alloc(0x200000, MEM_SLOW);
+  size_t actual_size = 0, count = 0;
 
-  int actual_size = rg_sdcard_read_file(filename, cart.rom, 0x200000);
-  if (actual_size < 512)
+  FILE *fd = fopen(filename, "rb");
+  if (fd)
+  {
+    fseek(fd, 0, SEEK_END);
+    actual_size = ftell(fd);
+    fseek(fd, 0, SEEK_SET);
+
+    cart.size = actual_size < 0x4000 ? 0x4000 : actual_size;
+    cart.rom = calloc(1, cart.size);
+    cart.sram = calloc(1, 0x8000);
+
+    if (!cart.rom || !cart.sram) abort();
+
+    count = fread(cart.rom, actual_size, 1, fd);
+    fclose(fd);
+  }
+
+  if (count == 0)
   {
     return 0;
   }
@@ -375,10 +393,7 @@ int load_rom(const char *filename)
   if (strcasecmp(filename + (strlen(filename) - 4), ".col") == 0)
   {
     option.console = 6;
-    coleco.rom = (uint8*)ColecoVision_BIOS;
   }
-
-  cart.size = (actual_size < 0x4000) ? 0x4000 : actual_size;
 
   /* Take care of image header, if present */
   if ((cart.size / 512) & 1)
@@ -387,11 +402,9 @@ int load_rom(const char *filename)
     memmove(cart.rom, cart.rom + 512, cart.size);
   }
 
-  cart.pages = cart.size / 0x4000;
   cart.crc = crc32_le(0, cart.rom, option.console == 6 ? actual_size : cart.size);
-  cart.loaded = 1;
 
-  set_config();
+  set_rom_config();
 
   printf("%s: OK. cart.size=%d, cart.crc=%#010lx\n", __func__, (int)cart.size, cart.crc);
 

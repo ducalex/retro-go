@@ -64,10 +64,11 @@ typedef struct __attribute__ ((packed)) {
 
 typedef void (*netplay_callback_t)(netplay_event_t event, void *arg);
 
-void rg_netplay_pre_init(netplay_callback_t callback);
-bool rg_netplay_quick_start();
+void rg_netplay_init(netplay_callback_t callback);
+void rg_netplay_deinit(void);
+bool rg_netplay_quick_start(void);
 bool rg_netplay_start(netplay_mode_t mode);
-bool rg_netplay_stop();
+bool rg_netplay_stop(void);
 void rg_netplay_sync(void *data_in, void *data_out, uint8_t data_len);
 
 netplay_mode_t rg_netplay_mode();

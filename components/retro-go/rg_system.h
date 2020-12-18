@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #if defined(ESP_IDF_VERSION_MAJOR) && ESP_IDF_VERSION_MAJOR >= 4
 #include <esp32/rom/crc.h>
@@ -20,7 +21,6 @@
 #include "rg_netplay.h"
 #include "rg_gui.h"
 #include "rg_profiler.h"
-#include "rg_sdcard.h"
 #include "rg_settings.h"
 
 typedef bool (*state_handler_t)(char *pathName);
@@ -106,6 +106,19 @@ bool rg_emu_load_state(int slot);
 void rg_spi_lock_acquire(spi_lock_res_t);
 void rg_spi_lock_release(spi_lock_res_t);
 
+bool rg_sdcard_mount();
+bool rg_sdcard_unmount();
+
+FILE *rg_fopen(const char *filename, const char *mode);
+int rg_fclose(FILE *fp);
+bool rg_mkdir(const char *path);
+bool rg_unlink(const char* path);
+bool rg_readdir(const char* path, char **out_files, size_t *out_count);
+long rg_filesize(const char *path);
+
+const char* rg_get_filename(const char *path);
+const char* rg_get_extension(const char *path);
+
 void *rg_alloc(size_t size, uint32_t caps);
 void rg_free(void *ptr);
 
@@ -143,8 +156,4 @@ extern void heap_caps_malloc_extmem_enable(size_t limit);
 
 #ifndef DRAM_ATTR
 #define DRAM_ATTR
-#endif
-
-#ifndef NO_PROFILING
-#define NO_PROFILING __attribute((no_instrument_function))
 #endif

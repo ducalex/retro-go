@@ -27,24 +27,29 @@ static rg_video_frame_t *currentUpdate = &update1;
 static rg_video_frame_t *previousUpdate = NULL;
 
 static gamepad_state_t joystick1;
-static gamepad_state_t joystick2;
 static gamepad_state_t *localJoystick = &joystick1;
-static gamepad_state_t *remoteJoystick = &joystick2;
 
 static bool overscan = true;
 static long autocrop = false;
-static bool netplay  = false;
 
 static bool fullFrame = 0;
 static long frameTime = 0;
 static nes_t *nes;
 
 static rg_app_desc_t *app;
+
+#ifdef ENABLE_NETPLAY
+static gamepad_state_t *remoteJoystick = &joystick2;
+static gamepad_state_t joystick2;
+
+static bool netplay  = false;
+#endif
 // --- MAIN
 
 
 static void netplay_callback(netplay_event_t event, void *arg)
 {
+#ifdef ENABLE_NETPLAY
    bool new_netplay;
 
    switch (event)
@@ -81,8 +86,8 @@ static void netplay_callback(netplay_event_t event, void *arg)
       localJoystick = &joystick1;
       remoteJoystick = &joystick2;
    }
+#endif
 }
-
 
 static bool SaveState(char *pathName)
 {
@@ -307,7 +312,7 @@ void osd_blitscreen(bitmap_t *bmp)
 
 void osd_getinput(void)
 {
-   uint16 pad0 = 0, pad1 = 0;
+   uint16 input = 0;
 
    *localJoystick = rg_input_read_gamepad();
 
@@ -325,30 +330,33 @@ void osd_getinput(void)
       rg_gui_game_settings_menu(options);
    }
 
+   #ifdef ENABLE_NETPLAY
    if (netplay)
    {
       rg_netplay_sync(localJoystick, remoteJoystick, sizeof(gamepad_state_t));
-      if (joystick2.values[GAMEPAD_KEY_START])  pad1 |= INP_PAD_START;
-      if (joystick2.values[GAMEPAD_KEY_SELECT]) pad1 |= INP_PAD_SELECT;
-      if (joystick2.values[GAMEPAD_KEY_UP])     pad1 |= INP_PAD_UP;
-      if (joystick2.values[GAMEPAD_KEY_RIGHT])  pad1 |= INP_PAD_RIGHT;
-      if (joystick2.values[GAMEPAD_KEY_DOWN])   pad1 |= INP_PAD_DOWN;
-      if (joystick2.values[GAMEPAD_KEY_LEFT])   pad1 |= INP_PAD_LEFT;
-      if (joystick2.values[GAMEPAD_KEY_A])      pad1 |= INP_PAD_A;
-      if (joystick2.values[GAMEPAD_KEY_B])      pad1 |= INP_PAD_B;
-      input_update(INP_JOYPAD1, pad1);
+      if (joystick2.values[GAMEPAD_KEY_START])  input |= INP_PAD_START;
+      if (joystick2.values[GAMEPAD_KEY_SELECT]) input |= INP_PAD_SELECT;
+      if (joystick2.values[GAMEPAD_KEY_UP])     input |= INP_PAD_UP;
+      if (joystick2.values[GAMEPAD_KEY_RIGHT])  input |= INP_PAD_RIGHT;
+      if (joystick2.values[GAMEPAD_KEY_DOWN])   input |= INP_PAD_DOWN;
+      if (joystick2.values[GAMEPAD_KEY_LEFT])   input |= INP_PAD_LEFT;
+      if (joystick2.values[GAMEPAD_KEY_A])      input |= INP_PAD_A;
+      if (joystick2.values[GAMEPAD_KEY_B])      input |= INP_PAD_B;
+      input_update(INP_JOYPAD1, input);
+      input = 0;
    }
+   #endif
 
-	if (joystick1.values[GAMEPAD_KEY_START])  pad0 |= INP_PAD_START;
-	if (joystick1.values[GAMEPAD_KEY_SELECT]) pad0 |= INP_PAD_SELECT;
-	if (joystick1.values[GAMEPAD_KEY_UP])     pad0 |= INP_PAD_UP;
-	if (joystick1.values[GAMEPAD_KEY_RIGHT])  pad0 |= INP_PAD_RIGHT;
-	if (joystick1.values[GAMEPAD_KEY_DOWN])   pad0 |= INP_PAD_DOWN;
-	if (joystick1.values[GAMEPAD_KEY_LEFT])   pad0 |= INP_PAD_LEFT;
-	if (joystick1.values[GAMEPAD_KEY_A])      pad0 |= INP_PAD_A;
-	if (joystick1.values[GAMEPAD_KEY_B])      pad0 |= INP_PAD_B;
+	if (joystick1.values[GAMEPAD_KEY_START])  input |= INP_PAD_START;
+	if (joystick1.values[GAMEPAD_KEY_SELECT]) input |= INP_PAD_SELECT;
+	if (joystick1.values[GAMEPAD_KEY_UP])     input |= INP_PAD_UP;
+	if (joystick1.values[GAMEPAD_KEY_RIGHT])  input |= INP_PAD_RIGHT;
+	if (joystick1.values[GAMEPAD_KEY_DOWN])   input |= INP_PAD_DOWN;
+	if (joystick1.values[GAMEPAD_KEY_LEFT])   input |= INP_PAD_LEFT;
+	if (joystick1.values[GAMEPAD_KEY_A])      input |= INP_PAD_A;
+	if (joystick1.values[GAMEPAD_KEY_B])      input |= INP_PAD_B;
 
-   input_update(INP_JOYPAD0, pad0);
+   input_update(INP_JOYPAD0, input);
 }
 
 
@@ -360,29 +368,28 @@ void app_main(void)
 
    app = rg_system_get_app();
 
-   romData = rg_alloc(0x200000, MEM_ANY);
-
-   const char *romPath = app->romPath;
-
    // Load ROM
-   if (strcasecmp(romPath + (strlen(romPath) - 4), ".zip") == 0)
+   printf("app_main: Reading file: '%s'\n", app->romPath);
+
+   FILE *fp;
+   if ((fp = rg_fopen(app->romPath, "rb")))
    {
-      printf("app_main ROM: Reading compressed file: %s\n", romPath);
-      romSize = rg_sdcard_unzip_file(romPath, romData, 0x200000);
-   }
-   else
-   {
-      printf("app_main ROM: Reading file: %s\n", romPath);
-      romSize = rg_sdcard_read_file(romPath, romData, 0x200000);
+      fseek(fp, 0, SEEK_END);
+      romSize = ftell(fp);
+      fseek(fp, 0, SEEK_SET);
+      romData = rg_alloc(romSize, MEM_SLOW);
+      romSize *= fread(romData, romSize, 1, fp);
+      rg_fclose(fp);
    }
 
-   printf("app_main ROM: romSize=%d\n", romSize);
    if (romSize < 16)
    {
       RG_PANIC("ROM file loading failed!");
    }
 
    romCRC32 = crc32_le(0, (const uint8_t*)(romData + 16), romSize - 16);
+
+   printf("app_main ROM: OK. romSize=%d, romCRC32=%08X\n", romSize, romCRC32);
 
    int region, ret;
 
@@ -396,7 +403,7 @@ void app_main(void)
 
    printf("Nofrendo start!\n");
 
-   ret = nofrendo_start(romPath, region, AUDIO_SAMPLE_RATE, true);
+   ret = nofrendo_start(app->romPath, region, AUDIO_SAMPLE_RATE, true);
 
    switch (ret)
    {

@@ -106,7 +106,7 @@ void rg_audio_init(int sample_rate)
     printf("%s: I2S init done. clock=%f\n", __func__, i2s_get_clk(RG_AUDIO_I2S_NUM));
 }
 
-void rg_audio_terminate()
+void rg_audio_deinit()
 {
     if (audioInitialized)
     {
@@ -236,7 +236,7 @@ void rg_audio_set_sink(audio_sink_t sink)
 
     if (audioSampleRate > 0)
     {
-        rg_audio_terminate();
+        rg_audio_deinit();
         rg_audio_init(audioSampleRate);
     }
 }

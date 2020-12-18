@@ -18,9 +18,6 @@ typedef signed long int int32;
 #include <math.h>
 #include <rg_system.h>
 
-#undef PATH_MAX
-#define PATH_MAX 255
-
 #include "z80.h"
 #include "sms.h"
 #include "pio.h"

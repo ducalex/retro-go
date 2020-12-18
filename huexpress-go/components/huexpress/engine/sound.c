@@ -224,7 +224,7 @@ snd_update(short *buffer, size_t length)
 
     for (int i = 0; i < PSG_CHANNELS; i++)
     {
-        psg_update(mix_buffer, i, length);
+        psg_update((void*)mix_buffer, i, length);
 
         for (int j = 0; j < length; j += 2)
         {

@@ -104,7 +104,7 @@ def analyze_profile(frames):
         debug_print("")
 
 
-def build_firmware(targets):
+def build_firmware(targets, auto_size=False):
     os.chdir(PRJ_PATH)
     args = [
         sys.executable,
@@ -115,7 +115,8 @@ def build_firmware(targets):
     ]
     for target in targets:
         part = PROJECT_APPS[target]
-        args += [str(0), str(part[0]), str(part[1]), target, os.path.join(target, "build", target + ".bin")]
+        size = 0 if auto_size else part[1]
+        args += [str(0), str(part[0]), str(size), target, os.path.join(target, "build", target + ".bin")]
 
     print("Building firmware: %s\n" % shlex.join(args[1:]))
     subprocess.run(args, check=True)
@@ -247,7 +248,7 @@ parser.add_argument(
     "targets", nargs="*", default="all", choices=["all"] + list(PROJECT_APPS.keys())
 )
 parser.add_argument(
-    "--compact-fw", action="store_const", const=True, help="Ignore the partition sizes set in rg_config.py when building .fw"
+    "--auto-size", action="store_const", const=True, help="Ignore the partition sizes set in rg_config.py when building .fw"
 )
 parser.add_argument(
     "--with-netplay", action="store_const", const=True, help="Build with netplay enabled"
@@ -278,7 +279,7 @@ if command == "build-fw":
     for target in targets:
         clean_app(target)
         build_app(target, args.with_debugging, args.with_profiling, args.with_netplay)
-    build_firmware(targets)
+    build_firmware(targets, args.auto_size)
 
 if command == "build":
     for target in targets:

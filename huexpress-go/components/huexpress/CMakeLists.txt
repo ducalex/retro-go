@@ -1,5 +1,5 @@
-set(COMPONENT_SRCDIRS ". engine ports")
+set(COMPONENT_SRCDIRS "engine ports")
 set(COMPONENT_ADD_INCLUDEDIRS ". engine")
 set(COMPONENT_REQUIRES "retro-go")
 register_component()
-rg_setup_compile_options(-Wno-all -Wno-error -Wno-sequence-point)
+rg_setup_compile_options(-Wno-sequence-point)

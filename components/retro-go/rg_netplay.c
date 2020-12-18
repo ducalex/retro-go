@@ -1,3 +1,8 @@
+#include "rg_system.h"
+#include "rg_netplay.h"
+
+#ifdef ENABLE_NETPLAY
+
 #include <freertos/FreeRTOS.h>
 #include <lwip/ip_addr.h>
 #include <sys/socket.h>
@@ -10,9 +15,6 @@
 #include <unistd.h>
 #include <assert.h>
 #include <netdb.h>
-
-#include "rg_system.h"
-#include "rg_netplay.h"
 
 #define NETPLAY_VERSION 0x01
 #define MAX_PLAYERS 8
@@ -71,7 +73,7 @@ static void network_setup(tcpip_adapter_if_t tcpip_if)
     local_player = &players[player_id];
     local_player->id = player_id;
     local_player->version = NETPLAY_VERSION;
-    local_player->game_id = rg_system_get_app()->gameId;
+    local_player->game_id = rg_system_get_app()->romCRC32;
     local_player->ip_addr = local_if.ip.addr;
 
     printf("netplay: Local player ID: %d\n", local_player->id);
@@ -350,7 +352,7 @@ static void netplay_init()
 }
 
 
-void rg_netplay_pre_init(netplay_callback_t callback)
+void rg_netplay_init(netplay_callback_t callback)
 {
     printf("netplay: %s called.\n", __func__);
 
@@ -358,9 +360,8 @@ void rg_netplay_pre_init(netplay_callback_t callback)
 }
 
 
-bool rg_netplay_quick_start()
+bool rg_netplay_quick_start(void)
 {
-#ifdef ENABLE_NETPLAY
     const char *status_msg = "Initializing...";
     const char *screen_msg = NULL;
     // short timeout = 100;
@@ -431,7 +432,7 @@ bool rg_netplay_quick_start()
     }
 
     rg_netplay_stop();
-#endif
+
     return false;
 }
 
@@ -489,7 +490,7 @@ bool rg_netplay_start(netplay_mode_t mode)
 }
 
 
-bool rg_netplay_stop()
+bool rg_netplay_stop(void)
 {
     printf("netplay: %s called.\n", __func__);
 
@@ -510,7 +511,6 @@ bool rg_netplay_stop()
 
 void rg_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
 {
-#ifdef ENABLE_NETPLAY
     static uint32_t sync_count = 0, sync_time = 0, start_time = 0;
     static netplay_packet_t packet;
 
@@ -573,7 +573,6 @@ void rg_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
         printf("netplay: Sync delay=%.4fms\n", (float)sync_time / sync_count / 1000);
         sync_count = sync_time = 0;
     }
-#endif
 }
 
 
@@ -587,3 +586,5 @@ netplay_status_t rg_netplay_status()
 {
     return netplay_status;
 }
+
+#endif

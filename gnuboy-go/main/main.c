@@ -27,15 +27,18 @@ static rg_video_frame_t *currentUpdate = &update1;
 static bool fullFrame = false;
 static long skipFrames = 0;
 
-static bool netplay = false;
-
 static bool saveSRAM = false;
 static int  saveSRAM_Timer = 0;
+
+#ifdef ENABLE_NETPLAY
+static bool netplay = false;
+#endif
 // --- MAIN
 
 
 static void netplay_callback(netplay_event_t event, void *arg)
 {
+#ifdef ENABLE_NETPLAY
    bool new_netplay;
 
    switch (event)
@@ -53,6 +56,7 @@ static void netplay_callback(netplay_event_t event, void *arg)
       default:
          break;
    }
+#endif
 }
 
 

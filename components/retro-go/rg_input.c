@@ -140,7 +140,7 @@ void rg_input_init(void)
   	printf("rg_input_init done.\n");
 }
 
-void rg_input_terminate(void)
+void rg_input_deinit(void)
 {
     input_task_is_running = false;
 }
