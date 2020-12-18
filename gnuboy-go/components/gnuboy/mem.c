@@ -1,6 +1,6 @@
 #include "stdlib.h"
 
-#include "defs.h"
+#include "emu.h"
 #include "hw.h"
 #include "regs.h"
 #include "mem.h"
@@ -275,7 +275,7 @@ static inline byte ioreg_read(byte r)
  * and a byte value written to the address.
  */
 
-static inline void mbc_write(int a, byte b)
+static inline void mbc_write(addr_t a, byte b)
 {
 	byte ha = (a >> 12);
 
@@ -423,7 +423,7 @@ static inline void mbc_write(int a, byte b)
  * region, it accepts writes to any address.
  */
 
-void IRAM_ATTR mem_write(word a, byte b)
+void IRAM_ATTR mem_write(addr_t a, byte b)
 {
 	byte ha = (a >> 12) & 0xE;
 
@@ -489,7 +489,7 @@ void IRAM_ATTR mem_write(word a, byte b)
  * region.
  */
 
-byte IRAM_ATTR mem_read(word a)
+byte IRAM_ATTR mem_read(addr_t a)
 {
 	byte ha = (a >> 12) & 0xE;
 

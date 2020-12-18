@@ -1,7 +1,7 @@
 #ifndef __MEM_H__
 #define __MEM_H__
 
-#include "defs.h"
+#include "emu.h"
 
 #define MBC_NONE 0
 #define MBC_MBC1 1
@@ -49,25 +49,25 @@ extern struct ram ram;
 
 
 void mem_updatemap();
-void mem_write(word a, byte b);
-byte mem_read(word a);
+void mem_write(addr_t a, byte b);
+byte mem_read(addr_t a);
 void mbc_reset();
 
-static inline byte readb(word a)
+static inline byte readb(addr_t a)
 {
 	byte *p = mbc.rmap[a>>12];
 	if (p) return p[a];
 	return mem_read(a);
 }
 
-static inline void writeb(word a, byte b)
+static inline void writeb(addr_t a, byte b)
 {
 	byte *p = mbc.wmap[a>>12];
 	if (p) p[a] = b;
 	else mem_write(a, b);
 }
 
-static inline word readw(word a)
+static inline word readw(addr_t a)
 {
 #ifdef IS_LITTLE_ENDIAN
 	if ((a & 0xFFF) == 0xFFF)
@@ -83,7 +83,7 @@ static inline word readw(word a)
 	return mem_read(a) | (mem_read(a + 1) << 8);
 }
 
-static inline void writew(word a, word w)
+static inline void writew(addr_t a, word w)
 {
 #ifdef IS_LITTLE_ENDIAN
 	if ((a & 0xFFF) == 0xFFF)

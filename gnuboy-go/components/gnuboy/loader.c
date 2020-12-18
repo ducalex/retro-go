@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <malloc.h>
 #include <time.h>
 #include <ctype.h>
 
-#include "defs.h"
+#include "emu.h"
 #include "regs.h"
 #include "mem.h"
 #include "hw.h"
@@ -73,10 +74,6 @@ static const byte ramsize_table[256] =
 };
 
 static FILE* fpRomFile = NULL;
-
-static char *romfile=NULL;
-static char *sramfile=NULL;
-
 
 #ifdef IS_LITTLE_ENDIAN
 #define LIL(x) (x)
@@ -182,7 +179,7 @@ static svar_t svars[] =
 };
 
 
-int rom_loadbank(short bank)
+int rom_loadbank(int bank)
 {
 	const size_t BANK_SIZE = 0x4000;
 	const size_t OFFSET = bank * BANK_SIZE;
@@ -221,11 +218,11 @@ int rom_loadbank(short bank)
 }
 
 
-int rom_load()
+int rom_load(const char *file)
 {
-    printf("loader: Loading file: %s\n", romfile);
+    printf("loader: Loading file: '%s'\n", file);
 
-	fpRomFile = fopen(romfile, "rb");
+	fpRomFile = fopen(file, "rb");
 	if (fpRomFile == NULL)
 	{
 		emu_die("ROM fopen failed");
@@ -313,18 +310,33 @@ int rom_load()
 }
 
 
-int sram_load()
+void rom_unload(void)
+{
+	for (int i = 0; i < 512; i++) {
+		if (rom.bank[i]) {
+			free(rom.bank[i]);
+			rom.bank[i] = NULL;
+		}
+	}
+	free(ram.sbank);
+
+	mbc.type = mbc.romsize = mbc.ramsize = mbc.batt = mbc.rtc = 0;
+	// ram.sbank = NULL;
+}
+
+
+int sram_load(const char *file)
 {
 	int ret = -1;
 	FILE *f;
 
-	if (!mbc.batt || !sramfile || !*sramfile) return -1;
+	if (!mbc.batt || !file || !*file) return -1;
 
 	rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
-	if ((f = fopen(sramfile, "rb")))
+	if ((f = fopen(file, "rb")))
 	{
-		printf("sram_load: Loading SRAM\n");
+		printf("sram_load: Loading SRAM from '%s'\n", file);
 		fread(ram.sbank, 8192, mbc.ramsize, f);
 		rtc_load(f);
 		fclose(f);
@@ -336,18 +348,18 @@ int sram_load()
 }
 
 
-int sram_save()
+int sram_save(const char *file)
 {
 	int ret = -1;
 	FILE *f;
 
-	if (!mbc.batt || !sramfile || !mbc.ramsize) return -1;
+	if (!mbc.batt || !file || !mbc.ramsize) return -1;
 
 	rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
-	if ((f = fopen(sramfile, "wb")))
+	if ((f = fopen(file, "wb")))
 	{
-		printf("sram_load: Saving SRAM\n");
+		printf("sram_save: Saving SRAM to '%s'\n", file);
 		fwrite(ram.sbank, 8192, mbc.ramsize, f);
 		rtc_save(f);
 		fclose(f);
@@ -359,11 +371,11 @@ int sram_save()
 }
 
 
-int state_save(char *name)
+int state_save(const char *file)
 {
 	FILE *f;
 
-	if ((f = fopen(name, "wb")))
+	if ((f = fopen(file, "wb")))
 	{
 		int i;
 		byte* buf = malloc(4096);
@@ -438,11 +450,11 @@ int state_save(char *name)
 }
 
 
-int state_load(char *name)
+int state_load(const char *file)
 {
 	FILE *f;
 
-	if ((f = fopen(name, "rb")))
+	if ((f = fopen(file, "rb")))
 	{
 		int i, j;
 		byte* buf = malloc(4096);
@@ -514,34 +526,4 @@ int state_load(char *name)
 	}
 
 	return -1;
-}
-
-
-void loader_unload()
-{
-	sram_save();
-	if (romfile) free(romfile);
-	if (sramfile) free(sramfile);
-	if (ram.sbank) free(ram.sbank);
-
-	for (int i = 0; i < 512; i++) {
-		if (rom.bank[i]) {
-			free(rom.bank[i]);
-			rom.bank[i] = NULL;
-		}
-	}
-
-	mbc.type = mbc.romsize = mbc.ramsize = mbc.batt = mbc.rtc = 0;
-	romfile = sramfile = NULL;
-	// ram.sbank = NULL;
-}
-
-
-void loader_init(char *s)
-{
-	romfile  = rg_emu_get_path(EMU_PATH_ROM_FILE, 0);
-	sramfile = rg_emu_get_path(EMU_PATH_SAVE_SRAM, 0);
-
-	rom_load();
-	// sram_load();
 }

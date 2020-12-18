@@ -1,6 +1,4 @@
-#include "stdbool.h"
-#include "stdarg.h"
-#include "defs.h"
+#include "emu.h"
 #include "regs.h"
 #include "hw.h"
 #include "cpu.h"

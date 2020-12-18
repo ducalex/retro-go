@@ -1,6 +1,4 @@
-#include <string.h>
-
-#include "defs.h"
+#include "emu.h"
 #include "sound.h"
 #include "cpu.h"
 #include "hw.h"
@@ -23,7 +21,7 @@ static const byte cgbwave[16] =
 	0x00, 0xff, 0x00, 0xff,
 };
 
-static DRAM_ATTR const byte sqwave[4][8] =
+static const byte sqwave[4][8] =
 {
 	{  0, 0,-1, 0, 0, 0, 0, 0 },
 	{  0,-1,-1, 0, 0, 0, 0, 0 },
@@ -31,7 +29,7 @@ static DRAM_ATTR const byte sqwave[4][8] =
 	{ -1, 0, 0,-1,-1,-1,-1,-1 }
 };
 
-static DRAM_ATTR const int freqtab[8] =
+static const int freqtab[8] =
 {
 	(1<<14)*2,
 	(1<<14),
@@ -43,8 +41,8 @@ static DRAM_ATTR const int freqtab[8] =
 	(1<<14)/7
 };
 
-struct pcm pcm;
-struct snd snd;
+pcm_t pcm;
+snd_t snd;
 
 #define RATE (snd.rate)
 #define WAVE (snd.wave) /* ram.hi+0x30 */

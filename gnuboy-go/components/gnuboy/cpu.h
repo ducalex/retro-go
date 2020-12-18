@@ -1,7 +1,7 @@
 #ifndef __CPU_H__
 #define __CPU_H__
 
-#include "defs.h"
+#include "emu.h"
 
 /* Quick access CPU registers */
 #define LB(r) ((r).b[LO])
@@ -42,7 +42,7 @@ typedef union
 	word w;
 } cpu_reg_t;
 
-struct cpu
+typedef struct
 {
 	cpu_reg_t pc, sp, bc, de, hl, af;
 
@@ -50,10 +50,11 @@ struct cpu
 	int speed;
 	int halt;
 	int timer, div;
-};
 
-extern int enable_disassembler;
-extern struct cpu cpu;
+	int disassemble;
+} cpu_t;
+
+extern cpu_t cpu;
 
 void cpu_reset();
 int  cpu_emulate(int cycles);

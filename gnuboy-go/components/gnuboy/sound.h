@@ -1,9 +1,9 @@
 #ifndef __SOUND_H__
 #define __SOUND_H__
 
-#include "defs.h"
+#include "emu.h"
 
-struct sndchan
+typedef struct
 {
 	int on;
 	unsigned pos;
@@ -12,29 +12,26 @@ struct sndchan
 	int swfreq;
 	int freq;
 	int envol, endir;
-};
+} sndchan_t;
 
-
-struct snd
+typedef struct
 {
 	int rate;
-	struct sndchan ch[4];
+	sndchan_t ch[4];
 	byte wave[16];
 	int cycles;
-};
+} snd_t;
 
-
-struct pcm
+typedef struct
 {
 	int hz, len;
 	int stereo;
 	n16* buf;
 	int pos;
-};
+} pcm_t;
 
-
-extern struct pcm pcm;
-extern struct snd snd;
+extern pcm_t pcm;
+extern snd_t snd;
 
 void sound_write(byte r, byte b);
 byte sound_read(byte r);

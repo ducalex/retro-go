@@ -1,6 +1,6 @@
 #include <string.h>
 
-#include "defs.h"
+#include "emu.h"
 #include "cpu.h"
 #include "hw.h"
 #include "regs.h"
@@ -8,7 +8,7 @@
 #include "mem.h"
 
 
-struct hw hw;
+hw_t hw;
 
 
 /*
@@ -39,7 +39,7 @@ void IRAM_ATTR hw_interrupt(byte i, byte mask)
  */
 void IRAM_ATTR hw_dma(byte b)
 {
-	addr a = ((addr)b) << 8;
+	addr_t a = ((addr_t)b) << 8;
 	for (int i = 0; i < 160; i++, a++)
 		lcd.oam.mem[i] = readb(a);
 }
@@ -56,9 +56,9 @@ void IRAM_ATTR hw_hdma_cmd(byte c)
 	}
 
 	/* Perform GDMA */
-	int sa = ((addr)R_HDMA1 << 8) | (R_HDMA2&0xf0);
-	int da = 0x8000 | ((int)(R_HDMA3&0x1f) << 8) | (R_HDMA4&0xf0);
-	int cnt = ((int)c)+1;
+	addr_t sa = ((addr_t)R_HDMA1 << 8) | (R_HDMA2&0xf0);
+	addr_t da = 0x8000 | ((addr_t)(R_HDMA3&0x1f) << 8) | (R_HDMA4&0xf0);
+	size_t cnt = ((int)c)+1;
 	/* FIXME - this should use cpu time! */
 	/*cpu_timers(102 * cnt);*/
 	cnt <<= 4;
@@ -74,9 +74,9 @@ void IRAM_ATTR hw_hdma_cmd(byte c)
 
 void IRAM_ATTR hw_hdma()
 {
-	int sa = ((addr)R_HDMA1 << 8) | (R_HDMA2&0xf0);
-	int da = 0x8000 | ((int)(R_HDMA3&0x1f) << 8) | (R_HDMA4&0xf0);
-	int cnt = 16;
+	addr_t sa = ((addr_t)R_HDMA1 << 8) | (R_HDMA2&0xf0);
+	addr_t da = 0x8000 | ((addr_t)(R_HDMA3&0x1f) << 8) | (R_HDMA4&0xf0);
+	size_t cnt = 16;
 
 	while (cnt--)
 		writeb(da++, readb(sa++));

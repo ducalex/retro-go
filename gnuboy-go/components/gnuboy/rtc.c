@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "defs.h"
+#include "emu.h"
 #include "mem.h"
 #include "rtc.h"
 
-struct rtc rtc;
+rtc_t rtc;
 
 // Set in the far future for VBA-M support
 #define RT_BASE 1893456000

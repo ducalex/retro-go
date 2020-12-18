@@ -1,7 +1,7 @@
 #ifndef __LCD_H__
 #define __LCD_H__
 
-#include "defs.h"
+#include "emu.h"
 
 #define GB_WIDTH (160)
 #define GB_HEIGHT (144)

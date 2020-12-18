@@ -3,9 +3,9 @@
 
 #include <stdio.h>
 
-#include "defs.h"
+#include "emu.h"
 
-struct rtc
+typedef struct
 {
 	int sel, latch;
 	// Ticks (60 = +1s)
@@ -14,9 +14,9 @@ struct rtc
 	int d, h, m, s, flags;
 	// Latched time
 	byte regs[8];
-};
+} rtc_t;
 
-extern struct rtc rtc;
+extern rtc_t rtc;
 
 void rtc_latch(byte b);
 void rtc_write(byte b);
