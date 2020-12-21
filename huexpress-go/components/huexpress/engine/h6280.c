@@ -53,8 +53,10 @@ h6280_irq(int type)
 void
 h6280_run(void)
 {
+	int max_cycles = PCE.MaxCycles;
+
 	/* Handle active block transfers, ie: do nothing. (tai/tdd/tia/tin/tii) */
-	if (Cycles >= 0) {
+	if (Cycles > max_cycles) {
 		return;
 	}
 
@@ -65,7 +67,7 @@ h6280_run(void)
 	}
 
 	/* Run for roughly one scanline */
-	while (Cycles < 0)
+	while (Cycles < max_cycles)
 	{
 		UBYTE opcode = imm_operand(reg_pc);
 

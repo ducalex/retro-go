@@ -7,6 +7,7 @@
 
 #define APP_ID 40
 
+// Dont forget to change in huexpress/odroid_go as well
 #define AUDIO_SAMPLE_RATE 22050
 
 // static bool netplay = false;

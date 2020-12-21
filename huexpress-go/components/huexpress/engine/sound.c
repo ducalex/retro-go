@@ -10,113 +10,100 @@ static const uint8_t vol_tbl[32] = {
     7085 >> 8, 7986 >> 8, 9002 >> 8, 10148 >> 8, 11439 >> 8, 12894 >> 8, 14535 >> 8, 16384 >> 8
 };
 
-static uint32_t da_index[PSG_CHANNELS];
-static uint32_t fixed_n[PSG_CHANNELS];
-static uint32_t noise_k[PSG_CHANNELS];
 static uint32_t noise_rand[PSG_CHANNELS];
 static int32_t noise_level[PSG_CHANNELS];
 
 // The buffer should be signed but it seems to sound better
 // unsigned. I am still reviewing the implementation bellow.
-static uint8_t mix_buffer[48000 / 60 * 2];
-// static int8_t mix_buffer[48000 / 60 * 2];
+static int8_t mix_buffer[44100 / 60 * 2];
+// static uint8_t mix_buffer[44100 / 60 * 2];
+
+static int last_cycles = 0;
 
 
 static inline void
 psg_update(int8_t *buf, int ch, size_t dwSize)
 {
+    psg_chan_t *chan = &PCE.PSG.chan[ch];
+    int vol, sample = 0;
     uint32_t Tp;
-    int vol, sample;
     int8_t *buf_end = buf + dwSize;
-
-    /*
-    * Bail if there is no audio to be played on this channel.
-    */
-    if (!(PCE.PSG.regs[ch][PSG_DDA_REG] & PSG_DDA_ENABLE)) {
-        fixed_n[ch] = 0;
-        goto pad_and_return;
-    }
 
     /*
     * We multiply the 4-bit balance values by 1.1 to get a result from (0..16.5).
     * This multiplied by the 5-bit channel volume (0..31) gives us a result of
     * (0..511).
     */
-    int lbal = ((PCE.PSG.regs[ch][5] >> 4) * 1.1) * (PCE.PSG.regs[ch][4] & 0x1F);
-    int rbal = ((PCE.PSG.regs[ch][5] & 0xF) * 1.1) * (PCE.PSG.regs[ch][4] & 0x1F);
+    int lbal = ((chan->balance >> 4) * 1.1) * (chan->control & 0x1F);
+    int rbal = ((chan->balance & 0xF) * 1.1) * (chan->control & 0x1F);
 
     if (!host.sound.stereo) {
         lbal = (lbal + rbal) / 2;
     }
 
-    /*
-    * There is 'direct access' audio to be played.
-    */
-    if ((PCE.PSG.regs[ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS) || PCE.PSG.da_count[ch]) {
-        uint32_t index = da_index[ch] >> 16;
-        /*
-         * For this direct audio stuff there is no frequency provided via PSG registers 3
-         * and 4.  I'm not sure if this is normal behaviour or if it's something wrong in
-         * the emulation but I'm leaning toward the former.
-         *
-         * The 0x1FF divisor is completely arbitrary.  I adjusted it by listening to the voices
-         * in Street Fighter 2 CE.  If anyone has information to improve my "seat of the pants"
-         * calculations then by all means *does finger quotes* "throw me a frikkin` bone here".
-         *
-         * See the big comment in the final else clause for an explanation of this value
-         * to the best of my knowledge.
-         */
-        uint32_t fixed_inc = ((CLOCK_PSG / host.sound.sample_freq) << 16) / 0x1FF;
+    // This isn't very accurate, we don't track how long each DA sample should play
+    // but we call psg_update() often enough (10x per frame) that guessing should be good enough...
+    if (chan->dda_count) {
+        // Cycles per frame: 119318
+        // Samples per frame: 368
 
-        while ((buf < buf_end) && PCE.PSG.da_count[ch]) {
-            /*
-             * Make our sample data signed (-16..15) and then increment a non-negative
-             * result otherwise a sample with a value of 10000b will not be reproduced,
-             * which I do not believe is the correct behaviour.  Plus the increment
-             * insures matching values on both sides of the wave.
-             */
-            if ((sample = PCE.PSG.da_data[ch][index] - 16) >= 0)
-                sample++;
+        // Cycles per scanline: 454
+        // Samples per scanline: ~1.4
 
-            /*
-             * Multiply our sample value (-16..16) by our balance (0..511) and then divide
-             * by 64 to get a final 8-bit output sample of (-127..127)
-             */
-            *buf++ = (int8_t) (sample * lbal / 64);
+        // One sample = 324 cycles
 
-            if (host.sound.stereo) {
-                *buf++ = (int8_t) (sample * rbal / 64);
+        int elapsed = Cycles - last_cycles;
+        const int cycles_per_sample = CYCLES_PER_FRAME / (host.sound.sample_freq / 60);
+
+        // float repeat = (float)elapsed / cycles_per_sample / chan->dda_count;
+        // printf("%.2f\n", repeat);
+
+        int start = (int)chan->dda_index - chan->dda_count;
+        if (start < 0)
+            start += 0x80;
+
+        int repeat = 3; // MIN(2, (dwSize / 2) / chan->dda_count) + 1;
+
+        while (buf < buf_end && (chan->dda_count || chan->control & PSG_DDA_ENABLE)) {
+            if (chan->dda_count) {
+                // sample = chan->dda_data[(start++) & 0x7F];
+                if ((sample = (chan->dda_data[(start++) & 0x7F] - 16)) >= 0)
+                    sample++;
+                chan->dda_count--;
             }
 
-            da_index[ch] += fixed_inc;
-            da_index[ch] &= 0x3FFFFFF;  /* (1023 << 16) + 0xFFFF */
-            if ((da_index[ch] >> 16) != index) {
-                index = da_index[ch] >> 16;
-                PCE.PSG.da_count[ch]--;
-            }
-        }
+            for (int i = 0; i < repeat; i++) {
+                *buf++ = (int8_t) (sample * lbal / 50);  // 64
 
-        if (PCE.PSG.regs[ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS) {
-            goto pad_and_return;
+                if (host.sound.stereo) {
+                    *buf++ = (int8_t) (sample * rbal / 50);  // 64
+                }
+            }
         }
     }
 
     /*
-    * PSG Noise generation (only available to PSG channels 5 and 6).
+    * Do nothing if there is no audio to be played on this channel.
     */
-    if ((ch > 3) && (PCE.PSG.regs[ch][PSG_NOISE_REG] & PSG_NOISE_ENABLE)) {
-        int Np = (PCE.PSG.regs[ch][PSG_NOISE_REG] & 0x1F);
+    if (!(chan->control & PSG_CHAN_ENABLE)) {
+        chan->wave_accum = 0;
+    }
+    /*
+    * PSG Noise generation (it has priority over DDA and WAVE)
+    */
+    else if ((ch == 4 || ch == 5) && (chan->noise_ctrl & PSG_NOISE_ENABLE)) {
+        int Np = (chan->noise_ctrl & 0x1F);
 
         vol = MAX((PCE.PSG.volume >> 3) & 0x1E, (PCE.PSG.volume << 1) & 0x1E) +
-              (PCE.PSG.regs[ch][PSG_DDA_REG] & PSG_DDA_VOICE_VOLUME) +
-              MAX((PCE.PSG.regs[ch][5] >> 3) & 0x1E, (PCE.PSG.regs[ch][5] << 1) & 0x1E);
+              (chan->control & PSG_CHAN_VOLUME) +
+              MAX((chan->balance >> 3) & 0x1E, (chan->balance << 1) & 0x1E);
 
         vol = vol_tbl[MAX(0, vol - 60)];
 
         while (buf < buf_end) {
-            noise_k[ch] += 3000 + Np * 512;
+            chan->noise_accum += 3000 + Np * 512;
 
-            if ((Tp = (noise_k[ch] / host.sound.sample_freq)) >= 1) {
+            if ((Tp = (chan->noise_accum / host.sound.sample_freq)) >= 1) {
                 if (noise_rand[ch] & 0x00080000) {
                     noise_rand[ch] = ((noise_rand[ch] ^ 0x0004) << 1) + 1;
                     noise_level[ch] = -10 * 702;
@@ -124,18 +111,52 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
                     noise_rand[ch] <<= 1;
                     noise_level[ch] = 10 * 702;
                 }
-                noise_k[ch] -= host.sound.sample_freq * Tp;
+                chan->noise_accum -= host.sound.sample_freq * Tp;
             }
 
             *buf++ = (int8_t) (noise_level[ch] * vol / 4096);
         }
-        goto pad_and_return;
     }
+    /*
+    * There is 'direct access' audio to be played.
+    */
+    else if (chan->control & PSG_DDA_ENABLE) {
+        #if 0
+        int start = (int)chan->dda_index - chan->dda_count;
+        if (start < 0)
+            start += 0x80;
 
+        while (buf < buf_end) {
+            if (chan->dda_count) {
+                sample = chan->dda_data[start++];
+                start &= 0x7F;
+                chan->dda_count--;
+            }
+
+            *buf++ = (int8_t) (sample * lbal / 64);
+
+            if (host.sound.stereo) {
+                *buf++ = (int8_t) (sample * rbal / 64);
+            }
+
+            *buf++ = (int8_t) (sample * lbal / 64);
+
+            if (host.sound.stereo) {
+                *buf++ = (int8_t) (sample * rbal / 64);
+            }
+
+            *buf++ = (int8_t) (sample * lbal / 64);
+
+            if (host.sound.stereo) {
+                *buf++ = (int8_t) (sample * rbal / 64);
+            }
+        }
+#endif
+    }
     /*
     * PSG Wave generation.
     */
-    if ((Tp = PCE.PSG.regs[ch][PSG_FREQ_LSB_REG] + (PCE.PSG.regs[ch][PSG_FREQ_MSB_REG] << 8)) > 0) {
+    else if ((Tp = chan->freq_lsb + (chan->freq_msb << 8)) > 0) {
         /*
          * Thank god for well commented code!  The original line of code read:
          * fixed_inc = ((uint32_t) (3.2 * 1118608 / host.sound.sample_freq) << 16) / Tp;
@@ -162,20 +183,19 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
         uint32_t fixed_inc = ((CLOCK_PSG / host.sound.sample_freq) << 16) / Tp;
 
         while (buf < buf_end) {
-            if ((sample = (PCE.PSG.wave[ch][PCE.PSG.regs[ch][PSG_DATA_INDEX_REG]] - 16)) >= 0)
+            if ((sample = (chan->wave_data[chan->wave_index] - 16)) >= 0)
                 sample++;
 
-            *buf++ = (int8_t) (sample * lbal / 64);
+            *buf++ = (int8_t) (sample * lbal / 100); // 64
 
             if (host.sound.stereo) {
-                *buf++ = (int8_t) (sample * rbal / 64);
+                *buf++ = (int8_t) (sample * rbal / 100); // 64
             }
 
-            fixed_n[ch] += fixed_inc;
-            fixed_n[ch] &= 0x1FFFFF;    /* (31 << 16) + 0xFFFF */
-            PCE.PSG.regs[ch][PSG_DATA_INDEX_REG] = fixed_n[ch] >> 16;
+            chan->wave_accum += fixed_inc;
+            chan->wave_accum &= 0x1FFFFF;    /* (31 << 16) + 0xFFFF */
+            chan->wave_index = chan->wave_accum >> 16;
         }
-        goto pad_and_return;
     }
 
 pad_and_return:
@@ -188,14 +208,8 @@ pad_and_return:
 int
 snd_init(void)
 {
-    memset(&da_index, 0, sizeof(da_index));
-    memset(&fixed_n, 0, sizeof(fixed_n));
-
-    for (int i = 0; i < PSG_CHANNELS; i++) {
-        noise_rand[i] = 0x51F6310 << i;
-        noise_level[i] = i;
-        noise_k[i] = 0;
-    }
+    noise_rand[4] = 0x51F63101;
+    noise_rand[5] = 0x1F631042;
 
     osd_snd_init();
 
@@ -232,4 +246,6 @@ snd_update(short *buffer, size_t length)
             buffer[j + 1] += mix_buffer[j + 1] * rvol;
         }
     }
+
+    last_cycles = Cycles;
 }

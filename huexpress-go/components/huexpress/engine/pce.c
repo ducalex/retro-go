@@ -24,17 +24,18 @@ const svar_t SaveStateVars[] =
 	SVAR_1("CPU.Y", reg_y),      SVAR_1("CPU.P", reg_p),    SVAR_1("CPU.S", reg_s),
 
 	// Misc
-	SVAR_2("Cycles", Cycles),                   SVAR_1("SF2", PCE.SF2),
+	SVAR_4("Cycles", Cycles),                   SVAR_4("MaxCycles", PCE.MaxCycles),
+	SVAR_1("SF2", PCE.SF2),
 
 	// IRQ
 	SVAR_1("irq_mask", PCE.irq_mask),           SVAR_1("irq_status", PCE.irq_status),
 
 	// PSG
-	SVAR_A("PSG", PCE.PSG.regs),                SVAR_A("PSG_WAVE", PCE.PSG.wave),
-	SVAR_A("psg_da_data", PCE.PSG.da_data),     SVAR_A("psg_da_count", PCE.PSG.da_count),
-	SVAR_A("psg_da_index", PCE.PSG.da_index),   SVAR_1("psg_ch", PCE.PSG.ch),
-	SVAR_1("psg_volume", PCE.PSG.volume),       SVAR_1("psg_lfo_freq", PCE.PSG.lfo_freq),
-	SVAR_1("psg_lfo_ctrl", PCE.PSG.lfo_ctrl),
+	// SVAR_A("PSG", PCE.PSG.regs),                SVAR_A("PSG_WAVE", PCE.PSG.wave),
+	// SVAR_A("psg_da_data", PCE.PSG.da_data),     SVAR_A("psg_da_count", PCE.PSG.da_count),
+	// SVAR_A("psg_da_index", PCE.PSG.da_index),   SVAR_1("psg_ch", PCE.PSG.ch),
+	// SVAR_1("psg_volume", PCE.PSG.volume),       SVAR_1("psg_lfo_freq", PCE.PSG.lfo_freq),
+	// SVAR_1("psg_lfo_ctrl", PCE.PSG.lfo_ctrl),
 
 	// VCE
 	SVAR_A("vce_regs", PCE.VCE.regs),           SVAR_2("vce_reg", PCE.VCE.reg),

@@ -229,8 +229,10 @@ void osd_input_read(void)
  * Sound
  */
 
+// Dont forget to change in main.c as well
 #define AUDIO_SAMPLE_RATE   (22050)
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 1)
+// #define AUDIO_BUFFER_LENGTH  (AUDIO_SAMPLE_RATE / 60)
+#define AUDIO_BUFFER_LENGTH  (AUDIO_SAMPLE_RATE / 60 / 10)
 
 static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 

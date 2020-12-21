@@ -38,7 +38,7 @@ pce_reset(void)
 
     // Reset sound generator values
     for (int i = 0; i < PSG_CHANNELS; i++) {
-        PCE.PSG.regs[i][4] = 0x80;
+        PCE.PSG.chan[i].control = 0x80;
     }
 
     // Reset memory banking
@@ -101,7 +101,7 @@ pce_run(void)
         osd_input_read();
 
         for (Scanline = 0; Scanline < 263; ++Scanline) {
-            Cycles -= CYCLES_PER_LINE;
+            PCE.MaxCycles += CYCLES_PER_LINE;
             h6280_run();
             timer_run();
             gfx_run();
@@ -109,6 +109,11 @@ pce_run(void)
 
         osd_gfx_blit();
         osd_vsync();
+
+        // Prevent Overflowing
+        // int trim = MIN(Cycles, PCE.MaxCycles);
+        // PCE.MaxCycles -= trim;
+        // Cycles -= trim;
     }
 }
 
@@ -215,16 +220,12 @@ IO_read(uint16_t A)
         switch (A & 15) {
         case 0: ret = PCE.PSG.ch; break;
         case 1: ret = PCE.PSG.volume; break;
-        case 2: ret = PCE.PSG.regs[PCE.PSG.ch][PSG_FREQ_LSB_REG]; break;
-        case 3: ret = PCE.PSG.regs[PCE.PSG.ch][PSG_FREQ_MSB_REG]; break;
-        case 4: ret = PCE.PSG.regs[PCE.PSG.ch][PSG_DDA_REG]; break;
-        case 5: ret = PCE.PSG.regs[PCE.PSG.ch][PSG_BALANCE_REG]; break;
-        case 6:
-            index = PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG]++;
-            PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG] &= 0x1F;
-            ret = PCE.PSG.wave[PCE.PSG.ch][index];
-            break;
-        case 7: ret = PCE.PSG.regs[PCE.PSG.ch][PSG_NOISE_REG]; break;
+        case 2: ret = PCE.PSG.chan[PCE.PSG.ch].freq_lsb; break;
+        case 3: ret = PCE.PSG.chan[PCE.PSG.ch].freq_msb; break;
+        case 4: ret = PCE.PSG.chan[PCE.PSG.ch].control; break;
+        case 5: ret = PCE.PSG.chan[PCE.PSG.ch].balance; break;
+        case 6: ret = PCE.PSG.chan[PCE.PSG.ch].wave_index; break;
+        case 7: ret = PCE.PSG.chan[PCE.PSG.ch].noise_ctrl; break;
         case 8: ret = PCE.PSG.lfo_freq; break;
         case 9: ret = PCE.PSG.lfo_ctrl; break;
         }
@@ -527,7 +528,7 @@ IO_write(uint16_t A, uint8_t V)
     case 0x0800:                /* PSG */
         switch (A & 15) {
         case 0:                                 // Select PSG channel
-            PCE.PSG.ch = V & 7;
+            PCE.PSG.ch = MIN(V & 7, 5);
             return;
 
         case 1:                                 // Select global volume
@@ -535,40 +536,44 @@ IO_write(uint16_t A, uint8_t V)
             return;
 
         case 2:                                 // Frequency setting, 8 lower bits
-            PCE.PSG.regs[PCE.PSG.ch][PSG_FREQ_LSB_REG] = V;
+            PCE.PSG.chan[PCE.PSG.ch].freq_lsb = V;
             return;
 
         case 3:                                 // Frequency setting, 4 upper bits
-            PCE.PSG.regs[PCE.PSG.ch][PSG_FREQ_MSB_REG] = V & 0xF;
+            PCE.PSG.chan[PCE.PSG.ch].freq_msb = V & 0xF;
             return;
 
         case 4:
-            PCE.PSG.regs[PCE.PSG.ch][PSG_DDA_REG] = V;
+            if ((V & 0xC0) == (PSG_DDA_ENABLE)) {
+                PCE.PSG.chan[PCE.PSG.ch].wave_index = 0; // Reset wave index pointer
+            }
+
+            PCE.PSG.chan[PCE.PSG.ch].control = V;
             return;
 
         case 5:                                 // Set channel specific volume
-            PCE.PSG.regs[PCE.PSG.ch][PSG_BALANCE_REG] = V;
+            PCE.PSG.chan[PCE.PSG.ch].balance = V;
             return;
 
         case 6:                                 // Put a value into the waveform or direct audio buffers
-            if (PCE.PSG.regs[PCE.PSG.ch][PSG_DDA_REG] & PSG_DDA_DIRECT_ACCESS) {
-                int index = PCE.PSG.da_index[PCE.PSG.ch]++;
-                if (index <= 0x3FF) {
-                    PCE.PSG.da_data[PCE.PSG.ch][index] = V & 0x1F;
-                } else {
-                    MESSAGE_DEBUG("Audio being put into the direct access buffer "
-                                  "faster than it's being played.\n");
-                    PCE.PSG.da_count[PCE.PSG.ch] = 0;
-                }
-            } else {
-                int index = PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG]++;
-                PCE.PSG.regs[PCE.PSG.ch][PSG_DATA_INDEX_REG] &= 0x1F;
-                PCE.PSG.wave[PCE.PSG.ch][index] = V & 0x1F;
+            switch (PCE.PSG.chan[PCE.PSG.ch].control & 0xC0)
+            {
+            case 0: // Write to the wave buffer and increment the counter
+                PCE.PSG.chan[PCE.PSG.ch].wave_data[PCE.PSG.chan[PCE.PSG.ch].wave_index] = V & 0x1F;
+                PCE.PSG.chan[PCE.PSG.ch].wave_index++; // Inc pointer
+                PCE.PSG.chan[PCE.PSG.ch].wave_index &= 0x1F; // Wrap at 32
+                break;
+            case PSG_CHAN_ENABLE|PSG_DDA_ENABLE: // Update DDA sample
+                PCE.PSG.chan[PCE.PSG.ch].dda_data[PCE.PSG.chan[PCE.PSG.ch].dda_index] = V & 0x1F;
+                PCE.PSG.chan[PCE.PSG.ch].dda_count++;
+                PCE.PSG.chan[PCE.PSG.ch].dda_index++;
+                PCE.PSG.chan[PCE.PSG.ch].dda_index &= 0x7F;
+                break;
             }
             return;
 
         case 7:
-            PCE.PSG.regs[PCE.PSG.ch][PSG_NOISE_REG] = V;
+            PCE.PSG.chan[PCE.PSG.ch].noise_ctrl = V;
             return;
 
         case 8:

@@ -52,23 +52,13 @@ typedef enum {
 	SATB 	= 19		/* Address of SATB */
 } vdc_reg_t;
 
-#define PSG_VOICE_REG           0x00 // voice index
-#define PSG_VOLUME_REG          0x01 // master volume
-#define PSG_FREQ_LSB_REG        0x02 // lower 8 bits of 12 bit frequency
-#define PSG_FREQ_MSB_REG        0x03 // actually most significant nibble
-#define PSG_DDA_REG             0x04
-#define PSG_BALANCE_REG         0x05
-#define PSG_DATA_INDEX_REG      0x06
-#define PSG_NOISE_REG           0x07
-
-#define PSG_DDA_ENABLE          0x80 // bit 7
-#define PSG_DDA_DIRECT_ACCESS   0x40 // bit 6
-#define PSG_DDA_VOICE_VOLUME    0x1F // bits 0-4
+#define PSG_CHAN_ENABLE         0x80 // bit 7
+#define PSG_DDA_ENABLE          0x40 // bit 6
+#define PSG_CHAN_VOLUME         0x1F // bits 0-4
 #define PSG_BALANCE_LEFT        0xF0 // bits 4-7
 #define PSG_BALANCE_RIGHT       0x0F // bits 0-3
 #define PSG_NOISE_ENABLE        0x80 // bit 7
 
-#define PSG_DA_BUFSIZE          1024
 #define PSG_CHANNELS            6
 
 
@@ -79,6 +69,23 @@ typedef union {
 	uint16_t W;
 } UWord;
 
+typedef struct {
+	uint8_t freq_lsb;   // 2
+	uint8_t freq_msb;   // 3
+	uint8_t control;    // 4
+	uint8_t balance;    // 5
+	uint8_t wave_index; // 6
+	uint8_t noise_ctrl; // 7
+
+	uint8_t wave_data[32];
+	uint8_t dda_data[128];
+
+	uint32_t dda_count;
+	uint32_t dda_index;
+
+	uint32_t wave_accum;
+	uint32_t noise_accum;
+} psg_chan_t;
 
 typedef struct {
 	// Main memory
@@ -114,8 +121,11 @@ typedef struct {
 	// The current rendered line on screen
 	uint16_t Scanline;
 
-	// Total number of elapsed cycles in the current scanline
-	int16_t Cycles;
+	// Number of executed CPU cycles
+	uint32_t Cycles;
+
+	// Run CPU until Cycles >= MaxCycles
+	uint32_t MaxCycles;
 
 	// Value of each of the MMR registers
 	uint8_t MMR[8];
@@ -162,12 +172,12 @@ typedef struct {
 
 	// Programmable Sound Generator
 	struct {
-		uint8_t regs[PSG_CHANNELS][8];
-		uint8_t wave[PSG_CHANNELS][32];
-		uint8_t ch, volume, lfo_freq, lfo_ctrl;
-		uint8_t da_data[PSG_CHANNELS][PSG_DA_BUFSIZE];
-		uint16_t da_index[PSG_CHANNELS];
-		uint16_t da_count[PSG_CHANNELS];
+		uint8_t ch;             // reg 0
+		uint8_t volume;         // reg 1
+		uint8_t lfo_freq;       // reg 8
+		uint8_t lfo_ctrl;       // reg 9
+		psg_chan_t chan[PSG_CHANNELS]; // regs 2-7
+		uint8_t padding[16];
 	} PSG;
 
 } PCE_t;
