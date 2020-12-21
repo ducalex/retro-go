@@ -297,11 +297,17 @@ void app_main(void)
             bitmap.data = currentUpdate->buffer - bitmap.viewport.x;
         }
 
+        int elapsed = get_elapsed_time_since(startTime);
+
         // See if we need to skip a frame to keep up
         if (skipFrames == 0)
         {
-            if (get_elapsed_time_since(startTime) > frameTime) skipFrames = 1;
-            if (app->speedupEnabled) skipFrames += app->speedupEnabled * 2.5;
+            if (app->speedupEnabled)
+                skipFrames = app->speedupEnabled * 2.5;
+            else if (elapsed >= frameTime) // Frame took too long
+                skipFrames = 1;
+            else if (drawFrame && fullFrame) // This could be avoided when scaling != full
+                skipFrames = 1;
         }
         else if (skipFrames > 0)
         {
@@ -309,7 +315,7 @@ void app_main(void)
         }
 
         // Tick before submitting audio/syncing
-        rg_system_tick(!drawFrame, fullFrame, get_elapsed_time_since(startTime));
+        rg_system_tick(!drawFrame, fullFrame, elapsed);
 
         if (!app->speedupEnabled)
         {

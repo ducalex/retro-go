@@ -282,10 +282,16 @@ void app_main(void)
             }
         }
 
+        int elapsed = get_elapsed_time_since(startTime);
+
         if (skipFrames == 0)
         {
-            if (get_elapsed_time_since(startTime) > get_frame_time(60)) skipFrames = 1;
-            if (app->speedupEnabled) skipFrames += app->speedupEnabled * 2;
+            if (app->speedupEnabled)
+                skipFrames = app->speedupEnabled * 2;
+            else if (elapsed >= get_frame_time(60)) // Frame took too long
+                skipFrames = 1;
+            else if (drawFrame && fullFrame) // This could be avoided when scaling != full
+                skipFrames = 1;
         }
         else if (skipFrames > 0)
         {
@@ -293,7 +299,7 @@ void app_main(void)
         }
 
         // Tick before submitting audio/syncing
-        rg_system_tick(!drawFrame, fullFrame, get_elapsed_time_since(startTime));
+        rg_system_tick(!drawFrame, fullFrame, elapsed);
 
         if (!app->speedupEnabled)
         {

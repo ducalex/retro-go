@@ -227,19 +227,25 @@ extern "C" void app_main(void)
             gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;
         }
 
+        int elapsed = get_elapsed_time_since(startTime);
+
         // See if we need to skip a frame to keep up
         if (skipFrames == 0)
         {
+            if (app->speedupEnabled)
+                skipFrames += app->speedupEnabled * 2.5;
             // The Lynx uses a variable framerate so we use the count of generated audio samples as reference instead
-            if (get_elapsed_time_since(startTime) > ((gAudioBufferPointer/2) * sampleTime)) skipFrames += 1;
-            if (app->speedupEnabled) skipFrames += app->speedupEnabled * 2.5;
+            else if (elapsed > ((gAudioBufferPointer/2) * sampleTime))
+                skipFrames += 1;
+            else if (drawFrame && fullFrame) // This could be avoided when scaling != full
+                skipFrames += 1;
         }
         else if (skipFrames > 0)
         {
             skipFrames--;
         }
 
-        rg_system_tick(!drawFrame, fullFrame, get_elapsed_time_since(startTime));
+        rg_system_tick(!drawFrame, fullFrame, elapsed);
 
         if (!app->speedupEnabled)
         {

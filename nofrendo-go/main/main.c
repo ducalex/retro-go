@@ -259,8 +259,12 @@ void osd_vsync()
 
    if (skipFrames == 0)
    {
-      if (elapsed > frameTime) skipFrames = 1;
-      if (app->speedupEnabled) skipFrames += app->speedupEnabled * 2;
+      if (app->speedupEnabled)
+         skipFrames = app->speedupEnabled * 2;
+      else if (elapsed >= frameTime) // Frame took too long
+         skipFrames = 1;
+      else if (nes->drawframe && fullFrame) // This could be avoided when scaling != full
+         skipFrames = 1;
    }
    else if (skipFrames > 0)
    {
