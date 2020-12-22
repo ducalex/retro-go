@@ -26,13 +26,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+// #include "<zlib.h>"
 
-#ifndef LUPNG_USE_ZLIB
-#include <miniz.h>
-#else
-#include <zlib.h>
-#endif
-
+#include "miniz.h"
 #include "lupng.h"
 
 #define PNG_NONE 0
@@ -315,6 +311,7 @@ static size_t internalMemFread(void *ptr, size_t size, size_t count, void *userP
 
 static size_t internalFwrite(const void *ptr, size_t size, size_t count, void *userPtr)
 {
+    printf("Writing %d %d\n", size, count);
     return fwrite(ptr, size, count, (FILE *)userPtr);
 }
 

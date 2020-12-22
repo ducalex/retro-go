@@ -163,7 +163,7 @@ rg_image_t *rg_gui_load_image_file(const char *file)
         return img;
     }
 
-    printf("%s: Unable to load image file!\n", __func__);
+    printf("%s: Unable to load image file '%s'!\n", __func__, file);
     return NULL;
 }
 
