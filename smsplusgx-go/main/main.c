@@ -82,28 +82,32 @@ static void netplay_callback(netplay_event_t event, void *arg)
 static bool SaveState(char *pathName)
 {
     FILE* f = fopen(pathName, "w");
-    if (f == NULL)
-        return false;
-
-    system_save_state(f);
-    fclose(f);
-
-    return true;
+    if (f)
+    {
+        system_save_state(f);
+        fclose(f);
+        char *filename = rg_emu_get_path(EMU_PATH_SCREENSHOT, 0);
+        if (filename)
+        {
+            rg_display_save_frame(filename, currentUpdate, 160.f / currentUpdate->width);
+            rg_free(filename);
+        }
+        return true;
+    }
+    return false;
 }
 
 static bool LoadState(char *pathName)
 {
     FILE* f = fopen(pathName, "r");
-    if (f == NULL)
+    if (f)
     {
-        system_reset();
-        return false;
+        system_load_state(f);
+        fclose(f);
+        return true;
     }
-
-    system_load_state(f);
-    fclose(f);
-
-    return true;
+    system_reset();
+    return false;
 }
 
 void app_main(void)

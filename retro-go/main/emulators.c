@@ -65,13 +65,13 @@ static void event_handler(gui_event_t event, tab_t *tab)
         if (file->checksum == 0)
             emulator_crc32_file(file);
 
-        if (gui.show_cover && gui.idle_counter == (gui.show_cover == 1 ? 8 : 1))
-            gui_draw_cover(file);
+        if (gui.show_preview && gui.idle_counter == (gui.show_preview == 1 ? 8 : 1))
+            gui_draw_preview(file);
     }
     else if (event == TAB_REDRAW)
     {
-        if (gui.show_cover)
-            gui_draw_cover(file);
+        if (gui.show_preview)
+            gui_draw_preview(file);
     }
 }
 
@@ -112,8 +112,8 @@ void emulator_init(retro_emulator_t *emu)
 
     printf("Retro-Go: Initializing emulator '%s'\n", emu->system_name);
 
-    char extensions[128];
-    char path[128];
+    char extensions[64];
+    char path[256];
     char *files = NULL;
     size_t count = 0;
 
@@ -299,6 +299,7 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
 {
     char *save_path = rg_emu_get_path(EMU_PATH_SAVE_STATE, emu_get_file_path(file));
     char *sram_path = rg_emu_get_path(EMU_PATH_SAVE_SRAM, emu_get_file_path(file));
+    char *scrn_path = rg_emu_get_path(EMU_PATH_SCREENSHOT, emu_get_file_path(file));
     bool has_save = rg_filesize(save_path) > 0;
     bool has_sram = rg_filesize(sram_path) > 0;
     bool is_fav = favorite_find(file) != NULL;
@@ -325,6 +326,7 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
             if (has_sram) {
                 rg_unlink(sram_path);
             }
+            rg_unlink(scrn_path);
         }
     }
     else if (sel == 3) {
@@ -336,6 +338,7 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
 
     rg_free(save_path);
     rg_free(sram_path);
+    rg_free(scrn_path);
 }
 
 void emulator_start(retro_emulator_file_t *file, bool load_state)

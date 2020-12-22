@@ -14,6 +14,7 @@ typedef enum
 {
    PIXEL_FORMAT_565_BE = 0,  // 16bit 565 big endian (prefered for our lcd)
    PIXEL_FORMAT_565_LE,      // 16bit 565 little endian
+   PIXEL_FORMAT_888,         // 24bit 888
 } screen_pixel_format_t;
 
 typedef enum
@@ -80,6 +81,7 @@ void rg_display_clear(uint16_t colorLE);
 void rg_display_show_hourglass();
 void rg_display_force_refresh(void);
 void rg_display_set_scale(short width, short height, double aspect_ratio);
+bool rg_display_save_frame(const char *filename, rg_video_frame_t *frame, float scale);
 screen_update_t rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *previousFrame);
 
 display_backlight_t rg_display_get_backlight();

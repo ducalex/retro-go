@@ -18,7 +18,7 @@ typedef struct {
     char system_name[64];
     char partition[16];
     char dirname[16];
-    char extensions[16];
+    char extensions[32];
     size_t crc_offset;
     struct {
         retro_emulator_file_t *files;

@@ -31,7 +31,7 @@ static long skipFrames = 0;
 
 static const char *sramFile;
 static bool saveSRAM = false;
-static int  saveSRAM_Timer = 0;
+static long saveSRAM_Timer = 0;
 
 #ifdef ENABLE_NETPLAY
 static bool netplay = false;
@@ -42,11 +42,11 @@ static bool netplay = false;
 static void netplay_callback(netplay_event_t event, void *arg)
 {
 #ifdef ENABLE_NETPLAY
-   bool new_netplay;
+    bool new_netplay;
 
-   switch (event)
-   {
-      case NETPLAY_EVENT_STATUS_CHANGED:
+    switch (event)
+    {
+    case NETPLAY_EVENT_STATUS_CHANGED:
         new_netplay = (rg_netplay_status() == NETPLAY_STATUS_CONNECTED);
 
         if (netplay && !new_netplay)
@@ -56,9 +56,9 @@ static void netplay_callback(netplay_event_t event, void *arg)
         netplay = new_netplay;
         break;
 
-      default:
-         break;
-   }
+    default:
+        break;
+    }
 #endif
 }
 
@@ -68,7 +68,18 @@ static bool SaveState(char *pathName)
     // So that it can be imported in other emulators
     sram_save(sramFile);
 
-    return state_save(pathName) == 0;
+    if (state_save(pathName) == 0)
+    {
+        char *filename = rg_emu_get_path(EMU_PATH_SCREENSHOT, 0);
+        if (filename)
+        {
+            rg_display_save_frame(filename, currentUpdate, 1);
+            rg_free(filename);
+        }
+        return true;
+    }
+
+    return false;
 }
 
 static bool LoadState(char *pathName)
@@ -164,15 +175,15 @@ static bool rtc_update_cb(dialog_choice_t *option, dialog_event_t event)
 
 static bool advanced_settings_cb(dialog_choice_t *option, dialog_event_t event)
 {
-   if (event == RG_DIALOG_ENTER) {
-      dialog_choice_t options[] = {
-        {101, "Set clock", "00:00", 1, &rtc_update_cb},
-        {102, "Auto save SRAM", "No", 1, &save_sram_update_cb},
-        RG_DIALOG_CHOICE_LAST
-      };
-      rg_gui_dialog("Advanced", options, 0);
-   }
-   return false;
+    if (event == RG_DIALOG_ENTER) {
+        dialog_choice_t options[] = {
+            {101, "Set clock", "00:00", 1, &rtc_update_cb},
+            {102, "Auto save SRAM", "No", 1, &save_sram_update_cb},
+            RG_DIALOG_CHOICE_LAST
+        };
+        rg_gui_dialog("Advanced", options, 0);
+    }
+    return false;
 }
 
 static inline void screen_blit(void)
@@ -197,7 +208,7 @@ void app_main(void)
     update2.buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
 
     saveSRAM = rg_settings_app_int32_get(NVS_KEY_SAVE_SRAM, 0);
-	sramFile = rg_emu_get_path(EMU_PATH_SAVE_SRAM, 0);
+    sramFile = rg_emu_get_path(EMU_PATH_SAVE_SRAM, 0);
 
     // Load ROM
     rom_load(app->romPath);
@@ -208,21 +219,21 @@ void app_main(void)
     // Video
     memset(&fb, 0, sizeof(fb));
     fb.w = GB_WIDTH;
-  	fb.h = GB_HEIGHT;
-  	fb.pixelsize = 2;
-  	fb.pitch = fb.w * fb.pixelsize;
-  	fb.ptr = currentUpdate->buffer;
-  	fb.enabled = 1;
+    fb.h = GB_HEIGHT;
+    fb.pixelsize = 2;
+    fb.pitch = fb.w * fb.pixelsize;
+    fb.ptr = currentUpdate->buffer;
+    fb.enabled = 1;
     fb.byteorder = 1;
     fb.blit_func = &screen_blit;
 
     // Audio
     memset(&pcm, 0, sizeof(pcm));
     pcm.hz = AUDIO_SAMPLE_RATE;
-  	pcm.stereo = 1;
-  	pcm.len = AUDIO_BUFFER_LENGTH * 2; // count of 16bit samples (x2 for stereo)
-  	pcm.buf = (n16*)&audioBuffer;
-  	pcm.pos = 0;
+    pcm.stereo = 1;
+    pcm.len = AUDIO_BUFFER_LENGTH * 2; // count of 16bit samples (x2 for stereo)
+    pcm.buf = (n16 *)&audioBuffer;
+    pcm.pos = 0;
 
     emu_init();
 

@@ -62,6 +62,8 @@ Go-Play romart pack that you may already have.
 For a quick start you can copy the folder `covers` of this repository to the root of your sdcard and 
 rename it `romart`.
 
+If a cover is missing Retro-Go will display a screenshot of the last saved state (if any).
+
 ## Adding missing covers
 First identify the CRC32 of your game (in the launcher press B). Now, let's assume that the CRC32 of your
 nes game is ABCDE123, you must place the file (format described above) at: `sdcard:/romart/nes/A/ABCDE123.png`.

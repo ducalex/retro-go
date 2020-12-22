@@ -362,6 +362,12 @@ char* rg_emu_get_path(emu_path_type_t type, const char *_romPath)
             strcat(buffer, ".sram");
             break;
 
+        case EMU_PATH_SCREENSHOT:
+            strcpy(buffer, RG_BASE_PATH_SAVES);
+            strcat(buffer, fileName);
+            strcat(buffer, ".png");
+            break;
+
         case EMU_PATH_TEMP_FILE:
             sprintf(buffer, "%s/%X%X.tmp", RG_BASE_PATH_TEMP, get_elapsed_time(), rand());
             break;

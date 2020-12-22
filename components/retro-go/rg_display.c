@@ -6,6 +6,7 @@
 #include <driver/ledc.h>
 #include <driver/rtc_io.h>
 #include <string.h>
+#include <lupng.h>
 
 #include "rg_system.h"
 #include "rg_display.h"
@@ -991,6 +992,45 @@ void
 rg_display_force_refresh(void)
 {
     forceVideoRefresh = true;
+}
+
+bool
+rg_display_save_frame(const char *filename, rg_video_frame_t *frame, float scale)
+{
+    // We do not support upscale right now
+    scale = RG_MIN(scale, 1.f);
+
+    LuImage *png = luImageCreate(frame->width * scale, frame->height * scale, 3, 8, 0, 0);
+    if (!png)
+        return false;
+
+    uint8_t *dst = png->data;
+    uint16_t pixel;
+    float factor = 1 + (1 - scale);
+
+    printf("%s: Rendering frame: %dx%d\n", __func__, png->width, png->height);
+
+    for (size_t y = 0; y < png->height; y++)
+    {
+        for (size_t x = 0; x < png->width; x++)
+        {
+            uint8_t *src = frame->buffer + ((int)(y * factor) * frame->stride);
+            if (frame->palette) {
+                pixel = ((uint16_t*)frame->palette)[src[(int)(x * factor)] & frame->pixel_mask];
+            } else {
+                pixel = ((uint16_t*)src)[(int)(x * factor)];
+            }
+            pixel = (pixel << 8) | (pixel >> 8);
+            *(dst++) = ((pixel >> 11) & 0x1F) << 3;
+            *(dst++) = ((pixel >> 5) & 0x3F) << 2;
+            *(dst++) = (pixel & 0x1F) << 3;
+        }
+    }
+
+    bool success = luPngWriteFile(filename, png);
+    luImageRelease(png, 0);
+
+    return success;
 }
 
 IRAM_ATTR screen_update_t

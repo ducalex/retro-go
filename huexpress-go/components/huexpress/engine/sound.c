@@ -14,6 +14,7 @@ static uint32_t noise_rand[PSG_CHANNELS];
 static int32_t noise_level[PSG_CHANNELS];
 // The buffer should be signed but it seems to sound better
 // unsigned. I am still reviewing the implementation bellow.
+// In some games it also sounds better in 8 bit than in 16...
 // static uint8_t mix_buffer[44100 / 60 * 2];
 static int16_t mix_buffer[44100 / 60 * 2];
 

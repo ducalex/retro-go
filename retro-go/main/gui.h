@@ -65,7 +65,9 @@ typedef struct {
     int selected;
     int theme;
     int show_empty;
-    int show_cover;
+    int show_preview;
+    int show_preview_cover;
+    int show_preview_save;
     int idle_counter;
     int last_key;
     gamepad_state_t joystick;
@@ -96,4 +98,4 @@ void gui_draw_header(tab_t *tab);
 void gui_draw_status(tab_t *tab);
 void gui_draw_list(tab_t *tab);
 void gui_draw_notice(const char *text, uint16_t color);
-void gui_draw_cover(retro_emulator_file_t *file);
+void gui_draw_preview(retro_emulator_file_t *file);

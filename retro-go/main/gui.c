@@ -301,21 +301,36 @@ void gui_draw_list(tab_t *tab)
     }
 }
 
-void gui_draw_cover(retro_emulator_file_t *file)
+void gui_draw_preview(retro_emulator_file_t *file)
 {
     retro_emulator_t *emu = (retro_emulator_t *)file->emulator;
 
     if (file->checksum > 0 && file->missing_cover == 0)
     {
-        char path1[128], path2[128], buf_crc[10];
-
+        char path[256], buf_crc[10];
         sprintf(buf_crc, "%08X", file->checksum);
-        sprintf(path1, "%s/%s/%c/%s.png", RG_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
-        sprintf(path2, "%s/%s/%c/%s.art", RG_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
 
-        rg_image_t *img;
+        rg_image_t *img = NULL;
 
-        if ((img = rg_gui_load_image_file(path1)) || (img = rg_gui_load_image_file(path2)))
+        if (gui.show_preview_cover && !img)
+        {
+            sprintf(path, "%s/%s/%c/%s.png", RG_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
+            img = rg_gui_load_image_file(path);
+        }
+
+        if (gui.show_preview_cover && !img)
+        {
+            sprintf(path, "%s/%s/%c/%s.art", RG_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
+            img = rg_gui_load_image_file(path);
+        }
+
+        if (gui.show_preview_save && !img)
+        {
+            sprintf(path, "%s/%s/%s.%s.png", RG_BASE_PATH_SAVES, emu->dirname, file->name, file->ext);
+            img = rg_gui_load_image_file(path);
+        }
+
+        if (img)
         {
             int height = MIN(img->height, COVER_MAX_HEIGHT);
             int width = MIN(img->width, COVER_MAX_WIDTH);

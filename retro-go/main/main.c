@@ -54,19 +54,19 @@ static bool startup_app_cb(dialog_choice_t *option, dialog_event_t event)
     return event == RG_DIALOG_ENTER;
 }
 
-static bool show_cover_cb(dialog_choice_t *option, dialog_event_t event)
+static bool show_preview_cb(dialog_choice_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_PREV) {
-        if (--gui.show_cover < 0) gui.show_cover = 2;
-        rg_settings_int32_set(KEY_SHOW_COVER, gui.show_cover);
+        if (--gui.show_preview < 0) gui.show_preview = 2;
+        rg_settings_int32_set(KEY_SHOW_COVER, gui.show_preview);
     }
     if (event == RG_DIALOG_NEXT) {
-        if (++gui.show_cover > 2) gui.show_cover = 0;
-        rg_settings_int32_set(KEY_SHOW_COVER, gui.show_cover);
+        if (++gui.show_preview > 2) gui.show_preview = 0;
+        rg_settings_int32_set(KEY_SHOW_COVER, gui.show_preview);
     }
-    if (gui.show_cover == 0) strcpy(option->value, "No");
-    if (gui.show_cover == 1) strcpy(option->value, "Slow");
-    if (gui.show_cover == 2) strcpy(option->value, "Fast");
+    if (gui.show_preview == 0) strcpy(option->value, "No");
+    if (gui.show_preview == 1) strcpy(option->value, "Slow");
+    if (gui.show_preview == 2) strcpy(option->value, "Fast");
     return event == RG_DIALOG_ENTER;
 }
 
@@ -109,10 +109,12 @@ void retro_loop()
     int last_key = -1;
     int selected_tab_last = -1;
 
-    gui.selected   = rg_settings_int32_get(KEY_SELECTED_TAB, 0);
-    gui.theme      = rg_settings_int32_get(KEY_GUI_THEME, 0);
-    gui.show_empty = rg_settings_int32_get(KEY_SHOW_EMPTY, 1);
-    gui.show_cover = rg_settings_int32_get(KEY_SHOW_COVER, 1);
+    gui.selected     = rg_settings_int32_get(KEY_SELECTED_TAB, 0);
+    gui.theme        = rg_settings_int32_get(KEY_GUI_THEME, 0);
+    gui.show_empty   = rg_settings_int32_get(KEY_SHOW_EMPTY, 1);
+    gui.show_preview = rg_settings_int32_get(KEY_SHOW_COVER, 1);
+    gui.show_preview_cover = 1;
+    gui.show_preview_save  = 1;
 
     while (true)
     {
@@ -205,7 +207,7 @@ void retro_loop()
                     {0, "---", "", -1, NULL},
                     {0, "Color theme", "1/10", 1, &color_shift_cb},
                     {0, "Font size", "Small", 1, &font_size_cb},
-                    {0, "Show cover", "Yes", 1, &show_cover_cb},
+                    {0, "Show preview", "Yes", 1, &show_preview_cb},
                     {0, "Show empty", "Yes", 1, &show_empty_cb},
                     {0, "---", "", -1, NULL},
                     {0, "Startup app", "Last", 1, &startup_app_cb},

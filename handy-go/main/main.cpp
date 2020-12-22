@@ -122,6 +122,13 @@ static bool save_state(char *pathName)
     {
         ret = lynx->ContextSave(fp);
         fclose(fp);
+
+        char *filename = rg_emu_get_path(EMU_PATH_SCREENSHOT, 0);
+        if (filename)
+        {
+            rg_display_save_frame(filename, currentUpdate, 1);
+            rg_free(filename);
+        }
     }
 
     return ret;
