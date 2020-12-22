@@ -176,7 +176,12 @@ bool favorite_remove(retro_emulator_file_t *file)
 
 void favorites_init()
 {
-    fav_tab = gui_add_tab("favorites", &logo_fav, NULL, NULL, event_handler);
+    fav_tab = gui_add_tab(
+        "favorites",
+        rg_gui_load_image(logo_fav.data, logo_fav.size),
+        NULL,
+        NULL,
+        event_handler);
 
     // We must load favorites now because other tabs depend on it for menu items
     favorites_load();

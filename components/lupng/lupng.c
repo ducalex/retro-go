@@ -923,14 +923,14 @@ LuImage *luPngReadFile(const char *filename)
     return img;
 }
 
-LuImage *luPngReadMem(const void *data, size_t size, int skipSig)
+LuImage *luPngReadMem(const void *data, size_t size)
 {
     MemReader mp = {.data = (void*)data, .size = size, .pos = 0};
     LuUserContext userCtx;
     luUserContextInitDefault(&userCtx);
     userCtx.readProc = internalMemFread;
     userCtx.readProcUserPtr = &mp;
-    userCtx.skipSig = skipSig;
+    userCtx.skipSig = 0;
 
     return luPngReadUC(&userCtx);
 }

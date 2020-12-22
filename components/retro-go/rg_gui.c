@@ -132,47 +132,100 @@ void rg_gui_draw_fill_rect(int x, int y, int width, int height, uint16_t color)
     }
 }
 
-bool rg_gui_draw_png(int x, int y, int width, int height, const rg_file_t *file)
+static rg_image_t *new_image(int width, int height)
 {
-    LuImage *img;
+    width = RG_MIN(width, RG_SCREEN_WIDTH);
+    height = RG_MIN(height, RG_SCREEN_HEIGHT);
+    rg_image_t *img = rg_alloc(sizeof(rg_image_t) + width * height * 2, MEM_SLOW);
+    img->width = width;
+    img->height = height;
+    return img;
+}
 
-    if (file->path) {
-        img = luPngReadFile(file->path);
-    } else {
-        img = luPngReadMem(file->data, file->size, 0);
+rg_image_t *rg_gui_load_image_file(const char *file)
+{
+    if (!file)
+        return NULL;
+
+    FILE *fp = rg_fopen(file, "rb");
+    if (fp)
+    {
+        fseek(fp, 0, SEEK_END);
+        size_t data_len = RG_MAX(0x80000, ftell(fp));
+        void *data = rg_alloc(data_len, MEM_SLOW);
+        fseek(fp, 0, SEEK_SET);
+        fread(data, data_len, 1, fp);
+        rg_fclose(fp);
+
+        rg_image_t *img = rg_gui_load_image(data, data_len);
+        free(data);
+
+        return img;
     }
 
-    if (!img) {
-        printf("%s: Unable to load PNG file!\n", __func__);
+    printf("%s: Unable to load image file!\n", __func__);
+    return NULL;
+}
+
+rg_image_t *rg_gui_load_image(const uint8_t *data, size_t data_len)
+{
+    if (!data || data_len < 16)
+        return NULL;
+
+    LuImage *png = luPngReadMem(data, data_len);
+    if (png)
+    {
+        rg_image_t *img = new_image(png->width, png->height);
+        uint16_t *ptr = img->data;
+
+        for (int y = 0; y < img->height; ++y) {
+            for (int x = 0; x < img->width; ++x) {
+                int offset = (y * png->width * 3) + (x * 3);
+                int r = (png->data[offset+0] >> 3) & 0x1F;
+                int g = (png->data[offset+1] >> 2) & 0x3F;
+                int b = (png->data[offset+2] >> 3) & 0x1F;
+                *(ptr++) = (r << 11) | (g << 5) | b;
+            }
+        }
+
+        luImageRelease(png, NULL);
+        return img;
+    }
+
+    // Not valid PNG, try loading as raw 565
+    uint16_t *img_data = (uint16_t *)data;
+    size_t img_width = *img_data++;
+    size_t img_height = *img_data++;
+
+    if (data_len < (img_width * img_height * 2))
+    {
+        printf("%s: Invalid RAW data!\n", __func__);
         return false;
     }
 
-    if (width == 0 || width > img->width) {
-        width = img->width;
+    rg_image_t *img = new_image(img_width, img_height);
+
+    for (int y = 0; y < img->height; ++y)
+    {
+        memcpy(img->data + (y * img->width), img_data + (y * img_width), img->width * 2);
     }
 
-    if (height == 0 || height > img->height) {
-        height = img->height;
+    return img;
+}
+
+void rg_gui_free_image(rg_image_t *img)
+{
+    free(img);
+}
+
+void rg_gui_draw_image(int x, int y, int width, int height, const rg_image_t *img)
+{
+    if (img && x < RG_SCREEN_WIDTH && y < RG_SCREEN_HEIGHT)
+    {
+        width = RG_MIN(width > 0 ? width : img->width, RG_SCREEN_WIDTH);
+        height = RG_MIN(height > 0 ? height : img->height, RG_SCREEN_HEIGHT);
+        rg_display_write(x, y, width, height, img->width * 2, img->data);
     }
-
-    uint16_t *ptr = (uint16_t *)img->data;
-
-    // Rewrite image to RGB565 and crop if necessary
-    for (int img_y = 0; img_y < height; ++img_y) {
-        for (int img_x = 0; img_x < width; ++img_x) {
-            int offset = (img_y * img->width * 3) + (img_x * 3);
-            int r = (img->data[offset+0] >> 3) & 0x1F;
-            int g = (img->data[offset+1] >> 2) & 0x3F;
-            int b = (img->data[offset+2] >> 3) & 0x1F;
-            *(ptr++) = (r << 11) | (g << 5) | b;
-        }
-    }
-
-    rg_display_write(x, y, width, height, width * 2, img->data);
-
-    luImageRelease(img, NULL);
-
-    return true;
 }
 
 void rg_gui_draw_battery(int x_pos, int y_pos)

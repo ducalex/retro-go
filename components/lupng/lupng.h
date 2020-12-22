@@ -137,7 +137,7 @@ LuImage *luPngReadFile(const char *filename);
  * @param data the buffer containing the data.
  * @param size the buffer size.
  */
-LuImage *luPngReadMem(const void *data, size_t size, int skipSig);
+LuImage *luPngReadMem(const void *data, size_t size);
 
 /**
  * Decodes a PNG image with the provided read function into a LuImage struct

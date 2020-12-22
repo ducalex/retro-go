@@ -47,8 +47,6 @@ theme_t gui_themes[] = {
 };
 int gui_themes_count = 12;
 
-static size_t img_buffer_length = 300 * 300;
-static uint16_t *img_buffer = NULL;
 static char str_buffer[128];
 
 retro_gui_t gui;
@@ -59,7 +57,7 @@ void gui_event(gui_event_t event, tab_t *tab)
         (*tab->event_handler)(event, tab);
 }
 
-tab_t *gui_add_tab(const char *name, const rg_file_t *logo, const rg_file_t *header, void *arg, void *event_handler)
+tab_t *gui_add_tab(const char *name, const rg_image_t *logo, const rg_image_t *header, void *arg, void *event_handler)
 {
     tab_t *tab = calloc(1, sizeof(tab_t));
 
@@ -251,10 +249,10 @@ void gui_draw_header(tab_t *tab)
     rg_gui_draw_fill_rect(0, y_pos, RG_SCREEN_WIDTH, LIST_Y_OFFSET - y_pos, C_BLACK);
 
     if (tab->img_logo)
-        rg_gui_draw_png(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, tab->img_logo);
+        rg_gui_draw_image(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, tab->img_logo);
 
     if (tab->img_header)
-        rg_gui_draw_png(x_pos + 1, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, tab->img_header);
+        rg_gui_draw_image(x_pos + 1, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, tab->img_header);
 }
 
 // void gui_draw_notice(tab_t *tab)
@@ -307,11 +305,6 @@ void gui_draw_cover(retro_emulator_file_t *file)
 {
     retro_emulator_t *emu = (retro_emulator_t *)file->emulator;
 
-    if (img_buffer == NULL)
-        img_buffer = malloc(img_buffer_length * 2);
-
-    uint16_t cover_width = 0, cover_height = 0;
-
     if (file->checksum > 0 && file->missing_cover == 0)
     {
         char path1[128], path2[128], buf_crc[10];
@@ -320,38 +313,18 @@ void gui_draw_cover(retro_emulator_file_t *file)
         sprintf(path1, "%s/%s/%c/%s.png", RG_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
         sprintf(path2, "%s/%s/%c/%s.art", RG_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
 
-        LuImage *img;
-        FILE *fp;
+        rg_image_t *img;
 
-        if ((img = luPngReadFile(path1)))
+        if ((img = rg_gui_load_image_file(path1)) || (img = rg_gui_load_image_file(path2)))
         {
-            for (int p = 0, i = 0; i < img->dataSize && p < img_buffer_length; i += 3) {
-                uint8_t r = img->data[i];
-                uint8_t g = img->data[i + 1];
-                uint8_t b = img->data[i + 2];
-                img_buffer[p++] = ((r / 8) << 11) | ((g / 4) << 5) | (b / 8);
-            }
-            cover_width = img->width;
-            cover_height = img->height;
-            luImageRelease(img, NULL);
-        }
-        else if ((fp = fopen(path2, "rb")))
-        {
-            fread(&cover_width, 2, 1, fp);
-            fread(&cover_height, 2, 1, fp);
-            fread(img_buffer, 2, img_buffer_length, fp);
-            fclose(fp);
-        }
+            int height = MIN(img->height, COVER_MAX_HEIGHT);
+            int width = MIN(img->width, COVER_MAX_WIDTH);
 
-        if (cover_width > 0 && cover_height > 0)
-        {
-            int height = MIN(cover_height, COVER_MAX_HEIGHT);
-            int width = MIN(cover_width, COVER_MAX_WIDTH);
-
-            if (cover_height > COVER_MAX_HEIGHT || cover_width > COVER_MAX_WIDTH)
+            if (img->height > COVER_MAX_HEIGHT || img->width > COVER_MAX_WIDTH)
                 gui_draw_notice("Art too large", C_ORANGE);
 
-            rg_display_write(320 - width, 240 - height, width, height, cover_width * 2, img_buffer);
+            rg_gui_draw_image(320 - width, 240 - height, width, height, img);
+            rg_gui_free_image(img);
             return;
         }
     }
