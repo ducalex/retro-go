@@ -565,9 +565,8 @@ IO_write(uint16_t A, uint8_t V)
                 break;
             case PSG_CHAN_ENABLE|PSG_DDA_ENABLE: // Update DDA sample
                 PCE.PSG.chan[PCE.PSG.ch].dda_data[PCE.PSG.chan[PCE.PSG.ch].dda_index] = V & 0x1F;
-                PCE.PSG.chan[PCE.PSG.ch].dda_count++;
-                PCE.PSG.chan[PCE.PSG.ch].dda_index++;
-                PCE.PSG.chan[PCE.PSG.ch].dda_index &= 0x7F;
+                PCE.PSG.chan[PCE.PSG.ch].dda_count = MIN(PCE.PSG.chan[PCE.PSG.ch].dda_count+1, 0x100);
+                PCE.PSG.chan[PCE.PSG.ch].dda_index = (PCE.PSG.chan[PCE.PSG.ch].dda_index+1) & 0xFF;
                 break;
             }
             return;

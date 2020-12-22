@@ -12,33 +12,28 @@ static const uint8_t vol_tbl[32] = {
 
 static uint32_t noise_rand[PSG_CHANNELS];
 static int32_t noise_level[PSG_CHANNELS];
-
 // The buffer should be signed but it seems to sound better
 // unsigned. I am still reviewing the implementation bellow.
-static int8_t mix_buffer[44100 / 60 * 2];
 // static uint8_t mix_buffer[44100 / 60 * 2];
-
-static int last_cycles = 0;
+static int16_t mix_buffer[44100 / 60 * 2];
 
 
 static inline void
-psg_update(int8_t *buf, int ch, size_t dwSize)
+psg_update(int16_t *buf, int ch, size_t dwSize)
 {
     psg_chan_t *chan = &PCE.PSG.chan[ch];
-    int vol, sample = 0;
+    int sample = 0;
     uint32_t Tp;
-    int8_t *buf_end = buf + dwSize;
+    typeof(buf) buf_end = buf + dwSize;
 
     /*
-    * We multiply the 4-bit balance values by 1.1 to get a result from (0..16.5).
-    * This multiplied by the 5-bit channel volume (0..31) gives us a result of
-    * (0..511).
+    * This gives us a volume level of (0...15).
     */
-    int lbal = ((chan->balance >> 4) * 1.1) * (chan->control & 0x1F);
-    int rbal = ((chan->balance & 0xF) * 1.1) * (chan->control & 0x1F);
+    int lvol = (((chan->balance >> 4) * 1.1) * (chan->control & 0x1F)) / 32;
+    int rvol = (((chan->balance & 0xF) * 1.1) * (chan->control & 0x1F)) / 32;
 
     if (!host.sound.stereo) {
-        lbal = (lbal + rbal) / 2;
+        lvol = (lvol + rvol) / 2;
     }
 
     // This isn't very accurate, we don't track how long each DA sample should play
@@ -52,31 +47,33 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
 
         // One sample = 324 cycles
 
-        int elapsed = Cycles - last_cycles;
-        const int cycles_per_sample = CYCLES_PER_FRAME / (host.sound.sample_freq / 60);
+        // const int cycles_per_sample = CYCLES_PER_FRAME / (host.sound.sample_freq / 60);
 
         // float repeat = (float)elapsed / cycles_per_sample / chan->dda_count;
         // printf("%.2f\n", repeat);
 
         int start = (int)chan->dda_index - chan->dda_count;
         if (start < 0)
-            start += 0x80;
+            start += 0x100;
 
         int repeat = 3; // MIN(2, (dwSize / 2) / chan->dda_count) + 1;
+
+        lvol = vol_tbl[lvol << 1];
+        rvol = vol_tbl[rvol << 1];
 
         while (buf < buf_end && (chan->dda_count || chan->control & PSG_DDA_ENABLE)) {
             if (chan->dda_count) {
                 // sample = chan->dda_data[(start++) & 0x7F];
-                if ((sample = (chan->dda_data[(start++) & 0x7F] - 16)) >= 0)
+                if ((sample = (chan->dda_data[(start++) & 0xFF] - 16)) >= 0)
                     sample++;
                 chan->dda_count--;
             }
 
             for (int i = 0; i < repeat; i++) {
-                *buf++ = (int8_t) (sample * lbal / 50);  // 64
+                *buf++ = (sample * lvol);
 
                 if (host.sound.stereo) {
-                    *buf++ = (int8_t) (sample * rbal / 50);  // 64
+                    *buf++ = (sample * rvol);
                 }
             }
         }
@@ -94,64 +91,32 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
     else if ((ch == 4 || ch == 5) && (chan->noise_ctrl & PSG_NOISE_ENABLE)) {
         int Np = (chan->noise_ctrl & 0x1F);
 
-        vol = MAX((PCE.PSG.volume >> 3) & 0x1E, (PCE.PSG.volume << 1) & 0x1E) +
-              (chan->control & PSG_CHAN_VOLUME) +
-              MAX((chan->balance >> 3) & 0x1E, (chan->balance << 1) & 0x1E);
-
-        vol = vol_tbl[MAX(0, vol - 60)];
-
         while (buf < buf_end) {
             chan->noise_accum += 3000 + Np * 512;
 
             if ((Tp = (chan->noise_accum / host.sound.sample_freq)) >= 1) {
                 if (noise_rand[ch] & 0x00080000) {
                     noise_rand[ch] = ((noise_rand[ch] ^ 0x0004) << 1) + 1;
-                    noise_level[ch] = -10 * 702;
+                    noise_level[ch] = -15;
                 } else {
                     noise_rand[ch] <<= 1;
-                    noise_level[ch] = 10 * 702;
+                    noise_level[ch] = 15;
                 }
                 chan->noise_accum -= host.sound.sample_freq * Tp;
             }
 
-            *buf++ = (int8_t) (noise_level[ch] * vol / 4096);
+            *buf++ = (noise_level[ch] * lvol);
+
+            if (host.sound.stereo) {
+                *buf++ = (noise_level[ch] * rvol);
+            }
         }
     }
     /*
     * There is 'direct access' audio to be played.
     */
     else if (chan->control & PSG_DDA_ENABLE) {
-        #if 0
-        int start = (int)chan->dda_index - chan->dda_count;
-        if (start < 0)
-            start += 0x80;
 
-        while (buf < buf_end) {
-            if (chan->dda_count) {
-                sample = chan->dda_data[start++];
-                start &= 0x7F;
-                chan->dda_count--;
-            }
-
-            *buf++ = (int8_t) (sample * lbal / 64);
-
-            if (host.sound.stereo) {
-                *buf++ = (int8_t) (sample * rbal / 64);
-            }
-
-            *buf++ = (int8_t) (sample * lbal / 64);
-
-            if (host.sound.stereo) {
-                *buf++ = (int8_t) (sample * rbal / 64);
-            }
-
-            *buf++ = (int8_t) (sample * lbal / 64);
-
-            if (host.sound.stereo) {
-                *buf++ = (int8_t) (sample * rbal / 64);
-            }
-        }
-#endif
     }
     /*
     * PSG Wave generation.
@@ -186,10 +151,10 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
             if ((sample = (chan->wave_data[chan->wave_index] - 16)) >= 0)
                 sample++;
 
-            *buf++ = (int8_t) (sample * lbal / 100); // 64
+            *buf++ = (sample * lvol);
 
             if (host.sound.stereo) {
-                *buf++ = (int8_t) (sample * rbal / 100); // 64
+                *buf++ = (sample * rvol);
             }
 
             chan->wave_accum += fixed_inc;
@@ -200,7 +165,7 @@ psg_update(int8_t *buf, int ch, size_t dwSize)
 
 pad_and_return:
     if (buf < buf_end) {
-        memset(buf, 0, buf_end - buf);
+        memset(buf, 0, (void*)buf_end - (void*)buf);
     }
 }
 
@@ -246,6 +211,4 @@ snd_update(short *buffer, size_t length)
             buffer[j + 1] += mix_buffer[j + 1] * rvol;
         }
     }
-
-    last_cycles = Cycles;
 }

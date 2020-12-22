@@ -76,9 +76,10 @@ typedef struct {
 	uint8_t balance;    // 5
 	uint8_t wave_index; // 6
 	uint8_t noise_ctrl; // 7
+	uint8_t pad0, pad1;
 
 	uint8_t wave_data[32];
-	uint8_t dda_data[128];
+	uint8_t dda_data[256];
 
 	uint32_t dda_count;
 	uint32_t dda_index;

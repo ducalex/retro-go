@@ -624,13 +624,6 @@ FILE *rg_fopen(const char *filename, const char *mode)
     return fp;
 }
 
-int rg_fread(FILE *fp)
-{
-    int ret = fclose(fp);
-    rg_spi_lock_release(SPI_LOCK_SDCARD);
-    return ret;
-}
-
 int rg_fclose(FILE *fp)
 {
     int ret = fclose(fp);

@@ -59,6 +59,7 @@ typedef struct
 #define SVAR_2(k, v) { 2, k, &v }
 #define SVAR_4(k, v) { 4, k, &v }
 #define SVAR_A(k, v) { sizeof(v), k, &v }
+#define SVAR_N(k, v, n) { n, k, &v }
 #define SVAR_END { 0, "\0\0\0\0", 0 }
 
 #endif

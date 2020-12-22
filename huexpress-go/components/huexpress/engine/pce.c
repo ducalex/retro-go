@@ -5,7 +5,7 @@
 
 struct host_machine host;
 
-const char SAVESTATE_HEADER[8] = "PCE_V003";
+const char SAVESTATE_HEADER[8] = "PCE_V004";
 
 /**
  * Describes what is saved in a save state. Changing the order will break
@@ -31,11 +31,11 @@ const svar_t SaveStateVars[] =
 	SVAR_1("irq_mask", PCE.irq_mask),           SVAR_1("irq_status", PCE.irq_status),
 
 	// PSG
-	// SVAR_A("PSG", PCE.PSG.regs),                SVAR_A("PSG_WAVE", PCE.PSG.wave),
-	// SVAR_A("psg_da_data", PCE.PSG.da_data),     SVAR_A("psg_da_count", PCE.PSG.da_count),
-	// SVAR_A("psg_da_index", PCE.PSG.da_index),   SVAR_1("psg_ch", PCE.PSG.ch),
-	// SVAR_1("psg_volume", PCE.PSG.volume),       SVAR_1("psg_lfo_freq", PCE.PSG.lfo_freq),
-	// SVAR_1("psg_lfo_ctrl", PCE.PSG.lfo_ctrl),
+	SVAR_1("psg.ch", PCE.PSG.ch),               SVAR_1("psg.vol", PCE.PSG.volume),
+	SVAR_1("psg.lfo_f", PCE.PSG.lfo_freq),      SVAR_1("psg.lfo_c", PCE.PSG.lfo_ctrl),
+	SVAR_N("psg.ch0", PCE.PSG.chan[0], 40),     SVAR_N("psg.ch1", PCE.PSG.chan[1], 40),
+	SVAR_N("psg.ch2", PCE.PSG.chan[2], 40),     SVAR_N("psg.ch3", PCE.PSG.chan[3], 40),
+	SVAR_N("psg.ch4", PCE.PSG.chan[4], 40),     SVAR_N("psg.ch5", PCE.PSG.chan[5], 40),
 
 	// VCE
 	SVAR_A("vce_regs", PCE.VCE.regs),           SVAR_2("vce_reg", PCE.VCE.reg),
