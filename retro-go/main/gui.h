@@ -66,8 +66,7 @@ typedef struct {
     int theme;
     int show_empty;
     int show_preview;
-    int show_preview_cover;
-    int show_preview_save;
+    int show_preview_fast;
     int idle_counter;
     int last_key;
     gamepad_state_t joystick;
