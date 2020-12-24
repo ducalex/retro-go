@@ -26,8 +26,10 @@ def debug_print(text):
 
 os.chdir(PRJ_PATH)
 
-exec(read_file("config.py"))
-
+if os.path.exists("fw-config.py"):
+    exec(read_file("fw-config.py"))
+elif os.path.exists("config.py"):
+    exec(read_file("config.py"))
 
 symbols_cache = dict()
 
