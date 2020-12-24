@@ -190,7 +190,7 @@ battery_state_t rg_input_read_battery()
     static esp_adc_cal_characteristics_t adc_chars;
     static float adcValue = 0.0f;
 
-    short sampleCount = 4;
+    const int sampleCount = 4;
     float adcSample = 0.0f;
 
     // ADC not initialized

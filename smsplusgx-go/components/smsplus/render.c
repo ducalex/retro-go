@@ -495,17 +495,15 @@ IRAM_ATTR void render_line(int line)
 static uint8 data[8];
 
 __attribute__((optimize("unroll-loops")))
-static inline void* tile_get(short attr, short line)
+static inline void* tile_get(int attr, int line)
 {
     // ---p cvhn nnnn nnnn
     const uint16 name = attr & 0x1ff;
-
     const uint16 y = (attr & 0x400) ? (line ^ 7) : line;
-
     const uint16* ptr = (uint16*)&vdp.vram[(name << 5) | (y << 2) | (0)];
     const uint32 temp = (bp_lut[*ptr] >> 2) | (bp_lut[*(ptr+1)]);
 
-    for(short x = 0; x < 8; x++)
+    for (size_t x = 0; x < 8; x++)
         data[(attr & 0x200) ? (x ^ 7) : x] = (temp >> (x << 2)) & 0x0F;
 
     return data;

@@ -47,7 +47,7 @@
 #define  SRAM_BANK_LENGTH  0x0400
 #define  VRAM_BANK_LENGTH  0x2000
 
-typedef struct inesheader_s
+typedef struct
 {
    uint8 ines_magic[4]    ;
    uint8 rom_banks        ;
@@ -58,7 +58,7 @@ typedef struct inesheader_s
    uint32 reserved2       ;
 } inesheader_t;
 
-typedef struct rominfo_s
+typedef struct
 {
    /* pointers to ROM and VROM */
    uint8 *rom, *vrom;

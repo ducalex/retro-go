@@ -12,8 +12,8 @@
 #include "rg_gui.h"
 
 static uint16_t *overlay_buffer = NULL;
-static short dialog_open_depth = 0;
-static short font_size = 8;
+static int dialog_open_depth = 0;
+static int font_size = 8;
 
 void rg_gui_init(void)
 {

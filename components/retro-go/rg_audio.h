@@ -39,5 +39,5 @@ audio_sink_t rg_audio_get_sink();
 void rg_audio_volume_set(audio_volume_t level);
 audio_volume_t rg_audio_volume_get();
 void rg_audio_mute(bool mute);
-void rg_audio_submit(short* stereoAudioBuffer, int frameCount);
+void rg_audio_submit(short *stereoAudioBuffer, size_t frameCount);
 int  rg_audio_sample_rate_get();

@@ -119,15 +119,15 @@ void rg_audio_deinit()
     gpio_reset_pin(RG_GPIO_DAC2);
 }
 
-static inline void filter_samples(short* samples, int count)
+static inline void filter_samples(short *samples, size_t count)
 {
 
 }
 
-void rg_audio_submit(short* stereoAudioBuffer, int frameCount)
+void rg_audio_submit(short *stereoAudioBuffer, size_t frameCount)
 {
     size_t sampleCount = frameCount * 2;
-    size_t bufferSize = sampleCount * sizeof(int16_t);
+    size_t bufferSize = sampleCount * sizeof(short);
     size_t written = 0;
     float volumePercent = volumeLevels[volumeLevel];
 
@@ -151,7 +151,7 @@ void rg_audio_submit(short* stereoAudioBuffer, int frameCount)
     }
     else if (audioSink == RG_AUDIO_SINK_SPEAKER)
     {
-        for (short i = 0; i < sampleCount; i += 2)
+        for (size_t i = 0; i < sampleCount; i += 2)
         {
             // Down mix stereo to mono
             int32_t sample = (stereoAudioBuffer[i] + stereoAudioBuffer[i + 1]) >> 1;
@@ -194,7 +194,7 @@ void rg_audio_submit(short* stereoAudioBuffer, int frameCount)
     }
     else if (audioSink == RG_AUDIO_SINK_DAC)
     {
-        for (short i = 0; i < sampleCount; ++i)
+        for (size_t i = 0; i < sampleCount; ++i)
         {
             int32_t sample = stereoAudioBuffer[i] * volumePercent;
 
@@ -217,7 +217,7 @@ void rg_audio_submit(short* stereoAudioBuffer, int frameCount)
         filter_samples(stereoAudioBuffer, bufferSize);
     }
 
-    i2s_write(RG_AUDIO_I2S_NUM, (const short *)stereoAudioBuffer, bufferSize, &written, 1000);
+    i2s_write(RG_AUDIO_I2S_NUM, (const void *)stereoAudioBuffer, bufferSize, &written, 1000);
     if (written == 0) // Anything > 0 is fine
     {
         RG_PANIC("i2s_write failed.");

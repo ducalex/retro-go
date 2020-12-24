@@ -388,7 +388,7 @@ static inline void spr_enum()
 {
 	int i, j, l, x, v, pat;
 	struct obj *o;
-	struct vissprite ts[10];
+	vissprite_t ts[10];
 
 	NS = 0;
 	if (!(R_LCDC & 0x02)) return;
@@ -464,7 +464,7 @@ static inline void spr_scan()
 {
 	byte *src, *dest, *bg, *pri;
 	int i, b, ns, x, pal;
-	struct vissprite *vs;
+	vissprite_t *vs;
 	static byte bgdup[256];
 
 	if (!NS) return;
@@ -598,16 +598,14 @@ static inline void lcd_renderline()
 
 static inline void pal_update(byte i)
 {
-	short c, r, g, b; //, y, u, v, rr, gg;
+	int low = lcd.pal[i << 1];
+	int  high = lcd.pal[(i << 1) | 1];
 
-	short low = lcd.pal[i << 1];
-	short high = lcd.pal[(i << 1) | 1];
+	int c = (low | (high << 8)) & 0x7fff;
 
-	c = (low | (high << 8)) & 0x7fff;
-
-	r = c & 0x1f;         // bit 0-4 red
-	g = (c >> 5) & 0x1f;  // bit 5-9 green
-	b = (c >> 10) & 0x1f; // bit 10-14 blue
+	int r = c & 0x1f;         // bit 0-4 red
+	int g = (c >> 5) & 0x1f;  // bit 5-9 green
+	int b = (c >> 10) & 0x1f; // bit 10-14 blue
 
 	PAL2[i] = (r << 11) | (g << (5 + 1)) | (b);
 

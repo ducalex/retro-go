@@ -28,41 +28,41 @@
 #include <bitmap.h>
 #include <nes.h>
 
-bitmap_t *bmp_create(short width, short height, short overdraw)
+bitmap_t *bmp_create(size_t width, size_t height, size_t overdraw)
 {
-   MESSAGE_INFO("bmp_create: width=%d, height=%d, overdraw=%d\n", width, height, overdraw);
+    MESSAGE_INFO("bmp_create: width=%d, height=%d, overdraw=%d\n", width, height, overdraw);
 
-   bitmap_t *bitmap = malloc(sizeof(bitmap_t) + (sizeof(uint8 *) * height));
-   if (bitmap == NULL)
-      return NULL;
+    bitmap_t *bitmap = malloc(sizeof(bitmap_t) + (sizeof(uint8 *) * height));
+    if (!bitmap)
+        return NULL;
 
-   uint8 *data = malloc((width + (overdraw * 2)) * height);
-   if (data == NULL)
-      return NULL;
+    uint8 *data = malloc((width + (overdraw * 2)) * height);
+    if (!data)
+        return NULL;
 
-   bitmap->height = height;
-   bitmap->width = width;
-   bitmap->data = data;
-   bitmap->pitch = width + (overdraw * 2);
+    bitmap->height = height;
+    bitmap->width = width;
+    bitmap->data = data;
+    bitmap->pitch = width + (overdraw * 2);
 
-   for (int i = 0; i < height; i++)
-      bitmap->line[i] = bitmap->data + (bitmap->pitch * i) + overdraw;
+    for (int i = 0; i < height; i++)
+        bitmap->line[i] = bitmap->data + (bitmap->pitch * i) + overdraw;
 
-   return bitmap;
+    return bitmap;
 }
 
-void bmp_clear(bitmap_t *bitmap, uint8 color)
+void bmp_clear(bitmap_t *bitmap, uint8_t color)
 {
-   memset(bitmap->data, color, bitmap->pitch * bitmap->height);
+    memset(bitmap->data, color, bitmap->pitch * bitmap->height);
 }
 
 /* Deallocate space for a bitmap structure */
 void bmp_free(bitmap_t *bitmap)
 {
-   if (bitmap)
-   {
-      if (bitmap->data)
-         free(bitmap->data);
-      free(bitmap);
-   }
+    if (bitmap)
+    {
+        if (bitmap->data)
+            free(bitmap->data);
+        free(bitmap);
+    }
 }

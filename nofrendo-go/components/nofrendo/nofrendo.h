@@ -28,9 +28,8 @@
 #ifndef _NOFRENDO_H_
 #define _NOFRENDO_H_
 
-#define APP_STRING     "Nofrendo"
-#define APP_VERSION    "3.0"
-
+#define APP_STRING  "Nofrendo"
+#define APP_VERSION "3.0"
 
 /* Configuration */
 /* uncomment option to enable */
@@ -49,48 +48,46 @@
 
 /* End configuration */
 
-
 /* Macros */
 
-#undef  PATH_MAX
-#define PATH_MAX  512
-#undef  PATH_SEP
-#define PATH_SEP  '/'
+#undef PATH_MAX
+#define PATH_MAX 512
+#undef PATH_SEP
+#define PATH_SEP '/'
 
 #ifndef __PACKED__
-#define __PACKED__  __attribute__ ((packed))
+#define __PACKED__ __attribute__((packed))
 #endif
 
-#define INLINE              static inline __attribute__((__always_inline__))
+#define INLINE static inline __attribute__((__always_inline__))
 
 #if !defined(MIN)
-#define MIN(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
-#define MAX(a,b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
+#define MIN(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
+#define MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
 #endif
 
 #ifdef NOFRENDO_DEBUG
 #define UNUSED(x)
-#define ASSERT(expr)        nofrendo_assert((int) (expr), __LINE__, __FILE__, NULL)
+#define ASSERT(expr) nofrendo_assert((int)(expr), __LINE__, __FILE__, NULL)
 #define MESSAGE_DEBUG(x...) nofrendo_printf(0, __FUNCTION__, "> " x)
 #else
-#define UNUSED(x)           (void)x
+#define UNUSED(x) (void)x
 #define ASSERT(expr)
 #define MESSAGE_DEBUG(x...)
 #endif
-#define MESSAGE_INFO(x...)  nofrendo_printf(1, NULL, "* " x)
+#define MESSAGE_INFO(x...) nofrendo_printf(1, NULL, "* " x)
 #define MESSAGE_ERROR(x...) nofrendo_printf(2, NULL, "!! " x)
 
 /* End macros */
 
-
 /* Basic types */
 
-typedef  signed char    int8;
-typedef  signed short   int16;
-typedef  signed int     int32;
-typedef  unsigned char  uint8;
-typedef  unsigned short uint16;
-typedef  unsigned int   uint32;
+typedef signed char int8;
+typedef signed short int16;
+typedef signed int int32;
+typedef unsigned char uint8;
+typedef unsigned short uint16;
+typedef unsigned int uint32;
 
 #include <stdbool.h>
 #include <stdlib.h>
@@ -99,7 +96,6 @@ typedef  unsigned int   uint32;
 #include <nes.h>
 
 /* End basic types */
-
 
 extern int nofrendo_start(const char *filename, int region, int sample_rate, bool stereo);
 extern void nofrendo_stop(void);

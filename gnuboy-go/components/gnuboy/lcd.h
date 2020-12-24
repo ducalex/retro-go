@@ -6,14 +6,14 @@
 #define GB_WIDTH (160)
 #define GB_HEIGHT (144)
 
-struct vissprite
+typedef struct
 {
 	short pat;
 	short x;
 	short v;
 	byte pal;
 	byte pri;
-};
+} vissprite_t;
 
 struct scan
 {
@@ -22,7 +22,7 @@ struct scan
 	byte buf[256];
 	un16 pal2[64];
 	byte pri[256];
-	struct vissprite vs[16];
+	vissprite_t vs[16];
 	int ns, l, x, y, s, t, u, v, wx, wy, wt, wv;
 };
 

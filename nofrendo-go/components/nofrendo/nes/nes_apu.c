@@ -790,7 +790,7 @@ apu_t *apu_init(int region, int sample_rate, bool stereo)
 {
    memset(&apu, 0, sizeof(apu_t));
 
-   short refresh_rate;
+   long refresh_rate;
    float cpu_clock;
 
    if (region == NES_PAL)

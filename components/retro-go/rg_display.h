@@ -76,12 +76,12 @@ typedef struct {
 void rg_display_init();
 void rg_display_deinit();
 void rg_display_drain_spi();
-void rg_display_write(short left, short top, short width, short height, short stride, const void* bufferLE);
+void rg_display_write(int left, int top, int width, int height, int stride, const void* buffer);
 void rg_display_clear(uint16_t colorLE);
 void rg_display_show_hourglass();
 void rg_display_force_refresh(void);
-void rg_display_set_scale(short width, short height, double aspect_ratio);
-bool rg_display_save_frame(const char *filename, rg_video_frame_t *frame, float scale);
+void rg_display_set_scale(int width, int height, double aspect_ratio);
+bool rg_display_save_frame(const char *filename, rg_video_frame_t *frame, double scale);
 screen_update_t rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *previousFrame);
 
 display_backlight_t rg_display_get_backlight();

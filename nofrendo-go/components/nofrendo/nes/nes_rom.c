@@ -83,7 +83,7 @@ static void rom_loadsram(rominfo_t *rominfo)
 }
 #endif
 
-static int rom_getheader(unsigned char **rom, rominfo_t *rominfo)
+static int rom_getheader(uint8_t **rom, rominfo_t *rominfo)
 {
    inesheader_t head;
 
@@ -128,26 +128,19 @@ static int rom_getheader(unsigned char **rom, rominfo_t *rominfo)
 /* Load a ROM image into memory */
 rominfo_t *rom_load(const char *filename)
 {
-   rominfo_t *rominfo;
-   unsigned char *rom, *rom_ptr;
-   size_t filesize;
+   rominfo_t *rominfo = calloc(sizeof(rominfo_t), 1);
+   uint8_t *rom_ptr = osd_getromdata();
+   size_t rom_size = osd_getromsize();
 
-   rominfo = calloc(sizeof(rominfo_t), 1);
-   if (NULL == rominfo)
+   if (!rominfo || !rom_ptr)
       goto _fail;
-
-   filesize = osd_getromdata(&rom);
-   if (NULL == rom)
-      goto _fail;
-
-   rom_ptr = rom;
 
    strncpy(rominfo->filename, filename, sizeof(rominfo->filename) - 1);
    rominfo->checksum = osd_getromcrc();
-   // rominfo->checksum = crc32_le(0, rom, filesize);
+   // rominfo->checksum = crc32_le(0, rom, rom_size);
 
    MESSAGE_INFO("ROM: Loading '%s'\n", rominfo->filename);
-   MESSAGE_INFO("ROM: Size:   %d\n", filesize);
+   MESSAGE_INFO("ROM: Size:   %d\n", rom_size);
    MESSAGE_INFO("ROM: CRC32:  %08X\n", rominfo->checksum);
 
    /* Get the header and stick it into rominfo struct */

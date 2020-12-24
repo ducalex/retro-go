@@ -209,7 +209,7 @@ InitPCE(const char *name)
 	if (gfx_init())
 		return 1;
 
-	if (snd_init())
+	if (psg_init())
 		return 1;
 
 	if (pce_init())
@@ -311,7 +311,7 @@ void
 ShutdownPCE()
 {
 	gfx_term();
-	snd_term();
+	psg_term();
 	pce_term();
 
 	exit(0);

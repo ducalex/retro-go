@@ -364,7 +364,7 @@ bool rg_netplay_quick_start(void)
 {
     const char *status_msg = "Initializing...";
     const char *screen_msg = NULL;
-    // short timeout = 100;
+    // int timeout = 100;
     gamepad_state_t joystick;
 
     rg_display_clear(0);

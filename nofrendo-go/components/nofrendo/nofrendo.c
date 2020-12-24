@@ -32,91 +32,80 @@
 #include <osd.h>
 #include <nes.h>
 
-
-/* our happy little timer ISR */
-volatile int nofrendo_ticks = 0;
-// static void timer_isr(void)
-// {
-//    nofrendo_ticks++;
-// }
-
-// apu_setchan(chan, chan_enabled[chan]);
-// apu_setfilter(filter_type);
-
 void nofrendo_printf(int type, const char *prefix, const char *format, ...)
 {
-   static char buffer[512];
-   va_list arg;
-   va_start(arg, format);
-   vsprintf(buffer, format, arg);
+    static char buffer[512];
+    va_list arg;
+    va_start(arg, format);
+    vsprintf(buffer, format, arg);
 
-   if (type > 0) {
-      // gui_sendmsg();
-   }
+    if (type > 0)
+    {
+        // gui_sendmsg();
+    }
 
-   if (prefix) {
+    if (prefix)
+    {
+    }
 
-   }
+    osd_logprint(0, buffer);
 
-   osd_logprint(0, buffer);
-
-   va_end(arg);
+    va_end(arg);
 }
 
 void nofrendo_assert(int expr, int line, const char *file, char *msg)
 {
-   if (expr)
-      return;
+    if (expr)
+        return;
 
-   if (NULL != msg)
-      MESSAGE_ERROR("ASSERT: line %d of %s, %s\n", line, file, msg);
-   else
-      MESSAGE_ERROR("ASSERT: line %d of %s\n", line, file);
+    if (NULL != msg)
+        MESSAGE_ERROR("ASSERT: line %d of %s, %s\n", line, file, msg);
+    else
+        MESSAGE_ERROR("ASSERT: line %d of %s\n", line, file);
 
-   asm("break.n 1");
-//   exit(-1);
+    asm("break.n 1");
+    //   exit(-1);
 }
 
 /* End the current context */
 void nofrendo_stop(void)
 {
-   nes_poweroff();
-   nes_shutdown();
-   osd_shutdown();
-   // vid_shutdown();
+    nes_poweroff();
+    nes_shutdown();
+    osd_shutdown();
+    // vid_shutdown();
 }
 
 int nofrendo_start(const char *filename, int region, int sample_rate, bool stereo)
 {
-   if (osd_init())
-      return -1;
+    if (osd_init())
+        return -1;
 
-   if (region == NES_AUTO)
-   {
-      if (
-         strstr(filename, "(E)") != NULL ||
-         strstr(filename, "(Europe)") != NULL ||
-         strstr(filename, "(A)") != NULL ||
-         strstr(filename, "(Australia)") != NULL
-      )
-         region = NES_PAL;
-      else
-         region = NES_NTSC;
-   }
+    if (region == NES_AUTO)
+    {
+        if (
+            strstr(filename, "(E)") != NULL ||
+            strstr(filename, "(Europe)") != NULL ||
+            strstr(filename, "(A)") != NULL ||
+            strstr(filename, "(Australia)") != NULL)
+            region = NES_PAL;
+        else
+            region = NES_NTSC;
+    }
 
-   if (!nes_init(region, sample_rate, stereo))
-   {
-      MESSAGE_ERROR("Failed to create NES instance.\n");
-      return -1;
-   }
+    if (!nes_init(region, sample_rate, stereo))
+    {
+        MESSAGE_ERROR("Failed to create NES instance.\n");
+        return -1;
+    }
 
-   if (!nes_insertcart(filename))
-   {
-      MESSAGE_ERROR("Failed to insert NES cart.\n");
-      return -2;
-   }
+    if (!nes_insertcart(filename))
+    {
+        MESSAGE_ERROR("Failed to insert NES cart.\n");
+        return -2;
+    }
 
-   nes_emulate();
+    nes_emulate();
 
-   return 0;
+    return 0;
 }

@@ -26,20 +26,22 @@
 #ifndef _BITMAP_H_
 #define _BITMAP_H_
 
-typedef struct rgb_s
+typedef struct
 {
-   uint8 r, g, b;
+    uint8_t r, g, b;
 } rgb_t;
 
-typedef struct bitmap_s
+typedef struct
 {
-   short width, height, pitch;
-   uint8 *data;               /* protected */
-   uint8 *line[0];            /* will hold line pointers */
+    size_t height;
+    size_t width;
+    size_t pitch;
+    uint8_t *data;    /* protected */
+    uint8_t *line[0]; /* will hold line pointers */
 } bitmap_t;
 
-extern bitmap_t *bmp_create(short width, short height, short overdraw);
-extern void bmp_clear(bitmap_t *bitmap, uint8 color);
+extern bitmap_t *bmp_create(size_t width, size_t height, size_t overdraw);
+extern void bmp_clear(bitmap_t *bitmap, uint8_t color);
 extern void bmp_free(bitmap_t *bitmap);
 
 #endif /* _BITMAP_H_ */

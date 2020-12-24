@@ -21,10 +21,10 @@ static rg_video_frame_t *previousUpdate = &update2;
 
 static CSystem *lynx = NULL;
 
-static short dpad_mapped_up;
-static short dpad_mapped_down;
-static short dpad_mapped_left;
-static short dpad_mapped_right;
+static int dpad_mapped_up;
+static int dpad_mapped_down;
+static int dpad_mapped_left;
+static int dpad_mapped_right;
 // static bool netplay = false;
 // --- MAIN
 

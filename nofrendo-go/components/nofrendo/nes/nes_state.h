@@ -30,13 +30,13 @@
 
 typedef struct
 {
-   uint8  type[4];
-   uint32 blockVersion;
-   uint32 blockLength;
+    uint8_t type[4];
+    uint32_t blockVersion;
+    uint32_t blockLength;
 } SnssBlockHeader;
 
 extern void state_setslot(int slot);
-extern int state_load(char* fn);
-extern int state_save(char* fn);
+extern int state_load(char *fn);
+extern int state_save(char *fn);
 
 #endif /* _NESSTATE_H_ */

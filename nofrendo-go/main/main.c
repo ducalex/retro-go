@@ -16,9 +16,9 @@
 
 #define NVS_KEY_AUTOCROP "autocrop"
 
-static char *romData;
-static uint32 romCRC32;
-static size_t romSize;
+static uint8_t *romData;
+static uint32_t romSize;
+static uint32_t romCRC32;
 
 static uint16_t myPalette[64];
 static rg_video_frame_t update1 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 0x3F, -1, NULL, myPalette, 0, {}};
@@ -216,13 +216,17 @@ static bool palette_update_cb(dialog_choice_t *option, dialog_event_t event)
 }
 
 
-size_t osd_getromdata(unsigned char **data)
+uint8_t *osd_getromdata(void)
 {
-    *data = (unsigned char *)romData;
+    return romData;
+}
+
+uint32_t osd_getromsize(void)
+{
     return romSize;
 }
 
-uint32 osd_getromcrc()
+uint32_t osd_getromcrc()
 {
     return romCRC32;
 }

@@ -324,7 +324,7 @@ void app_main(void)
         if (!app->speedupEnabled)
         {
             // Process audio
-            for (short i = 0; i < snd.sample_count; i++)
+            for (size_t i = 0; i < snd.sample_count; ++i)
             {
                 audioBuffer[i] = snd.output[0][i] << 16 | snd.output[1][i];
             }

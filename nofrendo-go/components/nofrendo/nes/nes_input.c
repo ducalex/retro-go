@@ -29,81 +29,81 @@
 static nesinput_t nes_inputs[INP_TYPE_MAX];
 static int strobe = 0;
 
-IRAM_ATTR void input_write(uint32 address, uint8 value)
+IRAM_ATTR void input_write(uint32_t address, uint8_t value)
 {
-   if (address != INP_REG_JOY0)
-      return;
+    if (address != INP_REG_JOY0)
+        return;
 
-   value &= 1;
+    value &= 1;
 
-   if (0 == value && strobe)
-   {
-      for (int i = 0; i < INP_TYPE_MAX; ++i)
-         nes_inputs[i].reads = 0;
-   }
+    if (0 == value && strobe)
+    {
+        for (int i = 0; i < INP_TYPE_MAX; ++i)
+            nes_inputs[i].reads = 0;
+    }
 
-   strobe = value;
+    strobe = value;
 }
 
-IRAM_ATTR uint8 input_read(uint32 address)
+IRAM_ATTR uint8_t input_read(uint32_t address)
 {
-   uint8 retval = 0, value = 0;
+    uint8_t retval = 0, value = 0;
 
-   if (address == INP_REG_JOY0)
-   {
-      value = nes_inputs[INP_JOYPAD0].state;
+    if (address == INP_REG_JOY0)
+    {
+        value = nes_inputs[INP_JOYPAD0].state;
 
-      /* mask out left/right simultaneous keypresses */
-      if ((value & INP_PAD_UP) && (value & INP_PAD_DOWN))
-         value &= ~(INP_PAD_UP | INP_PAD_DOWN);
+        /* mask out left/right simultaneous keypresses */
+        if ((value & INP_PAD_UP) && (value & INP_PAD_DOWN))
+            value &= ~(INP_PAD_UP | INP_PAD_DOWN);
 
-      if ((value & INP_PAD_LEFT) && (value & INP_PAD_RIGHT))
-         value &= ~(INP_PAD_LEFT | INP_PAD_RIGHT);
+        if ((value & INP_PAD_LEFT) && (value & INP_PAD_RIGHT))
+            value &= ~(INP_PAD_LEFT | INP_PAD_RIGHT);
 
-      /* return (0x40 | value) due to bus conflicts */
-      retval |= (0x40 | ((value >> nes_inputs[INP_JOYPAD0].reads++) & 1));
-   }
-   else if (address == INP_REG_JOY1)
-   {
-      value = nes_inputs[INP_JOYPAD1].state;
+        /* return (0x40 | value) due to bus conflicts */
+        retval |= (0x40 | ((value >> nes_inputs[INP_JOYPAD0].reads++) & 1));
+    }
+    else if (address == INP_REG_JOY1)
+    {
+        value = nes_inputs[INP_JOYPAD1].state;
 
-      /* mask out left/right simultaneous keypresses */
-      if ((value & INP_PAD_UP) && (value & INP_PAD_DOWN))
-         value &= ~(INP_PAD_UP | INP_PAD_DOWN);
+        /* mask out left/right simultaneous keypresses */
+        if ((value & INP_PAD_UP) && (value & INP_PAD_DOWN))
+            value &= ~(INP_PAD_UP | INP_PAD_DOWN);
 
-      if ((value & INP_PAD_LEFT) && (value & INP_PAD_RIGHT))
-         value &= ~(INP_PAD_LEFT | INP_PAD_RIGHT);
+        if ((value & INP_PAD_LEFT) && (value & INP_PAD_RIGHT))
+            value &= ~(INP_PAD_LEFT | INP_PAD_RIGHT);
 
-      /* return (0x40 | value) due to bus conflicts */
-      retval |= (0x40 | ((value >> nes_inputs[INP_JOYPAD1].reads++) & 1));
+        /* return (0x40 | value) due to bus conflicts */
+        retval |= (0x40 | ((value >> nes_inputs[INP_JOYPAD1].reads++) & 1));
 
-      retval |= nes_inputs[INP_ZAPPER].state;
-   }
-   else
-   {
-      retval = 0xFF;
-   }
+        retval |= nes_inputs[INP_ZAPPER].state;
+    }
+    else
+    {
+        retval = 0xFF;
+    }
 
-   return retval;
+    return retval;
 }
 
 void input_connect(nesinput_type_t input)
 {
-   ASSERT(input < INP_TYPE_MAX);
+    ASSERT(input < INP_TYPE_MAX);
 
-   nes_inputs[input].connected = true;
+    nes_inputs[input].connected = true;
 }
 
 void input_disconnect(nesinput_type_t input)
 {
-   ASSERT(input < INP_TYPE_MAX);
+    ASSERT(input < INP_TYPE_MAX);
 
-   nes_inputs[input].connected = false;
+    nes_inputs[input].connected = false;
 }
 
-void input_update(nesinput_type_t input, uint8 state)
+void input_update(nesinput_type_t input, uint8_t state)
 {
-   ASSERT(input < INP_TYPE_MAX);
+    ASSERT(input < INP_TYPE_MAX);
 
-   nes_inputs[input].state = state;
+    nes_inputs[input].state = state;
 }

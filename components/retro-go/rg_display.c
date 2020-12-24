@@ -83,7 +83,6 @@ static DRAM_ATTR const ili_init_cmd_t ili_sleep_cmds[] = {
     {0, {0}, 0xff}
 };
 
-
 // 2.4" LCD
 static DRAM_ATTR const ili_init_cmd_t ili_init_cmds[] = {
     // VCI=2.8V
@@ -270,7 +269,7 @@ ili9341_data(const uint8_t *data, size_t len)
 
     if (len < 5)
     {
-        for (short i = 0; i < len; ++i)
+        for (size_t i = 0; i < len; ++i)
         {
             t->tx_data[i] = data[i];
         }
@@ -285,13 +284,12 @@ ili9341_data(const uint8_t *data, size_t len)
 static void
 ili9341_init()
 {
-    short cmd = 0;
-
     //Initialize non-SPI GPIOs
     gpio_set_direction(RG_GPIO_LCD_DC, GPIO_MODE_OUTPUT);
     //gpio_set_direction(LCD_PIN_NUM_BCKL, GPIO_MODE_OUTPUT);
 
     //Send all the commands
+    size_t cmd = 0;
     while (ili_init_cmds[cmd].databytes != 0xff)
     {
         ili9341_cmd(ili_init_cmds[cmd].cmd);
@@ -304,10 +302,7 @@ ili9341_init()
 static void
 ili9341_deinit()
 {
-    backlight_deinit();
-
-    // Disable LCD panel
-    short cmd = 0;
+    size_t cmd = 0;
     while (ili_sleep_cmds[cmd].databytes != 0xff)
     {
         ili9341_cmd(ili_sleep_cmds[cmd].cmd);
@@ -315,9 +310,6 @@ ili9341_deinit()
         cmd++;
     }
 
-    rtc_gpio_init(RG_GPIO_LCD_BCKL);
-    rtc_gpio_set_direction(RG_GPIO_LCD_BCKL, RTC_GPIO_MODE_OUTPUT_ONLY);
-    rtc_gpio_set_level(RG_GPIO_LCD_BCKL, 0);
 }
 
 //This function is called (in irq context!) just before a transmission starts. It will
@@ -370,7 +362,7 @@ spi_initialize()
     spi_buffer_queue = xQueueCreate(SPI_TRANSACTION_COUNT, sizeof(void*));
     spi_count_semaphore = xSemaphoreCreateCounting(SPI_TRANSACTION_COUNT, 0);
 
-    for (short x = 0; x < SPI_TRANSACTION_COUNT; x++)
+    for (size_t x = 0; x < SPI_TRANSACTION_COUNT; x++)
     {
         spi_put_buffer(spi_buffers[x]);
 
@@ -406,15 +398,15 @@ spi_initialize()
 }
 
 static void
-send_reset_drawing(short left, short top, short width, short height)
+send_reset_drawing(int left, int top, int width, int height)
 {
-    static short last_left = -1;
-    static short last_right = -1;
-    static short last_top = -1;
-    static short last_bottom = -1;
+    static int last_left = -1;
+    static int last_right = -1;
+    static int last_top = -1;
+    static int last_bottom = -1;
 
-    short right = left + width - 1;
-    short bottom = SCREEN_HEIGHT - 1;
+    int right = left + width - 1;
+    int bottom = SCREEN_HEIGHT - 1;
 
     // rg_display_drain_spi();
 
@@ -468,13 +460,13 @@ Blend(uint16_t a, uint16_t b)
     a = a << 8 | a >> 8;
     b = b << 8 | b >> 8;
 
-    int8_t r0 = (a >> 11) & 0x1f;
-    int8_t g0 = (a >> 5) & 0x3f;
-    int8_t b0 = (a) & 0x1f;
+    int r0 = (a >> 11) & 0x1f;
+    int g0 = (a >> 5) & 0x3f;
+    int b0 = (a) & 0x1f;
 
-    int8_t r1 = (b >> 11) & 0x1f;
-    int8_t g1 = (b >> 5) & 0x3f;
-    int8_t b1 = (b) & 0x1f;
+    int r1 = (b >> 11) & 0x1f;
+    int g1 = (b >> 5) & 0x3f;
+    int b1 = (b) & 0x1f;
 
     uint16_t rv = ((r1 - r0) >> 1) + r0;
     uint16_t gv = ((g1 - g0) >> 1) + g0;
@@ -486,13 +478,13 @@ Blend(uint16_t a, uint16_t b)
 }
 
 static inline void
-bilinear_filter(uint16_t *line_buffer, short top, short left, short width, short height,
+bilinear_filter(uint16_t *line_buffer, int top, int left, int width, int height,
                 bool filter_x, bool filter_y)
 {
-    short ix_acc = (x_inc * left) % SCREEN_WIDTH;
-    short fill_line = -1;
+    int ix_acc = (x_inc * left) % SCREEN_WIDTH;
+    int fill_line = -1;
 
-    for (short y = 0; y < height; y++)
+    for (int y = 0; y < height; y++)
     {
         if (filter_y && y > 0 && screen_line_is_empty[top + y])
         {
@@ -504,7 +496,7 @@ bilinear_filter(uint16_t *line_buffer, short top, short left, short width, short
         if (filter_x)
         {
             uint16_t *buffer = line_buffer + y * width;
-            for (short x = 0, frame_x = 0, prev_frame_x = -1, x_acc = ix_acc; x < width; ++x)
+            for (int x = 0, frame_x = 0, prev_frame_x = -1, x_acc = ix_acc; x < width; ++x)
             {
                 if (frame_x == prev_frame_x && x > 0 && x + 1 < width)
                 {
@@ -526,7 +518,7 @@ bilinear_filter(uint16_t *line_buffer, short top, short left, short width, short
             uint16_t *lineA = line_buffer + (fill_line - 1) * width;
             uint16_t *lineB = line_buffer + (fill_line + 0) * width;
             uint16_t *lineC = line_buffer + (fill_line + 1) * width;
-            for (short x = 0; x < width; x++)
+            for (size_t x = 0; x < width; ++x)
             {
                 lineB[x] = Blend(lineA[x], lineC[x]);
             }
@@ -536,21 +528,21 @@ bilinear_filter(uint16_t *line_buffer, short top, short left, short width, short
 }
 
 static inline void
-write_rect(void *buffer, uint16_t *palette, short left, short top, short width, short height,
-           short stride, short pixel_size, uint8_t pixel_mask, short pixel_clear)
+write_rect(void *buffer, uint16_t *palette, int left, int top, int width, int height,
+           int stride, int pixel_size, uint8_t pixel_mask, int pixel_clear)
 {
-    short scaled_left = ((SCREEN_WIDTH * left) + (x_inc - 1)) / x_inc;
-    short scaled_top = ((SCREEN_HEIGHT * top) + (y_inc - 1)) / y_inc;
-    short scaled_right = ((SCREEN_WIDTH * (left + width)) + (x_inc - 1)) / x_inc;
-    short scaled_bottom = ((SCREEN_HEIGHT * (top + height)) + (y_inc - 1)) / y_inc;
-    short scaled_width = scaled_right - scaled_left;
-    short scaled_height = scaled_bottom - scaled_top;
-    short screen_top = y_origin + scaled_top;
-    short screen_left = x_origin + scaled_left;
-    // short screen_right = screen_left + scaled_width;
-    short screen_bottom = screen_top + scaled_height;
-    short ix_acc = (x_inc * scaled_left) % SCREEN_WIDTH;
-    short lines_per_buffer = SPI_TRANSACTION_BUFFER_LENGTH / scaled_width;
+    int scaled_left = ((SCREEN_WIDTH * left) + (x_inc - 1)) / x_inc;
+    int scaled_top = ((SCREEN_HEIGHT * top) + (y_inc - 1)) / y_inc;
+    int scaled_right = ((SCREEN_WIDTH * (left + width)) + (x_inc - 1)) / x_inc;
+    int scaled_bottom = ((SCREEN_HEIGHT * (top + height)) + (y_inc - 1)) / y_inc;
+    int scaled_width = scaled_right - scaled_left;
+    int scaled_height = scaled_bottom - scaled_top;
+    int screen_top = y_origin + scaled_top;
+    int screen_left = x_origin + scaled_left;
+    // int screen_right = screen_left + scaled_width;
+    int screen_bottom = screen_top + scaled_height;
+    int ix_acc = (x_inc * scaled_left) % SCREEN_WIDTH;
+    int lines_per_buffer = SPI_TRANSACTION_BUFFER_LENGTH / scaled_width;
 
     if (scaled_width < 1 || scaled_height < 1)
     {
@@ -564,9 +556,9 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
 
     send_reset_drawing(screen_left, screen_top, scaled_width, scaled_height);
 
-    for (short y = 0, screen_y = screen_top; y < height;)
+    for (int y = 0, screen_y = screen_top; y < height;)
     {
-        short lines_to_copy = lines_per_buffer;
+        int lines_to_copy = lines_per_buffer;
 
         if (lines_to_copy > screen_bottom - screen_y)
         {
@@ -589,7 +581,7 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
         uint16_t *line_buffer = spi_get_buffer();
         uint16_t  line_buffer_index = 0;
 
-        for (short i = 0; i < lines_to_copy; ++i)
+        for (int i = 0; i < lines_to_copy; ++i)
         {
             if (screen_line_is_empty[screen_y] && i > 0)
             {
@@ -598,7 +590,7 @@ write_rect(void *buffer, uint16_t *palette, short left, short top, short width, 
                 line_buffer_index += scaled_width;
             }
             else
-            for (short x = 0, x_acc = ix_acc; x < width;)
+            for (int x = 0, x_acc = ix_acc; x < width;)
             {
                 if (palette == NULL) {
                     line_buffer[line_buffer_index++] = ((uint16_t*)buffer)[x];
@@ -675,8 +667,8 @@ frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFrame)
     int partial_update_remaining = frame->width * frame->height * FULL_UPDATE_THRESHOLD;
 
     uint32_t u32_pixel_mask = (pixel_mask << 24)|(pixel_mask << 16)|(pixel_mask << 8)|pixel_mask;
-    uint16_t u32_blocks = (frame->width * frame->pixel_size / 4);
-    uint16_t u32_pixels = 4 / frame->pixel_size;
+    uint32_t u32_blocks = (frame->width * frame->pixel_size / 4);
+    uint32_t u32_pixels = 4 / frame->pixel_size;
 
     for (int y = 0, i = 0; y < frame->height; ++y, i += frame->stride)
     {
@@ -688,11 +680,11 @@ frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFrame)
             // This is only accurate to 4 pixels of course, but much faster
             uint32_t *buffer32 = frame->buffer + i;
             uint32_t *old_buffer32 = prevFrame->buffer + i;
-            for (short x = 0; x < u32_blocks; ++x)
+            for (int x = 0; x < u32_blocks; ++x)
             {
                 if ((buffer32[x] & u32_pixel_mask) != (old_buffer32[x] & u32_pixel_mask))
                 {
-                    for (short xl = u32_blocks - 1; xl >= x; --xl)
+                    for (int xl = u32_blocks - 1; xl >= x; --xl)
                     {
                         if ((buffer32[xl] & u32_pixel_mask) != (old_buffer32[xl] & u32_pixel_mask)) {
                             out_diff[y].left = x * u32_pixels;
@@ -707,7 +699,7 @@ frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFrame)
         } else {
             uint8_t *buffer8 = frame->buffer + i;
             uint8_t *old_buffer8 = prevFrame->buffer + i;
-            for (short x = 0; x < frame->width; ++x)
+            for (int x = 0; x < frame->width; ++x)
             {
                 if (!pixel_diff(buffer8[x], old_buffer8[x], frame->palette, prevFrame->palette,
                                 frame->pixel_mask, frame->pal_shift_mask)) {
@@ -743,14 +735,14 @@ frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFrame)
     if (scalingMode && filterMode != RG_DISPLAY_FILTER_OFF)
     {
         // printf("\nFRAME BEGIN\n");
-        for (short y = 0; y < frame->height; ++y)
+        for (int y = 0; y < frame->height; ++y)
         {
             if (out_diff[y].width > 0)
             {
-                short block_start = y;
-                short block_end = y;
-                short left = out_diff[y].left;
-                short right = left + out_diff[y].width;
+                int block_start = y;
+                int block_end = y;
+                int left = out_diff[y].left;
+                int right = left + out_diff[y].width;
 
                 while (block_start > 0 && (out_diff[block_start].width > 0 || !frame_filter_lines[block_start].start))
                     block_start--;
@@ -758,7 +750,7 @@ frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFrame)
                 while (block_end < frame->height - 1 && (out_diff[block_end].width > 0 || !frame_filter_lines[block_end].stop))
                     block_end++;
 
-                for (short i = block_start; i <= block_end; i++)
+                for (int i = block_start; i <= block_end; i++)
                 {
                     if (out_diff[i].width > 0) {
                         if (out_diff[i].left + out_diff[i].width > right) right = out_diff[i].left + out_diff[i].width;
@@ -775,7 +767,7 @@ frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFrame)
                 // while (right < frame->width -1 && !frame_filter_column_is_key[right])
                 //     right++;
 
-                for (short i = block_start; i <= block_end; i++)
+                for (int i = block_start; i <= block_end; i++)
                 {
                     out_diff[i].left = left;
                     out_diff[i].width = right - left;
@@ -788,13 +780,13 @@ frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFrame)
     }
 
     // Combine consecutive lines with similar changes location to optimize the SPI transfer
-    for (short y = frame->height - 1; y > 0; --y)
+    for (int y = frame->height - 1; y > 0; --y)
     {
         if (abs(out_diff[y].left - out_diff[y-1].left) > 8)
             continue;
 
-        short right = out_diff[y].left + out_diff[y].width;
-        short right_prev = out_diff[y-1].left + out_diff[y-1].width;
+        int right = out_diff[y].left + out_diff[y].width;
+        int right_prev = out_diff[y-1].left + out_diff[y-1].width;
         if (abs(right - right_prev) > 8)
             continue;
 
@@ -809,15 +801,15 @@ frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFrame)
 }
 
 static void
-generate_filter_structures(short width, short height)
+generate_filter_structures(size_t width, size_t height)
 {
     memset(frame_filter_lines,   0, sizeof frame_filter_lines);
     memset(screen_line_is_empty, 0, sizeof screen_line_is_empty);
 
-    short x_acc = (x_inc * x_origin) % SCREEN_WIDTH;
-    short y_acc = (y_inc * y_origin) % SCREEN_HEIGHT;
+    int x_acc = (x_inc * x_origin) % SCREEN_WIDTH;
+    int y_acc = (y_inc * y_origin) % SCREEN_HEIGHT;
 
-    for (short x = 0, screen_x = x_origin; x < width && screen_x < SCREEN_WIDTH; ++screen_x)
+    for (int x = 0, screen_x = x_origin; x < width && screen_x < SCREEN_WIDTH; ++screen_x)
     {
         x_acc += x_inc;
         while (x_acc >= SCREEN_WIDTH) {
@@ -826,9 +818,9 @@ generate_filter_structures(short width, short height)
         }
     }
 
-    for (short y = 0, screen_y = y_origin; y < height && screen_y < SCREEN_HEIGHT; ++screen_y)
+    for (int y = 0, screen_y = y_origin; y < height && screen_y < SCREEN_HEIGHT; ++screen_y)
     {
-        short repeat = ++frame_filter_lines[y].repeat;
+        int repeat = ++frame_filter_lines[y].repeat;
 
         frame_filter_lines[y].start = repeat == 1 || repeat == 2;
         frame_filter_lines[y].stop  = repeat == 1;
@@ -872,7 +864,7 @@ display_task(void *arg)
             rg_display_clear(0x0000);
         }
 
-        for (short y = 0; y < update->height;)
+        for (int y = 0; y < update->height;)
         {
             rg_line_diff_t *diff = &update->diff[y];
 
@@ -897,10 +889,10 @@ display_task(void *arg)
 }
 
 void
-rg_display_set_scale(short width, short height, double new_ratio)
+rg_display_set_scale(int width, int height, double new_ratio)
 {
-    short new_width = width;
-    short new_height = height;
+    int new_width = width;
+    int new_height = height;
     double x_scale = 1.0;
     double y_scale = 1.0;
 
@@ -995,7 +987,7 @@ rg_display_force_refresh(void)
 }
 
 bool
-rg_display_save_frame(const char *filename, rg_video_frame_t *frame, float scale)
+rg_display_save_frame(const char *filename, rg_video_frame_t *frame, double scale)
 {
     // We do not support upscale right now
     scale = RG_MIN(scale, 1.f);
@@ -1006,7 +998,7 @@ rg_display_save_frame(const char *filename, rg_video_frame_t *frame, float scale
 
     uint8_t *dst = png->data;
     uint16_t pixel;
-    float factor = 1 + (1 - scale);
+    double factor = 1 + (1 - scale);
 
     printf("%s: Rendering frame: %dx%d\n", __func__, png->width, png->height);
 
@@ -1037,7 +1029,7 @@ IRAM_ATTR screen_update_t
 rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *previousFrame)
 {
     static int prev_width = 0, prev_height = 0;
-    short linesChanged = 0;
+    int linesChanged = 0;
 
     if (frame)
     {
@@ -1080,41 +1072,41 @@ rg_display_drain_spi()
 {
     if (uxQueueSpacesAvailable(spi_queue)) {
         spi_transaction_t *t[SPI_TRANSACTION_COUNT];
-        for (short i = 0; i < SPI_TRANSACTION_COUNT; ++i) {
+        for (size_t i = 0; i < SPI_TRANSACTION_COUNT; ++i) {
             xQueueReceive(spi_queue, &t[i], portMAX_DELAY);
         }
-        for (short i = 0; i < SPI_TRANSACTION_COUNT; ++i) {
+        for (size_t i = 0; i < SPI_TRANSACTION_COUNT; ++i) {
             xQueueSend(spi_queue, &t[i], portMAX_DELAY);
         }
     }
 }
 
 void
-rg_display_write(short left, short top, short width, short height, short stride, const void* buffer)
+rg_display_write(int left, int top, int width, int height, int stride, const void* buffer)
 {
     rg_display_drain_spi();
 
     send_reset_drawing(left, top, width, height);
 
-    short lines_per_buffer = SPI_TRANSACTION_BUFFER_LENGTH / width;
+    size_t lines_per_buffer = SPI_TRANSACTION_BUFFER_LENGTH / width;
 
     if (stride <= 0) {
         stride = width * 2;
     }
 
-    for (short y = 0; y < height; y += lines_per_buffer)
+    for (size_t y = 0; y < height; y += lines_per_buffer)
     {
         uint16_t* line_buffer = spi_get_buffer();
 
         if (y + lines_per_buffer > height)
             lines_per_buffer = height - y;
 
-        for (int line = 0; line < lines_per_buffer; ++line)
+        for (size_t line = 0; line < lines_per_buffer; ++line)
         {
             const uint16_t *buf = buffer + ((y + line) * stride);
             size_t opos = line * width;
 
-            for (short i = 0; i < width; ++i)
+            for (size_t i = 0; i < width; ++i)
             {
                 line_buffer[opos + i] = buf[i] << 8 | buf[i] >> 8;
             }
@@ -1133,16 +1125,16 @@ rg_display_clear(uint16_t color)
 
     send_reset_drawing(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    for (short i = 0; i < SPI_TRANSACTION_COUNT; ++i)
+    for (size_t i = 0; i < SPI_TRANSACTION_COUNT; ++i)
     {
-        for (short j = 0; j < SPI_TRANSACTION_BUFFER_LENGTH; ++j)
+        for (size_t j = 0; j < SPI_TRANSACTION_BUFFER_LENGTH; ++j)
         {
             spi_buffers[i][j] = color << 8 | color >> 8;
         }
     }
 
-    short lines_per_buffer = SPI_TRANSACTION_BUFFER_LENGTH / SCREEN_WIDTH;
-    for (short y = 0; y < SCREEN_HEIGHT; y += lines_per_buffer)
+    size_t lines_per_buffer = SPI_TRANSACTION_BUFFER_LENGTH / SCREEN_WIDTH;
+    for (size_t y = 0; y < SCREEN_HEIGHT; y += lines_per_buffer)
     {
         send_continue_line(spi_get_buffer(), SCREEN_WIDTH, lines_per_buffer);
     }
@@ -1166,6 +1158,7 @@ rg_display_deinit()
 {
     // Here we should stop SPI and display tasks
     // Then:
+    backlight_deinit();
     ili9341_deinit();
 }
 

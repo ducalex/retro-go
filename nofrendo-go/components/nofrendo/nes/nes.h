@@ -35,8 +35,8 @@
 #include <nes6502.h>
 #include <bitmap.h>
 
-#define NES_SCREEN_WIDTH     256
-#define NES_SCREEN_HEIGHT    240
+#define NES_SCREEN_WIDTH      256
+#define NES_SCREEN_HEIGHT     240
 
 #define NES_CPU_CLOCK_NTSC    1789772.72727
 #define NES_CPU_CLOCK_PAL     1662607.03125
@@ -47,59 +47,59 @@
 
 typedef enum
 {
-   NES_AUTO,
-   NES_NTSC,
-   NES_PAL
+    NES_AUTO,
+    NES_NTSC,
+    NES_PAL
 } region_t;
 
 typedef enum
 {
-   SOFT_RESET,
-   HARD_RESET,
-   ZERO_RESET,
+    SOFT_RESET,
+    HARD_RESET,
+    ZERO_RESET,
 } reset_type_t;
 
 typedef struct nes_s
 {
-   /* Hardware */
-   nes6502_t *cpu;
-   ppu_t *ppu;
-   apu_t *apu;
-   mmc_t *mmc;
-   rominfo_t *rominfo;
+    /* Hardware */
+    nes6502_t *cpu;
+    ppu_t *ppu;
+    apu_t *apu;
+    mmc_t *mmc;
+    rominfo_t *rominfo;
 
-   /* Memory */
-   mem_t *mem;
+    /* Memory */
+    mem_t *mem;
 
-   /* Video buffer */
-   bitmap_t *vidbuf;
+    /* Video buffer */
+    bitmap_t *vidbuf;
 
-   /* Misc */
-   region_t region;
-   short overscan;
+    /* Misc */
+    region_t region;
+    short overscan;
 
-   /* Timing stuff */
-   short refresh_rate;
-   short scanlines_per_frame;
-   float cycles_per_line;
+    /* Timing stuff */
+    short refresh_rate;
+    short scanlines_per_frame;
+    float cycles_per_line;
 
-   short scanline;
-   float cycles;
+    short scanline;
+    float cycles;
 
-   /* Control */
-   bool autoframeskip;
-   bool poweroff;
-   bool pause;
-   bool drawframe;
+    /* Control */
+    bool autoframeskip;
+    bool poweroff;
+    bool pause;
+    bool drawframe;
 
 } nes_t;
 
 /* Function prototypes */
 extern nes_t *nes_getptr(void);
-extern int  nes_init(region_t region, int sample_rate, bool stereo);
+extern bool nes_init(region_t region, int sample_rate, bool stereo);
 extern void nes_shutdown(void);
 extern void nes_setregion(region_t region);
-extern int  nes_insertcart(const char *filename);
+extern bool nes_insertcart(const char *filename);
 extern void nes_emulate(void);
 extern void nes_reset(reset_type_t reset_type);
 extern void nes_poweroff(void);

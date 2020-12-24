@@ -18,7 +18,7 @@
 
 #define NVS_KEY_SAVE_SRAM "sram"
 
-static int16_t audioBuffer[AUDIO_BUFFER_LENGTH * 2];
+static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
 static rg_video_frame_t update1 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, -1, NULL, NULL, 0, {}};
 static rg_video_frame_t update2 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, -1, NULL, NULL, 0, {}};

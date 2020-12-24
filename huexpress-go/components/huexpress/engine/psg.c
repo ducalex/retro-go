@@ -1,6 +1,6 @@
-// sound.c - Sound emulation
+// psg.c - Programmable Sound Generator
 //
-#include "sound.h"
+#include "psg.h"
 #include "pce.h"
 
 static const uint8_t vol_tbl[32] = {
@@ -19,8 +19,8 @@ static int32_t noise_level[PSG_CHANNELS];
 static int16_t mix_buffer[44100 / 60 * 2];
 
 
-static inline void
-psg_update(int16_t *buf, int ch, size_t dwSize)
+void
+psg_update(short *buf, int ch, size_t dwSize)
 {
     psg_chan_t *chan = &PCE.PSG.chan[ch];
     int sample = 0;
@@ -172,7 +172,7 @@ pad_and_return:
 
 
 int
-snd_init(void)
+psg_init(void)
 {
     noise_rand[4] = 0x51F63101;
     noise_rand[5] = 0x1F631042;
@@ -184,14 +184,14 @@ snd_init(void)
 
 
 void
-snd_term(void)
+psg_term(void)
 {
     osd_snd_shutdown();
 }
 
 
 void
-snd_update(short *buffer, size_t length)
+psg_mix(short *buffer, size_t length)
 {
     int lvol = (PCE.PSG.volume >> 4);
     int rvol = (PCE.PSG.volume & 0x0F);

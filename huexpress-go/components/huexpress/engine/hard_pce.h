@@ -93,10 +93,10 @@ typedef struct {
 	uint8_t RAM[0x2000];
 
 	// Video RAM
-	uint16_t VRAM[0x10000 / 2];
+	uint16_t VRAM[0x8000];
 
 	// Sprite RAM
-	uint16_t SPRAM[64 * 4];
+	uint16_t SPRAM[0x100];
 
 	// Extra RAM contained on the HuCard (Populous)
 	uint8_t *ExRAM;

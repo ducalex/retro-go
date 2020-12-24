@@ -12,7 +12,7 @@
 #include "osd.h"
 #include "hard_pce.h"
 #include "h6280.h"
-#include "sound.h"
+#include "psg.h"
 #include "gfx.h"
 
 #include <rg_system.h>

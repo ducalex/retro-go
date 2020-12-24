@@ -15,9 +15,15 @@ if(NOT PROJECT_VER)
 endif()
 
 macro(rg_setup_compile_options)
-    component_compile_options(-O3 -Wno-comment -Wno-error=comment)
+    component_compile_options(-Wno-comment -Wno-error=comment)
     component_compile_options(-DIS_LITTLE_ENDIAN)
     component_compile_options(${ARGV})
+
+    if($ENV{ENABLE_TINY_BUILD})
+        component_compile_options(-Os)
+    else()
+        component_compile_options(-O3)
+    endif()
 
     if($ENV{ENABLE_PROFILING})
         # Still debating whether -fno-inline is necessary or not...
