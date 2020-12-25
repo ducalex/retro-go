@@ -12,38 +12,51 @@
 #include "rg_gui.h"
 
 static uint16_t *overlay_buffer = NULL;
-static int dialog_open_depth = 0;
-static int font_size = 8;
+
+static const dialog_theme_t default_theme = {
+    .box_background = C_NAVY,
+    .box_header = C_WHITE,
+    .box_border = C_DIM_GRAY,
+    .item_standard = C_WHITE,
+    .item_disabled = C_DIM_GRAY,
+};
+static dialog_theme_t theme;
+static font_info_t font_info;
 
 void rg_gui_init(void)
 {
     overlay_buffer = (uint16_t *)rg_alloc(RG_SCREEN_WIDTH * 32 * 2, MEM_SLOW);
     rg_gui_set_font_size(rg_settings_FontSize_get());
+    rg_gui_set_theme(&default_theme);
 }
 
-void rg_gui_set_font_size(int size)
+void rg_gui_set_theme(const dialog_theme_t *new_theme)
 {
-    font_size = RG_MAX(8, RG_MIN(32, size));
-    rg_settings_FontSize_set(font_size);
+    if (new_theme) {
+        memcpy(&theme, new_theme, sizeof(dialog_theme_t));
+    }
 }
 
-int rg_gui_get_font_size(void)
+void rg_gui_set_font_size(int points)
 {
-    return font_size;
+    font_info.points = RG_MAX(8, RG_MIN(32, points));
+    font_info.height = font_info.points;
+    font_info.width = 8;
+    rg_settings_FontSize_set(points);
 }
 
-int rg_gui_get_font_width(void)
+font_info_t rg_gui_get_font_info(void)
 {
-    return 8;
+    return font_info;
 }
 
 int rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, uint16_t color, uint16_t color_bg)
 {
-    int font_height = rg_gui_get_font_size();
-    int font_width = rg_gui_get_font_width();
+    int glyph_width = font_info.width;
+    int glyph_height = font_info.height;
     int text_len = 1;
     int height = 0;
-    float scale = (float)font_height / 8;
+    float scale = (float)glyph_height / 8;
 
     if (text == NULL || text[0] == 0) {
         text = " ";
@@ -52,14 +65,14 @@ int rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, uint16_t
     text_len = strlen(text);
 
     if (width < 1) {
-        width = text_len * font_width;
+        width = text_len * glyph_width;
     }
 
     if (width > (RG_SCREEN_WIDTH - x_pos)) {
         width = (RG_SCREEN_WIDTH - x_pos);
     }
 
-    int line_len = width / font_width;
+    int line_len = width / glyph_width;
     char buffer[line_len + 1];
 
     for (int pos = 0; pos < text_len;)
@@ -73,7 +86,7 @@ int rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, uint16_t
         for (int i = 0; i < line_len; i++)
         {
             const char *glyph = font8x8_basic[(i < chunk_len) ? text[i] : ' '];
-            for (int y = 0; y < font_height; y++)
+            for (int y = 0; y < glyph_height; y++)
             {
                 int offset = x_offset + (width * y);
                 for (int x = 0; x < 8; x++)
@@ -81,12 +94,12 @@ int rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, uint16_t
                     overlay_buffer[offset + x] = (glyph[(int)(y/scale)] & 1 << x) ? color : color_bg;
                 }
             }
-            x_offset += font_width;
+            x_offset += glyph_width;
         }
 
-        rg_display_write(x_pos, y_pos + height, width, font_height, 0, overlay_buffer);
+        rg_display_write(x_pos, y_pos + height, width, glyph_height, 0, overlay_buffer);
 
-        height += font_height;
+        height += glyph_height;
         pos += chunk_len;
 
         if (*(text + pos) == 0 || *(text + pos) == '\n') pos++;
@@ -270,16 +283,11 @@ void rg_gui_draw_dialog(const char *header, dialog_choice_t *options, int sel)
     int width = header ? strlen(header) : 8;
     int padding = 0;
     int len = 0;
-
     int row_margin = 1;
-    int row_height = rg_gui_get_font_size() + row_margin * 2;
-
+    int row_height = font_info.height + row_margin * 2;
     int box_width = 64;
     int box_height = 64;
     int box_padding = 6;
-    int box_color = C_NAVY;
-    int box_border_color = C_DIM_GRAY;
-    int box_text_color = C_WHITE;
 
     int options_count = get_dialog_items_count(options);
 
@@ -308,7 +316,7 @@ void rg_gui_draw_dialog(const char *header, dialog_choice_t *options, int sel)
 
     if (width > 32) width = 32;
 
-    box_width = (rg_gui_get_font_width() * width) + box_padding * 2;
+    box_width = (font_info.width * width) + box_padding * 2;
     box_height = (row_height * options_count) + (header ? row_height + 4 : 0) + box_padding * 2;
 
     int box_x = (RG_SCREEN_WIDTH - box_width) / 2;
@@ -316,21 +324,21 @@ void rg_gui_draw_dialog(const char *header, dialog_choice_t *options, int sel)
 
     int x = box_x + box_padding;
     int y = box_y + box_padding;
+    int inner_width = box_width - (box_padding * 2);
 
     if (header)
     {
-        int pad = (0.5f * (width - strlen(header)) * rg_gui_get_font_width());
-        rg_gui_draw_rect(x, y, box_width - 8, row_height + 4, (row_height + 4 / 2), box_color);
-        rg_gui_draw_text(x + pad, y, 0, header, box_text_color, box_color);
+        int pad = (0.5f * (width - strlen(header)) * font_info.width);
+        rg_gui_draw_rect(x, y, box_width - 8, row_height + 4, (row_height + 4 / 2), theme.box_background);
+        rg_gui_draw_text(x + pad, y, 0, header, theme.box_header, theme.box_background);
         y += row_height + 4;
     }
 
-    uint16_t fg, bg, color, inner_width = box_width - (box_padding * 2);
     for (int i = 0; i < options_count; i++)
     {
-        color = options[i].enabled == 1 ? box_text_color : C_GRAY;
-        fg = (i == sel) ? box_color : color;
-        bg = (i == sel) ? color : box_color;
+        uint16_t color = options[i].enabled == 1 ? theme.item_standard : theme.item_disabled;
+        uint16_t fg = (i == sel) ? theme.box_background : color;
+        uint16_t bg = (i == sel) ? color : theme.box_background;
         row_height = rg_gui_draw_text(x, y + row_margin, inner_width, rows + i * 256, fg, bg);
         row_height += row_margin * 2;
         rg_gui_draw_rect(x, y, inner_width, row_height, row_margin, bg);
@@ -339,8 +347,8 @@ void rg_gui_draw_dialog(const char *header, dialog_choice_t *options, int sel)
 
     box_height = y - box_y + box_padding;
 
-    rg_gui_draw_rect(box_x, box_y, box_width, box_height, box_padding, box_color);
-    rg_gui_draw_rect(box_x - 1, box_y - 1, box_width + 2, box_height + 2, 1, box_border_color);
+    rg_gui_draw_rect(box_x, box_y, box_width, box_height, box_padding, theme.box_background);
+    rg_gui_draw_rect(box_x - 1, box_y - 1, box_width + 2, box_height + 2, 1, theme.box_border);
 
     free(rows);
 }
@@ -352,8 +360,6 @@ int rg_gui_dialog(const char *header, dialog_choice_t *options, int selected)
     int sel_old = sel;
     int last_key = -1;
     bool select = false;
-
-    dialog_open_depth++;
 
     rg_gui_draw_dialog(header, options, sel);
 
@@ -441,8 +447,6 @@ int rg_gui_dialog(const char *header, dialog_choice_t *options, int selected)
 
     rg_display_force_refresh();
 
-    dialog_open_depth--;
-
     return sel < 0 ? sel : options[sel].id;
 }
 
@@ -463,11 +467,6 @@ void rg_gui_alert(const char *text)
         RG_DIALOG_CHOICE_LAST
     };
     rg_gui_dialog(text, choices, 0);
-}
-
-bool rg_gui_dialog_is_open(void)
-{
-    return dialog_open_depth > 0;
 }
 
 static bool volume_update_cb(dialog_choice_t *option, dialog_event_t event)
@@ -595,7 +594,7 @@ int rg_gui_settings_menu(dialog_choice_t *extra_options)
 static void draw_game_status_bar(runtime_stats_t stats)
 {
     int width = RG_SCREEN_WIDTH, height = 16;
-    int pad_text = (height - rg_gui_get_font_size()) / 2;
+    int pad_text = (height - font_info.height) / 2;
     char bottom[40], header[40];
 
     const char *romPath = rg_system_get_app()->romPath;

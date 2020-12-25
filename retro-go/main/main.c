@@ -18,7 +18,7 @@
 
 static bool font_size_cb(dialog_choice_t *option, dialog_event_t event)
 {
-    int font_size = rg_gui_get_font_size();
+    int font_size = rg_gui_get_font_info().points;
     if (event == RG_DIALOG_PREV && font_size > 8) {
         rg_gui_set_font_size(font_size -= 4);
         gui_redraw();

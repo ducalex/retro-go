@@ -15,6 +15,21 @@ typedef enum {
     RG_DIALOG_RETURN,
 } dialog_return_t;
 
+typedef struct {
+    uint16_t box_background;
+    uint16_t box_header;
+    uint16_t box_border;
+    uint16_t item_standard;
+    uint16_t item_disabled;
+} dialog_theme_t;
+
+typedef struct {
+    uint8_t width;
+    uint8_t height;
+    uint8_t points;
+    uint8_t type;
+} font_info_t;
+
 typedef struct dialog_choice_s dialog_choice_t;
 
 struct dialog_choice_s {
@@ -181,9 +196,9 @@ enum colors565
 };
 
 void rg_gui_init(void);
-void rg_gui_set_font_size(int size);
-int  rg_gui_get_font_size(void);
-int  rg_gui_get_font_width(void);
+void rg_gui_set_theme(const dialog_theme_t *new_theme);
+void rg_gui_set_font_size(int points);
+font_info_t rg_gui_get_font_info(void);
 int  rg_gui_draw_text(int x, int y, int width, const char *text, uint16_t color, uint16_t color_bg);
 void rg_gui_draw_rect(int x, int y, int width, int height, int border, uint16_t color);
 void rg_gui_draw_fill_rect(int x, int y, int width, int height, uint16_t color);
@@ -198,7 +213,6 @@ void rg_gui_free_image(rg_image_t *img);
 int  rg_gui_dialog(const char *header, dialog_choice_t *options, int selected_initial);
 int  rg_gui_confirm(const char *text, bool yes_selected);
 void rg_gui_alert(const char *text);
-bool rg_gui_dialog_is_open(void);
 
 int rg_gui_settings_menu(dialog_choice_t *extra_options);
 int rg_gui_game_settings_menu(dialog_choice_t *extra_options);

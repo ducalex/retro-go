@@ -94,6 +94,8 @@ static void favorites_load()
         token = strtok(NULL, "\n");
     }
 
+    free(favorites_str);
+
     if (favorites_count > 0)
     {
         sprintf(fav_tab->status, "Favorites: %d", favorites_count);

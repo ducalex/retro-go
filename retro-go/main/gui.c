@@ -4,9 +4,7 @@
 #include <dirent.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/stat.h>
 
-#include <lupng.h>
 #include "gui.h"
 
 #define IMAGE_LOGO_WIDTH    (47)
@@ -21,14 +19,14 @@
 #define LIST_WIDTH       (RG_SCREEN_WIDTH)
 #define LIST_HEIGHT      (RG_SCREEN_HEIGHT - LIST_Y_OFFSET)
 #define LIST_LINE_COUNT  ((RG_SCREEN_HEIGHT - LIST_Y_OFFSET) / LIST_LINE_HEIGHT)
-#define LIST_LINE_HEIGHT (rg_gui_get_font_size())
+#define LIST_LINE_HEIGHT (rg_gui_get_font_info().height)
 #define LIST_X_OFFSET    (0)
 #define LIST_Y_OFFSET    (48 + LIST_LINE_HEIGHT)
 
 #define COVER_MAX_HEIGHT (184)
 #define COVER_MAX_WIDTH  (184)
 
-theme_t gui_themes[] = {
+static const theme_t gui_themes[] = {
     {0, C_GRAY, C_WHITE, C_AQUA},
     {0, C_GRAY, C_GREEN, C_AQUA},
     {0, C_WHITE, C_GREEN, C_AQUA},
@@ -45,7 +43,7 @@ theme_t gui_themes[] = {
     {16, C_GRAY, C_GREEN, C_AQUA},
     {16, C_WHITE, C_GREEN, C_AQUA},
 };
-int gui_themes_count = 12;
+int gui_themes_count = sizeof(gui_themes) / sizeof(theme_t);
 
 static char str_buffer[128];
 
@@ -276,10 +274,12 @@ void gui_draw_status(tab_t *tab)
 
 void gui_draw_list(tab_t *tab)
 {
-    int columns = LIST_WIDTH / rg_gui_get_font_width();
+    const theme_t *theme = &gui_themes[gui.theme % gui_themes_count];
+    const listbox_t *list = &tab->listbox;
+
+    int columns = LIST_WIDTH / rg_gui_get_font_info().width;
+    int line_height = LIST_LINE_HEIGHT;
     int lines = LIST_LINE_COUNT;
-    theme_t *theme = &gui_themes[gui.theme % gui_themes_count];
-    listbox_t *list = &tab->listbox;
 
     for (int i = 0; i < lines; i++) {
         int entry = list->cursor + i - (lines / 2);
@@ -292,7 +292,7 @@ void gui_draw_list(tab_t *tab)
 
         rg_gui_draw_text(
             LIST_X_OFFSET,
-            LIST_Y_OFFSET + i * LIST_LINE_HEIGHT,
+            LIST_Y_OFFSET + i * line_height,
             LIST_WIDTH,
             str_buffer,
             (entry == list->cursor) ? theme->list_selected : theme->list_standard,
