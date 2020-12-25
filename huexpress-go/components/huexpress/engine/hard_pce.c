@@ -189,17 +189,19 @@ IO_read(uint16_t A)
             ret = 0;
             break;
         case 2:
-            if (PCE.VDC.reg == VRR)              // // VRAM Read Register (LSB)
-                ret = PCE.VRAM[IO_VDC_REG[MARR].W] & 0xFF;
-            else
+            if (PCE.VDC.reg == VRR) {             // // VRAM Read Register (LSB)
+                ret = PCE.VRAM[IO_VDC_REG[MARR].W & 0x7FFF] & 0xFF;
+            } else {
                 ret = IO_VDC_REG_ACTIVE.B.l;
+            }
             break;
         case 3:
             if (PCE.VDC.reg == VRR) {            // VRAM Read Register (MSB)
-                ret = PCE.VRAM[IO_VDC_REG[MARR].W] >> 8;
+                ret = PCE.VRAM[IO_VDC_REG[MARR].W & 0x7FFF] >> 8;
                 IO_VDC_REG_INC(MARR);
-            } else
+            } else {
                 ret = IO_VDC_REG_ACTIVE.B.h;
+            }
             break;
         }
         break;
@@ -385,8 +387,11 @@ IO_write(uint16_t A, uint8_t V)
                 break;
 
             case VWR:                           // VRAM Write Register
-                PCE.VRAM[IO_VDC_REG[MAWR].W] = (V << 8) | IO_VDC_REG_ACTIVE.B.l;
-                OBJ_CACHE_INVALIDATE(IO_VDC_REG[MAWR].W);
+                // I am not 100% sure if MAWR should wrap instead, eg IO_VDC_REG[MAWR].W & 0x7FFF
+                if (IO_VDC_REG[MAWR].W < 0x8000) {
+                    PCE.VRAM[IO_VDC_REG[MAWR].W] = (V << 8) | IO_VDC_REG_ACTIVE.B.l;
+                    OBJ_CACHE_INVALIDATE(IO_VDC_REG[MAWR].W);
+                }
                 IO_VDC_REG_INC(MAWR);
                 break;
 
@@ -454,8 +459,10 @@ IO_write(uint16_t A, uint8_t V)
                 int dst_inc = (IO_VDC_REG[DCR].W & 4) ? -1 : 1;
 
                 while (IO_VDC_REG[LENR].W != 0xFFFF) {
-                    PCE.VRAM[IO_VDC_REG[DISTR].W] = PCE.VRAM[IO_VDC_REG[SOUR].W];
-                    OBJ_CACHE_INVALIDATE(IO_VDC_REG[DISTR].W);
+                    if (IO_VDC_REG[DISTR].W < 0x8000) {
+                        PCE.VRAM[IO_VDC_REG[DISTR].W] = PCE.VRAM[IO_VDC_REG[SOUR].W];
+                        OBJ_CACHE_INVALIDATE(IO_VDC_REG[DISTR].W);
+                    }
                     IO_VDC_REG[SOUR].W += src_inc;
                     IO_VDC_REG[DISTR].W += dst_inc;
                     IO_VDC_REG[LENR].W -= 1;

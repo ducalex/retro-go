@@ -3,16 +3,16 @@
 
 typedef struct {
 	/* Vertical position */
-	short y;
+	uint16_t y;
 
 	/* Horizontal position */
-	short x;
+	uint16_t x;
 
 	/* Offset in VRAM */
-	short no;
+	uint16_t no;
 
 	/* Attributes */
-	short attr;
+	uint16_t attr;
 	/*
 		* bit 0-4 : number of the palette to be used
 		* bit 7 : background sprite
