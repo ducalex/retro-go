@@ -76,7 +76,7 @@ typedef struct {
 void rg_display_init();
 void rg_display_deinit();
 void rg_display_drain_spi();
-void rg_display_write(int left, int top, int width, int height, int stride, const void* buffer);
+void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t* buffer);
 void rg_display_clear(uint16_t colorLE);
 void rg_display_show_hourglass();
 void rg_display_force_refresh(void);

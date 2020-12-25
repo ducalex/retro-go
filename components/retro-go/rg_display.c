@@ -1082,7 +1082,7 @@ rg_display_drain_spi()
 }
 
 void
-rg_display_write(int left, int top, int width, int height, int stride, const void* buffer)
+rg_display_write(int left, int top, int width, int height, int stride, const uint16_t* buffer)
 {
     rg_display_drain_spi();
 
@@ -1090,7 +1090,7 @@ rg_display_write(int left, int top, int width, int height, int stride, const voi
 
     size_t lines_per_buffer = SPI_TRANSACTION_BUFFER_LENGTH / width;
 
-    if (stride <= 0) {
+    if (stride < width * 2) {
         stride = width * 2;
     }
 
@@ -1103,12 +1103,13 @@ rg_display_write(int left, int top, int width, int height, int stride, const voi
 
         for (size_t line = 0; line < lines_per_buffer; ++line)
         {
-            const uint16_t *buf = buffer + ((y + line) * stride);
-            size_t opos = line * width;
+            // We void* the buffer because stride is a byte length, not uint16
+            const uint16_t *buf = (void*)buffer + ((y + line) * stride);
+            const size_t offset = line * width;
 
             for (size_t i = 0; i < width; ++i)
             {
-                line_buffer[opos + i] = buf[i] << 8 | buf[i] >> 8;
+                line_buffer[offset + i] = buf[i] << 8 | buf[i] >> 8;
             }
         }
 
