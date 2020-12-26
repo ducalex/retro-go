@@ -319,7 +319,7 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
         emulator_start(file, sel == 0);
     }
     else if (sel == 2) {
-        if (rg_gui_confirm("Delete save file?", false) == 1) {
+        if (rg_gui_confirm("Delete save file?", NULL, false)) {
             if (has_save) {
                 rg_unlink(save_path);
             }

@@ -204,7 +204,7 @@ void retro_loop()
                     rg_system_switch_app(RG_APP_FACTORY);
                 }
                 else if (sel == 2) {
-                    if (rg_gui_confirm("Reset all settings?", false) == 1) {
+                    if (rg_gui_confirm("Reset all settings?", NULL, false)) {
                         rg_settings_reset();
                         rg_system_restart();
                     }
@@ -213,14 +213,13 @@ void retro_loop()
             }
             else if (last_key == GAMEPAD_KEY_VOLUME) {
                 dialog_choice_t choices[] = {
-                    {0, "---",          "",    -1, NULL},
-                    {0, "Color theme",  "...",  1, &color_shift_cb},
-                    {0, "Font size  ",    "...",  1, &font_size_cb},
+                    {0, "---",         "",    -1, NULL},
+                    {0, "Color theme", "...",  1, &color_shift_cb},
+                    {0, "Font size  ", "...",  1, &font_size_cb},
                     {0, "Empty tabs ", "...",  1, &show_empty_cb},
                     {0, "Preview    ", "...",  1, &show_preview_cb},
-                    {0, "      Delay", "...",  1, &show_preview_speed_cb},
-                    {0, "---",          "",    -1, NULL},
-                    {0, "Startup app",  "...",  1, &startup_app_cb},
+                    {0, "    - Delay", "...",  1, &show_preview_speed_cb},
+                    {0, "Startup app", "...",  1, &startup_app_cb},
                     RG_DIALOG_CHOICE_LAST
                 };
                 rg_gui_settings_menu(choices);

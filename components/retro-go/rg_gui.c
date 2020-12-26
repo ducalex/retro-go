@@ -295,6 +295,9 @@ void rg_gui_draw_dialog(const char *header, dialog_choice_t *options, int sel)
 
     for (int i = 0; i < options_count; i++)
     {
+        if (options[i].label == NULL) {
+            options[i].label = "";
+        }
         if (options[i].value[0]) {
             len = strlen(options[i].label);
             padding = (len > padding) ? len : padding;
@@ -450,23 +453,27 @@ int rg_gui_dialog(const char *header, dialog_choice_t *options, int selected)
     return sel < 0 ? sel : options[sel].id;
 }
 
-int rg_gui_confirm(const char *text, bool yes_selected)
+bool rg_gui_confirm(const char *title, const char *message, bool yes_selected)
 {
     dialog_choice_t choices[] = {
+        {0, message, "", -1, NULL},
+        {0, "", "", -1, NULL},
         {1, "Yes", "", 1, NULL},
         {0, "No ", "", 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
-    return rg_gui_dialog(text, choices, yes_selected ? 0 : 1);
+    return rg_gui_dialog(title, message ? choices : choices + 1, yes_selected ? -2 : -1) == 1;
 }
 
-void rg_gui_alert(const char *text)
+void rg_gui_alert(const char *title, const char *message)
 {
     dialog_choice_t choices[] = {
+        {0, message, "", -1, NULL},
+        {0, "", "", -1, NULL},
         {1, "OK", "", 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
-    rg_gui_dialog(text, choices, 0);
+    rg_gui_dialog(title, message ? choices : choices + 1, -1);
 }
 
 static bool volume_update_cb(dialog_choice_t *option, dialog_event_t event)

@@ -211,8 +211,8 @@ void rg_gui_draw_image(int x, int y, int width, int height, const rg_image_t *im
 void rg_gui_free_image(rg_image_t *img);
 
 int  rg_gui_dialog(const char *header, dialog_choice_t *options, int selected_initial);
-int  rg_gui_confirm(const char *text, bool yes_selected);
-void rg_gui_alert(const char *text);
+bool rg_gui_confirm(const char *title, const char *message, bool yes_selected);
+void rg_gui_alert(const char *title, const char *message);
 
 int rg_gui_settings_menu(dialog_choice_t *extra_options);
 int rg_gui_game_settings_menu(dialog_choice_t *extra_options);

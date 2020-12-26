@@ -390,7 +390,7 @@ bool rg_netplay_quick_start(void)
         {
             case NETPLAY_STATUS_CONNECTED:
                 return remote_player->game_id == local_player->game_id
-                    || rg_gui_confirm("ROMs not identical. Continue?", 1);
+                    || rg_gui_confirm("Netplay", "ROMs not identical. Continue?", 1);
                 break;
 
             case NETPLAY_STATUS_HANDSHAKE:

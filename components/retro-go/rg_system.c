@@ -33,9 +33,9 @@
 typedef struct
 {
     uint32_t magicWord;
-    char message[128];
-    char function[128];
-    char file[128];
+    char message[256];
+    char function[64];
+    char file[256];
 } panic_trace_t;
 
 // This is a direct pointer to rtc slow ram which isn't cleared on
@@ -102,7 +102,7 @@ static void system_monitor_task(void *arg)
         // Applications should never stop polling input. If they do, they're probably unresponsive...
         if (statistics.lastTickTime > 0 && rg_input_gamepad_last_read() > 5000000)
         {
-            RG_PANIC("Application is unresponsive!");
+            RG_PANIC("Application unresponsive");
         }
 
         if (statistics.battery.percentage < 2)
@@ -243,9 +243,14 @@ void rg_system_init(int appId, int sampleRate)
     if (esp_reset_reason() == ESP_RST_PANIC)
     {
         if (panicTrace->magicWord == PANIC_TRACE_MAGIC)
-            rg_system_panic_dialog(panicTrace->message);
-        else
-            rg_system_panic_dialog("Reason unknown");
+            printf(" *** PREVIOUS PANIC: %s *** \n", panicTrace->message);
+        else  // Presumably abort()
+            strcpy(panicTrace->message, "Application crashed");
+        panicTrace->magicWord = 0;
+        rg_audio_deinit();
+        rg_display_clear(C_BLUE);
+        rg_gui_alert("System Panic!", panicTrace->message);
+        rg_system_switch_app(RG_APP_LAUNCHER);
     }
 
     if (esp_reset_reason() != ESP_RST_SW)
@@ -302,7 +307,7 @@ void rg_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t 
     currentApp.romPath = rg_settings_RomFilePath_get();
     if (!currentApp.romPath || strlen(currentApp.romPath) < 4)
     {
-        RG_PANIC("Invalid ROM Path!");
+        RG_PANIC("Invalid ROM path!");
     }
 
     if (netplay_cb)
@@ -384,7 +389,7 @@ char* rg_emu_get_path(emu_path_type_t type, const char *_romPath)
             break;
 
         default:
-            RG_PANIC("Unknown Type");
+            RG_PANIC("Unknown path type");
     }
 
     return strdup(buffer);
@@ -457,7 +462,7 @@ bool rg_emu_save_state(int slot)
     if (!success)
     {
         printf("%s: Save failed!\n", __func__);
-        rg_gui_alert("Save failed");
+        rg_gui_alert("Save failed", NULL);
     }
 
     free(saveName);
@@ -522,31 +527,6 @@ void rg_system_panic(const char *reason, const char *function, const char *file)
     panicTrace->magicWord = PANIC_TRACE_MAGIC;
 
     abort();
-}
-
-void rg_system_panic_dialog(const char *reason)
-{
-    printf(" *** PREVIOUS PANIC: %s *** \n", reason);
-
-    // Clear the trace to avoid a boot loop
-    panicTrace->magicWord = 0;
-
-    rg_audio_deinit();
-
-    // In case we panicked from inside a dialog
-    rg_spi_lock_release(SPI_LOCK_ANY);
-
-    // Blue screen of death!
-    rg_display_clear(C_BLUE);
-
-    dialog_choice_t choices[] = {
-        {0, reason, "", -1, NULL},
-        {1, "OK", "", 1, NULL},
-        RG_DIALOG_CHOICE_LAST
-    };
-    rg_gui_dialog("The application crashed!", choices, 1);
-
-    rg_system_switch_app(RG_APP_LAUNCHER);
 }
 
 void rg_system_halt()

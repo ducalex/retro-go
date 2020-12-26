@@ -25,7 +25,7 @@ void ShutdownPCE();
 int InitPCE(const char *name);
 int LoadCard(const char *name);
 
-struct host_machine {
+typedef struct {
 	bool paused;
 	bool netplay;
 
@@ -44,9 +44,9 @@ struct host_machine {
 	struct {
 		bool splatterhouse;
 	} hacks;
-};
+} host_machine_t;
 
-extern struct host_machine host;
+extern host_machine_t host;
 
 typedef struct
 {

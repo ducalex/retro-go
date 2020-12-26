@@ -51,7 +51,7 @@ static void netplay_callback(netplay_event_t event, void *arg)
 
         if (netplay && !new_netplay)
         {
-            rg_gui_alert("Connection lost!");
+            rg_gui_alert("Netplay", "Connection lost!");
         }
         netplay = new_netplay;
         break;

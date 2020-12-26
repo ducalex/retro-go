@@ -86,7 +86,6 @@ typedef struct
 } runtime_stats_t;
 
 void rg_system_init(int app_id, int sampleRate);
-void rg_system_panic_dialog(const char *reason);
 void rg_system_panic(const char *reason, const char *function, const char *file) __attribute__((noreturn));
 void rg_system_halt() __attribute__((noreturn));
 void rg_system_sleep() __attribute__((noreturn));

@@ -3,7 +3,7 @@
 #include "pce.h"
 #include "romdb.h"
 
-struct host_machine host;
+host_machine_t host;
 
 const char SAVESTATE_HEADER[8] = "PCE_V004";
 
