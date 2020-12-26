@@ -111,9 +111,9 @@ pce_run(void)
         osd_vsync();
 
         // Prevent Overflowing
-        // int trim = MIN(Cycles, PCE.MaxCycles);
-        // PCE.MaxCycles -= trim;
-        // Cycles -= trim;
+        int trim = MIN(Cycles, PCE.MaxCycles);
+        PCE.MaxCycles -= trim;
+        Cycles -= trim;
     }
 }
 
@@ -172,7 +172,6 @@ IRAM_ATTR inline uint8_t
 IO_read(uint16_t A)
 {
     uint8_t ret = 0xFF; // Open Bus
-    uint8_t index;
 
     // The last read value in 0800-017FF is read from the io buffer
     if (A >= 0x800 && A < 0x1800)
