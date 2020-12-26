@@ -58,6 +58,6 @@ extern cpu_t cpu;
 
 void cpu_reset();
 int  cpu_emulate(int cycles);
-void cpu_timers(int cnt);
+void cpu_burn(int cycles);
 
 #endif

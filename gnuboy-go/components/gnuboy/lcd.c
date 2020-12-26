@@ -13,30 +13,23 @@
 
 struct fb fb;
 struct lcd lcd;
-struct scan scan;
 
-#define BG (scan.bg)
-#define WND (scan.wnd)
-#define BUF (scan.buf)
-#define PRI (scan.pri)
+static int BG[64];
+static int WND[64];
+static byte BUF[0x100];
+static byte PRI[0x100];
+static un16 PAL[64];
+static vissprite_t VS[16];
 
-#define PAL2 (scan.pal2)
+static int S; /* tilemap position */
+static int T;
+static int U; /* position within tile */
+static int V;
 
-#define VS (scan.vs) /* vissprites */
-#define NS (scan.ns)
-
-#define SL (scan.l) /* line */
-#define SX (scan.x) /* screen position */
-#define SY (scan.y)
-#define S (scan.s) /* tilemap position */
-#define T (scan.t)
-#define U (scan.u) /* position within tile */
-#define V (scan.v)
-
-#define WX (scan.wx)
-#define WY (scan.wy)
-#define WT (scan.wt)
-#define WV (scan.wv)
+static int WX;
+static int WY;
+static int WT;
+static int WV;
 
 #define CYCLES (lcd.cycles)
 
@@ -48,7 +41,6 @@ static uint16_t dmg_pal[4][4] = {
 static int dmg_selected_pal = 0;
 
 static byte *vdest;
-static byte pix[8];
 
 // Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
 int enable_window_offset_hack = 0;
@@ -71,62 +63,27 @@ int enable_window_offset_hack = 0;
  */
 
 __attribute__((optimize("unroll-loops")))
-static inline byte* get_patpix(int i, int x)
+static inline byte *get_patpix(int tile, int x)
 {
-	const int index = i & 0x3ff; // 1024 entries
-	const int rotation = (i >> 10) & 3; // / 1024;
+	const byte *vram = lcd.vbank[0];
 
-	int a, c, j;
-	const byte* vram = lcd.vbank[0];
+	static byte pix[8];
 
-	switch (rotation)
-	{
-		case 0:
-			a = ((index << 4) | (x << 1));
+	if (tile & (1 << 11)) // Vertical Flip
+		vram += ((tile & 0x3FF) << 4) | ((7 - x) << 1);
+	else
+		vram += ((tile & 0x3FF) << 4) | (x << 1);
 
-			for (byte k = 0; k < 8; k++)
-			{
-				c = vram[a] & (1 << k) ? 1 : 0;
-				c |= vram[a+1] & (1 << k) ? 2 : 0;
-				pix[7 - k] = c;
-			}
-			break;
-
-		case 1:
-			a = ((index << 4) | (x << 1));
-
-			for (byte k = 0; k < 8; k++)
-			{
-				c = vram[a] & (1 << k) ? 1 : 0;
-				c |= vram[a+1] & (1 << k) ? 2 : 0;
-				pix[k] = c;
-			}
-			break;
-
-		case 2:
-			j = 7 - x;
-			a = ((index << 4) | (j << 1));
-
-			for (byte k = 0; k < 8; k++)
-			{
-				c = vram[a] & (1 << k) ? 1 : 0;
-				c |= vram[a+1] & (1 << k) ? 2 : 0;
-				pix[7 - k] = c;
-			}
-			break;
-
-		case 3:
-			j = 7 - x;
-			a = ((index << 4) | (j << 1));
-
-			for (byte k = 0; k < 8; k++)
-			{
-				c = vram[a] & (1 << k) ? 1 : 0;
-				c |= vram[a+1] & (1 << k) ? 2 : 0;
-				pix[k] = c;
-			}
-			break;
-	}
+	if (tile & (1 << 10)) // Horizontal Flip
+		for (int k = 0; k < 8; ++k)
+		{
+			pix[k] = ((vram[0] >> k) & 1) | (((vram[1] >> k) & 1) << 1);
+		}
+	else
+		for (int k = 0; k < 8; ++k)
+		{
+			pix[7 - k] = ((vram[0] >> k) & 1) | (((vram[1] >> k) & 1) << 1);
+		}
 
 	return pix;
 }
@@ -136,9 +93,9 @@ static inline void tilebuf()
 	int i, cnt, base;
 	byte *tilemap, *attrmap;
 	int *tilebuf;
-	short const *wrap;
+	const int *wrap;
 
-	static const short wraptable[64] = {
+	const int wraptable[64] = {
 		0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
 		0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,-32
 	};
@@ -167,7 +124,7 @@ static inline void tilebuf()
 		else
 			for (i = cnt; i > 0; i--)
 			{
-				*(tilebuf++) = (256 + ((n8)*tilemap))
+				*(tilebuf++) = (0x100 + ((n8)*tilemap))
 					| (((int)*attrmap & 0x08) << 6)
 					| (((int)*attrmap & 0x60) << 5);
 				*(tilebuf++) = (((int)*attrmap & 0x07) << 2);
@@ -186,7 +143,7 @@ static inline void tilebuf()
 		else
 			for (i = cnt; i > 0; i--)
 			{
-				*(tilebuf++) = (256 + ((n8)*(tilemap++)));
+				*(tilebuf++) = (0x100 + ((n8)*(tilemap++)));
 				tilemap += *(wrap++);
 			}
 	}
@@ -209,15 +166,15 @@ static inline void tilebuf()
 				*(tilebuf++) = *(tilemap++)
 					| (((int)*attrmap & 0x08) << 6)
 					| (((int)*attrmap & 0x60) << 5);
-				*(tilebuf++) = (((int)*(attrmap++)&7) << 2);
+				*(tilebuf++) = (((int)*(attrmap++)&0x7) << 2);
 			}
 		else
 			for (i = cnt; i > 0; i--)
 			{
-				*(tilebuf++) = (256 + ((n8)*(tilemap++)))
+				*(tilebuf++) = (0x100 + ((n8)*(tilemap++)))
 					| (((int)*attrmap & 0x08) << 6)
 					| (((int)*attrmap & 0x60) << 5);
-				*(tilebuf++) = (((int)*(attrmap++)&7) << 2);
+				*(tilebuf++) = (((int)*(attrmap++)&0x7) << 2);
 			}
 	}
 	else
@@ -227,7 +184,7 @@ static inline void tilebuf()
 				*(tilebuf++) = *(tilemap++);
 		else
 			for (i = cnt; i > 0; i--)
-				*(tilebuf++) = (256 + ((n8)*(tilemap++)));
+				*(tilebuf++) = (0x100 + ((n8)*(tilemap++)));
 	}
 }
 
@@ -384,40 +341,41 @@ static inline void wnd_scan_color()
 	}
 }
 
-static inline void spr_enum()
+static inline int spr_enum()
 {
-	int i, j, l, x, v, pat;
-	struct obj *o;
+	if (!(R_LCDC & 0x02))
+		return 0;
+
 	vissprite_t ts[10];
+	int line = R_LY;
+	int NS = 0;
 
-	NS = 0;
-	if (!(R_LCDC & 0x02)) return;
-
-	o = lcd.oam.obj;
-
-	for (i = 40; i; i--, o++)
+	for (int i = 0; i < 40; ++i)
 	{
-		if (SL >= o->y || SL + 16 < o->y)
+		obj_t *obj = &lcd.oam.obj[i];
+		int v, pat;
+
+		if (line >= obj->y || line + 16 < obj->y)
 			continue;
-		if (SL + 8 >= o->y && !(R_LCDC & 0x04))
+		if (line + 8 >= obj->y && !(R_LCDC & 0x04))
 			continue;
 
-		VS[NS].x = (int)o->x - 8;
-		v = SL - (int)o->y + 16;
+		VS[NS].x = (int)obj->x - 8;
+		v = line - (int)obj->y + 16;
 
 		if (hw.cgb)
 		{
-			pat = o->pat | (((int)o->flags & 0x60) << 5)
-				| (((int)o->flags & 0x08) << 6);
-			VS[NS].pal = 32 + ((o->flags & 0x07) << 2);
+			pat = obj->pat | (((int)obj->flags & 0x60) << 5)
+				| (((int)obj->flags & 0x08) << 6);
+			VS[NS].pal = 32 + ((obj->flags & 0x07) << 2);
 		}
 		else
 		{
-			pat = o->pat | (((int)o->flags & 0x60) << 5);
-			VS[NS].pal = 32 + ((o->flags & 0x10) >> 2);
+			pat = obj->pat | (((int)obj->flags & 0x60) << 5);
+			VS[NS].pal = 32 + ((obj->flags & 0x10) >> 2);
 		}
 
-		VS[NS].pri = (o->flags & 0x80) >> 7;
+		VS[NS].pri = (obj->flags & 0x80) >> 7;
 
 		if ((R_LCDC & 0x04))
 		{
@@ -427,7 +385,7 @@ static inline void spr_enum()
 				v -= 8;
 				pat++;
 			}
-			if (o->flags & 0x40) pat ^= 1;
+			if (obj->flags & 0x40) pat ^= 1;
 		}
 
 		VS[NS].pat = pat;
@@ -440,11 +398,11 @@ static inline void spr_enum()
 	if (!hw.cgb)
 	{
 		/* not quite optimal but it finally works! */
-		for (i = 0; i < NS; i++)
+		for (int i = 0; i < NS; ++i)
 		{
-			l = 0;
-			x = VS[0].x;
-			for (j = 1; j < NS; j++)
+			int l = 0;
+			int x = VS[0].x;
+			for (int j = 1; j < NS; ++j)
 			{
 				if (VS[j].x < x)
 				{
@@ -458,20 +416,19 @@ static inline void spr_enum()
 
 		memcpy(VS, ts, sizeof(ts));
 	}
+
+	return NS;
 }
 
-static inline void spr_scan()
+static inline void spr_scan(int ns)
 {
 	byte *src, *dest, *bg, *pri;
-	int i, b, ns, x, pal;
+	int i, b, x, pal;
 	vissprite_t *vs;
-	static byte bgdup[256];
-
-	if (!NS) return;
+	byte bgdup[256];
 
 	memcpy(bgdup, BUF, 256);
 
-	ns = NS;
 	vs = &VS[ns-1];
 
 	for (; ns; ns--, vs--)
@@ -545,6 +502,8 @@ static inline void lcd_renderline()
 	if (!(R_LCDC & 0x80))
 		return; /* should not happen... */
 
+	int SX, SY, SL, NS;
+
 	SL = R_LY;
 	SX = R_SCX;
 	SY = (R_SCY + SL) & 0xff;
@@ -566,7 +525,7 @@ static inline void lcd_renderline()
 		WT %= 12;
 	}
 
-	spr_enum();
+	NS = spr_enum();
 	tilebuf();
 
 	if (hw.cgb)
@@ -585,13 +544,20 @@ static inline void lcd_renderline()
 		wnd_scan();
 		blendcpy(BUF+WX, BUF+WX, 0x04, 160-WX);
 	}
-	spr_scan();
 
-	int cnt = 160;
-	un16* dst = (un16*)vdest;
-	byte* src = BUF;
+	spr_scan(NS);
 
-	while (cnt--) *(dst++) = PAL2[*(src++)];
+	if (fb.format == GB_PIXEL_PALETTED)
+	{
+		memcpy(vdest, BUF, 160);
+	}
+	else
+	{
+		un16* dst = (un16*)vdest;
+
+		for (int i = 0; i < 160; ++i)
+			dst[i] = PAL[BUF[i]];
+	}
 
 	vdest += fb.pitch;
 }
@@ -599,7 +565,7 @@ static inline void lcd_renderline()
 static inline void pal_update(byte i)
 {
 	int low = lcd.pal[i << 1];
-	int  high = lcd.pal[(i << 1) | 1];
+	int high = lcd.pal[(i << 1) | 1];
 
 	int c = (low | (high << 8)) & 0x7fff;
 
@@ -607,10 +573,10 @@ static inline void pal_update(byte i)
 	int g = (c >> 5) & 0x1f;  // bit 5-9 green
 	int b = (c >> 10) & 0x1f; // bit 10-14 blue
 
-	PAL2[i] = (r << 11) | (g << (5 + 1)) | (b);
+	PAL[i] = (r << 11) | (g << (5 + 1)) | (b);
 
-	if (fb.byteorder == 1) {
-		PAL2[i] = (PAL2[i] << 8) | (PAL2[i] >> 8);
+	if (fb.format == GB_PIXEL_565_BE) {
+		PAL[i] = (PAL[i] << 8) | (PAL[i] >> 8);
 	}
 }
 
@@ -833,7 +799,7 @@ void IRAM_ATTR lcd_emulate()
 		/* LCDC operation disabled (short route) */
 		while (CYCLES <= 0)
 		{
-			switch ((byte)(R_STAT & 3))
+			switch (R_STAT & 3)
 			{
 			case 0: /* hblank */
 			case 1: /* vblank */
@@ -860,7 +826,7 @@ void IRAM_ATTR lcd_emulate()
 
 	while (CYCLES <= 0)
 	{
-		switch ((byte)(R_STAT & 3))
+		switch (R_STAT & 3)
 		{
 		case 0:
 			/* hblank -> */
@@ -891,8 +857,8 @@ void IRAM_ATTR lcd_emulate()
 			/* vblank -> */
 			if (!(hw.ilines & IF_VBLANK))
 			{
-				CYCLES += 218;
 				hw_interrupt(IF_VBLANK, IF_VBLANK);
+				CYCLES += 218;
 				break;
 			}
 			if (R_LY == 0)

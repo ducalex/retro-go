@@ -384,15 +384,10 @@ static inline void sound_advance(int cnt)
 	snd.cycles += cnt;
 }
 
-/* cnt - time to emulate, expressed in 2MHz units */
-void cpu_timers(int cnt)
+/* burn cpu cycles without running any instructions */
+void cpu_burn(int cycles)
 {
-	cnt <<= 1;
-	timer_advance(cnt);
-	serial_advance(cnt);
-	cnt >>= cpu.speed;
-	lcdc_advance(cnt);
-	sound_advance(cnt);
+
 }
 
 /* cpu_emulate()
@@ -404,7 +399,7 @@ void cpu_timers(int cnt)
 	Might emulate up to cycles+(11) time units (longest op takes 12
 	cycles in single-speed mode)
 */
-int IRAM_ATTR cpu_emulate(int cycles)
+int cpu_emulate(int cycles)
 {
 	int clen, i = cycles;
 	byte op, cbop, b;

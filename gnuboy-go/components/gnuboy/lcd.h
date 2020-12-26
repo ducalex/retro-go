@@ -8,11 +8,19 @@
 
 typedef struct
 {
-	short pat;
-	short x;
-	short v;
-	byte pal;
-	byte pri;
+	byte y;
+	byte x;
+	byte pat;
+	byte flags;
+} obj_t;
+
+typedef struct
+{
+	int pat;
+	int x;
+	int v;
+	int pal;
+	int pri;
 } vissprite_t;
 
 struct scan
@@ -26,40 +34,36 @@ struct scan
 	int ns, l, x, y, s, t, u, v, wx, wy, wt, wv;
 };
 
-struct obj
-{
-	byte y;
-	byte x;
-	byte pat;
-	byte flags;
-};
-
 struct lcd
 {
 	byte vbank[2][8192];
 	union
 	{
 		byte mem[256];
-		struct obj obj[40];
+		obj_t obj[40];
 	} oam;
 	byte pal[128];
 
 	int cycles;
 };
 
+enum {
+	GB_PIXEL_PALETTED,
+	GB_PIXEL_565_LE,
+	GB_PIXEL_565_BE,
+};
+
 struct fb
 {
 	byte *ptr;
 	int w, h;
-	int pixelsize;
 	int pitch;
-	int byteorder;
+	int format;
 	int enabled;
 	void (*blit_func)();
 };
 
 extern struct lcd lcd;
-extern struct scan scan;
 extern struct fb fb;
 
 extern int enable_window_offset_hack;

@@ -220,11 +220,10 @@ void app_main(void)
     memset(&fb, 0, sizeof(fb));
     fb.w = GB_WIDTH;
     fb.h = GB_HEIGHT;
-    fb.pixelsize = 2;
-    fb.pitch = fb.w * fb.pixelsize;
+    fb.format = GB_PIXEL_565_BE;
+    fb.pitch = update1.stride;
     fb.ptr = currentUpdate->buffer;
     fb.enabled = 1;
-    fb.byteorder = 1;
     fb.blit_func = &screen_blit;
 
     // Audio
