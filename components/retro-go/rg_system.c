@@ -369,7 +369,7 @@ char* rg_emu_get_path(emu_path_type_t type, const char *_romPath)
             break;
 
         case EMU_PATH_TEMP_FILE:
-            sprintf(buffer, "%s/%X%X.tmp", RG_BASE_PATH_TEMP, get_elapsed_time(), rand());
+            sprintf(buffer, "%s/%X%X.tmp", RG_BASE_PATH_TEMP, (uint32_t)get_elapsed_time(), rand());
             break;
 
         case EMU_PATH_ROM_FILE:

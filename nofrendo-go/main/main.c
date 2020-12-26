@@ -267,10 +267,10 @@ void osd_shutdown()
 // We've reached vsync. We need to process audio and sleep if we ran too fast
 void osd_vsync()
 {
-    static uint32_t skipFrames = 0;
-    static uint32_t lastSyncTime = 0;
+    static int32_t skipFrames = 0;
+    static int64_t lastSyncTime = 0;
 
-    int elapsed = get_elapsed_time_since(lastSyncTime);
+    long elapsed = get_elapsed_time_since(lastSyncTime);
 
     if (skipFrames == 0)
     {

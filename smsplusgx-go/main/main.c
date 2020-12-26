@@ -164,8 +164,7 @@ void app_main(void)
     update1.buffer += bitmap.viewport.x;
     update2.buffer += bitmap.viewport.x;
 
-    const int refresh_rate = (sms.display == DISPLAY_NTSC) ? FPS_NTSC : FPS_PAL;
-    const int frameTime = get_frame_time(refresh_rate);
+    const long frameTime = get_frame_time(sms.display == DISPLAY_NTSC ? 60 : 50);
     bool fullFrame = false;
 
     while (true)
@@ -179,7 +178,7 @@ void app_main(void)
             rg_gui_game_settings_menu(NULL);
         }
 
-        uint32_t startTime = get_elapsed_time();
+        int64_t startTime = get_elapsed_time();
         bool drawFrame = !skipFrames;
 
         input.pad[0] = 0x00;
@@ -301,7 +300,7 @@ void app_main(void)
             bitmap.data = currentUpdate->buffer - bitmap.viewport.x;
         }
 
-        int elapsed = get_elapsed_time_since(startTime);
+        long elapsed = get_elapsed_time_since(startTime);
 
         // See if we need to skip a frame to keep up
         if (skipFrames == 0)

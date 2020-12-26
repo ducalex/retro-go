@@ -208,7 +208,7 @@ extern "C" void app_main(void)
             rg_gui_game_settings_menu(options);
         }
 
-        uint32_t startTime = get_elapsed_time();
+        int64_t startTime = get_elapsed_time();
         bool drawFrame = !skipFrames;
 
         ULONG buttons = 0;
@@ -234,7 +234,7 @@ extern "C" void app_main(void)
             gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;
         }
 
-        int elapsed = get_elapsed_time_since(startTime);
+        long elapsed = get_elapsed_time_since(startTime);
 
         // See if we need to skip a frame to keep up
         if (skipFrames == 0)

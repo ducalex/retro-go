@@ -264,7 +264,7 @@ void app_main(void)
             rg_gui_game_settings_menu(options);
         }
 
-        uint32_t startTime = get_elapsed_time();
+        int64_t startTime = get_elapsed_time();
         bool drawFrame = !skipFrames;
 
         pad_set(PAD_UP, joystick.values[GAMEPAD_KEY_UP]);
@@ -293,7 +293,7 @@ void app_main(void)
             }
         }
 
-        int elapsed = get_elapsed_time_since(startTime);
+        long elapsed = get_elapsed_time_since(startTime);
 
         if (skipFrames == 0)
         {

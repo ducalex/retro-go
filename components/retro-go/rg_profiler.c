@@ -71,7 +71,7 @@ NO_PROFILE void rg_profiler_print(void)
 
     LOCK_PROFILE();
 
-    printf("RGD:PROF:BEGIN %d %d\n", profile->total_frames, get_elapsed_time_since(profile->time_started));
+    printf("RGD:PROF:BEGIN %d %lld\n", profile->total_frames, get_elapsed_time_since(profile->time_started));
 
     for (int i = 0; i < profile->total_frames; ++i)
     {
@@ -106,7 +106,7 @@ NO_PROFILE void __cyg_profile_func_enter(void *this_fn, void *call_site)
     if (!enabled)
         return;
 
-    uint32_t now = get_elapsed_time();
+    int64_t now = get_elapsed_time();
 
     LOCK_PROFILE();
 
@@ -127,7 +127,7 @@ NO_PROFILE void __cyg_profile_func_exit(void *this_fn, void *call_site)
     if (!enabled)
         return;
 
-    uint32_t now = get_elapsed_time();
+    int64_t now = get_elapsed_time();
 
     LOCK_PROFILE();
 

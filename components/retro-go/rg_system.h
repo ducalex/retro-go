@@ -76,7 +76,7 @@ typedef struct
     float totalFPS;
     float emulatedSpeed;
     float busyPercent;
-    uint32_t lastTickTime;
+    uint64_t lastTickTime;
     uint32_t freeMemoryInt;
     uint32_t freeMemoryExt;
     uint32_t freeBlockInt;
@@ -136,9 +136,12 @@ void rg_free(void *ptr);
 extern int64_t esp_timer_get_time();
 extern void heap_caps_malloc_extmem_enable(size_t limit);
 
-#define get_frame_time(refresh_rate) (uint32_t)(1000000 / (refresh_rate))
-#define get_elapsed_time() (uint32_t)esp_timer_get_time()
-#define get_elapsed_time_since(start) (uint32_t)(esp_timer_get_time() - (start))
+// long microseconds
+#define get_frame_time(refresh_rate) (1000000 / (refresh_rate))
+// int64_t microseconds
+#define get_elapsed_time() esp_timer_get_time()
+// int64_t microseconds
+#define get_elapsed_time_since(start) (esp_timer_get_time() - (start))
 
 #define RG_MIN(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
 #define RG_MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })

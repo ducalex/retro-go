@@ -8,11 +8,9 @@
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include <sys/socket.h>
 #include <rg_system.h>
 #include <string.h>
 #include <ctype.h>
-#include <sys/time.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -40,6 +38,8 @@ static int fullFrames = 0;
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 / 5)
 
 static short audiobuffer[AUDIO_BUFFER_LENGTH * 2];
+
+static rg_app_desc_t *app;
 
 #ifdef ENABLE_NETPLAY
 static bool netplay = false;
@@ -150,7 +150,6 @@ void osd_gfx_blit(void)
     // See if we need to skip a frame to keep up
     if (skipFrames == 0)
     {
-        rg_app_desc_t *app = rg_system_get_app();
 #ifndef USE_PARTIAL_FRAMES
         skipFrames++;
 #endif
@@ -265,37 +264,34 @@ void osd_log(const char *format, ...)
 
 void osd_vsync(void)
 {
-    const double deltatime = (1000000.0 / 60.0);
-    static double lasttime, curtime, prevtime, sleep;
-    struct timeval tp;
+    const int32_t frametime = get_frame_time(60);
+    static int64_t lasttime, prevtime;
 
-    gettimeofday(&tp, NULL);
-    curtime = tp.tv_sec * 1000000.0 + tp.tv_usec;
+    int64_t curtime = get_elapsed_time();
+    int32_t sleep = frametime - (curtime - lasttime);
 
-    sleep = lasttime + deltatime - curtime;
-
-    if (sleep > 0)
+    if (sleep > frametime)
     {
-        tp.tv_sec = 0;
-        tp.tv_usec = sleep;
-        select(1, NULL, NULL, NULL, &tp);
+        MESSAGE_ERROR("Our vsync timer seems to have overflowed! (%dus)\n", sleep);
+    }
+    else if (sleep > 0)
+    {
         usleep(sleep);
     }
-    else if (sleep < -8333.0)
+    else if (sleep < -(frametime / 2))
     {
         skipFrames++;
     }
 
-    rg_system_tick(blitFrames == 0, fullFrames > 0, (uint32_t)(curtime - prevtime));
+    rg_system_tick(blitFrames == 0, fullFrames > 0, curtime - prevtime);
     blitFrames = 0;
     fullFrames = 0;
 
-    gettimeofday(&tp, NULL);
-    curtime = prevtime = tp.tv_sec * 1000000.0 + tp.tv_usec;
-    lasttime += deltatime;
+    prevtime = get_elapsed_time();
+    lasttime += frametime;
 
-    if ((lasttime + deltatime) < curtime)
-        lasttime = curtime;
+    if ((lasttime + frametime) < prevtime)
+        lasttime = prevtime;
 }
 
 void *osd_alloc(size_t size)
@@ -323,7 +319,7 @@ void app_main(void)
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     rg_emu_init(&load_state, &save_state, NULL);
 
-    rg_app_desc_t *app = rg_system_get_app();
+    app = rg_system_get_app();
 
     InitPCE(app->romPath);
 

@@ -14,10 +14,10 @@ typedef struct
 
 typedef struct
 {
-    uint64_t time_started;
-    uint64_t time_stopped;
-    uint32_t total_frames;
-    uint32_t locked;
+    int64_t time_started;
+    int64_t time_stopped;
+    int32_t total_frames;
+    int32_t locked;
     profile_frame_t frames[512];
 } profile_t;
 

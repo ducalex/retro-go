@@ -10,9 +10,9 @@
 #include "rg_system.h"
 #include "rg_input.h"
 
-static volatile bool input_task_is_running = false;
-static volatile bool use_external_gamepad = 0;
-static volatile uint32_t last_gamepad_read = 0;
+static bool input_task_is_running = false;
+static bool use_external_gamepad = 0;
+static int64_t last_gamepad_read = 0;
 static gamepad_state_t gamepad_state;
 static SemaphoreHandle_t xSemaphore;
 
