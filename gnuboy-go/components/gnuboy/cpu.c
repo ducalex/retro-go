@@ -6,6 +6,10 @@
 #include "mem.h"
 #include "sound.h"
 
+// For cycle accurate emulation this needs to be 1
+// Anything above 10 have diminishing returns
+#define COUNTERS_TICK_PERIOD 8
+
 static const byte cycles_table[256] =
 {
 	1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1,
@@ -165,45 +169,21 @@ A = LB(acc); }
 #define XOR(n) { A ^= (n); F = ZFLAG(A); }
 #define OR(n)  { A |= (n); F = ZFLAG(A); }
 
-#define RLCA(r) { (r) = ((r)>>7) | ((r)<<1); \
-F = (((r)&0x01)<<4); }
-
-#define RRCA(r) { (r) = ((r)<<7) | ((r)>>1); \
-F = (((r)&0x80)>>3); }
-
-#define RLA(r) { \
-LB(acc) = (((r)&0x80)>>3); \
-(r) = ((r)<<1) | ((F&FC)>>4); \
-F = LB(acc); }
-
-#define RRA(r) { \
-LB(acc) = (((r)&0x01)<<4); \
-(r) = ((r)>>1) | ((F&FC)<<3); \
-F = LB(acc); }
+#define RLCA(r) { (r) = ((r)>>7) | ((r)<<1); F = (((r)&0x01)<<4); }
+#define RRCA(r) { (r) = ((r)<<7) | ((r)>>1); F = (((r)&0x80)>>3); }
+#define RLA(r) { LB(acc) = (((r)&0x80)>>3); (r) = ((r)<<1) | ((F&FC)>>4); F = LB(acc); }
+#define RRA(r) { LB(acc) = (((r)&0x01)<<4); (r) = ((r)>>1) | ((F&FC)<<3); F = LB(acc); }
 
 #define RLC(r) { RLCA(r); F |= ZFLAG(r); }
 #define RRC(r) { RRCA(r); F |= ZFLAG(r); }
 #define RL(r)  { RLA(r); F |= ZFLAG(r); }
 #define RR(r)  { RRA(r); F |= ZFLAG(r); }
 
-#define SLA(r) { \
-LB(acc) = (((r)&0x80)>>3); \
-(r) <<= 1; \
-F = ZFLAG((r)) | LB(acc); }
+#define SLA(r) { LB(acc) = (((r)&0x80)>>3); (r) <<= 1; F = ZFLAG((r)) | LB(acc); }
+#define SRA(r) { LB(acc) = (((r)&0x01)<<4); (r) = (un8)(((n8)(r))>>1); F = ZFLAG((r)) | LB(acc); }
+#define SRL(r) { LB(acc) = (((r)&0x01)<<4); (r) >>= 1; F = ZFLAG((r)) | LB(acc); }
 
-#define SRA(r) { \
-LB(acc) = (((r)&0x01)<<4); \
-(r) = (un8)(((n8)(r))>>1); \
-F = ZFLAG((r)) | LB(acc); }
-
-#define SRL(r) { \
-LB(acc) = (((r)&0x01)<<4); \
-(r) >>= 1; \
-F = ZFLAG((r)) | LB(acc); }
-
-#define CPL(r) { \
-(r) = ~(r); \
-F |= (FH|FN); }
+#define CPL(r) { (r) = ~(r); F |= (FH|FN); }
 
 #define SCF { F = (F & (FZ)) | FC; }
 #define CCF { F = (F & (FZ|FC)) ^ FC; }
@@ -265,8 +245,6 @@ label: op(b); break;
 #define JR ( PC += 1+(n8)readb(PC) )
 #define JP ( PC = readw(PC) )
 
-#define CALL ( PUSH(PC+2), JP )
-
 #define NOJR   ( clen--,  PC++ )
 #define NOJP   ( clen--,  PC+=2 )
 #define NOCALL ( clen-=3, PC+=2 )
@@ -274,23 +252,16 @@ label: op(b); break;
 
 #define RST(n) { PUSH(PC); PC = (n); }
 
+#define CALL ( PUSH(PC+2), JP )
 #define RET ( POP(PC) )
 
 #define EI ( IMA = 1 )
 #define DI ( cpu.halt = IMA = IME = 0 )
 
-
-#define COND_EXEC_INT(i, n) if (IF & IE & i) { DI; PUSH(PC); IF &= ~i; PC = 0x40+((n)<<3); clen = 5; goto _skip; }
+#define COND_EXEC_INT(i, n) if (IF & i) { DI; PUSH(PC); IF &= ~i; PC = 0x40+((n)<<3); clen = 5; goto _skip; }
 
 
 cpu_t cpu;
-
-
-/* A:
-	Set lcdc ahead of cpu by 19us (matches minimal hblank duration according
-	to some docs). Value from lcd.cycles (when positive) is used to drive CPU,
-	setting some ahead-time at startup is necessary to begin emulation.
-*/
 
 
 void cpu_reset()
@@ -299,8 +270,12 @@ void cpu_reset()
 	cpu.halt = 0;
 	cpu.div = 0;
 	cpu.timer = 0;
-	/* set lcdc ahead of cpu by 19us; see A */
-	/* FIXME: leave value at 0, use lcd_emulate() to actually send lcdc ahead */
+	/* set lcdc ahead of cpu by 19us; see A
+			Set lcdc ahead of cpu by 19us (matches minimal hblank duration according
+			to some docs). Value from lcd.cycles (when positive) is used to drive CPU,
+			setting some ahead-time at startup is necessary to begin emulation.
+	FIXME: leave value at 0, use lcd_emulate() to actually send lcdc ahead
+	*/
 	lcd.cycles = 40;
 
 	IME = 0;
@@ -317,46 +292,40 @@ void cpu_reset()
 	if (hw.gba) B = 0x01;
 }
 
-/* cnt - time to emulate, expressed in 2MHz units in
-	single-speed and 4MHz units in double speed mode
-*/
-static inline void timer_advance(int cnt)
+/* cnt - time to emulate, expressed in real clock cycles */
+static inline void timer_advance(int cycles)
 {
-	cpu.div += (cnt << 1);
+	cpu.div += (cycles << 2);
 
-	if (cpu.div >= 256)
+	R_DIV += (cpu.div >> 8);
+
+	cpu.div &= 0xff;
+
+	if (R_TAC & 0x04)
 	{
-		R_DIV += (cpu.div >> 8);
-		cpu.div &= 0xff;
-	}
+		cpu.timer += (cycles << ((((-R_TAC) & 3) << 1) + 1));
 
-	if (!(R_TAC & 0x04)) return;
-
-	int unit = ((-R_TAC) & 3) << 1;
-	cpu.timer += (cnt << unit);
-
-	if (cpu.timer >= 512)
-	{
-		int tima = R_TIMA + (cpu.timer >> 9);
-		cpu.timer &= 0x1ff;
-		if (tima >= 256)
+		if (cpu.timer >= 512)
 		{
-			hw_interrupt(IF_TIMER, IF_TIMER);
-			hw_interrupt(0, IF_TIMER);
-			tima = R_TMA;
+			int tima = R_TIMA + (cpu.timer >> 9);
+			cpu.timer &= 0x1ff;
+			if (tima >= 256)
+			{
+				hw_interrupt(IF_TIMER, IF_TIMER);
+				hw_interrupt(0, IF_TIMER);
+				tima = R_TMA;
+			}
+			R_TIMA = tima;
 		}
-		R_TIMA = tima;
 	}
 }
 
-/* cnt - time to emulate, expressed in 2MHz units in
-	single-speed and 4MHz units in double speed mode
-*/
-static inline void serial_advance(int cnt)
+/* cnt - time to emulate, expressed in real clock cycles */
+static inline void serial_advance(int cycles)
 {
 	if (hw.serial > 0)
 	{
-		hw.serial -= cnt;
+		hw.serial -= cycles << 1;
 		if (hw.serial <= 0)
 		{
 			R_SB = 0xFF;
@@ -368,20 +337,20 @@ static inline void serial_advance(int cnt)
 	}
 }
 
-/* cnt - time to emulate, expressed in 2MHz units
+/* cnt - time to emulate, expressed in double-speed cycles
 	Will call lcd_emulate() if CPU emulation catched up or
 	went ahead of LCDC, so that lcd never falls	behind
 */
-static inline void lcdc_advance(int cnt)
+static inline void lcdc_advance(int cycles)
 {
-	lcd.cycles -= cnt;
+	lcd.cycles -= cycles;
 	if (lcd.cycles <= 0) lcd_emulate();
 }
 
-/* cnt - time to emulate, expressed in 2MHz units */
-static inline void sound_advance(int cnt)
+/* cnt - time to emulate, expressed in double-speed cycles */
+static inline void sound_advance(int cycles)
 {
-	snd.cycles += cnt;
+	snd.cycles += cycles;
 }
 
 /* burn cpu cycles without running any instructions */
@@ -393,7 +362,7 @@ void cpu_burn(int cycles)
 /* cpu_emulate()
 	Emulate CPU for time no less than specified
 
-	cycles - time to emulate, expressed in 2MHz units
+	cycles - time to emulate, expressed in double-speed cycles
 	returns number of cycles emulated
 
 	Might emulate up to cycles+(11) time units (longest op takes 12
@@ -401,11 +370,14 @@ void cpu_burn(int cycles)
 */
 int cpu_emulate(int cycles)
 {
-	int clen, i = cycles;
-	byte op, cbop, b;
-	// word temp;
-	int temp;
-	static cpu_reg_t acc;
+	int clen, temp;
+	int remaining = cycles;
+	int count = 0;
+	byte op, b;
+	cpu_reg_t acc;
+
+	if (cpu.speed == 0)
+		remaining >>= 1;
 
 next:
 	/* Skip idle cycles */
@@ -425,8 +397,8 @@ next:
 	}
 	IME = IMA;
 
-	if (cpu.disassemble)
-		debug_disassemble(PC, 1);
+	// if (cpu.disassemble)
+	// 	debug_disassemble(PC, 1);
 
 	op = FETCH;
 	clen = cycles_table[op];
@@ -869,9 +841,9 @@ next:
 		break;
 
 	case 0xCB: /* CB prefix */
-		cbop = FETCH;
-		clen = cb_cycles_table[cbop];
-		switch (cbop)
+		op = FETCH;
+		clen = cb_cycles_table[op];
+		switch (op)
 		{
 			CB_REG_CASES(B, 0);
 			CB_REG_CASES(C, 1);
@@ -882,11 +854,11 @@ next:
 			CB_REG_CASES(A, 7);
 		default:
 			b = readb(HL);
-			switch(cbop)
+			switch (op)
 			{
 				CB_REG_CASES(b, 6);
 			}
-			if ((cbop & 0xC0) != 0x40) /* exclude BIT */
+			if ((op & 0xC0) != 0x40) /* exclude BIT */
 				writeb(HL, b);
 			break;
 		}
@@ -900,15 +872,30 @@ next:
 	}
 
 _skip:
-	/* Advance time counters */
-	clen <<= 1;
-	timer_advance(clen);
-	serial_advance(clen);
-	clen >>= cpu.speed;
-	lcdc_advance(clen);
-	sound_advance(clen);
 
-	i -= clen;
-	if (i > 0) goto next;
-	return cycles-i;
+	remaining -= clen;
+	count += clen;
+
+#if COUNTERS_TICK_PERIOD > 1
+	if (count > COUNTERS_TICK_PERIOD || remaining <= 0)
+#endif
+	{
+		/* Advance clock-bound counters */
+		timer_advance(count);
+		serial_advance(count);
+
+		if (cpu.speed == 0)
+			count <<= 1;
+
+		/* Advance fixed-speed counters */
+		lcdc_advance(count);
+		sound_advance(count);
+
+		count = 0;
+	}
+
+	if (remaining > 0)
+		goto next;
+
+	return cycles + -remaining;
 }

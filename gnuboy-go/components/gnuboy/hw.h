@@ -19,6 +19,7 @@
 #define IF_TIMER  0x04
 #define IF_SERIAL 0x08
 #define IF_PAD    0x10
+#define IF_MASK   0x1F
 
 typedef struct
 {

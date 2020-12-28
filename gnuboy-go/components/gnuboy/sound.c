@@ -121,20 +121,24 @@ void sound_reset()
 
 void IRAM_ATTR sound_mix()
 {
-	int s, l, r, f, n;
+	int s, f;
 
-	if (!RATE || snd.cycles < RATE) return;
+	if (!RATE || snd.cycles < RATE)
+		return;
 
 	for (; snd.cycles >= RATE; snd.cycles -= RATE)
 	{
-		l = r = 0;
+		int l = 0;
+		int r = 0;
 
 		if (S1.on)
 		{
 			s = sqwave[R_NR11>>6][(S1.pos>>18)&7] & S1.envol;
 			S1.pos += S1.freq;
+
 			if ((R_NR14 & 64) && ((S1.cnt += RATE) >= S1.len))
 				S1.on = 0;
+
 			if (S1.enlen && (S1.encnt += RATE) >= S1.enlen)
 			{
 				S1.encnt -= S1.enlen;
@@ -142,13 +146,17 @@ void IRAM_ATTR sound_mix()
 				if (S1.envol < 0) S1.envol = 0;
 				if (S1.envol > 15) S1.envol = 15;
 			}
+
 			if (S1.swlen && (S1.swcnt += RATE) >= S1.swlen)
 			{
 				S1.swcnt -= S1.swlen;
 				f = S1.swfreq;
-				n = (R_NR10 & 7);
-				if (R_NR10 & 8) f -= (f >> n);
-				else f += (f >> n);
+
+				if (R_NR10 & 8)
+					f -= (f >> (R_NR10 & 7));
+				else
+					f += (f >> (R_NR10 & 7));
+
 				if (f > 2047)
 					S1.on = 0;
 				else
@@ -169,8 +177,10 @@ void IRAM_ATTR sound_mix()
 		{
 			s = sqwave[R_NR21>>6][(S2.pos>>18)&7] & S2.envol;
 			S2.pos += S2.freq;
+
 			if ((R_NR24 & 64) && ((S2.cnt += RATE) >= S2.len))
 				S2.on = 0;
+
 			if (S2.enlen && (S2.encnt += RATE) >= S2.enlen)
 			{
 				S2.encnt -= S2.enlen;
@@ -186,28 +196,40 @@ void IRAM_ATTR sound_mix()
 		if (S3.on)
 		{
 			s = WAVE[(S3.pos>>22) & 15];
-			if (S3.pos & (1<<21)) s &= 15;
-			else s >>= 4;
+
+			if (S3.pos & (1<<21))
+				s &= 15;
+			else
+				s >>= 4;
+
 			s -= 8;
 			S3.pos += S3.freq;
+
 			if ((R_NR34 & 64) && ((S3.cnt += RATE) >= S3.len))
 				S3.on = 0;
-			if (R_NR32 & 96) s <<= (3 - ((R_NR32>>5)&3));
-			else s = 0;
+
+			if (R_NR32 & 96)
+				s <<= (3 - ((R_NR32>>5)&3));
+			else
+				s = 0;
+
 			if (R_NR51 & 4) r += s;
 			if (R_NR51 & 64) l += s;
 		}
 
 		if (S4.on)
 		{
-			if (R_NR43 & 8) s = 1 & (noise7[
-				(S4.pos>>20)&15] >> (7-((S4.pos>>17)&7)));
-			else s = 1 & (noise15[
-				(S4.pos>>20)&4095] >> (7-((S4.pos>>17)&7)));
+			if (R_NR43 & 8)
+				s = 1 & (noise7[(S4.pos>>20)&15] >> (7-((S4.pos>>17)&7)));
+			else
+				s = 1 & (noise15[(S4.pos>>20)&4095] >> (7-((S4.pos>>17)&7)));
+
 			s = (-s) & S4.envol;
 			S4.pos += S4.freq;
+
 			if ((R_NR44 & 64) && ((S4.cnt += RATE) >= S4.len))
 				S4.on = 0;
+
 			if (S4.enlen && (S4.encnt += RATE) >= S4.enlen)
 			{
 				S4.encnt -= S4.enlen;
@@ -215,7 +237,9 @@ void IRAM_ATTR sound_mix()
 				if (S4.envol < 0) S4.envol = 0;
 				if (S4.envol > 15) S4.envol = 15;
 			}
+
 			s += s << 1;
+
 			if (R_NR51 & 8) r += s;
 			if (R_NR51 & 128) l += s;
 		}
