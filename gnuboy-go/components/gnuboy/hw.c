@@ -17,14 +17,14 @@ hw_t hw;
  * in doing so, raises the appropriate bit of R_IF for any interrupt
  * lines that transition from low to high.
  */
-void IRAM_ATTR hw_interrupt(byte i, byte mask)
+void hw_interrupt(byte i, byte mask)
 {
 	i &= mask;
 	R_IF |= i & (hw.ilines ^ i);
 	if (i) {
 		// HALT shouldn't even be entered when interrupts are disabled.
 		// No need to check for IME, and it works around a stall bug.
-		cpu.halt = 0;
+		cpu.halted = 0;
 	}
 	hw.ilines &= ~mask;
 	hw.ilines |= i;
@@ -37,7 +37,7 @@ void IRAM_ATTR hw_interrupt(byte i, byte mask)
  * continues running during this mode of dma, so no special tricks to
  * stall the cpu are necessary.
  */
-void IRAM_ATTR hw_dma(byte b)
+void hw_dma(byte b)
 {
 	addr_t a = ((addr_t)b) << 8;
 	for (int i = 0; i < 160; i++, a++)
@@ -45,7 +45,7 @@ void IRAM_ATTR hw_dma(byte b)
 }
 
 
-void IRAM_ATTR hw_hdma_cmd(byte c)
+void hw_hdma_cmd(byte c)
 {
 	/* Begin or cancel HDMA */
 	if ((hw.hdma|c) & 0x80)
@@ -72,7 +72,7 @@ void IRAM_ATTR hw_hdma_cmd(byte c)
 }
 
 
-void IRAM_ATTR hw_hdma()
+void hw_hdma()
 {
 	addr_t sa = ((addr_t)R_HDMA1 << 8) | (R_HDMA2&0xf0);
 	addr_t da = 0x8000 | ((addr_t)(R_HDMA3&0x1f) << 8) | (R_HDMA4&0xf0);

@@ -56,6 +56,55 @@ snd_t snd;
 #define s3_freq() {int d = 2048 - (((R_NR34&7)<<8) + R_NR33); S3.freq = (RATE > (d<<3)) ? 0 : (RATE << 21)/d;}
 #define s4_freq() {S4.freq = (freqtab[R_NR43&7] >> (R_NR43 >> 4)) * RATE; if (S4.freq >> 18) S4.freq = 1<<18;}
 
+
+static inline void s1_init()
+{
+	S1.swcnt = 0;
+	S1.swfreq = ((R_NR14&7)<<8) + R_NR13;
+	S1.envol = R_NR12 >> 4;
+	S1.endir = (R_NR12>>3) & 1;
+	S1.endir |= S1.endir - 1;
+	S1.enlen = (R_NR12 & 7) << 15;
+	if (!S1.on) S1.pos = 0;
+	S1.on = 1;
+	S1.cnt = 0;
+	S1.encnt = 0;
+}
+
+static inline void s2_init()
+{
+	S2.envol = R_NR22 >> 4;
+	S2.endir = (R_NR22>>3) & 1;
+	S2.endir |= S2.endir - 1;
+	S2.enlen = (R_NR22 & 7) << 15;
+	if (!S2.on) S2.pos = 0;
+	S2.on = 1;
+	S2.cnt = 0;
+	S2.encnt = 0;
+}
+
+static inline void s3_init()
+{
+	if (!S3.on) S3.pos = 0;
+	S3.cnt = 0;
+	S3.on = R_NR30 >> 7;
+	if (!S3.on) return;
+	for (int i = 0; i < 16; i++)
+		ram.hi[i+0x30] = 0x13 ^ ram.hi[i+0x31];
+}
+
+static inline void s4_init()
+{
+	S4.envol = R_NR42 >> 4;
+	S4.endir = (R_NR42>>3) & 1;
+	S4.endir |= S4.endir - 1;
+	S4.enlen = (R_NR42 & 7) << 15;
+	S4.on = 1;
+	S4.pos = 0;
+	S4.cnt = 0;
+	S4.encnt = 0;
+}
+
 void sound_dirty()
 {
 	S1.swlen = ((R_NR10>>4) & 7) << 14;
@@ -65,14 +114,17 @@ void sound_dirty()
 	S1.endir |= S1.endir - 1;
 	S1.enlen = (R_NR12 & 7) << 15;
 	s1_freq();
+
 	S2.len = (64-(R_NR21&63)) << 13;
 	S2.envol = R_NR22 >> 4;
 	S2.endir = (R_NR22>>3) & 1;
 	S2.endir |= S2.endir - 1;
 	S2.enlen = (R_NR22 & 7) << 15;
 	s2_freq();
+
 	S3.len = (256-R_NR31) << 20;
 	s3_freq();
+
 	S4.len = (64-(R_NR41&63)) << 13;
 	S4.envol = R_NR42 >> 4;
 	S4.endir = (R_NR42>>3) & 1;
@@ -118,11 +170,8 @@ void sound_reset()
 	R_NR52 = 0xF1;
 }
 
-
-void IRAM_ATTR sound_mix()
+void sound_mix()
 {
-	int s, f;
-
 	if (!RATE || snd.cycles < RATE)
 		return;
 
@@ -133,7 +182,7 @@ void IRAM_ATTR sound_mix()
 
 		if (S1.on)
 		{
-			s = sqwave[R_NR11>>6][(S1.pos>>18)&7] & S1.envol;
+			int s = sqwave[R_NR11>>6][(S1.pos>>18)&7] & S1.envol;
 			S1.pos += S1.freq;
 
 			if ((R_NR14 & 64) && ((S1.cnt += RATE) >= S1.len))
@@ -150,7 +199,7 @@ void IRAM_ATTR sound_mix()
 			if (S1.swlen && (S1.swcnt += RATE) >= S1.swlen)
 			{
 				S1.swcnt -= S1.swlen;
-				f = S1.swfreq;
+				int f = S1.swfreq;
 
 				if (R_NR10 & 8)
 					f -= (f >> (R_NR10 & 7));
@@ -164,7 +213,6 @@ void IRAM_ATTR sound_mix()
 					S1.swfreq = f;
 					R_NR13 = f;
 					R_NR14 = (R_NR14 & 0xF8) | (f>>8);
-					// s1_freq_d(2048 - f);
 					s1_freq();
 				}
 			}
@@ -175,7 +223,7 @@ void IRAM_ATTR sound_mix()
 
 		if (S2.on)
 		{
-			s = sqwave[R_NR21>>6][(S2.pos>>18)&7] & S2.envol;
+			int s = sqwave[R_NR21>>6][(S2.pos>>18)&7] & S2.envol;
 			S2.pos += S2.freq;
 
 			if ((R_NR24 & 64) && ((S2.cnt += RATE) >= S2.len))
@@ -195,7 +243,7 @@ void IRAM_ATTR sound_mix()
 
 		if (S3.on)
 		{
-			s = WAVE[(S3.pos>>22) & 15];
+			int s = WAVE[(S3.pos>>22) & 15];
 
 			if (S3.pos & (1<<21))
 				s &= 15;
@@ -219,6 +267,8 @@ void IRAM_ATTR sound_mix()
 
 		if (S4.on)
 		{
+			int s;
+
 			if (R_NR43 & 8)
 				s = 1 & (noise7[(S4.pos>>20)&15] >> (7-((S4.pos>>17)&7)));
 			else
@@ -276,67 +326,17 @@ void IRAM_ATTR sound_mix()
 	R_NR52 = (R_NR52&0xf0) | S1.on | (S2.on<<1) | (S3.on<<2) | (S4.on<<3);
 }
 
-
-
 byte sound_read(byte r)
 {
 	sound_mix();
-	/* printf("read %02X: %02X\n", r, REG(r)); */
 	return REG(r);
 }
 
-static inline void s1_init()
+void sound_write(byte r, byte b)
 {
-	S1.swcnt = 0;
-	S1.swfreq = ((R_NR14&7)<<8) + R_NR13;
-	S1.envol = R_NR12 >> 4;
-	S1.endir = (R_NR12>>3) & 1;
-	S1.endir |= S1.endir - 1;
-	S1.enlen = (R_NR12 & 7) << 15;
-	if (!S1.on) S1.pos = 0;
-	S1.on = 1;
-	S1.cnt = 0;
-	S1.encnt = 0;
-}
+	if (!(R_NR52 & 128) && r != RI_NR52)
+		return;
 
-static inline void s2_init()
-{
-	S2.envol = R_NR22 >> 4;
-	S2.endir = (R_NR22>>3) & 1;
-	S2.endir |= S2.endir - 1;
-	S2.enlen = (R_NR22 & 7) << 15;
-	if (!S2.on) S2.pos = 0;
-	S2.on = 1;
-	S2.cnt = 0;
-	S2.encnt = 0;
-}
-
-static inline void s3_init()
-{
-	int i;
-	if (!S3.on) S3.pos = 0;
-	S3.cnt = 0;
-	S3.on = R_NR30 >> 7;
-	if (S3.on) for (i = 0; i < 16; i++)
-		ram.hi[i+0x30] = 0x13 ^ ram.hi[i+0x31];
-}
-
-static inline void s4_init()
-{
-	S4.envol = R_NR42 >> 4;
-	S4.endir = (R_NR42>>3) & 1;
-	S4.endir |= S4.endir - 1;
-	S4.enlen = (R_NR42 & 7) << 15;
-	S4.on = 1;
-	S4.pos = 0;
-	S4.cnt = 0;
-	S4.encnt = 0;
-}
-
-
-void IRAM_ATTR sound_write(byte r, byte b)
-{
-	if (!(R_NR52 & 128) && r != RI_NR52) return;
 	if ((r & 0xF0) == 0x30)
 	{
 		if (S3.on) sound_mix();
@@ -344,7 +344,9 @@ void IRAM_ATTR sound_write(byte r, byte b)
 			WAVE[r-0x30] = ram.hi[r] = b;
 		return;
 	}
+
 	sound_mix();
+
 	switch (r)
 	{
 	case RI_NR10:

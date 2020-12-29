@@ -194,6 +194,24 @@ A = LB(acc); }
 #define RES(n,r) { (r) &= ~(1 << (n)); }
 #define SET(n,r) { (r) |= (1 << (n)); }
 
+#define JR ( PC += 1+(n8)readb(PC) )
+#define JP ( PC = readw(PC) )
+
+#define NOJR   ( clen--,  PC++ )
+#define NOJP   ( clen--,  PC+=2 )
+#define NOCALL ( clen-=3, PC+=2 )
+#define NORET  ( clen-=3 )
+
+#define RST(n) { PUSH(PC); PC = (n); }
+
+#define CALL ( PUSH(PC+2), JP )
+#define RET ( POP(PC) )
+
+#define EI ( IMA = 1 )
+#define DI ( cpu.halted = IMA = IME = 0 )
+
+#define COND_EXEC_INT(i, n) if (R_IF & i) { DI; PUSH(PC); R_IF &= ~i; PC = 0x40+((n)<<3); clen = 5; goto _skip; }
+
 #define CB_REG_CASES(r, n) \
 case 0x00|(n): RLC(r); break; \
 case 0x08|(n): RRC(r); break; \
@@ -242,32 +260,13 @@ case (base)+7: b = A; \
 label: op(b); break;
 
 
-#define JR ( PC += 1+(n8)readb(PC) )
-#define JP ( PC = readw(PC) )
-
-#define NOJR   ( clen--,  PC++ )
-#define NOJP   ( clen--,  PC+=2 )
-#define NOCALL ( clen-=3, PC+=2 )
-#define NORET  ( clen-=3 )
-
-#define RST(n) { PUSH(PC); PC = (n); }
-
-#define CALL ( PUSH(PC+2), JP )
-#define RET ( POP(PC) )
-
-#define EI ( IMA = 1 )
-#define DI ( cpu.halt = IMA = IME = 0 )
-
-#define COND_EXEC_INT(i, n) if (IF & i) { DI; PUSH(PC); IF &= ~i; PC = 0x40+((n)<<3); clen = 5; goto _skip; }
-
-
 cpu_t cpu;
 
 
 void cpu_reset()
 {
-	cpu.speed = 0;
-	cpu.halt = 0;
+	cpu.double_speed = 0;
+	cpu.halted = 0;
 	cpu.div = 0;
 	cpu.timer = 0;
 	/* set lcdc ahead of cpu by 19us; see A
@@ -376,18 +375,18 @@ int cpu_emulate(int cycles)
 	byte op, b;
 	cpu_reg_t acc;
 
-	if (cpu.speed == 0)
+	if (!cpu.double_speed)
 		remaining >>= 1;
 
 next:
 	/* Skip idle cycles */
-	if (cpu.halt) {
+	if (cpu.halted) {
 		clen = 1;
 		goto _skip;
 	}
 
 	/* Handle interrupts */
-	if (IME && (IF & IE))
+	if (IME && (R_IF & R_IE))
 	{
 		COND_EXEC_INT(IF_VBLANK, 0);
 		COND_EXEC_INT(IF_STAT, 1);
@@ -829,15 +828,15 @@ next:
 		PC++;
 		if (R_KEY1 & 1)
 		{
-			cpu.speed = cpu.speed ^ 1;
-			R_KEY1 = (R_KEY1 & 0x7E) | (cpu.speed << 7);
+			cpu.double_speed ^= 1;
+			R_KEY1 = (R_KEY1 & 0x7E) | ((cpu.double_speed & 1) << 7);
 			break;
 		}
 		/* NOTE - we do not implement dmg STOP whatsoever */
 		break;
 
 	case 0x76: /* HALT */
-		cpu.halt = 1;
+		cpu.halted = 1;
 		break;
 
 	case 0xCB: /* CB prefix */
@@ -877,20 +876,23 @@ _skip:
 	count += clen;
 
 #if COUNTERS_TICK_PERIOD > 1
-	if (count > COUNTERS_TICK_PERIOD || remaining <= 0)
+	if (count >= COUNTERS_TICK_PERIOD || remaining <= 0)
 #endif
 	{
 		/* Advance clock-bound counters */
 		timer_advance(count);
 		serial_advance(count);
 
-		if (cpu.speed == 0)
+		if (!cpu.double_speed)
 			count <<= 1;
 
 		/* Advance fixed-speed counters */
 		lcdc_advance(count);
 		sound_advance(count);
 
+		// Here we could calculate when the next event is going to happen
+		// So that we can skip even more cycles, but it doesn't seem to save
+		// much more CPU and adds lots of complexity...
 		count = 0;
 	}
 

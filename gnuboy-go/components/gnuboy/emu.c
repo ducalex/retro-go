@@ -45,7 +45,7 @@ void emu_reset()
 		visible lines x144 = 32832 dsc (15.66ms)
 		vblank lines x10 = 2280 dsc (1.08ms)
 */
-void IRAM_ATTR emu_run(bool draw)
+void emu_run(bool draw)
 {
     fb.enabled = draw;
     pcm.pos = 0;

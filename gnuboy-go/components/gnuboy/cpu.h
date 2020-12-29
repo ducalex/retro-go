@@ -27,8 +27,6 @@
 
 #define IMA cpu.ima
 #define IME cpu.ime
-#define IF R_IF
-#define IE R_IE
 
 #define FZ 0x80
 #define FN 0x40
@@ -47,10 +45,10 @@ typedef struct
 	cpu_reg_t pc, sp, bc, de, hl, af;
 
 	int ime, ima;
-	int speed;
-	int halt;
 	int timer, div;
 
+	int halted;
+	int double_speed;
 	int disassemble;
 } cpu_t;
 

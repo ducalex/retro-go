@@ -112,8 +112,8 @@ static svar_t svars[] =
 
 	I4("IME ", &cpu.ime),
 	I4("ima ", &cpu.ima),
-	I4("spd ", &cpu.speed),
-	I4("halt", &cpu.halt),
+	I4("spd ", &cpu.double_speed),
+	I4("halt", &cpu.halted),
 	I4("div ", &cpu.div),
 	I4("tim ", &cpu.timer),
 	I4("lcdc", &lcd.cycles),
@@ -303,7 +303,7 @@ int rom_load(const char *file)
 	if (strncmp(rom.name, "SIREN GB2 ", 11) == 0 || strncmp(rom.name, "DONKEY KONG", 11) == 0)
 	{
 		printf("loader: HACK: Window offset hack enabled\n");
-		enable_window_offset_hack = 1;
+		lcd.enable_window_offset_hack = 1;
 	}
 
 	return 0;

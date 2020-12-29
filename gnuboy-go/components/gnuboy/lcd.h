@@ -16,26 +16,6 @@ typedef struct
 
 typedef struct
 {
-	int pat;
-	int x;
-	int v;
-	int pal;
-	int pri;
-} vissprite_t;
-
-struct scan
-{
-	int bg[64];
-	int wnd[64];
-	byte buf[256];
-	un16 pal2[64];
-	byte pri[256];
-	vissprite_t vs[16];
-	int ns, l, x, y, s, t, u, v, wx, wy, wt, wv;
-};
-
-struct lcd
-{
 	byte vbank[2][8192];
 	union
 	{
@@ -45,7 +25,12 @@ struct lcd
 	byte pal[128];
 
 	int cycles;
-};
+
+	int dmg_selected_pal;
+
+	// Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
+	int enable_window_offset_hack;
+} lcd_t;
 
 enum {
 	GB_PIXEL_PALETTED,
@@ -53,7 +38,7 @@ enum {
 	GB_PIXEL_565_BE,
 };
 
-struct fb
+typedef struct
 {
 	byte *ptr;
 	int w, h;
@@ -61,12 +46,10 @@ struct fb
 	int format;
 	int enabled;
 	void (*blit_func)();
-};
+} fb_t;
 
-extern struct lcd lcd;
-extern struct fb fb;
-
-extern int enable_window_offset_hack;
+extern lcd_t lcd;
+extern fb_t fb;
 
 void lcd_reset();
 void lcd_emulate();

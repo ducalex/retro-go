@@ -11,8 +11,10 @@
 
 #include "palettes.h"
 
-struct fb fb;
-struct lcd lcd;
+typedef struct
+{
+	int pat, x, v, pal, pri;
+} vissprite_t;
 
 static int BG[64];
 static int WND[64];
@@ -38,17 +40,12 @@ static uint16_t dmg_pal[4][4] = {
 	GB_DEFAULT_PALETTE, GB_DEFAULT_PALETTE,
 };
 
-static int dmg_selected_pal = 0;
-
 static byte *vdest;
 
-// Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
-int enable_window_offset_hack = 0;
 
+lcd_t lcd;
+fb_t fb;
 
-/**
- * Helper macros
- */
 
 #define priused(attr) ({un32 *a = (un32*)(attr); (int)((a[0]|a[1]|a[2]|a[3]|a[4]|a[5]|a[6]|a[7])&0x80808080);})
 
@@ -90,29 +87,28 @@ static inline byte *get_patpix(int tile, int x)
 
 static inline void tilebuf()
 {
-	int i, cnt, base;
+	int cnt, base;
 	byte *tilemap, *attrmap;
 	int *tilebuf;
-	const int *wrap;
 
-	const int wraptable[64] = {
+	/* Background tiles */
+
+	const int8_t wraptable[64] = {
 		0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
 		0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,-32
 	};
-
-	/* Background tiles */
+	int8_t *wrap = wraptable + S;
 
 	base = ((R_LCDC&0x08)?0x1C00:0x1800) + (T<<5) + S;
 	tilemap = lcd.vbank[0] + base;
 	attrmap = lcd.vbank[1] + base;
 	tilebuf = BG;
-	wrap = wraptable + S;
 	cnt = ((WX + 7) >> 3) + 1;
 
 	if (hw.cgb)
 	{
 		if (R_LCDC & 0x10)
-			for (i = cnt; i > 0; i--)
+			for (int i = cnt; i > 0; i--)
 			{
 				*(tilebuf++) = *tilemap
 					| (((int)*attrmap & 0x08) << 6)
@@ -122,7 +118,7 @@ static inline void tilebuf()
 				tilemap += *(wrap++) + 1;
 			}
 		else
-			for (i = cnt; i > 0; i--)
+			for (int i = cnt; i > 0; i--)
 			{
 				*(tilebuf++) = (0x100 + ((n8)*tilemap))
 					| (((int)*attrmap & 0x08) << 6)
@@ -135,13 +131,13 @@ static inline void tilebuf()
 	else
 	{
 		if (R_LCDC & 0x10)
-			for (i = cnt; i > 0; i--)
+			for (int i = cnt; i > 0; i--)
 			{
 				*(tilebuf++) = *(tilemap++);
 				tilemap += *(wrap++);
 			}
 		else
-			for (i = cnt; i > 0; i--)
+			for (int i = cnt; i > 0; i--)
 			{
 				*(tilebuf++) = (0x100 + ((n8)*(tilemap++)));
 				tilemap += *(wrap++);
@@ -161,7 +157,7 @@ static inline void tilebuf()
 	if (hw.cgb)
 	{
 		if (R_LCDC & 0x10)
-			for (i = cnt; i > 0; i--)
+			for (int i = cnt; i > 0; i--)
 			{
 				*(tilebuf++) = *(tilemap++)
 					| (((int)*attrmap & 0x08) << 6)
@@ -169,7 +165,7 @@ static inline void tilebuf()
 				*(tilebuf++) = (((int)*(attrmap++)&0x7) << 2);
 			}
 		else
-			for (i = cnt; i > 0; i--)
+			for (int i = cnt; i > 0; i--)
 			{
 				*(tilebuf++) = (0x100 + ((n8)*(tilemap++)))
 					| (((int)*attrmap & 0x08) << 6)
@@ -180,10 +176,10 @@ static inline void tilebuf()
 	else
 	{
 		if (R_LCDC & 0x10)
-			for (i = cnt; i > 0; i--)
+			for (int i = cnt; i > 0; i--)
 				*(tilebuf++) = *(tilemap++);
 		else
-			for (i = cnt; i > 0; i--)
+			for (int i = cnt; i > 0; i--)
 				*(tilebuf++) = (0x100 + ((n8)*(tilemap++)));
 	}
 }
@@ -306,7 +302,7 @@ static inline void bg_scan_color()
 	tile = BG;
 	dest = BUF;
 
-	src = get_patpix(*(tile++),V) + U;
+	src = get_patpix(*(tile++), V) + U;
 	blendcpy(dest, src, *(tile++), 8-U);
 	dest += 8-U;
 	cnt -= 8-U;
@@ -520,7 +516,7 @@ static inline void lcd_renderline()
 
 	// Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
 	// This is a hack, the real problem is elsewhere
-	if (enable_window_offset_hack && (R_LCDC & 0x20))
+	if (lcd.enable_window_offset_hack && (R_LCDC & 0x20))
 	{
 		WT %= 12;
 	}
@@ -653,15 +649,15 @@ void pal_write_dmg(byte i, byte mapnum, byte d)
 
 void pal_set_dmg(int palette)
 {
-	dmg_selected_pal = palette % (pal_count_dmg() + 1);
+	lcd.dmg_selected_pal = palette % (pal_count_dmg() + 1);
 
-	if (dmg_selected_pal == 0) {
+	if (lcd.dmg_selected_pal == 0) {
 		pal_detect_dmg();
 	} else {
-		memcpy(&dmg_pal[0], dmg_palettes[dmg_selected_pal - 1], 8); // BGP
-		memcpy(&dmg_pal[1], dmg_palettes[dmg_selected_pal - 1], 8); // BGP
-		memcpy(&dmg_pal[2], dmg_palettes[dmg_selected_pal - 1], 8); // OBP0
-		memcpy(&dmg_pal[3], dmg_palettes[dmg_selected_pal - 1], 8); // OBP1
+		memcpy(&dmg_pal[0], dmg_palettes[lcd.dmg_selected_pal - 1], 8); // BGP
+		memcpy(&dmg_pal[1], dmg_palettes[lcd.dmg_selected_pal - 1], 8); // BGP
+		memcpy(&dmg_pal[2], dmg_palettes[lcd.dmg_selected_pal - 1], 8); // OBP0
+		memcpy(&dmg_pal[3], dmg_palettes[lcd.dmg_selected_pal - 1], 8); // OBP1
 	}
 
 	pal_dirty();
@@ -669,7 +665,7 @@ void pal_set_dmg(int palette)
 
 int pal_get_dmg()
 {
-	return dmg_selected_pal;
+	return lcd.dmg_selected_pal;
 }
 
 int pal_count_dmg()
@@ -708,9 +704,9 @@ void pal_dirty()
  * stat_trigger also updates bit 2 of R_STAT to reflect whether LY=LYC.
  */
 
-void IRAM_ATTR stat_trigger()
+void stat_trigger()
 {
-	static const byte condbits[4] = { 0x08, 0x10, 0x20, 0x00 };
+	const byte condbits[4] = { 0x08, 0x10, 0x20, 0x00 };
 	byte flag = 0;
 
 	if (R_LY == R_LYC)
@@ -746,7 +742,7 @@ static void inline stat_change(int stat)
 }
 
 
-void IRAM_ATTR lcdc_change(byte b)
+void lcdc_change(byte b)
 {
 	byte old = R_LCDC;
 	R_LCDC = b;
@@ -791,7 +787,7 @@ void IRAM_ATTR lcdc_change(byte b)
 	sprites on the line and probably other factors. States 1, 2 and 3
 	do not require precise sub-line CPU-LCDC sync, but state 0 might do.
 */
-void IRAM_ATTR lcd_emulate()
+void lcd_emulate()
 {
 	/* LCD disabled */
 	if (!(R_LCDC & 0x80))
@@ -836,7 +832,7 @@ void IRAM_ATTR lcd_emulate()
 				this better be done here or within stat_change(),
 				otherwise CPU will have a chance to run	for some time
 				before interrupt is triggered */
-				if (cpu.halt)
+				if (cpu.halted)
 				{
 					hw_interrupt(IF_VBLANK, IF_VBLANK);
 					CYCLES += 228;
