@@ -9,12 +9,11 @@ extern void h6280_irq(int);
 extern void h6280_debug(void);
 extern void h6280_print_state(void);
 
-typedef struct op
+typedef struct
 {
-   int (*func_exe)(void);
-   short addr_mode;
-   const char opname[4];
-} operation_t;
+   uint32_t addr_mode;
+   const char name[6];
+} h6280_opcode_t;
 
 typedef struct
 {
@@ -87,6 +86,5 @@ typedef signed short SWORD;
 typedef unsigned short UWORD;
 
 extern h6280_t CPU;
-extern operation_t optable_runtime[256];
 
 #endif

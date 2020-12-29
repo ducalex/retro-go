@@ -3,8 +3,6 @@
 #include "pce.h"
 
 static gfx_context_t gfx_context;
-static int line_counter = 0;
-static int last_line_counter = 0;
 
 // Active screen buffer
 static uint8_t* screen_buffer;
@@ -443,6 +441,9 @@ gfx_irq(int type)
 void
 gfx_run(void)
 {
+	static int line_counter = 0;
+	static int last_line_counter = 0;
+
 	screen_buffer = osd_gfx_framebuffer();
 
 	/* DMA Transfer in "progress" */

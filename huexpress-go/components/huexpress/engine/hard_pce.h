@@ -239,26 +239,26 @@ uint8_t IO_read(uint16_t A);
 #if USE_MEM_MACROS
 
 #define pce_read8(addr) ({							\
-	uint16_t a = (addr);							\
+	uint32_t a = (addr);							\
 	uint8_t *page = PageR[a >> 13]; 				\
-	(page == PCE.IOAREA) ? IO_read(a) : page[a]; 	    \
+	(page == PCE.IOAREA) ? IO_read(a) : page[a]; 	\
 })
 
 #define pce_write8(addr, byte) {					\
-	uint16_t a = (addr), b = (byte); 				\
+	uint32_t a = (addr), b = (byte); 				\
 	uint8_t *page = PageW[a >> 13]; 				\
-	if (page == PCE.IOAREA) IO_write(a, b); 		    \
-	else page[a] = b;							    \
+	if (page == PCE.IOAREA) IO_write(a, b); 		\
+	else page[a] = b;								\
 }
 
 #define pce_read16(addr) ({							\
-	uint16_t a = (addr); 							\
-	*((uint16_t*)(PageR[a >> 13] + a));			    \
+	uint32_t a = (addr); 							\
+	*((uint16_t*)(PageR[a >> 13] + a));				\
 })
 
 #define pce_write16(addr, word) {					\
-	uint16_t a = (addr), w = (word); 				\
-	*((uint16_t*)(PageR[a >> 13] + a)) = w;		    \
+	uint32_t a = (addr), w = (word); 				\
+	*((uint16_t*)(PageR[a >> 13] + a)) = w;			\
 }
 
 #else
