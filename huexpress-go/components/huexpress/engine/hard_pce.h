@@ -134,9 +134,6 @@ typedef struct {
 	// Street Fighter 2 Mapper
 	uint8_t SF2;
 
-	// Interrupts
-	uint8_t irq_mask, irq_status;
-
 	// Remanence latch
 	uint8_t io_buffer;
 

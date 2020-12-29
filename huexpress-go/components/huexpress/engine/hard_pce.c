@@ -31,7 +31,6 @@ pce_reset(void)
 
     memset(&PCE.NULLRAM, 0xFF, sizeof(PCE.NULLRAM));
 
-    PCE.irq_mask = PCE.irq_status = 0;
     PCE.SF2 = 0;
 
     Cycles = 0;
@@ -134,7 +133,7 @@ timer_run(void)
 			// Trigger when it underflows from 0
 			if (PCE.Timer.counter > 0x7F) {
 				PCE.Timer.counter = PCE.Timer.reload;
-				PCE.irq_status |= INT_TIMER;
+				CPU.irq_lines |= INT_TIMER;
 			}
 			PCE.Timer.counter--;
 		}
@@ -250,11 +249,11 @@ IO_read(uint16_t A)
     case 0x1400:                /* IRQ */
         switch (A & 3) {
         case 2:
-            ret = PCE.irq_mask | (PCE.io_buffer & ~INT_MASK);
+            ret = CPU.irq_mask | (PCE.io_buffer & ~INT_MASK);
             break;
         case 3:
-            ret = PCE.irq_status;
-            PCE.irq_status = 0;
+            ret = CPU.irq_lines;
+            CPU.irq_lines = 0;
             break;
         }
         break;
@@ -614,10 +613,10 @@ IO_write(uint16_t A, uint8_t V)
     case 0x1400:                /* IRQ */
         switch (A & 3) {
         case 2:
-            PCE.irq_mask = V & INT_MASK;
+            CPU.irq_mask = V & INT_MASK;
             break;
         case 3:
-            PCE.irq_status &= ~INT_TIMER;
+            CPU.irq_lines &= ~INT_TIMER;
             break;
         }
         break;

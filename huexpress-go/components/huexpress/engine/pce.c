@@ -1,7 +1,6 @@
 // pce.c - Entry file to start/stop/reset/save emulation
 //
 #include "pce.h"
-#include "romdb.h"
 
 host_machine_t host;
 
@@ -20,15 +19,15 @@ const svar_t SaveStateVars[] =
 	SVAR_A("PAL", PCE.Palette),  SVAR_A("MMR", PCE.MMR),
 
 	// CPU registers
-	SVAR_2("CPU.PC", reg_pc),    SVAR_1("CPU.A", reg_a),    SVAR_1("CPU.X", reg_x),
-	SVAR_1("CPU.Y", reg_y),      SVAR_1("CPU.P", reg_p),    SVAR_1("CPU.S", reg_s),
+	SVAR_2("CPU.PC", CPU.PC),    SVAR_1("CPU.A", CPU.A),    SVAR_1("CPU.X", CPU.X),
+	SVAR_1("CPU.Y", CPU.Y),      SVAR_1("CPU.P", CPU.P),    SVAR_1("CPU.S", CPU.S),
 
 	// Misc
 	SVAR_4("Cycles", Cycles),                   SVAR_4("MaxCycles", PCE.MaxCycles),
 	SVAR_1("SF2", PCE.SF2),
 
 	// IRQ
-	SVAR_1("irq_mask", PCE.irq_mask),           SVAR_1("irq_status", PCE.irq_status),
+	SVAR_1("irq_mask", CPU.irq_mask),           SVAR_1("irq_lines", CPU.irq_lines),
 
 	// PSG
 	SVAR_1("psg.ch", PCE.PSG.ch),               SVAR_1("psg.vol", PCE.PSG.volume),
@@ -52,6 +51,22 @@ const svar_t SaveStateVars[] =
 	SVAR_END
 };
 
+#define TWO_PART_ROM 0x0001
+#define ONBOARD_RAM  0x0100
+#define US_ENCODED   0x0010
+
+static const struct {
+	const uint32_t CRC;
+	const char *Name;
+	const uint32_t Flags;
+} romFlags[] = {
+	{0xF0ED3094, "Blazing Lazers", TWO_PART_ROM},
+	{0xB4A1B0F6, "Blazing Lazers", TWO_PART_ROM},
+	{0x55E9630D, "Legend of Hero Tonma", US_ENCODED},
+	{0x083C956A, "Populous", ONBOARD_RAM},
+	{0x0A9ADE99, "Populous", ONBOARD_RAM},
+	{0x00000000, "Unknown", 0},
+};
 
 /**
  * Load card into memory and set its memory map
@@ -107,15 +122,13 @@ LoadCard(const char *name)
 	MESSAGE_INFO("ROM LOADED: OFFSET=%d, BANKS=%d, MASK=%03X, CRC=%08X\n",
 		offset, PCE.ROM_SIZE, ROM_MASK, PCE.ROM_CRC);
 
-	for (int index = 0; index < KNOWN_ROM_COUNT; index++) {
-		if (PCE.ROM_CRC == romFlags[index].CRC) {
-			IDX = index;
+	while (romFlags[IDX].CRC) {
+		if (PCE.ROM_CRC == romFlags[IDX].CRC)
 			break;
-		}
+		IDX++;
 	}
 
 	MESSAGE_INFO("Game Name: %s\n", romFlags[IDX].Name);
-	MESSAGE_INFO("Game Region: %s\n", (romFlags[IDX].Flags & JAP) ? "Japan" : "USA");
 
 	// US Encrypted
 	if ((romFlags[IDX].Flags & US_ENCODED) || PCE.ROM_DATA[0x1FFF] < 0xE0)

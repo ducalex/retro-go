@@ -9,20 +9,30 @@ extern void h6280_irq(int);
 extern void h6280_debug(void);
 extern void h6280_print_state(void);
 
-typedef struct op {
+typedef struct op
+{
    int (*func_exe)(void);
    short addr_mode;
    const char opname[4];
 } operation_t;
 
-typedef struct {
-	// CPU Registers
-	uint16_t reg_pc;
-	uint8_t reg_a;
-	uint8_t reg_x;
-	uint8_t reg_y;
-	uint8_t reg_p;
-	uint8_t reg_s;
+typedef struct
+{
+	/* Registers */
+	uint16_t PC;
+	uint8_t A;
+	uint8_t X;
+	uint8_t Y;
+	uint8_t P;
+	uint8_t S;
+
+	/* Interrupts */
+	uint8_t irq_mask;
+	uint8_t irq_lines;
+
+	/* Misc */
+	uint32_t cycles;
+	uint32_t halted;
 } h6280_t;
 
 // CPU Flags:
@@ -70,14 +80,6 @@ typedef struct {
 #define AM_TST_ZPX  17			/* special 'TST' addressing mode  */
 #define AM_TST_ABSX 18			/* special 'TST' addressing mode  */
 #define AM_XFER     19			/* special 7-byte transfer addressing mode  */
-
-// CPU registers
-#define reg_pc CPU.reg_pc
-#define reg_a  CPU.reg_a
-#define reg_x  CPU.reg_x
-#define reg_y  CPU.reg_y
-#define reg_p  CPU.reg_p
-#define reg_s  CPU.reg_s
 
 typedef signed char SBYTE;
 typedef unsigned char UBYTE;

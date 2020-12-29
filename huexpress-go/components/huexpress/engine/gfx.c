@@ -424,13 +424,13 @@ gfx_irq(int type)
 		PCE.VDC.pending_irqs |= type & 0xF;
 	}
 
-	/* Pop the first pending vdc interrupt only if PCE.irq_status is clear */
+	/* Pop the first pending vdc interrupt only if CPU.irq_lines is clear */
 	int pos = 28;
-	while (!(PCE.irq_status & INT_IRQ1) && PCE.VDC.pending_irqs) {
+	while (!(CPU.irq_lines & INT_IRQ1) && PCE.VDC.pending_irqs) {
 		if (PCE.VDC.pending_irqs >> pos) {
 			PCE.VDC.status |= 1 << (PCE.VDC.pending_irqs >> pos);
 			PCE.VDC.pending_irqs &= ~(0xF << pos);
-			PCE.irq_status |= INT_IRQ1; // Notify the CPU
+			CPU.irq_lines |= INT_IRQ1; // Notify the CPU
 		}
 		pos -= 4;
 	}

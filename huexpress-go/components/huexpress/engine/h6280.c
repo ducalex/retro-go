@@ -20,10 +20,11 @@ h6280_t CPU;
 void
 h6280_reset(void)
 {
-    reg_a = reg_x = reg_y = 0x00;
-    reg_p = (FL_I|FL_B);
-    reg_s = 0xFF;
-    reg_pc = pce_read16(VEC_RESET);
+    CPU.A = CPU.X = CPU.Y = 0x00;
+    CPU.P = (FL_I|FL_B);
+    CPU.S = 0xFF;
+    CPU.PC = pce_read16(VEC_RESET);
+	CPU.irq_mask = CPU.irq_lines = 0;
 }
 
 
@@ -61,15 +62,15 @@ h6280_run(void)
 	}
 
 	/* Handle pending interrupts (Should be in the loop, but it's too slow) */
-	uint8_t irq = PCE.irq_status & ~PCE.irq_mask & INT_MASK;
-	if ((reg_p & FL_I) == 0 && irq) {
+	uint8_t irq = CPU.irq_lines & ~CPU.irq_mask & INT_MASK;
+	if ((CPU.P & FL_I) == 0 && irq) {
 		interrupt(irq);
 	}
 
 	/* Run for roughly one scanline */
 	while (Cycles < max_cycles)
 	{
-		UBYTE opcode = imm_operand(reg_pc);
+		UBYTE opcode = imm_operand(CPU.PC);
 
 		switch (opcode)
 		{
@@ -325,7 +326,7 @@ h6280_run(void)
 
 			default:
 				// Illegal opcodes are treated as NOP
-				MESSAGE_DEBUG("Illegal opcode 0x%02X at pc=0x%04X!\n", opcode, reg_pc);
+				MESSAGE_DEBUG("Illegal opcode 0x%02X at pc=0x%04X!\n", opcode, CPU.PC);
 				nop();
 		}
 	}
@@ -337,12 +338,12 @@ h6280_print_state()
 {
 	MESSAGE_INFO("Current h6280 status:\n");
 
-	MESSAGE_INFO("PC = 0x%04x\n", reg_pc);
-	MESSAGE_INFO("A = 0x%02x\n", reg_a);
-	MESSAGE_INFO("X = 0x%02x\n", reg_x);
-	MESSAGE_INFO("Y = 0x%02x\n", reg_y);
-	MESSAGE_INFO("P = 0x%02x\n", reg_p);
-	MESSAGE_INFO("S = 0x%02x\n", reg_s);
+	MESSAGE_INFO("PC = 0x%04x\n", CPU.PC);
+	MESSAGE_INFO("A = 0x%02x\n", CPU.A);
+	MESSAGE_INFO("X = 0x%02x\n", CPU.X);
+	MESSAGE_INFO("Y = 0x%02x\n", CPU.Y);
+	MESSAGE_INFO("P = 0x%02x\n", CPU.P);
+	MESSAGE_INFO("S = 0x%02x\n", CPU.S);
 
 	for (int i = 0; i < 8; i++) {
 		MESSAGE_INFO("MMR[%d] = 0x%02x\n", i, PCE.MMR[i]);
