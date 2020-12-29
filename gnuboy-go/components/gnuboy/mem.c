@@ -1,4 +1,4 @@
-#include "stdlib.h"
+#include <stdlib.h>
 
 #include "emu.h"
 #include "hw.h"
@@ -339,13 +339,8 @@ static inline void mbc_write(addr_t a, byte b)
 		}
 		break;
 
-	case MBC_RUMBLE:
-		if (ha == 0x4 || ha == 0x5) {
-			b &= ~8;
-		}
-		/* fall thru */
 	case MBC_MBC5:
-		switch (ha & 0xF)
+		switch (ha & 0x7)
 		{
 		case 0x0:
 		case 0x1:
@@ -359,7 +354,15 @@ static inline void mbc_write(addr_t a, byte b)
 			break;
 		case 0x4:
 		case 0x5:
-			mbc.rambank = b & 0x0F;
+			if (mbc.rumble) {
+				mbc.rambank = b & 0x0F;
+			} else {
+				mbc.rambank = b & ~8;
+			}
+			break;
+		case 0x6:
+		case 0x7:
+			// Nothing but Radikal Bikers tries to access it.
 			break;
 		default:
 			printf("MBC_MBC5: invalid write to 0x%x (0x%x)\n", a, b);

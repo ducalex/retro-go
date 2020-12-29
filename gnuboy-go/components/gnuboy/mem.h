@@ -8,7 +8,6 @@
 #define MBC_MBC2 2
 #define MBC_MBC3 3
 #define MBC_MBC5 5
-#define MBC_RUMBLE 15
 #define MBC_HUC1 0xC1
 #define MBC_HUC3 0xC3
 
@@ -21,9 +20,11 @@ struct mbc
 	int romsize;
 	int ramsize;
 	int enableram;
+	int rumble;
 	int batt;
 	int rtc;
-	byte *rmap[0x10], *wmap[0x10];
+	byte *rmap[0x10];
+	byte *wmap[0x10];
 };
 
 struct rom

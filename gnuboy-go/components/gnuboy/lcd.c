@@ -97,7 +97,7 @@ static inline void tilebuf()
 		0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
 		0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,-32
 	};
-	int8_t *wrap = wraptable + S;
+	const int8_t *wrap = wraptable + S;
 
 	base = ((R_LCDC&0x08)?0x1C00:0x1800) + (T<<5) + S;
 	tilemap = lcd.vbank[0] + base;

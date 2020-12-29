@@ -17,7 +17,7 @@
 static const byte mbc_table[256] =
 {
 	0, 1, 1, 1, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 3,
-	3, 3, 3, 3, 0, 0, 0, 0, 0, 5, 5, 5, MBC_RUMBLE, MBC_RUMBLE, MBC_RUMBLE, 0,
+	3, 3, 3, 3, 0, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 
@@ -184,6 +184,12 @@ int rom_loadbank(int bank)
 	const size_t BANK_SIZE = 0x4000;
 	const size_t OFFSET = bank * BANK_SIZE;
 
+	if (rom.bank[bank])
+	{
+		printf("bank_load: bank %d already loaded!\n", bank);
+		// return 0;
+	}
+
 	printf("bank_load: loading bank %d.\n", bank);
 	rom.bank[bank] = (byte*)malloc(BANK_SIZE);
 	if (rom.bank[bank] == NULL) {
@@ -245,6 +251,7 @@ int rom_load(const char *file)
 	mbc.type = mbc_table[c];
 	mbc.batt = batt_table[c];
 	mbc.rtc = rtc_table[c];
+	mbc.rumble = (c == 30 || c == 29 || c == 28);
 
 	tmp = *((int*)(header + 0x0148));
 	mbc.romsize = romsize_table[(tmp & 0xff)];
@@ -264,7 +271,6 @@ int rom_load(const char *file)
 		case MBC_MBC2:   mbcName = "MBC_MBC2"; break;
 		case MBC_MBC3:   mbcName = "MBC_MBC3"; break;
 		case MBC_MBC5:   mbcName = "MBC_MBC5"; break;
-		case MBC_RUMBLE: mbcName = "MBC_RUMBLE"; break;
 		case MBC_HUC1:   mbcName = "MBC_HUC1"; break;
 		case MBC_HUC3:   mbcName = "MBC_HUC3"; break;
 		default:         mbcName = "(unknown)"; break;
@@ -286,8 +292,8 @@ int rom_load(const char *file)
 
 	int preload = mbc.romsize < 64 ? mbc.romsize : 64;
 
-	// RAYMAN stutters too much if we don't fully preload it
-	if (strncmp(rom.name, "RAYMAN", 6) == 0)
+	// Some games stutters too much if we don't fully preload it
+	if (strncmp(rom.name, "RAYMAN", 6) == 0 || strncmp(rom.name, "NONAME", 6) == 0)
 	{
 		printf("loader: Special preloading for Rayman 1/2\n");
 		preload = mbc.romsize - 8;
