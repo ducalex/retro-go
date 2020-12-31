@@ -310,8 +310,8 @@ static inline void timer_advance(int cycles)
 			cpu.timer &= 0x1ff;
 			if (tima >= 256)
 			{
-				hw_interrupt(IF_TIMER, IF_TIMER);
-				hw_interrupt(0, IF_TIMER);
+				hw_interrupt(IF_TIMER, 1);
+				hw_interrupt(IF_TIMER, 0);
 				tima = R_TMA;
 			}
 			R_TIMA = tima;
@@ -330,8 +330,8 @@ static inline void serial_advance(int cycles)
 			R_SB = 0xFF;
 			R_SC &= 0x7f;
 			hw.serial = 0;
-			hw_interrupt(IF_SERIAL, IF_SERIAL);
-			hw_interrupt(0, IF_SERIAL);
+			hw_interrupt(IF_SERIAL, 1);
+			hw_interrupt(IF_SERIAL, 0);
 		}
 	}
 }
@@ -836,7 +836,11 @@ next:
 		break;
 
 	case 0x76: /* HALT */
-		cpu.halted = 1;
+		if (IME) {
+			cpu.halted = 1;
+		} else {
+			printf("FIX ME: HALT requested with IME = 0\n");
+		}
 		break;
 
 	case 0xCB: /* CB prefix */

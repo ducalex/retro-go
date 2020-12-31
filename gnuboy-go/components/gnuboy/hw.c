@@ -12,22 +12,28 @@ hw_t hw;
 
 
 /*
- * hw_interrupt changes the virtual interrupt lines included in the
- * specified mask to the values the corresponding bits in i take, and
- * in doing so, raises the appropriate bit of R_IF for any interrupt
- * lines that transition from low to high.
+ * hw_interrupt changes the virtual interrupt line(s) defined by i
+ * The interrupt fires (added to R_IF) when the line transitions from 0 to 1.
+ * It does not refire if the line was already high.
  */
-void hw_interrupt(byte i, byte mask)
+void hw_interrupt(byte i, int level)
 {
-	i &= mask;
-	R_IF |= i & (hw.ilines ^ i);
-	if (i) {
-		// HALT shouldn't even be entered when interrupts are disabled.
-		// No need to check for IME, and it works around a stall bug.
-		cpu.halted = 0;
+	if (level == 0)
+	{
+		hw.ilines &= ~i;
 	}
-	hw.ilines &= ~mask;
-	hw.ilines |= i;
+	else if ((hw.ilines & i) == 0)
+	{
+		hw.ilines |= i;
+		R_IF |= i; // Fire!
+
+		if ((R_IE & i) != 0)
+		{
+			// Wake up the CPU when an enabled interrupt occurs
+			// IME doesn't matter at this point, only IE
+			cpu.halted = 0;
+		}
+	}
 }
 
 
@@ -104,26 +110,30 @@ void IRAM_ATTR pad_refresh()
 	R_P1 ^= 0x0F;
 	if (oldp1 & ~R_P1 & 0x0F)
 	{
-		hw_interrupt(IF_PAD, IF_PAD);
-		hw_interrupt(0, IF_PAD);
+		hw_interrupt(IF_PAD, 1);
+		hw_interrupt(IF_PAD, 0);
 	}
 }
 
 
 /*
- * These simple functions just update the state of a button on the
- * pad.
+ * pad_set updates the state of one or more buttons on the pad and calls
+ * pad_refresh() to fire an interrupt if the pad changed.
  */
-void IRAM_ATTR pad_set(byte k, int st)
+void IRAM_ATTR pad_set(byte btn, int set)
 {
-	if (st) {
-		if (hw.pad & k) return;
-		hw.pad |= k;
-	} else {
-		if (!(hw.pad & k)) return;
-		hw.pad &= ~k;
+	int new_pad = hw.pad;
+
+	if (set)
+		new_pad |= btn;
+	else
+		new_pad &= ~btn;
+
+	if (hw.pad != new_pad)
+	{
+		hw.pad = new_pad;
+		pad_refresh();
 	}
-	pad_refresh();
 }
 
 void hw_reset()

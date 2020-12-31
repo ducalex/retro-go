@@ -707,20 +707,20 @@ void pal_dirty()
 void stat_trigger()
 {
 	const byte condbits[4] = { 0x08, 0x10, 0x20, 0x00 };
-	byte flag = 0;
+	int level = 0;
 
 	if (R_LY == R_LYC)
 	{
 		R_STAT |= 0x04;
-		if (R_STAT & 0x40) flag = IF_STAT;
+		if (R_STAT & 0x40) level = 1;
 	}
 	else R_STAT &= ~0x04;
 
-	if (R_STAT & condbits[R_STAT&3]) flag = IF_STAT;
+	if (R_STAT & condbits[R_STAT&3]) level = 1;
 
-	if (!(R_LCDC & 0x80)) flag = 0;
+	if (!(R_LCDC & 0x80)) level = 0;
 
-	hw_interrupt(flag, IF_STAT);
+	hw_interrupt(IF_STAT, level);
 }
 
 
@@ -736,8 +736,7 @@ static void inline stat_change(int stat)
 	stat &= 3;
 	R_STAT = (R_STAT & 0x7C) | stat;
 
-	if (stat != 1) hw_interrupt(0, IF_VBLANK);
-	/* hw_interrupt((stat == 1) ? IF_VBLANK : 0, IF_VBLANK); */
+	if (stat != 1) hw_interrupt(IF_VBLANK, 0);
 	stat_trigger();
 }
 
@@ -834,7 +833,7 @@ void lcd_emulate()
 				before interrupt is triggered */
 				if (cpu.halted)
 				{
-					hw_interrupt(IF_VBLANK, IF_VBLANK);
+					hw_interrupt(IF_VBLANK, 1);
 					CYCLES += 228;
 				}
 				else CYCLES += 10;
@@ -844,7 +843,7 @@ void lcd_emulate()
 
 			// Hack for Worms Armageddon
 			if (R_STAT == 0x48)
-				hw_interrupt(0, IF_STAT);
+				hw_interrupt(IF_STAT, 0);
 
 			stat_change(2); /* -> search */
 			CYCLES += 40;
@@ -853,7 +852,7 @@ void lcd_emulate()
 			/* vblank -> */
 			if (!(hw.ilines & IF_VBLANK))
 			{
-				hw_interrupt(IF_VBLANK, IF_VBLANK);
+				hw_interrupt(IF_VBLANK, 1);
 				CYCLES += 218;
 				break;
 			}

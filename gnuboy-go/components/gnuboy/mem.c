@@ -158,7 +158,7 @@ static inline void ioreg_write(byte r, byte b)
 	case RI_STAT:
 		R_STAT = (R_STAT & 0x07) | (b & 0x78);
 		if (!hw.cgb && !(R_STAT & 2)) /* DMG STAT write bug => interrupt */
-			hw_interrupt(IF_STAT, IF_STAT);
+			hw_interrupt(IF_STAT, 1);
 		stat_trigger();
 		break;
 	case RI_LYC:

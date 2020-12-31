@@ -37,8 +37,8 @@ void hw_hdma();
 void hw_dma(byte b);
 void hw_hdma_cmd(byte c);
 void hw_reset();
-void pad_set(byte k, int st);
+void pad_set(byte btn, int set);
 void pad_refresh();
-void hw_interrupt(byte i, byte mask);
+void hw_interrupt(byte i, int level);
 
 #endif
