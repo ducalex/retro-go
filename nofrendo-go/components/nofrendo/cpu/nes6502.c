@@ -1146,7 +1146,7 @@ IRAM_ATTR int nes6502_execute(int timeslice_cycles)
 
 #ifdef NES6502_JUMPTABLE
 
-   DRAM_ATTR static const void *opcode_table[256] =
+   const void *opcode_table[256] =
    {
       &&op0x00, &&op0x01, &&op0x02, &&op0x03, &&op0x04, &&op0x05, &&op0x06, &&op0x07,
       &&op0x08, &&op0x09, &&op0x0A, &&op0x0B, &&op0x0C, &&op0x0D, &&op0x0E, &&op0x0F,
@@ -1189,9 +1189,7 @@ IRAM_ATTR int nes6502_execute(int timeslice_cycles)
    /* check for DMA cycle burning */
    if (cpu.burn_cycles && remaining_cycles > 0)
    {
-      int burn_for;
-
-      burn_for = MIN(remaining_cycles, cpu.burn_cycles);
+      int burn_for = MIN(remaining_cycles, cpu.burn_cycles);
       ADD_CYCLES(burn_for);
       cpu.burn_cycles -= burn_for;
    }
@@ -1240,8 +1238,8 @@ IRAM_ATTR int nes6502_execute(int timeslice_cycles)
       OPCODE(0x1B, SLO(7, ABS_IND_Y, writebyte, addr));             /* SLO $nnnn,Y */
       OPCODE(0x1C, TOP());                                          /* NOP $nnnn,X */
       OPCODE(0x1D, ORA(4, ABS_IND_X_BYTE_READ));                    /* ORA $nnnn,X */
-      OPCODE(0x1E, ASL(7, ABS_IND_X, writebyte, addr));              /* ASL $nnnn,X */
-      OPCODE(0x1F, SLO(7, ABS_IND_X, writebyte, addr));              /* SLO $nnnn,X */
+      OPCODE(0x1E, ASL(7, ABS_IND_X, writebyte, addr));             /* ASL $nnnn,X */
+      OPCODE(0x1F, SLO(7, ABS_IND_X, writebyte, addr));             /* SLO $nnnn,X */
 
       OPCODE(0x20, JSR());                                          /* JSR $nnnn */
       OPCODE(0x21, AND(6, INDIR_X_BYTE));                           /* AND ($nn,X) */
@@ -1494,11 +1492,10 @@ IRAM_ATTR int nes6502_execute(int timeslice_cycles)
 void nes6502_reset(void)
 {
    cpu.p_reg = Z_FLAG | R_FLAG | I_FLAG;  /* Reserved bit always 1 */
-   cpu.int_pending = 0;                   /* No pending interrupts */
-   cpu.int_latency = 0;                   /* No latent interrupts */
    cpu.pc_reg = readword(RESET_VECTOR);   /* Fetch reset vector */
-   cpu.burn_cycles = RESET_CYCLES;
+   cpu.int_pending = false;               /* No pending interrupts */
    cpu.jammed = false;
+   cpu.burn_cycles = RESET_CYCLES;
 }
 
 /* Non-maskable interrupt */

@@ -56,17 +56,17 @@
 typedef struct
 {
    uint32 pc_reg;
-   uint8 a_reg, p_reg;
+   uint8 a_reg;
    uint8 x_reg, y_reg;
-   uint8 s_reg;
+   uint8 s_reg, p_reg;
 
    uint8 *zp, *stack;
 
-   uint8 jammed;  /* is processor jammed? */
+   bool int_pending;
+   bool jammed;
 
-   uint8 int_pending, int_latency;
-
-   int32 total_cycles, burn_cycles;
+   long total_cycles;
+   long burn_cycles;
 } nes6502_t;
 
 #ifdef __cplusplus

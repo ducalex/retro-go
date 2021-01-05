@@ -36,18 +36,18 @@
 #include "palettes.h"
 
 /* PPU access */
-#define  PPU_MEM_READ(x)      (ppu.page[(x) >> 10][(x)])
-#define  PPU_MEM_WRITE(x,v)   (ppu.page[(x) >> 10][(x)] = (v))
+#define PPU_MEM_READ(x)      (ppu.page[(x) >> 10][(x)])
+#define PPU_MEM_WRITE(x,v)   (ppu.page[(x) >> 10][(x)] = (v))
 
 /* Background (color 0) and solid sprite pixel flags */
-#define  BG_TRANS             (0x80)
-#define  SP_PIXEL             (0x40)
-#define  BG_CLEAR(V)          ((V) & BG_TRANS)
-#define  BG_SOLID(V)          (0 == BG_CLEAR(V))
-#define  SP_CLEAR(V)          (0 == ((V) & SP_PIXEL))
+#define BG_TRANS             (0x80)
+#define SP_PIXEL             (0x40)
+#define BG_CLEAR(V)          ((V) & BG_TRANS)
+#define BG_SOLID(V)          (0 == BG_CLEAR(V))
+#define SP_CLEAR(V)          (0 == ((V) & SP_PIXEL))
 
 /* Full BG color */
-#define  FULLBG               (ppu.palette[0] | BG_TRANS)
+#define FULLBG               (ppu.palette[0] | BG_TRANS)
 
 /* Runtime settings */
 #define OPT(n)                (ppu.options[(n)])
@@ -55,7 +55,7 @@
 /* the NES PPU */
 static ppu_t ppu;
 
-rgb_t gui_pal[] =
+static rgb_t gui_pal[] =
 {
    { 0x00, 0x00, 0x00 }, /* black      */
    { 0x3F, 0x3F, 0x3F }, /* dark gray  */
@@ -93,24 +93,9 @@ void ppu_getcontext(ppu_t *dest_ppu)
 
 void ppu_setpage(int size, int page_num, uint8 *location)
 {
-   switch (size)
+   while (size--)
    {
-   case 8:
       ppu.page[page_num++] = location;
-      ppu.page[page_num++] = location;
-      ppu.page[page_num++] = location;
-      ppu.page[page_num++] = location;
-      // fall through
-   case 4:
-      ppu.page[page_num++] = location;
-      ppu.page[page_num++] = location;
-      // fall through
-   case 2:
-      ppu.page[page_num++] = location;
-      // fall through
-   case 1:
-      ppu.page[page_num++] = location;
-      break;
    }
 }
 
@@ -312,7 +297,6 @@ IRAM_ATTR void ppu_write(uint32 address, uint8 value)
       }
 
       ppu.flipflop ^= 1;
-
       break;
 
    case PPU_VADDR:
@@ -331,7 +315,6 @@ IRAM_ATTR void ppu_write(uint32 address, uint8 value)
       }
 
       ppu.flipflop ^= 1;
-
       break;
 
    case PPU_VDATA:
@@ -358,9 +341,7 @@ IRAM_ATTR void ppu_write(uint32 address, uint8 value)
       {
          if (0 == (ppu.vaddr & 0x0F))
          {
-            int i;
-
-            for (i = 0; i < 8; i ++)
+            for (int i = 0; i < 8; i ++)
                ppu.palette[i << 2] = (value & 0x3F) | BG_TRANS;
          }
          else if (ppu.vaddr & 3)
@@ -384,17 +365,15 @@ IRAM_ATTR void ppu_write(uint32 address, uint8 value)
 */
 void ppu_setpalette(rgb_t *pal)
 {
-   int i;
-
    /* Set it up 3 times, for sprite priority/BG transparency trickery */
-   for (i = 0; i < 64; i++)
+   for (int i = 0; i < 64; i++)
    {
       ppu.curpal[i].r = ppu.curpal[i + 64].r = ppu.curpal[i + 128].r = pal[i].r;
       ppu.curpal[i].g = ppu.curpal[i + 64].g = ppu.curpal[i + 128].g = pal[i].g;
       ppu.curpal[i].b = ppu.curpal[i + 64].b = ppu.curpal[i + 128].b = pal[i].b;
    }
 
-   for (i = 0; i < GUI_TOTALCOLORS; i++)
+   for (int i = 0; i < GUI_TOTALCOLORS; i++)
    {
       ppu.curpal[i + 192].r = gui_pal[i].r;
       ppu.curpal[i + 192].g = gui_pal[i].g;
@@ -556,7 +535,7 @@ INLINE void draw_oamtile(uint8 *surface, uint8 attrib, uint16 pattern, const uin
 INLINE void ppu_renderbg(uint8 *vidbuf)
 {
    /* draw a line of transparent background color if bg is disabled */
-   if (false == ppu.bg_on)
+   if (!ppu.bg_on)
    {
       memset(vidbuf, FULLBG, NES_SCREEN_WIDTH);
       return;
@@ -620,7 +599,7 @@ INLINE void ppu_renderbg(uint8 *vidbuf)
 /* TODO: fetch valid OAM a scanline before, like the Real Thing */
 INLINE void ppu_renderoam(uint8 *vidbuf, int scanline, bool draw)
 {
-   if (false == ppu.obj_on)
+   if (!ppu.obj_on)
       return;
 
    /* Save left hand column */
@@ -674,13 +653,13 @@ INLINE void ppu_renderoam(uint8 *vidbuf, int scanline, bool draw)
       }
 
       /* Check for a strike on sprite 0 if strike flag isn't set */
-      if (sprite_num == 0 && false == ppu.strikeflag)
+      if (sprite_num == 0 && !ppu.strikeflag)
       {
          check_strike(draw ? vidbuf + sprite->x_loc : NULL, sprite->attr, get_patpix(tile_addr));
       }
 
       /* If we don't draw to buffer then we're done after sprite 0 */
-      if (false == draw)
+      if (!draw)
          return;
 
       /* Fetch tile and draw it */
