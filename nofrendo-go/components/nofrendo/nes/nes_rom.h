@@ -35,9 +35,7 @@
 #define  ROM_FLAG_TRAINER     0x04
 #define  ROM_FLAG_BATTERY     0x02
 #define  ROM_FLAG_VERTICAL    0x01
-
-// non-ines flags
-#define  ROM_FLAG_VERSUS      0x100
+#define  ROM_FLAG_VERSUS      0x100 // non-ines flags
 
 #define  TRAINER_OFFSET    0x1000
 #define  TRAINER_LENGTH    0x200
@@ -46,17 +44,6 @@
 #define  VROM_BANK_LENGTH  0x2000
 #define  SRAM_BANK_LENGTH  0x0400
 #define  VRAM_BANK_LENGTH  0x2000
-
-typedef struct
-{
-   uint8 ines_magic[4]    ;
-   uint8 rom_banks        ;
-   uint8 vrom_banks       ;
-   uint8 rom_type         ;
-   uint8 mapper_hinybble  ;
-   uint32 reserved1       ;
-   uint32 reserved2       ;
-} inesheader_t;
 
 typedef struct
 {
@@ -76,11 +63,11 @@ typedef struct
 
    char filename[PATH_MAX + 1];
    uint32 checksum;
-} rominfo_t;
+} rom_t;
 
 
-extern rominfo_t *rom_load(const char *filename);
-extern void rom_free(rominfo_t *rominfo);
+extern rom_t *rom_load(const char *filename);
+extern void rom_free(rom_t *rominfo);
 
 
 #endif /* _NES_ROM_H_ */

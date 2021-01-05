@@ -33,11 +33,21 @@
 #include "nes.h"
 #include <osd.h>
 
+typedef struct
+{
+   uint8 ines_magic[4];
+   uint8 rom_banks;
+   uint8 vrom_banks;
+   uint8 rom_type;
+   uint8 mapper_hinybble;
+   uint32 reserved1;
+   uint32 reserved2;
+} inesheader_t;
 
 #ifdef USE_SRAM_FILE
 
 /* Save battery-backed RAM */
-static void rom_savesram(rominfo_t *rominfo)
+static void rom_savesram(rom_t *rominfo)
 {
    FILE *fp;
    char fn[PATH_MAX + 1];
@@ -48,7 +58,8 @@ static void rom_savesram(rominfo_t *rominfo)
    {
       strncpy(fn, rominfo->filename, PATH_MAX + 1);
       char *ext = strrchr(fn, '.');
-      if (ext) strcpy(ext, ".sav");
+      if (ext)
+         strcpy(ext, ".sav");
 
       if ((fp = fopen(fn, "wb")))
       {
@@ -60,7 +71,7 @@ static void rom_savesram(rominfo_t *rominfo)
 }
 
 /* Load battery-backed RAM from disk */
-static void rom_loadsram(rominfo_t *rominfo)
+static void rom_loadsram(rom_t *rominfo)
 {
    FILE *fp;
    char fn[PATH_MAX + 1];
@@ -71,7 +82,8 @@ static void rom_loadsram(rominfo_t *rominfo)
    {
       strncpy(fn, rominfo->filename, PATH_MAX);
       char *ext = strrchr(fn, '.');
-      if (ext) strcpy(ext, ".sav");
+      if (ext)
+         strcpy(ext, ".sav");
 
       if ((fp = fopen(fn, "rb")))
       {
@@ -83,7 +95,7 @@ static void rom_loadsram(rominfo_t *rominfo)
 }
 #endif
 
-static int rom_getheader(uint8_t **rom, rominfo_t *rominfo)
+static int rom_getheader(uint8_t **rom, rom_t *rominfo)
 {
    inesheader_t head;
 
@@ -92,8 +104,8 @@ static int rom_getheader(uint8_t **rom, rominfo_t *rominfo)
    ASSERT(rominfo);
 
    /* Read in the header */
-	memcpy(&head, *rom, sizeof(head));
-	*rom += sizeof(head);
+   memcpy(&head, *rom, sizeof(head));
+   *rom += sizeof(head);
 
    if (memcmp(head.ines_magic, ROM_INES_MAGIC, 4))
    {
@@ -126,9 +138,9 @@ static int rom_getheader(uint8_t **rom, rominfo_t *rominfo)
 }
 
 /* Load a ROM image into memory */
-rominfo_t *rom_load(const char *filename)
+rom_t *rom_load(const char *filename)
 {
-   rominfo_t *rominfo = calloc(sizeof(rominfo_t), 1);
+   rom_t *rominfo = calloc(sizeof(rom_t), 1);
    uint8_t *rom_ptr = osd_getromdata();
    size_t rom_size = osd_getromsize();
 
@@ -144,17 +156,16 @@ rominfo_t *rom_load(const char *filename)
    MESSAGE_INFO("ROM: CRC32:  %08X\n", rominfo->checksum);
 
    /* Get the header and stick it into rominfo struct */
-	if (rom_getheader(&rom_ptr, rominfo))
+   if (rom_getheader(&rom_ptr, rominfo))
       goto _fail;
 
    MESSAGE_INFO("ROM: Header: Mapper:%d, PRG:%dK, CHR:%dK, Mirror:%c, Flags: %c%c%c\n",
-      rominfo->mapper_number,
-      rominfo->rom_banks * 16, rominfo->vrom_banks * 8,
-      (rominfo->flags & ROM_FLAG_VERTICAL) ? 'V' : 'H',
-      (rominfo->flags & ROM_FLAG_BATTERY) ? 'B' : '-',
-      (rominfo->flags & ROM_FLAG_TRAINER) ? 'T' : '-',
-      (rominfo->flags & ROM_FLAG_FOURSCREEN) ? '4' : '-'
-   );
+                rominfo->mapper_number,
+                rominfo->rom_banks * 16, rominfo->vrom_banks * 8,
+                (rominfo->flags & ROM_FLAG_VERTICAL) ? 'V' : 'H',
+                (rominfo->flags & ROM_FLAG_BATTERY) ? 'B' : '-',
+                (rominfo->flags & ROM_FLAG_TRAINER) ? 'T' : '-',
+                (rominfo->flags & ROM_FLAG_FOURSCREEN) ? '4' : '-');
 
    /* iNES format doesn't tell us if we need SRAM, so
    ** we have to always allocate it -- bleh!
@@ -206,17 +217,21 @@ _fail:
 }
 
 /* Free a ROM */
-void rom_free(rominfo_t *rominfo)
+void rom_free(rom_t *rominfo)
 {
    if (rominfo)
    {
-   #ifdef USE_SRAM_FILE
+#ifdef USE_SRAM_FILE
       rom_savesram(rominfo);
-   #endif
-      if (rominfo->sram) free(rominfo->sram);
-      if (rominfo->rom)  free(rominfo->rom);
-      if (rominfo->vrom) free(rominfo->vrom);
-      if (rominfo->vram) free(rominfo->vram);
+#endif
+      if (rominfo->sram)
+         free(rominfo->sram);
+      if (rominfo->rom)
+         free(rominfo->rom);
+      if (rominfo->vrom)
+         free(rominfo->vrom);
+      if (rominfo->vram)
+         free(rominfo->vram);
 
       free(rominfo);
    }

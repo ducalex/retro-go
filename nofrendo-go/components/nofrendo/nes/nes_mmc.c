@@ -41,7 +41,7 @@
 static mmc_t mmc;
 
 
-rominfo_t *mmc_getinfo(void)
+rom_t *mmc_getinfo(void)
 {
    return mmc.cart;
 }
@@ -189,7 +189,7 @@ void mmc_shutdown()
 
 }
 
-mmc_t *mmc_init(rominfo_t *rominfo)
+mmc_t *mmc_init(rom_t *rominfo)
 {
    memset(&mmc, 0, sizeof(mmc_t));
 

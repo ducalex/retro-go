@@ -66,7 +66,7 @@ typedef struct nes_s
     ppu_t *ppu;
     apu_t *apu;
     mmc_t *mmc;
-    rominfo_t *rominfo;
+    rom_t *rominfo;
 
     /* Memory */
     mem_t *mem;
