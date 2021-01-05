@@ -218,7 +218,7 @@ mmc_t *mmc_init(rominfo_t *rominfo)
    {
       mmc.chr = rominfo->vram;
       mmc.chr_banks = rominfo->vram_banks;
-      MESSAGE_INFO("MMC: CHR-RAM: %d banks\n", rominfo->vrom_banks);
+      MESSAGE_INFO("MMC: CHR-RAM: %d banks\n", rominfo->vram_banks);
    }
 
 

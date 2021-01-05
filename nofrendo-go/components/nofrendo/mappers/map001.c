@@ -29,9 +29,10 @@
 #include <nes_ppu.h>
 #include <string.h>
 
-static uint8 regs[4];
-static uint8 bitcount = 0;
-static uint8 latch = 0;
+static unsigned int regs[4];
+static unsigned int latch = 0;
+static unsigned int bitcount = 0;
+static unsigned int prg_banks = 0;
 
 // Shouldn't that be packed? (It wasn't packed in SNSS...)
 typedef struct
@@ -67,28 +68,31 @@ static void update_chr()
 
 static void update_prg()
 {
-   int prg_reg = regs[3] & 0xF;
+   int offset = prg_banks >= 0x10 ? (regs[1] & 0x10) : 0;
+   int bank = regs[3] & 0xF;
    int mode = (regs[0] >> 2) & 3;
 
-   if (mmc_getinfo()->rom_banks == 0x20)
-      prg_reg += regs[1] & 0x10;
+   // Note: "fixed" banks do respect the offset!
 
-   // switch 32 KB at $8000, ignoring low bit of bank number
-   if (0 == mode || 1 == mode)
+   switch (mode)
    {
-      mmc_bankrom(32, 0x8000, prg_reg >> 1);
-   }
-   // fix first bank at $8000 and switch 16 KB bank at $C000
-   else if (mode == 2)
-   {
-      mmc_bankrom(16, 0x8000, 0);
-      mmc_bankrom(16, 0xC000, prg_reg);
-   }
-   // fix last bank at $C000 and switch 16 KB bank at $8000
-   else if (mode == 3)
-   {
-      mmc_bankrom(16, 0x8000, prg_reg);
-      mmc_bankrom(16, 0xC000, -1);
+   case 0:
+   case 1:
+      // switch 32 KB at $8000, ignoring low bit of bank number
+      mmc_bankrom(32, 0x8000, offset + (bank >> 1));
+      break;
+
+   case 2:
+      // fix first bank at $8000 and switch 16 KB bank at $C000
+      mmc_bankrom(16, 0x8000, offset);
+      mmc_bankrom(16, 0xC000, offset + bank);
+      break;
+
+   case 3:
+      // fix last bank at $C000 and switch 16 KB bank at $8000
+      mmc_bankrom(16, 0x8000, offset + bank);
+      mmc_bankrom(16, 0xC000, offset + ((prg_banks - 1) & 0xF));
+      break;
    }
 }
 
@@ -109,8 +113,8 @@ static void map1_write(uint32 address, uint8 value)
    // Serial data in
    latch |= ((value & 1) << bitcount++);
 
-   /* 5 bit registers */
-   if (5 != bitcount)
+   /* Wait until we received 5 bits */
+   if (bitcount != 5)
       return;
 
    // Only matters on fifth write
@@ -122,22 +126,34 @@ static void map1_write(uint32 address, uint8 value)
 
    switch (regnum)
    {
+   case 0:
       // Register 0: Control
-      case 0: update_mirror(); update_prg(); update_chr(); break;
+      update_mirror();
+      update_prg();
+      update_chr();
+      break;
 
+   case 1:
       // Register 1: CHR bank 0
-      case 1: update_chr(); update_prg(); break;
+      update_chr();
+      update_prg();
+      break;
 
+   case 2:
       // Register 2: CHR bank 1
-      case 2: update_chr(); break;
+      update_chr();
+      break;
 
+   case 3:
       // Register 3: PRG bank
-      case 3: update_prg(); break;
+      update_prg();
+      break;
    }
 }
 
 static void map1_init(void)
 {
+   prg_banks = mmc_getinfo()->rom_banks;
    bitcount = 0;
    latch = 0;
 
@@ -179,14 +195,14 @@ static mem_write_handler_t map1_memwrite[] =
 
 mapintf_t map1_intf =
 {
-   1, /* mapper number */
-   "MMC1", /* mapper name */
-   map1_init, /* init routine */
-   NULL, /* vblank callback */
-   NULL, /* hblank callback */
+   1,             /* mapper number */
+   "MMC1",        /* mapper name */
+   map1_init,     /* init routine */
+   NULL,          /* vblank callback */
+   NULL,          /* hblank callback */
    map1_getstate, /* get state (snss) */
    map1_setstate, /* set state (snss) */
-   NULL, /* memory read structure */
+   NULL,          /* memory read structure */
    map1_memwrite, /* memory write structure */
-   NULL /* external sound device */
+   NULL           /* external sound device */
 };
