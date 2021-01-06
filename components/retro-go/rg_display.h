@@ -12,13 +12,6 @@ typedef enum {
 
 typedef enum
 {
-   PIXEL_FORMAT_565_BE = 0,  // 16bit 565 big endian (prefered for our lcd)
-   PIXEL_FORMAT_565_LE,      // 16bit 565 little endian
-   PIXEL_FORMAT_888,         // 24bit 888
-} screen_pixel_format_t;
-
-typedef enum
-{
     RG_BACKLIGHT_LEVEL0 = 0,
     RG_BACKLIGHT_LEVEL1 = 1,
     RG_BACKLIGHT_LEVEL2 = 2,
@@ -53,6 +46,16 @@ typedef enum
    RG_DISPLAY_ROTATION_RIGHT,
    RG_DISPLAY_ROTATION_COUNT,
 } display_rotation_t;
+
+typedef enum
+{
+   PIXEL_FORMAT_565_BE = 0,  // 16bit 565 big endian (prefered for our lcd)
+   PIXEL_FORMAT_565_LE,      // 16bit 565 little endian
+   PIXEL_FORMAT_555_BE,      // 16bit 555 big endian
+   PIXEL_FORMAT_555_LE,      // 16bit 555 little endian
+   PIXEL_FORMAT_888,         // 24bit 888
+   PIXEL_FORMAT_PALETTED,    // Indexed palette
+} pixel_format_t;
 
 typedef struct {
     short left;

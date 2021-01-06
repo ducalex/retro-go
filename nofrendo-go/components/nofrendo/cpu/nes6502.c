@@ -1146,7 +1146,7 @@ IRAM_ATTR int nes6502_execute(int timeslice_cycles)
 
 #ifdef NES6502_JUMPTABLE
 
-   const void *opcode_table[256] =
+   DRAM_ATTR static const void *opcode_table[256] =
    {
       &&op0x00, &&op0x01, &&op0x02, &&op0x03, &&op0x04, &&op0x05, &&op0x06, &&op0x07,
       &&op0x08, &&op0x09, &&op0x0A, &&op0x0B, &&op0x0C, &&op0x0D, &&op0x0E, &&op0x0F,

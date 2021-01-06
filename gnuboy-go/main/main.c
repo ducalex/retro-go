@@ -20,9 +20,8 @@
 
 static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
-static rg_video_frame_t update1 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, -1, NULL, NULL, 0, {}};
-static rg_video_frame_t update2 = {GB_WIDTH, GB_HEIGHT, GB_WIDTH * 2, 2, 0xFF, -1, NULL, NULL, 0, {}};
-static rg_video_frame_t *currentUpdate = &update1;
+static rg_video_frame_t frames[2];
+static rg_video_frame_t *currentUpdate = &frames[0];
 
 static rg_app_desc_t *app;
 
@@ -188,7 +187,7 @@ static bool advanced_settings_cb(dialog_choice_t *option, dialog_event_t event)
 
 static inline void screen_blit(void)
 {
-    rg_video_frame_t *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
+    rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
 
     fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
 
@@ -204,8 +203,16 @@ void app_main(void)
 
     app = rg_system_get_app();
 
-    update1.buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
-    update2.buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
+    frames[0].width = GB_WIDTH;
+    frames[0].height = GB_HEIGHT;
+    frames[0].stride = GB_WIDTH * 2;
+    frames[0].pixel_size = 2;
+    frames[0].pixel_clear = -1;
+    frames[0].palette = NULL;
+    frames[1] = frames[0];
+
+    frames[0].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
+    frames[1].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
 
     saveSRAM = rg_settings_app_int32_get(NVS_KEY_SAVE_SRAM, 0);
     sramFile = rg_emu_get_path(EMU_PATH_SAVE_SRAM, 0);
@@ -218,11 +225,11 @@ void app_main(void)
 
     // Video
     memset(&fb, 0, sizeof(fb));
-    fb.w = GB_WIDTH;
-    fb.h = GB_HEIGHT;
-    fb.format = GB_PIXEL_565_BE;
-    fb.pitch = update1.stride;
+    fb.w = currentUpdate->width;
+    fb.h = currentUpdate->height;
+    fb.pitch = currentUpdate->stride;
     fb.ptr = currentUpdate->buffer;
+    fb.format = GB_PIXEL_565_BE;
     fb.enabled = 1;
     fb.blit_func = &screen_blit;
 

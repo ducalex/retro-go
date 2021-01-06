@@ -14,10 +14,8 @@ extern "C" {
 
 static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
-static rg_video_frame_t update1;
-static rg_video_frame_t update2;
-static rg_video_frame_t *currentUpdate = &update1;
-static rg_video_frame_t *previousUpdate = &update2;
+static rg_video_frame_t frames[2];
+static rg_video_frame_t *currentUpdate = &frames[0];
 
 static CSystem *lynx = NULL;
 
@@ -60,8 +58,8 @@ static void set_rotation()
     switch(rotation)
     {
         case RG_DISPLAY_ROTATION_LEFT:
-            update1.width = update2.width = HANDY_SCREEN_HEIGHT;
-            update1.height = update2.height = HANDY_SCREEN_WIDTH;
+            frames[0].width = frames[1].width = HANDY_SCREEN_HEIGHT;
+            frames[0].height = frames[1].height = HANDY_SCREEN_WIDTH;
             lynx->mMikie->SetRotation(MIKIE_ROTATE_L);
             dpad_mapped_up    = BUTTON_RIGHT;
             dpad_mapped_down  = BUTTON_LEFT;
@@ -69,8 +67,8 @@ static void set_rotation()
             dpad_mapped_right = BUTTON_DOWN;
             break;
         case RG_DISPLAY_ROTATION_RIGHT:
-            update1.width = update2.width = HANDY_SCREEN_HEIGHT;
-            update1.height = update2.height = HANDY_SCREEN_WIDTH;
+            frames[0].width = frames[1].width = HANDY_SCREEN_HEIGHT;
+            frames[0].height = frames[1].height = HANDY_SCREEN_WIDTH;
             lynx->mMikie->SetRotation(MIKIE_ROTATE_R);
             dpad_mapped_up    = BUTTON_LEFT;
             dpad_mapped_down  = BUTTON_RIGHT;
@@ -78,8 +76,8 @@ static void set_rotation()
             dpad_mapped_right = BUTTON_UP;
             break;
         default:
-            update1.width = update2.width = HANDY_SCREEN_WIDTH;
-            update1.height = update2.height = HANDY_SCREEN_HEIGHT;
+            frames[0].width = frames[1].width = HANDY_SCREEN_WIDTH;
+            frames[0].height = frames[1].height = HANDY_SCREEN_HEIGHT;
             lynx->mMikie->SetRotation(MIKIE_NO_ROTATE);
             dpad_mapped_up    = BUTTON_UP;
             dpad_mapped_down  = BUTTON_DOWN;
@@ -158,14 +156,16 @@ extern "C" void app_main(void)
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     rg_emu_init(&load_state, &save_state, NULL);
 
-    update1.width = update2.width = HANDY_SCREEN_WIDTH;
-    update1.height = update2.height = HANDY_SCREEN_WIDTH;
-    update1.stride = update2.stride = HANDY_SCREEN_WIDTH * 2;
-    update1.pixel_size = update2.pixel_size = 2;
-    update1.pixel_clear = update2.pixel_clear = -1;
+    frames[0].width = HANDY_SCREEN_WIDTH;
+    frames[0].height = HANDY_SCREEN_WIDTH;
+    frames[0].stride = HANDY_SCREEN_WIDTH * 2;
+    frames[0].pixel_size = 2;
+    frames[0].pixel_clear = -1;
+    frames[1] = frames[0];
 
-    update1.buffer = (void*)rg_alloc(update1.stride * update1.height, MEM_FAST);
-    update2.buffer = (void*)rg_alloc(update2.stride * update2.height, MEM_FAST);
+    // the HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH is deliberate because of rotation
+    frames[0].buffer = (void*)rg_alloc(HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH * 2, MEM_FAST);
+    frames[1].buffer = (void*)rg_alloc(HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH * 2, MEM_FAST);
 
     rg_app_desc_t *app = rg_system_get_app();
 
@@ -228,9 +228,11 @@ extern "C" void app_main(void)
 
         if (drawFrame)
         {
+            rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
+
             fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
-            previousUpdate = currentUpdate;
-            currentUpdate = (currentUpdate == &update1) ? &update2 : &update1;
+
+            currentUpdate = previousUpdate;
             gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;
         }
 
