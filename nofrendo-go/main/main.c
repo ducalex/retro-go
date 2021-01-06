@@ -21,10 +21,8 @@ static uint32_t romSize;
 static uint32_t romCRC32;
 
 static uint16_t myPalette[64];
-static rg_video_frame_t update1 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 0x3F, -1, NULL, myPalette, 0, {}};
-static rg_video_frame_t update2 = {NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 0, 1, 0x3F, -1, NULL, myPalette, 0, {}};
-static rg_video_frame_t *currentUpdate = &update1;
-static rg_video_frame_t *previousUpdate = NULL;
+static rg_video_frame_t frames[2];
+static rg_video_frame_t *currentUpdate = &frames[0];
 
 static gamepad_state_t joystick1;
 static gamepad_state_t *localJoystick = &joystick1;
@@ -323,10 +321,11 @@ void osd_blitscreen(bitmap_t *bmp)
     currentUpdate->width = bmp->width - (crop_h * 2);
     currentUpdate->height = bmp->height - (crop_v * 2);
 
+    rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
+
     fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
 
-    previousUpdate = currentUpdate;
-    currentUpdate = (currentUpdate == &update1) ? &update2 : &update1;
+    currentUpdate = previousUpdate;
 }
 
 void osd_getinput(void)
@@ -385,6 +384,12 @@ void app_main(void)
     rg_emu_init(&LoadState, &SaveState, &netplay_callback);
 
     app = rg_system_get_app();
+
+    frames[0].palette = myPalette;
+    frames[0].pixel_mask = 0x3F;
+    frames[0].pixel_size = 1;
+    frames[0].pixel_clear = -1;
+    frames[1] = frames[0];
 
     // Load ROM
     printf("app_main: Reading file: '%s'\n", app->romPath);

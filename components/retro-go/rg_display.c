@@ -529,7 +529,7 @@ bilinear_filter(uint16_t *line_buffer, int top, int left, int width, int height,
 
 static inline void
 write_rect(void *buffer, uint16_t *palette, int left, int top, int width, int height,
-           int stride, int pixel_size, uint8_t pixel_mask, int pixel_clear)
+           int stride, int pixel_size, int pixel_mask, int pixel_clear)
 {
     int scaled_left = ((SCREEN_WIDTH * left) + (x_inc - 1)) / x_inc;
     int scaled_top = ((SCREEN_HEIGHT * top) + (y_inc - 1)) / y_inc;
@@ -592,11 +592,17 @@ write_rect(void *buffer, uint16_t *palette, int left, int top, int width, int he
             else
             for (int x = 0, x_acc = ix_acc; x < width;)
             {
-                if (palette == NULL) {
-                    line_buffer[line_buffer_index++] = ((uint16_t*)buffer)[x];
-                } else {
-                    line_buffer[line_buffer_index++] = palette[((uint8_t*)buffer)[x] & pixel_mask];
-                }
+                uint32_t pixel;
+
+                if (pixel_size == 2)
+                    pixel = ((uint16_t*)buffer)[x];
+                else
+                    pixel = ((uint8_t*)buffer)[x];
+
+                if (palette)
+                    pixel = palette[pixel & pixel_mask];
+
+                line_buffer[line_buffer_index++] = pixel;
 
                 x_acc += x_inc;
                 while (x_acc >= SCREEN_WIDTH) {
@@ -606,7 +612,7 @@ write_rect(void *buffer, uint16_t *palette, int left, int top, int width, int he
             }
 
             if (!screen_line_is_empty[++screen_y]) {
-                if (pixel_clear > -1) {
+                if (pixel_clear >= 0) {
                     // if (pixel_clear > -1) ((uint16_t*)buffer)[x] = pixel_clear;
                     memset((uint8_t*)buffer, pixel_clear, width);
                 }
@@ -627,11 +633,11 @@ write_rect(void *buffer, uint16_t *palette, int left, int top, int width, int he
 }
 
 static inline bool
-pixel_diff(uint8_t pixel1, uint8_t pixel2, uint16_t *palette1, uint16_t *palette2,
-           uint8_t pixel_mask, uint8_t palette_shift_mask)
+pixel_diff(uint32_t pixel1, uint32_t pixel2, uint16_t *palette1, uint16_t *palette2,
+           uint32_t pixel_mask, uint32_t palette_shift_mask)
 {
-    uint8_t p1 = pixel1 & pixel_mask;
-    uint8_t p2 = pixel2 & pixel_mask;
+    uint32_t p1 = pixel1 & pixel_mask;
+    uint32_t p2 = pixel2 & pixel_mask;
 
     if (palette_shift_mask) {
         if (pixel1 & palette_shift_mask) p1 += (pixel_mask + 1);
@@ -997,21 +1003,28 @@ rg_display_save_frame(const char *filename, rg_video_frame_t *frame, double scal
         return false;
 
     uint8_t *dst = png->data;
-    uint16_t pixel;
+    uint32_t pixel_mask = frame->pixel_mask;
+    uint16_t *palette = frame->palette;
     double factor = 1 + (1 - scale);
 
     printf("%s: Rendering frame: %dx%d\n", __func__, png->width, png->height);
 
     for (size_t y = 0; y < png->height; y++)
     {
+        uint8_t *line = frame->buffer + ((int)(y * factor) * frame->stride);
+
         for (size_t x = 0; x < png->width; x++)
         {
-            uint8_t *src = frame->buffer + ((int)(y * factor) * frame->stride);
-            if (frame->palette) {
-                pixel = ((uint16_t*)frame->palette)[src[(int)(x * factor)] & frame->pixel_mask];
-            } else {
-                pixel = ((uint16_t*)src)[(int)(x * factor)];
-            }
+            uint32_t pixel;
+
+            if (frame->pixel_size == 2)
+                pixel = ((uint16_t*)line)[(int)(x * factor)];
+            else
+                pixel = line[(int)(x * factor)];
+
+            if (palette)
+                pixel = palette[pixel & pixel_mask];
+
             pixel = (pixel << 8) | (pixel >> 8);
             *(dst++) = ((pixel >> 11) & 0x1F) << 3;
             *(dst++) = ((pixel >> 5) & 0x3F) << 2;

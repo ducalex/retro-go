@@ -19,9 +19,9 @@
 static uint32_t audioBuffer[AUDIO_BUFFER_LENGTH];
 
 static uint16_t palettes[2][32];
-static rg_video_frame_t update1;
-static rg_video_frame_t update2;
-static rg_video_frame_t *currentUpdate = &update1;
+static rg_video_frame_t frames[2];
+static rg_video_frame_t *currentUpdate = &frames[0];
+static rg_video_frame_t *previousUpdate = NULL;
 
 static long skipFrames = 0;
 
@@ -115,8 +115,17 @@ void app_main(void)
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     rg_emu_init(&LoadState, &SaveState, &netplay_callback);
 
-    update1.buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
-    update2.buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
+    frames[0].pixel_size = 1;
+    frames[0].pixel_mask = PIXEL_MASK;
+    frames[0].pixel_clear = -1;
+    frames[0].pal_shift_mask = PAL_SHIFT_MASK;
+    frames[1] = frames[0];
+
+    frames[0].buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
+    frames[1].buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
+
+    frames[0].palette = (uint16_t*)&palettes[0];
+    frames[1].palette = (uint16_t*)&palettes[1];
 
     // Load ROM
     rg_app_desc_t *app = rg_system_get_app();
@@ -132,7 +141,7 @@ void app_main(void)
     bitmap.height = SMS_HEIGHT;
     bitmap.pitch = bitmap.width;
     //bitmap.depth = 8;
-    bitmap.data = update1.buffer;
+    bitmap.data = currentUpdate->buffer;
 
     option.sndrate = AUDIO_SAMPLE_RATE;
     option.overscan = 0;
@@ -152,17 +161,11 @@ void app_main(void)
         rg_emu_load_state(0);
     }
 
-    update1.width  = update2.width  = bitmap.viewport.w;
-    update1.height = update2.height = bitmap.viewport.h;
-    update1.stride  = update2.stride  = bitmap.pitch;
-    update1.pixel_size = update2.pixel_size = 1;
-    update1.pixel_mask = update2.pixel_mask = PIXEL_MASK;
-    update1.pixel_clear = update2.pixel_clear = -1;
-    update1.pal_shift_mask = update2.pal_shift_mask = PAL_SHIFT_MASK;
-    update1.palette = (uint16_t*)&palettes[0];
-    update2.palette = (uint16_t*)&palettes[1];
-    update1.buffer += bitmap.viewport.x;
-    update2.buffer += bitmap.viewport.x;
+    frames[0].width  = frames[1].width  = bitmap.viewport.w;
+    frames[0].height = frames[1].height = bitmap.viewport.h;
+    frames[0].stride  = frames[1].stride  = bitmap.pitch;
+    frames[0].buffer += bitmap.viewport.x;
+    frames[1].buffer += bitmap.viewport.x;
 
     const long frameTime = get_frame_time(sms.display == DISPLAY_NTSC ? 60 : 50);
     bool fullFrame = false;
@@ -289,7 +292,7 @@ void app_main(void)
 
         if (drawFrame)
         {
-            rg_video_frame_t *previousUpdate = (currentUpdate == &update1) ? &update2 : &update1;
+            rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
 
             render_copy_palette(currentUpdate->palette);
 
