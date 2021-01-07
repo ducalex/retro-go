@@ -200,10 +200,6 @@ struct SSettings
 	uint8	DSP;
 	bool8	SA1;
 	bool8	C4;
-	uint8	SETA;
-	bool8	BS;
-	bool8	BSXItself;
-	bool8	BSXBootup;
 	bool8	MSU1;
 	bool8	MouseMaster;
 	bool8	SuperScopeMaster;

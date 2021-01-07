@@ -257,7 +257,6 @@ void S9xLoadConfigFiles (char **argv, int argc)
 
 	// Settings
 
-	Settings.BSXBootup                  =  conf.GetBool("Settings::BSXBootup",                 false);
 	Settings.TurboMode                  =  conf.GetBool("Settings::TurboMode",                 false);
 	Settings.TurboSkipFrames            =  conf.GetUInt("Settings::TurboFrameSkip",            15);
 	Settings.MovieTruncate              =  conf.GetBool("Settings::MovieTruncateAtEnd",        false);
@@ -589,20 +588,6 @@ char * S9xParseArgs (char **argv, int argc)
 			else
 			if (!strcasecmp(argv[i], "-header"))
 				Settings.ForceHeader = TRUE;
-			else
-			if (!strcasecmp(argv[i], "-bsxbootup"))
-				Settings.BSXBootup = TRUE;
-                        else
-                        if (!strcasecmp(argv[i], "-snapshot"))
-                        {
-                                if (i + 1 < argc)
-                                {
-                                        strncpy(Settings.InitialSnapshotFilename, argv[++i], PATH_MAX);
-                                        Settings.InitialSnapshotFilename[PATH_MAX] = 0;
-                                }
-                                else
-                                        S9xUsage();
-                        }
 			else
 
 			// PATCH/CHEAT OPTIONS

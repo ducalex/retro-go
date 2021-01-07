@@ -755,40 +755,6 @@ static FreezeData	SnapDSP2[] =
 };
 
 #undef STRUCT
-#define STRUCT	struct SST010
-
-static FreezeData	SnapST010[] =
-{
-	ARRAY_ENTRY(6, input_params, 16, uint8_ARRAY_V),
-	ARRAY_ENTRY(6, output_params, 16, uint8_ARRAY_V),
-	INT_ENTRY(6, op_reg),
-	INT_ENTRY(6, execute),
-	INT_ENTRY(6, control_enable)
-};
-
-#undef STRUCT
-#define STRUCT	struct SBSX
-
-static FreezeData	SnapBSX[] =
-{
-	INT_ENTRY(6, dirty),
-	INT_ENTRY(6, dirty2),
-	INT_ENTRY(6, bootup),
-	INT_ENTRY(6, flash_enable),
-	INT_ENTRY(6, write_enable),
-	INT_ENTRY(6, read_enable),
-	INT_ENTRY(6, flash_command),
-	INT_ENTRY(6, old_write),
-	INT_ENTRY(6, new_write),
-	INT_ENTRY(6, out_index),
-	ARRAY_ENTRY(6, output, 32, uint8_ARRAY_V),
-	ARRAY_ENTRY(6, PPU, 32, uint8_ARRAY_V),
-	ARRAY_ENTRY(6, MMC, 16, uint8_ARRAY_V),
-	ARRAY_ENTRY(6, prevMMC, 16, uint8_ARRAY_V),
-	ARRAY_ENTRY(6, test2192, 32, uint8_ARRAY_V)
-};
-
-#undef STRUCT
 #define STRUCT	struct SMSU1
 
 static FreezeData	SnapMSU1[] =
@@ -1034,12 +1000,6 @@ void S9xFreezeToStream (STREAM stream)
 	if (Settings.C4)
 		FreezeBlock (stream, "CX4", Memory.C4RAM, 8192);
 
-	if (Settings.SETA == ST_010)
-		FreezeStruct(stream, "ST0", &ST010, SnapST010, COUNT(SnapST010));
-
-	if (Settings.BS)
-		FreezeStruct(stream, "BSX", &BSX, SnapBSX, COUNT(SnapBSX));
-
 	if (Settings.MSU1)
 		FreezeStruct(stream, "MSU", &MSU1, SnapMSU1, COUNT(SnapMSU1));
 
@@ -1135,8 +1095,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 	uint8	*local_dsp1          = NULL;
 	uint8	*local_dsp2          = NULL;
 	uint8	*local_cx4_data      = NULL;
-	uint8	*local_st010         = NULL;
-	uint8	*local_bsx_data      = NULL;
 	uint8	*local_msu1_data     = NULL;
 	uint8	*local_screenshot    = NULL;
 	uint8	*local_movie_data    = NULL;
@@ -1236,19 +1194,13 @@ int S9xUnfreezeFromStream (STREAM stream)
 			SkipBlockWithName(stream, "CX4");
 		}
 
-		result = UnfreezeStructCopy(stream, "ST0", &local_st010, SnapST010, COUNT(SnapST010), version);
-		if (result != SUCCESS && Settings.SETA == ST_010)
-			break;
-
+		SkipBlockWithName(stream, "ST0");
 		SkipBlockWithName(stream, "OBC");
 		SkipBlockWithName(stream, "OBM");
 		SkipBlockWithName(stream, "S71");
 		SkipBlockWithName(stream, "SRT");
 		SkipBlockWithName(stream, "CLK");
-
-		result = UnfreezeStructCopy(stream, "BSX", &local_bsx_data, SnapBSX, COUNT(SnapBSX), version);
-		if (result != SUCCESS && Settings.BS)
-			break;
+		SkipBlockWithName(stream, "BSX");
 
 		result = UnfreezeStructCopy(stream, "MSU", &local_msu1_data, SnapMSU1, COUNT(SnapMSU1), version);
 		if (result != SUCCESS && Settings.MSU1)
@@ -1358,12 +1310,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 		if (local_cx4_data)
 			memcpy(Memory.C4RAM, local_cx4_data, 8192);
 
-		if (local_st010)
-			UnfreezeStructFromCopy(&ST010, SnapST010, COUNT(SnapST010), local_st010, version);
-
-		if (local_bsx_data)
-			UnfreezeStructFromCopy(&BSX, SnapBSX, COUNT(SnapBSX), local_bsx_data, version);
-
 		if (local_msu1_data)
 			UnfreezeStructFromCopy(&MSU1, SnapMSU1, COUNT(SnapMSU1), local_msu1_data, version);
 
@@ -1448,9 +1394,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 			SA1.Flags |= sa1_old_flags & TRACE_FLAG;
 			S9xSA1PostLoadState();
 		}
-
-		if (local_bsx_data)
-			S9xBSXPostLoadState();
 
 		if (local_msu1_data)
 			S9xMSU1PostLoadState();
@@ -1537,8 +1480,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 	if (local_dsp1)				delete [] local_dsp1;
 	if (local_dsp2)				delete [] local_dsp2;
 	if (local_cx4_data)			delete [] local_cx4_data;
-	if (local_st010)			delete [] local_st010;
-	if (local_bsx_data)			delete [] local_bsx_data;
 	if (local_screenshot)		delete [] local_screenshot;
 	if (local_movie_data)		delete [] local_movie_data;
 

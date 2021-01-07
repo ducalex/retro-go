@@ -11,8 +11,6 @@
 #include "dsp.h"
 #include "sa1.h"
 #include "c4.h"
-#include "seta.h"
-#include "bsx.h"
 #include "msu1.h"
 
 #define addCyclesInMemoryAccess \
@@ -114,21 +112,6 @@ inline uint8 S9xGetByte (uint32 Address)
 
 		case CMemory::MAP_C4:
 			byte = S9xGetC4(Address & 0xffff);
-			addCyclesInMemoryAccess;
-			return (byte);
-
-		case CMemory::MAP_SETA_DSP:
-			byte = S9xGetSetaDSP(Address);
-			addCyclesInMemoryAccess;
-			return (byte);
-
-		case CMemory::MAP_SETA_RISC:
-			byte = S9xGetST018(Address);
-			addCyclesInMemoryAccess;
-			return (byte);
-
-		case CMemory::MAP_BSX:
-			byte = S9xGetBSX(Address);
 			addCyclesInMemoryAccess;
 			return (byte);
 
@@ -250,27 +233,6 @@ inline uint16 S9xGetWord (uint32 Address, enum s9xwrap_t w = WRAP_NONE)
 			addCyclesInMemoryAccess;
 			return (word);
 
-		case CMemory::MAP_SETA_DSP:
-			word  = S9xGetSetaDSP(Address);
-			addCyclesInMemoryAccess;
-			word |= S9xGetSetaDSP(Address + 1) << 8;
-			addCyclesInMemoryAccess;
-			return (word);
-
-		case CMemory::MAP_SETA_RISC:
-			word  = S9xGetST018(Address);
-			addCyclesInMemoryAccess;
-			word |= S9xGetST018(Address + 1) << 8;
-			addCyclesInMemoryAccess;
-			return (word);
-
-		case CMemory::MAP_BSX:
-			word  = S9xGetBSX(Address);
-			addCyclesInMemoryAccess;
-			word |= S9xGetBSX(Address + 1) << 8;
-			addCyclesInMemoryAccess;
-			return (word);
-
 		case CMemory::MAP_NONE:
 		default:
 			word = OpenBus | (OpenBus << 8);
@@ -355,21 +317,6 @@ inline void S9xSetByte (uint8 Byte, uint32 Address)
 
 		case CMemory::MAP_C4:
 			S9xSetC4(Byte, Address & 0xffff);
-			addCyclesInMemoryAccess;
-			return;
-
-		case CMemory::MAP_SETA_DSP:
-			S9xSetSetaDSP(Byte, Address);
-			addCyclesInMemoryAccess;
-			return;
-
-		case CMemory::MAP_SETA_RISC:
-			S9xSetST018(Byte, Address);
-			addCyclesInMemoryAccess;
-			return;
-
-		case CMemory::MAP_BSX:
-			S9xSetBSX(Byte, Address);
 			addCyclesInMemoryAccess;
 			return;
 
@@ -572,60 +519,6 @@ inline void S9xSetWord (uint16 Word, uint32 Address, enum s9xwrap_t w = WRAP_NON
 				return;
 			}
 
-		case CMemory::MAP_SETA_DSP:
-			if (o)
-			{
-				S9xSetSetaDSP(Word >> 8, Address + 1);
-				addCyclesInMemoryAccess;
-				S9xSetSetaDSP((uint8) Word, Address);
-				addCyclesInMemoryAccess;
-				return;
-			}
-			else
-			{
-				S9xSetSetaDSP((uint8) Word, Address);
-				addCyclesInMemoryAccess;
-				S9xSetSetaDSP(Word >> 8, Address + 1);
-				addCyclesInMemoryAccess;
-				return;
-			}
-
-		case CMemory::MAP_SETA_RISC:
-			if (o)
-			{
-				S9xSetST018(Word >> 8, Address + 1);
-				addCyclesInMemoryAccess;
-				S9xSetST018((uint8) Word, Address);
-				addCyclesInMemoryAccess;
-				return;
-			}
-			else
-			{
-				S9xSetST018((uint8) Word, Address);
-				addCyclesInMemoryAccess;
-				S9xSetST018(Word >> 8, Address + 1);
-				addCyclesInMemoryAccess;
-				return;
-			}
-
-		case CMemory::MAP_BSX:
-			if (o)
-			{
-				S9xSetBSX(Word >> 8, Address + 1);
-				addCyclesInMemoryAccess;
-				S9xSetBSX((uint8) Word, Address);
-				addCyclesInMemoryAccess;
-				return;
-			}
-			else
-			{
-				S9xSetBSX((uint8) Word, Address);
-				addCyclesInMemoryAccess;
-				S9xSetBSX(Word >> 8, Address + 1);
-				addCyclesInMemoryAccess;
-				return;
-			}
-
 		case CMemory::MAP_NONE:
 		default:
 			addCyclesInMemoryAccess_x2;
@@ -682,10 +575,6 @@ inline void S9xSetPCBase (uint32 Address)
 
 		case CMemory::MAP_C4:
 			CPU.PCBase = S9xGetBasePointerC4(Address & 0xffff);
-			return;
-
-		case CMemory::MAP_BSX:
-			CPU.PCBase = S9xGetBasePointerBSX(Address);
 			return;
 
 		case CMemory::MAP_NONE:

@@ -769,11 +769,6 @@ static void S9xDeinterleaveType1 (int, uint8 *);
 static void S9xDeinterleaveType2 (int, uint8 *);
 static void S9xDeinterleaveGD24 (int, uint8 *);
 static bool8 allASCII (uint8 *, int);
-static bool8 is_SufamiTurbo_BIOS (const uint8 *, uint32);
-static bool8 is_SufamiTurbo_Cart (const uint8 *, uint32);
-static bool8 is_BSCart_BIOS (const uint8 *, uint32);
-static bool8 is_BSCartSA1_BIOS(const uint8 *, uint32);
-static bool8 is_GNEXT_Add_On (const uint8 *, uint32);
 static uint32 caCRC32 (uint8 *, uint32, uint32 crc32 = 0xffffffff);
 static bool8 ReadUPSPatch (Stream *, long, int32 &);
 static long ReadInt (Stream *, unsigned);
@@ -963,8 +958,6 @@ bool8 CMemory::Init (void)
 	ROM += 0x8000;
 
 	C4RAM   = ROM + 0x400000 + 8192 * 8; // C4
-	BIOSROM = ROM + 0x300000; // BS
-	BSRAM   = ROM + 0x400000; // BS
 
 	SuperFX.pvRegisters = FillRAM + 0x3000;
 	SuperFX.nRamBanks   = 2; // Most only use 1.  1=64KB=512Mb, 2=128KB=1024Mb
@@ -1034,65 +1027,6 @@ static bool8 allASCII (uint8 *b, int size)
 	}
 
 	return (TRUE);
-}
-
-static bool8 is_SufamiTurbo_BIOS (const uint8 *data, uint32 size)
-{
-	if (size == 0x40000 &&
-		strncmp((char *) data, "BANDAI SFC-ADX", 14) == 0 && strncmp((char * ) (data + 0x10), "SFC-ADX BACKUP", 14) == 0)
-		return (TRUE);
-	else
-		return (FALSE);
-}
-
-static bool8 is_SufamiTurbo_Cart (const uint8 *data, uint32 size)
-{
-	if (size >= 0x80000 && size <= 0x100000 &&
-		strncmp((char *) data, "BANDAI SFC-ADX", 14) == 0 && strncmp((char * ) (data + 0x10), "SFC-ADX BACKUP", 14) != 0)
-		return (TRUE);
-	else
-		return (FALSE);
-}
-
-static bool8 is_BSCart_BIOS(const uint8 *data, uint32 size)
-{
-	if ((data[0x7FB2] == 0x5A) && (data[0x7FB5] != 0x20) && (data[0x7FDA] == 0x33))
-	{
-		Memory.LoROM = TRUE;
-		Memory.HiROM = FALSE;
-
-		return (TRUE);
-	}
-	else if ((data[0xFFB2] == 0x5A) && (data[0xFFB5] != 0x20) && (data[0xFFDA] == 0x33))
-	{
-		Memory.LoROM = FALSE;
-		Memory.HiROM = TRUE;
-
-		return (TRUE);
-	}
-	else
-		return (FALSE);
-}
-
-static bool8 is_BSCartSA1_BIOS (const uint8 *data, uint32 size)
-{
-	//Same basic check as BSCart
-	if (!is_BSCart_BIOS(data, size))
-		return (FALSE);
-
-	//Checks if the game is Itoi's Bass Fishing No. 1 (ZBPJ) or SD Gundam G-NEXT (ZX3J)
-	if (strncmp((char *)(data + 0x7fb2), "ZBPJ", 4) == 0 || strncmp((char *)(data + 0x7fb2), "ZX3J", 4) == 0)
-		return (TRUE);
-	else
-		return (FALSE);
-}
-
-static bool8 is_GNEXT_Add_On (const uint8 *data, uint32 size)
-{
-	if (size == 0x80000)
-		return (TRUE);
-	else
-		return (FALSE);
 }
 
 int CMemory::ScoreHiROM (bool8 skip_header, int32 romoff)
@@ -1621,41 +1555,6 @@ bool8 CMemory::LoadROMInt (int32 ROMfillSize)
     return (TRUE);
 }
 
-bool8 CMemory::LoadMultiCartMem (const uint8 *sourceA, uint32 sourceASize,
-                                 const uint8 *sourceB, uint32 sourceBSize,
-                                 const uint8 *bios, uint32 biosSize)
-{
-    uint32 offset = 0;
-    memset(ROM, 0, MAX_ROM_SIZE);
-	memset(&Multi, 0, sizeof(Multi));
-
-    if(bios) {
-        if(!is_SufamiTurbo_BIOS(bios,biosSize))
-            return FALSE;
-
-        memcpy(ROM,bios,biosSize);
-        offset+=biosSize;
-    }
-
-    if(sourceA) {
-        memcpy(ROM + offset,sourceA,sourceASize);
-        Multi.cartOffsetA = offset;
-        Multi.cartSizeA = sourceASize;
-        offset += sourceASize;
-        strcpy(Multi.fileNameA,"MemCartA");
-    }
-
-    if(sourceB) {
-        memcpy(ROM + offset,sourceB,sourceBSize);
-        Multi.cartOffsetB = offset;
-        Multi.cartSizeB = sourceBSize;
-        offset += sourceBSize;
-        strcpy(Multi.fileNameB,"MemCartB");
-    }
-
-    return LoadMultiCartInt();
-}
-
 bool8 CMemory::LoadMultiCart (const char *cartA, const char *cartB)
 {
     memset(ROM, 0, MAX_ROM_SIZE);
@@ -1695,67 +1594,10 @@ bool8 CMemory::LoadMultiCartInt ()
 	CalculatedSize = 0;
 	ExtendedFormat = NOPE;
 
-	if (Multi.cartSizeA)
-	{
-        if (is_SufamiTurbo_Cart(ROM + Multi.cartOffsetA, Multi.cartSizeA))
-			Multi.cartType = 4;
-		else
-		if (is_BSCartSA1_BIOS(ROM + Multi.cartOffsetA, Multi.cartSizeA))
-			Multi.cartType = 5;
-		else
-		if (is_BSCart_BIOS(ROM + Multi.cartOffsetA, Multi.cartSizeA))
-			Multi.cartType = 3;
-	}
-	else
-	if (Multi.cartSizeB)
-	{
-        if (is_SufamiTurbo_Cart(ROM + Multi.cartOffsetB, Multi.cartSizeB))
-			Multi.cartType = 4;
-	}
-	else
-		Multi.cartType = 4; // assuming BIOS only
-
-
-    if(Multi.cartType == 4 && Multi.cartOffsetA == 0) { // try to load bios from file
-        Multi.cartOffsetA = 0x40000;
-        if(Multi.cartSizeA)
-            memmove(ROM + Multi.cartOffsetA, ROM, Multi.cartSizeA + Multi.cartSizeB);
-        else if(Multi.cartOffsetB) // clear cart A so the bios can detect that it's not present
-            memset(ROM, 0, Multi.cartOffsetB);
-
-        FILE	*fp;
-	    size_t	size;
-	    char	path[PATH_MAX + 1];
-
-	    strcpy(path, S9xGetDirectory(BIOS_DIR));
-	    strcat(path, SLASH_STR);
-	    strcat(path, "STBIOS.bin");
-
-	    fp = fopen(path, "rb");
-	    if (fp)
-	    {
-		    size = fread((void *) ROM, 1, 0x40000, fp);
-		    fclose(fp);
-		    if (!is_SufamiTurbo_BIOS(ROM, size))
-			    return (FALSE);
-	    }
-	    else
-		    return (FALSE);
-
-        strcpy(ROMFilename, path);
-    }
+	Multi.cartType = 4; // assuming BIOS only
 
 	switch (Multi.cartType)
 	{
-		case 4:
-			r = LoadSufamiTurbo();
-			break;
-
-		case 3:
-		case 5:
-			r = LoadBSCart();
-			break;
-
 		default:
 			r = FALSE;
 	}
@@ -1778,87 +1620,6 @@ bool8 CMemory::LoadMultiCartInt ()
 	InitROM();
 
 	S9xReset();
-
-	return (TRUE);
-}
-
-bool8 CMemory::LoadSufamiTurbo ()
-{
-	Multi.sramA = SRAM;
-	Multi.sramB = SRAM + 0x10000;
-
-	if (Multi.cartSizeA)
-	{
-		Multi.sramSizeA = 4; // ROM[0x37]?
-		Multi.sramMaskA = Multi.sramSizeA ? ((1 << (Multi.sramSizeA + 3)) * 128 - 1) : 0;
-	}
-
-	if (Multi.cartSizeB)
-	{
-        if (!is_SufamiTurbo_Cart(ROM + Multi.cartOffsetB, Multi.cartSizeB))
-			Multi.cartSizeB = 0;
-	}
-
-	if (Multi.cartSizeB)
-	{
-		Multi.sramSizeB = 4; // ROM[0x37]?
-		Multi.sramMaskB = Multi.sramSizeB ? ((1 << (Multi.sramSizeB + 3)) * 128 - 1) : 0;
-	}
-
-	LoROM = TRUE;
-	HiROM = FALSE;
-	CalculatedSize = 0x40000;
-
-	return (TRUE);
-}
-
-bool8 CMemory::LoadBSCart ()
-{
-	Multi.sramA = SRAM;
-	Multi.sramB = NULL;
-
-	if (LoROM)
-		Multi.sramSizeA = ROM[0x7fd8];
-	else
-		Multi.sramSizeA = ROM[0xffd8];
-
-	Multi.sramMaskA = Multi.sramSizeA ? ((1 << (Multi.sramSizeA + 3)) * 128 - 1) : 0;
-	Multi.sramSizeB = 0;
-	Multi.sramMaskB = 0;
-
-	CalculatedSize = Multi.cartSizeA;
-
-	if (Multi.cartSizeB == 0 && Multi.cartSizeA <= (int32)(MAX_ROM_SIZE - 0x100000 - Multi.cartOffsetA))
-	{
-		//Initialize 1MB Empty Memory Pack only if cart B is cleared
-		//It does not make a Memory Pack if game is loaded like a normal ROM
-		Multi.cartOffsetB = Multi.cartOffsetA + CalculatedSize;
-		Multi.cartSizeB = 0x100000;
-		memset(Memory.ROM + Multi.cartOffsetB, 0xFF, 0x100000);
-	}
-
-	return (TRUE);
-}
-
-bool8 CMemory::LoadGNEXT ()
-{
-	Multi.sramA = SRAM;
-	Multi.sramB = NULL;
-
-	Multi.sramSizeA = ROM[0x7fd8];
-	Multi.sramMaskA = Multi.sramSizeA ? ((1 << (Multi.sramSizeA + 3)) * 128 - 1) : 0;
-	Multi.sramSizeB = 0;
-	Multi.sramMaskB = 0;
-
-	if (Multi.cartSizeB)
-	{
-		if (!is_GNEXT_Add_On(ROM + Multi.cartOffsetB, Multi.cartSizeB))
-			Multi.cartSizeB = 0;
-	}
-
-	LoROM = TRUE;
-	HiROM = FALSE;
-	CalculatedSize = Multi.cartSizeA;
 
 	return (TRUE);
 }
@@ -1919,34 +1680,6 @@ bool8 CMemory::LoadSRAM (const char *filename)
 
 			return (TRUE);
 		}
-		else
-		if (Settings.BS && !Settings.BSXItself)
-		{
-			// The BS game's SRAM was not found
-			// Try to read BS-X.srm instead
-			char	path[PATH_MAX + 1];
-
-			strcpy(path, S9xGetDirectory(SRAM_DIR));
-			strcat(path, SLASH_STR);
-			strcat(path, "BS-X.srm");
-
-			file = fopen(path, "rb");
-			if (file)
-			{
-				len = fread((char *) SRAM, 1, 0x20000, file);
-				fclose(file);
-				if (len - size == 512)
-					memmove(SRAM, SRAM + 512, size);
-
-				S9xMessage(S9X_INFO, S9X_ROM_INFO, "The SRAM file wasn't found: BS-X.srm was read instead.");
-				return (TRUE);
-			}
-			else
-			{
-				S9xMessage(S9X_INFO, S9X_ROM_INFO, "The SRAM file wasn't found, BS-X.srm wasn't found either.");
-				return (FALSE);
-			}
-		}
 
 		return (FALSE);
 	}
@@ -2006,32 +1739,6 @@ bool8 CMemory::SaveSRAM (const char *filename)
 		}
 	}
 
-	return (FALSE);
-}
-
-bool8 CMemory::SaveMPAK (const char *filename)
-{
-	if (Settings.BS || (Multi.cartSizeB && (Multi.cartType == 3)))
-	{
-		FILE	*file;
-		int		size;
-		char	mempakName[PATH_MAX + 1];
-
-		strcpy(mempakName, filename);
-		size = 0x100000;
-		if (size)
-		{
-			file = fopen(mempakName, "wb");
-			if (file)
-			{
-				size_t	written;
-				written = fwrite((char *)Memory.ROM + Multi.cartOffsetB, size, 1, file);
-				fclose(file);
-
-				return (written > 0);
-			}
-		}
-	}
 	return (FALSE);
 }
 
@@ -2128,31 +1835,13 @@ char * CMemory::SafeANK (const char *s)
 
 void CMemory::ParseSNESHeader (uint8 *RomHeader)
 {
-	bool8	bs = Settings.BS & !Settings.BSXItself;
-
 	strncpy(ROMName, (char *) &RomHeader[0x10], ROM_NAME_LEN - 1);
-	if (bs)
-		memset(ROMName + 16, 0x20, ROM_NAME_LEN - 17);
 
-	if (bs)
-	{
-		if (!(((RomHeader[0x29] & 0x20) && CalculatedSize <  0x100000) ||
-			 (!(RomHeader[0x29] & 0x20) && CalculatedSize == 0x100000)))
-			printf("BS: Size mismatch\n");
-
-		// FIXME
-		int	p = 0;
-		while ((1 << p) < (int) CalculatedSize)
-			p++;
-		ROMSize = p - 10;
-	}
-	else
-		ROMSize = RomHeader[0x27];
-
-	SRAMSize  = bs ? 5 /* BS-X */    : RomHeader[0x28];
-	ROMSpeed  = bs ? RomHeader[0x28] : RomHeader[0x25];
-	ROMType   = bs ? 0xE5 /* BS-X */ : RomHeader[0x26];
-	ROMRegion = bs ? 0               : RomHeader[0x29];
+	ROMSize   = RomHeader[0x27];
+	SRAMSize  = RomHeader[0x28];
+	ROMSpeed  = RomHeader[0x25];
+	ROMType   = RomHeader[0x26];
+	ROMRegion = RomHeader[0x29];
 
 	ROMChecksum           = RomHeader[0x2E] + (RomHeader[0x2F] << 8);
 	ROMComplementChecksum = RomHeader[0x2C] + (RomHeader[0x2D] << 8);
@@ -2179,8 +1868,6 @@ void CMemory::InitROM (void)
 	Settings.DSP = 0;
 	Settings.SA1 = FALSE;
 	Settings.C4 = FALSE;
-	Settings.SETA = 0;
-	Settings.BS = FALSE;
 	Settings.MSU1 = FALSE;
 
 	SuperFX.nRomBanks = CalculatedSize >> 15;
@@ -2195,8 +1882,6 @@ void CMemory::InitROM (void)
 		RomHeader += 0x400000;
 	if (HiROM)
 		RomHeader += 0x8000;
-
-	S9xInitBSX(); // Set BS header before parsing
 
 	ParseSNESHeader(RomHeader);
 
@@ -2277,34 +1962,6 @@ void CMemory::InitROM (void)
 				SRAMSize = 5;
 			break;
 
-		// ST018
-		case 0xF530:
-			Settings.SETA = ST_018;
-			SetSETA = NULL;
-			GetSETA = NULL;
-			SRAMSize = 2;
-			SNESGameFixes.SRAMInitialValue = 0x00;
-			break;
-
-		// ST010/011
-		case 0xF630:
-			if (ROM[0x7FD7] == 0x09)
-			{
-				Settings.SETA = ST_011;
-				SetSETA = &S9xSetST011;
-				GetSETA = &S9xGetST011;
-			}
-			else
-			{
-				Settings.SETA = ST_010;
-				SetSETA = &S9xSetST010;
-				GetSETA = &S9xGetST010;
-			}
-
-			SRAMSize = 2;
-			SNESGameFixes.SRAMInitialValue = 0x00;
-			break;
-
 		// C4
 		case 0xF320:
 			Settings.C4 = TRUE;
@@ -2321,25 +1978,13 @@ void CMemory::InitROM (void)
 
 	if (HiROM)
     {
-		if (Settings.BS)
-			/* Do nothing */;
-		else
 		if (ExtendedFormat != NOPE)
 			Map_ExtendedHiROMMap();
-		else
-		if (Multi.cartType == 3)
-			Map_BSCartHiROMMap();
 		else
 			Map_HiROMMap();
     }
     else
     {
-		if (Settings.BS)
-			/* Do nothing */;
-		else
-		if (Settings.SETA && Settings.SETA != ST_018)
-			Map_SetaDSPLoROMMap();
-		else
 		if (Settings.SuperFX)
 			Map_SuperFXLoROMMap();
 		else
@@ -2357,13 +2002,6 @@ void CMemory::InitROM (void)
 		if (strncmp(ROMName, "WANDERERS FROM YS", 17) == 0)
 			Map_NoMAD1LoROMMap();
 		else
-		if (Multi.cartType == 3)
-			if (strncmp(ROMName, "SOUND NOVEL-TCOOL", 17) == 0 ||
-				strncmp(ROMName, "DERBY STALLION 96", 17) == 0)
-				Map_BSCartLoROMMap(1);
-			else
-				Map_BSCartLoROMMap(0);
-		else
 		if (strncmp(ROMName, "SOUND NOVEL-TCOOL", 17) == 0 ||
 			strncmp(ROMName, "DERBY STALLION 96", 17) == 0)
 			Map_ROM24MBSLoROMMap();
@@ -2371,20 +2009,6 @@ void CMemory::InitROM (void)
 		if (strncmp(ROMName, "THOROUGHBRED BREEDER3", 21) == 0 ||
 			strncmp(ROMName, "RPG-TCOOL 2", 11) == 0)
 			Map_SRAM512KLoROMMap();
-		else
-		if (strncmp(ROMName, "ADD-ON BASE CASSETE", 19) == 0)
-		{
-			if (Multi.cartType == 4)
-			{
-				SRAMSize = Multi.sramSizeA;
-				Map_SufamiTurboLoROMMap();
-			}
-			else
-			{
-				SRAMSize = 5;
-				Map_SufamiTurboPseudoLoROMMap();
-			}
-		}
 		else
 			Map_LoROMMap();
     }
@@ -2397,27 +2021,8 @@ void CMemory::InitROM (void)
 	//// Build more ROM information
 
 	// CRC32
-	if (!Settings.BS || Settings.BSXItself) // Not BS Dump
-	{
-		ROMCRC32 = caCRC32(ROM, CalculatedSize);
-		sha256sum(ROM, CalculatedSize, ROMSHA256);
-	}
-	else // Convert to correct format before scan
-	{
-		int offset = HiROM ? 0xffc0 : 0x7fc0;
-		// Backup
-		uint8 BSMagic0 = ROM[offset + 22],
-			  BSMagic1 = ROM[offset + 23];
-		// uCONSRT standard
-		ROM[offset + 22] = 0x42;
-		ROM[offset + 23] = 0x00;
-		// Calc
-		ROMCRC32 = caCRC32(ROM, CalculatedSize);
-		sha256sum(ROM, CalculatedSize, ROMSHA256);
-		// Convert back
-		ROM[offset + 22] = BSMagic0;
-		ROM[offset + 23] = BSMagic1;
-	}
+	ROMCRC32 = caCRC32(ROM, CalculatedSize);
+	sha256sum(ROM, CalculatedSize, ROMSHA256);
 
 	// NTSC/PAL
 	if (Settings.ForceNTSC)
@@ -2426,7 +2031,7 @@ void CMemory::InitROM (void)
 	if (Settings.ForcePAL)
 		Settings.PAL = TRUE;
 	else
-	if (!Settings.BS && (ROMRegion >= 2) && (ROMRegion <= 12))
+	if ((ROMRegion >= 2) && (ROMRegion <= 12))
 		Settings.PAL = TRUE;
 	else
 		Settings.PAL = FALSE;
@@ -2739,24 +2344,6 @@ void CMemory::map_C4 (void)
 	map_index(0x80, 0xbf, 0x6000, 0x7fff, MAP_C4, MAP_TYPE_I_O);
 }
 
-void CMemory::map_SetaRISC (void)
-{
-	map_index(0x00, 0x3f, 0x3000, 0x3fff, MAP_SETA_RISC, MAP_TYPE_I_O);
-	map_index(0x80, 0xbf, 0x3000, 0x3fff, MAP_SETA_RISC, MAP_TYPE_I_O);
-}
-
-void CMemory::map_SetaDSP (void)
-{
-	// where does the SETA chip access, anyway?
-	// please confirm this?
-	map_index(0x68, 0x6f, 0x0000, 0x7fff, MAP_SETA_DSP, MAP_TYPE_RAM);
-	// and this!
-	map_index(0x60, 0x67, 0x0000, 0x3fff, MAP_SETA_DSP, MAP_TYPE_I_O);
-
-	// ST-0010:
-	// map_index(0x68, 0x6f, 0x0000, 0x0fff, MAP_SETA_DSP, ?);
-}
-
 void CMemory::map_WriteProtectROM (void)
 {
 	memmove((void *) WriteMap, (void *) Map, sizeof(Map));
@@ -2794,9 +2381,6 @@ void CMemory::Map_LoROMMap (void)
 	else
 	if (Settings.C4)
 		map_C4();
-	else
-	if (Settings.SETA == ST_018)
-		map_SetaRISC();
 
     map_LoROMSRAM();
 	map_WRAM();
@@ -2958,24 +2542,6 @@ void CMemory::Map_SuperFXLoROMMap (void)
 	map_WriteProtectROM();
 }
 
-void CMemory::Map_SetaDSPLoROMMap (void)
-{
-	printf("Map_SetaDSPLoROMMap\n");
-	map_System();
-
-	map_lorom(0x00, 0x3f, 0x8000, 0xffff, CalculatedSize);
-	map_lorom(0x40, 0x7f, 0x8000, 0xffff, CalculatedSize);
-	map_lorom(0x80, 0xbf, 0x8000, 0xffff, CalculatedSize);
-	map_lorom(0xc0, 0xff, 0x8000, 0xffff, CalculatedSize);
-
-	map_SetaDSP();
-
-    map_LoROMSRAM();
-	map_WRAM();
-
-	map_WriteProtectROM();
-}
-
 void CMemory::Map_SA1LoROMMap (void)
 {
 	printf("Map_SA1LoROMMap\n");
@@ -3099,71 +2665,6 @@ void CMemory::Map_ExtendedHiROMMap (void)
 	map_WriteProtectROM();
 }
 
-void CMemory::Map_BSCartLoROMMap(uint8 mapping)
-{
-	printf("Map_BSCartLoROMMap\n");
-
-	BSX.MMC[0x02] = 0x00;
-	BSX.MMC[0x0C] = 0x80;
-
-	map_System();
-
-	if (mapping)
-	{
-		map_lorom_offset(0x00, 0x1f, 0x8000, 0xffff, 0x100000, 0);
-		map_lorom_offset(0x20, 0x3f, 0x8000, 0xffff, 0x100000, 0x100000);
-		map_lorom_offset(0x80, 0x9f, 0x8000, 0xffff, 0x100000, 0x200000);
-		map_lorom_offset(0xa0, 0xbf, 0x8000, 0xffff, 0x100000, 0x100000);
-	}
-	else
-	{
-		map_lorom(0x00, 0x3f, 0x8000, 0xffff, CalculatedSize);
-		map_lorom(0x40, 0x7f, 0x0000, 0x7fff, CalculatedSize);
-		map_lorom(0x80, 0xbf, 0x8000, 0xffff, CalculatedSize);
-		map_lorom(0xc0, 0xff, 0x0000, 0x7fff, CalculatedSize);
-	}
-
-	map_LoROMSRAM();
-	map_index(0xc0, 0xef, 0x0000, 0xffff, MAP_BSX, MAP_TYPE_RAM);
-	map_WRAM();
-
-	map_WriteProtectROM();
-}
-
-void CMemory::Map_BSCartHiROMMap(void)
-{
-	printf("Map_BSCartHiROMMap\n");
-
-	BSX.MMC[0x02] = 0x80;
-	BSX.MMC[0x0C] = 0x80;
-
-	map_System();
-	map_hirom_offset(0x00, 0x1f, 0x8000, 0xffff, Multi.cartSizeA, Multi.cartOffsetA);
-	map_hirom_offset(0x20, 0x3f, 0x8000, 0xffff, Multi.cartSizeB, Multi.cartOffsetB);
-	map_hirom_offset(0x40, 0x5f, 0x0000, 0xffff, Multi.cartSizeA, Multi.cartOffsetA);
-	map_hirom_offset(0x60, 0x7f, 0x0000, 0xffff, Multi.cartSizeB, Multi.cartOffsetB);
-	map_hirom_offset(0x80, 0x9f, 0x8000, 0xffff, Multi.cartSizeA, Multi.cartOffsetA);
-	map_hirom_offset(0xa0, 0xbf, 0x8000, 0xffff, Multi.cartSizeB, Multi.cartOffsetB);
-	map_hirom_offset(0xc0, 0xdf, 0x0000, 0xffff, Multi.cartSizeA, Multi.cartOffsetA);
-
-	if ((ROM[Multi.cartOffsetB + 0xFF00] == 0x4D)
-		&& (ROM[Multi.cartOffsetB + 0xFF02] == 0x50)
-		&& ((ROM[Multi.cartOffsetB + 0xFF06] & 0xF0) == 0x70))
-	{
-		//Type 7 Memory Pack detection - if detected, emulate it as Mask ROM
-		map_hirom_offset(0xe0, 0xff, 0x0000, 0xffff, Multi.cartSizeB, Multi.cartOffsetB);
-	}
-	else
-	{
-		map_index(0xe0, 0xff, 0x0000, 0xffff, MAP_BSX, MAP_TYPE_RAM);
-	}
-
-	map_HiROMSRAM();
-	map_WRAM();
-
-	map_WriteProtectROM();
-}
-
 // checksum
 
 uint16 CMemory::checksum_calc_sum (uint8 *data, uint32 length)
@@ -3207,17 +2708,12 @@ void CMemory::Checksum_Calculate (void)
 	// from NSRT
 	uint16	sum = 0;
 
-	if (Settings.BS && !Settings.BSXItself)
-		sum = checksum_calc_sum(ROM, CalculatedSize) - checksum_calc_sum(ROM + (HiROM ? 0xffb0 : 0x7fb0), 48);
+	if (CalculatedSize & 0x7fff)
+		sum = checksum_calc_sum(ROM, CalculatedSize);
 	else
 	{
-		if (CalculatedSize & 0x7fff)
-			sum = checksum_calc_sum(ROM, CalculatedSize);
-		else
-		{
-			uint32	length = CalculatedSize;
-			sum = checksum_mirror_sum(ROM, length);
-		}
+		uint32	length = CalculatedSize;
+		sum = checksum_mirror_sum(ROM, length);
 	}
 
 	CalculatedChecksum = sum;
@@ -3273,12 +2769,9 @@ const char * CMemory::KartContents (void)
 
 	char	chip[20];
 
-	if (ROMType == 0 && !Settings.BS)
+	if (ROMType == 0)
 		return ("ROM");
 
-	if (Settings.BS)
-		strcpy(chip, "+BS");
-	else
 	if (Settings.SuperFX)
 		strcpy(chip, "+Super FX");
 	else
@@ -3287,15 +2780,6 @@ const char * CMemory::KartContents (void)
 	else
 	if (Settings.C4)
 		strcpy(chip, "+C4");
-	else
-	if (Settings.SETA == ST_010)
-		strcpy(chip, "+ST-010");
-	else
-	if (Settings.SETA == ST_011)
-		strcpy(chip, "+ST-011");
-	else
-	if (Settings.SETA == ST_018)
-		strcpy(chip, "+ST-018");
 	else
 	if (Settings.DSP)
 		sprintf(chip, "+DSP-%d", Settings.DSP);

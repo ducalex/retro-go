@@ -10,7 +10,7 @@ static char *strndup_p(char *str, int len)
     char *buffer;
     int n;
 
-    buffer = (char *) malloc (len + 1);
+    buffer = (char *) malloc(len + 1);
 
     if (buffer)
     {

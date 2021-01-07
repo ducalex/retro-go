@@ -42,10 +42,6 @@ struct CMemory
 		MAP_SPC7110_DRAM,
 		MAP_RONLY_SRAM,
 		MAP_C4,
-		MAP_OBC_RAM,
-		MAP_SETA_DSP,
-		MAP_SETA_RISC,
-		MAP_BSX,
 		MAP_NONE,
 		MAP_LAST
 	};
@@ -135,8 +131,6 @@ struct CMemory
 	void	map_HiROMSRAM (void);
 	void	map_DSP (void);
 	void	map_C4 (void);
-	void	map_SetaRISC (void);
-	void	map_SetaDSP (void);
 	void	map_WriteProtectROM (void);
 	void	Map_Initialize (void);
 	void	Map_LoROMMap (void);
@@ -147,13 +141,10 @@ struct CMemory
 	void	Map_SufamiTurboLoROMMap (void);
 	void	Map_SufamiTurboPseudoLoROMMap (void);
 	void	Map_SuperFXLoROMMap (void);
-	void	Map_SetaDSPLoROMMap (void);
 	void	Map_SA1LoROMMap (void);
 	void	Map_BSSA1LoROMMap (void);
 	void	Map_HiROMMap (void);
 	void	Map_ExtendedHiROMMap (void);
-	void	Map_BSCartLoROMMap(uint8);
-	void	Map_BSCartHiROMMap(void);
 
 	uint16	checksum_calc_sum (uint8 *, uint32);
 	uint16	checksum_mirror_sum (uint8 *, uint32 &, uint32 mask = 0x800000);

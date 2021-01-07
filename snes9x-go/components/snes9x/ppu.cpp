@@ -963,9 +963,6 @@ void S9xSetPPU (uint8 Byte, uint16 Address)
 				Memory.FillRAM[Address] = Byte;
 			return;
 		}
-		else
-		if (Settings.BS      && Address >= 0x2188 && Address <= 0x219f)
-			S9xSetBSXPPU(Byte, Address);
 	#ifdef DEBUGGER
 		else
 		{
@@ -1206,9 +1203,6 @@ uint8 S9xGetPPU (uint16 Address)
 		else
 		if (Settings.SA1     && Address >= 0x2200)
 			return (S9xGetSA1(Address));
-		else
-		if (Settings.BS      && Address >= 0x2188 && Address <= 0x219f)
-			return (S9xGetBSXPPU(Address));
 		else
 		switch (Address)
 		{
