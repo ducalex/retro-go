@@ -28,7 +28,6 @@
 #include "apu/apu.h"
 #include "fxemu.h"
 #include "controls.h"
-#include "cheats.h"
 #include "movie.h"
 #include "display.h"
 #include "sha256.h"
@@ -1619,9 +1618,6 @@ bool8 CMemory::LoadROMInt (int32 ROMfillSize)
 
 	S9xReset();
 
-	S9xDeleteCheats();
-	S9xLoadCheatFile(S9xGetFilename(".cht", CHEAT_DIR));
-
     return (TRUE);
 }
 
@@ -1782,9 +1778,6 @@ bool8 CMemory::LoadMultiCartInt ()
 	InitROM();
 
 	S9xReset();
-
-	S9xDeleteCheats();
-	S9xLoadCheatFile(S9xGetFilename(".cht", CHEAT_DIR));
 
 	return (TRUE);
 }

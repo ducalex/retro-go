@@ -9,13 +9,11 @@
 #include "tile.h"
 #include "controls.h"
 #include "crosshairs.h"
-#include "cheats.h"
 #include "movie.h"
 #include "screenshot.h"
 #include "font.h"
 #include "display.h"
 
-extern struct SCheatData		Cheat;
 extern struct SLineData			LineData[240];
 extern struct SLineMatrixData	LineMatrixData[240];
 
@@ -117,7 +115,7 @@ void S9xGraphicsScreenResize (void)
 	IPPU.Interlace    = Memory.FillRAM[0x2133] & 1;
 	IPPU.InterlaceOBJ = Memory.FillRAM[0x2133] & 2;
 	IPPU.PseudoHires = Memory.FillRAM[0x2133] & 8;
-		
+
 	if (Settings.SupportHiRes && (PPU.BGMode == 5 || PPU.BGMode == 6 || IPPU.PseudoHires))
 	{
 		GFX.RealPPL = GFX.Pitch >> 1;
@@ -149,7 +147,7 @@ void S9xGraphicsScreenResize (void)
 		GFX.PPL = GFX.RealPPL;
 		IPPU.DoubleHeightPixels = FALSE;
 		IPPU.RenderedScreenHeight = PPU.ScreenHeight;
-	}	
+	}
 }
 
 void S9xBuildDirectColourMaps (void)
@@ -237,8 +235,6 @@ void S9xEndScreenRefresh (void)
 	}
 	else
 		S9xControlEOF();
-
-	S9xUpdateCheatsInMemory ();
 
 #ifdef DEBUGGER
 	if (CPU.Flags & FRAME_ADVANCE_FLAG)
@@ -1994,6 +1990,7 @@ static void DisplayPressedKeys (void)
 
 static void DisplayWatchedAddresses (void)
 {
+	#if 0
 	for (unsigned int i = 0; i < sizeof(watches) / sizeof(watches[0]); i++)
 	{
 		if (!watches[i].on)
@@ -2027,6 +2024,7 @@ static void DisplayWatchedAddresses (void)
 
 		S9xDisplayString(buf, 6 + i, 1, false);
 	}
+	#endif
 }
 
 void S9xDisplayMessages (uint16 *screen, int ppl, int width, int height, int scale)

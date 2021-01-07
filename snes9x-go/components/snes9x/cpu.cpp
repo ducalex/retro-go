@@ -10,7 +10,6 @@
 #include "apu/apu.h"
 #include "fxemu.h"
 #include "snapshot.h"
-#include "cheats.h"
 #include "logger.h"
 #ifdef DEBUGGER
 #include "debug.h"
@@ -120,8 +119,6 @@ void S9xReset (void)
 		S9xInitC4();
 	if (Settings.MSU1)
 		S9xMSU1Init();
-
-	S9xInitCheatData();
 }
 
 void S9xSoftReset (void)
@@ -149,6 +146,4 @@ void S9xSoftReset (void)
 		S9xInitC4();
 	if (Settings.MSU1)
 		S9xMSU1Init();
-
-	S9xInitCheatData();
 }

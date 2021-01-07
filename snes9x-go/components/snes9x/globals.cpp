@@ -10,7 +10,6 @@
 #include "apu/apu.h"
 #include "fxinst.h"
 #include "fxemu.h"
-#include "cheats.h"
 #ifdef NETPLAY_SUPPORT
 #include "netplay.h"
 #endif
@@ -51,8 +50,7 @@ struct SNetPlay			NetPlay;
 #ifdef DEBUGGER
 struct Missing			missing;
 #endif
-struct SCheatData		Cheat;
-struct Watch			watches[16];
+// struct Watch			watches[16];
 CMemory					Memory;
 
 char	String[513];
