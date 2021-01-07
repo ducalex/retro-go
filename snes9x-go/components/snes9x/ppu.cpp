@@ -9,8 +9,6 @@
 #include "dma.h"
 #include "apu/apu.h"
 #include "fxemu.h"
-#include "sdd1.h"
-#include "srtc.h"
 #include "controls.h"
 #include "movie.h"
 #include "display.h"
@@ -968,9 +966,6 @@ void S9xSetPPU (uint8 Byte, uint16 Address)
 		else
 		if (Settings.BS      && Address >= 0x2188 && Address <= 0x219f)
 			S9xSetBSXPPU(Byte, Address);
-		else
-		if (Settings.SRTC    && Address == 0x2801)
-			S9xSetSRTC(Byte, Address);
 	#ifdef DEBUGGER
 		else
 		{
@@ -1214,9 +1209,6 @@ uint8 S9xGetPPU (uint16 Address)
 		else
 		if (Settings.BS      && Address >= 0x2188 && Address <= 0x219f)
 			return (S9xGetBSXPPU(Address));
-		else
-		if (Settings.SRTC    && Address == 0x2800)
-			return (S9xGetSRTC(Address));
 		else
 		switch (Address)
 		{
@@ -1573,11 +1565,6 @@ void S9xSetCPU (uint8 Byte, uint16 Address)
 				return;
 
 			default:
-				if (Settings.SPC7110 && Address >= 0x4800)
-					S9xSetSPC7110(Byte, Address);
-				else
-				if (Settings.SDD1 && Address >= 0x4804 && Address <= 0x4807)
-					S9xSetSDD1MemoryMap(Address - 0x4804, Byte & 7);
 				break;
 		}
 	}
@@ -1717,10 +1704,6 @@ uint8 S9xGetCPU (uint16 Address)
 				return (Memory.FillRAM[Address]);
 
 			default:
-				if (Settings.SPC7110 && Address >= 0x4800)
-					return (S9xGetSPC7110(Address));
-				if (Settings.SDD1 && Address >= 0x4800 && Address <= 0x4807)
-					return (Memory.FillRAM[Address]);
 				return (OpenBus);
 		}
 	}

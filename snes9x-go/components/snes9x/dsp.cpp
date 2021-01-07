@@ -22,12 +22,6 @@ void S9xResetDSP (void)
 
 	memset(&DSP2, 0, sizeof(DSP2));
 	DSP2.waiting4command = TRUE;
-
-	memset(&DSP3, 0, sizeof(DSP3));
-	DSP3_Reset();
-
-	memset(&DSP4, 0, sizeof(DSP4));
-	DSP4.waiting4command = TRUE;
 }
 
 uint8 S9xGetDSP (uint16 address)

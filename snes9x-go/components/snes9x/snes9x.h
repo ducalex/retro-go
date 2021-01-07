@@ -200,12 +200,7 @@ struct SSettings
 	uint8	DSP;
 	bool8	SA1;
 	bool8	C4;
-	bool8	SDD1;
-	bool8	SPC7110;
-	bool8	SPC7110RTC;
-	bool8	OBC1;
 	uint8	SETA;
-	bool8	SRTC;
 	bool8	BS;
 	bool8	BSXItself;
 	bool8	BSXBootup;
@@ -215,7 +210,7 @@ struct SSettings
 	bool8	JustifierMaster;
 	bool8	MultiPlayer5Master;
 	bool8	MacsRifleMaster;
-	
+
 	bool8	ForceLoROM;
 	bool8	ForceHiROM;
 	bool8	ForceHeader;

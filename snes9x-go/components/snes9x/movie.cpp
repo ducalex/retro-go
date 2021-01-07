@@ -378,7 +378,7 @@ static void truncate_movie (void)
 	if (Movie.SaveStateOffset > Movie.ControllerDataOffset)
 		return;
 
-	if (ftruncate(fileno(Movie.File), Movie.ControllerDataOffset + Movie.BytesPerSample * (Movie.MaxSample + 1)))
+	// if (ftruncate(fileno(Movie.File), Movie.ControllerDataOffset + Movie.BytesPerSample * (Movie.MaxSample + 1)))
 		printf ("Couldn't truncate file.\n");
 }
 

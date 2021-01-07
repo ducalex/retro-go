@@ -60,7 +60,6 @@ struct CMemory
 	uint8	*FillRAM;
 	uint8	*BWRAM;
 	uint8	*C4RAM;
-	uint8	*OBC1RAM;
 	uint8	*BSRAM;
 	uint8	*BIOSROM;
 
@@ -116,8 +115,6 @@ struct CMemory
 	bool8	LoadSRAM (const char *);
 	bool8	SaveSRAM (const char *);
 	void	ClearSRAM (bool8 onlyNonSavedSRAM = 0);
-	bool8	LoadSRTC (void);
-	bool8	SaveSRTC (void);
 	bool8	SaveMPAK (const char *);
 
 	char *	Safe (const char *);
@@ -138,7 +135,6 @@ struct CMemory
 	void	map_HiROMSRAM (void);
 	void	map_DSP (void);
 	void	map_C4 (void);
-	void	map_OBC1 (void);
 	void	map_SetaRISC (void);
 	void	map_SetaDSP (void);
 	void	map_WriteProtectROM (void);
@@ -152,12 +148,10 @@ struct CMemory
 	void	Map_SufamiTurboPseudoLoROMMap (void);
 	void	Map_SuperFXLoROMMap (void);
 	void	Map_SetaDSPLoROMMap (void);
-	void	Map_SDD1LoROMMap (void);
 	void	Map_SA1LoROMMap (void);
 	void	Map_BSSA1LoROMMap (void);
 	void	Map_HiROMMap (void);
 	void	Map_ExtendedHiROMMap (void);
-	void	Map_SPC7110HiROMMap (void);
 	void	Map_BSCartLoROMMap(uint8);
 	void	Map_BSCartHiROMMap(void);
 

@@ -13,8 +13,6 @@ enum
 	M_DSP1_LOROM_L,
 	M_DSP1_HIROM,
 	M_DSP2_LOROM,
-	M_DSP3_LOROM,
-	M_DSP4_LOROM
 };
 
 struct SDSP0
@@ -278,155 +276,9 @@ struct SDSP2
 	int32	Op0DInLen;
 };
 
-struct SDSP3
-{
-	uint16	DR;
-	uint16	SR;
-	uint16	MemoryIndex;
-
-	int16	WinLo;
-	int16	WinHi;
-	int16	AddLo;
-	int16	AddHi;
-
-	uint16	Codewords;
-	uint16	Outwords;
-	uint16	Symbol;
-	uint16	BitCount;
-	uint16	Index;
-	uint16	Codes[512];
-	uint16	BitsLeft;
-	uint16	ReqBits;
-	uint16	ReqData;
-	uint16	BitCommand;
-	uint8	BaseLength;
-	uint16	BaseCodes;
-	uint16	BaseCode;
-	uint8	CodeLengths[8];
-	uint16	CodeOffsets[8];
-	uint16	LZCode;
-	uint8	LZLength;
-
-	uint16	X;
-	uint16	Y;
-
-	uint8	Bitmap[8];
-	uint8	Bitplane[8];
-	uint16	BMIndex;
-	uint16	BPIndex;
-	uint16	Count;
-
-	int16	op3e_x;
-	int16	op3e_y;
-
-	int16	op1e_terrain[0x2000];
-	int16	op1e_cost[0x2000];
-	int16	op1e_weight[0x2000];
-
-	int16	op1e_cell;
-	int16	op1e_turn;
-	int16	op1e_search;
-
-	int16	op1e_x;
-	int16	op1e_y;
-
-	int16	op1e_min_radius;
-	int16	op1e_max_radius;
-
-	int16	op1e_max_search_radius;
-	int16	op1e_max_path_radius;
-
-	int16	op1e_lcv_radius;
-	int16	op1e_lcv_steps;
-	int16	op1e_lcv_turns;
-};
-
-struct SDSP4
-{
-	bool8	waiting4command;
-	bool8	half_command;
-	uint16	command;
-	uint32	in_count;
-	uint32	in_index;
-	uint32	out_count;
-	uint32	out_index;
-	uint8	parameters[512];
-	uint8	output[512];
-	uint8	byte;
-	uint16	address;
-
-	// op control
-	int8	Logic;				// controls op flow
-
-	// projection format
-	int16	lcv;				// loop-control variable
-	int16	distance;			// z-position into virtual world
-	int16	raster;				// current raster line
-	int16	segments;			// number of raster lines drawn
-
-	// 1.15.16 or 1.15.0 [sign, integer, fraction]
-	int32	world_x;			// line of x-projection in world
-	int32	world_y;			// line of y-projection in world
-	int32	world_dx;			// projection line x-delta
-	int32	world_dy;			// projection line y-delta
-	int16	world_ddx;			// x-delta increment
-	int16	world_ddy;			// y-delta increment
-	int32	world_xenv;			// world x-shaping factor
-	int16	world_yofs;			// world y-vertical scroll
-	int16	view_x1;			// current viewer-x
-	int16	view_y1;			// current viewer-y
-	int16	view_x2;			// future viewer-x
-	int16	view_y2;			// future viewer-y
-	int16	view_dx;			// view x-delta factor
-	int16	view_dy;			// view y-delta factor
-	int16	view_xofs1;			// current viewer x-vertical scroll
-	int16	view_yofs1;			// current viewer y-vertical scroll
-	int16	view_xofs2;			// future viewer x-vertical scroll
-	int16	view_yofs2;			// future viewer y-vertical scroll
-	int16	view_yofsenv;		// y-scroll shaping factor
-	int16	view_turnoff_x;		// road turnoff data
-	int16	view_turnoff_dx;	// road turnoff delta factor
-
-	// drawing area
-	int16	viewport_cx;		// x-center of viewport window
-	int16	viewport_cy;		// y-center of render window
-	int16	viewport_left;		// x-left of viewport
-	int16	viewport_right;		// x-right of viewport
-	int16	viewport_top;		// y-top of viewport
-	int16	viewport_bottom;	// y-bottom of viewport
-
-	// sprite structure
-	int16	sprite_x;			// projected x-pos of sprite
-	int16	sprite_y;			// projected y-pos of sprite
-	int16	sprite_attr;		// obj attributes
-	bool8	sprite_size;		// sprite size: 8x8 or 16x16
-	int16	sprite_clipy;		// visible line to clip pixels off
-	int16	sprite_count;
-
-	// generic projection variables designed for two solid polygons + two polygon sides
-	int16	poly_clipLf[2][2];	// left clip boundary
-	int16	poly_clipRt[2][2];	// right clip boundary
-	int16	poly_ptr[2][2];		// HDMA structure pointers
-	int16	poly_raster[2][2];	// current raster line below horizon
-	int16	poly_top[2][2];		// top clip boundary
-	int16	poly_bottom[2][2];	// bottom clip boundary
-	int16	poly_cx[2][2];		// center for left/right points
-	int16	poly_start[2];		// current projection points
-	int16	poly_plane[2];		// previous z-plane distance
-
-	// OAM
-	int16	OAM_attr[16];		// OAM (size, MSB) data
-	int16	OAM_index;			// index into OAM table
-	int16	OAM_bits;			// offset into OAM table
-	int16	OAM_RowMax;			// maximum number of tiles per 8 aligned pixels (row)
-	int16	OAM_Row[32];		// current number of tiles per row
-};
-
 extern struct SDSP0	DSP0;
 extern struct SDSP1	DSP1;
 extern struct SDSP2	DSP2;
-extern struct SDSP3	DSP3;
-extern struct SDSP4	DSP4;
 
 uint8 S9xGetDSP (uint16);
 void S9xSetDSP (uint8, uint16);
@@ -435,11 +287,6 @@ uint8 DSP1GetByte (uint16);
 void DSP1SetByte (uint8, uint16);
 uint8 DSP2GetByte (uint16);
 void DSP2SetByte (uint8, uint16);
-uint8 DSP3GetByte (uint16);
-void DSP3SetByte (uint8, uint16);
-uint8 DSP4GetByte (uint16);
-void DSP4SetByte (uint8, uint16);
-void DSP3_Reset (void);
 
 extern uint8 (*GetDSP) (uint16);
 extern void (*SetDSP) (uint8, uint16);

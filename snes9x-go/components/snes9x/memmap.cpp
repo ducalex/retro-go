@@ -27,8 +27,6 @@
 #include "memmap.h"
 #include "apu/apu.h"
 #include "fxemu.h"
-#include "sdd1.h"
-#include "srtc.h"
 #include "controls.h"
 #include "cheats.h"
 #include "movie.h"
@@ -966,7 +964,6 @@ bool8 CMemory::Init (void)
 	ROM += 0x8000;
 
 	C4RAM   = ROM + 0x400000 + 8192 * 8; // C4
-	OBC1RAM = ROM + 0x400000; // OBC1
 	BIOSROM = ROM + 0x300000; // BS
 	BSRAM   = ROM + 0x400000; // BS
 
@@ -1401,7 +1398,7 @@ bool8 CMemory::LoadROM (const char *filename)
         if (!totalFileSize)
             return (FALSE);
 
-        CheckForAnyPatch(filename, HeaderCount != 0, totalFileSize);
+        // CheckForAnyPatch(filename, HeaderCount != 0, totalFileSize);
     }
     while(!LoadROMInt(totalFileSize));
 
@@ -1873,38 +1870,6 @@ bool8 CMemory::LoadGNEXT ()
 	return (TRUE);
 }
 
-bool8 CMemory::LoadSRTC (void)
-{
-	FILE	*fp;
-
-	fp = fopen(S9xGetFilename(".rtc", SRAM_DIR), "rb");
-	if (!fp)
-		return (FALSE);
-
-	if (fread(RTCData.reg, 1, 20, fp) < 20)
-		memset (RTCData.reg, 0, 20);
-	fclose(fp);
-
-	return (TRUE);
-}
-
-bool8 CMemory::SaveSRTC (void)
-{
-	FILE	*fp;
-
-	fp = fopen(S9xGetFilename(".rtc", SRAM_DIR), "wb");
-	if (!fp)
-		return (FALSE);
-
-	if (fwrite(RTCData.reg, 1, 20, fp) < 20)
-	{
-		printf ("Failed to save clock data.\n");
-	}
-	fclose(fp);
-
-	return (TRUE);
-}
-
 void CMemory::ClearSRAM (bool8 onlyNonSavedSRAM)
 {
 	if (onlyNonSavedSRAM)
@@ -1958,9 +1923,6 @@ bool8 CMemory::LoadSRAM (const char *filename)
 			fclose(file);
 			if (len - size == 512)
 				memmove(SRAM, SRAM + 512, size);
-
-			if (Settings.SRTC || Settings.SPC7110RTC)
-				LoadSRTC();
 
 			return (TRUE);
 		}
@@ -2046,9 +2008,6 @@ bool8 CMemory::SaveSRAM (const char *filename)
 			if (!fwrite((char *) SRAM, size, 1, file))
 				printf ("Couldn't write to SRAM file.\n");
 			fclose(file);
-
-			if (Settings.SRTC || Settings.SPC7110RTC)
-				SaveSRTC();
 
 			return (TRUE);
 		}
@@ -2227,12 +2186,7 @@ void CMemory::InitROM (void)
 	Settings.DSP = 0;
 	Settings.SA1 = FALSE;
 	Settings.C4 = FALSE;
-	Settings.SDD1 = FALSE;
-	Settings.SPC7110 = FALSE;
-	Settings.SPC7110RTC = FALSE;
-	Settings.OBC1 = FALSE;
 	Settings.SETA = 0;
-	Settings.SRTC = FALSE;
 	Settings.BS = FALSE;
 	Settings.MSU1 = FALSE;
 
@@ -2259,19 +2213,13 @@ void CMemory::InitROM (void)
 	// DSP1/2/3/4
 	if (ROMType == 0x03)
 	{
-		if (ROMSpeed == 0x30)
-			Settings.DSP = 4; // DSP4
-		else
-			Settings.DSP = 1; // DSP1
+		Settings.DSP = 1; // DSP1
 	}
 	else
 	if (ROMType == 0x05)
 	{
 		if (ROMSpeed == 0x20)
 			Settings.DSP = 2; // DSP2
-		else
-		if (ROMSpeed == 0x30 && RomHeader[0x2a] == 0xb2)
-			Settings.DSP = 3; // DSP3
 		else
 			Settings.DSP = 1; // DSP1
 	}
@@ -2307,20 +2255,6 @@ void CMemory::InitROM (void)
 			GetDSP = &DSP2GetByte;
 			break;
 
-		case 3: // DSP3
-			DSP0.boundary = 0xc000;
-			DSP0.maptype = M_DSP3_LOROM;
-			SetDSP = &DSP3SetByte;
-			GetDSP = &DSP3GetByte;
-			break;
-
-		case 4: // DSP4
-			DSP0.boundary = 0xc000;
-			DSP0.maptype = M_DSP4_LOROM;
-			SetDSP = &DSP4SetByte;
-			GetDSP = &DSP4GetByte;
-			break;
-
 		default:
 			SetDSP = NULL;
 			GetDSP = NULL;
@@ -2331,26 +2265,6 @@ void CMemory::InitROM (void)
 
 	switch (identifier)
 	{
-	    // SRTC
-		case 0x5535:
-			Settings.SRTC = TRUE;
-			S9xInitSRTC();
-			break;
-
-		// SPC7110
-		case 0xF93A:
-			Settings.SPC7110RTC = TRUE;
-			// Fall through
-		case 0xF53A:
-			Settings.SPC7110 = TRUE;
-			S9xInitSPC7110();
-			break;
-
-		// OBC1
-		case 0x2530:
-			Settings.OBC1 = TRUE;
-			break;
-
 		// SA1
 		case 0x3423:
 		case 0x3523:
@@ -2368,12 +2282,6 @@ void CMemory::InitROM (void)
 				SRAMSize = ROM[0x7FBD];
 			else
 				SRAMSize = 5;
-			break;
-
-		// SDD1
-		case 0x4332:
-		case 0x4532:
-			Settings.SDD1 = TRUE;
 			break;
 
 		// ST018
@@ -2423,9 +2331,6 @@ void CMemory::InitROM (void)
 		if (Settings.BS)
 			/* Do nothing */;
 		else
-		if (Settings.SPC7110)
-			Map_SPC7110HiROMMap();
-		else
 		if (ExtendedFormat != NOPE)
 			Map_ExtendedHiROMMap();
 		else
@@ -2452,9 +2357,6 @@ void CMemory::InitROM (void)
 			else
 				Map_SA1LoROMMap();
 		}
-		else
-		if (Settings.SDD1)
-			Map_SDD1LoROMMap();
 		else
 		if (ExtendedFormat != NOPE)
 			Map_JumboLoROMMap();
@@ -2835,16 +2737,6 @@ void CMemory::map_DSP (void)
 			map_index(0xa0, 0xbf, 0x6000, 0x6fff, MAP_DSP, MAP_TYPE_I_O);
 			map_index(0xa0, 0xbf, 0x8000, 0xbfff, MAP_DSP, MAP_TYPE_I_O);
 			break;
-
-		case M_DSP3_LOROM:
-			map_index(0x20, 0x3f, 0x8000, 0xffff, MAP_DSP, MAP_TYPE_I_O);
-			map_index(0xa0, 0xbf, 0x8000, 0xffff, MAP_DSP, MAP_TYPE_I_O);
-			break;
-
-		case M_DSP4_LOROM:
-			map_index(0x30, 0x3f, 0x8000, 0xffff, MAP_DSP, MAP_TYPE_I_O);
-			map_index(0xb0, 0xbf, 0x8000, 0xffff, MAP_DSP, MAP_TYPE_I_O);
-			break;
 	}
 }
 
@@ -2852,12 +2744,6 @@ void CMemory::map_C4 (void)
 {
 	map_index(0x00, 0x3f, 0x6000, 0x7fff, MAP_C4, MAP_TYPE_I_O);
 	map_index(0x80, 0xbf, 0x6000, 0x7fff, MAP_C4, MAP_TYPE_I_O);
-}
-
-void CMemory::map_OBC1 (void)
-{
-	map_index(0x00, 0x3f, 0x6000, 0x7fff, MAP_OBC_RAM, MAP_TYPE_I_O);
-	map_index(0x80, 0xbf, 0x6000, 0x7fff, MAP_OBC_RAM, MAP_TYPE_I_O);
 }
 
 void CMemory::map_SetaRISC (void)
@@ -2915,9 +2801,6 @@ void CMemory::Map_LoROMMap (void)
 	else
 	if (Settings.C4)
 		map_C4();
-	else
-	if (Settings.OBC1)
-		map_OBC1();
 	else
 	if (Settings.SETA == ST_018)
 		map_SetaRISC();
@@ -3100,25 +2983,6 @@ void CMemory::Map_SetaDSPLoROMMap (void)
 	map_WriteProtectROM();
 }
 
-void CMemory::Map_SDD1LoROMMap (void)
-{
-	printf("Map_SDD1LoROMMap\n");
-	map_System();
-
-	map_lorom(0x00, 0x3f, 0x8000, 0xffff, CalculatedSize);
-	map_lorom(0x80, 0xbf, 0x8000, 0xffff, CalculatedSize);
-
-	map_hirom_offset(0x60, 0x7f, 0x0000, 0xffff, CalculatedSize, 0);
-	map_hirom_offset(0xc0, 0xff, 0x0000, 0xffff, CalculatedSize, 0); // will be overwritten dynamically
-
-	map_index(0x70, 0x7f, 0x0000, 0x7fff, MAP_LOROM_SRAM, MAP_TYPE_RAM);
-	map_index(0xa0, 0xbf, 0x6000, 0x7fff, MAP_LOROM_SRAM, MAP_TYPE_RAM);
-
-	map_WRAM();
-
-	map_WriteProtectROM();
-}
-
 void CMemory::Map_SA1LoROMMap (void)
 {
 	printf("Map_SA1LoROMMap\n");
@@ -3242,26 +3106,6 @@ void CMemory::Map_ExtendedHiROMMap (void)
 	map_WriteProtectROM();
 }
 
-void CMemory::Map_SPC7110HiROMMap (void)
-{
-	printf("Map_SPC7110HiROMMap\n");
-	map_System();
-
-	map_index(0x00, 0x00, 0x6000, 0x7fff, MAP_HIROM_SRAM, MAP_TYPE_RAM);
-	map_hirom(0x00, 0x0f, 0x8000, 0xffff, CalculatedSize);
-	map_index(0x30, 0x30, 0x6000, 0x7fff, MAP_HIROM_SRAM, MAP_TYPE_RAM);
-	if(Memory.ROMSize >= 13)
-		map_hirom_offset(0x40, 0x4f, 0x0000, 0xffff, CalculatedSize, 0x600000);
-	map_index(0x50, 0x50, 0x0000, 0xffff, MAP_SPC7110_DRAM, MAP_TYPE_ROM);
-	map_hirom(0x80, 0x8f, 0x8000, 0xffff, CalculatedSize);
-	map_hirom_offset(0xc0, 0xcf, 0x0000, 0xffff, CalculatedSize, 0);
-	map_index(0xd0, 0xff, 0x0000, 0xffff, MAP_SPC7110_ROM,  MAP_TYPE_ROM);
-
-	map_WRAM();
-
-	map_WriteProtectROM();
-}
-
 void CMemory::Map_BSCartLoROMMap(uint8 mapping)
 {
 	printf("Map_BSCartLoROMMap\n");
@@ -3373,13 +3217,6 @@ void CMemory::Checksum_Calculate (void)
 	if (Settings.BS && !Settings.BSXItself)
 		sum = checksum_calc_sum(ROM, CalculatedSize) - checksum_calc_sum(ROM + (HiROM ? 0xffb0 : 0x7fb0), 48);
 	else
-	if (Settings.SPC7110)
-	{
-		sum = checksum_calc_sum(ROM, CalculatedSize);
-		if (CalculatedSize == 0x300000)
-			sum += sum;
-	}
-	else
 	{
 		if (CalculatedSize & 0x7fff)
 			sum = checksum_calc_sum(ROM, CalculatedSize);
@@ -3452,23 +3289,8 @@ const char * CMemory::KartContents (void)
 	if (Settings.SuperFX)
 		strcpy(chip, "+Super FX");
 	else
-	if (Settings.SDD1)
-		strcpy(chip, "+S-DD1");
-	else
-	if (Settings.OBC1)
-		strcpy(chip, "+OBC1");
-	else
 	if (Settings.SA1)
 		strcpy(chip, "+SA-1");
-	else
-	if (Settings.SPC7110RTC)
-		strcpy(chip, "+SPC7110+RTC");
-	else
-	if (Settings.SPC7110)
-		strcpy(chip, "+SPC7110");
-	else
-	if (Settings.SRTC)
-		strcpy(chip, "+S-RTC");
 	else
 	if (Settings.C4)
 		strcpy(chip, "+C4");

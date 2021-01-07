@@ -11,8 +11,6 @@
 #include "apu/apu.h"
 #include "fxinst.h"
 #include "fxemu.h"
-#include "sdd1.h"
-#include "srtc.h"
 #include "snapshot.h"
 #include "controls.h"
 #include "movie.h"
@@ -757,79 +755,6 @@ static FreezeData	SnapDSP2[] =
 };
 
 #undef STRUCT
-#define STRUCT	struct SDSP4
-
-static FreezeData	SnapDSP4[] =
-{
-	INT_ENTRY(6, waiting4command),
-	INT_ENTRY(6, half_command),
-	INT_ENTRY(6, command),
-	INT_ENTRY(6, in_count),
-	INT_ENTRY(6, in_index),
-	INT_ENTRY(6, out_count),
-	INT_ENTRY(6, out_index),
-	ARRAY_ENTRY(6, parameters, 512, uint8_ARRAY_V),
-	ARRAY_ENTRY(6, output, 512, uint8_ARRAY_V),
-	INT_ENTRY(6, byte),
-	INT_ENTRY(6, address),
-	INT_ENTRY(6, Logic),
-	INT_ENTRY(6, lcv),
-	INT_ENTRY(6, distance),
-	INT_ENTRY(6, raster),
-	INT_ENTRY(6, segments),
-	INT_ENTRY(6, world_x),
-	INT_ENTRY(6, world_y),
-	INT_ENTRY(6, world_dx),
-	INT_ENTRY(6, world_dy),
-	INT_ENTRY(6, world_ddx),
-	INT_ENTRY(6, world_ddy),
-	INT_ENTRY(6, world_xenv),
-	INT_ENTRY(6, world_yofs),
-	INT_ENTRY(6, view_x1),
-	INT_ENTRY(6, view_y1),
-	INT_ENTRY(6, view_x2),
-	INT_ENTRY(6, view_y2),
-	INT_ENTRY(6, view_dx),
-	INT_ENTRY(6, view_dy),
-	INT_ENTRY(6, view_xofs1),
-	INT_ENTRY(6, view_yofs1),
-	INT_ENTRY(6, view_xofs2),
-	INT_ENTRY(6, view_yofs2),
-	INT_ENTRY(6, view_yofsenv),
-	INT_ENTRY(6, view_turnoff_x),
-	INT_ENTRY(6, view_turnoff_dx),
-	INT_ENTRY(6, viewport_cx),
-	INT_ENTRY(6, viewport_cy),
-	INT_ENTRY(6, viewport_left),
-	INT_ENTRY(6, viewport_right),
-	INT_ENTRY(6, viewport_top),
-	INT_ENTRY(6, viewport_bottom),
-	INT_ENTRY(6, sprite_x),
-	INT_ENTRY(6, sprite_y),
-	INT_ENTRY(6, sprite_attr),
-	INT_ENTRY(6, sprite_size),
-	INT_ENTRY(6, sprite_clipy),
-	INT_ENTRY(6, sprite_count),
-#define O(N) \
-	ARRAY_ENTRY(6, poly_clipLf[N], 2, uint16_ARRAY_V), \
-	ARRAY_ENTRY(6, poly_clipRt[N], 2, uint16_ARRAY_V), \
-	ARRAY_ENTRY(6, poly_ptr[N], 2, uint16_ARRAY_V), \
-	ARRAY_ENTRY(6, poly_raster[N], 2, uint16_ARRAY_V), \
-	ARRAY_ENTRY(6, poly_top[N], 2, uint16_ARRAY_V), \
-	ARRAY_ENTRY(6, poly_bottom[N], 2, uint16_ARRAY_V), \
-	ARRAY_ENTRY(6, poly_cx[N], 2, uint16_ARRAY_V)
-	O(0), O(1),
-#undef O
-	ARRAY_ENTRY(6, poly_start, 2, uint16_ARRAY_V),
-	ARRAY_ENTRY(6, poly_plane, 2, uint16_ARRAY_V),
-	ARRAY_ENTRY(6, OAM_attr, 16, uint16_ARRAY_V),
-	INT_ENTRY(6, OAM_index),
-	INT_ENTRY(6, OAM_bits),
-	INT_ENTRY(6, OAM_RowMax),
-	ARRAY_ENTRY(6, OAM_Row, 32, uint16_ARRAY_V)
-};
-
-#undef STRUCT
 #define STRUCT	struct SST010
 
 static FreezeData	SnapST010[] =
@@ -839,99 +764,6 @@ static FreezeData	SnapST010[] =
 	INT_ENTRY(6, op_reg),
 	INT_ENTRY(6, execute),
 	INT_ENTRY(6, control_enable)
-};
-
-#undef STRUCT
-#define STRUCT	struct SOBC1
-
-static FreezeData	SnapOBC1[] =
-{
-	INT_ENTRY(6, address),
-	INT_ENTRY(6, basePtr),
-	INT_ENTRY(6, shift)
-};
-
-#undef STRUCT
-#define STRUCT	struct SSPC7110Snapshot
-
-static FreezeData	SnapSPC7110Snap[] =
-{
-	INT_ENTRY(6, r4801),
-	INT_ENTRY(6, r4802),
-	INT_ENTRY(6, r4803),
-	INT_ENTRY(6, r4804),
-	INT_ENTRY(6, r4805),
-	INT_ENTRY(6, r4806),
-	INT_ENTRY(6, r4807),
-	INT_ENTRY(6, r4808),
-	INT_ENTRY(6, r4809),
-	INT_ENTRY(6, r480a),
-	INT_ENTRY(6, r480b),
-	INT_ENTRY(6, r480c),
-	INT_ENTRY(6, r4811),
-	INT_ENTRY(6, r4812),
-	INT_ENTRY(6, r4813),
-	INT_ENTRY(6, r4814),
-	INT_ENTRY(6, r4815),
-	INT_ENTRY(6, r4816),
-	INT_ENTRY(6, r4817),
-	INT_ENTRY(6, r4818),
-	INT_ENTRY(6, r481x),
-	INT_ENTRY(6, r4814_latch),
-	INT_ENTRY(6, r4815_latch),
-	INT_ENTRY(6, r4820),
-	INT_ENTRY(6, r4821),
-	INT_ENTRY(6, r4822),
-	INT_ENTRY(6, r4823),
-	INT_ENTRY(6, r4824),
-	INT_ENTRY(6, r4825),
-	INT_ENTRY(6, r4826),
-	INT_ENTRY(6, r4827),
-	INT_ENTRY(6, r4828),
-	INT_ENTRY(6, r4829),
-	INT_ENTRY(6, r482a),
-	INT_ENTRY(6, r482b),
-	INT_ENTRY(6, r482c),
-	INT_ENTRY(6, r482d),
-	INT_ENTRY(6, r482e),
-	INT_ENTRY(6, r482f),
-	INT_ENTRY(6, r4830),
-	INT_ENTRY(6, r4831),
-	INT_ENTRY(6, r4832),
-	INT_ENTRY(6, r4833),
-	INT_ENTRY(6, r4834),
-	INT_ENTRY(6, dx_offset),
-	INT_ENTRY(6, ex_offset),
-	INT_ENTRY(6, fx_offset),
-	INT_ENTRY(6, r4840),
-	INT_ENTRY(6, r4841),
-	INT_ENTRY(6, r4842),
-	INT_ENTRY(6, rtc_state),
-	INT_ENTRY(6, rtc_mode),
-	INT_ENTRY(6, rtc_index),
-	INT_ENTRY(6, decomp_mode),
-	INT_ENTRY(6, decomp_offset),
-	ARRAY_ENTRY(6, decomp_buffer, SPC7110_DECOMP_BUFFER_SIZE, uint8_ARRAY_V),
-	INT_ENTRY(6, decomp_buffer_rdoffset),
-	INT_ENTRY(6, decomp_buffer_wroffset),
-	INT_ENTRY(6, decomp_buffer_length),
-#define O(N) \
-	INT_ENTRY(6, context[N].index), \
-	INT_ENTRY(6, context[N].invert)
-	O(  0), O(  1), O(  2), O(  3), O(  4), O(  5), O(  6), O(  7),
-	O(  8), O(  9), O( 10), O( 11), O( 12), O( 13), O( 14), O( 15),
-	O( 16), O( 17), O( 18), O( 19), O( 20), O( 21), O( 22), O( 23),
-	O( 24), O( 25), O( 26), O( 27), O( 28), O( 29), O( 30), O( 31)
-#undef O
-};
-
-#undef STRUCT
-#define STRUCT	struct SSRTCSnapshot
-
-static FreezeData	SnapSRTCSnap[] =
-{
-	INT_ENTRY(6, rtc_mode),
-	INT_ENTRY(6, rtc_index)
 };
 
 #undef STRUCT
@@ -1199,35 +1031,11 @@ void S9xFreezeToStream (STREAM stream)
 	if (Settings.DSP == 2)
 		FreezeStruct(stream, "DP2", &DSP2, SnapDSP2, COUNT(SnapDSP2));
 
-	if (Settings.DSP == 4)
-		FreezeStruct(stream, "DP4", &DSP4, SnapDSP4, COUNT(SnapDSP4));
-
 	if (Settings.C4)
 		FreezeBlock (stream, "CX4", Memory.C4RAM, 8192);
 
 	if (Settings.SETA == ST_010)
 		FreezeStruct(stream, "ST0", &ST010, SnapST010, COUNT(SnapST010));
-
-	if (Settings.OBC1)
-	{
-		FreezeStruct(stream, "OBC", &OBC1, SnapOBC1, COUNT(SnapOBC1));
-		FreezeBlock (stream, "OBM", Memory.OBC1RAM, 8192);
-	}
-
-	if (Settings.SPC7110)
-	{
-		S9xSPC7110PreSaveState();
-		FreezeStruct(stream, "S71", &s7snap, SnapSPC7110Snap, COUNT(SnapSPC7110Snap));
-	}
-
-	if (Settings.SRTC)
-	{
-		S9xSRTCPreSaveState();
-		FreezeStruct(stream, "SRT", &srtcsnap, SnapSRTCSnap, COUNT(SnapSRTCSnap));
-	}
-
-	if (Settings.SRTC || Settings.SPC7110RTC)
-		FreezeBlock (stream, "CLK", RTCData.reg, 20);
 
 	if (Settings.BS)
 		FreezeStruct(stream, "BSX", &BSX, SnapBSX, COUNT(SnapBSX));
@@ -1326,14 +1134,8 @@ int S9xUnfreezeFromStream (STREAM stream)
 	uint8	*local_sa1_registers = NULL;
 	uint8	*local_dsp1          = NULL;
 	uint8	*local_dsp2          = NULL;
-	uint8	*local_dsp4          = NULL;
 	uint8	*local_cx4_data      = NULL;
 	uint8	*local_st010         = NULL;
-	uint8	*local_obc1          = NULL;
-	uint8	*local_obc1_data     = NULL;
-	uint8	*local_spc7110       = NULL;
-	uint8	*local_srtc          = NULL;
-	uint8	*local_rtc_data      = NULL;
 	uint8	*local_bsx_data      = NULL;
 	uint8	*local_msu1_data     = NULL;
 	uint8	*local_screenshot    = NULL;
@@ -1417,9 +1219,8 @@ int S9xUnfreezeFromStream (STREAM stream)
 		if (result != SUCCESS && Settings.DSP == 2)
 			break;
 
-		result = UnfreezeStructCopy(stream, "DP4", &local_dsp4, SnapDSP4, COUNT(SnapDSP4), version);
-		if (result != SUCCESS && Settings.DSP == 4)
-			break;
+		SkipBlockWithName(stream, "DP3");
+		SkipBlockWithName(stream, "DP4");
 
 		if (Settings.C4)
 		{
@@ -1439,35 +1240,11 @@ int S9xUnfreezeFromStream (STREAM stream)
 		if (result != SUCCESS && Settings.SETA == ST_010)
 			break;
 
-		result = UnfreezeStructCopy(stream, "OBC", &local_obc1, SnapOBC1, COUNT(SnapOBC1), version);
-		if (result != SUCCESS && Settings.OBC1)
-			break;
-
-		if (Settings.OBC1)
-		{
-			if (fast)
-				result = UnfreezeBlock(stream, "OBM", Memory.OBC1RAM, 8192);
-			else
-				result = UnfreezeBlockCopy(stream, "OBM", &local_obc1_data, 8192);
-			if (result != SUCCESS)
-				break;
-		}
-		else
-		{
-			SkipBlockWithName(stream, "OBM");
-		}
-
-		result = UnfreezeStructCopy(stream, "S71", &local_spc7110, SnapSPC7110Snap, COUNT(SnapSPC7110Snap), version);
-		if (result != SUCCESS && Settings.SPC7110)
-			break;
-
-		result = UnfreezeStructCopy(stream, "SRT", &local_srtc, SnapSRTCSnap, COUNT(SnapSRTCSnap), version);
-		if (result != SUCCESS && Settings.SRTC)
-			break;
-
-		result = UnfreezeBlockCopy (stream, "CLK", &local_rtc_data, 20);
-		if (result != SUCCESS && (Settings.SRTC || Settings.SPC7110RTC))
-			break;
+		SkipBlockWithName(stream, "OBC");
+		SkipBlockWithName(stream, "OBM");
+		SkipBlockWithName(stream, "S71");
+		SkipBlockWithName(stream, "SRT");
+		SkipBlockWithName(stream, "CLK");
 
 		result = UnfreezeStructCopy(stream, "BSX", &local_bsx_data, SnapBSX, COUNT(SnapBSX), version);
 		if (result != SUCCESS && Settings.BS)
@@ -1578,29 +1355,11 @@ int S9xUnfreezeFromStream (STREAM stream)
 		if (local_dsp2)
 			UnfreezeStructFromCopy(&DSP2, SnapDSP2, COUNT(SnapDSP2), local_dsp2, version);
 
-		if (local_dsp4)
-			UnfreezeStructFromCopy(&DSP4, SnapDSP4, COUNT(SnapDSP4), local_dsp4, version);
-
 		if (local_cx4_data)
 			memcpy(Memory.C4RAM, local_cx4_data, 8192);
 
 		if (local_st010)
 			UnfreezeStructFromCopy(&ST010, SnapST010, COUNT(SnapST010), local_st010, version);
-
-		if (local_obc1)
-			UnfreezeStructFromCopy(&OBC1, SnapOBC1, COUNT(SnapOBC1), local_obc1, version);
-
-		if (local_obc1_data)
-			memcpy(Memory.OBC1RAM, local_obc1_data, 8192);
-
-		if (local_spc7110)
-			UnfreezeStructFromCopy(&s7snap, SnapSPC7110Snap, COUNT(SnapSPC7110Snap), local_spc7110, version);
-
-		if (local_srtc)
-			UnfreezeStructFromCopy(&srtcsnap, SnapSRTCSnap, COUNT(SnapSRTCSnap), local_srtc, version);
-
-		if (local_rtc_data)
-			memcpy(RTCData.reg, local_rtc_data, 20);
 
 		if (local_bsx_data)
 			UnfreezeStructFromCopy(&BSX, SnapBSX, COUNT(SnapBSX), local_bsx_data, version);
@@ -1663,12 +1422,12 @@ int S9xUnfreezeFromStream (STREAM stream)
 		IPPU.ColorsChanged = TRUE;
 		IPPU.OBJChanged = TRUE;
 		IPPU.RenderThisFrame = TRUE;
-		
+
 		GFX.InterlaceFrame = Timings.InterlaceField;
 		GFX.DoInterlace = 0;
 
 		S9xGraphicsScreenResize();
-		
+
 		if (Settings.FastSavestates == 0)
 			memset(GFX.Screen,0,GFX.Pitch * MAX_SNES_HEIGHT);
 
@@ -1689,15 +1448,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 			SA1.Flags |= sa1_old_flags & TRACE_FLAG;
 			S9xSA1PostLoadState();
 		}
-
-		if (Settings.SDD1)
-			S9xSDD1PostLoadState();
-
-		if (local_spc7110)
-			S9xSPC7110PostLoadState(version);
-
-		if (local_srtc)
-			S9xSRTCPostLoadState(version);
 
 		if (local_bsx_data)
 			S9xBSXPostLoadState();
@@ -1786,14 +1536,8 @@ int S9xUnfreezeFromStream (STREAM stream)
 	if (local_sa1_registers)	delete [] local_sa1_registers;
 	if (local_dsp1)				delete [] local_dsp1;
 	if (local_dsp2)				delete [] local_dsp2;
-	if (local_dsp4)				delete [] local_dsp4;
 	if (local_cx4_data)			delete [] local_cx4_data;
 	if (local_st010)			delete [] local_st010;
-	if (local_obc1)				delete [] local_obc1;
-	if (local_obc1_data)		delete [] local_obc1_data;
-	if (local_spc7110)			delete [] local_spc7110;
-	if (local_srtc)				delete [] local_srtc;
-	if (local_rtc_data)			delete [] local_rtc_data;
 	if (local_bsx_data)			delete [] local_bsx_data;
 	if (local_screenshot)		delete [] local_screenshot;
 	if (local_movie_data)		delete [] local_movie_data;

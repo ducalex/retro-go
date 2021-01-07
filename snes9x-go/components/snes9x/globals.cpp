@@ -10,7 +10,6 @@
 #include "apu/apu.h"
 #include "fxinst.h"
 #include "fxemu.h"
-#include "srtc.h"
 #include "cheats.h"
 #ifdef NETPLAY_SUPPORT
 #include "netplay.h"
@@ -34,8 +33,6 @@ struct SLineMatrixData	LineMatrixData[240];
 struct SDSP0			DSP0;
 struct SDSP1			DSP1;
 struct SDSP2			DSP2;
-struct SDSP3			DSP3;
-struct SDSP4			DSP4;
 struct SSA1				SA1;
 struct SSA1Registers	SA1Registers;
 struct FxRegs_s			GSU;
@@ -43,10 +40,6 @@ struct FxInfo_s			SuperFX;
 struct SST010			ST010;
 struct SST011			ST011;
 struct SST018			ST018;
-struct SOBC1			OBC1;
-struct SSPC7110Snapshot	s7snap;
-struct SSRTCSnapshot	srtcsnap;
-struct SRTCData			RTCData;
 struct SBSX				BSX;
 struct SMSU1			MSU1;
 struct SMulti			Multi;

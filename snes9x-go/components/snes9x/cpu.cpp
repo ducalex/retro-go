@@ -9,8 +9,6 @@
 #include "dma.h"
 #include "apu/apu.h"
 #include "fxemu.h"
-#include "sdd1.h"
-#include "srtc.h"
 #include "snapshot.h"
 #include "cheats.h"
 #include "logger.h"
@@ -118,16 +116,8 @@ void S9xReset (void)
 		S9xResetSuperFX();
 	if (Settings.SA1)
 		S9xSA1Init();
-	if (Settings.SDD1)
-		S9xResetSDD1();
-	if (Settings.SPC7110)
-		S9xResetSPC7110();
 	if (Settings.C4)
 		S9xInitC4();
-	if (Settings.OBC1)
-		S9xResetOBC1();
-	if (Settings.SRTC)
-		S9xResetSRTC();
 	if (Settings.MSU1)
 		S9xMSU1Init();
 
@@ -155,16 +145,8 @@ void S9xSoftReset (void)
 		S9xResetSuperFX();
 	if (Settings.SA1)
 		S9xSA1Init();
-	if (Settings.SDD1)
-		S9xResetSDD1();
-	if (Settings.SPC7110)
-		S9xResetSPC7110();
 	if (Settings.C4)
 		S9xInitC4();
-	if (Settings.OBC1)
-		S9xResetOBC1();
-	if (Settings.SRTC)
-		S9xResetSRTC();
 	if (Settings.MSU1)
 		S9xMSU1Init();
 

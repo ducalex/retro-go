@@ -10,9 +10,7 @@
 #include "cpuexec.h"
 #include "dsp.h"
 #include "sa1.h"
-#include "spc7110.h"
 #include "c4.h"
-#include "obc1.h"
 #include "seta.h"
 #include "bsx.h"
 #include "msu1.h"
@@ -114,23 +112,8 @@ inline uint8 S9xGetByte (uint32 Address)
 			addCyclesInMemoryAccess;
 			return (byte);
 
-		case CMemory::MAP_SPC7110_ROM:
-			byte = S9xGetSPC7110Byte(Address);
-			addCyclesInMemoryAccess;
-			return (byte);
-
-		case CMemory::MAP_SPC7110_DRAM:
-			byte = S9xGetSPC7110(0x4800);
-			addCyclesInMemoryAccess;
-			return (byte);
-
 		case CMemory::MAP_C4:
 			byte = S9xGetC4(Address & 0xffff);
-			addCyclesInMemoryAccess;
-			return (byte);
-
-		case CMemory::MAP_OBC_RAM:
-			byte = S9xGetOBC1(Address & 0xffff);
 			addCyclesInMemoryAccess;
 			return (byte);
 
@@ -260,31 +243,10 @@ inline uint16 S9xGetWord (uint32 Address, enum s9xwrap_t w = WRAP_NONE)
 			addCyclesInMemoryAccess;
 			return (word);
 
-		case CMemory::MAP_SPC7110_ROM:
-			word  = S9xGetSPC7110Byte(Address);
-			addCyclesInMemoryAccess;
-			word |= S9xGetSPC7110Byte(Address + 1) << 8;
-			addCyclesInMemoryAccess;
-			return (word);
-
-		case CMemory::MAP_SPC7110_DRAM:
-			word  = S9xGetSPC7110(0x4800);
-			addCyclesInMemoryAccess;
-			word |= S9xGetSPC7110(0x4800) << 8;
-			addCyclesInMemoryAccess;
-			return (word);
-
 		case CMemory::MAP_C4:
 			word  = S9xGetC4(Address & 0xffff);
 			addCyclesInMemoryAccess;
 			word |= S9xGetC4((Address + 1) & 0xffff) << 8;
-			addCyclesInMemoryAccess;
-			return (word);
-
-		case CMemory::MAP_OBC_RAM:
-			word  = S9xGetOBC1(Address & 0xffff);
-			addCyclesInMemoryAccess;
-			word |= S9xGetOBC1((Address + 1) & 0xffff) << 8;
 			addCyclesInMemoryAccess;
 			return (word);
 
@@ -393,11 +355,6 @@ inline void S9xSetByte (uint8 Byte, uint32 Address)
 
 		case CMemory::MAP_C4:
 			S9xSetC4(Byte, Address & 0xffff);
-			addCyclesInMemoryAccess;
-			return;
-
-		case CMemory::MAP_OBC_RAM:
-			S9xSetOBC1(Byte, Address & 0xffff);
 			addCyclesInMemoryAccess;
 			return;
 
@@ -615,24 +572,6 @@ inline void S9xSetWord (uint16 Word, uint32 Address, enum s9xwrap_t w = WRAP_NON
 				return;
 			}
 
-		case CMemory::MAP_OBC_RAM:
-			if (o)
-			{
-				S9xSetOBC1(Word >> 8, (Address + 1) & 0xffff);
-				addCyclesInMemoryAccess;
-				S9xSetOBC1((uint8) Word, Address & 0xffff);
-				addCyclesInMemoryAccess;
-				return;
-			}
-			else
-			{
-				S9xSetOBC1((uint8) Word, Address & 0xffff);
-				addCyclesInMemoryAccess;
-				S9xSetOBC1(Word >> 8, (Address + 1) & 0xffff);
-				addCyclesInMemoryAccess;
-				return;
-			}
-
 		case CMemory::MAP_SETA_DSP:
 			if (o)
 			{
@@ -741,16 +680,8 @@ inline void S9xSetPCBase (uint32 Address)
 			CPU.PCBase = Memory.SRAM;
 			return;
 
-		case CMemory::MAP_SPC7110_ROM:
-			CPU.PCBase = S9xGetBasePointerSPC7110(Address);
-			return;
-
 		case CMemory::MAP_C4:
 			CPU.PCBase = S9xGetBasePointerC4(Address & 0xffff);
-			return;
-
-		case CMemory::MAP_OBC_RAM:
-			CPU.PCBase = S9xGetBasePointerOBC1(Address & 0xffff);
 			return;
 
 		case CMemory::MAP_BSX:
@@ -794,14 +725,8 @@ inline uint8 * S9xGetBasePointer (uint32 Address)
 		case CMemory::MAP_SA1RAM:
 			return (Memory.SRAM);
 
-		case CMemory::MAP_SPC7110_ROM:
-			return (S9xGetBasePointerSPC7110(Address));
-
 		case CMemory::MAP_C4:
 			return (S9xGetBasePointerC4(Address & 0xffff));
-
-		case CMemory::MAP_OBC_RAM:
-			return (S9xGetBasePointerOBC1(Address & 0xffff));
 
 		case CMemory::MAP_NONE:
 		default:
@@ -839,14 +764,8 @@ inline uint8 * S9xGetMemPointer (uint32 Address)
 		case CMemory::MAP_SA1RAM:
 			return (Memory.SRAM + (Address & 0xffff));
 
-		case CMemory::MAP_SPC7110_ROM:
-			return (S9xGetBasePointerSPC7110(Address) + (Address & 0xffff));
-
 		case CMemory::MAP_C4:
 			return (S9xGetMemPointerC4(Address & 0xffff));
-
-		case CMemory::MAP_OBC_RAM:
-			return (S9xGetMemPointerOBC1(Address & 0xffff));
 
 		case CMemory::MAP_NONE:
 		default:

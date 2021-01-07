@@ -8,8 +8,6 @@
 #include "memmap.h"
 #include "dma.h"
 #include "apu/apu.h"
-#include "sdd1emu.h"
-#include "spc7110emu.h"
 #ifdef DEBUGGER
 #include "missing.h"
 #endif
@@ -18,9 +16,6 @@
 
 extern uint8	*HDMAMemPointers[8];
 extern int		HDMA_ModeByteCounts[8];
-extern SPC7110	s7emu;
-
-static uint8	sdd1_decode_buffer[0x10000];
 
 static inline bool8 addCyclesInDMA (uint8);
 static inline bool8 HDMAReadLineCount (int);
@@ -123,61 +118,6 @@ bool8 S9xDoDMA (uint8 Channel)
 		count = 0x10000;
 
 	// Prepare for custom chip DMA
-
-	// S-DD1
-
-	uint8	*in_sdd1_dma = NULL;
-
-	if (Settings.SDD1)
-	{
-		if (d->AAddressFixed && Memory.FillRAM[0x4801] > 0)
-		{
-			// XXX: Should probably verify that we're DMAing from ROM?
-			// And somewhere we should make sure we're not running across a mapping boundary too.
-			// Hacky support for pre-decompressed S-DD1 data
-			inc = !d->AAddressDecrement ? 1 : -1;
-
-			uint8	*in_ptr = S9xGetBasePointer(((d->ABank << 16) | d->AAddress));
-			if (in_ptr)
-			{
-				in_ptr += d->AAddress;
-				SDD1_decompress(sdd1_decode_buffer, in_ptr, d->TransferBytes);
-			}
-		#ifdef DEBUGGER
-			else
-			{
-				sprintf(String, "S-DD1: DMA from non-block address $%02X:%04X", d->ABank, d->AAddress);
-				S9xMessage(S9X_WARNING, S9X_DMA_TRACE, String);
-			}
-		#endif
-
-			in_sdd1_dma = sdd1_decode_buffer;
-		}
-
-		Memory.FillRAM[0x4801] = 0;
-	}
-
-	// SPC7110
-
-	uint8	*spc7110_dma = NULL;
-
-	if (Settings.SPC7110)
-	{
-		if (d->AAddress == 0x4800 || d->ABank == 0x50)
-		{
-			spc7110_dma = new uint8[d->TransferBytes];
-			for (int i = 0; i < d->TransferBytes; i++)
-				spc7110_dma[i] = s7emu.decomp.read();
-
-			int32	icount = s7emu.r4809 | (s7emu.r480a << 8);
-			icount -= d->TransferBytes;
-			s7emu.r4809 =  icount & 0x00ff;
-			s7emu.r480a = (icount & 0xff00) >> 8;
-
-			inc = 1;
-			d->AAddress -= count;
-		}
-	}
 
 	// SA-1
 
@@ -362,22 +302,8 @@ bool8 S9xDoDMA (uint8 Channel)
 			p = 0;
 			count = rem;
 		}
-		else
-		if (in_sdd1_dma)
-		{
-			base = in_sdd1_dma;
-			p = 0;
-			count = rem;
-		}
-		else
-		if (spc7110_dma)
-		{
-			base = spc7110_dma;
-			p = 0;
-			count = rem;
-		}
 
-		inWRAM_DMA = ((!in_sa1_dma && !in_sdd1_dma && !spc7110_dma) &&
+		inWRAM_DMA = ((!in_sa1_dma) &&
 			(d->ABank == 0x7e || d->ABank == 0x7f || (!(d->ABank & 0x40) && d->AAddress < 0x2000)));
 
 		// 8 cycles per byte
@@ -865,7 +791,7 @@ bool8 S9xDoDMA (uint8 Channel)
 
 			base = S9xGetBasePointer((d->ABank << 16) + d->AAddress);
 			count = MEMMAP_BLOCK_SIZE;
-			inWRAM_DMA = ((!in_sa1_dma && !in_sdd1_dma && !spc7110_dma) &&
+			inWRAM_DMA = ((!in_sa1_dma) &&
 				(d->ABank == 0x7e || d->ABank == 0x7f || (!(d->ABank & 0x40) && d->AAddress < 0x2000)));
 		}
 
@@ -1106,13 +1032,6 @@ bool8 S9xDoDMA (uint8 Channel)
 	{
 		Timings.NMITriggerPos = CPU.Cycles + Timings.NMIDMADelay;
 	}
-
-	// Release the memory used in SPC7110 DMA
-    if (Settings.SPC7110)
-    {
-        if (spc7110_dma)
-            delete [] spc7110_dma;
-    }
 
 #if 0
 	// sanity check

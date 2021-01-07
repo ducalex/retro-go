@@ -73,20 +73,8 @@ static inline uint8 S9xGetByteFree (uint32 Address)
         byte = S9xGetDSP(Address & 0xffff);
         return (byte);
 
-    case CMemory::MAP_SPC7110_ROM:
-        byte = S9xGetSPC7110Byte(Address);
-        return (byte);
-
-    case CMemory::MAP_SPC7110_DRAM:
-        byte = S9xGetSPC7110(0x4800);
-        return (byte);
-
     case CMemory::MAP_C4:
         byte = S9xGetC4(Address & 0xffff);
-        return (byte);
-
-    case CMemory::MAP_OBC_RAM:
-        byte = S9xGetOBC1(Address & 0xffff);
         return (byte);
 
     case CMemory::MAP_SETA_DSP:
@@ -173,10 +161,6 @@ static inline void S9xSetByteFree (uint8 Byte, uint32 Address)
 
     case CMemory::MAP_C4:
         S9xSetC4(Byte, Address & 0xffff);
-        return;
-
-    case CMemory::MAP_OBC_RAM:
-        S9xSetOBC1(Byte, Address & 0xffff);
         return;
 
     case CMemory::MAP_SETA_DSP:
@@ -687,7 +671,7 @@ bool8 S9xSaveCheatFile (const char *filename)
                  txt,
                  Cheat.g[i].enabled ? "  enable\n" : ""
                  );
-        
+
         delete[] txt;
     }
 
