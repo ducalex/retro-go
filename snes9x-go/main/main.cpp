@@ -134,18 +134,7 @@ const char *S9xGetFilenameInc(const char *ex, enum s9x_getdirtype dirtype)
 
 const char *S9xBasename(const char *f)
 {
-	const char *p;
-
-	if ((p = strrchr(f, '/')) != NULL || (p = strrchr(f, '\\')) != NULL)
-		return (p + 1);
-
-	return (f);
-}
-
-const char *S9xSelectFilename(const char *def, const char *dir1, const char *ext1, const char *title)
-{
-	// Prompt user for filaname
-	return NULL;
+	return rg_get_filename(f);
 }
 
 const char *S9xChooseFilename(bool8 read_only)
@@ -204,11 +193,6 @@ void S9xMessage(int type, int number, const char *message)
 	strncpy(buffer, message, max + 1);
 	buffer[max] = 0;
 	S9xSetInfoString(buffer);
-}
-
-const char *S9xStringInput(const char *message)
-{
-	return (NULL);
 }
 
 void S9xInitDisplay(int argc, char **argv)
@@ -293,13 +277,9 @@ void S9xSyncSpeed(void)
 		rg_gui_game_settings_menu(NULL);
 	}
 
-	// S9xReportAxis();
-	// S9xReportButton();
-}
-
-bool8 S9xMapInput(const char *n, s9xcommand_t *cmd)
-{
-	return TRUE;
+	for (int i = 0; i < GAMEPAD_KEY_MAX; i++) {
+		S9xReportButton(i, joystick.values[i]);
+	}
 }
 
 bool S9xPollButton(uint32 id, bool *pressed)
@@ -319,19 +299,12 @@ bool S9xPollPointer(uint32 id, int16 *x, int16 *y)
 
 void S9xHandlePortCommand(s9xcommand_t cmd, int16 data1, int16 data2)
 {
-}
 
-void S9xInitInputDevices(void)
-{
-}
-
-void S9xSamplesAvailable(void *data)
-{
 }
 
 bool8 S9xOpenSoundDevice(void)
 {
-	return (TRUE);
+	return (FALSE);
 }
 
 void S9xExit(void)
@@ -369,9 +342,6 @@ static void snes9x_task(void *arg)
 	frames[0].buffer = rg_alloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2, MEM_SLOW);
 	frames[1].buffer = rg_alloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2, MEM_SLOW);
 
-	char *argv[] = {"A", "B"};
-	int argc = sizeof(argv) / sizeof(char *);
-
 	printf("\nSnes9x " VERSION " for ODROID-GO\n");
 
 	S9xInitSettings();
@@ -394,10 +364,25 @@ static void snes9x_task(void *arg)
 		exit(1);
 	}
 
+	S9xInitDisplay(0, NULL);
+
+	S9xSetController(0, CTL_JOYPAD, 0, 0, 0, 0);
+	S9xSetController(1, CTL_NONE, 1, 0, 0, 0);
+	S9xVerifyControllers();
+
+	#define MAP_BUTTON(id, name) S9xMapButton((id), S9xGetCommandT((name)), false)
+
+    MAP_BUTTON(GAMEPAD_KEY_A, "Joypad1 A");
+    MAP_BUTTON(GAMEPAD_KEY_B, "Joypad1 B");
+    MAP_BUTTON(GAMEPAD_KEY_START, "Joypad1 Select");
+    MAP_BUTTON(GAMEPAD_KEY_SELECT, "Joypad1 Start");
+    MAP_BUTTON(GAMEPAD_KEY_LEFT, "Joypad1 Left");
+    MAP_BUTTON(GAMEPAD_KEY_RIGHT, "Joypad1 Right");
+    MAP_BUTTON(GAMEPAD_KEY_UP, "Joypad1 Up");
+    MAP_BUTTON(GAMEPAD_KEY_DOWN, "Joypad1 Down");
+
 	S9xInitSound(0);
 	S9xSetSoundMute(TRUE);
-
-	S9xReportControllers();
 
 	uint32 saved_flags = CPU.Flags;
 
@@ -411,24 +396,6 @@ static void snes9x_task(void *arg)
 
 	CPU.Flags = saved_flags;
 	Settings.StopEmulation = FALSE;
-
-#ifdef DEBUGGER
-	struct sigaction sa;
-	sa.sa_handler = sigbrkhandler;
-#ifdef SA_RESTART
-	sa.sa_flags = SA_RESTART;
-#else
-	sa.sa_flags = 0;
-#endif
-	sigemptyset(&sa.sa_mask);
-	sigaction(SIGINT, &sa, NULL);
-#endif
-
-	S9xInitInputDevices();
-	S9xInitDisplay(argc, argv);
-	S9xTextMode();
-
-	S9xGraphicsMode();
 
 	while (1)
 	{

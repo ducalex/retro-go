@@ -227,7 +227,6 @@ struct SSettings
 	uint32	SoundPlaybackRate;
 	uint32	SoundInputRate;
 	bool8	Stereo;
-	bool8	ReverseStereo;
 	bool8	Mute;
 	bool8	DynamicRateControl;
 	int32	DynamicRateLimit; /* Multiplied by 1000 */
@@ -238,14 +237,11 @@ struct SSettings
 	bool8	DisableGraphicWindows;
 
 	bool8	DisplayFrameRate;
-	bool8	DisplayWatchedAddresses;
 	bool8	AutoDisplayMessages;
 	uint32	InitialInfoStringTimeout;
 	uint16	DisplayColor;
-	bool8	BilinearFilter;
 
 	bool8	DisableGameSpecificHacks;
-	bool8	BlockInvalidVRAMAccessMaster;
 	bool8	BlockInvalidVRAMAccess;
 	int32	HDMATimingHack;
 
@@ -257,9 +253,7 @@ struct SSettings
 	uint32	TurboSkipFrames;
 	uint32	AutoMaxSkipFrames;
 	bool8	TurboMode;
-	uint32	HighSpeedSeek;
 	bool8	FrameAdvance;
-	bool8	Rewinding;
 
 	bool8	NetPlay;
 	bool8	NetPlayServer;
@@ -278,8 +272,6 @@ struct SSettings
 	int32	AutoSaveDelay;
 	bool8	DontSaveOopsSnapshot;
 	bool8	UpAndDown;
-
-	bool8	OpenGLEnable;
 
 	uint32	SuperFXClockMultiplier;
     int OverclockMode;

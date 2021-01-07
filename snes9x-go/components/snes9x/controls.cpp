@@ -217,7 +217,6 @@ static const int	ptrspeeds[4] = { 1, 1, 4, 8 };
 	S(IncFrameTime), \
 	S(IncTurboSpeed), \
 	S(LoadFreezeFile), \
-	S(LoadOopsFile), \
 	S(Pause), \
 	S(QuickLoad000), \
 	S(QuickLoad001), \
@@ -777,84 +776,6 @@ void S9xGetController (int port, enum controllers *controller, int8 *id1, int8 *
 			*id1 = 1;
 			return;
 	}
-}
-
-void S9xReportControllers (void)
-{
-	static char	mes[128];
-	char		*c = mes;
-
-	S9xVerifyControllers();
-
-	for (int port = 0; port < 2; port++)
-	{
-		c += sprintf(c, "Port %d: ", port + 1);
-
-		switch (newcontrollers[port])
-		{
-			case NONE:
-				c += sprintf(c, "<none>. ");
-				break;
-
-			case MP5:
-				c += sprintf(c, "MP5 with pads");
-				for (int i = 0; i < 4; i++)
-				{
-					if (mp5[port].pads[i] == NONE)
-						c += sprintf(c, " <none>. ");
-					else
-						c += sprintf(c, " #%d. ", mp5[port].pads[i] + 1 - JOYPAD0);
-				}
-
-				break;
-
-			case JOYPAD0:
-			case JOYPAD1:
-			case JOYPAD2:
-			case JOYPAD3:
-			case JOYPAD4:
-			case JOYPAD5:
-			case JOYPAD6:
-			case JOYPAD7:
-				c += sprintf(c, "Pad #%d. ", (int) (newcontrollers[port] - JOYPAD0 + 1));
-				break;
-
-			case MOUSE0:
-			case MOUSE1:
-				c += sprintf(c, "Mouse #%d. ", (int) (newcontrollers[port] - MOUSE0 + 1));
-				break;
-
-			case SUPERSCOPE:
-				if (port == 0)
-					c += sprintf(c, "Superscope (cannot fire). ");
-				else
-					c += sprintf(c, "Superscope. ");
-				break;
-
-			case ONE_JUSTIFIER:
-				if (port == 0)
-					c += sprintf(c, "Blue Justifier (cannot fire). ");
-				else
-					c += sprintf(c, "Blue Justifier. ");
-				break;
-
-			case TWO_JUSTIFIERS:
-				if (port == 0)
-					c += sprintf(c, "Blue and Pink Justifiers (cannot fire). ");
-				else
-					c += sprintf(c, "Blue and Pink Justifiers. ");
-				break;
-
-			case MACSRIFLE:
-				if (port == 0)
-					c += sprintf(c, "M.A.C.S. Rifle (cannot fire). ");
-				else
-					c += sprintf(c, "M.A.C.S. Rifle. ");
-				break;
-		}
-	}
-
-	S9xMessage(S9X_INFO, S9X_CONFIG_INFO, mes);
 }
 
 char * S9xGetCommandName (s9xcommand_t command)
@@ -2266,25 +2187,6 @@ void S9xApplyCommand (s9xcommand_t cmd, int16 data1, int16 data2)
 					case SaveFreezeFile:
 						S9xFreezeGame(S9xChooseFilename(FALSE));
 						break;
-
-					case LoadOopsFile:
-					{
-						char	filename[PATH_MAX + 1];
-						char	drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], def[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
-
-						_splitpath(Memory.ROMFilename, drive, dir, def, ext);
-						snprintf(filename, PATH_MAX + 1, "%s%s%s.%.*s", S9xGetDirectory(SNAPSHOT_DIR), SLASH_STR, def, _MAX_EXT - 1, "oops");
-
-						if (S9xUnfreezeGame(filename))
-						{
-							snprintf(buf, 256, "%s.%.*s loaded", def, _MAX_EXT - 1, "oops");
-							S9xSetInfoString (buf);
-						}
-						else
-							S9xMessage(S9X_ERROR, S9X_FREEZE_FILE_NOT_FOUND, "Oops file not found");
-
-						break;
-					}
 
 					case Pause:
 						Settings.Paused = !Settings.Paused;

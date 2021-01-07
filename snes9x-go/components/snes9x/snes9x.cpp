@@ -166,7 +166,6 @@ void S9xInitSettings(void)
 	Settings.SoundSync                  =  true;
 	Settings.SixteenBitSound            =  true;
 	Settings.Stereo                     =  true;
-	Settings.ReverseStereo              =  false;
 	Settings.SoundPlaybackRate          =  48000;
 	Settings.SoundInputRate             =  31950;
 	Settings.Mute                       =  false;
@@ -179,10 +178,8 @@ void S9xInitSettings(void)
 	Settings.Transparency               =  true;
 	Settings.DisableGraphicWindows      = !true;
 	Settings.DisplayFrameRate           =  false;
-	Settings.DisplayWatchedAddresses    =  false;
 	Settings.AutoDisplayMessages        =  true;
 	Settings.InitialInfoStringTimeout   =  120;
-	Settings.BilinearFilter             =  false;
 
 	// Settings
 
@@ -218,7 +215,6 @@ void S9xInitSettings(void)
 	Settings.SuperFXClockMultiplier         = 100;
     Settings.OverclockMode                  = 0;
 	Settings.DisableGameSpecificHacks       = false;
-	Settings.BlockInvalidVRAMAccessMaster   = true;
 	Settings.HDMATimingHack                 = 100;
 	Settings.MaxSpriteTilesPerLine          = 34;
 

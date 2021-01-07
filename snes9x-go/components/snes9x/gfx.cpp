@@ -23,7 +23,6 @@ void (*S9xCustomDisplayString) (const char *, int, int, bool, int) = NULL;
 static void SetupOBJ (void);
 static void DrawOBJS (int);
 static void DisplayFrameRate (void);
-static void DisplayWatchedAddresses (void);
 static void DisplayStringFromBottom (const char *, int, int, bool);
 static void DrawBackground (int, uint8, uint8);
 static void DrawBackgroundMosaic (int, uint8, uint8);
@@ -54,11 +53,6 @@ bool8 S9xGraphicsInit (void)
 	GFX.SubScreen  = (uint16 *) malloc(GFX.ScreenSize * sizeof(uint16));
 	GFX.ZBuffer    = (uint8 *)  malloc(GFX.ScreenSize);
 	GFX.SubZBuffer = (uint8 *)  malloc(GFX.ScreenSize);
-
-	printf("S9xGraphicsInit: GFX.ZERO = %p\n", GFX.ZERO);
-	printf("S9xGraphicsInit: GFX.SubScreen = %p\n", GFX.SubScreen);
-	printf("S9xGraphicsInit: GFX.ZBuffer = %p\n", GFX.ZBuffer);
-	printf("S9xGraphicsInit: GFX.SubZBuffer = %p\n", GFX.SubZBuffer);
 
 	if (!GFX.ZERO || !GFX.SubScreen || !GFX.ZBuffer || !GFX.SubZBuffer)
 	{
@@ -117,12 +111,7 @@ void S9xGraphicsScreenResize (void)
 	IPPU.InterlaceOBJ = Memory.FillRAM[0x2133] & 2;
 	IPPU.PseudoHires = Memory.FillRAM[0x2133] & 8;
 
-	#ifdef USE_OPENGL
-	if (Settings.OpenGLEnable)
-		GFX.RealPPL = SNES_WIDTH;
-	else
-	#endif
-		GFX.RealPPL = GFX.Pitch >> 1;
+	GFX.RealPPL = GFX.Pitch >> 1;
 
 	IPPU.DoubleWidthPixels = FALSE;
 	IPPU.RenderedScreenWidth = SNES_WIDTH;
@@ -1781,52 +1770,10 @@ static void DisplayFrameRate (void)
 	S9xDisplayString(string, 1, IPPU.RenderedScreenWidth - (font_width - 1) * len - 1, false);
 }
 
-static void DisplayWatchedAddresses (void)
-{
-	#if 0
-	for (unsigned int i = 0; i < sizeof(watches) / sizeof(watches[0]); i++)
-	{
-		if (!watches[i].on)
-			break;
-
-		int32	displayNumber = 0;
-		char	buf[32];
-
-		for (int r = 0; r < watches[i].size; r++)
-			displayNumber += (Cheat.CWatchRAM[(watches[i].address - 0x7E0000) + r]) << (8 * r);
-
-		if (watches[i].format == 1)
-			sprintf(buf, "%s,%du = %u", watches[i].desc, watches[i].size, (unsigned int) displayNumber);
-		else
-		if (watches[i].format == 3)
-			sprintf(buf, "%s,%dx = %X", watches[i].desc, watches[i].size, (unsigned int) displayNumber);
-		else // signed
-		{
-			if (watches[i].size == 1)
-				displayNumber = (int32) ((int8)  displayNumber);
-			else
-			if (watches[i].size == 2)
-				displayNumber = (int32) ((int16) displayNumber);
-			else
-			if (watches[i].size == 3)
-				if (displayNumber >= 8388608)
-					displayNumber -= 16777216;
-
-			sprintf(buf, "%s,%ds = %d", watches[i].desc, watches[i].size, (int) displayNumber);
-		}
-
-		S9xDisplayString(buf, 6 + i, 1, false);
-	}
-	#endif
-}
-
 void S9xDisplayMessages (uint16 *screen, int ppl, int width, int height, int scale)
 {
 	if (Settings.DisplayFrameRate)
 		DisplayFrameRate();
-
-	if (Settings.DisplayWatchedAddresses)
-		DisplayWatchedAddresses();
 
 	if (GFX.InfoString && *GFX.InfoString)
 		S9xDisplayString(GFX.InfoString, 5, 1, true);

@@ -15,11 +15,11 @@ struct SGFX
 	uint16	*SubScreen;
 	uint8	*ZBuffer;
 	uint8	*SubZBuffer;
+	uint16	*ZERO;
 	uint32	Pitch;
 	uint32	ScreenSize;
 	uint16	*S;
 	uint8	*DB;
-	uint16	*ZERO;
 	uint32	RealPPL;			// true PPL of Screen buffer
 	uint32	PPL;				// number of pixels on each of Screen buffer
 	uint32	LinesPerTile;		// number of lines in 1 tile (4 or 8 due to interlace)
