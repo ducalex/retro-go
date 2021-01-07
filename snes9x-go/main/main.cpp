@@ -18,7 +18,6 @@ extern "C"
 #include "../components/snes9x/controls.h"
 #include "../components/snes9x/logger.h"
 #include "../components/snes9x/display.h"
-#include "../components/snes9x/conffile.h"
 #include "../components/snes9x/statemanager.h"
 
 #define APP_ID 90
@@ -99,18 +98,6 @@ void _makepath(char *path, const char *, const char *dir, const char *fname, con
 	}
 }
 
-void S9xExtraUsage(void)
-{
-}
-
-void S9xParseArg(char **argv, int &i, int argc)
-{
-}
-
-void S9xParsePortConfig(ConfigFile &conf, int pass)
-{
-}
-
 const char *S9xGetDirectory(enum s9x_getdirtype dirtype)
 {
 	return "/sdcard/roms/snes";
@@ -164,12 +151,6 @@ const char *S9xSelectFilename(const char *def, const char *dir1, const char *ext
 const char *S9xChooseFilename(bool8 read_only)
 {
 	// Return a saved state
-	return NULL;
-}
-
-const char *S9xChooseMovieFilename(bool8 read_only)
-{
-	// Return a movie file
 	return NULL;
 }
 
@@ -391,11 +372,9 @@ static void snes9x_task(void *arg)
 	char *argv[] = {"A", "B"};
 	int argc = sizeof(argv) / sizeof(char *);
 
-	printf("\n\nSnes9x " VERSION " for ODROID-GO\n");
+	printf("\nSnes9x " VERSION " for ODROID-GO\n");
 
-	memset(&Settings, 0, sizeof(Settings));
-
-	S9xLoadConfigFiles(argv, argc);
+	S9xInitSettings();
 
 	Settings.SixteenBitSound = FALSE;
 	Settings.Stereo = FALSE;
@@ -405,9 +384,7 @@ static void snes9x_task(void *arg)
 	Settings.AutoDisplayMessages = TRUE;
 	Settings.Transparency = TRUE;
 	Settings.DumpStreamsMaxFrames = -1;
-	Settings.SkipFrames = AUTO_FRAMERATE;
-	Settings.CartAName[0] = 0;
-	Settings.CartBName[0] = 0;
+	Settings.SkipFrames = 0;
 
 	if (!Memory.Init() || !S9xInitAPU())
 	{
@@ -416,8 +393,6 @@ static void snes9x_task(void *arg)
 		S9xDeinitAPU();
 		exit(1);
 	}
-
-	CPU.Flags = 0;
 
 	S9xInitSound(0);
 	S9xSetSoundMute(TRUE);

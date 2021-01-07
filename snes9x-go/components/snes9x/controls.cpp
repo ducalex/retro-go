@@ -204,7 +204,6 @@ static const int	ptrspeeds[4] = { 1, 1, 4, 8 };
 
 // Note: these should be in asciibetical order!
 #define THE_COMMANDS \
-	S(BeginRecordingMovie), \
 	S(ClipWindows), \
 	S(Debugger), \
 	S(DecEmuTurbo), \
@@ -212,14 +211,12 @@ static const int	ptrspeeds[4] = { 1, 1, 4, 8 };
 	S(DecFrameTime), \
 	S(DecTurboSpeed), \
 	S(EmuTurbo), \
-	S(EndRecordingMovie), \
 	S(ExitEmu), \
 	S(IncEmuTurbo), \
 	S(IncFrameRate), \
 	S(IncFrameTime), \
 	S(IncTurboSpeed), \
 	S(LoadFreezeFile), \
-	S(LoadMovie), \
 	S(LoadOopsFile), \
 	S(Pause), \
 	S(QuickLoad000), \
@@ -2403,15 +2400,6 @@ void S9xApplyCommand (s9xcommand_t cmd, int16 data1, int16 data2)
 						DisplayStateChange("Transparency effects", Settings.Transparency);
 						break;
 
-					case BeginRecordingMovie:
-						break;
-
-					case LoadMovie:
-						break;
-
-					case EndRecordingMovie:
-						break;
-
 					case SwapJoypads:
 						if ((curcontrollers[0] != NONE && !(curcontrollers[0] >= JOYPAD0 && curcontrollers[0] <= JOYPAD7)))
 						{
@@ -3571,139 +3559,3 @@ void S9xControlPostLoadState (struct SControlSnapshot *s)
 		pad_read_last = s->pad_read_last;
 	}
 }
-
-uint16 MovieGetJoypad (int i)
-{
-	if (i < 0 || i > 7)
-		return (0);
-
-	return (joypad[i].buttons);
-}
-
-void MovieSetJoypad (int i, uint16 buttons)
-{
-	if (i < 0 || i > 7)
-		return;
-
-	joypad[i].buttons = buttons;
-}
-
-bool MovieGetMouse (int i, uint8 out[5])
-{
-	if (i < 0 || i > 1 || (curcontrollers[i] != MOUSE0 && curcontrollers[i] != MOUSE1))
-		return (false);
-
-	int		n = curcontrollers[i] - MOUSE0;
-	uint8	*ptr = out;
-
-	WRITE_WORD(ptr, mouse[n].cur_x); ptr += 2;
-	WRITE_WORD(ptr, mouse[n].cur_y); ptr += 2;
-	*ptr = mouse[n].buttons;
-
-	return (true);
-}
-
-void MovieSetMouse (int i, uint8 in[5], bool inPolling)
-{
-	if (i < 0 || i > 1 || (curcontrollers[i] != MOUSE0 && curcontrollers[i] != MOUSE1))
-		return;
-
-	int		n = curcontrollers[i] - MOUSE0;
-	uint8	*ptr = in;
-
-	mouse[n].cur_x = READ_WORD(ptr); ptr += 2;
-	mouse[n].cur_y = READ_WORD(ptr); ptr += 2;
-	mouse[n].buttons = *ptr;
-
-	if (inPolling)
-		UpdatePolledMouse(curcontrollers[i]);
-}
-
-bool MovieGetScope (int i, uint8 out[6])
-{
-	if (i < 0 || i > 1 || curcontrollers[i] != SUPERSCOPE)
-		return (false);
-
-	uint8	*ptr = out;
-
-	WRITE_WORD(ptr, superscope.x); ptr += 2;
-	WRITE_WORD(ptr, superscope.y); ptr += 2;
-	*ptr++ = superscope.phys_buttons;
-	*ptr   = superscope.next_buttons;
-
-	return (true);
-}
-
-void MovieSetScope (int i, uint8 in[6])
-{
-	if (i < 0 || i > 1 || curcontrollers[i] != SUPERSCOPE)
-		return;
-
-	uint8	*ptr = in;
-
-	superscope.x = READ_WORD(ptr); ptr += 2;
-	superscope.y = READ_WORD(ptr); ptr += 2;
-	superscope.phys_buttons = *ptr++;
-	superscope.next_buttons = *ptr;
-}
-
-bool MovieGetJustifier (int i, uint8 out[11])
-{
-	if (i < 0 || i > 1 || (curcontrollers[i] != ONE_JUSTIFIER && curcontrollers[i] != TWO_JUSTIFIERS))
-		return (false);
-
-	uint8	*ptr = out;
-
-	WRITE_WORD(ptr, justifier.x[0]); ptr += 2;
-	WRITE_WORD(ptr, justifier.x[1]); ptr += 2;
-	WRITE_WORD(ptr, justifier.y[0]); ptr += 2;
-	WRITE_WORD(ptr, justifier.y[1]); ptr += 2;
-	*ptr++ = justifier.buttons;
-	*ptr++ = justifier.offscreen[0];
-	*ptr   = justifier.offscreen[1];
-
-	return (true);
-}
-
-void MovieSetJustifier (int i, uint8 in[11])
-{
-	if (i < 0 || i > 1 || (curcontrollers[i] != ONE_JUSTIFIER && curcontrollers[i] != TWO_JUSTIFIERS))
-		return;
-
-	uint8	*ptr = in;
-
-	justifier.x[0] = READ_WORD(ptr); ptr += 2;
-	justifier.x[1] = READ_WORD(ptr); ptr += 2;
-	justifier.y[0] = READ_WORD(ptr); ptr += 2;
-	justifier.y[1] = READ_WORD(ptr); ptr += 2;
-	justifier.buttons      = *ptr++;
-	justifier.offscreen[0] = *ptr++;
-	justifier.offscreen[1] = *ptr;
-}
-
-bool MovieGetMacsRifle (int i, uint8 out[5])
-{
-	if (i < 0 || i > 1 || curcontrollers[i] != MACSRIFLE)
-		return (false);
-
-	uint8	*ptr = out;
-
-	WRITE_WORD(ptr, macsrifle.x); ptr += 2;
-	WRITE_WORD(ptr, macsrifle.y); ptr += 2;
-	*ptr = macsrifle.buttons;
-
-	return (true);
-}
-
-void MovieSetMacsRifle (int i, uint8 in[5])
-{
-	if (i < 0 || i > 1 || curcontrollers[i] != MACSRIFLE)
-		return;
-
-	uint8	*ptr = in;
-
-	macsrifle.x = READ_WORD(ptr); ptr += 2;
-	macsrifle.y = READ_WORD(ptr); ptr += 2;
-	macsrifle.buttons = *ptr;
-}
-

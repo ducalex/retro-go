@@ -37,7 +37,6 @@ struct SSA1Registers	SA1Registers;
 struct FxRegs_s			GSU;
 struct FxInfo_s			SuperFX;
 struct SMSU1			MSU1;
-struct SMulti			Multi;
 struct SSettings		Settings;
 struct SSNESGameFixes	SNESGameFixes;
 #ifdef NETPLAY_SUPPORT

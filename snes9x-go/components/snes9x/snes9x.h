@@ -239,16 +239,10 @@ struct SSettings
 
 	bool8	DisplayFrameRate;
 	bool8	DisplayWatchedAddresses;
-	bool8	DisplayPressedKeys;
-	bool8	DisplayMovieFrame;
 	bool8	AutoDisplayMessages;
 	uint32	InitialInfoStringTimeout;
 	uint16	DisplayColor;
 	bool8	BilinearFilter;
-
-	bool8	Multi;
-	char	CartAName[PATH_MAX + 1];
-	char	CartBName[PATH_MAX + 1];
 
 	bool8	DisableGameSpecificHacks;
 	bool8	BlockInvalidVRAMAccessMaster;
@@ -272,16 +266,12 @@ struct SSettings
 	char	ServerName[128];
 	int		Port;
 
-	bool8	MovieTruncate;
-	bool8	MovieNotifyIgnored;
-	bool8	WrongMovieStateProtection;
 	bool8	DumpStreams;
 	int		DumpStreamsMaxFrames;
 
 	char    InitialSnapshotFilename[PATH_MAX + 1];
 	bool8	FastSavestates;
 
-	bool8	ApplyCheats;
 	bool8	NoPatch;
 	bool8	IgnorePatchChecksum;
 	bool8	IsPatched;
@@ -291,7 +281,6 @@ struct SSettings
 
 	bool8	OpenGLEnable;
 
-    bool8   SeparateEchoBuffer;
 	uint32	SuperFXClockMultiplier;
     int OverclockMode;
 	int	OneClockCycle;
@@ -322,6 +311,7 @@ void S9xSetPause(uint32);
 void S9xClearPause(uint32);
 void S9xExit(void);
 void S9xMessage(int, int, const char *);
+void S9xInitSettings(void);
 
 extern struct SSettings			Settings;
 extern struct SCPUState			CPU;

@@ -182,10 +182,6 @@ static uint8 S9xDebugGetByte (uint32 Address)
 			byte = *(Memory.SRAM + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Memory.SRAMMask));
 			return (byte);
 
-		case CMemory::MAP_LOROM_SRAM_B:
-			byte = *(Multi.sramB + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Multi.sramMaskB));
-			return (byte);
-
 		case CMemory::MAP_HIROM_SRAM:
 		case CMemory::MAP_RONLY_SRAM:
 			byte = *(Memory.SRAM + (((Address & 0x7fff) - 0x6000 + ((Address & 0xf0000) >> 3)) & Memory.SRAMMask));
@@ -2245,7 +2241,7 @@ static void debug_whats_missing (void)
 	debug_print_window(missing.window1);
 
 	printf("\n");
-	
+
 	printf("Window 2 enabled on: ");
 	debug_print_window(missing.window2);
 

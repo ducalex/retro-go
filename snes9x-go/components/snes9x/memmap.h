@@ -31,7 +31,6 @@ struct CMemory
 		MAP_CPU,
 		MAP_PPU,
 		MAP_LOROM_SRAM,
-		MAP_LOROM_SRAM_B,
 		MAP_HIROM_SRAM,
 		MAP_DSP,
 		MAP_SA1RAM,
@@ -130,7 +129,6 @@ struct CMemory
 	void	Map_SRAM512KLoROMMap (void);
 	void	Map_SuperFXLoROMMap (void);
 	void	Map_SA1LoROMMap (void);
-	void	Map_BSSA1LoROMMap (void);
 	void	Map_HiROMMap (void);
 	void	Map_ExtendedHiROMMap (void);
 
@@ -156,19 +154,7 @@ struct CMemory
 	const char *	PublishingCompany (void);
 };
 
-struct SMulti
-{
-	int		cartType;
-	int32	cartSizeA, cartSizeB;
-	int32	sramSizeA, sramSizeB;
-	uint32	sramMaskA, sramMaskB;
-	uint32	cartOffsetA, cartOffsetB;
-	uint8	*sramA, *sramB;
-	char	fileNameA[PATH_MAX + 1], fileNameB[PATH_MAX + 1];
-};
-
 extern CMemory	Memory;
-extern SMulti	Multi;
 
 void S9xAutoSaveSRAM (void);
 bool8 LoadZip(const char *, uint32 *, uint8 *);

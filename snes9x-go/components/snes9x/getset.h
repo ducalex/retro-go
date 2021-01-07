@@ -89,11 +89,6 @@ inline uint8 S9xGetByte (uint32 Address)
 			addCyclesInMemoryAccess;
 			return (byte);
 
-		case CMemory::MAP_LOROM_SRAM_B:
-			byte = *(Multi.sramB + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Multi.sramMaskB));
-			addCyclesInMemoryAccess;
-			return (byte);
-
 		case CMemory::MAP_HIROM_SRAM:
 		case CMemory::MAP_RONLY_SRAM:
 			byte = *(Memory.SRAM + (((Address & 0x7fff) - 0x6000 + ((Address & 0xf0000) >> 3)) & Memory.SRAMMask));
@@ -195,15 +190,6 @@ inline uint16 S9xGetWord (uint32 Address, enum s9xwrap_t w = WRAP_NONE)
 			addCyclesInMemoryAccess_x2;
 			return (word);
 
-		case CMemory::MAP_LOROM_SRAM_B:
-			if (Multi.sramMaskB >= MEMMAP_MASK)
-				word = READ_WORD(Multi.sramB + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Multi.sramMaskB));
-			else
-				word = (*(Multi.sramB + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Multi.sramMaskB))) |
-					  ((*(Multi.sramB + (((((Address + 1) & 0xff0000) >> 1) | ((Address + 1) & 0x7fff)) & Multi.sramMaskB))) << 8);
-			addCyclesInMemoryAccess_x2;
-			return (word);
-
 		case CMemory::MAP_HIROM_SRAM:
 		case CMemory::MAP_RONLY_SRAM:
 			if (Memory.SRAMMask >= MEMMAP_MASK)
@@ -273,16 +259,6 @@ inline void S9xSetByte (uint8 Byte, uint32 Address)
 			if (Memory.SRAMMask)
 			{
 				*(Memory.SRAM + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Memory.SRAMMask)) = Byte;
-				CPU.SRAMModified = TRUE;
-			}
-
-			addCyclesInMemoryAccess;
-			return;
-
-		case CMemory::MAP_LOROM_SRAM_B:
-			if (Multi.sramMaskB)
-			{
-				*(Multi.sramB + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Multi.sramMaskB)) = Byte;
 				CPU.SRAMModified = TRUE;
 			}
 
@@ -438,23 +414,6 @@ inline void S9xSetWord (uint16 Word, uint32 Address, enum s9xwrap_t w = WRAP_NON
 			addCyclesInMemoryAccess_x2;
 			return;
 
-		case CMemory::MAP_LOROM_SRAM_B:
-			if (Multi.sramMaskB)
-			{
-				if (Multi.sramMaskB >= MEMMAP_MASK)
-					WRITE_WORD(Multi.sramB + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Multi.sramMaskB), Word);
-				else
-				{
-					*(Multi.sramB + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Multi.sramMaskB)) = (uint8) Word;
-					*(Multi.sramB + (((((Address + 1) & 0xff0000) >> 1) | ((Address + 1) & 0x7fff)) & Multi.sramMaskB)) = Word >> 8;
-				}
-
-				CPU.SRAMModified = TRUE;
-			}
-
-			addCyclesInMemoryAccess_x2;
-			return;
-
 		case CMemory::MAP_HIROM_SRAM:
 			if (Memory.SRAMMask)
 			{
@@ -551,13 +510,6 @@ inline void S9xSetPCBase (uint32 Address)
 				CPU.PCBase = Memory.SRAM + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Memory.SRAMMask) - (Address & 0xffff);
 			return;
 
-		case CMemory::MAP_LOROM_SRAM_B:
-			if ((Multi.sramMaskB & MEMMAP_MASK) != MEMMAP_MASK)
-				CPU.PCBase = NULL;
-			else
-				CPU.PCBase = Multi.sramB + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Multi.sramMaskB) - (Address & 0xffff);
-			return;
-
 		case CMemory::MAP_HIROM_SRAM:
 			if ((Memory.SRAMMask & MEMMAP_MASK) != MEMMAP_MASK)
 				CPU.PCBase = NULL;
@@ -598,11 +550,6 @@ inline uint8 * S9xGetBasePointer (uint32 Address)
 				return (NULL);
 			return (Memory.SRAM + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Memory.SRAMMask) - (Address & 0xffff));
 
-		case CMemory::MAP_LOROM_SRAM_B:
-			if ((Multi.sramMaskB & MEMMAP_MASK) != MEMMAP_MASK)
-				return (NULL);
-			return (Multi.sramB + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Multi.sramMaskB) - (Address & 0xffff));
-
 		case CMemory::MAP_HIROM_SRAM:
 			if ((Memory.SRAMMask & MEMMAP_MASK) != MEMMAP_MASK)
 				return (NULL);
@@ -636,11 +583,6 @@ inline uint8 * S9xGetMemPointer (uint32 Address)
 			if ((Memory.SRAMMask & MEMMAP_MASK) != MEMMAP_MASK)
 				return (NULL);
 			return (Memory.SRAM + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Memory.SRAMMask));
-
-		case CMemory::MAP_LOROM_SRAM_B:
-			if ((Multi.sramMaskB & MEMMAP_MASK) != MEMMAP_MASK)
-				return (NULL);
-			return (Multi.sramB + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Multi.sramMaskB));
 
 		case CMemory::MAP_HIROM_SRAM:
 			if ((Memory.SRAMMask & MEMMAP_MASK) != MEMMAP_MASK)

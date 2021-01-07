@@ -1304,7 +1304,6 @@ bool8 CMemory::LoadROMMem (const uint8 *source, uint32 sourceSize)
     do
     {
         memset(ROM,0, MAX_ROM_SIZE);
-        memset(&Multi, 0,sizeof(Multi));
         memcpy(ROM,source,sourceSize);
     }
     while(!LoadROMInt(sourceSize));
@@ -1322,7 +1321,6 @@ bool8 CMemory::LoadROM (const char *filename)
     do
     {
         memset(ROM,0, MAX_ROM_SIZE);
-        memset(&Multi, 0,sizeof(Multi));
         totalFileSize = FileLoader(ROM, filename, MAX_ROM_SIZE);
 
         if (!totalFileSize)
@@ -1552,75 +1550,6 @@ bool8 CMemory::LoadROMInt (int32 ROMfillSize)
     return (TRUE);
 }
 
-bool8 CMemory::LoadMultiCart (const char *cartA, const char *cartB)
-{
-    memset(ROM, 0, MAX_ROM_SIZE);
-	memset(&Multi, 0, sizeof(Multi));
-
-	Settings.DisplayColor = BUILD_PIXEL(31, 31, 31);
-	SET_UI_COLOR(255, 255, 255);
-
-    if (cartB && cartB[0])
-		Multi.cartSizeB = FileLoader(ROM, cartB, MAX_ROM_SIZE);
-
-    if (Multi.cartSizeB) {
-        strcpy(Multi.fileNameB, cartB);
-
-		CheckForAnyPatch(cartB, HeaderCount != 0, Multi.cartSizeB);
-
-        Multi.cartOffsetB = 0x400000;
-        memcpy(ROM + Multi.cartOffsetB,ROM,Multi.cartSizeB);
-    }
-
-	if (cartA && cartA[0])
-		Multi.cartSizeA = FileLoader(ROM, cartA, MAX_ROM_SIZE);
-
-    if (Multi.cartSizeA) {
-        strcpy(Multi.fileNameA, cartA);
-
-		CheckForAnyPatch(cartA, HeaderCount != 0, Multi.cartSizeA);
-    }
-
-    return LoadMultiCartInt();
-}
-
-bool8 CMemory::LoadMultiCartInt ()
-{
-	bool8	r = TRUE;
-
-	CalculatedSize = 0;
-	ExtendedFormat = NOPE;
-
-	Multi.cartType = 4; // assuming BIOS only
-
-	switch (Multi.cartType)
-	{
-		default:
-			r = FALSE;
-	}
-
-	if (!r)
-	{
-		memset(&Multi, 0, sizeof(Multi));
-		return (FALSE);
-	}
-
-    if (Multi.cartSizeA)
-		strcpy(ROMFilename, Multi.fileNameA);
-	else
-	if (Multi.cartSizeB)
-		strcpy(ROMFilename, Multi.fileNameB);
-
-	memset(&SNESGameFixes, 0, sizeof(SNESGameFixes));
-	SNESGameFixes.SRAMInitialValue = 0x60;
-
-	InitROM();
-
-	S9xReset();
-
-	return (TRUE);
-}
-
 void CMemory::ClearSRAM (bool8 onlyNonSavedSRAM)
 {
 	if (onlyNonSavedSRAM)
@@ -1639,27 +1568,6 @@ bool8 CMemory::LoadSRAM (const char *filename)
 	strcpy(sramName, filename);
 
 	ClearSRAM();
-
-	if (Multi.cartType && Multi.sramSizeB)
-	{
-		char	temp[PATH_MAX + 1];
-
-		strcpy(temp, ROMFilename);
-		strcpy(ROMFilename, Multi.fileNameB);
-
-		size = (1 << (Multi.sramSizeB + 3)) * 128;
-
-		file = fopen(S9xGetFilename(".srm", SRAM_DIR), "rb");
-		if (file)
-		{
-			len = fread((char *) Multi.sramB, 1, 0x10000, file);
-			fclose(file);
-			if (len - size == 512)
-				memmove(Multi.sramB, Multi.sramB + 512, size);
-		}
-
-		strcpy(ROMFilename, temp);
-	}
 
 	size = SRAMSize ? (1 << (SRAMSize + 3)) * 128 : 0;
 	if (size > 0x20000)
@@ -1697,27 +1605,6 @@ bool8 CMemory::SaveSRAM (const char *filename)
 	char	sramName[PATH_MAX + 1];
 
 	strcpy(sramName, filename);
-
-	if (Multi.cartType && Multi.sramSizeB)
-	{
-		char	name[PATH_MAX + 1], temp[PATH_MAX + 1];
-
-		strcpy(temp, ROMFilename);
-		strcpy(ROMFilename, Multi.fileNameB);
-		strcpy(name, S9xGetFilename(".srm", SRAM_DIR));
-
-		size = (1 << (Multi.sramSizeB + 3)) * 128;
-
-		file = fopen(name, "wb");
-		if (file)
-		{
-			if (!fwrite((char *) Multi.sramB, size, 1, file))
-				printf ("Couldn't write to subcart SRAM file.\n");
-			fclose(file);
-		}
-
-		strcpy(ROMFilename, temp);
-    }
 
     size = SRAMSize ? (1 << (SRAMSize + 3)) * 128 : 0;
 	if (size > 0x20000)
@@ -1987,10 +1874,7 @@ void CMemory::InitROM (void)
 		else
 		if (Settings.SA1)
 		{
-			if (Multi.cartType == 5)
-				Map_BSSA1LoROMMap();
-			else
-				Map_SA1LoROMMap();
+			Map_SA1LoROMMap();
 		}
 		else
 		if (ExtendedFormat != NOPE)
@@ -2072,12 +1956,6 @@ void CMemory::InitROM (void)
 		SET_UI_COLOR(216, 216, 255);
 	}
 
-	if (Multi.cartType == 4)
-	{
-		Settings.DisplayColor = BUILD_PIXEL(0, 16, 31);
-		SET_UI_COLOR(0, 128, 255);
-	}
-
 	//// Initialize emulation
 
 	Timings.H_Max_Master = SNES_CYCLES_PER_SCANLINE;
@@ -2116,7 +1994,7 @@ void CMemory::InitROM (void)
 	sprintf(ROMId, "%s", Safe(ROMId));
 
 	sprintf(String, "\"%s\" [%s] %s, %s, %s, %s, SRAM:%s, ID:%s, CRC32:%08X",
-		displayName, isChecksumOK ? "checksum ok" : ((Multi.cartType == 4) ? "no checksum" : "bad checksum"),
+		displayName, isChecksumOK ? "checksum ok" : "bad checksum",
 		MapType(), Size(), KartContents(), Settings.PAL ? "PAL" : "NTSC", StaticRAMSize(), ROMId, ROMCRC32);
 	S9xMessage(S9X_INFO, S9X_ROM_INFO, String);
 
@@ -2515,48 +2393,6 @@ void CMemory::Map_SA1LoROMMap (void)
 	BWRAM = SRAM;
 }
 
-void CMemory::Map_BSSA1LoROMMap(void)
-{
-	printf("Map_BSSA1LoROMMap\n");
-	map_System();
-
-	map_lorom_offset(0x00, 0x3f, 0x8000, 0xffff, Multi.cartSizeA, Multi.cartOffsetA);
-	map_lorom_offset(0x80, 0xbf, 0x8000, 0xffff, Multi.cartSizeA, Multi.cartOffsetA);
-
-	map_hirom_offset(0xc0, 0xff, 0x0000, 0xffff, Multi.cartSizeA, Multi.cartOffsetA);
-
-	map_space(0x00, 0x3f, 0x3000, 0x3fff, FillRAM);
-	map_space(0x80, 0xbf, 0x3000, 0x3fff, FillRAM);
-	map_index(0x00, 0x3f, 0x6000, 0x7fff, MAP_BWRAM, MAP_TYPE_I_O);
-	map_index(0x80, 0xbf, 0x6000, 0x7fff, MAP_BWRAM, MAP_TYPE_I_O);
-
-	for (int c = 0x40; c < 0x80; c++)
-		map_space(c, c, 0x0000, 0xffff, SRAM + (c & 1) * 0x10000);
-
-	map_WRAM();
-
-	map_WriteProtectROM();
-
-	// Now copy the map and correct it for the SA1 CPU.
-	memmove((void *) SA1.Map, (void *) Map, sizeof(Map));
-	memmove((void *) SA1.WriteMap, (void *) WriteMap, sizeof(WriteMap));
-
-	// SA-1 Banks 00->3f and 80->bf
-	for (int c = 0x000; c < 0x400; c += 0x10)
-	{
-		SA1.Map[c + 0] = SA1.Map[c + 0x800] = FillRAM + 0x3000;
-		SA1.Map[c + 1] = SA1.Map[c + 0x801] = (uint8 *) MAP_NONE;
-		SA1.WriteMap[c + 0] = SA1.WriteMap[c + 0x800] = FillRAM + 0x3000;
-		SA1.WriteMap[c + 1] = SA1.WriteMap[c + 0x801] = (uint8 *) MAP_NONE;
-	}
-
-	// SA-1 Banks 60->6f
-	for (int c = 0x600; c < 0x700; c++)
-		SA1.Map[c] = SA1.WriteMap[c] = (uint8 *) MAP_BWRAM_BITMAP;
-
-	BWRAM = SRAM;
-}
-
 void CMemory::Map_HiROMMap (void)
 {
 	printf("Map_HiROMMap\n");
@@ -2669,9 +2505,6 @@ const char * CMemory::Size (void)
 {
 	static char	str[20];
 
-	if (Multi.cartType == 4)
-		strcpy(str, "N/A");
-	else
 	if (ROMSize < 7 || ROMSize - 7 > 23)
 		strcpy(str, "Corrupt");
 	else
