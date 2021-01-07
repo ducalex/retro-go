@@ -391,7 +391,7 @@ static void snes9x_task(void *arg)
 	char *argv[] = {"A", "B"};
 	int argc = sizeof(argv) / sizeof(char *);
 
-	printf("\n\nSnes9x " VERSION " for unix\n");
+	printf("\n\nSnes9x " VERSION " for ODROID-GO\n");
 
 	memset(&Settings, 0, sizeof(Settings));
 
@@ -405,7 +405,6 @@ static void snes9x_task(void *arg)
 	Settings.AutoDisplayMessages = TRUE;
 	Settings.Transparency = TRUE;
 	Settings.DumpStreamsMaxFrames = -1;
-	Settings.SnapshotScreenshots = FALSE;
 	Settings.SkipFrames = AUTO_FRAMERATE;
 	Settings.CartAName[0] = 0;
 	Settings.CartBName[0] = 0;

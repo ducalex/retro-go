@@ -10,7 +10,6 @@
 #include "apu/apu.h"
 #include "fxemu.h"
 #include "controls.h"
-#include "movie.h"
 #include "display.h"
 #ifdef NETPLAY_SUPPORT
 #include "netplay.h"

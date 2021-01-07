@@ -28,9 +28,7 @@
 #include "apu/apu.h"
 #include "fxemu.h"
 #include "controls.h"
-#include "movie.h"
 #include "display.h"
-#include "sha256.h"
 
 #ifndef SET_UI_COLOR
 #define SET_UI_COLOR(r, g, b) ;
@@ -44,7 +42,6 @@
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 #endif
 
-static bool8	stopMovie = TRUE;
 static char		LastRomFilename[PATH_MAX + 1] = "";
 
 // from NSRT
@@ -2022,7 +2019,6 @@ void CMemory::InitROM (void)
 
 	// CRC32
 	ROMCRC32 = caCRC32(ROM, CalculatedSize);
-	sha256sum(ROM, CalculatedSize, ROMSHA256);
 
 	// NTSC/PAL
 	if (Settings.ForceNTSC)
@@ -2134,11 +2130,6 @@ void CMemory::InitROM (void)
 	Settings.ForceNotInterleaved = FALSE;
 	Settings.ForcePAL = FALSE;
 	Settings.ForceNTSC = FALSE;
-
-	Settings.TakeScreenshot = FALSE;
-
-	if (stopMovie)
-		S9xMovieStop(TRUE);
 
 	if (PostRomInitFunc)
 		PostRomInitFunc();

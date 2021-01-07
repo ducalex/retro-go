@@ -5,7 +5,6 @@
 \*****************************************************************************/
 
 #include "snes9x.h"
-#include "movie.h"
 #include "logger.h"
 
 static int	resetno = 0;
@@ -57,15 +56,11 @@ void S9xCloseLogger (void)
 		fclose(audio);
 		audio = NULL;
 	}
-}	
+}
 
 void S9xVideoLogger (void *pixels, int width, int height, int depth, int bytes_per_line)
 {
-	int	fc = S9xMovieGetFrameCounter();
-	if (fc > 0)
-		framecounter = fc;
-	else
-		framecounter++;
+	framecounter++;
 
 	if (video)
 	{

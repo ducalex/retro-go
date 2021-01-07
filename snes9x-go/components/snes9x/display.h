@@ -17,7 +17,6 @@ enum s9x_getdirtype
 	ROM_DIR,
 	SRAM_DIR,
 	SNAPSHOT_DIR,
-	SCREENSHOT_DIR,
 	SPC_DIR,
 	CHEAT_DIR,
 	PATCH_DIR,

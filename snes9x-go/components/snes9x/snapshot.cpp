@@ -13,7 +13,6 @@
 #include "fxemu.h"
 #include "snapshot.h"
 #include "controls.h"
-#include "movie.h"
 #include "display.h"
 #include "language.h"
 #include "gfx.h"
@@ -158,14 +157,6 @@ struct SDMASnapshot
 struct SnapshotMovieInfo
 {
 	uint32	MovieInputDataSize;
-};
-
-struct SnapshotScreenshotInfo
-{
-	uint16	Width;
-	uint16	Height;
-	uint8	Interlaced;
-	uint8	Data[MAX_SNES_WIDTH * MAX_SNES_HEIGHT * 3];
 };
 
 static struct Obsolete
@@ -775,17 +766,6 @@ static FreezeData	SnapMSU1[] =
 };
 
 #undef STRUCT
-#define STRUCT	struct SnapshotScreenshotInfo
-
-static FreezeData	SnapScreenshot[] =
-{
-	INT_ENTRY(6, Width),
-	INT_ENTRY(6, Height),
-	INT_ENTRY(6, Interlaced),
-	ARRAY_ENTRY(6, Data, MAX_SNES_WIDTH * MAX_SNES_HEIGHT * 3, uint8_ARRAY_V)
-};
-
-#undef STRUCT
 #define STRUCT	struct SnapshotMovieInfo
 
 static FreezeData	SnapMovie[] =
@@ -812,7 +792,6 @@ static FreezeData	SnapSA1Registers[] = {INT_ENTRY(1, dummy)};
 static FreezeData	SnapDSP1[] = {INT_ENTRY(1, dummy)};
 static FreezeData	SnapDSP2[] = {INT_ENTRY(1, dummy)};
 static FreezeData	SnapMSU1[] = {INT_ENTRY(1, dummy)};
-static FreezeData	SnapScreenshot[] = {INT_ENTRY(1, dummy)};
 static FreezeData	SnapMovie[] = {INT_ENTRY(1, dummy)};
 
 #endif
@@ -873,10 +852,7 @@ bool8 S9xFreezeGame (const char *filename)
 		S9xResetSaveTimer(TRUE);
 
 		const char *base = S9xBasename(filename);
-		if (S9xMovieActive())
-			sprintf(String, MOVIE_INFO_SNAPSHOT " %s", base);
-		else
-			sprintf(String, SAVE_INFO_SNAPSHOT " %s", base);
+		sprintf(String, SAVE_INFO_SNAPSHOT " %s", base);
 
 		S9xMessage(S9X_INFO, S9X_FREEZE_FILE_INFO, String);
 
@@ -945,15 +921,7 @@ bool8 S9xUnfreezeGame (const char *filename)
 			return (FALSE);
 		}
 
-		if (S9xMovieActive())
-		{
-			if (S9xMovieReadOnly())
-				sprintf(String, MOVIE_INFO_REWIND " %s", base);
-			else
-				sprintf(String, MOVIE_INFO_RERECORD " %s", base);
-		}
-		else
-			sprintf(String, SAVE_INFO_LOAD " %s", base);
+		sprintf(String, SAVE_INFO_LOAD " %s", base);
 
 		S9xMessage(S9X_INFO, S9X_FREEZE_FILE_INFO, String);
 
@@ -1030,55 +998,6 @@ void S9xFreezeToStream (STREAM stream)
 	if (Settings.MSU1)
 		FreezeStruct(stream, "MSU", &MSU1, SnapMSU1, COUNT(SnapMSU1));
 
-	if (Settings.SnapshotScreenshots)
-	{
-		SnapshotScreenshotInfo	*ssi = new SnapshotScreenshotInfo;
-
-		ssi->Width  = min(IPPU.RenderedScreenWidth,  MAX_SNES_WIDTH);
-		ssi->Height = min(IPPU.RenderedScreenHeight, MAX_SNES_HEIGHT);
-		ssi->Interlaced = GFX.DoInterlace;
-
-		uint8	*rowpix = ssi->Data;
-		uint16	*screen = GFX.Screen;
-
-		for (int y = 0; y < ssi->Height; y++, screen += GFX.RealPPL)
-		{
-			for (int x = 0; x < ssi->Width; x++)
-			{
-				uint32	r, g, b;
-
-				DECOMPOSE_PIXEL(screen[x], r, g, b);
-				*(rowpix++) = r;
-				*(rowpix++) = g;
-				*(rowpix++) = b;
-			}
-		}
-
-		memset(rowpix, 0, sizeof(ssi->Data) + ssi->Data - rowpix);
-
-		FreezeStruct(stream, "SHO", ssi, SnapScreenshot, COUNT(SnapScreenshot));
-
-		delete ssi;
-	}
-
-	if (S9xMovieActive())
-	{
-		uint8	*movie_freeze_buf;
-		uint32	movie_freeze_size;
-
-		S9xMovieFreeze(&movie_freeze_buf, &movie_freeze_size);
-		if (movie_freeze_buf)
-		{
-			struct SnapshotMovieInfo mi;
-
-			mi.MovieInputDataSize = movie_freeze_size;
-			FreezeStruct(stream, "MOV", &mi, SnapMovie, COUNT(SnapMovie));
-			FreezeBlock (stream, "MID", movie_freeze_buf, movie_freeze_size);
-
-			delete [] movie_freeze_buf;
-		}
-	}
-
 	delete [] soundsnapshot;
 }
 
@@ -1123,8 +1042,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 	uint8	*local_dsp2          = NULL;
 	uint8	*local_cx4_data      = NULL;
 	uint8	*local_msu1_data     = NULL;
-	uint8	*local_screenshot    = NULL;
-	uint8	*local_movie_data    = NULL;
 
 	do
 	{
@@ -1232,39 +1149,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 		result = UnfreezeStructCopy(stream, "MSU", &local_msu1_data, SnapMSU1, COUNT(SnapMSU1), version);
 		if (result != SUCCESS && Settings.MSU1)
 			break;
-
-		result = UnfreezeStructCopy(stream, "SHO", &local_screenshot, SnapScreenshot, COUNT(SnapScreenshot), version);
-
-		SnapshotMovieInfo	mi;
-
-		result = UnfreezeStruct(stream, "MOV", &mi, SnapMovie, COUNT(SnapMovie), version);
-		if (result != SUCCESS)
-		{
-			if (S9xMovieActive())
-			{
-				result = NOT_A_MOVIE_SNAPSHOT;
-				break;
-			}
-		}
-		else
-		{
-			result = UnfreezeBlockCopy(stream, "MID", &local_movie_data, mi.MovieInputDataSize);
-			if (result != SUCCESS)
-			{
-				if (S9xMovieActive())
-				{
-					result = NOT_A_MOVIE_SNAPSHOT;
-					break;
-				}
-			}
-
-			if (S9xMovieActive())
-			{
-				result = S9xMovieUnfreeze(local_movie_data, mi.MovieInputDataSize);
-				if (result != SUCCESS)
-					break;
-			}
-		}
 
 		result = SUCCESS;
 	} while (false);
@@ -1424,70 +1308,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 
 		if (local_msu1_data)
 			S9xMSU1PostLoadState();
-
-		if (local_movie_data)
-		{
-			// restore last displayed pad_read status
-			extern bool8	pad_read, pad_read_last;
-			bool8			pad_read_temp = pad_read;
-
-			pad_read = pad_read_last;
-			S9xUpdateFrameCounter(-1);
-			pad_read = pad_read_temp;
-		}
-
-		if (local_screenshot)
-		{
-			SnapshotScreenshotInfo	*ssi = new SnapshotScreenshotInfo;
-
-			UnfreezeStructFromCopy(ssi, SnapScreenshot, COUNT(SnapScreenshot), local_screenshot, version);
-
-			IPPU.RenderedScreenWidth  = min(ssi->Width,  IMAGE_WIDTH);
-			IPPU.RenderedScreenHeight = min(ssi->Height, IMAGE_HEIGHT);
-			const bool8 scaleDownX = IPPU.RenderedScreenWidth  < ssi->Width;
-			const bool8 scaleDownY = IPPU.RenderedScreenHeight < ssi->Height && ssi->Height > SNES_HEIGHT_EXTENDED;
-			GFX.DoInterlace = 0;
-
-			uint8	*rowpix = ssi->Data;
-			uint16	*screen = GFX.Screen;
-
-			for (int y = 0; y < IPPU.RenderedScreenHeight; y++, screen += GFX.RealPPL)
-			{
-				for (int x = 0; x < IPPU.RenderedScreenWidth; x++)
-				{
-					uint32	r, g, b;
-
-					r = *(rowpix++);
-					g = *(rowpix++);
-					b = *(rowpix++);
-
-					if (scaleDownX)
-					{
-						r = (r + *(rowpix++)) >> 1;
-						g = (g + *(rowpix++)) >> 1;
-						b = (b + *(rowpix++)) >> 1;
-
-						if (x + x + 1 >= ssi->Width)
-							break;
-					}
-
-					screen[x] = BUILD_PIXEL(r, g, b);
-				}
-
-				if (scaleDownY)
-				{
-					rowpix += 3 * ssi->Width;
-					if (y + y + 1 >= ssi->Height)
-						break;
-				}
-			}
-
-			// black out what we might have missed
-			for (uint32 y = IPPU.RenderedScreenHeight; y < (uint32) (IMAGE_HEIGHT); y++)
-				memset(GFX.Screen + y * GFX.RealPPL, 0, GFX.RealPPL * 2);
-
-			delete ssi;
-		}
 	}
 
 	if (local_cpu)				delete [] local_cpu;
@@ -1507,8 +1327,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 	if (local_dsp1)				delete [] local_dsp1;
 	if (local_dsp2)				delete [] local_dsp2;
 	if (local_cx4_data)			delete [] local_cx4_data;
-	if (local_screenshot)		delete [] local_screenshot;
-	if (local_movie_data)		delete [] local_movie_data;
 
 	return (result);
 }

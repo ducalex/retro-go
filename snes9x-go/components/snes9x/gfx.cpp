@@ -9,8 +9,6 @@
 #include "tile.h"
 #include "controls.h"
 #include "crosshairs.h"
-#include "movie.h"
-#include "screenshot.h"
 #include "font.h"
 #include "display.h"
 
@@ -25,7 +23,6 @@ void (*S9xCustomDisplayString) (const char *, int, int, bool, int) = NULL;
 static void SetupOBJ (void);
 static void DrawOBJS (int);
 static void DisplayFrameRate (void);
-static void DisplayPressedKeys (void);
 static void DisplayWatchedAddresses (void);
 static void DisplayStringFromBottom (const char *, int, int, bool);
 static void DrawBackground (int, uint8, uint8);
@@ -36,7 +33,6 @@ static inline void DrawBackgroundMode7 (int, void (*DrawMath) (uint32, uint32, i
 static inline void DrawBackdrop (void);
 static inline void RenderScreen (bool8);
 static uint16 get_crosshair_color (uint8);
-static void S9xDisplayStringType (const char *, int, int, bool, int);
 
 #define TILE_PLUS(t, x)	(((t) & 0xfc00) | ((t + x) & 0x3ff))
 
@@ -209,9 +205,6 @@ void S9xEndScreenRefresh (void)
 			}
 
 			S9xControlEOF();
-
-			if (Settings.TakeScreenshot)
-				S9xDoScreenshot(IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight);
 
 			if (Settings.AutoDisplayMessages)
 				S9xDisplayMessages(GFX.Screen, GFX.RealPPL, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, 1);
@@ -1760,17 +1753,6 @@ static void DisplayStringFromBottom (const char *string, int linesFromBottom, in
 	}
 }
 
-static void S9xDisplayStringType (const char *string, int linesFromBottom, int pixelsFromLeft, bool allowWrap, int type)
-{
-    if (S9xCustomDisplayString)
-    {
-            S9xCustomDisplayString (string, linesFromBottom, pixelsFromLeft, allowWrap, type);
-            return;
-    }
-
-    S9xDisplayString (string, linesFromBottom, pixelsFromLeft, allowWrap);
-}
-
 static void DisplayFrameRate (void)
 {
 	char	string[10];
@@ -1797,132 +1779,6 @@ static void DisplayFrameRate (void)
 #endif
 
 	S9xDisplayString(string, 1, IPPU.RenderedScreenWidth - (font_width - 1) * len - 1, false);
-}
-
-static void DisplayPressedKeys (void)
-{
-	static unsigned char	KeyMap[]   = { '0', '1', '2', 'R', 'L', 'X', 'A', 225, 224, 227, 226, 'S', 's', 'Y', 'B' };
-	static int		KeyOrder[] = { 8, 10, 7, 9, 0, 6, 14, 13, 5, 1, 4, 3, 2, 11, 12 }; // < ^ > v   A B Y X  L R  S s
-
-	enum controllers	controller;
-    int					line = Settings.DisplayMovieFrame && S9xMovieActive() ? 2 : 1;
-	int8				ids[4];
-	char				string[255];
-
-	for (int port = 0; port < 2; port++)
-	{
-		S9xGetController(port, &controller, &ids[0], &ids[1], &ids[2], &ids[3]);
-
-		switch (controller)
-		{
-			case CTL_MOUSE:
-			{
-				uint8 buf[5];
-				if (!MovieGetMouse(port, buf))
-					break;
-				int16 x = READ_WORD(buf);
-				int16 y = READ_WORD(buf + 2);
-				uint8 buttons = buf[4];
-				sprintf(string, "#%d %d: (%03d,%03d) %c%c", port + 1, ids[0] + 1, x, y,
-						(buttons & 0x40) ? 'L' : ' ', (buttons & 0x80) ? 'R' : ' ');
-				S9xDisplayStringType(string, line++, 1, false, S9X_PRESSED_KEYS_INFO);
-				break;
-			}
-
-			case CTL_SUPERSCOPE:
-			{
-				uint8 buf[6];
-				if (!MovieGetScope(port, buf))
-					break;
-				int16 x = READ_WORD(buf);
-				int16 y = READ_WORD(buf + 2);
-				uint8 buttons = buf[4];
-				sprintf(string, "#%d %d: (%03d,%03d) %c%c%c%c", port + 1, ids[0] + 1, x, y,
-						(buttons & 0x80) ? 'F' : ' ', (buttons & 0x40) ? 'C' : ' ',
-						(buttons & 0x20) ? 'T' : ' ', (buttons & 0x10) ? 'P' : ' ');
-				S9xDisplayStringType(string, line++, 1, false, S9X_PRESSED_KEYS_INFO);
-				break;
-			}
-
-			case CTL_JUSTIFIER:
-			{
-				uint8 buf[11];
-				if (!MovieGetJustifier(port, buf))
-					break;
-				int16 x1 = READ_WORD(buf);
-				int16 x2 = READ_WORD(buf + 2);
-				int16 y1 = READ_WORD(buf + 4);
-				int16 y2 = READ_WORD(buf + 6);
-				uint8 buttons = buf[8];
-				bool8 offscreen1 = buf[9];
-				bool8 offscreen2 = buf[10];
-				sprintf(string, "#%d %d: (%03d,%03d) %c%c%c / (%03d,%03d) %c%c%c", port + 1, ids[0] + 1,
-						x1, y1, (buttons & 0x80) ? 'T' : ' ', (buttons & 0x20) ? 'S' : ' ', offscreen1 ? 'O' : ' ',
-						x2, y2, (buttons & 0x40) ? 'T' : ' ', (buttons & 0x10) ? 'S' : ' ', offscreen2 ? 'O' : ' ');
-				S9xDisplayStringType(string, line++, 1, false, S9X_PRESSED_KEYS_INFO);
-				break;
-			}
-
-			case CTL_JOYPAD:
-			{
-				sprintf(string, "#%d %d:                  ", port + 1, ids[0] + 1);
-				uint16 pad = MovieGetJoypad(ids[0]);
-				for (int i = 0; i < 15; i++)
-				{
-					int j = KeyOrder[i];
-					int mask = (1 << (j + 1));
-					string[6 + i]= (pad & mask) ? KeyMap[j] : ' ';
-				}
-
-				S9xDisplayStringType(string, line++, 1, false, S9X_PRESSED_KEYS_INFO);
-				break;
-			}
-
-			case CTL_MP5:
-			{
-				for (int n = 0; n < 4; n++)
-				{
-					if (ids[n] != -1)
-					{
-						sprintf(string, "#%d %d:                  ", port + 1, ids[n] + 1);
-						uint16 pad = MovieGetJoypad(ids[n]);
-						for (int i = 0; i < 15; i++)
-						{
-							int j = KeyOrder[i];
-							int mask = (1 << (j + 1));
-							string[6 + i]= (pad & mask) ? KeyMap[j] : ' ';
-						}
-
-						S9xDisplayStringType(string, line++, 1, false, S9X_PRESSED_KEYS_INFO);
-					}
-				}
-
-				break;
-			}
-
-			case CTL_MACSRIFLE:
-			{
-				/*
-				uint8 buf[6], *p = buf;
-				MovieGetScope(port, buf);
-				int16 x = READ_WORD(p);
-				int16 y = READ_WORD(p + 2);
-				uint8 buttons = buf[4];
-				sprintf(string, "#%d %d: (%03d,%03d) %c%c%c%c", port, ids[0], x, y,
-						(buttons & 0x80) ? 'F' : ' ', (buttons & 0x40) ? 'C' : ' ',
-						(buttons & 0x20) ? 'T' : ' ', (buttons & 0x10) ? 'P' : ' ');
-				S9xDisplayString(string, line++, 1, false);
-				*/
-				break;
-			}
-
-			case CTL_NONE:
-			{
-				// Display Nothing
-				break;
-			}
-		}
-	}
 }
 
 static void DisplayWatchedAddresses (void)
@@ -1971,12 +1827,6 @@ void S9xDisplayMessages (uint16 *screen, int ppl, int width, int height, int sca
 
 	if (Settings.DisplayWatchedAddresses)
 		DisplayWatchedAddresses();
-
-	if (Settings.DisplayPressedKeys)
-		DisplayPressedKeys();
-
-	if (Settings.DisplayMovieFrame && S9xMovieActive())
-		S9xDisplayString(GFX.FrameDisplayString, 1, 1, false);
 
 	if (GFX.InfoString && *GFX.InfoString)
 		S9xDisplayString(GFX.InfoString, 5, 1, true);
