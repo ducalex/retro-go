@@ -36,8 +36,10 @@ struct SSA1
 	uint8	*PCBase;
 	bool8	WaitingForInterrupt;
 
-	uint8	*Map[MEMMAP_NUM_BLOCKS];
-	uint8	*WriteMap[MEMMAP_NUM_BLOCKS];
+	uint8	**Map;
+	uint8	**WriteMap;
+	// uint8	*Map[MEMMAP_NUM_BLOCKS];
+	// uint8	*WriteMap[MEMMAP_NUM_BLOCKS];
 	uint8	*BWRAM;
 
 	bool8	in_char_dma;

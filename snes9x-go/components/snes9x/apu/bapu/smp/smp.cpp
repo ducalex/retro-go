@@ -15,11 +15,11 @@ namespace SNES {
 
 SMP smp;
 
-#include "algorithms.cpp"
-#include "core.cpp"
-#include "iplrom.cpp"
-#include "memory.cpp"
-#include "timing.cpp"
+#include "algorithms.hpp"
+#include "core.hpp"
+#include "iplrom.hpp"
+#include "memory.hpp"
+#include "timing.hpp"
 
 void SMP::enter() {
   while(clock < 0) op_step();

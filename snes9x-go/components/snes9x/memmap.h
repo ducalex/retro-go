@@ -15,7 +15,7 @@
 struct CMemory
 {
 	enum
-	{ MAX_ROM_SIZE = 0x800000 };
+	{ MAX_ROM_SIZE = 0x100000 };
 
 	enum file_formats
 	{ FILE_ZIP, FILE_JMA, FILE_DEFAULT };
@@ -56,13 +56,10 @@ struct CMemory
 	uint8	*FillRAM;
 	uint8	*BWRAM;
 	uint8	*C4RAM;
-	uint8	*BSRAM;
-	uint8	*BIOSROM;
 
 	uint8	*Map[MEMMAP_NUM_BLOCKS];
 	uint8	*WriteMap[MEMMAP_NUM_BLOCKS];
-	uint8	BlockIsRAM[MEMMAP_NUM_BLOCKS];
-	uint8	BlockIsROM[MEMMAP_NUM_BLOCKS];
+	uint8	BlockType[MEMMAP_NUM_BLOCKS];
 	uint8	ExtendedFormat;
 
 	char	ROMFilename[PATH_MAX + 1];
@@ -98,20 +95,14 @@ struct CMemory
 	int		First512BytesCountZeroes() const;
 	uint32	HeaderRemove (uint32, uint8 *);
 	uint32	FileLoader (uint8 *, const char *, uint32);
-    uint32  MemLoader (uint8 *, const char*, uint32);
     bool8   LoadROMMem (const uint8 *, uint32);
 	bool8	LoadROM (const char *);
     bool8	LoadROMInt (int32);
-    bool8   LoadMultiCartMem (const uint8 *, uint32, const uint8 *, uint32, const uint8 *, uint32);
 	bool8	LoadMultiCart (const char *, const char *);
     bool8	LoadMultiCartInt ();
-	bool8	LoadSufamiTurbo ();
-	bool8	LoadBSCart ();
-	bool8	LoadGNEXT ();
 	bool8	LoadSRAM (const char *);
 	bool8	SaveSRAM (const char *);
 	void	ClearSRAM (bool8 onlyNonSavedSRAM = 0);
-	bool8	SaveMPAK (const char *);
 
 	char *	Safe (const char *);
 	char *	SafeANK (const char *);
@@ -138,8 +129,6 @@ struct CMemory
 	void	Map_JumboLoROMMap (void);
 	void	Map_ROM24MBSLoROMMap (void);
 	void	Map_SRAM512KLoROMMap (void);
-	void	Map_SufamiTurboLoROMMap (void);
-	void	Map_SufamiTurboPseudoLoROMMap (void);
 	void	Map_SuperFXLoROMMap (void);
 	void	Map_SA1LoROMMap (void);
 	void	Map_BSSA1LoROMMap (void);

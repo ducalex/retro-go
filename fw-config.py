@@ -18,7 +18,7 @@ PROJECT_APPS = {
   'huexpress-go': [0,  458752],
   'handy-go':     [0,  458752],
   # 'meteor-go':    [0,  851968],
-  'snes9x-go':    [0,  851968],
+  'snes9x-go':    [0,  2097152],
   # 'neopop-go':    [0,  720896],
   # 'mpython-go':   [0,  720896],
 }

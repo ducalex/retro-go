@@ -5,6 +5,8 @@
 #define SPC_DSP_H
 
 #include "blargg_common.h"
+#include "resampler.h"
+#include "msu1.h"
 
 extern "C" { typedef void (*dsp_copy_func_t)( unsigned char** io, void* state, size_t ); }
 
@@ -203,7 +205,7 @@ private:
 		sample_t* out_begin;
 		sample_t extra [extra_size];
 
-        uint8_t separate_echo_buffer [0x10000];
+        uint8_t *separate_echo_buffer;
 	};
 	state_t m;
 

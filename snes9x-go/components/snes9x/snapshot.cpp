@@ -173,6 +173,9 @@ static struct Obsolete
 	uint8	CPU_IRQActive;
 }	Obsolete;
 
+// Disable snapshots for now
+#if 0
+
 #define STRUCT	struct SCPUState
 
 static FreezeData	SnapCPU[] =
@@ -789,6 +792,30 @@ static FreezeData	SnapMovie[] =
 {
 	INT_ENTRY(6, MovieInputDataSize)
 };
+
+#else
+
+static struct Dummy
+{
+	uint32 dummy;
+}	Dummy;
+#define STRUCT struct Dummy
+static FreezeData	SnapCPU[] = {INT_ENTRY(1, dummy)};
+static FreezeData	SnapRegisters[] = {INT_ENTRY(1, dummy)};
+static FreezeData	SnapPPU[] = {INT_ENTRY(1, dummy)};
+static FreezeData	SnapDMA[] = {INT_ENTRY(1, dummy)};
+static FreezeData	SnapControls[] = {INT_ENTRY(1, dummy)};
+static FreezeData	SnapTimings[] = {INT_ENTRY(1, dummy)};
+static FreezeData	SnapFX[] = {INT_ENTRY(1, dummy)};
+static FreezeData	SnapSA1[] = {INT_ENTRY(1, dummy)};
+static FreezeData	SnapSA1Registers[] = {INT_ENTRY(1, dummy)};
+static FreezeData	SnapDSP1[] = {INT_ENTRY(1, dummy)};
+static FreezeData	SnapDSP2[] = {INT_ENTRY(1, dummy)};
+static FreezeData	SnapMSU1[] = {INT_ENTRY(1, dummy)};
+static FreezeData	SnapScreenshot[] = {INT_ENTRY(1, dummy)};
+static FreezeData	SnapMovie[] = {INT_ENTRY(1, dummy)};
+
+#endif
 
 static int UnfreezeBlock (STREAM, const char *, uint8 *, int);
 static int UnfreezeBlockCopy (STREAM, const char *, uint8 **, int);
@@ -1419,7 +1446,7 @@ int S9xUnfreezeFromStream (STREAM stream)
 			IPPU.RenderedScreenHeight = min(ssi->Height, IMAGE_HEIGHT);
 			const bool8 scaleDownX = IPPU.RenderedScreenWidth  < ssi->Width;
 			const bool8 scaleDownY = IPPU.RenderedScreenHeight < ssi->Height && ssi->Height > SNES_HEIGHT_EXTENDED;
-			GFX.DoInterlace = Settings.SupportHiRes ? ssi->Interlaced : 0;
+			GFX.DoInterlace = 0;
 
 			uint8	*rowpix = ssi->Data;
 			uint16	*screen = GFX.Screen;

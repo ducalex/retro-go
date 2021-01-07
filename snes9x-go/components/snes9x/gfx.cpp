@@ -52,12 +52,17 @@ bool8 S9xGraphicsInit (void)
 	S9xFixColourBrightness();
 	S9xBuildDirectColourMaps();
 
-	GFX.ZERO = (uint16 *) malloc(sizeof(uint16) * 0x10000);
+	GFX.ScreenSize = GFX.Pitch / 2 * SNES_HEIGHT_EXTENDED;
 
-	GFX.ScreenSize = GFX.Pitch / 2 * SNES_HEIGHT_EXTENDED * (Settings.SupportHiRes ? 2 : 1);
+	GFX.ZERO = (uint16 *) malloc(sizeof(uint16) * 0x10000);
 	GFX.SubScreen  = (uint16 *) malloc(GFX.ScreenSize * sizeof(uint16));
 	GFX.ZBuffer    = (uint8 *)  malloc(GFX.ScreenSize);
 	GFX.SubZBuffer = (uint8 *)  malloc(GFX.ScreenSize);
+
+	printf("S9xGraphicsInit: GFX.ZERO = %p\n", GFX.ZERO);
+	printf("S9xGraphicsInit: GFX.SubScreen = %p\n", GFX.SubScreen);
+	printf("S9xGraphicsInit: GFX.ZBuffer = %p\n", GFX.ZBuffer);
+	printf("S9xGraphicsInit: GFX.SubZBuffer = %p\n", GFX.SubZBuffer);
 
 	if (!GFX.ZERO || !GFX.SubScreen || !GFX.ZBuffer || !GFX.SubZBuffer)
 	{
@@ -116,38 +121,19 @@ void S9xGraphicsScreenResize (void)
 	IPPU.InterlaceOBJ = Memory.FillRAM[0x2133] & 2;
 	IPPU.PseudoHires = Memory.FillRAM[0x2133] & 8;
 
-	if (Settings.SupportHiRes && (PPU.BGMode == 5 || PPU.BGMode == 6 || IPPU.PseudoHires))
-	{
+	#ifdef USE_OPENGL
+	if (Settings.OpenGLEnable)
+		GFX.RealPPL = SNES_WIDTH;
+	else
+	#endif
 		GFX.RealPPL = GFX.Pitch >> 1;
-		IPPU.DoubleWidthPixels = TRUE;
-		IPPU.RenderedScreenWidth = SNES_WIDTH << 1;
-	}
-	else
-	{
-		#ifdef USE_OPENGL
-		if (Settings.OpenGLEnable)
-			GFX.RealPPL = SNES_WIDTH;
-		else
-		#endif
-			GFX.RealPPL = GFX.Pitch >> 1;
 
-		IPPU.DoubleWidthPixels = FALSE;
-		IPPU.RenderedScreenWidth = SNES_WIDTH;
-	}
+	IPPU.DoubleWidthPixels = FALSE;
+	IPPU.RenderedScreenWidth = SNES_WIDTH;
 
-	if (Settings.SupportHiRes && IPPU.Interlace)
-	{
-		GFX.PPL = GFX.RealPPL << 1;
-		IPPU.DoubleHeightPixels = TRUE;
-		IPPU.RenderedScreenHeight = PPU.ScreenHeight << 1;
-		GFX.DoInterlace++;
-	}
-	else
-	{
-		GFX.PPL = GFX.RealPPL;
-		IPPU.DoubleHeightPixels = FALSE;
-		IPPU.RenderedScreenHeight = PPU.ScreenHeight;
-	}
+	GFX.PPL = GFX.RealPPL;
+	IPPU.DoubleHeightPixels = FALSE;
+	IPPU.RenderedScreenHeight = PPU.ScreenHeight;
 }
 
 void S9xBuildDirectColourMaps (void)
@@ -463,57 +449,6 @@ void S9xUpdateScreen (void)
 			PPU.RecomputeClipWindows = FALSE;
 		}
 
-		if (Settings.SupportHiRes)
-		{
-			if (!IPPU.DoubleWidthPixels && (PPU.BGMode == 5 || PPU.BGMode == 6 || IPPU.PseudoHires))
-			{
-				#ifdef USE_OPENGL
-				if (Settings.OpenGLEnable && GFX.RealPPL == 256)
-				{
-					// Have to back out of the speed up hack where the low res.
-					// SNES image was rendered into a 256x239 sized buffer,
-					// ignoring the true, larger size of the buffer.
-					GFX.RealPPL = GFX.Pitch >> 1;
-
-					for (int32 y = (int32) GFX.StartY - 1; y >= 0; y--)
-					{
-						uint16	*p = GFX.Screen + y * GFX.PPL     + 255;
-						uint16	*q = GFX.Screen + y * GFX.RealPPL + 510;
-
-						for (int x = 255; x >= 0; x--, p--, q -= 2)
-							*q = *(q + 1) = *p;
-					}
-
-					GFX.PPL = GFX.RealPPL; // = GFX.Pitch >> 1 above
-				}
-				else
-				#endif
-				// Have to back out of the regular speed hack
-				for (uint32 y = 0; y < GFX.StartY; y++)
-				{
-					uint16	*p = GFX.Screen + y * GFX.PPL + 255;
-					uint16	*q = GFX.Screen + y * GFX.PPL + 510;
-
-					for (int x = 255; x >= 0; x--, p--, q -= 2)
-						*q = *(q + 1) = *p;
-				}
-
-				IPPU.DoubleWidthPixels = TRUE;
-				IPPU.RenderedScreenWidth = 512;
-			}
-
-			if (!IPPU.DoubleHeightPixels && IPPU.Interlace && (PPU.BGMode == 5 || PPU.BGMode == 6))
-			{
-				IPPU.DoubleHeightPixels = TRUE;
-				IPPU.RenderedScreenHeight = PPU.ScreenHeight << 1;
-				GFX.PPL = GFX.RealPPL << 1;
-				GFX.DoInterlace = 2;
-
-				for (int32 y = (int32) GFX.StartY - 2; y >= 0; y--)
-					memmove(GFX.Screen + (y + 1) * GFX.PPL, GFX.Screen + y * GFX.RealPPL, GFX.PPL * sizeof(uint16));
-			}
-		}
-
 		if ((Memory.FillRAM[0x2130] & 0x30) != 0x30 && (Memory.FillRAM[0x2131] & 0x3f))
 			GFX.FixedColour = BUILD_PIXEL(IPPU.XB[PPU.FixedColourRed], IPPU.XB[PPU.FixedColourGreen], IPPU.XB[PPU.FixedColourBlue]);
 
@@ -678,6 +613,7 @@ static void SetupOBJ (void)
 	}
 	else // evil FirstSprite+Y case
 	{
+		#if 0
 		// First, find out which sprites are on which lines
 		uint8 OBJOnLine[SNES_HEIGHT_EXTENDED][128];
 		// memset(OBJOnLine, 0, sizeof(OBJOnLine));
@@ -772,6 +708,7 @@ static void SetupOBJ (void)
 			if (j < 32)
 				GFX.OBJLines[Y].OBJ[j].Sprite = -1;
 		}
+		#endif
 	}
 
 	IPPU.OBJChanged = FALSE;

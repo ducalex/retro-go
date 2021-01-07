@@ -86,7 +86,7 @@ typedef unsigned short		uint16;
 typedef signed int			int32;
 typedef unsigned int		uint32;
 #ifdef __GNUC__
-// long long is not part of ISO C++ 
+// long long is not part of ISO C++
 __extension__
 #endif
 typedef long long			int64;
@@ -170,7 +170,7 @@ inline void sstrncpy(char *dst, const char *src, size_t size)
 #define TITLE "Snes9x"
 #endif
 
-#if defined(__i386__) || defined(__i486__) || defined(__i586__) || defined(__i686__) || defined(__x86_64__) || defined(__alpha__) || defined(__MIPSEL__) || defined(_M_IX86) || defined(_M_X64) || defined(_XBOX1) || defined(__arm__) || defined(ANDROID) || defined(__aarch64__) || (defined(__BYTE_ORDER__) && __BYTE_ORDER == __ORDER_LITTLE_ENDIAN__)
+#if defined(__i386__) || defined(__i486__) || defined(__i586__) || defined(__i686__) || defined(__x86_64__) || defined(__alpha__) || defined(__MIPSEL__) || defined(_M_IX86) || defined(_M_X64) || defined(_XBOX1) || defined(__arm__) || defined(ANDROID) || defined(__aarch64__) || (defined(__BYTE_ORDER__) && __BYTE_ORDER == __ORDER_LITTLE_ENDIAN__) || defined(IS_LITTLE_ENDIAN)
 #define LSB_FIRST
 #define FAST_LSB_WORD_ACCESS
 #else

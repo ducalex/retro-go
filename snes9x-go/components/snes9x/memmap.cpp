@@ -2177,8 +2177,7 @@ void CMemory::map_lorom (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 add
 			p = (c << 4) | (i >> 12);
 			addr = (c & 0x7f) * 0x8000;
 			Map[p] = ROM + map_mirror(size, addr) - (i & 0x8000);
-			BlockIsROM[p] = TRUE;
-			BlockIsRAM[p] = FALSE;
+			BlockType[p] = MAP_TYPE_ROM;
 		}
 	}
 }
@@ -2194,8 +2193,7 @@ void CMemory::map_hirom (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 add
 			p = (c << 4) | (i >> 12);
 			addr = c << 16;
 			Map[p] = ROM + map_mirror(size, addr);
-			BlockIsROM[p] = TRUE;
-			BlockIsRAM[p] = FALSE;
+			BlockType[p] = MAP_TYPE_ROM;
 		}
 	}
 }
@@ -2211,8 +2209,7 @@ void CMemory::map_lorom_offset (uint32 bank_s, uint32 bank_e, uint32 addr_s, uin
 			p = (c << 4) | (i >> 12);
 			addr = ((c - bank_s) & 0x7f) * 0x8000;
 			Map[p] = ROM + offset + map_mirror(size, addr) - (i & 0x8000);
-			BlockIsROM[p] = TRUE;
-			BlockIsRAM[p] = FALSE;
+			BlockType[p] = MAP_TYPE_ROM;
 		}
 	}
 }
@@ -2228,8 +2225,7 @@ void CMemory::map_hirom_offset (uint32 bank_s, uint32 bank_e, uint32 addr_s, uin
 			p = (c << 4) | (i >> 12);
 			addr = (c - bank_s) << 16;
 			Map[p] = ROM + offset + map_mirror(size, addr);
-			BlockIsROM[p] = TRUE;
-			BlockIsRAM[p] = FALSE;
+			BlockType[p] = MAP_TYPE_ROM;
 		}
 	}
 }
@@ -2244,8 +2240,7 @@ void CMemory::map_space (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 add
 		{
 			p = (c << 4) | (i >> 12);
 			Map[p] = data;
-			BlockIsROM[p] = FALSE;
-			BlockIsRAM[p] = TRUE;
+			BlockType[p] = MAP_TYPE_RAM;
 		}
 	}
 }
@@ -2253,10 +2248,6 @@ void CMemory::map_space (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 add
 void CMemory::map_index (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 addr_e, int index, int type)
 {
 	uint32	c, i, p;
-	bool8	isROM, isRAM;
-
-	isROM = ((type == MAP_TYPE_I_O) || (type == MAP_TYPE_RAM)) ? FALSE : TRUE;
-	isRAM = ((type == MAP_TYPE_I_O) || (type == MAP_TYPE_ROM)) ? FALSE : TRUE;
 
 	for (c = bank_s; c <= bank_e; c++)
 	{
@@ -2264,8 +2255,7 @@ void CMemory::map_index (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 add
 		{
 			p = (c << 4) | (i >> 12);
 			Map[p] = (uint8 *) (pint) index;
-			BlockIsROM[p] = isROM;
-			BlockIsRAM[p] = isRAM;
+			BlockType[p] = type;
 		}
 	}
 }
@@ -2348,21 +2338,20 @@ void CMemory::map_WriteProtectROM (void)
 {
 	memmove((void *) WriteMap, (void *) Map, sizeof(Map));
 
-	for (int c = 0; c < 0x1000; c++)
+	for (int c = 0; c < MEMMAP_NUM_BLOCKS; c++)
 	{
-		if (BlockIsROM[c])
+		if (BlockType[c] == MAP_TYPE_ROM)
 			WriteMap[c] = (uint8 *) MAP_NONE;
 	}
 }
 
 void CMemory::Map_Initialize (void)
 {
-	for (int c = 0; c < 0x1000; c++)
+	for (int c = 0; c < MEMMAP_NUM_BLOCKS; c++)
 	{
 		Map[c]      = (uint8 *) MAP_NONE;
 		WriteMap[c] = (uint8 *) MAP_NONE;
-		BlockIsROM[c] = FALSE;
-		BlockIsRAM[c] = FALSE;
+		BlockType[c] = 0;
 	}
 }
 
@@ -2454,59 +2443,6 @@ void CMemory::Map_SRAM512KLoROMMap (void)
 	map_space(0x71, 0x71, 0x0000, 0xffff, SRAM + 0x8000);
 	map_space(0x72, 0x72, 0x0000, 0xffff, SRAM + 0x10000);
 	map_space(0x73, 0x73, 0x0000, 0xffff, SRAM + 0x18000);
-
-	map_WRAM();
-
-	map_WriteProtectROM();
-}
-
-void CMemory::Map_SufamiTurboLoROMMap (void)
-{
-	printf("Map_SufamiTurboLoROMMap\n");
-	map_System();
-
-	map_lorom_offset(0x00, 0x1f, 0x8000, 0xffff, 0x40000, 0);
-	map_lorom_offset(0x20, 0x3f, 0x8000, 0xffff, Multi.cartSizeA, Multi.cartOffsetA);
-	map_lorom_offset(0x40, 0x5f, 0x8000, 0xffff, Multi.cartSizeB, Multi.cartOffsetB);
-	map_lorom_offset(0x80, 0x9f, 0x8000, 0xffff, 0x40000, 0);
-	map_lorom_offset(0xa0, 0xbf, 0x8000, 0xffff, Multi.cartSizeA, Multi.cartOffsetA);
-	map_lorom_offset(0xc0, 0xdf, 0x8000, 0xffff, Multi.cartSizeB, Multi.cartOffsetB);
-
-	if (Multi.sramSizeA)
-	{
-		map_index(0x60, 0x63, 0x8000, 0xffff, MAP_LOROM_SRAM, MAP_TYPE_RAM);
-		map_index(0xe0, 0xe3, 0x8000, 0xffff, MAP_LOROM_SRAM, MAP_TYPE_RAM);
-	}
-
-	if (Multi.sramSizeB)
-	{
-		map_index(0x70, 0x73, 0x8000, 0xffff, MAP_LOROM_SRAM_B, MAP_TYPE_RAM);
-		map_index(0xf0, 0xf3, 0x8000, 0xffff, MAP_LOROM_SRAM_B, MAP_TYPE_RAM);
-	}
-
-	map_WRAM();
-
-	map_WriteProtectROM();
-}
-
-void CMemory::Map_SufamiTurboPseudoLoROMMap (void)
-{
-	// for combined images
-	printf("Map_SufamiTurboPseudoLoROMMap\n");
-	map_System();
-
-	map_lorom_offset(0x00, 0x1f, 0x8000, 0xffff, 0x40000, 0);
-	map_lorom_offset(0x20, 0x3f, 0x8000, 0xffff, 0x100000, 0x100000);
-	map_lorom_offset(0x40, 0x5f, 0x8000, 0xffff, 0x100000, 0x200000);
-	map_lorom_offset(0x80, 0x9f, 0x8000, 0xffff, 0x40000, 0);
-	map_lorom_offset(0xa0, 0xbf, 0x8000, 0xffff, 0x100000, 0x100000);
-	map_lorom_offset(0xc0, 0xdf, 0x8000, 0xffff, 0x100000, 0x200000);
-
-	// I don't care :P
-	map_space(0x60, 0x63, 0x8000, 0xffff, SRAM - 0x8000);
-	map_space(0xe0, 0xe3, 0x8000, 0xffff, SRAM - 0x8000);
-	map_space(0x70, 0x73, 0x8000, 0xffff, SRAM + 0x4000 - 0x8000);
-	map_space(0xf0, 0xf3, 0x8000, 0xffff, SRAM + 0x4000 - 0x8000);
 
 	map_WRAM();
 

@@ -58,8 +58,8 @@
 #define SNES_HEIGHT_EXTENDED		239
 #define MAX_SNES_WIDTH				(SNES_WIDTH * 2)
 #define MAX_SNES_HEIGHT				(SNES_HEIGHT_EXTENDED * 2)
-#define IMAGE_WIDTH					(Settings.SupportHiRes ? MAX_SNES_WIDTH : SNES_WIDTH)
-#define IMAGE_HEIGHT				(Settings.SupportHiRes ? MAX_SNES_HEIGHT : SNES_HEIGHT_EXTENDED)
+#define IMAGE_WIDTH					(SNES_WIDTH)
+#define IMAGE_HEIGHT				(SNES_HEIGHT_EXTENDED)
 
 #define	NTSC_MASTER_CLOCK			21477272.727272 // 21477272 + 8/11 exact
 #define	PAL_MASTER_CLOCK			21281370.0
@@ -233,7 +233,6 @@ struct SSettings
 	int32	DynamicRateLimit; /* Multiplied by 1000 */
 	int32	InterpolationMethod;
 
-	bool8	SupportHiRes;
 	bool8	Transparency;
 	uint8	BG_Forced;
 	bool8	DisableGraphicWindows;

@@ -1166,7 +1166,8 @@ extern struct SLineMatrixData	LineMatrixData[240];
 #define DRAW_PIXEL(N, M) \
 	if (Z1 > GFX.DB[Offset + N] && (M)) \
 	{ \
-		GFX.S[Offset + N] = MATH(GFX.ScreenColors[Pix], GFX.SubScreen[Offset + N], GFX.SubZBuffer[Offset + N]); \
+		uint16 __p = MATH(GFX.ScreenColors[Pix], GFX.SubScreen[Offset + N], GFX.SubZBuffer[Offset + N]); \
+		GFX.S[Offset + N] = (__p >> 8) | (__p << 8); \
 		GFX.DB[Offset + N] = Z2; \
 	}
 
