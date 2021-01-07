@@ -204,8 +204,6 @@ private:
 		sample_t* out_end;
 		sample_t* out_begin;
 		sample_t extra [extra_size];
-
-        uint8_t *separate_echo_buffer;
 	};
 	state_t m;
 
