@@ -147,6 +147,7 @@ extern void heap_caps_malloc_extmem_enable(size_t limit);
 
 // This should really support printf format...
 #define RG_PANIC(x) rg_system_panic(x, __FUNCTION__, __FILE__)
+#define RG_ASSERT(cond, x) do { if (!(cond)) rg_system_panic(x, __FUNCTION__, __FILE__); } while(0);
 
 // Attributes
 

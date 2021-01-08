@@ -111,7 +111,7 @@ void osd_gfx_set_mode(int width, int height)
     frames[0].width = width - crop_h;
     frames[0].height = height - crop_v;
     frames[0].stride = XBUF_WIDTH;
-    frames[0].pixel_size = 1;
+    frames[0].pixel_format = RG_PIXEL_PAL|RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].pixel_mask = 0xFF;
     frames[0].pixel_clear = -1;
     frames[0].palette = mypalette;
@@ -139,7 +139,7 @@ void osd_gfx_blit(void)
         curFrame->pixel_clear = PCE.Palette[0];
         prevFrame = NULL;
 #endif
-        if (rg_display_queue_update(curFrame, prevFrame) == SCREEN_UPDATE_FULL)
+        if (rg_display_queue_update(curFrame, prevFrame) == RG_SCREEN_UPDATE_FULL)
         {
             fullFrames++;
         }

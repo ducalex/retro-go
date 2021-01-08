@@ -529,30 +529,27 @@ bilinear_filter(uint16_t *line_buffer, int top, int left, int width, int height,
 
 static inline void
 write_rect(void *buffer, uint16_t *palette, int left, int top, int width, int height,
-           int stride, int pixel_size, int pixel_mask, int pixel_clear)
+           int stride, int pixel_format, int pixel_mask, int pixel_clear)
 {
-    int scaled_left = ((SCREEN_WIDTH * left) + (x_inc - 1)) / x_inc;
-    int scaled_top = ((SCREEN_HEIGHT * top) + (y_inc - 1)) / y_inc;
-    int scaled_right = ((SCREEN_WIDTH * (left + width)) + (x_inc - 1)) / x_inc;
-    int scaled_bottom = ((SCREEN_HEIGHT * (top + height)) + (y_inc - 1)) / y_inc;
-    int scaled_width = scaled_right - scaled_left;
-    int scaled_height = scaled_bottom - scaled_top;
-    int screen_top = y_origin + scaled_top;
-    int screen_left = x_origin + scaled_left;
-    // int screen_right = screen_left + scaled_width;
-    int screen_bottom = screen_top + scaled_height;
-    int ix_acc = (x_inc * scaled_left) % SCREEN_WIDTH;
-    int lines_per_buffer = SPI_TRANSACTION_BUFFER_LENGTH / scaled_width;
+    const int scaled_left = ((SCREEN_WIDTH * left) + (x_inc - 1)) / x_inc;
+    const int scaled_top = ((SCREEN_HEIGHT * top) + (y_inc - 1)) / y_inc;
+    const int scaled_right = ((SCREEN_WIDTH * (left + width)) + (x_inc - 1)) / x_inc;
+    const int scaled_bottom = ((SCREEN_HEIGHT * (top + height)) + (y_inc - 1)) / y_inc;
+    const int scaled_width = scaled_right - scaled_left;
+    const int scaled_height = scaled_bottom - scaled_top;
+    const int screen_top = y_origin + scaled_top;
+    const int screen_left = x_origin + scaled_left;
+    const int screen_bottom = RG_MIN(screen_top + scaled_height, SCREEN_HEIGHT);
+    const int ix_acc = (x_inc * scaled_left) % SCREEN_WIDTH;
+    const int lines_per_buffer = SPI_TRANSACTION_BUFFER_LENGTH / scaled_width;
 
     if (scaled_width < 1 || scaled_height < 1)
     {
         return;
     }
 
-    if (screen_bottom > SCREEN_HEIGHT)
-    {
-        screen_bottom = SCREEN_HEIGHT;
-    }
+    // Advance buffer to the correct starting point
+    buffer += (top * stride) + (left * (pixel_format & RG_PIXEL_PAL ? 1 : 2));
 
     send_reset_drawing(screen_left, screen_top, scaled_width, scaled_height);
 
@@ -579,7 +576,7 @@ write_rect(void *buffer, uint16_t *palette, int left, int top, int width, int he
         }
 
         uint16_t *line_buffer = spi_get_buffer();
-        uint16_t  line_buffer_index = 0;
+        size_t line_buffer_index = 0;
 
         for (int i = 0; i < lines_to_copy; ++i)
         {
@@ -590,34 +587,44 @@ write_rect(void *buffer, uint16_t *palette, int left, int top, int width, int he
                 line_buffer_index += scaled_width;
             }
             else
-            for (int x = 0, x_acc = ix_acc; x < width;)
             {
-                uint32_t pixel;
+                for (int x = 0, x_acc = ix_acc; x < width;)
+                {
+                    uint32_t pixel;
 
-                if (pixel_size == 2)
-                    pixel = ((uint16_t*)buffer)[x];
-                else
-                    pixel = ((uint8_t*)buffer)[x];
+                    if (pixel_format & RG_PIXEL_PAL)
+                        pixel = palette[((uint8_t*)buffer)[x] & pixel_mask];
+                    else
+                        pixel = ((uint16_t*)buffer)[x];
 
-                if (palette)
-                    pixel = palette[pixel & pixel_mask];
+                    line_buffer[line_buffer_index++] = pixel;
 
-                line_buffer[line_buffer_index++] = pixel;
-
-                x_acc += x_inc;
-                while (x_acc >= SCREEN_WIDTH) {
-                    ++x;
-                    x_acc -= SCREEN_WIDTH;
+                    x_acc += x_inc;
+                    while (x_acc >= SCREEN_WIDTH) {
+                        ++x;
+                        x_acc -= SCREEN_WIDTH;
+                    }
                 }
             }
 
-            if (!screen_line_is_empty[++screen_y]) {
+            if (!screen_line_is_empty[++screen_y])
+            {
                 if (pixel_clear >= 0) {
                     // if (pixel_clear > -1) ((uint16_t*)buffer)[x] = pixel_clear;
                     memset((uint8_t*)buffer, pixel_clear, width);
                 }
                 buffer += stride;
                 ++y;
+            }
+        }
+
+        // Swap endianness (looping over a second time is slower, but it should be unusual)
+        if (pixel_format & RG_PIXEL_LE)
+        {
+            while (line_buffer_index--)
+            {
+                uint32_t pixel = line_buffer[line_buffer_index];
+                line_buffer[line_buffer_index] = (pixel >> 8) | (pixel << 8);
             }
         }
 
@@ -668,13 +675,13 @@ frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFrame)
         use_u32bit = true;
     }
 
+    int partial_update_remaining = frame->width * frame->height * FULL_UPDATE_THRESHOLD;
+    int pixel_size = (frame->pixel_format & RG_PIXEL_PAL) ? 1 : 2;
     int lines_changed = 0;
 
-    int partial_update_remaining = frame->width * frame->height * FULL_UPDATE_THRESHOLD;
-
     uint32_t u32_pixel_mask = (pixel_mask << 24)|(pixel_mask << 16)|(pixel_mask << 8)|pixel_mask;
-    uint32_t u32_blocks = (frame->width * frame->pixel_size / 4);
-    uint32_t u32_pixels = 4 / frame->pixel_size;
+    uint32_t u32_blocks = (frame->width * pixel_size / 4);
+    uint32_t u32_pixels = 4 / pixel_size;
 
     for (int y = 0, i = 0; y < frame->height; ++y, i += frame->stride)
     {
@@ -870,14 +877,17 @@ display_task(void *arg)
             rg_display_clear(0x0000);
         }
 
+        RG_ASSERT((update->pixel_format & RG_PIXEL_PAL) == 0 || update->palette, "Palette not defined");
+
         for (int y = 0; y < update->height;)
         {
             rg_line_diff_t *diff = &update->diff[y];
 
-            if (diff->width > 0) {
-                write_rect(update->buffer + (y * update->stride) + (diff->left * update->pixel_size),
-                           update->palette, diff->left, y, diff->width, diff->repeat, update->stride,
-                           update->pixel_size, update->pixel_mask, update->pixel_clear);
+            if (diff->width > 0)
+            {
+                write_rect(update->buffer, update->palette, diff->left, y, diff->width,
+                           diff->repeat, update->stride, update->pixel_format,
+                           update->pixel_mask, update->pixel_clear);
             }
             y += diff->repeat;
         }
@@ -1017,15 +1027,14 @@ rg_display_save_frame(const char *filename, rg_video_frame_t *frame, double scal
         {
             uint32_t pixel;
 
-            if (frame->pixel_size == 2)
-                pixel = ((uint16_t*)line)[(int)(x * factor)];
+            if (frame->pixel_format & RG_PIXEL_PAL)
+                pixel = palette[line[(int)(x * factor)] & pixel_mask];
             else
-                pixel = line[(int)(x * factor)];
+                pixel = ((uint16_t*)line)[(int)(x * factor)];
 
-            if (palette)
-                pixel = palette[pixel & pixel_mask];
+            if ((frame->pixel_format & RG_PIXEL_LE) == 0) // BE to LE
+                pixel = (pixel << 8) | (pixel >> 8);
 
-            pixel = (pixel << 8) | (pixel >> 8);
             *(dst++) = ((pixel >> 11) & 0x1F) << 3;
             *(dst++) = ((pixel >> 5) & 0x3F) << 2;
             *(dst++) = (pixel & 0x1F) << 3;
@@ -1072,12 +1081,12 @@ rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *previousFrame
     }
 
     if (linesChanged == frame->height)
-        return SCREEN_UPDATE_FULL;
+        return RG_SCREEN_UPDATE_FULL;
 
     if (linesChanged == 0)
-        return SCREEN_UPDATE_EMPTY;
+        return RG_SCREEN_UPDATE_EMPTY;
 
-    return SCREEN_UPDATE_PARTIAL;
+    return RG_SCREEN_UPDATE_PARTIAL;
 }
 
 void

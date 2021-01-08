@@ -323,7 +323,7 @@ void osd_blitscreen(bitmap_t *bmp)
 
     rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
 
-    fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
+    fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_SCREEN_UPDATE_FULL;
 
     currentUpdate = previousUpdate;
 }
@@ -385,10 +385,10 @@ void app_main(void)
 
     app = rg_system_get_app();
 
-    frames[0].palette = myPalette;
+    frames[0].pixel_format = RG_PIXEL_PAL|RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].pixel_mask = 0x3F;
-    frames[0].pixel_size = 1;
     frames[0].pixel_clear = -1;
+    frames[0].palette = myPalette;
     frames[1] = frames[0];
 
     // Load ROM
