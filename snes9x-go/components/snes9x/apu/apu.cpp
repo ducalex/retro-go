@@ -259,6 +259,7 @@ void S9xAPUExecute(void)
 void S9xAPUEndScanline(void)
 {
     S9xAPUExecute();
+    return;
     SNES::dsp.synchronize();
 
     if (spc::resampler->space_filled() >= APU_SAMPLE_BLOCK || !spc::sound_in_sync)

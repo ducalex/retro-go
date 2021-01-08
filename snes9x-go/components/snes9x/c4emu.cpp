@@ -9,7 +9,7 @@
 #include "memmap.h"
 #include "sar.h"
 
-static int16	C4SinTable[512] =
+static const int16	C4SinTable[512] =
 {
 	     0,    402,    804,   1206,   1607,   2009,   2410,   2811,
 	  3211,   3611,   4011,   4409,   4808,   5205,   5602,   5997,
@@ -77,7 +77,7 @@ static int16	C4SinTable[512] =
 	 -3211,  -2811,  -2410,  -2009,  -1607,  -1206,   -804,   -402
 };
 
-static int16	C4CosTable[512] =
+static const int16	C4CosTable[512] =
 {
 	 32767,  32765,  32758,  32745,  32728,  32706,  32679,  32647,
 	 32610,  32568,  32521,  32469,  32413,  32351,  32285,  32214,
@@ -145,7 +145,7 @@ static int16	C4CosTable[512] =
 	 32610,  32647,  32679,  32706,  32728,  32745,  32758,  32765
 };
 
-static uint8	C4TestPattern[12 * 4] =
+static const uint8	C4TestPattern[12 * 4] =
 {
 	0x00, 0x00, 0x00, 0xff,
 	0xff, 0xff, 0x00, 0xff,
@@ -847,8 +847,8 @@ void S9xSetC4 (uint8 byte, uint16 Address)
 					if (r1 & 0x8000)
 					        r1 |= ~0x7fff;
 					else
-					        r1 &= 0x7fff;				
-										
+					        r1 &= 0x7fff;
+
 					tmp = SAR(r1 * C4CosTable[READ_WORD(Memory.C4RAM + 0x1f80) & 0x1ff] * 2, 16);
 					WRITE_3WORD(Memory.C4RAM + 0x1f86, tmp);
 					tmp = SAR(r1 * C4SinTable[READ_WORD(Memory.C4RAM + 0x1f80) & 0x1ff] * 2, 16);

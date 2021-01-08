@@ -157,6 +157,9 @@ inline void sstrncpy(char *dst, const char *src, size_t size)
 #define SLASH_CHAR	'/'
 #endif
 
+#undef PATH_MAX
+#define PATH_MAX 512
+
 #ifndef SIG_PF
 #define SIG_PF	void (*) (int)
 #endif

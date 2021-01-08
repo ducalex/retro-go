@@ -16,16 +16,15 @@ extern "C"
 #include "../components/snes9x/gfx.h"
 #include "../components/snes9x/snapshot.h"
 #include "../components/snes9x/controls.h"
-#include "../components/snes9x/logger.h"
 #include "../components/snes9x/display.h"
 #include "../components/snes9x/statemanager.h"
 
 #define APP_ID 90
 
-#define AUDIO_SAMPLE_RATE (32000)
+#define AUDIO_SAMPLE_RATE (22050)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50)
 
-static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
+// static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
 static rg_video_frame_t frames[2];
 static rg_video_frame_t *currentUpdate = &frames[0];
@@ -33,7 +32,7 @@ static rg_video_frame_t *currentUpdate = &frames[0];
 static rg_app_desc_t *app;
 static gamepad_state_t joystick;
 
-static long frames_counter = 0;
+// static long frames_counter = 0;
 
 // static bool netplay = false;
 // --- MAIN
@@ -335,8 +334,8 @@ static void snes9x_task(void *arg)
 
 	Settings.SixteenBitSound = FALSE;
 	Settings.Stereo = FALSE;
-	Settings.SoundPlaybackRate = 22050;
-	Settings.SoundInputRate = 31950;
+	Settings.SoundPlaybackRate = AUDIO_SAMPLE_RATE;
+	Settings.SoundInputRate = 20000;
 	Settings.Mute = TRUE;
 	Settings.AutoDisplayMessages = TRUE;
 	Settings.Transparency = TRUE;
@@ -359,9 +358,9 @@ static void snes9x_task(void *arg)
 	#define MAP_BUTTON(id, name) S9xMapButton((id), S9xGetCommandT((name)), false)
 
     MAP_BUTTON(GAMEPAD_KEY_A, "Joypad1 A");
-    MAP_BUTTON(GAMEPAD_KEY_B, "Joypad1 Y");
+    MAP_BUTTON(GAMEPAD_KEY_B, "Joypad1 B");
     MAP_BUTTON(GAMEPAD_KEY_START, "Joypad1 Start");
-    MAP_BUTTON(GAMEPAD_KEY_SELECT, "Joypad1 B"); // Select
+    MAP_BUTTON(GAMEPAD_KEY_SELECT, "Joypad1 X"); // Select
     MAP_BUTTON(GAMEPAD_KEY_LEFT, "Joypad1 Left");
     MAP_BUTTON(GAMEPAD_KEY_RIGHT, "Joypad1 Right");
     MAP_BUTTON(GAMEPAD_KEY_UP, "Joypad1 Up");
@@ -399,7 +398,7 @@ extern "C" void app_main(void)
 	app = rg_system_get_app();
 
 	frames[0].width = SNES_WIDTH;
-	frames[0].height = SNES_HEIGHT_EXTENDED;
+	frames[0].height = SNES_HEIGHT;
 	frames[0].pixel_format = RG_PIXEL_565|RG_PIXEL_LE;
 	frames[0].pixel_clear = -1;
 	frames[0].stride = SNES_WIDTH * 2;
@@ -408,6 +407,8 @@ extern "C" void app_main(void)
 	frames[0].buffer = rg_alloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2, MEM_SLOW);
 	frames[1].buffer = rg_alloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2, MEM_SLOW);
 
+	heap_caps_malloc_extmem_enable(64 * 1024);
+
 	// Important to set CONFIG_ESP_TIMER_TASK_STACK_SIZE=2048
-	xTaskCreatePinnedToCore(&snes9x_task, "snes9x", 1024 * 48, NULL, 5, NULL, 0);
+	xTaskCreatePinnedToCore(&snes9x_task, "snes9x", 1024 * 32, NULL, 5, NULL, 0);
 }

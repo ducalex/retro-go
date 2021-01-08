@@ -118,7 +118,7 @@ struct SLineMatrixData
 
 extern uint16		BlackColourMap[256];
 extern uint16		DirectColourMaps[8][256];
-extern uint8		mul_brightness[16][32];
+extern const uint8	mul_brightness[16][32];
 extern uint8		brightness_cap[64];
 extern struct SBG	BG;
 extern struct SGFX	GFX;

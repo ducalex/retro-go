@@ -34,6 +34,7 @@ static uint16 get_crosshair_color (uint8);
 
 #define TILE_PLUS(t, x)	(((t) & 0xfc00) | ((t + x) & 0x3ff))
 
+static const uint16 TABLE_ZERO[0x10000] = {};
 
 bool8 S9xGraphicsInit (void)
 {
@@ -47,17 +48,20 @@ bool8 S9xGraphicsInit (void)
 	S9xBuildDirectColourMaps();
 
 	GFX.ScreenSize = GFX.Pitch / 2 * SNES_HEIGHT_EXTENDED;
+	GFX.ZERO       = (uint16 *)TABLE_ZERO;
 
-	GFX.ZERO = (uint16 *) malloc(sizeof(uint16) * 0x10000);
 	GFX.SubScreen  = (uint16 *) malloc(GFX.ScreenSize * sizeof(uint16));
 	GFX.ZBuffer    = (uint8 *)  malloc(GFX.ScreenSize);
 	GFX.SubZBuffer = (uint8 *)  malloc(GFX.ScreenSize);
+	// GFX.ZERO = (uint16 *) malloc(0x10000, sizeof(uint16));
 
-	if (!GFX.ZERO || !GFX.SubScreen || !GFX.ZBuffer || !GFX.SubZBuffer)
+	if (!GFX.SubScreen || !GFX.ZBuffer || !GFX.SubZBuffer)
 	{
 		S9xGraphicsDeinit();
 		return (FALSE);
 	}
+
+	#if 0 // TO DO: pre-compute TABLE_ZERO
 
 	// Lookup table for 1/2 color subtraction
 	memset(GFX.ZERO, 0, 0x10000 * sizeof(uint16));
@@ -90,13 +94,14 @@ bool8 S9xGraphicsInit (void)
 			}
 		}
 	}
+	#endif
 
 	return (TRUE);
 }
 
 void S9xGraphicsDeinit (void)
 {
-	if (GFX.ZERO)       { free(GFX.ZERO);       GFX.ZERO       = NULL; }
+	// if (GFX.ZERO)       { free(GFX.ZERO);       GFX.ZERO       = NULL; }
 	if (GFX.SubScreen)  { free(GFX.SubScreen);  GFX.SubScreen  = NULL; }
 	if (GFX.ZBuffer)    { free(GFX.ZBuffer);    GFX.ZBuffer    = NULL; }
 	if (GFX.SubZBuffer) { free(GFX.SubZBuffer); GFX.SubZBuffer = NULL; }
@@ -122,7 +127,7 @@ void S9xGraphicsScreenResize (void)
 
 void S9xBuildDirectColourMaps (void)
 {
-	IPPU.XB = mul_brightness[PPU.Brightness];
+	IPPU.XB = (uint8 *)mul_brightness[PPU.Brightness];
 
 	for (uint32 p = 0; p < 8; p++)
 		for (uint32 c = 0; c < 256; c++)

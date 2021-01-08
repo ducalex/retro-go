@@ -139,8 +139,8 @@ void S9xMainLoop (void)
 			break;
 		}
 
-		uint8				Op;
-		struct	SOpcodes	*Opcodes;
+		uint32_t Op;
+		const struct SOpcodes *Opcodes;
 
 		if (CPU.PCBase)
 		{
