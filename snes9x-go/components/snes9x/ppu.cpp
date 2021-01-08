@@ -203,7 +203,7 @@ void S9xFixColourBrightness (void)
 	}
 }
 
-void S9xSetPPU (uint8 Byte, uint16 Address)
+void S9xSetPPU (uint8 Byte, uint32 Address)
 {
 	// MAP_PPU: $2000-$3FFF
 
@@ -978,7 +978,7 @@ void S9xSetPPU (uint8 Byte, uint16 Address)
 	Memory.FillRAM[Address] = Byte;
 }
 
-uint8 S9xGetPPU (uint16 Address)
+uint8 S9xGetPPU (uint32 Address)
 {
 	// MAP_PPU: $2000-$3FFF
 	if (Settings.MSU1 && (Address & 0xfff8) == 0x2000)
@@ -1221,7 +1221,7 @@ uint8 S9xGetPPU (uint16 Address)
 	}
 }
 
-void S9xSetCPU (uint8 Byte, uint16 Address)
+void S9xSetCPU (uint8 Byte, uint32 Address)
 {
 	if (Address < 0x4200)
 	{
@@ -1565,7 +1565,7 @@ void S9xSetCPU (uint8 Byte, uint16 Address)
 	Memory.FillRAM[Address] = Byte;
 }
 
-uint8 S9xGetCPU (uint16 Address)
+uint8 S9xGetCPU (uint32 Address)
 {
 	if (Address < 0x4200)
 	{

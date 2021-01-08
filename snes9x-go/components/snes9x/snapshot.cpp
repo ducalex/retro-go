@@ -766,13 +766,6 @@ static FreezeData	SnapMSU1[] =
 };
 
 #undef STRUCT
-#define STRUCT	struct SnapshotMovieInfo
-
-static FreezeData	SnapMovie[] =
-{
-	INT_ENTRY(6, MovieInputDataSize)
-};
-
 #else
 
 static struct Dummy
@@ -792,7 +785,6 @@ static FreezeData	SnapSA1Registers[] = {INT_ENTRY(1, dummy)};
 static FreezeData	SnapDSP1[] = {INT_ENTRY(1, dummy)};
 static FreezeData	SnapDSP2[] = {INT_ENTRY(1, dummy)};
 static FreezeData	SnapMSU1[] = {INT_ENTRY(1, dummy)};
-static FreezeData	SnapMovie[] = {INT_ENTRY(1, dummy)};
 
 #endif
 
