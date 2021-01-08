@@ -181,7 +181,7 @@ void favorites_init()
     fav_tab = gui_add_tab(
         "favorites",
         rg_gui_load_image(logo_fav.data, logo_fav.size),
-        NULL,
+        rg_gui_load_image(header_fav.data, header_fav.size),
         NULL,
         event_handler);
 

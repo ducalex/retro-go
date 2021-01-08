@@ -249,9 +249,13 @@ void gui_draw_header(tab_t *tab)
 
     if (tab->img_logo)
         rg_gui_draw_image(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, tab->img_logo);
+    else
+        rg_gui_draw_fill_rect(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, C_BLACK);
 
     if (tab->img_header)
         rg_gui_draw_image(x_pos + 1, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, tab->img_header);
+    else
+        rg_gui_draw_fill_rect(x_pos + 1, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, C_BLACK);
 }
 
 // void gui_draw_notice(tab_t *tab)

@@ -189,7 +189,7 @@ static inline void screen_blit(void)
 {
     rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
 
-    fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
+    fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_SCREEN_UPDATE_FULL;
 
     // swap buffers
     currentUpdate = previousUpdate;
@@ -206,9 +206,8 @@ void app_main(void)
     frames[0].width = GB_WIDTH;
     frames[0].height = GB_HEIGHT;
     frames[0].stride = GB_WIDTH * 2;
-    frames[0].pixel_size = 2;
+    frames[0].pixel_format = RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].pixel_clear = -1;
-    frames[0].palette = NULL;
     frames[1] = frames[0];
 
     frames[0].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);

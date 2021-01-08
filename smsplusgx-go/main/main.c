@@ -13,9 +13,6 @@
 #define GG_WIDTH 160
 #define GG_HEIGHT 144
 
-#define PIXEL_MASK 0x1F
-#define PAL_SHIFT_MASK 0x80
-
 static uint32_t audioBuffer[AUDIO_BUFFER_LENGTH];
 
 static uint16_t palettes[2][32];
@@ -115,10 +112,10 @@ void app_main(void)
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     rg_emu_init(&LoadState, &SaveState, &netplay_callback);
 
-    frames[0].pixel_size = 1;
+    frames[0].pixel_format = RG_PIXEL_PAL|RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].pixel_mask = PIXEL_MASK;
     frames[0].pixel_clear = -1;
-    frames[0].pal_shift_mask = PAL_SHIFT_MASK;
+    frames[0].pal_shift_mask = 0x80;
     frames[1] = frames[0];
 
     frames[0].buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
@@ -296,7 +293,7 @@ void app_main(void)
 
             render_copy_palette(currentUpdate->palette);
 
-            fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == SCREEN_UPDATE_FULL;
+            fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_SCREEN_UPDATE_FULL;
 
             // Swap buffers
             currentUpdate = previousUpdate;
