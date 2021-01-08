@@ -1160,10 +1160,11 @@ extern struct SLineMatrixData	LineMatrixData[240];
 #define BPSTART	StartLine
 #define PITCH	1
 
-#define CALC_PIXEL(N) ({\
-	int __p = MATH(GFX.ScreenColors[Pix], GFX.SubScreen[Offset + N], GFX.SubZBuffer[Offset + N]); \
-	(__p >> 8) | (__p << 8); \
-})
+// #define CALC_PIXEL(x...) ({\
+// 	int __p = MATH(x); \
+// 	(__p >> 8) | (__p << 8); \
+// })
+#define CALC_PIXEL MATH
 
 // The 1x1 pixel plotter, for speedhacking modes.
 
@@ -1171,7 +1172,7 @@ extern struct SLineMatrixData	LineMatrixData[240];
 #define DRAW_PIXEL(N, M) \
 	if (Z1 > GFX.DB[Offset + N] && (M)) \
 	{ \
-		GFX.S[Offset + N] = CALC_PIXEL(N); \
+		GFX.S[Offset + N] = CALC_PIXEL(GFX.ScreenColors[Pix], GFX.SubScreen[Offset + N], GFX.SubZBuffer[Offset + N]); \
 		GFX.DB[Offset + N] = Z2; \
 	}
 
@@ -1189,7 +1190,7 @@ extern struct SLineMatrixData	LineMatrixData[240];
 #define DRAW_PIXEL_N2x1(N, M) \
 	if (Z1 > GFX.DB[Offset + 2 * N] && (M)) \
 	{ \
-		GFX.S[Offset + 2 * N] = GFX.S[Offset + 2 * N + 1] = CALC_PIXEL(2 * N); \
+		GFX.S[Offset + 2 * N] = GFX.S[Offset + 2 * N + 1] = CALC_PIXEL(GFX.ScreenColors[Pix], GFX.SubScreen[Offset + 2 * N], GFX.SubZBuffer[Offset + 2 * N]); \
 		GFX.DB[Offset + 2 * N] = GFX.DB[Offset + 2 * N + 1] = Z2; \
 	}
 
@@ -1216,11 +1217,11 @@ extern struct SLineMatrixData	LineMatrixData[240];
 #define DRAW_PIXEL_H2x1(N, M) \
 	if (Z1 > GFX.DB[Offset + 2 * N] && (M)) \
 	{ \
-		GFX.S[Offset + 2 * N + 1] = CALC_PIXEL(2 * N); \
+		GFX.S[Offset + 2 * N + 1] = CALC_PIXEL(GFX.ScreenColors[Pix], GFX.SubScreen[Offset + 2 * N], GFX.SubZBuffer[Offset + 2 * N]); \
 		if ((OffsetInLine + 2 * N ) != (SNES_WIDTH - 1) << 1) \
-			GFX.S[Offset + 2 * N + 2] = MATH((GFX.ClipColors ? 0 : GFX.SubScreen[Offset + 2 * N + 2]), GFX.RealScreenColors[Pix], GFX.SubZBuffer[Offset + 2 * N]); \
+			GFX.S[Offset + 2 * N + 2] = CALC_PIXEL((GFX.ClipColors ? 0 : GFX.SubScreen[Offset + 2 * N + 2]), GFX.RealScreenColors[Pix], GFX.SubZBuffer[Offset + 2 * N]); \
 		if ((OffsetInLine + 2 * N) == 0 || (OffsetInLine + 2 * N) == GFX.RealPPL) \
-			GFX.S[Offset + 2 * N] = MATH((GFX.ClipColors ? 0 : GFX.SubScreen[Offset + 2 * N]), GFX.RealScreenColors[Pix], GFX.SubZBuffer[Offset + 2 * N]); \
+			GFX.S[Offset + 2 * N] = CALC_PIXEL((GFX.ClipColors ? 0 : GFX.SubScreen[Offset + 2 * N]), GFX.RealScreenColors[Pix], GFX.SubZBuffer[Offset + 2 * N]); \
 		GFX.DB[Offset + 2 * N] = GFX.DB[Offset + 2 * N + 1] = Z2; \
 	}
 

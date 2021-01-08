@@ -334,7 +334,7 @@ static void snes9x_task(void *arg)
 
 	frames[0].width = SNES_WIDTH;
 	frames[0].height = SNES_HEIGHT_EXTENDED;
-	frames[0].pixel_size = 2;
+	frames[0].pixel_format = PIXEL_FORMAT_565_LE;
 	frames[0].pixel_clear = -1;
 	frames[0].stride = SNES_WIDTH * 2;
 	frames[1] = frames[0];
