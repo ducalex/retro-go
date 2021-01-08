@@ -9,8 +9,6 @@
 #include "memmap.h"
 #include "dma.h"
 #include "apu/apu.h"
-#include "fxinst.h"
-#include "fxemu.h"
 #include "snapshot.h"
 #include "controls.h"
 #include "display.h"
@@ -377,9 +375,6 @@ static FreezeData	SnapControls[] =
 	ARRAY_ENTRY(6, dummy1, 4, uint8_ARRAY_V),
 	ARRAY_ENTRY(6, port2_read_idx, 2, uint8_ARRAY_V),
 	ARRAY_ENTRY(6, dummy2, 4, uint8_ARRAY_V),
-	ARRAY_ENTRY(6, mouse_speed, 2, uint8_ARRAY_V),
-	INT_ENTRY(6, justifier_select),
-	ARRAY_ENTRY(6, dummy3, 8, uint8_ARRAY_V),
 	INT_ENTRY(6, pad_read),
 	INT_ENTRY(6, pad_read_last),
 	ARRAY_ENTRY(6, internal, 60, uint8_ARRAY_V),
@@ -410,119 +405,6 @@ static FreezeData	SnapTimings[] =
 	INT_ENTRY(7, IRQTriggerCycles),
 	INT_ENTRY(7, APUAllowTimeOverflow),
 	INT_ENTRY(11, NextIRQTimer)
-};
-
-#undef STRUCT
-#define STRUCT	struct FxRegs_s
-
-static FreezeData	SnapFX[] =
-{
-	ARRAY_ENTRY(6, avReg, 16, uint32_ARRAY_V),
-	INT_ENTRY(6, vColorReg),
-	INT_ENTRY(6, vPlotOptionReg),
-	INT_ENTRY(6, vStatusReg),
-	INT_ENTRY(6, vPrgBankReg),
-	INT_ENTRY(6, vRomBankReg),
-	INT_ENTRY(6, vRamBankReg),
-	INT_ENTRY(6, vCacheBaseReg),
-	INT_ENTRY(6, vCacheFlags),
-	INT_ENTRY(6, vLastRamAdr),
-	POINTER_ENTRY(6, pvDreg, avRegAddr),
-	POINTER_ENTRY(6, pvSreg, avRegAddr),
-	INT_ENTRY(6, vRomBuffer),
-	INT_ENTRY(6, vPipe),
-	INT_ENTRY(6, vPipeAdr),
-	INT_ENTRY(6, vSign),
-	INT_ENTRY(6, vZero),
-	INT_ENTRY(6, vCarry),
-	INT_ENTRY(6, vOverflow),
-	INT_ENTRY(6, vErrorCode),
-	INT_ENTRY(6, vIllegalAddress),
-	INT_ENTRY(6, bBreakPoint),
-	INT_ENTRY(6, vBreakPoint),
-	INT_ENTRY(6, vStepPoint),
-	INT_ENTRY(6, nRamBanks),
-	INT_ENTRY(6, nRomBanks),
-	INT_ENTRY(6, vMode),
-	INT_ENTRY(6, vPrevMode),
-	POINTER_ENTRY(6, pvScreenBase, pvRam),
-#define O(N) \
-	POINTER_ENTRY(6, apvScreen[N], pvRam)
-	O(  0), O(  1), O(  2), O(  3), O(  4), O(  5), O(  6), O(  7),
-	O(  8), O(  9), O( 10), O( 11), O( 12), O( 13), O( 14), O( 15),
-	O( 16), O( 17), O( 18), O( 19), O( 20), O( 21), O( 22), O( 23),
-	O( 24), O( 25), O( 26), O( 27), O( 28), O( 29), O( 30), O( 31),
-#undef O
-	ARRAY_ENTRY(6, x, 32, uint32_ARRAY_V),
-	INT_ENTRY(6, vScreenHeight),
-	INT_ENTRY(6, vScreenRealHeight),
-	INT_ENTRY(6, vPrevScreenHeight),
-	INT_ENTRY(6, vScreenSize),
-	POINTER_ENTRY(6, pvRamBank, apvRamBank),
-	POINTER_ENTRY(6, pvRomBank, apvRomBank),
-	POINTER_ENTRY(6, pvPrgBank, apvRomBank),
-#define O(N) \
-	POINTER_ENTRY(6, apvRamBank[N], pvRam)
-	O(0), O(1), O(2), O(3),
-#undef O
-	INT_ENTRY(6, bCacheActive),
-	POINTER_ENTRY(6, pvCache, pvRegisters),
-	ARRAY_ENTRY(6, avCacheBackup, 512, uint8_ARRAY_V),
-	INT_ENTRY(6, vCounter),
-	INT_ENTRY(6, vInstCount),
-	INT_ENTRY(6, vSCBRDirty)
-};
-
-#undef STRUCT
-#define STRUCT	struct SSA1
-
-static FreezeData	SnapSA1[] =
-{
-	DELETED_INT_ENTRY(6, 7, CPUExecuting, 1),
-	INT_ENTRY(6, ShiftedPB),
-	INT_ENTRY(6, ShiftedDB),
-	INT_ENTRY(6, Flags),
-	DELETED_INT_ENTRY(6, 7, IRQActive, 1),
-	DELETED_INT_ENTRY(6, 7, Waiting, 1),
-	INT_ENTRY(6, WaitingForInterrupt),
-	DELETED_INT_ENTRY(6, 7, WaitAddress, 4),
-	DELETED_INT_ENTRY(6, 7, WaitCounter, 4),
-	DELETED_INT_ENTRY(6, 7, PBPCAtOpcodeStart, 4),
-	DELETED_INT_ENTRY(6, 7, Executing, 1),
-	INT_ENTRY(6, overflow),
-	INT_ENTRY(6, in_char_dma),
-	INT_ENTRY(6, op1),
-	INT_ENTRY(6, op2),
-	INT_ENTRY(6, arithmetic_op),
-	INT_ENTRY(6, sum),
-	INT_ENTRY(6, VirtualBitmapFormat),
-	INT_ENTRY(6, variable_bit_pos),
-	INT_ENTRY(7, Cycles),
-	INT_ENTRY(7, PrevCycles),
-	INT_ENTRY(7, TimerIRQLastState),
-	INT_ENTRY(7, HTimerIRQPos),
-	INT_ENTRY(7, VTimerIRQPos),
-	INT_ENTRY(7, HCounter),
-	INT_ENTRY(7, VCounter),
-	INT_ENTRY(7, PrevHCounter),
-	INT_ENTRY(7, MemSpeed),
-	INT_ENTRY(7, MemSpeedx2)
-};
-
-#undef STRUCT
-#define STRUCT	struct SSA1Registers
-
-static FreezeData	SnapSA1Registers[] =
-{
-	INT_ENTRY(6, PB),
-	INT_ENTRY(6, DB),
-	INT_ENTRY(6, P.W),
-	INT_ENTRY(6, A.W),
-	INT_ENTRY(6, D.W),
-	INT_ENTRY(6, S.W),
-	INT_ENTRY(6, X.W),
-	INT_ENTRY(6, Y.W),
-	INT_ENTRY(6, PCw)
 };
 
 #undef STRUCT
@@ -748,23 +630,6 @@ static FreezeData	SnapDSP2[] =
 	INT_ENTRY(6, Op0DInLen)
 };
 
-#undef STRUCT
-#define STRUCT	struct SMSU1
-
-static FreezeData	SnapMSU1[] =
-{
-	INT_ENTRY(9, MSU1_STATUS),
-	INT_ENTRY(9, MSU1_DATA_SEEK),
-	INT_ENTRY(9, MSU1_DATA_POS),
-	INT_ENTRY(9, MSU1_TRACK_SEEK),
-	INT_ENTRY(9, MSU1_CURRENT_TRACK),
-	INT_ENTRY(9, MSU1_RESUME_TRACK),
-	INT_ENTRY(9, MSU1_VOLUME),
-	INT_ENTRY(9, MSU1_CONTROL),
-	INT_ENTRY(9, MSU1_AUDIO_POS),
-	INT_ENTRY(9, MSU1_RESUME_POS)
-};
-
 #else
 
 static struct Dummy
@@ -778,12 +643,8 @@ static FreezeData	SnapPPU[] = {INT_ENTRY(1, dummy)};
 static FreezeData	SnapDMA[] = {INT_ENTRY(1, dummy)};
 static FreezeData	SnapControls[] = {INT_ENTRY(1, dummy)};
 static FreezeData	SnapTimings[] = {INT_ENTRY(1, dummy)};
-static FreezeData	SnapFX[] = {INT_ENTRY(1, dummy)};
-static FreezeData	SnapSA1[] = {INT_ENTRY(1, dummy)};
-static FreezeData	SnapSA1Registers[] = {INT_ENTRY(1, dummy)};
 static FreezeData	SnapDSP1[] = {INT_ENTRY(1, dummy)};
 static FreezeData	SnapDSP2[] = {INT_ENTRY(1, dummy)};
-static FreezeData	SnapMSU1[] = {INT_ENTRY(1, dummy)};
 
 #endif
 
@@ -817,6 +678,8 @@ void S9xResetSaveTimer (bool8 dontsave)
 
 	t = time(NULL);
 }
+
+// QuickSave
 
 uint32 S9xFreezeSize()
 {
@@ -854,6 +717,8 @@ bool8 S9xFreezeGame (const char *filename)
 
 	return (FALSE);
 }
+
+// QuickLoad
 
 int S9xUnfreezeGameMem (const uint8 *buf, uint32 bufSize)
 {
@@ -966,19 +831,6 @@ void S9xFreezeToStream (STREAM stream)
 
 	FreezeStruct(stream, "TIM", &Timings, SnapTimings, COUNT(SnapTimings));
 
-	if (Settings.SuperFX)
-	{
-		GSU.avRegAddr = (uint8 *) &GSU.avReg;
-		FreezeStruct(stream, "SFX", &GSU, SnapFX, COUNT(SnapFX));
-	}
-
-	if (Settings.SA1)
-	{
-		S9xSA1PackStatus();
-		FreezeStruct(stream, "SA1", &SA1, SnapSA1, COUNT(SnapSA1));
-		FreezeStruct(stream, "SAR", &SA1Registers, SnapSA1Registers, COUNT(SnapSA1Registers));
-	}
-
 	if (Settings.DSP == 1)
 		FreezeStruct(stream, "DP1", &DSP1, SnapDSP1, COUNT(SnapDSP1));
 
@@ -987,9 +839,6 @@ void S9xFreezeToStream (STREAM stream)
 
 	if (Settings.C4)
 		FreezeBlock (stream, "CX4", Memory.C4RAM, 8192);
-
-	if (Settings.MSU1)
-		FreezeStruct(stream, "MSU", &MSU1, SnapMSU1, COUNT(SnapMSU1));
 
 	delete [] soundsnapshot;
 }
@@ -1028,13 +877,9 @@ int S9xUnfreezeFromStream (STREAM stream)
 	uint8	*local_apu_sound     = NULL;
 	uint8	*local_control_data  = NULL;
 	uint8	*local_timing_data   = NULL;
-	uint8	*local_superfx       = NULL;
-	uint8	*local_sa1           = NULL;
-	uint8	*local_sa1_registers = NULL;
 	uint8	*local_dsp1          = NULL;
 	uint8	*local_dsp2          = NULL;
 	uint8	*local_cx4_data      = NULL;
-	uint8	*local_msu1_data     = NULL;
 
 	do
 	{
@@ -1094,18 +939,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 		if (result != SUCCESS)
 			break;
 
-		result = UnfreezeStructCopy(stream, "SFX", &local_superfx, SnapFX, COUNT(SnapFX), version);
-		if (result != SUCCESS && Settings.SuperFX)
-			break;
-
-		result = UnfreezeStructCopy(stream, "SA1", &local_sa1, SnapSA1, COUNT(SnapSA1), version);
-		if (result != SUCCESS && Settings.SA1)
-			break;
-
-		result = UnfreezeStructCopy(stream, "SAR", &local_sa1_registers, SnapSA1Registers, COUNT(SnapSA1Registers), version);
-		if (result != SUCCESS && Settings.SA1)
-			break;
-
 		result = UnfreezeStructCopy(stream, "DP1", &local_dsp1, SnapDSP1, COUNT(SnapDSP1), version);
 		if (result != SUCCESS && Settings.DSP == 1)
 			break;
@@ -1139,17 +972,12 @@ int S9xUnfreezeFromStream (STREAM stream)
 		SkipBlockWithName(stream, "CLK");
 		SkipBlockWithName(stream, "BSX");
 
-		result = UnfreezeStructCopy(stream, "MSU", &local_msu1_data, SnapMSU1, COUNT(SnapMSU1), version);
-		if (result != SUCCESS && Settings.MSU1)
-			break;
-
 		result = SUCCESS;
 	} while (false);
 
 	if (result == SUCCESS)
 	{
 		uint32 old_flags     = CPU.Flags;
-		uint32 sa1_old_flags = SA1.Flags;
 
 		if (fast)
 		{
@@ -1193,18 +1021,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 
 		UnfreezeStructFromCopy(&Timings, SnapTimings, COUNT(SnapTimings), local_timing_data, version);
 
-		if (local_superfx)
-		{
-			GSU.avRegAddr = (uint8 *) &GSU.avReg;
-			UnfreezeStructFromCopy(&GSU, SnapFX, COUNT(SnapFX), local_superfx, version);
-		}
-
-		if (local_sa1)
-			UnfreezeStructFromCopy(&SA1, SnapSA1, COUNT(SnapSA1), local_sa1, version);
-
-		if (local_sa1_registers)
-			UnfreezeStructFromCopy(&SA1Registers, SnapSA1Registers, COUNT(SnapSA1Registers), local_sa1_registers, version);
-
 		if (local_dsp1)
 			UnfreezeStructFromCopy(&DSP1, SnapDSP1, COUNT(SnapDSP1), local_dsp1, version);
 
@@ -1213,9 +1029,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 
 		if (local_cx4_data)
 			memcpy(Memory.C4RAM, local_cx4_data, 8192);
-
-		if (local_msu1_data)
-			UnfreezeStructFromCopy(&MSU1, SnapMSU1, COUNT(SnapMSU1), local_msu1_data, version);
 
 		if (version < SNAPSHOT_VERSION_IRQ)
 		{
@@ -1235,19 +1048,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 				case  6:	case   7:	CPU.WhichEvent = 4; break;
 				case  8:	case   9:	CPU.WhichEvent = 5; break;
 				case 10:	case  11:	CPU.WhichEvent = 6; break;
-			}
-
-			if (local_sa1) // FIXME
-			{
-				SA1.Cycles = SA1.PrevCycles = 0;
-				SA1.TimerIRQLastState = FALSE;
-				SA1.HTimerIRQPos = Memory.FillRAM[0x2212] | (Memory.FillRAM[0x2213] << 8);
-				SA1.VTimerIRQPos = Memory.FillRAM[0x2214] | (Memory.FillRAM[0x2215] << 8);
-				SA1.HCounter = 0;
-				SA1.VCounter = 0;
-				SA1.PrevHCounter = 0;
-				SA1.MemSpeed = ONE_CYCLE;
-				SA1.MemSpeedx2 = ONE_CYCLE * 2;
 			}
 		}
 
@@ -1286,21 +1086,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 		S9xSetCPU(hdma_byte, 0x420c);*/
 
 		S9xControlPostLoadState(&ctl_snap);
-
-		if (local_superfx)
-		{
-			GSU.pfPlot = fx_PlotTable[GSU.vMode];
-			GSU.pfRpix = fx_PlotTable[GSU.vMode + 5];
-		}
-
-		if (local_sa1 && local_sa1_registers)
-		{
-			SA1.Flags |= sa1_old_flags & TRACE_FLAG;
-			S9xSA1PostLoadState();
-		}
-
-		if (local_msu1_data)
-			S9xMSU1PostLoadState();
 	}
 
 	if (local_cpu)				delete [] local_cpu;
@@ -1314,9 +1099,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 	if (local_apu_sound)		delete [] local_apu_sound;
 	if (local_control_data)		delete [] local_control_data;
 	if (local_timing_data)		delete [] local_timing_data;
-	if (local_superfx)			delete [] local_superfx;
-	if (local_sa1)				delete [] local_sa1;
-	if (local_sa1_registers)	delete [] local_sa1_registers;
 	if (local_dsp1)				delete [] local_dsp1;
 	if (local_dsp2)				delete [] local_dsp2;
 	if (local_cx4_data)			delete [] local_cx4_data;

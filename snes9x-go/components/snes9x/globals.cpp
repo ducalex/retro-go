@@ -8,8 +8,6 @@
 #include "memmap.h"
 #include "dma.h"
 #include "apu/apu.h"
-#include "fxinst.h"
-#include "fxemu.h"
 #ifdef NETPLAY_SUPPORT
 #include "netplay.h"
 #endif
@@ -32,11 +30,6 @@ struct SLineMatrixData	LineMatrixData[240];
 struct SDSP0			DSP0;
 struct SDSP1			DSP1;
 struct SDSP2			DSP2;
-struct SSA1				SA1;
-struct SSA1Registers	SA1Registers;
-struct FxRegs_s			GSU;
-struct FxInfo_s			SuperFX;
-struct SMSU1			MSU1;
 struct SSettings		Settings;
 struct SSNESGameFixes	SNESGameFixes;
 #ifdef NETPLAY_SUPPORT
@@ -45,7 +38,6 @@ struct SNetPlay			NetPlay;
 #ifdef DEBUGGER
 struct Missing			missing;
 #endif
-// struct Watch			watches[16];
 CMemory					Memory;
 
 char	String[513];

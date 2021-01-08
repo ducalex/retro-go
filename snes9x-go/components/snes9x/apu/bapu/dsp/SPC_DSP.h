@@ -6,7 +6,6 @@
 
 #include "blargg_common.h"
 #include "resampler.h"
-#include "msu1.h"
 
 extern "C" { typedef void (*dsp_copy_func_t)( unsigned char** io, void* state, size_t ); }
 

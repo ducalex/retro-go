@@ -7,7 +7,6 @@
 #include <cmath>
 #include "../snes9x.h"
 #include "apu.h"
-#include "../msu1.h"
 #include "../snapshot.h"
 #include "../display.h"
 #include "resampler.h"
@@ -54,13 +53,6 @@ static uint32 ratio_denominator = APU_DENOMINATOR_NTSC;
 static double dynamic_rate_multiplier = 1.0;
 } // namespace spc
 
-namespace msu {
-// Always 16-bit, Stereo; 1.5x dsp buffer to never overflow
-static Resampler *resampler = NULL;
-static int16 *resample_buffer = NULL;
-static int resample_buffer_size = 0;
-} // namespace msu
-
 static void UpdatePlaybackRate(void);
 static void SPCSnapshotCallback(void);
 static inline int S9xAPUGetClock(int32);
@@ -80,29 +72,6 @@ bool8 S9xMixSamples(uint8 *dest, int sample_count)
         if (spc::resampler->avail() >= sample_count)
         {
             spc::resampler->read((short *)out, sample_count);
-
-            if (Settings.MSU1)
-            {
-                if (msu::resampler->avail() >= sample_count)
-                {
-                    if (msu::resample_buffer_size < sample_count)
-                    {
-                        if (msu::resample_buffer)
-                            delete[] msu::resample_buffer;
-                        msu::resample_buffer = new int16[sample_count];
-                        msu::resample_buffer_size = sample_count;
-                    }
-                    msu::resampler->read(msu::resample_buffer,
-                                         sample_count);
-                    for (int i = 0; i < sample_count; ++i)
-                    {
-                        int32 mixed = (int32)out[i] + msu::resample_buffer[i];
-                        out[i] = ((int16)mixed != mixed) ? (mixed >> 31) ^ 0x7fff : mixed;
-                    }
-                }
-                else // should never occur
-                    assert(0);
-            }
         }
         else
         {
@@ -140,8 +109,6 @@ void S9xLandSamples(void)
 void S9xClearSamples(void)
 {
     spc::resampler->clear();
-    if (Settings.MSU1)
-        msu::resampler->clear();
 }
 
 bool8 S9xSyncSound(void)
@@ -181,12 +148,6 @@ static void UpdatePlaybackRate(void)
     }
 
     spc::resampler->time_ratio(time_ratio);
-
-    if (Settings.MSU1)
-    {
-        time_ratio = (44100.0 / Settings.SoundPlaybackRate) * (Settings.SoundInputRate / 32040.0);
-        msu::resampler->time_ratio(time_ratio);
-    }
 }
 
 bool8 S9xInitSound(int buffer_ms)
@@ -208,17 +169,7 @@ bool8 S9xInitSound(int buffer_ms)
         spc::resampler->resize(buffer_size_samples);
 
 
-    if (!msu::resampler)
-    {
-        msu::resampler = new Resampler(buffer_size_samples * 3 / 2);
-        if (!msu::resampler)
-            return (FALSE);
-    }
-    else
-        msu::resampler->resize(buffer_size_samples * 3 / 2);
-
     SNES::dsp.spc_dsp.set_output(spc::resampler);
-    S9xMSU1SetOutput(msu::resampler);
 
     UpdatePlaybackRate();
 
@@ -253,7 +204,6 @@ static void SPCSnapshotCallback(void)
 bool8 S9xInitAPU(void)
 {
     spc::resampler = NULL;
-    msu::resampler = NULL;
 
     return (TRUE);
 }
@@ -265,14 +215,6 @@ void S9xDeinitAPU(void)
         delete spc::resampler;
         spc::resampler = NULL;
     }
-
-    if (msu::resampler)
-    {
-        delete msu::resampler;
-        msu::resampler = NULL;
-    }
-
-    S9xMSU1DeInit();
 }
 
 static inline int S9xAPUGetClock(int32 cpucycles)

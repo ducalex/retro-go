@@ -30,7 +30,6 @@ extern struct SBreakPoint	S9xBreakpoint[6];
 
 void S9xDoDebug (void);
 void S9xTrace (void);
-void S9xSA1Trace (void);
 void S9xTraceMessage (const char *);
 void S9xTraceFormattedMessage (const char *, ...);
 void S9xPrintHVPosition (char *);

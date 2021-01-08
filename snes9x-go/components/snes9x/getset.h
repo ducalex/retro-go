@@ -9,9 +9,7 @@
 
 #include "cpuexec.h"
 #include "dsp.h"
-#include "sa1.h"
 #include "c4.h"
-#include "msu1.h"
 
 #define addCyclesInMemoryAccess \
 	if (!CPU.InDMAorHDMA) \
@@ -80,7 +78,6 @@ inline uint8 S9xGetByte (uint32 Address)
 			return (byte);
 
 		case CMemory::MAP_LOROM_SRAM:
-		case CMemory::MAP_SA1RAM:
 			// Address & 0x7fff   : offset into bank
 			// Address & 0xff0000 : bank
 			// bank >> 1 | offset : SRAM address, unbound
@@ -181,7 +178,6 @@ inline uint16 S9xGetWord (uint32 Address, enum s9xwrap_t w = WRAP_NONE)
 			return (word);
 
 		case CMemory::MAP_LOROM_SRAM:
-		case CMemory::MAP_SA1RAM:
 			if (Memory.SRAMMask >= MEMMAP_MASK)
 				word = READ_WORD(Memory.SRAM + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Memory.SRAMMask));
 			else
@@ -278,11 +274,6 @@ inline void S9xSetByte (uint8 Byte, uint32 Address)
 		case CMemory::MAP_BWRAM:
 			*(Memory.BWRAM + ((Address & 0x7fff) - 0x6000)) = Byte;
 			CPU.SRAMModified = TRUE;
-			addCyclesInMemoryAccess;
-			return;
-
-		case CMemory::MAP_SA1RAM:
-			*(Memory.SRAM + (Address & 0xffff)) = Byte;
 			addCyclesInMemoryAccess;
 			return;
 
@@ -437,11 +428,6 @@ inline void S9xSetWord (uint16 Word, uint32 Address, enum s9xwrap_t w = WRAP_NON
 			addCyclesInMemoryAccess_x2;
 			return;
 
-		case CMemory::MAP_SA1RAM:
-			WRITE_WORD(Memory.SRAM + (Address & 0xffff), Word);
-			addCyclesInMemoryAccess_x2;
-			return;
-
 		case CMemory::MAP_DSP:
 			if (o)
 			{
@@ -521,10 +507,6 @@ inline void S9xSetPCBase (uint32 Address)
 			CPU.PCBase = Memory.BWRAM - 0x6000 - (Address & 0x8000);
 			return;
 
-		case CMemory::MAP_SA1RAM:
-			CPU.PCBase = Memory.SRAM;
-			return;
-
 		case CMemory::MAP_C4:
 			CPU.PCBase = S9xGetBasePointerC4(Address & 0xffff);
 			return;
@@ -558,9 +540,6 @@ inline uint8 * S9xGetBasePointer (uint32 Address)
 		case CMemory::MAP_BWRAM:
 			return (Memory.BWRAM - 0x6000 - (Address & 0x8000));
 
-		case CMemory::MAP_SA1RAM:
-			return (Memory.SRAM);
-
 		case CMemory::MAP_C4:
 			return (S9xGetBasePointerC4(Address & 0xffff));
 
@@ -591,9 +570,6 @@ inline uint8 * S9xGetMemPointer (uint32 Address)
 
 		case CMemory::MAP_BWRAM:
 			return (Memory.BWRAM - 0x6000 + (Address & 0x7fff));
-
-		case CMemory::MAP_SA1RAM:
-			return (Memory.SRAM + (Address & 0xffff));
 
 		case CMemory::MAP_C4:
 			return (S9xGetMemPointerC4(Address & 0xffff));

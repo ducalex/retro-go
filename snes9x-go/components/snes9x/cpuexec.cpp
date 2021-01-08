@@ -9,7 +9,6 @@
 #include "cpuops.h"
 #include "dma.h"
 #include "apu/apu.h"
-#include "fxemu.h"
 #include "snapshot.h"
 #ifdef DEBUGGER
 #include "debug.h"
@@ -167,9 +166,6 @@ void S9xMainLoop (void)
 
 		Registers.PCw++;
 		(*Opcodes[Op].S9xOpcode)();
-
-		if (Settings.SA1)
-			S9xSA1MainLoop();
 	}
 
 	S9xPackStatus();
@@ -252,13 +248,6 @@ void S9xDoHEventProcessing (void)
 			break;
 
 		case HC_HCOUNTER_MAX_EVENT:
-			if (Settings.SuperFX)
-			{
-				if (!SuperFX.oneLineDone)
-					S9xSuperFXExec();
-				SuperFX.oneLineDone = FALSE;
-			}
-
 			S9xAPUEndScanline();
 			CPU.Cycles -= Timings.H_Max;
 			if (Timings.NMITriggerPos != 0xffff)
@@ -266,9 +255,6 @@ void S9xDoHEventProcessing (void)
 			if (Timings.NextIRQTimer != 0x0fffffff)
 				Timings.NextIRQTimer -= Timings.H_Max;
 			S9xAPUSetReferenceTime(CPU.Cycles);
-
-			if (Settings.SA1)
-				SA1.Cycles -= Timings.H_Max * 3;
 
 			CPU.V_Counter++;
 			if (CPU.V_Counter >= Timings.V_Max)	// V ranges from 0 to Timings.V_Max - 1

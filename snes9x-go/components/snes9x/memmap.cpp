@@ -26,7 +26,6 @@
 #include "snes9x.h"
 #include "memmap.h"
 #include "apu/apu.h"
-#include "fxemu.h"
 #include "controls.h"
 #include "display.h"
 
@@ -956,12 +955,6 @@ bool8 CMemory::Init (void)
 
 	C4RAM   = ROM + 0x400000 + 8192 * 8; // C4
 
-	SuperFX.pvRegisters = FillRAM + 0x3000;
-	SuperFX.nRamBanks   = 2; // Most only use 1.  1=64KB=512Mb, 2=128KB=1024Mb
-	SuperFX.pvRam       = SRAM;
-	SuperFX.nRomBanks   = (2 * 1024 * 1024) / (32 * 1024);
-	SuperFX.pvRom       = (uint8 *) ROM;
-
 	PostRomInitFunc = NULL;
 
 	return (TRUE);
@@ -1187,11 +1180,8 @@ uint32 CMemory::FileLoader (uint8 *buffer, const char *filename, uint32 maxsize)
 	_makepath(fname, drive, dir, name, exts);
 
 	int	nFormat = FILE_DEFAULT;
-	if (strcasecmp(ext, "zip") == 0 || strcasecmp(ext, "msu1") == 0)
+	if (strcasecmp(ext, "zip") == 0)
 		nFormat = FILE_ZIP;
-	else
-	if (strcasecmp(ext, "jma") == 0)
-		nFormat = FILE_JMA;
 
 	switch (nFormat)
 	{
@@ -1552,10 +1542,6 @@ bool8 CMemory::LoadROMInt (int32 ROMfillSize)
 
 void CMemory::ClearSRAM (bool8 onlyNonSavedSRAM)
 {
-	if (onlyNonSavedSRAM)
-		if (!(Settings.SuperFX && ROMType < 0x15) && !(Settings.SA1 && ROMType == 0x34)) // can have SRAM
-			return;
-
 	memset(SRAM, SNESGameFixes.SRAMInitialValue, 0x20000);
 }
 
@@ -1594,12 +1580,6 @@ bool8 CMemory::LoadSRAM (const char *filename)
 
 bool8 CMemory::SaveSRAM (const char *filename)
 {
-	if (Settings.SuperFX && ROMType < 0x15) // doesn't have SRAM
-		return (TRUE);
-
-	if (Settings.SA1 && ROMType == 0x34)    // doesn't have SRAM
-		return (TRUE);
-
 	FILE	*file;
 	int		size;
 	char	sramName[PATH_MAX + 1];
@@ -1748,13 +1728,8 @@ void CMemory::ParseSNESHeader (uint8 *RomHeader)
 
 void CMemory::InitROM (void)
 {
-	Settings.SuperFX = FALSE;
 	Settings.DSP = 0;
-	Settings.SA1 = FALSE;
 	Settings.C4 = FALSE;
-	Settings.MSU1 = FALSE;
-
-	SuperFX.nRomBanks = CalculatedSize >> 15;
 
 	//// Parse ROM header and read ROM informatoin
 
@@ -1823,37 +1798,7 @@ void CMemory::InitROM (void)
 			break;
 	}
 
-	uint32	identifier = ((ROMType & 0xff) << 8) + (ROMSpeed & 0xff);
-
-	switch (identifier)
-	{
-		// SA1
-		case 0x3423:
-		case 0x3523:
-			Settings.SA1 = TRUE;
-			break;
-
-		// SuperFX
-		case 0x1320:
-		case 0x1420:
-		case 0x1520:
-		case 0x1A20:
-			Settings.SuperFX = TRUE;
-			S9xInitSuperFX();
-			if (ROM[0x7FDA] == 0x33)
-				SRAMSize = ROM[0x7FBD];
-			else
-				SRAMSize = 5;
-			break;
-
-		// C4
-		case 0xF320:
-			Settings.C4 = TRUE;
-			break;
-	}
-
-	// MSU1
-	Settings.MSU1 = S9xMSU1ROMExists();
+	Settings.C4 = (((ROMType & 0xff) << 8) + (ROMSpeed & 0xff)) == 0xF320;
 
 	//// Map memory and calculate checksum
 
@@ -1869,14 +1814,6 @@ void CMemory::InitROM (void)
     }
     else
     {
-		if (Settings.SuperFX)
-			Map_SuperFXLoROMMap();
-		else
-		if (Settings.SA1)
-		{
-			Map_SA1LoROMMap();
-		}
-		else
 		if (ExtendedFormat != NOPE)
 			Map_JumboLoROMMap();
 		else
@@ -2147,15 +2084,15 @@ void CMemory::map_WRAM (void)
 
 void CMemory::map_LoROMSRAM (void)
 {
-        uint32 hi;
+	uint32 hi;
 
-        if (SRAMSize == 0)
-            return;
+	if (SRAMSize == 0)
+		return;
 
-        if (ROMSize > 11 || SRAMSize > 5)
-            hi = 0x7fff;
-        else
-            hi = 0xffff;
+	if (ROMSize > 11 || SRAMSize > 5)
+		hi = 0x7fff;
+	else
+		hi = 0xffff;
 
 	map_index(0x70, 0x7d, 0x0000, hi, MAP_LOROM_SRAM, MAP_TYPE_RAM);
 	map_index(0xf0, 0xff, 0x0000, hi, MAP_LOROM_SRAM, MAP_TYPE_RAM);
@@ -2316,81 +2253,6 @@ void CMemory::Map_SRAM512KLoROMMap (void)
 	map_WriteProtectROM();
 }
 
-void CMemory::Map_SuperFXLoROMMap (void)
-{
-	printf("Map_SuperFXLoROMMap\n");
-	map_System();
-
-	// Replicate the first 2Mb of the ROM at ROM + 2MB such that each 32K
-	// block is repeated twice in each 64K block.
-	for (int c = 0; c < 64; c++)
-	{
-		memmove(&ROM[0x200000 + c * 0x10000], &ROM[c * 0x8000], 0x8000);
-		memmove(&ROM[0x208000 + c * 0x10000], &ROM[c * 0x8000], 0x8000);
-	}
-
-	map_lorom(0x00, 0x3f, 0x8000, 0xffff, CalculatedSize);
-	map_lorom(0x80, 0xbf, 0x8000, 0xffff, CalculatedSize);
-
-	map_hirom_offset(0x40, 0x7f, 0x0000, 0xffff, CalculatedSize, 0);
-	map_hirom_offset(0xc0, 0xff, 0x0000, 0xffff, CalculatedSize, 0);
-
-	map_space(0x00, 0x3f, 0x6000, 0x7fff, SRAM - 0x6000);
-	map_space(0x80, 0xbf, 0x6000, 0x7fff, SRAM - 0x6000);
-	map_space(0x70, 0x70, 0x0000, 0xffff, SRAM);
-	map_space(0x71, 0x71, 0x0000, 0xffff, SRAM + 0x10000);
-
-	map_WRAM();
-
-	map_WriteProtectROM();
-}
-
-void CMemory::Map_SA1LoROMMap (void)
-{
-	printf("Map_SA1LoROMMap\n");
-	map_System();
-
-	map_lorom(0x00, 0x3f, 0x8000, 0xffff, CalculatedSize);
-	map_lorom(0x80, 0xbf, 0x8000, 0xffff, CalculatedSize);
-
-	map_hirom_offset(0xc0, 0xff, 0x0000, 0xffff, CalculatedSize, 0);
-
-	map_space(0x00, 0x3f, 0x3000, 0x37ff, FillRAM);
-	map_space(0x80, 0xbf, 0x3000, 0x37ff, FillRAM);
-	map_index(0x00, 0x3f, 0x6000, 0x7fff, MAP_BWRAM, MAP_TYPE_I_O);
-	map_index(0x80, 0xbf, 0x6000, 0x7fff, MAP_BWRAM, MAP_TYPE_I_O);
-
-	for (int c = 0x40; c < 0x4f; c++)
-		map_space(c, c, 0x0000, 0xffff, SRAM + (c & 3) * 0x10000);
-
-	map_WRAM();
-
-	map_WriteProtectROM();
-
-	// Now copy the map and correct it for the SA1 CPU.
-	memmove((void *) SA1.Map, (void *) Map, sizeof(Map));
-	memmove((void *) SA1.WriteMap, (void *) WriteMap, sizeof(WriteMap));
-
-	// SA-1 Banks 00->3f and 80->bf
-	for (int c = 0x000; c < 0x400; c += 0x10)
-	{
-		SA1.Map[c + 0] = SA1.Map[c + 0x800] = FillRAM + 0x3000;
-		SA1.Map[c + 1] = SA1.Map[c + 0x801] = (uint8 *) MAP_NONE;
-		SA1.WriteMap[c + 0] = SA1.WriteMap[c + 0x800] = FillRAM + 0x3000;
-		SA1.WriteMap[c + 1] = SA1.WriteMap[c + 0x801] = (uint8 *) MAP_NONE;
-	}
-
-	// SA-1 Banks 40->4f
-	for (int c = 0x400; c < 0x500; c++)
-		SA1.Map[c] = SA1.WriteMap[c] = (uint8*)MAP_HIROM_SRAM;
-
-	// SA-1 Banks 60->6f
-	for (int c = 0x600; c < 0x700; c++)
-		SA1.Map[c] = SA1.WriteMap[c] = (uint8 *) MAP_BWRAM_BITMAP;
-
-	BWRAM = SRAM;
-}
-
 void CMemory::Map_HiROMMap (void)
 {
 	printf("Map_HiROMMap\n");
@@ -2530,12 +2392,6 @@ const char * CMemory::KartContents (void)
 	if (ROMType == 0)
 		return ("ROM");
 
-	if (Settings.SuperFX)
-		strcpy(chip, "+Super FX");
-	else
-	if (Settings.SA1)
-		strcpy(chip, "+SA-1");
-	else
 	if (Settings.C4)
 		strcpy(chip, "+C4");
 	else
@@ -3648,23 +3504,4 @@ void CMemory::CheckForAnyPatch (const char *rom_filename, bool8 header, int32 &r
 		if (flag)
 			return;
 	}
-
-#ifdef UNZIP_SUPPORT
-	// Mercurial Magic (MSU-1 distribution pack)
-	if (strcasecmp(ext, "msu1") && strcasecmp(ext, ".msu1"))	// ROM was *NOT* loaded from a .msu1 pack
-	{
-		Stream *s = S9xMSU1OpenFile("patch.bps", TRUE);
-		if (s)
-		{
-			printf("Using BPS patch %s.msu1", name);
-			ret = ReadBPSPatch(s, offset, rom_size);
-			s->closeStream();
-
-			if (ret)
-				printf("!\n");
-			else
-				printf(" failed!\n");
-		}
-	}
-#endif
 }

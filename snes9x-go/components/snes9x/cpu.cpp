@@ -8,7 +8,6 @@
 #include "memmap.h"
 #include "dma.h"
 #include "apu/apu.h"
-#include "fxemu.h"
 #include "snapshot.h"
 #include "logger.h"
 #ifdef DEBUGGER
@@ -106,18 +105,11 @@ void S9xReset (void)
 	S9xResetPPU();
 	S9xResetDMA();
 	S9xResetAPU();
-    S9xResetMSU();
 
 	if (Settings.DSP)
 		S9xResetDSP();
-	if (Settings.SuperFX)
-		S9xResetSuperFX();
-	if (Settings.SA1)
-		S9xSA1Init();
 	if (Settings.C4)
 		S9xInitC4();
-	if (Settings.MSU1)
-		S9xMSU1Init();
 }
 
 void S9xSoftReset (void)
@@ -130,16 +122,9 @@ void S9xSoftReset (void)
 	S9xSoftResetPPU();
 	S9xResetDMA();
 	S9xSoftResetAPU();
-    S9xResetMSU();
 
 	if (Settings.DSP)
 		S9xResetDSP();
-	if (Settings.SuperFX)
-		S9xResetSuperFX();
-	if (Settings.SA1)
-		S9xSA1Init();
 	if (Settings.C4)
 		S9xInitC4();
-	if (Settings.MSU1)
-		S9xMSU1Init();
 }

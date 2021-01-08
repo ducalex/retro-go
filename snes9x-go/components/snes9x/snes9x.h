@@ -196,16 +196,8 @@ struct SSettings
 	bool8	TraceHCEvent;
 	bool8	TraceSMP;
 
-	bool8	SuperFX;
 	uint8	DSP;
-	bool8	SA1;
 	bool8	C4;
-	bool8	MSU1;
-	bool8	MouseMaster;
-	bool8	SuperScopeMaster;
-	bool8	JustifierMaster;
-	bool8	MultiPlayer5Master;
-	bool8	MacsRifleMaster;
 
 	bool8	ForceLoROM;
 	bool8	ForceHiROM;
@@ -273,7 +265,6 @@ struct SSettings
 	bool8	DontSaveOopsSnapshot;
 	bool8	UpAndDown;
 
-	uint32	SuperFXClockMultiplier;
     int OverclockMode;
 	int	OneClockCycle;
 	int	OneSlowClockCycle;

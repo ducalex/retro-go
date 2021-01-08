@@ -33,12 +33,9 @@ struct CMemory
 		MAP_LOROM_SRAM,
 		MAP_HIROM_SRAM,
 		MAP_DSP,
-		MAP_SA1RAM,
 		MAP_BWRAM,
 		MAP_BWRAM_BITMAP,
 		MAP_BWRAM_BITMAP2,
-		MAP_SPC7110_ROM,
-		MAP_SPC7110_DRAM,
 		MAP_RONLY_SRAM,
 		MAP_C4,
 		MAP_NONE,
@@ -127,8 +124,6 @@ struct CMemory
 	void	Map_JumboLoROMMap (void);
 	void	Map_ROM24MBSLoROMMap (void);
 	void	Map_SRAM512KLoROMMap (void);
-	void	Map_SuperFXLoROMMap (void);
-	void	Map_SA1LoROMMap (void);
 	void	Map_HiROMMap (void);
 	void	Map_ExtendedHiROMMap (void);
 

@@ -195,7 +195,6 @@ struct SPPU
 	uint16	VRAMReadBuffer;
 };
 
-extern uint16				SignExtend[2];
 extern struct SPPU			PPU;
 extern struct InternalPPU	IPPU;
 
@@ -250,6 +249,8 @@ static inline void S9xUpdateVRAMReadBuffer()
 
 static inline void REGISTER_2104 (uint8 Byte)
 {
+	const uint16 SignExtend[2] = {0x0000, 0xff00};
+
 	if (!(PPU.OAMFlip & 1))
 	{
 		PPU.OAMWriteRegister &= 0xff00;

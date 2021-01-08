@@ -3,7 +3,6 @@
 
 #include "../../../snes9x.h"
 #include "../../resampler.h"
-#include "../../../msu1.h"
 
 #if defined(__GNUC__)
   #define inline        inline

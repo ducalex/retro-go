@@ -8,7 +8,6 @@
 #include "memmap.h"
 #include "dma.h"
 #include "apu/apu.h"
-#include "fxemu.h"
 #include "controls.h"
 #include "display.h"
 #ifdef NETPLAY_SUPPORT
@@ -184,7 +183,7 @@ void S9xUpdateIRQPositions (bool initial)
 
 void S9xFixColourBrightness (void)
 {
-	IPPU.XB = mul_brightness[PPU.Brightness];
+	IPPU.XB = (uint8 *)mul_brightness[PPU.Brightness];
 
 	for (int i = 0; i < 64; i++)
 	{
@@ -239,9 +238,6 @@ void S9xSetPPU (uint8 Byte, uint32 Address)
 		S9xTraceFormattedMessage("--- HDMA PPU %04X -> %02X", Address, Byte);
 #endif
 
-	if (Settings.MSU1 && (Address & 0xfff8) == 0x2000) // MSU-1
-		S9xMSU1WritePort(Address & 7, Byte);
-	else
 	if ((Address & 0xffc0) == 0x2140) // APUIO0, APUIO1, APUIO2, APUIO3
 		// write_port will run the APU until given clock before writing value
 		S9xAPUWritePort(Address & 3, Byte);
@@ -948,29 +944,12 @@ void S9xSetPPU (uint8 Byte, uint32 Address)
 	}
 	else
 	{
-		if (Settings.SuperFX && Address >= 0x3000 && Address <= 0x32ff)
-		{
-			S9xSetSuperFX(Byte, Address);
-			return;
-		}
-		else
-		if (Settings.SA1     && Address >= 0x2200)
-		{
-			if (Address <= 0x23ff)
-				S9xSetSA1(Byte, Address);
-			else
-				Memory.FillRAM[Address] = Byte;
-			return;
-		}
 	#ifdef DEBUGGER
-		else
+		missing.unknownppu_write = Address;
+		if (Settings.TraceUnknownRegisters)
 		{
-			missing.unknownppu_write = Address;
-			if (Settings.TraceUnknownRegisters)
-			{
-				sprintf(String, "Unknown register write: $%02X->$%04X\n", Byte, Address);
-				S9xMessage(S9X_TRACE, S9X_PPU_TRACE, String);
-			}
+			sprintf(String, "Unknown register write: $%02X->$%04X\n", Byte, Address);
+			S9xMessage(S9X_TRACE, S9X_PPU_TRACE, String);
 		}
 	#endif
 	}
@@ -981,9 +960,6 @@ void S9xSetPPU (uint8 Byte, uint32 Address)
 uint8 S9xGetPPU (uint32 Address)
 {
 	// MAP_PPU: $2000-$3FFF
-	if (Settings.MSU1 && (Address & 0xfff8) == 0x2000)
-		return (S9xMSU1ReadPort(Address & 7));
-	else
 	if (Address < 0x2100)
 		return (OpenBus);
 
@@ -1197,12 +1173,6 @@ uint8 S9xGetPPU (uint32 Address)
 	}
 	else
     {
-		if (Settings.SuperFX && Address >= 0x3000 && Address <= 0x32ff)
-			return (S9xGetSuperFX(Address));
-		else
-		if (Settings.SA1     && Address >= 0x2200)
-			return (S9xGetSA1(Address));
-		else
 		switch (Address)
 		{
 			case 0x21c2:

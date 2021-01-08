@@ -92,20 +92,11 @@ void S9xInitSettings(void)
 	Settings.SkipFrames = AUTO_FRAMERATE;
 
 	// Controls
-
-	Settings.MouseMaster                =  true;
-	Settings.SuperScopeMaster           =  true;
-	Settings.JustifierMaster            =  true;
-	Settings.MacsRifleMaster            =  true;
-	Settings.MultiPlayer5Master         =  true;
 	Settings.UpAndDown                  =  false;
-
-
 	parse_controller_spec(0, "pad1");
 	parse_controller_spec(1, "none");
 
 	// Hack
-	Settings.SuperFXClockMultiplier         = 100;
     Settings.OverclockMode                  = 0;
 	Settings.DisableGameSpecificHacks       = false;
 	Settings.HDMATimingHack                 = 100;

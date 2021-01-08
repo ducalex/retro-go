@@ -77,27 +77,7 @@ static char							buf[256];
 	S(LoadFreezeFile), \
 	S(Pause), \
 	S(QuickLoad000), \
-	S(QuickLoad001), \
-	S(QuickLoad002), \
-	S(QuickLoad003), \
-	S(QuickLoad004), \
-	S(QuickLoad005), \
-	S(QuickLoad006), \
-	S(QuickLoad007), \
-	S(QuickLoad008), \
-	S(QuickLoad009), \
-	S(QuickLoad010), \
 	S(QuickSave000), \
-	S(QuickSave001), \
-	S(QuickSave002), \
-	S(QuickSave003), \
-	S(QuickSave004), \
-	S(QuickSave005), \
-	S(QuickSave006), \
-	S(QuickSave007), \
-	S(QuickSave008), \
-	S(QuickSave009), \
-	S(QuickSave010), \
 	S(Reset), \
 	S(SaveFreezeFile), \
 	S(SaveSPC), \
@@ -186,20 +166,6 @@ static const char * maptypename (int t)
 	}
 }
 
-static string& operator += (string &s, int i)
-{
-	snprintf(buf, sizeof(buf), "%d", i);
-	s.append(buf);
-	return (s);
-}
-
-static string& operator += (string &s, double d)
-{
-	snprintf(buf, sizeof(buf), "%g", d);
-	s.append(buf);
-	return (s);
-}
-
 static void DisplayStateChange (const char *str, bool8 on)
 {
 	snprintf(buf, sizeof(buf), "%s: %s", str, on ? "on":"off");
@@ -262,8 +228,6 @@ void S9xSetController (int port, enum controllers controller, int8 id1, int8 id2
 s9xcommand_t S9xGetCommandT (const char *name)
 {
 	s9xcommand_t	cmd;
-	int				i, j;
-	const char		*s;
 
 	memset(&cmd, 0, sizeof(cmd));
 	cmd.type         = S9xBadMapping;
@@ -279,8 +243,8 @@ s9xcommand_t S9xGetCommandT (const char *name)
 			return (cmd);
 
 		cmd.button.joypad.idx = name[6] - '1';
-		s = name + 8;
-		i = 0;
+		const char	*s = name + 8;
+		int i = 0;
 
 		if ((cmd.button.joypad.toggle = strncmp(s, "Toggle", 6) ? 0 : 1))	s += i = 6;
 		if ((cmd.button.joypad.sticky = strncmp(s, "Sticky", 6) ? 0 : 1))	s += i = 6;
@@ -322,7 +286,7 @@ s9xcommand_t S9xGetCommandT (const char *name)
 	}
 	else
 	{
-		i = findstr(name, command_names, LAST_COMMAND);
+		int i = findstr(name, command_names, LAST_COMMAND);
 		if (i < 0)
 			return (cmd);
 
@@ -636,10 +600,12 @@ void S9xApplyCommand (s9xcommand_t cmd, int16 data1, int16 data2)
 						S9xSetInfoString(buf);
 						break;
 
+					case QuickLoad000:
 					case LoadFreezeFile:
 						S9xUnfreezeGame(S9xChooseFilename(TRUE));
 						break;
 
+					case QuickSave000:
 					case SaveFreezeFile:
 						S9xFreezeGame(S9xChooseFilename(FALSE));
 						break;
@@ -651,60 +617,6 @@ void S9xApplyCommand (s9xcommand_t cmd, int16 data1, int16 data2)
 						S9xNPSendPause(Settings.Paused);
 					#endif
 						break;
-
-					case QuickLoad000:
-					case QuickLoad001:
-					case QuickLoad002:
-					case QuickLoad003:
-					case QuickLoad004:
-					case QuickLoad005:
-					case QuickLoad006:
-					case QuickLoad007:
-					case QuickLoad008:
-					case QuickLoad009:
-					case QuickLoad010:
-					{
-						char	filename[PATH_MAX + 1];
-						char	drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], def[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
-
-						_splitpath(Memory.ROMFilename, drive, dir, def, ext);
-						snprintf(filename, PATH_MAX + 1, "%s%s%s.%03d", S9xGetDirectory(SNAPSHOT_DIR), SLASH_STR, def, i - QuickLoad000);
-
-						if (S9xUnfreezeGame(filename))
-						{
-							snprintf(buf, 256, "%s.%03d loaded", def, i - QuickLoad000);
-							S9xSetInfoString(buf);
-						}
-						else
-							S9xMessage(S9X_ERROR, S9X_FREEZE_FILE_NOT_FOUND, "Freeze file not found");
-
-						break;
-					}
-
-					case QuickSave000:
-					case QuickSave001:
-					case QuickSave002:
-					case QuickSave003:
-					case QuickSave004:
-					case QuickSave005:
-					case QuickSave006:
-					case QuickSave007:
-					case QuickSave008:
-					case QuickSave009:
-					case QuickSave010:
-					{
-						char	filename[PATH_MAX + 1];
-						char	drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], def[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
-
-						_splitpath(Memory.ROMFilename, drive, dir, def, ext);
-						snprintf(filename, PATH_MAX + 1, "%s%s%s.%03d", S9xGetDirectory(SNAPSHOT_DIR), SLASH_STR, def, i - QuickSave000);
-
-						snprintf(buf, 256, "%s.%03d saved", def, i - QuickSave000);
-						S9xSetInfoString(buf);
-
-						S9xFreezeGame(filename);
-						break;
-					}
 
 					case SaveSPC:
 						S9xDumpSPCSnapshot();
@@ -857,17 +769,17 @@ static inline uint8 IncreaseReadIdxPost(uint8 &var)
 
 uint8 S9xReadJOYSERn (int n)
 {
-	int	i, j, r;
-
 	if (n > 1)
 		n -= 0x4016;
+
 	assert(n == 0 || n == 1);
 
-	uint8	bits = (OpenBus & ~3) | ((n == 1) ? 0x1c : 0);
+	int bits = (OpenBus & ~3) | ((n == 1) ? 0x1c : 0);
+	int i = curcontrollers[n];
 
 	if (FLAG_LATCH)
 	{
-		switch (i = curcontrollers[n])
+		switch (i)
 		{
 			case JOYPAD0:
 			case JOYPAD1:
@@ -885,7 +797,7 @@ uint8 S9xReadJOYSERn (int n)
 	}
 	else
 	{
-		switch (i = curcontrollers[n])
+		switch (i)
 		{
 			case JOYPAD0:
 			case JOYPAD1:
@@ -912,14 +824,13 @@ uint8 S9xReadJOYSERn (int n)
 
 void S9xDoAutoJoypad (void)
 {
-	int	i, j;
-
 	S9xSetJoypadLatch(1);
 	S9xSetJoypadLatch(0);
 
 	for (int n = 0; n < 2; n++)
 	{
-		switch (i = curcontrollers[n])
+		int i = curcontrollers[n];
+		switch (i)
 		{
 			case JOYPAD0:
 			case JOYPAD1:
@@ -944,14 +855,13 @@ void S9xDoAutoJoypad (void)
 
 void S9xControlEOF (void)
 {
-	int					i, j;
-
 	PPU.GunVLatch = 1000; // i.e., never latch
 	PPU.GunHLatch = 0;
 
 	for (int n = 0; n < 2; n++)
 	{
-		switch (i = curcontrollers[n])
+		int i = curcontrollers[n];
+		switch (i)
 		{
 			case JOYPAD0:
 			case JOYPAD1:
