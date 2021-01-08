@@ -765,7 +765,6 @@ static FreezeData	SnapMSU1[] =
 	INT_ENTRY(9, MSU1_RESUME_POS)
 };
 
-#undef STRUCT
 #else
 
 static struct Dummy
@@ -787,6 +786,8 @@ static FreezeData	SnapDSP2[] = {INT_ENTRY(1, dummy)};
 static FreezeData	SnapMSU1[] = {INT_ENTRY(1, dummy)};
 
 #endif
+
+#undef STRUCT
 
 static int UnfreezeBlock (STREAM, const char *, uint8 *, int);
 static int UnfreezeBlockCopy (STREAM, const char *, uint8 **, int);

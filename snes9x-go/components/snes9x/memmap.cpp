@@ -2011,8 +2011,6 @@ void CMemory::InitROM (void)
 
 	if (PostRomInitFunc)
 		PostRomInitFunc();
-
-    S9xVerifyControllers();
 }
 
 // memory map

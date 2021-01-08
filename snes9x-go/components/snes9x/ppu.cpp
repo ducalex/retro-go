@@ -1727,7 +1727,7 @@ void S9xResetPPUFast (void)
 
 void S9xSoftResetPPU (void)
 {
-	S9xControlsSoftReset();
+	S9xControlsReset();
 
 	PPU.VMA.High = 0;
 	PPU.VMA.Increment = 1;

@@ -8,7 +8,6 @@
 #include "ppu.h"
 #include "tile.h"
 #include "controls.h"
-#include "crosshairs.h"
 #include "font.h"
 #include "display.h"
 

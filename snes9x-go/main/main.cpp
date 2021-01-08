@@ -355,7 +355,6 @@ static void snes9x_task(void *arg)
 
 	S9xSetController(0, CTL_JOYPAD, 0, 0, 0, 0);
 	S9xSetController(1, CTL_NONE, 1, 0, 0, 0);
-	S9xVerifyControllers();
 
 	#define MAP_BUTTON(id, name) S9xMapButton((id), S9xGetCommandT((name)), false)
 
