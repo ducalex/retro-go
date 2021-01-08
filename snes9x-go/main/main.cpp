@@ -327,22 +327,9 @@ static bool load_state(char *pathName)
 
 static void snes9x_task(void *arg)
 {
-	rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-	rg_emu_init(&load_state, &save_state, NULL);
-
-	app = rg_system_get_app();
-
-	frames[0].width = SNES_WIDTH;
-	frames[0].height = SNES_HEIGHT_EXTENDED;
-	frames[0].pixel_format = PIXEL_FORMAT_565_LE;
-	frames[0].pixel_clear = -1;
-	frames[0].stride = SNES_WIDTH * 2;
-	frames[1] = frames[0];
-
-	frames[0].buffer = rg_alloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2, MEM_SLOW);
-	frames[1].buffer = rg_alloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2, MEM_SLOW);
-
 	printf("\nSnes9x " VERSION " for ODROID-GO\n");
+
+	vTaskDelay(5); // Make sure app_main() returned and freed its stack
 
 	S9xInitSettings();
 
@@ -373,9 +360,9 @@ static void snes9x_task(void *arg)
 	#define MAP_BUTTON(id, name) S9xMapButton((id), S9xGetCommandT((name)), false)
 
     MAP_BUTTON(GAMEPAD_KEY_A, "Joypad1 A");
-    MAP_BUTTON(GAMEPAD_KEY_B, "Joypad1 B");
-    MAP_BUTTON(GAMEPAD_KEY_START, "Joypad1 Select");
-    MAP_BUTTON(GAMEPAD_KEY_SELECT, "Joypad1 Start");
+    MAP_BUTTON(GAMEPAD_KEY_B, "Joypad1 Y");
+    MAP_BUTTON(GAMEPAD_KEY_START, "Joypad1 Start");
+    MAP_BUTTON(GAMEPAD_KEY_SELECT, "Joypad1 B"); // Select
     MAP_BUTTON(GAMEPAD_KEY_LEFT, "Joypad1 Left");
     MAP_BUTTON(GAMEPAD_KEY_RIGHT, "Joypad1 Right");
     MAP_BUTTON(GAMEPAD_KEY_UP, "Joypad1 Up");
@@ -407,6 +394,21 @@ static void snes9x_task(void *arg)
 
 extern "C" void app_main(void)
 {
+	rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
+	rg_emu_init(&load_state, &save_state, NULL);
+
+	app = rg_system_get_app();
+
+	frames[0].width = SNES_WIDTH;
+	frames[0].height = SNES_HEIGHT_EXTENDED;
+	frames[0].pixel_format = RG_PIXEL_565|RG_PIXEL_LE;
+	frames[0].pixel_clear = -1;
+	frames[0].stride = SNES_WIDTH * 2;
+	frames[1] = frames[0];
+
+	frames[0].buffer = rg_alloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2, MEM_SLOW);
+	frames[1].buffer = rg_alloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2, MEM_SLOW);
+
 	// Important to set CONFIG_ESP_TIMER_TASK_STACK_SIZE=2048
 	xTaskCreatePinnedToCore(&snes9x_task, "snes9x", 1024 * 48, NULL, 5, NULL, 0);
 }
