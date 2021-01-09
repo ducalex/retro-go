@@ -30,6 +30,12 @@
 
 #define PANIC_TRACE_MAGIC 0x12345678
 
+#ifdef ENABLE_PROFILING
+#define INPUT_TIMEOUT 500000000
+#else
+#define INPUT_TIMEOUT 5000000
+#endif
+
 typedef struct
 {
     uint32_t magicWord;
@@ -100,7 +106,7 @@ static void system_monitor_task(void *arg)
     #endif
 
         // Applications should never stop polling input. If they do, they're probably unresponsive...
-        if (statistics.lastTickTime > 0 && rg_input_gamepad_last_read() > 5000000)
+        if (statistics.lastTickTime > 0 && rg_input_gamepad_last_read() > INPUT_TIMEOUT)
         {
             RG_PANIC("Application unresponsive");
         }
