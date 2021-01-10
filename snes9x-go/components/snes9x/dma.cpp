@@ -977,7 +977,7 @@ void S9xStartHDMA (void)
 	if (PPU.HDMA != 0)
 		ADD_CYCLES(Timings.DMACPUSync);
 
-	for (uint8 i = 0; i < 8; i++)
+	for (int i = 0; i < 8; i++)
 	{
 		if (PPU.HDMA & (1 << i))
 		{
@@ -1049,7 +1049,7 @@ uint8 S9xDoHDMA (uint8 byte)
 				// OAM Address Invalidation
 				if (p->BAddress == 0x04)
 				{
-					if (SNESGameFixes.Uniracers)
+					if (Settings.UniracersHack)
 					{
 						PPU.OAMAddr = 0x10c;
 						PPU.OAMFlip = 0;

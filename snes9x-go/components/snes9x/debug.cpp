@@ -206,60 +206,6 @@ static uint16 S9xDebugGetWord (uint32 Address)
 	return (word);
 }
 
-static uint8 S9xDebugSA1GetByte (uint32 Address)
-{
-	int		block = (Address & 0xffffff) >> MEMMAP_SHIFT;
-	uint8	*GetAddress = SA1.Map[block];
-	uint8	byte = 0;
-
-	if (GetAddress >= (uint8 *) CMemory::MAP_LAST)
-	{
-		byte = *(GetAddress + (Address & 0xffff));
-		return (byte);
-	}
-
-	switch ((pint) GetAddress)
-	{
-		case CMemory::MAP_LOROM_SRAM:
-		case CMemory::MAP_SA1RAM:
-			byte = *(Memory.SRAM + (Address & 0xffff));
-			return (byte);
-
-		case CMemory::MAP_BWRAM:
-			byte = *(SA1.BWRAM + ((Address & 0x7fff) - 0x6000));
-			return (byte);
-
-		case CMemory::MAP_BWRAM_BITMAP:
-			Address -= 0x600000;
-			if (SA1.VirtualBitmapFormat == 2)
-				byte = (Memory.SRAM[(Address >> 2) & 0xffff] >> ((Address & 3) << 1)) &  3;
-			else
-				byte = (Memory.SRAM[(Address >> 1) & 0xffff] >> ((Address & 1) << 2)) & 15;
-			return (byte);
-
-		case CMemory::MAP_BWRAM_BITMAP2:
-			Address = (Address & 0xffff) - 0x6000;
-			if (SA1.VirtualBitmapFormat == 2)
-				byte = (SA1.BWRAM[(Address >> 2) & 0xffff] >> ((Address & 3) << 1)) &  3;
-			else
-				byte = (SA1.BWRAM[(Address >> 1) & 0xffff] >> ((Address & 1) << 2)) & 15;
-			return (byte);
-
-		default:
-			return (byte);
-	}
-}
-
-static uint16 S9xDebugSA1GetWord (uint32 Address)
-{
-	uint16	word;
-
-	word  = S9xDebugSA1GetByte(Address);
-	word |= S9xDebugSA1GetByte(Address + 1) << 8;
-
-	return (word);
-}
-
 static uint8 debug_cpu_op_print (char *Line, uint8 Bank, uint16 Address)
 {
 	uint8	S9xOpcode;

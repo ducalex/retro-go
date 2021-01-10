@@ -10,9 +10,6 @@
 #include "apu/apu.h"
 #include "controls.h"
 #include "display.h"
-#ifdef NETPLAY_SUPPORT
-#include "netplay.h"
-#endif
 #ifdef DEBUGGER
 #include "debug.h"
 #include "missing.h"
@@ -195,10 +192,10 @@ void S9xFixColourBrightness (void)
 
 	for (int i = 0; i < 256; i++)
 	{
-		IPPU.Red[i]   = IPPU.XB[(PPU.CGDATA[i])       & 0x1f];
-		IPPU.Green[i] = IPPU.XB[(PPU.CGDATA[i] >>  5) & 0x1f];
-		IPPU.Blue[i]  = IPPU.XB[(PPU.CGDATA[i] >> 10) & 0x1f];
-		IPPU.ScreenColors[i] = BUILD_PIXEL(IPPU.Red[i], IPPU.Green[i], IPPU.Blue[i]);
+		int r  = IPPU.XB[(PPU.CGDATA[i])       & 0x1f];
+		int g = IPPU.XB[(PPU.CGDATA[i] >>  5) & 0x1f];
+		int b = IPPU.XB[(PPU.CGDATA[i] >> 10) & 0x1f];
+		IPPU.ScreenColors[i] = BUILD_PIXEL(r, g, b);
 	}
 }
 
@@ -1726,10 +1723,7 @@ void S9xSoftResetPPU (void)
 
 	for (int c = 0; c < 256; c++)
 	{
-		IPPU.Red[c]   = (c & 7) << 2;
-		IPPU.Green[c] = ((c >> 3) & 7) << 2;
-		IPPU.Blue[c]  = ((c >> 6) & 2) << 3;
-		PPU.CGDATA[c] = IPPU.Red[c] | (IPPU.Green[c] << 5) | (IPPU.Blue[c] << 10);
+		PPU.CGDATA[c] = ((c & 7) << 2) | (((c >> 3) & 7) << 2) | (((c >> 6) & 2) << 3);
 	}
 
 	for (int c = 0; c < 128; c++)

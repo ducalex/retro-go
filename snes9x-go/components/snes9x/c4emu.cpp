@@ -7,7 +7,6 @@
 #include <math.h>
 #include "snes9x.h"
 #include "memmap.h"
-#include "sar.h"
 
 static const int16	C4SinTable[512] =
 {
@@ -170,6 +169,46 @@ static void C4BitPlaneWave (void);
 static void C4SprDisintegrate (void);
 static void C4ProcessSprites (void);
 
+
+#ifdef RIGHTSHIFT_IS_SAR
+#define SAR(b, n)	((b) >> (n))
+#else
+static inline int8 SAR (const int8 b, const int n)
+{
+#ifndef RIGHTSHIFT_int8_IS_SAR
+	if (b < 0)
+		return ((b >> n) | (-1 << (8  - n)));
+#endif
+	return (b >> n);
+}
+
+static inline int16 SAR (const int16 b, const int n)
+{
+#ifndef RIGHTSHIFT_int16_IS_SAR
+	if (b < 0)
+		return ((b >> n) | (-1 << (16 - n)));
+#endif
+	return (b >> n);
+}
+
+static inline int32 SAR (const int32 b, const int n)
+{
+#ifndef RIGHTSHIFT_int32_IS_SAR
+	if (b < 0)
+		return ((b >> n) | (-1 << (32 - n)));
+#endif
+	return (b >> n);
+}
+
+static inline int64 SAR (const int64 b, const int n)
+{
+#ifndef RIGHTSHIFT_int64_IS_SAR
+	if (b < 0)
+		return ((b >> n) | (-1 << (64 - n)));
+#endif
+	return (b >> n);
+}
+#endif
 
 static void C4ConvOAM (void)
 {

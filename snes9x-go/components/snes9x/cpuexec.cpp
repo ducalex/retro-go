@@ -17,7 +17,7 @@
 
 static inline void S9xReschedule (void);
 
-void S9xMainLoop (void)
+IRAM_ATTR void S9xMainLoop (void)
 {
 	#define CHECK_FOR_IRQ_CHANGE() \
 	if (Timings.IRQFlagChanging) \
@@ -171,7 +171,7 @@ void S9xMainLoop (void)
 	S9xPackStatus();
 }
 
-static inline void S9xReschedule (void)
+IRAM_ATTR static inline void S9xReschedule (void)
 {
 	switch (CPU.WhichEvent)
 	{
@@ -207,7 +207,7 @@ static inline void S9xReschedule (void)
 	}
 }
 
-void S9xDoHEventProcessing (void)
+IRAM_ATTR void S9xDoHEventProcessing (void)
 {
 #ifdef DEBUGGER
 	static char	eventname[7][32] =

@@ -53,14 +53,13 @@ struct CMemory
 	uint8	*BWRAM;
 	uint8	*C4RAM;
 
-	uint8	*Map[MEMMAP_NUM_BLOCKS];
-	uint8	*WriteMap[MEMMAP_NUM_BLOCKS];
-	uint8	BlockType[MEMMAP_NUM_BLOCKS];
+	uint8	*Map[MEMMAP_NUM_BLOCKS];		// 16384
+	uint8	*WriteMap[MEMMAP_NUM_BLOCKS];	// 16384
+	uint8	BlockType[MEMMAP_NUM_BLOCKS];	// 4096
 	uint8	ExtendedFormat;
 
 	char	ROMFilename[PATH_MAX + 1];
 	char	ROMName[ROM_NAME_LEN];
-	char	RawROMName[ROM_NAME_LEN];
 	char	ROMId[5];
 	int32	CompanyId;
 	uint8	ROMRegion;
@@ -79,9 +78,6 @@ struct CMemory
 	uint32	CalculatedSize;
 	uint32	CalculatedChecksum;
 
-	// ports can assign this to perform some custom action upon loading a ROM (such as adjusting controls)
-	void	(*PostRomInitFunc) (void);
-
 	bool8	Init (void);
 	void	Deinit (void);
 
@@ -93,8 +89,6 @@ struct CMemory
     bool8   LoadROMMem (const uint8 *, uint32);
 	bool8	LoadROM (const char *);
     bool8	LoadROMInt (int32);
-	bool8	LoadMultiCart (const char *, const char *);
-    bool8	LoadMultiCartInt ();
 	bool8	LoadSRAM (const char *);
 	bool8	SaveSRAM (const char *);
 	void	ClearSRAM (bool8 onlyNonSavedSRAM = 0);

@@ -30,7 +30,6 @@ static rg_video_frame_t frames[2];
 static rg_video_frame_t *currentUpdate = &frames[0];
 
 static rg_app_desc_t *app;
-static gamepad_state_t joystick;
 
 // static long frames_counter = 0;
 
@@ -253,47 +252,9 @@ void S9xAutoSaveSRAM(void)
 	// Memory.SaveSRAM(S9xGetFilename(".srm", SRAM_DIR));
 }
 
-static int64_t prevtime = 0;
-
 void S9xSyncSpeed(void)
 {
-	int64_t curtime = get_elapsed_time();
-
-	rg_system_tick(IPPU.RenderThisFrame, true, curtime - prevtime);
-
-	prevtime = curtime;
-
 	IPPU.RenderThisFrame = !IPPU.RenderThisFrame;
-
-	joystick = rg_input_read_gamepad();
-
-	if (joystick.values[GAMEPAD_KEY_MENU])
-	{
-		rg_gui_game_menu();
-	}
-	else if (joystick.values[GAMEPAD_KEY_VOLUME])
-	{
-		rg_gui_game_settings_menu(NULL);
-	}
-
-	for (int i = 0; i < GAMEPAD_KEY_MAX; i++) {
-		S9xReportButton(i, joystick.values[i]);
-	}
-}
-
-bool S9xPollButton(uint32 id, bool *pressed)
-{
-	return false;
-}
-
-bool S9xPollAxis(uint32 id, int16 *value)
-{
-	return false;
-}
-
-bool S9xPollPointer(uint32 id, int16 *x, int16 *y)
-{
-	return false;
 }
 
 void S9xHandlePortCommand(s9xcommand_t cmd, int16 data1, int16 data2)
@@ -336,10 +297,10 @@ static void snes9x_task(void *arg)
 	Settings.Stereo = FALSE;
 	Settings.SoundPlaybackRate = AUDIO_SAMPLE_RATE;
 	Settings.SoundInputRate = 20000;
+	Settings.SoundSync = FALSE;
 	Settings.Mute = TRUE;
 	Settings.AutoDisplayMessages = TRUE;
 	Settings.Transparency = TRUE;
-	Settings.DumpStreamsMaxFrames = -1;
 	Settings.SkipFrames = 0;
 
 	if (!Memory.Init() || !S9xInitAPU())
@@ -384,7 +345,34 @@ static void snes9x_task(void *arg)
 
 	while (1)
 	{
+		const int64_t startTime = get_elapsed_time();
+		gamepad_state_t joystick = rg_input_read_gamepad();
+
+		if (joystick.values[GAMEPAD_KEY_MENU])
+		{
+			rg_gui_game_menu();
+			continue;
+		}
+		else if (joystick.values[GAMEPAD_KEY_VOLUME])
+		{
+			rg_gui_game_settings_menu(NULL);
+			continue;
+		}
+
+		S9xReportButton(GAMEPAD_KEY_A, joystick.values[GAMEPAD_KEY_A]);
+		S9xReportButton(GAMEPAD_KEY_B, joystick.values[GAMEPAD_KEY_B]);
+		S9xReportButton(GAMEPAD_KEY_START, joystick.values[GAMEPAD_KEY_START]);
+		S9xReportButton(GAMEPAD_KEY_SELECT, joystick.values[GAMEPAD_KEY_SELECT]);
+		S9xReportButton(GAMEPAD_KEY_UP, joystick.values[GAMEPAD_KEY_UP]);
+		S9xReportButton(GAMEPAD_KEY_DOWN, joystick.values[GAMEPAD_KEY_DOWN]);
+		S9xReportButton(GAMEPAD_KEY_LEFT, joystick.values[GAMEPAD_KEY_LEFT]);
+		S9xReportButton(GAMEPAD_KEY_RIGHT, joystick.values[GAMEPAD_KEY_RIGHT]);
+
 		S9xMainLoop();
+
+		long elapsed = get_elapsed_time_since(startTime);
+
+		rg_system_tick(IPPU.RenderThisFrame, true, elapsed);
 	}
 
 	vTaskDelete(NULL);

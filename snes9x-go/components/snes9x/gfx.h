@@ -202,7 +202,4 @@ void S9xReRefresh (void);
 void S9xSetPalette (void);
 void S9xSyncSpeed (void);
 
-// called instead of S9xDisplayString if set to non-NULL
-extern void (*S9xCustomDisplayString) (const char *, int, int, bool, int type);
-
 #endif

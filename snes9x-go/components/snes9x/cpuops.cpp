@@ -17,6 +17,8 @@
 #endif
 
 #define AddCycles(n)	{ CPU.Cycles += (n); while (CPU.Cycles >= CPU.NextEvent) S9xDoHEventProcessing(); }
+// Less accurate irq handling when invoked in opcodes (set AddCyclesFast = AddCycles to get back accuracy)
+#define AddCyclesFast(n)	{ CPU.Cycles += (n); }
 
 #include "cpuaddr.h"
 #include "cpuops.h"

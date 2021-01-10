@@ -47,43 +47,6 @@ class fStream : public Stream
 		FSTREAM	fp;
 };
 
-#ifdef UNZIP_SUPPORT
-#  ifdef SYSTEM_ZIP
-#    include <minizip/unzip.h>
-#  else
-#    include "unzip.h"
-#  endif
-
-#define unz_BUFFSIZ	1024
-
-class unzStream : public Stream
-{
-	public:
-		unzStream (unzFile &);
-		virtual ~unzStream (void);
-		virtual int get_char (void);
-		virtual char * gets (char *, size_t);
-		virtual size_t read (void *, size_t);
-        virtual size_t write (void *, size_t);
-        virtual size_t pos (void);
-        virtual size_t size (void);
-        virtual int revert (uint8 origin, int32 offset);
-        virtual void closeStream();
-
-	private:
-        void   fill_buffer();
-        size_t buffer_remaining();
-
-		unzFile	file;
-		char	buffer[unz_BUFFSIZ];
-        size_t  pos_in_buf;
-        size_t  buf_pos_in_unzipped;
-		size_t	bytes_in_buf;
-        unz_file_pos unz_file_start_pos;
-};
-
-#endif
-
 class memStream : public Stream
 {
 	public:

@@ -8,18 +8,6 @@
 #include <numeric>
 #include <assert.h>
 
-#ifdef UNZIP_SUPPORT
-#  ifdef SYSTEM_ZIP
-#    include <minizip/unzip.h>
-#  else
-#    include "unzip/unzip.h"
-#  endif
-#endif
-
-#ifdef JMA_SUPPORT
-#include "jma/s9x-jma.h"
-#endif
-
 #include <ctype.h>
 #include <sys/stat.h>
 
@@ -769,9 +757,6 @@ static uint32 caCRC32 (uint8 *, uint32, uint32 crc32 = 0xffffffff);
 static bool8 ReadUPSPatch (Stream *, long, int32 &);
 static long ReadInt (Stream *, unsigned);
 static bool8 ReadIPSPatch (Stream *, long, int32 &);
-#ifdef UNZIP_SUPPORT
-static int unzFindExtension (unzFile &, const char *, bool restart = TRUE, bool print = TRUE, bool allowExact = FALSE);
-#endif
 
 // deinterleave
 
@@ -933,8 +918,6 @@ bool8 CMemory::Init (void)
 	ROM += 0x8000;
 
 	C4RAM   = ROM + 0x400000 + 8192 * 8; // C4
-
-	PostRomInitFunc = NULL;
 
 	return (TRUE);
 }
@@ -1158,99 +1141,49 @@ uint32 CMemory::FileLoader (uint8 *buffer, const char *filename, uint32 maxsize)
 	_splitpath(filename, drive, dir, name, exts);
 	_makepath(fname, drive, dir, name, exts);
 
-	int	nFormat = FILE_DEFAULT;
-	if (strcasecmp(ext, "zip") == 0)
-		nFormat = FILE_ZIP;
+	STREAM	fp = OPEN_STREAM(fname, "rb");
+	if (!fp)
+		return (0);
 
-	switch (nFormat)
+	strcpy(ROMFilename, fname);
+
+	int 	len  = 0;
+	uint32	size = 0;
+	bool8	more = FALSE;
+	uint8	*ptr = buffer;
+
+	do
 	{
-		case FILE_ZIP:
+		size = READ_STREAM(ptr, maxsize + 0x200 - (ptr - buffer), fp);
+		CLOSE_STREAM(fp);
+
+		size = HeaderRemove(size, ptr);
+		totalSize += size;
+		ptr += size;
+
+		// check for multi file roms
+		if (ptr - buffer < maxsize + 0x200 &&
+			(isdigit(ext[0]) && ext[1] == 0 && ext[0] < '9'))
 		{
-		#ifdef UNZIP_SUPPORT
-			if (!LoadZip(fname, &totalSize, buffer))
-			{
-			 	S9xMessage(S9X_ERROR, S9X_ROM_INFO, "Invalid Zip archive.");
-				return (0);
-			}
-
-			strcpy(ROMFilename, fname);
-		#else
-			S9xMessage(S9X_ERROR, S9X_ROM_INFO, "This binary was not created with Zip support.");
-			return (0);
-		#endif
-			break;
+			more = TRUE;
+			ext[0]++;
+			_makepath(fname, drive, dir, name, exts);
 		}
-
-		case FILE_JMA:
+		else
+		if (ptr - buffer < maxsize + 0x200 &&
+			(((len = strlen(name)) == 7 || len == 8) &&
+			strncasecmp(name, "sf", 2) == 0 &&
+			isdigit(name[2]) && isdigit(name[3]) && isdigit(name[4]) && isdigit(name[5]) &&
+			isalpha(name[len - 1])))
 		{
-		#ifdef JMA_SUPPORT
-			size_t	size = load_jma_file(fname, buffer);
-			if (!size)
-			{
-			 	S9xMessage(S9X_ERROR, S9X_ROM_INFO, "Invalid JMA archive.");
-				return (0);
-			}
-
-			totalSize = HeaderRemove(size, buffer);
-
-			strcpy(ROMFilename, fname);
-		#else
-			S9xMessage(S9X_ERROR, S9X_ROM_INFO, "This binary was not created with JMA support.");
-			return (0);
-		#endif
-			break;
+			more = TRUE;
+			name[len - 1]++;
+			_makepath(fname, drive, dir, name, exts);
 		}
+		else
+			more = FALSE;
 
-		case FILE_DEFAULT:
-		default:
-		{
-			STREAM	fp = OPEN_STREAM(fname, "rb");
-			if (!fp)
-				return (0);
-
-			strcpy(ROMFilename, fname);
-
-			int 	len  = 0;
-			uint32	size = 0;
-			bool8	more = FALSE;
-			uint8	*ptr = buffer;
-
-			do
-			{
-				size = READ_STREAM(ptr, maxsize + 0x200 - (ptr - buffer), fp);
-				CLOSE_STREAM(fp);
-
-				size = HeaderRemove(size, ptr);
-				totalSize += size;
-				ptr += size;
-
-				// check for multi file roms
-				if (ptr - buffer < maxsize + 0x200 &&
-					(isdigit(ext[0]) && ext[1] == 0 && ext[0] < '9'))
-				{
-					more = TRUE;
-					ext[0]++;
-					_makepath(fname, drive, dir, name, exts);
-				}
-				else
-				if (ptr - buffer < maxsize + 0x200 &&
-					(((len = strlen(name)) == 7 || len == 8) &&
-					strncasecmp(name, "sf", 2) == 0 &&
-					isdigit(name[2]) && isdigit(name[3]) && isdigit(name[4]) && isdigit(name[5]) &&
-					isalpha(name[len - 1])))
-				{
-					more = TRUE;
-					name[len - 1]++;
-					_makepath(fname, drive, dir, name, exts);
-				}
-				else
-					more = FALSE;
-
-			}	while (more && (fp = OPEN_STREAM(fname, "rb")) != NULL);
-
-			break;
-		}
-	}
+	}	while (more && (fp = OPEN_STREAM(fname, "rb")) != NULL);
 
     if (HeaderCount == 0)
 		S9xMessage(S9X_INFO, S9X_HEADERS_INFO, "No ROM file header found.");
@@ -1509,8 +1442,8 @@ bool8 CMemory::LoadROMInt (int32 ROMfillSize)
 		LastRomFilename[PATH_MAX] = 0;
 	}
 
-	memset(&SNESGameFixes, 0, sizeof(SNESGameFixes));
-	SNESGameFixes.SRAMInitialValue = 0x60;
+	Settings.UniracersHack = FALSE;
+	Settings.SRAMInitialValue = 0x60;
 
 	InitROM();
 
@@ -1521,7 +1454,7 @@ bool8 CMemory::LoadROMInt (int32 ROMfillSize)
 
 void CMemory::ClearSRAM (bool8 onlyNonSavedSRAM)
 {
-	memset(SRAM, SNESGameFixes.SRAMInitialValue, 0x20000);
+	memset(SRAM, Settings.SRAMInitialValue, 0x20000);
 }
 
 bool8 CMemory::LoadSRAM (const char *filename)
@@ -1898,19 +1831,14 @@ void CMemory::InitROM (void)
 	IPPU.TotalEmulatedFrames = 0;
 
 	//// Hack games
-
 	ApplyROMFixes();
 
 	//// Show ROM information
-	char displayName[ROM_NAME_LEN];
-
-	strcpy(RawROMName, ROMName);
-	sprintf(displayName, "%s", SafeANK(ROMName));
 	sprintf(ROMName, "%s", Safe(ROMName));
 	sprintf(ROMId, "%s", Safe(ROMId));
 
 	sprintf(String, "\"%s\" [%s] %s, %s, %s, %s, SRAM:%s, ID:%s, CRC32:%08X",
-		displayName, isChecksumOK ? "checksum ok" : "bad checksum",
+		ROMName, isChecksumOK ? "checksum ok" : "bad checksum",
 		MapType(), Size(), KartContents(), Settings.PAL ? "PAL" : "NTSC", StaticRAMSize(), ROMId, ROMCRC32);
 	S9xMessage(S9X_INFO, S9X_ROM_INFO, String);
 
@@ -1924,9 +1852,6 @@ void CMemory::InitROM (void)
 	Settings.ForceNotInterleaved = FALSE;
 	Settings.ForcePAL = FALSE;
 	Settings.ForceNTSC = FALSE;
-
-	if (PostRomInitFunc)
-		PostRomInitFunc();
 }
 
 // memory map
@@ -2589,12 +2514,12 @@ void CMemory::ApplyROMFixes (void)
 		if (match_na("SUPER DRIFT OUT")      || // Super Drift Out
 			match_na("SATAN IS OUR FATHER!") ||
 			match_na("goemon 4"))               // Ganbare Goemon Kirakira Douchuu
-			SNESGameFixes.SRAMInitialValue = 0x00;
+			Settings.SRAMInitialValue = 0x00;
 
 		// Additional game fixes by sanmaiwashi ...
 		// XXX: unnecessary?
 		if (match_na("SFX \xC5\xB2\xC4\xB6\xDE\xDD\xC0\xDE\xD1\xD3\xC9\xB6\xDE\xC0\xD8 1")) // SD Gundam Gaiden - Knight Gundam Monogatari
-			SNESGameFixes.SRAMInitialValue = 0x6b;
+			Settings.SRAMInitialValue = 0x6b;
 
 		// others: BS and ST-01x games are 0x00.
 	}
@@ -2608,7 +2533,7 @@ void CMemory::ApplyROMFixes (void)
 		// seems to need a disproven behavior, so we're definitely overlooking some other bug?
 		if (match_nn("UNIRACERS")) // Uniracers
 		{
-			SNESGameFixes.Uniracers = TRUE;
+			Settings.UniracersHack = TRUE;
 			printf("Applied Uniracers hack.\n");
 		}
 	}
@@ -2679,7 +2604,7 @@ static bool8 ReadUPSPatch (Stream *r, long, int32 &rom_size)
 
 	//fill expanded area with 0x00s; so that XORing works as expected below.
 	//note that this is needed (and works) whether output ROM is larger or smaller than pre-patched ROM
-	for(unsigned i = min((uint32) rom_size, out_size); i < max((uint32) rom_size, out_size); i++) {
+	for(int i = min((uint32) rom_size, out_size); i < max((uint32) rom_size, out_size); i++) {
 		Memory.ROM[i] = 0x00;
 	}
 
@@ -2914,40 +2839,6 @@ static bool8 ReadIPSPatch (Stream *r, long offset, int32 &rom_size)
 	return (1);
 }
 
-#ifdef UNZIP_SUPPORT
-static int unzFindExtension (unzFile &file, const char *ext, bool restart, bool print, bool allowExact)
-{
-	unz_file_info	info;
-	int				port, l = strlen(ext), e = allowExact ? 0 : 1;
-
-	if (restart)
-		port = unzGoToFirstFile(file);
-	else
-		port = unzGoToNextFile(file);
-
-	while (port == UNZ_OK)
-	{
-		int		len;
-		char	name[132];
-
-		unzGetCurrentFileInfo(file, &info, name, 128, NULL, 0, NULL, 0);
-		len = strlen(name);
-
-		if (len >= l + e && name[len - l - 1] == '.' && strcasecmp(name + len - l, ext) == 0 && unzOpenCurrentFile(file) == UNZ_OK)
-		{
-			if (print)
-				printf("Using patch %s", name);
-
-			return (port);
-		}
-
-		port = unzGoToNextFile(file);
-	}
-
-	return (port);
-}
-#endif
-
 void CMemory::CheckForAnyPatch (const char *rom_filename, bool8 header, int32 &rom_size)
 {
 	Settings.IsPatched = false;
@@ -2984,31 +2875,6 @@ void CMemory::CheckForAnyPatch (const char *rom_filename, bool8 header, int32 &r
 		else
 			printf(" failed!\n");
 	}
-
-#ifdef UNZIP_SUPPORT
-	if (!strcasecmp(ext, "zip") || !strcasecmp(ext, ".zip"))
-	{
-		unzFile	file = unzOpen(rom_filename);
-		if (file)
-		{
-			int	port = unzFindExtension(file, "bps");
-			if (port == UNZ_OK)
-			{
-				printf(" in %s", rom_filename);
-
-                Stream *s = new unzStream(file);
-				ret = ReadBPSPatch(s, offset, rom_size);
-				delete s;
-
-				if (ret)
-					printf("!\n");
-				else
-					printf(" failed!\n");
-			}
-			assert(unzClose(file) == UNZ_OK);
-		}
-	}
-#endif
 
 	n = S9xGetFilename(".bps", PATCH_DIR);
 
@@ -3049,31 +2915,6 @@ void CMemory::CheckForAnyPatch (const char *rom_filename, bool8 header, int32 &r
 		else
 			printf(" failed!\n");
 	}
-
-#ifdef UNZIP_SUPPORT
-	if (!strcasecmp(ext, "zip") || !strcasecmp(ext, ".zip"))
-	{
-		unzFile	file = unzOpen(rom_filename);
-		if (file)
-		{
-			int	port = unzFindExtension(file, "ups");
-			if (port == UNZ_OK)
-			{
-				printf(" in %s", rom_filename);
-
-                Stream *s = new unzStream(file);
-				ret = ReadUPSPatch(s, offset, rom_size);
-				delete s;
-
-				if (ret)
-					printf("!\n");
-				else
-					printf(" failed!\n");
-			}
-			assert(unzClose(file) == UNZ_OK);
-		}
-	}
-#endif
 
 	n = S9xGetFilename(".ups", PATCH_DIR);
 
@@ -3221,141 +3062,6 @@ void CMemory::CheckForAnyPatch (const char *rom_filename, bool8 header, int32 &r
 		if (flag)
 			return;
 	}
-
-#ifdef UNZIP_SUPPORT
-	if (!strcasecmp(ext, "zip") || !strcasecmp(ext, ".zip"))
-	{
-		unzFile	file = unzOpen(rom_filename);
-		if (file)
-		{
-			int	port = unzFindExtension(file, "ips");
-			while (port == UNZ_OK)
-			{
-				printf(" in %s", rom_filename);
-
-                Stream *s = new unzStream(file);
-				ret = ReadIPSPatch(s, offset, rom_size);
-				delete s;
-
-				if (ret)
-				{
-					printf("!\n");
-					flag = true;
-				}
-				else
-					printf(" failed!\n");
-
-				port = unzFindExtension(file, "ips", false);
-			}
-
-			if (!flag)
-			{
-				i = 0;
-
-				do
-				{
-					snprintf(ips, 8, "%03d.ips", i);
-
-					if (unzFindExtension(file, ips) != UNZ_OK)
-						break;
-
-					printf(" in %s", rom_filename);
-
-                    Stream *s = new unzStream(file);
-					ret = ReadIPSPatch(s, offset, rom_size);
-					delete s;
-
-					if (ret)
-					{
-						printf("!\n");
-						flag = true;
-					}
-					else
-					{
-						printf(" failed!\n");
-						break;
-					}
-
-					if (unzFindExtension(file, ips, false, false) == UNZ_OK)
-						printf("WARNING: Ignoring extra .%s files!\n", ips);
-				} while (++i < 1000);
-			}
-
-			if (!flag)
-			{
-				i = 0;
-
-				do
-				{
-					snprintf(ips, _MAX_EXT + 2, "ips%d", i);
-					if (strlen(ips) > _MAX_EXT)
-						break;
-
-					if (unzFindExtension(file, ips) != UNZ_OK)
-						break;
-
-					printf(" in %s", rom_filename);
-
-                    Stream *s = new unzStream(file);
-					ret = ReadIPSPatch(s, offset, rom_size);
-					delete s;
-
-					if (ret)
-					{
-						printf("!\n");
-						flag = true;
-					}
-					else
-					{
-						printf(" failed!\n");
-						break;
-					}
-
-					if (unzFindExtension(file, ips, false, false) == UNZ_OK)
-						printf("WARNING: Ignoring extra .%s files!\n", ips);
-				} while (++i != 0);
-			}
-
-			if (!flag)
-			{
-				i = 0;
-
-				do
-				{
-					snprintf(ips, 4, "ip%d", i);
-
-					if (unzFindExtension(file, ips) != UNZ_OK)
-						break;
-
-					printf(" in %s", rom_filename);
-
-                    Stream *s = new unzStream(file);
-					ret = ReadIPSPatch(s, offset, rom_size);
-					delete s;
-
-					if (ret)
-					{
-						printf("!\n");
-						flag = true;
-					}
-					else
-					{
-						printf(" failed!\n");
-						break;
-					}
-
-					if (unzFindExtension(file, ips, false, false) == UNZ_OK)
-						printf("WARNING: Ignoring extra .%s files!\n", ips);
-				} while (++i < 10);
-			}
-
-			assert(unzClose(file) == UNZ_OK);
-
-			if (flag)
-				return;
-		}
-	}
-#endif
 
 	n = S9xGetFilename(".ips", PATCH_DIR);
 

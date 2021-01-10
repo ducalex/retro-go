@@ -15,6 +15,8 @@
 #include "65c816.h"
 #include "messages.h"
 
+#include <esp_attr.h>
+
 #ifdef ZLIB
 #include <zlib.h>
 #define FSTREAM					gzFile
@@ -138,7 +140,7 @@ struct SCPUState
 	bool8	InWRAMDMAorHDMA;
 	uint8	HDMARanInDMA;
 	int32	CurrentDMAorHDMAChannel;
-	uint8	WhichEvent;
+	int32	WhichEvent;
 	int32	NextEvent;
 	bool8	WaitingForInterrupt;
 	uint32	AutoSaveTimer;
@@ -233,10 +235,6 @@ struct SSettings
 	uint32	InitialInfoStringTimeout;
 	uint16	DisplayColor;
 
-	bool8	DisableGameSpecificHacks;
-	bool8	BlockInvalidVRAMAccess;
-	int32	HDMATimingHack;
-
 	bool8	ForcedPause;
 	bool8	Paused;
 	bool8	StopEmulation;
@@ -247,35 +245,23 @@ struct SSettings
 	bool8	TurboMode;
 	bool8	FrameAdvance;
 
-	bool8	NetPlay;
-	bool8	NetPlayServer;
-	char	ServerName[128];
-	int		Port;
-
-	bool8	DumpStreams;
-	int		DumpStreamsMaxFrames;
-
-	char    InitialSnapshotFilename[PATH_MAX + 1];
 	bool8	FastSavestates;
 
 	bool8	NoPatch;
 	bool8	IgnorePatchChecksum;
 	bool8	IsPatched;
 	int32	AutoSaveDelay;
-	bool8	DontSaveOopsSnapshot;
-	bool8	UpAndDown;
 
-    int OverclockMode;
+	bool8	DisableGameSpecificHacks;
+	bool8	BlockInvalidVRAMAccess;
+	int32	HDMATimingHack;
+	uint8	SRAMInitialValue;
+	uint8	UniracersHack;
+
 	int	OneClockCycle;
 	int	OneSlowClockCycle;
 	int	TwoClockCycles;
 	int	MaxSpriteTilesPerLine;
-};
-
-struct SSNESGameFixes
-{
-	uint8	SRAMInitialValue;
-	uint8	Uniracers;
 };
 
 enum
@@ -299,7 +285,6 @@ void S9xInitSettings(void);
 extern struct SSettings			Settings;
 extern struct SCPUState			CPU;
 extern struct STimings			Timings;
-extern struct SSNESGameFixes	SNESGameFixes;
 extern char						String[513];
 
 #endif

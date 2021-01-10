@@ -14,10 +14,9 @@
 extern struct SLineData			LineData[240];
 extern struct SLineMatrixData	LineMatrixData[240];
 
-void S9xComputeClipWindows (void);
+extern void S9xComputeClipWindows (void);
 
-static int	font_width = 8, font_height = 9;
-void (*S9xCustomDisplayString) (const char *, int, int, bool, int) = NULL;
+static const int font_width = 8, font_height = 9;
 
 static void SetupOBJ (void);
 static void DrawOBJS (int);
@@ -30,11 +29,8 @@ static void DrawBackgroundOffsetMosaic (int, uint8, uint8, int);
 static inline void DrawBackgroundMode7 (int, void (*DrawMath) (uint32, uint32, int), void (*DrawNomath) (uint32, uint32, int), int);
 static inline void DrawBackdrop (void);
 static inline void RenderScreen (bool8);
-static uint16 get_crosshair_color (uint8);
 
 #define TILE_PLUS(t, x)	(((t) & 0xfc00) | ((t + x) & 0x3ff))
-
-static const uint16 TABLE_ZERO[0x10000] = {};
 
 bool8 S9xGraphicsInit (void)
 {
@@ -48,12 +44,12 @@ bool8 S9xGraphicsInit (void)
 	S9xBuildDirectColourMaps();
 
 	GFX.ScreenSize = GFX.Pitch / 2 * SNES_HEIGHT_EXTENDED;
-	GFX.ZERO       = (uint16 *)TABLE_ZERO;
 
 	GFX.SubScreen  = (uint16 *) malloc(GFX.ScreenSize * sizeof(uint16));
 	GFX.ZBuffer    = (uint8 *)  malloc(GFX.ScreenSize);
 	GFX.SubZBuffer = (uint8 *)  malloc(GFX.ScreenSize);
 	// GFX.ZERO = (uint16 *) malloc(0x10000, sizeof(uint16));
+	GFX.ZERO       = (uint16 *)GFX.SubScreen; // This will cause garbage but for now it's okay
 
 	if (!GFX.SubScreen || !GFX.ZBuffer || !GFX.SubZBuffer)
 	{
@@ -61,7 +57,7 @@ bool8 S9xGraphicsInit (void)
 		return (FALSE);
 	}
 
-	#if 0 // TO DO: pre-compute TABLE_ZERO
+	#if 0 // TO DO: pre-compute GFX.ZERO
 
 	// Lookup table for 1/2 color subtraction
 	memset(GFX.ZERO, 0, 0x10000 * sizeof(uint16));
@@ -131,7 +127,10 @@ void S9xBuildDirectColourMaps (void)
 
 	for (uint32 p = 0; p < 8; p++)
 		for (uint32 c = 0; c < 256; c++)
-			DirectColourMaps[p][c] = BUILD_PIXEL(IPPU.XB[((c & 7) << 2) | ((p & 1) << 1)], IPPU.XB[((c & 0x38) >> 1) | (p & 2)], IPPU.XB[((c & 0xc0) >> 3) | (p & 4)]);
+			DirectColourMaps[p][c] = BUILD_PIXEL(
+				IPPU.XB[((c & 7) << 2) | ((p & 1) << 1)],
+				IPPU.XB[((c & 0x38) >> 1) | (p & 2)],
+				IPPU.XB[((c & 0xc0) >> 3) | (p & 4)]);
 }
 
 void S9xStartScreenRefresh (void)
@@ -454,7 +453,7 @@ void S9xUpdateScreen (void)
 		if (GFX.DoInterlace && GFX.InterlaceFrame)
 			GFX.S += GFX.RealPPL;
 
-		for (uint32 l = GFX.StartY; l <= GFX.EndY; l++, GFX.S += GFX.PPL)
+		for (int l = GFX.StartY; l <= GFX.EndY; l++, GFX.S += GFX.PPL)
 			for (int x = 0; x < IPPU.RenderedScreenWidth; x++)
 				GFX.S[x] = black;
 	}
@@ -564,7 +563,7 @@ static void SetupOBJ (void)
 				else
 					GFX.OBJVisibleTiles[S] = GFX.OBJWidths[S] >> 3;
 
-				for (uint8 line = startline, Y = (uint8) (PPU.OBJ[S].VPos & 0xff); line < Height; Y++, line += inc)
+				for (int line = startline, Y = (uint8) (PPU.OBJ[S].VPos & 0xff); line < Height; Y++, line += inc)
 				{
 					if (Y >= SNES_HEIGHT_EXTENDED)
 						continue;
@@ -599,7 +598,6 @@ static void SetupOBJ (void)
 	}
 	else // evil FirstSprite+Y case
 	{
-		#if 0
 		// First, find out which sprites are on which lines
 		uint8 OBJOnLine[SNES_HEIGHT_EXTENDED][128];
 		// memset(OBJOnLine, 0, sizeof(OBJOnLine));
@@ -637,7 +635,7 @@ static void SetupOBJ (void)
 				else
 					GFX.OBJVisibleTiles[S] = GFX.OBJWidths[S] >> 3;
 
-				for (uint8 line = startline, Y = (uint8) (PPU.OBJ[S].VPos & 0xff); line < Height; Y++, line += inc)
+				for (int line = startline, Y = (uint8) (PPU.OBJ[S].VPos & 0xff); line < Height; Y++, line += inc)
 				{
 					if (Y >= SNES_HEIGHT_EXTENDED)
 						continue;
@@ -694,7 +692,6 @@ static void SetupOBJ (void)
 			if (j < 32)
 				GFX.OBJLines[Y].OBJ[j].Sprite = -1;
 		}
-		#endif
 	}
 
 	IPPU.OBJChanged = FALSE;
@@ -1709,12 +1706,6 @@ void S9xDisplayChar (uint16 *s, uint8 c)
 
 static void DisplayStringFromBottom (const char *string, int linesFromBottom, int pixelsFromLeft, bool allowWrap)
 {
-	if (S9xCustomDisplayString)
-	{
-		S9xCustomDisplayString (string, linesFromBottom, pixelsFromLeft, allowWrap, S9X_NO_INFO);
-		return;
-	}
-
 	if (linesFromBottom <= 0)
 		linesFromBottom = 1;
 
@@ -1782,81 +1773,3 @@ void S9xDisplayMessages (uint16 *screen, int ppl, int width, int height, int sca
 	if (GFX.InfoString && *GFX.InfoString)
 		S9xDisplayString(GFX.InfoString, 5, 1, true);
 }
-
-static uint16 get_crosshair_color (uint8 color)
-{
-	switch (color & 15)
-	{
-		case  0: return (BUILD_PIXEL( 0,  0,  0)); // transparent, shouldn't be used
-		case  1: return (BUILD_PIXEL( 0,  0,  0)); // Black
-		case  2: return (BUILD_PIXEL( 8,  8,  8)); // 25Grey
-		case  3: return (BUILD_PIXEL(16, 16, 16)); // 50Grey
-		case  4: return (BUILD_PIXEL(23, 23, 23)); // 75Grey
-		case  5: return (BUILD_PIXEL(31, 31, 31)); // White
-		case  6: return (BUILD_PIXEL(31,  0,  0)); // Red
-		case  7: return (BUILD_PIXEL(31, 16,  0)); // Orange
-		case  8: return (BUILD_PIXEL(31, 31,  0)); // Yellow
-		case  9: return (BUILD_PIXEL( 0, 31,  0)); // Green
-		case 10: return (BUILD_PIXEL( 0, 31, 31)); // Cyan
-		case 11: return (BUILD_PIXEL( 0, 23, 31)); // Sky
-		case 12: return (BUILD_PIXEL( 0,  0, 31)); // Blue
-		case 13: return (BUILD_PIXEL(23,  0, 31)); // Violet
-		case 14: return (BUILD_PIXEL(31,  0, 31)); // Magenta
-		case 15: return (BUILD_PIXEL(31,  0, 16)); // Purple
-	}
-
-	return (0);
-}
-
-void S9xDrawCrosshair (const char *crosshair, uint8 fgcolor, uint8 bgcolor, int16 x, int16 y)
-{
-	if (!crosshair)
-		return;
-
-	int16	r, rx = 1, c, cx = 1, W = SNES_WIDTH, H = PPU.ScreenHeight;
-	uint16	fg, bg;
-
-	x -= 7;
-	y -= 7;
-
-	if (IPPU.DoubleWidthPixels)  { cx = 2; x *= 2; W *= 2; }
-	if (IPPU.DoubleHeightPixels) { rx = 2; y *= 2; H *= 2; }
-
-	fg = get_crosshair_color(fgcolor);
-	bg = get_crosshair_color(bgcolor);
-
-	uint16	*s = GFX.Screen + y * (int32)GFX.RealPPL + x;
-
-	for (r = 0; r < 15 * rx; r++, s += GFX.RealPPL - 15 * cx)
-	{
-		if (y + r < 0)
-		{
-			s += 15 * cx;
-			continue;
-		}
-
-		if (y + r >= H)
-			break;
-
-		for (c = 0; c < 15 * cx; c++, s++)
-		{
-			if (x + c < 0 || s < GFX.Screen)
-				continue;
-
-			if (x + c >= W)
-			{
-				s += 15 * cx - c;
-				break;
-			}
-
-			uint8	p = crosshair[(r / rx) * 15 + (c / cx)];
-
-			if (p == '#' && fgcolor)
-				*s = (fgcolor & 0x10) ? COLOR_ADD1_2(fg, *s) : fg;
-			else
-			if (p == '.' && bgcolor)
-				*s = (bgcolor & 0x10) ? COLOR_ADD1_2(*s, bg) : bg;
-		}
-	}
-}
-

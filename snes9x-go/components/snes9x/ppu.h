@@ -49,9 +49,6 @@ struct InternalPPU
 	int		CurrentLine;
 	int		PreviousLine;
 	uint8	*XB;
-	uint32	Red[256];
-	uint32	Green[256];
-	uint32	Blue[256];
 	uint16	ScreenColors[256];
 	uint8	MaxBrightness;
 	bool8	RenderThisFrame;
@@ -555,10 +552,10 @@ static inline void REGISTER_2122 (uint8 Byte)
 			FLUSH_REDRAW();
 			PPU.CGDATA[PPU.CGADD] = (Byte & 0x7f) << 8 | PPU.CGSavedByte;
 			IPPU.ColorsChanged = TRUE;
-			IPPU.Red[PPU.CGADD] = IPPU.XB[PPU.CGSavedByte & 0x1f];
-			IPPU.Blue[PPU.CGADD] = IPPU.XB[(Byte >> 2) & 0x1f];
-			IPPU.Green[PPU.CGADD] = IPPU.XB[(PPU.CGDATA[PPU.CGADD] >> 5) & 0x1f];
-			IPPU.ScreenColors[PPU.CGADD] = (uint16) BUILD_PIXEL(IPPU.Red[PPU.CGADD], IPPU.Green[PPU.CGADD], IPPU.Blue[PPU.CGADD]);
+			int r = IPPU.XB[PPU.CGSavedByte & 0x1f];
+			int g = IPPU.XB[(Byte >> 2) & 0x1f];
+			int b = IPPU.XB[(PPU.CGDATA[PPU.CGADD] >> 5) & 0x1f];
+			IPPU.ScreenColors[PPU.CGADD] = (uint16) BUILD_PIXEL(r, g, b);
 		}
 
 		PPU.CGADD++;

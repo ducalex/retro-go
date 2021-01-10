@@ -14,9 +14,6 @@
 #include "memmap.h"
 #include "controls.h"
 #include "display.h"
-#ifdef NETPLAY_SUPPORT
-#include "netplay.h"
-#endif
 
 #ifdef DEBUGGER
 #include "debug.h"
@@ -58,8 +55,6 @@ void S9xInitSettings(void)
 	Settings.ForceInterleaved = false;
 	Settings.ForceNotInterleaved = false;
 
-	Settings.InitialSnapshotFilename[0] = '\0';
-
 	// Sound
 
 	Settings.SoundSync                  =  true;
@@ -92,22 +87,13 @@ void S9xInitSettings(void)
 	Settings.SkipFrames = AUTO_FRAMERATE;
 
 	// Controls
-	Settings.UpAndDown                  =  false;
 	parse_controller_spec(0, "pad1");
 	parse_controller_spec(1, "none");
 
 	// Hack
-    Settings.OverclockMode                  = 0;
 	Settings.DisableGameSpecificHacks       = false;
 	Settings.HDMATimingHack                 = 100;
 	Settings.MaxSpriteTilesPerLine          = 34;
-
-	// Netplay
-#ifdef NETPLAY_SUPPORT
-	Settings.NetPlay = false;
-	Settings.Port = NP_DEFAULT_PORT;
-	Settings.ServerName[0] = '\0';
-#endif
 
 	// Debug
 #ifdef DEBUGGER

@@ -5,19 +5,20 @@ class DSP : public Processor {
 public:
   inline uint8 read(uint8 addr) {
     synchronize ();
-    return spc_dsp.read(addr);
+    // return spc_dsp.read(addr);
+    return 0;
   }
 
   inline void synchronize (void) {
     if (clock) {
-      spc_dsp.run (clock);
+      // spc_dsp.run (clock);
       clock = 0;
     }
   }
 
   inline void write(uint8 addr, uint8 data) {
     synchronize ();
-    spc_dsp.write(addr, data);
+    // spc_dsp.write(addr, data);
   }
 
   void save_state(uint8 **);
