@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <esp_idf_version.h>
 #include <esp_attr.h>
 #include <stdbool.h>
@@ -33,6 +37,8 @@ typedef struct
     state_handler_t loadState;
     state_handler_t saveState;
     int32_t speedupEnabled;
+    int32_t refreshRate;
+    int32_t sampleRate;
     int32_t startAction;
 } rg_app_desc_t;
 
@@ -65,7 +71,8 @@ typedef struct
     uint32_t fullFrames;
     uint32_t busyTime;
     uint32_t realTime;
-    uint32_t resetTime;
+    uint64_t resetTime;
+    uint32_t ticks;
 } runtime_counters_t;
 
 typedef struct
@@ -76,7 +83,6 @@ typedef struct
     float totalFPS;
     float emulatedSpeed;
     float busyPercent;
-    uint64_t lastTickTime;
     uint32_t freeMemoryInt;
     uint32_t freeMemoryExt;
     uint32_t freeBlockInt;
@@ -94,7 +100,7 @@ void rg_system_switch_app(const char *app) __attribute__((noreturn));
 void rg_system_set_boot_app(const char *app);
 bool rg_system_find_app(const char *app);
 void rg_system_set_led(int value);
-void rg_system_tick(bool skippedFrame, bool fullFrame, long busyTime);
+void rg_system_tick(bool skippedFrame, bool fullFrame, int busyTime);
 rg_app_desc_t *rg_system_get_app();
 runtime_stats_t rg_system_get_stats();
 
@@ -160,4 +166,8 @@ extern void heap_caps_malloc_extmem_enable(size_t limit);
 
 #ifndef DRAM_ATTR
 #define DRAM_ATTR
+#endif
+
+#ifdef __cplusplus
+}
 #endif

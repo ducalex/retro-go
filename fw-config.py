@@ -17,8 +17,6 @@ PROJECT_APPS = {
   'smsplusgx-go': [0,  458752],
   'huexpress-go': [0,  458752],
   'handy-go':     [0,  458752],
-  # 'meteor-go':    [0,  851968],
-  'snes9x-go':    [0,  2621440],
-  # 'neopop-go':    [0,  720896],
-  # 'mpython-go':   [0,  720896],
+  # 'snes9x-go':    [0,  2621440],
+  # 'ngpocket-go':  [0,  1048576],
 }

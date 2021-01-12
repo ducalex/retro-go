@@ -31,6 +31,8 @@ static SemaphoreHandle_t spi_count_semaphore;
 static spi_transaction_t trans[SPI_TRANSACTION_COUNT];
 static spi_device_handle_t spi;
 
+static update_callback_t *updateCallback = NULL;
+
 static QueueHandle_t videoTaskQueue;
 
 static int8_t backlightLevels[] = {10, 25, 50, 75, 100};
@@ -40,13 +42,13 @@ static display_rotation_t rotationMode = RG_DISPLAY_ROTATION_OFF;
 static display_scaling_t scalingMode = RG_DISPLAY_SCALING_FILL;
 static display_filter_t filterMode = RG_DISPLAY_FILTER_OFF;
 
-static int8_t forceVideoRefresh = true;
+static bool forceVideoRefresh = true;
 
 static int x_inc = SCREEN_WIDTH;
 static int y_inc = SCREEN_HEIGHT;
 static int x_origin = 0;
 static int y_origin = 0;
-static int8_t screen_line_is_empty[SCREEN_HEIGHT];
+static bool screen_line_is_empty[SCREEN_HEIGHT];
 
 typedef struct {
     int8_t start  : 1; // Indicates this line or column is safe to start an update on
@@ -528,9 +530,14 @@ bilinear_filter(uint16_t *line_buffer, int top, int left, int width, int height,
 }
 
 static inline void
-write_rect(void *buffer, uint16_t *palette, int left, int top, int width, int height,
-           int stride, int pixel_format, int pixel_mask, int pixel_clear)
+write_rect(rg_video_frame_t *update, int left, int top, int width, int height)
 {
+    uint8_t *buffer = update->buffer;
+    uint16_t *palette = update->palette;
+    uint32_t pixel_mask = update->pixel_mask;
+    uint32_t stride = update->stride;
+    uint32_t pixel_format = update->flags;
+
     const int scaled_left = ((SCREEN_WIDTH * left) + (x_inc - 1)) / x_inc;
     const int scaled_top = ((SCREEN_HEIGHT * top) + (y_inc - 1)) / y_inc;
     const int scaled_right = ((SCREEN_WIDTH * (left + width)) + (x_inc - 1)) / x_inc;
@@ -593,7 +600,7 @@ write_rect(void *buffer, uint16_t *palette, int left, int top, int width, int he
                     uint32_t pixel;
 
                     if (pixel_format & RG_PIXEL_PAL)
-                        pixel = palette[((uint8_t*)buffer)[x] & pixel_mask];
+                        pixel = palette[buffer[x] & pixel_mask];
                     else
                         pixel = ((uint16_t*)buffer)[x];
 
@@ -609,10 +616,6 @@ write_rect(void *buffer, uint16_t *palette, int left, int top, int width, int he
 
             if (!screen_line_is_empty[++screen_y])
             {
-                if (pixel_clear >= 0) {
-                    // if (pixel_clear > -1) ((uint16_t*)buffer)[x] = pixel_clear;
-                    memset((uint8_t*)buffer, pixel_clear, width);
-                }
                 buffer += stride;
                 ++y;
             }
@@ -639,47 +642,19 @@ write_rect(void *buffer, uint16_t *palette, int left, int top, int width, int he
     }
 }
 
-static inline bool
-pixel_diff(uint32_t pixel1, uint32_t pixel2, uint16_t *palette1, uint16_t *palette2,
-           uint32_t pixel_mask, uint32_t palette_shift_mask)
-{
-    uint32_t p1 = pixel1 & pixel_mask;
-    uint32_t p2 = pixel2 & pixel_mask;
-
-    if (palette_shift_mask) {
-        if (pixel1 & palette_shift_mask) p1 += (pixel_mask + 1);
-        if (pixel2 & palette_shift_mask) p2 += (pixel_mask + 1);
-    }
-
-    return palette1[p1] != palette2[p2];
-}
-
 static inline int
 frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFrame)
 {
-    uint8_t pixel_mask = frame->pixel_mask;
+    // NOTE: We no longer use the palette when comparing pixels. It is now the emulator's
+    // responsibility to force a full redraw when its palette changes.
+    // In most games a palette change is unusual so we get a performance increase by not checking.
+
     rg_line_diff_t *out_diff = frame->diff;
-    bool use_u32bit = false;
 
-    // If there's no palette we compare all the bits
-    if (frame->palette == NULL)
-    {
-        pixel_mask = 0xFF;
-        use_u32bit = true;
-    }
-    // If the palette didn't change we can speed up things by avoiding pixel_diff()
-    else if (frame->palette == prevFrame->palette
-         || memcmp(frame->palette, prevFrame->palette, (pixel_mask + 1) * 2) == 0)
-    {
-        pixel_mask |= frame->pal_shift_mask;
-        use_u32bit = true;
-    }
-
-    int partial_update_remaining = frame->width * frame->height * FULL_UPDATE_THRESHOLD;
-    int pixel_size = (frame->pixel_format & RG_PIXEL_PAL) ? 1 : 2;
+    int threshold_remaining = frame->width * frame->height * FULL_UPDATE_THRESHOLD;
+    int pixel_size = (frame->flags & RG_PIXEL_PAL) ? 1 : 2;
     int lines_changed = 0;
 
-    uint32_t u32_pixel_mask = (pixel_mask << 24)|(pixel_mask << 16)|(pixel_mask << 8)|pixel_mask;
     uint32_t u32_blocks = (frame->width * pixel_size / 4);
     uint32_t u32_pixels = 4 / pixel_size;
 
@@ -689,54 +664,29 @@ frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFrame)
         out_diff[y].width = 0;
         out_diff[y].repeat = 1;
 
-        if (use_u32bit) {
-            // This is only accurate to 4 pixels of course, but much faster
-            uint32_t *buffer32 = frame->buffer + i;
-            uint32_t *old_buffer32 = prevFrame->buffer + i;
-            for (int x = 0; x < u32_blocks; ++x)
-            {
-                if ((buffer32[x] & u32_pixel_mask) != (old_buffer32[x] & u32_pixel_mask))
-                {
-                    for (int xl = u32_blocks - 1; xl >= x; --xl)
-                    {
-                        if ((buffer32[xl] & u32_pixel_mask) != (old_buffer32[xl] & u32_pixel_mask)) {
-                            out_diff[y].left = x * u32_pixels;
-                            out_diff[y].width = ((xl + 1) - x) * u32_pixels;
-                            lines_changed++;
-                            break;
-                        }
-                    }
-                    break;
-                }
-            }
-        } else {
-            uint8_t *buffer8 = frame->buffer + i;
-            uint8_t *old_buffer8 = prevFrame->buffer + i;
-            for (int x = 0; x < frame->width; ++x)
-            {
-                if (!pixel_diff(buffer8[x], old_buffer8[x], frame->palette, prevFrame->palette,
-                                frame->pixel_mask, frame->pal_shift_mask)) {
-                    continue;
-                }
-                out_diff[y].left = x;
+        uint32_t *buffer = frame->buffer + i;
+        uint32_t *prevBuffer = prevFrame->buffer + i;
 
-                for (x = frame->width - 1; x >= 0; --x)
+        for (int x = 0; x < u32_blocks; ++x)
+        {
+            if (buffer[x] != prevBuffer[x])
+            {
+                for (int xl = u32_blocks - 1; xl >= x; --xl)
                 {
-                    if (!pixel_diff(buffer8[x], old_buffer8[x], frame->palette, prevFrame->palette,
-                                    frame->pixel_mask, frame->pal_shift_mask)) {
-                        continue;
+                    if (buffer[xl] != prevBuffer[xl]) {
+                        out_diff[y].left = x * u32_pixels;
+                        out_diff[y].width = ((xl + 1) - x) * u32_pixels;
+                        lines_changed++;
+                        break;
                     }
-                    out_diff[y].width = (x - out_diff[y].left) + 1;
-                    lines_changed++;
-                    break;
                 }
                 break;
             }
         }
 
-        partial_update_remaining -= out_diff[y].width;
+        threshold_remaining -= out_diff[y].width;
 
-        if (partial_update_remaining <= 0)
+        if (threshold_remaining <= 0)
         {
             out_diff[0].left = 0;
             out_diff[0].width = frame->width;
@@ -875,9 +825,11 @@ display_task(void *arg)
                 rg_display_set_scale(update->width, update->height, 0.0);
             }
             rg_display_clear(0x0000);
+
+            forceVideoRefresh = false;
         }
 
-        RG_ASSERT((update->pixel_format & RG_PIXEL_PAL) == 0 || update->palette, "Palette not defined");
+        RG_ASSERT((update->flags & RG_PIXEL_PAL) == 0 || update->palette, "Palette not defined");
 
         for (int y = 0; y < update->height;)
         {
@@ -885,14 +837,15 @@ display_task(void *arg)
 
             if (diff->width > 0)
             {
-                write_rect(update->buffer, update->palette, diff->left, y, diff->width,
-                           diff->repeat, update->stride, update->pixel_format,
-                           update->pixel_mask, update->pixel_clear);
+                write_rect(update, diff->left, y, diff->width, diff->repeat);
             }
             y += diff->repeat;
         }
 
-        forceVideoRefresh = false;
+        if (updateCallback)
+        {
+            (*updateCallback)(update);
+        }
 
         xQueueReceive(videoTaskQueue, &update, portMAX_DELAY);
     }
@@ -900,8 +853,6 @@ display_task(void *arg)
     videoTaskQueue = NULL;
 
     vTaskDelete(NULL);
-
-    while (1) {}
 }
 
 void
@@ -997,6 +948,12 @@ rg_display_set_backlight(display_backlight_t level)
 }
 
 void
+rg_display_set_callback(update_callback_t *func)
+{
+    updateCallback = func;
+}
+
+void
 rg_display_force_refresh(void)
 {
     forceVideoRefresh = true;
@@ -1027,12 +984,12 @@ rg_display_save_frame(const char *filename, rg_video_frame_t *frame, double scal
         {
             uint32_t pixel;
 
-            if (frame->pixel_format & RG_PIXEL_PAL)
+            if (frame->flags & RG_PIXEL_PAL)
                 pixel = palette[line[(int)(x * factor)] & pixel_mask];
             else
                 pixel = ((uint16_t*)line)[(int)(x * factor)];
 
-            if ((frame->pixel_format & RG_PIXEL_LE) == 0) // BE to LE
+            if ((frame->flags & RG_PIXEL_LE) == 0) // BE to LE
                 pixel = (pixel << 8) | (pixel >> 8);
 
             *(dst++) = ((pixel >> 11) & 0x1F) << 3;

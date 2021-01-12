@@ -156,11 +156,10 @@ extern "C" void app_main(void)
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     rg_emu_init(&load_state, &save_state, NULL);
 
+    frames[0].flags = RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].width = HANDY_SCREEN_WIDTH;
     frames[0].height = HANDY_SCREEN_WIDTH;
     frames[0].stride = HANDY_SCREEN_WIDTH * 2;
-    frames[0].pixel_format = RG_PIXEL_565|RG_PIXEL_BE;
-    frames[0].pixel_clear = -1;
     frames[1] = frames[0];
 
     // the HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH is deliberate because of rotation

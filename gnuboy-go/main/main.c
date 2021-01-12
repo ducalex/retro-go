@@ -203,11 +203,10 @@ void app_main(void)
 
     app = rg_system_get_app();
 
+    frames[0].flags = RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].width = GB_WIDTH;
     frames[0].height = GB_HEIGHT;
     frames[0].stride = GB_WIDTH * 2;
-    frames[0].pixel_format = RG_PIXEL_565|RG_PIXEL_BE;
-    frames[0].pixel_clear = -1;
     frames[1] = frames[0];
 
     frames[0].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);

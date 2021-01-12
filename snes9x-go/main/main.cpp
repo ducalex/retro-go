@@ -385,10 +385,9 @@ extern "C" void app_main(void)
 
 	app = rg_system_get_app();
 
+	frames[0].flags = RG_PIXEL_565|RG_PIXEL_LE;
 	frames[0].width = SNES_WIDTH;
 	frames[0].height = SNES_HEIGHT;
-	frames[0].pixel_format = RG_PIXEL_565|RG_PIXEL_LE;
-	frames[0].pixel_clear = -1;
 	frames[0].stride = SNES_WIDTH * 2;
 	frames[1] = frames[0];
 

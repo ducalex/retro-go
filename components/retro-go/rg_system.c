@@ -31,9 +31,9 @@
 #define PANIC_TRACE_MAGIC 0x12345678
 
 #ifdef ENABLE_PROFILING
-#define INPUT_TIMEOUT 500000000
+#define INPUT_TIMEOUT 1000000000
 #else
-#define INPUT_TIMEOUT 5000000
+#define INPUT_TIMEOUT 8000000
 #endif
 
 typedef struct
@@ -60,56 +60,30 @@ static spi_lock_res_t spiMutexOwner;
 
 static void system_monitor_task(void *arg)
 {
-    runtime_counters_t current;
+    runtime_counters_t current = {0};
     bool letState = false;
-    float tickTime = 0;
-    long loops = 0;
 
     while (1)
     {
+        float tickTime = get_elapsed_time() - counters.resetTime;
+        long  ticks = counters.ticks - current.ticks;
+
         // Make a copy and reset counters immediately because processing could take 1-2ms
         current = counters;
         counters.totalFrames = counters.fullFrames = 0;
         counters.skippedFrames = counters.busyTime = 0;
         counters.resetTime = get_elapsed_time();
 
-        tickTime = (counters.resetTime - current.resetTime);
-
-        if (current.busyTime > tickTime)
-            current.busyTime = tickTime;
-
         statistics.battery = rg_input_read_battery();
-        statistics.busyPercent = current.busyTime / tickTime * 100.f;
+        statistics.busyPercent = RG_MIN(current.busyTime / tickTime * 100.f, 100.f);
         statistics.skippedFPS = current.skippedFrames / (tickTime / 1000000.f);
         statistics.totalFPS = current.totalFrames / (tickTime / 1000000.f);
-        // To do get the actual game refresh rate somehow
-        statistics.emulatedSpeed = statistics.totalFPS / 60 * 100.f;
+        statistics.emulatedSpeed = statistics.totalFPS / currentApp.refreshRate * 100.f;
 
         statistics.freeMemoryInt = heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
         statistics.freeMemoryExt = heap_caps_get_free_size(MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
         statistics.freeBlockInt = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
         statistics.freeBlockExt = heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
-
-    #if (configGENERATE_RUN_TIME_STATS == 1)
-        TaskStatus_t pxTaskStatusArray[16];
-        uint32_t ulTotalTime = 0;
-        uint32_t uxArraySize = uxTaskGetSystemState(pxTaskStatusArray, 16, &ulTotalTime);
-        ulTotalTime /= 100UL;
-
-        for (x = 0; x < uxArraySize; x++)
-        {
-            if (pxTaskStatusArray[x].xHandle == xTaskGetIdleTaskHandleForCPU(0))
-                statistics.idleTimeCPU0 = 100 - (pxTaskStatusArray[x].ulRunTimeCounter / ulTotalTime);
-            if (pxTaskStatusArray[x].xHandle == xTaskGetIdleTaskHandleForCPU(1))
-                statistics.idleTimeCPU1 = 100 - (pxTaskStatusArray[x].ulRunTimeCounter / ulTotalTime);
-        }
-    #endif
-
-        // Applications should never stop polling input. If they do, they're probably unresponsive...
-        if (statistics.lastTickTime > 0 && rg_input_gamepad_last_read() > INPUT_TIMEOUT)
-        {
-            RG_PANIC("Application unresponsive");
-        }
 
         if (statistics.battery.percentage < 2)
         {
@@ -122,20 +96,32 @@ static void system_monitor_task(void *arg)
             rg_system_set_led(letState);
         }
 
-        printf("HEAP:%d+%d (%d+%d), BUSY:%.4f, FPS:%.4f (SKIP:%d, PART:%d, FULL:%d), BATTERY:%d\n",
-            statistics.freeMemoryInt / 1024,
-            statistics.freeMemoryExt / 1024,
-            statistics.freeBlockInt / 1024,
-            statistics.freeBlockExt / 1024,
-            statistics.busyPercent,
-            statistics.totalFPS,
-            current.skippedFrames,
-            current.totalFrames - current.fullFrames - current.skippedFrames,
-            current.fullFrames,
-            statistics.battery.millivolts);
+        if (counters.ticks == 0)
+        {
+            // App isn't ticking (eg, our launcher)
+        }
+        else if (ticks > 0)
+        {
+            printf("HEAP:%d+%d (%d+%d), BUSY:%.4f, FPS:%.4f (SKIP:%d, PART:%d, FULL:%d), BATTERY:%d\n",
+                statistics.freeMemoryInt / 1024,
+                statistics.freeMemoryExt / 1024,
+                statistics.freeBlockInt / 1024,
+                statistics.freeBlockExt / 1024,
+                statistics.busyPercent,
+                statistics.totalFPS,
+                current.skippedFrames,
+                current.totalFrames - current.fullFrames - current.skippedFrames,
+                current.fullFrames,
+                statistics.battery.millivolts);
+        }
+        else if (rg_input_gamepad_last_read() > INPUT_TIMEOUT)
+        {
+            RG_PANIC("Application unresponsive");
+        }
 
         #ifdef ENABLE_PROFILING
-            if ((loops % 10) == 0)
+            static long loops = 0;
+            if (((loops++) % 10) == 0)
             {
                 rg_profiler_stop();
                 rg_profiler_print();
@@ -144,10 +130,28 @@ static void system_monitor_task(void *arg)
         #endif
 
         vTaskDelay(pdMS_TO_TICKS(1000));
-        loops++;
     }
 
     vTaskDelete(NULL);
+}
+
+// IRAM_ATTR void rg_system_tick(int fullFrames, int partialFrames, int skippedFrames, int busyTime)
+IRAM_ATTR void rg_system_tick(bool skippedFrame, bool fullFrame, int busyTime)
+{
+    // counters.skippedFrames += skippedFrames;
+    // counters.fullFrames += fullFrames;
+    // counters.totalFrames += fullFrames + partialFrames + skippedFrames;
+    if (skippedFrame) counters.skippedFrames++;
+    else if (fullFrame) counters.fullFrames++;
+    counters.totalFrames++;
+
+    counters.busyTime += busyTime;
+    counters.ticks++;
+}
+
+runtime_stats_t rg_system_get_stats()
+{
+    return statistics;
 }
 
 bool rg_sdcard_mount()
@@ -194,11 +198,8 @@ bool rg_sdcard_unmount()
     return false;
 }
 
-static void rg_gpio_init()
+void rg_system_gpio_init()
 {
-    // rtc_gpio_deinit(RG_GPIO_GAMEPAD_MENU);
-    // rtc_gpio_deinit(GPIO_NUM_14);
-
     // Blue LED
     gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
     gpio_set_level(RG_GPIO_LED, 0);
@@ -239,8 +240,8 @@ void rg_system_init(int appId, int sampleRate)
     // and rg_settings_init() if JSON is used
     bool sd_init = rg_sdcard_mount();
 
+    rg_system_gpio_init();
     rg_settings_init();
-    rg_gpio_init();
     rg_gui_init();
     rg_input_init();
     rg_audio_init(sampleRate);
@@ -325,6 +326,7 @@ void rg_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t 
 
     currentApp.loadState = load;
     currentApp.saveState = save;
+    currentApp.refreshRate = 60;
 
     printf("%s: Init done. romPath='%s'\n", __func__, currentApp.romPath);
 }
@@ -556,21 +558,6 @@ void rg_system_sleep()
 void rg_system_set_led(int value)
 {
     gpio_set_level(RG_GPIO_LED, value);
-}
-
-IRAM_ATTR void rg_system_tick(bool skippedFrame, bool fullFrame, long busyTime)
-{
-    if (skippedFrame) counters.skippedFrames++;
-    else if (fullFrame) counters.fullFrames++;
-    counters.totalFrames++;
-    counters.busyTime += busyTime;
-
-    statistics.lastTickTime = get_elapsed_time();
-}
-
-runtime_stats_t rg_system_get_stats()
-{
-    return statistics;
 }
 
 IRAM_ATTR void rg_spi_lock_acquire(spi_lock_res_t owner)

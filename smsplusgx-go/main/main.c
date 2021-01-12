@@ -18,7 +18,6 @@ static uint32_t audioBuffer[AUDIO_BUFFER_LENGTH];
 static uint16_t palettes[2][32];
 static rg_video_frame_t frames[2];
 static rg_video_frame_t *currentUpdate = &frames[0];
-static rg_video_frame_t *previousUpdate = NULL;
 
 static long skipFrames = 0;
 
@@ -112,10 +111,8 @@ void app_main(void)
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     rg_emu_init(&LoadState, &SaveState, &netplay_callback);
 
-    frames[0].pixel_format = RG_PIXEL_PAL|RG_PIXEL_565|RG_PIXEL_BE;
+    frames[0].flags = RG_PIXEL_PAL|RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].pixel_mask = PIXEL_MASK;
-    frames[0].pixel_clear = -1;
-    frames[0].pal_shift_mask = 0x80;
     frames[1] = frames[0];
 
     frames[0].buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
@@ -291,9 +288,10 @@ void app_main(void)
         {
             rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
 
-            render_copy_palette(currentUpdate->palette);
-
-            fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_SCREEN_UPDATE_FULL;
+            if (render_copy_palette(currentUpdate->palette))
+                fullFrame = rg_display_queue_update(currentUpdate, NULL);
+            else
+                fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_SCREEN_UPDATE_FULL;
 
             // Swap buffers
             currentUpdate = previousUpdate;

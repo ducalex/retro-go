@@ -108,12 +108,11 @@ void osd_gfx_set_mode(int width, int height)
 
     printf("%s: Cropping H: %d V: %d\n", __func__, crop_h, crop_v);
 
+    frames[0].flags = RG_PIXEL_PAL|RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].width = width - crop_h;
     frames[0].height = height - crop_v;
     frames[0].stride = XBUF_WIDTH;
-    frames[0].pixel_format = RG_PIXEL_PAL|RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].pixel_mask = 0xFF;
-    frames[0].pixel_clear = -1;
     frames[0].palette = mypalette;
     frames[1] = frames[0];
 
@@ -122,7 +121,6 @@ void osd_gfx_set_mode(int width, int height)
 
     set_current_fb(0);
 
-    rg_display_force_refresh();
     gfx_init_done = true;
 }
 
@@ -135,10 +133,7 @@ void osd_gfx_blit(void)
 
     if (drawFrame)
     {
-#ifndef USE_PARTIAL_FRAMES
-        curFrame->pixel_clear = PCE.Palette[0];
         prevFrame = NULL;
-#endif
         if (rg_display_queue_update(curFrame, prevFrame) == RG_SCREEN_UPDATE_FULL)
         {
             fullFrames++;
@@ -150,9 +145,8 @@ void osd_gfx_blit(void)
     // See if we need to skip a frame to keep up
     if (skipFrames == 0)
     {
-#ifndef USE_PARTIAL_FRAMES
         skipFrames++;
-#endif
+
         if (app->speedupEnabled)
             skipFrames += app->speedupEnabled * 2.5;
     }
@@ -240,6 +234,16 @@ static void audioTask(void *arg)
     vTaskDelete(NULL);
 }
 
+static void clear_buffer(rg_video_frame_t *update)
+{
+    void *buffer = update->buffer;
+    for (int i = 0; i < update->height; ++i)
+    {
+        memset(buffer, PCE.Palette[0], update->width);
+        buffer += update->stride;
+    }
+}
+
 void osd_snd_init(void)
 {
     host.sound.stereo = true;
@@ -318,6 +322,7 @@ void app_main(void)
 {
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     rg_emu_init(&load_state, &save_state, NULL);
+    rg_display_set_callback(&clear_buffer);
 
     app = rg_system_get_app();
 

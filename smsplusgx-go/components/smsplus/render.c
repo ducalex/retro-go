@@ -836,7 +836,10 @@ static inline void parse_satb(int line)
   }
 }
 
-void render_copy_palette(uint16* palette)
+bool render_copy_palette(uint16* palette)
 {
-    memcpy(palette, pixel, sizeof(pixel));
+  if (memcmp(palette, pixel, sizeof(pixel)) == 0)
+    return false;
+  memcpy(palette, pixel, sizeof(pixel));
+  return true;
 }
