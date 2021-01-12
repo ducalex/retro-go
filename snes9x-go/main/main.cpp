@@ -312,16 +312,18 @@ static void snes9x_task(void *arg)
 	S9xSetController(0, CTL_JOYPAD, 0, 0, 0, 0);
 	S9xSetController(1, CTL_NONE, 1, 0, 0, 0);
 
-	#define MAP_BUTTON(id, name) S9xMapButton((id), S9xGetCommandT((name)), false)
-
-    MAP_BUTTON(GAMEPAD_KEY_A, "Joypad1 A");
-    MAP_BUTTON(GAMEPAD_KEY_B, "Joypad1 B");
-    MAP_BUTTON(GAMEPAD_KEY_START, "Joypad1 Start");
-    MAP_BUTTON(GAMEPAD_KEY_SELECT, "Joypad1 X"); // Select
-    MAP_BUTTON(GAMEPAD_KEY_LEFT, "Joypad1 Left");
-    MAP_BUTTON(GAMEPAD_KEY_RIGHT, "Joypad1 Right");
-    MAP_BUTTON(GAMEPAD_KEY_UP, "Joypad1 Up");
-    MAP_BUTTON(GAMEPAD_KEY_DOWN, "Joypad1 Down");
+	S9xMapButtonT(SNES_A_MASK, "Joypad1 A");
+    S9xMapButtonT(SNES_B_MASK, "Joypad1 B");
+    S9xMapButtonT(SNES_X_MASK, "Joypad1 X");
+    S9xMapButtonT(SNES_Y_MASK, "Joypad1 Y");
+    S9xMapButtonT(SNES_TL_MASK, "Joypad1 TL");
+    S9xMapButtonT(SNES_TR_MASK, "Joypad1 TR");
+    S9xMapButtonT(SNES_START_MASK, "Joypad1 Start");
+    S9xMapButtonT(SNES_SELECT_MASK, "Joypad1 X");
+    S9xMapButtonT(SNES_LEFT_MASK, "Joypad1 Left");
+    S9xMapButtonT(SNES_RIGHT_MASK, "Joypad1 Right");
+    S9xMapButtonT(SNES_UP_MASK, "Joypad1 Up");
+    S9xMapButtonT(SNES_DOWN_MASK, "Joypad1 Down");
 
 	S9xInitSound(0);
 	S9xSetSoundMute(TRUE);
@@ -339,30 +341,51 @@ static void snes9x_task(void *arg)
 	CPU.Flags = saved_flags;
 	Settings.StopEmulation = FALSE;
 
+	bool menuCancelled = false;
+	bool menuPressed = false;
+
 	while (1)
 	{
-		const int64_t startTime = get_elapsed_time();
 		gamepad_state_t joystick = rg_input_read_gamepad();
 
-		if (joystick.values[GAMEPAD_KEY_MENU])
+		if (menuPressed && !joystick.values[GAMEPAD_KEY_MENU])
 		{
-			rg_gui_game_menu();
-			continue;
+			if (!menuCancelled)
+			{
+				vTaskDelay(5);
+				rg_gui_game_menu();
+			}
+			menuCancelled = false;
 		}
 		else if (joystick.values[GAMEPAD_KEY_VOLUME])
 		{
 			rg_gui_game_settings_menu(NULL);
-			continue;
 		}
 
-		S9xReportButton(GAMEPAD_KEY_A, joystick.values[GAMEPAD_KEY_A]);
-		S9xReportButton(GAMEPAD_KEY_B, joystick.values[GAMEPAD_KEY_B]);
-		S9xReportButton(GAMEPAD_KEY_START, joystick.values[GAMEPAD_KEY_START]);
-		S9xReportButton(GAMEPAD_KEY_SELECT, joystick.values[GAMEPAD_KEY_SELECT]);
-		S9xReportButton(GAMEPAD_KEY_UP, joystick.values[GAMEPAD_KEY_UP]);
-		S9xReportButton(GAMEPAD_KEY_DOWN, joystick.values[GAMEPAD_KEY_DOWN]);
-		S9xReportButton(GAMEPAD_KEY_LEFT, joystick.values[GAMEPAD_KEY_LEFT]);
-		S9xReportButton(GAMEPAD_KEY_RIGHT, joystick.values[GAMEPAD_KEY_RIGHT]);
+		int64_t startTime = get_elapsed_time();
+
+		menuPressed = joystick.values[GAMEPAD_KEY_MENU];
+
+		if (menuPressed && (joystick.values[GAMEPAD_KEY_B] || joystick.values[GAMEPAD_KEY_A]
+				|| joystick.values[GAMEPAD_KEY_START] || joystick.values[GAMEPAD_KEY_SELECT]))
+		{
+			menuCancelled = true;
+		}
+
+		S9xReportButton(SNES_TL_MASK, menuPressed && joystick.values[GAMEPAD_KEY_B]);
+		S9xReportButton(SNES_TR_MASK, menuPressed && joystick.values[GAMEPAD_KEY_A]);
+		S9xReportButton(SNES_START_MASK, menuPressed && joystick.values[GAMEPAD_KEY_START]);
+		S9xReportButton(SNES_SELECT_MASK, menuPressed && joystick.values[GAMEPAD_KEY_SELECT]);
+
+		S9xReportButton(SNES_A_MASK, !menuPressed && joystick.values[GAMEPAD_KEY_A]);
+		S9xReportButton(SNES_B_MASK, !menuPressed && joystick.values[GAMEPAD_KEY_B]);
+		S9xReportButton(SNES_X_MASK, !menuPressed && joystick.values[GAMEPAD_KEY_START]);
+		S9xReportButton(SNES_Y_MASK, !menuPressed && joystick.values[GAMEPAD_KEY_SELECT]);
+
+		S9xReportButton(SNES_UP_MASK, joystick.values[GAMEPAD_KEY_UP]);
+		S9xReportButton(SNES_DOWN_MASK, joystick.values[GAMEPAD_KEY_DOWN]);
+		S9xReportButton(SNES_LEFT_MASK, joystick.values[GAMEPAD_KEY_LEFT]);
+		S9xReportButton(SNES_RIGHT_MASK, joystick.values[GAMEPAD_KEY_RIGHT]);
 
 		S9xMainLoop();
 

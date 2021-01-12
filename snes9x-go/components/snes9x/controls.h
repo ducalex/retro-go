@@ -78,6 +78,8 @@ void S9xUnmapID (uint32 id);
 bool S9xMapButton (uint32 id, s9xcommand_t mapping, bool poll);
 void S9xReportButton (uint32 id, bool pressed);
 
+bool S9xMapButtonT (uint32 id, const char *command, bool poll = false);
+
 // Do whatever the s9xcommand_t says to do.
 // If cmd.type is a button type, data1 should be TRUE (non-0) or FALSE (0) to indicate whether the 'button' is pressed or released.
 // If cmd.type is an axis, data1 holds the deflection value.

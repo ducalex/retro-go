@@ -311,6 +311,11 @@ void S9xUnmapID (uint32 id)
 	keymap.erase(id);
 }
 
+bool S9xMapButtonT (uint32 id, const char *command, bool poll)
+{
+	return S9xMapButton(id, S9xGetCommandT(command), poll);
+}
+
 bool S9xMapButton (uint32 id, s9xcommand_t mapping, bool poll)
 {
 	int	t;
