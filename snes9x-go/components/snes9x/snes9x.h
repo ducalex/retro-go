@@ -199,15 +199,12 @@ struct SSettings
 	bool8	TraceSMP;
 
 	uint8	DSP;
-	bool8	C4;
 
 	bool8	ForceLoROM;
 	bool8	ForceHiROM;
 	bool8	ForceHeader;
 	bool8	ForceNoHeader;
 	bool8	ForceInterleaved;
-	bool8	ForceInterleaved2;
-	bool8	ForceInterleaveGD24;
 	bool8	ForceNotInterleaved;
 	bool8	ForcePAL;
 	bool8	ForceNTSC;

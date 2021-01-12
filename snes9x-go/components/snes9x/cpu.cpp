@@ -104,8 +104,6 @@ void S9xReset (void)
 
 	if (Settings.DSP)
 		S9xResetDSP();
-	if (Settings.C4)
-		S9xInitC4();
 }
 
 void S9xSoftReset (void)
@@ -119,6 +117,4 @@ void S9xSoftReset (void)
 
 	if (Settings.DSP)
 		S9xResetDSP();
-	if (Settings.C4)
-		S9xInitC4();
 }

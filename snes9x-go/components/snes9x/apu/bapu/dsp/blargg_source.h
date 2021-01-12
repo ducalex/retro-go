@@ -47,25 +47,15 @@ static inline void blargg_dprintf_( const char*, ... ) { }
 #undef min
 #undef max
 
-#define DEF_MIN_MAX( type ) \
-	static inline type min( type x, type y ) { if ( x < y ) return x; return y; }\
-	static inline type max( type x, type y ) { if ( y < x ) return x; return y; }
-
-DEF_MIN_MAX( int )
-DEF_MIN_MAX( unsigned )
-DEF_MIN_MAX( long )
-DEF_MIN_MAX( unsigned long )
-DEF_MIN_MAX( float )
-DEF_MIN_MAX( double )
-
-#undef DEF_MIN_MAX
+#define min(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
+#define max(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
 
 /*
 // using const references generates crappy code, and I am currenly only using these
 // for built-in types, so they take arguments by value
 
 // TODO: remove
-inline int min( int x, int y ) 
+inline int min( int x, int y )
 template<class T>
 inline T min( T x, T y )
 {

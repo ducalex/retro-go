@@ -38,10 +38,8 @@ void S9xInitSettings(void)
 	memset(&Settings, 0, sizeof(Settings));
 
 	// ROM
-	Settings.ForceInterleaved2          =  false;
-	Settings.ForceInterleaveGD24        =  false;
-	Settings.NoPatch                    = !true;
-	Settings.IgnorePatchChecksum        =  false;
+	Settings.NoPatch               = false;
+	Settings.IgnorePatchChecksum   = false;
 
 	Settings.ForceLoROM = false;
 	Settings.ForceHiROM = false;
@@ -70,7 +68,7 @@ void S9xInitSettings(void)
 	// Display
 
 	Settings.Transparency               =  true;
-	Settings.DisableGraphicWindows      = !true;
+	Settings.DisableGraphicWindows      =  false;
 	Settings.DisplayFrameRate           =  false;
 	Settings.AutoDisplayMessages        =  true;
 	Settings.InitialInfoStringTimeout   =  120;

@@ -31,6 +31,8 @@ static rg_video_frame_t *currentUpdate = &frames[0];
 
 static rg_app_desc_t *app;
 
+static char temp_path[PATH_MAX + 1];
+
 // static long frames_counter = 0;
 
 // static bool netplay = false;
@@ -98,36 +100,49 @@ void _makepath(char *path, const char *, const char *dir, const char *fname, con
 
 const char *S9xGetDirectory(enum s9x_getdirtype dirtype)
 {
-	return "/sdcard/roms/snes";
+	S9xGetFilename("none", dirtype);
+
+	char *end = strrchr(temp_path, '/');
+
+	if (end)
+		*end = 0;
+
+	return temp_path;
 }
 
 const char *S9xGetFilename(const char *ex, enum s9x_getdirtype dirtype)
 {
-	static char s[PATH_MAX + 1];
-	char drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], fname[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
+	char *path;
 
-	_splitpath(Memory.ROMFilename, drive, dir, fname, ext);
-	snprintf(s, PATH_MAX + 1, "%s%s%s%s", S9xGetDirectory(dirtype), SLASH_STR, fname, ex);
+	switch (dirtype)
+	{
+		case HOME_DIR:
+		case ROMFILENAME_DIR:
+		case ROM_DIR:
+			path = rg_emu_get_path(EMU_PATH_ROM_FILE, 0);
+			strcpy(temp_path, path);
+			break;
 
-	return (s);
-}
+		case SRAM_DIR:
+			path = rg_emu_get_path(EMU_PATH_SAVE_SRAM, 0);
+			strcpy(temp_path, path);
+			break;
 
-const char *S9xGetFilenameInc(const char *ex, enum s9x_getdirtype dirtype)
-{
-	static char s[PATH_MAX + 1];
-	char drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], fname[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
+		case SNAPSHOT_DIR:
+			path = rg_emu_get_path(EMU_PATH_SAVE_STATE, 0);
+			strcpy(temp_path, path);
+			break;
 
-	unsigned int i = 0;
-	const char *d;
+		default:
+			path = rg_emu_get_path(EMU_PATH_TEMP_FILE, 0);
+			strcpy(temp_path, path);
+			strcpy(temp_path, ex);
+			break;
+	}
 
-	_splitpath(Memory.ROMFilename, drive, dir, fname, ext);
-	d = S9xGetDirectory(dirtype);
+	free(path);
 
-	do
-		snprintf(s, PATH_MAX + 1, "%s%s%s.%03d%s", d, SLASH_STR, fname, i++, ex);
-	while (rg_filesize(s) > 0 && i < 1000);
-
-	return (s);
+	return temp_path;
 }
 
 const char *S9xBasename(const char *f)
@@ -143,25 +158,6 @@ const char *S9xChooseFilename(bool8 read_only)
 
 bool8 S9xOpenSnapshotFile(const char *filename, bool8 read_only, STREAM *file)
 {
-	char s[PATH_MAX + 1];
-	char drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], fname[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
-
-	_splitpath(filename, drive, dir, fname, ext);
-
-	if (*drive || *dir == SLASH_CHAR || (strlen(dir) > 1 && *dir == '.' && *(dir + 1) == SLASH_CHAR))
-	{
-		strncpy(s, filename, PATH_MAX + 1);
-		s[PATH_MAX] = 0;
-	}
-	else
-		snprintf(s, PATH_MAX + 1, "%s%s%s", S9xGetDirectory(SNAPSHOT_DIR), SLASH_STR, fname);
-
-	if (!*ext && strlen(s) <= PATH_MAX - 4)
-		strcat(s, ".frz");
-
-	if ((*file = OPEN_STREAM(s, read_only ? "rb" : "wb")))
-		return (TRUE);
-
 	return (FALSE);
 }
 

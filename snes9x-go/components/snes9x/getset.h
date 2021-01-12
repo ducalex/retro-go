@@ -9,7 +9,6 @@
 
 #include "cpuexec.h"
 #include "dsp.h"
-#include "c4.h"
 
 #define addCyclesInMemoryAccess \
 	if (!CPU.InDMAorHDMA) \
@@ -50,10 +49,9 @@ static inline int32 memory_speed (uint32 address)
 
 inline uint8 S9xGetByte (uint32 Address)
 {
-	int		block = (Address & 0xffffff) >> MEMMAP_SHIFT;
-	uint8	*GetAddress = Memory.Map[block];
-	int32	speed = memory_speed(Address);
-	uint8	byte;
+	uint8	*GetAddress = Memory.Map[(Address & 0xffffff) >> MEMMAP_SHIFT];
+	uint32	speed = memory_speed(Address);
+	uint32	byte;
 
 	if (GetAddress >= (uint8 *) CMemory::MAP_LAST)
 	{
@@ -102,11 +100,6 @@ inline uint8 S9xGetByte (uint32 Address)
 			addCyclesInMemoryAccess;
 			return (byte);
 
-		case CMemory::MAP_C4:
-			byte = S9xGetC4(Address & 0xffff);
-			addCyclesInMemoryAccess;
-			return (byte);
-
 		case CMemory::MAP_NONE:
 		default:
 			byte = OpenBus;
@@ -117,7 +110,7 @@ inline uint8 S9xGetByte (uint32 Address)
 
 inline uint16 S9xGetWord (uint32 Address, enum s9xwrap_t w = WRAP_NONE)
 {
-	uint16	word;
+	uint32	word;
 
 	uint32	mask = MEMMAP_MASK & (w == WRAP_PAGE ? 0xff : (w == WRAP_BANK ? 0xffff : 0xffffff));
 	if ((Address & mask) == mask)
@@ -144,9 +137,8 @@ inline uint16 S9xGetWord (uint32 Address, enum s9xwrap_t w = WRAP_NONE)
 		}
 	}
 
-	int		block = (Address & 0xffffff) >> MEMMAP_SHIFT;
-	uint8	*GetAddress = Memory.Map[block];
-	int32	speed = memory_speed(Address);
+	uint8	*GetAddress = Memory.Map[(Address & 0xffffff) >> MEMMAP_SHIFT];
+	uint32	speed = memory_speed(Address);
 
 	if (GetAddress >= (uint8 *) CMemory::MAP_LAST)
 	{
@@ -159,9 +151,8 @@ inline uint16 S9xGetWord (uint32 Address, enum s9xwrap_t w = WRAP_NONE)
 	{
 		case CMemory::MAP_CPU:
 			word  = S9xGetCPU(Address & 0xffff);
-			addCyclesInMemoryAccess;
 			word |= S9xGetCPU((Address + 1) & 0xffff) << 8;
-			addCyclesInMemoryAccess;
+			addCyclesInMemoryAccess_x2;
 			return (word);
 
 		case CMemory::MAP_PPU:
@@ -172,9 +163,8 @@ inline uint16 S9xGetWord (uint32 Address, enum s9xwrap_t w = WRAP_NONE)
 			}
 
 			word  = S9xGetPPU(Address & 0xffff);
-			addCyclesInMemoryAccess;
 			word |= S9xGetPPU((Address + 1) & 0xffff) << 8;
-			addCyclesInMemoryAccess;
+			addCyclesInMemoryAccess_x2;
 			return (word);
 
 		case CMemory::MAP_LOROM_SRAM:
@@ -203,16 +193,8 @@ inline uint16 S9xGetWord (uint32 Address, enum s9xwrap_t w = WRAP_NONE)
 
 		case CMemory::MAP_DSP:
 			word  = S9xGetDSP(Address & 0xffff);
-			addCyclesInMemoryAccess;
 			word |= S9xGetDSP((Address + 1) & 0xffff) << 8;
-			addCyclesInMemoryAccess;
-			return (word);
-
-		case CMemory::MAP_C4:
-			word  = S9xGetC4(Address & 0xffff);
-			addCyclesInMemoryAccess;
-			word |= S9xGetC4((Address + 1) & 0xffff) << 8;
-			addCyclesInMemoryAccess;
+			addCyclesInMemoryAccess_x2;
 			return (word);
 
 		case CMemory::MAP_NONE:
@@ -225,9 +207,8 @@ inline uint16 S9xGetWord (uint32 Address, enum s9xwrap_t w = WRAP_NONE)
 
 inline void S9xSetByte (uint8 Byte, uint32 Address)
 {
-	int		block = (Address & 0xffffff) >> MEMMAP_SHIFT;
-	uint8	*SetAddress = Memory.WriteMap[block];
-	int32	speed = memory_speed(Address);
+	uint8	*SetAddress = Memory.WriteMap[(Address & 0xffffff) >> MEMMAP_SHIFT];
+	uint32	speed = memory_speed(Address);
 
 	if (SetAddress >= (uint8 *) CMemory::MAP_LAST)
 	{
@@ -282,11 +263,6 @@ inline void S9xSetByte (uint8 Byte, uint32 Address)
 			addCyclesInMemoryAccess;
 			return;
 
-		case CMemory::MAP_C4:
-			S9xSetC4(Byte, Address & 0xffff);
-			addCyclesInMemoryAccess;
-			return;
-
 		case CMemory::MAP_NONE:
 		default:
 			addCyclesInMemoryAccess;
@@ -330,9 +306,8 @@ inline void S9xSetWord (uint16 Word, uint32 Address, enum s9xwrap_t w = WRAP_NON
 		return;
 	}
 
-	int		block = (Address & 0xffffff) >> MEMMAP_SHIFT;
-	uint8	*SetAddress = Memory.WriteMap[block];
-	int32	speed = memory_speed(Address);
+	uint8	*SetAddress = Memory.WriteMap[(Address & 0xffffff) >> MEMMAP_SHIFT];
+	uint32	speed = memory_speed(Address);
 
 	if (SetAddress >= (uint8 *) CMemory::MAP_LAST)
 	{
@@ -347,19 +322,15 @@ inline void S9xSetWord (uint16 Word, uint32 Address, enum s9xwrap_t w = WRAP_NON
 			if (o)
 			{
 				S9xSetCPU(Word >> 8, (Address + 1) & 0xffff);
-				addCyclesInMemoryAccess;
 				S9xSetCPU((uint8) Word, Address & 0xffff);
-				addCyclesInMemoryAccess;
-				return;
 			}
 			else
 			{
 				S9xSetCPU((uint8) Word, Address & 0xffff);
-				addCyclesInMemoryAccess;
 				S9xSetCPU(Word >> 8, (Address + 1) & 0xffff);
-				addCyclesInMemoryAccess;
-				return;
 			}
+			addCyclesInMemoryAccess_x2;
+			return;
 
 		case CMemory::MAP_PPU:
 			if (CPU.InDMAorHDMA)
@@ -374,19 +345,15 @@ inline void S9xSetWord (uint16 Word, uint32 Address, enum s9xwrap_t w = WRAP_NON
 			if (o)
 			{
 				S9xSetPPU(Word >> 8, (Address + 1) & 0xffff);
-				addCyclesInMemoryAccess;
 				S9xSetPPU((uint8) Word, Address & 0xffff);
-				addCyclesInMemoryAccess;
-				return;
 			}
 			else
 			{
 				S9xSetPPU((uint8) Word, Address & 0xffff);
-				addCyclesInMemoryAccess;
 				S9xSetPPU(Word >> 8, (Address + 1) & 0xffff);
-				addCyclesInMemoryAccess;
-				return;
 			}
+			addCyclesInMemoryAccess_x2;
+			return;
 
 		case CMemory::MAP_LOROM_SRAM:
 			if (Memory.SRAMMask)
@@ -432,37 +399,15 @@ inline void S9xSetWord (uint16 Word, uint32 Address, enum s9xwrap_t w = WRAP_NON
 			if (o)
 			{
 				S9xSetDSP(Word >> 8, (Address + 1) & 0xffff);
-				addCyclesInMemoryAccess;
 				S9xSetDSP((uint8) Word, Address & 0xffff);
-				addCyclesInMemoryAccess;
-				return;
 			}
 			else
 			{
 				S9xSetDSP((uint8) Word, Address & 0xffff);
-				addCyclesInMemoryAccess;
 				S9xSetDSP(Word >> 8, (Address + 1) & 0xffff);
-				addCyclesInMemoryAccess;
-				return;
 			}
-
-		case CMemory::MAP_C4:
-			if (o)
-			{
-				S9xSetC4(Word >> 8, (Address + 1) & 0xffff);
-				addCyclesInMemoryAccess;
-				S9xSetC4((uint8) Word, Address & 0xffff);
-				addCyclesInMemoryAccess;
-				return;
-			}
-			else
-			{
-				S9xSetC4((uint8) Word, Address & 0xffff);
-				addCyclesInMemoryAccess;
-				S9xSetC4(Word >> 8, (Address + 1) & 0xffff);
-				addCyclesInMemoryAccess;
-				return;
-			}
+			addCyclesInMemoryAccess_x2;
+			return;
 
 		case CMemory::MAP_NONE:
 		default:
@@ -473,10 +418,12 @@ inline void S9xSetWord (uint16 Word, uint32 Address, enum s9xwrap_t w = WRAP_NON
 
 inline void S9xSetPCBase (uint32 Address)
 {
-	Registers.PBPC = Address & 0xffffff;
-	ICPU.ShiftedPB = Address & 0xff0000;
+	Address &= 0xffffff;
 
-	uint8	*GetAddress = Memory.Map[(int)((Address & 0xffffff) >> MEMMAP_SHIFT)];
+	uint8	*GetAddress = Memory.Map[Address >> MEMMAP_SHIFT];
+
+	Registers.PBPC = Address;
+	ICPU.ShiftedPB = Address & 0xff0000;
 
 	CPU.MemSpeed = memory_speed(Address);
 	CPU.MemSpeedx2 = CPU.MemSpeed << 1;
@@ -505,10 +452,6 @@ inline void S9xSetPCBase (uint32 Address)
 
 		case CMemory::MAP_BWRAM:
 			CPU.PCBase = Memory.BWRAM - 0x6000 - (Address & 0x8000);
-			return;
-
-		case CMemory::MAP_C4:
-			CPU.PCBase = S9xGetBasePointerC4(Address & 0xffff);
 			return;
 
 		case CMemory::MAP_NONE:
@@ -540,9 +483,6 @@ inline uint8 * S9xGetBasePointer (uint32 Address)
 		case CMemory::MAP_BWRAM:
 			return (Memory.BWRAM - 0x6000 - (Address & 0x8000));
 
-		case CMemory::MAP_C4:
-			return (S9xGetBasePointerC4(Address & 0xffff));
-
 		case CMemory::MAP_NONE:
 		default:
 			return (NULL);
@@ -570,9 +510,6 @@ inline uint8 * S9xGetMemPointer (uint32 Address)
 
 		case CMemory::MAP_BWRAM:
 			return (Memory.BWRAM - 0x6000 + (Address & 0x7fff));
-
-		case CMemory::MAP_C4:
-			return (S9xGetMemPointerC4(Address & 0xffff));
 
 		case CMemory::MAP_NONE:
 		default:

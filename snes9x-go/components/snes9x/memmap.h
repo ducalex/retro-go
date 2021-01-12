@@ -37,7 +37,6 @@ struct CMemory
 		MAP_BWRAM_BITMAP,
 		MAP_BWRAM_BITMAP2,
 		MAP_RONLY_SRAM,
-		MAP_C4,
 		MAP_NONE,
 		MAP_LAST
 	};
@@ -51,7 +50,6 @@ struct CMemory
 	uint8	*VRAM;
 	uint8	*FillRAM;
 	uint8	*BWRAM;
-	uint8	*C4RAM;
 
 	uint8	*Map[MEMMAP_NUM_BLOCKS];		// 16384
 	uint8	*WriteMap[MEMMAP_NUM_BLOCKS];	// 16384
@@ -94,7 +92,6 @@ struct CMemory
 	void	ClearSRAM (bool8 onlyNonSavedSRAM = 0);
 
 	char *	Safe (const char *);
-	char *	SafeANK (const char *);
 	void	ParseSNESHeader (uint8 *);
 	void	InitROM (void);
 
@@ -110,7 +107,6 @@ struct CMemory
 	void	map_LoROMSRAM (void);
 	void	map_HiROMSRAM (void);
 	void	map_DSP (void);
-	void	map_C4 (void);
 	void	map_WriteProtectROM (void);
 	void	Map_Initialize (void);
 	void	Map_LoROMMap (void);

@@ -10,6 +10,7 @@
 
 #include <ctype.h>
 #include <sys/stat.h>
+#include <rg_system.h>
 
 #include "snes9x.h"
 #include "memmap.h"
@@ -21,742 +22,17 @@
 #define SET_UI_COLOR(r, g, b) ;
 #endif
 
-#ifndef max
-#define max(a, b) (((a) > (b)) ? (a) : (b))
-#endif
+#undef max
+#define max(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
 
-#ifndef min
-#define min(a, b) (((a) < (b)) ? (a) : (b))
-#endif
+#undef min
+#define min(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
 
-static char		LastRomFilename[PATH_MAX + 1] = "";
-
-// from NSRT
-static const char	*nintendo_licensees[] =
+static uint32 caCRC32 (uint8 *array, uint32 size, uint32 crc32 = 0)
 {
-	"Unlicensed",
-	"Nintendo",
-	"Rocket Games/Ajinomoto",
-	"Imagineer-Zoom",
-	"Gray Matter",
-	"Zamuse",
-	"Falcom",
-	NULL,
-	"Capcom",
-	"Hot B Co.",
-	"Jaleco",
-	"Coconuts Japan",
-	"Coconuts Japan/G.X.Media",
-	"Micronet",
-	"Technos",
-	"Mebio Software",
-	"Shouei System",
-	"Starfish",
-	NULL,
-	"Mitsui Fudosan/Dentsu",
-	NULL,
-	"Warashi Inc.",
-	NULL,
-	"Nowpro",
-	NULL,
-	"Game Village",
-	"IE Institute",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"Banarex",
-	"Starfish",
-	"Infocom",
-	"Electronic Arts Japan",
-	NULL,
-	"Cobra Team",
-	"Human/Field",
-	"KOEI",
-	"Hudson Soft",
-	"S.C.P./Game Village",
-	"Yanoman",
-	NULL,
-	"Tecmo Products",
-	"Japan Glary Business",
-	"Forum/OpenSystem",
-	"Virgin Games (Japan)",
-	"SMDE",
-	"Yojigen",
-	NULL,
-	"Daikokudenki",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"Creatures Inc.",
-	"TDK Deep Impresion",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"Destination Software/KSS",
-	"Sunsoft/Tokai Engineering",
-	"POW (Planning Office Wada)/VR 1 Japan",
-	"Micro World",
-	NULL,
-	"San-X",
-	"Enix",
-	"Loriciel/Electro Brain",
-	"Kemco Japan",
-	"Seta Co.,Ltd.",
-	"Culture Brain",
-	"Irem Corp.",
-	"Palsoft",
-	"Visit Co., Ltd.",
-	"Intec",
-	"System Sacom",
-	"Poppo",
-	"Ubisoft Japan",
-	NULL,
-	"Media Works",
-	"NEC InterChannel",
-	"Tam",
-	"Gajin/Jordan",
-	"Smilesoft",
-	NULL,
-	NULL,
-	"Mediakite",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"Viacom",
-	"Carrozzeria",
-	"Dynamic",
-	NULL,
-	"Magifact",
-	"Hect",
-	"Codemasters",
-	"Taito/GAGA Communications",
-	"Laguna",
-	"Telstar Fun & Games/Event/Taito",
-	NULL,
-	"Arcade Zone Ltd.",
-	"Entertainment International/Empire Software",
-	"Loriciel",
-	"Gremlin Graphics",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"Seika Corp.",
-	"UBI SOFT Entertainment Software",
-	"Sunsoft US",
-	NULL,
-	"Life Fitness",
-	NULL,
-	"System 3",
-	"Spectrum Holobyte",
-	NULL,
-	"Irem",
-	NULL,
-	"Raya Systems",
-	"Renovation Products",
-	"Malibu Games",
-	NULL,
-	"Eidos/U.S. Gold",
-	"Playmates Interactive",
-	NULL,
-	NULL,
-	"Fox Interactive",
-	"Time Warner Interactive",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"Disney Interactive",
-	NULL,
-	"Black Pearl",
-	NULL,
-	"Advanced Productions",
-	NULL,
-	NULL,
-	"GT Interactive",
-	"RARE",
-	"Crave Entertainment",
-	"Absolute Entertainment",
-	"Acclaim",
-	"Activision",
-	"American Sammy",
-	"Take 2/GameTek",
-	"Hi Tech",
-	"LJN Ltd.",
-	NULL,
-	"Mattel",
-	NULL,
-	"Mindscape/Red Orb Entertainment",
-	"Romstar",
-	"Taxan",
-	"Midway/Tradewest",
-	NULL,
-	"American Softworks Corp.",
-	"Majesco Sales Inc.",
-	"3DO",
-	NULL,
-	NULL,
-	"Hasbro",
-	"NewKidCo",
-	"Telegames",
-	"Metro3D",
-	NULL,
-	"Vatical Entertainment",
-	"LEGO Media",
-	NULL,
-	"Xicat Interactive",
-	"Cryo Interactive",
-	NULL,
-	NULL,
-	"Red Storm Entertainment",
-	"Microids",
-	NULL,
-	"Conspiracy/Swing",
-	"Titus",
-	"Virgin Interactive",
-	"Maxis",
-	NULL,
-	"LucasArts Entertainment",
-	NULL,
-	NULL,
-	"Ocean",
-	NULL,
-	"Electronic Arts",
-	NULL,
-	"Laser Beam",
-	NULL,
-	NULL,
-	"Elite Systems",
-	"Electro Brain",
-	"The Learning Company",
-	"BBC",
-	NULL,
-	"Software 2000",
-	NULL,
-	"BAM! Entertainment",
-	"Studio 3",
-	NULL,
-	NULL,
-	NULL,
-	"Classified Games",
-	NULL,
-	"TDK Mediactive",
-	NULL,
-	"DreamCatcher",
-	"JoWood Produtions",
-	"SEGA",
-	"Wannado Edition",
-	"LSP (Light & Shadow Prod.)",
-	"ITE Media",
-	"Infogrames",
-	"Interplay",
-	"JVC (US)",
-	"Parker Brothers",
-	NULL,
-	"SCI (Sales Curve Interactive)/Storm",
-	NULL,
-	NULL,
-	"THQ Software",
-	"Accolade Inc.",
-	"Triffix Entertainment",
-	NULL,
-	"Microprose Software",
-	"Universal Interactive/Sierra/Simon & Schuster",
-	NULL,
-	"Kemco",
-	"Rage Software",
-	"Encore",
-	NULL,
-	"Zoo",
-	"Kiddinx",
-	"Simon & Schuster Interactive",
-	"Asmik Ace Entertainment Inc./AIA",
-	"Empire Interactive",
-	NULL,
-	NULL,
-	"Jester Interactive",
-	NULL,
-	"Rockstar Games",
-	"Scholastic",
-	"Ignition Entertainment",
-	"Summitsoft",
-	"Stadlbauer",
-	NULL,
-	NULL,
-	NULL,
-	"Misawa",
-	"Teichiku",
-	"Namco Ltd.",
-	"LOZC",
-	"KOEI",
-	NULL,
-	"Tokuma Shoten Intermedia",
-	"Tsukuda Original",
-	"DATAM-Polystar",
-	NULL,
-	NULL,
-	"Bullet-Proof Software",
-	"Vic Tokai Inc.",
-	NULL,
-	"Character Soft",
-	"I'Max",
-	"Saurus",
-	NULL,
-	NULL,
-	"General Entertainment",
-	NULL,
-	NULL,
-	"I'Max",
-	"Success",
-	NULL,
-	"SEGA Japan",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"Takara",
-	"Chun Soft",
-	"Video System Co., Ltd./McO'River",
-	"BEC",
-	NULL,
-	"Varie",
-	"Yonezawa/S'pal",
-	"Kaneko",
-	NULL,
-	"Victor Interactive Software/Pack-in-Video",
-	"Nichibutsu/Nihon Bussan",
-	"Tecmo",
-	"Imagineer",
-	NULL,
-	NULL,
-	"Nova",
-	"Den'Z",
-	"Bottom Up",
-	NULL,
-	"TGL (Technical Group Laboratory)",
-	NULL,
-	"Hasbro Japan",
-	NULL,
-	"Marvelous Entertainment",
-	NULL,
-	"Keynet Inc.",
-	"Hands-On Entertainment",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"Telenet",
-	"Hori",
-	NULL,
-	NULL,
-	"Konami",
-	"K.Amusement Leasing Co.",
-	"Kawada",
-	"Takara",
-	NULL,
-	"Technos Japan Corp.",
-	"JVC (Europe/Japan)/Victor Musical Industries",
-	NULL,
-	"Toei Animation",
-	"Toho",
-	NULL,
-	"Namco",
-	"Media Rings Corp.",
-	"J-Wing",
-	NULL,
-	"Pioneer LDC",
-	"KID",
-	"Mediafactory",
-	NULL,
-	NULL,
-	NULL,
-	"Infogrames Hudson",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"Acclaim Japan",
-	"ASCII Co./Nexoft",
-	"Bandai",
-	NULL,
-	"Enix",
-	NULL,
-	"HAL Laboratory/Halken",
-	"SNK",
-	NULL,
-	"Pony Canyon Hanbai",
-	"Culture Brain",
-	"Sunsoft",
-	"Toshiba EMI",
-	"Sony Imagesoft",
-	NULL,
-	"Sammy",
-	"Magical",
-	"Visco",
-	NULL,
-	"Compile",
-	NULL,
-	"MTO Inc.",
-	NULL,
-	"Sunrise Interactive",
-	NULL,
-	"Global A Entertainment",
-	"Fuuki",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"Taito",
-	NULL,
-	"Kemco",
-	"Square",
-	"Tokuma Shoten",
-	"Data East",
-	"Tonkin House",
-	NULL,
-	"KOEI",
-	NULL,
-	"Konami/Ultra/Palcom",
-	"NTVIC/VAP",
-	"Use Co., Ltd.",
-	"Meldac",
-	"Pony Canyon (Japan)/FCI (US)",
-	"Angel/Sotsu Agency/Sunrise",
-	"Yumedia/Aroma Co., Ltd.",
-	NULL,
-	NULL,
-	"Boss",
-	"Axela/Crea-Tech",
-	"Sekaibunka-Sha/Sumire kobo/Marigul Management Inc.",
-	"Konami Computer Entertainment Osaka",
-	NULL,
-	NULL,
-	"Enterbrain",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"Taito/Disco",
-	"Sofel",
-	"Quest Corp.",
-	"Sigma",
-	"Ask Kodansha",
-	NULL,
-	"Naxat",
-	"Copya System",
-	"Capcom Co., Ltd.",
-	"Banpresto",
-	"TOMY",
-	"Acclaim/LJN Japan",
-	NULL,
-	"NCS",
-	"Human Entertainment",
-	"Altron",
-	"Jaleco",
-	"Gaps Inc.",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"Elf",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"Jaleco",
-	NULL,
-	"Yutaka",
-	"Varie",
-	"T&ESoft",
-	"Epoch Co., Ltd.",
-	NULL,
-	"Athena",
-	"Asmik",
-	"Natsume",
-	"King Records",
-	"Atlus",
-	"Epic/Sony Records (Japan)",
-	NULL,
-	"IGS (Information Global Service)",
-	NULL,
-	"Chatnoir",
-	"Right Stuff",
-	NULL,
-	"NTT COMWARE",
-	NULL,
-	"Spike",
-	"Konami Computer Entertainment Tokyo",
-	"Alphadream Corp.",
-	NULL,
-	"Sting",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"A Wave",
-	"Motown Software",
-	"Left Field Entertainment",
-	"Extreme Entertainment Group",
-	"TecMagik",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"Cybersoft",
-	NULL,
-	"Psygnosis",
-	NULL,
-	NULL,
-	"Davidson/Western Tech.",
-	"Unlicensed",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"The Game Factory Europe",
-	"Hip Games",
-	"Aspyr",
-	NULL,
-	NULL,
-	"Mastiff",
-	"iQue",
-	"Digital Tainment Pool",
-	"XS Games",
-	"Daiwon",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"PCCW Japan",
-	NULL,
-	NULL,
-	"KiKi Co. Ltd.",
-	"Open Sesame Inc.",
-	"Sims",
-	"Broccoli",
-	"Avex",
-	"D3 Publisher",
-	NULL,
-	"Konami Computer Entertainment Japan",
-	NULL,
-	"Square-Enix",
-	"KSG",
-	"Micott & Basara Inc.",
-	NULL,
-	"Orbital Media",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"The Game Factory USA",
-	NULL,
-	NULL,
-	"Treasure",
-	"Aruze",
-	"Ertain",
-	"SNK Playmore",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"Yojigen"
-};
-
-static const uint32	crc32Table[256] =
-{
-	0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,
-	0xe963a535, 0x9e6495a3, 0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988,
-	0x09b64c2b, 0x7eb17cbd, 0xe7b82d07, 0x90bf1d91, 0x1db71064, 0x6ab020f2,
-	0xf3b97148, 0x84be41de, 0x1adad47d, 0x6ddde4eb, 0xf4d4b551, 0x83d385c7,
-	0x136c9856, 0x646ba8c0, 0xfd62f97a, 0x8a65c9ec, 0x14015c4f, 0x63066cd9,
-	0xfa0f3d63, 0x8d080df5, 0x3b6e20c8, 0x4c69105e, 0xd56041e4, 0xa2677172,
-	0x3c03e4d1, 0x4b04d447, 0xd20d85fd, 0xa50ab56b, 0x35b5a8fa, 0x42b2986c,
-	0xdbbbc9d6, 0xacbcf940, 0x32d86ce3, 0x45df5c75, 0xdcd60dcf, 0xabd13d59,
-	0x26d930ac, 0x51de003a, 0xc8d75180, 0xbfd06116, 0x21b4f4b5, 0x56b3c423,
-	0xcfba9599, 0xb8bda50f, 0x2802b89e, 0x5f058808, 0xc60cd9b2, 0xb10be924,
-	0x2f6f7c87, 0x58684c11, 0xc1611dab, 0xb6662d3d, 0x76dc4190, 0x01db7106,
-	0x98d220bc, 0xefd5102a, 0x71b18589, 0x06b6b51f, 0x9fbfe4a5, 0xe8b8d433,
-	0x7807c9a2, 0x0f00f934, 0x9609a88e, 0xe10e9818, 0x7f6a0dbb, 0x086d3d2d,
-	0x91646c97, 0xe6635c01, 0x6b6b51f4, 0x1c6c6162, 0x856530d8, 0xf262004e,
-	0x6c0695ed, 0x1b01a57b, 0x8208f4c1, 0xf50fc457, 0x65b0d9c6, 0x12b7e950,
-	0x8bbeb8ea, 0xfcb9887c, 0x62dd1ddf, 0x15da2d49, 0x8cd37cf3, 0xfbd44c65,
-	0x4db26158, 0x3ab551ce, 0xa3bc0074, 0xd4bb30e2, 0x4adfa541, 0x3dd895d7,
-	0xa4d1c46d, 0xd3d6f4fb, 0x4369e96a, 0x346ed9fc, 0xad678846, 0xda60b8d0,
-	0x44042d73, 0x33031de5, 0xaa0a4c5f, 0xdd0d7cc9, 0x5005713c, 0x270241aa,
-	0xbe0b1010, 0xc90c2086, 0x5768b525, 0x206f85b3, 0xb966d409, 0xce61e49f,
-	0x5edef90e, 0x29d9c998, 0xb0d09822, 0xc7d7a8b4, 0x59b33d17, 0x2eb40d81,
-	0xb7bd5c3b, 0xc0ba6cad, 0xedb88320, 0x9abfb3b6, 0x03b6e20c, 0x74b1d29a,
-	0xead54739, 0x9dd277af, 0x04db2615, 0x73dc1683, 0xe3630b12, 0x94643b84,
-	0x0d6d6a3e, 0x7a6a5aa8, 0xe40ecf0b, 0x9309ff9d, 0x0a00ae27, 0x7d079eb1,
-	0xf00f9344, 0x8708a3d2, 0x1e01f268, 0x6906c2fe, 0xf762575d, 0x806567cb,
-	0x196c3671, 0x6e6b06e7, 0xfed41b76, 0x89d32be0, 0x10da7a5a, 0x67dd4acc,
-	0xf9b9df6f, 0x8ebeeff9, 0x17b7be43, 0x60b08ed5, 0xd6d6a3e8, 0xa1d1937e,
-	0x38d8c2c4, 0x4fdff252, 0xd1bb67f1, 0xa6bc5767, 0x3fb506dd, 0x48b2364b,
-	0xd80d2bda, 0xaf0a1b4c, 0x36034af6, 0x41047a60, 0xdf60efc3, 0xa867df55,
-	0x316e8eef, 0x4669be79, 0xcb61b38c, 0xbc66831a, 0x256fd2a0, 0x5268e236,
-	0xcc0c7795, 0xbb0b4703, 0x220216b9, 0x5505262f, 0xc5ba3bbe, 0xb2bd0b28,
-	0x2bb45a92, 0x5cb36a04, 0xc2d7ffa7, 0xb5d0cf31, 0x2cd99e8b, 0x5bdeae1d,
-	0x9b64c2b0, 0xec63f226, 0x756aa39c, 0x026d930a, 0x9c0906a9, 0xeb0e363f,
-	0x72076785, 0x05005713, 0x95bf4a82, 0xe2b87a14, 0x7bb12bae, 0x0cb61b38,
-	0x92d28e9b, 0xe5d5be0d, 0x7cdcefb7, 0x0bdbdf21, 0x86d3d2d4, 0xf1d4e242,
-	0x68ddb3f8, 0x1fda836e, 0x81be16cd, 0xf6b9265b, 0x6fb077e1, 0x18b74777,
-	0x88085ae6, 0xff0f6a70, 0x66063bca, 0x11010b5c, 0x8f659eff, 0xf862ae69,
-	0x616bffd3, 0x166ccf45, 0xa00ae278, 0xd70dd2ee, 0x4e048354, 0x3903b3c2,
-	0xa7672661, 0xd06016f7, 0x4969474d, 0x3e6e77db, 0xaed16a4a, 0xd9d65adc,
-	0x40df0b66, 0x37d83bf0, 0xa9bcae53, 0xdebb9ec5, 0x47b2cf7f, 0x30b5ffe9,
-	0xbdbdf21c, 0xcabac28a, 0x53b39330, 0x24b4a3a6, 0xbad03605, 0xcdd70693,
-	0x54de5729, 0x23d967bf, 0xb3667a2e, 0xc4614ab8, 0x5d681b02, 0x2a6f2b94,
-	0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d
-};
-
-static void S9xDeinterleaveType1 (int, uint8 *);
-static void S9xDeinterleaveType2 (int, uint8 *);
-static void S9xDeinterleaveGD24 (int, uint8 *);
-static bool8 allASCII (uint8 *, int);
-static uint32 caCRC32 (uint8 *, uint32, uint32 crc32 = 0xffffffff);
-static bool8 ReadUPSPatch (Stream *, long, int32 &);
-static long ReadInt (Stream *, unsigned);
-static bool8 ReadIPSPatch (Stream *, long, int32 &);
+	return crc32_le(crc32, array, size);
+	// return (~crc32);
+}
 
 // deinterleave
 
@@ -795,70 +71,6 @@ static void S9xDeinterleaveType1 (int size, uint8 *base)
 		}
 
 		free(tmp);
-	}
-}
-
-static void S9xDeinterleaveType2 (int size, uint8 *base)
-{
-	// for odd Super FX images
-	Settings.DisplayColor = BUILD_PIXEL(31, 14, 6);
-	SET_UI_COLOR(255, 119, 25);
-
-	uint8	blocks[256];
-	int		nblocks = size >> 16;
-	int		step = 64;
-
-	while (nblocks <= step)
-		step >>= 1;
-	nblocks = step;
-
-	for (int i = 0; i < nblocks * 2; i++)
-		blocks[i] = (i & ~0xf) | ((i & 3) << 2) | ((i & 12) >> 2);
-
-	uint8	*tmp = (uint8 *) malloc(0x10000);
-	if (tmp)
-	{
-		for (int i = 0; i < nblocks * 2; i++)
-		{
-			for (int j = i; j < nblocks * 2; j++)
-			{
-				if (blocks[j] == i)
-				{
-					memmove(tmp, &base[blocks[j] * 0x10000], 0x10000);
-					memmove(&base[blocks[j] * 0x10000], &base[blocks[i] * 0x10000], 0x10000);
-					memmove(&base[blocks[i] * 0x10000], tmp, 0x10000);
-					uint8	b = blocks[j];
-					blocks[j] = blocks[i];
-					blocks[i] = b;
-					break;
-				}
-			}
-		}
-
-		free(tmp);
-	}
-}
-
-static void S9xDeinterleaveGD24 (int size, uint8 *base)
-{
-	// for 24Mb images dumped with Game Doctor
-	if (size != 0x300000)
-		return;
-
-	Settings.DisplayColor = BUILD_PIXEL(0, 31, 31);
-	SET_UI_COLOR(0, 255, 255);
-
-	uint8	*tmp = (uint8 *) malloc(0x80000);
-	if (tmp)
-	{
-		memmove(tmp, &base[0x180000], 0x80000);
-		memmove(&base[0x180000], &base[0x200000], 0x80000);
-		memmove(&base[0x200000], &base[0x280000], 0x80000);
-		memmove(&base[0x280000], tmp, 0x80000);
-
-		free(tmp);
-
-		S9xDeinterleaveType1(size, base);
 	}
 }
 
@@ -917,8 +129,6 @@ bool8 CMemory::Init (void)
 
 	ROM += 0x8000;
 
-	C4RAM   = ROM + 0x400000 + 8192 * 8; // C4
-
 	return (TRUE);
 }
 
@@ -965,7 +175,6 @@ void CMemory::Deinit (void)
 	}
 
 	Safe(NULL);
-	SafeANK(NULL);
 }
 
 // file management and ROM detection
@@ -1315,7 +524,7 @@ bool8 CMemory::LoadROMInt (int32 ROMfillSize)
 
 	bool8	interleaved, tales = FALSE;
 
-    interleaved = Settings.ForceInterleaved || Settings.ForceInterleaved2 || Settings.ForceInterleaveGD24;
+    interleaved = Settings.ForceInterleaved;
 
 	if (Settings.ForceLoROM || (!Settings.ForceHiROM && lo_score >= hi_score))
 	{
@@ -1389,17 +598,6 @@ bool8 CMemory::LoadROMInt (int32 ROMfillSize)
 			HiROM = TRUE;
 		}
 		else
-		if (Settings.ForceInterleaveGD24 && CalculatedSize == 0x300000)
-		{
-			bool8	t = LoROM;
-			LoROM = HiROM;
-			HiROM = t;
-			S9xDeinterleaveGD24(CalculatedSize, ROM);
-		}
-		else
-		if (Settings.ForceInterleaved2)
-			S9xDeinterleaveType2(CalculatedSize, ROM);
-		else
 		{
 			bool8	t = LoROM;
 			LoROM = HiROM;
@@ -1434,12 +632,6 @@ bool8 CMemory::LoadROMInt (int32 ROMfillSize)
 			memmove(ROM + 0x400000, tmp, CalculatedSize - 0x400000);
 			free(tmp);
 		}
-	}
-
-	if (strncmp(LastRomFilename, ROMFilename, PATH_MAX + 1))
-	{
-		strncpy(LastRomFilename, ROMFilename, PATH_MAX + 1);
-		LastRomFilename[PATH_MAX] = 0;
 	}
 
 	Settings.UniracersHack = FALSE;
@@ -1520,14 +712,6 @@ bool8 CMemory::SaveSRAM (const char *filename)
 
 // initialization
 
-static uint32 caCRC32 (uint8 *array, uint32 size, uint32 crc32)
-{
-	for (uint32 i = 0; i < size; i++)
-		crc32 = ((crc32 >> 8) & 0x00FFFFFF) ^ crc32Table[(crc32 ^ array[i]) & 0xFF];
-
-	return (~crc32);
-}
-
 char * CMemory::Safe (const char *s)
 {
 	static char	*safe = NULL;
@@ -1567,48 +751,6 @@ char * CMemory::Safe (const char *s)
 	return (safe);
 }
 
-char * CMemory::SafeANK (const char *s)
-{
-	static char	*safe = NULL;
-	static int	safe_len = 0;
-
-	if (s == NULL)
-	{
-		if (safe)
-		{
-			free(safe);
-			safe = NULL;
-		}
-
-		return (NULL);
-	}
-
-	int	len = strlen(s);
-	if (!safe || len + 1 > safe_len)
-	{
-		if (safe)
-			free(safe);
-
-		safe_len = len + 1;
-		safe = (char *) malloc(safe_len);
-	}
-
-	for (int i = 0; i < len; i++)
-	{
-		if (s[i] >= 32 && s[i] < 127) // ASCII
-			safe [i] = s[i];
-		else
-		if (ROMRegion == 0 && ((uint8) s[i] >= 0xa0 && (uint8) s[i] < 0xe0)) // JIS X 201 - Katakana
-			safe [i] = s[i];
-		else
-			safe [i] = '_';
-	}
-
-	safe [len] = 0;
-
-	return (safe);
-}
-
 void CMemory::ParseSNESHeader (uint8 *RomHeader)
 {
 	strncpy(ROMName, (char *) &RomHeader[0x10], ROM_NAME_LEN - 1);
@@ -1641,7 +783,6 @@ void CMemory::ParseSNESHeader (uint8 *RomHeader)
 void CMemory::InitROM (void)
 {
 	Settings.DSP = 0;
-	Settings.C4 = FALSE;
 
 	//// Parse ROM header and read ROM informatoin
 
@@ -1709,8 +850,6 @@ void CMemory::InitROM (void)
 			GetDSP = NULL;
 			break;
 	}
-
-	Settings.C4 = (((ROMType & 0xff) << 8) + (ROMSpeed & 0xff)) == 0xF320;
 
 	//// Map memory and calculate checksum
 
@@ -1847,8 +986,6 @@ void CMemory::InitROM (void)
 	Settings.ForceHeader = FALSE;
 	Settings.ForceNoHeader = FALSE;
 	Settings.ForceInterleaved = FALSE;
-	Settings.ForceInterleaved2 = FALSE;
-	Settings.ForceInterleaveGD24 = FALSE;
 	Settings.ForceNotInterleaved = FALSE;
 	Settings.ForcePAL = FALSE;
 	Settings.ForceNTSC = FALSE;
@@ -2036,12 +1173,6 @@ void CMemory::map_DSP (void)
 	}
 }
 
-void CMemory::map_C4 (void)
-{
-	map_index(0x00, 0x3f, 0x6000, 0x7fff, MAP_C4, MAP_TYPE_I_O);
-	map_index(0x80, 0xbf, 0x6000, 0x7fff, MAP_C4, MAP_TYPE_I_O);
-}
-
 void CMemory::map_WriteProtectROM (void)
 {
 	memmove((void *) WriteMap, (void *) Map, sizeof(Map));
@@ -2075,9 +1206,6 @@ void CMemory::Map_LoROMMap (void)
 
 	if (Settings.DSP)
 		map_DSP();
-	else
-	if (Settings.C4)
-		map_C4();
 
     map_LoROMSRAM();
 	map_WRAM();
@@ -2290,23 +1418,15 @@ const char * CMemory::Revision (void)
 
 const char * CMemory::KartContents (void)
 {
-	static char			str[64];
-	static const char	*contents[3] = { "ROM", "ROM+RAM", "ROM+RAM+BAT" };
+	static char	str[64];
+	const char	*contents[3] = { "ROM", "ROM+RAM", "ROM+RAM+BAT" };
 
-	char	chip[20];
+	strcpy(str, contents[(ROMType & 0xf) % 3]);
 
-	if (ROMType == 0)
-		return ("ROM");
-
-	if (Settings.C4)
-		strcpy(chip, "+C4");
-	else
-	if (Settings.DSP)
-		sprintf(chip, "+DSP-%d", Settings.DSP);
-	else
-		strcpy(chip, "");
-
-	sprintf(str, "%s%s", contents[(ROMType & 0xf) % 3], chip);
+	if (Settings.DSP == 1)
+		strcat(str, "+DSP-1");
+	else if (Settings.DSP == 2)
+		strcat(str, "+DSP-2");
 
 	return (str);
 }
@@ -2335,13 +1455,7 @@ const char * CMemory::Country (void)
 
 const char * CMemory::PublishingCompany (void)
 {
-	if (CompanyId >= (int) (sizeof(nintendo_licensees) / sizeof(nintendo_licensees[0])) || CompanyId < 0)
-		return ("Unknown");
-
-	if (nintendo_licensees[CompanyId] == NULL)
-		return ("Unknown");
-
-	return (nintendo_licensees[CompanyId]);
+	return ("Unknown");
 }
 
 void CMemory::MakeRomInfoText (char *romtext)
@@ -2541,208 +1655,6 @@ void CMemory::ApplyROMFixes (void)
 
 // BPS % UPS % IPS
 
-// number decoding used for both BPS and UPS
-static uint32 XPSdecode (const uint8 *data, unsigned &addr, unsigned size)
-{
-	uint32 offset = 0, shift = 1;
-	while(addr < size) {
-		uint8 x = data[addr++];
-		offset += (x & 0x7f) * shift;
-		if(x & 0x80) break;
-		shift <<= 7;
-		offset += shift;
-	}
-	return offset;
-}
-
-//NOTE: UPS patches are *never* created against a headered ROM!
-//this is per the UPS file specification. however, do note that it is
-//technically possible for a non-compliant patcher to ignore this requirement.
-//therefore, it is *imperative* that no emulator support such patches.
-//thusly, we ignore the "long offset" parameter below. failure to do so would
-//completely invalidate the purpose of UPS; which is to avoid header vs
-//no-header patching errors that result in IPS patches having a 50/50 chance of
-//being applied correctly.
-
-static bool8 ReadUPSPatch (Stream *r, long, int32 &rom_size)
-{
-	//Reader lacks size() and rewind(), so we need to read in the file to get its size
-	uint8 *data = new uint8[8 * 1024 * 1024];  //allocate a lot of memory, better safe than sorry ...
-	uint32 size = 0;
-	while(true) {
-		int value = r->get_char();
-		if(value == EOF) break;
-		data[size++] = value;
-		if(size >= 8 * 1024 * 1024) {
-			//prevent buffer overflow: SNES-made UPS patches should never be this big anyway ...
-			delete[] data;
-			return false;
-		}
-	}
-
-	//4-byte header + 1-byte input size + 1-byte output size + 4-byte patch CRC32 + 4-byte unpatched CRC32 + 4-byte patched CRC32
-	if(size < 18) { delete[] data; return false; }  //patch is too small
-
-	uint32 addr = 0;
-	if(data[addr++] != 'U') { delete[] data; return false; }  //patch has an invalid header
-	if(data[addr++] != 'P') { delete[] data; return false; }  //...
-	if(data[addr++] != 'S') { delete[] data; return false; }  //...
-	if(data[addr++] != '1') { delete[] data; return false; }  //...
-
-	uint32 patch_crc32 = caCRC32(data, size - 4);  //don't include patch CRC32 itself in CRC32 calculation
-	uint32 rom_crc32 = caCRC32(Memory.ROM, rom_size);
-	uint32 px_crc32 = (data[size - 12] << 0) + (data[size - 11] << 8) + (data[size - 10] << 16) + (data[size -  9] << 24);
-	uint32 py_crc32 = (data[size -  8] << 0) + (data[size -  7] << 8) + (data[size -  6] << 16) + (data[size -  5] << 24);
-	uint32 pp_crc32 = (data[size -  4] << 0) + (data[size -  3] << 8) + (data[size -  2] << 16) + (data[size -  1] << 24);
-	if(patch_crc32 != pp_crc32) { delete[] data; return false; }  //patch is corrupted
-	if(!Settings.IgnorePatchChecksum && (rom_crc32 != px_crc32) && (rom_crc32 != py_crc32)) { delete[] data; return false; }  //patch is for a different ROM
-
-	uint32 px_size = XPSdecode(data, addr, size);
-	uint32 py_size = XPSdecode(data, addr, size);
-	uint32 out_size = ((uint32) rom_size == px_size) ? py_size : px_size;
-	if(out_size > CMemory::MAX_ROM_SIZE) { delete[] data; return false; }  //applying this patch will overflow Memory.ROM buffer
-
-	//fill expanded area with 0x00s; so that XORing works as expected below.
-	//note that this is needed (and works) whether output ROM is larger or smaller than pre-patched ROM
-	for(int i = min((uint32) rom_size, out_size); i < max((uint32) rom_size, out_size); i++) {
-		Memory.ROM[i] = 0x00;
-	}
-
-	uint32 relative = 0;
-	while(addr < size - 12) {
-		relative += XPSdecode(data, addr, size);
-		while(addr < size - 12) {
-			uint8 x = data[addr++];
-			Memory.ROM[relative++] ^= x;
-			if(!x) break;
-		}
-	}
-
-	rom_size = out_size;
-	delete[] data;
-
-	uint32 out_crc32 = caCRC32(Memory.ROM, rom_size);
-	if(Settings.IgnorePatchChecksum
-	|| ((rom_crc32 == px_crc32) && (out_crc32 == py_crc32))
-	|| ((rom_crc32 == py_crc32) && (out_crc32 == px_crc32))
-	) {
-		Settings.IsPatched = 3;
-		return true;
-	} else {
-		//technically, reaching here means that patching has failed.
-		//we should return false, but unfortunately Memory.ROM has already
-		//been modified above and cannot be undone. to do this properly, we
-		//would need to make a copy of Memory.ROM, apply the patch, and then
-		//copy that back to Memory.ROM.
-		//
-		//however, the only way for this case to happen is if the UPS patch file
-		//itself is corrupted, which should be detected by the patch CRC32 check
-		//above anyway. errors due to the wrong ROM or patch file being used are
-		//already caught above.
-		fprintf(stderr, "WARNING: UPS patching appears to have failed.\nGame may not be playable.\n");
-		return true;
-	}
-}
-
-// header notes for UPS patches also apply to BPS
-//
-// logic taken from http://byuu.org/programming/bps and the accompanying source
-//
-static bool8 ReadBPSPatch (Stream *r, long, int32 &rom_size)
-{
-	uint8 *data = new uint8[8 * 1024 * 1024];  //allocate a lot of memory, better safe than sorry ...
-	uint32 size = 0;
-	while(true) {
-		int value = r->get_char();
-		if(value == EOF) break;
-		data[size++] = value;
-		if(size >= 8 * 1024 * 1024) {
-			//prevent buffer overflow: SNES-made BPS patches should never be this big anyway ...
-			delete[] data;
-			return false;
-		}
-	}
-
-	/* 4-byte header + 1-byte input size + 1-byte output size + 1-byte metadata size
-	   + 4-byte unpatched CRC32 + 4-byte patched CRC32 + 4-byte patch CRC32 */
-	if(size < 19) { delete[] data; return false; }  //patch is too small
-
-	uint32 addr = 0;
-	if(data[addr++] != 'B') { delete[] data; return false; }  //patch has an invalid header
-	if(data[addr++] != 'P') { delete[] data; return false; }  //...
-	if(data[addr++] != 'S') { delete[] data; return false; }  //...
-	if(data[addr++] != '1') { delete[] data; return false; }  //...
-
-	uint32 patch_crc32 = caCRC32(data, size - 4);  //don't include patch CRC32 itself in CRC32 calculation
-	uint32 rom_crc32 = caCRC32(Memory.ROM, rom_size);
-	uint32 source_crc32 = (data[size - 12] << 0) + (data[size - 11] << 8) + (data[size - 10] << 16) + (data[size -  9] << 24);
-	uint32 target_crc32 = (data[size -  8] << 0) + (data[size -  7] << 8) + (data[size -  6] << 16) + (data[size -  5] << 24);
-	uint32 pp_crc32 = (data[size -  4] << 0) + (data[size -  3] << 8) + (data[size -  2] << 16) + (data[size -  1] << 24);
-	if(patch_crc32 != pp_crc32) { delete[] data; return false; }  //patch is corrupted
-	if(!Settings.IgnorePatchChecksum && rom_crc32 != source_crc32) { delete[] data; return false; }  //patch is for a different ROM
-
-	XPSdecode(data, addr, size);
-	uint32 target_size = XPSdecode(data, addr, size);
-	uint32 metadata_size = XPSdecode(data, addr, size);
-	addr += metadata_size;
-
-	if(target_size > CMemory::MAX_ROM_SIZE) { delete[] data; return false; }  //applying this patch will overflow Memory.ROM buffer
-
-	enum { SourceRead, TargetRead, SourceCopy, TargetCopy };
-	uint32 outputOffset = 0, sourceRelativeOffset = 0, targetRelativeOffset = 0;
-
-	uint8 *patched_rom = new uint8[target_size];
-	memset(patched_rom,0,target_size);
-
-	while(addr < size - 12) {
-		uint32 length = XPSdecode(data, addr, size);
-		uint32 mode = length & 3;
-		length = (length >> 2) + 1;
-
-		switch((int)mode) {
-			case SourceRead:
-				while(length--) {
-					patched_rom[outputOffset] = Memory.ROM[outputOffset];
-					outputOffset++;
-				}
-				break;
-			case TargetRead:
-				while(length--) patched_rom[outputOffset++] = data[addr++];
-				break;
-			case SourceCopy:
-			case TargetCopy:
-				int32 offset = XPSdecode(data, addr, size);
-				bool negative = offset & 1;
-				offset >>= 1;
-				if(negative) offset = -offset;
-
-				if(mode == SourceCopy) {
-					sourceRelativeOffset += offset;
-					while(length--) patched_rom[outputOffset++] = Memory.ROM[sourceRelativeOffset++];
-				} else {
-					targetRelativeOffset += offset;
-					while(length--) patched_rom[outputOffset++] = patched_rom[targetRelativeOffset++];
-				}
-				break;
-		}
-	}
-
-	delete[] data;
-
-	uint32 out_crc32 = caCRC32(patched_rom, target_size);
-	if(Settings.IgnorePatchChecksum || out_crc32 == target_crc32) {
-		memcpy(Memory.ROM, patched_rom, target_size);
-		rom_size = target_size;
-		delete[] patched_rom;
-		Settings.IsPatched = 2;
-		return true;
-	} else {
-		delete[] patched_rom;
-		fprintf(stderr, "WARNING: BPS patching failed.\nROM has not been altered.\n");
-		return false;
-	}
-}
-
 static long ReadInt (Stream *r, unsigned nbytes)
 {
 	long	v = 0;
@@ -2855,85 +1767,6 @@ void CMemory::CheckForAnyPatch (const char *rom_filename, bool8 header, int32 &r
 	const char	*n;
 
 	_splitpath(rom_filename, drive, dir, name, ext);
-
-	// BPS
-	_makepath(fname, drive, dir, name, "bps");
-
-	if ((patch_file = OPEN_FSTREAM(fname, "rb")) != NULL)
-	{
-		printf("Using BPS patch %s", fname);
-
-        Stream *s = new fStream(patch_file);
-		ret = ReadBPSPatch(s, 0, rom_size);
-        s->closeStream();
-
-		if (ret)
-		{
-			printf("!\n");
-			return;
-		}
-		else
-			printf(" failed!\n");
-	}
-
-	n = S9xGetFilename(".bps", PATCH_DIR);
-
-	if ((patch_file = OPEN_FSTREAM(n, "rb")) != NULL)
-	{
-		printf("Using BPS patch %s", n);
-
-        Stream *s = new fStream(patch_file);
-		ret = ReadBPSPatch(s, 0, rom_size);
-        s->closeStream();
-
-		if (ret)
-		{
-			printf("!\n");
-			return;
-		}
-		else
-			printf(" failed!\n");
-	}
-
-	// UPS
-
-	_makepath(fname, drive, dir, name, "ups");
-
-	if ((patch_file = OPEN_FSTREAM(fname, "rb")) != NULL)
-	{
-		printf("Using UPS patch %s", fname);
-
-        Stream *s = new fStream(patch_file);
-		ret = ReadUPSPatch(s, 0, rom_size);
-        s->closeStream();
-
-		if (ret)
-		{
-			printf("!\n");
-			return;
-		}
-		else
-			printf(" failed!\n");
-	}
-
-	n = S9xGetFilename(".ups", PATCH_DIR);
-
-	if ((patch_file = OPEN_FSTREAM(n, "rb")) != NULL)
-	{
-		printf("Using UPS patch %s", n);
-
-        Stream *s = new fStream(patch_file);
-		ret = ReadUPSPatch(s, 0, rom_size);
-        s->closeStream();
-
-		if (ret)
-		{
-			printf("!\n");
-			return;
-		}
-		else
-			printf(" failed!\n");
-	}
 
 	// IPS
 

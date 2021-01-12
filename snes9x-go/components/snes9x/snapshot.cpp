@@ -710,11 +710,8 @@ int S9xUnfreezeGameMem (const uint8 *buf, uint32 bufSize)
 bool8 S9xUnfreezeGame (const char *filename)
 {
 	STREAM	stream = NULL;
-	char	drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], def[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
 
 	const char	*base = S9xBasename(filename);
-
-	_splitpath(filename, drive, dir, def, ext);
 
 	if (S9xOpenSnapshotFile(filename, TRUE, &stream))
 	{
@@ -815,9 +812,6 @@ void S9xFreezeToStream (STREAM stream)
 	if (Settings.DSP == 2)
 		FreezeStruct(stream, "DP2", &DSP2, SnapDSP2, COUNT(SnapDSP2));
 
-	if (Settings.C4)
-		FreezeBlock (stream, "CX4", Memory.C4RAM, 8192);
-
 	delete [] soundsnapshot;
 }
 
@@ -857,7 +851,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 	uint8	*local_timing_data   = NULL;
 	uint8	*local_dsp1          = NULL;
 	uint8	*local_dsp2          = NULL;
-	uint8	*local_cx4_data      = NULL;
 
 	do
 	{
@@ -927,21 +920,7 @@ int S9xUnfreezeFromStream (STREAM stream)
 
 		SkipBlockWithName(stream, "DP3");
 		SkipBlockWithName(stream, "DP4");
-
-		if (Settings.C4)
-		{
-			if (fast)
-				result = UnfreezeBlock(stream, "CX4", Memory.C4RAM, 8192);
-			else
-				result = UnfreezeBlockCopy(stream, "CX4", &local_cx4_data, 8192);
-			if (result != SUCCESS)
-				break;
-		}
-		else
-		{
-			SkipBlockWithName(stream, "CX4");
-		}
-
+		SkipBlockWithName(stream, "CX4");
 		SkipBlockWithName(stream, "ST0");
 		SkipBlockWithName(stream, "OBC");
 		SkipBlockWithName(stream, "OBM");
@@ -1004,9 +983,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 
 		if (local_dsp2)
 			UnfreezeStructFromCopy(&DSP2, SnapDSP2, COUNT(SnapDSP2), local_dsp2, version);
-
-		if (local_cx4_data)
-			memcpy(Memory.C4RAM, local_cx4_data, 8192);
 
 		if (version < SNAPSHOT_VERSION_IRQ)
 		{
@@ -1079,7 +1055,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 	if (local_timing_data)		delete [] local_timing_data;
 	if (local_dsp1)				delete [] local_dsp1;
 	if (local_dsp2)				delete [] local_dsp2;
-	if (local_cx4_data)			delete [] local_cx4_data;
 
 	return (result);
 }

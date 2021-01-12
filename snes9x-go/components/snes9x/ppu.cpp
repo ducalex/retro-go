@@ -505,8 +505,8 @@ void S9xSetPPU (uint8 Byte, uint32 Address)
 
 				if (Byte & 0x0c)
 				{
-					static uint16 Shift[4]    = { 0, 5, 6, 7 };
-					static uint16 IncCount[4] = { 0, 32, 64, 128 };
+					const uint16 Shift[4]    = { 0, 5, 6, 7 };
+					const uint16 IncCount[4] = { 0, 32, 64, 128 };
 
 					uint8 i = (Byte & 0x0c) >> 2;
 					PPU.VMA.FullGraphicCount = IncCount[i];

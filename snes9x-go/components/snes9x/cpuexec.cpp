@@ -210,7 +210,7 @@ IRAM_ATTR static inline void S9xReschedule (void)
 IRAM_ATTR void S9xDoHEventProcessing (void)
 {
 #ifdef DEBUGGER
-	static char	eventname[7][32] =
+	const char	eventname[7][32] =
 	{
 		"",
 		"HC_HBLANK_START_EVENT",
