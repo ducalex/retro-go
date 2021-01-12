@@ -27,8 +27,8 @@
 snd_t snd;
 // static int16 **fm_buffer;
 static int16 **psg_buffer;
-int smptab[313];
-int smptab_len;
+static int lines_per_frame;
+static int samples_per_line;
 
 
 int sound_init(void)
@@ -72,8 +72,8 @@ int sound_init(void)
   }
 
   /* Assign stream mixing callback if none provided */
-  if(!snd.mixer_callback)
-    snd.mixer_callback = sound_mixer_callback;
+  // if(!snd.mixer_callback)
+  //   snd.mixer_callback = sound_mixer_callback;
 
   /* Calculate number of samples generated per frame */
   snd.sample_count = (snd.sample_rate / snd.fps) + 1;
@@ -85,14 +85,8 @@ int sound_init(void)
 
   /* Prepare incremental info */
   snd.done_so_far = 0;
-  smptab_len = (sms.display == DISPLAY_NTSC) ? 262 : 313;
-
-  for(i = 0; i < smptab_len; i++)
-  {
-    double calc = (snd.sample_count * i);
-    calc = calc / (double)smptab_len;
-    smptab[i] = (int)calc;
-  }
+  lines_per_frame = (sms.display == DISPLAY_NTSC) ? 262 : 313;
+  samples_per_line = snd.sample_count / lines_per_frame;
 
   /* Allocate emulated sound streams */
   for(i = 0; i < STREAM_MAX; i++)
@@ -101,10 +95,13 @@ int sound_init(void)
     if(!snd.stream[i]) abort();
   }
 
-  /* Allocate sound output streams */
-  snd.output[0] = calloc(snd.buffer_size, 1);
-  snd.output[1] = calloc(snd.buffer_size, 1);
-  if(!snd.output[0] || !snd.output[1]) abort();
+  /* Allocate sound output streams for the generic mixer */
+  if (snd.mixer_callback == sound_mixer_callback)
+  {
+    snd.output[0] = calloc(snd.buffer_size, 1);
+    snd.output[1] = calloc(snd.buffer_size, 1);
+    if(!snd.output[0] || !snd.output[1]) abort();
+  }
 
   /* Set up buffer pointers */
   // fm_buffer = (int16 **)&snd.stream[STREAM_FM_MO];
@@ -194,7 +191,7 @@ void sound_update(int line)
     return;
 
   /* Finish buffers at end of frame */
-  if(line == smptab_len - 1)
+  if(line == lines_per_frame - 1)
   {
     psg[0] = psg_buffer[0] + snd.done_so_far;
     psg[1] = psg_buffer[1] + snd.done_so_far;
@@ -210,17 +207,14 @@ void sound_update(int line)
 #endif
 
     /* Mix streams into output buffer */
-    snd.mixer_callback(snd.stream, snd.output, snd.sample_count);
+    if (snd.mixer_callback)
+      snd.mixer_callback(snd.stream, snd.output, snd.sample_count);
 
     /* Reset */
     snd.done_so_far = 0;
   }
   else
   {
-    int tinybit;
-
-    tinybit = smptab[line] - snd.done_so_far;
-
     /* Do a tiny bit */
     psg[0] = psg_buffer[0] + snd.done_so_far;
     psg[1] = psg_buffer[1] + snd.done_so_far;
@@ -228,15 +222,15 @@ void sound_update(int line)
     // fm[1]  = fm_buffer[1] + snd.done_so_far;
 
     /* Generate SN76489 sample data */
-    SN76489_Update(0, psg, tinybit);
+    SN76489_Update(0, psg, samples_per_line);
 
 #if 0
     /* Generate YM2413 sample data */
-    FM_Update(fm, tinybit);
+    FM_Update(fm, samples_per_line);
 #endif
 
     /* Sum total */
-    snd.done_so_far += tinybit;
+    snd.done_so_far += samples_per_line;
   }
 }
 

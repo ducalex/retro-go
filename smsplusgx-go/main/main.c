@@ -13,7 +13,7 @@
 #define GG_WIDTH 160
 #define GG_HEIGHT 144
 
-static uint32_t audioBuffer[AUDIO_BUFFER_LENGTH];
+static int16_t audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
 static uint16_t palettes[2][32];
 static rg_video_frame_t frames[2];
@@ -320,13 +320,13 @@ void app_main(void)
 
         if (!app->speedupEnabled)
         {
-            // Process audio
-            for (size_t i = 0; i < snd.sample_count; ++i)
+            size_t length = snd.sample_count;
+            for (size_t i = 0, out = 0; i < length; i++, out += 2)
             {
-                audioBuffer[i] = snd.output[0][i] << 16 | snd.output[1][i];
+                audioBuffer[out] = snd.stream[0][i] * 2.75f;
+                audioBuffer[out + 1] = snd.stream[1][i] * 2.75f;
             }
-
-            rg_audio_submit((short*)audioBuffer, snd.sample_count);
+            rg_audio_submit(audioBuffer, length);
         }
     }
 }
