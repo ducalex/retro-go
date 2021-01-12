@@ -23,6 +23,8 @@ static const dialog_theme_t default_theme = {
 static dialog_theme_t theme;
 static font_info_t font_info;
 
+#define wait_all_keys_released() while (rg_input_key_is_pressed(GAMEPAD_KEY_ANY))
+
 void rg_gui_init(void)
 {
     overlay_buffer = (uint16_t *)rg_alloc(RG_SCREEN_WIDTH * 32 * 2, MEM_SLOW);
@@ -366,7 +368,7 @@ int rg_gui_dialog(const char *header, dialog_choice_t *options, int selected)
 
     rg_gui_draw_dialog(header, options, sel);
 
-    while (rg_input_key_is_pressed(GAMEPAD_KEY_ANY));
+    wait_all_keys_released();
 
     while (1)
     {
@@ -636,7 +638,7 @@ int rg_gui_game_settings_menu(dialog_choice_t *extra_options)
     runtime_stats_t stats = rg_system_get_stats();
 
     rg_audio_mute(true);
-    while (rg_input_key_is_pressed(GAMEPAD_KEY_ANY));
+    wait_all_keys_released();
     draw_game_status_bar(stats);
 
     int r = rg_gui_settings_menu(options);
@@ -659,7 +661,8 @@ int rg_gui_game_debug_menu(void)
     };
     // runtime_stats_t stats = rg_system_get_stats();
 
-    while (rg_input_key_is_pressed(GAMEPAD_KEY_ANY));
+    wait_all_keys_released();
+
     return rg_gui_dialog("Debugging", options, 0);
 }
 
@@ -682,7 +685,7 @@ int rg_gui_game_menu(void)
     runtime_stats_t stats = rg_system_get_stats();
 
     rg_audio_mute(true);
-    while (rg_input_key_is_pressed(GAMEPAD_KEY_ANY));
+    wait_all_keys_released();
     draw_game_status_bar(stats);
 
     int r = rg_gui_dialog("Retro-Go", choices, 0);

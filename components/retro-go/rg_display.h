@@ -83,7 +83,7 @@ void rg_display_clear(uint16_t colorLE);
 void rg_display_show_hourglass();
 void rg_display_force_refresh(void);
 void rg_display_set_scale(int width, int height, double aspect_ratio);
-void rg_display_set_callback(update_callback_t *func);
+void rg_display_set_callback(update_callback_t func);
 bool rg_display_save_frame(const char *filename, rg_video_frame_t *frame, double scale);
 screen_update_t rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *previousFrame);
 

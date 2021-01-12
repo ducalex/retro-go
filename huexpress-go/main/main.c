@@ -322,7 +322,7 @@ void app_main(void)
 {
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     rg_emu_init(&load_state, &save_state, NULL);
-    rg_display_set_callback(&clear_buffer);
+    rg_display_set_callback(clear_buffer);
 
     app = rg_system_get_app();
 

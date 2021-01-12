@@ -31,7 +31,7 @@ static SemaphoreHandle_t spi_count_semaphore;
 static spi_transaction_t trans[SPI_TRANSACTION_COUNT];
 static spi_device_handle_t spi;
 
-static update_callback_t *updateCallback = NULL;
+static update_callback_t updateCallback = NULL;
 
 static QueueHandle_t videoTaskQueue;
 
@@ -843,9 +843,7 @@ display_task(void *arg)
         }
 
         if (updateCallback)
-        {
-            (*updateCallback)(update);
-        }
+            updateCallback(update);
 
         xQueueReceive(videoTaskQueue, &update, portMAX_DELAY);
     }
@@ -948,7 +946,7 @@ rg_display_set_backlight(display_backlight_t level)
 }
 
 void
-rg_display_set_callback(update_callback_t *func)
+rg_display_set_callback(update_callback_t func)
 {
     updateCallback = func;
 }
@@ -1010,32 +1008,29 @@ rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *previousFrame
     static int prev_width = 0, prev_height = 0;
     int linesChanged = 0;
 
-    if (frame)
-    {
-        if (frame->width != prev_width || frame->height != prev_height)
-        {
-            prev_width = frame->width;
-            prev_height = frame->height;
-            forceVideoRefresh = true;
-        }
+    if (!frame)
+        return RG_SCREEN_UPDATE_ERROR;
 
-        if (previousFrame && !forceVideoRefresh)
-        {
-            linesChanged = frame_diff(frame, previousFrame);
-        }
-        else
-        {
-            frame->diff[0].left = 0;
-            frame->diff[0].width = frame->width;
-            frame->diff[0].repeat = frame->height;
-            linesChanged = frame->height;
-        }
+    if (frame->width != prev_width || frame->height != prev_height)
+    {
+        prev_width = frame->width;
+        prev_height = frame->height;
+        forceVideoRefresh = true;
     }
 
-    // if (linesChanged > 0)
+    if (previousFrame && !forceVideoRefresh)
     {
-        xQueueSend(videoTaskQueue, &frame, portMAX_DELAY);
+        linesChanged = frame_diff(frame, previousFrame);
     }
+    else
+    {
+        frame->diff[0].left = 0;
+        frame->diff[0].width = frame->width;
+        frame->diff[0].repeat = frame->height;
+        linesChanged = frame->height;
+    }
+
+    xQueueSend(videoTaskQueue, &frame, portMAX_DELAY);
 
     if (linesChanged == frame->height)
         return RG_SCREEN_UPDATE_FULL;
@@ -1136,8 +1131,12 @@ rg_display_show_hourglass()
 void
 rg_display_deinit()
 {
-    // Here we should stop SPI and display tasks
-    // Then:
+    void *stop = NULL;
+
+    xQueueSend(videoTaskQueue, &stop, portMAX_DELAY);
+    vTaskDelay(10);
+    // To do: Stop SPI task...
+
     backlight_deinit();
     ili9341_deinit();
 }
