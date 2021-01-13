@@ -568,7 +568,7 @@ static bool scaling_update_cb(dialog_choice_t *option, dialog_event_t event)
     return event == RG_DIALOG_ENTER;
 }
 
-bool speedup_update_cb(dialog_choice_t *option, dialog_event_t event)
+static bool speedup_update_cb(dialog_choice_t *option, dialog_event_t event)
 {
     rg_app_desc_t *app = rg_system_get_app();
     if (event == RG_DIALOG_PREV && --app->speedupEnabled < 0) app->speedupEnabled = 2;

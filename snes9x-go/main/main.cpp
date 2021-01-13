@@ -316,8 +316,8 @@ static void snes9x_task(void *arg)
     S9xMapButtonT(SNES_B_MASK, "Joypad1 B");
     S9xMapButtonT(SNES_X_MASK, "Joypad1 X");
     S9xMapButtonT(SNES_Y_MASK, "Joypad1 Y");
-    S9xMapButtonT(SNES_TL_MASK, "Joypad1 TL");
-    S9xMapButtonT(SNES_TR_MASK, "Joypad1 TR");
+    S9xMapButtonT(SNES_TL_MASK, "Joypad1 L");
+    S9xMapButtonT(SNES_TR_MASK, "Joypad1 R");
     S9xMapButtonT(SNES_START_MASK, "Joypad1 Start");
     S9xMapButtonT(SNES_SELECT_MASK, "Joypad1 X");
     S9xMapButtonT(SNES_LEFT_MASK, "Joypad1 Left");
