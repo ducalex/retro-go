@@ -417,7 +417,7 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 		case 8:
 			BG.ConvertTile      = BG.ConvertTileFlip = ConvertTile8;
 			BG.Buffer           = BG.BufferFlip      = IPPU.TileCache[TILE_8BIT];
-			BG.Buffered         = BG.BufferedFlip    = IPPU.TileCached[TILE_8BIT];
+			BG.Buffered         = BG.BufferedFlip    = TILE_8BIT_MASK;
 			BG.TileShift        = 6;
 			BG.PaletteShift     = 0;
 			BG.PaletteMask      = 0;
@@ -432,26 +432,26 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 				{
 					BG.ConvertTile     = ConvertTile4h_even;
 					BG.Buffer          = IPPU.TileCache[TILE_4BIT_EVEN];
-					BG.Buffered        = IPPU.TileCached[TILE_4BIT_EVEN];
+					BG.Buffered        = TILE_4BIT_EVEN_MASK;
 					BG.ConvertTileFlip = ConvertTile4h_odd;
 					BG.BufferFlip      = IPPU.TileCache[TILE_4BIT_ODD];
-					BG.BufferedFlip    = IPPU.TileCached[TILE_4BIT_ODD];
+					BG.BufferedFlip    = TILE_4BIT_ODD_MASK;
 				}
 				else
 				{
 					BG.ConvertTile     = ConvertTile4h_odd;
 					BG.Buffer          = IPPU.TileCache[TILE_4BIT_ODD];
-					BG.Buffered        = IPPU.TileCached[TILE_4BIT_ODD];
+					BG.Buffered        = TILE_4BIT_ODD_MASK;
 					BG.ConvertTileFlip = ConvertTile4h_even;
 					BG.BufferFlip      = IPPU.TileCache[TILE_4BIT_EVEN];
-					BG.BufferedFlip    = IPPU.TileCached[TILE_4BIT_EVEN];
+					BG.BufferedFlip    = TILE_4BIT_EVEN_MASK;
 				}
 			}
 			else
 			{
 				BG.ConvertTile = BG.ConvertTileFlip = ConvertTile4;
 				BG.Buffer      = BG.BufferFlip      = IPPU.TileCache[TILE_4BIT];
-				BG.Buffered    = BG.BufferedFlip    = IPPU.TileCached[TILE_4BIT];
+				BG.Buffered    = BG.BufferedFlip    = TILE_4BIT_MASK;
 			}
 
 			BG.TileShift        = 5;
@@ -468,26 +468,26 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 				{
 					BG.ConvertTile     = ConvertTile2h_even;
 					BG.Buffer          = IPPU.TileCache[TILE_2BIT_EVEN];
-					BG.Buffered        = IPPU.TileCached[TILE_2BIT_EVEN];
+					BG.Buffered        = TILE_2BIT_EVEN_MASK;
 					BG.ConvertTileFlip = ConvertTile2h_odd;
 					BG.BufferFlip      = IPPU.TileCache[TILE_2BIT_ODD];
-					BG.BufferedFlip    = IPPU.TileCached[TILE_2BIT_ODD];
+					BG.BufferedFlip    = TILE_2BIT_ODD_MASK;
 				}
 				else
 				{
 					BG.ConvertTile     = ConvertTile2h_odd;
 					BG.Buffer          = IPPU.TileCache[TILE_2BIT_ODD];
-					BG.Buffered        = IPPU.TileCached[TILE_2BIT_ODD];
+					BG.Buffered        = TILE_2BIT_ODD_MASK;
 					BG.ConvertTileFlip = ConvertTile2h_even;
 					BG.BufferFlip      = IPPU.TileCache[TILE_2BIT_EVEN];
-					BG.BufferedFlip    = IPPU.TileCached[TILE_2BIT_EVEN];
+					BG.BufferedFlip    = TILE_2BIT_EVEN_MASK;
 				}
 			}
 			else
 			{
 				BG.ConvertTile = BG.ConvertTileFlip = ConvertTile2;
 				BG.Buffer      = BG.BufferFlip      = IPPU.TileCache[TILE_2BIT];
-				BG.Buffered    = BG.BufferedFlip    = IPPU.TileCached[TILE_2BIT];
+				BG.Buffered    = BG.BufferedFlip    = TILE_2BIT_MASK;
 			}
 
 			BG.TileShift        = 4;
@@ -514,18 +514,28 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 	if (Tile & H_FLIP) \
 	{ \
 		pCache = &BG.BufferFlip[TileNumber << 6]; \
-		if (!BG.BufferedFlip[TileNumber]) \
-			BG.BufferedFlip[TileNumber] = BG.ConvertTileFlip(pCache, TileAddr, Tile & 0x3ff); \
+		if (!(IPPU.TileCached[TileNumber] & BG.BufferedFlip)) { \
+			IPPU.TileCached[TileNumber] |= BG.BufferedFlip; \
+			if (BG.ConvertTileFlip(pCache, TileAddr, Tile & 0x3ff) == BLANK_TILE) \
+				IPPU.TileBlank[TileNumber] |= BG.BufferedFlip; \
+			else \
+				IPPU.TileBlank[TileNumber] &= ~BG.BufferedFlip; \
+		} \
 	} \
 	else \
 	{ \
 		pCache = &BG.Buffer[TileNumber << 6]; \
-		if (!BG.Buffered[TileNumber]) \
-			BG.Buffered[TileNumber] = BG.ConvertTile(pCache, TileAddr, Tile & 0x3ff); \
+		if (!(IPPU.TileCached[TileNumber] & BG.Buffered)) { \
+			IPPU.TileCached[TileNumber] |= BG.Buffered; \
+			if (BG.ConvertTile(pCache, TileAddr, Tile & 0x3ff) == BLANK_TILE) \
+				IPPU.TileBlank[TileNumber] |= BG.Buffered; \
+			else \
+				IPPU.TileBlank[TileNumber] &= ~BG.Buffered; \
+		} \
 	}
 
 #define IS_BLANK_TILE() \
-	( ( (Tile & H_FLIP) ? BG.BufferedFlip[TileNumber] : BG.Buffered[TileNumber]) == BLANK_TILE)
+	( (Tile & H_FLIP) ? (IPPU.TileBlank[TileNumber] & BG.BufferedFlip) : (IPPU.TileBlank[TileNumber] & BG.Buffered) )
 
 #define SELECT_PALETTE() \
 	if (BG.DirectColourMode) \

@@ -78,62 +78,48 @@ static void S9xDeinterleaveType1 (int size, uint8 *base)
 
 bool8 CMemory::Init (void)
 {
+	FillRAM = (uint8 *) calloc(1, 0x2800);
     RAM	 = (uint8 *) calloc(1, 0x20000);
-    SRAM = (uint8 *) calloc(1, 0x10000);//calloc(0x20000);
     VRAM = (uint8 *) calloc(1, 0x10000);
-    ROM  = (uint8 *) calloc(1, MAX_ROM_SIZE + 0x200 + 0x8000);
+    SRAM = (uint8 *) calloc(1, 0x10000);//calloc(0x20000);
+    ROM  = (uint8 *) calloc(1, MAX_ROM_SIZE + 0x200);
 
-	IPPU.TileCache[TILE_2BIT]       = (uint8 *) calloc(1, MAX_2BIT_TILES * 64);
-	IPPU.TileCache[TILE_4BIT]       = (uint8 *) calloc(1, MAX_4BIT_TILES * 64);
-	IPPU.TileCache[TILE_8BIT]       = (uint8 *) calloc(1, MAX_8BIT_TILES * 64);
-	IPPU.TileCache[TILE_2BIT_EVEN]  = (uint8 *) calloc(1, MAX_2BIT_TILES * 64);
-	IPPU.TileCache[TILE_2BIT_ODD]   = (uint8 *) calloc(1, MAX_2BIT_TILES * 64);
-	IPPU.TileCache[TILE_4BIT_EVEN]  = (uint8 *) calloc(1, MAX_4BIT_TILES * 64);
-	IPPU.TileCache[TILE_4BIT_ODD]   = (uint8 *) calloc(1, MAX_4BIT_TILES * 64);
+	IPPU.TileCache[TILE_2BIT]       = (uint8 *) calloc(MAX_2BIT_TILES, 64);
+	IPPU.TileCache[TILE_4BIT]       = (uint8 *) calloc(MAX_4BIT_TILES, 64);
+	IPPU.TileCache[TILE_8BIT]       = (uint8 *) calloc(MAX_8BIT_TILES, 64);
+	IPPU.TileCache[TILE_2BIT_EVEN]  = (uint8 *) calloc(MAX_2BIT_TILES, 64);
+	IPPU.TileCache[TILE_2BIT_ODD]   = (uint8 *) calloc(MAX_2BIT_TILES, 64);
+	IPPU.TileCache[TILE_4BIT_EVEN]  = (uint8 *) calloc(MAX_4BIT_TILES, 64);
+	IPPU.TileCache[TILE_4BIT_ODD]   = (uint8 *) calloc(MAX_4BIT_TILES, 64);
 
-	IPPU.TileCached[TILE_2BIT]      = (uint8 *) calloc(1, MAX_2BIT_TILES);
-	IPPU.TileCached[TILE_4BIT]      = (uint8 *) calloc(1, MAX_4BIT_TILES);
-	IPPU.TileCached[TILE_8BIT]      = (uint8 *) calloc(1, MAX_8BIT_TILES);
-	IPPU.TileCached[TILE_2BIT_EVEN] = (uint8 *) calloc(1, MAX_2BIT_TILES);
-	IPPU.TileCached[TILE_2BIT_ODD]  = (uint8 *) calloc(1, MAX_2BIT_TILES);
-	IPPU.TileCached[TILE_4BIT_EVEN] = (uint8 *) calloc(1, MAX_4BIT_TILES);
-	IPPU.TileCached[TILE_4BIT_ODD]  = (uint8 *) calloc(1, MAX_4BIT_TILES);
-
-	if (!RAM || !SRAM || !VRAM || !ROM ||
+	if (!FillRAM || !RAM || !SRAM || !VRAM || !ROM ||
 		!IPPU.TileCache[TILE_2BIT]       ||
 		!IPPU.TileCache[TILE_4BIT]       ||
 		!IPPU.TileCache[TILE_8BIT]       ||
 		!IPPU.TileCache[TILE_2BIT_EVEN]  ||
 		!IPPU.TileCache[TILE_2BIT_ODD]   ||
 		!IPPU.TileCache[TILE_4BIT_EVEN]  ||
-		!IPPU.TileCache[TILE_4BIT_ODD]   ||
-		!IPPU.TileCached[TILE_2BIT]      ||
-		!IPPU.TileCached[TILE_4BIT]      ||
-		!IPPU.TileCached[TILE_8BIT]      ||
-		!IPPU.TileCached[TILE_2BIT_EVEN] ||
-		!IPPU.TileCached[TILE_2BIT_ODD]  ||
-		!IPPU.TileCached[TILE_4BIT_EVEN] ||
-		!IPPU.TileCached[TILE_4BIT_ODD])
+		!IPPU.TileCache[TILE_4BIT_ODD])
     {
 		Deinit();
 		return (FALSE);
     }
 
-	// FillRAM uses first 32K of ROM image area, otherwise space just
-	// wasted. Might be read by the SuperFX code.
-
-	FillRAM = ROM;
-
-	// Add 0x8000 to ROM image pointer to stop SuperFX code accessing
-	// unallocated memory (can cause crash on some ports).
-
-	ROM += 0x8000;
+	// We never access 0x0000 - 0x2000 so we shift our offset to save 8K of ram
+	FillRAM -= 0x2000;
 
 	return (TRUE);
 }
 
 void CMemory::Deinit (void)
 {
+	if (FillRAM)
+	{
+		FillRAM += 0x2000;
+		free(FillRAM);
+		FillRAM = NULL;
+	}
+
 	if (RAM)
 	{
 		free(RAM);
@@ -154,7 +140,6 @@ void CMemory::Deinit (void)
 
 	if (ROM)
 	{
-		ROM -= 0x8000;
 		free(ROM);
 		ROM = NULL;
 	}
@@ -165,12 +150,6 @@ void CMemory::Deinit (void)
 		{
 			free(IPPU.TileCache[t]);
 			IPPU.TileCache[t] = NULL;
-		}
-
-		if (IPPU.TileCached[t])
-		{
-			free(IPPU.TileCached[t]);
-			IPPU.TileCached[t] = NULL;
 		}
 	}
 
@@ -1021,8 +1000,7 @@ void CMemory::map_lorom (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 add
 		{
 			p = (c << 4) | (i >> 12);
 			addr = (c & 0x7f) * 0x8000;
-			Map[p] = ROM + map_mirror(size, addr) - (i & 0x8000);
-			BlockType[p] = MAP_TYPE_ROM;
+			ReadMap[p] = ROM + map_mirror(size, addr) - (i & 0x8000);
 		}
 	}
 }
@@ -1037,8 +1015,7 @@ void CMemory::map_hirom (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 add
 		{
 			p = (c << 4) | (i >> 12);
 			addr = c << 16;
-			Map[p] = ROM + map_mirror(size, addr);
-			BlockType[p] = MAP_TYPE_ROM;
+			ReadMap[p] = ROM + map_mirror(size, addr);
 		}
 	}
 }
@@ -1053,8 +1030,7 @@ void CMemory::map_lorom_offset (uint32 bank_s, uint32 bank_e, uint32 addr_s, uin
 		{
 			p = (c << 4) | (i >> 12);
 			addr = ((c - bank_s) & 0x7f) * 0x8000;
-			Map[p] = ROM + offset + map_mirror(size, addr) - (i & 0x8000);
-			BlockType[p] = MAP_TYPE_ROM;
+			ReadMap[p] = ROM + offset + map_mirror(size, addr) - (i & 0x8000);
 		}
 	}
 }
@@ -1069,8 +1045,7 @@ void CMemory::map_hirom_offset (uint32 bank_s, uint32 bank_e, uint32 addr_s, uin
 		{
 			p = (c << 4) | (i >> 12);
 			addr = (c - bank_s) << 16;
-			Map[p] = ROM + offset + map_mirror(size, addr);
-			BlockType[p] = MAP_TYPE_ROM;
+			ReadMap[p] = ROM + offset + map_mirror(size, addr);
 		}
 	}
 }
@@ -1084,8 +1059,7 @@ void CMemory::map_space (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 add
 		for (i = addr_s; i <= addr_e; i += 0x1000)
 		{
 			p = (c << 4) | (i >> 12);
-			Map[p] = data;
-			BlockType[p] = MAP_TYPE_RAM;
+			ReadMap[p] = data;
 		}
 	}
 }
@@ -1099,8 +1073,7 @@ void CMemory::map_index (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 add
 		for (i = addr_s; i <= addr_e; i += 0x1000)
 		{
 			p = (c << 4) | (i >> 12);
-			Map[p] = (uint8 *) (pint) index;
-			BlockType[p] = type;
+			ReadMap[p] = (uint8 *) (pint) index;
 		}
 	}
 }
@@ -1119,6 +1092,7 @@ void CMemory::map_System (void)
 void CMemory::map_WRAM (void)
 {
 	// will overwrite others
+	map_space(0x7e, 0x7e, 0x0000, 0xffff, RAM);
 	map_space(0x7e, 0x7e, 0x0000, 0xffff, RAM);
 	map_space(0x7f, 0x7f, 0x0000, 0xffff, RAM + 0x10000);
 }
@@ -1175,12 +1149,14 @@ void CMemory::map_DSP (void)
 
 void CMemory::map_WriteProtectROM (void)
 {
-	memmove((void *) WriteMap, (void *) Map, sizeof(Map));
+	memmove((void *) WriteMap, (void *) ReadMap, sizeof(ReadMap));
 
 	for (int c = 0; c < MEMMAP_NUM_BLOCKS; c++)
 	{
-		if (BlockType[c] == MAP_TYPE_ROM)
+		if (WriteMap[c] >= ROM && WriteMap[c] <= (ROM + MAX_ROM_SIZE + 0x8000))
+		{
 			WriteMap[c] = (uint8 *) MAP_NONE;
+		}
 	}
 }
 
@@ -1188,9 +1164,8 @@ void CMemory::Map_Initialize (void)
 {
 	for (int c = 0; c < MEMMAP_NUM_BLOCKS; c++)
 	{
-		Map[c]      = (uint8 *) MAP_NONE;
+		ReadMap[c]  = (uint8 *) MAP_NONE;
 		WriteMap[c] = (uint8 *) MAP_NONE;
-		BlockType[c] = 0;
 	}
 }
 

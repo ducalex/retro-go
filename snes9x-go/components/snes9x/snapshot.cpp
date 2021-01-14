@@ -1035,10 +1035,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 		if (Settings.FastSavestates == 0)
 			memset(GFX.Screen,0,GFX.Pitch * MAX_SNES_HEIGHT);
 
-		// TODO: this seems to be a relic from 1.43 changes, completely remove if no issues in the future
-		/*uint8 hdma_byte = Memory.FillRAM[0x420c];
-		S9xSetCPU(hdma_byte, 0x420c);*/
-
 		S9xControlPostLoadState(&ctl_snap);
 	}
 

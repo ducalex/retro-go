@@ -51,9 +51,8 @@ struct CMemory
 	uint8	*FillRAM;
 	uint8	*BWRAM;
 
-	uint8	*Map[MEMMAP_NUM_BLOCKS];		// 16384
+	uint8	*ReadMap[MEMMAP_NUM_BLOCKS];	// 16384
 	uint8	*WriteMap[MEMMAP_NUM_BLOCKS];	// 16384
-	uint8	BlockType[MEMMAP_NUM_BLOCKS];	// 4096
 	uint8	ExtendedFormat;
 
 	char	ROMFilename[PATH_MAX + 1];

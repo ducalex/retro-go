@@ -90,8 +90,8 @@ struct SBG
 
 	uint8	*Buffer;
 	uint8	*BufferFlip;
-	uint8	*Buffered;
-	uint8	*BufferedFlip;
+	uint32	Buffered;
+	uint32	BufferedFlip;
 	bool8	DirectColourMode;
 };
 

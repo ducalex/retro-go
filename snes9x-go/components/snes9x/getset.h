@@ -49,7 +49,7 @@ static inline int32 memory_speed (uint32 address)
 
 inline uint8 S9xGetByte (uint32 Address)
 {
-	uint8	*GetAddress = Memory.Map[(Address & 0xffffff) >> MEMMAP_SHIFT];
+	uint8	*GetAddress = Memory.ReadMap[(Address & 0xffffff) >> MEMMAP_SHIFT];
 	uint32	speed = memory_speed(Address);
 	uint32	byte;
 
@@ -137,7 +137,7 @@ inline uint16 S9xGetWord (uint32 Address, enum s9xwrap_t w = WRAP_NONE)
 		}
 	}
 
-	uint8	*GetAddress = Memory.Map[(Address & 0xffffff) >> MEMMAP_SHIFT];
+	uint8	*GetAddress = Memory.ReadMap[(Address & 0xffffff) >> MEMMAP_SHIFT];
 	uint32	speed = memory_speed(Address);
 
 	if (GetAddress >= (uint8 *) CMemory::MAP_LAST)
@@ -420,7 +420,7 @@ inline void S9xSetPCBase (uint32 Address)
 {
 	Address &= 0xffffff;
 
-	uint8	*GetAddress = Memory.Map[Address >> MEMMAP_SHIFT];
+	uint8	*GetAddress = Memory.ReadMap[Address >> MEMMAP_SHIFT];
 
 	Registers.PBPC = Address;
 	ICPU.ShiftedPB = Address & 0xff0000;
@@ -463,7 +463,7 @@ inline void S9xSetPCBase (uint32 Address)
 
 inline uint8 * S9xGetBasePointer (uint32 Address)
 {
-	uint8	*GetAddress = Memory.Map[(Address & 0xffffff) >> MEMMAP_SHIFT];
+	uint8	*GetAddress = Memory.ReadMap[(Address & 0xffffff) >> MEMMAP_SHIFT];
 
 	if (GetAddress >= (uint8 *) CMemory::MAP_LAST)
 		return (GetAddress);
@@ -491,7 +491,7 @@ inline uint8 * S9xGetBasePointer (uint32 Address)
 
 inline uint8 * S9xGetMemPointer (uint32 Address)
 {
-	uint8	*GetAddress = Memory.Map[(Address & 0xffffff) >> MEMMAP_SHIFT];
+	uint8	*GetAddress = Memory.ReadMap[(Address & 0xffffff) >> MEMMAP_SHIFT];
 
 	if (GetAddress >= (uint8 *) CMemory::MAP_LAST)
 		return (GetAddress + (Address & 0xffff));

@@ -223,12 +223,15 @@ void S9xComputeClipWindows (void)
 	for (j = 0; j < 5; j++)
 	{
 		uint8	W = Settings.DisableGraphicWindows ? 0 : CalcWindowMask(j, W1, W2);
-		for (int sub = 0; sub < 2; sub++)
-		{
-			if (Memory.FillRAM[sub + 0x212e] & (1 << j))
-				StoreWindowRegions(W, &IPPU.Clip[sub][j], n_regions, windows, drawing_modes, sub);
-			else
-				StoreWindowRegions(0, &IPPU.Clip[sub][j], n_regions, windows, drawing_modes, sub);
-		}
+
+		if (Memory.FillRAM[0x212e] & (1 << j))
+			StoreWindowRegions(W, &IPPU.Clip[0][j], n_regions, windows, drawing_modes, 0);
+		else
+			StoreWindowRegions(0, &IPPU.Clip[0][j], n_regions, windows, drawing_modes, 0);
+
+		if (Memory.FillRAM[0x212f] & (1 << j))
+			StoreWindowRegions(W, &IPPU.Clip[1][j], n_regions, windows, drawing_modes, 1);
+		else
+			StoreWindowRegions(0, &IPPU.Clip[1][j], n_regions, windows, drawing_modes, 1);
 	}
 }

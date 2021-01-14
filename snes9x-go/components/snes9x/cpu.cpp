@@ -95,7 +95,7 @@ void S9xReset (void)
 {
 	memset(Memory.RAM, 0x55, 0x20000);
 	memset(Memory.VRAM, 0x00, 0x10000);
-	memset(Memory.FillRAM, 0, 0x8000);
+	memset(Memory.FillRAM + 0x2000, 0, 0x2800);
 
 	S9xResetCPU();
 	S9xResetPPU();
@@ -108,7 +108,7 @@ void S9xReset (void)
 
 void S9xSoftReset (void)
 {
-	memset(Memory.FillRAM, 0, 0x8000);
+	memset(Memory.FillRAM + 0x2000, 0, 0x2800);
 
 	S9xSoftResetCPU();
 	S9xSoftResetPPU();

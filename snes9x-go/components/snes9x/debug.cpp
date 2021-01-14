@@ -166,7 +166,7 @@ static void debug_whats_missing (void);
 static uint8 S9xDebugGetByte (uint32 Address)
 {
 	int		block = (Address & 0xffffff) >> MEMMAP_SHIFT;
-	uint8	*GetAddress = Memory.Map[block];
+	uint8	*GetAddress = Memory.ReadMap[block];
 	uint8	byte = 0;
 
 	if (GetAddress >= (uint8 *) CMemory::MAP_LAST)

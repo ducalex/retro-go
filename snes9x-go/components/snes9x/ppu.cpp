@@ -951,7 +951,8 @@ void S9xSetPPU (uint8 Byte, uint32 Address)
 	#endif
 	}
 
-	Memory.FillRAM[Address] = Byte;
+	if (Address > 0x2000 && Address < 0x4800)
+		Memory.FillRAM[Address] = Byte;
 }
 
 uint8 S9xGetPPU (uint32 Address)
@@ -1529,7 +1530,8 @@ void S9xSetCPU (uint8 Byte, uint32 Address)
 		}
 	}
 
-	Memory.FillRAM[Address] = Byte;
+	if (Address > 0x2000 && Address < 0x4800)
+		Memory.FillRAM[Address] = Byte;
 }
 
 uint8 S9xGetCPU (uint32 Address)
@@ -1683,13 +1685,7 @@ void S9xResetPPUFast (void)
 	PPU.RecomputeClipWindows = TRUE;
 	IPPU.ColorsChanged = TRUE;
 	IPPU.OBJChanged = TRUE;
-	memset(IPPU.TileCached[TILE_2BIT], 0, MAX_2BIT_TILES);
-	memset(IPPU.TileCached[TILE_4BIT], 0, MAX_4BIT_TILES);
-	memset(IPPU.TileCached[TILE_8BIT], 0, MAX_8BIT_TILES);
-	memset(IPPU.TileCached[TILE_2BIT_EVEN], 0, MAX_2BIT_TILES);
-	memset(IPPU.TileCached[TILE_2BIT_ODD], 0, MAX_2BIT_TILES);
-	memset(IPPU.TileCached[TILE_4BIT_EVEN], 0, MAX_4BIT_TILES);
-	memset(IPPU.TileCached[TILE_4BIT_ODD], 0, MAX_4BIT_TILES);
+	memset(IPPU.TileCached, 0, sizeof(IPPU.TileCached));
 }
 
 void S9xSoftResetPPU (void)
@@ -1826,13 +1822,7 @@ void S9xSoftResetPPU (void)
 		memset(&IPPU.Clip[c], 0, sizeof(struct ClipData));
 	IPPU.ColorsChanged = TRUE;
 	IPPU.OBJChanged = TRUE;
-	memset(IPPU.TileCached[TILE_2BIT], 0, MAX_2BIT_TILES);
-	memset(IPPU.TileCached[TILE_4BIT], 0, MAX_4BIT_TILES);
-	memset(IPPU.TileCached[TILE_8BIT], 0, MAX_8BIT_TILES);
-	memset(IPPU.TileCached[TILE_2BIT_EVEN], 0, MAX_2BIT_TILES);
-	memset(IPPU.TileCached[TILE_2BIT_ODD], 0,  MAX_2BIT_TILES);
-	memset(IPPU.TileCached[TILE_4BIT_EVEN], 0, MAX_4BIT_TILES);
-	memset(IPPU.TileCached[TILE_4BIT_ODD], 0,  MAX_4BIT_TILES);
+	memset(IPPU.TileCached, 0, sizeof(IPPU.TileCached));
 	PPU.VRAMReadBuffer = 0; // XXX: FIXME: anything better?
 	GFX.InterlaceFrame = 0;
 	GFX.DoInterlace = 0;
@@ -1858,13 +1848,11 @@ void S9xSoftResetPPU (void)
 	S9xFixColourBrightness();
 	S9xBuildDirectColourMaps();
 
-	for (int c = 0; c < 0x8000; c += 0x100)
+	for (int c = 0x2000; c < 0x4800; c += 0x100)
 		memset(&Memory.FillRAM[c], c >> 8, 0x100);
 	memset(&Memory.FillRAM[0x2100], 0, 0x100);
 	memset(&Memory.FillRAM[0x4200], 0, 0x100);
 	memset(&Memory.FillRAM[0x4000], 0, 0x100);
-	// For BS Suttehakkun 2...
-	memset(&Memory.FillRAM[0x1000], 0, 0x1000);
 
 	Memory.FillRAM[0x4201] = Memory.FillRAM[0x4213] = 0xff;
 	Memory.FillRAM[0x2126] = Memory.FillRAM[0x2128] = 1;
