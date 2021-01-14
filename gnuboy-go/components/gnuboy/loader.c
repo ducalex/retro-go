@@ -81,11 +81,16 @@ static FILE* fpRomFile = NULL;
 #define LIL(x) ((x<<24)|((x&0xff00)<<8)|((x>>8)&0xff00)|(x>>24))
 #endif
 
+#define SAVE_VERSION 0x107
+
+#define wavofs  (4096 - 784)
+#define hiofs   (4096 - 768)
+#define palofs  (4096 - 512)
+#define oamofs  (4096 - 256)
+
 #define I1(s, p) { 1, s, p }
 #define I2(s, p) { 2, s, p }
 #define I4(s, p) { 4, s, p }
-#define R(r) I1(#r, &R_##r)
-#define NOSAVE { -1, "\0\0\0\0", 0 }
 #define END { 0, "\0\0\0\0", 0 }
 
 typedef struct
@@ -95,9 +100,7 @@ typedef struct
 	void *ptr;
 } svar_t;
 
-static int ver;
-static int sramblock, iramblock, vramblock;
-static int hiofs, palofs, oamofs, wavofs;
+static un32 ver;
 
 static svar_t svars[] =
 {
@@ -119,10 +122,11 @@ static svar_t svars[] =
 	I4("lcdc", &lcd.cycles),
 	I4("snd ", &snd.cycles),
 
-	I1("ints", &hw.ilines),
-	I1("pad ", &hw.pad),
+	I4("ints", &hw.ilines),
+	I4("pad ", &hw.pad),
 	I4("cgb ", &hw.cgb),
-	I4("gba ", &hw.gba),
+	I4("hdma", &hw.hdma),
+	I4("seri", &hw.serial),
 
 	I4("mbcm", &mbc.model),
 	I4("romb", &mbc.rombank),
@@ -165,19 +169,24 @@ static svar_t svars[] =
 	I4("S4c ", &snd.ch[3].cnt),
 	I4("S4ec", &snd.ch[3].encnt),
 
-	I4("hdma", &hw.hdma),
-
-	I4("sram", &sramblock),
-	I4("iram", &iramblock),
-	I4("vram", &vramblock),
-	I4("hi  ", &hiofs),
-	I4("pal ", &palofs),
-	I4("oam ", &oamofs),
-	I4("wav ", &wavofs),
-
 	END
 };
 
+/**
+ * Save file format is:
+ * GB:
+ * 0x0000 - 0x0FFF: svars, oam, palette, hiram, wave
+ * 0x1000 - 0x2FFF: RAM
+ * 0x3000 - 0x4FFF: VRAM
+ * 0x5000 - 0x...:  SRAM
+ *
+ * GBC:
+ * 0x0000 - 0x0FFF: svars, oam, palette, hiram, wave
+ * 0x1000 - 0x8FFF: RAM
+ * 0x9000 - 0xCFFF: VRAM
+ * 0xD000 - 0x...:  SRAM
+ *
+ */
 
 int rom_loadbank(int bank)
 {
@@ -244,7 +253,6 @@ int rom_load(const char *file)
 	int tmp = *((int*)(header + 0x0140));
 	byte c = tmp >> 24;
 	hw.cgb = ((c == 0x80) || (c == 0xc0));
-	hw.gba = (hw.cgb && 0);
 
 	tmp = *((int*)(header + 0x0144));
 	c = (tmp >> 24) & 0xff;
@@ -379,157 +387,110 @@ int sram_save(const char *file)
 
 int state_save(const char *file)
 {
-	FILE *f;
+	byte *buf = calloc(1, 4096);
+	if (!buf) return -2;
 
-	if ((f = fopen(file, "wb")))
+	FILE *f = fopen(file, "wb");
+	if (!f) return -1;
+
+	un32 (*header)[2] = (un32 (*)[2])buf;
+
+	ver = SAVE_VERSION;
+
+	for (int i = 0; svars[i].ptr; i++)
 	{
-		int i;
-		byte* buf = malloc(4096);
-		if (!buf) abort();
-
-		un32 (*header)[2] = (un32 (*)[2])buf;
 		un32 d = 0;
-		int irl = hw.cgb ? 8 : 2;
-		int vrl = hw.cgb ? 4 : 2;
-		int srl = mbc.ramsize << 1;
 
-		ver = 0x106;
-		iramblock = 1;
-		vramblock = 1+irl;
-		sramblock = 1+irl+vrl;
-		wavofs = 4096 - 784;
-		hiofs = 4096 - 768;
-		palofs = 4096 - 512;
-		oamofs = 4096 - 256;
-		memset(buf, 0, 4096);
-
-		for (i = 0; svars[i].len > 0; i++)
+		switch (svars[i].len)
 		{
-			header[i][0] = *(un32 *)svars[i].key;
-			switch (svars[i].len)
-			{
-			case 1:
-				d = *(byte *)svars[i].ptr;
-				break;
-			case 2:
-				d = *(un16 *)svars[i].ptr;
-				break;
-			case 4:
-				d = *(un32 *)svars[i].ptr;
-				break;
-			}
-			header[i][1] = LIL(d);
-		}
-		header[i][0] = header[i][1] = 0;
-
-		memcpy(buf+hiofs, ram.hi, sizeof ram.hi);
-		memcpy(buf+palofs, lcd.pal, sizeof lcd.pal);
-		memcpy(buf+oamofs, lcd.oam.mem, sizeof lcd.oam);
-		memcpy(buf+wavofs, snd.wave, sizeof snd.wave);
-
-		fseek(f, 0, SEEK_SET);
-		fwrite(buf, 4096, 1, f);
-
-		fseek(f, iramblock<<12, SEEK_SET);
-		fwrite(ram.ibank, 4096, irl, f);
-
-		fseek(f, vramblock<<12, SEEK_SET);
-		fwrite(lcd.vbank, 4096, vrl, f);
-
-		fseek(f, sramblock<<12, SEEK_SET);
-
-		byte* tmp = (byte*)ram.sbank;
-		for (int j = 0; j < srl; ++j)
-		{
-			memcpy(buf, (void*)tmp, 4096);
-			size_t count = fwrite(buf, 4096, 1, f);
-			printf("state_save: wrote sram addr=%p, size=0x%x, count=%d\n", (void*)tmp, 4096, count);
-			tmp += 4096;
+		case 1:
+			d = *(byte *)svars[i].ptr;
+			break;
+		case 2:
+			d = *(un16 *)svars[i].ptr;
+			break;
+		case 4:
+			d = *(un32 *)svars[i].ptr;
+			break;
 		}
 
-		free(buf);
-		fclose(f);
-		return 0;
+		header[i][0] = *(un32 *)svars[i].key;
+		header[i][1] = LIL(d);
 	}
 
-	return -1;
+	memcpy(buf+hiofs, ram.hi, sizeof ram.hi);
+	memcpy(buf+palofs, lcd.pal, sizeof lcd.pal);
+	memcpy(buf+oamofs, lcd.oam.mem, sizeof lcd.oam);
+	memcpy(buf+wavofs, snd.wave, sizeof snd.wave);
+
+	fwrite(buf, 4096, 1, f);
+	fwrite(ram.ibank, 4096, hw.cgb ? 8 : 2, f);
+	fwrite(lcd.vbank, 4096, hw.cgb ? 4 : 2, f);
+	fwrite(ram.sbank, 4096, mbc.ramsize << 1, f);
+	fclose(f);
+
+	free(buf);
+
+	return 0;
 }
 
 
 int state_load(const char *file)
 {
-	FILE *f;
+	byte* buf = calloc(1, 4096);
+	if (!buf) return -2;
 
-	if ((f = fopen(file, "rb")))
+	FILE *f = fopen(file, "rb");
+	if (!f) return -1;
+
+	fread(buf, 4096, 1, f);
+	fread(ram.ibank, 4096, hw.cgb ? 8 : 2, f);
+	fread(lcd.vbank, 4096, hw.cgb ? 4 : 2, f);
+	fread(ram.sbank, 4096, mbc.ramsize << 1, f);
+	fclose(f);
+
+	un32 (*header)[2] = (un32 (*)[2])buf;
+
+	for (int i = 0; svars[i].ptr; i++)
 	{
-		int i, j;
-		byte* buf = malloc(4096);
-		if (!buf) abort();
+		un32 d = 0;
 
-		un32 (*header)[2] = (un32 (*)[2])buf;
-		un32 d;
-		int irl = hw.cgb ? 8 : 2;
-		int vrl = hw.cgb ? 4 : 2;
-		int srl = mbc.ramsize << 1;
-
-		ver = hiofs = palofs = oamofs = wavofs = 0;
-
-		fseek(f, 0, SEEK_SET);
-		fread(buf, 4096, 1, f);
-
-		for (j = 0; header[j][0]; j++)
+		for (int j = 0; header[j][0]; j++)
 		{
-			for (i = 0; svars[i].ptr; i++)
+			if (header[j][0] == *(un32 *)svars[i].key)
 			{
-				if (header[j][0] != *(un32 *)svars[i].key)
-					continue;
 				d = LIL(header[j][1]);
-				switch (svars[i].len)
-				{
-				case 1:
-					*(byte *)svars[i].ptr = d;
-					break;
-				case 2:
-					*(un16 *)svars[i].ptr = d;
-					break;
-				case 4:
-					*(un32 *)svars[i].ptr = d;
-					break;
-				}
 				break;
 			}
 		}
 
-		if (hiofs) memcpy(ram.hi, buf+hiofs, sizeof ram.hi);
-		if (palofs) memcpy(lcd.pal, buf+palofs, sizeof lcd.pal);
-		if (oamofs) memcpy(lcd.oam.mem, buf+oamofs, sizeof lcd.oam);
-
-		if (wavofs) memcpy(snd.wave, buf+wavofs, sizeof snd.wave);
-		else memcpy(snd.wave, ram.hi+0x30, 16); /* patch data from older files */
-
-		iramblock = 1;
-		vramblock = 1+irl;
-		sramblock = 1+irl+vrl;
-
-		fseek(f, iramblock<<12, SEEK_SET);
-		fread(ram.ibank, 4096, irl, f);
-
-		fseek(f, vramblock<<12, SEEK_SET);
-		fread(lcd.vbank, 4096, vrl, f);
-
-		fseek(f, sramblock<<12, SEEK_SET);
-
-		size_t count = fread(ram.sbank, 4096, srl, f);
-
-		printf("state_load: read sram addr=%p, size=0x%x, count=%d\n", (void*)ram.sbank, 4096 * srl, count);
-
-		free(buf);
-		fclose(f);
-		pal_dirty();
-		sound_dirty();
-		mem_updatemap();
-		return 0;
+		switch (svars[i].len)
+		{
+		case 1:
+			*(byte *)svars[i].ptr = d;
+			break;
+		case 2:
+			*(un16 *)svars[i].ptr = d;
+			break;
+		case 4:
+			*(un32 *)svars[i].ptr = d;
+			break;
+		}
 	}
 
-	return -1;
+	memcpy(ram.hi, buf+hiofs, sizeof ram.hi);
+	memcpy(lcd.pal, buf+palofs, sizeof lcd.pal);
+	memcpy(lcd.oam.mem, buf+oamofs, sizeof lcd.oam);
+	memcpy(snd.wave, buf+wavofs, sizeof snd.wave);
+
+	if (ver != SAVE_VERSION)
+		printf("state_load: Save file version mismatch!\n");
+
+	free(buf);
+
+	pal_dirty();
+	sound_dirty();
+	mem_updatemap();
+
+	return 0;
 }

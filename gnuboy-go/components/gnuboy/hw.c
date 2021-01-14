@@ -122,7 +122,7 @@ void IRAM_ATTR pad_refresh()
  */
 void IRAM_ATTR pad_set(byte btn, int set)
 {
-	int new_pad = hw.pad;
+	un32 new_pad = hw.pad;
 
 	if (set)
 		new_pad |= btn;
@@ -140,9 +140,11 @@ void hw_reset()
 {
 	hw.ilines = 0;
 	hw.serial = 0;
+	hw.hdma = 0;
 	hw.pad = 0;
 
-	memset(ram.hi, 0, sizeof ram.hi);
+	memset(ram.hi, 0, sizeof(ram.hi));
+	memset(ram.ibank, 0, sizeof(ram.ibank));
 
 	R_P1 = 0xFF;
 	R_LCDC = 0x91;

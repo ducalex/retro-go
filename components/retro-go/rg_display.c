@@ -810,6 +810,7 @@ display_task(void *arg)
     while(1)
     {
         xQueuePeek(videoTaskQueue, &update, portMAX_DELAY);
+        // xQueueReceive(videoTaskQueue, &update, portMAX_DELAY);
 
         if (!update) break;
 

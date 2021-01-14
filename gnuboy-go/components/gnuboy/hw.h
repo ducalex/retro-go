@@ -23,11 +23,11 @@
 
 typedef struct
 {
-	byte ilines;
-	byte pad;
-	int cgb, gba;
-	int hdma;
-	int serial;
+	un32 ilines;
+	un32 pad;
+	un32 cgb;
+	n32 hdma;
+	n32 serial;
 } hw_t;
 
 

@@ -288,7 +288,6 @@ void cpu_reset()
 	HL = 0x014D;
 
 	if (hw.cgb) A = 0x11;
-	if (hw.gba) B = 0x01;
 }
 
 /* cnt - time to emulate, expressed in real clock cycles */
