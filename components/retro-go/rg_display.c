@@ -17,7 +17,7 @@
 
 #define BACKLIGHT_DUTY_MAX 0x1fff
 
-#define SPI_TRANSACTION_COUNT (5)
+#define SPI_TRANSACTION_COUNT (6)
 #define SPI_TRANSACTION_BUFFER_LENGTH (6 * 320) // (SPI_MAX_DMA_LEN / 2) // 16bit words
 
 // Maximum amount of change (percent) in a frame before we trigger a full transfer
@@ -63,72 +63,53 @@ static frame_filter_cap_t frame_filter_lines[256];
 */
 typedef struct {
     uint8_t cmd;
-    uint8_t data[128];
-    uint8_t databytes; //No of data in data; bit 7 = delay after set; 0xFF = end of cmds.
+    uint8_t data[16];
+    uint8_t databytes; // No of bytes in data; bit 7 = delay after set;
 } ili_init_cmd_t;
 
-#define TFT_CMD_SWRESET	0x01
-#define TFT_CMD_SLEEP 0x10
-#define TFT_CMD_DISPLAY_OFF 0x28
+#define ILI_LAST_CMD {0, {0}, 0}
 
-#define MADCTL_MY  0x80
-#define MADCTL_MX  0x40
-#define MADCTL_MV  0x20
-#define MADCTL_ML  0x10
-#define MADCTL_MH 0x04
+#define MADCTL_MY   0x80
+#define MADCTL_MX   0x40
+#define MADCTL_MV   0x20
+#define MADCTL_ML   0x10
+#define MADCTL_MH   0x04
 #define TFT_RGB_BGR 0x08
 
 static DRAM_ATTR const ili_init_cmd_t ili_sleep_cmds[] = {
-    {TFT_CMD_SWRESET, {0}, 0x80},
-    {TFT_CMD_DISPLAY_OFF, {0}, 0x80},
-    {TFT_CMD_SLEEP, {0}, 0x80},
-    {0, {0}, 0xff}
+    {0x01, {0}, 0x80},                                  // Reset
+    {0x28, {0}, 0x80},                                  // Display off
+    {0x10, {0}, 0x80},                                  // Sleep
+    ILI_LAST_CMD
 };
 
-// 2.4" LCD
 static DRAM_ATTR const ili_init_cmd_t ili_init_cmds[] = {
-    // VCI=2.8V
-    //************* Start Initial Sequence **********//
-    {TFT_CMD_SWRESET, {0}, 0x80},
+    {0x01, {0}, 0x80},                                  // Reset
     {0xCF, {0x00, 0xc3, 0x30}, 3},
     {0xED, {0x64, 0x03, 0x12, 0x81}, 4},
     {0xE8, {0x85, 0x00, 0x78}, 3},
     {0xCB, {0x39, 0x2c, 0x00, 0x34, 0x02}, 5},
     {0xF7, {0x20}, 1},
     {0xEA, {0x00, 0x00}, 2},
-    {0xC0, {0x1B}, 1},    //Power control   //VRH[5:0]
-    {0xC1, {0x12}, 1},    //Power control   //SAP[2:0];BT[3:0]
-    {0xC5, {0x32, 0x3C}, 2},    //VCM control
-    {0xC7, {0x91}, 1},    //VCM control2
-    //{0x36, {(MADCTL_MV | MADCTL_MX | TFT_RGB_BGR)}, 1},    // Memory Access Control
-    {0x36, {(MADCTL_MV | MADCTL_MY | TFT_RGB_BGR)}, 1},    // Memory Access Control
+    {0xC0, {0x1B}, 1},                                  // Power control   //VRH[5:0]
+    {0xC1, {0x12}, 1},                                  // Power control   //SAP[2:0];BT[3:0]
+    {0xC5, {0x32, 0x3C}, 2},                            // VCM control
+    {0xC7, {0x91}, 1},                                  // VCM control2
+    {0x36, {(MADCTL_MV|MADCTL_MY|TFT_RGB_BGR)}, 1},     // Memory Access Control
     {0x3A, {0x55}, 1},
-    {0xB1, {0x00, 0x10}, 2},  // Frame Rate Control (1B=70, 1F=61, 10=119)
-    {0xB6, {0x0A, 0xA2}, 2},    // Display Function Control
+    {0xB1, {0x00, 0x10}, 2},                            // Frame Rate Control (1B=70, 1F=61, 10=119)
+    {0xB6, {0x0A, 0xA2}, 2},                            // Display Function Control
     {0xF6, {0x01, 0x30}, 2},
-    {0xF2, {0x00}, 1},    // 3Gamma Function Disable
-    {0x26, {0x01}, 1},     //Gamma curve selected
+    {0xF2, {0x00}, 1},                                  // 3Gamma Function Disable
+    {0x26, {0x01}, 1},                                  // Gamma curve selected
 
-    //Set Gamma
-    {0xE0, {0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, 0x4E, 0xF1, 0x37, 0x07, 0x10, 0x03, 0x0E, 0x09, 0x00}, 15},
-    {0XE1, {0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F}, 15},
+    {0xE0, {0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, 0x4E, 0xF1, 0x37, 0x07, 0x10, 0x03, 0x0E, 0x09, 0x00}, 15}, // Set Gamma
+    {0XE1, {0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F}, 15}, // Set Gamma
 
-/*
-    // LUT
-    {0x2d, {0x01, 0x03, 0x05, 0x07, 0x09, 0x0b, 0x0d, 0x0f, 0x11, 0x13, 0x15, 0x17, 0x19, 0x1b, 0x1d, 0x1f,
-            0x21, 0x23, 0x25, 0x27, 0x29, 0x2b, 0x2d, 0x2f, 0x31, 0x33, 0x35, 0x37, 0x39, 0x3b, 0x3d, 0x3f,
-            0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
-            0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c,
-            0x1d, 0x1d, 0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x26, 0x27, 0x28, 0x29, 0x2a,
-            0x2b, 0x2c, 0x2d, 0x2e, 0x2f, 0x30, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39,
-            0x00, 0x00, 0x02, 0x04, 0x06, 0x08, 0x0a, 0x0c, 0x0e, 0x10, 0x12, 0x12, 0x14, 0x16, 0x18, 0x1a,
-            0x1c, 0x1e, 0x20, 0x22, 0x24, 0x26, 0x26, 0x28, 0x2a, 0x2c, 0x2e, 0x30, 0x32, 0x34, 0x36, 0x38}, 128},
-*/
+    {0x11, {0}, 0x80},                                  // Exit Sleep
+    {0x29, {0}, 0x80},                                  // Display on
 
-    {0x11, {0}, 0x80},    //Exit Sleep
-    {0x29, {0}, 0x80},    //Display on
-
-    {0, {0}, 0xff}
+    ILI_LAST_CMD
 };
 
 
@@ -244,21 +225,19 @@ spi_put_transaction(spi_transaction_t* t)
     xSemaphoreGive(spi_count_semaphore);
 }
 
-//Send a command to the ILI9341.
 static inline void
 ili9341_cmd(const uint8_t cmd)
 {
     spi_transaction_t* t = spi_get_transaction();
 
-    t->length = 8;                     //Command is 8 bits
-    t->tx_data[0] = cmd;               //The data is the cmd itself
-    t->user = (void*)0;                //D/C needs to be set to 0
+    t->length = 8;                     // Command is 8 bits
+    t->tx_data[0] = cmd;               // The data is the cmd itself
+    t->user = (void*)0;                // D/C needs to be set to 0
     t->flags = SPI_TRANS_USE_TXDATA;
 
     spi_put_transaction(t);
 }
 
-//Send data to the ILI9341.
 static inline void
 ili9341_data(const uint8_t *data, size_t len)
 {
@@ -271,10 +250,7 @@ ili9341_data(const uint8_t *data, size_t len)
 
     if (len < 5)
     {
-        for (size_t i = 0; i < len; ++i)
-        {
-            t->tx_data[i] = data[i];
-        }
+        memcpy(t->tx_data, data, len);
         t->flags = SPI_TRANS_USE_TXDATA;
     }
     else
@@ -286,32 +262,27 @@ ili9341_data(const uint8_t *data, size_t len)
 static void
 ili9341_init()
 {
-    //Initialize non-SPI GPIOs
     gpio_set_direction(RG_GPIO_LCD_DC, GPIO_MODE_OUTPUT);
-    //gpio_set_direction(LCD_PIN_NUM_BCKL, GPIO_MODE_OUTPUT);
 
-    //Send all the commands
-    size_t cmd = 0;
-    while (ili_init_cmds[cmd].databytes != 0xff)
+    for (size_t i = 0; ili_init_cmds[i].cmd; ++i)
     {
-        ili9341_cmd(ili_init_cmds[cmd].cmd);
-        ili9341_data(ili_init_cmds[cmd].data, ili_init_cmds[cmd].databytes & 0x7f);
-        //     vTaskDelay(pdMS_TO_TICKS(10));
-        cmd++;
+        ili9341_cmd(ili_init_cmds[i].cmd);
+        ili9341_data(ili_init_cmds[i].data, ili_init_cmds[i].databytes & 0x7F);
+        if (ili_init_cmds[i].databytes & 0x80)
+            vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
 static void
 ili9341_deinit()
 {
-    size_t cmd = 0;
-    while (ili_sleep_cmds[cmd].databytes != 0xff)
+    for (size_t i = 0; ili_init_cmds[i].cmd; ++i)
     {
-        ili9341_cmd(ili_sleep_cmds[cmd].cmd);
-        ili9341_data(ili_sleep_cmds[cmd].data, ili_sleep_cmds[cmd].databytes & 0x7f);
-        cmd++;
+        ili9341_cmd(ili_sleep_cmds[i].cmd);
+        ili9341_data(ili_sleep_cmds[i].data, ili_sleep_cmds[i].databytes & 0x7F);
+        if (ili_init_cmds[i].databytes & 0x80)
+            vTaskDelay(pdMS_TO_TICKS(10));
     }
-
 }
 
 //This function is called (in irq context!) just before a transmission starts. It will
@@ -384,12 +355,12 @@ spi_initialize()
     spi_device_interface_config_t devcfg;
 	memset(&devcfg, 0, sizeof(devcfg));
 
-    devcfg.clock_speed_hz = SPI_MASTER_FREQ_40M;    //80Mhz causes glitches unfortunately
-    devcfg.mode = 0;                                //SPI mode 0
-    devcfg.spics_io_num = RG_GPIO_LCD_CS;        //CS pin
-    devcfg.queue_size = SPI_TRANSACTION_COUNT;      //We want to be able to queue 7 transactions at a time
-    devcfg.pre_cb = spi_pre_transfer_callback;      //Specify pre-transfer callback to handle D/C line
-    devcfg.flags = SPI_DEVICE_NO_DUMMY;             //SPI_DEVICE_HALFDUPLEX;
+    devcfg.clock_speed_hz = SPI_MASTER_FREQ_40M;    // 80Mhz causes glitches unfortunately
+    devcfg.mode = 0;                                // SPI mode 0
+    devcfg.spics_io_num = RG_GPIO_LCD_CS;           // CS pin
+    devcfg.queue_size = SPI_TRANSACTION_COUNT;      // We want to be able to queue 5 transactions at a time
+    devcfg.pre_cb = spi_pre_transfer_callback;      // Specify pre-transfer callback to handle D/C line
+    devcfg.flags = SPI_DEVICE_NO_DUMMY;             // SPI_DEVICE_HALFDUPLEX;
 
     //Initialize the SPI bus
     spi_bus_initialize(HSPI_HOST, &buscfg, 1);
@@ -448,7 +419,7 @@ static inline void
 send_continue_line(uint16_t *line, int width, int lineCount)
 {
     spi_transaction_t* t = spi_get_transaction();
-    t->length = width * 2 * lineCount * 8;
+    t->length = width * lineCount * 16;
     t->tx_buffer = line;
     t->user = (void*)0x81;
     t->flags = 0;
@@ -456,27 +427,32 @@ send_continue_line(uint16_t *line, int width, int lineCount)
     spi_put_transaction(t);
 }
 
-static inline uint16_t
-Blend(uint16_t a, uint16_t b)
+static inline uint
+blend_pixels(uint a, uint b)
 {
-    a = a << 8 | a >> 8;
-    b = b << 8 | b >> 8;
+    // Input in Big-Endian, swap to Little Endian
+    a = (a << 8) | (a >> 8);
+    b = (b << 8) | (b >> 8);
 
-    int r0 = (a >> 11) & 0x1f;
-    int g0 = (a >> 5) & 0x3f;
-    int b0 = (a) & 0x1f;
+    // Signed arithmetic is deliberate here
+    int r0 = (a >> 11) & 0x1F;
+    int g0 = (a >> 5) & 0x3F;
+    int b0 = (a) & 0x1F;
 
-    int r1 = (b >> 11) & 0x1f;
-    int g1 = (b >> 5) & 0x3f;
-    int b1 = (b) & 0x1f;
+    int r1 = (b >> 11) & 0x1F;
+    int g1 = (b >> 5) & 0x3F;
+    int b1 = (b) & 0x1F;
 
-    uint16_t rv = ((r1 - r0) >> 1) + r0;
-    uint16_t gv = ((g1 - g0) >> 1) + g0;
-    uint16_t bv = ((b1 - b0) >> 1) + b0;
+    int rv = (((r1 - r0) >> 1) + r0);
+    int gv = (((g1 - g0) >> 1) + g0);
+    int bv = (((b1 - b0) >> 1) + b0);
 
-    uint16_t out = (rv << 11) | (gv << 5) | (bv);
+    uint v = (rv << 11) | (gv << 5) | (bv);
 
-    return out << 8 | out >> 8;
+    // Back to Big-Endian
+    v = (v << 8) | (v >> 8);
+
+    return v;
 }
 
 static inline void
@@ -502,7 +478,7 @@ bilinear_filter(uint16_t *line_buffer, int top, int left, int width, int height,
             {
                 if (frame_x == prev_frame_x && x > 0 && x + 1 < width)
                 {
-                    buffer[x] = Blend(buffer[x - 1], buffer[x + 1]);
+                    buffer[x] = blend_pixels(buffer[x - 1], buffer[x + 1]);
                 }
                 prev_frame_x = frame_x;
 
@@ -522,7 +498,7 @@ bilinear_filter(uint16_t *line_buffer, int top, int left, int width, int height,
             uint16_t *lineC = line_buffer + (fill_line + 1) * width;
             for (size_t x = 0; x < width; ++x)
             {
-                lineB[x] = Blend(lineA[x], lineC[x]);
+                lineB[x] = blend_pixels(lineA[x], lineC[x]);
             }
             fill_line = -1;
         }
@@ -532,12 +508,6 @@ bilinear_filter(uint16_t *line_buffer, int top, int left, int width, int height,
 static inline void
 write_rect(rg_video_frame_t *update, int left, int top, int width, int height)
 {
-    uint8_t *buffer = update->buffer;
-    uint16_t *palette = update->palette;
-    uint32_t pixel_mask = update->pixel_mask;
-    uint32_t stride = update->stride;
-    uint32_t pixel_format = update->flags;
-
     const int scaled_left = ((SCREEN_WIDTH * left) + (x_inc - 1)) / x_inc;
     const int scaled_top = ((SCREEN_HEIGHT * top) + (y_inc - 1)) / y_inc;
     const int scaled_right = ((SCREEN_WIDTH * (left + width)) + (x_inc - 1)) / x_inc;
@@ -555,8 +525,13 @@ write_rect(rg_video_frame_t *update, int left, int top, int width, int height)
         return;
     }
 
-    // Advance buffer to the correct starting point
-    buffer += (top * stride) + (left * (pixel_format & RG_PIXEL_PAL ? 1 : 2));
+    uint32_t pixel_format = update->flags;
+    uint32_t pixel_mask = update->pixel_mask;
+    uint32_t stride = update->stride;
+
+    // Set buffer to the correct starting point
+    uint8_t *buffer = update->buffer + (top * stride) + (left * (pixel_format & RG_PIXEL_PAL ? 1 : 2));
+    uint16_t *palette = update->palette;
 
     send_reset_drawing(screen_left, screen_top, scaled_width, scaled_height);
 
@@ -1162,7 +1137,7 @@ rg_display_init()
     backlight_init();
 
 	printf("     - starting display_task.\n");
-    xTaskCreatePinnedToCore(&display_task, "display_task", 4096, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(&display_task, "display_task", 3072, NULL, 5, NULL, 1);
 
     printf("     - done.\n");
 }
