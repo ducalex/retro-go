@@ -17,13 +17,9 @@
 #define TILE_4BIT_EVEN		5
 #define TILE_4BIT_ODD		6
 
-#define TILE_2BIT_MASK			(1 << TILE_2BIT)
-#define TILE_4BIT_MASK			(1 << TILE_4BIT)
-#define TILE_8BIT_MASK			(1 << TILE_8BIT)
-#define TILE_2BIT_EVEN_MASK		(1 << TILE_2BIT_EVEN)
-#define TILE_2BIT_ODD_MASK		(1 << TILE_2BIT_ODD)
-#define TILE_4BIT_EVEN_MASK		(1 << TILE_4BIT_EVEN)
-#define TILE_4BIT_ODD_MASK		(1 << TILE_4BIT_ODD)
+#define TILE_CACHE_VALID	(1 << 7)
+#define TILE_CACHE_FLIP		(1 << 6)
+#define TILE_CACHE_BLANK	(1 << 5)
 
 #define MAX_2BIT_TILES		4096
 #define MAX_4BIT_TILES		2048
@@ -47,9 +43,8 @@ struct InternalPPU
 	struct ClipData Clip[2][6];
 	bool8	ColorsChanged;
 	bool8	OBJChanged;
-	uint8	*TileCache[7];
-	uint8	TileCached[4096];
-	uint8	TileBlank[4096];
+	uint8	*TileCacheData;
+	uint8	TileCache[4096];
 	bool8	Interlace;
 	bool8	InterlaceOBJ;
 	bool8	PseudoHires;
@@ -360,11 +355,11 @@ static inline void REGISTER_2104 (uint8 Byte)
 #endif
 
 #define INVALIDATE_TILE_CACHE() \
-	IPPU.TileCached[address >> 4] &= ~(TILE_2BIT_MASK|TILE_2BIT_EVEN_MASK|TILE_2BIT_ODD_MASK); \
-	IPPU.TileCached[address >> 5] &= ~(TILE_4BIT_MASK|TILE_4BIT_EVEN_MASK|TILE_4BIT_ODD_MASK); \
-	IPPU.TileCached[address >> 6] &= ~(TILE_8BIT_MASK); \
-	IPPU.TileCached[((address >> 4) - 1) & (MAX_2BIT_TILES - 1)] &= ~(TILE_2BIT_EVEN_MASK|TILE_2BIT_ODD_MASK); \
-	IPPU.TileCached[((address >> 5) - 1) & (MAX_4BIT_TILES - 1)] &= ~(TILE_4BIT_EVEN_MASK|TILE_4BIT_ODD_MASK);
+	IPPU.TileCache[address >> 4] = 0; \
+	IPPU.TileCache[address >> 5] = 0; \
+	IPPU.TileCache[address >> 6] = 0; \
+	IPPU.TileCache[((address >> 4) - 1) & (MAX_2BIT_TILES - 1)] = 0; \
+	IPPU.TileCache[((address >> 5) - 1) & (MAX_4BIT_TILES - 1)] = 0;
 
 static inline void REGISTER_2118 (uint8 Byte)
 {

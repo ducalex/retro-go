@@ -1685,7 +1685,7 @@ void S9xResetPPUFast (void)
 	PPU.RecomputeClipWindows = TRUE;
 	IPPU.ColorsChanged = TRUE;
 	IPPU.OBJChanged = TRUE;
-	memset(IPPU.TileCached, 0, sizeof(IPPU.TileCached));
+	memset(IPPU.TileCache, 0, sizeof(IPPU.TileCache));
 }
 
 void S9xSoftResetPPU (void)
@@ -1822,7 +1822,7 @@ void S9xSoftResetPPU (void)
 		memset(&IPPU.Clip[c], 0, sizeof(struct ClipData));
 	IPPU.ColorsChanged = TRUE;
 	IPPU.OBJChanged = TRUE;
-	memset(IPPU.TileCached, 0, sizeof(IPPU.TileCached));
+	memset(IPPU.TileCache, 0, sizeof(IPPU.TileCache));
 	PPU.VRAMReadBuffer = 0; // XXX: FIXME: anything better?
 	GFX.InterlaceFrame = 0;
 	GFX.DoInterlace = 0;

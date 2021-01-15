@@ -88,8 +88,6 @@ struct SBG
 	uint8	EnableMath;
 	uint8	InterlaceLine;
 
-	uint8	*Buffer;
-	uint8	*BufferFlip;
 	uint32	Buffered;
 	uint32	BufferedFlip;
 	bool8	DirectColourMode;
