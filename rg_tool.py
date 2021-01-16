@@ -141,7 +141,7 @@ def build_app(target, with_debugging=False, with_profiling=False, with_netplay=F
     os.putenv("ENABLE_DEBUGGING", "1" if with_debugging else "0")
     os.putenv("ENABLE_TINY_BUILD", "1" if tiny_build else "0")
     os.putenv("ENABLE_NETPLAY", "1" if with_netplay else "0")
-    subprocess.run(["idf.py", "app"], shell=True, check=True)
+    subprocess.run("idf.py app", shell=True, check=True)
 
     print("Patching esp_image_header_t to skip sha256 on boot...")
     with open("build/" + target + ".bin", "r+b") as fp:
