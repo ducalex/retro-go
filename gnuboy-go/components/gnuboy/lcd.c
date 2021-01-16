@@ -39,6 +39,7 @@ static uint16_t dmg_pal[4][4] = {
 	GB_DEFAULT_PALETTE, GB_DEFAULT_PALETTE,
 	GB_DEFAULT_PALETTE, GB_DEFAULT_PALETTE,
 };
+static int dmg_selected_pal = 0;
 
 static byte *vdest;
 
@@ -485,9 +486,9 @@ static inline void lcd_beginframe()
 
 void lcd_reset()
 {
-	memset(&lcd, 0, sizeof lcd);
+	memset(&lcd, 0, sizeof(lcd));
 	lcd_beginframe();
-	pal_dirty();
+	pal_set_dmg(dmg_selected_pal);
 }
 
 static inline void lcd_renderline()
@@ -649,15 +650,15 @@ void pal_write_dmg(byte i, byte mapnum, byte d)
 
 void pal_set_dmg(int palette)
 {
-	lcd.dmg_selected_pal = palette % (pal_count_dmg() + 1);
+	dmg_selected_pal = palette % (pal_count_dmg() + 1);
 
-	if (lcd.dmg_selected_pal == 0) {
+	if (dmg_selected_pal == 0) {
 		pal_detect_dmg();
 	} else {
-		memcpy(&dmg_pal[0], dmg_palettes[lcd.dmg_selected_pal - 1], 8); // BGP
-		memcpy(&dmg_pal[1], dmg_palettes[lcd.dmg_selected_pal - 1], 8); // BGP
-		memcpy(&dmg_pal[2], dmg_palettes[lcd.dmg_selected_pal - 1], 8); // OBP0
-		memcpy(&dmg_pal[3], dmg_palettes[lcd.dmg_selected_pal - 1], 8); // OBP1
+		memcpy(&dmg_pal[0], dmg_palettes[dmg_selected_pal - 1], 8); // BGP
+		memcpy(&dmg_pal[1], dmg_palettes[dmg_selected_pal - 1], 8); // BGP
+		memcpy(&dmg_pal[2], dmg_palettes[dmg_selected_pal - 1], 8); // OBP0
+		memcpy(&dmg_pal[3], dmg_palettes[dmg_selected_pal - 1], 8); // OBP1
 	}
 
 	pal_dirty();
@@ -665,7 +666,7 @@ void pal_set_dmg(int palette)
 
 int pal_get_dmg()
 {
-	return lcd.dmg_selected_pal;
+	return dmg_selected_pal;
 }
 
 int pal_count_dmg()

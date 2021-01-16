@@ -21,6 +21,7 @@ void emu_init()
 void emu_reset()
 {
 	hw_reset();
+	rtc_reset();
 	lcd_reset();
 	cpu_reset();
 	mbc_reset();

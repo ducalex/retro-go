@@ -1,3 +1,4 @@
+#include <sys/time.h>
 #include <stdio.h>
 #include <time.h>
 
@@ -10,6 +11,26 @@ rtc_t rtc;
 // Set in the far future for VBA-M support
 #define RT_BASE 1893456000
 
+
+void rtc_reset()
+{
+	memset(&rtc, 0, sizeof(rtc));
+	rtc_sync();
+}
+
+void rtc_sync()
+{
+	time_t timer = time(NULL);
+	struct tm *info = localtime(&timer);
+
+	rtc.d = info->tm_yday;
+	rtc.h = info->tm_hour;
+	rtc.m = info->tm_min;
+	rtc.s = info->tm_sec;
+
+	printf("%s: Clock set to day %03d at %02d:%02d:%02d\n",
+		__func__, rtc.d, rtc.h, rtc.m, rtc.s);
+}
 
 void rtc_latch(byte b)
 {
@@ -88,38 +109,35 @@ void rtc_save(FILE *f)
 {
 	int64_t rt = RT_BASE + (rtc.s + (rtc.m * 60) + (rtc.h * 3600) + (rtc.d * 86400));
 
-	fwrite(&rtc.s, sizeof(rtc.s), 1, f);
-	fwrite(&rtc.m, sizeof(rtc.m), 1, f);
-	fwrite(&rtc.h, sizeof(rtc.h), 1, f);
-	fwrite(&rtc.d, sizeof(rtc.d), 1, f);
-	fwrite(&rtc.flags, sizeof(rtc.flags), 1, f);
+	fwrite(&rtc.s, 4, 1, f);
+	fwrite(&rtc.m, 4, 1, f);
+	fwrite(&rtc.h, 4, 1, f);
+	fwrite(&rtc.d, 4, 1, f);
+	fwrite(&rtc.flags, 4, 1, f);
 	for (int i = 0; i < 5; i++) {
-		int tmp = rtc.regs[i];
-		fwrite(&tmp, sizeof(tmp), 1, f);
+		fwrite(&rtc.regs[i], 4, 1, f);
 	}
-	fwrite(&rt, sizeof(rt), 1, f);
+	fwrite(&rt, 8, 1, f);
 }
 
 void rtc_load(FILE *f)
 {
 	int64_t rt = 0;
-	int tmp;
 
 	// Try to read old format first
-	tmp = fscanf(f, "%d %*d %d %02d %02d %02d %02d\n%*d\n",
+	int tmp = fscanf(f, "%d %*d %d %02d %02d %02d %02d\n%*d\n",
 		&rtc.flags, &rtc.d, &rtc.h, &rtc.m, &rtc.s, &rtc.ticks);
 
 	if (tmp >= 5)
 		return;
 
-	fread(&rtc.s, sizeof(rtc.s), 1, f);
-	fread(&rtc.m, sizeof(rtc.m), 1, f);
-	fread(&rtc.h, sizeof(rtc.h), 1, f);
-	fread(&rtc.d, sizeof(rtc.d), 1, f);
-	fread(&rtc.flags, sizeof(rtc.flags), 1, f);
+	fread(&rtc.s, 4, 1, f);
+	fread(&rtc.m, 4, 1, f);
+	fread(&rtc.h, 4, 1, f);
+	fread(&rtc.d, 4, 1, f);
+	fread(&rtc.flags, 4, 1, f);
 	for (int i = 0; i < 5; i++) {
-		fread(&tmp, sizeof(tmp), 1, f);
-		rtc.regs[i] = tmp;
+		fread(&rtc.regs[i], 4, 1, f);
 	}
-	fread(&rt, sizeof(rt), 1, f);
+	fread(&rt, 8, 1, f);
 }

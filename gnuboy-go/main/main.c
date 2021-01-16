@@ -1,4 +1,5 @@
 #include <rg_system.h>
+#include <sys/time.h>
 #include <string.h>
 
 #include "../components/gnuboy/loader.h"
@@ -91,6 +92,9 @@ static bool LoadState(char *pathName)
 
         return false;
     }
+
+    // TO DO: Call rtc_sync() if a physical RTC is present
+
     return true;
 }
 
@@ -153,6 +157,9 @@ static bool rtc_t_update_cb(dialog_choice_t *option, dialog_event_t event)
         if (event == RG_DIALOG_NEXT && ++rtc.s > 59) rtc.s = 0;
         sprintf(option->value, "%02d", rtc.s);
     }
+
+    // TO DO: Update system clock
+
     return event == RG_DIALOG_ENTER;
 }
 
@@ -218,8 +225,8 @@ void app_main(void)
     // Load ROM
     rom_load(app->romPath);
 
-    // RTC
-    memset(&rtc, 0, sizeof(rtc));
+    // Set palette for non-gbc games (must be after rom_load)
+    pal_set_dmg(rg_settings_Palette_get());
 
     // Video
     memset(&fb, 0, sizeof(fb));
@@ -240,8 +247,6 @@ void app_main(void)
     pcm.pos = 0;
 
     emu_init();
-
-    pal_set_dmg(rg_settings_Palette_get());
 
     if (app->startAction == EMU_START_ACTION_RESUME)
     {

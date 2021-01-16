@@ -166,6 +166,7 @@ void sound_reset()
 	memcpy(WAVE, hw.cgb ? cgbwave : dmgwave, 16);
 	memcpy(ram.hi + 0x30, WAVE, 16);
 	if (pcm.hz) snd.rate = (1<<21) / pcm.hz;
+	pcm.pos = 0;
 	sound_off();
 	R_NR52 = 0xF1;
 }

@@ -26,8 +26,6 @@ typedef struct
 
 	int cycles;
 
-	int dmg_selected_pal;
-
 	// Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
 	int enable_window_offset_hack;
 } lcd_t;
