@@ -17,4 +17,4 @@ Jeroen Domburg <jeroen@espressif.com>
 Mangling the code to make it into an esp-idf component
 
 Alex Duchesne <alex@netvps.ca>
-Refactoring, PAL support, mappers 5, 162, 193, 228
+Refactoring, PAL support, palettes, mappers 1, 3, 5, 162, 193, 228

@@ -1,0 +1,25 @@
+DISCLAIMER:
+The authorship wasn't preserved by the time I (ducalex, 2020) found this source.
+It's very difficult to trace back the history of this particular fork.
+Best I can ascertain is that those two original authors created the bulk of the code:
+
+
+Charles Mcdonald
+================
+
+Released his SMS emulator since 0.9 under the GPLv2+.
+It stayed like so until after version 1.5 (source code to version 1.5 got lost unfortunately but we still have SmSPlus-GX thankfully).
+After version 1.5, he decided to switch it to a non-commercial license, turning it proprietary again.
+(The reason being he got legal threats from some companies using his emulator)
+
+He also contributed modifications to sn76489.c, i contacted him and he told me it fell under the same license as Maxim's.
+
+ekeeke
+======
+He worked on SMSPlus-GX, with several improvements such as improved accuracy, fixing bugs with most games etc...
+It was originally designed for the Gamecube/Wii.
+https://github.com/ekeeke/smsplus-gx
+
+This fork also has code for Colecovision but Colecovision support seems to be a bit spotty and requires a BIOS.
+The overscan code got removed because it was not useful and little to no SMS games make use of it.
+
