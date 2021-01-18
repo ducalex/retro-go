@@ -1,59 +1,59 @@
 case 0xbc: {
-  op_io();
+  ticks++;
   regs.B.a = op_inc(regs.B.a);
   break;
 }
 
 case 0x3d: {
-  op_io();
+  ticks++;
   regs.x = op_inc(regs.x);
   break;
 }
 
 case 0xfc: {
-  op_io();
+  ticks++;
   regs.B.y = op_inc(regs.B.y);
   break;
 }
 
 case 0x9c: {
-  op_io();
+  ticks++;
   regs.B.a = op_dec(regs.B.a);
   break;
 }
 
 case 0x1d: {
-  op_io();
+  ticks++;
   regs.x = op_dec(regs.x);
   break;
 }
 
 case 0xdc: {
-  op_io();
+  ticks++;
   regs.B.y = op_dec(regs.B.y);
   break;
 }
 
 case 0x1c: {
-  op_io();
+  ticks++;
   regs.B.a = op_asl(regs.B.a);
   break;
 }
 
 case 0x5c: {
-  op_io();
+  ticks++;
   regs.B.a = op_lsr(regs.B.a);
   break;
 }
 
 case 0x3c: {
-  op_io();
+  ticks++;
   regs.B.a = op_rol(regs.B.a);
   break;
 }
 
 case 0x7c: {
-  op_io();
+  ticks++;
   regs.B.a = op_ror(regs.B.a);
     break;
 }
@@ -108,7 +108,7 @@ case 0x6b: {
 
 case 0xbb: {
   dp = op_readpc();
-  op_io();
+  ticks++;
   rd = op_readdp(dp + regs.x);
   rd = op_inc(rd);
   op_writedp(dp + regs.x, rd);
@@ -117,7 +117,7 @@ case 0xbb: {
 
 case 0x9b: {
   dp = op_readpc();
-  op_io();
+  ticks++;
   rd = op_readdp(dp + regs.x);
   rd = op_dec(rd);
   op_writedp(dp + regs.x, rd);
@@ -126,7 +126,7 @@ case 0x9b: {
 
 case 0x1b: {
   dp = op_readpc();
-  op_io();
+  ticks++;
   rd = op_readdp(dp + regs.x);
   rd = op_asl(rd);
   op_writedp(dp + regs.x, rd);
@@ -135,7 +135,7 @@ case 0x1b: {
 
 case 0x5b: {
   dp = op_readpc();
-  op_io();
+  ticks++;
   rd = op_readdp(dp + regs.x);
   rd = op_lsr(rd);
   op_writedp(dp + regs.x, rd);
@@ -144,7 +144,7 @@ case 0x5b: {
 
 case 0x3b: {
   dp = op_readpc();
-  op_io();
+  ticks++;
   rd = op_readdp(dp + regs.x);
   rd = op_rol(rd);
   op_writedp(dp + regs.x, rd);
@@ -153,7 +153,7 @@ case 0x3b: {
 
 case 0x7b: {
   dp = op_readpc();
-  op_io();
+  ticks++;
   rd = op_readdp(dp + regs.x);
   rd = op_ror(rd);
   op_writedp(dp + regs.x, rd);

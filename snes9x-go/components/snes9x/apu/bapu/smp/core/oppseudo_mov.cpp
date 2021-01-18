@@ -1,5 +1,5 @@
 case 0x7d: {
-  op_io();
+  ticks++;
   regs.B.a = regs.x;
   regs.p.n = !!(regs.B.a & 0x80);
   regs.p.z = (regs.B.a == 0);
@@ -7,7 +7,7 @@ case 0x7d: {
 }
 
 case 0xdd: {
-  op_io();
+  ticks++;
   regs.B.a = regs.B.y;
   regs.p.n = !!(regs.B.a & 0x80);
   regs.p.z = (regs.B.a == 0);
@@ -15,7 +15,7 @@ case 0xdd: {
 }
 
 case 0x5d: {
-  op_io();
+  ticks++;
   regs.x = regs.B.a;
   regs.p.n = !!(regs.x & 0x80);
   regs.p.z = (regs.x == 0);
@@ -23,7 +23,7 @@ case 0x5d: {
 }
 
 case 0xfd: {
-  op_io();
+  ticks++;
   regs.B.y = regs.B.a;
   regs.p.n = !!(regs.B.y & 0x80);
   regs.p.z = (regs.B.y == 0);
@@ -31,7 +31,7 @@ case 0xfd: {
 }
 
 case 0x9d: {
-  op_io();
+  ticks++;
   regs.x = regs.sp;
   regs.p.n = !!(regs.x & 0x80);
   regs.p.z = (regs.x == 0);
@@ -39,7 +39,7 @@ case 0x9d: {
 }
 
 case 0xbd: {
-  op_io();
+  ticks++;
   regs.sp = regs.x;
   break;
 }
@@ -68,7 +68,7 @@ case 0x8d: {
 case 0xe6: {
   switch(++opcode_cycle) {
   case 1:
-    op_io();
+    ticks++;
     break;
   case 2:
     regs.B.a = op_readdp(regs.x);
@@ -83,11 +83,11 @@ case 0xe6: {
 case 0xbf: {
   switch(++opcode_cycle) {
   case 1:
-    op_io();
+    ticks++;
     break;
   case 2:
     regs.B.a = op_readdp(regs.x++);
-    op_io();
+    ticks++;
     regs.p.n = !!(regs.B.a & 0x80);
     regs.p.z = (regs.B.a == 0);
     opcode_cycle = 0;
@@ -145,7 +145,7 @@ case 0xf4: {
   switch(++opcode_cycle) {
   case 1:
     sp = op_readpc();
-    op_io();
+    ticks++;
     break;
   case 2:
     regs.B.a = op_readdp(sp + regs.x);
@@ -161,7 +161,7 @@ case 0xf9: {
   switch(++opcode_cycle) {
   case 1:
     sp = op_readpc();
-    op_io();
+    ticks++;
     break;
   case 2:
     regs.x = op_readdp(sp + regs.B.y);
@@ -177,7 +177,7 @@ case 0xfb: {
   switch(++opcode_cycle) {
   case 1:
     sp = op_readpc();
-    op_io();
+    ticks++;
     break;
   case 2:
     regs.B.y = op_readdp(sp + regs.x);
@@ -244,7 +244,7 @@ case 0xf5: {
   case 1:
     sp  = op_readpc();
     sp |= op_readpc() << 8;
-    op_io();
+    ticks++;
     break;
   case 2:
     regs.B.a = op_readaddr(sp + regs.x);
@@ -261,7 +261,7 @@ case 0xf6: {
   case 1:
     sp  = op_readpc();
     sp |= op_readpc() << 8;
-    op_io();
+    ticks++;
     break;
   case 2:
     regs.B.a = op_readaddr(sp + regs.B.y);
@@ -277,7 +277,7 @@ case 0xe7: {
   switch(++opcode_cycle) {
   case 1:
     dp = op_readpc() + regs.x;
-    op_io();
+    ticks++;
     break;
   case 2:
     sp  = op_readdp(dp);
@@ -299,7 +299,7 @@ case 0xf7: {
   switch(++opcode_cycle) {
   case 1:
     dp = op_readpc();
-    op_io();
+    ticks++;
     break;
   case 2:
     sp  = op_readdp(dp);
@@ -356,7 +356,7 @@ case 0x8f: {
 case 0xc6: {
   switch(++opcode_cycle) {
   case 1:
-    op_io();
+    ticks++;
     break;
   case 2:
     op_readdp(regs.x);
@@ -372,7 +372,7 @@ case 0xc6: {
 case 0xaf: {
   switch(++opcode_cycle) {
   case 1:
-    op_io(2);
+    ticks += 2;
     break;
   case 2:
     op_writedp(regs.x++, regs.B.a);
@@ -434,7 +434,7 @@ case 0xd4: {
   switch(++opcode_cycle) {
   case 1:
     dp  = op_readpc();
-    op_io();
+    ticks++;
     dp += regs.x;
     break;
   case 2:
@@ -452,7 +452,7 @@ case 0xd9: {
   switch(++opcode_cycle) {
   case 1:
     dp  = op_readpc();
-    op_io();
+    ticks++;
     dp += regs.B.y;
     break;
   case 2:
@@ -470,7 +470,7 @@ case 0xdb: {
   switch(++opcode_cycle) {
   case 1:
     dp  = op_readpc();
-    op_io();
+    ticks++;
     dp += regs.x;
     break;
   case 2:
@@ -546,7 +546,7 @@ case 0xd5: {
   case 1:
     dp  = op_readpc();
     dp |= op_readpc() << 8;
-    op_io();
+    ticks++;
     dp += regs.x;
     break;
   case 2:
@@ -565,7 +565,7 @@ case 0xd6: {
   case 1:
     dp  = op_readpc();
     dp |= op_readpc() << 8;
-    op_io();
+    ticks++;
     dp += regs.B.y;
     break;
   case 2:
@@ -583,7 +583,7 @@ case 0xc7: {
   switch(++opcode_cycle) {
   case 1:
     sp  = op_readpc();
-    op_io();
+    ticks++;
     sp += regs.x;
     break;
   case 2:
@@ -613,7 +613,7 @@ case 0xd7: {
     break;
   case 3:
     dp |= op_readdp(sp + 1) << 8;
-    op_io();
+    ticks++;
     dp += regs.B.y;
     break;
   case 4:
@@ -634,7 +634,7 @@ case 0xba: {
     break;
   case 2:
     regs.B.a = op_readdp(sp);
-    op_io();
+    ticks++;
     break;
   case 3:
     regs.B.y = op_readdp(sp + 1);
@@ -694,7 +694,7 @@ case 0xca: {
     rd = op_readaddr(dp);
     if(regs.p.c)rd |=  (1 << bit);
     else        rd &= ~(1 << bit);
-    op_io();
+    ticks++;
     break;
   case 3:
     op_writeaddr(dp, rd);

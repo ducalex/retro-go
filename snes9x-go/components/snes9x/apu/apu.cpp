@@ -28,11 +28,6 @@ static const int MINIMUM_BUFFER_SIZE = 550 * 2;
 
 static int consecutive_accesses = 0;
 
-namespace SNES {
-#include "bapu/dsp/blargg_endian.h"
-CPU cpu;
-} // namespace SNES
-
 namespace spc {
 static apu_callback callback = NULL;
 static void *callback_data = NULL;
@@ -57,8 +52,6 @@ static double dynamic_rate_multiplier = 1.0;
 
 static void UpdatePlaybackRate(void);
 static void SPCSnapshotCallback(void);
-static inline int S9xAPUGetClock(int32);
-static inline int S9xAPUGetClockRemainder(int32);
 
 bool8 S9xMixSamples(uint8 *dest, int sample_count)
 {
@@ -219,19 +212,7 @@ void S9xDeinitAPU(void)
     }
 }
 
-static inline int S9xAPUGetClock(int32 cpucycles)
-{
-    return (spc::ratio_numerator * (cpucycles - spc::reference_time) + spc::remainder) /
-           spc::ratio_denominator;
-}
-
-static inline int S9xAPUGetClockRemainder(int32 cpucycles)
-{
-    return (spc::ratio_numerator * (cpucycles - spc::reference_time) + spc::remainder) %
-           spc::ratio_denominator;
-}
-
-uint8 S9xAPUReadPort(int port)
+uint8 S9xAPUReadPort(uint32 port)
 {
 #if RETRO_LESS_ACCURATE
     if (++consecutive_accesses == 2)
@@ -241,14 +222,14 @@ uint8 S9xAPUReadPort(int port)
     return ((uint8)SNES::smp.port_read(port & 3));
 }
 
-void S9xAPUWritePort(int port, uint8 byte)
+void S9xAPUWritePort(uint32 port, uint8 byte)
 {
 #if RETRO_LESS_ACCURATE
     if (++consecutive_accesses == 2)
 #endif
         S9xAPUExecute();
 
-    SNES::cpu.port_write(port & 3, byte);
+    SNES::smp.registers[port & 3] = byte;
 }
 
 void S9xAPUSetReferenceTime(int32 cpucycles)
@@ -258,13 +239,11 @@ void S9xAPUSetReferenceTime(int32 cpucycles)
 
 void S9xAPUExecute(void)
 {
+    int cycles = (spc::ratio_numerator * (CPU.Cycles - spc::reference_time) + spc::remainder);
+    SNES::smp.execute(cycles / spc::ratio_denominator);
+    spc::remainder = (cycles % spc::ratio_denominator);
+    spc::reference_time = CPU.Cycles;
     consecutive_accesses = 0;
-    SNES::smp.clock -= S9xAPUGetClock(CPU.Cycles);
-    SNES::smp.enter();
-
-    spc::remainder = S9xAPUGetClockRemainder(CPU.Cycles);
-
-    S9xAPUSetReferenceTime(CPU.Cycles);
 }
 
 void S9xAPUEndScanline(void)
@@ -298,7 +277,6 @@ void S9xResetAPU(void)
     spc::reference_time = 0;
     spc::remainder = 0;
 
-    SNES::cpu.reset();
     SNES::smp.power();
     SNES::dsp.power();
     SNES::dsp.spc_dsp.set_spc_snapshot_callback(SPCSnapshotCallback);
@@ -310,7 +288,7 @@ void S9xSoftResetAPU(void)
 {
     spc::reference_time = 0;
     spc::remainder = 0;
-    SNES::cpu.reset();
+
     SNES::smp.reset();
     SNES::dsp.reset();
 
@@ -330,7 +308,7 @@ void S9xAPUSaveState(uint8 *block)
     ptr += sizeof(int32);
     SNES::set_le32(ptr, SNES::dsp.clock);
     ptr += sizeof(int32);
-    memcpy(ptr, SNES::cpu.registers, 4);
+    memcpy(ptr, SNES::smp.registers, 4);
     ptr += sizeof(int32);
 
     memset(ptr, 0, SPC_SAVE_STATE_BLOCK_SIZE - (ptr - block));
@@ -349,7 +327,7 @@ void S9xAPULoadState(uint8 *block)
     ptr += sizeof(int32);
     SNES::dsp.clock = SNES::get_le32(ptr);
     ptr += sizeof(int32);
-    memcpy(SNES::cpu.registers, ptr, 4);
+    memcpy(SNES::smp.registers, ptr, 4);
 }
 
 static void to_var_from_buf(uint8 **buf, void *var, size_t size)
@@ -389,7 +367,8 @@ void S9xAPULoadBlarggState(uint8 *oldblock)
     spc_time = copier.copy_int(0, sizeof(uint16));
     dsp_time = copier.copy_int(0, sizeof(uint16));
 
-    int cur_time = S9xAPUGetClock(CPU.Cycles);
+    int cur_time = (spc::ratio_numerator * (CPU.Cycles - spc::reference_time) + spc::remainder) /
+           spc::ratio_denominator;
 
     // spc_time is absolute, dsp_time is relative
     // smp.clock is relative, dsp.clock relative but counting upwards
@@ -460,7 +439,7 @@ void S9xAPULoadBlarggState(uint8 *oldblock)
     spc::remainder = SNES::get_le32(ptr);
 
     // blargg stores CPUIx in regs_in
-    memcpy(SNES::cpu.registers, regs_in + 4, 4);
+    memcpy(SNES::smp.registers, regs_in + 4, 4);
 }
 
 bool8 S9xSPCDump(const char *filename)

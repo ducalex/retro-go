@@ -1,22 +1,22 @@
 case 0x00: {
-  op_io();
+  ticks++;
   break;
 }
 
 case 0xef: {
-  op_io(2);
+  ticks += (2);
   regs.pc--;
   break;
 }
 
 case 0xff: {
-  op_io(2);
+  ticks += (2);
   regs.pc--;
   break;
 }
 
 case 0x9f: {
-  op_io(4);
+  ticks += (4);
   regs.B.a = (regs.B.a >> 4) | (regs.B.a << 4);
   regs.p.n = !!(regs.B.a & 0x80);
   regs.p.z = (regs.B.a == 0);
@@ -24,7 +24,7 @@ case 0x9f: {
 }
 
 case 0xdf: {
-  op_io(2);
+  ticks += (2);
   if(regs.p.c || (regs.B.a) > 0x99) {
     regs.B.a += 0x60;
     regs.p.c = 1;
@@ -38,7 +38,7 @@ case 0xdf: {
 }
 
 case 0xbe: {
-  op_io(2);
+  ticks += (2);
   if(!regs.p.c || (regs.B.a) > 0x99) {
     regs.B.a -= 0x60;
     regs.p.c = 0;
@@ -52,50 +52,50 @@ case 0xbe: {
 }
 
 case 0x60: {
-  op_io();
+  ticks++;
   regs.p.c = 0;
   break;
 }
 
 case 0x20: {
-  op_io();
+  ticks++;
   regs.p.p = 0;
   break;
 }
 
 case 0x80: {
-  op_io();
+  ticks++;
   regs.p.c = 1;
   break;
 }
 
 case 0x40: {
-  op_io();
+  ticks++;
   regs.p.p = 1;
   break;
 }
 
 case 0xe0: {
-  op_io();
+  ticks++;
   regs.p.v = 0;
   regs.p.h = 0;
   break;
 }
 
 case 0xed: {
-  op_io(2);
+  ticks += (2);
   regs.p.c = !regs.p.c;
   break;
 }
 
 case 0xa0: {
-  op_io(2);
+  ticks += (2);
   regs.p.i = 1;
   break;
 }
 
 case 0xc0: {
-  op_io(2);
+  ticks += (2);
   regs.p.i = 0;
   break;
 }
@@ -229,55 +229,55 @@ case 0xf2: {
 }
 
 case 0x2d: {
-  op_io(2);
+  ticks += (2);
   op_writestack(regs.B.a);
   break;
 }
 
 case 0x4d: {
-  op_io(2);
+  ticks += (2);
   op_writestack(regs.x);
   break;
 }
 
 case 0x6d: {
-  op_io(2);
+  ticks += (2);
   op_writestack(regs.B.y);
   break;
 }
 
 case 0x0d: {
-  op_io(2);
+  ticks += (2);
   op_writestack(regs.p);
   break;
 }
 
 case 0xae: {
-  op_io(2);
+  ticks += (2);
   regs.B.a = op_readstack();
   break;
 }
 
 case 0xce: {
-  op_io(2);
+  ticks += (2);
   regs.x = op_readstack();
   break;
 }
 
 case 0xee: {
-  op_io(2);
+  ticks += (2);
   regs.B.y = op_readstack();
   break;
 }
 
 case 0x8e: {
-  op_io(2);
+  ticks += (2);
   regs.p = op_readstack();
   break;
 }
 
 case 0xcf: {
-  op_io(8);
+  ticks += (8);
   ya = regs.B.y * regs.B.a;
   regs.B.a = ya;
   regs.B.y = ya >> 8;
@@ -288,7 +288,7 @@ case 0xcf: {
 }
 
 case 0x9e: {
-  op_io(11);
+  ticks += (11);
   ya = regs.ya;
   //overflow set if quotient >= 256
   regs.p.v = !!(regs.B.y >= regs.x);

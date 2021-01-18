@@ -1,6 +1,7 @@
 class SMP : public Processor {
 public:
   static const uint8 iplrom[64];
+  uint32 registers[4];
   uint8 *apuram;
 
   unsigned port_read(unsigned port);
@@ -9,7 +10,7 @@ public:
   unsigned mmio_read(unsigned addr);
   void mmio_write(unsigned addr, unsigned data);
 
-  void enter();
+  void execute(int cycles = 0);
   void power();
   void reset();
 
@@ -39,13 +40,13 @@ public:
     alwaysinline unsigned operator&=(unsigned data) { return operator=(operator unsigned() & data); }
   };
 
-  unsigned opcode_number;
-  unsigned opcode_cycle;
+  uint8 opcode_number;
+  uint32 opcode_cycle;
 
-  uint16 rd, wr, dp, sp, ya, bit;
+  uint32 rd, wr, dp, sp, ya, bit;
 
   struct Regs {
-    uint16 pc;
+    uint32 pc;
     uint8 sp;
     union {
       uint16 ya;
@@ -89,18 +90,10 @@ public:
 
   inline void tick();
   inline void tick(unsigned clocks);
-  alwaysinline void op_io();
-  alwaysinline void op_io(unsigned clocks);
-  debugvirtual alwaysinline uint8 op_read(uint16 addr);
-  debugvirtual alwaysinline void op_write(uint16 addr, uint8 data);
-  debugvirtual alwaysinline void op_step();
-  alwaysinline void op_writestack(uint8 data);
-  alwaysinline uint8 op_readstack();
-  static const unsigned cycle_count_table[256];
-  uint64 cycle_table_cpu[256];
-  unsigned cycle_table_dsp[256];
-  uint64 cycle_step_cpu;
+  alwaysinline uint8 op_read(uint32 addr);
+  alwaysinline void op_write(uint32 addr, uint8 data);
 
+private:
   inline uint8  op_adc (uint8  x, uint8  y);
   inline uint16 op_addw(uint16 x, uint16 y);
   inline uint8  op_and (uint8  x, uint8  y);
