@@ -17,6 +17,18 @@
 
 #include <esp_attr.h>
 
+/* Experimental retro-go flags */
+
+// RETRO_LESS_ACCURATE runs pending events only once per execution
+// loop. This is much less accurate, but also much faster. to be
+// seen how badly it affects game
+#define RETRO_LESS_ACCURATE 1
+
+
+
+
+
+
 #ifdef ZLIB
 #include <zlib.h>
 #define FSTREAM					gzFile

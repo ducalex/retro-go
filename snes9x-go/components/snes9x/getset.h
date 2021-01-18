@@ -10,6 +10,18 @@
 #include "cpuexec.h"
 #include "dsp.h"
 
+#if RETRO_LESS_ACCURATE
+#define addCyclesInMemoryAccess \
+	if (!CPU.InDMAorHDMA) \
+	{ \
+		CPU.Cycles += speed; \
+	}
+#define addCyclesInMemoryAccess_x2 \
+	if (!CPU.InDMAorHDMA) \
+	{ \
+		CPU.Cycles += speed << 1; \
+	}
+#else
 #define addCyclesInMemoryAccess \
 	if (!CPU.InDMAorHDMA) \
 	{ \
@@ -17,7 +29,6 @@
 		while (CPU.Cycles >= CPU.NextEvent) \
 			S9xDoHEventProcessing(); \
 	}
-
 #define addCyclesInMemoryAccess_x2 \
 	if (!CPU.InDMAorHDMA) \
 	{ \
@@ -25,6 +36,9 @@
 		while (CPU.Cycles >= CPU.NextEvent) \
 			S9xDoHEventProcessing(); \
 	}
+#endif
+
+
 
 extern uint8	OpenBus;
 

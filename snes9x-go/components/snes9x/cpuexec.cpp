@@ -41,6 +41,11 @@ IRAM_ATTR void S9xMainLoop (void)
 
 	for (;;)
 	{
+		#if RETRO_LESS_ACCURATE
+			while (CPU.Cycles >= CPU.NextEvent)
+				S9xDoHEventProcessing();
+		#endif
+
 		if (CPU.NMIPending)
 		{
 			#ifdef DEBUGGER

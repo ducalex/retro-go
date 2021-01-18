@@ -26,6 +26,8 @@ static const int APU_DENOMINATOR_PAL    = 709379;
 // for use with SoundSync, multiplied by 2, for left and right samples.
 static const int MINIMUM_BUFFER_SIZE = 550 * 2;
 
+static int consecutive_accesses = 0;
+
 namespace SNES {
 #include "bapu/dsp/blargg_endian.h"
 CPU cpu;
@@ -231,13 +233,21 @@ static inline int S9xAPUGetClockRemainder(int32 cpucycles)
 
 uint8 S9xAPUReadPort(int port)
 {
-    S9xAPUExecute();
+#if RETRO_LESS_ACCURATE
+    if (++consecutive_accesses == 2)
+#endif
+        S9xAPUExecute();
+
     return ((uint8)SNES::smp.port_read(port & 3));
 }
 
 void S9xAPUWritePort(int port, uint8 byte)
 {
-    S9xAPUExecute();
+#if RETRO_LESS_ACCURATE
+    if (++consecutive_accesses == 2)
+#endif
+        S9xAPUExecute();
+
     SNES::cpu.port_write(port & 3, byte);
 }
 
@@ -248,6 +258,7 @@ void S9xAPUSetReferenceTime(int32 cpucycles)
 
 void S9xAPUExecute(void)
 {
+    consecutive_accesses = 0;
     SNES::smp.clock -= S9xAPUGetClock(CPU.Cycles);
     SNES::smp.enter();
 
@@ -259,7 +270,9 @@ void S9xAPUExecute(void)
 void S9xAPUEndScanline(void)
 {
     S9xAPUExecute();
+
     return;
+
     SNES::dsp.synchronize();
 
     if (spc::resampler->space_filled() >= APU_SAMPLE_BLOCK || !spc::sound_in_sync)
