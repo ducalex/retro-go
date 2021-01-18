@@ -136,23 +136,18 @@ void S9xBuildDirectColourMaps (void)
 void S9xStartScreenRefresh (void)
 {
 	GFX.InterlaceFrame = !GFX.InterlaceFrame;
-	if (GFX.DoInterlace)
-		GFX.DoInterlace--;
 
 	if (IPPU.RenderThisFrame)
 	{
-		if (!GFX.DoInterlace || !GFX.InterlaceFrame)
+		if (!S9xInitUpdate())
 		{
-			if (!S9xInitUpdate())
-			{
-				IPPU.RenderThisFrame = FALSE;
-				return;
-			}
-
-			S9xGraphicsScreenResize();
-
-			IPPU.RenderedFramesCount++;
+			IPPU.RenderThisFrame = FALSE;
+			return;
 		}
+
+		S9xGraphicsScreenResize();
+
+		IPPU.RenderedFramesCount++;
 
 		PPU.MosaicStart = 0;
 		PPU.RecomputeClipWindows = TRUE;
@@ -181,28 +176,20 @@ void S9xEndScreenRefresh (void)
 	{
 		FLUSH_REDRAW();
 
-		if (GFX.DoInterlace && GFX.InterlaceFrame == 0)
+		if (IPPU.ColorsChanged)
 		{
-			S9xControlEOF();
-			S9xContinueUpdate(IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight);
+			uint32 saved = PPU.CGDATA[0];
+			IPPU.ColorsChanged = FALSE;
+			S9xSetPalette();
+			PPU.CGDATA[0] = saved;
 		}
-		else
-		{
-			if (IPPU.ColorsChanged)
-			{
-				uint32 saved = PPU.CGDATA[0];
-				IPPU.ColorsChanged = FALSE;
-				S9xSetPalette();
-				PPU.CGDATA[0] = saved;
-			}
 
-			S9xControlEOF();
+		S9xControlEOF();
 
-			if (Settings.AutoDisplayMessages)
-				S9xDisplayMessages(GFX.Screen, GFX.RealPPL, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, 1);
+		if (Settings.AutoDisplayMessages)
+			S9xDisplayMessages(GFX.Screen, GFX.RealPPL, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, 1);
 
-			S9xDeinitUpdate(IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight);
-		}
+		S9xDeinitUpdate(IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight);
 	}
 	else
 		S9xControlEOF();
@@ -291,8 +278,6 @@ static inline void RenderScreen (bool8 sub)
 	if (!sub)
 	{
 		GFX.S = GFX.Screen;
-		if (GFX.DoInterlace && GFX.InterlaceFrame)
-			GFX.S += GFX.RealPPL;
 		GFX.DB = GFX.ZBuffer;
 		GFX.Clip = IPPU.Clip[0];
 		BGActive = Memory.FillRAM[0x212c] & ~Settings.BG_Forced;
@@ -450,8 +435,6 @@ void S9xUpdateScreen (void)
 		const uint16	black = BUILD_PIXEL(0, 0, 0);
 
 		GFX.S = GFX.Screen + GFX.StartY * GFX.PPL;
-		if (GFX.DoInterlace && GFX.InterlaceFrame)
-			GFX.S += GFX.RealPPL;
 
 		for (int l = GFX.StartY; l <= GFX.EndY; l++, GFX.S += GFX.PPL)
 			for (int x = 0; x < IPPU.RenderedScreenWidth; x++)

@@ -28,11 +28,10 @@ struct SGFX
 	uint8	Z1;					// depth for comparison
 	uint8	Z2;					// depth to save
 	uint32	FixedColour;
-	uint8	DoInterlace;
-	uint8	InterlaceFrame;
+	uint32	InterlaceFrame;
 	uint32	StartY;
 	uint32	EndY;
-	bool8	ClipColors;
+	uint32	ClipColors;
 	uint8	OBJWidths[128];
 	uint8	OBJVisibleTiles[128];
 
@@ -45,8 +44,8 @@ struct SGFX
 
 		struct
 		{
-			int8	Sprite;
-			uint8	Line;
+			int32	Sprite;
+			uint32	Line;
 		}	OBJ[32];
 	}	OBJLines[SNES_HEIGHT_EXTENDED];
 
@@ -65,7 +64,6 @@ struct SGFX
 
 	const char	*InfoString;
 	uint32	InfoStringTimeout;
-	char	FrameDisplayString[256];
 };
 
 struct SBG
@@ -85,8 +83,8 @@ struct SBG
 	uint32	StartPalette;
 	uint32	PaletteShift;
 	uint32	PaletteMask;
-	uint8	EnableMath;
-	uint8	InterlaceLine;
+	uint32	EnableMath;
+	uint32	InterlaceLine;
 
 	uint32	Buffered;
 	uint32	BufferedFlip;
@@ -104,14 +102,14 @@ struct SLineData
 
 struct SLineMatrixData
 {
-	short	MatrixA;
-	short	MatrixB;
-	short	MatrixC;
-	short	MatrixD;
-	short	CentreX;
-	short	CentreY;
-	short	M7HOFS;
-	short	M7VOFS;
+	int16	MatrixA;
+	int16	MatrixB;
+	int16	MatrixC;
+	int16	MatrixD;
+	int16	CentreX;
+	int16	CentreY;
+	int16	M7HOFS;
+	int16	M7VOFS;
 };
 
 extern uint16		BlackColourMap[256];

@@ -16,17 +16,15 @@
 #include "missing.h"
 #endif
 
-#if RETRO_LESS_ACCURATE
+#if RETRO_LESS_ACCURATE_CPU
 #define AddCycles(n)	{ CPU.Cycles += (n); }
 #else
-// #define AddCycles(n)	{ CPU.Cycles += (n); while (CPU.Cycles >= CPU.NextEvent) S9xDoHEventProcessing(); }
+#define AddCycles(n)	{ CPU.Cycles += (n); while (CPU.Cycles >= CPU.NextEvent) S9xDoHEventProcessing(); }
 #endif
 
 #include "cpuaddr.h"
 #include "cpuops.h"
 #include "cpumacro.h"
-
-#include <esp_attr.h>
 
 /* ADC ********************************************************************* */
 

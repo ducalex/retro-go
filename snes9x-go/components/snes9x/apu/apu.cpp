@@ -214,7 +214,7 @@ void S9xDeinitAPU(void)
 
 uint8 S9xAPUReadPort(uint32 port)
 {
-#if RETRO_LESS_ACCURATE
+#if RETRO_LESS_ACCURATE_APU
     if (++consecutive_accesses == 2)
 #endif
         S9xAPUExecute();
@@ -224,7 +224,7 @@ uint8 S9xAPUReadPort(uint32 port)
 
 void S9xAPUWritePort(uint32 port, uint8 byte)
 {
-#if RETRO_LESS_ACCURATE
+#if RETRO_LESS_ACCURATE_APU
     if (++consecutive_accesses == 2)
 #endif
         S9xAPUExecute();

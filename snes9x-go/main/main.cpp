@@ -17,7 +17,6 @@ extern "C"
 #include "../components/snes9x/snapshot.h"
 #include "../components/snes9x/controls.h"
 #include "../components/snes9x/display.h"
-#include "../components/snes9x/statemanager.h"
 
 #define APP_ID 90
 
@@ -33,7 +32,7 @@ static rg_app_desc_t *app;
 
 static char temp_path[PATH_MAX + 1];
 
-// static long frames_counter = 0;
+static uint32_t frames_counter = 0;
 
 // static bool netplay = false;
 // --- MAIN
@@ -210,14 +209,6 @@ bool8 S9xInitUpdate(void)
 
 bool8 S9xDeinitUpdate(int width, int height)
 {
-    rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
-
-    // rg_display_queue_update(currentUpdate, previousUpdate);
-    rg_display_queue_update(currentUpdate, NULL);
-
-    currentUpdate = previousUpdate;
-	GFX.Screen = (uint16*)currentUpdate->buffer;
-
 	return (TRUE);
 }
 
@@ -250,7 +241,7 @@ void S9xAutoSaveSRAM(void)
 
 void S9xSyncSpeed(void)
 {
-	IPPU.RenderThisFrame = !IPPU.RenderThisFrame;
+
 }
 
 void S9xHandlePortCommand(s9xcommand_t cmd, int16 data1, int16 data2)
@@ -391,7 +382,24 @@ static void snes9x_task(void *arg)
 
 		long elapsed = get_elapsed_time_since(startTime);
 
-		rg_system_tick(IPPU.RenderThisFrame, true, elapsed);
+		if (IPPU.RenderThisFrame)
+		{
+			rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
+
+			bool full = rg_display_queue_update(currentUpdate, previousUpdate) == RG_SCREEN_UPDATE_FULL;
+			// rg_display_queue_update(currentUpdate, NULL);
+
+			currentUpdate = previousUpdate;
+			GFX.Screen = (uint16*)currentUpdate->buffer;
+
+			rg_system_tick(true, full, elapsed);
+		}
+		else
+		{
+			rg_system_tick(false, false, elapsed);
+		}
+
+		IPPU.RenderThisFrame = (((++frames_counter) & 3) == 3);
 	}
 
 	vTaskDelete(NULL);

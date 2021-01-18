@@ -15,18 +15,16 @@
 #include "65c816.h"
 #include "messages.h"
 
-#include <esp_attr.h>
+#include <rg_system.h>
 
 /* Experimental retro-go flags */
 
 // RETRO_LESS_ACCURATE runs pending events only once per execution
 // loop. This is much less accurate, but also much faster. to be
 // seen how badly it affects game
-#define RETRO_LESS_ACCURATE 1
-
-
-
-
+#define RETRO_LESS_ACCURATE_CPU 1
+#define RETRO_LESS_ACCURATE_MEM 1
+#define RETRO_LESS_ACCURATE_APU 0
 
 
 #ifdef ZLIB
@@ -70,10 +68,6 @@
 #define SNES_WIDTH					256
 #define SNES_HEIGHT					224
 #define SNES_HEIGHT_EXTENDED		239
-#define MAX_SNES_WIDTH				(SNES_WIDTH * 2)
-#define MAX_SNES_HEIGHT				(SNES_HEIGHT_EXTENDED * 2)
-#define IMAGE_WIDTH					(SNES_WIDTH)
-#define IMAGE_HEIGHT				(SNES_HEIGHT_EXTENDED)
 
 #define	NTSC_MASTER_CLOCK			21477272.727272 // 21477272 + 8/11 exact
 #define	PAL_MASTER_CLOCK			21281370.0
@@ -273,20 +267,6 @@ struct SSettings
 	int	MaxSpriteTilesPerLine;
 };
 
-enum
-{
-	PAUSE_NETPLAY_CONNECT		= (1 << 0),
-	PAUSE_TOGGLE_FULL_SCREEN	= (1 << 1),
-	PAUSE_EXIT					= (1 << 2),
-	PAUSE_MENU					= (1 << 3),
-	PAUSE_INACTIVE_WINDOW		= (1 << 4),
-	PAUSE_WINDOW_ICONISED		= (1 << 5),
-	PAUSE_RESTORE_GUI			= (1 << 6),
-	PAUSE_FREEZE_FILE			= (1 << 7)
-};
-
-void S9xSetPause(uint32);
-void S9xClearPause(uint32);
 void S9xExit(void);
 void S9xMessage(int, int, const char *);
 void S9xInitSettings(void);

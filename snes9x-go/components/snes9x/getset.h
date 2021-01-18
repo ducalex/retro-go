@@ -10,7 +10,7 @@
 #include "cpuexec.h"
 #include "dsp.h"
 
-#if RETRO_LESS_ACCURATE
+#if RETRO_LESS_ACCURATE_MEM
 #define addCyclesInMemoryAccess \
 	if (!CPU.InDMAorHDMA) \
 	{ \

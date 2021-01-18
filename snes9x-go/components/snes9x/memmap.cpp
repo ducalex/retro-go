@@ -7,10 +7,7 @@
 #include <string>
 #include <numeric>
 #include <assert.h>
-
 #include <ctype.h>
-#include <sys/stat.h>
-#include <rg_system.h>
 
 #include "snes9x.h"
 #include "memmap.h"

@@ -1734,9 +1734,6 @@ void S9xSoftResetPPU (void)
 		PPU.OBJ[c].Size = 0;
 	}
 
-	PPU.OBJThroughMain = FALSE;
-	PPU.OBJThroughSub = FALSE;
-	PPU.OBJAddition = FALSE;
 	PPU.OBJNameBase = 0;
 	PPU.OBJNameSelect = 0;
 	PPU.OBJSizeSelect = 0;
@@ -1825,7 +1822,6 @@ void S9xSoftResetPPU (void)
 	memset(IPPU.TileCache, 0, sizeof(IPPU.TileCache));
 	PPU.VRAMReadBuffer = 0; // XXX: FIXME: anything better?
 	GFX.InterlaceFrame = 0;
-	GFX.DoInterlace = 0;
 	IPPU.Interlace = FALSE;
 	IPPU.InterlaceOBJ = FALSE;
 	IPPU.DoubleWidthPixels = FALSE;

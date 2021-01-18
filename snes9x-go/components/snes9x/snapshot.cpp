@@ -266,9 +266,6 @@ static FreezeData	SnapPPU[] =
 	O(112), O(113), O(114), O(115), O(116), O(117), O(118), O(119),
 	O(120), O(121), O(122), O(123), O(124), O(125), O(126), O(127),
 #undef O
-	INT_ENTRY(6, OBJThroughMain),
-	INT_ENTRY(6, OBJThroughSub),
-	INT_ENTRY(6, OBJAddition),
 	INT_ENTRY(6, OBJNameBase),
 	INT_ENTRY(6, OBJNameSelect),
 	INT_ENTRY(6, OBJSizeSelect),
@@ -669,14 +666,6 @@ uint32 S9xFreezeSize()
     return stream.size();
 }
 
-bool8 S9xFreezeGameMem (uint8 *buf, uint32 bufSize)
-{
-    memStream mStream(buf, bufSize);
-	S9xFreezeToStream(&mStream);
-
-	return (TRUE);
-}
-
 bool8 S9xFreezeGame (const char *filename)
 {
 	STREAM	stream = NULL;
@@ -698,14 +687,6 @@ bool8 S9xFreezeGame (const char *filename)
 }
 
 // QuickLoad
-
-int S9xUnfreezeGameMem (const uint8 *buf, uint32 bufSize)
-{
-    memStream stream(buf, bufSize);
-	int result = S9xUnfreezeFromStream(&stream);
-
-	return result;
-}
 
 bool8 S9xUnfreezeGame (const char *filename)
 {
@@ -1028,12 +1009,11 @@ int S9xUnfreezeFromStream (STREAM stream)
 		IPPU.RenderThisFrame = TRUE;
 
 		GFX.InterlaceFrame = Timings.InterlaceField;
-		GFX.DoInterlace = 0;
 
 		S9xGraphicsScreenResize();
 
 		if (Settings.FastSavestates == 0)
-			memset(GFX.Screen,0,GFX.Pitch * MAX_SNES_HEIGHT);
+			memset(GFX.Screen,0,GFX.Pitch * SNES_HEIGHT_EXTENDED);
 
 		S9xControlPostLoadState(&ctl_snap);
 	}

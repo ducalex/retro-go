@@ -41,7 +41,7 @@ IRAM_ATTR void S9xMainLoop (void)
 
 	for (;;)
 	{
-		#if RETRO_LESS_ACCURATE
+		#if (RETRO_LESS_ACCURATE_CPU || RETRO_LESS_ACCURATE_MEM)
 			while (CPU.Cycles >= CPU.NextEvent)
 				S9xDoHEventProcessing();
 		#endif
@@ -138,7 +138,7 @@ IRAM_ATTR void S9xMainLoop (void)
 			if (!(CPU.Flags & FRAME_ADVANCE_FLAG))
 			#endif
 			{
-				S9xSyncSpeed();
+				// S9xSyncSpeed();
 			}
 
 			break;

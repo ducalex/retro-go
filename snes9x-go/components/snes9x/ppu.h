@@ -83,11 +83,11 @@ struct SPPU
 	struct
 	{
 		bool8	High;
-		uint8	Increment;
-		uint16	Address;
-		uint16	Mask1;
-		uint16	FullGraphicCount;
-		uint16	Shift;
+		uint32	Increment;
+		uint32	Address;
+		uint32	Mask1;
+		uint32	FullGraphicCount;
+		uint32	Shift;
 	}	VMA;
 
 	uint32	WRAM;
@@ -112,9 +112,6 @@ struct SPPU
 	uint16	CGDATA[256];
 
 	struct SOBJ OBJ[128];
-	bool8	OBJThroughMain;
-	bool8	OBJThroughSub;
-	bool8	OBJAddition;
 	uint16	OBJNameBase;
 	uint16	OBJNameSelect;
 	uint8	OBJSizeSelect;
@@ -150,14 +147,14 @@ struct SPPU
 	bool8	Mode7HFlip;
 	bool8	Mode7VFlip;
 	uint8	Mode7Repeat;
-	short	MatrixA;
-	short	MatrixB;
-	short	MatrixC;
-	short	MatrixD;
-	short	CentreX;
-	short	CentreY;
-	short	M7HOFS;
-	short	M7VOFS;
+	int16	MatrixA;
+	int16	MatrixB;
+	int16	MatrixC;
+	int16	MatrixD;
+	int16	CentreX;
+	int16	CentreY;
+	int16	M7HOFS;
+	int16	M7VOFS;
 
 	uint8	Mosaic;
 	uint8	MosaicStart;
@@ -250,7 +247,7 @@ static inline void S9xUpdateVRAMReadBuffer()
 
 static inline void REGISTER_2104 (uint8 Byte)
 {
-	const uint16 SignExtend[2] = {0x0000, 0xff00};
+	const uint32 SignExtend[2] = {0x0000, 0xff00};
 
 	if (!(PPU.OAMFlip & 1))
 	{
@@ -260,7 +257,7 @@ static inline void REGISTER_2104 (uint8 Byte)
 
 	if (PPU.OAMAddr & 0x100)
 	{
-		int addr = ((PPU.OAMAddr & 0x10f) << 1) + (PPU.OAMFlip & 1);
+		uint32 addr = ((PPU.OAMAddr & 0x10f) << 1) + (PPU.OAMFlip & 1);
 		if (Byte != PPU.OAMData[addr])
 		{
 			FLUSH_REDRAW();
@@ -283,8 +280,8 @@ static inline void REGISTER_2104 (uint8 Byte)
 	else if (PPU.OAMFlip & 1)
 	{
 		PPU.OAMWriteRegister &= 0x00ff;
-		uint8 lowbyte = (uint8) (PPU.OAMWriteRegister);
-		uint8 highbyte = Byte;
+		uint32 lowbyte = (uint8) (PPU.OAMWriteRegister);
+		uint32 highbyte = Byte;
 		PPU.OAMWriteRegister |= Byte << 8;
 
 		int addr = (PPU.OAMAddr << 1);
