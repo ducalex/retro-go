@@ -104,6 +104,9 @@ void rg_system_tick(bool skippedFrame, bool fullFrame, int busyTime);
 rg_app_desc_t *rg_system_get_app();
 runtime_stats_t rg_system_get_stats();
 
+void rg_system_time_init();
+void rg_system_time_save();
+
 void rg_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t netplay_cb);
 char *rg_emu_get_path(emu_path_type_t type, const char *romPath);
 bool rg_emu_save_state(int slot);

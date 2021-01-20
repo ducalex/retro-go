@@ -62,6 +62,7 @@ static void system_monitor_task(void *arg)
 {
     runtime_counters_t current = {0};
     bool letState = false;
+    time_t lastTime = time(NULL);
 
     while (1)
     {
@@ -118,6 +119,13 @@ static void system_monitor_task(void *arg)
         {
             RG_PANIC("Application unresponsive");
         }
+
+        if (abs(time(NULL) - lastTime) > 60)
+        {
+            printf("%s: System time suddenly changed! Saving...\n", __func__);
+            rg_system_time_save();
+        }
+        lastTime = time(NULL);
 
         #ifdef ENABLE_PROFILING
             static long loops = 0;
@@ -198,6 +206,16 @@ bool rg_sdcard_unmount()
     return false;
 }
 
+void rg_system_time_init()
+{
+    // Query an external RTC or NTP or load saved timestamp from disk
+}
+
+void rg_system_time_save()
+{
+    // Update external RTC or save timestamp to disk
+}
+
 void rg_system_gpio_init()
 {
     // Blue LED
@@ -246,6 +264,7 @@ void rg_system_init(int appId, int sampleRate)
     rg_input_init();
     rg_audio_init(sampleRate);
     rg_display_init();
+    rg_system_time_init();
 
     if (esp_reset_reason() == ESP_RST_PANIC)
     {
