@@ -30,36 +30,43 @@
 // Shouldn't that be packed? (It wasn't packed in SNSS...)
 typedef struct
 {
-   unsigned char irqCounterLowByte;
-   unsigned char irqCounterHighByte;
-   unsigned char irqCounterEnabled;
+   uint8 irqCounterLowByte;
+   uint8 irqCounterHighByte;
+   uint8 irqCounterEnabled;
 } mapper19Data;
 
-/* TODO: shouldn't there be an h-blank IRQ handler??? */
 static struct
 {
-   int counter, enabled;
+   int counter;
+   int enabled;
 } irq;
+
+static rom_t *cart;
+static int counter_inc;
 
 static void map19_init(void)
 {
-   irq.counter = irq.enabled = 0;
+   counter_inc = nes_getptr()->cycles_per_line;
+   cart = mmc_getinfo();
+
+   irq.counter = 0;
+   irq.enabled = 0;
 }
 
-/* mapper 19: Namco 129/163 */
 static void map19_write(uint32 address, uint8 value)
 {
    int reg = address >> 11;
+   uint8 *page;
+
    switch (reg)
    {
    case 0xA:
-      irq.counter &= ~0xFF;
-      irq.counter |= value;
+      irq.counter = (irq.counter & 0x7F00) | value;
       break;
 
    case 0xB:
-      irq.counter = ((value & 0x7F) << 8) | (irq.counter & 0xFF);
-      irq.enabled = (value & 0x80) ? true : false;
+      irq.counter = (irq.counter & 0x00FF) | ((value & 0x7F) << 8);
+      irq.enabled = (value >> 7);
       break;
 
    case 0x10:
@@ -76,14 +83,13 @@ static void map19_write(uint32 address, uint8 value)
    case 0x18:
    case 0x19:
    case 0x1A:
-   case 0x1B: {
-      rom_t *cart = mmc_getinfo();
-      uint8 *page;
-      if (value < 0xE0) page = &cart->vrom[(value % (cart->vrom_banks * 8)) << 10] - (0x2000 + ((reg & 3) << 10));
-      else page = ppu_getnametable(value & 1) - (0x2000 + ((reg & 3) << 10));
+   case 0x1B:
+      if (value < 0xE0)
+         page = &cart->vrom[(value % (cart->vrom_banks * 8)) << 10] - (0x2000 + ((reg & 3) << 10));
+      else
+         page = ppu_getnametable(value & 1) - (0x2000 + ((reg & 3) << 10));
       ppu_setpage(1, (reg & 3) + 8, page);
       ppu_setpage(1, (reg & 3) + 12, page);
-      }
       break;
 
    case 0x1C:
@@ -100,6 +106,37 @@ static void map19_write(uint32 address, uint8 value)
 
    default:
       break;
+   }
+}
+
+static uint8 map19_read(uint32 address)
+{
+   int reg = address >> 11;
+
+   switch (reg)
+   {
+   case 0xA:
+      return irq.counter & 0xFF;
+
+   case 0xB:
+      return irq.counter >> 8;
+
+   default:
+      return 0xFF;
+   }
+}
+
+static void map19_hblank(int scanline)
+{
+   if (irq.enabled)
+   {
+      irq.counter += counter_inc;
+
+      if (irq.counter >= 0x7FFF)
+      {
+         nes6502_irq();
+         irq.counter = 0;
+      }
    }
 }
 
@@ -124,50 +161,22 @@ static mem_write_handler_t map19_memwrite[] =
    LAST_MEMORY_HANDLER
 };
 
+static mem_read_handler_t map19_memread[] =
+{
+   { 0x5000, 0x5FFF, map19_read },
+   LAST_MEMORY_HANDLER
+};
+
 mapintf_t map19_intf =
 {
    19, /* mapper number */
    "Namco 129/163", /* mapper name */
    map19_init, /* init routine */
    NULL, /* vblank callback */
-   NULL, /* hblank callback */
+   map19_hblank, /* hblank callback */
    map19_getstate, /* get state (snss) */
    map19_setstate, /* set state (snss) */
-   NULL, /* memory read structure */
+   map19_memread, /* memory read structure */
    map19_memwrite, /* memory write structure */
    NULL /* external sound device */
 };
-
-/*
-** $Log: map019.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.1  2000/10/24 12:19:33  matt
-** changed directory structure
-**
-** Revision 1.6  2000/10/22 19:17:46  matt
-** mapper cleanups galore
-**
-** Revision 1.5  2000/10/21 19:33:38  matt
-** many more cleanups
-**
-** Revision 1.4  2000/10/10 13:58:17  matt
-** stroustrup squeezing his way in the door
-**
-** Revision 1.3  2000/07/15 23:52:20  matt
-** rounded out a bunch more mapper interfaces
-**
-** Revision 1.2  2000/07/06 02:48:43  matt
-** clearly labelled structure members
-**
-** Revision 1.1  2000/07/06 01:01:56  matt
-** initial revision
-**
-*/
