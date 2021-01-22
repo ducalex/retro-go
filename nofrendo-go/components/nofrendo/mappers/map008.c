@@ -24,7 +24,7 @@
 */
 
 #include <nofrendo.h>
-#include <nes_mmc.h>
+#include <mmc.h>
 
 /* mapper 8: FFE F3xxx -- what the hell uses this? */
 static void map8_write(uint32 address, uint8 value)

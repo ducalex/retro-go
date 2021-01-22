@@ -24,8 +24,7 @@
 */
 
 #include <nofrendo.h>
-#include <nes_mmc.h>
-#include <nes_ppu.h>
+#include <mmc.h>
 
 /* mapper 33: Taito TC0190*/
 static void map33_write(uint32 address, uint8 value)

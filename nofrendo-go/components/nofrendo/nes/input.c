@@ -24,7 +24,7 @@
 */
 
 #include <nofrendo.h>
-#include "nes_input.h"
+#include "input.h"
 
 static nesinput_t nes_inputs[INP_TYPE_MAX];
 static int strobe = 0;

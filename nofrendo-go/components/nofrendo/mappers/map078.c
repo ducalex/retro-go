@@ -24,8 +24,7 @@
 */
 
 #include <nofrendo.h>
-#include <nes_mmc.h>
-#include <nes_ppu.h>
+#include <mmc.h>
 
 /* mapper 78: Holy Diver, Cosmo Carrier */
 /* ($8000-$FFFF) D2-D0 = switch $8000-$BFFF */

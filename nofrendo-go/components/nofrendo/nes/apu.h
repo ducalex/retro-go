@@ -214,11 +214,6 @@ typedef struct
    int options[16];
 } apu_t;
 
-
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
-
 /* Function prototypes */
 extern apu_t *apu_init(int region, int sample_rate, bool stereo);
 extern void apu_refresh(void);
@@ -239,9 +234,5 @@ extern void apu_fc_advance(int cycles);
 
 extern uint8 apu_read(uint32 address);
 extern void apu_write(uint32 address, uint8 value);
-
-#ifdef __cplusplus
-}
-#endif /* __cplusplus */
 
 #endif /* _NES_APU_H_ */

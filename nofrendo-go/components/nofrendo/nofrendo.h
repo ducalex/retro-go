@@ -93,6 +93,7 @@ typedef unsigned int uint32;
 #include <stdlib.h>
 #include <stdint.h>
 #include <rg_system.h>
+#include <osd.h>
 #include <nes.h>
 
 /* End basic types */

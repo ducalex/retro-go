@@ -24,8 +24,7 @@
 */
 
 #include <nofrendo.h>
-#include <nes_mmc.h>
-#include <nes_ppu.h>
+#include <mmc.h>
 
 static int is_battletoads = 0;
 

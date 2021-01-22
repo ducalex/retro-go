@@ -23,15 +23,14 @@
 ** $Id: nes_rom.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
+#include <nofrendo.h>
+#include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
-#include <nofrendo.h>
-#include "nes_rom.h"
-#include "nes_mmc.h"
-#include "nes_ppu.h"
+#include "rom.h"
+#include "mmc.h"
+#include "ppu.h"
 #include "nes.h"
-#include <osd.h>
 
 typedef struct
 {

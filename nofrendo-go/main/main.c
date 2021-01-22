@@ -2,12 +2,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <nofrendo.h>
+#include <nes/nes.h>
+#include <nes/input.h>
+#include <nes/state.h>
 #include <bitmap.h>
-#include <nes.h>
-#include <nes_input.h>
-#include <nes_state.h>
-#include <nes_input.h>
-#include <osd.h>
 
 #define APP_ID 10
 

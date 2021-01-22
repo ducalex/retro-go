@@ -1,4 +1,4 @@
-#include "nes_ppu.h"
+#include "nes/ppu.h"
 
 static const palette_t nes_palettes[PPU_PAL_COUNT] = {
    {"Default", {

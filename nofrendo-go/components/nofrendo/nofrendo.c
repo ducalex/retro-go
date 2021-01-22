@@ -29,7 +29,6 @@
 #include <stdarg.h>
 #include <string.h>
 #include <nofrendo.h>
-#include <osd.h>
 #include <nes.h>
 
 void nofrendo_printf(int type, const char *prefix, const char *format, ...)

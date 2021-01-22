@@ -24,7 +24,7 @@
 */
 
 #include <nofrendo.h>
-#include <nes_mmc.h>
+#include <mmc.h>
 
 /* mapper 66: GNROM */
 static void map66_write(uint32 address, uint8 value)

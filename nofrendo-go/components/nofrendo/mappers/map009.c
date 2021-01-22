@@ -24,8 +24,7 @@
 */
 
 #include <nofrendo.h>
-#include <nes_mmc.h>
-#include <nes_ppu.h>
+#include <mmc.h>
 #include <string.h>
 
 static uint8 latch[2];

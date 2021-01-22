@@ -22,11 +22,11 @@
 ** State saving/loading
 ** $Id: nes_state.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
-#include <stdio.h>
-#include <string.h>
 #include <nofrendo.h>
-#include <nes6502.h>
-#include "nes_state.h"
+#include <string.h>
+#include <stdio.h>
+#include "state.h"
+#include "cpu.h"
 
 #define _fread(buffer, size) {                       \
    if (fread(buffer, size, 1, file) != 1)            \

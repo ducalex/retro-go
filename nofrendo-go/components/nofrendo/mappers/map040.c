@@ -24,7 +24,7 @@
 */
 
 #include <nofrendo.h>
-#include <nes_mmc.h>
+#include <mmc.h>
 #include <nes.h>
 
 // Shouldn't that be packed? (It wasn't packed in SNSS...)

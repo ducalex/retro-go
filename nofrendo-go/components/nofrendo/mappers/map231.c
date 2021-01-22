@@ -24,7 +24,7 @@
 */
 
 #include <nofrendo.h>
-#include <nes_mmc.h>
+#include <mmc.h>
 
 /* mapper 231: NINA-07, used in Wally Bear and the NO! Gang */
 

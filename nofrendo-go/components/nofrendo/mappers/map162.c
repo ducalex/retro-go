@@ -25,8 +25,7 @@
 */
 
 #include <nofrendo.h>
-#include <nes_mmc.h>
-#include <nes_ppu.h>
+#include <mmc.h>
 #include <nes.h>
 
 static uint8 reg5000;

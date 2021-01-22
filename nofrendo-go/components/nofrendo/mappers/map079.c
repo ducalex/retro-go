@@ -24,7 +24,7 @@
 */
 
 #include <nofrendo.h>
-#include <nes_mmc.h>
+#include <mmc.h>
 
 /* mapper 79: NINA-03/06 */
 static void map79_write(uint32 address, uint8 value)

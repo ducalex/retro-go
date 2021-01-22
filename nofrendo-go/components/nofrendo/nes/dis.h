@@ -17,26 +17,15 @@
 ** must bear this legend.
 **
 **
-** nes_state.h
+** dis6502.h
 **
-** state saving header
-** $Id: nes_state.h,v 1.2 2001/04/27 14:37:11 neil Exp $
+** 6502 disassembler header
+** $Id: dis6502.h,v 1.1 2001/04/27 12:54:39 neil Exp $
 */
 
-#ifndef _NESSTATE_H_
-#define _NESSTATE_H_
+#ifndef _DIS6502_H_
+#define _DIS6502_H_
 
-#include <nes.h>
+extern char *nes6502_disasm(uint32 PC, uint8 P, uint8 A, uint8 X, uint8 Y, uint8 S);
 
-typedef struct
-{
-    uint8_t type[4];
-    uint32_t blockVersion;
-    uint32_t blockLength;
-} SnssBlockHeader;
-
-extern void state_setslot(int slot);
-extern int state_load(char *fn);
-extern int state_save(char *fn);
-
-#endif /* _NESSTATE_H_ */
+#endif /* !_DIS6502_H_ */

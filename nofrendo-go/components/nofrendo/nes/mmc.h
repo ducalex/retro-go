@@ -30,10 +30,10 @@ typedef struct mapintf_s mapintf_t;
 typedef struct mmc_s mmc_t;
 
 #include <nofrendo.h>
-#include "nes_state.h"
-#include "nes_apu.h"
-#include "nes_rom.h"
-#include "nes_mem.h"
+#include "state.h"
+#include "apu.h"
+#include "rom.h"
+#include "mem.h"
 
 struct mapintf_s
 {

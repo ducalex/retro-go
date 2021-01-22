@@ -24,9 +24,9 @@
 **
 */
 
-#include <string.h>
 #include <nofrendo.h>
-#include <nes_mmc.h>
+#include <string.h>
+#include <mmc.h>
 #include <nes.h>
 
 static uint8 prg_mode;

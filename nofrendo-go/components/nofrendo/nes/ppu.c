@@ -23,17 +23,17 @@
 ** $Id: nes_ppu.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
-#include <string.h>
 #include <nofrendo.h>
-#include <nes6502.h>
+#include <string.h>
 #include <bitmap.h>
-#include "nes_input.h"
-#include "nes_mmc.h"
-#include "nes_ppu.h"
+#include "input.h"
+#include "cpu.h"
+#include "mmc.h"
+#include "ppu.h"
 #include "nes.h"
 
 /* static const palette_t nes_palettes[PPU_PAL_COUNT] */
-#include "palettes.h"
+#include <palettes.h>
 
 /* PPU access */
 #define PPU_MEM_READ(x)      (ppu.page[(x) >> 10][(x)])

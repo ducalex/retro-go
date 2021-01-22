@@ -24,8 +24,7 @@
 */
 
 #include <nofrendo.h>
-#include <nes_mmc.h>
-#include <nes_ppu.h>
+#include <mmc.h>
 
 // Shouldn't that be packed? (It wasn't packed in SNSS...)
 typedef struct

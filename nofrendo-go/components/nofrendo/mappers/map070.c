@@ -24,8 +24,7 @@
 */
 
 #include <nofrendo.h>
-#include <nes_mmc.h>
-#include <nes_ppu.h>
+#include <mmc.h>
 
 /* mapper 70: Arkanoid II, Kamen Rider Club, etc. */
 /* ($8000-$FFFF) D6-D4 = switch $8000-$BFFF */

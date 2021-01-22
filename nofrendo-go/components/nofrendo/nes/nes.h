@@ -27,13 +27,13 @@
 #define _NES_H_
 
 #include <nofrendo.h>
-#include <nes_apu.h>
-#include <nes_ppu.h>
-#include <nes_mmc.h>
-#include <nes_mem.h>
-#include <nes_rom.h>
-#include <nes6502.h>
 #include <bitmap.h>
+#include "apu.h"
+#include "cpu.h"
+#include "ppu.h"
+#include "mmc.h"
+#include "mem.h"
+#include "rom.h"
 
 #define NES_SCREEN_WIDTH      256
 #define NES_SCREEN_HEIGHT     240
@@ -76,14 +76,14 @@ typedef struct nes_s
 
     /* Misc */
     region_t region;
-    short overscan;
+    int overscan;
 
     /* Timing stuff */
-    short refresh_rate;
-    short scanlines_per_frame;
+    int refresh_rate;
+    int scanlines_per_frame;
     float cycles_per_line;
 
-    short scanline;
+    int scanline;
     float cycles;
 
     /* Control */

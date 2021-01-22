@@ -25,8 +25,10 @@
 
 #include <nofrendo.h>
 #include <string.h>
-#include "nes6502.h"
-#include "dis6502.h"
+#include "cpu.h"
+#include "dis.h"
+#include "mmc.h"
+#include "mem.h"
 
 /* internal CPU context */
 static nes6502_t cpu;
@@ -1531,6 +1533,14 @@ IRAM_ATTR void nes6502_irq(void)
       }
       STORE_LOCAL_REGS();
    }
+}
+
+void nes6502_irq_clear(void)
+{
+   DECLARE_LOCAL_REGS();
+   GET_GLOBAL_REGS();
+   CLI();
+   STORE_LOCAL_REGS();
 }
 
 /* Set dead cycle period */

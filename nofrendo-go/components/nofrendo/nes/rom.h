@@ -26,9 +26,6 @@
 #ifndef _NES_ROM_H_
 #define _NES_ROM_H_
 
-#include <unistd.h>
-#include <osd.h>
-
 #define  ROM_INES_MAGIC       "NES\x1A"
 
 #define  ROM_FLAG_FOURSCREEN  0x08
@@ -68,6 +65,5 @@ typedef struct
 
 extern rom_t *rom_load(const char *filename);
 extern void rom_free(rom_t *rominfo);
-
 
 #endif /* _NES_ROM_H_ */

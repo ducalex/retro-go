@@ -26,8 +26,6 @@
 #ifndef _NES_MEM_H_
 #define _NES_MEM_H_
 
-#include <nofrendo.h>
-
 #define MEM_PAGEBITS  5
 #define MEM_PAGESHIFT (16 - MEM_PAGEBITS)
 #define MEM_PAGECOUNT (1 << MEM_PAGEBITS)
@@ -59,6 +57,8 @@ typedef struct
    uint32 min_range, max_range;
    void (*write_func)(uint32 address, uint8 value);
 } mem_write_handler_t;
+
+typedef struct mapintf_s mapintf_t;
 
 typedef struct
 {

@@ -24,8 +24,7 @@
 */
 
 #include <nofrendo.h>
-#include <nes_mmc.h>
-#include <nes_ppu.h>
+#include <mmc.h>
 
 // Shouldn't that be packed? (It wasn't packed in SNSS...)
 typedef struct
@@ -42,11 +41,11 @@ static struct
 } irq;
 
 static rom_t *cart;
-static int counter_inc;
+static nes_t *nes;
 
 static void map19_init(void)
 {
-   counter_inc = nes_getptr()->cycles_per_line;
+   nes = nes_getptr();
    cart = mmc_getinfo();
 
    irq.counter = 0;
@@ -62,11 +61,13 @@ static void map19_write(uint32 address, uint8 value)
    {
    case 0xA:
       irq.counter = (irq.counter & 0x7F00) | value;
+      nes6502_irq_clear();
       break;
 
    case 0xB:
       irq.counter = (irq.counter & 0x00FF) | ((value & 0x7F) << 8);
-      irq.enabled = (value >> 7);
+      irq.enabled = (value & 0x80);
+      nes6502_irq_clear();
       break;
 
    case 0x10:
@@ -130,12 +131,13 @@ static void map19_hblank(int scanline)
 {
    if (irq.enabled)
    {
-      irq.counter += counter_inc;
+      irq.counter += nes->cycles_per_line;
 
       if (irq.counter >= 0x7FFF)
       {
          nes6502_irq();
-         irq.counter = 0;
+         irq.counter = 0x7FFF;
+         irq.enabled = 0;
       }
    }
 }

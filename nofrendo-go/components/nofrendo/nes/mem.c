@@ -23,11 +23,10 @@
 ** by ducalex
 */
 
-#include <string.h>
 #include <nofrendo.h>
-#include <nes_input.h>
-#include <osd.h>
-#include <nes.h>
+#include <string.h>
+#include "input.h"
+#include "nes.h"
 
 static mem_t mem;
 

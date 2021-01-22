@@ -24,7 +24,7 @@
 */
 
 #include <nofrendo.h>
-#include <nes_mmc.h>
+#include <mmc.h>
 
 /* mapper 94: Senjou no Ookami */
 static void map94_write(uint32 address, uint8 value)

@@ -24,7 +24,7 @@
 */
 
 #include <nofrendo.h>
-#include <nes_mmc.h>
+#include <mmc.h>
 
 /* mapper 11: Color Dreams, Wisdom Tree */
 static void map11_write(uint32 address, uint8 value)

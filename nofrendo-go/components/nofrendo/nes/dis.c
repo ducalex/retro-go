@@ -23,11 +23,11 @@
 ** $Id: dis6502.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
-#include <stdio.h>
 #include <nofrendo.h>
-#include <nes.h>
-#include "nes6502.h"
-#include "dis6502.h"
+#include <stdio.h>
+#include "nes.h"
+#include "cpu.h"
+#include "dis.h"
 
 #ifdef NES6502_DEBUG
 

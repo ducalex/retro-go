@@ -29,7 +29,7 @@
 #ifndef _NES6502_H_
 #define _NES6502_H_
 
-#include <nofrendo.h>
+#include "mem.h"
 
 /* P (flag) register bitmasks */
 #define  N_FLAG         0x80
@@ -69,14 +69,11 @@ typedef struct
    long burn_cycles;
 } nes6502_t;
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
-
 /* Functions which govern the 6502's execution */
 extern int nes6502_execute(int total_cycles);
 extern void nes6502_nmi(void);
 extern void nes6502_irq(void);
+extern void nes6502_irq_clear(void);
 extern uint32 nes6502_getcycles(void);
 extern void nes6502_burn(int cycles);
 extern void nes6502_release(void);
@@ -88,9 +85,5 @@ extern void nes6502_shutdown(void);
 
 extern void nes6502_setcontext(nes6502_t *cpu);
 extern void nes6502_getcontext(nes6502_t *cpu);
-
-#ifdef __cplusplus
-}
-#endif /* __cplusplus */
 
 #endif /* _NES6502_H_ */

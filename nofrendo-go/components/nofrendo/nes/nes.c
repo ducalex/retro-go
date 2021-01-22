@@ -23,11 +23,10 @@
 ** $Id: nes.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
-#include <string.h>
 #include <nofrendo.h>
-#include <nes_input.h>
-#include <osd.h>
-#include <nes.h>
+#include <string.h>
+#include "input.h"
+#include "nes.h"
 
 static bitmap_t *framebuffers[2];
 static nes_t nes;

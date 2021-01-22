@@ -25,7 +25,7 @@
 */
 
 #include <nofrendo.h>
-#include <nes_mmc.h>
+#include <mmc.h>
 #include <nes.h>
 
 static uint8 mram[4];

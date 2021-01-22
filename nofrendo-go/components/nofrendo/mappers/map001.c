@@ -25,9 +25,8 @@
 */
 
 #include <nofrendo.h>
-#include <nes_mmc.h>
-#include <nes_ppu.h>
 #include <string.h>
+#include <mmc.h>
 
 static unsigned int regs[4];
 static unsigned int latch = 0;
