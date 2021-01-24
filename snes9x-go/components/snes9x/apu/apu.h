@@ -36,6 +36,7 @@ bool8 S9xOpenSoundDevice (void);
 bool8 S9xSyncSound (void);
 int S9xGetSampleCount (void);
 void S9xSetSoundControl (uint8);
+void S9xToggleSoundChannel(int c);
 void S9xSetSoundMute (bool8);
 void S9xLandSamples (void);
 void S9xClearSamples (void);

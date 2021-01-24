@@ -190,6 +190,18 @@ void S9xDumpSPCSnapshot(void)
     SNES::dsp.spc_dsp.dump_spc_snapshot();
 }
 
+void S9xToggleSoundChannel(int c)
+{
+	uint8 sound_switch = SNES::dsp.spc_dsp.stereo_switch;
+
+	if (c == 8)
+		sound_switch = 255;
+	else
+		sound_switch ^= 1 << c;
+
+	S9xSetSoundControl(sound_switch);
+}
+
 static void SPCSnapshotCallback(void)
 {
     S9xSPCDump(S9xGetFilename((".spc"), SPC_DIR));

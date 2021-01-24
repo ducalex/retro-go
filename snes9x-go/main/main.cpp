@@ -1,5 +1,3 @@
-extern "C"
-{
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <rg_system.h>
@@ -8,7 +6,6 @@ extern "C"
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
-}
 
 #include "../components/snes9x/snes9x.h"
 #include "../components/snes9x/memmap.h"
@@ -163,14 +160,12 @@ void S9xCloseSnapshotFile(STREAM file)
 
 void S9xTextMode(void)
 {
+	// This is only used by the debugger
 }
 
 void S9xGraphicsMode(void)
 {
-}
-
-void S9xSetTitle(const char *string)
-{
+	// This is only used by the debugger
 }
 
 void S9xMessage(int type, int number, const char *message)
@@ -182,20 +177,6 @@ void S9xMessage(int type, int number, const char *message)
 	strncpy(buffer, message, max + 1);
 	buffer[max] = 0;
 	S9xSetInfoString(buffer);
-}
-
-void S9xInitDisplay(int argc, char **argv)
-{
-	GFX.Pitch = SNES_WIDTH * 2;
-	GFX.Screen = (uint16*)currentUpdate->buffer;
-
-	if (!S9xGraphicsInit())
-	{
-		fprintf(stderr, "Snes9x: Graphics Memory allocation failure - not enough RAM/virtual memory available.\nExiting...\n");
-		Memory.Deinit();
-		S9xDeinitAPU();
-		exit(1);
-	}
 }
 
 bool8 S9xInitUpdate(void)
@@ -211,18 +192,6 @@ bool8 S9xDeinitUpdate(int width, int height)
 bool8 S9xContinueUpdate(int width, int height)
 {
 	return (TRUE);
-}
-
-void S9xToggleSoundChannel(int c)
-{
-	static uint8 sound_switch = 255;
-
-	if (c == 8)
-		sound_switch = 255;
-	else
-		sound_switch ^= 1 << c;
-
-	S9xSetSoundControl(sound_switch);
 }
 
 void S9xSetPalette(void)
@@ -247,11 +216,12 @@ void S9xHandlePortCommand(s9xcommand_t cmd, int16 data1, int16 data2)
 
 bool8 S9xOpenSoundDevice(void)
 {
-	return (FALSE);
+	return (TRUE);
 }
 
 void S9xExit(void)
 {
+	exit(0);
 }
 
 static bool save_state(char *pathName)
@@ -292,16 +262,10 @@ static void snes9x_task(void *arg)
 	Settings.AutoDisplayMessages = TRUE;
 	Settings.Transparency = TRUE;
 	Settings.SkipFrames = 0;
+	Settings.StopEmulation = FALSE;
 
-	if (!Memory.Init() || !S9xInitAPU())
-	{
-		fprintf(stderr, "Snes9x: Memory allocation failure - not enough RAM/virtual memory available.\nExiting...\n");
-		Memory.Deinit();
-		S9xDeinitAPU();
-		exit(1);
-	}
-
-	S9xInitDisplay(0, NULL);
+	GFX.Pitch = SNES_WIDTH * 2;
+	GFX.Screen = (uint16*)currentUpdate->buffer;
 
 	S9xSetController(0, CTL_JOYPAD, 0, 0, 0, 0);
 	S9xSetController(1, CTL_NONE, 1, 0, 0, 0);
@@ -319,21 +283,17 @@ static void snes9x_task(void *arg)
     S9xMapButtonT(SNES_UP_MASK, "Joypad1 Up");
     S9xMapButtonT(SNES_DOWN_MASK, "Joypad1 Down");
 
-	S9xInitSound(0);
-	S9xSetSoundMute(TRUE);
+	if (!Memory.Init())
+		RG_PANIC("Memory init failed!");
 
-	uint32 saved_flags = CPU.Flags;
+	if (!S9xInitAPU() || !S9xInitSound(0))
+		RG_PANIC("Sound init failed!");
+
+	if (!S9xGraphicsInit())
+		RG_PANIC("Graphics init failed!");
 
 	if (!Memory.LoadROM(app->romPath))
-	{
-		fprintf(stderr, "Error opening the ROM file.\n");
-		exit(1);
-	}
-
-	// Memory.LoadSRAM(S9xGetFilename(".srm", SRAM_DIR));
-
-	CPU.Flags = saved_flags;
-	Settings.StopEmulation = FALSE;
+		RG_PANIC("ROM loading failed!");
 
 	bool menuCancelled = false;
 	bool menuPressed = false;
