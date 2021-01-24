@@ -149,14 +149,10 @@ const char *S9xBasename(const char *f)
 	return rg_get_filename(f);
 }
 
-const char *S9xChooseFilename(bool8 read_only)
-{
-	// Return a saved state
-	return NULL;
-}
-
 bool8 S9xOpenSnapshotFile(const char *filename, bool8 read_only, STREAM *file)
 {
+	if ((*file = OPEN_STREAM(filename, read_only ? "rb" : "wb")))
+		return (TRUE);
 	return (FALSE);
 }
 
@@ -260,14 +256,21 @@ void S9xExit(void)
 
 static bool save_state(char *pathName)
 {
-	bool ret = false;
-
-	return ret;
+	return false; // S9xFreezeGame(pathName);
 }
 
 static bool load_state(char *pathName)
 {
 	bool ret = false;
+
+	if (rg_filesize(pathName) > 0)
+	{
+		ret = S9xUnfreezeGame(pathName);
+	}
+	else
+	{
+		// reset emulation
+	}
 
 	return ret;
 }

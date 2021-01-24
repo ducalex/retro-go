@@ -132,21 +132,4 @@ uint8 S9xReadJOYSERn (int n);
 
 void S9xControlEOF (void);
 
-// Functions and a structure for snapshot.
-
-struct SControlSnapshot
-{
-	uint8	ver;
-	uint8	port1_read_idx[2];
-	uint8	dummy1[4];					// for future expansion
-	uint8	port2_read_idx[2];
-	uint8	dummy2[4];
-	bool8	pad_read, pad_read_last;
-	uint8	internal[60];				// yes, we need to save this!
-	uint8   internal_macs[5];
-};
-
-void S9xControlPreSaveState (struct SControlSnapshot *s);
-void S9xControlPostLoadState (struct SControlSnapshot *s);
-
 #endif

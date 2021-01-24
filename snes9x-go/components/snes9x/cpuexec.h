@@ -21,10 +21,10 @@ struct SICPU
 {
 	const struct SOpcodes *S9xOpcodes;
 	const uint8 *S9xOpLengths;
-	uint8	_Carry;
-	uint8	_Zero;
-	uint8	_Negative;
-	uint8	_Overflow;
+	uint32	_Carry;
+	uint32	_Zero;
+	uint32	_Negative;
+	uint32	_Overflow;
 	uint32	ShiftedPB;
 	uint32	ShiftedDB;
 	uint32	Frame;

@@ -38,9 +38,7 @@ using namespace	std;
 #define FLAG_IOBIT1				(Memory.FillRAM[0x4213] & 0x80)
 #define FLAG_IOBIT(n)			((n) ? (FLAG_IOBIT1) : (FLAG_IOBIT0))
 
-bool8	pad_read = 0, pad_read_last = 0;
-uint8	read_idx[2 /* ports */][2 /* per port */];
-
+static uint8	read_idx[2 /* ports */][2 /* per port */];
 static struct
 {
 	uint16				buttons;
@@ -584,12 +582,12 @@ void S9xApplyCommand (s9xcommand_t cmd, int16 data1, int16 data2)
 
 					case QuickLoad000:
 					case LoadFreezeFile:
-						S9xUnfreezeGame(S9xChooseFilename(TRUE));
+						// S9xUnfreezeGame(S9xChooseFilename(TRUE));
 						break;
 
 					case QuickSave000:
 					case SaveFreezeFile:
-						S9xFreezeGame(S9xChooseFilename(FALSE));
+						// S9xFreezeGame(S9xChooseFilename(FALSE));
 						break;
 
 					case Pause:
@@ -850,63 +848,5 @@ void S9xControlEOF (void)
 			default:
 				break;
 		}
-	}
-
-	pad_read_last = pad_read;
-	pad_read      = false;
-}
-
-void S9xControlPreSaveState (struct SControlSnapshot *s)
-{
-	memset(s, 0, sizeof(*s));
-	s->ver = 4;
-
-	for (int j = 0; j < 2; j++)
-	{
-		s->port1_read_idx[j] = read_idx[0][j];
-		s->port2_read_idx[j] = read_idx[1][j];
-	}
-
-#define COPY(x)	{ memcpy((char *) s->internal + i, &(x), sizeof(x)); i += sizeof(x); }
-
-	int	i = 0;
-
-	for (int j = 0; j < 8; j++)
-		COPY(joypad[j].buttons);
-
-	assert(i == sizeof(s->internal) + sizeof(s->internal_macs));
-
-#undef COPY
-
-	s->pad_read      = pad_read;
-	s->pad_read_last = pad_read_last;
-}
-
-void S9xControlPostLoadState (struct SControlSnapshot *s)
-{
-	for (int j = 0; j < 2; j++)
-	{
-		read_idx[0][j] = s->port1_read_idx[j];
-		read_idx[1][j] = s->port2_read_idx[j];
-	}
-
-	FLAG_LATCH = (Memory.FillRAM[0x4016] & 1) == 1;
-
-	if (s->ver > 1)
-	{
-	#define COPY(x)	{ memcpy(&(x), (char *) s->internal + i, sizeof(x)); i += sizeof(x); }
-
-		int	i = 0;
-
-		for (int j = 0; j < 8; j++)
-			COPY(joypad[j].buttons);
-
-	#undef COPY
-	}
-
-	if (s->ver > 2)
-	{
-		pad_read      = s->pad_read;
-		pad_read_last = s->pad_read_last;
 	}
 }

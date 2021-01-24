@@ -152,22 +152,14 @@ struct SDMASnapshot
 	struct SDMA	dma[8];
 };
 
-struct SnapshotMovieInfo
-{
-	uint32	MovieInputDataSize;
-};
-
 static struct Obsolete
 {
 	uint8	CPU_IRQActive;
 }	Obsolete;
 
-// Disable snapshots for now
-#if 0
-
 #define STRUCT	struct SCPUState
 
-static FreezeData	SnapCPU[] =
+static const FreezeData	SnapCPU[] =
 {
 	INT_ENTRY(6, Cycles),
 	INT_ENTRY(6, PrevCycles),
@@ -199,7 +191,7 @@ static FreezeData	SnapCPU[] =
 #undef STRUCT
 #define STRUCT	struct SRegisters
 
-static FreezeData	SnapRegisters[] =
+static const FreezeData	SnapRegisters[] =
 {
 	INT_ENTRY(6, PB),
 	INT_ENTRY(6, DB),
@@ -215,7 +207,7 @@ static FreezeData	SnapRegisters[] =
 #undef STRUCT
 #define STRUCT	struct SPPU
 
-static FreezeData	SnapPPU[] =
+static const FreezeData	SnapPPU[] =
 {
 	INT_ENTRY(6, VMA.High),
 	INT_ENTRY(6, VMA.Increment),
@@ -339,7 +331,7 @@ static FreezeData	SnapPPU[] =
 #undef STRUCT
 #define STRUCT	struct SDMASnapshot
 
-static FreezeData	SnapDMA[] =
+static const FreezeData	SnapDMA[] =
 {
 #define O(N) \
 	INT_ENTRY(6, dma[N].ReverseTransfer), \
@@ -363,25 +355,9 @@ static FreezeData	SnapDMA[] =
 };
 
 #undef STRUCT
-#define STRUCT	struct SControlSnapshot
-
-static FreezeData	SnapControls[] =
-{
-	INT_ENTRY(6, ver),
-	ARRAY_ENTRY(6, port1_read_idx, 2, uint8_ARRAY_V),
-	ARRAY_ENTRY(6, dummy1, 4, uint8_ARRAY_V),
-	ARRAY_ENTRY(6, port2_read_idx, 2, uint8_ARRAY_V),
-	ARRAY_ENTRY(6, dummy2, 4, uint8_ARRAY_V),
-	INT_ENTRY(6, pad_read),
-	INT_ENTRY(6, pad_read_last),
-	ARRAY_ENTRY(6, internal, 60, uint8_ARRAY_V),
-	ARRAY_ENTRY(10, internal_macs, 5, uint8_ARRAY_V)
-};
-
-#undef STRUCT
 #define STRUCT	struct STimings
 
-static FreezeData	SnapTimings[] =
+static const FreezeData	SnapTimings[] =
 {
 	INT_ENTRY(6, H_Max_Master),
 	INT_ENTRY(6, H_Max),
@@ -407,7 +383,7 @@ static FreezeData	SnapTimings[] =
 #undef STRUCT
 #define STRUCT	struct SDSP1
 
-static FreezeData	SnapDSP1[] =
+static const FreezeData	SnapDSP1[] =
 {
 	INT_ENTRY(6, waiting4command),
 	INT_ENTRY(6, first_parameter),
@@ -605,7 +581,7 @@ static FreezeData	SnapDSP1[] =
 #undef STRUCT
 #define STRUCT	struct SDSP2
 
-static FreezeData	SnapDSP2[] =
+static const FreezeData	SnapDSP2[] =
 {
 	INT_ENTRY(6, waiting4command),
 	INT_ENTRY(6, command),
@@ -627,33 +603,15 @@ static FreezeData	SnapDSP2[] =
 	INT_ENTRY(6, Op0DInLen)
 };
 
-#else
-
-static struct Dummy
-{
-	uint32 dummy;
-}	Dummy;
-#define STRUCT struct Dummy
-static FreezeData	SnapCPU[] = {INT_ENTRY(1, dummy)};
-static FreezeData	SnapRegisters[] = {INT_ENTRY(1, dummy)};
-static FreezeData	SnapPPU[] = {INT_ENTRY(1, dummy)};
-static FreezeData	SnapDMA[] = {INT_ENTRY(1, dummy)};
-static FreezeData	SnapControls[] = {INT_ENTRY(1, dummy)};
-static FreezeData	SnapTimings[] = {INT_ENTRY(1, dummy)};
-static FreezeData	SnapDSP1[] = {INT_ENTRY(1, dummy)};
-static FreezeData	SnapDSP2[] = {INT_ENTRY(1, dummy)};
-
-#endif
-
 #undef STRUCT
 
 static int UnfreezeBlock (STREAM, const char *, uint8 *, int);
 static int UnfreezeBlockCopy (STREAM, const char *, uint8 **, int);
-static int UnfreezeStruct (STREAM, const char *, void *, FreezeData *, int, int);
-static int UnfreezeStructCopy (STREAM, const char *, uint8 **, FreezeData *, int, int);
-static void UnfreezeStructFromCopy (void *, FreezeData *, int, uint8 *, int);
+static int UnfreezeStruct (STREAM, const char *, void *, const FreezeData *, int, int);
+static int UnfreezeStructCopy (STREAM, const char *, uint8 **, const FreezeData *, int, int);
+static void UnfreezeStructFromCopy (void *, const FreezeData *, int, uint8 *, int);
 static void FreezeBlock (STREAM, const char *, uint8 *, int);
-static void FreezeStruct (STREAM, const char *, void *, FreezeData *, int);
+static void FreezeStruct (STREAM, const char *, void *, const FreezeData *, int);
 static bool CheckBlockName(STREAM stream, const char *name, int &len);
 static void SkipBlockWithName(STREAM stream, const char *name);
 
@@ -675,10 +633,10 @@ bool8 S9xFreezeGame (const char *filename)
 		S9xFreezeToStream(stream);
 		S9xCloseSnapshotFile(stream);
 
-		const char *base = S9xBasename(filename);
-		sprintf(String, SAVE_INFO_SNAPSHOT " %s", base);
+		// const char *base = S9xBasename(filename);
+		// sprintf(String, SAVE_INFO_SNAPSHOT " %s", base);
 
-		S9xMessage(S9X_INFO, S9X_FREEZE_FILE_INFO, String);
+		// S9xMessage(S9X_INFO, S9X_FREEZE_FILE_INFO, String);
 
 		return (TRUE);
 	}
@@ -750,7 +708,7 @@ bool8 S9xUnfreezeGame (const char *filename)
 
 void S9xFreezeToStream (STREAM stream)
 {
-	char	buffer[8192];
+	char	buffer[2048];
 	uint8	*soundsnapshot = new uint8[SPC_SAVE_STATE_BLOCK_SIZE];
 
 	sprintf(buffer, "%s:%04d\n", SNAPSHOT_MAGIC, SNAPSHOT_VERSION);
@@ -781,10 +739,6 @@ void S9xFreezeToStream (STREAM stream)
 	S9xAPUSaveState(soundsnapshot);
 	FreezeBlock (stream, "SND", soundsnapshot, SPC_SAVE_STATE_BLOCK_SIZE);
 
-	struct SControlSnapshot	ctl_snap;
-	S9xControlPreSaveState(&ctl_snap);
-	FreezeStruct(stream, "CTL", &ctl_snap, SnapControls, COUNT(SnapControls));
-
 	FreezeStruct(stream, "TIM", &Timings, SnapTimings, COUNT(SnapTimings));
 
 	if (Settings.DSP == 1)
@@ -798,8 +752,6 @@ void S9xFreezeToStream (STREAM stream)
 
 int S9xUnfreezeFromStream (STREAM stream)
 {
-	const bool8 fast = Settings.FastSavestates;
-
 	int		result = SUCCESS;
 	int		version, len;
 	char	buffer[PATH_MAX + 1];
@@ -819,63 +771,42 @@ int S9xUnfreezeFromStream (STREAM stream)
 	if (result != SUCCESS)
 		return (result);
 
-	uint8	*local_cpu           = NULL;
-	uint8	*local_registers     = NULL;
-	uint8	*local_ppu           = NULL;
-	uint8	*local_dma           = NULL;
-	uint8	*local_vram          = NULL;
-	uint8	*local_ram           = NULL;
-	uint8	*local_sram          = NULL;
-	uint8	*local_fillram       = NULL;
+	uint32 old_flags     = CPU.Flags;
+	struct SDMASnapshot	dma_snap;
+
 	uint8	*local_apu_sound     = NULL;
-	uint8	*local_control_data  = NULL;
-	uint8	*local_timing_data   = NULL;
-	uint8	*local_dsp1          = NULL;
-	uint8	*local_dsp2          = NULL;
 
 	do
 	{
-		result = UnfreezeStructCopy(stream, "CPU", &local_cpu, SnapCPU, COUNT(SnapCPU), version);
+		result = UnfreezeStruct(stream, "CPU", &CPU, SnapCPU, COUNT(SnapCPU), version);
 		if (result != SUCCESS)
 			break;
 
-		result = UnfreezeStructCopy(stream, "REG", &local_registers, SnapRegisters, COUNT(SnapRegisters), version);
+		result = UnfreezeStruct(stream, "REG", &Registers, SnapRegisters, COUNT(SnapRegisters), version);
 		if (result != SUCCESS)
 			break;
 
-		result = UnfreezeStructCopy(stream, "PPU", &local_ppu, SnapPPU, COUNT(SnapPPU), version);
+		result = UnfreezeStruct(stream, "PPU", &PPU, SnapPPU, COUNT(SnapPPU), version);
 		if (result != SUCCESS)
 			break;
 
-		result = UnfreezeStructCopy(stream, "DMA", &local_dma, SnapDMA, COUNT(SnapDMA), version);
+		result = UnfreezeStruct(stream, "DMA", &dma_snap, SnapDMA, COUNT(SnapDMA), version);
 		if (result != SUCCESS)
 			break;
 
-		if (fast)
-			result = UnfreezeBlock(stream, "VRA", Memory.VRAM, 0x10000);
-		else
-			result = UnfreezeBlockCopy(stream, "VRA", &local_vram, 0x10000);
+		result = UnfreezeBlock(stream, "VRA", Memory.VRAM, 0x10000);
 		if (result != SUCCESS)
 			break;
 
-		if (fast)
-			result = UnfreezeBlock(stream, "RAM", Memory.RAM, 0x20000);
-		else
-			result = UnfreezeBlockCopy(stream, "RAM", &local_ram, 0x20000);
+		result = UnfreezeBlock(stream, "RAM", Memory.RAM, 0x20000);
 		if (result != SUCCESS)
 			break;
 
-		if (fast)
-			result = UnfreezeBlock(stream, "SRA", Memory.SRAM, 0x20000);
-		else
-			result = UnfreezeBlockCopy (stream, "SRA", &local_sram, 0x20000);
+		result = UnfreezeBlock(stream, "SRA", Memory.SRAM, 0x20000);
 		if (result != SUCCESS)
 			break;
 
-		if (fast)
-			result = UnfreezeBlock(stream, "FIL", Memory.FillRAM, 0x8000);
-		else
-			result = UnfreezeBlockCopy(stream, "FIL", &local_fillram, 0x8000);
+		result = UnfreezeBlock(stream, "FIL", Memory.FillRAM, 0x8000);
 		if (result != SUCCESS)
 			break;
 
@@ -883,116 +814,34 @@ int S9xUnfreezeFromStream (STREAM stream)
 		if (result != SUCCESS)
 			break;
 
-		result = UnfreezeStructCopy(stream, "CTL", &local_control_data, SnapControls, COUNT(SnapControls), version);
+		result = UnfreezeStruct(stream, "TIM", &Timings, SnapTimings, COUNT(SnapTimings), version);
 		if (result != SUCCESS)
 			break;
 
-		result = UnfreezeStructCopy(stream, "TIM", &local_timing_data, SnapTimings, COUNT(SnapTimings), version);
-		if (result != SUCCESS)
-			break;
-
-		result = UnfreezeStructCopy(stream, "DP1", &local_dsp1, SnapDSP1, COUNT(SnapDSP1), version);
+		result = UnfreezeStruct(stream, "DP1", &DSP1, SnapDSP1, COUNT(SnapDSP1), version);
 		if (result != SUCCESS && Settings.DSP == 1)
 			break;
 
-		result = UnfreezeStructCopy(stream, "DP2", &local_dsp2, SnapDSP2, COUNT(SnapDSP2), version);
+		result = UnfreezeStruct(stream, "DP2", &DSP2, SnapDSP2, COUNT(SnapDSP2), version);
 		if (result != SUCCESS && Settings.DSP == 2)
 			break;
-
-		SkipBlockWithName(stream, "DP3");
-		SkipBlockWithName(stream, "DP4");
-		SkipBlockWithName(stream, "CX4");
-		SkipBlockWithName(stream, "ST0");
-		SkipBlockWithName(stream, "OBC");
-		SkipBlockWithName(stream, "OBM");
-		SkipBlockWithName(stream, "S71");
-		SkipBlockWithName(stream, "SRT");
-		SkipBlockWithName(stream, "CLK");
-		SkipBlockWithName(stream, "BSX");
 
 		result = SUCCESS;
 	} while (false);
 
 	if (result == SUCCESS)
 	{
-		uint32 old_flags     = CPU.Flags;
+		S9xResetPPUFast();
+		//Do not call this if you have written directly to "Memory." arrays
+		// S9xReset();
 
-		if (fast)
-		{
-			S9xResetPPUFast();
-		}
-		else
-		{
-			//Do not call this if you have written directly to "Memory." arrays
-			S9xReset();
-		}
-
-		UnfreezeStructFromCopy(&CPU, SnapCPU, COUNT(SnapCPU), local_cpu, version);
-
-		UnfreezeStructFromCopy(&Registers, SnapRegisters, COUNT(SnapRegisters), local_registers, version);
-
-		UnfreezeStructFromCopy(&PPU, SnapPPU, COUNT(SnapPPU), local_ppu, version);
-
-		struct SDMASnapshot	dma_snap;
-		UnfreezeStructFromCopy(&dma_snap, SnapDMA, COUNT(SnapDMA), local_dma, version);
-
-		if (local_vram)
-			memcpy(Memory.VRAM, local_vram, 0x10000);
-
-		if (local_ram)
-			memcpy(Memory.RAM, local_ram, 0x20000);
-
-		if (local_sram)
-			memcpy(Memory.SRAM, local_sram, 0x20000);
-
-		if (local_fillram)
-			memcpy(Memory.FillRAM, local_fillram, 0x8000);
-
-        if(version < SNAPSHOT_VERSION_BAPU) {
-            printf("Using Blargg APU snapshot loading (snapshot version %d, current is %d)\n...", version, SNAPSHOT_VERSION);
-            S9xAPULoadBlarggState(local_apu_sound);
-        } else
-		    S9xAPULoadState(local_apu_sound);
-
-		struct SControlSnapshot	ctl_snap;
-		UnfreezeStructFromCopy(&ctl_snap, SnapControls, COUNT(SnapControls), local_control_data, version);
-
-		UnfreezeStructFromCopy(&Timings, SnapTimings, COUNT(SnapTimings), local_timing_data, version);
-
-		if (local_dsp1)
-			UnfreezeStructFromCopy(&DSP1, SnapDSP1, COUNT(SnapDSP1), local_dsp1, version);
-
-		if (local_dsp2)
-			UnfreezeStructFromCopy(&DSP2, SnapDSP2, COUNT(SnapDSP2), local_dsp2, version);
-
-		if (version < SNAPSHOT_VERSION_IRQ)
-		{
-			printf("Converting old snapshot version %d to %d\n...", version, SNAPSHOT_VERSION);
-
-			CPU.NMIPending = (CPU.Flags & (1 <<  7)) ? TRUE : FALSE;
-			CPU.IRQLine = (CPU.Flags & (1 << 11)) ? TRUE : FALSE;
-			CPU.IRQTransition = FALSE;
-			CPU.IRQLastState = FALSE;
-			CPU.IRQExternal = (Obsolete.CPU_IRQActive & ~(1 << 1)) ? TRUE : FALSE;
-
-			switch (CPU.WhichEvent)
-			{
-				case 12:	case   1:	CPU.WhichEvent = 1; break;
-				case  2:	case   3:	CPU.WhichEvent = 2; break;
-				case  4:	case   5:	CPU.WhichEvent = 3; break;
-				case  6:	case   7:	CPU.WhichEvent = 4; break;
-				case  8:	case   9:	CPU.WhichEvent = 5; break;
-				case 10:	case  11:	CPU.WhichEvent = 6; break;
-			}
-		}
+		S9xAPULoadState(local_apu_sound);
 
 		CPU.Flags |= old_flags & (DEBUG_MODE_FLAG | TRACE_FLAG | SINGLE_STEP_FLAG | FRAME_ADVANCE_FLAG);
 		ICPU.ShiftedPB = Registers.PB << 16;
 		ICPU.ShiftedDB = Registers.DB << 16;
 		S9xSetPCBase(Registers.PBPC);
 		S9xUnpackStatus();
-		if(version < SNAPSHOT_VERSION_IRQ_2018)
-			S9xUpdateIRQPositions(false); // calculate the new trigger pos from saved PPU data
 		S9xFixCycles();
 
 		for (int d = 0; d < 8; d++)
@@ -1012,25 +861,11 @@ int S9xUnfreezeFromStream (STREAM stream)
 
 		S9xGraphicsScreenResize();
 
-		if (Settings.FastSavestates == 0)
-			memset(GFX.Screen,0,GFX.Pitch * SNES_HEIGHT_EXTENDED);
-
-		S9xControlPostLoadState(&ctl_snap);
+		if (GFX.Screen)
+			memset(GFX.Screen, 0, GFX.ScreenSize);
 	}
 
-	if (local_cpu)				delete [] local_cpu;
-	if (local_registers)		delete [] local_registers;
-	if (local_ppu)				delete [] local_ppu;
-	if (local_dma)				delete [] local_dma;
-	if (local_vram)				delete [] local_vram;
-	if (local_ram)				delete [] local_ram;
-	if (local_sram)				delete [] local_sram;
-	if (local_fillram)			delete [] local_fillram;
 	if (local_apu_sound)		delete [] local_apu_sound;
-	if (local_control_data)		delete [] local_control_data;
-	if (local_timing_data)		delete [] local_timing_data;
-	if (local_dsp1)				delete [] local_dsp1;
-	if (local_dsp2)				delete [] local_dsp2;
 
 	return (result);
 }
@@ -1052,7 +887,7 @@ static int FreezeSize (int size, int type)
 	}
 }
 
-static void FreezeStruct (STREAM stream, const char *name, void *base, FreezeData *fields, int num_fields)
+static void FreezeStruct (STREAM stream, const char *name, void *base, const FreezeData *fields, int num_fields)
 {
 	int	len = 0;
 	int	i, j;
@@ -1329,7 +1164,7 @@ static int UnfreezeBlockCopy (STREAM stream, const char *name, uint8 **block, in
 	return (SUCCESS);
 }
 
-static int UnfreezeStruct (STREAM stream, const char *name, void *base, FreezeData *fields, int num_fields, int version)
+static int UnfreezeStruct (STREAM stream, const char *name, void *base, const FreezeData *fields, int num_fields, int version)
 {
 	int		result;
 	uint8	*block = NULL;
@@ -1348,7 +1183,7 @@ static int UnfreezeStruct (STREAM stream, const char *name, void *base, FreezeDa
 	return (SUCCESS);
 }
 
-static int UnfreezeStructCopy (STREAM stream, const char *name, uint8 **block, FreezeData *fields, int num_fields, int version)
+static int UnfreezeStructCopy (STREAM stream, const char *name, uint8 **block, const FreezeData *fields, int num_fields, int version)
 {
 	int	len = 0;
 
@@ -1361,7 +1196,7 @@ static int UnfreezeStructCopy (STREAM stream, const char *name, uint8 **block, F
 	return (UnfreezeBlockCopy(stream, name, block, len));
 }
 
-static void UnfreezeStructFromCopy (void *sbase, FreezeData *fields, int num_fields, uint8 *block, int version)
+static void UnfreezeStructFromCopy (void *sbase, const FreezeData *fields, int num_fields, uint8 *block, int version)
 {
 	uint8	*ptr = block;
 	uint16	word;
