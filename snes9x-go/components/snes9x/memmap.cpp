@@ -32,50 +32,32 @@ static int First512BytesCountZeroes(const uint8 *buf)
 	for (int i = 0; i < 512; i++)
 	{
 		if (buf[i] == 0)
-		{
 			zeroCount++;
-		}
 	}
 	return zeroCount;
 }
 
-static char * Sanitize (const char *s)
+static void sanitize(char *b, int size)
 {
-	static char	*safe = NULL;
-	static int	safe_len = 0;
-
-	if (s == NULL)
+	for (int pos = 0; pos < size; pos++)
 	{
-		if (safe)
-		{
-			free(safe);
-			safe = NULL;
-		}
+		if (b[pos] == 0)
+			continue;
+		if (b[pos] < 32 || b[pos] > 126)
+			b[pos] = '_';
+	}
+	b[size - 1] = 0;
+}
 
-		return (NULL);
+static bool8 allASCII (uint8 *b, int size)
+{
+	for (int i = 0; i < size; i++)
+	{
+		if (b[i] < 32 || b[i] > 126)
+			return (FALSE);
 	}
 
-	int	len = strlen(s);
-	if (!safe || len + 1 > safe_len)
-	{
-		if (safe)
-			free(safe);
-
-		safe_len = len + 1;
-		safe = (char *) malloc(safe_len);
-	}
-
-	for (int i = 0; i < len; i++)
-	{
-		if (s[i] >= 32 && s[i] < 127)
-			safe[i] = s[i];
-		else
-			safe[i] = '_';
-	}
-
-	safe[len] = 0;
-
-	return (safe);
+	return (TRUE);
 }
 
 // allocation and deallocation
@@ -111,51 +93,20 @@ void CMemory::Deinit (void)
 		FillRAM = NULL;
 	}
 
-	if (RAM)
-	{
-		free(RAM);
-		RAM = NULL;
-	}
+	free(RAM);
+	free(SRAM);
+	free(VRAM);
+	free(ROM);
+	free(IPPU.TileCacheData);
 
-	if (SRAM)
-	{
-		free(SRAM);
-		SRAM = NULL;
-	}
-
-	if (VRAM)
-	{
-		free(VRAM);
-		VRAM = NULL;
-	}
-
-	if (ROM)
-	{
-		free(ROM);
-		ROM = NULL;
-	}
-
-	if (IPPU.TileCacheData)
-	{
-		free(IPPU.TileCacheData);
-		IPPU.TileCacheData = NULL;
-	}
-
-	Sanitize(NULL);
+	RAM = NULL;
+	SRAM = NULL;
+	VRAM = NULL;
+	ROM = NULL;
+	IPPU.TileCacheData = NULL;
 }
 
 // file management and ROM detection
-
-static bool8 allASCII (uint8 *b, int size)
-{
-	for (int i = 0; i < size; i++)
-	{
-		if (b[i] < 32 || b[i] > 126)
-			return (FALSE);
-	}
-
-	return (TRUE);
-}
 
 int CMemory::ScoreHiROM (bool8 skip_header, int32 romoff)
 {
@@ -319,8 +270,6 @@ bool8 CMemory::InitROM ()
 	int hi_score = ScoreHiROM(FALSE);
 	int lo_score = ScoreLoROM(FALSE);
 
-	uint8	*RomHeader = ROM;
-
 	if (ExtendedFormat != NOPE)
 	{
 		int swappedhirom = ScoreHiROM(FALSE, 0x400000);
@@ -332,7 +281,6 @@ bool8 CMemory::InitROM ()
 			ExtendedFormat = BIGFIRST;
 			hi_score = swappedhirom;
 			lo_score = swappedlorom;
-			RomHeader += 0x400000;
 		}
 		else
 			ExtendedFormat = SMALLFIRST;
@@ -375,7 +323,7 @@ bool8 CMemory::InitROM ()
 	}
 
 	//// Parse ROM header and read ROM informatoin
-	RomHeader = ROM + 0x7FB0;
+	uint8	*RomHeader = ROM + 0x7FB0;
 
 	if (ExtendedFormat == BIGFIRST)
 		RomHeader += 0x400000;
@@ -623,7 +571,7 @@ bool8 CMemory::SaveSRAM (const char *filename)
 void CMemory::ParseSNESHeader (uint8 *RomHeader)
 {
 	strncpy(ROMName, (char *) &RomHeader[0x10], ROM_NAME_LEN - 1);
-	sprintf(ROMName, "%s", Sanitize(ROMName));
+	sanitize(ROMName, ROM_NAME_LEN);
 
 	ROMSize   = RomHeader[0x27];
 	SRAMSize  = RomHeader[0x28];
@@ -634,9 +582,8 @@ void CMemory::ParseSNESHeader (uint8 *RomHeader)
 	ROMChecksum           = RomHeader[0x2E] + (RomHeader[0x2F] << 8);
 	ROMComplementChecksum = RomHeader[0x2C] + (RomHeader[0x2D] << 8);
 
-	memset(ROMId, 0, 5);
 	memmove(ROMId, &RomHeader[0x02], 4);
-	sprintf(ROMId, "%s", Sanitize(ROMId));
+	sanitize(ROMId, 4);
 
 	CompanyId = -1;
 

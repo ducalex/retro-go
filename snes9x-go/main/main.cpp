@@ -295,6 +295,8 @@ static void snes9x_task(void *arg)
 	if (!Memory.LoadROM(app->romPath))
 		RG_PANIC("ROM loading failed!");
 
+	app->refreshRate = Memory.ROMFramesPerSecond;
+
 	bool menuCancelled = false;
 	bool menuPressed = false;
 

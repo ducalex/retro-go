@@ -40,10 +40,10 @@ public:
     alwaysinline unsigned operator&=(unsigned data) { return operator=(operator unsigned() & data); }
   };
 
-  uint8 opcode_number;
+  uint32 opcode_number;
   uint32 opcode_cycle;
 
-  uint32 rd, wr, dp, sp, ya, bit;
+  uint16 rd, wr, dp, sp, ya, bit;
 
   struct Regs {
     uint32 pc;
