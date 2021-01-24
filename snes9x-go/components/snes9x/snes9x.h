@@ -208,10 +208,6 @@ struct SSettings
 
 	bool8	ForceLoROM;
 	bool8	ForceHiROM;
-	bool8	ForceHeader;
-	bool8	ForceNoHeader;
-	bool8	ForceInterleaved;
-	bool8	ForceNotInterleaved;
 	bool8	ForcePAL;
 	bool8	ForceNTSC;
 	bool8	PAL;

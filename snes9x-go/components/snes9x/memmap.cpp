@@ -21,54 +21,61 @@
 
 #undef max
 #define max(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
-
 #undef min
 #define min(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
 
-static uint32 caCRC32 (uint8 *array, uint32 size, uint32 crc32 = 0)
+extern uint32 crc32_le(uint32 crc, uint8 const * buf, uint32 len);
+
+static int First512BytesCountZeroes(const uint8 *buf)
 {
-	return crc32_le(crc32, array, size);
-	// return (~crc32);
+	int zeroCount = 0;
+	for (int i = 0; i < 512; i++)
+	{
+		if (buf[i] == 0)
+		{
+			zeroCount++;
+		}
+	}
+	return zeroCount;
 }
 
-// deinterleave
-
-static void S9xDeinterleaveType1 (int size, uint8 *base)
+static char * Sanitize (const char *s)
 {
-	Settings.DisplayColor = BUILD_PIXEL(0, 31, 0);
-	SET_UI_COLOR(0, 255, 0);
+	static char	*safe = NULL;
+	static int	safe_len = 0;
 
-	uint8	blocks[256];
-	int		nblocks = size >> 16;
-
-	for (int i = 0; i < nblocks; i++)
+	if (s == NULL)
 	{
-		blocks[i * 2] = i + nblocks;
-		blocks[i * 2 + 1] = i;
-	}
-
-	uint8	*tmp = (uint8 *) malloc(0x8000);
-	if (tmp)
-	{
-		for (int i = 0; i < nblocks * 2; i++)
+		if (safe)
 		{
-			for (int j = i; j < nblocks * 2; j++)
-			{
-				if (blocks[j] == i)
-				{
-					memmove(tmp, &base[blocks[j] * 0x8000], 0x8000);
-					memmove(&base[blocks[j] * 0x8000], &base[blocks[i] * 0x8000], 0x8000);
-					memmove(&base[blocks[i] * 0x8000], tmp, 0x8000);
-					uint8	b = blocks[j];
-					blocks[j] = blocks[i];
-					blocks[i] = b;
-					break;
-				}
-			}
+			free(safe);
+			safe = NULL;
 		}
 
-		free(tmp);
+		return (NULL);
 	}
+
+	int	len = strlen(s);
+	if (!safe || len + 1 > safe_len)
+	{
+		if (safe)
+			free(safe);
+
+		safe_len = len + 1;
+		safe = (char *) malloc(safe_len);
+	}
+
+	for (int i = 0; i < len; i++)
+	{
+		if (s[i] >= 32 && s[i] < 127)
+			safe[i] = s[i];
+		else
+			safe[i] = '_';
+	}
+
+	safe[len] = 0;
+
+	return (safe);
 }
 
 // allocation and deallocation
@@ -79,7 +86,7 @@ bool8 CMemory::Init (void)
     RAM	 = (uint8 *) calloc(1, 0x20000);
     VRAM = (uint8 *) calloc(1, 0x10000);
     SRAM = (uint8 *) calloc(1, 0x20000);
-    ROM  = (uint8 *) calloc(1, MAX_ROM_SIZE + 0x200);
+    ROM  = (uint8 *) calloc(1, ROM_BUFFER_SIZE + 0x200);
 
 	IPPU.TileCacheData = (uint8 *) calloc(4096, 64);
 
@@ -134,7 +141,7 @@ void CMemory::Deinit (void)
 		IPPU.TileCacheData = NULL;
 	}
 
-	Safe(NULL);
+	Sanitize(NULL);
 }
 
 // file management and ROM detection
@@ -245,199 +252,59 @@ int CMemory::ScoreLoROM (bool8 skip_header, int32 romoff)
 	return (score);
 }
 
-int CMemory::First512BytesCountZeroes() const
-{
-	const uint8 *buf = ROM;
-	int zeroCount = 0;
-	for (int i = 0; i < 512; i++)
-	{
-		if (buf[i] == 0)
-		{
-			zeroCount++;
-		}
-	}
-	return zeroCount;
-}
-
-uint32 CMemory::HeaderRemove (uint32 size, uint8 *buf)
-{
-	uint32	calc_size = (size / 0x2000) * 0x2000;
-
-	if ((size - calc_size == 512 && !Settings.ForceNoHeader) || Settings.ForceHeader)
-	{
-		uint8	*NSRTHead = buf + 0x1D0; // NSRT Header Location
-
-		// detect NSRT header
-		if (!strncmp("NSRT", (char *) &NSRTHead[24], 4))
-		{
-			if (NSRTHead[28] == 22)
-			{
-				if (((std::accumulate(NSRTHead, NSRTHead + sizeof(NSRTHeader), 0) & 0xFF) == NSRTHead[30]) &&
-					(NSRTHead[30] + NSRTHead[31] == 255) && ((NSRTHead[0] & 0x0F) <= 13) &&
-					(((NSRTHead[0] & 0xF0) >> 4) <= 3) && ((NSRTHead[0] & 0xF0) >> 4))
-					memcpy(NSRTHeader, NSRTHead, sizeof(NSRTHeader));
-			}
-		}
-
-		memmove(buf, buf + 512, calc_size);
-		HeaderCount++;
-		size -= 512;
-	}
-
-	return (size);
-}
-
-uint32 CMemory::FileLoader (uint8 *buffer, const char *filename, uint32 maxsize)
-{
-	// <- ROM size without header
-	// ** Memory.HeaderCount
-	// ** Memory.ROMFilename
-
-	uint32	totalSize = 0;
-    char	fname[PATH_MAX + 1];
-    char	drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], name[_MAX_FNAME + 1], exts[_MAX_EXT + 1];
-	char	*ext;
-
-#if defined(__WIN32__) || defined(__MACOSX__)
-	ext = &exts[1];
-#else
-	ext = &exts[0];
-#endif
-
-	memset(NSRTHeader, 0, sizeof(NSRTHeader));
-	HeaderCount = 0;
-
-	_splitpath(filename, drive, dir, name, exts);
-	_makepath(fname, drive, dir, name, exts);
-
-	STREAM	fp = OPEN_STREAM(fname, "rb");
-	if (!fp)
-		return (0);
-
-	strcpy(ROMFilename, fname);
-
-	int 	len  = 0;
-	uint32	size = 0;
-	bool8	more = FALSE;
-	uint8	*ptr = buffer;
-
-	do
-	{
-		size = READ_STREAM(ptr, maxsize + 0x200 - (ptr - buffer), fp);
-		CLOSE_STREAM(fp);
-
-		size = HeaderRemove(size, ptr);
-		totalSize += size;
-		ptr += size;
-
-		// check for multi file roms
-		if (ptr - buffer < maxsize + 0x200 &&
-			(isdigit(ext[0]) && ext[1] == 0 && ext[0] < '9'))
-		{
-			more = TRUE;
-			ext[0]++;
-			_makepath(fname, drive, dir, name, exts);
-		}
-		else
-		if (ptr - buffer < maxsize + 0x200 &&
-			(((len = strlen(name)) == 7 || len == 8) &&
-			strncasecmp(name, "sf", 2) == 0 &&
-			isdigit(name[2]) && isdigit(name[3]) && isdigit(name[4]) && isdigit(name[5]) &&
-			isalpha(name[len - 1])))
-		{
-			more = TRUE;
-			name[len - 1]++;
-			_makepath(fname, drive, dir, name, exts);
-		}
-		else
-			more = FALSE;
-
-	}	while (more && (fp = OPEN_STREAM(fname, "rb")) != NULL);
-
-    if (HeaderCount == 0)
-		S9xMessage(S9X_INFO, S9X_HEADERS_INFO, "No ROM file header found.");
-    else
-    if (HeaderCount == 1)
-		S9xMessage(S9X_INFO, S9X_HEADERS_INFO, "Found ROM file header (and ignored it).");
-	else
-		S9xMessage(S9X_INFO, S9X_HEADERS_INFO, "Found multiple ROM file headers (and ignored them).");
-
-	return ((uint32) totalSize);
-}
-
 bool8 CMemory::LoadROMMem (const uint8 *source, uint32 sourceSize)
 {
-    if(!source || sourceSize > MAX_ROM_SIZE)
-        return FALSE;
+	if (source == 0 || sourceSize > ROM_BUFFER_SIZE)
+		return FALSE;
 
-    strcpy(ROMFilename,"MemoryROM");
+	memset(ROM, 0, ROM_BUFFER_SIZE);
+	memcpy(ROM, source, sourceSize);
 
-    do
-    {
-        memset(ROM,0, MAX_ROM_SIZE);
-        memcpy(ROM,source,sourceSize);
-    }
-    while(!LoadROMInt(sourceSize));
+	ROM_SIZE = sourceSize;
 
-    return TRUE;
+	return InitROM();
 }
 
 bool8 CMemory::LoadROM (const char *filename)
 {
-    if(!filename || !*filename)
-        return FALSE;
+	FILE *fp = fopen(filename, "rb");
+	if (!fp)
+		return (FALSE);
 
-    int32 totalFileSize;
+	fseek(fp, 0, SEEK_END);
 
-    do
-    {
-        memset(ROM,0, MAX_ROM_SIZE);
-        totalFileSize = FileLoader(ROM, filename, MAX_ROM_SIZE);
+	ROM_SIZE = ftell(fp);
 
-        if (!totalFileSize)
-            return (FALSE);
+	fseek(fp, 0, SEEK_SET);
+	fread(ROM, ROM_BUFFER_SIZE + 0x200, 1, fp);
 
-        // CheckForAnyPatch(filename, HeaderCount != 0, totalFileSize);
-    }
-    while(!LoadROMInt(totalFileSize));
+	fclose(fp);
 
-    return TRUE;
+	return InitROM();
 }
 
-bool8 CMemory::LoadROMInt (int32 ROMfillSize)
+bool8 CMemory::LoadROMBlock (int b)
 {
+	return FALSE;
+}
+
+bool8 CMemory::InitROM ()
+{
+	if (!ROM || ROM_SIZE < 0x200)
+		return (FALSE);
+
 	Settings.DisplayColor = BUILD_PIXEL(31, 31, 31);
 	SET_UI_COLOR(255, 255, 255);
 
-	CalculatedSize = 0;
-	ExtendedFormat = NOPE;
-
-	int	hi_score, lo_score;
-	int score_headered;
-	int score_nonheadered;
-
-	hi_score = ScoreHiROM(FALSE);
-	lo_score = ScoreLoROM(FALSE);
-	score_nonheadered = max(hi_score, lo_score);
-	score_headered = max(ScoreHiROM(TRUE), ScoreLoROM(TRUE));
-
-	bool size_is_likely_headered = ((ROMfillSize - 512) & 0xFFFF) == 0;
-	if (size_is_likely_headered) { score_headered += 2; } else { score_headered -= 2; }
-	if (First512BytesCountZeroes() >= 0x1E0) { score_headered += 2; } else { score_headered -= 2; }
-
-	bool headered_score_highest = score_headered > score_nonheadered;
-
-	if (HeaderCount == 0 && !Settings.ForceNoHeader && headered_score_highest)
+	if ((ROM_SIZE & 0x7FF) == 512 || First512BytesCountZeroes(ROM) > 400)
 	{
-		memmove(ROM, ROM + 512, ROMfillSize - 512);
-		ROMfillSize -= 512;
-		S9xMessage(S9X_INFO, S9X_HEADER_WARNING, "Try 'force no-header' option if the game doesn't work");
-		// modifying ROM, so we need to rescore
-		hi_score = ScoreHiROM(FALSE);
-		lo_score = ScoreLoROM(FALSE);
+		S9xMessage(S9X_INFO, S9X_HEADERS_INFO, "Found ROM file header (and ignored it).");
+		memmove(ROM, ROM + 512, ROM_BUFFER_SIZE - 512);
+		ROM_SIZE -= 512;
 	}
 
-	CalculatedSize = ((ROMfillSize + 0x1fff) / 0x2000) * 0x2000;
+	CalculatedSize = ((ROM_SIZE + 0x1fff) / 0x2000) * 0x2000;
+	ExtendedFormat = NOPE;
 
 	if (CalculatedSize > 0x400000 &&
 		(ROM[0x7fd5] + (ROM[0x7fd6] << 8)) != 0x3423 && // exclude SA-1
@@ -448,27 +315,16 @@ bool8 CMemory::LoadROMInt (int32 ROMfillSize)
 		(ROM[0xffd5] + (ROM[0xffd6] << 8)) != 0xF53a)
 		ExtendedFormat = YEAH;
 
-	// if both vectors are invalid, it's type 1 interleaved LoROM
-	if (ExtendedFormat == NOPE &&
-		((ROM[0x7ffc] + (ROM[0x7ffd] << 8)) < 0x8000) &&
-		((ROM[0xfffc] + (ROM[0xfffd] << 8)) < 0x8000))
-	{
-		if (!Settings.ForceInterleaved && !Settings.ForceNotInterleaved)
-			S9xDeinterleaveType1(ROMfillSize, ROM);
-	}
-
 	// CalculatedSize is now set, so rescore
-	hi_score = ScoreHiROM(FALSE);
-	lo_score = ScoreLoROM(FALSE);
+	int hi_score = ScoreHiROM(FALSE);
+	int lo_score = ScoreLoROM(FALSE);
 
 	uint8	*RomHeader = ROM;
 
 	if (ExtendedFormat != NOPE)
 	{
-		int	swappedhirom, swappedlorom;
-
-		swappedhirom = ScoreHiROM(FALSE, 0x400000);
-		swappedlorom = ScoreLoROM(FALSE, 0x400000);
+		int swappedhirom = ScoreHiROM(FALSE, 0x400000);
+		int swappedlorom = ScoreLoROM(FALSE, 0x400000);
 
 		// set swapped here
 		if (max(swappedlorom, swappedhirom) >= max(lo_score, hi_score))
@@ -482,46 +338,15 @@ bool8 CMemory::LoadROMInt (int32 ROMfillSize)
 			ExtendedFormat = SMALLFIRST;
 	}
 
-	bool8	interleaved, tales = FALSE;
-
-    interleaved = Settings.ForceInterleaved;
-
 	if (Settings.ForceLoROM || (!Settings.ForceHiROM && lo_score >= hi_score))
 	{
 		LoROM = TRUE;
 		HiROM = FALSE;
-
-		// ignore map type byte if not 0x2x or 0x3x
-		if ((RomHeader[0x7fd5] & 0xf0) == 0x20 || (RomHeader[0x7fd5] & 0xf0) == 0x30)
-		{
-			switch (RomHeader[0x7fd5] & 0xf)
-			{
-				case 1:
-					interleaved = TRUE;
-					break;
-
-				case 5:
-					interleaved = TRUE;
-					tales = TRUE;
-					break;
-			}
-		}
 	}
 	else
 	{
 		LoROM = FALSE;
 		HiROM = TRUE;
-
-		if ((RomHeader[0xffd5] & 0xf0) == 0x20 || (RomHeader[0xffd5] & 0xf0) == 0x30)
-		{
-			switch (RomHeader[0xffd5] & 0xf)
-			{
-				case 0:
-				case 3:
-					interleaved = TRUE;
-					break;
-			}
-		}
 	}
 
 	// this two games fail to be detected
@@ -532,73 +357,196 @@ bool8 CMemory::LoadROMInt (int32 ROMfillSize)
 		{
 			LoROM = TRUE;
 			HiROM = FALSE;
-			interleaved = FALSE;
-			tales = FALSE;
 		}
 	}
 
-	if (!Settings.ForceNotInterleaved && interleaved)
+	if (ExtendedFormat == SMALLFIRST)
 	{
-		S9xMessage(S9X_INFO, S9X_ROM_INTERLEAVED_INFO, "ROM image is in interleaved format - converting...");
+		RG_PANIC("ExHiROM swapping not implemented yet");
+		// uint8	*tmp = (uint8 *) malloc(CalculatedSize - 0x400000);
+		// if (tmp)
+		// {
+		// 	S9xMessage(S9X_INFO, S9X_ROM_INTERLEAVED_INFO, "Fixing swapped ExHiROM...");
+		// 	memmove(tmp, ROM, CalculatedSize - 0x400000);
+		// 	memmove(ROM, ROM + CalculatedSize - 0x400000, 0x400000);
+		// 	memmove(ROM + 0x400000, tmp, CalculatedSize - 0x400000);
+		// 	free(tmp);
+		// }
+	}
 
-		if (tales)
+	//// Parse ROM header and read ROM informatoin
+	RomHeader = ROM + 0x7FB0;
+
+	if (ExtendedFormat == BIGFIRST)
+		RomHeader += 0x400000;
+
+	if (HiROM)
+		RomHeader += 0x8000;
+
+	ParseSNESHeader(RomHeader);
+
+	//// Detect and initialize chips
+	//// detection codes are compatible with NSRT
+
+	// DSP 1 & 2
+	if (ROMType == 0x03 || (ROMType == 0x05 && ROMSpeed != 0x20))
+	{
+		Settings.DSP = 1;
+		if (HiROM)
 		{
-			if (ExtendedFormat == BIGFIRST)
-			{
-				S9xDeinterleaveType1(0x400000, ROM);
-				S9xDeinterleaveType1(CalculatedSize - 0x400000, ROM + 0x400000);
-			}
-			else
-			{
-				S9xDeinterleaveType1(CalculatedSize - 0x400000, ROM);
-				S9xDeinterleaveType1(0x400000, ROM + CalculatedSize - 0x400000);
-			}
-
-			LoROM = FALSE;
-			HiROM = TRUE;
+			DSP0.boundary = 0x7000;
+			DSP0.maptype = M_DSP1_HIROM;
+		}
+		else
+		if (CalculatedSize > 0x100000)
+		{
+			DSP0.boundary = 0x4000;
+			DSP0.maptype = M_DSP1_LOROM_L;
 		}
 		else
 		{
-			bool8	t = LoROM;
-			LoROM = HiROM;
-			HiROM = t;
-			S9xDeinterleaveType1(CalculatedSize, ROM);
+			DSP0.boundary = 0xc000;
+			DSP0.maptype = M_DSP1_LOROM_S;
 		}
 
-		hi_score = ScoreHiROM(FALSE);
-		lo_score = ScoreLoROM(FALSE);
-
-		if ((HiROM && (lo_score >= hi_score || hi_score < 0)) ||
-			(LoROM && (hi_score >  lo_score || lo_score < 0)))
-		{
-			S9xMessage(S9X_INFO, S9X_ROM_CONFUSING_FORMAT_INFO, "ROM lied about its type! Trying again.");
-			Settings.ForceNotInterleaved = TRUE;
-			Settings.ForceInterleaved = FALSE;
-            return (FALSE);
-		}
-    }
-
-	if (ExtendedFormat == SMALLFIRST)
-		tales = TRUE;
-
-	if (tales)
+		SetDSP = &DSP1SetByte;
+		GetDSP = &DSP1GetByte;
+	}
+	else
+	if (ROMType == 0x05 && ROMSpeed == 0x20)
 	{
-		uint8	*tmp = (uint8 *) malloc(CalculatedSize - 0x400000);
-		if (tmp)
-		{
-			S9xMessage(S9X_INFO, S9X_ROM_INTERLEAVED_INFO, "Fixing swapped ExHiROM...");
-			memmove(tmp, ROM, CalculatedSize - 0x400000);
-			memmove(ROM, ROM + CalculatedSize - 0x400000, 0x400000);
-			memmove(ROM + 0x400000, tmp, CalculatedSize - 0x400000);
-			free(tmp);
-		}
+		Settings.DSP = 2;
+		DSP0.boundary = 0x10000;
+		DSP0.maptype = M_DSP2_LOROM;
+		SetDSP = &DSP2SetByte;
+		GetDSP = &DSP2GetByte;
+	}
+	else
+	{
+		Settings.DSP = 0;
+		SetDSP = NULL;
+		GetDSP = NULL;
 	}
 
-	Settings.UniracersHack = FALSE;
-	Settings.SRAMInitialValue = 0x60;
 
-	InitROM();
+	//// Map memory and calculate checksum
+	Map_Initialize();
+	CalculatedChecksum = 0;
 
+	if (HiROM)
+    {
+		if (ExtendedFormat != NOPE)
+			Map_ExtendedHiROMMap();
+		else
+			Map_HiROMMap();
+    }
+    else
+    {
+		if (ExtendedFormat != NOPE)
+			Map_JumboLoROMMap();
+		else
+		if (strncmp(ROMName, "WANDERERS FROM YS", 17) == 0)
+			Map_NoMAD1LoROMMap();
+		else
+		if (strncmp(ROMName, "SOUND NOVEL-TCOOL", 17) == 0 ||
+			strncmp(ROMName, "DERBY STALLION 96", 17) == 0)
+			Map_ROM24MBSLoROMMap();
+		else
+		if (strncmp(ROMName, "THOROUGHBRED BREEDER3", 21) == 0 ||
+			strncmp(ROMName, "RPG-TCOOL 2", 11) == 0)
+			Map_SRAM512KLoROMMap();
+		else
+			Map_LoROMMap();
+    }
+
+	Checksum_Calculate();
+
+	bool8 isChecksumOK = (ROMChecksum + ROMComplementChecksum == 0xffff) &
+						 (ROMChecksum == CalculatedChecksum);
+
+	//// Build more ROM information
+
+	// CRC32
+	ROMCRC32 = crc32_le(0, ROM, CalculatedSize);
+
+	// NTSC / PAL
+	Settings.PAL = (Settings.ForcePAL && !Settings.ForceNTSC)
+						|| ((ROMRegion >= 2) && (ROMRegion <= 12));
+
+	if (Settings.PAL)
+	{
+		Settings.FrameTime = Settings.FrameTimePAL;
+		ROMFramesPerSecond = 50;
+	}
+	else
+	{
+		Settings.FrameTime = Settings.FrameTimeNTSC;
+		ROMFramesPerSecond = 60;
+	}
+
+	// truncate cart name
+	ROMName[ROM_NAME_LEN - 1] = 0;
+	if (strlen(ROMName))
+	{
+		char *p = ROMName + strlen(ROMName);
+		if (p > ROMName + 21 && ROMName[20] == ' ')
+			p = ROMName + 21;
+		while (p > ROMName && *(p - 1) == ' ')
+			p--;
+		*p = 0;
+	}
+
+	// SRAM size
+	SRAMMask = SRAMSize ? ((1 << (SRAMSize + 3)) * 128) - 1 : 0;
+
+	// checksum
+	if (!isChecksumOK || ((uint32) CalculatedSize > (uint32) (((1 << (ROMSize - 7)) * 128) * 1024)))
+	{
+		Settings.DisplayColor = BUILD_PIXEL(31, 31, 0);
+		SET_UI_COLOR(255, 255, 0);
+	}
+
+	// Use slight blue tint to indicate ROM was patched.
+	if (Settings.IsPatched)
+	{
+		Settings.DisplayColor = BUILD_PIXEL(26, 26, 31);
+		SET_UI_COLOR(216, 216, 255);
+	}
+
+	//// Initialize emulation
+	Timings.H_Max_Master = SNES_CYCLES_PER_SCANLINE;
+	Timings.H_Max        = Timings.H_Max_Master;
+	Timings.HBlankStart  = SNES_HBLANK_START_HC;
+	Timings.HBlankEnd    = SNES_HBLANK_END_HC;
+	Timings.HDMAInit     = SNES_HDMA_INIT_HC;
+	Timings.HDMAStart    = SNES_HDMA_START_HC;
+	Timings.RenderPos    = SNES_RENDER_START_HC;
+	Timings.V_Max_Master = Settings.PAL ? SNES_MAX_PAL_VCOUNTER : SNES_MAX_NTSC_VCOUNTER;
+	Timings.V_Max        = Timings.V_Max_Master;
+	/* From byuu: The total delay time for both the initial (H)DMA sync (to the DMA clock),
+	   and the end (H)DMA sync (back to the last CPU cycle's mcycle rate (6, 8, or 12)) always takes between 12-24 mcycles.
+	   Possible delays: { 12, 14, 16, 18, 20, 22, 24 }
+	   XXX: Snes9x can't emulate this timing :( so let's use the average value... */
+	Timings.DMACPUSync   = 18;
+	/* If the CPU is halted (i.e. for DMA) while /NMI goes low, the NMI will trigger
+	   after the DMA completes (even if /NMI goes high again before the DMA
+	   completes). In this case, there is a 24-30 cycle delay between the end of DMA
+	   and the NMI handler, time enough for an instruction or two. */
+	// Wild Guns, Mighty Morphin Power Rangers - The Fighting Edition
+	Timings.NMIDMADelay  = 24;
+
+	IPPU.TotalEmulatedFrames = 0;
+
+	//// Hack games
+	ApplyROMFixes();
+
+	//// Show ROM information
+	sprintf(String, "\"%s\" [%s] %s, %s, %s, %s, SRAM:%s, ID:%s, CRC32:%08X",
+		ROMName, isChecksumOK ? "checksum ok" : "bad checksum",
+		MapType(), Size(), KartContents(), Settings.PAL ? "PAL" : "NTSC", StaticRAMSize(), ROMId, ROMCRC32);
+	S9xMessage(S9X_INFO, S9X_ROM_INFO, String);
+
+	// Reset system, then we're ready
 	S9xReset();
 
     return (TRUE);
@@ -672,48 +620,10 @@ bool8 CMemory::SaveSRAM (const char *filename)
 
 // initialization
 
-char * CMemory::Safe (const char *s)
-{
-	static char	*safe = NULL;
-	static int	safe_len = 0;
-
-	if (s == NULL)
-	{
-		if (safe)
-		{
-			free(safe);
-			safe = NULL;
-		}
-
-		return (NULL);
-	}
-
-	int	len = strlen(s);
-	if (!safe || len + 1 > safe_len)
-	{
-		if (safe)
-			free(safe);
-
-		safe_len = len + 1;
-		safe = (char *) malloc(safe_len);
-	}
-
-	for (int i = 0; i < len; i++)
-	{
-		if (s[i] >= 32 && s[i] < 127)
-			safe[i] = s[i];
-		else
-			safe[i] = '_';
-	}
-
-	safe[len] = 0;
-
-	return (safe);
-}
-
 void CMemory::ParseSNESHeader (uint8 *RomHeader)
 {
 	strncpy(ROMName, (char *) &RomHeader[0x10], ROM_NAME_LEN - 1);
+	sprintf(ROMName, "%s", Sanitize(ROMName));
 
 	ROMSize   = RomHeader[0x27];
 	SRAMSize  = RomHeader[0x28];
@@ -724,7 +634,11 @@ void CMemory::ParseSNESHeader (uint8 *RomHeader)
 	ROMChecksum           = RomHeader[0x2E] + (RomHeader[0x2F] << 8);
 	ROMComplementChecksum = RomHeader[0x2C] + (RomHeader[0x2D] << 8);
 
+	memset(ROMId, 0, 5);
 	memmove(ROMId, &RomHeader[0x02], 4);
+	sprintf(ROMId, "%s", Sanitize(ROMId));
+
+	CompanyId = -1;
 
 	if (RomHeader[0x2A] != 0x33)
 		CompanyId = ((RomHeader[0x2A] >> 4) & 0x0F) * 36 + (RomHeader[0x2A] & 0x0F);
@@ -738,217 +652,6 @@ void CMemory::ParseSNESHeader (uint8 *RomHeader)
 		r2 = (r > '9') ? r - '7' : r - '0';
 		CompanyId = l2 * 36 + r2;
 	}
-}
-
-void CMemory::InitROM (void)
-{
-	Settings.DSP = 0;
-
-	//// Parse ROM header and read ROM informatoin
-
-	CompanyId = -1;
-	memset(ROMId, 0, 5);
-
-	uint8	*RomHeader = ROM + 0x7FB0;
-	if (ExtendedFormat == BIGFIRST)
-		RomHeader += 0x400000;
-	if (HiROM)
-		RomHeader += 0x8000;
-
-	ParseSNESHeader(RomHeader);
-
-	//// Detect and initialize chips
-	//// detection codes are compatible with NSRT
-
-	// DSP1/2/3/4
-	if (ROMType == 0x03)
-	{
-		Settings.DSP = 1; // DSP1
-	}
-	else
-	if (ROMType == 0x05)
-	{
-		if (ROMSpeed == 0x20)
-			Settings.DSP = 2; // DSP2
-		else
-			Settings.DSP = 1; // DSP1
-	}
-
-	switch (Settings.DSP)
-	{
-		case 1:	// DSP1
-			if (HiROM)
-			{
-				DSP0.boundary = 0x7000;
-				DSP0.maptype = M_DSP1_HIROM;
-			}
-			else
-			if (CalculatedSize > 0x100000)
-			{
-				DSP0.boundary = 0x4000;
-				DSP0.maptype = M_DSP1_LOROM_L;
-			}
-			else
-			{
-				DSP0.boundary = 0xc000;
-				DSP0.maptype = M_DSP1_LOROM_S;
-			}
-
-			SetDSP = &DSP1SetByte;
-			GetDSP = &DSP1GetByte;
-			break;
-
-		case 2: // DSP2
-			DSP0.boundary = 0x10000;
-			DSP0.maptype = M_DSP2_LOROM;
-			SetDSP = &DSP2SetByte;
-			GetDSP = &DSP2GetByte;
-			break;
-
-		default:
-			SetDSP = NULL;
-			GetDSP = NULL;
-			break;
-	}
-
-	//// Map memory and calculate checksum
-
-	Map_Initialize();
-	CalculatedChecksum = 0;
-
-	if (HiROM)
-    {
-		if (ExtendedFormat != NOPE)
-			Map_ExtendedHiROMMap();
-		else
-			Map_HiROMMap();
-    }
-    else
-    {
-		if (ExtendedFormat != NOPE)
-			Map_JumboLoROMMap();
-		else
-		if (strncmp(ROMName, "WANDERERS FROM YS", 17) == 0)
-			Map_NoMAD1LoROMMap();
-		else
-		if (strncmp(ROMName, "SOUND NOVEL-TCOOL", 17) == 0 ||
-			strncmp(ROMName, "DERBY STALLION 96", 17) == 0)
-			Map_ROM24MBSLoROMMap();
-		else
-		if (strncmp(ROMName, "THOROUGHBRED BREEDER3", 21) == 0 ||
-			strncmp(ROMName, "RPG-TCOOL 2", 11) == 0)
-			Map_SRAM512KLoROMMap();
-		else
-			Map_LoROMMap();
-    }
-
-	Checksum_Calculate();
-
-	bool8 isChecksumOK = (ROMChecksum + ROMComplementChecksum == 0xffff) &
-						 (ROMChecksum == CalculatedChecksum);
-
-	//// Build more ROM information
-
-	// CRC32
-	ROMCRC32 = caCRC32(ROM, CalculatedSize);
-
-	// NTSC/PAL
-	if (Settings.ForceNTSC)
-		Settings.PAL = FALSE;
-	else
-	if (Settings.ForcePAL)
-		Settings.PAL = TRUE;
-	else
-	if ((ROMRegion >= 2) && (ROMRegion <= 12))
-		Settings.PAL = TRUE;
-	else
-		Settings.PAL = FALSE;
-
-	if (Settings.PAL)
-	{
-		Settings.FrameTime = Settings.FrameTimePAL;
-		ROMFramesPerSecond = 50;
-	}
-	else
-	{
-		Settings.FrameTime = Settings.FrameTimeNTSC;
-		ROMFramesPerSecond = 60;
-	}
-
-	// truncate cart name
-	ROMName[ROM_NAME_LEN - 1] = 0;
-	if (strlen(ROMName))
-	{
-		char *p = ROMName + strlen(ROMName);
-		if (p > ROMName + 21 && ROMName[20] == ' ')
-			p = ROMName + 21;
-		while (p > ROMName && *(p - 1) == ' ')
-			p--;
-		*p = 0;
-	}
-
-	// SRAM size
-	SRAMMask = SRAMSize ? ((1 << (SRAMSize + 3)) * 128) - 1 : 0;
-
-	// checksum
-	if (!isChecksumOK || ((uint32) CalculatedSize > (uint32) (((1 << (ROMSize - 7)) * 128) * 1024)))
-	{
-		Settings.DisplayColor = BUILD_PIXEL(31, 31, 0);
-		SET_UI_COLOR(255, 255, 0);
-	}
-
-	// Use slight blue tint to indicate ROM was patched.
-	if (Settings.IsPatched)
-	{
-		Settings.DisplayColor = BUILD_PIXEL(26, 26, 31);
-		SET_UI_COLOR(216, 216, 255);
-	}
-
-	//// Initialize emulation
-
-	Timings.H_Max_Master = SNES_CYCLES_PER_SCANLINE;
-	Timings.H_Max        = Timings.H_Max_Master;
-	Timings.HBlankStart  = SNES_HBLANK_START_HC;
-	Timings.HBlankEnd    = SNES_HBLANK_END_HC;
-	Timings.HDMAInit     = SNES_HDMA_INIT_HC;
-	Timings.HDMAStart    = SNES_HDMA_START_HC;
-	Timings.RenderPos    = SNES_RENDER_START_HC;
-	Timings.V_Max_Master = Settings.PAL ? SNES_MAX_PAL_VCOUNTER : SNES_MAX_NTSC_VCOUNTER;
-	Timings.V_Max        = Timings.V_Max_Master;
-	/* From byuu: The total delay time for both the initial (H)DMA sync (to the DMA clock),
-	   and the end (H)DMA sync (back to the last CPU cycle's mcycle rate (6, 8, or 12)) always takes between 12-24 mcycles.
-	   Possible delays: { 12, 14, 16, 18, 20, 22, 24 }
-	   XXX: Snes9x can't emulate this timing :( so let's use the average value... */
-	Timings.DMACPUSync   = 18;
-	/* If the CPU is halted (i.e. for DMA) while /NMI goes low, the NMI will trigger
-	   after the DMA completes (even if /NMI goes high again before the DMA
-	   completes). In this case, there is a 24-30 cycle delay between the end of DMA
-	   and the NMI handler, time enough for an instruction or two. */
-	// Wild Guns, Mighty Morphin Power Rangers - The Fighting Edition
-	Timings.NMIDMADelay  = 24;
-
-	IPPU.TotalEmulatedFrames = 0;
-
-	//// Hack games
-	ApplyROMFixes();
-
-	//// Show ROM information
-	sprintf(ROMName, "%s", Safe(ROMName));
-	sprintf(ROMId, "%s", Safe(ROMId));
-
-	sprintf(String, "\"%s\" [%s] %s, %s, %s, %s, SRAM:%s, ID:%s, CRC32:%08X",
-		ROMName, isChecksumOK ? "checksum ok" : "bad checksum",
-		MapType(), Size(), KartContents(), Settings.PAL ? "PAL" : "NTSC", StaticRAMSize(), ROMId, ROMCRC32);
-	S9xMessage(S9X_INFO, S9X_ROM_INFO, String);
-
-	Settings.ForceLoROM = FALSE;
-	Settings.ForceHiROM = FALSE;
-	Settings.ForceHeader = FALSE;
-	Settings.ForceNoHeader = FALSE;
-	Settings.ForceInterleaved = FALSE;
-	Settings.ForceNotInterleaved = FALSE;
-	Settings.ForcePAL = FALSE;
-	Settings.ForceNTSC = FALSE;
 }
 
 // memory map
@@ -1134,7 +837,7 @@ void CMemory::map_WriteProtectROM (void)
 
 	for (int c = 0; c < MEMMAP_NUM_BLOCKS; c++)
 	{
-		if (WriteMap[c] >= ROM && WriteMap[c] <= (ROM + MAX_ROM_SIZE + 0x8000))
+		if (WriteMap[c] >= ROM && WriteMap[c] <= (ROM + ROM_SIZE + 0x8000))
 		{
 			WriteMap[c] = (uint8 *) MAP_NONE;
 		}
@@ -1466,19 +1169,11 @@ bool8 CMemory::match_nn (const char *str)
 	return (strncmp(ROMName, str, strlen(str)) == 0);
 }
 
-bool8 CMemory::match_nc (const char *str)
-{
-	return (strncasecmp(ROMName, str, strlen(str)) == 0);
-}
-
-bool8 CMemory::match_id (const char *str)
-{
-	return (strncmp(ROMId, str, strlen(str)) == 0);
-}
-
 void CMemory::ApplyROMFixes (void)
 {
 	Settings.BlockInvalidVRAMAccess = true;
+	Settings.UniracersHack = FALSE;
+	Settings.SRAMInitialValue = 0x60;
 
 	//// Warnings
 
@@ -1500,46 +1195,8 @@ void CMemory::ApplyROMFixes (void)
 
 	if (!Settings.DisableGameSpecificHacks)
 	{
-		//if (match_id("AVCJ"))                                      // Rendering Ranger R2
-		//	Timings.APUSpeedup = 2;
 		if (match_na("CIRCUIT USA"))
 			Timings.APUSpeedup = 3;
-
-/*		if (match_na("GAIA GENSOUKI 1 JPN")                     || // Gaia Gensouki
-			match_id("JG  ")                                    || // Illusion of Gaia
-			match_id("CQ  ")                                    || // Stunt Race FX
-			match_na("SOULBLADER - 1")                          || // Soul Blader
-			match_na("SOULBLAZER - 1 USA")                      || // Soul Blazer
-			match_na("SLAP STICK 1 JPN")                        || // Slap Stick
-			match_id("E9 ")                                     || // Robotrek
-			match_nn("ACTRAISER")                               || // Actraiser
-			match_nn("ActRaiser-2")                             || // Actraiser 2
-			match_id("AQT")                                     || // Tenchi Souzou, Terranigma
-			match_id("ATV")                                     || // Tales of Phantasia
-			match_id("ARF")                                     || // Star Ocean
-			match_id("APR")                                     || // Zen-Nippon Pro Wrestling 2 - 3-4 Budoukan
-			match_id("A4B")                                     || // Super Bomberman 4
-			match_id("Y7 ")                                     || // U.F.O. Kamen Yakisoban - Present Ban
-			match_id("Y9 ")                                     || // U.F.O. Kamen Yakisoban - Shihan Ban
-			match_id("APB")                                     || // Super Bomberman - Panic Bomber W
-			match_na("DARK KINGDOM")                            || // Dark Kingdom
-			match_na("ZAN3 SFC")                                || // Zan III Spirits
-			match_na("HIOUDEN")                                 || // Hiouden - Mamono-tachi Tono Chikai
-			match_na("\xC3\xDD\xBC\xC9\xB3\xC0")                || // Tenshi no Uta
-			match_na("FORTUNE QUEST")                           || // Fortune Quest - Dice wo Korogase
-			match_na("FISHING TO BASSING")                      || // Shimono Masaki no Fishing To Bassing
-			match_na("OHMONO BLACKBASS")                        || // Oomono Black Bass Fishing - Jinzouko Hen
-			match_na("MASTERS")                                 || // Harukanaru Augusta 2 - Masters
-			match_na("SFC \xB6\xD2\xDD\xD7\xB2\xC0\xDE\xB0")    || // Kamen Rider
-			match_na("ZENKI TENCHIMEIDOU")					    || // Kishin Douji Zenki - Tenchi Meidou
-			match_nn("TokyoDome '95Battle 7")                   || // Shin Nippon Pro Wrestling Kounin '95 - Tokyo Dome Battle 7
-			match_nn("SWORD WORLD SFC")                         || // Sword World SFC/2
-			match_nn("LETs PACHINKO(")                          || // BS Lets Pachinko Nante Gindama 1/2/3/4
-			match_nn("THE FISHING MASTER")                      || // Mark Davis The Fishing Master
-			match_nn("Parlor")                                  || // Parlor mini/2/3/4/5/6/7, Parlor Parlor!/2/3/4/5
-			match_na("HEIWA Parlor!Mini8")                      || // Parlor mini 8
-			match_nn("SANKYO Fever! \xCC\xA8\xB0\xCA\xDE\xB0!"))   // SANKYO Fever! Fever!
-			Timings.APUSpeedup = 1; */
 	}
 
 	S9xAPUTimingSetSpeedup(Timings.APUSpeedup);
@@ -1608,6 +1265,7 @@ void CMemory::ApplyROMFixes (void)
 }
 
 // BPS % UPS % IPS
+#if 0
 
 static long ReadInt (Stream *r, unsigned nbytes)
 {
@@ -1662,7 +1320,7 @@ static bool8 ReadIPSPatch (Stream *r, long offset, int32 &rom_size)
 
 		if (len)
 		{
-			if (ofs + len > CMemory::MAX_ROM_SIZE)
+			if (ofs + len > CMemory::ROM_MAX_SIZE)
 				return (0);
 
 			while (len--)
@@ -1686,7 +1344,7 @@ static bool8 ReadIPSPatch (Stream *r, long offset, int32 &rom_size)
 			if (rchar == EOF)
 				return (0);
 
-			if (ofs + rlen > CMemory::MAX_ROM_SIZE)
+			if (ofs + rlen > CMemory::ROM_MAX_SIZE)
 				return (0);
 
 			while (rlen--)
@@ -1976,3 +1634,5 @@ void CMemory::CheckForAnyPatch (const char *rom_filename, bool8 header, int32 &r
 			return;
 	}
 }
+
+#endif

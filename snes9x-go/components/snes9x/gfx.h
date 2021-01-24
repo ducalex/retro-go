@@ -197,5 +197,6 @@ bool8 S9xContinueUpdate (int, int);
 void S9xReRefresh (void);
 void S9xSetPalette (void);
 void S9xSyncSpeed (void);
+void S9xAutoSaveSRAM (void);
 
 #endif

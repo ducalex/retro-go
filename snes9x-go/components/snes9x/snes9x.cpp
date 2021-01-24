@@ -47,12 +47,6 @@ void S9xInitSettings(void)
 	Settings.ForcePAL   = false;
 	Settings.ForceNTSC  = false;
 
-	Settings.ForceHeader = false;
-	Settings.ForceNoHeader = false;
-
-	Settings.ForceInterleaved = false;
-	Settings.ForceNotInterleaved = false;
-
 	// Sound
 
 	Settings.SoundSync                  =  true;

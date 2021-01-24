@@ -714,7 +714,7 @@ void S9xFreezeToStream (STREAM stream)
 	sprintf(buffer, "%s:%04d\n", SNAPSHOT_MAGIC, SNAPSHOT_VERSION);
 	WRITE_STREAM(buffer, strlen(buffer), stream);
 
-	sprintf(buffer, "NAM:%06d:%s%c", (int) strlen(Memory.ROMFilename) + 1, Memory.ROMFilename, 0);
+	sprintf(buffer, "NAM:%06d:%s%c", (int) strlen(Memory.ROMName) + 1, Memory.ROMName, 0);
 	WRITE_STREAM(buffer, strlen(buffer) + 1, stream);
 
 	FreezeStruct(stream, "CPU", &CPU, SnapCPU, COUNT(SnapCPU));
