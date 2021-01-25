@@ -15,6 +15,8 @@
 #include "../components/snes9x/controls.h"
 #include "../components/snes9x/display.h"
 
+#include "keymap.h"
+
 #define APP_ID 90
 
 #define AUDIO_SAMPLE_RATE (22050)
@@ -30,6 +32,9 @@ static rg_app_desc_t *app;
 static char temp_path[PATH_MAX + 1];
 
 static uint32_t frames_counter = 0;
+
+static int keymap_id = 0;
+static keymap_t keymap;
 
 // static bool netplay = false;
 // --- MAIN
@@ -199,11 +204,6 @@ void S9xSetPalette(void)
 	return;
 }
 
-void S9xAutoSaveSRAM(void)
-{
-	// Memory.SaveSRAM(S9xGetFilename(".srm", SRAM_DIR));
-}
-
 void S9xSyncSpeed(void)
 {
 
@@ -222,6 +222,57 @@ bool8 S9xOpenSoundDevice(void)
 void S9xExit(void)
 {
 	exit(0);
+}
+
+static void update_keymap(uint32_t id)
+{
+	if (id < KEYMAPS_COUNT)
+	{
+		memcpy(&keymap, &KEYMAPS[id], sizeof(keymap));
+
+		S9xUnmapAllControls();
+
+		for (int i = 0; i < 12; i++)
+		{
+			S9xMapButtonT(i, keymap.keys[i].action);
+		}
+	}
+}
+
+static bool menu_keymap_cb(dialog_choice_t *option, dialog_event_t event)
+{
+	const int max = KEYMAPS_COUNT - 1;
+	const int prev = keymap_id;
+
+    if (event == RG_DIALOG_PREV && --keymap_id < 0) keymap_id = max;
+    if (event == RG_DIALOG_NEXT && ++keymap_id > max) keymap_id = 0;
+
+	if (keymap_id != prev)
+		update_keymap(keymap_id);
+
+    strcpy(option->value, keymap.name);
+
+	if (event == RG_DIALOG_ENTER)
+	{
+		// For now we don't display the D-PAD because it doesn't fit on large font
+		dialog_choice_t options[9] = {};
+
+		for (int i = 0; i < 8; i++)
+		{
+			const char *key = (keymap.keys[i].key_id < GAMEPAD_KEY_MAX) ? KEYNAMES[keymap.keys[i].key_id] : "N/A";
+			const char *mod = (keymap.keys[i].mod1) ? "MENU + " : "";
+			strcpy(options[i].value, mod);
+			strcat(options[i].value, key);
+			options[i].label = keymap.keys[i].action;
+			options[i].flags = RG_DIALOG_FLAG_NORMAL;
+		}
+
+		RG_DIALOG_MAKE_LAST(&options[8]);
+
+		rg_gui_dialog("SNES  :ODROID", options, 0xFF);
+	}
+
+    return false;
 }
 
 static bool save_state(char *pathName)
@@ -270,18 +321,7 @@ static void snes9x_task(void *arg)
 	S9xSetController(0, CTL_JOYPAD, 0, 0, 0, 0);
 	S9xSetController(1, CTL_NONE, 1, 0, 0, 0);
 
-	S9xMapButtonT(SNES_A_MASK, "Joypad1 A");
-    S9xMapButtonT(SNES_B_MASK, "Joypad1 B");
-    S9xMapButtonT(SNES_X_MASK, "Joypad1 X");
-    S9xMapButtonT(SNES_Y_MASK, "Joypad1 Y");
-    S9xMapButtonT(SNES_TL_MASK, "Joypad1 L");
-    S9xMapButtonT(SNES_TR_MASK, "Joypad1 R");
-    S9xMapButtonT(SNES_START_MASK, "Joypad1 Start");
-    S9xMapButtonT(SNES_SELECT_MASK, "Joypad1 X");
-    S9xMapButtonT(SNES_LEFT_MASK, "Joypad1 Left");
-    S9xMapButtonT(SNES_RIGHT_MASK, "Joypad1 Right");
-    S9xMapButtonT(SNES_UP_MASK, "Joypad1 Up");
-    S9xMapButtonT(SNES_DOWN_MASK, "Joypad1 Down");
+	update_keymap(keymap_id);
 
 	if (!Memory.Init())
 		RG_PANIC("Memory init failed!");
@@ -315,7 +355,10 @@ static void snes9x_task(void *arg)
 		}
 		else if (joystick.values[GAMEPAD_KEY_VOLUME])
 		{
-			rg_gui_game_settings_menu(NULL);
+			dialog_choice_t options[] = {
+				{2, "Keymap", "ABC", 1, &menu_keymap_cb},
+				RG_DIALOG_CHOICE_LAST};
+			rg_gui_game_settings_menu(options);
 		}
 
 		int64_t startTime = get_elapsed_time();
@@ -328,20 +371,10 @@ static void snes9x_task(void *arg)
 			menuCancelled = true;
 		}
 
-		S9xReportButton(SNES_TL_MASK, menuPressed && joystick.values[GAMEPAD_KEY_B]);
-		S9xReportButton(SNES_TR_MASK, menuPressed && joystick.values[GAMEPAD_KEY_A]);
-		S9xReportButton(SNES_START_MASK, menuPressed && joystick.values[GAMEPAD_KEY_START]);
-		S9xReportButton(SNES_SELECT_MASK, menuPressed && joystick.values[GAMEPAD_KEY_SELECT]);
-
-		S9xReportButton(SNES_A_MASK, !menuPressed && joystick.values[GAMEPAD_KEY_A]);
-		S9xReportButton(SNES_B_MASK, !menuPressed && joystick.values[GAMEPAD_KEY_B]);
-		S9xReportButton(SNES_X_MASK, !menuPressed && joystick.values[GAMEPAD_KEY_START]);
-		S9xReportButton(SNES_Y_MASK, !menuPressed && joystick.values[GAMEPAD_KEY_SELECT]);
-
-		S9xReportButton(SNES_UP_MASK, joystick.values[GAMEPAD_KEY_UP]);
-		S9xReportButton(SNES_DOWN_MASK, joystick.values[GAMEPAD_KEY_DOWN]);
-		S9xReportButton(SNES_LEFT_MASK, joystick.values[GAMEPAD_KEY_LEFT]);
-		S9xReportButton(SNES_RIGHT_MASK, joystick.values[GAMEPAD_KEY_RIGHT]);
+		for (int i = 0; i < 12; i++)
+		{
+			S9xReportButton(i, joystick.values[keymap.keys[i].key_id] && keymap.keys[i].mod1 == menuPressed);
+		}
 
 		S9xMainLoop();
 

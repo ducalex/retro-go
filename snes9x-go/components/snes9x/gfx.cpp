@@ -211,7 +211,7 @@ void S9xEndScreenRefresh (void)
 		}
 	}
 #endif
-
+#if 0
 	if (CPU.SRAMModified)
 	{
 		if (!CPU.AutoSaveTimer)
@@ -228,6 +228,7 @@ void S9xEndScreenRefresh (void)
 			}
 		}
 	}
+#endif
 }
 
 void RenderLine (uint8 C)
