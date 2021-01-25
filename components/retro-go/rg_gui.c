@@ -87,7 +87,7 @@ int rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, uint16_t
 
         for (int i = 0; i < line_len; i++)
         {
-            const char *glyph = font8x8_basic[(i < chunk_len) ? text[i] : ' '];
+            const char *glyph = font8x8_basic[(i < chunk_len) ? buffer[i] : ' '];
             for (int y = 0; y < glyph_height; y++)
             {
                 int offset = x_offset + (width * y);
@@ -265,15 +265,12 @@ void rg_gui_draw_battery(int x_pos, int y_pos)
 
 static int get_dialog_items_count(dialog_choice_t *options)
 {
-    dialog_choice_t last = RG_DIALOG_CHOICE_LAST;
-
     if (options == NULL)
         return 0;
 
     for (int i = 0; i < 16; i++)
     {
-        // if (memcmp(&last, options + i, sizeof(last))) {
-        if (options[i].id == last.id && options[i].enabled == last.enabled) {
+        if (options[i].flags == RG_DIALOG_FLAG_LAST) {
             return i;
         }
     }
@@ -341,7 +338,7 @@ void rg_gui_draw_dialog(const char *header, dialog_choice_t *options, int sel)
 
     for (int i = 0; i < options_count; i++)
     {
-        uint16_t color = options[i].enabled == 1 ? theme.item_standard : theme.item_disabled;
+        uint16_t color = (options[i].flags == RG_DIALOG_FLAG_NORMAL) ? theme.item_standard : theme.item_disabled;
         uint16_t fg = (i == sel) ? theme.box_background : color;
         uint16_t bg = (i == sel) ? color : theme.box_background;
         row_height = rg_gui_draw_text(x, y + row_margin, inner_width, rows + i * 256, fg, bg);
@@ -403,7 +400,7 @@ int rg_gui_dialog(const char *header, dialog_choice_t *options, int selected)
                 sel = -1;
                 break;
             }
-            if (options[sel].enabled) {
+            if (options[sel].flags != RG_DIALOG_FLAG_DISABLED) {
                 select = false;
                 if (joystick.values[GAMEPAD_KEY_LEFT]) {
                     last_key = GAMEPAD_KEY_LEFT;
@@ -437,7 +434,7 @@ int rg_gui_dialog(const char *header, dialog_choice_t *options, int selected)
         if (sel_old != sel)
         {
             int dir = sel - sel_old;
-            while (options[sel].enabled == -1 && sel_old != sel)
+            while (options[sel].flags == RG_DIALOG_FLAG_SKIP && sel_old != sel)
             {
                 sel = (sel + dir) % options_count;
             }
@@ -611,7 +608,7 @@ static void draw_game_status_bar(runtime_stats_t stats)
 
     snprintf(header, 40, "SPEED: %.0f%% (%.0f/%.0f) / BUSY: %.0f%%",
         round(stats.totalFPS / app->refreshRate * 100.f),
-        round(stats.skippedFPS),
+        round(stats.totalFPS - stats.skippedFPS),
         round(stats.totalFPS),
         round(stats.busyPercent));
 

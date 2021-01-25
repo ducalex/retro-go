@@ -24,7 +24,8 @@ typedef enum
 typedef struct
 {
     uint8_t values[GAMEPAD_KEY_MAX];
-    uint16_t bitmask;
+    uint32_t bitmask;
+    // uint32_t changed;
 } gamepad_state_t;
 
 typedef struct

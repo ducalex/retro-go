@@ -279,7 +279,7 @@ void emulator_show_file_info(retro_emulator_file_t *file)
         RG_DIALOG_CHOICE_LAST
     };
 
-    sprintf(choices[0].value, "%.127s", file->name);
+    sprintf(choices[0].value, "%.95s", file->name);
     sprintf(choices[1].value, "%s", file->ext);
     sprintf(choices[2].value, "%s", file->folder);
     sprintf(choices[3].value, "%ld KB", rg_filesize(emu_get_file_path(file)) / 1024);
