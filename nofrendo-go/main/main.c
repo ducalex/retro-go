@@ -241,6 +241,8 @@ void osd_loadstate()
 
     nes = nes_getptr();
     frameTime = get_frame_time(nes->refresh_rate);
+
+    app->refreshRate = nes->refresh_rate;
 }
 
 void osd_logprint(int type, char *string)

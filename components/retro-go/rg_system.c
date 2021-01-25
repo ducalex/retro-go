@@ -61,8 +61,9 @@ static spi_lock_res_t spiMutexOwner;
 static void system_monitor_task(void *arg)
 {
     runtime_counters_t current = {0};
-    bool letState = false;
+    multi_heap_info_t heap_info = {0};
     time_t lastTime = time(NULL);
+    bool ledState = false;
 
     while (1)
     {
@@ -79,22 +80,24 @@ static void system_monitor_task(void *arg)
         statistics.busyPercent = RG_MIN(current.busyTime / tickTime * 100.f, 100.f);
         statistics.skippedFPS = current.skippedFrames / (tickTime / 1000000.f);
         statistics.totalFPS = current.totalFrames / (tickTime / 1000000.f);
-        statistics.emulatedSpeed = statistics.totalFPS / currentApp.refreshRate * 100.f;
 
-        statistics.freeMemoryInt = heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
-        statistics.freeMemoryExt = heap_caps_get_free_size(MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
-        statistics.freeBlockInt = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
-        statistics.freeBlockExt = heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
+        heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
+        statistics.freeMemoryInt = heap_info.total_free_bytes;
+        statistics.freeBlockInt = heap_info.largest_free_block;
+
+        heap_caps_get_info(&heap_info, MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
+        statistics.freeMemoryExt = heap_info.total_free_bytes;
+        statistics.freeBlockExt = heap_info.largest_free_block;
 
         if (statistics.battery.percentage < 2)
         {
-            letState = !letState;
-            rg_system_set_led(letState);
+            ledState = !ledState;
+            rg_system_set_led(ledState);
         }
-        else if (letState)
+        else if (ledState)
         {
-            letState = false;
-            rg_system_set_led(letState);
+            ledState = false;
+            rg_system_set_led(ledState);
         }
 
         if (counters.ticks == 0)

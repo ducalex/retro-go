@@ -168,6 +168,9 @@ extern "C" void app_main(void)
 
     rg_app_desc_t *app = rg_system_get_app();
 
+    // The Lynx has a variable framerate but 60 is typical
+    app->refreshRate = 60;
+
     // Init emulator
     lynx = new CSystem(app->romPath, MIKIE_PIXEL_FORMAT_16BPP_565_BE, AUDIO_SAMPLE_RATE);
 

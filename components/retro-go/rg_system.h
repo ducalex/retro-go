@@ -70,7 +70,6 @@ typedef struct
     uint32_t skippedFrames;
     uint32_t fullFrames;
     uint32_t busyTime;
-    uint32_t realTime;
     uint64_t resetTime;
     uint32_t ticks;
 } runtime_counters_t;
@@ -81,14 +80,11 @@ typedef struct
     float partialFPS;
     float skippedFPS;
     float totalFPS;
-    float emulatedSpeed;
     float busyPercent;
     uint32_t freeMemoryInt;
     uint32_t freeMemoryExt;
     uint32_t freeBlockInt;
     uint32_t freeBlockExt;
-    uint32_t idleTimeCPU0;
-    uint32_t idleTimeCPU1;
 } runtime_stats_t;
 
 void rg_system_init(int app_id, int sampleRate);

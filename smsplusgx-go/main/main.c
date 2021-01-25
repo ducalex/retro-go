@@ -19,6 +19,7 @@ static uint16_t palettes[2][32];
 static rg_video_frame_t frames[2];
 static rg_video_frame_t *currentUpdate = &frames[0];
 
+static long refreshRate = 60;
 static long skipFrames = 0;
 
 static bool consoleIsGG = false;
@@ -146,14 +147,12 @@ void app_main(void)
 
     consoleIsSMS = sms.console == CONSOLE_SMS || sms.console == CONSOLE_SMS2;
     consoleIsGG  = sms.console == CONSOLE_GG || sms.console == CONSOLE_GGMS;
+    refreshRate = sms.display == DISPLAY_NTSC ? 60 : 50;
+
+    app->refreshRate = refreshRate;
 
     // if (consoleIsSMS) rg_system_set_app_id(APP_ID + 1);
     // if (consoleIsGG)  rg_system_set_app_id(APP_ID + 2);
-
-    if (app->startAction == EMU_START_ACTION_RESUME)
-    {
-        rg_emu_load_state(0);
-    }
 
     frames[0].width  = frames[1].width  = bitmap.viewport.w;
     frames[0].height = frames[1].height = bitmap.viewport.h;
@@ -161,7 +160,12 @@ void app_main(void)
     frames[0].buffer += bitmap.viewport.x;
     frames[1].buffer += bitmap.viewport.x;
 
-    const long frameTime = get_frame_time(sms.display == DISPLAY_NTSC ? 60 : 50);
+    if (app->startAction == EMU_START_ACTION_RESUME)
+    {
+        rg_emu_load_state(0);
+    }
+
+    long frameTime = get_frame_time(refreshRate);
     bool fullFrame = false;
 
     while (true)

@@ -604,18 +604,24 @@ static void draw_game_status_bar(runtime_stats_t stats)
 {
     int width = RG_SCREEN_WIDTH, height = 16;
     int pad_text = (height - font_info.height) / 2;
-    char bottom[40], header[40];
+    char header[41] = {0};
+    char footer[41] = {0};
 
-    const char *romPath = rg_system_get_app()->romPath;
+    const rg_app_desc_t *app = rg_system_get_app();
 
-    snprintf(header, 40, "FPS: %.0f (%.0f) / BUSY: %.0f%%",
-        round(stats.totalFPS), round(stats.skippedFPS), round(stats.busyPercent));
-    snprintf(bottom, 40, "%s", romPath ? (romPath + strlen(RG_BASE_PATH_ROMS)) : "N/A");
+    snprintf(header, 40, "SPEED: %.0f%% (%.0f/%.0f) / BUSY: %.0f%%",
+        round(stats.totalFPS / app->refreshRate * 100.f),
+        round(stats.skippedFPS),
+        round(stats.totalFPS),
+        round(stats.busyPercent));
+
+    if (app->romPath)
+        snprintf(footer, 40, "%s", app->romPath + strlen(RG_BASE_PATH_ROMS));
 
     rg_gui_draw_fill_rect(0, 0, width, height, C_BLACK);
     rg_gui_draw_fill_rect(0, RG_SCREEN_HEIGHT - height, width, height, C_BLACK);
     rg_gui_draw_text(0, pad_text, width, header, C_LIGHT_GRAY, C_BLACK);
-    rg_gui_draw_text(0, RG_SCREEN_HEIGHT - height + pad_text, width, bottom, C_LIGHT_GRAY, C_BLACK);
+    rg_gui_draw_text(0, RG_SCREEN_HEIGHT - height + pad_text, width, footer, C_LIGHT_GRAY, C_BLACK);
     rg_gui_draw_battery(width - 26, 3);
 }
 
