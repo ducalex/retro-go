@@ -22,6 +22,8 @@
 #define AUDIO_SAMPLE_RATE (22050)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50)
 
+#define NVS_KEY_KEYMAP "keymap"
+
 // static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
 static rg_video_frame_t frames[2];
@@ -224,18 +226,18 @@ void S9xExit(void)
 	exit(0);
 }
 
-static void update_keymap(uint32_t id)
+static void update_keymap(int id)
 {
-	if (id < KEYMAPS_COUNT)
+	keymap_id = id % KEYMAPS_COUNT;
+
+	memcpy(&keymap, &KEYMAPS[keymap_id], sizeof(keymap));
+
+	S9xUnmapAllControls();
+
+	for (int i = 0; i < keymap.size; i++)
 	{
-		memcpy(&keymap, &KEYMAPS[id], sizeof(keymap));
-
-		S9xUnmapAllControls();
-
-		for (int i = 0; i < 12; i++)
-		{
-			S9xMapButtonT(i, keymap.keys[i].action);
-		}
+		keymap.keys[i].key_id %= GAMEPAD_KEY_MAX;
+		S9xMapButtonT(i, keymap.keys[i].action);
 	}
 }
 
@@ -248,28 +250,43 @@ static bool menu_keymap_cb(dialog_choice_t *option, dialog_event_t event)
     if (event == RG_DIALOG_NEXT && ++keymap_id > max) keymap_id = 0;
 
 	if (keymap_id != prev)
+	{
 		update_keymap(keymap_id);
+		rg_settings_app_int32_set(NVS_KEY_KEYMAP, keymap_id);
+	}
 
     strcpy(option->value, keymap.name);
 
 	if (event == RG_DIALOG_ENTER)
 	{
-		// For now we don't display the D-PAD because it doesn't fit on large font
-		dialog_choice_t options[9] = {};
+		dialog_choice_t *options = (dialog_choice_t *)calloc(keymap.size + 2, sizeof(dialog_choice_t));
+		dialog_choice_t *option = options;
 
-		for (int i = 0; i < 8; i++)
+		for (int i = 0; i < keymap.size; i++)
 		{
-			const char *key = (keymap.keys[i].key_id < GAMEPAD_KEY_MAX) ? KEYNAMES[keymap.keys[i].key_id] : "N/A";
+			// For now we don't display the D-PAD because it doesn't fit on large font
+			if (keymap.keys[i].key_id < 4)
+				continue;
+
+			const char *key = KEYNAMES[keymap.keys[i].key_id];
 			const char *mod = (keymap.keys[i].mod1) ? "MENU + " : "";
-			strcpy(options[i].value, mod);
-			strcat(options[i].value, key);
-			options[i].label = keymap.keys[i].action;
-			options[i].flags = RG_DIALOG_FLAG_NORMAL;
+			strcpy(option->value, mod);
+			strcat(option->value, key);
+			option->label = keymap.keys[i].action;
+			option->flags = RG_DIALOG_FLAG_NORMAL;
+			option++;
 		}
 
-		RG_DIALOG_MAKE_LAST(&options[8]);
+		option->label = "Close";
+		option->flags = RG_DIALOG_FLAG_NORMAL;
+		option++;
 
-		rg_gui_dialog("SNES  :ODROID", options, 0xFF);
+		RG_DIALOG_MAKE_LAST(option);
+
+		rg_gui_dialog("SNES  :ODROID", options, -1);
+		rg_display_clear(C_BLACK);
+
+		free(options);
 	}
 
     return false;
@@ -321,7 +338,7 @@ static void snes9x_task(void *arg)
 	S9xSetController(0, CTL_JOYPAD, 0, 0, 0, 0);
 	S9xSetController(1, CTL_NONE, 1, 0, 0, 0);
 
-	update_keymap(keymap_id);
+	update_keymap(rg_settings_app_int32_get(NVS_KEY_KEYMAP, 0));
 
 	if (!Memory.Init())
 		RG_PANIC("Memory init failed!");
@@ -356,7 +373,7 @@ static void snes9x_task(void *arg)
 		else if (joystick.values[GAMEPAD_KEY_VOLUME])
 		{
 			dialog_choice_t options[] = {
-				{2, "Keymap", "ABC", 1, &menu_keymap_cb},
+				{2, "Controls", "ABC", 1, &menu_keymap_cb},
 				RG_DIALOG_CHOICE_LAST};
 			rg_gui_game_settings_menu(options);
 		}
@@ -371,7 +388,7 @@ static void snes9x_task(void *arg)
 			menuCancelled = true;
 		}
 
-		for (int i = 0; i < 12; i++)
+		for (int i = 0; i < keymap.size; i++)
 		{
 			S9xReportButton(i, joystick.values[keymap.keys[i].key_id] && keymap.keys[i].mod1 == menuPressed);
 		}
