@@ -23,13 +23,15 @@ It comes with many emulators!
 - NES PAL support
 - Smoother performance
 - Better compatibility
-- Fastforward
+- Double/Triple Speed
 - Customizable launcher
 - PNG cover art
 - And more!
 
+
 # Screenshot
 ![Preview](retro-go-preview.jpg)
+
 
 # Key Mappings
 
@@ -76,6 +78,7 @@ The number must also be zero padded to be 8 chars._
 Retro-Go caches some data to speed up cover art discovery and display.
 If you have any problem the first step is to delete the `sdcard:/odroid/cache` folder.
 
+
 # Sound quality
 The volume isn't correctly attenuated on the GO, resulting in upper volume levels that are too loud and 
 lower levels that are distorted due to DAC resolution. A quick way to improve the audio is to cut one
@@ -83,29 +86,34 @@ of the speaker wire and add a `10 Ohm (or thereabout)` resistor in series. Solde
 required, twisting the wires tightly will work just fine.
 [A more involved solution can be seen here.](https://wiki.odroid.com/odroid_go/silent_volume)
 
+
 # Known issues
-An up to date list of incompatible/broken games can be found on the ODROID-GO forums.
+An up to date list of incompatible/broken games can be found on the [ODROID-GO forums](https://forum.odroid.com/viewtopic.php?f=159&t=37599). This is also the place to submit bug reports and feature requests.
 
 
 # Future plans
-- Rewind  (In progress)
-- Cheats  (In progress)
-- Netplay (In progress)
+- SNES emulation (In progress)
+- Netplay (On hold)
 
 
-# Compilation
-The official esp-idf version 3.3 or 4.0 is required and it is recommended to apply the 
-sdcard-fix patch located in the tools folder. Only the cmake build system is supported.
+# Building Retro-Go
+
+## Prerequisites
+You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/v4.0.2/) version 3.3.4 or 4.0.2. The legacy (make) build system isn't supported, only idf/cmake.
+
+An optional patch to improve SD Card compatibility can be found in the tools folder.
+
+_Note: many other versions of esp-idf will work but at least 3.3.0, 4.0.0, 4.1.0, and 4.2.0 are known to have driver bugs resulting in no audio or no SD Card support. For now the best choice is 4.0.2. I will update this document when 4.1 or 4.2 fix the driver issues._
 
 ## Build everything and generate .fw:
-1. `python rg_tool.py build-fw`
+1. `rg_tool.py build-fw`
 
 For a smaller build you can also specify which apps you want, for example the launcher + nes/gameboy only:
-1. `python rg_tool.py build-fw retro-go nofrendo-go gnuboy-go`
+1. `rg_tool.py build-fw retro-go nofrendo-go gnuboy-go`
 
 ## Build, flash, and monitor individual apps for faster development:
-1. `python rg_tool.py run nofrendo-go --offset=0x100000 --port=COM3`
-* Offset is required only if you use my multi-firmware, in which case it is displayed in the boot menu.
+1. `rg_tool.py run nofrendo-go --offset=0x100000 --port=COM3`
+* Offset is required only if you use my multi-firmware AND retro-go isn't the first installed application, in which case the offset is shown in the multi-firmware.
 
 
 # Acknowledgements
@@ -113,7 +121,6 @@ For a smaller build you can also specify which apps you want, for example the la
 - The [HuExpress](https://github.com/kallisti5/huexpress) (PCE) emulator was first ported to the GO by [pelle7](https://github.com/pelle7/odroid-go-pcengine-huexpress/).
 - The Lynx emulator is an adaptation of [libretro-handy](https://github.com/libretro/libretro-handy).
 - The aesthetics of the launcher were inspired (copied) from [pelle7's go-emu](https://github.com/pelle7/odroid-go-emu-launcher).
-- [miniz](https://github.com/richgel999/miniz) For zipped ROM and zlib API
 - [luPng](https://github.com/jansol/LuPng) For basic PNG decoding
 - PCE cover art is from Christian_Haitian.
 
@@ -121,6 +128,5 @@ For a smaller build you can also specify which apps you want, for example the la
 # License
 Everything in this project is licensed under the [GPLv2 license](COPYING) with the exception of the following components:
 - components/lupng (PNG library, MIT)
-- components/miniz (zlib library, MIT)
 - components/retro-go (Retro-Go's framework, MIT)
 - handy-go/components/handy (Lynx emulator, BSD)
