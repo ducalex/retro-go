@@ -77,11 +77,7 @@ static void S9xSoftResetCPU (void)
 	Timings.NMITriggerPos = 0xffff;
 	Timings.NextIRQTimer = 0x0fffffff;
 	Timings.IRQFlagChanging = IRQ_NONE;
-
-	if (Model->_5A22 == 2)
-		Timings.WRAMRefreshPos = SNES_WRAM_REFRESH_HC_v2;
-	else
-		Timings.WRAMRefreshPos = SNES_WRAM_REFRESH_HC_v1;
+	Timings.WRAMRefreshPos = SNES_WRAM_REFRESH_HC;
 
 	S9xSetPCBase(Registers.PBPC);
 

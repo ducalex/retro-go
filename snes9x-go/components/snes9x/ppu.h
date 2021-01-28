@@ -41,7 +41,6 @@ struct ClipData
 struct InternalPPU
 {
 	struct ClipData Clip[2][6];
-	bool8	ColorsChanged;
 	bool8	OBJChanged;
 	uint8	*TileCacheData;
 	uint8	TileCache[4096];
@@ -209,21 +208,6 @@ void S9xDoAutoJoypad (void);
 
 #include "gfx.h"
 #include "memmap.h"
-
-typedef struct
-{
-	uint8	_5C77;
-	uint8	_5C78;
-	uint8	_5A22;
-}	SnesModel;
-
-extern SnesModel	*Model;
-extern SnesModel	M1SNES;
-extern SnesModel	M2SNES;
-
-#define MAX_5C77_VERSION	0x01
-#define MAX_5C78_VERSION	0x03
-#define MAX_5A22_VERSION	0x02
 
 void S9xUpdateScreen (void);
 static inline void FLUSH_REDRAW (void)
@@ -499,7 +483,6 @@ static inline void REGISTER_2122 (uint8 Byte)
 		{
 			FLUSH_REDRAW();
 			PPU.CGDATA[PPU.CGADD] = (Byte & 0x7f) << 8 | PPU.CGSavedByte;
-			IPPU.ColorsChanged = TRUE;
 			int r = IPPU.XB[PPU.CGSavedByte & 0x1f];
 			int g = IPPU.XB[(Byte >> 2) & 0x1f];
 			int b = IPPU.XB[(PPU.CGDATA[PPU.CGADD] >> 5) & 0x1f];

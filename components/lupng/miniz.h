@@ -209,7 +209,7 @@
 #define MINIZ_LITTLE_ENDIAN 1
 #endif
 
-#if MINIZ_X86_OR_X64_CPU
+#if MINIZ_X86_OR_X64_CPU || defined(__xtensa__)
 // Set MINIZ_USE_UNALIGNED_LOADS_AND_STORES to 1 on CPU's that permit efficient integer loads and stores from unaligned addresses.
 #define MINIZ_USE_UNALIGNED_LOADS_AND_STORES 1
 #endif
@@ -2284,7 +2284,12 @@ static MZ_FORCEINLINE void tdefl_find_match(tdefl_compressor *d, mz_uint lookahe
         if (TDEFL_READ_UNALIGNED_WORD(&d->m_dict[probe_pos + match_len - 1]) == c01) break;
       TDEFL_PROBE; TDEFL_PROBE; TDEFL_PROBE;
     }
-    if (!dist) break; q = (const mz_uint16*)(d->m_dict + probe_pos); if (TDEFL_READ_UNALIGNED_WORD(q) != s01) continue; p = s; probe_len = 32;
+    if (!dist) break;
+    q = (const mz_uint16*)(d->m_dict + probe_pos);
+    if (TDEFL_READ_UNALIGNED_WORD(q) != s01) continue;
+    p = s;
+    probe_len = 32;
+
     do { } while ( (TDEFL_READ_UNALIGNED_WORD(++p) == TDEFL_READ_UNALIGNED_WORD(++q)) && (TDEFL_READ_UNALIGNED_WORD(++p) == TDEFL_READ_UNALIGNED_WORD(++q)) &&
                    (TDEFL_READ_UNALIGNED_WORD(++p) == TDEFL_READ_UNALIGNED_WORD(++q)) && (TDEFL_READ_UNALIGNED_WORD(++p) == TDEFL_READ_UNALIGNED_WORD(++q)) && (--probe_len > 0) );
     if (!probe_len)

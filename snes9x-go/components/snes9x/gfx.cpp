@@ -177,14 +177,6 @@ void S9xEndScreenRefresh (void)
 	{
 		FLUSH_REDRAW();
 
-		if (IPPU.ColorsChanged)
-		{
-			uint32 saved = PPU.CGDATA[0];
-			IPPU.ColorsChanged = FALSE;
-			S9xSetPalette();
-			PPU.CGDATA[0] = saved;
-		}
-
 		S9xControlEOF();
 
 		if (Settings.AutoDisplayMessages)
@@ -231,7 +223,7 @@ void S9xEndScreenRefresh (void)
 #endif
 }
 
-void RenderLine (uint8 C)
+void RenderLine (int C)
 {
 	if (IPPU.RenderThisFrame)
 	{

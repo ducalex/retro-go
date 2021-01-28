@@ -181,7 +181,7 @@ inline uint16 COLOR_SUB (uint16 C1, uint16 C2)
 void S9xStartScreenRefresh (void);
 void S9xEndScreenRefresh (void);
 void S9xBuildDirectColourMaps (void);
-void RenderLine (uint8);
+void RenderLine (int);
 void S9xComputeClipWindows (void);
 void S9xDisplayChar (uint16 *, uint8);
 void S9xGraphicsScreenResize (void);

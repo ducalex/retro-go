@@ -33,7 +33,7 @@
 #ifdef ENABLE_PROFILING
 #define INPUT_TIMEOUT 1000000000
 #else
-#define INPUT_TIMEOUT 8000000
+#define INPUT_TIMEOUT 12000000
 #endif
 
 typedef struct

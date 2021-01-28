@@ -433,10 +433,15 @@ int rg_gui_dialog(const char *header, dialog_choice_t *options, int selected)
         }
         if (sel_old != sel)
         {
-            int dir = sel - sel_old;
             while (options[sel].flags == RG_DIALOG_FLAG_SKIP && sel_old != sel)
             {
-                sel = (sel + dir) % options_count;
+                sel += (last_key == GAMEPAD_KEY_DOWN) ? 1 : -1;
+
+                if (sel < 0)
+                    sel = options_count - 1;
+
+                if (sel >= options_count)
+                    sel = 0;
             }
             rg_gui_draw_dialog(header, options, sel);
             sel_old = sel;

@@ -201,11 +201,6 @@ bool8 S9xContinueUpdate(int width, int height)
 	return (TRUE);
 }
 
-void S9xSetPalette(void)
-{
-	return;
-}
-
 void S9xSyncSpeed(void)
 {
 
@@ -294,7 +289,19 @@ static bool menu_keymap_cb(dialog_choice_t *option, dialog_event_t event)
 
 static bool save_state(char *pathName)
 {
-	return false; // S9xFreezeGame(pathName);
+	if (S9xFreezeGame(pathName))
+	{
+		// lupng creates a broken image on the SNES. It seems to be compressed incorrectly
+		// so for now we won't have pretty screenshot...
+		char *filename = rg_emu_get_path(EMU_PATH_SCREENSHOT, 0);
+		if (filename)
+		{
+			// rg_display_save_frame(filename, currentUpdate, 160.f / currentUpdate->width);
+			rg_free(filename);
+		}
+		return true;
+	}
+	return false;
 }
 
 static bool load_state(char *pathName)
@@ -307,7 +314,7 @@ static bool load_state(char *pathName)
 	}
 	else
 	{
-		// reset emulation
+		S9xReset();
 	}
 
 	return ret;
@@ -351,6 +358,11 @@ static void snes9x_task(void *arg)
 
 	if (!Memory.LoadROM(app->romPath))
 		RG_PANIC("ROM loading failed!");
+
+    if (app->startAction == EMU_START_ACTION_RESUME)
+    {
+        rg_emu_load_state(0);
+    }
 
 	app->refreshRate = Memory.ROMFramesPerSecond;
 

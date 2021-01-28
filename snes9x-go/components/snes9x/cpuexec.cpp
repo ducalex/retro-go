@@ -283,7 +283,7 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 				PPU.RangeTimeOver = 0;
 
 				// FIXME: reading $4210 will wait 2 cycles, then perform reading, then wait 4 more cycles.
-				Memory.FillRAM[0x4210] = Model->_5A22;
+				Memory.FillRAM[0x4210] = 2;
 
 				ICPU.Frame++;
 				PPU.HVBeamCounterLatched = 0;
@@ -300,18 +300,13 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 			else
 				Timings.H_Max = Timings.H_Max_Master;					// HC=1364
 
-			if (Model->_5A22 == 2)
+			if (CPU.V_Counter != 240 || IPPU.Interlace || !Timings.InterlaceField)	// V=240
 			{
-				if (CPU.V_Counter != 240 || IPPU.Interlace || !Timings.InterlaceField)	// V=240
-				{
-					if (Timings.WRAMRefreshPos == SNES_WRAM_REFRESH_HC_v2 - ONE_DOT_CYCLE)	// HC=534
-						Timings.WRAMRefreshPos = SNES_WRAM_REFRESH_HC_v2;					// HC=538
-					else
-						Timings.WRAMRefreshPos = SNES_WRAM_REFRESH_HC_v2 - ONE_DOT_CYCLE;	// HC=534
-				}
+				if (Timings.WRAMRefreshPos == SNES_WRAM_REFRESH_HC - ONE_DOT_CYCLE)	// HC=534
+					Timings.WRAMRefreshPos = SNES_WRAM_REFRESH_HC;					// HC=538
+				else
+					Timings.WRAMRefreshPos = SNES_WRAM_REFRESH_HC - ONE_DOT_CYCLE;	// HC=534
 			}
-			else
-				Timings.WRAMRefreshPos = SNES_WRAM_REFRESH_HC_v1;
 
 			if (CPU.V_Counter == PPU.ScreenHeight + FIRST_VISIBLE_LINE)	// VBlank starts from V=225(240).
 			{
@@ -345,7 +340,7 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 				}
 
 				// FIXME: writing to $4210 will wait 6 cycles.
-				Memory.FillRAM[0x4210] = 0x80 | Model->_5A22;
+				Memory.FillRAM[0x4210] = 0x80 | 2;
 				if (Memory.FillRAM[0x4200] & 0x80)
 				{
 #ifdef DEBUGGER

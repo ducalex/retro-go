@@ -35,7 +35,6 @@ void S9xInitDisplay (int, char **);
 void S9xDeinitDisplay (void);
 void S9xTextMode (void);
 void S9xGraphicsMode (void);
-void S9xSetPalette (void);
 bool8 S9xOpenSnapshotFile (const char *, bool8, STREAM *);
 void S9xCloseSnapshotFile (STREAM);
 const char * S9xStringInput (const char *);

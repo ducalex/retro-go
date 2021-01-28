@@ -734,7 +734,7 @@ void S9xFreezeToStream (STREAM stream)
 
 	FreezeBlock (stream, "SRA", Memory.SRAM, 0x20000);
 
-	FreezeBlock (stream, "FIL", Memory.FillRAM, 0x8000);
+	FreezeBlock (stream, "FIL", Memory.FillRAM + 0x2000, 0x2800);
 
 	S9xAPUSaveState(soundsnapshot);
 	FreezeBlock (stream, "SND", soundsnapshot, SPC_SAVE_STATE_BLOCK_SIZE);
@@ -806,7 +806,7 @@ int S9xUnfreezeFromStream (STREAM stream)
 		if (result != SUCCESS)
 			break;
 
-		result = UnfreezeBlock(stream, "FIL", Memory.FillRAM, 0x8000);
+		result = UnfreezeBlock(stream, "FIL", Memory.FillRAM + 0x2000, 0x2800);
 		if (result != SUCCESS)
 			break;
 
@@ -853,7 +853,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 
 		S9xFixColourBrightness();
 		S9xBuildDirectColourMaps();
-		IPPU.ColorsChanged = TRUE;
 		IPPU.OBJChanged = TRUE;
 		IPPU.RenderThisFrame = TRUE;
 

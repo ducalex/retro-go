@@ -250,7 +250,6 @@ void S9xSetPPU (uint8 Byte, uint32 Address)
 
 					if (PPU.Brightness != (Byte & 0xf))
 					{
-						IPPU.ColorsChanged = TRUE;
 						PPU.Brightness = Byte & 0xf;
 						S9xFixColourBrightness();
 						S9xBuildDirectColourMaps();
@@ -260,7 +259,6 @@ void S9xSetPPU (uint8 Byte, uint32 Address)
 
 					if ((Memory.FillRAM[0x2100] & 0x80) != (Byte & 0x80))
 					{
-						IPPU.ColorsChanged = TRUE;
 						PPU.ForcedBlanking = (Byte >> 7) & 1;
 					}
 				}
@@ -1142,13 +1140,13 @@ uint8 S9xGetPPU (uint32 Address)
 
 			case 0x213e: // STAT77
 				FLUSH_REDRAW();
-				byte = (PPU.OpenBus1 & 0x10) | PPU.RangeTimeOver | Model->_5C77;
+				byte = (PPU.OpenBus1 & 0x10) | PPU.RangeTimeOver | 1;
 				return (PPU.OpenBus1 = byte);
 
 			case 0x213f: // STAT78
 				S9xTryGunLatch(false);
 				PPU.VBeamFlip = PPU.HBeamFlip = 0;
-				byte = (PPU.OpenBus2 & 0x20) | (Memory.FillRAM[0x213f] & 0xc0) | (Settings.PAL ? 0x10 : 0) | Model->_5C78;
+				byte = (PPU.OpenBus2 & 0x20) | (Memory.FillRAM[0x213f] & 0xc0) | (Settings.PAL ? 0x10 : 0) | 3;
 				Memory.FillRAM[0x213f] &= ~0x40;
 				return (PPU.OpenBus2 = byte);
 
@@ -1171,21 +1169,7 @@ uint8 S9xGetPPU (uint32 Address)
 	}
 	else
     {
-		switch (Address)
-		{
-			case 0x21c2:
-				if (Model->_5C77 == 2)
-					return (0x20);
-				return (OpenBus);
-
-			case 0x21c3:
-				if (Model->_5C77 == 2)
-					return (0);
-				return (OpenBus);
-
-			default:
-				return (OpenBus);
-		}
+		return (OpenBus);
 	}
 }
 
@@ -1619,8 +1603,8 @@ uint8 S9xGetCPU (uint32 Address)
 		{
 			case 0x4210: // RDNMI
 				byte = Memory.FillRAM[0x4210];
-				Memory.FillRAM[0x4210] = Model->_5A22;
-				return ((byte & 0x80) | (OpenBus & 0x70) | Model->_5A22);
+				Memory.FillRAM[0x4210] = 2;
+				return ((byte & 0x80) | (OpenBus & 0x70) | 2);
 
 			case 0x4211: // TIMEUP
 				byte = 0;
@@ -1679,7 +1663,6 @@ void S9xResetPPU (void)
 void S9xResetPPUFast (void)
 {
 	PPU.RecomputeClipWindows = TRUE;
-	IPPU.ColorsChanged = TRUE;
 	IPPU.OBJChanged = TRUE;
 	memset(IPPU.TileCache, 0, sizeof(IPPU.TileCache));
 }
@@ -1813,7 +1796,6 @@ void S9xSoftResetPPU (void)
 
 	for (int c = 0; c < 2; c++)
 		memset(&IPPU.Clip[c], 0, sizeof(struct ClipData));
-	IPPU.ColorsChanged = TRUE;
 	IPPU.OBJChanged = TRUE;
 	memset(IPPU.TileCache, 0, sizeof(IPPU.TileCache));
 	PPU.VRAMReadBuffer = 0; // XXX: FIXME: anything better?

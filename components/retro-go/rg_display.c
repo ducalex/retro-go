@@ -937,7 +937,7 @@ bool
 rg_display_save_frame(const char *filename, rg_video_frame_t *frame, double scale)
 {
     // We do not support upscale right now
-    scale = RG_MIN(scale, 1.f);
+    scale = RG_MIN(scale, 1.0);
 
     LuImage *png = luImageCreate(frame->width * scale, frame->height * scale, 3, 8, 0, 0);
     if (!png)
@@ -946,7 +946,7 @@ rg_display_save_frame(const char *filename, rg_video_frame_t *frame, double scal
     uint8_t *dst = png->data;
     uint32_t pixel_mask = frame->pixel_mask;
     uint16_t *palette = frame->palette;
-    double factor = 1 + (1 - scale);
+    double factor = 1.0 + (1.0 - scale);
 
     printf("%s: Rendering frame: %dx%d\n", __func__, png->width, png->height);
 
