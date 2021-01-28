@@ -15,33 +15,37 @@
 #include "missing.h"
 #endif
 
-static inline void S9xReschedule (void);
+#define CHECK_FOR_IRQ_CHANGE() \
+if (Timings.IRQFlagChanging) \
+{ \
+	if (Timings.IRQFlagChanging & IRQ_TRIGGER_NMI) \
+	{ \
+		CPU.NMIPending = TRUE; \
+		Timings.NMITriggerPos = CPU.Cycles + 6; \
+	} \
+	if (Timings.IRQFlagChanging & IRQ_CLEAR_FLAG) \
+		ClearIRQ(); \
+	else if (Timings.IRQFlagChanging & IRQ_SET_FLAG) \
+		SetIRQ(); \
+	Timings.IRQFlagChanging = IRQ_NONE; \
+}
 
 IRAM_ATTR void S9xMainLoop (void)
 {
-	#define CHECK_FOR_IRQ_CHANGE() \
-	if (Timings.IRQFlagChanging) \
-	{ \
-		if (Timings.IRQFlagChanging & IRQ_TRIGGER_NMI) \
-		{ \
-			CPU.NMIPending = TRUE; \
-			Timings.NMITriggerPos = CPU.Cycles + 6; \
-		} \
-		if (Timings.IRQFlagChanging & IRQ_CLEAR_FLAG) \
-			ClearIRQ(); \
-		else if (Timings.IRQFlagChanging & IRQ_SET_FLAG) \
-			SetIRQ(); \
-		Timings.IRQFlagChanging = IRQ_NONE; \
-	}
+	const struct SOpcodes *Opcodes;
+	uint32_t loops = 0;
+	uint32_t Op = 0;
 
-	if (CPU.Flags & SCAN_KEYS_FLAG)
-	{
-		CPU.Flags &= ~SCAN_KEYS_FLAG;
-	}
+	CPU.Flags &= ~SCAN_KEYS_FLAG;
 
 	for (;;)
 	{
 		#if (RETRO_LESS_ACCURATE_CPU || RETRO_LESS_ACCURATE_MEM)
+			// Only check for interrupts every 15 loops. More than that breaks too many games
+			// This is temporary until we improve speed elsewhere...
+			if ((++loops) & 0xF)
+				goto run_opcode;
+
 			while (CPU.Cycles >= CPU.NextEvent)
 				S9xDoHEventProcessing();
 		#endif
@@ -80,7 +84,7 @@ IRAM_ATTR void S9xMainLoop (void)
 			CPU.IRQLine = TRUE;
 		}
 
-		if (CPU.IRQLine || CPU.IRQExternal)
+		if (CPU.IRQLine)
 		{
 			if (CPU.WaitingForInterrupt)
 			{
@@ -144,9 +148,7 @@ IRAM_ATTR void S9xMainLoop (void)
 			break;
 		}
 
-		uint32_t Op;
-		const struct SOpcodes *Opcodes;
-
+	run_opcode:
 		if (CPU.PCBase)
 		{
 			Op = CPU.PCBase[Registers.PCw];
@@ -176,42 +178,6 @@ IRAM_ATTR void S9xMainLoop (void)
 	S9xPackStatus();
 }
 
-IRAM_ATTR static inline void S9xReschedule (void)
-{
-	switch (CPU.WhichEvent)
-	{
-		case HC_HBLANK_START_EVENT:
-			CPU.WhichEvent = HC_HDMA_START_EVENT;
-			CPU.NextEvent  = Timings.HDMAStart;
-			break;
-
-		case HC_HDMA_START_EVENT:
-			CPU.WhichEvent = HC_HCOUNTER_MAX_EVENT;
-			CPU.NextEvent  = Timings.H_Max;
-			break;
-
-		case HC_HCOUNTER_MAX_EVENT:
-			CPU.WhichEvent = HC_HDMA_INIT_EVENT;
-			CPU.NextEvent  = Timings.HDMAInit;
-			break;
-
-		case HC_HDMA_INIT_EVENT:
-			CPU.WhichEvent = HC_RENDER_EVENT;
-			CPU.NextEvent  = Timings.RenderPos;
-			break;
-
-		case HC_RENDER_EVENT:
-			CPU.WhichEvent = HC_WRAM_REFRESH_EVENT;
-			CPU.NextEvent  = Timings.WRAMRefreshPos;
-			break;
-
-		case HC_WRAM_REFRESH_EVENT:
-			CPU.WhichEvent = HC_HBLANK_START_EVENT;
-			CPU.NextEvent  = Timings.HBlankStart;
-			break;
-	}
-}
-
 IRAM_ATTR void S9xDoHEventProcessing (void)
 {
 #ifdef DEBUGGER
@@ -236,11 +202,13 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 	switch (CPU.WhichEvent)
 	{
 		case HC_HBLANK_START_EVENT:
-			S9xReschedule();
+			CPU.WhichEvent = HC_HDMA_START_EVENT;
+			CPU.NextEvent  = Timings.HDMAStart;
 			break;
 
 		case HC_HDMA_START_EVENT:
-			S9xReschedule();
+			CPU.WhichEvent = HC_HCOUNTER_MAX_EVENT;
+			CPU.NextEvent  = Timings.H_Max;
 
 			if (PPU.HDMA && CPU.V_Counter <= PPU.ScreenHeight)
 			{
@@ -343,10 +311,10 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 				Memory.FillRAM[0x4210] = 0x80 | 2;
 				if (Memory.FillRAM[0x4200] & 0x80)
 				{
-#ifdef DEBUGGER
+				#ifdef DEBUGGER
 					if (Settings.TraceHCEvent)
 					    S9xTraceFormattedMessage ("NMI Scheduled for next scanline.");
-#endif
+				#endif
 					// FIXME: triggered at HC=6, checked just before the final CPU cycle,
 					// then, when to call S9xOpcode_NMI()?
 					CPU.NMIPending = TRUE;
@@ -364,12 +332,13 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 			if (CPU.V_Counter == FIRST_VISIBLE_LINE)	// V=1
 				S9xStartScreenRefresh();
 
-			S9xReschedule();
-
+			CPU.WhichEvent = HC_HDMA_INIT_EVENT;
+			CPU.NextEvent  = Timings.HDMAInit;
 			break;
 
 		case HC_HDMA_INIT_EVENT:
-			S9xReschedule();
+			CPU.WhichEvent = HC_RENDER_EVENT;
+			CPU.NextEvent  = Timings.RenderPos;
 
 			if (CPU.V_Counter == 0)
 			{
@@ -378,15 +347,14 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 			#endif
 				S9xStartHDMA();
 			}
-
 			break;
 
 		case HC_RENDER_EVENT:
 			if (CPU.V_Counter >= FIRST_VISIBLE_LINE && CPU.V_Counter <= PPU.ScreenHeight)
 				RenderLine((uint8) (CPU.V_Counter - FIRST_VISIBLE_LINE));
 
-			S9xReschedule();
-
+			CPU.WhichEvent = HC_WRAM_REFRESH_EVENT;
+			CPU.NextEvent  = Timings.WRAMRefreshPos;
 			break;
 
 		case HC_WRAM_REFRESH_EVENT:
@@ -395,11 +363,11 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 		#endif
 
 			CPU.Cycles += SNES_WRAM_REFRESH_CYCLES;
-
-			S9xReschedule();
-
+			CPU.WhichEvent = HC_HBLANK_START_EVENT;
+			CPU.NextEvent  = Timings.HBlankStart;
 			break;
 	}
+
 
 #ifdef DEBUGGER
 	if (Settings.TraceHCEvent)

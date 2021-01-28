@@ -1418,7 +1418,7 @@ void S9xDebugProcessCommand(char *Line)
 	if (*Line == 'a')
 	{
 		printf("S-CPU-side ports S-CPU writes these, S-SMP reads: %02X %02X %02X %02X\n", SNES::cpu.port_read(0), SNES::cpu.port_read(1), SNES::cpu.port_read(2), SNES::cpu.port_read(3));
-		printf("S-SMP-side ports S-SMP writes these, S-CPU reads: %02X %02X %02X %02X\n", SNES::smp.port_read(0), SNES::smp.port_read(1), SNES::smp.port_read(2), SNES::smp.port_read(3));
+		// printf("S-SMP-side ports S-SMP writes these, S-CPU reads: %02X %02X %02X %02X\n", SNES::smp.port_read(0), SNES::smp.port_read(1), SNES::smp.port_read(2), SNES::smp.port_read(3));
 	}
 /*
 	if (*Line == 'P')

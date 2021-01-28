@@ -1,5 +1,3 @@
-#ifdef SMP_CPP
-
 //this is the IPLROM for the S-SMP coprocessor.
 //the S-SMP does not allow writing to the IPLROM.
 //all writes are instead mapped to the extended
@@ -40,5 +38,3 @@ const uint8 SMP::iplrom[64] = {
 /*fffb*/  0x1f, 0x00, 0x00,  //jmp   ($0000+x)
 /*fffe*/  0xc0, 0xff         //reset vector location ($ffc0)
 };
-
-#endif

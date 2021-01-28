@@ -47,7 +47,6 @@ struct CMemory
 
 	uint8	*ReadMap[MEMMAP_NUM_BLOCKS];
 	uint8	*WriteMap[MEMMAP_NUM_BLOCKS];
-	uint8	ExtendedFormat;
 
 	char	ROMName[ROM_NAME_LEN];
 	char	ROMId[5];
@@ -63,7 +62,8 @@ struct CMemory
 
 	bool8	HiROM;
 	bool8	LoROM;
-	uint8	SRAMSize;
+	uint32	SRAMSize;
+	uint32	SRAMBytes;
 	uint32	SRAMMask;
 	uint32	CalculatedSize;
 	uint32	CalculatedChecksum;
@@ -89,8 +89,6 @@ struct CMemory
 	uint32	map_mirror (uint32, uint32);
 	void	map_lorom (uint32, uint32, uint32, uint32, uint32);
 	void	map_hirom (uint32, uint32, uint32, uint32, uint32);
-	void	map_lorom_offset (uint32, uint32, uint32, uint32, uint32, uint32);
-	void	map_hirom_offset (uint32, uint32, uint32, uint32, uint32, uint32);
 	void	map_space (uint32, uint32, uint32, uint32, uint8 *);
 	void	map_index (uint32, uint32, uint32, uint32, int, int);
 	void	map_System (void);
@@ -101,12 +99,7 @@ struct CMemory
 	void	map_WriteProtectROM (void);
 	void	Map_Initialize (void);
 	void	Map_LoROMMap (void);
-	void	Map_NoMAD1LoROMMap (void);
-	void	Map_JumboLoROMMap (void);
-	void	Map_ROM24MBSLoROMMap (void);
-	void	Map_SRAM512KLoROMMap (void);
 	void	Map_HiROMMap (void);
-	void	Map_ExtendedHiROMMap (void);
 
 	uint16	checksum_calc_sum (uint8 *, uint32);
 	uint16	checksum_mirror_sum (uint8 *, uint32 &, uint32 mask = 0x800000);

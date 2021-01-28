@@ -75,7 +75,6 @@ static char							buf[256];
 	S(QuickSave000), \
 	S(Reset), \
 	S(SaveFreezeFile), \
-	S(SaveSPC), \
 	S(SeekToFrame), \
 	S(SoftReset), \
 	S(SoundChannel0), \
@@ -595,10 +594,6 @@ void S9xApplyCommand (s9xcommand_t cmd, int16 data1, int16 data2)
 						DisplayStateChange("Pause", Settings.Paused);
 						break;
 
-					case SaveSPC:
-						S9xDumpSPCSnapshot();
-						break;
-
 					case SoundChannel0:
 					case SoundChannel1:
 					case SoundChannel2:
@@ -821,9 +816,6 @@ void S9xDoAutoJoypad (void)
 
 void S9xControlEOF (void)
 {
-	PPU.GunVLatch = 1000; // i.e., never latch
-	PPU.GunHLatch = 0;
-
 	for (int n = 0; n < 2; n++)
 	{
 		int i = curcontrollers[n];

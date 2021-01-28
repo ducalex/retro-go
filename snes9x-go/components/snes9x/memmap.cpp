@@ -67,7 +67,7 @@ bool8 CMemory::Init (void)
 	FillRAM = (uint8 *) calloc(1, 0x2800);
     RAM	 = (uint8 *) calloc(1, 0x20000);
     VRAM = (uint8 *) calloc(1, 0x10000);
-    SRAM = (uint8 *) calloc(1, 0x20000);
+    SRAM = (uint8 *) calloc(1, 0x8000);
     ROM  = (uint8 *) calloc(1, ROM_BUFFER_SIZE + 0x200);
 
 	IPPU.TileCacheData = (uint8 *) calloc(4096, 64);
@@ -255,36 +255,10 @@ bool8 CMemory::InitROM ()
 	}
 
 	CalculatedSize = ((ROM_SIZE + 0x1fff) / 0x2000) * 0x2000;
-	ExtendedFormat = NOPE;
-
-	if (CalculatedSize > 0x400000 &&
-		(ROM[0x7fd5] + (ROM[0x7fd6] << 8)) != 0x3423 && // exclude SA-1
-		(ROM[0x7fd5] + (ROM[0x7fd6] << 8)) != 0x3523 &&
-		(ROM[0x7fd5] + (ROM[0x7fd6] << 8)) != 0x4332 && // exclude S-DD1
-		(ROM[0x7fd5] + (ROM[0x7fd6] << 8)) != 0x4532 &&
-		(ROM[0xffd5] + (ROM[0xffd6] << 8)) != 0xF93a && // exclude SPC7110
-		(ROM[0xffd5] + (ROM[0xffd6] << 8)) != 0xF53a)
-		ExtendedFormat = YEAH;
 
 	// CalculatedSize is now set, so rescore
 	int hi_score = ScoreHiROM(FALSE);
 	int lo_score = ScoreLoROM(FALSE);
-
-	if (ExtendedFormat != NOPE)
-	{
-		int swappedhirom = ScoreHiROM(FALSE, 0x400000);
-		int swappedlorom = ScoreLoROM(FALSE, 0x400000);
-
-		// set swapped here
-		if (max(swappedlorom, swappedhirom) >= max(lo_score, hi_score))
-		{
-			ExtendedFormat = BIGFIRST;
-			hi_score = swappedhirom;
-			lo_score = swappedlorom;
-		}
-		else
-			ExtendedFormat = SMALLFIRST;
-	}
 
 	if (Settings.ForceLoROM || (!Settings.ForceHiROM && lo_score >= hi_score))
 	{
@@ -308,25 +282,8 @@ bool8 CMemory::InitROM ()
 		}
 	}
 
-	if (ExtendedFormat == SMALLFIRST)
-	{
-		RG_PANIC("ExHiROM swapping not implemented yet");
-		// uint8	*tmp = (uint8 *) malloc(CalculatedSize - 0x400000);
-		// if (tmp)
-		// {
-		// 	S9xMessage(S9X_INFO, S9X_ROM_INTERLEAVED_INFO, "Fixing swapped ExHiROM...");
-		// 	memmove(tmp, ROM, CalculatedSize - 0x400000);
-		// 	memmove(ROM, ROM + CalculatedSize - 0x400000, 0x400000);
-		// 	memmove(ROM + 0x400000, tmp, CalculatedSize - 0x400000);
-		// 	free(tmp);
-		// }
-	}
-
 	//// Parse ROM header and read ROM informatoin
 	uint8	*RomHeader = ROM + 0x7FB0;
-
-	if (ExtendedFormat == BIGFIRST)
-		RomHeader += 0x400000;
 
 	if (HiROM)
 		RomHeader += 0x8000;
@@ -383,28 +340,11 @@ bool8 CMemory::InitROM ()
 
 	if (HiROM)
     {
-		if (ExtendedFormat != NOPE)
-			Map_ExtendedHiROMMap();
-		else
-			Map_HiROMMap();
+		Map_HiROMMap();
     }
     else
     {
-		if (ExtendedFormat != NOPE)
-			Map_JumboLoROMMap();
-		else
-		if (strncmp(ROMName, "WANDERERS FROM YS", 17) == 0)
-			Map_NoMAD1LoROMMap();
-		else
-		if (strncmp(ROMName, "SOUND NOVEL-TCOOL", 17) == 0 ||
-			strncmp(ROMName, "DERBY STALLION 96", 17) == 0)
-			Map_ROM24MBSLoROMMap();
-		else
-		if (strncmp(ROMName, "THOROUGHBRED BREEDER3", 21) == 0 ||
-			strncmp(ROMName, "RPG-TCOOL 2", 11) == 0)
-			Map_SRAM512KLoROMMap();
-		else
-			Map_LoROMMap();
+		Map_LoROMMap();
     }
 
 	Checksum_Calculate();
@@ -446,6 +386,12 @@ bool8 CMemory::InitROM ()
 
 	// SRAM size
 	SRAMMask = SRAMSize ? ((1 << (SRAMSize + 3)) * 128) - 1 : 0;
+	SRAMBytes = SRAMSize ? ((1 << (SRAMSize + 3)) * 128) : 0;
+
+	if (SRAMBytes > 0x8000)
+	{
+		printf("\n\nWARNING: Default SRAM size too small!, need %d bytes\n\n", SRAMBytes);
+	}
 
 	// checksum
 	if (!isChecksumOK || ((uint32) CalculatedSize > (uint32) (((1 << (ROMSize - 7)) * 128) * 1024)))
@@ -502,67 +448,17 @@ bool8 CMemory::InitROM ()
 
 void CMemory::ClearSRAM (bool8 onlyNonSavedSRAM)
 {
-	memset(SRAM, Settings.SRAMInitialValue, 0x20000);
+	if (SRAMBytes > 0)
+		memset(SRAM, Settings.SRAMInitialValue, SRAMBytes);
 }
 
 bool8 CMemory::LoadSRAM (const char *filename)
 {
-	FILE	*file;
-	int		size, len;
-	char	sramName[PATH_MAX + 1];
-
-	strcpy(sramName, filename);
-
-	ClearSRAM();
-
-	size = SRAMSize ? (1 << (SRAMSize + 3)) * 128 : 0;
-	if (size > 0x20000)
-		size = 0x20000;
-
-	if (size)
-	{
-		file = fopen(sramName, "rb");
-		if (file)
-		{
-			len = fread((char *) SRAM, 1, 0x20000, file);
-			fclose(file);
-			if (len - size == 512)
-				memmove(SRAM, SRAM + 512, size);
-
-			return (TRUE);
-		}
-
-		return (FALSE);
-	}
-
 	return (TRUE);
 }
 
 bool8 CMemory::SaveSRAM (const char *filename)
 {
-	FILE	*file;
-	int		size;
-	char	sramName[PATH_MAX + 1];
-
-	strcpy(sramName, filename);
-
-    size = SRAMSize ? (1 << (SRAMSize + 3)) * 128 : 0;
-	if (size > 0x20000)
-		size = 0x20000;
-
-	if (size)
-	{
-		file = fopen(sramName, "wb");
-		if (file)
-		{
-			if (!fwrite((char *) SRAM, size, 1, file))
-				printf ("Couldn't write to SRAM file.\n");
-			fclose(file);
-
-			return (TRUE);
-		}
-	}
-
 	return (FALSE);
 }
 
@@ -647,36 +543,6 @@ void CMemory::map_hirom (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 add
 			p = (c << 4) | (i >> 12);
 			addr = c << 16;
 			ReadMap[p] = ROM + map_mirror(size, addr);
-		}
-	}
-}
-
-void CMemory::map_lorom_offset (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 addr_e, uint32 size, uint32 offset)
-{
-	uint32	c, i, p, addr;
-
-	for (c = bank_s; c <= bank_e; c++)
-	{
-		for (i = addr_s; i <= addr_e; i += 0x1000)
-		{
-			p = (c << 4) | (i >> 12);
-			addr = ((c - bank_s) & 0x7f) * 0x8000;
-			ReadMap[p] = ROM + offset + map_mirror(size, addr) - (i & 0x8000);
-		}
-	}
-}
-
-void CMemory::map_hirom_offset (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 addr_e, uint32 size, uint32 offset)
-{
-	uint32	c, i, p, addr;
-
-	for (c = bank_s; c <= bank_e; c++)
-	{
-		for (i = addr_s; i <= addr_e; i += 0x1000)
-		{
-			p = (c << 4) | (i >> 12);
-			addr = (c - bank_s) << 16;
-			ReadMap[p] = ROM + offset + map_mirror(size, addr);
 		}
 	}
 }
@@ -819,78 +685,6 @@ void CMemory::Map_LoROMMap (void)
 	map_WriteProtectROM();
 }
 
-void CMemory::Map_NoMAD1LoROMMap (void)
-{
-	printf("Map_NoMAD1LoROMMap\n");
-	map_System();
-
-	map_lorom(0x00, 0x3f, 0x8000, 0xffff, CalculatedSize);
-	map_lorom(0x40, 0x7f, 0x0000, 0xffff, CalculatedSize);
-	map_lorom(0x80, 0xbf, 0x8000, 0xffff, CalculatedSize);
-	map_lorom(0xc0, 0xff, 0x0000, 0xffff, CalculatedSize);
-
-	map_index(0x70, 0x7f, 0x0000, 0xffff, MAP_LOROM_SRAM, MAP_TYPE_RAM);
-	map_index(0xf0, 0xff, 0x0000, 0xffff, MAP_LOROM_SRAM, MAP_TYPE_RAM);
-
-	map_WRAM();
-
-	map_WriteProtectROM();
-}
-
-void CMemory::Map_JumboLoROMMap (void)
-{
-	// XXX: Which game uses this?
-	printf("Map_JumboLoROMMap\n");
-	map_System();
-
-	map_lorom_offset(0x00, 0x3f, 0x8000, 0xffff, CalculatedSize - 0x400000, 0x400000);
-	map_lorom_offset(0x40, 0x7f, 0x0000, 0xffff, CalculatedSize - 0x600000, 0x600000);
-	map_lorom_offset(0x80, 0xbf, 0x8000, 0xffff, 0x400000, 0);
-	map_lorom_offset(0xc0, 0xff, 0x0000, 0xffff, 0x400000, 0x200000);
-
-	map_LoROMSRAM();
-	map_WRAM();
-
-	map_WriteProtectROM();
-}
-
-void CMemory::Map_ROM24MBSLoROMMap (void)
-{
-	// PCB: BSC-1A5M-01, BSC-1A7M-10
-	printf("Map_ROM24MBSLoROMMap\n");
-	map_System();
-
-	map_lorom_offset(0x00, 0x1f, 0x8000, 0xffff, 0x100000, 0);
-	map_lorom_offset(0x20, 0x3f, 0x8000, 0xffff, 0x100000, 0x100000);
-	map_lorom_offset(0x80, 0x9f, 0x8000, 0xffff, 0x100000, 0x200000);
-	map_lorom_offset(0xa0, 0xbf, 0x8000, 0xffff, 0x100000, 0x100000);
-
-	map_LoROMSRAM();
-	map_WRAM();
-
-	map_WriteProtectROM();
-}
-
-void CMemory::Map_SRAM512KLoROMMap (void)
-{
-	printf("Map_SRAM512KLoROMMap\n");
-	map_System();
-
-	map_lorom(0x00, 0x3f, 0x8000, 0xffff, CalculatedSize);
-	map_lorom(0x40, 0x7f, 0x0000, 0xffff, CalculatedSize);
-	map_lorom(0x80, 0xbf, 0x8000, 0xffff, CalculatedSize);
-	map_lorom(0xc0, 0xff, 0x0000, 0xffff, CalculatedSize);
-
-	map_space(0x70, 0x70, 0x0000, 0xffff, SRAM);
-	map_space(0x71, 0x71, 0x0000, 0xffff, SRAM + 0x8000);
-	map_space(0x72, 0x72, 0x0000, 0xffff, SRAM + 0x10000);
-	map_space(0x73, 0x73, 0x0000, 0xffff, SRAM + 0x18000);
-
-	map_WRAM();
-
-	map_WriteProtectROM();
-}
-
 void CMemory::Map_HiROMMap (void)
 {
 	printf("Map_HiROMMap\n");
@@ -903,22 +697,6 @@ void CMemory::Map_HiROMMap (void)
 
 	if (Settings.DSP)
 		map_DSP();
-
-	map_HiROMSRAM();
-	map_WRAM();
-
-	map_WriteProtectROM();
-}
-
-void CMemory::Map_ExtendedHiROMMap (void)
-{
-	printf("Map_ExtendedHiROMMap\n");
-	map_System();
-
-	map_hirom_offset(0x00, 0x3f, 0x8000, 0xffff, CalculatedSize - 0x400000, 0x400000);
-	map_hirom_offset(0x40, 0x7f, 0x0000, 0xffff, CalculatedSize - 0x400000, 0x400000);
-	map_hirom_offset(0x80, 0xbf, 0x8000, 0xffff, 0x400000, 0);
-	map_hirom_offset(0xc0, 0xff, 0x0000, 0xffff, 0x400000, 0);
 
 	map_HiROMSRAM();
 	map_WRAM();
@@ -984,7 +762,7 @@ void CMemory::Checksum_Calculate (void)
 
 const char * CMemory::MapType (void)
 {
-	return (HiROM ? ((ExtendedFormat != NOPE) ? "ExHiROM": "HiROM") : "LoROM");
+	return (HiROM ? "HiROM" : "LoROM");
 }
 
 const char * CMemory::StaticRAMSize (void)
@@ -1015,7 +793,7 @@ const char * CMemory::Revision (void)
 {
 	static char	str[20];
 
-	sprintf(str, "1.%d", HiROM ? ((ExtendedFormat != NOPE) ? ROM[0x40ffdb] : ROM[0xffdb]) : ROM[0x7fdb]);
+	sprintf(str, "1.%d", HiROM ? ROM[0xffdb] : ROM[0x7fdb]);
 
 	return (str);
 }

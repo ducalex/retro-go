@@ -23,6 +23,15 @@
 #define NOT_A_MOVIE_SNAPSHOT	(-5)
 #define SNAPSHOT_INCONSISTENT	(-6)
 
+// Snapshot Messages
+#define SAVE_INFO_SNAPSHOT				"Saved"
+#define SAVE_INFO_LOAD					"Loaded"
+#define SAVE_INFO_OOPS					"Auto-saving 'oops' snapshot"
+#define SAVE_ERR_WRONG_FORMAT			"File not in Snes9x snapshot format"
+#define SAVE_ERR_WRONG_VERSION			"Incompatible snapshot version"
+#define SAVE_ERR_ROM_NOT_FOUND			"ROM image \"%s\" for snapshot not found"
+#define SAVE_ERR_SAVE_NOT_FOUND			"Snapshot %s does not exist"
+
 bool8 S9xFreezeGame (const char *);
 uint32 S9xFreezeSize (void);
 bool8 S9xUnfreezeGame (const char *);

@@ -50,30 +50,6 @@ static inline void S9xLatchCounters (bool force)
 
 		Memory.FillRAM[0x213f] |= 0x40;
 	}
-
-	if (CPU.V_Counter >  PPU.GunVLatch || (CPU.V_Counter == PPU.GunVLatch && CPU.Cycles >= PPU.GunHLatch * ONE_DOT_CYCLE))
-		PPU.GunVLatch = 1000;
-}
-
-static inline void S9xTryGunLatch (bool force)
-{
-	if (CPU.V_Counter >  PPU.GunVLatch || (CPU.V_Counter == PPU.GunVLatch && CPU.Cycles >= PPU.GunHLatch * ONE_DOT_CYCLE))
-	{
-		if (force || (Memory.FillRAM[0x4213] & 0x80))
-		{
-		#ifdef DEBUGGER
-			missing.h_v_latch = 1;
-		#endif
-
-			PPU.HVBeamCounterLatched = 1;
-			PPU.VBeamPosLatched = (uint16) PPU.GunVLatch;
-			PPU.HBeamPosLatched = (uint16) PPU.GunHLatch;
-
-			Memory.FillRAM[0x213f] |= 0x40;
-		}
-
-		PPU.GunVLatch = 1000;
-	}
 }
 
 static int CyclesUntilNext (int hc, int vc)
@@ -1115,7 +1091,6 @@ uint8 S9xGetPPU (uint32 Address)
 				return (PPU.OpenBus2 = byte);
 
 			case 0x213c: // OPHCT
-				S9xTryGunLatch(false);
 				if (PPU.HBeamFlip)
 					byte = (PPU.OpenBus2 & 0xfe) | ((PPU.HBeamPosLatched >> 8) & 0x01);
 				else
@@ -1127,7 +1102,6 @@ uint8 S9xGetPPU (uint32 Address)
 				return (PPU.OpenBus2 = byte);
 
 			case 0x213d: // OPVCT
-				S9xTryGunLatch(false);
 				if (PPU.VBeamFlip)
 					byte = (PPU.OpenBus2 & 0xfe) | ((PPU.VBeamPosLatched >> 8) & 0x01);
 				else
@@ -1144,7 +1118,6 @@ uint8 S9xGetPPU (uint32 Address)
 				return (PPU.OpenBus1 = byte);
 
 			case 0x213f: // STAT78
-				S9xTryGunLatch(false);
 				PPU.VBeamFlip = PPU.HBeamFlip = 0;
 				byte = (PPU.OpenBus2 & 0x20) | (Memory.FillRAM[0x213f] & 0xc0) | (Settings.PAL ? 0x10 : 0) | 3;
 				Memory.FillRAM[0x213f] &= ~0x40;
@@ -1358,8 +1331,6 @@ void S9xSetCPU (uint8 Byte, uint32 Address)
 			case 0x4201: // WRIO
 				if ((Byte & 0x80) == 0 && (Memory.FillRAM[0x4213] & 0x80) == 0x80)
 					S9xLatchCounters(1);
-				else
-					S9xTryGunLatch((Byte & 0x80) ? true : false);
 				Memory.FillRAM[0x4201] = Memory.FillRAM[0x4213] = Byte;
 				break;
 
@@ -1741,8 +1712,6 @@ void S9xSoftResetPPU (void)
 	PPU.VBeamFlip = 0;
 	PPU.HBeamPosLatched = 0;
 	PPU.VBeamPosLatched = 0;
-	PPU.GunHLatch = 0;
-	PPU.GunVLatch = 1000;
 	PPU.HVBeamCounterLatched = 0;
 
 	PPU.Mode7HFlip = FALSE;

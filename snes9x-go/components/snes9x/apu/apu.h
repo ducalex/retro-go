@@ -12,7 +12,6 @@
 typedef void (*apu_callback) (void *);
 
 #define SPC_SAVE_STATE_BLOCK_SIZE (1024 * 65)
-#define SPC_FILE_SIZE             (66048)
 
 bool8 S9xInitAPU (void);
 void S9xDeinitAPU (void);
@@ -25,10 +24,7 @@ void S9xAPUEndScanline (void);
 void S9xAPUSetReferenceTime (int32);
 void S9xAPUTimingSetSpeedup (int);
 void S9xAPULoadState (uint8 *);
-void S9xAPULoadBlarggState(uint8 *oldblock);
 void S9xAPUSaveState (uint8 *);
-void S9xDumpSPCSnapshot (void);
-bool8 S9xSPCDump (const char *);
 
 bool8 S9xInitSound (int);
 bool8 S9xOpenSoundDevice (void);
