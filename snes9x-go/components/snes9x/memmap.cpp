@@ -218,18 +218,18 @@ bool8 CMemory::LoadROMMem (const uint8 *source, uint32 sourceSize)
 
 bool8 CMemory::LoadROM (const char *filename)
 {
-	FILE *fp = fopen(filename, "rb");
-	if (!fp)
+	STREAM stream = OPEN_STREAM(filename, "rb");
+	if (!stream)
 		return (FALSE);
 
-	fseek(fp, 0, SEEK_END);
+	REVERT_STREAM(stream, 0, SEEK_END);
 
-	ROM_SIZE = ftell(fp);
+	ROM_SIZE = FIND_STREAM(stream);
 
-	fseek(fp, 0, SEEK_SET);
-	fread(ROM, ROM_BUFFER_SIZE + 0x200, 1, fp);
+	REVERT_STREAM(stream, 0, SEEK_SET);
+	READ_STREAM(ROM, ROM_BUFFER_SIZE + 0x200, stream);
 
-	fclose(fp);
+	CLOSE_STREAM(stream);
 
 	return InitROM();
 }
@@ -260,26 +260,15 @@ bool8 CMemory::InitROM ()
 	int hi_score = ScoreHiROM(FALSE);
 	int lo_score = ScoreLoROM(FALSE);
 
-	if (Settings.ForceLoROM || (!Settings.ForceHiROM && lo_score >= hi_score))
+	LoROM = (lo_score >= hi_score);
+	HiROM = !LoROM;
+
+	// this two games fail to be detected
+	if (strncmp((char *) &ROM[0x7fc0], "YUYU NO QUIZ DE GO!GO!", 22) == 0 ||
+		(strncmp((char *) &ROM[0xffc0], "BATMAN--REVENGE JOKER",  21) == 0))
 	{
 		LoROM = TRUE;
 		HiROM = FALSE;
-	}
-	else
-	{
-		LoROM = FALSE;
-		HiROM = TRUE;
-	}
-
-	// this two games fail to be detected
-	if (!Settings.ForceHiROM && !Settings.ForceLoROM)
-	{
-		if (strncmp((char *) &ROM[0x7fc0], "YUYU NO QUIZ DE GO!GO!", 22) == 0 ||
-		   (strncmp((char *) &ROM[0xffc0], "BATMAN--REVENGE JOKER",  21) == 0))
-		{
-			LoROM = TRUE;
-			HiROM = FALSE;
-		}
 	}
 
 	//// Parse ROM header and read ROM informatoin
@@ -363,12 +352,12 @@ bool8 CMemory::InitROM ()
 
 	if (Settings.PAL)
 	{
-		Settings.FrameTime = Settings.FrameTimePAL;
+		Settings.FrameTime = 20000;
 		ROMFramesPerSecond = 50;
 	}
 	else
 	{
-		Settings.FrameTime = Settings.FrameTimeNTSC;
+		Settings.FrameTime = 16667;
 		ROMFramesPerSecond = 60;
 	}
 
@@ -408,26 +397,13 @@ bool8 CMemory::InitROM ()
 	}
 
 	//// Initialize emulation
-	Timings.H_Max_Master = SNES_CYCLES_PER_SCANLINE;
-	Timings.H_Max        = Timings.H_Max_Master;
-	Timings.HBlankStart  = SNES_HBLANK_START_HC;
-	Timings.HBlankEnd    = SNES_HBLANK_END_HC;
-	Timings.HDMAInit     = SNES_HDMA_INIT_HC;
-	Timings.HDMAStart    = SNES_HDMA_START_HC;
-	Timings.RenderPos    = SNES_RENDER_START_HC;
-	Timings.V_Max_Master = Settings.PAL ? SNES_MAX_PAL_VCOUNTER : SNES_MAX_NTSC_VCOUNTER;
-	Timings.V_Max        = Timings.V_Max_Master;
+	Timings.H_Max        = SNES_CYCLES_PER_SCANLINE;
+	Timings.V_Max        = (Settings.PAL ? SNES_MAX_PAL_VCOUNTER : SNES_MAX_NTSC_VCOUNTER);
 	/* From byuu: The total delay time for both the initial (H)DMA sync (to the DMA clock),
 	   and the end (H)DMA sync (back to the last CPU cycle's mcycle rate (6, 8, or 12)) always takes between 12-24 mcycles.
 	   Possible delays: { 12, 14, 16, 18, 20, 22, 24 }
 	   XXX: Snes9x can't emulate this timing :( so let's use the average value... */
 	Timings.DMACPUSync   = 18;
-	/* If the CPU is halted (i.e. for DMA) while /NMI goes low, the NMI will trigger
-	   after the DMA completes (even if /NMI goes high again before the DMA
-	   completes). In this case, there is a 24-30 cycle delay between the end of DMA
-	   and the NMI handler, time enough for an instruction or two. */
-	// Wild Guns, Mighty Morphin Power Rangers - The Fighting Edition
-	Timings.NMIDMADelay  = 24;
 
 	IPPU.TotalEmulatedFrames = 0;
 
@@ -896,7 +872,6 @@ bool8 CMemory::match_nn (const char *str)
 
 void CMemory::ApplyROMFixes (void)
 {
-	Settings.BlockInvalidVRAMAccess = true;
 	Settings.UniracersHack = FALSE;
 	Settings.SRAMInitialValue = 0x60;
 
@@ -916,21 +891,15 @@ void CMemory::ApplyROMFixes (void)
 
 	//// APU timing hacks :(
 
-	Timings.APUSpeedup = 0;
+	S9xAPUTimingSetSpeedup(0);
 
 	if (!Settings.DisableGameSpecificHacks)
 	{
 		if (match_na("CIRCUIT USA"))
-			Timings.APUSpeedup = 3;
+			S9xAPUTimingSetSpeedup(3);
 	}
 
-	S9xAPUTimingSetSpeedup(Timings.APUSpeedup);
-
 	//// Other timing hacks :(
-
-	Timings.HDMAStart   = SNES_HDMA_START_HC + Settings.HDMATimingHack - 100;
-	Timings.HBlankStart = SNES_HBLANK_START_HC + Timings.HDMAStart - SNES_HDMA_START_HC;
-	Timings.IRQTriggerCycles = 14;
 
 	if (!Settings.DisableGameSpecificHacks)
 	{

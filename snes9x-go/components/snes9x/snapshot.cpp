@@ -80,39 +80,6 @@ enum
 	#field \
 }
 
-#define OBSOLETE_INT_ENTRY(save_version_introduced, save_version_removed, field) \
-{ \
-	DUMMY(field), \
-	0, \
-	sizeof(((struct Obsolete *) NULL)->field), \
-	INT_V, \
-	save_version_introduced, \
-	save_version_removed, \
-	#field \
-}
-
-#define OBSOLETE_ARRAY_ENTRY(save_version_introduced, save_version_removed, field, count, elemType) \
-{ \
-	DUMMY(field), \
-	0, \
-	count, \
-	elemType, \
-	save_version_introduced, \
-	save_version_removed, \
-	#field \
-}
-
-#define OBSOLETE_POINTER_ENTRY(save_version_introduced, save_version_removed, field, relativeToField) \
-{ \
-	DUMMY(field), \
-	DUMMY(relativeToField), \
-	4, \
-	POINTER_V, \
-	save_version_introduced, \
-	save_version_removed, \
-	#field \
-}
-
 #define DELETED_INT_ENTRY(save_version_introduced, save_version_removed, field, size) \
 { \
 	DELETED(field), \
@@ -161,10 +128,8 @@ static struct Obsolete
 static const FreezeData	SnapCPU[] =
 {
 	INT_ENTRY(6, Cycles),
-	INT_ENTRY(6, PrevCycles),
 	INT_ENTRY(6, V_Counter),
 	INT_ENTRY(6, Flags),
-	OBSOLETE_INT_ENTRY(6, 7, CPU_IRQActive),
 	INT_ENTRY(6, IRQPending),
 	INT_ENTRY(6, MemSpeed),
 	INT_ENTRY(6, MemSpeedx2),
@@ -177,14 +142,9 @@ static const FreezeData	SnapCPU[] =
 	INT_ENTRY(6, WhichEvent),
 	INT_ENTRY(6, NextEvent),
 	INT_ENTRY(6, WaitingForInterrupt),
-	DELETED_INT_ENTRY(6, 7, WaitAddress, 4),
-	DELETED_INT_ENTRY(6, 7, WaitCounter, 4),
-	DELETED_INT_ENTRY(6, 7, PBPCAtOpcodeStart, 4),
 	INT_ENTRY(7, NMIPending),
 	INT_ENTRY(7, IRQLine),
-	INT_ENTRY(7, IRQTransition),
 	INT_ENTRY(7, IRQLastState),
-	INT_ENTRY(7, IRQExternal)
 };
 
 #undef STRUCT
@@ -358,24 +318,13 @@ static const FreezeData	SnapDMA[] =
 
 static const FreezeData	SnapTimings[] =
 {
-	INT_ENTRY(6, H_Max_Master),
 	INT_ENTRY(6, H_Max),
-	INT_ENTRY(6, V_Max_Master),
 	INT_ENTRY(6, V_Max),
-	INT_ENTRY(6, HBlankStart),
-	INT_ENTRY(6, HBlankEnd),
-	INT_ENTRY(6, HDMAInit),
-	INT_ENTRY(6, HDMAStart),
 	INT_ENTRY(6, NMITriggerPos),
 	INT_ENTRY(6, WRAMRefreshPos),
-	INT_ENTRY(6, RenderPos),
 	INT_ENTRY(6, InterlaceField),
 	INT_ENTRY(6, DMACPUSync),
-	INT_ENTRY(6, NMIDMADelay),
 	INT_ENTRY(6, IRQFlagChanging),
-	INT_ENTRY(6, APUSpeedup),
-	INT_ENTRY(7, IRQTriggerCycles),
-	INT_ENTRY(7, APUAllowTimeOverflow),
 	INT_ENTRY(11, NextIRQTimer)
 };
 
@@ -616,13 +565,6 @@ static void SkipBlockWithName(STREAM stream, const char *name);
 
 // QuickSave
 
-uint32 S9xFreezeSize()
-{
-    nulStream stream;
-    S9xFreezeToStream(&stream);
-    return stream.size();
-}
-
 bool8 S9xFreezeGame (const char *filename)
 {
 	STREAM	stream = NULL;
@@ -848,17 +790,12 @@ int S9xUnfreezeFromStream (STREAM stream)
 		CPU.InDMAorHDMA = CPU.InWRAMDMAorHDMA = FALSE;
 		CPU.HDMARanInDMA = 0;
 
-		S9xFixColourBrightness();
-		S9xBuildDirectColourMaps();
 		IPPU.OBJChanged = TRUE;
 		IPPU.RenderThisFrame = TRUE;
 
 		GFX.InterlaceFrame = Timings.InterlaceField;
 
 		S9xGraphicsScreenResize();
-
-		if (GFX.Screen)
-			memset(GFX.Screen, 0, GFX.ScreenSize);
 	}
 
 	if (local_apu_sound)		delete [] local_apu_sound;
@@ -1110,10 +1047,7 @@ static int UnfreezeBlock (STREAM stream, const char *name, uint8 *block, int siz
 		len = size;
 	}
 
-	if (!Settings.FastSavestates)
-	{
-		memset(block, 0, size);
-	}
+	memset(block, 0, size);
 
 	if (READ_STREAM(block, len, stream) != (unsigned int) len)
 	{

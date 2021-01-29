@@ -7,6 +7,7 @@
 #include "snes9x.h"
 #include "memmap.h"
 #include "dma.h"
+#include "tile.h"
 #include "apu/apu.h"
 #include "controls.h"
 #include "display.h"
@@ -38,7 +39,7 @@ static inline void S9xLatchCounters (bool force)
 		// This makes the effective range of hscan_pos 0-339 at all times.
 		int32	hc = CPU.Cycles;
 
-		if (Timings.H_Max == Timings.H_Max_Master) // 1364
+		if (Timings.H_Max == SNES_CYCLES_PER_SCANLINE) // 1364
 		{
 			if (hc >= 1292)
 				hc -= (ONE_DOT_CYCLE / 2);
@@ -61,7 +62,7 @@ static int CyclesUntilNext (int hc, int vc)
 	{
 		// It's still in this frame */
 		// Add number of lines
-		total += (vc - vpos) * Timings.H_Max_Master;
+		total += (vc - vpos) * SNES_CYCLES_PER_SCANLINE;
 		// If line 240 is in there and we're odd, subtract a dot
 		if (vpos <= 240 && vc > 240 && Timings.InterlaceField & !IPPU.Interlace)
 			total -= ONE_DOT_CYCLE;
@@ -73,11 +74,11 @@ static int CyclesUntilNext (int hc, int vc)
 			return hc;
 		}
 
-		total += (Timings.V_Max - vpos) * Timings.H_Max_Master;
+		total += (Timings.V_Max - vpos) * SNES_CYCLES_PER_SCANLINE;
 		if (vpos <= 240 && Timings.InterlaceField && !IPPU.Interlace)
 			total -= ONE_DOT_CYCLE;
 
-		total += (vc) * Timings.H_Max_Master;
+		total += (vc) * SNES_CYCLES_PER_SCANLINE;
 		if (vc > 240 && !Timings.InterlaceField && !IPPU.Interlace)
 			total -= ONE_DOT_CYCLE;
 	}
@@ -89,7 +90,7 @@ static int CyclesUntilNext (int hc, int vc)
 
 void S9xUpdateIRQPositions (bool initial)
 {
-	PPU.HTimerPosition = PPU.IRQHBeamPos * ONE_DOT_CYCLE + Timings.IRQTriggerCycles;
+	PPU.HTimerPosition = PPU.IRQHBeamPos * ONE_DOT_CYCLE + SNES_IRQ_TRIGGER_CYCLES;
 	PPU.HTimerPosition -= PPU.IRQHBeamPos ? 0 : ONE_DOT_CYCLE;
 	PPU.HTimerPosition += PPU.IRQHBeamPos > 322 ? (ONE_DOT_CYCLE / 2) : 0;
 	PPU.HTimerPosition += PPU.IRQHBeamPos > 326 ? (ONE_DOT_CYCLE / 2) : 0;
@@ -108,7 +109,7 @@ void S9xUpdateIRQPositions (bool initial)
 		int v_pos = CPU.V_Counter;
 
 		Timings.NextIRQTimer = PPU.HTimerPosition;
-		if (CPU.Cycles > Timings.NextIRQTimer - Timings.IRQTriggerCycles)
+		if (CPU.Cycles > Timings.NextIRQTimer - SNES_IRQ_TRIGGER_CYCLES)
 		{
 			Timings.NextIRQTimer += Timings.H_Max;
 			v_pos++;
@@ -124,9 +125,9 @@ void S9xUpdateIRQPositions (bool initial)
 	else if (!PPU.HTimerEnabled && PPU.VTimerEnabled)
 	{
 		if (CPU.V_Counter == PPU.VTimerPosition && initial)
-			Timings.NextIRQTimer = CPU.Cycles + Timings.IRQTriggerCycles - ONE_DOT_CYCLE;
+			Timings.NextIRQTimer = CPU.Cycles + SNES_IRQ_TRIGGER_CYCLES - ONE_DOT_CYCLE;
 		else
-			Timings.NextIRQTimer = CyclesUntilNext (Timings.IRQTriggerCycles - ONE_DOT_CYCLE, PPU.VTimerPosition);
+			Timings.NextIRQTimer = CyclesUntilNext (SNES_IRQ_TRIGGER_CYCLES - ONE_DOT_CYCLE, PPU.VTimerPosition);
 	}
 	else
 	{
@@ -152,27 +153,6 @@ void S9xUpdateIRQPositions (bool initial)
 	S9xTraceFormattedMessage("--- IRQ Timer HC:%d VC:%d set %d cycles HTimer:%d Pos:%04d->%04d  VTimer:%d Pos:%03d->%03d", CPU.Cycles, CPU.V_Counter,
 		Timings.NextIRQTimer, PPU.HTimerEnabled, PPU.IRQHBeamPos, PPU.HTimerPosition, PPU.VTimerEnabled, PPU.IRQVBeamPos, PPU.VTimerPosition);
 #endif
-}
-
-void S9xFixColourBrightness (void)
-{
-	IPPU.XB = (uint8 *)mul_brightness[PPU.Brightness];
-
-	for (int i = 0; i < 64; i++)
-	{
-		if (i > IPPU.XB[0x1f])
-			brightness_cap[i] = IPPU.XB[0x1f];
-		else
-			brightness_cap[i] = i;
-	}
-
-	for (int i = 0; i < 256; i++)
-	{
-		int r  = IPPU.XB[(PPU.CGDATA[i])       & 0x1f];
-		int g = IPPU.XB[(PPU.CGDATA[i] >>  5) & 0x1f];
-		int b = IPPU.XB[(PPU.CGDATA[i] >> 10) & 0x1f];
-		IPPU.ScreenColors[i] = BUILD_PIXEL(r, g, b);
-	}
 }
 
 void S9xSetPPU (uint8 Byte, uint32 Address)
@@ -1295,7 +1275,6 @@ void S9xSetCPU (uint8 Byte, uint32 Address)
 				if (!(Byte & 0x10) && !(Byte & 0x20))
 				{
 					CPU.IRQLine = FALSE;
-					CPU.IRQTransition = FALSE;
 				}
 
 				if ((Byte & 0x30) != (Memory.FillRAM[0x4200] & 0x30))
@@ -1583,7 +1562,6 @@ uint8 S9xGetCPU (uint32 Address)
 				{
 					byte = 0x80;
 					CPU.IRQLine = FALSE;
-					CPU.IRQTransition = FALSE;
 				}
 
 				return (byte | (OpenBus & 0x7f));
@@ -1636,6 +1614,9 @@ void S9xResetPPUFast (void)
 	PPU.RecomputeClipWindows = TRUE;
 	IPPU.OBJChanged = TRUE;
 	memset(IPPU.TileCache, 0, sizeof(IPPU.TileCache));
+
+	S9xFixColourBrightness();
+	S9xBuildDirectColourMaps();
 }
 
 void S9xSoftResetPPU (void)

@@ -11,13 +11,7 @@
 #include "font.h"
 #include "display.h"
 
-extern struct SLineData			LineData[240];
-extern struct SLineMatrixData	LineMatrixData[240];
-
 extern void S9xComputeClipWindows (void);
-
-static const int font_width = 8, font_height = 9;
-
 static void SetupOBJ (void);
 static void DrawOBJS (int);
 static void DisplayFrameRate (void);
@@ -30,19 +24,20 @@ static inline void DrawBackgroundMode7 (int, void (*DrawMath) (uint32, uint32, i
 static inline void DrawBackdrop (void);
 static inline void RenderScreen (bool8);
 
+static const int font_width = 8, font_height = 9;
+static struct SLineData	LineData[240];
+
 #define TILE_PLUS(t, x)	(((t) & 0xfc00) | ((t + x) & 0x3ff))
+
 
 bool8 S9xGraphicsInit (void)
 {
-	S9xInitTileRenderer();
-	memset(BlackColourMap, 0, 256 * sizeof(uint16));
-
 	GFX.Pitch = SNES_WIDTH * 2;
 	GFX.RealPPL = GFX.Pitch >> 1;
 	IPPU.OBJChanged = TRUE;
 	Settings.BG_Forced = 0;
-	S9xFixColourBrightness();
-	S9xBuildDirectColourMaps();
+
+	S9xInitTileRenderer();
 
 	GFX.ScreenSize = GFX.Pitch / 2 * SNES_HEIGHT_EXTENDED;
 
@@ -120,18 +115,6 @@ void S9xGraphicsScreenResize (void)
 	GFX.PPL = GFX.RealPPL;
 	IPPU.DoubleHeightPixels = FALSE;
 	IPPU.RenderedScreenHeight = PPU.ScreenHeight;
-}
-
-void S9xBuildDirectColourMaps (void)
-{
-	IPPU.XB = (uint8 *)mul_brightness[PPU.Brightness];
-
-	for (uint32 p = 0; p < 8; p++)
-		for (uint32 c = 0; c < 256; c++)
-			DirectColourMaps[p][c] = BUILD_PIXEL(
-				IPPU.XB[((c & 7) << 2) | ((p & 1) << 1)],
-				IPPU.XB[((c & 0x38) >> 1) | (p & 2)],
-				IPPU.XB[((c & 0xc0) >> 3) | (p & 4)]);
 }
 
 void S9xStartScreenRefresh (void)
@@ -234,15 +217,7 @@ void RenderLine (int C)
 
 		if (PPU.BGMode == 7)
 		{
-			struct SLineMatrixData *p = &LineMatrixData[C];
-			p->MatrixA = PPU.MatrixA;
-			p->MatrixB = PPU.MatrixB;
-			p->MatrixC = PPU.MatrixC;
-			p->MatrixD = PPU.MatrixD;
-			p->CentreX = PPU.CentreX;
-			p->CentreY = PPU.CentreY;
-			p->M7HOFS  = PPU.M7HOFS;
-			p->M7VOFS  = PPU.M7VOFS;
+			S9UpdateLineMatrix(C);
 		}
 		else
 		{
@@ -486,26 +461,21 @@ static void SetupOBJ (void)
 			break;
 	}
 
-	int	inc = IPPU.InterlaceOBJ ? 2 : 1;
-
-	int startline = (IPPU.InterlaceOBJ && GFX.InterlaceFrame) ? 1 : 0;
-
 	// OK, we have three cases here. Either there's no priority, priority is
 	// normal FirstSprite, or priority is FirstSprite+Y. The first two are
 	// easy, the last is somewhat more ... interesting. So we split them up.
 
-	int		Height;
-	uint8	S;
+	int startline = (IPPU.InterlaceOBJ && GFX.InterlaceFrame) ? 1 : 0;
+	int	inc = IPPU.InterlaceOBJ ? 2 : 1;
+	int Height, S;
 
-	if (!PPU.OAMPriorityRotation || !(PPU.OAMFlip & PPU.OAMAddr & 1)) // normal case
-	{
 		uint8	LineOBJ[SNES_HEIGHT_EXTENDED];
 		memset(LineOBJ, 0, sizeof(LineOBJ));
 
 		for (int i = 0; i < SNES_HEIGHT_EXTENDED; i++)
 		{
 			GFX.OBJLines[i].RTOFlags = 0;
-			GFX.OBJLines[i].Tiles = Settings.MaxSpriteTilesPerLine;
+			GFX.OBJLines[i].Tiles = SNES_SPRITE_TILE_PER_LINE;
 			for (int j = 0; j < 32; j++)
 				GFX.OBJLines[i].OBJ[j].Sprite = -1;
 		}
@@ -637,7 +607,7 @@ static void SetupOBJ (void)
 		for (int Y = 0; Y < SNES_HEIGHT_EXTENDED; Y++)
 		{
 			GFX.OBJLines[Y].RTOFlags = Y ? GFX.OBJLines[Y - 1].RTOFlags : 0;
-			GFX.OBJLines[Y].Tiles = Settings.MaxSpriteTilesPerLine;
+			GFX.OBJLines[Y].Tiles = SNES_SPRITE_TILE_PER_LINE;
 
 			uint8	FirstSprite = (PPU.FirstSprite + Y) & 0x7f;
 			S = FirstSprite;

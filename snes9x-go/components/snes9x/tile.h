@@ -10,5 +10,8 @@
 void S9xInitTileRenderer (void);
 void S9xSelectTileRenderers (int, bool8, bool8);
 void S9xSelectTileConverter (int, bool8, bool8, bool8);
+void S9xBuildDirectColourMaps (void);
+void S9UpdateLineMatrix(int line);
+void S9xFixColourBrightness (void);
 
 #endif

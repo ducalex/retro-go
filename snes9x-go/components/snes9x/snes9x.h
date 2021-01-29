@@ -27,43 +27,16 @@
 #define RETRO_LESS_ACCURATE_APU 0
 
 
-#ifdef ZLIB
-#include <zlib.h>
-#define FSTREAM					gzFile
-#define READ_FSTREAM(p, l, s)	gzread(s, p, l)
-#define WRITE_FSTREAM(p, l, s)	gzwrite(s, p, l)
-#define GETS_FSTREAM(p, l, s)	gzgets(s, p, l)
-#define GETC_FSTREAM(s)			gzgetc(s)
-#define OPEN_FSTREAM(f, m)		gzopen(f, m)
-#define REOPEN_FSTREAM(f, m)		gzdopen(f, m)
-#define FIND_FSTREAM(f)			gztell(f)
-#define REVERT_FSTREAM(s, o, p)	gzseek(s, o, p)
-#define CLOSE_FSTREAM(s)			gzclose(s)
-#else
-#define FSTREAM					FILE *
-#define READ_FSTREAM(p, l, s)	fread(p, 1, l, s)
-#define WRITE_FSTREAM(p, l, s)	fwrite(p, 1, l, s)
-#define GETS_FSTREAM(p, l, s)	fgets(p, l, s)
-#define GETC_FSTREAM(s)			fgetc(s)
-#define OPEN_FSTREAM(f, m)		fopen(f, m)
-#define REOPEN_FSTREAM(f, m)		fdopen(f, m)
-#define FIND_FSTREAM(s)			ftell(s)
-#define REVERT_FSTREAM(s, o, p)	fseek(s, o, p)
-#define CLOSE_FSTREAM(s)			fclose(s)
-#endif
+#define STREAM					FILE *
+#define GETS_STREAM(p, l, s)	fgets(p, l, s)
+#define GETC_STREAM(s)			fgetc(s)
+#define READ_STREAM(p, l, s)	fread(p, 1, l, s)
+#define WRITE_STREAM(p, l, s)	fwrite(p, 1, l, s)
+#define OPEN_STREAM(f, m)		fopen(f, m)
+#define FIND_STREAM(s)			ftell(s)
+#define REVERT_STREAM(s, o, p)	fseek(s, o, p)
+#define CLOSE_STREAM(s)			fclose(s)
 
-#include "stream.h"
-
-#define STREAM					Stream *
-#define READ_STREAM(p, l, s)	s->read(p,l)
-#define WRITE_STREAM(p, l, s)	s->write(p,l)
-#define GETS_STREAM(p, l, s)	s->gets(p,l)
-#define GETC_STREAM(s)			s->get_char()
-#define OPEN_STREAM(f, m)		openStreamFromFSTREAM(f, m)
-#define REOPEN_STREAM(f, m)		reopenStreamFromFd(f, m)
-#define FIND_STREAM(s)			s->pos()
-#define REVERT_STREAM(s, o, p)	s->revert(p, o)
-#define CLOSE_STREAM(s)			s->closeStream()
 
 #define SNES_WIDTH					256
 #define SNES_HEIGHT					224
@@ -76,19 +49,15 @@
 #define SNES_MAX_PAL_VCOUNTER		312
 #define SNES_HCOUNTER_MAX			341
 
-#ifndef ALLOW_CPU_OVERCLOCK
 #define ONE_CYCLE					6
 #define SLOW_ONE_CYCLE				8
 #define TWO_CYCLES					12
-#else
-#define ONE_CYCLE      (Settings.OneClockCycle)
-#define SLOW_ONE_CYCLE (Settings.OneSlowClockCycle)
-#define TWO_CYCLES     (Settings.TwoClockCycles)
-#endif
 #define	ONE_DOT_CYCLE				4
 
 #define SNES_CYCLES_PER_SCANLINE	(SNES_HCOUNTER_MAX * ONE_DOT_CYCLE)
 #define SNES_SCANLINE_TIME			(SNES_CYCLES_PER_SCANLINE / NTSC_MASTER_CLOCK)
+
+#define SNES_SPRITE_TILE_PER_LINE	34
 
 #define SNES_WRAM_REFRESH_HC		538
 #define SNES_WRAM_REFRESH_CYCLES	40
@@ -98,6 +67,14 @@
 #define	SNES_HBLANK_END_HC			4						// H=1
 #define	SNES_HDMA_INIT_HC			20						// FIXME: not true
 #define	SNES_RENDER_START_HC		(128 * ONE_DOT_CYCLE)	// FIXME: Snes9x renders a line at a time.
+
+#define SNES_IRQ_TRIGGER_CYCLES		14
+
+/* If the CPU is halted (i.e. for DMA) while /NMI goes low, the NMI will trigger
+	after the DMA completes (even if /NMI goes high again before the DMA
+	completes). In this case, there is a 24-30 cycle delay between the end of DMA
+	and the NMI handler, time enough for an instruction or two. */
+#define SNES_NMI_DMA_DELAY		24
 
 #define SNES_TR_MASK		(1 <<  4)
 #define SNES_TL_MASK		(1 <<  5)
@@ -127,14 +104,11 @@ struct SCPUState
 {
 	uint32	Flags;
 	int32	Cycles;
-	int32	PrevCycles;
 	int32	V_Counter;
 	uint8	*PCBase;
 	bool8	NMIPending;
 	bool8	IRQLine;
-	bool8	IRQTransition;
 	bool8	IRQLastState;
-	bool8	IRQExternal;
 	int32	IRQPending;
 	int32	MemSpeed;
 	int32	MemSpeedx2;
@@ -172,25 +146,14 @@ enum
 
 struct STimings
 {
-	int32	H_Max_Master;
 	int32	H_Max;
-	int32	V_Max_Master;
 	int32	V_Max;
-	int32	HBlankStart;
-	int32	HBlankEnd;
-	int32	HDMAInit;
-	int32	HDMAStart;
 	int32	NMITriggerPos;
 	int32	NextIRQTimer;
-	int32	IRQTriggerCycles;
 	int32	WRAMRefreshPos;
-	int32	RenderPos;
 	bool8	InterlaceField;
 	int32	DMACPUSync;		// The cycles to synchronize DMA and CPU. Snes9x cannot emulate correctly.
-	int32	NMIDMADelay;	// The delay of NMI trigger after DMA transfers. Snes9x cannot emulate correctly.
 	int32	IRQFlagChanging;	// This value is just a hack.
-	int32	APUSpeedup;
-	bool8	APUAllowTimeOverflow;
 };
 
 struct SSettings
@@ -205,13 +168,9 @@ struct SSettings
 
 	uint8	DSP;
 
-	bool8	ForceLoROM;
-	bool8	ForceHiROM;
 	bool8	ForcePAL;
 	bool8	ForceNTSC;
 	bool8	PAL;
-	uint32	FrameTimePAL;
-	uint32	FrameTimeNTSC;
 	uint32	FrameTime;
 
 	bool8	SoundSync;
@@ -239,11 +198,8 @@ struct SSettings
 
 	uint32	SkipFrames;
 	uint32	TurboSkipFrames;
-	uint32	AutoMaxSkipFrames;
 	bool8	TurboMode;
 	bool8	FrameAdvance;
-
-	bool8	FastSavestates;
 
 	bool8	NoPatch;
 	bool8	IgnorePatchChecksum;
@@ -251,15 +207,9 @@ struct SSettings
 	int32	AutoSaveDelay;
 
 	bool8	DisableGameSpecificHacks;
-	bool8	BlockInvalidVRAMAccess;
 	int32	HDMATimingHack;
 	uint8	SRAMInitialValue;
 	uint8	UniracersHack;
-
-	int	OneClockCycle;
-	int	OneSlowClockCycle;
-	int	TwoClockCycles;
-	int	MaxSpriteTilesPerLine;
 };
 
 void S9xExit(void);

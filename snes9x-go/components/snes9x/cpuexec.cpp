@@ -203,7 +203,7 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 	{
 		case HC_HBLANK_START_EVENT:
 			CPU.WhichEvent = HC_HDMA_START_EVENT;
-			CPU.NextEvent  = Timings.HDMAStart;
+			CPU.NextEvent  = SNES_HDMA_START_HC;
 			break;
 
 		case HC_HDMA_START_EVENT:
@@ -242,10 +242,9 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 				// [PAL] <PAL info is unverified on hardware>
 				// interlace mode has 625 scanlines: 313 on the even frame, and 312 on the odd.
 				// non-interlace mode has 624 scanlines: 312 scanlines on both even and odd frames.
+				Timings.V_Max = (Settings.PAL ? SNES_MAX_PAL_VCOUNTER : SNES_MAX_NTSC_VCOUNTER); // 262 (NTSC), 312?(PAL)
 				if (IPPU.Interlace && !Timings.InterlaceField)
-					Timings.V_Max = Timings.V_Max_Master + 1;	// 263 (NTSC), 313?(PAL)
-				else
-					Timings.V_Max = Timings.V_Max_Master;		// 262 (NTSC), 312?(PAL)
+					Timings.V_Max++;
 
 				Memory.FillRAM[0x213F] ^= 0x80;
 				PPU.RangeTimeOver = 0;
@@ -264,9 +263,9 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 			// and odd frames have 262 scanlines.
 			// Interlace mode scanline 240 on odd frames is not missing a dot.
 			if (CPU.V_Counter == 240 && !IPPU.Interlace && Timings.InterlaceField)	// V=240
-				Timings.H_Max = Timings.H_Max_Master - ONE_DOT_CYCLE;	// HC=1360
+				Timings.H_Max = SNES_CYCLES_PER_SCANLINE - ONE_DOT_CYCLE;	// HC=1360
 			else
-				Timings.H_Max = Timings.H_Max_Master;					// HC=1364
+				Timings.H_Max = SNES_CYCLES_PER_SCANLINE;					// HC=1364
 
 			if (CPU.V_Counter != 240 || IPPU.Interlace || !Timings.InterlaceField)	// V=240
 			{
@@ -333,12 +332,12 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 				S9xStartScreenRefresh();
 
 			CPU.WhichEvent = HC_HDMA_INIT_EVENT;
-			CPU.NextEvent  = Timings.HDMAInit;
+			CPU.NextEvent  = SNES_HDMA_INIT_HC;
 			break;
 
 		case HC_HDMA_INIT_EVENT:
 			CPU.WhichEvent = HC_RENDER_EVENT;
-			CPU.NextEvent  = Timings.RenderPos;
+			CPU.NextEvent  = SNES_RENDER_START_HC;
 
 			if (CPU.V_Counter == 0)
 			{
@@ -364,7 +363,7 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 
 			CPU.Cycles += SNES_WRAM_REFRESH_CYCLES;
 			CPU.WhichEvent = HC_HBLANK_START_EVENT;
-			CPU.NextEvent  = Timings.HBlankStart;
+			CPU.NextEvent  = SNES_HBLANK_START_HC;
 			break;
 	}
 

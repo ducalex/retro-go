@@ -139,8 +139,6 @@ struct SPPU
 	uint8	VBeamFlip;
 	uint16	HBeamPosLatched;
 	uint16	VBeamPosLatched;
-	uint16	GunHLatch;
-	uint16	GunVLatch;
 	uint8	HVBeamCounterLatched;
 
 	bool8	Mode7HFlip;
@@ -203,7 +201,6 @@ uint8 S9xGetPPU (uint32);
 void S9xSetCPU (uint8, uint32);
 uint8 S9xGetCPU (uint32);
 void S9xUpdateIRQPositions (bool initial);
-void S9xFixColourBrightness (void);
 void S9xDoAutoJoypad (void);
 
 #include "gfx.h"
@@ -320,15 +317,12 @@ static inline void REGISTER_2104 (uint8 Byte)
 	if (!PPU.ForcedBlanking && CPU.V_Counter < PPU.ScreenHeight + FIRST_VISIBLE_LINE) \
 	{ \
 		printf("Invalid VRAM acess at (%04d, %04d) blank:%d\n", CPU.Cycles, CPU.V_Counter, PPU.ForcedBlanking); \
-		if (Settings.BlockInvalidVRAMAccess) \
-		{ \
-			PPU.VMA.Address += !PPU.VMA.High ? PPU.VMA.Increment : 0; \
-			return; \
-		} \
+		PPU.VMA.Address += !PPU.VMA.High ? PPU.VMA.Increment : 0; \
+		return; \
 	}
 #else
 #define CHECK_INBLANK() \
-	if (Settings.BlockInvalidVRAMAccess && !PPU.ForcedBlanking && CPU.V_Counter < PPU.ScreenHeight + FIRST_VISIBLE_LINE) \
+	if (!PPU.ForcedBlanking && CPU.V_Counter < PPU.ScreenHeight + FIRST_VISIBLE_LINE) \
 	{ \
 		PPU.VMA.Address += !PPU.VMA.High ? PPU.VMA.Increment : 0; \
 		return; \
@@ -404,15 +398,12 @@ static inline void REGISTER_2118_linear (uint8 Byte)
     if (!PPU.ForcedBlanking && CPU.V_Counter < PPU.ScreenHeight + FIRST_VISIBLE_LINE) \
     { \
         printf("Invalid VRAM acess at (%04d, %04d) blank:%d\n", CPU.Cycles, CPU.V_Counter, PPU.ForcedBlanking); \
-        if (Settings.BlockInvalidVRAMAccess) \
-        { \
-            PPU.VMA.Address += PPU.VMA.High ? PPU.VMA.Increment : 0; \
-            return; \
-        } \
+		PPU.VMA.Address += PPU.VMA.High ? PPU.VMA.Increment : 0; \
+		return; \
     }
 #else
 #define CHECK_INBLANK() \
-        if (Settings.BlockInvalidVRAMAccess && !PPU.ForcedBlanking && CPU.V_Counter < PPU.ScreenHeight + FIRST_VISIBLE_LINE) \
+        if (!PPU.ForcedBlanking && CPU.V_Counter < PPU.ScreenHeight + FIRST_VISIBLE_LINE) \
         { \
             PPU.VMA.Address += PPU.VMA.High ? PPU.VMA.Increment : 0; \
             return; \
@@ -511,7 +502,7 @@ static inline uint8 REGISTER_4212 (void)
 
     if ((CPU.V_Counter >= PPU.ScreenHeight + FIRST_VISIBLE_LINE) && (CPU.V_Counter < PPU.ScreenHeight + FIRST_VISIBLE_LINE + 3))
 		byte = 1;
-	if ((CPU.Cycles < Timings.HBlankEnd) || (CPU.Cycles >= Timings.HBlankStart))
+	if ((CPU.Cycles < SNES_HBLANK_END_HC) || (CPU.Cycles >= SNES_HBLANK_START_HC))
 		byte |= 0x40;
     if (CPU.V_Counter >= PPU.ScreenHeight + FIRST_VISIBLE_LINE)
 		byte |= 0x80;

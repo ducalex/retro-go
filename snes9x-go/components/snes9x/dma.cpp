@@ -879,7 +879,7 @@ bool8 S9xDoDMA (uint8 Channel)
 
 	if (CPU.NMIPending && (Timings.NMITriggerPos != 0xffff))
 	{
-		Timings.NMITriggerPos = CPU.Cycles + Timings.NMIDMADelay;
+		Timings.NMITriggerPos = CPU.Cycles + SNES_NMI_DMA_DELAY;
 	}
 
 #if 0

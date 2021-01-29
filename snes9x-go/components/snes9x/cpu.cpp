@@ -32,14 +32,11 @@ static void S9xResetCPU (void)
 static void S9xSoftResetCPU (void)
 {
 	CPU.Cycles = 182; // Or 188. This is the cycle count just after the jump to the Reset Vector.
-	CPU.PrevCycles = CPU.Cycles;
 	CPU.V_Counter = 0;
 	CPU.Flags = CPU.Flags & (DEBUG_MODE_FLAG | TRACE_FLAG);
 	CPU.PCBase = NULL;
 	CPU.NMIPending = FALSE;
 	CPU.IRQLine = FALSE;
-	CPU.IRQTransition = FALSE;
-	CPU.IRQExternal = FALSE;
 	CPU.MemSpeed = SLOW_ONE_CYCLE;
 	CPU.MemSpeedx2 = SLOW_ONE_CYCLE * 2;
 	CPU.FastROMSpeed = SLOW_ONE_CYCLE;
@@ -50,7 +47,7 @@ static void S9xSoftResetCPU (void)
 	CPU.HDMARanInDMA = 0;
 	CPU.CurrentDMAorHDMAChannel = -1;
 	CPU.WhichEvent = HC_RENDER_EVENT;
-	CPU.NextEvent  = Timings.RenderPos;
+	CPU.NextEvent  = SNES_RENDER_START_HC;
 	CPU.WaitingForInterrupt = FALSE;
 	CPU.AutoSaveTimer = 0;
 	CPU.SRAMModified = FALSE;
@@ -72,8 +69,8 @@ static void S9xSoftResetCPU (void)
 	ClearFlags(Decimal);
 
 	Timings.InterlaceField = FALSE;
-	Timings.H_Max = Timings.H_Max_Master;
-	Timings.V_Max = Timings.V_Max_Master;
+	Timings.H_Max = SNES_CYCLES_PER_SCANLINE;
+	Timings.V_Max = (Settings.PAL ? SNES_MAX_PAL_VCOUNTER : SNES_MAX_NTSC_VCOUNTER);
 	Timings.NMITriggerPos = 0xffff;
 	Timings.NextIRQTimer = 0x0fffffff;
 	Timings.IRQFlagChanging = IRQ_NONE;
