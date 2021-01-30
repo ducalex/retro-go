@@ -467,11 +467,13 @@ static void SetupOBJ (void)
 
 	int startline = (IPPU.InterlaceOBJ && GFX.InterlaceFrame) ? 1 : 0;
 	int	inc = IPPU.InterlaceOBJ ? 2 : 1;
-	int Height, S;
+	int Height;
 
-		uint8	LineOBJ[SNES_HEIGHT_EXTENDED];
-		memset(LineOBJ, 0, sizeof(LineOBJ));
+	uint8	LineOBJ[SNES_HEIGHT_EXTENDED];
+	memset(LineOBJ, 0, sizeof(LineOBJ));
 
+	if (!PPU.OAMPriorityRotation || !(PPU.OAMFlip & PPU.OAMAddr & 1)) // normal case
+	{
 		for (int i = 0; i < SNES_HEIGHT_EXTENDED; i++)
 		{
 			GFX.OBJLines[i].RTOFlags = 0;
@@ -480,8 +482,8 @@ static void SetupOBJ (void)
 				GFX.OBJLines[i].OBJ[j].Sprite = -1;
 		}
 
-		uint8	FirstSprite = PPU.FirstSprite;
-		S = FirstSprite;
+		int	FirstSprite = PPU.FirstSprite;
+		int S = FirstSprite;
 
 		do
 		{
@@ -545,17 +547,13 @@ static void SetupOBJ (void)
 	}
 	else // evil FirstSprite+Y case
 	{
-		// First, find out which sprites are on which lines
-		uint8 OBJOnLine[SNES_HEIGHT_EXTENDED][128];
-		// memset(OBJOnLine, 0, sizeof(OBJOnLine));
-		/* Hold on here, that's a lot of bytes to initialise at once!
-		 * So we only initialise them per line, as needed. [Neb]
-		 * Bonus: We can quickly avoid looping if a line has no OBJs.
-		 */
-        bool8 AnyOBJOnLine[SNES_HEIGHT_EXTENDED];
-        memset(AnyOBJOnLine, FALSE, sizeof(AnyOBJOnLine)); // better
+		// printf("evil FirstSprite+Y case\n");
 
-		for (S = 0; S < 128; S++)
+		// We can't afford 30K of ram, we abuse the tile cache instead
+		uint8 *OBJOnLine = (uint8 *)IPPU.TileCacheData;
+		memset(IPPU.TileCache, 0, (SNES_HEIGHT_EXTENDED * 128) / 64);
+
+		for (int S = 0; S < 128; S++)
 		{
 			if (PPU.OBJ[S].Size)
 			{
@@ -587,17 +585,17 @@ static void SetupOBJ (void)
 					if (Y >= SNES_HEIGHT_EXTENDED)
 						continue;
 
-					if (!AnyOBJOnLine[Y]) {
-						memset(OBJOnLine[Y], 0, sizeof(OBJOnLine[Y]));
-						AnyOBJOnLine[Y] = TRUE;
+					if (!LineOBJ[Y]) {
+						memset(OBJOnLine + (Y * 128), 0, 128);
+						LineOBJ[Y] = TRUE;
 					}
 
 					if (PPU.OBJ[S].VFlip)
 						// Yes, Width not Height. It so happens that the
 						// sprites with H=2*W flip as two WxW sprites.
-						OBJOnLine[Y][S] = (line ^ (GFX.OBJWidths[S] - 1)) | 0x80;
+						OBJOnLine[(Y * 128) + S] = (line ^ (GFX.OBJWidths[S] - 1)) | 0x80;
 					else
-						OBJOnLine[Y][S] = line | 0x80;
+						OBJOnLine[(Y * 128) + S] = line | 0x80;
 				}
 			}
 		}
@@ -609,15 +607,15 @@ static void SetupOBJ (void)
 			GFX.OBJLines[Y].RTOFlags = Y ? GFX.OBJLines[Y - 1].RTOFlags : 0;
 			GFX.OBJLines[Y].Tiles = SNES_SPRITE_TILE_PER_LINE;
 
-			uint8	FirstSprite = (PPU.FirstSprite + Y) & 0x7f;
-			S = FirstSprite;
+			int	FirstSprite = (PPU.FirstSprite + Y) & 0x7f;
+			int S = FirstSprite;
 			j = 0;
 
-			if (AnyOBJOnLine[Y])
+			if (LineOBJ[Y])
 			{
 				do
 				{
-					if (OBJOnLine[Y][S])
+					if (OBJOnLine[(Y * 128) + S])
 					{
 						if (j >= 32)
 						{
@@ -629,7 +627,7 @@ static void SetupOBJ (void)
 						if (GFX.OBJLines[Y].Tiles < 0)
 							GFX.OBJLines[Y].RTOFlags |= 0x80;
 						GFX.OBJLines[Y].OBJ[j].Sprite = S;
-						GFX.OBJLines[Y].OBJ[j++].Line = OBJOnLine[Y][S] & ~0x80;
+						GFX.OBJLines[Y].OBJ[j++].Line = OBJOnLine[(Y * 128) + S] & ~0x80;
 					}
 
 					S = (S + 1) & 0x7f;
@@ -639,6 +637,8 @@ static void SetupOBJ (void)
 			if (j < 32)
 				GFX.OBJLines[Y].OBJ[j].Sprite = -1;
 		}
+
+		free(OBJOnLine);
 	}
 
 	IPPU.OBJChanged = FALSE;

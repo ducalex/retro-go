@@ -9,8 +9,8 @@
 
 #include "snes9x.h"
 
-#define SNAPSHOT_MAGIC			"#!s9xsnp"
-#define SNAPSHOT_VERSION		10
+#define SNAPSHOT_MAGIC			"#!s9x-rg"
+#define SNAPSHOT_VERSION		11
 
 #define SUCCESS					(1)
 #define WRONG_FORMAT			(-1)
@@ -31,7 +31,5 @@
 
 bool8 S9xFreezeGame (const char *);
 bool8 S9xUnfreezeGame (const char *);
-void S9xFreezeToStream (STREAM);
-int	 S9xUnfreezeFromStream (STREAM);
 
 #endif
