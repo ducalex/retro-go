@@ -1357,49 +1357,49 @@ mOPM (0CSlow,   AbsoluteSlow,                     WRAP_BANK, TSB)
 /* Branch Instructions ***************************************************** */
 
 // BCC
-bOP(90E0,   Relative,     !CheckCarry(),    0, 0)
-bOP(90E1,   Relative,     !CheckCarry(),    0, 1)
-bOP(90Slow, RelativeSlow, !CheckCarry(),    0, CheckEmulation())
+bOP(90E0,   Immediate8,     !CheckCarry(),    0, 0)
+bOP(90E1,   Immediate8,     !CheckCarry(),    0, 1)
+bOP(90Slow, Immediate8Slow, !CheckCarry(),    0, CheckEmulation())
 
 // BCS
-bOP(B0E0,   Relative,      CheckCarry(),    0, 0)
-bOP(B0E1,   Relative,      CheckCarry(),    0, 1)
-bOP(B0Slow, RelativeSlow,  CheckCarry(),    0, CheckEmulation())
+bOP(B0E0,   Immediate8,      CheckCarry(),    0, 0)
+bOP(B0E1,   Immediate8,      CheckCarry(),    0, 1)
+bOP(B0Slow, Immediate8Slow,  CheckCarry(),    0, CheckEmulation())
 
 // BEQ
-bOP(F0E0,   Relative,      CheckZero(),     2, 0)
-bOP(F0E1,   Relative,      CheckZero(),     2, 1)
-bOP(F0Slow, RelativeSlow,  CheckZero(),     2, CheckEmulation())
+bOP(F0E0,   Immediate8,      CheckZero(),     2, 0)
+bOP(F0E1,   Immediate8,      CheckZero(),     2, 1)
+bOP(F0Slow, Immediate8Slow,  CheckZero(),     2, CheckEmulation())
 
 // BMI
-bOP(30E0,   Relative,      CheckNegative(), 1, 0)
-bOP(30E1,   Relative,      CheckNegative(), 1, 1)
-bOP(30Slow, RelativeSlow,  CheckNegative(), 1, CheckEmulation())
+bOP(30E0,   Immediate8,      CheckNegative(), 1, 0)
+bOP(30E1,   Immediate8,      CheckNegative(), 1, 1)
+bOP(30Slow, Immediate8Slow,  CheckNegative(), 1, CheckEmulation())
 
 // BNE
-bOP(D0E0,   Relative,     !CheckZero(),     1, 0)
-bOP(D0E1,   Relative,     !CheckZero(),     1, 1)
-bOP(D0Slow, RelativeSlow, !CheckZero(),     1, CheckEmulation())
+bOP(D0E0,   Immediate8,     !CheckZero(),     1, 0)
+bOP(D0E1,   Immediate8,     !CheckZero(),     1, 1)
+bOP(D0Slow, Immediate8Slow, !CheckZero(),     1, CheckEmulation())
 
 // BPL
-bOP(10E0,   Relative,     !CheckNegative(), 1, 0)
-bOP(10E1,   Relative,     !CheckNegative(), 1, 1)
-bOP(10Slow, RelativeSlow, !CheckNegative(), 1, CheckEmulation())
+bOP(10E0,   Immediate8,     !CheckNegative(), 1, 0)
+bOP(10E1,   Immediate8,     !CheckNegative(), 1, 1)
+bOP(10Slow, Immediate8Slow, !CheckNegative(), 1, CheckEmulation())
 
 // BRA
-bOP(80E0,   Relative,     1,                X, 0)
-bOP(80E1,   Relative,     1,                X, 1)
-bOP(80Slow, RelativeSlow, 1,                X, CheckEmulation())
+bOP(80E0,   Immediate8,     1,                X, 0)
+bOP(80E1,   Immediate8,     1,                X, 1)
+bOP(80Slow, Immediate8Slow, 1,                X, CheckEmulation())
 
 // BVC
-bOP(50E0,   Relative,     !CheckOverflow(), 0, 0)
-bOP(50E1,   Relative,     !CheckOverflow(), 0, 1)
-bOP(50Slow, RelativeSlow, !CheckOverflow(), 0, CheckEmulation())
+bOP(50E0,   Immediate8,     !CheckOverflow(), 0, 0)
+bOP(50E1,   Immediate8,     !CheckOverflow(), 0, 1)
+bOP(50Slow, Immediate8Slow, !CheckOverflow(), 0, CheckEmulation())
 
 // BVS
-bOP(70E0,   Relative,      CheckOverflow(), 0, 0)
-bOP(70E1,   Relative,      CheckOverflow(), 0, 1)
-bOP(70Slow, RelativeSlow,  CheckOverflow(), 0, CheckEmulation())
+bOP(70E0,   Immediate8,      CheckOverflow(), 0, 0)
+bOP(70E1,   Immediate8,      CheckOverflow(), 0, 1)
+bOP(70Slow, Immediate8Slow,  CheckOverflow(), 0, CheckEmulation())
 
 // BRL
 static void Op82 (void)
@@ -3302,344 +3302,346 @@ static void Op42 (void)
 
 /* CPU-S9xOpcodes Definitions ************************************************/
 
-DRAM_ATTR const struct SOpcodes S9xOpcodesM1X1[256] =
+const S9xOpcode S9xOpcodesM1X1[256] =
 {
-	{ Op00 },        { Op01E0M1 },    { Op02 },        { Op03M1 },      { Op04M1 },
-	{ Op05M1 },      { Op06M1 },      { Op07M1 },      { Op08E0 },      { Op09M1 },
-	{ Op0AM1 },      { Op0BE0 },      { Op0CM1 },      { Op0DM1 },      { Op0EM1 },
-	{ Op0FM1 },      { Op10E0 },      { Op11E0M1X1 },  { Op12E0M1 },    { Op13M1 },
-	{ Op14M1 },      { Op15E0M1 },    { Op16E0M1 },    { Op17M1 },      { Op18 },
-	{ Op19M1X1 },    { Op1AM1 },      { Op1B },        { Op1CM1 },      { Op1DM1X1 },
-	{ Op1EM1X1 },    { Op1FM1 },      { Op20E0 },      { Op21E0M1 },    { Op22E0 },
-	{ Op23M1 },      { Op24M1 },      { Op25M1 },      { Op26M1 },      { Op27M1 },
-	{ Op28E0 },      { Op29M1 },      { Op2AM1 },      { Op2BE0 },      { Op2CM1 },
-	{ Op2DM1 },      { Op2EM1 },      { Op2FM1 },      { Op30E0 },      { Op31E0M1X1 },
-	{ Op32E0M1 },    { Op33M1 },      { Op34E0M1 },    { Op35E0M1 },    { Op36E0M1 },
-	{ Op37M1 },      { Op38 },        { Op39M1X1 },    { Op3AM1 },      { Op3B },
-	{ Op3CM1X1 },    { Op3DM1X1 },    { Op3EM1X1 },    { Op3FM1 },      { Op40Slow },
-	{ Op41E0M1 },    { Op42 },        { Op43M1 },      { Op44X1 },      { Op45M1 },
-	{ Op46M1 },      { Op47M1 },      { Op48E0M1 },    { Op49M1 },      { Op4AM1 },
-	{ Op4BE0 },      { Op4C },        { Op4DM1 },      { Op4EM1 },      { Op4FM1 },
-	{ Op50E0 },      { Op51E0M1X1 },  { Op52E0M1 },    { Op53M1 },      { Op54X1 },
-	{ Op55E0M1 },    { Op56E0M1 },    { Op57M1 },      { Op58 },        { Op59M1X1 },
-	{ Op5AE0X1 },    { Op5B },        { Op5C },        { Op5DM1X1 },    { Op5EM1X1 },
-	{ Op5FM1 },      { Op60E0 },      { Op61E0M1 },    { Op62E0 },      { Op63M1 },
-	{ Op64M1 },      { Op65M1 },      { Op66M1 },      { Op67M1 },      { Op68E0M1 },
-	{ Op69M1 },      { Op6AM1 },      { Op6BE0 },      { Op6C },        { Op6DM1 },
-	{ Op6EM1 },      { Op6FM1 },      { Op70E0 },      { Op71E0M1X1 },  { Op72E0M1 },
-	{ Op73M1 },      { Op74E0M1 },    { Op75E0M1 },    { Op76E0M1 },    { Op77M1 },
-	{ Op78 },        { Op79M1X1 },    { Op7AE0X1 },    { Op7B },        { Op7C },
-	{ Op7DM1X1 },    { Op7EM1X1 },    { Op7FM1 },      { Op80E0 },      { Op81E0M1 },
-	{ Op82 },        { Op83M1 },      { Op84X1 },      { Op85M1 },      { Op86X1 },
-	{ Op87M1 },      { Op88X1 },      { Op89M1 },      { Op8AM1 },      { Op8BE0 },
-	{ Op8CX1 },      { Op8DM1 },      { Op8EX1 },      { Op8FM1 },      { Op90E0 },
-	{ Op91E0M1X1 },  { Op92E0M1 },    { Op93M1 },      { Op94E0X1 },    { Op95E0M1 },
-	{ Op96E0X1 },    { Op97M1 },      { Op98M1 },      { Op99M1X1 },    { Op9A },
-	{ Op9BX1 },      { Op9CM1 },      { Op9DM1X1 },    { Op9EM1X1 },    { Op9FM1 },
-	{ OpA0X1 },      { OpA1E0M1 },    { OpA2X1 },      { OpA3M1 },      { OpA4X1 },
-	{ OpA5M1 },      { OpA6X1 },      { OpA7M1 },      { OpA8X1 },      { OpA9M1 },
-	{ OpAAX1 },      { OpABE0 },      { OpACX1 },      { OpADM1 },      { OpAEX1 },
-	{ OpAFM1 },      { OpB0E0 },      { OpB1E0M1X1 },  { OpB2E0M1 },    { OpB3M1 },
-	{ OpB4E0X1 },    { OpB5E0M1 },    { OpB6E0X1 },    { OpB7M1 },      { OpB8 },
-	{ OpB9M1X1 },    { OpBAX1 },      { OpBBX1 },      { OpBCX1 },      { OpBDM1X1 },
-	{ OpBEX1 },      { OpBFM1 },      { OpC0X1 },      { OpC1E0M1 },    { OpC2 },
-	{ OpC3M1 },      { OpC4X1 },      { OpC5M1 },      { OpC6M1 },      { OpC7M1 },
-	{ OpC8X1 },      { OpC9M1 },      { OpCAX1 },      { OpCB },        { OpCCX1 },
-	{ OpCDM1 },      { OpCEM1 },      { OpCFM1 },      { OpD0E0 },      { OpD1E0M1X1 },
-	{ OpD2E0M1 },    { OpD3M1 },      { OpD4E0 },      { OpD5E0M1 },    { OpD6E0M1 },
-	{ OpD7M1 },      { OpD8 },        { OpD9M1X1 },    { OpDAE0X1 },    { OpDB },
-	{ OpDC },        { OpDDM1X1 },    { OpDEM1X1 },    { OpDFM1 },      { OpE0X1 },
-	{ OpE1E0M1 },    { OpE2 },        { OpE3M1 },      { OpE4X1 },      { OpE5M1 },
-	{ OpE6M1 },      { OpE7M1 },      { OpE8X1 },      { OpE9M1 },      { OpEA },
-	{ OpEB },        { OpECX1 },      { OpEDM1 },      { OpEEM1 },      { OpEFM1 },
-	{ OpF0E0 },      { OpF1E0M1X1 },  { OpF2E0M1 },    { OpF3M1 },      { OpF4E0 },
-	{ OpF5E0M1 },    { OpF6E0M1 },    { OpF7M1 },      { OpF8 },        { OpF9M1X1 },
-	{ OpFAE0X1 },    { OpFB },        { OpFCE0 },      { OpFDM1X1 },    { OpFEM1X1 },
-	{ OpFFM1 }
+	Op00,        Op01E0M1,    Op02,        Op03M1,      Op04M1,
+	Op05M1,      Op06M1,      Op07M1,      Op08E0,      Op09M1,
+	Op0AM1,      Op0BE0,      Op0CM1,      Op0DM1,      Op0EM1,
+	Op0FM1,      Op10E0,      Op11E0M1X1,  Op12E0M1,    Op13M1,
+	Op14M1,      Op15E0M1,    Op16E0M1,    Op17M1,      Op18,
+	Op19M1X1,    Op1AM1,      Op1B,        Op1CM1,      Op1DM1X1,
+	Op1EM1X1,    Op1FM1,      Op20E0,      Op21E0M1,    Op22E0,
+	Op23M1,      Op24M1,      Op25M1,      Op26M1,      Op27M1,
+	Op28E0,      Op29M1,      Op2AM1,      Op2BE0,      Op2CM1,
+	Op2DM1,      Op2EM1,      Op2FM1,      Op30E0,      Op31E0M1X1,
+	Op32E0M1,    Op33M1,      Op34E0M1,    Op35E0M1,    Op36E0M1,
+	Op37M1,      Op38,        Op39M1X1,    Op3AM1,      Op3B,
+	Op3CM1X1,    Op3DM1X1,    Op3EM1X1,    Op3FM1,      Op40Slow,
+	Op41E0M1,    Op42,        Op43M1,      Op44X1,      Op45M1,
+	Op46M1,      Op47M1,      Op48E0M1,    Op49M1,      Op4AM1,
+	Op4BE0,      Op4C,        Op4DM1,      Op4EM1,      Op4FM1,
+	Op50E0,      Op51E0M1X1,  Op52E0M1,    Op53M1,      Op54X1,
+	Op55E0M1,    Op56E0M1,    Op57M1,      Op58,        Op59M1X1,
+	Op5AE0X1,    Op5B,        Op5C,        Op5DM1X1,    Op5EM1X1,
+	Op5FM1,      Op60E0,      Op61E0M1,    Op62E0,      Op63M1,
+	Op64M1,      Op65M1,      Op66M1,      Op67M1,      Op68E0M1,
+	Op69M1,      Op6AM1,      Op6BE0,      Op6C,        Op6DM1,
+	Op6EM1,      Op6FM1,      Op70E0,      Op71E0M1X1,  Op72E0M1,
+	Op73M1,      Op74E0M1,    Op75E0M1,    Op76E0M1,    Op77M1,
+	Op78,        Op79M1X1,    Op7AE0X1,    Op7B,        Op7C,
+	Op7DM1X1,    Op7EM1X1,    Op7FM1,      Op80E0,      Op81E0M1,
+	Op82,        Op83M1,      Op84X1,      Op85M1,      Op86X1,
+	Op87M1,      Op88X1,      Op89M1,      Op8AM1,      Op8BE0,
+	Op8CX1,      Op8DM1,      Op8EX1,      Op8FM1,      Op90E0,
+	Op91E0M1X1,  Op92E0M1,    Op93M1,      Op94E0X1,    Op95E0M1,
+	Op96E0X1,    Op97M1,      Op98M1,      Op99M1X1,    Op9A,
+	Op9BX1,      Op9CM1,      Op9DM1X1,    Op9EM1X1,    Op9FM1,
+	OpA0X1,      OpA1E0M1,    OpA2X1,      OpA3M1,      OpA4X1,
+	OpA5M1,      OpA6X1,      OpA7M1,      OpA8X1,      OpA9M1,
+	OpAAX1,      OpABE0,      OpACX1,      OpADM1,      OpAEX1,
+	OpAFM1,      OpB0E0,      OpB1E0M1X1,  OpB2E0M1,    OpB3M1,
+	OpB4E0X1,    OpB5E0M1,    OpB6E0X1,    OpB7M1,      OpB8,
+	OpB9M1X1,    OpBAX1,      OpBBX1,      OpBCX1,      OpBDM1X1,
+	OpBEX1,      OpBFM1,      OpC0X1,      OpC1E0M1,    OpC2,
+	OpC3M1,      OpC4X1,      OpC5M1,      OpC6M1,      OpC7M1,
+	OpC8X1,      OpC9M1,      OpCAX1,      OpCB,        OpCCX1,
+	OpCDM1,      OpCEM1,      OpCFM1,      OpD0E0,      OpD1E0M1X1,
+	OpD2E0M1,    OpD3M1,      OpD4E0,      OpD5E0M1,    OpD6E0M1,
+	OpD7M1,      OpD8,        OpD9M1X1,    OpDAE0X1,    OpDB,
+	OpDC,        OpDDM1X1,    OpDEM1X1,    OpDFM1,      OpE0X1,
+	OpE1E0M1,    OpE2,        OpE3M1,      OpE4X1,      OpE5M1,
+	OpE6M1,      OpE7M1,      OpE8X1,      OpE9M1,      OpEA,
+	OpEB,        OpECX1,      OpEDM1,      OpEEM1,      OpEFM1,
+	OpF0E0,      OpF1E0M1X1,  OpF2E0M1,    OpF3M1,      OpF4E0,
+	OpF5E0M1,    OpF6E0M1,    OpF7M1,      OpF8,        OpF9M1X1,
+	OpFAE0X1,    OpFB,        OpFCE0,      OpFDM1X1,    OpFEM1X1,
+	OpFFM1
 };
 
-DRAM_ATTR const struct SOpcodes S9xOpcodesE1[256] =
+const S9xOpcode S9xOpcodesE1[256] =
 {
-	{ Op00 },        { Op01E1 },      { Op02 },        { Op03M1 },      { Op04M1 },
-	{ Op05M1 },      { Op06M1 },      { Op07M1 },      { Op08E1 },      { Op09M1 },
-	{ Op0AM1 },      { Op0BE1 },      { Op0CM1 },      { Op0DM1 },      { Op0EM1 },
-	{ Op0FM1 },      { Op10E1 },      { Op11E1 },      { Op12E1 },      { Op13M1 },
-	{ Op14M1 },      { Op15E1 },      { Op16E1 },      { Op17M1 },      { Op18 },
-	{ Op19M1X1 },    { Op1AM1 },      { Op1B },        { Op1CM1 },      { Op1DM1X1 },
-	{ Op1EM1X1 },    { Op1FM1 },      { Op20E1 },      { Op21E1 },      { Op22E1 },
-	{ Op23M1 },      { Op24M1 },      { Op25M1 },      { Op26M1 },      { Op27M1 },
-	{ Op28E1 },      { Op29M1 },      { Op2AM1 },      { Op2BE1 },      { Op2CM1 },
-	{ Op2DM1 },      { Op2EM1 },      { Op2FM1 },      { Op30E1 },      { Op31E1 },
-	{ Op32E1 },      { Op33M1 },      { Op34E1 },      { Op35E1 },      { Op36E1 },
-	{ Op37M1 },      { Op38 },        { Op39M1X1 },    { Op3AM1 },      { Op3B },
-	{ Op3CM1X1 },    { Op3DM1X1 },    { Op3EM1X1 },    { Op3FM1 },      { Op40Slow },
-	{ Op41E1 },      { Op42 },        { Op43M1 },      { Op44X1 },      { Op45M1 },
-	{ Op46M1 },      { Op47M1 },      { Op48E1 },      { Op49M1 },      { Op4AM1 },
-	{ Op4BE1 },      { Op4C },        { Op4DM1 },      { Op4EM1 },      { Op4FM1 },
-	{ Op50E1 },      { Op51E1 },      { Op52E1 },      { Op53M1 },      { Op54X1 },
-	{ Op55E1 },      { Op56E1 },      { Op57M1 },      { Op58 },        { Op59M1X1 },
-	{ Op5AE1 },      { Op5B },        { Op5C },        { Op5DM1X1 },    { Op5EM1X1 },
-	{ Op5FM1 },      { Op60E1 },      { Op61E1 },      { Op62E1 },      { Op63M1 },
-	{ Op64M1 },      { Op65M1 },      { Op66M1 },      { Op67M1 },      { Op68E1 },
-	{ Op69M1 },      { Op6AM1 },      { Op6BE1 },      { Op6C },        { Op6DM1 },
-	{ Op6EM1 },      { Op6FM1 },      { Op70E1 },      { Op71E1 },      { Op72E1 },
-	{ Op73M1 },      { Op74E1 },      { Op75E1 },      { Op76E1 },      { Op77M1 },
-	{ Op78 },        { Op79M1X1 },    { Op7AE1 },      { Op7B },        { Op7C },
-	{ Op7DM1X1 },    { Op7EM1X1 },    { Op7FM1 },      { Op80E1 },      { Op81E1 },
-	{ Op82 },        { Op83M1 },      { Op84X1 },      { Op85M1 },      { Op86X1 },
-	{ Op87M1 },      { Op88X1 },      { Op89M1 },      { Op8AM1 },      { Op8BE1 },
-	{ Op8CX1 },      { Op8DM1 },      { Op8EX1 },      { Op8FM1 },      { Op90E1 },
-	{ Op91E1 },      { Op92E1 },      { Op93M1 },      { Op94E1 },      { Op95E1 },
-	{ Op96E1 },      { Op97M1 },      { Op98M1 },      { Op99M1X1 },    { Op9A },
-	{ Op9BX1 },      { Op9CM1 },      { Op9DM1X1 },    { Op9EM1X1 },    { Op9FM1 },
-	{ OpA0X1 },      { OpA1E1 },      { OpA2X1 },      { OpA3M1 },      { OpA4X1 },
-	{ OpA5M1 },      { OpA6X1 },      { OpA7M1 },      { OpA8X1 },      { OpA9M1 },
-	{ OpAAX1 },      { OpABE1 },      { OpACX1 },      { OpADM1 },      { OpAEX1 },
-	{ OpAFM1 },      { OpB0E1 },      { OpB1E1 },      { OpB2E1 },      { OpB3M1 },
-	{ OpB4E1 },      { OpB5E1 },      { OpB6E1 },      { OpB7M1 },      { OpB8 },
-	{ OpB9M1X1 },    { OpBAX1 },      { OpBBX1 },      { OpBCX1 },      { OpBDM1X1 },
-	{ OpBEX1 },      { OpBFM1 },      { OpC0X1 },      { OpC1E1 },      { OpC2 },
-	{ OpC3M1 },      { OpC4X1 },      { OpC5M1 },      { OpC6M1 },      { OpC7M1 },
-	{ OpC8X1 },      { OpC9M1 },      { OpCAX1 },      { OpCB },        { OpCCX1 },
-	{ OpCDM1 },      { OpCEM1 },      { OpCFM1 },      { OpD0E1 },      { OpD1E1 },
-	{ OpD2E1 },      { OpD3M1 },      { OpD4E1 },      { OpD5E1 },      { OpD6E1 },
-	{ OpD7M1 },      { OpD8 },        { OpD9M1X1 },    { OpDAE1 },      { OpDB },
-	{ OpDC },        { OpDDM1X1 },    { OpDEM1X1 },    { OpDFM1 },      { OpE0X1 },
-	{ OpE1E1 },      { OpE2 },        { OpE3M1 },      { OpE4X1 },      { OpE5M1 },
-	{ OpE6M1 },      { OpE7M1 },      { OpE8X1 },      { OpE9M1 },      { OpEA },
-	{ OpEB },        { OpECX1 },      { OpEDM1 },      { OpEEM1 },      { OpEFM1 },
-	{ OpF0E1 },      { OpF1E1 },      { OpF2E1 },      { OpF3M1 },      { OpF4E1 },
-	{ OpF5E1 },      { OpF6E1 },      { OpF7M1 },      { OpF8 },        { OpF9M1X1 },
-	{ OpFAE1 },      { OpFB },        { OpFCE1 },      { OpFDM1X1 },    { OpFEM1X1 },
-	{ OpFFM1 }
+	Op00,        Op01E1,      Op02,        Op03M1,      Op04M1,
+	Op05M1,      Op06M1,      Op07M1,      Op08E1,      Op09M1,
+	Op0AM1,      Op0BE1,      Op0CM1,      Op0DM1,      Op0EM1,
+	Op0FM1,      Op10E1,      Op11E1,      Op12E1,      Op13M1,
+	Op14M1,      Op15E1,      Op16E1,      Op17M1,      Op18,
+	Op19M1X1,    Op1AM1,      Op1B,        Op1CM1,      Op1DM1X1,
+	Op1EM1X1,    Op1FM1,      Op20E1,      Op21E1,      Op22E1,
+	Op23M1,      Op24M1,      Op25M1,      Op26M1,      Op27M1,
+	Op28E1,      Op29M1,      Op2AM1,      Op2BE1,      Op2CM1,
+	Op2DM1,      Op2EM1,      Op2FM1,      Op30E1,      Op31E1,
+	Op32E1,      Op33M1,      Op34E1,      Op35E1,      Op36E1,
+	Op37M1,      Op38,        Op39M1X1,    Op3AM1,      Op3B,
+	Op3CM1X1,    Op3DM1X1,    Op3EM1X1,    Op3FM1,      Op40Slow,
+	Op41E1,      Op42,        Op43M1,      Op44X1,      Op45M1,
+	Op46M1,      Op47M1,      Op48E1,      Op49M1,      Op4AM1,
+	Op4BE1,      Op4C,        Op4DM1,      Op4EM1,      Op4FM1,
+	Op50E1,      Op51E1,      Op52E1,      Op53M1,      Op54X1,
+	Op55E1,      Op56E1,      Op57M1,      Op58,        Op59M1X1,
+	Op5AE1,      Op5B,        Op5C,        Op5DM1X1,    Op5EM1X1,
+	Op5FM1,      Op60E1,      Op61E1,      Op62E1,      Op63M1,
+	Op64M1,      Op65M1,      Op66M1,      Op67M1,      Op68E1,
+	Op69M1,      Op6AM1,      Op6BE1,      Op6C,        Op6DM1,
+	Op6EM1,      Op6FM1,      Op70E1,      Op71E1,      Op72E1,
+	Op73M1,      Op74E1,      Op75E1,      Op76E1,      Op77M1,
+	Op78,        Op79M1X1,    Op7AE1,      Op7B,        Op7C,
+	Op7DM1X1,    Op7EM1X1,    Op7FM1,      Op80E1,      Op81E1,
+	Op82,        Op83M1,      Op84X1,      Op85M1,      Op86X1,
+	Op87M1,      Op88X1,      Op89M1,      Op8AM1,      Op8BE1,
+	Op8CX1,      Op8DM1,      Op8EX1,      Op8FM1,      Op90E1,
+	Op91E1,      Op92E1,      Op93M1,      Op94E1,      Op95E1,
+	Op96E1,      Op97M1,      Op98M1,      Op99M1X1,    Op9A,
+	Op9BX1,      Op9CM1,      Op9DM1X1,    Op9EM1X1,    Op9FM1,
+	OpA0X1,      OpA1E1,      OpA2X1,      OpA3M1,      OpA4X1,
+	OpA5M1,      OpA6X1,      OpA7M1,      OpA8X1,      OpA9M1,
+	OpAAX1,      OpABE1,      OpACX1,      OpADM1,      OpAEX1,
+	OpAFM1,      OpB0E1,      OpB1E1,      OpB2E1,      OpB3M1,
+	OpB4E1,      OpB5E1,      OpB6E1,      OpB7M1,      OpB8,
+	OpB9M1X1,    OpBAX1,      OpBBX1,      OpBCX1,      OpBDM1X1,
+	OpBEX1,      OpBFM1,      OpC0X1,      OpC1E1,      OpC2,
+	OpC3M1,      OpC4X1,      OpC5M1,      OpC6M1,      OpC7M1,
+	OpC8X1,      OpC9M1,      OpCAX1,      OpCB,        OpCCX1,
+	OpCDM1,      OpCEM1,      OpCFM1,      OpD0E1,      OpD1E1,
+	OpD2E1,      OpD3M1,      OpD4E1,      OpD5E1,      OpD6E1,
+	OpD7M1,      OpD8,        OpD9M1X1,    OpDAE1,      OpDB,
+	OpDC,        OpDDM1X1,    OpDEM1X1,    OpDFM1,      OpE0X1,
+	OpE1E1,      OpE2,        OpE3M1,      OpE4X1,      OpE5M1,
+	OpE6M1,      OpE7M1,      OpE8X1,      OpE9M1,      OpEA,
+	OpEB,        OpECX1,      OpEDM1,      OpEEM1,      OpEFM1,
+	OpF0E1,      OpF1E1,      OpF2E1,      OpF3M1,      OpF4E1,
+	OpF5E1,      OpF6E1,      OpF7M1,      OpF8,        OpF9M1X1,
+	OpFAE1,      OpFB,        OpFCE1,      OpFDM1X1,    OpFEM1X1,
+	OpFFM1
 };
 
-DRAM_ATTR const struct SOpcodes S9xOpcodesM1X0[256] =
+const S9xOpcode S9xOpcodesM1X0[256] =
 {
-	{ Op00 },        { Op01E0M1 },    { Op02 },        { Op03M1 },      { Op04M1 },
-	{ Op05M1 },      { Op06M1 },      { Op07M1 },      { Op08E0 },      { Op09M1 },
-	{ Op0AM1 },      { Op0BE0 },      { Op0CM1 },      { Op0DM1 },      { Op0EM1 },
-	{ Op0FM1 },      { Op10E0 },      { Op11E0M1X0 },  { Op12E0M1 },    { Op13M1 },
-	{ Op14M1 },      { Op15E0M1 },    { Op16E0M1 },    { Op17M1 },      { Op18 },
-	{ Op19M1X0 },    { Op1AM1 },      { Op1B },        { Op1CM1 },      { Op1DM1X0 },
-	{ Op1EM1X0 },    { Op1FM1 },      { Op20E0 },      { Op21E0M1 },    { Op22E0 },
-	{ Op23M1 },      { Op24M1 },      { Op25M1 },      { Op26M1 },      { Op27M1 },
-	{ Op28E0 },      { Op29M1 },      { Op2AM1 },      { Op2BE0 },      { Op2CM1 },
-	{ Op2DM1 },      { Op2EM1 },      { Op2FM1 },      { Op30E0 },      { Op31E0M1X0 },
-	{ Op32E0M1 },    { Op33M1 },      { Op34E0M1 },    { Op35E0M1 },    { Op36E0M1 },
-	{ Op37M1 },      { Op38 },        { Op39M1X0 },    { Op3AM1 },      { Op3B },
-	{ Op3CM1X0 },    { Op3DM1X0 },    { Op3EM1X0 },    { Op3FM1 },      { Op40Slow },
-	{ Op41E0M1 },    { Op42 },        { Op43M1 },      { Op44X0 },      { Op45M1 },
-	{ Op46M1 },      { Op47M1 },      { Op48E0M1 },    { Op49M1 },      { Op4AM1 },
-	{ Op4BE0 },      { Op4C },        { Op4DM1 },      { Op4EM1 },      { Op4FM1 },
-	{ Op50E0 },      { Op51E0M1X0 },  { Op52E0M1 },    { Op53M1 },      { Op54X0 },
-	{ Op55E0M1 },    { Op56E0M1 },    { Op57M1 },      { Op58 },        { Op59M1X0 },
-	{ Op5AE0X0 },    { Op5B },        { Op5C },        { Op5DM1X0 },    { Op5EM1X0 },
-	{ Op5FM1 },      { Op60E0 },      { Op61E0M1 },    { Op62E0 },      { Op63M1 },
-	{ Op64M1 },      { Op65M1 },      { Op66M1 },      { Op67M1 },      { Op68E0M1 },
-	{ Op69M1 },      { Op6AM1 },      { Op6BE0 },      { Op6C },        { Op6DM1 },
-	{ Op6EM1 },      { Op6FM1 },      { Op70E0 },      { Op71E0M1X0 },  { Op72E0M1 },
-	{ Op73M1 },      { Op74E0M1 },    { Op75E0M1 },    { Op76E0M1 },    { Op77M1 },
-	{ Op78 },        { Op79M1X0 },    { Op7AE0X0 },    { Op7B },        { Op7C },
-	{ Op7DM1X0 },    { Op7EM1X0 },    { Op7FM1 },      { Op80E0 },      { Op81E0M1 },
-	{ Op82 },        { Op83M1 },      { Op84X0 },      { Op85M1 },      { Op86X0 },
-	{ Op87M1 },      { Op88X0 },      { Op89M1 },      { Op8AM1 },      { Op8BE0 },
-	{ Op8CX0 },      { Op8DM1 },      { Op8EX0 },      { Op8FM1 },      { Op90E0 },
-	{ Op91E0M1X0 },  { Op92E0M1 },    { Op93M1 },      { Op94E0X0 },    { Op95E0M1 },
-	{ Op96E0X0 },    { Op97M1 },      { Op98M1 },      { Op99M1X0 },    { Op9A },
-	{ Op9BX0 },      { Op9CM1 },      { Op9DM1X0 },    { Op9EM1X0 },    { Op9FM1 },
-	{ OpA0X0 },      { OpA1E0M1 },    { OpA2X0 },      { OpA3M1 },      { OpA4X0 },
-	{ OpA5M1 },      { OpA6X0 },      { OpA7M1 },      { OpA8X0 },      { OpA9M1 },
-	{ OpAAX0 },      { OpABE0 },      { OpACX0 },      { OpADM1 },      { OpAEX0 },
-	{ OpAFM1 },      { OpB0E0 },      { OpB1E0M1X0 },  { OpB2E0M1 },    { OpB3M1 },
-	{ OpB4E0X0 },    { OpB5E0M1 },    { OpB6E0X0 },    { OpB7M1 },      { OpB8 },
-	{ OpB9M1X0 },    { OpBAX0 },      { OpBBX0 },      { OpBCX0 },      { OpBDM1X0 },
-	{ OpBEX0 },      { OpBFM1 },      { OpC0X0 },      { OpC1E0M1 },    { OpC2 },
-	{ OpC3M1 },      { OpC4X0 },      { OpC5M1 },      { OpC6M1 },      { OpC7M1 },
-	{ OpC8X0 },      { OpC9M1 },      { OpCAX0 },      { OpCB },        { OpCCX0 },
-	{ OpCDM1 },      { OpCEM1 },      { OpCFM1 },      { OpD0E0 },      { OpD1E0M1X0 },
-	{ OpD2E0M1 },    { OpD3M1 },      { OpD4E0 },      { OpD5E0M1 },    { OpD6E0M1 },
-	{ OpD7M1 },      { OpD8 },        { OpD9M1X0 },    { OpDAE0X0 },    { OpDB },
-	{ OpDC },        { OpDDM1X0 },    { OpDEM1X0 },    { OpDFM1 },      { OpE0X0 },
-	{ OpE1E0M1 },    { OpE2 },        { OpE3M1 },      { OpE4X0 },      { OpE5M1 },
-	{ OpE6M1 },      { OpE7M1 },      { OpE8X0 },      { OpE9M1 },      { OpEA },
-	{ OpEB },        { OpECX0 },      { OpEDM1 },      { OpEEM1 },      { OpEFM1 },
-	{ OpF0E0 },      { OpF1E0M1X0 },  { OpF2E0M1 },    { OpF3M1 },      { OpF4E0 },
-	{ OpF5E0M1 },    { OpF6E0M1 },    { OpF7M1 },      { OpF8 },        { OpF9M1X0 },
-	{ OpFAE0X0 },    { OpFB },        { OpFCE0 },      { OpFDM1X0 },    { OpFEM1X0 },
-	{ OpFFM1 }
+	Op00,        Op01E0M1,    Op02,        Op03M1,      Op04M1,
+	Op05M1,      Op06M1,      Op07M1,      Op08E0,      Op09M1,
+	Op0AM1,      Op0BE0,      Op0CM1,      Op0DM1,      Op0EM1,
+	Op0FM1,      Op10E0,      Op11E0M1X0,  Op12E0M1,    Op13M1,
+	Op14M1,      Op15E0M1,    Op16E0M1,    Op17M1,      Op18,
+	Op19M1X0,    Op1AM1,      Op1B,        Op1CM1,      Op1DM1X0,
+	Op1EM1X0,    Op1FM1,      Op20E0,      Op21E0M1,    Op22E0,
+	Op23M1,      Op24M1,      Op25M1,      Op26M1,      Op27M1,
+	Op28E0,      Op29M1,      Op2AM1,      Op2BE0,      Op2CM1,
+	Op2DM1,      Op2EM1,      Op2FM1,      Op30E0,      Op31E0M1X0,
+	Op32E0M1,    Op33M1,      Op34E0M1,    Op35E0M1,    Op36E0M1,
+	Op37M1,      Op38,        Op39M1X0,    Op3AM1,      Op3B,
+	Op3CM1X0,    Op3DM1X0,    Op3EM1X0,    Op3FM1,      Op40Slow,
+	Op41E0M1,    Op42,        Op43M1,      Op44X0,      Op45M1,
+	Op46M1,      Op47M1,      Op48E0M1,    Op49M1,      Op4AM1,
+	Op4BE0,      Op4C,        Op4DM1,      Op4EM1,      Op4FM1,
+	Op50E0,      Op51E0M1X0,  Op52E0M1,    Op53M1,      Op54X0,
+	Op55E0M1,    Op56E0M1,    Op57M1,      Op58,        Op59M1X0,
+	Op5AE0X0,    Op5B,        Op5C,        Op5DM1X0,    Op5EM1X0,
+	Op5FM1,      Op60E0,      Op61E0M1,    Op62E0,      Op63M1,
+	Op64M1,      Op65M1,      Op66M1,      Op67M1,      Op68E0M1,
+	Op69M1,      Op6AM1,      Op6BE0,      Op6C,        Op6DM1,
+	Op6EM1,      Op6FM1,      Op70E0,      Op71E0M1X0,  Op72E0M1,
+	Op73M1,      Op74E0M1,    Op75E0M1,    Op76E0M1,    Op77M1,
+	Op78,        Op79M1X0,    Op7AE0X0,    Op7B,        Op7C,
+	Op7DM1X0,    Op7EM1X0,    Op7FM1,      Op80E0,      Op81E0M1,
+	Op82,        Op83M1,      Op84X0,      Op85M1,      Op86X0,
+	Op87M1,      Op88X0,      Op89M1,      Op8AM1,      Op8BE0,
+	Op8CX0,      Op8DM1,      Op8EX0,      Op8FM1,      Op90E0,
+	Op91E0M1X0,  Op92E0M1,    Op93M1,      Op94E0X0,    Op95E0M1,
+	Op96E0X0,    Op97M1,      Op98M1,      Op99M1X0,    Op9A,
+	Op9BX0,      Op9CM1,      Op9DM1X0,    Op9EM1X0,    Op9FM1,
+	OpA0X0,      OpA1E0M1,    OpA2X0,      OpA3M1,      OpA4X0,
+	OpA5M1,      OpA6X0,      OpA7M1,      OpA8X0,      OpA9M1,
+	OpAAX0,      OpABE0,      OpACX0,      OpADM1,      OpAEX0,
+	OpAFM1,      OpB0E0,      OpB1E0M1X0,  OpB2E0M1,    OpB3M1,
+	OpB4E0X0,    OpB5E0M1,    OpB6E0X0,    OpB7M1,      OpB8,
+	OpB9M1X0,    OpBAX0,      OpBBX0,      OpBCX0,      OpBDM1X0,
+	OpBEX0,      OpBFM1,      OpC0X0,      OpC1E0M1,    OpC2,
+	OpC3M1,      OpC4X0,      OpC5M1,      OpC6M1,      OpC7M1,
+	OpC8X0,      OpC9M1,      OpCAX0,      OpCB,        OpCCX0,
+	OpCDM1,      OpCEM1,      OpCFM1,      OpD0E0,      OpD1E0M1X0,
+	OpD2E0M1,    OpD3M1,      OpD4E0,      OpD5E0M1,    OpD6E0M1,
+	OpD7M1,      OpD8,        OpD9M1X0,    OpDAE0X0,    OpDB,
+	OpDC,        OpDDM1X0,    OpDEM1X0,    OpDFM1,      OpE0X0,
+	OpE1E0M1,    OpE2,        OpE3M1,      OpE4X0,      OpE5M1,
+	OpE6M1,      OpE7M1,      OpE8X0,      OpE9M1,      OpEA,
+	OpEB,        OpECX0,      OpEDM1,      OpEEM1,      OpEFM1,
+	OpF0E0,      OpF1E0M1X0,  OpF2E0M1,    OpF3M1,      OpF4E0,
+	OpF5E0M1,    OpF6E0M1,    OpF7M1,      OpF8,        OpF9M1X0,
+	OpFAE0X0,    OpFB,        OpFCE0,      OpFDM1X0,    OpFEM1X0,
+	OpFFM1
 };
 
-DRAM_ATTR const struct SOpcodes S9xOpcodesM0X0[256] =
+const S9xOpcode S9xOpcodesM0X0[256] =
 {
-	{ Op00 },        { Op01E0M0 },    { Op02 },        { Op03M0 },      { Op04M0 },
-	{ Op05M0 },      { Op06M0 },      { Op07M0 },      { Op08E0 },      { Op09M0 },
-	{ Op0AM0 },      { Op0BE0 },      { Op0CM0 },      { Op0DM0 },      { Op0EM0 },
-	{ Op0FM0 },      { Op10E0 },      { Op11E0M0X0 },  { Op12E0M0 },    { Op13M0 },
-	{ Op14M0 },      { Op15E0M0 },    { Op16E0M0 },    { Op17M0 },      { Op18 },
-	{ Op19M0X0 },    { Op1AM0 },      { Op1B },        { Op1CM0 },      { Op1DM0X0 },
-	{ Op1EM0X0 },    { Op1FM0 },      { Op20E0 },      { Op21E0M0 },    { Op22E0 },
-	{ Op23M0 },      { Op24M0 },      { Op25M0 },      { Op26M0 },      { Op27M0 },
-	{ Op28E0 },      { Op29M0 },      { Op2AM0 },      { Op2BE0 },      { Op2CM0 },
-	{ Op2DM0 },      { Op2EM0 },      { Op2FM0 },      { Op30E0 },      { Op31E0M0X0 },
-	{ Op32E0M0 },    { Op33M0 },      { Op34E0M0 },    { Op35E0M0 },    { Op36E0M0 },
-	{ Op37M0 },      { Op38 },        { Op39M0X0 },    { Op3AM0 },      { Op3B },
-	{ Op3CM0X0 },    { Op3DM0X0 },    { Op3EM0X0 },    { Op3FM0 },      { Op40Slow },
-	{ Op41E0M0 },    { Op42 },        { Op43M0 },      { Op44X0 },      { Op45M0 },
-	{ Op46M0 },      { Op47M0 },      { Op48E0M0 },    { Op49M0 },      { Op4AM0 },
-	{ Op4BE0 },      { Op4C },        { Op4DM0 },      { Op4EM0 },      { Op4FM0 },
-	{ Op50E0 },      { Op51E0M0X0 },  { Op52E0M0 },    { Op53M0 },      { Op54X0 },
-	{ Op55E0M0 },    { Op56E0M0 },    { Op57M0 },      { Op58 },        { Op59M0X0 },
-	{ Op5AE0X0 },    { Op5B },        { Op5C },        { Op5DM0X0 },    { Op5EM0X0 },
-	{ Op5FM0 },      { Op60E0 },      { Op61E0M0 },    { Op62E0 },      { Op63M0 },
-	{ Op64M0 },      { Op65M0 },      { Op66M0 },      { Op67M0 },      { Op68E0M0 },
-	{ Op69M0 },      { Op6AM0 },      { Op6BE0 },      { Op6C },        { Op6DM0 },
-	{ Op6EM0 },      { Op6FM0 },      { Op70E0 },      { Op71E0M0X0 },  { Op72E0M0 },
-	{ Op73M0 },      { Op74E0M0 },    { Op75E0M0 },    { Op76E0M0 },    { Op77M0 },
-	{ Op78 },        { Op79M0X0 },    { Op7AE0X0 },    { Op7B },        { Op7C },
-	{ Op7DM0X0 },    { Op7EM0X0 },    { Op7FM0 },      { Op80E0 },      { Op81E0M0 },
-	{ Op82 },        { Op83M0 },      { Op84X0 },      { Op85M0 },      { Op86X0 },
-	{ Op87M0 },      { Op88X0 },      { Op89M0 },      { Op8AM0 },      { Op8BE0 },
-	{ Op8CX0 },      { Op8DM0 },      { Op8EX0 },      { Op8FM0 },      { Op90E0 },
-	{ Op91E0M0X0 },  { Op92E0M0 },    { Op93M0 },      { Op94E0X0 },    { Op95E0M0 },
-	{ Op96E0X0 },    { Op97M0 },      { Op98M0 },      { Op99M0X0 },    { Op9A },
-	{ Op9BX0 },      { Op9CM0 },      { Op9DM0X0 },    { Op9EM0X0 },    { Op9FM0 },
-	{ OpA0X0 },      { OpA1E0M0 },    { OpA2X0 },      { OpA3M0 },      { OpA4X0 },
-	{ OpA5M0 },      { OpA6X0 },      { OpA7M0 },      { OpA8X0 },      { OpA9M0 },
-	{ OpAAX0 },      { OpABE0 },      { OpACX0 },      { OpADM0 },      { OpAEX0 },
-	{ OpAFM0 },      { OpB0E0 },      { OpB1E0M0X0 },  { OpB2E0M0 },    { OpB3M0 },
-	{ OpB4E0X0 },    { OpB5E0M0 },    { OpB6E0X0 },    { OpB7M0 },      { OpB8 },
-	{ OpB9M0X0 },    { OpBAX0 },      { OpBBX0 },      { OpBCX0 },      { OpBDM0X0 },
-	{ OpBEX0 },      { OpBFM0 },      { OpC0X0 },      { OpC1E0M0 },    { OpC2 },
-	{ OpC3M0 },      { OpC4X0 },      { OpC5M0 },      { OpC6M0 },      { OpC7M0 },
-	{ OpC8X0 },      { OpC9M0 },      { OpCAX0 },      { OpCB },        { OpCCX0 },
-	{ OpCDM0 },      { OpCEM0 },      { OpCFM0 },      { OpD0E0 },      { OpD1E0M0X0 },
-	{ OpD2E0M0 },    { OpD3M0 },      { OpD4E0 },      { OpD5E0M0 },    { OpD6E0M0 },
-	{ OpD7M0 },      { OpD8 },        { OpD9M0X0 },    { OpDAE0X0 },    { OpDB },
-	{ OpDC },        { OpDDM0X0 },    { OpDEM0X0 },    { OpDFM0 },      { OpE0X0 },
-	{ OpE1E0M0 },    { OpE2 },        { OpE3M0 },      { OpE4X0 },      { OpE5M0 },
-	{ OpE6M0 },      { OpE7M0 },      { OpE8X0 },      { OpE9M0 },      { OpEA },
-	{ OpEB },        { OpECX0 },      { OpEDM0 },      { OpEEM0 },      { OpEFM0 },
-	{ OpF0E0 },      { OpF1E0M0X0 },  { OpF2E0M0 },    { OpF3M0 },      { OpF4E0 },
-	{ OpF5E0M0 },    { OpF6E0M0 },    { OpF7M0 },      { OpF8 },        { OpF9M0X0 },
-	{ OpFAE0X0 },    { OpFB },        { OpFCE0 },      { OpFDM0X0 },    { OpFEM0X0 },
-	{ OpFFM0 }
+	Op00,        Op01E0M0,    Op02,        Op03M0,      Op04M0,
+	Op05M0,      Op06M0,      Op07M0,      Op08E0,      Op09M0,
+	Op0AM0,      Op0BE0,      Op0CM0,      Op0DM0,      Op0EM0,
+	Op0FM0,      Op10E0,      Op11E0M0X0,  Op12E0M0,    Op13M0,
+	Op14M0,      Op15E0M0,    Op16E0M0,    Op17M0,      Op18,
+	Op19M0X0,    Op1AM0,      Op1B,        Op1CM0,      Op1DM0X0,
+	Op1EM0X0,    Op1FM0,      Op20E0,      Op21E0M0,    Op22E0,
+	Op23M0,      Op24M0,      Op25M0,      Op26M0,      Op27M0,
+	Op28E0,      Op29M0,      Op2AM0,      Op2BE0,      Op2CM0,
+	Op2DM0,      Op2EM0,      Op2FM0,      Op30E0,      Op31E0M0X0,
+	Op32E0M0,    Op33M0,      Op34E0M0,    Op35E0M0,    Op36E0M0,
+	Op37M0,      Op38,        Op39M0X0,    Op3AM0,      Op3B,
+	Op3CM0X0,    Op3DM0X0,    Op3EM0X0,    Op3FM0,      Op40Slow,
+	Op41E0M0,    Op42,        Op43M0,      Op44X0,      Op45M0,
+	Op46M0,      Op47M0,      Op48E0M0,    Op49M0,      Op4AM0,
+	Op4BE0,      Op4C,        Op4DM0,      Op4EM0,      Op4FM0,
+	Op50E0,      Op51E0M0X0,  Op52E0M0,    Op53M0,      Op54X0,
+	Op55E0M0,    Op56E0M0,    Op57M0,      Op58,        Op59M0X0,
+	Op5AE0X0,    Op5B,        Op5C,        Op5DM0X0,    Op5EM0X0,
+	Op5FM0,      Op60E0,      Op61E0M0,    Op62E0,      Op63M0,
+	Op64M0,      Op65M0,      Op66M0,      Op67M0,      Op68E0M0,
+	Op69M0,      Op6AM0,      Op6BE0,      Op6C,        Op6DM0,
+	Op6EM0,      Op6FM0,      Op70E0,      Op71E0M0X0,  Op72E0M0,
+	Op73M0,      Op74E0M0,    Op75E0M0,    Op76E0M0,    Op77M0,
+	Op78,        Op79M0X0,    Op7AE0X0,    Op7B,        Op7C,
+	Op7DM0X0,    Op7EM0X0,    Op7FM0,      Op80E0,      Op81E0M0,
+	Op82,        Op83M0,      Op84X0,      Op85M0,      Op86X0,
+	Op87M0,      Op88X0,      Op89M0,      Op8AM0,      Op8BE0,
+	Op8CX0,      Op8DM0,      Op8EX0,      Op8FM0,      Op90E0,
+	Op91E0M0X0,  Op92E0M0,    Op93M0,      Op94E0X0,    Op95E0M0,
+	Op96E0X0,    Op97M0,      Op98M0,      Op99M0X0,    Op9A,
+	Op9BX0,      Op9CM0,      Op9DM0X0,    Op9EM0X0,    Op9FM0,
+	OpA0X0,      OpA1E0M0,    OpA2X0,      OpA3M0,      OpA4X0,
+	OpA5M0,      OpA6X0,      OpA7M0,      OpA8X0,      OpA9M0,
+	OpAAX0,      OpABE0,      OpACX0,      OpADM0,      OpAEX0,
+	OpAFM0,      OpB0E0,      OpB1E0M0X0,  OpB2E0M0,    OpB3M0,
+	OpB4E0X0,    OpB5E0M0,    OpB6E0X0,    OpB7M0,      OpB8,
+	OpB9M0X0,    OpBAX0,      OpBBX0,      OpBCX0,      OpBDM0X0,
+	OpBEX0,      OpBFM0,      OpC0X0,      OpC1E0M0,    OpC2,
+	OpC3M0,      OpC4X0,      OpC5M0,      OpC6M0,      OpC7M0,
+	OpC8X0,      OpC9M0,      OpCAX0,      OpCB,        OpCCX0,
+	OpCDM0,      OpCEM0,      OpCFM0,      OpD0E0,      OpD1E0M0X0,
+	OpD2E0M0,    OpD3M0,      OpD4E0,      OpD5E0M0,    OpD6E0M0,
+	OpD7M0,      OpD8,        OpD9M0X0,    OpDAE0X0,    OpDB,
+	OpDC,        OpDDM0X0,    OpDEM0X0,    OpDFM0,      OpE0X0,
+	OpE1E0M0,    OpE2,        OpE3M0,      OpE4X0,      OpE5M0,
+	OpE6M0,      OpE7M0,      OpE8X0,      OpE9M0,      OpEA,
+	OpEB,        OpECX0,      OpEDM0,      OpEEM0,      OpEFM0,
+	OpF0E0,      OpF1E0M0X0,  OpF2E0M0,    OpF3M0,      OpF4E0,
+	OpF5E0M0,    OpF6E0M0,    OpF7M0,      OpF8,        OpF9M0X0,
+	OpFAE0X0,    OpFB,        OpFCE0,      OpFDM0X0,    OpFEM0X0,
+	OpFFM0
 };
 
-DRAM_ATTR const struct SOpcodes S9xOpcodesM0X1[256] =
+const S9xOpcode S9xOpcodesM0X1[256] =
 {
-	{ Op00 },        { Op01E0M0 },    { Op02 },        { Op03M0 },      { Op04M0 },
-	{ Op05M0 },      { Op06M0 },      { Op07M0 },      { Op08E0 },      { Op09M0 },
-	{ Op0AM0 },      { Op0BE0 },      { Op0CM0 },      { Op0DM0 },      { Op0EM0 },
-	{ Op0FM0 },      { Op10E0 },      { Op11E0M0X1 },  { Op12E0M0 },    { Op13M0 },
-	{ Op14M0 },      { Op15E0M0 },    { Op16E0M0 },    { Op17M0 },      { Op18 },
-	{ Op19M0X1 },    { Op1AM0 },      { Op1B },        { Op1CM0 },      { Op1DM0X1 },
-	{ Op1EM0X1 },    { Op1FM0 },      { Op20E0 },      { Op21E0M0 },    { Op22E0 },
-	{ Op23M0 },      { Op24M0 },      { Op25M0 },      { Op26M0 },      { Op27M0 },
-	{ Op28E0 },      { Op29M0 },      { Op2AM0 },      { Op2BE0 },      { Op2CM0 },
-	{ Op2DM0 },      { Op2EM0 },      { Op2FM0 },      { Op30E0 },      { Op31E0M0X1 },
-	{ Op32E0M0 },    { Op33M0 },      { Op34E0M0 },    { Op35E0M0 },    { Op36E0M0 },
-	{ Op37M0 },      { Op38 },        { Op39M0X1 },    { Op3AM0 },      { Op3B },
-	{ Op3CM0X1 },    { Op3DM0X1 },    { Op3EM0X1 },    { Op3FM0 },      { Op40Slow },
-	{ Op41E0M0 },    { Op42 },        { Op43M0 },      { Op44X1 },      { Op45M0 },
-	{ Op46M0 },      { Op47M0 },      { Op48E0M0 },    { Op49M0 },      { Op4AM0 },
-	{ Op4BE0 },      { Op4C },        { Op4DM0 },      { Op4EM0 },      { Op4FM0 },
-	{ Op50E0 },      { Op51E0M0X1 },  { Op52E0M0 },    { Op53M0 },      { Op54X1 },
-	{ Op55E0M0 },    { Op56E0M0 },    { Op57M0 },      { Op58 },        { Op59M0X1 },
-	{ Op5AE0X1 },    { Op5B },        { Op5C },        { Op5DM0X1 },    { Op5EM0X1 },
-	{ Op5FM0 },      { Op60E0 },      { Op61E0M0 },    { Op62E0 },      { Op63M0 },
-	{ Op64M0 },      { Op65M0 },      { Op66M0 },      { Op67M0 },      { Op68E0M0 },
-	{ Op69M0 },      { Op6AM0 },      { Op6BE0 },      { Op6C },        { Op6DM0 },
-	{ Op6EM0 },      { Op6FM0 },      { Op70E0 },      { Op71E0M0X1 },  { Op72E0M0 },
-	{ Op73M0 },      { Op74E0M0 },    { Op75E0M0 },    { Op76E0M0 },    { Op77M0 },
-	{ Op78 },        { Op79M0X1 },    { Op7AE0X1 },    { Op7B },        { Op7C },
-	{ Op7DM0X1 },    { Op7EM0X1 },    { Op7FM0 },      { Op80E0 },      { Op81E0M0 },
-	{ Op82 },        { Op83M0 },      { Op84X1 },      { Op85M0 },      { Op86X1 },
-	{ Op87M0 },      { Op88X1 },      { Op89M0 },      { Op8AM0 },      { Op8BE0 },
-	{ Op8CX1 },      { Op8DM0 },      { Op8EX1 },      { Op8FM0 },      { Op90E0 },
-	{ Op91E0M0X1 },  { Op92E0M0 },    { Op93M0 },      { Op94E0X1 },    { Op95E0M0 },
-	{ Op96E0X1 },    { Op97M0 },      { Op98M0 },      { Op99M0X1 },    { Op9A },
-	{ Op9BX1 },      { Op9CM0 },      { Op9DM0X1 },    { Op9EM0X1 },    { Op9FM0 },
-	{ OpA0X1 },      { OpA1E0M0 },    { OpA2X1 },      { OpA3M0 },      { OpA4X1 },
-	{ OpA5M0 },      { OpA6X1 },      { OpA7M0 },      { OpA8X1 },      { OpA9M0 },
-	{ OpAAX1 },      { OpABE0 },      { OpACX1 },      { OpADM0 },      { OpAEX1 },
-	{ OpAFM0 },      { OpB0E0 },      { OpB1E0M0X1 },  { OpB2E0M0 },    { OpB3M0 },
-	{ OpB4E0X1 },    { OpB5E0M0 },    { OpB6E0X1 },    { OpB7M0 },      { OpB8 },
-	{ OpB9M0X1 },    { OpBAX1 },      { OpBBX1 },      { OpBCX1 },      { OpBDM0X1 },
-	{ OpBEX1 },      { OpBFM0 },      { OpC0X1 },      { OpC1E0M0 },    { OpC2 },
-	{ OpC3M0 },      { OpC4X1 },      { OpC5M0 },      { OpC6M0 },      { OpC7M0 },
-	{ OpC8X1 },      { OpC9M0 },      { OpCAX1 },      { OpCB },        { OpCCX1 },
-	{ OpCDM0 },      { OpCEM0 },      { OpCFM0 },      { OpD0E0 },      { OpD1E0M0X1 },
-	{ OpD2E0M0 },    { OpD3M0 },      { OpD4E0 },      { OpD5E0M0 },    { OpD6E0M0 },
-	{ OpD7M0 },      { OpD8 },        { OpD9M0X1 },    { OpDAE0X1 },    { OpDB },
-	{ OpDC },        { OpDDM0X1 },    { OpDEM0X1 },    { OpDFM0 },      { OpE0X1 },
-	{ OpE1E0M0 },    { OpE2 },        { OpE3M0 },      { OpE4X1 },      { OpE5M0 },
-	{ OpE6M0 },      { OpE7M0 },      { OpE8X1 },      { OpE9M0 },      { OpEA },
-	{ OpEB },        { OpECX1 },      { OpEDM0 },      { OpEEM0 },      { OpEFM0 },
-	{ OpF0E0 },      { OpF1E0M0X1 },  { OpF2E0M0 },    { OpF3M0 },      { OpF4E0 },
-	{ OpF5E0M0 },    { OpF6E0M0 },    { OpF7M0 },      { OpF8 },        { OpF9M0X1 },
-	{ OpFAE0X1 },    { OpFB },        { OpFCE0 },      { OpFDM0X1 },    { OpFEM0X1 },
-	{ OpFFM0 }
+	Op00,        Op01E0M0,    Op02,        Op03M0,      Op04M0,
+	Op05M0,      Op06M0,      Op07M0,      Op08E0,      Op09M0,
+	Op0AM0,      Op0BE0,      Op0CM0,      Op0DM0,      Op0EM0,
+	Op0FM0,      Op10E0,      Op11E0M0X1,  Op12E0M0,    Op13M0,
+	Op14M0,      Op15E0M0,    Op16E0M0,    Op17M0,      Op18,
+	Op19M0X1,    Op1AM0,      Op1B,        Op1CM0,      Op1DM0X1,
+	Op1EM0X1,    Op1FM0,      Op20E0,      Op21E0M0,    Op22E0,
+	Op23M0,      Op24M0,      Op25M0,      Op26M0,      Op27M0,
+	Op28E0,      Op29M0,      Op2AM0,      Op2BE0,      Op2CM0,
+	Op2DM0,      Op2EM0,      Op2FM0,      Op30E0,      Op31E0M0X1,
+	Op32E0M0,    Op33M0,      Op34E0M0,    Op35E0M0,    Op36E0M0,
+	Op37M0,      Op38,        Op39M0X1,    Op3AM0,      Op3B,
+	Op3CM0X1,    Op3DM0X1,    Op3EM0X1,    Op3FM0,      Op40Slow,
+	Op41E0M0,    Op42,        Op43M0,      Op44X1,      Op45M0,
+	Op46M0,      Op47M0,      Op48E0M0,    Op49M0,      Op4AM0,
+	Op4BE0,      Op4C,        Op4DM0,      Op4EM0,      Op4FM0,
+	Op50E0,      Op51E0M0X1,  Op52E0M0,    Op53M0,      Op54X1,
+	Op55E0M0,    Op56E0M0,    Op57M0,      Op58,        Op59M0X1,
+	Op5AE0X1,    Op5B,        Op5C,        Op5DM0X1,    Op5EM0X1,
+	Op5FM0,      Op60E0,      Op61E0M0,    Op62E0,      Op63M0,
+	Op64M0,      Op65M0,      Op66M0,      Op67M0,      Op68E0M0,
+	Op69M0,      Op6AM0,      Op6BE0,      Op6C,        Op6DM0,
+	Op6EM0,      Op6FM0,      Op70E0,      Op71E0M0X1,  Op72E0M0,
+	Op73M0,      Op74E0M0,    Op75E0M0,    Op76E0M0,    Op77M0,
+	Op78,        Op79M0X1,    Op7AE0X1,    Op7B,        Op7C,
+	Op7DM0X1,    Op7EM0X1,    Op7FM0,      Op80E0,      Op81E0M0,
+	Op82,        Op83M0,      Op84X1,      Op85M0,      Op86X1,
+	Op87M0,      Op88X1,      Op89M0,      Op8AM0,      Op8BE0,
+	Op8CX1,      Op8DM0,      Op8EX1,      Op8FM0,      Op90E0,
+	Op91E0M0X1,  Op92E0M0,    Op93M0,      Op94E0X1,    Op95E0M0,
+	Op96E0X1,    Op97M0,      Op98M0,      Op99M0X1,    Op9A,
+	Op9BX1,      Op9CM0,      Op9DM0X1,    Op9EM0X1,    Op9FM0,
+	OpA0X1,      OpA1E0M0,    OpA2X1,      OpA3M0,      OpA4X1,
+	OpA5M0,      OpA6X1,      OpA7M0,      OpA8X1,      OpA9M0,
+	OpAAX1,      OpABE0,      OpACX1,      OpADM0,      OpAEX1,
+	OpAFM0,      OpB0E0,      OpB1E0M0X1,  OpB2E0M0,    OpB3M0,
+	OpB4E0X1,    OpB5E0M0,    OpB6E0X1,    OpB7M0,      OpB8,
+	OpB9M0X1,    OpBAX1,      OpBBX1,      OpBCX1,      OpBDM0X1,
+	OpBEX1,      OpBFM0,      OpC0X1,      OpC1E0M0,    OpC2,
+	OpC3M0,      OpC4X1,      OpC5M0,      OpC6M0,      OpC7M0,
+	OpC8X1,      OpC9M0,      OpCAX1,      OpCB,        OpCCX1,
+	OpCDM0,      OpCEM0,      OpCFM0,      OpD0E0,      OpD1E0M0X1,
+	OpD2E0M0,    OpD3M0,      OpD4E0,      OpD5E0M0,    OpD6E0M0,
+	OpD7M0,      OpD8,        OpD9M0X1,    OpDAE0X1,    OpDB,
+	OpDC,        OpDDM0X1,    OpDEM0X1,    OpDFM0,      OpE0X1,
+	OpE1E0M0,    OpE2,        OpE3M0,      OpE4X1,      OpE5M0,
+	OpE6M0,      OpE7M0,      OpE8X1,      OpE9M0,      OpEA,
+	OpEB,        OpECX1,      OpEDM0,      OpEEM0,      OpEFM0,
+	OpF0E0,      OpF1E0M0X1,  OpF2E0M0,    OpF3M0,      OpF4E0,
+	OpF5E0M0,    OpF6E0M0,    OpF7M0,      OpF8,        OpF9M0X1,
+	OpFAE0X1,    OpFB,        OpFCE0,      OpFDM0X1,    OpFEM0X1,
+	OpFFM0
 };
 
-DRAM_ATTR const struct SOpcodes S9xOpcodesSlow[256] =
+const S9xOpcode S9xOpcodesSlow[256] =
 {
-	{ Op00 },        { Op01Slow },    { Op02 },        { Op03Slow },    { Op04Slow },
-	{ Op05Slow },    { Op06Slow },    { Op07Slow },    { Op08Slow },    { Op09Slow },
-	{ Op0ASlow },    { Op0BSlow },    { Op0CSlow },    { Op0DSlow },    { Op0ESlow },
-	{ Op0FSlow },    { Op10Slow },    { Op11Slow },    { Op12Slow },    { Op13Slow },
-	{ Op14Slow },    { Op15Slow },    { Op16Slow },    { Op17Slow },    { Op18 },
-	{ Op19Slow },    { Op1ASlow },    { Op1B },        { Op1CSlow },    { Op1DSlow },
-	{ Op1ESlow },    { Op1FSlow },    { Op20Slow },    { Op21Slow },    { Op22Slow },
-	{ Op23Slow },    { Op24Slow },    { Op25Slow },    { Op26Slow },    { Op27Slow },
-	{ Op28Slow },    { Op29Slow },    { Op2ASlow },    { Op2BSlow },    { Op2CSlow },
-	{ Op2DSlow },    { Op2ESlow },    { Op2FSlow },    { Op30Slow },    { Op31Slow },
-	{ Op32Slow },    { Op33Slow },    { Op34Slow },    { Op35Slow },    { Op36Slow },
-	{ Op37Slow },    { Op38 },        { Op39Slow },    { Op3ASlow },    { Op3B },
-	{ Op3CSlow },    { Op3DSlow },    { Op3ESlow },    { Op3FSlow },    { Op40Slow },
-	{ Op41Slow },    { Op42 },        { Op43Slow },    { Op44Slow },    { Op45Slow },
-	{ Op46Slow },    { Op47Slow },    { Op48Slow },    { Op49Slow },    { Op4ASlow },
-	{ Op4BSlow },    { Op4CSlow },    { Op4DSlow },    { Op4ESlow },    { Op4FSlow },
-	{ Op50Slow },    { Op51Slow },    { Op52Slow },    { Op53Slow },    { Op54Slow },
-	{ Op55Slow },    { Op56Slow },    { Op57Slow },    { Op58 },        { Op59Slow },
-	{ Op5ASlow },    { Op5B },        { Op5CSlow },    { Op5DSlow },    { Op5ESlow },
-	{ Op5FSlow },    { Op60Slow },    { Op61Slow },    { Op62Slow },    { Op63Slow },
-	{ Op64Slow },    { Op65Slow },    { Op66Slow },    { Op67Slow },    { Op68Slow },
-	{ Op69Slow },    { Op6ASlow },    { Op6BSlow },    { Op6CSlow },    { Op6DSlow },
-	{ Op6ESlow },    { Op6FSlow },    { Op70Slow },    { Op71Slow },    { Op72Slow },
-	{ Op73Slow },    { Op74Slow },    { Op75Slow },    { Op76Slow },    { Op77Slow },
-	{ Op78 },        { Op79Slow },    { Op7ASlow },    { Op7B },        { Op7CSlow },
-	{ Op7DSlow },    { Op7ESlow },    { Op7FSlow },    { Op80Slow },    { Op81Slow },
-	{ Op82Slow },    { Op83Slow },    { Op84Slow },    { Op85Slow },    { Op86Slow },
-	{ Op87Slow },    { Op88Slow },    { Op89Slow },    { Op8ASlow },    { Op8BSlow },
-	{ Op8CSlow },    { Op8DSlow },    { Op8ESlow },    { Op8FSlow },    { Op90Slow },
-	{ Op91Slow },    { Op92Slow },    { Op93Slow },    { Op94Slow },    { Op95Slow },
-	{ Op96Slow },    { Op97Slow },    { Op98Slow },    { Op99Slow },    { Op9A },
-	{ Op9BSlow },    { Op9CSlow },    { Op9DSlow },    { Op9ESlow },    { Op9FSlow },
-	{ OpA0Slow },    { OpA1Slow },    { OpA2Slow },    { OpA3Slow },    { OpA4Slow },
-	{ OpA5Slow },    { OpA6Slow },    { OpA7Slow },    { OpA8Slow },    { OpA9Slow },
-	{ OpAASlow },    { OpABSlow },    { OpACSlow },    { OpADSlow },    { OpAESlow },
-	{ OpAFSlow },    { OpB0Slow },    { OpB1Slow },    { OpB2Slow },    { OpB3Slow },
-	{ OpB4Slow },    { OpB5Slow },    { OpB6Slow },    { OpB7Slow },    { OpB8 },
-	{ OpB9Slow },    { OpBASlow },    { OpBBSlow },    { OpBCSlow },    { OpBDSlow },
-	{ OpBESlow },    { OpBFSlow },    { OpC0Slow },    { OpC1Slow },    { OpC2Slow },
-	{ OpC3Slow },    { OpC4Slow },    { OpC5Slow },    { OpC6Slow },    { OpC7Slow },
-	{ OpC8Slow },    { OpC9Slow },    { OpCASlow },    { OpCB },        { OpCCSlow },
-	{ OpCDSlow },    { OpCESlow },    { OpCFSlow },    { OpD0Slow },    { OpD1Slow },
-	{ OpD2Slow },    { OpD3Slow },    { OpD4Slow },    { OpD5Slow },    { OpD6Slow },
-	{ OpD7Slow },    { OpD8 },        { OpD9Slow },    { OpDASlow },    { OpDB },
-	{ OpDCSlow },    { OpDDSlow },    { OpDESlow },    { OpDFSlow },    { OpE0Slow },
-	{ OpE1Slow },    { OpE2Slow },    { OpE3Slow },    { OpE4Slow },    { OpE5Slow },
-	{ OpE6Slow },    { OpE7Slow },    { OpE8Slow },    { OpE9Slow },    { OpEA },
-	{ OpEB },        { OpECSlow },    { OpEDSlow },    { OpEESlow },    { OpEFSlow },
-	{ OpF0Slow },    { OpF1Slow },    { OpF2Slow },    { OpF3Slow },    { OpF4Slow },
-	{ OpF5Slow },    { OpF6Slow },    { OpF7Slow },    { OpF8 },        { OpF9Slow },
-	{ OpFASlow },    { OpFB },        { OpFCSlow },    { OpFDSlow },    { OpFESlow },
-	{ OpFFSlow }
+	Op00,        Op01Slow,    Op02,        Op03Slow,    Op04Slow,
+	Op05Slow,    Op06Slow,    Op07Slow,    Op08Slow,    Op09Slow,
+	Op0ASlow,    Op0BSlow,    Op0CSlow,    Op0DSlow,    Op0ESlow,
+	Op0FSlow,    Op10Slow,    Op11Slow,    Op12Slow,    Op13Slow,
+	Op14Slow,    Op15Slow,    Op16Slow,    Op17Slow,    Op18,
+	Op19Slow,    Op1ASlow,    Op1B,        Op1CSlow,    Op1DSlow,
+	Op1ESlow,    Op1FSlow,    Op20Slow,    Op21Slow,    Op22Slow,
+	Op23Slow,    Op24Slow,    Op25Slow,    Op26Slow,    Op27Slow,
+	Op28Slow,    Op29Slow,    Op2ASlow,    Op2BSlow,    Op2CSlow,
+	Op2DSlow,    Op2ESlow,    Op2FSlow,    Op30Slow,    Op31Slow,
+	Op32Slow,    Op33Slow,    Op34Slow,    Op35Slow,    Op36Slow,
+	Op37Slow,    Op38,        Op39Slow,    Op3ASlow,    Op3B,
+	Op3CSlow,    Op3DSlow,    Op3ESlow,    Op3FSlow,    Op40Slow,
+	Op41Slow,    Op42,        Op43Slow,    Op44Slow,    Op45Slow,
+	Op46Slow,    Op47Slow,    Op48Slow,    Op49Slow,    Op4ASlow,
+	Op4BSlow,    Op4CSlow,    Op4DSlow,    Op4ESlow,    Op4FSlow,
+	Op50Slow,    Op51Slow,    Op52Slow,    Op53Slow,    Op54Slow,
+	Op55Slow,    Op56Slow,    Op57Slow,    Op58,        Op59Slow,
+	Op5ASlow,    Op5B,        Op5CSlow,    Op5DSlow,    Op5ESlow,
+	Op5FSlow,    Op60Slow,    Op61Slow,    Op62Slow,    Op63Slow,
+	Op64Slow,    Op65Slow,    Op66Slow,    Op67Slow,    Op68Slow,
+	Op69Slow,    Op6ASlow,    Op6BSlow,    Op6CSlow,    Op6DSlow,
+	Op6ESlow,    Op6FSlow,    Op70Slow,    Op71Slow,    Op72Slow,
+	Op73Slow,    Op74Slow,    Op75Slow,    Op76Slow,    Op77Slow,
+	Op78,        Op79Slow,    Op7ASlow,    Op7B,        Op7CSlow,
+	Op7DSlow,    Op7ESlow,    Op7FSlow,    Op80Slow,    Op81Slow,
+	Op82Slow,    Op83Slow,    Op84Slow,    Op85Slow,    Op86Slow,
+	Op87Slow,    Op88Slow,    Op89Slow,    Op8ASlow,    Op8BSlow,
+	Op8CSlow,    Op8DSlow,    Op8ESlow,    Op8FSlow,    Op90Slow,
+	Op91Slow,    Op92Slow,    Op93Slow,    Op94Slow,    Op95Slow,
+	Op96Slow,    Op97Slow,    Op98Slow,    Op99Slow,    Op9A,
+	Op9BSlow,    Op9CSlow,    Op9DSlow,    Op9ESlow,    Op9FSlow,
+	OpA0Slow,    OpA1Slow,    OpA2Slow,    OpA3Slow,    OpA4Slow,
+	OpA5Slow,    OpA6Slow,    OpA7Slow,    OpA8Slow,    OpA9Slow,
+	OpAASlow,    OpABSlow,    OpACSlow,    OpADSlow,    OpAESlow,
+	OpAFSlow,    OpB0Slow,    OpB1Slow,    OpB2Slow,    OpB3Slow,
+	OpB4Slow,    OpB5Slow,    OpB6Slow,    OpB7Slow,    OpB8,
+	OpB9Slow,    OpBASlow,    OpBBSlow,    OpBCSlow,    OpBDSlow,
+	OpBESlow,    OpBFSlow,    OpC0Slow,    OpC1Slow,    OpC2Slow,
+	OpC3Slow,    OpC4Slow,    OpC5Slow,    OpC6Slow,    OpC7Slow,
+	OpC8Slow,    OpC9Slow,    OpCASlow,    OpCB,        OpCCSlow,
+	OpCDSlow,    OpCESlow,    OpCFSlow,    OpD0Slow,    OpD1Slow,
+	OpD2Slow,    OpD3Slow,    OpD4Slow,    OpD5Slow,    OpD6Slow,
+	OpD7Slow,    OpD8,        OpD9Slow,    OpDASlow,    OpDB,
+	OpDCSlow,    OpDDSlow,    OpDESlow,    OpDFSlow,    OpE0Slow,
+	OpE1Slow,    OpE2Slow,    OpE3Slow,    OpE4Slow,    OpE5Slow,
+	OpE6Slow,    OpE7Slow,    OpE8Slow,    OpE9Slow,    OpEA,
+	OpEB,        OpECSlow,    OpEDSlow,    OpEESlow,    OpEFSlow,
+	OpF0Slow,    OpF1Slow,    OpF2Slow,    OpF3Slow,    OpF4Slow,
+	OpF5Slow,    OpF6Slow,    OpF7Slow,    OpF8,        OpF9Slow,
+	OpFASlow,    OpFB,        OpFCSlow,    OpFDSlow,    OpFESlow,
+	OpFFSlow
 };
 
 
-DRAM_ATTR const uint8 S9xOpLengthsM0X0[256] =
+// More testing with DRAM_ATTR required
+
+const uint8 S9xOpLengthsM0X0[256] =
 {
 //  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
 	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 0
@@ -3660,7 +3662,7 @@ DRAM_ATTR const uint8 S9xOpLengthsM0X0[256] =
 	2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4  // F
 };
 
-DRAM_ATTR const uint8 S9xOpLengthsM0X1[256] =
+const uint8 S9xOpLengthsM0X1[256] =
 {
 //  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
 	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 0
@@ -3681,7 +3683,7 @@ DRAM_ATTR const uint8 S9xOpLengthsM0X1[256] =
 	2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4  // F
 };
 
-DRAM_ATTR const uint8 S9xOpLengthsM1X0[256] =
+const uint8 S9xOpLengthsM1X0[256] =
 {
 //  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
 	2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4, // 0
@@ -3702,7 +3704,7 @@ DRAM_ATTR const uint8 S9xOpLengthsM1X0[256] =
 	2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4  // F
 };
 
-DRAM_ATTR const uint8 S9xOpLengthsM1X1[256] =
+const uint8 S9xOpLengthsM1X1[256] =
 {
 //  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
 	2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4, // 0

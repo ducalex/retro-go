@@ -12,14 +12,11 @@
 #include "debug.h"
 #endif
 
-struct SOpcodes
-{
-	void (*S9xOpcode) (void);
-};
+typedef void (*S9xOpcode) (void);
 
 struct SICPU
 {
-	const struct SOpcodes *S9xOpcodes;
+	const S9xOpcode *S9xOpcodes;
 	const uint8 *S9xOpLengths;
 	uint32	_Carry;
 	uint32	_Zero;
@@ -33,12 +30,12 @@ struct SICPU
 
 extern struct SICPU		ICPU;
 
-extern const struct SOpcodes	S9xOpcodesE1[256];
-extern const struct SOpcodes	S9xOpcodesM1X1[256];
-extern const struct SOpcodes	S9xOpcodesM1X0[256];
-extern const struct SOpcodes	S9xOpcodesM0X1[256];
-extern const struct SOpcodes	S9xOpcodesM0X0[256];
-extern const struct SOpcodes	S9xOpcodesSlow[256];
+extern const S9xOpcode	S9xOpcodesE1[256];
+extern const S9xOpcode	S9xOpcodesM1X1[256];
+extern const S9xOpcode	S9xOpcodesM1X0[256];
+extern const S9xOpcode	S9xOpcodesM0X1[256];
+extern const S9xOpcode	S9xOpcodesM0X0[256];
+extern const S9xOpcode	S9xOpcodesSlow[256];
 extern const uint8		S9xOpLengthsM1X1[256];
 extern const uint8		S9xOpLengthsM1X0[256];
 extern const uint8		S9xOpLengthsM0X1[256];

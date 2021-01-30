@@ -862,10 +862,12 @@ void CMemory::ApplyROMFixes (void)
 		SET_UI_COLOR(255, 0, 0);
 	}
 
+	// Always exec because it sets PAL mode too
+	S9xAPUTimingSetSpeedup(0);
+
 	if (!Settings.DisableGameSpecificHacks)
 	{
 		//// APU timing hacks :(
-		S9xAPUTimingSetSpeedup(0);
 		if (match_nn("CIRCUIT USA "))
 			S9xAPUTimingSetSpeedup(3);
 

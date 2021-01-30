@@ -32,9 +32,9 @@ if (CPU.IRQFlagChanging) \
 
 IRAM_ATTR void S9xMainLoop (void)
 {
-	const struct SOpcodes *Opcodes;
-	uint32_t loops = 0;
-	uint32_t Op = 0;
+	const S9xOpcode *Opcodes;
+	uint32 loops = 0;
+	uint32 Op = 0;
 
 	CPU.Flags &= ~SCAN_KEYS_FLAG;
 
@@ -43,8 +43,10 @@ IRAM_ATTR void S9xMainLoop (void)
 		#if (RETRO_LESS_ACCURATE_CPU || RETRO_LESS_ACCURATE_MEM)
 			// Only check for interrupts every 15 loops. More than that breaks too many games
 			// This is temporary until we improve speed elsewhere...
-			if ((++loops) & 0xF)
+			if (loops--)
 				goto run_opcode;
+			else
+				loops = 20;
 
 			if (CPU.Cycles >= CPU.NextEvent)
 				S9xDoHEventProcessing();
@@ -149,6 +151,7 @@ IRAM_ATTR void S9xMainLoop (void)
 		}
 
 	run_opcode:
+
 		if (CPU.PCBase)
 		{
 			Op = CPU.PCBase[Registers.PCw];
@@ -172,7 +175,7 @@ IRAM_ATTR void S9xMainLoop (void)
 		}
 
 		Registers.PCw++;
-		(*Opcodes[Op].S9xOpcode)();
+		(Opcodes[Op])();
 	}
 
 	S9xPackStatus();
