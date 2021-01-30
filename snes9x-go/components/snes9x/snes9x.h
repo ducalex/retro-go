@@ -146,12 +146,9 @@ enum
 
 struct STimings
 {
-	int32	H_Max;
 	int32	V_Max;
 	int32	NMITriggerPos;
 	int32	NextIRQTimer;
-	int32	WRAMRefreshPos;
-	bool8	InterlaceField;
 	int32	DMACPUSync;		// The cycles to synchronize DMA and CPU. Snes9x cannot emulate correctly.
 	int32	IRQFlagChanging;	// This value is just a hack.
 };

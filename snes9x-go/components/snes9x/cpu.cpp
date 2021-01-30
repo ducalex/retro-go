@@ -68,13 +68,10 @@ static void S9xSoftResetCPU (void)
 	SetFlags(MemoryFlag | IndexFlag | IRQ | Emulation);
 	ClearFlags(Decimal);
 
-	Timings.InterlaceField = FALSE;
-	Timings.H_Max = SNES_CYCLES_PER_SCANLINE;
 	Timings.V_Max = (Settings.PAL ? SNES_MAX_PAL_VCOUNTER : SNES_MAX_NTSC_VCOUNTER);
 	Timings.NMITriggerPos = 0xffff;
 	Timings.NextIRQTimer = 0x0fffffff;
 	Timings.IRQFlagChanging = IRQ_NONE;
-	Timings.WRAMRefreshPos = SNES_WRAM_REFRESH_HC;
 
 	S9xSetPCBase(Registers.PBPC);
 

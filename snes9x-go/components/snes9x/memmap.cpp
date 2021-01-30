@@ -397,7 +397,6 @@ bool8 CMemory::InitROM ()
 	}
 
 	//// Initialize emulation
-	Timings.H_Max        = SNES_CYCLES_PER_SCANLINE;
 	Timings.V_Max        = (Settings.PAL ? SNES_MAX_PAL_VCOUNTER : SNES_MAX_NTSC_VCOUNTER);
 	/* From byuu: The total delay time for both the initial (H)DMA sync (to the DMA clock),
 	   and the end (H)DMA sync (back to the last CPU cycle's mcycle rate (6, 8, or 12)) always takes between 12-24 mcycles.

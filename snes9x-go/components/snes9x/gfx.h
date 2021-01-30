@@ -20,15 +20,12 @@ struct SGFX
 	uint32	ScreenSize;
 	uint16	*S;
 	uint8	*DB;
-	uint32	RealPPL;			// true PPL of Screen buffer
-	uint32	PPL;				// number of pixels on each of Screen buffer
-	uint32	LinesPerTile;		// number of lines in 1 tile (4 or 8 due to interlace)
+	uint32	PPL;				// number of pixels on each line
 	uint16	*ScreenColors;		// screen colors for rendering main
 	uint16	*RealScreenColors;	// screen colors, ignoring color window clipping
 	uint8	Z1;					// depth for comparison
 	uint8	Z2;					// depth to save
 	uint32	FixedColour;
-	uint32	InterlaceFrame;
 	uint32	StartY;
 	uint32	EndY;
 	uint32	ClipColors;
@@ -84,7 +81,6 @@ struct SBG
 	uint32	PaletteShift;
 	uint32	PaletteMask;
 	uint32	EnableMath;
-	uint32	InterlaceLine;
 
 	uint32	Buffered;
 	uint32	BufferedFlip;
@@ -125,7 +121,6 @@ void RenderLine (int);
 void S9xComputeClipWindows (void);
 void S9xDisplayChar (uint16 *, uint8);
 void S9xGraphicsScreenResize (void);
-// called automatically unless Settings.AutoDisplayMessages is false
 void S9xDisplayMessages (uint16 *, int, int, int, int);
 
 // external port interface which must be implemented or initialised for each port

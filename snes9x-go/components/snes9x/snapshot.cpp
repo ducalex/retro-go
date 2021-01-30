@@ -316,11 +316,8 @@ static const FreezeData	SnapDMA[] =
 
 static const FreezeData	SnapTimings[] =
 {
-	INT_ENTRY(6, H_Max),
 	INT_ENTRY(6, V_Max),
 	INT_ENTRY(6, NMITriggerPos),
-	INT_ENTRY(6, WRAMRefreshPos),
-	INT_ENTRY(6, InterlaceField),
 	INT_ENTRY(6, DMACPUSync),
 	INT_ENTRY(6, IRQFlagChanging),
 	INT_ENTRY(11, NextIRQTimer)
@@ -739,8 +736,6 @@ bool8 S9xUnfreezeGame (const char *filename)
 
 		IPPU.OBJChanged = TRUE;
 		IPPU.RenderThisFrame = TRUE;
-
-		GFX.InterlaceFrame = Timings.InterlaceField;
 
 		S9xGraphicsScreenResize();
 	}

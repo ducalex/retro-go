@@ -14,7 +14,6 @@
 extern void S9xComputeClipWindows (void);
 static void SetupOBJ (void);
 static void DrawOBJS (int);
-static void DisplayFrameRate (void);
 static void DisplayStringFromBottom (const char *, int, int, bool);
 static void DrawBackground (int, uint8, uint8);
 static void DrawBackgroundMosaic (int, uint8, uint8);
@@ -33,7 +32,7 @@ static struct SLineData	LineData[240];
 bool8 S9xGraphicsInit (void)
 {
 	GFX.Pitch = SNES_WIDTH * 2;
-	GFX.RealPPL = GFX.Pitch >> 1;
+	GFX.PPL = GFX.Pitch >> 1;
 	IPPU.OBJChanged = TRUE;
 	Settings.BG_Forced = 0;
 
@@ -107,20 +106,15 @@ void S9xGraphicsScreenResize (void)
 	IPPU.InterlaceOBJ = Memory.FillRAM[0x2133] & 2;
 	IPPU.PseudoHires = Memory.FillRAM[0x2133] & 8;
 
-	GFX.RealPPL = GFX.Pitch >> 1;
-
 	IPPU.DoubleWidthPixels = FALSE;
 	IPPU.RenderedScreenWidth = SNES_WIDTH;
 
-	GFX.PPL = GFX.RealPPL;
 	IPPU.DoubleHeightPixels = FALSE;
 	IPPU.RenderedScreenHeight = PPU.ScreenHeight;
 }
 
 void S9xStartScreenRefresh (void)
 {
-	GFX.InterlaceFrame = !GFX.InterlaceFrame;
-
 	if (IPPU.RenderThisFrame)
 	{
 		if (!S9xInitUpdate())
@@ -162,8 +156,7 @@ void S9xEndScreenRefresh (void)
 
 		S9xControlEOF();
 
-		if (Settings.AutoDisplayMessages)
-			S9xDisplayMessages(GFX.Screen, GFX.RealPPL, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, 1);
+		S9xDisplayMessages(GFX.Screen, GFX.PPL, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, 1);
 
 		S9xDeinitUpdate(IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight);
 	}
@@ -367,7 +360,7 @@ static inline void RenderScreen (bool8 sub)
 
 void S9xUpdateScreen (void)
 {
-	if (IPPU.OBJChanged || IPPU.InterlaceOBJ)
+	if (IPPU.OBJChanged)
 		SetupOBJ();
 
 	// XXX: Check ForceBlank? Or anything else?
@@ -465,12 +458,10 @@ static void SetupOBJ (void)
 	// normal FirstSprite, or priority is FirstSprite+Y. The first two are
 	// easy, the last is somewhat more ... interesting. So we split them up.
 
-	int startline = (IPPU.InterlaceOBJ && GFX.InterlaceFrame) ? 1 : 0;
-	int	inc = IPPU.InterlaceOBJ ? 2 : 1;
-	int Height;
-
-	uint8	LineOBJ[SNES_HEIGHT_EXTENDED];
+	uint8 LineOBJ[SNES_HEIGHT_EXTENDED];
 	memset(LineOBJ, 0, sizeof(LineOBJ));
+
+	int Height;
 
 	if (!PPU.OAMPriorityRotation || !(PPU.OAMFlip & PPU.OAMAddr & 1)) // normal case
 	{
@@ -512,7 +503,7 @@ static void SetupOBJ (void)
 				else
 					GFX.OBJVisibleTiles[S] = GFX.OBJWidths[S] >> 3;
 
-				for (int line = startline, Y = (uint8) (PPU.OBJ[S].VPos & 0xff); line < Height; Y++, line += inc)
+				for (int line = 0, Y = (uint8) (PPU.OBJ[S].VPos & 0xff); line < Height; Y++, line++)
 				{
 					if (Y >= SNES_HEIGHT_EXTENDED)
 						continue;
@@ -580,7 +571,7 @@ static void SetupOBJ (void)
 				else
 					GFX.OBJVisibleTiles[S] = GFX.OBJWidths[S] >> 3;
 
-				for (int line = startline, Y = (uint8) (PPU.OBJ[S].VPos & 0xff); line < Height; Y++, line += inc)
+				for (int line = 0, Y = (uint8) (PPU.OBJ[S].VPos & 0xff); line < Height; Y++, line++)
 				{
 					if (Y >= SNES_HEIGHT_EXTENDED)
 						continue;
@@ -654,7 +645,6 @@ static void DrawOBJS (int D)
 	void (*DrawClippedTile) (uint32, uint32, uint32, uint32, uint32, uint32) = NULL;
 
 	int	PixWidth = IPPU.DoubleWidthPixels ? 2 : 1;
-	BG.InterlaceLine = GFX.InterlaceFrame ? 8 : 0;
 	GFX.Z1 = 2;
 
 	for (uint32 Y = GFX.StartY, Offset = Y * GFX.PPL; Y <= GFX.EndY; Y++, Offset += GFX.PPL)
@@ -766,7 +756,6 @@ static void DrawBackground (int bg, uint8 Zh, uint8 Zl)
 	int		OffsetMask  = (BG.TileSizeH == 16) ? 0x3ff : 0x1ff;
 	int		OffsetShift = (BG.TileSizeV == 16) ? 4 : 3;
 	int		PixWidth = IPPU.DoubleWidthPixels ? 2 : 1;
-	bool8	HiresInterlace = IPPU.Interlace && IPPU.DoubleWidthPixels;
 
 	void (*DrawTile) (uint32, uint32, uint32, uint32);
 	void (*DrawClippedTile) (uint32, uint32, uint32, uint32, uint32, uint32);
@@ -788,12 +777,11 @@ static void DrawBackground (int bg, uint8 Zh, uint8 Zl)
 
 		for (uint32 Y = GFX.StartY; Y <= GFX.EndY; Y += Lines)
 		{
-			uint32	Y2 = HiresInterlace ? Y * 2 + GFX.InterlaceFrame : Y;
-			uint32	VOffset = LineData[Y].BG[bg].VOffset + (HiresInterlace ? 1 : 0);
+			uint32	VOffset = LineData[Y].BG[bg].VOffset;
 			uint32	HOffset = LineData[Y].BG[bg].HOffset;
-			int		VirtAlign = ((Y2 + VOffset) & 7) >> (HiresInterlace ? 1 : 0);
+			int		VirtAlign = ((Y + VOffset) & 7);
 
-			for (Lines = 1; Lines < GFX.LinesPerTile - VirtAlign; Lines++)
+			for (Lines = 1; Lines < 8 - VirtAlign; Lines++)
 			{
 				if ((VOffset != LineData[Y + Lines].BG[bg].VOffset) || (HOffset != LineData[Y + Lines].BG[bg].HOffset))
 					break;
@@ -805,10 +793,9 @@ static void DrawBackground (int bg, uint8 Zh, uint8 Zl)
 			VirtAlign <<= 3;
 
 			uint32	t1, t2;
-			uint32	TilemapRow = (VOffset + Y2) >> OffsetShift;
-			BG.InterlaceLine = ((VOffset + Y2) & 1) << 3;
+			uint32	TilemapRow = (VOffset + Y) >> OffsetShift;
 
-			if ((VOffset + Y2) & 8)
+			if ((VOffset + Y) & 8)
 			{
 				t1 = 16;
 				t2 = 0;
@@ -983,7 +970,6 @@ static void DrawBackgroundMosaic (int bg, uint8 Zh, uint8 Zl)
 	int	OffsetMask  = (BG.TileSizeH == 16) ? 0x3ff : 0x1ff;
 	int	OffsetShift = (BG.TileSizeV == 16) ? 4 : 3;
 	int	PixWidth = IPPU.DoubleWidthPixels ? 2 : 1;
-	bool8	HiresInterlace = IPPU.Interlace && IPPU.DoubleWidthPixels;
 
 	void (*DrawPix) (uint32, uint32, uint32, uint32, uint32, uint32);
 
@@ -1000,21 +986,19 @@ static void DrawBackgroundMosaic (int bg, uint8 Zh, uint8 Zl)
 
 		for (uint32 Y = GFX.StartY - MosaicStart; Y <= GFX.EndY; Y += PPU.Mosaic)
 		{
-			uint32	Y2 = HiresInterlace ? Y * 2 : Y;
-			uint32	VOffset = LineData[Y + MosaicStart].BG[bg].VOffset + (HiresInterlace ? 1 : 0);
+			uint32	VOffset = LineData[Y + MosaicStart].BG[bg].VOffset + (0);
 			uint32	HOffset = LineData[Y + MosaicStart].BG[bg].HOffset;
 
 			Lines = PPU.Mosaic - MosaicStart;
 			if (Y + MosaicStart + Lines > GFX.EndY)
 				Lines = GFX.EndY - Y - MosaicStart + 1;
 
-			int	VirtAlign = (((Y2 + VOffset) & 7) >> (HiresInterlace ? 1 : 0)) << 3;
+			int	VirtAlign = ((Y + VOffset) & 7) << 3;
 
 			uint32	t1, t2;
-			uint32	TilemapRow = (VOffset + Y2) >> OffsetShift;
-			BG.InterlaceLine = ((VOffset + Y2) & 1) << 3;
+			uint32	TilemapRow = (VOffset + Y) >> OffsetShift;
 
-			if ((VOffset + Y2) & 8)
+			if ((VOffset + Y) & 8)
 			{
 				t1 = 16;
 				t2 = 0;
@@ -1163,7 +1147,6 @@ static void DrawBackgroundOffset (int bg, uint8 Zh, uint8 Zl, int VOffOff)
 	int	Offset2Shift = (BG.OffsetSizeV == 16) ? 4 : 3;
 	int	OffsetEnableMask = 0x2000 << bg;
 	int	PixWidth = IPPU.DoubleWidthPixels ? 2 : 1;
-	bool8	HiresInterlace = IPPU.Interlace && IPPU.DoubleWidthPixels;
 
 	void (*DrawClippedTile) (uint32, uint32, uint32, uint32, uint32, uint32);
 
@@ -1182,7 +1165,6 @@ static void DrawBackgroundOffset (int bg, uint8 Zh, uint8 Zl, int VOffOff)
 
 		for (uint32 Y = GFX.StartY; Y <= GFX.EndY; Y++)
 		{
-			uint32	Y2 = HiresInterlace ? Y * 2 + GFX.InterlaceFrame : Y;
 			uint32	VOff = LineData[Y].BG[2].VOffset - 1;
 			uint32	HOff = LineData[Y].BG[2].HOffset;
 			uint32	HOffsetRow = VOff >> Offset2Shift;
@@ -1269,15 +1251,11 @@ static void DrawBackgroundOffset (int bg, uint8 Zh, uint8 Zl, int VOffOff)
 						HOffset = HScroll;
 				}
 
-				if (HiresInterlace)
-					VOffset++;
-
 				uint32	t1, t2;
-				int		VirtAlign = (((Y2 + VOffset) & 7) >> (HiresInterlace ? 1 : 0)) << 3;
-				int		TilemapRow = (VOffset + Y2) >> OffsetShift;
-				BG.InterlaceLine = ((VOffset + Y2) & 1) << 3;
+				int		VirtAlign = ((Y + VOffset) & 7) << 3;
+				int		TilemapRow = (VOffset + Y) >> OffsetShift;
 
-				if ((VOffset + Y2) & 8)
+				if ((VOffset + Y) & 8)
 				{
 					t1 = 16;
 					t2 = 0;
@@ -1391,7 +1369,6 @@ static void DrawBackgroundOffsetMosaic (int bg, uint8 Zh, uint8 Zl, int VOffOff)
 	int	Offset2Shift = (BG.OffsetSizeV == 16) ? 4 : 3;
 	int	OffsetEnableMask = 0x2000 << bg;
 	int	PixWidth = IPPU.DoubleWidthPixels ? 2 : 1;
-	bool8	HiresInterlace = IPPU.Interlace && IPPU.DoubleWidthPixels;
 
 	void (*DrawPix) (uint32, uint32, uint32, uint32, uint32, uint32);
 
@@ -1408,7 +1385,6 @@ static void DrawBackgroundOffsetMosaic (int bg, uint8 Zh, uint8 Zl, int VOffOff)
 
 		for (uint32 Y = GFX.StartY - MosaicStart; Y <= GFX.EndY; Y += PPU.Mosaic)
 		{
-			uint32	Y2 = HiresInterlace ? Y * 2 : Y;
 			uint32	VOff = LineData[Y + MosaicStart].BG[2].VOffset - 1;
 			uint32	HOff = LineData[Y + MosaicStart].BG[2].HOffset;
 
@@ -1498,15 +1474,11 @@ static void DrawBackgroundOffsetMosaic (int bg, uint8 Zh, uint8 Zl, int VOffOff)
 						HOffset = HScroll;
 				}
 
-				if (HiresInterlace)
-					VOffset++;
-
 				uint32	t1, t2;
-				int		VirtAlign = (((Y2 + VOffset) & 7) >> (HiresInterlace ? 1 : 0)) << 3;
-				int		TilemapRow = (VOffset + Y2) >> OffsetShift;
-				BG.InterlaceLine = ((VOffset + Y2) & 1) << 3;
+				int		VirtAlign = (((Y + VOffset) & 7) >> (0)) << 3;
+				int		TilemapRow = (VOffset + Y) >> OffsetShift;
 
-				if ((VOffset + Y2) & 8)
+				if ((VOffset + Y) & 8)
 				{
 					t1 = 16;
 					t2 = 0;
@@ -1636,7 +1608,7 @@ void S9xDisplayChar (uint16 *s, uint8 c)
 	int	line   = ((c - 32) >> 4) * font_height;
 	int	offset = ((c - 32) & 15) * font_width;
 
-	for (int h = 0; h < font_height; h++, line++, s += GFX.RealPPL - font_width)
+	for (int h = 0; h < font_height; h++, line++, s += GFX.PPL - font_width)
 	{
 		for (int w = 0; w < font_width; w++, s++)
 		{
@@ -1656,7 +1628,7 @@ static void DisplayStringFromBottom (const char *string, int linesFromBottom, in
 	if (linesFromBottom <= 0)
 		linesFromBottom = 1;
 
-	uint16	*dst = GFX.Screen + (IPPU.RenderedScreenHeight - font_height * linesFromBottom) * GFX.RealPPL + pixelsFromLeft;
+	uint16	*dst = GFX.Screen + (IPPU.RenderedScreenHeight - font_height * linesFromBottom) * GFX.PPL + pixelsFromLeft;
 
 	int	len = strlen(string);
 	int	max_chars = IPPU.RenderedScreenWidth / (font_width - 1);
@@ -1669,8 +1641,8 @@ static void DisplayStringFromBottom (const char *string, int linesFromBottom, in
 			if (!allowWrap)
 				break;
 
-			dst += font_height * GFX.RealPPL - (font_width - 1) * max_chars;
-			if (dst >= GFX.Screen + IPPU.RenderedScreenHeight * GFX.RealPPL)
+			dst += font_height * GFX.PPL - (font_width - 1) * max_chars;
+			if (dst >= GFX.Screen + IPPU.RenderedScreenHeight * GFX.PPL)
 				break;
 
 			char_count -= max_chars;
@@ -1684,39 +1656,8 @@ static void DisplayStringFromBottom (const char *string, int linesFromBottom, in
 	}
 }
 
-static void DisplayFrameRate (void)
-{
-	char	string[10];
-	static uint32 lastFrameCount = 0, calcFps = 0;
-	static time_t lastTime = time(NULL);
-
-	time_t currTime = time(NULL);
-	if (lastTime != currTime) {
-		if (lastFrameCount < IPPU.TotalEmulatedFrames) {
-			calcFps = (IPPU.TotalEmulatedFrames - lastFrameCount) / (uint32)(currTime - lastTime);
-		}
-		lastTime = currTime;
-		lastFrameCount = IPPU.TotalEmulatedFrames;
-	}
-	sprintf(string, "%u fps", calcFps);
-	S9xDisplayString(string, 2, IPPU.RenderedScreenWidth - (font_width - 1) * strlen(string) - 1, false);
-
-#ifdef DEBUGGER
-	const int	len = 8;
-	sprintf(string, "%02d/%02d %02d", (int) IPPU.DisplayedRenderedFrameCount, (int) Memory.ROMFramesPerSecond, (int) IPPU.FrameCount);
-#else
-	const int	len = 5;
-	sprintf(string, "%02d/%02d",      (int) IPPU.DisplayedRenderedFrameCount, (int) Memory.ROMFramesPerSecond);
-#endif
-
-	S9xDisplayString(string, 1, IPPU.RenderedScreenWidth - (font_width - 1) * len - 1, false);
-}
-
 void S9xDisplayMessages (uint16 *screen, int ppl, int width, int height, int scale)
 {
-	if (Settings.DisplayFrameRate)
-		DisplayFrameRate();
-
 	if (GFX.InfoString && *GFX.InfoString)
 		S9xDisplayString(GFX.InfoString, 5, 1, true);
 }

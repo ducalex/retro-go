@@ -208,7 +208,7 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 
 		case HC_HDMA_START_EVENT:
 			CPU.WhichEvent = HC_HCOUNTER_MAX_EVENT;
-			CPU.NextEvent  = Timings.H_Max;
+			CPU.NextEvent  = SNES_CYCLES_PER_SCANLINE;
 
 			if (PPU.HDMA && CPU.V_Counter <= PPU.ScreenHeight)
 			{
@@ -222,29 +222,19 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 
 		case HC_HCOUNTER_MAX_EVENT:
 			S9xAPUEndScanline();
-			CPU.Cycles -= Timings.H_Max;
+			CPU.Cycles -= SNES_CYCLES_PER_SCANLINE;
 			if (Timings.NMITriggerPos != 0xffff)
-				Timings.NMITriggerPos -= Timings.H_Max;
+				Timings.NMITriggerPos -= SNES_CYCLES_PER_SCANLINE;
 			if (Timings.NextIRQTimer != 0x0fffffff)
-				Timings.NextIRQTimer -= Timings.H_Max;
+				Timings.NextIRQTimer -= SNES_CYCLES_PER_SCANLINE;
 			S9xAPUSetReferenceTime(CPU.Cycles);
 
 			CPU.V_Counter++;
 			if (CPU.V_Counter >= Timings.V_Max)	// V ranges from 0 to Timings.V_Max - 1
 			{
 				CPU.V_Counter = 0;
-				Timings.InterlaceField ^= 1;
 
-				// From byuu:
-				// [NTSC]
-				// interlace mode has 525 scanlines: 263 on the even frame, and 262 on the odd.
-				// non-interlace mode has 524 scanlines: 262 scanlines on both even and odd frames.
-				// [PAL] <PAL info is unverified on hardware>
-				// interlace mode has 625 scanlines: 313 on the even frame, and 312 on the odd.
-				// non-interlace mode has 624 scanlines: 312 scanlines on both even and odd frames.
 				Timings.V_Max = (Settings.PAL ? SNES_MAX_PAL_VCOUNTER : SNES_MAX_NTSC_VCOUNTER); // 262 (NTSC), 312?(PAL)
-				if (IPPU.Interlace && !Timings.InterlaceField)
-					Timings.V_Max++;
 
 				Memory.FillRAM[0x213F] ^= 0x80;
 				PPU.RangeTimeOver = 0;
@@ -254,25 +244,6 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 
 				ICPU.Frame++;
 				PPU.HVBeamCounterLatched = 0;
-			}
-
-			// From byuu:
-			// In non-interlace mode, there are 341 dots per scanline, and 262 scanlines per frame.
-			// On odd frames, scanline 240 is one dot short.
-			// In interlace mode, there are always 341 dots per scanline. Even frames have 263 scanlines,
-			// and odd frames have 262 scanlines.
-			// Interlace mode scanline 240 on odd frames is not missing a dot.
-			if (CPU.V_Counter == 240 && !IPPU.Interlace && Timings.InterlaceField)	// V=240
-				Timings.H_Max = SNES_CYCLES_PER_SCANLINE - ONE_DOT_CYCLE;	// HC=1360
-			else
-				Timings.H_Max = SNES_CYCLES_PER_SCANLINE;					// HC=1364
-
-			if (CPU.V_Counter != 240 || IPPU.Interlace || !Timings.InterlaceField)	// V=240
-			{
-				if (Timings.WRAMRefreshPos == SNES_WRAM_REFRESH_HC - ONE_DOT_CYCLE)	// HC=534
-					Timings.WRAMRefreshPos = SNES_WRAM_REFRESH_HC;					// HC=538
-				else
-					Timings.WRAMRefreshPos = SNES_WRAM_REFRESH_HC - ONE_DOT_CYCLE;	// HC=534
 			}
 
 			if (CPU.V_Counter == PPU.ScreenHeight + FIRST_VISIBLE_LINE)	// VBlank starts from V=225(240).
@@ -353,7 +324,7 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 				RenderLine((uint8) (CPU.V_Counter - FIRST_VISIBLE_LINE));
 
 			CPU.WhichEvent = HC_WRAM_REFRESH_EVENT;
-			CPU.NextEvent  = Timings.WRAMRefreshPos;
+			CPU.NextEvent  = SNES_WRAM_REFRESH_HC;
 			break;
 
 		case HC_WRAM_REFRESH_EVENT:

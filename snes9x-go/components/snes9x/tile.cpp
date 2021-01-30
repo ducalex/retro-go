@@ -441,7 +441,6 @@ void S9xSelectTileRenderers (int BGMode, bool8 sub, bool8 obj)
 	M7M1 = PPU.BGMosaic[0] && PPU.Mosaic > 1;
 	M7M2 = PPU.BGMosaic[1] && PPU.Mosaic > 1;
 
-	bool8 interlace = obj ? FALSE : IPPU.Interlace;
 	bool8 hires = !sub && (BGMode == 5 || BGMode == 6 || IPPU.PseudoHires);
 
 	if (!IPPU.DoubleWidthPixels)	// normal width
@@ -452,53 +451,24 @@ void S9xSelectTileRenderers (int BGMode, bool8 sub, bool8 obj)
 		DB     = Renderers_DrawBackdrop16Normal1x1;
 		DM7BG1 = M7M1 ? Renderers_DrawMode7MosaicBG1Normal1x1 : Renderers_DrawMode7BG1Normal1x1;
 		DM7BG2 = M7M2 ? Renderers_DrawMode7MosaicBG2Normal1x1 : Renderers_DrawMode7BG2Normal1x1;
-		GFX.LinesPerTile = 8;
 	}
 	else if(hires)					// hires double width
 	{
-		if (interlace)
-		{
-			DT     = Renderers_DrawTile16HiresInterlace;
-			DCT    = Renderers_DrawClippedTile16HiresInterlace;
-			DMP    = Renderers_DrawMosaicPixel16HiresInterlace;
-			DB     = Renderers_DrawBackdrop16Hires;
-			DM7BG1 = M7M1 ? Renderers_DrawMode7MosaicBG1Hires : Renderers_DrawMode7BG1Hires;
-			DM7BG2 = M7M2 ? Renderers_DrawMode7MosaicBG2Hires : Renderers_DrawMode7BG2Hires;
-			GFX.LinesPerTile = 4;
-		}
-		else
-		{
-			DT     = Renderers_DrawTile16Hires;
-			DCT    = Renderers_DrawClippedTile16Hires;
-			DMP    = Renderers_DrawMosaicPixel16Hires;
-			DB     = Renderers_DrawBackdrop16Hires;
-			DM7BG1 = M7M1 ? Renderers_DrawMode7MosaicBG1Hires : Renderers_DrawMode7BG1Hires;
-			DM7BG2 = M7M2 ? Renderers_DrawMode7MosaicBG2Hires : Renderers_DrawMode7BG2Hires;
-			GFX.LinesPerTile = 8;
-		}
+		DT     = Renderers_DrawTile16Hires;
+		DCT    = Renderers_DrawClippedTile16Hires;
+		DMP    = Renderers_DrawMosaicPixel16Hires;
+		DB     = Renderers_DrawBackdrop16Hires;
+		DM7BG1 = M7M1 ? Renderers_DrawMode7MosaicBG1Hires : Renderers_DrawMode7BG1Hires;
+		DM7BG2 = M7M2 ? Renderers_DrawMode7MosaicBG2Hires : Renderers_DrawMode7BG2Hires;
 	}
 	else							// normal double width
 	{
-		if (interlace)
-		{
-			DT     = Renderers_DrawTile16Interlace;
-			DCT    = Renderers_DrawClippedTile16Interlace;
-			DMP    = Renderers_DrawMosaicPixel16Interlace;
-			DB     = Renderers_DrawBackdrop16Normal2x1;
-			DM7BG1 = M7M1 ? Renderers_DrawMode7MosaicBG1Normal2x1 : Renderers_DrawMode7BG1Normal2x1;
-			DM7BG2 = M7M2 ? Renderers_DrawMode7MosaicBG2Normal2x1 : Renderers_DrawMode7BG2Normal2x1;
-			GFX.LinesPerTile = 4;
-		}
-		else
-		{
-			DT     = Renderers_DrawTile16Normal2x1;
-			DCT    = Renderers_DrawClippedTile16Normal2x1;
-			DMP    = Renderers_DrawMosaicPixel16Normal2x1;
-			DB     = Renderers_DrawBackdrop16Normal2x1;
-			DM7BG1 = M7M1 ? Renderers_DrawMode7MosaicBG1Normal2x1 : Renderers_DrawMode7BG1Normal2x1;
-			DM7BG2 = M7M2 ? Renderers_DrawMode7MosaicBG2Normal2x1 : Renderers_DrawMode7BG2Normal2x1;
-			GFX.LinesPerTile = 8;
-		}
+		DT     = Renderers_DrawTile16Normal2x1;
+		DCT    = Renderers_DrawClippedTile16Normal2x1;
+		DMP    = Renderers_DrawMosaicPixel16Normal2x1;
+		DB     = Renderers_DrawBackdrop16Normal2x1;
+		DM7BG1 = M7M1 ? Renderers_DrawMode7MosaicBG1Normal2x1 : Renderers_DrawMode7BG1Normal2x1;
+		DM7BG2 = M7M2 ? Renderers_DrawMode7MosaicBG2Normal2x1 : Renderers_DrawMode7BG2Normal2x1;
 	}
 
 	GFX.DrawTileNomath        = DT[0];
@@ -920,7 +890,6 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 // (or interlace at all, really).
 // The backdrop is always depth = 1, so Z1 = Z2 = 1. And backdrop is always color 0.
 
-#define NO_INTERLACE	1
 #define Z1				1
 #define Z2				1
 #define Pix				0
@@ -951,7 +920,6 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 #undef Pix
 #undef Z1
 #undef Z2
-#undef NO_INTERLACE
 
 // Basic routine to render a chunk of a Mode 7 BG.
 // Mode 7 has no interlace, so BPSTART and PITCH are unused.
@@ -963,7 +931,6 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 
 #define CLIP_10_BIT_SIGNED(a)	(((a) & 0x2000) ? ((a) | ~0x3ff) : ((a) & 0x3ff))
 
-#define NO_INTERLACE	1
 #define Z1				(D + 7)
 #define Z2				(D + 7)
 #define MASK			0xff
@@ -1266,7 +1233,6 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 #undef DRAW_TILE_MOSAIC
 #undef Z1
 #undef Z2
-#undef NO_INTERLACE
 
 /*****************************************************************************/
 #else
@@ -1336,13 +1302,13 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 		GFX.S[Offset + 2 * N + 1] = CALC_PIXEL(GFX.ScreenColors[Pix], GFX.SubScreen[Offset + 2 * N], GFX.SubZBuffer[Offset + 2 * N]); \
 		if ((OffsetInLine + 2 * N ) != (SNES_WIDTH - 1) << 1) \
 			GFX.S[Offset + 2 * N + 2] = CALC_PIXEL((GFX.ClipColors ? 0 : GFX.SubScreen[Offset + 2 * N + 2]), GFX.RealScreenColors[Pix], GFX.SubZBuffer[Offset + 2 * N]); \
-		if ((OffsetInLine + 2 * N) == 0 || (OffsetInLine + 2 * N) == GFX.RealPPL) \
+		if ((OffsetInLine + 2 * N) == 0 || (OffsetInLine + 2 * N) == GFX.PPL) \
 			GFX.S[Offset + 2 * N] = CALC_PIXEL((GFX.ClipColors ? 0 : GFX.SubScreen[Offset + 2 * N]), GFX.RealScreenColors[Pix], GFX.SubZBuffer[Offset + 2 * N]); \
 		GFX.DB[Offset + 2 * N] = GFX.DB[Offset + 2 * N + 1] = Z2; \
 	}
 
 #define OFFSET_IN_LINE \
-	uint32 OffsetInLine = Offset % GFX.RealPPL;
+	uint32 OffsetInLine = Offset % GFX.PPL;
 #define DRAW_PIXEL(N, M)	DRAW_PIXEL_H2x1(N, M)
 #define NAME2				Hires
 
@@ -1353,44 +1319,6 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 #undef NAME2
 #undef DRAW_PIXEL
 #undef OFFSET_IN_LINE
-
-// Interlace: Only draw every other line, so we'll redefine BPSTART and PITCH to do so.
-// Otherwise, it's the same as Normal2x1/Hires2x1.
-
-#undef BPSTART
-#undef PITCH
-
-#define BPSTART	(StartLine * 2 + BG.InterlaceLine)
-#define PITCH	2
-
-#ifndef NO_INTERLACE
-
-#define OFFSET_IN_LINE
-#define DRAW_PIXEL(N, M)	DRAW_PIXEL_N2x1(N, M)
-#define NAME2				Interlace
-
-// Third-level include: Get the double width Interlace renderers.
-
-#include "tile.cpp"
-
-#undef NAME2
-#undef DRAW_PIXEL
-#undef OFFSET_IN_LINE
-
-#define OFFSET_IN_LINE \
-	uint32 OffsetInLine = Offset % GFX.RealPPL;
-#define DRAW_PIXEL(N, M)	DRAW_PIXEL_H2x1(N, M)
-#define NAME2				HiresInterlace
-
-// Third-level include: Get the HiresInterlace renderers.
-
-#include "tile.cpp"
-
-#undef NAME2
-#undef DRAW_PIXEL
-#undef OFFSET_IN_LINE
-
-#endif
 
 #undef BPSTART
 #undef PITCH

@@ -39,13 +39,10 @@ static inline void S9xLatchCounters (bool force)
 		// This makes the effective range of hscan_pos 0-339 at all times.
 		int32	hc = CPU.Cycles;
 
-		if (Timings.H_Max == SNES_CYCLES_PER_SCANLINE) // 1364
-		{
-			if (hc >= 1292)
-				hc -= (ONE_DOT_CYCLE / 2);
-			if (hc >= 1308)
-				hc -= (ONE_DOT_CYCLE / 2);
-		}
+		if (hc >= 1292)
+			hc -= (ONE_DOT_CYCLE / 2);
+		if (hc >= 1308)
+			hc -= (ONE_DOT_CYCLE / 2);
 
 		PPU.HBeamPosLatched = (uint16) (hc / ONE_DOT_CYCLE);
 
@@ -63,9 +60,6 @@ static int CyclesUntilNext (int hc, int vc)
 		// It's still in this frame */
 		// Add number of lines
 		total += (vc - vpos) * SNES_CYCLES_PER_SCANLINE;
-		// If line 240 is in there and we're odd, subtract a dot
-		if (vpos <= 240 && vc > 240 && Timings.InterlaceField & !IPPU.Interlace)
-			total -= ONE_DOT_CYCLE;
 	}
 	else
 	{
@@ -75,11 +69,9 @@ static int CyclesUntilNext (int hc, int vc)
 		}
 
 		total += (Timings.V_Max - vpos) * SNES_CYCLES_PER_SCANLINE;
-		if (vpos <= 240 && Timings.InterlaceField && !IPPU.Interlace)
-			total -= ONE_DOT_CYCLE;
 
 		total += (vc) * SNES_CYCLES_PER_SCANLINE;
-		if (vc > 240 && !Timings.InterlaceField && !IPPU.Interlace)
+		if (vc > 240)
 			total -= ONE_DOT_CYCLE;
 	}
 
@@ -96,7 +88,7 @@ void S9xUpdateIRQPositions (bool initial)
 	PPU.HTimerPosition += PPU.IRQHBeamPos > 326 ? (ONE_DOT_CYCLE / 2) : 0;
 	PPU.VTimerPosition = PPU.IRQVBeamPos;
 
-	if (PPU.VTimerEnabled && (PPU.VTimerPosition >= (Timings.V_Max + (IPPU.Interlace ? 1 : 0))))
+	if (PPU.VTimerEnabled && (PPU.VTimerPosition >= (Timings.V_Max)))
 	{
 		Timings.NextIRQTimer = 0x0fffffff;
 	}
@@ -111,15 +103,8 @@ void S9xUpdateIRQPositions (bool initial)
 		Timings.NextIRQTimer = PPU.HTimerPosition;
 		if (CPU.Cycles > Timings.NextIRQTimer - SNES_IRQ_TRIGGER_CYCLES)
 		{
-			Timings.NextIRQTimer += Timings.H_Max;
+			Timings.NextIRQTimer += SNES_CYCLES_PER_SCANLINE;
 			v_pos++;
-		}
-
-		// Check for short dot scanline
-		if (v_pos == 240 && Timings.InterlaceField && !IPPU.Interlace)
-		{
-			Timings.NextIRQTimer -= PPU.IRQHBeamPos <= 322 ? ONE_DOT_CYCLE / 2 : 0;
-			Timings.NextIRQTimer -= PPU.IRQHBeamPos <= 326 ? ONE_DOT_CYCLE / 2 : 0;
 		}
 	}
 	else if (!PPU.HTimerEnabled && PPU.VTimerEnabled)
@@ -132,21 +117,6 @@ void S9xUpdateIRQPositions (bool initial)
 	else
 	{
 		Timings.NextIRQTimer = CyclesUntilNext (PPU.HTimerPosition, PPU.VTimerPosition);
-
-		// Check for short dot scanline
-		int field = Timings.InterlaceField;
-
-		if (PPU.VTimerPosition < CPU.V_Counter ||
-		   (PPU.VTimerPosition == CPU.V_Counter && Timings.NextIRQTimer > Timings.H_Max))
-		{
-			field = !field;
-		}
-
-		if (PPU.VTimerPosition == 240 && field && !IPPU.Interlace)
-		{
-			Timings.NextIRQTimer -= PPU.IRQHBeamPos <= 322 ? ONE_DOT_CYCLE / 2 : 0;
-			Timings.NextIRQTimer -= PPU.IRQHBeamPos <= 326 ? ONE_DOT_CYCLE / 2 : 0;
-		}
 	}
 
 #ifdef DEBUGGER
@@ -312,10 +282,6 @@ void S9xSetPPU (uint8 Byte, uint32 Address)
 					PPU.BGMode = Byte & 7;
 					// BJ: BG3Priority only takes effect if BGMode == 1 and the bit is set
 					PPU.BG3Priority = ((Byte & 0x0f) == 0x09);
-					if (PPU.BGMode == 6 || PPU.BGMode == 5 || PPU.BGMode == 7)
-					    IPPU.Interlace = Memory.FillRAM[0x2133] & 1;
-					else
-					    IPPU.Interlace = 0;
 				#ifdef DEBUGGER
 					missing.modes[PPU.BGMode] = 1;
 				#endif
@@ -1684,7 +1650,7 @@ void S9xSoftResetPPU (void)
 
 	PPU.HTimerEnabled = FALSE;
 	PPU.VTimerEnabled = FALSE;
-	PPU.HTimerPosition = Timings.H_Max + 1;
+	PPU.HTimerPosition = SNES_CYCLES_PER_SCANLINE + 1;
 	PPU.VTimerPosition = Timings.V_Max + 1;
 	PPU.IRQHBeamPos = 0x1ff;
 	PPU.IRQVBeamPos = 0x1ff;
@@ -1749,8 +1715,6 @@ void S9xSoftResetPPU (void)
 	IPPU.OBJChanged = TRUE;
 	memset(IPPU.TileCache, 0, sizeof(IPPU.TileCache));
 	PPU.VRAMReadBuffer = 0; // XXX: FIXME: anything better?
-	GFX.InterlaceFrame = 0;
-	IPPU.Interlace = FALSE;
 	IPPU.InterlaceOBJ = FALSE;
 	IPPU.DoubleWidthPixels = FALSE;
 	IPPU.DoubleHeightPixels = FALSE;
