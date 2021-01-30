@@ -60,6 +60,11 @@ static bool8 allASCII (uint8 *b, int size)
 	return (TRUE);
 }
 
+static bool8 match_nn (const char *str)
+{
+	return (strncmp(Memory.ROMName, str, strlen(str)) == 0);
+}
+
 // allocation and deallocation
 
 bool8 CMemory::Init (void)
@@ -272,12 +277,7 @@ bool8 CMemory::InitROM ()
 	}
 
 	//// Parse ROM header and read ROM informatoin
-	uint8	*RomHeader = ROM + 0x7FB0;
-
-	if (HiROM)
-		RomHeader += 0x8000;
-
-	ParseSNESHeader(RomHeader);
+	ParseSNESHeader(ROM + (HiROM ? 0xFFB0 : 0x7FB0));
 
 	//// Detect and initialize chips
 	//// detection codes are compatible with NSRT
@@ -322,10 +322,8 @@ bool8 CMemory::InitROM ()
 		GetDSP = NULL;
 	}
 
-
-	//// Map memory and calculate checksum
+	//// Map memory
 	Map_Initialize();
-	CalculatedChecksum = 0;
 
 	if (HiROM)
     {
@@ -336,17 +334,7 @@ bool8 CMemory::InitROM ()
 		Map_LoROMMap();
     }
 
-	Checksum_Calculate();
-
-	bool8 isChecksumOK = (ROMChecksum + ROMComplementChecksum == 0xffff) &
-						 (ROMChecksum == CalculatedChecksum);
-
-	//// Build more ROM information
-
-	// CRC32
-	ROMCRC32 = crc32_le(0, ROM, CalculatedSize);
-
-	// NTSC / PAL
+	// ROM Region
 	Settings.PAL = (Settings.ForcePAL && !Settings.ForceNTSC)
 						|| ((ROMRegion >= 2) && (ROMRegion <= 12));
 
@@ -361,18 +349,6 @@ bool8 CMemory::InitROM ()
 		ROMFramesPerSecond = 60;
 	}
 
-	// truncate cart name
-	ROMName[ROM_NAME_LEN - 1] = 0;
-	if (strlen(ROMName))
-	{
-		char *p = ROMName + strlen(ROMName);
-		if (p > ROMName + 21 && ROMName[20] == ' ')
-			p = ROMName + 21;
-		while (p > ROMName && *(p - 1) == ' ')
-			p--;
-		*p = 0;
-	}
-
 	// SRAM size
 	SRAMMask = SRAMSize ? ((1 << (SRAMSize + 3)) * 128) - 1 : 0;
 	SRAMBytes = SRAMSize ? ((1 << (SRAMSize + 3)) * 128) : 0;
@@ -382,7 +358,14 @@ bool8 CMemory::InitROM ()
 		printf("\n\nWARNING: Default SRAM size too small!, need %d bytes\n\n", SRAMBytes);
 	}
 
-	// checksum
+	// Checksums
+	Checksum_Calculate();
+
+	bool8 isChecksumOK = (ROMChecksum + ROMComplementChecksum == 0xffff) &
+						 (ROMChecksum == CalculatedChecksum);
+
+	ROMCRC32 = crc32_le(0, ROM, CalculatedSize);
+
 	if (!isChecksumOK || ((uint32) CalculatedSize > (uint32) (((1 << (ROMSize - 7)) * 128) * 1024)))
 	{
 		Settings.DisplayColor = BUILD_PIXEL(31, 31, 0);
@@ -395,16 +378,6 @@ bool8 CMemory::InitROM ()
 		Settings.DisplayColor = BUILD_PIXEL(26, 26, 31);
 		SET_UI_COLOR(216, 216, 255);
 	}
-
-	//// Initialize emulation
-	Timings.V_Max        = (Settings.PAL ? SNES_MAX_PAL_VCOUNTER : SNES_MAX_NTSC_VCOUNTER);
-	/* From byuu: The total delay time for both the initial (H)DMA sync (to the DMA clock),
-	   and the end (H)DMA sync (back to the last CPU cycle's mcycle rate (6, 8, or 12)) always takes between 12-24 mcycles.
-	   Possible delays: { 12, 14, 16, 18, 20, 22, 24 }
-	   XXX: Snes9x can't emulate this timing :( so let's use the average value... */
-	Timings.DMACPUSync   = 18;
-
-	IPPU.TotalEmulatedFrames = 0;
 
 	//// Hack games
 	ApplyROMFixes();
@@ -424,7 +397,7 @@ bool8 CMemory::InitROM ()
 void CMemory::ClearSRAM (bool8 onlyNonSavedSRAM)
 {
 	if (SRAMBytes > 0)
-		memset(SRAM, Settings.SRAMInitialValue, SRAMBytes);
+		memset(SRAM, 0x00, SRAMBytes);
 }
 
 bool8 CMemory::LoadSRAM (const char *filename)
@@ -443,6 +416,17 @@ void CMemory::ParseSNESHeader (uint8 *RomHeader)
 {
 	strncpy(ROMName, (char *) &RomHeader[0x10], ROM_NAME_LEN - 1);
 	sanitize(ROMName, ROM_NAME_LEN);
+
+	ROMName[ROM_NAME_LEN - 1] = 0;
+	if (strlen(ROMName))
+	{
+		char *p = ROMName + strlen(ROMName);
+		if (p > ROMName + 21 && ROMName[20] == ' ')
+			p = ROMName + 21;
+		while (p > ROMName && *(p - 1) == ' ')
+			p--;
+		*p = 0;
+	}
 
 	ROMSize   = RomHeader[0x27];
 	SRAMSize  = RomHeader[0x28];
@@ -685,7 +669,7 @@ uint16 CMemory::checksum_calc_sum (uint8 *data, uint32 length)
 {
 	uint16	sum = 0;
 
-	for (uint32 i = 0; i < length; i++)
+	for (size_t i = 0; i < length; i++)
 		sum += data[i];
 
 	return (sum);
@@ -859,20 +843,10 @@ void CMemory::MakeRomInfoText (char *romtext)
 
 // hack
 
-bool8 CMemory::match_na (const char *str)
-{
-	return (strcmp(ROMName, str) == 0);
-}
-
-bool8 CMemory::match_nn (const char *str)
-{
-	return (strncmp(ROMName, str, strlen(str)) == 0);
-}
-
 void CMemory::ApplyROMFixes (void)
 {
 	Settings.UniracersHack = FALSE;
-	Settings.SRAMInitialValue = 0x60;
+	Settings.DMACPUSyncHack = FALSE;
 
 	//// Warnings
 
@@ -881,79 +855,35 @@ void CMemory::ApplyROMFixes (void)
 		(ROMCRC32 == 0x340f23e5) ||
 		(ROMCRC32 == 0x77fd806a) ||
 		(match_nn("HIGHWAY BATTLE 2")) ||
-		(match_na("FX SKIING NINTENDO 96") && (ROM[0x7fda] == 0)) ||
+		(match_nn("FX SKIING NINTENDO 96") && (ROM[0x7fda] == 0)) ||
 		(match_nn("HONKAKUHA IGO GOSEI")   && (ROM[0xffd5] != 0x31)))
 	{
 		Settings.DisplayColor = BUILD_PIXEL(31, 0, 0);
 		SET_UI_COLOR(255, 0, 0);
 	}
 
-	//// APU timing hacks :(
-
-	S9xAPUTimingSetSpeedup(0);
-
 	if (!Settings.DisableGameSpecificHacks)
 	{
-		if (match_na("CIRCUIT USA"))
+		//// APU timing hacks :(
+		S9xAPUTimingSetSpeedup(0);
+		if (match_nn("CIRCUIT USA "))
 			S9xAPUTimingSetSpeedup(3);
-	}
 
-	//// Other timing hacks :(
-
-	if (!Settings.DisableGameSpecificHacks)
-	{
-		// The delay to sync CPU and DMA which Snes9x cannot emulate.
-		// Some games need really severe delay timing...
-		if (match_na("BATTLE GRANDPRIX")) // Battle Grandprix
-		{
-			Timings.DMACPUSync = 20;
-			printf("DMA sync: %d\n", Timings.DMACPUSync);
-		}
-		else if (match_na("KORYU NO MIMI ENG")) // Koryu no Mimi translation by rpgone)
-		{
-			// An infinite loop reads $4210 and checks NMI flag. This only works if LDA instruction executes before the NMI triggers,
-			// which doesn't work very well with s9x's default DMA timing.
-			Timings.DMACPUSync = 20;
-			printf("DMA sync: %d\n", Timings.DMACPUSync);
-		}
-	}
-
-	//// SRAM initial value
-
-	if (!Settings.DisableGameSpecificHacks)
-	{
-		if (match_na("HITOMI3"))
+		// SRAM not correctly detected
+		if (match_nn("HITOMI3 "))
 		{
 			SRAMSize = 1;
 			SRAMMask = ((1 << (SRAMSize + 3)) * 128) - 1;
 		}
 
-		// SRAM value fixes
-		if (match_na("SUPER DRIFT OUT")      || // Super Drift Out
-			match_na("SATAN IS OUR FATHER!") ||
-			match_na("goemon 4"))               // Ganbare Goemon Kirakira Douchuu
-			Settings.SRAMInitialValue = 0x00;
+		// The delay to sync CPU and DMA which Snes9x cannot emulate.
+		// Some games need really severe delay timing...
+		Settings.DMACPUSyncHack = (match_nn("BATTLE GRANDPRIX") || match_nn("KORYU NO MIMI ENG"));
 
-		// Additional game fixes by sanmaiwashi ...
-		// XXX: unnecessary?
-		if (match_na("SFX \xC5\xB2\xC4\xB6\xDE\xDD\xC0\xDE\xD1\xD3\xC9\xB6\xDE\xC0\xD8 1")) // SD Gundam Gaiden - Knight Gundam Monogatari
-			Settings.SRAMInitialValue = 0x6b;
-
-		// others: BS and ST-01x games are 0x00.
-	}
-
-	//// OAM hacks :(
-
-	if (!Settings.DisableGameSpecificHacks)
-	{
 		// OAM hacks because we don't fully understand the behavior of the SNES.
 		// Totally wacky display in 2P mode...
 		// seems to need a disproven behavior, so we're definitely overlooking some other bug?
-		if (match_nn("UNIRACERS")) // Uniracers
-		{
-			Settings.UniracersHack = TRUE;
-			printf("Applied Uniracers hack.\n");
-		}
+		Settings.UniracersHack = match_nn("UNIRACERS");
 	}
 }
 

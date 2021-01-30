@@ -47,14 +47,15 @@
 
 #define SNES_MAX_NTSC_VCOUNTER		262
 #define SNES_MAX_PAL_VCOUNTER		312
-#define SNES_HCOUNTER_MAX			341
+#define SNES_MAX_VCOUNTER			(Settings.PAL ? SNES_MAX_PAL_VCOUNTER : SNES_MAX_NTSC_VCOUNTER)
+#define SNES_MAX_HCOUNTER			341
 
 #define ONE_CYCLE					6
 #define SLOW_ONE_CYCLE				8
 #define TWO_CYCLES					12
 #define	ONE_DOT_CYCLE				4
 
-#define SNES_CYCLES_PER_SCANLINE	(SNES_HCOUNTER_MAX * ONE_DOT_CYCLE)
+#define SNES_CYCLES_PER_SCANLINE	(SNES_MAX_HCOUNTER * ONE_DOT_CYCLE)
 #define SNES_SCANLINE_TIME			(SNES_CYCLES_PER_SCANLINE / NTSC_MASTER_CLOCK)
 
 #define SNES_SPRITE_TILE_PER_LINE	34
@@ -69,6 +70,12 @@
 #define	SNES_RENDER_START_HC		(128 * ONE_DOT_CYCLE)	// FIXME: Snes9x renders a line at a time.
 
 #define SNES_IRQ_TRIGGER_CYCLES		14
+
+/* From byuu: The total delay time for both the initial (H)DMA sync (to the DMA clock),
+	and the end (H)DMA sync (back to the last CPU cycle's mcycle rate (6, 8, or 12)) always takes between 12-24 mcycles.
+	Possible delays: { 12, 14, 16, 18, 20, 22, 24 }
+	XXX: Snes9x can't emulate this timing :( so let's use the average value... */
+#define SNES_DMA_CPU_SYNC_CYCLES	18
 
 /* If the CPU is halted (i.e. for DMA) while /NMI goes low, the NMI will trigger
 	after the DMA completes (even if /NMI goes high again before the DMA
@@ -100,6 +107,24 @@
 #define ROM_NAME_LEN	23
 #define AUTO_FRAMERATE	200
 
+typedef enum
+{
+	HC_HBLANK_START_EVENT = 1,
+	HC_HDMA_START_EVENT   = 2,
+	HC_HCOUNTER_MAX_EVENT = 3,
+	HC_HDMA_INIT_EVENT    = 4,
+	HC_RENDER_EVENT       = 5,
+	HC_WRAM_REFRESH_EVENT = 6
+} hevent_t;
+
+enum
+{
+	IRQ_NONE        = 0x0,
+	IRQ_SET_FLAG    = 0x1,
+	IRQ_CLEAR_FLAG  = 0x2,
+	IRQ_TRIGGER_NMI = 0x4
+};
+
 struct SCPUState
 {
 	uint32	Flags;
@@ -119,37 +144,14 @@ struct SCPUState
 	bool8	InWRAMDMAorHDMA;
 	uint8	HDMARanInDMA;
 	int32	CurrentDMAorHDMAChannel;
-	int32	WhichEvent;
+	hevent_t	WhichEvent;
 	int32	NextEvent;
 	bool8	WaitingForInterrupt;
 	uint32	AutoSaveTimer;
 	bool8	SRAMModified;
-};
 
-enum
-{
-	HC_HBLANK_START_EVENT = 1,
-	HC_HDMA_START_EVENT   = 2,
-	HC_HCOUNTER_MAX_EVENT = 3,
-	HC_HDMA_INIT_EVENT    = 4,
-	HC_RENDER_EVENT       = 5,
-	HC_WRAM_REFRESH_EVENT = 6
-};
-
-enum
-{
-	IRQ_NONE        = 0x0,
-	IRQ_SET_FLAG    = 0x1,
-	IRQ_CLEAR_FLAG  = 0x2,
-	IRQ_TRIGGER_NMI = 0x4
-};
-
-struct STimings
-{
-	int32	V_Max;
 	int32	NMITriggerPos;
 	int32	NextIRQTimer;
-	int32	DMACPUSync;		// The cycles to synchronize DMA and CPU. Snes9x cannot emulate correctly.
 	int32	IRQFlagChanging;	// This value is just a hack.
 };
 
@@ -184,8 +186,6 @@ struct SSettings
 	uint8	BG_Forced;
 	bool8	DisableGraphicWindows;
 
-	bool8	DisplayFrameRate;
-	bool8	AutoDisplayMessages;
 	uint32	InitialInfoStringTimeout;
 	uint16	DisplayColor;
 
@@ -204,9 +204,8 @@ struct SSettings
 	int32	AutoSaveDelay;
 
 	bool8	DisableGameSpecificHacks;
-	int32	HDMATimingHack;
-	uint8	SRAMInitialValue;
-	uint8	UniracersHack;
+	bool8	UniracersHack;
+	bool8	DMACPUSyncHack;
 };
 
 void S9xExit(void);
@@ -215,7 +214,6 @@ void S9xInitSettings(void);
 
 extern struct SSettings			Settings;
 extern struct SCPUState			CPU;
-extern struct STimings			Timings;
 extern char						String[513];
 
 #endif

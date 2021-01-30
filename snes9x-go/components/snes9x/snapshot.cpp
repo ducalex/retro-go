@@ -145,6 +145,9 @@ static const FreezeData	SnapCPU[] =
 	INT_ENTRY(7, NMIPending),
 	INT_ENTRY(7, IRQLine),
 	INT_ENTRY(7, IRQLastState),
+	INT_ENTRY(6, NMITriggerPos),
+	INT_ENTRY(6, IRQFlagChanging),
+	INT_ENTRY(6, NextIRQTimer)
 };
 
 #undef STRUCT
@@ -309,18 +312,6 @@ static const FreezeData	SnapDMA[] =
 	INT_ENTRY(6, dma[N].DoTransfer)
 	O(0), O(1), O(2), O(3), O(4), O(5), O(6), O(7)
 #undef O
-};
-
-#undef STRUCT
-#define STRUCT	struct STimings
-
-static const FreezeData	SnapTimings[] =
-{
-	INT_ENTRY(6, V_Max),
-	INT_ENTRY(6, NMITriggerPos),
-	INT_ENTRY(6, DMACPUSync),
-	INT_ENTRY(6, IRQFlagChanging),
-	INT_ENTRY(11, NextIRQTimer)
 };
 
 #undef STRUCT
@@ -603,8 +594,6 @@ bool8 S9xFreezeGame (const char *filename)
 	S9xAPUSaveState(soundsnapshot);
 	FreezeBlock (stream, "SND", soundsnapshot, SPC_SAVE_STATE_BLOCK_SIZE);
 
-	FreezeStruct(stream, "TIM", &Timings, SnapTimings, COUNT(SnapTimings));
-
 	if (Settings.DSP == 1)
 		FreezeStruct(stream, "DP1", &DSP1, SnapDSP1, COUNT(SnapDSP1));
 
@@ -694,10 +683,6 @@ bool8 S9xUnfreezeGame (const char *filename)
 			break;
 
 		result = UnfreezeBlock (stream, "SND", soundsnapshot, SPC_SAVE_STATE_BLOCK_SIZE);
-		if (result != SUCCESS)
-			break;
-
-		result = UnfreezeStruct(stream, "TIM", &Timings, SnapTimings, COUNT(SnapTimings), version);
 		if (result != SUCCESS)
 			break;
 

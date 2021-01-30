@@ -25,6 +25,8 @@ struct SDMA
 	uint8	LineCount;
 	uint8	UnknownByte;
 	uint8	DoTransfer;
+
+	uint8	*MemPointer;
 };
 
 #define TransferBytes	DMACount_Or_HDMAIndirectAddress

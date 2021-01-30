@@ -16,8 +16,6 @@
 #include "missing.h"
 #endif
 
-extern uint8	*HDMAMemPointers[8];
-
 
 static inline void S9xLatchCounters (bool force)
 {
@@ -68,7 +66,7 @@ static int CyclesUntilNext (int hc, int vc)
 			return hc;
 		}
 
-		total += (Timings.V_Max - vpos) * SNES_CYCLES_PER_SCANLINE;
+		total += (SNES_MAX_VCOUNTER - vpos) * SNES_CYCLES_PER_SCANLINE;
 
 		total += (vc) * SNES_CYCLES_PER_SCANLINE;
 		if (vc > 240)
@@ -88,40 +86,40 @@ void S9xUpdateIRQPositions (bool initial)
 	PPU.HTimerPosition += PPU.IRQHBeamPos > 326 ? (ONE_DOT_CYCLE / 2) : 0;
 	PPU.VTimerPosition = PPU.IRQVBeamPos;
 
-	if (PPU.VTimerEnabled && (PPU.VTimerPosition >= (Timings.V_Max)))
+	if (PPU.VTimerEnabled && PPU.VTimerPosition >= SNES_MAX_VCOUNTER)
 	{
-		Timings.NextIRQTimer = 0x0fffffff;
+		CPU.NextIRQTimer = 0x0fffffff;
 	}
 	else if (!PPU.HTimerEnabled && !PPU.VTimerEnabled)
 	{
-		Timings.NextIRQTimer = 0x0fffffff;
+		CPU.NextIRQTimer = 0x0fffffff;
 	}
 	else if (PPU.HTimerEnabled && !PPU.VTimerEnabled)
 	{
 		int v_pos = CPU.V_Counter;
 
-		Timings.NextIRQTimer = PPU.HTimerPosition;
-		if (CPU.Cycles > Timings.NextIRQTimer - SNES_IRQ_TRIGGER_CYCLES)
+		CPU.NextIRQTimer = PPU.HTimerPosition;
+		if (CPU.Cycles > CPU.NextIRQTimer - SNES_IRQ_TRIGGER_CYCLES)
 		{
-			Timings.NextIRQTimer += SNES_CYCLES_PER_SCANLINE;
+			CPU.NextIRQTimer += SNES_CYCLES_PER_SCANLINE;
 			v_pos++;
 		}
 	}
 	else if (!PPU.HTimerEnabled && PPU.VTimerEnabled)
 	{
 		if (CPU.V_Counter == PPU.VTimerPosition && initial)
-			Timings.NextIRQTimer = CPU.Cycles + SNES_IRQ_TRIGGER_CYCLES - ONE_DOT_CYCLE;
+			CPU.NextIRQTimer = CPU.Cycles + SNES_IRQ_TRIGGER_CYCLES - ONE_DOT_CYCLE;
 		else
-			Timings.NextIRQTimer = CyclesUntilNext (SNES_IRQ_TRIGGER_CYCLES - ONE_DOT_CYCLE, PPU.VTimerPosition);
+			CPU.NextIRQTimer = CyclesUntilNext (SNES_IRQ_TRIGGER_CYCLES - ONE_DOT_CYCLE, PPU.VTimerPosition);
 	}
 	else
 	{
-		Timings.NextIRQTimer = CyclesUntilNext (PPU.HTimerPosition, PPU.VTimerPosition);
+		CPU.NextIRQTimer = CyclesUntilNext (PPU.HTimerPosition, PPU.VTimerPosition);
 	}
 
 #ifdef DEBUGGER
 	S9xTraceFormattedMessage("--- IRQ Timer HC:%d VC:%d set %d cycles HTimer:%d Pos:%04d->%04d  VTimer:%d Pos:%03d->%03d", CPU.Cycles, CPU.V_Counter,
-		Timings.NextIRQTimer, PPU.HTimerEnabled, PPU.IRQHBeamPos, PPU.HTimerPosition, PPU.VTimerEnabled, PPU.IRQVBeamPos, PPU.VTimerPosition);
+		CPU.NextIRQTimer, PPU.HTimerEnabled, PPU.IRQHBeamPos, PPU.HTimerPosition, PPU.VTimerEnabled, PPU.IRQVBeamPos, PPU.VTimerPosition);
 #endif
 }
 
@@ -1144,36 +1142,36 @@ void S9xSetCPU (uint8 Byte, uint32 Address)
 
 			case 0x4: // 0x43x4: A1Bx
 				DMA[d].ABank = Byte;
-				HDMAMemPointers[d] = NULL;
+				DMA[d].MemPointer = NULL;
 				return;
 
 			case 0x5: // 0x43x5: DASxL
 				DMA[d].DMACount_Or_HDMAIndirectAddress &= 0xff00;
 				DMA[d].DMACount_Or_HDMAIndirectAddress |= Byte;
-				HDMAMemPointers[d] = NULL;
+				DMA[d].MemPointer = NULL;
 				return;
 
 			case 0x6: // 0x43x6: DASxH
 				DMA[d].DMACount_Or_HDMAIndirectAddress &= 0xff;
 				DMA[d].DMACount_Or_HDMAIndirectAddress |= Byte << 8;
-				HDMAMemPointers[d] = NULL;
+				DMA[d].MemPointer = NULL;
 				return;
 
 			case 0x7: // 0x43x7: DASBx
 				DMA[d].IndirectBank = Byte;
-				HDMAMemPointers[d] = NULL;
+				DMA[d].MemPointer = NULL;
 				return;
 
 			case 0x8: // 0x43x8: A2AxL
 				DMA[d].Address &= 0xff00;
 				DMA[d].Address |= Byte;
-				HDMAMemPointers[d] = NULL;
+				DMA[d].MemPointer = NULL;
 				return;
 
 			case 0x9: // 0x43x9: A2AxH
 				DMA[d].Address &= 0xff;
 				DMA[d].Address |= Byte << 8;
-				HDMAMemPointers[d] = NULL;
+				DMA[d].MemPointer = NULL;
 				return;
 
 			case 0xa: // 0x43xa: NLTRx
@@ -1258,11 +1256,11 @@ void S9xSetCPU (uint8 Byte, uint32 Address)
 				{
 					// FIXME: triggered at HC+=6, checked just before the final CPU cycle,
 					// then, when to call S9xOpcode_NMI()?
-					Timings.IRQFlagChanging |= IRQ_TRIGGER_NMI;
+					CPU.IRQFlagChanging |= IRQ_TRIGGER_NMI;
 
 					#ifdef DEBUGGER
 					if (Settings.TraceHCEvent)
-						S9xTraceFormattedMessage("NMI Triggered on low-to-high occurring at next HC=%d\n", Timings.NMITriggerPos);
+						S9xTraceFormattedMessage("NMI Triggered on low-to-high occurring at next HC=%d\n", CPU.NMITriggerPos);
 					#endif
 				}
 
@@ -1352,9 +1350,11 @@ void S9xSetCPU (uint8 Byte, uint32 Address)
 				if (CPU.InDMAorHDMA)
 					return;
 				// XXX: Not quite right...
-                if (Byte) {
-				CPU.Cycles += Timings.DMACPUSync;
-                }
+				if (Byte) {
+					CPU.Cycles += SNES_DMA_CPU_SYNC_CYCLES;
+					if (Settings.DMACPUSyncHack)
+						CPU.Cycles += 2;
+				}
 				if (Byte & 0x01)
 					S9xDoDMA(0);
 				if (Byte & 0x02)
@@ -1651,7 +1651,7 @@ void S9xSoftResetPPU (void)
 	PPU.HTimerEnabled = FALSE;
 	PPU.VTimerEnabled = FALSE;
 	PPU.HTimerPosition = SNES_CYCLES_PER_SCANLINE + 1;
-	PPU.VTimerPosition = Timings.V_Max + 1;
+	PPU.VTimerPosition = SNES_MAX_VCOUNTER + 1;
 	PPU.IRQHBeamPos = 0x1ff;
 	PPU.IRQVBeamPos = 0x1ff;
 
@@ -1715,6 +1715,7 @@ void S9xSoftResetPPU (void)
 	IPPU.OBJChanged = TRUE;
 	memset(IPPU.TileCache, 0, sizeof(IPPU.TileCache));
 	PPU.VRAMReadBuffer = 0; // XXX: FIXME: anything better?
+	IPPU.Interlace = FALSE;
 	IPPU.InterlaceOBJ = FALSE;
 	IPPU.DoubleWidthPixels = FALSE;
 	IPPU.DoubleHeightPixels = FALSE;
@@ -1729,6 +1730,7 @@ void S9xSoftResetPPU (void)
 	IPPU.RenderedScreenHeight = SNES_HEIGHT;
 	IPPU.FrameCount = 0;
 	IPPU.RenderedFramesCount = 0;
+	IPPU.TotalEmulatedFrames = 0;
 	IPPU.DisplayedRenderedFrameCount = 0;
 	IPPU.SkippedFrames = 0;
 	IPPU.FrameSkip = 0;

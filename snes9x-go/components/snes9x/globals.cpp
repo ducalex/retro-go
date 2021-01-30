@@ -19,7 +19,6 @@ struct SRegisters		Registers;
 struct SPPU				PPU;
 struct InternalPPU		IPPU;
 struct SDMA				DMA[8];
-struct STimings			Timings;
 struct SGFX				GFX;
 struct SBG				BG;
 struct SDSP0			DSP0;
@@ -32,5 +31,4 @@ struct Missing			missing;
 CMemory					Memory;				// 33448 bytes
 
 char	String[513];
-uint8	OpenBus = 0;
-uint8	*HDMAMemPointers[8];
+uint32	OpenBus = 0;

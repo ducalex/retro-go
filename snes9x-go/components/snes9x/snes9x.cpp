@@ -44,8 +44,6 @@ void S9xInitSettings(void)
 	// Display
 	Settings.Transparency               =  true;
 	Settings.DisableGraphicWindows      =  false;
-	Settings.DisplayFrameRate           =  false;
-	Settings.AutoDisplayMessages        =  true;
 	Settings.InitialInfoStringTimeout   =  120;
 
 	// Settings

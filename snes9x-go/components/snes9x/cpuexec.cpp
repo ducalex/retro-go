@@ -16,18 +16,18 @@
 #endif
 
 #define CHECK_FOR_IRQ_CHANGE() \
-if (Timings.IRQFlagChanging) \
+if (CPU.IRQFlagChanging) \
 { \
-	if (Timings.IRQFlagChanging & IRQ_TRIGGER_NMI) \
+	if (CPU.IRQFlagChanging & IRQ_TRIGGER_NMI) \
 	{ \
 		CPU.NMIPending = TRUE; \
-		Timings.NMITriggerPos = CPU.Cycles + 6; \
+		CPU.NMITriggerPos = CPU.Cycles + 6; \
 	} \
-	if (Timings.IRQFlagChanging & IRQ_CLEAR_FLAG) \
+	if (CPU.IRQFlagChanging & IRQ_CLEAR_FLAG) \
 		ClearIRQ(); \
-	else if (Timings.IRQFlagChanging & IRQ_SET_FLAG) \
+	else if (CPU.IRQFlagChanging & IRQ_SET_FLAG) \
 		SetIRQ(); \
-	Timings.IRQFlagChanging = IRQ_NONE; \
+	CPU.IRQFlagChanging = IRQ_NONE; \
 }
 
 IRAM_ATTR void S9xMainLoop (void)
@@ -46,7 +46,7 @@ IRAM_ATTR void S9xMainLoop (void)
 			if ((++loops) & 0xF)
 				goto run_opcode;
 
-			while (CPU.Cycles >= CPU.NextEvent)
+			if (CPU.Cycles >= CPU.NextEvent)
 				S9xDoHEventProcessing();
 		#endif
 
@@ -54,18 +54,18 @@ IRAM_ATTR void S9xMainLoop (void)
 		{
 			#ifdef DEBUGGER
 			if (Settings.TraceHCEvent)
-			    S9xTraceFormattedMessage ("Comparing %d to %d\n", Timings.NMITriggerPos, CPU.Cycles);
+			    S9xTraceFormattedMessage ("Comparing %d to %d\n", CPU.NMITriggerPos, CPU.Cycles);
 			#endif
-			if (Timings.NMITriggerPos <= CPU.Cycles)
+			if (CPU.NMITriggerPos <= CPU.Cycles)
 			{
 				CPU.NMIPending = FALSE;
-				Timings.NMITriggerPos = 0xffff;
+				CPU.NMITriggerPos = 0xffff;
 				if (CPU.WaitingForInterrupt)
 				{
 					CPU.WaitingForInterrupt = FALSE;
 					Registers.PCw++;
 					CPU.Cycles += TWO_CYCLES + ONE_DOT_CYCLE / 2;
-					while (CPU.Cycles >= CPU.NextEvent)
+					if (CPU.Cycles >= CPU.NextEvent)
 						S9xDoHEventProcessing();
 				}
 
@@ -74,7 +74,7 @@ IRAM_ATTR void S9xMainLoop (void)
 			}
 		}
 
-		if (CPU.Cycles >= Timings.NextIRQTimer)
+		if (CPU.Cycles >= CPU.NextIRQTimer)
 		{
 			#ifdef DEBUGGER
 			S9xTraceMessage ("Timer triggered\n");
@@ -91,7 +91,7 @@ IRAM_ATTR void S9xMainLoop (void)
 				CPU.WaitingForInterrupt = FALSE;
 				Registers.PCw++;
 				CPU.Cycles += TWO_CYCLES + ONE_DOT_CYCLE / 2;
-				while (CPU.Cycles >= CPU.NextEvent)
+				if (CPU.Cycles >= CPU.NextEvent)
 					S9xDoHEventProcessing();
 			}
 
@@ -193,155 +193,155 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 	};
 #endif
 
-#ifdef DEBUGGER
-	if (Settings.TraceHCEvent)
-		S9xTraceFormattedMessage("--- HC event processing  (%s)  expected HC:%04d  executed HC:%04d VC:%04d",
-			eventname[CPU.WhichEvent], CPU.NextEvent, CPU.Cycles, CPU.V_Counter);
-#endif
-
-	switch (CPU.WhichEvent)
+	do
 	{
-		case HC_HBLANK_START_EVENT:
-			CPU.WhichEvent = HC_HDMA_START_EVENT;
-			CPU.NextEvent  = SNES_HDMA_START_HC;
-			break;
+	#ifdef DEBUGGER
+		if (Settings.TraceHCEvent)
+			S9xTraceFormattedMessage("--- HC event processing  (%s)  expected HC:%04d  executed HC:%04d VC:%04d",
+				eventname[CPU.WhichEvent], CPU.NextEvent, CPU.Cycles, CPU.V_Counter);
+	#endif
 
-		case HC_HDMA_START_EVENT:
-			CPU.WhichEvent = HC_HCOUNTER_MAX_EVENT;
-			CPU.NextEvent  = SNES_CYCLES_PER_SCANLINE;
+		switch (CPU.WhichEvent)
+		{
+			case HC_HBLANK_START_EVENT:
+				CPU.WhichEvent = HC_HDMA_START_EVENT;
+				CPU.NextEvent  = SNES_HDMA_START_HC;
+				break;
 
-			if (PPU.HDMA && CPU.V_Counter <= PPU.ScreenHeight)
-			{
-			#ifdef DEBUGGER
-				S9xTraceFormattedMessage("*** HDMA Transfer HC:%04d, Channel:%02x", CPU.Cycles, PPU.HDMA);
-			#endif
-				PPU.HDMA = S9xDoHDMA(PPU.HDMA);
-			}
+			case HC_HDMA_START_EVENT:
+				CPU.WhichEvent = HC_HCOUNTER_MAX_EVENT;
+				CPU.NextEvent  = SNES_CYCLES_PER_SCANLINE;
 
-			break;
-
-		case HC_HCOUNTER_MAX_EVENT:
-			S9xAPUEndScanline();
-			CPU.Cycles -= SNES_CYCLES_PER_SCANLINE;
-			if (Timings.NMITriggerPos != 0xffff)
-				Timings.NMITriggerPos -= SNES_CYCLES_PER_SCANLINE;
-			if (Timings.NextIRQTimer != 0x0fffffff)
-				Timings.NextIRQTimer -= SNES_CYCLES_PER_SCANLINE;
-			S9xAPUSetReferenceTime(CPU.Cycles);
-
-			CPU.V_Counter++;
-			if (CPU.V_Counter >= Timings.V_Max)	// V ranges from 0 to Timings.V_Max - 1
-			{
-				CPU.V_Counter = 0;
-
-				Timings.V_Max = (Settings.PAL ? SNES_MAX_PAL_VCOUNTER : SNES_MAX_NTSC_VCOUNTER); // 262 (NTSC), 312?(PAL)
-
-				Memory.FillRAM[0x213F] ^= 0x80;
-				PPU.RangeTimeOver = 0;
-
-				// FIXME: reading $4210 will wait 2 cycles, then perform reading, then wait 4 more cycles.
-				Memory.FillRAM[0x4210] = 2;
-
-				ICPU.Frame++;
-				PPU.HVBeamCounterLatched = 0;
-			}
-
-			if (CPU.V_Counter == PPU.ScreenHeight + FIRST_VISIBLE_LINE)	// VBlank starts from V=225(240).
-			{
-				S9xEndScreenRefresh();
-
-				CPU.Flags |= SCAN_KEYS_FLAG;
-
-				PPU.HDMA = 0;
-				// Bits 7 and 6 of $4212 are computed when read in S9xGetPPU.
-			#ifdef DEBUGGER
-				missing.dma_this_frame = 0;
-			#endif
-				IPPU.MaxBrightness = PPU.Brightness;
-				PPU.ForcedBlanking = (Memory.FillRAM[0x2100] >> 7) & 1;
-
-				if (!PPU.ForcedBlanking)
-				{
-					PPU.OAMAddr = PPU.SavedOAMAddr;
-
-					uint8	tmp = 0;
-
-					if (PPU.OAMPriorityRotation)
-						tmp = (PPU.OAMAddr & 0xFE) >> 1;
-					if ((PPU.OAMFlip & 1) || PPU.FirstSprite != tmp)
-					{
-						PPU.FirstSprite = tmp;
-						IPPU.OBJChanged = TRUE;
-					}
-
-					PPU.OAMFlip = 0;
-				}
-
-				// FIXME: writing to $4210 will wait 6 cycles.
-				Memory.FillRAM[0x4210] = 0x80 | 2;
-				if (Memory.FillRAM[0x4200] & 0x80)
+				if (PPU.HDMA && CPU.V_Counter <= PPU.ScreenHeight)
 				{
 				#ifdef DEBUGGER
-					if (Settings.TraceHCEvent)
-					    S9xTraceFormattedMessage ("NMI Scheduled for next scanline.");
+					S9xTraceFormattedMessage("*** HDMA Transfer HC:%04d, Channel:%02x", CPU.Cycles, PPU.HDMA);
 				#endif
-					// FIXME: triggered at HC=6, checked just before the final CPU cycle,
-					// then, when to call S9xOpcode_NMI()?
-					CPU.NMIPending = TRUE;
-					Timings.NMITriggerPos = 6 + 6;
+					PPU.HDMA = S9xDoHDMA(PPU.HDMA);
 				}
 
-			}
+				break;
 
-			if (CPU.V_Counter == PPU.ScreenHeight + 3)	// FIXME: not true
-			{
-				if (Memory.FillRAM[0x4200] & 1)
-					S9xDoAutoJoypad();
-			}
+			case HC_HCOUNTER_MAX_EVENT:
+				S9xAPUEndScanline();
+				CPU.Cycles -= SNES_CYCLES_PER_SCANLINE;
+				if (CPU.NMITriggerPos != 0xffff)
+					CPU.NMITriggerPos -= SNES_CYCLES_PER_SCANLINE;
+				if (CPU.NextIRQTimer != 0x0fffffff)
+					CPU.NextIRQTimer -= SNES_CYCLES_PER_SCANLINE;
+				S9xAPUSetReferenceTime(CPU.Cycles);
 
-			if (CPU.V_Counter == FIRST_VISIBLE_LINE)	// V=1
-				S9xStartScreenRefresh();
+				CPU.V_Counter++;
+				if (CPU.V_Counter >= SNES_MAX_VCOUNTER)	// V ranges from 0 to MAX_VCOUNTER - 1
+				{
+					CPU.V_Counter = 0;
 
-			CPU.WhichEvent = HC_HDMA_INIT_EVENT;
-			CPU.NextEvent  = SNES_HDMA_INIT_HC;
-			break;
+					Memory.FillRAM[0x213F] ^= 0x80;
+					PPU.RangeTimeOver = 0;
 
-		case HC_HDMA_INIT_EVENT:
-			CPU.WhichEvent = HC_RENDER_EVENT;
-			CPU.NextEvent  = SNES_RENDER_START_HC;
+					// FIXME: reading $4210 will wait 2 cycles, then perform reading, then wait 4 more cycles.
+					Memory.FillRAM[0x4210] = 2;
 
-			if (CPU.V_Counter == 0)
-			{
+					ICPU.Frame++;
+					PPU.HVBeamCounterLatched = 0;
+				}
+
+				if (CPU.V_Counter == PPU.ScreenHeight + FIRST_VISIBLE_LINE)	// VBlank starts from V=225(240).
+				{
+					S9xEndScreenRefresh();
+
+					CPU.Flags |= SCAN_KEYS_FLAG;
+
+					PPU.HDMA = 0;
+					// Bits 7 and 6 of $4212 are computed when read in S9xGetPPU.
+				#ifdef DEBUGGER
+					missing.dma_this_frame = 0;
+				#endif
+					IPPU.MaxBrightness = PPU.Brightness;
+					PPU.ForcedBlanking = (Memory.FillRAM[0x2100] >> 7) & 1;
+
+					if (!PPU.ForcedBlanking)
+					{
+						PPU.OAMAddr = PPU.SavedOAMAddr;
+
+						uint8	tmp = 0;
+
+						if (PPU.OAMPriorityRotation)
+							tmp = (PPU.OAMAddr & 0xFE) >> 1;
+						if ((PPU.OAMFlip & 1) || PPU.FirstSprite != tmp)
+						{
+							PPU.FirstSprite = tmp;
+							IPPU.OBJChanged = TRUE;
+						}
+
+						PPU.OAMFlip = 0;
+					}
+
+					// FIXME: writing to $4210 will wait 6 cycles.
+					Memory.FillRAM[0x4210] = 0x80 | 2;
+					if (Memory.FillRAM[0x4200] & 0x80)
+					{
+					#ifdef DEBUGGER
+						if (Settings.TraceHCEvent)
+							S9xTraceFormattedMessage ("NMI Scheduled for next scanline.");
+					#endif
+						// FIXME: triggered at HC=6, checked just before the final CPU cycle,
+						// then, when to call S9xOpcode_NMI()?
+						CPU.NMIPending = TRUE;
+						CPU.NMITriggerPos = 6 + 6;
+					}
+
+				}
+
+				if (CPU.V_Counter == PPU.ScreenHeight + 3)	// FIXME: not true
+				{
+					if (Memory.FillRAM[0x4200] & 1)
+						S9xDoAutoJoypad();
+				}
+
+				if (CPU.V_Counter == FIRST_VISIBLE_LINE)	// V=1
+					S9xStartScreenRefresh();
+
+				CPU.WhichEvent = HC_HDMA_INIT_EVENT;
+				CPU.NextEvent  = SNES_HDMA_INIT_HC;
+				break;
+
+			case HC_HDMA_INIT_EVENT:
+				CPU.WhichEvent = HC_RENDER_EVENT;
+				CPU.NextEvent  = SNES_RENDER_START_HC;
+
+				if (CPU.V_Counter == 0)
+				{
+				#ifdef DEBUGGER
+					S9xTraceFormattedMessage("*** HDMA Init     HC:%04d, Channel:%02x", CPU.Cycles, PPU.HDMA);
+				#endif
+					S9xStartHDMA();
+				}
+				break;
+
+			case HC_RENDER_EVENT:
+				if (CPU.V_Counter >= FIRST_VISIBLE_LINE && CPU.V_Counter <= PPU.ScreenHeight)
+					RenderLine((uint8) (CPU.V_Counter - FIRST_VISIBLE_LINE));
+
+				CPU.WhichEvent = HC_WRAM_REFRESH_EVENT;
+				CPU.NextEvent  = SNES_WRAM_REFRESH_HC;
+				break;
+
+			case HC_WRAM_REFRESH_EVENT:
 			#ifdef DEBUGGER
-				S9xTraceFormattedMessage("*** HDMA Init     HC:%04d, Channel:%02x", CPU.Cycles, PPU.HDMA);
+				S9xTraceFormattedMessage("*** WRAM Refresh  HC:%04d", CPU.Cycles);
 			#endif
-				S9xStartHDMA();
-			}
-			break;
 
-		case HC_RENDER_EVENT:
-			if (CPU.V_Counter >= FIRST_VISIBLE_LINE && CPU.V_Counter <= PPU.ScreenHeight)
-				RenderLine((uint8) (CPU.V_Counter - FIRST_VISIBLE_LINE));
+				CPU.Cycles += SNES_WRAM_REFRESH_CYCLES;
+				CPU.WhichEvent = HC_HBLANK_START_EVENT;
+				CPU.NextEvent  = SNES_HBLANK_START_HC;
+				break;
+		}
 
-			CPU.WhichEvent = HC_WRAM_REFRESH_EVENT;
-			CPU.NextEvent  = SNES_WRAM_REFRESH_HC;
-			break;
-
-		case HC_WRAM_REFRESH_EVENT:
-		#ifdef DEBUGGER
-			S9xTraceFormattedMessage("*** WRAM Refresh  HC:%04d", CPU.Cycles);
-		#endif
-
-			CPU.Cycles += SNES_WRAM_REFRESH_CYCLES;
-			CPU.WhichEvent = HC_HBLANK_START_EVENT;
-			CPU.NextEvent  = SNES_HBLANK_START_HC;
-			break;
-	}
-
-
-#ifdef DEBUGGER
-	if (Settings.TraceHCEvent)
-		S9xTraceFormattedMessage("--- HC event rescheduled (%s)  expected HC:%04d  current  HC:%04d",
-			eventname[CPU.WhichEvent], CPU.NextEvent, CPU.Cycles);
-#endif
+	#ifdef DEBUGGER
+		if (Settings.TraceHCEvent)
+			S9xTraceFormattedMessage("--- HC event rescheduled (%s)  expected HC:%04d  current  HC:%04d",
+				eventname[CPU.WhichEvent], CPU.NextEvent, CPU.Cycles);
+	#endif
+	} while (CPU.Cycles >= CPU.NextEvent);
 }

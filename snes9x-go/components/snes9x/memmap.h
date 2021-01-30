@@ -102,8 +102,6 @@ struct CMemory
 	uint16	checksum_mirror_sum (uint8 *, uint32 &, uint32 mask = 0x800000);
 	void	Checksum_Calculate (void);
 
-	bool8	match_na (const char *);
-	bool8	match_nn (const char *);
 	void	ApplyROMFixes (void);
 	void	CheckForAnyPatch (const char *, bool8, int32 &);
 
@@ -119,7 +117,7 @@ struct CMemory
 };
 
 extern CMemory	Memory;
-extern uint8	OpenBus;
+extern uint32	OpenBus;
 
 enum s9xwrap_t
 {
@@ -154,14 +152,14 @@ enum s9xwriteorder_t
 	if (!CPU.InDMAorHDMA) \
 	{ \
 		CPU.Cycles += speed; \
-		while (CPU.Cycles >= CPU.NextEvent) \
+		if (CPU.Cycles >= CPU.NextEvent) \
 			S9xDoHEventProcessing(); \
 	}
 #define addCyclesInMemoryAccess_x2 \
 	if (!CPU.InDMAorHDMA) \
 	{ \
 		CPU.Cycles += speed << 1; \
-		while (CPU.Cycles >= CPU.NextEvent) \
+		if (CPU.Cycles >= CPU.NextEvent) \
 			S9xDoHEventProcessing(); \
 	}
 #endif
@@ -248,9 +246,9 @@ inline uint8 S9xGetByte (uint32 Address)
 
 inline uint16 S9xGetWord (uint32 Address, enum s9xwrap_t w = WRAP_NONE)
 {
+	uint32	mask = MEMMAP_MASK & (w == WRAP_PAGE ? 0xff : (w == WRAP_BANK ? 0xffff : 0xffffff));
 	uint32	word;
 
-	uint32	mask = MEMMAP_MASK & (w == WRAP_PAGE ? 0xff : (w == WRAP_BANK ? 0xffff : 0xffffff));
 	if ((Address & mask) == mask)
 	{
 		PC_t	a;
@@ -411,6 +409,7 @@ inline void S9xSetByte (uint8 Byte, uint32 Address)
 inline void S9xSetWord (uint16 Word, uint32 Address, enum s9xwrap_t w = WRAP_NONE, enum s9xwriteorder_t o = WRITE_01)
 {
 	uint32	mask = MEMMAP_MASK & (w == WRAP_PAGE ? 0xff : (w == WRAP_BANK ? 0xffff : 0xffffff));
+
 	if ((Address & mask) == mask)
 	{
 		PC_t	a;

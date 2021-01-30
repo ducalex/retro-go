@@ -1450,7 +1450,7 @@ static void Op58 (void)
 {
 	AddCycles(ONE_CYCLE);
 
-	Timings.IRQFlagChanging |= IRQ_CLEAR_FLAG;
+	CPU.IRQFlagChanging |= IRQ_CLEAR_FLAG;
 }
 
 // SEI
@@ -1458,7 +1458,7 @@ static void Op78 (void)
 {
 	AddCycles(ONE_CYCLE);
 
-	Timings.IRQFlagChanging |= IRQ_SET_FLAG;
+	CPU.IRQFlagChanging |= IRQ_SET_FLAG;
 }
 
 // CLV

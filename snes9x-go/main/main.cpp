@@ -334,7 +334,6 @@ static void snes9x_task(void *arg)
 	Settings.SoundInputRate = 20000;
 	Settings.SoundSync = FALSE;
 	Settings.Mute = TRUE;
-	Settings.AutoDisplayMessages = TRUE;
 	Settings.Transparency = TRUE;
 	Settings.SkipFrames = 0;
 	Settings.StopEmulation = FALSE;

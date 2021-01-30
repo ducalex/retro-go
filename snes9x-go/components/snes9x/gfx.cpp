@@ -56,29 +56,17 @@ bool8 S9xGraphicsInit (void)
 
 	// Lookup table for 1/2 color subtraction
 	memset(GFX.ZERO, 0, 0x10000 * sizeof(uint16));
-	for (uint32 r = 0; r <= MAX_RED; r++)
+	for (uint8 r = 0; r <= MAX_RED; r++)
 	{
-		uint32	r2 = r;
-		if (r2 & 0x10)
-			r2 &= ~0x10;
-		else
-			r2 = 0;
+		uint8 r2 = (r & 0x10) ? (r & ~0x10) : (0);
 
-		for (uint32 g = 0; g <= MAX_GREEN; g++)
+		for (uint8 g = 0; g <= MAX_GREEN; g++)
 		{
-			uint32	g2 = g;
-			if (g2 & GREEN_HI_BIT)
-				g2 &= ~GREEN_HI_BIT;
-			else
-				g2 = 0;
+			uint8 g2 = (g & GREEN_HI_BIT) ? (g & ~GREEN_HI_BIT) : (0);
 
-			for (uint32 b = 0; b <= MAX_BLUE; b++)
+			for (uint8 b = 0; b <= MAX_BLUE; b++)
 			{
-				uint32	b2 = b;
-				if (b2 & 0x10)
-					b2 &= ~0x10;
-				else
-					b2 = 0;
+				uint8 b2 = (b & 0x10) ? (b & ~0x10) : (0);
 
 				GFX.ZERO[BUILD_PIXEL2(r, g, b)] = BUILD_PIXEL2(r2, g2, b2);
 				GFX.ZERO[BUILD_PIXEL2(r, g, b) & ~ALPHA_BITS_MASK] = BUILD_PIXEL2(r2, g2, b2);

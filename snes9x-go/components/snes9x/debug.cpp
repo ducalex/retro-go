@@ -665,7 +665,7 @@ static uint8 debug_cpu_op_print (char *Line, uint8 Bank, uint16 Address)
 	        Memory.FillRAM[0x4210] & 0x80 ? '+' : '.',
 	        CPU.IRQTransition ? 'T' : ' ',
 	        CPU.IRQLine ? 'L' : ' ',
-	        PPU.HTimerPosition, PPU.VTimerPosition, Timings.NextIRQTimer);
+	        PPU.HTimerPosition, PPU.VTimerPosition, CPU.NextIRQTimer);
 
 	return (Size);
 }

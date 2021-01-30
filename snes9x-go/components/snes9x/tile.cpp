@@ -113,8 +113,8 @@ void S9xBuildDirectColourMaps (void)
 {
 	IPPU.XB = (uint8 *)mul_brightness[PPU.Brightness];
 
-	for (uint32 p = 0; p < 8; p++)
-		for (uint32 c = 0; c < 256; c++)
+	for (int p = 0; p < 8; p++)
+		for (int c = 0; c < 256; c++)
 			DirectColourMaps[p][c] = BUILD_PIXEL(
 				IPPU.XB[((c & 7) << 2) | ((p & 1) << 1)],
 				IPPU.XB[((c & 0x38) >> 1) | (p & 2)],
@@ -478,11 +478,9 @@ void S9xSelectTileRenderers (int BGMode, bool8 sub, bool8 obj)
 	GFX.DrawMode7BG1Nomath    = DM7BG1[0];
 	GFX.DrawMode7BG2Nomath    = DM7BG2[0];
 
-	int	i;
+	int	i = 0;
 
-	if (!Settings.Transparency)
-		i = 0;
-	else
+	if (Settings.Transparency)
 	{
 		i = (Memory.FillRAM[0x2131] & 0x80) ? 4 : 1;
 		if (Memory.FillRAM[0x2131] & 0x40)
@@ -498,7 +496,6 @@ void S9xSelectTileRenderers (int BGMode, bool8 sub, bool8 obj)
 			else if (i == 3)
 				i = 8;
 		}
-
 	}
 
 	GFX.DrawTileMath        = DT[i];
@@ -1115,7 +1112,7 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 		\
 		if (!PPU.Mode7Repeat) \
 		{ \
-			for (int32 x = MLeft; x < MRight; x++, AA += aa, CC += cc) \
+			for (int x = MLeft; x < MRight; x++, AA += aa, CC += cc) \
 			{ \
 				if (--ctr) \
 					continue; \
@@ -1129,9 +1126,9 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 				\
 				if ((Pix = (b & MASK))) \
 				{ \
-					for (int32 h = MosaicStart; h < VMosaic; h++) \
+					for (int h = MosaicStart; h < VMosaic; h++) \
 					{ \
-						for (int32 w = x + HMosaic - 1; w >= x; w--) \
+						for (int w = x + HMosaic - 1; w >= x; w--) \
 							DRAW_PIXEL(w + h * GFX.PPL, (w >= (int32) Left && w < (int32) Right)); \
 					} \
 				} \
@@ -1139,7 +1136,7 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 		} \
 		else \
 		{ \
-			for (int32 x = MLeft; x < MRight; x++, AA += aa, CC += cc) \
+			for (int x = MLeft; x < MRight; x++, AA += aa, CC += cc) \
 			{ \
 				if (--ctr) \
 					continue; \
@@ -1163,9 +1160,9 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 				\
 				if ((Pix = (b & MASK))) \
 				{ \
-					for (int32 h = MosaicStart; h < VMosaic; h++) \
+					for (int h = MosaicStart; h < VMosaic; h++) \
 					{ \
-						for (int32 w = x + HMosaic - 1; w >= x; w--) \
+						for (int w = x + HMosaic - 1; w >= x; w--) \
 							DRAW_PIXEL(w + h * GFX.PPL, (w >= (int32) Left && w < (int32) Right)); \
 					} \
 				} \
