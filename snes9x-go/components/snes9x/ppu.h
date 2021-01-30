@@ -474,10 +474,10 @@ static inline void REGISTER_2122 (uint8 Byte)
 		{
 			FLUSH_REDRAW();
 			PPU.CGDATA[PPU.CGADD] = (Byte & 0x7f) << 8 | PPU.CGSavedByte;
-			int r = IPPU.XB[PPU.CGSavedByte & 0x1f];
-			int g = IPPU.XB[(Byte >> 2) & 0x1f];
-			int b = IPPU.XB[(PPU.CGDATA[PPU.CGADD] >> 5) & 0x1f];
-			IPPU.ScreenColors[PPU.CGADD] = (uint16) BUILD_PIXEL(r, g, b);
+			uint8 r = IPPU.XB[PPU.CGSavedByte & 0x1f];
+			uint8 g = IPPU.XB[(PPU.CGDATA[PPU.CGADD] >> 5) & 0x1f];
+			uint8 b = IPPU.XB[(Byte >> 2) & 0x1f];
+			IPPU.ScreenColors[PPU.CGADD] = BUILD_PIXEL(r, g, b);
 		}
 
 		PPU.CGADD++;

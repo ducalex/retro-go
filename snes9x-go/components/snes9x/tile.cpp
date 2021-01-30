@@ -114,11 +114,15 @@ void S9xBuildDirectColourMaps (void)
 	IPPU.XB = (uint8 *)mul_brightness[PPU.Brightness];
 
 	for (int p = 0; p < 8; p++)
+	{
 		for (int c = 0; c < 256; c++)
-			DirectColourMaps[p][c] = BUILD_PIXEL(
-				IPPU.XB[((c & 7) << 2) | ((p & 1) << 1)],
-				IPPU.XB[((c & 0x38) >> 1) | (p & 2)],
-				IPPU.XB[((c & 0xc0) >> 3) | (p & 4)]);
+		{
+			uint8 r = IPPU.XB[((c & 7) << 2) | ((p & 1) << 1)];
+			uint8 g = IPPU.XB[((c & 0x38) >> 1) | (p & 2)];
+			uint8 b = IPPU.XB[((c & 0xc0) >> 3) | (p & 4)];
+			DirectColourMaps[p][c] = BUILD_PIXEL(r, g, b);
+		}
+	}
 }
 
 void S9xFixColourBrightness (void)
@@ -135,9 +139,9 @@ void S9xFixColourBrightness (void)
 
 	for (int i = 0; i < 256; i++)
 	{
-		int r = IPPU.XB[(PPU.CGDATA[i])       & 0x1f];
-		int g = IPPU.XB[(PPU.CGDATA[i] >>  5) & 0x1f];
-		int b = IPPU.XB[(PPU.CGDATA[i] >> 10) & 0x1f];
+		uint8 r = IPPU.XB[(PPU.CGDATA[i])       & 0x1f];
+		uint8 g = IPPU.XB[(PPU.CGDATA[i] >>  5) & 0x1f];
+		uint8 b = IPPU.XB[(PPU.CGDATA[i] >> 10) & 0x1f];
 		IPPU.ScreenColors[i] = BUILD_PIXEL(r, g, b);
 	}
 }

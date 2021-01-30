@@ -11,6 +11,7 @@ It comes with many emulators!
 - Colecovision
 - PC Engine
 - Lynx
+- SNES (work in progress)
 
 ### Retro-Go features:
 - In-game menu
