@@ -31,9 +31,9 @@
 #define PANIC_TRACE_MAGIC 0x12345678
 
 #ifdef ENABLE_PROFILING
-#define INPUT_TIMEOUT 1000000000
+#define INPUT_TIMEOUT -1
 #else
-#define INPUT_TIMEOUT 12000000
+#define INPUT_TIMEOUT 8000000
 #endif
 
 typedef struct
@@ -51,6 +51,7 @@ static panic_trace_t *panicTrace = (void *)0x50001000;
 static rg_app_desc_t currentApp;
 static runtime_stats_t statistics;
 static runtime_counters_t counters;
+static long inputTimeout = -1;
 
 #if USE_SPI_MUTEX
 static SemaphoreHandle_t spiMutex;
@@ -100,11 +101,7 @@ static void system_monitor_task(void *arg)
             rg_system_set_led(ledState);
         }
 
-        if (counters.ticks == 0)
-        {
-            // App isn't ticking (eg, our launcher)
-        }
-        else if (ticks > 0)
+        if (ticks > 0)
         {
             printf("HEAP:%d+%d (%d+%d), BUSY:%.4f, FPS:%.4f (SKIP:%d, PART:%d, FULL:%d), BATTERY:%d\n",
                 statistics.freeMemoryInt / 1024,
@@ -118,7 +115,7 @@ static void system_monitor_task(void *arg)
                 current.fullFrames,
                 statistics.battery.millivolts);
         }
-        else if (rg_input_gamepad_last_read() > INPUT_TIMEOUT)
+        else if (inputTimeout > 0 && rg_input_gamepad_last_read() > inputTimeout)
         {
             RG_PANIC("Application unresponsive");
         }
@@ -146,18 +143,23 @@ static void system_monitor_task(void *arg)
     vTaskDelete(NULL);
 }
 
-// IRAM_ATTR void rg_system_tick(int fullFrames, int partialFrames, int skippedFrames, int busyTime)
 IRAM_ATTR void rg_system_tick(bool skippedFrame, bool fullFrame, int busyTime)
 {
-    // counters.skippedFrames += skippedFrames;
-    // counters.fullFrames += fullFrames;
-    // counters.totalFrames += fullFrames + partialFrames + skippedFrames;
-    if (skippedFrame) counters.skippedFrames++;
-    else if (fullFrame) counters.fullFrames++;
-    counters.totalFrames++;
+    if (skippedFrame)
+        counters.skippedFrames++;
+    else if (fullFrame)
+        counters.fullFrames++;
 
     counters.busyTime += busyTime;
+
+    counters.totalFrames++;
     counters.ticks++;
+
+    // Reduce the inputTimeout once the emulation is running
+    if (counters.ticks == 1)
+    {
+        inputTimeout = INPUT_TIMEOUT;
+    }
 }
 
 runtime_stats_t rg_system_get_stats()
@@ -350,6 +352,9 @@ void rg_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t 
     currentApp.saveState = save;
     currentApp.refreshRate = 60;
 
+    // This is to allow time for rom loading
+    inputTimeout = INPUT_TIMEOUT * 3;
+
     printf("%s: Init done. romPath='%s'\n", __func__, currentApp.romPath);
 }
 
@@ -438,8 +443,13 @@ bool rg_emu_load_state(int slot)
     rg_display_show_hourglass();
     rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
+    // Disable input watchdog
+    inputTimeout = -1;
+
     char *pathName = rg_emu_get_path(EMU_PATH_SAVE_STATE, currentApp.romPath);
     bool success = (*currentApp.loadState)(pathName);
+
+    inputTimeout = INPUT_TIMEOUT;
 
     rg_spi_lock_release(SPI_LOCK_SDCARD);
 
@@ -473,6 +483,9 @@ bool rg_emu_save_state(int slot)
 
     bool success = false;
 
+    // Disable input watchdog
+    inputTimeout = -1;
+
     if ((*currentApp.saveState)(tempName))
     {
         rename(saveName, backName);
@@ -485,6 +498,8 @@ bool rg_emu_save_state(int slot)
     }
 
     unlink(tempName);
+
+    inputTimeout = INPUT_TIMEOUT;
 
     rg_spi_lock_release(SPI_LOCK_SDCARD);
     rg_system_set_led(0);
