@@ -287,7 +287,7 @@ void rg_system_init(int appId, int sampleRate)
     if (esp_reset_reason() != ESP_RST_SW)
     {
         rg_display_clear(0);
-        rg_display_show_hourglass();
+        rg_gui_draw_hourglass();
     }
 
     if (!sd_init)
@@ -440,7 +440,7 @@ bool rg_emu_load_state(int slot)
 
     printf("%s: Loading state %d.\n", __func__, slot);
 
-    rg_display_show_hourglass();
+    rg_gui_draw_hourglass();
     rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
     // Disable input watchdog
@@ -474,7 +474,7 @@ bool rg_emu_save_state(int slot)
     printf("%s: Saving state %d.\n", __func__, slot);
 
     rg_system_set_led(1);
-    rg_display_show_hourglass();
+    rg_gui_draw_hourglass();
     rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
     char *saveName = rg_emu_get_path(EMU_PATH_SAVE_STATE, currentApp.romPath);
@@ -528,7 +528,7 @@ void rg_system_switch_app(const char *app)
     printf("%s: Switching to app '%s'.\n", __func__, app ? app : "NULL");
 
     rg_display_clear(0);
-    rg_display_show_hourglass();
+    rg_gui_draw_hourglass();
 
     rg_audio_deinit();
     rg_sdcard_unmount();

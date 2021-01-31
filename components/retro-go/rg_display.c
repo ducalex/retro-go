@@ -10,7 +10,6 @@
 
 #include "rg_system.h"
 #include "rg_display.h"
-#include "bitmaps/image_hourglass.h"
 
 #define SCREEN_WIDTH  RG_SCREEN_WIDTH
 #define SCREEN_HEIGHT RG_SCREEN_HEIGHT
@@ -160,11 +159,9 @@ backlight_deinit()
 }
 
 static void
-backlight_percentage_set(int value)
+backlight_set_level(int percent)
 {
-    value = RG_MIN(RG_MAX(value, 5), 100);
-
-    int duty = BACKLIGHT_DUTY_MAX * (value * 0.01f);
+    int duty = BACKLIGHT_DUTY_MAX * (RG_MIN(RG_MAX(percent, 5), 100) * 0.01f);
 
     ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty, 10);
     ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
@@ -223,66 +220,6 @@ spi_put_transaction(spi_transaction_t* t)
     }
 
     xSemaphoreGive(spi_count_semaphore);
-}
-
-static inline void
-ili9341_cmd(const uint8_t cmd)
-{
-    spi_transaction_t* t = spi_get_transaction();
-
-    t->length = 8;                     // Command is 8 bits
-    t->tx_data[0] = cmd;               // The data is the cmd itself
-    t->user = (void*)0;                // D/C needs to be set to 0
-    t->flags = SPI_TRANS_USE_TXDATA;
-
-    spi_put_transaction(t);
-}
-
-static inline void
-ili9341_data(const uint8_t *data, size_t len)
-{
-    if (len < 1) return;
-
-    spi_transaction_t* t = spi_get_transaction();
-
-    t->length = len * 8;               // Len is in bytes, transaction length is in bits.
-    t->user = (void*)1;                // D/C needs to be set to 1
-
-    if (len < 5)
-    {
-        memcpy(t->tx_data, data, len);
-        t->flags = SPI_TRANS_USE_TXDATA;
-    }
-    else
-        t->tx_buffer = data;
-
-    spi_put_transaction(t);
-}
-
-static void
-ili9341_init()
-{
-    gpio_set_direction(RG_GPIO_LCD_DC, GPIO_MODE_OUTPUT);
-
-    for (size_t i = 0; ili_init_cmds[i].cmd; ++i)
-    {
-        ili9341_cmd(ili_init_cmds[i].cmd);
-        ili9341_data(ili_init_cmds[i].data, ili_init_cmds[i].databytes & 0x7F);
-        if (ili_init_cmds[i].databytes & 0x80)
-            vTaskDelay(pdMS_TO_TICKS(10));
-    }
-}
-
-static void
-ili9341_deinit()
-{
-    for (size_t i = 0; ili_init_cmds[i].cmd; ++i)
-    {
-        ili9341_cmd(ili_sleep_cmds[i].cmd);
-        ili9341_data(ili_sleep_cmds[i].data, ili_sleep_cmds[i].databytes & 0x7F);
-        if (ili_init_cmds[i].databytes & 0x80)
-            vTaskDelay(pdMS_TO_TICKS(10));
-    }
 }
 
 //This function is called (in irq context!) just before a transmission starts. It will
@@ -368,6 +305,66 @@ spi_initialize()
     //assert(ret==ESP_OK);
 
     xTaskCreatePinnedToCore(&spi_task, "spi_task", 1024 + 768, NULL, 5, NULL, 1);
+}
+
+static inline void
+ili9341_cmd(const uint8_t cmd)
+{
+    spi_transaction_t* t = spi_get_transaction();
+
+    t->length = 8;                     // Command is 8 bits
+    t->tx_data[0] = cmd;               // The data is the cmd itself
+    t->user = (void*)0;                // D/C needs to be set to 0
+    t->flags = SPI_TRANS_USE_TXDATA;
+
+    spi_put_transaction(t);
+}
+
+static inline void
+ili9341_data(const uint8_t *data, size_t len)
+{
+    if (len < 1) return;
+
+    spi_transaction_t* t = spi_get_transaction();
+
+    t->length = len * 8;               // Len is in bytes, transaction length is in bits.
+    t->user = (void*)1;                // D/C needs to be set to 1
+
+    if (len < 5)
+    {
+        memcpy(t->tx_data, data, len);
+        t->flags = SPI_TRANS_USE_TXDATA;
+    }
+    else
+        t->tx_buffer = data;
+
+    spi_put_transaction(t);
+}
+
+static void
+ili9341_init()
+{
+    gpio_set_direction(RG_GPIO_LCD_DC, GPIO_MODE_OUTPUT);
+
+    for (size_t i = 0; ili_init_cmds[i].cmd; ++i)
+    {
+        ili9341_cmd(ili_init_cmds[i].cmd);
+        ili9341_data(ili_init_cmds[i].data, ili_init_cmds[i].databytes & 0x7F);
+        if (ili_init_cmds[i].databytes & 0x80)
+            vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
+static void
+ili9341_deinit()
+{
+    for (size_t i = 0; ili_init_cmds[i].cmd; ++i)
+    {
+        ili9341_cmd(ili_sleep_cmds[i].cmd);
+        ili9341_data(ili_sleep_cmds[i].data, ili_sleep_cmds[i].databytes & 0x7F);
+        if (ili_init_cmds[i].databytes & 0x80)
+            vTaskDelay(pdMS_TO_TICKS(10));
+    }
 }
 
 static void
@@ -917,7 +914,7 @@ void
 rg_display_set_backlight(display_backlight_t level)
 {
     rg_settings_Backlight_set(level);
-    backlight_percentage_set(backlightLevels[level % RG_BACKLIGHT_LEVEL_COUNT]);
+    backlight_set_level(backlightLevels[level % RG_BACKLIGHT_LEVEL_COUNT]);
     backlightLevel = level;
 }
 
@@ -1032,6 +1029,13 @@ rg_display_drain_spi()
 }
 
 void
+rg_display_show_info(const char *text, int timeout_ms)
+{
+    // Overlay a line of text at the bottom of the screen for approximately timeout_ms
+    // It would make more sense in rg_gui, but for efficiency I think here will be best...
+}
+
+void
 rg_display_write(int left, int top, int width, int height, int stride, const uint16_t* buffer)
 {
     rg_display_drain_spi();
@@ -1076,11 +1080,13 @@ rg_display_clear(uint16_t color)
 
     send_reset_drawing(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
+    color = (color << 8) | (color >> 8);
+
     for (size_t i = 0; i < SPI_TRANSACTION_COUNT; ++i)
     {
         for (size_t j = 0; j < SPI_TRANSACTION_BUFFER_LENGTH; ++j)
         {
-            spi_buffers[i][j] = color << 8 | color >> 8;
+            spi_buffers[i][j] = color;
         }
     }
 
@@ -1091,17 +1097,6 @@ rg_display_clear(uint16_t color)
     }
 
     rg_display_drain_spi();
-}
-
-void
-rg_display_show_hourglass()
-{
-    rg_display_write((SCREEN_WIDTH / 2) - (image_hourglass.width / 2),
-        (SCREEN_HEIGHT / 2) - (image_hourglass.height / 2),
-        image_hourglass.width,
-        image_hourglass.height,
-        image_hourglass.width * 2,
-        (uint16_t*)image_hourglass.pixel_data);
 }
 
 void

@@ -7,6 +7,7 @@
 #include <math.h>
 #include <lupng.h>
 
+#include "bitmaps/image_hourglass.h"
 #include "bitmaps/font_basic.h"
 #include "rg_system.h"
 #include "rg_gui.h"
@@ -261,6 +262,16 @@ void rg_gui_draw_battery(int x_pos, int y_pos)
     rg_gui_draw_rect(x_pos + 22, y_pos + 2, 2, 6, 1, color_border);
     rg_gui_draw_fill_rect(x_pos + 1, y_pos + 1, width_fill, 8, color_fill);
     rg_gui_draw_fill_rect(x_pos + 1 + width_fill, y_pos + 1, width_empty, 8, color_empty);
+}
+
+void rg_gui_draw_hourglass(void)
+{
+    rg_display_write((RG_SCREEN_WIDTH / 2) - (image_hourglass.width / 2),
+        (RG_SCREEN_HEIGHT / 2) - (image_hourglass.height / 2),
+        image_hourglass.width,
+        image_hourglass.height,
+        image_hourglass.width * 2,
+        (uint16_t*)image_hourglass.pixel_data);
 }
 
 static int get_dialog_items_count(dialog_choice_t *options)
