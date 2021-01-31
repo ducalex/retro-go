@@ -11,7 +11,6 @@
 #include "font.h"
 #include "display.h"
 
-extern void S9xComputeClipWindows (void);
 static void SetupOBJ (void);
 static void DrawOBJS (int);
 static void DisplayStringFromBottom (const char *, int, int, bool);
@@ -88,17 +87,21 @@ void S9xGraphicsDeinit (void)
 
 void S9xGraphicsScreenResize (void)
 {
+	IPPU.RenderedScreenHeight = PPU.ScreenHeight;
+	IPPU.RenderedScreenWidth = SNES_WIDTH;
 	IPPU.MaxBrightness = PPU.Brightness;
 
 	IPPU.Interlace    = Memory.FillRAM[0x2133] & 1;
 	IPPU.InterlaceOBJ = Memory.FillRAM[0x2133] & 2;
-	IPPU.PseudoHires = Memory.FillRAM[0x2133] & 8;
+	IPPU.PseudoHires  = Memory.FillRAM[0x2133] & 8;
 
-	IPPU.DoubleWidthPixels = FALSE;
-	IPPU.RenderedScreenWidth = SNES_WIDTH;
-
-	IPPU.DoubleHeightPixels = FALSE;
-	IPPU.RenderedScreenHeight = PPU.ScreenHeight;
+	static uint8 prev2133 = 0;
+	if (prev2133 != Memory.FillRAM[0x2133])
+	{
+		sprintf(String, "Int=%d IntOBJ=%d Hires=%d\n", IPPU.Interlace, IPPU.InterlaceOBJ, IPPU.PseudoHires);
+		S9xMessage(0, 0, String);
+		prev2133 = Memory.FillRAM[0x2133];
+	}
 }
 
 void S9xStartScreenRefresh (void)
@@ -123,7 +126,7 @@ void S9xStartScreenRefresh (void)
 		memset(GFX.SubZBuffer, 0, GFX.ScreenSize);
 	}
 
-	if (++IPPU.FrameCount % Memory.ROMFramesPerSecond == 0)
+	if (++IPPU.FrameCount % Settings.FrameRate == 0)
 	{
 		IPPU.DisplayedRenderedFrameCount = IPPU.RenderedFramesCount;
 		IPPU.RenderedFramesCount = 0;
@@ -172,7 +175,7 @@ void S9xEndScreenRefresh (void)
 	{
 		if (!CPU.AutoSaveTimer)
 		{
-			if (!(CPU.AutoSaveTimer = Settings.AutoSaveDelay * Memory.ROMFramesPerSecond))
+			if (!(CPU.AutoSaveTimer = Settings.AutoSaveDelay * Settings.FrameRate))
 				CPU.SRAMModified = FALSE;
 		}
 		else
@@ -616,8 +619,6 @@ static void SetupOBJ (void)
 			if (j < 32)
 				GFX.OBJLines[Y].OBJ[j].Sprite = -1;
 		}
-
-		free(OBJOnLine);
 	}
 
 	IPPU.OBJChanged = FALSE;
@@ -632,7 +633,6 @@ static void DrawOBJS (int D)
 	void (*DrawTile) (uint32, uint32, uint32, uint32) = NULL;
 	void (*DrawClippedTile) (uint32, uint32, uint32, uint32, uint32, uint32) = NULL;
 
-	int	PixWidth = IPPU.DoubleWidthPixels ? 2 : 1;
 	GFX.Z1 = 2;
 
 	for (uint32 Y = GFX.StartY, Offset = Y * GFX.PPL; Y <= GFX.EndY; Y++, Offset += GFX.PPL)
@@ -666,7 +666,7 @@ static void DrawOBJS (int D)
 			if (X == -256)
 				X = 256;
 
-			for (int t = tiles, O = Offset + X * PixWidth; X <= 256 && X < PPU.OBJ[S].HPos + GFX.OBJWidths[S]; TileX = (TileX + TileInc) & 0x0f, X += 8, O += 8 * PixWidth)
+			for (int t = tiles, O = Offset + X; X <= 256 && X < PPU.OBJ[S].HPos + GFX.OBJWidths[S]; TileX = (TileX + TileInc) & 0x0f, X += 8, O += 8)
 			{
 				if (X < -7 || --t < 0 || X == 256)
 					continue;
@@ -743,7 +743,6 @@ static void DrawBackground (int bg, uint8 Zh, uint8 Zl)
 	uint32	Lines;
 	int		OffsetMask  = (BG.TileSizeH == 16) ? 0x3ff : 0x1ff;
 	int		OffsetShift = (BG.TileSizeV == 16) ? 4 : 3;
-	int		PixWidth = IPPU.DoubleWidthPixels ? 2 : 1;
 
 	void (*DrawTile) (uint32, uint32, uint32, uint32);
 	void (*DrawClippedTile) (uint32, uint32, uint32, uint32, uint32, uint32);
@@ -812,7 +811,7 @@ static void DrawBackground (int bg, uint8 Zh, uint8 Zl)
 
 			uint32	Left   = GFX.Clip[bg].Left[clip];
 			uint32	Right  = GFX.Clip[bg].Right[clip];
-			uint32	Offset = Left * PixWidth + Y * GFX.PPL;
+			uint32	Offset = Left + Y * GFX.PPL;
 			uint32	HPos   = (HOffset + Left) & OffsetMask;
 			uint32	HTile  = HPos >> 3;
 			uint16	*t;
@@ -841,7 +840,7 @@ static void DrawBackground (int bg, uint8 Zh, uint8 Zl)
 				if (w > Width)
 					w = Width;
 
-				Offset -= l * PixWidth;
+				Offset -= l;
 				Tile = READ_WORD(t);
 				GFX.Z1 = GFX.Z2 = (Tile & 0x2000) ? Zh : Zl;
 
@@ -873,7 +872,7 @@ static void DrawBackground (int bg, uint8 Zh, uint8 Zl)
 				}
 
 				HTile++;
-				Offset += 8 * PixWidth;
+				Offset += 8;
 				Width -= w;
 			}
 
@@ -910,7 +909,7 @@ static void DrawBackground (int bg, uint8 Zh, uint8 Zl)
 				}
 
 				HTile++;
-				Offset += 8 * PixWidth;
+				Offset += 8;
 				Width -= 8;
 			}
 
@@ -957,7 +956,6 @@ static void DrawBackgroundMosaic (int bg, uint8 Zh, uint8 Zl)
 	int	Lines;
 	int	OffsetMask  = (BG.TileSizeH == 16) ? 0x3ff : 0x1ff;
 	int	OffsetShift = (BG.TileSizeV == 16) ? 4 : 3;
-	int	PixWidth = IPPU.DoubleWidthPixels ? 2 : 1;
 
 	void (*DrawPix) (uint32, uint32, uint32, uint32, uint32, uint32);
 
@@ -1015,7 +1013,7 @@ static void DrawBackgroundMosaic (int bg, uint8 Zh, uint8 Zl)
 
 			uint32	Left   = GFX.Clip[bg].Left[clip];
 			uint32	Right  = GFX.Clip[bg].Right[clip];
-			uint32	Offset = Left * PixWidth + (Y + MosaicStart) * GFX.PPL;
+			uint32	Offset = Left + (Y + MosaicStart) * GFX.PPL;
 			uint32	HPos   = (HOffset + Left - (Left % PPU.Mosaic)) & OffsetMask;
 			uint32	HTile  = HPos >> 3;
 			uint16	*t;
@@ -1089,7 +1087,7 @@ static void DrawBackgroundMosaic (int bg, uint8 Zh, uint8 Zl)
 					HTile++;
 				}
 
-				Offset += w * PixWidth;
+				Offset += w;
 				Width -= w;
 				Left += w;
 			}
@@ -1134,7 +1132,6 @@ static void DrawBackgroundOffset (int bg, uint8 Zh, uint8 Zl, int VOffOff)
 	int	Offset2Mask  = (BG.OffsetSizeH == 16) ? 0x3ff : 0x1ff;
 	int	Offset2Shift = (BG.OffsetSizeV == 16) ? 4 : 3;
 	int	OffsetEnableMask = 0x2000 << bg;
-	int	PixWidth = IPPU.DoubleWidthPixels ? 2 : 1;
 
 	void (*DrawClippedTile) (uint32, uint32, uint32, uint32, uint32, uint32);
 
@@ -1177,7 +1174,7 @@ static void DrawBackgroundOffset (int bg, uint8 Zh, uint8 Zl, int VOffOff)
 
 			uint32	Left  = GFX.Clip[bg].Left[clip];
 			uint32	Right = GFX.Clip[bg].Right[clip];
-			uint32	Offset = Left * PixWidth + Y * GFX.PPL;
+			uint32	Offset = Left + Y * GFX.PPL;
 			uint32	HScroll = LineData[Y].BG[bg].HOffset;
 			bool8	left_edge = (Left < (8 - (HScroll & 7)));
 			uint32	Width = Right - Left;
@@ -1294,7 +1291,7 @@ static void DrawBackgroundOffset (int bg, uint8 Zh, uint8 Zl, int VOffOff)
 				if (w > Width)
 					w = Width;
 
-				Offset -= l * PixWidth;
+				Offset -= l;
 				Tile = READ_WORD(t);
 				GFX.Z1 = GFX.Z2 = (Tile & 0x2000) ? Zh : Zl;
 
@@ -1314,7 +1311,7 @@ static void DrawBackgroundOffset (int bg, uint8 Zh, uint8 Zl, int VOffOff)
 				}
 
 				Left += w;
-				Offset += 8 * PixWidth;
+				Offset += 8;
 				Width -= w;
 			}
 		}
@@ -1356,7 +1353,6 @@ static void DrawBackgroundOffsetMosaic (int bg, uint8 Zh, uint8 Zl, int VOffOff)
 	int	OffsetShift  = (BG.TileSizeV   == 16) ? 4 : 3;
 	int	Offset2Shift = (BG.OffsetSizeV == 16) ? 4 : 3;
 	int	OffsetEnableMask = 0x2000 << bg;
-	int	PixWidth = IPPU.DoubleWidthPixels ? 2 : 1;
 
 	void (*DrawPix) (uint32, uint32, uint32, uint32, uint32, uint32);
 
@@ -1402,7 +1398,7 @@ static void DrawBackgroundOffsetMosaic (int bg, uint8 Zh, uint8 Zl, int VOffOff)
 
 			uint32	Left =  GFX.Clip[bg].Left[clip];
 			uint32	Right = GFX.Clip[bg].Right[clip];
-			uint32	Offset = Left * PixWidth + (Y + MosaicStart) * GFX.PPL;
+			uint32	Offset = Left + (Y + MosaicStart) * GFX.PPL;
 			uint32	HScroll = LineData[Y + MosaicStart].BG[bg].HOffset;
 			uint32	Width = Right - Left;
 
@@ -1534,7 +1530,7 @@ static void DrawBackgroundOffsetMosaic (int bg, uint8 Zh, uint8 Zl, int VOffOff)
 				}
 
 				Left += w;
-				Offset += w * PixWidth;
+				Offset += w;
 				Width -= w;
 			}
 

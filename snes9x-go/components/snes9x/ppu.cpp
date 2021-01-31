@@ -769,10 +769,7 @@ void S9xSetPPU (uint8 Byte, uint32 Address)
 					if (Byte & 0x04)
 					{
 						PPU.ScreenHeight = SNES_HEIGHT_EXTENDED;
-						if (IPPU.DoubleHeightPixels)
-							IPPU.RenderedScreenHeight = PPU.ScreenHeight << 1;
-						else
-							IPPU.RenderedScreenHeight = PPU.ScreenHeight;
+						IPPU.RenderedScreenHeight = PPU.ScreenHeight;
 					#ifdef DEBUGGER
 						missing.lines_239 = 1;
 					#endif
@@ -780,10 +777,7 @@ void S9xSetPPU (uint8 Byte, uint32 Address)
 					else
 					{
 						PPU.ScreenHeight = SNES_HEIGHT;
-						if (IPPU.DoubleHeightPixels)
-							IPPU.RenderedScreenHeight = PPU.ScreenHeight << 1;
-						else
-							IPPU.RenderedScreenHeight = PPU.ScreenHeight;
+						IPPU.RenderedScreenHeight = PPU.ScreenHeight;
 					}
 
 					if ((Memory.FillRAM[0x2133] ^ Byte) & 3)
@@ -1717,8 +1711,6 @@ void S9xSoftResetPPU (void)
 	PPU.VRAMReadBuffer = 0; // XXX: FIXME: anything better?
 	IPPU.Interlace = FALSE;
 	IPPU.InterlaceOBJ = FALSE;
-	IPPU.DoubleWidthPixels = FALSE;
-	IPPU.DoubleHeightPixels = FALSE;
 	IPPU.CurrentLine = 0;
 	IPPU.PreviousLine = 0;
 	IPPU.XB = NULL;

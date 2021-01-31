@@ -47,8 +47,6 @@ struct InternalPPU
 	bool8	Interlace;
 	bool8	InterlaceOBJ;
 	bool8	PseudoHires;
-	bool8	DoubleWidthPixels;
-	bool8	DoubleHeightPixels;
 	int		CurrentLine;
 	int		PreviousLine;
 	uint8	*XB;

@@ -171,6 +171,7 @@ struct SSettings
 	bool8	ForceNTSC;
 	bool8	PAL;
 	uint32	FrameTime;
+	uint32	FrameRate;
 
 	bool8	SoundSync;
 	bool8	SixteenBitSound;

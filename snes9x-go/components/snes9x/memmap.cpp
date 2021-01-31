@@ -60,10 +60,7 @@ static bool8 allASCII (uint8 *b, int size)
 	return (TRUE);
 }
 
-static bool8 match_nn (const char *str)
-{
-	return (strncmp(Memory.ROMName, str, strlen(str)) == 0);
-}
+#define match_nn(str) (strncmp(Memory.ROMName, (str), strlen((str))) == 0)
 
 // allocation and deallocation
 
@@ -261,28 +258,23 @@ bool8 CMemory::InitROM ()
 
 	CalculatedSize = ((ROM_SIZE + 0x1fff) / 0x2000) * 0x2000;
 
-	// CalculatedSize is now set, so rescore
-	int hi_score = ScoreHiROM(FALSE);
-	int lo_score = ScoreLoROM(FALSE);
-
-	LoROM = (lo_score >= hi_score);
-	HiROM = !LoROM;
-
-	// this two games fail to be detected
+	// these two games fail to be detected
 	if (strncmp((char *) &ROM[0x7fc0], "YUYU NO QUIZ DE GO!GO!", 22) == 0 ||
 		(strncmp((char *) &ROM[0xffc0], "BATMAN--REVENGE JOKER",  21) == 0))
 	{
 		LoROM = TRUE;
 		HiROM = FALSE;
 	}
+	else
+	{
+		LoROM = (ScoreLoROM(FALSE) >= ScoreHiROM(FALSE));
+		HiROM = !LoROM;
+	}
 
 	//// Parse ROM header and read ROM informatoin
 	ParseSNESHeader(ROM + (HiROM ? 0xFFB0 : 0x7FB0));
 
-	//// Detect and initialize chips
-	//// detection codes are compatible with NSRT
-
-	// DSP 1 & 2
+	// Detect DSP 1 & 2
 	if (ROMType == 0x03 || (ROMType == 0x05 && ROMSpeed != 0x20))
 	{
 		Settings.DSP = 1;
@@ -323,16 +315,10 @@ bool8 CMemory::InitROM ()
 	}
 
 	//// Map memory
-	Map_Initialize();
-
 	if (HiROM)
-    {
 		Map_HiROMMap();
-    }
     else
-    {
 		Map_LoROMMap();
-    }
 
 	// ROM Region
 	Settings.PAL = (Settings.ForcePAL && !Settings.ForceNTSC)
@@ -341,12 +327,12 @@ bool8 CMemory::InitROM ()
 	if (Settings.PAL)
 	{
 		Settings.FrameTime = 20000;
-		ROMFramesPerSecond = 50;
+		Settings.FrameRate = 50;
 	}
 	else
 	{
 		Settings.FrameTime = 16667;
-		ROMFramesPerSecond = 60;
+		Settings.FrameRate = 60;
 	}
 
 	// SRAM size
@@ -534,7 +520,29 @@ void CMemory::map_index (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 add
 	}
 }
 
-void CMemory::map_System (void)
+void CMemory::Map_Initialize (void)
+{
+	for (int c = 0; c < MEMMAP_NUM_BLOCKS; c++)
+	{
+		ReadMap[c]  = (uint8 *) MAP_NONE;
+		WriteMap[c] = (uint8 *) MAP_NONE;
+	}
+}
+
+void CMemory::Map_WriteProtectROM (void)
+{
+	memmove((void *) WriteMap, (void *) ReadMap, sizeof(ReadMap));
+
+	for (int c = 0; c < MEMMAP_NUM_BLOCKS; c++)
+	{
+		if (WriteMap[c] >= ROM && WriteMap[c] <= (ROM + ROM_SIZE + 0x8000))
+		{
+			WriteMap[c] = (uint8 *) MAP_NONE;
+		}
+	}
+}
+
+void CMemory::Map_System (void)
 {
 	// will be overwritten
 	map_space(0x00, 0x3f, 0x0000, 0x1fff, RAM);
@@ -545,7 +553,7 @@ void CMemory::map_System (void)
 	map_index(0x80, 0xbf, 0x4000, 0x5fff, MAP_CPU, MAP_TYPE_I_O);
 }
 
-void CMemory::map_WRAM (void)
+void CMemory::Map_WRAM (void)
 {
 	// will overwrite others
 	map_space(0x7e, 0x7e, 0x0000, 0xffff, RAM);
@@ -553,7 +561,7 @@ void CMemory::map_WRAM (void)
 	map_space(0x7f, 0x7f, 0x0000, 0xffff, RAM + 0x10000);
 }
 
-void CMemory::map_LoROMSRAM (void)
+void CMemory::Map_LoROMSRAM (void)
 {
 	uint32 hi;
 
@@ -569,13 +577,53 @@ void CMemory::map_LoROMSRAM (void)
 	map_index(0xf0, 0xff, 0x0000, hi, MAP_LOROM_SRAM, MAP_TYPE_RAM);
 }
 
-void CMemory::map_HiROMSRAM (void)
+void CMemory::Map_HiROMSRAM (void)
 {
 	map_index(0x20, 0x3f, 0x6000, 0x7fff, MAP_HIROM_SRAM, MAP_TYPE_RAM);
 	map_index(0xa0, 0xbf, 0x6000, 0x7fff, MAP_HIROM_SRAM, MAP_TYPE_RAM);
 }
 
-void CMemory::map_DSP (void)
+void CMemory::Map_LoROMMap (void)
+{
+	printf("Map_LoROMMap\n");
+	Map_Initialize();
+	Map_System();
+
+	map_lorom(0x00, 0x3f, 0x8000, 0xffff, CalculatedSize);
+	map_lorom(0x40, 0x7f, 0x0000, 0xffff, CalculatedSize);
+	map_lorom(0x80, 0xbf, 0x8000, 0xffff, CalculatedSize);
+	map_lorom(0xc0, 0xff, 0x0000, 0xffff, CalculatedSize);
+
+	if (Settings.DSP)
+		Map_DSP();
+
+    Map_LoROMSRAM();
+	Map_WRAM();
+
+	Map_WriteProtectROM();
+}
+
+void CMemory::Map_HiROMMap (void)
+{
+	printf("Map_HiROMMap\n");
+	Map_Initialize();
+	Map_System();
+
+	map_hirom(0x00, 0x3f, 0x8000, 0xffff, CalculatedSize);
+	map_hirom(0x40, 0x7f, 0x0000, 0xffff, CalculatedSize);
+	map_hirom(0x80, 0xbf, 0x8000, 0xffff, CalculatedSize);
+	map_hirom(0xc0, 0xff, 0x0000, 0xffff, CalculatedSize);
+
+	if (Settings.DSP)
+		Map_DSP();
+
+	Map_HiROMSRAM();
+	Map_WRAM();
+
+	Map_WriteProtectROM();
+}
+
+void CMemory::Map_DSP (void)
 {
 	switch (DSP0.maptype)
 	{
@@ -601,66 +649,6 @@ void CMemory::map_DSP (void)
 			map_index(0xa0, 0xbf, 0x8000, 0xbfff, MAP_DSP, MAP_TYPE_I_O);
 			break;
 	}
-}
-
-void CMemory::map_WriteProtectROM (void)
-{
-	memmove((void *) WriteMap, (void *) ReadMap, sizeof(ReadMap));
-
-	for (int c = 0; c < MEMMAP_NUM_BLOCKS; c++)
-	{
-		if (WriteMap[c] >= ROM && WriteMap[c] <= (ROM + ROM_SIZE + 0x8000))
-		{
-			WriteMap[c] = (uint8 *) MAP_NONE;
-		}
-	}
-}
-
-void CMemory::Map_Initialize (void)
-{
-	for (int c = 0; c < MEMMAP_NUM_BLOCKS; c++)
-	{
-		ReadMap[c]  = (uint8 *) MAP_NONE;
-		WriteMap[c] = (uint8 *) MAP_NONE;
-	}
-}
-
-void CMemory::Map_LoROMMap (void)
-{
-	printf("Map_LoROMMap\n");
-	map_System();
-
-	map_lorom(0x00, 0x3f, 0x8000, 0xffff, CalculatedSize);
-	map_lorom(0x40, 0x7f, 0x0000, 0xffff, CalculatedSize);
-	map_lorom(0x80, 0xbf, 0x8000, 0xffff, CalculatedSize);
-	map_lorom(0xc0, 0xff, 0x0000, 0xffff, CalculatedSize);
-
-	if (Settings.DSP)
-		map_DSP();
-
-    map_LoROMSRAM();
-	map_WRAM();
-
-	map_WriteProtectROM();
-}
-
-void CMemory::Map_HiROMMap (void)
-{
-	printf("Map_HiROMMap\n");
-	map_System();
-
-	map_hirom(0x00, 0x3f, 0x8000, 0xffff, CalculatedSize);
-	map_hirom(0x40, 0x7f, 0x0000, 0xffff, CalculatedSize);
-	map_hirom(0x80, 0xbf, 0x8000, 0xffff, CalculatedSize);
-	map_hirom(0xc0, 0xff, 0x0000, 0xffff, CalculatedSize);
-
-	if (Settings.DSP)
-		map_DSP();
-
-	map_HiROMSRAM();
-	map_WRAM();
-
-	map_WriteProtectROM();
 }
 
 // checksum

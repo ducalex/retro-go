@@ -363,7 +363,7 @@ static void snes9x_task(void *arg)
         rg_emu_load_state(0);
     }
 
-	app->refreshRate = Memory.ROMFramesPerSecond;
+	app->refreshRate = Settings.FrameRate;
 
 	bool menuCancelled = false;
 	bool menuPressed = false;

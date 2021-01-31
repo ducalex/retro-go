@@ -445,35 +445,12 @@ void S9xSelectTileRenderers (int BGMode, bool8 sub, bool8 obj)
 	M7M1 = PPU.BGMosaic[0] && PPU.Mosaic > 1;
 	M7M2 = PPU.BGMosaic[1] && PPU.Mosaic > 1;
 
-	bool8 hires = !sub && (BGMode == 5 || BGMode == 6 || IPPU.PseudoHires);
-
-	if (!IPPU.DoubleWidthPixels)	// normal width
-	{
-		DT     = Renderers_DrawTile16Normal1x1;
-		DCT    = Renderers_DrawClippedTile16Normal1x1;
-		DMP    = Renderers_DrawMosaicPixel16Normal1x1;
-		DB     = Renderers_DrawBackdrop16Normal1x1;
-		DM7BG1 = M7M1 ? Renderers_DrawMode7MosaicBG1Normal1x1 : Renderers_DrawMode7BG1Normal1x1;
-		DM7BG2 = M7M2 ? Renderers_DrawMode7MosaicBG2Normal1x1 : Renderers_DrawMode7BG2Normal1x1;
-	}
-	else if(hires)					// hires double width
-	{
-		DT     = Renderers_DrawTile16Hires;
-		DCT    = Renderers_DrawClippedTile16Hires;
-		DMP    = Renderers_DrawMosaicPixel16Hires;
-		DB     = Renderers_DrawBackdrop16Hires;
-		DM7BG1 = M7M1 ? Renderers_DrawMode7MosaicBG1Hires : Renderers_DrawMode7BG1Hires;
-		DM7BG2 = M7M2 ? Renderers_DrawMode7MosaicBG2Hires : Renderers_DrawMode7BG2Hires;
-	}
-	else							// normal double width
-	{
-		DT     = Renderers_DrawTile16Normal2x1;
-		DCT    = Renderers_DrawClippedTile16Normal2x1;
-		DMP    = Renderers_DrawMosaicPixel16Normal2x1;
-		DB     = Renderers_DrawBackdrop16Normal2x1;
-		DM7BG1 = M7M1 ? Renderers_DrawMode7MosaicBG1Normal2x1 : Renderers_DrawMode7BG1Normal2x1;
-		DM7BG2 = M7M2 ? Renderers_DrawMode7MosaicBG2Normal2x1 : Renderers_DrawMode7BG2Normal2x1;
-	}
+	DT     = Renderers_DrawTile16Normal1x1;
+	DCT    = Renderers_DrawClippedTile16Normal1x1;
+	DMP    = Renderers_DrawMosaicPixel16Normal1x1;
+	DB     = Renderers_DrawBackdrop16Normal1x1;
+	DM7BG1 = M7M1 ? Renderers_DrawMode7MosaicBG1Normal1x1 : Renderers_DrawMode7BG1Normal1x1;
+	DM7BG2 = M7M2 ? Renderers_DrawMode7MosaicBG2Normal1x1 : Renderers_DrawMode7BG2Normal1x1;
 
 	GFX.DrawTileNomath        = DT[0];
 	GFX.DrawClippedTileNomath = DCT[0];
@@ -646,9 +623,6 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 
 // Basic routine to render an unclipped tile.
 // Input parameters:
-//     BPSTART = either StartLine or (StartLine * 2 + BG.InterlaceLine),
-//     so interlace modes can render every other line from the tile.
-//     PITCH = 1 or 2, again so interlace can count lines properly.
 //     DRAW_PIXEL(N, M) is a routine to actually draw the pixel. N is the pixel in the row to draw,
 //     and M is a test which if false means the pixel should be skipped.
 //     Z1 is the "draw if Z1 > cur_depth".
@@ -670,9 +644,9 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 	\
 	if (!(Tile & (V_FLIP | H_FLIP))) \
 	{ \
-		bp = pCache + BPSTART; \
+		bp = pCache + StartLine; \
 		OFFSET_IN_LINE; \
-		for (l = LineCount; l > 0; l--, bp += 8 * PITCH, Offset += GFX.PPL) \
+		for (l = LineCount; l > 0; l--, bp += 8, Offset += GFX.PPL) \
 		{ \
 			for (int x = 0; x < 8; x++) { \
 				DRAW_PIXEL(x, Pix = bp[x]); \
@@ -682,9 +656,9 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 	else \
 	if (!(Tile & V_FLIP)) \
 	{ \
-		bp = pCache + BPSTART; \
+		bp = pCache + StartLine; \
 		OFFSET_IN_LINE; \
-		for (l = LineCount; l > 0; l--, bp += 8 * PITCH, Offset += GFX.PPL) \
+		for (l = LineCount; l > 0; l--, bp += 8, Offset += GFX.PPL) \
 		{ \
 			for (int x = 0; x < 8; x++) { \
 				DRAW_PIXEL(x, Pix = bp[7 - x]); \
@@ -694,9 +668,9 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 	else \
 	if (!(Tile & H_FLIP)) \
 	{ \
-		bp = pCache + 56 - BPSTART; \
+		bp = pCache + 56 - StartLine; \
 		OFFSET_IN_LINE; \
-		for (l = LineCount; l > 0; l--, bp -= 8 * PITCH, Offset += GFX.PPL) \
+		for (l = LineCount; l > 0; l--, bp -= 8, Offset += GFX.PPL) \
 		{ \
 			for (int x = 0; x < 8; x++) { \
 				DRAW_PIXEL(x, Pix = bp[x]); \
@@ -705,9 +679,9 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 	} \
 	else \
 	{ \
-		bp = pCache + 56 - BPSTART; \
+		bp = pCache + 56 - StartLine; \
 		OFFSET_IN_LINE; \
-		for (l = LineCount; l > 0; l--, bp -= 8 * PITCH, Offset += GFX.PPL) \
+		for (l = LineCount; l > 0; l--, bp -= 8, Offset += GFX.PPL) \
 		{ \
 			for (int x = 0; x < 8; x++) { \
 				DRAW_PIXEL(x, Pix = bp[7 - x]); \
@@ -745,9 +719,9 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 	\
 	if (!(Tile & (V_FLIP | H_FLIP))) \
 	{ \
-		bp = pCache + BPSTART; \
+		bp = pCache + StartLine; \
 		OFFSET_IN_LINE; \
-		for (l = LineCount; l > 0; l--, bp += 8 * PITCH, Offset += GFX.PPL) \
+		for (l = LineCount; l > 0; l--, bp += 8 , Offset += GFX.PPL) \
 		{ \
 			w = Width; \
 			switch (StartPixel) \
@@ -766,9 +740,9 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 	else \
 	if (!(Tile & V_FLIP)) \
 	{ \
-		bp = pCache + BPSTART; \
+		bp = pCache + StartLine; \
 		OFFSET_IN_LINE; \
-		for (l = LineCount; l > 0; l--, bp += 8 * PITCH, Offset += GFX.PPL) \
+		for (l = LineCount; l > 0; l--, bp += 8, Offset += GFX.PPL) \
 		{ \
 			w = Width; \
 			switch (StartPixel) \
@@ -787,9 +761,9 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 	else \
 	if (!(Tile & H_FLIP)) \
 	{ \
-		bp = pCache + 56 - BPSTART; \
+		bp = pCache + 56 - StartLine; \
 		OFFSET_IN_LINE; \
-		for (l = LineCount; l > 0; l--, bp -= 8 * PITCH, Offset += GFX.PPL) \
+		for (l = LineCount; l > 0; l--, bp -= 8, Offset += GFX.PPL) \
 		{ \
 			w = Width; \
 			switch (StartPixel) \
@@ -807,9 +781,9 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 	} \
 	else \
 	{ \
-		bp = pCache + 56 - BPSTART; \
+		bp = pCache + 56 - StartLine; \
 		OFFSET_IN_LINE; \
-		for (l = LineCount; l > 0; l--, bp -= 8 * PITCH, Offset += GFX.PPL) \
+		for (l = LineCount; l > 0; l--, bp -= 8, Offset += GFX.PPL) \
 		{ \
 			w = Width; \
 			switch (StartPixel) \
@@ -840,7 +814,7 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 #undef Z2
 
 // Basic routine to render a single mosaic pixel.
-// DRAW_PIXEL, BPSTART, Z1, Z2 and Pix are the same as above, but PITCH is not used.
+// DRAW_PIXEL, Z1, Z2 and Pix are the same as above
 
 #define Z1	GFX.Z1
 #define Z2	GFX.Z2
@@ -859,9 +833,9 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 		StartPixel = 7 - StartPixel; \
 	\
 	if (Tile & V_FLIP) \
-		Pix = pCache[56 - BPSTART + StartPixel]; \
+		Pix = pCache[56 - StartLine + StartPixel]; \
 	else \
-		Pix = pCache[BPSTART + StartPixel]; \
+		Pix = pCache[StartLine + StartPixel]; \
 	\
 	if (Pix) \
 	{ \
@@ -887,7 +861,7 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 #undef Z2
 
 // Basic routine to render the backdrop.
-// DRAW_PIXEL is the same as above, but since we're just replicating a single pixel there's no need for PITCH or BPSTART
+// DRAW_PIXEL is the same as above
 // (or interlace at all, really).
 // The backdrop is always depth = 1, so Z1 = Z2 = 1. And backdrop is always color 0.
 
@@ -923,7 +897,6 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 #undef Z2
 
 // Basic routine to render a chunk of a Mode 7 BG.
-// Mode 7 has no interlace, so BPSTART and PITCH are unused.
 // We get some new parameters, so we can use the same DRAW_TILE to do BG1 or BG2:
 //     DCMODE tests if Direct Color should apply.
 //     BG is the BG, so we use the right clip window.
@@ -1240,9 +1213,6 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 #ifndef NAME2 // Second-level: Get all the NAME1 renderers.
 /*****************************************************************************/
 
-#define BPSTART	StartLine
-#define PITCH	1
-
 // The 1x1 pixel plotter, for speedhacking modes.
 
 #define OFFSET_IN_LINE
@@ -1261,62 +1231,6 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 
 #undef NAME2
 #undef DRAW_PIXEL
-
-// The 2x1 pixel plotter, for normal rendering when we've used hires/interlace already this frame.
-
-#define DRAW_PIXEL_N2x1(N, M) \
-	if (Z1 > GFX.DB[Offset + 2 * N] && (M)) \
-	{ \
-		GFX.S[Offset + 2 * N] = GFX.S[Offset + 2 * N + 1] = MATH(GFX.ScreenColors[Pix], GFX.SubScreen[Offset + 2 * N], GFX.SubZBuffer[Offset + 2 * N]); \
-		GFX.DB[Offset + 2 * N] = GFX.DB[Offset + 2 * N + 1] = Z2; \
-	}
-
-#define DRAW_PIXEL(N, M)	DRAW_PIXEL_N2x1(N, M)
-#define NAME2				Normal2x1
-
-// Third-level include: Get the Normal2x1 renderers.
-
-#include "tile.cpp"
-
-#undef NAME2
-#undef DRAW_PIXEL
-#undef OFFSET_IN_LINE
-
-// Hires pixel plotter, this combines the main and subscreen pixels as appropriate to render hires or pseudo-hires images.
-// Use it only on the main screen, subscreen should use Normal2x1 instead.
-// Hires math:
-//     Main pixel is mathed as normal: Main(x, y) * Sub(x, y).
-//     Sub pixel is mathed somewhat weird: Basically, for Sub(x + 1, y) we apply the same operation we applied to Main(x, y)
-//     (e.g. no math, add fixed, add1/2 subscreen) using Main(x, y) as the "corresponding subscreen pixel".
-//     Also, color window clipping clips Sub(x + 1, y) if Main(x, y) is clipped, not Main(x + 1, y).
-//     We don't know how Sub(0, y) is handled.
-
-#define DRAW_PIXEL_H2x1(N, M) \
-	if (Z1 > GFX.DB[Offset + 2 * N] && (M)) \
-	{ \
-		GFX.S[Offset + 2 * N + 1] = MATH(GFX.ScreenColors[Pix], GFX.SubScreen[Offset + 2 * N], GFX.SubZBuffer[Offset + 2 * N]); \
-		if ((OffsetInLine + 2 * N ) != (SNES_WIDTH - 1) << 1) \
-			GFX.S[Offset + 2 * N + 2] = MATH((GFX.ClipColors ? 0 : GFX.SubScreen[Offset + 2 * N + 2]), GFX.RealScreenColors[Pix], GFX.SubZBuffer[Offset + 2 * N]); \
-		if ((OffsetInLine + 2 * N) == 0 || (OffsetInLine + 2 * N) == GFX.PPL) \
-			GFX.S[Offset + 2 * N] = MATH((GFX.ClipColors ? 0 : GFX.SubScreen[Offset + 2 * N]), GFX.RealScreenColors[Pix], GFX.SubZBuffer[Offset + 2 * N]); \
-		GFX.DB[Offset + 2 * N] = GFX.DB[Offset + 2 * N + 1] = Z2; \
-	}
-
-#define OFFSET_IN_LINE \
-	uint32 OffsetInLine = Offset % GFX.PPL;
-#define DRAW_PIXEL(N, M)	DRAW_PIXEL_H2x1(N, M)
-#define NAME2				Hires
-
-// Third-level include: Get the Hires renderers.
-
-#include "tile.cpp"
-
-#undef NAME2
-#undef DRAW_PIXEL
-#undef OFFSET_IN_LINE
-
-#undef BPSTART
-#undef PITCH
 
 /*****************************************************************************/
 #else // Third-level: Renderers for each math mode for NAME1 + NAME2.

@@ -187,10 +187,6 @@ static uint8 S9xDebugGetByte (uint32 Address)
 			byte = *(Memory.SRAM + (((Address & 0x7fff) - 0x6000 + ((Address & 0xf0000) >> 3)) & Memory.SRAMMask));
 			return (byte);
 
-		case CMemory::MAP_BWRAM:
-			byte = *(Memory.BWRAM + ((Address & 0x7fff) - 0x6000));
-			return (byte);
-
 		default:
 			return (byte);
 	}
