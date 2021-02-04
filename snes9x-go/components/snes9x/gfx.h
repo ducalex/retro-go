@@ -111,6 +111,9 @@ struct SLineData
 extern struct SBG	BG;
 extern struct SGFX	GFX;
 
+#define FONT_WIDTH  8
+#define FONT_HEIGHT 9
+
 #define H_FLIP		0x4000
 #define V_FLIP		0x8000
 #define BLANK_TILE	2
@@ -118,7 +121,6 @@ extern struct SGFX	GFX;
 void S9xStartScreenRefresh (void);
 void S9xEndScreenRefresh (void);
 void RenderLine (int);
-void S9xComputeClipWindows (void);
 void S9xDisplayChar (uint16 *, uint8);
 void S9xGraphicsScreenResize (void);
 void S9xDisplayMessages (uint16 *, int, int, int, int);

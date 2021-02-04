@@ -5,7 +5,7 @@
 \*****************************************************************************/
 
 #include "snes9x.h"
-#include "memmap.h"
+#include "memory.h"
 #include "apu/apu.h"
 
 // for "Magic WDM" features
@@ -13,7 +13,6 @@
 #include "snapshot.h"
 #include "display.h"
 #include "debug.h"
-#include "missing.h"
 #endif
 
 #if RETRO_LESS_ACCURATE_CPU

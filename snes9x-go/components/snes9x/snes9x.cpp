@@ -6,12 +6,10 @@
 
 #include <ctype.h>
 #include <string.h>
-#ifdef HAVE_STRINGS_H
 #include <strings.h>
-#endif
 
 #include "snes9x.h"
-#include "memmap.h"
+#include "memory.h"
 #include "controls.h"
 #include "display.h"
 
@@ -25,14 +23,11 @@ void S9xInitSettings(void)
 	memset(&Settings, 0, sizeof(Settings));
 
 	// ROM
-	Settings.NoPatch                    = false;
-	Settings.IgnorePatchChecksum        = false;
 	Settings.ForcePAL                   = false;
 	Settings.ForceNTSC                  = false;
 
 	// Sound
 	Settings.SoundSync                  =  true;
-	Settings.SixteenBitSound            =  true;
 	Settings.Stereo                     =  true;
 	Settings.SoundPlaybackRate          =  48000;
 	Settings.SoundInputRate             =  31950;
@@ -54,17 +49,4 @@ void S9xInitSettings(void)
 
 	// Hack
 	Settings.DisableGameSpecificHacks   = false;
-
-	// Debug
-#ifdef DEBUGGER
-	if (conf.GetBool("DEBUG::Debugger", false))
-		CPU.Flags |= DEBUG_MODE_FLAG;
-
-	if (conf.GetBool("DEBUG::Trace", false))
-	{
-		ENSURE_TRACE_OPEN(trace,"trace.log","wb")
-		CPU.Flags |= TRACE_FLAG;
-	}
-	Settings.TraceSMP = FALSE;
-#endif
 }

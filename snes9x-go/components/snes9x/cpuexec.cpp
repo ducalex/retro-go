@@ -5,14 +5,13 @@
 \*****************************************************************************/
 
 #include "snes9x.h"
-#include "memmap.h"
+#include "memory.h"
 #include "cpuops.h"
 #include "dma.h"
 #include "apu/apu.h"
 #include "snapshot.h"
 #ifdef DEBUGGER
 #include "debug.h"
-#include "missing.h"
 #endif
 
 #define CHECK_FOR_IRQ_CHANGE() \
@@ -257,9 +256,6 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 
 					PPU.HDMA = 0;
 					// Bits 7 and 6 of $4212 are computed when read in S9xGetPPU.
-				#ifdef DEBUGGER
-					missing.dma_this_frame = 0;
-				#endif
 					IPPU.MaxBrightness = PPU.Brightness;
 					PPU.ForcedBlanking = (Memory.FillRAM[0x2100] >> 7) & 1;
 

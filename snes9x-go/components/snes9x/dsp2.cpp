@@ -5,7 +5,7 @@
 \*****************************************************************************/
 
 #include "snes9x.h"
-#include "memmap.h"
+#include "memory.h"
 
 static void DSP2_Op01 (void);
 static void DSP2_Op03 (void);

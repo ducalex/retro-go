@@ -10,21 +10,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <limits.h>
-#ifndef __LIBRETRO__
-#include <memory.h>
-#endif
 #include <time.h>
 #include <string.h>
-#ifdef HAVE_STRINGS_H
 #include <strings.h>
-#endif
 #include <sys/types.h>
-
-#ifdef __WIN32__
-#define NOMINMAX 1
-#include <windows.h>
-#endif
 
 #ifdef __WIN32__
 //#define RIGHTSHIFT_IS_SAR
@@ -44,11 +36,8 @@
 #define PIXEL_FORMAT RGB565
 #endif
 
-#ifndef snes9x_types_defined
-#define snes9x_types_defined
-typedef unsigned char		bool8;
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
+// typedef unsigned char		bool8;
+typedef bool				bool8;
 typedef intptr_t			pint;
 typedef int8_t				int8;
 typedef uint8_t				uint8;
@@ -58,47 +47,6 @@ typedef int32_t				int32;
 typedef uint32_t			uint32;
 typedef int64_t				int64;
 typedef uint64_t			uint64;
-#else	// HAVE_STDINT_H
-#ifdef __WIN32__
-typedef intptr_t			pint;
-typedef signed char			int8;
-typedef unsigned char		uint8;
-typedef signed short		int16;
-typedef unsigned short		uint16;
-typedef signed int     		int32;
-typedef unsigned int		uint32;
-typedef signed __int64		int64;
-typedef unsigned __int64	uint64;
-typedef int8                int8_t;
-typedef uint8       		uint8_t;
-typedef int16       		int16_t;
-typedef uint16      		uint16_t;
-typedef int32		    	int32_t;
-typedef uint32      		uint32_t;
-typedef int64               int64_t;
-typedef uint64              uint64_t;
-typedef int					socklen_t;
-#else	// __WIN32__
-typedef signed char			int8;
-typedef unsigned char		uint8;
-typedef signed short		int16;
-typedef unsigned short		uint16;
-typedef signed int			int32;
-typedef unsigned int		uint32;
-#ifdef __GNUC__
-// long long is not part of ISO C++
-__extension__
-#endif
-typedef long long			int64;
-typedef unsigned long long	uint64;
-#ifdef PTR_NOT_INT
-typedef size_t				pint;
-#else   // __PTR_NOT_INT
-typedef size_t					pint;
-#endif  // __PTR_NOT_INT
-#endif	//  __WIN32__
-#endif	// HAVE_STDINT_H
-#endif	// snes9x_types_defined
 
 #ifndef TRUE
 #define TRUE	1
@@ -107,67 +55,21 @@ typedef size_t					pint;
 #define FALSE	0
 #endif
 
-#define START_EXTERN_C	extern "C" {
-#define END_EXTERN_C	}
+#undef PATH_MAX
+#define PATH_MAX 512
 
-#ifndef __WIN32__
-#ifndef PATH_MAX
-#define PATH_MAX	1024
-#endif
 #define _MAX_DRIVE	1
 #define _MAX_DIR	PATH_MAX
 #define _MAX_FNAME	PATH_MAX
 #define _MAX_EXT	PATH_MAX
 #define _MAX_PATH	PATH_MAX
-#else
-#ifndef PATH_MAX
-#define PATH_MAX	_MAX_PATH
-#endif
-#endif
 
-#ifndef __WIN32__
+#define SLASH_STR	"/"
+#define SLASH_CHAR	'/'
+
 void _splitpath (const char *, char *, char *, char *, char *);
 void _makepath (char *, const char *, const char *, const char *, const char *);
 #define S9xDisplayString	DisplayStringFromBottom
-#else   // __WIN32__
-#define snprintf _snprintf
-#define strcasecmp	stricmp
-#define strncasecmp	strnicmp
-#ifndef __LIBRETRO__
-void WinDisplayStringFromBottom(const char *string, int linesFromBottom, int pixelsFromLeft, bool allowWrap);
-#define S9xDisplayString	WinDisplayStringFromBottom
-void SetInfoDlgColor(unsigned char, unsigned char, unsigned char);
-#define SET_UI_COLOR(r,g,b) SetInfoDlgColor(r,g,b)
-#else   // __LIBRETRO__
-#define S9xDisplayString	DisplayStringFromBottom
-#endif  // __LIBRETRO__
-#endif  // __WIN32__
-
-inline void sstrncpy(char *dst, const char *src, size_t size)
-{
-    strncpy(dst, src, size - 1);
-    dst[size - 1] = '\0';
-}
-
-#if defined(__DJGPP) || defined(__WIN32__)
-#define SLASH_STR	"\\"
-#define SLASH_CHAR	'\\'
-#else
-#define SLASH_STR	"/"
-#define SLASH_CHAR	'/'
-#endif
-
-#undef PATH_MAX
-#define PATH_MAX 512
-
-#ifndef SIG_PF
-#define SIG_PF	void (*) (int)
-#endif
-
-#ifdef __linux
-#define TITLE "Snes9x: Linux"
-#define SYS_CONFIG_FILE "/etc/snes9x/snes9x.conf"
-#endif
 
 #ifndef TITLE
 #define TITLE "Snes9x"
@@ -199,6 +101,117 @@ inline void sstrncpy(char *dst, const char *src, size_t size)
 #define SWAP_WORD(s)		(s) = (((s) & 0xff) <<  8) | (((s) & 0xff00) >> 8)
 #define SWAP_DWORD(s)		(s) = (((s) & 0xff) << 24) | (((s) & 0xff00) << 8) | (((s) & 0xff0000) >> 8) | (((s) & 0xff000000) >> 24)
 
-#include "pixform.h"
+
+#ifndef _PIXFORM_H_
+#define _PIXFORM_H_
+
+/* RGB565 format */
+#define BUILD_PIXEL_RGB565(R, G, B)  (((int)(R) << 11) | ((int)(G) << 6) | (((int)(G) & 0x10) << 1) | (int)(B))
+#define BUILD_PIXEL2_RGB565(R, G, B) (((int)(R) << 11) | ((int)(G) << 5) | (int)(B))
+#define DECOMPOSE_PIXEL_RGB565(PIX, R, G, B) \
+    {                                        \
+        (R) = (PIX) >> 11;                   \
+        (G) = ((PIX) >> 6) & 0x1f;           \
+        (B) = (PIX)&0x1f;                    \
+    }
+#define SPARE_RGB_BIT_MASK_RGB565 (1 << 5)
+
+#define MAX_RED_RGB565            31
+#define MAX_GREEN_RGB565          63
+#define MAX_BLUE_RGB565           31
+#define RED_SHIFT_BITS_RGB565     11
+#define GREEN_SHIFT_BITS_RGB565   6
+#define RED_LOW_BIT_MASK_RGB565   0x0800
+#define GREEN_LOW_BIT_MASK_RGB565 0x0020
+#define BLUE_LOW_BIT_MASK_RGB565  0x0001
+#define RED_HI_BIT_MASK_RGB565    0x8000
+#define GREEN_HI_BIT_MASK_RGB565  0x0400
+#define BLUE_HI_BIT_MASK_RGB565   0x0010
+#define FIRST_COLOR_MASK_RGB565   0xF800
+#define SECOND_COLOR_MASK_RGB565  0x07E0
+#define THIRD_COLOR_MASK_RGB565   0x001F
+#define ALPHA_BITS_MASK_RGB565    0x0000
+
+/* RGB555 format */
+#define BUILD_PIXEL_RGB555(R, G, B)  (((int)(R) << 10) | ((int)(G) << 5) | (int)(B))
+#define BUILD_PIXEL2_RGB555(R, G, B) (((int)(R) << 10) | ((int)(G) << 5) | (int)(B))
+#define DECOMPOSE_PIXEL_RGB555(PIX, R, G, B) \
+    {                                        \
+        (R) = (PIX) >> 10;                   \
+        (G) = ((PIX) >> 5) & 0x1f;           \
+        (B) = (PIX)&0x1f;                    \
+    }
+#define SPARE_RGB_BIT_MASK_RGB555 (1 << 15)
+
+#define MAX_RED_RGB555            31
+#define MAX_GREEN_RGB555          31
+#define MAX_BLUE_RGB555           31
+#define RED_SHIFT_BITS_RGB555     10
+#define GREEN_SHIFT_BITS_RGB555   5
+#define RED_LOW_BIT_MASK_RGB555   0x0400
+#define GREEN_LOW_BIT_MASK_RGB555 0x0020
+#define BLUE_LOW_BIT_MASK_RGB555  0x0001
+#define RED_HI_BIT_MASK_RGB555    0x4000
+#define GREEN_HI_BIT_MASK_RGB555  0x0200
+#define BLUE_HI_BIT_MASK_RGB555   0x0010
+#define FIRST_COLOR_MASK_RGB555   0x7C00
+#define SECOND_COLOR_MASK_RGB555  0x03E0
+#define THIRD_COLOR_MASK_RGB555   0x001F
+#define ALPHA_BITS_MASK_RGB555    0x0000
+
+#define CONCAT(X, Y) X##Y
+
+// C pre-processor needs a two stage macro define to enable it to concat
+// to macro names together to form the name of another macro.
+#define BUILD_PIXEL_D(F, R, G, B)          CONCAT(BUILD_PIXEL_, F) (R, G, B)
+#define BUILD_PIXEL2_D(F, R, G, B)         CONCAT(BUILD_PIXEL2_, F) (R, G, B)
+#define DECOMPOSE_PIXEL_D(F, PIX, R, G, B) CONCAT(DECOMPOSE_PIXEL_, F) (PIX, R, G, B)
+
+#define BUILD_PIXEL(R, G, B)               BUILD_PIXEL_D(PIXEL_FORMAT, R, G, B)
+#define BUILD_PIXEL2(R, G, B)              BUILD_PIXEL2_D(PIXEL_FORMAT, R, G, B)
+#define DECOMPOSE_PIXEL(PIX, R, G, B)      DECOMPOSE_PIXEL_D(PIXEL_FORMAT, PIX, R, G, B)
+
+#define MAX_RED_D(F)            CONCAT(MAX_RED_, F)
+#define MAX_GREEN_D(F)          CONCAT(MAX_GREEN_, F)
+#define MAX_BLUE_D(F)           CONCAT(MAX_BLUE_, F)
+#define RED_SHIFT_BITS_D(F)     CONCAT(RED_SHIFT_BITS_, F)
+#define GREEN_SHIFT_BITS_D(F)   CONCAT(GREEN_SHIFT_BITS_, F)
+#define RED_LOW_BIT_MASK_D(F)   CONCAT(RED_LOW_BIT_MASK_, F)
+#define GREEN_LOW_BIT_MASK_D(F) CONCAT(GREEN_LOW_BIT_MASK_, F)
+#define BLUE_LOW_BIT_MASK_D(F)  CONCAT(BLUE_LOW_BIT_MASK_, F)
+#define RED_HI_BIT_MASK_D(F)    CONCAT(RED_HI_BIT_MASK_, F)
+#define GREEN_HI_BIT_MASK_D(F)  CONCAT(GREEN_HI_BIT_MASK_, F)
+#define BLUE_HI_BIT_MASK_D(F)   CONCAT(BLUE_HI_BIT_MASK_, F)
+#define FIRST_COLOR_MASK_D(F)   CONCAT(FIRST_COLOR_MASK_, F)
+#define SECOND_COLOR_MASK_D(F)  CONCAT(SECOND_COLOR_MASK_, F)
+#define THIRD_COLOR_MASK_D(F)   CONCAT(THIRD_COLOR_MASK_, F)
+#define ALPHA_BITS_MASK_D(F)    CONCAT(ALPHA_BITS_MASK_, F)
+
+#define MAX_RED            MAX_RED_D(PIXEL_FORMAT)
+#define MAX_GREEN          MAX_GREEN_D(PIXEL_FORMAT)
+#define MAX_BLUE           MAX_BLUE_D(PIXEL_FORMAT)
+#define RED_SHIFT_BITS     RED_SHIFT_BITS_D(PIXEL_FORMAT)
+#define GREEN_SHIFT_BITS   GREEN_SHIFT_BITS_D(PIXEL_FORMAT)
+#define RED_LOW_BIT_MASK   RED_LOW_BIT_MASK_D(PIXEL_FORMAT)
+#define GREEN_LOW_BIT_MASK GREEN_LOW_BIT_MASK_D(PIXEL_FORMAT)
+#define BLUE_LOW_BIT_MASK  BLUE_LOW_BIT_MASK_D(PIXEL_FORMAT)
+#define RED_HI_BIT_MASK    RED_HI_BIT_MASK_D(PIXEL_FORMAT)
+#define GREEN_HI_BIT_MASK  GREEN_HI_BIT_MASK_D(PIXEL_FORMAT)
+#define BLUE_HI_BIT_MASK   BLUE_HI_BIT_MASK_D(PIXEL_FORMAT)
+#define FIRST_COLOR_MASK   FIRST_COLOR_MASK_D(PIXEL_FORMAT)
+#define SECOND_COLOR_MASK  SECOND_COLOR_MASK_D(PIXEL_FORMAT)
+#define THIRD_COLOR_MASK   THIRD_COLOR_MASK_D(PIXEL_FORMAT)
+#define ALPHA_BITS_MASK    ALPHA_BITS_MASK_D(PIXEL_FORMAT)
+
+#define GREEN_HI_BIT               ((MAX_GREEN + 1) >> 1)
+#define RGB_LOW_BITS_MASK          (RED_LOW_BIT_MASK | GREEN_LOW_BIT_MASK | BLUE_LOW_BIT_MASK)
+#define RGB_HI_BITS_MASK           (RED_HI_BIT_MASK | GREEN_HI_BIT_MASK | BLUE_HI_BIT_MASK)
+#define RGB_HI_BITS_MASKx2         ((RED_HI_BIT_MASK | GREEN_HI_BIT_MASK | BLUE_HI_BIT_MASK) << 1)
+#define RGB_REMOVE_LOW_BITS_MASK   (~RGB_LOW_BITS_MASK)
+#define FIRST_THIRD_COLOR_MASK     (FIRST_COLOR_MASK | THIRD_COLOR_MASK)
+#define TWO_LOW_BITS_MASK          (RGB_LOW_BITS_MASK | (RGB_LOW_BITS_MASK << 1))
+#define HIGH_BITS_SHIFTED_TWO_MASK (((FIRST_COLOR_MASK | SECOND_COLOR_MASK | THIRD_COLOR_MASK) & ~TWO_LOW_BITS_MASK) >> 2)
+
+#endif // _PIXFORM_H_
 
 #endif

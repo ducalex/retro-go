@@ -8,7 +8,7 @@
 #include <time.h>
 
 #include "../components/snes9x/snes9x.h"
-#include "../components/snes9x/memmap.h"
+#include "../components/snes9x/memory.h"
 #include "../components/snes9x/apu/apu.h"
 #include "../components/snes9x/gfx.h"
 #include "../components/snes9x/snapshot.h"
@@ -328,7 +328,6 @@ static void snes9x_task(void *arg)
 
 	S9xInitSettings();
 
-	Settings.SixteenBitSound = FALSE;
 	Settings.Stereo = FALSE;
 	Settings.SoundPlaybackRate = AUDIO_SAMPLE_RATE;
 	Settings.SoundInputRate = 20000;
@@ -336,7 +335,7 @@ static void snes9x_task(void *arg)
 	Settings.Mute = TRUE;
 	Settings.Transparency = TRUE;
 	Settings.SkipFrames = 0;
-	Settings.StopEmulation = FALSE;
+	Settings.Paused = FALSE;
 
 	GFX.Pitch = SNES_WIDTH * 2;
 	GFX.Screen = (uint16*)currentUpdate->buffer;

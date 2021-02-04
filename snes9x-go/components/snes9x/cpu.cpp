@@ -5,7 +5,7 @@
 \*****************************************************************************/
 
 #include "snes9x.h"
-#include "memmap.h"
+#include "memory.h"
 #include "dma.h"
 #include "apu/apu.h"
 #include "snapshot.h"

@@ -11,7 +11,7 @@
 #include <ctype.h>
 
 #include "snes9x.h"
-#include "memmap.h"
+#include "memory.h"
 #include "apu/apu.h"
 #include "snapshot.h"
 #include "controls.h"
@@ -33,10 +33,6 @@ using namespace	std;
 #define MAP_UNKNOWN				(-1)
 #define MAP_NONE				0
 #define MAP_BUTTON				1
-
-#define FLAG_IOBIT0				(Memory.FillRAM[0x4213] & 0x40)
-#define FLAG_IOBIT1				(Memory.FillRAM[0x4213] & 0x80)
-#define FLAG_IOBIT(n)			((n) ? (FLAG_IOBIT1) : (FLAG_IOBIT0))
 
 static uint8	read_idx[2 /* ports */][2 /* per port */];
 static struct

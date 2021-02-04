@@ -14,7 +14,6 @@
 #include "apu/apu.h"
 #include "display.h"
 #include "debug.h"
-#include "missing.h"
 
 #include "apu/bapu/snes/snes.hpp"
 
@@ -53,7 +52,7 @@ static const char	*HelpMessage[] =
 	"T                      - Toggle CPU instruction tracing to trace.log",
 	"TS                     - Toggle SA-1 instruction tracing to trace_sa1.log",
 	"E                      - Toggle HC-based event tracing to trace.log",
-	"V                      - Toggle non-DMA V-RAM read/write tracing to stdout",
+	"V                      - Toggle non-DMA V-` read/write tracing to stdout",
 	"D                      - Toggle on-screen DMA tracing",
 	"H                      - Toggle on-screen HDMA tracing",
 	"U                      - Toggle on-screen unknown register read/write tracing",
@@ -160,7 +159,6 @@ static short debug_get_start_address (char *, uint8 *, uint32 *);
 static void debug_print_window (uint8 *);
 static const char * debug_clip_fn (int);
 static void debug_whats_used (void);
-static void debug_whats_missing (void);
 
 
 static uint8 S9xDebugGetByte (uint32 Address)
@@ -1649,9 +1647,6 @@ void S9xDebugProcessCommand(char *Line)
 	if (*Line == 'q')
 		S9xExit();
 
-	if (*Line == 'W')
-		debug_whats_missing();
-
 	if (*Line == 'w')
 		debug_whats_used();
 
@@ -1821,29 +1816,6 @@ static void debug_whats_used (void)
 
 	if (Memory.FillRAM[0x4200] & 0x80)
 		printf("V-blank NMI enabled, \n");
-
-	for (int i = 0; i < 8; i++)
-	{
-		if (missing.hdma_this_frame & (1 << i))
-		{
-			printf("H-DMA %d [%d] 0x%02X%04X->0x21%02X %s %s 0x%02X%04X %s addressing, \n",
-			       i, DMA[i].TransferMode, DMA[i].ABank, DMA[i].AAddress, DMA[i].BAddress,
-			       DMA[i].AAddressDecrement ? "dec" : "inc",
-			       DMA[i].Repeat ? "repeat" : "continue",
-			       DMA[i].IndirectBank, DMA[i].IndirectAddress,
-			       DMA[i].HDMAIndirectAddressing ? "indirect" : "absolute");
-		}
-	}
-
-	for (int i = 0; i < 8; i++)
-	{
-		if (missing.dma_this_frame & (1 << i))
-		{
-			printf("DMA %d [%d] 0x%02X%04X->0x21%02X Num: %d %s, \n",
-			       i, DMA[i].TransferMode, DMA[i].ABank, DMA[i].AAddress, DMA[i].BAddress, DMA[i].TransferBytes,
-			       DMA[i].AAddressFixed ? "fixed" : (DMA[i].AAddressDecrement ? "dec" : "inc"));
-		}
-	}
 
 	printf("VRAM write address: 0x%04x(%s), Full Graphic: %d, Address inc: %d, \n",
 	       PPU.VMA.Address,
@@ -2100,205 +2072,6 @@ static void debug_whats_used (void)
 	printf("\n");
 
 	printf("Fixed colour: %02x%02x%02x, \n", PPU.FixedColourRed, PPU.FixedColourGreen, PPU.FixedColourBlue);
-}
-
-static void debug_whats_missing (void)
-{
-	printf("Processor: ");
-
-	if (missing.emulate6502)
-		printf("emulation mode, ");
-
-	if (missing.decimal_mode)
-		printf("decimal mode, ");
-
-	if (missing.mv_8bit_index)
-		printf("MVP/MVN with 8bit index registers and XH or YH > 0, ");
-
-	if (missing.mv_8bit_acc)
-		printf("MVP/MVN with 8bit accumulator > 255, ");
-
-	printf("\n");
-
-	printf("Screen modes used: ");
-
-	for (int i = 0; i < 8; i++)
-		if (missing.modes[i])
-			printf("%d, ", i);
-
-	printf("\n");
-
-	if (missing.interlace)
-		printf("Interlace, ");
-
-	if (missing.pseudo_512)
-		printf("Pseudo 512 pixels horizontal resolution, ");
-
-	if (missing.lines_239)
-		printf("240 lines visible, ");
-
-	if (missing.sprite_double_height)
-		printf("double-hight sprites, ");
-
-	printf("\n");
-
-	if (missing.mode7_fx)
-		printf("Mode 7 rotation/scaling, ");
-
-	if (missing.matrix_read)
-		printf("Mode 7 read matrix registers, ");
-
-	if (missing.mode7_flip)
-		printf("Mode 7 flipping, ");
-
-	if (missing.mode7_bgmode)
-		printf("Mode 7 priority per pixel, ");
-
-	if (missing.direct)
-		printf("Direct 32000 colour mode, ");
-
-	printf("\n");
-
-	if (missing.mosaic)
-		printf("Mosaic effect, ");
-
-	if (missing.subscreen)
-		printf("Subscreen enabled, ");
-
-	if (missing.subscreen_add)
-		printf("Subscreen colour add, ");
-
-	if (missing.subscreen_sub)
-		printf("Subscreen colour subtract, ");
-
-	if (missing.fixed_colour_add)
-		printf("Fixed colour add, ");
-
-	if (missing.fixed_colour_sub)
-		printf("Fixed colour subtract, ");
-
-	printf("\n");
-
-	printf("Window 1 enabled on: ");
-	debug_print_window(missing.window1);
-
-	printf("\n");
-
-	printf("Window 2 enabled on: ");
-	debug_print_window(missing.window2);
-
-	printf("\n");
-
-	if (missing.bg_offset_read)
-		printf("BG offset read, ");
-
-	if (missing.oam_address_read)
-		printf("OAM address read, ");
-
-	if (missing.sprite_priority_rotation)
-		printf("Sprite priority rotation, ");
-
-	if (missing.fast_rom)
-		printf("Fast 3.58MHz ROM access enabled, ");
-
-	if (missing.matrix_multiply)
-		printf("Matrix multiply 16bit by 8bit used, ");
-
-	printf("\n");
-
-	if (missing.virq)
-		printf("V-IRQ used at line %d, ", missing.virq_pos);
-
-	if (missing.hirq)
-		printf("H-IRQ used at position %d, ", missing.hirq_pos);
-
-	printf("\n");
-
-	if (missing.h_v_latch)
-		printf("H and V-Pos latched, ");
-
-	if (missing.h_counter_read)
-		printf("H-Pos read, ");
-
-	if (missing.v_counter_read)
-		printf("V-Pos read, ");
-
-	printf("\n");
-
-	if (missing.oam_read)
-		printf("OAM read, ");
-
-	if (missing.vram_read)
-		printf("VRAM read, ");
-
-	if (missing.cgram_read)
-		printf("CG-RAM read, ");
-
-	if (missing.wram_read)
-		printf("WRAM read, ");
-
-	if (missing.dma_read)
-		printf("DMA read, ");
-
-	if (missing.vram_inc)
-		printf("VRAM inc: %d, ", missing.vram_inc);
-
-	if (missing.vram_full_graphic_inc)
-		printf("VRAM full graphic inc: %d, ", missing.vram_full_graphic_inc);
-
-	printf("\n");
-
-	for (int i = 0; i < 8; i++)
-	{
-		if (missing.hdma[i].used)
-		{
-			printf("HDMA %d 0x%02X%04X->0x21%02X %s, ",
-			       i, missing.hdma[i].abus_bank, missing.hdma[i].abus_address, missing.hdma[i].bbus_address,
-			       missing.hdma[i].indirect_address ? "indirect" : "absolute");
-
-			if (missing.hdma[i].force_table_address_write)
-				printf("Forced address write, ");
-
-			if (missing.hdma[i].force_table_address_read)
-				printf("Current address read, ");
-
-			if (missing.hdma[i].line_count_write)
-				printf("Line count write, ");
-
-			if (missing.hdma[i].line_count_read)
-				printf("Line count read, ");
-
-			printf("\n");
-		}
-	}
-
-	for (int i = 0; i < 8; i++)
-	{
-		if (missing.dma_channels & (1 << i))
-		{
-			printf("DMA %d [%d] 0x%02X%04X->0x21%02X Num: %d %s, \n",
-			       i, DMA[i].TransferMode, DMA[i].ABank, DMA[i].AAddress, DMA[i].BAddress, DMA[i].TransferBytes,
-			       DMA[i].AAddressFixed ? "fixed" : (DMA[i].AAddressDecrement ? "dec" : "inc"));
-		}
-	}
-
-	if (missing.unknownppu_read)
-		printf("Read from unknown PPU register: $%04X, \n", missing.unknownppu_read);
-
-	if (missing.unknownppu_write)
-		printf("Write to unknown PPU register: $%04X, \n", missing.unknownppu_write);
-
-	if (missing.unknowncpu_read)
-		printf("Read from unknown CPU register: $%04X, \n", missing.unknowncpu_read);
-
-	if (missing.unknowncpu_write)
-		printf("Write to unknown CPU register: $%04X, \n", missing.unknowncpu_write);
-
-	if (missing.unknowndsp_read)
-		printf("Read from unknown DSP register: $%04X, \n", missing.unknowndsp_read);
-
-	if (missing.unknowndsp_write)
-		printf("Write to unknown DSP register: $%04X, \n", missing.unknowndsp_write);
 }
 
 void S9xDoDebug (void)

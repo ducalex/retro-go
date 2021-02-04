@@ -10,7 +10,7 @@
 #include <ctype.h>
 
 #include "snes9x.h"
-#include "memmap.h"
+#include "memory.h"
 #include "apu/apu.h"
 #include "controls.h"
 #include "display.h"
@@ -358,8 +358,12 @@ bool8 CMemory::InitROM ()
 		SET_UI_COLOR(255, 255, 0);
 	}
 
+	ROMIsPatched = false;
+
+	// CheckAnyPatch();
+
 	// Use slight blue tint to indicate ROM was patched.
-	if (Settings.IsPatched)
+	if (ROMIsPatched)
 	{
 		Settings.DisplayColor = BUILD_PIXEL(26, 26, 31);
 		SET_UI_COLOR(216, 216, 255);
@@ -556,7 +560,6 @@ void CMemory::Map_System (void)
 void CMemory::Map_WRAM (void)
 {
 	// will overwrite others
-	map_space(0x7e, 0x7e, 0x0000, 0xffff, RAM);
 	map_space(0x7e, 0x7e, 0x0000, 0xffff, RAM);
 	map_space(0x7f, 0x7f, 0x0000, 0xffff, RAM + 0x10000);
 }
@@ -972,16 +975,13 @@ static bool8 ReadIPSPatch (Stream *r, long offset, int32 &rom_size)
 	if (ofs != -1 && ofs - offset < rom_size)
 		rom_size = ofs - offset;
 
-	Settings.IsPatched = 1;
+	ROMIsPatched = 1;
 	return (1);
 }
 
 void CMemory::CheckForAnyPatch (const char *rom_filename, bool8 header, int32 &rom_size)
 {
-	Settings.IsPatched = false;
-
-	if (Settings.NoPatch)
-		return;
+	ROMIsPatched = false;
 
 	FSTREAM		patch_file  = NULL;
 	uint32		i;

@@ -5,12 +5,11 @@
 \*****************************************************************************/
 
 #include "snes9x.h"
-#include "memmap.h"
+#include "memory.h"
 #include "dma.h"
 #include "apu/apu.h"
 #ifdef DEBUGGER
 #include "debug.h"
-#include "missing.h"
 #endif
 
 struct SCPUState		CPU;
@@ -25,9 +24,6 @@ struct SDSP0			DSP0;
 struct SDSP1			DSP1;
 struct SDSP2			DSP2;
 struct SSettings		Settings;
-#ifdef DEBUGGER
-struct Missing			missing;
-#endif
 CMemory					Memory;				// 33448 bytes
 
 char	String[513];

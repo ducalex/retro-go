@@ -13,16 +13,13 @@
 
 static void SetupOBJ (void);
 static void DrawOBJS (int);
-static void DisplayStringFromBottom (const char *, int, int, bool);
 static void DrawBackground (int, uint8, uint8);
 static void DrawBackgroundMosaic (int, uint8, uint8);
 static void DrawBackgroundOffset (int, uint8, uint8, int);
 static void DrawBackgroundOffsetMosaic (int, uint8, uint8, int);
 static inline void DrawBackgroundMode7 (int, void (*DrawMath) (uint32, uint32, int), void (*DrawNomath) (uint32, uint32, int), int);
 static inline void DrawBackdrop (void);
-static inline void RenderScreen (bool8);
 
-static const int font_width = 8, font_height = 9;
 static struct SLineData	LineData[240];
 
 #define TILE_PLUS(t, x)	(((t) & 0xfc00) | ((t + x) & 0x3ff))
@@ -349,6 +346,225 @@ static inline void RenderScreen (bool8 sub)
 	DrawBackdrop();
 }
 
+static inline uint8 CalcWindowMask (int i, uint8 W1, uint8 W2)
+{
+	if (!PPU.ClipWindow1Enable[i])
+	{
+		if (!PPU.ClipWindow2Enable[i])
+			return (0);
+		if (!PPU.ClipWindow2Inside[i])
+			return (~W2);
+		return (W2);
+	}
+	else
+	{
+		if (!PPU.ClipWindow2Enable[i])
+		{
+			if (!PPU.ClipWindow1Inside[i])
+				return (~W1);
+			return (W1);
+		}
+		else
+		{
+			if (!PPU.ClipWindow1Inside[i])
+				W1 = ~W1;
+			if (!PPU.ClipWindow2Inside[i])
+				W2 = ~W2;
+
+			switch (PPU.ClipWindowOverlapLogic[i])
+			{
+				case 0: // OR
+					return (W1 | W2);
+
+				case 1: // AND
+					return (W1 & W2);
+
+				case 2: // XOR
+					return (W1 ^ W2);
+
+				case 3: // XNOR
+					return (~(W1 ^ W2));
+			}
+		}
+	}
+
+	// Never get here
+	return (0);
+}
+
+static inline void StoreWindowRegions (uint8 Mask, struct ClipData *Clip, int n_regions, int16 *windows, uint8 *drawing_modes, bool8 sub, bool8 StoreMode0 = FALSE)
+{
+	int	ct = 0;
+
+	for (int j = 0; j < n_regions; j++)
+	{
+		int	DrawMode = drawing_modes[j];
+		if (sub)
+			DrawMode |= 1;
+		if (Mask & (1 << j))
+			DrawMode = 0;
+
+		if (!StoreMode0 && !DrawMode)
+			continue;
+
+		if (ct > 0 && Clip->Right[ct - 1] == windows[j] && Clip->DrawMode[ct - 1] == DrawMode)
+			Clip->Right[ct - 1] = windows[j + 1]; // This region borders with and has the same drawing mode as the previous region: merge them.
+		else
+		{
+			// Add a new region to the BG
+			Clip->Left[ct]     = windows[j];
+			Clip->Right[ct]    = windows[j + 1];
+			Clip->DrawMode[ct] = DrawMode;
+			ct++;
+		}
+	}
+
+	Clip->Count = ct;
+}
+
+static inline void ComputeClipWindows (void)
+{
+	int16	windows[6] = { 0, 256, 256, 256, 256, 256 };
+	uint8	drawing_modes[5] = { 0, 0, 0, 0, 0 };
+	int		n_regions = 1;
+	int		i, j;
+
+	// Calculate window regions. We have at most 5 regions, because we have 6 control points
+	// (screen edges, window 1 left & right, and window 2 left & right).
+
+	if (PPU.Window1Left <= PPU.Window1Right)
+	{
+		if (PPU.Window1Left > 0)
+		{
+			windows[2] = 256;
+			windows[1] = PPU.Window1Left;
+			n_regions = 2;
+		}
+
+		if (PPU.Window1Right < 255)
+		{
+			windows[n_regions + 1] = 256;
+			windows[n_regions] = PPU.Window1Right + 1;
+			n_regions++;
+		}
+	}
+
+	if (PPU.Window2Left <= PPU.Window2Right)
+	{
+		for (i = 0; i <= n_regions; i++)
+		{
+			if (PPU.Window2Left == windows[i])
+				break;
+
+			if (PPU.Window2Left <  windows[i])
+			{
+				for (j = n_regions; j >= i; j--)
+					windows[j + 1] = windows[j];
+
+				windows[i] = PPU.Window2Left;
+				n_regions++;
+				break;
+			}
+		}
+
+		for (; i <= n_regions; i++)
+		{
+			if (PPU.Window2Right + 1 == windows[i])
+				break;
+
+			if (PPU.Window2Right + 1 <  windows[i])
+			{
+				for (j = n_regions; j >= i; j--)
+					windows[j + 1] = windows[j];
+
+				windows[i] = PPU.Window2Right + 1;
+				n_regions++;
+				break;
+			}
+		}
+	}
+
+	// Get a bitmap of which regions correspond to each window.
+
+	const uint8 region_map[6][6] =
+	{
+		{ 0, 0x01, 0x03, 0x07, 0x0f, 0x1f },
+		{ 0,    0, 0x02, 0x06, 0x0e, 0x1e },
+		{ 0,    0,    0, 0x04, 0x0c, 0x1c },
+		{ 0,    0,    0,    0, 0x08, 0x18 },
+		{ 0,    0,    0,    0,    0, 0x10 }
+	};
+
+	uint8 W1 = 0;
+	uint8 W2 = 0;
+
+	if (PPU.Window1Left <= PPU.Window1Right)
+	{
+		for (i = 0; windows[i] != PPU.Window1Left; i++) ;
+		for (j = i; windows[j] != PPU.Window1Right + 1; j++) ;
+		W1 = region_map[i][j];
+	}
+
+	if (PPU.Window2Left <= PPU.Window2Right)
+	{
+		for (i = 0; windows[i] != PPU.Window2Left; i++) ;
+		for (j = i; windows[j] != PPU.Window2Right + 1; j++) ;
+		W2 = region_map[i][j];
+	}
+
+	// Color Window affects the drawing mode for each region.
+	// Modes are: 3=Draw as normal, 2=clip color (math only), 1=no math (draw only), 0=nothing.
+
+	uint8	CW_color = 0, CW_math = 0;
+	uint8	CW = CalcWindowMask(5, W1, W2);
+
+	switch (Memory.FillRAM[0x2130] & 0xc0)
+	{
+		case 0x00:	CW_color = 0;		break;
+		case 0x40:	CW_color = ~CW;		break;
+		case 0x80:	CW_color = CW;		break;
+		case 0xc0:	CW_color = 0xff;	break;
+	}
+
+	switch (Memory.FillRAM[0x2130] & 0x30)
+	{
+		case 0x00:	CW_math  = 0;		break;
+		case 0x10:	CW_math  = ~CW;		break;
+		case 0x20:	CW_math  = CW;		break;
+		case 0x30:	CW_math  = 0xff;	break;
+	}
+
+	for (i = 0; i < n_regions; i++)
+	{
+		if (!(CW_color & (1 << i)))
+			drawing_modes[i] |= 1;
+		if (!(CW_math  & (1 << i)))
+			drawing_modes[i] |= 2;
+	}
+
+	// Store backdrop clip window (draw everywhere color window allows)
+
+	StoreWindowRegions(0, &IPPU.Clip[0][5], n_regions, windows, drawing_modes, FALSE, TRUE);
+	StoreWindowRegions(0, &IPPU.Clip[1][5], n_regions, windows, drawing_modes, TRUE,  TRUE);
+
+	// Store per-BG and OBJ clip windows
+
+	for (j = 0; j < 5; j++)
+	{
+		uint8	W = Settings.DisableGraphicWindows ? 0 : CalcWindowMask(j, W1, W2);
+
+		if (Memory.FillRAM[0x212e] & (1 << j))
+			StoreWindowRegions(W, &IPPU.Clip[0][j], n_regions, windows, drawing_modes, 0);
+		else
+			StoreWindowRegions(0, &IPPU.Clip[0][j], n_regions, windows, drawing_modes, 0);
+
+		if (Memory.FillRAM[0x212f] & (1 << j))
+			StoreWindowRegions(W, &IPPU.Clip[1][j], n_regions, windows, drawing_modes, 1);
+		else
+			StoreWindowRegions(0, &IPPU.Clip[1][j], n_regions, windows, drawing_modes, 1);
+	}
+}
+
 void S9xUpdateScreen (void)
 {
 	if (IPPU.OBJChanged)
@@ -368,7 +584,7 @@ void S9xUpdateScreen (void)
 
 		if (PPU.RecomputeClipWindows)
 		{
-			S9xComputeClipWindows();
+			ComputeClipWindows();
 			PPU.RecomputeClipWindows = FALSE;
 		}
 
@@ -1589,12 +1805,12 @@ void S9xDisplayChar (uint16 *s, uint8 c)
 {
 	const uint16	black = BUILD_PIXEL(0, 0, 0);
 
-	int	line   = ((c - 32) >> 4) * font_height;
-	int	offset = ((c - 32) & 15) * font_width;
+	int	line   = ((c - 32) >> 4) * FONT_HEIGHT;
+	int	offset = ((c - 32) & 15) * FONT_WIDTH;
 
-	for (int h = 0; h < font_height; h++, line++, s += GFX.PPL - font_width)
+	for (int h = 0; h < FONT_HEIGHT; h++, line++, s += GFX.PPL - FONT_WIDTH)
 	{
-		for (int w = 0; w < font_width; w++, s++)
+		for (int w = 0; w < FONT_WIDTH; w++, s++)
 		{
 			char	p = font[line][offset + w];
 
@@ -1612,10 +1828,10 @@ static void DisplayStringFromBottom (const char *string, int linesFromBottom, in
 	if (linesFromBottom <= 0)
 		linesFromBottom = 1;
 
-	uint16	*dst = GFX.Screen + (IPPU.RenderedScreenHeight - font_height * linesFromBottom) * GFX.PPL + pixelsFromLeft;
+	uint16	*dst = GFX.Screen + (IPPU.RenderedScreenHeight - FONT_HEIGHT * linesFromBottom) * GFX.PPL + pixelsFromLeft;
 
 	int	len = strlen(string);
-	int	max_chars = IPPU.RenderedScreenWidth / (font_width - 1);
+	int	max_chars = IPPU.RenderedScreenWidth / (FONT_WIDTH - 1);
 	int	char_count = 0;
 
 	for (int i = 0 ; i < len ; i++, char_count++)
@@ -1625,7 +1841,7 @@ static void DisplayStringFromBottom (const char *string, int linesFromBottom, in
 			if (!allowWrap)
 				break;
 
-			dst += font_height * GFX.PPL - (font_width - 1) * max_chars;
+			dst += FONT_HEIGHT * GFX.PPL - (FONT_WIDTH - 1) * max_chars;
 			if (dst >= GFX.Screen + IPPU.RenderedScreenHeight * GFX.PPL)
 				break;
 
@@ -1636,7 +1852,7 @@ static void DisplayStringFromBottom (const char *string, int linesFromBottom, in
 			continue;
 
 		S9xDisplayChar(dst, string[i]);
-		dst += font_width - 1;
+		dst += FONT_WIDTH - 1;
 	}
 }
 

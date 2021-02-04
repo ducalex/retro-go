@@ -1,6 +1,6 @@
 # Description
 
-Retro-Go's framework provides an easily way to port emulators to the ODROID-GO and the ESP32 in general.
+Retro-Go's shared library (or framework) provides an easy way to port emulators to the ODROID-GO and the ESP32 in general.
 
 # Credits
 

@@ -202,7 +202,7 @@ void S9xUpdateIRQPositions (bool initial);
 void S9xDoAutoJoypad (void);
 
 #include "gfx.h"
-#include "memmap.h"
+#include "memory.h"
 
 void S9xUpdateScreen (void);
 static inline void FLUSH_REDRAW (void)

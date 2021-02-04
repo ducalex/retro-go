@@ -5,11 +5,11 @@
 \*****************************************************************************/
 
 #include "snes9x.h"
-#include "memmap.h"
+#include "memory.h"
 #include "dma.h"
 #include "apu/apu.h"
 #ifdef DEBUGGER
-#include "missing.h"
+#include "debug.h"
 #endif
 
 #define ADD_CYCLES(n)	{ CPU.Cycles += (n); }
@@ -958,11 +958,6 @@ static inline bool8 HDMAReadLineCount (int d)
 void S9xStartHDMA (void)
 {
 	PPU.HDMA = Memory.FillRAM[0x420c];
-
-#ifdef DEBUGGER
-	missing.hdma_this_frame = PPU.HDMA;
-#endif
-
 	PPU.HDMAEnded = 0;
 
 	int32	tmpch;

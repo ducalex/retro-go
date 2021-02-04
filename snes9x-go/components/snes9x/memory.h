@@ -4,8 +4,8 @@
    For further information, consult the LICENSE file in the root directory.
 \*****************************************************************************/
 
-#ifndef _MEMMAP_H_
-#define _MEMMAP_H_
+#ifndef _MEMORY_H_
+#define _MEMORY_H_
 
 #define MEMMAP_BLOCK_SIZE	(0x1000)
 #define MEMMAP_NUM_BLOCKS	(0x1000000 / MEMMAP_BLOCK_SIZE)
@@ -51,6 +51,7 @@ struct CMemory
 	uint32	ROMChecksum;
 	uint32	ROMComplementChecksum;
 	uint32	ROMCRC32;
+	bool8	ROMIsPatched;
 
 	bool8	HiROM;
 	bool8	LoROM;
