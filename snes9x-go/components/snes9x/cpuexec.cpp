@@ -6,7 +6,6 @@
 
 #include "snes9x.h"
 #include "memory.h"
-#include "cpuops.h"
 #include "dma.h"
 #include "apu/apu.h"
 #include "snapshot.h"
@@ -31,8 +30,8 @@ if (CPU.IRQFlagChanging) \
 
 IRAM_ATTR void S9xMainLoop (void)
 {
-	const S9xOpcode *Opcodes;
 	uint32 loops = 0;
+	// uint32 slow = 0;
 	uint32 Op = 0;
 
 	CPU.Flags &= ~SCAN_KEYS_FLAG;
@@ -151,31 +150,27 @@ IRAM_ATTR void S9xMainLoop (void)
 
 	run_opcode:
 
-		if (CPU.PCBase)
-		{
-			Op = CPU.PCBase[Registers.PCw];
-			CPU.Cycles += CPU.MemSpeed;
-			Opcodes = ICPU.S9xOpcodes;
-		}
-		else
+		// If we're crossing a page or PCBase isn't set then we must use the slow route!
+		if (CPU.PCBase == NULL || (Registers.PCw & MEMMAP_MASK) + 4 >= MEMMAP_BLOCK_SIZE)
 		{
 			Op = S9xGetByte(Registers.PBPC);
 			OpenBus = Op;
-			Opcodes = S9xOpcodesSlow;
-		}
 
-		if ((Registers.PCw & MEMMAP_MASK) + ICPU.S9xOpLengths[Op] >= MEMMAP_BLOCK_SIZE)
+			Registers.PCw++;
+			(S9xOpcodesSlow[Op])();
+			// slow++;
+		}
+		else
 		{
-			uint8	*oldPCBase = CPU.PCBase;
+			Op = CPU.PCBase[Registers.PCw];
+			CPU.Cycles += CPU.MemSpeed;
 
-			CPU.PCBase = S9xGetBasePointer(ICPU.ShiftedPB + ((uint16) (Registers.PCw + 4)));
-			if (oldPCBase != CPU.PCBase || (Registers.PCw & ~MEMMAP_MASK) == (0xffff & ~MEMMAP_MASK))
-				Opcodes = S9xOpcodesSlow;
+			Registers.PCw++;
+			(ICPU.S9xOpcodes[Op])();
 		}
-
-		Registers.PCw++;
-		(Opcodes[Op])();
 	}
+
+	// printf("fast: %d /  slow: %d\n", loops - slow, slow);
 
 	S9xPackStatus();
 }

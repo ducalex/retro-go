@@ -22,7 +22,6 @@
 #endif
 
 #include "cpuaddr.h"
-#include "cpuops.h"
 #include "cpumacro.h"
 
 /* ADC ********************************************************************* */
@@ -49,22 +48,18 @@ rOP8 (65M1,     Direct,                           WRAP_BANK, ADC)
 rOP16(65M0,     Direct,                           WRAP_BANK, ADC)
 rOPM (65Slow,   DirectSlow,                       WRAP_BANK, ADC)
 
-rOP8 (75E1,     DirectIndexedXE1,                 WRAP_BANK, ADC)
 rOP8 (75E0M1,   DirectIndexedXE0,                 WRAP_BANK, ADC)
 rOP16(75E0M0,   DirectIndexedXE0,                 WRAP_BANK, ADC)
 rOPM (75Slow,   DirectIndexedXSlow,               WRAP_BANK, ADC)
 
-rOP8 (72E1,     DirectIndirectE1,                 WRAP_NONE, ADC)
 rOP8 (72E0M1,   DirectIndirectE0,                 WRAP_NONE, ADC)
 rOP16(72E0M0,   DirectIndirectE0,                 WRAP_NONE, ADC)
 rOPM (72Slow,   DirectIndirectSlow,               WRAP_NONE, ADC)
 
-rOP8 (61E1,     DirectIndexedIndirectE1,          WRAP_NONE, ADC)
 rOP8 (61E0M1,   DirectIndexedIndirectE0,          WRAP_NONE, ADC)
 rOP16(61E0M0,   DirectIndexedIndirectE0,          WRAP_NONE, ADC)
 rOPM (61Slow,   DirectIndexedIndirectSlow,        WRAP_NONE, ADC)
 
-rOP8 (71E1,     DirectIndirectIndexedE1,          WRAP_NONE, ADC)
 rOP8 (71E0M1X1, DirectIndirectIndexedE0X1,        WRAP_NONE, ADC)
 rOP16(71E0M0X1, DirectIndirectIndexedE0X1,        WRAP_NONE, ADC)
 rOP8 (71E0M1X0, DirectIndirectIndexedE0X0,        WRAP_NONE, ADC)
@@ -143,22 +138,18 @@ rOP8 (25M1,     Direct,                           WRAP_BANK, AND)
 rOP16(25M0,     Direct,                           WRAP_BANK, AND)
 rOPM (25Slow,   DirectSlow,                       WRAP_BANK, AND)
 
-rOP8 (35E1,     DirectIndexedXE1,                 WRAP_BANK, AND)
 rOP8 (35E0M1,   DirectIndexedXE0,                 WRAP_BANK, AND)
 rOP16(35E0M0,   DirectIndexedXE0,                 WRAP_BANK, AND)
 rOPM (35Slow,   DirectIndexedXSlow,               WRAP_BANK, AND)
 
-rOP8 (32E1,     DirectIndirectE1,                 WRAP_NONE, AND)
 rOP8 (32E0M1,   DirectIndirectE0,                 WRAP_NONE, AND)
 rOP16(32E0M0,   DirectIndirectE0,                 WRAP_NONE, AND)
 rOPM (32Slow,   DirectIndirectSlow,               WRAP_NONE, AND)
 
-rOP8 (21E1,     DirectIndexedIndirectE1,          WRAP_NONE, AND)
 rOP8 (21E0M1,   DirectIndexedIndirectE0,          WRAP_NONE, AND)
 rOP16(21E0M0,   DirectIndexedIndirectE0,          WRAP_NONE, AND)
 rOPM (21Slow,   DirectIndexedIndirectSlow,        WRAP_NONE, AND)
 
-rOP8 (31E1,     DirectIndirectIndexedE1,          WRAP_NONE, AND)
 rOP8 (31E0M1X1, DirectIndirectIndexedE0X1,        WRAP_NONE, AND)
 rOP16(31E0M0X1, DirectIndirectIndexedE0X1,        WRAP_NONE, AND)
 rOP8 (31E0M1X0, DirectIndirectIndexedE0X0,        WRAP_NONE, AND)
@@ -245,7 +236,6 @@ mOP8 (06M1,     Direct,                           WRAP_BANK, ASL)
 mOP16(06M0,     Direct,                           WRAP_BANK, ASL)
 mOPM (06Slow,   DirectSlow,                       WRAP_BANK, ASL)
 
-mOP8 (16E1,     DirectIndexedXE1,                 WRAP_BANK, ASL)
 mOP8 (16E0M1,   DirectIndexedXE0,                 WRAP_BANK, ASL)
 mOP16(16E0M0,   DirectIndexedXE0,                 WRAP_BANK, ASL)
 mOPM (16Slow,   DirectIndexedXSlow,               WRAP_BANK, ASL)
@@ -284,7 +274,6 @@ rOP8 (24M1,     Direct,                           WRAP_BANK, BIT)
 rOP16(24M0,     Direct,                           WRAP_BANK, BIT)
 rOPM (24Slow,   DirectSlow,                       WRAP_BANK, BIT)
 
-rOP8 (34E1,     DirectIndexedXE1,                 WRAP_BANK, BIT)
 rOP8 (34E0M1,   DirectIndexedXE0,                 WRAP_BANK, BIT)
 rOP16(34E0M0,   DirectIndexedXE0,                 WRAP_BANK, BIT)
 rOPM (34Slow,   DirectIndexedXSlow,               WRAP_BANK, BIT)
@@ -335,22 +324,18 @@ rOP8 (C5M1,     Direct,                           WRAP_BANK, CMP)
 rOP16(C5M0,     Direct,                           WRAP_BANK, CMP)
 rOPM (C5Slow,   DirectSlow,                       WRAP_BANK, CMP)
 
-rOP8 (D5E1,     DirectIndexedXE1,                 WRAP_BANK, CMP)
 rOP8 (D5E0M1,   DirectIndexedXE0,                 WRAP_BANK, CMP)
 rOP16(D5E0M0,   DirectIndexedXE0,                 WRAP_BANK, CMP)
 rOPM (D5Slow,   DirectIndexedXSlow,               WRAP_BANK, CMP)
 
-rOP8 (D2E1,     DirectIndirectE1,                 WRAP_NONE, CMP)
 rOP8 (D2E0M1,   DirectIndirectE0,                 WRAP_NONE, CMP)
 rOP16(D2E0M0,   DirectIndirectE0,                 WRAP_NONE, CMP)
 rOPM (D2Slow,   DirectIndirectSlow,               WRAP_NONE, CMP)
 
-rOP8 (C1E1,     DirectIndexedIndirectE1,          WRAP_NONE, CMP)
 rOP8 (C1E0M1,   DirectIndexedIndirectE0,          WRAP_NONE, CMP)
 rOP16(C1E0M0,   DirectIndexedIndirectE0,          WRAP_NONE, CMP)
 rOPM (C1Slow,   DirectIndexedIndirectSlow,        WRAP_NONE, CMP)
 
-rOP8 (D1E1,     DirectIndirectIndexedE1,          WRAP_NONE, CMP)
 rOP8 (D1E0M1X1, DirectIndirectIndexedE0X1,        WRAP_NONE, CMP)
 rOP16(D1E0M0X1, DirectIndirectIndexedE0X1,        WRAP_NONE, CMP)
 rOP8 (D1E0M1X0, DirectIndirectIndexedE0X0,        WRAP_NONE, CMP)
@@ -513,7 +498,6 @@ mOP8 (C6M1,     Direct,                           WRAP_BANK, DEC)
 mOP16(C6M0,     Direct,                           WRAP_BANK, DEC)
 mOPM (C6Slow,   DirectSlow,                       WRAP_BANK, DEC)
 
-mOP8 (D6E1,     DirectIndexedXE1,                 WRAP_BANK, DEC)
 mOP8 (D6E0M1,   DirectIndexedXE0,                 WRAP_BANK, DEC)
 mOP16(D6E0M0,   DirectIndexedXE0,                 WRAP_BANK, DEC)
 mOPM (D6Slow,   DirectIndexedXSlow,               WRAP_BANK, DEC)
@@ -560,22 +544,18 @@ rOP8 (45M1,     Direct,                           WRAP_BANK, EOR)
 rOP16(45M0,     Direct,                           WRAP_BANK, EOR)
 rOPM (45Slow,   DirectSlow,                       WRAP_BANK, EOR)
 
-rOP8 (55E1,     DirectIndexedXE1,                 WRAP_BANK, EOR)
 rOP8 (55E0M1,   DirectIndexedXE0,                 WRAP_BANK, EOR)
 rOP16(55E0M0,   DirectIndexedXE0,                 WRAP_BANK, EOR)
 rOPM (55Slow,   DirectIndexedXSlow,               WRAP_BANK, EOR)
 
-rOP8 (52E1,     DirectIndirectE1,                 WRAP_NONE, EOR)
 rOP8 (52E0M1,   DirectIndirectE0,                 WRAP_NONE, EOR)
 rOP16(52E0M0,   DirectIndirectE0,                 WRAP_NONE, EOR)
 rOPM (52Slow,   DirectIndirectSlow,               WRAP_NONE, EOR)
 
-rOP8 (41E1,     DirectIndexedIndirectE1,          WRAP_NONE, EOR)
 rOP8 (41E0M1,   DirectIndexedIndirectE0,          WRAP_NONE, EOR)
 rOP16(41E0M0,   DirectIndexedIndirectE0,          WRAP_NONE, EOR)
 rOPM (41Slow,   DirectIndexedIndirectSlow,        WRAP_NONE, EOR)
 
-rOP8 (51E1,     DirectIndirectIndexedE1,          WRAP_NONE, EOR)
 rOP8 (51E0M1X1, DirectIndirectIndexedE0X1,        WRAP_NONE, EOR)
 rOP16(51E0M0X1, DirectIndirectIndexedE0X1,        WRAP_NONE, EOR)
 rOP8 (51E0M1X0, DirectIndirectIndexedE0X0,        WRAP_NONE, EOR)
@@ -658,7 +638,6 @@ mOP8 (E6M1,     Direct,                           WRAP_BANK, INC)
 mOP16(E6M0,     Direct,                           WRAP_BANK, INC)
 mOPM (E6Slow,   DirectSlow,                       WRAP_BANK, INC)
 
-mOP8 (F6E1,     DirectIndexedXE1,                 WRAP_BANK, INC)
 mOP8 (F6E0M1,   DirectIndexedXE0,                 WRAP_BANK, INC)
 mOP16(F6E0M0,   DirectIndexedXE0,                 WRAP_BANK, INC)
 mOPM (F6Slow,   DirectIndexedXSlow,               WRAP_BANK, INC)
@@ -705,22 +684,18 @@ rOP8 (A5M1,     Direct,                           WRAP_BANK, LDA)
 rOP16(A5M0,     Direct,                           WRAP_BANK, LDA)
 rOPM (A5Slow,   DirectSlow,                       WRAP_BANK, LDA)
 
-rOP8 (B5E1,     DirectIndexedXE1,                 WRAP_BANK, LDA)
 rOP8 (B5E0M1,   DirectIndexedXE0,                 WRAP_BANK, LDA)
 rOP16(B5E0M0,   DirectIndexedXE0,                 WRAP_BANK, LDA)
 rOPM (B5Slow,   DirectIndexedXSlow,               WRAP_BANK, LDA)
 
-rOP8 (B2E1,     DirectIndirectE1,                 WRAP_NONE, LDA)
 rOP8 (B2E0M1,   DirectIndirectE0,                 WRAP_NONE, LDA)
 rOP16(B2E0M0,   DirectIndirectE0,                 WRAP_NONE, LDA)
 rOPM (B2Slow,   DirectIndirectSlow,               WRAP_NONE, LDA)
 
-rOP8 (A1E1,     DirectIndexedIndirectE1,          WRAP_NONE, LDA)
 rOP8 (A1E0M1,   DirectIndexedIndirectE0,          WRAP_NONE, LDA)
 rOP16(A1E0M0,   DirectIndexedIndirectE0,          WRAP_NONE, LDA)
 rOPM (A1Slow,   DirectIndexedIndirectSlow,        WRAP_NONE, LDA)
 
-rOP8 (B1E1,     DirectIndirectIndexedE1,          WRAP_NONE, LDA)
 rOP8 (B1E0M1X1, DirectIndirectIndexedE0X1,        WRAP_NONE, LDA)
 rOP16(B1E0M0X1, DirectIndirectIndexedE0X1,        WRAP_NONE, LDA)
 rOP8 (B1E0M1X0, DirectIndirectIndexedE0X0,        WRAP_NONE, LDA)
@@ -799,7 +774,6 @@ rOP8 (A6X1,     Direct,                           WRAP_BANK, LDX)
 rOP16(A6X0,     Direct,                           WRAP_BANK, LDX)
 rOPX (A6Slow,   DirectSlow,                       WRAP_BANK, LDX)
 
-rOP8 (B6E1,     DirectIndexedYE1,                 WRAP_BANK, LDX)
 rOP8 (B6E0X1,   DirectIndexedYE0,                 WRAP_BANK, LDX)
 rOP16(B6E0X0,   DirectIndexedYE0,                 WRAP_BANK, LDX)
 rOPX (B6Slow,   DirectIndexedYSlow,               WRAP_BANK, LDX)
@@ -844,7 +818,6 @@ rOP8 (A4X1,     Direct,                           WRAP_BANK, LDY)
 rOP16(A4X0,     Direct,                           WRAP_BANK, LDY)
 rOPX (A4Slow,   DirectSlow,                       WRAP_BANK, LDY)
 
-rOP8 (B4E1,     DirectIndexedXE1,                 WRAP_BANK, LDY)
 rOP8 (B4E0X1,   DirectIndexedXE0,                 WRAP_BANK, LDY)
 rOP16(B4E0X0,   DirectIndexedXE0,                 WRAP_BANK, LDY)
 rOPX (B4Slow,   DirectIndexedXSlow,               WRAP_BANK, LDY)
@@ -897,7 +870,6 @@ mOP8 (46M1,     Direct,                           WRAP_BANK, LSR)
 mOP16(46M0,     Direct,                           WRAP_BANK, LSR)
 mOPM (46Slow,   DirectSlow,                       WRAP_BANK, LSR)
 
-mOP8 (56E1,     DirectIndexedXE1,                 WRAP_BANK, LSR)
 mOP8 (56E0M1,   DirectIndexedXE0,                 WRAP_BANK, LSR)
 mOP16(56E0M0,   DirectIndexedXE0,                 WRAP_BANK, LSR)
 mOPM (56Slow,   DirectIndexedXSlow,               WRAP_BANK, LSR)
@@ -944,22 +916,18 @@ rOP8 (05M1,     Direct,                           WRAP_BANK, ORA)
 rOP16(05M0,     Direct,                           WRAP_BANK, ORA)
 rOPM (05Slow,   DirectSlow,                       WRAP_BANK, ORA)
 
-rOP8 (15E1,     DirectIndexedXE1,                 WRAP_BANK, ORA)
 rOP8 (15E0M1,   DirectIndexedXE0,                 WRAP_BANK, ORA)
 rOP16(15E0M0,   DirectIndexedXE0,                 WRAP_BANK, ORA)
 rOPM (15Slow,   DirectIndexedXSlow,               WRAP_BANK, ORA)
 
-rOP8 (12E1,     DirectIndirectE1,                 WRAP_NONE, ORA)
 rOP8 (12E0M1,   DirectIndirectE0,                 WRAP_NONE, ORA)
 rOP16(12E0M0,   DirectIndirectE0,                 WRAP_NONE, ORA)
 rOPM (12Slow,   DirectIndirectSlow,               WRAP_NONE, ORA)
 
-rOP8 (01E1,     DirectIndexedIndirectE1,          WRAP_NONE, ORA)
 rOP8 (01E0M1,   DirectIndexedIndirectE0,          WRAP_NONE, ORA)
 rOP16(01E0M0,   DirectIndexedIndirectE0,          WRAP_NONE, ORA)
 rOPM (01Slow,   DirectIndexedIndirectSlow,        WRAP_NONE, ORA)
 
-rOP8 (11E1,     DirectIndirectIndexedE1,          WRAP_NONE, ORA)
 rOP8 (11E0M1X1, DirectIndirectIndexedE0X1,        WRAP_NONE, ORA)
 rOP16(11E0M0X1, DirectIndirectIndexedE0X1,        WRAP_NONE, ORA)
 rOP8 (11E0M1X0, DirectIndirectIndexedE0X0,        WRAP_NONE, ORA)
@@ -1050,7 +1018,6 @@ mOP8 (26M1,     Direct,                           WRAP_BANK, ROL)
 mOP16(26M0,     Direct,                           WRAP_BANK, ROL)
 mOPM (26Slow,   DirectSlow,                       WRAP_BANK, ROL)
 
-mOP8 (36E1,     DirectIndexedXE1,                 WRAP_BANK, ROL)
 mOP8 (36E0M1,   DirectIndexedXE0,                 WRAP_BANK, ROL)
 mOP16(36E0M0,   DirectIndexedXE0,                 WRAP_BANK, ROL)
 mOPM (36Slow,   DirectIndexedXSlow,               WRAP_BANK, ROL)
@@ -1113,7 +1080,6 @@ mOP8 (66M1,     Direct,                           WRAP_BANK, ROR)
 mOP16(66M0,     Direct,                           WRAP_BANK, ROR)
 mOPM (66Slow,   DirectSlow,                       WRAP_BANK, ROR)
 
-mOP8 (76E1,     DirectIndexedXE1,                 WRAP_BANK, ROR)
 mOP8 (76E0M1,   DirectIndexedXE0,                 WRAP_BANK, ROR)
 mOP16(76E0M0,   DirectIndexedXE0,                 WRAP_BANK, ROR)
 mOPM (76Slow,   DirectIndexedXSlow,               WRAP_BANK, ROR)
@@ -1152,22 +1118,18 @@ rOP8 (E5M1,     Direct,                           WRAP_BANK, SBC)
 rOP16(E5M0,     Direct,                           WRAP_BANK, SBC)
 rOPM (E5Slow,   DirectSlow,                       WRAP_BANK, SBC)
 
-rOP8 (F5E1,     DirectIndexedXE1,                 WRAP_BANK, SBC)
 rOP8 (F5E0M1,   DirectIndexedXE0,                 WRAP_BANK, SBC)
 rOP16(F5E0M0,   DirectIndexedXE0,                 WRAP_BANK, SBC)
 rOPM (F5Slow,   DirectIndexedXSlow,               WRAP_BANK, SBC)
 
-rOP8 (F2E1,     DirectIndirectE1,                 WRAP_NONE, SBC)
 rOP8 (F2E0M1,   DirectIndirectE0,                 WRAP_NONE, SBC)
 rOP16(F2E0M0,   DirectIndirectE0,                 WRAP_NONE, SBC)
 rOPM (F2Slow,   DirectIndirectSlow,               WRAP_NONE, SBC)
 
-rOP8 (E1E1,     DirectIndexedIndirectE1,          WRAP_NONE, SBC)
 rOP8 (E1E0M1,   DirectIndexedIndirectE0,          WRAP_NONE, SBC)
 rOP16(E1E0M0,   DirectIndexedIndirectE0,          WRAP_NONE, SBC)
 rOPM (E1Slow,   DirectIndexedIndirectSlow,        WRAP_NONE, SBC)
 
-rOP8 (F1E1,     DirectIndirectIndexedE1,          WRAP_NONE, SBC)
 rOP8 (F1E0M1X1, DirectIndirectIndexedE0X1,        WRAP_NONE, SBC)
 rOP16(F1E0M0X1, DirectIndirectIndexedE0X1,        WRAP_NONE, SBC)
 rOP8 (F1E0M1X0, DirectIndirectIndexedE0X0,        WRAP_NONE, SBC)
@@ -1220,22 +1182,18 @@ wOP8 (85M1,     Direct,                           WRAP_BANK, STA)
 wOP16(85M0,     Direct,                           WRAP_BANK, STA)
 wOPM (85Slow,   DirectSlow,                       WRAP_BANK, STA)
 
-wOP8 (95E1,     DirectIndexedXE1,                 WRAP_BANK, STA)
 wOP8 (95E0M1,   DirectIndexedXE0,                 WRAP_BANK, STA)
 wOP16(95E0M0,   DirectIndexedXE0,                 WRAP_BANK, STA)
 wOPM (95Slow,   DirectIndexedXSlow,               WRAP_BANK, STA)
 
-wOP8 (92E1,     DirectIndirectE1,                 WRAP_NONE, STA)
 wOP8 (92E0M1,   DirectIndirectE0,                 WRAP_NONE, STA)
 wOP16(92E0M0,   DirectIndirectE0,                 WRAP_NONE, STA)
 wOPM (92Slow,   DirectIndirectSlow,               WRAP_NONE, STA)
 
-wOP8 (81E1,     DirectIndexedIndirectE1,          WRAP_NONE, STA)
 wOP8 (81E0M1,   DirectIndexedIndirectE0,          WRAP_NONE, STA)
 wOP16(81E0M0,   DirectIndexedIndirectE0,          WRAP_NONE, STA)
 wOPM (81Slow,   DirectIndexedIndirectSlow,        WRAP_NONE, STA)
 
-wOP8 (91E1,     DirectIndirectIndexedE1,          WRAP_NONE, STA)
 wOP8 (91E0M1X1, DirectIndirectIndexedE0X1,        WRAP_NONE, STA)
 wOP16(91E0M0X1, DirectIndirectIndexedE0X1,        WRAP_NONE, STA)
 wOP8 (91E0M1X0, DirectIndirectIndexedE0X0,        WRAP_NONE, STA)
@@ -1288,7 +1246,6 @@ wOP8 (86X1,     Direct,                           WRAP_BANK, STX)
 wOP16(86X0,     Direct,                           WRAP_BANK, STX)
 wOPX (86Slow,   DirectSlow,                       WRAP_BANK, STX)
 
-wOP8 (96E1,     DirectIndexedYE1,                 WRAP_BANK, STX)
 wOP8 (96E0X1,   DirectIndexedYE0,                 WRAP_BANK, STX)
 wOP16(96E0X0,   DirectIndexedYE0,                 WRAP_BANK, STX)
 wOPX (96Slow,   DirectIndexedYSlow,               WRAP_BANK, STX)
@@ -1303,7 +1260,6 @@ wOP8 (84X1,     Direct,                           WRAP_BANK, STY)
 wOP16(84X0,     Direct,                           WRAP_BANK, STY)
 wOPX (84Slow,   DirectSlow,                       WRAP_BANK, STY)
 
-wOP8 (94E1,     DirectIndexedXE1,                 WRAP_BANK, STY)
 wOP8 (94E0X1,   DirectIndexedXE0,                 WRAP_BANK, STY)
 wOP16(94E0X0,   DirectIndexedXE0,                 WRAP_BANK, STY)
 wOPX (94Slow,   DirectIndexedXSlow,               WRAP_BANK, STY)
@@ -1318,7 +1274,6 @@ wOP8 (64M1,     Direct,                           WRAP_BANK, STZ)
 wOP16(64M0,     Direct,                           WRAP_BANK, STZ)
 wOPM (64Slow,   DirectSlow,                       WRAP_BANK, STZ)
 
-wOP8 (74E1,     DirectIndexedXE1,                 WRAP_BANK, STZ)
 wOP8 (74E0M1,   DirectIndexedXE0,                 WRAP_BANK, STZ)
 wOP16(74E0M0,   DirectIndexedXE0,                 WRAP_BANK, STZ)
 wOPM (74Slow,   DirectIndexedXSlow,               WRAP_BANK, STZ)
@@ -1357,47 +1312,38 @@ mOPM (0CSlow,   AbsoluteSlow,                     WRAP_BANK, TSB)
 
 // BCC
 bOP(90E0,   Immediate8,     !CheckCarry(),    0, 0)
-bOP(90E1,   Immediate8,     !CheckCarry(),    0, 1)
 bOP(90Slow, Immediate8Slow, !CheckCarry(),    0, CheckEmulation())
 
 // BCS
 bOP(B0E0,   Immediate8,      CheckCarry(),    0, 0)
-bOP(B0E1,   Immediate8,      CheckCarry(),    0, 1)
 bOP(B0Slow, Immediate8Slow,  CheckCarry(),    0, CheckEmulation())
 
 // BEQ
 bOP(F0E0,   Immediate8,      CheckZero(),     2, 0)
-bOP(F0E1,   Immediate8,      CheckZero(),     2, 1)
 bOP(F0Slow, Immediate8Slow,  CheckZero(),     2, CheckEmulation())
 
 // BMI
 bOP(30E0,   Immediate8,      CheckNegative(), 1, 0)
-bOP(30E1,   Immediate8,      CheckNegative(), 1, 1)
 bOP(30Slow, Immediate8Slow,  CheckNegative(), 1, CheckEmulation())
 
 // BNE
 bOP(D0E0,   Immediate8,     !CheckZero(),     1, 0)
-bOP(D0E1,   Immediate8,     !CheckZero(),     1, 1)
 bOP(D0Slow, Immediate8Slow, !CheckZero(),     1, CheckEmulation())
 
 // BPL
 bOP(10E0,   Immediate8,     !CheckNegative(), 1, 0)
-bOP(10E1,   Immediate8,     !CheckNegative(), 1, 1)
 bOP(10Slow, Immediate8Slow, !CheckNegative(), 1, CheckEmulation())
 
 // BRA
 bOP(80E0,   Immediate8,     1,                X, 0)
-bOP(80E1,   Immediate8,     1,                X, 1)
 bOP(80Slow, Immediate8Slow, 1,                X, CheckEmulation())
 
 // BVC
 bOP(50E0,   Immediate8,     !CheckOverflow(), 0, 0)
-bOP(50E1,   Immediate8,     !CheckOverflow(), 0, 1)
 bOP(50Slow, Immediate8Slow, !CheckOverflow(), 0, CheckEmulation())
 
 // BVS
 bOP(70E0,   Immediate8,      CheckOverflow(), 0, 0)
-bOP(70E1,   Immediate8,      CheckOverflow(), 0, 1)
 bOP(70Slow, Immediate8Slow,  CheckOverflow(), 0, CheckEmulation())
 
 // BRL
@@ -1439,9 +1385,6 @@ static void OpF8 (void)
 {
 	SetDecimal();
 	AddCycles(ONE_CYCLE);
-#ifdef DEBUGGER
-	missing.decimal_mode = 1;
-#endif
 }
 
 // CLI
@@ -1624,16 +1567,6 @@ static void OpF4E0 (void)
 	OpenBus = val & 0xff;
 }
 
-static void OpF4E1 (void)
-{
-	// Note: PEA is a new instruction,
-	// and so doesn't respect the emu-mode stack bounds.
-	uint16	val = (uint16) Absolute(NONE);
-	PushW(val);
-	OpenBus = val & 0xff;
-	Registers.SH = 1;
-}
-
 static void OpF4Slow (void)
 {
 	uint16	val = (uint16) AbsoluteSlow(NONE);
@@ -1649,16 +1582,6 @@ static void OpD4E0 (void)
 	uint16	val = (uint16) DirectIndirectE0(NONE);
 	PushW(val);
 	OpenBus = val & 0xff;
-}
-
-static void OpD4E1 (void)
-{
-	// Note: PEI is a new instruction,
-	// and so doesn't respect the emu-mode stack bounds.
-	uint16	val = (uint16) DirectIndirectE1(NONE);
-	PushW(val);
-	OpenBus = val & 0xff;
-	Registers.SH = 1;
 }
 
 static void OpD4Slow (void)
@@ -1678,16 +1601,6 @@ static void Op62E0 (void)
 	OpenBus = val & 0xff;
 }
 
-static void Op62E1 (void)
-{
-	// Note: PER is a new instruction,
-	// and so doesn't respect the emu-mode stack bounds.
-	uint16	val = (uint16) RelativeLong(NONE);
-	PushW(val);
-	OpenBus = val & 0xff;
-	Registers.SH = 1;
-}
-
 static void Op62Slow (void)
 {
 	uint16	val = (uint16) RelativeLongSlow(NONE);
@@ -1698,13 +1611,6 @@ static void Op62Slow (void)
 }
 
 // PHA
-static void Op48E1 (void)
-{
-	AddCycles(ONE_CYCLE);
-	PushBE(Registers.AL);
-	OpenBus = Registers.AL;
-}
-
 static void Op48E0M1 (void)
 {
 	AddCycles(ONE_CYCLE);
@@ -1741,13 +1647,6 @@ static void Op48Slow (void)
 }
 
 // PHB
-static void Op8BE1 (void)
-{
-	AddCycles(ONE_CYCLE);
-	PushBE(Registers.DB);
-	OpenBus = Registers.DB;
-}
-
 static void Op8BE0 (void)
 {
 	AddCycles(ONE_CYCLE);
@@ -1779,16 +1678,6 @@ static void Op0BE0 (void)
 	OpenBus = Registers.DL;
 }
 
-static void Op0BE1 (void)
-{
-	// Note: PHD is a new instruction,
-	// and so doesn't respect the emu-mode stack bounds.
-	AddCycles(ONE_CYCLE);
-	PushW(Registers.D.W);
-	OpenBus = Registers.DL;
-	Registers.SH = 1;
-}
-
 static void Op0BSlow (void)
 {
 	AddCycles(ONE_CYCLE);
@@ -1799,13 +1688,6 @@ static void Op0BSlow (void)
 }
 
 // PHK
-static void Op4BE1 (void)
-{
-	AddCycles(ONE_CYCLE);
-	PushBE(Registers.PB);
-	OpenBus = Registers.PB;
-}
-
 static void Op4BE0 (void)
 {
 	AddCycles(ONE_CYCLE);
@@ -1838,14 +1720,6 @@ static void Op08E0 (void)
 	OpenBus = Registers.PL;
 }
 
-static void Op08E1 (void)
-{
-	S9xPackStatus();
-	AddCycles(ONE_CYCLE);
-	PushBE(Registers.PL);
-	OpenBus = Registers.PL;
-}
-
 static void Op08Slow (void)
 {
 	S9xPackStatus();
@@ -1864,13 +1738,6 @@ static void Op08Slow (void)
 }
 
 // PHX
-static void OpDAE1 (void)
-{
-	AddCycles(ONE_CYCLE);
-	PushBE(Registers.XL);
-	OpenBus = Registers.XL;
-}
-
 static void OpDAE0X1 (void)
 {
 	AddCycles(ONE_CYCLE);
@@ -1907,13 +1774,6 @@ static void OpDASlow (void)
 }
 
 // PHY
-static void Op5AE1 (void)
-{
-	AddCycles(ONE_CYCLE);
-	PushBE(Registers.YL);
-	OpenBus = Registers.YL;
-}
-
 static void Op5AE0X1 (void)
 {
 	AddCycles(ONE_CYCLE);
@@ -1968,14 +1828,6 @@ static void Op5ASlow (void)
 	b = S9xGetByte(Registers.S.W);
 
 // PLA
-static void Op68E1 (void)
-{
-	AddCycles(TWO_CYCLES);
-	PullBE(Registers.AL);
-	SetZN(Registers.AL);
-	OpenBus = Registers.AL;
-}
-
 static void Op68E0M1 (void)
 {
 	AddCycles(TWO_CYCLES);
@@ -2018,15 +1870,6 @@ static void Op68Slow (void)
 }
 
 // PLB
-static void OpABE1 (void)
-{
-	AddCycles(TWO_CYCLES);
-	PullBE(Registers.DB);
-	SetZN(Registers.DB);
-	ICPU.ShiftedDB = Registers.DB << 16;
-	OpenBus = Registers.DB;
-}
-
 static void OpABE0 (void)
 {
 	AddCycles(TWO_CYCLES);
@@ -2063,17 +1906,6 @@ static void Op2BE0 (void)
 	OpenBus = Registers.DH;
 }
 
-static void Op2BE1 (void)
-{
-	// Note: PLD is a new instruction,
-	// and so doesn't respect the emu-mode stack bounds.
-	AddCycles(TWO_CYCLES);
-	PullW(Registers.D.W);
-	SetZN(Registers.D.W);
-	OpenBus = Registers.DH;
-	Registers.SH = 1;
-}
-
 static void Op2BSlow (void)
 {
 	AddCycles(TWO_CYCLES);
@@ -2085,17 +1917,6 @@ static void Op2BSlow (void)
 }
 
 // PLP
-static void Op28E1 (void)
-{
-	AddCycles(TWO_CYCLES);
-	PullBE(Registers.PL);
-	OpenBus = Registers.PL;
-	SetFlags(MemoryFlag | IndexFlag);
-	S9xUnpackStatus();
-	S9xFixCycles();
-	CHECK_FOR_IRQ();
-}
-
 static void Op28E0 (void)
 {
 	AddCycles(TWO_CYCLES);
@@ -2110,7 +1931,6 @@ static void Op28E0 (void)
 	}
 
 	S9xFixCycles();
-	CHECK_FOR_IRQ();
 }
 
 static void Op28Slow (void)
@@ -2138,18 +1958,9 @@ static void Op28Slow (void)
 	}
 
 	S9xFixCycles();
-	CHECK_FOR_IRQ();
 }
 
 // PLX
-static void OpFAE1 (void)
-{
-	AddCycles(TWO_CYCLES);
-	PullBE(Registers.XL);
-	SetZN(Registers.XL);
-	OpenBus = Registers.XL;
-}
-
 static void OpFAE0X1 (void)
 {
 	AddCycles(TWO_CYCLES);
@@ -2192,14 +2003,6 @@ static void OpFASlow (void)
 }
 
 // PLY
-static void Op7AE1 (void)
-{
-	AddCycles(TWO_CYCLES);
-	PullBE(Registers.YL);
-	SetZN(Registers.YL);
-	OpenBus = Registers.YL;
-}
-
 static void Op7AE0X1 (void)
 {
 	AddCycles(TWO_CYCLES);
@@ -2518,9 +2321,6 @@ static void OpFB (void)
 	{
 		SetFlags(MemoryFlag | IndexFlag);
 		Registers.SH = 1;
-	#ifdef DEBUGGER
-		missing.emulate6502 = 1;
-	#endif
 	}
 
 	if (CheckIndex())
@@ -2752,17 +2552,6 @@ static void Op7CSlow (void)
 
 /* JSL/RTL ***************************************************************** */
 
-static void Op22E1 (void)
-{
-	// Note: JSL is a new instruction,
-	// and so doesn't respect the emu-mode stack bounds.
-	uint32	addr = AbsoluteLong(JSR);
-	PushB(Registers.PB);
-	PushW(Registers.PCw - 1);
-	Registers.SH = 1;
-	S9xSetPCBase(addr);
-}
-
 static void Op22E0 (void)
 {
 	uint32	addr = AbsoluteLong(JSR);
@@ -2779,18 +2568,6 @@ static void Op22Slow (void)
 	if (CheckEmulation())
 		Registers.SH = 1;
 	S9xSetPCBase(addr);
-}
-
-static void Op6BE1 (void)
-{
-	// Note: RTL is a new instruction,
-	// and so doesn't respect the emu-mode stack bounds.
-	AddCycles(TWO_CYCLES);
-	PullW(Registers.PCw);
-	PullB(Registers.PB);
-	Registers.SH = 1;
-	Registers.PCw++;
-	S9xSetPCBase(Registers.PBPC);
 }
 
 static void Op6BE0 (void)
@@ -2814,14 +2591,6 @@ static void Op6BSlow (void)
 }
 
 /* JSR/RTS ***************************************************************** */
-
-static void Op20E1 (void)
-{
-	uint16	addr = Absolute(JSR);
-	AddCycles(ONE_CYCLE);
-	PushWE(Registers.PCw - 1);
-	S9xSetPCBase(ICPU.ShiftedPB + addr);
-}
 
 static void Op20E0 (void)
 {
@@ -2848,17 +2617,7 @@ static void Op20Slow (void)
 
 	S9xSetPCBase(ICPU.ShiftedPB + addr);
 }
-
-static void OpFCE1 (void)
-{
-	// Note: JSR (a,X) is a new instruction,
-	// and so doesn't respect the emu-mode stack bounds.
-	uint16	addr = AbsoluteIndexedIndirect(JSR);
-	PushW(Registers.PCw - 1);
-	Registers.SH = 1;
-	S9xSetPCBase(ICPU.ShiftedPB + addr);
-}
-
+\
 static void OpFCE0 (void)
 {
 	uint16	addr = AbsoluteIndexedIndirect(JSR);
@@ -2873,15 +2632,6 @@ static void OpFCSlow (void)
 	if (CheckEmulation())
 		Registers.SH = 1;
 	S9xSetPCBase(ICPU.ShiftedPB + addr);
-}
-
-static void Op60E1 (void)
-{
-	AddCycles(TWO_CYCLES);
-	PullWE(Registers.PCw);
-	AddCycles(ONE_CYCLE);
-	Registers.PCw++;
-	S9xSetPCBase(Registers.PBPC);
 }
 
 static void Op60E0 (void)
@@ -3061,9 +2811,6 @@ static void OpC2 (void)
 	if (CheckEmulation())
 	{
 		SetFlags(MemoryFlag | IndexFlag);
-	#ifdef DEBUGGER
-		missing.emulate6502 = 1;
-	#endif
 	}
 
 	if (CheckIndex())
@@ -3073,7 +2820,6 @@ static void OpC2 (void)
 	}
 
 	S9xFixCycles();
-	CHECK_FOR_IRQ();
 }
 
 static void OpC2Slow (void)
@@ -3090,9 +2836,6 @@ static void OpC2Slow (void)
 	if (CheckEmulation())
 	{
 		SetFlags(MemoryFlag | IndexFlag);
-	#ifdef DEBUGGER
-		missing.emulate6502 = 1;
-	#endif
 	}
 
 	if (CheckIndex())
@@ -3102,7 +2845,6 @@ static void OpC2Slow (void)
 	}
 
 	S9xFixCycles();
-	CHECK_FOR_IRQ();
 }
 
 static void OpE2 (void)
@@ -3120,9 +2862,6 @@ static void OpE2 (void)
 	if (CheckEmulation())
 	{
 		SetFlags(MemoryFlag | IndexFlag);
-	#ifdef DEBUGGER
-		missing.emulate6502 = 1;
-	#endif
 	}
 
 	if (CheckIndex())
@@ -3149,9 +2888,6 @@ static void OpE2Slow (void)
 	if (CheckEmulation())
 	{
 		SetFlags(MemoryFlag | IndexFlag);
-	#ifdef DEBUGGER
-		missing.emulate6502 = 1;
-	#endif
 	}
 
 	if (CheckIndex())
@@ -3196,9 +2932,6 @@ static void Op40Slow (void)
 		PullWE(Registers.PCw);
 		OpenBus = Registers.PCh;
 		SetFlags(MemoryFlag | IndexFlag);
-	#ifdef DEBUGGER
-		missing.emulate6502 = 1;
-	#endif
 	}
 
 	S9xSetPCBase(Registers.PBPC);
@@ -3210,7 +2943,6 @@ static void Op40Slow (void)
 	}
 
 	S9xFixCycles();
-	CHECK_FOR_IRQ();
 }
 
 /* STP/WAI ***************************************************************** */
@@ -3283,10 +3015,8 @@ static void Op42 (void)
 			break;
 
 		case 0x42: // "WDM" = Snapshot
-			char	filename[PATH_MAX + 1], drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], def[PATH_MAX + 1], ext[_MAX_EXT + 1];
-
-			_splitpath(Memory.ROMFilename, drive, dir, def, ext);
-			snprintf(filename, PATH_MAX, "%s%s%s-%06X.wdm", S9xGetDirectory(SNAPSHOT_DIR), SLASH_STR, def, Registers.PBPC & 0xffffff);
+			char	filename[PATH_MAX + 1], def[PATH_MAX + 1];
+			snprintf(filename, PATH_MAX, "%s%s%s-%06X.wdm", S9xGetDirectory(SNAPSHOT_DIR), SLASH_STR, Memory.ROMName, Registers.PBPC & 0xffffff);
 			sprintf(def, "WDM Snapshot at $%02X:%04X: %s", Registers.PB, Registers.PCw, filename);
 			S9xMessage(S9X_DEBUG, S9X_DEBUG_OUTPUT, def);
 			S9xFreezeGame(filename);
@@ -3300,174 +3030,6 @@ static void Op42 (void)
 }
 
 /* CPU-S9xOpcodes Definitions ************************************************/
-
-const S9xOpcode S9xOpcodesM1X1[256] =
-{
-	Op00,        Op01E0M1,    Op02,        Op03M1,      Op04M1,
-	Op05M1,      Op06M1,      Op07M1,      Op08E0,      Op09M1,
-	Op0AM1,      Op0BE0,      Op0CM1,      Op0DM1,      Op0EM1,
-	Op0FM1,      Op10E0,      Op11E0M1X1,  Op12E0M1,    Op13M1,
-	Op14M1,      Op15E0M1,    Op16E0M1,    Op17M1,      Op18,
-	Op19M1X1,    Op1AM1,      Op1B,        Op1CM1,      Op1DM1X1,
-	Op1EM1X1,    Op1FM1,      Op20E0,      Op21E0M1,    Op22E0,
-	Op23M1,      Op24M1,      Op25M1,      Op26M1,      Op27M1,
-	Op28E0,      Op29M1,      Op2AM1,      Op2BE0,      Op2CM1,
-	Op2DM1,      Op2EM1,      Op2FM1,      Op30E0,      Op31E0M1X1,
-	Op32E0M1,    Op33M1,      Op34E0M1,    Op35E0M1,    Op36E0M1,
-	Op37M1,      Op38,        Op39M1X1,    Op3AM1,      Op3B,
-	Op3CM1X1,    Op3DM1X1,    Op3EM1X1,    Op3FM1,      Op40Slow,
-	Op41E0M1,    Op42,        Op43M1,      Op44X1,      Op45M1,
-	Op46M1,      Op47M1,      Op48E0M1,    Op49M1,      Op4AM1,
-	Op4BE0,      Op4C,        Op4DM1,      Op4EM1,      Op4FM1,
-	Op50E0,      Op51E0M1X1,  Op52E0M1,    Op53M1,      Op54X1,
-	Op55E0M1,    Op56E0M1,    Op57M1,      Op58,        Op59M1X1,
-	Op5AE0X1,    Op5B,        Op5C,        Op5DM1X1,    Op5EM1X1,
-	Op5FM1,      Op60E0,      Op61E0M1,    Op62E0,      Op63M1,
-	Op64M1,      Op65M1,      Op66M1,      Op67M1,      Op68E0M1,
-	Op69M1,      Op6AM1,      Op6BE0,      Op6C,        Op6DM1,
-	Op6EM1,      Op6FM1,      Op70E0,      Op71E0M1X1,  Op72E0M1,
-	Op73M1,      Op74E0M1,    Op75E0M1,    Op76E0M1,    Op77M1,
-	Op78,        Op79M1X1,    Op7AE0X1,    Op7B,        Op7C,
-	Op7DM1X1,    Op7EM1X1,    Op7FM1,      Op80E0,      Op81E0M1,
-	Op82,        Op83M1,      Op84X1,      Op85M1,      Op86X1,
-	Op87M1,      Op88X1,      Op89M1,      Op8AM1,      Op8BE0,
-	Op8CX1,      Op8DM1,      Op8EX1,      Op8FM1,      Op90E0,
-	Op91E0M1X1,  Op92E0M1,    Op93M1,      Op94E0X1,    Op95E0M1,
-	Op96E0X1,    Op97M1,      Op98M1,      Op99M1X1,    Op9A,
-	Op9BX1,      Op9CM1,      Op9DM1X1,    Op9EM1X1,    Op9FM1,
-	OpA0X1,      OpA1E0M1,    OpA2X1,      OpA3M1,      OpA4X1,
-	OpA5M1,      OpA6X1,      OpA7M1,      OpA8X1,      OpA9M1,
-	OpAAX1,      OpABE0,      OpACX1,      OpADM1,      OpAEX1,
-	OpAFM1,      OpB0E0,      OpB1E0M1X1,  OpB2E0M1,    OpB3M1,
-	OpB4E0X1,    OpB5E0M1,    OpB6E0X1,    OpB7M1,      OpB8,
-	OpB9M1X1,    OpBAX1,      OpBBX1,      OpBCX1,      OpBDM1X1,
-	OpBEX1,      OpBFM1,      OpC0X1,      OpC1E0M1,    OpC2,
-	OpC3M1,      OpC4X1,      OpC5M1,      OpC6M1,      OpC7M1,
-	OpC8X1,      OpC9M1,      OpCAX1,      OpCB,        OpCCX1,
-	OpCDM1,      OpCEM1,      OpCFM1,      OpD0E0,      OpD1E0M1X1,
-	OpD2E0M1,    OpD3M1,      OpD4E0,      OpD5E0M1,    OpD6E0M1,
-	OpD7M1,      OpD8,        OpD9M1X1,    OpDAE0X1,    OpDB,
-	OpDC,        OpDDM1X1,    OpDEM1X1,    OpDFM1,      OpE0X1,
-	OpE1E0M1,    OpE2,        OpE3M1,      OpE4X1,      OpE5M1,
-	OpE6M1,      OpE7M1,      OpE8X1,      OpE9M1,      OpEA,
-	OpEB,        OpECX1,      OpEDM1,      OpEEM1,      OpEFM1,
-	OpF0E0,      OpF1E0M1X1,  OpF2E0M1,    OpF3M1,      OpF4E0,
-	OpF5E0M1,    OpF6E0M1,    OpF7M1,      OpF8,        OpF9M1X1,
-	OpFAE0X1,    OpFB,        OpFCE0,      OpFDM1X1,    OpFEM1X1,
-	OpFFM1
-};
-
-const S9xOpcode S9xOpcodesE1[256] =
-{
-	Op00,        Op01E1,      Op02,        Op03M1,      Op04M1,
-	Op05M1,      Op06M1,      Op07M1,      Op08E1,      Op09M1,
-	Op0AM1,      Op0BE1,      Op0CM1,      Op0DM1,      Op0EM1,
-	Op0FM1,      Op10E1,      Op11E1,      Op12E1,      Op13M1,
-	Op14M1,      Op15E1,      Op16E1,      Op17M1,      Op18,
-	Op19M1X1,    Op1AM1,      Op1B,        Op1CM1,      Op1DM1X1,
-	Op1EM1X1,    Op1FM1,      Op20E1,      Op21E1,      Op22E1,
-	Op23M1,      Op24M1,      Op25M1,      Op26M1,      Op27M1,
-	Op28E1,      Op29M1,      Op2AM1,      Op2BE1,      Op2CM1,
-	Op2DM1,      Op2EM1,      Op2FM1,      Op30E1,      Op31E1,
-	Op32E1,      Op33M1,      Op34E1,      Op35E1,      Op36E1,
-	Op37M1,      Op38,        Op39M1X1,    Op3AM1,      Op3B,
-	Op3CM1X1,    Op3DM1X1,    Op3EM1X1,    Op3FM1,      Op40Slow,
-	Op41E1,      Op42,        Op43M1,      Op44X1,      Op45M1,
-	Op46M1,      Op47M1,      Op48E1,      Op49M1,      Op4AM1,
-	Op4BE1,      Op4C,        Op4DM1,      Op4EM1,      Op4FM1,
-	Op50E1,      Op51E1,      Op52E1,      Op53M1,      Op54X1,
-	Op55E1,      Op56E1,      Op57M1,      Op58,        Op59M1X1,
-	Op5AE1,      Op5B,        Op5C,        Op5DM1X1,    Op5EM1X1,
-	Op5FM1,      Op60E1,      Op61E1,      Op62E1,      Op63M1,
-	Op64M1,      Op65M1,      Op66M1,      Op67M1,      Op68E1,
-	Op69M1,      Op6AM1,      Op6BE1,      Op6C,        Op6DM1,
-	Op6EM1,      Op6FM1,      Op70E1,      Op71E1,      Op72E1,
-	Op73M1,      Op74E1,      Op75E1,      Op76E1,      Op77M1,
-	Op78,        Op79M1X1,    Op7AE1,      Op7B,        Op7C,
-	Op7DM1X1,    Op7EM1X1,    Op7FM1,      Op80E1,      Op81E1,
-	Op82,        Op83M1,      Op84X1,      Op85M1,      Op86X1,
-	Op87M1,      Op88X1,      Op89M1,      Op8AM1,      Op8BE1,
-	Op8CX1,      Op8DM1,      Op8EX1,      Op8FM1,      Op90E1,
-	Op91E1,      Op92E1,      Op93M1,      Op94E1,      Op95E1,
-	Op96E1,      Op97M1,      Op98M1,      Op99M1X1,    Op9A,
-	Op9BX1,      Op9CM1,      Op9DM1X1,    Op9EM1X1,    Op9FM1,
-	OpA0X1,      OpA1E1,      OpA2X1,      OpA3M1,      OpA4X1,
-	OpA5M1,      OpA6X1,      OpA7M1,      OpA8X1,      OpA9M1,
-	OpAAX1,      OpABE1,      OpACX1,      OpADM1,      OpAEX1,
-	OpAFM1,      OpB0E1,      OpB1E1,      OpB2E1,      OpB3M1,
-	OpB4E1,      OpB5E1,      OpB6E1,      OpB7M1,      OpB8,
-	OpB9M1X1,    OpBAX1,      OpBBX1,      OpBCX1,      OpBDM1X1,
-	OpBEX1,      OpBFM1,      OpC0X1,      OpC1E1,      OpC2,
-	OpC3M1,      OpC4X1,      OpC5M1,      OpC6M1,      OpC7M1,
-	OpC8X1,      OpC9M1,      OpCAX1,      OpCB,        OpCCX1,
-	OpCDM1,      OpCEM1,      OpCFM1,      OpD0E1,      OpD1E1,
-	OpD2E1,      OpD3M1,      OpD4E1,      OpD5E1,      OpD6E1,
-	OpD7M1,      OpD8,        OpD9M1X1,    OpDAE1,      OpDB,
-	OpDC,        OpDDM1X1,    OpDEM1X1,    OpDFM1,      OpE0X1,
-	OpE1E1,      OpE2,        OpE3M1,      OpE4X1,      OpE5M1,
-	OpE6M1,      OpE7M1,      OpE8X1,      OpE9M1,      OpEA,
-	OpEB,        OpECX1,      OpEDM1,      OpEEM1,      OpEFM1,
-	OpF0E1,      OpF1E1,      OpF2E1,      OpF3M1,      OpF4E1,
-	OpF5E1,      OpF6E1,      OpF7M1,      OpF8,        OpF9M1X1,
-	OpFAE1,      OpFB,        OpFCE1,      OpFDM1X1,    OpFEM1X1,
-	OpFFM1
-};
-
-const S9xOpcode S9xOpcodesM1X0[256] =
-{
-	Op00,        Op01E0M1,    Op02,        Op03M1,      Op04M1,
-	Op05M1,      Op06M1,      Op07M1,      Op08E0,      Op09M1,
-	Op0AM1,      Op0BE0,      Op0CM1,      Op0DM1,      Op0EM1,
-	Op0FM1,      Op10E0,      Op11E0M1X0,  Op12E0M1,    Op13M1,
-	Op14M1,      Op15E0M1,    Op16E0M1,    Op17M1,      Op18,
-	Op19M1X0,    Op1AM1,      Op1B,        Op1CM1,      Op1DM1X0,
-	Op1EM1X0,    Op1FM1,      Op20E0,      Op21E0M1,    Op22E0,
-	Op23M1,      Op24M1,      Op25M1,      Op26M1,      Op27M1,
-	Op28E0,      Op29M1,      Op2AM1,      Op2BE0,      Op2CM1,
-	Op2DM1,      Op2EM1,      Op2FM1,      Op30E0,      Op31E0M1X0,
-	Op32E0M1,    Op33M1,      Op34E0M1,    Op35E0M1,    Op36E0M1,
-	Op37M1,      Op38,        Op39M1X0,    Op3AM1,      Op3B,
-	Op3CM1X0,    Op3DM1X0,    Op3EM1X0,    Op3FM1,      Op40Slow,
-	Op41E0M1,    Op42,        Op43M1,      Op44X0,      Op45M1,
-	Op46M1,      Op47M1,      Op48E0M1,    Op49M1,      Op4AM1,
-	Op4BE0,      Op4C,        Op4DM1,      Op4EM1,      Op4FM1,
-	Op50E0,      Op51E0M1X0,  Op52E0M1,    Op53M1,      Op54X0,
-	Op55E0M1,    Op56E0M1,    Op57M1,      Op58,        Op59M1X0,
-	Op5AE0X0,    Op5B,        Op5C,        Op5DM1X0,    Op5EM1X0,
-	Op5FM1,      Op60E0,      Op61E0M1,    Op62E0,      Op63M1,
-	Op64M1,      Op65M1,      Op66M1,      Op67M1,      Op68E0M1,
-	Op69M1,      Op6AM1,      Op6BE0,      Op6C,        Op6DM1,
-	Op6EM1,      Op6FM1,      Op70E0,      Op71E0M1X0,  Op72E0M1,
-	Op73M1,      Op74E0M1,    Op75E0M1,    Op76E0M1,    Op77M1,
-	Op78,        Op79M1X0,    Op7AE0X0,    Op7B,        Op7C,
-	Op7DM1X0,    Op7EM1X0,    Op7FM1,      Op80E0,      Op81E0M1,
-	Op82,        Op83M1,      Op84X0,      Op85M1,      Op86X0,
-	Op87M1,      Op88X0,      Op89M1,      Op8AM1,      Op8BE0,
-	Op8CX0,      Op8DM1,      Op8EX0,      Op8FM1,      Op90E0,
-	Op91E0M1X0,  Op92E0M1,    Op93M1,      Op94E0X0,    Op95E0M1,
-	Op96E0X0,    Op97M1,      Op98M1,      Op99M1X0,    Op9A,
-	Op9BX0,      Op9CM1,      Op9DM1X0,    Op9EM1X0,    Op9FM1,
-	OpA0X0,      OpA1E0M1,    OpA2X0,      OpA3M1,      OpA4X0,
-	OpA5M1,      OpA6X0,      OpA7M1,      OpA8X0,      OpA9M1,
-	OpAAX0,      OpABE0,      OpACX0,      OpADM1,      OpAEX0,
-	OpAFM1,      OpB0E0,      OpB1E0M1X0,  OpB2E0M1,    OpB3M1,
-	OpB4E0X0,    OpB5E0M1,    OpB6E0X0,    OpB7M1,      OpB8,
-	OpB9M1X0,    OpBAX0,      OpBBX0,      OpBCX0,      OpBDM1X0,
-	OpBEX0,      OpBFM1,      OpC0X0,      OpC1E0M1,    OpC2,
-	OpC3M1,      OpC4X0,      OpC5M1,      OpC6M1,      OpC7M1,
-	OpC8X0,      OpC9M1,      OpCAX0,      OpCB,        OpCCX0,
-	OpCDM1,      OpCEM1,      OpCFM1,      OpD0E0,      OpD1E0M1X0,
-	OpD2E0M1,    OpD3M1,      OpD4E0,      OpD5E0M1,    OpD6E0M1,
-	OpD7M1,      OpD8,        OpD9M1X0,    OpDAE0X0,    OpDB,
-	OpDC,        OpDDM1X0,    OpDEM1X0,    OpDFM1,      OpE0X0,
-	OpE1E0M1,    OpE2,        OpE3M1,      OpE4X0,      OpE5M1,
-	OpE6M1,      OpE7M1,      OpE8X0,      OpE9M1,      OpEA,
-	OpEB,        OpECX0,      OpEDM1,      OpEEM1,      OpEFM1,
-	OpF0E0,      OpF1E0M1X0,  OpF2E0M1,    OpF3M1,      OpF4E0,
-	OpF5E0M1,    OpF6E0M1,    OpF7M1,      OpF8,        OpF9M1X0,
-	OpFAE0X0,    OpFB,        OpFCE0,      OpFDM1X0,    OpFEM1X0,
-	OpFFM1
-};
 
 const S9xOpcode S9xOpcodesM0X0[256] =
 {
@@ -3581,6 +3143,118 @@ const S9xOpcode S9xOpcodesM0X1[256] =
 	OpFFM0
 };
 
+const S9xOpcode S9xOpcodesM1X0[256] =
+{
+	Op00,        Op01E0M1,    Op02,        Op03M1,      Op04M1,
+	Op05M1,      Op06M1,      Op07M1,      Op08E0,      Op09M1,
+	Op0AM1,      Op0BE0,      Op0CM1,      Op0DM1,      Op0EM1,
+	Op0FM1,      Op10E0,      Op11E0M1X0,  Op12E0M1,    Op13M1,
+	Op14M1,      Op15E0M1,    Op16E0M1,    Op17M1,      Op18,
+	Op19M1X0,    Op1AM1,      Op1B,        Op1CM1,      Op1DM1X0,
+	Op1EM1X0,    Op1FM1,      Op20E0,      Op21E0M1,    Op22E0,
+	Op23M1,      Op24M1,      Op25M1,      Op26M1,      Op27M1,
+	Op28E0,      Op29M1,      Op2AM1,      Op2BE0,      Op2CM1,
+	Op2DM1,      Op2EM1,      Op2FM1,      Op30E0,      Op31E0M1X0,
+	Op32E0M1,    Op33M1,      Op34E0M1,    Op35E0M1,    Op36E0M1,
+	Op37M1,      Op38,        Op39M1X0,    Op3AM1,      Op3B,
+	Op3CM1X0,    Op3DM1X0,    Op3EM1X0,    Op3FM1,      Op40Slow,
+	Op41E0M1,    Op42,        Op43M1,      Op44X0,      Op45M1,
+	Op46M1,      Op47M1,      Op48E0M1,    Op49M1,      Op4AM1,
+	Op4BE0,      Op4C,        Op4DM1,      Op4EM1,      Op4FM1,
+	Op50E0,      Op51E0M1X0,  Op52E0M1,    Op53M1,      Op54X0,
+	Op55E0M1,    Op56E0M1,    Op57M1,      Op58,        Op59M1X0,
+	Op5AE0X0,    Op5B,        Op5C,        Op5DM1X0,    Op5EM1X0,
+	Op5FM1,      Op60E0,      Op61E0M1,    Op62E0,      Op63M1,
+	Op64M1,      Op65M1,      Op66M1,      Op67M1,      Op68E0M1,
+	Op69M1,      Op6AM1,      Op6BE0,      Op6C,        Op6DM1,
+	Op6EM1,      Op6FM1,      Op70E0,      Op71E0M1X0,  Op72E0M1,
+	Op73M1,      Op74E0M1,    Op75E0M1,    Op76E0M1,    Op77M1,
+	Op78,        Op79M1X0,    Op7AE0X0,    Op7B,        Op7C,
+	Op7DM1X0,    Op7EM1X0,    Op7FM1,      Op80E0,      Op81E0M1,
+	Op82,        Op83M1,      Op84X0,      Op85M1,      Op86X0,
+	Op87M1,      Op88X0,      Op89M1,      Op8AM1,      Op8BE0,
+	Op8CX0,      Op8DM1,      Op8EX0,      Op8FM1,      Op90E0,
+	Op91E0M1X0,  Op92E0M1,    Op93M1,      Op94E0X0,    Op95E0M1,
+	Op96E0X0,    Op97M1,      Op98M1,      Op99M1X0,    Op9A,
+	Op9BX0,      Op9CM1,      Op9DM1X0,    Op9EM1X0,    Op9FM1,
+	OpA0X0,      OpA1E0M1,    OpA2X0,      OpA3M1,      OpA4X0,
+	OpA5M1,      OpA6X0,      OpA7M1,      OpA8X0,      OpA9M1,
+	OpAAX0,      OpABE0,      OpACX0,      OpADM1,      OpAEX0,
+	OpAFM1,      OpB0E0,      OpB1E0M1X0,  OpB2E0M1,    OpB3M1,
+	OpB4E0X0,    OpB5E0M1,    OpB6E0X0,    OpB7M1,      OpB8,
+	OpB9M1X0,    OpBAX0,      OpBBX0,      OpBCX0,      OpBDM1X0,
+	OpBEX0,      OpBFM1,      OpC0X0,      OpC1E0M1,    OpC2,
+	OpC3M1,      OpC4X0,      OpC5M1,      OpC6M1,      OpC7M1,
+	OpC8X0,      OpC9M1,      OpCAX0,      OpCB,        OpCCX0,
+	OpCDM1,      OpCEM1,      OpCFM1,      OpD0E0,      OpD1E0M1X0,
+	OpD2E0M1,    OpD3M1,      OpD4E0,      OpD5E0M1,    OpD6E0M1,
+	OpD7M1,      OpD8,        OpD9M1X0,    OpDAE0X0,    OpDB,
+	OpDC,        OpDDM1X0,    OpDEM1X0,    OpDFM1,      OpE0X0,
+	OpE1E0M1,    OpE2,        OpE3M1,      OpE4X0,      OpE5M1,
+	OpE6M1,      OpE7M1,      OpE8X0,      OpE9M1,      OpEA,
+	OpEB,        OpECX0,      OpEDM1,      OpEEM1,      OpEFM1,
+	OpF0E0,      OpF1E0M1X0,  OpF2E0M1,    OpF3M1,      OpF4E0,
+	OpF5E0M1,    OpF6E0M1,    OpF7M1,      OpF8,        OpF9M1X0,
+	OpFAE0X0,    OpFB,        OpFCE0,      OpFDM1X0,    OpFEM1X0,
+	OpFFM1
+};
+
+const S9xOpcode S9xOpcodesM1X1[256] =
+{
+	Op00,        Op01E0M1,    Op02,        Op03M1,      Op04M1,
+	Op05M1,      Op06M1,      Op07M1,      Op08E0,      Op09M1,
+	Op0AM1,      Op0BE0,      Op0CM1,      Op0DM1,      Op0EM1,
+	Op0FM1,      Op10E0,      Op11E0M1X1,  Op12E0M1,    Op13M1,
+	Op14M1,      Op15E0M1,    Op16E0M1,    Op17M1,      Op18,
+	Op19M1X1,    Op1AM1,      Op1B,        Op1CM1,      Op1DM1X1,
+	Op1EM1X1,    Op1FM1,      Op20E0,      Op21E0M1,    Op22E0,
+	Op23M1,      Op24M1,      Op25M1,      Op26M1,      Op27M1,
+	Op28E0,      Op29M1,      Op2AM1,      Op2BE0,      Op2CM1,
+	Op2DM1,      Op2EM1,      Op2FM1,      Op30E0,      Op31E0M1X1,
+	Op32E0M1,    Op33M1,      Op34E0M1,    Op35E0M1,    Op36E0M1,
+	Op37M1,      Op38,        Op39M1X1,    Op3AM1,      Op3B,
+	Op3CM1X1,    Op3DM1X1,    Op3EM1X1,    Op3FM1,      Op40Slow,
+	Op41E0M1,    Op42,        Op43M1,      Op44X1,      Op45M1,
+	Op46M1,      Op47M1,      Op48E0M1,    Op49M1,      Op4AM1,
+	Op4BE0,      Op4C,        Op4DM1,      Op4EM1,      Op4FM1,
+	Op50E0,      Op51E0M1X1,  Op52E0M1,    Op53M1,      Op54X1,
+	Op55E0M1,    Op56E0M1,    Op57M1,      Op58,        Op59M1X1,
+	Op5AE0X1,    Op5B,        Op5C,        Op5DM1X1,    Op5EM1X1,
+	Op5FM1,      Op60E0,      Op61E0M1,    Op62E0,      Op63M1,
+	Op64M1,      Op65M1,      Op66M1,      Op67M1,      Op68E0M1,
+	Op69M1,      Op6AM1,      Op6BE0,      Op6C,        Op6DM1,
+	Op6EM1,      Op6FM1,      Op70E0,      Op71E0M1X1,  Op72E0M1,
+	Op73M1,      Op74E0M1,    Op75E0M1,    Op76E0M1,    Op77M1,
+	Op78,        Op79M1X1,    Op7AE0X1,    Op7B,        Op7C,
+	Op7DM1X1,    Op7EM1X1,    Op7FM1,      Op80E0,      Op81E0M1,
+	Op82,        Op83M1,      Op84X1,      Op85M1,      Op86X1,
+	Op87M1,      Op88X1,      Op89M1,      Op8AM1,      Op8BE0,
+	Op8CX1,      Op8DM1,      Op8EX1,      Op8FM1,      Op90E0,
+	Op91E0M1X1,  Op92E0M1,    Op93M1,      Op94E0X1,    Op95E0M1,
+	Op96E0X1,    Op97M1,      Op98M1,      Op99M1X1,    Op9A,
+	Op9BX1,      Op9CM1,      Op9DM1X1,    Op9EM1X1,    Op9FM1,
+	OpA0X1,      OpA1E0M1,    OpA2X1,      OpA3M1,      OpA4X1,
+	OpA5M1,      OpA6X1,      OpA7M1,      OpA8X1,      OpA9M1,
+	OpAAX1,      OpABE0,      OpACX1,      OpADM1,      OpAEX1,
+	OpAFM1,      OpB0E0,      OpB1E0M1X1,  OpB2E0M1,    OpB3M1,
+	OpB4E0X1,    OpB5E0M1,    OpB6E0X1,    OpB7M1,      OpB8,
+	OpB9M1X1,    OpBAX1,      OpBBX1,      OpBCX1,      OpBDM1X1,
+	OpBEX1,      OpBFM1,      OpC0X1,      OpC1E0M1,    OpC2,
+	OpC3M1,      OpC4X1,      OpC5M1,      OpC6M1,      OpC7M1,
+	OpC8X1,      OpC9M1,      OpCAX1,      OpCB,        OpCCX1,
+	OpCDM1,      OpCEM1,      OpCFM1,      OpD0E0,      OpD1E0M1X1,
+	OpD2E0M1,    OpD3M1,      OpD4E0,      OpD5E0M1,    OpD6E0M1,
+	OpD7M1,      OpD8,        OpD9M1X1,    OpDAE0X1,    OpDB,
+	OpDC,        OpDDM1X1,    OpDEM1X1,    OpDFM1,      OpE0X1,
+	OpE1E0M1,    OpE2,        OpE3M1,      OpE4X1,      OpE5M1,
+	OpE6M1,      OpE7M1,      OpE8X1,      OpE9M1,      OpEA,
+	OpEB,        OpECX1,      OpEDM1,      OpEEM1,      OpEFM1,
+	OpF0E0,      OpF1E0M1X1,  OpF2E0M1,    OpF3M1,      OpF4E0,
+	OpF5E0M1,    OpF6E0M1,    OpF7M1,      OpF8,        OpF9M1X1,
+	OpFAE0X1,    OpFB,        OpFCE0,      OpFDM1X1,    OpFEM1X1,
+	OpFFM1
+};
+
 const S9xOpcode S9xOpcodesSlow[256] =
 {
 	Op00,        Op01Slow,    Op02,        Op03Slow,    Op04Slow,
@@ -3635,91 +3309,4 @@ const S9xOpcode S9xOpcodesSlow[256] =
 	OpF5Slow,    OpF6Slow,    OpF7Slow,    OpF8,        OpF9Slow,
 	OpFASlow,    OpFB,        OpFCSlow,    OpFDSlow,    OpFESlow,
 	OpFFSlow
-};
-
-
-// More testing with DRAM_ATTR required
-
-const uint8 S9xOpLengthsM0X0[256] =
-{
-//  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 0
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 1
-	3, 2, 4, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 2
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 3
-	1, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 4
-	2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 4, 3, 3, 4, // 5
-	1, 2, 3, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 6
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 7
-	2, 2, 3, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 8
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 9
-	3, 2, 3, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // A
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // B
-	3, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // C
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // D
-	3, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // E
-	2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4  // F
-};
-
-const uint8 S9xOpLengthsM0X1[256] =
-{
-//  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 0
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 1
-	3, 2, 4, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 2
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 3
-	1, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 4
-	2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 4, 3, 3, 4, // 5
-	1, 2, 3, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 6
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 7
-	2, 2, 3, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 8
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 9
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // A
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // B
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // C
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // D
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // E
-	2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4  // F
-};
-
-const uint8 S9xOpLengthsM1X0[256] =
-{
-//  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4, // 0
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 1
-	3, 2, 4, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4, // 2
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 3
-	1, 2, 2, 2, 3, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4, // 4
-	2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 4, 3, 3, 4, // 5
-	1, 2, 3, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4, // 6
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 7
-	2, 2, 3, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4, // 8
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 9
-	3, 2, 3, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4, // A
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // B
-	3, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4, // C
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // D
-	3, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4, // E
-	2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4  // F
-};
-
-const uint8 S9xOpLengthsM1X1[256] =
-{
-//  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4, // 0
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 1
-	3, 2, 4, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4, // 2
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 3
-	1, 2, 2, 2, 3, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4, // 4
-	2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 4, 3, 3, 4, // 5
-	1, 2, 3, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4, // 6
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 7
-	2, 2, 3, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4, // 8
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // 9
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4, // A
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // B
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4, // C
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // D
-	2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4, // E
-	2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4  // F
 };

@@ -73,9 +73,7 @@ static void S9xSoftResetCPU (void)
 	CPU.IRQFlagChanging = IRQ_NONE;
 
 	S9xSetPCBase(Registers.PBPC);
-
-	ICPU.S9xOpcodes = S9xOpcodesE1;
-	ICPU.S9xOpLengths = S9xOpLengthsM1X1;
+	ICPU.S9xOpcodes = S9xOpcodesSlow;
 
 	S9xUnpackStatus();
 }

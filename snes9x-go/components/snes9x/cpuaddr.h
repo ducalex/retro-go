@@ -238,16 +238,6 @@ static inline uint32 DirectIndirectE0 (AccessMode a)					// (d)
 	return (addr);
 }
 
-static inline uint32 DirectIndirectE1 (AccessMode a)					// (d)
-{
-	uint32	addr = S9xGetWord(DirectSlow(READ), Registers.DL ? WRAP_BANK : WRAP_PAGE);
-	if (a & READ)
-		OpenBus = (uint8) (addr >> 8);
-	addr |= ICPU.ShiftedDB;
-
-	return (addr);
-}
-
 static inline uint32 DirectIndirectIndexedSlow (AccessMode a)			// (d),Y
 {
 	uint32	addr = DirectIndirectSlow(a);
@@ -268,15 +258,6 @@ static inline uint32 DirectIndirectIndexedE0X0 (AccessMode a)			// (d),Y
 static inline uint32 DirectIndirectIndexedE0X1 (AccessMode a)			// (d),Y
 {
 	uint32	addr = DirectIndirectE0(a);
-	if (a & WRITE || (addr & 0xff) + Registers.YL >= 0x100)
-		AddCycles(ONE_CYCLE);
-
-	return (addr + Registers.Y.W);
-}
-
-static inline uint32 DirectIndirectIndexedE1 (AccessMode a)				// (d),Y
-{
-	uint32	addr = DirectIndirectE1(a);
 	if (a & WRITE || (addr & 0xff) + Registers.YL >= 0x100)
 		AddCycles(ONE_CYCLE);
 
@@ -335,21 +316,6 @@ static inline uint32 DirectIndexedXE0 (AccessMode a)					// d,X
 	return (addr);
 }
 
-static inline uint32 DirectIndexedXE1 (AccessMode a)					// d,X
-{
-	if (Registers.DL)
-		return (DirectIndexedXE0(a));
-	else
-	{
-		pair	addr;
-		addr.W = Direct(a);
-		addr.B.l += Registers.XL;
-		AddCycles(ONE_CYCLE);
-
-		return (addr.W);
-	}
-}
-
 static inline uint32 DirectIndexedYSlow (AccessMode a)					// d,Y
 {
 	pair	addr;
@@ -372,21 +338,6 @@ static inline uint32 DirectIndexedYE0 (AccessMode a)					// d,Y
 	return (addr);
 }
 
-static inline uint32 DirectIndexedYE1 (AccessMode a)					// d,Y
-{
-	if (Registers.DL)
-		return (DirectIndexedYE0(a));
-	else
-	{
-		pair	addr;
-		addr.W = Direct(a);
-		addr.B.l += Registers.YL;
-		AddCycles(ONE_CYCLE);
-
-		return (addr.W);
-	}
-}
-
 static inline uint32 DirectIndexedIndirectSlow (AccessMode a)			// (d,X)
 {
 	uint32	addr = S9xGetWord(DirectIndexedXSlow(READ), (!CheckEmulation() || Registers.DL) ? WRAP_BANK : WRAP_PAGE);
@@ -399,15 +350,6 @@ static inline uint32 DirectIndexedIndirectSlow (AccessMode a)			// (d,X)
 static inline uint32 DirectIndexedIndirectE0 (AccessMode a)				// (d,X)
 {
 	uint32	addr = S9xGetWord(DirectIndexedXE0(READ));
-	if (a & READ)
-		OpenBus = (uint8) (addr >> 8);
-
-	return (ICPU.ShiftedDB | addr);
-}
-
-static inline uint32 DirectIndexedIndirectE1 (AccessMode a)				// (d,X)
-{
-	uint32	addr = S9xGetWord(DirectIndexedXE1(READ), Registers.DL ? WRAP_BANK : WRAP_PAGE);
 	if (a & READ)
 		OpenBus = (uint8) (addr >> 8);
 

@@ -17,7 +17,6 @@ typedef void (*S9xOpcode) (void);
 struct SICPU
 {
 	const S9xOpcode *S9xOpcodes;
-	const uint8 *S9xOpLengths;
 	uint32	_Carry;
 	uint32	_Zero;
 	uint32	_Negative;
@@ -30,21 +29,18 @@ struct SICPU
 
 extern struct SICPU		ICPU;
 
-extern const S9xOpcode	S9xOpcodesE1[256];
-extern const S9xOpcode	S9xOpcodesM1X1[256];
-extern const S9xOpcode	S9xOpcodesM1X0[256];
-extern const S9xOpcode	S9xOpcodesM0X1[256];
 extern const S9xOpcode	S9xOpcodesM0X0[256];
+extern const S9xOpcode	S9xOpcodesM0X1[256];
+extern const S9xOpcode	S9xOpcodesM1X0[256];
+extern const S9xOpcode	S9xOpcodesM1X1[256];
 extern const S9xOpcode	S9xOpcodesSlow[256];
-extern const uint8		S9xOpLengthsM1X1[256];
-extern const uint8		S9xOpLengthsM1X0[256];
-extern const uint8		S9xOpLengthsM0X1[256];
-extern const uint8		S9xOpLengthsM0X0[256];
 
 void S9xMainLoop (void);
 void S9xReset (void);
 void S9xSoftReset (void);
 void S9xDoHEventProcessing (void);
+void S9xOpcode_NMI (void);
+void S9xOpcode_IRQ (void);
 
 static inline void S9xUnpackStatus (void)
 {
@@ -58,42 +54,6 @@ static inline void S9xPackStatus (void)
 {
 	Registers.PL &= ~(Zero | Negative | Carry | Overflow);
 	Registers.PL |= ICPU._Carry | ((ICPU._Zero == 0) << 1) | (ICPU._Negative & 0x80) | (ICPU._Overflow << 6);
-}
-
-static inline void S9xFixCycles (void)
-{
-	if (CheckEmulation())
-	{
-		ICPU.S9xOpcodes = S9xOpcodesE1;
-		ICPU.S9xOpLengths = S9xOpLengthsM1X1;
-	}
-	else
-	if (CheckMemory())
-	{
-		if (CheckIndex())
-		{
-			ICPU.S9xOpcodes = S9xOpcodesM1X1;
-			ICPU.S9xOpLengths = S9xOpLengthsM1X1;
-		}
-		else
-		{
-			ICPU.S9xOpcodes = S9xOpcodesM1X0;
-			ICPU.S9xOpLengths = S9xOpLengthsM1X0;
-		}
-	}
-	else
-	{
-		if (CheckIndex())
-		{
-			ICPU.S9xOpcodes = S9xOpcodesM0X1;
-			ICPU.S9xOpLengths = S9xOpLengthsM0X1;
-		}
-		else
-		{
-			ICPU.S9xOpcodes = S9xOpcodesM0X0;
-			ICPU.S9xOpLengths = S9xOpLengthsM0X0;
-		}
-	}
 }
 
 #endif

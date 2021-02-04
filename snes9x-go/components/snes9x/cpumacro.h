@@ -671,4 +671,11 @@ static inline void TRB8 (uint32 OpAddress)
 	OpenBus = Work8;
 }
 
+static inline void S9xFixCycles (void)
+{
+	// 0bMX
+	const S9xOpcode *OpcodeSets[4] = {S9xOpcodesM0X0, S9xOpcodesM0X1, S9xOpcodesM1X0, S9xOpcodesM1X1};
+	ICPU.S9xOpcodes = CheckEmulation() ? S9xOpcodesSlow : OpcodeSets[(Registers.PL >> 4) & 3];
+}
+
 #endif

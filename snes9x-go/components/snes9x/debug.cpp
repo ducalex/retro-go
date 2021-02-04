@@ -9,7 +9,6 @@
 #include <stdarg.h>
 #include "snes9x.h"
 #include "memmap.h"
-#include "cpuops.h"
 #include "dma.h"
 #include "apu/apu.h"
 #include "display.h"

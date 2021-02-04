@@ -708,9 +708,9 @@ bool8 S9xUnfreezeGame (const char *filename)
 		CPU.Flags |= old_flags & (DEBUG_MODE_FLAG | TRACE_FLAG | SINGLE_STEP_FLAG | FRAME_ADVANCE_FLAG);
 		ICPU.ShiftedPB = Registers.PB << 16;
 		ICPU.ShiftedDB = Registers.DB << 16;
+		ICPU.S9xOpcodes = S9xOpcodesSlow;
 		S9xSetPCBase(Registers.PBPC);
 		S9xUnpackStatus();
-		S9xFixCycles();
 
 		for (int d = 0; d < 8; d++)
 			DMA[d] = dma_snap.dma[d];
