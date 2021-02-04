@@ -129,7 +129,7 @@ enum s9xwriteorder_t
 };
 
 
-#include "cpuexec.h"
+#include "cpu.h"
 #include "dsp.h"
 
 #if RETRO_LESS_ACCURATE_MEM

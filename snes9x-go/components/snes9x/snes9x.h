@@ -12,7 +12,6 @@
 #endif
 
 #include "port.h"
-#include "65c816.h"
 
 #include <rg_system.h>
 

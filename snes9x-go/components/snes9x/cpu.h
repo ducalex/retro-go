@@ -4,8 +4,13 @@
    For further information, consult the LICENSE file in the root directory.
 \*****************************************************************************/
 
-#ifndef _65C816_H_
-#define _65C816_H_
+#ifndef _CPU_H_
+#define _CPU_H_
+
+#include "ppu.h"
+#ifdef DEBUGGER
+#include "debug.h"
+#endif
 
 #define Carry		1
 #define Zero		2
@@ -101,5 +106,47 @@ struct SRegisters
 #define PB		PC.B.xPB
 
 extern struct SRegisters	Registers;
+
+typedef void (*S9xOpcode) (void);
+
+struct SICPU
+{
+	const S9xOpcode *S9xOpcodes;
+	uint32	_Carry;
+	uint32	_Zero;
+	uint32	_Negative;
+	uint32	_Overflow;
+	uint32	ShiftedPB;
+	uint32	ShiftedDB;
+	uint32	Frame;
+	uint32	FrameAdvanceCount;
+};
+
+extern struct SICPU		ICPU;
+
+extern const S9xOpcode	S9xOpcodesM0X0[256];
+extern const S9xOpcode	S9xOpcodesM0X1[256];
+extern const S9xOpcode	S9xOpcodesM1X0[256];
+extern const S9xOpcode	S9xOpcodesM1X1[256];
+extern const S9xOpcode	S9xOpcodesSlow[256];
+
+void S9xMainLoop (void);
+void S9xReset (void);
+void S9xSoftReset (void);
+void S9xDoHEventProcessing (void);
+
+static inline void S9xUnpackStatus (void)
+{
+	ICPU._Zero = (Registers.PL & Zero) == 0;
+	ICPU._Negative = (Registers.PL & Negative);
+	ICPU._Carry = (Registers.PL & Carry);
+	ICPU._Overflow = (Registers.PL & Overflow) >> 6;
+}
+
+static inline void S9xPackStatus (void)
+{
+	Registers.PL &= ~(Zero | Negative | Carry | Overflow);
+	Registers.PL |= ICPU._Carry | ((ICPU._Zero == 0) << 1) | (ICPU._Negative & 0x80) | (ICPU._Overflow << 6);
+}
 
 #endif

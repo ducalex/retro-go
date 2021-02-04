@@ -7,11 +7,7 @@
 #include "snes9x.h"
 #include "memory.h"
 #include "apu/apu.h"
-
-// for "Magic WDM" features
 #ifdef DEBUGGER
-#include "snapshot.h"
-#include "display.h"
 #include "debug.h"
 #endif
 
@@ -2375,7 +2371,7 @@ static void Op00 (void)
 
 /* IRQ ********************************************************************* */
 
-void S9xOpcode_IRQ (void)
+static void S9xOpcode_IRQ (void)
 {
 #ifdef DEBUGGER
 	if (CPU.Flags & TRACE_FLAG)
@@ -2416,7 +2412,7 @@ void S9xOpcode_IRQ (void)
 
 /* NMI ********************************************************************* */
 
-void S9xOpcode_NMI (void)
+static void S9xOpcode_NMI (void)
 {
 #ifdef DEBUGGER
 	if (CPU.Flags & TRACE_FLAG)
@@ -2965,68 +2961,10 @@ static void OpDB (void)
 
 /* WDM (Reserved S9xOpcode) ************************************************ */
 
-#ifdef DEBUGGER
-extern FILE	*trace, *trace2;
-#endif
-
 static void Op42 (void)
 {
-#ifdef DEBUGGER
-	uint8	byte = (uint8) S9xGetWord(Registers.PBPC);
-#else
 	S9xGetWord(Registers.PBPC);
-#endif
 	Registers.PCw++;
-
-#ifdef DEBUGGER
-	// Hey, let's use this to trigger debug modes.
-	switch (byte)
-	{
-		case 0xdb: // "STP" = Enter debug mode
-			CPU.Flags |= DEBUG_MODE_FLAG;
-			break;
-
-		case 0xe2: // "SEP" = Trace on
-			if (!(CPU.Flags & TRACE_FLAG))
-			{
-				char	buf[25];
-				CPU.Flags |= TRACE_FLAG;
-				snprintf(buf, 25, "WDM trace on at $%02X:%04X", Registers.PB, Registers.PCw);
-				S9xMessage(S9X_DEBUG, S9X_DEBUG_OUTPUT, buf);
-				if (trace != NULL)
-					fclose(trace);
-				ENSURE_TRACE_OPEN(trace, "WDMtrace.log", "ab")
-			}
-
-			break;
-
-		case 0xc2: // "REP" = Trace off
-			if (CPU.Flags & TRACE_FLAG)
-			{
-				char	buf[26];
-				CPU.Flags &= ~TRACE_FLAG;
-				snprintf(buf, 26, "WDM trace off at $%02X:%04X", Registers.PB, Registers.PCw);
-				S9xMessage(S9X_DEBUG, S9X_DEBUG_OUTPUT, buf);
-				if (trace != NULL)
-					fclose(trace);
-				trace = NULL;
-			}
-
-			break;
-
-		case 0x42: // "WDM" = Snapshot
-			char	filename[PATH_MAX + 1], def[PATH_MAX + 1];
-			snprintf(filename, PATH_MAX, "%s%s%s-%06X.wdm", S9xGetDirectory(SNAPSHOT_DIR), SLASH_STR, Memory.ROMName, Registers.PBPC & 0xffffff);
-			sprintf(def, "WDM Snapshot at $%02X:%04X: %s", Registers.PB, Registers.PCw, filename);
-			S9xMessage(S9X_DEBUG, S9X_DEBUG_OUTPUT, def);
-			S9xFreezeGame(filename);
-
-			break;
-
-		default:
-			break;
-	}
-#endif
 }
 
 /* CPU-S9xOpcodes Definitions ************************************************/
