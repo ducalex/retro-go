@@ -11,12 +11,11 @@ PROJECT_TILE = "fw-icon.raw"
 PROJECT_APPS = {
   # Note: Size will be adjusted if needed but flashmon needs accurate values to work correctly
   # Project name   Sub, Size
-  'retro-go':     [0,  393216],
-  'nofrendo-go':  [0,  458752],
+  'retro-go':     [0,  327680],
+  'nofrendo-go':  [0,  393216],
   'gnuboy-go':    [0,  393216],
-  'smsplusgx-go': [0,  458752],
-  'huexpress-go': [0,  458752],
-  'handy-go':     [0,  458752],
-  'snes9x-go':    [0, 1048576],
-  # 'ngpocket-go':  [0,  1048576],
+  'smsplusgx-go': [0,  393216],
+  'huexpress-go': [0,  393216],
+  'handy-go':     [0,  393216],
+  'snes9x-go':    [0,  851968], # 1048576
 }

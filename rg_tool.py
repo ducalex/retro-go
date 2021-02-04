@@ -106,7 +106,7 @@ def analyze_profile(frames):
         debug_print("")
 
 
-def build_firmware(targets, tiny_build=False):
+def build_firmware(targets, part_size=None):
     os.chdir(PRJ_PATH)
     args = [
         sys.executable,
@@ -117,7 +117,11 @@ def build_firmware(targets, tiny_build=False):
     ]
     for target in targets:
         part = PROJECT_APPS[target]
-        size = 0 if tiny_build else part[1]
+        size = part[1]
+        if part_size == "auto":
+            size = 0
+        elif part_size == "oversize":
+            size = max(512 * 1024, size + 65536)
         args += [str(0), str(part[0]), str(size), target, os.path.join(target, "build", target + ".bin")]
 
     print("Building firmware: %s\n" % shlex.join(args[1:]))
@@ -133,13 +137,12 @@ def clean_app(target):
         print("Nothing to do.\n")
 
 
-def build_app(target, with_debugging=False, with_profiling=False, with_netplay=False, tiny_build=False):
+def build_app(target, with_debugging=False, with_profiling=False, with_netplay=False):
     # To do: clean up if any of the flags changed since last build
     print("Building app '%s'" % target)
     os.chdir(os.path.join(PRJ_PATH, target))
     os.putenv("ENABLE_PROFILING", "1" if with_profiling else "0")
     os.putenv("ENABLE_DEBUGGING", "1" if with_debugging else "0")
-    os.putenv("ENABLE_TINY_BUILD", "1" if tiny_build else "0")
     os.putenv("ENABLE_NETPLAY", "1" if with_netplay else "0")
     subprocess.run("idf.py app", shell=True, check=True)
 
@@ -251,7 +254,7 @@ parser.add_argument(
     "targets", nargs="*", default="all", choices=["all"] + list(PROJECT_APPS.keys())
 )
 parser.add_argument(
-    "--tiny-build", action="store_const", const=True, help="Compile with -Os and auto resize partitions to be smaller"
+    "--part-size", default="normal", choices=["auto", "normal", "oversize"], help="Adjust partition size"
 )
 parser.add_argument(
     "--with-netplay", action="store_const", const=True, help="Build with netplay enabled"
@@ -281,12 +284,12 @@ targets = args.targets if "all" not in args.targets else PROJECT_APPS.keys()
 if command == "build-fw":
     for target in targets:
         clean_app(target)
-        build_app(target, args.with_debugging, args.with_profiling, args.with_netplay, args.tiny_build)
-    build_firmware(targets, args.tiny_build)
+        build_app(target, args.with_debugging, args.with_profiling, args.with_netplay)
+    build_firmware(targets, args.part_size)
 
 if command == "build":
     for target in targets:
-        build_app(target,args.with_debugging, args.with_profiling, args.with_netplay, args.tiny_build)
+        build_app(target,args.with_debugging, args.with_profiling, args.with_netplay)
 
 if command == "clean":
     for target in targets:
