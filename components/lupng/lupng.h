@@ -40,6 +40,12 @@ typedef unsigned __int32 uint32_t;
 #include <stdint.h>
 #endif
 
+typedef enum {
+    PNG_DONE = 1,
+    PNG_OK = 0,
+    PNG_ERROR = -1,
+} LuStatus;
+
 typedef struct {
     int32_t width;
     int32_t height;
@@ -67,9 +73,9 @@ typedef struct {
     int compressionLevel;
 
     /* memory allocation */
-    PngAllocProc allocProc;
+    PngAllocProc allocProc; /* should zero the memory */
     void *allocProcUserPtr;
-    PngFreeProc freeProc;
+    PngFreeProc freeProc;   /* should fail silently */
     void *freeProcUserPtr;
 
     /* warnings/error output */

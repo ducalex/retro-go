@@ -52,11 +52,7 @@
 
 #define PNG_SIG_SIZE 8
 
-#define PNG_DONE 1
-#define PNG_OK 0
-#define PNG_ERROR -1
-
-#define BUF_SIZE 8192
+#define BUF_SIZE 4096
 #define MAX(x, y) (x > y ? x : y)
 
 #if defined(_MSC_VER)
@@ -64,8 +60,6 @@
 #else
 #define LU_INLINE inline /* rest of the world... */
 #endif
-
-#define SIZE_T_MAX_POSITIVE ( ((size_t)-1) >> 1 )
 
 /********************************************************
  * CRC computation as per PNG spec
@@ -177,24 +171,25 @@ typedef struct {
     /* fields used for (de)compression & (de-)filtering */
     z_stream stream;
     size_t scanlineBytes;
+    size_t bytesPerPixel;
+    size_t currentByte;
     int32_t currentCol;
     int32_t currentRow;
-    uint32_t currentElem;
-    size_t currentByte;
-    int bytesPerPixel;
+    int32_t currentElem;
     uint8_t *currentScanline;
     uint8_t *previousScanline;
     uint8_t currentFilter;
     uint8_t interlacePass;
-    size_t compressedBytes;
 
     /* used for constructing 16 bit deep pixels */
     int tmpCount;
     uint8_t tmpBytes[2];
 
     /* the output image */
-    LuImage *img;
-    const LuImage *cimg; /* constant pointer version */
+    union {
+        LuImage *img;
+        const LuImage *cimg;
+    };
 } PngInfoStruct;
 
 typedef struct
@@ -247,13 +242,7 @@ static LU_INLINE uint32_t swap32(uint32_t n)
 
 static LU_INLINE uint16_t swap16(uint16_t n)
 {
-    union {
-        unsigned char np[2];
-        uint16_t i;
-    } u;
-    u.i = n;
-
-    return ((uint16_t)u.np[0] << 8) | (uint16_t)u.np[1];
+    return (n << 8) | (n >> 8);
 }
 
 static int bytesEqual(const uint8_t *a, const uint8_t *b, size_t count)
@@ -271,7 +260,7 @@ static int bytesEqual(const uint8_t *a, const uint8_t *b, size_t count)
 static void* internalMalloc(size_t size, void *userPtr)
 {
     (void)userPtr; /* not used */
-    return malloc(size);
+    return calloc(1, size);
 }
 
 static void internalFree(void *ptr, void *userPtr)
@@ -325,18 +314,17 @@ static LU_INLINE int absi(int val)
 
 static LU_INLINE uint8_t raw(PngInfoStruct *info, size_t col)
 {
-    if (col > SIZE_T_MAX_POSITIVE)
+    if (col > (SIZE_MAX >> 1))
         return 0;
     return info->currentScanline[col];
 }
 
 static LU_INLINE uint8_t prior(PngInfoStruct *info, size_t col)
 {
-    if (info->currentRow <= startingRow[info->interlacePass] || col > SIZE_T_MAX_POSITIVE)
+    if (info->currentRow <= startingRow[info->interlacePass] || col > (SIZE_MAX >> 1))
         return 0;
     return info->previousScanline[col];
 }
-
 
 static LU_INLINE uint8_t paethPredictor(uint8_t a, uint8_t b, uint8_t c)
 {
@@ -485,21 +473,20 @@ static LU_INLINE int parseIhdr(PngInfoStruct *info, PngChunk *chunk)
         return PNG_ERROR;
     }
 
-    memset(&(info->stream), 0, sizeof(info->stream));
-    if(inflateInit(&(info->stream)) != Z_OK)
+    memset(&info->stream, 0, sizeof(info->stream));
+    if(inflateInit(&info->stream) != Z_OK)
     {
         LUPNG_WARN(info, "PNG: inflateInit failed!");
         return PNG_ERROR;
     }
     info->img = luImageCreate(info->width, info->height,
                               info->channels, info->depth < 16 ? 8 : 16, NULL, info->userCtx);
-    info->cimg = info->img;
-    info->scanlineBytes = MAX((info->width * info->channels * info->depth) >> 3, 1);
+    info->bytesPerPixel = MAX((info->channels * info->depth) >> 3, 1);
+    info->scanlineBytes = info->width * info->bytesPerPixel;
     info->currentScanline = (uint8_t *)info->userCtx->allocProc(info->scanlineBytes, info->userCtx->allocProcUserPtr);
     info->previousScanline = (uint8_t *)info->userCtx->allocProc(info->scanlineBytes, info->userCtx->allocProcUserPtr);
     info->currentCol = -1;
     info->interlacePass = info->interlace ? 1 : 0;
-    info->bytesPerPixel = MAX((info->channels * info->depth) >> 3, 1);
     if (!info->img || !info->currentScanline || !info->previousScanline)
     {
         LUPNG_WARN(info, "PNG: memory allocation failed!");
@@ -742,10 +729,9 @@ static LU_INLINE int parseIdat(PngInfoStruct *info, PngChunk *chunk)
 
                 if (info->depth < 8)
                 {
-                    int j;
                     stretchBits(rawByte, fullBytes, info->depth);
-                    for (j = 0; j < 8/info->depth; ++j)
-                        if(insertByte(info, fullBytes[j]))
+                    for (int j = 0; j < 8/info->depth; ++j)
+                        if (insertByte(info, fullBytes[j]))
                             break;
                 }
                 else
@@ -846,17 +832,13 @@ static LU_INLINE int handleChunk(PngInfoStruct *info, PngChunk *chunk)
 
 LuImage *luPngReadUC(const LuUserContext *userCtx)
 {
-
+    PngInfoStruct info = { .userCtx = userCtx };
     uint8_t signature[PNG_SIG_SIZE];
     int status = PNG_ERROR;
 
-    PngInfoStruct info;
-    memset(&info, 0, sizeof(PngInfoStruct));
-    info.userCtx = userCtx;
-
     if (!userCtx->skipSig)
     {
-        info.userCtx->readProc((void *)signature, 1, PNG_SIG_SIZE, info.userCtx->readProcUserPtr);
+        userCtx->readProc((void *)signature, 1, PNG_SIG_SIZE, userCtx->readProcUserPtr);
         status = bytesEqual(signature, PNG_SIG, PNG_SIG_SIZE) ? PNG_OK : PNG_ERROR;
     }
 
@@ -882,9 +864,9 @@ LuImage *luPngReadUC(const LuUserContext *userCtx)
 
     if (status == PNG_DONE)
         return info.img;
-    else
-        if (info.img)
-            luImageRelease(info.img, info.userCtx);
+
+    if (info.img)
+        luImageRelease(info.img, info.userCtx);
 
     return NULL;
 }
@@ -934,43 +916,44 @@ LuImage *luPngReadMem(const void *data, size_t size)
 
 static LU_INLINE int writeIhdr(PngInfoStruct *info)
 {
-    static uint8_t buf[17];
-    static const uint8_t colorType[] = {
+   const uint8_t colorType[] = {
             PNG_GRAYSCALE,
             PNG_GRAYSCALE_ALPHA,
             PNG_TRUECOLOR,
             PNG_TRUECOLOR_ALPHA
     };
-    size_t written = 0;
-    PngChunk c;
 
-    if (info->cimg->channels > 4)
+    if (info->img->channels > 4)
     {
         LUPNG_WARN(info, "PNG: too many channels in image");
         return PNG_ERROR;
     }
 
+    uint8_t buffer[25];
+    PngChunk c;
+
     c.length = swap32(13);
-    c.type = buf; /* 4 (type) + 4 + 4 + 5x1 */
+    c.type = buffer + 4; /* 4 (type) + 4 + 4 + 5x1 */
     c.data = c.type + 4;
 
     memcpy((void *)c.type, (void *)"IHDR", 4);
-    *(uint32_t *)(c.data)     = swap32((uint32_t)info->cimg->width);
-    *(uint32_t *)(c.data + 4) = swap32((uint32_t)info->cimg->height);
-    *(c.data + 8)  = info->cimg->depth;
-    *(c.data + 9)  = colorType[info->cimg->channels-1];
+    *(uint32_t *)(c.data)     = swap32((uint32_t)info->img->width);
+    *(uint32_t *)(c.data + 4) = swap32((uint32_t)info->img->height);
+    *(c.data + 8)  = info->img->depth;
+    *(c.data + 9)  = colorType[info->img->channels-1];
     *(c.data + 10) = 0; /* compression method */
     *(c.data + 11) = 0; /* filter method */
     *(c.data + 12) = 0; /* interlace method: none */
 
     c.crc = swap32(crc(c.type, 17));
 
-    written += info->userCtx->writeProc((void *)&c.length, 4, 1, info->userCtx->writeProcUserPtr) * 4;
-    written += info->userCtx->writeProc((void *)c.type, 1, 4, info->userCtx->writeProcUserPtr);
-    written += info->userCtx->writeProc((void *)c.data, 1, 13, info->userCtx->writeProcUserPtr);
-    written += info->userCtx->writeProc((void *)&c.crc, 4, 1, info->userCtx->writeProcUserPtr) * 4;
 
-    if (written != 25)
+    memcpy(buffer + 0, &c.length, 4);
+    // memcpy(buffer + 4, c.type, 4);
+    // memcpy(buffer + 8, c.data, 13);
+    memcpy(buffer + 21, &c.crc, 4);
+
+    if (info->userCtx->writeProc(buffer, 25, 1, info->userCtx->writeProcUserPtr) != 1)
     {
         LUPNG_WARN(info, "PNG: write error");
         return PNG_ERROR;
@@ -1053,7 +1036,7 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
         LUPNG_WARN(info, "PNG: memory allocation failed!");
     }
 
-    memset(&(info->stream), 0, sizeof(info->stream));
+    memset(&info->stream, 0, sizeof(info->stream));
 
     int ret = deflateInit(&(info->stream), info->userCtx->compressionLevel);
     if(ret != Z_OK)
@@ -1067,11 +1050,9 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
     info->stream.avail_out = BUF_SIZE;
     info->stream.next_out = compressed;
 
-    for (info->currentRow = 0; info->currentRow < info->cimg->height;
-         ++info->currentRow)
+    for (info->currentRow = 0; info->currentRow < info->img->height; ++info->currentRow)
     {
-        int flush = (info->currentRow < info->cimg->height-1) ?
-        Z_NO_FLUSH : Z_FINISH;
+        int flush = (info->currentRow < info->img->height-1) ? Z_NO_FLUSH : Z_FINISH;
         minSum = (size_t)-1;
 
         /*
@@ -1079,7 +1060,7 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
          * scanline when processing row 0. And next time it'll be valid.
          */
         info->previousScanline = info->currentScanline;
-        info->currentScanline = info->cimg->data + (info->currentRow*info->scanlineBytes);
+        info->currentScanline = info->img->data + (info->currentRow*info->scanlineBytes);
 
         /*
          * Try to choose the best filter for each scanline.
@@ -1087,7 +1068,6 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
          */
         for (info->currentFilter = PNG_FILTER_NONE; info->currentFilter <= PNG_FILTER_PAETH; ++info->currentFilter)
         {
-
             switch (info->currentFilter)
             {
                 case PNG_FILTER_NONE:
@@ -1150,14 +1130,14 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
 static LU_INLINE int writeIend(PngInfoStruct *info)
 {
     PngChunk c = { 0, (uint8_t *)"IEND", 0, 0 };
-    size_t written = 0;
     c.crc = swap32(crc(c.type, 4));
+    uint8_t buffer[12];
 
-    written += info->userCtx->writeProc((void *)&c.length, 4, 1, info->userCtx->writeProcUserPtr) * 4;
-    written += info->userCtx->writeProc((void *)c.type, 1, 4, info->userCtx->writeProcUserPtr);
-    written += info->userCtx->writeProc((void *)&c.crc, 4, 1, info->userCtx->writeProcUserPtr) * 4;
+    memcpy(buffer + 0, &c.length, 4);
+    memcpy(buffer + 4, c.type, 4);
+    memcpy(buffer + 8, &c.crc, 4);
 
-    if (written != 12)
+    if (info->userCtx->writeProc(buffer, 12, 1, info->userCtx->writeProcUserPtr) != 1)
     {
         LUPNG_WARN(info, "PNG: write error");
         return PNG_ERROR;
@@ -1168,54 +1148,60 @@ static LU_INLINE int writeIend(PngInfoStruct *info)
 
 int luPngWriteUC(const LuUserContext *userCtx, const LuImage *img)
 {
-    PngInfoStruct info;
-    memset(&info, 0, sizeof(PngInfoStruct));
-    info.userCtx = userCtx;
-    info.cimg = img;
-    info.bytesPerPixel = (info.cimg->channels * info.cimg->depth) >> 3;
+    PngInfoStruct info = {
+        .userCtx = userCtx,
+        .cimg = img,
+        .bytesPerPixel = (img->channels * img->depth) >> 3,
+        .scanlineBytes = ((img->channels * img->depth) >> 3) * img->width,
+    };
+    int status = PNG_ERROR;
 
-    if (info.userCtx->writeProc((void *)PNG_SIG, 1, PNG_SIG_SIZE, info.userCtx->writeProcUserPtr) != PNG_SIG_SIZE)
+    if (userCtx->writeProc((void *)PNG_SIG, 1, PNG_SIG_SIZE, userCtx->writeProcUserPtr) != PNG_SIG_SIZE)
     {
-        LUPNG_WARN(&info, "PNG: write error");
-        return PNG_ERROR;
+        LUPNG_WARN(&info, "PNG: writeProc() error");
+        goto _cleanup;
     }
 
-    if (writeIhdr(&info) != PNG_OK)
-        return PNG_ERROR;
-
-    info.scanlineBytes = (info.cimg->depth >> 3) * info.cimg->channels * info.cimg->width;
-    if (processPixels(&info) != PNG_OK)
+    if ((status = writeIhdr(&info)) != PNG_OK)
     {
-        deflateEnd(&(info.stream));
-        return PNG_ERROR;
+        LUPNG_WARN(&info, "PNG: writeIhdr() error");
+        goto _cleanup;
     }
 
-    deflateEnd(&(info.stream));
-    return writeIend(&info);
+    if ((status = processPixels(&info)) != PNG_OK)
+    {
+        LUPNG_WARN(&info, "PNG: processPixels() error");
+        deflateEnd(&info.stream);
+        goto _cleanup;
+    }
+
+    deflateEnd(&info.stream);
+    status = writeIend(&info);
+
+_cleanup:
+    return status;
 }
 
 int luPngWrite(PngWriteProc writeProc, void *userPtr, const LuImage *img)
 {
     LuUserContext userCtx;
-
     luUserContextInitDefault(&userCtx);
+
     userCtx.writeProc = writeProc;
     userCtx.writeProcUserPtr = userPtr;
+
     return luPngWriteUC(&userCtx, img);
 }
 
 int luPngWriteFile(const char *filename, const LuImage *img)
 {
     LuUserContext userCtx;
-    FILE *f;
-
-    if (!img)
-    {
-        return PNG_ERROR;
-    }
-
-    f = fopen(filename,"wb");
     luUserContextInitDefault(&userCtx);
+
+    if (!img || !filename)
+        return PNG_ERROR;
+
+    FILE *f = fopen(filename,"wb");
     if (f)
     {
         userCtx.writeProc = internalFwrite;
@@ -1253,7 +1239,8 @@ LuImage *luImageCreate(size_t width, size_t height, uint8_t channels, uint8_t de
     LuImage *img;
     LuUserContext ucDefault;
 
-    if (userCtx == NULL) {
+    if (userCtx == NULL)
+    {
         luUserContextInitDefault(&ucDefault);
         userCtx = &ucDefault;
     }
@@ -1263,7 +1250,9 @@ LuImage *luImageCreate(size_t width, size_t height, uint8_t channels, uint8_t de
         LUPNG_WARN_UC(userCtx,"Image: only bit depths 8 and 16 are supported!");
         return NULL;
     }
-    if (width > 0x7FFFFFFF || height > 0x7FFFFFFF) {
+
+    if (width > 0x7FFFFFFF || height > 0x7FFFFFFF)
+    {
         LUPNG_WARN_UC(userCtx, "Image: only 32 bit signed image dimensions are supported!");
         return NULL;
     }
@@ -1281,10 +1270,7 @@ LuImage *luImageCreate(size_t width, size_t height, uint8_t channels, uint8_t de
     img->channels = channels;
     img->depth = depth;
     img->dataSize = (size_t)((depth >> 3) * width * height * channels);
-    if (buffer)
-        img->data = buffer;
-    else
-        img->data = (uint8_t *)userCtx->allocProc(img->dataSize, userCtx->allocProcUserPtr);
+    img->data = buffer ? buffer : userCtx->allocProc(img->dataSize, userCtx->allocProcUserPtr);
 
     if (img->data == NULL)
     {
@@ -1298,24 +1284,20 @@ LuImage *luImageCreate(size_t width, size_t height, uint8_t channels, uint8_t de
 
 uint8_t *luImageExtractBufAndRelease(LuImage *img, const LuUserContext *userCtx)
 {
-    uint8_t *data;
     LuUserContext ucDefault;
 
-    if (userCtx == NULL) {
+    if (!img)
+        return NULL;
+
+    if (userCtx == NULL)
+    {
         luUserContextInitDefault(&ucDefault);
         userCtx = &ucDefault;
     }
 
-    if (img)
-    {
-        data = img->data;
-        img->data = NULL;
-        luImageRelease(img, userCtx);
-    }
-    else
-    {
-        data = NULL;
-    }
+    uint8_t *data = img->data;
+    img->data = NULL;
+    luImageRelease(img, userCtx);
 
     return data;
 }

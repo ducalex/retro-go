@@ -933,46 +933,57 @@ rg_display_force_refresh(void)
 bool
 rg_display_save_frame(const char *filename, rg_video_frame_t *frame, double scale)
 {
-    // We do not support upscale right now
-    scale = RG_MIN(scale, 1.0);
+    size_t img_width = (size_t)(frame->width * scale) & ~1;
+    size_t img_height = (size_t)(frame->height * scale) & ~1;
+    float step_x = (float)frame->width / img_width;
+    float step_y = (float)frame->height / img_height;
 
-    LuImage *png = luImageCreate(frame->width * scale, frame->height * scale, 3, 8, 0, 0);
+    printf("%s: Saving frame: %dx%d to PNG %dx%d. Step: X=%.3f Y=%.3f\n",
+        __func__, frame->width, frame->height, img_width, img_height, step_x, step_y);
+
+    assert(step_x > 0 && step_y > 0);
+
+    LuImage *png = luImageCreate(img_width, img_height, 3, 8, 0, 0);
     if (!png)
-        return false;
-
-    uint8_t *dst = png->data;
-    uint32_t pixel_mask = frame->pixel_mask;
-    uint16_t *palette = frame->palette;
-    double factor = 1.0 + (1.0 - scale);
-
-    printf("%s: Rendering frame: %dx%d\n", __func__, png->width, png->height);
-
-    for (size_t y = 0; y < png->height; y++)
     {
-        uint8_t *line = frame->buffer + ((int)(y * factor) * frame->stride);
+        printf("%s: LuImage allocation failed!\n", __func__);
+        return false;
+    }
 
-        for (size_t x = 0; x < png->width; x++)
+    uint8_t *img_ptr = png->data;
+
+    for (int y = 0; y < img_height; y++)
+    {
+        uint8_t *line = frame->buffer + ((int)(y * step_y) * frame->stride);
+
+        for (int x = 0; x < img_width; x++)
         {
             uint32_t pixel;
 
             if (frame->flags & RG_PIXEL_PAL)
-                pixel = palette[line[(int)(x * factor)] & pixel_mask];
+                pixel = ((uint16_t*)frame->palette)[line[(int)(x * step_x)] & frame->pixel_mask];
             else
-                pixel = ((uint16_t*)line)[(int)(x * factor)];
+                pixel = ((uint16_t*)line)[(int)(x * step_x)];
 
             if ((frame->flags & RG_PIXEL_LE) == 0) // BE to LE
                 pixel = (pixel << 8) | (pixel >> 8);
 
-            *(dst++) = ((pixel >> 11) & 0x1F) << 3;
-            *(dst++) = ((pixel >> 5) & 0x3F) << 2;
-            *(dst++) = (pixel & 0x1F) << 3;
+            *(img_ptr++) = ((pixel >> 11) & 0x1F) << 3;
+            *(img_ptr++) = ((pixel >> 5) & 0x3F) << 2;
+            *(img_ptr++) = (pixel & 0x1F) << 3;
         }
     }
 
-    bool success = luPngWriteFile(filename, png);
+    bool status = luPngWriteFile(filename, png);
     luImageRelease(png, 0);
 
-    return success;
+    if (status != PNG_OK)
+    {
+        printf("%s: luPngWriteFile() failed! %d\n", __func__, status);
+        return false;
+    }
+
+    return true;
 }
 
 IRAM_ATTR screen_update_t
