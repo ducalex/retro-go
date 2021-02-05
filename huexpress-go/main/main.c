@@ -23,11 +23,9 @@
 static uint16_t mypalette[256];
 static uint8_t *framebuffers[2];
 static rg_video_frame_t frames[2];
-static rg_video_frame_t *curFrame, *prevFrame;
-static uint8_t current_fb = 0;
-static bool gfx_init_done = false;
-static bool overscan = false;
+static rg_video_frame_t *currentUpdate = &frames[0];
 static int current_height, current_width;
+static bool overscan = false;
 
 static int skipFrames = 0;
 static int blitFrames = 0;
@@ -46,22 +44,20 @@ static bool netplay = false;
 #endif
 // --- MAIN
 
-#define COLOR_RGB(r, g, b) ((((r) << 12) & 0xf800) + (((g) << 7) & 0x07e0) + (((b) << 1) & 0x001f))
-
-// We center the content vertically and horizontally to allow overflows all around
-#define FB_INTERNAL_OFFSET (((XBUF_HEIGHT - current_height) / 2 + 16) * XBUF_WIDTH + (XBUF_WIDTH - current_width) / 2)
-
-// #define USE_PARTIAL_FRAMES
-
-static inline void set_current_fb(int i)
+static inline void clear_buffer(rg_video_frame_t *update)
 {
-    current_fb = i & 1;
-    prevFrame = curFrame;
-    curFrame = &frames[current_fb];
+    void *buffer = update->buffer;
+    for (int i = 0; i < update->height; ++i)
+    {
+        memset(buffer, PCE.Palette[0], update->width);
+        buffer += update->stride;
+    }
 }
 
 static inline void set_color(int index, uint8_t r, uint8_t g, uint8_t b)
 {
+    #define COLOR_RGB(r, g, b) ((((r) << 12) & 0xf800) + (((g) << 7) & 0x07e0) + (((b) << 1) & 0x001f))
+
     uint16_t col = 0xffff;
     if (index != 255)
     {
@@ -73,11 +69,9 @@ static inline void set_color(int index, uint8_t r, uint8_t g, uint8_t b)
 
 uint8_t *osd_gfx_framebuffer(void)
 {
-    if (skipFrames == 0)
-    {
-        return framebuffers[current_fb] + FB_INTERNAL_OFFSET;
-    }
-    return NULL;
+    if (skipFrames > 0)
+        return NULL;
+    return (uint8_t *)currentUpdate->my_arg;
 }
 
 void osd_gfx_init(void)
@@ -93,20 +87,23 @@ void osd_gfx_init(void)
         set_color(i, (i & 0x1C) << 1, (i & 0xe0) >> 2, (i & 0x03) << 4);
     }
     set_color(255, 0x3f, 0x3f, 0x3f);
+
+    osd_gfx_set_mode(256, 240);
 }
 
 void osd_gfx_set_mode(int width, int height)
 {
-    printf("%s: Resolution: %dx%d\n", __func__, width, height);
+    int crop_h = MAX(0, width - RG_SCREEN_WIDTH);
+    int crop_v = MAX(0, height - RG_SCREEN_HEIGHT) + (overscan ? 6 : 0);
+
+    // We center the content vertically and horizontally to allow overflows all around
+    int offset_center = (((XBUF_HEIGHT - height) / 2 + 16) * XBUF_WIDTH + (XBUF_WIDTH - width) / 2);
+    int offset_cropping = (crop_v / 2) * XBUF_WIDTH + (crop_h / 2);
 
     current_width = width;
     current_height = height;
 
-    int crop_h = MAX(0, width - RG_SCREEN_WIDTH);
-    int crop_v = MAX(0, height - RG_SCREEN_HEIGHT) + (overscan ? 6 : 0);
-    int crop_offset = (crop_v / 2) * XBUF_WIDTH + (crop_h / 2);
-
-    printf("%s: Cropping H: %d V: %d\n", __func__, crop_h, crop_v);
+    printf("%s: Resolution: %dx%d / Cropping: H: %d V: %d\n", __func__, width, height, crop_h, crop_v);
 
     frames[0].flags = RG_PIXEL_PAL|RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].width = width - crop_h;
@@ -116,30 +113,31 @@ void osd_gfx_set_mode(int width, int height)
     frames[0].palette = mypalette;
     frames[1] = frames[0];
 
-    frames[0].buffer = framebuffers[0] + FB_INTERNAL_OFFSET + crop_offset;
-    frames[1].buffer = framebuffers[1] + FB_INTERNAL_OFFSET + crop_offset;
+    frames[0].buffer = framebuffers[0] + offset_center + offset_cropping;
+    frames[1].buffer = framebuffers[1] + offset_center + offset_cropping;
 
-    set_current_fb(0);
+    frames[0].my_arg = framebuffers[0] + offset_center;
+    frames[1].my_arg = framebuffers[1] + offset_center;
 
-    gfx_init_done = true;
+    currentUpdate = &frames[0];
+    clear_buffer(currentUpdate);
 }
 
 void osd_gfx_blit(void)
 {
-    if (!gfx_init_done)
-        return;
-
     bool drawFrame = !skipFrames;
 
     if (drawFrame)
     {
-        prevFrame = NULL;
-        if (rg_display_queue_update(curFrame, prevFrame) == RG_SCREEN_UPDATE_FULL)
+        rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
+        if (rg_display_queue_update(currentUpdate, NULL) == RG_SCREEN_UPDATE_FULL)
         {
             fullFrames++;
         }
-        set_current_fb(!current_fb);
         blitFrames++;
+
+        currentUpdate = previousUpdate;
+        clear_buffer(currentUpdate);
     }
 
     // See if we need to skip a frame to keep up
@@ -234,16 +232,6 @@ static void audioTask(void *arg)
     vTaskDelete(NULL);
 }
 
-static void clear_buffer(rg_video_frame_t *update)
-{
-    void *buffer = update->buffer;
-    for (int i = 0; i < update->height; ++i)
-    {
-        memset(buffer, PCE.Palette[0], update->width);
-        buffer += update->stride;
-    }
-}
-
 void osd_snd_init(void)
 {
     host.sound.stereo = true;
@@ -305,7 +293,20 @@ void *osd_alloc(size_t size)
 
 static bool save_state(char *pathName)
 {
-    return SaveState(pathName) == 0;
+    if (SaveState(pathName) == 0)
+    {
+        char *filename = rg_emu_get_path(EMU_PATH_SCREENSHOT, 0);
+        if (filename)
+        {
+            // We must use previous update because at this point current has been wiped.
+            rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
+            rg_display_save_frame(filename, previousUpdate, 160.f / (previousUpdate->width - 2));
+            rg_free(filename);
+        }
+        return true;
+    }
+
+    return false;
 }
 
 static bool load_state(char *pathName)
@@ -322,7 +323,10 @@ void app_main(void)
 {
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     rg_emu_init(&load_state, &save_state, NULL);
-    rg_display_set_callback(clear_buffer);
+
+    // Clearing the buffer on the display core is somewhat faster, but it
+    // prevents us from doing partial updates and screenshots.
+    // rg_display_set_callback(clear_buffer);
 
     app = rg_system_get_app();
 

@@ -70,6 +70,7 @@ typedef struct {
     uint32_t pixel_mask;    // Used only with palette
     void *buffer;           // Should be at least height*stride bytes
     void *palette;          //
+    void *my_arg;           // Reserved for user usage
     rg_line_diff_t diff[256];
 } rg_video_frame_t;
 

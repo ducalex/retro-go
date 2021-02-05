@@ -1255,7 +1255,7 @@ LuImage *luImageCreate(size_t width, size_t height, uint8_t channels, uint8_t de
 
     if (userCtx == NULL) {
         luUserContextInitDefault(&ucDefault);
-	userCtx = &ucDefault;
+        userCtx = &ucDefault;
     }
 
     if (depth != 8 && depth != 16)
@@ -1272,6 +1272,7 @@ LuImage *luImageCreate(size_t width, size_t height, uint8_t channels, uint8_t de
         img = userCtx->overrideImage;
     else
         img = (LuImage *)userCtx->allocProc(sizeof(LuImage), userCtx->allocProcUserPtr);
+
     if (!img)
         return NULL;
 
@@ -1287,6 +1288,7 @@ LuImage *luImageCreate(size_t width, size_t height, uint8_t channels, uint8_t de
 
     if (img->data == NULL)
     {
+        LUPNG_WARN_UC(userCtx, "Image->data: Out of memory!");
         luImageRelease(img, userCtx);
         return NULL;
     }
