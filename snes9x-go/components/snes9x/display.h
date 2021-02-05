@@ -26,6 +26,10 @@ enum s9x_getdirtype
 	LAST_DIR
 };
 
+#ifndef SET_UI_COLOR
+#define SET_UI_COLOR(r, g, b) ;
+#endif
+
 void S9xSetInfoString (const char *);
 
 // Routines the port has to implement even if it doesn't use them

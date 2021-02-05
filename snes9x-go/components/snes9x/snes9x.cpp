@@ -4,19 +4,14 @@
    For further information, consult the LICENSE file in the root directory.
 \*****************************************************************************/
 
-#include <ctype.h>
-#include <string.h>
-#include <strings.h>
-
 #include "snes9x.h"
 #include "memory.h"
 #include "controls.h"
 #include "display.h"
 
-#ifdef DEBUGGER
-#include "debug.h"
-extern FILE	*trace;
-#endif
+struct SSettings Settings;
+char String[513];
+
 
 void S9xInitSettings(void)
 {

@@ -15,6 +15,9 @@
 #include "debug.h"
 #endif
 
+struct SPPU				PPU;
+struct InternalPPU		IPPU;
+
 
 static inline void S9xLatchCounters (bool force)
 {

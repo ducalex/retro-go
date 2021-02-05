@@ -120,7 +120,7 @@ extern struct SGFX	GFX;
 
 void S9xStartScreenRefresh (void);
 void S9xEndScreenRefresh (void);
-void RenderLine (int);
+void S9xRenderLine (int);
 void S9xDisplayChar (uint16 *, uint8);
 void S9xGraphicsScreenResize (void);
 void S9xDisplayMessages (uint16 *, int, int, int, int);

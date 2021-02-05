@@ -14,6 +14,9 @@
 
 #define ADD_CYCLES(n)	{ CPU.Cycles += (n); }
 
+struct SDMA	DMA[8];
+
+
 static inline bool8 addCyclesInDMA (uint32 dma_channel)
 {
 	// Add 8 cycles per byte, sync APU, and do HC related events.

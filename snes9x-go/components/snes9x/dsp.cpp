@@ -13,6 +13,10 @@
 uint8	(*GetDSP) (uint16)        = NULL;
 void	(*SetDSP) (uint8, uint16) = NULL;
 
+struct SDSP0	DSP0;
+struct SDSP1	DSP1;
+struct SDSP2	DSP2;
+
 
 void S9xResetDSP (void)
 {

@@ -14,21 +14,10 @@
 #include "debug.h"
 #endif
 
+struct SCPUState		CPU;
+struct SICPU			ICPU;
+struct SRegisters		Registers;
 
-#define CHECK_FOR_IRQ_CHANGE() \
-if (CPU.IRQFlagChanging) \
-{ \
-	if (CPU.IRQFlagChanging & IRQ_TRIGGER_NMI) \
-	{ \
-		CPU.NMIPending = TRUE; \
-		CPU.NMITriggerPos = CPU.Cycles + 6; \
-	} \
-	if (CPU.IRQFlagChanging & IRQ_CLEAR_FLAG) \
-		ClearIRQ(); \
-	else if (CPU.IRQFlagChanging & IRQ_SET_FLAG) \
-		SetIRQ(); \
-	CPU.IRQFlagChanging = IRQ_NONE; \
-}
 
 IRAM_ATTR void S9xMainLoop (void)
 {
@@ -37,6 +26,21 @@ IRAM_ATTR void S9xMainLoop (void)
 	uint32 Op = 0;
 
 	CPU.Flags &= ~SCAN_KEYS_FLAG;
+
+	#define CHECK_FOR_IRQ_CHANGE() \
+	if (CPU.IRQFlagChanging) \
+	{ \
+		if (CPU.IRQFlagChanging & IRQ_TRIGGER_NMI) \
+		{ \
+			CPU.NMIPending = TRUE; \
+			CPU.NMITriggerPos = CPU.Cycles + 6; \
+		} \
+		if (CPU.IRQFlagChanging & IRQ_CLEAR_FLAG) \
+			ClearIRQ(); \
+		else if (CPU.IRQFlagChanging & IRQ_SET_FLAG) \
+			SetIRQ(); \
+		CPU.IRQFlagChanging = IRQ_NONE; \
+	}
 
 	for (;;)
 	{
@@ -317,7 +321,7 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 
 			case HC_RENDER_EVENT:
 				if (CPU.V_Counter >= FIRST_VISIBLE_LINE && CPU.V_Counter <= PPU.ScreenHeight)
-					RenderLine((uint8) (CPU.V_Counter - FIRST_VISIBLE_LINE));
+					S9xRenderLine((uint8) (CPU.V_Counter - FIRST_VISIBLE_LINE));
 
 				CPU.WhichEvent = HC_WRAM_REFRESH_EVENT;
 				CPU.NextEvent  = SNES_WRAM_REFRESH_HC;

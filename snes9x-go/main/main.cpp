@@ -366,6 +366,7 @@ static void snes9x_task(void *arg)
 
 	bool menuCancelled = false;
 	bool menuPressed = false;
+	bool fullFrame = false;
 
 	while (1)
 	{
@@ -410,21 +411,14 @@ static void snes9x_task(void *arg)
 		if (IPPU.RenderThisFrame)
 		{
 			rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
-
-			bool full = rg_display_queue_update(currentUpdate, previousUpdate) == RG_SCREEN_UPDATE_FULL;
-			// rg_display_queue_update(currentUpdate, NULL);
-
+			fullFrame = rg_display_queue_update(currentUpdate, previousUpdate);
 			currentUpdate = previousUpdate;
-			GFX.Screen = (uint16*)currentUpdate->buffer;
+		}
 
-			rg_system_tick(true, full, elapsed);
-		}
-		else
-		{
-			rg_system_tick(false, false, elapsed);
-		}
+		rg_system_tick(IPPU.RenderThisFrame, fullFrame, elapsed);
 
 		IPPU.RenderThisFrame = (((++frames_counter) & 3) == 3);
+		GFX.Screen = (uint16*)currentUpdate->buffer;
 	}
 
 	vTaskDelete(NULL);

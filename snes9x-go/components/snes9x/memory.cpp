@@ -5,24 +5,15 @@
 \*****************************************************************************/
 
 #include <string>
-#include <numeric>
-#include <assert.h>
-#include <ctype.h>
-
 #include "snes9x.h"
 #include "memory.h"
 #include "apu/apu.h"
 #include "controls.h"
 #include "display.h"
 
-#ifndef SET_UI_COLOR
-#define SET_UI_COLOR(r, g, b) ;
-#endif
+CMemory		Memory;
+uint32		OpenBus = 0;
 
-#undef max
-#define max(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
-#undef min
-#define min(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
 
 extern uint32 crc32_le(uint32 crc, uint8 const * buf, uint32 len);
 
