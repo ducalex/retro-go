@@ -92,20 +92,17 @@ void system_load_state(void *mem)
   system_reset();
 
   /*** Set SMS Context ***/
-  sms_t sms_tmp;
-  fread(&sms_tmp, sizeof(sms_tmp), 1, mem);
-  if(sms.console != sms_tmp.console)
+  int current_console = sms.console;
+  fread(&sms, sizeof(sms), 1, mem);
+  if(sms.console != current_console)
   {
       system_reset();
       printf("%s: Bad save data\n", __func__);
       return;
   }
-  sms = sms_tmp;
 
   /*** Set vdp state ***/
   fread(&vdp, sizeof(vdp), 1, mem);
-
-
 
   /** restore video & audio settings (needed if timing changed) ***/
   vdp_init();

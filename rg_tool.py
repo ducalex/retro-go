@@ -300,7 +300,10 @@ if command == "flash":
         flash_app(target, args.port, find_app(target, args.offset, args.app_offset))
 
 if command == "monitor":
-    monitor_app(targets[0], args.port)
+    if len(targets) == 1:
+        monitor_app(targets[0], args.port)
+    else:
+        monitor_app("dummy", args.port)
 
 if command == "run":
     build_app(targets[0], args.with_debugging, args.with_profiling, args.with_netplay)

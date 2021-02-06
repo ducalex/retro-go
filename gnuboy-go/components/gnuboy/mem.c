@@ -55,22 +55,19 @@ void IRAM_ATTR mem_updatemap()
 		mbc.rmap[0x7] = rom.bank[mbc.rombank] - 0x4000;
 	}
 
-	// VRAM
+	// Video RAM
 	mbc.rmap[0x8] = mbc.wmap[0x8] = lcd.vbank[R_VBK & 1] - 0x8000;
 	mbc.rmap[0x9] = mbc.wmap[0x9] = lcd.vbank[R_VBK & 1] - 0x8000;
 
-	// SRAM
+	// Backup RAM
 	if (mbc.enableram && !(rtc.sel & 8))
 	{
 	 	// mbc.rmap[0xA] = mbc.wmap[0xA] = ram.sbank[mbc.rambank] - 0xA000;
 	 	// mbc.rmap[0xB] = mbc.wmap[0xB] = ram.sbank[mbc.rambank] - 0xA000;
 	}
 
-	// WRAM
-	// NOTE: This cause stuttering in some games, needs more investigating...
-	// mbc.rmap[0xC] = mbc.wmap[0xC] = ram.ibank[0] - 0xC000;
-	// mbc.rmap[0xD] = mbc.wmap[0xD] = ram.ibank[(R_SVBK & 0x7) ?: 1] - 0xD000;
-	// mbc.rmap[0xE] = mbc.wmap[0xE] = ram.ibank[0] - 0xE000; // Mirror
+	// Work RAM
+	mbc.rmap[0xC] = mbc.wmap[0xC] = ram.ibank[0] - 0xC000;
 
 	// IO port and registers
 	mbc.rmap[0xF] = mbc.wmap[0xF] = NULL;

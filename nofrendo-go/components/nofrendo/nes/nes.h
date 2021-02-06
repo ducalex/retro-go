@@ -72,6 +72,7 @@ typedef struct nes_s
     mem_t *mem;
 
     /* Video buffer */
+    bitmap_t *framebuffers[2];
     bitmap_t *vidbuf;
 
     /* Misc */

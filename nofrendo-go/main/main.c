@@ -379,7 +379,6 @@ void osd_getinput(void)
 
 void app_main(void)
 {
-    heap_caps_malloc_extmem_enable(64 * 1024);
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     rg_emu_init(&LoadState, &SaveState, &netplay_callback);
 

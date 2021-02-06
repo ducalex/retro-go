@@ -1023,28 +1023,28 @@ static LU_INLINE size_t filterScanline(PngInfoStruct *info,
  */
 static LU_INLINE int processPixels(PngInfoStruct *info)
 {
-    uint8_t idatBuf[BUF_SIZE+4] = {'I', 'D', 'A', 'T'};
-    uint8_t *compressed = idatBuf+4;
     uint8_t *filterCandidate = (uint8_t *)info->userCtx->allocProc(info->scanlineBytes+1, info->userCtx->allocProcUserPtr);
     uint8_t *bestCandidate = (uint8_t *)info->userCtx->allocProc(info->scanlineBytes+1, info->userCtx->allocProcUserPtr);
+    uint8_t *idatBuf = (uint8_t *)info->userCtx->allocProc(BUF_SIZE+4, info->userCtx->allocProcUserPtr);
+    uint8_t *compressed = idatBuf+4;
     size_t minSum = (size_t)-1, curSum = 0;
     int status = Z_OK;
     int is16bit = info->cimg->depth == 16;
 
-    if (!filterCandidate || !bestCandidate)
+    if (!idatBuf || !filterCandidate || !bestCandidate)
     {
         LUPNG_WARN(info, "PNG: memory allocation failed!");
+        goto _error;
     }
 
     memset(&info->stream, 0, sizeof(info->stream));
+    memcpy(idatBuf, "IDAT", 4);
 
     int ret = deflateInit(&(info->stream), info->userCtx->compressionLevel);
     if(ret != Z_OK)
     {
         LUPNG_WARN(info, "PNG: deflateInit failed (%d)!", ret);
-        info->userCtx->freeProc(filterCandidate, info->userCtx->freeProcUserPtr);
-        info->userCtx->freeProc(bestCandidate, info->userCtx->freeProcUserPtr);
-        return PNG_ERROR;
+        goto _error;
     }
 
     info->stream.avail_out = BUF_SIZE;
@@ -1123,8 +1123,16 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
 
     info->userCtx->freeProc(filterCandidate, info->userCtx->freeProcUserPtr);
     info->userCtx->freeProc(bestCandidate, info->userCtx->freeProcUserPtr);
+    info->userCtx->freeProc(idatBuf, info->userCtx->freeProcUserPtr);
 
     return PNG_OK;
+
+_error:
+    info->userCtx->freeProc(filterCandidate, info->userCtx->freeProcUserPtr);
+    info->userCtx->freeProc(bestCandidate, info->userCtx->freeProcUserPtr);
+    info->userCtx->freeProc(idatBuf, info->userCtx->freeProcUserPtr);
+
+    return PNG_ERROR;
 }
 
 static LU_INLINE int writeIend(PngInfoStruct *info)

@@ -40,6 +40,7 @@ typedef struct
     int32_t refreshRate;
     int32_t sampleRate;
     int32_t startAction;
+    void *mainTaskHandle;
 } rg_app_desc_t;
 
 typedef enum
@@ -85,6 +86,7 @@ typedef struct
     uint32_t freeMemoryExt;
     uint32_t freeBlockInt;
     uint32_t freeBlockExt;
+    uint32_t freeStackMain;
 } runtime_stats_t;
 
 void rg_system_init(int app_id, int sampleRate);

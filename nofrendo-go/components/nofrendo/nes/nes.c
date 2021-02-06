@@ -28,7 +28,6 @@
 #include "input.h"
 #include "nes.h"
 
-static bitmap_t *framebuffers[2];
 static nes_t nes;
 
 nes_t *nes_getptr(void)
@@ -92,7 +91,7 @@ void nes_emulate(void)
         if (nes.drawframe)
         {
             osd_blitscreen(nes.vidbuf);
-            nes.vidbuf = (nes.vidbuf == framebuffers[1]) ? framebuffers[0] : framebuffers[1];
+            nes.vidbuf = nes.framebuffers[nes.vidbuf == nes.framebuffers[0]];
         }
 
         apu_emulate();
@@ -170,7 +169,7 @@ void nes_reset(reset_type_t reset_type)
     mmc_reset();
     nes6502_reset();
 
-    nes.vidbuf = framebuffers[0];
+    nes.vidbuf = nes.framebuffers[0];
     nes.scanline = 241;
     nes.cycles = 0;
 
@@ -186,8 +185,8 @@ void nes_shutdown(void)
     apu_shutdown();
     nes6502_shutdown();
     rom_free(nes.rominfo);
-    bmp_free(framebuffers[0]);
-    bmp_free(framebuffers[1]);
+    bmp_free(nes.framebuffers[0]);
+    bmp_free(nes.framebuffers[1]);
 }
 
 /* Setup region-dependant timings */
@@ -227,9 +226,9 @@ bool nes_init(region_t region, int sample_rate, bool stereo)
     nes.drawframe = true;
 
     /* Framebuffers */
-    framebuffers[0] = bmp_create(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 8);
-    framebuffers[1] = bmp_create(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 8);
-    if (NULL == framebuffers[0] || NULL == framebuffers[1])
+    nes.framebuffers[0] = bmp_create(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 8);
+    nes.framebuffers[1] = bmp_create(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 8);
+    if (NULL == nes.framebuffers[0] || NULL == nes.framebuffers[1])
         goto _fail;
 
     /* memory */

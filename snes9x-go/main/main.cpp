@@ -430,11 +430,5 @@ extern "C" void app_main(void)
 	frames[0].buffer = rg_alloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2, MEM_SLOW);
 	frames[1].buffer = rg_alloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2, MEM_SLOW);
 
-	heap_caps_malloc_extmem_enable(32 * 1024);
-
-	// Important to set CONFIG_ESP_MAIN_TASK_STACK_SIZE=2048
-	// xTaskCreatePinnedToCore(&snes9x_task, "snes9x", 1024 * 32, NULL, 5, NULL, 0);
-
-	// Important to set CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
 	snes9x_task(NULL);
 }

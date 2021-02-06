@@ -195,21 +195,22 @@ int rom_loadbank(int bank)
 
 	if (rom.bank[bank])
 	{
-		printf("bank_load: bank %d already loaded!\n", bank);
+		printf("%s: bank %d already loaded!\n", __func__, bank);
+		free(rom.bank[bank]);
 		// return 0;
 	}
 
-	printf("bank_load: loading bank %d.\n", bank);
+	printf("%s: loading bank %d.\n", __func__, bank);
 	rom.bank[bank] = (byte*)malloc(BANK_SIZE);
-	if (rom.bank[bank] == NULL) {
-		while (true) {
-			uint8_t i = rand() & 0xFF;
-			if (rom.bank[i]) {
-				printf("bank_load: reclaiming bank %d.\n", i);
-				rom.bank[bank] = rom.bank[i];
-				rom.bank[i] = NULL;
-				break;
-			}
+	while (!rom.bank[bank])
+	{
+		int i = rand() & 0xFF;
+		if (rom.bank[i])
+		{
+			printf("%s: reclaiming bank %d.\n", __func__, i);
+			rom.bank[bank] = rom.bank[i];
+			rom.bank[i] = NULL;
+			break;
 		}
 	}
 
@@ -289,7 +290,7 @@ int rom_load(const char *file)
 		mbcName, mbc.romsize, rom.length / 1024, mbc.ramsize, mbc.ramsize * 8);
 
 	// SRAM
-	ram.sbank = rg_alloc(8192 * mbc.ramsize, MEM_FAST);
+	ram.sbank = malloc(8192 * mbc.ramsize);
 	ram.sram_dirty = 0;
 
 	memset(ram.sbank, 0xff, 8192 * mbc.ramsize);

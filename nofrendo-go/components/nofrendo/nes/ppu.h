@@ -117,10 +117,6 @@ typedef struct
    /* Framebuffer palette */
    rgb_t curpal[256];
 
-   /* Frame buffers */
-   bitmap_t *framebuffers[2];
-   bitmap_t *vidbuf; // Current drawing buffer
-
    /* Hardware registers */
    uint8 ctrl0, ctrl1, stat, oam_addr, nametab_base;
    uint8 latch, vdata_latch, tile_xofs, flipflop;

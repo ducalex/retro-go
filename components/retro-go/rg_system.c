@@ -69,7 +69,7 @@ static void system_monitor_task(void *arg)
     while (1)
     {
         float tickTime = get_elapsed_time() - counters.resetTime;
-        long  ticks = counters.ticks - current.ticks;
+        // long  ticks = counters.ticks - current.ticks;
 
         // Make a copy and reset counters immediately because processing could take 1-2ms
         current = counters;
@@ -81,6 +81,7 @@ static void system_monitor_task(void *arg)
         statistics.busyPercent = RG_MIN(current.busyTime / tickTime * 100.f, 100.f);
         statistics.skippedFPS = current.skippedFrames / (tickTime / 1000000.f);
         statistics.totalFPS = current.totalFrames / (tickTime / 1000000.f);
+        statistics.freeStackMain = uxTaskGetStackHighWaterMark(currentApp.mainTaskHandle);
 
         heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
         statistics.freeMemoryInt = heap_info.total_free_bytes;
@@ -101,21 +102,30 @@ static void system_monitor_task(void *arg)
             rg_system_set_led(ledState);
         }
 
-        if (ticks > 0)
-        {
-            printf("HEAP:%d+%d (%d+%d), BUSY:%.4f, FPS:%.4f (SKIP:%d, PART:%d, FULL:%d), BATTERY:%d\n",
-                statistics.freeMemoryInt / 1024,
-                statistics.freeMemoryExt / 1024,
-                statistics.freeBlockInt / 1024,
-                statistics.freeBlockExt / 1024,
-                statistics.busyPercent,
-                statistics.totalFPS,
-                current.skippedFrames,
-                current.totalFrames - current.fullFrames - current.skippedFrames,
-                current.fullFrames,
-                statistics.battery.millivolts);
-        }
-        else if (inputTimeout > 0 && rg_input_gamepad_last_read() > inputTimeout)
+        printf("STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%.4f, FPS:%.4f (SKIP:%d, PART:%d, FULL:%d), BATTERY:%d\n",
+            statistics.freeStackMain,
+            statistics.freeMemoryInt / 1024,
+            statistics.freeMemoryExt / 1024,
+            statistics.freeBlockInt / 1024,
+            statistics.freeBlockExt / 1024,
+            statistics.busyPercent,
+            statistics.totalFPS,
+            current.skippedFrames,
+            current.totalFrames - current.fullFrames - current.skippedFrames,
+            current.fullFrames,
+            statistics.battery.millivolts);
+
+        // if (statistics.freeStackMain < 1024)
+        // {
+        //     RG_PANIC("Running out of stack space!");
+        // }
+
+        // if (RG_MAX(statistics.freeBlockInt, statistics.freeBlockExt) < 8192)
+        // {
+        //     RG_PANIC("Running out of heap space!");
+        // }
+
+        if (inputTimeout > 0 && rg_input_gamepad_last_read() > inputTimeout)
         {
             RG_PANIC("Application unresponsive");
         }
@@ -258,6 +268,7 @@ void rg_system_init(int appId, int sampleRate)
 
     memset(&currentApp, 0, sizeof(currentApp));
     currentApp.id = appId;
+    currentApp.mainTaskHandle = xTaskGetCurrentTaskHandle();
 
     // sdcard init must be before rg_display_init()
     // and rg_settings_init() if JSON is used

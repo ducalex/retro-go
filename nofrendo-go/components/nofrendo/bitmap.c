@@ -36,7 +36,7 @@ bitmap_t *bmp_create(size_t width, size_t height, size_t overdraw)
     if (!bitmap)
         return NULL;
 
-    uint8 *data = malloc((width + (overdraw * 2)) * height);
+    uint8 *data = rg_alloc((width + (overdraw * 2)) * height, MEM_FAST);
     if (!data)
         return NULL;
 
