@@ -85,7 +85,7 @@ void rg_display_force_refresh(void);
 void rg_display_set_scale(int width, int height, double aspect_ratio);
 void rg_display_set_callback(update_callback_t func);
 void rg_display_show_info(const char *text, int timeout_ms);
-bool rg_display_save_frame(const char *filename, rg_video_frame_t *frame, double scale);
+bool rg_display_save_frame(const char *filename, const rg_video_frame_t *frame, int width, int height);
 screen_update_t rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *previousFrame);
 
 display_backlight_t rg_display_get_backlight();

@@ -300,7 +300,7 @@ static bool save_state(char *pathName)
         {
             // We must use previous update because at this point current has been wiped.
             rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
-            rg_display_save_frame(filename, previousUpdate, 160.f / (previousUpdate->width - 2));
+            rg_display_save_frame(filename, previousUpdate, 160, 0);
             rg_free(filename);
         }
         return true;

@@ -931,19 +931,29 @@ rg_display_force_refresh(void)
 }
 
 bool
-rg_display_save_frame(const char *filename, rg_video_frame_t *frame, double scale)
+rg_display_save_frame(const char *filename, const rg_video_frame_t *frame, int width, int height)
 {
-    size_t img_width = (size_t)(frame->width * scale) & ~1;
-    size_t img_height = (size_t)(frame->height * scale) & ~1;
-    float step_x = (float)frame->width / img_width;
-    float step_y = (float)frame->height / img_height;
+    if (width <= 0 && height <= 0)
+    {
+        width = frame->width;
+        height = frame->height;
+    }
+    else if (width <= 0)
+    {
+        width = frame->width * ((float)height / frame->height);
+    }
+    else if (height <= 0)
+    {
+        height = frame->height * ((float)width / frame->width);
+    }
+
+    float step_x = (float)frame->width / width;
+    float step_y = (float)frame->height / height;
 
     printf("%s: Saving frame: %dx%d to PNG %dx%d. Step: X=%.3f Y=%.3f\n",
-        __func__, frame->width, frame->height, img_width, img_height, step_x, step_y);
+        __func__, frame->width, frame->height, width, height, step_x, step_y);
 
-    assert(step_x > 0 && step_y > 0);
-
-    LuImage *png = luImageCreate(img_width, img_height, 3, 8, 0, 0);
+    LuImage *png = luImageCreate(width, height, 3, 8, 0, 0);
     if (!png)
     {
         printf("%s: LuImage allocation failed!\n", __func__);
@@ -952,11 +962,11 @@ rg_display_save_frame(const char *filename, rg_video_frame_t *frame, double scal
 
     uint8_t *img_ptr = png->data;
 
-    for (int y = 0; y < img_height; y++)
+    for (int y = 0; y < height; y++)
     {
         uint8_t *line = frame->buffer + ((int)(y * step_y) * frame->stride);
 
-        for (int x = 0; x < img_width; x++)
+        for (int x = 0; x < width; x++)
         {
             uint32_t pixel;
 

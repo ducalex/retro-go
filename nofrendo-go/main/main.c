@@ -92,7 +92,7 @@ static bool SaveState(char *pathName)
         char *filename = rg_emu_get_path(EMU_PATH_SCREENSHOT, 0);
         if (filename)
         {
-            rg_display_save_frame(filename, currentUpdate, 160.f / currentUpdate->width);
+            rg_display_save_frame(filename, currentUpdate, 160, 0);
             rg_free(filename);
         }
         return true;
