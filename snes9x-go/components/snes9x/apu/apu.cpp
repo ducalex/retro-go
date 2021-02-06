@@ -26,8 +26,6 @@ static const int APU_DENOMINATOR_PAL = 709379;
 // for use with SoundSync, multiplied by 2, for left and right samples.
 static const int MINIMUM_BUFFER_SIZE = 550 * 2;
 
-static int consecutive_accesses = 0;
-
 namespace spc
 {
 	static apu_callback callback = NULL;
@@ -53,6 +51,7 @@ namespace spc
 
 bool8 S9xMixSamples(uint8 *dest, int sample_count)
 {
+#if 0
 	int16 *out = (int16 *)dest;
 
 	if (Settings.Mute)
@@ -78,17 +77,28 @@ bool8 S9xMixSamples(uint8 *dest, int sample_count)
 		spc::sound_in_sync = true;
 	else
 		spc::sound_in_sync = false;
+#endif
 
 	return true;
 }
 
 int S9xGetSampleCount(void)
 {
-	return spc::resampler->avail();
+	if (spc::resampler)
+		return spc::resampler->avail();
+	else
+		return -1;
+}
+
+void S9xClearSamples(void)
+{
+	if (spc::resampler)
+		spc::resampler->clear();
 }
 
 void S9xLandSamples(void)
 {
+#if 0
 	if (spc::callback != NULL)
 		spc::callback(spc::callback_data);
 
@@ -97,11 +107,7 @@ void S9xLandSamples(void)
 		spc::sound_in_sync = true;
 	else
 		spc::sound_in_sync = false;
-}
-
-void S9xClearSamples(void)
-{
-	spc::resampler->clear();
+#endif
 }
 
 bool8 S9xSyncSound(void)
@@ -122,6 +128,7 @@ void S9xSetSamplesAvailableCallback(apu_callback callback, void *data)
 
 static void UpdatePlaybackRate(void)
 {
+#if 0
 	if (Settings.SoundInputRate == 0)
 		Settings.SoundInputRate = APU_DEFAULT_INPUT_RATE;
 
@@ -133,6 +140,7 @@ static void UpdatePlaybackRate(void)
 	}
 
 	spc::resampler->time_ratio(time_ratio);
+#endif
 }
 
 void S9xUpdateDynamicRate(int avail, int buffer_size)
@@ -145,6 +153,7 @@ void S9xUpdateDynamicRate(int avail, int buffer_size)
 
 bool8 S9xInitSound(int buffer_ms)
 {
+#if 0
 	// The resampler and spc unit use samples (16-bit short) as arguments.
 	int buffer_size_samples = MINIMUM_BUFFER_SIZE;
 	int requested_buffer_size_samples = Settings.SoundPlaybackRate * buffer_ms * 2 / 1000;
@@ -162,17 +171,18 @@ bool8 S9xInitSound(int buffer_ms)
 		spc::resampler->resize(buffer_size_samples);
 
 	SNES::dsp.spc_dsp.set_output(spc::resampler);
+#endif
 
 	UpdatePlaybackRate();
 
-	spc::sound_enabled = S9xOpenSoundDevice();
-
-	return (spc::sound_enabled);
+	return TRUE;
 }
 
 void S9xSetSoundControl(uint8 voice_switch)
 {
+#if 0
 	SNES::dsp.spc_dsp.set_stereo_switch(voice_switch << 8 | voice_switch);
+#endif
 }
 
 void S9xSetSoundMute(bool8 mute)
@@ -208,23 +218,23 @@ void S9xDeinitAPU(void)
 	}
 }
 
+void S9xAPUExecute(void)
+{
+	int cycles = (spc::ratio_numerator * (CPU.Cycles - spc::reference_time) + spc::remainder);
+	SNES::smp.execute(cycles / spc::ratio_denominator);
+	spc::remainder = (cycles % spc::ratio_denominator);
+	spc::reference_time = CPU.Cycles;
+}
+
 uint8 S9xAPUReadPort(uint32 port)
 {
-#if RETRO_LESS_ACCURATE_APU
-	if (++consecutive_accesses == 2)
-#endif
-		S9xAPUExecute();
-
+	S9xAPUExecute();
 	return ((uint8)SNES::smp.apuram[0xf4 + (port & 3)]);
 }
 
 void S9xAPUWritePort(uint32 port, uint8 byte)
 {
-#if RETRO_LESS_ACCURATE_APU
-	if (++consecutive_accesses == 2)
-#endif
-		S9xAPUExecute();
-
+	S9xAPUExecute();
 	SNES::smp.registers[port & 3] = byte;
 }
 
@@ -233,25 +243,16 @@ void S9xAPUSetReferenceTime(int32 cpucycles)
 	spc::reference_time = cpucycles;
 }
 
-IRAM_ATTR void S9xAPUExecute(void)
-{
-	int cycles = (spc::ratio_numerator * (CPU.Cycles - spc::reference_time) + spc::remainder);
-	SNES::smp.execute(cycles / spc::ratio_denominator);
-	spc::remainder = (cycles % spc::ratio_denominator);
-	spc::reference_time = CPU.Cycles;
-	consecutive_accesses = 0;
-}
-
 void S9xAPUEndScanline(void)
 {
 	S9xAPUExecute();
 
-	return;
-
+#if 0
 	SNES::dsp.synchronize();
 
 	if (spc::resampler->space_filled() >= APU_SAMPLE_BLOCK || !spc::sound_in_sync)
 		S9xLandSamples();
+#endif
 }
 
 void S9xAPUTimingSetSpeedup(int ticks)

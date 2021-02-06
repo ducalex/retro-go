@@ -6,9 +6,13 @@ SMP smp;
 
 #include "iplrom.hpp"
 
+#define op_read1(addr)	(((((addr) & 0xfff0) != 0x00f0) && (addr) < 0xffc0 && ++ticks) ? apuram[addr] : op_read(addr))
+#define op_read2(addr)	({uint32 x = (addr); op_read1(x); })
+
 #define op_readpc() op_read(regs.pc++)
 #define op_readdp(addr) op_read((regs.p.p << 8) + ((addr)&0xff))
 #define op_writedp(addr, data) op_write((regs.p.p << 8) + ((addr)&0xff), data)
+
 
 uint8 SMP::op_adc(uint8 x, uint8 y)
 {
@@ -312,8 +316,6 @@ IRAM_ATTR void SMP::op_write(unsigned addr, uint8 data)
 IRAM_ATTR void SMP::execute(int cycles)
 {
 	clock -= cycles;
-
-	int ticks = 0;
 
 	while (clock < 0)
 	{
@@ -2723,7 +2725,10 @@ IRAM_ATTR void SMP::execute(int cycles)
 	}
 
 	if (ticks)
-		tick(ticks);
+	{
+		tick(ticks << 1);
+		ticks = 0;
+	}
 }
 
 template <unsigned cycle_frequency>
@@ -2778,6 +2783,8 @@ void SMP::reset()
 
 	opcode_number = 0;
 	opcode_cycle = 0;
+
+	ticks = 0;
 
 	regs.pc = 0xffc0;
 	regs.sp = 0xef;

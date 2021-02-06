@@ -27,8 +27,6 @@ void S9xAPULoadState (uint8 *);
 void S9xAPUSaveState (uint8 *);
 
 bool8 S9xInitSound (int);
-bool8 S9xOpenSoundDevice (void);
-
 bool8 S9xSyncSound (void);
 int S9xGetSampleCount (void);
 void S9xSetSoundControl (uint8);

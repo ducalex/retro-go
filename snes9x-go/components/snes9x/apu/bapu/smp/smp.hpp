@@ -41,6 +41,8 @@ private:
 	uint32 opcode_cycle;
 	uint8 opcode_number;
 
+	uint32 ticks;
+
 	uint16 rd, wr, dp, sp, ya, bit;
 
 	struct Regs

@@ -1695,21 +1695,14 @@ void S9xEndScreenRefresh (void)
 #endif
 }
 
-void S9xReRefresh (void)
-{
-	// Be careful when calling this function from the thread other than the emulation one...
-	// Here it's assumed no drawing occurs from the emulation thread when Settings.Paused is TRUE.
-	if (Settings.Paused)
-		S9xDeinitUpdate(IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight);
-}
-
 void S9xSetInfoString (const char *string)
 {
 	if (Settings.InitialInfoStringTimeout > 0)
 	{
 		GFX.InfoString = string;
 		GFX.InfoStringTimeout = Settings.InitialInfoStringTimeout;
-		S9xReRefresh();
+		if (Settings.Paused)
+			S9xDeinitUpdate(IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight);
 	}
 }
 
