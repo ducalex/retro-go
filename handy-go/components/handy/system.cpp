@@ -274,7 +274,7 @@ void CSystem::HLE_BIOS_FE19(void)
    Poke_CPU(0x0006,0x02);
    // Call to $FE00
    mCart->SetShifterValue(0);
-   // Fallthrou $FE4A
+   // Fallthrough $FE4A
    HLE_BIOS_FE4A();
 }
 

@@ -25,11 +25,11 @@
 //                          Copyright (c) 1996,1997                         //
 //                                 K. Wilkins                               //
 //////////////////////////////////////////////////////////////////////////////
-// Generic lyynx definition header file                                     //
+// Generic lynx definition header file                                      //
 //////////////////////////////////////////////////////////////////////////////
 //                                                                          //
 // This header file provides the definition of all of the useful hardware   //
-// addreses within the Lynx.                                                //
+// addresses within the Lynx.                                               //
 //                                                                          //
 //    K. Wilkins                                                            //
 // August 1997                                                              //

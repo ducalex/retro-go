@@ -144,7 +144,7 @@ INLINE void apu_build_luts(int num_samples)
    for (int i = 0; i < 16; i++)
       decay_lut[i] = num_samples * (i + 1);
 
-   /* used for note length, based on vblanks and size of audio buffer */
+   /* used for note length, based on vblank and size of audio buffer */
    for (int i = 0; i < 32; i++)
       vbl_lut[i] = vbl_length[i] * num_samples;
 

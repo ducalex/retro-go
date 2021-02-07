@@ -112,7 +112,7 @@ void nes_togglepause(void)
 
 void nes_setcompathacks(void)
 {
-    // Hack to fix many MMC3 games with status bar vertical aligment issues
+    // Hack to fix many MMC3 games with status bar vertical alignment issues
     // The issue is that the CPU and PPU aren't running in sync
     // if (nes.region == NES_NTSC && nes.rominfo->mapper_number == 4)
     if (nes.rominfo->checksum == 0xD8578BFD || // Zen Intergalactic

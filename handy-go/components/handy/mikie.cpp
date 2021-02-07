@@ -31,7 +31,7 @@
 // This class emulates all of the Mikey hardware with the exception of the  //
 // CPU and memory selector. Update() does most of the work and does screen  //
 // DMA and counter updates, it also schecules in which cycle the next timer //
-// update will occur so that the CSystem->Update() doesnt have to call it   //
+// update will occur so that the CSystem->Update() doesn't have to call it  //
 // every cycle, massive speedup but big complexity headache.                //
 //                                                                          //
 //    K. Wilkins                                                            //
@@ -61,7 +61,7 @@ static inline ULONG GetLfsrNext(ULONG current)
    //  Bits 12-20 Feedback switches	(9 Bits)
    //     (Order = 7,0,1,2,3,4,5,10,11)
    //  Order is mangled to make peek/poke easier as
-   //  bit 7 is in a seperate register
+   //  bit 7 is in a separate register
    //
    // Total 21 bits = 2MWords @ 4 Bytes/Word = 8MB !!!!!
    //
@@ -811,7 +811,7 @@ void CMikie::ComLynxRxData(int data)
       mUART_Rx_waiting++;
       TRACE_MIKIE2("ComLynxRxData() - input ptr=%02d waiting=%02d",mUART_Rx_input_ptr,mUART_Rx_waiting);
    } else {
-      TRACE_MIKIE0("ComLynxRxData() - UART RX Overun");
+      TRACE_MIKIE0("ComLynxRxData() - UART RX Overrun");
    }
 }
 
@@ -831,7 +831,7 @@ void CMikie::ComLynxTxLoopback(int data)
       mUART_Rx_waiting++;
       TRACE_MIKIE2("ComLynxTxLoopback() - input ptr=%02d waiting=%02d",mUART_Rx_input_ptr,mUART_Rx_waiting);
    } else {
-      TRACE_MIKIE0("ComLynxTxLoopback() - UART RX Overun");
+      TRACE_MIKIE0("ComLynxTxLoopback() - UART RX Overrun");
    }
 }
 
@@ -865,7 +865,7 @@ void CMikie::BuildPalette()
    mTIM_0_CURRENT=0;
    mTIM_2_CURRENT=0;
 
-   // Fix lastcount so that timer update will definately occur
+   // Fix lastcount so that timer update will definitely occur
    mTIM_0_LAST_COUNT-=(1<<(4+mTIM_0_LINKING))+1;
    mTIM_2_LAST_COUNT-=(1<<(4+mTIM_2_LINKING))+1;
 
@@ -914,7 +914,7 @@ inline ULONG CMikie::DisplayRenderLine(void)
    }
 
    // Logic says it should be 101 but testing on an actual lynx shows the rest
-   // persiod is between lines 102,101,100 with the new line being latched at
+   // period is between lines 102,101,100 with the new line being latched at
    // the beginning of count==99 hence the code below !!
 
    // Emulate REST signal
@@ -1573,7 +1573,7 @@ void CMikie::Poke(ULONG addr,UBYTE data)
          if(!(data&0x02)) {
             C6502_REGS regs;
             mSystem.mCpu->GetRegs(regs);
-            printf("Runtime Alert - System Halted\nCMikie::Poke(SYSCTL1) - Lynx power down occured at PC=$%04x.\nResetting system.\n",regs.PC);
+            printf("Runtime Alert - System Halted\nCMikie::Poke(SYSCTL1) - Lynx power down occurred at PC=$%04x.\nResetting system.\n",regs.PC);
             mSystem.Reset();
             gSystemHalt=TRUE;
          }
@@ -2319,7 +2319,7 @@ inline void CMikie::Update(void)
    //
    // We set the next event to the end of time at first and let the timers
    // overload it. Any writes to timer controls will force next event to
-   // be immediate and hence a new preidction will be done. The prediction
+   // be immediate and hence a new prediction will be done. The prediction
    // causes overflow as opposed to zero i.e. current+1
    // (In reality T0 line counter should always be running.)
    //
@@ -2341,7 +2341,7 @@ inline void CMikie::Update(void)
       //				if(mTIM_0_LINKING!=0x07)
       {
          // Ordinary clocked mode as opposed to linked mode
-         // 16MHz clock downto 1us == cyclecount >> 4
+         // 16MHz clock down to 1us == cyclecount >> 4
          divide=(4+mTIM_0_LINKING);
          decval=(gSystemCycleCount-mTIM_0_LAST_COUNT)>>divide;
 
@@ -2353,7 +2353,7 @@ inline void CMikie::Update(void)
                // Set carry out
                mTIM_0_BORROW_OUT=TRUE;
 
-               //							// Reload if neccessary
+               //							// Reload if necessary
                //							if(mTIM_0_ENABLE_RELOAD)
                //							{
                mTIM_0_CURRENT+=mTIM_0_BKUP+1;
@@ -2367,7 +2367,7 @@ inline void CMikie::Update(void)
 
                // Interupt flag setting code moved into DisplayRenderLine()
 
-               // Line timer has expired, render a line, we cannot incrememnt
+               // Line timer has expired, render a line, we cannot increment
                // the global counter at this point as it will screw the other timers
                // so we save under work done and inc at the end.
                mikie_work_done+=DisplayRenderLine();
@@ -2427,7 +2427,7 @@ inline void CMikie::Update(void)
       //				else
       //				{
       //					// Ordinary clocked mode as opposed to linked mode
-      //					// 16MHz clock downto 1us == cyclecount >> 4
+      //					// 16MHz clock down to 1us == cyclecount >> 4
       //					divide=(4+mTIM_2_LINKING);
       //					decval=(gSystemCycleCount-mTIM_2_LAST_COUNT)>>divide;
       //				}
@@ -2439,7 +2439,7 @@ inline void CMikie::Update(void)
             // Set carry out
             mTIM_2_BORROW_OUT=TRUE;
 
-            //						// Reload if neccessary
+            //						// Reload if necessary
             //						if(mTIM_2_ENABLE_RELOAD)
             //						{
             mTIM_2_CURRENT+=mTIM_2_BKUP+1;
@@ -2521,7 +2521,7 @@ inline void CMikie::Update(void)
       //				else
       {
          // Ordinary clocked mode as opposed to linked mode
-         // 16MHz clock downto 1us == cyclecount >> 4
+         // 16MHz clock down to 1us == cyclecount >> 4
          // Additional /8 (+3) for 8 clocks per bit transmit
          divide=4+3+mTIM_4_LINKING;
          decval=(gSystemCycleCount-mTIM_4_LAST_COUNT)>>divide;
@@ -2568,7 +2568,7 @@ inline void CMikie::Update(void)
                }
 
                // If RX_READY already set then we have an overrun
-               // as previous byte hasnt been read
+               // as previous byte hasn't been read
                if(mUART_RX_READY) mUART_Rx_overun_error=1;
 
                // Flag byte as being recvd
@@ -2604,13 +2604,13 @@ inline void CMikie::Update(void)
 
             // 16 Clocks = 1 bit transmission. Hold separate Rx & Tx counters
 
-            // Reload if neccessary
+            // Reload if necessary
             //						if(mTIM_4_ENABLE_RELOAD)
             //						{
             mTIM_4_CURRENT+=mTIM_4_BKUP+1;
             // The low reload values on TIM4 coupled with a longer
             // timer service delay can sometimes cause
-            // an underun, check and fix
+            // an underrun, check and fix
             if(mTIM_4_CURRENT&0x80000000) {
                mTIM_4_CURRENT=mTIM_4_BKUP;
                mTIM_4_LAST_COUNT=gSystemCycleCount;
@@ -2683,7 +2683,7 @@ inline void CMikie::Update(void)
    if(mTIM_1_ENABLE_COUNT && (mTIM_1_ENABLE_RELOAD || !mTIM_1_TIMER_DONE)) {
       if(mTIM_1_LINKING!=0x07) {
          // Ordinary clocked mode as opposed to linked mode
-         // 16MHz clock downto 1us == cyclecount >> 4
+         // 16MHz clock down to 1us == cyclecount >> 4
          divide=(4+mTIM_1_LINKING);
          decval=(gSystemCycleCount-mTIM_1_LAST_COUNT)>>divide;
 
@@ -2701,7 +2701,7 @@ inline void CMikie::Update(void)
                   gSystemIRQ=TRUE;	// Added 19/09/06 fix for IRQ issue
                }
 
-               // Reload if neccessary
+               // Reload if necessary
                if(mTIM_1_ENABLE_RELOAD) {
                   mTIM_1_CURRENT+=mTIM_1_BKUP+1;
                } else {
@@ -2752,7 +2752,7 @@ inline void CMikie::Update(void)
             mTIM_3_LAST_LINK_CARRY=mTIM_1_BORROW_OUT;
       } else {
          // Ordinary clocked mode as opposed to linked mode
-         // 16MHz clock downto 1us == cyclecount >> 4
+         // 16MHz clock down to 1us == cyclecount >> 4
          divide=(4+mTIM_3_LINKING);
          decval=(gSystemCycleCount-mTIM_3_LAST_COUNT)>>divide;
       }
@@ -2771,7 +2771,7 @@ inline void CMikie::Update(void)
                gSystemIRQ=TRUE;	// Added 19/09/06 fix for IRQ issue
             }
 
-            // Reload if neccessary
+            // Reload if necessary
             if(mTIM_3_ENABLE_RELOAD) {
                mTIM_3_CURRENT+=mTIM_3_BKUP+1;
             } else {
@@ -2821,7 +2821,7 @@ inline void CMikie::Update(void)
             mTIM_5_LAST_LINK_CARRY=mTIM_3_BORROW_OUT;
       } else {
          // Ordinary clocked mode as opposed to linked mode
-         // 16MHz clock downto 1us == cyclecount >> 4
+         // 16MHz clock down to 1us == cyclecount >> 4
          divide=(4+mTIM_5_LINKING);
          decval=(gSystemCycleCount-mTIM_5_LAST_COUNT)>>divide;
       }
@@ -2840,7 +2840,7 @@ inline void CMikie::Update(void)
                gSystemIRQ=TRUE;	// Added 19/09/06 fix for IRQ issue
             }
 
-            // Reload if neccessary
+            // Reload if necessary
             if(mTIM_5_ENABLE_RELOAD) {
                mTIM_5_CURRENT+=mTIM_5_BKUP+1;
             } else {
@@ -2890,7 +2890,7 @@ inline void CMikie::Update(void)
             mTIM_7_LAST_LINK_CARRY=mTIM_5_BORROW_OUT;
       } else {
           // Ordinary clocked mode as opposed to linked mode
-          // 16MHz clock downto 1us == cyclecount >> 4
+          // 16MHz clock down to 1us == cyclecount >> 4
           divide=(4+mTIM_7_LINKING);
           decval=(gSystemCycleCount-mTIM_7_LAST_COUNT)>>divide;
       }
@@ -2909,7 +2909,7 @@ inline void CMikie::Update(void)
                gSystemIRQ=TRUE;	// Added 19/09/06 fix for IRQ issue
             }
 
-            // Reload if neccessary
+            // Reload if necessary
             if(mTIM_7_ENABLE_RELOAD) {
                mTIM_7_CURRENT+=mTIM_7_BKUP+1;
             } else {
@@ -2956,7 +2956,7 @@ inline void CMikie::Update(void)
       //				if(mTIM_6_LINKING!=0x07)
       {
          // Ordinary clocked mode as opposed to linked mode
-         // 16MHz clock downto 1us == cyclecount >> 4
+         // 16MHz clock down to 1us == cyclecount >> 4
          divide=(4+mTIM_6_LINKING);
          decval=(gSystemCycleCount-mTIM_6_LAST_COUNT)>>divide;
 
@@ -2974,7 +2974,7 @@ inline void CMikie::Update(void)
                   gSystemIRQ=TRUE;	// Added 19/09/06 fix for IRQ issue
                }
 
-               // Reload if neccessary
+               // Reload if necessary
                if(mTIM_6_ENABLE_RELOAD) {
                   mTIM_6_CURRENT+=mTIM_6_BKUP+1;
                } else {
@@ -3055,7 +3055,7 @@ inline void CMikie::UpdateCalcSound(void)
          mAUDIO_0_LAST_LINK_CARRY=mTIM_7_BORROW_OUT;
       } else {
          // Ordinary clocked mode as opposed to linked mode
-         // 16MHz clock downto 1us == cyclecount >> 4
+         // 16MHz clock down to 1us == cyclecount >> 4
          divide=(4+mAUDIO_0_LINKING);
          decval=(gSystemCycleCount-mAUDIO_0_LAST_COUNT)>>divide;
       }
@@ -3067,7 +3067,7 @@ inline void CMikie::UpdateCalcSound(void)
             // Set carry out
             mAUDIO_0_BORROW_OUT=TRUE;
 
-            // Reload if neccessary
+            // Reload if necessary
             if(mAUDIO_0_ENABLE_RELOAD) {
                mAUDIO_0_CURRENT+=mAUDIO_0_BKUP+1;
                if(mAUDIO_0_CURRENT&0x80000000) mAUDIO_0_CURRENT=0;
@@ -3137,7 +3137,7 @@ inline void CMikie::UpdateCalcSound(void)
          mAUDIO_1_LAST_LINK_CARRY=mAUDIO_0_BORROW_OUT;
       } else {
          // Ordinary clocked mode as opposed to linked mode
-         // 16MHz clock downto 1us == cyclecount >> 4
+         // 16MHz clock down to 1us == cyclecount >> 4
          divide=(4+mAUDIO_1_LINKING);
          decval=(gSystemCycleCount-mAUDIO_1_LAST_COUNT)>>divide;
       }
@@ -3149,7 +3149,7 @@ inline void CMikie::UpdateCalcSound(void)
             // Set carry out
             mAUDIO_1_BORROW_OUT=TRUE;
 
-            // Reload if neccessary
+            // Reload if necessary
             if(mAUDIO_1_ENABLE_RELOAD) {
                mAUDIO_1_CURRENT+=mAUDIO_1_BKUP+1;
                if(mAUDIO_1_CURRENT&0x80000000) mAUDIO_1_CURRENT=0;
@@ -3219,7 +3219,7 @@ inline void CMikie::UpdateCalcSound(void)
          mAUDIO_2_LAST_LINK_CARRY=mAUDIO_1_BORROW_OUT;
       } else {
          // Ordinary clocked mode as opposed to linked mode
-         // 16MHz clock downto 1us == cyclecount >> 4
+         // 16MHz clock down to 1us == cyclecount >> 4
          divide=(4+mAUDIO_2_LINKING);
          decval=(gSystemCycleCount-mAUDIO_2_LAST_COUNT)>>divide;
       }
@@ -3231,7 +3231,7 @@ inline void CMikie::UpdateCalcSound(void)
             // Set carry out
             mAUDIO_2_BORROW_OUT=TRUE;
 
-            // Reload if neccessary
+            // Reload if necessary
             if(mAUDIO_2_ENABLE_RELOAD) {
                mAUDIO_2_CURRENT+=mAUDIO_2_BKUP+1;
                if(mAUDIO_2_CURRENT&0x80000000) mAUDIO_2_CURRENT=0;
@@ -3301,7 +3301,7 @@ inline void CMikie::UpdateCalcSound(void)
          mAUDIO_3_LAST_LINK_CARRY=mAUDIO_2_BORROW_OUT;
       } else {
          // Ordinary clocked mode as opposed to linked mode
-         // 16MHz clock downto 1us == cyclecount >> 4
+         // 16MHz clock down to 1us == cyclecount >> 4
          divide=(4+mAUDIO_3_LINKING);
          decval=(gSystemCycleCount-mAUDIO_3_LAST_COUNT)>>divide;
       }
@@ -3313,7 +3313,7 @@ inline void CMikie::UpdateCalcSound(void)
             // Set carry out
             mAUDIO_3_BORROW_OUT=TRUE;
 
-            // Reload if neccessary
+            // Reload if necessary
             if(mAUDIO_3_ENABLE_RELOAD) {
                mAUDIO_3_CURRENT+=mAUDIO_3_BKUP+1;
                if(mAUDIO_3_CURRENT&0x80000000) mAUDIO_3_CURRENT=0;
@@ -3384,7 +3384,7 @@ inline void CMikie::UpdateSound(void)
       /// a) they are linear from $0 to $f - checked!
       /// b) an attenuation of $0 is equal to channel OFF (bits in mSTEREO not set) - checked!
       /// c) an attenuation of $f is NOT equal to no attenuation (bits in PAN not set), $10 would be - checked!
-      /// These assumptions can only checked with an oszilloscope... - done
+      /// These assumptions can only checked with an oscilloscope... - done
       /// the values stored in mSTEREO are NOT bit-inverted ...
       /// mSTEREO was found to be set like that already (why?), but unused
 

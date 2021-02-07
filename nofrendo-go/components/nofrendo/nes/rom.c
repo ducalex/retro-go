@@ -166,9 +166,7 @@ rom_t *rom_load(const char *filename)
                 (rominfo->flags & ROM_FLAG_TRAINER) ? 'T' : '-',
                 (rominfo->flags & ROM_FLAG_FOURSCREEN) ? '4' : '-');
 
-   /* iNES format doesn't tell us if we need SRAM, so
-   ** we have to always allocate it -- bleh!
-   */
+   /* iNES format doesn't tell us if we need SRAM, so we have to always allocate 8KB */
    rominfo->sram = calloc(SRAM_BANK_LENGTH, rominfo->sram_banks);
    if (NULL == rominfo->sram)
    {

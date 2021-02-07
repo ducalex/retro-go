@@ -69,7 +69,7 @@ static void map160_write(uint32 address, uint8 value)
    }
    else
    {
-      MESSAGE_DEBUG("mapper 160: untrapped write $%02X to $%04X\n", value, address);
+      MESSAGE_DEBUG("mapper 160: unhandled write $%02X to $%04X\n", value, address);
    }
 }
 

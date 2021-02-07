@@ -336,7 +336,7 @@ void rom_unload(void)
 	free(ram.sbank);
 
 	mbc.type = mbc.romsize = mbc.ramsize = mbc.batt = mbc.rtc = 0;
-	// ram.sbank = NULL;
+	ram.sbank = NULL;
 }
 
 

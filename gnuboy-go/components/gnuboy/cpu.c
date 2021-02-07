@@ -336,7 +336,7 @@ static inline void serial_advance(int cycles)
 }
 
 /* cnt - time to emulate, expressed in double-speed cycles
-	Will call lcd_emulate() if CPU emulation catched up or
+	Will call lcd_emulate() if CPU emulation caught up or
 	went ahead of LCDC, so that lcd never falls	behind
 */
 static inline void lcdc_advance(int cycles)

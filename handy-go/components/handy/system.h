@@ -30,7 +30,7 @@
 //                                                                          //
 // This header file provides the interface definition and inline code for   //
 // the system object, this object if what binds together all of the Handy   //
-// hardware enmulation objects, its the glue that holds the system together //
+// hardware emulation objects, its the glue that holds the system together  //
 //                                                                          //
 //    K. Wilkins                                                            //
 // August 1997                                                              //
@@ -328,7 +328,7 @@ class CSystem : public CSystemBase
       void   SetCycleBreakpoint(ULONG breakpoint) {mCycleCountBreakpoint=breakpoint;};
       UBYTE* GetRamPointer(void) {return mRam->GetRamPointer();};
 
-      // Debygging
+      // Debugging
 
       void   DebugTrace(int address);
       void   DebugSetCallback(void (*function)(ULONG objref, char *message),ULONG objref);

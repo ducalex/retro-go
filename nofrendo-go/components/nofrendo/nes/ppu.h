@@ -133,7 +133,7 @@ typedef struct
    int scanline;
    int scanlines_per_frame;
 
-   /* Bleh. Determine if left column can be cropped/blanked */
+   /* Determines if left column can be cropped/blanked */
    int left_bg_counter;
 
    /* Callbacks for naughty mappers */

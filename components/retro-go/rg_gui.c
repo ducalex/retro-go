@@ -596,7 +596,7 @@ int rg_gui_settings_menu(dialog_choice_t *extra_options)
     dialog_choice_t options[12] = {
         {0, "Brightness", "50%",  1, &brightness_update_cb},
         {1, "Volume    ", "50%",  1, &volume_update_cb},
-        {2, "Audio out ", "Spkr", 1, &audio_update_cb},
+        {2, "Audio out ", "Speaker", 1, &audio_update_cb},
         RG_DIALOG_CHOICE_LAST
     };
 

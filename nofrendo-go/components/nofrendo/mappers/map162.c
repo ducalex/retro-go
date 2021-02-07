@@ -83,7 +83,7 @@ static uint8 map162_reg_read(uint32 address)
       return trigger ? reg5300 : 0;
 
    default:
-      MESSAGE_ERROR("mapper 162: untrapped read to $%04X\n", address);
+      MESSAGE_ERROR("mapper 162: unhandled read to $%04X\n", address);
       return 0x04;
    }
 }
@@ -125,7 +125,7 @@ static void map162_reg_write(uint32 address, uint8 value)
       break;
 
    default:
-      MESSAGE_ERROR("mapper 162: untrapped write $%02X to $%04X\n", value, address);
+      MESSAGE_ERROR("mapper 162: unhandled write $%02X to $%04X\n", value, address);
    }
 }
 

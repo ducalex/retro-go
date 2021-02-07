@@ -16,7 +16,7 @@ void emu_init()
 /*
  * emu_reset is called to initialize the state of the emulated
  * system. It should set cpu registers, hardware registers, etc. to
- * their appropriate values at powerup time.
+ * their appropriate values at power up time.
  */
 void emu_reset()
 {
@@ -51,7 +51,7 @@ void emu_run(bool draw)
     fb.enabled = draw;
     pcm.pos = 0;
 
-    /* FIXME: djudging by the time specified this was intended
+    /* FIXME: judging by the time specified this was intended
     to emulate through vblank phase which is handled at the
     end of the loop. */
     cpu_emulate(2280);
@@ -76,7 +76,7 @@ void emu_run(bool draw)
 
     if (!(R_LCDC & 0x80)) {
         /* LCDC operation stopped */
-        /* FIXME: djudging by the time specified, this is
+        /* FIXME: judging by the time specified, this is
         intended to emulate through visible line scanning
         phase, even though we are already at vblank here */
         cpu_emulate(32832);

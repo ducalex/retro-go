@@ -172,7 +172,7 @@ static mem_t *mem;
 }
 
 /* Zero-page indexed Y */
-/* Not really an adressing mode, just for LDx/STx */
+/* Not really an addressing mode, just for LDx/STx */
 #define ZP_IND_Y_ADDR(address) \
 { \
    ZERO_PAGE_ADDR(address); \
@@ -1064,7 +1064,7 @@ static mem_t *mem;
 #define readbyte(a) mem_getbyte(a)
 
 /*
-** Middle man for faster albeit unsafe/innacurate/unchecked memory access.
+** Middle man for faster albeit unsafe/inaccurate/unchecked memory access.
 ** Used only when address = PC, which is always a valid ROM access (in theory)
 */
 

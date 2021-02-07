@@ -128,7 +128,7 @@ typedef struct
 
 
 //
-// Emumerated types for possible mikie windows independant modes
+// Enumerated types for possible mikie windows independant modes
 //
 enum
 {

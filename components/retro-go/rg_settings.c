@@ -131,7 +131,7 @@ char* rg_settings_string_get(const char *key, const char *default_value)
     cJSON *obj = cJSON_GetObjectItem(root, key);
     if (obj != NULL && obj->valuestring != NULL)
     {
-        return strdup(obj->valuestring); // stdup to be compatible with old nvs impl. below
+        return strdup(obj->valuestring); // strdup to be compatible with old nvs impl. below
     }
 #else
     size_t required_size;

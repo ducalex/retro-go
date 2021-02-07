@@ -10,7 +10,7 @@
 *  UINT64 - Unsigned 64-bit Integer  INT64 - Signed 64-bit integer          *
 *                                         *
 *                                         *
-*   The macro names for the artithmatic operations are composed as follows:    *
+*   The macro names for the arithmetic operations are composed as follows:    *
 *                                         *
 *   XXX_R_A_B, where XXX - 3 letter operation code (ADD, SUB, etc.)         *
 *           R   - The type  of the result                 *

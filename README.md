@@ -21,7 +21,7 @@ It comes with many emulators!
 - More scaling options
 - Bilinear filtering
 - NES color palettes
-- NES PAL support
+- PAL roms support
 - Smoother performance
 - Better compatibility
 - Double/Triple Speed
