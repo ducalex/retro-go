@@ -27,7 +27,6 @@
 #define _NES_H_
 
 #include <nofrendo.h>
-#include <bitmap.h>
 #include "apu.h"
 #include "cpu.h"
 #include "ppu.h"
@@ -37,6 +36,10 @@
 
 #define NES_SCREEN_WIDTH      256
 #define NES_SCREEN_HEIGHT     240
+#define NES_SCREEN_OVERDRAW   8
+#define NES_SCREEN_PITCH      (8 + 256 + 8)
+
+#define NES_SCREEN_GETPTR(buf, x, y)     ((buf) + ((y) * NES_SCREEN_PITCH) + (x) + NES_SCREEN_OVERDRAW)
 
 #define NES_CPU_CLOCK_NTSC    1789772.72727
 #define NES_CPU_CLOCK_PAL     1662607.03125
@@ -72,8 +75,8 @@ typedef struct nes_s
     mem_t *mem;
 
     /* Video buffer */
-    bitmap_t *framebuffers[2];
-    bitmap_t *vidbuf;
+    uint8 *framebuffers[2];
+    uint8 *vidbuf;
 
     /* Misc */
     region_t region;

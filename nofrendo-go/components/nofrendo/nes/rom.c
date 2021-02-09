@@ -32,17 +32,6 @@
 #include "ppu.h"
 #include "nes.h"
 
-typedef struct
-{
-   uint8 ines_magic[4];
-   uint8 rom_banks;
-   uint8 vrom_banks;
-   uint8 rom_type;
-   uint8 mapper_hinybble;
-   uint32 reserved1;
-   uint32 reserved2;
-} inesheader_t;
-
 #ifdef USE_SRAM_FILE
 
 /* Save battery-backed RAM */
@@ -94,48 +83,6 @@ static void rom_loadsram(rom_t *rominfo)
 }
 #endif
 
-static int rom_getheader(uint8_t **rom, rom_t *rominfo)
-{
-   inesheader_t head;
-
-   ASSERT(rom);
-   ASSERT(*rom);
-   ASSERT(rominfo);
-
-   /* Read in the header */
-   memcpy(&head, *rom, sizeof(head));
-   *rom += sizeof(head);
-
-   if (memcmp(head.ines_magic, ROM_INES_MAGIC, 4))
-   {
-      MESSAGE_ERROR("ROM: %s is not a valid ROM image\n", rominfo->filename);
-      return -1;
-   }
-
-   rominfo->rom_banks = head.rom_banks;
-   rominfo->vrom_banks = head.vrom_banks;
-   /* iNES assumptions */
-   rominfo->sram_banks = 8; /* 1kB banks, so 8KB */
-   rominfo->vram_banks = 1; /* 8kB banks, so 8KB */
-   rominfo->flags = head.rom_type;
-   rominfo->mapper_number = head.rom_type >> 4;
-
-   if (head.mapper_hinybble & 1)
-      rominfo->flags |= ROM_FLAG_VERSUS;
-
-   if (head.reserved2 == 0)
-   {
-      // https://wiki.nesdev.com/w/index.php/INES
-      // A general rule of thumb: if the last 4 bytes are not all zero, and the header is
-      // not marked for NES 2.0 format, an emulator should either mask off the upper 4 bits
-      // of the mapper number or simply refuse to load the ROM.
-
-      rominfo->mapper_number |= (head.mapper_hinybble & 0xF0);
-   }
-
-   return 0;
-}
-
 /* Load a ROM image into memory */
 rom_t *rom_load(const char *filename)
 {
@@ -147,16 +94,42 @@ rom_t *rom_load(const char *filename)
       goto _fail;
 
    strncpy(rominfo->filename, filename, sizeof(rominfo->filename) - 1);
-   rominfo->checksum = osd_getromcrc();
-   // rominfo->checksum = crc32_le(0, rom, rom_size);
 
    MESSAGE_INFO("ROM: Loading '%s'\n", rominfo->filename);
    MESSAGE_INFO("ROM: Size:   %d\n", rom_size);
+
+   /* Read in the header */
+   memcpy(&rominfo->header, rom_ptr, 16);
+   rom_ptr += 16;
+
+   if (memcmp(rominfo->header.ines_magic, ROM_INES_MAGIC, 4))
+   {
+      MESSAGE_ERROR("ROM: %s is not a valid ROM image\n", rominfo->filename);
+      goto _fail;
+   }
+
+   rominfo->checksum = crc32_le(0, rom_ptr, rom_size - 16);
    MESSAGE_INFO("ROM: CRC32:  %08X\n", rominfo->checksum);
 
-   /* Get the header and stick it into rominfo struct */
-   if (rom_getheader(&rom_ptr, rominfo))
-      goto _fail;
+   /* Assumed values */
+   rominfo->sram_banks = 8; /* 1kB banks, so 8KB */
+   rominfo->vram_banks = 1; /* 8kB banks, so 8KB */
+
+   /* Valid values */
+   rominfo->rom_banks = rominfo->header.rom_banks;
+   rominfo->vrom_banks = rominfo->header.vrom_banks;
+   rominfo->flags = rominfo->header.rom_type;
+   rominfo->mapper_number = rominfo->header.rom_type >> 4;
+
+   if (rominfo->header.reserved2 == 0)
+   {
+      // https://wiki.nesdev.com/w/index.php/INES
+      // A general rule of thumb: if the last 4 bytes are not all zero, and the header is
+      // not marked for NES 2.0 format, an emulator should either mask off the upper 4 bits
+      // of the mapper number or simply refuse to load the ROM.
+
+      rominfo->mapper_number |= (rominfo->header.mapper_hinybble & 0xF0);
+   }
 
    MESSAGE_INFO("ROM: Header: Mapper:%d, PRG:%dK, CHR:%dK, Mirror:%c, Flags: %c%c%c\n",
                 rominfo->mapper_number,
@@ -165,14 +138,6 @@ rom_t *rom_load(const char *filename)
                 (rominfo->flags & ROM_FLAG_BATTERY) ? 'B' : '-',
                 (rominfo->flags & ROM_FLAG_TRAINER) ? 'T' : '-',
                 (rominfo->flags & ROM_FLAG_FOURSCREEN) ? '4' : '-');
-
-   /* iNES format doesn't tell us if we need SRAM, so we have to always allocate 8KB */
-   rominfo->sram = calloc(SRAM_BANK_LENGTH, rominfo->sram_banks);
-   if (NULL == rominfo->sram)
-   {
-      MESSAGE_ERROR("ROM: Could not allocate space for battery RAM\n");
-      goto _fail;
-   }
 
    if (rominfo->flags & ROM_FLAG_TRAINER)
    {
@@ -188,15 +153,6 @@ rom_t *rom_load(const char *filename)
    {
       rominfo->vrom = rom_ptr;
       rom_ptr += VROM_BANK_LENGTH * rominfo->vrom_banks;
-   }
-   else
-   {
-      rominfo->vram = calloc(VRAM_BANK_LENGTH, rominfo->vram_banks);
-      if (NULL == rominfo->vram)
-      {
-         MESSAGE_ERROR("ROM: Could not allocate space for VRAM\n");
-         goto _fail;
-      }
    }
 
 #ifdef USE_SRAM_FILE
@@ -221,15 +177,7 @@ void rom_free(rom_t *rominfo)
 #ifdef USE_SRAM_FILE
       rom_savesram(rominfo);
 #endif
-      if (rominfo->sram)
-         free(rominfo->sram);
-      if (rominfo->rom)
-         free(rominfo->rom);
-      if (rominfo->vrom)
-         free(rominfo->vrom);
-      if (rominfo->vram)
-         free(rominfo->vram);
-
+      free(rominfo->rom);
       free(rominfo);
    }
 }

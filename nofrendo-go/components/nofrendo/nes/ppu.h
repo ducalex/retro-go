@@ -26,8 +26,6 @@
 #ifndef _NES_PPU_H_
 #define _NES_PPU_H_
 
-#include <bitmap.h>
-
 /* PPU register defines */
 #define  PPU_CTRL0            0x2000
 #define  PPU_CTRL1            0x2001
@@ -181,14 +179,14 @@ extern uint8 ppu_read(uint32 address);
 extern void ppu_write(uint32 address, uint8 value);
 
 /* Rendering */
-extern void ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag);
+extern void ppu_scanline(uint8 *bmp, int scanline, bool draw_flag);
 extern void ppu_endscanline(void);
 extern void ppu_setpalette(rgb_t *pal);
 extern const palette_t *ppu_getpalette(int n);
 
 /* Debugging */
-extern void ppu_dumppattern(bitmap_t *bmp, int table_num, int x_loc, int y_loc, int col);
-extern void ppu_dumpoam(bitmap_t *bmp, int x_loc, int y_loc);
+extern void ppu_dumppattern(uint8 *bmp, int table_num, int x_loc, int y_loc, int col);
+extern void ppu_dumpoam(uint8 *bmp, int x_loc, int y_loc);
 
 /* PPU debug drawing */
 #define  GUI_FIRSTENTRY 192

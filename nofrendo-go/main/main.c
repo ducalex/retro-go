@@ -5,7 +5,6 @@
 #include <nes/nes.h>
 #include <nes/input.h>
 #include <nes/state.h>
-#include <bitmap.h>
 
 #define APP_ID 10
 
@@ -16,7 +15,6 @@
 
 static uint8_t *romData;
 static uint32_t romSize;
-static uint32_t romCRC32;
 
 static uint16_t myPalette[64];
 static rg_video_frame_t frames[2];
@@ -222,11 +220,6 @@ uint32_t osd_getromsize(void)
     return romSize;
 }
 
-uint32_t osd_getromcrc()
-{
-    return romCRC32;
-}
-
 void osd_loadstate()
 {
     if (app->startAction == EMU_START_ACTION_RESUME)
@@ -311,15 +304,15 @@ void osd_setpalette(rgb_t *pal)
     rg_display_force_refresh();
 }
 
-void osd_blitscreen(bitmap_t *bmp)
+void osd_blitscreen(uint8 *bmp)
 {
     int crop_v = (overscan) ? nes->overscan : 0;
     int crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
 
-    currentUpdate->buffer = bmp->line[crop_v] + crop_h;
-    currentUpdate->stride = bmp->pitch;
-    currentUpdate->width = bmp->width - (crop_h * 2);
-    currentUpdate->height = bmp->height - (crop_v * 2);
+    currentUpdate->buffer = NES_SCREEN_GETPTR(bmp, crop_h, crop_v);
+    currentUpdate->stride = NES_SCREEN_PITCH;
+    currentUpdate->width = NES_SCREEN_WIDTH - (crop_h * 2);
+    currentUpdate->height = NES_SCREEN_HEIGHT - (crop_v * 2);
 
     rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
 
@@ -408,9 +401,7 @@ void app_main(void)
         RG_PANIC("ROM file loading failed!");
     }
 
-    romCRC32 = crc32_le(0, (const uint8_t *)(romData + 16), romSize - 16);
-
-    printf("app_main ROM: OK. romSize=%d, romCRC32=%08X\n", romSize, romCRC32);
+    printf("app_main ROM: OK. romSize=%d\n", romSize);
 
     int region, ret;
 
@@ -430,6 +421,7 @@ void app_main(void)
     {
         case -1: RG_PANIC("Init failed.");
         case -2: RG_PANIC("Unsupported ROM.");
+        case -3: RG_PANIC("ROM Loading failed.");
         default: RG_PANIC("Nofrendo died!");
     }
 }

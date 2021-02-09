@@ -25,7 +25,6 @@
 
 #include <nofrendo.h>
 #include <string.h>
-#include <bitmap.h>
 #include "input.h"
 #include "cpu.h"
 #include "mmc.h"
@@ -724,7 +723,7 @@ IRAM_ATTR void ppu_endscanline()
    }
 }
 
-IRAM_ATTR void ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag)
+IRAM_ATTR void ppu_scanline(uint8 *bmp, int scanline, bool draw_flag)
 {
    ppu.scanline = scanline;
 
@@ -746,11 +745,13 @@ IRAM_ATTR void ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag)
       if (scanline == 0)
          ppu.left_bg_counter = 0;
 
+      uint8 *vidbuf = NES_SCREEN_GETPTR(bmp, 0, scanline);
+
       if (draw_flag && OPT(PPU_DRAW_BACKGROUND))
-         ppu_renderbg(bmp->line[scanline]);
+         ppu_renderbg(vidbuf);
 
       /* TODO: fetch obj data 1 scanline before */
-      ppu_renderoam(bmp->line[scanline], scanline, draw_flag && OPT(PPU_DRAW_SPRITES));
+      ppu_renderoam(vidbuf, scanline, draw_flag && OPT(PPU_DRAW_SPRITES));
    }
    // Vertical Blank
    else if (scanline == 241)
@@ -768,9 +769,9 @@ IRAM_ATTR void ppu_scanline(bitmap_t *bmp, int scanline, bool draw_flag)
    }
 }
 
-bool ppu_checkzapperhit(bitmap_t *bmp, int x, int y)
+bool ppu_checkzapperhit(uint8 *bmp, int x, int y)
 {
-   uint8 pixel = bmp->line[y][x] & 0x3F;
+   uint8 pixel = *NES_SCREEN_GETPTR(bmp, x, y) & 0x3F;
 
    if (0x20 == pixel || 0x30 == pixel)
       return true;
@@ -821,33 +822,33 @@ void ppu_shutdown()
 /*************************************************/
 /* TODO: all this stuff should go somewhere else */
 /*************************************************/
-INLINE void draw_box(bitmap_t *bmp, int x, int y, int height)
+INLINE void draw_box(uint8 *bmp, int x, int y, int height)
 {
    int i;
    uint8 *vid;
 
-   vid = bmp->line[y] + x;
+   vid = NES_SCREEN_GETPTR(bmp, x, y);
 
    for (i = 0; i < 10; i++)
       *vid++ = GUI_GRAY;
-   vid += (bmp->pitch - 10);
+   vid += (NES_SCREEN_PITCH - 10);
    for (i = 0; i < height; i++)
    {
       vid[0] = vid[9] = GUI_GRAY;
-      vid += bmp->pitch;
+      vid += NES_SCREEN_PITCH;
    }
    for (i = 0; i < 10; i++)
       *vid++ = GUI_GRAY;
 }
 
-INLINE void draw_deadsprite(bitmap_t *bmp, int x, int y, int height)
+INLINE void draw_deadsprite(uint8 *bmp, int x, int y, int height)
 {
    int i, j, index;
    uint8 *vid;
    uint8 colbuf[8] = { GUI_BLACK, GUI_BLACK, GUI_BLACK, GUI_BLACK,
                        GUI_BLACK, GUI_BLACK, GUI_BLACK, GUI_DKGRAY };
 
-   vid = bmp->line[y] + x;
+   vid = NES_SCREEN_GETPTR(bmp, x, y);
 
    for (i = 0; i < height; i++)
    {
@@ -862,17 +863,17 @@ INLINE void draw_deadsprite(bitmap_t *bmp, int x, int y, int height)
          index &= 7;
       }
 
-      vid += bmp->pitch;
+      vid += NES_SCREEN_PITCH;
    }
 }
 
-INLINE void draw_sprite(bitmap_t *bmp, int x, int y, uint8 tile_num, uint8 attrib)
+INLINE void draw_sprite(uint8 *bmp, int x, int y, uint8 tile_num, uint8 attrib)
 {
    int line, height;
    int col_high, tile_addr;
    uint8 *vid;
 
-   vid = bmp->line[y] + x;
+   vid = NES_SCREEN_GETPTR(bmp, x, y);
 
    /* Get upper two bits of color */
    col_high = ((attrib & 3) << 2);
@@ -894,11 +895,11 @@ INLINE void draw_sprite(bitmap_t *bmp, int x, int y, uint8 tile_num, uint8 attri
       //draw_oamtile(vid, attrib, data_ptr[0], data_ptr[8], ppu.palette + 16 + col_high);
 
       tile_addr++;
-      vid += bmp->pitch;
+      vid += NES_SCREEN_PITCH;
    }
 }
 
-void ppu_dumpoam(bitmap_t *bmp, int x_loc, int y_loc)
+void ppu_dumpoam(uint8 *bmp, int x_loc, int y_loc)
 {
    int sprite, x_pos, y_pos, height;
    ppu_obj_t *spr_ptr;
@@ -925,7 +926,7 @@ void ppu_dumpoam(bitmap_t *bmp, int x_loc, int y_loc)
    }
 }
 
-void ppu_dumpbg(bitmap_t *bmp, int x_loc, int y_loc)
+void ppu_dumpbg(uint8 *bmp, int x_loc, int y_loc)
 {
    //
 }

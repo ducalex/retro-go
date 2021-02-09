@@ -89,6 +89,11 @@ typedef unsigned char uint8;
 typedef unsigned short uint16;
 typedef unsigned int uint32;
 
+typedef struct
+{
+    uint8 r, g, b;
+} rgb_t;
+
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>

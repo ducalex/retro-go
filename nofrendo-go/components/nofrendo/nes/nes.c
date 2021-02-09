@@ -185,8 +185,8 @@ void nes_shutdown(void)
     apu_shutdown();
     nes6502_shutdown();
     rom_free(nes.rominfo);
-    bmp_free(nes.framebuffers[0]);
-    bmp_free(nes.framebuffers[1]);
+    free(nes.framebuffers[0]);
+    free(nes.framebuffers[1]);
 }
 
 /* Setup region-dependant timings */
@@ -226,8 +226,8 @@ bool nes_init(region_t region, int sample_rate, bool stereo)
     nes.drawframe = true;
 
     /* Framebuffers */
-    nes.framebuffers[0] = bmp_create(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 8);
-    nes.framebuffers[1] = bmp_create(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, 8);
+    nes.framebuffers[0] = rg_alloc(NES_SCREEN_PITCH * NES_SCREEN_HEIGHT, MEM_FAST);
+    nes.framebuffers[1] = rg_alloc(NES_SCREEN_PITCH * NES_SCREEN_HEIGHT, MEM_FAST);
     if (NULL == nes.framebuffers[0] || NULL == nes.framebuffers[1])
         goto _fail;
 

@@ -44,11 +44,25 @@
 
 typedef struct
 {
+   uint8 ines_magic[4];
+   uint8 rom_banks;
+   uint8 vrom_banks;
+   uint8 rom_type;
+   uint8 mapper_hinybble;
+   uint32 reserved1;
+   uint32 reserved2;
+} inesheader_t;
+
+typedef struct
+{
+   inesheader_t header;
+
    /* pointers to ROM and VROM */
    uint8 *rom, *vrom;
 
-   /* pointers to SRAM and VRAM */
-   uint8 *sram, *vram;
+   /* SRAM and vram are not iNES header-defined, always alloc them */
+   uint8 vram[1 * 0x2000];
+   uint8 sram[8 * 0x400];
 
    /* number of banks */
    int rom_banks, vrom_banks;

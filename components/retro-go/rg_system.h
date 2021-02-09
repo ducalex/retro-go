@@ -140,7 +140,7 @@ void rg_free(void *ptr);
 
 // Functions from esp-idf, we don't include their header but they will be linked
 extern int64_t esp_timer_get_time();
-extern void heap_caps_malloc_extmem_enable(size_t limit);
+extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 
 // long microseconds
 #define get_frame_time(refresh_rate) (1000000 / (refresh_rate))
