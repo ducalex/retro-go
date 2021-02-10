@@ -6,7 +6,6 @@
 
 int  psg_init(void);
 void psg_term(void);
-void psg_update(short *buf, int chan, size_t dwSize);
-void psg_mix(short *buffer, size_t length);
+void psg_update(int16_t *output, size_t length);
 
 #endif

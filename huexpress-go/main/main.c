@@ -225,7 +225,7 @@ static void audioTask(void *arg)
 
     while (1)
     {
-        psg_mix(audiobuffer, AUDIO_BUFFER_LENGTH);
+        psg_update(audiobuffer, AUDIO_BUFFER_LENGTH);
         rg_audio_submit(audiobuffer, AUDIO_BUFFER_LENGTH);
     }
 
