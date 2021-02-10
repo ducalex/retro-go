@@ -103,7 +103,7 @@ void osd_gfx_set_mode(int width, int height)
     current_width = width;
     current_height = height;
 
-    printf("%s: Resolution: %dx%d / Cropping: H: %d V: %d\n", __func__, width, height, crop_h, crop_v);
+    MESSAGE_INFO("[GFX] Resolution: %dx%d / Cropping: H: %d V: %d\n", width, height, crop_h, crop_v);
 
     frames[0].flags = RG_PIXEL_PAL|RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].width = width - crop_h;
@@ -156,7 +156,7 @@ void osd_gfx_blit(void)
 
 void osd_gfx_shutdown(void)
 {
-    printf("%s: \n", __func__);
+    MESSAGE_INFO("Goodbye...\n");
 }
 
 static bool overscan_update_cb(dialog_choice_t *option, dialog_event_t event)
@@ -221,7 +221,7 @@ void osd_input_read(void)
 
 static void audioTask(void *arg)
 {
-    printf("%s: STARTED\n", __func__);
+    MESSAGE_INFO("[PSG] task started.\n");
 
     while (1)
     {
@@ -246,7 +246,7 @@ void osd_snd_shutdown(void)
     rg_audio_deinit();
 }
 
-void osd_log(const char *format, ...)
+void osd_log(int type, const char *format, ...)
 {
     va_list ap;
     va_start(ap, format);

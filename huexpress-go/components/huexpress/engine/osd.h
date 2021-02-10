@@ -84,7 +84,7 @@ extern void osd_vsync(void);
 /*
 * Logging function, printf-style arguments
 */
-extern void osd_log(const char *, ...);
+extern void osd_log(int type, const char *, ...);
 
 /*
 * Malloc function

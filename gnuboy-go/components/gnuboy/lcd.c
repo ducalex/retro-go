@@ -621,7 +621,7 @@ static inline void pal_detect_dmg()
         obp1 = dmg_game_palettes[palette][2];
     }
 
-	printf("pal_detect_dmg: Using GBC palette %d\n", palette);
+	MESSAGE_INFO("Using GBC palette %d\n", palette);
 
 	memcpy(&dmg_pal[0], bgp, 8); // BGP
 	memcpy(&dmg_pal[1], bgp, 8); // BGP

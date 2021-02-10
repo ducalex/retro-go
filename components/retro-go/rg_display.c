@@ -165,6 +165,8 @@ backlight_set_level(int percent)
 
     ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty, 10);
     ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
+
+    RG_LOGI("backlight set to %d%%\n", percent);
 }
 
 static inline uint16_t*
@@ -409,7 +411,7 @@ send_reset_drawing(int left, int top, int width, int height)
     // Memory write continue
     if (height > 1) ili9341_cmd(0x3C);
 
-    // printf("LCD DRAW: left:%d top:%d width:%d height:%d\n", left, top, width, height);
+    RG_LOGD("LCD DRAW: left:%d top:%d width:%d height:%d\n", left, top, width, height);
 }
 
 static inline void
@@ -669,7 +671,6 @@ frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFrame)
 
     if (scalingMode && filterMode != RG_DISPLAY_FILTER_OFF)
     {
-        // printf("\nFRAME BEGIN\n");
         for (int y = 0; y < frame->height; ++y)
         {
             if (out_diff[y].width > 0)
@@ -696,19 +697,12 @@ frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFrame)
                 if (--left < 0) left = 0;
                 if (++right > frame->width) right = frame->width;
 
-                // while (left > 0 && !frame_filter_column_is_key[left])
-                //     left--;
-
-                // while (right < frame->width -1 && !frame_filter_column_is_key[right])
-                //     right++;
-
                 for (int i = block_start; i <= block_end; i++)
                 {
                     out_diff[i].left = left;
                     out_diff[i].width = right - left;
                 }
 
-                // printf("  Block Y=%d   %dx%d\n", y, right - left + 1, block_end - block_start + 1);
                 y = block_end;
             }
         }
@@ -841,7 +835,7 @@ rg_display_set_scale(int width, int height, double new_ratio)
 
         if (new_width > SCREEN_WIDTH)
         {
-            printf("LCD SCALE: new_width too large: %d, reducing new_height to maintain ratio.\n", new_width);
+            RG_LOGX("[LCD SCALE] new_width too large: %d, reducing new_height to maintain ratio.\n", new_width);
             new_height = SCREEN_HEIGHT * (SCREEN_WIDTH / (double)new_width);
             new_width = SCREEN_WIDTH;
         }
@@ -857,7 +851,7 @@ rg_display_set_scale(int width, int height, double new_ratio)
 
     generate_filter_structures(width, height);
 
-    printf("LCD SCALE: %dx%d@%.3f => %dx%d@%.3f x_inc:%d y_inc:%d x_scale:%.3f y_scale:%.3f x_origin:%d y_origin:%d\n",
+    RG_LOGX("[LCD SCALE] %dx%d@%.3f => %dx%d@%.3f x_inc:%d y_inc:%d x_scale:%.3f y_scale:%.3f x_origin:%d y_origin:%d\n",
            width, height, width/(double)height, new_width, new_height, new_ratio,
            x_inc, y_inc, x_scale, y_scale, x_origin, y_origin);
 }
@@ -950,13 +944,13 @@ rg_display_save_frame(const char *filename, const rg_video_frame_t *frame, int w
     float step_x = (float)frame->width / width;
     float step_y = (float)frame->height / height;
 
-    printf("%s: Saving frame: %dx%d to PNG %dx%d. Step: X=%.3f Y=%.3f\n",
-        __func__, frame->width, frame->height, width, height, step_x, step_y);
+    RG_LOGI("Saving frame: %dx%d to PNG %dx%d. Step: X=%.3f Y=%.3f\n",
+        frame->width, frame->height, width, height, step_x, step_y);
 
     LuImage *png = luImageCreate(width, height, 3, 8, 0, 0);
     if (!png)
     {
-        printf("%s: LuImage allocation failed!\n", __func__);
+        RG_LOGE("LuImage allocation failed!\n");
         return false;
     }
 
@@ -989,7 +983,7 @@ rg_display_save_frame(const char *filename, const rg_video_frame_t *frame, int w
 
     if (status != PNG_OK)
     {
-        printf("%s: luPngWriteFile() failed! %d\n", __func__, status);
+        RG_LOGE("luPngWriteFile() failed! %d\n", status);
         return false;
     }
 
@@ -1141,19 +1135,19 @@ rg_display_init()
     filterMode = rg_settings_DisplayFilter_get();
     rotationMode = rg_settings_DisplayRotation_get();
 
-    printf("%s: Initialization:\n", __func__);
+    RG_LOGI("Initialization:\n");
 
-    printf("     - calling spi_initialize.\n");
+    RG_LOGI(" - calling spi_initialize.\n");
     spi_initialize();
 
-	printf("     - calling ili9341_init.\n");
+	RG_LOGI(" - calling ili9341_init.\n");
     ili9341_init();
 
-	printf("     - calling backlight_init.\n");
+	RG_LOGI(" - calling backlight_init.\n");
     backlight_init();
 
-	printf("     - starting display_task.\n");
+	RG_LOGI(" - starting display_task.\n");
     xTaskCreatePinnedToCore(&display_task, "display_task", 3072, NULL, 5, NULL, 1);
 
-    printf("     - done.\n");
+    RG_LOGI("init done.\n");
 }

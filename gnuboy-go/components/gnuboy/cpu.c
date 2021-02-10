@@ -838,7 +838,7 @@ next:
 		if (IME) {
 			cpu.halted = 1;
 		} else {
-			printf("FIX ME: HALT requested with IME = 0\n");
+			MESSAGE_ERROR("FIX ME: HALT requested with IME = 0\n");
 		}
 		break;
 

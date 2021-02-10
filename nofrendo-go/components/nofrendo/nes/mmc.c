@@ -54,7 +54,7 @@ void mmc_setcontext(mmc_t *src_mmc)
 
 void mmc_getcontext(mmc_t *dest_mmc)
 {
-   ASSERT(dst_mmc);
+   ASSERT(dest_mmc);
    *dest_mmc = mmc;
 }
 

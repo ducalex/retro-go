@@ -1,6 +1,7 @@
 #include <rg_system.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <nofrendo.h>
 #include <nes/nes.h>
 #include <nes/input.h>
@@ -238,9 +239,12 @@ void osd_loadstate()
     app->refreshRate = nes->refresh_rate;
 }
 
-void osd_logprint(int type, char *string)
+void osd_log(int type, const char *format, ...)
 {
-    printf("%s", string);
+    va_list arg;
+    va_start(arg, format);
+    vprintf(format, arg);
+    va_end(arg);
 }
 
 int osd_init()
@@ -383,7 +387,7 @@ void app_main(void)
     frames[1] = frames[0];
 
     // Load ROM
-    printf("app_main: Reading file: '%s'\n", app->romPath);
+    MESSAGE_INFO("Loading rom file: '%s'\n", app->romPath);
 
     FILE *fp;
     if ((fp = rg_fopen(app->romPath, "rb")))
@@ -401,7 +405,7 @@ void app_main(void)
         RG_PANIC("ROM file loading failed!");
     }
 
-    printf("app_main ROM: OK. romSize=%d\n", romSize);
+    MESSAGE_INFO("Loading complete! romSize=%d\n", romSize);
 
     int region, ret;
 
@@ -413,7 +417,7 @@ void app_main(void)
         default: region = NES_NTSC; break;
     }
 
-    printf("Nofrendo start!\n");
+    MESSAGE_INFO("Nofrendo start!\n");
 
     ret = nofrendo_start(app->romPath, region, AUDIO_SAMPLE_RATE, true);
 

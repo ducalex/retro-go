@@ -17,6 +17,11 @@
 #define HI 0
 #endif
 
+#define MESSAGE_ERROR(x, ...) printf("!! %s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_INFO(x, ...) printf("%s: " x, __func__, ## __VA_ARGS__)
+// #define MESSAGE_DEBUG(x, ...) printf("> %s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_DEBUG(x...) {}
+
 typedef uint8_t byte;
 typedef uint8_t un8;
 typedef uint16_t un16;
@@ -30,6 +35,7 @@ typedef unsigned int addr_t; // Most efficient but at least 16 bits
 /* Implemented by the port */
 extern void sys_vsync(void);
 extern void sys_panic(char *);
+extern void sys_log(int type, const char *format, ...);
 
 /* emu.c */
 void emu_init();

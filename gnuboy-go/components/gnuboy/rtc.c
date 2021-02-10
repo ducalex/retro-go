@@ -28,8 +28,7 @@ void rtc_sync()
 	rtc.m = info->tm_min;
 	rtc.s = info->tm_sec;
 
-	printf("%s: Clock set to day %03d at %02d:%02d:%02d\n",
-		__func__, rtc.d, rtc.h, rtc.m, rtc.s);
+	MESSAGE_INFO("Clock set to day %03d at %02d:%02d:%02d\n", rtc.d, rtc.h, rtc.m, rtc.s);
 }
 
 void rtc_latch(byte b)
@@ -50,7 +49,8 @@ void rtc_latch(byte b)
 
 void rtc_write(byte b)
 {
-	/* printf("write %02X: %02X (%d)\n", rtc.sel, b, b); */
+	MESSAGE_DEBUG("write %02X: %02X (%d)\n", rtc.sel, b, b);
+
 	switch (rtc.sel & 0xf)
 	{
 	case 0x8: // Seconds

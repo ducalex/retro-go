@@ -209,7 +209,7 @@ static inline void ioreg_write(byte r, byte b)
 		}
 	}
 
-	/* printf("reg %02X => %02X (%02X)\n", r, REG(r), b); */
+	MESSAGE_DEBUG("reg %02X => %02X (%02X)\n", r, REG(r), b);
 }
 
 
@@ -276,7 +276,8 @@ static inline void mbc_write(addr_t a, byte b)
 {
 	byte ha = (a >> 12);
 
-	// printf("mbc %d: rom bank %02X -[%04X:%02X]-> ", mbc.type, mbc.rombank, a, b);
+	MESSAGE_DEBUG("mbc %d: rom bank %02X -[%04X:%02X]-> ", mbc.type, mbc.rombank, a, b);
+
 	switch (mbc.type)
 	{
 	case MBC_MBC1:
@@ -362,7 +363,7 @@ static inline void mbc_write(addr_t a, byte b)
 			// Nothing but Radikal Bikers tries to access it.
 			break;
 		default:
-			printf("MBC_MBC5: invalid write to 0x%x (0x%x)\n", a, b);
+			MESSAGE_ERROR("MBC_MBC5: invalid write to 0x%x (0x%x)\n", a, b);
 			break;
 		}
 		break;
@@ -412,7 +413,8 @@ static inline void mbc_write(addr_t a, byte b)
 		break;
 	}
 
-	// printf("%02X\n", mbc.rombank);
+	MESSAGE_DEBUG("%02X\n", mbc.rombank);
+
 	mem_updatemap();
 }
 
@@ -427,7 +429,8 @@ void IRAM_ATTR mem_write(addr_t a, byte b)
 {
 	byte ha = (a >> 12) & 0xE;
 
-	/* printf("write to 0x%04X: 0x%02X\n", a, b); */
+	MESSAGE_DEBUG("write to 0x%04X: 0x%02X\n", a, b);
+
 	switch (ha)
 	{
 	case 0x0:
@@ -493,7 +496,8 @@ byte IRAM_ATTR mem_read(addr_t a)
 {
 	byte ha = (a >> 12) & 0xE;
 
-	/* printf("read %04x\n", a); */
+	MESSAGE_DEBUG("read %04x\n", a);
+
 	switch (ha)
 	{
 	case 0x0:

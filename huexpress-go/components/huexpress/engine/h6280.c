@@ -72,7 +72,7 @@ h6280_run(void)
 	{
 		UBYTE opcode = imm_operand(CPU.PC);
 
-		// printf("0x%4X: %s\n", CPU.PC, opcodes[opcode].name);
+		TRACE_CPU("0x%4X: %s\n", CPU.PC, opcodes[opcode].name);
 
 		switch (opcode)
 		{

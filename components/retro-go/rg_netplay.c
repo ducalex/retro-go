@@ -48,7 +48,7 @@ static int rx_sock, tx_sock;
 
 static void dummy_netplay_callback(netplay_event_t event, void *arg)
 {
-    printf("dummy_netplay_callback: ...\n");
+    RG_LOGI("...\n");
 }
 
 
@@ -76,7 +76,7 @@ static void network_setup(tcpip_adapter_if_t tcpip_if)
     local_player->game_id = rg_system_get_app()->romCRC32;
     local_player->ip_addr = local_if.ip.addr;
 
-    printf("netplay: Local player ID: %d\n", local_player->id);
+    RG_LOGX("netplay: Local player ID: %d\n", local_player->id);
 
     rx_addr.sin_family = AF_INET;
     rx_addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -124,7 +124,7 @@ static inline bool receive_packet(netplay_packet_t *packet, int timeout)
     }
     else if (sel < 0)
     {
-        printf("netplay: [Error] select() failed\n");
+        RG_LOGX("netplay: [Error] select() failed\n");
     }
 
     return false;
@@ -157,7 +157,7 @@ static inline void send_packet(uint32_t dest, uint8_t cmd, uint8_t arg, void *da
 
     if (sendto(tx_sock, &packet, len, 0, (struct sockaddr*)&tx_addr, sizeof tx_addr) <= 0)
     {
-        printf("netplay: [Error] sendto() failed\n");
+        RG_LOGX("netplay: [Error] sendto() failed\n");
         // stop network
     }
 }
@@ -208,7 +208,7 @@ static void netplay_task()
     int len, expected_len;
     netplay_packet_t packet;
 
-    printf("netplay: Task started!\n");
+    RG_LOGX("netplay: Task started!\n");
 
     while (1)
     {
@@ -227,7 +227,7 @@ static void netplay_task()
         // if ((len = recv(client_sock, &packet, sizeof packet, 0)) <= 0)
         if ((len = recvfrom(rx_sock, &packet, sizeof packet, 0, NULL, 0)) <= 0)
         {
-            printf("netplay: [Error] Socket disconnected! (recv() failed)\n");
+            RG_LOGX("netplay: [Error] Socket disconnected! (recv() failed)\n");
             vTaskDelay(pdMS_TO_TICKS(100));
             continue;
         }
@@ -236,17 +236,17 @@ static void netplay_task()
 
         if (expected_len != len)
         {
-            printf("netplay: [Error] Packet size mismatch. expected=%d received=%d\n", expected_len, len);
+            RG_LOGX("netplay: [Error] Packet size mismatch. expected=%d received=%d\n", expected_len, len);
             continue;
         }
         else if (packet.player_id >= MAX_PLAYERS)
         {
-            printf("netplay: [Error] Packet invalid player id: %d\n", packet.player_id);
+            RG_LOGX("netplay: [Error] Packet invalid player id: %d\n", packet.player_id);
             continue;
         }
         else if (packet.player_id == local_player->id)
         {
-            printf("netplay: [Error] Received echo!\n");
+            RG_LOGX("netplay: [Error] Received echo!\n");
             continue;
         }
 
@@ -258,7 +258,7 @@ static void netplay_task()
             case NETPLAY_PACKET_INFO: // HOST <-> GUEST
                 if (packet.data_len != sizeof(netplay_player_t))
                 {
-                    printf("netplay: [Error] Player struct size mismatch. expected=%d received=%d\n",
+                    RG_LOGX("netplay: [Error] Player struct size mismatch. expected=%d received=%d\n",
                             sizeof(netplay_player_t), packet.data_len);
                     break;
                 }
@@ -266,12 +266,12 @@ static void netplay_task()
                 memcpy(packet_from, packet.data, packet.data_len);
                 remote_player = packet_from;
 
-                printf("netplay: Remote client info player_id=%d game_id=%08X version=%02X\n",
+                RG_LOGX("netplay: Remote client info player_id=%d game_id=%08X version=%02X\n",
                         packet_from->id, packet_from->game_id, packet_from->version);
 
                 if (packet_from->version != NETPLAY_VERSION)
                 {
-                    printf("netplay: [Error] Remote client protocol version mismatch.\n");
+                    RG_LOGX("netplay: [Error] Remote client protocol version mismatch.\n");
                     break;
                 }
 
@@ -290,7 +290,7 @@ static void netplay_task()
             case NETPLAY_PACKET_READY: // HOST -> GUEST
                 // if (packet.data_len != sizeof(players))
                 // {
-                //     printf("netplay: [Error] Players array size mismatch. expected=%d received=%d\n",
+                //     RG_LOGX("netplay: [Error] Players array size mismatch. expected=%d received=%d\n",
                 //             sizeof(players), packet.data_len);
                 //     break;
                 // }
@@ -317,7 +317,7 @@ static void netplay_task()
                 break;
 
             default:
-                printf("netplay: [Error] Received unknown packet type 0x%02x\n", packet.cmd);
+                RG_LOGX("netplay: [Error] Received unknown packet type 0x%02x\n", packet.cmd);
         }
     }
 
@@ -327,7 +327,7 @@ static void netplay_task()
 
 static void netplay_init()
 {
-    printf("netplay: %s called.\n", __func__);
+    RG_LOGX("netplay: %s called.\n", __func__);
 
     if (netplay_status == NETPLAY_STATUS_NOT_INIT)
     {
@@ -354,7 +354,7 @@ static void netplay_init()
 
 void rg_netplay_init(netplay_callback_t callback)
 {
-    printf("netplay: %s called.\n", __func__);
+    RG_LOGX("netplay: %s called.\n", __func__);
 
     netplay_callback = callback;
 }
@@ -439,7 +439,7 @@ bool rg_netplay_quick_start(void)
 
 bool rg_netplay_start(netplay_mode_t mode)
 {
-    printf("netplay: %s called.\n", __func__);
+    RG_LOGX("netplay: %s called.\n", __func__);
 
     esp_err_t ret = ESP_FAIL;
 
@@ -458,7 +458,7 @@ bool rg_netplay_start(netplay_mode_t mode)
 
     if (mode == NETPLAY_MODE_GUEST)
     {
-        printf("netplay: Starting in guest mode.\n");
+        RG_LOGX("netplay: Starting in guest mode.\n");
 
         strncpy((char*)wifi_config.sta.ssid, WIFI_SSID, 32);
         wifi_config.sta.channel = WIFI_CHANNEL;
@@ -470,7 +470,7 @@ bool rg_netplay_start(netplay_mode_t mode)
     }
     else if (mode == NETPLAY_MODE_HOST)
     {
-        printf("netplay: Starting in host mode.\n");
+        RG_LOGX("netplay: Starting in host mode.\n");
 
         strncpy((char*)wifi_config.ap.ssid, WIFI_SSID, 32);
         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
@@ -492,7 +492,7 @@ bool rg_netplay_start(netplay_mode_t mode)
 
 bool rg_netplay_stop(void)
 {
-    printf("netplay: %s called.\n", __func__);
+    RG_LOGX("netplay: %s called.\n", __func__);
 
     esp_err_t ret = ESP_FAIL;
 
@@ -551,7 +551,7 @@ void rg_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
     // wait to receive/send NETPLAY_PACKET_SYNC_DONE
     if (xSemaphoreTake(netplay_sync, 10000 / portTICK_PERIOD_MS) != pdPASS)
     {
-        printf("netplay: [Error] Lost sync...\n");
+        RG_LOGX("netplay: [Error] Lost sync...\n");
         rg_netplay_stop();
         return;
     }
@@ -570,7 +570,7 @@ void rg_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
 
     if (++sync_count == 60)
     {
-        printf("netplay: Sync delay=%.4fms\n", (float)sync_time / sync_count / 1000);
+        RG_LOGX("netplay: Sync delay=%.4fms\n", (float)sync_time / sync_count / 1000);
         sync_count = sync_time = 0;
     }
 }

@@ -43,9 +43,9 @@ NO_PROFILE static inline profile_frame_t *find_frame(void *this_fn, void *call_s
 
 NO_PROFILE void rg_profiler_init(void)
 {
-    printf("%s: Allocating profile...\n", __func__);
     profile = rg_alloc(sizeof(profile_t), MEM_SLOW);
     lock = xSemaphoreCreateMutex();
+    RG_LOGI("init done.\n");
 }
 
 NO_PROFILE void rg_profiler_start(void)

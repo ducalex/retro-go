@@ -137,7 +137,7 @@ void rg_input_init(void)
     // Start background polling
     xTaskCreatePinnedToCore(&input_task, "input_task", 2048, NULL, 5, NULL, 1);
 
-  	printf("rg_input_init done.\n");
+  	RG_LOGI("init done.\n");
 }
 
 void rg_input_deinit(void)

@@ -67,7 +67,7 @@ void rg_settings_init()
 
     if (!root)
     {
-        printf("rg_system_init: Failed to load JSON config file!\n");
+        RG_LOGE("Failed to load JSON config file!\n");
         root = cJSON_CreateObject();
     }
 #else
@@ -86,6 +86,7 @@ void rg_settings_init()
         RG_PANIC("Failed to open NVS!");
     }
 #endif
+    RG_LOGI("init done.\n");
 }
 
 void rg_settings_commit()
@@ -148,7 +149,7 @@ char* rg_settings_string_get(const char *key, const char *default_value)
     }
     if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
     {
-        printf("%s: key='%s' err=%d\n", __func__, key, err);
+        RG_LOGW("key='%s' err=%d\n", key, err);
     }
 #endif
     if (default_value != NULL)
@@ -164,7 +165,7 @@ void rg_settings_string_set(const char *key, const char *value)
 #else
     esp_err_t ret = nvs_set_str(my_handle, key, value);
     if (ret != ESP_OK)
-        printf("%s: key='%s' err=%d\n", __func__, key, ret);
+        RG_LOGW("key='%s' err=%d\n", key, ret);
 #endif
     unsaved_changes++;
 }
@@ -178,7 +179,7 @@ int32_t rg_settings_int32_get(const char *key, int32_t default_value)
     int value = default_value;
     esp_err_t ret = nvs_get_i32(my_handle, key, &value);
     if (ret != ESP_OK && ret != ESP_ERR_NVS_NOT_FOUND)
-        printf("%s: key='%s' err=%d\n", __func__, key, ret);
+        RG_LOGW("key='%s' err=%d\n", key, ret);
     return value;
 #endif
 }
@@ -192,7 +193,7 @@ void rg_settings_int32_set(const char *key, int32_t value)
 #else
     esp_err_t ret = nvs_set_i32(my_handle, key, value);
     if (ret != ESP_OK)
-        printf("%s: key='%s' err=%d\n", __func__, key, ret);
+        RG_LOGW("key='%s' err=%d\n", key, ret);
 #endif
     unsaved_changes++;
 }

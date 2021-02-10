@@ -195,19 +195,19 @@ int rom_loadbank(int bank)
 
 	if (rom.bank[bank])
 	{
-		printf("%s: bank %d already loaded!\n", __func__, bank);
+		MESSAGE_INFO("bank %d already loaded!\n", bank);
 		free(rom.bank[bank]);
 		// return 0;
 	}
 
-	printf("%s: loading bank %d.\n", __func__, bank);
+	MESSAGE_INFO("loading bank %d.\n", bank);
 	rom.bank[bank] = (byte*)malloc(BANK_SIZE);
 	while (!rom.bank[bank])
 	{
 		int i = rand() & 0xFF;
 		if (rom.bank[i])
 		{
-			printf("%s: reclaiming bank %d.\n", __func__, i);
+			MESSAGE_INFO("reclaiming bank %d.\n", i);
 			rom.bank[bank] = rom.bank[i];
 			rom.bank[i] = NULL;
 			break;
@@ -236,7 +236,7 @@ int rom_loadbank(int bank)
 
 int rom_load(const char *file)
 {
-    printf("loader: Loading file: '%s'\n", file);
+    MESSAGE_INFO("Loading file: '%s'\n", file);
 
 	fpRomFile = fopen(file, "rb");
 	if (fpRomFile == NULL)
@@ -285,8 +285,8 @@ int rom_load(const char *file)
 		default:         mbcName = "(unknown)"; break;
 	}
 
-	printf("loader: rom.name='%s'\n", rom.name);
-	printf("loader: mbc.type=%s, mbc.romsize=%d (%dK), mbc.ramsize=%d (%dK)\n",
+	MESSAGE_INFO("rom.name='%s'\n", rom.name);
+	MESSAGE_INFO("mbc.type=%s, mbc.romsize=%d (%dK), mbc.ramsize=%d (%dK)\n",
 		mbcName, mbc.romsize, rom.length / 1024, mbc.ramsize, mbc.ramsize * 8);
 
 	// SRAM
@@ -304,11 +304,11 @@ int rom_load(const char *file)
 	// Some games stutters too much if we don't fully preload it
 	if (strncmp(rom.name, "RAYMAN", 6) == 0 || strncmp(rom.name, "NONAME", 6) == 0)
 	{
-		printf("loader: Special preloading for Rayman 1/2\n");
+		MESSAGE_INFO("Special preloading for Rayman 1/2\n");
 		preload = mbc.romsize - 8;
 	}
 
-	printf("loader: Preloading the first %d banks\n", preload);
+	MESSAGE_INFO("Preloading the first %d banks\n", preload);
 	for (int i = 1; i < preload; i++)
 	{
 		rom_loadbank(i);
@@ -317,7 +317,7 @@ int rom_load(const char *file)
 	// Apply game-specific hacks
 	if (strncmp(rom.name, "SIREN GB2 ", 11) == 0 || strncmp(rom.name, "DONKEY KONG", 11) == 0)
 	{
-		printf("loader: HACK: Window offset hack enabled\n");
+		MESSAGE_INFO("HACK: Window offset hack enabled\n");
 		lcd.enable_window_offset_hack = 1;
 	}
 
@@ -351,7 +351,7 @@ int sram_load(const char *file)
 
 	if ((f = fopen(file, "rb")))
 	{
-		printf("sram_load: Loading SRAM from '%s'\n", file);
+		MESSAGE_INFO("Loading SRAM from '%s'\n", file);
 		fread(ram.sbank, 8192, mbc.ramsize, f);
 		rtc_load(f);
 		fclose(f);
@@ -374,7 +374,7 @@ int sram_save(const char *file)
 
 	if ((f = fopen(file, "wb")))
 	{
-		printf("sram_save: Saving SRAM to '%s'\n", file);
+		MESSAGE_INFO("Saving SRAM to '%s'\n", file);
 		fwrite(ram.sbank, 8192, mbc.ramsize, f);
 		rtc_save(f);
 		fclose(f);
@@ -485,7 +485,7 @@ int state_load(const char *file)
 	memcpy(snd.wave, buf+wavofs, sizeof snd.wave);
 
 	if (ver != SAVE_VERSION)
-		printf("state_load: Save file version mismatch!\n");
+		MESSAGE_ERROR("Save file version mismatch!\n");
 
 	free(buf);
 

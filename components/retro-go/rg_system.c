@@ -102,7 +102,7 @@ static void system_monitor_task(void *arg)
             rg_system_set_led(ledState);
         }
 
-        printf("STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%.4f, FPS:%.4f (SKIP:%d, PART:%d, FULL:%d), BATTERY:%d\n",
+        RG_LOGX("STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%.4f, FPS:%.4f (SKIP:%d, PART:%d, FULL:%d), BATTERY:%d\n",
             statistics.freeStackMain,
             statistics.freeMemoryInt / 1024,
             statistics.freeMemoryExt / 1024,
@@ -132,7 +132,7 @@ static void system_monitor_task(void *arg)
 
         if (abs(time(NULL) - lastTime) > 60)
         {
-            printf("%s: System time suddenly changed! Saving...\n", __func__);
+            RG_LOGI("System time suddenly changed! Saving...\n");
             rg_system_time_save();
         }
         lastTime = time(NULL);
@@ -201,11 +201,11 @@ bool rg_sdcard_mount()
 
     if (ret == ESP_OK)
     {
-        printf("%s: SD Card mounted, freq=%d\n", __func__, 0);
+        RG_LOGI("SD Card mounted, freq=%d\n", 0);
         return true;
     }
 
-    printf("%s: SD Card mounting failed (%d)\n", __func__, ret);
+    RG_LOGE("SD Card mounting failed (%d)\n", ret);
     return false;
 }
 
@@ -214,10 +214,10 @@ bool rg_sdcard_unmount()
     esp_err_t ret = esp_vfs_fat_sdmmc_unmount();
     if (ret == ESP_OK)
     {
-        printf("%s: SD Card unmounted\n", __func__);
+        RG_LOGI("SD Card unmounted\n");
         return true;
     }
-    printf("%s: SD Card unmounting failed (%d)\n", __func__, ret);
+    RG_LOGE("SD Card unmounting failed (%d)\n", ret);
     return false;
 }
 
@@ -252,11 +252,9 @@ void rg_system_init(int appId, int sampleRate)
 {
     const esp_app_desc_t *app = esp_ota_get_app_description();
 
-    printf("\n========================================================\n");
-    printf("%s %s (%s %s)\n", app->project_name, app->version, app->date, app->time);
-    printf("========================================================\n\n");
-
-    printf("%s: %d KB free\n", __func__, esp_get_free_heap_size() / 1024);
+    RG_LOGX("\n========================================================\n");
+    RG_LOGX("%s %s (%s %s)\n", app->project_name, app->version, app->date, app->time);
+    RG_LOGX("========================================================\n\n");
 
     #if USE_SPI_MUTEX
     spiMutex = xSemaphoreCreateMutex();
@@ -285,7 +283,7 @@ void rg_system_init(int appId, int sampleRate)
     if (esp_reset_reason() == ESP_RST_PANIC)
     {
         if (panicTrace->magicWord == PANIC_TRACE_MAGIC)
-            printf(" *** PREVIOUS PANIC: %s *** \n", panicTrace->message);
+            RG_LOGX(" *** PREVIOUS PANIC: %s *** \n", panicTrace->message);
         else  // Presumably abort()
             strcpy(panicTrace->message, "Application crashed");
         panicTrace->magicWord = 0;
@@ -314,7 +312,7 @@ void rg_system_init(int appId, int sampleRate)
     }
 
     #ifdef ENABLE_PROFILING
-        printf("%s: Profiling has been enabled at compile time!\n", __func__);
+        RG_LOGI("Profiling has been enabled at compile time!\n");
         rg_profiler_init();
     #endif
 
@@ -322,7 +320,7 @@ void rg_system_init(int appId, int sampleRate)
 
     panicTrace->magicWord = 0;
 
-    printf("%s: System ready!\n\n", __func__);
+    RG_LOGI("System ready!\n\n");
 }
 
 void rg_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t netplay_cb)
@@ -366,7 +364,7 @@ void rg_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t 
     // This is to allow time for rom loading
     inputTimeout = INPUT_TIMEOUT * 3;
 
-    printf("%s: Init done. romPath='%s'\n", __func__, currentApp.romPath);
+    RG_LOGI("Init done. romPath='%s'\n\n", currentApp.romPath);
 }
 
 rg_app_desc_t *rg_system_get_app()
@@ -445,11 +443,11 @@ bool rg_emu_load_state(int slot)
 {
     if (!currentApp.romPath || !currentApp.loadState)
     {
-        printf("%s: No game/emulator loaded...\n", __func__);
+        RG_LOGE("No game/emulator loaded...\n");
         return false;
     }
 
-    printf("%s: Loading state %d.\n", __func__, slot);
+    RG_LOGI("Loading state %d.\n", slot);
 
     rg_gui_draw_hourglass();
     rg_spi_lock_acquire(SPI_LOCK_SDCARD);
@@ -466,7 +464,7 @@ bool rg_emu_load_state(int slot)
 
     if (!success)
     {
-        printf("%s: Load failed!\n", __func__);
+        RG_LOGE("Load failed!\n");
     }
 
     free(pathName);
@@ -478,11 +476,11 @@ bool rg_emu_save_state(int slot)
 {
     if (!currentApp.romPath || !currentApp.saveState)
     {
-        printf("%s: No game/emulator loaded...\n", __func__);
+        RG_LOGE("No game/emulator loaded...\n");
         return false;
     }
 
-    printf("%s: Saving state %d.\n", __func__, slot);
+    RG_LOGI("Saving state %d.\n", slot);
 
     rg_system_set_led(1);
     rg_gui_draw_hourglass();
@@ -517,7 +515,7 @@ bool rg_emu_save_state(int slot)
 
     if (!success)
     {
-        printf("%s: Save failed!\n", __func__);
+        RG_LOGE("Save failed!\n");
         rg_gui_alert("Save failed", NULL);
     }
 
@@ -536,7 +534,7 @@ void rg_system_restart()
 
 void rg_system_switch_app(const char *app)
 {
-    printf("%s: Switching to app '%s'.\n", __func__, app ? app : "NULL");
+    RG_LOGI("Switching to app '%s'.\n", app ? app : "NULL");
 
     rg_display_clear(0);
     rg_gui_draw_hourglass();
@@ -569,12 +567,12 @@ void rg_system_set_boot_app(const char *app)
         RG_PANIC("Unable to set boot app!");
     }
 
-    printf("%s: Boot partition set to %d '%s'\n", __func__, partition->subtype, partition->label);
+    RG_LOGI("Boot partition set to %d '%s'\n", partition->subtype, partition->label);
 }
 
 void rg_system_panic(const char *reason, const char *function, const char *file)
 {
-    printf("*** PANIC: %s\n  *** FUNCTION: %s\n  *** FILE: %s\n", reason, function, file);
+    RG_LOGX("*** PANIC: %s\n  *** FUNCTION: %s\n  *** FILE: %s\n", reason, function, file);
 
     strcpy(panicTrace->message, reason);
     strcpy(panicTrace->file, file);
@@ -587,14 +585,14 @@ void rg_system_panic(const char *reason, const char *function, const char *file)
 
 void rg_system_halt()
 {
-    printf("%s: Halting system!\n", __func__);
+    RG_LOGI("Halting system!\n");
     vTaskSuspendAll();
     while (1);
 }
 
 void rg_system_sleep()
 {
-    printf("%s: Going to sleep!\n", __func__);
+    RG_LOGI("Going to sleep!\n");
 
     // Wait for button release
     rg_input_wait_for_key(GAMEPAD_KEY_MENU, false);
@@ -678,7 +676,7 @@ bool rg_mkdir(const char *dir)
             if (*p == '/') {
                 *p = 0;
                 if (strlen(temp) > 0) {
-                    printf("%s: Creating %s\n", __func__, temp);
+                    RG_LOGI("Creating %s\n", temp);
                     mkdir(temp, 0777);
                 }
                 *p = '/';
@@ -691,7 +689,7 @@ bool rg_mkdir(const char *dir)
 
     if (ret == 0)
     {
-        printf("%s: Folder created %s\n", __func__, dir);
+        RG_LOGI("Folder created %s\n", dir);
     }
 
     rg_spi_lock_release(SPI_LOCK_SDCARD);
@@ -799,7 +797,7 @@ void *rg_alloc(size_t size, uint32_t mem_type)
 
     void *ptr = heap_caps_calloc(1, size, caps);
 
-    printf("RG_ALLOC: SIZE: %u  [SPIRAM: %u; 32BIT: %u; DMA: %u]  PTR: %p\n",
+    RG_LOGX("[RG_ALLOC] SIZE: %u  [SPIRAM: %u; 32BIT: %u; DMA: %u]  PTR: %p\n",
             size, (caps & MALLOC_CAP_SPIRAM) != 0, (caps & MALLOC_CAP_32BIT) != 0,
             (caps & MALLOC_CAP_DMA) != 0, ptr);
 
@@ -811,11 +809,11 @@ void *rg_alloc(size_t size, uint32_t mem_type)
         ptr = heap_caps_calloc(1, size, caps & ~(MALLOC_CAP_SPIRAM|MALLOC_CAP_INTERNAL));
         if (!ptr)
         {
-            printf("RG_ALLOC: ^-- Allocation failed! (available: %d)\n", availaible);
+            RG_LOGX("[RG_ALLOC] ^-- Allocation failed! (available: %d)\n", availaible);
             RG_PANIC("Memory allocation failed!");
         }
 
-        printf("RG_ALLOC: ^-- CAPS not fully met! (available: %d)\n", availaible);
+        RG_LOGX("[RG_ALLOC] ^-- CAPS not fully met! (available: %d)\n", availaible);
     }
 
     return ptr;

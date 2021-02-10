@@ -87,7 +87,7 @@ static void favorites_load()
         }
         else
         {
-            printf("Unknown favorite: '%s'\n", token);
+            RG_LOGW("Unknown favorite: '%s'\n", token);
             favorites_count--;
         }
 

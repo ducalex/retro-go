@@ -26,45 +26,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 #include <string.h>
 #include <nofrendo.h>
 #include <nes.h>
-
-void nofrendo_printf(int type, const char *prefix, const char *format, ...)
-{
-    static char buffer[512];
-    va_list arg;
-    va_start(arg, format);
-    vsprintf(buffer, format, arg);
-
-    if (type > 0)
-    {
-        // gui_sendmsg();
-    }
-
-    if (prefix)
-    {
-    }
-
-    osd_logprint(0, buffer);
-
-    va_end(arg);
-}
-
-void nofrendo_assert(int expr, int line, const char *file, char *msg)
-{
-    if (expr)
-        return;
-
-    if (NULL != msg)
-        MESSAGE_ERROR("ASSERT: line %d of %s, %s\n", line, file, msg);
-    else
-        MESSAGE_ERROR("ASSERT: line %d of %s\n", line, file);
-
-    asm("break.n 1");
-    //   exit(-1);
-}
 
 /* End the current context */
 void nofrendo_stop(void)

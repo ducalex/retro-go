@@ -179,7 +179,7 @@ rg_image_t *rg_gui_load_image_file(const char *file)
         return img;
     }
 
-    printf("%s: Unable to load image file '%s'!\n", __func__, file);
+    RG_LOGE("Unable to load image file '%s'!\n", file);
     return NULL;
 }
 
@@ -215,7 +215,7 @@ rg_image_t *rg_gui_load_image(const uint8_t *data, size_t data_len)
 
     if (data_len < (img_width * img_height * 2))
     {
-        printf("%s: Invalid RAW data!\n", __func__);
+        RG_LOGE("Invalid RAW data!\n");
         return false;
     }
 

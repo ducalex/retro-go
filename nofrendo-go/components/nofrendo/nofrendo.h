@@ -68,15 +68,20 @@
 
 #ifdef NOFRENDO_DEBUG
 #define UNUSED(x)
-#define ASSERT(expr) nofrendo_assert((int)(expr), __LINE__, __FILE__, NULL)
-#define MESSAGE_DEBUG(x...) nofrendo_printf(0, __FUNCTION__, "> " x)
+#define ASSERT(expr) while (!(expr)) { osd_log(1, "ASSERTION FAILED IN %s: " #expr "\n", __func__); abort(); }
+#define MESSAGE_TRACE(x...)   osd_log(5, "~ %s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_DEBUG(x...)   osd_log(4, "> %s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_INFO(x, ...)  osd_log(3, "* %s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_WARN(x, ...)  osd_log(2, "* %s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_ERROR(x, ...) osd_log(1, "!! %s: " x, __func__, ## __VA_ARGS__)
 #else
 #define UNUSED(x) (void)x
 #define ASSERT(expr)
-#define MESSAGE_DEBUG(x...)
+#define MESSAGE_DEBUG(x, ...)
+#define MESSAGE_INFO(x...)  osd_log(3, x)
+#define MESSAGE_WARN(x...)  osd_log(2, " ! " x)
+#define MESSAGE_ERROR(x...) osd_log(1, "!! " x)
 #endif
-#define MESSAGE_INFO(x...) nofrendo_printf(1, NULL, "* " x)
-#define MESSAGE_ERROR(x...) nofrendo_printf(2, NULL, "!! " x)
 
 /* End macros */
 
@@ -105,7 +110,5 @@ typedef struct
 
 extern int nofrendo_start(const char *filename, int region, int sample_rate, bool stereo);
 extern void nofrendo_stop(void);
-extern void nofrendo_printf(int type, const char *prefix, const char *format, ...);
-extern void nofrendo_assert(int expr, int line, const char *file, char *msg);
 
 #endif /* !_NOFRENDO_H_ */

@@ -23,20 +23,13 @@ audio_volume_t rg_audio_volume_get()
 
 void rg_audio_volume_set(audio_volume_t level)
 {
-    if (level < RG_AUDIO_VOL_MIN)
-    {
-        printf("rg_audio_volume_set: level out of range (< 0) (%d)\n", level);
-        level = RG_AUDIO_VOL_MIN;
-    }
-    else if (level > RG_AUDIO_VOL_MAX)
-    {
-        printf("rg_audio_volume_set: level out of range (> max) (%d)\n", level);
-        level = RG_AUDIO_VOL_MAX;
-    }
+    level = RG_MAX(level, RG_AUDIO_VOL_MIN);
+    level = RG_MIN(level, RG_AUDIO_VOL_MAX);
+    volumeLevel = level;
 
     rg_settings_Volume_set(level);
 
-    volumeLevel = level;
+    RG_LOGI("volume set to %d%%\n", (int)(volumeLevels[level] * 100));
 }
 
 void rg_audio_init(int sample_rate)
@@ -46,7 +39,7 @@ void rg_audio_init(int sample_rate)
     audioSampleRate = sample_rate;
     audioInitialized = true;
 
-    printf("%s: sink=%d, sample_rate=%d\n", __func__, audioSink, sample_rate);
+    RG_LOGI("sink=%d, sample_rate=%d\n", audioSink, sample_rate);
 
     int buffer_length = RG_MIN(sample_rate / 50 + 1, 640);
 
@@ -103,7 +96,7 @@ void rg_audio_init(int sample_rate)
 
     rg_audio_volume_set(volumeLevel);
 
-    printf("%s: I2S init done. clock=%f\n", __func__, i2s_get_clk(RG_AUDIO_I2S_NUM));
+    RG_LOGI("init done. clock=%f\n", i2s_get_clk(RG_AUDIO_I2S_NUM));
 }
 
 void rg_audio_deinit()
@@ -133,7 +126,7 @@ void rg_audio_submit(short *stereoAudioBuffer, size_t frameCount)
 
     if (bufferSize == 0)
     {
-        printf("%s: Empty buffer?\n", __func__);
+        RG_LOGW("Empty buffer?\n");
         return;
     }
 

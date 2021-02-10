@@ -156,6 +156,13 @@ extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 #define RG_PANIC(x) rg_system_panic(x, __FUNCTION__, __FILE__)
 #define RG_ASSERT(cond, x) do { if (!(cond)) rg_system_panic(x, __FUNCTION__, __FILE__); } while(0);
 
+#define RG_LOGX(x, ...) printf(x, ## __VA_ARGS__)
+#define RG_LOGE(x, ...) printf("!! %s: " x, __func__, ## __VA_ARGS__)
+#define RG_LOGW(x, ...) printf(" ! %s: " x, __func__, ## __VA_ARGS__)
+#define RG_LOGI(x, ...) printf("%s: " x, __func__, ## __VA_ARGS__)
+//#define RG_LOGD(x, ...) printf("> %s: " x, __func__, ## __VA_ARGS__)
+#define RG_LOGD(x...) {}
+
 // Attributes
 
 #undef PATH_MAX

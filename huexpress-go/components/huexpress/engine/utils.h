@@ -19,40 +19,42 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define MESSAGE_ERROR(x...) osd_log("!! " x)
-#define MESSAGE_INFO(x...) osd_log(" * " x)
+#define MESSAGE_ERROR(x...) osd_log(1, "!! " x)
+#define MESSAGE_WARN(x...)  osd_log(2, " ! " x)
+#define MESSAGE_INFO(x...)  osd_log(3, " * " x)
+#define MESSAGE_TRACE(tag, x...) osd_log(4, " & (" tag ") ", x)
 #if DEBUG_ENABLED
-#define MESSAGE_DEBUG(x...) osd_log(" ~ " x)
+#define MESSAGE_DEBUG(x...) osd_log(5, " > " x)
 #else
 #define MESSAGE_DEBUG(x...) {}
 #endif
 
 #if ENABLE_SPR_TRACING
-#define TRACE_SPR(x...) osd_log(" & (SPR) " x)
+#define TRACE_SPR(x...) MESSAGE_TRACE("SPR", x)
 #else
 #define TRACE_SPR(x...) {}
 #endif
 
 #if ENABLE_GFX_TRACING
-#define TRACE_GFX(x...) osd_log(" & (GFX) " x)
+#define TRACE_GFX(x...) MESSAGE_TRACE("GFX", x)
 #else
 #define TRACE_GFX(x...) {}
 #endif
 
 #if ENABLE_GFX2_TRACING
-#define TRACE_GFX2(x...) osd_log(" & (GFX2) " x)
+#define TRACE_GFX2(x...) MESSAGE_TRACE("GFX2", x)
 #else
 #define TRACE_GFX2(x...) {}
 #endif
 
 #if ENABLE_IO_TRACING
-#define TRACE_IO(x...) osd_log(" & (IO) " x)
+#define TRACE_IO(x...) MESSAGE_TRACE("IO", x)
 #else
 #define TRACE_IO(x...) {}
 #endif
 
 #if ENABLE_CPU_TRACING
-#define TRACE_CPU(x...) osd_log(" & (CPU) " x)
+#define TRACE_CPU(x...) MESSAGE_TRACE("CPU", x)
 #else
 #define TRACE_CPU(x...) {}
 #endif

@@ -313,7 +313,7 @@ void sound_mix()
 			if (pcm.pos >= pcm.len)
 			{
 				//pcm_submit();
-				printf("sound_mix: buffer overflow. (pcm.len=%d)\n", pcm.len);
+				MESSAGE_ERROR("buffer overflow. (pcm.len=%d)\n", pcm.len);
 				//abort();
 			}
 			else if (pcm.stereo)

@@ -51,7 +51,7 @@ psg_update(short *buf, int ch, size_t dwSize)
         // const int cycles_per_sample = CYCLES_PER_FRAME / (host.sound.sample_freq / 60);
 
         // float repeat = (float)elapsed / cycles_per_sample / chan->dda_count;
-        // printf("%.2f\n", repeat);
+        // MESSAGE_INFO("%.2f\n", repeat);
 
         int start = (int)chan->dda_index - chan->dda_count;
         if (start < 0)

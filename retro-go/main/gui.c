@@ -71,7 +71,7 @@ tab_t *gui_add_tab(const char *name, const rg_image_t *logo, const rg_image_t *h
 
     gui.tabs[gui.tabcount++] = tab;
 
-    printf("gui_add_tab: Tab '%s' added at index %d\n", tab->name, gui.tabcount - 1);
+    RG_LOGI("Tab '%s' added at index %d\n", tab->name, gui.tabcount - 1);
 
     return tab;
 }
@@ -171,7 +171,7 @@ void gui_resize_list(tab_t *tab, int new_size)
     tab->listbox.cursor = MIN(tab->listbox.cursor, tab->listbox.length -1);
     tab->listbox.cursor = MAX(tab->listbox.cursor, 0);
 
-    printf("gui_resize_list: Resized list '%s' from %d to %d items\n", tab->name, cur_size, new_size);
+    RG_LOGI("Resized list '%s' from %d to %d items\n", tab->name, cur_size, new_size);
 }
 
 void gui_scroll_list(tab_t *tab, scroll_mode_t mode)
