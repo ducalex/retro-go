@@ -36,8 +36,8 @@ typedef struct {
 	} options;
 
 	struct {
-		size_t sample_size;
 		size_t sample_freq;
+		bool sample_uint8;
 		bool stereo;
 	} sound;
 

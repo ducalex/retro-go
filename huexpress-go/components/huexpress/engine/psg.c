@@ -166,7 +166,6 @@ psg_update_chan(sample_t *buf, int ch, size_t dwSize)
         }
     }
 
-pad_and_return:
     if (buf < buf_end) {
         memset(buf, 0, (void*)buf_end - (void*)buf);
     }
@@ -208,10 +207,16 @@ psg_update(int16_t *output, size_t length)
     {
         psg_update_chan((void*)mix_buffer, i, length);
 
-        for (int j = 0; j < length; j += 2)
-        {
-            output[j] += mix_buffer[j] * lvol;
-            output[j + 1] += mix_buffer[j + 1] * rvol;
+        if (host.sound.sample_uint8) {
+            for (int j = 0; j < length; j += 2) {
+                output[j] += (uint8_t)mix_buffer[j] * lvol;
+                output[j + 1] += (uint8_t)mix_buffer[j + 1] * rvol;
+            }
+        } else {
+            for (int j = 0; j < length; j += 2) {
+                output[j] += mix_buffer[j] * lvol;
+                output[j + 1] += mix_buffer[j + 1] * rvol;
+            }
         }
     }
 }
