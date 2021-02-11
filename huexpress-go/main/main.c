@@ -319,10 +319,22 @@ static bool load_state(char *pathName)
     return true;
 }
 
+static bool reset_emulation(bool hard)
+{
+    ResetPCE(hard);
+    return true;
+}
+
 void app_main(void)
 {
+    rg_emu_proc_t handlers = {
+        .loadState = &load_state,
+        .saveState = &save_state,
+        .reset = &reset_emulation,
+    };
+
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    rg_emu_init(&load_state, &save_state, NULL);
+    rg_emu_init(handlers);
 
     // Clearing the buffer on the display core is somewhat faster, but it
     // prevents us from doing partial updates and screenshots.

@@ -484,9 +484,13 @@ static inline void lcd_beginframe()
 	WY = R_WY;
 }
 
-void lcd_reset()
+void lcd_reset(bool hard)
 {
-	memset(&lcd, 0, sizeof(lcd));
+	if (hard)
+	{
+		memset(&lcd, 0, sizeof(lcd));
+	}
+
 	lcd_beginframe();
 	pal_set_dmg(dmg_selected_pal);
 }

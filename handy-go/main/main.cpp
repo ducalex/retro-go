@@ -149,11 +149,22 @@ static bool load_state(char *pathName)
     return ret;
 }
 
+static bool reset_emulation(bool hard)
+{
+    lynx->Reset();
+    return true;
+}
 
 extern "C" void app_main(void)
 {
+    rg_emu_proc_t handlers = {
+        .loadState = &load_state,
+        .saveState = &save_state,
+        .reset = &reset_emulation,
+    };
+
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    rg_emu_init(&load_state, &save_state, NULL);
+    rg_emu_init(handlers);
 
     frames[0].flags = RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].width = HANDY_SCREEN_WIDTH;

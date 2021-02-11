@@ -84,7 +84,7 @@ static void netplay_callback(netplay_event_t event, void *arg)
 #endif
 }
 
-static bool SaveState(char *pathName)
+static bool save_state(char *pathName)
 {
     if (state_save(pathName) >= 0)
     {
@@ -99,13 +99,19 @@ static bool SaveState(char *pathName)
     return false;
 }
 
-static bool LoadState(char *pathName)
+static bool load_state(char *pathName)
 {
     if (state_load(pathName) < 0)
     {
         nes_reset(HARD_RESET);
         return false;
     }
+    return true;
+}
+
+static bool reset_emulation(bool hard)
+{
+    nes_reset(hard ? HARD_RESET : SOFT_RESET);
     return true;
 }
 
@@ -376,8 +382,15 @@ void osd_getinput(void)
 
 void app_main(void)
 {
+    rg_emu_proc_t handlers = {
+        .loadState = &load_state,
+        .saveState = &save_state,
+        .reset = &reset_emulation,
+        .netplay = &netplay_callback,
+    };
+
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    rg_emu_init(&LoadState, &SaveState, &netplay_callback);
+    rg_emu_init(handlers);
 
     app = rg_system_get_app();
 

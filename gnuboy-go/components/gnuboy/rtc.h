@@ -23,7 +23,7 @@ void rtc_write(byte b);
 void rtc_save(FILE *f);
 void rtc_load(FILE *f);
 void rtc_tick();
-void rtc_reset();
+void rtc_reset(bool hard);
 void rtc_sync();
 
 #endif

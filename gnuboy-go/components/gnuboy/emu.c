@@ -10,7 +10,7 @@
 
 void emu_init()
 {
-	emu_reset();
+	emu_reset(true);
 }
 
 /*
@@ -18,14 +18,14 @@ void emu_init()
  * system. It should set cpu registers, hardware registers, etc. to
  * their appropriate values at power up time.
  */
-void emu_reset()
+void emu_reset(bool hard)
 {
-	hw_reset();
-	rtc_reset();
-	lcd_reset();
-	cpu_reset();
-	mbc_reset();
-	sound_reset();
+	hw_reset(hard);
+	rtc_reset(hard);
+	lcd_reset(hard);
+	cpu_reset(hard);
+	mbc_reset(hard);
+	sound_reset(hard);
 }
 
 /*

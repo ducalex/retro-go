@@ -136,15 +136,18 @@ void IRAM_ATTR pad_set(byte btn, int set)
 	}
 }
 
-void hw_reset()
+void hw_reset(bool hard)
 {
 	hw.ilines = 0;
 	hw.serial = 0;
 	hw.hdma = 0;
 	hw.pad = 0;
 
-	memset(ram.hi, 0, sizeof(ram.hi));
-	memset(ram.ibank, 0, sizeof(ram.ibank));
+	if (hard)
+	{
+		memset(ram.hi, 0, sizeof(ram.hi));
+		memset(ram.ibank, 0, sizeof(ram.ibank));
+	}
 
 	R_P1 = 0xFF;
 	R_LCDC = 0x91;

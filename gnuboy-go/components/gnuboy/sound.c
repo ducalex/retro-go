@@ -160,7 +160,7 @@ void sound_off()
 	sound_dirty();
 }
 
-void sound_reset()
+void sound_reset(bool hard)
 {
 	memset(&snd, 0, sizeof snd);
 	memcpy(WAVE, hw.cgb ? cgbwave : dmgwave, 16);

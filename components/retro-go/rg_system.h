@@ -28,19 +28,26 @@ extern "C" {
 #include "rg_settings.h"
 
 typedef bool (*state_handler_t)(char *pathName);
+typedef bool (*reset_handler_t)(bool hard);
+
+typedef struct
+{
+    state_handler_t loadState;
+    state_handler_t saveState;
+    reset_handler_t reset;
+    netplay_callback_t netplay;
+} rg_emu_proc_t;
 
 typedef struct
 {
     uint32_t id;
-    uint32_t gameId;
     const char *romPath;
-    state_handler_t loadState;
-    state_handler_t saveState;
     int32_t speedupEnabled;
     int32_t refreshRate;
     int32_t sampleRate;
     int32_t startAction;
     void *mainTaskHandle;
+    rg_emu_proc_t handlers;
 } rg_app_desc_t;
 
 typedef enum
@@ -105,10 +112,11 @@ runtime_stats_t rg_system_get_stats();
 void rg_system_time_init();
 void rg_system_time_save();
 
-void rg_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t netplay_cb);
+void rg_emu_init(rg_emu_proc_t handlers);
 char *rg_emu_get_path(emu_path_type_t type, const char *romPath);
 bool rg_emu_save_state(int slot);
 bool rg_emu_load_state(int slot);
+bool rg_emu_reset(int hard);
 
 void rg_spi_lock_acquire(spi_lock_res_t);
 void rg_spi_lock_release(spi_lock_res_t);

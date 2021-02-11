@@ -692,6 +692,7 @@ int rg_gui_game_menu(void)
         {10, "Save & Continue", "",  1, NULL},
         {20, "Save & Quit", "", 1, NULL},
         {30, "Reload", "", 1, NULL},
+        {35, "Reset", "", 1, NULL},
         #ifdef ENABLE_NETPLAY
         {40, "Netplay", "", 1, NULL},
         #endif
@@ -714,6 +715,7 @@ int rg_gui_game_menu(void)
         case 10: rg_emu_save_state(0); break;
         case 20: rg_emu_save_state(0); rg_system_switch_app(RG_APP_LAUNCHER); break;
         case 30: rg_emu_load_state(0); break; // esp_restart();
+        case 35: if (rg_gui_confirm("Reset CPU?", 0, 1)) rg_emu_reset(false); break;
     #ifdef ENABLE_NETPLAY
         case 40: rg_netplay_quick_start(); break;
     #endif

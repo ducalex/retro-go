@@ -12,10 +12,13 @@ rtc_t rtc;
 #define RT_BASE 1893456000
 
 
-void rtc_reset()
+void rtc_reset(bool hard)
 {
-	memset(&rtc, 0, sizeof(rtc));
-	rtc_sync();
+	if (hard)
+	{
+		memset(&rtc, 0, sizeof(rtc));
+		rtc_sync();
+	}
 }
 
 void rtc_sync()

@@ -310,6 +310,16 @@ static bool load_state(char *pathName)
 	return ret;
 }
 
+static bool reset_emulation(bool hard)
+{
+	if (hard)
+		S9xReset();
+	else
+		S9xSoftReset();
+
+    return true;
+}
+
 static void snes9x_task(void *arg)
 {
 	printf("\nSnes9x " VERSION " for ODROID-GO\n");
@@ -416,8 +426,15 @@ static void snes9x_task(void *arg)
 
 extern "C" void app_main(void)
 {
-	rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-	rg_emu_init(&load_state, &save_state, NULL);
+    rg_emu_proc_t handlers = {
+        .loadState = &load_state,
+        .saveState = &save_state,
+		.reset = &reset_emulation,
+		.netplay = NULL,
+    };
+
+    rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
+    rg_emu_init(handlers);
 
 	app = rg_system_get_app();
 

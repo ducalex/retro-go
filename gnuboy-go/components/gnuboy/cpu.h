@@ -53,7 +53,7 @@ typedef struct
 
 extern cpu_t cpu;
 
-void cpu_reset();
+void cpu_reset(bool hard);
 int  cpu_emulate(int cycles);
 void cpu_burn(int cycles);
 

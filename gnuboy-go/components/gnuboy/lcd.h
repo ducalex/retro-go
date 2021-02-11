@@ -49,7 +49,7 @@ typedef struct
 extern lcd_t lcd;
 extern fb_t fb;
 
-void lcd_reset();
+void lcd_reset(bool hard);
 void lcd_emulate();
 
 void lcdc_change(byte b);

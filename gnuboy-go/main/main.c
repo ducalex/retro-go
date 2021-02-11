@@ -62,7 +62,7 @@ static void netplay_callback(netplay_event_t event, void *arg)
 #endif
 }
 
-static bool SaveState(char *pathName)
+static bool save_state(char *pathName)
 {
     // For convenience we also write the sram to its own file
     // So that it can be imported in other emulators
@@ -82,11 +82,11 @@ static bool SaveState(char *pathName)
     return false;
 }
 
-static bool LoadState(char *pathName)
+static bool load_state(char *pathName)
 {
     if (state_load(pathName) != 0)
     {
-        emu_reset();
+        emu_reset(true);
 
         if (saveSRAM) sram_load(sramFile);
 
@@ -94,7 +94,12 @@ static bool LoadState(char *pathName)
     }
 
     // TO DO: Call rtc_sync() if a physical RTC is present
+    return true;
+}
 
+static bool reset_emulation(bool hard)
+{
+    emu_reset(hard);
     return true;
 }
 
@@ -205,8 +210,15 @@ static inline void screen_blit(void)
 
 void app_main(void)
 {
+    rg_emu_proc_t handlers = {
+        .loadState = &load_state,
+        .saveState = &save_state,
+        .reset = &reset_emulation,
+        .netplay = &netplay_callback,
+    };
+
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    rg_emu_init(&LoadState, &SaveState, &netplay_callback);
+    rg_emu_init(handlers);
 
     app = rg_system_get_app();
 

@@ -266,6 +266,7 @@ void rg_system_init(int appId, int sampleRate)
 
     memset(&currentApp, 0, sizeof(currentApp));
     currentApp.id = appId;
+    currentApp.refreshRate = 60;
     currentApp.mainTaskHandle = xTaskGetCurrentTaskHandle();
 
     // sdcard init must be before rg_display_init()
@@ -323,7 +324,7 @@ void rg_system_init(int appId, int sampleRate)
     RG_LOGI("System ready!\n\n");
 }
 
-void rg_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t netplay_cb)
+void rg_emu_init(rg_emu_proc_t handlers)
 {
     // If any key is pressed we go back to the menu (recover from ROM crash)
     if (rg_input_key_is_pressed(GAMEPAD_KEY_ANY))
@@ -350,16 +351,14 @@ void rg_emu_init(state_handler_t load, state_handler_t save, netplay_callback_t 
         RG_PANIC("Invalid ROM path!");
     }
 
-    if (netplay_cb)
-    {
-        #ifdef ENABLE_NETPLAY
-            rg_netplay_init(netplay_cb);
-        #endif
-    }
+    currentApp.handlers = handlers;
 
-    currentApp.loadState = load;
-    currentApp.saveState = save;
-    currentApp.refreshRate = 60;
+    #ifdef ENABLE_NETPLAY
+    if (currentApp.handlers.netplay)
+    {
+        rg_netplay_init(netplay_cb);
+    }
+    #endif
 
     // This is to allow time for rom loading
     inputTimeout = INPUT_TIMEOUT * 3;
@@ -441,7 +440,7 @@ char* rg_emu_get_path(emu_path_type_t type, const char *_romPath)
 
 bool rg_emu_load_state(int slot)
 {
-    if (!currentApp.romPath || !currentApp.loadState)
+    if (!currentApp.romPath || !currentApp.handlers.loadState)
     {
         RG_LOGE("No game/emulator loaded...\n");
         return false;
@@ -456,7 +455,7 @@ bool rg_emu_load_state(int slot)
     inputTimeout = -1;
 
     char *pathName = rg_emu_get_path(EMU_PATH_SAVE_STATE, currentApp.romPath);
-    bool success = (*currentApp.loadState)(pathName);
+    bool success = (*currentApp.handlers.loadState)(pathName);
 
     inputTimeout = INPUT_TIMEOUT;
 
@@ -474,7 +473,7 @@ bool rg_emu_load_state(int slot)
 
 bool rg_emu_save_state(int slot)
 {
-    if (!currentApp.romPath || !currentApp.saveState)
+    if (!currentApp.romPath || !currentApp.handlers.saveState)
     {
         RG_LOGE("No game/emulator loaded...\n");
         return false;
@@ -495,7 +494,7 @@ bool rg_emu_save_state(int slot)
     // Disable input watchdog
     inputTimeout = -1;
 
-    if ((*currentApp.saveState)(tempName))
+    if ((*currentApp.handlers.saveState)(tempName))
     {
         rename(saveName, backName);
 
@@ -524,6 +523,17 @@ bool rg_emu_save_state(int slot)
     free(tempName);
 
     return success;
+}
+
+bool rg_emu_reset(int hard)
+{
+    if (!currentApp.romPath || !currentApp.handlers.reset)
+    {
+        RG_LOGE("No game/emulator loaded...\n");
+        return false;
+    }
+
+    return (*currentApp.handlers.reset)(hard);
 }
 
 void rg_system_restart()

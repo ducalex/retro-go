@@ -263,7 +263,7 @@ label: op(b); break;
 cpu_t cpu;
 
 
-void cpu_reset()
+void cpu_reset(bool hard)
 {
 	cpu.double_speed = 0;
 	cpu.halted = 0;

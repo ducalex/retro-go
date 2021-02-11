@@ -548,7 +548,7 @@ byte IRAM_ATTR mem_read(addr_t a)
 	return 0xFF;
 }
 
-void mbc_reset()
+void mbc_reset(bool hard)
 {
 	mbc.rombank = 1;
 	mbc.rambank = 0;
