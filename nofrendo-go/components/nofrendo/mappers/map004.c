@@ -115,7 +115,7 @@ static void map4_write(uint32 address, uint8 value)
       break;
 
    case 0xC000:
-      irq.latch = value - 1;
+      irq.latch = value; //  - 1
       break;
 
    case 0xC001:
