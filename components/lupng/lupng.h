@@ -53,6 +53,7 @@ typedef struct {
     uint8_t depth; /* must be 8 or 16 */
     size_t dataSize;
     uint8_t *data;
+    uint8_t isUserData;
 } LuImage;
 
 typedef size_t (*PngReadProc)(void *outPtr, size_t size, size_t count, void *userPtr);
@@ -65,7 +66,6 @@ typedef struct {
     /* loader */
     PngReadProc readProc;
     void *readProcUserPtr;
-    int skipSig;
 
     /* writer */
     PngWriteProc writeProc;
@@ -81,10 +81,6 @@ typedef struct {
     /* warnings/error output */
     PngWarnProc warnProc; /* set to NULL to disable output altogether */
     void *warnProcUserPtr;
-
-    /* special case: avoid allocating a LuImage when loading or creating
-     * an image, just use this one */
-    LuImage *overrideImage;
 } LuUserContext;
 
 /**
@@ -151,10 +147,8 @@ LuImage *luPngReadMem(const void *data, size_t size);
  * @param readProc a function pointer to a user-defined function to use for
  * reading the PNG data.
  * @param userPtr an opaque pointer provided as an argument to readProc
- * @param skipSig don't verify PNG signature - the bytes have already been
- * removed from the input stream
  */
-LuImage *luPngRead(PngReadProc readProc, void *userPtr, int skipSig);
+LuImage *luPngRead(PngReadProc readProc, void *userPtr);
 
 /**
  * Decodes a PNG image with the provided user context into a LuImage struct
