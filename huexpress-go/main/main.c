@@ -306,7 +306,7 @@ void *osd_alloc(size_t size)
     return rg_alloc(size, (size <= 0x10000) ? MEM_FAST : MEM_SLOW);
 }
 
-static bool save_state(char *pathName)
+static bool save_state_handler(char *pathName)
 {
     if (SaveState(pathName) == 0)
     {
@@ -324,7 +324,7 @@ static bool save_state(char *pathName)
     return false;
 }
 
-static bool load_state(char *pathName)
+static bool load_state_handler(char *pathName)
 {
     if (LoadState(pathName) != 0)
     {
@@ -334,7 +334,7 @@ static bool load_state(char *pathName)
     return true;
 }
 
-static bool reset_emulation(bool hard)
+static bool reset_handler(bool hard)
 {
     ResetPCE(hard);
     return true;
@@ -343,13 +343,13 @@ static bool reset_emulation(bool hard)
 void app_main(void)
 {
     rg_emu_proc_t handlers = {
-        .loadState = &load_state,
-        .saveState = &save_state,
-        .reset = &reset_emulation,
+        .loadState = &load_state_handler,
+        .saveState = &save_state_handler,
+        .reset = &reset_handler,
     };
 
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    rg_emu_init(handlers);
+    rg_emu_init(&handlers);
 
     // Clearing the buffer on the display core is somewhat faster, but it
     // prevents us from doing partial updates and screenshots.

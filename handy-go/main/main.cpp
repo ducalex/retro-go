@@ -111,7 +111,7 @@ static bool rotation_cb(dialog_choice_t *option, dialog_event_t event)
     return event == RG_DIALOG_ENTER;
 }
 
-static bool save_state(char *pathName)
+static bool save_state_handler(char *pathName)
 {
     bool ret = false;
     FILE *fp;
@@ -133,7 +133,7 @@ static bool save_state(char *pathName)
 }
 
 
-static bool load_state(char *pathName)
+static bool load_state_handler(char *pathName)
 {
     bool ret = false;
     FILE *fp;
@@ -149,7 +149,7 @@ static bool load_state(char *pathName)
     return ret;
 }
 
-static bool reset_emulation(bool hard)
+static bool reset_handler(bool hard)
 {
     lynx->Reset();
     return true;
@@ -158,13 +158,14 @@ static bool reset_emulation(bool hard)
 extern "C" void app_main(void)
 {
     rg_emu_proc_t handlers = {
-        .loadState = &load_state,
-        .saveState = &save_state,
-        .reset = &reset_emulation,
+        .loadState = &load_state_handler,
+        .saveState = &save_state_handler,
+        .reset = &reset_handler,
+		.netplay = NULL,
     };
 
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    rg_emu_init(handlers);
+    rg_emu_init(&handlers);
 
     frames[0].flags = RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].width = HANDY_SCREEN_WIDTH;

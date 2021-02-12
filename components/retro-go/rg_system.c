@@ -324,7 +324,7 @@ void rg_system_init(int appId, int sampleRate)
     RG_LOGI("System ready!\n\n");
 }
 
-void rg_emu_init(rg_emu_proc_t handlers)
+void rg_emu_init(const rg_emu_proc_t *handlers)
 {
     // If any key is pressed we go back to the menu (recover from ROM crash)
     if (rg_input_key_is_pressed(GAMEPAD_KEY_ANY))
@@ -351,12 +351,15 @@ void rg_emu_init(rg_emu_proc_t handlers)
         RG_PANIC("Invalid ROM path!");
     }
 
-    currentApp.handlers = handlers;
+    if (handlers)
+    {
+        memcpy(&currentApp.handlers, handlers, sizeof(rg_emu_proc_t));
+    }
 
     #ifdef ENABLE_NETPLAY
     if (currentApp.handlers.netplay)
     {
-        rg_netplay_init(netplay_cb);
+        rg_netplay_init(currentApp.handlers.netplay);
     }
     #endif
 

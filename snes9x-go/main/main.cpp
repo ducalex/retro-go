@@ -277,7 +277,7 @@ static bool menu_keymap_cb(dialog_choice_t *option, dialog_event_t event)
     return false;
 }
 
-static bool save_state(char *pathName)
+static bool save_state_handler(char *pathName)
 {
 	if (S9xFreezeGame(pathName))
 	{
@@ -294,7 +294,7 @@ static bool save_state(char *pathName)
 	return false;
 }
 
-static bool load_state(char *pathName)
+static bool load_state_handler(char *pathName)
 {
 	bool ret = false;
 
@@ -310,7 +310,7 @@ static bool load_state(char *pathName)
 	return ret;
 }
 
-static bool reset_emulation(bool hard)
+static bool reset_handler(bool hard)
 {
 	if (hard)
 		S9xReset();
@@ -427,14 +427,14 @@ static void snes9x_task(void *arg)
 extern "C" void app_main(void)
 {
     rg_emu_proc_t handlers = {
-        .loadState = &load_state,
-        .saveState = &save_state,
-		.reset = &reset_emulation,
+        .loadState = &load_state_handler,
+        .saveState = &save_state_handler,
+		.reset = &reset_handler,
 		.netplay = NULL,
     };
 
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    rg_emu_init(handlers);
+    rg_emu_init(&handlers);
 
 	app = rg_system_get_app();
 

@@ -112,7 +112,7 @@ runtime_stats_t rg_system_get_stats();
 void rg_system_time_init();
 void rg_system_time_save();
 
-void rg_emu_init(rg_emu_proc_t handlers);
+void rg_emu_init(const rg_emu_proc_t *handlers);
 char *rg_emu_get_path(emu_path_type_t type, const char *romPath);
 bool rg_emu_save_state(int slot);
 bool rg_emu_load_state(int slot);

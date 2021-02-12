@@ -68,11 +68,9 @@ typedef struct nes_s
     nes6502_t *cpu;
     ppu_t *ppu;
     apu_t *apu;
+    mem_t *mem;
     mmc_t *mmc;
     rom_t *rominfo;
-
-    /* Memory */
-    mem_t *mem;
 
     /* Video buffer */
     uint8 *framebuffers[2];
