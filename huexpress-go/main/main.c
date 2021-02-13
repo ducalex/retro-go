@@ -366,5 +366,5 @@ void app_main(void)
 
     RunPCE();
 
-    RG_PANIC("HuExpress died.");
+    RG_PANIC("HuExpress-GO died.");
 }

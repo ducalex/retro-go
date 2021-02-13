@@ -1,16 +1,12 @@
 
-         _______         _______
-        |   |   |.--.--.|    ___|.--.--.-----.----.-----.-----.-----.
-        |       ||  |  ||    ___||_   _|  _  |   _|  -__|__ --|__ --| - GO :)
-        |___|___||_____||_______||__.__|   __|__| |_____|_____|_____|
-                                       |__|
+                                 HuExpress-GO
 
-                CoreGrafx / PC Engine / TurboGrafx-16 Emulator
+                        PC Engine / TurboGrafx-16 Emulator
 
 --[ INTRODUCTION ]-----------------------------------------------------------
 
-    HuExpress-GO is a fork/rewrite of HuExpress (https://github.com/kallisti5/huexpress) for
-    the ESP32, and more specifically the ODROID-GO handheld.
+    HuExpress-GO is a PCE emulator for constrained systems such as microcontrollers.
+    It is derived from the great HuExpress (https://github.com/kallisti5/huexpress).
 
     HuExpress itself is a fork/rewrite of Hu-Go! (https://www.zeograd.com/parse.php?src=hugof&path=0,1,).
 

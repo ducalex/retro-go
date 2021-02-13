@@ -30,8 +30,6 @@ static SemaphoreHandle_t spi_count_semaphore;
 static spi_transaction_t trans[SPI_TRANSACTION_COUNT];
 static spi_device_handle_t spi;
 
-static update_callback_t updateCallback = NULL;
-
 static QueueHandle_t videoTaskQueue;
 
 static int8_t backlightLevels[] = {10, 25, 50, 75, 100};
@@ -809,8 +807,8 @@ display_task(void *arg)
             y += diff->repeat;
         }
 
-        if (updateCallback)
-            updateCallback(update);
+        // if (updateCallback)
+        //     updateCallback(update);
 
         xQueueReceive(videoTaskQueue, &update, portMAX_DELAY);
     }
@@ -910,12 +908,6 @@ rg_display_set_backlight(display_backlight_t level)
     rg_settings_Backlight_set(level);
     backlight_set_level(backlightLevels[level % RG_BACKLIGHT_LEVEL_COUNT]);
     backlightLevel = level;
-}
-
-void
-rg_display_set_callback(update_callback_t func)
-{
-    updateCallback = func;
 }
 
 void

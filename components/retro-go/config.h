@@ -52,7 +52,7 @@
 #define RG_BASE_PATH_CRC_CACHE RG_BASE_PATH "/odroid/cache/crc"
 
 // Partitions
-#define RG_APP_LAUNCHER        "retro-go"
+#define RG_APP_LAUNCHER        "launcher"
 #define RG_APP_FACTORY         NULL
 
 // Third party libraries needed for some features

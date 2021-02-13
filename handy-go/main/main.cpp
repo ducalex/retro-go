@@ -161,7 +161,7 @@ extern "C" void app_main(void)
         .loadState = &load_state_handler,
         .saveState = &save_state_handler,
         .reset = &reset_handler,
-		.netplay = NULL,
+        .netplay = NULL,
     };
 
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);

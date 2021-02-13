@@ -15,7 +15,7 @@ if(NOT PROJECT_VER)
 endif()
 
 macro(rg_setup_compile_options)
-    component_compile_options(-Wno-comment -Wno-error=comment)
+    component_compile_options(-Wno-comment -Wno-error=comment -Wno-missing-field-initializers)
     component_compile_options(-DIS_LITTLE_ENDIAN)
     component_compile_options(-O3)
     component_compile_options(${ARGV})

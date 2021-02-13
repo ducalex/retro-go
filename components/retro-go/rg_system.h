@@ -36,6 +36,7 @@ typedef struct
     state_handler_t saveState;
     reset_handler_t reset;
     netplay_callback_t netplay;
+    display_callback_t display;
 } rg_emu_proc_t;
 
 typedef struct

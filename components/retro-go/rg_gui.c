@@ -19,7 +19,7 @@ static const dialog_theme_t default_theme = {
     .box_header = C_WHITE,
     .box_border = C_DIM_GRAY,
     .item_standard = C_WHITE,
-    .item_disabled = C_DIM_GRAY,
+    .item_disabled = C_GRAY, // C_DIM_GRAY
 };
 static dialog_theme_t theme;
 static font_info_t font_info;
@@ -274,7 +274,7 @@ void rg_gui_draw_hourglass(void)
         (uint16_t*)image_hourglass.pixel_data);
 }
 
-static int get_dialog_items_count(dialog_choice_t *options)
+static int get_dialog_items_count(const dialog_choice_t *options)
 {
     if (options == NULL)
         return 0;
@@ -305,26 +305,26 @@ void rg_gui_draw_dialog(const char *header, dialog_choice_t *options, int sel)
 
     for (int i = 0; i < options_count; i++)
     {
-        if (options[i].label == NULL) {
-            options[i].label = "";
-        }
-        if (options[i].value[0]) {
-            len = strlen(options[i].label);
-            padding = (len > padding) ? len : padding;
+        if (options[i].value[0] && options[i].label) {
+            padding = RG_MAX(strlen(options[i].label), padding);
         }
     }
 
     for (int i = 0; i < options_count; i++)
     {
-        if (options[i].update_cb != NULL) {
+        const char *label = options[i].label ? options[i].label : "";
+
+        if (options[i].update_cb) {
             options[i].update_cb(&options[i], RG_DIALOG_INIT);
         }
+
         if (options[i].value[0]) {
-            len = sprintf(rows + i * 256, " %*s: %s ", -padding, options[i].label, options[i].value);
+            len = sprintf(rows + i * 256, " %*s: %s ", -padding, label, options[i].value);
         } else {
-            len = sprintf(rows + i * 256, " %s ", options[i].label);
+            len = sprintf(rows + i * 256, " %s ", label);
         }
-        width = len > width ? len : width;
+
+        width = RG_MAX(len, width);
     }
 
     if (width > 32) width = 32;

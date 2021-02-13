@@ -15,7 +15,6 @@
 #include <errno.h>
 #include <stdio.h>
 
-#include "bitmaps/image_sdcard.h"
 #include "rg_system.h"
 
 // On the Odroid-GO the SPI bus is shared between the SD Card and the LCD
@@ -125,7 +124,7 @@ static void system_monitor_task(void *arg)
         //     RG_PANIC("Running out of heap space!");
         // }
 
-        if (inputTimeout > 0 && rg_input_gamepad_last_read() > inputTimeout)
+        if (rg_input_gamepad_last_read() > (unsigned long)inputTimeout)
         {
             RG_PANIC("Application unresponsive");
         }
@@ -266,7 +265,7 @@ void rg_system_init(int appId, int sampleRate)
 
     memset(&currentApp, 0, sizeof(currentApp));
     currentApp.id = appId;
-    currentApp.refreshRate = 60;
+    currentApp.refreshRate = 1;
     currentApp.mainTaskHandle = xTaskGetCurrentTaskHandle();
 
     // sdcard init must be before rg_display_init()
@@ -290,6 +289,7 @@ void rg_system_init(int appId, int sampleRate)
         panicTrace->magicWord = 0;
         rg_audio_deinit();
         rg_display_clear(C_BLUE);
+        rg_gui_set_font_size(12);
         rg_gui_alert("System Panic!", panicTrace->message);
         rg_system_switch_app(RG_APP_LAUNCHER);
     }
@@ -302,14 +302,25 @@ void rg_system_init(int appId, int sampleRate)
 
     if (!sd_init)
     {
-        rg_display_clear(C_WHITE);
-        rg_display_write((RG_SCREEN_WIDTH - image_sdcard.width) / 2,
-            (RG_SCREEN_HEIGHT - image_sdcard.height) / 2,
-            image_sdcard.width,
-            image_sdcard.height,
-            image_sdcard.width * 2,
-            (uint16_t*)image_sdcard.pixel_data);
-        rg_system_halt();
+        rg_display_clear(C_SKY_BLUE);
+        rg_gui_set_font_size(12);
+        rg_gui_alert("SD Card Error", "Mount failed."); // esp_err_to_name(ret)
+        rg_system_switch_app(RG_APP_LAUNCHER);
+    }
+
+    if (strcmp(app->project_name, RG_APP_LAUNCHER) != 0)
+    {
+        // If any key is pressed we abort and go back to the launcher
+        if (rg_input_key_is_pressed(GAMEPAD_KEY_ANY))
+        {
+            rg_system_switch_app(RG_APP_LAUNCHER);
+        }
+
+        // Only boot this app once, next time will return to launcher
+        if (rg_settings_StartupApp_get() == 0)
+        {
+            rg_system_set_boot_app(RG_APP_LAUNCHER);
+        }
     }
 
     #ifdef ENABLE_PROFILING
@@ -321,29 +332,13 @@ void rg_system_init(int appId, int sampleRate)
 
     panicTrace->magicWord = 0;
 
-    RG_LOGI("System ready!\n\n");
+    RG_LOGI("Retro-Go init done.\n\n");
 }
 
 void rg_emu_init(const rg_emu_proc_t *handlers)
 {
-    // If any key is pressed we go back to the menu (recover from ROM crash)
-    if (rg_input_key_is_pressed(GAMEPAD_KEY_ANY))
-    {
-        rg_system_switch_app(RG_APP_LAUNCHER);
-    }
-
-    if (rg_settings_StartupApp_get() == 0)
-    {
-        // Only boot this emu once, next time will return to launcher
-        rg_system_set_boot_app(RG_APP_LAUNCHER);
-    }
-
     currentApp.startAction = rg_settings_StartAction_get();
-    if (currentApp.startAction == EMU_START_ACTION_NEWGAME)
-    {
-        rg_settings_StartAction_set(EMU_START_ACTION_RESUME);
-        rg_settings_commit();
-    }
+    currentApp.refreshRate = 60;
 
     currentApp.romPath = rg_settings_RomFilePath_get();
     if (!currentApp.romPath || strlen(currentApp.romPath) < 4)
@@ -366,7 +361,7 @@ void rg_emu_init(const rg_emu_proc_t *handlers)
     // This is to allow time for rom loading
     inputTimeout = INPUT_TIMEOUT * 3;
 
-    RG_LOGI("Init done. romPath='%s'\n\n", currentApp.romPath);
+    RG_LOGI("Emu init done. romPath='%s'\n\n", currentApp.romPath);
 }
 
 rg_app_desc_t *rg_system_get_app()
@@ -454,8 +449,8 @@ bool rg_emu_load_state(int slot)
     rg_gui_draw_hourglass();
     rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
-    // Disable input watchdog
-    inputTimeout = -1;
+    // Increased input timeout, this might take a while
+    inputTimeout = INPUT_TIMEOUT * 3;
 
     char *pathName = rg_emu_get_path(EMU_PATH_SAVE_STATE, currentApp.romPath);
     bool success = (*currentApp.handlers.loadState)(pathName);
@@ -494,8 +489,8 @@ bool rg_emu_save_state(int slot)
 
     bool success = false;
 
-    // Disable input watchdog
-    inputTimeout = -1;
+    // Increased input timeout, this might take a while
+    inputTimeout = INPUT_TIMEOUT * 3;
 
     if ((*currentApp.handlers.saveState)(tempName))
     {
@@ -505,6 +500,9 @@ bool rg_emu_save_state(int slot)
         {
             unlink(backName);
             success = true;
+
+            rg_settings_StartAction_set(EMU_START_ACTION_RESUME);
+            rg_settings_commit();
         }
     }
 

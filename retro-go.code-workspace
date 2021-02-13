@@ -12,14 +12,11 @@
 		{
 			"path": "huexpress-go"
 		},
-		// {
-		// 	"path": "neopop-go"
-		// },
 		{
-			"path": "nofrendo-go"
+			"path": "launcher"
 		},
 		{
-			"path": "retro-go"
+			"path": "nofrendo-go"
 		},
 		{
 			"path": "smsplusgx-go"
@@ -27,9 +24,6 @@
 		{
 			"path": "snes9x-go"
 		},
-		// {
-		// 	"path": "stella-go"
-		// },
 		{
 			"path": ".",
 			"name": "root"
