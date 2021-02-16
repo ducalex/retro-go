@@ -32,7 +32,7 @@
 #ifdef ENABLE_PROFILING
 #define INPUT_TIMEOUT -1
 #else
-#define INPUT_TIMEOUT 8000000
+#define INPUT_TIMEOUT 5000000
 #endif
 
 typedef struct
@@ -359,7 +359,7 @@ void rg_emu_init(const rg_emu_proc_t *handlers)
     #endif
 
     // This is to allow time for rom loading
-    inputTimeout = INPUT_TIMEOUT * 3;
+    inputTimeout = INPUT_TIMEOUT * 5;
 
     RG_LOGI("Emu init done. romPath='%s'\n\n", currentApp.romPath);
 }
@@ -450,7 +450,7 @@ bool rg_emu_load_state(int slot)
     rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
     // Increased input timeout, this might take a while
-    inputTimeout = INPUT_TIMEOUT * 3;
+    inputTimeout = INPUT_TIMEOUT * 5;
 
     char *pathName = rg_emu_get_path(EMU_PATH_SAVE_STATE, currentApp.romPath);
     bool success = (*currentApp.handlers.loadState)(pathName);
@@ -490,7 +490,7 @@ bool rg_emu_save_state(int slot)
     bool success = false;
 
     // Increased input timeout, this might take a while
-    inputTimeout = INPUT_TIMEOUT * 3;
+    inputTimeout = INPUT_TIMEOUT * 5;
 
     if ((*currentApp.handlers.saveState)(tempName))
     {

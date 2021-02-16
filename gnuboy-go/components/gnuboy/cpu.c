@@ -835,10 +835,10 @@ next:
 		break;
 
 	case 0x76: /* HALT */
-		if (IME) {
-			cpu.halted = 1;
-		} else {
-			MESSAGE_ERROR("FIX ME: HALT requested with IME = 0\n");
+		cpu.halted = 1;
+		if (!IME)
+		{
+			MESSAGE_DEBUG("FIX ME: HALT requested with IME = 0\n");
 		}
 		break;
 

@@ -319,6 +319,8 @@ void osd_blitscreen(uint8 *bmp)
     int crop_v = (overscan) ? nes->overscan : 0;
     int crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
 
+    // A rolling average should be used for autocrop == 1, it causes jitter in some games...
+
     currentUpdate->buffer = NES_SCREEN_GETPTR(bmp, crop_h, crop_v);
     currentUpdate->stride = NES_SCREEN_PITCH;
     currentUpdate->width = NES_SCREEN_WIDTH - (crop_h * 2);
