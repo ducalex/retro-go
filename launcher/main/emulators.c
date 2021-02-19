@@ -274,7 +274,7 @@ void emulator_show_file_info(retro_emulator_file_t *file)
         {0, "Folder", "...", 1, NULL},
         {0, "Size", "0", 1, NULL},
         {0, "CRC32", "N/A", 1, NULL},
-        {0, "---", "", -1, NULL},
+        RG_DIALOG_SEPARATOR,
         {1, "Close", "", 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
@@ -319,14 +319,16 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
         emulator_start(file, sel == 0);
     }
     else if (sel == 2) {
-        if (rg_gui_confirm("Delete save file?", NULL, false)) {
-            if (has_save) {
+        if (has_save) {
+            if (rg_gui_confirm("Delete save state?", 0, 0)) {
                 rg_unlink(save_path);
+                rg_unlink(scrn_path);
             }
-            if (has_sram) {
+        }
+        if (has_sram) {
+            if (rg_gui_confirm("Delete sram file?", 0, 0)) {
                 rg_unlink(sram_path);
             }
-            rg_unlink(scrn_path);
         }
     }
     else if (sel == 3) {

@@ -185,7 +185,7 @@ void retro_loop()
                     {0, "Ver.", "build string", 1, NULL},
                     {0, "Date", "", 1, NULL},
                     {0, "By", "ducalex", 1, NULL},
-                    {0, "--", "", -1, NULL},
+                    RG_DIALOG_SEPARATOR,
                     {1, "Reboot to firmware", "", 1, NULL},
                     {2, "Reset settings", "", 1, NULL},
                     {0, "Close", "", 1, NULL},
@@ -213,7 +213,7 @@ void retro_loop()
             }
             else if (last_key == GAMEPAD_KEY_VOLUME) {
                 dialog_choice_t choices[] = {
-                    {0, "---",         "",    -1, NULL},
+                    RG_DIALOG_SEPARATOR,
                     {0, "Color theme", "...",  1, &color_shift_cb},
                     {0, "Font size  ", "...",  1, &font_size_cb},
                     {0, "Empty tabs ", "...",  1, &show_empty_cb},

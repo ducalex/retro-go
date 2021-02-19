@@ -46,6 +46,7 @@ struct dialog_choice_s {
 #define RG_DIALOG_FLAG_LAST      0xF0F0
 
 #define RG_DIALOG_CHOICE_LAST {0, NULL, "LAST", RG_DIALOG_FLAG_LAST, NULL}
+#define RG_DIALOG_SEPARATOR   {0, "----", "", RG_DIALOG_FLAG_SKIP, NULL}
 #define RG_DIALOG_MAKE_LAST(ptr) {dialog_choice_t *p = (ptr); p->flags = RG_DIALOG_FLAG_LAST;}
 
 typedef struct {
