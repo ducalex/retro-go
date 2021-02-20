@@ -528,13 +528,18 @@ bool rg_emu_save_state(int slot)
 
 bool rg_emu_reset(int hard)
 {
-    if (!currentApp.romPath || !currentApp.handlers.reset)
+    if (!currentApp.handlers.reset)
     {
-        RG_LOGE("No game/emulator loaded...\n");
+        RG_LOGE("Emulator has no reset handler...\n");
         return false;
     }
 
     return (*currentApp.handlers.reset)(hard);
+}
+
+bool rg_emu_notify(int msg, void *arg)
+{
+    return false;
 }
 
 void rg_system_restart()

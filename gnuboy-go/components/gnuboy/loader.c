@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <malloc.h>
+#include <unistd.h>
 #include <time.h>
 #include <ctype.h>
 
@@ -428,7 +429,7 @@ int sram_update(const char *file)
 
 			// MESSAGE_INFO("Writing sram sector #%d @ %ld\n", sector, ftell(fpSramFile));
 
-			if (fwrite(&ram.sram[pos], 1, SRAM_SECTOR_SIZE, fpSramFile) > 0)
+			if (fwrite(&ram.sram[pos], SRAM_SECTOR_SIZE, 1, fpSramFile) == 1)
 			{
 				ram.sram_dirty_sector[sector] = 0;
 			}

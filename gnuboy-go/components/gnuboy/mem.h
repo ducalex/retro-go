@@ -11,6 +11,7 @@
 #define MBC_HUC1 0xC1
 #define MBC_HUC3 0xC3
 
+// This must be a power of 2
 #define SRAM_SECTOR_SIZE 1024
 
 struct mbc
