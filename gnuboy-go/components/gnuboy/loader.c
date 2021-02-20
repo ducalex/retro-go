@@ -74,6 +74,7 @@ static const byte ramsize_table[256] =
 };
 
 static FILE* fpRomFile = NULL;
+static FILE *fpSramFile = NULL;
 
 #ifdef IS_LITTLE_ENDIAN
 #define LIL(x) (x)
@@ -290,11 +291,7 @@ int rom_load(const char *file)
 		mbcName, mbc.romsize, rom.length / 1024, mbc.ramsize, mbc.ramsize * 8);
 
 	// SRAM
-	ram.sbank = malloc(8192 * mbc.ramsize);
-	ram.sram_dirty = 0;
-
-	memset(ram.sbank, 0xff, 8192 * mbc.ramsize);
-	memset(ram.ibank, 0xff, 4096 * 8);
+	ram.sram = malloc(8192 * mbc.ramsize);
 
 	mbc.rombank = 1;
 	mbc.rambank = 0;
@@ -335,6 +332,18 @@ void rom_unload(void)
 	}
 	free(ram.sbank);
 
+	if (fpRomFile)
+	{
+		fclose(fpRomFile);
+		fpRomFile = NULL;
+	}
+
+	if (fpSramFile)
+	{
+		fclose(fpSramFile);
+		fpSramFile = NULL;
+	}
+
 	mbc.type = mbc.romsize = mbc.ramsize = mbc.batt = mbc.rtc = 0;
 	ram.sbank = NULL;
 }
@@ -352,10 +361,13 @@ int sram_load(const char *file)
 	if ((f = fopen(file, "rb")))
 	{
 		MESSAGE_INFO("Loading SRAM from '%s'\n", file);
-		fread(ram.sbank, 8192, mbc.ramsize, f);
-		rtc_load(f);
+		if (fread(ram.sbank, 8192, mbc.ramsize, f))
+		{
+			ram.sram_dirty = 0;
+			rtc_load(f);
+			ret = 0;
+		}
 		fclose(f);
-		ret = 0;
 	}
 
 	rg_spi_lock_release(SPI_LOCK_SDCARD);
@@ -375,14 +387,79 @@ int sram_save(const char *file)
 	if ((f = fopen(file, "wb")))
 	{
 		MESSAGE_INFO("Saving SRAM to '%s'\n", file);
-		fwrite(ram.sbank, 8192, mbc.ramsize, f);
-		rtc_save(f);
+		if (fwrite(ram.sbank, 8192, mbc.ramsize, f))
+		{
+			ram.sram_dirty = 0;
+			rtc_save(f);
+			ret = 0;
+		}
 		fclose(f);
-		ret = 0;
 	}
 
 	rg_spi_lock_release(SPI_LOCK_SDCARD);
 	return ret;
+}
+
+
+int sram_update(const char *file)
+{
+	if (!mbc.batt || !file || !mbc.ramsize) return -1;
+
+	rg_spi_lock_acquire(SPI_LOCK_SDCARD);
+
+	if (!fpSramFile)
+	{
+		fpSramFile = fopen(file, "wb");
+		if (!fpSramFile)
+		{
+			MESSAGE_ERROR("Unable to open SRAM file: %s", file);
+			return -1;
+		}
+		MESSAGE_INFO("Opened file: %s\n", file);
+	}
+
+	for (int pos = 0; pos < (mbc.ramsize * 8192); pos += SRAM_SECTOR_SIZE)
+	{
+		int sector = pos / SRAM_SECTOR_SIZE;
+
+		if (ram.sram_dirty_sector[sector])
+		{
+			fseek(fpSramFile, pos, SEEK_SET);
+
+			// MESSAGE_INFO("Writing sram sector #%d @ %ld\n", sector, ftell(fpSramFile));
+
+			if (fwrite(&ram.sram[pos], 1, SRAM_SECTOR_SIZE, fpSramFile) > 0)
+			{
+				ram.sram_dirty_sector[sector] = 0;
+			}
+			else
+			{
+				MESSAGE_ERROR("Failed to write sram sector #%d\n", sector);
+			}
+		}
+	}
+
+	// fseek(fpSramFile, 0, SEEK_END);
+	// rtc_save(fpSramFile);
+
+	// Keeping the file open between calls is dangerous unfortunately
+	// it seems to interfer with our rom loader
+
+	// if (mbc.romsize < 64)
+	// {
+	// 	fflush(fpSramFile);
+	// }
+	// else
+	{
+		fclose(fpSramFile);
+		fpSramFile = NULL;
+	}
+
+	ram.sram_dirty = 0;
+
+	rg_spi_lock_release(SPI_LOCK_SDCARD);
+
+	return 0;
 }
 
 
@@ -427,7 +504,7 @@ int state_save(const char *file)
 	fwrite(buf, 4096, 1, f);
 	fwrite(ram.ibank, 4096, hw.cgb ? 8 : 2, f);
 	fwrite(lcd.vbank, 4096, hw.cgb ? 4 : 2, f);
-	fwrite(ram.sbank, 4096, mbc.ramsize << 1, f);
+	fwrite(ram.sbank, 8192, mbc.ramsize, f);
 	fclose(f);
 
 	free(buf);
@@ -447,7 +524,7 @@ int state_load(const char *file)
 	fread(buf, 4096, 1, f);
 	fread(ram.ibank, 4096, hw.cgb ? 8 : 2, f);
 	fread(lcd.vbank, 4096, hw.cgb ? 4 : 2, f);
-	fread(ram.sbank, 4096, mbc.ramsize << 1, f);
+	fread(ram.sbank, 8192, mbc.ramsize, f);
 	fclose(f);
 
 	un32 (*header)[2] = (un32 (*)[2])buf;

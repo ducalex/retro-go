@@ -446,11 +446,20 @@ void IRAM_ATTR mem_write(addr_t a, byte b)
 
 	case 0xA:
 		if (!mbc.enableram) break;
-		if (rtc.sel & 8) {
+		if (rtc.sel & 8)
+		{
 			rtc_write(b);
-		} else {
-			ram.sbank[mbc.rambank][a & 0x1FFF] = b;
-			ram.sram_dirty = 1;
+		}
+		else
+		{
+			int offset = (mbc.rambank << 13) | (a & 0x1FFF);
+			if (ram.sram[offset] != b)
+			{
+				ram.sram[offset] = b;
+				ram.sram_dirty_sector[offset / SRAM_SECTOR_SIZE] = 1;
+				ram.sram_dirty = 1;
+				// ram.sram_dirty |= (1 << mbc.rambank);
+			}
 		}
 		break;
 
@@ -548,8 +557,18 @@ byte IRAM_ATTR mem_read(addr_t a)
 	return 0xFF;
 }
 
-void mbc_reset(bool hard)
+void mem_reset(bool hard)
 {
+	if (hard)
+	{
+		memset(ram.ibank, 0xff, 4096 * 8);
+		memset(ram.sbank, 0xff, 8192 * mbc.ramsize);
+	}
+
+	// Mark all sectors as dirty and wait for sram_dirty to trigger
+	memset(ram.sram_dirty_sector, 1, 256);
+	ram.sram_dirty = 0;
+
 	mbc.rombank = 1;
 	mbc.rambank = 0;
 	mbc.enableram = 0;

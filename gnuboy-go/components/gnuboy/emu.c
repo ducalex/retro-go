@@ -24,7 +24,7 @@ void emu_reset(bool hard)
 	rtc_reset(hard);
 	lcd_reset(hard);
 	cpu_reset(hard);
-	mbc_reset(hard);
+	mem_reset(hard);
 	sound_reset(hard);
 }
 

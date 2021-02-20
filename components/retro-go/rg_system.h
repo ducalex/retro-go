@@ -71,6 +71,7 @@ typedef enum
     SPI_LOCK_ANY = 0,
     SPI_LOCK_SDCARD = 1,
     SPI_LOCK_DISPLAY = 2,
+    SPI_LOCK_OTHER = 3,
 } spi_lock_res_t;
 
 typedef struct

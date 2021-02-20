@@ -30,8 +30,8 @@ static bool fullFrame = false;
 static long skipFrames = 0;
 
 static const char *sramFile;
-static bool saveSRAM = false;
-static long saveSRAM_Timer = 0;
+static long autoSaveSRAM = 0;
+static long autoSaveSRAM_Timer = 0;
 
 #ifdef ENABLE_NETPLAY
 static bool netplay = false;
@@ -64,10 +64,6 @@ static void netplay_handler(netplay_event_t event, void *arg)
 
 static bool save_state_handler(char *pathName)
 {
-    // For convenience we also write the sram to its own file
-    // So that it can be imported in other emulators
-    sram_save(sramFile);
-
     if (state_save(pathName) == 0)
     {
         char *filename = rg_emu_get_path(EMU_PATH_SCREENSHOT, 0);
@@ -88,8 +84,6 @@ static bool load_state_handler(char *pathName)
     {
         emu_reset(true);
 
-        if (saveSRAM) sram_load(sramFile);
-
         return false;
     }
 
@@ -108,15 +102,14 @@ static bool palette_update_cb(dialog_choice_t *option, dialog_event_t event)
     int pal = pal_get_dmg();
     int max = pal_count_dmg();
 
-    if (event == RG_DIALOG_PREV) {
+    if (event == RG_DIALOG_PREV)
         pal = pal > 0 ? pal - 1 : max;
-    }
 
-    if (event == RG_DIALOG_NEXT) {
+    if (event == RG_DIALOG_NEXT)
         pal = pal < max ? pal + 1 : 0;
-    }
 
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
         rg_settings_Palette_set(pal);
         pal_set_dmg(pal);
         emu_run(true);
@@ -128,14 +121,56 @@ static bool palette_update_cb(dialog_choice_t *option, dialog_event_t event)
     return event == RG_DIALOG_ENTER;
 }
 
-static bool save_sram_update_cb(dialog_choice_t *option, dialog_event_t event)
+static bool sram_load_now_cb(dialog_choice_t *option, dialog_event_t event)
 {
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
-        saveSRAM = !saveSRAM;
-        rg_settings_app_int32_set(NVS_KEY_SAVE_SRAM, saveSRAM);
+    if (event == RG_DIALOG_ENTER)
+    {
+        emu_reset(true);
+
+        if (sram_load(sramFile) != 0)
+        {
+            rg_gui_alert("Load failed!", sramFile);
+        }
+
+        return true;
     }
 
-    strcpy(option->value, saveSRAM ? "Yes" : "No");
+    return false;
+}
+
+static bool sram_save_now_cb(dialog_choice_t *option, dialog_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        rg_system_set_led(1);
+
+        if (sram_save(sramFile) != 0)
+        {
+            rg_gui_alert("Save failed!", sramFile);
+        }
+
+        rg_system_set_led(0);
+
+        return true;
+    }
+
+    return false;
+}
+
+static bool sram_autosave_cb(dialog_choice_t *option, dialog_event_t event)
+{
+    if (event == RG_DIALOG_PREV) autoSaveSRAM--;
+    if (event == RG_DIALOG_NEXT) autoSaveSRAM++;
+
+    autoSaveSRAM = RG_MIN(RG_MAX(0, autoSaveSRAM), 999);
+
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
+        rg_settings_app_int32_set(NVS_KEY_SAVE_SRAM, autoSaveSRAM);
+    }
+
+    if (autoSaveSRAM == 0) strcpy(option->value, "Off ");
+    else sprintf(option->value, "%lds", autoSaveSRAM);
 
     return event == RG_DIALOG_ENTER;
 }
@@ -188,8 +223,11 @@ static bool advanced_settings_cb(dialog_choice_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_ENTER) {
         dialog_choice_t options[] = {
-            {101, "Set clock", "00:00", 1, &rtc_update_cb},
-            {102, "Auto save SRAM", "No", 1, &save_sram_update_cb},
+            {101, "Set clock", "00:00 ", 1, &rtc_update_cb},
+            RG_DIALOG_SEPARATOR,
+            {111, "Auto save SRAM", "Off", mbc.batt && mbc.ramsize, &sram_autosave_cb},
+            {112, "Save SRAM now", "", mbc.batt && mbc.ramsize, &sram_save_now_cb},
+            {113, "Load SRAM now", "", mbc.batt && mbc.ramsize, &sram_load_now_cb},
             RG_DIALOG_CHOICE_LAST
         };
         rg_gui_dialog("Advanced", options, 0);
@@ -231,7 +269,7 @@ void app_main(void)
     frames[0].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
     frames[1].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
 
-    saveSRAM = rg_settings_app_int32_get(NVS_KEY_SAVE_SRAM, 0);
+    autoSaveSRAM = rg_settings_app_int32_get(NVS_KEY_SAVE_SRAM, 0);
     sramFile = rg_emu_get_path(EMU_PATH_SAVE_SRAM, 0);
 
     // Load ROM
@@ -264,7 +302,7 @@ void app_main(void)
     {
         rg_emu_load_state(0);
     }
-    else if (saveSRAM)
+    else
     {
         sram_load(sramFile);
     }
@@ -299,18 +337,19 @@ void app_main(void)
 
         emu_run(drawFrame);
 
-        if (saveSRAM)
+        if (autoSaveSRAM > 0)
         {
-            if (ram.sram_dirty)
+            if (ram.sram_dirty && autoSaveSRAM_Timer == 0)
             {
-                saveSRAM_Timer = 120; // wait 2 seconds
-                ram.sram_dirty = 0;
+                autoSaveSRAM_Timer = autoSaveSRAM * 60;
             }
 
-            if (saveSRAM_Timer > 0 && --saveSRAM_Timer == 0)
+            if (autoSaveSRAM_Timer > 0 && --autoSaveSRAM_Timer == 0)
             {
-                // TO DO: Try compressing the sram file, it might reduce stuttering
-                sram_save(sramFile);
+                rg_system_set_led(1);
+                sram_update(sramFile);
+                rg_system_set_led(0);
+                skipFrames += 5;
             }
         }
 

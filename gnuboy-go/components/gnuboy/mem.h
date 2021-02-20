@@ -11,6 +11,8 @@
 #define MBC_HUC1 0xC1
 #define MBC_HUC3 0xC3
 
+#define SRAM_SECTOR_SIZE 1024
+
 struct mbc
 {
 	int type;
@@ -39,8 +41,12 @@ struct ram
 {
 	byte hi[256];
 	byte ibank[8][4096];
-	byte (*sbank)[8192];
-	byte sram_dirty;
+	union {
+		byte (*sbank)[8192];
+		byte *sram;
+	};
+	un32 sram_dirty;
+	byte sram_dirty_sector[256];
 };
 
 
@@ -52,7 +58,7 @@ extern struct ram ram;
 void mem_updatemap();
 void mem_write(addr_t a, byte b);
 byte mem_read(addr_t a);
-void mbc_reset(bool hard);
+void mem_reset(bool hard);
 
 static inline byte readb(addr_t a)
 {
