@@ -763,9 +763,12 @@ bool rg_readdir(const char* path, char **out_files, size_t *out_count)
 
 bool rg_unlink(const char *path)
 {
+    bool ret = false;
+
     rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
-    bool ret = unlink(path) == 0 || rmdir(path) == 0;
+    if (unlink(path) == 0 || rmdir(path) == 0)
+        ret = true;
 
     rg_spi_lock_release(SPI_LOCK_SDCARD);
 
@@ -774,15 +777,15 @@ bool rg_unlink(const char *path)
 
 long rg_filesize(const char *path)
 {
+    struct stat st;
     long ret = -1;
-    FILE* f;
 
-    if ((f = rg_fopen(path, "rb")))
-    {
-        fseek(f, 0, SEEK_END);
-        ret = ftell(f);
-        rg_fclose(f);
-    }
+    rg_spi_lock_acquire(SPI_LOCK_SDCARD);
+
+    if (stat(path, &st) == 0)
+        ret = st.st_size;
+
+    rg_spi_lock_release(SPI_LOCK_SDCARD);
 
     return ret;
 }

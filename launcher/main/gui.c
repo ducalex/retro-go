@@ -122,7 +122,7 @@ void gui_save_current_tab()
     sprintf(str_buffer, "Sel.%.11s", tab->name);
     rg_settings_int32_set(str_buffer, tab->listbox.cursor);
     rg_settings_int32_set("SelectedTab", gui.selected);
-    rg_settings_commit();
+    // rg_settings_commit();
 }
 
 listbox_item_t *gui_get_selected_item(tab_t *tab)

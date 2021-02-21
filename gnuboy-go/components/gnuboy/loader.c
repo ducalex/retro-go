@@ -15,63 +15,11 @@
 #include "cpu.h"
 #include "sound.h"
 
-static const byte mbc_table[256] =
-{
-	0, 1, 1, 1, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 3,
-	3, 3, 3, 3, 0, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, MBC_HUC3, MBC_HUC1
-};
-
-static const byte rtc_table[256] =
-{
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-	1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0
-};
-
-static const byte batt_table[256] =
-{
-	0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0,
-	1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0,
-	0
-};
-
-static const short romsize_table[256] =
-{
-	2, 4, 8, 16, 32, 64, 128, 256, 512,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 128, 128, 128
-	/* 0, 0, 72, 80, 96  -- actual values but bad to use these! */
-};
-
-static const byte ramsize_table[256] =
-{
-	1, 1, 1, 4, 16,
-	4 /* FIXME - what value should this be?! */
+static const char *mbc_names[16] = {
+	"MBC_NONE", "MBC_MBC1", "MBC_MBC2", "MBC_MBC3",
+	"MBC_MBC5", "MBC_MBC6", "MBC_MBC7", "MBC_HUC1",
+	"MBC_HUC3", "MBC_MMM01", "INVALID", "INVALID",
+	"INVALID", "INVALID", "INVALID", "INVALID",
 };
 
 static FILE* fpRomFile = NULL;
@@ -174,21 +122,6 @@ static svar_t svars[] =
 	END
 };
 
-/**
- * Save file format is:
- * GB:
- * 0x0000 - 0x0FFF: svars, oam, palette, hiram, wave
- * 0x1000 - 0x2FFF: RAM
- * 0x3000 - 0x4FFF: VRAM
- * 0x5000 - 0x...:  SRAM
- *
- * GBC:
- * 0x0000 - 0x0FFF: svars, oam, palette, hiram, wave
- * 0x1000 - 0x8FFF: RAM
- * 0x9000 - 0xCFFF: VRAM
- * 0xD000 - 0x...:  SRAM
- *
- */
 
 int rom_loadbank(int bank)
 {
@@ -250,56 +183,82 @@ int rom_load(const char *file)
 
 	byte *header = rom.bank[0];
 
-	memcpy(rom.name, header + 0x0134, 16);
-	rom.name[16] = 0;
+	int type = header[0x0147];
+	int romsize = header[0x0148];
+	int ramsize = header[0x0149];
 
-	int tmp = *((int*)(header + 0x0140));
-	byte c = tmp >> 24;
-	hw.cgb = ((c == 0x80) || (c == 0xc0));
-
-	tmp = *((int*)(header + 0x0144));
-	c = (tmp >> 24) & 0xff;
-	mbc.type = mbc_table[c];
-	mbc.batt = batt_table[c];
-	mbc.rtc = rtc_table[c];
-	mbc.rumble = (c == 30 || c == 29 || c == 28);
-
-	tmp = *((int*)(header + 0x0148));
-	mbc.romsize = romsize_table[(tmp & 0xff)];
-	mbc.ramsize = ramsize_table[((tmp >> 8) & 0xff)];
-	rom.length = 16384 * mbc.romsize;
+	hw.cgb = (header[0x0143] == 0x80 || header[0x0143] == 0xC0);
 
 	memcpy(&rom.checksum, header + 0x014E, 2);
+	memcpy(&rom.name, header + 0x0134, 16);
+	rom.name[16] = 0;
 
-	if (!mbc.romsize) emu_die("ROM size == 0");
-	if (!mbc.ramsize) emu_die("SRAM size == 0");
+	mbc.batt = (type == 3 || type == 6 || type == 9 || type == 13 || type == 15 ||
+				type == 16 || type == 19 || type == 27 || type == 30 || type == 255);
+	mbc.rtc  = (type == 15 || type == 16);
+	mbc.rumble = (type == 28 || type == 29 || type == 30);
+	mbc.sensor = (type == 34);
 
-	const char* mbcName;
-	switch (mbc.type)
+	if (type >= 1 && type <= 3)
+		mbc.type = MBC_MBC1;
+	else if (type >= 5 && type <= 6)
+		mbc.type = MBC_MBC2;
+	else if (type >= 11 && type <= 13)
+		mbc.type = MBC_MMM01;
+	else if (type >= 15 && type <= 19)
+		mbc.type = MBC_MBC3;
+	else if (type >= 25 && type <= 30)
+		mbc.type = MBC_MBC5;
+	else if (type == 32)
+		mbc.type = MBC_MBC6;
+	else if (type == 34)
+		mbc.type = MBC_MBC7;
+	else if (type == 254)
+		mbc.type = MBC_HUC3;
+	else if (type == 255)
+		mbc.type = MBC_HUC1;
+	else
+		mbc.type = MBC_NONE;
+
+	if (romsize < 9)
 	{
-		case MBC_NONE:   mbcName = "MBC_NONE"; break;
-		case MBC_MBC1:   mbcName = "MBC_MBC1"; break;
-		case MBC_MBC2:   mbcName = "MBC_MBC2"; break;
-		case MBC_MBC3:   mbcName = "MBC_MBC3"; break;
-		case MBC_MBC5:   mbcName = "MBC_MBC5"; break;
-		case MBC_HUC1:   mbcName = "MBC_HUC1"; break;
-		case MBC_HUC3:   mbcName = "MBC_HUC3"; break;
-		default:         mbcName = "(unknown)"; break;
+		mbc.romsize = (2 << romsize);
+	}
+	else if (romsize > 0x51 && romsize < 0x55)
+	{
+		mbc.romsize = 128; // (2 << romsize) + 64;
+	}
+	else
+	{
+		emu_die("Invalid ROM size: %d\n", romsize);
 	}
 
-	MESSAGE_INFO("rom.name='%s'\n", rom.name);
-	MESSAGE_INFO("mbc.type=%s, mbc.romsize=%d (%dK), mbc.ramsize=%d (%dK)\n",
-		mbcName, mbc.romsize, rom.length / 1024, mbc.ramsize, mbc.ramsize * 8);
+	if (ramsize < 6)
+	{
+		const byte ramsize_table[] = {1, 1, 1, 4, 16, 8};
+		mbc.ramsize = ramsize_table[ramsize];
+	}
+	else
+	{
+		MESSAGE_ERROR("Invalid RAM size: %d\n", ramsize);
+		mbc.ramsize = 1;
+	}
 
-	// SRAM
 	ram.sram = malloc(8192 * mbc.ramsize);
 
-	mbc.rombank = 1;
-	mbc.rambank = 0;
+	if (!ram.sram)
+	{
+		emu_die("SRAM alloc failed");
+	}
+
+	MESSAGE_INFO("Cart loaded: name='%s', cgb=%d, mbc=%s, romsize=%dK, ramsize=%dK\n",
+		rom.name, hw.cgb, mbc_names[mbc.type], mbc.romsize * 16, mbc.ramsize * 8);
+
+	// Gameboy color games can be very large so we only load 1024K for faster boot
+	// Also 4/8MB games do not fully fit, our bank manager takes care of swapping.
 
 	int preload = mbc.romsize < 64 ? mbc.romsize : 64;
 
-	// Some games stutters too much if we don't fully preload it
 	if (strncmp(rom.name, "RAYMAN", 6) == 0 || strncmp(rom.name, "NONAME", 6) == 0)
 	{
 		MESSAGE_INFO("Special preloading for Rayman 1/2\n");
@@ -332,6 +291,7 @@ void rom_unload(void)
 		}
 	}
 	free(ram.sbank);
+	ram.sbank = NULL;
 
 	if (fpRomFile)
 	{
@@ -345,8 +305,8 @@ void rom_unload(void)
 		fpSramFile = NULL;
 	}
 
-	mbc.type = mbc.romsize = mbc.ramsize = mbc.batt = mbc.rtc = 0;
-	ram.sbank = NULL;
+	memset(&mbc, 0, sizeof(mbc));
+	memset(&rom, 0, sizeof(rom));
 }
 
 
@@ -355,7 +315,8 @@ int sram_load(const char *file)
 	int ret = -1;
 	FILE *f;
 
-	if (!mbc.batt || !file || !*file) return -1;
+	if (!mbc.batt || !mbc.ramsize || !file || !*file)
+		return -1;
 
 	rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
@@ -381,7 +342,8 @@ int sram_save(const char *file)
 	int ret = -1;
 	FILE *f;
 
-	if (!mbc.batt || !file || !mbc.ramsize) return -1;
+	if (!mbc.batt || !mbc.ramsize || !file || !*file)
+		return -1;
 
 	rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
@@ -404,19 +366,16 @@ int sram_save(const char *file)
 
 int sram_update(const char *file)
 {
-	if (!mbc.batt || !file || !mbc.ramsize) return -1;
+	if (!mbc.batt || !mbc.ramsize || !file || !*file)
+		return -1;
 
 	rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
-	if (!fpSramFile)
+	FILE *fp = fopen(file, "wb");
+	if (!fp)
 	{
-		fpSramFile = fopen(file, "wb");
-		if (!fpSramFile)
-		{
-			MESSAGE_ERROR("Unable to open SRAM file: %s", file);
-			return -1;
-		}
-		MESSAGE_INFO("Opened file: %s\n", file);
+		MESSAGE_ERROR("Unable to open SRAM file: %s", file);
+		goto _cleanup;
 	}
 
 	for (int pos = 0; pos < (mbc.ramsize * 8192); pos += SRAM_SECTOR_SIZE)
@@ -425,44 +384,64 @@ int sram_update(const char *file)
 
 		if (ram.sram_dirty_sector[sector])
 		{
-			fseek(fpSramFile, pos, SEEK_SET);
+			// MESSAGE_INFO("Writing sram sector #%d @ %ld\n", sector, pos);
 
-			// MESSAGE_INFO("Writing sram sector #%d @ %ld\n", sector, ftell(fpSramFile));
-
-			if (fwrite(&ram.sram[pos], SRAM_SECTOR_SIZE, 1, fpSramFile) == 1)
+			if (fseek(fp, pos, SEEK_SET) != 0)
 			{
-				ram.sram_dirty_sector[sector] = 0;
+				MESSAGE_ERROR("Failed to seek sram sector #%d\n", sector);
+				goto _cleanup;
 			}
-			else
+
+			if (fwrite(&ram.sram[pos], SRAM_SECTOR_SIZE, 1, fp) != 1)
 			{
 				MESSAGE_ERROR("Failed to write sram sector #%d\n", sector);
+				goto _cleanup;
 			}
+
+			ram.sram_dirty_sector[sector] = 0;
 		}
 	}
 
-	// fseek(fpSramFile, 0, SEEK_END);
-	// rtc_save(fpSramFile);
+	if (fseek(fp, mbc.ramsize * 8192, SEEK_SET) == 0)
+	{
+		rtc_save(fp);
+	}
 
+_cleanup:
 	// Keeping the file open between calls is dangerous unfortunately
-	// it seems to interfer with our rom loader
 
 	// if (mbc.romsize < 64)
 	// {
 	// 	fflush(fpSramFile);
 	// }
 	// else
-	{
-		fclose(fpSramFile);
-		fpSramFile = NULL;
-	}
 
-	ram.sram_dirty = 0;
+	if (fclose(fp) == 0)
+	{
+		ram.sram_dirty = 0;
+	}
 
 	rg_spi_lock_release(SPI_LOCK_SDCARD);
 
 	return 0;
 }
 
+
+/**
+ * Save file format is:
+ * GB:
+ * 0x0000 - 0x0FFF: svars, oam, palette, hiram, wave
+ * 0x1000 - 0x2FFF: RAM
+ * 0x3000 - 0x4FFF: VRAM
+ * 0x5000 - 0x...:  SRAM
+ *
+ * GBC:
+ * 0x0000 - 0x0FFF: svars, oam, palette, hiram, wave
+ * 0x1000 - 0x8FFF: RAM
+ * 0x9000 - 0xCFFF: VRAM
+ * 0xD000 - 0x...:  SRAM
+ *
+ */
 
 int state_save(const char *file)
 {
