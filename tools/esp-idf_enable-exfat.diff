@@ -1,0 +1,13 @@
+diff --git a/components/fatfs/src/ffconf.h b/components/fatfs/src/ffconf.h
+index 79792beef..0339ccef2 100644
+--- a/components/fatfs/src/ffconf.h
++++ b/components/fatfs/src/ffconf.h
+@@ -252,7 +252,7 @@
+ /  buffer in the filesystem object (FATFS) is used for the file data transfer. */
+
+
+-#define FF_FS_EXFAT            0
++#define FF_FS_EXFAT            1
+ /* This option switches support for exFAT filesystem. (0:Disable or 1:Enable)
+ /  To enable exFAT, also LFN needs to be enabled. (FF_USE_LFN >= 1)
+ /  Note that enabling exFAT discards ANSI C (C89) compatibility. */
