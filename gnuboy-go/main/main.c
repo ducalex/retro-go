@@ -82,7 +82,10 @@ static bool load_state_handler(char *pathName)
 {
     if (state_load(pathName) != 0)
     {
+        // If a state fails to load then we should behave as we do on boot
+        // which is a hard reset and load sram if present
         emu_reset(true);
+        sram_load(sramFile);
 
         return false;
     }
@@ -119,23 +122,6 @@ static bool palette_update_cb(dialog_choice_t *option, dialog_event_t event)
     else sprintf(option->value, "%d/%d", pal, max);
 
     return event == RG_DIALOG_ENTER;
-}
-
-static bool sram_load_now_cb(dialog_choice_t *option, dialog_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-    {
-        emu_reset(true);
-
-        if (sram_load(sramFile) != 0)
-        {
-            rg_gui_alert("Load failed!", sramFile);
-        }
-
-        return true;
-    }
-
-    return false;
 }
 
 static bool sram_save_now_cb(dialog_choice_t *option, dialog_event_t event)
@@ -226,8 +212,7 @@ static bool advanced_settings_cb(dialog_choice_t *option, dialog_event_t event)
             {101, "Set clock", "00:00 ", 1, &rtc_update_cb},
             RG_DIALOG_SEPARATOR,
             {111, "Auto save SRAM", "Off", mbc.batt && mbc.ramsize, &sram_autosave_cb},
-            {112, "Save SRAM now", "", mbc.batt && mbc.ramsize, &sram_save_now_cb},
-            {113, "Load SRAM now", "", mbc.batt && mbc.ramsize, &sram_load_now_cb},
+            {112, "Save SRAM now ", "", mbc.batt && mbc.ramsize, &sram_save_now_cb},
             RG_DIALOG_CHOICE_LAST
         };
         rg_gui_dialog("Advanced", options, 0);
@@ -235,7 +220,7 @@ static bool advanced_settings_cb(dialog_choice_t *option, dialog_event_t event)
     return false;
 }
 
-static inline void screen_blit(void)
+static void screen_blit(void)
 {
     rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
 
@@ -244,6 +229,21 @@ static inline void screen_blit(void)
     // swap buffers
     currentUpdate = previousUpdate;
     fb.ptr = currentUpdate->buffer;
+}
+
+static void auto_sram_update(void)
+{
+    if (autoSaveSRAM > 0 && ram.sram_dirty)
+    {
+        rg_system_set_led(1);
+        sram_update(sramFile);
+        if (ram.sram_dirty)
+        {
+            MESSAGE_ERROR("sram still dirty after sram_update(), trying full save...\n");
+            sram_save(sramFile);
+        }
+        rg_system_set_led(0);
+    }
 }
 
 void app_main(void)
@@ -312,6 +312,7 @@ void app_main(void)
         gamepad_state_t joystick = rg_input_read_gamepad();
 
         if (joystick.values[GAMEPAD_KEY_MENU]) {
+            auto_sram_update();
             rg_gui_game_menu();
         }
         else if (joystick.values[GAMEPAD_KEY_VOLUME]) {
@@ -320,6 +321,7 @@ void app_main(void)
                 {101, "More...", "", 1, &advanced_settings_cb},
                 RG_DIALOG_CHOICE_LAST
             };
+            auto_sram_update();
             rg_gui_game_settings_menu(options);
         }
 
@@ -346,9 +348,7 @@ void app_main(void)
 
             if (autoSaveSRAM_Timer > 0 && --autoSaveSRAM_Timer == 0)
             {
-                rg_system_set_led(1);
-                sram_update(sramFile);
-                rg_system_set_led(0);
+                auto_sram_update();
                 skipFrames += 5;
             }
         }
