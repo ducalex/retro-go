@@ -50,6 +50,12 @@ typedef struct
 	void *ptr;
 } svar_t;
 
+typedef struct
+{
+	void *ptr;
+	int len;
+} sblock_t;
+
 static un32 ver;
 
 static svar_t svars[] =
@@ -448,8 +454,16 @@ int state_save(const char *file)
 	byte *buf = calloc(1, 4096);
 	if (!buf) return -2;
 
-	FILE *f = fopen(file, "wb");
-	if (!f) return -1;
+	FILE *fp = fopen(file, "wb");
+	if (!fp) goto _error;
+
+	sblock_t blocks[] = {
+		{buf, 1},
+		{ram.ibank, hw.cgb ? 8 : 2},
+		{lcd.vbank, hw.cgb ? 4 : 2},
+		{ram.sbank, mbc.ramsize * 2},
+		{NULL, 0},
+	};
 
 	un32 (*header)[2] = (un32 (*)[2])buf;
 
@@ -481,15 +495,25 @@ int state_save(const char *file)
 	memcpy(buf+oamofs, lcd.oam.mem, sizeof lcd.oam);
 	memcpy(buf+wavofs, snd.wave, sizeof snd.wave);
 
-	fwrite(buf, 4096, 1, f);
-	fwrite(ram.ibank, 4096, hw.cgb ? 8 : 2, f);
-	fwrite(lcd.vbank, 4096, hw.cgb ? 4 : 2, f);
-	fwrite(ram.sbank, 8192, mbc.ramsize, f);
-	fclose(f);
+	for (int i = 0; blocks[i].ptr != NULL; i++)
+	{
+		if (fwrite(blocks[i].ptr, 4096, blocks[i].len, fp) < 1)
+		{
+			MESSAGE_ERROR("Write error in block %d\n", i);
+			goto _error;
+		}
+	}
 
+	fclose(fp);
 	free(buf);
 
 	return 0;
+
+_error:
+	if (fp) fclose(fp);
+	if (buf) free(buf);
+
+	return -1;
 }
 
 
@@ -498,14 +522,25 @@ int state_load(const char *file)
 	byte* buf = calloc(1, 4096);
 	if (!buf) return -2;
 
-	FILE *f = fopen(file, "rb");
-	if (!f) return -1;
+	FILE *fp = fopen(file, "rb");
+	if (!fp) goto _error;
 
-	fread(buf, 4096, 1, f);
-	fread(ram.ibank, 4096, hw.cgb ? 8 : 2, f);
-	fread(lcd.vbank, 4096, hw.cgb ? 4 : 2, f);
-	fread(ram.sbank, 8192, mbc.ramsize, f);
-	fclose(f);
+	sblock_t blocks[] = {
+		{buf, 1},
+		{ram.ibank, hw.cgb ? 8 : 2},
+		{lcd.vbank, hw.cgb ? 4 : 2},
+		{ram.sbank, mbc.ramsize * 2},
+		{NULL, 0},
+	};
+
+	for (int i = 0; blocks[i].ptr != NULL; i++)
+	{
+		if (fread(blocks[i].ptr, 4096, blocks[i].len, fp) < 1)
+		{
+			MESSAGE_ERROR("Read error in block %d\n", i);
+			goto _error;
+		}
+	}
 
 	un32 (*header)[2] = (un32 (*)[2])buf;
 
@@ -536,14 +571,15 @@ int state_load(const char *file)
 		}
 	}
 
+	if (ver != SAVE_VERSION)
+		MESSAGE_ERROR("Save file version mismatch!\n");
+
 	memcpy(ram.hi, buf+hiofs, sizeof ram.hi);
 	memcpy(lcd.pal, buf+palofs, sizeof lcd.pal);
 	memcpy(lcd.oam.mem, buf+oamofs, sizeof lcd.oam);
 	memcpy(snd.wave, buf+wavofs, sizeof snd.wave);
 
-	if (ver != SAVE_VERSION)
-		MESSAGE_ERROR("Save file version mismatch!\n");
-
+	fclose(fp);
 	free(buf);
 
 	pal_dirty();
@@ -551,4 +587,10 @@ int state_load(const char *file)
 	mem_updatemap();
 
 	return 0;
+
+_error:
+	if (fp) fclose(fp);
+	if (buf) free(buf);
+
+	return -1;
 }
