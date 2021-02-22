@@ -4,6 +4,8 @@
    For further information, consult the LICENSE file in the root directory.
 \*****************************************************************************/
 
+#include <string>
+
 #include "snes9x.h"
 #include "memory.h"
 #include "apu/apu.h"
@@ -61,9 +63,7 @@ bool8 CMemory::Init (void)
     SRAM = (uint8 *) calloc(1, 0x8000);
     ROM  = (uint8 *) calloc(1, ROM_BUFFER_SIZE + 0x200);
 
-	IPPU.TileCacheData = (uint8 *) calloc(4096, 64);
-
-	if (!FillRAM || !RAM || !SRAM || !VRAM || !ROM || !IPPU.TileCacheData)
+	if (!FillRAM || !RAM || !SRAM || !VRAM || !ROM)
     {
 		Deinit();
 		return (FALSE);
@@ -88,13 +88,11 @@ void CMemory::Deinit (void)
 	free(SRAM);
 	free(VRAM);
 	free(ROM);
-	free(IPPU.TileCacheData);
 
 	RAM = NULL;
 	SRAM = NULL;
 	VRAM = NULL;
 	ROM = NULL;
-	IPPU.TileCacheData = NULL;
 }
 
 // file management and ROM detection

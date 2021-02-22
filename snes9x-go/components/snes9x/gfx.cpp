@@ -1533,22 +1533,22 @@ static inline void ComputeClipWindows (void)
 
 bool8 S9xGraphicsInit (void)
 {
-	GFX.Pitch = SNES_WIDTH * 2;
-	GFX.PPL = GFX.Pitch >> 1;
+	GFX.ScreenSize = SNES_WIDTH * SNES_HEIGHT_EXTENDED;
+	GFX.PPL = SNES_WIDTH;
+	GFX.Pitch = GFX.PPL * 2;
 	IPPU.OBJChanged = TRUE;
 	Settings.BG_Forced = 0;
 
 	S9xInitTileRenderer();
 
-	GFX.ScreenSize = GFX.Pitch / 2 * SNES_HEIGHT_EXTENDED;
-
-	GFX.SubScreen  = (uint16 *) malloc(GFX.ScreenSize * sizeof(uint16));
-	GFX.ZBuffer    = (uint8 *)  malloc(GFX.ScreenSize);
-	GFX.SubZBuffer = (uint8 *)  malloc(GFX.ScreenSize);
+	GFX.SubScreen  = (uint16 *) rg_alloc(GFX.ScreenSize * 2, MEM_SLOW);
+	GFX.ZBuffer    = (uint8 *)  rg_alloc(GFX.ScreenSize, MEM_FAST);
+	GFX.SubZBuffer = (uint8 *)  rg_alloc(GFX.ScreenSize, MEM_FAST);
+	GFX.ZERO       = (uint16 *) GFX.SubScreen; // This will cause garbage but for now it's okay
 	// GFX.ZERO = (uint16 *) malloc(0x10000, sizeof(uint16));
-	GFX.ZERO       = (uint16 *)GFX.SubScreen; // This will cause garbage but for now it's okay
+	IPPU.TileCacheData = (uint8 *) rg_alloc(4096 * 64, MEM_SLOW);
 
-	if (!GFX.SubScreen || !GFX.ZBuffer || !GFX.SubZBuffer)
+	if (!GFX.SubScreen || !GFX.ZBuffer || !GFX.SubZBuffer || !IPPU.TileCacheData)
 	{
 		S9xGraphicsDeinit();
 		return (FALSE);
@@ -1586,6 +1586,7 @@ void S9xGraphicsDeinit (void)
 	if (GFX.SubScreen)  { free(GFX.SubScreen);  GFX.SubScreen  = NULL; }
 	if (GFX.ZBuffer)    { free(GFX.ZBuffer);    GFX.ZBuffer    = NULL; }
 	if (GFX.SubZBuffer) { free(GFX.SubZBuffer); GFX.SubZBuffer = NULL; }
+	if (IPPU.TileCacheData) { free(IPPU.TileCacheData); IPPU.TileCacheData = NULL; }
 }
 
 void S9xGraphicsScreenResize (void)

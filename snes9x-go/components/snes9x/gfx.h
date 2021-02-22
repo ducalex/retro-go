@@ -36,13 +36,13 @@ struct SGFX
 
 	struct
 	{
-		uint8	RTOFlags;
+		int16	RTOFlags;
 		int16	Tiles;
 
 		struct
 		{
-			int32	Sprite;
-			uint32	Line;
+			int16	Sprite;
+			int16	Line;
 		}	OBJ[32];
 	}	OBJLines[SNES_HEIGHT_EXTENDED];
 
