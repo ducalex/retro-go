@@ -159,14 +159,12 @@ int rom_loadbank(int bank)
 	rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
 	// Load the 16K page
-	if (fseek(fpRomFile, OFFSET, SEEK_SET))
+	if (fseek(fpRomFile, OFFSET, SEEK_SET) || !fread(rom.bank[bank], BANK_SIZE, 1, fpRomFile))
 	{
-		emu_die("ROM fseek failed");
-	}
-
-	if (fread(rom.bank[bank], BANK_SIZE, 1, fpRomFile) < 1)
-	{
-		emu_die("ROM fread failed");
+		if (feof(fpRomFile))
+			MESSAGE_ERROR("End of file reached, the rom's header is probably incorrect!\n");
+		else
+			emu_die("ROM bank loading failed");
 	}
 
 	rg_spi_lock_release(SPI_LOCK_SDCARD);
