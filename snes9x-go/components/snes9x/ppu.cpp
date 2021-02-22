@@ -1274,13 +1274,6 @@ uint8 S9xGetCPU (uint32 Address)
 {
 	if (Address < 0x4200)
 	{
-	#ifdef SNES_JOY_READ_CALLBACKS
-		if (Address == 0x4016 || Address == 0x4017)
-		{
-			S9xOnSNESPadRead();
-		}
-	#endif
-
 		switch (Address)
 		{
 			case 0x4016: // JOYSER0
@@ -1388,12 +1381,6 @@ uint8 S9xGetCPU (uint32 Address)
 			case 0x421d: // JOY3H
 			case 0x421e: // JOY4L
 			case 0x421f: // JOY4H
-			#ifdef SNES_JOY_READ_CALLBACKS
-				if (Memory.FillRAM[0x4200] & 1)
-				{
-					S9xOnSNESPadRead();
-				}
-			#endif
 				return (Memory.FillRAM[Address]);
 
 			default:

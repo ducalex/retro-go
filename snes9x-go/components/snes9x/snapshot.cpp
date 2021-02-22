@@ -545,7 +545,7 @@ static int UnfreezeStructCopy (STREAM, const char *, uint8 **, const FreezeData 
 static void UnfreezeStructFromCopy (void *, const FreezeData *, int, uint8 *, int);
 static void FreezeBlock (STREAM, const char *, uint8 *, int);
 static void FreezeStruct (STREAM, const char *, void *, const FreezeData *, int);
-static bool CheckBlockName(STREAM stream, const char *name, int &len);
+static bool CheckBlockName(STREAM stream, const char *name, int *len);
 static void SkipBlockWithName(STREAM stream, const char *name);
 
 // QuickSave
@@ -788,7 +788,7 @@ static void FreezeStruct (STREAM stream, const char *name, void *base, const Fre
 			len += FreezeSize(fields[i].size, fields[i].type);
 	}
 
-	uint8	*block = new uint8[len];
+	uint8	*block = (uint8*)calloc(1, len);
 	uint8	*ptr = block;
 	uint8	*addr;
 	uint16	word;
@@ -890,7 +890,7 @@ static void FreezeStruct (STREAM stream, const char *name, void *base, const Fre
 	}
 
 	FreezeBlock(stream, name, block, len);
-	delete [] block;
+	free(block);
 }
 
 static void FreezeBlock (STREAM stream, const char *name, uint8 *block, int size)
@@ -916,42 +916,35 @@ static void FreezeBlock (STREAM stream, const char *name, uint8 *block, int size
 	WRITE_STREAM(block, size, stream);
 }
 
-static bool CheckBlockName(STREAM stream, const char *name, int &len)
+static bool CheckBlockName(STREAM stream, const char *name, int *len)
 {
-	char	buffer[16];
-	len = 0;
-
+	char	buffer[16] = {0};
 	size_t	l = READ_STREAM(buffer, 11, stream);
-	buffer[l] = 0;
+
 	REVERT_STREAM(stream, FIND_STREAM(stream) - l, 0);
 
 	if (buffer[4] == '-')
 	{
-		len = (((unsigned char)buffer[6]) << 24)
+		*len = (((unsigned char)buffer[6]) << 24)
 			| (((unsigned char)buffer[7]) << 16)
 			| (((unsigned char)buffer[8]) << 8)
 			| (((unsigned char)buffer[9]) << 0);
 	}
 	else
-		len = atoi(buffer + 4);
+		*len = atoi(buffer + 4);
 
 	if (l != 11 || strncmp(buffer, name, 3) != 0 || buffer[3] != ':')
 	{
 		return false;
 	}
 
-	if (len <= 0)
-	{
-		return false;
-	}
-
-	return true;
+	return (*len > 0);
 }
 
 static void SkipBlockWithName(STREAM stream, const char *name)
 {
 	int len;
-	bool matchesName = CheckBlockName(stream, name, len);
+	bool matchesName = CheckBlockName(stream, name, &len);
 	if (matchesName)
 	{
 		long rewind = FIND_STREAM(stream);
@@ -1008,10 +1001,7 @@ static int UnfreezeBlock (STREAM stream, const char *name, uint8 *block, int siz
 
 	if (rem)
 	{
-		char	*junk = new char[rem];
-		len = READ_STREAM(junk, rem, stream);
-		delete [] junk;
-		if (len != rem)
+		if (REVERT_STREAM(stream, FIND_STREAM(stream) + rem, 0) != 0)
 		{
 			REVERT_STREAM(stream, rewind, 0);
 			return (WRONG_FORMAT);
@@ -1027,17 +1017,17 @@ static int UnfreezeBlockCopy (STREAM stream, const char *name, uint8 **block, in
 
 	//check name first to avoid memory allocation
 	int blockLength;
-	if (!CheckBlockName(stream, name, blockLength))
+	if (!CheckBlockName(stream, name, &blockLength))
 	{
 		return 0;
 	}
 
-	*block = new uint8[size];
+	*block = (uint8*)calloc(1, size);
 
 	result = UnfreezeBlock(stream, name, *block, size);
 	if (result != SUCCESS)
 	{
-		delete [] (*block);
+		free(*block);
 		*block = NULL;
 		return (result);
 	}
@@ -1053,13 +1043,12 @@ static int UnfreezeStruct (STREAM stream, const char *name, void *base, const Fr
 	result = UnfreezeStructCopy(stream, name, &block, fields, num_fields, version);
 	if (result != SUCCESS)
 	{
-		if (block != NULL)
-			delete [] block;
+		free(block);
 		return (result);
 	}
 
 	UnfreezeStructFromCopy(base, fields, num_fields, block, version);
-	delete [] block;
+	free(block);
 
 	return (SUCCESS);
 }

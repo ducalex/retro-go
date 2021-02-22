@@ -1358,7 +1358,7 @@ static inline uint8 CalcWindowMask (int i, uint8 W1, uint8 W2)
 	return (0);
 }
 
-static inline void StoreWindowRegions (uint8 Mask, struct ClipData *Clip, int n_regions, int16 *windows, uint8 *drawing_modes, bool8 sub, bool8 StoreMode0 = FALSE)
+static inline void StoreWindowRegions (uint8 Mask, struct ClipData *Clip, int n_regions, int16 *windows, uint8 *drawing_modes, bool8 sub, bool8 StoreMode0)
 {
 	int	ct = 0;
 
@@ -1520,14 +1520,14 @@ static inline void ComputeClipWindows (void)
 		uint8	W = Settings.DisableGraphicWindows ? 0 : CalcWindowMask(j, W1, W2);
 
 		if (Memory.FillRAM[0x212e] & (1 << j))
-			StoreWindowRegions(W, &IPPU.Clip[0][j], n_regions, windows, drawing_modes, 0);
+			StoreWindowRegions(W, &IPPU.Clip[0][j], n_regions, windows, drawing_modes, 0, FALSE);
 		else
-			StoreWindowRegions(0, &IPPU.Clip[0][j], n_regions, windows, drawing_modes, 0);
+			StoreWindowRegions(0, &IPPU.Clip[0][j], n_regions, windows, drawing_modes, 0, FALSE);
 
 		if (Memory.FillRAM[0x212f] & (1 << j))
-			StoreWindowRegions(W, &IPPU.Clip[1][j], n_regions, windows, drawing_modes, 1);
+			StoreWindowRegions(W, &IPPU.Clip[1][j], n_regions, windows, drawing_modes, 1, FALSE);
 		else
-			StoreWindowRegions(0, &IPPU.Clip[1][j], n_regions, windows, drawing_modes, 1);
+			StoreWindowRegions(0, &IPPU.Clip[1][j], n_regions, windows, drawing_modes, 1, FALSE);
 	}
 }
 
@@ -1648,14 +1648,10 @@ void S9xEndScreenRefresh (void)
 	{
 		FLUSH_REDRAW();
 
-		S9xControlEOF();
-
 		S9xDisplayMessages(GFX.Screen, GFX.PPL, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, 1);
 
 		S9xDeinitUpdate(IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight);
 	}
-	else
-		S9xControlEOF();
 
 #ifdef DEBUGGER
 	if (CPU.Flags & FRAME_ADVANCE_FLAG)

@@ -708,7 +708,7 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 #define Z2	GFX.Z2
 
 #define DRAW_TILE() \
-	uint8			*pCache; \
+	uint8	*pCache; \
 	int32	l; \
 	uint8	*bp, Pix, w; \
 	\

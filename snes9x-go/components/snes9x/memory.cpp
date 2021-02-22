@@ -4,7 +4,6 @@
    For further information, consult the LICENSE file in the root directory.
 \*****************************************************************************/
 
-#include <string>
 #include "snes9x.h"
 #include "memory.h"
 #include "apu/apu.h"

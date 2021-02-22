@@ -129,11 +129,6 @@ void S9xSyncSpeed(void)
 
 }
 
-void S9xHandlePortCommand(s9xcommand_t cmd, int16 data1, int16 data2)
-{
-
-}
-
 void S9xExit(void)
 {
 	exit(0);
@@ -267,9 +262,6 @@ static void snes9x_task(void *arg)
 
 	GFX.Pitch = SNES_WIDTH * 2;
 	GFX.Screen = (uint16*)currentUpdate->buffer;
-
-	S9xSetController(0, CTL_JOYPAD, 0, 0, 0, 0);
-	S9xSetController(1, CTL_NONE, 1, 0, 0, 0);
 
 	update_keymap(rg_settings_app_int32_get(NVS_KEY_KEYMAP, 0));
 
