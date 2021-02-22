@@ -9,7 +9,6 @@
 #include "tile.h"
 #include "controls.h"
 #include "font.h"
-#include "display.h"
 
 #define TILE_PLUS(t, x)	(((t) & 0xfc00) | ((t + x) & 0x3ff))
 
@@ -473,7 +472,7 @@ static void DrawBackgroundOffset (int bg, uint8 Zh, uint8 Zl, int VOffOff)
 			uint32	Right = GFX.Clip[bg].Right[clip];
 			uint32	Offset = Left + Y * GFX.PPL;
 			uint32	HScroll = LineData[Y].BG[bg].HOffset;
-			bool8	left_edge = (Left < (8 - (HScroll & 7)));
+			uint32	left_edge = (Left < (8 - (HScroll & 7)));
 			uint32	Width = Right - Left;
 
 			while (Left < Right)
@@ -1191,8 +1190,7 @@ static void DrawOBJS (int D)
 
 static inline void RenderScreen (bool8 sub)
 {
-	uint8	BGActive;
-	int		D;
+	int BGActive, D;
 
 	if (!sub)
 	{
@@ -1695,39 +1693,6 @@ void S9xEndScreenRefresh (void)
 #endif
 }
 
-void S9xSetInfoString (const char *string)
-{
-	if (Settings.InitialInfoStringTimeout > 0)
-	{
-		GFX.InfoString = string;
-		GFX.InfoStringTimeout = Settings.InitialInfoStringTimeout;
-		if (Settings.Paused)
-			S9xDeinitUpdate(IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight);
-	}
-}
-
-void S9xDisplayChar (uint16 *s, uint8 c)
-{
-	const uint16	black = BUILD_PIXEL(0, 0, 0);
-
-	int	line   = ((c - 32) >> 4) * FONT_HEIGHT;
-	int	offset = ((c - 32) & 15) * FONT_WIDTH;
-
-	for (int h = 0; h < FONT_HEIGHT; h++, line++, s += GFX.PPL - FONT_WIDTH)
-	{
-		for (int w = 0; w < FONT_WIDTH; w++, s++)
-		{
-			char	p = font[line][offset + w];
-
-			if (p == '#')
-				*s = Settings.DisplayColor;
-			else
-			if (p == '.')
-				*s = black;
-		}
-	}
-}
-
 void S9xRenderLine (int C)
 {
 	if (IPPU.RenderThisFrame)
@@ -1797,19 +1762,50 @@ void S9xUpdateScreen (void)
 	}
 	else
 	{
-		const uint16	black = BUILD_PIXEL(0, 0, 0);
-
 		GFX.S = GFX.Screen + GFX.StartY * GFX.PPL;
 
+		// Set to black
 		for (int l = GFX.StartY; l <= GFX.EndY; l++, GFX.S += GFX.PPL)
-			for (int x = 0; x < IPPU.RenderedScreenWidth; x++)
-				GFX.S[x] = black;
+			memset(GFX.S, 0, IPPU.RenderedScreenWidth * 2);
 	}
 
 	IPPU.PreviousLine = IPPU.CurrentLine;
 }
 
-static void DisplayStringFromBottom (const char *string, int linesFromBottom, int pixelsFromLeft, bool allowWrap)
+void S9xSetInfoString (const char *string)
+{
+	if (Settings.InitialInfoStringTimeout > 0)
+	{
+		GFX.InfoString = string;
+		GFX.InfoStringTimeout = Settings.InitialInfoStringTimeout;
+		if (Settings.Paused)
+			S9xDeinitUpdate(IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight);
+	}
+}
+
+static inline void DisplayChar (uint16 *s, uint8 c)
+{
+	const uint16	black = BUILD_PIXEL(0, 0, 0);
+
+	int	line   = ((c - 32) >> 4) * FONT_HEIGHT;
+	int	offset = ((c - 32) & 15) * FONT_WIDTH;
+
+	for (int h = 0; h < FONT_HEIGHT; h++, line++, s += GFX.PPL - FONT_WIDTH)
+	{
+		for (int w = 0; w < FONT_WIDTH; w++, s++)
+		{
+			char	p = font[line][offset + w];
+
+			if (p == '#')
+				*s = Settings.DisplayColor;
+			else
+			if (p == '.')
+				*s = black;
+		}
+	}
+}
+
+static inline void DisplayStringFromBottom (const char *string, int linesFromBottom, int pixelsFromLeft, bool allowWrap)
 {
 	if (linesFromBottom <= 0)
 		linesFromBottom = 1;
@@ -1837,7 +1833,7 @@ static void DisplayStringFromBottom (const char *string, int linesFromBottom, in
 		if ((uint8) string[i] < 32)
 			continue;
 
-		S9xDisplayChar(dst, string[i]);
+		DisplayChar(dst, string[i]);
 		dst += FONT_WIDTH - 1;
 	}
 }
@@ -1845,5 +1841,5 @@ static void DisplayStringFromBottom (const char *string, int linesFromBottom, in
 void S9xDisplayMessages (uint16 *screen, int ppl, int width, int height, int scale)
 {
 	if (GFX.InfoString && *GFX.InfoString)
-		S9xDisplayString(GFX.InfoString, 5, 1, true);
+		DisplayStringFromBottom(GFX.InfoString, 5, 1, true);
 }

@@ -11,7 +11,6 @@
 #include "memmap.h"
 #include "dma.h"
 #include "apu/apu.h"
-#include "display.h"
 #include "debug.h"
 
 #include "apu/bapu/snes/snes.hpp"

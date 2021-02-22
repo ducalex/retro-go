@@ -200,13 +200,22 @@ struct SSettings
 	bool8	DMACPUSyncHack;
 };
 
-void S9xExit(void);
-void S9xMessage(int, int, const char *);
-void S9xInitSettings(void);
-
-extern struct SSettings			Settings;
-extern struct SCPUState			CPU;
-extern char						String[513];
+enum s9x_getdirtype
+{
+	DEFAULT_DIR = 0,
+	HOME_DIR,
+	ROMFILENAME_DIR,
+	ROM_DIR,
+	SRAM_DIR,
+	SNAPSHOT_DIR,
+	SPC_DIR,
+	CHEAT_DIR,
+	PATCH_DIR,
+	BIOS_DIR,
+	LOG_DIR,
+	SAT_DIR,
+	LAST_DIR
+};
 
 // Types of message sent to S9xMessage()
 enum
@@ -252,5 +261,21 @@ enum
 	S9X_SNAPSHOT_INCONSISTENT,
 	S9X_PRESSED_KEYS_INFO
 };
+
+void S9xExit(void);
+void S9xMessage(int, int, const char *);
+void S9xInitSettings(void);
+void S9xTextMode (void);
+void S9xGraphicsMode (void);
+const char * S9xGetDirectory (enum s9x_getdirtype);
+const char * S9xGetFilename (const char *, enum s9x_getdirtype);
+const char * S9xBasename (const char *);
+void S9xSetInfoString (const char *);
+void S9xSyncSpeed (void);
+void S9xAutoSaveSRAM (void);
+
+extern struct SSettings			Settings;
+extern struct SCPUState			CPU;
+extern char						String[513];
 
 #endif

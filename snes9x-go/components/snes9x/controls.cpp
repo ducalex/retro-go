@@ -15,7 +15,6 @@
 #include "apu/apu.h"
 #include "snapshot.h"
 #include "controls.h"
-#include "display.h"
 
 using namespace	std;
 
@@ -110,8 +109,6 @@ static const char	*command_names[LAST_COMMAND + 1] =
 
 #undef S
 #undef THE_COMMANDS
-
-static void DisplayStateChange (const char *, bool8);
 
 static int maptype (int t)
 {

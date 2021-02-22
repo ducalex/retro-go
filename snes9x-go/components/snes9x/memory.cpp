@@ -9,7 +9,6 @@
 #include "memory.h"
 #include "apu/apu.h"
 #include "controls.h"
-#include "display.h"
 
 CMemory		Memory;
 uint32		OpenBus = 0;
@@ -238,7 +237,6 @@ bool8 CMemory::InitROM ()
 		return (FALSE);
 
 	Settings.DisplayColor = BUILD_PIXEL(31, 31, 31);
-	SET_UI_COLOR(255, 255, 255);
 
 	if ((ROM_SIZE & 0x7FF) == 512 || First512BytesCountZeroes(ROM) > 400)
 	{
@@ -346,7 +344,6 @@ bool8 CMemory::InitROM ()
 	if (!isChecksumOK || ((uint32) CalculatedSize > (uint32) (((1 << (ROMSize - 7)) * 128) * 1024)))
 	{
 		Settings.DisplayColor = BUILD_PIXEL(31, 31, 0);
-		SET_UI_COLOR(255, 255, 0);
 	}
 
 	ROMIsPatched = false;
@@ -357,7 +354,6 @@ bool8 CMemory::InitROM ()
 	if (ROMIsPatched)
 	{
 		Settings.DisplayColor = BUILD_PIXEL(26, 26, 31);
-		SET_UI_COLOR(216, 216, 255);
 	}
 
 	//// Hack games
@@ -841,7 +837,6 @@ void CMemory::ApplyROMFixes (void)
 		(match_nn("HONKAKUHA IGO GOSEI")   && (ROM[0xffd5] != 0x31)))
 	{
 		Settings.DisplayColor = BUILD_PIXEL(31, 0, 0);
-		SET_UI_COLOR(255, 0, 0);
 	}
 
 	// Always exec because it sets PAL mode too

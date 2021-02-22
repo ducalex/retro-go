@@ -84,7 +84,7 @@ struct SBG
 
 	uint32	Buffered;
 	uint32	BufferedFlip;
-	bool8	DirectColourMode;
+	uint32	DirectColourMode;
 };
 
 struct SLineMatrixData
@@ -121,9 +121,9 @@ extern struct SGFX	GFX;
 void S9xStartScreenRefresh (void);
 void S9xEndScreenRefresh (void);
 void S9xRenderLine (int);
-void S9xDisplayChar (uint16 *, uint8);
 void S9xGraphicsScreenResize (void);
 void S9xDisplayMessages (uint16 *, int, int, int, int);
+void S9xUpdateScreen (void);
 
 // external port interface which must be implemented or initialised for each port
 bool8 S9xGraphicsInit (void);

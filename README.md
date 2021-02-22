@@ -117,6 +117,13 @@ For a smaller build you can also specify which apps you want, for example the la
 * Offset is required only if you use my multi-firmware AND retro-go isn't the first installed application, in which case the offset is shown in the multi-firmware.
 
 
+# Porting
+I don't want to maintain other ports in this repository but let me know if I can make small changes to make your own port easier. The minimum requirements for Retro-Go are roughly:
+- Processor: 200Mhz 16 or 32bit little-endian with unaligned memory access
+- Memory: 2MB
+- Compiler: C99
+
+
 # Acknowledgements
 - The NES/GBC/SMS emulators and base library were originally from the "Triforce" fork of the [official Go-Play firmware](https://github.com/othercrashoverride/go-play) by crashoverride, Nemo1984, and many others.
 - The [HuExpress](https://github.com/kallisti5/huexpress) (PCE) emulator was first ported to the GO by [pelle7](https://github.com/pelle7/odroid-go-pcengine-huexpress/).

@@ -10,7 +10,6 @@
 #include "tile.h"
 #include "apu/apu.h"
 #include "controls.h"
-#include "display.h"
 #ifdef DEBUGGER
 #include "debug.h"
 #endif

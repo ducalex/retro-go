@@ -11,7 +11,6 @@
 #include "apu/apu.h"
 #include "snapshot.h"
 #include "controls.h"
-#include "display.h"
 #include "gfx.h"
 
 #ifndef min
@@ -553,9 +552,9 @@ static void SkipBlockWithName(STREAM stream, const char *name);
 
 bool8 S9xFreezeGame (const char *filename)
 {
-	STREAM	stream = NULL;
+	STREAM	stream = OPEN_STREAM(filename, "wb");
 
-	if (!S9xOpenSnapshotFile(filename, FALSE, &stream))
+	if (!stream)
 	{
 		return (FALSE);
 	}
@@ -600,7 +599,7 @@ bool8 S9xFreezeGame (const char *filename)
 	if (Settings.DSP == 2)
 		FreezeStruct(stream, "DP2", &DSP2, SnapDSP2, COUNT(SnapDSP2));
 
-	S9xCloseSnapshotFile(stream);
+	CLOSE_STREAM(stream);
 
 	sprintf(String, SAVE_INFO_SNAPSHOT " %s", S9xBasename(filename));
 	S9xMessage(S9X_INFO, S9X_FREEZE_FILE_INFO, String);
@@ -612,9 +611,9 @@ bool8 S9xFreezeGame (const char *filename)
 
 bool8 S9xUnfreezeGame (const char *filename)
 {
-	STREAM	stream = NULL;
+	STREAM	stream = OPEN_STREAM(filename, "rb");
 
-	if (!S9xOpenSnapshotFile(filename, TRUE, &stream))
+	if (!stream)
 	{
 		sprintf(String, SAVE_ERR_SAVE_NOT_FOUND, S9xBasename(filename));
 		S9xMessage(S9X_INFO, S9X_FREEZE_FILE_INFO, String);
@@ -725,7 +724,7 @@ bool8 S9xUnfreezeGame (const char *filename)
 		S9xGraphicsScreenResize();
 	}
 
-	S9xCloseSnapshotFile(stream);
+	CLOSE_STREAM(stream);
 
 	if (result != SUCCESS)
 	{

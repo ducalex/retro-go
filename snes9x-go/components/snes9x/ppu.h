@@ -202,9 +202,9 @@ void S9xUpdateIRQPositions (bool initial);
 void S9xDoAutoJoypad (void);
 
 #include "gfx.h"
+#include "tile.h"
 #include "memory.h"
 
-void S9xUpdateScreen (void);
 static inline void FLUSH_REDRAW (void)
 {
 	if (IPPU.PreviousLine != IPPU.CurrentLine)

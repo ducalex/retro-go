@@ -18,20 +18,6 @@
 #include <strings.h>
 #include <sys/types.h>
 
-#ifdef __WIN32__
-//#define RIGHTSHIFT_IS_SAR
-#define RIGHTSHIFT_int8_IS_SAR
-#define RIGHTSHIFT_int16_IS_SAR
-#define RIGHTSHIFT_int32_IS_SAR
-#ifndef __LIBRETRO__
-#define SNES_JOY_READ_CALLBACKS
-#endif //__LIBRETRO__
-#endif
-
-#ifdef __MACOSX__
-#define PIXEL_FORMAT RGB555
-#endif
-
 #ifndef PIXEL_FORMAT
 #define PIXEL_FORMAT RGB565
 #endif
@@ -63,13 +49,6 @@ typedef uint64_t			uint64;
 #define _MAX_FNAME	PATH_MAX
 #define _MAX_EXT	PATH_MAX
 #define _MAX_PATH	PATH_MAX
-
-#define SLASH_STR	"/"
-#define SLASH_CHAR	'/'
-
-void _splitpath (const char *, char *, char *, char *, char *);
-void _makepath (char *, const char *, const char *, const char *, const char *);
-#define S9xDisplayString	DisplayStringFromBottom
 
 #ifndef TITLE
 #define TITLE "Snes9x"

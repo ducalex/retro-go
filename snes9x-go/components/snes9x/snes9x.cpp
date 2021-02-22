@@ -7,7 +7,6 @@
 #include "snes9x.h"
 #include "memory.h"
 #include "controls.h"
-#include "display.h"
 
 struct SSettings Settings;
 char String[513];
