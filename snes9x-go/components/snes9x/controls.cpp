@@ -484,7 +484,7 @@ void S9xDoAutoJoypad (void)
 	for (int n = 0; n < 2; n++)
 	{
 		joypads[n].read_idx = 16;
-		WRITE_WORD(Memory.FillRAM + 0x4218 + n * 2, joypads[n].buttons);
-		WRITE_WORD(Memory.FillRAM + 0x421c + n * 2, 0);
+		WRITE_WORD(Memory.FillRAM + 0x2218 + n * 2, joypads[n].buttons);
+		WRITE_WORD(Memory.FillRAM + 0x221c + n * 2, 0);
 	}
 }

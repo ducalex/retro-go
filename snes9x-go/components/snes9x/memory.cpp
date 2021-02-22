@@ -57,33 +57,22 @@ static bool8 allASCII (uint8 *b, int size)
 
 bool8 CMemory::Init (void)
 {
-	FillRAM = (uint8 *) calloc(1, 0x2800);
     RAM	 = (uint8 *) calloc(1, 0x20000);
     VRAM = (uint8 *) calloc(1, 0x10000);
     SRAM = (uint8 *) calloc(1, 0x8000);
     ROM  = (uint8 *) calloc(1, ROM_BUFFER_SIZE + 0x200);
 
-	if (!FillRAM || !RAM || !SRAM || !VRAM || !ROM)
+	if (!RAM || !SRAM || !VRAM || !ROM)
     {
 		Deinit();
 		return (FALSE);
     }
-
-	// We never access 0x0000 - 0x2000 so we shift our offset to save 8K of ram
-	FillRAM -= 0x2000;
 
 	return (TRUE);
 }
 
 void CMemory::Deinit (void)
 {
-	if (FillRAM)
-	{
-		FillRAM += 0x2000;
-		free(FillRAM);
-		FillRAM = NULL;
-	}
-
 	free(RAM);
 	free(SRAM);
 	free(VRAM);

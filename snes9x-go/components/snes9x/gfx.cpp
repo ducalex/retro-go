@@ -1197,7 +1197,7 @@ static inline void RenderScreen (bool8 sub)
 		GFX.S = GFX.Screen;
 		GFX.DB = GFX.ZBuffer;
 		GFX.Clip = IPPU.Clip[0];
-		BGActive = Memory.FillRAM[0x212c] & ~Settings.BG_Forced;
+		BGActive = Memory.FillRAM[0x012c] & ~Settings.BG_Forced;
 		D = 32;
 	}
 	else
@@ -1205,15 +1205,15 @@ static inline void RenderScreen (bool8 sub)
 		GFX.S = GFX.SubScreen;
 		GFX.DB = GFX.SubZBuffer;
 		GFX.Clip = IPPU.Clip[1];
-		BGActive = Memory.FillRAM[0x212d] & ~Settings.BG_Forced;
-		D = (Memory.FillRAM[0x2130] & 2) << 4; // 'do math' depth flag
+		BGActive = Memory.FillRAM[0x012d] & ~Settings.BG_Forced;
+		D = (Memory.FillRAM[0x0130] & 2) << 4; // 'do math' depth flag
 	}
 
 	if (BGActive & 0x10)
 	{
 		BG.TileAddress = PPU.OBJNameBase;
 		BG.NameSelect = PPU.OBJNameSelect;
-		BG.EnableMath = !sub && (Memory.FillRAM[0x2131] & 0x10);
+		BG.EnableMath = !sub && (Memory.FillRAM[0x0131] & 0x10);
 		BG.StartPalette = 128;
 		S9xSelectTileConverter(4, FALSE, sub, FALSE);
 		S9xSelectTileRenderers(PPU.BGMode, sub, TRUE);
@@ -1227,7 +1227,7 @@ static inline void RenderScreen (bool8 sub)
 		if (BGActive & (1 << n)) \
 		{ \
 			BG.StartPalette = pal; \
-			BG.EnableMath = !sub && (Memory.FillRAM[0x2131] & (1 << n)); \
+			BG.EnableMath = !sub && (Memory.FillRAM[0x0131] & (1 << n)); \
 			BG.TileSizeH = (!hires && PPU.BG[n].BGSize) ? 16 : 8; \
 			BG.TileSizeV = (PPU.BG[n].BGSize) ? 16 : 8; \
 			S9xSelectTileConverter(depth, hires, sub, PPU.BGMosaic[n]); \
@@ -1293,13 +1293,13 @@ static inline void RenderScreen (bool8 sub)
 		case 7:
 			if (BGActive & 0x01)
 			{
-				BG.EnableMath = !sub && (Memory.FillRAM[0x2131] & 1);
+				BG.EnableMath = !sub && (Memory.FillRAM[0x0131] & 1);
 				DrawBackgroundMode7(0, GFX.DrawMode7BG1Math, GFX.DrawMode7BG1Nomath, D);
 			}
 
-			if ((Memory.FillRAM[0x2133] & 0x40) && (BGActive & 0x02))
+			if ((Memory.FillRAM[0x0133] & 0x40) && (BGActive & 0x02))
 			{
-				BG.EnableMath = !sub && (Memory.FillRAM[0x2131] & 2);
+				BG.EnableMath = !sub && (Memory.FillRAM[0x0131] & 2);
 				DrawBackgroundMode7(1, GFX.DrawMode7BG2Math, GFX.DrawMode7BG2Nomath, D);
 			}
 			break;
@@ -1307,7 +1307,7 @@ static inline void RenderScreen (bool8 sub)
 
 	#undef DO_BG
 
-	BG.EnableMath = !sub && (Memory.FillRAM[0x2131] & 0x20);
+	BG.EnableMath = !sub && (Memory.FillRAM[0x0131] & 0x20);
 
 	DrawBackdrop();
 }
@@ -1484,7 +1484,7 @@ static inline void ComputeClipWindows (void)
 	uint8	CW_color = 0, CW_math = 0;
 	uint8	CW = CalcWindowMask(5, W1, W2);
 
-	switch (Memory.FillRAM[0x2130] & 0xc0)
+	switch (Memory.FillRAM[0x0130] & 0xc0)
 	{
 		case 0x00:	CW_color = 0;		break;
 		case 0x40:	CW_color = ~CW;		break;
@@ -1492,7 +1492,7 @@ static inline void ComputeClipWindows (void)
 		case 0xc0:	CW_color = 0xff;	break;
 	}
 
-	switch (Memory.FillRAM[0x2130] & 0x30)
+	switch (Memory.FillRAM[0x0130] & 0x30)
 	{
 		case 0x00:	CW_math  = 0;		break;
 		case 0x10:	CW_math  = ~CW;		break;
@@ -1519,12 +1519,12 @@ static inline void ComputeClipWindows (void)
 	{
 		uint8	W = Settings.DisableGraphicWindows ? 0 : CalcWindowMask(j, W1, W2);
 
-		if (Memory.FillRAM[0x212e] & (1 << j))
+		if (Memory.FillRAM[0x012e] & (1 << j))
 			StoreWindowRegions(W, &IPPU.Clip[0][j], n_regions, windows, drawing_modes, 0, FALSE);
 		else
 			StoreWindowRegions(0, &IPPU.Clip[0][j], n_regions, windows, drawing_modes, 0, FALSE);
 
-		if (Memory.FillRAM[0x212f] & (1 << j))
+		if (Memory.FillRAM[0x012f] & (1 << j))
 			StoreWindowRegions(W, &IPPU.Clip[1][j], n_regions, windows, drawing_modes, 1, FALSE);
 		else
 			StoreWindowRegions(0, &IPPU.Clip[1][j], n_regions, windows, drawing_modes, 1, FALSE);
@@ -1595,16 +1595,16 @@ void S9xGraphicsScreenResize (void)
 	IPPU.RenderedScreenWidth = SNES_WIDTH;
 	IPPU.MaxBrightness = PPU.Brightness;
 
-	IPPU.Interlace    = Memory.FillRAM[0x2133] & 1;
-	IPPU.InterlaceOBJ = Memory.FillRAM[0x2133] & 2;
-	IPPU.PseudoHires  = Memory.FillRAM[0x2133] & 8;
+	IPPU.Interlace    = Memory.FillRAM[0x0133] & 1;
+	IPPU.InterlaceOBJ = Memory.FillRAM[0x0133] & 2;
+	IPPU.PseudoHires  = Memory.FillRAM[0x0133] & 8;
 
 	static uint8 prev2133 = 0;
-	if (prev2133 != Memory.FillRAM[0x2133])
+	if (prev2133 != Memory.FillRAM[0x0133])
 	{
 		sprintf(String, "Int=%d IntOBJ=%d Hires=%d\n", IPPU.Interlace, IPPU.InterlaceOBJ, IPPU.PseudoHires);
 		S9xMessage(0, 0, String);
-		prev2133 = Memory.FillRAM[0x2133];
+		prev2133 = Memory.FillRAM[0x0133];
 	}
 }
 
@@ -1746,11 +1746,11 @@ void S9xUpdateScreen (void)
 			PPU.RecomputeClipWindows = FALSE;
 		}
 
-		if ((Memory.FillRAM[0x2130] & 0x30) != 0x30 && (Memory.FillRAM[0x2131] & 0x3f))
+		if ((Memory.FillRAM[0x0130] & 0x30) != 0x30 && (Memory.FillRAM[0x0131] & 0x3f))
 			GFX.FixedColour = BUILD_PIXEL(IPPU.XB[PPU.FixedColourRed], IPPU.XB[PPU.FixedColourGreen], IPPU.XB[PPU.FixedColourBlue]);
 
 		if (PPU.BGMode == 5 || PPU.BGMode == 6 || IPPU.PseudoHires ||
-			((Memory.FillRAM[0x2130] & 0x30) != 0x30 && (Memory.FillRAM[0x2130] & 2) && (Memory.FillRAM[0x2131] & 0x3f) && (Memory.FillRAM[0x212d] & 0x1f)))
+			((Memory.FillRAM[0x0130] & 0x30) != 0x30 && (Memory.FillRAM[0x0130] & 2) && (Memory.FillRAM[0x0131] & 0x3f) && (Memory.FillRAM[0x012d] & 0x1f)))
 			// If hires (Mode 5/6 or pseudo-hires) or math is to be done
 			// involving the subscreen, then we need to render the subscreen...
 			RenderScreen(TRUE);

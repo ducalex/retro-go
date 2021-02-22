@@ -13,6 +13,11 @@
 #endif
 
 #define ADD_CYCLES(n)	{ CPU.Cycles += (n); }
+#define GET_MEM_PTR(Address) ({ \
+	uint32 a = (Address); \
+	uint8 *ptr = S9xGetBasePointer(a); \
+	ptr ? (ptr + (a & 0xffff)) : NULL; \
+})
 
 struct SDMA	DMA[8];
 
@@ -950,17 +955,17 @@ static inline bool8 HDMAReadLineCount (int d)
 		ADD_CYCLES(SLOW_ONE_CYCLE << 1);
 		DMA[d].IndirectAddress = S9xGetWord((DMA[d].ABank << 16) + DMA[d].Address);
 		DMA[d].Address += 2;
-		DMA[d].MemPointer = S9xGetMemPointer((DMA[d].IndirectBank << 16) + DMA[d].IndirectAddress);
+		DMA[d].MemPointer = GET_MEM_PTR((DMA[d].IndirectBank << 16) + DMA[d].IndirectAddress);
 	}
 	else
-		DMA[d].MemPointer = S9xGetMemPointer((DMA[d].ABank << 16) + DMA[d].Address);
+		DMA[d].MemPointer = GET_MEM_PTR((DMA[d].ABank << 16) + DMA[d].Address);
 
 	return (TRUE);
 }
 
 void S9xStartHDMA (void)
 {
-	PPU.HDMA = Memory.FillRAM[0x420c];
+	PPU.HDMA = Memory.FillRAM[0x220c];
 	PPU.HDMAEnded = 0;
 
 	int32	tmpch;
@@ -1044,7 +1049,7 @@ uint8 S9xDoHDMA (uint8 byte)
 			}
 
 			if (!DMA[d].MemPointer)
-				DMA[d].MemPointer = S9xGetMemPointer(ShiftedIBank + IAddr);
+				DMA[d].MemPointer = GET_MEM_PTR(ShiftedIBank + IAddr);
 
 			if (p->DoTransfer)
 			{

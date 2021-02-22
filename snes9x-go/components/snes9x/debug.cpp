@@ -653,8 +653,8 @@ static uint8 debug_cpu_op_print (char *Line, uint8 Bank, uint16 Address)
 	        IPPU.FrameCount,
 	        CPU.IRQExternal ?  'E' : ' ', PPU.HTimerEnabled ? 'H' : ' ', PPU.VTimerEnabled ? 'V' : ' ',
 	        CPU.NMIPending ? 'N' : '.',
-	        Memory.FillRAM[0x4200] & 0x80 ? 'n' : '.',
-	        Memory.FillRAM[0x4210] & 0x80 ? '+' : '.',
+	        Memory.FillRAM[0x2200] & 0x80 ? 'n' : '.',
+	        Memory.FillRAM[0x2210] & 0x80 ? '+' : '.',
 	        CPU.IRQTransition ? 'T' : ' ',
 	        CPU.IRQLine ? 'L' : ' ',
 	        PPU.HTimerPosition, PPU.VTimerPosition, CPU.NextIRQTimer);
@@ -1088,7 +1088,7 @@ static uint8 debug_sa1_op_print (char *Line, uint8 Bank, uint16 Address)
 	        (long) CPU.V_Counter,
 	        IPPU.FrameCount,
 	        CPU.NMIPending ? 'P' : ' ',
-	        Memory.FillRAM[0x4210] & 0x80 ? 'N' : ' ');
+	        Memory.FillRAM[0x2210] & 0x80 ? 'N' : ' ');
 
 	return (Size);
 }
@@ -1806,13 +1806,13 @@ static void debug_whats_used (void)
 	if (PPU.HVBeamCounterLatched)
 		printf("V and H beam pos latched, \n");
 
-	if (Memory.FillRAM[0x4200] & 0x20)
+	if (Memory.FillRAM[0x2200] & 0x20)
 		printf("V-IRQ enabled at %d, \n", PPU.IRQVBeamPos);
 
-	if (Memory.FillRAM[0x4200] & 0x10)
+	if (Memory.FillRAM[0x2200] & 0x10)
 		printf("H-IRQ enabled at %d, \n", PPU.IRQHBeamPos);
 
-	if (Memory.FillRAM[0x4200] & 0x80)
+	if (Memory.FillRAM[0x2200] & 0x80)
 		printf("V-blank NMI enabled, \n");
 
 	printf("VRAM write address: 0x%04x(%s), Full Graphic: %d, Address inc: %d, \n",

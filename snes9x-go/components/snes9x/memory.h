@@ -32,11 +32,11 @@ struct CMemory
 		MAP_LAST
 	};
 
+	uint8	FillRAM[0x2800];
 	uint8	*RAM;
 	uint8	*ROM;
 	uint8	*SRAM;
 	uint8	*VRAM;
-	uint8	*FillRAM;
 
 	uint8	*ReadMap[MEMMAP_NUM_BLOCKS];
 	uint8	*WriteMap[MEMMAP_NUM_BLOCKS];
@@ -61,7 +61,7 @@ struct CMemory
 	uint32	CalculatedSize;
 	uint32	CalculatedChecksum;
 
-	uint32	ROM_BLOCKS[ROM_MAX_SIZE / ROM_BLOCK_SIZE];
+	// uint32	ROM_BLOCKS[ROM_MAX_SIZE / ROM_BLOCK_SIZE];
 	uint32	ROM_SIZE;
 
 	bool8	Init (void);
@@ -534,102 +534,38 @@ inline void S9xSetWord (uint16 Word, uint32 Address, enum s9xwrap_t w = WRAP_NON
 	}
 }
 
+inline uint8 * S9xGetBasePointer (uint32 Address)
+{
+	uint8	*GetAddress = Memory.ReadMap[(Address & 0xffffff) >> MEMMAP_SHIFT];
+
+	if ((pint) GetAddress >= CMemory::MAP_LAST)
+	{
+		CHECK_ROM_MAPPING(GetAddress);
+		return (GetAddress);
+	}
+	else if ((pint) GetAddress == CMemory::MAP_LOROM_SRAM)
+	{
+		if ((Memory.SRAMMask & MEMMAP_MASK) == MEMMAP_MASK)
+			return (Memory.SRAM + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Memory.SRAMMask) - (Address & 0xffff));
+	}
+	else if ((pint) GetAddress == CMemory::MAP_HIROM_SRAM)
+	{
+		if ((Memory.SRAMMask & MEMMAP_MASK) == MEMMAP_MASK)
+			return (Memory.SRAM + (((Address & 0x7fff) - 0x6000 + ((Address & 0xf0000) >> 3)) & Memory.SRAMMask) - (Address & 0xffff));
+	}
+
+	return (NULL);
+}
+
 inline void S9xSetPCBase (uint32 Address)
 {
-	Address &= 0xffffff;
-
-	uint8	*GetAddress = Memory.ReadMap[Address >> MEMMAP_SHIFT];
-
-	Registers.PBPC = Address;
+	Registers.PBPC = Address & 0xffffff;
 	ICPU.ShiftedPB = Address & 0xff0000;
 
 	CPU.MemSpeed = memory_speed(Address);
 	CPU.MemSpeedx2 = CPU.MemSpeed << 1;
 
-	if (GetAddress >= (uint8 *) CMemory::MAP_LAST)
-	{
-		CHECK_ROM_MAPPING(GetAddress);
-		CPU.PCBase = GetAddress;
-		return;
-	}
-
-	switch ((pint) GetAddress)
-	{
-		case CMemory::MAP_LOROM_SRAM:
-			if ((Memory.SRAMMask & MEMMAP_MASK) != MEMMAP_MASK)
-				CPU.PCBase = NULL;
-			else
-				CPU.PCBase = Memory.SRAM + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Memory.SRAMMask) - (Address & 0xffff);
-			return;
-
-		case CMemory::MAP_HIROM_SRAM:
-			if ((Memory.SRAMMask & MEMMAP_MASK) != MEMMAP_MASK)
-				CPU.PCBase = NULL;
-			else
-				CPU.PCBase = Memory.SRAM + (((Address & 0x7fff) - 0x6000 + ((Address & 0xf0000) >> 3)) & Memory.SRAMMask) - (Address & 0xffff);
-			return;
-
-		case CMemory::MAP_NONE:
-		default:
-			CPU.PCBase = NULL;
-			return;
-	}
-}
-
-inline uint8 * S9xGetBasePointer (uint32 Address)
-{
-	uint8	*GetAddress = Memory.ReadMap[(Address & 0xffffff) >> MEMMAP_SHIFT];
-
-	if (GetAddress >= (uint8 *) CMemory::MAP_LAST)
-	{
-		CHECK_ROM_MAPPING(GetAddress);
-		return (GetAddress);
-	}
-
-	switch ((pint) GetAddress)
-	{
-		case CMemory::MAP_LOROM_SRAM:
-			if ((Memory.SRAMMask & MEMMAP_MASK) != MEMMAP_MASK)
-				return (NULL);
-			return (Memory.SRAM + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Memory.SRAMMask) - (Address & 0xffff));
-
-		case CMemory::MAP_HIROM_SRAM:
-			if ((Memory.SRAMMask & MEMMAP_MASK) != MEMMAP_MASK)
-				return (NULL);
-			return (Memory.SRAM + (((Address & 0x7fff) - 0x6000 + ((Address & 0xf0000) >> 3)) & Memory.SRAMMask) - (Address & 0xffff));
-
-		case CMemory::MAP_NONE:
-		default:
-			return (NULL);
-	}
-}
-
-inline uint8 * S9xGetMemPointer (uint32 Address)
-{
-	uint8	*GetAddress = Memory.ReadMap[(Address & 0xffffff) >> MEMMAP_SHIFT];
-
-	if (GetAddress >= (uint8 *) CMemory::MAP_LAST)
-	{
-		CHECK_ROM_MAPPING(GetAddress + (Address & 0xffff));
-		return (GetAddress + (Address & 0xffff));
-	}
-
-	switch ((pint) GetAddress)
-	{
-		case CMemory::MAP_LOROM_SRAM:
-			if ((Memory.SRAMMask & MEMMAP_MASK) != MEMMAP_MASK)
-				return (NULL);
-			return (Memory.SRAM + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Memory.SRAMMask));
-
-		case CMemory::MAP_HIROM_SRAM:
-			if ((Memory.SRAMMask & MEMMAP_MASK) != MEMMAP_MASK)
-				return (NULL);
-			return (Memory.SRAM + (((Address & 0x7fff) - 0x6000 + ((Address & 0xf0000) >> 3)) & Memory.SRAMMask));
-
-		case CMemory::MAP_NONE:
-		default:
-			return (NULL);
-	}
+	CPU.PCBase = S9xGetBasePointer(Address);
 }
 
 #endif
