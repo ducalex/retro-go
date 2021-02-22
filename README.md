@@ -1,5 +1,5 @@
 # Description
-Retro-Go is a launcher and framework to run emulators on the ODROID-GO and compatible ESP32 devices. 
+Retro-Go is a launcher and framework to run emulators on the ODROID-GO and compatible ESP32(-S2) devices. 
 It comes with many emulators!
 
 ### Supported systems:
@@ -27,6 +27,8 @@ It comes with many emulators!
 - Double/Triple Speed
 - Customizable launcher
 - PNG cover art
+- Saved state screenshots
+- exFAT support
 - And more!
 
 
@@ -83,13 +85,13 @@ If you have any problem the first step is to delete the `sdcard:/odroid/cache` f
 # Sound quality
 The volume isn't correctly attenuated on the GO, resulting in upper volume levels that are too loud and 
 lower levels that are distorted due to DAC resolution. A quick way to improve the audio is to cut one
-of the speaker wire and add a `10 Ohm (or thereabout)` resistor in series. Soldering is better but not 
+of the speaker wire and add a `15 Ohm (or thereabout)` resistor in series. Soldering is better but not 
 required, twisting the wires tightly will work just fine.
 [A more involved solution can be seen here.](https://wiki.odroid.com/odroid_go/silent_volume)
 
 
 # Known issues
-An up to date list of incompatible/broken games can be found on the [ODROID-GO forums](https://forum.odroid.com/viewtopic.php?f=159&t=37599). This is also the place to submit bug reports and feature requests.
+An up to date list of incompatible/broken games can be found on the [ODROID-GO forum](https://forum.odroid.com/viewtopic.php?f=159&t=37599). This is also the place to submit bug reports and feature requests.
 
 
 # Future plans
@@ -118,18 +120,19 @@ For a smaller build you can also specify which apps you want, for example the la
 
 
 # Porting
-I don't want to maintain other ports in this repository but let me know if I can make small changes to make your own port easier. The minimum requirements for Retro-Go are roughly:
-- Processor: 200Mhz 16 or 32bit little-endian with unaligned memory access
+I don't want to maintain non-ESP32 ports in this repository but let me know if I can make small changes to make your own port easier! The absolute minimum requirements for Retro-Go are roughly:
+- Processor: 200Mhz 32bit little-endian with unaligned memory access support
 - Memory: 2MB
-- Compiler: C99
+- Compiler: C99 and C++03 (for lynx and snes)
 
 
 # Acknowledgements
+- The design of the launcher was inspired (copied) from [pelle7's go-emu](https://github.com/pelle7/odroid-go-emu-launcher).
 - The NES/GBC/SMS emulators and base library were originally from the "Triforce" fork of the [official Go-Play firmware](https://github.com/othercrashoverride/go-play) by crashoverride, Nemo1984, and many others.
-- The [HuExpress](https://github.com/kallisti5/huexpress) (PCE) emulator was first ported to the GO by [pelle7](https://github.com/pelle7/odroid-go-pcengine-huexpress/).
-- The Lynx emulator is an adaptation of [libretro-handy](https://github.com/libretro/libretro-handy).
-- The aesthetics of the launcher were inspired (copied) from [pelle7's go-emu](https://github.com/pelle7/odroid-go-emu-launcher).
-- [luPng](https://github.com/jansol/LuPng) For basic PNG decoding
+- The PCE emulator is a port of [HuExpress](https://github.com/kallisti5/huexpress) and [pelle7's port](https://github.com/pelle7/odroid-go-pcengine-huexpress/) was used as reference.
+- The Lynx emulator is a port of [libretro-handy](https://github.com/libretro/libretro-handy).
+- The SNES emulator is a port of [Snes9x](https://github.com/snes9xgit/snes9x/).
+- PNG support is provided by [luPng](https://github.com/jansol/LuPng) and miniz.
 - PCE cover art is from Christian_Haitian.
 
 
