@@ -13,6 +13,10 @@ typedef void (*apu_callback) (void *);
 
 #define SPC_SAVE_STATE_BLOCK_SIZE (1024 * 65)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 bool8 S9xInitAPU (void);
 void S9xDeinitAPU (void);
 void S9xResetAPU (void);
@@ -26,8 +30,8 @@ void S9xAPUTimingSetSpeedup (int);
 void S9xAPULoadState (uint8 *);
 void S9xAPUSaveState (uint8 *);
 
-bool8 S9xInitSound (int);
-bool8 S9xSyncSound (void);
+bool8 S9xSoundInit (int);
+bool8 S9xSoundSync (void);
 int S9xGetSampleCount (void);
 void S9xSetSoundControl (uint8);
 void S9xToggleSoundChannel(int c);
@@ -37,6 +41,10 @@ void S9xClearSamples (void);
 bool8 S9xMixSamples (uint8 *, int);
 void S9xSetSamplesAvailableCallback (apu_callback, void *);
 void S9xUpdateDynamicRate (int, int);
+
+#ifdef __cplusplus
+}
+#endif
 
 #define DSP_INTERPOLATION_NONE     0
 #define DSP_INTERPOLATION_LINEAR   1

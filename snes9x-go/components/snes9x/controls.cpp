@@ -12,7 +12,6 @@
 
 static s9xcommand_t keymap[MaxControlID + 1];
 static int			FLAG_LATCH = FALSE;
-static char			buf[256];
 static struct {
 	uint32	read_idx;
 	uint32	buttons;
@@ -74,8 +73,8 @@ static const char	*command_names[LAST_COMMAND + 1] =
 
 static void DisplayStateChange (const char *str, bool8 on)
 {
-	snprintf(buf, sizeof(buf), "%s: %s", str, on ? "on":"off");
-	S9xSetInfoString(buf);
+	snprintf(String, sizeof(String), "%s: %s", str, on ? "on":"off");
+	S9xMessage(S9X_INFO, 0, String);
 }
 
 void S9xControlsReset (void)
@@ -303,11 +302,11 @@ void S9xApplyCommand (s9xcommand_t cmd, int data1)
 							Settings.SkipFrames++;
 
 						if (Settings.SkipFrames == AUTO_FRAMERATE)
-							S9xSetInfoString("Auto frame skip");
+							S9xMessage(S9X_INFO, 0, "Auto frame skip");
 						else
 						{
-							sprintf(buf, "Frame skip: %d", Settings.SkipFrames - 1);
-							S9xSetInfoString(buf);
+							sprintf(String, "Frame skip: %d", Settings.SkipFrames - 1);
+							S9xMessage(S9X_INFO, 0, String);
 						}
 
 						break;
@@ -320,11 +319,11 @@ void S9xApplyCommand (s9xcommand_t cmd, int data1)
 							Settings.SkipFrames--;
 
 						if (Settings.SkipFrames == AUTO_FRAMERATE)
-							S9xSetInfoString("Auto frame skip");
+							S9xMessage(S9X_INFO, 0, "Auto frame skip");
 						else
 						{
-							sprintf(buf, "Frame skip: %d", Settings.SkipFrames - 1);
-							S9xSetInfoString(buf);
+							sprintf(String, "Frame skip: %d", Settings.SkipFrames - 1);
+							S9xMessage(S9X_INFO, 0, String);
 						}
 
 						break;
@@ -335,8 +334,8 @@ void S9xApplyCommand (s9xcommand_t cmd, int data1)
 						else
 						if (Settings.TurboSkipFrames < 200)
 							Settings.TurboSkipFrames += 5;
-						sprintf(buf, "Turbo frame skip: %d", Settings.TurboSkipFrames);
-						S9xSetInfoString(buf);
+						sprintf(String, "Turbo frame skip: %d", Settings.TurboSkipFrames);
+						S9xMessage(S9X_INFO, 0, String);
 						break;
 
 					case DecEmuTurbo:
@@ -345,21 +344,21 @@ void S9xApplyCommand (s9xcommand_t cmd, int data1)
 						else
 						if (Settings.TurboSkipFrames > 0)
 							Settings.TurboSkipFrames -= 1;
-						sprintf(buf, "Turbo frame skip: %d", Settings.TurboSkipFrames);
-						S9xSetInfoString(buf);
+						sprintf(String, "Turbo frame skip: %d", Settings.TurboSkipFrames);
+						S9xMessage(S9X_INFO, 0, String);
 						break;
 
 					case IncFrameTime: // Increase emulated frame time by 1ms
 						Settings.FrameTime += 1000;
-						sprintf(buf, "Emulated frame time: %dms", Settings.FrameTime / 1000);
-						S9xSetInfoString(buf);
+						sprintf(String, "Emulated frame time: %dms", Settings.FrameTime / 1000);
+						S9xMessage(S9X_INFO, 0, String);
 						break;
 
 					case DecFrameTime: // Decrease emulated frame time by 1ms
 						if (Settings.FrameTime >= 1000)
 							Settings.FrameTime -= 1000;
-						sprintf(buf, "Emulated frame time: %dms", Settings.FrameTime / 1000);
-						S9xSetInfoString(buf);
+						sprintf(String, "Emulated frame time: %dms", Settings.FrameTime / 1000);
+						S9xMessage(S9X_INFO, 0, String);
 						break;
 
 					case LoadFreezeFile:
@@ -384,13 +383,13 @@ void S9xApplyCommand (s9xcommand_t cmd, int data1)
 					case SoundChannel6:
 					case SoundChannel7:
 						S9xToggleSoundChannel((int)cmd.command - SoundChannel0);
-						sprintf(buf, "Sound channel %d toggled", (int)cmd.command - SoundChannel0);
-						S9xSetInfoString(buf);
+						sprintf(String, "Sound channel %d toggled", (int)cmd.command - SoundChannel0);
+						S9xMessage(S9X_INFO, 0, String);
 						break;
 
 					case SoundChannelsOn:
 						S9xToggleSoundChannel(8);
-						S9xSetInfoString("All sound channels on");
+						S9xMessage(S9X_INFO, 0, "All sound channels on");
 						break;
 
 					case ToggleBG0:

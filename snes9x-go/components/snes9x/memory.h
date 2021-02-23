@@ -12,38 +12,65 @@
 #define MEMMAP_SHIFT		(12)
 #define MEMMAP_MASK			(MEMMAP_BLOCK_SIZE - 1)
 
-struct CMemory
+enum
 {
-	enum
-	{ ROM_MAX_SIZE = 0x800000, ROM_BUFFER_SIZE = 0x300000, ROM_BLOCK_SIZE = 0x10000 };
+	ROM_MAX_SIZE = 0x800000,
+	ROM_BUFFER_SIZE = 0x300000,
+	ROM_BLOCK_SIZE = 0x10000
+};
 
-	enum
-	{ MAP_TYPE_I_O, MAP_TYPE_ROM, MAP_TYPE_RAM };
+enum
+{
+	MAP_TYPE_I_O,
+	MAP_TYPE_ROM,
+	MAP_TYPE_RAM
+};
 
-	enum
-	{
-		MAP_CPU,
-		MAP_PPU,
-		MAP_LOROM_SRAM,
-		MAP_HIROM_SRAM,
-		MAP_DSP,
-		MAP_RONLY_SRAM,
-		MAP_NONE,
-		MAP_LAST
-	};
+enum
+{
+	MAP_CPU,
+	MAP_PPU,
+	MAP_LOROM_SRAM,
+	MAP_HIROM_SRAM,
+	MAP_DSP,
+	MAP_RONLY_SRAM,
+	MAP_NONE,
+	MAP_LAST
+};
 
+typedef enum
+{
+	WRAP_NONE,
+	WRAP_BANK,
+	WRAP_PAGE
+} s9xwrap_t;
+
+typedef enum
+{
+	WRITE_01,
+	WRITE_10
+} s9xwriteorder_t;
+
+typedef struct
+{
 	uint8	FillRAM[0x2800];
 	uint8	*RAM;
 	uint8	*ROM;
 	uint8	*SRAM;
 	uint8	*VRAM;
 
+#if RETRO_COMBINED_MEMORY_MAP
+	union {
 	uint8	*ReadMap[MEMMAP_NUM_BLOCKS];
 	uint8	*WriteMap[MEMMAP_NUM_BLOCKS];
+	};
+#else
+	uint8	*ReadMap[MEMMAP_NUM_BLOCKS];
+	uint8	*WriteMap[MEMMAP_NUM_BLOCKS];
+#endif
 
 	char	ROMName[ROM_NAME_LEN];
 	char	ROMId[5];
-	int32	CompanyId;
 	uint8	ROMRegion;
 	uint8	ROMSpeed;
 	uint8	ROMType;
@@ -63,74 +90,20 @@ struct CMemory
 
 	// uint32	ROM_BLOCKS[ROM_MAX_SIZE / ROM_BLOCK_SIZE];
 	uint32	ROM_SIZE;
-
-	bool8	Init (void);
-	void	Deinit (void);
-
-	int		ScoreHiROM (bool8, int32 romoff = 0);
-	int		ScoreLoROM (bool8, int32 romoff = 0);
-    bool8   LoadROMMem (const uint8 *, uint32);
-	bool8	LoadROM (const char *);
-	bool8	LoadROMBlock (int);
-    bool8	InitROM ();
-	bool8	LoadSRAM (const char *);
-	bool8	SaveSRAM (const char *);
-	void	ClearSRAM (bool8 onlyNonSavedSRAM = 0);
-	void	ParseSNESHeader (uint8 *);
-
-	void	Map_Initialize (void);
-	void	Map_System (void);
-	void	Map_WRAM (void);
-	void	Map_LoROMSRAM (void);
-	void	Map_HiROMSRAM (void);
-	void	Map_DSP (void);
-	void	Map_WriteProtectROM (void);
-	void	Map_LoROMMap (void);
-	void	Map_HiROMMap (void);
-
-	uint32	map_mirror (uint32, uint32);
-	void	map_lorom (uint32, uint32, uint32, uint32, uint32);
-	void	map_hirom (uint32, uint32, uint32, uint32, uint32);
-	void	map_space (uint32, uint32, uint32, uint32, uint8 *);
-	void	map_index (uint32, uint32, uint32, uint32, int, int);
-
-	uint16	checksum_calc_sum (uint8 *, uint32);
-	uint16	checksum_mirror_sum (uint8 *, uint32 &, uint32 mask = 0x800000);
-	void	Checksum_Calculate (void);
-
-	void	ApplyROMFixes (void);
-	void	CheckForAnyPatch (const char *, bool8, int32 &);
-
-	void	MakeRomInfoText (char *);
-
-	const char *	MapType (void);
-	const char *	StaticRAMSize (void);
-	const char *	Size (void);
-	const char *	Revision (void);
-	const char *	KartContents (void);
-	const char *	Country (void);
-	const char *	PublishingCompany (void);
-};
+} CMemory;
 
 extern CMemory	Memory;
 extern uint32	OpenBus;
 
-enum s9xwrap_t
-{
-	WRAP_NONE,
-	WRAP_BANK,
-	WRAP_PAGE
-};
-
-enum s9xwriteorder_t
-{
-	WRITE_01,
-	WRITE_10
-};
+bool8 S9xLoadROMMem (const uint8 *);
+bool8 S9xLoadROM (const char *);
+bool8 S9xMemoryInit (void);
+void S9xMemoryDeinit (void);
 
 
 #include "cpu.h"
 #include "dsp.h"
+
 
 #if RETRO_LESS_ACCURATE_MEM
 #define addCyclesInMemoryAccess \
@@ -190,7 +163,7 @@ inline uint8 S9xGetByte (uint32 Address)
 	uint32	speed = memory_speed(Address);
 	uint32	byte;
 
-	if (GetAddress >= (uint8 *) CMemory::MAP_LAST)
+	if (GetAddress >= (uint8 *) MAP_LAST)
 	{
 		CHECK_ROM_MAPPING(GetAddress + (Address & 0xffff));
 		byte = *(GetAddress + (Address & 0xffff));
@@ -200,12 +173,12 @@ inline uint8 S9xGetByte (uint32 Address)
 
 	switch ((pint) GetAddress)
 	{
-		case CMemory::MAP_CPU:
+		case MAP_CPU:
 			byte = S9xGetCPU(Address & 0xffff);
 			addCyclesInMemoryAccess;
 			return (byte);
 
-		case CMemory::MAP_PPU:
+		case MAP_PPU:
 			if (CPU.InDMAorHDMA && (Address & 0xff00) == 0x2100)
 				return (OpenBus);
 
@@ -213,7 +186,7 @@ inline uint8 S9xGetByte (uint32 Address)
 			addCyclesInMemoryAccess;
 			return (byte);
 
-		case CMemory::MAP_LOROM_SRAM:
+		case MAP_LOROM_SRAM:
 			// Address & 0x7fff   : offset into bank
 			// Address & 0xff0000 : bank
 			// bank >> 1 | offset : SRAM address, unbound
@@ -222,18 +195,18 @@ inline uint8 S9xGetByte (uint32 Address)
 			addCyclesInMemoryAccess;
 			return (byte);
 
-		case CMemory::MAP_HIROM_SRAM:
-		case CMemory::MAP_RONLY_SRAM:
+		case MAP_HIROM_SRAM:
+		case MAP_RONLY_SRAM:
 			byte = *(Memory.SRAM + (((Address & 0x7fff) - 0x6000 + ((Address & 0xf0000) >> 3)) & Memory.SRAMMask));
 			addCyclesInMemoryAccess;
 			return (byte);
 
-		case CMemory::MAP_DSP:
+		case MAP_DSP:
 			byte = S9xGetDSP(Address & 0xffff);
 			addCyclesInMemoryAccess;
 			return (byte);
 
-		case CMemory::MAP_NONE:
+		case MAP_NONE:
 		default:
 			byte = OpenBus;
 			addCyclesInMemoryAccess;
@@ -241,7 +214,7 @@ inline uint8 S9xGetByte (uint32 Address)
 	}
 }
 
-inline uint16 S9xGetWord (uint32 Address, enum s9xwrap_t w = WRAP_NONE)
+inline uint16 S9xGetWord (uint32 Address, s9xwrap_t w = WRAP_NONE)
 {
 	uint32	mask = MEMMAP_MASK & (w == WRAP_PAGE ? 0xff : (w == WRAP_BANK ? 0xffff : 0xffffff));
 	uint32	word;
@@ -273,7 +246,7 @@ inline uint16 S9xGetWord (uint32 Address, enum s9xwrap_t w = WRAP_NONE)
 	uint8	*GetAddress = Memory.ReadMap[(Address & 0xffffff) >> MEMMAP_SHIFT];
 	uint32	speed = memory_speed(Address);
 
-	if (GetAddress >= (uint8 *) CMemory::MAP_LAST)
+	if (GetAddress >= (uint8 *) MAP_LAST)
 	{
 		CHECK_ROM_MAPPING(GetAddress + (Address & 0xffff));
 		word = READ_WORD(GetAddress + (Address & 0xffff));
@@ -283,13 +256,13 @@ inline uint16 S9xGetWord (uint32 Address, enum s9xwrap_t w = WRAP_NONE)
 
 	switch ((pint) GetAddress)
 	{
-		case CMemory::MAP_CPU:
+		case MAP_CPU:
 			word  = S9xGetCPU(Address & 0xffff);
 			word |= S9xGetCPU((Address + 1) & 0xffff) << 8;
 			addCyclesInMemoryAccess_x2;
 			return (word);
 
-		case CMemory::MAP_PPU:
+		case MAP_PPU:
 			if (CPU.InDMAorHDMA)
 			{
 				word = OpenBus = S9xGetByte(Address);
@@ -301,7 +274,7 @@ inline uint16 S9xGetWord (uint32 Address, enum s9xwrap_t w = WRAP_NONE)
 			addCyclesInMemoryAccess_x2;
 			return (word);
 
-		case CMemory::MAP_LOROM_SRAM:
+		case MAP_LOROM_SRAM:
 			if (Memory.SRAMMask >= MEMMAP_MASK)
 				word = READ_WORD(Memory.SRAM + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Memory.SRAMMask));
 			else
@@ -310,8 +283,8 @@ inline uint16 S9xGetWord (uint32 Address, enum s9xwrap_t w = WRAP_NONE)
 			addCyclesInMemoryAccess_x2;
 			return (word);
 
-		case CMemory::MAP_HIROM_SRAM:
-		case CMemory::MAP_RONLY_SRAM:
+		case MAP_HIROM_SRAM:
+		case MAP_RONLY_SRAM:
 			if (Memory.SRAMMask >= MEMMAP_MASK)
 				word = READ_WORD(Memory.SRAM + (((Address & 0x7fff) - 0x6000 + ((Address & 0xf0000) >> 3)) & Memory.SRAMMask));
 			else
@@ -320,13 +293,13 @@ inline uint16 S9xGetWord (uint32 Address, enum s9xwrap_t w = WRAP_NONE)
 			addCyclesInMemoryAccess_x2;
 			return (word);
 
-		case CMemory::MAP_DSP:
+		case MAP_DSP:
 			word  = S9xGetDSP(Address & 0xffff);
 			word |= S9xGetDSP((Address + 1) & 0xffff) << 8;
 			addCyclesInMemoryAccess_x2;
 			return (word);
 
-		case CMemory::MAP_NONE:
+		case MAP_NONE:
 		default:
 			word = OpenBus | (OpenBus << 8);
 			addCyclesInMemoryAccess_x2;
@@ -339,7 +312,7 @@ inline void S9xSetByte (uint8 Byte, uint32 Address)
 	uint8	*SetAddress = Memory.WriteMap[(Address & 0xffffff) >> MEMMAP_SHIFT];
 	uint32	speed = memory_speed(Address);
 
-	if (SetAddress >= (uint8 *) CMemory::MAP_LAST)
+	if (SetAddress >= (uint8 *) MAP_LAST)
 	{
 		*(SetAddress + (Address & 0xffff)) = Byte;
 		addCyclesInMemoryAccess;
@@ -348,12 +321,12 @@ inline void S9xSetByte (uint8 Byte, uint32 Address)
 
 	switch ((pint) SetAddress)
 	{
-		case CMemory::MAP_CPU:
+		case MAP_CPU:
 			S9xSetCPU(Byte, Address & 0xffff);
 			addCyclesInMemoryAccess;
 			return;
 
-		case CMemory::MAP_PPU:
+		case MAP_PPU:
 			if (CPU.InDMAorHDMA && (Address & 0xff00) == 0x2100)
 				return;
 
@@ -361,7 +334,7 @@ inline void S9xSetByte (uint8 Byte, uint32 Address)
 			addCyclesInMemoryAccess;
 			return;
 
-		case CMemory::MAP_LOROM_SRAM:
+		case MAP_LOROM_SRAM:
 			if (Memory.SRAMMask)
 			{
 				*(Memory.SRAM + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Memory.SRAMMask)) = Byte;
@@ -371,7 +344,7 @@ inline void S9xSetByte (uint8 Byte, uint32 Address)
 			addCyclesInMemoryAccess;
 			return;
 
-		case CMemory::MAP_HIROM_SRAM:
+		case MAP_HIROM_SRAM:
 			if (Memory.SRAMMask)
 			{
 				*(Memory.SRAM + (((Address & 0x7fff) - 0x6000 + ((Address & 0xf0000) >> 3)) & Memory.SRAMMask)) = Byte;
@@ -381,19 +354,19 @@ inline void S9xSetByte (uint8 Byte, uint32 Address)
 			addCyclesInMemoryAccess;
 			return;
 
-		case CMemory::MAP_DSP:
+		case MAP_DSP:
 			S9xSetDSP(Byte, Address & 0xffff);
 			addCyclesInMemoryAccess;
 			return;
 
-		case CMemory::MAP_NONE:
+		case MAP_NONE:
 		default:
 			addCyclesInMemoryAccess;
 			return;
 	}
 }
 
-inline void S9xSetWord (uint16 Word, uint32 Address, enum s9xwrap_t w = WRAP_NONE, enum s9xwriteorder_t o = WRITE_01)
+inline void S9xSetWord (uint16 Word, uint32 Address, s9xwrap_t w, s9xwriteorder_t o)
 {
 	uint32	mask = MEMMAP_MASK & (w == WRAP_PAGE ? 0xff : (w == WRAP_BANK ? 0xffff : 0xffffff));
 
@@ -433,7 +406,7 @@ inline void S9xSetWord (uint16 Word, uint32 Address, enum s9xwrap_t w = WRAP_NON
 	uint8	*SetAddress = Memory.WriteMap[(Address & 0xffffff) >> MEMMAP_SHIFT];
 	uint32	speed = memory_speed(Address);
 
-	if (SetAddress >= (uint8 *) CMemory::MAP_LAST)
+	if (SetAddress >= (uint8 *) MAP_LAST)
 	{
 		WRITE_WORD(SetAddress + (Address & 0xffff), Word);
 		addCyclesInMemoryAccess_x2;
@@ -442,7 +415,7 @@ inline void S9xSetWord (uint16 Word, uint32 Address, enum s9xwrap_t w = WRAP_NON
 
 	switch ((pint) SetAddress)
 	{
-		case CMemory::MAP_CPU:
+		case MAP_CPU:
 			if (o)
 			{
 				S9xSetCPU(Word >> 8, (Address + 1) & 0xffff);
@@ -456,7 +429,7 @@ inline void S9xSetWord (uint16 Word, uint32 Address, enum s9xwrap_t w = WRAP_NON
 			addCyclesInMemoryAccess_x2;
 			return;
 
-		case CMemory::MAP_PPU:
+		case MAP_PPU:
 			if (CPU.InDMAorHDMA)
 			{
 				if ((Address & 0xff00) != 0x2100)
@@ -479,7 +452,7 @@ inline void S9xSetWord (uint16 Word, uint32 Address, enum s9xwrap_t w = WRAP_NON
 			addCyclesInMemoryAccess_x2;
 			return;
 
-		case CMemory::MAP_LOROM_SRAM:
+		case MAP_LOROM_SRAM:
 			if (Memory.SRAMMask)
 			{
 				if (Memory.SRAMMask >= MEMMAP_MASK)
@@ -496,7 +469,7 @@ inline void S9xSetWord (uint16 Word, uint32 Address, enum s9xwrap_t w = WRAP_NON
 			addCyclesInMemoryAccess_x2;
 			return;
 
-		case CMemory::MAP_HIROM_SRAM:
+		case MAP_HIROM_SRAM:
 			if (Memory.SRAMMask)
 			{
 				if (Memory.SRAMMask >= MEMMAP_MASK)
@@ -513,7 +486,7 @@ inline void S9xSetWord (uint16 Word, uint32 Address, enum s9xwrap_t w = WRAP_NON
 			addCyclesInMemoryAccess_x2;
 			return;
 
-		case CMemory::MAP_DSP:
+		case MAP_DSP:
 			if (o)
 			{
 				S9xSetDSP(Word >> 8, (Address + 1) & 0xffff);
@@ -527,7 +500,7 @@ inline void S9xSetWord (uint16 Word, uint32 Address, enum s9xwrap_t w = WRAP_NON
 			addCyclesInMemoryAccess_x2;
 			return;
 
-		case CMemory::MAP_NONE:
+		case MAP_NONE:
 		default:
 			addCyclesInMemoryAccess_x2;
 			return;
@@ -538,17 +511,17 @@ inline uint8 * S9xGetBasePointer (uint32 Address)
 {
 	uint8	*GetAddress = Memory.ReadMap[(Address & 0xffffff) >> MEMMAP_SHIFT];
 
-	if ((pint) GetAddress >= CMemory::MAP_LAST)
+	if ((pint) GetAddress >= MAP_LAST)
 	{
 		CHECK_ROM_MAPPING(GetAddress);
 		return (GetAddress);
 	}
-	else if ((pint) GetAddress == CMemory::MAP_LOROM_SRAM)
+	else if ((pint) GetAddress == MAP_LOROM_SRAM)
 	{
 		if ((Memory.SRAMMask & MEMMAP_MASK) == MEMMAP_MASK)
 			return (Memory.SRAM + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Memory.SRAMMask) - (Address & 0xffff));
 	}
-	else if ((pint) GetAddress == CMemory::MAP_HIROM_SRAM)
+	else if ((pint) GetAddress == MAP_HIROM_SRAM)
 	{
 		if ((Memory.SRAMMask & MEMMAP_MASK) == MEMMAP_MASK)
 			return (Memory.SRAM + (((Address & 0x7fff) - 0x6000 + ((Address & 0xf0000) >> 3)) & Memory.SRAMMask) - (Address & 0xffff));

@@ -4,8 +4,6 @@
    For further information, consult the LICENSE file in the root directory.
 \*****************************************************************************/
 
-#include <string>
-
 #include "snes9x.h"
 #include "memory.h"
 #include "apu/apu.h"
@@ -14,15 +12,15 @@
 CMemory		Memory;
 uint32		OpenBus = 0;
 
-
+#define match_nn(str) (strncmp(Memory.ROMName, (str), strlen((str))) == 0)
 extern uint32 crc32_le(uint32 crc, uint8 const * buf, uint32 len);
 
-static int First512BytesCountZeroes(const uint8 *buf)
+static int First512BytesCountZeroes(void)
 {
 	int zeroCount = 0;
 	for (int i = 0; i < 512; i++)
 	{
-		if (buf[i] == 0)
+		if (Memory.ROM[i] == 0)
 			zeroCount++;
 	}
 	return zeroCount;
@@ -51,44 +49,287 @@ static bool8 allASCII (uint8 *b, int size)
 	return (TRUE);
 }
 
-#define match_nn(str) (strncmp(Memory.ROMName, (str), strlen((str))) == 0)
-
-// allocation and deallocation
-
-bool8 CMemory::Init (void)
+static void ShowInfoString (void)
 {
-    RAM	 = (uint8 *) calloc(1, 0x20000);
-    VRAM = (uint8 *) calloc(1, 0x10000);
-    SRAM = (uint8 *) calloc(1, 0x8000);
-    ROM  = (uint8 *) calloc(1, ROM_BUFFER_SIZE + 0x200);
+	const char *contents[3] = { "ROM", "ROM+RAM", "ROM+RAM+BAT" };
+	char contentstr[20], sizestr[20], sramstr[20];
 
-	if (!RAM || !SRAM || !VRAM || !ROM)
-    {
-		Deinit();
-		return (FALSE);
-    }
+	bool8 isChecksumOK = (Memory.ROMChecksum + Memory.ROMComplementChecksum == 0xffff) &
+						 (Memory.ROMChecksum == Memory.CalculatedChecksum);
 
-	return (TRUE);
+	if (!isChecksumOK || ((uint32) Memory.CalculatedSize > (uint32) (((1 << (Memory.ROMSize - 7)) * 128) * 1024)))
+	{
+		// Use yellow tint to indicate corrupted ROM.
+		Settings.DisplayColor = BUILD_PIXEL(31, 31, 0);
+	}
+	else if (Memory.ROMIsPatched)
+	{
+		// Use slight blue tint to indicate ROM was patched.
+		Settings.DisplayColor = BUILD_PIXEL(26, 26, 31);
+	}
+	else
+	{
+		Settings.DisplayColor = BUILD_PIXEL(31, 31, 31);
+	}
+
+	strcpy(contentstr, contents[(Memory.ROMType & 0xf) % 3]);
+
+	if (Settings.DSP == 1)
+		strcat(contentstr, "+DSP-1");
+	else if (Settings.DSP == 2)
+		strcat(contentstr, "+DSP-2");
+
+	if (Memory.ROMSize < 7 || Memory.ROMSize - 7 > 23)
+		strcpy(sizestr, "Corrupt");
+	else
+		sprintf(sizestr, "%dMbits", 1 << (Memory.ROMSize - 7));
+
+	if (Memory.SRAMSize > 16)
+		strcpy(sramstr, "Corrupt");
+	else
+		sprintf(sramstr, "%dKbits", 8 * (Memory.SRAMMask + 1) / 1024);
+
+	sprintf(String, "\"%s\" [%s] %s, %s, %s, %s, SRAM:%s, ID:%s, CRC32:%08X",
+		Memory.ROMName,
+		isChecksumOK ? "checksum ok" : "bad checksum",
+		Memory.HiROM ? "HiROM" : "LoROM",
+		sizestr,
+		contentstr,
+		Settings.PAL ? "PAL" : "NTSC",
+		sramstr,
+		Memory.ROMId,
+		Memory.ROMCRC32);
+
+	S9xMessage(S9X_INFO, S9X_ROM_INFO, String);
 }
 
-void CMemory::Deinit (void)
+static uint32 map_mirror (uint32 size, uint32 pos)
 {
-	free(RAM);
-	free(SRAM);
-	free(VRAM);
-	free(ROM);
+	// from bsnes
+	if (size == 0)
+		return (0);
+	if (pos < size)
+		return (pos);
 
-	RAM = NULL;
-	SRAM = NULL;
-	VRAM = NULL;
-	ROM = NULL;
+	uint32	mask = 1 << 31;
+	while (!(pos & mask))
+		mask >>= 1;
+
+	if (size <= (pos & mask))
+		return (map_mirror(size, pos - mask));
+	else
+		return (mask + map_mirror(size - mask, pos - mask));
 }
 
-// file management and ROM detection
-
-int CMemory::ScoreHiROM (bool8 skip_header, int32 romoff)
+static void map_lorom (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 addr_e, uint32 size)
 {
-	uint8	*buf = ROM + 0xff00 + romoff + (skip_header ? 0x200 : 0);
+	uint32	c, i, p, addr;
+
+	for (c = bank_s; c <= bank_e; c++)
+	{
+		for (i = addr_s; i <= addr_e; i += 0x1000)
+		{
+			p = (c << 4) | (i >> 12);
+			addr = (c & 0x7f) * 0x8000;
+			Memory.ReadMap[p] = Memory.ROM + map_mirror(size, addr) - (i & 0x8000);
+		}
+	}
+}
+
+static void map_hirom (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 addr_e, uint32 size)
+{
+	uint32	c, i, p, addr;
+
+	for (c = bank_s; c <= bank_e; c++)
+	{
+		for (i = addr_s; i <= addr_e; i += 0x1000)
+		{
+			p = (c << 4) | (i >> 12);
+			addr = c << 16;
+			Memory.ReadMap[p] = Memory.ROM + map_mirror(size, addr);
+		}
+	}
+}
+
+static void map_space (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 addr_e, uint8 *data)
+{
+	uint32	c, i, p;
+
+	for (c = bank_s; c <= bank_e; c++)
+	{
+		for (i = addr_s; i <= addr_e; i += 0x1000)
+		{
+			p = (c << 4) | (i >> 12);
+			Memory.ReadMap[p] = data;
+		}
+	}
+}
+
+static void map_index (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 addr_e, int index, int type)
+{
+	uint32	c, i, p;
+
+	for (c = bank_s; c <= bank_e; c++)
+	{
+		for (i = addr_s; i <= addr_e; i += 0x1000)
+		{
+			p = (c << 4) | (i >> 12);
+			Memory.ReadMap[p] = (uint8 *) (pint) index;
+		}
+	}
+}
+
+static void Map_Initialize (void)
+{
+	for (int c = 0; c < MEMMAP_NUM_BLOCKS; c++)
+	{
+		Memory.ReadMap[c]  = (uint8 *) MAP_NONE;
+		Memory.WriteMap[c] = (uint8 *) MAP_NONE;
+	}
+
+	// will be overwritten
+	map_space(0x00, 0x3f, 0x0000, 0x1fff, Memory.RAM);
+	map_index(0x00, 0x3f, 0x2000, 0x3fff, MAP_PPU, MAP_TYPE_I_O);
+	map_index(0x00, 0x3f, 0x4000, 0x5fff, MAP_CPU, MAP_TYPE_I_O);
+	map_space(0x80, 0xbf, 0x0000, 0x1fff, Memory.RAM);
+	map_index(0x80, 0xbf, 0x2000, 0x3fff, MAP_PPU, MAP_TYPE_I_O);
+	map_index(0x80, 0xbf, 0x4000, 0x5fff, MAP_CPU, MAP_TYPE_I_O);
+}
+
+static void Map_Finalize (void)
+{
+	// Map Work RAM
+	map_space(0x7e, 0x7e, 0x0000, 0xffff, Memory.RAM);
+	map_space(0x7f, 0x7f, 0x0000, 0xffff, Memory.RAM + 0x10000);
+
+#if !RETRO_COMBINED_MEMORY_MAP
+	// Write protect ROM
+	memcpy((void *) Memory.WriteMap, (void *) Memory.ReadMap, sizeof(Memory.ReadMap));
+	for (int c = 0; c < MEMMAP_NUM_BLOCKS; c++)
+	{
+		if (Memory.WriteMap[c] >= Memory.ROM && Memory.WriteMap[c] <= (Memory.ROM + Memory.ROM_SIZE + 0x8000))
+		{
+			Memory.WriteMap[c] = (uint8 *) MAP_NONE;
+		}
+	}
+#endif
+}
+
+static void Map_DSP (void)
+{
+	switch (DSP0.maptype)
+	{
+		case M_DSP1_LOROM_S:
+			map_index(0x20, 0x3f, 0x8000, 0xffff, MAP_DSP, MAP_TYPE_I_O);
+			map_index(0xa0, 0xbf, 0x8000, 0xffff, MAP_DSP, MAP_TYPE_I_O);
+			break;
+
+		case M_DSP1_LOROM_L:
+			map_index(0x60, 0x6f, 0x0000, 0x7fff, MAP_DSP, MAP_TYPE_I_O);
+			map_index(0xe0, 0xef, 0x0000, 0x7fff, MAP_DSP, MAP_TYPE_I_O);
+			break;
+
+		case M_DSP1_HIROM:
+			map_index(0x00, 0x1f, 0x6000, 0x7fff, MAP_DSP, MAP_TYPE_I_O);
+			map_index(0x80, 0x9f, 0x6000, 0x7fff, MAP_DSP, MAP_TYPE_I_O);
+			break;
+
+		case M_DSP2_LOROM:
+			map_index(0x20, 0x3f, 0x6000, 0x6fff, MAP_DSP, MAP_TYPE_I_O);
+			map_index(0x20, 0x3f, 0x8000, 0xbfff, MAP_DSP, MAP_TYPE_I_O);
+			map_index(0xa0, 0xbf, 0x6000, 0x6fff, MAP_DSP, MAP_TYPE_I_O);
+			map_index(0xa0, 0xbf, 0x8000, 0xbfff, MAP_DSP, MAP_TYPE_I_O);
+			break;
+	}
+}
+
+static void Map_LoROMMap (void)
+{
+	Map_Initialize();
+
+	map_lorom(0x00, 0x3f, 0x8000, 0xffff, Memory.CalculatedSize);
+	map_lorom(0x40, 0x7f, 0x0000, 0xffff, Memory.CalculatedSize);
+	map_lorom(0x80, 0xbf, 0x8000, 0xffff, Memory.CalculatedSize);
+	map_lorom(0xc0, 0xff, 0x0000, 0xffff, Memory.CalculatedSize);
+
+	if (Settings.DSP)
+		Map_DSP();
+
+	if (Memory.SRAMSize > 0)
+	{
+		uint32 hi = (Memory.ROMSize > 11 || Memory.SRAMSize > 5) ? 0x7fff : 0xffff;
+		map_index(0x70, 0x7d, 0x0000, hi, MAP_LOROM_SRAM, MAP_TYPE_RAM);
+		map_index(0xf0, 0xff, 0x0000, hi, MAP_LOROM_SRAM, MAP_TYPE_RAM);
+	}
+
+	Map_Finalize();
+}
+
+static void Map_HiROMMap (void)
+{
+	Map_Initialize();
+
+	map_hirom(0x00, 0x3f, 0x8000, 0xffff, Memory.CalculatedSize);
+	map_hirom(0x40, 0x7f, 0x0000, 0xffff, Memory.CalculatedSize);
+	map_hirom(0x80, 0xbf, 0x8000, 0xffff, Memory.CalculatedSize);
+	map_hirom(0xc0, 0xff, 0x0000, 0xffff, Memory.CalculatedSize);
+
+	if (Settings.DSP)
+		Map_DSP();
+
+	map_index(0x20, 0x3f, 0x6000, 0x7fff, MAP_HIROM_SRAM, MAP_TYPE_RAM);
+	map_index(0xa0, 0xbf, 0x6000, 0x7fff, MAP_HIROM_SRAM, MAP_TYPE_RAM);
+
+	Map_Finalize();
+}
+
+static uint16 checksum_calc_sum (uint8 *data, uint32 length)
+{
+	uint16	sum = 0;
+
+	for (size_t i = 0; i < length; i++)
+		sum += data[i];
+
+	return (sum);
+}
+
+static uint16 checksum_mirror_sum (uint8 *start, uint32 *length, uint32 mask)
+{
+	// from NSRT
+	while (!(*length & mask) && mask)
+		mask >>= 1;
+
+	uint16	part1 = checksum_calc_sum(start, mask);
+	uint16	part2 = 0;
+
+	uint32	next_length = *length - mask;
+	if (next_length)
+	{
+		part2 = checksum_mirror_sum(start + mask, &next_length, mask >> 1);
+
+		while (next_length < mask)
+		{
+			next_length += next_length;
+			part2 += part2;
+		}
+
+		*length = mask + mask;
+	}
+
+	return (part1 + part2);
+}
+
+static uint16 CalcChecksum (uint8 *data, uint32 length)
+{
+	if (length & 0x7fff)
+		return checksum_calc_sum(data, length);
+	else
+		return checksum_mirror_sum(data, &length, 0x800000);
+}
+
+static int ScoreHiROM (void)
+{
+	uint8	*buf = Memory.ROM + 0xff00;
 	int		score = 0;
 
 	if (buf[0xd5] & 0x1)
@@ -120,7 +361,7 @@ int CMemory::ScoreHiROM (bool8 skip_header, int32 romoff)
 	if ((buf[0xfc] + (buf[0xfd] << 8)) > 0xffb0)
 		score -= 2; // reduced after looking at a scan by Cowering
 
-	if (CalculatedSize > 1024 * 1024 * 3)
+	if (Memory.CalculatedSize > 1024 * 1024 * 3)
 		score += 4;
 
 	if ((1 << (buf[0xd7] - 7)) > 48)
@@ -135,9 +376,9 @@ int CMemory::ScoreHiROM (bool8 skip_header, int32 romoff)
 	return (score);
 }
 
-int CMemory::ScoreLoROM (bool8 skip_header, int32 romoff)
+static int ScoreLoROM (void)
 {
-	uint8	*buf = ROM + 0x7f00 + romoff + (skip_header ? 0x200 : 0);
+	uint8	*buf = Memory.ROM + 0x7f00;
 	int		score = 0;
 
 	if (!(buf[0xd5] & 0x1))
@@ -166,7 +407,7 @@ int CMemory::ScoreLoROM (bool8 skip_header, int32 romoff)
 	if ((buf[0xfc] + (buf[0xfd] << 8)) > 0xffb0)
 		score -= 2; // reduced per Cowering suggestion
 
-	if (CalculatedSize <= 1024 * 1024 * 16)
+	if (Memory.CalculatedSize <= 1024 * 1024 * 16)
 		score += 2;
 
 	if ((1 << (buf[0xd7] - 7)) > 48)
@@ -181,633 +422,7 @@ int CMemory::ScoreLoROM (bool8 skip_header, int32 romoff)
 	return (score);
 }
 
-bool8 CMemory::LoadROMMem (const uint8 *source, uint32 sourceSize)
-{
-	if (source == 0 || sourceSize > ROM_BUFFER_SIZE)
-		return FALSE;
-
-	memset(ROM, 0, ROM_BUFFER_SIZE);
-	memcpy(ROM, source, sourceSize);
-
-	ROM_SIZE = sourceSize;
-
-	return InitROM();
-}
-
-bool8 CMemory::LoadROM (const char *filename)
-{
-	STREAM stream = OPEN_STREAM(filename, "rb");
-	if (!stream)
-		return (FALSE);
-
-	REVERT_STREAM(stream, 0, SEEK_END);
-
-	ROM_SIZE = FIND_STREAM(stream);
-
-	REVERT_STREAM(stream, 0, SEEK_SET);
-	READ_STREAM(ROM, ROM_BUFFER_SIZE + 0x200, stream);
-
-	CLOSE_STREAM(stream);
-
-	return InitROM();
-}
-
-bool8 CMemory::LoadROMBlock (int b)
-{
-	return FALSE;
-}
-
-bool8 CMemory::InitROM ()
-{
-	if (!ROM || ROM_SIZE < 0x200)
-		return (FALSE);
-
-	Settings.DisplayColor = BUILD_PIXEL(31, 31, 31);
-
-	if ((ROM_SIZE & 0x7FF) == 512 || First512BytesCountZeroes(ROM) > 400)
-	{
-		S9xMessage(S9X_INFO, S9X_HEADERS_INFO, "Found ROM file header (and ignored it).");
-		memmove(ROM, ROM + 512, ROM_BUFFER_SIZE - 512);
-		ROM_SIZE -= 512;
-	}
-
-	CalculatedSize = ((ROM_SIZE + 0x1fff) / 0x2000) * 0x2000;
-
-	// these two games fail to be detected
-	if (strncmp((char *) &ROM[0x7fc0], "YUYU NO QUIZ DE GO!GO!", 22) == 0 ||
-		(strncmp((char *) &ROM[0xffc0], "BATMAN--REVENGE JOKER",  21) == 0))
-	{
-		LoROM = TRUE;
-		HiROM = FALSE;
-	}
-	else
-	{
-		LoROM = (ScoreLoROM(FALSE) >= ScoreHiROM(FALSE));
-		HiROM = !LoROM;
-	}
-
-	//// Parse ROM header and read ROM informatoin
-	ParseSNESHeader(ROM + (HiROM ? 0xFFB0 : 0x7FB0));
-
-	// Detect DSP 1 & 2
-	if (ROMType == 0x03 || (ROMType == 0x05 && ROMSpeed != 0x20))
-	{
-		Settings.DSP = 1;
-		if (HiROM)
-		{
-			DSP0.boundary = 0x7000;
-			DSP0.maptype = M_DSP1_HIROM;
-		}
-		else
-		if (CalculatedSize > 0x100000)
-		{
-			DSP0.boundary = 0x4000;
-			DSP0.maptype = M_DSP1_LOROM_L;
-		}
-		else
-		{
-			DSP0.boundary = 0xc000;
-			DSP0.maptype = M_DSP1_LOROM_S;
-		}
-
-		SetDSP = &DSP1SetByte;
-		GetDSP = &DSP1GetByte;
-	}
-	else
-	if (ROMType == 0x05 && ROMSpeed == 0x20)
-	{
-		Settings.DSP = 2;
-		DSP0.boundary = 0x10000;
-		DSP0.maptype = M_DSP2_LOROM;
-		SetDSP = &DSP2SetByte;
-		GetDSP = &DSP2GetByte;
-	}
-	else
-	{
-		Settings.DSP = 0;
-		SetDSP = NULL;
-		GetDSP = NULL;
-	}
-
-	//// Map memory
-	if (HiROM)
-		Map_HiROMMap();
-    else
-		Map_LoROMMap();
-
-	// ROM Region
-	Settings.PAL = (Settings.ForcePAL && !Settings.ForceNTSC)
-						|| ((ROMRegion >= 2) && (ROMRegion <= 12));
-
-	if (Settings.PAL)
-	{
-		Settings.FrameTime = 20000;
-		Settings.FrameRate = 50;
-	}
-	else
-	{
-		Settings.FrameTime = 16667;
-		Settings.FrameRate = 60;
-	}
-
-	// SRAM size
-	SRAMMask = SRAMSize ? ((1 << (SRAMSize + 3)) * 128) - 1 : 0;
-	SRAMBytes = SRAMSize ? ((1 << (SRAMSize + 3)) * 128) : 0;
-
-	if (SRAMBytes > 0x8000)
-	{
-		printf("\n\nWARNING: Default SRAM size too small!, need %d bytes\n\n", SRAMBytes);
-	}
-
-	// Checksums
-	Checksum_Calculate();
-
-	bool8 isChecksumOK = (ROMChecksum + ROMComplementChecksum == 0xffff) &
-						 (ROMChecksum == CalculatedChecksum);
-
-	ROMCRC32 = crc32_le(0, ROM, CalculatedSize);
-
-	if (!isChecksumOK || ((uint32) CalculatedSize > (uint32) (((1 << (ROMSize - 7)) * 128) * 1024)))
-	{
-		Settings.DisplayColor = BUILD_PIXEL(31, 31, 0);
-	}
-
-	ROMIsPatched = false;
-
-	// CheckAnyPatch();
-
-	// Use slight blue tint to indicate ROM was patched.
-	if (ROMIsPatched)
-	{
-		Settings.DisplayColor = BUILD_PIXEL(26, 26, 31);
-	}
-
-	//// Hack games
-	ApplyROMFixes();
-
-	//// Show ROM information
-	sprintf(String, "\"%s\" [%s] %s, %s, %s, %s, SRAM:%s, ID:%s, CRC32:%08X",
-		ROMName, isChecksumOK ? "checksum ok" : "bad checksum",
-		MapType(), Size(), KartContents(), Settings.PAL ? "PAL" : "NTSC", StaticRAMSize(), ROMId, ROMCRC32);
-	S9xMessage(S9X_INFO, S9X_ROM_INFO, String);
-
-	// Reset system, then we're ready
-	S9xReset();
-
-    return (TRUE);
-}
-
-void CMemory::ClearSRAM (bool8 onlyNonSavedSRAM)
-{
-	if (SRAMBytes > 0)
-		memset(SRAM, 0x00, SRAMBytes);
-}
-
-bool8 CMemory::LoadSRAM (const char *filename)
-{
-	return (TRUE);
-}
-
-bool8 CMemory::SaveSRAM (const char *filename)
-{
-	return (FALSE);
-}
-
-// initialization
-
-void CMemory::ParseSNESHeader (uint8 *RomHeader)
-{
-	strncpy(ROMName, (char *) &RomHeader[0x10], ROM_NAME_LEN - 1);
-	sanitize(ROMName, ROM_NAME_LEN);
-
-	ROMName[ROM_NAME_LEN - 1] = 0;
-	if (strlen(ROMName))
-	{
-		char *p = ROMName + strlen(ROMName);
-		if (p > ROMName + 21 && ROMName[20] == ' ')
-			p = ROMName + 21;
-		while (p > ROMName && *(p - 1) == ' ')
-			p--;
-		*p = 0;
-	}
-
-	ROMSize   = RomHeader[0x27];
-	SRAMSize  = RomHeader[0x28];
-	ROMSpeed  = RomHeader[0x25];
-	ROMType   = RomHeader[0x26];
-	ROMRegion = RomHeader[0x29];
-
-	ROMChecksum           = RomHeader[0x2E] + (RomHeader[0x2F] << 8);
-	ROMComplementChecksum = RomHeader[0x2C] + (RomHeader[0x2D] << 8);
-
-	memmove(ROMId, &RomHeader[0x02], 4);
-	sanitize(ROMId, 4);
-
-	CompanyId = -1;
-
-	if (RomHeader[0x2A] != 0x33)
-		CompanyId = ((RomHeader[0x2A] >> 4) & 0x0F) * 36 + (RomHeader[0x2A] & 0x0F);
-	else
-	if (isalnum(RomHeader[0x00]) && isalnum(RomHeader[0x01]))
-	{
-		int	l, r, l2, r2;
-		l = toupper(RomHeader[0x00]);
-		r = toupper(RomHeader[0x01]);
-		l2 = (l > '9') ? l - '7' : l - '0';
-		r2 = (r > '9') ? r - '7' : r - '0';
-		CompanyId = l2 * 36 + r2;
-	}
-}
-
-// memory map
-
-uint32 CMemory::map_mirror (uint32 size, uint32 pos)
-{
-	// from bsnes
-	if (size == 0)
-		return (0);
-	if (pos < size)
-		return (pos);
-
-	uint32	mask = 1 << 31;
-	while (!(pos & mask))
-		mask >>= 1;
-
-	if (size <= (pos & mask))
-		return (map_mirror(size, pos - mask));
-	else
-		return (mask + map_mirror(size - mask, pos - mask));
-}
-
-void CMemory::map_lorom (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 addr_e, uint32 size)
-{
-	uint32	c, i, p, addr;
-
-	for (c = bank_s; c <= bank_e; c++)
-	{
-		for (i = addr_s; i <= addr_e; i += 0x1000)
-		{
-			p = (c << 4) | (i >> 12);
-			addr = (c & 0x7f) * 0x8000;
-			ReadMap[p] = ROM + map_mirror(size, addr) - (i & 0x8000);
-		}
-	}
-}
-
-void CMemory::map_hirom (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 addr_e, uint32 size)
-{
-	uint32	c, i, p, addr;
-
-	for (c = bank_s; c <= bank_e; c++)
-	{
-		for (i = addr_s; i <= addr_e; i += 0x1000)
-		{
-			p = (c << 4) | (i >> 12);
-			addr = c << 16;
-			ReadMap[p] = ROM + map_mirror(size, addr);
-		}
-	}
-}
-
-void CMemory::map_space (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 addr_e, uint8 *data)
-{
-	uint32	c, i, p;
-
-	for (c = bank_s; c <= bank_e; c++)
-	{
-		for (i = addr_s; i <= addr_e; i += 0x1000)
-		{
-			p = (c << 4) | (i >> 12);
-			ReadMap[p] = data;
-		}
-	}
-}
-
-void CMemory::map_index (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 addr_e, int index, int type)
-{
-	uint32	c, i, p;
-
-	for (c = bank_s; c <= bank_e; c++)
-	{
-		for (i = addr_s; i <= addr_e; i += 0x1000)
-		{
-			p = (c << 4) | (i >> 12);
-			ReadMap[p] = (uint8 *) (pint) index;
-		}
-	}
-}
-
-void CMemory::Map_Initialize (void)
-{
-	for (int c = 0; c < MEMMAP_NUM_BLOCKS; c++)
-	{
-		ReadMap[c]  = (uint8 *) MAP_NONE;
-		WriteMap[c] = (uint8 *) MAP_NONE;
-	}
-}
-
-void CMemory::Map_WriteProtectROM (void)
-{
-	memmove((void *) WriteMap, (void *) ReadMap, sizeof(ReadMap));
-
-	for (int c = 0; c < MEMMAP_NUM_BLOCKS; c++)
-	{
-		if (WriteMap[c] >= ROM && WriteMap[c] <= (ROM + ROM_SIZE + 0x8000))
-		{
-			WriteMap[c] = (uint8 *) MAP_NONE;
-		}
-	}
-}
-
-void CMemory::Map_System (void)
-{
-	// will be overwritten
-	map_space(0x00, 0x3f, 0x0000, 0x1fff, RAM);
-	map_index(0x00, 0x3f, 0x2000, 0x3fff, MAP_PPU, MAP_TYPE_I_O);
-	map_index(0x00, 0x3f, 0x4000, 0x5fff, MAP_CPU, MAP_TYPE_I_O);
-	map_space(0x80, 0xbf, 0x0000, 0x1fff, RAM);
-	map_index(0x80, 0xbf, 0x2000, 0x3fff, MAP_PPU, MAP_TYPE_I_O);
-	map_index(0x80, 0xbf, 0x4000, 0x5fff, MAP_CPU, MAP_TYPE_I_O);
-}
-
-void CMemory::Map_WRAM (void)
-{
-	// will overwrite others
-	map_space(0x7e, 0x7e, 0x0000, 0xffff, RAM);
-	map_space(0x7f, 0x7f, 0x0000, 0xffff, RAM + 0x10000);
-}
-
-void CMemory::Map_LoROMSRAM (void)
-{
-	uint32 hi;
-
-	if (SRAMSize == 0)
-		return;
-
-	if (ROMSize > 11 || SRAMSize > 5)
-		hi = 0x7fff;
-	else
-		hi = 0xffff;
-
-	map_index(0x70, 0x7d, 0x0000, hi, MAP_LOROM_SRAM, MAP_TYPE_RAM);
-	map_index(0xf0, 0xff, 0x0000, hi, MAP_LOROM_SRAM, MAP_TYPE_RAM);
-}
-
-void CMemory::Map_HiROMSRAM (void)
-{
-	map_index(0x20, 0x3f, 0x6000, 0x7fff, MAP_HIROM_SRAM, MAP_TYPE_RAM);
-	map_index(0xa0, 0xbf, 0x6000, 0x7fff, MAP_HIROM_SRAM, MAP_TYPE_RAM);
-}
-
-void CMemory::Map_LoROMMap (void)
-{
-	printf("Map_LoROMMap\n");
-	Map_Initialize();
-	Map_System();
-
-	map_lorom(0x00, 0x3f, 0x8000, 0xffff, CalculatedSize);
-	map_lorom(0x40, 0x7f, 0x0000, 0xffff, CalculatedSize);
-	map_lorom(0x80, 0xbf, 0x8000, 0xffff, CalculatedSize);
-	map_lorom(0xc0, 0xff, 0x0000, 0xffff, CalculatedSize);
-
-	if (Settings.DSP)
-		Map_DSP();
-
-    Map_LoROMSRAM();
-	Map_WRAM();
-
-	Map_WriteProtectROM();
-}
-
-void CMemory::Map_HiROMMap (void)
-{
-	printf("Map_HiROMMap\n");
-	Map_Initialize();
-	Map_System();
-
-	map_hirom(0x00, 0x3f, 0x8000, 0xffff, CalculatedSize);
-	map_hirom(0x40, 0x7f, 0x0000, 0xffff, CalculatedSize);
-	map_hirom(0x80, 0xbf, 0x8000, 0xffff, CalculatedSize);
-	map_hirom(0xc0, 0xff, 0x0000, 0xffff, CalculatedSize);
-
-	if (Settings.DSP)
-		Map_DSP();
-
-	Map_HiROMSRAM();
-	Map_WRAM();
-
-	Map_WriteProtectROM();
-}
-
-void CMemory::Map_DSP (void)
-{
-	switch (DSP0.maptype)
-	{
-		case M_DSP1_LOROM_S:
-			map_index(0x20, 0x3f, 0x8000, 0xffff, MAP_DSP, MAP_TYPE_I_O);
-			map_index(0xa0, 0xbf, 0x8000, 0xffff, MAP_DSP, MAP_TYPE_I_O);
-			break;
-
-		case M_DSP1_LOROM_L:
-			map_index(0x60, 0x6f, 0x0000, 0x7fff, MAP_DSP, MAP_TYPE_I_O);
-			map_index(0xe0, 0xef, 0x0000, 0x7fff, MAP_DSP, MAP_TYPE_I_O);
-			break;
-
-		case M_DSP1_HIROM:
-			map_index(0x00, 0x1f, 0x6000, 0x7fff, MAP_DSP, MAP_TYPE_I_O);
-			map_index(0x80, 0x9f, 0x6000, 0x7fff, MAP_DSP, MAP_TYPE_I_O);
-			break;
-
-		case M_DSP2_LOROM:
-			map_index(0x20, 0x3f, 0x6000, 0x6fff, MAP_DSP, MAP_TYPE_I_O);
-			map_index(0x20, 0x3f, 0x8000, 0xbfff, MAP_DSP, MAP_TYPE_I_O);
-			map_index(0xa0, 0xbf, 0x6000, 0x6fff, MAP_DSP, MAP_TYPE_I_O);
-			map_index(0xa0, 0xbf, 0x8000, 0xbfff, MAP_DSP, MAP_TYPE_I_O);
-			break;
-	}
-}
-
-// checksum
-
-uint16 CMemory::checksum_calc_sum (uint8 *data, uint32 length)
-{
-	uint16	sum = 0;
-
-	for (size_t i = 0; i < length; i++)
-		sum += data[i];
-
-	return (sum);
-}
-
-uint16 CMemory::checksum_mirror_sum (uint8 *start, uint32 &length, uint32 mask)
-{
-	// from NSRT
-	while (!(length & mask) && mask)
-		mask >>= 1;
-
-	uint16	part1 = checksum_calc_sum(start, mask);
-	uint16	part2 = 0;
-
-	uint32	next_length = length - mask;
-	if (next_length)
-	{
-		part2 = checksum_mirror_sum(start + mask, next_length, mask >> 1);
-
-		while (next_length < mask)
-		{
-			next_length += next_length;
-			part2 += part2;
-		}
-
-		length = mask + mask;
-	}
-
-	return (part1 + part2);
-}
-
-void CMemory::Checksum_Calculate (void)
-{
-	// from NSRT
-	uint16	sum = 0;
-
-	if (CalculatedSize & 0x7fff)
-		sum = checksum_calc_sum(ROM, CalculatedSize);
-	else
-	{
-		uint32	length = CalculatedSize;
-		sum = checksum_mirror_sum(ROM, length);
-	}
-
-	CalculatedChecksum = sum;
-}
-
-// information
-
-const char * CMemory::MapType (void)
-{
-	return (HiROM ? "HiROM" : "LoROM");
-}
-
-const char * CMemory::StaticRAMSize (void)
-{
-	static char	str[20];
-
-	if (SRAMSize > 16)
-		strcpy(str, "Corrupt");
-	else
-		sprintf(str, "%dKbits", 8 * (SRAMMask + 1) / 1024);
-
-	return (str);
-}
-
-const char * CMemory::Size (void)
-{
-	static char	str[20];
-
-	if (ROMSize < 7 || ROMSize - 7 > 23)
-		strcpy(str, "Corrupt");
-	else
-		sprintf(str, "%dMbits", 1 << (ROMSize - 7));
-
-	return (str);
-}
-
-const char * CMemory::Revision (void)
-{
-	static char	str[20];
-
-	sprintf(str, "1.%d", HiROM ? ROM[0xffdb] : ROM[0x7fdb]);
-
-	return (str);
-}
-
-const char * CMemory::KartContents (void)
-{
-	static char	str[64];
-	const char	*contents[3] = { "ROM", "ROM+RAM", "ROM+RAM+BAT" };
-
-	strcpy(str, contents[(ROMType & 0xf) % 3]);
-
-	if (Settings.DSP == 1)
-		strcat(str, "+DSP-1");
-	else if (Settings.DSP == 2)
-		strcat(str, "+DSP-2");
-
-	return (str);
-}
-
-const char * CMemory::Country (void)
-{
-	switch (ROMRegion)
-	{
-		case 0:		return("Japan");
-		case 1:		return("USA and Canada");
-		case 2:		return("Oceania, Europe and Asia");
-		case 3:		return("Sweden");
-		case 4:		return("Finland");
-		case 5:		return("Denmark");
-		case 6:		return("France");
-		case 7:		return("Holland");
-		case 8:		return("Spain");
-		case 9:		return("Germany, Austria and Switzerland");
-		case 10:	return("Italy");
-		case 11:	return("Hong Kong and China");
-		case 12:	return("Indonesia");
-		case 13:	return("South Korea");
-		default:	return("Unknown");
-	}
-}
-
-const char * CMemory::PublishingCompany (void)
-{
-	return ("Unknown");
-}
-
-void CMemory::MakeRomInfoText (char *romtext)
-{
-	char	temp[256];
-
-	romtext[0] = 0;
-
-	sprintf(temp,   "            Cart Name: %s", ROMName);
-	strcat(romtext, temp);
-	sprintf(temp, "\n            Game Code: %s", ROMId);
-	strcat(romtext, temp);
-	sprintf(temp, "\n             Contents: %s", KartContents());
-	strcat(romtext, temp);
-	sprintf(temp, "\n                  Map: %s", MapType());
-	strcat(romtext, temp);
-	sprintf(temp, "\n                Speed: 0x%02X (%s)", ROMSpeed, (ROMSpeed & 0x10) ? "FastROM" : "SlowROM");
-	strcat(romtext, temp);
-	sprintf(temp, "\n                 Type: 0x%02X", ROMType);
-	strcat(romtext, temp);
-	sprintf(temp, "\n    Size (calculated): %dMbits", CalculatedSize / 0x20000);
-	strcat(romtext, temp);
-	sprintf(temp, "\n        Size (header): %s", Size());
-	strcat(romtext, temp);
-	sprintf(temp, "\n            SRAM size: %s", StaticRAMSize());
-	strcat(romtext, temp);
-	sprintf(temp, "\nChecksum (calculated): 0x%04X", CalculatedChecksum);
-	strcat(romtext, temp);
-	sprintf(temp, "\n    Checksum (header): 0x%04X", ROMChecksum);
-	strcat(romtext, temp);
-	sprintf(temp, "\n  Complement (header): 0x%04X", ROMComplementChecksum);
-	strcat(romtext, temp);
-	sprintf(temp, "\n         Video Output: %s", (ROMRegion > 12 || ROMRegion < 2) ? "NTSC 60Hz" : "PAL 50Hz");
-	strcat(romtext, temp);
-	sprintf(temp, "\n             Revision: %s", Revision());
-	strcat(romtext, temp);
-	sprintf(temp, "\n             Licensee: %s", PublishingCompany());
-	strcat(romtext, temp);
-	sprintf(temp, "\n               Region: %s", Country());
-	strcat(romtext, temp);
-	sprintf(temp, "\n                CRC32: 0x%08X", ROMCRC32);
-	strcat(romtext, temp);
-}
-
-// hack
-
-void CMemory::ApplyROMFixes (void)
+static void ApplyROMFixes (void)
 {
 	Settings.UniracersHack = FALSE;
 	Settings.DMACPUSyncHack = FALSE;
@@ -815,12 +430,12 @@ void CMemory::ApplyROMFixes (void)
 	//// Warnings
 
 	// Reject strange hacked games
-	if ((ROMCRC32 == 0x6810aa95) ||
-		(ROMCRC32 == 0x340f23e5) ||
-		(ROMCRC32 == 0x77fd806a) ||
+	if ((Memory.ROMCRC32 == 0x6810aa95) ||
+		(Memory.ROMCRC32 == 0x340f23e5) ||
+		(Memory.ROMCRC32 == 0x77fd806a) ||
 		(match_nn("HIGHWAY BATTLE 2")) ||
-		(match_nn("FX SKIING NINTENDO 96") && (ROM[0x7fda] == 0)) ||
-		(match_nn("HONKAKUHA IGO GOSEI")   && (ROM[0xffd5] != 0x31)))
+		(match_nn("FX SKIING NINTENDO 96") && (Memory.ROM[0x7fda] == 0)) ||
+		(match_nn("HONKAKUHA IGO GOSEI")   && (Memory.ROM[0xffd5] != 0x31)))
 	{
 		Settings.DisplayColor = BUILD_PIXEL(31, 0, 0);
 	}
@@ -837,8 +452,8 @@ void CMemory::ApplyROMFixes (void)
 		// SRAM not correctly detected
 		if (match_nn("HITOMI3 "))
 		{
-			SRAMSize = 1;
-			SRAMMask = ((1 << (SRAMSize + 3)) * 128) - 1;
+			Memory.SRAMSize = 1;
+			Memory.SRAMMask = ((1 << (Memory.SRAMSize + 3)) * 128) - 1;
 		}
 
 		// The delay to sync CPU and DMA which Snes9x cannot emulate.
@@ -850,6 +465,203 @@ void CMemory::ApplyROMFixes (void)
 		// seems to need a disproven behavior, so we're definitely overlooking some other bug?
 		Settings.UniracersHack = match_nn("UNIRACERS");
 	}
+}
+
+static bool8 InitROM ()
+{
+	if (!Memory.ROM || Memory.ROM_SIZE < 0x200)
+		return (FALSE);
+
+	if ((Memory.ROM_SIZE & 0x7FF) == 512 || First512BytesCountZeroes() > 400)
+	{
+		printf("Found ROM file header (and ignored it).\n");
+		memmove(Memory.ROM, Memory.ROM + 512, ROM_BUFFER_SIZE - 512);
+		Memory.ROM_SIZE -= 512;
+	}
+
+	Memory.CalculatedSize = ((Memory.ROM_SIZE + 0x1fff) / 0x2000) * 0x2000;
+
+	//// these two games fail to be detected
+	if (strncmp((char *) &Memory.ROM[0x7fc0], "YUYU NO QUIZ DE GO!GO!", 22) == 0 ||
+		(strncmp((char *) &Memory.ROM[0xffc0], "BATMAN--REVENGE JOKER",  21) == 0))
+	{
+		Memory.LoROM = TRUE;
+		Memory.HiROM = FALSE;
+	}
+	else
+	{
+		Memory.LoROM = (ScoreLoROM() >= ScoreHiROM());
+		Memory.HiROM = !Memory.LoROM;
+	}
+
+	//// Parse ROM header and read ROM informatoin
+
+	uint8 *RomHeader = Memory.ROM + (Memory.HiROM ? 0xFFB0 : 0x7FB0);
+
+	strncpy(Memory.ROMName, (char *) &RomHeader[0x10], ROM_NAME_LEN - 1);
+	sanitize(Memory.ROMName, ROM_NAME_LEN);
+
+	Memory.ROMName[ROM_NAME_LEN - 1] = 0;
+	if (strlen(Memory.ROMName))
+	{
+		char *p = Memory.ROMName + strlen(Memory.ROMName);
+		if (p > Memory.ROMName + 21 && Memory.ROMName[20] == ' ')
+			p = Memory.ROMName + 21;
+		while (p > Memory.ROMName && *(p - 1) == ' ')
+			p--;
+		*p = 0;
+	}
+
+	Memory.ROMSize   = RomHeader[0x27];
+	Memory.SRAMSize  = RomHeader[0x28];
+	Memory.ROMSpeed  = RomHeader[0x25];
+	Memory.ROMType   = RomHeader[0x26];
+	Memory.ROMRegion = RomHeader[0x29];
+	Memory.ROMChecksum           = RomHeader[0x2E] + (RomHeader[0x2F] << 8);
+	Memory.ROMComplementChecksum = RomHeader[0x2C] + (RomHeader[0x2D] << 8);
+
+	memmove(Memory.ROMId, &RomHeader[0x02], 4);
+	sanitize(Memory.ROMId, 4);
+
+	//// Detect DSP 1 & 2
+	if (Memory.ROMType == 0x03 || (Memory.ROMType == 0x05 && Memory.ROMSpeed != 0x20))
+	{
+		Settings.DSP = 1;
+		if (Memory.HiROM)
+		{
+			DSP0.boundary = 0x7000;
+			DSP0.maptype = M_DSP1_HIROM;
+		}
+		else
+		if (Memory.CalculatedSize > 0x100000)
+		{
+			DSP0.boundary = 0x4000;
+			DSP0.maptype = M_DSP1_LOROM_L;
+		}
+		else
+		{
+			DSP0.boundary = 0xc000;
+			DSP0.maptype = M_DSP1_LOROM_S;
+		}
+
+		SetDSP = &DSP1SetByte;
+		GetDSP = &DSP1GetByte;
+	}
+	else
+	if (Memory.ROMType == 0x05 && Memory.ROMSpeed == 0x20)
+	{
+		Settings.DSP = 2;
+		DSP0.boundary = 0x10000;
+		DSP0.maptype = M_DSP2_LOROM;
+		SetDSP = &DSP2SetByte;
+		GetDSP = &DSP2GetByte;
+	}
+	else
+	{
+		Settings.DSP = 0;
+		SetDSP = NULL;
+		GetDSP = NULL;
+	}
+
+	//// Map memory
+	if (Memory.HiROM)
+		Map_HiROMMap();
+    else
+		Map_LoROMMap();
+
+	//// ROM Region
+	Settings.PAL = (Settings.ForcePAL && !Settings.ForceNTSC)
+						|| ((Memory.ROMRegion >= 2) && (Memory.ROMRegion <= 12));
+
+	if (Settings.PAL)
+	{
+		Settings.FrameTime = 20000;
+		Settings.FrameRate = 50;
+	}
+	else
+	{
+		Settings.FrameTime = 16667;
+		Settings.FrameRate = 60;
+	}
+
+	//// SRAM size
+	Memory.SRAMMask = Memory.SRAMSize ? ((1 << (Memory.SRAMSize + 3)) * 128) - 1 : 0;
+	Memory.SRAMBytes = Memory.SRAMSize ? ((1 << (Memory.SRAMSize + 3)) * 128) : 0;
+	if (Memory.SRAMBytes > 0x8000)
+	{
+		printf("\n\nWARNING: Default SRAM size too small!, need %d bytes\n\n", Memory.SRAMBytes);
+	}
+
+	//// Checksums
+	Memory.ROMCRC32 = crc32_le(0, Memory.ROM, Memory.CalculatedSize);
+	Memory.CalculatedChecksum = CalcChecksum(Memory.ROM, Memory.CalculatedSize);
+
+	//// Patches
+	// Memory.ROMIsPatched = false;
+	// CheckAnyPatch();
+
+	//// Hack games
+	ApplyROMFixes();
+
+	//// Show ROM information
+	ShowInfoString();
+
+	//// Reset system, then we're ready
+	S9xReset();
+
+    return (TRUE);
+}
+
+
+// Public functions
+
+bool8 S9xMemoryInit (void)
+{
+	memset(&Memory, 0, sizeof(Memory));
+
+    Memory.RAM	 = (uint8 *) calloc(1, 0x20000);
+    Memory.VRAM = (uint8 *) calloc(1, 0x10000);
+    Memory.SRAM = (uint8 *) calloc(1, 0x8000);
+    Memory.ROM  = (uint8 *) calloc(1, ROM_BUFFER_SIZE + 0x200);
+
+	if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM || !Memory.ROM)
+    {
+		S9xMemoryDeinit();
+		return (FALSE);
+    }
+
+	return (TRUE);
+}
+
+void S9xMemoryDeinit (void)
+{
+	free(Memory.RAM);
+	free(Memory.SRAM);
+	free(Memory.VRAM);
+	free(Memory.ROM);
+
+	Memory.RAM = NULL;
+	Memory.SRAM = NULL;
+	Memory.VRAM = NULL;
+	Memory.ROM = NULL;
+}
+
+bool8 S9xLoadROM (const char *filename)
+{
+	STREAM stream = OPEN_STREAM(filename, "rb");
+	if (!stream)
+		return (FALSE);
+
+	REVERT_STREAM(stream, 0, SEEK_END);
+
+	Memory.ROM_SIZE = FIND_STREAM(stream);
+
+	REVERT_STREAM(stream, 0, SEEK_SET);
+	READ_STREAM(Memory.ROM, ROM_BUFFER_SIZE + 0x200, stream);
+
+	CLOSE_STREAM(stream);
+
+	return InitROM();
 }
 
 // BPS % UPS % IPS

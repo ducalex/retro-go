@@ -223,7 +223,7 @@ static inline uint16 COLOR_SUB (uint32 C1, uint32 C2)
 		p2 |= pixbit[(i)][pix & 0xf]; \
 	}
 
-static uint8 ConvertTile2 (uint8 *pCache, uint32 TileAddr, uint32)
+static uint8 ConvertTile2 (uint8 *pCache, uint32 TileAddr, uint32 Unused)
 {
 	uint8	*tp      = &Memory.VRAM[TileAddr];
 	uint32	*p       = (uint32 *) pCache;
@@ -245,7 +245,7 @@ static uint8 ConvertTile2 (uint8 *pCache, uint32 TileAddr, uint32)
 	return (non_zero ? TRUE : BLANK_TILE);
 }
 
-static uint8 ConvertTile4 (uint8 *pCache, uint32 TileAddr, uint32)
+static uint8 ConvertTile4 (uint8 *pCache, uint32 TileAddr, uint32 Unused)
 {
 	uint8	*tp      = &Memory.VRAM[TileAddr];
 	uint32	*p       = (uint32 *) pCache;
@@ -269,7 +269,7 @@ static uint8 ConvertTile4 (uint8 *pCache, uint32 TileAddr, uint32)
 	return (non_zero ? TRUE : BLANK_TILE);
 }
 
-static uint8 ConvertTile8 (uint8 *pCache, uint32 TileAddr, uint32)
+static uint8 ConvertTile8 (uint8 *pCache, uint32 TileAddr, uint32 Unused)
 {
 	uint8	*tp      = &Memory.VRAM[TileAddr];
 	uint32	*p       = (uint32 *) pCache;

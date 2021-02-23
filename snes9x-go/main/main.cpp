@@ -105,12 +105,11 @@ void S9xGraphicsMode(void)
 
 void S9xMessage(int type, int number, const char *message)
 {
-	const int max = 36 * 3;
-	static char buffer[max + 1];
+	static char buffer[36 * 3];
 
 	fprintf(stdout, "%s\n", message);
-	strncpy(buffer, message, max + 1);
-	buffer[max] = 0;
+	strncpy(buffer, message, sizeof(buffer));
+	buffer[sizeof(buffer) - 1] = 0;
 	S9xSetInfoString(buffer);
 }
 
@@ -265,16 +264,16 @@ static void snes9x_task(void *arg)
 
 	update_keymap(rg_settings_app_int32_get(NVS_KEY_KEYMAP, 0));
 
-	if (!Memory.Init())
+	if (!S9xMemoryInit())
 		RG_PANIC("Memory init failed!");
 
-	if (!S9xInitAPU() || !S9xInitSound(0))
+	if (!S9xSoundInit(0))
 		RG_PANIC("Sound init failed!");
 
 	if (!S9xGraphicsInit())
 		RG_PANIC("Graphics init failed!");
 
-	if (!Memory.LoadROM(app->romPath))
+	if (!S9xLoadROM(app->romPath))
 		RG_PANIC("ROM loading failed!");
 
     if (app->startAction == EMU_START_ACTION_RESUME)

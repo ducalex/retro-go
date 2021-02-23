@@ -65,6 +65,9 @@ static void system_monitor_task(void *arg)
     time_t lastTime = time(NULL);
     bool ledState = false;
 
+    // Give the app a few seconds to start before monitoring
+    vTaskDelay(pdMS_TO_TICKS(2000));
+
     while (1)
     {
         float tickTime = get_elapsed_time() - counters.resetTime;
@@ -332,7 +335,7 @@ void rg_system_init(int appId, int sampleRate)
 
     panicTrace->magicWord = 0;
 
-    RG_LOGI("Retro-Go init done.\n\n");
+    RG_LOGI("Retro-Go init done.\n");
 }
 
 void rg_emu_init(const rg_emu_proc_t *handlers)
@@ -348,7 +351,7 @@ void rg_emu_init(const rg_emu_proc_t *handlers)
 
     if (handlers)
     {
-        memcpy(&currentApp.handlers, handlers, sizeof(rg_emu_proc_t));
+        currentApp.handlers = *handlers;
     }
 
     #ifdef ENABLE_NETPLAY

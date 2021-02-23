@@ -48,6 +48,8 @@ namespace spc
 	static double dynamic_rate_multiplier = 1.0;
 } // namespace spc
 
+extern "C" {
+
 bool8 S9xMixSamples(uint8 *dest, int sample_count)
 {
 #if 0
@@ -109,7 +111,7 @@ void S9xLandSamples(void)
 #endif
 }
 
-bool8 S9xSyncSound(void)
+bool8 S9xSoundSync(void)
 {
 	if (!Settings.SoundSync || spc::sound_in_sync)
 		return (TRUE);
@@ -150,8 +152,11 @@ void S9xUpdateDynamicRate(int avail, int buffer_size)
 	UpdatePlaybackRate();
 }
 
-bool8 S9xInitSound(int buffer_ms)
+bool8 S9xSoundInit(int buffer_ms)
 {
+	if (!S9xInitAPU())
+		return FALSE;
+
 #if 0
 	// The resampler and spc unit use samples (16-bit short) as arguments.
 	int buffer_size_samples = MINIMUM_BUFFER_SIZE;
@@ -323,4 +328,6 @@ void S9xAPULoadState(uint8 *block)
 	SNES::dsp.clock = SNES::get_le32(ptr);
 	ptr += sizeof(int32);
 	memcpy(SNES::smp.registers, ptr, 4);
+}
+
 }
