@@ -1232,9 +1232,7 @@ void S9xSetCPU (uint8 Byte, uint32 Address)
 				if ((Byte & 1) != (Memory.FillRAM[0x220d] & 1))
 				{
 					if (Byte & 1)
-					{
 						CPU.FastROMSpeed = ONE_CYCLE;
-					}
 					else
 						CPU.FastROMSpeed = SLOW_ONE_CYCLE;
 					// we might currently be in FastROMSpeed region, S9xSetPCBase will update CPU.MemSpeed

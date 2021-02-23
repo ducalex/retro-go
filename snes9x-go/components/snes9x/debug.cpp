@@ -48,7 +48,6 @@ static const char	*HelpMessage[] =
 	"p                      - Proceed to next instruction [step-over]",
 	"s                      - Skip to next instruction    [skip]",
 	"T                      - Toggle CPU instruction tracing to trace.log",
-	"TS                     - Toggle SA-1 instruction tracing to trace_sa1.log",
 	"E                      - Toggle HC-based event tracing to trace.log",
 	"V                      - Toggle non-DMA V-` read/write tracing to stdout",
 	"D                      - Toggle on-screen DMA tracing",
@@ -147,10 +146,7 @@ static int	AddrModes[256] =
 
 static uint8 S9xDebugGetByte (uint32);
 static uint16 S9xDebugGetWord (uint32);
-static uint8 S9xDebugSA1GetByte (uint32);
-static uint16 S9xDebugSA1GetWord (uint32);
 static uint8 debug_cpu_op_print (char *, uint8, uint16);
-static uint8 debug_sa1_op_print (char *, uint8, uint16);
 static void debug_line_print (const char *);
 static int debug_get_number (char *, uint16 *);
 static short debug_get_start_address (char *, uint8 *, uint32 *);
@@ -174,7 +170,6 @@ static uint8 S9xDebugGetByte (uint32 Address)
 	switch ((pint) GetAddress)
 	{
 		case CMemory::MAP_LOROM_SRAM:
-		case CMemory::MAP_SA1RAM:
 			byte = *(Memory.SRAM + ((((Address & 0xff0000) >> 1) | (Address & 0x7fff)) & Memory.SRAMMask));
 			return (byte);
 
@@ -662,437 +657,6 @@ static uint8 debug_cpu_op_print (char *Line, uint8 Bank, uint16 Address)
 	return (Size);
 }
 
-static uint8 debug_sa1_op_print (char *Line, uint8 Bank, uint16 Address)
-{
-	uint8	S9xOpcode;
-	uint8	Operant[3];
-	uint16	Word;
-	uint8	Byte;
-	int16	SWord;
-	int8	SByte;
-	uint8	Size = 0;
-
-	S9xOpcode = S9xDebugSA1GetByte((Bank << 16) + Address);
-	sprintf(Line, "$%02X:%04X %02X ", Bank, Address, S9xOpcode);
-
-	Operant[0] = S9xDebugSA1GetByte((Bank << 16) + Address + 1);
-	Operant[1] = S9xDebugSA1GetByte((Bank << 16) + Address + 2);
-	Operant[2] = S9xDebugSA1GetByte((Bank << 16) + Address + 3);
-
-	switch (AddrModes[S9xOpcode])
-	{
-		case 0:
-			// Implied
-			sprintf(Line, "%s         %s",
-			        Line,
-			        S9xMnemonics[S9xOpcode]);
-			Size = 1;
-			break;
-
-		case 1:
-			// Immediate[MemoryFlag]
-			if (!SA1CheckFlag(MemoryFlag))
-			{
-				// Accumulator 16 - Bit
-				sprintf(Line, "%s%02X %02X    %s #$%02X%02X",
-				        Line,
-				        Operant[0],
-				        Operant[1],
-				        S9xMnemonics[S9xOpcode],
-				        Operant[1],
-				        Operant[0]);
-				Size = 3;
-			}
-			else
-			{
-				// Accumulator 8 - Bit
-				sprintf(Line, "%s%02X       %s #$%02X",
-				        Line,
-				        Operant[0],
-				        S9xMnemonics[S9xOpcode],
-				        Operant[0]);
-				Size = 2;
-			}
-
-			break;
-
-		case 2:
-			// Immediate[IndexFlag]
-			if (!SA1CheckFlag(IndexFlag))
-			{
-				// X / Y 16 - Bit
-				sprintf(Line, "%s%02X %02X    %s #$%02X%02X",
-				        Line,
-				        Operant[0],
-				        Operant[1],
-				        S9xMnemonics[S9xOpcode],
-				        Operant[1],
-				        Operant[0]);
-				Size = 3;
-			}
-			else
-			{
-				// X / Y 8 - Bit
-				sprintf(Line, "%s%02X       %s #$%02X",
-				        Line,
-				        Operant[0],
-				        S9xMnemonics[S9xOpcode],
-				        Operant[0]);
-				Size = 2;
-			}
-
-			break;
-
-		case 3:
-			// Immediate[Always 8 - Bit]
-			sprintf(Line, "%s%02X       %s #$%02X",
-			        Line,
-			        Operant[0],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[0]);
-			Size = 2;
-			break;
-
-		case 4:
-			// Relative
-			sprintf(Line, "%s%02X       %s $%02X",
-			        Line,
-			        Operant[0],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[0]);
-			SByte = Operant[0];
-			Word = Address;
-			Word += SByte;
-			Word += 2;
-			sprintf(Line, "%-32s[$%04X]", Line, Word);
-			Size = 2;
-			break;
-
-		case 5:
-			// Relative Long
-			sprintf(Line, "%s%02X %02X    %s $%02X%02X",
-			        Line,
-			        Operant[0],
-			        Operant[1],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[1],
-			        Operant[0]);
-			SWord = (Operant[1] << 8) | Operant[0];
-			Word = Address;
-			Word += SWord;
-			Word += 3;
-			sprintf(Line, "%-32s[$%04X]", Line, Word);
-			Size = 3;
-			break;
-
-		case 6:
-			// Direct
-			sprintf(Line, "%s%02X       %s $%02X",
-			        Line,
-			        Operant[0],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[0]);
-			Word = Operant[0];
-			Word += SA1Registers.D.W;
-			sprintf(Line, "%-32s[$00:%04X]", Line, Word);
-			Size = 2;
-			break;
-
-		case 7:
-			// Direct Indexed (with X)
-			sprintf(Line, "%s%02X       %s $%02X,x",
-			        Line,
-			        Operant[0],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[0]);
-			Word = Operant[0];
-			Word += SA1Registers.D.W;
-			Word += SA1Registers.X.W;
-			sprintf(Line, "%-32s[$00:%04X]", Line, Word);
-			Size = 2;
-			break;
-
-		case 8:
-			// Direct Indexed (with Y)
-			sprintf(Line, "%s%02X       %s $%02X,y",
-			        Line,
-			        Operant[0],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[0]);
-			Word = Operant[0];
-			Word += SA1Registers.D.W;
-			Word += SA1Registers.Y.W;
-			sprintf(Line, "%-32s[$00:%04X]", Line, Word);
-			Size = 2;
-			break;
-
-		case 9:
-			// Direct Indirect
-			sprintf(Line, "%s%02X       %s ($%02X)",
-			        Line,
-			        Operant[0],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[0]);
-			Word = Operant[0];
-			Word += SA1Registers.D.W;
-			Word = S9xDebugSA1GetWord(Word);
-			sprintf(Line, "%-32s[$%02X:%04X]", Line, SA1Registers.DB, Word);
-			Size = 2;
-			break;
-
-		case 10:
-			// Direct Indexed Indirect
-			sprintf(Line, "%s%02X       %s ($%02X,x)",
-			        Line,
-			        Operant[0],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[0]);
-			Word = Operant[0];
-			Word += SA1Registers.D.W;
-			Word += SA1Registers.X.W;
-			Word = S9xDebugSA1GetWord(Word);
-			sprintf(Line, "%-32s[$%02X:%04X]", Line, SA1Registers.DB, Word);
-			Size = 2;
-			break;
-
-		case 11:
-			// Direct Indirect Indexed
-			sprintf(Line, "%s%02X       %s ($%02X),y",
-			        Line,
-			        Operant[0],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[0]);
-			Word = Operant[0];
-			Word += SA1Registers.D.W;
-			Word = S9xDebugSA1GetWord(Word);
-			Word += SA1Registers.Y.W;
-			sprintf(Line, "%-32s[$%02X:%04X]", Line, SA1Registers.DB, Word);
-			Size = 2;
-			break;
-
-		case 12:
-			// Direct Indirect Long
-			sprintf(Line, "%s%02X       %s [$%02X]",
-			        Line,
-			        Operant[0],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[0]);
-			Word = Operant[0];
-			Word += SA1Registers.D.W;
-			Byte = S9xDebugSA1GetByte(Word + 2);
-			Word = S9xDebugSA1GetWord(Word);
-			sprintf(Line, "%-32s[$%02X:%04X]", Line, Byte, Word);
-			Size = 2;
-			break;
-
-		case 13:
-			// Direct Indirect Indexed Long
-			sprintf(Line, "%s%02X       %s [$%02X],y",
-			        Line,
-			        Operant[0],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[0]);
-			Word = Operant[0];
-			Word += SA1Registers.D.W;
-			Byte = S9xDebugSA1GetByte(Word + 2);
-			Word = S9xDebugSA1GetWord(Word);
-			Word += SA1Registers.Y.W;
-			sprintf(Line, "%-32s[$%02X:%04X]", Line, Byte, Word);
-			Size = 2;
-			break;
-
-		case 14:
-			// Absolute
-			sprintf(Line, "%s%02X %02X    %s $%02X%02X",
-			        Line,
-			        Operant[0],
-			        Operant[1],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[1],
-			        Operant[0]);
-			Word = (Operant[1] << 8) | Operant[0];
-			sprintf(Line, "%-32s[$%02X:%04X]", Line, SA1Registers.DB, Word);
-			Size = 3;
-			break;
-
-		case 15:
-			// Absolute Indexed (with X)
-			sprintf(Line, "%s%02X %02X    %s $%02X%02X,x",
-			        Line,
-			        Operant[0],
-			        Operant[1],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[1],
-			        Operant[0]);
-			Word = (Operant[1] << 8) | Operant[0];
-			Word += SA1Registers.X.W;
-			sprintf(Line, "%-32s[$%02X:%04X]", Line, SA1Registers.DB, Word);
-			Size = 3;
-			break;
-
-		case 16:
-			// Absolute Indexed (with Y)
-			sprintf(Line, "%s%02X %02X    %s $%02X%02X,y",
-			        Line,
-			        Operant[0],
-			        Operant[1],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[1],
-			        Operant[0]);
-			Word = (Operant[1] << 8) | Operant[0];
-			Word += SA1Registers.Y.W;
-			sprintf(Line, "%-32s[$%02X:%04X]", Line, SA1Registers.DB, Word);
-			Size = 3;
-			break;
-
-		case 17:
-			// Absolute Long
-			sprintf(Line, "%s%02X %02X %02X %s $%02X%02X%02X",
-			        Line,
-			        Operant[0],
-			        Operant[1],
-			        Operant[2],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[2],
-			        Operant[1],
-			        Operant[0]);
-			Word = (Operant[1] << 8) | Operant[0];
-			sprintf(Line, "%-32s[$%02X:%04X]", Line, Operant[2], Word);
-			Size = 4;
-			break;
-
-		case 18:
-			// Absolute Indexed Long
-			sprintf(Line, "%s%02X %02X %02X %s $%02X%02X%02X,x",
-			        Line,
-			        Operant[0],
-			        Operant[1],
-			        Operant[2],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[2],
-			        Operant[1],
-			        Operant[0]);
-			Word = (Operant[1] << 8) | Operant[0];
-			Word += SA1Registers.X.W;
-			sprintf(Line, "%-32s[$%02X:%04X]", Line, Operant[2], Word);
-			Size = 4;
-			break;
-
-		case 19:
-			// Stack Relative
-			sprintf(Line, "%s%02X       %s $%02X,s",
-			        Line,
-			        Operant[0],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[0]);
-			Word = SA1Registers.S.W;
-			Word += Operant[0];
-			sprintf(Line, "%-32s[$00:%04X]", Line, Word);
-			Size = 2;
-			break;
-
-		case 20:
-			// Stack Relative Indirect Indexed
-			sprintf(Line, "%s%02X       %s ($%02X,s),y",
-			        Line,
-			        Operant[0],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[0]);
-			Word = SA1Registers.S.W;
-			Word += Operant[0];
-			Word = S9xDebugSA1GetWord(Word);
-			Word += SA1Registers.Y.W;
-			sprintf(Line, "%-32s[$%02X:%04X]", Line, SA1Registers.DB, Word);
-			Size = 2;
-			break;
-
-		case 21:
-			// Absolute Indirect
-			sprintf(Line, "%s%02X %02X    %s ($%02X%02X)",
-			        Line,
-			        Operant[0],
-			        Operant[1],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[1],
-			        Operant[0]);
-			Word = (Operant[1] << 8) | Operant[0];
-			Word = S9xDebugSA1GetWord(Word);
-			sprintf(Line, "%-32s[$%02X:%04X]", Line, SA1Registers.PB, Word);
-			Size = 3;
-			break;
-
-		case 22:
-			// Absolute Indirect Long
-			sprintf(Line, "%s%02X %02X    %s [$%02X%02X]",
-			        Line,
-			        Operant[0],
-			        Operant[1],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[1],
-			        Operant[0]);
-			Word = (Operant[1] << 8) | Operant[0];
-			Byte = S9xDebugSA1GetByte(Word + 2);
-			Word = S9xDebugSA1GetWord(Word);
-			sprintf(Line, "%-32s[$%02X:%04X]", Line, Byte, Word);
-			Size = 3;
-			break;
-
-		case 23:
-			// Absolute Indexed Indirect
-			sprintf(Line, "%s%02X %02X    %s ($%02X%02X,x)",
-			        Line,
-			        Operant[0],
-			        Operant[1],
-			        S9xMnemonics[S9xOpcode],
-			        Operant[1],
-			        Operant[0]);
-			Word = (Operant[1] << 8) | Operant[0];
-			Word += SA1Registers.X.W;
-			Word = S9xDebugSA1GetWord(SA1.ShiftedPB + Word);
-			sprintf(Line, "%-32s[$%02X:%04X]", Line, SA1Registers.PB, Word);
-			Size = 3;
-			break;
-
-		case 24:
-			// Implied Accumulator
-			sprintf(Line, "%s         %s A",
-			        Line,
-			        S9xMnemonics[S9xOpcode]);
-			Size = 1;
-			break;
-
-		case 25:
-			// MVN/MVP SRC DST
-			sprintf(Line, "%s         %s %02X %02X",
-			        Line,
-			        S9xMnemonics[S9xOpcode],
-			        Operant[0],
-			        Operant[1]);
-			Size = 3;
-			break;
-	}
-
-	sprintf(Line, "%-44s A:%04X X:%04X Y:%04X D:%04X DB:%02X S:%04X P:%c%c%c%c%c%c%c%c%c HC:%04ld VC:%03ld FC:%02d %c%c",
-	        Line, SA1Registers.A.W, SA1Registers.X.W, SA1Registers.Y.W,
-	        SA1Registers.D.W, SA1Registers.DB, SA1Registers.S.W,
-	        SA1CheckEmulation() ? 'E' : 'e',
-	        SA1CheckNegative() ? 'N' : 'n',
-	        SA1CheckOverflow() ? 'V' : 'v',
-	        SA1CheckMemory() ? 'M' : 'm',
-	        SA1CheckIndex() ? 'X' : 'x',
-	        SA1CheckDecimal() ? 'D' : 'd',
-	        SA1CheckIRQ() ? 'I' : 'i',
-	        SA1CheckZero() ? 'Z' : 'z',
-	        SA1CheckCarry() ? 'C' : 'c',
-	        (long) CPU.Cycles,
-	        (long) CPU.V_Counter,
-	        IPPU.FrameCount,
-	        CPU.NMIPending ? 'P' : ' ',
-	        Memory.FillRAM[0x2210] & 0x80 ? 'N' : ' ');
-
-	return (Size);
-}
-
 static void debug_line_print (const char *Line)
 {
 	printf("%s\n", Line);
@@ -1297,37 +861,18 @@ void S9xDebugProcessCommand(char *Line)
 
 	if (*Line == 'T')
 	{
-		if (Line[1] == 'S')
-		{
-			SA1.Flags ^= TRACE_FLAG;
+		CPU.Flags ^= TRACE_FLAG;
 
-			if (SA1.Flags & TRACE_FLAG)
-			{
-				printf("SA1 CPU instruction tracing enabled.\n");
-				ENSURE_TRACE_OPEN(trace2, "trace_sa1.log", "wb")
-			}
-			else
-			{
-				printf("SA1 CPU instruction tracing disabled.\n");
-				fclose(trace2);
-				trace2 = NULL;
-			}
+		if (CPU.Flags & TRACE_FLAG)
+		{
+			printf("CPU instruction tracing enabled.\n");
+			ENSURE_TRACE_OPEN(trace, "trace.log", "wb")
 		}
 		else
 		{
-			CPU.Flags ^= TRACE_FLAG;
-
-			if (CPU.Flags & TRACE_FLAG)
-			{
-				printf("CPU instruction tracing enabled.\n");
-				ENSURE_TRACE_OPEN(trace, "trace.log", "wb")
-			}
-			else
-			{
-				printf("CPU instruction tracing disabled.\n");
-				fclose(trace);
-				trace = NULL;
-			}
+			printf("CPU instruction tracing disabled.\n");
+			fclose(trace);
+			trace = NULL;
 		}
 	}
 
@@ -2114,16 +1659,6 @@ void S9xTrace (void)
 
 	debug_cpu_op_print(msg, Registers.PB, Registers.PCw);
 	fprintf(trace, "%s\n", msg);
-}
-
-void S9xSA1Trace (void)
-{
-	char	msg[512];
-
-	ENSURE_TRACE_OPEN(trace2, "trace_sa1.log", "a")
-
-	debug_sa1_op_print(msg, SA1Registers.PB, SA1Registers.PCw);
-	fprintf(trace2, "%s\n", msg);
 }
 
 void S9xTraceMessage (const char *s)

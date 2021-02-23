@@ -7,13 +7,16 @@
 #ifndef _CONTROLS_H_
 #define _CONTROLS_H_
 
-#define S9xNoMapping			0
-#define S9xButtonJoypad0		1
-#define S9xButtonJoypad1		2
-#define S9xButtonCommand		3
-#define S9xBadMapping			255
+enum
+{
+	S9xNoMapping,
+	S9xButtonJoypad0,
+	S9xButtonJoypad1,
+	S9xButtonCommand,
+	S9xBadMapping,
+};
 
-#define MaxControlID			63
+#define MaxControlID	63
 
 typedef struct
 {

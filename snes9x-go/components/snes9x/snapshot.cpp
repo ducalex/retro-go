@@ -13,6 +13,17 @@
 #include "controls.h"
 #include "gfx.h"
 
+#define SNAPSHOT_MAGIC			"#!s9x-rg"
+#define SNAPSHOT_VERSION		11
+
+#define SAVE_INFO_SNAPSHOT				"Saved"
+#define SAVE_INFO_LOAD					"Loaded"
+#define SAVE_INFO_OOPS					"Auto-saving 'oops' snapshot"
+#define SAVE_ERR_WRONG_FORMAT			"File not in Snes9x snapshot format"
+#define SAVE_ERR_WRONG_VERSION			"Incompatible snapshot version"
+#define SAVE_ERR_ROM_NOT_FOUND			"ROM image \"%s\" for snapshot not found"
+#define SAVE_ERR_SAVE_NOT_FOUND			"Snapshot %s does not exist"
+
 #ifndef min
 #define min(a,b)	(((a) < (b)) ? (a) : (b))
 #endif
@@ -550,13 +561,13 @@ static void SkipBlockWithName(STREAM stream, const char *name);
 
 // QuickSave
 
-bool8 S9xFreezeGame (const char *filename)
+int S9xFreezeGame (const char *filename)
 {
 	STREAM	stream = OPEN_STREAM(filename, "wb");
 
 	if (!stream)
 	{
-		return (FALSE);
+		return (FILE_NOT_FOUND);
 	}
 
 	// We don't have enough RAM to fit the sound snapshot at the moment
@@ -604,12 +615,12 @@ bool8 S9xFreezeGame (const char *filename)
 	sprintf(String, SAVE_INFO_SNAPSHOT " %s", S9xBasename(filename));
 	S9xMessage(S9X_INFO, S9X_FREEZE_FILE_INFO, String);
 
-	return (TRUE);
+	return (SUCCESS);
 }
 
 // QuickLoad
 
-bool8 S9xUnfreezeGame (const char *filename)
+int S9xUnfreezeGame (const char *filename)
 {
 	STREAM	stream = OPEN_STREAM(filename, "rb");
 
@@ -617,7 +628,7 @@ bool8 S9xUnfreezeGame (const char *filename)
 	{
 		sprintf(String, SAVE_ERR_SAVE_NOT_FOUND, S9xBasename(filename));
 		S9xMessage(S9X_INFO, S9X_FREEZE_FILE_INFO, String);
-		return (FALSE);
+		return (FILE_NOT_FOUND);
 	}
 
 	int		result = SUCCESS;
@@ -751,7 +762,7 @@ bool8 S9xUnfreezeGame (const char *filename)
 	sprintf(String, SAVE_INFO_LOAD " %s", S9xBasename(filename));
 	S9xMessage(S9X_INFO, S9X_FREEZE_FILE_INFO, String);
 
-	return (TRUE);
+	return (SUCCESS);
 }
 
 static int FreezeSize (int size, int type)

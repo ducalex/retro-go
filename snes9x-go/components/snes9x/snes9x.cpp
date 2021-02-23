@@ -23,7 +23,7 @@ void S9xInitSettings(void)
 	// Sound
 	Settings.SoundSync                  =  true;
 	Settings.Stereo                     =  true;
-	Settings.SoundPlaybackRate          =  48000;
+	Settings.SoundPlaybackRate          =  32000;
 	Settings.SoundInputRate             =  31950;
 	Settings.Mute                       =  false;
 	Settings.DynamicRateControl         =  false;

@@ -222,7 +222,7 @@ static bool load_state_handler(char *pathName)
 
 	if (rg_filesize(pathName) > 0)
 	{
-		ret = S9xUnfreezeGame(pathName);
+		ret = S9xUnfreezeGame(pathName) == SUCCESS;
 	}
 	else
 	{
@@ -259,7 +259,6 @@ static void snes9x_task(void *arg)
 	Settings.SkipFrames = 0;
 	Settings.Paused = FALSE;
 
-	GFX.Pitch = SNES_WIDTH * 2;
 	GFX.Screen = (uint16*)currentUpdate->buffer;
 
 	update_keymap(rg_settings_app_int32_get(NVS_KEY_KEYMAP, 0));
