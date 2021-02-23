@@ -461,17 +461,14 @@ uint8 S9xReadJOYSERn (int n)
 	}
 	else
 	{
-		int read_idx = joypads[n].read_idx;
-
-		// prevent read_idx from overflowing (only latching resets it)
-		// otherwise $4016/7 reads will start returning input data again
-		if (read_idx < 255)
-			joypads[n].read_idx++;
-
-		if (read_idx >= 16)
-			return (bits | 1);
+		if (joypads[n].read_idx < 16)
+		{
+			return (bits | ((joypads[n].buttons >> (15 - joypads[n].read_idx++)) & 1));
+		}
 		else
-			return (bits | (joypads[n].buttons & (0x8000 >> joypads[n].read_idx) & 1));
+		{
+			return (bits | 1);
+		}
 	}
 }
 

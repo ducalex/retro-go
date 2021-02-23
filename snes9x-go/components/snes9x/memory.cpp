@@ -161,6 +161,7 @@ static void map_space (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 addr_
 		{
 			p = (c << 4) | (i >> 12);
 			Memory.ReadMap[p] = data;
+			Memory.WriteMap[p] = data;
 		}
 	}
 }
@@ -175,6 +176,7 @@ static void map_index (uint32 bank_s, uint32 bank_e, uint32 addr_s, uint32 addr_
 		{
 			p = (c << 4) | (i >> 12);
 			Memory.ReadMap[p] = (uint8 *) (pint) index;
+			Memory.WriteMap[p] = (uint8 *) (pint) index;
 		}
 	}
 }
@@ -201,18 +203,6 @@ static void Map_Finalize (void)
 	// Map Work RAM
 	map_space(0x7e, 0x7e, 0x0000, 0xffff, Memory.RAM);
 	map_space(0x7f, 0x7f, 0x0000, 0xffff, Memory.RAM + 0x10000);
-
-#if !RETRO_COMBINED_MEMORY_MAP
-	// Write protect ROM
-	memcpy((void *) Memory.WriteMap, (void *) Memory.ReadMap, sizeof(Memory.ReadMap));
-	for (int c = 0; c < MEMMAP_NUM_BLOCKS; c++)
-	{
-		if (Memory.WriteMap[c] >= Memory.ROM && Memory.WriteMap[c] <= (Memory.ROM + Memory.ROM_SIZE + 0x8000))
-		{
-			Memory.WriteMap[c] = (uint8 *) MAP_NONE;
-		}
-	}
-#endif
 }
 
 static void Map_DSP (void)
