@@ -18,18 +18,20 @@ static inline void timer_run(void);
   * Reset the hardware
   **/
 void
-pce_reset(void)
+pce_reset(bool hard)
 {
-    memset(&PCE.RAM, 0, sizeof(PCE.RAM));
-    memset(&PCE.VRAM, 0, sizeof(PCE.VRAM));
-    memset(&PCE.SPRAM, 0, sizeof(PCE.SPRAM));
-    memset(&PCE.Palette, 0, sizeof(PCE.Palette));
     memset(&PCE.VCE, 0, sizeof(PCE.VCE));
     memset(&PCE.VDC, 0, sizeof(PCE.VDC));
     memset(&PCE.PSG, 0, sizeof(PCE.PSG));
     memset(&PCE.Timer, 0, sizeof(PCE.Timer));
 
-    memset(&PCE.NULLRAM, 0xFF, sizeof(PCE.NULLRAM));
+    if (hard) {
+        memset(&PCE.RAM, 0, sizeof(PCE.RAM));
+        memset(&PCE.VRAM, 0, sizeof(PCE.VRAM));
+        memset(&PCE.SPRAM, 0, sizeof(PCE.SPRAM));
+        memset(&PCE.Palette, 0, sizeof(PCE.Palette));
+        memset(&PCE.NULLRAM, 0xFF, sizeof(PCE.NULLRAM));
+    }
 
     PCE.SF2 = 0;
 

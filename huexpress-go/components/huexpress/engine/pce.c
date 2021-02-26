@@ -206,7 +206,7 @@ void
 ResetPCE(bool hard)
 {
 	gfx_clear_cache();
-	pce_reset();
+	pce_reset(hard);
 }
 
 

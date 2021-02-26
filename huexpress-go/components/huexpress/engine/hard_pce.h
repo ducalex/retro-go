@@ -224,7 +224,7 @@ extern uint8_t *MemoryMapW[256];
  */
 
 int  pce_init(void);
-void pce_reset(void);
+void pce_reset(bool hard);
 void pce_term(void);
 void pce_run(void);
 
