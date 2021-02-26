@@ -55,6 +55,17 @@ static dialog_return_t startup_app_cb(dialog_option_t *option, dialog_event_t ev
     return RG_DIALOG_IGNORE;
 }
 
+static dialog_return_t disk_activity_cb(dialog_option_t *option, dialog_event_t event)
+{
+    int disk_activity = rg_settings_DiskActivity_get();
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
+        disk_activity = !disk_activity;
+        rg_settings_DiskActivity_set(disk_activity);
+    }
+    strcpy(option->value, disk_activity ? "On " : "Off");
+    return RG_DIALOG_IGNORE;
+}
+
 static dialog_return_t show_preview_cb(dialog_option_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_PREV) {
@@ -220,6 +231,7 @@ void retro_loop()
                     {0, "Preview    ", "...",  1, &show_preview_cb},
                     {0, "    - Delay", "...",  1, &show_preview_speed_cb},
                     {0, "Startup app", "...",  1, &startup_app_cb},
+                    {0, "Disk LED   ", "off",  1, &disk_activity_cb},
                     RG_DIALOG_CHOICE_LAST
                 };
                 rg_gui_settings_menu(choices);

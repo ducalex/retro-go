@@ -90,7 +90,7 @@ const char *S9xGetFilename(const char *ex, enum s9x_getdirtype dirtype)
 
 const char *S9xBasename(const char *f)
 {
-	return rg_get_filename(f);
+	return rg_fs_basename(f);
 }
 
 void S9xTextMode(void)
@@ -220,7 +220,7 @@ static bool load_state_handler(char *pathName)
 {
 	bool ret = false;
 
-	if (rg_filesize(pathName) > 0)
+	if (rg_fs_filesize(pathName) > 0)
 	{
 		ret = S9xUnfreezeGame(pathName) == SUCCESS;
 	}

@@ -155,9 +155,6 @@ int rom_loadbank(int bank)
 		}
 	}
 
-	// Make sure no transaction is running
-	rg_spi_lock_acquire(SPI_LOCK_SDCARD);
-
 	// Load the 16K page
 	if (fseek(fpRomFile, OFFSET, SEEK_SET) || !fread(rom.bank[bank], BANK_SIZE, 1, fpRomFile))
 	{
@@ -166,8 +163,6 @@ int rom_loadbank(int bank)
 		else
 			emu_die("ROM bank loading failed");
 	}
-
-	rg_spi_lock_release(SPI_LOCK_SDCARD);
 
 	return 0;
 }
@@ -322,8 +317,6 @@ int sram_load(const char *file)
 	if (!mbc.batt || !mbc.ramsize || !file || !*file)
 		return -1;
 
-	rg_spi_lock_acquire(SPI_LOCK_SDCARD);
-
 	if ((f = fopen(file, "rb")))
 	{
 		MESSAGE_INFO("Loading SRAM from '%s'\n", file);
@@ -336,7 +329,6 @@ int sram_load(const char *file)
 		fclose(f);
 	}
 
-	rg_spi_lock_release(SPI_LOCK_SDCARD);
 	return ret;
 }
 
@@ -348,8 +340,6 @@ int sram_save(const char *file)
 
 	if (!mbc.batt || !mbc.ramsize || !file || !*file)
 		return -1;
-
-	rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
 	if ((f = fopen(file, "wb")))
 	{
@@ -363,7 +353,6 @@ int sram_save(const char *file)
 		fclose(f);
 	}
 
-	rg_spi_lock_release(SPI_LOCK_SDCARD);
 	return ret;
 }
 
@@ -372,8 +361,6 @@ int sram_update(const char *file)
 {
 	if (!mbc.batt || !mbc.ramsize || !file || !*file)
 		return -1;
-
-	rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
 	FILE *fp = fopen(file, "wb");
 	if (!fp)
@@ -424,8 +411,6 @@ _cleanup:
 	{
 		ram.sram_dirty = 0;
 	}
-
-	rg_spi_lock_release(SPI_LOCK_SDCARD);
 
 	return 0;
 }

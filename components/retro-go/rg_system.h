@@ -108,6 +108,7 @@ void rg_system_switch_app(const char *app) __attribute__((noreturn));
 void rg_system_set_boot_app(const char *app);
 bool rg_system_find_app(const char *app);
 void rg_system_set_led(int value);
+int  rg_system_get_led(void);
 void rg_system_tick(bool skippedFrame, bool fullFrame, int busyTime);
 rg_app_desc_t *rg_system_get_app();
 runtime_stats_t rg_system_get_stats();
@@ -128,15 +129,13 @@ void rg_spi_lock_release(spi_lock_res_t);
 bool rg_sdcard_mount();
 bool rg_sdcard_unmount();
 
-FILE *rg_fopen(const char *filename, const char *mode);
-int rg_fclose(FILE *fp);
-bool rg_mkdir(const char *path);
-bool rg_unlink(const char* path);
-bool rg_readdir(const char* path, char **out_files, size_t *out_count);
-long rg_filesize(const char *path);
-
-const char* rg_get_filename(const char *path);
-const char* rg_get_extension(const char *path);
+bool rg_fs_mkdir(const char *path);
+bool rg_fs_delete(const char* path);
+bool rg_fs_readdir(const char* path, char **out_files, size_t *out_count);
+long rg_fs_filesize(const char *path);
+const char* rg_fs_basename(const char *path);
+const char* rg_fs_dirname(const char *path);
+const char* rg_fs_extension(const char *path);
 
 void *rg_alloc(size_t size, uint32_t caps);
 void rg_free(void *ptr);

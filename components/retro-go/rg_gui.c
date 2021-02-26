@@ -163,7 +163,7 @@ rg_image_t *rg_gui_load_image_file(const char *file)
     if (!file)
         return NULL;
 
-    FILE *fp = rg_fopen(file, "rb");
+    FILE *fp = fopen(file, "rb");
     if (fp)
     {
         fseek(fp, 0, SEEK_END);
@@ -171,7 +171,7 @@ rg_image_t *rg_gui_load_image_file(const char *file)
         void *data = rg_alloc(data_len, MEM_SLOW);
         fseek(fp, 0, SEEK_SET);
         fread(data, data_len, 1, fp);
-        rg_fclose(fp);
+        fclose(fp);
 
         rg_image_t *img = rg_gui_load_image(data, data_len);
         free(data);

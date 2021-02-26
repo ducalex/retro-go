@@ -405,14 +405,14 @@ void app_main(void)
     MESSAGE_INFO("Loading rom file: '%s'\n", app->romPath);
 
     FILE *fp;
-    if ((fp = rg_fopen(app->romPath, "rb")))
+    if ((fp = fopen(app->romPath, "rb")))
     {
         fseek(fp, 0, SEEK_END);
         romSize = ftell(fp);
         fseek(fp, 0, SEEK_SET);
         romData = rg_alloc(romSize, MEM_SLOW);
         romSize *= fread(romData, romSize, 1, fp);
-        rg_fclose(fp);
+        fclose(fp);
     }
 
     if (romSize < 16)

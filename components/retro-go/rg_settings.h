@@ -42,6 +42,9 @@ void rg_settings_StartAction_set(emu_start_action_t value);
 int32_t rg_settings_AudioSink_get();
 void rg_settings_AudioSink_set(int32_t value);
 
+int32_t rg_settings_DiskActivity_get();
+void rg_settings_DiskActivity_set(int32_t value);
+
 emu_region_t rg_settings_Region_get();
 void rg_settings_Region_set(emu_region_t value);
 

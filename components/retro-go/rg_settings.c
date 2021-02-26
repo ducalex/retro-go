@@ -14,6 +14,7 @@ static const char* Key_AudioSink    = "AudioSink";
 static const char* Key_Volume       = "Volume";
 static const char* Key_StartupApp   = "StartupApp";
 static const char* Key_FontSize     = "FontSize";
+static const char* Key_DiskActivity = "DiskActivity";
 // static const char* Key_RetroGoVer   = "RetroGoVer";
 // Per-app
 static const char* Key_Region       = "Region";
@@ -51,7 +52,7 @@ static int unsaved_changes = 0;
 void rg_settings_init()
 {
 #ifdef USE_CONFIG_FILE
-    FILE *fp = rg_fopen(config_file, "rb");
+    FILE *fp = fopen(config_file, "rb");
     if (fp)
     {
         fseek(fp, 0, SEEK_END);
@@ -62,7 +63,7 @@ void rg_settings_init()
             root = cJSON_Parse(buffer);
         }
         rg_free(buffer);
-        rg_fclose(fp);
+        fclose(fp);
     }
 
     if (!root)
@@ -97,11 +98,11 @@ void rg_settings_commit()
         char *buffer = cJSON_Print(root);
         if (buffer)
         {
-            FILE *fp = rg_fopen(config_file, "wb");
+            FILE *fp = fopen(config_file, "wb");
             if (fp)
             {
                 fwrite(buffer, strlen(buffer), 1, fp);
-                rg_fclose(fp);
+                fclose(fp);
             }
             cJSON_free(buffer);
         }
@@ -281,6 +282,16 @@ int32_t rg_settings_StartupApp_get()
 void rg_settings_StartupApp_set(int32_t value)
 {
     rg_settings_int32_set(Key_StartupApp, value);
+}
+
+
+int32_t rg_settings_DiskActivity_get()
+{
+    return rg_settings_int32_get(Key_DiskActivity, 0);
+}
+void rg_settings_DiskActivity_set(int32_t value)
+{
+    rg_settings_int32_set(Key_DiskActivity, value);
 }
 
 

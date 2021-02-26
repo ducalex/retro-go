@@ -118,15 +118,15 @@ void emulator_init(retro_emulator_t *emu)
     size_t count = 0;
 
     sprintf(path, RG_BASE_PATH_CRC_CACHE "/%s", emu->dirname);
-    rg_mkdir(path);
+    rg_fs_mkdir(path);
 
     sprintf(path, RG_BASE_PATH_SAVES "/%s", emu->dirname);
-    rg_mkdir(path);
+    rg_fs_mkdir(path);
 
     sprintf(path, RG_BASE_PATH_ROMS "/%s", emu->dirname);
-    rg_mkdir(path);
+    rg_fs_mkdir(path);
 
-    if (rg_readdir(path, &files, &count) && count > 0)
+    if (rg_fs_readdir(path, &files, &count) && count > 0)
     {
         emu->roms.files = rg_alloc(count * sizeof(retro_emulator_file_t), MEM_ANY);
         emu->roms.count = 0;
@@ -135,7 +135,7 @@ void emulator_init(retro_emulator_t *emu)
         for (int i = 0; i < count; ++i)
         {
             const char *name = ptr;
-            const char *ext = rg_get_extension(ptr);
+            const char *ext = rg_fs_extension(ptr);
             size_t name_len = strlen(name);
             bool ext_match = false;
             strcpy(extensions, emu->extensions);
@@ -179,8 +179,8 @@ const char *emu_get_file_path(retro_emulator_file_t *file)
 
 bool emulator_build_file_object(const char *path, retro_emulator_file_t *file)
 {
-    const char *name = rg_get_filename(path);
-    const char *ext = rg_get_extension(path);
+    const char *name = rg_fs_basename(path);
+    const char *ext = rg_fs_extension(path);
 
     if (ext == NULL || name == NULL)
         return false;
@@ -190,7 +190,7 @@ bool emulator_build_file_object(const char *path, retro_emulator_file_t *file)
     strncpy(file->name, name, strlen(name)-strlen(ext)-1);
     strcpy(file->ext, ext);
 
-    const char *dirname = rg_get_filename(file->folder);
+    const char *dirname = rg_fs_basename(file->folder);
 
     for (int i = 0; i < emulators_count; ++i)
     {
@@ -282,7 +282,7 @@ void emulator_show_file_info(retro_emulator_file_t *file)
     sprintf(choices[0].value, "%.95s", file->name);
     sprintf(choices[1].value, "%s", file->ext);
     sprintf(choices[2].value, "%s", file->folder);
-    sprintf(choices[3].value, "%ld KB", rg_filesize(emu_get_file_path(file)) / 1024);
+    sprintf(choices[3].value, "%ld KB", rg_fs_filesize(emu_get_file_path(file)) / 1024);
 
     if (file->checksum > 1)
     {
@@ -300,8 +300,8 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
     char *save_path = rg_emu_get_path(EMU_PATH_SAVE_STATE, emu_get_file_path(file));
     char *sram_path = rg_emu_get_path(EMU_PATH_SAVE_SRAM, emu_get_file_path(file));
     char *scrn_path = rg_emu_get_path(EMU_PATH_SCREENSHOT, emu_get_file_path(file));
-    bool has_save = rg_filesize(save_path) > 0;
-    bool has_sram = rg_filesize(sram_path) > 0;
+    bool has_save = rg_fs_filesize(save_path) > 0;
+    bool has_sram = rg_fs_filesize(sram_path) > 0;
     bool is_fav = favorite_find(file) != NULL;
 
     dialog_option_t choices[] = {
@@ -321,13 +321,13 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
     else if (sel == 2) {
         if (has_save) {
             if (rg_gui_confirm("Delete save state?", 0, 0)) {
-                rg_unlink(save_path);
-                rg_unlink(scrn_path);
+                rg_fs_delete(save_path);
+                rg_fs_delete(scrn_path);
             }
         }
         if (has_sram) {
             if (rg_gui_confirm("Delete sram file?", 0, 0)) {
-                rg_unlink(sram_path);
+                rg_fs_delete(sram_path);
             }
         }
     }
