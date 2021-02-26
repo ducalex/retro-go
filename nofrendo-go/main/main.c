@@ -116,7 +116,7 @@ static bool reset_handler(bool hard)
 }
 
 
-static bool sprite_limit_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t sprite_limit_cb(dialog_option_t *option, dialog_event_t event)
 {
     int val = rg_settings_SpriteLimit_get();
 
@@ -128,10 +128,10 @@ static bool sprite_limit_cb(dialog_choice_t *option, dialog_event_t event)
 
     strcpy(option->value, val ? "On " : "Off");
 
-    return event == RG_DIALOG_ENTER;
+    return RG_DIALOG_IGNORE;
 }
 
-static bool overscan_update_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t overscan_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         overscan = !overscan;
@@ -140,10 +140,10 @@ static bool overscan_update_cb(dialog_choice_t *option, dialog_event_t event)
 
     strcpy(option->value, overscan ? "Auto" : "Off ");
 
-    return event == RG_DIALOG_ENTER;
+    return RG_DIALOG_IGNORE;
 }
 
-static bool autocrop_update_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t autocrop_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     int val = autocrop;
     int max = 2;
@@ -160,10 +160,10 @@ static bool autocrop_update_cb(dialog_choice_t *option, dialog_event_t event)
     if (val == 1) strcpy(option->value, "Auto  ");
     if (val == 2) strcpy(option->value, "Always");
 
-    return event == RG_DIALOG_ENTER;
+    return RG_DIALOG_IGNORE;
 }
 
-static bool region_update_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t region_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     int val = rg_settings_Region_get();
     int max = 2;
@@ -179,13 +179,13 @@ static bool region_update_cb(dialog_choice_t *option, dialog_event_t event)
     if (val == EMU_REGION_NTSC) strcpy(option->value, "NTSC");
     if (val == EMU_REGION_PAL)  strcpy(option->value, "PAL ");
 
-    return event == RG_DIALOG_ENTER;
+    return RG_DIALOG_IGNORE;
 }
 
-static bool advanced_settings_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t advanced_settings_cb(dialog_option_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_ENTER) {
-        dialog_choice_t options[] = {
+        dialog_option_t options[] = {
             {1, "Region      ", "Auto ", 1, &region_update_cb},
             {2, "Overscan    ", "Auto ", 1, &overscan_update_cb},
             {3, "Crop sides  ", "Never", 1, &autocrop_update_cb},
@@ -194,10 +194,10 @@ static bool advanced_settings_cb(dialog_choice_t *option, dialog_event_t event)
         };
         rg_gui_dialog("Advanced", options, 0);
     }
-    return false;
+    return RG_DIALOG_IGNORE;
 }
 
-static bool palette_update_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     int pal = ppu_getopt(PPU_PALETTE_RGB);
     int max = PPU_PAL_COUNT - 1;
@@ -213,7 +213,7 @@ static bool palette_update_cb(dialog_choice_t *option, dialog_event_t event)
     }
 
     sprintf(option->value, "%.7s", ppu_getpalette(pal)->name);
-    return event == RG_DIALOG_ENTER;
+    return RG_DIALOG_IGNORE;
 }
 
 
@@ -311,7 +311,7 @@ void osd_setpalette(rgb_t *pal)
         uint16_t c = (pal[i].b >> 3) + ((pal[i].g >> 2) << 5) + ((pal[i].r >> 3) << 11);
         myPalette[i] = (c >> 8) | ((c & 0xff) << 8);
     }
-    rg_display_force_refresh();
+    rg_display_set_config_param(changed, 1);
 }
 
 void osd_blitscreen(uint8 *bmp)
@@ -345,7 +345,7 @@ void osd_getinput(void)
     }
     else if (localJoystick->values[GAMEPAD_KEY_VOLUME])
     {
-        dialog_choice_t options[] = {
+        dialog_option_t options[] = {
             {100, "Palette", "Default", 1, &palette_update_cb},
             {101, "More...", "", 1, &advanced_settings_cb},
             RG_DIALOG_CHOICE_LAST};

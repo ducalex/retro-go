@@ -369,13 +369,13 @@ bool rg_netplay_quick_start(void)
 
     rg_display_clear(0);
 
-    dialog_choice_t choices[] = {
+    dialog_option_t options[] = {
         {1, "Host Game (P1)", "", 1, NULL},
         {2, "Find Game (P2)", "", 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
 
-    int ret = rg_gui_dialog("Netplay", choices, 0);
+    int ret = rg_gui_dialog("Netplay", options, 0);
 
     if (ret == 1)
         rg_netplay_start(NETPLAY_MODE_HOST);

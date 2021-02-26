@@ -16,7 +16,7 @@
 #define KEY_SHOW_PREVIEW  "ShowPreview"
 #define KEY_PREVIEW_SPEED "PreviewSpeed"
 
-static bool font_size_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t font_size_cb(dialog_option_t *option, dialog_event_t event)
 {
     int font_size = rg_gui_get_font_info().points;
     if (event == RG_DIALOG_PREV && font_size > 8) {
@@ -31,20 +31,20 @@ static bool font_size_cb(dialog_choice_t *option, dialog_event_t event)
     if (font_size ==  8) strcpy(option->value, "Small ");
     if (font_size == 12) strcpy(option->value, "Medium");
     if (font_size == 16) strcpy(option->value, "Large ");
-    return event == RG_DIALOG_ENTER;
+    return RG_DIALOG_IGNORE;
 }
 
-static bool show_empty_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t show_empty_cb(dialog_option_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         gui.show_empty = !gui.show_empty;
         rg_settings_int32_set(KEY_SHOW_EMPTY, gui.show_empty);
     }
     strcpy(option->value, gui.show_empty ? "Show" : "Hide");
-    return event == RG_DIALOG_ENTER;
+    return RG_DIALOG_IGNORE;
 }
 
-static bool startup_app_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t startup_app_cb(dialog_option_t *option, dialog_event_t event)
 {
     int startup_app = rg_settings_StartupApp_get();
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
@@ -52,10 +52,10 @@ static bool startup_app_cb(dialog_choice_t *option, dialog_event_t event)
         rg_settings_StartupApp_set(startup_app);
     }
     strcpy(option->value, startup_app == 0 ? "Launcher " : "Last used");
-    return event == RG_DIALOG_ENTER;
+    return RG_DIALOG_IGNORE;
 }
 
-static bool show_preview_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t show_preview_cb(dialog_option_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_PREV) {
         if (--gui.show_preview < 0) gui.show_preview = 5;
@@ -67,20 +67,20 @@ static bool show_preview_cb(dialog_choice_t *option, dialog_event_t event)
     }
     const char *values[] = {"None      ", "Cover,Save", "Save,Cover", "Cover     ", "Save      "};
     strcpy(option->value, values[gui.show_preview % 5]);
-    return event == RG_DIALOG_ENTER;
+    return RG_DIALOG_IGNORE;
 }
 
-static bool show_preview_speed_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t show_preview_speed_cb(dialog_option_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         gui.show_preview_fast = gui.show_preview_fast ? 0 : 1;
         rg_settings_int32_set(KEY_PREVIEW_SPEED, gui.show_preview_fast);
     }
     strcpy(option->value, gui.show_preview_fast ? "Short" : "Long");
-    return event == RG_DIALOG_ENTER;
+    return RG_DIALOG_IGNORE;
 }
 
-static bool color_shift_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t color_shift_cb(dialog_option_t *option, dialog_event_t event)
 {
     int max = gui_themes_count - 1;
     if (event == RG_DIALOG_PREV) {
@@ -94,7 +94,7 @@ static bool color_shift_cb(dialog_choice_t *option, dialog_event_t event)
         gui_redraw();
     }
     sprintf(option->value, "%d/%d", gui.theme + 1, max + 1);
-    return event == RG_DIALOG_ENTER;
+    return RG_DIALOG_IGNORE;
 }
 
 static inline bool tab_enabled(tab_t *tab)
@@ -181,7 +181,7 @@ void retro_loop()
                 if (gui.joystick.values[i]) last_key = i;
 
             if (last_key == GAMEPAD_KEY_MENU) {
-                dialog_choice_t choices[] = {
+                dialog_option_t choices[] = {
                     {0, "Ver.", "build string", 1, NULL},
                     {0, "Date", "", 1, NULL},
                     {0, "By", "ducalex", 1, NULL},
@@ -212,7 +212,7 @@ void retro_loop()
                 gui_redraw();
             }
             else if (last_key == GAMEPAD_KEY_VOLUME) {
-                dialog_choice_t choices[] = {
+                dialog_option_t choices[] = {
                     RG_DIALOG_SEPARATOR,
                     {0, "Color theme", "...",  1, &color_shift_cb},
                     {0, "Font size  ", "...",  1, &font_size_cb},

@@ -268,7 +268,7 @@ void emulator_crc32_file(retro_emulator_file_t *file)
 
 void emulator_show_file_info(retro_emulator_file_t *file)
 {
-    dialog_choice_t choices[] = {
+    dialog_option_t choices[] = {
         {0, "File", "...", 1, NULL},
         {0, "Type", "N/A", 1, NULL},
         {0, "Folder", "...", 1, NULL},
@@ -304,7 +304,7 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
     bool has_sram = rg_filesize(sram_path) > 0;
     bool is_fav = favorite_find(file) != NULL;
 
-    dialog_choice_t choices[] = {
+    dialog_option_t choices[] = {
         {0, "Resume game ", "", has_save, NULL},
         {1, "New game    ", "", 1, NULL},
         {0, "------------", "", -1, NULL},

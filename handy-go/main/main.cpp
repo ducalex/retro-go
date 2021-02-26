@@ -28,7 +28,7 @@ static int dpad_mapped_right;
 
 static void set_rotation()
 {
-    display_rotation_t rotation = rg_display_get_rotation();
+    display_rotation_t rotation = rg_display_get_config_param(rotation);
 
     if (rotation == RG_DISPLAY_ROTATION_AUTO)
     {
@@ -88,18 +88,18 @@ static void set_rotation()
 }
 
 
-static bool rotation_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t rotation_cb(dialog_option_t *option, dialog_event_t event)
 {
-    int rotation = (int)rg_display_get_rotation();
+    int rotation = rg_display_get_config_param(rotation);
 
     if (event == RG_DIALOG_PREV) {
         if (--rotation < 0) rotation = RG_DISPLAY_ROTATION_COUNT - 1;
-        rg_display_set_rotation((display_rotation_t)rotation);
+        rg_display_set_config_param(rotation, rotation);
         set_rotation();
     }
     if (event == RG_DIALOG_NEXT) {
         if (++rotation > RG_DISPLAY_ROTATION_COUNT - 1) rotation = 0;
-        rg_display_set_rotation((display_rotation_t)rotation);
+        rg_display_set_config_param(rotation, rotation);
         set_rotation();
     }
 
@@ -108,7 +108,7 @@ static bool rotation_cb(dialog_choice_t *option, dialog_event_t event)
     if (rotation == RG_DISPLAY_ROTATION_LEFT)  strcpy(option->value, "Left ");
     if (rotation == RG_DISPLAY_ROTATION_RIGHT) strcpy(option->value, "Right");
 
-    return event == RG_DIALOG_ENTER;
+    return RG_DIALOG_IGNORE;
 }
 
 static bool save_state_handler(char *pathName)
@@ -214,7 +214,7 @@ extern "C" void app_main(void)
             rg_gui_game_menu();
         }
         else if (joystick.values[GAMEPAD_KEY_VOLUME]) {
-            dialog_choice_t options[] = {
+            dialog_option_t options[] = {
                 {100, "Rotation", "Auto", 1, &rotation_cb},
                 RG_DIALOG_CHOICE_LAST
             };

@@ -148,7 +148,7 @@ static void update_keymap(int id)
 	}
 }
 
-static bool menu_keymap_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t menu_keymap_cb(dialog_option_t *option, dialog_event_t event)
 {
 	const int max = KEYMAPS_COUNT - 1;
 	const int prev = keymap_id;
@@ -166,8 +166,8 @@ static bool menu_keymap_cb(dialog_choice_t *option, dialog_event_t event)
 
 	if (event == RG_DIALOG_ENTER)
 	{
-		dialog_choice_t *options = (dialog_choice_t *)calloc(keymap.size + 2, sizeof(dialog_choice_t));
-		dialog_choice_t *option = options;
+		dialog_option_t *options = (dialog_option_t *)calloc(keymap.size + 2, sizeof(dialog_option_t));
+		dialog_option_t *option = options;
 
 		for (int i = 0; i < keymap.size; i++)
 		{
@@ -196,7 +196,7 @@ static bool menu_keymap_cb(dialog_choice_t *option, dialog_event_t event)
 		free(options);
 	}
 
-    return false;
+    return RG_DIALOG_IGNORE;
 }
 
 static bool save_state_handler(char *pathName)
@@ -301,7 +301,7 @@ static void snes9x_task(void *arg)
 		}
 		else if (joystick.values[GAMEPAD_KEY_VOLUME])
 		{
-			dialog_choice_t options[] = {
+			dialog_option_t options[] = {
 				{2, "Controls", "ABC", 1, &menu_keymap_cb},
 				RG_DIALOG_CHOICE_LAST};
 			rg_gui_game_settings_menu(options);

@@ -100,7 +100,7 @@ static bool reset_handler(bool hard)
     return true;
 }
 
-static bool palette_update_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     int pal = pal_get_dmg();
     int max = pal_count_dmg();
@@ -121,10 +121,10 @@ static bool palette_update_cb(dialog_choice_t *option, dialog_event_t event)
     if (pal == 0) strcpy(option->value, "GBC");
     else sprintf(option->value, "%d/%d", pal, max);
 
-    return event == RG_DIALOG_ENTER;
+    return RG_DIALOG_IGNORE;
 }
 
-static bool sram_save_now_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t sram_save_now_cb(dialog_option_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
     {
@@ -137,13 +137,13 @@ static bool sram_save_now_cb(dialog_choice_t *option, dialog_event_t event)
 
         rg_system_set_led(0);
 
-        return true;
+        return RG_DIALOG_SELECT;
     }
 
-    return false;
+    return RG_DIALOG_IGNORE;
 }
 
-static bool sram_autosave_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t sram_autosave_cb(dialog_option_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_PREV) autoSaveSRAM--;
     if (event == RG_DIALOG_NEXT) autoSaveSRAM++;
@@ -158,10 +158,10 @@ static bool sram_autosave_cb(dialog_choice_t *option, dialog_event_t event)
     if (autoSaveSRAM == 0) strcpy(option->value, "Off ");
     else sprintf(option->value, "%lds", autoSaveSRAM);
 
-    return event == RG_DIALOG_ENTER;
+    return RG_DIALOG_IGNORE;
 }
 
-static bool rtc_t_update_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t rtc_t_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     if (option->id == 'd') {
         if (event == RG_DIALOG_PREV && --rtc.d < 0) rtc.d = 364;
@@ -186,13 +186,13 @@ static bool rtc_t_update_cb(dialog_choice_t *option, dialog_event_t event)
 
     // TO DO: Update system clock
 
-    return event == RG_DIALOG_ENTER;
+    return RG_DIALOG_IGNORE;
 }
 
-static bool rtc_update_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t rtc_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_ENTER) {
-        static dialog_choice_t choices[] = {
+        static dialog_option_t choices[] = {
             {'d', "Day", "000", 1, &rtc_t_update_cb},
             {'h', "Hour", "00", 1, &rtc_t_update_cb},
             {'m', "Min",  "00", 1, &rtc_t_update_cb},
@@ -202,13 +202,13 @@ static bool rtc_update_cb(dialog_choice_t *option, dialog_event_t event)
         rg_gui_dialog("Set Clock", choices, 0);
     }
     sprintf(option->value, "%02d:%02d", rtc.h, rtc.m);
-    return false;
+    return RG_DIALOG_IGNORE;
 }
 
-static bool advanced_settings_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t advanced_settings_cb(dialog_option_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_ENTER) {
-        dialog_choice_t options[] = {
+        dialog_option_t options[] = {
             {101, "Set clock", "00:00 ", 1, &rtc_update_cb},
             RG_DIALOG_SEPARATOR,
             {111, "Auto save SRAM", "Off", mbc.batt && mbc.ramsize, &sram_autosave_cb},
@@ -217,7 +217,7 @@ static bool advanced_settings_cb(dialog_choice_t *option, dialog_event_t event)
         };
         rg_gui_dialog("Advanced", options, 0);
     }
-    return false;
+    return RG_DIALOG_IGNORE;
 }
 
 static void screen_blit(void)
@@ -316,7 +316,7 @@ void app_main(void)
             rg_gui_game_menu();
         }
         else if (joystick.values[GAMEPAD_KEY_VOLUME]) {
-            dialog_choice_t options[] = {
+            dialog_option_t options[] = {
                 {100, "Palette", "7/7", !hw.cgb, &palette_update_cb},
                 {101, "More...", "", 1, &advanced_settings_cb},
                 RG_DIALOG_CHOICE_LAST

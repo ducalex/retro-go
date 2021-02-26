@@ -8,11 +8,13 @@ typedef enum {
     RG_DIALOG_PREV,
     RG_DIALOG_NEXT,
     RG_DIALOG_ENTER,
+    RG_DIALOG_ALT,
 } dialog_event_t;
 
 typedef enum {
     RG_DIALOG_IGNORE,
-    RG_DIALOG_RETURN,
+    RG_DIALOG_SELECT,
+    RG_DIALOG_CANCEL,
 } dialog_return_t;
 
 typedef struct {
@@ -30,14 +32,15 @@ typedef struct {
     uint8_t type;
 } font_info_t;
 
-typedef struct dialog_choice_s dialog_choice_t;
+typedef struct dialog_option_s dialog_option_t;
+typedef dialog_return_t (*dialog_callback_t)(dialog_option_t *, dialog_event_t);
 
-struct dialog_choice_s {
+struct dialog_option_s {
     int  id;
     const char *label;
     char value[96];
     int  flags;
-    bool (*update_cb)(dialog_choice_t *, dialog_event_t);
+    dialog_callback_t update_cb;
 };
 
 #define RG_DIALOG_FLAG_DISABLED  0 // (1 << 0)
@@ -47,7 +50,7 @@ struct dialog_choice_s {
 
 #define RG_DIALOG_CHOICE_LAST {0, NULL, "LAST", RG_DIALOG_FLAG_LAST, NULL}
 #define RG_DIALOG_SEPARATOR   {0, "----", "", RG_DIALOG_FLAG_SKIP, NULL}
-#define RG_DIALOG_MAKE_LAST(ptr) {dialog_choice_t *p = (ptr); p->flags = RG_DIALOG_FLAG_LAST;}
+#define RG_DIALOG_MAKE_LAST(ptr) {dialog_option_t *p = (ptr); p->flags = RG_DIALOG_FLAG_LAST;}
 
 typedef struct {
     size_t width;
@@ -211,17 +214,17 @@ void rg_gui_draw_rect(int x, int y, int width, int height, int border, uint16_t 
 void rg_gui_draw_fill_rect(int x, int y, int width, int height, uint16_t color);
 void rg_gui_draw_battery(int x, int y);
 void rg_gui_draw_hourglass(void);
-void rg_gui_draw_dialog(const char *header, dialog_choice_t *options, int sel);
+void rg_gui_draw_dialog(const char *header, dialog_option_t *options, int sel);
 
 rg_image_t *rg_gui_load_image_file(const char *file);
 rg_image_t *rg_gui_load_image(const uint8_t *data, size_t data_len);
 void rg_gui_draw_image(int x, int y, int width, int height, const rg_image_t *img);
 void rg_gui_free_image(rg_image_t *img);
 
-int  rg_gui_dialog(const char *header, dialog_choice_t *options, int selected_initial);
+int  rg_gui_dialog(const char *header, dialog_option_t *options, int selected_initial);
 bool rg_gui_confirm(const char *title, const char *message, bool yes_selected);
 void rg_gui_alert(const char *title, const char *message);
 
-int rg_gui_settings_menu(dialog_choice_t *extra_options);
-int rg_gui_game_settings_menu(dialog_choice_t *extra_options);
+int rg_gui_settings_menu(dialog_option_t *extra_options);
+int rg_gui_game_settings_menu(dialog_option_t *extra_options);
 int rg_gui_game_menu(void);

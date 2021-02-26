@@ -274,7 +274,7 @@ void rg_gui_draw_hourglass(void)
         (uint16_t*)image_hourglass.pixel_data);
 }
 
-static int get_dialog_items_count(const dialog_choice_t *options)
+static int get_dialog_items_count(const dialog_option_t *options)
 {
     if (options == NULL)
         return 0;
@@ -288,7 +288,7 @@ static int get_dialog_items_count(const dialog_choice_t *options)
     return 0;
 }
 
-void rg_gui_draw_dialog(const char *header, dialog_choice_t *options, int sel)
+void rg_gui_draw_dialog(const char *header, dialog_option_t *options, int sel)
 {
     int width = header ? strlen(header) : 8;
     int padding = 0;
@@ -366,13 +366,12 @@ void rg_gui_draw_dialog(const char *header, dialog_choice_t *options, int sel)
     free(rows);
 }
 
-int rg_gui_dialog(const char *header, dialog_choice_t *options, int selected)
+int rg_gui_dialog(const char *header, dialog_option_t *options, int selected)
 {
     int options_count = get_dialog_items_count(options);
     int sel = selected < 0 ? (options_count + selected) : selected;
     int sel_old = sel;
     int last_key = -1;
-    bool select = false;
 
     rg_gui_draw_dialog(header, options, sel);
 
@@ -388,6 +387,8 @@ int rg_gui_dialog(const char *header, dialog_choice_t *options, int selected)
             }
         }
         else {
+            dialog_return_t select = RG_DIALOG_IGNORE;
+
             if (joystick.values[GAMEPAD_KEY_UP]) {
                 last_key = GAMEPAD_KEY_UP;
                 if (--sel < 0) sel = options_count - 1;
@@ -398,21 +399,17 @@ int rg_gui_dialog(const char *header, dialog_choice_t *options, int selected)
             }
             else if (joystick.values[GAMEPAD_KEY_B]) {
                 last_key = GAMEPAD_KEY_B;
-                sel = -1;
-                break;
+                select = RG_DIALOG_CANCEL;
             }
             else if (joystick.values[GAMEPAD_KEY_VOLUME]) {
                 last_key = GAMEPAD_KEY_VOLUME;
-                sel = -1;
-                break;
+                select = RG_DIALOG_CANCEL;
             }
             else if (joystick.values[GAMEPAD_KEY_MENU]) {
                 last_key = GAMEPAD_KEY_MENU;
-                sel = -1;
-                break;
+                select = RG_DIALOG_CANCEL;
             }
             if (options[sel].flags != RG_DIALOG_FLAG_DISABLED) {
-                select = false;
                 if (joystick.values[GAMEPAD_KEY_LEFT]) {
                     last_key = GAMEPAD_KEY_LEFT;
                     if (options[sel].update_cb != NULL) {
@@ -427,19 +424,30 @@ int rg_gui_dialog(const char *header, dialog_choice_t *options, int selected)
                         sel_old = -1;
                     }
                 }
+                else if (joystick.values[GAMEPAD_KEY_START]) {
+                    last_key = GAMEPAD_KEY_START;
+                    if (options[sel].update_cb != NULL) {
+                        select = options[sel].update_cb(&options[sel], RG_DIALOG_ALT);
+                        sel_old = -1;
+                    }
+                }
                 else if (joystick.values[GAMEPAD_KEY_A]) {
                     last_key = GAMEPAD_KEY_A;
                     if (options[sel].update_cb != NULL) {
                         select = options[sel].update_cb(&options[sel], RG_DIALOG_ENTER);
                         sel_old = -1;
                     } else {
-                        select = true;
+                        select = RG_DIALOG_SELECT;
                     }
                 }
+            }
 
-                if (select) {
-                    break;
-                }
+            if (select == RG_DIALOG_CANCEL) {
+                sel = -1;
+                break;
+            }
+            if (select == RG_DIALOG_SELECT) {
+                break;
             }
         }
         if (sel_old != sel)
@@ -463,35 +471,35 @@ int rg_gui_dialog(const char *header, dialog_choice_t *options, int selected)
 
     rg_input_wait_for_key(last_key, false);
 
-    rg_display_force_refresh();
+    rg_display_set_config_param(changed, 1);
 
     return sel < 0 ? sel : options[sel].id;
 }
 
 bool rg_gui_confirm(const char *title, const char *message, bool yes_selected)
 {
-    dialog_choice_t choices[] = {
+    dialog_option_t options[] = {
         {0, message, "", -1, NULL},
         {0, "", "", -1, NULL},
         {1, "Yes", "", 1, NULL},
         {0, "No ", "", 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
-    return rg_gui_dialog(title, message ? choices : choices + 1, yes_selected ? -2 : -1) == 1;
+    return rg_gui_dialog(title, message ? options : options + 1, yes_selected ? -2 : -1) == 1;
 }
 
 void rg_gui_alert(const char *title, const char *message)
 {
-    dialog_choice_t choices[] = {
+    dialog_option_t options[] = {
         {0, message, "", -1, NULL},
         {0, "", "", -1, NULL},
         {1, "OK", "", 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
-    rg_gui_dialog(title, message ? choices : choices + 1, -1);
+    rg_gui_dialog(title, message ? options : options + 1, -1);
 }
 
-static bool volume_update_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t volume_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     int8_t level = rg_audio_volume_get();
     int8_t min = RG_AUDIO_VOL_MIN;
@@ -506,27 +514,29 @@ static bool volume_update_cb(dialog_choice_t *option, dialog_event_t event)
     }
 
     sprintf(option->value, "%d/%d", level, max);
-    return event == RG_DIALOG_ENTER;
+
+    return RG_DIALOG_IGNORE;
 }
 
-static bool brightness_update_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t brightness_update_cb(dialog_option_t *option, dialog_event_t event)
 {
-    int8_t level = rg_display_get_backlight();
+    int8_t level = rg_display_get_config_param(backlight);
     int8_t max = RG_BACKLIGHT_LEVEL_COUNT - 1;
 
     if (event == RG_DIALOG_PREV && level > 0) {
-        rg_display_set_backlight(--level);
+        rg_display_set_config_param(backlight, --level);
     }
 
     if (event == RG_DIALOG_NEXT && level < max) {
-        rg_display_set_backlight(++level);
+        rg_display_set_config_param(backlight, ++level);
     }
 
     sprintf(option->value, "%d/%d", level + 1, max + 1);
-    return event == RG_DIALOG_ENTER;
+
+    return RG_DIALOG_IGNORE;
 }
 
-static bool audio_update_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t audio_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     int8_t sink = rg_audio_get_sink();
 
@@ -536,13 +546,14 @@ static bool audio_update_cb(dialog_choice_t *option, dialog_event_t event)
     }
 
     strcpy(option->value, (sink == RG_AUDIO_SINK_DAC) ? "Ext DAC" : "Speaker");
-    return event == RG_DIALOG_ENTER;
+
+    return RG_DIALOG_IGNORE;
 }
 
-static bool filter_update_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t filter_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     int8_t max = RG_DISPLAY_FILTER_COUNT - 1;
-    int8_t mode = rg_display_get_filter_mode();
+    int8_t mode = rg_display_get_config_param(filter);
     int8_t prev = mode;
 
     if (event == RG_DIALOG_PREV && --mode < 0) mode = max; // 0;
@@ -550,7 +561,7 @@ static bool filter_update_cb(dialog_choice_t *option, dialog_event_t event)
 
     if (mode != prev)
     {
-        rg_display_set_filter_mode(mode);
+        rg_display_set_config_param(filter, mode);
     }
 
     if (mode == RG_DISPLAY_FILTER_OFF)      strcpy(option->value, "Off  ");
@@ -558,42 +569,43 @@ static bool filter_update_cb(dialog_choice_t *option, dialog_event_t event)
     if (mode == RG_DISPLAY_FILTER_LINEAR_Y) strcpy(option->value, "Vert ");
     if (mode == RG_DISPLAY_FILTER_BILINEAR) strcpy(option->value, "Both ");
 
-    return event == RG_DIALOG_ENTER;
+    return RG_DIALOG_IGNORE;
 }
 
-static bool scaling_update_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t scaling_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     int8_t max = RG_DISPLAY_SCALING_COUNT - 1;
-    int8_t mode = rg_display_get_scaling_mode();
+    int8_t mode = rg_display_get_config_param(scaling);
     int8_t prev = mode;
 
     if (event == RG_DIALOG_PREV && --mode < 0) mode =  max; // 0;
     if (event == RG_DIALOG_NEXT && ++mode > max) mode = 0;  // max;
 
     if (mode != prev) {
-        rg_display_set_scaling_mode(mode);
+        rg_display_set_config_param(scaling, mode);
     }
 
     if (mode == RG_DISPLAY_SCALING_OFF)  strcpy(option->value, "Off  ");
     if (mode == RG_DISPLAY_SCALING_FIT)  strcpy(option->value, "Fit ");
     if (mode == RG_DISPLAY_SCALING_FILL) strcpy(option->value, "Full ");
 
-    return event == RG_DIALOG_ENTER;
+    return RG_DIALOG_IGNORE;
 }
 
-static bool speedup_update_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t speedup_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     rg_app_desc_t *app = rg_system_get_app();
     if (event == RG_DIALOG_PREV && --app->speedupEnabled < 0) app->speedupEnabled = 2;
     if (event == RG_DIALOG_NEXT && ++app->speedupEnabled > 2) app->speedupEnabled = 0;
 
     sprintf(option->value, "%dx", app->speedupEnabled + 1);
-    return event == RG_DIALOG_ENTER;
+
+    return RG_DIALOG_IGNORE;
 }
 
-int rg_gui_settings_menu(dialog_choice_t *extra_options)
+int rg_gui_settings_menu(dialog_option_t *extra_options)
 {
-    dialog_choice_t options[12] = {
+    dialog_option_t options[12] = {
         {0, "Brightness", "50%",  1, &brightness_update_cb},
         {1, "Volume    ", "50%",  1, &volume_update_cb},
         {2, "Audio out ", "Speaker", 1, &audio_update_cb},
@@ -603,7 +615,7 @@ int rg_gui_settings_menu(dialog_choice_t *extra_options)
     if (extra_options) {
         int options_count = get_dialog_items_count(options);
         int extra_options_count = get_dialog_items_count(extra_options);
-        memcpy(options + options_count, extra_options, (extra_options_count + 1) * sizeof(dialog_choice_t));
+        memcpy(options + options_count, extra_options, (extra_options_count + 1) * sizeof(dialog_option_t));
     }
 
     int ret = rg_gui_dialog("Options", options, 0);
@@ -638,9 +650,9 @@ static void draw_game_status_bar(runtime_stats_t stats)
     rg_gui_draw_battery(width - 26, 3);
 }
 
-int rg_gui_game_settings_menu(dialog_choice_t *extra_options)
+int rg_gui_game_settings_menu(dialog_option_t *extra_options)
 {
-    dialog_choice_t options[12] = {
+    dialog_option_t options[12] = {
         {10, "Scaling", "Full", 1, &scaling_update_cb},
         {12, "Filtering", "None", 1, &filter_update_cb}, // Interpolation
         {13, "Speed", "1x", 1, &speedup_update_cb},
@@ -650,7 +662,7 @@ int rg_gui_game_settings_menu(dialog_choice_t *extra_options)
     if (extra_options) {
         int options_count = get_dialog_items_count(options);
         int extra_options_count = get_dialog_items_count(extra_options);
-        memcpy(options + options_count, extra_options, (extra_options_count + 1) * sizeof(dialog_choice_t));
+        memcpy(options + options_count, extra_options, (extra_options_count + 1) * sizeof(dialog_option_t));
     }
 
     // Collect stats before freezing emulation with wait_all_keys_released()
@@ -669,35 +681,58 @@ int rg_gui_game_settings_menu(dialog_choice_t *extra_options)
 
 int rg_gui_game_debug_menu(void)
 {
-    dialog_choice_t options[12] = {
-        {10, "Screen Res", "A", 1, NULL},
-        {10, "Game Res", "B", 1, NULL},
-        {10, "Scaled Res", "C", 1, NULL},
-        {10, "Cheats", "C", 1, NULL},
-        {10, "Rewind", "C", 1, NULL},
-        {10, "Registers", "C", 1, NULL},
+    dialog_option_t options[] = {
+        {0, "Screen Res", "0", 1, NULL},
+        {0, "Game Res  ", "0", 1, NULL},
+        {0, "Scaled Res", "0", 1, NULL},
+        {0, "Stack HWM ", "0", 1, NULL},
+        {0, "Heap free ", "0", 1, NULL},
+        {0, "Block free", "0", 1, NULL},
+        {0, "Uptime    ", "0", 1, NULL},
+        RG_DIALOG_SEPARATOR,
+        {0, "Cheats", "", 1, NULL},
+        {0, "Rewind", "", 1, NULL},
+        {0, "Registers", "", 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
-    // runtime_stats_t stats = rg_system_get_stats();
+
+    runtime_stats_t stats = rg_system_get_stats();
+    rg_display_cfg_t display = rg_display_get_config();
+
+    sprintf(options[0].value, "%dx%d", RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT);
+    sprintf(options[1].value, "%dx%d", display.fb_width, display.fb_height);
+    sprintf(options[2].value, "%dx%d", display.sc_width, display.sc_height);
+    sprintf(options[3].value, "%d", stats.freeStackMain);
+    sprintf(options[4].value, "%d+%d", stats.freeMemoryInt, stats.freeMemoryExt);
+    sprintf(options[5].value, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);
+    sprintf(options[6].value, "%ds", (int)(get_elapsed_time() / 1000 / 1000));
 
     wait_all_keys_released();
 
     return rg_gui_dialog("Debugging", options, 0);
 }
 
+static dialog_return_t debug_menu_cb(dialog_option_t *option, dialog_event_t event)
+{
+    if (event == RG_DIALOG_ALT)
+        rg_gui_game_debug_menu();
+    else if (event == RG_DIALOG_ENTER)
+        return RG_DIALOG_SELECT;
+    return RG_DIALOG_CANCEL;
+}
+
 int rg_gui_game_menu(void)
 {
-    dialog_choice_t choices[] = {
+    dialog_option_t choices[] = {
         // {0, "Continue", "",  1, NULL},
-        {10, "Save & Continue", "",  1, NULL},
-        {20, "Save & Quit", "", 1, NULL},
-        {30, "Reload", "", 1, NULL},
-        {35, "Reset", "", 1, NULL},
+        {10, "Save & Continue", "",  1, &debug_menu_cb},
+        {20, "Save & Quit", "", 1, &debug_menu_cb},
+        {30, "Reload", "", 1, &debug_menu_cb},
+        {35, "Reset", "", 1, &debug_menu_cb},
         #ifdef ENABLE_NETPLAY
-        {40, "Netplay", "", 1, NULL},
+        {40, "Netplay", "", 1, &debug_menu_cb},
         #endif
-        // {50, "Tools", "", 1, NULL},
-        {100, "Quit", "", 1, NULL},
+        {100, "Quit", "", 1, &debug_menu_cb},
         RG_DIALOG_CHOICE_LAST
     };
 
@@ -719,7 +754,6 @@ int rg_gui_game_menu(void)
     #ifdef ENABLE_NETPLAY
         case 40: rg_netplay_quick_start(); break;
     #endif
-        case 50: rg_gui_game_debug_menu(); break;
         case 100: rg_system_switch_app(RG_APP_LAUNCHER); break;
     }
 

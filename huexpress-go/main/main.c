@@ -161,7 +161,7 @@ void osd_gfx_shutdown(void)
     MESSAGE_INFO("Goodbye...\n");
 }
 
-static bool overscan_update_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t overscan_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
@@ -172,10 +172,10 @@ static bool overscan_update_cb(dialog_choice_t *option, dialog_event_t event)
 
     strcpy(option->value, overscan ? "On " : "Off");
 
-    return event == RG_DIALOG_ENTER;
+    return RG_DIALOG_IGNORE;
 }
 
-static bool sampletype_update_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t sampletype_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         host.sound.sample_uint8 ^= 1;
@@ -184,20 +184,20 @@ static bool sampletype_update_cb(dialog_choice_t *option, dialog_event_t event)
 
     strcpy(option->value, host.sound.sample_uint8 ? "On " : "Off");
 
-    return event == RG_DIALOG_ENTER;
+    return RG_DIALOG_IGNORE;
 }
 
-static bool advanced_settings_cb(dialog_choice_t *option, dialog_event_t event)
+static dialog_return_t advanced_settings_cb(dialog_option_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
     {
-        dialog_choice_t options[] = {
+        dialog_option_t options[] = {
             {2, "Overscan      ", "On ", 1, &overscan_update_cb},
             {3, "Unsigned audio", "Off", 1, &sampletype_update_cb},
             RG_DIALOG_CHOICE_LAST};
         rg_gui_dialog("Advanced", options, 0);
     }
-    return false;
+    return RG_DIALOG_IGNORE;
 }
 
 int osd_input_init(void)
@@ -215,7 +215,7 @@ void osd_input_read(void)
     }
     else if (joystick.values[GAMEPAD_KEY_VOLUME])
     {
-        dialog_choice_t options[] = {
+        dialog_option_t options[] = {
             {101, "More...", "", 1, &advanced_settings_cb},
             RG_DIALOG_CHOICE_LAST};
         rg_gui_game_settings_menu(options);

@@ -57,6 +57,16 @@ enum
 };
 
 typedef struct {
+    display_backlight_t backlight;
+    display_rotation_t rotation;
+    display_scaling_t scaling;
+    display_filter_t filter;
+    uint32_t fb_width, fb_height;
+    uint32_t sc_width, sc_height;
+    bool changed;
+} rg_display_cfg_t;
+
+typedef struct {
     short left;
     short width;
     short repeat;
@@ -74,27 +84,22 @@ typedef struct {
     rg_line_diff_t diff[256];
 } rg_video_frame_t;
 
-typedef void (*display_callback_t)(rg_video_frame_t *arg);
-
-void rg_display_init();
-void rg_display_deinit();
-void rg_display_drain_spi();
+void rg_display_init(void);
+void rg_display_deinit(void);
+void rg_display_drain_spi(void);
 void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t* buffer);
 void rg_display_clear(uint16_t colorLE);
-void rg_display_force_refresh(void);
 void rg_display_set_scale(int width, int height, double aspect_ratio);
 void rg_display_show_info(const char *text, int timeout_ms);
 bool rg_display_save_frame(const char *filename, const rg_video_frame_t *frame, int width, int height);
 screen_update_t rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *previousFrame);
 
-display_backlight_t rg_display_get_backlight();
-void rg_display_set_backlight(display_backlight_t level);
+rg_display_cfg_t rg_display_get_config(void);
+void rg_display_set_config(rg_display_cfg_t config);
 
-display_scaling_t rg_display_get_scaling_mode(void);
-void rg_display_set_scaling_mode(display_scaling_t mode);
-
-display_filter_t rg_display_get_filter_mode(void);
-void rg_display_set_filter_mode(display_filter_t mode);
-
-display_rotation_t rg_display_get_rotation(void);
-void rg_display_set_rotation(display_rotation_t rotation);
+#define rg_display_get_config_param(param) (rg_display_get_config().param)
+#define rg_display_set_config_param(param, value) {     \
+    rg_display_cfg_t config = rg_display_get_config();  \
+    config.param = (typeof(config.param))(value);       \
+    rg_display_set_config(config);                      \
+}
