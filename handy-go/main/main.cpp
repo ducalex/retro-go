@@ -16,7 +16,7 @@ static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
 static rg_video_frame_t frames[2];
 static rg_video_frame_t *currentUpdate = &frames[0];
-
+static rg_app_desc_t *app = NULL;
 static CSystem *lynx = NULL;
 
 static int dpad_mapped_up;
@@ -151,7 +151,9 @@ static bool load_state_handler(char *pathName)
 
 static bool reset_handler(bool hard)
 {
-    lynx->Reset();
+    // This isn't nice but lynx->Reset() crashes...
+    delete lynx;
+    lynx = new CSystem(app->romPath, MIKIE_PIXEL_FORMAT_16BPP_565_BE, AUDIO_SAMPLE_RATE);
     return true;
 }
 
@@ -167,6 +169,8 @@ extern "C" void app_main(void)
     rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
     rg_emu_init(&handlers);
 
+    app = rg_system_get_app();
+
     frames[0].flags = RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].width = HANDY_SCREEN_WIDTH;
     frames[0].height = HANDY_SCREEN_WIDTH;
@@ -176,8 +180,6 @@ extern "C" void app_main(void)
     // the HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH is deliberate because of rotation
     frames[0].buffer = (void*)rg_alloc(HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH * 2, MEM_FAST);
     frames[1].buffer = (void*)rg_alloc(HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH * 2, MEM_FAST);
-
-    rg_app_desc_t *app = rg_system_get_app();
 
     // The Lynx has a variable framerate but 60 is typical
     app->refreshRate = 60;
