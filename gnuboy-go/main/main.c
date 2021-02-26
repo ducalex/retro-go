@@ -90,6 +90,9 @@ static bool load_state_handler(char *pathName)
         return false;
     }
 
+    skipFrames = 0;
+    autoSaveSRAM_Timer = 0;
+
     // TO DO: Call rtc_sync() if a physical RTC is present
     return true;
 }
