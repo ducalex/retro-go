@@ -27,7 +27,7 @@ static rg_video_frame_t *currentUpdate = &frames[0];
 static rg_app_desc_t *app;
 
 static bool fullFrame = false;
-static long skipFrames = 0;
+static long skipFrames = 20; // The 20 is to hide startup flicker in some games
 
 static const char *sramFile;
 static long autoSaveSRAM = 0;
@@ -97,6 +97,11 @@ static bool load_state_handler(char *pathName)
 static bool reset_handler(bool hard)
 {
     emu_reset(hard);
+
+    fullFrame = false;
+    skipFrames = 20;
+    autoSaveSRAM_Timer = 0;
+
     return true;
 }
 
