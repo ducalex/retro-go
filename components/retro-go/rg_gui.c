@@ -620,7 +620,7 @@ int rg_gui_settings_menu(dialog_option_t *extra_options)
 
     int ret = rg_gui_dialog("Options", options, 0);
 
-    rg_settings_commit();
+    rg_settings_save();
 
     return ret;
 }

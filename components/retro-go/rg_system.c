@@ -51,6 +51,7 @@ static rg_app_desc_t currentApp;
 static runtime_stats_t statistics;
 static runtime_counters_t counters;
 static long inputTimeout = -1;
+static bool initialized = false;
 
 #if USE_SPI_MUTEX
 static SemaphoreHandle_t spiMutex;
@@ -181,7 +182,8 @@ runtime_stats_t rg_system_get_stats()
 
 esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
 {
-    bool use_led = (rg_settings_DiskActivity_get() && !rg_system_get_led());
+    // bool use_led = ((!initialized || rg_settings_DiskActivity_get()) && !rg_system_get_led());
+    bool use_led = (initialized && rg_settings_DiskActivity_get() && !rg_system_get_led());
 
     rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
@@ -359,6 +361,7 @@ void rg_system_init(int appId, int sampleRate)
     xTaskCreate(&system_monitor_task, "sysmon", 2048, NULL, 7, NULL);
 
     panicTrace->magicWord = 0;
+    initialized = true;
 
     RG_LOGI("Retro-Go init done.\n");
 }
@@ -526,7 +529,7 @@ bool rg_emu_save_state(int slot)
             success = true;
 
             rg_settings_StartAction_set(EMU_START_ACTION_RESUME);
-            rg_settings_commit();
+            rg_settings_save();
         }
     }
 

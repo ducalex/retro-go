@@ -128,7 +128,7 @@ static void favorites_save()
     }
 
     rg_settings_string_set(KEY_FAVORITES, buffer);
-    rg_settings_commit();
+    rg_settings_save();
     free(buffer);
 }
 

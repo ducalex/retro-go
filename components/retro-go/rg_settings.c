@@ -1,5 +1,7 @@
+#include <esp_err.h>
 #include <string.h>
 #include <stdio.h>
+#include <cJSON.h>
 
 #include "rg_system.h"
 #include "rg_settings.h"
@@ -8,6 +10,7 @@
 
 #define CONFIG_FILE_PATH "/sd/odroid/retro-go.json"
 #define CONFIG_NAMESPACE "retro-go"
+#define CONFIG_NVS_STORE "config"
 
 // Global
 static const char* Key_RomFilePath  = "RomFilePath";
@@ -31,203 +34,171 @@ static const char* Key_SpriteLimit  = "SpriteLimit";
 
 static int unsaved_changes = 0;
 static bool initialized = false;
+static cJSON *root = NULL;
 
-#if USE_CONFIG_FILE
-    #include <cJSON.h>
-
-    static cJSON *root = NULL;
-
-    static inline void json_set(const char *key, cJSON *value)
-    {
-        cJSON *obj = cJSON_GetObjectItem(root, key);
-        if (obj == NULL)
-            cJSON_AddItemToObject(root, key, value);
-        else
-            cJSON_ReplaceItemInObject(root, key, value);
-    }
-#else
+#if !USE_CONFIG_FILE
     #include <nvs_flash.h>
-
-    static nvs_handle my_handle = NULL;
+    static nvs_handle my_handle = 0;
 #endif
+
+
+static inline void json_set(const char *key, cJSON *value)
+{
+    cJSON *obj = cJSON_GetObjectItem(root, key);
+    if (obj == NULL)
+        cJSON_AddItemToObject(root, key, value);
+    else
+        cJSON_ReplaceItemInObject(root, key, value);
+}
+
 
 void rg_settings_init()
 {
+    char *buffer = NULL;
+    char *source;
+    size_t length = 0;
+
 #if USE_CONFIG_FILE
     FILE *fp = fopen(CONFIG_FILE_PATH, "rb");
     if (fp)
     {
         fseek(fp, 0, SEEK_END);
-        size_t size = ftell(fp);
+        length = ftell(fp);
         fseek(fp, 0, SEEK_SET);
-        char *buffer = rg_alloc(size, MEM_ANY);
-        if (fread(buffer, 1, size, fp)) {
-            root = cJSON_Parse(buffer);
-        }
-        rg_free(buffer);
+        buffer = rg_alloc(length + 1, MEM_ANY);
+        fread(buffer, 1, length, fp);
         fclose(fp);
     }
-
-    if (!root)
-    {
-        RG_LOGE("Failed to load JSON config file!\n");
-        root = cJSON_CreateObject();
-    }
+    source = "SD Card";
 #else
-    esp_err_t err = nvs_flash_init();
-    if (err != ESP_OK)
+    if (nvs_flash_init() != ESP_OK)
     {
         nvs_flash_erase();
-        if (nvs_flash_init() != ESP_OK)
+        nvs_flash_init();
+    }
+
+	if (nvs_open(CONFIG_NAMESPACE, NVS_READWRITE, &my_handle) == ESP_OK)
+    {
+        if (nvs_get_str(my_handle, CONFIG_NVS_STORE, NULL, &length) == ESP_OK)
         {
-            RG_PANIC("Failed to init NVS!");
+            buffer = rg_alloc(length + 1, MEM_ANY);
+            nvs_get_str(my_handle, CONFIG_NVS_STORE, buffer, &length);
         }
     }
-	err = nvs_open(CONFIG_NAMESPACE, NVS_READWRITE, &my_handle);
-	if (err != ESP_OK)
+    source = "NVS";
+#endif
+
+    if (buffer)
     {
-        RG_PANIC("Failed to open NVS!");
+        root = cJSON_Parse(buffer);
+        rg_free(buffer);
     }
-#endif
-    initialized = true;
-    RG_LOGI("init done.\n");
-}
 
-void rg_settings_commit()
-{
-    if (unsaved_changes > 0)
+    if (root)
     {
-#if USE_CONFIG_FILE
-        char *buffer = cJSON_Print(root);
-        if (buffer)
-        {
-            FILE *fp = fopen(CONFIG_FILE_PATH, "wb");
-            if (fp)
-            {
-                fwrite(buffer, strlen(buffer), 1, fp);
-                fclose(fp);
-            }
-            cJSON_free(buffer);
-        }
-#else
-        nvs_commit(my_handle);
-#endif
-        unsaved_changes = 0;
-    }
-}
-
-void rg_settings_reset()
-{
-#if USE_CONFIG_FILE
-    cJSON_free(root);
-    root = cJSON_CreateObject();
-    unsaved_changes++;
-    rg_settings_commit();
-#else
-    // nvs_flash_deinit()
-    // nvs_flash_erase()
-    // rg_settings_init();
-#endif
-}
-
-char* rg_settings_string_get(const char *key, const char *default_value)
-{
-    if (initialized)
-    {
-    #if USE_CONFIG_FILE
-        cJSON *obj = cJSON_GetObjectItem(root, key);
-        if (obj != NULL && obj->valuestring != NULL)
-        {
-            return strdup(obj->valuestring); // strdup to be compatible with old nvs impl. below
-        }
-    #else
-        size_t required_size;
-        esp_err_t err = nvs_get_str(my_handle, key, NULL, &required_size);
-        if (err == ESP_OK)
-        {
-            char* buffer = rg_alloc(required_size, MEM_ANY);
-
-            esp_err_t err = nvs_get_str(my_handle, key, buffer, &required_size);
-            if (err == ESP_OK)
-            {
-                return buffer;
-            }
-        }
-        if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
-        {
-            RG_LOGW("key='%s' err=%d\n", key, err);
-        }
-    #endif
+        RG_LOGI("Config loaded from %s!\n", source);
     }
     else
     {
-        RG_LOGE("Settings not initialized (key='%s')\n", key);
+        RG_LOGE("Config failed to load from %s!\n", source);
+        root = cJSON_CreateObject();
     }
 
-    if (default_value != NULL)
-        return strdup(default_value);
+    initialized = true;
+}
 
-    return NULL;
+bool rg_settings_save(void)
+{
+    if (unsaved_changes == 0)
+        return true;
+
+    char *buffer = cJSON_Print(root);
+    bool success = false;
+
+    if (buffer)
+    {
+    #if USE_CONFIG_FILE
+        FILE *fp = fopen(CONFIG_FILE_PATH, "wb");
+        if (fp)
+        {
+            success = (fputs(buffer, fp) > 0);
+            fclose(fp);
+        }
+    #else
+        nvs_set_str(my_handle, CONFIG_NVS_STORE, buffer);
+        success = (nvs_commit(my_handle) == ESP_OK);
+    #endif
+        cJSON_free(buffer);
+        unsaved_changes = 0;
+    }
+
+    return success;
+}
+
+void rg_settings_reset(void)
+{
+    cJSON_free(root);
+    root = cJSON_CreateObject();
+    unsaved_changes++;
+    rg_settings_save();
+}
+
+char *rg_settings_string_get(const char *key, const char *default_value)
+{
+    if (!initialized)
+    {
+        RG_LOGE("Trying to get key '%s' before rg_settings_init() was called!\n", key);
+    }
+    else
+    {
+        cJSON *obj = cJSON_GetObjectItem(root, key);
+        if (obj != NULL && obj->valuestring != NULL)
+        {
+            return strdup(obj->valuestring);
+        }
+    }
+
+    return default_value ? strdup(default_value) : NULL;
 }
 
 void rg_settings_string_set(const char *key, const char *value)
 {
     if (!initialized)
     {
-        RG_LOGE("Settings not initialized (key='%s')\n", key);
+        RG_LOGE("Trying to set key '%s' before rg_settings_init() was called!\n", key);
         return;
     }
 
-#if USE_CONFIG_FILE
     json_set(key, cJSON_CreateString(value));
-#else
-    esp_err_t ret = nvs_set_str(my_handle, key, value);
-    if (ret != ESP_OK)
-        RG_LOGW("key='%s' err=%d\n", key, ret);
-#endif
     unsaved_changes++;
 }
 
 int32_t rg_settings_int32_get(const char *key, int32_t default_value)
 {
-    int32_t value = default_value;
-
-    if (initialized)
+    if (!initialized)
     {
-#if USE_CONFIG_FILE
+        RG_LOGE("Trying to get key '%s' before rg_settings_init() was called!\n", key);
+        return default_value;
+    }
+
     cJSON *obj = cJSON_GetObjectItem(root, key);
-    if (obj) value = obj->valueint;
-#else
-    esp_err_t ret = nvs_get_i32(my_handle, key, &value);
-    if (ret != ESP_OK && ret != ESP_ERR_NVS_NOT_FOUND)
-        RG_LOGW("key='%s' err=%d\n", key, ret);
-#endif
-    }
-    else
-    {
-        RG_LOGE("Settings not initialized (key='%s')\n", key);
-    }
 
-    return value;
+    return obj ? obj->valueint : default_value;
 }
 
 void rg_settings_int32_set(const char *key, int32_t value)
 {
     if (!initialized)
     {
-        RG_LOGE("Settings not initialized (key='%s')\n", key);
+        RG_LOGE("Trying to set key '%s' before rg_settings_init() was called!\n", key);
         return;
     }
+    else if (rg_settings_int32_get(key, ~value) == value)
+    {
+        return; // Do nothing, value identical
+    }
 
-    if (rg_settings_int32_get(key, ~value) == value)
-        return; // Do nothing
-#if USE_CONFIG_FILE
     json_set(key, cJSON_CreateNumber(value));
-#else
-    esp_err_t ret = nvs_set_i32(my_handle, key, value);
-    if (ret != ESP_OK)
-        RG_LOGW("key='%s' err=%d\n", key, ret);
-#endif
     unsaved_changes++;
 }
 

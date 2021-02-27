@@ -19,7 +19,8 @@ typedef enum
 
 void rg_settings_init(void);
 void rg_settings_reset(void);
-void rg_settings_commit(void);
+bool rg_settings_load(void);
+bool rg_settings_save(void);
 
 int32_t rg_settings_FontSize_get();
 void rg_settings_FontSize_set(int32_t);
