@@ -107,35 +107,23 @@ static DRAM_ATTR const ili_init_cmd_t ili_init_cmds[] = {
 static void
 backlight_init()
 {
-    // Initial backlight percent
     int percent = backlightLevels[displayConfig.backlight % RG_BACKLIGHT_LEVEL_COUNT];
 
-    //configure timer0
-    ledc_timer_config_t ledc_timer;
-    memset(&ledc_timer, 0, sizeof(ledc_timer));
+    ledc_timer_config_t ledc_timer = {
+        .duty_resolution = LEDC_TIMER_13_BIT,
+        .freq_hz = 5000,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .timer_num = LEDC_TIMER_0,
+    };
 
-    ledc_timer.duty_resolution = LEDC_TIMER_13_BIT; //set timer counter bit number
-    ledc_timer.freq_hz = 5000;                      //set frequency of pwm
-    ledc_timer.speed_mode = LEDC_LOW_SPEED_MODE;    //timer mode,
-    ledc_timer.timer_num = LEDC_TIMER_0;            //timer index
-
-    //set the configuration
-    ledc_channel_config_t ledc_channel;
-    memset(&ledc_channel, 0, sizeof(ledc_channel));
-
-    //set LEDC channel 0
-    ledc_channel.channel = LEDC_CHANNEL_0;
-    //set the duty for initialization.(duty range is 0 ~ ((2**bit_num)-1)
-    ledc_channel.duty = BACKLIGHT_DUTY_MAX * (percent * 0.01f);
-    //GPIO number
-    ledc_channel.gpio_num = RG_GPIO_LCD_BCKL;
-    //GPIO INTR TYPE, as an example, we enable fade_end interrupt here.
-    ledc_channel.intr_type = LEDC_INTR_FADE_END;
-    //set LEDC mode, from ledc_mode_t
-    ledc_channel.speed_mode = LEDC_LOW_SPEED_MODE;
-    //set LEDC timer source, if different channel use one timer,
-    //the frequency and bit_num of these channels should be the same
-    ledc_channel.timer_sel = LEDC_TIMER_0;
+    ledc_channel_config_t ledc_channel = {
+        .channel = LEDC_CHANNEL_0,
+        .duty = BACKLIGHT_DUTY_MAX * (percent * 0.01f),
+        .gpio_num = RG_GPIO_LCD_BCKL,
+        .hpoint = 0,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .timer_sel = LEDC_TIMER_0,
+    };
 
     ledc_timer_config(&ledc_timer);
     ledc_channel_config(&ledc_channel);
@@ -145,7 +133,7 @@ backlight_init()
 static void
 backlight_deinit()
 {
-    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0, 100);
+    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0, 50);
     ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_WAIT_DONE);
     ledc_fade_func_uninstall();
 }
@@ -155,7 +143,7 @@ backlight_set_level(int percent)
 {
     int duty = BACKLIGHT_DUTY_MAX * (RG_MIN(RG_MAX(percent, 5), 100) * 0.01f);
 
-    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty, 10);
+    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty, 50);
     ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
 
     RG_LOGI("backlight set to %d%%\n", percent);
@@ -216,11 +204,10 @@ spi_put_transaction(spi_transaction_t* t)
     xSemaphoreGive(spi_count_semaphore);
 }
 
-//This function is called (in irq context!) just before a transmission starts. It will
-//set the D/C line to the value indicated in the user field.
 IRAM_ATTR static void
 spi_pre_transfer_callback(spi_transaction_t *t)
 {
+    // Set the data/command line accordingly
     gpio_set_level(RG_GPIO_LCD_DC, (int)t->user & 0x01);
 }
 
@@ -244,10 +231,7 @@ spi_task(void *arg)
             spi_put_buffer((uint16_t*)t->tx_buffer);
         }
 
-        if (xQueueSend(spi_queue, &t, portMAX_DELAY) != pdPASS)
-        {
-            RG_PANIC("display");
-        }
+        xQueueSend(spi_queue, &t, portMAX_DELAY);
 
         // if (uxQueueSpacesAvailable(spi_queue) == 0)
         if (uxQueueMessagesWaiting(spi_count_semaphore) == 0)
@@ -274,24 +258,23 @@ spi_initialize()
         xQueueSend(spi_queue, &param, portMAX_DELAY);
     }
 
-    spi_bus_config_t buscfg;
-	memset(&buscfg, 0, sizeof(buscfg));
+    spi_bus_config_t buscfg = {
+        .miso_io_num = RG_GPIO_LCD_MISO,
+        .mosi_io_num = RG_GPIO_LCD_MOSI,
+        .sclk_io_num = RG_GPIO_LCD_CLK,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+    };
 
-    buscfg.miso_io_num = RG_GPIO_LCD_MISO;
-    buscfg.mosi_io_num = RG_GPIO_LCD_MOSI;
-    buscfg.sclk_io_num = RG_GPIO_LCD_CLK;
-    buscfg.quadwp_io_num = -1;
-    buscfg.quadhd_io_num = -1;
-
-    spi_device_interface_config_t devcfg;
-	memset(&devcfg, 0, sizeof(devcfg));
-
-    devcfg.clock_speed_hz = SPI_MASTER_FREQ_40M;    // 80Mhz causes glitches unfortunately
-    devcfg.mode = 0;                                // SPI mode 0
-    devcfg.spics_io_num = RG_GPIO_LCD_CS;           // CS pin
-    devcfg.queue_size = SPI_TRANSACTION_COUNT;      // We want to be able to queue 5 transactions at a time
-    devcfg.pre_cb = spi_pre_transfer_callback;      // Specify pre-transfer callback to handle D/C line
-    devcfg.flags = SPI_DEVICE_NO_DUMMY;             // SPI_DEVICE_HALFDUPLEX;
+    spi_device_interface_config_t devcfg = {
+        .clock_speed_hz = SPI_MASTER_FREQ_40M,    // 80Mhz causes glitches unfortunately
+        .mode = 0,                                // SPI mode 0
+        .spics_io_num = RG_GPIO_LCD_CS,           // CS pin
+        .queue_size = SPI_TRANSACTION_COUNT,      // We want to be able to queue 5 transactions at a time
+        .pre_cb = spi_pre_transfer_callback,      // Specify pre-transfer callback to handle D/C line and SPI lock
+        // .post_cb = spi_post_transfer_callback,    // Specify post-transfer callback to handle SPI lock
+        .flags = SPI_DEVICE_NO_DUMMY,             // SPI_DEVICE_HALFDUPLEX;
+    };
 
     //Initialize the SPI bus
     spi_bus_initialize(HSPI_HOST, &buscfg, 1);
@@ -344,8 +327,8 @@ ili9341_init()
     {
         ili9341_cmd(ili_init_cmds[i].cmd);
         ili9341_data(ili_init_cmds[i].data, ili_init_cmds[i].databytes & 0x7F);
-        if (ili_init_cmds[i].databytes & 0x80)
-            vTaskDelay(pdMS_TO_TICKS(10));
+        // if (ili_init_cmds[i].databytes & 0x80)
+        //     vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
@@ -356,8 +339,8 @@ ili9341_deinit()
     {
         ili9341_cmd(ili_sleep_cmds[i].cmd);
         ili9341_data(ili_sleep_cmds[i].data, ili_sleep_cmds[i].databytes & 0x7F);
-        if (ili_init_cmds[i].databytes & 0x80)
-            vTaskDelay(pdMS_TO_TICKS(10));
+        // if (ili_init_cmds[i].databytes & 0x80)
+        //     vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 

@@ -374,22 +374,27 @@ int rg_gui_dialog(const char *header, const dialog_option_t *options_const, int 
     int last_key = -1;
 
     // We create a copy of options because the callbacks might modify it (ie option->value)
-
     dialog_option_t options[options_count + 1];
 
     for (int i = 0; i <= options_count; i++)
     {
-        options[i] = options_const[i];
+        char value_buffer[128] = {0xFF, 0};
 
-        if (options[i].value)
-        {
-            options[i].value = calloc(1, strlen(options[i].value) + 32);
-            strcpy(options[i].value, options_const[i].value);
-        }
+        options[i] = options_const[i];
 
         if (options[i].update_cb)
         {
+            options[i].value = value_buffer;
             options[i].update_cb(&options[i], RG_DIALOG_INIT);
+            if (value_buffer[0] == 0xFF) // Not updated, reset ptr
+                options[i].value = options_const[i].value;
+        }
+
+        if (options[i].value)
+        {
+            char *new_value = malloc(strlen(options[i].value) + 16);
+            strcpy(new_value, options[i].value);
+            options[i].value = new_value;
         }
     }
 

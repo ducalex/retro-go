@@ -93,7 +93,7 @@ typedef struct
 } runtime_stats_t;
 
 void rg_system_init(int app_id, int sampleRate);
-void rg_system_panic(const char *reason, const char *function, const char *file) __attribute__((noreturn));
+void rg_system_panic(const char *reason, const char *context) __attribute__((noreturn));
 void rg_system_halt() __attribute__((noreturn));
 void rg_system_sleep() __attribute__((noreturn));
 void rg_system_restart() __attribute__((noreturn));
@@ -157,8 +157,8 @@ extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 #define RG_MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
 
 // This should really support printf format...
-#define RG_PANIC(x) rg_system_panic(x, __FUNCTION__, __FILE__)
-#define RG_ASSERT(cond, x) do { if (!(cond)) rg_system_panic(x, __FUNCTION__, __FILE__); } while(0);
+#define RG_PANIC(x) rg_system_panic(x, __FUNCTION__)
+#define RG_ASSERT(cond, x) while (!(cond)) { RG_PANIC(x); }
 
 #define RG_LOGX(x, ...) printf(x, ## __VA_ARGS__)
 #define RG_LOGE(x, ...) printf("!! %s: " x, __func__, ## __VA_ARGS__)

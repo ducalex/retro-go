@@ -38,14 +38,20 @@
 typedef struct
 {
     uint32_t magicWord;
+    char output[2048];
+    size_t cursor;
+} panic_console_t;
+
+typedef struct
+{
+    uint32_t magicWord;
     char message[256];
-    char function[64];
-    char file[256];
+    char context[128];
 } panic_trace_t;
 
-// This is a direct pointer to rtc slow ram which isn't cleared on
-// panic. We don't use this region so we can point anywhere in it.
-static panic_trace_t *panicTrace = (void *)0x50001000;
+// These will survive a software reset
+static RTC_NOINIT_ATTR panic_trace_t panicTrace;
+static RTC_NOINIT_ATTR panic_console_t panicConsole;
 
 static rg_app_desc_t currentApp;
 static runtime_stats_t statistics;
@@ -58,6 +64,21 @@ static SemaphoreHandle_t spiMutex;
 static spi_lock_res_t spiMutexOwner;
 #endif
 
+
+void esp_panic_putchar_hook(char c)
+{
+    if (panicConsole.magicWord != PANIC_TRACE_MAGIC)
+    {
+        panicConsole.magicWord = PANIC_TRACE_MAGIC;
+        panicConsole.cursor = 0;
+    }
+
+    if (panicConsole.cursor < sizeof(panicConsole.output) - 1)
+    {
+        panicConsole.output[panicConsole.cursor++] = c;
+        panicConsole.output[panicConsole.cursor] = 0;
+    }
+}
 
 static void system_monitor_task(void *arg)
 {
@@ -298,36 +319,61 @@ void rg_system_init(int appId, int sampleRate)
     currentApp.refreshRate = 1;
     currentApp.mainTaskHandle = xTaskGetCurrentTaskHandle();
 
-    // sdcard init must be before rg_display_init()
-    // and rg_settings_init() if JSON is used
+    // This must be before rg_display_init() and rg_settings_init()
     bool sd_init = rg_sdcard_mount();
 
     rg_system_gpio_init();
     rg_settings_init();
-    rg_gui_init();
-    rg_input_init();
-    rg_audio_init(sampleRate);
     rg_display_init();
+    rg_display_clear(0);
+    rg_gui_init();
+    rg_gui_draw_hourglass();
+    rg_audio_init(sampleRate);
+    rg_input_init();
     rg_system_time_init();
 
     if (esp_reset_reason() == ESP_RST_PANIC)
     {
-        if (panicTrace->magicWord == PANIC_TRACE_MAGIC)
-            RG_LOGX(" *** PREVIOUS PANIC: %s *** \n", panicTrace->message);
-        else  // Presumably abort()
-            strcpy(panicTrace->message, "Application crashed");
-        panicTrace->magicWord = 0;
-        rg_audio_deinit();
+        char message[400] = "Application crashed";
+
+        if (panicTrace.magicWord == PANIC_TRACE_MAGIC)
+        {
+            RG_LOGX(" *** PANIC TRACE: %s (%s) *** \n", panicTrace.message, panicTrace.context);
+            strcpy(message, panicTrace.message);
+        }
+
+        if (panicConsole.magicWord == PANIC_TRACE_MAGIC)
+        {
+            RG_LOGI("Panic log found, saving to sdcard...\n");
+            FILE *fp = fopen(RG_BASE_PATH "/crash.log", "w");
+            if (fp)
+            {
+                fprintf(fp, "Application: %s %s\n", app->project_name, app->version);
+                fprintf(fp, "Build date: %s %s\n", app->date, app->time);
+                if (panicTrace.magicWord == PANIC_TRACE_MAGIC)
+                {
+                    fprintf(fp, "Message: %.256s\n", panicTrace.message);
+                    fprintf(fp, "Context: %.256s\n", panicTrace.context);
+                }
+                fputs("\nConsole:\n", fp);
+                fputs(panicConsole.output, fp);
+                fputs("\n\nEnd of log\n", fp);
+                fclose(fp);
+            }
+            strcat(message, "\n Log saved to SD Card");
+        }
+
         rg_display_clear(C_BLUE);
         rg_gui_set_font_size(12);
-        rg_gui_alert("System Panic!", panicTrace->message);
+        rg_gui_alert("System Panic!", message);
+        rg_sdcard_unmount();
+        rg_audio_deinit();
         rg_system_switch_app(RG_APP_LAUNCHER);
     }
-
-    if (esp_reset_reason() != ESP_RST_SW)
+    else
     {
-        rg_display_clear(0);
-        rg_gui_draw_hourglass();
+        panicConsole.magicWord = 0;
+        panicTrace.magicWord = 0;
     }
 
     if (!sd_init)
@@ -360,7 +406,6 @@ void rg_system_init(int appId, int sampleRate)
 
     xTaskCreate(&system_monitor_task, "sysmon", 2048, NULL, 7, NULL);
 
-    panicTrace->magicWord = 0;
     initialized = true;
 
     RG_LOGI("Retro-Go init done.\n");
@@ -612,15 +657,14 @@ void rg_system_set_boot_app(const char *app)
     RG_LOGI("Boot partition set to %d '%s'\n", partition->subtype, partition->label);
 }
 
-void rg_system_panic(const char *reason, const char *function, const char *file)
+void rg_system_panic(const char *message, const char *context)
 {
-    RG_LOGX("*** PANIC: %s\n  *** FUNCTION: %s\n  *** FILE: %s\n", reason, function, file);
+    strcpy(panicTrace.message, message ? message : "");
+    strcpy(panicTrace.context, context ? context : "");
+    panicTrace.magicWord = PANIC_TRACE_MAGIC;
 
-    strcpy(panicTrace->message, reason);
-    strcpy(panicTrace->file, file);
-    strcpy(panicTrace->function, function);
-
-    panicTrace->magicWord = PANIC_TRACE_MAGIC;
+    RG_LOGX("*** PANIC  : %s\n", panicTrace.message);
+    RG_LOGX("*** CONTEXT: %s\n", panicTrace.context);
 
     abort();
 }

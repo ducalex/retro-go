@@ -16,6 +16,7 @@ typedef enum {
     RG_DIALOG_IGNORE,
     RG_DIALOG_SELECT,
     RG_DIALOG_CANCEL,
+    RG_DIALOG_UPDATE,
 } dialog_return_t;
 
 typedef struct {
