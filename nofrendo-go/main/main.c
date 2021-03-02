@@ -12,7 +12,7 @@
 #define AUDIO_SAMPLE_RATE   (32000)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
 
-#define NVS_KEY_AUTOCROP "autocrop"
+#define SETTING_AUTOCROP "autocrop"
 
 static uint8_t *romData;
 static uint32_t romSize;
@@ -153,7 +153,7 @@ static dialog_return_t autocrop_update_cb(dialog_option_t *option, dialog_event_
 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         autocrop = val;
-        rg_settings_app_int32_set(NVS_KEY_AUTOCROP, autocrop);
+        rg_settings_app_int32_set(SETTING_AUTOCROP, autocrop);
     }
 
     if (val == 0) strcpy(option->value, "Never ");
@@ -237,7 +237,7 @@ void osd_loadstate()
     ppu_setopt(PPU_LIMIT_SPRITES, rg_settings_SpriteLimit_get());
     ppu_setopt(PPU_PALETTE_RGB, rg_settings_Palette_get());
     overscan = rg_settings_DisplayOverscan_get();
-    autocrop = rg_settings_app_int32_get(NVS_KEY_AUTOCROP, 0);
+    autocrop = rg_settings_app_int32_get(SETTING_AUTOCROP, 0);
 
     nes = nes_getptr();
     frameTime = get_frame_time(nes->refresh_rate);
@@ -347,7 +347,7 @@ void osd_getinput(void)
     {
         dialog_option_t options[] = {
             {100, "Palette", "Default", 1, &palette_update_cb},
-            {101, "More...", "", 1, &advanced_settings_cb},
+            {101, "More...", NULL, 1, &advanced_settings_cb},
             RG_DIALOG_CHOICE_LAST};
         rg_gui_game_settings_menu(options);
     }

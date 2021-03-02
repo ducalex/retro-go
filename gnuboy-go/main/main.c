@@ -17,7 +17,7 @@
 #define AUDIO_SAMPLE_RATE   (32000)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 16 + 1)
 
-#define NVS_KEY_SAVE_SRAM "sram"
+#define SETTING_SAVE_SRAM "sram"
 
 static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
@@ -160,7 +160,7 @@ static dialog_return_t sram_autosave_cb(dialog_option_t *option, dialog_event_t 
 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
-        rg_settings_app_int32_set(NVS_KEY_SAVE_SRAM, autoSaveSRAM);
+        rg_settings_app_int32_set(SETTING_SAVE_SRAM, autoSaveSRAM);
     }
 
     if (autoSaveSRAM == 0) strcpy(option->value, "Off ");
@@ -200,7 +200,7 @@ static dialog_return_t rtc_t_update_cb(dialog_option_t *option, dialog_event_t e
 static dialog_return_t rtc_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_ENTER) {
-        static dialog_option_t choices[] = {
+        dialog_option_t choices[] = {
             {'d', "Day", "000", 1, &rtc_t_update_cb},
             {'h', "Hour", "00", 1, &rtc_t_update_cb},
             {'m', "Min",  "00", 1, &rtc_t_update_cb},
@@ -217,10 +217,10 @@ static dialog_return_t advanced_settings_cb(dialog_option_t *option, dialog_even
 {
     if (event == RG_DIALOG_ENTER) {
         dialog_option_t options[] = {
-            {101, "Set clock", "00:00 ", 1, &rtc_update_cb},
+            {101, "Set clock", "00:00", 1, &rtc_update_cb},
             RG_DIALOG_SEPARATOR,
             {111, "Auto save SRAM", "Off", mbc.batt && mbc.ramsize, &sram_autosave_cb},
-            {112, "Save SRAM now ", "", mbc.batt && mbc.ramsize, &sram_save_now_cb},
+            {112, "Save SRAM now ", NULL, mbc.batt && mbc.ramsize, &sram_save_now_cb},
             RG_DIALOG_CHOICE_LAST
         };
         rg_gui_dialog("Advanced", options, 0);
@@ -277,7 +277,7 @@ void app_main(void)
     frames[0].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
     frames[1].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
 
-    autoSaveSRAM = rg_settings_app_int32_get(NVS_KEY_SAVE_SRAM, 0);
+    autoSaveSRAM = rg_settings_app_int32_get(SETTING_SAVE_SRAM, 0);
     sramFile = rg_emu_get_path(EMU_PATH_SAVE_SRAM, 0);
 
     // Load ROM
@@ -326,7 +326,7 @@ void app_main(void)
         else if (joystick.values[GAMEPAD_KEY_VOLUME]) {
             dialog_option_t options[] = {
                 {100, "Palette", "7/7", !hw.cgb, &palette_update_cb},
-                {101, "More...", "", 1, &advanced_settings_cb},
+                {101, "More...", NULL, 1, &advanced_settings_cb},
                 RG_DIALOG_CHOICE_LAST
             };
             auto_sram_update();

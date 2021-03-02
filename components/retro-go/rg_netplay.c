@@ -370,8 +370,8 @@ bool rg_netplay_quick_start(void)
     rg_display_clear(0);
 
     dialog_option_t options[] = {
-        {1, "Host Game (P1)", "", 1, NULL},
-        {2, "Find Game (P2)", "", 1, NULL},
+        {1, "Host Game (P1)", NULL, 1, NULL},
+        {2, "Find Game (P2)", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
 

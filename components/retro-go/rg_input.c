@@ -135,7 +135,7 @@ void rg_input_init(void)
 	gpio_set_pull_mode(RG_GPIO_GAMEPAD_B, GPIO_PULLUP_ONLY);
 
     // Start background polling
-    xTaskCreatePinnedToCore(&input_task, "input_task", 2048, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(&input_task, "input_task", 1024, NULL, 5, NULL, 1);
 
   	RG_LOGI("init done.\n");
 }

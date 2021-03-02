@@ -268,31 +268,31 @@ void emulator_crc32_file(retro_emulator_file_t *file)
 
 void emulator_show_file_info(retro_emulator_file_t *file)
 {
-    dialog_option_t choices[] = {
-        {0, "File", "...", 1, NULL},
-        {0, "Type", "N/A", 1, NULL},
-        {0, "Folder", "...", 1, NULL},
-        {0, "Size", "0", 1, NULL},
-        {0, "CRC32", "N/A", 1, NULL},
+    char filesize[16] = "N/A";
+    char filecrc[16] = "N/A";
+
+    dialog_option_t options[] = {
+        {0, "File", file->name, 1, NULL},
+        {0, "Type", file->ext, 1, NULL},
+        {0, "Folder", file->folder, 1, NULL},
+        {0, "Size", filesize, 1, NULL},
+        {0, "CRC32", filecrc, 1, NULL},
         RG_DIALOG_SEPARATOR,
-        {1, "Close", "", 1, NULL},
+        {1, "Close", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
 
-    sprintf(choices[0].value, "%.95s", file->name);
-    sprintf(choices[1].value, "%s", file->ext);
-    sprintf(choices[2].value, "%s", file->folder);
-    sprintf(choices[3].value, "%ld KB", rg_fs_filesize(emu_get_file_path(file)) / 1024);
+    sprintf(filesize, "%ld KB", rg_fs_filesize(emu_get_file_path(file)) / 1024);
 
     if (file->checksum > 1)
     {
         if (file->crc_offset)
-            sprintf(choices[4].value, "%08X (%d)", file->checksum, file->crc_offset);
+            sprintf(filecrc, "%08X (%d)", file->checksum, file->crc_offset);
         else
-            sprintf(choices[4].value, "%08X", file->checksum);
+            sprintf(filecrc, "%08X", file->checksum);
     }
 
-    rg_gui_dialog("Properties", choices, -1);
+    rg_gui_dialog("Properties", options, -1);
 }
 
 void emulator_show_file_menu(retro_emulator_file_t *file)
@@ -305,11 +305,11 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
     bool is_fav = favorite_find(file) != NULL;
 
     dialog_option_t choices[] = {
-        {0, "Resume game ", "", has_save, NULL},
-        {1, "New game    ", "", 1, NULL},
-        {0, "------------", "", -1, NULL},
-        {3, is_fav ? "Del favorite" : "Add favorite", "", 1, NULL},
-        {2, "Delete save ", "", has_save || has_sram, NULL},
+        {0, "Resume game ", NULL, has_save, NULL},
+        {1, "New game    ", NULL, 1, NULL},
+        {0, "------------", NULL, -1, NULL},
+        {3, is_fav ? "Del favorite" : "Add favorite", NULL, 1, NULL},
+        {2, "Delete save ", NULL, has_save || has_sram, NULL},
         RG_DIALOG_CHOICE_LAST
     };
     int sel = rg_gui_dialog(NULL, choices, has_save ? 0 : 1);

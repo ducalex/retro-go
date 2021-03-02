@@ -15,27 +15,30 @@ static bool audioInitialized = 0;
 static int volumeLevel = RG_AUDIO_VOL_DEFAULT;
 static float volumeLevels[] = {0.f, 0.06f, 0.125f, 0.187f, 0.25f, 0.35f, 0.42f, 0.60f, 0.80f, 1.f};
 
+static const char *SETTING_OUTPUT = "AudioSink";
+static const char *SETTING_VOLUME = "Volume";
 
-audio_volume_t rg_audio_volume_get()
+
+audio_volume_t rg_audio_get_volume(void)
 {
     return volumeLevel;
 }
 
-void rg_audio_volume_set(audio_volume_t level)
+void rg_audio_set_volume(audio_volume_t level)
 {
     level = RG_MAX(level, RG_AUDIO_VOL_MIN);
     level = RG_MIN(level, RG_AUDIO_VOL_MAX);
     volumeLevel = level;
 
-    rg_settings_Volume_set(level);
+    rg_settings_int32_set(SETTING_VOLUME, volumeLevel);
 
     RG_LOGI("volume set to %d%%\n", (int)(volumeLevels[level] * 100));
 }
 
 void rg_audio_init(int sample_rate)
 {
-    volumeLevel = rg_settings_Volume_get();
-    audioSink = rg_settings_AudioSink_get();
+    volumeLevel = rg_settings_int32_get(SETTING_VOLUME, RG_AUDIO_VOL_DEFAULT);
+    audioSink = rg_settings_int32_get(SETTING_OUTPUT, RG_AUDIO_SINK_SPEAKER);
     audioSampleRate = sample_rate;
     audioInitialized = true;
 
@@ -94,12 +97,12 @@ void rg_audio_init(int sample_rate)
         RG_PANIC("Audio Sink Unknown");
     }
 
-    rg_audio_volume_set(volumeLevel);
+    rg_audio_set_volume(volumeLevel);
 
     RG_LOGI("init done. clock=%f\n", i2s_get_clk(RG_AUDIO_I2S_NUM));
 }
 
-void rg_audio_deinit()
+void rg_audio_deinit(void)
 {
     if (audioInitialized)
     {
@@ -217,15 +220,11 @@ void rg_audio_submit(short *stereoAudioBuffer, size_t frameCount)
     }
 }
 
-bool rg_audio_is_playing()
-{
-    return false;
-}
-
 void rg_audio_set_sink(audio_sink_t sink)
 {
-    rg_settings_AudioSink_set(sink);
     audioSink = sink;
+
+    rg_settings_int32_set(SETTING_OUTPUT, audioSink);
 
     if (audioSampleRate > 0)
     {
@@ -234,17 +233,17 @@ void rg_audio_set_sink(audio_sink_t sink)
     }
 }
 
-audio_sink_t rg_audio_get_sink()
+audio_sink_t rg_audio_get_sink(void)
 {
     return audioSink;
 }
 
-int rg_audio_sample_rate_get()
+int rg_audio_get_sample_rate(void)
 {
     return audioSampleRate;
 }
 
-void rg_audio_mute(bool mute)
+void rg_audio_set_mute(bool mute)
 {
     audioMuted = mute;
 

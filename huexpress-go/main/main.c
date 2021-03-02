@@ -31,7 +31,7 @@ static int skipFrames = 0;
 static int blitFrames = 0;
 static int fullFrames = 0;
 
-#define NVS_KEY_SAMPLE_TYPE "audiotype"
+#define SETTING_AUDIOTYPE "audiotype"
 
 #define AUDIO_SAMPLE_RATE 22050
 // #define AUDIO_BUFFER_LENGTH  (AUDIO_SAMPLE_RATE / 60)
@@ -179,7 +179,7 @@ static dialog_return_t sampletype_update_cb(dialog_option_t *option, dialog_even
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         host.sound.sample_uint8 ^= 1;
-        rg_settings_app_int32_set(NVS_KEY_SAMPLE_TYPE, host.sound.sample_uint8);
+        rg_settings_app_int32_set(SETTING_AUDIOTYPE, host.sound.sample_uint8);
     }
 
     strcpy(option->value, host.sound.sample_uint8 ? "On " : "Off");
@@ -216,7 +216,7 @@ void osd_input_read(void)
     else if (joystick.values[GAMEPAD_KEY_VOLUME])
     {
         dialog_option_t options[] = {
-            {101, "More...", "", 1, &advanced_settings_cb},
+            {101, "More...", NULL, 1, &advanced_settings_cb},
             RG_DIALOG_CHOICE_LAST};
         rg_gui_game_settings_menu(options);
     }
@@ -251,7 +251,7 @@ void osd_snd_init(void)
 {
     host.sound.stereo = true;
     host.sound.sample_freq = AUDIO_SAMPLE_RATE;
-    host.sound.sample_uint8 = rg_settings_app_int32_get(NVS_KEY_SAMPLE_TYPE, 0);
+    host.sound.sample_uint8 = rg_settings_app_int32_get(SETTING_AUDIOTYPE, 0);
 
     xTaskCreatePinnedToCore(&audioTask, "audioTask", 1024 * 2, NULL, 5, NULL, 1);
 }

@@ -724,8 +724,8 @@ frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFrame)
 static void
 generate_filter_structures(size_t width, size_t height)
 {
-    memset(frame_filter_lines,   0, sizeof frame_filter_lines);
-    memset(screen_line_is_empty, 0, sizeof screen_line_is_empty);
+    memset(frame_filter_lines,   0, sizeof(frame_filter_lines));
+    memset(screen_line_is_empty, 0, sizeof(screen_line_is_empty));
 
     int x_acc = (x_inc * x_origin) % SCREEN_WIDTH;
     int y_acc = (y_inc * y_origin) % SCREEN_HEIGHT;
@@ -1107,7 +1107,7 @@ rg_display_init()
     backlight_init();
 
 	RG_LOGI(" - starting display_task.\n");
-    xTaskCreatePinnedToCore(&display_task, "display_task", 3072, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(&display_task, "display_task", 2048, NULL, 5, NULL, 1);
 
     RG_LOGI("init done.\n");
 }

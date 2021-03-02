@@ -10,11 +10,11 @@
 #include "favorites.h"
 #include "gui.h"
 
-#define KEY_SELECTED_TAB  "SelectedTab"
-#define KEY_GUI_THEME     "ColorTheme"
-#define KEY_SHOW_EMPTY    "ShowEmptyTabs"
-#define KEY_SHOW_PREVIEW  "ShowPreview"
-#define KEY_PREVIEW_SPEED "PreviewSpeed"
+#define SETTING_SELECTED_TAB  "SelectedTab"
+#define SETTING_GUI_THEME     "ColorTheme"
+#define SETTING_SHOW_EMPTY    "ShowEmptyTabs"
+#define SETTING_SHOW_PREVIEW  "ShowPreview"
+#define SETTING_PREVIEW_SPEED "PreviewSpeed"
 
 static dialog_return_t font_size_cb(dialog_option_t *option, dialog_event_t event)
 {
@@ -38,7 +38,7 @@ static dialog_return_t show_empty_cb(dialog_option_t *option, dialog_event_t eve
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         gui.show_empty = !gui.show_empty;
-        rg_settings_int32_set(KEY_SHOW_EMPTY, gui.show_empty);
+        rg_settings_int32_set(SETTING_SHOW_EMPTY, gui.show_empty);
     }
     strcpy(option->value, gui.show_empty ? "Show" : "Hide");
     return RG_DIALOG_IGNORE;
@@ -70,11 +70,11 @@ static dialog_return_t show_preview_cb(dialog_option_t *option, dialog_event_t e
 {
     if (event == RG_DIALOG_PREV) {
         if (--gui.show_preview < 0) gui.show_preview = 5;
-        rg_settings_int32_set(KEY_SHOW_PREVIEW, gui.show_preview);
+        rg_settings_int32_set(SETTING_SHOW_PREVIEW, gui.show_preview);
     }
     if (event == RG_DIALOG_NEXT) {
         if (++gui.show_preview > 5) gui.show_preview = 0;
-        rg_settings_int32_set(KEY_SHOW_PREVIEW, gui.show_preview);
+        rg_settings_int32_set(SETTING_SHOW_PREVIEW, gui.show_preview);
     }
     const char *values[] = {"None      ", "Cover,Save", "Save,Cover", "Cover     ", "Save      "};
     strcpy(option->value, values[gui.show_preview % 5]);
@@ -85,7 +85,7 @@ static dialog_return_t show_preview_speed_cb(dialog_option_t *option, dialog_eve
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         gui.show_preview_fast = gui.show_preview_fast ? 0 : 1;
-        rg_settings_int32_set(KEY_PREVIEW_SPEED, gui.show_preview_fast);
+        rg_settings_int32_set(SETTING_PREVIEW_SPEED, gui.show_preview_fast);
     }
     strcpy(option->value, gui.show_preview_fast ? "Short" : "Long");
     return RG_DIALOG_IGNORE;
@@ -96,12 +96,12 @@ static dialog_return_t color_shift_cb(dialog_option_t *option, dialog_event_t ev
     int max = gui_themes_count - 1;
     if (event == RG_DIALOG_PREV) {
         if (--gui.theme < 0) gui.theme = max;
-        rg_settings_int32_set(KEY_GUI_THEME, gui.theme);
+        rg_settings_int32_set(SETTING_GUI_THEME, gui.theme);
         gui_redraw();
     }
     if (event == RG_DIALOG_NEXT) {
         if (++gui.theme > max) gui.theme = 0;
-        rg_settings_int32_set(KEY_GUI_THEME, gui.theme);
+        rg_settings_int32_set(SETTING_GUI_THEME, gui.theme);
         gui_redraw();
     }
     sprintf(option->value, "%d/%d", gui.theme + 1, max + 1);
@@ -130,11 +130,11 @@ void retro_loop()
     int last_key = -1;
     int selected_tab_last = -1;
 
-    gui.selected     = rg_settings_int32_get(KEY_SELECTED_TAB, 0);
-    gui.theme        = rg_settings_int32_get(KEY_GUI_THEME, 0);
-    gui.show_empty   = rg_settings_int32_get(KEY_SHOW_EMPTY, 1);
-    gui.show_preview = rg_settings_int32_get(KEY_SHOW_PREVIEW, 1);
-    gui.show_preview_fast = rg_settings_int32_get(KEY_PREVIEW_SPEED, 0);
+    gui.selected     = rg_settings_int32_get(SETTING_SELECTED_TAB, 0);
+    gui.theme        = rg_settings_int32_get(SETTING_GUI_THEME, 0);
+    gui.show_empty   = rg_settings_int32_get(SETTING_SHOW_EMPTY, 1);
+    gui.show_preview = rg_settings_int32_get(SETTING_SHOW_PREVIEW, 1);
+    gui.show_preview_fast = rg_settings_int32_get(SETTING_PREVIEW_SPEED, 0);
 
     while (true)
     {
@@ -192,25 +192,27 @@ void retro_loop()
                 if (gui.joystick.values[i]) last_key = i;
 
             if (last_key == GAMEPAD_KEY_MENU) {
-                dialog_option_t choices[] = {
-                    {0, "Ver.", "build string", 1, NULL},
-                    {0, "Date", "", 1, NULL},
+                char buildstr[32], datestr[32];
+
+                dialog_option_t options[] = {
+                    {0, "Ver.", buildstr, 1, NULL},
+                    {0, "Date", datestr, 1, NULL},
                     {0, "By", "ducalex", 1, NULL},
                     RG_DIALOG_SEPARATOR,
-                    {1, "Reboot to firmware", "", 1, NULL},
-                    {2, "Reset settings", "", 1, NULL},
-                    {0, "Close", "", 1, NULL},
+                    {1, "Reboot to firmware", NULL, 1, NULL},
+                    {2, "Reset settings", NULL, 1, NULL},
+                    {0, "Close", NULL, 1, NULL},
                     RG_DIALOG_CHOICE_LAST
                 };
 
                 const esp_app_desc_t *app = esp_ota_get_app_description();
-                sprintf(choices[0].value, "%.30s", app->version);
-                sprintf(choices[1].value, "%s %.5s", app->date, app->time);
+                sprintf(buildstr, "%.30s", app->version);
+                sprintf(datestr, "%s %.5s", app->date, app->time);
 
                 if (strstr(app->version, "-0-") == strrchr(app->version, '-') - 2)
-                    sprintf(strstr(choices[0].value, "-0-") , " (%s)", strrchr(app->version, '-') + 1);
+                    sprintf(strstr(buildstr, "-0-") , " (%s)", strrchr(app->version, '-') + 1);
 
-                int sel = rg_gui_dialog("Retro-Go", choices, -1);
+                int sel = rg_gui_dialog("Retro-Go", options, -1);
                 if (sel == 1) {
                     rg_system_switch_app(RG_APP_FACTORY);
                 }
@@ -223,7 +225,7 @@ void retro_loop()
                 gui_redraw();
             }
             else if (last_key == GAMEPAD_KEY_VOLUME) {
-                dialog_option_t choices[] = {
+                dialog_option_t options[] = {
                     RG_DIALOG_SEPARATOR,
                     {0, "Color theme", "...",  1, &color_shift_cb},
                     {0, "Font size  ", "...",  1, &font_size_cb},
@@ -234,7 +236,7 @@ void retro_loop()
                     {0, "Disk LED   ", "off",  1, &disk_activity_cb},
                     RG_DIALOG_CHOICE_LAST
                 };
-                rg_gui_settings_menu(choices);
+                rg_gui_settings_menu(options);
                 gui_redraw();
             }
             else if (last_key == GAMEPAD_KEY_SELECT) {

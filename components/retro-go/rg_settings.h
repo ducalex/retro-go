@@ -22,12 +22,6 @@ void rg_settings_reset(void);
 bool rg_settings_load(void);
 bool rg_settings_save(void);
 
-int32_t rg_settings_FontSize_get();
-void rg_settings_FontSize_set(int32_t);
-
-int32_t rg_settings_Volume_get();
-void rg_settings_Volume_set(int32_t value);
-
 char* rg_settings_RomFilePath_get();
 void rg_settings_RomFilePath_set(const char* value);
 
@@ -39,9 +33,6 @@ void rg_settings_StartupApp_set(int32_t value);
 
 emu_start_action_t rg_settings_StartAction_get();
 void rg_settings_StartAction_set(emu_start_action_t value);
-
-int32_t rg_settings_AudioSink_get();
-void rg_settings_AudioSink_set(int32_t value);
 
 int32_t rg_settings_DiskActivity_get();
 void rg_settings_DiskActivity_set(int32_t value);

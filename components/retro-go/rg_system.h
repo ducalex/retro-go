@@ -4,18 +4,11 @@
 extern "C" {
 #endif
 
-#include <esp_idf_version.h>
 #include <esp_attr.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-
-#if defined(ESP_IDF_VERSION_MAJOR) && ESP_IDF_VERSION_MAJOR >= 4
-#include <esp32/rom/crc.h>
-#else
-#include <rom/crc.h>
-#endif
 
 #include "config.h"
 
@@ -172,7 +165,9 @@ extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 #define RG_LOGW(x, ...) printf(" ! %s: " x, __func__, ## __VA_ARGS__)
 #define RG_LOGI(x, ...) printf("%s: " x, __func__, ## __VA_ARGS__)
 //#define RG_LOGD(x, ...) printf("> %s: " x, __func__, ## __VA_ARGS__)
-#define RG_LOGD(x...) {}
+#define RG_LOGD(x, ...) {}
+
+#define RG_DUMP(...) {}
 
 // Attributes
 

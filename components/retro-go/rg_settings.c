@@ -16,10 +16,7 @@
 static const char* Key_RomFilePath  = "RomFilePath";
 static const char* Key_StartAction  = "StartAction";
 static const char* Key_Backlight    = "Backlight";
-static const char* Key_AudioSink    = "AudioSink";
-static const char* Key_Volume       = "Volume";
 static const char* Key_StartupApp   = "StartupApp";
-static const char* Key_FontSize     = "FontSize";
 static const char* Key_DiskActivity = "DiskActivity";
 // static const char* Key_RetroGoVer   = "RetroGoVer";
 // Per-app
@@ -65,7 +62,7 @@ void rg_settings_init()
         fseek(fp, 0, SEEK_END);
         length = ftell(fp);
         fseek(fp, 0, SEEK_SET);
-        buffer = rg_alloc(length + 1, MEM_ANY);
+        buffer = calloc(1, length + 1);
         fread(buffer, 1, length, fp);
         fclose(fp);
     }
@@ -81,7 +78,7 @@ void rg_settings_init()
     {
         if (nvs_get_str(my_handle, CONFIG_NVS_STORE, NULL, &length) == ESP_OK)
         {
-            buffer = rg_alloc(length + 1, MEM_ANY);
+            buffer = calloc(1, length + 1);
             nvs_get_str(my_handle, CONFIG_NVS_STORE, buffer, &length);
         }
     }
@@ -91,7 +88,7 @@ void rg_settings_init()
     if (buffer)
     {
         root = cJSON_Parse(buffer);
-        rg_free(buffer);
+        free(buffer);
     }
 
     if (root)
@@ -147,7 +144,7 @@ char *rg_settings_string_get(const char *key, const char *default_value)
 {
     if (!initialized)
     {
-        RG_LOGE("Trying to get key '%s' before rg_settings_init() was called!\n", key);
+        RG_LOGW("Trying to get key '%s' before rg_settings_init() was called!\n", key);
     }
     else
     {
@@ -165,7 +162,7 @@ void rg_settings_string_set(const char *key, const char *value)
 {
     if (!initialized)
     {
-        RG_LOGE("Trying to set key '%s' before rg_settings_init() was called!\n", key);
+        RG_LOGW("Trying to set key '%s' before rg_settings_init() was called!\n", key);
         return;
     }
 
@@ -177,7 +174,7 @@ int32_t rg_settings_int32_get(const char *key, int32_t default_value)
 {
     if (!initialized)
     {
-        RG_LOGE("Trying to get key '%s' before rg_settings_init() was called!\n", key);
+        RG_LOGW("Trying to get key '%s' before rg_settings_init() was called!\n", key);
         return default_value;
     }
 
@@ -190,7 +187,7 @@ void rg_settings_int32_set(const char *key, int32_t value)
 {
     if (!initialized)
     {
-        RG_LOGE("Trying to set key '%s' before rg_settings_init() was called!\n", key);
+        RG_LOGW("Trying to set key '%s' before rg_settings_init() was called!\n", key);
         return;
     }
     else if (rg_settings_int32_get(key, ~value) == value)
@@ -218,16 +215,6 @@ void rg_settings_app_int32_set(const char *key, int32_t value)
 }
 
 
-int32_t rg_settings_FontSize_get()
-{
-    return rg_settings_int32_get(Key_FontSize, 8);
-}
-void rg_settings_FontSize_set(int32_t value)
-{
-    rg_settings_int32_set(Key_FontSize, value);
-}
-
-
 char* rg_settings_RomFilePath_get()
 {
     return rg_settings_string_get(Key_RomFilePath, NULL);
@@ -235,26 +222,6 @@ char* rg_settings_RomFilePath_get()
 void rg_settings_RomFilePath_set(const char* value)
 {
     rg_settings_string_set(Key_RomFilePath, value);
-}
-
-
-int32_t rg_settings_Volume_get()
-{
-    return rg_settings_int32_get(Key_Volume, RG_AUDIO_VOL_DEFAULT);
-}
-void rg_settings_Volume_set(int32_t value)
-{
-    rg_settings_int32_set(Key_Volume, value);
-}
-
-
-int32_t rg_settings_AudioSink_get()
-{
-    return rg_settings_int32_get(Key_AudioSink, RG_AUDIO_SINK_SPEAKER);
-}
-void rg_settings_AudioSink_set(int32_t value)
-{
-    rg_settings_int32_set(Key_AudioSink, value);
 }
 
 

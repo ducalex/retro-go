@@ -21,7 +21,7 @@
 #define AUDIO_SAMPLE_RATE (22050)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50)
 
-#define NVS_KEY_KEYMAP "keymap"
+#define SETTING_KEYMAP "keymap"
 
 // static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
@@ -159,15 +159,16 @@ static dialog_return_t menu_keymap_cb(dialog_option_t *option, dialog_event_t ev
 	if (keymap_id != prev)
 	{
 		update_keymap(keymap_id);
-		rg_settings_app_int32_set(NVS_KEY_KEYMAP, keymap_id);
+		rg_settings_app_int32_set(SETTING_KEYMAP, keymap_id);
 	}
 
     strcpy(option->value, keymap.name);
 
 	if (event == RG_DIALOG_ENTER)
 	{
-		dialog_option_t *options = (dialog_option_t *)calloc(keymap.size + 2, sizeof(dialog_option_t));
+		dialog_option_t options[keymap.size + 2] = {0};
 		dialog_option_t *option = options;
+		char values[keymap.size + 2][16] = {0};
 
 		for (int i = 0; i < keymap.size; i++)
 		{
@@ -177,6 +178,7 @@ static dialog_return_t menu_keymap_cb(dialog_option_t *option, dialog_event_t ev
 
 			const char *key = KEYNAMES[keymap.keys[i].key_id];
 			const char *mod = (keymap.keys[i].mod1) ? "MENU + " : "";
+			option->value = (char*)&values[i];
 			strcpy(option->value, mod);
 			strcat(option->value, key);
 			option->label = keymap.keys[i].action;
@@ -192,8 +194,6 @@ static dialog_return_t menu_keymap_cb(dialog_option_t *option, dialog_event_t ev
 
 		rg_gui_dialog("SNES  :ODROID", options, -1);
 		rg_display_clear(C_BLACK);
-
-		free(options);
 	}
 
     return RG_DIALOG_IGNORE;
@@ -261,7 +261,7 @@ static void snes9x_task(void *arg)
 
 	GFX.Screen = (uint16*)currentUpdate->buffer;
 
-	update_keymap(rg_settings_app_int32_get(NVS_KEY_KEYMAP, 0));
+	update_keymap(rg_settings_app_int32_get(SETTING_KEYMAP, 0));
 
 	if (!S9xMemoryInit())
 		RG_PANIC("Memory init failed!");
@@ -302,7 +302,7 @@ static void snes9x_task(void *arg)
 		else if (joystick.values[GAMEPAD_KEY_VOLUME])
 		{
 			dialog_option_t options[] = {
-				{2, "Controls", "ABC", 1, &menu_keymap_cb},
+				{2, "Controls", "Type 0", 1, &menu_keymap_cb},
 				RG_DIALOG_CHOICE_LAST};
 			rg_gui_game_settings_menu(options);
 		}

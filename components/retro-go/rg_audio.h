@@ -33,11 +33,11 @@ typedef enum
 } audio_filter_t;
 
 void rg_audio_init(int sample_rate);
-void rg_audio_deinit();
+void rg_audio_deinit(void);
 void rg_audio_set_sink(audio_sink_t sink);
-audio_sink_t rg_audio_get_sink();
-void rg_audio_volume_set(audio_volume_t level);
-audio_volume_t rg_audio_volume_get();
-void rg_audio_mute(bool mute);
+audio_sink_t rg_audio_get_sink(void);
+void rg_audio_set_volume(audio_volume_t level);
+audio_volume_t rg_audio_get_volume(void);
+void rg_audio_set_mute(bool mute);
 void rg_audio_submit(short *stereoAudioBuffer, size_t frameCount);
-int  rg_audio_sample_rate_get();
+int  rg_audio_get_sample_rate(void);
