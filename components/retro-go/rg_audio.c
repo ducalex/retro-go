@@ -10,8 +10,8 @@
 static int audioSink = RG_AUDIO_SINK_SPEAKER;
 static int audioSampleRate = 0;
 static int audioFilter = 0;
-static bool audioMuted = 0;
-static bool audioInitialized = 0;
+static bool audioMuted = false;
+static bool audioInitialized = false;
 static int volumeLevel = RG_AUDIO_VOL_DEFAULT;
 static float volumeLevels[] = {0.f, 0.06f, 0.125f, 0.187f, 0.25f, 0.35f, 0.42f, 0.60f, 0.80f, 1.f};
 
@@ -40,11 +40,8 @@ void rg_audio_init(int sample_rate)
     volumeLevel = rg_settings_int32_get(SETTING_VOLUME, RG_AUDIO_VOL_DEFAULT);
     audioSink = rg_settings_int32_get(SETTING_OUTPUT, RG_AUDIO_SINK_SPEAKER);
     audioSampleRate = sample_rate;
-    audioInitialized = true;
 
-    RG_LOGI("sink=%d, sample_rate=%d\n", audioSink, sample_rate);
-
-    int buffer_length = RG_MIN(sample_rate / 50 + 1, 640);
+    rg_audio_deinit();
 
     if (audioSink == RG_AUDIO_SINK_SPEAKER)
     {
@@ -52,28 +49,31 @@ void rg_audio_init(int sample_rate)
             .mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN,          // Only TX
             .sample_rate = audioSampleRate,
             .bits_per_sample = 16,
-            .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,                           //2-channels
+            .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,                           // 2-channels
             .communication_format = I2S_COMM_FORMAT_I2S_MSB,
             .dma_buf_count = 2,
-            .dma_buf_len = buffer_length, //The unit is stereo samples (4 bytes)
-            .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,                                //Interrupt level 1
+            .dma_buf_len = RG_MIN(sample_rate / 50 + 1, 640),                       // The unit is stereo samples (4 bytes)
+            .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,                               // Interrupt level 1
             .use_apll = 0 //1
         };
 
         i2s_driver_install(RG_AUDIO_I2S_NUM, &i2s_config, 0, NULL);
         i2s_set_pin(RG_AUDIO_I2S_NUM, NULL);
+        audioInitialized = true;
+
+        RG_LOGI("SPEAKER ready. samplerate=%d, i2s=%d\n", sample_rate, i2s_get_clk(RG_AUDIO_I2S_NUM));
     }
-    else if (audioSink == RG_AUDIO_SINK_DAC)
+    else if (audioSink == RG_AUDIO_SINK_EXT_DAC)
     {
         i2s_config_t i2s_config = {
             .mode = I2S_MODE_MASTER | I2S_MODE_TX,                                  // Only TX
             .sample_rate = audioSampleRate,
             .bits_per_sample = 16,
-            .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,                           //2-channels
+            .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,                           // 2-channels
             .communication_format = I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB,
             .dma_buf_count = 2,
-            .dma_buf_len = buffer_length, //The unit is stereo samples (4 bytes)
-            .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,                                //Interrupt level 1
+            .dma_buf_len = RG_MIN(sample_rate / 50 + 1, 640),                       // The unit is stereo samples (4 bytes)
+            .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,                               // Interrupt level 1
             .use_apll = 1
         };
 
@@ -86,20 +86,17 @@ void rg_audio_init(int sample_rate)
 
         i2s_driver_install(RG_AUDIO_I2S_NUM, &i2s_config, 0, NULL);
         i2s_set_pin(RG_AUDIO_I2S_NUM, &pin_config);
+        audioInitialized = true;
 
-        // Disable internal amp
-        gpio_set_direction(RG_GPIO_DAC1, GPIO_MODE_OUTPUT);
-        gpio_set_direction(RG_GPIO_DAC2, GPIO_MODE_DISABLE);
-        gpio_set_level(RG_GPIO_DAC1, 0);
+        RG_LOGI("EXT_DAC ready. samplerate=%d, i2s=%d\n", sample_rate, i2s_get_clk(RG_AUDIO_I2S_NUM));
     }
     else
     {
-        RG_PANIC("Audio Sink Unknown");
+        RG_LOGI("DUMMY ready. samplerate=%d\n", sample_rate);
+        audioSink = RG_AUDIO_SINK_DUMMY;
     }
 
     rg_audio_set_volume(volumeLevel);
-
-    RG_LOGI("init done. clock=%f\n", i2s_get_clk(RG_AUDIO_I2S_NUM));
 }
 
 void rg_audio_deinit(void)
@@ -111,6 +108,9 @@ void rg_audio_deinit(void)
         audioInitialized = false;
     }
 
+    gpio_reset_pin(RG_GPIO_I2S_DAC_DATA);
+    gpio_reset_pin(RG_GPIO_I2S_DAC_BCK);
+    gpio_reset_pin(RG_GPIO_I2S_DAC_WS);
     gpio_reset_pin(RG_GPIO_DAC1);
     gpio_reset_pin(RG_GPIO_DAC2);
 }
@@ -133,7 +133,7 @@ void rg_audio_submit(short *stereoAudioBuffer, size_t frameCount)
         return;
     }
 
-    if (audioMuted)
+    if (audioMuted || audioSink == RG_AUDIO_SINK_DUMMY)
     {
         // Simulate i2s_write_bytes delay
         usleep((audioSampleRate * 1000) / sampleCount);
@@ -188,7 +188,7 @@ void rg_audio_submit(short *stereoAudioBuffer, size_t frameCount)
             stereoAudioBuffer[i + 1] = (short)dac0;
         }
     }
-    else if (audioSink == RG_AUDIO_SINK_DAC)
+    else if (audioSink == RG_AUDIO_SINK_EXT_DAC)
     {
         for (size_t i = 0; i < sampleCount; ++i)
         {
@@ -222,15 +222,9 @@ void rg_audio_submit(short *stereoAudioBuffer, size_t frameCount)
 
 void rg_audio_set_sink(audio_sink_t sink)
 {
-    audioSink = sink;
-
-    rg_settings_int32_set(SETTING_OUTPUT, audioSink);
-
-    if (audioSampleRate > 0)
-    {
-        rg_audio_deinit();
-        rg_audio_init(audioSampleRate);
-    }
+    rg_audio_deinit();
+    rg_settings_int32_set(SETTING_OUTPUT, sink);
+    rg_audio_init(audioSampleRate);
 }
 
 audio_sink_t rg_audio_get_sink(void)

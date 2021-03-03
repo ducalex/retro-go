@@ -104,7 +104,7 @@ An up to date list of incompatible/broken games can be found on the [ODROID-GO f
 ## Prerequisites
 You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/v4.0.2/) version 3.3.4 or 4.0.2. The legacy (make) build system isn't supported, only idf/cmake.
 
-An optional patch to improve SD Card compatibility can be found in the tools folder.
+An optional patch to improve SD Card compatibility can be found in the `tools/patches` folder as well as one to enable exFAT support.
 
 _Note: many other versions of esp-idf will work but at least 3.3.0, 4.0.0, 4.1.0, and 4.2.0 are known to have driver bugs resulting in no audio or no SD Card support. For now the best choice is 4.0.2. I will update this document when 4.1 or 4.2 fix the driver issues._
 
@@ -117,6 +117,9 @@ For a smaller build you can also specify which apps you want, for example the la
 ## Build, flash, and monitor individual apps for faster development:
 1. `rg_tool.py run nofrendo-go --offset=0x100000 --port=COM3`
 * Offset is required only if you use my multi-firmware AND retro-go isn't the first installed application, in which case the offset is shown in the multi-firmware.
+
+## Capturing crash logs
+When a panic occurs, Retro-Go has the ability to save debugging information to `/sd/crash.log`. This provides users with a simple way of recovering a backtrace (and often more) versus having to install drivers and serial console software. A weak hook is installed into esp-idf panic's putchar, allowing us to save each chars in RTC RAM. Then, after the system resets, we can move that data to the sd card. You will find a small esp-idf patch to enable this feature in tools/patches.
 
 
 # Porting

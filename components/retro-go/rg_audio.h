@@ -21,7 +21,8 @@ typedef enum
 typedef enum
 {
     RG_AUDIO_SINK_SPEAKER = 0,
-    RG_AUDIO_SINK_DAC
+    RG_AUDIO_SINK_EXT_DAC,
+    RG_AUDIO_SINK_DUMMY,
 } audio_sink_t;
 
 typedef enum

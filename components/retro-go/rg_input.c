@@ -46,7 +46,7 @@ static inline gamepad_state_t external_gamepad_read(void)
     gamepad_state_t state = {0};
 
     // Unfortunately the GO doesn't bring out enough GPIO for both ext DAC and controller...
-    if (rg_audio_get_sink() != RG_AUDIO_SINK_DAC)
+    if (rg_audio_get_sink() != RG_AUDIO_SINK_EXT_DAC)
     {
         // NES / SNES shift register
     }

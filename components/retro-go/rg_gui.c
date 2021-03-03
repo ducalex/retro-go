@@ -571,11 +571,11 @@ static dialog_return_t audio_update_cb(dialog_option_t *option, dialog_event_t e
     int8_t sink = rg_audio_get_sink();
 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
-        sink = (sink == RG_AUDIO_SINK_SPEAKER) ? RG_AUDIO_SINK_DAC : RG_AUDIO_SINK_SPEAKER;
+        sink = (sink == RG_AUDIO_SINK_SPEAKER) ? RG_AUDIO_SINK_EXT_DAC : RG_AUDIO_SINK_SPEAKER;
         rg_audio_set_sink(sink);
     }
 
-    strcpy(option->value, (sink == RG_AUDIO_SINK_DAC) ? "Ext DAC" : "Speaker");
+    strcpy(option->value, (sink == RG_AUDIO_SINK_EXT_DAC) ? "Ext DAC" : "Speaker");
 
     return RG_DIALOG_IGNORE;
 }

@@ -276,6 +276,10 @@ spi_initialize()
         .flags = SPI_DEVICE_NO_DUMMY,             // SPI_DEVICE_HALFDUPLEX;
     };
 
+    // Disable LCD CD to prevent garbage
+    gpio_set_direction(RG_GPIO_LCD_CS, GPIO_MODE_OUTPUT);
+    gpio_set_level(RG_GPIO_LCD_CS, 1);
+
     //Initialize the SPI bus
     spi_bus_initialize(HSPI_HOST, &buscfg, 1);
     spi_bus_add_device(HSPI_HOST, &devcfg, &spi_dev);
