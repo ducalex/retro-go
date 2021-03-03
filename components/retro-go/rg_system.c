@@ -47,6 +47,7 @@ typedef struct
     uint32_t magicWord;
     char message[256];
     char context[128];
+    char appname[128];
 } panic_trace_t;
 
 // These will survive a software reset
@@ -225,7 +226,7 @@ esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
     return ret;
 }
 
-bool rg_sdcard_mount()
+bool rg_sdcard_init(void)
 {
     sdmmc_host_t host_config = SDSPI_HOST_DEFAULT();
     host_config.slot = HSPI_HOST;
@@ -259,7 +260,7 @@ bool rg_sdcard_mount()
     return false;
 }
 
-bool rg_sdcard_unmount()
+bool rg_sdcard_deinit(void)
 {
     esp_err_t ret = esp_vfs_fat_sdmmc_unmount();
     if (ret == ESP_OK)
@@ -279,23 +280,6 @@ void rg_system_time_init()
 void rg_system_time_save()
 {
     // Update external RTC or save timestamp to disk
-}
-
-void rg_system_gpio_init()
-{
-    // Blue LED
-    gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
-    gpio_set_level(RG_GPIO_LED, 0);
-
-    // Disable LCD CD to prevent garbage
-    gpio_set_direction(RG_GPIO_LCD_CS, GPIO_MODE_OUTPUT);
-    gpio_set_level(RG_GPIO_LCD_CS, 1);
-
-    // Disable speaker to prevent hiss/pops
-    gpio_set_direction(RG_GPIO_DAC1, GPIO_MODE_INPUT);
-    gpio_set_direction(RG_GPIO_DAC2, GPIO_MODE_INPUT);
-    gpio_set_level(RG_GPIO_DAC1, 0);
-    gpio_set_level(RG_GPIO_DAC2, 0);
 }
 
 void rg_system_init(int appId, int sampleRate)
@@ -319,10 +303,12 @@ void rg_system_init(int appId, int sampleRate)
     currentApp.refreshRate = 1;
     currentApp.mainTaskHandle = xTaskGetCurrentTaskHandle();
 
-    // This must be before rg_display_init() and rg_settings_init()
-    bool sd_init = rg_sdcard_mount();
+    // Blue LED
+    gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
+    gpio_set_level(RG_GPIO_LED, 0);
 
-    rg_system_gpio_init();
+    // This must be before rg_display_init() and rg_settings_init()
+    bool sd_init = rg_sdcard_init();
     rg_settings_init();
     rg_display_init();
     rg_display_clear(0);
@@ -359,14 +345,14 @@ void rg_system_init(int appId, int sampleRate)
                 fputs(panicConsole.output, fp);
                 fputs("\n\nEnd of log\n", fp);
                 fclose(fp);
+                strcat(message, "\n Log saved to SD Card.");
             }
-            strcat(message, "\n Log saved to SD Card");
         }
 
         rg_display_clear(C_BLUE);
         rg_gui_set_font_size(12);
         rg_gui_alert("System Panic!", message);
-        rg_sdcard_unmount();
+        rg_sdcard_deinit();
         rg_audio_deinit();
         rg_system_switch_app(RG_APP_LAUNCHER);
     }
@@ -395,6 +381,8 @@ void rg_system_init(int appId, int sampleRate)
         // Only boot this app once, next time will return to launcher
         if (rg_settings_StartupApp_get() == 0)
         {
+            // This might interfer with our panic capture above and, at the very least, make
+            // it report wrong app/version...
             rg_system_set_boot_app(RG_APP_LAUNCHER);
         }
     }
@@ -414,9 +402,9 @@ void rg_system_init(int appId, int sampleRate)
 void rg_emu_init(const rg_emu_proc_t *handlers)
 {
     currentApp.startAction = rg_settings_StartAction_get();
+    currentApp.romPath = rg_settings_RomFilePath_get();
     currentApp.refreshRate = 60;
 
-    currentApp.romPath = rg_settings_RomFilePath_get();
     if (!currentApp.romPath || strlen(currentApp.romPath) < 4)
     {
         RG_PANIC("Invalid ROM path!");
@@ -613,6 +601,18 @@ bool rg_emu_notify(int msg, void *arg)
     return false;
 }
 
+bool rg_emu_start_game(const char *emulator, const char *romPath, emu_start_action_t action)
+{
+    rg_settings_RomFilePath_set(romPath);
+    rg_settings_StartAction_set(action);
+    rg_settings_save();
+
+    if (emulator)
+        rg_system_switch_app(emulator);
+    else
+        esp_restart();
+}
+
 void rg_system_restart()
 {
     // FIX ME: Ensure the boot loader points to us
@@ -627,7 +627,7 @@ void rg_system_switch_app(const char *app)
     rg_gui_draw_hourglass();
 
     rg_audio_deinit();
-    rg_sdcard_unmount();
+    rg_sdcard_deinit();
 
     rg_system_set_boot_app(app);
     esp_restart();

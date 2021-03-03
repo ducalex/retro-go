@@ -345,18 +345,12 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
 
 void emulator_start(retro_emulator_file_t *file, bool load_state)
 {
-    const char *path = emu_get_file_path(file);
-
-    if (path == NULL)
+    if (file == NULL)
         RG_PANIC("Unable to find file...");
 
-    RG_LOGX("Retro-Go: Starting game: %s\n", path);
-
-    rg_settings_StartAction_set(load_state ? EMU_START_ACTION_RESUME : EMU_START_ACTION_NEWGAME);
-    rg_settings_RomFilePath_set(path);
-    rg_settings_save();
-
-    rg_system_switch_app(((retro_emulator_t *)file->emulator)->partition);
+    const char *path = emu_get_file_path(file);
+    const char *emu = ((retro_emulator_t *)file->emulator)->partition;
+    rg_emu_start_game(emu, path, load_state ? EMU_START_ACTION_RESUME : EMU_START_ACTION_NEWGAME);
 }
 
 void emulators_init()

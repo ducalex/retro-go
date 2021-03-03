@@ -44,6 +44,12 @@ void rg_audio_init(int sample_rate)
 
     RG_LOGI("sink=%d, sample_rate=%d\n", audioSink, sample_rate);
 
+    gpio_reset_pin(RG_GPIO_I2S_DAC_DATA);
+    gpio_reset_pin(RG_GPIO_I2S_DAC_BCK);
+    gpio_reset_pin(RG_GPIO_I2S_DAC_WS);
+    gpio_reset_pin(RG_GPIO_DAC1);
+    gpio_reset_pin(RG_GPIO_DAC2);
+
     int buffer_length = RG_MIN(sample_rate / 50 + 1, 640);
 
     if (audioSink == RG_AUDIO_SINK_SPEAKER)
@@ -86,11 +92,6 @@ void rg_audio_init(int sample_rate)
 
         i2s_driver_install(RG_AUDIO_I2S_NUM, &i2s_config, 0, NULL);
         i2s_set_pin(RG_AUDIO_I2S_NUM, &pin_config);
-
-        // Disable internal amp
-        gpio_set_direction(RG_GPIO_DAC1, GPIO_MODE_OUTPUT);
-        gpio_set_direction(RG_GPIO_DAC2, GPIO_MODE_DISABLE);
-        gpio_set_level(RG_GPIO_DAC1, 0);
     }
     else
     {
@@ -111,6 +112,9 @@ void rg_audio_deinit(void)
         audioInitialized = false;
     }
 
+    gpio_reset_pin(RG_GPIO_I2S_DAC_DATA);
+    gpio_reset_pin(RG_GPIO_I2S_DAC_BCK);
+    gpio_reset_pin(RG_GPIO_I2S_DAC_WS);
     gpio_reset_pin(RG_GPIO_DAC1);
     gpio_reset_pin(RG_GPIO_DAC2);
 }

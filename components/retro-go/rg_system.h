@@ -109,18 +109,19 @@ runtime_stats_t rg_system_get_stats();
 void rg_system_time_init();
 void rg_system_time_save();
 
+bool rg_sdcard_init(void);
+bool rg_sdcard_deinit(void);
+
 void rg_emu_init(const rg_emu_proc_t *handlers);
 char *rg_emu_get_path(emu_path_type_t type, const char *romPath);
 bool rg_emu_save_state(int slot);
 bool rg_emu_load_state(int slot);
 bool rg_emu_reset(int hard);
 bool rg_emu_notify(int msg, void *arg);
+bool rg_emu_start_game(const char *emulator, const char *romPath, emu_start_action_t action);
 
 void rg_spi_lock_acquire(spi_lock_res_t);
 void rg_spi_lock_release(spi_lock_res_t);
-
-bool rg_sdcard_mount();
-bool rg_sdcard_unmount();
 
 bool rg_fs_mkdir(const char *path);
 bool rg_fs_delete(const char* path);
