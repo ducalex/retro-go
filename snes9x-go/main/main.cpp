@@ -21,23 +21,24 @@
 #define AUDIO_SAMPLE_RATE (22050)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50)
 
-#define SETTING_KEYMAP "keymap"
-
 // static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
 static rg_video_frame_t frames[2];
 static rg_video_frame_t *currentUpdate = &frames[0];
-
-static rg_app_desc_t *app;
+static uint32_t frames_counter = 0;
 
 static char temp_path[PATH_MAX + 1];
-
-static uint32_t frames_counter = 0;
 
 static int keymap_id = 0;
 static keymap_t keymap;
 
-// static bool netplay = false;
+static rg_app_desc_t *app;
+
+#ifdef ENABLE_NETPLAY
+static bool netplay = false;
+#endif
+
+static const char *SETTING_KEYMAP = "keymap";
 // --- MAIN
 
 

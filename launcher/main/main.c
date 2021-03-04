@@ -10,11 +10,12 @@
 #include "favorites.h"
 #include "gui.h"
 
-#define SETTING_SELECTED_TAB  "SelectedTab"
-#define SETTING_GUI_THEME     "ColorTheme"
-#define SETTING_SHOW_EMPTY    "ShowEmptyTabs"
-#define SETTING_SHOW_PREVIEW  "ShowPreview"
-#define SETTING_PREVIEW_SPEED "PreviewSpeed"
+static const char *SETTING_SELECTED_TAB  = "SelectedTab";
+static const char *SETTING_GUI_THEME     = "ColorTheme";
+static const char *SETTING_SHOW_EMPTY    = "ShowEmptyTabs";
+static const char *SETTING_SHOW_PREVIEW  = "ShowPreview";
+static const char *SETTING_PREVIEW_SPEED = "PreviewSpeed";
+
 
 static dialog_return_t font_size_cb(dialog_option_t *option, dialog_event_t event)
 {

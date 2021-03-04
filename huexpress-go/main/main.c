@@ -20,6 +20,12 @@
 
 #define APP_ID 40
 
+#define AUDIO_SAMPLE_RATE 22050
+// #define AUDIO_BUFFER_LENGTH  (AUDIO_SAMPLE_RATE / 60)
+#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 / 5)
+
+static short audiobuffer[AUDIO_BUFFER_LENGTH * 2];
+
 static uint16_t mypalette[256];
 static uint8_t *framebuffers[2];
 static rg_video_frame_t frames[2];
@@ -31,20 +37,15 @@ static int skipFrames = 0;
 static int blitFrames = 0;
 static int fullFrames = 0;
 
-#define SETTING_AUDIOTYPE "audiotype"
-
-#define AUDIO_SAMPLE_RATE 22050
-// #define AUDIO_BUFFER_LENGTH  (AUDIO_SAMPLE_RATE / 60)
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 / 5)
-
-static short audiobuffer[AUDIO_BUFFER_LENGTH * 2];
-
 static rg_app_desc_t *app;
 
 #ifdef ENABLE_NETPLAY
 static bool netplay = false;
 #endif
+
+static const char *SETTING_AUDIOTYPE = "audiotype";
 // --- MAIN
+
 
 static inline void clear_buffer(rg_video_frame_t *update)
 {

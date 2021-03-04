@@ -12,8 +12,6 @@
 #define AUDIO_SAMPLE_RATE   (32000)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
 
-#define SETTING_AUTOCROP "autocrop"
-
 static uint8_t *romData;
 static uint32_t romSize;
 
@@ -39,6 +37,8 @@ static gamepad_state_t joystick2;
 
 static bool netplay = false;
 #endif
+
+static const char *SETTING_AUTOCROP = "autocrop";
 // --- MAIN
 
 

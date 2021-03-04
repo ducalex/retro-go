@@ -17,8 +17,6 @@
 #define AUDIO_SAMPLE_RATE   (32000)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 16 + 1)
 
-#define SETTING_SAVE_SRAM "sram"
-
 static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
 static rg_video_frame_t frames[2];
@@ -36,6 +34,8 @@ static long autoSaveSRAM_Timer = 0;
 #ifdef ENABLE_NETPLAY
 static bool netplay = false;
 #endif
+
+static const char *SETTING_SAVE_SRAM = "sram";
 // --- MAIN
 
 

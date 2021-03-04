@@ -61,7 +61,7 @@ void rg_audio_init(int sample_rate)
         i2s_set_pin(RG_AUDIO_I2S_NUM, NULL);
         audioInitialized = true;
 
-        RG_LOGI("SPEAKER ready. samplerate=%d, i2s=%d\n", sample_rate, i2s_get_clk(RG_AUDIO_I2S_NUM));
+        RG_LOGI("SPEAKER ready. samplerate=%d, i2s=%f\n", sample_rate, i2s_get_clk(RG_AUDIO_I2S_NUM));
     }
     else if (audioSink == RG_AUDIO_SINK_EXT_DAC)
     {
@@ -88,7 +88,7 @@ void rg_audio_init(int sample_rate)
         i2s_set_pin(RG_AUDIO_I2S_NUM, &pin_config);
         audioInitialized = true;
 
-        RG_LOGI("EXT_DAC ready. samplerate=%d, i2s=%d\n", sample_rate, i2s_get_clk(RG_AUDIO_I2S_NUM));
+        RG_LOGI("EXT_DAC ready. samplerate=%d, i2s=%f\n", sample_rate, i2s_get_clk(RG_AUDIO_I2S_NUM));
     }
     else
     {
