@@ -172,7 +172,7 @@ void retro_loop()
 
         gui.joystick = rg_input_read_gamepad();
 
-        if (gui.idle_counter > 0 && gui.joystick.bitmask == 0)
+        if (gui.idle_counter > 0 && (gui.joystick & GAMEPAD_KEY_ANY) == 0)
         {
             gui_event(TAB_IDLE, tab);
 
@@ -181,7 +181,7 @@ void retro_loop()
         }
 
         if (last_key >= 0) {
-            if (!gui.joystick.values[last_key]) {
+            if (!(gui.joystick & last_key)) {
                 last_key = -1;
                 debounce = 0;
             } else if (debounce++ > 12) {
@@ -189,8 +189,9 @@ void retro_loop()
                 last_key = -1;
             }
         } else {
-            for (int i = 0; i < GAMEPAD_KEY_MAX; i++)
-                if (gui.joystick.values[i]) last_key = i;
+            for (int i = 0; i < GAMEPAD_KEY_COUNT; i++)
+                if (gui.joystick & (1 << i))
+                    last_key = (1 << i);
 
             if (last_key == GAMEPAD_KEY_MENU) {
                 char buildstr[32], datestr[32];
@@ -268,7 +269,7 @@ void retro_loop()
             }
         }
 
-        if (gui.joystick.bitmask) {
+        if (gui.joystick & GAMEPAD_KEY_ANY) {
             gui.idle_counter = 0;
         } else {
             gui.idle_counter++;

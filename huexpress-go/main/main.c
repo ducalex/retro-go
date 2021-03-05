@@ -208,13 +208,14 @@ int osd_input_init(void)
 
 void osd_input_read(void)
 {
-    gamepad_state_t joystick = rg_input_read_gamepad();
+    uint32_t joystick = rg_input_read_gamepad();
+    uint32_t buttons = 0;
 
-    if (joystick.values[GAMEPAD_KEY_MENU])
+    if (joystick & GAMEPAD_KEY_MENU)
     {
         rg_gui_game_menu();
     }
-    else if (joystick.values[GAMEPAD_KEY_VOLUME])
+    else if (joystick & GAMEPAD_KEY_VOLUME)
     {
         dialog_option_t options[] = {
             {101, "More...", NULL, 1, &advanced_settings_cb},
@@ -222,17 +223,16 @@ void osd_input_read(void)
         rg_gui_game_settings_menu(options);
     }
 
-    unsigned char rc = 0;
-    if (joystick.values[GAMEPAD_KEY_LEFT])   rc |= JOY_LEFT;
-    if (joystick.values[GAMEPAD_KEY_RIGHT])  rc |= JOY_RIGHT;
-    if (joystick.values[GAMEPAD_KEY_UP])     rc |= JOY_UP;
-    if (joystick.values[GAMEPAD_KEY_DOWN])   rc |= JOY_DOWN;
-    if (joystick.values[GAMEPAD_KEY_A])      rc |= JOY_A;
-    if (joystick.values[GAMEPAD_KEY_B])      rc |= JOY_B;
-    if (joystick.values[GAMEPAD_KEY_START])  rc |= JOY_RUN;
-    if (joystick.values[GAMEPAD_KEY_SELECT]) rc |= JOY_SELECT;
+    if (joystick & GAMEPAD_KEY_LEFT)   buttons |= JOY_LEFT;
+    if (joystick & GAMEPAD_KEY_RIGHT)  buttons |= JOY_RIGHT;
+    if (joystick & GAMEPAD_KEY_UP)     buttons |= JOY_UP;
+    if (joystick & GAMEPAD_KEY_DOWN)   buttons |= JOY_DOWN;
+    if (joystick & GAMEPAD_KEY_A)      buttons |= JOY_A;
+    if (joystick & GAMEPAD_KEY_B)      buttons |= JOY_B;
+    if (joystick & GAMEPAD_KEY_START)  buttons |= JOY_RUN;
+    if (joystick & GAMEPAD_KEY_SELECT) buttons |= JOY_SELECT;
 
-    PCE.Joypad.regs[0] = rc;
+    PCE.Joypad.regs[0] = buttons;
 }
 
 static void audioTask(void *arg)

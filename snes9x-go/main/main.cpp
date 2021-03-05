@@ -144,7 +144,6 @@ static void update_keymap(int id)
 
 	for (int i = 0; i < keymap.size; i++)
 	{
-		keymap.keys[i].key_id %= GAMEPAD_KEY_MAX;
 		S9xMapButtonT(i, keymap.keys[i].action);
 	}
 }
@@ -289,9 +288,9 @@ static void snes9x_task(void *arg)
 
 	while (1)
 	{
-		gamepad_state_t joystick = rg_input_read_gamepad();
+		uint32_t joystick = rg_input_read_gamepad();
 
-		if (menuPressed && !joystick.values[GAMEPAD_KEY_MENU])
+		if (menuPressed && !(joystick & GAMEPAD_KEY_MENU))
 		{
 			if (!menuCancelled)
 			{
@@ -300,7 +299,7 @@ static void snes9x_task(void *arg)
 			}
 			menuCancelled = false;
 		}
-		else if (joystick.values[GAMEPAD_KEY_VOLUME])
+		else if (joystick & GAMEPAD_KEY_VOLUME)
 		{
 			dialog_option_t options[] = {
 				{2, "Controls", "Type 0", 1, &menu_keymap_cb},
@@ -310,17 +309,16 @@ static void snes9x_task(void *arg)
 
 		int64_t startTime = get_elapsed_time();
 
-		menuPressed = joystick.values[GAMEPAD_KEY_MENU];
+		menuPressed = joystick & GAMEPAD_KEY_MENU;
 
-		if (menuPressed && (joystick.values[GAMEPAD_KEY_B] || joystick.values[GAMEPAD_KEY_A]
-				|| joystick.values[GAMEPAD_KEY_START] || joystick.values[GAMEPAD_KEY_SELECT]))
+		if (menuPressed && (joystick & (GAMEPAD_KEY_B|GAMEPAD_KEY_A|GAMEPAD_KEY_START|GAMEPAD_KEY_SELECT)))
 		{
 			menuCancelled = true;
 		}
 
 		for (int i = 0; i < keymap.size; i++)
 		{
-			S9xReportButton(i, joystick.values[keymap.keys[i].key_id] && keymap.keys[i].mod1 == menuPressed);
+			S9xReportButton(i, (joystick & (keymap.keys[i].key_id)) && keymap.keys[i].mod1 == menuPressed);
 		}
 
 		S9xMainLoop();

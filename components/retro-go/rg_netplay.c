@@ -365,7 +365,6 @@ bool rg_netplay_quick_start(void)
     const char *status_msg = "Initializing...";
     const char *screen_msg = NULL;
     // int timeout = 100;
-    gamepad_state_t joystick;
 
     rg_display_clear(0);
 
@@ -424,9 +423,8 @@ bool rg_netplay_quick_start(void)
             screen_msg = status_msg;
         }
 
-        joystick = rg_input_read_gamepad();
-
-        if (joystick.values[GAMEPAD_KEY_B]) break;
+        if (rg_input_key_is_pressed(GAMEPAD_KEY_B))
+            break;
 
         vTaskDelay(pdMS_TO_TICKS(10));
     }

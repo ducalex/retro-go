@@ -234,7 +234,9 @@ void emulator_crc32_file(retro_emulator_file_t *file)
         while (true)
         {
             gui.joystick = rg_input_read_gamepad();
-            if (gui.joystick.bitmask > 0) break;
+
+            if (gui.joystick & GAMEPAD_KEY_ANY)
+                break;
 
             count = fread(buffer, 1, chunk_size, fp);
             if (count == 0) break;

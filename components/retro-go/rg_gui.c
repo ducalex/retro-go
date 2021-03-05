@@ -28,8 +28,6 @@ static font_info_t font_info;
 static const char *SETTING_FONTSIZE     = "FontSize";
 // static const char *SETTING_FONTTYPE     = "FontType";
 
-#define wait_all_keys_released() while (rg_input_key_is_pressed(GAMEPAD_KEY_ANY))
-
 
 void rg_gui_init(void)
 {
@@ -400,63 +398,63 @@ int rg_gui_dialog(const char *header, const dialog_option_t *options_const, int 
 
     rg_gui_draw_dialog(header, options, sel);
 
-    wait_all_keys_released();
+    rg_input_wait_for_key(GAMEPAD_KEY_ALL, false);
 
     while (1)
     {
-        gamepad_state_t joystick = rg_input_read_gamepad();
+        uint32_t joystick = rg_input_read_gamepad();
 
         if (last_key >= 0) {
-            if (!joystick.values[last_key]) {
+            if (!(joystick & last_key)) {
                 last_key = -1;
             }
         }
         else {
             dialog_return_t select = RG_DIALOG_IGNORE;
 
-            if (joystick.values[GAMEPAD_KEY_UP]) {
+            if (joystick & GAMEPAD_KEY_UP) {
                 last_key = GAMEPAD_KEY_UP;
                 if (--sel < 0) sel = options_count - 1;
             }
-            else if (joystick.values[GAMEPAD_KEY_DOWN]) {
+            else if (joystick & GAMEPAD_KEY_DOWN) {
                 last_key = GAMEPAD_KEY_DOWN;
                 if (++sel > options_count - 1) sel = 0;
             }
-            else if (joystick.values[GAMEPAD_KEY_B]) {
+            else if (joystick & GAMEPAD_KEY_B) {
                 last_key = GAMEPAD_KEY_B;
                 select = RG_DIALOG_CANCEL;
             }
-            else if (joystick.values[GAMEPAD_KEY_VOLUME]) {
+            else if (joystick & GAMEPAD_KEY_VOLUME) {
                 last_key = GAMEPAD_KEY_VOLUME;
                 select = RG_DIALOG_CANCEL;
             }
-            else if (joystick.values[GAMEPAD_KEY_MENU]) {
+            else if (joystick & GAMEPAD_KEY_MENU) {
                 last_key = GAMEPAD_KEY_MENU;
                 select = RG_DIALOG_CANCEL;
             }
             if (options[sel].flags != RG_DIALOG_FLAG_DISABLED) {
-                if (joystick.values[GAMEPAD_KEY_LEFT]) {
+                if (joystick & GAMEPAD_KEY_LEFT) {
                     last_key = GAMEPAD_KEY_LEFT;
                     if (options[sel].update_cb != NULL) {
                         select = options[sel].update_cb(&options[sel], RG_DIALOG_PREV);
                         sel_old = -1;
                     }
                 }
-                else if (joystick.values[GAMEPAD_KEY_RIGHT]) {
+                else if (joystick & GAMEPAD_KEY_RIGHT) {
                     last_key = GAMEPAD_KEY_RIGHT;
                     if (options[sel].update_cb != NULL) {
                         select = options[sel].update_cb(&options[sel], RG_DIALOG_NEXT);
                         sel_old = -1;
                     }
                 }
-                else if (joystick.values[GAMEPAD_KEY_START]) {
+                else if (joystick & GAMEPAD_KEY_START) {
                     last_key = GAMEPAD_KEY_START;
                     if (options[sel].update_cb != NULL) {
                         select = options[sel].update_cb(&options[sel], RG_DIALOG_ALT);
                         sel_old = -1;
                     }
                 }
-                else if (joystick.values[GAMEPAD_KEY_A]) {
+                else if (joystick & GAMEPAD_KEY_A) {
                     last_key = GAMEPAD_KEY_A;
                     if (options[sel].update_cb != NULL) {
                         select = options[sel].update_cb(&options[sel], RG_DIALOG_ENTER);
@@ -699,7 +697,7 @@ int rg_gui_game_settings_menu(const dialog_option_t *extra_options)
     runtime_stats_t stats = rg_system_get_stats();
 
     rg_audio_set_mute(true);
-    wait_all_keys_released();
+    rg_input_wait_for_key(GAMEPAD_KEY_ALL, false);
     draw_game_status_bar(stats);
 
     int r = rg_gui_settings_menu(options);
@@ -741,7 +739,7 @@ int rg_gui_game_debug_menu(void)
     sprintf(block_free, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);
     sprintf(uptime, "%ds", (int)(get_elapsed_time() / 1000 / 1000));
 
-    wait_all_keys_released();
+    rg_input_wait_for_key(GAMEPAD_KEY_ALL, false);
 
     int r = rg_gui_dialog("Debugging", options, 0);
 
@@ -784,7 +782,7 @@ int rg_gui_game_menu(void)
     runtime_stats_t stats = rg_system_get_stats();
 
     rg_audio_set_mute(true);
-    wait_all_keys_released();
+    rg_input_wait_for_key(GAMEPAD_KEY_ALL, false);
     draw_game_status_bar(stats);
 
     int r = rg_gui_dialog("Retro-Go", choices, 0);

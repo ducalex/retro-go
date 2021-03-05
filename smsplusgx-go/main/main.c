@@ -175,10 +175,10 @@ void app_main(void)
     {
         *localJoystick = rg_input_read_gamepad();
 
-        if (localJoystick->values[GAMEPAD_KEY_MENU]) {
+        if (*localJoystick & GAMEPAD_KEY_MENU) {
             rg_gui_game_menu();
         }
-        else if (localJoystick->values[GAMEPAD_KEY_VOLUME]) {
+        else if (*localJoystick & GAMEPAD_KEY_VOLUME) {
             rg_gui_game_settings_menu(NULL);
         }
 
@@ -194,48 +194,53 @@ void app_main(void)
         if (netplay)
         {
             rg_netplay_sync(localJoystick, remoteJoystick, sizeof(gamepad_state_t));
-            if (remoteJoystick->values[GAMEPAD_KEY_UP])    input.pad[1] |= INPUT_UP;
-            if (remoteJoystick->values[GAMEPAD_KEY_DOWN])  input.pad[1] |= INPUT_DOWN;
-            if (remoteJoystick->values[GAMEPAD_KEY_LEFT])  input.pad[1] |= INPUT_LEFT;
-            if (remoteJoystick->values[GAMEPAD_KEY_RIGHT]) input.pad[1] |= INPUT_RIGHT;
-            if (remoteJoystick->values[GAMEPAD_KEY_A])     input.pad[1] |= INPUT_BUTTON2;
-            if (remoteJoystick->values[GAMEPAD_KEY_B])     input.pad[1] |= INPUT_BUTTON1;
+
+            uint32_t joystick = *remoteJoystick;
+
+            if (joystick & GAMEPAD_KEY_UP)    input.pad[1] |= INPUT_UP;
+            if (joystick & GAMEPAD_KEY_DOWN)  input.pad[1] |= INPUT_DOWN;
+            if (joystick & GAMEPAD_KEY_LEFT)  input.pad[1] |= INPUT_LEFT;
+            if (joystick & GAMEPAD_KEY_RIGHT) input.pad[1] |= INPUT_RIGHT;
+            if (joystick & GAMEPAD_KEY_A)     input.pad[1] |= INPUT_BUTTON2;
+            if (joystick & GAMEPAD_KEY_B)     input.pad[1] |= INPUT_BUTTON1;
             if (IS_SMS)
             {
-                if (remoteJoystick->values[GAMEPAD_KEY_START])  input.system |= INPUT_PAUSE;
-                if (remoteJoystick->values[GAMEPAD_KEY_SELECT]) input.system |= INPUT_START;
+                if (joystick & GAMEPAD_KEY_START)  input.system |= INPUT_PAUSE;
+                if (joystick & GAMEPAD_KEY_SELECT) input.system |= INPUT_START;
             }
             else if (IS_GG)
             {
-                if (remoteJoystick->values[GAMEPAD_KEY_START])  input.system |= INPUT_START;
-                if (remoteJoystick->values[GAMEPAD_KEY_SELECT]) input.system |= INPUT_PAUSE;
+                if (joystick & GAMEPAD_KEY_START)  input.system |= INPUT_START;
+                if (joystick & GAMEPAD_KEY_SELECT) input.system |= INPUT_PAUSE;
             }
         }
         #endif
 
-        if (localJoystick->values[GAMEPAD_KEY_UP])    input.pad[0] |= INPUT_UP;
-        if (localJoystick->values[GAMEPAD_KEY_DOWN])  input.pad[0] |= INPUT_DOWN;
-        if (localJoystick->values[GAMEPAD_KEY_LEFT])  input.pad[0] |= INPUT_LEFT;
-        if (localJoystick->values[GAMEPAD_KEY_RIGHT]) input.pad[0] |= INPUT_RIGHT;
-        if (localJoystick->values[GAMEPAD_KEY_A])     input.pad[0] |= INPUT_BUTTON2;
-        if (localJoystick->values[GAMEPAD_KEY_B])     input.pad[0] |= INPUT_BUTTON1;
+        uint32_t joystick = *localJoystick;
+
+        if (joystick & GAMEPAD_KEY_UP)    input.pad[0] |= INPUT_UP;
+        if (joystick & GAMEPAD_KEY_DOWN)  input.pad[0] |= INPUT_DOWN;
+        if (joystick & GAMEPAD_KEY_LEFT)  input.pad[0] |= INPUT_LEFT;
+        if (joystick & GAMEPAD_KEY_RIGHT) input.pad[0] |= INPUT_RIGHT;
+        if (joystick & GAMEPAD_KEY_A)     input.pad[0] |= INPUT_BUTTON2;
+        if (joystick & GAMEPAD_KEY_B)     input.pad[0] |= INPUT_BUTTON1;
 
         if (IS_SMS)
         {
-            if (localJoystick->values[GAMEPAD_KEY_START])  input.system |= INPUT_PAUSE;
-            if (localJoystick->values[GAMEPAD_KEY_SELECT]) input.system |= INPUT_START;
+            if (joystick & GAMEPAD_KEY_START)  input.system |= INPUT_PAUSE;
+            if (joystick & GAMEPAD_KEY_SELECT) input.system |= INPUT_START;
         }
         else if (IS_GG)
         {
-            if (localJoystick->values[GAMEPAD_KEY_START])  input.system |= INPUT_START;
-            if (localJoystick->values[GAMEPAD_KEY_SELECT]) input.system |= INPUT_PAUSE;
+            if (joystick & GAMEPAD_KEY_START)  input.system |= INPUT_START;
+            if (joystick & GAMEPAD_KEY_SELECT) input.system |= INPUT_PAUSE;
         }
         else // Coleco
         {
             coleco.keypad[0] = 0xff;
             coleco.keypad[1] = 0xff;
 
-            if (localJoystick->values[GAMEPAD_KEY_SELECT])
+            if (joystick & GAMEPAD_KEY_SELECT)
             {
                 rg_input_wait_for_key(GAMEPAD_KEY_SELECT, false);
                 system_reset();
@@ -248,7 +253,7 @@ void app_main(void)
                 case 0x32b95be0:    // Frogger
                 case 0x9cc3fabc:    // Alcazar
                 case 0x964db3bc:    // Fraction Fever
-                    if (localJoystick->values[GAMEPAD_KEY_START])
+                    if (joystick & GAMEPAD_KEY_START)
                     {
                         coleco.keypad[0] = 10; // *
                     }
@@ -257,32 +262,30 @@ void app_main(void)
                 case 0x1796de5e:    // Boulder Dash
                 case 0x5933ac18:    // Boulder Dash
                 case 0x6e5c4b11:    // Boulder Dash
-                    if (localJoystick->values[GAMEPAD_KEY_START])
+                    if (joystick & GAMEPAD_KEY_START)
                     {
                         coleco.keypad[0] = 11; // #
                     }
 
-                    if (localJoystick->values[GAMEPAD_KEY_START] &&
-                        localJoystick->values[GAMEPAD_KEY_LEFT])
+                    if ((joystick & GAMEPAD_KEY_START) && (joystick & GAMEPAD_KEY_LEFT))
                     {
                         coleco.keypad[0] = 1;
                     }
                     break;
                 case 0x109699e2:    // Dr. Seuss's Fix-Up The Mix-Up Puzzler
                 case 0x614bb621:    // Decathlon
-                    if (localJoystick->values[GAMEPAD_KEY_START])
+                    if (joystick & GAMEPAD_KEY_START)
                     {
                         coleco.keypad[0] = 1;
                     }
-                    if (localJoystick->values[GAMEPAD_KEY_START] &&
-                        localJoystick->values[GAMEPAD_KEY_LEFT])
+                    if ((joystick & GAMEPAD_KEY_START) && (joystick & GAMEPAD_KEY_LEFT))
                     {
                         coleco.keypad[0] = 10; // *
                     }
                     break;
 
                 default:
-                    if (localJoystick->values[GAMEPAD_KEY_START])
+                    if (joystick & GAMEPAD_KEY_START)
                     {
                         coleco.keypad[0] = 1;
                     }

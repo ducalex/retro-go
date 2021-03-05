@@ -317,13 +317,13 @@ void app_main(void)
 
     while (true)
     {
-        gamepad_state_t joystick = rg_input_read_gamepad();
+        uint32_t joystick = rg_input_read_gamepad();
 
-        if (joystick.values[GAMEPAD_KEY_MENU]) {
+        if (joystick & GAMEPAD_KEY_MENU) {
             auto_sram_update();
             rg_gui_game_menu();
         }
-        else if (joystick.values[GAMEPAD_KEY_VOLUME]) {
+        else if (joystick & GAMEPAD_KEY_VOLUME) {
             dialog_option_t options[] = {
                 {100, "Palette", "7/7", !hw.cgb, &palette_update_cb},
                 {101, "More...", NULL, 1, &advanced_settings_cb},
@@ -336,14 +336,14 @@ void app_main(void)
         int64_t startTime = get_elapsed_time();
         bool drawFrame = !skipFrames;
 
-        pad_set(PAD_UP, joystick.values[GAMEPAD_KEY_UP]);
-        pad_set(PAD_RIGHT, joystick.values[GAMEPAD_KEY_RIGHT]);
-        pad_set(PAD_DOWN, joystick.values[GAMEPAD_KEY_DOWN]);
-        pad_set(PAD_LEFT, joystick.values[GAMEPAD_KEY_LEFT]);
-        pad_set(PAD_SELECT, joystick.values[GAMEPAD_KEY_SELECT]);
-        pad_set(PAD_START, joystick.values[GAMEPAD_KEY_START]);
-        pad_set(PAD_A, joystick.values[GAMEPAD_KEY_A]);
-        pad_set(PAD_B, joystick.values[GAMEPAD_KEY_B]);
+        pad_set(PAD_UP, joystick & GAMEPAD_KEY_UP);
+        pad_set(PAD_RIGHT, joystick & GAMEPAD_KEY_RIGHT);
+        pad_set(PAD_DOWN, joystick & GAMEPAD_KEY_DOWN);
+        pad_set(PAD_LEFT, joystick & GAMEPAD_KEY_LEFT);
+        pad_set(PAD_SELECT, joystick & GAMEPAD_KEY_SELECT);
+        pad_set(PAD_START, joystick & GAMEPAD_KEY_START);
+        pad_set(PAD_A, joystick & GAMEPAD_KEY_A);
+        pad_set(PAD_B, joystick & GAMEPAD_KEY_B);
 
         emu_run(drawFrame);
 

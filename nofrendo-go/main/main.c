@@ -339,11 +339,11 @@ void osd_getinput(void)
 
     *localJoystick = rg_input_read_gamepad();
 
-    if (localJoystick->values[GAMEPAD_KEY_MENU])
+    if (*localJoystick & GAMEPAD_KEY_MENU)
     {
         rg_gui_game_menu();
     }
-    else if (localJoystick->values[GAMEPAD_KEY_VOLUME])
+    else if (*localJoystick & GAMEPAD_KEY_VOLUME)
     {
         dialog_option_t options[] = {
             {100, "Palette", "Default", 1, &palette_update_cb},
@@ -356,27 +356,27 @@ void osd_getinput(void)
     if (netplay)
     {
         rg_netplay_sync(localJoystick, remoteJoystick, sizeof(gamepad_state_t));
-        if (joystick2.values[GAMEPAD_KEY_START])  input |= INP_PAD_START;
-        if (joystick2.values[GAMEPAD_KEY_SELECT]) input |= INP_PAD_SELECT;
-        if (joystick2.values[GAMEPAD_KEY_UP])     input |= INP_PAD_UP;
-        if (joystick2.values[GAMEPAD_KEY_RIGHT])  input |= INP_PAD_RIGHT;
-        if (joystick2.values[GAMEPAD_KEY_DOWN])   input |= INP_PAD_DOWN;
-        if (joystick2.values[GAMEPAD_KEY_LEFT])   input |= INP_PAD_LEFT;
-        if (joystick2.values[GAMEPAD_KEY_A])      input |= INP_PAD_A;
-        if (joystick2.values[GAMEPAD_KEY_B])      input |= INP_PAD_B;
+        if (joystick2 & GAMEPAD_KEY_START)  input |= INP_PAD_START;
+        if (joystick2 & GAMEPAD_KEY_SELECT) input |= INP_PAD_SELECT;
+        if (joystick2 & GAMEPAD_KEY_UP)     input |= INP_PAD_UP;
+        if (joystick2 & GAMEPAD_KEY_RIGHT)  input |= INP_PAD_RIGHT;
+        if (joystick2 & GAMEPAD_KEY_DOWN)   input |= INP_PAD_DOWN;
+        if (joystick2 & GAMEPAD_KEY_LEFT)   input |= INP_PAD_LEFT;
+        if (joystick2 & GAMEPAD_KEY_A)      input |= INP_PAD_A;
+        if (joystick2 & GAMEPAD_KEY_B)      input |= INP_PAD_B;
         input_update(INP_JOYPAD1, input);
         input = 0;
     }
 #endif
 
-    if (joystick1.values[GAMEPAD_KEY_START])  input |= INP_PAD_START;
-    if (joystick1.values[GAMEPAD_KEY_SELECT]) input |= INP_PAD_SELECT;
-    if (joystick1.values[GAMEPAD_KEY_UP])     input |= INP_PAD_UP;
-    if (joystick1.values[GAMEPAD_KEY_RIGHT])  input |= INP_PAD_RIGHT;
-    if (joystick1.values[GAMEPAD_KEY_DOWN])   input |= INP_PAD_DOWN;
-    if (joystick1.values[GAMEPAD_KEY_LEFT])   input |= INP_PAD_LEFT;
-    if (joystick1.values[GAMEPAD_KEY_A])      input |= INP_PAD_A;
-    if (joystick1.values[GAMEPAD_KEY_B])      input |= INP_PAD_B;
+    if (joystick1 & GAMEPAD_KEY_START)  input |= INP_PAD_START;
+    if (joystick1 & GAMEPAD_KEY_SELECT) input |= INP_PAD_SELECT;
+    if (joystick1 & GAMEPAD_KEY_UP)     input |= INP_PAD_UP;
+    if (joystick1 & GAMEPAD_KEY_RIGHT)  input |= INP_PAD_RIGHT;
+    if (joystick1 & GAMEPAD_KEY_DOWN)   input |= INP_PAD_DOWN;
+    if (joystick1 & GAMEPAD_KEY_LEFT)   input |= INP_PAD_LEFT;
+    if (joystick1 & GAMEPAD_KEY_A)      input |= INP_PAD_A;
+    if (joystick1 & GAMEPAD_KEY_B)      input |= INP_PAD_B;
 
     input_update(INP_JOYPAD0, input);
 }
