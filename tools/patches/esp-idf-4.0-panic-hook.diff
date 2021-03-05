@@ -16,3 +16,18 @@
  }
 
  static void panicPutStr(const char *c)
+@@ -160,9 +165,11 @@ static __attribute__((noreturn)) inline void invoke_abort()
+
+ void abort()
+ {
+-#if !CONFIG_ESP32_PANIC_SILENT_REBOOT
+-    ets_printf("abort() was called at PC 0x%08x on core %d\r\n", (intptr_t)__builtin_return_address(0) - 3, xPortGetCoreID());
+-#endif
++    panicPutStr("abort() was called at PC 0x");
++    panicPutHex(__builtin_return_address(0) - 3);
++    panicPutStr(" on core ");
++    panicPutDec(xPortGetCoreID());
++    panicPutStr("\r\n");
+     /* Calling code might have set other reset reason hint (such as Task WDT),
+      * don't overwrite that.
+      */

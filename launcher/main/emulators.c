@@ -213,7 +213,7 @@ void emulator_crc32_file(retro_emulator_file_t *file)
     const size_t chunk_size = 32768;
     const char *file_path = emu_get_file_path(file);
     char *cache_path = rg_emu_get_path(EMU_PATH_CRC_CACHE, file_path);
-    FILE *fp, *fp2;
+    FILE *fp;
 
     file->missing_cover = 0;
 
@@ -224,9 +224,10 @@ void emulator_crc32_file(retro_emulator_file_t *file)
     }
     else if ((fp = fopen(file_path, "rb")) != NULL)
     {
-        uint8_t *buffer = rg_alloc(chunk_size, MEM_ANY);
+        void *buffer = rg_alloc(chunk_size, MEM_ANY);
+        size_t count = 0;
+        bool done = false;
         uint32_t crc_tmp = 0;
-        uint32_t count = 0;
 
         gui_draw_notice("        CRC32", C_GREEN);
 
@@ -244,19 +245,20 @@ void emulator_crc32_file(retro_emulator_file_t *file)
             crc_tmp = crc32_le(crc_tmp, buffer, count);
             if (count < chunk_size) break;
         }
+        done = feof(fp);
+        fclose(fp);
 
         rg_free(buffer);
 
-        if (feof(fp))
+        if (done)
         {
             file->checksum = crc_tmp;
-            if ((fp2 = fopen(cache_path, "wb")) != NULL)
+            if ((fp = fopen(cache_path, "wb")) != NULL)
             {
-                fwrite(&file->checksum, 4, 1, fp2);
-                fclose(fp2);
+                fwrite(&file->checksum, 4, 1, fp);
+                fclose(fp);
             }
         }
-        fclose(fp);
     }
     else
     {
