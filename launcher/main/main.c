@@ -70,11 +70,11 @@ static dialog_return_t disk_activity_cb(dialog_option_t *option, dialog_event_t 
 static dialog_return_t show_preview_cb(dialog_option_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_PREV) {
-        if (--gui.show_preview < 0) gui.show_preview = 5;
+        if (--gui.show_preview < 0) gui.show_preview = 4;
         rg_settings_int32_set(SETTING_SHOW_PREVIEW, gui.show_preview);
     }
     if (event == RG_DIALOG_NEXT) {
-        if (++gui.show_preview > 5) gui.show_preview = 0;
+        if (++gui.show_preview > 4) gui.show_preview = 0;
         rg_settings_int32_set(SETTING_SHOW_PREVIEW, gui.show_preview);
     }
     const char *values[] = {"None      ", "Cover,Save", "Save,Cover", "Cover     ", "Save      "};
