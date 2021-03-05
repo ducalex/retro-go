@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <math.h>
 
 #include "../components/snes9x/snes9x.h"
 #include "../components/snes9x/memory.h"
@@ -172,11 +173,14 @@ static dialog_return_t menu_keymap_cb(dialog_option_t *option, dialog_event_t ev
 
 		for (int i = 0; i < keymap.size; i++)
 		{
+			// keys[i].key_id contains a bitmask, convert to bit number
+			int key_id = log2(keymap.keys[i].key_id);
+
 			// For now we don't display the D-PAD because it doesn't fit on large font
-			if (keymap.keys[i].key_id < 4)
+			if (key_id < 4)
 				continue;
 
-			const char *key = KEYNAMES[keymap.keys[i].key_id];
+			const char *key = KEYNAMES[key_id];
 			const char *mod = (keymap.keys[i].mod1) ? "MENU + " : "";
 			option->value = (char*)&values[i];
 			strcpy(option->value, mod);
