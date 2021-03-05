@@ -137,6 +137,18 @@ void retro_loop()
     gui.show_preview = rg_settings_int32_get(SETTING_SHOW_PREVIEW, 1);
     gui.show_preview_fast = rg_settings_int32_get(SETTING_PREVIEW_SPEED, 0);
 
+    if (!gui.show_empty)
+    {
+        // If we're hiding empty tabs then we must preload all files
+        // to avoid flicker and delays when skipping empty tabs...
+        for (int i = 0; i < gui.tabcount; i++)
+        {
+            gui_init_tab(gui.tabs[i]);
+        }
+    }
+
+    rg_display_clear(0);
+
     while (true)
     {
         if (gui.selected != selected_tab_last)
@@ -282,7 +294,6 @@ void retro_loop()
 void app_main(void)
 {
     rg_system_init(0, 32000);
-    rg_display_clear(0);
 
     emulators_init();
     favorites_init();
