@@ -32,15 +32,17 @@
 #define  ROM_FLAG_TRAINER     0x04
 #define  ROM_FLAG_BATTERY     0x02
 #define  ROM_FLAG_VERTICAL    0x01
-#define  ROM_FLAG_VERSUS      0x100 // non-ines flags
+
+#define  ROM_VRAM_BANKS      1 // non-ines flags
+#define  ROM_SRAM_BANKS      8 // non-ines flags
+
+#define  ROM_PROG_BANK_SIZE  0x4000
+#define  ROM_VROM_BANK_SIZE  0x2000
+#define  ROM_VRAM_BANK_SIZE  0x2000
+#define  ROM_SRAM_BANK_SIZE  0x400
 
 #define  TRAINER_OFFSET    0x1000
 #define  TRAINER_LENGTH    0x200
-
-#define  ROM_BANK_LENGTH   0x4000
-#define  VROM_BANK_LENGTH  0x2000
-#define  SRAM_BANK_LENGTH  0x0400
-#define  VRAM_BANK_LENGTH  0x2000
 
 typedef struct
 {
@@ -55,29 +57,27 @@ typedef struct
 
 typedef struct
 {
-   inesheader_t header;
+   uint8 *rom;  // PRG-ROM, also top of our allocation
+   uint8 *vrom; // CHR-ROM
 
-   /* pointers to ROM and VROM */
-   uint8 *rom, *vrom;
-
-   /* SRAM and vram are not iNES header-defined, always alloc them */
-   uint8 vram[1 * 0x2000];
-   uint8 sram[8 * 0x400];
+   uint8 vram[ROM_VRAM_BANKS * ROM_VRAM_BANK_SIZE]; // CHR-RAM
+   uint8 sram[ROM_SRAM_BANKS * ROM_SRAM_BANK_SIZE]; // SRAM
 
    /* number of banks */
    int rom_banks, vrom_banks;
    int sram_banks, vram_banks;
 
-   int mapper_number;
-
-   uint16 flags;
+   uint32 mapper_number;
+   uint32 flags;
+   uint32 checksum;
+   uint32 size;
 
    char filename[PATH_MAX + 1];
-   uint32 checksum;
 } rom_t;
 
 
-extern rom_t *rom_load(const char *filename);
-extern void rom_free(rom_t *rominfo);
+extern rom_t *rom_load_memory(const void *data, size_t size);
+extern rom_t *rom_load_file(const char *filename);
+extern void rom_free(void);
 
 #endif /* _NES_ROM_H_ */

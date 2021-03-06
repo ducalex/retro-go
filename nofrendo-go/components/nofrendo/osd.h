@@ -42,10 +42,6 @@ extern void osd_vsync(void);
 /* input */
 extern void osd_getinput(void);
 
-/* get rom data */
-extern uint32_t osd_getromsize(void);
-extern uint8_t *osd_getromdata(void);
-
 /* Log output, printf-style format */
 extern void osd_log(int type, const char *format, ...);
 

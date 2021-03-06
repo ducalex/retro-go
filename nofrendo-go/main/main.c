@@ -12,9 +12,6 @@
 #define AUDIO_SAMPLE_RATE   (32000)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
 
-static uint8_t *romData;
-static uint32_t romSize;
-
 static uint16_t myPalette[64];
 static rg_video_frame_t frames[2];
 static rg_video_frame_t *currentUpdate = &frames[0];
@@ -217,16 +214,6 @@ static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t
 }
 
 
-uint8_t *osd_getromdata(void)
-{
-    return romData;
-}
-
-uint32_t osd_getromsize(void)
-{
-    return romSize;
-}
-
 void osd_loadstate()
 {
     if (app->startAction == EMU_START_ACTION_RESUME)
@@ -400,27 +387,6 @@ void app_main(void)
     frames[0].pixel_mask = 0x3F;
     frames[0].palette = myPalette;
     frames[1] = frames[0];
-
-    // Load ROM
-    MESSAGE_INFO("Loading rom file: '%s'\n", app->romPath);
-
-    FILE *fp;
-    if ((fp = fopen(app->romPath, "rb")))
-    {
-        fseek(fp, 0, SEEK_END);
-        romSize = ftell(fp);
-        fseek(fp, 0, SEEK_SET);
-        romData = rg_alloc(romSize, MEM_SLOW);
-        romSize *= fread(romData, romSize, 1, fp);
-        fclose(fp);
-    }
-
-    if (romSize < 16)
-    {
-        RG_PANIC("ROM file loading failed!");
-    }
-
-    MESSAGE_INFO("Loading complete! romSize=%d\n", romSize);
 
     int region, ret;
 

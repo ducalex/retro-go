@@ -129,7 +129,7 @@ void nes_setcompathacks(void)
 bool nes_insertcart(const char *filename)
 {
     /* rom file */
-    nes.rominfo = rom_load(filename);
+    nes.rominfo = rom_load_file(filename);
     if (NULL == nes.rominfo)
         goto _fail;
 
@@ -184,7 +184,7 @@ void nes_shutdown(void)
     ppu_shutdown();
     apu_shutdown();
     nes6502_shutdown();
-    rom_free(nes.rominfo);
+    rom_free();
     free(nes.framebuffers[0]);
     free(nes.framebuffers[1]);
 }

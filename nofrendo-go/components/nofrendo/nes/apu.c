@@ -806,12 +806,8 @@ apu_t *apu_init(int region, int sample_rate, bool stereo)
    apu.sample_rate = sample_rate;
    apu.samples_per_frame = sample_rate / refresh_rate;
    apu.cycle_rate = (float) (cpu_clock / sample_rate);
-   apu.buffer = (int16*)calloc(apu.samples_per_frame + 1, stereo ? 4 : 2);
    apu.stereo = stereo;
    apu.ext = NULL;
-
-   if (apu.buffer == NULL)
-      return NULL;
 
    apu_setopt(APU_FILTER_TYPE, APU_FILTER_WEIGHTED);
    apu_setopt(APU_CHANNEL1_EN, true);
@@ -833,7 +829,6 @@ void apu_shutdown()
 {
    if (apu.ext && apu.ext->shutdown)
       apu.ext->shutdown();
-   free(apu.buffer);
 }
 
 void apu_setext(apuext_t *ext)

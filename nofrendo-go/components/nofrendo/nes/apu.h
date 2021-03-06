@@ -26,6 +26,9 @@
 #ifndef _NES_APU_H_
 #define _NES_APU_H_
 
+// This is the worst case scenario, 48khz stereo running PAL
+#define  APU_SAMPLES_PER_FRAME ((48000 / 50 + 1) * 2)
+
 #define  APU_WRA0       0x4000
 #define  APU_WRA1       0x4001
 #define  APU_WRA2       0x4002
@@ -195,7 +198,7 @@ typedef struct
    uint32 samples_per_frame;
    bool stereo;
 
-   int16 *buffer;
+   int16 buffer[APU_SAMPLES_PER_FRAME];
 
    float cycle_rate;
 
