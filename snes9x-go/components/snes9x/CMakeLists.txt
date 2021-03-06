@@ -1,5 +1,5 @@
-set(COMPONENT_SRCDIRS ". apu apu/bapu/dsp apu/bapu/smp")
-set(COMPONENT_ADD_INCLUDEDIRS ". apu apu/bapu/dsp apu/bapu/smp")
+set(COMPONENT_SRCDIRS ". apu")
+set(COMPONENT_ADD_INCLUDEDIRS ". apu")
 set(COMPONENT_REQUIRES "retro-go")
 register_component()
 rg_setup_compile_options(

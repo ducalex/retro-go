@@ -1,7 +1,9 @@
-#include "../snes/snes.hpp"
+#include "../snes9x.h"
 
 namespace SNES
 {
+#include "smp.hpp"
+
 SMP smp;
 
 #include "iplrom.hpp"
@@ -159,7 +161,6 @@ void SMP::tick()
 	timer2.tick();
 
 	clock++;
-	dsp.clock++;
 }
 
 void SMP::tick(unsigned clocks)
@@ -169,7 +170,6 @@ void SMP::tick(unsigned clocks)
 	timer2.tick(clocks);
 
 	clock += clocks;
-	dsp.clock += clocks;
 }
 
 IRAM_ATTR unsigned SMP::op_read(unsigned addr)
@@ -183,7 +183,7 @@ IRAM_ATTR unsigned SMP::op_read(unsigned addr)
 		case 0xf2:
 			return status.dsp_addr;
 		case 0xf3:
-			return dsp.read(status.dsp_addr & 0x7f);
+			return 0; // dsp.read(status.dsp_addr & 0x7f);
 		case 0xf4:
 		case 0xf5:
 		case 0xf6:
@@ -277,7 +277,7 @@ IRAM_ATTR void SMP::op_write(unsigned addr, uint8 data)
 		case 0xf3:
 			if (status.dsp_addr & 0x80)
 				break;
-			dsp.write(status.dsp_addr, data);
+			// dsp.write(status.dsp_addr, data);
 			break;
 
 		case 0xf4:
@@ -2768,7 +2768,7 @@ void SMP::Timer<cycle_frequency>::tick(unsigned clocks)
 
 void SMP::power()
 {
-	Processor::clock = 0;
+	smp.clock = 0;
 
 	timer0.target = 0;
 	timer1.target = 0;
@@ -2831,7 +2831,7 @@ void SMP::save_state(uint8 **block)
 
 #undef INT32
 #define INT32(i)		\
-set_le32(ptr, (i)); \
+SET_LE32(ptr, (i)); \
 ptr += sizeof(int32)
 	INT32(clock);
 
@@ -2896,7 +2896,7 @@ void SMP::load_state(uint8 **block)
 
 #undef INT32
 #define INT32(i)	   \
-i = get_le32(ptr); \
+i = GET_LE32(ptr); \
 ptr += sizeof(int32)
 	INT32(clock);
 

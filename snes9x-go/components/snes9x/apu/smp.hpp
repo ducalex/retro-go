@@ -1,6 +1,20 @@
-class SMP : public Processor
+typedef int_least32_t blargg_long;
+typedef uint_least32_t blargg_ulong;
+
+#define GET_LE16( addr )        (*(uint16_t*) (addr))
+#define GET_LE32( addr )        (*(uint32_t*) (addr))
+#define SET_LE16( addr, data )  (void) (*(uint16_t*) (addr) = (data))
+#define SET_LE32( addr, data )  (void) (*(uint32_t*) (addr) = (data))
+
+#define GET_LE16SA( addr )      ((int16_t) GET_LE16( addr ))
+#define GET_LE16A( addr )       GET_LE16( addr )
+#define SET_LE16A( addr, data ) SET_LE16( addr, data )
+
+class SMP
 {
 public:
+    unsigned frequency;
+    int32 clock;
 	static const uint8 iplrom[64];
 	uint32 registers[4];
 	uint8 *apuram;
