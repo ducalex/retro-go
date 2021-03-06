@@ -43,11 +43,10 @@ static const theme_t gui_themes[] = {
     {16, C_GRAY, C_GREEN, C_AQUA},
     {16, C_WHITE, C_GREEN, C_AQUA},
 };
-int gui_themes_count = sizeof(gui_themes) / sizeof(theme_t);
-
-static char str_buffer[128];
+const int gui_themes_count = sizeof(gui_themes) / sizeof(theme_t);
 
 retro_gui_t gui;
+
 
 void gui_event(gui_event_t event, tab_t *tab)
 {
@@ -84,8 +83,9 @@ void gui_init_tab(tab_t *tab)
     tab->initialized = true;
     // tab->status[0] = 0;
 
-    sprintf(str_buffer, "Sel.%.11s", tab->name);
-    tab->listbox.cursor = rg_settings_int32_get(str_buffer, 0);
+    char key_name[32];
+    sprintf(key_name, "Sel.%.11s", tab->name);
+    tab->listbox.cursor = rg_settings_int32_get(key_name, 0);
 
     gui_event(TAB_INIT, tab);
 
@@ -118,9 +118,9 @@ tab_t *gui_set_current_tab(int index)
 void gui_save_current_tab()
 {
     tab_t *tab = gui_get_current_tab();
-
-    sprintf(str_buffer, "Sel.%.11s", tab->name);
-    rg_settings_int32_set(str_buffer, tab->listbox.cursor);
+    char key_name[32];
+    sprintf(key_name, "Sel.%.11s", tab->name);
+    rg_settings_int32_set(key_name, tab->listbox.cursor);
     rg_settings_int32_set("SelectedTab", gui.selected);
     // rg_settings_save();
 }
@@ -281,6 +281,7 @@ void gui_draw_list(tab_t *tab)
 {
     const theme_t *theme = &gui_themes[gui.theme % gui_themes_count];
     const listbox_t *list = &tab->listbox;
+    char text_label[128];
 
     int columns = LIST_WIDTH / rg_gui_get_font_info().width;
     int line_height = LIST_LINE_HEIGHT;
@@ -290,16 +291,16 @@ void gui_draw_list(tab_t *tab)
         int entry = list->cursor + i - (lines / 2);
 
         if (entry >= 0 && entry < list->length) {
-            sprintf(str_buffer, "%.*s", columns, list->items[entry].text);
+            snprintf(text_label, columns + 1, "%s", list->items[entry].text);
         } else {
-            str_buffer[0] = '\0';
+            text_label[0] = '\0';
         }
 
         rg_gui_draw_text(
             LIST_X_OFFSET,
             LIST_Y_OFFSET + i * line_height,
             LIST_WIDTH,
-            str_buffer,
+            text_label,
             (entry == list->cursor) ? theme->list_selected : theme->list_standard,
             (int)(16.f / lines * i) << theme->list_background
         );
@@ -309,29 +310,53 @@ void gui_draw_list(tab_t *tab)
 void gui_draw_preview(retro_emulator_file_t *file)
 {
     retro_emulator_t *emu = (retro_emulator_t *)file->emulator;
+    bool show_art_missing;
+    uint32_t order;
+    char path[256];
+    char crc[10];
+
+    switch (gui.show_preview)
+    {
+        case PREVIEW_MODE_COVER_SAVE:
+            show_art_missing = true;
+            order = 0x0312;
+            break;
+        case PREVIEW_MODE_SAVE_COVER:
+            show_art_missing = true;
+            order = 0x0123;
+            break;
+        case PREVIEW_MODE_COVER_ONLY:
+            show_art_missing = true;
+            order = 0x0012;
+            break;
+        case PREVIEW_MODE_SAVE_ONLY:
+            show_art_missing = false;
+            order = 0x0003;
+            break;
+        default:
+            show_art_missing = false;
+            order = 0x0000;
+    }
 
     if (file->checksum > 0 && file->missing_cover != gui.show_preview)
     {
-        uint16_t modes[] = {0x0000, 0x0312, 0x0123, 0x0012, 0x0003};
-        uint16_t order = modes[gui.show_preview % 5];
-        char path[256], buf_crc[10];
         rg_image_t *img = NULL;
 
-        sprintf(buf_crc, "%08X", file->checksum);
+        sprintf(crc, "%08X", file->checksum);
 
         while (order && !img)
         {
             switch (order & 0xF)
             {
-                case 0x1:
-                    sprintf(path, "%s/%s/%c/%s.art", RG_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
+                case 0x1: // Game cover (old format)
+                    sprintf(path, "%s/%s/%c/%s.art", RG_BASE_PATH_ROMART, emu->dirname, crc[0], crc);
                     img = rg_gui_load_image_file(path);
                     break;
-                case 0x2:
-                    sprintf(path, "%s/%s/%c/%s.png", RG_BASE_PATH_ROMART, emu->dirname, buf_crc[0], buf_crc);
+                case 0x2: // Game cover (png)
+                    sprintf(path, "%s/%s/%c/%s.png", RG_BASE_PATH_ROMART, emu->dirname, crc[0], crc);
                     img = rg_gui_load_image_file(path);
                     break;
-                case 0x3:
+                case 0x3: // Save state screenshot (png)
                     sprintf(path, "%s/%s/%s.%s.png", RG_BASE_PATH_SAVES, emu->dirname, file->name, file->ext);
                     img = rg_gui_load_image_file(path);
                     break;
@@ -358,5 +383,8 @@ void gui_draw_preview(retro_emulator_file_t *file)
     // In case we change show_preview we want missing_cover to be invalidated
     file->missing_cover = gui.show_preview;
 
-    gui_draw_notice(" No art found", C_RED);
+    if (show_art_missing)
+    {
+        gui_draw_notice(" No art found", C_RED);
+    }
 }

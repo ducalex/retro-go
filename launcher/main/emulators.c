@@ -10,6 +10,7 @@
 static retro_emulator_t emulators[16];
 static int emulators_count = 0;
 
+
 static void event_handler(gui_event_t event, tab_t *tab)
 {
     retro_emulator_t *emu = (retro_emulator_t *)tab->arg;

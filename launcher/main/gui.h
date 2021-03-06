@@ -23,6 +23,20 @@ typedef enum {
     LAST_ROW,
 } scroll_mode_t;
 
+typedef enum {
+    PREVIEW_MODE_NONE = 0,
+    PREVIEW_MODE_COVER_SAVE,
+    PREVIEW_MODE_SAVE_COVER,
+    PREVIEW_MODE_COVER_ONLY,
+    PREVIEW_MODE_SAVE_ONLY,
+    PREVIEW_MODE_COUNT
+} preview_modes_t;
+
+typedef struct {
+    const char *name;
+    uint16_t order;
+} preview_mode_t;
+
 typedef struct {
     uint16_t list_background;
     uint16_t list_standard;
@@ -73,7 +87,7 @@ typedef struct {
 } retro_gui_t;
 
 extern retro_gui_t gui;
-extern int gui_themes_count;
+extern const int gui_themes_count;
 
 #define MIN(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
 #define MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
