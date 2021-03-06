@@ -549,7 +549,7 @@ static dialog_return_t volume_update_cb(dialog_option_t *option, dialog_event_t 
 static dialog_return_t brightness_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     int8_t level = rg_display_get_config_param(backlight);
-    int8_t max = RG_BACKLIGHT_LEVEL_COUNT - 1;
+    int8_t max = RG_DISPLAY_BACKLIGHT_MAX;
 
     if (event == RG_DIALOG_PREV && level > 0) {
         rg_display_set_config_param(backlight, --level);
@@ -559,7 +559,7 @@ static dialog_return_t brightness_update_cb(dialog_option_t *option, dialog_even
         rg_display_set_config_param(backlight, ++level);
     }
 
-    sprintf(option->value, "%d/%d", level + 1, max + 1);
+    sprintf(option->value, "%d/%d", level, max);
 
     return RG_DIALOG_IGNORE;
 }
@@ -732,8 +732,8 @@ int rg_gui_game_debug_menu(void)
     rg_display_cfg_t display = rg_display_get_config();
 
     sprintf(screen_res, "%dx%d", RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT);
-    sprintf(game_res, "%dx%d", display.fb_width, display.fb_height);
-    sprintf(scaled_res, "%dx%d", display.sc_width, display.sc_height);
+    sprintf(game_res, "%dx%d", display.source.width, display.source.height);
+    sprintf(scaled_res, "%dx%d", display.window.width, display.window.height);
     sprintf(stack_hwm, "%d", stats.freeStackMain);
     sprintf(heap_free, "%d+%d", stats.freeMemoryInt, stats.freeMemoryExt);
     sprintf(block_free, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);

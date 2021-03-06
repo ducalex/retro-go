@@ -15,16 +15,12 @@
 // Global
 static const char* Key_RomFilePath  = "RomFilePath";
 static const char* Key_StartAction  = "StartAction";
-static const char* Key_Backlight    = "Backlight";
 static const char* Key_StartupApp   = "StartupApp";
 static const char* Key_DiskActivity = "DiskActivity";
 // static const char* Key_RetroGoVer   = "RetroGoVer";
 // Per-app
 static const char* Key_Region       = "Region";
 static const char* Key_Palette      = "Palette";
-static const char* Key_DispScaling  = "DispScaling";
-static const char* Key_DispFilter   = "DispFilter";
-static const char* Key_DispRotation = "DistRotation";
 static const char* Key_DispOverscan = "DispOverscan";
 static const char* Key_SpriteLimit  = "SpriteLimit";
 // static const char* Key_AudioFilter  = "AudioFilter";
@@ -225,16 +221,6 @@ void rg_settings_RomFilePath_set(const char* value)
 }
 
 
-int32_t rg_settings_Backlight_get()
-{
-    return rg_settings_int32_get(Key_Backlight, 2);
-}
-void rg_settings_Backlight_set(int32_t value)
-{
-    rg_settings_int32_set(Key_Backlight, value);
-}
-
-
 emu_start_action_t rg_settings_StartAction_get()
 {
     return rg_settings_int32_get(Key_StartAction, 0);
@@ -292,36 +278,6 @@ emu_region_t rg_settings_Region_get()
 void rg_settings_Region_set(emu_region_t value)
 {
     rg_settings_app_int32_set(Key_Region, value);
-}
-
-
-int32_t rg_settings_DisplayScaling_get()
-{
-    return rg_settings_app_int32_get(Key_DispScaling, RG_DISPLAY_SCALING_FILL);
-}
-void rg_settings_DisplayScaling_set(int32_t value)
-{
-    rg_settings_app_int32_set(Key_DispScaling, value);
-}
-
-
-int32_t rg_settings_DisplayFilter_get()
-{
-    return rg_settings_app_int32_get(Key_DispFilter, RG_DISPLAY_FILTER_OFF);
-}
-void rg_settings_DisplayFilter_set(int32_t value)
-{
-    rg_settings_app_int32_set(Key_DispFilter, value);
-}
-
-
-int32_t rg_settings_DisplayRotation_get()
-{
-    return rg_settings_app_int32_get(Key_DispRotation, RG_DISPLAY_ROTATION_AUTO);
-}
-void rg_settings_DisplayRotation_set(int32_t value)
-{
-    rg_settings_app_int32_set(Key_DispRotation, value);
 }
 
 

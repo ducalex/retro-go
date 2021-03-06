@@ -147,7 +147,7 @@ void retro_loop()
         }
     }
 
-    rg_display_clear(0);
+    rg_display_clear(C_BLACK);
 
     while (true)
     {

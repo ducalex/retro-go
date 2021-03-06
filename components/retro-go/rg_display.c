@@ -6,37 +6,42 @@
 #include <driver/ledc.h>
 #include <driver/rtc_io.h>
 #include <string.h>
+#include <unistd.h>
 #include <lupng.h>
 
 #include "rg_system.h"
 #include "rg_display.h"
 
-#define SCREEN_WIDTH  RG_SCREEN_WIDTH
-#define SCREEN_HEIGHT RG_SCREEN_HEIGHT
+#define SPI_TRANSACTION_COUNT (8)
+#define SPI_BUFFER_COUNT (6)
+#define SPI_BUFFER_LENGTH (4 * 320) // In pixels (uint16)
 
-#define BACKLIGHT_DUTY_MAX 0x1fff
-
-#define SPI_TRANSACTION_COUNT (6)
-#define SPI_TRANSACTION_BUFFER_LENGTH (6 * 320) // (SPI_MAX_DMA_LEN / 2) // 16bit words
+#define PTR_IS_SPI_BUFFER(ptr) ((((intptr_t)(ptr) - (intptr_t)&spi_buffers) % sizeof(spi_buffers[0])) == 0)
 
 // Maximum amount of change (percent) in a frame before we trigger a full transfer
 // instead of a partial update (faster). This also allows us to stop the diff early!
 #define FULL_UPDATE_THRESHOLD (0.6f) // 0.4f
 
-static const uint8_t backlightLevels[] = {10, 25, 50, 75, 100};
-
-static DMA_ATTR uint16_t spi_buffers[SPI_TRANSACTION_COUNT][SPI_TRANSACTION_BUFFER_LENGTH];
+static DMA_ATTR uint16_t spi_buffers[SPI_BUFFER_COUNT][SPI_BUFFER_LENGTH];
 static spi_transaction_t spi_trans[SPI_TRANSACTION_COUNT];
 static spi_device_handle_t spi_dev;
 static SemaphoreHandle_t spi_count_semaphore;
-static QueueHandle_t spi_buffer_queue;
+static QueueHandle_t spi_buffers_queue;
 static QueueHandle_t spi_queue;
 static QueueHandle_t video_task_queue;
 
-static rg_display_cfg_t displayConfig;
+static rg_display_cfg_t display_config;
 
-static int x_inc = SCREEN_WIDTH;
-static int y_inc = SCREEN_HEIGHT;
+static const char *SETTING_BACKLIGHT = "Backlight";
+static const char *SETTING_SCALING   = "DispScaling";
+static const char *SETTING_FILTER    = "DispFilter";
+static const char *SETTING_ROTATION  = "DistRotation";
+
+#define SCREEN_WIDTH  RG_SCREEN_WIDTH
+#define SCREEN_HEIGHT RG_SCREEN_HEIGHT
+
+static int x_inc = 1;
+static int y_inc = 1;
 static int x_origin = 0;
 static int y_origin = 0;
 static bool screen_line_is_empty[SCREEN_HEIGHT];
@@ -49,16 +54,11 @@ typedef struct {
 
 static frame_filter_cap_t frame_filter_lines[256];
 
-/*
- The ILI9341 needs a bunch of command/argument values to be initialized. They are stored in this struct.
-*/
 typedef struct {
     uint8_t cmd;
     uint8_t data[16];
     uint8_t databytes; // No of bytes in data; bit 7 = delay after set;
-} ili_init_cmd_t;
-
-#define ILI_LAST_CMD {0, {0}, 0}
+} ili_cmd_t;
 
 #define MADCTL_MY   0x80
 #define MADCTL_MX   0x40
@@ -67,94 +67,19 @@ typedef struct {
 #define MADCTL_MH   0x04
 #define TFT_RGB_BGR 0x08
 
-static DRAM_ATTR const ili_init_cmd_t ili_sleep_cmds[] = {
-    {0x01, {0}, 0x80},                                  // Reset
-    {0x28, {0}, 0x80},                                  // Display off
-    {0x10, {0}, 0x80},                                  // Sleep
-    ILI_LAST_CMD
-};
+#define lcd_init() ili9341_init()
+#define lcd_deinit() ili9341_deinit()
+#define lcd_set_window(left, top, width, height) ili9341_set_window(left, top, width, height)
+#define lcd_send_data(buffer, length) ili9341_send_data(buffer, length)
+#define lcd_set_backlight(percent) ili9341_set_backlight(percent)
 
-static DRAM_ATTR const ili_init_cmd_t ili_init_cmds[] = {
-    {0x01, {0}, 0x80},                                  // Reset
-    {0xCF, {0x00, 0xc3, 0x30}, 3},
-    {0xED, {0x64, 0x03, 0x12, 0x81}, 4},
-    {0xE8, {0x85, 0x00, 0x78}, 3},
-    {0xCB, {0x39, 0x2c, 0x00, 0x34, 0x02}, 5},
-    {0xF7, {0x20}, 1},
-    {0xEA, {0x00, 0x00}, 2},
-    {0xC0, {0x1B}, 1},                                  // Power control   //VRH[5:0]
-    {0xC1, {0x12}, 1},                                  // Power control   //SAP[2:0];BT[3:0]
-    {0xC5, {0x32, 0x3C}, 2},                            // VCM control
-    {0xC7, {0x91}, 1},                                  // VCM control2
-    {0x36, {(MADCTL_MV|MADCTL_MY|TFT_RGB_BGR)}, 1},     // Memory Access Control
-    {0x3A, {0x55}, 1},
-    {0xB1, {0x00, 0x10}, 2},                            // Frame Rate Control (1B=70, 1F=61, 10=119)
-    {0xB6, {0x0A, 0xA2}, 2},                            // Display Function Control
-    {0xF6, {0x01, 0x30}, 2},
-    {0xF2, {0x00}, 1},                                  // 3Gamma Function Disable
-    {0x26, {0x01}, 1},                                  // Gamma curve selected
-
-    {0xE0, {0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, 0x4E, 0xF1, 0x37, 0x07, 0x10, 0x03, 0x0E, 0x09, 0x00}, 15}, // Set Gamma
-    {0XE1, {0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F}, 15}, // Set Gamma
-
-    {0x11, {0}, 0x80},                                  // Exit Sleep
-    {0x29, {0}, 0x80},                                  // Display on
-
-    ILI_LAST_CMD
-};
-
-
-static void
-backlight_init()
-{
-    int percent = backlightLevels[displayConfig.backlight % RG_BACKLIGHT_LEVEL_COUNT];
-
-    ledc_timer_config_t ledc_timer = {
-        .duty_resolution = LEDC_TIMER_13_BIT,
-        .freq_hz = 5000,
-        .speed_mode = LEDC_LOW_SPEED_MODE,
-        .timer_num = LEDC_TIMER_0,
-    };
-
-    ledc_channel_config_t ledc_channel = {
-        .channel = LEDC_CHANNEL_0,
-        .duty = BACKLIGHT_DUTY_MAX * (percent * 0.01f),
-        .gpio_num = RG_GPIO_LCD_BCKL,
-        .hpoint = 0,
-        .speed_mode = LEDC_LOW_SPEED_MODE,
-        .timer_sel = LEDC_TIMER_0,
-    };
-
-    ledc_timer_config(&ledc_timer);
-    ledc_channel_config(&ledc_channel);
-    ledc_fade_func_install(0);
-}
-
-static void
-backlight_deinit()
-{
-    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0, 50);
-    ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_WAIT_DONE);
-    ledc_fade_func_uninstall();
-}
-
-static void
-backlight_set_level(int percent)
-{
-    int duty = BACKLIGHT_DUTY_MAX * (RG_MIN(RG_MAX(percent, 5), 100) * 0.01f);
-
-    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty, 50);
-    ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
-
-    RG_LOGI("backlight set to %d%%\n", percent);
-}
 
 static inline uint16_t*
 spi_get_buffer()
 {
     uint16_t* buffer;
 
-    if (xQueueReceive(spi_buffer_queue, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
+    if (xQueueReceive(spi_buffers_queue, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
     {
         RG_PANIC("display");
     }
@@ -163,35 +88,34 @@ spi_get_buffer()
 }
 
 static inline void
-spi_put_buffer(uint16_t* buffer)
+spi_queue_transaction(const void *data, size_t length, uint32_t dc_line)
 {
-    if (xQueueSend(spi_buffer_queue, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
-    {
-        RG_PANIC("display");
-    }
-}
+    spi_transaction_t *t;
 
-static inline spi_transaction_t*
-spi_get_transaction()
-{
-    spi_transaction_t* t;
+    if (length < 1)
+        return;
 
     xQueueReceive(spi_queue, &t, portMAX_DELAY);
 
     memset(t, 0, sizeof(*t));
 
-    return t;
-}
+    t->length = length * 8; // In bits
+    t->user = (void*)dc_line;
 
-static inline void
-spi_put_transaction(spi_transaction_t* t)
-{
-    t->rx_buffer = NULL;
-    t->rxlength = t->length;
-
-    if (t->flags & SPI_TRANS_USE_TXDATA)
+    if (PTR_IS_SPI_BUFFER(data))
     {
-        t->flags |= SPI_TRANS_USE_RXDATA;
+        t->tx_buffer = data;
+        t->flags = 0;
+    }
+    else if (length < 5)
+    {
+        memcpy(t->tx_data, data, length);
+        t->flags = SPI_TRANS_USE_TXDATA|SPI_TRANS_USE_RXDATA;
+    }
+    else
+    {
+        t->tx_buffer = memcpy(spi_get_buffer(), data, length);
+        t->flags = 0;
     }
 
     rg_spi_lock_acquire(SPI_LOCK_DISPLAY);
@@ -205,33 +129,33 @@ spi_put_transaction(spi_transaction_t* t)
 }
 
 IRAM_ATTR static void
-spi_pre_transfer_callback(spi_transaction_t *t)
+spi_pre_transfer_cb(spi_transaction_t *t)
 {
     // Set the data/command line accordingly
-    gpio_set_level(RG_GPIO_LCD_DC, (int)t->user & 0x01);
+    gpio_set_level(RG_GPIO_LCD_DC, (int)t->user & 1);
 }
 
 IRAM_ATTR static void
 spi_task(void *arg)
 {
-    spi_transaction_t* t;
+    spi_transaction_t *t;
 
     while (1)
     {
         // Wait for a transaction to be queued
         xSemaphoreTake(spi_count_semaphore, portMAX_DELAY);
 
-        if (spi_device_get_trans_result(spi_dev, &t, portMAX_DELAY) != ESP_OK)
+        if (spi_device_get_trans_result(spi_dev, &t, 100) == ESP_OK)
         {
-            RG_PANIC("display");
+            if (PTR_IS_SPI_BUFFER(t->tx_buffer) && !(t->flags & SPI_TRANS_USE_TXDATA))
+            {
+                xQueueSend(spi_buffers_queue, &t->tx_buffer, 0);
+            }
+            if (xQueueSend(spi_queue, &t, 0) != pdTRUE)
+            {
+                RG_PANIC("spi_queue full..?");
+            }
         }
-
-        if ((int)t->user & 0x80)
-        {
-            spi_put_buffer((uint16_t*)t->tx_buffer);
-        }
-
-        xQueueSend(spi_queue, &t, portMAX_DELAY);
 
         // if (uxQueueSpacesAvailable(spi_queue) == 0)
         if (uxQueueMessagesWaiting(spi_count_semaphore) == 0)
@@ -244,18 +168,22 @@ spi_task(void *arg)
 }
 
 static void
-spi_initialize()
+spi_init()
 {
     spi_queue = xQueueCreate(SPI_TRANSACTION_COUNT, sizeof(void*));
-    spi_buffer_queue = xQueueCreate(SPI_TRANSACTION_COUNT, sizeof(void*));
+    spi_buffers_queue = xQueueCreate(SPI_BUFFER_COUNT, sizeof(void*));
     spi_count_semaphore = xSemaphoreCreateCounting(SPI_TRANSACTION_COUNT, 0);
+
+    for (size_t x = 0; x < SPI_BUFFER_COUNT; x++)
+    {
+        void *buffer = &spi_buffers[x];
+        xQueueSend(spi_buffers_queue, &buffer, portMAX_DELAY);
+    }
 
     for (size_t x = 0; x < SPI_TRANSACTION_COUNT; x++)
     {
-        spi_put_buffer(spi_buffers[x]);
-
-        void *param = &spi_trans[x];
-        xQueueSend(spi_queue, &param, portMAX_DELAY);
+        void *trans = &spi_trans[x];
+        xQueueSend(spi_queue, &trans, portMAX_DELAY);
     }
 
     spi_bus_config_t buscfg = {
@@ -267,18 +195,17 @@ spi_initialize()
     };
 
     spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = SPI_MASTER_FREQ_40M,    // 80Mhz causes glitches unfortunately
-        .mode = 0,                                // SPI mode 0
-        .spics_io_num = RG_GPIO_LCD_CS,           // CS pin
-        .queue_size = SPI_TRANSACTION_COUNT,      // We want to be able to queue 5 transactions at a time
-        .pre_cb = spi_pre_transfer_callback,      // Specify pre-transfer callback to handle D/C line and SPI lock
-        // .post_cb = spi_post_transfer_callback,    // Specify post-transfer callback to handle SPI lock
-        .flags = SPI_DEVICE_NO_DUMMY,             // SPI_DEVICE_HALFDUPLEX;
+        .clock_speed_hz = SPI_MASTER_FREQ_40M,  // 80Mhz causes glitches unfortunately
+        .mode = 0,                              // SPI mode 0
+        .spics_io_num = RG_GPIO_LCD_CS,         // CS pin
+        .queue_size = SPI_TRANSACTION_COUNT,    // We want to be able to queue 5 transactions at a time
+        .pre_cb = &spi_pre_transfer_cb,         // Specify pre-transfer callback to handle D/C line and SPI lock
+        .flags = SPI_DEVICE_NO_DUMMY,           // SPI_DEVICE_HALFDUPLEX;
     };
 
-    // Disable LCD CD to prevent garbage
-    gpio_set_direction(RG_GPIO_LCD_CS, GPIO_MODE_OUTPUT);
-    gpio_set_level(RG_GPIO_LCD_CS, 1);
+    // Setup DC line
+    gpio_set_direction(RG_GPIO_LCD_DC, GPIO_MODE_OUTPUT);
+    gpio_set_level(RG_GPIO_LCD_DC, 1);
 
     //Initialize the SPI bus
     spi_bus_initialize(HSPI_HOST, &buscfg, 1);
@@ -289,67 +216,108 @@ spi_initialize()
 }
 
 static inline void
-ili9341_cmd(const uint8_t cmd)
+ili9341_cmd(uint8_t cmd, const void *data, size_t data_len)
 {
-    spi_transaction_t* t = spi_get_transaction();
-
-    t->length = 8;                     // Command is 8 bits
-    t->tx_data[0] = cmd;               // The data is the cmd itself
-    t->user = (void*)0;                // D/C needs to be set to 0
-    t->flags = SPI_TRANS_USE_TXDATA;
-
-    spi_put_transaction(t);
+    spi_queue_transaction(&cmd, 1, 0);
+    spi_queue_transaction(data, data_len, 1);
 }
 
-static inline void
-ili9341_data(const uint8_t *data, size_t len)
+static void
+ili9341_set_backlight(float level)
 {
-    if (len < 1) return;
+    #define BACKLIGHT_DUTY_MAX 0x1fff
+    uint32_t duty = BACKLIGHT_DUTY_MAX * RG_MIN(RG_MAX(level, 0.01f), 1.0f);
 
-    spi_transaction_t* t = spi_get_transaction();
+    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty, 50);
+    ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
 
-    t->length = len * 8;               // Len is in bytes, transaction length is in bits.
-    t->user = (void*)1;                // D/C needs to be set to 1
-
-    if (len < 5)
-    {
-        memcpy(t->tx_data, data, len);
-        t->flags = SPI_TRANS_USE_TXDATA;
-    }
-    else
-        t->tx_buffer = data;
-
-    spi_put_transaction(t);
+    RG_LOGI("backlight set to %0.f%%\n", level * 100);
 }
 
 static void
 ili9341_init()
 {
-    gpio_set_direction(RG_GPIO_LCD_DC, GPIO_MODE_OUTPUT);
+    const ili_cmd_t commands[] = {
+        {0x01, {0}, 0x80},                                  // Reset
+        {0xCF, {0x00, 0xc3, 0x30}, 3},
+        {0xED, {0x64, 0x03, 0x12, 0x81}, 4},
+        {0xE8, {0x85, 0x00, 0x78}, 3},
+        {0xCB, {0x39, 0x2c, 0x00, 0x34, 0x02}, 5},
+        {0xF7, {0x20}, 1},
+        {0xEA, {0x00, 0x00}, 2},
+        {0xC0, {0x1B}, 1},                                  // Power control   //VRH[5:0]
+        {0xC1, {0x12}, 1},                                  // Power control   //SAP[2:0];BT[3:0]
+        {0xC5, {0x32, 0x3C}, 2},                            // VCM control
+        {0xC7, {0x91}, 1},                                  // VCM control2
+        {0x36, {(MADCTL_MV|MADCTL_MY|TFT_RGB_BGR)}, 1},     // Memory Access Control
+        {0x3A, {0x55}, 1},
+        {0xB1, {0x00, 0x10}, 2},                            // Frame Rate Control (1B=70, 1F=61, 10=119)
+        {0xB6, {0x0A, 0xA2}, 2},                            // Display Function Control
+        {0xF6, {0x01, 0x30}, 2},
+        {0xF2, {0x00}, 1},                                  // 3Gamma Function Disable
+        {0x26, {0x01}, 1},                                  // Gamma curve selected
+        {0xE0, {0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, 0x4E, 0xF1, 0x37, 0x07, 0x10, 0x03, 0x0E, 0x09, 0x00}, 15}, // Set Gamma
+        {0XE1, {0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F}, 15}, // Set Gamma
+        {0x11, {0}, 0x80},                                  // Exit Sleep
+        {0x29, {0}, 0x00},                                  // Display on
+    };
 
-    for (size_t i = 0; ili_init_cmds[i].cmd; ++i)
+    float level = (float)display_config.backlight / RG_DISPLAY_BACKLIGHT_MAX;
+
+    ledc_timer_config_t ledc_timer = {
+        .duty_resolution = LEDC_TIMER_13_BIT,
+        .freq_hz = 5000,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .timer_num = LEDC_TIMER_0,
+    };
+
+    ledc_channel_config_t ledc_channel = {
+        .channel = LEDC_CHANNEL_0,
+        .duty = BACKLIGHT_DUTY_MAX * RG_MIN(RG_MAX(level, 0.01f), 1.0f),
+        .gpio_num = RG_GPIO_LCD_BCKL,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .timer_sel = LEDC_TIMER_0,
+    };
+
+    // Initialize backlight
+    ledc_timer_config(&ledc_timer);
+    ledc_channel_config(&ledc_channel);
+    ledc_fade_func_install(0);
+
+    // Initialize LCD
+    for (int i = 0; i < (sizeof(commands)/sizeof(commands[0])); i++)
     {
-        ili9341_cmd(ili_init_cmds[i].cmd);
-        ili9341_data(ili_init_cmds[i].data, ili_init_cmds[i].databytes & 0x7F);
-        // if (ili_init_cmds[i].databytes & 0x80)
-        //     vTaskDelay(pdMS_TO_TICKS(10));
+        ili9341_cmd(commands[i].cmd, commands[i].data, commands[i].databytes & 0x7F);
+        if (commands[i].databytes & 0x80)
+        {
+            rg_display_drain_spi();
+            // usleep(5000);
+        }
     }
+
+    rg_display_clear(C_BLACK);
+    usleep(20000);
+
+    // Do this last to avoid a flash
+    // lcd_set_backlight(initial_brightness);
 }
 
 static void
 ili9341_deinit()
 {
-    for (size_t i = 0; ili_init_cmds[i].cmd; ++i)
-    {
-        ili9341_cmd(ili_sleep_cmds[i].cmd);
-        ili9341_data(ili_sleep_cmds[i].data, ili_sleep_cmds[i].databytes & 0x7F);
-        // if (ili_init_cmds[i].databytes & 0x80)
-        //     vTaskDelay(pdMS_TO_TICKS(10));
-    }
+    // Backlight
+    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0, 50);
+    ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_WAIT_DONE);
+    ledc_fade_func_uninstall();
+
+    // Panel
+    ili9341_cmd(0x01, NULL, 0); // Reset
+    ili9341_cmd(0x28, NULL, 0); // Display off
+    ili9341_cmd(0x10, NULL, 0); // Sleep
 }
 
 static void
-send_reset_drawing(int left, int top, int width, int height)
+ili9341_set_window(int left, int top, int width, int height)
 {
     static int last_left = -1;
     static int last_right = -1;
@@ -369,8 +337,7 @@ send_reset_drawing(int left, int top, int width, int height)
     if (left != last_left || right != last_right)
     {
         const uint8_t data[] = { left >> 8, left & 0xff, right >> 8, right & 0xff };
-        ili9341_cmd(0x2A);
-        ili9341_data(data, (right != last_right) ?  4 : 2);
+        ili9341_cmd(0x2A, data, (right != last_right) ?  4 : 2);
         last_left = left;
         last_right = right;
     }
@@ -378,31 +345,25 @@ send_reset_drawing(int left, int top, int width, int height)
     if (top != last_top || bottom != last_bottom)
     {
         const uint8_t data[] = { top >> 8, top & 0xff, bottom >> 8, bottom & 0xff };
-        ili9341_cmd(0x2B);
-        ili9341_data(data, (bottom != last_bottom) ? 4 : 2);
+        ili9341_cmd(0x2B, data, (bottom != last_bottom) ? 4 : 2);
         last_top = top;
         last_bottom = bottom;
     }
 
     // Memory write
-    ili9341_cmd(0x2C);
+    ili9341_cmd(0x2C, NULL, 0);
 
     // Memory write continue
-    if (height > 1) ili9341_cmd(0x3C);
+    if (height > 1)
+        ili9341_cmd(0x3C, NULL, 0);
 
     RG_LOGD("LCD DRAW: left:%d top:%d width:%d height:%d\n", left, top, width, height);
 }
 
 static inline void
-send_continue_line(uint16_t *line, int width, int lineCount)
+ili9341_send_data(void *buffer, size_t length)
 {
-    spi_transaction_t* t = spi_get_transaction();
-    t->length = width * lineCount * 16;
-    t->tx_buffer = line;
-    t->user = (void*)0x81;
-    t->flags = 0;
-
-    spi_put_transaction(t);
+    spi_queue_transaction(buffer, length, 1);
 }
 
 static inline uint
@@ -496,7 +457,7 @@ write_rect(rg_video_frame_t *update, int left, int top, int width, int height)
     const int screen_left = x_origin + scaled_left;
     const int screen_bottom = RG_MIN(screen_top + scaled_height, SCREEN_HEIGHT);
     const int ix_acc = (x_inc * scaled_left) % SCREEN_WIDTH;
-    const int lines_per_buffer = SPI_TRANSACTION_BUFFER_LENGTH / scaled_width;
+    const int lines_per_buffer = SPI_BUFFER_LENGTH / scaled_width;
 
     if (scaled_width < 1 || scaled_height < 1)
     {
@@ -511,7 +472,7 @@ write_rect(rg_video_frame_t *update, int left, int top, int width, int height)
     uint8_t *buffer = update->buffer + (top * stride) + (left * (pixel_format & RG_PIXEL_PAL ? 1 : 2));
     uint16_t *palette = update->palette;
 
-    send_reset_drawing(screen_left, screen_top, scaled_width, scaled_height);
+    lcd_set_window(screen_left, screen_top, scaled_width, scaled_height);
 
     for (int y = 0, screen_y = screen_top; y < height;)
     {
@@ -523,7 +484,7 @@ write_rect(rg_video_frame_t *update, int left, int top, int width, int height)
         }
 
         // The vertical filter requires a block to start and end with unscaled lines
-        if (displayConfig.filter & RG_DISPLAY_FILTER_LINEAR_Y)
+        if (display_config.filter & RG_DISPLAY_FILTER_LINEAR_Y)
         {
             while (lines_to_copy > 1 && (screen_line_is_empty[screen_y + lines_to_copy - 1] ||
                                          screen_line_is_empty[screen_y + lines_to_copy]))
@@ -584,14 +545,14 @@ write_rect(rg_video_frame_t *update, int left, int top, int width, int height)
             }
         }
 
-        if (displayConfig.filter && displayConfig.scaling)
+        if (display_config.filter && display_config.scaling)
         {
             bilinear_filter(line_buffer, screen_y - lines_to_copy, scaled_left, scaled_width, lines_to_copy,
-                            displayConfig.filter & RG_DISPLAY_FILTER_LINEAR_X,
-                            displayConfig.filter & RG_DISPLAY_FILTER_LINEAR_Y);
+                            display_config.filter & RG_DISPLAY_FILTER_LINEAR_X,
+                            display_config.filter & RG_DISPLAY_FILTER_LINEAR_Y);
         }
 
-        send_continue_line(line_buffer, scaled_width, lines_to_copy);
+        lcd_send_data(line_buffer, scaled_width * lines_to_copy * 2);
     }
 }
 
@@ -648,7 +609,7 @@ frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFrame)
         }
     }
 
-    if (displayConfig.scaling && displayConfig.filter != RG_DISPLAY_FILTER_OFF)
+    if (display_config.scaling && display_config.filter != RG_DISPLAY_FILTER_OFF)
     {
         for (int y = 0; y < frame->height; ++y)
         {
@@ -759,19 +720,19 @@ display_task(void *arg)
 
         if (!update) break;
 
-        if (displayConfig.changed)
+        if (display_config.changed)
         {
-            if (displayConfig.scaling == RG_DISPLAY_SCALING_FILL) {
+            if (display_config.scaling == RG_DISPLAY_SCALING_FILL) {
                 rg_display_set_scale(update->width, update->height, SCREEN_WIDTH / (double)SCREEN_HEIGHT);
             }
-            else if (displayConfig.scaling == RG_DISPLAY_SCALING_FIT) {
+            else if (display_config.scaling == RG_DISPLAY_SCALING_FIT) {
                 rg_display_set_scale(update->width, update->height, update->width / (double)update->height);
             }
             else {
                 rg_display_set_scale(update->width, update->height, 0.0);
             }
-            rg_display_clear(0x0000);
-            displayConfig.changed = false;
+            rg_display_clear(C_BLACK);
+            display_config.changed = false;
         }
 
         RG_ASSERT((update->flags & RG_PIXEL_PAL) == 0 || update->palette, "Palette not defined");
@@ -829,10 +790,10 @@ rg_display_set_scale(int width, int height, double new_ratio)
 
     generate_filter_structures(width, height);
 
-    displayConfig.fb_width = width;
-    displayConfig.fb_height = height;
-    displayConfig.sc_width = new_width;
-    displayConfig.sc_height = new_height;
+    display_config.source.width = width;
+    display_config.source.height = height;
+    display_config.window.width = new_width;
+    display_config.window.height = new_height;
 
     RG_LOGX("[LCD SCALE] %dx%d@%.3f => %dx%d@%.3f x_inc:%d y_inc:%d x_scale:%.3f y_scale:%.3f x_origin:%d y_origin:%d\n",
            width, height, width/(double)height, new_width, new_height, new_ratio,
@@ -842,35 +803,40 @@ rg_display_set_scale(int width, int height, double new_ratio)
 rg_display_cfg_t
 rg_display_get_config()
 {
-    return displayConfig;
+    return display_config;
 }
 
 void
 rg_display_set_config(rg_display_cfg_t config)
 {
-    if (displayConfig.scaling != config.scaling)
+    config.scaling = RG_MIN(RG_MAX(config.scaling, 0), RG_DISPLAY_SCALING_COUNT - 1);
+    config.filter = RG_MIN(RG_MAX(config.filter, 0), RG_DISPLAY_FILTER_COUNT - 1);
+    config.rotation = RG_MIN(RG_MAX(config.rotation, 0), RG_DISPLAY_ROTATION_COUNT - 1);
+    config.backlight = RG_MIN(RG_MAX(config.backlight, 0), RG_DISPLAY_BACKLIGHT_MAX);
+
+    if (display_config.scaling != config.scaling)
     {
-        rg_settings_DisplayScaling_set(config.scaling);
+        rg_settings_int32_set(SETTING_SCALING, config.scaling);
     }
 
-    if (displayConfig.filter != config.filter)
+    if (display_config.filter != config.filter)
     {
-        rg_settings_DisplayFilter_set(config.filter);
+        rg_settings_int32_set(SETTING_FILTER, config.filter);
     }
 
-    if (displayConfig.rotation != config.rotation)
+    if (display_config.rotation != config.rotation)
     {
-        rg_settings_DisplayRotation_set(config.rotation);
+        rg_settings_int32_set(SETTING_ROTATION, config.rotation);
     }
 
-    if (displayConfig.backlight != config.backlight)
+    if (display_config.backlight != config.backlight)
     {
-        rg_settings_Backlight_set(config.backlight);
-        backlight_set_level(backlightLevels[config.backlight % RG_BACKLIGHT_LEVEL_COUNT]);
+        rg_settings_int32_set(SETTING_BACKLIGHT, config.backlight);
+        lcd_set_backlight((float)config.backlight / RG_DISPLAY_BACKLIGHT_MAX);
     }
 
-    displayConfig = config;
-    displayConfig.changed = true;
+    display_config = config;
+    display_config.changed = true;
 }
 
 bool
@@ -947,12 +913,12 @@ rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *previousFrame
     if (!frame)
         return RG_SCREEN_UPDATE_ERROR;
 
-    if (frame->width != displayConfig.fb_width || frame->height != displayConfig.fb_height)
+    if (frame->width != display_config.source.width || frame->height != display_config.source.height)
     {
-        displayConfig.changed = true;
+        display_config.changed = true;
     }
 
-    if (previousFrame && !displayConfig.changed)
+    if (previousFrame && !display_config.changed)
     {
         linesChanged = frame_diff(frame, previousFrame);
     }
@@ -979,12 +945,13 @@ void
 rg_display_drain_spi()
 {
     if (uxQueueSpacesAvailable(spi_queue)) {
-        spi_transaction_t *t[SPI_TRANSACTION_COUNT];
         for (size_t i = 0; i < SPI_TRANSACTION_COUNT; ++i) {
-            xQueueReceive(spi_queue, &t[i], portMAX_DELAY);
+            spi_transaction_t *t;
+            xQueueReceive(spi_queue, &t, portMAX_DELAY);
         }
         for (size_t i = 0; i < SPI_TRANSACTION_COUNT; ++i) {
-            xQueueSend(spi_queue, &t[i], portMAX_DELAY);
+            spi_transaction_t *t = &spi_trans[i];
+            xQueueSend(spi_queue, &t, portMAX_DELAY);
         }
     }
 }
@@ -1001,9 +968,9 @@ rg_display_write(int left, int top, int width, int height, int stride, const uin
 {
     rg_display_drain_spi();
 
-    send_reset_drawing(left, top, width, height);
+    lcd_set_window(left, top, width, height);
 
-    size_t lines_per_buffer = SPI_TRANSACTION_BUFFER_LENGTH / width;
+    size_t lines_per_buffer = SPI_BUFFER_LENGTH / width;
 
     if (stride < width * 2) {
         stride = width * 2;
@@ -1028,7 +995,7 @@ rg_display_write(int left, int top, int width, int height, int stride, const uin
             }
         }
 
-        send_continue_line(line_buffer, width, lines_per_buffer);
+        lcd_send_data(line_buffer, width * lines_per_buffer * 2);
     }
 
     rg_display_drain_spi();
@@ -1039,22 +1006,23 @@ rg_display_clear(uint16_t color)
 {
     rg_display_drain_spi();
 
-    send_reset_drawing(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    lcd_set_window(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     color = (color << 8) | (color >> 8);
 
-    for (size_t i = 0; i < SPI_TRANSACTION_COUNT; ++i)
+    size_t remaining = SCREEN_WIDTH * SCREEN_HEIGHT;
+    while (remaining > 0)
     {
-        for (size_t j = 0; j < SPI_TRANSACTION_BUFFER_LENGTH; ++j)
-        {
-            spi_buffers[i][j] = color;
-        }
-    }
+        size_t count = RG_MIN(SPI_BUFFER_LENGTH, remaining);
+        uint16_t *buffer = spi_get_buffer();
 
-    size_t lines_per_buffer = SPI_TRANSACTION_BUFFER_LENGTH / SCREEN_WIDTH;
-    for (size_t y = 0; y < SCREEN_HEIGHT; y += lines_per_buffer)
-    {
-        send_continue_line(spi_get_buffer(), SCREEN_WIDTH, lines_per_buffer);
+        for (size_t j = 0; j < count; ++j)
+        {
+            buffer[j] = color;
+        }
+
+        lcd_send_data(buffer, count * 2);
+        remaining -= count;
     }
 
     rg_display_drain_spi();
@@ -1069,31 +1037,30 @@ rg_display_deinit()
     vTaskDelay(10);
     // To do: Stop SPI task...
 
-    backlight_deinit();
-    ili9341_deinit();
+    lcd_deinit();
 }
 
 void
 rg_display_init()
 {
-    displayConfig.backlight = rg_settings_Backlight_get();
-    displayConfig.scaling = rg_settings_DisplayScaling_get();
-    displayConfig.filter = rg_settings_DisplayFilter_get();
-    displayConfig.rotation = rg_settings_DisplayRotation_get();
-    displayConfig.changed = true;
+    rg_display_cfg_t cfg = {
+        .backlight = rg_settings_int32_get(SETTING_BACKLIGHT, RG_DISPLAY_BACKLIGHT_MAX),
+        .scaling = rg_settings_int32_get(SETTING_SCALING, RG_DISPLAY_SCALING_FILL),
+        .filter = rg_settings_int32_get(SETTING_FILTER, RG_DISPLAY_FILTER_OFF),
+        .rotation = rg_settings_int32_get(SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO),
+        .window = {RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT},
+    };
+    rg_display_set_config(cfg);
 
     RG_LOGI("Initialization:\n");
 
-    RG_LOGI(" - calling spi_initialize.\n");
-    spi_initialize();
+    RG_LOGI(" - calling spi_init.\n");
+    spi_init();
 
-	RG_LOGI(" - calling ili9341_init.\n");
-    ili9341_init();
+	RG_LOGI(" - calling lcd_init.\n");
+    lcd_init();
 
-	RG_LOGI(" - calling backlight_init.\n");
-    backlight_init();
-
-	RG_LOGI(" - starting display_task.\n");
+    RG_LOGI(" - starting display_task.\n");
     xTaskCreatePinnedToCore(&display_task, "display_task", 2048, NULL, 5, NULL, 1);
 
     RG_LOGI("init done.\n");

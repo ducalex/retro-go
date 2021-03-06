@@ -25,9 +25,6 @@ bool rg_settings_save(void);
 char* rg_settings_RomFilePath_get();
 void rg_settings_RomFilePath_set(const char* value);
 
-int32_t rg_settings_Backlight_get();
-void rg_settings_Backlight_set(int32_t value);
-
 int32_t rg_settings_StartupApp_get();
 void rg_settings_StartupApp_set(int32_t value);
 
@@ -45,15 +42,6 @@ void rg_settings_Palette_set(int32_t value);
 
 int32_t rg_settings_SpriteLimit_get();
 void rg_settings_SpriteLimit_set(int32_t value);
-
-int32_t rg_settings_DisplayScaling_get();
-void rg_settings_DisplayScaling_set(int32_t value);
-
-int32_t rg_settings_DisplayFilter_get();
-void rg_settings_DisplayFilter_set(int32_t value);
-
-int32_t rg_settings_DisplayRotation_get();
-void rg_settings_DisplayRotation_set(int32_t value);
 
 int32_t rg_settings_DisplayOverscan_get();
 void rg_settings_DisplayOverscan_set(int32_t value);

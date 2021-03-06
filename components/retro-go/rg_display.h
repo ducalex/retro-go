@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 typedef enum {
-    RG_SCREEN_UPDATE_EMPTY,
+    RG_SCREEN_UPDATE_EMPTY = 0,
     RG_SCREEN_UPDATE_FULL,
     RG_SCREEN_UPDATE_PARTIAL,
     RG_SCREEN_UPDATE_ERROR,
@@ -12,12 +12,15 @@ typedef enum {
 
 typedef enum
 {
-    RG_BACKLIGHT_LEVEL0 = 0,
-    RG_BACKLIGHT_LEVEL1 = 1,
-    RG_BACKLIGHT_LEVEL2 = 2,
-    RG_BACKLIGHT_LEVEL3 = 3,
-    RG_BACKLIGHT_LEVEL4 = 4,
-    RG_BACKLIGHT_LEVEL_COUNT = 5,
+    RG_DISPLAY_BACKLIGHT_0 = 0,
+    RG_DISPLAY_BACKLIGHT_1,
+    RG_DISPLAY_BACKLIGHT_2,
+    RG_DISPLAY_BACKLIGHT_3,
+    RG_DISPLAY_BACKLIGHT_4,
+    RG_DISPLAY_BACKLIGHT_5,
+    RG_DISPLAY_BACKLIGHT_MIN = RG_DISPLAY_BACKLIGHT_0,
+    RG_DISPLAY_BACKLIGHT_MAX = RG_DISPLAY_BACKLIGHT_5,
+    RG_DISPLAY_BACKLIGHT_DEFAULT = RG_DISPLAY_BACKLIGHT_3,
 } display_backlight_t;
 
 typedef enum
@@ -61,8 +64,18 @@ typedef struct {
     display_rotation_t rotation;
     display_scaling_t scaling;
     display_filter_t filter;
-    uint32_t fb_width, fb_height;
-    uint32_t sc_width, sc_height;
+    struct {
+        uint32_t width;
+        uint32_t height;
+    } screen;
+    struct {
+        uint32_t width;
+        uint32_t height;
+    } window;
+    struct {
+        uint32_t width;
+        uint32_t height;
+    } source;
     bool changed;
 } rg_display_cfg_t;
 
@@ -97,6 +110,7 @@ screen_update_t rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_
 rg_display_cfg_t rg_display_get_config(void);
 void rg_display_set_config(rg_display_cfg_t config);
 
+// To do: do offsetof() magic instead of passing the whole struct
 #define rg_display_get_config_param(param) (rg_display_get_config().param)
 #define rg_display_set_config_param(param, value) {     \
     rg_display_cfg_t config = rg_display_get_config();  \

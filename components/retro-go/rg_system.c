@@ -66,7 +66,7 @@ static spi_lock_res_t spiMutexOwner;
 #endif
 
 
-void esp_panic_putchar_hook(char c)
+IRAM_ATTR void esp_panic_putchar_hook(char c)
 {
     if (panicConsole.magicWord != PANIC_TRACE_MAGIC)
     {
@@ -311,7 +311,6 @@ void rg_system_init(int appId, int sampleRate)
     bool sd_init = rg_sdcard_init();
     rg_settings_init();
     rg_display_init();
-    rg_display_clear(0);
     rg_gui_init();
     rg_gui_draw_hourglass();
     rg_audio_init(sampleRate);
@@ -623,13 +622,15 @@ void rg_system_switch_app(const char *app)
 {
     RG_LOGI("Switching to app '%s'.\n", app ? app : "NULL");
 
-    rg_display_clear(0);
+    rg_display_clear(C_BLACK);
     rg_gui_draw_hourglass();
+
+    rg_system_set_boot_app(app);
 
     rg_audio_deinit();
     rg_sdcard_deinit();
+    // rg_display_deinit();
 
-    rg_system_set_boot_app(app);
     esp_restart();
 }
 
