@@ -28,7 +28,7 @@ static int dpad_mapped_right;
 
 static void set_rotation()
 {
-    display_rotation_t rotation = rg_display_get_config_param(rotation);
+    display_rotation_t rotation = rg_display_get_rotation();
 
     if (rotation == RG_DISPLAY_ROTATION_AUTO)
     {
@@ -90,16 +90,16 @@ static void set_rotation()
 
 static dialog_return_t rotation_cb(dialog_option_t *option, dialog_event_t event)
 {
-    int rotation = rg_display_get_config_param(rotation);
+    int rotation = (int)rg_display_get_rotation();
 
     if (event == RG_DIALOG_PREV) {
         if (--rotation < 0) rotation = RG_DISPLAY_ROTATION_COUNT - 1;
-        rg_display_set_config_param(rotation, rotation);
+        rg_display_set_rotation((display_rotation_t)rotation);
         set_rotation();
     }
     if (event == RG_DIALOG_NEXT) {
         if (++rotation > RG_DISPLAY_ROTATION_COUNT - 1) rotation = 0;
-        rg_display_set_config_param(rotation, rotation);
+        rg_display_set_rotation((display_rotation_t)rotation);
         set_rotation();
     }
 
@@ -245,7 +245,7 @@ extern "C" void app_main(void)
         {
             rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
 
-            fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_SCREEN_UPDATE_FULL;
+            fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
 
             currentUpdate = previousUpdate;
             gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;

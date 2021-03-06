@@ -133,7 +133,7 @@ void osd_gfx_blit(void)
     if (drawFrame)
     {
         rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
-        if (rg_display_queue_update(currentUpdate, NULL) == RG_SCREEN_UPDATE_FULL)
+        if (rg_display_queue_update(currentUpdate, NULL) == RG_UPDATE_FULL)
         {
             fullFrames++;
         }

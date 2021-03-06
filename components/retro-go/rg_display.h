@@ -4,11 +4,11 @@
 #include <stdint.h>
 
 typedef enum {
-    RG_SCREEN_UPDATE_EMPTY = 0,
-    RG_SCREEN_UPDATE_FULL,
-    RG_SCREEN_UPDATE_PARTIAL,
-    RG_SCREEN_UPDATE_ERROR,
-} screen_update_t;
+    RG_UPDATE_EMPTY = 0,
+    RG_UPDATE_FULL,
+    RG_UPDATE_PARTIAL,
+    RG_UPDATE_ERROR,
+} rg_update_t;
 
 typedef enum
 {
@@ -60,10 +60,10 @@ enum
 };
 
 typedef struct {
-    display_backlight_t backlight;
-    display_rotation_t rotation;
-    display_scaling_t scaling;
-    display_filter_t filter;
+    display_backlight_t backlight; // _level
+    display_rotation_t rotation; // _mode
+    display_scaling_t scaling; // _mode
+    display_filter_t filter; // _mode
     struct {
         uint32_t width;
         uint32_t height;
@@ -71,18 +71,20 @@ typedef struct {
     struct {
         uint32_t width;
         uint32_t height;
-    } window;
+        uint32_t x, y;
+    } viewport;
     struct {
         uint32_t width;
         uint32_t height;
+        uint32_t x, y;
     } source;
     bool changed;
-} rg_display_cfg_t;
+} rg_display_t;
 
 typedef struct {
-    short left;
-    short width;
-    short repeat;
+    short left;     // uint32_t left:10;
+    short width;    // uint32_t width:10;
+    short repeat;   // uint32_t repeat:10;
 } rg_line_diff_t;
 
 typedef struct {
@@ -102,18 +104,18 @@ void rg_display_deinit(void);
 void rg_display_drain_spi(void);
 void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t* buffer);
 void rg_display_clear(uint16_t colorLE);
-void rg_display_set_scale(int width, int height, double aspect_ratio);
+void rg_display_force_refresh(void);
 void rg_display_show_info(const char *text, int timeout_ms);
-bool rg_display_save_frame(const char *filename, const rg_video_frame_t *frame, int width, int height);
-screen_update_t rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *previousFrame);
+bool rg_display_save_frame(const char *filename, rg_video_frame_t *frame, int width, int height);
+rg_update_t rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *previousFrame);
+rg_display_t rg_display_get_status(void);
 
-rg_display_cfg_t rg_display_get_config(void);
-void rg_display_set_config(rg_display_cfg_t config);
 
-// To do: do offsetof() magic instead of passing the whole struct
-#define rg_display_get_config_param(param) (rg_display_get_config().param)
-#define rg_display_set_config_param(param, value) {     \
-    rg_display_cfg_t config = rg_display_get_config();  \
-    config.param = (typeof(config.param))(value);       \
-    rg_display_set_config(config);                      \
-}
+void rg_display_set_scaling(display_scaling_t scaling);
+display_scaling_t rg_display_get_scaling(void);
+void rg_display_set_filter(display_filter_t filter);
+display_filter_t rg_display_get_filter(void);
+void rg_display_set_rotation(display_rotation_t rotation);
+display_rotation_t rg_display_get_rotation(void);
+void rg_display_set_backlight(display_backlight_t backlight);
+display_backlight_t rg_display_get_backlight(void);

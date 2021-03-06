@@ -332,7 +332,7 @@ static void snes9x_task(void *arg)
 		if (IPPU.RenderThisFrame)
 		{
 			rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
-			fullFrame = rg_display_queue_update(currentUpdate, previousUpdate);
+			fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_PARTIAL;
 			currentUpdate = previousUpdate;
 		}
 

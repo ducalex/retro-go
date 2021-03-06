@@ -494,7 +494,7 @@ int rg_gui_dialog(const char *header, const dialog_option_t *options_const, int 
 
     rg_input_wait_for_key(last_key, false);
 
-    rg_display_set_config_param(changed, 1);
+    rg_display_force_refresh();
 
     for (int i = 0; i < options_count; i++)
     {
@@ -548,15 +548,15 @@ static dialog_return_t volume_update_cb(dialog_option_t *option, dialog_event_t 
 
 static dialog_return_t brightness_update_cb(dialog_option_t *option, dialog_event_t event)
 {
-    int8_t level = rg_display_get_config_param(backlight);
+    int8_t level = rg_display_get_backlight();
     int8_t max = RG_DISPLAY_BACKLIGHT_MAX;
 
     if (event == RG_DIALOG_PREV && level > 0) {
-        rg_display_set_config_param(backlight, --level);
+        rg_display_set_backlight(--level);
     }
 
     if (event == RG_DIALOG_NEXT && level < max) {
-        rg_display_set_config_param(backlight, ++level);
+        rg_display_set_backlight(++level);
     }
 
     sprintf(option->value, "%d/%d", level, max);
@@ -581,7 +581,7 @@ static dialog_return_t audio_update_cb(dialog_option_t *option, dialog_event_t e
 static dialog_return_t filter_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     int8_t max = RG_DISPLAY_FILTER_COUNT - 1;
-    int8_t mode = rg_display_get_config_param(filter);
+    int8_t mode = rg_display_get_filter();
     int8_t prev = mode;
 
     if (event == RG_DIALOG_PREV && --mode < 0) mode = max; // 0;
@@ -589,7 +589,7 @@ static dialog_return_t filter_update_cb(dialog_option_t *option, dialog_event_t 
 
     if (mode != prev)
     {
-        rg_display_set_config_param(filter, mode);
+        rg_display_set_filter(mode);
     }
 
     if (mode == RG_DISPLAY_FILTER_OFF)      strcpy(option->value, "Off  ");
@@ -603,14 +603,14 @@ static dialog_return_t filter_update_cb(dialog_option_t *option, dialog_event_t 
 static dialog_return_t scaling_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     int8_t max = RG_DISPLAY_SCALING_COUNT - 1;
-    int8_t mode = rg_display_get_config_param(scaling);
+    int8_t mode = rg_display_get_scaling();
     int8_t prev = mode;
 
     if (event == RG_DIALOG_PREV && --mode < 0) mode =  max; // 0;
     if (event == RG_DIALOG_NEXT && ++mode > max) mode = 0;  // max;
 
     if (mode != prev) {
-        rg_display_set_config_param(scaling, mode);
+        rg_display_set_scaling(mode);
     }
 
     if (mode == RG_DISPLAY_SCALING_OFF)  strcpy(option->value, "Off  ");
@@ -729,11 +729,11 @@ int rg_gui_game_debug_menu(void)
     };
 
     runtime_stats_t stats = rg_system_get_stats();
-    rg_display_cfg_t display = rg_display_get_config();
+    rg_display_t display = rg_display_get_status();
 
     sprintf(screen_res, "%dx%d", RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT);
     sprintf(game_res, "%dx%d", display.source.width, display.source.height);
-    sprintf(scaled_res, "%dx%d", display.window.width, display.window.height);
+    sprintf(scaled_res, "%dx%d", display.viewport.width, display.viewport.height);
     sprintf(stack_hwm, "%d", stats.freeStackMain);
     sprintf(heap_free, "%d+%d", stats.freeMemoryInt, stats.freeMemoryExt);
     sprintf(block_free, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);

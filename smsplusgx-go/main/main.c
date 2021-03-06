@@ -300,9 +300,9 @@ void app_main(void)
             rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
 
             if (render_copy_palette(currentUpdate->palette))
-                fullFrame = rg_display_queue_update(currentUpdate, NULL);
+                fullFrame = rg_display_queue_update(currentUpdate, NULL) == RG_UPDATE_FULL;
             else
-                fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_SCREEN_UPDATE_FULL;
+                fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
 
             // Swap buffers
             currentUpdate = previousUpdate;

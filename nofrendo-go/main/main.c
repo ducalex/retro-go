@@ -311,7 +311,7 @@ void osd_setpalette(rgb_t *pal)
         uint16_t c = (pal[i].b >> 3) + ((pal[i].g >> 2) << 5) + ((pal[i].r >> 3) << 11);
         myPalette[i] = (c >> 8) | ((c & 0xff) << 8);
     }
-    rg_display_set_config_param(changed, 1);
+    rg_display_force_refresh();
 }
 
 void osd_blitscreen(uint8 *bmp)
@@ -328,7 +328,7 @@ void osd_blitscreen(uint8 *bmp)
 
     rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
 
-    fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_SCREEN_UPDATE_FULL;
+    fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
 
     currentUpdate = previousUpdate;
 }
