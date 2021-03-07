@@ -57,7 +57,6 @@ typedef enum
     EMU_PATH_TEMP_FILE,
     EMU_PATH_ROM_FILE,
     EMU_PATH_ART_FILE,
-    EMU_PATH_CRC_CACHE,
 } emu_path_type_t;
 
 typedef enum

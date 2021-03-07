@@ -1,5 +1,6 @@
 #include <rg_system.h>
 #include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 #include "emulators.h"
@@ -104,6 +105,64 @@ static void add_emulator(const char *system, const char *dirname, const char* ex
         event_handler);
 }
 
+static uint64_t crc_cache_calc_key(retro_emulator_file_t *file)
+{
+    return ((uint64_t)crc32_le(0, (void *)file->name, strlen(file->name)) << 33 | file->size);
+}
+
+static uint32_t crc_cache_lookup(retro_emulator_file_t *file)
+{
+    retro_crc_cache_t *cache = file->emulator->crc_cache;
+    uint64_t key = crc_cache_calc_key(file);
+
+    for (int i = 0; i < cache->count; i++)
+    {
+        if (cache->entries[i].key == key)
+            return cache->entries[i].crc;
+    }
+
+    return 0;
+}
+
+static void crc_cache_update(retro_emulator_file_t *file)
+{
+    retro_crc_cache_t *cache = file->emulator->crc_cache;
+    uint64_t key = crc_cache_calc_key(file);
+    char path[256];
+    int index;
+    FILE *fp;
+
+    if (cache->count < CRC_CACHE_MAX_ENTRIES)
+        index = cache->count++;
+    else
+        index = rand() % CRC_CACHE_MAX_ENTRIES;
+
+    cache->magic = CRC_CACHE_MAGIC;
+    cache->entries[index].key = crc_cache_calc_key(file);
+    cache->entries[index].crc = file->checksum;
+
+    RG_LOGI("Adding %08X%08X %08X to cache (new total: %d)\n",
+        (uint32_t)(key >> 32), (uint32_t)(key),
+        file->checksum, cache->count);
+
+    sprintf(path, RG_BASE_PATH_CACHE "/%s_crc32.bin", file->emulator->dirname);
+
+    if (!(fp = fopen(path, "wb")))
+    {
+        rg_fs_mkdir(RG_BASE_PATH_CACHE);
+        fp = fopen(path, "wb");
+    }
+
+    if (fp)
+    {
+        fwrite(cache, 32 + cache->count * sizeof(retro_crc_entry_t), 1, fp);
+        fclose(fp);
+        // fwrite(cache, sizeof(retro_crc_cache_t), 1, fp);
+        // fseek(fp, (cache->count - 1) * sizeof(retro_crc_entry_t), SEEK_CUR);
+        // fwrite(entry, sizeof(retro_crc_entry_t), 1, fp);
+    }
+}
+
 void emulator_init(retro_emulator_t *emu)
 {
     if (emu->initialized)
@@ -117,9 +176,26 @@ void emulator_init(retro_emulator_t *emu)
     char path[256];
     char *files = NULL;
     size_t count = 0;
+    FILE *fp;
 
-    sprintf(path, RG_BASE_PATH_CRC_CACHE "/%s", emu->dirname);
-    rg_fs_mkdir(path);
+    emu->crc_cache = rg_alloc(0x4000, MEM_ANY);
+
+    sprintf(path, RG_BASE_PATH_CACHE "/%s_crc32.bin", emu->dirname);
+    if ((fp = fopen(path, "rb")))
+    {
+        fread(emu->crc_cache, 0x4000, 1, fp);
+        fclose(fp);
+
+        if (emu->crc_cache->magic == CRC_CACHE_MAGIC && emu->crc_cache->count <= CRC_CACHE_MAX_ENTRIES)
+        {
+            RG_LOGI("Loaded CRC cache (entries: %d)\n", emu->crc_cache->count);
+        }
+        else
+        {
+            emu->crc_cache->count = 0;
+            rg_fs_delete(path);
+        }
+    }
 
     sprintf(path, RG_BASE_PATH_SAVES "/%s", emu->dirname);
     rg_fs_mkdir(path);
@@ -204,27 +280,24 @@ bool emulator_build_file_object(const char *path, retro_emulator_file_t *file)
 
 void emulator_crc32_file(retro_emulator_file_t *file)
 {
+    const size_t chunk_size = 32768;
+    uint32_t crc_tmp = 0;
+    FILE *fp;
+
     if (file == NULL || file->checksum > 0)
         return;
 
-    const size_t chunk_size = 32768;
-    const char *file_path = emu_get_file_path(file);
-    char *cache_path = rg_emu_get_path(EMU_PATH_CRC_CACHE, file_path);
-    FILE *fp;
-
     file->missing_cover = 0;
 
-    if ((fp = fopen(cache_path, "rb")) != NULL)
+    if ((crc_tmp = crc_cache_lookup(file)))
     {
-        fread(&file->checksum, 4, 1, fp);
-        fclose(fp);
+        file->checksum = crc_tmp;
     }
-    else if ((fp = fopen(file_path, "rb")) != NULL)
+    else if ((fp = fopen(emu_get_file_path(file), "rb")) != NULL)
     {
         void *buffer = rg_alloc(chunk_size, MEM_ANY);
         size_t count = 0;
         bool done = false;
-        uint32_t crc_tmp = 0;
 
         gui_draw_notice("        CRC32", C_GREEN);
 
@@ -250,19 +323,13 @@ void emulator_crc32_file(retro_emulator_file_t *file)
         if (done)
         {
             file->checksum = crc_tmp;
-            if ((fp = fopen(cache_path, "wb")) != NULL)
-            {
-                fwrite(&file->checksum, 4, 1, fp);
-                fclose(fp);
-            }
+            crc_cache_update(file);
         }
     }
     else
     {
         file->checksum = 1;
     }
-
-    rg_free(cache_path);
 
     gui_draw_notice(" ", C_RED);
 }
@@ -349,9 +416,8 @@ void emulator_start(retro_emulator_file_t *file, bool load_state)
     if (file == NULL)
         RG_PANIC("Unable to find file...");
 
-    const char *path = emu_get_file_path(file);
-    const char *emu = ((retro_emulator_t *)file->emulator)->partition;
-    rg_emu_start_game(emu, path, load_state ? EMU_START_ACTION_RESUME : EMU_START_ACTION_NEWGAME);
+    emu_start_action_t action = load_state ? EMU_START_ACTION_RESUME : EMU_START_ACTION_NEWGAME;
+    rg_emu_start_game(file->emulator->partition, emu_get_file_path(file), action);
 }
 
 void emulators_init()

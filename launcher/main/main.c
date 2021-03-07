@@ -215,6 +215,7 @@ void retro_loop()
                     RG_DIALOG_SEPARATOR,
                     {1, "Reboot to firmware", NULL, 1, NULL},
                     {2, "Reset settings", NULL, 1, NULL},
+                    // {3, "Clear cache", NULL, 1, NULL},
                     {0, "Close", NULL, 1, NULL},
                     RG_DIALOG_CHOICE_LAST
                 };

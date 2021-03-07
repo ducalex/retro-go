@@ -3,18 +3,38 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef struct {
+#define CRC_CACHE_MAGIC 0x11112222
+#define CRC_CACHE_MAX_ENTRIES 1250
+
+typedef struct __attribute__((__packed__))
+{
+    uint64_t key;
+    uint32_t crc;
+} retro_crc_entry_t;
+
+typedef struct __attribute__((__packed__))
+{
+    uint32_t magic;
+    uint32_t count;
+    retro_crc_entry_t entries[];
+} retro_crc_cache_t;
+
+typedef struct retro_emulator_s retro_emulator_t;
+
+typedef struct
+{
     char name[128];
     char ext[8];
     char folder[32];
     size_t size;
     size_t crc_offset;
     uint32_t checksum;
-    bool missing_cover;
-    void *emulator;
+    uint32_t missing_cover;
+    retro_emulator_t *emulator;
 } retro_emulator_file_t;
 
-typedef struct {
+typedef struct retro_emulator_s
+{
     char system_name[64];
     char partition[16];
     char dirname[16];
@@ -25,6 +45,7 @@ typedef struct {
         size_t count;
     } roms;
     bool initialized;
+    retro_crc_cache_t *crc_cache;
 } retro_emulator_t;
 
 void emulators_init();

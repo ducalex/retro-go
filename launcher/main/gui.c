@@ -309,7 +309,7 @@ void gui_draw_list(tab_t *tab)
 
 void gui_draw_preview(retro_emulator_file_t *file)
 {
-    retro_emulator_t *emu = (retro_emulator_t *)file->emulator;
+    const char *dirname = file->emulator->dirname;
     bool show_art_missing;
     uint32_t order;
     char path[256];
@@ -338,7 +338,7 @@ void gui_draw_preview(retro_emulator_file_t *file)
             order = 0x0000;
     }
 
-    if (file->checksum > 0 && file->missing_cover != gui.show_preview)
+    if (file->checksum > 0)
     {
         rg_image_t *img = NULL;
 
@@ -346,21 +346,30 @@ void gui_draw_preview(retro_emulator_file_t *file)
 
         while (order && !img)
         {
-            switch (order & 0xF)
+            int type = order & 0xF;
+
+            if (file->missing_cover & (1 << type))
+            {
+                type = 0xF;
+            }
+
+            switch (type)
             {
                 case 0x1: // Game cover (old format)
-                    sprintf(path, "%s/%s/%c/%s.art", RG_BASE_PATH_ROMART, emu->dirname, crc[0], crc);
+                    sprintf(path, "%s/%s/%c/%s.art", RG_BASE_PATH_ROMART, dirname, crc[0], crc);
                     img = rg_gui_load_image_file(path);
                     break;
                 case 0x2: // Game cover (png)
-                    sprintf(path, "%s/%s/%c/%s.png", RG_BASE_PATH_ROMART, emu->dirname, crc[0], crc);
+                    sprintf(path, "%s/%s/%c/%s.png", RG_BASE_PATH_ROMART, dirname, crc[0], crc);
                     img = rg_gui_load_image_file(path);
                     break;
                 case 0x3: // Save state screenshot (png)
-                    sprintf(path, "%s/%s/%s.%s.png", RG_BASE_PATH_SAVES, emu->dirname, file->name, file->ext);
+                    sprintf(path, "%s/%s/%s.%s.png", RG_BASE_PATH_SAVES, dirname, file->name, file->ext);
                     img = rg_gui_load_image_file(path);
                     break;
             }
+
+            file->missing_cover |= (img ? 0 : 1) << type;
 
             order >>= 4;
         }
@@ -375,13 +384,9 @@ void gui_draw_preview(retro_emulator_file_t *file)
 
             rg_gui_draw_image(320 - width, 240 - height, width, height, img);
             rg_gui_free_image(img);
-            file->missing_cover = 0;
             return;
         }
     }
-
-    // In case we change show_preview we want missing_cover to be invalidated
-    file->missing_cover = gui.show_preview;
 
     if (show_art_missing)
     {

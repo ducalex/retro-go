@@ -432,7 +432,7 @@ rg_app_desc_t *rg_system_get_app()
     return &currentApp;
 }
 
-char* rg_emu_get_path(emu_path_type_t type, const char *_romPath)
+char *rg_emu_get_path(emu_path_type_t type, const char *_romPath)
 {
     const char *fileName = _romPath ?: currentApp.romPath;
     char buffer[256];
@@ -484,12 +484,6 @@ char* rg_emu_get_path(emu_path_type_t type, const char *_romPath)
         case EMU_PATH_ROM_FILE:
             strcpy(buffer, RG_BASE_PATH_ROMS);
             strcat(buffer, fileName);
-            break;
-
-        case EMU_PATH_CRC_CACHE:
-            strcpy(buffer, RG_BASE_PATH_CRC_CACHE);
-            strcat(buffer, fileName);
-            strcat(buffer, ".crc");
             break;
 
         default:
