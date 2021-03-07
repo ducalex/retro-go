@@ -41,9 +41,6 @@ static void event_handler(gui_event_t event, tab_t *tab)
     }
     else if (event == TAB_IDLE)
     {
-        if (file->checksum == 0)
-            emulator_crc32_file(file);
-
         if (gui.show_preview && gui.idle_counter == (gui.show_preview_fast ? 1 : 8))
             gui_draw_preview(file);
     }

@@ -64,9 +64,6 @@ static void event_handler(gui_event_t event, tab_t *tab)
     }
     else if (event == TAB_IDLE)
     {
-        if (file->checksum == 0)
-            emulator_crc32_file(file);
-
         if (gui.show_preview && gui.idle_counter == (gui.show_preview_fast ? 1 : 8))
             gui_draw_preview(file);
     }
@@ -237,6 +234,7 @@ void emulator_init(retro_emulator_t *emu)
             file->emulator = (void*)emu;
             file->crc_offset = emu->crc_offset;
             file->checksum = 0;
+            file->missing_cover = 0;
         }
     }
     rg_free(files);
@@ -278,16 +276,17 @@ bool emulator_build_file_object(const char *path, retro_emulator_file_t *file)
     return false;
 }
 
-void emulator_crc32_file(retro_emulator_file_t *file)
+bool emulator_crc32_file(retro_emulator_file_t *file)
 {
-    const size_t chunk_size = 32768;
+    const size_t chunk_size = 0x4000;
     uint32_t crc_tmp = 0;
     FILE *fp;
 
-    if (file == NULL || file->checksum > 0)
-        return;
+    if (file == NULL)
+        return false;
 
-    file->missing_cover = 0;
+    if (file->checksum > 0)
+        return true;
 
     if ((crc_tmp = crc_cache_lookup(file)))
     {
@@ -326,25 +325,23 @@ void emulator_crc32_file(retro_emulator_file_t *file)
             crc_cache_update(file);
         }
     }
-    else
-    {
-        file->checksum = 1;
-    }
 
     gui_draw_notice(" ", C_RED);
+
+    return file->checksum > 0;
 }
 
 void emulator_show_file_info(retro_emulator_file_t *file)
 {
-    char filesize[16] = "N/A";
-    char filecrc[16] = "N/A";
+    char filesize[16];
+    char filecrc[16] = "Compute";
 
     dialog_option_t options[] = {
         {0, "File", file->name, 1, NULL},
         {0, "Type", file->ext, 1, NULL},
         {0, "Folder", file->folder, 1, NULL},
         {0, "Size", filesize, 1, NULL},
-        {0, "CRC32", filecrc, 1, NULL},
+        {3, "CRC32", filecrc, 1, NULL},
         RG_DIALOG_SEPARATOR,
         {1, "Close", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
@@ -352,7 +349,8 @@ void emulator_show_file_info(retro_emulator_file_t *file)
 
     sprintf(filesize, "%ld KB", rg_fs_filesize(emu_get_file_path(file)) / 1024);
 
-    if (file->checksum > 1)
+    // if (emulator_crc32_file(file))
+    if (file->checksum)
     {
         if (file->crc_offset)
             sprintf(filecrc, "%08X (%d)", file->checksum, file->crc_offset);
@@ -360,7 +358,12 @@ void emulator_show_file_info(retro_emulator_file_t *file)
             sprintf(filecrc, "%08X", file->checksum);
     }
 
-    rg_gui_dialog("Properties", options, -1);
+    if (rg_gui_dialog("Properties", options, -1) == 3)
+    {
+        // CRC32 was selected, compute it and redraw dialog
+        emulator_crc32_file(file);
+        emulator_show_file_info(file);
+    }
 }
 
 void emulator_show_file_menu(retro_emulator_file_t *file)

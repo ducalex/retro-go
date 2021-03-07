@@ -310,10 +310,9 @@ void gui_draw_list(tab_t *tab)
 void gui_draw_preview(retro_emulator_file_t *file)
 {
     const char *dirname = file->emulator->dirname;
-    bool show_art_missing;
+    bool show_art_missing = false;
     uint32_t order;
     char path[256];
-    char crc[10];
 
     switch (gui.show_preview)
     {
@@ -338,54 +337,53 @@ void gui_draw_preview(retro_emulator_file_t *file)
             order = 0x0000;
     }
 
-    if (file->checksum > 0)
+    rg_image_t *img = NULL;
+
+    while (order && !img)
     {
-        rg_image_t *img = NULL;
+        int type = order & 0xF;
 
-        sprintf(crc, "%08X", file->checksum);
+        order >>= 4;
 
-        while (order && !img)
+        if (file->missing_cover & (1 << type))
         {
-            int type = order & 0xF;
-
-            if (file->missing_cover & (1 << type))
-            {
-                type = 0xF;
-            }
-
-            switch (type)
-            {
-                case 0x1: // Game cover (old format)
-                    sprintf(path, "%s/%s/%c/%s.art", RG_BASE_PATH_ROMART, dirname, crc[0], crc);
-                    img = rg_gui_load_image_file(path);
-                    break;
-                case 0x2: // Game cover (png)
-                    sprintf(path, "%s/%s/%c/%s.png", RG_BASE_PATH_ROMART, dirname, crc[0], crc);
-                    img = rg_gui_load_image_file(path);
-                    break;
-                case 0x3: // Save state screenshot (png)
-                    sprintf(path, "%s/%s/%s.%s.png", RG_BASE_PATH_SAVES, dirname, file->name, file->ext);
-                    img = rg_gui_load_image_file(path);
-                    break;
-            }
-
-            file->missing_cover |= (img ? 0 : 1) << type;
-
-            order >>= 4;
+            continue;
         }
 
-        if (img)
+        switch (type)
         {
-            int height = MIN(img->height, COVER_MAX_HEIGHT);
-            int width = MIN(img->width, COVER_MAX_WIDTH);
-
-            if (img->height > COVER_MAX_HEIGHT || img->width > COVER_MAX_WIDTH)
-                gui_draw_notice("Art too large", C_ORANGE);
-
-            rg_gui_draw_image(320 - width, 240 - height, width, height, img);
-            rg_gui_free_image(img);
-            return;
+            case 0x1: // Game cover (old format)
+                if (!emulator_crc32_file(file))
+                    continue;
+                sprintf(path, RG_BASE_PATH_ROMART "/%s/%X/%08X.art", dirname, file->checksum >> 28, file->checksum);
+                img = rg_gui_load_image_file(path);
+                break;
+            case 0x2: // Game cover (png)
+                if (!emulator_crc32_file(file))
+                    continue;
+                sprintf(path, RG_BASE_PATH_ROMART "/%s/%X/%08X.png", dirname, file->checksum >> 28, file->checksum);
+                img = rg_gui_load_image_file(path);
+                break;
+            case 0x3: // Save state screenshot (png)
+                sprintf(path, "%s/%s/%s.%s.png", RG_BASE_PATH_SAVES, dirname, file->name, file->ext);
+                img = rg_gui_load_image_file(path);
+                break;
         }
+
+        file->missing_cover |= (img ? 0 : 1) << type;
+    }
+
+    if (img)
+    {
+        int height = MIN(img->height, COVER_MAX_HEIGHT);
+        int width = MIN(img->width, COVER_MAX_WIDTH);
+
+        if (img->height > COVER_MAX_HEIGHT || img->width > COVER_MAX_WIDTH)
+            gui_draw_notice("Art too large", C_ORANGE);
+
+        rg_gui_draw_image(320 - width, 240 - height, width, height, img);
+        rg_gui_free_image(img);
+        return;
     }
 
     if (show_art_missing)
