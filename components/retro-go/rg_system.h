@@ -125,7 +125,7 @@ void rg_spi_lock_release(spi_lock_res_t);
 
 bool rg_fs_mkdir(const char *path);
 bool rg_fs_delete(const char* path);
-bool rg_fs_readdir(const char* path, char **out_files, size_t *out_count);
+bool rg_fs_readdir(const char* path, char **out_files, size_t *out_count, bool skip_hidden);
 long rg_fs_filesize(const char *path);
 const char* rg_fs_basename(const char *path);
 const char* rg_fs_dirname(const char *path);

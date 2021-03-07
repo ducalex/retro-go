@@ -766,14 +766,11 @@ bool rg_fs_mkdir(const char *dir)
     return (ret == 0);
 }
 
-bool rg_fs_readdir(const char* path, char **out_files, size_t *out_count)
+bool rg_fs_readdir(const char* path, char **out_files, size_t *out_count, bool skip_hidden)
 {
     DIR* dir = opendir(path);
     if (!dir)
-    {
-        rg_spi_lock_release(SPI_LOCK_SDCARD);
         return false;
-    }
 
     // TO DO: We should use a struct instead of a packed list of strings
     char *buffer = NULL;
@@ -784,18 +781,22 @@ bool rg_fs_readdir(const char* path, char **out_files, size_t *out_count)
 
     while ((file = readdir(dir)))
     {
-        size_t len = strlen(file->d_name) + 1;
+        const char *name = file->d_name;
+        size_t name_len = strlen(name) + 1;
 
-        if (len < 2) continue;
+        if (name_len < 2 || (skip_hidden && name[0] == '.'))
+        {
+            continue;
+        }
 
-        if ((bufsize - bufpos) < len)
+        if ((bufsize - bufpos) < name_len)
         {
             bufsize += 1024;
             buffer = realloc(buffer, bufsize);
         }
 
-        memcpy(buffer + bufpos, &file->d_name, len);
-        bufpos += len;
+        memcpy(buffer + bufpos, name, name_len);
+        bufpos += name_len;
         count++;
     }
 

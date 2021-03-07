@@ -113,7 +113,7 @@ void emulator_init(retro_emulator_t *emu)
 
     RG_LOGX("Retro-Go: Initializing emulator '%s'\n", emu->system_name);
 
-    char extensions[64];
+    char buffer[32];
     char path[256];
     char *files = NULL;
     size_t count = 0;
@@ -127,7 +127,7 @@ void emulator_init(retro_emulator_t *emu)
     sprintf(path, RG_BASE_PATH_ROMS "/%s", emu->dirname);
     rg_fs_mkdir(path);
 
-    if (rg_fs_readdir(path, &files, &count) && count > 0)
+    if (rg_fs_readdir(path, &files, &count, true) && count > 0)
     {
         emu->roms.files = rg_alloc(count * sizeof(retro_emulator_file_t), MEM_ANY);
         emu->roms.count = 0;
@@ -139,17 +139,13 @@ void emulator_init(retro_emulator_t *emu)
             const char *ext = rg_fs_extension(ptr);
             size_t name_len = strlen(name);
             bool ext_match = false;
-            strcpy(extensions, emu->extensions);
 
             // Advance pointer to next entry
             ptr += name_len + 1;
 
-            if (!ext)
-                continue;
-
-            char *token = strtok(extensions, " ");
-
-            while (token && !ext_match) {
+            char *token = strtok(strcpy(buffer, emu->extensions), " ");
+            while (token && ext && !ext_match)
+            {
                 ext_match = strcasecmp(token, ext) == 0;
                 token = strtok(NULL, " ");
             }
