@@ -463,11 +463,11 @@ void S9xSelectTileRenderers (int BGMode, bool8 sub, bool8 obj)
 
 	if (Settings.Transparency)
 	{
-		i = (Memory.FillRAM[0x0131] & 0x80) ? 4 : 1;
-		if (Memory.FillRAM[0x0131] & 0x40)
+		i = (Memory.PPU_IO[0x131] & 0x80) ? 4 : 1;
+		if (Memory.PPU_IO[0x131] & 0x40)
 		{
 			i++;
-			if (Memory.FillRAM[0x0130] & 2)
+			if (Memory.PPU_IO[0x130] & 2)
 				i++;
 		}
 		if (IPPU.MaxBrightness != 0xf)
@@ -497,7 +497,7 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 			BG.TileShift        = 6;
 			BG.PaletteShift     = 0;
 			BG.PaletteMask      = 0;
-			BG.DirectColourMode = Memory.FillRAM[0x0130] & 1;
+			BG.DirectColourMode = Memory.PPU_IO[0x130] & 1;
 
 			break;
 
@@ -908,7 +908,7 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 #define Z1				(D + 7)
 #define Z2				(D + 7)
 #define MASK			0xff
-#define DCMODE			(Memory.FillRAM[0x0130] & 1)
+#define DCMODE			(Memory.PPU_IO[0x130] & 1)
 #define BG				0
 
 #define DRAW_TILE_NORMAL() \

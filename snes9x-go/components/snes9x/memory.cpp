@@ -609,16 +609,16 @@ bool8 S9xMemoryInit (void)
 {
 	memset(&Memory, 0, sizeof(Memory));
 
-    Memory.RAM	 = (uint8 *) calloc(1, 0x20000);
-    Memory.VRAM = (uint8 *) calloc(1, 0x10000);
-    Memory.SRAM = (uint8 *) calloc(1, 0x8000);
-    Memory.ROM  = (uint8 *) calloc(1, ROM_BUFFER_SIZE + 0x200);
+	Memory.RAM	 = (uint8 *) calloc(1, 0x20000);
+	Memory.VRAM = (uint8 *) calloc(1, 0x10000);
+	Memory.SRAM = (uint8 *) calloc(1, 0x8000);
+	Memory.ROM  = (uint8 *) calloc(1, ROM_BUFFER_SIZE + 0x200);
 
 	if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM || !Memory.ROM)
-    {
+	{
 		S9xMemoryDeinit();
 		return (FALSE);
-    }
+	}
 
 	return (TRUE);
 }

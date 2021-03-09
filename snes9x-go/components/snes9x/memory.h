@@ -53,7 +53,8 @@ typedef enum
 
 typedef struct
 {
-	uint8	FillRAM[0x2800];
+	uint8	CPU_IO[0x400];
+	uint8	PPU_IO[0x200];
 	uint8	*RAM;
 	uint8	*ROM;
 	uint8	*SRAM;

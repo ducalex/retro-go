@@ -239,11 +239,11 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 				{
 					CPU.V_Counter = 0;
 
-					Memory.FillRAM[0x013F] ^= 0x80;
+					Memory.PPU_IO[0x13F] ^= 0x80;
 					PPU.RangeTimeOver = 0;
 
 					// FIXME: reading $4210 will wait 2 cycles, then perform reading, then wait 4 more cycles.
-					Memory.FillRAM[0x2210] = 2;
+					Memory.CPU_IO[0x210] = 2;
 
 					ICPU.Frame++;
 					PPU.HVBeamCounterLatched = 0;
@@ -258,7 +258,7 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 					PPU.HDMA = 0;
 					// Bits 7 and 6 of $4212 are computed when read in S9xGetPPU.
 					IPPU.MaxBrightness = PPU.Brightness;
-					PPU.ForcedBlanking = (Memory.FillRAM[0x0100] >> 7) & 1;
+					PPU.ForcedBlanking = (Memory.PPU_IO[0x100] >> 7) & 1;
 
 					if (!PPU.ForcedBlanking)
 					{
@@ -278,8 +278,8 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 					}
 
 					// FIXME: writing to $4210 will wait 6 cycles.
-					Memory.FillRAM[0x2210] = 0x80 | 2;
-					if (Memory.FillRAM[0x2200] & 0x80)
+					Memory.CPU_IO[0x210] = 0x80 | 2;
+					if (Memory.CPU_IO[0x200] & 0x80)
 					{
 					#ifdef DEBUGGER
 						if (Settings.TraceHCEvent)
@@ -295,7 +295,7 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 
 				if (CPU.V_Counter == PPU.ScreenHeight + 3)	// FIXME: not true
 				{
-					if (Memory.FillRAM[0x2200] & 1)
+					if (Memory.CPU_IO[0x200] & 1)
 						S9xDoAutoJoypad();
 				}
 
@@ -411,7 +411,7 @@ void S9xReset (void)
 {
 	memset(Memory.RAM, 0x55, 0x20000);
 	memset(Memory.VRAM, 0x00, 0x10000);
-	memset(Memory.FillRAM, 0, 0x2800);
+	memset(Memory.CPU_IO, 0, 0x400);
 
 	S9xResetCPU();
 	S9xResetPPU();
@@ -424,7 +424,7 @@ void S9xReset (void)
 
 void S9xSoftReset (void)
 {
-	memset(Memory.FillRAM, 0, 0x2800);
+	memset(Memory.CPU_IO, 0, 0x400);
 
 	S9xSoftResetCPU();
 	S9xSoftResetPPU();

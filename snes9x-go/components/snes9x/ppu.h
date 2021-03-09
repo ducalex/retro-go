@@ -355,7 +355,7 @@ static inline void REGISTER_2118 (uint8 Byte)
 	{
 	#ifdef DEBUGGER
 		if (Settings.TraceVRAM && !CPU.InDMAorHDMA)
-			printf("VRAM write byte: $%04X (%d, %d)\n", PPU.VMA.Address, Memory.FillRAM[0x0115] & 3, (Memory.FillRAM[0x0115] & 0x0c) >> 2);
+			printf("VRAM write byte: $%04X (%d, %d)\n", PPU.VMA.Address, Memory.PPU_IO[0x115] & 3, (Memory.PPU_IO[0x115] & 0x0c) >> 2);
 	#endif
 		PPU.VMA.Address += PPU.VMA.Increment;
 	}
@@ -429,7 +429,7 @@ static inline void REGISTER_2119 (uint8 Byte)
 	{
 	#ifdef DEBUGGER
 		if (Settings.TraceVRAM && !CPU.InDMAorHDMA)
-			printf("VRAM write word: $%04X (%d, %d)\n", PPU.VMA.Address, Memory.FillRAM[0x0115] & 3, (Memory.FillRAM[0x0115] & 0x0c) >> 2);
+			printf("VRAM write word: $%04X (%d, %d)\n", PPU.VMA.Address, Memory.PPU_IO[0x115] & 3, (Memory.PPU_IO[0x115] & 0x0c) >> 2);
 	#endif
 		PPU.VMA.Address += PPU.VMA.Increment;
 	}

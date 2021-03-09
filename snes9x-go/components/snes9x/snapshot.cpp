@@ -599,7 +599,8 @@ int S9xFreezeGame (const char *filename)
 	if (Memory.SRAMSize > 0)
 		FreezeBlock(stream, "SRA", Memory.SRAM, Memory.SRAMBytes);
 
-	FreezeBlock (stream, "FIL", Memory.FillRAM, 0x2800);
+	FreezeBlock (stream, "FI1", Memory.CPU_IO, 0x400);
+	FreezeBlock (stream, "FI2", Memory.PPU_IO, 0x200);
 
 	S9xAPUSaveState(soundsnapshot);
 	FreezeBlock (stream, "SND", soundsnapshot, SPC_SAVE_STATE_BLOCK_SIZE);
@@ -688,7 +689,11 @@ int S9xUnfreezeGame (const char *filename)
 		if (result != SUCCESS && Memory.SRAMSize > 0)
 			break;
 
-		result = UnfreezeBlock(stream, "FIL", Memory.FillRAM, 0x2800);
+		result = UnfreezeBlock(stream, "FI1", Memory.CPU_IO, 0x400);
+		if (result != SUCCESS)
+			break;
+
+		result = UnfreezeBlock(stream, "FI2", Memory.PPU_IO, 0x200);
 		if (result != SUCCESS)
 			break;
 
