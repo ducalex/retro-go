@@ -60,26 +60,21 @@ Note: If you are stuck in an emulator, hold MENU while powering up the device to
 
 
 # Game covers 
-The preferred cover art format is 8bit PNG with a resolution of 168x168 and I recommend post-processing 
-with [pngquant](https://pngquant.org/). Retro-Go is also backwards-compatible with the official RAW565 
-Go-Play romart pack that you may already have.
+The preferred cover art format is PNG with a resolution of 160x168 and I recommend post-processing your 
+PNG with [pngquant](https://pngquant.org/) or [imagemagick](https://imagemagick.org/script/index.php)'s 
+`-colors 255` for smaller file sizes. Retro-Go is also backwards-compatible with the official RAW565 Go-Play 
+romart pack that you may already have.
 
 For a quick start you can copy the folder `covers` of this repository to the root of your sdcard and 
-rename it `romart`.
-
-If a cover is missing Retro-Go will display a screenshot of the last saved state (if any).
+rename it `romart`. I also periodically upload zips to the release page.
 
 ## Adding missing covers
 First identify the CRC32 of your game (in the launcher press B). Now, let's assume that the CRC32 of your
-nes game is ABCDE123, you must place the file (format described above) at: `sdcard:/romart/nes/A/ABCDE123.png`.
+NES game is ABCDE123, you must place the file (format described above) at: `sdcard:/romart/nes/A/ABCDE123.png`.
 
 _Note: If you need to compute the CRC32 outside of retro-go, please be mindful that certain systems 
 skip the file header in their CRC calculation (eg NES skips 16 bytes and Lynx skips 64 bytes). 
 The number must also be zero padded to be 8 chars._
-
-## CRC cache
-Retro-Go caches some data to speed up cover art discovery and display.
-If you have any problem the first step is to delete the `sdcard:/odroid/cache` folder.
 
 
 # Sound quality
@@ -105,7 +100,10 @@ An up to date list of incompatible/broken games can be found on the [ODROID-GO f
 # Future plans
 - SNES emulation (In progress)
 - Netplay (On hold)
-
+- Multiple save states
+- Atari 2600 or 5200 or 7800
+- Neo Geo Pocket Color
+- Better launcher fonts
 
 # Building Retro-Go
 
