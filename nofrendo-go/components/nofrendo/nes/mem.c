@@ -117,8 +117,11 @@ void mem_refresh()
 }
 
 /* Set 2KB memory page */
-IRAM_ATTR void mem_setpage(uint16 page, uint8 *ptr)
+IRAM_ATTR void mem_setpage(uint32 page, uint8 *ptr)
 {
+   ASSERT(page < 32);
+   ASSERT(ptr);
+
    mem.pages[page] = ptr - (page * MEM_PAGESIZE);
 
    if (!MEM_PAGE_HAS_HANDLERS(mem.pages_read[page]))
@@ -133,8 +136,10 @@ IRAM_ATTR void mem_setpage(uint16 page, uint8 *ptr)
 }
 
 /* Get 2KB memory page */
-uint8 *mem_getpage(uint16 page)
+uint8 *mem_getpage(uint32 page)
 {
+   ASSERT(page < 32);
+
    uint8 *page_ptr = mem.pages[page];
 
    if (MEM_PAGE_IS_VALID_PTR(page_ptr))

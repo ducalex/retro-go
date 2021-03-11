@@ -28,9 +28,9 @@
 
 typedef struct
 {
-    uint8_t type[4];
-    uint32_t blockVersion;
-    uint32_t blockLength;
+    uint8  type[4];
+    uint32 blockVersion;
+    uint32 blockLength;
 } SnssBlockHeader;
 
 extern void state_setslot(int slot);

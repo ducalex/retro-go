@@ -695,7 +695,7 @@ IRAM_ATTR uint8 apu_read(uint32 address)
    return value;
 }
 
-void apu_process(short *buffer, size_t num_samples, bool stereo)
+void apu_process(int16 *buffer, size_t num_samples, bool stereo)
 {
    static int32 prev_sample = 0;
 

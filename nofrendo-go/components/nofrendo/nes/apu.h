@@ -232,7 +232,7 @@ extern int  apu_getopt(apu_option_t n);
 extern void apu_setcontext(apu_t *src_apu);
 extern void apu_getcontext(apu_t *dest_apu);
 
-extern void apu_process(short *buffer, size_t num_samples, bool stereo);
+extern void apu_process(int16 *buffer, size_t num_samples, bool stereo);
 extern void apu_fc_advance(int cycles);
 
 extern uint8 apu_read(uint32 address);

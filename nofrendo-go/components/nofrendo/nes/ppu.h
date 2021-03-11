@@ -147,8 +147,8 @@ typedef struct
 
 typedef struct
 {
-    char  name[16];
-    uint8 data[192]; // rgb_t
+   char  name[16];
+   uint8 data[192]; // rgb_t
 } palette_t;
 
 /* Mirroring / Paging */

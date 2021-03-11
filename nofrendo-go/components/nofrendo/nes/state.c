@@ -45,12 +45,12 @@
 }
 
 #ifdef IS_LITTLE_ENDIAN
-   static inline uint16_t swap16(uint16_t x)
+   static inline uint16 swap16(uint16 x)
    {
       return (x << 8) | (x >> 8);
    }
 
-   static inline uint32_t swap32(uint32_t x)
+   static inline uint32 swap32(uint32 x)
    {
       return ((x>>24)&0xff) | ((x<<8)&0xff0000) | ((x>>8)&0xff00) | ((x<<24)&0xff000000);
    }

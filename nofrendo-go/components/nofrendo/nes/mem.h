@@ -83,8 +83,8 @@ extern mem_t *mem_create(void);
 extern void mem_shutdown(void);
 extern void mem_reset(void);
 extern void mem_setmapper(mapintf_t *intf);
-extern void mem_setpage(uint16 page, uint8 *ptr);
-extern uint8 *mem_getpage(uint16 page);
+extern void mem_setpage(uint32 page, uint8 *ptr);
+extern uint8 *mem_getpage(uint32 page);
 
 extern uint8 mem_getbyte(uint32 address);
 extern uint32 mem_getword(uint32 address);
