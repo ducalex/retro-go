@@ -124,7 +124,8 @@ def build_firmware(targets, part_size=None):
             size = max(512 * 1024, size + 65536)
         args += [str(0), str(part[0]), str(size), target, os.path.join(target, "build", target + ".bin")]
 
-    print("Building firmware: %s\n" % shlex.join(args[1:]))
+    commandline = ' '.join(shlex.quote(arg) for arg in args[1:]) # shlex.join()
+    print("Building firmware: %s\n" % commandline)
     subprocess.run(args, check=True)
 
 
