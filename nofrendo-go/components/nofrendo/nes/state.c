@@ -140,7 +140,7 @@ int state_save(char* fn)
 
    /****************************************************/
 
-   if (machine->rominfo->vram)
+   if (machine->cart->chr_ram)
    {
       MESSAGE_INFO("  - Saving VRAM block\n");
 
@@ -148,13 +148,13 @@ int state_save(char* fn)
       _fwrite("VRAM\x00\x00\x00\x01\x00\x00\x20\x00", 12);
       numberOfBlocks++;
 
-      _fwrite(machine->rominfo->vram, 0x2000);
+      _fwrite(machine->cart->chr_ram, 0x2000);
    }
 
 
    /****************************************************/
 
-   if (machine->rominfo->sram)
+   if (machine->cart->prg_ram)
    {
       MESSAGE_INFO("  - Saving SRAM block\n");
 
@@ -164,7 +164,7 @@ int state_save(char* fn)
       _fwrite("SRAM\x00\x00\x00\x01\x00\x00\x20\x01\x01", 13);
       numberOfBlocks++;
 
-      _fwrite(machine->rominfo->sram, 0x2000);
+      _fwrite(machine->cart->prg_ram, 0x2000);
    }
 
 
@@ -215,15 +215,15 @@ int state_save(char* fn)
       /* TODO: snss spec should be updated, using 4kB ROM pages.. */
       for (i = 0; i < 4; i++)
       {
-         temp = swap16((mem_getpage((i + 4) * 4) - machine->rominfo->rom) >> 13);
+         temp = swap16((mem_getpage((i + 4) * 4) - machine->cart->prg_rom) >> 13);
          buffer[(i * 2) + 0] = ((uint8 *) &temp)[0];
          buffer[(i * 2) + 1] = ((uint8 *) &temp)[1];
       }
 
       for (i = 0; i < 8; i++)
       {
-         temp = (machine->rominfo->vrom_banks) ?
-            ((ppu_getpage(i) - machine->rominfo->vrom + (i * 0x400)) >> 10) : (i);
+         temp = (machine->cart->chr_rom_banks) ?
+            ((ppu_getpage(i) - machine->cart->chr_rom + (i * 0x400)) >> 10) : (i);
          temp = swap16(temp);
          buffer[8 + (i * 2) + 0] = ((uint8 *) &temp)[0];
          buffer[8 + (i * 2) + 1] = ((uint8 *) &temp)[1];
@@ -351,13 +351,13 @@ int state_load(char* fn)
       {
          MESSAGE_INFO("  - Found VRAM block\n");
 
-         if (machine->rominfo->vram == NULL)
+         if (machine->cart->chr_ram == NULL)
          {
-            MESSAGE_ERROR("rominfo says no vram!\n");
+            MESSAGE_ERROR("cart says no vram!\n");
             continue;
          }
 
-         _fread(machine->rominfo->vram, MIN(blockLength, 0x4000)); // Max 16K
+         _fread(machine->cart->chr_ram, MIN(blockLength, 0x2000)); // Max 8K
       }
 
 
@@ -367,14 +367,14 @@ int state_load(char* fn)
       {
          MESSAGE_INFO("  - Found SRAM block\n");
 
-         if (machine->rominfo->sram == NULL)
+         if (machine->cart->prg_ram == NULL)
          {
-            MESSAGE_ERROR("rominfo says no sram!\n");
+            MESSAGE_ERROR("cart says no sram!\n");
             continue;
          }
 
          _fread(buffer, 1); // SRAM enabled (always true)
-         _fread(machine->rominfo->sram, MIN(blockLength - 1, 0x2000)); // Max 8K
+         _fread(machine->cart->prg_ram, MIN(blockLength - 1, 0x2000)); // Max 8K
       }
 
 
@@ -389,15 +389,15 @@ int state_load(char* fn)
          for (i = 0; i < 4; i++)
             mmc_bankrom(8, 0x8000 + (i * 0x2000), swap16(((uint16*)buffer)[i]));
 
-         if (machine->rominfo->vrom_banks)
+         if (machine->cart->chr_rom_banks)
          {
             for (i = 0; i < 8; i++)
                mmc_bankvrom(1, i * 0x400, swap16(((uint16*)buffer)[4 + i]));
          }
-         else if (machine->rominfo->vram)
+         else if (machine->cart->chr_ram)
          {
             for (i = 0; i < 8; i++)
-               ppu_setpage(1, i, machine->rominfo->vram);
+               ppu_setpage(1, i, machine->cart->chr_ram);
          }
 
          if (machine->mmc->intf->set_state)

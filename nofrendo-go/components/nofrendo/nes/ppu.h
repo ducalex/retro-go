@@ -159,7 +159,7 @@ extern uint8 *ppu_getpage(int page_num);
 extern uint8 *ppu_getnametable(int nt);
 
 /* Control */
-extern ppu_t *ppu_init(int region);
+extern ppu_t *ppu_init(void);
 extern void ppu_refresh(void);
 extern void ppu_reset(void);
 extern void ppu_shutdown(void);

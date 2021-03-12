@@ -36,6 +36,7 @@ static struct
 static uint8 reg;
 static uint8 reg8000;
 static uint16 vrombase;
+static bool fourscreen;
 
 // Shouldn't that be packed? (It wasn't packed in SNSS...)
 typedef struct
@@ -100,7 +101,7 @@ static void map4_write(uint32 address, uint8 value)
 
    case 0xA000:
       /* four screen mirroring crap */
-      if (0 == (mmc_getinfo()->flags & ROM_FLAG_FOURSCREEN))
+      if (fourscreen == false)
       {
          if (value & 1)
             ppu_setmirroring(PPU_MIRROR_HORI);
@@ -177,6 +178,7 @@ static void map4_init(void)
    irq.counter = irq.latch = 0;
    irq.enabled = false;
    reg = reg8000 = vrombase = 0;
+   fourscreen = (nes_getptr()->cart->flags & ROM_FLAG_FOURSCREEN);
 }
 
 static mem_write_handler_t map4_memwrite[] =
@@ -187,14 +189,14 @@ static mem_write_handler_t map4_memwrite[] =
 
 mapintf_t map4_intf =
 {
-   4, /* mapper number */
-   "MMC3", /* mapper name */
-   map4_init, /* init routine */
-   NULL, /* vblank callback */
-   map4_hblank, /* hblank callback */
-   map4_getstate, /* get state (snss) */
-   map4_setstate, /* set state (snss) */
-   NULL, /* memory read structure */
-   map4_memwrite, /* memory write structure */
-   NULL /* external sound device */
+   4,                /* mapper number */
+   "MMC3",           /* mapper name */
+   map4_init,        /* init routine */
+   NULL,             /* vblank callback */
+   map4_hblank,      /* hblank callback */
+   map4_getstate,    /* get state (snss) */
+   map4_setstate,    /* set state (snss) */
+   NULL,             /* memory read structure */
+   map4_memwrite,    /* memory write structure */
+   NULL              /* external sound device */
 };

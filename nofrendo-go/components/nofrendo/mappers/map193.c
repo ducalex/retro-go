@@ -65,14 +65,14 @@ static mem_write_handler_t map193_memwrite[] =
 
 mapintf_t map193_intf =
 {
-   193,             /* mapper number */
-   "Mapper 193",    /* mapper name */
-   map193_init,     /* init routine */
-   NULL,            /* vblank callback */
-   NULL,            /* hblank callback */
-   NULL,            /* get state (snss) */
-   NULL,            /* set state (snss) */
-   NULL,            /* memory read structure */
-   map193_memwrite, /* memory write structure */
-   NULL             /* external sound device */
+   193,              /* mapper number */
+   "Mapper 193",     /* mapper name */
+   map193_init,      /* init routine */
+   NULL,             /* vblank callback */
+   NULL,             /* hblank callback */
+   NULL,             /* get state (snss) */
+   NULL,             /* set state (snss) */
+   NULL,             /* memory read structure */
+   map193_memwrite,  /* memory write structure */
+   NULL              /* external sound device */
 };

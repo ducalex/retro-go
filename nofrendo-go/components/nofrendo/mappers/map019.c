@@ -40,14 +40,12 @@ static struct
    int enabled;
 } irq;
 
-static rom_t *cart;
 static nes_t *nes;
+
 
 static void map19_init(void)
 {
    nes = nes_getptr();
-   cart = mmc_getinfo();
-
    irq.counter = 0;
    irq.enabled = 0;
 }
@@ -86,7 +84,7 @@ static void map19_write(uint32 address, uint8 value)
    case 0x1A:
    case 0x1B:
       if (value < 0xE0)
-         page = &cart->vrom[(value % (cart->vrom_banks * 8)) << 10] - (0x2000 + ((reg & 3) << 10));
+         page = &nes->cart->chr_rom[(value % (nes->cart->chr_rom_banks * 8)) << 10] - (0x2000 + ((reg & 3) << 10));
       else
          page = ppu_getnametable(value & 1) - (0x2000 + ((reg & 3) << 10));
       ppu_setpage(1, (reg & 3) + 8, page);
@@ -171,14 +169,14 @@ static mem_read_handler_t map19_memread[] =
 
 mapintf_t map19_intf =
 {
-   19, /* mapper number */
-   "Namco 129/163", /* mapper name */
-   map19_init, /* init routine */
-   NULL, /* vblank callback */
-   map19_hblank, /* hblank callback */
-   map19_getstate, /* get state (snss) */
-   map19_setstate, /* set state (snss) */
-   map19_memread, /* memory read structure */
-   map19_memwrite, /* memory write structure */
-   NULL /* external sound device */
+   19,               /* mapper number */
+   "Namco 129/163",  /* mapper name */
+   map19_init,       /* init routine */
+   NULL,             /* vblank callback */
+   map19_hblank,     /* hblank callback */
+   map19_getstate,   /* get state (snss) */
+   map19_setstate,   /* set state (snss) */
+   map19_memread,    /* memory read structure */
+   map19_memwrite,   /* memory write structure */
+   NULL              /* external sound device */
 };

@@ -748,23 +748,10 @@ void apu_process(int16 *buffer, size_t num_samples, bool stereo)
    }
 }
 
-// Run for one frame
 void apu_emulate(void)
 {
+   // Run for one frame
    apu_process(apu.buffer, apu.samples_per_frame, apu.stereo);
-}
-
-void apu_reset(void)
-{
-   /* initialize all channel members */
-   for (uint32 addr = 0x4000; addr <= 0x4013; addr++)
-      apu_write(addr, 0);
-
-   apu_write(0x4015, 0x00);
-   apu_write(0x4017, 0x80); // nesdev wiki says this should be 0, but it seems to work better disabled
-
-   if (apu.ext && apu.ext->reset)
-      apu.ext->reset();
 }
 
 void apu_setopt(apu_option_t n, int val)
@@ -784,28 +771,31 @@ int apu_getopt(apu_option_t n)
    return apu.options[n];
 }
 
-/* Initializes emulated sound hardware, creates waveforms/voices */
-apu_t *apu_init(int region, int sample_rate, bool stereo)
+void apu_reset(void)
+{
+   /* Update region if needed */
+   apu.samples_per_frame = apu.sample_rate / NES_REFRESH_RATE;
+   apu.cycle_rate = (float)NES_CPU_CLOCK / apu.sample_rate;
+   apu_build_luts(apu.samples_per_frame);
+
+   /* initialize all channel members */
+   for (uint32 addr = 0x4000; addr <= 0x4013; addr++)
+      apu_write(addr, 0);
+
+   apu_write(APU_SMASK, 0x00);
+   apu_write(APU_FRAME_IRQ, 0x80); // nesdev wiki says this should be 0, but it seems to work better disabled
+
+   if (apu.ext && apu.ext->reset)
+      apu.ext->reset();
+}
+
+apu_t *apu_init(int sample_rate, bool stereo)
 {
    memset(&apu, 0, sizeof(apu_t));
 
-   long refresh_rate;
-   float cpu_clock;
-
-   if (region == NES_PAL)
-   {
-      refresh_rate = NES_REFRESH_RATE_PAL;
-      cpu_clock = NES_CPU_CLOCK_PAL;
-   }
-   else
-   {
-      refresh_rate = NES_REFRESH_RATE_NTSC;
-      cpu_clock = NES_CPU_CLOCK_NTSC;
-   }
-
+   apu.samples_per_frame = sample_rate / NES_REFRESH_RATE;
+   apu.cycle_rate = (float)NES_CPU_CLOCK / sample_rate;
    apu.sample_rate = sample_rate;
-   apu.samples_per_frame = sample_rate / refresh_rate;
-   apu.cycle_rate = (float) (cpu_clock / sample_rate);
    apu.stereo = stereo;
    apu.ext = NULL;
 
@@ -817,10 +807,7 @@ apu_t *apu_init(int region, int sample_rate, bool stereo)
    apu_setopt(APU_CHANNEL5_EN, true);
    apu_setopt(APU_CHANNEL6_EN, true);
 
-   apu_build_luts(apu.samples_per_frame);
-
-   MESSAGE_INFO("APU: Ready! Sample rate = %d, stereo = %d, buffer = %p\n",
-      apu.sample_rate, apu.stereo, apu.buffer);
+   MESSAGE_INFO("APU: Ready! Sample rate = %d, stereo = %d\n", sample_rate, stereo);
 
    return &apu;
 }

@@ -36,7 +36,6 @@ void nofrendo_stop(void)
     nes_poweroff();
     nes_shutdown();
     osd_shutdown();
-    // vid_shutdown();
 }
 
 int nofrendo_start(const char *filename, int region, int sample_rate, bool stereo)

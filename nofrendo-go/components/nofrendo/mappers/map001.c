@@ -152,7 +152,7 @@ static void map1_write(uint32 address, uint8 value)
 
 static void map1_init(void)
 {
-   prg_banks = mmc_getinfo()->rom_banks;
+   prg_banks = nes_getptr()->mmc->prg_banks;
    bitcount = 0;
    latch = 0;
 
@@ -194,14 +194,14 @@ static mem_write_handler_t map1_memwrite[] =
 
 mapintf_t map1_intf =
 {
-   1,             /* mapper number */
-   "MMC1",        /* mapper name */
-   map1_init,     /* init routine */
-   NULL,          /* vblank callback */
-   NULL,          /* hblank callback */
-   map1_getstate, /* get state (snss) */
-   map1_setstate, /* set state (snss) */
-   NULL,          /* memory read structure */
-   map1_memwrite, /* memory write structure */
-   NULL           /* external sound device */
+   1,                /* mapper number */
+   "MMC1",           /* mapper name */
+   map1_init,        /* init routine */
+   NULL,             /* vblank callback */
+   NULL,             /* hblank callback */
+   map1_getstate,    /* get state (snss) */
+   map1_setstate,    /* set state (snss) */
+   NULL,             /* memory read structure */
+   map1_memwrite,    /* memory write structure */
+   NULL              /* external sound device */
 };

@@ -44,7 +44,7 @@ static void map7_init(void)
 {
    map7_write(0x8000, 0);
 
-   if (nes_getptr()->rominfo->checksum == 0x279710DC)
+   if (nes_getptr()->cart->checksum == 0x279710DC)
    {
       is_battletoads = 1;
       MESSAGE_INFO("Enabled Battletoads mirroring hack\n");
@@ -59,14 +59,14 @@ static mem_write_handler_t map7_memwrite[] =
 
 mapintf_t map7_intf =
 {
-   7, /* mapper number */
-   "AOROM", /* mapper name */
-   map7_init, /* init routine */
-   NULL, /* vblank callback */
-   NULL, /* hblank callback */
-   NULL, /* get state (snss) */
-   NULL, /* set state (snss) */
-   NULL, /* memory read structure */
-   map7_memwrite, /* memory write structure */
-   NULL /* external sound device */
+   7,                /* mapper number */
+   "AOROM",          /* mapper name */
+   map7_init,        /* init routine */
+   NULL,             /* vblank callback */
+   NULL,             /* hblank callback */
+   NULL,             /* get state (snss) */
+   NULL,             /* set state (snss) */
+   NULL,             /* memory read structure */
+   map7_memwrite,    /* memory write structure */
+   NULL              /* external sound device */
 };

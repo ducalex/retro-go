@@ -19,7 +19,7 @@
 **
 ** map087.c
 **
-** Mapper #87 (16K VROM switch)
+** Mapper 87
 ** Implementation by Firebug
 ** $Id: map087.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 **
@@ -29,23 +29,18 @@
 #include <mmc.h>
 #include <nes.h>
 
-/******************************************/
-/* Mapper #87 write handler ($6000-$7FFF) */
-/******************************************/
-static void map87_write (uint32 address, uint8 value)
+static void map87_write(uint32 address, uint8 value)
 {
-  /* Within range, address written to is irrelevant */
-  UNUSED (address);
-
-  /* Very simple: 8K CHR page is selected by D1 */
-  if (value & 0x02) mmc_bankvrom (8, 0x0000, 0x01);
-  else              mmc_bankvrom (8, 0x0000, 0x00);
-
-  /* Done */
-  return;
+   UNUSED(address);
+/***
+   value:  [.... ..LH]
+   This reg selects 8k CHR @ $0000.  Note the reversed bit orders.  Most games using this
+   mapper only have 16k CHR, so the 'H' bit is usually unused.
+***/
+   mmc_bankvrom(8, 0x0000, (value & 3) >> 1);
 }
 
-static mem_write_handler_t map87_memwrite [] =
+static mem_write_handler_t map87_memwrite[] =
 {
    { 0x6000, 0x7FFF, map87_write },
    LAST_MEMORY_HANDLER
@@ -53,31 +48,14 @@ static mem_write_handler_t map87_memwrite [] =
 
 mapintf_t map87_intf =
 {
-   87,                               /* Mapper number */
-   "16K VROM switch",                /* Mapper name */
-   NULL,                             /* Initialization routine */
-   NULL,                             /* VBlank callback */
-   NULL,                             /* HBlank callback */
-   NULL,                             /* Get state (SNSS) */
-   NULL,                             /* Set state (SNSS) */
-   NULL,                             /* Memory read structure */
-   map87_memwrite,                   /* Memory write structure */
-   NULL                              /* External sound device */
+   87,               /* Mapper number */
+   "Mapper 087",     /* Mapper name */
+   NULL,             /* Initialization routine */
+   NULL,             /* VBlank callback */
+   NULL,             /* HBlank callback */
+   NULL,             /* Get state (SNSS) */
+   NULL,             /* Set state (SNSS) */
+   NULL,             /* Memory read structure */
+   map87_memwrite,   /* Memory write structure */
+   NULL              /* External sound device */
 };
-
-/*
-** $Log: map087.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1  2001/04/27 10:57:41  neil
-** wheee
-**
-** Revision 1.1  2000/12/30 06:34:44  firebug
-** Initial revision
-**
-**
-*/

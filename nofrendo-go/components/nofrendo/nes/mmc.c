@@ -41,11 +41,6 @@
 static mmc_t mmc;
 
 
-rom_t *mmc_getinfo(void)
-{
-   return mmc.cart;
-}
-
 void mmc_setcontext(mmc_t *src_mmc)
 {
    ASSERT(src_mmc);
@@ -98,13 +93,13 @@ void mmc_bankptr(int size, uint32 address, int bank, uint8 *ptr)
 /* PRG-ROM bankswitching */
 void mmc_bankrom(int size, uint32 address, int bank)
 {
-   mmc_bankptr(size, address, bank, mmc.prg);
+   mmc_bankptr(size, address, bank, mmc.cart->prg_rom);
 }
 
 /* PRG-RAM bankswitching */
 void mmc_bankwram(int size, uint32 address, int bank)
 {
-   mmc_bankptr(size, address, bank, mmc.cart->sram);
+   mmc_bankptr(size, address, bank, mmc.cart->prg_ram);
 }
 
 /* CHR-ROM bankswitching */
@@ -189,36 +184,36 @@ void mmc_shutdown()
 
 }
 
-mmc_t *mmc_init(rom_t *rominfo)
+mmc_t *mmc_init(rom_t *cart)
 {
    memset(&mmc, 0, sizeof(mmc_t));
 
-   mmc.intf = mmc_peek(rominfo->mapper_number);
+   mmc.intf = mmc_peek(cart->mapper_number);
    if (NULL == mmc.intf)
    {
-      MESSAGE_ERROR("MMC: Unsupported mapper %03d\n", rominfo->mapper_number);
+      MESSAGE_ERROR("MMC: Unsupported mapper %03d\n", cart->mapper_number);
       return NULL;
    }
 
    MESSAGE_INFO("MMC: Mapper %s (iNES %03d)\n", mmc.intf->name, mmc.intf->number);
 
-   mmc.cart = rominfo;
-   mmc.prg = rominfo->rom;
-   mmc.prg_banks = rominfo->rom_banks;
+   mmc.cart = cart;
+   mmc.prg = cart->prg_rom;
+   mmc.prg_banks = cart->prg_rom_banks;
 
-   MESSAGE_INFO("MMC: PRG-ROM: %d banks\n", rominfo->rom_banks);
+   MESSAGE_INFO("MMC: PRG-ROM: %d banks\n", cart->prg_rom_banks);
 
-   if (rominfo->vrom_banks)
+   if (cart->chr_rom)
    {
-      mmc.chr = rominfo->vrom;
-      mmc.chr_banks = rominfo->vrom_banks;
-      MESSAGE_INFO("MMC: CHR-ROM: %d banks\n", rominfo->vrom_banks);
+      mmc.chr = cart->chr_rom;
+      mmc.chr_banks = cart->chr_rom_banks;
+      MESSAGE_INFO("MMC: CHR-ROM: %d banks\n", cart->chr_rom_banks);
    }
    else
    {
-      mmc.chr = rominfo->vram;
-      mmc.chr_banks = rominfo->vram_banks;
-      MESSAGE_INFO("MMC: CHR-RAM: %d banks\n", rominfo->vram_banks);
+      mmc.chr = cart->chr_ram;
+      mmc.chr_banks = cart->chr_ram_banks;
+      MESSAGE_INFO("MMC: CHR-RAM: %d banks\n", cart->chr_ram_banks);
    }
 
 

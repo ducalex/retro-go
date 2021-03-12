@@ -48,6 +48,10 @@
 #define NES_SCANLINES_NTSC    262
 #define NES_SCANLINES_PAL     312
 
+#define NES_REFRESH_RATE (nes_getregion() == NES_PAL ? NES_REFRESH_RATE_PAL : NES_REFRESH_RATE_NTSC)
+#define NES_SCANLINES    (nes_getregion() == NES_PAL ? NES_SCANLINES_PAL : NES_SCANLINES_NTSC)
+#define NES_CPU_CLOCK    (nes_getregion() == NES_PAL ? NES_CPU_CLOCK_PAL : NES_CPU_CLOCK_NTSC)
+
 typedef enum
 {
     NES_AUTO,
@@ -70,7 +74,7 @@ typedef struct nes_s
     apu_t *apu;
     mem_t *mem;
     mmc_t *mmc;
-    rom_t *rominfo;
+    rom_t *cart;
 
     /* Video buffer */
     uint8 *framebuffers[2];
@@ -101,7 +105,9 @@ extern nes_t *nes_getptr(void);
 extern bool nes_init(region_t region, int sample_rate, bool stereo);
 extern void nes_shutdown(void);
 extern void nes_setregion(region_t region);
+extern region_t nes_getregion(void);
 extern bool nes_insertcart(const char *filename);
+extern bool nes_insertdisk(const char *filename);
 extern void nes_emulate(void);
 extern void nes_reset(reset_type_t reset_type);
 extern void nes_poweroff(void);

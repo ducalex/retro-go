@@ -114,11 +114,11 @@ void nes_setcompathacks(void)
 {
     // Hack to fix many MMC3 games with status bar vertical alignment issues
     // The issue is that the CPU and PPU aren't running in sync
-    // if (nes.region == NES_NTSC && nes.rominfo->mapper_number == 4)
-    if (nes.rominfo->checksum == 0xD8578BFD || // Zen Intergalactic
-        nes.rominfo->checksum == 0x2E6301ED || // Super Mario Bros 3
-        nes.rominfo->checksum == 0x5ED6F221 || // Kirby's Adventure
-        nes.rominfo->checksum == 0xD273B409)   // Power Blade 2
+    // if (nes.region == NES_NTSC && nes.cart->mapper_number == 4)
+    if (nes.cart->checksum == 0xD8578BFD || // Zen Intergalactic
+        nes.cart->checksum == 0x2E6301ED || // Super Mario Bros 3
+        nes.cart->checksum == 0x5ED6F221 || // Kirby's Adventure
+        nes.cart->checksum == 0xD273B409)   // Power Blade 2
     {
         nes.cycles_per_line += 2.5;
         MESSAGE_INFO("NES: Enabled MMC3 Timing Hack\n");
@@ -129,19 +129,17 @@ void nes_setcompathacks(void)
 bool nes_insertcart(const char *filename)
 {
     /* rom file */
-    nes.rominfo = rom_load_file(filename);
-    if (NULL == nes.rominfo)
+    nes.cart = rom_loadfile(filename);
+    if (NULL == nes.cart)
         goto _fail;
 
     /* mapper */
-    nes.mmc = mmc_init(nes.rominfo);
+    nes.mmc = mmc_init(nes.cart);
     if (NULL == nes.mmc)
         goto _fail;
 
-    nes.mem->mapper = nes.mmc->intf;
-
     /* if there's VRAM, let the PPU know */
-    nes.ppu->vram_present = (NULL != nes.rominfo->vram);
+    nes.ppu->vram_present = (NULL != nes.cart->chr_ram); // FIX ME: This is always true?
 
     nes_setregion(nes.region);
     nes_setcompathacks();
@@ -155,12 +153,18 @@ _fail:
     return false;
 }
 
+/* insert a disk into the FDS */
+bool nes_insertdisk(const char *filename)
+{
+
+}
+
 /* Reset NES hardware */
 void nes_reset(reset_type_t reset_type)
 {
-    if (nes.rominfo->vram)
+    if (nes.cart->chr_ram)
     {
-        memset(nes.rominfo->vram, 0, 0x2000 * nes.rominfo->vram_banks);
+        memset(nes.cart->chr_ram, 0, 0x2000 * nes.cart->chr_ram_banks);
     }
 
     apu_reset();
@@ -213,6 +217,11 @@ void nes_setregion(region_t region)
     }
 }
 
+region_t nes_getregion(void)
+{
+    return (nes.region == NES_PAL) ? NES_PAL : NES_NTSC;
+}
+
 /* Initialize NES CPU, hardware, etc. */
 bool nes_init(region_t region, int sample_rate, bool stereo)
 {
@@ -241,14 +250,14 @@ bool nes_init(region_t region, int sample_rate, bool stereo)
     if (NULL == nes.cpu)
         goto _fail;
 
-    /* apu */
-    nes.apu = apu_init(region, sample_rate, stereo);
-    if (NULL == nes.apu)
+    /* ppu */
+    nes.ppu = ppu_init();
+    if (NULL == nes.ppu)
         goto _fail;
 
-    /* ppu */
-    nes.ppu = ppu_init(region);
-    if (NULL == nes.ppu)
+    /* apu */
+    nes.apu = apu_init(sample_rate, stereo);
+    if (NULL == nes.apu)
         goto _fail;
 
     return true;

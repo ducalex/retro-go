@@ -779,7 +779,6 @@ bool ppu_checkzapperhit(uint8 *bmp, int x, int y)
    return false;
 }
 
-/* reset state of ppu */
 void ppu_reset()
 {
    memset(ppu.nametab, 0, sizeof(ppu.nametab));
@@ -792,16 +791,16 @@ void ppu_reset()
    ppu.vaddr = ppu.vaddr_latch = 0x2000;
    ppu.oam_addr = 0;
    ppu.tile_xofs = 0;
-
    ppu.latch = 0;
    ppu.vram_accessible = true;
+   ppu.scanlines_per_frame = NES_SCANLINES;
 }
 
-ppu_t *ppu_init(int region)
+ppu_t *ppu_init(void)
 {
    memset(&ppu, 0, sizeof(ppu_t));
 
-   ppu.scanlines_per_frame = (region == NES_PAL) ? NES_SCANLINES_PAL : NES_SCANLINES_NTSC;
+   ppu.scanlines_per_frame = NES_SCANLINES;
 
    ppu_setopt(PPU_DRAW_BACKGROUND, true);
    ppu_setopt(PPU_DRAW_SPRITES, true);
@@ -811,7 +810,7 @@ ppu_t *ppu_init(int region)
    return &ppu;
 }
 
-void ppu_shutdown()
+void ppu_shutdown(void)
 {
    //
 }

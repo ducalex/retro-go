@@ -75,8 +75,6 @@ typedef struct
    /* Special memory handlers */
    mem_read_handler_t read_handlers[MEM_HANDLERS_MAX];
    mem_write_handler_t write_handlers[MEM_HANDLERS_MAX];
-
-   mapintf_t *mapper;
 } mem_t;
 
 extern mem_t *mem_create(void);

@@ -59,8 +59,8 @@ static mem_write_handler_t write_handlers[] =
 
 void mem_refresh()
 {
+   mapintf_t *intf = nes_getptr()->mmc ? nes_getptr()->mmc->intf : NULL;
    int num_read_handlers = 0, num_write_handlers = 0;
-   mapintf_t *intf = mem.mapper;
 
    memset(&mem.read_handlers, 0, sizeof(mem.read_handlers));
    memset(&mem.write_handlers, 0, sizeof(mem.write_handlers));

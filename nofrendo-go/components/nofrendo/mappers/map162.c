@@ -145,28 +145,28 @@ static mem_read_handler_t map162_memread[] =
 
 mapintf_t map162_intf =
 {
-   162,             /* mapper number */
-   "Nanjing 162",   /* mapper name */
-   map162_init,     /* init routine */
-   NULL,            /* vblank callback */
-   map162_hblank,   /* hblank callback */
-   NULL,            /* get state (snss) */
-   NULL,            /* set state (snss) */
-   map162_memread,  /* memory read structure */
-   map162_memwrite, /* memory write structure */
-   NULL             /* external sound device */
+   162,              /* mapper number */
+   "Nanjing 162",    /* mapper name */
+   map162_init,      /* init routine */
+   NULL,             /* vblank callback */
+   map162_hblank,    /* hblank callback */
+   NULL,             /* get state (snss) */
+   NULL,             /* set state (snss) */
+   map162_memread,   /* memory read structure */
+   map162_memwrite,  /* memory write structure */
+   NULL              /* external sound device */
 };
 
 mapintf_t map163_intf =
 {
-   163,             /* mapper number */
-   "Nanjing 163",   /* mapper name */
-   map162_init,     /* init routine */
-   NULL,            /* vblank callback */
-   map162_hblank,   /* hblank callback */
-   NULL,            /* get state (snss) */
-   NULL,            /* set state (snss) */
-   map162_memread,  /* memory read structure */
-   map162_memwrite, /* memory write structure */
-   NULL             /* external sound device */
+   163,              /* mapper number */
+   "Nanjing 163",    /* mapper name */
+   map162_init,      /* init routine */
+   NULL,             /* vblank callback */
+   map162_hblank,    /* hblank callback */
+   NULL,             /* get state (snss) */
+   NULL,             /* set state (snss) */
+   map162_memread,   /* memory read structure */
+   map162_memwrite,  /* memory write structure */
+   NULL              /* external sound device */
 };
