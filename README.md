@@ -103,16 +103,23 @@ An up to date list of incompatible/broken games can be found on the [ODROID-GO f
 - Multiple save states
 - Atari 2600 or 5200 or 7800
 - Neo Geo Pocket Color
+- Famicom Disk System
 - Better launcher fonts
+- Folders support
 
 # Building Retro-Go
 
 ## Prerequisites
 You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/v4.0.2/) version 3.3.4 or 4.0.2. The legacy (make) build system isn't supported, only idf/cmake.
 
-An optional patch to improve SD Card compatibility can be found in the `tools/patches` folder as well as one to enable exFAT support.
-
 _Note: many other versions of esp-idf will work but at least 3.3.0, 4.0.0, 4.1.0, and 4.2.0 are known to have driver bugs resulting in no audio or no SD Card support. For now the best choice is 4.0.2. I will update this document when 4.1 or 4.2 fix the driver issues._
+
+### ESP-IDF Patches
+Retro-Go will build and most likely run without any changes to esp-idf, but patches do provide significant advantages. The patches are located in `tools/patches`. Here's the list:
+- `esp-idf_enable-exfat`:  Enable exFAT support. The patch is entirely optional.
+- `esp-idf_esp_error_check`: This causes assertion handling to behave somewhere between [SILENT and ENABLED](https://docs.espressif.com/projects/esp-idf/en/v3.1.7/api-reference/kconfig.html#envvar-CONFIG_OPTIMIZATION_ASSERTION_LEVEL). The goal is to have ENABLED's benefits without the file size penalty. The patch is entirely optional.
+- `esp-idf-X.X_sdcard-fix`: This improves SD Card compatibility significantly but can also reduce transfer speed a lot. The patch is usually required if you intend to distribute your build.
+- `esp-idf-4.0-panic-hook`: This is to help users report bugs, see `Capturing crash logs` bellow for more details. The patch is entirely optional.
 
 ## Build everything and generate .fw:
 1. `rg_tool.py build-fw`
