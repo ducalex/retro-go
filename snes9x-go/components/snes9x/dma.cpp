@@ -978,8 +978,6 @@ void S9xStartHDMA (void)
 	if (PPU.HDMA != 0)
 	{
 		ADD_CYCLES(SNES_DMA_CPU_SYNC_CYCLES);
-		if (Settings.DMACPUSyncHack)
-			CPU.Cycles += 2;
 	}
 
 	for (int i = 0; i < 8; i++)
@@ -1027,9 +1025,6 @@ uint8 S9xDoHDMA (uint8 byte)
 	// XXX: Not quite right...
 	ADD_CYCLES(SNES_DMA_CPU_SYNC_CYCLES);
 
-	if (Settings.DMACPUSyncHack)
-		CPU.Cycles += 2;
-
 	for (mask = 1, p = &DMA[0], d = 0; mask; mask <<= 1, p++, d++)
 	{
 		if (byte & mask)
@@ -1053,17 +1048,6 @@ uint8 S9xDoHDMA (uint8 byte)
 
 			if (p->DoTransfer)
 			{
-				// XXX: Hack for Uniracers, because we don't understand
-				// OAM Address Invalidation
-				if (p->BAddress == 0x04)
-				{
-					if (Settings.UniracersHack)
-					{
-						PPU.OAMAddr = 0x10c;
-						PPU.OAMFlip = 0;
-					}
-				}
-
 			#ifdef DEBUGGER
 				if (Settings.TraceHDMA && p->DoTransfer)
 				{

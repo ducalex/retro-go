@@ -8,6 +8,7 @@
 #include "memory.h"
 #include "apu/apu.h"
 #include "controls.h"
+#include "hacks.h"
 
 CMemory		Memory;
 uint32		OpenBus = 0;
@@ -412,49 +413,53 @@ static int ScoreLoROM (void)
 	return (score);
 }
 
-static void ApplyROMFixes (void)
+int ApplyGameSpecificHacks (void)
 {
-	Settings.UniracersHack = FALSE;
-	Settings.DMACPUSyncHack = FALSE;
+	int applied = 0;
 
-	//// Warnings
-
-	// Reject strange hacked games
-	if ((Memory.ROMCRC32 == 0x6810aa95) ||
-		(Memory.ROMCRC32 == 0x340f23e5) ||
-		(Memory.ROMCRC32 == 0x77fd806a) ||
-		(match_nn("HIGHWAY BATTLE 2")) ||
-		(match_nn("FX SKIING NINTENDO 96") && (Memory.ROM[0x7fda] == 0)) ||
-		(match_nn("HONKAKUHA IGO GOSEI")   && (Memory.ROM[0xffd5] != 0x31)))
+	for (const s9x_hack_t *hack = &GameHacks[0]; hack->checksum; hack++)
 	{
-		Settings.DisplayColor = BUILD_PIXEL(31, 0, 0);
-	}
-
-	// Always exec because it sets PAL mode too
-	S9xAPUTimingSetSpeedup(0);
-
-	if (!Settings.DisableGameSpecificHacks)
-	{
-		//// APU timing hacks :(
-		if (match_nn("CIRCUIT USA "))
-			S9xAPUTimingSetSpeedup(3);
-
-		// SRAM not correctly detected
-		if (match_nn("HITOMI3 "))
+		if (hack->checksum == Memory.ROMCRC32)
 		{
-			Memory.SRAMSize = 1;
-			Memory.SRAMMask = ((1 << (Memory.SRAMSize + 3)) * 128) - 1;
+			printf("Applying patch %s: '%s'\n", hack->name, hack->patch);
+
+			char *ptr = (char*)hack->patch;
+
+			while (ptr && *ptr)
+			{
+				int offset = strtol(ptr, &ptr, 16);
+				int value = strtol(ptr + 1, &ptr, 16);
+
+				if ((ptr = strchr(ptr, ',')))
+					ptr++;
+
+				// We only care about opcode 0x42 for now
+				if ((value != 0x42) && ((value >> 8) != 0x42))
+				{
+					printf(" - Warning: Ignoring patch %X=%X...\n", offset, value);
+				}
+				else if (offset < 1 || offset >= Memory.CalculatedSize)
+				{
+					printf(" - Warning: Offset %d (%X) is out of range...\n", offset, offset);
+				}
+				else if (value & 0xFF00) // 16 bit replacement
+				{
+					printf(" - Applying 16bit patch %X=%X\n", offset, value);
+					// Memory.ROM[offset] = (value >> 8) & 0xFF;
+					// Memory.ROM[offset + 1] = value & 0xFF;
+					applied++;
+				}
+				else // 8 bit replacement
+				{
+					printf(" - Applying 8bit patch %X=%X\n", offset, value);
+					// Memory.ROM[offset] = value;
+					applied++;
+				}
+			}
 		}
-
-		// The delay to sync CPU and DMA which Snes9x cannot emulate.
-		// Some games need really severe delay timing...
-		Settings.DMACPUSyncHack = (match_nn("BATTLE GRANDPRIX") || match_nn("KORYU NO MIMI ENG"));
-
-		// OAM hacks because we don't fully understand the behavior of the SNES.
-		// Totally wacky display in 2P mode...
-		// seems to need a disproven behavior, so we're definitely overlooking some other bug?
-		Settings.UniracersHack = match_nn("UNIRACERS");
 	}
+
+	return applied;
 }
 
 static bool8 InitROM ()
@@ -553,11 +558,31 @@ static bool8 InitROM ()
 		GetDSP = NULL;
 	}
 
+	//// SRAM size
+	if (strncmp("HITOMI3 ", Memory.ROMName, 8) == 0)
+	{
+		Memory.SRAMSize = 1;
+	}
+	Memory.SRAMMask = Memory.SRAMSize ? ((1 << (Memory.SRAMSize + 3)) * 128) - 1 : 0;
+	Memory.SRAMBytes = Memory.SRAMSize ? ((1 << (Memory.SRAMSize + 3)) * 128) : 0;
+	if (Memory.SRAMBytes > 0x8000)
+	{
+		printf("\n\nWARNING: Default SRAM size too small!, need %d bytes\n\n", Memory.SRAMBytes);
+	}
+
 	//// Map memory
 	if (Memory.HiROM)
+	{
 		Map_HiROMMap();
+	}
     else
+	{
 		Map_LoROMMap();
+	}
+
+	//// Checksums
+	Memory.ROMCRC32 = crc32_le(0, Memory.ROM, Memory.CalculatedSize);
+	Memory.CalculatedChecksum = CalcChecksum(Memory.ROM, Memory.CalculatedSize);
 
 	//// ROM Region
 	Settings.PAL = (Settings.ForcePAL && !Settings.ForceNTSC)
@@ -574,24 +599,14 @@ static bool8 InitROM ()
 		Settings.FrameRate = 60;
 	}
 
-	//// SRAM size
-	Memory.SRAMMask = Memory.SRAMSize ? ((1 << (Memory.SRAMSize + 3)) * 128) - 1 : 0;
-	Memory.SRAMBytes = Memory.SRAMSize ? ((1 << (Memory.SRAMSize + 3)) * 128) : 0;
-	if (Memory.SRAMBytes > 0x8000)
+	// Setup APU timings
+	S9xAPUTimingSetSpeedup(0);
+
+	//// Apply Game hacks
+	if (!Settings.DisableGameSpecificHacks)
 	{
-		printf("\n\nWARNING: Default SRAM size too small!, need %d bytes\n\n", Memory.SRAMBytes);
+		ApplyGameSpecificHacks();
 	}
-
-	//// Checksums
-	Memory.ROMCRC32 = crc32_le(0, Memory.ROM, Memory.CalculatedSize);
-	Memory.CalculatedChecksum = CalcChecksum(Memory.ROM, Memory.CalculatedSize);
-
-	//// Patches
-	// Memory.ROMIsPatched = false;
-	// CheckAnyPatch();
-
-	//// Hack games
-	ApplyROMFixes();
 
 	//// Show ROM information
 	ShowInfoString();

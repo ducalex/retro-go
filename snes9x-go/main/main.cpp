@@ -115,12 +115,7 @@ void S9xMessage(int type, int number, const char *message)
 	S9xSetInfoString(buffer);
 }
 
-bool8 S9xInitUpdate(void)
-{
-	return (TRUE);
-}
-
-bool8 S9xDeinitUpdate(int width, int height)
+bool8 S9xBlitUpdate(int width, int height)
 {
 	return (TRUE);
 }

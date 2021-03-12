@@ -1612,12 +1612,6 @@ void S9xStartScreenRefresh (void)
 {
 	if (IPPU.RenderThisFrame)
 	{
-		if (!S9xInitUpdate())
-		{
-			IPPU.RenderThisFrame = FALSE;
-			return;
-		}
-
 		S9xGraphicsScreenResize();
 
 		IPPU.RenderedFramesCount++;
@@ -1648,10 +1642,8 @@ void S9xEndScreenRefresh (void)
 	if (IPPU.RenderThisFrame)
 	{
 		FLUSH_REDRAW();
-
 		S9xDisplayMessages(GFX.Screen, GFX.PPL, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, 1);
-
-		S9xDeinitUpdate(IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight);
+		S9xBlitUpdate(IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight);
 	}
 
 #ifdef DEBUGGER
@@ -1667,24 +1659,6 @@ void S9xEndScreenRefresh (void)
 		{
 			CPU.Flags &= ~FRAME_ADVANCE_FLAG;
 			CPU.Flags |= DEBUG_MODE_FLAG;
-		}
-	}
-#endif
-#if 0
-	if (CPU.SRAMModified)
-	{
-		if (!CPU.AutoSaveTimer)
-		{
-			if (!(CPU.AutoSaveTimer = Settings.AutoSaveDelay * Settings.FrameRate))
-				CPU.SRAMModified = FALSE;
-		}
-		else
-		{
-			if (!--CPU.AutoSaveTimer)
-			{
-				S9xAutoSaveSRAM();
-				CPU.SRAMModified = FALSE;
-			}
 		}
 	}
 #endif
@@ -1776,7 +1750,7 @@ void S9xSetInfoString (const char *string)
 		GFX.InfoString = string;
 		GFX.InfoStringTimeout = Settings.InitialInfoStringTimeout;
 		if (Settings.Paused)
-			S9xDeinitUpdate(IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight);
+			S9xBlitUpdate(IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight);
 	}
 }
 

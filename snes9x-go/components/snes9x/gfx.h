@@ -128,8 +128,7 @@ void S9xUpdateScreen (void);
 // external port interface which must be implemented or initialised for each port
 bool8 S9xGraphicsInit (void);
 void S9xGraphicsDeinit (void);
-bool8 S9xInitUpdate (void);
-bool8 S9xDeinitUpdate (int, int);
+bool8 S9xBlitUpdate (int, int);
 void S9xSyncSpeed (void);
 void S9xAutoSaveSRAM (void);
 

@@ -38,7 +38,6 @@ void S9xInitSettings(void)
 	// Settings
 	Settings.TurboMode                  =  false;
 	Settings.TurboSkipFrames            =  15;
-	Settings.AutoSaveDelay              =  0;
 	Settings.SkipFrames                 = AUTO_FRAMERATE;
 
 	// Hack

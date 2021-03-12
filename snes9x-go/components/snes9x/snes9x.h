@@ -194,11 +194,7 @@ struct SSettings
 	uint32	TurboSkipFrames;
 	bool8	TurboMode;
 
-	int32	AutoSaveDelay;
-
 	bool8	DisableGameSpecificHacks;
-	bool8	UniracersHack;
-	bool8	DMACPUSyncHack;
 };
 
 enum s9x_getdirtype

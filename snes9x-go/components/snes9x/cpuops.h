@@ -2963,8 +2963,55 @@ static void OpDB (void)
 
 static void Op42 (void)
 {
+	// Snes9x used this opcode for debugging breakpoints
+	// We use it for game hacks (from hacks.h)
+
 	S9xGetWord(Registers.PBPC);
 	Registers.PCw++;
+
+	#if 0
+
+	uint32 op = Immediate8Slow(NONE);
+
+	printf("Op42: Requested 0x%02X\n", op);
+
+	(*S9xOpcodesSlow[op])();
+
+	switch (op & 0xF0)
+	{
+    case 0x00: // ???
+    	return;
+    case 0x10: // BPL
+    	return;
+    case 0x20: // ???
+    	return;
+    case 0x30: // BMI
+    	return;
+    case 0x40: // ???
+    	return;
+    case 0x50: // BVC
+    	return;
+    case 0x60: // ???
+    	return;
+    case 0x70: // BVS
+    	return;
+    case 0x80: // BRA
+    	return;
+    case 0x90: // BCC
+    	return;
+    case 0xA0: // ???
+    	return;
+    case 0xB0: // BCS
+    	return;
+    case 0xC0: // ???
+    	return;
+    case 0xD0: // BNE
+    	return;
+    case 0xF0: // BEQ
+    	return;
+	}
+
+	#endif
 }
 
 /* CPU-S9xOpcodes Definitions ************************************************/

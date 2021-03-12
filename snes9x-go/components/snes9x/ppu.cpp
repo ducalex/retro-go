@@ -1201,8 +1201,6 @@ void S9xSetCPU (uint8 Byte, uint32 Address)
 				// XXX: Not quite right...
 				if (Byte) {
 					CPU.Cycles += SNES_DMA_CPU_SYNC_CYCLES;
-					if (Settings.DMACPUSyncHack)
-						CPU.Cycles += 2;
 				}
 				if (Byte & 0x01)
 					S9xDoDMA(0);
