@@ -17,9 +17,9 @@
 ** must bear this legend.
 **
 **
-** map32.c
+** map032.c
 **
-** mapper 32 interface
+** Irem G-101 mapper interface
 ** $Id: map032.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
@@ -73,48 +73,14 @@ static mem_write_handler_t map32_memwrite[] =
 
 mapintf_t map32_intf =
 {
-   32, /* mapper number */
-   "Irem G-101", /* mapper name */
-   NULL, /* init routine */
-   NULL, /* vblank callback */
-   NULL, /* hblank callback */
-   NULL, /* get state (snss) */
-   NULL, /* set state (snss) */
-   NULL, /* memory read structure */
-   map32_memwrite, /* memory write structure */
-   NULL /* external sound device */
+   32,               /* mapper number */
+   "Irem G-101",     /* mapper name */
+   NULL,             /* init routine */
+   NULL,             /* vblank callback */
+   NULL,             /* hblank callback */
+   NULL,             /* get state (snss) */
+   NULL,             /* set state (snss) */
+   NULL,             /* memory read structure */
+   map32_memwrite,   /* memory write structure */
+   NULL              /* external sound device */
 };
-
-/*
-** $Log: map032.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.1  2000/10/24 12:19:33  matt
-** changed directory structure
-**
-** Revision 1.6  2000/10/22 19:17:46  matt
-** mapper cleanups galore
-**
-** Revision 1.5  2000/10/22 15:03:13  matt
-** simplified mirroring
-**
-** Revision 1.4  2000/10/21 19:33:38  matt
-** many more cleanups
-**
-** Revision 1.3  2000/07/10 05:29:03  matt
-** cleaned up some mirroring issues
-**
-** Revision 1.2  2000/07/06 02:48:43  matt
-** clearly labelled structure members
-**
-** Revision 1.1  2000/07/06 01:01:56  matt
-** initial revision
-**
-*/

@@ -35,6 +35,7 @@ static uint8 reg5200;
 static uint8 reg5300;
 static uint8 trigger;
 
+
 static void map162_sync()
 {
    uint8 bank = (reg5200 & 0x3) << 4 | (reg5000 & 0xF);
@@ -42,8 +43,10 @@ static void map162_sync()
    // mmc_bankvrom(8, 0x0000, 0);
 }
 
-static void map162_init(void)
+static void map162_init(rom_t *cart)
 {
+   UNUSED(cart);
+
    reg5000 = 0;
    reg5100 = 1;
    reg5101 = 1;

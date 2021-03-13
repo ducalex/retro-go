@@ -17,16 +17,15 @@
 ** must bear this legend.
 **
 **
-** map15.c
+** map015.c
 **
-** mapper 15 interface
+** Contra 100-in-1 mapper interface
 ** $Id: map015.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>
 #include <mmc.h>
 
-/* mapper 15: Contra 100-in-1 */
 static void map15_write(uint32 address, uint8 value)
 {
    int bank = value & 0x3F;
@@ -83,8 +82,9 @@ static void map15_write(uint32 address, uint8 value)
    }
 }
 
-static void map15_init(void)
+static void map15_init(rom_t *cart)
 {
+   UNUSED(cart);
    mmc_bankrom(32, 0x8000, 0);
 }
 
@@ -96,48 +96,14 @@ static mem_write_handler_t map15_memwrite[] =
 
 mapintf_t map15_intf =
 {
-   15, /* mapper number */
-   "Contra 100-in-1", /* mapper name */
-   map15_init, /* init routine */
-   NULL, /* vblank callback */
-   NULL, /* hblank callback */
-   NULL, /* get state (snss) */
-   NULL, /* set state (snss) */
-   NULL, /* memory read structure */
-   map15_memwrite, /* memory write structure */
-   NULL /* external sound device */
+   15,               /* mapper number */
+   "Contra 100-in-1",/* mapper name */
+   map15_init,       /* init routine */
+   NULL,             /* vblank callback */
+   NULL,             /* hblank callback */
+   NULL,             /* get state (snss) */
+   NULL,             /* set state (snss) */
+   NULL,             /* memory read structure */
+   map15_memwrite,   /* memory write structure */
+   NULL              /* external sound device */
 };
-
-/*
-** $Log: map015.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.1  2000/10/24 12:19:33  matt
-** changed directory structure
-**
-** Revision 1.6  2000/10/22 19:17:46  matt
-** mapper cleanups galore
-**
-** Revision 1.5  2000/10/22 15:03:13  matt
-** simplified mirroring
-**
-** Revision 1.4  2000/10/21 19:33:38  matt
-** many more cleanups
-**
-** Revision 1.3  2000/07/10 05:29:03  matt
-** cleaned up some mirroring issues
-**
-** Revision 1.2  2000/07/06 02:48:43  matt
-** clearly labelled structure members
-**
-** Revision 1.1  2000/07/05 05:05:18  matt
-** initial revision
-**
-*/

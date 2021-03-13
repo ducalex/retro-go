@@ -17,9 +17,9 @@
 ** must bear this legend.
 **
 **
-** map18.c
+** map018.c
 **
-** mapper 18 interface
+** Jaleco SS8806 mapper interface
 ** $Id: map018.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
@@ -34,7 +34,6 @@ typedef struct
    unsigned char irqCounterEnabled;
 } mapper18Data;
 
-/* mapper 18: Jaleco SS8806 */
 #define  VRC_PBANK(bank, value, high) \
 do { \
    if ((high)) \
@@ -60,16 +59,17 @@ static struct
    int clockticks;
 } irq;
 
-static void map18_init(void)
-{
-   irq.counter = irq.enabled = 0;
-}
-
 static uint8 lownybbles[8];
 static uint8 highnybbles[8];
 static uint8 lowprgnybbles[3];
 static uint8 highprgnybbles[3];
 
+
+static void map18_init(rom_t *cart)
+{
+   UNUSED(cart);
+   irq.counter = irq.enabled = 0;
+}
 
 static void map18_write(uint32 address, uint8 value)
 {
@@ -168,54 +168,14 @@ static void map18_setstate(void *state)
 
 mapintf_t map18_intf =
 {
-   18, /* mapper number */
-   "Jaleco SS8806", /* mapper name */
-   map18_init, /* init routine */
-   NULL, /* vblank callback */
-   NULL, /* hblank callback */
-   map18_getstate, /* get state (snss) */
-   map18_setstate, /* set state (snss) */
-   NULL, /* memory read structure */
-   map18_memwrite, /* memory write structure */
-   NULL /* external sound device */
+   18,               /* mapper number */
+   "Jaleco SS8806",  /* mapper name */
+   map18_init,       /* init routine */
+   NULL,             /* vblank callback */
+   NULL,             /* hblank callback */
+   map18_getstate,   /* get state (snss) */
+   map18_setstate,   /* set state (snss) */
+   NULL,             /* memory read structure */
+   map18_memwrite,   /* memory write structure */
+   NULL              /* external sound device */
 };
-
-/*
-** $Log: map018.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.1  2000/10/24 12:19:33  matt
-** changed directory structure
-**
-** Revision 1.8  2000/10/22 19:17:46  matt
-** mapper cleanups galore
-**
-** Revision 1.7  2000/10/22 15:03:13  matt
-** simplified mirroring
-**
-** Revision 1.6  2000/10/21 19:33:38  matt
-** many more cleanups
-**
-** Revision 1.5  2000/10/10 13:58:17  matt
-** stroustrup squeezing his way in the door
-**
-** Revision 1.4  2000/07/15 23:52:19  matt
-** rounded out a bunch more mapper interfaces
-**
-** Revision 1.3  2000/07/10 05:29:03  matt
-** cleaned up some mirroring issues
-**
-** Revision 1.2  2000/07/06 02:48:42  matt
-** clearly labelled structure members
-**
-** Revision 1.1  2000/07/06 01:01:56  matt
-** initial revision
-**
-*/

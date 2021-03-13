@@ -176,7 +176,7 @@ void mmc_reset(void)
    ppu_setlatchfunc(NULL);
 
    if (mmc.intf->init)
-      mmc.intf->init();
+      mmc.intf->init(mmc.cart);
 }
 
 void mmc_shutdown()

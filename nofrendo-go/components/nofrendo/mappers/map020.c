@@ -84,9 +84,9 @@ static void fds_setstate(void *state)
     //
 }
 
-void fds_init(void)
+void fds_init(rom_t *cart)
 {
-    //
+    UNUSED(cart);
 }
 
 static mem_write_handler_t fds_memwrite[] =

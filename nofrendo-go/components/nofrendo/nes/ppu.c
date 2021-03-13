@@ -758,25 +758,16 @@ IRAM_ATTR void ppu_scanline(uint8 *bmp, int scanline, bool draw_flag)
    {
       ppu.stat |= PPU_STATF_VBLANK;
       ppu.vram_accessible = true;
+      ppu.last_scanline = NES_SCANLINES - 1;
    }
    // End of frame
-   else if (scanline == ppu.scanlines_per_frame - 1)
+   else if (scanline == ppu.last_scanline)
    {
       ppu.stat &= ~PPU_STATF_VBLANK;
       ppu.strikeflag = false;
       ppu.strike_cycle = (uint32) -1;
       ppu.vram_accessible = false;
    }
-}
-
-bool ppu_checkzapperhit(uint8 *bmp, int x, int y)
-{
-   uint8 pixel = *NES_SCREEN_GETPTR(bmp, x, y) & 0x3F;
-
-   if (0x20 == pixel || 0x30 == pixel)
-      return true;
-
-   return false;
 }
 
 void ppu_reset()
@@ -793,14 +784,12 @@ void ppu_reset()
    ppu.tile_xofs = 0;
    ppu.latch = 0;
    ppu.vram_accessible = true;
-   ppu.scanlines_per_frame = NES_SCANLINES;
+   ppu.last_scanline = NES_SCANLINES - 1;
 }
 
 ppu_t *ppu_init(void)
 {
    memset(&ppu, 0, sizeof(ppu_t));
-
-   ppu.scanlines_per_frame = NES_SCANLINES;
 
    ppu_setopt(PPU_DRAW_BACKGROUND, true);
    ppu_setopt(PPU_DRAW_SPRITES, true);

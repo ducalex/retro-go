@@ -58,8 +58,6 @@ typedef struct
    void (*write_func)(uint32 address, uint8 value);
 } mem_write_handler_t;
 
-typedef struct mapintf_s mapintf_t;
-
 typedef struct
 {
    // System RAM
@@ -80,7 +78,6 @@ typedef struct
 extern mem_t *mem_create(void);
 extern void mem_shutdown(void);
 extern void mem_reset(void);
-extern void mem_setmapper(mapintf_t *intf);
 extern void mem_setpage(uint32 page, uint8 *ptr);
 extern uint8 *mem_getpage(uint32 page);
 

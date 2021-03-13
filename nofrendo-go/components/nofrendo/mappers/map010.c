@@ -19,7 +19,7 @@
 **
 ** map010.c
 **
-** mapper 10 interface
+** MMC4 mapper interface
 ** $Id: map010.c,v 1.0 2018/07/07
 */
 
@@ -39,6 +39,7 @@ typedef struct
    unsigned char lastD000Write;
    unsigned char lastE000Write;
 } mapper10Data;
+
 
 /* Used when tile $FD/$FE is accessed */
 static void mmc10_latchfunc(uint32 address, uint8 value)
@@ -108,8 +109,10 @@ static void map10_write(uint32 address, uint8 value)
    }
 }
 
-static void map10_init(void)
+static void map10_init(rom_t *cart)
 {
+   UNUSED(cart);
+
    memset(regs, 0, sizeof(regs));
 
    mmc_bankrom(16, 0x8000, 0);
@@ -149,21 +152,14 @@ static mem_write_handler_t map10_memwrite[] =
 
 mapintf_t map10_intf =
 {
-   10, /* mapper number */
-   "MMC4", /* mapper name */
-   map10_init, /* init routine */
-   NULL, /* vblank callback */
-   NULL, /* hblank callback */
-   map10_getstate, /* get state (snss) */
-   map10_setstate, /* set state (snss) */
-   NULL, /* memory read structure */
-   map10_memwrite, /* memory write structure */
-   NULL /* external sound device */
+   10,               /* mapper number */
+   "MMC4",           /* mapper name */
+   map10_init,       /* init routine */
+   NULL,             /* vblank callback */
+   NULL,             /* hblank callback */
+   map10_getstate,   /* get state (snss) */
+   map10_setstate,   /* set state (snss) */
+   NULL,             /* memory read structure */
+   map10_memwrite,   /* memory write structure */
+   NULL              /* external sound device */
 };
-
-/*
-** $Log: map010.c,v $
-** Revision 1.0  2018/07/07
-** initial revision based on map009.c
-**
-*/

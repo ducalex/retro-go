@@ -17,9 +17,9 @@
 ** must bear this legend.
 **
 **
-** map9.c
+** map009.c
 **
-** mapper 9 interface
+** MMC2 mapper interface
 ** $Id: map009.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
@@ -39,6 +39,7 @@ typedef struct
    unsigned char lastD000Write;
    unsigned char lastE000Write;
 } mapper9Data;
+
 
 /* Used when tile $FD/$FE is accessed */
 static void mmc9_latchfunc(uint32 address, uint8 value)
@@ -62,8 +63,6 @@ static void mmc9_latchfunc(uint32 address, uint8 value)
    }
 }
 
-/* mapper 9: MMC2 */
-/* MMC2: Punch-Out! */
 static void map9_write(uint32 address, uint8 value)
 {
    switch ((address & 0xF000) >> 12)
@@ -108,16 +107,14 @@ static void map9_write(uint32 address, uint8 value)
    }
 }
 
-static void map9_init(void)
+static void map9_init(rom_t *cart)
 {
    memset(regs, 0, sizeof(regs));
 
-   int prg_banks = nes_getptr()->mmc->prg_banks;
-
    mmc_bankrom(8, 0x8000, 0);
-   mmc_bankrom(8, 0xA000, (prg_banks * 2) - 3);
-   mmc_bankrom(8, 0xC000, (prg_banks * 2) - 2);
-   mmc_bankrom(8, 0xE000, (prg_banks * 2) - 1);
+   mmc_bankrom(8, 0xA000, (cart->prg_rom_banks * 2) - 3);
+   mmc_bankrom(8, 0xC000, (cart->prg_rom_banks * 2) - 2);
+   mmc_bankrom(8, 0xE000, (cart->prg_rom_banks * 2) - 1);
 
    latch[0] = 0xFE;
    latch[1] = 0xFE;

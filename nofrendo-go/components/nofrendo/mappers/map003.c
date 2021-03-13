@@ -17,20 +17,19 @@
 ** must bear this legend.
 **
 **
-** map3.c
+** map003.c
 **
-** mapper 3 interface
+** CNROM mapper interface
 ** $Id: map003.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>
 #include <mmc.h>
 
-/* mapper 3: CNROM */
+
 static void map3_write(uint32 address, uint8 value)
 {
    UNUSED(address);
-
    mmc_bankvrom(8, 0x0000, value);
 }
 
@@ -42,45 +41,14 @@ static mem_write_handler_t map3_memwrite[] =
 
 mapintf_t map3_intf =
 {
-   3, /* mapper number */
-   "CNROM", /* mapper name */
-   NULL, /* init routine */
-   NULL, /* vblank callback */
-   NULL, /* hblank callback */
-   NULL, /* get state (snss) */
-   NULL, /* set state (snss) */
-   NULL, /* memory read structure */
-   map3_memwrite, /* memory write structure */
-   NULL /* external sound device */
+   3,                /* mapper number */
+   "CNROM",          /* mapper name */
+   NULL,             /* init routine */
+   NULL,             /* vblank callback */
+   NULL,             /* hblank callback */
+   NULL,             /* get state (snss) */
+   NULL,             /* set state (snss) */
+   NULL,             /* memory read structure */
+   map3_memwrite,    /* memory write structure */
+   NULL              /* external sound device */
 };
-
-/*
-** $Log: map003.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.1  2000/10/24 12:19:32  matt
-** changed directory structure
-**
-** Revision 1.5  2000/10/22 19:17:46  matt
-** mapper cleanups galore
-**
-** Revision 1.4  2000/10/21 19:33:38  matt
-** many more cleanups
-**
-** Revision 1.3  2000/08/16 02:50:11  matt
-** random mapper cleanups
-**
-** Revision 1.2  2000/07/06 02:48:43  matt
-** clearly labelled structure members
-**
-** Revision 1.1  2000/07/04 23:11:45  matt
-** initial revision
-**
-*/

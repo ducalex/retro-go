@@ -37,8 +37,7 @@ static uint8 multiplication[2];
 static uint16 prg_banks[4];
 static uint16 chr_banks[12];
 static uint16 chr_upper_bits;
-
-static nes_t *nes;
+static uint16 chr_banks_count;
 
 static int16 split_tile, split_tile_number, split_region;
 static int16 scanline;
@@ -139,7 +138,7 @@ static void prg_update()
 
 static void chr_update()
 {
-   bool large_spr = nes->ppu->obj_height == 16;
+   bool large_spr = nes_getptr()->ppu->obj_height == 16;
 
    switch (chr_mode)
    {
@@ -311,7 +310,7 @@ static void map5_write(uint32 address, uint8 value)
 
    case 0x5202:
       /* Vertical Split Bank */
-      vert_split.bank = value % (nes->mmc->chr_banks * 2);
+      vert_split.bank = value % (chr_banks_count * 2);
       break;
 
    case 0x5203:
@@ -473,15 +472,8 @@ static void map5_exram_write(uint32 address, uint8 value)
    }
 }
 
-static void map5_init(void)
+static void map5_init(rom_t *cart)
 {
-   nes = nes_getptr();
-
-   // if (nes->rominfo->sram)
-   // {
-   //    free(nes->rominfo->sram);
-   // }
-
    // nes->rominfo->sram = malloc(0x10000);
    // mmc_bankwram(8, 0x6000, 0);
 
@@ -501,6 +493,7 @@ static void map5_init(void)
    prg_mode = 3;
    chr_mode = 3;
 
+   chr_banks_count = cart->chr_rom ? cart->chr_rom_banks : cart->chr_ram_banks;
    chr_upper_bits = 0;
 
    for (int i = 0; i < 4; i++)

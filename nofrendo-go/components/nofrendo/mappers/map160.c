@@ -92,8 +92,9 @@ static void map160_hblank(int scanline)
    }
 }
 
-static void map160_init(void)
+static void map160_init(rom_t *cart)
 {
+   UNUSED(cart);
    irq.enabled = false;
    irq.expired = false;
    irq.counter = 0;
@@ -108,30 +109,14 @@ static mem_write_handler_t map160_memwrite[] =
 
 mapintf_t map160_intf =
 {
-   160, /* mapper number */
-   "Aladdin (pirate)", /* mapper name */
-   map160_init, /* init routine */
-   NULL, /* vblank callback */
-   map160_hblank, /* hblank callback */
-   NULL, /* get state (snss) */
-   NULL, /* set state (snss) */
-   NULL, /* memory read structure */
-   map160_memwrite, /* memory write structure */
-   NULL /* external sound device */
+   160,                 /* mapper number */
+   "Aladdin (pirate)",  /* mapper name */
+   map160_init,         /* init routine */
+   NULL,                /* vblank callback */
+   map160_hblank,       /* hblank callback */
+   NULL,                /* get state (snss) */
+   NULL,                /* set state (snss) */
+   NULL,                /* memory read structure */
+   map160_memwrite,     /* memory write structure */
+   NULL                 /* external sound device */
 };
-
-/*
-** $Log: map160.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1  2001/04/27 10:57:41  neil
-** wheee
-**
-** Revision 1.1  2000/12/27 04:24:46  matt
-** initial revision
-**
-*/

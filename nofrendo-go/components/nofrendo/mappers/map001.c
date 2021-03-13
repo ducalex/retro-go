@@ -19,7 +19,7 @@
 **
 ** map001.c
 **
-** Mapper 1 interface
+** MMC1 mapper interface
 ** New implementation by ducalex
 **
 */
@@ -150,9 +150,9 @@ static void map1_write(uint32 address, uint8 value)
    }
 }
 
-static void map1_init(void)
+static void map1_init(rom_t *cart)
 {
-   prg_banks = nes_getptr()->mmc->prg_banks;
+   prg_banks = cart->prg_rom_banks;
    bitcount = 0;
    latch = 0;
 

@@ -215,7 +215,7 @@ IRAM_ATTR uint32 mem_getword(uint32 address)
    return mem_getbyte(address + 1) << 8 | mem_getbyte(address);
 }
 
-void mem_reset()
+void mem_reset(void)
 {
    memset(&mem.pages, 0, sizeof(mem.pages));
    memset(&mem.ram, 0, sizeof(mem.ram));

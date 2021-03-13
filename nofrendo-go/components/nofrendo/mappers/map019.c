@@ -17,9 +17,9 @@
 ** must bear this legend.
 **
 **
-** map19.c
+** map019.c
 **
-** mapper 19 interface
+** Namco 129/163 mapper interface
 ** $Id: map019.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
@@ -40,12 +40,12 @@ static struct
    int enabled;
 } irq;
 
-static nes_t *nes;
+static rom_t *cart;
 
 
-static void map19_init(void)
+static void map19_init(rom_t *_cart)
 {
-   nes = nes_getptr();
+   cart = _cart;
    irq.counter = 0;
    irq.enabled = 0;
 }
@@ -84,7 +84,7 @@ static void map19_write(uint32 address, uint8 value)
    case 0x1A:
    case 0x1B:
       if (value < 0xE0)
-         page = &nes->cart->chr_rom[(value % (nes->cart->chr_rom_banks * 8)) << 10] - (0x2000 + ((reg & 3) << 10));
+         page = &cart->chr_rom[(value % (cart->chr_rom_banks * 8)) << 10] - (0x2000 + ((reg & 3) << 10));
       else
          page = ppu_getnametable(value & 1) - (0x2000 + ((reg & 3) << 10));
       ppu_setpage(1, (reg & 3) + 8, page);
@@ -129,7 +129,7 @@ static void map19_hblank(int scanline)
 {
    if (irq.enabled)
    {
-      irq.counter += nes->cycles_per_line;
+      irq.counter += nes_getptr()->cycles_per_line;
 
       if (irq.counter >= 0x7FFF)
       {

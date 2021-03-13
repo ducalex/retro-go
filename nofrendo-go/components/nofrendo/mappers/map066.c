@@ -17,16 +17,15 @@
 ** must bear this legend.
 **
 **
-** map66.c
+** map066.c
 **
-** mapper 66 interface
+** GNROM mapper interface
 ** $Id: map066.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>
 #include <mmc.h>
 
-/* mapper 66: GNROM */
 static void map66_write(uint32 address, uint8 value)
 {
    UNUSED(address);
@@ -35,8 +34,9 @@ static void map66_write(uint32 address, uint8 value)
    mmc_bankvrom(8, 0x0000, value & 3);
 }
 
-static void map66_init(void)
+static void map66_init(rom_t *cart)
 {
+   UNUSED(cart);
    mmc_bankrom(32, 0x8000, 0);
    mmc_bankvrom(8, 0x0000, 0);
 }
@@ -50,45 +50,14 @@ static mem_write_handler_t map66_memwrite[] =
 
 mapintf_t map66_intf =
 {
-   66, /* mapper number */
-   "GNROM", /* mapper name */
-   map66_init, /* init routine */
-   NULL, /* vblank callback */
-   NULL, /* hblank callback */
-   NULL, /* get state (snss) */
-   NULL, /* set state (snss) */
-   NULL, /* memory read structure */
-   map66_memwrite, /* memory write structure */
-   NULL /* external sound device */
+   66,               /* mapper number */
+   "GNROM",          /* mapper name */
+   map66_init,       /* init routine */
+   NULL,             /* vblank callback */
+   NULL,             /* hblank callback */
+   NULL,             /* get state (snss) */
+   NULL,             /* set state (snss) */
+   NULL,             /* memory read structure */
+   map66_memwrite,   /* memory write structure */
+   NULL              /* external sound device */
 };
-
-/*
-** $Log: map066.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.1  2000/10/24 12:19:33  matt
-** changed directory structure
-**
-** Revision 1.5  2000/10/22 19:17:46  matt
-** mapper cleanups galore
-**
-** Revision 1.4  2000/10/21 19:33:38  matt
-** many more cleanups
-**
-** Revision 1.3  2000/08/16 02:50:11  matt
-** random mapper cleanups
-**
-** Revision 1.2  2000/07/06 02:48:43  matt
-** clearly labelled structure members
-**
-** Revision 1.1  2000/07/05 05:05:18  matt
-** initial revision
-**
-*/

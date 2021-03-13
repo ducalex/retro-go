@@ -53,8 +53,10 @@ static int select_c000 = 0;
 static uint8 lownybbles[8];
 static uint8 highnybbles[8];
 
-static void vrc4_init(void)
+
+static void vrc4_init(rom_t *cart)
 {
+   UNUSED(cart);
    irq.counter = irq.enabled = 0;
    irq.latch = irq.wait_state = 0;
 }
@@ -183,28 +185,28 @@ static mem_write_handler_t vrc4_memwrite[] =
 
 mapintf_t map21_intf =
 {
-   21,              /* mapper number */
-   "Konami VRC4 A", /* mapper name */
-   vrc4_init,       /* init routine */
-   NULL,            /* vblank callback */
-   vrc4_hblank,     /* hblank callback */
-   vrc4_getstate,   /* get state (snss) */
-   vrc4_setstate,   /* set state (snss) */
-   NULL,            /* memory read structure */
-   vrc4_memwrite,   /* memory write structure */
-   NULL             /* external sound device */
+   21,               /* mapper number */
+   "Konami VRC4 A",  /* mapper name */
+   vrc4_init,        /* init routine */
+   NULL,             /* vblank callback */
+   vrc4_hblank,      /* hblank callback */
+   vrc4_getstate,    /* get state (snss) */
+   vrc4_setstate,    /* set state (snss) */
+   NULL,             /* memory read structure */
+   vrc4_memwrite,    /* memory write structure */
+   NULL              /* external sound device */
 };
 
 mapintf_t map25_intf =
 {
-   25,              /* mapper number */
-   "Konami VRC4 B", /* mapper name */
-   NULL,            /* init routine */
-   NULL,            /* vblank callback */
-   vrc4_hblank,     /* hblank callback */
-   NULL,            /* get state (snss) */
-   NULL,            /* set state (snss) */
-   NULL,            /* memory read structure */
-   vrc4_memwrite,   /* memory write structure */
-   NULL             /* external sound device */
+   25,               /* mapper number */
+   "Konami VRC4 B",  /* mapper name */
+   NULL,             /* init routine */
+   NULL,             /* vblank callback */
+   vrc4_hblank,      /* hblank callback */
+   NULL,             /* get state (snss) */
+   NULL,             /* set state (snss) */
+   NULL,             /* memory read structure */
+   vrc4_memwrite,    /* memory write structure */
+   NULL              /* external sound device */
 };

@@ -39,7 +39,7 @@ struct mapintf_s
 {
    int number;
    const char *name;
-   void (*init)(void);
+   void (*init)(rom_t *cart);
    void (*vblank)(void);
    void (*hblank)(int scanline);
    void (*get_state)(void *state); // State is a 128 bytes buffer

@@ -17,9 +17,9 @@
 ** must bear this legend.
 **
 **
-** map4.c
+** map004.c
 **
-** mapper 4 interface
+** MMC3 mapper interface
 ** $Id: map004.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
@@ -47,7 +47,7 @@ typedef struct
    unsigned char last8000Write;
 } mapper4Data;
 
-/* mapper 4: MMC3 */
+
 static void map4_write(uint32 address, uint8 value)
 {
    switch (address & 0xE001)
@@ -173,12 +173,12 @@ static void map4_setstate(void *state)
    map4_write(0x8000, ((mapper4Data*)state)->last8000Write);
 }
 
-static void map4_init(void)
+static void map4_init(rom_t *cart)
 {
    irq.counter = irq.latch = 0;
    irq.enabled = false;
    reg = reg8000 = vrombase = 0;
-   fourscreen = (nes_getptr()->cart->flags & ROM_FLAG_FOURSCREEN);
+   fourscreen = cart->flags & ROM_FLAG_FOURSCREEN;
 }
 
 static mem_write_handler_t map4_memwrite[] =

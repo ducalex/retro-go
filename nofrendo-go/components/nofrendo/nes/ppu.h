@@ -129,7 +129,7 @@ typedef struct
    uint32 strike_cycle;
 
    int scanline;
-   int scanlines_per_frame;
+   int last_scanline;
 
    /* Determines if left column can be cropped/blanked */
    int left_bg_counter;

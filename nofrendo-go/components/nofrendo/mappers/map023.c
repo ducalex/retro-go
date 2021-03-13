@@ -45,8 +45,9 @@ static struct
 static uint8 lownybbles[8];
 static uint8 highnybbles[8];
 
-static void map23_init(void)
+static void map23_init(rom_t *cart)
 {
+   UNUSED(cart);
    irq.counter = irq.enabled = 0;
    irq.latch = irq.wait_state = 0;
 }

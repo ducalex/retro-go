@@ -17,17 +17,18 @@
 ** must bear this legend.
 **
 **
-** map34.c
+** map034.c
 **
-** mapper 34 interface
+** Nina-1 mapper interface
 ** $Id: map034.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>
 #include <mmc.h>
 
-static void map34_init(void)
+static void map34_init(rom_t *cart)
 {
+   UNUSED(cart);
    mmc_bankrom(32, 0x8000, MMC_LASTBANK);
 }
 
@@ -55,46 +56,14 @@ static mem_write_handler_t map34_memwrite[] =
 
 mapintf_t map34_intf =
 {
-   34, /* mapper number */
-   "Nina-1", /* mapper name */
-   map34_init, /* init routine */
-   NULL, /* vblank callback */
-   NULL, /* hblank callback */
-   NULL, /* get state (snss) */
-   NULL, /* set state (snss) */
-   NULL, /* memory read structure */
-   map34_memwrite, /* memory write structure */
-   NULL /* external sound device */
+   34,               /* mapper number */
+   "Nina-1",         /* mapper name */
+   map34_init,       /* init routine */
+   NULL,             /* vblank callback */
+   NULL,             /* hblank callback */
+   NULL,             /* get state (snss) */
+   NULL,             /* set state (snss) */
+   NULL,             /* memory read structure */
+   map34_memwrite,   /* memory write structure */
+   NULL              /* external sound device */
 };
-
-/*
-** $Log: map034.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.1  2000/10/24 12:19:33  matt
-** changed directory structure
-**
-** Revision 1.5  2000/10/22 19:17:46  matt
-** mapper cleanups galore
-**
-** Revision 1.4  2000/10/21 19:33:38  matt
-** many more cleanups
-**
-** Revision 1.3  2000/07/11 05:03:49  matt
-** value masking isn't necessary for the banking routines
-**
-** Revision 1.2  2000/07/11 03:35:08  bsittler
-** Fixes to make mikes new mappers compile.
-**
-** Revision 1.1  2000/07/11 03:14:18  melanson
-** Initial commit for mappers 16, 34, and 231
-**
-**
-*/

@@ -32,72 +32,73 @@ static uint8 mram[4];
 
 static void update(uint32 address, uint8 value)
 {
-	uint16 bank1 = ((address >> 6) & 0x7E) + (((address >> 6) & 1) & ((address >> 5) & 1));
-    uint16 bank2 = bank1 + (((address >> 5) & 1) ^ 1);
-    uint16 vbank = (((address & 0xF) << 2)) | (value & 0x3);
+   uint16 bank1 = ((address >> 6) & 0x7E) + (((address >> 6) & 1) & ((address >> 5) & 1));
+   uint16 bank2 = bank1 + (((address >> 5) & 1) ^ 1);
+   uint16 vbank = (((address & 0xF) << 2)) | (value & 0x3);
 
-    // Chip 2 doesn't exist
-	if ((bank1 & 0x60) == 0x60) {
-		bank1 -= 0x20;
-		bank2 -= 0x20;
-    }
+   // Chip 2 doesn't exist
+   if ((bank1 & 0x60) == 0x60) {
+      bank1 -= 0x20;
+      bank2 -= 0x20;
+   }
 
-    mmc_bankrom(16, 0x8000, bank1);
-    mmc_bankrom(16, 0xc000, bank2);
-    mmc_bankvrom(8, 0x0000, vbank);
+   mmc_bankrom(16, 0x8000, bank1);
+   mmc_bankrom(16, 0xc000, bank2);
+   mmc_bankvrom(8, 0x0000, vbank);
 
-    if ((address & 0x2000) == 0) {
-        ppu_setmirroring(PPU_MIRROR_VERT);
-    } else {
-        ppu_setmirroring(PPU_MIRROR_HORI);
-    }
+   if ((address & 0x2000) == 0) {
+      ppu_setmirroring(PPU_MIRROR_VERT);
+   } else {
+      ppu_setmirroring(PPU_MIRROR_HORI);
+   }
 }
 
-static void map228_init(void)
+static void map228_init(rom_t *cart)
 {
-    update(0x8000, 0x00);
+   UNUSED(cart);
+   update(0x8000, 0x00);
 }
 
 static uint8 map228_read(uint32 address)
 {
-    return mram[address & 3] & 0xF;
+   return mram[address & 3] & 0xF;
 }
 
 static void map228_write(uint32 address, uint8 value)
 {
-    if (address >= 0x4020 && address <= 0x5FFF)
-    {
-        mram[address & 3] = value;
-    }
-    else
-    {
-        update(address, value);
-    }
+   if (address >= 0x4020 && address <= 0x5FFF)
+   {
+      mram[address & 3] = value;
+   }
+   else
+   {
+      update(address, value);
+   }
 }
 
-static mem_write_handler_t map228_memwrite [] =
+static mem_write_handler_t map228_memwrite[] =
 {
-    { 0x8000, 0xFFFF, map228_write },
-    { 0x4020, 0x5FFF, map228_write },
-    LAST_MEMORY_HANDLER
+   { 0x8000, 0xFFFF, map228_write },
+   { 0x4020, 0x5FFF, map228_write },
+   LAST_MEMORY_HANDLER
 };
 
-static mem_read_handler_t map228_memread [] =
+static mem_read_handler_t map228_memread[] =
 {
-    { 0x4020, 0x5FFF, map228_read },
-    LAST_MEMORY_HANDLER
+   { 0x4020, 0x5FFF, map228_read },
+   LAST_MEMORY_HANDLER
 };
 
 mapintf_t map228_intf =
 {
-    228,                              /* Mapper number */
-    "Mapper 228",                     /* Mapper name */
-    map228_init,                      /* Initialization routine */
-    NULL,                             /* VBlank callback */
-    NULL,                             /* HBlank callback */
-    NULL,                             /* Get state (SNSS) */
-    NULL,                             /* Set state (SNSS) */
-    map228_memread,                   /* Memory read structure */
-    map228_memwrite,                  /* Memory write structure */
-    NULL                              /* External sound device */
+   228,              /* Mapper number */
+   "Mapper 228",     /* Mapper name */
+   map228_init,      /* Initialization routine */
+   NULL,             /* VBlank callback */
+   NULL,             /* HBlank callback */
+   NULL,             /* Get state (SNSS) */
+   NULL,             /* Set state (SNSS) */
+   map228_memread,   /* Memory read structure */
+   map228_memwrite,  /* Memory write structure */
+   NULL              /* External sound device */
 };

@@ -17,9 +17,9 @@
 ** must bear this legend.
 **
 **
-** map85.c
+** map085.c
 **
-** mapper 85 interface
+** Konami VRC7 mapper interface
 ** $Id: map085.c,v 1.3 2001/05/06 01:42:03 neil Exp $
 */
 
@@ -34,7 +34,7 @@ static struct
    bool enabled;
 } irq;
 
-/* mapper 85: Konami VRC7 */
+
 static void map85_write(uint32 address, uint8 value)
 {
    uint8 bank = address >> 12;
@@ -142,8 +142,10 @@ static mem_write_handler_t map85_memwrite[] =
    LAST_MEMORY_HANDLER
 };
 
-static void map85_init(void)
+static void map85_init(rom_t *cart)
 {
+   UNUSED(cart);
+
    mmc_bankrom(16, 0x8000, 0);
    mmc_bankrom(16, 0xC000, MMC_LASTBANK);
 
@@ -156,63 +158,14 @@ static void map85_init(void)
 
 mapintf_t map85_intf =
 {
-   85, /* mapper number */
-   "Konami VRC7", /* mapper name */
-   map85_init, /* init routine */
-   NULL, /* vblank callback */
-   map85_hblank, /* hblank callback */
-   NULL, /* get state (snss) */
-   NULL, /* set state (snss) */
-   NULL, /* memory read structure */
-   map85_memwrite, /* memory write structure */
+   85,               /* mapper number */
+   "Konami VRC7",    /* mapper name */
+   map85_init,       /* init routine */
+   NULL,             /* vblank callback */
+   map85_hblank,     /* hblank callback */
+   NULL,             /* get state (snss) */
+   NULL,             /* set state (snss) */
+   NULL,             /* memory read structure */
+   map85_memwrite,   /* memory write structure */
    NULL
 };
-
-/*
-** $Log: map085.c,v $
-** Revision 1.3  2001/05/06 01:42:03  neil
-** boooo
-**
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.1  2000/10/24 12:19:33  matt
-** changed directory structure
-**
-** Revision 1.10  2000/10/22 19:17:46  matt
-** mapper cleanups galore
-**
-** Revision 1.9  2000/10/22 15:03:14  matt
-** simplified mirroring
-**
-** Revision 1.8  2000/10/21 19:33:38  matt
-** many more cleanups
-**
-** Revision 1.7  2000/10/10 13:58:17  matt
-** stroustrup squeezing his way in the door
-**
-** Revision 1.6  2000/08/16 02:50:11  matt
-** random mapper cleanups
-**
-** Revision 1.5  2000/07/23 14:37:21  matt
-** added a break statement
-**
-** Revision 1.4  2000/07/15 23:52:19  matt
-** rounded out a bunch more mapper interfaces
-**
-** Revision 1.3  2000/07/10 13:51:25  matt
-** using generic nes6502_irq() routine now
-**
-** Revision 1.2  2000/07/10 05:29:03  matt
-** cleaned up some mirroring issues
-**
-** Revision 1.1  2000/07/06 02:47:47  matt
-** initial revision
-**
-*/

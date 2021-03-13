@@ -17,9 +17,9 @@
 ** must bear this legend.
 **
 **
-** map7.c
+** map007.c
 **
-** mapper 7 interface
+** AOROM mapper interface
 ** $Id: map007.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
@@ -28,7 +28,7 @@
 
 static int is_battletoads = 0;
 
-/* mapper 7: AOROM */
+
 static void map7_write(uint32 address, uint8 value)
 {
    mmc_bankrom(32, 0x8000, value & 0xF);
@@ -40,11 +40,11 @@ static void map7_write(uint32 address, uint8 value)
       ppu_setmirroring(PPU_MIRROR_SCR0);
 }
 
-static void map7_init(void)
+static void map7_init(rom_t *cart)
 {
    map7_write(0x8000, 0);
 
-   if (nes_getptr()->cart->checksum == 0x279710DC)
+   if (cart->checksum == 0x279710DC)
    {
       is_battletoads = 1;
       MESSAGE_INFO("Enabled Battletoads mirroring hack\n");

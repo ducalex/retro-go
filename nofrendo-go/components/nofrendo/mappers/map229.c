@@ -33,8 +33,9 @@
 /************************/
 /* Mapper #229: 31 in 1 */
 /************************/
-static void map229_init (void)
+static void map229_init(rom_t *cart)
 {
+   UNUSED(cart);
   /* On reset, PRG is set to first 32K and CHR to first 8K */
   mmc_bankrom (32, 0x8000, 0x00);
   mmc_bankvrom (8, 0x0000, 0x00);
@@ -46,7 +47,7 @@ static void map229_init (void)
 /*******************************************/
 /* Mapper #229 write handler ($8000-$FFFF) */
 /*******************************************/
-static void map229_write (uint32 address, uint8 value)
+static void map229_write(uint32 address, uint8 value)
 {
   /* Value written is irrelevant */
   UNUSED (value);
@@ -74,7 +75,7 @@ static void map229_write (uint32 address, uint8 value)
   return;
 }
 
-static mem_write_handler_t map229_memwrite [] =
+static mem_write_handler_t map229_memwrite[] =
 {
    { 0x8000, 0xFFFF, map229_write },
    LAST_MEMORY_HANDLER
@@ -82,31 +83,14 @@ static mem_write_handler_t map229_memwrite [] =
 
 mapintf_t map229_intf =
 {
-   229,                              /* Mapper number */
-   "31 in 1 (bootleg)",              /* Mapper name */
-   map229_init,                      /* Initialization routine */
-   NULL,                             /* VBlank callback */
-   NULL,                             /* HBlank callback */
-   NULL,                             /* Get state (SNSS) */
-   NULL,                             /* Set state (SNSS) */
-   NULL,                             /* Memory read structure */
-   map229_memwrite,                  /* Memory write structure */
-   NULL                              /* External sound device */
+   229,              /* Mapper number */
+   "BMC 31-IN-1",    /* Mapper name */
+   map229_init,      /* Initialization routine */
+   NULL,             /* VBlank callback */
+   NULL,             /* HBlank callback */
+   NULL,             /* Get state (SNSS) */
+   NULL,             /* Set state (SNSS) */
+   NULL,             /* Memory read structure */
+   map229_memwrite,  /* Memory write structure */
+   NULL              /* External sound device */
 };
-
-/*
-** $Log: map229.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1  2001/04/27 10:57:41  neil
-** wheee
-**
-** Revision 1.1  2000/12/30 06:34:31  firebug
-** Initial revision
-**
-**
-*/

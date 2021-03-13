@@ -17,9 +17,9 @@
 ** must bear this legend.
 **
 **
-** map24.c
+** map024.c
 **
-** mapper 24 interface
+** Konami VRC6 mapper interface
 ** $Id: map024.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
@@ -40,8 +40,9 @@ typedef struct
    unsigned char irqCounterEnabled;
 } mapper24Data;
 
-static void map24_init(void)
+static void map24_init(rom_t *cart)
 {
+   UNUSED(cart);
    irq.counter = irq.enabled = 0;
    irq.latch = irq.wait_state = 0;
 }
@@ -161,63 +162,14 @@ static mem_write_handler_t map24_memwrite[] =
 
 mapintf_t map24_intf =
 {
-   24, /* mapper number */
-   "Konami VRC6", /* mapper name */
-   map24_init, /* init routine */
-   NULL, /* vblank callback */
-   map24_hblank, /* hblank callback */
-   map24_getstate, /* get state (snss) */
-   map24_setstate, /* set state (snss) */
-   NULL, /* memory read structure */
-   map24_memwrite, /* memory write structure */
-   NULL /* external sound device */
+   24,               /* mapper number */
+   "Konami VRC6",    /* mapper name */
+   map24_init,       /* init routine */
+   NULL,             /* vblank callback */
+   map24_hblank,     /* hblank callback */
+   map24_getstate,   /* get state (snss) */
+   map24_setstate,   /* set state (snss) */
+   NULL,             /* memory read structure */
+   map24_memwrite,   /* memory write structure */
+   NULL              /* external sound device */
 };
-
-/*
-** $Log: map024.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.1  2000/10/24 12:19:33  matt
-** changed directory structure
-**
-** Revision 1.11  2000/10/22 19:17:46  matt
-** mapper cleanups galore
-**
-** Revision 1.10  2000/10/22 15:03:13  matt
-** simplified mirroring
-**
-** Revision 1.9  2000/10/21 19:33:38  matt
-** many more cleanups
-**
-** Revision 1.8  2000/10/10 13:58:17  matt
-** stroustrup squeezing his way in the door
-**
-** Revision 1.7  2000/10/09 12:00:53  matt
-** removed old code
-**
-** Revision 1.6  2000/08/16 02:50:11  matt
-** random mapper cleanups
-**
-** Revision 1.5  2000/07/15 23:52:19  matt
-** rounded out a bunch more mapper interfaces
-**
-** Revision 1.4  2000/07/10 13:51:25  matt
-** using generic nes6502_irq() routine now
-**
-** Revision 1.3  2000/07/10 05:29:03  matt
-** cleaned up some mirroring issues
-**
-** Revision 1.2  2000/07/06 02:48:43  matt
-** clearly labelled structure members
-**
-** Revision 1.1  2000/07/04 23:11:45  matt
-** initial revision
-**
-*/

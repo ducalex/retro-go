@@ -17,20 +17,19 @@
 ** must bear this legend.
 **
 **
-** map75.c
+** map075.c
 **
-** mapper 75 interface
+** Konami VRC1 mapper interface
 ** $Id: map075.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>
 #include <mmc.h>
 
-
 static uint8 latch[2];
 static uint8 hibits;
 
-/* mapper 75: Konami VRC1 */
+
 static void map75_write(uint32 address, uint8 value)
 {
    switch ((address & 0xF000) >> 12)

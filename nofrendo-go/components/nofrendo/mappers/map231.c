@@ -19,27 +19,26 @@
 **
 ** map231.c
 **
-** mapper 231 interface
+** NINA-07 mapper interface
 ** $Id: map231.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>
 #include <mmc.h>
 
-/* mapper 231: NINA-07, used in Wally Bear and the NO! Gang */
-
-static void map231_init(void)
+static void map231_init(rom_t *cart)
 {
+   UNUSED(cart);
+
    mmc_bankrom(32, 0x8000, MMC_LASTBANK);
 }
 
 static void map231_write(uint32 address, uint8 value)
 {
-   int bank, vbank;
    UNUSED(address);
 
-   bank = ((value & 0x80) >> 5) | (value & 0x03);
-   vbank = (value >> 4) & 0x07;
+   int bank = ((value & 0x80) >> 5) | (value & 0x03);
+   int vbank = (value >> 4) & 0x07;
 
    mmc_bankrom(32, 0x8000, bank);
    mmc_bankvrom(8, 0x0000, vbank);
@@ -53,43 +52,14 @@ static mem_write_handler_t map231_memwrite[] =
 
 mapintf_t map231_intf =
 {
-   231, /* mapper number */
-   "NINA-07", /* mapper name */
-   map231_init, /* init routine */
-   NULL, /* vblank callback */
-   NULL, /* hblank callback */
-   NULL, /* get state (snss) */
-   NULL, /* set state (snss) */
-   NULL, /* memory read structure */
-   map231_memwrite, /* memory write structure */
-   NULL /* external sound device */
+   231,              /* mapper number */
+   "NINA-07",        /* mapper name */
+   map231_init,      /* init routine */
+   NULL,             /* vblank callback */
+   NULL,             /* hblank callback */
+   NULL,             /* get state (snss) */
+   NULL,             /* set state (snss) */
+   NULL,             /* memory read structure */
+   map231_memwrite,  /* memory write structure */
+   NULL              /* external sound device */
 };
-
-/*
-** $Log: map231.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.1  2000/10/24 12:19:33  matt
-** changed directory structure
-**
-** Revision 1.4  2000/10/22 19:17:46  matt
-** mapper cleanups galore
-**
-** Revision 1.3  2000/10/21 19:33:38  matt
-** many more cleanups
-**
-** Revision 1.2  2000/08/16 02:50:11  matt
-** random mapper cleanups
-**
-** Revision 1.1  2000/07/11 03:14:18  melanson
-** Initial commit for mappers 16, 34, and 231
-**
-**
-*/

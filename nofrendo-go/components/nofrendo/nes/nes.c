@@ -156,7 +156,7 @@ _fail:
 /* insert a disk into the FDS */
 bool nes_insertdisk(const char *filename)
 {
-
+    return false;
 }
 
 /* Reset NES hardware */

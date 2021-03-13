@@ -31,27 +31,25 @@
 
 static struct
 {
-  bool enabled;
-  uint32 counter;
+   bool enabled;
+   uint32 counter;
 } irq;
 
 /**************************/
 /* Mapper #73: Salamander */
 /**************************/
-static void map73_init (void)
+static void map73_init(rom_t *cart)
 {
-  /* Turn off IRQs */
-  irq.enabled = false;
-  irq.counter = 0x0000;
+   UNUSED(cart);
 
-  /* Done */
-  return;
+   irq.enabled = false;
+   irq.counter = 0x0000;
 }
 
 /****************************************/
 /* Mapper #73 callback for IRQ handling */
 /****************************************/
-static void map73_hblank (int vblank)
+static void map73_hblank(int vblank)
 {
    /* Counter is M2 based so it doesn't matter whether */
    /* the PPU is in its VBlank period or not           */
@@ -60,57 +58,53 @@ static void map73_hblank (int vblank)
    /* Increment the counter if it is enabled and check for strike */
    if (irq.enabled)
    {
-     /* Is there a constant for cycles per scanline? */
-     /* If so, someone ought to substitute it here   */
-     irq.counter = irq.counter + 114;
+      /* Is there a constant for cycles per scanline? */
+      /* If so, someone ought to substitute it here   */
+      irq.counter = irq.counter + 114;
 
-     /* Counter triggered on overflow into Q16 */
-     if (irq.counter & 0x10000)
-     {
-       /* Clip to sixteen-bit word */
-       irq.counter &= 0xFFFF;
+      /* Counter triggered on overflow into Q16 */
+      if (irq.counter & 0x10000)
+      {
+            /* Clip to sixteen-bit word */
+            irq.counter &= 0xFFFF;
 
-       /* Trigger the IRQ */
-       nes6502_irq ();
+            /* Trigger the IRQ */
+            nes6502_irq ();
 
-       /* Shut off IRQ counter */
-       irq.enabled = false;
-     }
+            /* Shut off IRQ counter */
+            irq.enabled = false;
+      }
    }
 }
 
 /******************************************/
 /* Mapper #73 write handler ($8000-$FFFF) */
 /******************************************/
-static void map73_write (uint32 address, uint8 value)
+static void map73_write(uint32 address, uint8 value)
 {
-  switch (address & 0xF000)
-  {
-    case 0x8000: irq.counter &= 0xFFF0;
-                 irq.counter |= (uint32) (value);
-                 break;
-    case 0x9000: irq.counter &= 0xFF0F;
-                 irq.counter |= (uint32) (value << 4);
-                 break;
-    case 0xA000: irq.counter &= 0xF0FF;
-                 irq.counter |= (uint32) (value << 8);
-                 break;
-    case 0xB000: irq.counter &= 0x0FFF;
-                 irq.counter |= (uint32) (value << 12);
-                 break;
-    case 0xC000: if (value & 0x02) irq.enabled = true;
-                 else              irq.enabled = false;
-                 break;
-    case 0xF000: mmc_bankrom (16, 0x8000, value);
-    default:     break;
-  }
-
-  /* Done */
-  return;
+   switch (address & 0xF000)
+   {
+      case 0x8000: irq.counter &= 0xFFF0;
+                   irq.counter |= (uint32) (value);
+                   break;
+      case 0x9000: irq.counter &= 0xFF0F;
+                   irq.counter |= (uint32) (value << 4);
+                   break;
+      case 0xA000: irq.counter &= 0xF0FF;
+                   irq.counter |= (uint32) (value << 8);
+                   break;
+      case 0xB000: irq.counter &= 0x0FFF;
+                   irq.counter |= (uint32) (value << 12);
+                   break;
+      case 0xC000: irq.enabled = (value & 0x02);
+                   break;
+      case 0xF000: mmc_bankrom (16, 0x8000, value);
+      default:     break;
+   }
 }
 
 
-static mem_write_handler_t map73_memwrite [] =
+static mem_write_handler_t map73_memwrite[] =
 {
    { 0x8000, 0xFFFF, map73_write },
    LAST_MEMORY_HANDLER
@@ -118,31 +112,14 @@ static mem_write_handler_t map73_memwrite [] =
 
 mapintf_t map73_intf =
 {
-   73,                               /* Mapper number */
-   "Konami VRC3",                    /* Mapper name */
-   map73_init,                       /* Initialization routine */
-   NULL,                             /* VBlank callback */
-   map73_hblank,                     /* HBlank callback */
-   NULL,                             /* Get state (SNSS) */
-   NULL,                             /* Set state (SNSS) */
-   NULL,                             /* Memory read structure */
-   map73_memwrite,                   /* Memory write structure */
-   NULL                              /* External sound device */
+   73,               /* Mapper number */
+   "Konami VRC3",    /* Mapper name */
+   map73_init,       /* Initialization routine */
+   NULL,             /* VBlank callback */
+   map73_hblank,     /* HBlank callback */
+   NULL,             /* Get state (SNSS) */
+   NULL,             /* Set state (SNSS) */
+   NULL,             /* Memory read structure */
+   map73_memwrite,   /* Memory write structure */
+   NULL              /* External sound device */
 };
-
-/*
-** $Log: map073.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1  2001/04/27 10:57:41  neil
-** wheee
-**
-** Revision 1.1  2000/12/30 06:35:05  firebug
-** Initial revision
-**
-**
-*/

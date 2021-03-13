@@ -17,9 +17,9 @@
 ** must bear this legend.
 **
 **
-** map64.c
+** map064.c
 **
-** mapper 64 interface
+** Tengen RAMBO-1 mapper interface
 ** $Id: map064.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
@@ -57,7 +57,6 @@ static void map64_hblank(int scanline)
    }
 }
 
-/* mapper 64: Tengen RAMBO-1 */
 static void map64_write(uint32 address, uint8 value)
 {
    switch (address & 0xE001)
@@ -157,8 +156,10 @@ static void map64_write(uint32 address, uint8 value)
       irq.counter = irq.latch;
 }
 
-static void map64_init(void)
+static void map64_init(rom_t *cart)
 {
+   UNUSED(cart);
+
    mmc_bankrom(8, 0x8000, MMC_LASTBANK);
    mmc_bankrom(8, 0xA000, MMC_LASTBANK);
    mmc_bankrom(8, 0xC000, MMC_LASTBANK);
@@ -176,54 +177,14 @@ static mem_write_handler_t map64_memwrite[] =
 
 mapintf_t map64_intf =
 {
-   64, /* mapper number */
+   64,               /* mapper number */
    "Tengen RAMBO-1", /* mapper name */
-   map64_init, /* init routine */
-   NULL, /* vblank callback */
-   map64_hblank, /* hblank callback */
-   NULL, /* get state (snss) */
-   NULL, /* set state (snss) */
-   NULL, /* memory read structure */
-   map64_memwrite, /* memory write structure */
-   NULL /* external sound device */
+   map64_init,       /* init routine */
+   NULL,             /* vblank callback */
+   map64_hblank,     /* hblank callback */
+   NULL,             /* get state (snss) */
+   NULL,             /* set state (snss) */
+   NULL,             /* memory read structure */
+   map64_memwrite,   /* memory write structure */
+   NULL              /* external sound device */
 };
-
-/*
-** $Log: map064.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.1  2000/10/24 12:19:33  matt
-** changed directory structure
-**
-** Revision 1.8  2000/10/22 19:17:46  matt
-** mapper cleanups galore
-**
-** Revision 1.7  2000/10/22 15:03:13  matt
-** simplified mirroring
-**
-** Revision 1.6  2000/10/21 19:33:38  matt
-** many more cleanups
-**
-** Revision 1.5  2000/10/10 13:58:17  matt
-** stroustrup squeezing his way in the door
-**
-** Revision 1.4  2000/07/10 13:51:25  matt
-** using generic nes6502_irq() routine now
-**
-** Revision 1.3  2000/07/10 05:29:03  matt
-** cleaned up some mirroring issues
-**
-** Revision 1.2  2000/07/06 02:48:43  matt
-** clearly labelled structure members
-**
-** Revision 1.1  2000/07/05 05:05:18  matt
-** initial revision
-**
-*/

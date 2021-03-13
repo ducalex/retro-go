@@ -17,7 +17,7 @@
 ** must bear this legend.
 **
 **
-** map78.c
+** map078.c
 **
 ** mapper 78 interface
 ** $Id: map078.c,v 1.2 2001/04/27 14:37:11 neil Exp $
@@ -56,9 +56,9 @@ static void map78_write(uint32 address, uint8 value)
    }
 }
 
-static void map78_init(void)
+static void map78_init(rom_t *cart)
 {
-   fourscreen = (nes_getptr()->cart->flags & ROM_FLAG_FOURSCREEN);
+   fourscreen = cart->flags & ROM_FLAG_FOURSCREEN;
 }
 
 static mem_write_handler_t map78_memwrite[] =

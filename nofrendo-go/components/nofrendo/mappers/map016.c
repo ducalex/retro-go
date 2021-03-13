@@ -17,9 +17,9 @@
 ** must bear this legend.
 **
 **
-** map16.c
+** map016.c
 **
-** mapper 16 interface
+** Bandai mapper interface
 ** $Id: map016.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
@@ -41,10 +41,9 @@ typedef struct
    unsigned char irqCounterEnabled;
 } mapper16Data;
 
-/* mapper 16: Bandai */
-
-static void map16_init(void)
+static void map16_init(rom_t *cart)
 {
+   UNUSED(cart);
    mmc_bankrom(16, 0x8000, 0);
    mmc_bankrom(16, 0xC000, MMC_LASTBANK);
    irq.counter = 0;
@@ -134,14 +133,14 @@ static mem_write_handler_t map16_memwrite[] =
 
 mapintf_t map16_intf =
 {
-   16, /* mapper number */
-   "Bandai", /* mapper name */
-   map16_init, /* init routine */
-   NULL, /* vblank callback */
-   map16_hblank, /* hblank callback */
-   map16_getstate, /* get state (snss) */
-   map16_setstate, /* set state (snss) */
-   NULL, /* memory read structure */
-   map16_memwrite, /* memory write structure */
-   NULL /* external sound device */
+   16,               /* mapper number */
+   "Bandai",         /* mapper name */
+   map16_init,       /* init routine */
+   NULL,             /* vblank callback */
+   map16_hblank,     /* hblank callback */
+   map16_getstate,   /* get state (snss) */
+   map16_setstate,   /* set state (snss) */
+   NULL,             /* memory read structure */
+   map16_memwrite,   /* memory write structure */
+   NULL              /* external sound device */
 };

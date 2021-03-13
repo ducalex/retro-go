@@ -17,16 +17,15 @@
 ** must bear this legend.
 **
 **
-** map33.c
+** map033.c
 **
-** mapper 33 interface
+** Taito TC0190 mapper interface
 ** $Id: map033.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>
 #include <mmc.h>
 
-/* mapper 33: Taito TC0190*/
 static void map33_write(uint32 address, uint8 value)
 {
    int page = (address >> 13) & 3;
@@ -94,51 +93,14 @@ static mem_write_handler_t map33_memwrite[] =
 
 mapintf_t map33_intf =
 {
-   33, /* mapper number */
-   "Taito TC0190", /* mapper name */
-   NULL, /* init routine */
-   NULL, /* vblank callback */
-   NULL, /* hblank callback */
-   NULL, /* get state (snss) */
-   NULL, /* set state (snss) */
-   NULL, /* memory read structure */
-   map33_memwrite, /* memory write structure */
-   NULL /* external sound device */
+   33,               /* mapper number */
+   "Taito TC0190",   /* mapper name */
+   NULL,             /* init routine */
+   NULL,             /* vblank callback */
+   NULL,             /* hblank callback */
+   NULL,             /* get state (snss) */
+   NULL,             /* set state (snss) */
+   NULL,             /* memory read structure */
+   map33_memwrite,   /* memory write structure */
+   NULL              /* external sound device */
 };
-
-/*
-** $Log: map033.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.1  2000/10/24 12:19:33  matt
-** changed directory structure
-**
-** Revision 1.7  2000/10/22 19:17:46  matt
-** mapper cleanups galore
-**
-** Revision 1.6  2000/10/22 15:03:13  matt
-** simplified mirroring
-**
-** Revision 1.5  2000/10/21 19:33:38  matt
-** many more cleanups
-**
-** Revision 1.4  2000/07/15 23:52:19  matt
-** rounded out a bunch more mapper interfaces
-**
-** Revision 1.3  2000/07/10 05:29:03  matt
-** cleaned up some mirroring issues
-**
-** Revision 1.2  2000/07/06 02:48:43  matt
-** clearly labelled structure members
-**
-** Revision 1.1  2000/07/06 01:01:56  matt
-** initial revision
-**
-*/

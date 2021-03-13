@@ -17,7 +17,7 @@
 ** must bear this legend.
 **
 **
-** map70.c
+** map070.c
 **
 ** mapper 70 interface
 ** $Id: map070.c,v 1.2 2001/04/27 14:37:11 neil Exp $
@@ -60,9 +60,9 @@ static void map70_write(uint32 address, uint8 value)
    }
 }
 
-static void map70_init(void)
+static void map70_init(rom_t *cart)
 {
-   fourscreen = (nes_getptr()->cart->flags & ROM_FLAG_FOURSCREEN);
+   fourscreen = cart->flags & ROM_FLAG_FOURSCREEN;
 }
 
 static mem_write_handler_t map70_memwrite[] =

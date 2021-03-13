@@ -17,9 +17,9 @@
 ** must bear this legend.
 **
 **
-** map65.c
+** map065.c
 **
-** mapper 65 interface
+** Irem H-3001 mapper interface
 ** $Id: map065.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
@@ -34,8 +34,10 @@ static struct
    uint8 low, high;
 } irq;
 
-static void map65_init(void)
+static void map65_init(rom_t *cart)
 {
+   UNUSED(cart);
+
    irq.counter = 0;
    irq.enabled = false;
    irq.low = irq.high = 0;
@@ -44,7 +46,6 @@ static void map65_init(void)
 
 /* TODO: shouldn't there be some kind of HBlank callback??? */
 
-/* mapper 65: Irem H-3001*/
 static void map65_write(uint32 address, uint8 value)
 {
    int range = address & 0xF000;
@@ -99,45 +100,14 @@ static mem_write_handler_t map65_memwrite[] =
 
 mapintf_t map65_intf =
 {
-   65, /* mapper number */
-   "Irem H-3001", /* mapper name */
-   map65_init, /* init routine */
-   NULL, /* vblank callback */
-   NULL, /* hblank callback */
-   NULL, /* get state (snss) */
-   NULL, /* set state (snss) */
-   NULL, /* memory read structure */
-   map65_memwrite, /* memory write structure */
-   NULL /* external sound device */
+   65,               /* mapper number */
+   "Irem H-3001",    /* mapper name */
+   map65_init,       /* init routine */
+   NULL,             /* vblank callback */
+   NULL,             /* hblank callback */
+   NULL,             /* get state (snss) */
+   NULL,             /* set state (snss) */
+   NULL,             /* memory read structure */
+   map65_memwrite,   /* memory write structure */
+   NULL              /* external sound device */
 };
-
-/*
-** $Log: map065.c,v $
-** Revision 1.2  2001/04/27 14:37:11  neil
-** wheeee
-**
-** Revision 1.1  2001/04/27 12:54:40  neil
-** blah
-**
-** Revision 1.1.1.1  2001/04/27 07:03:54  neil
-** initial
-**
-** Revision 1.1  2000/10/24 12:19:33  matt
-** changed directory structure
-**
-** Revision 1.5  2000/10/22 19:17:46  matt
-** mapper cleanups galore
-**
-** Revision 1.4  2000/10/21 19:33:38  matt
-** many more cleanups
-**
-** Revision 1.3  2000/10/10 13:58:17  matt
-** stroustrup squeezing his way in the door
-**
-** Revision 1.2  2000/07/06 02:48:43  matt
-** clearly labelled structure members
-**
-** Revision 1.1  2000/07/06 01:01:56  matt
-** initial revision
-**
-*/

@@ -50,8 +50,10 @@ static void map193_reg_write(uint32 address, uint8 value)
    }
 }
 
-static void map193_init(void)
+static void map193_init(rom_t *cart)
 {
+   UNUSED(cart);
+
    mmc_bankrom(8, 0xA000, 0xD);
    mmc_bankrom(8, 0xC000, 0xE);
    mmc_bankrom(8, 0xE000, 0xF);
