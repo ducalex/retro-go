@@ -30,28 +30,18 @@
 #include "mmc.h"
 #include "rom.h"
 
-#define  MMC_8KPRG         (mmc.prg_banks * 2)
-#define  MMC_16KPRG        (mmc.prg_banks)
-#define  MMC_32KPRG        (mmc.prg_banks / 2)
-#define  MMC_8KCHR         (mmc.chr_banks)
-#define  MMC_4KCHR         (mmc.chr_banks * 2)
-#define  MMC_2KCHR         (mmc.chr_banks * 4)
-#define  MMC_1KCHR         (mmc.chr_banks * 8)
+#define  MMC_8KPRG         (prg_banks * 2)
+#define  MMC_16KPRG        (prg_banks)
+#define  MMC_32KPRG        (prg_banks / 2)
+#define  MMC_8KCHR         (chr_banks)
+#define  MMC_4KCHR         (chr_banks * 2)
+#define  MMC_2KCHR         (chr_banks * 4)
+#define  MMC_1KCHR         (chr_banks * 8)
 
-static mmc_t mmc;
-
-
-void mmc_setcontext(mmc_t *src_mmc)
-{
-   ASSERT(src_mmc);
-   mmc = *src_mmc;
-}
-
-void mmc_getcontext(mmc_t *dest_mmc)
-{
-   ASSERT(dest_mmc);
-   *dest_mmc = mmc;
-}
+static map_t mapper;
+static rom_t *cart;
+static int prg_banks;
+static int chr_banks;
 
 /* Map a pointer into the address space */
 void mmc_bankptr(int size, uint32 address, int bank, uint8 *ptr)
@@ -93,59 +83,46 @@ void mmc_bankptr(int size, uint32 address, int bank, uint8 *ptr)
 /* PRG-ROM bankswitching */
 void mmc_bankrom(int size, uint32 address, int bank)
 {
-   mmc_bankptr(size, address, bank, mmc.cart->prg_rom);
+   mmc_bankptr(size, address, bank, cart->prg_rom);
 }
 
 /* PRG-RAM bankswitching */
 void mmc_bankwram(int size, uint32 address, int bank)
 {
-   mmc_bankptr(size, address, bank, mmc.cart->prg_ram);
+   mmc_bankptr(size, address, bank, cart->prg_ram);
 }
 
-/* CHR-ROM bankswitching */
+/* CHR-ROM/RAM bankswitching */
 void mmc_bankvrom(int size, uint32 address, int bank)
 {
+   uint8 *chr = cart->chr_rom ?: cart->chr_ram;
+
    switch (size)
    {
    case 1:
       bank = (bank >= 0 ? bank : MMC_1KCHR + bank) % MMC_1KCHR;
-      ppu_setpage(1, address >> 10, &mmc.chr[bank << 10] - address);
+      ppu_setpage(1, address >> 10, &chr[bank << 10] - address);
       break;
 
    case 2:
       bank = (bank >= 0 ? bank : MMC_2KCHR + bank) % MMC_2KCHR;
-      ppu_setpage(2, address >> 10, &mmc.chr[bank << 11] - address);
+      ppu_setpage(2, address >> 10, &chr[bank << 11] - address);
       break;
 
    case 4:
       bank = (bank >= 0 ? bank : MMC_4KCHR + bank) % MMC_4KCHR;
-      ppu_setpage(4, address >> 10, &mmc.chr[bank << 12] - address);
+      ppu_setpage(4, address >> 10, &chr[bank << 12] - address);
       break;
 
    case 8:
       bank = (bank >= 0 ? bank : MMC_8KCHR + bank) % MMC_8KCHR;
-      ppu_setpage(8, 0, &mmc.chr[bank << 13]);
+      ppu_setpage(8, 0, &chr[bank << 13]);
       break;
 
    default:
       MESSAGE_ERROR("MMC: Invalid CHR bank size %d\n", size);
       abort();
    }
-}
-
-/* Check to see if this mapper is supported */
-mapintf_t *mmc_peek(int map_num)
-{
-   mapintf_t **map_ptr = (mapintf_t **)mappers;
-
-   while (NULL != *map_ptr)
-   {
-      if ((*map_ptr)->number == map_num)
-         return *map_ptr;
-      map_ptr++;
-   }
-
-   return NULL;
 }
 
 static void mmc_setpages(void)
@@ -160,9 +137,9 @@ static void mmc_setpages(void)
    /* Switch CHR ROM/RAM into CPU space */
    mmc_bankvrom(8, 0x0000, 0);
 
-   if (mmc.cart->flags & ROM_FLAG_FOURSCREEN)
+   if (cart->flags & ROM_FLAG_FOURSCREEN)
       ppu_setmirroring(PPU_MIRROR_FOUR);
-   else if (mmc.cart->flags & ROM_FLAG_VERTICAL)
+   else if (cart->flags & ROM_FLAG_VERTICAL)
       ppu_setmirroring(PPU_MIRROR_VERT);
    else
       ppu_setmirroring(PPU_MIRROR_HORI);
@@ -175,8 +152,8 @@ void mmc_reset(void)
 
    ppu_setlatchfunc(NULL);
 
-   if (mmc.intf->init)
-      mmc.intf->init(mmc.cart);
+   if (mapper.init)
+      mapper.init(cart);
 }
 
 void mmc_shutdown()
@@ -184,38 +161,29 @@ void mmc_shutdown()
 
 }
 
-mmc_t *mmc_init(rom_t *cart)
+map_t *mmc_init(rom_t *_cart)
 {
-   memset(&mmc, 0, sizeof(mmc_t));
+   int mapper_number = _cart->mapper_number;
 
-   mmc.intf = mmc_peek(cart->mapper_number);
-   if (NULL == mmc.intf)
+   mapper.number = -1;
+
+   for (int i = 0; mappers[i]; i++)
    {
-      MESSAGE_ERROR("MMC: Unsupported mapper %03d\n", cart->mapper_number);
-      return NULL;
+      if (mappers[i]->number == mapper_number)
+      {
+         mapper = *mappers[i]; // Copy
+         cart = _cart;
+         chr_banks = cart->chr_rom ? cart->chr_rom_banks : cart->chr_ram_banks;
+         prg_banks = cart->prg_rom_banks;
+
+         MESSAGE_INFO("MMC: Mapper %s (iNES %03d)\n", mapper.name, mapper.number);
+         MESSAGE_INFO("MMC: PRG-ROM: %d banks\n", cart->prg_rom_banks);
+         MESSAGE_INFO("MMC: %s: %d banks\n", cart->chr_rom ? "CHR-ROM" : "CHR-RAM", chr_banks);
+
+         return &mapper;
+      }
    }
 
-   MESSAGE_INFO("MMC: Mapper %s (iNES %03d)\n", mmc.intf->name, mmc.intf->number);
-
-   mmc.cart = cart;
-   mmc.prg = cart->prg_rom;
-   mmc.prg_banks = cart->prg_rom_banks;
-
-   MESSAGE_INFO("MMC: PRG-ROM: %d banks\n", cart->prg_rom_banks);
-
-   if (cart->chr_rom)
-   {
-      mmc.chr = cart->chr_rom;
-      mmc.chr_banks = cart->chr_rom_banks;
-      MESSAGE_INFO("MMC: CHR-ROM: %d banks\n", cart->chr_rom_banks);
-   }
-   else
-   {
-      mmc.chr = cart->chr_ram;
-      mmc.chr_banks = cart->chr_ram_banks;
-      MESSAGE_INFO("MMC: CHR-RAM: %d banks\n", cart->chr_ram_banks);
-   }
-
-
-   return &mmc;
+   MESSAGE_ERROR("MMC: Unsupported mapper %03d\n", mapper_number);
+   return NULL;
 }

@@ -201,7 +201,7 @@ int state_save(char* fn)
 
    /****************************************************/
 
-   if (machine->mmc->intf->number > 0)
+   if (machine->mapper->number > 0)
    {
       MESSAGE_INFO("  - Saving mapper block\n");
 
@@ -229,9 +229,9 @@ int state_save(char* fn)
          buffer[8 + (i * 2) + 1] = ((uint8 *) &temp)[1];
       }
 
-      if (machine->mmc->intf->get_state)
+      if (machine->mapper->get_state)
       {
-         machine->mmc->intf->get_state(&state);
+         machine->mapper->get_state(&state);
          memcpy(buffer + 0x18, state, 0x80);
       }
 
@@ -400,8 +400,8 @@ int state_load(char* fn)
                ppu_setpage(1, i, machine->cart->chr_ram);
          }
 
-         if (machine->mmc->intf->set_state)
-            machine->mmc->intf->set_state(buffer + 0x18);
+         if (machine->mapper->set_state)
+            machine->mapper->set_state(buffer + 0x18);
       }
 
 

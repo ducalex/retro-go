@@ -43,18 +43,6 @@ int nofrendo_start(const char *filename, int region, int sample_rate, bool stere
     if (osd_init())
         return -1;
 
-    if (region == NES_AUTO)
-    {
-        if (
-            strstr(filename, "(E)") != NULL ||
-            strstr(filename, "(Europe)") != NULL ||
-            strstr(filename, "(A)") != NULL ||
-            strstr(filename, "(Australia)") != NULL)
-            region = NES_PAL;
-        else
-            region = NES_NTSC;
-    }
-
     if (!nes_init(region, sample_rate, stereo))
     {
         MESSAGE_ERROR("Failed to create NES instance.\n");

@@ -129,7 +129,7 @@ static void map19_hblank(int scanline)
 {
    if (irq.enabled)
    {
-      irq.counter += nes_getptr()->cycles_per_line;
+      irq.counter += NES_CYCLES_PER_SCANLINE;
 
       if (irq.counter >= 0x7FFF)
       {

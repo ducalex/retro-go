@@ -31,15 +31,14 @@
 static mem_t mem;
 
 
-static void write_protect(uint32 address, uint8 value)
+static void dummy_write(uint32 address, uint8 value)
 {
-   /* don't allow write to go through */
    UNUSED(address);
    UNUSED(value);
 }
 
 /* read/write handlers for standard NES */
-static mem_read_handler_t read_handlers[] =
+static const mem_read_handler_t read_handlers[] =
 {
    { 0x2000, 0x3FFF, ppu_read   },
    { 0x4000, 0x4015, apu_read   },
@@ -47,74 +46,15 @@ static mem_read_handler_t read_handlers[] =
    LAST_MEMORY_HANDLER
 };
 
-static mem_write_handler_t write_handlers[] =
+static const mem_write_handler_t write_handlers[] =
 {
    { 0x2000, 0x3FFF, ppu_write   },
    { 0x4014, 0x4014, ppu_write   },
    { 0x4016, 0x4016, input_write },
    { 0x4000, 0x4017, apu_write   },
-   { 0x8000, 0xFFFF, write_protect},
+   { 0x8000, 0xFFFF, dummy_write },
    LAST_MEMORY_HANDLER
 };
-
-void mem_refresh()
-{
-   mapintf_t *intf = nes_getptr()->mmc ? nes_getptr()->mmc->intf : NULL;
-   int num_read_handlers = 0, num_write_handlers = 0;
-
-   memset(&mem.read_handlers, 0, sizeof(mem.read_handlers));
-   memset(&mem.write_handlers, 0, sizeof(mem.write_handlers));
-
-   // Reset our map to pages set via mem_setpage
-   for (int i = 0; i < MEM_PAGECOUNT; i++)
-   {
-      mem.pages_read[i]  = mem.pages[i];
-      mem.pages_write[i] = mem.pages[i];
-   }
-
-   // Special MMC handlers
-   if (intf != NULL)
-   {
-      for (int i = 0, rc = 0, wc = 0; i < MEM_HANDLERS_MAX; i++)
-      {
-         if (intf->mem_read && intf->mem_read[rc].read_func)
-            memcpy(&mem.read_handlers[num_read_handlers++], &intf->mem_read[rc++],
-                  sizeof(mem_read_handler_t));
-
-         if (intf->mem_write && intf->mem_write[wc].write_func)
-            memcpy(&mem.write_handlers[num_write_handlers++], &intf->mem_write[wc++],
-                  sizeof(mem_write_handler_t));
-      }
-   }
-
-   // Special IO handlers
-   for (int i = 0, rc = 0, wc = 0; i < MEM_HANDLERS_MAX; i++)
-   {
-      if (read_handlers[rc].read_func)
-         memcpy(&mem.read_handlers[num_read_handlers++], &read_handlers[rc++],
-               sizeof(mem_read_handler_t));
-
-      if (write_handlers[wc].write_func)
-         memcpy(&mem.write_handlers[num_write_handlers++], &write_handlers[wc++],
-               sizeof(mem_write_handler_t));
-   }
-
-   // Mark pages if they contain handlers (used for fast access in nes6502)
-   for (mem_read_handler_t *mr = mem.read_handlers; mr->read_func != NULL; mr++)
-   {
-      for (int i = mr->min_range; i < mr->max_range; i++)
-         mem.pages_read[i >> MEM_PAGESHIFT] = MEM_PAGE_USE_HANDLERS;
-   }
-
-   for (mem_write_handler_t *mw = mem.write_handlers; mw->write_func != NULL; mw++)
-   {
-      for (int i = mw->min_range; i < mw->max_range; i++)
-         mem.pages_write[i >> MEM_PAGESHIFT] = MEM_PAGE_USE_HANDLERS;
-   }
-
-   ASSERT(num_read_handlers <= MEM_HANDLERS_MAX);
-   ASSERT(num_write_handlers <= MEM_HANDLERS_MAX);
-}
 
 /* Set 2KB memory page */
 IRAM_ATTR void mem_setpage(uint32 page, uint8 *ptr)
@@ -217,18 +157,59 @@ IRAM_ATTR uint32 mem_getword(uint32 address)
 
 void mem_reset(void)
 {
-   memset(&mem.pages, 0, sizeof(mem.pages));
-   memset(&mem.ram, 0, sizeof(mem.ram));
+   memset(&mem, 0, sizeof(mem));
+
    mem_setpage(0, mem.ram);
    mem_setpage(1, mem.ram); // $800 - $FFF mirror
    mem_setpage(2, mem.ram); // $1000 - $07FF mirror
    mem_setpage(3, mem.ram); // $1800 - $1FFF mirror
-   mem_refresh();
+
+   int num_read_handlers = 0, num_write_handlers = 0;
+   map_t *mapper = nes_getptr()->mapper;
+
+   // NES cartridge handlers
+   if (mapper && (mapper->mem_read || mapper->mem_write))
+   {
+      for (int i = 0, rc = 0, wc = 0; i < MEM_HANDLERS_MAX; i++)
+      {
+         if (mapper->mem_read && mapper->mem_read[rc].read_func)
+            mem.read_handlers[num_read_handlers++] = mapper->mem_read[rc++];
+
+         if (mapper->mem_write && mapper->mem_write[wc].write_func)
+            mem.write_handlers[num_write_handlers++] = mapper->mem_write[wc++];
+      }
+   }
+
+   // NES hardware handlers
+   for (int i = 0, rc = 0, wc = 0; i < MEM_HANDLERS_MAX; i++)
+   {
+      if (read_handlers[rc].read_func)
+         mem.read_handlers[num_read_handlers++] = read_handlers[rc++];
+
+      if (write_handlers[wc].write_func)
+         mem.write_handlers[num_write_handlers++] = write_handlers[wc++];
+   }
+
+   // Mark pages if they contain handlers (used for fast access in nes6502)
+   for (mem_read_handler_t *mr = mem.read_handlers; mr->read_func != NULL; mr++)
+   {
+      for (int i = mr->min_range; i < mr->max_range; i++)
+         mem.pages_read[i >> MEM_PAGESHIFT] = MEM_PAGE_USE_HANDLERS;
+   }
+
+   for (mem_write_handler_t *mw = mem.write_handlers; mw->write_func != NULL; mw++)
+   {
+      for (int i = mw->min_range; i < mw->max_range; i++)
+         mem.pages_write[i >> MEM_PAGESHIFT] = MEM_PAGE_USE_HANDLERS;
+   }
+
+   ASSERT(num_read_handlers <= MEM_HANDLERS_MAX);
+   ASSERT(num_write_handlers <= MEM_HANDLERS_MAX);
 }
 
 mem_t *mem_create()
 {
-   memset(&mem, 0, sizeof(mem));
+   // memset(&mem, 0, sizeof(mem));
    mem_reset();
    return &mem;
 }

@@ -206,7 +206,7 @@ IRAM_ATTR uint8 ppu_read(uint32 address)
       {
          ppu.vdata_latch = 0xFF;
          MESSAGE_DEBUG("VRAM read at $%04X, scanline %d\n",
-                        ppu.vaddr, nes_getptr()->scanline);
+                        ppu.vaddr, NES_CURRENT_SCANLINE);
       }
       else
       {
@@ -323,7 +323,7 @@ IRAM_ATTR void ppu_write(uint32 address, uint8 value)
          if ((ppu.bg_on || ppu.obj_on) && !ppu.vram_accessible)
          {
             MESSAGE_DEBUG("VRAM write to $%04X, scanline %d\n",
-                           ppu.vaddr, nes_getptr()->scanline);
+                           ppu.vaddr, NES_CURRENT_SCANLINE);
             PPU_MEM_WRITE(ppu.vaddr, 0xFF); /* corrupt */
          }
          else

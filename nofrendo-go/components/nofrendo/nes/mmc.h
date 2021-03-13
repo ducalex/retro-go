@@ -26,8 +26,8 @@
 #ifndef _NES_MMC_H_
 #define _NES_MMC_H_
 
-typedef struct mapintf_s mapintf_t;
-typedef struct mmc_s mmc_t;
+typedef const struct mapper_s mapintf_t;
+typedef struct mapper_s map_t;
 
 #include <nofrendo.h>
 #include "state.h"
@@ -35,7 +35,7 @@ typedef struct mmc_s mmc_t;
 #include "rom.h"
 #include "mem.h"
 
-struct mapintf_s
+struct mapper_s
 {
    int number;
    const char *name;
@@ -49,28 +49,14 @@ struct mapintf_s
    apuext_t *sound_ext;
 };
 
-struct mmc_s
-{
-   mapintf_t *intf;
-   rom_t *cart;
-   uint8 *prg, *chr;
-   uint8 prg_banks, chr_banks;
-};
-
 #define MMC_LASTBANK      -1
 
 extern void mmc_bankwram(int size, uint32 address, int bank);
 extern void mmc_bankvrom(int size, uint32 address, int bank);
 extern void mmc_bankrom(int size, uint32 address, int bank);
 
-extern mmc_t *mmc_init(rom_t *cart);
-extern void mmc_refresh(void);
+extern map_t *mmc_init(rom_t *cart);
 extern void mmc_reset(void);
 extern void mmc_shutdown(void);
-
-extern mapintf_t *mmc_peek(int map_num);
-
-extern void mmc_getcontext(mmc_t *dest_mmc);
-extern void mmc_setcontext(mmc_t *src_mmc);
 
 #endif /* _NES_MMC_H_ */

@@ -793,8 +793,6 @@ apu_t *apu_init(int sample_rate, bool stereo)
 {
    memset(&apu, 0, sizeof(apu_t));
 
-   apu.samples_per_frame = sample_rate / NES_REFRESH_RATE;
-   apu.cycle_rate = (float)NES_CPU_CLOCK / sample_rate;
    apu.sample_rate = sample_rate;
    apu.stereo = stereo;
    apu.ext = NULL;
@@ -806,8 +804,6 @@ apu_t *apu_init(int sample_rate, bool stereo)
    apu_setopt(APU_CHANNEL4_EN, true);
    apu_setopt(APU_CHANNEL5_EN, true);
    apu_setopt(APU_CHANNEL6_EN, true);
-
-   MESSAGE_INFO("APU: Ready! Sample rate = %d, stereo = %d\n", sample_rate, stereo);
 
    return &apu;
 }

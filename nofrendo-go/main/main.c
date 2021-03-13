@@ -388,25 +388,28 @@ void app_main(void)
     frames[0].palette = myPalette;
     frames[1] = frames[0];
 
-    int region, ret;
+    int region = NES_AUTO;
 
     switch (rg_settings_Region_get())
     {
-        case EMU_REGION_AUTO: region = NES_AUTO; break;
         case EMU_REGION_NTSC: region = NES_NTSC; break;
         case EMU_REGION_PAL:  region = NES_PAL;  break;
-        default: region = NES_NTSC; break;
+        default: region = NES_AUTO; break;
     }
 
-    MESSAGE_INFO("Nofrendo start!\n");
+    osd_init();
 
-    ret = nofrendo_start(app->romPath, region, AUDIO_SAMPLE_RATE, true);
-
-    switch (ret)
+    if (!nes_init(region, AUDIO_SAMPLE_RATE, true))
     {
-        case -1: RG_PANIC("Init failed.");
-        case -2: RG_PANIC("Unsupported ROM.");
-        case -3: RG_PANIC("ROM Loading failed.");
-        default: RG_PANIC("Nofrendo died!");
+        RG_PANIC("Init failed.");
     }
+
+    if (!nes_insertcart(app->romPath))
+    {
+        RG_PANIC("Unsupported ROM.");
+    }
+
+    nes_emulate();
+
+    RG_PANIC("Nofrendo died!");
 }
