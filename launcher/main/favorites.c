@@ -23,7 +23,8 @@ static void event_handler(gui_event_t event, tab_t *tab)
     if (event == TAB_INIT)
     {
         // I know this happens twice, this is needed for now...
-        favorites_load();
+        // Update 2021: I don't remember WHY it is needed, is it still the case..?
+        // favorites_load();
     }
 
     if (file == NULL)
@@ -72,13 +73,13 @@ void favorites_load()
     while (token != NULL)
     {
         favorite_t *favorite = &favorites[pos];
+        listbox_item_t *listitem = &fav_tab->listbox.items[pos];
 
         if (emulator_build_file_object(token, &favorite->file))
         {
-            strcpy(favorite->path, token);
-            sprintf(favorite->name, "[%-3s] %s", favorite->file.ext, favorite->file.name);
-            strcpy(fav_tab->listbox.items[pos].text, favorite->name);
-            fav_tab->listbox.items[pos].arg = &favorite->file;
+            snprintf(favorite->path, 168, "%s", token);
+            snprintf(listitem->text, 128, "[%-3s] %s", favorite->file.ext, favorite->file.name);
+            listitem->arg = &favorite->file;
             pos++;
         }
         else

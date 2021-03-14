@@ -238,7 +238,7 @@ void retro_loop()
                     }
                 }
                 else if (sel == 3) {
-                    //
+                    rg_fs_delete(CRC_CACHE_PATH);
                 }
                 gui_redraw();
             }
