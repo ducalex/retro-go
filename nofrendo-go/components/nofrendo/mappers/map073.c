@@ -35,9 +35,7 @@ static struct
    uint32 counter;
 } irq;
 
-/**************************/
-/* Mapper #73: Salamander */
-/**************************/
+
 static void map73_init(rom_t *cart)
 {
    UNUSED(cart);
@@ -46,21 +44,14 @@ static void map73_init(rom_t *cart)
    irq.counter = 0x0000;
 }
 
-/****************************************/
-/* Mapper #73 callback for IRQ handling */
-/****************************************/
-static void map73_hblank(int vblank)
+static void map73_hblank(int scanline)
 {
-   /* Counter is M2 based so it doesn't matter whether */
-   /* the PPU is in its VBlank period or not           */
-   UNUSED (vblank);
+   UNUSED(scanline);
 
    /* Increment the counter if it is enabled and check for strike */
    if (irq.enabled)
    {
-      /* Is there a constant for cycles per scanline? */
-      /* If so, someone ought to substitute it here   */
-      irq.counter = irq.counter + 114;
+      irq.counter += NES_CYCLES_PER_SCANLINE;
 
       /* Counter triggered on overflow into Q16 */
       if (irq.counter & 0x10000)
@@ -69,7 +60,7 @@ static void map73_hblank(int vblank)
             irq.counter &= 0xFFFF;
 
             /* Trigger the IRQ */
-            nes6502_irq ();
+            nes6502_irq();
 
             /* Shut off IRQ counter */
             irq.enabled = false;
@@ -103,8 +94,7 @@ static void map73_write(uint32 address, uint8 value)
    }
 }
 
-
-static mem_write_handler_t map73_memwrite[] =
+static const mem_write_handler_t map73_memwrite[] =
 {
    { 0x8000, 0xFFFF, map73_write },
    LAST_MEMORY_HANDLER

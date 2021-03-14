@@ -41,9 +41,11 @@ typedef struct
    unsigned char irqCounterEnabled;
 } mapper16Data;
 
+
 static void map16_init(rom_t *cart)
 {
    UNUSED(cart);
+
    mmc_bankrom(16, 0x8000, 0);
    mmc_bankrom(16, 0xC000, MMC_LASTBANK);
    irq.counter = 0;
@@ -95,17 +97,14 @@ static void map16_write(uint32 address, uint8 value)
    }
 }
 
-static void map16_hblank(int vblank)
+static void map16_hblank(int scanline)
 {
-   UNUSED(vblank);
+   UNUSED(scanline);
 
-   if (irq.enabled)
+   if (irq.enabled && irq.counter)
    {
-      if (irq.counter)
-      {
-         if (0 == --irq.counter)
-            nes6502_irq();
-      }
+      if (0 == --irq.counter)
+         nes6502_irq();
    }
 }
 
@@ -123,7 +122,7 @@ static void map16_setstate(void *state)
    irq.enabled = ((mapper16Data*)state)->irqCounterEnabled;
 }
 
-static mem_write_handler_t map16_memwrite[] =
+static const mem_write_handler_t map16_memwrite[] =
 {
    { 0x6000, 0x600D, map16_write },
    { 0x7FF0, 0x7FFD, map16_write },

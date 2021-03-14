@@ -89,6 +89,7 @@ struct mapper5Data
    unsigned char dummy; /* needed for some compilers; remove if any members are added */
 };
 
+
 static void prg_setbank(int size, uint32 address, int bank)
 {
    bool rom = (bank & 0x80);
@@ -520,7 +521,7 @@ static void map5_setstate(void *state)
    //
 }
 
-static mem_write_handler_t map5_memwrite[] =
+static const mem_write_handler_t map5_memwrite[] =
 {
    // { 0x5000, 0x50FF, map5_write }, // sound
    { 0x5100, 0x5BFF, map5_write },
@@ -529,7 +530,7 @@ static mem_write_handler_t map5_memwrite[] =
    LAST_MEMORY_HANDLER
 };
 
-static mem_read_handler_t map5_memread[] =
+static const mem_read_handler_t map5_memread[] =
 {
    { 0x5100, 0x5BFF, map5_read },
    { 0x5C00, 0x5FFF, map5_exram_read },

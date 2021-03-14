@@ -58,7 +58,7 @@ static void netplay_handler(netplay_event_t event, void *arg)
             // displayScalingMode = RG_DISPLAY_SCALING_FILL;
             // displayFilterMode = RG_DISPLAY_FILTER_NONE;
             // forceVideoRefresh = true;
-            nes_reset(ZERO_RESET);
+            nes_reset(true);
         }
 
         netplay = new_netplay;
@@ -100,7 +100,7 @@ static bool load_state_handler(char *pathName)
 {
     if (state_load(pathName) < 0)
     {
-        nes_reset(HARD_RESET);
+        nes_reset(true);
         return false;
     }
     return true;
@@ -108,7 +108,7 @@ static bool load_state_handler(char *pathName)
 
 static bool reset_handler(bool hard)
 {
-    nes_reset(hard ? HARD_RESET : SOFT_RESET);
+    nes_reset(hard);
     return true;
 }
 

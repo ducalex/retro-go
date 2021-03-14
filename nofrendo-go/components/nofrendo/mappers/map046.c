@@ -41,8 +41,8 @@ static uint8 chr_high_bank;
 static void map46_set_banks(void)
 {
   /* Set the PRG and CHR pages */
-  mmc_bankrom (32, 0x8000, (prg_high_bank << 1) | (prg_low_bank));
-  mmc_bankvrom (8, 0x0000, (chr_high_bank << 3) | (chr_low_bank));
+  mmc_bankrom(32, 0x8000, (prg_high_bank << 1) | (prg_low_bank));
+  mmc_bankvrom(8, 0x0000, (chr_high_bank << 3) | (chr_low_bank));
 }
 
 /*********************************************************/
@@ -61,7 +61,7 @@ static void map46_init(rom_t *cart)
 /******************************************/
 /* Mapper #46 write handler ($6000-$FFFF) */
 /******************************************/
-static void map46_write (uint32 address, uint8 value)
+static void map46_write(uint32 address, uint8 value)
 {
    /* $8000-$FFFF: D6-D4 = lower three bits of CHR bank */
    /*              D0    = low bit of PRG bank          */
@@ -81,7 +81,7 @@ static void map46_write (uint32 address, uint8 value)
    }
 }
 
-static mem_write_handler_t map46_memwrite[] =
+static const mem_write_handler_t map46_memwrite[] =
 {
    { 0x6000, 0xFFFF, map46_write },
    LAST_MEMORY_HANDLER

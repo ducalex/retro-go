@@ -26,6 +26,7 @@
 #include <nofrendo.h>
 #include <mmc.h>
 
+
 static void map79_write(uint32 address, uint8 value)
 {
    if ((address & 0x5100) == 0x4100)
@@ -43,7 +44,7 @@ static void map79_init(rom_t *cart)
    mmc_bankvrom(8, 0x0000, 0);
 }
 
-static mem_write_handler_t map79_memwrite[] =
+static const mem_write_handler_t map79_memwrite[] =
 {
    { 0x4100, 0x5FFF, map79_write }, /* ????? incorrect range ??? */
    LAST_MEMORY_HANDLER

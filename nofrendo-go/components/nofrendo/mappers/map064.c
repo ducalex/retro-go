@@ -29,12 +29,13 @@
 
 static struct
 {
-   int counter, latch;
+   uint16 counter, latch;
    bool enabled, reset;
 } irq;
 
-static uint8 command = 0;
+static uint16 command = 0;
 static uint16 vrombase = 0x0000;
+
 
 static void map64_hblank(int scanline)
 {
@@ -49,7 +50,7 @@ static void map64_hblank(int scanline)
       {
          irq.counter = irq.latch;
 
-         if (true == irq.enabled)
+         if (irq.enabled)
             nes6502_irq();
 
          irq.reset = true;
@@ -169,7 +170,7 @@ static void map64_init(rom_t *cart)
    irq.reset = irq.enabled = false;
 }
 
-static mem_write_handler_t map64_memwrite[] =
+static const mem_write_handler_t map64_memwrite[] =
 {
    { 0x8000, 0xFFFF, map64_write },
    LAST_MEMORY_HANDLER

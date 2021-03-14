@@ -65,7 +65,7 @@ static void map70_init(rom_t *cart)
    fourscreen = cart->flags & ROM_FLAG_FOURSCREEN;
 }
 
-static mem_write_handler_t map70_memwrite[] =
+static const mem_write_handler_t map70_memwrite[] =
 {
    { 0x8000, 0xFFFF, map70_write },
    LAST_MEMORY_HANDLER

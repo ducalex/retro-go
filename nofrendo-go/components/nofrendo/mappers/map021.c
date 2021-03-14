@@ -45,11 +45,11 @@ typedef struct
 
 static struct
 {
-   int counter, enabled;
-   int latch, wait_state;
+   bool enabled, wait_state;
+   int counter, latch;
 } irq;
 
-static int select_c000 = 0;
+static bool select_c000 = 0;
 static uint8 lownybbles[8];
 static uint8 highnybbles[8];
 
@@ -57,8 +57,9 @@ static uint8 highnybbles[8];
 static void vrc4_init(rom_t *cart)
 {
    UNUSED(cart);
-   irq.counter = irq.enabled = 0;
-   irq.latch = irq.wait_state = 0;
+
+   irq.enabled = irq.wait_state = 0;
+   irq.counter = irq.latch = 0;
 }
 
 static void vrc4_write(uint32 address, uint8 value)
@@ -149,9 +150,9 @@ static void vrc4_write(uint32 address, uint8 value)
    }
 }
 
-static void vrc4_hblank(int vblank)
+static void vrc4_hblank(int scanline)
 {
-   UNUSED(vblank);
+   UNUSED(scanline);
 
    if (irq.enabled)
    {
@@ -177,7 +178,7 @@ static void vrc4_setstate(void *state)
    irq.enabled = ((mapper21Data*)state)->irqCounterEnabled;
 }
 
-static mem_write_handler_t vrc4_memwrite[] =
+static const mem_write_handler_t vrc4_memwrite[] =
 {
    { 0x8000, 0xFFFF, vrc4_write },
    LAST_MEMORY_HANDLER

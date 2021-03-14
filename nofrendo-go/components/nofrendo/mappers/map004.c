@@ -181,7 +181,7 @@ static void map4_init(rom_t *cart)
    fourscreen = cart->flags & ROM_FLAG_FOURSCREEN;
 }
 
-static mem_write_handler_t map4_memwrite[] =
+static const mem_write_handler_t map4_memwrite[] =
 {
    { 0x8000, 0xFFFF, map4_write },
    LAST_MEMORY_HANDLER

@@ -29,6 +29,7 @@
 #include <mmc.h>
 #include <nes.h>
 
+
 static void map87_write(uint32 address, uint8 value)
 {
    UNUSED(address);
@@ -40,7 +41,7 @@ static void map87_write(uint32 address, uint8 value)
    mmc_bankvrom(8, 0x0000, (value & 3) >> 1);
 }
 
-static mem_write_handler_t map87_memwrite[] =
+static const mem_write_handler_t map87_memwrite[] =
 {
    { 0x6000, 0x7FFF, map87_write },
    LAST_MEMORY_HANDLER

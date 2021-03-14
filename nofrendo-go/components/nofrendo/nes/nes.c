@@ -143,7 +143,7 @@ bool nes_insertcart(const char *filename)
     nes_setregion(nes.region);
     nes_setcompathacks();
 
-    nes_reset(HARD_RESET);
+    nes_reset(true);
 
     return true;
 
@@ -159,11 +159,14 @@ bool nes_insertdisk(const char *filename)
 }
 
 /* Reset NES hardware */
-void nes_reset(reset_type_t reset_type)
+void nes_reset(bool hard_reset)
 {
-    if (nes.cart->chr_ram)
+    if (hard_reset)
     {
-        memset(nes.cart->chr_ram, 0, 0x2000 * nes.cart->chr_ram_banks);
+        if (nes.cart->chr_ram_banks > 0)
+            memset(nes.cart->chr_ram, 0, nes.cart->chr_ram_banks * ROM_CHR_BANK_SIZE);
+        if (nes.cart->prg_ram_banks > 0)
+            memset(nes.cart->prg_ram, 0, nes.cart->prg_ram_banks * ROM_CHR_BANK_SIZE);
     }
 
     apu_reset();
@@ -176,7 +179,7 @@ void nes_reset(reset_type_t reset_type)
     nes.scanline = 241;
     nes.cycles = 0;
 
-    MESSAGE_INFO("NES: System reset (%s)\n", (SOFT_RESET == reset_type) ? "soft" : "hard");
+    MESSAGE_INFO("NES: System reset (%s)\n", hard_reset ? "hard" : "soft");
 }
 
 /* Shutdown NES */

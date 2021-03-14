@@ -32,8 +32,8 @@
 
 static struct
 {
-   bool enabled;
-   uint32 counter;
+   uint16 enabled;
+   uint16 counter;
 } irq;
 
 /********************************/
@@ -54,10 +54,10 @@ static void map50_init(rom_t *cart)
    UNUSED(cart);
 
    /* Set the hardwired pages */
-   mmc_bankrom (8, 0x6000, 0x0F);
-   mmc_bankrom (8, 0x8000, 0x08);
-   mmc_bankrom (8, 0xA000, 0x09);
-   mmc_bankrom (8, 0xE000, 0x0B);
+   mmc_bankrom(8, 0x6000, 0x0F);
+   mmc_bankrom(8, 0x8000, 0x08);
+   mmc_bankrom(8, 0xA000, 0x09);
+   mmc_bankrom(8, 0xE000, 0x0B);
 
    /* Reset the IRQ counter */
    map50_irq_reset();
@@ -66,28 +66,24 @@ static void map50_init(rom_t *cart)
 /****************************************/
 /* Mapper #50 callback for IRQ handling */
 /****************************************/
-static void map50_hblank(int vblank)
+static void map50_hblank(int scanline)
 {
-   /* Counter is M2 based so it doesn't matter whether */
-   /* the PPU is in its VBlank period or not           */
-   UNUSED(vblank);
+   UNUSED(scanline);
 
    /* Increment the counter if it is enabled and check for strike */
    if (irq.enabled)
    {
-     /* Is there a constant for cycles per scanline? */
-     /* If so, someone ought to substitute it here   */
-     irq.counter = irq.counter + 114;
+      irq.counter += NES_CYCLES_PER_SCANLINE;
 
-     /* IRQ line is hooked to Q12 of the counter */
-     if (irq.counter & 0x1000)
-     {
-       /* Trigger the IRQ */
-       nes6502_irq ();
+      /* IRQ line is hooked to Q12 of the counter */
+      if (irq.counter & 0x1000)
+      {
+         /* Trigger the IRQ */
+         nes6502_irq();
 
-       /* Reset the counter */
-       map50_irq_reset ();
-     }
+         /* Reset the counter */
+         map50_irq_reset();
+      }
    }
 }
 
@@ -121,7 +117,7 @@ static void map50_write(uint32 address, uint8 value)
    }
 }
 
-static mem_write_handler_t map50_memwrite [] =
+static const mem_write_handler_t map50_memwrite[] =
 {
    { 0x4000, 0x5FFF, map50_write },
    LAST_MEMORY_HANDLER

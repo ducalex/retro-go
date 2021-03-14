@@ -27,6 +27,7 @@
 #include <mmc.h>
 #include <nes.h>
 
+
 static void map22_write(uint32 address, uint8 value)
 {
    int reg = address >> 12;
@@ -66,7 +67,7 @@ static void map22_write(uint32 address, uint8 value)
    }
 }
 
-static mem_write_handler_t map22_memwrite[] =
+static const mem_write_handler_t map22_memwrite[] =
 {
    { 0x8000, 0xFFFF, map22_write },
    LAST_MEMORY_HANDLER

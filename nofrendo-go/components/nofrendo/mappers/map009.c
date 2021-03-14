@@ -142,7 +142,7 @@ static void map9_setstate(void *state)
    regs[3]  = ((mapper9Data*)state)->lastE000Write;
 }
 
-static mem_write_handler_t map9_memwrite[] =
+static const mem_write_handler_t map9_memwrite[] =
 {
    { 0x8000, 0xFFFF, map9_write },
    LAST_MEMORY_HANDLER

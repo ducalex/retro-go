@@ -145,13 +145,6 @@ static void map18_write(uint32 address, uint8 value)
    }
 }
 
-
-static mem_write_handler_t map18_memwrite[] =
-{
-   { 0x8000, 0xFFFF, map18_write },
-   LAST_MEMORY_HANDLER
-};
-
 static void map18_getstate(void *state)
 {
    ((mapper18Data*)state)->irqCounterLowByte = irq.counter & 0xFF;
@@ -165,6 +158,12 @@ static void map18_setstate(void *state)
                        | ((mapper18Data*)state)->irqCounterLowByte;
    irq.enabled = ((mapper18Data*)state)->irqCounterEnabled;
 }
+
+static const mem_write_handler_t map18_memwrite[] =
+{
+   { 0x8000, 0xFFFF, map18_write },
+   LAST_MEMORY_HANDLER
+};
 
 mapintf_t map18_intf =
 {

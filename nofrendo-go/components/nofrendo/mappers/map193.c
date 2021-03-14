@@ -28,6 +28,7 @@
 #include <mmc.h>
 #include <nes.h>
 
+
 static void map193_reg_write(uint32 address, uint8 value)
 {
    switch (address & 0x03)
@@ -59,7 +60,7 @@ static void map193_init(rom_t *cart)
    mmc_bankrom(8, 0xE000, 0xF);
 }
 
-static mem_write_handler_t map193_memwrite[] =
+static const mem_write_handler_t map193_memwrite[] =
 {
    {0x6000, 0x6004, map193_reg_write},
    LAST_MEMORY_HANDLER

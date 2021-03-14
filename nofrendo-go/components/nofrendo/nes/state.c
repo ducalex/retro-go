@@ -140,7 +140,7 @@ int state_save(char* fn)
 
    /****************************************************/
 
-   if (machine->cart->chr_ram)
+   if (machine->cart->chr_ram_banks > 0)
    {
       MESSAGE_INFO("  - Saving VRAM block\n");
 
@@ -154,7 +154,7 @@ int state_save(char* fn)
 
    /****************************************************/
 
-   if (machine->cart->prg_ram)
+   if (machine->cart->prg_ram_banks > 0)
    {
       MESSAGE_INFO("  - Saving SRAM block\n");
 
@@ -351,13 +351,13 @@ int state_load(char* fn)
       {
          MESSAGE_INFO("  - Found VRAM block\n");
 
-         if (machine->cart->chr_ram == NULL)
+         if (machine->cart->chr_ram_banks < (blockLength / ROM_CHR_BANK_SIZE))
          {
-            MESSAGE_ERROR("cart says no vram!\n");
+            MESSAGE_ERROR("Invalid CHR-RAM size!\n");
             continue;
          }
 
-         _fread(machine->cart->chr_ram, MIN(blockLength, 0x2000)); // Max 8K
+         _fread(machine->cart->chr_ram, blockLength);
       }
 
 
@@ -367,14 +367,14 @@ int state_load(char* fn)
       {
          MESSAGE_INFO("  - Found SRAM block\n");
 
-         if (machine->cart->prg_ram == NULL)
+         if (machine->cart->prg_ram_banks < ((blockLength-1) / ROM_PRG_BANK_SIZE))
          {
-            MESSAGE_ERROR("cart says no sram!\n");
+            MESSAGE_ERROR("Invalid PRG-RAM size!\n");
             continue;
          }
 
          _fread(buffer, 1); // SRAM enabled (always true)
-         _fread(machine->cart->prg_ram, MIN(blockLength - 1, 0x2000)); // Max 8K
+         _fread(machine->cart->prg_ram, blockLength - 1);
       }
 
 

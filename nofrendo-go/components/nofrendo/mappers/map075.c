@@ -74,7 +74,7 @@ static void map75_write(uint32 address, uint8 value)
    }
 }
 
-static mem_write_handler_t map75_memwrite[] =
+static const mem_write_handler_t map75_memwrite[] =
 {
    { 0x8000, 0xFFFF, map75_write },
    LAST_MEMORY_HANDLER

@@ -26,6 +26,7 @@
 #include <nofrendo.h>
 #include <mmc.h>
 
+
 static void map231_init(rom_t *cart)
 {
    UNUSED(cart);
@@ -44,7 +45,7 @@ static void map231_write(uint32 address, uint8 value)
    mmc_bankvrom(8, 0x0000, vbank);
 }
 
-static mem_write_handler_t map231_memwrite[] =
+static const mem_write_handler_t map231_memwrite[] =
 {
    { 0x8000, 0xFFFF, map231_write },
    LAST_MEMORY_HANDLER

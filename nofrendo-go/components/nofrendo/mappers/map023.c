@@ -38,18 +38,20 @@
 
 static struct
 {
-   int counter, enabled;
-   int latch, wait_state;
+   bool enabled, wait_state;
+   int counter, latch;
 } irq;
 
 static uint8 lownybbles[8];
 static uint8 highnybbles[8];
 
+
 static void map23_init(rom_t *cart)
 {
    UNUSED(cart);
-   irq.counter = irq.enabled = 0;
-   irq.latch = irq.wait_state = 0;
+
+   irq.enabled = irq.wait_state = 0;
+   irq.counter = irq.latch = 0;
 }
 
 static void map23_write(uint32 address, uint8 value)
@@ -133,9 +135,9 @@ static void map23_write(uint32 address, uint8 value)
    }
 }
 
-static void map23_hblank(int vblank)
+static void map23_hblank(int scanline)
 {
-   UNUSED(vblank);
+   UNUSED(scanline);
 
    if (irq.enabled)
    {
@@ -149,7 +151,7 @@ static void map23_hblank(int vblank)
    }
 }
 
-static mem_write_handler_t map23_memwrite[] =
+static const mem_write_handler_t map23_memwrite[] =
 {
    { 0x8000, 0xFFFF, map23_write },
    LAST_MEMORY_HANDLER

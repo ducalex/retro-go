@@ -28,10 +28,10 @@
 #include <string.h>
 #include <mmc.h>
 
-static unsigned int regs[4];
-static unsigned int latch = 0;
-static unsigned int bitcount = 0;
-static unsigned int prg_banks = 0;
+static uint8 regs[4];
+static uint8 latch = 0;
+static int bitcount = 0;
+static int prg_banks = 0;
 
 // Shouldn't that be packed? (It wasn't packed in SNSS...)
 typedef struct
@@ -40,6 +40,7 @@ typedef struct
    uint8 bitcount;
    uint8 latch;
 } mapper1Data;
+
 
 static void update_mirror()
 {
@@ -186,7 +187,7 @@ static void map1_setstate(void *state)
    bitcount = ((mapper1Data*)state)->bitcount;
 }
 
-static mem_write_handler_t map1_memwrite[] =
+static const mem_write_handler_t map1_memwrite[] =
 {
    { 0x8000, 0xFFFF, map1_write },
    LAST_MEMORY_HANDLER

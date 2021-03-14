@@ -26,6 +26,7 @@
 #include <nofrendo.h>
 #include <mmc.h>
 
+
 static void map93_write(uint32 address, uint8 value)
 {
    UNUSED(address);
@@ -39,7 +40,7 @@ static void map93_write(uint32 address, uint8 value)
       ppu_setmirroring(PPU_MIRROR_HORI);
 }
 
-static mem_write_handler_t map93_memwrite[] =
+static const mem_write_handler_t map93_memwrite[] =
 {
    { 0x8000, 0xFFFF, map93_write },
    LAST_MEMORY_HANDLER

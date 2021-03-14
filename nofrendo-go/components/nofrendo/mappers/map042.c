@@ -32,8 +32,8 @@
 
 static struct
 {
-   bool enabled;
-   uint32 counter;
+   uint16 enabled;
+   uint16 counter;
 } irq;
 
 /********************************/
@@ -66,18 +66,14 @@ static void map42_init(rom_t *cart)
 /****************************************/
 /* Mapper #42 callback for IRQ handling */
 /****************************************/
-static void map42_hblank(int vblank)
+static void map42_hblank(int scanline)
 {
-   /* Counter is M2 based so it doesn't matter whether */
-   /* the PPU is in its VBlank period or not           */
-   UNUSED(vblank);
+   UNUSED(scanline);
 
    /* Increment the counter if it is enabled and check for strike */
    if (irq.enabled)
    {
-      /* Is there a constant for cycles per scanline? */
-      /* If so, someone ought to substitute it here   */
-      irq.counter = irq.counter + 114;
+      irq.counter += NES_CYCLES_PER_SCANLINE;
 
       /* IRQ is triggered after 24576 M2 cycles */
       if (irq.counter >= 0x6000)
@@ -94,13 +90,13 @@ static void map42_hblank(int vblank)
 /******************************************/
 /* Mapper #42 write handler ($E000-$FFFF) */
 /******************************************/
-static void map42_write (uint32 address, uint8 value)
+static void map42_write(uint32 address, uint8 value)
 {
    switch (address & 0x03)
    {
       /* Register 0: Select ROM page at $6000-$7FFF */
       case 0x00:
-         mmc_bankrom (8, 0x6000, value & 0x0F);
+         mmc_bankrom(8, 0x6000, value & 0x0F);
          break;
 
       /* Register 1: mirroring */
@@ -121,7 +117,7 @@ static void map42_write (uint32 address, uint8 value)
    }
 }
 
-static mem_write_handler_t map42_memwrite [] =
+static const mem_write_handler_t map42_memwrite[] =
 {
    { 0xE000, 0xFFFF, map42_write },
    LAST_MEMORY_HANDLER

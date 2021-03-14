@@ -92,7 +92,7 @@ void fds_init(rom_t *cart)
     mmc_bankrom(8, 0xE000, -1); // BIOS 0xE000-0xFFFF
 }
 
-static mem_write_handler_t fds_memwrite[] =
+static const mem_write_handler_t fds_memwrite[] =
 {
     {0x4020, 0x4027, fds_write},
     {0x4040, 0x407F, fds_wave_write},
@@ -100,7 +100,7 @@ static mem_write_handler_t fds_memwrite[] =
     LAST_MEMORY_HANDLER
 };
 
-static mem_read_handler_t fds_memread[] =
+static const mem_read_handler_t fds_memread[] =
 {
     {0x4030, 0x4037, fds_read},
     {0x4040, 0x407F, fds_wave_read},

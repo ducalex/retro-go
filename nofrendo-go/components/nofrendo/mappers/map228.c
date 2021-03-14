@@ -30,6 +30,7 @@
 
 static uint8 mram[4];
 
+
 static void update(uint32 address, uint8 value)
 {
    uint16 bank1 = ((address >> 6) & 0x7E) + (((address >> 6) & 1) & ((address >> 5) & 1));
@@ -76,14 +77,14 @@ static void map228_write(uint32 address, uint8 value)
    }
 }
 
-static mem_write_handler_t map228_memwrite[] =
+static const mem_write_handler_t map228_memwrite[] =
 {
    { 0x8000, 0xFFFF, map228_write },
    { 0x4020, 0x5FFF, map228_write },
    LAST_MEMORY_HANDLER
 };
 
-static mem_read_handler_t map228_memread[] =
+static const mem_read_handler_t map228_memread[] =
 {
    { 0x4020, 0x5FFF, map228_read },
    LAST_MEMORY_HANDLER

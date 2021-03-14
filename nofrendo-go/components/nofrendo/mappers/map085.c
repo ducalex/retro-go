@@ -119,9 +119,9 @@ static void map85_write(uint32 address, uint8 value)
    }
 }
 
-static void map85_hblank(int vblank)
+static void map85_hblank(int scanline)
 {
-   UNUSED(vblank);
+   UNUSED(scanline);
 
    if (irq.enabled)
    {
@@ -136,7 +136,7 @@ static void map85_hblank(int vblank)
    }
 }
 
-static mem_write_handler_t map85_memwrite[] =
+static const mem_write_handler_t map85_memwrite[] =
 {
    { 0x8000, 0xFFFF, map85_write },
    LAST_MEMORY_HANDLER

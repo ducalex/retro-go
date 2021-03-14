@@ -26,9 +26,11 @@
 #include <nofrendo.h>
 #include <mmc.h>
 
+
 static void map34_init(rom_t *cart)
 {
    UNUSED(cart);
+
    mmc_bankrom(32, 0x8000, MMC_LASTBANK);
 }
 
@@ -48,10 +50,10 @@ static void map34_write(uint32 address, uint8 value)
    }
 }
 
-static mem_write_handler_t map34_memwrite[] =
+static const mem_write_handler_t map34_memwrite[] =
 {
    { 0x7FFD, 0xFFFF, map34_write },
-   { -1, -1, NULL }
+   LAST_MEMORY_HANDLER
 };
 
 mapintf_t map34_intf =

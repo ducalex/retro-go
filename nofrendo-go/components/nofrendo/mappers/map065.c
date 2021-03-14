@@ -28,11 +28,12 @@
 
 static struct
 {
-   int counter;
-   bool enabled;
-   int cycles;
+   uint16 counter;
+   uint16 cycles;
    uint8 low, high;
+   bool enabled;
 } irq;
+
 
 static void map65_init(rom_t *cart)
 {
@@ -92,7 +93,7 @@ static void map65_write(uint32 address, uint8 value)
    }
 }
 
-static mem_write_handler_t map65_memwrite[] =
+static const mem_write_handler_t map65_memwrite[] =
 {
    { 0x8000, 0xFFFF, map65_write },
    LAST_MEMORY_HANDLER

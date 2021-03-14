@@ -38,11 +38,12 @@ static void map11_write(uint32 address, uint8 value)
 static void map11_init(rom_t *cart)
 {
    UNUSED(cart);
+
    mmc_bankrom(32, 0x8000, 0);
    mmc_bankvrom(8, 0x0000, 0);
 }
 
-static mem_write_handler_t map11_memwrite[] =
+static const mem_write_handler_t map11_memwrite[] =
 {
    { 0x8000, 0xFFFF, map11_write },
    LAST_MEMORY_HANDLER

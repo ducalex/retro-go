@@ -26,7 +26,7 @@
 #include <nofrendo.h>
 #include <mmc.h>
 
-static int is_battletoads = 0;
+static bool is_battletoads = 0;
 
 
 static void map7_write(uint32 address, uint8 value)
@@ -42,16 +42,15 @@ static void map7_write(uint32 address, uint8 value)
 
 static void map7_init(rom_t *cart)
 {
-   map7_write(0x8000, 0);
+   is_battletoads = (cart->checksum == 0x279710DC);
 
-   if (cart->checksum == 0x279710DC)
-   {
-      is_battletoads = 1;
+   if (is_battletoads)
       MESSAGE_INFO("Enabled Battletoads mirroring hack\n");
-   }
+
+   map7_write(0x8000, 0);
 }
 
-static mem_write_handler_t map7_memwrite[] =
+static const mem_write_handler_t map7_memwrite[] =
 {
    { 0x8000, 0xFFFF, map7_write },
    LAST_MEMORY_HANDLER

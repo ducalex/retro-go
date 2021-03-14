@@ -88,7 +88,7 @@ static void map15_init(rom_t *cart)
    mmc_bankrom(32, 0x8000, 0);
 }
 
-static mem_write_handler_t map15_memwrite[] =
+static const mem_write_handler_t map15_memwrite[] =
 {
    { 0x8000, 0xFFFF, map15_write },
    LAST_MEMORY_HANDLER

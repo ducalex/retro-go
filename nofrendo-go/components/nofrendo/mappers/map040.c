@@ -34,12 +34,12 @@ typedef struct
    unsigned char irqCounterEnabled;
 } mapper40Data;
 
-#define  MAP40_IRQ_PERIOD  (4096 / 113.666666)
+#define  MAP40_IRQ_PERIOD  (4096 / NES_CYCLES_PER_SCANLINE)
 
 static struct
 {
-   int enabled;
-   int counter;
+   bool  enabled;
+   uint8 counter;
 } irq;
 
 
@@ -53,17 +53,16 @@ static void map40_init(rom_t *cart)
    mmc_bankrom(8, 0xE000, 7);
 
    irq.enabled = false;
-   irq.counter = (int) MAP40_IRQ_PERIOD;
+   irq.counter = MAP40_IRQ_PERIOD;
 }
 
-static void map40_hblank(int vblank)
+static void map40_hblank(int scanline)
 {
-   UNUSED(vblank);
+   UNUSED(scanline);
 
    if (irq.enabled && irq.counter)
    {
-      irq.counter--;
-      if (0 == irq.counter)
+      if (0 == --irq.counter)
       {
          nes6502_irq();
          irq.enabled = false;
@@ -79,7 +78,7 @@ static void map40_write(uint32 address, uint8 value)
    {
    case 0: /* 0x8000-0x9FFF */
       irq.enabled = false;
-      irq.counter = (int) MAP40_IRQ_PERIOD;
+      irq.counter = MAP40_IRQ_PERIOD;
       break;
 
    case 1: /* 0xA000-0xBFFF */
@@ -107,7 +106,7 @@ static void map40_setstate(void *state)
    irq.enabled = ((mapper40Data*)state)->irqCounterEnabled;
 }
 
-static mem_write_handler_t map40_memwrite[] =
+static const mem_write_handler_t map40_memwrite[] =
 {
    { 0x8000, 0xFFFF, map40_write },
    LAST_MEMORY_HANDLER

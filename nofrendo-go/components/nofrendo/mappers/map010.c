@@ -144,7 +144,7 @@ static void map10_setstate(void *state)
    regs[3]  = ((mapper10Data*)state)->lastE000Write;
 }
 
-static mem_write_handler_t map10_memwrite[] =
+static const mem_write_handler_t map10_memwrite[] =
 {
    { 0x8000, 0xFFFF, map10_write },
    LAST_MEMORY_HANDLER

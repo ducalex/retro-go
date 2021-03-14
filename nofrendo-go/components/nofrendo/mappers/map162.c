@@ -132,14 +132,14 @@ static void map162_reg_write(uint32 address, uint8 value)
    }
 }
 
-static mem_write_handler_t map162_memwrite[] =
+static const mem_write_handler_t map162_memwrite[] =
 {
    {0x5000, 0x5FFF, map162_reg_write},
    // {0x6000, 0x7FFF, map162_ram_write},
    LAST_MEMORY_HANDLER
 };
 
-static mem_read_handler_t map162_memread[] =
+static const mem_read_handler_t map162_memread[] =
 {
    {0x5000, 0x5FFF, map162_reg_read},
    // {0x6000, 0x7FFF, map162_ram_read},

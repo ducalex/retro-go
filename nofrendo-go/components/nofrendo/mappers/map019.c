@@ -36,8 +36,8 @@ typedef struct
 
 static struct
 {
-   int counter;
-   int enabled;
+   uint16 counter;
+   uint16 enabled;
 } irq;
 
 static rom_t *cart;
@@ -154,14 +154,14 @@ static void map19_setstate(void *state)
    irq.enabled = ((mapper19Data*)state)->irqCounterEnabled;
 }
 
-static mem_write_handler_t map19_memwrite[] =
+static const mem_write_handler_t map19_memwrite[] =
 {
    { 0x5000, 0x5FFF, map19_write },
    { 0x8000, 0xFFFF, map19_write },
    LAST_MEMORY_HANDLER
 };
 
-static mem_read_handler_t map19_memread[] =
+static const mem_read_handler_t map19_memread[] =
 {
    { 0x5000, 0x5FFF, map19_read },
    LAST_MEMORY_HANDLER

@@ -26,6 +26,7 @@
 #include <nofrendo.h>
 #include <mmc.h>
 
+
 static void map33_write(uint32 address, uint8 value)
 {
    int page = (address >> 13) & 3;
@@ -84,8 +85,7 @@ static void map33_write(uint32 address, uint8 value)
    }
 }
 
-
-static mem_write_handler_t map33_memwrite[] =
+static const mem_write_handler_t map33_memwrite[] =
 {
    { 0x8000, 0xFFFF, map33_write },
    LAST_MEMORY_HANDLER

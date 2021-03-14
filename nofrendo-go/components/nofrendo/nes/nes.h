@@ -61,13 +61,6 @@ typedef enum
     NES_PAL
 } region_t;
 
-typedef enum
-{
-    SOFT_RESET,
-    HARD_RESET,
-    ZERO_RESET,
-} reset_type_t;
-
 typedef struct
 {
     /* Hardware */
@@ -112,7 +105,7 @@ extern void nes_setregion(region_t region);
 extern bool nes_insertcart(const char *filename);
 extern bool nes_insertdisk(const char *filename);
 extern void nes_emulate(void);
-extern void nes_reset(reset_type_t reset_type);
+extern void nes_reset(bool hard_reset);
 extern void nes_poweroff(void);
 extern void nes_togglepause(void);
 

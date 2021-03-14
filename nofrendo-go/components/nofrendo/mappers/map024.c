@@ -29,8 +29,8 @@
 
 static struct
 {
-   int counter, enabled;
-   int latch, wait_state;
+   bool enabled, wait_state;
+   int counter, latch;
 } irq;
 
 // Shouldn't that be packed? (It wasn't packed in SNSS...)
@@ -40,16 +40,18 @@ typedef struct
    unsigned char irqCounterEnabled;
 } mapper24Data;
 
+
 static void map24_init(rom_t *cart)
 {
    UNUSED(cart);
-   irq.counter = irq.enabled = 0;
-   irq.latch = irq.wait_state = 0;
+
+   irq.enabled = irq.wait_state = 0;
+   irq.counter = irq.latch = 0;
 }
 
-static void map24_hblank(int vblank)
+static void map24_hblank(int scanline)
 {
-   UNUSED(vblank);
+   UNUSED(scanline);
 
    if (irq.enabled)
    {
@@ -154,7 +156,7 @@ static void map24_setstate(void *state)
    irq.enabled = ((mapper24Data*)state)->irqCounterEnabled;
 }
 
-static mem_write_handler_t map24_memwrite[] =
+static const mem_write_handler_t map24_memwrite[] =
 {
    { 0x8000, 0xF002, map24_write },
    LAST_MEMORY_HANDLER

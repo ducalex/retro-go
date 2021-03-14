@@ -17,16 +17,16 @@
 ** must bear this legend.
 **
 **
-** map94.c
+** map094.c
 **
-** mapper 94 interface
+** Senjou no Ookami mapper interface
 ** $Id: map094.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>
 #include <mmc.h>
 
-/* mapper 94: Senjou no Ookami */
+
 static void map94_write(uint32 address, uint8 value)
 {
    UNUSED(address);
@@ -35,7 +35,7 @@ static void map94_write(uint32 address, uint8 value)
    mmc_bankrom(16, 0x8000, value >> 2);
 }
 
-static mem_write_handler_t map94_memwrite[] =
+static const mem_write_handler_t map94_memwrite[] =
 {
    { 0x8000, 0xFFFF, map94_write },
    LAST_MEMORY_HANDLER

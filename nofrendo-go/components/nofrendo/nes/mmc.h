@@ -44,8 +44,8 @@ struct mapper_s
    void (*hblank)(int scanline);
    void (*get_state)(void *state); // State is a 128 bytes buffer
    void (*set_state)(void *state); // State is a 128 bytes buffer
-   mem_read_handler_t *mem_read;
-   mem_write_handler_t *mem_write;
+   const mem_read_handler_t *mem_read;
+   const mem_write_handler_t *mem_write;
    apuext_t *sound_ext;
 };
 

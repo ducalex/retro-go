@@ -34,6 +34,7 @@ static struct
    int latch_c005, latch_c003;
 } irq;
 
+
 static void map160_write(uint32 address, uint8 value)
 {
    if (address >= 0x8000 && address <= 0x8003)
@@ -95,13 +96,14 @@ static void map160_hblank(int scanline)
 static void map160_init(rom_t *cart)
 {
    UNUSED(cart);
+
    irq.enabled = false;
    irq.expired = false;
    irq.counter = 0;
    irq.latch_c003 = irq.latch_c005 = 0;
 }
 
-static mem_write_handler_t map160_memwrite[] =
+static const mem_write_handler_t map160_memwrite[] =
 {
    { 0x8000, 0xFFFF, map160_write },
    LAST_MEMORY_HANDLER

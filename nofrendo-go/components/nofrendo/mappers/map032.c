@@ -28,7 +28,7 @@
 
 static int select_c000 = 0;
 
-/* mapper 32: Irem G-101 */
+
 static void map32_write(uint32 address, uint8 value)
 {
    switch (address >> 12)
@@ -65,7 +65,7 @@ static void map32_write(uint32 address, uint8 value)
    }
 }
 
-static mem_write_handler_t map32_memwrite[] =
+static const mem_write_handler_t map32_memwrite[] =
 {
    { 0x8000, 0xFFFF, map32_write },
    LAST_MEMORY_HANDLER
