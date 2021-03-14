@@ -24,7 +24,7 @@
 -    ets_printf("abort() was called at PC 0x%08x on core %d\r\n", (intptr_t)__builtin_return_address(0) - 3, xPortGetCoreID());
 -#endif
 +    panicPutStr("abort() was called at PC 0x");
-+    panicPutHex(__builtin_return_address(0) - 3);
++    panicPutHex((intptr_t)__builtin_return_address(0) - 3);
 +    panicPutStr(" on core ");
 +    panicPutDec(xPortGetCoreID());
 +    panicPutStr("\r\n");
