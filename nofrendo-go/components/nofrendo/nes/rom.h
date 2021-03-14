@@ -34,13 +34,8 @@
 #define  ROM_FLAG_BATTERY        0x02
 #define  ROM_FLAG_VERTICAL       0x01
 
-#define  ROM_VRAM_BANKS          1 // non-ines flags
-#define  ROM_SRAM_BANKS          8 // non-ines flags
-
-#define  ROM_PROG_BANK_SIZE      0x4000
-#define  ROM_VROM_BANK_SIZE      0x2000
-#define  ROM_VRAM_BANK_SIZE      0x2000
-#define  ROM_SRAM_BANK_SIZE      0x400
+#define  ROM_PRG_BANK_SIZE       0x2000
+#define  ROM_CHR_BANK_SIZE       0x2000
 
 #define  TRAINER_OFFSET          0x1000
 #define  TRAINER_LENGTH          0x200
@@ -79,8 +74,8 @@ typedef struct
 
    uint8 *prg_rom;
    uint8 *chr_rom;
-   uint8 prg_ram[ROM_SRAM_BANKS * ROM_SRAM_BANK_SIZE];
-   uint8 chr_ram[ROM_VRAM_BANKS * ROM_VRAM_BANK_SIZE];
+   uint8 prg_ram[0x2000];
+   uint8 chr_ram[0x2000];
 
    int prg_rom_banks;
    int chr_rom_banks;

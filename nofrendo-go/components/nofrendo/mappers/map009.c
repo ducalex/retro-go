@@ -112,9 +112,9 @@ static void map9_init(rom_t *cart)
    memset(regs, 0, sizeof(regs));
 
    mmc_bankrom(8, 0x8000, 0);
-   mmc_bankrom(8, 0xA000, (cart->prg_rom_banks * 2) - 3);
-   mmc_bankrom(8, 0xC000, (cart->prg_rom_banks * 2) - 2);
-   mmc_bankrom(8, 0xE000, (cart->prg_rom_banks * 2) - 1);
+   mmc_bankrom(8, 0xA000, (cart->prg_rom_banks) - 3);
+   mmc_bankrom(8, 0xC000, (cart->prg_rom_banks) - 2);
+   mmc_bankrom(8, 0xE000, (cart->prg_rom_banks) - 1);
 
    latch[0] = 0xFE;
    latch[1] = 0xFE;

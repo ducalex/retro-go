@@ -152,7 +152,7 @@ static void map1_write(uint32 address, uint8 value)
 
 static void map1_init(rom_t *cart)
 {
-   prg_banks = cart->prg_rom_banks;
+   prg_banks = cart->prg_rom_banks / 2;
    bitcount = 0;
    latch = 0;
 

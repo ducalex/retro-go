@@ -47,7 +47,7 @@ static void rom_savesram(void)
       snprintf(fn, PATH_MAX, "%s.sav", rom.filename);
       if ((fp = fopen(fn, "wb")))
       {
-         fwrite(rom.prg_ram, ROM_SRAM_BANK_SIZE, rom.prg_ram_banks, fp);
+         fwrite(rom.prg_ram, ROM_PRG_BANK_SIZE, rom.prg_ram_banks, fp);
          fclose(fp);
          MESSAGE_INFO("ROM: Wrote battery RAM to %s.\n", fn);
       }
@@ -65,7 +65,7 @@ static void rom_loadsram(void)
       snprintf(fn, PATH_MAX, "%s.sav", rom.filename);
       if ((fp = fopen(fn, "rb")))
       {
-         fread(rom.prg_ram, ROM_SRAM_BANK_SIZE, rom.prg_ram_banks, fp);
+         fread(rom.prg_ram, ROM_PRG_BANK_SIZE, rom.prg_ram_banks, fp);
          fclose(fp);
          MESSAGE_INFO("ROM: Read battery RAM from %s.\n", fn);
       }
@@ -98,10 +98,10 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
       }
 
       rom.checksum = crc32_le(0, rom.prg_rom, size - (rom.prg_rom - data));
-      rom.prg_rom_banks = header->ines.prg_banks;
-      rom.prg_ram_banks = ROM_SRAM_BANKS;
+      rom.prg_rom_banks = header->ines.prg_banks * 2;
       rom.chr_rom_banks = header->ines.chr_banks;
-      rom.chr_ram_banks = ROM_VRAM_BANKS;
+      rom.prg_ram_banks = 1; // 8KB. Not specified by iNES
+      rom.chr_ram_banks = 1; // 8KB. Not specified by iNES
       rom.flags = header->ines.rom_type;
       rom.mapper_number = header->ines.rom_type >> 4;
 
@@ -116,13 +116,13 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
 
       if (rom.chr_rom_banks > 0)
       {
-         rom.chr_rom = rom.prg_rom + (rom.prg_rom_banks * ROM_PROG_BANK_SIZE);
+         rom.chr_rom = rom.prg_rom + (rom.prg_rom_banks * ROM_PRG_BANK_SIZE);
       }
 
       MESSAGE_INFO("ROM: CRC32:  %08X\n", rom.checksum);
       MESSAGE_INFO("ROM: Mapper: %d, PRG:%dK, CHR:%dK, Flags: %c%c%c%c\n",
                   rom.mapper_number,
-                  rom.prg_rom_banks * 16, rom.chr_rom_banks * 8,
+                  rom.prg_rom_banks * 8, rom.chr_rom_banks * 8,
                   (rom.flags & ROM_FLAG_VERTICAL) ? 'V' : 'H',
                   (rom.flags & ROM_FLAG_BATTERY) ? 'B' : '-',
                   (rom.flags & ROM_FLAG_TRAINER) ? 'T' : '-',

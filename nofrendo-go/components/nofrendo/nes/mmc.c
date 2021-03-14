@@ -30,9 +30,9 @@
 #include "mmc.h"
 #include "rom.h"
 
-#define  MMC_8KPRG         (prg_banks * 2)
-#define  MMC_16KPRG        (prg_banks)
-#define  MMC_32KPRG        (prg_banks / 2)
+#define  MMC_8KPRG         (prg_banks)
+#define  MMC_16KPRG        (prg_banks / 2)
+#define  MMC_32KPRG        (prg_banks / 4)
 #define  MMC_8KCHR         (chr_banks)
 #define  MMC_4KCHR         (chr_banks * 2)
 #define  MMC_2KCHR         (chr_banks * 4)
@@ -40,8 +40,8 @@
 
 static map_t mapper;
 static rom_t *cart;
-static int prg_banks;
-static int chr_banks;
+static size_t prg_banks;
+static size_t chr_banks;
 
 /* Map a pointer into the address space */
 void mmc_bankptr(int size, uint32 address, int bank, uint8 *ptr)
@@ -125,16 +125,18 @@ void mmc_bankvrom(int size, uint32 address, int bank)
    }
 }
 
-static void mmc_setpages(void)
+/* Mapper initialization routine */
+void mmc_reset(void)
 {
    /* Switch Save RAM into CPU space */
-   mmc_bankwram(8, 0x6000, 0);
+   if (cart->prg_ram_banks)
+      mmc_bankwram(8, 0x6000, 0);
 
    /* Switch PRG ROM into CPU space */
    mmc_bankrom(16, 0x8000, 0);
    mmc_bankrom(16, 0xC000, MMC_LASTBANK);
 
-   /* Switch CHR ROM/RAM into CPU space */
+   /* Switch CHR ROM/RAM into PPU space */
    mmc_bankvrom(8, 0x0000, 0);
 
    if (cart->flags & ROM_FLAG_FOURSCREEN)
@@ -143,14 +145,9 @@ static void mmc_setpages(void)
       ppu_setmirroring(PPU_MIRROR_VERT);
    else
       ppu_setmirroring(PPU_MIRROR_HORI);
-}
-
-/* Mapper initialization routine */
-void mmc_reset(void)
-{
-   mmc_setpages();
 
    ppu_setlatchfunc(NULL);
+   ppu_setvreadfunc(NULL);
 
    if (mapper.init)
       mapper.init(cart);
@@ -158,7 +155,7 @@ void mmc_reset(void)
 
 void mmc_shutdown()
 {
-
+   //
 }
 
 map_t *mmc_init(rom_t *_cart)

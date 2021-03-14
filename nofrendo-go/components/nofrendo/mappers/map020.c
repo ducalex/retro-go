@@ -87,6 +87,9 @@ static void fds_setstate(void *state)
 void fds_init(rom_t *cart)
 {
     UNUSED(cart);
+
+    mmc_bankrom(32, 0x6000, 0); // PRG-RAM 0x6000-0xDFFF
+    mmc_bankrom(8, 0xE000, -1); // BIOS 0xE000-0xFFFF
 }
 
 static mem_write_handler_t fds_memwrite[] =
