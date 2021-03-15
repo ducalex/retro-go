@@ -99,14 +99,7 @@ static void prg_setbank(int size, uint32 address, int bank)
    if (size == 32) bank >>= 2;
    if (size == 16) bank >>= 1;
 
-   if (rom)
-   {
-      mmc_bankrom(size, address, bank);
-   }
-   else
-   {
-      mmc_bankwram(size, address, bank);
-   }
+   mmc_bankprg(size, address, bank, rom ? PRG_ROM : PRG_RAM);
 }
 
 static void prg_update()
@@ -475,9 +468,6 @@ static void map5_exram_write(uint32 address, uint8 value)
 
 static void map5_init(rom_t *cart)
 {
-   // nes->rominfo->sram = malloc(0x10000);
-   // mmc_bankwram(8, 0x6000, 0);
-
    exram.data = ppu_getnametable(2);
 
    irq.scanline = irq.enabled = 0;

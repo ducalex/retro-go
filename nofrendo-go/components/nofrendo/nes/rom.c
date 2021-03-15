@@ -76,13 +76,13 @@ static void rom_loadsram(void)
 /* Load a ROM from a memory buffer */
 rom_t *rom_loadmem(uint8 *data, size_t size)
 {
-   fileheader_t *header = (fileheader_t *)data;
-
    if (!data || size < 16)
       return NULL;
 
-   if (memcmp(header->ines.magic, ROM_INES_MAGIC, 4) == 0)
+   if (!memcmp(data, ROM_INES_MAGIC, 4))
    {
+      inesheader_t *header = (inesheader_t *)data;
+
       MESSAGE_INFO("ROM: Found iNES file of size %d.\n", size);
 
       memset(&rom, 0, sizeof(rom_t));
@@ -91,27 +91,27 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
 
       rom.prg_rom = data + sizeof(inesheader_t);
 
-      if (header->ines.rom_type & ROM_FLAG_TRAINER)
+      if (header->rom_type & ROM_FLAG_TRAINER)
       {
          MESSAGE_INFO("ROM: Trainer found and skipped.\n");
          rom.prg_rom += TRAINER_LENGTH;
       }
 
       rom.checksum = crc32_le(0, rom.prg_rom, size - (rom.prg_rom - data));
-      rom.prg_rom_banks = header->ines.prg_banks * 2;
-      rom.chr_rom_banks = header->ines.chr_banks;
+      rom.prg_rom_banks = header->prg_banks * 2;
+      rom.chr_rom_banks = header->chr_banks;
       rom.prg_ram_banks = 1; // 8KB. Not specified by iNES
       rom.chr_ram_banks = 1; // 8KB. Not specified by iNES
-      rom.flags = header->ines.rom_type;
-      rom.mapper_number = header->ines.rom_type >> 4;
+      rom.flags = header->rom_type;
+      rom.mapper_number = header->rom_type >> 4;
 
-      if (header->ines.reserved2 == 0)
+      if (header->reserved2 == 0)
       {
          // https://wiki.nesdev.com/w/index.php/INES
          // A general rule of thumb: if the last 4 bytes are not all zero, and the header is
          // not marked for NES 2.0 format, an emulator should either mask off the upper 4 bits
          // of the mapper number or simply refuse to load the ROM.
-         rom.mapper_number |= (header->ines.mapper_hinybble & 0xF0);
+         rom.mapper_number |= (header->mapper_hinybble & 0xF0);
       }
 
       if (rom.chr_rom_banks > 0)
@@ -131,7 +131,7 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
       strncpy(rom.filename, "filename.nes", PATH_MAX);
       return &rom;
    }
-   else if (memcmp(header->fds.magic, ROM_FDS_MAGIC, 4) == 0)
+   else if (!memcmp(data, FDS_DISK_MAGIC, 15) || !memcmp(data + 16, FDS_DISK_MAGIC, 15))
    {
       MESSAGE_INFO("ROM: Found FDS file of size %d.\n", size);
 
@@ -139,11 +139,16 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
       rom.data_ptr = data;
       rom.data_len = size;
 
+      // The mapper will set those correctly later
+      rom.chr_ram_banks = 1;
+      rom.chr_rom_banks = 0;
+      rom.prg_rom_banks = 0;
+      rom.prg_ram_banks = 0;
+
       rom.checksum = crc32_le(0, rom.data_ptr, rom.data_len);
       rom.mapper_number = 20;
 
       MESSAGE_INFO("ROM: CRC32:  %08X\n", rom.checksum);
-      MESSAGE_INFO("ROM: Disk sides: %d\n", header->fds.sides);
 
       strncpy(rom.filename, "filename.fds", PATH_MAX);
       return &rom;
@@ -195,6 +200,7 @@ rom_t *rom_loadfile(const char *filename)
    {
       fclose(fp);
       strncpy(rom.filename, filename, PATH_MAX);
+      rom.flags |= ROM_FLAG_FREE_DATA;
       #ifdef USE_SRAM_FILE
          rom_loadsram();
       #endif
@@ -212,6 +218,9 @@ void rom_free(void)
 #ifdef USE_SRAM_FILE
    rom_savesram();
 #endif
-   free(rom.data_ptr);
-   rom.data_ptr = NULL;
+   if (rom.flags & ROM_FLAG_FREE_DATA)
+   {
+      free(rom.data_ptr);
+      rom.data_ptr = NULL;
+   }
 }

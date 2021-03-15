@@ -137,8 +137,9 @@ bool nes_insertcart(const char *filename)
     if (NULL == nes.mapper)
         goto _fail;
 
-    /* if there's VRAM, let the PPU know */
-    nes.ppu->vram_present = (NULL != nes.cart->chr_ram); // FIX ME: This is always true?
+    /* if we're using VRAM, let the PPU know */
+    nes.ppu->vram_present = (nes.cart->chr_rom == NULL);
+    // nes.ppu->vram_present = (NULL != nes.cart->chr_ram); // FIX ME: This is always true?
 
     nes_setregion(nes.region);
     nes_setcompathacks();
@@ -166,7 +167,7 @@ void nes_reset(bool hard_reset)
         if (nes.cart->chr_ram_banks > 0)
             memset(nes.cart->chr_ram, 0, nes.cart->chr_ram_banks * ROM_CHR_BANK_SIZE);
         if (nes.cart->prg_ram_banks > 0)
-            memset(nes.cart->prg_ram, 0, nes.cart->prg_ram_banks * ROM_CHR_BANK_SIZE);
+            memset(nes.cart->prg_ram, 0, nes.cart->prg_ram_banks * ROM_PRG_BANK_SIZE);
     }
 
     apu_reset();

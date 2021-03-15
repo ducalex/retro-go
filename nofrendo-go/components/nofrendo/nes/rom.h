@@ -27,12 +27,14 @@
 #define _NES_ROM_H_
 
 #define  ROM_INES_MAGIC          "NES\x1A"
-#define  ROM_FDS_MAGIC           "FDS\x1A"
+#define  FDS_HEAD_MAGIC          "FDS\x1A"
+#define  FDS_DISK_MAGIC          "\x01*NINTENDO-HVC*"
 
 #define  ROM_FLAG_FOURSCREEN     0x08
 #define  ROM_FLAG_TRAINER        0x04
 #define  ROM_FLAG_BATTERY        0x02
 #define  ROM_FLAG_VERTICAL       0x01
+#define  ROM_FLAG_FREE_DATA      0x100
 
 #define  ROM_PRG_BANK_SIZE       0x2000
 #define  ROM_CHR_BANK_SIZE       0x2000
@@ -58,19 +60,12 @@ typedef struct __attribute__((packed))
    uint8 reserved[11];
 } fdsheader_t;
 
-typedef union
-{
-   inesheader_t ines;
-   fdsheader_t  fds;
-} fileheader_t;
-
 typedef struct
 {
+   char filename[PATH_MAX + 1];
+
    uint8 *data_ptr; // Top of our allocation
    size_t data_len; // Size of our allocation
-   bool data_const; // Prevents nofrendo from modifying or freeing data_ptr
-
-   char filename[PATH_MAX + 1];
 
    uint8 *prg_rom;
    uint8 *chr_rom;

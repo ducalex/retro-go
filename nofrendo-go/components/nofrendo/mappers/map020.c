@@ -34,24 +34,72 @@
 
 #define FDS_CLOCK (NES_CPU_CLOCK_NTSC / 2)
 
-static uint8 fds_regs[8];
-
 typedef struct
 {
-    //
-} fds_snd_t;
+    uint8 prog[0x8000];
+    uint8 bios[0x2000];
+    uint8 *disk[8];
+    uint8 sides;
+    uint8 regs[8];
+} fds_t;
 
-static fds_snd_t fds_snd;
+static fds_t *fds;
 
+
+static void fds_hblank(int scanline)
+{
+    // int a = NES_CYCLES_PER_SCANLINE;
+}
 
 static uint8 fds_read(uint32 address)
 {
-    return 0x00;
+    MESSAGE_INFO("FDS read at %04X\n", address);
+
+    switch (address)
+    {
+        case 0x4030:            // Disk Status Register 0
+            return 0x00;
+
+        case 0x4031:            // Read data register
+            return 0x00;
+
+        case 0x4032:            // Disk drive status register
+            return 0x00;
+
+        case 0x4033:            // External connector read
+            return 0x80;        // bit 7 = battery status
+
+        default:
+            return 0x00;
+    }
 }
 
 static void fds_write(uint32 address, uint8 value)
 {
-    fds_regs[address & 7] = value;
+    MESSAGE_INFO("FDS write at %04X: %02X\n", address, value);
+
+	switch (address)
+    {
+        case 0x4020:
+            break;
+
+        case 0x4021:
+            break;
+
+        case 0x4022:
+            break;
+
+        case 0x4023:
+            break;
+
+        case 0x4024:
+            break;
+
+        case 0x4025:
+            break;
+	}
+
+    fds->regs[address & 7] = value;
 }
 
 static uint8 fds_sound_read(uint32 address)
@@ -86,10 +134,42 @@ static void fds_setstate(void *state)
 
 void fds_init(rom_t *cart)
 {
-    UNUSED(cart);
+    if (!fds)
+    {
+        fds = calloc(1, sizeof(fds_t));
 
-    mmc_bankrom(32, 0x6000, 0); // PRG-RAM 0x6000-0xDFFF
-    mmc_bankrom(8, 0xE000, -1); // BIOS 0xE000-0xFFFF
+        // I'm not sure yet where we should load the bios
+        // so it shall be hardcoded here while I work on
+        // the actual hardware emulation...
+        FILE *fp = fopen("/sd/roms/fds/disksys.rom", "rb");
+        fread(fds->bios, 0x2000, 1, fp);
+        fclose(fp);
+    }
+
+    uint8 *disk_ptr = cart->data_ptr;
+
+    if (memcmp(disk_ptr, FDS_HEAD_MAGIC, 4) == 0)
+    {
+        fds->sides = ((fdsheader_t *)disk_ptr)->sides;
+        disk_ptr += 16;
+    }
+    else
+    {
+        fds->sides = cart->data_len / 65500;
+    }
+
+    fds->sides = MIN(MAX(fds->sides, 1), 8);
+
+    for (int i = 0; i < fds->sides; i++)
+    {
+        fds->disk[i] = disk_ptr + (i * 65500);
+    }
+
+    // cart->prg_rom = fds->prog;
+    // cart->prg_rom_banks = 4;
+
+    mmc_bankprg(32, 0x6000, 0, fds->prog); // PRG-RAM 0x6000-0xDFFF
+    mmc_bankprg(8,  0xE000, 0, fds->bios); // BIOS 0xE000-0xFFFF
 }
 
 static const mem_write_handler_t fds_memwrite[] =
@@ -114,7 +194,7 @@ mapintf_t map20_intf =
     "Famicom Disk System",  /* mapper name */
     fds_init,               /* init routine */
     NULL,                   /* vblank callback */
-    NULL,                   /* hblank callback */
+    fds_hblank,             /* hblank callback */
     fds_getstate,           /* get state (snss) */
     fds_setstate,           /* set state (snss) */
     fds_memread,            /* memory read structure */

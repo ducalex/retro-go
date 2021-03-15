@@ -35,6 +35,13 @@ typedef struct mapper_s map_t;
 #include "rom.h"
 #include "mem.h"
 
+#define PRG_RAM ((void*)1)
+#define PRG_ROM ((void*)2)
+#define PRG_ANY ((void*)3)
+#define CHR_RAM ((void*)4)
+#define CHR_ROM ((void*)5)
+#define CHR_ANY ((void*)6)
+
 struct mapper_s
 {
    int number;
@@ -51,12 +58,13 @@ struct mapper_s
 
 #define MMC_LASTBANK      -1
 
-extern void mmc_bankwram(int size, uint32 address, int bank);
-extern void mmc_bankvrom(int size, uint32 address, int bank);
-extern void mmc_bankrom(int size, uint32 address, int bank);
+#define mmc_bankvrom(a, b, c) mmc_bankchr(a, b, c, CHR_ANY)
+#define mmc_bankrom(a, b, c) mmc_bankprg(a, b, c, PRG_ROM)
 
 extern map_t *mmc_init(rom_t *cart);
-extern void mmc_reset(void);
 extern void mmc_shutdown(void);
+extern void mmc_reset(void);
+extern void mmc_bankprg(int size, uint32 address, int bank, uint8 *base);
+extern void mmc_bankchr(int size, uint32 address, int bank, uint8 *base);
 
 #endif /* _NES_MMC_H_ */

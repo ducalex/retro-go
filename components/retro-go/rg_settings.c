@@ -106,26 +106,34 @@ bool rg_settings_save(void)
         return true;
 
     char *buffer = cJSON_Print(root);
-    bool success = false;
-
-    if (buffer)
+    if (!buffer)
     {
-    #if USE_CONFIG_FILE
-        FILE *fp = fopen(CONFIG_FILE_PATH, "wb");
-        if (fp)
-        {
-            success = (fputs(buffer, fp) > 0);
-            fclose(fp);
-        }
-    #else
-        nvs_set_str(my_handle, CONFIG_NVS_STORE, buffer);
-        success = (nvs_commit(my_handle) == ESP_OK);
-    #endif
-        cJSON_free(buffer);
-        unsaved_changes = 0;
+        RG_LOGE("cJSON_Print() failed.\n");
+        return false;
     }
 
-    return success;
+#if USE_CONFIG_FILE
+    FILE *fp = fopen(CONFIG_FILE_PATH, "wb");
+    if (!fp)
+    {
+        // Sometimes the FAT is left in an inconsistent state and this might help
+        rg_fs_delete(CONFIG_FILE_PATH);
+        fp = fopen(CONFIG_FILE_PATH, "wb");
+    }
+    if (fp)
+    {
+        if (fputs(buffer, fp) > 0)
+            unsaved_changes = 0;
+        fclose(fp);
+    }
+#else
+    if (nvs_set_str(my_handle, CONFIG_NVS_STORE, buffer) == ESP_OK
+        && nvs_commit(my_handle) == ESP_OK) unsaved_changes = 0;
+#endif
+
+    cJSON_free(buffer);
+
+    return (unsaved_changes == 0);
 }
 
 void rg_settings_reset(void)
