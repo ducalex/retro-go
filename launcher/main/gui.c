@@ -85,7 +85,7 @@ void gui_init_tab(tab_t *tab)
 
     char key_name[32];
     sprintf(key_name, "Sel.%.11s", tab->name);
-    tab->listbox.cursor = rg_settings_int32_get(key_name, 0);
+    tab->listbox.cursor = rg_settings_get_int32(key_name, 0);
 
     gui_event(TAB_INIT, tab);
 
@@ -120,8 +120,8 @@ void gui_save_current_tab()
     tab_t *tab = gui_get_current_tab();
     char key_name[32];
     sprintf(key_name, "Sel.%.11s", tab->name);
-    rg_settings_int32_set(key_name, tab->listbox.cursor);
-    rg_settings_int32_set("SelectedTab", gui.selected);
+    rg_settings_set_int32(key_name, tab->listbox.cursor);
+    rg_settings_set_int32("SelectedTab", gui.selected);
     // rg_settings_save();
 }
 

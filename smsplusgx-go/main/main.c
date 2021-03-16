@@ -140,6 +140,10 @@ void app_main(void)
         RG_PANIC("ROM file loading failed!");
     }
 
+    if (IS_GG)  app->id += 1;
+    if (IS_TMS) app->id += 2;
+    rg_display_reset_config();
+
     bitmap.width = SMS_WIDTH;
     bitmap.height = SMS_HEIGHT;
     bitmap.pitch = bitmap.width;
@@ -153,9 +157,6 @@ void app_main(void)
     system_reset();
 
     app->refreshRate = (sms.display == DISPLAY_NTSC) ? 60 : 50;
-
-    // if (IS_SMS) rg_system_set_app_id(APP_ID + 1);
-    // if (IS_GG)  rg_system_set_app_id(APP_ID + 2);
 
     frames[0].width  = frames[1].width  = bitmap.viewport.w;
     frames[0].height = frames[1].height = bitmap.viewport.h;

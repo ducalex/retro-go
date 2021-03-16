@@ -54,7 +54,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
 
 void favorites_load()
 {
-    char *favorites_str = rg_settings_string_get(SETTING_FAVORITES, "");
+    char *favorites_str = rg_settings_get_string(SETTING_FAVORITES, "");
     char *temp_ptr = favorites_str;
 
     favorites_count = 0;
@@ -124,7 +124,7 @@ void favorites_save()
         }
     }
 
-    rg_settings_string_set(SETTING_FAVORITES, buffer);
+    rg_settings_set_string(SETTING_FAVORITES, buffer);
     rg_settings_save();
     free(buffer);
 }

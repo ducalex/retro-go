@@ -39,7 +39,7 @@ static dialog_return_t show_empty_cb(dialog_option_t *option, dialog_event_t eve
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         gui.show_empty = !gui.show_empty;
-        rg_settings_int32_set(SETTING_SHOW_EMPTY, gui.show_empty);
+        rg_settings_set_int32(SETTING_SHOW_EMPTY, gui.show_empty);
     }
     strcpy(option->value, gui.show_empty ? "Show" : "Hide");
     return RG_DIALOG_IGNORE;
@@ -71,11 +71,11 @@ static dialog_return_t show_preview_cb(dialog_option_t *option, dialog_event_t e
 {
     if (event == RG_DIALOG_PREV) {
         if (--gui.show_preview < 0) gui.show_preview = PREVIEW_MODE_COUNT - 1;
-        rg_settings_int32_set(SETTING_SHOW_PREVIEW, gui.show_preview);
+        rg_settings_set_int32(SETTING_SHOW_PREVIEW, gui.show_preview);
     }
     if (event == RG_DIALOG_NEXT) {
         if (++gui.show_preview >= PREVIEW_MODE_COUNT) gui.show_preview = 0;
-        rg_settings_int32_set(SETTING_SHOW_PREVIEW, gui.show_preview);
+        rg_settings_set_int32(SETTING_SHOW_PREVIEW, gui.show_preview);
     }
     const char *values[] = {"None      ", "Cover,Save", "Save,Cover", "Cover     ", "Save      "};
     strcpy(option->value, values[gui.show_preview % PREVIEW_MODE_COUNT]);
@@ -86,7 +86,7 @@ static dialog_return_t show_preview_speed_cb(dialog_option_t *option, dialog_eve
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         gui.show_preview_fast = gui.show_preview_fast ? 0 : 1;
-        rg_settings_int32_set(SETTING_PREVIEW_SPEED, gui.show_preview_fast);
+        rg_settings_set_int32(SETTING_PREVIEW_SPEED, gui.show_preview_fast);
     }
     strcpy(option->value, gui.show_preview_fast ? "Short" : "Long");
     return RG_DIALOG_IGNORE;
@@ -97,12 +97,12 @@ static dialog_return_t color_shift_cb(dialog_option_t *option, dialog_event_t ev
     int max = gui_themes_count - 1;
     if (event == RG_DIALOG_PREV) {
         if (--gui.theme < 0) gui.theme = max;
-        rg_settings_int32_set(SETTING_GUI_THEME, gui.theme);
+        rg_settings_set_int32(SETTING_GUI_THEME, gui.theme);
         gui_redraw();
     }
     if (event == RG_DIALOG_NEXT) {
         if (++gui.theme > max) gui.theme = 0;
-        rg_settings_int32_set(SETTING_GUI_THEME, gui.theme);
+        rg_settings_set_int32(SETTING_GUI_THEME, gui.theme);
         gui_redraw();
     }
     sprintf(option->value, "%d/%d", gui.theme + 1, max + 1);
@@ -131,11 +131,11 @@ void retro_loop()
     int last_key = -1;
     int selected_tab_last = -1;
 
-    gui.selected     = rg_settings_int32_get(SETTING_SELECTED_TAB, 0);
-    gui.theme        = rg_settings_int32_get(SETTING_GUI_THEME, 0);
-    gui.show_empty   = rg_settings_int32_get(SETTING_SHOW_EMPTY, 1);
-    gui.show_preview = rg_settings_int32_get(SETTING_SHOW_PREVIEW, 1);
-    gui.show_preview_fast = rg_settings_int32_get(SETTING_PREVIEW_SPEED, 0);
+    gui.selected     = rg_settings_get_int32(SETTING_SELECTED_TAB, 0);
+    gui.theme        = rg_settings_get_int32(SETTING_GUI_THEME, 0);
+    gui.show_empty   = rg_settings_get_int32(SETTING_SHOW_EMPTY, 1);
+    gui.show_preview = rg_settings_get_int32(SETTING_SHOW_PREVIEW, 1);
+    gui.show_preview_fast = rg_settings_get_int32(SETTING_PREVIEW_SPEED, 0);
 
     if (!gui.show_empty)
     {

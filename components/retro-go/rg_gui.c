@@ -32,7 +32,7 @@ static const char *SETTING_FONTSIZE     = "FontSize";
 void rg_gui_init(void)
 {
     overlay_buffer = (uint16_t *)rg_alloc(RG_SCREEN_WIDTH * 32 * 2, MEM_SLOW);
-    rg_gui_set_font_size(rg_settings_int32_get(SETTING_FONTSIZE, 8));
+    rg_gui_set_font_size(rg_settings_get_int32(SETTING_FONTSIZE, 8));
     rg_gui_set_theme(&default_theme);
 }
 
@@ -48,7 +48,7 @@ void rg_gui_set_font_size(int points)
     font_info.points = RG_MAX(8, RG_MIN(32, points));
     font_info.height = font_info.points;
     font_info.width = 8;
-    rg_settings_int32_set(SETTING_FONTSIZE, font_info.points);
+    rg_settings_set_int32(SETTING_FONTSIZE, font_info.points);
 }
 
 font_info_t rg_gui_get_font_info(void)
@@ -494,7 +494,8 @@ int rg_gui_dialog(const char *header, const dialog_option_t *options_const, int 
 
     rg_input_wait_for_key(last_key, false);
 
-    rg_display_force_refresh();
+    // This will force a redraw
+    rg_display_reset_config();
 
     for (int i = 0; i < options_count; i++)
     {

@@ -35,7 +35,8 @@ static long autoSaveSRAM_Timer = 0;
 static bool netplay = false;
 #endif
 
-static const char *SETTING_SAVE_SRAM = "sram";
+static const char *SETTING_SAVESRAM = "SaveSRAM";
+static const char *SETTING_PALETTE  = "Palette";
 // --- MAIN
 
 
@@ -121,7 +122,7 @@ static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t
 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
-        rg_settings_Palette_set(pal);
+        rg_settings_set_app_int32(SETTING_PALETTE, pal);
         pal_set_dmg(pal);
         emu_run(true);
     }
@@ -160,7 +161,7 @@ static dialog_return_t sram_autosave_cb(dialog_option_t *option, dialog_event_t 
 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
-        rg_settings_app_int32_set(SETTING_SAVE_SRAM, autoSaveSRAM);
+        rg_settings_set_app_int32(SETTING_SAVESRAM, autoSaveSRAM);
     }
 
     if (autoSaveSRAM == 0) strcpy(option->value, "Off ");
@@ -277,14 +278,14 @@ void app_main(void)
     frames[0].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
     frames[1].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
 
-    autoSaveSRAM = rg_settings_app_int32_get(SETTING_SAVE_SRAM, 0);
+    autoSaveSRAM = rg_settings_get_app_int32(SETTING_SAVESRAM, 0);
     sramFile = rg_emu_get_path(EMU_PATH_SAVE_SRAM, 0);
 
     // Load ROM
     rom_load(app->romPath);
 
     // Set palette for non-gbc games (must be after rom_load)
-    pal_set_dmg(rg_settings_Palette_get());
+    pal_set_dmg(rg_settings_get_app_int32(SETTING_PALETTE, 0));
 
     // Video
     memset(&fb, 0, sizeof(fb));

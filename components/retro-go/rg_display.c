@@ -787,8 +787,12 @@ static void display_task(void *arg)
     vTaskDelete(NULL);
 }
 
-void rg_display_force_refresh(void)
+void rg_display_reset_config(void)
 {
+    display.backlight = rg_settings_get_int32(SETTING_BACKLIGHT, RG_DISPLAY_BACKLIGHT_MAX);
+    display.scaling = rg_settings_get_app_int32(SETTING_SCALING, RG_DISPLAY_SCALING_FILL);
+    display.filter = rg_settings_get_app_int32(SETTING_FILTER, RG_DISPLAY_FILTER_OFF);
+    display.rotation = rg_settings_get_app_int32(SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO);
     display.changed = true;
 }
 
@@ -800,7 +804,7 @@ rg_display_t rg_display_get_status(void)
 void rg_display_set_scaling(display_scaling_t scaling)
 {
     display.scaling = RG_MIN(RG_MAX(0, scaling), RG_DISPLAY_SCALING_COUNT - 1);
-    rg_settings_int32_set(SETTING_SCALING, display.scaling);
+    rg_settings_set_app_int32(SETTING_SCALING, display.scaling);
     display.changed = true;
 }
 
@@ -812,7 +816,7 @@ display_scaling_t rg_display_get_scaling(void)
 void rg_display_set_filter(display_filter_t filter)
 {
     display.filter = RG_MIN(RG_MAX(0, filter), RG_DISPLAY_FILTER_COUNT - 1);
-    rg_settings_int32_set(SETTING_FILTER, display.filter);
+    rg_settings_set_app_int32(SETTING_FILTER, display.filter);
     display.changed = true;
 }
 
@@ -824,7 +828,7 @@ display_filter_t rg_display_get_filter(void)
 void rg_display_set_rotation(display_rotation_t rotation)
 {
     display.rotation = RG_MIN(RG_MAX(0, rotation), RG_DISPLAY_ROTATION_COUNT - 1);
-    rg_settings_int32_set(SETTING_SCALING, display.rotation);
+    rg_settings_set_app_int32(SETTING_SCALING, display.rotation);
     display.changed = true;
 }
 
@@ -836,7 +840,7 @@ display_rotation_t rg_display_get_rotation(void)
 void rg_display_set_backlight(display_backlight_t backlight)
 {
     display.backlight = RG_MIN(RG_MAX(0, backlight), RG_DISPLAY_BACKLIGHT_MAX);
-    rg_settings_int32_set(SETTING_BACKLIGHT, display.backlight);
+    rg_settings_set_int32(SETTING_BACKLIGHT, display.backlight);
     lcd_set_backlight((float)display.backlight / RG_DISPLAY_BACKLIGHT_MAX);
 }
 
@@ -1042,12 +1046,8 @@ void rg_display_deinit()
 
 void rg_display_init()
 {
-    display.backlight = rg_settings_int32_get(SETTING_BACKLIGHT, RG_DISPLAY_BACKLIGHT_MAX);
-    display.scaling = rg_settings_int32_get(SETTING_SCALING, RG_DISPLAY_SCALING_FILL);
-    display.filter = rg_settings_int32_get(SETTING_FILTER, RG_DISPLAY_FILTER_OFF);
-    display.rotation = rg_settings_int32_get(SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO);
-
     RG_LOGI("Initialization:\n");
+    rg_display_reset_config();
 
     RG_LOGI(" - calling spi_init.\n");
     spi_init();

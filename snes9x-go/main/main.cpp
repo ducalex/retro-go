@@ -155,7 +155,7 @@ static dialog_return_t menu_keymap_cb(dialog_option_t *option, dialog_event_t ev
 	if (keymap_id != prev)
 	{
 		update_keymap(keymap_id);
-		rg_settings_app_int32_set(SETTING_KEYMAP, keymap_id);
+		rg_settings_set_app_int32(SETTING_KEYMAP, keymap_id);
 	}
 
     strcpy(option->value, keymap.name);
@@ -260,7 +260,7 @@ static void snes9x_task(void *arg)
 
 	GFX.Screen = (uint16*)currentUpdate->buffer;
 
-	update_keymap(rg_settings_app_int32_get(SETTING_KEYMAP, 0));
+	update_keymap(rg_settings_get_app_int32(SETTING_KEYMAP, 0));
 
 	if (!S9xMemoryInit())
 		RG_PANIC("Memory init failed!");

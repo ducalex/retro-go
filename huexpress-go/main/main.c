@@ -44,6 +44,7 @@ static bool netplay = false;
 #endif
 
 static const char *SETTING_AUDIOTYPE = "audiotype";
+static const char *SETTING_OVERSCAN  = "overscan";
 // --- MAIN
 
 
@@ -82,7 +83,7 @@ void osd_gfx_init(void)
     framebuffers[0] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
     framebuffers[1] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
 
-    overscan = rg_settings_DisplayOverscan_get();
+    overscan = rg_settings_get_app_int32(SETTING_OVERSCAN, 1);
 
     // Build palette
     for (int i = 0; i < 255; i++)
@@ -167,7 +168,7 @@ static dialog_return_t overscan_update_cb(dialog_option_t *option, dialog_event_
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
         overscan = !overscan;
-        rg_settings_DisplayOverscan_set(overscan);
+        rg_settings_set_app_int32(SETTING_OVERSCAN, overscan);
         osd_gfx_set_mode(current_width, current_height);
     }
 
@@ -180,7 +181,7 @@ static dialog_return_t sampletype_update_cb(dialog_option_t *option, dialog_even
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         host.sound.sample_uint8 ^= 1;
-        rg_settings_app_int32_set(SETTING_AUDIOTYPE, host.sound.sample_uint8);
+        rg_settings_set_app_int32(SETTING_AUDIOTYPE, host.sound.sample_uint8);
     }
 
     strcpy(option->value, host.sound.sample_uint8 ? "On " : "Off");
@@ -252,7 +253,7 @@ void osd_snd_init(void)
 {
     host.sound.stereo = true;
     host.sound.sample_freq = AUDIO_SAMPLE_RATE;
-    host.sound.sample_uint8 = rg_settings_app_int32_get(SETTING_AUDIOTYPE, 0);
+    host.sound.sample_uint8 = rg_settings_get_app_int32(SETTING_AUDIOTYPE, 0);
 
     xTaskCreatePinnedToCore(&audioTask, "audioTask", 1024 * 2, NULL, 5, NULL, 1);
 }

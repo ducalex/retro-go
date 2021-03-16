@@ -30,15 +30,15 @@ void rg_audio_set_volume(audio_volume_t level)
     level = RG_MIN(level, RG_AUDIO_VOL_MAX);
     volumeLevel = level;
 
-    rg_settings_int32_set(SETTING_VOLUME, volumeLevel);
+    rg_settings_set_int32(SETTING_VOLUME, volumeLevel);
 
     RG_LOGI("volume set to %d%%\n", (int)(volumeLevels[level] * 100));
 }
 
 void rg_audio_init(int sample_rate)
 {
-    volumeLevel = rg_settings_int32_get(SETTING_VOLUME, RG_AUDIO_VOL_DEFAULT);
-    audioSink = rg_settings_int32_get(SETTING_OUTPUT, RG_AUDIO_SINK_SPEAKER);
+    volumeLevel = rg_settings_get_int32(SETTING_VOLUME, RG_AUDIO_VOL_DEFAULT);
+    audioSink = rg_settings_get_int32(SETTING_OUTPUT, RG_AUDIO_SINK_SPEAKER);
     audioSampleRate = sample_rate;
 
     rg_audio_deinit();
@@ -223,7 +223,7 @@ void rg_audio_submit(short *stereoAudioBuffer, size_t frameCount)
 void rg_audio_set_sink(audio_sink_t sink)
 {
     rg_audio_deinit();
-    rg_settings_int32_set(SETTING_OUTPUT, sink);
+    rg_settings_set_int32(SETTING_OUTPUT, sink);
     rg_audio_init(audioSampleRate);
 }
 
