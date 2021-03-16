@@ -61,6 +61,8 @@ typedef enum
     NES_PAL
 } region_t;
 
+typedef void (nes_timer_t)(int cycles);
+
 typedef struct
 {
     /* Hardware */
@@ -90,6 +92,10 @@ typedef struct
     int scanline;
     float cycles;
 
+    /* Periodic timer */
+    nes_timer_t *timer_func;
+    long timer_period;
+
     /* Control */
     bool autoframeskip;
     bool poweroff;
@@ -104,6 +110,7 @@ extern void nes_shutdown(void);
 extern void nes_setregion(region_t region);
 extern bool nes_insertcart(const char *filename);
 extern bool nes_insertdisk(const char *filename);
+extern void nes_settimer(nes_timer_t *func, long period);
 extern void nes_emulate(void);
 extern void nes_reset(bool hard_reset);
 extern void nes_poweroff(void);

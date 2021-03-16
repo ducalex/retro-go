@@ -20,7 +20,7 @@
 ** map020.c
 **
 ** Famicom Disk System
-** Implementation by ducalex
+** Implementation by ducalex with the help of wiki.nesdev.com and FCEUX
 **
 ** Mapper 20 is reserved by iNES for internal usage when emulating an FDS game.
 ** The FDS doesn't actually use a mapper, but our mapper infrastructure is a
@@ -33,6 +33,16 @@
 #include <nes.h>
 
 #define FDS_CLOCK (NES_CPU_CLOCK_NTSC / 2)
+#define CLEAR_IRQ() irq.data_ready = 0; irq.seeking = 0; irq.pending = 0; nes6502_irq_clear();
+
+enum {
+    BLOCK_INIT = 0,
+    BLOCK_VOLUME,
+    BLOCK_FILECOUNT,
+    BLOCK_FILEHEADER,
+    BLOCK_FILEDATA,
+    BLOCK_NEXT,
+};
 
 typedef struct
 {
@@ -41,33 +51,97 @@ typedef struct
     uint8 *disk[8];
     uint8 sides;
     uint8 regs[8];
+    uint8 *block_ptr;
+    int block_type;
+    int block_pos;
+    int block_size;
+    int block_filesize;
 } fds_t;
+
+struct
+{
+    // Timer IRQ
+    int32 counter;
+    int32 reload;
+    bool pending;
+    bool enabled;
+    bool repeat;
+    // Disk access IRQ
+    long seeking;
+    bool data_ready;
+} irq;
 
 static fds_t *fds;
 
 
+static void fds_cpu_timer(int cycles)
+{
+	if (irq.enabled && irq.counter)
+    {
+		irq.counter -= cycles;
+		if (irq.counter <= 0)
+        {
+            irq.counter = irq.reload;
+            irq.enabled = irq.repeat;
+            irq.pending = 1;
+            nes6502_irq();
+		}
+	}
+
+    if (irq.seeking > 0)
+    {
+        irq.seeking -= cycles;
+        if (irq.seeking <= 0)
+        {
+            if (fds->regs[5] & 0x80)
+            {
+                irq.data_ready = 1;
+                nes6502_irq();
+            }
+        }
+    }
+}
+
 static void fds_hblank(int scanline)
 {
-    // int a = NES_CYCLES_PER_SCANLINE;
+    //
 }
 
 static uint8 fds_read(uint32 address)
 {
-    MESSAGE_INFO("FDS read at %04X\n", address);
+    // MESSAGE_INFO("FDS read at %04X\n", address);
+    uint8 ret = 0;
 
     switch (address)
     {
-        case 0x4030:            // Disk Status Register 0
-            return 0x00;
+        case 0x4030:                    // Disk Status Register 0
+            if (irq.pending) ret |= 1;        // Timer IRQ
+            if (irq.data_ready) ret |= 2;     // Byte transferred
+            CLEAR_IRQ();
+            return ret;
 
-        case 0x4031:            // Read data register
-            return 0x00;
+        case 0x4031:                    // Read data register
+            if (fds->regs[5] & 0x04)
+            {
+                CLEAR_IRQ();
+                irq.seeking = 150;
 
-        case 0x4032:            // Disk drive status register
-            return 0x00;
+                if (fds->block_pos < fds->block_size)
+                    return fds->block_ptr[fds->block_pos++];
+                else
+                    return 0;
+            }
+            return 0xFF;
 
-        case 0x4033:            // External connector read
-            return 0x80;        // bit 7 = battery status
+        case 0x4032:                    // Disk drive status register
+            // wprotect|/ready|/inserted
+            if (!(fds->regs[5] & 1) || (fds->regs[5] & 2))
+                return 0b110;
+            return 0b100;
+
+        case 0x4033:                    // External connector read
+            // bit 7 = battery, rest = ignore for now
+            return 0x80;
 
         default:
             return 0x00;
@@ -76,26 +150,83 @@ static uint8 fds_read(uint32 address)
 
 static void fds_write(uint32 address, uint8 value)
 {
-    MESSAGE_INFO("FDS write at %04X: %02X\n", address, value);
+    // MESSAGE_INFO("FDS write at %04X: %02X\n", address, value);
 
 	switch (address)
     {
-        case 0x4020:
+        case 0x4020:                    // IRQ reload value low
+            CLEAR_IRQ();
+            irq.reload = (irq.reload & 0xFF00) | value;
             break;
 
-        case 0x4021:
+        case 0x4021:                    // IRQ reload value high
+            CLEAR_IRQ();
+            irq.reload = (irq.reload & 0x00FF) | (value << 8);
             break;
 
-        case 0x4022:
+        case 0x4022:                    // IRQ control
+            CLEAR_IRQ();
+            irq.enabled = (value >> 1) & 1;
+            irq.repeat = (value >> 0) & 1;
+            irq.counter = irq.reload;
             break;
 
-        case 0x4023:
+        case 0x4023:                    // Master I/O enable
+            // Do nothing
             break;
 
-        case 0x4024:
+        case 0x4024:                    // Write data register
             break;
 
-        case 0x4025:
+        case 0x4025:                    // FDS Control
+            // Transfer Reset
+            if (value & 0x02)
+            {
+				fds->block_type = BLOCK_INIT;
+                fds->block_ptr = &fds->disk[0][0];
+                fds->block_filesize = 0;
+				fds->block_size = 0;
+				fds->block_pos = 0;
+			}
+
+            // New transfer
+			if (value & 0x40 && ~(fds->regs[5]) & 0x40)
+            {
+                fds->block_ptr = fds->block_ptr + fds->block_pos;
+				fds->block_pos = 0;
+
+				switch (fds->block_type + 1)
+                {
+					case BLOCK_VOLUME:
+                        fds->block_type = BLOCK_VOLUME;
+						fds->block_size = 0x38;
+						break;
+					case BLOCK_FILECOUNT:
+                        fds->block_type = BLOCK_FILECOUNT;
+						fds->block_size = 0x02;
+						break;
+					case BLOCK_FILEHEADER:
+					case BLOCK_NEXT:
+                        fds->block_type = BLOCK_FILEHEADER;
+						fds->block_size = 0x10;
+                        fds->block_filesize = (fds->block_ptr[13]) | (fds->block_ptr[14]) << 8;
+						break;
+					case BLOCK_FILEDATA:
+                        fds->block_type = BLOCK_FILEDATA;
+						fds->block_size = 0x01 + fds->block_filesize;
+						break;
+				}
+
+                printf("Block type %d with size %d bytes\n", fds->block_type, fds->block_size);
+			}
+
+            // Turn on motor
+            if (value & 0x40)
+            {
+				irq.seeking = 150;
+			}
+
+            ppu_setmirroring((value & 8) ? PPU_MIRROR_HORI : PPU_MIRROR_VERT);
             break;
 	}
 
@@ -164,27 +295,31 @@ void fds_init(rom_t *cart)
     {
         fds->disk[i] = disk_ptr + (i * 65500);
     }
+    fds->block_ptr = &fds->disk[0][0];
 
-    // cart->prg_rom = fds->prog;
-    // cart->prg_rom_banks = 4;
+    // cart->prg_rom = fds->bios;
+    // cart->prg_rom_banks = 1;
 
     mmc_bankprg(32, 0x6000, 0, fds->prog); // PRG-RAM 0x6000-0xDFFF
     mmc_bankprg(8,  0xE000, 0, fds->bios); // BIOS 0xE000-0xFFFF
-}
 
-static const mem_write_handler_t fds_memwrite[] =
-{
-    {0x4020, 0x4027, fds_write},
-    {0x4040, 0x407F, fds_wave_write},
-    {0x4080, 0x408A, fds_sound_write},
-    LAST_MEMORY_HANDLER
-};
+    ppu_setmirroring(PPU_MIRROR_HORI);
+    nes_settimer(fds_cpu_timer, 10);
+}
 
 static const mem_read_handler_t fds_memread[] =
 {
-    {0x4030, 0x4037, fds_read},
+    {0x4030, 0x4035, fds_read},
     {0x4040, 0x407F, fds_wave_read},
     {0x4090, 0x4092, fds_sound_read},
+    LAST_MEMORY_HANDLER
+};
+
+static const mem_write_handler_t fds_memwrite[] =
+{
+    {0x4020, 0x4025, fds_write},
+    {0x4040, 0x407F, fds_wave_write},
+    {0x4080, 0x408A, fds_sound_write},
     LAST_MEMORY_HANDLER
 };
 

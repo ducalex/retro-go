@@ -162,9 +162,10 @@ void mmc_reset(void)
    else
       ppu_setmirroring(PPU_MIRROR_HORI);
 
-   /* Clear the PPU's special callbacks */
+   /* Clear special callbacks */
    ppu_setlatchfunc(NULL);
    ppu_setvreadfunc(NULL);
+   nes_settimer(NULL, 0);
 
    /* The mapper's init will undo all we've just done, oh well :) */
    if (mapper.init)

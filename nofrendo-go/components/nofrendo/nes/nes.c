@@ -62,9 +62,22 @@ INLINE void renderframe()
         if (nes.mapper->hblank)
             nes.mapper->hblank(nes.scanline);
 
-        elapsed_cycles = nes6502_execute(nes.cycles);
-        apu_fc_advance(elapsed_cycles);
-        nes.cycles -= elapsed_cycles;
+        if (nes.timer_func == NULL)
+        {
+            elapsed_cycles = nes6502_execute(nes.cycles);
+            apu_fc_advance(elapsed_cycles);
+            nes.cycles -= elapsed_cycles;
+        }
+        else
+        {
+            while (nes.cycles >= 1)
+            {
+                elapsed_cycles = nes6502_execute(MIN(nes.timer_period, nes.cycles));
+                apu_fc_advance(elapsed_cycles);
+                nes.timer_func(elapsed_cycles);
+                nes.cycles -= elapsed_cycles;
+            }
+        }
 
         ppu_endscanline();
         nes.scanline++;
@@ -97,6 +110,13 @@ void nes_emulate(void)
 
         osd_vsync();
     }
+}
+
+/* This sets a timer to be fired every `period` cpu cycles. It is NOT accurate. */
+void nes_settimer(nes_timer_t *func, long period)
+{
+    nes.timer_func = func;
+    nes.timer_period = period;
 }
 
 void nes_poweroff(void)
