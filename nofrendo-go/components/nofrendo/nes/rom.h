@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** nes_rom.h
+** nes/rom.h: ROM loader header
 **
-** NES ROM loading/saving related defines / prototypes
-** $Id: nes_rom.h,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #ifndef _NES_ROM_H_

@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map085.c
+** map085.c: Konami VRC7 mapper interface
 **
-** Konami VRC7 mapper interface
-** $Id: map085.c,v 1.3 2001/05/06 01:42:03 neil Exp $
 */
 
 #include <nofrendo.h>

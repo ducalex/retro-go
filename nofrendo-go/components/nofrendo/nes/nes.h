@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** nes.h
+** nes.h: NES console emulation header
 **
-** NES hardware related definitions / prototypes
-** $Id: nes.h,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #ifndef _NES_H_
@@ -70,8 +68,8 @@ typedef struct
     ppu_t *ppu;
     apu_t *apu;
     mem_t *mem;
-    map_t *mapper;
     rom_t *cart;
+    mapper_t *mapper;
 
     /* Video buffer */
     uint8 *framebuffers[2];

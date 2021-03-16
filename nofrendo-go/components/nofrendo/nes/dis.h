@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** dis6502.h
+** nes/dis.h: 6502 disassembler header
 **
-** 6502 disassembler header
-** $Id: dis6502.h,v 1.1 2001/04/27 12:54:39 neil Exp $
 */
 
 #ifndef _DIS6502_H_

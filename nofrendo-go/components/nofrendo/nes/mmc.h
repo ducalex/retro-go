@@ -17,17 +17,15 @@
 ** must bear this legend.
 **
 **
-** nes_mmc.h
+** nes/mmc.h: Mapper emulation header
 **
-** NES Memory Management Controller (mapper) defines / prototypes
-** $Id: nes_mmc.h,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #ifndef _NES_MMC_H_
 #define _NES_MMC_H_
 
-typedef const struct mapper_s mapintf_t;
-typedef struct mapper_s map_t;
+typedef struct mapper_s mapper_t;
+typedef const mapper_t mapintf_t;
 
 #include <nofrendo.h>
 #include "state.h"
@@ -61,7 +59,7 @@ struct mapper_s
 #define mmc_bankvrom(a, b, c) mmc_bankchr(a, b, c, CHR_ANY)
 #define mmc_bankrom(a, b, c) mmc_bankprg(a, b, c, PRG_ROM)
 
-extern map_t *mmc_init(rom_t *cart);
+extern mapper_t *mmc_init(rom_t *cart);
 extern void mmc_shutdown(void);
 extern void mmc_reset(void);
 extern void mmc_bankprg(int size, uint32 address, int bank, uint8 *base);

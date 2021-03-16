@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map064.c
+** map064.c: Tengen RAMBO-1 mapper interface
 **
-** Tengen RAMBO-1 mapper interface
-** $Id: map064.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

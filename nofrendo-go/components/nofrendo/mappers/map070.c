@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map070.c
+** map070.c: mapper 70 interface
 **
-** mapper 70 interface
-** $Id: map070.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

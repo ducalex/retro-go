@@ -17,12 +17,8 @@
 ** must bear this legend.
 **
 **
-** map229.c
-**
-** Mapper #229 (31 in 1)
-** Implementation by Firebug
-** Mapper information courtesy of Mark Knibbs
-** $Id: map229.c,v 1.2 2001/04/27 14:37:11 neil Exp $
+** map229.c: 31 in 1 mapper interface
+** Implemented by Firebug with information courtesy of Mark Knibbs
 **
 */
 

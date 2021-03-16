@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** nes_mem.h
+** nes/mem.h: Memory emulation header
 **
-** Memory related functions
-** by ducalex
 */
 
 #ifndef _NES_MEM_H_

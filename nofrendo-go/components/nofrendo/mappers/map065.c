@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map065.c
+** map065.c: Irem H-3001 mapper interface
 **
-** Irem H-3001 mapper interface
-** $Id: map065.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

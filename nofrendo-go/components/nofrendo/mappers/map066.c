@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map066.c
+** map066.c: GNROM mapper interface
 **
-** GNROM mapper interface
-** $Id: map066.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

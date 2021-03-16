@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map034.c
+** map034.c: Nina-1 mapper interface
 **
-** Nina-1 mapper interface
-** $Id: map034.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

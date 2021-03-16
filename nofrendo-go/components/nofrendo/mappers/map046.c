@@ -17,12 +17,8 @@
 ** must bear this legend.
 **
 **
-** map046.c
-**
-** Mapper #46 (Pelican Game Station)
-** Implementation by Firebug
-** Mapper information courtesy of Kevin Horton
-** $Id: map046.c,v 1.2 2001/04/27 14:37:11 neil Exp $
+** map046.c: Mapper #46 (Pelican Game Station)
+** Implemented by Firebug with information courtesy of Kevin Horton
 **
 */
 

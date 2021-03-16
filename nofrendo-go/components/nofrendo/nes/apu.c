@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** nes_apu.c
+** nes/apu.c: Sound emulation (APU)
 **
-** NES APU emulation
-** $Id: nes_apu.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

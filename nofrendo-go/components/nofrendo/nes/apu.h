@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** nes_apu.h
+** nes/apu.h: Sound emulation header
 **
-** NES APU emulation header file
-** $Id: nes_apu.h,v 1.1 2001/04/27 12:54:40 neil Exp $
 */
 
 #ifndef _NES_APU_H_

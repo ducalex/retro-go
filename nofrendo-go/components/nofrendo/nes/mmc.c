@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** nes_mmc.c
+** nes/mmc.c: Mapper emulation
 **
-** NES Memory Management Controller (mapper) emulation
-** $Id: nes_mmc.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>
@@ -30,7 +28,7 @@
 #include "mmc.h"
 #include "rom.h"
 
-static map_t mapper;
+static mapper_t mapper;
 static rom_t *cart;
 
 /* PRG-ROM/RAM bankswitching */
@@ -177,7 +175,7 @@ void mmc_shutdown()
    //
 }
 
-map_t *mmc_init(rom_t *_cart)
+mapper_t *mmc_init(rom_t *_cart)
 {
    int mapper_number = _cart->mapper_number;
 

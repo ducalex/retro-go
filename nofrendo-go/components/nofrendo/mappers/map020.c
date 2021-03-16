@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map020.c
-**
-** Famicom Disk System
-** Implementation by ducalex with the help of wiki.nesdev.com and FCEUX
+** map020.c: Famicom Disk System
+** Implemented by ducalex with the help of wiki.nesdev.com and FCEUX
 **
 ** Mapper 20 is reserved by iNES for internal usage when emulating an FDS game.
 ** The FDS doesn't actually use a mapper, but our mapper infrastructure is a
@@ -35,7 +33,8 @@
 #define FDS_CLOCK (NES_CPU_CLOCK_NTSC / 2)
 #define CLEAR_IRQ() irq.data_ready = 0; irq.seeking = 0; irq.pending = 0; nes6502_irq_clear();
 
-enum {
+enum
+{
     BLOCK_INIT = 0,
     BLOCK_VOLUME,
     BLOCK_FILECOUNT,

@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map001.c
-**
-** MMC1 mapper interface
-** New implementation by ducalex
+** map001.c: MMC1 mapper interface
+** Implemented by ducalex
 **
 */
 

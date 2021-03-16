@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map015.c
+** map015.c: Contra 100-in-1 mapper interface
 **
-** Contra 100-in-1 mapper interface
-** $Id: map015.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

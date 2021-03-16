@@ -17,12 +17,8 @@
 ** must bear this legend.
 **
 **
-** map050.c
-**
-** Mapper #50 (SMB2j - 3rd discovered variation)
-** Implementation by Firebug
-** Mapper information courtesy of Kevin Horton
-** $Id: map050.c,v 1.2 2001/04/27 14:37:11 neil Exp $
+** map050.c: SMB2j - 3rd discovered variation
+** Implemented by Firebug with information courtesy of Kevin Horton
 **
 */
 

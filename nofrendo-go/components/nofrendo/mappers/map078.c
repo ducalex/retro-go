@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map078.c
+** map078.c: mapper 78 interface
 **
-** mapper 78 interface
-** $Id: map078.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

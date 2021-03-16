@@ -20,9 +20,6 @@
 ** nofrendo.h (c) 1998-2000 Matthew Conte (matt@conte.com)
 **            (c) 2000 Neil Stevens (multivac@fcmail.com)
 **
-** Note: all architectures should call these functions
-**
-** $Id: nofrendo.h,v 1.2 2001/04/27 11:10:08 neil Exp $
 */
 
 #ifndef _NOFRENDO_H_
@@ -54,10 +51,6 @@
 #define PATH_MAX 512
 #undef PATH_SEP
 #define PATH_SEP '/'
-
-#ifndef __PACKED__
-#define __PACKED__ __attribute__((packed))
-#endif
 
 #define INLINE static inline __attribute__((__always_inline__))
 

@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map005.c
-**
-** Mapper 5 (MMC5) interface
-** Implementation by ducalex
+** map005.c: Mapper 5 (MMC5) interface
+** Implemented by ducalex
 **
 */
 

@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map040.c
+** map040.c: SMB 2j (hack) mapper interface
 **
-** SMB 2j (hack) mapper interface
-** $Id: map040.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

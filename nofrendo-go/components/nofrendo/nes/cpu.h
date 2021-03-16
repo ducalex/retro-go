@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** nes6502.h
+** nes/cpu.h: CPU emulation header
 **
-** NES custom 6502 CPU definitions / prototypes
-** $Id: nes6502.h,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 /* NOTE: 16-bit addresses avoided like the plague: use 32-bit values

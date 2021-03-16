@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map160.c
+** map160.c: Mapper 160 interface
 **
-** mapper 160 interface
-** $Id: map160.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

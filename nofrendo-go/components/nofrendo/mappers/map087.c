@@ -17,11 +17,8 @@
 ** must bear this legend.
 **
 **
-** map087.c
-**
-** Mapper 87
-** Implementation by Firebug
-** $Id: map087.c,v 1.2 2001/04/27 14:37:11 neil Exp $
+** map087.c: Mapper 87 interface
+** Implemented by Firebug
 **
 */
 

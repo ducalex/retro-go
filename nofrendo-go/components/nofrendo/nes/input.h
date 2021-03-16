@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** nes_input.h
+** nes/input.h: Input emulation header
 **
-** Platform independent input definitions
-** $Id: nes_input.h,v 1.1.1.1 2001/04/27 07:03:54 neil Exp $
 */
 
 #ifndef _NESINPUT_H_

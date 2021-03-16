@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map021.c
+** map021.c: VRC4 mapper interface
 **
-** VRC4 mapper interface
-** $Id: mapvrc.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

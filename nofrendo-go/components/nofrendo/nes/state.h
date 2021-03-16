@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** nes_state.h
+** nes/state.h: Save state support header
 **
-** state saving header
-** $Id: nes_state.h,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #ifndef _NESSTATE_H_

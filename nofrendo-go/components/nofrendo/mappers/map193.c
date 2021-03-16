@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map193.c
-**
-** Mapper 193 interface (War in the Gulf)
-** Implementation by ducalex
+** map193.c: Mapper 193 interface (War in the Gulf)
+** Implemented by ducalex
 **
 */
 

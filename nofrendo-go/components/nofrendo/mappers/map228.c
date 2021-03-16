@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map228.c
-**
-** Mapper 228 interface (Cheetahmen II)
-** Implementation by ducalex
+** map228.c: Cheetahmen II mapper interface
+** Implemented by ducalex
 **
 */
 

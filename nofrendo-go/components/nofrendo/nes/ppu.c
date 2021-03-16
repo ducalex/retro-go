@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** nes_ppu.c
+** nes/ppu.c: Graphics emulation (PPU)
 **
-** NES PPU emulation
-** $Id: nes_ppu.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

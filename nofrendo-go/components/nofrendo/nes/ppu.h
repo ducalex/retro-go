@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** nes_ppu.h
+** nes/ppu.h: Graphics emulation header
 **
-** NES Picture Processing Unit (PPU) emulation header file
-** $Id: nes_ppu.h,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #ifndef _NES_PPU_H_

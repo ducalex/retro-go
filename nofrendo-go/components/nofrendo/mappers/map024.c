@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map024.c
+** map024.c: Konami VRC6 mapper interface
 **
-** Konami VRC6 mapper interface
-** $Id: map024.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

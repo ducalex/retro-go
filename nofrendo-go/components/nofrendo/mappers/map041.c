@@ -17,12 +17,8 @@
 ** must bear this legend.
 **
 **
-** map041.c
-**
-** Mapper #41 (Caltron 6 in 1)
-** Implementation by Firebug
-** Mapper information courtesy of Kevin Horton
-** $Id: map041.c,v 1.2 2001/04/27 14:37:11 neil Exp $
+** map041.c: Mapper #41 (Caltron 6 in 1)
+** Implemented by Firebug with information courtesy of Kevin Horton
 **
 */
 

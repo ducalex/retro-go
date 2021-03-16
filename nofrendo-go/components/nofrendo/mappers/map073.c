@@ -17,11 +17,8 @@
 ** must bear this legend.
 **
 **
-** map073.c
-**
-** Mapper #73 (Konami VRC3)
-** Implementation by Firebug
-** $Id: map073.c,v 1.2 2001/04/27 14:37:11 neil Exp $
+** map073.c: Konami VRC3 mapper interface
+** Implemented by Firebug
 **
 */
 

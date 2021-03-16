@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** nes_mem.c
+** nes/mem.c: Memory emulation
 **
-** Memory related functions
-** by ducalex
 */
 
 #include <nofrendo.h>
@@ -165,7 +163,7 @@ void mem_reset(void)
    mem_setpage(3, mem.ram); // $1800 - $1FFF mirror
 
    int num_read_handlers = 0, num_write_handlers = 0;
-   map_t *mapper = nes_getptr()->mapper;
+   mapper_t *mapper = nes_getptr()->mapper;
 
    // NES cartridge handlers
    if (mapper && (mapper->mem_read || mapper->mem_write))

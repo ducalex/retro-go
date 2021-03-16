@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map011.c
+** map011.c: Color Dreams mapper interface
 **
-** Color Dreams mapper interface
-** $Id: map011.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

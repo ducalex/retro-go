@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map032.c
+** map032.c: Irem G-101 mapper interface
 **
-** Irem G-101 mapper interface
-** $Id: map032.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

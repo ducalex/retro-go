@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map162.c
-**
-** Mapper 162 and 163 interface (Nanjing games)
-** Implementation by ducalex
+** map162.c: Mapper 162 and 163 interface (Nanjing games)
+** by ducalex
 **
 */
 

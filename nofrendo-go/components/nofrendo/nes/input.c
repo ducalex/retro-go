@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** nes_input.c
+** nes/input.c: Input emulation (joypads)
 **
-** Event handling system routines
-** $Id: nes_input.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

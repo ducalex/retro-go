@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map002.c
+** map002.c: UNROM mapper interface
 **
-** UNROM mapper interface
-** $Id: map002.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

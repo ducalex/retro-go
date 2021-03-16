@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** nes6502.c
+** nes/cpu.c: CPU emulation (2A03, 6502-like)
 **
-** NES custom 6502 (2A03) CPU implementation
-** $Id: nes6502.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

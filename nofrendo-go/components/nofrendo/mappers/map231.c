@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map231.c
+** map231.c: NINA-07 mapper interface
 **
-** NINA-07 mapper interface
-** $Id: map231.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map009.c
+** map009.c: MMC2 mapper interface
 **
-** MMC2 mapper interface
-** $Id: map009.c,v 1.2 2001/04/27 14:37:11 neil Exp $
 */
 
 #include <nofrendo.h>

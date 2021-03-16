@@ -17,10 +17,8 @@
 ** must bear this legend.
 **
 **
-** map010.c
+** map010.c: MMC4 mapper interface
 **
-** MMC4 mapper interface
-** $Id: map010.c,v 1.0 2018/07/07
 */
 
 #include <nofrendo.h>

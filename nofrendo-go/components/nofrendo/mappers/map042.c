@@ -17,12 +17,8 @@
 ** must bear this legend.
 **
 **
-** map042.c
-**
-** Mapper #42 (Baby Mario bootleg)
-** Implementation by Firebug
-** Mapper information courtesy of Kevin Horton
-** $Id: map042.c,v 1.2 2001/04/27 14:37:11 neil Exp $
+** map042.c: Mapper #42 (Baby Mario bootleg)
+** Implemented by Firebug with information courtesy of Kevin Horton
 **
 */
 
