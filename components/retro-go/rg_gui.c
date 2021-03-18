@@ -596,10 +596,10 @@ static dialog_return_t filter_update_cb(dialog_option_t *option, dialog_event_t 
         rg_display_set_filter(mode);
     }
 
-    if (mode == RG_DISPLAY_FILTER_OFF)      strcpy(option->value, "Off  ");
-    if (mode == RG_DISPLAY_FILTER_LINEAR_X) strcpy(option->value, "Horiz");
-    if (mode == RG_DISPLAY_FILTER_LINEAR_Y) strcpy(option->value, "Vert ");
-    if (mode == RG_DISPLAY_FILTER_BILINEAR) strcpy(option->value, "Both ");
+    if (mode == RG_DISPLAY_FILTER_OFF)   strcpy(option->value, "Off  ");
+    if (mode == RG_DISPLAY_FILTER_HORIZ) strcpy(option->value, "Horiz");
+    if (mode == RG_DISPLAY_FILTER_VERT)  strcpy(option->value, "Vert ");
+    if (mode == RG_DISPLAY_FILTER_BOTH)  strcpy(option->value, "Both ");
 
     return RG_DIALOG_IGNORE;
 }

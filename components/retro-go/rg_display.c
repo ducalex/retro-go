@@ -470,7 +470,7 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
         }
 
         // The vertical filter requires a block to start and end with unscaled lines
-        if (display.filter & RG_DISPLAY_FILTER_LINEAR_Y)
+        if (display.filter == RG_DISPLAY_FILTER_VERT || display.filter == RG_DISPLAY_FILTER_BOTH)
         {
             while (lines_to_copy > 1 && (screen_line_is_empty[screen_y + lines_to_copy - 1] ||
                                          screen_line_is_empty[screen_y + lines_to_copy]))
@@ -534,8 +534,8 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
         if (display.filter && display.scaling)
         {
             bilinear_filter(line_buffer, screen_y - lines_to_copy, scaled_left, scaled_width, lines_to_copy,
-                            display.filter & RG_DISPLAY_FILTER_LINEAR_X,
-                            display.filter & RG_DISPLAY_FILTER_LINEAR_Y);
+                            display.filter != RG_DISPLAY_FILTER_VERT,
+                            display.filter != RG_DISPLAY_FILTER_HORIZ);
         }
 
         lcd_send_data(line_buffer, scaled_width * lines_to_copy * 2);
@@ -789,9 +789,9 @@ static void display_task(void *arg)
 
 void rg_display_reset_config(void)
 {
-    display.backlight = rg_settings_get_int32(SETTING_BACKLIGHT, RG_DISPLAY_BACKLIGHT_MAX);
+    display.backlight = rg_settings_get_int32(SETTING_BACKLIGHT, RG_DISPLAY_BACKLIGHT_DEFAULT);
     display.scaling = rg_settings_get_app_int32(SETTING_SCALING, RG_DISPLAY_SCALING_FILL);
-    display.filter = rg_settings_get_app_int32(SETTING_FILTER, RG_DISPLAY_FILTER_OFF);
+    display.filter = rg_settings_get_app_int32(SETTING_FILTER, RG_DISPLAY_FILTER_HORIZ);
     display.rotation = rg_settings_get_app_int32(SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO);
     display.changed = true;
 }
