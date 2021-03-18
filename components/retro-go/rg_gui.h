@@ -211,7 +211,7 @@ void rg_gui_init(void);
 void rg_gui_set_theme(const dialog_theme_t *new_theme);
 void rg_gui_set_font_size(int points);
 font_info_t rg_gui_get_font_info(void);
-int  rg_gui_draw_text(int x, int y, int width, const char *text, uint16_t color, uint16_t color_bg);
+int  rg_gui_draw_text(int x, int y, int width, const char *text, uint16_t color_fg, uint16_t color_bg);
 void rg_gui_draw_rect(int x, int y, int width, int height, int border, uint16_t color);
 void rg_gui_draw_fill_rect(int x, int y, int width, int height, uint16_t color);
 void rg_gui_draw_battery(int x, int y);
