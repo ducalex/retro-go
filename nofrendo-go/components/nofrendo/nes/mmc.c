@@ -134,20 +134,24 @@ void mmc_bankchr(int size, uint32 address, int bank, uint8 *base)
 void mmc_reset(void)
 {
    /* Switch PRG-RAM into CPU space */
-   if (cart->prg_ram_banks)
+   if (cart->prg_ram_banks > 0)
    {
       mmc_bankprg(8, 0x6000, 0, PRG_RAM);
    }
 
    /* Switch PRG-ROM into CPU space */
-   if (cart->prg_rom_banks)
+   if (cart->prg_rom_banks > 1)
    {
       mmc_bankprg(16, 0x8000,  0, PRG_ROM);
       mmc_bankprg(16, 0xC000, -1, PRG_ROM);
    }
+   else if (cart->prg_rom_banks == 1)
+   {
+      mmc_bankprg(8, 0xE000,  0, PRG_ROM);
+   }
 
    /* Switch CHR-ROM/RAM into PPU space */
-   if (cart->chr_rom_banks)
+   if (cart->chr_rom_banks > 0)
       mmc_bankchr(8, 0x0000, 0, CHR_ROM);
    else
       mmc_bankchr(8, 0x0000, 0, CHR_RAM);

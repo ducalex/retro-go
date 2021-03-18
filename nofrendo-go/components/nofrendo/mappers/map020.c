@@ -31,7 +31,21 @@
 #include <nes.h>
 
 #define FDS_CLOCK (NES_CPU_CLOCK_NTSC / 2)
-#define CLEAR_IRQ() irq.data_ready = 0; irq.seeking = 0; irq.pending = 0; nes6502_irq_clear();
+#define SEEK_TIME 100 // 150
+#define CLEAR_IRQ() irq.seek_counter = irq.transfer_done = irq.timer_fired = 0; nes6502_irq_clear();
+#define TIMER_RELOAD() irq.timer_counter = (fds->regs[1] << 8) | fds->regs[0];
+
+#define REG2_IRQ_REPEAT  (1 << 0)
+#define REG2_IRQ_ENABLED (1 << 1)
+#define REG3_ENABLE_DISK_REGS (1 << 0)
+#define REG3_ENABLE_SOUND_REGS  (1 << 1)
+#define REG5_MOTOR_ON (1 << 0)
+#define REG5_TRANSFER_RESET (1 << 1)
+#define REG5_READ_MODE (1 << 2)
+#define REG5_MIRRORING (1 << 3)
+#define REG5_CRC_CONTROL (1 << 4)
+#define REG5_TRANSFER_START (1 << 6)
+#define REG5_USE_INTERRUPT (1 << 7)
 
 enum
 {
@@ -45,8 +59,6 @@ enum
 
 typedef struct
 {
-    uint8 prog[0x8000];
-    uint8 bios[0x2000];
     uint8 *disk[8];
     uint8 sides;
     uint8 regs[8];
@@ -60,14 +72,11 @@ typedef struct
 struct
 {
     // Timer IRQ
-    int32 counter;
-    int32 reload;
-    bool pending;
-    bool enabled;
-    bool repeat;
+    long timer_counter;
+    bool timer_fired;
     // Disk access IRQ
-    long seeking;
-    bool data_ready;
+    long seek_counter;
+    bool transfer_done;
 } irq;
 
 static fds_t *fds;
@@ -75,35 +84,38 @@ static fds_t *fds;
 
 static void fds_cpu_timer(int cycles)
 {
-	if (irq.enabled && irq.counter)
+	if (irq.timer_counter > 0 && (fds->regs[2] & REG2_IRQ_ENABLED))
     {
-		irq.counter -= cycles;
-		if (irq.counter <= 0)
+		irq.timer_counter -= cycles;
+		if (irq.timer_counter <= 0)
         {
-            irq.counter = irq.reload;
-            irq.enabled = irq.repeat;
-            irq.pending = 1;
+            if (!(fds->regs[2] & REG2_IRQ_REPEAT))
+                fds->regs[2] &= ~REG2_IRQ_ENABLED;
+
+            TIMER_RELOAD();
             nes6502_irq();
+
+            irq.timer_fired = true;
 		}
 	}
 
-    if (irq.seeking > 0)
+    if (irq.seek_counter > 0)
     {
-        irq.seeking -= cycles;
-        if (irq.seeking <= 0)
+        irq.seek_counter -= cycles;
+        if (irq.seek_counter <= 0)
         {
             if (fds->regs[5] & 0x80)
             {
-                irq.data_ready = 1;
                 nes6502_irq();
             }
+            irq.transfer_done = true;
         }
     }
 }
 
 static void fds_hblank(int scanline)
 {
-    //
+    fds_cpu_timer(NES_CYCLES_PER_SCANLINE);
 }
 
 static uint8 fds_read(uint32 address)
@@ -114,8 +126,8 @@ static uint8 fds_read(uint32 address)
     switch (address)
     {
         case 0x4030:                    // Disk Status Register 0
-            if (irq.pending) ret |= 1;        // Timer IRQ
-            if (irq.data_ready) ret |= 2;     // Byte transferred
+            if (irq.timer_fired) ret |= 1;        // Timer IRQ
+            if (irq.transfer_done) ret |= 2;     // Byte transferred
             CLEAR_IRQ();
             return ret;
 
@@ -123,7 +135,7 @@ static uint8 fds_read(uint32 address)
             if (fds->regs[5] & 0x04)
             {
                 CLEAR_IRQ();
-                irq.seeking = 150;
+                irq.seek_counter = SEEK_TIME;
 
                 if (fds->block_pos < fds->block_size)
                     return fds->block_ptr[fds->block_pos++];
@@ -155,19 +167,15 @@ static void fds_write(uint32 address, uint8 value)
     {
         case 0x4020:                    // IRQ reload value low
             CLEAR_IRQ();
-            irq.reload = (irq.reload & 0xFF00) | value;
             break;
 
         case 0x4021:                    // IRQ reload value high
             CLEAR_IRQ();
-            irq.reload = (irq.reload & 0x00FF) | (value << 8);
             break;
 
         case 0x4022:                    // IRQ control
             CLEAR_IRQ();
-            irq.enabled = (value >> 1) & 1;
-            irq.repeat = (value >> 0) & 1;
-            irq.counter = irq.reload;
+            TIMER_RELOAD();
             break;
 
         case 0x4023:                    // Master I/O enable
@@ -222,7 +230,7 @@ static void fds_write(uint32 address, uint8 value)
             // Turn on motor
             if (value & 0x40)
             {
-				irq.seeking = 150;
+				irq.seek_counter = SEEK_TIME;
 			}
 
             ppu_setmirroring((value & 8) ? PPU_MIRROR_HORI : PPU_MIRROR_VERT);
@@ -234,22 +242,24 @@ static void fds_write(uint32 address, uint8 value)
 
 static uint8 fds_sound_read(uint32 address)
 {
+    MESSAGE_INFO("FDS sound read at %04X\n", address);
     return 0x00;
 }
 
 static void fds_sound_write(uint32 address, uint8 value)
 {
-    //
+    MESSAGE_INFO("FDS sound write at %04X: %02X\n", address, value);
 }
 
 static uint8 fds_wave_read(uint32 address)
 {
+    MESSAGE_INFO("FDS wave read at %04X\n", address);
     return 0x00;
 }
 
 static void fds_wave_write(uint32 address, uint8 value)
 {
-    //
+    MESSAGE_INFO("FDS wave write at %04X: %02X\n", address, value);
 }
 
 static void fds_getstate(void *state)
@@ -272,7 +282,7 @@ void fds_init(rom_t *cart)
         // so it shall be hardcoded here while I work on
         // the actual hardware emulation...
         FILE *fp = fopen("/sd/roms/fds/disksys.rom", "rb");
-        fread(fds->bios, 0x2000, 1, fp);
+        fread(cart->prg_rom, 0x2000, 1, fp);
         fclose(fp);
     }
 
@@ -296,14 +306,11 @@ void fds_init(rom_t *cart)
     }
     fds->block_ptr = &fds->disk[0][0];
 
-    // cart->prg_rom = fds->bios;
-    // cart->prg_rom_banks = 1;
-
-    mmc_bankprg(32, 0x6000, 0, fds->prog); // PRG-RAM 0x6000-0xDFFF
-    mmc_bankprg(8,  0xE000, 0, fds->bios); // BIOS 0xE000-0xFFFF
+    mmc_bankprg(32, 0x6000, 0, PRG_RAM); // PRG-RAM 0x6000-0xDFFF
+    mmc_bankprg(8,  0xE000, 0, PRG_ROM); // BIOS 0xE000-0xFFFF
 
     ppu_setmirroring(PPU_MIRROR_HORI);
-    nes_settimer(fds_cpu_timer, 10);
+    // nes_settimer(fds_cpu_timer, 10);
 }
 
 static const mem_read_handler_t fds_memread[] =

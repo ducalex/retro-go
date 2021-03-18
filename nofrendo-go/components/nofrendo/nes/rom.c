@@ -112,6 +112,15 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
          rom.mapper_number |= (header->mapper_hinybble & 0xF0);
       }
 
+      rom.prg_ram = malloc(rom.prg_ram_banks * ROM_PRG_BANK_SIZE);
+      rom.chr_ram = malloc(rom.chr_ram_banks * ROM_CHR_BANK_SIZE);
+
+      if (!rom.prg_ram || !rom.chr_ram)
+      {
+         MESSAGE_ERROR("ROM: Memory allocation failed!\n");
+         return NULL;
+      }
+
       if (rom.chr_rom_banks > 0)
       {
          rom.chr_rom = rom.prg_rom + (rom.prg_rom_banks * ROM_PRG_BANK_SIZE);
@@ -137,11 +146,19 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
       rom.data_ptr = data;
       rom.data_len = size;
 
-      // The mapper will set those correctly later
+      rom.prg_ram_banks = 4;
       rom.chr_ram_banks = 1;
-      rom.chr_rom_banks = 0;
-      rom.prg_rom_banks = 0;
-      rom.prg_ram_banks = 0;
+      rom.prg_rom_banks = 1;
+
+      rom.prg_ram = malloc(0x8000 + 0x2000);
+      rom.chr_ram = malloc(0x2000);
+      rom.prg_rom = rom.prg_ram + 0x8000;
+
+      if (!rom.prg_ram || !rom.chr_ram)
+      {
+         MESSAGE_ERROR("ROM: Memory allocation failed!\n");
+         return NULL;
+      }
 
       rom.checksum = crc32_le(0, rom.data_ptr, rom.data_len);
       rom.mapper_number = 20;
@@ -221,4 +238,8 @@ void rom_free(void)
       free(rom.data_ptr);
       rom.data_ptr = NULL;
    }
+   free(rom.prg_ram);
+   rom.prg_ram = NULL;
+   free(rom.chr_ram);
+   rom.chr_ram = NULL;
 }

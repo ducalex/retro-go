@@ -67,8 +67,8 @@ typedef struct
 
    uint8 *prg_rom;
    uint8 *chr_rom;
-   uint8 prg_ram[0x2000];
-   uint8 chr_ram[0x2000];
+   uint8 *prg_ram;
+   uint8 *chr_ram;
 
    int prg_rom_banks;
    int chr_rom_banks;
