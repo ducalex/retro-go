@@ -349,7 +349,7 @@ void rg_system_init(int appId, int sampleRate)
         }
 
         rg_display_clear(C_BLUE);
-        rg_gui_set_font_size(12);
+        // rg_gui_set_font_size(12);
         rg_gui_alert("System Panic!", message);
         rg_sdcard_deinit();
         rg_audio_deinit();
@@ -364,7 +364,7 @@ void rg_system_init(int appId, int sampleRate)
     if (!sd_init)
     {
         rg_display_clear(C_SKY_BLUE);
-        rg_gui_set_font_size(12);
+        // rg_gui_set_font_size(12);
         rg_gui_alert("SD Card Error", "Mount failed."); // esp_err_to_name(ret)
         rg_system_switch_app(RG_APP_LAUNCHER);
     }

@@ -18,10 +18,9 @@
 
 #define LIST_WIDTH       (RG_SCREEN_WIDTH)
 #define LIST_HEIGHT      (RG_SCREEN_HEIGHT - LIST_Y_OFFSET)
-#define LIST_LINE_COUNT  ((RG_SCREEN_HEIGHT - LIST_Y_OFFSET) / LIST_LINE_HEIGHT)
-#define LIST_LINE_HEIGHT (rg_gui_get_font_info().height)
+#define LIST_LINE_COUNT  (LIST_HEIGHT / rg_gui_get_font_info().height)
 #define LIST_X_OFFSET    (0)
-#define LIST_Y_OFFSET    (48 + LIST_LINE_HEIGHT)
+#define LIST_Y_OFFSET    (48 + 8)
 
 #define COVER_MAX_HEIGHT (184)
 #define COVER_MAX_WIDTH  (184)
@@ -261,50 +260,42 @@ void gui_draw_header(tab_t *tab)
 // void gui_draw_notice(tab_t *tab)
 void gui_draw_notice(const char *text, uint16_t color)
 {
-    rg_gui_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, text, color, C_BLACK);
+    rg_gui_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, text, color, C_BLACK, 0);
 }
 
 void gui_draw_status(tab_t *tab)
 {
     rg_gui_draw_battery(RG_SCREEN_WIDTH - 27, 3);
-    rg_gui_draw_text(
-        IMAGE_LOGO_WIDTH + 11,
-        IMAGE_BANNER_HEIGHT + 3,
-        128,
-        tab->status,
-        C_WHITE,
-        C_BLACK
-    );
+    rg_gui_draw_text(IMAGE_LOGO_WIDTH + 11, IMAGE_BANNER_HEIGHT + 3, 128, tab->status, C_WHITE, C_BLACK, 0);
 }
 
 void gui_draw_list(tab_t *tab)
 {
     const theme_t *theme = &gui_themes[gui.theme % gui_themes_count];
     const listbox_t *list = &tab->listbox;
-    char text_label[128];
+    char text_label[64];
+    uint16_t color_fg = theme->list_standard;
+    uint16_t color_bg = theme->list_background;
 
-    int columns = LIST_WIDTH / rg_gui_get_font_info().width;
-    int line_height = LIST_LINE_HEIGHT;
     int lines = LIST_LINE_COUNT;
+    int y = LIST_Y_OFFSET;
 
     for (int i = 0; i < lines; i++) {
         int entry = list->cursor + i - (lines / 2);
 
         if (entry >= 0 && entry < list->length) {
-            snprintf(text_label, columns + 1, "%s", list->items[entry].text);
+            sprintf(text_label, "%.63s", list->items[entry].text);
         } else {
             text_label[0] = '\0';
         }
 
-        rg_gui_draw_text(
-            LIST_X_OFFSET,
-            LIST_Y_OFFSET + i * line_height,
-            LIST_WIDTH,
-            text_label,
-            (entry == list->cursor) ? theme->list_selected : theme->list_standard,
-            (int)(16.f / lines * i) << theme->list_background
-        );
+        color_fg = (entry == list->cursor) ? theme->list_selected : theme->list_standard;
+        color_bg = (int)(16.f / lines * i) << theme->list_background;
+
+        y += rg_gui_draw_text(LIST_X_OFFSET, y, LIST_WIDTH, text_label, color_fg, color_bg, 0);
     }
+
+    rg_gui_draw_fill_rect(0, y, LIST_WIDTH, RG_SCREEN_HEIGHT - y, color_bg);
 }
 
 void gui_draw_preview(retro_emulator_file_t *file)

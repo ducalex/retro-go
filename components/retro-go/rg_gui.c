@@ -8,7 +8,7 @@
 #include <lupng.h>
 
 #include "bitmaps/image_hourglass.h"
-#include "bitmaps/font_basic.h"
+#include "fonts/fonts.h"
 #include "rg_system.h"
 #include "rg_gui.h"
 
@@ -23,16 +23,16 @@ static const dialog_theme_t default_theme = {
 };
 
 static dialog_theme_t theme;
-static font_info_t font_info;
+static font_info_t font_info = {0, 8, 8, 8, &font_basic8x8};
 
-static const char *SETTING_FONTSIZE     = "FontSize";
-// static const char *SETTING_FONTTYPE     = "FontType";
+// static const char *SETTING_FONTSIZE     = "FontSize";
+static const char *SETTING_FONTTYPE     = "FontType";
 
 
 void rg_gui_init(void)
 {
     overlay_buffer = (uint16_t *)rg_alloc(RG_SCREEN_WIDTH * 32 * 2, MEM_SLOW);
-    rg_gui_set_font_size(rg_settings_get_int32(SETTING_FONTSIZE, 8));
+    rg_gui_set_font_type(rg_settings_get_int32(SETTING_FONTTYPE, 0));
     rg_gui_set_theme(&default_theme);
 }
 
@@ -43,12 +43,92 @@ void rg_gui_set_theme(const dialog_theme_t *new_theme)
     }
 }
 
-void rg_gui_set_font_size(int points)
+static rg_glyph_t get_glyph(const rg_font_t *font, int points, int c)
 {
-    font_info.points = RG_MAX(8, RG_MIN(32, points));
+    rg_glyph_t out = {
+        .width  = font->width ? font->width : 8,
+        .height = font->height,
+        .bitmap = {0},
+    };
+
+    if (font->type == 0) // bitmap
+    {
+        if (c < font->chars)
+        {
+            for (int y = 0; y < font->height; y++) {
+                out.bitmap[y] = font->data[(c * font->height) + y];
+            }
+        }
+    }
+    else // Proportional
+    {
+        // Based on code by Boris Lovosevic (https://github.com/loboris)
+        int charCode, adjYOffset, width, height, xOffset, xDelta;
+        const uint8_t *data = font->data;
+        do {
+            charCode = *data++;
+            adjYOffset = *data++;
+            width = *data++;
+            height = *data++;
+            xOffset = *data++;
+            xOffset = xOffset < 0x80 ? xOffset : -(0xFF - xOffset);
+            xDelta = *data++;
+
+            if (c != charCode && charCode != 0xFF && width != 0) {
+                data += (((width * height) - 1) / 8) + 1;
+            }
+        } while ((c != charCode) && (charCode != 0xFF));
+
+        if (c == charCode)
+        {
+            out.width = ((width > xDelta) ? width : xDelta);
+            // out.height = height;
+
+            int ch = 0, mask = 0x80;
+
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    if (((x + (y * width)) % 8) == 0) {
+                        mask = 0x80;
+                        ch = *data++;
+                    }
+                    if ((ch & mask) != 0) {
+                        out.bitmap[adjYOffset + y] |= (1 << (xOffset + x));
+                    }
+                    mask >>= 1;
+                }
+            }
+        }
+    }
+
+    if (points && points != font->height)
+    {
+        float scale = (float)points / font->height;
+        rg_glyph_t out2 = out;
+        out.height = points;
+        for (int y = 0; y < out.height; y++)
+            out.bitmap[y] = out2.bitmap[(int)(y / scale)];
+    }
+
+    return out;
+}
+
+void rg_gui_set_font_type(uint8_t type)
+{
+    int index = (type / 5) % fonts_count;
+    int size  = (type % 5);
+
+    font_info.points = 8 + (size * 2);
+    font_info.type = (index * 5) + size;
+    font_info.font = fonts[index];
+    font_info.width  = RG_MAX(font_info.font->width, 8);
     font_info.height = font_info.points;
-    font_info.width = 8;
-    rg_settings_set_int32(SETTING_FONTSIZE, font_info.points);
+
+    rg_settings_set_int32(SETTING_FONTTYPE, font_info.type);
+
+    RG_LOGI("Font set to: points=%d, size=%dx%d, scaling=%.2f\n",
+        font_info.points, font_info.width, font_info.height,
+        (float)font_info.points / font_info.font->height);
 }
 
 font_info_t rg_gui_get_font_info(void)
@@ -57,12 +137,11 @@ font_info_t rg_gui_get_font_info(void)
 }
 
 int rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
-                     uint16_t color_fg, uint16_t color_bg) // , font_info_t *font
+                     uint16_t color_fg, uint16_t color_bg, uint32_t flags)
 {
     int line_height = font_info.height;
     int line_width = width;
     bool autosize = (width < 1);
-    float scale = (float)line_height / 8;
 
     if (!text || !*text) {
         text = " ";
@@ -82,20 +161,26 @@ int rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
 
         while (x_offset < line_width)
         {
-            int chr_width = RG_MIN(line_width - x_offset, font_info.width);
             int chr = (*ptr == 0 || *ptr == '\n') ? ' ' : *ptr++;
+            rg_glyph_t glyph = get_glyph(font_info.font, font_info.points, chr);
+
+            if (line_width - x_offset < glyph.width) // Do not truncate glyphs
+            {
+                glyph.width = line_width - x_offset;
+                memset(&glyph.bitmap, 0, sizeof(glyph.bitmap));
+            }
 
             for (int y = 0; y < line_height; y++)
             {
                 uint16_t *output = &overlay_buffer[x_offset + (line_width * y)];
-                uint32_t pixels = font8x8_basic[chr][(int)(y / scale)];
 
-                for (int x = 0; x < chr_width; x++)
+                for (int x = 0; x < glyph.width; x++)
                 {
-                    output[x] = (pixels & (1 << x)) ? color_fg : color_bg;
+                    output[x] = (glyph.bitmap[y] & (1 << x)) ? color_fg : color_bg;
                 }
             }
-            x_offset += chr_width;
+
+            x_offset += glyph.width;
 
             if (autosize && (*ptr == 0 || *ptr == '\n') && x_offset != line_width)
             {
@@ -105,12 +190,16 @@ int rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
             }
         }
 
-        if (*ptr == '\n')
-            ptr++;
-
         rg_display_write(x_pos, y_pos + y_offset, x_offset, line_height, 0, overlay_buffer);
 
         y_offset += line_height;
+
+        if (*ptr == '\n') {
+            ptr++;
+        }
+        else if (!(flags & RG_TEXT_WRAP)) {
+            break;
+        }
     }
 
     return y_offset;
@@ -118,7 +207,7 @@ int rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
 
 void rg_gui_draw_rect(int x, int y, int width, int height, int border, uint16_t color)
 {
-    if (width == 0 || height == 0 || border == 0)
+    if (width <= 0 || height <= 0 || border <= 0)
         return;
 
     int pixels = (width > height ? width : height) * border;
@@ -134,7 +223,7 @@ void rg_gui_draw_rect(int x, int y, int width, int height, int border, uint16_t 
 
 void rg_gui_draw_fill_rect(int x, int y, int width, int height, uint16_t color)
 {
-    if (width == 0 || height == 0)
+    if (width <= 0 || height <= 0)
         return;
 
     for (int i = 0; i < width * 16; i++)
@@ -336,7 +425,7 @@ void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int 
     {
         int pad = (0.5f * (text_width - strlen(header)) * font_info.width);
         rg_gui_draw_rect(x, y, box_width - 8, row_height + 4, (row_height + 4 / 2), theme.box_background);
-        rg_gui_draw_text(x + pad, y, 0, header, theme.box_header, theme.box_background);
+        rg_gui_draw_text(x + pad, y, 0, header, theme.box_header, theme.box_background, 0);
         y += row_height + 4;
     }
 
@@ -355,7 +444,7 @@ void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int 
                             ? theme.item_standard : theme.item_disabled;
         uint16_t fg = (i == sel) ? theme.box_background : color;
         uint16_t bg = (i == sel) ? color : theme.box_background;
-        row_height = rg_gui_draw_text(x, y + row_margin, inner_width, row, fg, bg);
+        row_height = rg_gui_draw_text(x, y + row_margin, inner_width, row, fg, bg, RG_TEXT_WRAP);
         row_height += row_margin * 2;
         rg_gui_draw_rect(x, y, inner_width, row_height, row_margin, bg);
         y += row_height;
@@ -677,8 +766,8 @@ static void draw_game_status_bar(runtime_stats_t stats)
 
     rg_gui_draw_fill_rect(0, 0, width, height, C_BLACK);
     rg_gui_draw_fill_rect(0, RG_SCREEN_HEIGHT - height, width, height, C_BLACK);
-    rg_gui_draw_text(0, pad_text, width, header, C_LIGHT_GRAY, C_BLACK);
-    rg_gui_draw_text(0, RG_SCREEN_HEIGHT - height + pad_text, width, footer, C_LIGHT_GRAY, C_BLACK);
+    rg_gui_draw_text(0, pad_text, width, header, C_LIGHT_GRAY, C_BLACK, 0);
+    rg_gui_draw_text(0, RG_SCREEN_HEIGHT - height + pad_text, width, footer, C_LIGHT_GRAY, C_BLACK, 0);
     rg_gui_draw_battery(width - 26, 3);
 }
 

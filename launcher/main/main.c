@@ -17,21 +17,20 @@ static const char *SETTING_SHOW_PREVIEW  = "ShowPreview";
 static const char *SETTING_PREVIEW_SPEED = "PreviewSpeed";
 
 
-static dialog_return_t font_size_cb(dialog_option_t *option, dialog_event_t event)
+static dialog_return_t font_type_cb(dialog_option_t *option, dialog_event_t event)
 {
-    int font_size = rg_gui_get_font_info().points;
-    if (event == RG_DIALOG_PREV && font_size > 8) {
-        rg_gui_set_font_size(font_size -= 4);
+    if (event == RG_DIALOG_PREV) {
+        rg_gui_set_font_type(rg_gui_get_font_info().type - 1);
         gui_redraw();
     }
-    if (event == RG_DIALOG_NEXT && font_size < 16) {
-        rg_gui_set_font_size(font_size += 4);
+    if (event == RG_DIALOG_NEXT) {
+        rg_gui_set_font_type(rg_gui_get_font_info().type + 1);
         gui_redraw();
     }
-    sprintf(option->value, "%d", font_size);
-    if (font_size ==  8) strcpy(option->value, "Small ");
-    if (font_size == 12) strcpy(option->value, "Medium");
-    if (font_size == 16) strcpy(option->value, "Large ");
+
+    font_info_t info = rg_gui_get_font_info();
+    sprintf(option->value, "%s %d", info.font->name, info.height);
+
     return RG_DIALOG_IGNORE;
 }
 
@@ -246,7 +245,7 @@ void retro_loop()
                 dialog_option_t options[] = {
                     RG_DIALOG_SEPARATOR,
                     {0, "Color theme", "...",  1, &color_shift_cb},
-                    {0, "Font size  ", "...",  1, &font_size_cb},
+                    {0, "Font type  ", "...",  1, &font_type_cb},
                     {0, "Empty tabs ", "...",  1, &show_empty_cb},
                     {0, "Preview    ", "...",  1, &show_preview_cb},
                     {0, "    - Delay", "...",  1, &show_preview_speed_cb},
