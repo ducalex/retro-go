@@ -170,7 +170,7 @@ INLINE void ppu_oamdma(uint8 value)
 
    /* make the CPU spin for DMA cycles */
    nes6502_burn(513);
-   nes6502_release();
+   // nes6502_release();
 }
 
 /* Read from $2000-$2007 */

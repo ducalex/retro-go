@@ -68,13 +68,12 @@ typedef struct
 } nes6502_t;
 
 /* Functions which govern the 6502's execution */
-extern int nes6502_execute(int total_cycles);
+extern int nes6502_execute(int cycles);
 extern void nes6502_nmi(void);
 extern void nes6502_irq(void);
 extern void nes6502_irq_clear(void);
 extern uint32 nes6502_getcycles(void);
 extern void nes6502_burn(int cycles);
-extern void nes6502_release(void);
 
 extern nes6502_t *nes6502_init(mem_t *mem);
 extern void nes6502_refresh(void);
