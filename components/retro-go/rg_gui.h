@@ -27,7 +27,7 @@ enum {
 typedef struct
 {
     uint8_t type;
-    uint8_t width; // In prop fonts this must be set to max char width
+    uint8_t width; // In prop fonts this must be set to avg char width
     uint8_t height;
     uint8_t chars;
     char name[16];

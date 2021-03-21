@@ -4,10 +4,10 @@
 /* This image is taken from https://icons8.de/icon/49923/sanduhr and is free license. */
 
 static const struct {
-  unsigned int 	 width;
-  unsigned int 	 height;
-  unsigned int 	 bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */
-  unsigned char	 pixel_data[48 * 48 * 2 + 1];
+  unsigned int  width;
+  unsigned int  height;
+  unsigned int  bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */
+  unsigned char pixel_data[48 * 48 * 2 + 1];
 } image_hourglass = {
   48, 48, 2,
   "\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377"

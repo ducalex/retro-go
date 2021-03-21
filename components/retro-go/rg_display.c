@@ -1052,7 +1052,7 @@ void rg_display_init()
     RG_LOGI(" - calling spi_init.\n");
     spi_init();
 
-	RG_LOGI(" - calling lcd_init.\n");
+    RG_LOGI(" - calling lcd_init.\n");
     lcd_init();
 
     RG_LOGI(" - starting display_task.\n");

@@ -35,17 +35,17 @@
 #define CLEAR_IRQ() irq.seek_counter = irq.transfer_done = irq.timer_fired = 0; nes6502_irq_clear();
 #define TIMER_RELOAD() irq.timer_counter = (fds->regs[1] << 8) | fds->regs[0];
 
-#define REG2_IRQ_REPEAT  (1 << 0)
-#define REG2_IRQ_ENABLED (1 << 1)
-#define REG3_ENABLE_DISK_REGS (1 << 0)
+#define REG2_IRQ_REPEAT         (1 << 0)
+#define REG2_IRQ_ENABLED        (1 << 1)
+#define REG3_ENABLE_DISK_REGS   (1 << 0)
 #define REG3_ENABLE_SOUND_REGS  (1 << 1)
-#define REG5_MOTOR_ON (1 << 0)
-#define REG5_TRANSFER_RESET (1 << 1)
-#define REG5_READ_MODE (1 << 2)
-#define REG5_MIRRORING (1 << 3)
-#define REG5_CRC_CONTROL (1 << 4)
-#define REG5_TRANSFER_START (1 << 6)
-#define REG5_USE_INTERRUPT (1 << 7)
+#define REG5_MOTOR_ON           (1 << 0)
+#define REG5_TRANSFER_RESET     (1 << 1)
+#define REG5_READ_MODE          (1 << 2)
+#define REG5_MIRRORING          (1 << 3)
+#define REG5_CRC_CONTROL        (1 << 4)
+#define REG5_TRANSFER_START     (1 << 6)
+#define REG5_USE_INTERRUPT      (1 << 7)
 
 enum
 {
@@ -84,10 +84,10 @@ static fds_t *fds;
 
 static void fds_cpu_timer(int cycles)
 {
-	if (irq.timer_counter > 0 && (fds->regs[2] & REG2_IRQ_ENABLED))
+    if (irq.timer_counter > 0 && (fds->regs[2] & REG2_IRQ_ENABLED))
     {
-		irq.timer_counter -= cycles;
-		if (irq.timer_counter <= 0)
+        irq.timer_counter -= cycles;
+        if (irq.timer_counter <= 0)
         {
             if (!(fds->regs[2] & REG2_IRQ_REPEAT))
                 fds->regs[2] &= ~REG2_IRQ_ENABLED;
@@ -96,8 +96,8 @@ static void fds_cpu_timer(int cycles)
             nes6502_irq();
 
             irq.timer_fired = true;
-		}
-	}
+        }
+    }
 
     if (irq.seek_counter > 0)
     {
@@ -163,7 +163,7 @@ static void fds_write(uint32 address, uint8 value)
 {
     // MESSAGE_INFO("FDS write at %04X: %02X\n", address, value);
 
-	switch (address)
+    switch (address)
     {
         case 0x4020:                    // IRQ reload value low
             CLEAR_IRQ();
@@ -189,53 +189,53 @@ static void fds_write(uint32 address, uint8 value)
             // Transfer Reset
             if (value & 0x02)
             {
-				fds->block_type = BLOCK_INIT;
+                fds->block_type = BLOCK_INIT;
                 fds->block_ptr = &fds->disk[0][0];
                 fds->block_filesize = 0;
-				fds->block_size = 0;
-				fds->block_pos = 0;
-			}
+                fds->block_size = 0;
+                fds->block_pos = 0;
+            }
 
             // New transfer
-			if (value & 0x40 && ~(fds->regs[5]) & 0x40)
+            if (value & 0x40 && ~(fds->regs[5]) & 0x40)
             {
                 fds->block_ptr = fds->block_ptr + fds->block_pos;
-				fds->block_pos = 0;
+                fds->block_pos = 0;
 
-				switch (fds->block_type + 1)
+                switch (fds->block_type + 1)
                 {
-					case BLOCK_VOLUME:
+                    case BLOCK_VOLUME:
                         fds->block_type = BLOCK_VOLUME;
-						fds->block_size = 0x38;
-						break;
-					case BLOCK_FILECOUNT:
+                        fds->block_size = 0x38;
+                        break;
+                    case BLOCK_FILECOUNT:
                         fds->block_type = BLOCK_FILECOUNT;
-						fds->block_size = 0x02;
-						break;
-					case BLOCK_FILEHEADER:
-					case BLOCK_NEXT:
+                        fds->block_size = 0x02;
+                        break;
+                    case BLOCK_FILEHEADER:
+                    case BLOCK_NEXT:
                         fds->block_type = BLOCK_FILEHEADER;
-						fds->block_size = 0x10;
+                        fds->block_size = 0x10;
                         fds->block_filesize = (fds->block_ptr[13]) | (fds->block_ptr[14]) << 8;
-						break;
-					case BLOCK_FILEDATA:
+                        break;
+                    case BLOCK_FILEDATA:
                         fds->block_type = BLOCK_FILEDATA;
-						fds->block_size = 0x01 + fds->block_filesize;
-						break;
-				}
+                        fds->block_size = 0x01 + fds->block_filesize;
+                        break;
+                }
 
-                printf("Block type %d with size %d bytes\n", fds->block_type, fds->block_size);
-			}
+                MESSAGE_INFO("Block type %d with size %d bytes\n", fds->block_type, fds->block_size);
+            }
 
             // Turn on motor
             if (value & 0x40)
             {
-				irq.seek_counter = SEEK_TIME;
-			}
+                irq.seek_counter = SEEK_TIME;
+            }
 
             ppu_setmirroring((value & 8) ? PPU_MIRROR_HORI : PPU_MIRROR_VERT);
             break;
-	}
+    }
 
     fds->regs[address & 7] = value;
 }

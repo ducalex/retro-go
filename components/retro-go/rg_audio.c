@@ -243,6 +243,6 @@ void rg_audio_set_mute(bool mute)
 
     if (mute && audioInitialized)
     {
-	    i2s_zero_dma_buffer(RG_AUDIO_I2S_NUM);
+        i2s_zero_dma_buffer(RG_AUDIO_I2S_NUM);
     }
 }

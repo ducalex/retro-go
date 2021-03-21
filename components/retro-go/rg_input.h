@@ -5,7 +5,7 @@
 
 typedef enum
 {
-	GAMEPAD_KEY_UP      = (1 << 0),
+    GAMEPAD_KEY_UP      = (1 << 0),
     GAMEPAD_KEY_RIGHT   = (1 << 1),
     GAMEPAD_KEY_DOWN    = (1 << 2),
     GAMEPAD_KEY_LEFT    = (1 << 3),
@@ -25,8 +25,8 @@ typedef uint32_t gamepad_state_t;
 
 typedef struct
 {
-	int millivolts;
-	int percentage;
+    int millivolts;
+    int percentage;
 } battery_state_t;
 
 void rg_input_init(void);

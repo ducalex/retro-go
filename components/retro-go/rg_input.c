@@ -68,7 +68,7 @@ static void input_task(void *arg)
         }
 
         for (int i = 0; i < GAMEPAD_KEY_COUNT; ++i)
-		{
+        {
             debounce[i] = ((debounce[i] << 1) | ((state >> i) & 1));
             debounce[i] &= debounce_level;
 
@@ -80,7 +80,7 @@ static void input_task(void *arg)
             {
                 input_state &= ~(1 << i);
             }
-		}
+        }
 
         gamepad_state = input_state;
 
@@ -98,31 +98,31 @@ void rg_input_init(void)
         return;
     }
 
-	adc1_config_width(ADC_WIDTH_12Bit);
+    adc1_config_width(ADC_WIDTH_12Bit);
     adc1_config_channel_atten(RG_GPIO_GAMEPAD_X, ADC_ATTEN_11db);
-	adc1_config_channel_atten(RG_GPIO_GAMEPAD_Y, ADC_ATTEN_11db);
+    adc1_config_channel_atten(RG_GPIO_GAMEPAD_Y, ADC_ATTEN_11db);
 
-	gpio_set_direction(RG_GPIO_GAMEPAD_MENU, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(RG_GPIO_GAMEPAD_MENU, GPIO_PULLUP_ONLY);
+    gpio_set_direction(RG_GPIO_GAMEPAD_MENU, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(RG_GPIO_GAMEPAD_MENU, GPIO_PULLUP_ONLY);
     gpio_set_direction(RG_GPIO_GAMEPAD_VOLUME, GPIO_MODE_INPUT);
-	// gpio_set_pull_mode(RG_GPIO_GAMEPAD_VOLUME, GPIO_PULLUP_ONLY);
+    // gpio_set_pull_mode(RG_GPIO_GAMEPAD_VOLUME, GPIO_PULLUP_ONLY);
 
-	gpio_set_direction(RG_GPIO_GAMEPAD_SELECT, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(RG_GPIO_GAMEPAD_SELECT, GPIO_PULLUP_ONLY);
-	gpio_set_direction(RG_GPIO_GAMEPAD_START, GPIO_MODE_INPUT);
-	// gpio_set_direction(RG_GPIO_GAMEPAD_START, GPIO_PULLUP_ONLY);
+    gpio_set_direction(RG_GPIO_GAMEPAD_SELECT, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(RG_GPIO_GAMEPAD_SELECT, GPIO_PULLUP_ONLY);
+    gpio_set_direction(RG_GPIO_GAMEPAD_START, GPIO_MODE_INPUT);
+    // gpio_set_direction(RG_GPIO_GAMEPAD_START, GPIO_PULLUP_ONLY);
 
-	gpio_set_direction(RG_GPIO_GAMEPAD_A, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(RG_GPIO_GAMEPAD_A, GPIO_PULLUP_ONLY);
+    gpio_set_direction(RG_GPIO_GAMEPAD_A, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(RG_GPIO_GAMEPAD_A, GPIO_PULLUP_ONLY);
     gpio_set_direction(RG_GPIO_GAMEPAD_B, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(RG_GPIO_GAMEPAD_B, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(RG_GPIO_GAMEPAD_B, GPIO_PULLUP_ONLY);
 
     // Start background polling
     xTaskCreatePinnedToCore(&input_task, "input_task", 1024, NULL, 5, NULL, 1);
 
     input_initialized = true;
 
-  	RG_LOGI("init done.\n");
+      RG_LOGI("init done.\n");
 }
 
 void rg_input_deinit(void)
@@ -151,7 +151,7 @@ bool rg_input_key_is_pressed(gamepad_key_t key)
 
 void rg_input_wait_for_key(gamepad_key_t key, bool pressed)
 {
-	while (rg_input_key_is_pressed(key) != pressed)
+    while (rg_input_key_is_pressed(key) != pressed)
     {
         vTaskDelay(1);
     }

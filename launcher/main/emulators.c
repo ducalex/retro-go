@@ -375,11 +375,11 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
     bool is_fav = favorite_find(file) != NULL;
 
     dialog_option_t choices[] = {
-        {0, "Resume game ", NULL, has_save, NULL},
+        {0, "Resume game", NULL, has_save, NULL},
         {1, "New game    ", NULL, 1, NULL},
         {0, "------------", NULL, -1, NULL},
         {3, is_fav ? "Del favorite" : "Add favorite", NULL, 1, NULL},
-        {2, "Delete save ", NULL, has_save || has_sram, NULL},
+        {2, "Delete save", NULL, has_save || has_sram, NULL},
         RG_DIALOG_CHOICE_LAST
     };
     int sel = rg_gui_dialog(NULL, choices, has_save ? 0 : 1);
