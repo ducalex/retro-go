@@ -70,9 +70,9 @@
  using the polynomial from the PNG spec, 0xEDB88320L. */
 static const uint32_t crcTable[] =
 {
-    0x0, 0x77073096, 0xEE0E612C, 0x990951BA, 0x76DC419, 0x706AF48F,
-    0xE963A535, 0x9E6495A3, 0xEDB8832, 0x79DCB8A4, 0xE0D5E91E, 0x97D2D988,
-    0x9B64C2B, 0x7EB17CBD, 0xE7B82D07, 0x90BF1D91, 0x1DB71064, 0x6AB020F2,
+    0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706AF48F,
+    0xE963A535, 0x9E6495A3, 0x0EDB8832, 0x79DCB8A4, 0xE0D5E91E, 0x97D2D988,
+    0x09B64C2B, 0x7EB17CBD, 0xE7B82D07, 0x90BF1D91, 0x1DB71064, 0x6AB020F2,
     0xF3B97148, 0x84BE41DE, 0x1ADAD47D, 0x6DDDE4EB, 0xF4D4B551, 0x83D385C7,
     0x136C9856, 0x646BA8C0, 0xFD62F97A, 0x8A65C9EC, 0x14015C4F, 0x63066CD9,
     0xFA0F3D63, 0x8D080DF5, 0x3B6E20C8, 0x4C69105E, 0xD56041E4, 0xA2677172,
@@ -81,8 +81,8 @@ static const uint32_t crcTable[] =
     0x26D930AC, 0x51DE003A, 0xC8D75180, 0xBFD06116, 0x21B4F4B5, 0x56B3C423,
     0xCFBA9599, 0xB8BDA50F, 0x2802B89E, 0x5F058808, 0xC60CD9B2, 0xB10BE924,
     0x2F6F7C87, 0x58684C11, 0xC1611DAB, 0xB6662D3D, 0x76DC4190, 0x1DB7106,
-    0x98D220BC, 0xEFD5102A, 0x71B18589, 0x6B6B51F, 0x9FBFE4A5, 0xE8B8D433,
-    0x7807C9A2, 0xF00F934, 0x9609A88E, 0xE10E9818, 0x7F6A0DBB, 0x86D3D2D,
+    0x98D220BC, 0xEFD5102A, 0x71B18589, 0x06B6B51F, 0x9FBFE4A5, 0xE8B8D433,
+    0x7807C9A2, 0x0F00F934, 0x9609A88E, 0xE10E9818, 0x7F6A0DBB, 0x86D3D2D,
     0x91646C97, 0xE6635C01, 0x6B6B51F4, 0x1C6C6162, 0x856530D8, 0xF262004E,
     0x6C0695ED, 0x1B01A57B, 0x8208F4C1, 0xF50FC457, 0x65B0D9C6, 0x12B7E950,
     0x8BBEB8EA, 0xFCB9887C, 0x62DD1DDF, 0x15DA2D49, 0x8CD37CF3, 0xFBD44C65,
@@ -91,9 +91,9 @@ static const uint32_t crcTable[] =
     0x44042D73, 0x33031DE5, 0xAA0A4C5F, 0xDD0D7CC9, 0x5005713C, 0x270241AA,
     0xBE0B1010, 0xC90C2086, 0x5768B525, 0x206F85B3, 0xB966D409, 0xCE61E49F,
     0x5EDEF90E, 0x29D9C998, 0xB0D09822, 0xC7D7A8B4, 0x59B33D17, 0x2EB40D81,
-    0xB7BD5C3B, 0xC0BA6CAD, 0xEDB88320, 0x9ABFB3B6, 0x3B6E20C, 0x74B1D29A,
-    0xEAD54739, 0x9DD277AF, 0x4DB2615, 0x73DC1683, 0xE3630B12, 0x94643B84,
-    0xD6D6A3E, 0x7A6A5AA8, 0xE40ECF0B, 0x9309FF9D, 0xA00AE27, 0x7D079EB1,
+    0xB7BD5C3B, 0xC0BA6CAD, 0xEDB88320, 0x9ABFB3B6, 0x03B6E20C, 0x74B1D29A,
+    0xEAD54739, 0x9DD277AF, 0x04DB2615, 0x73DC1683, 0xE3630B12, 0x94643B84,
+    0x0D6D6A3E, 0x7A6A5AA8, 0xE40ECF0B, 0x9309FF9D, 0x0A00AE27, 0x7D079EB1,
     0xF00F9344, 0x8708A3D2, 0x1E01F268, 0x6906C2FE, 0xF762575D, 0x806567CB,
     0x196C3671, 0x6E6B06E7, 0xFED41B76, 0x89D32BE0, 0x10DA7A5A, 0x67DD4ACC,
     0xF9B9DF6F, 0x8EBEEFF9, 0x17B7BE43, 0x60B08ED5, 0xD6D6A3E8, 0xA1D1937E,
@@ -102,9 +102,9 @@ static const uint32_t crcTable[] =
     0x316E8EEF, 0x4669BE79, 0xCB61B38C, 0xBC66831A, 0x256FD2A0, 0x5268E236,
     0xCC0C7795, 0xBB0B4703, 0x220216B9, 0x5505262F, 0xC5BA3BBE, 0xB2BD0B28,
     0x2BB45A92, 0x5CB36A04, 0xC2D7FFA7, 0xB5D0CF31, 0x2CD99E8B, 0x5BDEAE1D,
-    0x9B64C2B0, 0xEC63F226, 0x756AA39C, 0x26D930A, 0x9C0906A9, 0xEB0E363F,
-    0x72076785, 0x5005713, 0x95BF4A82, 0xE2B87A14, 0x7BB12BAE, 0xCB61B38,
-    0x92D28E9B, 0xE5D5BE0D, 0x7CDCEFB7, 0xBDBDF21, 0x86D3D2D4, 0xF1D4E242,
+    0x9B64C2B0, 0xEC63F226, 0x756AA39C, 0x026D930A, 0x9C0906A9, 0xEB0E363F,
+    0x72076785, 0x05005713, 0x95BF4A82, 0xE2B87A14, 0x7BB12BAE, 0x0CB61B38,
+    0x92D28E9B, 0xE5D5BE0D, 0x7CDCEFB7, 0x0BDBDF21, 0x86D3D2D4, 0xF1D4E242,
     0x68DDB3F8, 0x1FDA836E, 0x81BE16CD, 0xF6B9265B, 0x6FB077E1, 0x18B74777,
     0x88085AE6, 0xFF0F6A70, 0x66063BCA, 0x11010B5C, 0x8F659EFF, 0xF862AE69,
     0x616BFFD3, 0x166CCF45, 0xA00AE278, 0xD70DD2EE, 0x4E048354, 0x3903B3C2,
@@ -117,24 +117,15 @@ static const uint32_t crcTable[] =
 
 /* Update a running CRC with the bytes buf[0..len-1]--the CRC
  should be initialized to all 1's, and the transmitted value
- is the 1's complement of the final running CRC (see the
- crc() routine below)). */
-static uint32_t updateCrc(uint32_t crc, unsigned char *buf,
-                          size_t len)
-{
-    uint32_t c = crc;
-    size_t n;
-
-    for (n = 0; n < len; n++)
-        c = crcTable[(c ^ buf[n]) & 0xFF] ^ (c >> 8);
-
-    return c;
-}
-
-/* Return the CRC of the bytes buf[0..len-1]. */
+ is the 1's complement of the final running CRC. */
 static uint32_t crc(unsigned char *buf, size_t len)
 {
-    return updateCrc(0xFFFFFFFFL, buf, len) ^ 0xFFFFFFFFL;
+    uint32_t crc = 0xFFFFFFFFL;
+
+    for (size_t n = 0; n < len; n++)
+        crc = crcTable[(crc ^ buf[n]) & 0xFF] ^ (crc >> 8);
+
+    return crc ^ 0xFFFFFFFFL;
 }
 
 
@@ -170,7 +161,7 @@ typedef struct {
     uint8_t *palette;
 
     /* fields used for (de)compression & (de-)filtering */
-    z_stream stream;
+    mz_stream stream;
     size_t scanlineBytes;
     size_t bytesPerPixel;
     size_t currentByte;
@@ -212,10 +203,10 @@ static const uint8_t PNG_SIG[] =
 /*        P     N     G    \r    \n   SUB    \n   */
 {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
 
-static const int startingRow[] =  { 0, 0, 0, 4, 0, 2, 0, 1 };
-static const int startingCol[] =  { 0, 0, 4, 0, 2, 0, 1, 0 };
-static const int rowIncrement[] = { 1, 8, 8, 8, 4, 4, 2, 2 };
-static const int colIncrement[] = { 1, 8, 8, 4, 4, 2, 2, 1 };
+static const int8_t startingRow[] =  { 0, 0, 0, 4, 0, 2, 0, 1 };
+static const int8_t startingCol[] =  { 0, 0, 4, 0, 2, 0, 1, 0 };
+static const int8_t rowIncrement[] = { 1, 8, 8, 8, 4, 4, 2, 2 };
+static const int8_t colIncrement[] = { 1, 8, 8, 4, 4, 2, 2, 1 };
 
 
 
@@ -244,8 +235,7 @@ static LU_INLINE uint16_t swap16(uint16_t n)
 
 static int bytesEqual(const uint8_t *a, const uint8_t *b, size_t count)
 {
-    size_t i;
-    for (i = 0; i < count; ++i)
+    for (size_t i = 0; i < count; ++i)
     {
         if (*(a+i) != *(b+i))
             return 0;
@@ -470,7 +460,7 @@ static LU_INLINE int parseIhdr(PngInfoStruct *info, PngChunk *chunk)
     }
 
     memset(&info->stream, 0, sizeof(info->stream));
-    if (inflateInit(&info->stream) != Z_OK)
+    if (mz_inflateInit2(&info->stream, MZ_DEFAULT_WINDOW_BITS) != MZ_OK)
     {
         LUPNG_WARN(info, "PNG: inflateInit failed!");
         return PNG_ERROR;
@@ -649,7 +639,7 @@ static LU_INLINE int insertByte(PngInfoStruct *info, uint8_t byte)
 
 static LU_INLINE int parseIdat(PngInfoStruct *info, PngChunk *chunk)
 {
-    int status = Z_OK;
+    int status = MZ_OK;
 
     if (!(info->chunksFound & PNG_IHDR))
     {
@@ -673,13 +663,13 @@ static LU_INLINE int parseIdat(PngInfoStruct *info, PngChunk *chunk)
 
         info->stream.next_out = info->buffer;
         info->stream.avail_out = BUF_SIZE;
-        status = inflate(&(info->stream), Z_NO_FLUSH);
+        status = mz_inflate(&(info->stream), MZ_NO_FLUSH);
         decompressed = BUF_SIZE - info->stream.avail_out;
 
-        if (status != Z_OK &&
-            status != Z_STREAM_END &&
-            status != Z_BUF_ERROR &&
-            status != Z_NEED_DICT)
+        if (status != MZ_OK &&
+            status != MZ_STREAM_END &&
+            status != MZ_BUF_ERROR &&
+            status != MZ_NEED_DICT)
         {
             LUPNG_WARN(info, "PNG: inflate error!");
             return PNG_ERROR;
@@ -846,7 +836,7 @@ LuImage *luPngReadUC(const LuUserContext *userCtx)
 
     if (info->chunksFound & PNG_IHDR)
     {
-        inflateEnd(&info->stream);
+        mz_inflateEnd(&info->stream);
     }
 
     LuImage *img = info->img;
@@ -1018,7 +1008,7 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
     uint8_t *filterCandidate = (uint8_t *)info->userCtx->allocProc(info->scanlineBytes+1, info->userCtx->allocProcUserPtr);
     uint8_t *bestCandidate = (uint8_t *)info->userCtx->allocProc(info->scanlineBytes+1, info->userCtx->allocProcUserPtr);
     size_t minSum = (size_t)-1, curSum = 0;
-    int status = Z_OK;
+    int status = MZ_OK;
     int is16bit = info->cimg->depth == 16;
 
     if (!filterCandidate || !bestCandidate)
@@ -1030,8 +1020,8 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
     memset(&info->stream, 0, sizeof(info->stream));
     memcpy(info->buffer, "IDAT", 4);
 
-    int ret = deflateInit2(&info->stream, info->userCtx->compressionLevel, Z_DEFLATED, Z_DEFAULT_WINDOW_BITS, 9, Z_RLE);
-    if(ret != Z_OK)
+    int ret = mz_deflateInit2(&info->stream, info->userCtx->compressionLevel, MZ_DEFLATED, MZ_DEFAULT_WINDOW_BITS, 9, MZ_RLE);
+    if(ret != MZ_OK)
     {
         LUPNG_WARN(info, "PNG: deflateInit failed (%d)!", ret);
         goto _error;
@@ -1042,7 +1032,7 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
 
     for (info->currentRow = 0; info->currentRow < info->img->height; ++info->currentRow)
     {
-        int flush = (info->currentRow < info->img->height-1) ? Z_NO_FLUSH : Z_FINISH;
+        int flush = (info->currentRow < info->img->height-1) ? MZ_NO_FLUSH : MZ_FINISH;
         minSum = (size_t)-1;
 
         /*
@@ -1099,7 +1089,7 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
         /* compress bestCandidate */
         do
         {
-            status = deflate(&info->stream, flush);
+            status = mz_deflate(&info->stream, flush);
 
             if (info->stream.avail_out < BUF_SIZE)
             {
@@ -1107,8 +1097,8 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
                 info->stream.next_out = info->buffer + 4;
                 info->stream.avail_out = BUF_SIZE;
             }
-        } while ((flush == Z_FINISH && status != Z_STREAM_END)
-                    || (flush == Z_NO_FLUSH && info->stream.avail_in));
+        } while ((flush == MZ_FINISH && status != MZ_STREAM_END)
+                    || (flush == MZ_NO_FLUSH && info->stream.avail_in));
     }
 
     info->userCtx->freeProc(filterCandidate, info->userCtx->freeProcUserPtr);
@@ -1167,14 +1157,14 @@ int luPngWriteUC(const LuUserContext *userCtx, const LuImage *img)
     if ((status = processPixels(info)) != PNG_OK)
     {
         LUPNG_WARN(info, "PNG: processPixels() error");
-        deflateEnd(&info->stream);
         goto _cleanup;
     }
 
-    deflateEnd(&info->stream);
+    mz_deflateEnd(&info->stream);
     status = writeIend(info);
 
 _cleanup:
+    mz_deflateEnd(&info->stream);
     userCtx->freeProc(info, userCtx->freeProcUserPtr);
     return status;
 }
@@ -1311,7 +1301,7 @@ void luUserContextInitDefault(LuUserContext *userCtx)
 
     userCtx->writeProc=NULL;
     userCtx->writeProcUserPtr=NULL;
-    userCtx->compressionLevel=Z_DEFAULT_COMPRESSION;
+    userCtx->compressionLevel=MZ_DEFAULT_COMPRESSION;
 
     userCtx->allocProc=internalMalloc;
     userCtx->allocProcUserPtr=NULL;

@@ -366,6 +366,8 @@ void gui_draw_preview(retro_emulator_file_t *file)
 
     if (img)
     {
+        gui_draw_notice(" ", C_BLACK);
+
         int height = MIN(img->height, COVER_MAX_HEIGHT);
         int width = MIN(img->width, COVER_MAX_WIDTH);
 
