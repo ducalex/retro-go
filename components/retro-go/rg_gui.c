@@ -115,6 +115,7 @@ static rg_glyph_t get_glyph(const rg_font_t *font, int points, int c)
 
 void rg_gui_set_font_type(uint8_t type)
 {
+#if 0
     int index = (type / 5) % fonts_count;
     int size  = (type % 5);
 
@@ -123,6 +124,13 @@ void rg_gui_set_font_type(uint8_t type)
     font_info.font = fonts[index];
     font_info.width  = RG_MAX(font_info.font->width, 8);
     font_info.height = font_info.points;
+#else
+    font_info.type = type % fonts_count;
+    font_info.font = fonts[font_info.type];
+    font_info.points = (font_info.type < 3) ? (8 + font_info.type * 4) : font_info.font->height;
+    font_info.width  = RG_MAX(font_info.font->width, 4);
+    font_info.height = font_info.points;
+#endif
 
     rg_settings_set_int32(SETTING_FONTTYPE, font_info.type);
 
@@ -158,16 +166,27 @@ int rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
     {
         const char *line_start = ptr;
         int x_offset = 0;
+        int chr = 0;
 
         while (x_offset < line_width)
         {
-            int chr = (*ptr == 0 || *ptr == '\n') ? ' ' : *ptr++;
+            if (*ptr && *ptr != '\n')
+                chr = *ptr++;
+            else
+                chr = ' ';
+
             rg_glyph_t glyph = get_glyph(font_info.font, font_info.points, chr);
 
             if (line_width - x_offset < glyph.width) // Do not truncate glyphs
             {
                 glyph.width = line_width - x_offset;
                 memset(&glyph.bitmap, 0, sizeof(glyph.bitmap));
+
+                // Render chr on next line if we're set to wrap
+                if (ptr > line_start && chr != ' ' && (flags & RG_TEXT_WRAP))
+                {
+                    ptr--;
+                }
             }
 
             for (int y = 0; y < line_height; y++)
@@ -268,7 +287,7 @@ rg_image_t *rg_gui_load_image_file(const char *file)
         fclose(fp);
 
         rg_image_t *img = rg_gui_load_image(data, data_len);
-        free(data);
+        rg_free(data);
 
         return img;
     }

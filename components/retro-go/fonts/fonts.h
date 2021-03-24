@@ -9,11 +9,17 @@
 
 extern const rg_font_t font_basic8x8;
 extern const rg_font_t font_DejaVu12;
-extern const rg_font_t font_Ubuntu16;
+extern const rg_font_t font_DejaVu15;
+extern const rg_font_t font_VeraBold12;
+extern const rg_font_t font_VeraBold15;
 
 static const rg_font_t *fonts[] = {
     &font_basic8x8,
+    &font_basic8x8,
+    &font_basic8x8,
     &font_DejaVu12,
-    &font_Ubuntu16,
+    &font_DejaVu15,
+    &font_VeraBold12,
+    &font_VeraBold15,
 };
-static const int fonts_count = sizeof(fonts) / sizeof(rg_font_t*);
+static const size_t fonts_count = sizeof(fonts) / sizeof(rg_font_t*);
