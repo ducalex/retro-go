@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 #define CRC_CACHE_MAGIC 0x11112222
-#define CRC_CACHE_MAX_ENTRIES 2500
+#define CRC_CACHE_MAX_ENTRIES 3000
 #define CRC_CACHE_PATH RG_BASE_PATH_CACHE "/crc32.bin"
 
 typedef struct __attribute__((__packed__))

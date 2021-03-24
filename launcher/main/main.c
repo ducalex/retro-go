@@ -10,6 +10,9 @@
 #include "favorites.h"
 #include "gui.h"
 
+#define APP_ID              (0)
+#define AUDIO_SAMPLE_RATE   (32000)
+
 static const char *SETTING_SELECTED_TAB  = "SelectedTab";
 static const char *SETTING_GUI_THEME     = "ColorTheme";
 static const char *SETTING_SHOW_EMPTY    = "ShowEmptyTabs";
@@ -46,10 +49,10 @@ static dialog_return_t show_empty_cb(dialog_option_t *option, dialog_event_t eve
 
 static dialog_return_t startup_app_cb(dialog_option_t *option, dialog_event_t event)
 {
-    int startup_app = rg_settings_StartupApp_get();
+    int startup_app = rg_system_get_startup_app();
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         startup_app = startup_app ? 0 : 1;
-        rg_settings_StartupApp_set(startup_app);
+        rg_system_set_startup_app(startup_app);
     }
     strcpy(option->value, startup_app == 0 ? "Launcher " : "Last used");
     return RG_DIALOG_IGNORE;
@@ -57,10 +60,10 @@ static dialog_return_t startup_app_cb(dialog_option_t *option, dialog_event_t ev
 
 static dialog_return_t disk_activity_cb(dialog_option_t *option, dialog_event_t event)
 {
-    int disk_activity = rg_settings_DiskActivity_get();
+    int disk_activity = rg_vfs_get_enable_disk_led();
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         disk_activity = !disk_activity;
-        rg_settings_DiskActivity_set(disk_activity);
+        rg_vfs_set_enable_disk_led(disk_activity);
     }
     strcpy(option->value, disk_activity ? "On " : "Off");
     return RG_DIALOG_IGNORE;
@@ -237,7 +240,7 @@ void retro_loop()
                     }
                 }
                 else if (sel == 3) {
-                    rg_fs_delete(CRC_CACHE_PATH);
+                    rg_vfs_delete(CRC_CACHE_PATH);
                 }
                 gui_redraw();
             }
@@ -296,7 +299,7 @@ void retro_loop()
 
 void app_main(void)
 {
-    rg_system_init(0, 32000);
+    rg_system_init(APP_ID, AUDIO_SAMPLE_RATE, NULL);
 
     emulators_init();
     favorites_init();

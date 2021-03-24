@@ -605,8 +605,8 @@ int rg_gui_dialog(const char *header, const dialog_option_t *options_const, int 
 
     rg_input_wait_for_key(last_key, false);
 
-    // This will force a redraw
-    rg_display_reset_config();
+    if (!rg_emu_notify(RG_MSG_REDRAW, NULL))
+        rg_display_reset_config();
 
     for (int i = 0; i < options_count; i++)
     {

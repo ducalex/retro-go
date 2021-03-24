@@ -12,14 +12,7 @@
 #define CONFIG_NAMESPACE "retro-go"
 #define CONFIG_NVS_STORE "config"
 
-// Global
-static const char* Key_RomFilePath  = "RomFilePath";
-static const char* Key_StartAction  = "StartAction";
-static const char* Key_StartupApp   = "StartupApp";
-static const char* Key_DiskActivity = "DiskActivity";
-// static const char* Key_RetroGoVer   = "RetroGoVer";
-// Per-app
-// static const char* Key_AudioFilter  = "AudioFilter";
+// static const char *Key_RetroGoVer   = "RetroGoVer";
 
 static int unsaved_changes = 0;
 static bool initialized = false;
@@ -116,7 +109,7 @@ bool rg_settings_save(void)
     if (!fp)
     {
         // Sometimes the FAT is left in an inconsistent state and this might help
-        rg_fs_delete(CONFIG_FILE_PATH);
+        rg_vfs_delete(CONFIG_FILE_PATH);
         fp = fopen(CONFIG_FILE_PATH, "wb");
     }
     if (fp)
@@ -218,41 +211,16 @@ void rg_settings_set_app_int32(const char *key, int32_t value)
 }
 
 
-char* rg_settings_RomFilePath_get()
+char *rg_settings_get_app_string(const char *key, const char *default_value)
 {
-    return rg_settings_get_string(Key_RomFilePath, NULL);
-}
-void rg_settings_RomFilePath_set(const char* value)
-{
-    rg_settings_set_string(Key_RomFilePath, value);
+    char app_key[32];
+    snprintf(app_key, 32, "%.16s.%u", key, rg_system_get_app()->id);
+    return rg_settings_get_string(app_key, default_value);
 }
 
-
-emu_start_action_t rg_settings_StartAction_get()
+void rg_settings_set_app_string(const char *key, const char *value)
 {
-    return rg_settings_get_int32(Key_StartAction, 0);
-}
-void rg_settings_StartAction_set(emu_start_action_t value)
-{
-    rg_settings_set_int32(Key_StartAction, value);
-}
-
-
-int32_t rg_settings_StartupApp_get()
-{
-    return rg_settings_get_int32(Key_StartupApp, 1);
-}
-void rg_settings_StartupApp_set(int32_t value)
-{
-    rg_settings_set_int32(Key_StartupApp, value);
-}
-
-
-int32_t rg_settings_DiskActivity_get()
-{
-    return rg_settings_get_int32(Key_DiskActivity, 0);
-}
-void rg_settings_DiskActivity_set(int32_t value)
-{
-    rg_settings_set_int32(Key_DiskActivity, value);
+    char app_key[32];
+    snprintf(app_key, 32, "%.16s.%u", key, rg_system_get_app()->id);
+    rg_settings_set_string(app_key, value);
 }

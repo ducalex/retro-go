@@ -40,37 +40,14 @@ static const char *SETTING_PALETTE  = "Palette";
 // --- MAIN
 
 
-static void netplay_handler(netplay_event_t event, void *arg)
-{
-#ifdef ENABLE_NETPLAY
-    bool new_netplay;
-
-    switch (event)
-    {
-    case NETPLAY_EVENT_STATUS_CHANGED:
-        new_netplay = (rg_netplay_status() == NETPLAY_STATUS_CONNECTED);
-
-        if (netplay && !new_netplay)
-        {
-            rg_gui_alert("Netplay", "Connection lost!");
-        }
-        netplay = new_netplay;
-        break;
-
-    default:
-        break;
-    }
-#endif
-}
-
 static bool save_state_handler(char *pathName)
 {
     if (state_save(pathName) == 0)
     {
-        char *filename = rg_emu_get_path(EMU_PATH_SCREENSHOT, 0);
+        char *filename = rg_emu_get_path(RG_PATH_SCREENSHOT, 0);
         if (filename)
         {
-            rg_display_save_frame(filename, currentUpdate, 0, 0);
+            rg_display_save_frame(filename, currentUpdate, 160, 0);
             rg_free(filename);
         }
         return true;
@@ -261,13 +238,10 @@ void app_main(void)
         .loadState = &load_state_handler,
         .saveState = &save_state_handler,
         .reset = &reset_handler,
-        .netplay = &netplay_handler,
+        .netplay = NULL,
     };
 
-    rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    rg_emu_init(&handlers);
-
-    app = rg_system_get_app();
+    app = rg_system_init(APP_ID, AUDIO_SAMPLE_RATE, &handlers);
 
     frames[0].flags = RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].width = GB_WIDTH;
@@ -279,7 +253,7 @@ void app_main(void)
     frames[1].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
 
     autoSaveSRAM = rg_settings_get_app_int32(SETTING_SAVESRAM, 0);
-    sramFile = rg_emu_get_path(EMU_PATH_SAVE_SRAM, 0);
+    sramFile = rg_emu_get_path(RG_PATH_SAVE_SRAM, 0);
 
     // Load ROM
     rom_load(app->romPath);
@@ -307,7 +281,7 @@ void app_main(void)
 
     emu_init();
 
-    if (app->startAction == EMU_START_ACTION_RESUME)
+    if (app->startAction == RG_START_ACTION_RESUME)
     {
         rg_emu_load_state(0);
     }

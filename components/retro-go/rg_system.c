@@ -2,7 +2,6 @@
 #include <esp_heap_caps.h>
 #include <esp_partition.h>
 #include <esp_task_wdt.h>
-#include <esp_vfs_fat.h>
 #include <esp_ota_ops.h>
 #include <esp_system.h>
 #include <esp_event.h>
@@ -10,10 +9,7 @@
 #include <driver/gpio.h>
 #include <sys/stat.h>
 #include <assert.h>
-#include <dirent.h>
 #include <string.h>
-#include <errno.h>
-#include <stdio.h>
 
 #include "rg_system.h"
 
@@ -34,6 +30,10 @@
 #else
 #define INPUT_TIMEOUT 5000000
 #endif
+
+#define SETTING_ROM_FILE_PATH "RomFilePath"
+#define SETTING_START_ACTION  "StartAction"
+#define SETTING_STARTUP_APP   "StartupApp"
 
 typedef struct
 {
@@ -202,76 +202,6 @@ runtime_stats_t rg_system_get_stats()
     return statistics;
 }
 
-esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
-{
-    // bool use_led = ((!initialized || rg_settings_DiskActivity_get()) && !rg_system_get_led());
-    bool use_led = (initialized && rg_settings_DiskActivity_get() && !rg_system_get_led());
-
-    rg_spi_lock_acquire(SPI_LOCK_SDCARD);
-
-    if (use_led)
-    {
-        rg_system_set_led(1);
-    }
-
-    esp_err_t ret = sdspi_host_do_transaction(slot, cmdinfo);
-
-    if (use_led)
-    {
-        rg_system_set_led(0);
-    }
-
-    rg_spi_lock_release(SPI_LOCK_SDCARD);
-
-    return ret;
-}
-
-bool rg_sdcard_init(void)
-{
-    sdmmc_host_t host_config = SDSPI_HOST_DEFAULT();
-    host_config.slot = HSPI_HOST;
-    host_config.max_freq_khz = SDMMC_FREQ_DEFAULT; // SDMMC_FREQ_26M;
-    host_config.do_transaction = &sdcard_do_transaction;
-
-    sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
-    slot_config.gpio_miso = RG_GPIO_SD_MISO;
-    slot_config.gpio_mosi = RG_GPIO_SD_MOSI;
-    slot_config.gpio_sck  = RG_GPIO_SD_CLK;
-    slot_config.gpio_cs = RG_GPIO_SD_CS;
-
-    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
-        .format_if_mount_failed = false,
-        .allocation_unit_size = 0,
-        .max_files = 5,
-    };
-
-    esp_vfs_fat_sdmmc_unmount();
-
-    esp_err_t ret = esp_vfs_fat_sdmmc_mount(
-            RG_BASE_PATH, &host_config, &slot_config, &mount_config, NULL);
-
-    if (ret == ESP_OK)
-    {
-        RG_LOGI("SD Card mounted, freq=%d\n", 0);
-        return true;
-    }
-
-    RG_LOGE("SD Card mounting failed (%d)\n", ret);
-    return false;
-}
-
-bool rg_sdcard_deinit(void)
-{
-    esp_err_t ret = esp_vfs_fat_sdmmc_unmount();
-    if (ret == ESP_OK)
-    {
-        RG_LOGI("SD Card unmounted\n");
-        return true;
-    }
-    RG_LOGE("SD Card unmounting failed (%d)\n", ret);
-    return false;
-}
-
 void rg_system_time_init()
 {
     // Query an external RTC or NTP or load saved timestamp from disk
@@ -282,7 +212,7 @@ void rg_system_time_save()
     // Update external RTC or save timestamp to disk
 }
 
-void rg_system_init(int appId, int sampleRate)
+rg_app_desc_t *rg_system_init(int appId, int sampleRate, const rg_emu_proc_t *handlers)
 {
     const esp_app_desc_t *app = esp_ota_get_app_description();
 
@@ -302,13 +232,16 @@ void rg_system_init(int appId, int sampleRate)
     currentApp.id = appId;
     currentApp.refreshRate = 1;
     currentApp.mainTaskHandle = xTaskGetCurrentTaskHandle();
+    if (handlers)
+        currentApp.handlers = *handlers;
 
     // Blue LED
     gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
     gpio_set_level(RG_GPIO_LED, 0);
 
     // This must be before rg_display_init() and rg_settings_init()
-    bool sd_init = rg_sdcard_init();
+    rg_vfs_init();
+    bool sd_init = rg_vfs_mount(RG_SDCARD);
     rg_settings_init();
     rg_display_init();
     rg_gui_init();
@@ -351,7 +284,7 @@ void rg_system_init(int appId, int sampleRate)
         rg_display_clear(C_BLUE);
         // rg_gui_set_font_size(12);
         rg_gui_alert("System Panic!", message);
-        rg_sdcard_deinit();
+        rg_vfs_deinit();
         rg_audio_deinit();
         rg_system_switch_app(RG_APP_LAUNCHER);
     }
@@ -371,6 +304,10 @@ void rg_system_init(int appId, int sampleRate)
 
     if (strcmp(app->project_name, RG_APP_LAUNCHER) != 0)
     {
+        currentApp.startAction = rg_settings_get_int32(SETTING_START_ACTION, 0);
+        currentApp.romPath = rg_settings_get_string(SETTING_ROM_FILE_PATH, NULL);
+        currentApp.refreshRate = 60;
+
         // If any key is pressed we abort and go back to the launcher
         if (rg_input_key_is_pressed(GAMEPAD_KEY_ANY))
         {
@@ -378,11 +315,17 @@ void rg_system_init(int appId, int sampleRate)
         }
 
         // Only boot this app once, next time will return to launcher
-        if (rg_settings_StartupApp_get() == 0)
+        if (rg_system_get_startup_app() == 0)
         {
             // This might interfer with our panic capture above and, at the very least, make
             // it report wrong app/version...
             rg_system_set_boot_app(RG_APP_LAUNCHER);
+        }
+
+        if (!currentApp.romPath || strlen(currentApp.romPath) < 4)
+        {
+            rg_gui_alert("SD Card Error", "Invalid ROM Path.");
+            rg_system_switch_app(RG_APP_LAUNCHER);
         }
     }
 
@@ -391,40 +334,19 @@ void rg_system_init(int appId, int sampleRate)
         rg_profiler_init();
     #endif
 
-    xTaskCreate(&system_monitor_task, "sysmon", 2048, NULL, 7, NULL);
-
-    initialized = true;
-
-    RG_LOGI("Retro-Go init done.\n");
-}
-
-void rg_emu_init(const rg_emu_proc_t *handlers)
-{
-    currentApp.startAction = rg_settings_StartAction_get();
-    currentApp.romPath = rg_settings_RomFilePath_get();
-    currentApp.refreshRate = 60;
-
-    if (!currentApp.romPath || strlen(currentApp.romPath) < 4)
-    {
-        RG_PANIC("Invalid ROM path!");
-    }
-
-    if (handlers)
-    {
-        currentApp.handlers = *handlers;
-    }
-
     #ifdef ENABLE_NETPLAY
-    if (currentApp.handlers.netplay)
-    {
-        rg_netplay_init(currentApp.handlers.netplay);
-    }
+    rg_netplay_init(currentApp.netplay_handler);
     #endif
 
-    // This is to allow time for rom loading
-    inputTimeout = INPUT_TIMEOUT * 5;
+    xTaskCreate(&system_monitor_task, "sysmon", 2048, NULL, 7, NULL);
 
-    RG_LOGI("Emu init done. romPath='%s'\n\n", currentApp.romPath);
+    // This is to allow time for app starting
+    inputTimeout = INPUT_TIMEOUT * 5;
+    initialized = true;
+
+    RG_LOGI("Retro-Go init done.\n\n");
+
+    return &currentApp;
 }
 
 rg_app_desc_t *rg_system_get_app()
@@ -432,7 +354,7 @@ rg_app_desc_t *rg_system_get_app()
     return &currentApp;
 }
 
-char *rg_emu_get_path(emu_path_type_t type, const char *_romPath)
+char *rg_emu_get_path(rg_path_type_t type, const char *_romPath)
 {
     const char *fileName = _romPath ?: currentApp.romPath;
     char buffer[256];
@@ -450,38 +372,32 @@ char *rg_emu_get_path(emu_path_type_t type, const char *_romPath)
 
     switch (type)
     {
-        case EMU_PATH_SAVE_STATE:
-        case EMU_PATH_SAVE_STATE_1:
-        case EMU_PATH_SAVE_STATE_2:
-        case EMU_PATH_SAVE_STATE_3:
+        case RG_PATH_SAVE_STATE:
+        case RG_PATH_SAVE_STATE_1:
+        case RG_PATH_SAVE_STATE_2:
+        case RG_PATH_SAVE_STATE_3:
             strcpy(buffer, RG_BASE_PATH_SAVES);
             strcat(buffer, fileName);
             strcat(buffer, ".sav");
             break;
 
-        case EMU_PATH_SAVE_BACK:
-            strcpy(buffer, RG_BASE_PATH_SAVES);
-            strcat(buffer, fileName);
-            strcat(buffer, ".sav.bak");
-            break;
-
-        case EMU_PATH_SAVE_SRAM:
+        case RG_PATH_SAVE_SRAM:
             strcpy(buffer, RG_BASE_PATH_SAVES);
             strcat(buffer, fileName);
             strcat(buffer, ".sram");
             break;
 
-        case EMU_PATH_SCREENSHOT:
+        case RG_PATH_SCREENSHOT:
             strcpy(buffer, RG_BASE_PATH_SAVES);
             strcat(buffer, fileName);
             strcat(buffer, ".png");
             break;
 
-        case EMU_PATH_TEMP_FILE:
+        case RG_PATH_TEMP_FILE:
             sprintf(buffer, "%s/%X%X.tmp", RG_BASE_PATH_TEMP, (uint32_t)get_elapsed_time(), rand());
             break;
 
-        case EMU_PATH_ROM_FILE:
+        case RG_PATH_ROM_FILE:
             strcpy(buffer, RG_BASE_PATH_ROMS);
             strcat(buffer, fileName);
             break;
@@ -495,7 +411,7 @@ char *rg_emu_get_path(emu_path_type_t type, const char *_romPath)
 
 bool rg_emu_load_state(int slot)
 {
-    if (!currentApp.romPath || !currentApp.handlers.loadState)
+    if (!currentApp.romPath)
     {
         RG_LOGE("No game/emulator loaded...\n");
         return false;
@@ -508,8 +424,9 @@ bool rg_emu_load_state(int slot)
     // Increased input timeout, this might take a while
     inputTimeout = INPUT_TIMEOUT * 5;
 
-    char *pathName = rg_emu_get_path(EMU_PATH_SAVE_STATE, currentApp.romPath);
+    char *pathName = rg_emu_get_path(RG_PATH_SAVE_STATE, currentApp.romPath);
     bool success = (*currentApp.handlers.loadState)(pathName);
+    // bool success = rg_emu_notify(RG_MSG_LOAD_STATE, pathName);
 
     inputTimeout = INPUT_TIMEOUT;
 
@@ -525,7 +442,7 @@ bool rg_emu_load_state(int slot)
 
 bool rg_emu_save_state(int slot)
 {
-    if (!currentApp.romPath || !currentApp.handlers.saveState)
+    if (!currentApp.romPath)
     {
         RG_LOGE("No game/emulator loaded...\n");
         return false;
@@ -536,68 +453,72 @@ bool rg_emu_save_state(int slot)
     rg_system_set_led(1);
     rg_gui_draw_hourglass();
 
-    char *saveName = rg_emu_get_path(EMU_PATH_SAVE_STATE, currentApp.romPath);
-    char *backName = rg_emu_get_path(EMU_PATH_SAVE_BACK, currentApp.romPath);
-    char *tempName = rg_emu_get_path(EMU_PATH_TEMP_FILE, currentApp.romPath);
-
+    char *saveName = rg_emu_get_path(RG_PATH_SAVE_STATE, currentApp.romPath);
+    char path_buffer[PATH_MAX + 1];
     bool success = false;
 
     // Increased input timeout, this might take a while
     inputTimeout = INPUT_TIMEOUT * 5;
 
-    if ((*currentApp.handlers.saveState)(tempName))
+    sprintf(path_buffer, "%s.new", saveName);
+    if ((*currentApp.handlers.saveState)(path_buffer))
     {
-        rename(saveName, backName);
+        sprintf(path_buffer, "%s.bak", saveName);
+        rename(saveName, path_buffer);
 
-        if (rename(tempName, saveName) == 0)
+        sprintf(path_buffer, "%s.new", saveName);
+        if (rename(path_buffer, saveName) == 0)
         {
-            unlink(backName);
+            sprintf(path_buffer, "%s.bak", saveName);
+            unlink(path_buffer);
+
             success = true;
 
-            rg_settings_StartAction_set(EMU_START_ACTION_RESUME);
+            rg_settings_set_app_int32(SETTING_START_ACTION, RG_START_ACTION_RESUME);
             rg_settings_save();
         }
     }
 
-    unlink(tempName);
+    if (!success)
+    {
+        RG_LOGE("Save failed!\n");
+
+        sprintf(path_buffer, "%s.bak", saveName);
+        rename(saveName, path_buffer);
+        sprintf(path_buffer, "%s.new", saveName);
+        unlink(path_buffer);
+
+        rg_gui_alert("Save failed", NULL);
+    }
 
     inputTimeout = INPUT_TIMEOUT;
 
     rg_system_set_led(0);
 
-    if (!success)
-    {
-        RG_LOGE("Save failed!\n");
-        rg_gui_alert("Save failed", NULL);
-    }
-
     free(saveName);
-    free(backName);
-    free(tempName);
 
     return success;
 }
 
 bool rg_emu_reset(int hard)
 {
-    if (!currentApp.handlers.reset)
-    {
-        RG_LOGE("Emulator has no reset handler...\n");
-        return false;
-    }
-
-    return (*currentApp.handlers.reset)(hard);
+    if (currentApp.handlers.reset)
+        return currentApp.handlers.reset(hard);
+    return false;
+    // return rg_emu_notify(RG_MSG_RESET, (void*)hard);
 }
 
 bool rg_emu_notify(int msg, void *arg)
 {
+    if (currentApp.handlers.message)
+        return currentApp.handlers.message(msg, arg);
     return false;
 }
 
-bool rg_emu_start_game(const char *emulator, const char *romPath, emu_start_action_t action)
+void rg_emu_start_game(const char *emulator, const char *romPath, rg_start_action_t action)
 {
-    rg_settings_RomFilePath_set(romPath);
-    rg_settings_StartAction_set(action);
+    rg_settings_set_string(SETTING_ROM_FILE_PATH, romPath);
+    rg_settings_set_int32(SETTING_START_ACTION, action);
     rg_settings_save();
 
     if (emulator)
@@ -622,7 +543,7 @@ void rg_system_switch_app(const char *app)
     rg_system_set_boot_app(app);
 
     rg_audio_deinit();
-    rg_sdcard_deinit();
+    rg_vfs_deinit();
     // rg_display_deinit();
 
     esp_restart();
@@ -692,6 +613,16 @@ int rg_system_get_led(void)
     return gpio_get_level(RG_GPIO_LED);
 }
 
+int32_t rg_system_get_startup_app(void)
+{
+    return rg_settings_get_int32(SETTING_STARTUP_APP, 1);
+}
+
+void rg_system_set_startup_app(int32_t value)
+{
+    rg_settings_set_int32(SETTING_STARTUP_APP, value);
+}
+
 IRAM_ATTR void rg_spi_lock_acquire(spi_lock_res_t owner)
 {
 #if USE_SPI_MUTEX
@@ -719,113 +650,6 @@ IRAM_ATTR void rg_spi_lock_release(spi_lock_res_t owner)
         spiMutexOwner = SPI_LOCK_ANY;
     }
 #endif
-}
-
-/* File System */
-
-bool rg_fs_mkdir(const char *dir)
-{
-    int ret = mkdir(dir, 0777);
-
-    if (ret == -1)
-    {
-        if (errno == EEXIST)
-        {
-            return true;
-        }
-
-        char temp[255];
-        strncpy(temp, dir, sizeof(temp) - 1);
-
-        for (char *p = temp + strlen(RG_BASE_PATH) + 1; *p; p++) {
-            if (*p == '/') {
-                *p = 0;
-                if (strlen(temp) > 0) {
-                    RG_LOGI("Creating %s\n", temp);
-                    mkdir(temp, 0777);
-                }
-                *p = '/';
-                while (*(p+1) == '/') p++;
-            }
-        }
-
-        ret = mkdir(temp, 0777);
-    }
-
-    if (ret == 0)
-    {
-        RG_LOGI("Folder created %s\n", dir);
-    }
-
-    return (ret == 0);
-}
-
-bool rg_fs_readdir(const char* path, char **out_files, size_t *out_count, bool skip_hidden)
-{
-    DIR* dir = opendir(path);
-    if (!dir)
-        return false;
-
-    // TO DO: We should use a struct instead of a packed list of strings
-    char *buffer = NULL;
-    size_t bufsize = 0;
-    size_t bufpos = 0;
-    size_t count = 0;
-    struct dirent* file;
-
-    while ((file = readdir(dir)))
-    {
-        const char *name = file->d_name;
-        size_t name_len = strlen(name) + 1;
-
-        if (name_len < 2 || (skip_hidden && name[0] == '.'))
-        {
-            continue;
-        }
-
-        if ((bufsize - bufpos) < name_len)
-        {
-            bufsize += 1024;
-            buffer = realloc(buffer, bufsize);
-        }
-
-        memcpy(buffer + bufpos, name, name_len);
-        bufpos += name_len;
-        count++;
-    }
-
-    buffer = realloc(buffer, bufpos + 1);
-    buffer[bufpos] = 0;
-
-    closedir(dir);
-
-    if (out_files) *out_files = buffer;
-    if (out_count) *out_count = count;
-
-    return true;
-}
-
-bool rg_fs_delete(const char *path)
-{
-    return (unlink(path) == 0 || rmdir(path) == 0);
-}
-
-long rg_fs_filesize(const char *path)
-{
-    struct stat st;
-    return (stat(path, &st) == 0) ? st.st_size : -1;
-}
-
-const char* rg_fs_basename(const char *path)
-{
-    const char *name = strrchr(path, '/');
-    return name ? name + 1 : NULL;
-}
-
-const char* rg_fs_extension(const char *path)
-{
-    const char *ext = strrchr(path, '.');
-    return ext ? ext + 1 : NULL;
 }
 
 /* Memory */

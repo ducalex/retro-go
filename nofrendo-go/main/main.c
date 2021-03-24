@@ -89,7 +89,7 @@ static bool save_state_handler(char *pathName)
 {
     if (state_save(pathName) >= 0)
     {
-        char *filename = rg_emu_get_path(EMU_PATH_SCREENSHOT, 0);
+        char *filename = rg_emu_get_path(RG_PATH_SCREENSHOT, 0);
         if (filename)
         {
             rg_display_save_frame(filename, currentUpdate, 160, 0);
@@ -226,7 +226,7 @@ static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t
 
 void osd_loadstate()
 {
-    if (app->startAction == EMU_START_ACTION_RESUME)
+    if (app->startAction == RG_START_ACTION_RESUME)
     {
         rg_emu_load_state(0);
     }
@@ -388,10 +388,7 @@ void app_main(void)
         .netplay = &netplay_handler,
     };
 
-    rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-    rg_emu_init(&handlers);
-
-    app = rg_system_get_app();
+    app = rg_system_init(APP_ID, AUDIO_SAMPLE_RATE, &handlers);
 
     frames[0].flags = RG_PIXEL_PAL|RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].pixel_mask = 0x3F;

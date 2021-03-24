@@ -104,7 +104,7 @@ static void fds_cpu_timer(int cycles)
         irq.seek_counter -= cycles;
         if (irq.seek_counter <= 0)
         {
-            if (fds->regs[5] & 0x80)
+            if (fds->regs[5] & REG5_USE_INTERRUPT)
             {
                 nes6502_irq();
             }
@@ -175,7 +175,8 @@ static void fds_write(uint32 address, uint8 value)
 
         case 0x4022:                    // IRQ control
             CLEAR_IRQ();
-            TIMER_RELOAD();
+            if (value & REG2_IRQ_ENABLED)
+                TIMER_RELOAD();
             break;
 
         case 0x4023:                    // Master I/O enable
@@ -233,7 +234,12 @@ static void fds_write(uint32 address, uint8 value)
                 irq.seek_counter = SEEK_TIME;
             }
 
-            ppu_setmirroring((value & 8) ? PPU_MIRROR_HORI : PPU_MIRROR_VERT);
+            // Update mirroring
+            if ((value & REG5_MIRRORING) != (fds->regs[5] & REG5_MIRRORING) || fds->regs[5] == 0)
+            {
+                ppu_setmirroring((value & REG5_MIRRORING) ? PPU_MIRROR_HORI : PPU_MIRROR_VERT);
+            }
+
             break;
     }
 

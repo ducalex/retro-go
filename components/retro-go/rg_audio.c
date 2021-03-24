@@ -17,6 +17,7 @@ static float volumeLevels[] = {0.f, 0.06f, 0.125f, 0.187f, 0.25f, 0.35f, 0.42f, 
 
 static const char *SETTING_OUTPUT = "AudioSink";
 static const char *SETTING_VOLUME = "Volume";
+// static const char *SETTING_FILTER = "AudioFilter";
 
 
 audio_volume_t rg_audio_get_volume(void)

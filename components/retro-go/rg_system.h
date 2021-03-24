@@ -16,13 +16,55 @@ extern "C" {
 #include "rg_display.h"
 #include "rg_input.h"
 #include "rg_netplay.h"
+#include "rg_vfs.h"
 #include "rg_gui.h"
 #include "rg_profiler.h"
 #include "rg_settings.h"
 
+typedef enum
+{
+    RG_MSG_SHUTDOWN,
+    RG_MSG_RESTART,
+    RG_MSG_RESET,
+    RG_MSG_REDRAW,
+    RG_MSG_NETPLAY,
+    RG_MSG_SAVE_STATE,
+    RG_MSG_LOAD_STATE,
+    RG_MSG_SAVE_SRAM,
+    RG_MSG_LOAD_SRAM,
+} rg_msg_t;
+
+typedef enum
+{
+    RG_START_ACTION_RESUME = 0,
+    RG_START_ACTION_NEWGAME,
+    RG_START_ACTION_NETPLAY
+} rg_start_action_t;
+
+typedef enum
+{
+    RG_PATH_SAVE_STATE = 0,
+    RG_PATH_SAVE_STATE_1,
+    RG_PATH_SAVE_STATE_2,
+    RG_PATH_SAVE_STATE_3,
+    RG_PATH_SCREENSHOT,
+    RG_PATH_SAVE_SRAM,
+    RG_PATH_TEMP_FILE,
+    RG_PATH_ROM_FILE,
+    RG_PATH_ART_FILE,
+} rg_path_type_t;
+
+typedef enum
+{
+    SPI_LOCK_ANY = 0,
+    SPI_LOCK_SDCARD = 1,
+    SPI_LOCK_DISPLAY = 2,
+    SPI_LOCK_OTHER = 3,
+} spi_lock_res_t;
+
 typedef bool (*state_handler_t)(char *pathName);
 typedef bool (*reset_handler_t)(bool hard);
-typedef void (*message_handler_t)(int msg, void *arg);
+typedef bool (*message_handler_t)(int msg, void *arg);
 
 typedef struct
 {
@@ -44,28 +86,6 @@ typedef struct
     void *mainTaskHandle;
     rg_emu_proc_t handlers;
 } rg_app_desc_t;
-
-typedef enum
-{
-    EMU_PATH_SAVE_STATE = 0,
-    EMU_PATH_SAVE_STATE_1,
-    EMU_PATH_SAVE_STATE_2,
-    EMU_PATH_SAVE_STATE_3,
-    EMU_PATH_SCREENSHOT,
-    EMU_PATH_SAVE_BACK,
-    EMU_PATH_SAVE_SRAM,
-    EMU_PATH_TEMP_FILE,
-    EMU_PATH_ROM_FILE,
-    EMU_PATH_ART_FILE,
-} emu_path_type_t;
-
-typedef enum
-{
-    SPI_LOCK_ANY = 0,
-    SPI_LOCK_SDCARD = 1,
-    SPI_LOCK_DISPLAY = 2,
-    SPI_LOCK_OTHER = 3,
-} spi_lock_res_t;
 
 typedef struct
 {
@@ -91,7 +111,7 @@ typedef struct
     uint32_t freeStackMain;
 } runtime_stats_t;
 
-void rg_system_init(int app_id, int sampleRate);
+rg_app_desc_t *rg_system_init(int appId, int sampleRate, const rg_emu_proc_t *handlers);
 void rg_system_panic(const char *reason, const char *context) __attribute__((noreturn));
 void rg_system_halt() __attribute__((noreturn));
 void rg_system_sleep() __attribute__((noreturn));
@@ -108,27 +128,18 @@ runtime_stats_t rg_system_get_stats();
 void rg_system_time_init();
 void rg_system_time_save();
 
-bool rg_sdcard_init(void);
-bool rg_sdcard_deinit(void);
-
-void rg_emu_init(const rg_emu_proc_t *handlers);
-char *rg_emu_get_path(emu_path_type_t type, const char *romPath);
+char *rg_emu_get_path(rg_path_type_t type, const char *romPath);
 bool rg_emu_save_state(int slot);
 bool rg_emu_load_state(int slot);
 bool rg_emu_reset(int hard);
 bool rg_emu_notify(int msg, void *arg);
-bool rg_emu_start_game(const char *emulator, const char *romPath, emu_start_action_t action);
+void rg_emu_start_game(const char *emulator, const char *romPath, rg_start_action_t action);
+
+int32_t rg_system_get_startup_app(void);
+void rg_system_set_startup_app(int32_t value);
 
 void rg_spi_lock_acquire(spi_lock_res_t);
 void rg_spi_lock_release(spi_lock_res_t);
-
-bool rg_fs_mkdir(const char *path);
-bool rg_fs_delete(const char* path);
-bool rg_fs_readdir(const char* path, char **out_files, size_t *out_count, bool skip_hidden);
-long rg_fs_filesize(const char *path);
-const char* rg_fs_basename(const char *path);
-const char* rg_fs_dirname(const char *path);
-const char* rg_fs_extension(const char *path);
 
 void *rg_alloc(size_t size, uint32_t caps);
 void rg_free(void *ptr);

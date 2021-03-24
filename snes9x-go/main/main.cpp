@@ -28,8 +28,6 @@ static rg_video_frame_t frames[2];
 static rg_video_frame_t *currentUpdate = &frames[0];
 static uint32_t frames_counter = 0;
 
-static char temp_path[PATH_MAX + 1];
-
 static int keymap_id = 0;
 static keymap_t keymap;
 
@@ -43,56 +41,9 @@ static const char *SETTING_KEYMAP = "keymap";
 // --- MAIN
 
 
-const char *S9xGetDirectory(enum s9x_getdirtype dirtype)
-{
-	S9xGetFilename("none", dirtype);
-
-	char *end = strrchr(temp_path, '/');
-
-	if (end)
-		*end = 0;
-
-	return temp_path;
-}
-
-const char *S9xGetFilename(const char *ex, enum s9x_getdirtype dirtype)
-{
-	char *path;
-
-	switch (dirtype)
-	{
-		case HOME_DIR:
-		case ROMFILENAME_DIR:
-		case ROM_DIR:
-			path = rg_emu_get_path(EMU_PATH_ROM_FILE, 0);
-			strcpy(temp_path, path);
-			break;
-
-		case SRAM_DIR:
-			path = rg_emu_get_path(EMU_PATH_SAVE_SRAM, 0);
-			strcpy(temp_path, path);
-			break;
-
-		case SNAPSHOT_DIR:
-			path = rg_emu_get_path(EMU_PATH_SAVE_STATE, 0);
-			strcpy(temp_path, path);
-			break;
-
-		default:
-			path = rg_emu_get_path(EMU_PATH_TEMP_FILE, 0);
-			strcpy(temp_path, path);
-			strcpy(temp_path, ex);
-			break;
-	}
-
-	free(path);
-
-	return temp_path;
-}
-
 const char *S9xBasename(const char *f)
 {
-	return rg_fs_basename(f);
+	return rg_vfs_basename(f);
 }
 
 void S9xTextMode(void)
@@ -204,7 +155,7 @@ static bool save_state_handler(char *pathName)
 	{
 		// lupng creates a broken image on the SNES. It seems to be compressed incorrectly
 		// so for now we won't have pretty screenshot...
-		char *filename = rg_emu_get_path(EMU_PATH_SCREENSHOT, 0);
+		char *filename = rg_emu_get_path(RG_PATH_SCREENSHOT, 0);
 		if (filename)
 		{
 			// rg_display_save_frame(filename, currentUpdate, 160, 0);
@@ -219,7 +170,7 @@ static bool load_state_handler(char *pathName)
 {
 	bool ret = false;
 
-	if (rg_fs_filesize(pathName) > 0)
+	if (rg_vfs_filesize(pathName) > 0)
 	{
 		ret = S9xUnfreezeGame(pathName) == SUCCESS;
 	}
@@ -274,7 +225,7 @@ static void snes9x_task(void *arg)
 	if (!S9xLoadROM(app->romPath))
 		RG_PANIC("ROM loading failed!");
 
-    if (app->startAction == EMU_START_ACTION_RESUME)
+    if (app->startAction == RG_START_ACTION_RESUME)
     {
         rg_emu_load_state(0);
     }
@@ -349,10 +300,7 @@ extern "C" void app_main(void)
 		.netplay = NULL,
 	};
 
-	rg_system_init(APP_ID, AUDIO_SAMPLE_RATE);
-	rg_emu_init(&handlers);
-
-	app = rg_system_get_app();
+	app = rg_system_init(APP_ID, AUDIO_SAMPLE_RATE, &handlers);
 
 	frames[0].flags = RG_PIXEL_565|RG_PIXEL_LE;
 	frames[0].width = SNES_WIDTH;
