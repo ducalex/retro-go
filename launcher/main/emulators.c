@@ -278,8 +278,10 @@ bool emulator_build_file_object(const char *path, retro_emulator_file_t *file)
 
 bool emulator_crc32_file(retro_emulator_file_t *file)
 {
-    const size_t chunk_size = 0x4000;
+    uint8_t buffer[0x1000];
     uint32_t crc_tmp = 0;
+    uint32_t count = 0;
+    bool done = false;
     FILE *fp;
 
     if (file == NULL)
@@ -292,32 +294,31 @@ bool emulator_crc32_file(retro_emulator_file_t *file)
     {
         file->checksum = crc_tmp;
     }
-    else if ((fp = fopen(emu_get_file_path(file), "rb")) != NULL)
+    else
     {
-        void *buffer = rg_alloc(chunk_size, MEM_ANY);
-        size_t count = 0;
-        bool done = false;
-
         gui_draw_notice("        CRC32", C_GREEN);
 
-        fseek(fp, file->crc_offset, SEEK_SET);
-        while (true)
+        if ((fp = fopen(emu_get_file_path(file), "rb")) != NULL)
         {
-            gui.joystick = rg_input_read_gamepad();
+            fseek(fp, file->crc_offset, SEEK_SET);
+            while (true)
+            {
+                gui.joystick = rg_input_read_gamepad();
 
-            if (gui.joystick & GAMEPAD_KEY_ANY)
-                break;
+                if (gui.joystick & GAMEPAD_KEY_ANY)
+                    break;
 
-            count = fread(buffer, 1, chunk_size, fp);
-            if (count == 0) break;
+                count = fread(buffer, 1, sizeof(buffer), fp);
+                if (count == 0) break;
 
-            crc_tmp = crc32_le(crc_tmp, buffer, count);
-            if (count < chunk_size) break;
+                crc_tmp = crc32_le(crc_tmp, buffer, count);
+                if (count < sizeof(buffer)) break;
+            }
+            done = feof(fp);
+            fclose(fp);
         }
-        done = feof(fp);
-        fclose(fp);
 
-        rg_free(buffer);
+        gui_draw_notice("        CRC32", C_ALICE_BLUE);
 
         if (done)
         {

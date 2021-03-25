@@ -341,17 +341,25 @@ void gui_draw_preview(retro_emulator_file_t *file)
             continue;
         }
 
+        gui.joystick = rg_input_read_gamepad();
+
+        if (type == 0x1 || type == 0x2)
+        {
+            emulator_crc32_file(file);
+        }
+
+        if (gui.joystick & GAMEPAD_KEY_ANY)
+        {
+            break;
+        }
+
         switch (type)
         {
             case 0x1: // Game cover (old format)
-                if (!emulator_crc32_file(file))
-                    continue;
                 sprintf(path, RG_BASE_PATH_ROMART "/%s/%X/%08X.art", dirname, file->checksum >> 28, file->checksum);
                 img = rg_gui_load_image_file(path);
                 break;
             case 0x2: // Game cover (png)
-                if (!emulator_crc32_file(file))
-                    continue;
                 sprintf(path, RG_BASE_PATH_ROMART "/%s/%X/%08X.png", dirname, file->checksum >> 28, file->checksum);
                 img = rg_gui_load_image_file(path);
                 break;
@@ -359,15 +367,19 @@ void gui_draw_preview(retro_emulator_file_t *file)
                 sprintf(path, "%s/%s/%s.%s.png", RG_BASE_PATH_SAVES, dirname, file->name, file->ext);
                 img = rg_gui_load_image_file(path);
                 break;
+            case 0x4: // use default image (not currently used)
+                sprintf(path, RG_BASE_PATH_ROMART "/%s/default.png", dirname);
+                img = rg_gui_load_image_file(path);
+                break;
         }
 
         file->missing_cover |= (img ? 0 : 1) << type;
     }
 
+    gui_draw_notice(" ", C_BLACK);
+
     if (img)
     {
-        gui_draw_notice(" ", C_BLACK);
-
         int height = MIN(img->height, COVER_MAX_HEIGHT);
         int width = MIN(img->width, COVER_MAX_WIDTH);
 
@@ -376,10 +388,8 @@ void gui_draw_preview(retro_emulator_file_t *file)
 
         rg_gui_draw_image(320 - width, 240 - height, width, height, img);
         rg_gui_free_image(img);
-        return;
     }
-
-    if (show_art_missing)
+    else if (show_art_missing)
     {
         gui_draw_notice(" No art found", C_RED);
     }
