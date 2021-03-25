@@ -25,28 +25,16 @@
 #define RETRO_LESS_ACCURATE_APU 0
 #define RETRO_COMBINED_MEMORY_MAP 1
 
-
-#define STREAM					FILE *
-#define GETS_STREAM(p, l, s)	fgets(p, l, s)
-#define GETC_STREAM(s)			fgetc(s)
-#define READ_STREAM(p, l, s)	fread(p, 1, l, s)
-#define WRITE_STREAM(p, l, s)	fwrite(p, 1, l, s)
-#define OPEN_STREAM(f, m)		fopen(f, m)
-#define FIND_STREAM(s)			ftell(s)
-#define REVERT_STREAM(s, o, p)	fseek(s, o, p)
-#define CLOSE_STREAM(s)			fclose(s)
-
-
 #define SNES_WIDTH					256
 #define SNES_HEIGHT					224
-#define SNES_HEIGHT_EXTENDED		239
+#define SNES_HEIGHT_EXTENDED		224 // 239 This will cause problem in some games, but it saves a lot of memory...
 
 #define	NTSC_MASTER_CLOCK			21477272.727272 // 21477272 + 8/11 exact
 #define	PAL_MASTER_CLOCK			21281370.0
 
 #define SNES_MAX_NTSC_VCOUNTER		262
 #define SNES_MAX_PAL_VCOUNTER		312
-#define SNES_MAX_VCOUNTER			(Settings.PAL ? SNES_MAX_PAL_VCOUNTER : SNES_MAX_NTSC_VCOUNTER)
+#define SNES_MAX_VCOUNTER			(Settings.Region == S9X_PAL ? SNES_MAX_PAL_VCOUNTER : SNES_MAX_NTSC_VCOUNTER)
 #define SNES_MAX_HCOUNTER			341
 
 #define ONE_CYCLE					6
@@ -116,6 +104,13 @@ typedef enum
 	HC_WRAM_REFRESH_EVENT = 6
 } hevent_t;
 
+typedef enum
+{
+	S9X_AUTO,
+	S9X_NTSC,
+	S9X_PAL,
+} region_t;
+
 enum
 {
 	IRQ_NONE        = 0x0,
@@ -156,34 +151,20 @@ struct SCPUState
 
 struct SSettings
 {
-	bool8	TraceDMA;
-	bool8	TraceHDMA;
-	bool8	TraceVRAM;
-	bool8	TraceUnknownRegisters;
-	bool8	TraceDSP;
-	bool8	TraceHCEvent;
-	bool8	TraceSMP;
+	uint32	Region;
+	uint32	FrameRate;
 
 	uint8	DSP;
-
-	bool8	ForcePAL;
-	bool8	ForceNTSC;
-	bool8	PAL;
-	uint32	FrameTime;
-	uint32	FrameRate;
 
 	bool8	SoundSync;
 	uint32	SoundPlaybackRate;
 	uint32	SoundInputRate;
 	bool8	Stereo;
 	bool8	Mute;
-	bool8	DynamicRateControl;
-	int32	DynamicRateLimit; /* Multiplied by 1000 */
-	int32	InterpolationMethod;
+	int32	DynamicRateLimit;
 
 	bool8	Transparency;
 	uint8	BG_Forced;
-	bool8	DisableGraphicWindows;
 
 	uint32	InitialInfoStringTimeout;
 	uint16	DisplayColor;
@@ -191,10 +172,19 @@ struct SSettings
 	bool8	Paused;
 
 	uint32	SkipFrames;
-	uint32	TurboSkipFrames;
 	bool8	TurboMode;
 
 	bool8	DisableGameSpecificHacks;
+
+#ifdef DEBUGGER
+	bool8	TraceDMA;
+	bool8	TraceHDMA;
+	bool8	TraceVRAM;
+	bool8	TraceUnknownRegisters;
+	bool8	TraceDSP;
+	bool8	TraceHCEvent;
+	bool8	TraceSMP;
+#endif
 };
 
 enum s9x_getdirtype

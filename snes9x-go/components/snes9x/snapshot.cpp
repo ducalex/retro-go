@@ -549,21 +549,21 @@ static const FreezeData	SnapDSP2[] =
 
 #undef STRUCT
 
-static int UnfreezeBlock (STREAM, const char *, uint8 *, int);
-static int UnfreezeBlockCopy (STREAM, const char *, uint8 **, int);
-static int UnfreezeStruct (STREAM, const char *, void *, const FreezeData *, int, int);
-static int UnfreezeStructCopy (STREAM, const char *, uint8 **, const FreezeData *, int, int);
+static int UnfreezeBlock (FILE *, const char *, uint8 *, int);
+static int UnfreezeBlockCopy (FILE *, const char *, uint8 **, int);
+static int UnfreezeStruct (FILE *, const char *, void *, const FreezeData *, int, int);
+static int UnfreezeStructCopy (FILE *, const char *, uint8 **, const FreezeData *, int, int);
 static void UnfreezeStructFromCopy (void *, const FreezeData *, int, uint8 *, int);
-static void FreezeBlock (STREAM, const char *, uint8 *, int);
-static void FreezeStruct (STREAM, const char *, void *, const FreezeData *, int);
-static bool CheckBlockName(STREAM stream, const char *name, int *len);
-static void SkipBlockWithName(STREAM stream, const char *name);
+static void FreezeBlock (FILE *, const char *, uint8 *, int);
+static void FreezeStruct (FILE *, const char *, void *, const FreezeData *, int);
+static bool CheckBlockName(FILE *, const char *, int *);
+static void SkipBlockWithName(FILE *, const char *);
 
 // QuickSave
 
 int S9xFreezeGame (const char *filename)
 {
-	STREAM	stream = OPEN_STREAM(filename, "wb");
+	FILE *stream = fopen(filename, "wb");
 
 	if (!stream)
 	{
@@ -576,10 +576,10 @@ int S9xFreezeGame (const char *filename)
 	memset(IPPU.TileCache, 0, sizeof(IPPU.TileCache));
 
 	sprintf(String, "%s:%04d\n", SNAPSHOT_MAGIC, SNAPSHOT_VERSION);
-	WRITE_STREAM(String, strlen(String), stream);
+	fwrite(String, strlen(String), 1, stream);
 
 	sprintf(String, "NAM:%06d:%s%c", (int) strlen(Memory.ROMName) + 1, Memory.ROMName, 0);
-	WRITE_STREAM(String, strlen(String) + 1, stream);
+	fwrite(String, strlen(String) + 1, 1,stream);
 
 	FreezeStruct(stream, "CPU", &CPU, SnapCPU, COUNT(SnapCPU));
 
@@ -611,7 +611,7 @@ int S9xFreezeGame (const char *filename)
 	if (Settings.DSP == 2)
 		FreezeStruct(stream, "DP2", &DSP2, SnapDSP2, COUNT(SnapDSP2));
 
-	CLOSE_STREAM(stream);
+	fclose(stream);
 
 	sprintf(String, SAVE_INFO_SNAPSHOT " %s", S9xBasename(filename));
 	S9xMessage(S9X_INFO, S9X_FREEZE_FILE_INFO, String);
@@ -623,7 +623,7 @@ int S9xFreezeGame (const char *filename)
 
 int S9xUnfreezeGame (const char *filename)
 {
-	STREAM	stream = OPEN_STREAM(filename, "rb");
+	FILE *stream = fopen(filename, "rb");
 
 	if (!stream)
 	{
@@ -637,7 +637,7 @@ int S9xUnfreezeGame (const char *filename)
 	char	buffer[PATH_MAX + 1];
 
 	len = strlen(SNAPSHOT_MAGIC) + 1 + 4 + 1;
-	if (READ_STREAM(buffer, len, stream) != (unsigned int ) len)
+	if (fread(buffer, 1, len, stream) != (unsigned int ) len)
 		return (WRONG_FORMAT);
 
 	if (strncmp(buffer, SNAPSHOT_MAGIC, strlen(SNAPSHOT_MAGIC)) != 0)
@@ -740,7 +740,7 @@ int S9xUnfreezeGame (const char *filename)
 		S9xGraphicsScreenResize();
 	}
 
-	CLOSE_STREAM(stream);
+	fclose(stream);
 
 	if (result != SUCCESS)
 	{
@@ -787,7 +787,7 @@ static int FreezeSize (int size, int type)
 	}
 }
 
-static void FreezeStruct (STREAM stream, const char *name, void *base, const FreezeData *fields, int num_fields)
+static void FreezeStruct (FILE *stream, const char *name, void *base, const FreezeData *fields, int num_fields)
 {
 	int	len = 0;
 	int	i, j;
@@ -909,7 +909,7 @@ static void FreezeStruct (STREAM stream, const char *name, void *base, const Fre
 	free(block);
 }
 
-static void FreezeBlock (STREAM stream, const char *name, uint8 *block, int size)
+static void FreezeBlock (FILE *stream, const char *name, uint8 *block, int size)
 {
 	char	buffer[20];
 
@@ -928,16 +928,16 @@ static void FreezeBlock (STREAM stream, const char *name, uint8 *block, int size
 
 	buffer[11] = 0;
 
-	WRITE_STREAM(buffer, 11, stream);
-	WRITE_STREAM(block, size, stream);
+	fwrite(buffer, 11, 1, stream);
+	fwrite(block, size, 1, stream);
 }
 
-static bool CheckBlockName(STREAM stream, const char *name, int *len)
+static bool CheckBlockName(FILE *stream, const char *name, int *len)
 {
 	char	buffer[16] = {0};
-	size_t	l = READ_STREAM(buffer, 11, stream);
+	size_t	l = fread(buffer, 1, 11, stream);
 
-	REVERT_STREAM(stream, FIND_STREAM(stream) - l, 0);
+	fseek(stream, ftell(stream) - l, 0);
 
 	if (buffer[4] == '-')
 	{
@@ -957,25 +957,25 @@ static bool CheckBlockName(STREAM stream, const char *name, int *len)
 	return (*len > 0);
 }
 
-static void SkipBlockWithName(STREAM stream, const char *name)
+static void SkipBlockWithName(FILE *stream, const char *name)
 {
 	int len;
 	bool matchesName = CheckBlockName(stream, name, &len);
 	if (matchesName)
 	{
-		long rewind = FIND_STREAM(stream);
+		long rewind = ftell(stream);
 		rewind += len + 11;
-		REVERT_STREAM(stream, rewind, 0);
+		fseek(stream, rewind, 0);
 	}
 }
 
-static int UnfreezeBlock (STREAM stream, const char *name, uint8 *block, int size)
+static int UnfreezeBlock (FILE *stream, const char *name, uint8 *block, int size)
 {
 	char	buffer[20];
 	int		len = 0, rem = 0;
-	long	rewind = FIND_STREAM(stream);
+	long	rewind = ftell(stream);
 
-	size_t	l = READ_STREAM(buffer, 11, stream);
+	size_t	l = fread(buffer, 1, 11, stream);
 	buffer[l] = 0;
 
 	if (l != 11 || strncmp(buffer, name, 3) != 0 || buffer[3] != ':')
@@ -984,7 +984,7 @@ static int UnfreezeBlock (STREAM stream, const char *name, uint8 *block, int siz
 #ifdef DEBUGGER
 		fprintf(stdout, "absent: %s(%d); next: '%.11s'\n", name, size, buffer);
 #endif
-		REVERT_STREAM(stream, FIND_STREAM(stream) - l, 0);
+		fseek(stream, ftell(stream) - l, 0);
 		return (WRONG_FORMAT);
 	}
 
@@ -1009,17 +1009,17 @@ static int UnfreezeBlock (STREAM stream, const char *name, uint8 *block, int siz
 
 	memset(block, 0, size);
 
-	if (READ_STREAM(block, len, stream) != (unsigned int) len)
+	if (fread(block, 1, len, stream) != (unsigned int) len)
 	{
-		REVERT_STREAM(stream, rewind, 0);
+		fseek(stream, rewind, 0);
 		return (WRONG_FORMAT);
 	}
 
 	if (rem)
 	{
-		if (REVERT_STREAM(stream, FIND_STREAM(stream) + rem, 0) != 0)
+		if (fseek(stream, ftell(stream) + rem, 0) != 0)
 		{
-			REVERT_STREAM(stream, rewind, 0);
+			fseek(stream, rewind, 0);
 			return (WRONG_FORMAT);
 		}
 	}
@@ -1027,7 +1027,7 @@ static int UnfreezeBlock (STREAM stream, const char *name, uint8 *block, int siz
 	return (SUCCESS);
 }
 
-static int UnfreezeBlockCopy (STREAM stream, const char *name, uint8 **block, int size)
+static int UnfreezeBlockCopy (FILE *stream, const char *name, uint8 **block, int size)
 {
 	int	result;
 
@@ -1051,7 +1051,7 @@ static int UnfreezeBlockCopy (STREAM stream, const char *name, uint8 **block, in
 	return (SUCCESS);
 }
 
-static int UnfreezeStruct (STREAM stream, const char *name, void *base, const FreezeData *fields, int num_fields, int version)
+static int UnfreezeStruct (FILE *stream, const char *name, void *base, const FreezeData *fields, int num_fields, int version)
 {
 	int		result;
 	uint8	*block = NULL;
@@ -1069,7 +1069,7 @@ static int UnfreezeStruct (STREAM stream, const char *name, void *base, const Fr
 	return (SUCCESS);
 }
 
-static int UnfreezeStructCopy (STREAM stream, const char *name, uint8 **block, const FreezeData *fields, int num_fields, int version)
+static int UnfreezeStructCopy (FILE *stream, const char *name, uint8 **block, const FreezeData *fields, int num_fields, int version)
 {
 	int	len = 0;
 

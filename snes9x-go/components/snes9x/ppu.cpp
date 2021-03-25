@@ -937,7 +937,8 @@ uint8 S9xGetPPU (uint32 Address)
 
 			case 0x213f: // STAT78
 				PPU.VBeamFlip = PPU.HBeamFlip = 0;
-				byte = (PPU.OpenBus2 & 0x20) | (Memory.PPU_IO[0x13f] & 0xc0) | (Settings.PAL ? 0x10 : 0) | 3;
+				byte = (PPU.OpenBus2 & 0x20) | (Memory.PPU_IO[0x13f] & 0xc0) | 3;
+				if (Settings.Region == S9X_PAL) byte |= 0x10;
 				Memory.PPU_IO[0x13f] &= ~0x40;
 				return (PPU.OpenBus2 = byte);
 

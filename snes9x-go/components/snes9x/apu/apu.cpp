@@ -170,8 +170,8 @@ void S9xAPUTimingSetSpeedup(int ticks)
 
 	spc::timing_hack_denominator = 256 - ticks;
 
-	spc::ratio_numerator = Settings.PAL ? APU_NUMERATOR_PAL : APU_NUMERATOR_NTSC;
-	spc::ratio_denominator = Settings.PAL ? APU_DENOMINATOR_PAL : APU_DENOMINATOR_NTSC;
+	spc::ratio_numerator = (Settings.Region == S9X_PAL) ? APU_NUMERATOR_PAL : APU_NUMERATOR_NTSC;
+	spc::ratio_denominator = (Settings.Region == S9X_PAL) ? APU_DENOMINATOR_PAL : APU_DENOMINATOR_NTSC;
 	spc::ratio_denominator = spc::ratio_denominator * spc::timing_hack_denominator / spc::timing_hack_numerator;
 
 	UpdatePlaybackRate();

@@ -96,7 +96,7 @@ static void ShowInfoString (void)
 		Memory.HiROM ? "HiROM" : "LoROM",
 		sizestr,
 		contentstr,
-		Settings.PAL ? "PAL" : "NTSC",
+		(Settings.Region == S9X_PAL) ? "PAL" : "NTSC",
 		sramstr,
 		Memory.ROMId,
 		Memory.ROMCRC32);
@@ -470,7 +470,7 @@ static bool8 InitROM ()
 	if ((Memory.ROM_SIZE & 0x7FF) == 512 || First512BytesCountZeroes() > 400)
 	{
 		printf("Found ROM file header (and ignored it).\n");
-		memmove(Memory.ROM, Memory.ROM + 512, ROM_BUFFER_SIZE - 512);
+		memmove(Memory.ROM, Memory.ROM + 512, Memory.ROM_SIZE - 512);
 		Memory.ROM_SIZE -= 512;
 	}
 
@@ -585,17 +585,14 @@ static bool8 InitROM ()
 	Memory.CalculatedChecksum = CalcChecksum(Memory.ROM, Memory.CalculatedSize);
 
 	//// ROM Region
-	Settings.PAL = (Settings.ForcePAL && !Settings.ForceNTSC)
-						|| ((Memory.ROMRegion >= 2) && (Memory.ROMRegion <= 12));
-
-	if (Settings.PAL)
+	if ((Memory.ROMRegion >= 2) && (Memory.ROMRegion <= 12))
 	{
-		Settings.FrameTime = 20000;
+		Settings.Region = S9X_PAL;
 		Settings.FrameRate = 50;
 	}
 	else
 	{
-		Settings.FrameTime = 16667;
+		Settings.Region = S9X_NTSC;
 		Settings.FrameRate = 60;
 	}
 
@@ -624,10 +621,10 @@ bool8 S9xMemoryInit (void)
 {
 	memset(&Memory, 0, sizeof(Memory));
 
-	Memory.RAM	 = (uint8 *) calloc(1, 0x20000);
+	Memory.RAM  = (uint8 *) calloc(1, 0x20000);
 	Memory.VRAM = (uint8 *) calloc(1, 0x10000);
 	Memory.SRAM = (uint8 *) calloc(1, 0x8000);
-	Memory.ROM  = (uint8 *) calloc(1, ROM_BUFFER_SIZE + 0x200);
+	Memory.ROM  = (uint8 *) calloc(1, ROM_MAX_SIZE);
 
 	if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM || !Memory.ROM)
 	{
@@ -653,18 +650,26 @@ void S9xMemoryDeinit (void)
 
 bool8 S9xLoadROM (const char *filename)
 {
-	STREAM stream = OPEN_STREAM(filename, "rb");
+	FILE *stream = fopen(filename, "rb");
 	if (!stream)
 		return (FALSE);
 
-	REVERT_STREAM(stream, 0, SEEK_END);
+	fseek(stream, 0, SEEK_END);
 
-	Memory.ROM_SIZE = FIND_STREAM(stream);
+	Memory.ROM_SIZE = ftell(stream);
 
-	REVERT_STREAM(stream, 0, SEEK_SET);
-	READ_STREAM(Memory.ROM, ROM_BUFFER_SIZE + 0x200, stream);
+	if (Memory.ROM_SIZE > ROM_MAX_SIZE)
+		Memory.ROM_SIZE = ROM_MAX_SIZE;
 
-	CLOSE_STREAM(stream);
+	Memory.ROM = (uint8 *)realloc(Memory.ROM, Memory.ROM_SIZE);
+
+	if (Memory.ROM)
+	{
+		fseek(stream, 0, SEEK_SET);
+		fread(Memory.ROM, Memory.ROM_SIZE, 1, stream);
+	}
+
+	fclose(stream);
 
 	return InitROM();
 }

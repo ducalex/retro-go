@@ -153,12 +153,10 @@ static bool save_state_handler(char *pathName)
 {
 	if (S9xFreezeGame(pathName))
 	{
-		// lupng creates a broken image on the SNES. It seems to be compressed incorrectly
-		// so for now we won't have pretty screenshot...
 		char *filename = rg_emu_get_path(RG_PATH_SCREENSHOT, 0);
 		if (filename)
 		{
-			// rg_display_save_frame(filename, currentUpdate, 160, 0);
+			rg_display_save_frame(filename, currentUpdate, 160, 0);
 			rg_free(filename);
 		}
 		return true;
@@ -202,7 +200,6 @@ static void snes9x_task(void *arg)
 
 	Settings.Stereo = FALSE;
 	Settings.SoundPlaybackRate = AUDIO_SAMPLE_RATE;
-	Settings.SoundInputRate = 20000;
 	Settings.SoundSync = FALSE;
 	Settings.Mute = TRUE;
 	Settings.Transparency = TRUE;

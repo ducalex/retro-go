@@ -16,28 +16,20 @@ void S9xInitSettings(void)
 {
 	memset(&Settings, 0, sizeof(Settings));
 
-	// ROM
-	Settings.ForcePAL                   = false;
-	Settings.ForceNTSC                  = false;
-
 	// Sound
 	Settings.SoundSync                  =  true;
 	Settings.Stereo                     =  true;
 	Settings.SoundPlaybackRate          =  32000;
 	Settings.SoundInputRate             =  31950;
 	Settings.Mute                       =  false;
-	Settings.DynamicRateControl         =  false;
 	Settings.DynamicRateLimit           =  5;
-	Settings.InterpolationMethod        =  2;
 
 	// Display
 	Settings.Transparency               =  true;
-	Settings.DisableGraphicWindows      =  false;
 	Settings.InitialInfoStringTimeout   =  120;
 
 	// Settings
 	Settings.TurboMode                  =  false;
-	Settings.TurboSkipFrames            =  15;
 	Settings.SkipFrames                 = AUTO_FRAMERATE;
 
 	// Hack

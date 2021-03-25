@@ -1500,7 +1500,7 @@ static inline void ComputeClipWindows (void)
 		case 0x30:	CW_math  = 0xff;	break;
 	}
 
-	for (i = 0; i < n_regions; i++)
+	for (int i = 0; i < n_regions; i++)
 	{
 		if (!(CW_color & (1 << i)))
 			drawing_modes[i] |= 1;
@@ -1515,17 +1515,15 @@ static inline void ComputeClipWindows (void)
 
 	// Store per-BG and OBJ clip windows
 
-	for (j = 0; j < 5; j++)
+	for (int j = 0; j < 5; j++)
 	{
-		uint8	W = Settings.DisableGraphicWindows ? 0 : CalcWindowMask(j, W1, W2);
-
 		if (Memory.PPU_IO[0x12e] & (1 << j))
-			StoreWindowRegions(W, &IPPU.Clip[0][j], n_regions, windows, drawing_modes, 0, FALSE);
+			StoreWindowRegions(CalcWindowMask(j, W1, W2), &IPPU.Clip[0][j], n_regions, windows, drawing_modes, 0, FALSE);
 		else
 			StoreWindowRegions(0, &IPPU.Clip[0][j], n_regions, windows, drawing_modes, 0, FALSE);
 
 		if (Memory.PPU_IO[0x12f] & (1 << j))
-			StoreWindowRegions(W, &IPPU.Clip[1][j], n_regions, windows, drawing_modes, 1, FALSE);
+			StoreWindowRegions(CalcWindowMask(j, W1, W2), &IPPU.Clip[1][j], n_regions, windows, drawing_modes, 1, FALSE);
 		else
 			StoreWindowRegions(0, &IPPU.Clip[1][j], n_regions, windows, drawing_modes, 1, FALSE);
 	}

@@ -22,18 +22,25 @@
 #define Negative	128
 #define Emulation	256
 
+#define SetFlags(f)			(Registers.P.W |= (f))
+#define ClearFlags(f)		(Registers.P.W &= ~(f))
+#define CheckFlag(f)		(Registers.P.W & (f))
+
+#define SetCarryX(expr)		{if (expr) SetCarry(); else ClearCarry();}
+#define SetZeroX(expr)		{if (expr) SetZero(); else ClearZero();}
+
 #define SetCarry()			(ICPU._Carry = 1)
 #define ClearCarry()		(ICPU._Carry = 0)
 #define SetZero()			(ICPU._Zero = 0)
 #define ClearZero()			(ICPU._Zero = 1)
-#define SetIRQ()			(Registers.PL |= IRQ)
-#define ClearIRQ()			(Registers.PL &= ~IRQ)
-#define SetDecimal()		(Registers.PL |= Decimal)
-#define ClearDecimal()		(Registers.PL &= ~Decimal)
-#define SetIndex()			(Registers.PL |= IndexFlag)
-#define ClearIndex()		(Registers.PL &= ~IndexFlag)
-#define SetMemory()			(Registers.PL |= MemoryFlag)
-#define ClearMemory()		(Registers.PL &= ~MemoryFlag)
+#define SetIRQ()			SetFlags(IRQ)
+#define ClearIRQ()			ClearFlags(IRQ)
+#define SetDecimal()		SetFlags(Decimal)
+#define ClearDecimal()		ClearFlags(Decimal)
+#define SetIndex()			SetFlags(IndexFlag)
+#define ClearIndex()		ClearFlags(IndexFlag)
+#define SetMemory()			SetFlags(MemoryFlag)
+#define ClearMemory()		ClearFlags(MemoryFlag)
 #define SetOverflow()		(ICPU._Overflow = 1)
 #define ClearOverflow()		(ICPU._Overflow = 0)
 #define SetNegative()		(ICPU._Negative = 0x80)
@@ -41,17 +48,13 @@
 
 #define CheckCarry()		(ICPU._Carry)
 #define CheckZero()			(ICPU._Zero == 0)
-#define CheckIRQ()			(Registers.PL & IRQ)
-#define CheckDecimal()		(Registers.PL & Decimal)
-#define CheckIndex()		(Registers.PL & IndexFlag)
-#define CheckMemory()		(Registers.PL & MemoryFlag)
+#define CheckIRQ()			CheckFlag(IRQ)
+#define CheckDecimal()		CheckFlag(Decimal)
+#define CheckIndex()		CheckFlag(IndexFlag)
+#define CheckMemory()		CheckFlag(MemoryFlag)
 #define CheckOverflow()		(ICPU._Overflow)
 #define CheckNegative()		(ICPU._Negative & 0x80)
-#define CheckEmulation()	(Registers.P.W & Emulation)
-
-#define SetFlags(f)			(Registers.P.W |= (f))
-#define ClearFlags(f)		(Registers.P.W &= ~(f))
-#define CheckFlag(f)		(Registers.PL & (f))
+#define CheckEmulation()	CheckFlag(Emulation)
 
 typedef union
 {

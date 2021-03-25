@@ -19,16 +19,11 @@ static struct {
 
 // Note: these should be in asciibetical order!
 #define THE_COMMANDS \
-	S(ClipWindows), \
 	S(Debugger), \
-	S(DecEmuTurbo), \
 	S(DecFrameRate), \
-	S(DecFrameTime), \
 	S(EmuTurbo), \
 	S(ExitEmu), \
-	S(IncEmuTurbo), \
 	S(IncFrameRate), \
-	S(IncFrameTime), \
 	S(LoadFreezeFile), \
 	S(Pause), \
 	S(Reset), \
@@ -283,11 +278,6 @@ void S9xApplyCommand (s9xcommand_t cmd, int data1)
 						DisplayStateChange("Turbo mode", Settings.TurboMode);
 						break;
 
-					case ClipWindows:
-						Settings.DisableGraphicWindows = !Settings.DisableGraphicWindows;
-						DisplayStateChange("Graphic clip windows", !Settings.DisableGraphicWindows);
-						break;
-
 					case Debugger:
 					#ifdef DEBUGGER
 						CPU.Flags |= DEBUG_MODE_FLAG;
@@ -326,39 +316,6 @@ void S9xApplyCommand (s9xcommand_t cmd, int data1)
 							S9xMessage(S9X_INFO, 0, String);
 						}
 
-						break;
-
-					case IncEmuTurbo:
-						if (Settings.TurboSkipFrames < 20)
-							Settings.TurboSkipFrames += 1;
-						else
-						if (Settings.TurboSkipFrames < 200)
-							Settings.TurboSkipFrames += 5;
-						sprintf(String, "Turbo frame skip: %d", Settings.TurboSkipFrames);
-						S9xMessage(S9X_INFO, 0, String);
-						break;
-
-					case DecEmuTurbo:
-						if (Settings.TurboSkipFrames > 20)
-							Settings.TurboSkipFrames -= 5;
-						else
-						if (Settings.TurboSkipFrames > 0)
-							Settings.TurboSkipFrames -= 1;
-						sprintf(String, "Turbo frame skip: %d", Settings.TurboSkipFrames);
-						S9xMessage(S9X_INFO, 0, String);
-						break;
-
-					case IncFrameTime: // Increase emulated frame time by 1ms
-						Settings.FrameTime += 1000;
-						sprintf(String, "Emulated frame time: %dms", Settings.FrameTime / 1000);
-						S9xMessage(S9X_INFO, 0, String);
-						break;
-
-					case DecFrameTime: // Decrease emulated frame time by 1ms
-						if (Settings.FrameTime >= 1000)
-							Settings.FrameTime -= 1000;
-						sprintf(String, "Emulated frame time: %dms", Settings.FrameTime / 1000);
-						S9xMessage(S9X_INFO, 0, String);
 						break;
 
 					case LoadFreezeFile:
