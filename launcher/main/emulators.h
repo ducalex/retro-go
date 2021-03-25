@@ -56,3 +56,9 @@ void emulator_show_file_info(retro_emulator_file_t *file);
 bool emulator_crc32_file(retro_emulator_file_t *file);
 bool emulator_build_file_object(const char *path, retro_emulator_file_t *out_file);
 const char *emu_get_file_path(retro_emulator_file_t *file);
+
+void crc_cache_init(void);
+void crc_cache_populate_idle(void);
+uint32_t crc_cache_lookup(retro_emulator_file_t *file);
+void crc_cache_update(retro_emulator_file_t *file);
+void crc_cache_save(void);

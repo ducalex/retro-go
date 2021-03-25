@@ -13,6 +13,108 @@ static int emulators_count = 0;
 static retro_crc_cache_t *crc_cache;
 
 
+void crc_cache_init(void)
+{
+    crc_cache = rg_alloc(sizeof(retro_crc_cache_t), MEM_ANY);
+
+    FILE *fp = fopen(CRC_CACHE_PATH, "rb");
+    if (!fp)
+    {
+        rg_vfs_mkdir(RG_BASE_PATH_CACHE);
+        fp = fopen(CRC_CACHE_PATH, "wb");
+        fwrite(crc_cache, sizeof(retro_crc_cache_t), 1, fp);
+        fclose(fp);
+
+        fp = fopen(CRC_CACHE_PATH, "rb");
+    }
+
+    if (fp)
+    {
+        fread(crc_cache, offsetof(retro_crc_cache_t, entries), 1, fp);
+
+        if (crc_cache->magic == CRC_CACHE_MAGIC && crc_cache->count <= CRC_CACHE_MAX_ENTRIES)
+        {
+            RG_LOGI("Loaded CRC cache (entries: %d)\n", crc_cache->count);
+            fread(crc_cache->entries, crc_cache->count, sizeof(crc_cache->entries), fp);
+        }
+        else
+        {
+            crc_cache->count = 0;
+        }
+        fclose(fp);
+    }
+}
+
+static uint64_t crc_cache_calc_key(retro_emulator_file_t *file)
+{
+    // We could add the file type or emulator name for more entropy
+    return ((uint64_t)crc32_le(0, (void *)file->name, strlen(file->name)) << 33 | file->size);
+}
+
+uint32_t crc_cache_lookup(retro_emulator_file_t *file)
+{
+    uint64_t key = crc_cache_calc_key(file);
+
+    for (int i = 0; i < crc_cache->count; i++)
+    {
+        if (crc_cache->entries[i].key == key)
+            return crc_cache->entries[i].crc;
+    }
+
+    return 0;
+}
+
+void crc_cache_save(void)
+{
+    size_t unused = CRC_CACHE_MAX_ENTRIES - RG_MIN(crc_cache->count, CRC_CACHE_MAX_ENTRIES);
+    size_t minsize = sizeof(retro_crc_cache_t) - (unused * sizeof(retro_crc_entry_t));
+
+    FILE *fp = fopen(CRC_CACHE_PATH, "wb");
+    if (fp)
+    {
+        fwrite(crc_cache, minsize, 1, fp);
+        fclose(fp);
+    }
+}
+
+void crc_cache_update(retro_emulator_file_t *file)
+{
+    uint64_t key = crc_cache_calc_key(file);
+    int index;
+
+    if (crc_cache->count < CRC_CACHE_MAX_ENTRIES)
+        index = crc_cache->count++;
+    else
+        index = rand() % CRC_CACHE_MAX_ENTRIES;
+
+    crc_cache->magic = CRC_CACHE_MAGIC;
+    crc_cache->entries[index].key = crc_cache_calc_key(file);
+    crc_cache->entries[index].crc = file->checksum;
+
+    RG_LOGI("Adding %08X%08X %08X to cache (new total: %d)\n",
+        (uint32_t)(key >> 32), (uint32_t)(key),
+        file->checksum, crc_cache->count);
+
+    crc_cache_save();
+}
+
+void crc_cache_populate_idle(void)
+{
+    if (crc_cache->count < CRC_CACHE_MAX_ENTRIES)
+    {
+        for (int i = 0; i < emulators_count; i++)
+        {
+            for (int j = 0; j < emulators[i].roms.count; j++)
+            {
+                if (emulators[i].roms.files[j].checksum == 0)
+                    emulator_crc32_file(&emulators[i].roms.files[j]);
+                if (gui.joystick & GAMEPAD_KEY_ANY)
+                    return;
+            }
+        }
+    }
+}
+
 static void event_handler(gui_event_t event, tab_t *tab)
 {
     retro_emulator_t *emu = (retro_emulator_t *)tab->arg;
@@ -67,87 +169,14 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         if (gui.show_preview && gui.idle_counter == (gui.show_preview_fast ? 1 : 8))
             gui_draw_preview(file);
+
+        if (gui.idle_counter == 1000)
+            crc_cache_populate_idle();
     }
     else if (event == TAB_REDRAW)
     {
-        if (gui.show_preview)
-            gui_draw_preview(file);
-    }
-}
-
-static void crc_cache_init(void)
-{
-    crc_cache = rg_alloc(sizeof(retro_crc_cache_t), MEM_ANY);
-
-    FILE *fp = fopen(CRC_CACHE_PATH, "rb");
-    if (fp)
-    {
-        fread(crc_cache, sizeof(retro_crc_cache_t), 1, fp);
-        fclose(fp);
-
-        if (crc_cache->magic == CRC_CACHE_MAGIC && crc_cache->count <= CRC_CACHE_MAX_ENTRIES)
-        {
-            RG_LOGI("Loaded CRC cache (entries: %d)\n", crc_cache->count);
-        }
-        else
-        {
-            crc_cache->count = 0;
-            rg_vfs_delete(CRC_CACHE_PATH);
-        }
-    }
-}
-
-static uint64_t crc_cache_calc_key(retro_emulator_file_t *file)
-{
-    // We could add the file type or emulator name for more entropy
-    return ((uint64_t)crc32_le(0, (void *)file->name, strlen(file->name)) << 33 | file->size);
-}
-
-static uint32_t crc_cache_lookup(retro_emulator_file_t *file)
-{
-    uint64_t key = crc_cache_calc_key(file);
-
-    for (int i = 0; i < crc_cache->count; i++)
-    {
-        if (crc_cache->entries[i].key == key)
-            return crc_cache->entries[i].crc;
-    }
-
-    return 0;
-}
-
-static void crc_cache_update(retro_emulator_file_t *file)
-{
-    uint64_t key = crc_cache_calc_key(file);
-    int index;
-    FILE *fp;
-
-    if (crc_cache->count < CRC_CACHE_MAX_ENTRIES)
-        index = crc_cache->count++;
-    else
-        index = rand() % CRC_CACHE_MAX_ENTRIES;
-
-    crc_cache->magic = CRC_CACHE_MAGIC;
-    crc_cache->entries[index].key = crc_cache_calc_key(file);
-    crc_cache->entries[index].crc = file->checksum;
-
-    RG_LOGI("Adding %08X%08X %08X to cache (new total: %d)\n",
-        (uint32_t)(key >> 32), (uint32_t)(key),
-        file->checksum, crc_cache->count);
-
-    if (!(fp = fopen(CRC_CACHE_PATH, "wb")))
-    {
-        rg_vfs_mkdir(RG_BASE_PATH_CACHE);
-        fp = fopen(CRC_CACHE_PATH, "wb");
-    }
-
-    if (fp)
-    {
-        fwrite(crc_cache, 32 + crc_cache->count * sizeof(retro_crc_entry_t), 1, fp);
-        fclose(fp);
-        // fwrite(cache, sizeof(retro_crc_cache_t), 1, fp);
-        // fseek(fp, (cache->count - 1) * sizeof(retro_crc_entry_t), SEEK_CUR);
-        // fwrite(entry, sizeof(retro_crc_entry_t), 1, fp);
+        // if (gui.show_preview)
+        //     gui_draw_preview(file);
     }
 }
 
@@ -280,8 +309,7 @@ bool emulator_crc32_file(retro_emulator_file_t *file)
 {
     uint8_t buffer[0x1000];
     uint32_t crc_tmp = 0;
-    uint32_t count = 0;
-    bool done = false;
+    int count = -1;
     FILE *fp;
 
     if (file == NULL)
@@ -296,12 +324,15 @@ bool emulator_crc32_file(retro_emulator_file_t *file)
     }
     else
     {
-        gui_draw_notice("        CRC32", C_GREEN);
+        gui_draw_notice("        CRC32", C_YELLOW);
 
-        if ((fp = fopen(emu_get_file_path(file), "rb")) != NULL)
+        if ((fp = fopen(emu_get_file_path(file), "rb")))
         {
             fseek(fp, file->crc_offset, SEEK_SET);
-            while (true)
+
+            gui_draw_notice("        CRC32", C_GREEN);
+
+            while (count != 0)
             {
                 gui.joystick = rg_input_read_gamepad();
 
@@ -309,25 +340,20 @@ bool emulator_crc32_file(retro_emulator_file_t *file)
                     break;
 
                 count = fread(buffer, 1, sizeof(buffer), fp);
-                if (count == 0) break;
-
                 crc_tmp = crc32_le(crc_tmp, buffer, count);
-                if (count < sizeof(buffer)) break;
             }
-            done = feof(fp);
+
+            if (feof(fp))
+            {
+                file->checksum = crc_tmp;
+                crc_cache_update(file);
+            }
+
             fclose(fp);
         }
 
-        gui_draw_notice("        CRC32", C_ALICE_BLUE);
-
-        if (done)
-        {
-            file->checksum = crc_tmp;
-            crc_cache_update(file);
-        }
+        gui_draw_notice(" ", C_BLACK);
     }
-
-    gui_draw_notice(" ", C_RED);
 
     return file->checksum > 0;
 }

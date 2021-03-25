@@ -44,11 +44,14 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         if (gui.show_preview && gui.idle_counter == (gui.show_preview_fast ? 1 : 8))
             gui_draw_preview(file);
+
+        if (gui.idle_counter == 1000)
+            crc_cache_populate_idle();
     }
     else if (event == TAB_REDRAW)
     {
-        if (gui.show_preview)
-            gui_draw_preview(file);
+        // if (gui.show_preview)
+        //     gui_draw_preview(file);
     }
 }
 

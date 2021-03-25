@@ -79,7 +79,7 @@ static dialog_return_t show_preview_cb(dialog_option_t *option, dialog_event_t e
         if (++gui.show_preview >= PREVIEW_MODE_COUNT) gui.show_preview = 0;
         rg_settings_set_int32(SETTING_SHOW_PREVIEW, gui.show_preview);
     }
-    const char *values[] = {"None      ", "Cover,Save", "Save,Cover", "Cover     ", "Save      "};
+    const char *values[] = {"None      ", "Cover,Save", "Save,Cover", "Cover only", "Save only "};
     strcpy(option->value, values[gui.show_preview % PREVIEW_MODE_COUNT]);
     return RG_DIALOG_IGNORE;
 }
@@ -129,8 +129,8 @@ static inline bool tab_enabled(tab_t *tab)
 void retro_loop()
 {
     tab_t *tab = gui_get_current_tab();
-    int debounce = 0;
     int last_key = -1;
+    int repeat = 0;
     int selected_tab_last = -1;
 
     gui.selected     = rg_settings_get_int32(SETTING_SELECTED_TAB, 0);
@@ -194,97 +194,97 @@ void retro_loop()
                 gui_draw_status(tab);
         }
 
-        if (last_key >= 0) {
-            if (!(gui.joystick & last_key)) {
-                last_key = -1;
-                debounce = 0;
-            } else if (debounce++ > 12) {
-                debounce = 12;
-                last_key = -1;
+        if ((gui.joystick & last_key) && repeat > 0)
+        {
+            last_key |= (1 << 24); // No repeat
+            if (--repeat == 0)
+            {
+                last_key &= GAMEPAD_KEY_ANY;
+                repeat = 4;
             }
-        } else {
-            for (int i = 0; i < GAMEPAD_KEY_COUNT; i++)
-                if (gui.joystick & (1 << i))
-                    last_key = (1 << i);
+        }
+        else
+        {
+            last_key = gui.joystick & GAMEPAD_KEY_ANY;
+            repeat = 25;
+        }
 
-            if (last_key == GAMEPAD_KEY_MENU) {
-                char buildstr[32], datestr[32];
+        if (last_key == GAMEPAD_KEY_MENU) {
+            char buildstr[32], datestr[32];
 
-                dialog_option_t options[] = {
-                    {0, "Ver.", buildstr, 1, NULL},
-                    {0, "Date", datestr, 1, NULL},
-                    {0, "By", "ducalex", 1, NULL},
-                    RG_DIALOG_SEPARATOR,
-                    {1, "Reboot to firmware", NULL, 1, NULL},
-                    {2, "Reset settings", NULL, 1, NULL},
-                    {3, "Clear cache", NULL, 1, NULL},
-                    {0, "Close", NULL, 1, NULL},
-                    RG_DIALOG_CHOICE_LAST
-                };
+            const dialog_option_t options[] = {
+                {0, "Ver.", buildstr, 1, NULL},
+                {0, "Date", datestr, 1, NULL},
+                {0, "By", "ducalex", 1, NULL},
+                RG_DIALOG_SEPARATOR,
+                {1, "Reboot to firmware", NULL, 1, NULL},
+                {2, "Reset settings", NULL, 1, NULL},
+                {3, "Clear cache", NULL, 1, NULL},
+                {0, "Close", NULL, 1, NULL},
+                RG_DIALOG_CHOICE_LAST
+            };
 
-                const esp_app_desc_t *app = esp_ota_get_app_description();
-                sprintf(buildstr, "%.30s", app->version);
-                sprintf(datestr, "%s %.5s", app->date, app->time);
+            const esp_app_desc_t *app = esp_ota_get_app_description();
+            sprintf(buildstr, "%.30s", app->version);
+            sprintf(datestr, "%s %.5s", app->date, app->time);
 
-                if (strstr(app->version, "-0-") == strrchr(app->version, '-') - 2)
-                    sprintf(strstr(buildstr, "-0-") , " (%s)", strrchr(app->version, '-') + 1);
+            if (strstr(app->version, "-0-") == strrchr(app->version, '-') - 2)
+                sprintf(strstr(buildstr, "-0-") , " (%s)", strrchr(app->version, '-') + 1);
 
-                int sel = rg_gui_dialog("Retro-Go", options, -1);
-                if (sel == 1) {
-                    rg_system_switch_app(RG_APP_FACTORY);
+            int sel = rg_gui_dialog("Retro-Go", options, -1);
+            if (sel == 1) {
+                rg_system_switch_app(RG_APP_FACTORY);
+            }
+            else if (sel == 2) {
+                if (rg_gui_confirm("Reset all settings?", NULL, false)) {
+                    rg_settings_reset();
+                    rg_system_restart();
                 }
-                else if (sel == 2) {
-                    if (rg_gui_confirm("Reset all settings?", NULL, false)) {
-                        rg_settings_reset();
-                        rg_system_restart();
-                    }
-                }
-                else if (sel == 3) {
-                    rg_vfs_delete(CRC_CACHE_PATH);
-                }
-                gui_redraw();
             }
-            else if (last_key == GAMEPAD_KEY_VOLUME) {
-                dialog_option_t options[] = {
-                    RG_DIALOG_SEPARATOR,
-                    {0, "Color theme", "...",  1, &color_shift_cb},
-                    {0, "Font type  ", "...",  1, &font_type_cb},
-                    {0, "Empty tabs ", "...",  1, &show_empty_cb},
-                    {0, "Preview    ", "...",  1, &show_preview_cb},
-                    {0, "    - Delay", "...",  1, &show_preview_speed_cb},
-                    {0, "Startup app", "...",  1, &startup_app_cb},
-                    {0, "Disk LED   ", "off",  1, &disk_activity_cb},
-                    RG_DIALOG_CHOICE_LAST
-                };
-                rg_gui_settings_menu(options);
-                gui_redraw();
+            else if (sel == 3) {
+                rg_vfs_delete(CRC_CACHE_PATH);
+                rg_system_restart();
             }
-            else if (last_key == GAMEPAD_KEY_SELECT) {
-                debounce = -10;
-                gui.selected--;
-            }
-            else if (last_key == GAMEPAD_KEY_START) {
-                debounce = -10;
-                gui.selected++;
-            }
-            else if (last_key == GAMEPAD_KEY_UP) {
-                gui_scroll_list(tab, LINE_UP);
-            }
-            else if (last_key == GAMEPAD_KEY_DOWN) {
-                gui_scroll_list(tab, LINE_DOWN);
-            }
-            else if (last_key == GAMEPAD_KEY_LEFT) {
-                gui_scroll_list(tab, PAGE_UP);
-            }
-            else if (last_key == GAMEPAD_KEY_RIGHT) {
-                gui_scroll_list(tab, PAGE_DOWN);
-            }
-            else if (last_key == GAMEPAD_KEY_A) {
-                gui_event(KEY_PRESS_A, tab);
-            }
-            else if (last_key == GAMEPAD_KEY_B) {
-                gui_event(KEY_PRESS_B, tab);
-            }
+            gui_redraw();
+        }
+        else if (last_key == GAMEPAD_KEY_VOLUME) {
+            const dialog_option_t options[] = {
+                RG_DIALOG_SEPARATOR,
+                {0, "Color theme", "...", 1, &color_shift_cb},
+                {0, "Font type  ", "...", 1, &font_type_cb},
+                {0, "Empty tabs ", "...", 1, &show_empty_cb},
+                {0, "Preview    ", "...", 1, &show_preview_cb},
+                {0, "    - Delay", "...", 1, &show_preview_speed_cb},
+                {0, "Startup app", "...", 1, &startup_app_cb},
+                {0, "Disk LED   ", "...", 1, &disk_activity_cb},
+                RG_DIALOG_CHOICE_LAST
+            };
+            rg_gui_settings_menu(options);
+            gui_redraw();
+        }
+        else if (last_key == GAMEPAD_KEY_SELECT) {
+            gui.selected--;
+        }
+        else if (last_key == GAMEPAD_KEY_START) {
+            gui.selected++;
+        }
+        else if (last_key == GAMEPAD_KEY_UP) {
+            gui_scroll_list(tab, LINE_UP);
+        }
+        else if (last_key == GAMEPAD_KEY_DOWN) {
+            gui_scroll_list(tab, LINE_DOWN);
+        }
+        else if (last_key == GAMEPAD_KEY_LEFT) {
+            gui_scroll_list(tab, PAGE_UP);
+        }
+        else if (last_key == GAMEPAD_KEY_RIGHT) {
+            gui_scroll_list(tab, PAGE_DOWN);
+        }
+        else if (last_key == GAMEPAD_KEY_A) {
+            gui_event(KEY_PRESS_A, tab);
+        }
+        else if (last_key == GAMEPAD_KEY_B) {
+            gui_event(KEY_PRESS_B, tab);
         }
 
         if (gui.joystick & GAMEPAD_KEY_ANY) {
