@@ -136,6 +136,11 @@ void rg_settings_reset(void)
     rg_settings_save();
 }
 
+bool rg_settings_ready(void)
+{
+    return initialized;
+}
+
 char *rg_settings_get_string(const char *key, const char *default_value)
 {
     if (!initialized)

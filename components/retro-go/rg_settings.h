@@ -7,6 +7,7 @@ void rg_settings_init(void);
 void rg_settings_reset(void);
 bool rg_settings_load(void);
 bool rg_settings_save(void);
+bool rg_settings_ready(void);
 
 void rg_settings_set_string(const char *key, const char *value);
 char* rg_settings_get_string(const char *key, const char *default_value);

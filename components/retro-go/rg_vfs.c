@@ -11,21 +11,20 @@
 
 #define SETTING_DISK_ACTIVITY "DiskActivity"
 
-static bool initialized = false;
-static bool diskActivity = false;
+static int initialized = false;
+static int diskActivity = -1;
 
 
 bool rg_vfs_init(void)
 {
     initialized =  true;
-    diskActivity = rg_vfs_get_enable_disk_led();
+    diskActivity = -1;
     return true;
 }
 
 bool rg_vfs_deinit(void)
 {
     initialized = false;
-    diskActivity = false;
     return true;
 }
 
@@ -37,12 +36,14 @@ void rg_vfs_set_enable_disk_led(bool enable)
 
 bool rg_vfs_get_enable_disk_led(void)
 {
-    return rg_settings_get_int32(SETTING_DISK_ACTIVITY, false);
+    if (diskActivity == -1 && rg_settings_ready())
+        diskActivity = rg_settings_get_int32(SETTING_DISK_ACTIVITY, false);
+    return diskActivity;
 }
 
 static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
 {
-    bool use_led = (diskActivity && !rg_system_get_led());
+    bool use_led = (rg_vfs_get_enable_disk_led() && !rg_system_get_led());
 
     rg_spi_lock_acquire(SPI_LOCK_SDCARD);
 
