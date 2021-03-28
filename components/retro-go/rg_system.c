@@ -54,7 +54,7 @@ typedef struct
 static RTC_NOINIT_ATTR panic_trace_t panicTrace;
 static RTC_NOINIT_ATTR panic_console_t panicConsole;
 
-static rg_app_desc_t currentApp;
+static rg_app_desc_t app;
 static runtime_stats_t statistics;
 static runtime_counters_t counters;
 static long inputTimeout = -1;
@@ -106,7 +106,7 @@ static void system_monitor_task(void *arg)
         statistics.busyPercent = RG_MIN(current.busyTime / tickTime * 100.f, 100.f);
         statistics.skippedFPS = current.skippedFrames / (tickTime / 1000000.f);
         statistics.totalFPS = current.totalFrames / (tickTime / 1000000.f);
-        statistics.freeStackMain = uxTaskGetStackHighWaterMark(currentApp.mainTaskHandle);
+        statistics.freeStackMain = uxTaskGetStackHighWaterMark(app.mainTaskHandle);
 
         heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
         statistics.freeMemoryInt = heap_info.total_free_bytes;
@@ -212,12 +212,12 @@ void rg_system_time_save()
     // Update external RTC or save timestamp to disk
 }
 
-rg_app_desc_t *rg_system_init(int appId, int sampleRate, const rg_emu_proc_t *handlers)
+rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
 {
-    const esp_app_desc_t *app = esp_ota_get_app_description();
+    const esp_app_desc_t *esp_app = esp_ota_get_app_description();
 
     RG_LOGX("\n========================================================\n");
-    RG_LOGX("%s %s (%s %s)\n", app->project_name, app->version, app->date, app->time);
+    RG_LOGX("%s %s (%s %s)\n", esp_app->project_name, esp_app->version, esp_app->date, esp_app->time);
     RG_LOGX("========================================================\n\n");
 
     #if USE_SPI_MUTEX
@@ -228,12 +228,16 @@ rg_app_desc_t *rg_system_init(int appId, int sampleRate, const rg_emu_proc_t *ha
     // Seed C's pseudo random number generator
     srand(esp_random());
 
-    memset(&currentApp, 0, sizeof(currentApp));
-    currentApp.id = appId;
-    currentApp.refreshRate = 1;
-    currentApp.mainTaskHandle = xTaskGetCurrentTaskHandle();
+    memset(&app, 0, sizeof(app));
+    app.name = esp_app->project_name;
+    app.version = esp_app->version;
+    app.buildDate = esp_app->date;
+    app.buildTime = esp_app->time;
+    app.refreshRate = 1;
+    app.sampleRate = sampleRate;
+    app.mainTaskHandle = xTaskGetCurrentTaskHandle();
     if (handlers)
-        currentApp.handlers = *handlers;
+        app.handlers = *handlers;
 
     // Blue LED
     gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
@@ -242,7 +246,7 @@ rg_app_desc_t *rg_system_init(int appId, int sampleRate, const rg_emu_proc_t *ha
     // This must be before rg_display_init() and rg_settings_init()
     rg_vfs_init();
     bool sd_init = rg_vfs_mount(RG_SDCARD);
-    rg_settings_init();
+    rg_settings_init(app.name);
     rg_display_init();
     rg_gui_init();
     rg_gui_draw_hourglass();
@@ -266,8 +270,8 @@ rg_app_desc_t *rg_system_init(int appId, int sampleRate, const rg_emu_proc_t *ha
             FILE *fp = fopen(RG_BASE_PATH "/crash.log", "w");
             if (fp)
             {
-                fprintf(fp, "Application: %s %s\n", app->project_name, app->version);
-                fprintf(fp, "Build date: %s %s\n", app->date, app->time);
+                fprintf(fp, "Application: %s %s\n", app.name, app.version);
+                fprintf(fp, "Build date: %s %s\n", app.buildDate, app.buildTime);
                 if (panicTrace.magicWord == PANIC_TRACE_MAGIC)
                 {
                     fprintf(fp, "Message: %.256s\n", panicTrace.message);
@@ -302,11 +306,11 @@ rg_app_desc_t *rg_system_init(int appId, int sampleRate, const rg_emu_proc_t *ha
         rg_system_switch_app(RG_APP_LAUNCHER);
     }
 
-    if (strcmp(app->project_name, RG_APP_LAUNCHER) != 0)
+    if (strcmp(app.name, RG_APP_LAUNCHER) != 0)
     {
-        currentApp.startAction = rg_settings_get_int32(SETTING_START_ACTION, 0);
-        currentApp.romPath = rg_settings_get_string(SETTING_ROM_FILE_PATH, NULL);
-        currentApp.refreshRate = 60;
+        app.startAction = rg_settings_get_int32(SETTING_START_ACTION, 0);
+        app.romPath = rg_settings_get_string(SETTING_ROM_FILE_PATH, NULL);
+        app.refreshRate = 60;
 
         // If any key is pressed we abort and go back to the launcher
         if (rg_input_key_is_pressed(GAMEPAD_KEY_ANY))
@@ -322,7 +326,7 @@ rg_app_desc_t *rg_system_init(int appId, int sampleRate, const rg_emu_proc_t *ha
             rg_system_set_boot_app(RG_APP_LAUNCHER);
         }
 
-        if (!currentApp.romPath || strlen(currentApp.romPath) < 4)
+        if (!app.romPath || strlen(app.romPath) < 4)
         {
             rg_gui_alert("SD Card Error", "Invalid ROM Path.");
             rg_system_switch_app(RG_APP_LAUNCHER);
@@ -335,7 +339,7 @@ rg_app_desc_t *rg_system_init(int appId, int sampleRate, const rg_emu_proc_t *ha
     #endif
 
     #ifdef ENABLE_NETPLAY
-    rg_netplay_init(currentApp.netplay_handler);
+    rg_netplay_init(app.netplay_handler);
     #endif
 
     xTaskCreate(&system_monitor_task, "sysmon", 2048, NULL, 7, NULL);
@@ -346,17 +350,17 @@ rg_app_desc_t *rg_system_init(int appId, int sampleRate, const rg_emu_proc_t *ha
 
     RG_LOGI("Retro-Go init done.\n\n");
 
-    return &currentApp;
+    return &app;
 }
 
 rg_app_desc_t *rg_system_get_app()
 {
-    return &currentApp;
+    return &app;
 }
 
 char *rg_emu_get_path(rg_path_type_t type, const char *_romPath)
 {
-    const char *fileName = _romPath ?: currentApp.romPath;
+    const char *fileName = _romPath ?: app.romPath;
     char buffer[256];
 
     if (strstr(fileName, RG_BASE_PATH_ROMS))
@@ -411,7 +415,7 @@ char *rg_emu_get_path(rg_path_type_t type, const char *_romPath)
 
 bool rg_emu_load_state(int slot)
 {
-    if (!currentApp.romPath)
+    if (!app.romPath)
     {
         RG_LOGE("No game/emulator loaded...\n");
         return false;
@@ -424,8 +428,8 @@ bool rg_emu_load_state(int slot)
     // Increased input timeout, this might take a while
     inputTimeout = INPUT_TIMEOUT * 5;
 
-    char *pathName = rg_emu_get_path(RG_PATH_SAVE_STATE, currentApp.romPath);
-    bool success = (*currentApp.handlers.loadState)(pathName);
+    char *pathName = rg_emu_get_path(RG_PATH_SAVE_STATE, app.romPath);
+    bool success = (*app.handlers.loadState)(pathName);
     // bool success = rg_emu_notify(RG_MSG_LOAD_STATE, pathName);
 
     inputTimeout = INPUT_TIMEOUT;
@@ -442,7 +446,7 @@ bool rg_emu_load_state(int slot)
 
 bool rg_emu_save_state(int slot)
 {
-    if (!currentApp.romPath)
+    if (!app.romPath)
     {
         RG_LOGE("No game/emulator loaded...\n");
         return false;
@@ -453,7 +457,7 @@ bool rg_emu_save_state(int slot)
     rg_system_set_led(1);
     rg_gui_draw_hourglass();
 
-    char *saveName = rg_emu_get_path(RG_PATH_SAVE_STATE, currentApp.romPath);
+    char *saveName = rg_emu_get_path(RG_PATH_SAVE_STATE, app.romPath);
     char path_buffer[PATH_MAX + 1];
     bool success = false;
 
@@ -461,7 +465,7 @@ bool rg_emu_save_state(int slot)
     inputTimeout = INPUT_TIMEOUT * 5;
 
     sprintf(path_buffer, "%s.new", saveName);
-    if ((*currentApp.handlers.saveState)(path_buffer))
+    if ((*app.handlers.saveState)(path_buffer))
     {
         sprintf(path_buffer, "%s.bak", saveName);
         rename(saveName, path_buffer);
@@ -474,7 +478,7 @@ bool rg_emu_save_state(int slot)
 
             success = true;
 
-            rg_settings_set_app_int32(SETTING_START_ACTION, RG_START_ACTION_RESUME);
+            rg_settings_set_int32(SETTING_START_ACTION, RG_START_ACTION_RESUME);
             rg_settings_save();
         }
     }
@@ -502,16 +506,16 @@ bool rg_emu_save_state(int slot)
 
 bool rg_emu_reset(int hard)
 {
-    if (currentApp.handlers.reset)
-        return currentApp.handlers.reset(hard);
+    if (app.handlers.reset)
+        return app.handlers.reset(hard);
     return false;
     // return rg_emu_notify(RG_MSG_RESET, (void*)hard);
 }
 
 bool rg_emu_notify(int msg, void *arg)
 {
-    if (currentApp.handlers.message)
-        return currentApp.handlers.message(msg, arg);
+    if (app.handlers.message)
+        return app.handlers.message(msg, arg);
     return false;
 }
 

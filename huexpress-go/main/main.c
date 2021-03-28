@@ -18,8 +18,6 @@
 
 #include "../components/huexpress/engine/osd.h"
 
-#define APP_ID 40
-
 #define AUDIO_SAMPLE_RATE 22050
 // #define AUDIO_BUFFER_LENGTH  (AUDIO_SAMPLE_RATE / 60)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 / 5)
@@ -350,7 +348,7 @@ void app_main(void)
         .reset = &reset_handler,
     };
 
-    app = rg_system_init(APP_ID, AUDIO_SAMPLE_RATE, &handlers);
+    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
 
     // Clearing the buffer on the display core is somewhat faster, but it
     // prevents us from doing partial updates and screenshots.

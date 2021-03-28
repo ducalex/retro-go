@@ -77,11 +77,14 @@ typedef struct
 
 typedef struct
 {
-    int32_t id;
-    int32_t speedupEnabled;
-    int32_t refreshRate;
-    int32_t sampleRate;
-    int32_t startAction;
+    const char *name;
+    const char *version;
+    const char *buildDate;
+    const char *buildTime;
+    int speedupEnabled;
+    int refreshRate;
+    int sampleRate;
+    int startAction;
     const char *romPath;
     void *mainTaskHandle;
     rg_emu_proc_t handlers;
@@ -111,7 +114,7 @@ typedef struct
     uint32_t freeStackMain;
 } runtime_stats_t;
 
-rg_app_desc_t *rg_system_init(int appId, int sampleRate, const rg_emu_proc_t *handlers);
+rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers);
 void rg_system_panic(const char *reason, const char *context) __attribute__((noreturn));
 void rg_system_halt() __attribute__((noreturn));
 void rg_system_sleep() __attribute__((noreturn));

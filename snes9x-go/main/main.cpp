@@ -17,8 +17,6 @@
 
 #include "keymap.h"
 
-#define APP_ID 90
-
 #define AUDIO_SAMPLE_RATE (22050)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50)
 
@@ -297,7 +295,7 @@ extern "C" void app_main(void)
 		.netplay = NULL,
 	};
 
-	app = rg_system_init(APP_ID, AUDIO_SAMPLE_RATE, &handlers);
+	app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
 
 	frames[0].flags = RG_PIXEL_565|RG_PIXEL_LE;
 	frames[0].width = SNES_WIDTH;

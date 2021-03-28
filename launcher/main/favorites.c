@@ -10,9 +10,12 @@
 
 static favorite_t *favorites;
 static int favorites_count = 0;
+static int recent_count = 0;
+static tab_t *recent_tab;
 static tab_t *fav_tab;
 
 static const char *SETTING_FAVORITES = "Favorites";
+static const char *SETTING_RECENT = "Recent";
 
 
 static void event_handler(gui_event_t event, tab_t *tab)
@@ -25,6 +28,11 @@ static void event_handler(gui_event_t event, tab_t *tab)
         // I know this happens twice, this is needed for now...
         // Update 2021: I don't remember WHY it is needed, is it still the case..?
         // favorites_load();
+
+        if (tab == fav_tab && favorites_count == 0)
+        {
+            fav_tab->listbox.cursor = 3;
+        }
     }
 
     if (file == NULL)
@@ -184,6 +192,13 @@ void favorites_init()
         rg_gui_load_image(header_fav.data, header_fav.size),
         NULL,
         event_handler);
+
+    // recent_tab = gui_add_tab(
+    //     "recent",
+    //     rg_gui_load_image(logo_recent.data, logo_recent.size),
+    //     rg_gui_load_image(header_recent.data, header_recent.size),
+    //     NULL,
+    //     event_handler);
 
     // We must load favorites now because other tabs depend on it for menu items
     favorites_load();

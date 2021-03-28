@@ -2,8 +2,6 @@
 
 #include "../components/smsplus/shared.h"
 
-#define APP_ID 30
-
 #define AUDIO_SAMPLE_RATE   (32000)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
 
@@ -118,7 +116,7 @@ void app_main(void)
         .reset = &reset_handler,
     };
 
-    app = rg_system_init(APP_ID, AUDIO_SAMPLE_RATE, &handlers);
+    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
 
     frames[0].flags = RG_PIXEL_PAL|RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].pixel_mask = PIXEL_MASK;
@@ -137,8 +135,8 @@ void app_main(void)
         RG_PANIC("ROM file loading failed!");
     }
 
-    if (IS_GG)  app->id += 1;
-    if (IS_TMS) app->id += 2;
+    if (IS_TMS) rg_settings_set_app_name("smsplusgx-col");
+    if (IS_GG) rg_settings_set_app_name("smsplusgx-gg");
     rg_display_reset_config();
 
     bitmap.width = SMS_WIDTH;

@@ -12,18 +12,18 @@
 #define IMAGE_BANNER_WIDTH  (272)
 #define IMAGE_BANNER_HEIGHT (32)
 
-#define CRC_WIDTH    (104)
-#define CRC_X_OFFSET (RG_SCREEN_WIDTH - CRC_WIDTH)
-#define CRC_Y_OFFSET (35)
+#define CRC_WIDTH           (104)
+#define CRC_X_OFFSET        (RG_SCREEN_WIDTH - CRC_WIDTH)
+#define CRC_Y_OFFSET        (35)
 
-#define LIST_WIDTH       (RG_SCREEN_WIDTH)
-#define LIST_HEIGHT      (RG_SCREEN_HEIGHT - LIST_Y_OFFSET)
-#define LIST_LINE_COUNT  (LIST_HEIGHT / rg_gui_get_font_info().height)
-#define LIST_X_OFFSET    (0)
-#define LIST_Y_OFFSET    (48 + 8)
+#define LIST_WIDTH          (RG_SCREEN_WIDTH)
+#define LIST_HEIGHT         (RG_SCREEN_HEIGHT - LIST_Y_OFFSET)
+#define LIST_LINE_COUNT     (LIST_HEIGHT / rg_gui_get_font_info().height)
+#define LIST_X_OFFSET       (0)
+#define LIST_Y_OFFSET       (48 + 8)
 
-#define COVER_MAX_HEIGHT (184)
-#define COVER_MAX_WIDTH  (184)
+#define COVER_MAX_HEIGHT    (184)
+#define COVER_MAX_WIDTH     (184)
 
 static const theme_t gui_themes[] = {
     {0, C_GRAY, C_WHITE, C_AQUA},
@@ -84,7 +84,7 @@ void gui_init_tab(tab_t *tab)
 
     char key_name[32];
     sprintf(key_name, "Sel.%.11s", tab->name);
-    tab->listbox.cursor = rg_settings_get_int32(key_name, 0);
+    tab->listbox.cursor = rg_settings_get_app_int32(key_name, 0);
 
     gui_event(TAB_INIT, tab);
 
@@ -119,8 +119,8 @@ void gui_save_current_tab()
     tab_t *tab = gui_get_current_tab();
     char key_name[32];
     sprintf(key_name, "Sel.%.11s", tab->name);
-    rg_settings_set_int32(key_name, tab->listbox.cursor);
-    rg_settings_set_int32("SelectedTab", gui.selected);
+    rg_settings_set_app_int32(key_name, tab->listbox.cursor);
+    rg_settings_set_app_int32("SelectedTab", gui.selected);
     // rg_settings_save();
 }
 

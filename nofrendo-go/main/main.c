@@ -7,8 +7,6 @@
 #include <nes/input.h>
 #include <nes/state.h>
 
-#define APP_ID 10
-
 #define AUDIO_SAMPLE_RATE   (32000)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
 
@@ -388,7 +386,7 @@ void app_main(void)
         .netplay = &netplay_handler,
     };
 
-    app = rg_system_init(APP_ID, AUDIO_SAMPLE_RATE, &handlers);
+    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
 
     frames[0].flags = RG_PIXEL_PAL|RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].pixel_mask = 0x3F;
