@@ -100,7 +100,7 @@
                     <div class="input">List &gt; Background color 2: <input id="list-color-bg2" type="color" value="#0000FF"></div>
                     <div class="input">List &gt; Normal text color: <input  id="list-color-txt-fg" type="color" value="#848284"></div>
                     <div class="input">List &gt; Normal text background: <input id="list-color-txt-bg" type="color" value="#00000000"></div>
-                    <div class="input">List &gt; Selected text color: <input id="list-color-sel-bg" type="color" value="#FFFFFF"></div>
+                    <div class="input">List &gt; Selected text color: <input id="list-color-sel-fg" type="color" value="#FFFFFF"></div>
                     <div class="input">List &gt; Selected text background: <input id="list-color-sel-bg" type="color" value="#00000000"></div>
                     <div class="input">Dialog &gt; Background color: <input id="dialog-color-bg" type="color" value="#000000"></div>
                     <div class="input">Dialog &gt; Foreground color: <input id="dialog-color-fg" type="color" value="#FFFFFF"></div>
@@ -145,68 +145,81 @@
             </div>
         </div>
         <script>
-            let colors = {
-                header_bg: $('#header-color-bg'),
-                header_fg: $('#header-color-fg'),
-                list_bg1: $('#list-color-bg1'),
-                list_bg2: $('#list-color-bg2'),
-                list_txt_bg: $('#list-color-txt-bg'),
-                list_txt_fg: $('#list-color-txt-fg'),
-                list_sel_bg: $('#list-color-sel-bg'),
-                list_sel_fg: $('#list-color-sel-fg'),
-                dialog_bg: $('#dialog-color-bg'),
-                dialog_fg: $('#dialog-color-fg'),
-            };
+            function main() {
+                let colors = {
+                    header_bg: $('#header-color-bg'),
+                    header_fg: $('#header-color-fg'),
+                    list_bg1: $('#list-color-bg1'),
+                    list_bg2: $('#list-color-bg2'),
+                    list_txt_bg: $('#list-color-txt-bg'),
+                    list_txt_fg: $('#list-color-txt-fg'),
+                    list_sel_bg: $('#list-color-sel-bg'),
+                    list_sel_fg: $('#list-color-sel-fg'),
+                    dialog_bg: $('#dialog-color-bg'),
+                    dialog_fg: $('#dialog-color-fg'),
+                };
 
-            function css2rg(color) {
+                function css2rg(color) {
 
-            }
-
-            function rg2css(color) {
-
-            }
-
-            function updateColors() {
-                $('#preview .header').css({"color": colors.header_fg.val(), "background-color": colors.header_bg.val()});
-                $('#preview .list .normal').css({"color": colors.list_txt_fg.val()}); // , "background-color": colors.list_txt_bg.val()
-                $('#preview .list .selected').css({"color": colors.list_sel_fg.val()}); // , "background-color": colors.list_sel_bg.val()
-                $('#preview .list').css({"background-image": "linear-gradient(" + colors.list_bg1.val() + ", " + colors.list_bg2.val() + ")"});
-            }
-
-            function updateData() {
-                let data = {};
-                for (let key in colors) {
-                    data[key] = colors[key].val();
                 }
-                $('#theme-data').val(JSON.stringify(data, null, 2));
-            }
 
-            $('#controls input').change(function() {
-                updateColors();
-                updateData();
-            });
+                function rg2css(color) {
 
-            $('#reset-all').mouseup(function() {
-                setTimeout(function() {
+                }
+
+                function updateColors() {
+                    $('#preview .header').css({"color": colors.header_fg.val(), "background-color": colors.header_bg.val()});
+                    $('#preview .list .normal').css({"color": colors.list_txt_fg.val()}); // , "background-color": colors.list_txt_bg.val()
+                    $('#preview .list .selected').css({"color": colors.list_sel_fg.val()}); // , "background-color": colors.list_sel_bg.val()
+                    $('#preview .list').css({"background-image": "linear-gradient(" + colors.list_bg1.val() + ", " + colors.list_bg2.val() + ")"});
+                }
+
+                function updateData() {
+                    let data = {};
+                    for (let key in colors) {
+                        data[key] = colors[key].val();
+                    }
+                    $('#theme-data').val(JSON.stringify(data, null, 2));
+                }
+
+                $('#controls input').change(function() {
                     updateColors();
                     updateData();
-                }, 50);
-            });
+                });
 
-            $('#theme-data').on("keyup change", function() {
-                try {
-                    let data = JSON.parse(this.value);
-                    for (let key in colors) {
-                        colors[key].val(data[key]);
+                $('#reset-all').mouseup(function() {
+                    setTimeout(function() {
+                        updateColors();
+                        updateData();
+                    }, 50);
+                });
+
+                $('#theme-data').on("keyup change", function() {
+                    try {
+                        let data = JSON.parse(this.value);
+                        for (let key in colors) {
+                            colors[key].val(data[key]);
+                        }
+                        updateColors();
+                    } catch(err) {
+                        // ignore
                     }
-                    updateColors();
-                } catch(err) {
-                    // ignore
-                }
-            });
+                });
 
-            updateColors();
-            updateData();
+                updateColors();
+                updateData();
+            }
+
+            // This nonsense is to make it work in htmlpreview.github.io
+            if (typeof $ != 'undefined') {
+                main();
+            } else {
+                script = document.createElement('script');
+                script.type = 'text/javascript';
+                script.src = 'https://code.jquery.com/jquery-3.6.0.min.js';
+                script.onload = main;
+                document.getElementsByTagName('head')[0].appendChild(script);
+            }
         </script>
     </body>
 </html>
