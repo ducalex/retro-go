@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Retro-Go theme creator</title>
+        <style>
+            body {
+                font-family: "Consolas", "Monaco", "Lucida Console", monospace;
+            }
+            h1 {
+                text-align: center;
+            }
+            #container {
+                width: 80%;
+                margin: 0 auto;
+            }
+            #left-pane {
+                width: 49%;
+                float: left;
+            }
+            #right-pane {
+                width: 49%;
+                float: right;
+            }
+            #preview {
+                transform: scale(2);
+                transform-origin: 0 0;
+                width: 320px;
+                height: 240px;
+                border: 1px solid black;
+                position: relative;
+                background-color: black;
+                color: white;
+                font-size: 12px;
+            }
+            #preview * {
+                padding: 0px;
+                margin: 0px;
+            }
+            #preview .header {
+                width: 320px;
+                height: 56px;
+                position: absolute;
+                top: 0px;
+                left: 0px;
+            }
+            #preview .logo {
+                width: 47px;
+                height: 51px;
+                position: absolute;
+                top: 0px;
+                left: 0px;
+            }
+            #preview .banner {
+                width: 272px;
+                height: 32px;
+                position: absolute;
+                top: 0px;
+                left: 48px;
+            }
+            #preview .status {
+                width: 128px;
+                position: absolute;
+                top: 35px;
+                left: 58px;
+            }
+            #preview .notification {
+                width: 104px;
+                position: absolute;
+                top: 35px;
+                left: 216px;
+                color: green;
+                text-align: right;
+            }
+            #preview .list {
+                width: 128px;
+                position: absolute;
+                top: 56px;
+                left: 0px;
+                height: 184px;
+                width: 100%;
+                background-image: linear-gradient(black, blue);
+            }
+            #preview .list > div {
+                height: 1em;
+            }
+            #preview .list .normal {
+                color: #AAA;
+            }
+        </style>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    </head>
+    <body>
+        <h1>Theme creator</h1>
+        <div id="container">
+            <div id="left-pane">
+                <form id="controls" autocomplete="off">
+                    <div class="input">Header &gt; Background color: <input id="header-color-bg" type="color" value="#000000"></div>
+                    <div class="input">Header &gt; Foreground color: <input id="header-color-fg" type="color" value="#FFFFFF"></div>
+                    <div class="input">List &gt; Background color 1: <input id="list-color-bg1" type="color" value="#000000"></div>
+                    <div class="input">List &gt; Background color 2: <input id="list-color-bg2" type="color" value="#0000FF"></div>
+                    <div class="input">List &gt; Normal text color: <input  id="list-color-txt-fg" type="color" value="#848284"></div>
+                    <div class="input">List &gt; Normal text background: <input id="list-color-txt-bg" type="color" value="#00000000"></div>
+                    <div class="input">List &gt; Selected text color: <input id="list-color-sel-bg" type="color" value="#FFFFFF"></div>
+                    <div class="input">List &gt; Selected text background: <input id="list-color-sel-bg" type="color" value="#00000000"></div>
+                    <div class="input">Dialog &gt; Background color: <input id="dialog-color-bg" type="color" value="#000000"></div>
+                    <div class="input">Dialog &gt; Foreground color: <input id="dialog-color-fg" type="color" value="#FFFFFF"></div>
+                    <input id="reset-all" type="reset">
+                </form>
+                <hr>
+                <textarea id="theme-data" cols="40" rows="15"></textarea>
+            </div>
+            <div id="right-pane">
+                <div id="preview">
+                    <div class="header">
+                        <img class="logo" src="../launcher/images/logo_nes.png">
+                        <img class="banner" src="../launcher/images/header_nes.png">
+                        <div class="battery">
+
+                        </div>
+                        <div class="status">
+                            Games: 100
+                        </div>
+                        <div class="notification">
+                            CRC32
+                        </div>
+                    </div>
+                    <div class="list">
+                        <div class="normal">MY VERY VERY LONG GAME.NES</div>
+                        <div class="normal">MY VERY VERY LONG GAME.NES</div>
+                        <div class="normal">MY VERY VERY LONG GAME.NES</div>
+                        <div class="normal">MY VERY VERY VERY LONG GAME.NES</div>
+                        <div class="normal">MY VERY VERY LONG GAME.NES</div>
+                        <div class="normal">MY VERY VERY LONG GAME.NES</div>
+                        <div class="normal">MY VERY VERY LONG GAME.NES</div>
+                        <div class="selected">SELECTED GAME NAME.NES</div>
+                        <div class="normal">OTHER GAME NAME.NES</div>
+                        <div class="normal">OTHER GAME NAME.NES</div>
+                        <div class="normal">OTHER GAME NAME.NES</div>
+                        <div class="normal">OTHER GAME NAME.NES</div>
+                        <div class="normal">OTHER GAME NAME.NES</div>
+                        <div class="normal">OTHER GAME NAME.NES</div>
+                        <div class="normal">OTHER GAME NAME.NES</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            let colors = {
+                header_bg: $('#header-color-bg'),
+                header_fg: $('#header-color-fg'),
+                list_bg1: $('#list-color-bg1'),
+                list_bg2: $('#list-color-bg2'),
+                list_txt_bg: $('#list-color-txt-bg'),
+                list_txt_fg: $('#list-color-txt-fg'),
+                list_sel_bg: $('#list-color-sel-bg'),
+                list_sel_fg: $('#list-color-sel-fg'),
+                dialog_bg: $('#dialog-color-bg'),
+                dialog_fg: $('#dialog-color-fg'),
+            };
+
+            function css2rg(color) {
+
+            }
+
+            function rg2css(color) {
+
+            }
+
+            function updateColors() {
+                $('#preview .header').css({"color": colors.header_fg.val(), "background-color": colors.header_bg.val()});
+                $('#preview .list .normal').css({"color": colors.list_txt_fg.val()}); // , "background-color": colors.list_txt_bg.val()
+                $('#preview .list .selected').css({"color": colors.list_sel_fg.val()}); // , "background-color": colors.list_sel_bg.val()
+                $('#preview .list').css({"background-image": "linear-gradient(" + colors.list_bg1.val() + ", " + colors.list_bg2.val() + ")"});
+            }
+
+            function updateData() {
+                let data = {};
+                for (let key in colors) {
+                    data[key] = colors[key].val();
+                }
+                $('#theme-data').val(JSON.stringify(data, null, 2));
+            }
+
+            $('#controls input').change(function() {
+                updateColors();
+                updateData();
+            });
+
+            $('#reset-all').mouseup(function() {
+                setTimeout(function() {
+                    updateColors();
+                    updateData();
+                }, 50);
+            });
+
+            $('#theme-data').on("keyup change", function() {
+                try {
+                    let data = JSON.parse(this.value);
+                    for (let key in colors) {
+                        colors[key].val(data[key]);
+                    }
+                    updateColors();
+                } catch(err) {
+                    // ignore
+                }
+            });
+
+            updateColors();
+            updateData();
+        </script>
+    </body>
+</html>
