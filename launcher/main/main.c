@@ -153,6 +153,8 @@ void retro_loop()
         {
             int direction = (gui.selected - selected_tab_last) < 0 ? -1 : 1;
 
+            gui_event(TAB_LEAVE, tab);
+
             tab = gui_set_current_tab(gui.selected);
 
             if (!tab->initialized)
@@ -176,6 +178,8 @@ void retro_loop()
                 gui.selected += direction;
                 continue;
             }
+
+            gui_event(TAB_ENTER, tab);
 
             selected_tab_last = gui.selected;
         }

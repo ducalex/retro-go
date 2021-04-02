@@ -3,13 +3,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define CRC_CACHE_MAGIC 0x11112222
-#define CRC_CACHE_MAX_ENTRIES 3000
+#define CRC_CACHE_MAGIC 0x21112222
+#define CRC_CACHE_MAX_ENTRIES (0x10000 / sizeof(retro_crc_entry_t) - 1)
 #define CRC_CACHE_PATH RG_BASE_PATH_CACHE "/crc32.bin"
 
 typedef struct __attribute__((__packed__))
 {
-    uint64_t key;
+    // uint64_t key;
+    uint32_t key;
     uint32_t crc;
 } retro_crc_entry_t;
 
@@ -58,7 +59,7 @@ bool emulator_build_file_object(const char *path, retro_emulator_file_t *out_fil
 const char *emu_get_file_path(retro_emulator_file_t *file);
 
 void crc_cache_init(void);
-void crc_cache_populate_idle(void);
+void crc_cache_idle_task(void);
 uint32_t crc_cache_lookup(retro_emulator_file_t *file);
 void crc_cache_update(retro_emulator_file_t *file);
 void crc_cache_save(void);

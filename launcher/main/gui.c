@@ -49,7 +49,7 @@ retro_gui_t gui;
 
 void gui_event(gui_event_t event, tab_t *tab)
 {
-    if (tab->event_handler)
+    if (tab && tab->event_handler)
         (*tab->event_handler)(event, tab);
 }
 
@@ -114,14 +114,14 @@ tab_t *gui_set_current_tab(int index)
     return gui_get_tab(gui.selected);
 }
 
-void gui_save_current_tab()
+void gui_save_position(bool commit)
 {
     tab_t *tab = gui_get_current_tab();
     char key_name[32];
     sprintf(key_name, "Sel.%.11s", tab->name);
     rg_settings_set_app_int32(key_name, tab->listbox.cursor);
     rg_settings_set_app_int32("SelectedTab", gui.selected);
-    // rg_settings_save();
+    if (commit) rg_settings_save();
 }
 
 listbox_item_t *gui_get_selected_item(tab_t *tab)

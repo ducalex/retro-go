@@ -38,7 +38,26 @@ static void event_handler(gui_event_t event, tab_t *tab)
     if (file == NULL)
         return;
 
-    if (event == KEY_PRESS_A)
+    if (event == TAB_ENTER)
+    {
+        //
+    }
+    else if (event == TAB_LEAVE)
+    {
+        //
+    }
+    else if (event == TAB_REDRAW)
+    {
+        //
+    }
+    else if (event == TAB_IDLE)
+    {
+        if (gui.show_preview && gui.idle_counter == (gui.show_preview_fast ? 1 : 8))
+            gui_draw_preview(file);
+        else if ((gui.idle_counter % 100) == 0)
+            crc_cache_idle_task();
+    }
+    else if (event == KEY_PRESS_A)
     {
         emulator_show_file_menu(file);
         gui_redraw();
@@ -47,19 +66,6 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         emulator_show_file_info(file);
         gui_redraw();
-    }
-    else if (event == TAB_IDLE)
-    {
-        if (gui.show_preview && gui.idle_counter == (gui.show_preview_fast ? 1 : 8))
-            gui_draw_preview(file);
-
-        if (gui.idle_counter == 1000)
-            crc_cache_populate_idle();
-    }
-    else if (event == TAB_REDRAW)
-    {
-        // if (gui.show_preview)
-        //     gui_draw_preview(file);
     }
 }
 
