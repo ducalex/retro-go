@@ -145,10 +145,10 @@ void hw_reset(bool hard)
 
 	if (hard)
 	{
-		memset(ram.hi, 0, sizeof(ram.hi));
 		memset(ram.ibank, 0, sizeof(ram.ibank));
 	}
 
+	memset(ram.hi, 0, sizeof(ram.hi));
 	R_P1 = 0xFF;
 	R_LCDC = 0x91;
 	R_BGP = 0xFC;
