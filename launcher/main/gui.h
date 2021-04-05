@@ -91,9 +91,6 @@ typedef struct {
 extern retro_gui_t gui;
 extern const int gui_themes_count;
 
-#define MIN(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
-#define MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
-
 tab_t *gui_add_tab(const char *name, const rg_image_t *logo, const rg_image_t *header, void *arg, void *event_handler);
 tab_t *gui_get_tab(int index);
 tab_t *gui_get_current_tab();

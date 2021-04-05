@@ -88,8 +88,8 @@ void gui_init_tab(tab_t *tab)
 
     gui_event(TAB_INIT, tab);
 
-    tab->listbox.cursor = MIN(tab->listbox.cursor, tab->listbox.length -1);
-    tab->listbox.cursor = MAX(tab->listbox.cursor, 0);
+    tab->listbox.cursor = RG_MIN(tab->listbox.cursor, tab->listbox.length -1);
+    tab->listbox.cursor = RG_MAX(tab->listbox.cursor, 0);
 }
 
 tab_t *gui_get_tab(int index)
@@ -167,8 +167,8 @@ void gui_resize_list(tab_t *tab, int new_size)
     }
 
     tab->listbox.length = new_size;
-    tab->listbox.cursor = MIN(tab->listbox.cursor, tab->listbox.length -1);
-    tab->listbox.cursor = MAX(tab->listbox.cursor, 0);
+    tab->listbox.cursor = RG_MIN(tab->listbox.cursor, tab->listbox.length -1);
+    tab->listbox.cursor = RG_MAX(tab->listbox.cursor, 0);
 
     RG_LOGI("Resized list '%s' from %d to %d items\n", tab->name, cur_size, new_size);
 }
@@ -380,8 +380,8 @@ void gui_draw_preview(retro_emulator_file_t *file)
 
     if (img)
     {
-        int height = MIN(img->height, COVER_MAX_HEIGHT);
-        int width = MIN(img->width, COVER_MAX_WIDTH);
+        int height = RG_MIN(img->height, COVER_MAX_HEIGHT);
+        int width = RG_MIN(img->width, COVER_MAX_WIDTH);
 
         if (img->height > COVER_MAX_HEIGHT || img->width > COVER_MAX_WIDTH)
             gui_draw_notice("Art too large", C_ORANGE);
