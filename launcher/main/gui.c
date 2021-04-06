@@ -12,10 +12,6 @@
 #define IMAGE_BANNER_WIDTH  (272)
 #define IMAGE_BANNER_HEIGHT (32)
 
-#define CRC_WIDTH           (104)
-#define CRC_X_OFFSET        (RG_SCREEN_WIDTH - CRC_WIDTH)
-#define CRC_Y_OFFSET        (35)
-
 #define LIST_WIDTH          (RG_SCREEN_WIDTH)
 #define LIST_HEIGHT         (RG_SCREEN_HEIGHT - LIST_Y_OFFSET)
 #define LIST_LINE_COUNT     (LIST_HEIGHT / rg_gui_get_font_info().height)
@@ -214,7 +210,7 @@ void gui_scroll_list(tab_t *tab, scroll_mode_t mode)
 
     if (cur_cursor != old_cursor)
     {
-        gui_draw_notice(" ", C_BLACK);
+        gui_draw_status(tab);
         gui_draw_list(tab);
         gui_event(TAB_SCROLL, tab);
     }
@@ -257,16 +253,31 @@ void gui_draw_header(tab_t *tab)
         rg_gui_draw_fill_rect(x_pos + 1, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, C_BLACK);
 }
 
-// void gui_draw_notice(tab_t *tab)
 void gui_draw_notice(const char *text, uint16_t color)
 {
-    rg_gui_draw_text(CRC_X_OFFSET, CRC_Y_OFFSET, CRC_WIDTH, text, color, C_BLACK, 0);
+    rg_rect_t rect = rg_gui_calc_text_size(text, 0);
+    rg_gui_draw_text(-rect.width, -rect.height, 0, text, color, C_BLACK, 0);
 }
 
 void gui_draw_status(tab_t *tab)
 {
-    rg_gui_draw_battery(RG_SCREEN_WIDTH - 27, 3);
-    rg_gui_draw_text(IMAGE_LOGO_WIDTH + 11, IMAGE_BANNER_HEIGHT + 3, 128, tab->status, C_WHITE, C_BLACK, 0);
+    char *status = tab->status;
+    char buffer[128];
+
+    // Draw cursor position if status is empty
+    if (*status == 0)
+    {
+        if (tab->is_empty)
+            strcpy(buffer, "list empty");
+        else
+            sprintf(buffer, "%d / %d", tab->listbox.cursor + 1, tab->listbox.length);
+
+        status = buffer;
+    }
+
+    rg_gui_draw_battery(- 27, 3);
+    rg_gui_draw_text(IMAGE_LOGO_WIDTH + 11, IMAGE_BANNER_HEIGHT, RG_SCREEN_WIDTH,
+                     status, C_WHITE, C_BLACK, RG_TEXT_ALIGN_LEFT);
 }
 
 void gui_draw_list(tab_t *tab)
@@ -280,7 +291,8 @@ void gui_draw_list(tab_t *tab)
     int lines = LIST_LINE_COUNT;
     int y = LIST_Y_OFFSET;
 
-    for (int i = 0; i < lines; i++) {
+    for (int i = 0; i < lines; i++)
+    {
         int entry = list->cursor + i - (lines / 2);
 
         if (entry >= 0 && entry < list->length) {
@@ -292,39 +304,40 @@ void gui_draw_list(tab_t *tab)
         color_fg = (entry == list->cursor) ? theme->list_selected : theme->list_standard;
         color_bg = (int)(16.f / lines * i) << theme->list_background;
 
-        y += rg_gui_draw_text(LIST_X_OFFSET, y, LIST_WIDTH, text_label, color_fg, color_bg, 0);
+        y += rg_gui_draw_text(LIST_X_OFFSET, y, LIST_WIDTH, text_label, color_fg, color_bg, 0).height;
     }
 
-    rg_gui_draw_fill_rect(0, y, LIST_WIDTH, RG_SCREEN_HEIGHT - y, color_bg);
+    if (y < RG_SCREEN_HEIGHT)
+        rg_gui_draw_fill_rect(0, y, LIST_WIDTH, RG_SCREEN_HEIGHT - y, color_bg);
 }
 
 void gui_draw_preview(retro_emulator_file_t *file)
 {
     const char *dirname = file->emulator->dirname;
-    bool show_art_missing = false;
+    bool show_missing_cover = false;
     uint32_t order;
     char path[256];
 
     switch (gui.show_preview)
     {
         case PREVIEW_MODE_COVER_SAVE:
-            show_art_missing = true;
+            show_missing_cover = true;
             order = 0x0312;
             break;
         case PREVIEW_MODE_SAVE_COVER:
-            show_art_missing = true;
+            show_missing_cover = true;
             order = 0x0123;
             break;
         case PREVIEW_MODE_COVER_ONLY:
-            show_art_missing = true;
+            show_missing_cover = true;
             order = 0x0012;
             break;
         case PREVIEW_MODE_SAVE_ONLY:
-            show_art_missing = false;
+            show_missing_cover = false;
             order = 0x0003;
             break;
         default:
-            show_art_missing = false;
+            show_missing_cover = false;
             order = 0x0000;
     }
 
@@ -376,21 +389,20 @@ void gui_draw_preview(retro_emulator_file_t *file)
         file->missing_cover |= (img ? 0 : 1) << type;
     }
 
-    gui_draw_notice(" ", C_BLACK);
-
     if (img)
     {
         int height = RG_MIN(img->height, COVER_MAX_HEIGHT);
         int width = RG_MIN(img->width, COVER_MAX_WIDTH);
 
+        rg_gui_draw_image(-width, -height, width, height, img);
+
         if (img->height > COVER_MAX_HEIGHT || img->width > COVER_MAX_WIDTH)
             gui_draw_notice("Art too large", C_ORANGE);
 
-        rg_gui_draw_image(320 - width, 240 - height, width, height, img);
         rg_gui_free_image(img);
     }
-    else if (show_art_missing)
+    else if (file->checksum && show_missing_cover)
     {
-        gui_draw_notice(" No art found", C_RED);
+        gui_draw_notice("No cover", C_RED);
     }
 }

@@ -116,6 +116,7 @@ void crc_cache_idle_task(void)
 
         int start_offset = 0;
         int remaining = 100;
+        int processed = 0;
 
         // Find the currently focused emulator, if any
         tab_t *tab = gui_get_current_tab();
@@ -139,15 +140,32 @@ void crc_cache_idle_task(void)
 
             for (int j = 0; j < emulator->roms.count && remaining > 0; j++)
             {
-                if (emulator->roms.files[j].checksum == 0)
+                retro_emulator_file_t *file = &emulator->roms.files[j];
+
+                if (file->checksum == 0)
+                    file->checksum = crc_cache_lookup(file);
+
+                if (file->checksum == 0)
                 {
-                    emulator_crc32_file(&emulator->roms.files[j]);
-                    remaining--;
+                    if (processed == 0)
+                        gui_draw_notice(" BUILDING CACHE...             ____", C_WHITE_SMOKE);
+
+                    if (emulator_crc32_file(file))
+                    {
+                        processed++;
+                        remaining--;
+                    }
                 }
                 if (gui.joystick & GAMEPAD_KEY_ANY)
-                    remaining = 0;
+                    remaining = -1;
             }
         }
+
+        if (processed && remaining == 0)
+            gui_draw_notice(" BUILDING CACHE...             DONE", C_WHITE);
+
+        // if (processed == 0 && remaining == 0)
+        //      We should disable the idle task here, we seem to have done it all
     }
 
     crc_cache_save();
@@ -165,7 +183,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
 
         if (emu->roms.count > 0)
         {
-            sprintf(tab->status, "Games: %d", emu->roms.count);
+            strcpy(tab->status, "");
             gui_resize_list(tab, emu->roms.count);
 
             for (int i = 0; i < emu->roms.count; i++)
@@ -179,7 +197,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
         }
         else
         {
-            sprintf(tab->status, "No games");
+            strcpy(tab->status, "No Games");
             gui_resize_list(tab, 8);
             sprintf(tab->listbox.items[0].text, "Place roms in folder: /roms/%s", emu->dirname);
             sprintf(tab->listbox.items[2].text, "With file extension: %s", emu->extensions);
@@ -203,7 +221,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
     }
     else if (event == TAB_REDRAW)
     {
-        //
+        // gui_draw_preview(file);
     }
     else if (event == TAB_IDLE)
     {
@@ -368,13 +386,13 @@ bool emulator_crc32_file(retro_emulator_file_t *file)
     }
     else
     {
-        gui_draw_notice("        CRC32", C_YELLOW);
+        gui_draw_notice("CRC32...", C_YELLOW);
 
         if ((fp = fopen(emu_get_file_path(file), "rb")))
         {
             fseek(fp, file->crc_offset, SEEK_SET);
 
-            gui_draw_notice("        CRC32", C_GREEN);
+            gui_draw_notice("CRC32...", C_GREEN);
 
             while (count != 0)
             {
@@ -396,7 +414,7 @@ bool emulator_crc32_file(retro_emulator_file_t *file)
             fclose(fp);
         }
 
-        gui_draw_notice(" ", C_BLACK);
+        // gui_draw_notice("CRC32...", C_BLACK);
     }
 
     return file->checksum > 0;
@@ -420,7 +438,6 @@ void emulator_show_file_info(retro_emulator_file_t *file)
 
     sprintf(filesize, "%ld KB", rg_vfs_filesize(emu_get_file_path(file)) / 1024);
 
-    // if (emulator_crc32_file(file))
     if (file->checksum)
     {
         if (file->crc_offset)

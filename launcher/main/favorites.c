@@ -48,7 +48,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
     }
     else if (event == TAB_REDRAW)
     {
-        //
+        // gui_draw_preview(file);
     }
     else if (event == TAB_IDLE)
     {
@@ -112,14 +112,14 @@ void favorites_load()
 
     if (favorites_count > 0)
     {
-        sprintf(fav_tab->status, "Favorites: %d", favorites_count);
+        strcpy(fav_tab->status, "");
         gui_resize_list(fav_tab, favorites_count);
         gui_sort_list(fav_tab, 0);
         fav_tab->is_empty = false;
     }
     else
     {
-        sprintf(fav_tab->status, "No favorites");
+        strcpy(fav_tab->status, "No favorites");
         gui_resize_list(fav_tab, 6);
         sprintf(fav_tab->listbox.items[0].text, "Welcome to Retro-Go!");
         sprintf(fav_tab->listbox.items[2].text, "You have no favorites.");
