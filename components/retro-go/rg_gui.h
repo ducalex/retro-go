@@ -21,7 +21,10 @@ typedef enum {
 } dialog_return_t;
 
 enum {
-    RG_TEXT_WRAP = (1 << 0),
+    RG_TEXT_WRAP         = (1 << 0),
+    RG_TEXT_ALIGN_LEFT   = (1 << 1),
+    RG_TEXT_ALIGN_CENTER = (1 << 2),
+    RG_TEXT_ALIGN_RIGHT  = (1 << 3),
 };
 
 typedef struct
@@ -40,6 +43,18 @@ typedef struct
     uint16_t height;
     uint16_t bitmap[24];
 } rg_glyph_t;
+
+typedef struct
+{
+    uint16_t width;
+    uint16_t height;
+} rg_rect_t;
+
+typedef struct {
+    size_t width;
+    size_t height;
+    uint16_t data[];
+} rg_image_t;
 
 typedef struct {
     uint16_t box_background;
@@ -76,12 +91,6 @@ struct dialog_option_s {
 #define RG_DIALOG_CHOICE_LAST {0, NULL, NULL, RG_DIALOG_FLAG_LAST, NULL}
 #define RG_DIALOG_SEPARATOR   {0, "----", NULL, RG_DIALOG_FLAG_SKIP, NULL}
 #define RG_DIALOG_MAKE_LAST(ptr) {dialog_option_t *p = (ptr); p->flags = RG_DIALOG_FLAG_LAST;}
-
-typedef struct {
-    size_t width;
-    size_t height;
-    uint16_t data[];
-} rg_image_t;
 
 /* -------------------------------------------------------------------------------- */
 /* -- µGUI COLORS                                                                -- */
@@ -234,16 +243,17 @@ void rg_gui_init(void);
 void rg_gui_set_theme(const dialog_theme_t *new_theme);
 void rg_gui_set_font_type(uint8_t type);
 font_info_t rg_gui_get_font_info(void);
-int  rg_gui_draw_text(int x, int y, int width, const char *text, uint16_t color_fg, uint16_t color_bg, uint32_t flags);
-void rg_gui_draw_rect(int x, int y, int width, int height, int border, uint16_t color);
-void rg_gui_draw_fill_rect(int x, int y, int width, int height, uint16_t color);
-void rg_gui_draw_battery(int x, int y);
-void rg_gui_draw_hourglass(void);
+rg_rect_t rg_gui_calc_text_size(const char *text, uint32_t flags);
+rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, uint16_t color_fg, uint16_t color_bg, uint32_t flags);
+void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border, uint16_t color);
+void rg_gui_draw_fill_rect(int x_pos, int y_pos, int width, int height, uint16_t color);
+void rg_gui_draw_battery(int x_pos, int y_pos);
 void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int sel);
+void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, const rg_image_t *img);
+void rg_gui_draw_hourglass(void);
 
 rg_image_t *rg_gui_load_image_file(const char *file);
 rg_image_t *rg_gui_load_image(const uint8_t *data, size_t data_len);
-void rg_gui_draw_image(int x, int y, int width, int height, const rg_image_t *img);
 void rg_gui_free_image(rg_image_t *img);
 
 int  rg_gui_dialog(const char *header, const dialog_option_t *options, int selected_initial);
