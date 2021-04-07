@@ -269,16 +269,16 @@ void retro_loop()
             gui.selected++;
         }
         else if (last_key == GAMEPAD_KEY_UP) {
-            gui_scroll_list(tab, LINE_UP);
+            gui_scroll_list(tab, SCROLL_LINE_UP, 0);
         }
         else if (last_key == GAMEPAD_KEY_DOWN) {
-            gui_scroll_list(tab, LINE_DOWN);
+            gui_scroll_list(tab, SCROLL_LINE_DOWN, 0);
         }
         else if (last_key == GAMEPAD_KEY_LEFT) {
-            gui_scroll_list(tab, PAGE_UP);
+            gui_scroll_list(tab, SCROLL_PAGE_UP, 0);
         }
         else if (last_key == GAMEPAD_KEY_RIGHT) {
-            gui_scroll_list(tab, PAGE_DOWN);
+            gui_scroll_list(tab, SCROLL_PAGE_DOWN, 0);
         }
         else if (last_key == GAMEPAD_KEY_A) {
             gui_event(KEY_PRESS_A, tab);

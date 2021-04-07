@@ -53,8 +53,8 @@ tab_t *gui_add_tab(const char *name, const rg_image_t *logo, const rg_image_t *h
 {
     tab_t *tab = calloc(1, sizeof(tab_t));
 
-    sprintf(tab->name, "%s", name);
-    sprintf(tab->status, "Loading...");
+    sprintf(tab->name, "%.63s", name);
+    sprintf(tab->status[1].left, "Loading...");
 
     tab->event_handler = event_handler;
     tab->img_header = header;
@@ -84,8 +84,8 @@ void gui_init_tab(tab_t *tab)
 
     gui_event(TAB_INIT, tab);
 
-    tab->listbox.cursor = RG_MIN(tab->listbox.cursor, tab->listbox.length -1);
-    tab->listbox.cursor = RG_MAX(tab->listbox.cursor, 0);
+    tab->listbox.cursor = RG_MAX(RG_MIN(tab->listbox.cursor, tab->listbox.length - 1), 0);
+    gui_event(TAB_SCROLL, tab);
 }
 
 tab_t *gui_get_tab(int index)
@@ -108,6 +108,16 @@ tab_t *gui_set_current_tab(int index)
     gui.selected = index;
 
     return gui_get_tab(gui.selected);
+}
+
+void gui_set_status(tab_t *tab, const char *left, const char *right)
+{
+    if (!tab)
+        tab = gui_get_current_tab();
+    if (left)
+        strcpy(tab->status[1].left, left);
+    if (right)
+        strcpy(tab->status[1].right, right);
 }
 
 void gui_save_position(bool commit)
@@ -163,43 +173,47 @@ void gui_resize_list(tab_t *tab, int new_size)
     }
 
     tab->listbox.length = new_size;
-    tab->listbox.cursor = RG_MIN(tab->listbox.cursor, tab->listbox.length -1);
-    tab->listbox.cursor = RG_MAX(tab->listbox.cursor, 0);
+    tab->listbox.cursor = RG_MAX(RG_MIN(tab->listbox.cursor, new_size - 1), 0);
+
+    gui_event(TAB_SCROLL, tab);
 
     RG_LOGI("Resized list '%s' from %d to %d items\n", tab->name, cur_size, new_size);
 }
 
-void gui_scroll_list(tab_t *tab, scroll_mode_t mode)
+void gui_scroll_list(tab_t *tab, scroll_mode_t mode, int arg)
 {
     listbox_t *list = &tab->listbox;
 
-    if (list->length == 0 || list->cursor > list->length) {
-        return;
-    }
-
-    int cur_cursor = list->cursor;
+    int cur_cursor = RG_MAX(RG_MIN(list->cursor, list->length - 1), 0);
     int old_cursor = list->cursor;
+    int max = LIST_LINE_COUNT - 2;
 
-    if (mode == LINE_UP) {
+    if (mode == SCROLL_ABSOLUTE)
+    {
+        cur_cursor = arg;
+    }
+    else if (mode == SCROLL_LINE_UP)
+    {
         cur_cursor--;
     }
-    else if (mode == LINE_DOWN) {
+    else if (mode == SCROLL_LINE_DOWN)
+    {
         cur_cursor++;
     }
-    else if (mode == PAGE_UP) {
-        char st = ((char*)list->items[cur_cursor].text)[0];
-        int max = LIST_LINE_COUNT - 2;
+    else if (mode == SCROLL_PAGE_UP)
+    {
+        char start = list->items[cur_cursor].text[0];
         while (--cur_cursor > 0 && max-- > 0)
         {
-           if (st != ((char*)list->items[cur_cursor].text)[0]) break;
+           if (start != list->items[cur_cursor].text[0]) break;
         }
     }
-    else if (mode == PAGE_DOWN) {
-        char st = ((char*)list->items[cur_cursor].text)[0];
-        int max = LIST_LINE_COUNT - 2;
-        while (++cur_cursor < list->length-1 && max-- > 0)
+    else if (mode == SCROLL_PAGE_DOWN)
+    {
+        char start = list->items[cur_cursor].text[0];
+        while (++cur_cursor < list->length - 1 && max-- > 0)
         {
-           if (st != ((char*)list->items[cur_cursor].text)[0]) break;
+           if (start != list->items[cur_cursor].text[0]) break;
         }
     }
 
@@ -207,12 +221,13 @@ void gui_scroll_list(tab_t *tab, scroll_mode_t mode)
     if (cur_cursor >= list->length) cur_cursor = 0;
 
     list->cursor = cur_cursor;
+    gui_event(TAB_SCROLL, tab);
 
     if (cur_cursor != old_cursor)
     {
         gui_draw_status(tab);
         gui_draw_list(tab);
-        gui_event(TAB_SCROLL, tab);
+        gui_event(TAB_REDRAW, tab);
     }
 }
 
@@ -253,31 +268,16 @@ void gui_draw_header(tab_t *tab)
         rg_gui_draw_fill_rect(x_pos + 1, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, C_BLACK);
 }
 
-void gui_draw_notice(const char *text, uint16_t color)
-{
-    rg_rect_t rect = rg_gui_calc_text_size(text, 0);
-    rg_gui_draw_text(-rect.width, -rect.height, 0, text, color, C_BLACK, 0);
-}
-
 void gui_draw_status(tab_t *tab)
 {
-    char *status = tab->status;
-    char buffer[128];
+    int status_x = IMAGE_LOGO_WIDTH + 11;
+    int status_y = IMAGE_BANNER_HEIGHT + 1;
+    char *txt_left = tab->status[tab->status[1].left[0] ? 1 : 0].left;
+    char *txt_right = tab->status[tab->status[1].right[0] ? 1 : 0].right;
 
-    // Draw cursor position if status is empty
-    if (*status == 0)
-    {
-        if (tab->is_empty)
-            strcpy(buffer, "list empty");
-        else
-            sprintf(buffer, "%d / %d", tab->listbox.cursor + 1, tab->listbox.length);
-
-        status = buffer;
-    }
-
-    rg_gui_draw_battery(- 27, 3);
-    rg_gui_draw_text(IMAGE_LOGO_WIDTH + 11, IMAGE_BANNER_HEIGHT, RG_SCREEN_WIDTH,
-                     status, C_WHITE, C_BLACK, RG_TEXT_ALIGN_LEFT);
+    rg_gui_draw_battery(-27, 3);
+    rg_gui_draw_text(status_x, status_y, RG_SCREEN_WIDTH, txt_right, C_SNOW, C_BLACK, RG_TEXT_ALIGN_LEFT);
+    rg_gui_draw_text(status_x, status_y, 0, txt_left, C_WHITE, C_BLACK, RG_TEXT_ALIGN_RIGHT);
 }
 
 void gui_draw_list(tab_t *tab)
@@ -311,7 +311,7 @@ void gui_draw_list(tab_t *tab)
         rg_gui_draw_fill_rect(0, y, LIST_WIDTH, RG_SCREEN_HEIGHT - y, color_bg);
 }
 
-void gui_draw_preview(retro_emulator_file_t *file)
+void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file)
 {
     const char *dirname = file->emulator->dirname;
     bool show_missing_cover = false;
@@ -397,12 +397,16 @@ void gui_draw_preview(retro_emulator_file_t *file)
         rg_gui_draw_image(-width, -height, width, height, img);
 
         if (img->height > COVER_MAX_HEIGHT || img->width > COVER_MAX_WIDTH)
-            gui_draw_notice("Art too large", C_ORANGE);
+        {
+            gui_set_status(tab, NULL, "Art too large");
+            gui_draw_status(tab);
+        }
 
         rg_gui_free_image(img);
     }
     else if (file->checksum && show_missing_cover)
     {
-        gui_draw_notice("No cover", C_RED);
+        gui_set_status(tab, NULL, "No cover");
+        gui_draw_status(tab);
     }
 }

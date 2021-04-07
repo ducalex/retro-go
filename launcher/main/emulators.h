@@ -49,6 +49,8 @@ typedef struct retro_emulator_s
     bool initialized;
 } retro_emulator_t;
 
+typedef struct tab_s tab_t;
+
 void emulators_init();
 void emulator_init(retro_emulator_t *emu);
 void emulator_start(retro_emulator_file_t *file, bool load_state);
@@ -59,7 +61,7 @@ bool emulator_build_file_object(const char *path, retro_emulator_file_t *out_fil
 const char *emu_get_file_path(retro_emulator_file_t *file);
 
 void crc_cache_init(void);
-void crc_cache_idle_task(void);
+void crc_cache_idle_task(tab_t *tab);
 uint32_t crc_cache_lookup(retro_emulator_file_t *file);
 void crc_cache_update(retro_emulator_file_t *file);
 void crc_cache_save(void);

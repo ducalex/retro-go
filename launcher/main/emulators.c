@@ -108,9 +108,9 @@ void crc_cache_update(retro_emulator_file_t *file)
     // crc_cache_save();
 }
 
-void crc_cache_idle_task(void)
+void crc_cache_idle_task(tab_t *tab)
 {
-    if (gui.idle_counter >= 1000 && crc_cache->count < CRC_CACHE_MAX_ENTRIES)
+    if (gui.idle_counter >= 2000 && crc_cache->count < CRC_CACHE_MAX_ENTRIES)
     {
         RG_LOGI("Starting...\n");
 
@@ -119,7 +119,6 @@ void crc_cache_idle_task(void)
         int processed = 0;
 
         // Find the currently focused emulator, if any
-        tab_t *tab = gui_get_current_tab();
         for (int i = 0; i < emulators_count; i++)
         {
             if (tab && tab->arg == &emulators[i])
@@ -128,6 +127,9 @@ void crc_cache_idle_task(void)
                 break;
             }
         }
+
+        gui_set_status(tab, "BUILDING CACHE...", "SCANNING");
+        gui_draw_status(tab);
 
         for (int i = 0; i < emulators_count && remaining > 0; i++)
         {
@@ -148,9 +150,6 @@ void crc_cache_idle_task(void)
                 if (file->checksum != 0)
                     continue;
 
-                if (processed == 0)
-                    gui_draw_notice(" BUILDING CACHE...             PEND", C_WHITE_SMOKE);
-
                 emulator_crc32_file(file);
                 processed++;
                 remaining--;
@@ -160,13 +159,9 @@ void crc_cache_idle_task(void)
             }
         }
 
-        if (processed > 0)
-        {
-            if (remaining == 0)
-                gui_draw_notice(" BUILDING CACHE...             IDLE", C_WHITE);
-            else if (remaining > 0)
-                gui_draw_notice(" BUILDING CACHE...             DONE", C_WHITE);
-        }
+        gui_set_status(tab, "", "");
+        gui_draw_status(tab);
+
         // if (processed == 0 && remaining > 0)
         //      We should disable the idle task here, we seem to have done it all
     }
@@ -184,9 +179,10 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         emulator_init(emu);
 
+        memset(&tab->status, 0, sizeof(tab->status));
+
         if (emu->roms.count > 0)
         {
-            strcpy(tab->status, "");
             gui_resize_list(tab, emu->roms.count);
 
             for (int i = 0; i < emu->roms.count; i++)
@@ -200,7 +196,6 @@ static void event_handler(gui_event_t event, tab_t *tab)
         }
         else
         {
-            strcpy(tab->status, "No Games");
             gui_resize_list(tab, 8);
             sprintf(tab->listbox.items[0].text, "Place roms in folder: /roms/%s", emu->dirname);
             sprintf(tab->listbox.items[2].text, "With file extension: %s", emu->extensions);
@@ -209,12 +204,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
             tab->is_empty = true;
         }
     }
-
-    /* The rest of the events require a file to be selected */
-    if (file == NULL)
-        return;
-
-    if (event == TAB_ENTER)
+    else if (event == TAB_ENTER)
     {
         //
     }
@@ -222,26 +212,35 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         //
     }
+    else if (event == TAB_SCROLL)
+    {
+        if (!tab->is_empty && tab->listbox.length)
+            sprintf(tab->status[0].left, "%d / %d", (tab->listbox.cursor + 1) % 10000, tab->listbox.length % 10000);
+        else
+            strcpy(tab->status[0].left, "No Games");
+        gui_set_status(tab, NULL, "");
+    }
     else if (event == TAB_REDRAW)
     {
-        // gui_draw_preview(file);
+        // gui_draw_preview(tab, file);
     }
     else if (event == TAB_IDLE)
     {
-        if (gui.show_preview && gui.idle_counter == (gui.show_preview_fast ? 1 : 8))
-            gui_draw_preview(file);
+        if (file && gui.show_preview && gui.idle_counter == (gui.show_preview_fast ? 1 : 8))
+            gui_draw_preview(tab, file);
         else if ((gui.idle_counter % 100) == 0)
-            crc_cache_idle_task();
-            // crc_cache_save();
+            crc_cache_idle_task(tab);
     }
     else if (event == KEY_PRESS_A)
     {
-        emulator_show_file_menu(file);
+        if (file)
+            emulator_show_file_menu(file);
         gui_redraw();
     }
     else if (event == KEY_PRESS_B)
     {
-        emulator_show_file_info(file);
+        if (file)
+            emulator_show_file_info(file);
         gui_redraw();
     }
 }
@@ -390,13 +389,13 @@ bool emulator_crc32_file(retro_emulator_file_t *file)
     }
     else
     {
-        gui_draw_notice("CRC32...", C_YELLOW);
+        tab_t *tab = gui_get_current_tab();
+        gui_set_status(tab, NULL, "CRC32...");
+        gui_draw_status(tab);
 
         if ((fp = fopen(emu_get_file_path(file), "rb")))
         {
             fseek(fp, file->crc_offset, SEEK_SET);
-
-            gui_draw_notice("CRC32...", C_GREEN);
 
             while (count != 0)
             {
@@ -418,7 +417,8 @@ bool emulator_crc32_file(retro_emulator_file_t *file)
             fclose(fp);
         }
 
-        // gui_draw_notice("CRC32...", C_BLACK);
+        gui_set_status(tab, NULL, "");
+        gui_draw_status(tab);
     }
 
     return file->checksum > 0;

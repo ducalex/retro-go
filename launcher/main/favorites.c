@@ -31,14 +31,10 @@ static void event_handler(gui_event_t event, tab_t *tab)
 
         if (tab == fav_tab && favorites_count == 0)
         {
-            fav_tab->listbox.cursor = 3;
+            tab->listbox.cursor = 3;
         }
     }
-
-    if (file == NULL)
-        return;
-
-    if (event == TAB_ENTER)
+    else if (event == TAB_ENTER)
     {
         //
     }
@@ -46,25 +42,35 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         //
     }
+    else if (event == TAB_SCROLL)
+    {
+        if (!tab->is_empty && tab->listbox.length)
+            sprintf(tab->status[0].left, "%d / %d", (tab->listbox.cursor + 1) % 10000, tab->listbox.length % 10000);
+        else
+            strcpy(tab->status[0].left, "No Favorites");
+        gui_set_status(tab, NULL, "");
+    }
     else if (event == TAB_REDRAW)
     {
-        // gui_draw_preview(file);
+        // gui_draw_preview(tab, file);
     }
     else if (event == TAB_IDLE)
     {
-        if (gui.show_preview && gui.idle_counter == (gui.show_preview_fast ? 1 : 8))
-            gui_draw_preview(file);
+        if (file && gui.show_preview && gui.idle_counter == (gui.show_preview_fast ? 1 : 8))
+            gui_draw_preview(tab, file);
         else if ((gui.idle_counter % 100) == 0)
-            crc_cache_idle_task();
+            crc_cache_idle_task(tab);
     }
     else if (event == KEY_PRESS_A)
     {
-        emulator_show_file_menu(file);
+        if (file)
+            emulator_show_file_menu(file);
         gui_redraw();
     }
     else if (event == KEY_PRESS_B)
     {
-        emulator_show_file_info(file);
+        if (file)
+            emulator_show_file_info(file);
         gui_redraw();
     }
 }
@@ -110,16 +116,16 @@ void favorites_load()
 
     free(favorites_str);
 
+    memset(&fav_tab->status, 0, sizeof(fav_tab->status));
+
     if (favorites_count > 0)
     {
-        strcpy(fav_tab->status, "");
         gui_resize_list(fav_tab, favorites_count);
         gui_sort_list(fav_tab, 0);
         fav_tab->is_empty = false;
     }
     else
     {
-        strcpy(fav_tab->status, "No favorites");
         gui_resize_list(fav_tab, 6);
         sprintf(fav_tab->listbox.items[0].text, "Welcome to Retro-Go!");
         sprintf(fav_tab->listbox.items[2].text, "You have no favorites.");

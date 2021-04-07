@@ -17,12 +17,14 @@ typedef enum {
 } gui_event_t;
 
 typedef enum {
-    LINE_UP,
-    LINE_DOWN,
-    PAGE_UP,
-    PAGE_DOWN,
-    FIRST_ROW,
-    LAST_ROW,
+    SCROLL_UPDATE,
+    SCROLL_ABSOLUTE,
+    SCROLL_LINE_UP,
+    SCROLL_LINE_DOWN,
+    SCROLL_PAGE_UP,
+    SCROLL_PAGE_DOWN,
+    SCROLL_FIRST_ROW,
+    SCROLL_LAST_ROW,
 } scroll_mode_t;
 
 typedef enum {
@@ -63,9 +65,12 @@ typedef struct {
 
 typedef void (*gui_event_handler_t)(gui_event_t event, void *arg);
 
-typedef struct {
+typedef struct tab_s {
     char name[64];
-    char status[64];
+    struct {
+        char left[24];
+        char right[24];
+    } status[2];
     const rg_image_t *img_logo;
     const rg_image_t *img_header;
     bool initialized;
@@ -95,10 +100,11 @@ tab_t *gui_add_tab(const char *name, const rg_image_t *logo, const rg_image_t *h
 tab_t *gui_get_tab(int index);
 tab_t *gui_get_current_tab();
 tab_t *gui_set_current_tab(int index);
+void gui_set_status(tab_t *tab, const char *left, const char *right);
 void gui_init_tab(tab_t *tab);
 
 void gui_sort_list(tab_t *tab, int sort_mode);
-void gui_scroll_list(tab_t *tab, scroll_mode_t mode);
+void gui_scroll_list(tab_t *tab, scroll_mode_t mode, int arg);
 void gui_resize_list(tab_t *tab, int new_size);
 listbox_item_t *gui_get_selected_item(tab_t *tab);
 
@@ -109,5 +115,4 @@ void gui_draw_navbar(void);
 void gui_draw_header(tab_t *tab);
 void gui_draw_status(tab_t *tab);
 void gui_draw_list(tab_t *tab);
-void gui_draw_notice(const char *text, uint16_t color);
-void gui_draw_preview(retro_emulator_file_t *file);
+void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file);
