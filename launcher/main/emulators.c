@@ -115,7 +115,7 @@ void crc_cache_idle_task(void)
         RG_LOGI("Starting...\n");
 
         int start_offset = 0;
-        int remaining = 100;
+        int remaining = 20;
         int processed = 0;
 
         // Find the currently focused emulator, if any
@@ -145,26 +145,29 @@ void crc_cache_idle_task(void)
                 if (file->checksum == 0)
                     file->checksum = crc_cache_lookup(file);
 
-                if (file->checksum == 0)
-                {
-                    if (processed == 0)
-                        gui_draw_notice(" BUILDING CACHE...             ____", C_WHITE_SMOKE);
+                if (file->checksum != 0)
+                    continue;
 
-                    if (emulator_crc32_file(file))
-                    {
-                        processed++;
-                        remaining--;
-                    }
-                }
+                if (processed == 0)
+                    gui_draw_notice(" BUILDING CACHE...             PEND", C_WHITE_SMOKE);
+
+                emulator_crc32_file(file);
+                processed++;
+                remaining--;
+
                 if (gui.joystick & GAMEPAD_KEY_ANY)
                     remaining = -1;
             }
         }
 
-        if (processed && remaining == 0)
-            gui_draw_notice(" BUILDING CACHE...             DONE", C_WHITE);
-
-        // if (processed == 0 && remaining == 0)
+        if (processed > 0)
+        {
+            if (remaining == 0)
+                gui_draw_notice(" BUILDING CACHE...             IDLE", C_WHITE);
+            else if (remaining > 0)
+                gui_draw_notice(" BUILDING CACHE...             DONE", C_WHITE);
+        }
+        // if (processed == 0 && remaining > 0)
         //      We should disable the idle task here, we seem to have done it all
     }
 
@@ -229,6 +232,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
             gui_draw_preview(file);
         else if ((gui.idle_counter % 100) == 0)
             crc_cache_idle_task();
+            // crc_cache_save();
     }
     else if (event == KEY_PRESS_A)
     {
