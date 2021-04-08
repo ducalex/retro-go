@@ -112,8 +112,6 @@ void crc_cache_idle_task(tab_t *tab)
 {
     if (gui.idle_counter >= 2000 && crc_cache->count < CRC_CACHE_MAX_ENTRIES)
     {
-        RG_LOGI("Starting...\n");
-
         int start_offset = 0;
         int remaining = 20;
         int processed = 0;
@@ -128,12 +126,15 @@ void crc_cache_idle_task(tab_t *tab)
             }
         }
 
-        gui_set_status(tab, "BUILDING CACHE...", "SCANNING");
-        gui_draw_status(tab);
-
         for (int i = 0; i < emulators_count && remaining > 0; i++)
         {
             retro_emulator_t *emulator = &emulators[(start_offset + i) % emulators_count];
+
+            if (emulator->crc_scan_done)
+                continue;
+
+            gui_set_status(tab, "BUILDING CACHE...", "SCANNING");
+            gui_draw_status(tab);
 
             if (!emulator->initialized)
                 emulator_init(emulator);
@@ -150,20 +151,22 @@ void crc_cache_idle_task(tab_t *tab)
                 if (file->checksum != 0)
                     continue;
 
-                emulator_crc32_file(file);
-                processed++;
-                remaining--;
+                if (emulator_crc32_file(file))
+                {
+                    processed++;
+                    remaining--;
+                }
 
                 if (gui.joystick & GAMEPAD_KEY_ANY)
                     remaining = -1;
             }
+
+            if (processed == 0 && remaining > 0)
+                emulator->crc_scan_done = true;
+
+            gui_set_status(tab, "", "");
+            gui_draw_status(tab);
         }
-
-        gui_set_status(tab, "", "");
-        gui_draw_status(tab);
-
-        // if (processed == 0 && remaining > 0)
-        //      We should disable the idle task here, we seem to have done it all
     }
 
     crc_cache_save();
@@ -323,7 +326,6 @@ void emulator_init(retro_emulator_t *emu)
             strcpy(file->ext, ext);
             file->name[name_len-strlen(ext)-1] = 0;
             file->emulator = (void*)emu;
-            file->crc_offset = emu->crc_offset;
             file->checksum = 0;
             file->missing_cover = 0;
         }
@@ -337,6 +339,13 @@ const char *emu_get_file_path(retro_emulator_file_t *file)
     if (file == NULL) return NULL;
     sprintf(buffer, "%s/%s.%s", file->folder, file->name, file->ext);
     return (const char*)&buffer;
+}
+
+size_t emu_get_file_crc_offset(retro_emulator_file_t *file)
+{
+    if (file && file->emulator)
+        return file->emulator->crc_offset;
+    return 0;
 }
 
 bool emulator_build_file_object(const char *path, retro_emulator_file_t *file)
@@ -361,7 +370,6 @@ bool emulator_build_file_object(const char *path, retro_emulator_file_t *file)
     {
         if (strcmp(emulators[i].dirname, dirname) == 0)
         {
-            file->crc_offset = emulators[i].crc_offset;
             file->emulator = &emulators[i];
             return true;
         }
@@ -395,7 +403,7 @@ bool emulator_crc32_file(retro_emulator_file_t *file)
 
         if ((fp = fopen(emu_get_file_path(file), "rb")))
         {
-            fseek(fp, file->crc_offset, SEEK_SET);
+            fseek(fp, emu_get_file_crc_offset(file), SEEK_SET);
 
             while (count != 0)
             {
@@ -444,10 +452,7 @@ void emulator_show_file_info(retro_emulator_file_t *file)
 
     if (file->checksum)
     {
-        if (file->crc_offset)
-            sprintf(filecrc, "%08X (%d)", file->checksum, file->crc_offset);
-        else
-            sprintf(filecrc, "%08X", file->checksum);
+        sprintf(filecrc, "%08X (%d)", file->checksum, emu_get_file_crc_offset(file));
     }
 
     if (rg_gui_dialog("Properties", options, -1) == 3)

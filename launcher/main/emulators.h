@@ -29,7 +29,6 @@ typedef struct
     char ext[8];
     char folder[32];
     size_t size;
-    size_t crc_offset;
     uint32_t checksum;
     uint32_t missing_cover;
     retro_emulator_t *emulator;
@@ -46,6 +45,7 @@ typedef struct retro_emulator_s
         retro_emulator_file_t *files;
         size_t count;
     } roms;
+    bool crc_scan_done;
     bool initialized;
 } retro_emulator_t;
 
@@ -59,6 +59,7 @@ void emulator_show_file_info(retro_emulator_file_t *file);
 bool emulator_crc32_file(retro_emulator_file_t *file);
 bool emulator_build_file_object(const char *path, retro_emulator_file_t *out_file);
 const char *emu_get_file_path(retro_emulator_file_t *file);
+size_t emu_get_file_crc_offset(retro_emulator_file_t *file);
 
 void crc_cache_init(void);
 void crc_cache_idle_task(tab_t *tab);
