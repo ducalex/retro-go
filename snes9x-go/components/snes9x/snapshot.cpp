@@ -725,7 +725,6 @@ int S9xUnfreezeGame (const char *filename)
 		ICPU.ShiftedDB = Registers.DB << 16;
 		ICPU.S9xOpcodes = S9xOpcodesSlow;
 		S9xSetPCBase(Registers.PBPC);
-		S9xUnpackStatus();
 
 		for (int d = 0; d < 8; d++)
 			DMA[d] = dma_snap.dma[d];

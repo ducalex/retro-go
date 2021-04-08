@@ -177,8 +177,6 @@ IRAM_ATTR void S9xMainLoop (void)
 	}
 
 	// printf("fast: %d /  slow: %d\n", loops - slow, slow);
-
-	S9xPackStatus();
 }
 
 IRAM_ATTR void S9xDoHEventProcessing (void)
@@ -391,8 +389,6 @@ static void S9xSoftResetCPU (void)
 
 	S9xSetPCBase(Registers.PBPC);
 	S9xFixCycles();
-
-	S9xUnpackStatus();
 }
 
 static void S9xResetCPU (void)

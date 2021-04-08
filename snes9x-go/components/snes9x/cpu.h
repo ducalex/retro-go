@@ -29,10 +29,10 @@
 #define SetCarryX(expr)		{if (expr) SetCarry(); else ClearCarry();}
 #define SetZeroX(expr)		{if (expr) SetZero(); else ClearZero();}
 
-#define SetCarry()			(ICPU._Carry = 1)
-#define ClearCarry()		(ICPU._Carry = 0)
-#define SetZero()			(ICPU._Zero = 0)
-#define ClearZero()			(ICPU._Zero = 1)
+#define SetCarry()			SetFlags(Carry)
+#define ClearCarry()		ClearFlags(Carry)
+#define SetZero()			SetFlags(Zero)
+#define ClearZero()			ClearFlags(Zero)
 #define SetIRQ()			SetFlags(IRQ)
 #define ClearIRQ()			ClearFlags(IRQ)
 #define SetDecimal()		SetFlags(Decimal)
@@ -41,19 +41,19 @@
 #define ClearIndex()		ClearFlags(IndexFlag)
 #define SetMemory()			SetFlags(MemoryFlag)
 #define ClearMemory()		ClearFlags(MemoryFlag)
-#define SetOverflow()		(ICPU._Overflow = 1)
-#define ClearOverflow()		(ICPU._Overflow = 0)
-#define SetNegative()		(ICPU._Negative = 0x80)
-#define ClearNegative()		(ICPU._Negative = 0)
+#define SetOverflow()		SetFlags(Overflow)
+#define ClearOverflow()		ClearFlags(Overflow)
+#define SetNegative()		SetFlags(Negative)
+#define ClearNegative()		ClearFlags(Negative)
 
-#define CheckCarry()		(ICPU._Carry)
-#define CheckZero()			(ICPU._Zero == 0)
+#define CheckCarry()		CheckFlag(Carry)
+#define CheckZero()			CheckFlag(Zero)
 #define CheckIRQ()			CheckFlag(IRQ)
 #define CheckDecimal()		CheckFlag(Decimal)
 #define CheckIndex()		CheckFlag(IndexFlag)
 #define CheckMemory()		CheckFlag(MemoryFlag)
-#define CheckOverflow()		(ICPU._Overflow)
-#define CheckNegative()		(ICPU._Negative & 0x80)
+#define CheckOverflow()		CheckFlag(Overflow)
+#define CheckNegative()		CheckFlag(Negative)
 #define CheckEmulation()	CheckFlag(Emulation)
 
 typedef union
@@ -115,10 +115,6 @@ typedef void (*S9xOpcode) (void);
 struct SICPU
 {
 	const S9xOpcode *S9xOpcodes;
-	uint32	_Carry;
-	uint32	_Zero;
-	uint32	_Negative;
-	uint32	_Overflow;
 	uint32	ShiftedPB;
 	uint32	ShiftedDB;
 	uint32	Frame;
@@ -137,19 +133,5 @@ void S9xMainLoop (void);
 void S9xReset (void);
 void S9xSoftReset (void);
 void S9xDoHEventProcessing (void);
-
-static inline void S9xUnpackStatus (void)
-{
-	ICPU._Zero = (Registers.PL & Zero) == 0;
-	ICPU._Negative = (Registers.PL & Negative);
-	ICPU._Carry = (Registers.PL & Carry);
-	ICPU._Overflow = (Registers.PL & Overflow) >> 6;
-}
-
-static inline void S9xPackStatus (void)
-{
-	Registers.PL &= ~(Zero | Negative | Carry | Overflow);
-	Registers.PL |= ICPU._Carry | ((ICPU._Zero == 0) << 1) | (ICPU._Negative & 0x80) | (ICPU._Overflow << 6);
-}
 
 #endif
