@@ -106,6 +106,12 @@ An up to date list of incompatible/broken games can be found on the [ODROID-GO f
 - Famicom Disk System
 - Better launcher fonts
 - Folders support
+- Recently played games
+- Game Boy BIOS
+- Chip sound player
+- Sleep mode
+- Arduboy compatibility?
+
 
 # Building Retro-Go
 
