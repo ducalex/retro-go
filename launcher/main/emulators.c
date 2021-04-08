@@ -114,7 +114,6 @@ void crc_cache_idle_task(tab_t *tab)
     {
         int start_offset = 0;
         int remaining = 20;
-        int processed = 0;
 
         // Find the currently focused emulator, if any
         for (int i = 0; i < emulators_count; i++)
@@ -129,6 +128,7 @@ void crc_cache_idle_task(tab_t *tab)
         for (int i = 0; i < emulators_count && remaining > 0; i++)
         {
             retro_emulator_t *emulator = &emulators[(start_offset + i) % emulators_count];
+            int processed = 0;
 
             if (emulator->crc_scan_done)
                 continue;
@@ -139,8 +139,6 @@ void crc_cache_idle_task(tab_t *tab)
             if (!emulator->initialized)
                 emulator_init(emulator);
 
-            RG_LOGI("%s = %d roms\n", emulator->system_name, emulator->roms.count);
-
             for (int j = 0; j < emulator->roms.count && remaining > 0; j++)
             {
                 retro_emulator_file_t *file = &emulator->roms.files[j];
@@ -148,10 +146,7 @@ void crc_cache_idle_task(tab_t *tab)
                 if (file->checksum == 0)
                     file->checksum = crc_cache_lookup(file);
 
-                if (file->checksum != 0)
-                    continue;
-
-                if (emulator_crc32_file(file))
+                if (file->checksum == 0 && emulator_crc32_file(file))
                 {
                     processed++;
                     remaining--;
@@ -161,7 +156,7 @@ void crc_cache_idle_task(tab_t *tab)
                     remaining = -1;
             }
 
-            if (processed == 0 && remaining > 0)
+            if (processed == 0 && remaining != -1)
                 emulator->crc_scan_done = true;
 
             gui_set_status(tab, "", "");
