@@ -21,7 +21,7 @@ typedef enum {
 } dialog_return_t;
 
 enum {
-    RG_TEXT_WRAP         = (1 << 0),
+    RG_TEXT_MULTILINE    = (1 << 0),
     RG_TEXT_ALIGN_LEFT   = (1 << 1),
     RG_TEXT_ALIGN_CENTER = (1 << 2),
     RG_TEXT_ALIGN_RIGHT  = (1 << 3),

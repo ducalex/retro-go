@@ -281,7 +281,7 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
                 fputs(panicConsole.output, fp);
                 fputs("\n\nEnd of log\n", fp);
                 fclose(fp);
-                strcat(message, "\n Log saved to SD Card.");
+                strcat(message, "\nLog saved to SD Card.");
             }
         }
 

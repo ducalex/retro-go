@@ -51,7 +51,11 @@ static rg_glyph_t get_glyph(const rg_font_t *font, int points, int c)
         .bitmap = {0},
     };
 
-    if (font->type == 0) // bitmap
+    if (c == '\n') // Some glyphs are always zero width
+    {
+        out.width = 0;
+    }
+    else if (font->type == 0) // bitmap
     {
         if (c < font->chars)
         {
@@ -147,14 +151,23 @@ font_info_t rg_gui_get_font_info(void)
 rg_rect_t rg_gui_calc_text_size(const char *text, uint32_t flags)
 {
     rg_rect_t rect = {0, 0};
+    int line_width = 0;
+    int line_height = 0;
 
-    // TO DO: Handle multi line and wrapping
-    while (text && *text && *text != '\n')
+    while (text && *text)
     {
-        rg_glyph_t g = get_glyph(font_info.font, font_info.points, *text);
-        rect.width += g.width;
-        rect.height = RG_MAX(g.height, rect.height);
-        text++;
+        int chr = *text++;
+
+        rg_glyph_t g = get_glyph(font_info.font, font_info.points, chr);
+        line_width += g.width;
+        line_height = RG_MAX(line_height, g.height);
+
+        if (chr == '\n' || *text == 0)
+        {
+            rect.width = RG_MAX(line_width, rect.width);
+            rect.height += line_height;
+            line_width = 0;
+        }
     }
 
     return rect;
@@ -168,7 +181,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
     if (!text || *text == 0) text = " ";
 
     rg_rect_t rect = rg_gui_calc_text_size(text, flags);
-    int line_height = rect.height;
+    int line_height = font_info.height;//rect.height;
     int text_width = rect.width;
     int line_width = width > 0 ? width : text_width;
     int y_offset = 0;
@@ -179,9 +192,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
     const char *ptr = text;
     while (*ptr)
     {
-        const char *line_start = ptr;
         int x_offset = 0;
-        int chr = 0;
 
         if (flags & (RG_TEXT_ALIGN_LEFT|RG_TEXT_ALIGN_CENTER))
         {
@@ -189,31 +200,21 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
                 x_offset = (line_width - text_width) / 2;
             else if (flags & RG_TEXT_ALIGN_LEFT)
                 x_offset = line_width - text_width;
-
-            for (int y = 0; y < line_height; y++)
-                for (int x = 0; x < line_width; x++)
-                    overlay_buffer[(line_width * y) + x] = color_bg;
         }
+
+        for (int y = 0; y < line_height; y++)
+            for (int x = 0; x < line_width; x++)
+                overlay_buffer[(line_width * y) + x] = color_bg;
 
         while (x_offset < line_width)
         {
-            if (*ptr && *ptr != '\n')
-                chr = *ptr++;
-            else
-                chr = ' ';
-
-            rg_glyph_t glyph = get_glyph(font_info.font, font_info.points, chr);
+            rg_glyph_t glyph = get_glyph(font_info.font, font_info.points, *ptr++);
 
             if (line_width - x_offset < glyph.width) // Do not truncate glyphs
             {
-                glyph.width = line_width - x_offset;
-                memset(&glyph.bitmap, 0, sizeof(glyph.bitmap));
-
-                // Render chr on next line if we're set to wrap
-                if (ptr > line_start && chr != ' ' && (flags & RG_TEXT_WRAP))
-                {
-                    ptr--;
-                }
+                if (flags & RG_TEXT_MULTILINE)
+                    text--;
+                break;
             }
 
             for (int y = 0; y < line_height; y++)
@@ -227,18 +228,17 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
             }
 
             x_offset += glyph.width;
+
+            if (*ptr == 0 || *ptr == '\n')
+                break;
         }
 
-        rg_display_write(x_pos, y_pos + y_offset, x_offset, line_height, 0, overlay_buffer);
+        rg_display_write(x_pos, y_pos + y_offset, line_width, line_height, 0, overlay_buffer);
 
         y_offset += line_height;
 
-        if (*ptr == '\n') {
-            ptr++;
-        }
-        else if (!(flags & RG_TEXT_WRAP)) {
+        if (!(flags & RG_TEXT_MULTILINE))
             break;
-        }
     }
 
     return (rg_rect_t){line_width, y_offset};
@@ -427,71 +427,94 @@ static int get_dialog_items_count(const dialog_option_t *options)
 
 void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int sel)
 {
-    int text_width = header ? strlen(header) : 8;
+    const int options_count = get_dialog_items_count(options);
+    const int sep_width = rg_gui_calc_text_size(": ", 0).width;
+    const int text_height = font_info.height;
+    const int box_padding = 6;
+    const int row_padding_y = 1;
+    const int row_padding_x = 8;
+
+    int text_width = rg_gui_calc_text_size(header, 0).width;
     int col1_width = -1;
     int col2_width = -1;
-    int options_count = get_dialog_items_count(options);
+    int box_width = box_padding * 2;
+    int box_height = box_padding * 2 + (header ? text_height + 6 : 0);
 
     for (int i = 0; i < options_count; i++)
     {
+        rg_rect_t label = {0};
+        rg_rect_t value = {0};
+
+        if (options[i].label)
+        {
+            label = rg_gui_calc_text_size(options[i].label, 0);
+            text_width = RG_MAX(text_width, label.width);
+        }
+
         if (options[i].value)
         {
-            col1_width = RG_MAX(col1_width, (int)strlen(options[i].label));
-            col2_width = RG_MAX(col2_width, (int)strlen(options[i].value));
+            value = rg_gui_calc_text_size(options[i].value, 0);
+            col1_width = RG_MAX(col1_width, label.width);
+            col2_width = RG_MAX(col2_width, value.width);
         }
-        else if (options[i].label)
-        {
-            text_width = RG_MAX(text_width, (int)strlen(options[i].label) + 2);
-        }
+
+        box_height += RG_MAX(label.height, value.height) + row_padding_y * 2;
     }
 
+    col1_width = RG_MIN(col1_width, 0.80f * RG_SCREEN_WIDTH);
+    col2_width = RG_MIN(col2_width, 0.80f * RG_SCREEN_WIDTH);
+
     if (col2_width >= 0)
-        text_width = RG_MAX(text_width, col1_width + col2_width + 4);
+        text_width = RG_MAX(text_width, col1_width + col2_width + sep_width);
 
-    text_width = RG_MIN(text_width, 32);
+    text_width = RG_MIN(text_width, 0.80f * RG_SCREEN_WIDTH);
+    col2_width = text_width - col1_width - sep_width;
+    box_width += text_width + row_padding_x * 2;
 
-    int row_margin = 1;
-    int row_height = font_info.height + row_margin * 2;
-
-    int box_padding = 6;
-    int box_width = (font_info.width * text_width) + box_padding * 2;
-    int box_height = (row_height * options_count) + (header ? row_height + 4 : 0) + box_padding * 2;
-
-    int box_x = (RG_SCREEN_WIDTH - box_width) / 2;
-    int box_y = (RG_SCREEN_HEIGHT - box_height) / 2;
+    const int box_x = (RG_SCREEN_WIDTH - box_width) / 2;
+    const int box_y = (RG_SCREEN_HEIGHT - box_height) / 2;
 
     int x = box_x + box_padding;
     int y = box_y + box_padding;
-    int inner_width = box_width - (box_padding * 2);
 
     if (header)
     {
+        int inner_width = box_width - box_padding * 2;
         rg_gui_draw_text(x, y, inner_width, header, theme.box_header, theme.box_background, RG_TEXT_ALIGN_CENTER);
-        rg_gui_draw_fill_rect(x, y + row_height - row_margin * 2, inner_width, 8, theme.box_background);
-        y += row_height + 4;
+        rg_gui_draw_fill_rect(x, y + text_height, inner_width, 6, theme.box_background);
+        y += text_height + 6;
     }
 
     for (int i = 0; i < options_count; i++)
     {
-        const char *label = options[i].label ? options[i].label : "";
-        char row[256];
-
-        if (options[i].value) {
-            sprintf(row, " %*s: %s ", -col1_width, label, options[i].value);
-        } else {
-            sprintf(row, " %s ", label);
-        }
-
-        uint16_t color = (options[i].flags == RG_DIALOG_FLAG_NORMAL)
-                            ? theme.item_standard : theme.item_disabled;
+        uint16_t color = (options[i].flags == RG_DIALOG_FLAG_NORMAL) ? theme.item_standard : theme.item_disabled;
         uint16_t fg = (i == sel) ? theme.box_background : color;
         uint16_t bg = (i == sel) ? color : theme.box_background;
-        row_height = rg_gui_draw_text(x, y + row_margin, inner_width, row, fg, bg, RG_TEXT_WRAP).height;
-        row_height += row_margin * 2;
-        rg_gui_draw_rect(x, y, inner_width, row_height, row_margin, bg);
-        y += row_height;
+        int xx = x + row_padding_x;
+        int yy = y + row_padding_y;
+        int row_height = 8;
+
+        if (options[i].value)
+        {
+            rg_gui_draw_text(xx, yy, col1_width, options[i].label, fg, bg, 0);
+            rg_gui_draw_text(xx + col1_width, yy, sep_width, ": ", fg, bg, 0);
+            row_height = rg_gui_draw_text(xx + col1_width + sep_width, yy, col2_width, options[i].value, fg, bg, RG_TEXT_MULTILINE).height;
+            rg_gui_draw_fill_rect(xx, yy + text_height, text_width - col2_width, row_height - text_height, bg);
+        }
+        else
+        {
+            row_height = rg_gui_draw_text(xx, yy, text_width, options[i].label, fg, bg, RG_TEXT_MULTILINE).height;
+        }
+
+        rg_gui_draw_fill_rect(x, yy, row_padding_x, row_height, bg);
+        rg_gui_draw_fill_rect(xx + text_width, yy, row_padding_x, row_height, bg);
+        rg_gui_draw_fill_rect(x, y, text_width + row_padding_x * 2, row_padding_y, bg);
+        rg_gui_draw_fill_rect(x, yy + row_height, text_width + row_padding_x * 2, row_padding_y, bg);
+
+        y += row_height + row_padding_y * 2;
     }
 
+    // Get real height. It might differ because rg_gui_calc_text_size isn't wraping aware yet
     box_height = y - box_y + box_padding;
 
     rg_gui_draw_rect(box_x, box_y, box_width, box_height, box_padding, theme.box_background);
