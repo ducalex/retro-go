@@ -228,8 +228,15 @@ void retro_loop()
             sprintf(buildstr, "%.30s", app->version);
             sprintf(datestr, "%s %.5s", app->buildDate, app->buildTime);
 
-            if (strstr(app->version, "-0-") == strrchr(app->version, '-') - 2)
-                sprintf(strstr(buildstr, "-0-") , " (%s)", strrchr(app->version, '-') + 1);
+            char *rel_hash = strstr(buildstr, "-0-g");
+            if (rel_hash)
+            {
+                rel_hash[0] = ' ';
+                rel_hash[1] = ' ';
+                rel_hash[2] = ' ';
+                rel_hash[3] = '(';
+                strcat(buildstr, ")");
+            }
 
             int sel = rg_gui_dialog("Retro-Go", options, -1);
             if (sel == 1) {
