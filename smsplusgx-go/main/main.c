@@ -70,27 +70,26 @@ static void netplay_handler(netplay_event_t event, void *arg)
 #endif
 }
 
-static bool save_state_handler(char *pathName)
+static bool screenshot_handler(const char *filename, int width, int height)
 {
-    FILE* f = fopen(pathName, "w");
+	return rg_display_save_frame(filename, currentUpdate, width, height);
+}
+
+static bool save_state_handler(const char *filename)
+{
+    FILE* f = fopen(filename, "w");
     if (f)
     {
         system_save_state(f);
         fclose(f);
-        char *filename = rg_emu_get_path(RG_PATH_SCREENSHOT, 0);
-        if (filename)
-        {
-            rg_display_save_frame(filename, currentUpdate, 160, 0);
-            rg_free(filename);
-        }
         return true;
     }
     return false;
 }
 
-static bool load_state_handler(char *pathName)
+static bool load_state_handler(const char *filename)
 {
-    FILE* f = fopen(pathName, "r");
+    FILE* f = fopen(filename, "r");
     if (f)
     {
         system_load_state(f);
@@ -114,6 +113,7 @@ void app_main(void)
         .saveState = &save_state_handler,
         .netplay = &netplay_handler,
         .reset = &reset_handler,
+        .screenshot = &screenshot_handler,
     };
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);

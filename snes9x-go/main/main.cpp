@@ -147,28 +147,23 @@ static dialog_return_t menu_keymap_cb(dialog_option_t *option, dialog_event_t ev
     return RG_DIALOG_IGNORE;
 }
 
-static bool save_state_handler(char *pathName)
+static bool screenshot_handler(const char *filename, int width, int height)
 {
-	if (S9xFreezeGame(pathName))
-	{
-		char *filename = rg_emu_get_path(RG_PATH_SCREENSHOT, 0);
-		if (filename)
-		{
-			rg_display_save_frame(filename, currentUpdate, 160, 0);
-			rg_free(filename);
-		}
-		return true;
-	}
-	return false;
+	return rg_display_save_frame(filename, currentUpdate, width, height);
 }
 
-static bool load_state_handler(char *pathName)
+static bool save_state_handler(const char *filename)
+{
+	return S9xFreezeGame(filename) == SUCCESS;
+}
+
+static bool load_state_handler(const char *filename)
 {
 	bool ret = false;
 
-	if (rg_vfs_filesize(pathName) > 0)
+	if (rg_vfs_filesize(filename) > 0)
 	{
-		ret = S9xUnfreezeGame(pathName) == SUCCESS;
+		ret = S9xUnfreezeGame(filename) == SUCCESS;
 	}
 	else
 	{
@@ -293,6 +288,7 @@ extern "C" void app_main(void)
 		.saveState = &save_state_handler,
 		.reset = &reset_handler,
 		.netplay = NULL,
+		.screenshot = &screenshot_handler,
 	};
 
 	app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);

@@ -880,14 +880,16 @@ int rg_gui_game_debug_menu(void)
         {0, "Block free", block_free, 1, NULL},
         {0, "Uptime    ", uptime, 1, NULL},
         RG_DIALOG_SEPARATOR,
-        {0, "Cheats", NULL, 1, NULL},
-        {0, "Rewind", NULL, 1, NULL},
-        {100, "Crash", NULL, 1, NULL},
+        {10, "Screenshot", NULL, 1, NULL},
+        {20, "Cheats", NULL, 1, NULL},
+        {30, "Rewind", NULL, 1, NULL},
+        {40, "Crash", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
 
     runtime_stats_t stats = rg_system_get_stats();
     rg_display_t display = rg_display_get_status();
+    // rg_app_desc_t *app = rg_system_get_app();
 
     sprintf(screen_res, "%dx%d", RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT);
     sprintf(game_res, "%dx%d", display.source.width, display.source.height);
@@ -901,7 +903,9 @@ int rg_gui_game_debug_menu(void)
 
     int r = rg_gui_dialog("Debugging", options, 0);
 
-    if (r == 100)
+    if (r == 10)
+        rg_emu_screenshot(RG_BASE_PATH "/screenshot.png", 0, 0);
+    else if (r == 40)
         RG_PANIC("Crash test!");
 
     return r;

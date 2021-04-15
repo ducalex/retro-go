@@ -62,9 +62,10 @@ typedef enum
     SPI_LOCK_OTHER = 3,
 } spi_lock_res_t;
 
-typedef bool (*state_handler_t)(char *pathName);
+typedef bool (*state_handler_t)(const char *filename);
 typedef bool (*reset_handler_t)(bool hard);
 typedef bool (*message_handler_t)(int msg, void *arg);
+typedef bool (*screenshot_handler_t)(const char *filename, int width, int height);
 
 typedef struct
 {
@@ -73,6 +74,7 @@ typedef struct
     reset_handler_t reset;
     message_handler_t message;
     netplay_handler_t netplay;
+    screenshot_handler_t screenshot;
 } rg_emu_proc_t;
 
 typedef struct
@@ -136,6 +138,7 @@ bool rg_emu_save_state(int slot);
 bool rg_emu_load_state(int slot);
 bool rg_emu_reset(int hard);
 bool rg_emu_notify(int msg, void *arg);
+bool rg_emu_screenshot(const char *file, int width, int height);
 void rg_emu_start_game(const char *emulator, const char *romPath, rg_start_action_t action);
 
 int32_t rg_system_get_startup_app(void);

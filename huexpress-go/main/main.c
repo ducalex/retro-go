@@ -306,27 +306,21 @@ void *osd_alloc(size_t size)
     return rg_alloc(size, (size <= 0x10000) ? MEM_FAST : MEM_SLOW);
 }
 
-static bool save_state_handler(char *pathName)
+static bool screenshot_handler(const char *filename, int width, int height)
 {
-    if (SaveState(pathName) == 0)
-    {
-        char *filename = rg_emu_get_path(RG_PATH_SCREENSHOT, 0);
-        if (filename)
-        {
-            // We must use previous update because at this point current has been wiped.
-            rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
-            rg_display_save_frame(filename, previousUpdate, 160, 0);
-            rg_free(filename);
-        }
-        return true;
-    }
-
-    return false;
+    // We must use previous update because at this point current has been wiped.
+    rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
+    return rg_display_save_frame(filename, previousUpdate, width, height);
 }
 
-static bool load_state_handler(char *pathName)
+static bool save_state_handler(const char *filename)
 {
-    if (LoadState(pathName) != 0)
+    return SaveState(filename) == 0;
+}
+
+static bool load_state_handler(const char *filename)
+{
+    if (LoadState(filename) != 0)
     {
         ResetPCE(false);
         return false;
@@ -346,6 +340,7 @@ void app_main(void)
         .loadState = &load_state_handler,
         .saveState = &save_state_handler,
         .reset = &reset_handler,
+        .screenshot = &screenshot_handler,
     };
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);

@@ -38,25 +38,19 @@ static const char *SETTING_PALETTE  = "Palette";
 // --- MAIN
 
 
-static bool save_state_handler(char *pathName)
+static bool screenshot_handler(const char *filename, int width, int height)
 {
-    if (state_save(pathName) == 0)
-    {
-        char *filename = rg_emu_get_path(RG_PATH_SCREENSHOT, 0);
-        if (filename)
-        {
-            rg_display_save_frame(filename, currentUpdate, 160, 0);
-            rg_free(filename);
-        }
-        return true;
-    }
-
-    return false;
+    return rg_display_save_frame(filename, currentUpdate, width, height);
 }
 
-static bool load_state_handler(char *pathName)
+static bool save_state_handler(const char *filename)
 {
-    if (state_load(pathName) != 0)
+    return state_save(filename) == 0;
+}
+
+static bool load_state_handler(const char *filename)
+{
+    if (state_load(filename) != 0)
     {
         // If a state fails to load then we should behave as we do on boot
         // which is a hard reset and load sram if present
@@ -237,6 +231,7 @@ void app_main(void)
         .saveState = &save_state_handler,
         .reset = &reset_handler,
         .netplay = NULL,
+        .screenshot = &screenshot_handler,
     };
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);

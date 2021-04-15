@@ -415,9 +415,9 @@ char *rg_emu_get_path(rg_path_type_t type, const char *_romPath)
 
 bool rg_emu_load_state(int slot)
 {
-    if (!app.romPath)
+    if (!app.romPath || !app.handlers.loadState)
     {
-        RG_LOGE("No game/emulator loaded...\n");
+        RG_LOGE("No rom or handler defined...\n");
         return false;
     }
 
@@ -446,9 +446,9 @@ bool rg_emu_load_state(int slot)
 
 bool rg_emu_save_state(int slot)
 {
-    if (!app.romPath)
+    if (!app.romPath || !app.handlers.saveState)
     {
-        RG_LOGE("No game/emulator loaded...\n");
+        RG_LOGE("No rom or handler defined...\n");
         return false;
     }
 
@@ -494,12 +494,40 @@ bool rg_emu_save_state(int slot)
 
         rg_gui_alert("Save failed", NULL);
     }
+    else
+    {
+        // Save succeeded, let's take a pretty screenshot for the launcher!
+        char *fileName = rg_emu_get_path(RG_PATH_SCREENSHOT, app.romPath);
+        rg_emu_screenshot(fileName, 160, 0);
+        free(fileName);
+    }
 
     inputTimeout = INPUT_TIMEOUT;
 
     rg_system_set_led(0);
 
     free(saveName);
+
+    return success;
+}
+
+bool rg_emu_screenshot(const char *file, int width, int height)
+{
+    if (!app.handlers.screenshot)
+    {
+        RG_LOGE("No handler defined...\n");
+        return false;
+    }
+
+    RG_LOGI("Saving screenshot %dx%d to '%s'.\n", width, height, file);
+
+    rg_system_set_led(1);
+
+    // FIXME: We should allocate a framebuffer to pass to the handler and ask it
+    // to fill it, then we'd resize and save to png from here...
+    bool success = (*app.handlers.screenshot)(file, width, height);
+
+    rg_system_set_led(0);
 
     return success;
 }

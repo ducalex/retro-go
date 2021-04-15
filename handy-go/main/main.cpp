@@ -109,34 +109,31 @@ static dialog_return_t rotation_cb(dialog_option_t *option, dialog_event_t event
     return RG_DIALOG_IGNORE;
 }
 
-static bool save_state_handler(char *pathName)
+static bool screenshot_handler(const char *filename, int width, int height)
+{
+    return rg_display_save_frame(filename, currentUpdate, width, height);
+}
+
+static bool save_state_handler(const char *filename)
 {
     bool ret = false;
     FILE *fp;
 
-    if ((fp = fopen(pathName, "wb")))
+    if ((fp = fopen(filename, "wb")))
     {
         ret = lynx->ContextSave(fp);
         fclose(fp);
-
-        char *filename = rg_emu_get_path(RG_PATH_SCREENSHOT, 0);
-        if (filename)
-        {
-            rg_display_save_frame(filename, currentUpdate, 160, 0);
-            rg_free(filename);
-        }
     }
 
     return ret;
 }
 
-
-static bool load_state_handler(char *pathName)
+static bool load_state_handler(const char *filename)
 {
     bool ret = false;
     FILE *fp;
 
-    if ((fp = fopen(pathName, "rb")))
+    if ((fp = fopen(filename, "rb")))
     {
         ret = lynx->ContextLoad(fp);
         fclose(fp);
@@ -162,6 +159,7 @@ extern "C" void app_main(void)
         .saveState = &save_state_handler,
         .reset = &reset_handler,
         .netplay = NULL,
+        .screenshot = &screenshot_handler,
     };
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
@@ -212,7 +210,7 @@ extern "C" void app_main(void)
         }
         else if (joystick & GAMEPAD_KEY_VOLUME) {
             dialog_option_t options[] = {
-                {100, "Rotation", "Auto", 1, &rotation_cb},
+                {100, "Rotation", NULL, 1, &rotation_cb},
                 RG_DIALOG_CHOICE_LAST
             };
             rg_gui_game_settings_menu(options);
