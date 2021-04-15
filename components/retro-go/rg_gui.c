@@ -36,11 +36,13 @@ void rg_gui_init(void)
     rg_gui_set_theme(&default_theme);
 }
 
-void rg_gui_set_theme(const dialog_theme_t *new_theme)
+bool rg_gui_set_theme(const dialog_theme_t *new_theme)
 {
-    if (new_theme) {
-        memcpy(&theme, new_theme, sizeof(dialog_theme_t));
-    }
+    if (!new_theme)
+        return false;
+
+    theme = *new_theme;
+    return true;
 }
 
 static rg_glyph_t get_glyph(const rg_font_t *font, int points, int c)
@@ -117,30 +119,24 @@ static rg_glyph_t get_glyph(const rg_font_t *font, int points, int c)
     return out;
 }
 
-void rg_gui_set_font_type(uint8_t type)
+bool rg_gui_set_font_type(uint8_t type)
 {
-#if 0
-    int index = (type / 5) % fonts_count;
-    int size  = (type % 5);
+    // if (type > fonts_count - 1)
+    //     return false;
 
-    font_info.points = 8 + (size * 2);
-    font_info.type = (index * 5) + size;
-    font_info.font = fonts[index];
-    font_info.width  = RG_MAX(font_info.font->width, 8);
-    font_info.height = font_info.points;
-#else
     font_info.type = type % fonts_count;
     font_info.font = fonts[font_info.type];
     font_info.points = (font_info.type < 3) ? (8 + font_info.type * 4) : font_info.font->height;
     font_info.width  = RG_MAX(font_info.font->width, 4);
     font_info.height = font_info.points;
-#endif
 
     rg_settings_set_int32(SETTING_FONTTYPE, font_info.type);
 
     RG_LOGI("Font set to: points=%d, size=%dx%d, scaling=%.2f\n",
         font_info.points, font_info.width, font_info.height,
         (float)font_info.points / font_info.font->height);
+
+    return true;
 }
 
 font_info_t rg_gui_get_font_info(void)
@@ -213,7 +209,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
             if (line_width - x_offset < glyph.width) // Do not truncate glyphs
             {
                 if (flags & RG_TEXT_MULTILINE)
-                    text--;
+                    ptr--;
                 break;
             }
 

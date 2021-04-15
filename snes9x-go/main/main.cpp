@@ -242,7 +242,7 @@ static void snes9x_task(void *arg)
 		else if (joystick & GAMEPAD_KEY_VOLUME)
 		{
 			dialog_option_t options[] = {
-				{2, "Controls", "Type 0", 1, &menu_keymap_cb},
+				{2, "Controls", NULL, 1, &menu_keymap_cb},
 				RG_DIALOG_CHOICE_LAST};
 			rg_gui_game_settings_menu(options);
 		}
