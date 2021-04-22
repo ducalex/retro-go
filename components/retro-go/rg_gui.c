@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 #include <lupng.h>
 
 #include "bitmaps/image_hourglass.h"
@@ -866,9 +867,9 @@ int rg_gui_game_settings_menu(const dialog_option_t *extra_options)
 
 int rg_gui_game_debug_menu(void)
 {
-    char screen_res[10], game_res[10], scaled_res[10];
-    char stack_hwm[16], heap_free[16], block_free[16];
-    char uptime[16];
+    char screen_res[20], game_res[20], scaled_res[20];
+    char stack_hwm[20], heap_free[20], block_free[20];
+    char system_rtc[20], uptime[20];
 
     const dialog_option_t options[] = {
         {0, "Screen Res", screen_res, 1, NULL},
@@ -877,11 +878,11 @@ int rg_gui_game_debug_menu(void)
         {0, "Stack HWM ", stack_hwm, 1, NULL},
         {0, "Heap free ", heap_free, 1, NULL},
         {0, "Block free", block_free, 1, NULL},
+        {0, "System RTC", system_rtc, 1, NULL},
         {0, "Uptime    ", uptime, 1, NULL},
         RG_DIALOG_SEPARATOR,
         {10, "Screenshot", NULL, 1, NULL},
         {20, "Cheats", NULL, 1, NULL},
-        {30, "Rewind", NULL, 1, NULL},
         {40, "Crash", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
@@ -889,7 +890,9 @@ int rg_gui_game_debug_menu(void)
     runtime_stats_t stats = rg_system_get_stats();
     rg_display_t display = rg_display_get_status();
     // rg_app_desc_t *app = rg_system_get_app();
+    time_t now = time(NULL);
 
+    strftime(system_rtc, 20, "%F %T", localtime(&now));
     sprintf(screen_res, "%dx%d", RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT);
     sprintf(game_res, "%dx%d", display.source.width, display.source.height);
     sprintf(scaled_res, "%dx%d", display.viewport.width, display.viewport.height);

@@ -118,7 +118,7 @@ An up to date list of incompatible/broken games can be found on the [ODROID-GO f
 ## Prerequisites
 You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/v4.0.2/) version 3.3.4 or 4.0.2. The legacy (make) build system isn't supported, only idf/cmake.
 
-_Note: many other versions of esp-idf will work but at least 3.3.0, 4.0.0, 4.1.0, and 4.2.0 are known to have driver bugs resulting in no audio or no SD Card support. For now the best choice is 4.0.2. I will update this document when 4.1 or 4.2 fix the driver issues._
+_Note: Other esp-idf versions will work (>=3.3.3) but I cannot provide help for them. Many are known to have problems; for example 3.3.0, 4.0.0, and 4.1.* have broken sound (but it is fixable if you really need to) and 4.2 and 4.3 have broken SD Card support._
 
 ### ESP-IDF Patches
 Retro-Go will build and most likely run without any changes to esp-idf, but patches do provide significant advantages. The patches are located in `tools/patches`. Here's the list:

@@ -86,7 +86,7 @@ bool rg_vfs_mount(rg_blkdev_t dev)
         .max_files = 5,
     };
 
-    esp_vfs_fat_sdmmc_unmount();
+    // esp_vfs_fat_sdmmc_unmount();
 
     esp_err_t ret = esp_vfs_fat_sdmmc_mount(
             RG_BASE_PATH, &host_config, &slot_config, &mount_config, NULL);

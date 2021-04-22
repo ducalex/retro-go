@@ -221,7 +221,9 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
     RG_LOGX("========================================================\n\n");
 
     #if USE_SPI_MUTEX
-    spiMutex = xSemaphoreCreateMutex();
+    // spiMutex = xSemaphoreCreateMutex();
+    spiMutex = xSemaphoreCreateBinary();
+    xSemaphoreGive(spiMutex);
     spiMutexOwner = -1;
     #endif
 
