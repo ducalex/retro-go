@@ -101,7 +101,7 @@ struct dialog_option_s
 
 void rg_gui_init(void);
 bool rg_gui_set_theme(const dialog_theme_t *new_theme);
-bool rg_gui_set_font_type(uint8_t type);
+bool rg_gui_set_font_type(int type);
 font_info_t rg_gui_get_font_info(void);
 rg_rect_t rg_gui_calc_text_size(const char *text, uint32_t flags);
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, uint16_t color_fg, uint16_t color_bg, uint32_t flags);

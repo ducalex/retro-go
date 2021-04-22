@@ -119,12 +119,15 @@ static rg_glyph_t get_glyph(const rg_font_t *font, int points, int c)
     return out;
 }
 
-bool rg_gui_set_font_type(uint8_t type)
+bool rg_gui_set_font_type(int type)
 {
-    // if (type > fonts_count - 1)
-    //     return false;
+    if (type < 0)
+        type += fonts_count;
 
-    font_info.type = type % fonts_count;
+    if (type < 0 || type > fonts_count - 1)
+        return false;
+
+    font_info.type = type;
     font_info.font = fonts[font_info.type];
     font_info.points = (font_info.type < 3) ? (8 + font_info.type * 4) : font_info.font->height;
     font_info.width  = RG_MAX(font_info.font->width, 4);

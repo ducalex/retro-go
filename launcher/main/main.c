@@ -21,12 +21,13 @@ static dialog_return_t font_type_cb(dialog_option_t *option, dialog_event_t even
     font_info_t info = rg_gui_get_font_info();
 
     if (event == RG_DIALOG_PREV) {
-        rg_gui_set_font_type(info.type > 0 ? info.type - 1 : 0xFF);
+        rg_gui_set_font_type((int)info.type - 1);
         info = rg_gui_get_font_info();
         gui_redraw();
     }
     if (event == RG_DIALOG_NEXT) {
-        rg_gui_set_font_type(rg_gui_get_font_info().type + 1);
+        if (!rg_gui_set_font_type((int)info.type + 1))
+            rg_gui_set_font_type(0);
         info = rg_gui_get_font_info();
         gui_redraw();
     }

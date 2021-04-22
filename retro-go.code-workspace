@@ -61,6 +61,7 @@
 			"smsplusgx",
 			"supergraphx"
 		],
+		"files.trimTrailingWhitespace": true,
 		"files.exclude": {
 			"**/build": true,
 			"root": true
