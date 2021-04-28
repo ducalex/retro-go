@@ -222,6 +222,7 @@ enum { TDEFL_LZ_CODE_BUF_SIZE = 64 * 1024, TDEFL_OUT_BUF_SIZE = (TDEFL_LZ_CODE_B
 // The low-level tdefl functions below may be used directly if the above helper functions aren't flexible enough. The low-level functions don't make any heap allocations, unlike the above helper functions.
 typedef enum
 {
+  TDEFL_STATUS_ERROR = -3,
   TDEFL_STATUS_BAD_PARAM = -2,
   TDEFL_STATUS_PUT_BUF_FAILED = -1,
   TDEFL_STATUS_OKAY = 0,
@@ -1215,57 +1216,58 @@ static void tdefl_start_static_block(tdefl_compressor *d)
   TDEFL_PUT_BITS(1, 2);
 }
 
-static bool tdefl_compress_lz_codes(tdefl_compressor *d)
+static int tdefl_compress_block(tdefl_compressor *d, bool static_block)
 {
-  unsigned flags;
-  uint8_t *pLZ_codes;
+  if (static_block)
+    tdefl_start_static_block(d);
+  else
+    tdefl_start_dynamic_block(d);
 
-  flags = 1;
-  for (pLZ_codes = d->m_lz_code_buf; pLZ_codes < d->m_pLZ_code_buf; flags >>= 1)
+  unsigned flags = 1;
+  for (uint8_t *pLZ_codes = d->m_lz_code_buf; pLZ_codes < d->m_pLZ_code_buf; flags >>= 1)
   {
     if (flags == 1)
       flags = *pLZ_codes++ | 0x100;
     if (flags & 1)
     {
       unsigned sym, num_extra_bits;
-      unsigned match_len = pLZ_codes[0], match_dist = (pLZ_codes[1] | (pLZ_codes[2] << 8)); pLZ_codes += 3;
+      unsigned match_len = pLZ_codes[0], match_dist = (pLZ_codes[1] | (pLZ_codes[2] << 8));
 
-      MZ_ASSERT(d->m_huff_code_sizes[0][s_tdefl_len_sym[match_len]]);
+      pLZ_codes += 3;
+
+      // MZ_ASSERT(d->m_huff_code_sizes[0][s_tdefl_len_sym[match_len]]);
+      if (!d->m_huff_code_sizes[0][s_tdefl_len_sym[match_len]]) {return d->m_prev_return_status = TDEFL_STATUS_ERROR;}
       TDEFL_PUT_BITS(d->m_huff_codes[0][s_tdefl_len_sym[match_len]], d->m_huff_code_sizes[0][s_tdefl_len_sym[match_len]]);
       TDEFL_PUT_BITS(match_len & mz_bitmasks[s_tdefl_len_extra[match_len]], s_tdefl_len_extra[match_len]);
 
       if (match_dist < 512)
       {
-        sym = s_tdefl_small_dist_sym[match_dist]; num_extra_bits = s_tdefl_small_dist_extra[match_dist];
+        sym = s_tdefl_small_dist_sym[match_dist];
+        num_extra_bits = s_tdefl_small_dist_extra[match_dist];
       }
       else
       {
-        sym = s_tdefl_large_dist_sym[match_dist >> 8]; num_extra_bits = s_tdefl_large_dist_extra[match_dist >> 8];
+        sym = s_tdefl_large_dist_sym[match_dist >> 8];
+        num_extra_bits = s_tdefl_large_dist_extra[match_dist >> 8];
       }
-      MZ_ASSERT(d->m_huff_code_sizes[1][sym]);
+      // MZ_ASSERT(d->m_huff_code_sizes[1][sym]);
+      if (!d->m_huff_code_sizes[1][sym]) {return d->m_prev_return_status = TDEFL_STATUS_ERROR;}
       TDEFL_PUT_BITS(d->m_huff_codes[1][sym], d->m_huff_code_sizes[1][sym]);
       TDEFL_PUT_BITS(match_dist & mz_bitmasks[num_extra_bits], num_extra_bits);
     }
     else
     {
       unsigned lit = *pLZ_codes++;
-      MZ_ASSERT(d->m_huff_code_sizes[0][lit]);
+      // MZ_ASSERT(d->m_huff_code_sizes[0][lit]);
+      if (!d->m_huff_code_sizes[0][lit]) {return d->m_prev_return_status = TDEFL_STATUS_ERROR;}
       TDEFL_PUT_BITS(d->m_huff_codes[0][lit], d->m_huff_code_sizes[0][lit]);
     }
   }
 
   TDEFL_PUT_BITS(d->m_huff_codes[0][256], d->m_huff_code_sizes[0][256]);
+  // end tdefl_compress_lz_codes
 
-  return (d->m_pOutput_buf < d->m_pOutput_buf_end);
-}
-
-static bool tdefl_compress_block(tdefl_compressor *d, bool static_block)
-{
-  if (static_block)
-    tdefl_start_static_block(d);
-  else
-    tdefl_start_dynamic_block(d);
-  return tdefl_compress_lz_codes(d);
+  return TDEFL_STATUS_OKAY;
 }
 
 static int tdefl_flush_block(tdefl_compressor *d, int flush)
@@ -1296,7 +1298,11 @@ static int tdefl_flush_block(tdefl_compressor *d, int flush)
   pSaved_output_buf = d->m_pOutput_buf; saved_bit_buf = d->m_bit_buffer; saved_bits_in = d->m_bits_in;
 
   if (!use_raw_block)
-    comp_block_succeeded = tdefl_compress_block(d, (d->m_flags & TDEFL_FORCE_ALL_STATIC_BLOCKS) || (d->m_total_lz_bytes < 48));
+  {
+    if (tdefl_compress_block(d, (d->m_flags & TDEFL_FORCE_ALL_STATIC_BLOCKS) || (d->m_total_lz_bytes < 48)) < 0)
+      return d->m_prev_return_status;
+    comp_block_succeeded = (d->m_pOutput_buf < d->m_pOutput_buf_end);
+  }
 
   // If the block gets expanded, forget the current contents of the output buffer and send a raw block instead.
   if ( ((use_raw_block) || ((d->m_total_lz_bytes) && ((d->m_pOutput_buf - pSaved_output_buf + 1U) >= d->m_total_lz_bytes))) &&
@@ -1318,7 +1324,8 @@ static int tdefl_flush_block(tdefl_compressor *d, int flush)
   else if (!comp_block_succeeded)
   {
     d->m_pOutput_buf = pSaved_output_buf; d->m_bit_buffer = saved_bit_buf, d->m_bits_in = saved_bits_in;
-    tdefl_compress_block(d, true);
+    if (tdefl_compress_block(d, true) < 0)
+      return d->m_prev_return_status;
   }
 
   if (flush)
