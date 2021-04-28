@@ -114,6 +114,7 @@ typedef struct
     uint32_t freeBlockInt;
     uint32_t freeBlockExt;
     uint32_t freeStackMain;
+    uint32_t magicWord;
 } runtime_stats_t;
 
 rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers);

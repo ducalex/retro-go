@@ -24,6 +24,7 @@
 #endif
 
 #define PANIC_TRACE_MAGIC 0x12345678
+#define BLOCK_MAGIC 0x12345678
 
 #ifdef ENABLE_PROFILING
 #define INPUT_TIMEOUT -1
@@ -53,10 +54,9 @@ typedef struct
 // These will survive a software reset
 static RTC_NOINIT_ATTR panic_trace_t panicTrace;
 static RTC_NOINIT_ATTR panic_console_t panicConsole;
-
-static rg_app_desc_t app;
-static runtime_stats_t statistics;
+static RTC_NOINIT_ATTR runtime_stats_t statistics;
 static runtime_counters_t counters;
+static rg_app_desc_t app;
 static long inputTimeout = -1;
 static bool initialized = false;
 
@@ -87,6 +87,11 @@ static void system_monitor_task(void *arg)
     multi_heap_info_t heap_info = {0};
     time_t lastTime = time(NULL);
     bool ledState = false;
+
+    memset(&statistics, 0, sizeof(statistics));
+    memset(&counters, 0, sizeof(counters));
+
+    statistics.magicWord = BLOCK_MAGIC;
 
     // Give the app a few seconds to start before monitoring
     vTaskDelay(pdMS_TO_TICKS(2000));
@@ -274,6 +279,12 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
             {
                 fprintf(fp, "Application: %s %s\n", app.name, app.version);
                 fprintf(fp, "Build date: %s %s\n", app.buildDate, app.buildTime);
+                if (statistics.magicWord == BLOCK_MAGIC)
+                {
+                    fprintf(fp, "Free memory: %d + %d\n", statistics.freeMemoryInt, statistics.freeMemoryExt);
+                    fprintf(fp, "Free block: %d + %d\n", statistics.freeBlockInt, statistics.freeBlockExt);
+                    fprintf(fp, "Stack HWM: %d\n", statistics.freeStackMain);
+                }
                 if (panicTrace.magicWord == PANIC_TRACE_MAGIC)
                 {
                     fprintf(fp, "Message: %.256s\n", panicTrace.message);
