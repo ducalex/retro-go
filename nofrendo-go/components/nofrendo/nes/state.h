@@ -32,7 +32,7 @@ typedef struct
 } SnssBlockHeader;
 
 extern void state_setslot(int slot);
-extern int state_load(char *fn);
-extern int state_save(char *fn);
+extern int state_load(const char *fn);
+extern int state_save(const char *fn);
 
 #endif /* _NESSTATE_H_ */

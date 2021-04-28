@@ -70,7 +70,7 @@ void state_setslot(int slot)
    }
 }
 
-int state_save(char* fn)
+int state_save(const char* fn)
 {
    uint8 buffer[512];
    uint8 numberOfBlocks = 0;
@@ -255,7 +255,7 @@ _error:
    return -1;
 }
 
-int state_load(char* fn)
+int state_load(const char* fn)
 {
    uint8 buffer[512];
    FILE *file;
