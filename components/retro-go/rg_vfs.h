@@ -10,6 +10,12 @@ typedef enum
     RG_USBHDD,
 } rg_blkdev_t;
 
+typedef enum
+{
+    RG_SKIP_HIDDEN = (1 << 0),
+    RG_RECURSIVE   = (1 << 1),
+} rg_vfs_flags_t;
+
 bool rg_vfs_init(void);
 bool rg_vfs_deinit(void);
 
@@ -23,6 +29,11 @@ bool rg_vfs_mkdir(const char *dir);
 bool rg_vfs_readdir(const char* path, char **out_files, size_t *out_count, bool skip_hidden);
 bool rg_vfs_delete(const char *path);
 long rg_vfs_filesize(const char *path);
+bool rg_vfs_isdir(const char *path);
 
+char *rg_vfs_dirname(const char *path);
 const char *rg_vfs_basename(const char *path);
 const char *rg_vfs_extension(const char *path);
+
+FILE *rg_vfs_fopen(const char *path, const char *mode);
+int rg_vfs_fclose(FILE *file);

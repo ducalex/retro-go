@@ -248,6 +248,10 @@ void app_main(void)
     autoSaveSRAM = rg_settings_get_app_int32(SETTING_SAVESRAM, 0);
     sramFile = rg_emu_get_path(RG_PATH_SAVE_SRAM, 0);
 
+    char *dirname = rg_vfs_dirname(sramFile);
+    rg_vfs_mkdir(dirname);
+    free(dirname);
+
     // Load ROM
     rom_load(app->romPath);
 

@@ -127,7 +127,7 @@ bool rg_vfs_mkdir(const char *dir)
             return true;
         }
 
-        char temp[255];
+        char temp[PATH_MAX + 1];
         strncpy(temp, dir, sizeof(temp) - 1);
 
         for (char *p = temp + strlen(RG_BASE_PATH) + 1; *p; p++) {
@@ -209,19 +209,53 @@ long rg_vfs_filesize(const char *path)
     return (stat(path, &st) == 0) ? st.st_size : -1;
 }
 
+bool rg_vfs_isdir(const char *path)
+{
+    struct stat st;
+
+    if (stat(path, &st) == 0)
+        return S_ISDIR(st.st_mode);
+
+    return false;
+}
+
+char *rg_vfs_dirname(const char *path)
+{
+    char *dirname = strdup(path);
+    char *basename = strrchr(dirname, '/');
+    if (basename) {
+        *basename = 0;
+    }
+    return dirname;
+}
+
 const char *rg_vfs_basename(const char *path)
 {
     const char *name = strrchr(path, '/');
     return name ? name + 1 : NULL;
 }
 
-const char *rg_vfs_dirname(const char *path)
-{
-    return NULL;
-}
-
 const char* rg_vfs_extension(const char *path)
 {
     const char *ext = strrchr(path, '.');
     return ext ? ext + 1 : NULL;
+}
+
+FILE *rg_vfs_fopen(const char *path, const char *mode)
+{
+    FILE *file = fopen(path, mode);
+    if (!file && !strchr(mode, 'r'))
+    {
+        // Try to create the directory and retry open
+        char *dirname = rg_vfs_dirname(path);
+        rg_vfs_mkdir(dirname);
+        free(dirname);
+        file = fopen(path, mode);
+    }
+    return file;
+}
+
+int rg_vfs_fclose(FILE *file)
+{
+    return fclose(file);
 }

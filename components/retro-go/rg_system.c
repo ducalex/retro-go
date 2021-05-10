@@ -374,11 +374,10 @@ rg_app_desc_t *rg_system_get_app()
 char *rg_emu_get_path(rg_path_type_t type, const char *_romPath)
 {
     const char *fileName = _romPath ?: app.romPath;
-    char buffer[256];
+    char buffer[PATH_MAX + 1];
 
-    if (strstr(fileName, RG_BASE_PATH_ROMS))
+    if (strstr(fileName, RG_BASE_PATH_ROMS) == fileName)
     {
-        fileName = strstr(fileName, RG_BASE_PATH_ROMS);
         fileName += strlen(RG_BASE_PATH_ROMS);
     }
 
@@ -441,9 +440,9 @@ bool rg_emu_load_state(int slot)
     // Increased input timeout, this might take a while
     inputTimeout = INPUT_TIMEOUT * 5;
 
-    char *pathName = rg_emu_get_path(RG_PATH_SAVE_STATE, app.romPath);
-    bool success = (*app.handlers.loadState)(pathName);
-    // bool success = rg_emu_notify(RG_MSG_LOAD_STATE, pathName);
+    char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE, app.romPath);
+    bool success = (*app.handlers.loadState)(filename);
+    // bool success = rg_emu_notify(RG_MSG_LOAD_STATE, filename);
 
     inputTimeout = INPUT_TIMEOUT;
 
@@ -452,7 +451,7 @@ bool rg_emu_load_state(int slot)
         RG_LOGE("Load failed!\n");
     }
 
-    free(pathName);
+    free(filename);
 
     return success;
 }
@@ -470,23 +469,29 @@ bool rg_emu_save_state(int slot)
     rg_system_set_led(1);
     rg_gui_draw_hourglass();
 
-    char *saveName = rg_emu_get_path(RG_PATH_SAVE_STATE, app.romPath);
+    char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE, app.romPath);
+    char *dirname = rg_vfs_dirname(filename);
     char path_buffer[PATH_MAX + 1];
     bool success = false;
 
     // Increased input timeout, this might take a while
     inputTimeout = INPUT_TIMEOUT * 5;
 
-    sprintf(path_buffer, "%s.new", saveName);
+    if (!rg_vfs_mkdir(dirname))
+    {
+        RG_LOGE("Unable to create dir, save might fail...\n");
+    }
+
+    sprintf(path_buffer, "%s.new", filename);
     if ((*app.handlers.saveState)(path_buffer))
     {
-        sprintf(path_buffer, "%s.bak", saveName);
-        rename(saveName, path_buffer);
+        sprintf(path_buffer, "%s.bak", filename);
+        rename(filename, path_buffer);
 
-        sprintf(path_buffer, "%s.new", saveName);
-        if (rename(path_buffer, saveName) == 0)
+        sprintf(path_buffer, "%s.new", filename);
+        if (rename(path_buffer, filename) == 0)
         {
-            sprintf(path_buffer, "%s.bak", saveName);
+            sprintf(path_buffer, "%s.bak", filename);
             unlink(path_buffer);
 
             success = true;
@@ -500,9 +505,9 @@ bool rg_emu_save_state(int slot)
     {
         RG_LOGE("Save failed!\n");
 
-        sprintf(path_buffer, "%s.bak", saveName);
-        rename(saveName, path_buffer);
-        sprintf(path_buffer, "%s.new", saveName);
+        sprintf(path_buffer, "%s.bak", filename);
+        rename(filename, path_buffer);
+        sprintf(path_buffer, "%s.new", filename);
         unlink(path_buffer);
 
         rg_gui_alert("Save failed", NULL);
@@ -519,7 +524,8 @@ bool rg_emu_save_state(int slot)
 
     rg_system_set_led(0);
 
-    free(saveName);
+    free(filename);
+    free(dirname);
 
     return success;
 }
@@ -535,6 +541,13 @@ bool rg_emu_screenshot(const char *file, int width, int height)
     RG_LOGI("Saving screenshot %dx%d to '%s'.\n", width, height, file);
 
     rg_system_set_led(1);
+
+    char *dirname = rg_vfs_dirname(file);
+    if (!rg_vfs_mkdir(dirname))
+    {
+        RG_LOGE("Unable to create dir, save might fail...\n");
+    }
+    free(dirname);
 
     // FIXME: We should allocate a framebuffer to pass to the handler and ask it
     // to fill it, then we'd resize and save to png from here...
