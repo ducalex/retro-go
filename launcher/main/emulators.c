@@ -280,8 +280,6 @@ void emulator_init(retro_emulator_t *emu)
     RG_LOGX("Retro-Go: Initializing emulator '%s'\n", emu->system_name);
 
     char path[256], buffer[32];
-    char *files = NULL;
-    size_t count = 0;
 
     sprintf(path, RG_BASE_PATH_SAVES "/%s", emu->dirname);
     rg_vfs_mkdir(path);
@@ -289,13 +287,14 @@ void emulator_init(retro_emulator_t *emu)
     sprintf(path, RG_BASE_PATH_ROMS "/%s", emu->dirname);
     rg_vfs_mkdir(path);
 
-    if (rg_vfs_readdir(path, &files, &count, true) && count > 0)
+    rg_strings_t *files = rg_vfs_readdir(path, RG_SKIP_HIDDEN|RG_RECURSIVE|RG_FILES_ONLY);
+    if (files && files->count > 0)
     {
-        emu->roms.files = rg_alloc(count * sizeof(retro_emulator_file_t), MEM_ANY);
+        emu->roms.files = rg_alloc(files->count * sizeof(retro_emulator_file_t), MEM_ANY);
         emu->roms.count = 0;
 
-        char *ptr = files;
-        for (int i = 0; i < count; ++i)
+        char *ptr = files->buffer;
+        for (int i = 0; i < files->count; ++i)
         {
             const char *name = ptr;
             const char *ext = rg_vfs_extension(ptr);

@@ -153,49 +153,73 @@ bool rg_vfs_mkdir(const char *dir)
     return (ret == 0);
 }
 
-bool rg_vfs_readdir(const char* path, char **out_files, size_t *out_count, bool skip_hidden)
+rg_strings_t *rg_vfs_readdir(const char* path, int flags)
 {
     DIR* dir = opendir(path);
     if (!dir)
-        return false;
+        return NULL;
 
-    // TO DO: We should use a struct instead of a packed list of strings
-    char *buffer = NULL;
-    size_t bufsize = 0;
-    size_t bufpos = 0;
-    size_t count = 0;
+    size_t buffer_size = 512;
+    rg_strings_t *files = calloc(1, sizeof(rg_strings_t) + buffer_size);
+    char pathbuf[PATH_MAX + 1];
     struct dirent* file;
 
     while ((file = readdir(dir)))
     {
         const char *name = file->d_name;
         size_t name_len = strlen(name) + 1;
+        bool is_directory = (file->d_type == DT_DIR);
 
-        if (name_len < 2 || (skip_hidden && name[0] == '.'))
+        if (name[0] == '.')
         {
-            continue;
+            if (flags & RG_SKIP_HIDDEN)
+                continue;
+            else if (name_len <= 3)
+                continue;
         }
 
-        if ((bufsize - bufpos) < name_len)
+        if (!is_directory || !(flags & RG_FILES_ONLY))
         {
-            bufsize += 1024;
-            buffer = realloc(buffer, bufsize);
+            if ((files->length + name_len) >= buffer_size)
+            {
+                buffer_size += 1024;
+                files = realloc(files, sizeof(rg_strings_t) + buffer_size);
+            }
+
+            memcpy(&files->buffer[files->length], name, name_len);
+            files->length += name_len;
+            files->count++;
         }
 
-        memcpy(buffer + bufpos, name, name_len);
-        bufpos += name_len;
-        count++;
+        // FIX ME: This won't work correctly on more than one nesting level
+        // That is because we don't carry the base path around so we'll store an
+        // incomplete relative path beyond the first level...
+        if (is_directory && (flags & RG_RECURSIVE))
+        {
+            sprintf(pathbuf, "%.120s/%.120s", path, name);
+            rg_strings_t *sub = rg_vfs_readdir(pathbuf, flags);
+            if (sub && sub->count > 0)
+            {
+                buffer_size = files->length + sub->length + (name_len * sub->count) + 128;
+                files = realloc(files, sizeof(rg_strings_t) + buffer_size);
+
+                char *ptr = sub->buffer;
+                for (size_t i = 0; i < sub->count; i++)
+                {
+                    files->length += sprintf(&files->buffer[files->length], "%s/%s", name, ptr) + 1;
+                    files->count++;
+                    ptr += strlen(sub->buffer) + 1;
+                }
+            }
+            free(sub);
+        }
     }
 
-    buffer = realloc(buffer, bufpos + 1);
-    buffer[bufpos] = 0;
+    files->buffer[files->length] = 0;
 
     closedir(dir);
 
-    if (out_files) *out_files = buffer;
-    if (out_count) *out_count = count;
-
-    return true;
+    return files;
 }
 
 bool rg_vfs_delete(const char *path)
