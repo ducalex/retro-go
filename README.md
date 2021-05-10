@@ -97,7 +97,7 @@ To recap: If you set a reasonable save delay (10-30s) and you briefly open the m
 An up to date list of incompatible/broken games can be found on the [ODROID-GO forum](https://forum.odroid.com/viewtopic.php?f=159&t=37599). This is also the place to submit bug reports and feature requests.
 
 
-# Future plans
+# Future plans / Feature requests
 - SNES emulation (In progress)
 - Netplay (On hold)
 - Multiple save states
@@ -136,6 +136,13 @@ For a smaller build you can also specify which apps you want, for example the la
 ## Build, flash, and monitor individual apps for faster development:
 1. `rg_tool.py run nofrendo-go --offset=0x100000 --port=COM3`
 * Offset is required only if you use my multi-firmware AND retro-go isn't the first installed application, in which case the offset is shown in the multi-firmware.
+
+## Changing the launcher's images
+All images used by the launcher (headers, logos) are located in `launcher/images`. If you edit them you must run the `launcher/gen_images.py` script to regenerate `images.h`. The format must be PNG 255 colors.
+
+## Changing or adding fonts
+Fonts are found in `components/retro-go/fonts`. There are basic instructions in `fonts.h` on how to add fonts. 
+In short you need to generate a font.c file and add it to fonts.h. It'll try to add better instructions soon...
 
 ## Capturing crash logs
 When a panic occurs, Retro-Go has the ability to save debugging information to `/sd/crash.log`. This provides users with a simple way of recovering a backtrace (and often more) versus having to install drivers and serial console software. A weak hook is installed into esp-idf panic's putchar, allowing us to save each chars in RTC RAM. Then, after the system resets, we can move that data to the sd card. You will find a small esp-idf patch to enable this feature in tools/patches.
