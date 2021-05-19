@@ -148,29 +148,12 @@ font_info_t rg_gui_get_font_info(void)
     return font_info;
 }
 
-rg_rect_t rg_gui_calc_text_size(const char *text, uint32_t flags)
+rg_rect_t rg_gui_calc_text_size(const char *text, int wrap_width)
 {
-    rg_rect_t rect = {0, 0};
-    int line_width = 0;
-    int line_height = 0;
-
-    while (text && *text)
-    {
-        int chr = *text++;
-
-        rg_glyph_t g = get_glyph(font_info.font, font_info.points, chr);
-        line_width += g.width;
-        line_height = RG_MAX(line_height, g.height);
-
-        if (chr == '\n' || *text == 0)
-        {
-            rect.width = RG_MAX(line_width, rect.width);
-            rect.height += line_height;
-            line_width = 0;
-        }
-    }
-
-    return rect;
+    if (wrap_width > 0)
+        return rg_gui_draw_text(RG_SCREEN_WIDTH - wrap_width, 0, 0, text, 0, 0, RG_TEXT_MULTILINE|RG_TEXT_DUMMY_DRAW);
+    else
+        return rg_gui_draw_text(0, 0, 0, text, 0, 0, RG_TEXT_DUMMY_DRAW);
 }
 
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
@@ -180,46 +163,70 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
     if (y_pos < 0) y_pos += RG_SCREEN_HEIGHT;
     if (!text || *text == 0) text = " ";
 
-    rg_rect_t rect = rg_gui_calc_text_size(text, flags);
-    int line_height = font_info.height;//rect.height;
-    int text_width = rect.width;
-    int line_width = width > 0 ? width : text_width;
+    // FIX ME: We should cache get_glyph().width to avoid calling it up to 3 times.
+
+    if (width == 0)
+    {
+        // Find the longest line to determine our box width
+        int line_width = 0;
+        const char *ptr = text;
+        while (*ptr)
+        {
+            int chr = *ptr++;
+            line_width += get_glyph(font_info.font, font_info.points, chr).width;
+
+            if (chr == '\n' || *ptr == 0)
+            {
+                width = RG_MAX(line_width, width);
+                line_width = 0;
+            }
+        }
+    }
+
+    int draw_width = RG_MIN(width, RG_SCREEN_WIDTH - x_pos);
+    int font_height = font_info.height;
     int y_offset = 0;
-
-    line_width = RG_MIN(line_width, RG_SCREEN_WIDTH - x_pos);
-    text_width = RG_MIN(text_width, line_width);
-
     const char *ptr = text;
+
     while (*ptr)
     {
         int x_offset = 0;
 
+        for (int y = 0; y < font_height; y++)
+            for (int x = 0; x < draw_width; x++)
+                overlay_buffer[(draw_width * y) + x] = color_bg;
+
         if (flags & (RG_TEXT_ALIGN_LEFT|RG_TEXT_ALIGN_CENTER))
         {
+            // Find the current line's text width
+            const char *line = ptr;
+            while (x_offset < draw_width && *line && *line != '\n')
+            {
+                int width = get_glyph(font_info.font, font_info.points, *line++).width;
+                if (draw_width - x_offset < width) // Do not truncate glyphs
+                    break;
+                x_offset += width;
+            }
             if (flags & RG_TEXT_ALIGN_CENTER)
-                x_offset = (line_width - text_width) / 2;
+                x_offset = (draw_width - x_offset) / 2;
             else if (flags & RG_TEXT_ALIGN_LEFT)
-                x_offset = line_width - text_width;
+                x_offset = draw_width - x_offset;
         }
 
-        for (int y = 0; y < line_height; y++)
-            for (int x = 0; x < line_width; x++)
-                overlay_buffer[(line_width * y) + x] = color_bg;
-
-        while (x_offset < line_width)
+        while (x_offset < draw_width)
         {
             rg_glyph_t glyph = get_glyph(font_info.font, font_info.points, *ptr++);
 
-            if (line_width - x_offset < glyph.width) // Do not truncate glyphs
+            if (draw_width - x_offset < glyph.width) // Do not truncate glyphs
             {
                 if (flags & RG_TEXT_MULTILINE)
                     ptr--;
                 break;
             }
 
-            for (int y = 0; y < line_height; y++)
+            for (int y = 0; y < font_height; y++)
             {
-                uint16_t *output = &overlay_buffer[x_offset + (line_width * y)];
+                uint16_t *output = &overlay_buffer[x_offset + (draw_width * y)];
 
                 for (int x = 0; x < glyph.width; x++)
                 {
@@ -233,15 +240,16 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
                 break;
         }
 
-        rg_display_write(x_pos, y_pos + y_offset, line_width, line_height, 0, overlay_buffer);
+        if (!(flags & RG_TEXT_DUMMY_DRAW))
+            rg_display_write(x_pos, y_pos + y_offset, draw_width, font_height, 0, overlay_buffer);
 
-        y_offset += line_height;
+        y_offset += font_height;
 
         if (!(flags & RG_TEXT_MULTILINE))
             break;
     }
 
-    return (rg_rect_t){line_width, y_offset};
+    return (rg_rect_t){draw_width, y_offset};
 }
 
 void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border, uint16_t color)
