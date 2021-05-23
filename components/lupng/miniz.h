@@ -109,10 +109,6 @@ void mz_free(void *p);
 /* mz_adler32() returns the initial adler-32 value to use when called with ptr==NULL. */
 mz_ulong mz_adler32(mz_ulong adler, const unsigned char *ptr, size_t buf_len);
 
-#define MZ_CRC32_INIT (0)
-/* mz_crc32() returns the initial CRC-32 value to use when called with ptr==NULL. */
-mz_ulong mz_crc32(mz_ulong crc, const unsigned char *ptr, size_t buf_len);
-
 /* Compression strategies. */
 enum
 {
@@ -569,6 +565,12 @@ typedef enum {
     TDEFL_FINISH = 4
 } tdefl_flush;
 
+typedef struct
+{
+    mz_uint16 m_key;
+    mz_uint16 m_sym_index;
+} tdefl_sym_freq;
+
 /* tdefl's compression state structure. */
 typedef struct
 {
@@ -595,6 +597,9 @@ typedef struct
     mz_uint16 m_next[TDEFL_LZ_DICT_SIZE];
     mz_uint16 m_hash[TDEFL_LZ_HASH_SIZE];
     mz_uint8 m_output_buf[TDEFL_OUT_BUF_SIZE];
+
+    tdefl_sym_freq m_syms0[TDEFL_MAX_HUFF_SYMBOLS];
+    tdefl_sym_freq m_syms1[TDEFL_MAX_HUFF_SYMBOLS];
 } tdefl_compressor;
 
 /* Initializes the compressor. */
