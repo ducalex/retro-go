@@ -346,26 +346,23 @@ rg_image_t *rg_gui_load_image(const uint8_t *data, size_t data_len)
         luImageRelease(png, NULL);
         return img;
     }
-
-    // Not valid PNG, try loading as raw 565
-    uint16_t *img_data = (uint16_t *)data;
-    size_t img_width = *img_data++;
-    size_t img_height = *img_data++;
-
-    if (data_len < (img_width * img_height * 2))
+    else // RAW565 (uint16 width, uint16 height, uint16 data[])
     {
-        RG_LOGE("Invalid RAW data!\n");
-        return false;
+        uint16_t img_width = ((uint16_t *)data)[0];
+        uint16_t img_height = ((uint16_t *)data)[1];
+
+        if (data_len == (img_width * img_height * 2 + 4))
+        {
+            // return (rg_image_t *)data;
+            rg_image_t *img = new_image(img_width, img_height);
+            memcpy(img->data, data + 4, data_len - 4);
+            return img;
+        }
     }
 
-    rg_image_t *img = new_image(img_width, img_height);
+    RG_LOGE("Buffer does not contain a valid image!\n");
 
-    for (int y = 0; y < img->height; ++y)
-    {
-        memcpy(img->data + (y * img->width), img_data + (y * img_width), img->width * 2);
-    }
-
-    return img;
+    return NULL;
 }
 
 void rg_gui_free_image(rg_image_t *img)

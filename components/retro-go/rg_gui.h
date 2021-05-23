@@ -56,8 +56,8 @@ typedef struct
 
 typedef struct
 {
-    size_t width;
-    size_t height;
+    uint16_t width;
+    uint16_t height;
     uint16_t data[];
 } rg_image_t;
 
