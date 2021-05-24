@@ -102,7 +102,15 @@ int mz_deflateInit(mz_streamp pStream, int level)
 int mz_deflateInit2(mz_streamp pStream, int level, int method, int window_bits, int mem_level, int strategy)
 {
     tdefl_compressor *pComp;
-    mz_uint comp_flags = TDEFL_COMPUTE_ADLER32 | tdefl_create_comp_flags_from_zip_params(level, window_bits, strategy);
+    mz_uint comp_flags = TDEFL_COMPUTE_ADLER32;
+
+    if (level)
+        comp_flags |= TDEFL_RLE_MATCHES;
+    else
+        comp_flags |= TDEFL_FORCE_ALL_RAW_BLOCKS;
+
+    if (window_bits > 0)
+        comp_flags |= TDEFL_WRITE_ZLIB_HEADER;
 
     if (!pStream)
         return MZ_STREAM_ERROR;
@@ -1386,16 +1394,10 @@ tdefl_status tdefl_compress(tdefl_compressor *d, const void *pIn_buf, size_t *pI
             }
             else if (!cur_match_dist)
                 tdefl_record_literal(d, d->m_dict[MZ_MIN(cur_pos, sizeof(d->m_dict) - 1)]);
-            else if ((d->m_greedy_parsing) || (d->m_flags & TDEFL_RLE_MATCHES) || (cur_match_len >= 128))
+            else
             {
                 tdefl_record_match(d, cur_match_len, cur_match_dist);
                 len_to_move = cur_match_len;
-            }
-            else
-            {
-                d->m_saved_lit = d->m_dict[MZ_MIN(cur_pos, sizeof(d->m_dict) - 1)];
-                d->m_saved_match_dist = cur_match_dist;
-                d->m_saved_match_len = cur_match_len;
             }
             /* Move the lookahead forward by len_to_move bytes. */
             d->m_lookahead_pos += len_to_move;
@@ -1455,34 +1457,19 @@ tdefl_status tdefl_compress_buffer(tdefl_compressor *d, const void *pIn_buf, siz
 
 tdefl_status tdefl_init(tdefl_compressor *d, tdefl_put_buf_func_ptr pPut_buf_func, void *pPut_buf_user, int flags)
 {
+    memset(d, 0, sizeof(tdefl_compressor));
     d->m_pPut_buf_func = pPut_buf_func;
     d->m_pPut_buf_user = pPut_buf_user;
     d->m_flags = (mz_uint)(flags);
-    d->m_max_probes[0] = 1 + ((flags & 0xFFF) + 2) / 3;
-    d->m_greedy_parsing = (flags & TDEFL_GREEDY_PARSING_FLAG) != 0;
-    d->m_max_probes[1] = 1 + (((flags & 0xFFF) >> 2) + 2) / 3;
-    d->m_lookahead_pos = d->m_lookahead_size = d->m_dict_size = d->m_total_lz_bytes = d->m_lz_code_buf_dict_pos = d->m_bits_in = 0;
-    d->m_output_flush_ofs = d->m_output_flush_remaining = d->m_finished = d->m_block_index = d->m_bit_buffer = d->m_wants_to_finish = 0;
+    d->m_greedy_parsing = 1;
     d->m_pLZ_code_buf = d->m_lz_code_buf + 1;
     d->m_pLZ_flags = d->m_lz_code_buf;
     d->m_num_flags_left = 8;
     d->m_pOutput_buf = d->m_output_buf;
     d->m_pOutput_buf_end = d->m_output_buf;
     d->m_prev_return_status = TDEFL_STATUS_OKAY;
-    d->m_saved_match_dist = d->m_saved_match_len = d->m_saved_lit = 0;
     d->m_adler32 = 1;
-    d->m_pIn_buf = NULL;
-    d->m_pOut_buf = NULL;
-    d->m_pIn_buf_size = NULL;
-    d->m_pOut_buf_size = NULL;
     d->m_flush = TDEFL_NO_FLUSH;
-    d->m_pSrc = NULL;
-    d->m_src_buf_left = 0;
-    d->m_out_buf_ofs = 0;
-    if (!(flags & TDEFL_NONDETERMINISTIC_PARSING_FLAG))
-        MZ_CLEAR_OBJ(d->m_dict);
-    memset(&d->m_huff_count[0][0], 0, sizeof(d->m_huff_count[0][0]) * TDEFL_MAX_HUFF_SYMBOLS_0);
-    memset(&d->m_huff_count[1][0], 0, sizeof(d->m_huff_count[1][0]) * TDEFL_MAX_HUFF_SYMBOLS_1);
     return TDEFL_STATUS_OKAY;
 }
 
@@ -1569,23 +1556,6 @@ size_t tdefl_compress_mem_to_mem(void *pOut_buf, size_t out_buf_len, const void 
     if (!tdefl_compress_mem_to_output(pSrc_buf, src_buf_len, tdefl_output_buffer_putter, &out_buf, flags))
         return 0;
     return out_buf.m_size;
-}
-
-static const mz_uint s_tdefl_num_probes[11] = { 0, 1, 6, 32, 16, 32, 128, 256, 512, 768, 1500 };
-
-/* level may actually range from [0,10] (10 is a "hidden" max level, where we want a bit more compression and it's fine if throughput to fall off a cliff on some files). */
-mz_uint tdefl_create_comp_flags_from_zip_params(int level, int window_bits, int strategy)
-{
-    mz_uint comp_flags = s_tdefl_num_probes[(level >= 0) ? MZ_MIN(10, level) : MZ_DEFAULT_LEVEL] | ((level <= 3) ? TDEFL_GREEDY_PARSING_FLAG : 0);
-    if (window_bits > 0)
-        comp_flags |= TDEFL_WRITE_ZLIB_HEADER;
-
-    if (!level)
-        comp_flags |= TDEFL_FORCE_ALL_RAW_BLOCKS;
-    else
-        comp_flags |= TDEFL_RLE_MATCHES;
-
-    return comp_flags;
 }
 
 #ifndef MINIZ_NO_MALLOC
