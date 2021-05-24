@@ -123,7 +123,6 @@ _Note: Other esp-idf versions will work (>=3.3.3) but I cannot provide help for 
 ### ESP-IDF Patches
 Retro-Go will build and most likely run without any changes to esp-idf, but patches do provide significant advantages. The patches are located in `tools/patches`. Here's the list:
 - `esp-idf_enable-exfat`:  Enable exFAT support. The patch is entirely optional.
-- `esp-idf_esp_error_check`: This causes assertion handling to behave somewhere between [SILENT and ENABLED](https://docs.espressif.com/projects/esp-idf/en/v3.1.7/api-reference/kconfig.html#envvar-CONFIG_OPTIMIZATION_ASSERTION_LEVEL). The goal is to have ENABLED's benefits without the file size penalty. The patch is entirely optional.
 - `esp-idf-X.X_sdcard-fix`: This improves SD Card compatibility significantly but can also reduce transfer speed a lot. The patch is usually required if you intend to distribute your build.
 - `esp-idf-4.0-panic-hook`: This is to help users report bugs, see `Capturing crash logs` bellow for more details. The patch is entirely optional.
 
