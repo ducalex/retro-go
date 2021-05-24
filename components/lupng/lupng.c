@@ -1294,7 +1294,7 @@ void luUserContextInitDefault(LuUserContext *userCtx)
 
     userCtx->writeProc=NULL;
     userCtx->writeProcUserPtr=NULL;
-    userCtx->compressionLevel=0;
+    userCtx->compressionLevel=MZ_DEFAULT_COMPRESSION;
 
     userCtx->allocProc=internalMalloc;
     userCtx->allocProcUserPtr=NULL;
