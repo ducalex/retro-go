@@ -66,6 +66,8 @@
    functions (such as tdefl_compress_mem_to_heap() and tinfl_decompress_mem_to_heap()) won't work. */
 /*#define MINIZ_NO_MALLOC */
 
+#define MINIZ_USE_UNALIGNED_LOADS_AND_STORES 1
+
 #if defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__i386) || defined(__i486__) || defined(__i486) || defined(i386) || defined(__ia64__) || defined(__x86_64__)
 /* MINIZ_X86_OR_X64_CPU is only used to help set the below macros. */
 #define MINIZ_X86_OR_X64_CPU 1
@@ -402,7 +404,8 @@ typedef int mz_bool;
 #define MZ_MACRO_END while (0)
 #endif
 
-#define MZ_ASSERT(x) assert(x)
+#include <stdio.h>
+#define MZ_ASSERT(x) {if (!(x)) { fputs("MINIZ ASSERTION FAILED: " #x "\n", stderr); goto _exception; }}
 
 #ifdef MINIZ_NO_MALLOC
 #define MZ_MALLOC(x) NULL
@@ -551,6 +554,7 @@ enum
 
 /* The low-level tdefl functions below may be used directly if the above helper functions aren't flexible enough. The low-level functions don't make any heap allocations, unlike the above helper functions. */
 typedef enum {
+    TDEFL_STATUS_ASSERT_FAILED = -3,
     TDEFL_STATUS_BAD_PARAM = -2,
     TDEFL_STATUS_PUT_BUF_FAILED = -1,
     TDEFL_STATUS_OKAY = 0,
