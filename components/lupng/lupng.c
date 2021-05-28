@@ -294,6 +294,7 @@ static size_t internalMemRead(void *ptr, size_t size, size_t count, void *userPt
 
 static size_t internalFwrite(const void *ptr, size_t size, size_t count, void *userPtr)
 {
+    // printf("PNG: Writing %d bytes\n", size * count);
     return fwrite(ptr, size, count, (FILE *)userPtr);
 }
 
@@ -778,7 +779,7 @@ static LU_INLINE int readChunk(PngInfoStruct *info, PngChunk *chunk)
     chunk_crc = swap32(*((uint32_t*)(buffer + data_len + 4)));
     if (crc(buffer, data_len + 4) != chunk_crc)
     {
-        LUPNG_WARN(info, "PNG: CRC mismatch in '%.4s' chunk", (char *)buffer);
+        LUPNG_WARN(info, "PNG: CRC mismatch in chunk '%.4s'", (char *)buffer);
         info->userCtx->freeProc(buffer, info->userCtx->freeProcUserPtr);
         return PNG_ERROR;
     }
@@ -917,7 +918,7 @@ static LU_INLINE int writeChunk(PngInfoStruct *info, const void *buf, size_t buf
 
     if (written != 3)
     {
-        LUPNG_WARN(info, "PNG: write error");
+        LUPNG_WARN(info, "PNG: write error in chunk '%.4s'", (char*)buf);
         return PNG_ERROR;
     }
 
@@ -926,16 +927,21 @@ static LU_INLINE int writeChunk(PngInfoStruct *info, const void *buf, size_t buf
 
 static LU_INLINE int writeHeader(PngInfoStruct *info)
 {
-   const uint8_t colorType[] = {
-            PNG_GRAYSCALE,
-            PNG_GRAYSCALE_ALPHA,
-            PNG_TRUECOLOR,
-            PNG_TRUECOLOR_ALPHA
-    };
+    uint8_t colorType;
 
-    if (info->cimg->channels > 4)
+    if (info->paletteItems > 0)
+        colorType = PNG_PALETTED;
+    else if (info->cimg->channels == 1)
+        colorType = PNG_GRAYSCALE;
+    else if (info->cimg->channels == 2)
+        colorType = PNG_GRAYSCALE_ALPHA;
+    else if (info->cimg->channels == 3)
+        colorType = PNG_TRUECOLOR;
+    else if (info->cimg->channels == 4)
+        colorType = PNG_TRUECOLOR_ALPHA;
+    else
     {
-        LUPNG_WARN(info, "PNG: too many channels in image");
+        LUPNG_WARN(info, "PNG: couldn't determine color type!");
         return PNG_ERROR;
     }
 
@@ -944,7 +950,7 @@ static LU_INLINE int writeHeader(PngInfoStruct *info)
         0, 0, 0, 0,         // Width,
         0, 0, 0, 0,         // Height,
         info->cimg->depth,  // Depth,
-        colorType[info->cimg->channels-1], // Color Type,
+        colorType,          // Color Type,
         0,                  // Compression
         0,                  // Filter
         0,                  // Interlacing
@@ -955,45 +961,67 @@ static LU_INLINE int writeHeader(PngInfoStruct *info)
 
     if (!info->userCtx->writeProc(PNG_SIG, PNG_SIG_SIZE, 1, info->userCtx->writeProcUserPtr))
     {
-        LUPNG_WARN(info, "PNG: writeProc() error");
+        LUPNG_WARN(info, "PNG: error writing signature");
         return PNG_ERROR;
     }
 
-    return writeChunk(info, buffer, sizeof(buffer));
-}
-
-static LU_INLINE void advanceBytep(PngInfoStruct *info, int is16bit)
-{
-    if (is16bit)
+    if (writeChunk(info, buffer, sizeof(buffer)) != PNG_OK)
     {
-        if (info->currentByte%2)
-            --info->currentByte;
-        else
-            info->currentByte+=3;
-    }
-    else
-        ++info->currentByte;
-}
-
-static LU_INLINE size_t filterScanline(PngInfoStruct *info,
-                                    uint8_t(*f)(PngInfoStruct *info),
-                                    uint8_t filter,
-                                    uint8_t *filterCandidate,
-                                    int is16bit)
-{
-    size_t curSum = 0;
-    size_t fc;
-
-    filterCandidate[0] = filter;
-    for (info->currentByte = is16bit ? 1 : 0, fc = 1;
-        info->currentByte < info->scanlineBytes; ++fc, advanceBytep(info, is16bit) )
-    {
-        uint8_t val = f(info);
-        filterCandidate[fc] = val;
-        curSum += val;
+        LUPNG_WARN(info, "PNG: error writing header");
+        return PNG_ERROR;
     }
 
-    return curSum;
+    if (colorType == PNG_PALETTED)
+    {
+        uint8_t buffer[4 + info->paletteItems * 3];
+        memcpy(buffer, "PLTE", 4);
+        memcpy(buffer + 4, info->palette, info->paletteItems * 3);
+        return writeChunk(info, buffer, sizeof(buffer));
+    }
+
+    return PNG_OK;
+}
+
+static LU_INLINE int buildPalette(PngInfoStruct *info)
+{
+    LuImage *img = info->img;
+
+    if (img->channels != 3 || img->depth != 8)
+    {
+        LUPNG_WARN(info, "Can only build palette for 3 channels RGB8!");
+        return PNG_ERROR;
+    }
+
+    info->paletteItems = 0;
+
+    for (int i = 0; i < img->dataSize; i += 3)
+    {
+        int found = 0;
+        for (int j = 0; j < info->paletteItems; j++)
+        {
+            if (memcmp(info->palette[j], img->data + i, 3) == 0)
+            {
+                found = 1;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            if (info->paletteItems >= 256)
+            {
+                LUPNG_WARN(info, "Too many colors to build palette!\n");
+                info->paletteItems = 0;
+                return PNG_ERROR;
+            }
+
+            memcpy(&info->palette[info->paletteItems++], img->data + i, 3);
+        }
+    }
+
+    printf("Built palette of %d colors\n", info->paletteItems);
+
+    return PNG_OK;
 }
 
 /*
@@ -1004,7 +1032,6 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
 {
     uint8_t *filterCandidate = (uint8_t *)info->userCtx->allocProc(info->scanlineBytes+1, info->userCtx->allocProcUserPtr);
     uint8_t *bestCandidate = (uint8_t *)info->userCtx->allocProc(info->scanlineBytes+1, info->userCtx->allocProcUserPtr);
-    size_t minSum = (size_t)-1, curSum = 0;
     int status = MZ_OK;
     int is16bit = info->cimg->depth == 16;
 
@@ -1030,58 +1057,99 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
     for (info->currentRow = 0; info->currentRow < info->img->height; ++info->currentRow)
     {
         int flush = (info->currentRow < info->img->height-1) ? MZ_NO_FLUSH : MZ_FINISH;
-        minSum = (size_t)-1;
 
         /*
          * 1st time it doesn't matter, the filters never look at the previous
          * scanline when processing row 0. And next time it'll be valid.
          */
         info->previousScanline = info->currentScanline;
-        info->currentScanline = info->cimg->data + (info->currentRow*info->scanlineBytes);
+        info->currentScanline = info->img->data + (info->currentRow*info->img->pitch);
 
-        /*
-         * Try to choose the best filter for each scanline.
-         * Breaks in case of overflow, but hey it's just a heuristic.
-         */
-        for (info->currentFilter = PNG_FILTER_NONE; info->currentFilter <= PNG_FILTER_PAETH; ++info->currentFilter)
+        if (info->paletteItems)
         {
-            switch (info->currentFilter)
+            uint8_t *pixel = info->currentScanline;
+
+            // Spec says that filtering isn't needed/recommended with palette
+            bestCandidate[0] = PNG_FILTER_NONE;
+
+            for (int x = 0; x < info->img->width; x++, pixel += 3)
             {
-                case PNG_FILTER_NONE:
-                    curSum = filterScanline(info, none, PNG_FILTER_NONE, filterCandidate, is16bit);
-                    break;
-
-                case PNG_FILTER_SUB:
-                    curSum = filterScanline(info, sub, PNG_FILTER_SUB, filterCandidate, is16bit);
-                    break;
-
-                case PNG_FILTER_UP:
-                    curSum = filterScanline(info, up, PNG_FILTER_UP, filterCandidate, is16bit);
-                    break;
-
-                case PNG_FILTER_AVERAGE:
-                    curSum = filterScanline(info, average, PNG_FILTER_AVERAGE, filterCandidate, is16bit);
-                    break;
-
-                case PNG_FILTER_PAETH:
-                    curSum = filterScanline(info, paeth, PNG_FILTER_PAETH, filterCandidate, is16bit);
-                    break;
-
-                default:
-                    break;
+                for (int c = 0; c < info->paletteItems; c++)
+                {
+                    if (memcmp(info->palette[c], pixel, 3) == 0)
+                    {
+                        bestCandidate[x + 1] = c;
+                        break;
+                    }
+                }
             }
-
-            if (curSum < minSum || !info->currentFilter)
-            {
-                uint8_t *tmp = bestCandidate;
-                bestCandidate = filterCandidate;
-                filterCandidate = tmp;
-                minSum = curSum;
-            }
+            info->stream.avail_in = (unsigned int)info->img->width+1;
+            info->stream.next_in = bestCandidate;
         }
+        else
+        {
+            size_t minSum = SIZE_MAX;
+            /*
+             * Try to choose the best filter for each scanline.
+             * Breaks in case of overflow, but hey it's just a heuristic.
+             */
+            for (info->currentFilter = PNG_FILTER_NONE; info->currentFilter <= PNG_FILTER_PAETH; ++info->currentFilter)
+            {
+                size_t curSum = 0, fc = 0;
 
-        info->stream.avail_in = (unsigned int)info->scanlineBytes+1;
-        info->stream.next_in = bestCandidate;
+                filterCandidate[fc++] = info->currentFilter;
+
+                for (info->currentByte = 0; info->currentByte < info->scanlineBytes;)
+                {
+                    uint8_t val;
+
+                    switch (info->currentFilter)
+                    {
+                        case PNG_FILTER_NONE:
+                            val = none(info);
+                            break;
+                        case PNG_FILTER_SUB:
+                            val = sub(info);
+                            break;
+                        case PNG_FILTER_UP:
+                            val = up(info);
+                            break;
+                        case PNG_FILTER_AVERAGE:
+                            val = average(info);
+                            break;
+                        case PNG_FILTER_PAETH:
+                            val = paeth(info);
+                            break;
+                        default:
+                            val = 0;
+                    }
+
+                    filterCandidate[fc++] = val;
+                    curSum += val;
+                }
+
+                if (curSum < minSum)
+                {
+                    uint8_t *tmp = bestCandidate;
+                    bestCandidate = filterCandidate;
+                    filterCandidate = tmp;
+                    minSum = curSum;
+                }
+
+                if (is16bit)
+                {
+                    if (info->currentByte%2)
+                        --info->currentByte;
+                    else
+                        info->currentByte+=3;
+                }
+                else
+                    ++info->currentByte;
+            }
+
+            info->stream.avail_in = (unsigned int)info->scanlineBytes+1;
+            info->stream.next_in = bestCandidate;
+        }
 
         /* compress bestCandidate */
         do
@@ -1129,17 +1197,15 @@ int luPngWriteUC(const LuUserContext *userCtx, const LuImage *img)
     info->bytesPerPixel = (img->channels * img->depth) >> 3;
     info->scanlineBytes = info->bytesPerPixel * img->width;
 
+    // Try using a palette if possible
+    if (img->channels == 3 && img->depth == 8)
+        buildPalette(info);
+
     if ((status = writeHeader(info)) != PNG_OK)
-    {
-        LUPNG_WARN(info, "PNG: writeHeader() error");
         goto _cleanup;
-    }
 
     if ((status = processPixels(info)) != PNG_OK)
-    {
-        LUPNG_WARN(info, "PNG: processPixels() error");
         goto _cleanup;
-    }
 
     mz_deflateEnd(&info->stream);
     status = writeChunk(info, "IEND", 4);
@@ -1243,7 +1309,8 @@ LuImage *luImageCreate(size_t width, size_t height, uint8_t channels, uint8_t de
     img->height = (int32_t)height;
     img->channels = channels;
     img->depth = depth;
-    img->dataSize = (size_t)((depth >> 3) * width * height * channels);
+    img->pitch = width * channels * (depth >> 3);
+    img->dataSize = img->pitch * height;
 
     if (buffer)
     {

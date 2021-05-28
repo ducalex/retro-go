@@ -45,8 +45,9 @@ typedef struct {
     int32_t height;
     uint8_t channels;
     uint8_t depth; /* must be 8 or 16 */
+    size_t  pitch;
     uint8_t isUserData;
-    size_t dataSize;
+    size_t  dataSize;
     uint8_t *data;
 } LuImage;
 
