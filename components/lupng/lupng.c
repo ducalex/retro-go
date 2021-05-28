@@ -32,7 +32,7 @@
 #include "miniz.h"
 #include "lupng.h"
 
-#define PNG_NONE 0
+#define PNG_NONE 0x00
 #define PNG_IHDR 0x01
 #define PNG_PLTE 0x02
 #define PNG_IDAT 0x04
@@ -198,7 +198,7 @@ typedef struct
 } MemStream;
 
 /* helper macro to output warning via user context of the info struct */
-#define LUPNG_WARN_UC(uc,...) do { if ((uc)->warnProc) { (uc)->warnProc((uc)->warnProcUserPtr, __VA_ARGS__); }} while(0)
+#define LUPNG_WARN_UC(uc,...) do { if ((uc)->warnProc) { (uc)->warnProc((uc)->warnProcUserPtr, "LuPng: " __VA_ARGS__); }} while(0)
 #define LUPNG_WARN(info,...) LUPNG_WARN_UC((info)->userCtx, __VA_ARGS__)
 
 /* PNG header: */
@@ -319,14 +319,14 @@ static LU_INLINE int absi(int val)
 
 static LU_INLINE uint8_t raw(PngInfoStruct *info, size_t col)
 {
-    if (col > SIZE_T_MAX_POSITIVE)
+    if (col >= info->scanlineBytes)
         return 0;
     return info->currentScanline[col];
 }
 
 static LU_INLINE uint8_t prior(PngInfoStruct *info, size_t col)
 {
-    if (info->currentRow <= startingRow[info->interlacePass] || col > SIZE_T_MAX_POSITIVE)
+    if (info->currentRow <= startingRow[info->interlacePass] || col >= info->scanlineBytes)
         return 0;
     return info->previousScanline[col];
 }
@@ -412,7 +412,7 @@ static LU_INLINE int parseIhdr(PngInfoStruct *info, PngChunk *chunk)
 {
     if (info->chunksFound)
     {
-        LUPNG_WARN(info,"PNG: malformed PNG file!");
+        LUPNG_WARN(info, "malformed PNG file!");
         return PNG_ERROR;
     }
 
@@ -443,42 +443,39 @@ static LU_INLINE int parseIhdr(PngInfoStruct *info, PngChunk *chunk)
             info->channels = 4;
             break;
         default:
-            LUPNG_WARN(info,"PNG: illegal color type: %u",
-                       (unsigned int)info->colorType);
+            LUPNG_WARN(info, "illegal color type: %u", info->colorType);
             return PNG_ERROR;
     }
 
     if (info->width <= 0 || info->height <= 0)
     {
-        LUPNG_WARN(info, "PNG: illegal dimensions");
+        LUPNG_WARN(info, "illegal dimensions");
         return PNG_ERROR;
     }
 
     if ((info->colorType != PNG_GRAYSCALE && info->colorType != PNG_PALETTED && info->depth < 8)
         || (info->colorType == PNG_PALETTED && info->depth == 16) || info->depth > 16)
     {
-        LUPNG_WARN(info, "PNG: illegal bit depth for color type");
+        LUPNG_WARN(info, "illegal bit depth for color type");
         return PNG_ERROR;
     }
 
     if (info->compression)
     {
-        LUPNG_WARN(info,"PNG: unknown compression method: %u",
-                   (unsigned int)info->compression);
+        LUPNG_WARN(info, "unknown compression method: %u", info->compression);
         return PNG_ERROR;
     }
 
     if (info->filter)
     {
-        LUPNG_WARN(info,"PNG: unknown filter scheme: %u",
-                   (unsigned int)info->filter);
+        LUPNG_WARN(info, "unknown filter scheme: %u", info->filter);
         return PNG_ERROR;
     }
 
     memset(&info->stream, 0, sizeof(info->stream));
     if (mz_inflateInit2(&info->stream, MZ_DEFAULT_WINDOW_BITS) != MZ_OK)
     {
-        LUPNG_WARN(info, "PNG: inflateInit failed!");
+        LUPNG_WARN(info, "inflateInit failed!");
         return PNG_ERROR;
     }
     info->img = luImageCreate(info->width, info->height,
@@ -492,7 +489,7 @@ static LU_INLINE int parseIhdr(PngInfoStruct *info, PngChunk *chunk)
 
     if (!info->img || !info->currentScanline || !info->previousScanline)
     {
-        LUPNG_WARN(info, "PNG: memory allocation failed!");
+        LUPNG_WARN(info, "memory allocation failed!");
         return PNG_ERROR;
     }
 
@@ -503,26 +500,26 @@ static LU_INLINE int parsePlte(PngInfoStruct *info, PngChunk *chunk)
 {
     if (info->chunksFound & PNG_PLTE)
     {
-        LUPNG_WARN(info, "PNG: too many palette chunks in file!");
+        LUPNG_WARN(info, "too many palette chunks in file!");
         return PNG_ERROR;
     }
     info->chunksFound |= PNG_PLTE;
 
     if ((info->chunksFound & PNG_IDAT) || !(info->chunksFound & PNG_IHDR))
     {
-        LUPNG_WARN(info, "PNG: malformed PNG file!");
+        LUPNG_WARN(info, "malformed PNG file!");
         return PNG_ERROR;
     }
 
     if (info->colorType == PNG_GRAYSCALE || info->colorType == PNG_GRAYSCALE_ALPHA)
     {
-        LUPNG_WARN(info, "PNG: palettes are not allowed in grayscale images!");
+        LUPNG_WARN(info, "palettes are not allowed in grayscale images!");
         return PNG_ERROR;
     }
 
     if (chunk->length < 1 || chunk->length > 768 || chunk->length % 3)
     {
-        LUPNG_WARN(info, "PNG: invalid palette size!");
+        LUPNG_WARN(info, "invalid palette size!");
         return PNG_ERROR;
     }
 
@@ -613,7 +610,7 @@ static LU_INLINE int insertByte(PngInfoStruct *info, uint8_t byte)
         }
         else
         {
-            LUPNG_WARN(info, "PNG: invalid palette index encountered!");
+            LUPNG_WARN(info, "invalid palette index encountered!");
         }
         advance = 1;
     }
@@ -652,13 +649,13 @@ static LU_INLINE int parseIdat(PngInfoStruct *info, PngChunk *chunk)
 {
     if (!(info->chunksFound & PNG_IHDR))
     {
-        LUPNG_WARN(info,"PNG: malformed PNG file!");
+        LUPNG_WARN(info, "malformed PNG file!");
         return PNG_ERROR;
     }
 
     if (info->colorType == PNG_PALETTED && !(info->chunksFound & PNG_PLTE))
     {
-        LUPNG_WARN(info,"PNG: palette required but missing!");
+        LUPNG_WARN(info, "palette required but missing!");
         return PNG_ERROR;
     }
 
@@ -679,7 +676,7 @@ static LU_INLINE int parseIdat(PngInfoStruct *info, PngChunk *chunk)
             status != MZ_BUF_ERROR &&
             status != MZ_NEED_DICT)
         {
-            LUPNG_WARN(info, "PNG: inflate error!");
+            LUPNG_WARN(info, "inflate error!");
             return PNG_ERROR;
         }
 
@@ -713,8 +710,6 @@ static LU_INLINE int parseIdat(PngInfoStruct *info, PngChunk *chunk)
                     case PNG_FILTER_PAETH:
                         rawByte = dePaeth(info, info->buffer[i]);
                         break;
-                    default:
-                        break;
                 }
 
                 info->currentScanline[info->currentByte] = rawByte;
@@ -744,34 +739,34 @@ static LU_INLINE int readChunk(PngInfoStruct *info, PngChunk *chunk)
 
     if (!info->userCtx->readProc(&data_len, 4, 1, info->userCtx->readProcUserPtr))
     {
-        LUPNG_WARN(info, "PNG: read error");
+        LUPNG_WARN(info, "read error");
         return PNG_ERROR;
     }
 
     data_len = swap32(data_len);
     if (data_len + 8 < data_len)
     {
-        LUPNG_WARN(info, "PNG: chunk claims to be absurdly large");
+        LUPNG_WARN(info, "chunk claims to be absurdly large");
         return PNG_ERROR;
     }
 
     buffer = (uint8_t *)info->userCtx->allocProc(data_len + 8, info->userCtx->allocProcUserPtr);
     if (!buffer)
     {
-        LUPNG_WARN(info, "PNG: memory allocation failed!");
+        LUPNG_WARN(info, "memory allocation failed!");
         return PNG_ERROR;
     }
 
     if (!info->userCtx->readProc(buffer, data_len + 8, 1, info->userCtx->readProcUserPtr))
     {
-        LUPNG_WARN(info, "PNG: chunk data read error");
+        LUPNG_WARN(info, "chunk data read error");
         info->userCtx->freeProc(buffer, info->userCtx->freeProcUserPtr);
         return PNG_ERROR;
     }
 
     if (!isalpha(buffer[0]) || !isalpha(buffer[1]) || !isalpha(buffer[2]) || !isalpha(buffer[3]))
     {
-        LUPNG_WARN(info, "PNG: invalid chunk name, possibly unprintable");
+        LUPNG_WARN(info, "invalid chunk name, possibly unprintable");
         info->userCtx->freeProc(buffer, info->userCtx->freeProcUserPtr);
         return PNG_ERROR;
     }
@@ -779,7 +774,7 @@ static LU_INLINE int readChunk(PngInfoStruct *info, PngChunk *chunk)
     chunk_crc = swap32(*((uint32_t*)(buffer + data_len + 4)));
     if (crc(buffer, data_len + 4) != chunk_crc)
     {
-        LUPNG_WARN(info, "PNG: CRC mismatch in chunk '%.4s'", (char *)buffer);
+        LUPNG_WARN(info, "CRC mismatch in chunk '%.4s'", (char *)buffer);
         info->userCtx->freeProc(buffer, info->userCtx->freeProcUserPtr);
         return PNG_ERROR;
     }
@@ -808,7 +803,7 @@ static LU_INLINE int handleChunk(PngInfoStruct *info, PngChunk *chunk)
             info->chunksFound |= PNG_IEND;
             if (!(info->chunksFound & PNG_IDAT))
             {
-                LUPNG_WARN(info, "PNG: no IDAT chunk found");
+                LUPNG_WARN(info, "no IDAT chunk found");
                 return PNG_ERROR;
             }
             return PNG_DONE;
@@ -832,7 +827,7 @@ LuImage *luPngReadUC(const LuUserContext *userCtx)
         if (!userCtx->readProc(buffer, PNG_SIG_SIZE, 1, userCtx->readProcUserPtr)
             || !bytesEqual(buffer, PNG_SIG, PNG_SIG_SIZE))
         {
-            LUPNG_WARN_UC(userCtx, "PNG: invalid header");
+            LUPNG_WARN_UC(userCtx, "invalid signature");
             return NULL;
         }
     }
@@ -899,7 +894,7 @@ LuImage *luPngReadFile(const char *filename)
         img = luPngReadUC(&userCtx);
         fclose(f);
     } else {
-        LUPNG_WARN_UC(&userCtx, "PNG: failed to open '%s'", filename);
+        LUPNG_WARN_UC(&userCtx, "failed to open '%s'", filename);
         img = NULL;
     }
 
@@ -918,7 +913,7 @@ static LU_INLINE int writeChunk(PngInfoStruct *info, const void *buf, size_t buf
 
     if (written != 3)
     {
-        LUPNG_WARN(info, "PNG: write error in chunk '%.4s'", (char*)buf);
+        LUPNG_WARN(info, "write error in chunk '%.4s'", (char*)buf);
         return PNG_ERROR;
     }
 
@@ -941,7 +936,7 @@ static LU_INLINE int writeHeader(PngInfoStruct *info)
         colorType = PNG_TRUECOLOR_ALPHA;
     else
     {
-        LUPNG_WARN(info, "PNG: couldn't determine color type!");
+        LUPNG_WARN(info, "couldn't determine color type!");
         return PNG_ERROR;
     }
 
@@ -961,15 +956,12 @@ static LU_INLINE int writeHeader(PngInfoStruct *info)
 
     if (!info->userCtx->writeProc(PNG_SIG, PNG_SIG_SIZE, 1, info->userCtx->writeProcUserPtr))
     {
-        LUPNG_WARN(info, "PNG: error writing signature");
+        LUPNG_WARN(info, "error writing signature");
         return PNG_ERROR;
     }
 
     if (writeChunk(info, buffer, sizeof(buffer)) != PNG_OK)
-    {
-        LUPNG_WARN(info, "PNG: error writing header");
         return PNG_ERROR;
-    }
 
     if (colorType == PNG_PALETTED)
     {
@@ -988,7 +980,7 @@ static LU_INLINE int buildPalette(PngInfoStruct *info)
 
     if (img->channels != 3 || img->depth != 8)
     {
-        LUPNG_WARN(info, "Can only build palette for 3 channels RGB8!");
+        LUPNG_WARN(info, "can only build palette for 8bit / 3 channels!");
         return PNG_ERROR;
     }
 
@@ -1010,7 +1002,7 @@ static LU_INLINE int buildPalette(PngInfoStruct *info)
         {
             if (info->paletteItems >= 256)
             {
-                LUPNG_WARN(info, "Too many colors to build palette!\n");
+                LUPNG_WARN(info, "too many colors to build palette!");
                 info->paletteItems = 0;
                 return PNG_ERROR;
             }
@@ -1019,7 +1011,7 @@ static LU_INLINE int buildPalette(PngInfoStruct *info)
         }
     }
 
-    printf("Built palette of %d colors\n", info->paletteItems);
+    LUPNG_WARN(info, "built palette of %d colors", info->paletteItems);
 
     return PNG_OK;
 }
@@ -1037,7 +1029,7 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
 
     if (!filterCandidate || !bestCandidate)
     {
-        LUPNG_WARN(info, "PNG: memory allocation failed!");
+        LUPNG_WARN(info, "memory allocation failed!");
         goto _error;
     }
 
@@ -1045,9 +1037,9 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
     memcpy(info->buffer, "IDAT", 4);
 
     int ret = mz_deflateInit(&info->stream, info->userCtx->compressionLevel);
-    if(ret != MZ_OK)
+    if (ret != MZ_OK)
     {
-        LUPNG_WARN(info, "PNG: deflateInit failed (%d)!", ret);
+        LUPNG_WARN(info, "deflateInit failed (%d)!", ret);
         goto _error;
     }
 
@@ -1101,7 +1093,7 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
 
                 for (info->currentByte = 0; info->currentByte < info->scanlineBytes;)
                 {
-                    uint8_t val;
+                    uint8_t val = 0;
 
                     switch (info->currentFilter)
                     {
@@ -1120,8 +1112,6 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
                         case PNG_FILTER_PAETH:
                             val = paeth(info);
                             break;
-                        default:
-                            val = 0;
                     }
 
                     filterCandidate[fc++] = val;
@@ -1158,13 +1148,16 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
 
             if (status < 0)
             {
-                LUPNG_WARN(info, "PNG: deflate failed (%d)!", status);
+                LUPNG_WARN(info, "deflate failed (%d)!", status);
                 goto _error;
             }
 
             if (info->stream.avail_out < BUF_SIZE)
             {
-                writeChunk(info, info->buffer, BUF_SIZE-info->stream.avail_out+4);
+                if (writeChunk(info, info->buffer, BUF_SIZE-info->stream.avail_out+4) != PNG_OK)
+                {
+                    goto _error;
+                }
                 info->stream.next_out = info->buffer + 4;
                 info->stream.avail_out = BUF_SIZE;
             }
@@ -1250,7 +1243,7 @@ int luPngWriteFile(const char *filename, const LuImage *img)
     }
     else
     {
-        LUPNG_WARN_UC(&userCtx, "PNG: failed to open '%s'", filename);
+        LUPNG_WARN_UC(&userCtx, "failed to open '%s'", filename);
         return PNG_ERROR;
     }
 
@@ -1287,13 +1280,13 @@ LuImage *luImageCreate(size_t width, size_t height, uint8_t channels, uint8_t de
 
     if (depth != 8 && depth != 16)
     {
-        LUPNG_WARN_UC(userCtx,"Image: only bit depths 8 and 16 are supported!");
+        LUPNG_WARN_UC(userCtx, "only bit depths 8 and 16 are supported!");
         return NULL;
     }
 
     if (width > 0x7FFFFFFF || height > 0x7FFFFFFF)
     {
-        LUPNG_WARN_UC(userCtx, "Image: only 32 bit signed image dimensions are supported!");
+        LUPNG_WARN_UC(userCtx, "only 32 bit signed image dimensions are supported!");
         return NULL;
     }
 
