@@ -54,7 +54,7 @@
 		"C_Cpp.default.compilerPath": "${config:esp.tools-path}/bin/xtensa-esp32-elf-g++.exe",
 		"C_Cpp.default.cStandard": "c11",
 		"C_Cpp.default.cppStandard": "c++11",
-		"C_Cpp.default.intelliSenseMode": "gcc-x64",
+		"C_Cpp.default.intelliSenseMode": "gcc-x86",
 		"cSpell.words": [
 			"huexpress",
 			"nofrendo",
