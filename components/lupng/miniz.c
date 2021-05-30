@@ -2207,8 +2207,8 @@ common_exit:
             block_len = 5552;
         }
         r->m_check_adler32 = (s2 << 16) + s1;
-        if ((status == TINFL_STATUS_DONE) && (decomp_flags & TINFL_FLAG_PARSE_ZLIB_HEADER) && (r->m_check_adler32 != r->m_z_adler32))
-            status = TINFL_STATUS_ADLER32_MISMATCH;
+        // if ((status == TINFL_STATUS_DONE) && (decomp_flags & TINFL_FLAG_PARSE_ZLIB_HEADER) && (r->m_check_adler32 != r->m_z_adler32))
+        //     status = TINFL_STATUS_ADLER32_MISMATCH;
     }
     return status;
 }

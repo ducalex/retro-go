@@ -63,8 +63,6 @@
 #define LU_INLINE inline /* rest of the world... */
 #endif
 
-#define SIZE_T_MAX_POSITIVE ( ((size_t)-1) >> 1 )
-
 /********************************************************
  * CRC computation as per PNG spec
  ********************************************************/
@@ -136,6 +134,7 @@ static uint32_t crc(const uint8_t *buf, size_t len)
 /********************************************************
  * Helper structs
  ********************************************************/
+
 typedef struct
 {
     uint32_t length;
@@ -472,12 +471,6 @@ static LU_INLINE int parseIhdr(PngInfoStruct *info, PngChunk *chunk)
         return PNG_ERROR;
     }
 
-    memset(&info->stream, 0, sizeof(info->stream));
-    if (mz_inflateInit2(&info->stream, MZ_DEFAULT_WINDOW_BITS) != MZ_OK)
-    {
-        LUPNG_WARN(info, "inflateInit failed!");
-        return PNG_ERROR;
-    }
     info->img = luImageCreate(info->width, info->height,
                               info->channels, info->depth < 16 ? 8 : 16, NULL, info->userCtx);
     info->bytesPerPixel = MAX((info->channels * info->depth) >> 3, 1);
@@ -659,6 +652,8 @@ static LU_INLINE int parseIdat(PngInfoStruct *info, PngChunk *chunk)
         return PNG_ERROR;
     }
 
+    // mz_inflateReset(&info->stream);
+
     info->chunksFound |= PNG_IDAT;
     info->stream.next_in = chunk->data;
     info->stream.avail_in = chunk->length;
@@ -676,7 +671,7 @@ static LU_INLINE int parseIdat(PngInfoStruct *info, PngChunk *chunk)
             status != MZ_BUF_ERROR &&
             status != MZ_NEED_DICT)
         {
-            LUPNG_WARN(info, "inflate error!");
+            LUPNG_WARN(info, "inflate error (%d)!", status);
             return PNG_ERROR;
         }
 
@@ -839,6 +834,12 @@ LuImage *luPngReadUC(const LuUserContext *userCtx)
     memset(info, 0, sizeof(PngInfoStruct));
     info->userCtx = userCtx;
 
+    if (mz_inflateInit(&info->stream) != MZ_OK)
+    {
+        LUPNG_WARN(info, "inflateInit failed!");
+        return NULL;
+    }
+
     while (readChunk(info, &chunk) == PNG_OK)
     {
         status = handleChunk(info, &chunk);
@@ -848,9 +849,9 @@ LuImage *luPngReadUC(const LuUserContext *userCtx)
             break;
     }
 
-    mz_inflateEnd(&info->stream);
     img = info->img;
 
+    mz_inflateEnd(&info->stream);
     userCtx->freeProc(info->currentScanline, userCtx->freeProcUserPtr);
     userCtx->freeProc(info->previousScanline, userCtx->freeProcUserPtr);
     userCtx->freeProc(info, userCtx->freeProcUserPtr);
@@ -1033,15 +1034,9 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
         goto _error;
     }
 
-    memset(&info->stream, 0, sizeof(info->stream));
-    memcpy(info->buffer, "IDAT", 4);
+    mz_deflateReset(&info->stream);
 
-    int ret = mz_deflateInit(&info->stream, info->userCtx->compressionLevel);
-    if (ret != MZ_OK)
-    {
-        LUPNG_WARN(info, "deflateInit failed (%d)!", ret);
-        goto _error;
-    }
+    memcpy(info->buffer, "IDAT", 4);
 
     info->stream.avail_out = BUF_SIZE;
     info->stream.next_out = info->buffer + 4;
@@ -1148,7 +1143,7 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
 
             if (status < 0)
             {
-                LUPNG_WARN(info, "deflate failed (%d)!", status);
+                LUPNG_WARN(info, "deflate error (%d)!", status);
                 goto _error;
             }
 
@@ -1190,6 +1185,12 @@ int luPngWriteUC(const LuUserContext *userCtx, const LuImage *img)
     info->bytesPerPixel = (img->channels * img->depth) >> 3;
     info->scanlineBytes = info->bytesPerPixel * img->width;
 
+    if (mz_deflateInit(&info->stream, info->userCtx->compressionLevel) != MZ_OK)
+    {
+        LUPNG_WARN(info, "deflateInit failed!");
+        goto _cleanup;
+    }
+
     // Try using a palette if possible
     if (img->channels == 3 && img->depth == 8)
         buildPalette(info);
@@ -1200,7 +1201,6 @@ int luPngWriteUC(const LuUserContext *userCtx, const LuImage *img)
     if ((status = processPixels(info)) != PNG_OK)
         goto _cleanup;
 
-    mz_deflateEnd(&info->stream);
     status = writeChunk(info, "IEND", 4);
 
 _cleanup:
