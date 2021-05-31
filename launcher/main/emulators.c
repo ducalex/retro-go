@@ -16,8 +16,14 @@ static bool crc_cache_dirty = false;
 
 void crc_cache_init(void)
 {
-    crc_cache = rg_alloc(sizeof(retro_crc_cache_t), MEM_ANY);
+    crc_cache = calloc(1, sizeof(retro_crc_cache_t));
     crc_cache_dirty = true;
+
+    if (!crc_cache)
+    {
+        RG_LOGE("Failed to allocate crc_cache!\n");
+        return;
+    }
 
     FILE *fp = fopen(CRC_CACHE_PATH, "rb");
     if (!fp)
@@ -59,6 +65,9 @@ uint32_t crc_cache_lookup(retro_emulator_file_t *file)
 {
     uint32_t key = crc_cache_calc_key(file);
 
+    if (!crc_cache)
+        return 0;
+
     for (int i = 0; i < crc_cache->count; i++)
     {
         if (crc_cache->entries[i].key == key)
@@ -70,10 +79,7 @@ uint32_t crc_cache_lookup(retro_emulator_file_t *file)
 
 void crc_cache_save(void)
 {
-    size_t unused = CRC_CACHE_MAX_ENTRIES - RG_MIN(crc_cache->count, CRC_CACHE_MAX_ENTRIES);
-    size_t minsize = sizeof(retro_crc_cache_t) - (unused * sizeof(retro_crc_entry_t));
-
-    if (!crc_cache_dirty)
+    if (!crc_cache || !crc_cache_dirty)
         return;
 
     RG_LOGI("Saving cache\n");
@@ -81,6 +87,9 @@ void crc_cache_save(void)
     FILE *fp = fopen(CRC_CACHE_PATH, "wb");
     if (fp)
     {
+        size_t unused = CRC_CACHE_MAX_ENTRIES - RG_MIN(crc_cache->count, CRC_CACHE_MAX_ENTRIES);
+        size_t minsize = sizeof(retro_crc_cache_t) - (unused * sizeof(retro_crc_entry_t));
+
         fwrite(crc_cache, minsize, 1, fp);
         fclose(fp);
         crc_cache_dirty = false;
@@ -90,7 +99,10 @@ void crc_cache_save(void)
 void crc_cache_update(retro_emulator_file_t *file)
 {
     uint32_t key = crc_cache_calc_key(file);
-    int index;
+    size_t index = 0;
+
+    if (!crc_cache)
+        return;
 
     if (crc_cache->count < CRC_CACHE_MAX_ENTRIES)
         index = crc_cache->count++;
@@ -98,7 +110,7 @@ void crc_cache_update(retro_emulator_file_t *file)
         index = rand() % CRC_CACHE_MAX_ENTRIES;
 
     crc_cache->magic = CRC_CACHE_MAGIC;
-    crc_cache->entries[index].key = crc_cache_calc_key(file);
+    crc_cache->entries[index].key = key;
     crc_cache->entries[index].crc = file->checksum;
     crc_cache_dirty = true;
 
@@ -110,6 +122,9 @@ void crc_cache_update(retro_emulator_file_t *file)
 
 void crc_cache_idle_task(tab_t *tab)
 {
+    if (!crc_cache)
+        return;
+
     if (gui.idle_counter >= 2000 && crc_cache->count < CRC_CACHE_MAX_ENTRIES)
     {
         int start_offset = 0;
@@ -290,19 +305,32 @@ void emulator_init(retro_emulator_t *emu)
     rg_strings_t *files = rg_vfs_readdir(path, RG_SKIP_HIDDEN|RG_RECURSIVE|RG_FILES_ONLY);
     if (files && files->count > 0)
     {
-        emu->roms.files = rg_alloc(files->count * sizeof(retro_emulator_file_t), MEM_ANY);
+        char *files_ptr = files->buffer;
+        size_t count = files->count;
+
+        emu->roms.files = calloc(count, sizeof(retro_emulator_file_t));;
         emu->roms.count = 0;
 
-        char *ptr = files->buffer;
-        for (int i = 0; i < files->count; ++i)
+        // In case of low memory, try to fit at least *something*...
+        while (!emu->roms.files && count > 20)
         {
-            const char *name = ptr;
-            const char *ext = rg_vfs_extension(ptr);
+            count /= 2;
+            emu->roms.files = calloc(count, sizeof(retro_emulator_file_t));
+            RG_LOGW("Had to reduce list to fit in memory %d => %d ...\n", files->count, count);
+        }
+
+        if (!emu->roms.files)
+            RG_PANIC("Out of memory, unable to alloc ROMs list!\n");
+
+        for (int i = 0; i < count; ++i)
+        {
+            const char *name = files_ptr;
+            const char *ext = rg_vfs_extension(files_ptr);
             size_t name_len = strlen(name);
             bool ext_match = false;
 
             // Advance pointer to next entry
-            ptr += name_len + 1;
+            files_ptr += name_len + 1;
 
             char *token = strtok(strcpy(buffer, emu->extensions), " ");
             while (token && ext && !ext_match)
@@ -324,7 +352,7 @@ void emulator_init(retro_emulator_t *emu)
             file->missing_cover = 0;
         }
     }
-    rg_free(files);
+    free(files);
 }
 
 const char *emu_get_file_path(retro_emulator_file_t *file)
@@ -501,9 +529,9 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
             favorite_add(file);
     }
 
-    rg_free(save_path);
-    rg_free(sram_path);
-    rg_free(scrn_path);
+    free(save_path);
+    free(sram_path);
+    free(scrn_path);
 }
 
 void emulator_start(retro_emulator_file_t *file, bool load_state)

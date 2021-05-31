@@ -710,8 +710,9 @@ IRAM_ATTR void rg_spi_lock_release(spi_lock_res_t owner)
 #endif
 }
 
-/* Memory */
-
+// Note: You should use calloc/malloc everywhere possible. This function is used to ensure
+// that some memory is put in specific regions for performance or hardware reasons.
+// Memory from this function should be freed with free()
 void *rg_alloc(size_t size, uint32_t mem_type)
 {
     uint32_t caps = 0;
@@ -744,9 +745,4 @@ void *rg_alloc(size_t size, uint32_t mem_type)
     }
 
     return ptr;
-}
-
-void rg_free(void *ptr)
-{
-    return heap_caps_free(ptr);
 }

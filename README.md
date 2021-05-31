@@ -118,13 +118,13 @@ An up to date list of incompatible/broken games can be found on the [ODROID-GO f
 ## Prerequisites
 You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/v4.0.2/) version 3.3.4 or 4.0.2. The legacy (make) build system isn't supported, only idf/cmake.
 
-_Note: Other esp-idf versions will work (>=3.3.3) but I cannot provide help for them. Many are known to have problems; for example 3.3.0, 4.0.0, and 4.1.* have broken sound (but it is fixable if you really need to) and 4.2 and 4.3 have broken SD Card support._
+_Note: Other esp-idf versions will work (>=3.3.3) but I cannot provide help for them. Many are known to have problems: for example 3.3.0, 4.0.0, and 4.1.* have broken sound (broken i2s driver) and 4.2 and 4.3 have broken SD Card support. If you can make retro-go work with 4.1 or 4.2 then please send me a pull request :)._
 
 ### ESP-IDF Patches
 Retro-Go will build and most likely run without any changes to esp-idf, but patches do provide significant advantages. The patches are located in `tools/patches`. Here's the list:
-- `esp-idf_enable-exfat`:  Enable exFAT support. The patch is entirely optional.
 - `esp-idf-X.X_sdcard-fix`: This improves SD Card compatibility significantly but can also reduce transfer speed a lot. The patch is usually required if you intend to distribute your build.
-- `esp-idf-4.0-panic-hook`: This is to help users report bugs, see `Capturing crash logs` bellow for more details. The patch is entirely optional.
+- `esp-idf-4.0-panic-hook`: This is to help users report bugs, see `Capturing crash logs` bellow for more details. The patch is optional but recommended.
+- `esp-idf_enable-exfat`:  Enable exFAT support. The patch is entirely optional.
 
 ## Build everything and generate .fw:
 1. `rg_tool.py build-fw`
@@ -144,7 +144,7 @@ Fonts are found in `components/retro-go/fonts`. There are basic instructions in 
 In short you need to generate a font.c file and add it to fonts.h. It'll try to add better instructions soon...
 
 ## Capturing crash logs
-When a panic occurs, Retro-Go has the ability to save debugging information to `/sd/crash.log`. This provides users with a simple way of recovering a backtrace (and often more) versus having to install drivers and serial console software. A weak hook is installed into esp-idf panic's putchar, allowing us to save each chars in RTC RAM. Then, after the system resets, we can move that data to the sd card. You will find a small esp-idf patch to enable this feature in tools/patches.
+When a panic occurs, Retro-Go has the ability to save debugging information to `/sd/crash.log`. This provides users with a simple way of recovering a backtrace (and often more) without having to install drivers and serial console software. A weak hook is installed into esp-idf panic's putchar, allowing us to save each chars in RTC RAM. Then, after the system resets, we can move that data to the sd card. You will find a small esp-idf patch to enable this feature in tools/patches.
 
 
 # Porting

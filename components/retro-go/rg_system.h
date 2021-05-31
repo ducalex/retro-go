@@ -20,6 +20,7 @@ extern "C" {
 #include "rg_gui.h"
 #include "rg_profiler.h"
 #include "rg_settings.h"
+#include "rg_cheats.h"
 
 typedef enum
 {
@@ -66,6 +67,8 @@ typedef bool (*state_handler_t)(const char *filename);
 typedef bool (*reset_handler_t)(bool hard);
 typedef bool (*message_handler_t)(int msg, void *arg);
 typedef bool (*screenshot_handler_t)(const char *filename, int width, int height);
+typedef int  (*mem_read_handler_t)(int addr);
+typedef bool (*mem_write_handler_t)(int addr, int value);
 
 typedef struct
 {
@@ -75,6 +78,8 @@ typedef struct
     message_handler_t message;
     netplay_handler_t netplay;
     screenshot_handler_t screenshot;
+    mem_read_handler_t memRead;    // Used by for cheats and debugging
+    mem_write_handler_t memWrite;  // Used by for cheats and debugging
 } rg_emu_proc_t;
 
 typedef struct
@@ -149,7 +154,6 @@ void rg_spi_lock_acquire(spi_lock_res_t);
 void rg_spi_lock_release(spi_lock_res_t);
 
 void *rg_alloc(size_t size, uint32_t caps);
-void rg_free(void *ptr);
 
 #define MEM_ANY   (0)
 #define MEM_SLOW  (1)
@@ -176,7 +180,7 @@ extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 
 // This should really support printf format...
 #define RG_PANIC(x) rg_system_panic(x, __FUNCTION__)
-#define RG_ASSERT(cond, x) while (!(cond)) { RG_PANIC(x); }
+#define RG_ASSERT(cond) while (!(cond)) { RG_PANIC("Assertion failed: " #cond); }
 
 #define RG_LOGX(x, ...) printf(x, ## __VA_ARGS__)
 #define RG_LOGE(x, ...) printf("!! %s: " x, __func__, ## __VA_ARGS__)

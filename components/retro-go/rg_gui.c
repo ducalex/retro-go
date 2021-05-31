@@ -287,16 +287,6 @@ void rg_gui_draw_fill_rect(int x_pos, int y_pos, int width, int height, uint16_t
     }
 }
 
-static rg_image_t *new_image(int width, int height)
-{
-    width = RG_MIN(width, RG_SCREEN_WIDTH);
-    height = RG_MIN(height, RG_SCREEN_HEIGHT);
-    rg_image_t *img = rg_alloc(sizeof(rg_image_t) + width * height * 2, MEM_SLOW);
-    img->width = width;
-    img->height = height;
-    return img;
-}
-
 rg_image_t *rg_gui_load_image_file(const char *file)
 {
     if (!file)
@@ -306,14 +296,22 @@ rg_image_t *rg_gui_load_image_file(const char *file)
     if (fp)
     {
         fseek(fp, 0, SEEK_END);
-        size_t data_len = RG_MAX(0x80000, ftell(fp));
-        void *data = rg_alloc(data_len, MEM_SLOW);
+
+        size_t data_len = RG_MIN(0x80000, ftell(fp));
+        void *data = malloc(data_len);
+        if (!data)
+        {
+            RG_LOGE("Unable to load image file '%s' (out of memory)!\n", file);
+            fclose(fp);
+            return NULL;
+        }
+
         fseek(fp, 0, SEEK_SET);
         fread(data, data_len, 1, fp);
         fclose(fp);
 
         rg_image_t *img = rg_gui_load_image(data, data_len);
-        rg_free(data);
+        free(data);
 
         return img;
     }
@@ -330,7 +328,16 @@ rg_image_t *rg_gui_load_image(const uint8_t *data, size_t data_len)
     LuImage *png = luPngReadMem(data, data_len);
     if (png)
     {
-        rg_image_t *img = new_image(png->width, png->height);
+        rg_image_t *img = malloc(sizeof(rg_image_t) + png->width * png->height * 2);
+        if (!img)
+        {
+            RG_LOGE("PNG image is too large, alloc failed (%dx%d)\n", png->width, png->height);
+            luImageRelease(png, NULL);
+            return NULL;
+        }
+        img->width = png->width;
+        img->height = png->height;
+
         uint16_t *ptr = img->data;
 
         for (int y = 0; y < img->height; ++y) {
@@ -353,8 +360,15 @@ rg_image_t *rg_gui_load_image(const uint8_t *data, size_t data_len)
 
         if (data_len == (img_width * img_height * 2 + 4))
         {
-            // return (rg_image_t *)data;
-            rg_image_t *img = new_image(img_width, img_height);
+            rg_image_t *img = malloc(sizeof(rg_image_t) + img_width * img_height * 2);
+            if (!img)
+            {
+                // Maybe we could just return (rg_image_t *)data; ?
+                RG_LOGE("RAW image is too large, alloc failed (%dx%d)\n", img_width, img_height);
+                return NULL;
+            }
+            img->width = img_width;
+            img->height = img_height;
             memcpy(img->data, data + 4, data_len - 4);
             return img;
         }
