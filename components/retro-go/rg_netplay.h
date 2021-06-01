@@ -63,7 +63,7 @@ typedef struct __attribute__ ((packed)) {
 } netplay_player_t;
 
 typedef void (*netplay_callback_t)(netplay_event_t event, void *arg);
-typedef netplay_callback_t netplay_handler_t;
+typedef netplay_callback_t rg_netplay_handler_t;
 
 void rg_netplay_init(netplay_callback_t callback);
 void rg_netplay_deinit(void);

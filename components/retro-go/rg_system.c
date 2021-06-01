@@ -562,8 +562,7 @@ bool rg_emu_reset(int hard)
 {
     if (app.handlers.reset)
         return app.handlers.reset(hard);
-    return false;
-    // return rg_emu_notify(RG_MSG_RESET, (void*)hard);
+    return rg_emu_notify(RG_MSG_RESET, (void*)hard);
 }
 
 bool rg_emu_notify(int msg, void *arg)

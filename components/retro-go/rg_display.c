@@ -88,7 +88,7 @@ static inline void spi_queue_transaction(const void *data, size_t length, uint32
 {
     spi_transaction_t *t;
 
-    if (length < 1)
+    if (!data || length < 1)
         return;
 
     xQueueReceive(spi_queue, &t, portMAX_DELAY);

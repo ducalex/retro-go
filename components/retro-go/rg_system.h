@@ -63,23 +63,23 @@ typedef enum
     SPI_LOCK_OTHER = 3,
 } spi_lock_res_t;
 
-typedef bool (*state_handler_t)(const char *filename);
-typedef bool (*reset_handler_t)(bool hard);
-typedef bool (*message_handler_t)(int msg, void *arg);
-typedef bool (*screenshot_handler_t)(const char *filename, int width, int height);
-typedef int  (*mem_read_handler_t)(int addr);
-typedef bool (*mem_write_handler_t)(int addr, int value);
+typedef bool (*rg_state_handler_t)(const char *filename);
+typedef bool (*rg_reset_handler_t)(bool hard);
+typedef bool (*rg_message_handler_t)(int msg, void *arg);
+typedef bool (*rg_screenshot_handler_t)(const char *filename, int width, int height);
+typedef int  (*rg_mem_read_handler_t)(int addr);
+typedef bool (*rg_mem_write_handler_t)(int addr, int value);
 
 typedef struct
 {
-    state_handler_t loadState;
-    state_handler_t saveState;
-    reset_handler_t reset;
-    message_handler_t message;
-    netplay_handler_t netplay;
-    screenshot_handler_t screenshot;
-    mem_read_handler_t memRead;    // Used by for cheats and debugging
-    mem_write_handler_t memWrite;  // Used by for cheats and debugging
+    rg_state_handler_t loadState;
+    rg_state_handler_t saveState;
+    rg_reset_handler_t reset;
+    rg_message_handler_t message;
+    rg_netplay_handler_t netplay;
+    rg_screenshot_handler_t screenshot;
+    rg_mem_read_handler_t memRead;    // Used by for cheats and debugging
+    rg_mem_write_handler_t memWrite;  // Used by for cheats and debugging
 } rg_emu_proc_t;
 
 typedef struct
@@ -180,7 +180,7 @@ extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 
 // This should really support printf format...
 #define RG_PANIC(x) rg_system_panic(x, __FUNCTION__)
-#define RG_ASSERT(cond) while (!(cond)) { RG_PANIC("Assertion failed: " #cond); }
+#define RG_ASSERT(cond, msg) while (!(cond)) { RG_PANIC("Assertion failed: `" #cond "` : " msg); }
 
 #define RG_LOGX(x, ...) printf(x, ## __VA_ARGS__)
 #define RG_LOGE(x, ...) printf("!! %s: " x, __func__, ## __VA_ARGS__)
