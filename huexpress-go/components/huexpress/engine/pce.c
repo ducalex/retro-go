@@ -251,7 +251,7 @@ RunPCE(void)
  * Load saved state
  */
 int
-LoadState(char *name)
+LoadState(const char *name)
 {
 	MESSAGE_INFO("Loading state from %s...\n", name);
 
@@ -295,7 +295,7 @@ LoadState(char *name)
  * Save current state
  */
 int
-SaveState(char *name)
+SaveState(const char *name)
 {
 	MESSAGE_INFO("Saving state to %s...\n", name);
 

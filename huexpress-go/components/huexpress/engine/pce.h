@@ -17,8 +17,8 @@
 
 #include <rg_system.h>
 
-int LoadState(char *name);
-int SaveState(char *name);
+int LoadState(const char *name);
+int SaveState(const char *name);
 void ResetPCE(bool);
 void RunPCE(void);
 void ShutdownPCE();
