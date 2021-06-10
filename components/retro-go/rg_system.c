@@ -8,6 +8,7 @@
 #include <esp_sleep.h>
 #include <driver/gpio.h>
 #include <sys/stat.h>
+#include <stdarg.h>
 #include <assert.h>
 #include <string.h>
 
@@ -39,9 +40,10 @@
 typedef struct
 {
     uint32_t magicWord;
-    char output[2048];
-    size_t cursor;
-} panic_console_t;
+    char buffer[2048];
+    size_t head;
+    size_t tail;
+} ring_buffer_t;
 
 typedef struct
 {
@@ -49,11 +51,12 @@ typedef struct
     char message[256];
     char context[128];
     char appname[128];
+    ring_buffer_t log;
 } panic_trace_t;
 
 // These will survive a software reset
 static RTC_NOINIT_ATTR panic_trace_t panicTrace;
-static RTC_NOINIT_ATTR panic_console_t panicConsole;
+static RTC_NOINIT_ATTR ring_buffer_t logBuffer;
 static RTC_NOINIT_ATTR runtime_stats_t statistics;
 static runtime_counters_t counters;
 static rg_app_desc_t app;
@@ -640,6 +643,25 @@ void rg_system_panic(const char *message, const char *context)
     RG_LOGX("*** CONTEXT: %s\n", panicTrace.context);
 
     abort();
+}
+
+void rg_system_log(int level, const char *context, const char *format, ...)
+{
+    const char *prefix[] = {"print", "error", "warn", "info", "debug"};
+
+    va_list args;
+    va_start(args, format);
+
+    if (level > RG_LOG_LEVEL)
+        return;
+
+    if (level >= RG_LOG_ERROR && level <= RG_LOG_DEBUG)
+        printf("[%s] %s: ", prefix[level], context);
+    else if (level > 0)
+        printf("[log:%d] %s: ", level, context);
+
+    vprintf(format, args);
+    va_end(args);
 }
 
 void rg_system_halt()

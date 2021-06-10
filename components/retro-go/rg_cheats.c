@@ -1,6 +1,6 @@
 #include "rg_system.h"
 #include "rg_cheats.h"
-
+#if 0
 static rg_cheat_t **cheats;
 
 
@@ -34,3 +34,4 @@ void rg_cheats_enter_code_menu(void)
 
     // ...
 }
+#endif

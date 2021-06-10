@@ -704,7 +704,7 @@ static void update_viewport_size(int src_width, int src_height, double new_ratio
 
         if (new_width > SCREEN_WIDTH)
         {
-            RG_LOGX("[LCD SCALE] new_width too large: %d, reducing new_height to maintain ratio.\n", new_width);
+            RG_LOGW("new_width too large: %d, reducing new_height to maintain ratio.\n", new_width);
             new_height = SCREEN_HEIGHT * (SCREEN_WIDTH / (double)new_width);
             new_width = SCREEN_WIDTH;
         }
@@ -727,7 +727,7 @@ static void update_viewport_size(int src_width, int src_height, double new_ratio
 
     generate_filter_structures(src_width, src_height);
 
-    RG_LOGX("[LCD SCALE] %dx%d@%.3f => %dx%d@%.3f x_inc:%d y_inc:%d x_scale:%.3f y_scale:%.3f x_origin:%d y_origin:%d\n",
+    RG_LOGI("%dx%d@%.3f => %dx%d@%.3f x_inc:%d y_inc:%d x_scale:%.3f y_scale:%.3f x_origin:%d y_origin:%d\n",
            src_width, src_height, src_width/(double)src_height, new_width, new_height, new_ratio,
            x_inc, y_inc, x_scale, y_scale, display.viewport.x, display.viewport.y);
 }

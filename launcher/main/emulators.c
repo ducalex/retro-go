@@ -264,7 +264,7 @@ static void add_emulator(const char *system, const char *dirname, const char* ex
 {
     if (!rg_system_find_app(part))
     {
-        RG_LOGW("add_emulator: Emulator '%s' (%s) not present, skipping\n", system, part);
+        RG_LOGI("Emulator '%s' (%s) not present, skipping\n", system, part);
         return;
     }
 
@@ -292,7 +292,7 @@ void emulator_init(retro_emulator_t *emu)
 
     emu->initialized = true;
 
-    RG_LOGX("Retro-Go: Initializing emulator '%s'\n", emu->system_name);
+    RG_LOGI("Initializing emulator '%s'\n", emu->system_name);
 
     char path[256], buffer[32];
 

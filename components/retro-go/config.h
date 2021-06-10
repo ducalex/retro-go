@@ -1,3 +1,6 @@
+// System
+#define RG_LOG_LEVEL           RG_LOG_INFO
+
 // Audio
 #define RG_AUDIO_I2S_NUM       (I2S_NUM_0)
 

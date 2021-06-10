@@ -63,6 +63,14 @@ typedef enum
     SPI_LOCK_OTHER = 3,
 } spi_lock_res_t;
 
+enum {
+    RG_LOG_PRINT = 0,
+    RG_LOG_ERROR,
+    RG_LOG_WARN,
+    RG_LOG_INFO,
+    RG_LOG_DEBUG,
+};
+
 typedef bool (*rg_state_handler_t)(const char *filename);
 typedef bool (*rg_reset_handler_t)(bool hard);
 typedef bool (*rg_message_handler_t)(int msg, void *arg);
@@ -133,6 +141,7 @@ bool rg_system_find_app(const char *app);
 void rg_system_set_led(int value);
 int  rg_system_get_led(void);
 void rg_system_tick(bool skippedFrame, bool fullFrame, int busyTime);
+void rg_system_log(int level, const char *context, const char *format, ...);
 rg_app_desc_t *rg_system_get_app();
 runtime_stats_t rg_system_get_stats();
 
@@ -182,12 +191,11 @@ extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 #define RG_PANIC(x) rg_system_panic(x, __FUNCTION__)
 #define RG_ASSERT(cond, msg) while (!(cond)) { RG_PANIC("Assertion failed: `" #cond "` : " msg); }
 
-#define RG_LOGX(x, ...) printf(x, ## __VA_ARGS__)
-#define RG_LOGE(x, ...) printf("!! %s: " x, __func__, ## __VA_ARGS__)
-#define RG_LOGW(x, ...) printf(" ! %s: " x, __func__, ## __VA_ARGS__)
-#define RG_LOGI(x, ...) printf("%s: " x, __func__, ## __VA_ARGS__)
-//#define RG_LOGD(x, ...) printf("> %s: " x, __func__, ## __VA_ARGS__)
-#define RG_LOGD(x, ...) {}
+#define RG_LOGX(x, ...) rg_system_log(RG_LOG_PRINT, __func__, x, ## __VA_ARGS__)
+#define RG_LOGE(x, ...) rg_system_log(RG_LOG_ERROR, __func__, x, ## __VA_ARGS__)
+#define RG_LOGW(x, ...) rg_system_log(RG_LOG_WARN, __func__, x, ## __VA_ARGS__)
+#define RG_LOGI(x, ...) rg_system_log(RG_LOG_INFO, __func__, x, ## __VA_ARGS__)
+#define RG_LOGD(x, ...) rg_system_log(RG_LOG_DEBUG, __func__, x, ## __VA_ARGS__)
 
 #define RG_DUMP(...) {}
 
