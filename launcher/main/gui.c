@@ -342,6 +342,7 @@ void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file)
     }
 
     rg_image_t *img = NULL;
+    uint32_t errors = 0;
 
     while (order && !img)
     {
@@ -366,24 +367,22 @@ void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file)
             break;
         }
 
-        switch (type)
+        if (type == 0x1) // Game cover (old format)
+            sprintf(path, RG_BASE_PATH_ROMART "/%s/%X/%08X.art", dirname, file->checksum >> 28, file->checksum);
+        else if (type == 0x2) // Game cover (png)
+            sprintf(path, RG_BASE_PATH_ROMART "/%s/%X/%08X.png", dirname, file->checksum >> 28, file->checksum);
+        else if (type == 0x3) // Save state screenshot (png)
+            sprintf(path, "%s/%s/%s.%s.png", RG_BASE_PATH_SAVES, dirname, file->name, file->ext);
+        else if (type == 0x4) // use default image (not currently used)
+            sprintf(path, RG_BASE_PATH_ROMART "/%s/default.png", dirname);
+        else
+            continue;
+
+        if (rg_vfs_filesize(path) > 0)
         {
-            case 0x1: // Game cover (old format)
-                sprintf(path, RG_BASE_PATH_ROMART "/%s/%X/%08X.art", dirname, file->checksum >> 28, file->checksum);
-                img = rg_gui_load_image_file(path);
-                break;
-            case 0x2: // Game cover (png)
-                sprintf(path, RG_BASE_PATH_ROMART "/%s/%X/%08X.png", dirname, file->checksum >> 28, file->checksum);
-                img = rg_gui_load_image_file(path);
-                break;
-            case 0x3: // Save state screenshot (png)
-                sprintf(path, "%s/%s/%s.%s.png", RG_BASE_PATH_SAVES, dirname, file->name, file->ext);
-                img = rg_gui_load_image_file(path);
-                break;
-            case 0x4: // use default image (not currently used)
-                sprintf(path, RG_BASE_PATH_ROMART "/%s/default.png", dirname);
-                img = rg_gui_load_image_file(path);
-                break;
+            img = rg_image_load_from_file(path, 0);
+            if (!img)
+                errors++;
         }
 
         file->missing_cover |= (img ? 0 : 1) << type;
@@ -395,18 +394,12 @@ void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file)
         int width = RG_MIN(img->width, COVER_MAX_WIDTH);
 
         rg_gui_draw_image(-width, -height, width, height, img);
-
-        if (img->height > COVER_MAX_HEIGHT || img->width > COVER_MAX_WIDTH)
-        {
-            gui_set_status(tab, NULL, "Art too large");
-            gui_draw_status(tab);
-        }
-
-        rg_gui_free_image(img);
+        rg_image_free(img);
     }
-    else if (file->checksum && show_missing_cover)
+    else if (file->checksum && (show_missing_cover || errors))
     {
-        gui_set_status(tab, NULL, "No cover");
+        RG_LOGI("No image found for '%s'\n", file->name);
+        gui_set_status(tab, NULL, errors ? "Bad cover" : "No cover");
         gui_draw_status(tab);
     }
 }

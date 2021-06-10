@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "rg_image.h"
+
 typedef enum
 {
     RG_DIALOG_INIT,
@@ -56,13 +58,6 @@ typedef struct
 
 typedef struct
 {
-    uint16_t width;
-    uint16_t height;
-    uint16_t data[];
-} rg_image_t;
-
-typedef struct
-{
     uint16_t box_background;
     uint16_t box_header;
     uint16_t box_border;
@@ -112,10 +107,6 @@ void rg_gui_draw_battery(int x_pos, int y_pos);
 void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int sel);
 void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, const rg_image_t *img);
 void rg_gui_draw_hourglass(void);
-
-rg_image_t *rg_gui_load_image_file(const char *file);
-rg_image_t *rg_gui_load_image(const uint8_t *data, size_t data_len);
-void rg_gui_free_image(rg_image_t *img);
 
 int  rg_gui_dialog(const char *header, const dialog_option_t *options, int selected_initial);
 bool rg_gui_confirm(const char *title, const char *message, bool yes_selected);

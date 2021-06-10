@@ -200,15 +200,15 @@ void favorites_init()
 {
     fav_tab = gui_add_tab(
         "favorites",
-        rg_gui_load_image(logo_fav.data, logo_fav.size),
-        rg_gui_load_image(header_fav.data, header_fav.size),
+        rg_image_load_from_memory(logo_fav.data, logo_fav.size, 0),
+        rg_image_load_from_memory(header_fav.data, header_fav.size, 0),
         NULL,
         event_handler);
 
     // recent_tab = gui_add_tab(
     //     "recent",
-    //     rg_gui_load_image(logo_recent.data, logo_recent.size),
-    //     rg_gui_load_image(header_recent.data, header_recent.size),
+    //     rg_image_load_from_memory(logo_recent.data, logo_recent.size, 0),
+    //     rg_image_load_from_memory(header_recent.data, header_recent.size, 0),
     //     NULL,
     //     event_handler);
 

@@ -7,7 +7,6 @@
 #include <driver/rtc_io.h>
 #include <string.h>
 #include <unistd.h>
-#include <lupng.h>
 
 #include "rg_system.h"
 #include "rg_display.h"
@@ -871,14 +870,10 @@ bool rg_display_save_frame(const char *filename, rg_video_frame_t *frame, int wi
     RG_LOGI("Saving frame: %dx%d to PNG %dx%d. Step: X=%.3f Y=%.3f\n",
         frame->width, frame->height, width, height, step_x, step_y);
 
-    LuImage *png = luImageCreate(width, height, 3, 8, 0, 0);
-    if (!png)
-    {
-        RG_LOGE("LuImage allocation failed!\n");
-        return false;
-    }
+    rg_image_t *img = rg_image_alloc(width, height);
+    if (!img) return false;
 
-    uint8_t *img_ptr = png->data;
+    uint16_t *img_ptr = img->data;
 
     for (int y = 0; y < height; y++)
     {
@@ -896,22 +891,17 @@ bool rg_display_save_frame(const char *filename, rg_video_frame_t *frame, int wi
             if ((frame->flags & RG_PIXEL_LE) == 0) // BE to LE
                 pixel = (pixel << 8) | (pixel >> 8);
 
-            *(img_ptr++) = ((pixel >> 11) & 0x1F) << 3;
-            *(img_ptr++) = ((pixel >> 5) & 0x3F) << 2;
-            *(img_ptr++) = (pixel & 0x1F) << 3;
+            *(img_ptr++) = pixel;
         }
     }
 
-    bool status = luPngWriteFile(filename, png);
-    luImageRelease(png, 0);
+    bool status = rg_image_save_to_file(filename, img, 0);
+    rg_image_free(img);
 
-    if (status != PNG_OK)
-    {
-        RG_LOGE("luPngWriteFile() failed! %d\n", status);
-        return false;
-    }
+    if (!status)
+        RG_LOGE("rg_image_write_file() failed!\n");
 
-    return true;
+    return status;
 }
 
 IRAM_ATTR

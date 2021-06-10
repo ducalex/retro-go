@@ -1,6 +1,6 @@
 set(COMPONENT_SRCDIRS ". fonts")
 set(COMPONENT_ADD_INCLUDEDIRS ".")
-set(COMPONENT_REQUIRES "nvs_flash spi_flash fatfs app_update esp_adc_cal esp32 json lupng")
+set(COMPONENT_REQUIRES "nvs_flash spi_flash fatfs app_update esp_adc_cal esp32 json lupng gif")
 register_component()
 
 component_compile_options(-O3)

@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
-#include <lupng.h>
 
 #include "bitmaps/image_hourglass.h"
 #include "fonts/fonts.h"
@@ -285,103 +284,6 @@ void rg_gui_draw_fill_rect(int x_pos, int y_pos, int width, int height, uint16_t
         int thickness = (y_end - y_pos >= 16) ? 16 : (y_end - y_pos);
         rg_display_write(x_pos, y_pos, width, thickness, 0, overlay_buffer);
     }
-}
-
-rg_image_t *rg_gui_load_image_file(const char *file)
-{
-    if (!file)
-        return NULL;
-
-    FILE *fp = fopen(file, "rb");
-    if (fp)
-    {
-        fseek(fp, 0, SEEK_END);
-
-        size_t data_len = RG_MIN(0x80000, ftell(fp));
-        void *data = malloc(data_len);
-        if (!data)
-        {
-            RG_LOGE("Unable to load image file '%s' (out of memory)!\n", file);
-            fclose(fp);
-            return NULL;
-        }
-
-        fseek(fp, 0, SEEK_SET);
-        fread(data, data_len, 1, fp);
-        fclose(fp);
-
-        rg_image_t *img = rg_gui_load_image(data, data_len);
-        free(data);
-
-        return img;
-    }
-
-    RG_LOGE("Unable to load image file '%s'!\n", file);
-    return NULL;
-}
-
-rg_image_t *rg_gui_load_image(const uint8_t *data, size_t data_len)
-{
-    if (!data || data_len < 16)
-        return NULL;
-
-    LuImage *png = luPngReadMem(data, data_len);
-    if (png)
-    {
-        rg_image_t *img = malloc(sizeof(rg_image_t) + png->width * png->height * 2);
-        if (!img)
-        {
-            RG_LOGE("PNG image is too large, alloc failed (%dx%d)\n", png->width, png->height);
-            luImageRelease(png, NULL);
-            return NULL;
-        }
-        img->width = png->width;
-        img->height = png->height;
-
-        uint16_t *ptr = img->data;
-
-        for (int y = 0; y < img->height; ++y) {
-            for (int x = 0; x < img->width; ++x) {
-                int offset = (y * png->width * 3) + (x * 3);
-                int r = (png->data[offset+0] >> 3) & 0x1F;
-                int g = (png->data[offset+1] >> 2) & 0x3F;
-                int b = (png->data[offset+2] >> 3) & 0x1F;
-                *(ptr++) = (r << 11) | (g << 5) | b;
-            }
-        }
-
-        luImageRelease(png, NULL);
-        return img;
-    }
-    else // RAW565 (uint16 width, uint16 height, uint16 data[])
-    {
-        uint16_t img_width = ((uint16_t *)data)[0];
-        uint16_t img_height = ((uint16_t *)data)[1];
-
-        if (data_len == (img_width * img_height * 2 + 4))
-        {
-            rg_image_t *img = malloc(sizeof(rg_image_t) + img_width * img_height * 2);
-            if (!img)
-            {
-                // Maybe we could just return (rg_image_t *)data; ?
-                RG_LOGE("RAW image is too large, alloc failed (%dx%d)\n", img_width, img_height);
-                return NULL;
-            }
-            img->width = img_width;
-            img->height = img_height;
-            memcpy(img->data, data + 4, data_len - 4);
-            return img;
-        }
-    }
-
-    RG_LOGE("Buffer does not contain a valid image!\n");
-
-    return NULL;
-}
-
-void rg_gui_free_image(rg_image_t *img)
-{
-    free(img);
 }
 
 void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, const rg_image_t *img)

@@ -279,8 +279,8 @@ static void add_emulator(const char *system, const char *dirname, const char* ex
 
     gui_add_tab(
         dirname,
-        logo ? rg_gui_load_image(logo->data, logo->size) : NULL,
-        header ? rg_gui_load_image(header->data, header->size) : NULL,
+        logo ? rg_image_load_from_memory(logo->data, logo->size, 0) : NULL,
+        header ? rg_image_load_from_memory(header->data, header->size, 0) : NULL,
         emulator,
         event_handler);
 }
