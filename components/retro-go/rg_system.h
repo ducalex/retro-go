@@ -17,6 +17,7 @@ extern "C" {
 #include "rg_input.h"
 #include "rg_netplay.h"
 #include "rg_vfs.h"
+#include "rg_image.h"
 #include "rg_gui.h"
 #include "rg_profiler.h"
 #include "rg_settings.h"
@@ -71,6 +72,8 @@ enum {
     RG_LOG_DEBUG,
 };
 
+#define RG_STRUCT_MAGIC 0x12345678
+
 typedef bool (*rg_state_handler_t)(const char *filename);
 typedef bool (*rg_reset_handler_t)(bool hard);
 typedef bool (*rg_message_handler_t)(int msg, void *arg);
@@ -90,6 +93,14 @@ typedef struct
     rg_mem_write_handler_t memWrite;  // Used by for cheats and debugging
 } rg_emu_proc_t;
 
+// TO DO: Make it an abstract ring buffer implementation?
+#define LOG_BUFFER_SIZE 2048
+typedef struct
+{
+    char buffer[LOG_BUFFER_SIZE];
+    size_t cursor;
+} log_buffer_t;
+
 typedef struct
 {
     const char *name;
@@ -100,9 +111,11 @@ typedef struct
     int refreshRate;
     int sampleRate;
     int startAction;
+    int logLevel;
     const char *romPath;
     void *mainTaskHandle;
     rg_emu_proc_t handlers;
+    log_buffer_t log;
 } rg_app_desc_t;
 
 typedef struct
@@ -127,7 +140,6 @@ typedef struct
     uint32_t freeBlockInt;
     uint32_t freeBlockExt;
     uint32_t freeStackMain;
-    uint32_t magicWord;
 } runtime_stats_t;
 
 rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers);

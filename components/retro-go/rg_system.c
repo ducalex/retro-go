@@ -24,9 +24,6 @@
 #define USE_SPI_MUTEX 0
 #endif
 
-#define PANIC_TRACE_MAGIC 0x12345678
-#define BLOCK_MAGIC 0x12345678
-
 #ifdef ENABLE_PROFILING
 #define INPUT_TIMEOUT -1
 #else
@@ -40,24 +37,15 @@
 typedef struct
 {
     uint32_t magicWord;
-    char buffer[2048];
-    size_t head;
-    size_t tail;
-} ring_buffer_t;
-
-typedef struct
-{
-    uint32_t magicWord;
     char message[256];
     char context[128];
-    char appname[128];
-    ring_buffer_t log;
+    runtime_stats_t statistics;
+    log_buffer_t log;
 } panic_trace_t;
 
 // These will survive a software reset
 static RTC_NOINIT_ATTR panic_trace_t panicTrace;
-static RTC_NOINIT_ATTR ring_buffer_t logBuffer;
-static RTC_NOINIT_ATTR runtime_stats_t statistics;
+static runtime_stats_t statistics;
 static runtime_counters_t counters;
 static rg_app_desc_t app;
 static long inputTimeout = -1;
@@ -69,19 +57,31 @@ static spi_lock_res_t spiMutexOwner;
 #endif
 
 
+static inline void logbuf_print(log_buffer_t *buf, const char *str)
+{
+    while (*str)
+    {
+        buf->buffer[buf->cursor++] = *str++;
+        buf->cursor %= LOG_BUFFER_SIZE;
+    }
+    buf->buffer[buf->cursor] = 0;
+}
+
+static inline void begin_panic_trace()
+{
+    panicTrace.magicWord = RG_STRUCT_MAGIC;
+    panicTrace.message[0] = 0;
+    panicTrace.context[0] = 0;
+    panicTrace.statistics = statistics;
+    panicTrace.log = app.log;
+    logbuf_print(&panicTrace.log, "\n\n*** PANIC TRACE: ***\n\n");
+}
+
 IRAM_ATTR void esp_panic_putchar_hook(char c)
 {
-    if (panicConsole.magicWord != PANIC_TRACE_MAGIC)
-    {
-        panicConsole.magicWord = PANIC_TRACE_MAGIC;
-        panicConsole.cursor = 0;
-    }
-
-    if (panicConsole.cursor < sizeof(panicConsole.output) - 1)
-    {
-        panicConsole.output[panicConsole.cursor++] = c;
-        panicConsole.output[panicConsole.cursor] = 0;
-    }
+    if (panicTrace.magicWord != RG_STRUCT_MAGIC)
+        begin_panic_trace();
+    logbuf_print(&panicTrace.log, (char[2]){c, 0});
 }
 
 static void system_monitor_task(void *arg)
@@ -93,8 +93,6 @@ static void system_monitor_task(void *arg)
 
     memset(&statistics, 0, sizeof(statistics));
     memset(&counters, 0, sizeof(counters));
-
-    statistics.magicWord = BLOCK_MAGIC;
 
     // Give the app a few seconds to start before monitoring
     vTaskDelay(pdMS_TO_TICKS(2000));
@@ -245,6 +243,7 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
     app.buildTime = esp_app->time;
     app.refreshRate = 1;
     app.sampleRate = sampleRate;
+    app.logLevel = RG_LOG_LEVEL;
     app.mainTaskHandle = xTaskGetCurrentTaskHandle();
     if (handlers)
         app.handlers = *handlers;
@@ -268,33 +267,29 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
     {
         char message[400] = "Application crashed";
 
-        if (panicTrace.magicWord == PANIC_TRACE_MAGIC)
+        if (panicTrace.magicWord == RG_STRUCT_MAGIC)
         {
-            RG_LOGX(" *** PANIC TRACE: %s (%s) *** \n", panicTrace.message, panicTrace.context);
-            strcpy(message, panicTrace.message);
-        }
+            if (panicTrace.message[0])
+                strcpy(message, panicTrace.message);
 
-        if (panicConsole.magicWord == PANIC_TRACE_MAGIC)
-        {
             RG_LOGI("Panic log found, saving to sdcard...\n");
             FILE *fp = fopen(RG_BASE_PATH "/crash.log", "w");
             if (fp)
             {
                 fprintf(fp, "Application: %s %s\n", app.name, app.version);
                 fprintf(fp, "Build date: %s %s\n", app.buildDate, app.buildTime);
-                if (statistics.magicWord == BLOCK_MAGIC)
-                {
-                    fprintf(fp, "Free memory: %d + %d\n", statistics.freeMemoryInt, statistics.freeMemoryExt);
-                    fprintf(fp, "Free block: %d + %d\n", statistics.freeBlockInt, statistics.freeBlockExt);
-                    fprintf(fp, "Stack HWM: %d\n", statistics.freeStackMain);
-                }
-                if (panicTrace.magicWord == PANIC_TRACE_MAGIC)
-                {
-                    fprintf(fp, "Message: %.256s\n", panicTrace.message);
-                    fprintf(fp, "Context: %.256s\n", panicTrace.context);
-                }
+                fprintf(fp, "Free memory: %d + %d\n", panicTrace.statistics.freeMemoryInt, panicTrace.statistics.freeMemoryExt);
+                fprintf(fp, "Free block: %d + %d\n", panicTrace.statistics.freeBlockInt, panicTrace.statistics.freeBlockExt);
+                fprintf(fp, "Stack HWM: %d\n", panicTrace.statistics.freeStackMain);
+                fprintf(fp, "Message: %.256s\n", panicTrace.message);
+                fprintf(fp, "Context: %.256s\n", panicTrace.context);
                 fputs("\nConsole:\n", fp);
-                fputs(panicConsole.output, fp);
+                for (size_t i = 0; i < LOG_BUFFER_SIZE; i++)
+                {
+                    size_t index = (panicTrace.log.cursor + i) % LOG_BUFFER_SIZE;
+                    if (panicTrace.log.buffer[index])
+                        fputc(panicTrace.log.buffer[index], fp);
+                }
                 fputs("\n\nEnd of log\n", fp);
                 fclose(fp);
                 strcat(message, "\nLog saved to SD Card.");
@@ -308,11 +303,8 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
         rg_audio_deinit();
         rg_system_switch_app(RG_APP_LAUNCHER);
     }
-    else
-    {
-        panicConsole.magicWord = 0;
-        panicTrace.magicWord = 0;
-    }
+
+    panicTrace.magicWord = 0;
 
     if (!sd_init)
     {
@@ -635,9 +627,11 @@ void rg_system_set_boot_app(const char *app)
 
 void rg_system_panic(const char *message, const char *context)
 {
+    if (panicTrace.magicWord != RG_STRUCT_MAGIC)
+        begin_panic_trace();
+
     strcpy(panicTrace.message, message ? message : "");
     strcpy(panicTrace.context, context ? context : "");
-    panicTrace.magicWord = PANIC_TRACE_MAGIC;
 
     RG_LOGX("*** PANIC  : %s\n", panicTrace.message);
     RG_LOGX("*** CONTEXT: %s\n", panicTrace.context);
@@ -647,21 +641,25 @@ void rg_system_panic(const char *message, const char *context)
 
 void rg_system_log(int level, const char *context, const char *format, ...)
 {
-    const char *prefix[] = {"print", "error", "warn", "info", "debug"};
-
+    static const char *prefix[] = {"", "error", "warn", "info", "debug"};
+    char buffer[512]; /*static*/
+    size_t len = 0;
     va_list args;
-    va_start(args, format);
 
-    if (level > RG_LOG_LEVEL)
+    if (level > RG_LOG_LEVEL) // app.logLevel
         return;
 
-    if (level >= RG_LOG_ERROR && level <= RG_LOG_DEBUG)
-        printf("[%s] %s: ", prefix[level], context);
-    else if (level > 0)
-        printf("[log:%d] %s: ", level, context);
+    if (level > RG_LOG_DEBUG)
+        len += sprintf(buffer, "[log:%d] %s: ", level, context);
+    else if (level > RG_LOG_PRINT)
+        len += sprintf(buffer, "[%s] %s: ", prefix[level], context);
 
-    vprintf(format, args);
+    va_start(args, format);
+    len += vsnprintf(buffer + len, sizeof(buffer) - len, format, args);
     va_end(args);
+
+    logbuf_print(&app.log, buffer);
+    fwrite(buffer, len, 1, stdout);
 }
 
 void rg_system_halt()
