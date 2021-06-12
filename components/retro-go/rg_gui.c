@@ -506,9 +506,9 @@ int rg_gui_dialog(const char *header, const dialog_option_t *options_const, int 
         }
     }
 
-    rg_gui_draw_dialog(header, options, sel);
-
+    rg_audio_clear_buffer();
     rg_input_wait_for_key(GAMEPAD_KEY_ALL, false);
+    rg_gui_draw_dialog(header, options, sel);
 
     while (1)
     {
@@ -744,81 +744,90 @@ static dialog_return_t speedup_update_cb(dialog_option_t *option, dialog_event_t
 
 int rg_gui_settings_menu(const dialog_option_t *extra_options)
 {
-    dialog_option_t options[16] = {
-        {0, "Brightness", "50%",  1, &brightness_update_cb},
-        {1, "Volume    ", "50%",  1, &volume_update_cb},
-        {2, "Audio out ", "Speaker", 1, &audio_update_cb},
-        RG_DIALOG_CHOICE_LAST
-    };
+    dialog_option_t options[16 + get_dialog_items_count(extra_options)];
+    dialog_option_t *opt = &options[0];
 
-    if (extra_options) {
-        int options_count = get_dialog_items_count(options);
-        int extra_options_count = get_dialog_items_count(extra_options) + 1;
-        memcpy(options + options_count, extra_options, extra_options_count * sizeof(dialog_option_t));
+    *opt++ = (dialog_option_t){0, "Brightness", "50%",  1, &brightness_update_cb};
+    *opt++ = (dialog_option_t){0, "Volume    ", "50%",  1, &volume_update_cb};
+    *opt++ = (dialog_option_t){0, "Audio out ", "Speaker", 1, &audio_update_cb};
+
+    if (!rg_system_get_app()->isLauncher)
+    {
+        *opt++ = (dialog_option_t){0, "Scaling", "Full", 1, &scaling_update_cb};
+        *opt++ = (dialog_option_t){0, "Filtering", "None", 1, &filter_update_cb};
+        *opt++ = (dialog_option_t){0, "Speed", "1x", 1, &speedup_update_cb};
     }
 
-    int ret = rg_gui_dialog("Options", options, 0);
+    while (extra_options && (*extra_options).flags != RG_DIALOG_FLAG_LAST) {
+        *opt++ = *extra_options++;
+    }
+
+    *opt++ = (dialog_option_t)RG_DIALOG_CHOICE_LAST;
+
+    int sel = rg_gui_dialog("Options", options, 0);
 
     rg_settings_save();
 
-    return ret;
+    return sel;
 }
 
-static void draw_game_status_bar(runtime_stats_t stats)
+int rg_gui_about_menu(const dialog_option_t *extra_options)
 {
-    int width = RG_SCREEN_WIDTH, height = 16;
-    int pad_text = (height - font_info.height) / 2;
-    char header[41] = {0};
-    char footer[41] = {0};
+    char build_ver[32], build_date[32], build_user[32];
 
-    const rg_app_desc_t *app = rg_system_get_app();
-
-    snprintf(header, 40, "SPEED: %.0f%% (%.0f/%.0f) / BUSY: %.0f%%",
-        round(stats.totalFPS / app->refreshRate * 100.f),
-        round(stats.totalFPS - stats.skippedFPS),
-        round(stats.totalFPS),
-        round(stats.busyPercent));
-
-    if (app->romPath)
-        snprintf(footer, 40, "%s", app->romPath + strlen(RG_BASE_PATH_ROMS));
-
-    rg_gui_draw_fill_rect(0, 0, width, height, C_BLACK);
-    rg_gui_draw_fill_rect(0, RG_SCREEN_HEIGHT - height, width, height, C_BLACK);
-    rg_gui_draw_text(0, pad_text, width, header, C_LIGHT_GRAY, C_BLACK, 0);
-    rg_gui_draw_text(0, RG_SCREEN_HEIGHT - height + pad_text, width, footer, C_LIGHT_GRAY, C_BLACK, 0);
-    rg_gui_draw_battery(width - 26, 3);
-}
-
-int rg_gui_game_settings_menu(const dialog_option_t *extra_options)
-{
-    dialog_option_t options[12] = {
-        {10, "Scaling", "Full", 1, &scaling_update_cb},
-        {12, "Filtering", "None", 1, &filter_update_cb}, // Interpolation
-        {13, "Speed", "1x", 1, &speedup_update_cb},
+    const dialog_option_t options[] = {
+        {0, "Ver.", build_ver, 1, NULL},
+        {0, "Date", build_date, 1, NULL},
+        {0, "By", build_user, 1, NULL},
+        RG_DIALOG_SEPARATOR,
+        {1000, "Reboot to firmware", NULL, 1, NULL},
+        {2000, "Reset settings", NULL, 1, NULL},
+        {3000, "Clear cache", NULL, 1, NULL},
+        {4000, "Debug", NULL, 1, NULL},
+        {0000, "Close", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
 
-    if (extra_options) {
-        int options_count = get_dialog_items_count(options);
-        int extra_options_count = get_dialog_items_count(extra_options) + 1;
-        memcpy(options + options_count, extra_options, extra_options_count * sizeof(dialog_option_t));
+    const rg_app_desc_t *app = rg_system_get_app();
+
+    sprintf(build_ver, "%.30s", app->version);
+    sprintf(build_date, "%s %.5s", app->buildDate, app->buildTime);
+    sprintf(build_user, "%.30s", app->buildUser);
+
+    char *rel_hash = strstr(build_ver, "-0-g");
+    if (rel_hash)
+    {
+        rel_hash[0] = ' ';
+        rel_hash[1] = ' ';
+        rel_hash[2] = ' ';
+        rel_hash[3] = '(';
+        strcat(build_ver, ")");
     }
 
-    // Collect stats before freezing emulation with wait_all_keys_released()
-    runtime_stats_t stats = rg_system_get_stats();
+    int sel = rg_gui_dialog("Retro-Go", options, -1);
 
-    rg_audio_set_mute(true);
-    rg_input_wait_for_key(GAMEPAD_KEY_ALL, false);
-    draw_game_status_bar(stats);
+    switch (sel)
+    {
+        case 1000:
+            rg_system_switch_app(RG_APP_FACTORY);
+            break;
+        case 2000:
+            if (rg_gui_confirm("Reset all settings?", NULL, false)) {
+                rg_settings_reset();
+                rg_system_restart();
+            }
+            break;
+        case 3000:
+            break;
+        case 4000:
+            rg_gui_debug_menu(NULL);
+            break;
+    }
 
-    int r = rg_gui_settings_menu(options);
-
-    rg_audio_set_mute(false);
-
-    return r;
+    return sel;
 }
 
-int rg_gui_game_debug_menu(void)
+int rg_gui_debug_menu(const dialog_option_t *extra_options)
 {
     char screen_res[20], game_res[20], scaled_res[20];
     char stack_hwm[20], heap_free[20], block_free[20];
@@ -834,15 +843,16 @@ int rg_gui_game_debug_menu(void)
         {0, "System RTC", system_rtc, 1, NULL},
         {0, "Uptime    ", uptime, 1, NULL},
         RG_DIALOG_SEPARATOR,
-        {10, "Screenshot", NULL, 1, NULL},
-        {20, "Cheats", NULL, 1, NULL},
-        {40, "Crash", NULL, 1, NULL},
+        {1000, "Save screenshot", NULL, 1, NULL},
+        {2000, "Save app log", NULL, 1, NULL},
+        {3000, "Cheats", NULL, 1, NULL},
+        {4000, "Crash", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
 
     runtime_stats_t stats = rg_system_get_stats();
     rg_display_t display = rg_display_get_status();
-    // rg_app_desc_t *app = rg_system_get_app();
+    rg_app_desc_t *app = rg_system_get_app();
     time_t now = time(NULL);
 
     strftime(system_rtc, 20, "%F %T", localtime(&now));
@@ -854,69 +864,103 @@ int rg_gui_game_debug_menu(void)
     sprintf(block_free, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);
     sprintf(uptime, "%ds", (int)(get_elapsed_time() / 1000 / 1000));
 
-    rg_input_wait_for_key(GAMEPAD_KEY_ALL, false);
+    int sel = rg_gui_dialog("Debugging", options, 0);
 
-    int r = rg_gui_dialog("Debugging", options, 0);
-
-    if (r == 10)
+    if (sel == 1000)
+    {
         rg_emu_screenshot(RG_BASE_PATH "/screenshot.png", 0, 0);
-    else if (r == 40)
+    }
+    else if (sel == 2000)
+    {
+        FILE *fp = fopen(RG_BASE_PATH "/log.txt", "wb");
+        rg_system_write_log(&app->log, fp);
+        fclose(fp);
+    }
+    else if (sel == 4000)
+    {
         RG_PANIC("Crash test!");
+    }
 
-    return r;
+    return sel;
 }
 
-static dialog_return_t game_menu_cb(dialog_option_t *option, dialog_event_t event)
+static void draw_game_status_bar(void)
 {
-    if (event == RG_DIALOG_ALT)
-        rg_gui_game_debug_menu();
+    int width = RG_SCREEN_WIDTH, height = 16;
+    int pad_text = (height - font_info.height) / 2;
+    char header[41] = {0};
+    char footer[41] = {0};
 
-    if (event == RG_DIALOG_ENTER)
-        return RG_DIALOG_SELECT;
+    const runtime_stats_t stats = rg_system_get_stats();
+    const rg_app_desc_t *app = rg_system_get_app();
 
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
-        return RG_DIALOG_IGNORE;
+    snprintf(header, 40, "SPEED: %.0f%% (%.0f/%.0f) / BUSY: %.0f%%",
+        round(stats.totalFPS / app->refreshRate * 100.f),
+        round(stats.totalFPS - stats.skippedFPS),
+        round(stats.totalFPS),
+        round(stats.busyPercent));
 
-    return RG_DIALOG_CANCEL;
+    if (app->romPath)
+        snprintf(footer, 40, "%s", app->romPath + strlen(RG_BASE_PATH_ROMS));
+
+    rg_input_wait_for_key(GAMEPAD_KEY_ALL, false);
+
+    rg_gui_draw_fill_rect(0, 0, width, height, C_BLACK);
+    rg_gui_draw_fill_rect(0, RG_SCREEN_HEIGHT - height, width, height, C_BLACK);
+    rg_gui_draw_text(0, pad_text, width, header, C_LIGHT_GRAY, C_BLACK, 0);
+    rg_gui_draw_text(0, RG_SCREEN_HEIGHT - height + pad_text, width, footer, C_LIGHT_GRAY, C_BLACK, 0);
+    rg_gui_draw_battery(width - 26, 3);
+}
+
+int rg_gui_game_settings_menu(const dialog_option_t *extra_options)
+{
+    draw_game_status_bar();
+    return rg_gui_settings_menu(extra_options);
 }
 
 int rg_gui_game_menu(void)
 {
     const dialog_option_t choices[] = {
-        // {0, "Continue", NULL,  1, NULL},
-        {10, "Save & Continue", NULL,  1, &game_menu_cb},
-        {20, "Save & Quit", NULL, 1, &game_menu_cb},
-        {30, "Reload", NULL, 1, &game_menu_cb},
-        {35, "Reset", NULL, 1, &game_menu_cb},
+        {1000, "Save & Continue", NULL,  1, NULL},
+        {2000, "Save & Quit", NULL, 1, NULL},
+        {3000, "Restart", NULL, 1, NULL},
         #ifdef ENABLE_NETPLAY
-        {40, "Netplay", NULL, 1, &game_menu_cb},
+        {5000, "Netplay", NULL, 1, NULL},
         #endif
-        {100, "Quit", NULL, 1, &game_menu_cb},
+        {6000, "About", NULL, 1, NULL},
+        {7000, "Quit", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
 
-    // Collect stats before freezing emulation with wait_all_keys_released()
-    runtime_stats_t stats = rg_system_get_stats();
+    const dialog_option_t choices_restart[] = {
+        {3001, "Reload save", NULL,  1, NULL},
+        {3002, "Soft reset", NULL, 1, NULL},
+        {3003, "Hard reset", NULL, 1, NULL},
+        RG_DIALOG_CHOICE_LAST
+    };
 
-    rg_audio_set_mute(true);
-    rg_input_wait_for_key(GAMEPAD_KEY_ALL, false);
-    draw_game_status_bar(stats);
+    draw_game_status_bar();
 
-    int r = rg_gui_dialog("Retro-Go", choices, 0);
+    int sel = rg_gui_dialog("Retro-Go", choices, 0);
 
-    switch (r)
+    if (sel == 3000)
     {
-        case 10: rg_emu_save_state(0); break;
-        case 20: rg_emu_save_state(0); rg_system_switch_app(RG_APP_LAUNCHER); break;
-        case 30: rg_emu_load_state(0); break; // esp_restart();
-        case 35: if (rg_gui_confirm("Reset CPU?", 0, 1)) rg_emu_reset(false); break;
-    #ifdef ENABLE_NETPLAY
-        case 40: rg_netplay_quick_start(); break;
-    #endif
-        case 100: rg_system_switch_app(RG_APP_LAUNCHER); break;
+        sel = rg_gui_dialog("Restart", choices_restart, 0);
     }
 
-    rg_audio_set_mute(false);
+    switch (sel)
+    {
+        case 1000: rg_emu_save_state(0); break;
+        case 2000: rg_emu_save_state(0); rg_system_switch_app(RG_APP_LAUNCHER); break;
+        case 3001: rg_emu_load_state(0); break; // esp_restart();
+        case 3002: rg_emu_reset(false); break;
+        case 3003: rg_emu_reset(true); break;
+    #ifdef ENABLE_NETPLAY
+        case 5000: rg_netplay_quick_start(); break;
+    #endif
+        case 6000: rg_gui_about_menu(NULL); break;
+        case 7000: rg_system_switch_app(RG_APP_LAUNCHER); break;
+    }
 
-    return r;
+    return sel;
 }

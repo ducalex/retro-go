@@ -238,12 +238,20 @@ int rg_audio_get_sample_rate(void)
     return audioSampleRate;
 }
 
+void rg_audio_clear_buffer()
+{
+    if (audioInitialized)
+    {
+        i2s_zero_dma_buffer(RG_AUDIO_I2S_NUM);
+    }
+}
+
 void rg_audio_set_mute(bool mute)
 {
     audioMuted = mute;
 
     if (mute && audioInitialized)
     {
-        i2s_zero_dma_buffer(RG_AUDIO_I2S_NUM);
+        rg_audio_clear_buffer();
     }
 }

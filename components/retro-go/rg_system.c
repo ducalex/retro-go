@@ -137,7 +137,7 @@ static void system_monitor_task(void *arg)
             rg_system_set_led(ledState);
         }
 
-        RG_LOGX("STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%.4f, FPS:%.4f (SKIP:%d, PART:%d, FULL:%d), BATTERY:%d\n",
+        RG_LOGX("STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%.2f, FPS:%.2f (SKIP:%d, PART:%d, FULL:%d), BATT:%d\n",
             statistics.freeStackMain,
             statistics.freeMemoryInt / 1024,
             statistics.freeMemoryExt / 1024,

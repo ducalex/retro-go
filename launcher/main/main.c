@@ -214,45 +214,7 @@ void retro_loop()
         }
 
         if (last_key == GAMEPAD_KEY_MENU) {
-            char buildstr[32], datestr[32];
-
-            const dialog_option_t options[] = {
-                {0, "Ver.", buildstr, 1, NULL},
-                {0, "Date", datestr, 1, NULL},
-                {0, "By", "ducalex", 1, NULL},
-                RG_DIALOG_SEPARATOR,
-                {1, "Reboot to firmware", NULL, 1, NULL},
-                {2, "Reset settings", NULL, 1, NULL},
-                {3, "Clear cache", NULL, 1, NULL},
-                {0, "Close", NULL, 1, NULL},
-                RG_DIALOG_CHOICE_LAST
-            };
-
-            const rg_app_desc_t *app = rg_system_get_app();
-            sprintf(buildstr, "%.30s", app->version);
-            sprintf(datestr, "%s %.5s", app->buildDate, app->buildTime);
-
-            char *rel_hash = strstr(buildstr, "-0-g");
-            if (rel_hash)
-            {
-                rel_hash[0] = ' ';
-                rel_hash[1] = ' ';
-                rel_hash[2] = ' ';
-                rel_hash[3] = '(';
-                strcat(buildstr, ")");
-            }
-
-            int sel = rg_gui_dialog("Retro-Go", options, -1);
-            if (sel == 1) {
-                rg_system_switch_app(RG_APP_FACTORY);
-            }
-            else if (sel == 2) {
-                if (rg_gui_confirm("Reset all settings?", NULL, false)) {
-                    rg_settings_reset();
-                    rg_system_restart();
-                }
-            }
-            else if (sel == 3) {
+            if (rg_gui_about_menu(NULL) == 3000) {
                 rg_vfs_delete(CRC_CACHE_PATH);
                 rg_system_restart();
             }

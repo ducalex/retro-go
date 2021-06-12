@@ -42,3 +42,4 @@ audio_volume_t rg_audio_get_volume(void);
 void rg_audio_set_mute(bool mute);
 void rg_audio_submit(short *stereoAudioBuffer, size_t frameCount);
 int  rg_audio_get_sample_rate(void);
+void rg_audio_clear_buffer();
