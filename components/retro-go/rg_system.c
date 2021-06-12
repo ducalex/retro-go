@@ -30,6 +30,10 @@
 #define INPUT_TIMEOUT 5000000
 #endif
 
+#ifndef RG_BUILD_USER
+#define RG_BUILD_USER "ducalex"
+#endif
+
 #define SETTING_ROM_FILE_PATH "RomFilePath"
 #define SETTING_START_ACTION  "StartAction"
 #define SETTING_STARTUP_APP   "StartupApp"
@@ -148,12 +152,12 @@ static void system_monitor_task(void *arg)
 
         // if (statistics.freeStackMain < 1024)
         // {
-        //     RG_PANIC("Running out of stack space!");
+        //     RG_LOGW("Running out of stack space!");
         // }
 
         // if (RG_MAX(statistics.freeBlockInt, statistics.freeBlockExt) < 8192)
         // {
-        //     RG_PANIC("Running out of heap space!");
+        //     RG_LOGW("Running out of heap space!");
         // }
 
         if (rg_input_gamepad_last_read() > (unsigned long)inputTimeout)
@@ -241,9 +245,11 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
     app.version = esp_app->version;
     app.buildDate = esp_app->date;
     app.buildTime = esp_app->time;
+    app.buildUser = RG_BUILD_USER;
     app.refreshRate = 1;
     app.sampleRate = sampleRate;
     app.logLevel = RG_LOG_LEVEL;
+    app.isLauncher = (strcmp(app.name, RG_APP_LAUNCHER) == 0);
     app.mainTaskHandle = xTaskGetCurrentTaskHandle();
     if (handlers)
         app.handlers = *handlers;
@@ -284,12 +290,7 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
                 fprintf(fp, "Message: %.256s\n", panicTrace.message);
                 fprintf(fp, "Context: %.256s\n", panicTrace.context);
                 fputs("\nConsole:\n", fp);
-                for (size_t i = 0; i < LOG_BUFFER_SIZE; i++)
-                {
-                    size_t index = (panicTrace.log.cursor + i) % LOG_BUFFER_SIZE;
-                    if (panicTrace.log.buffer[index])
-                        fputc(panicTrace.log.buffer[index], fp);
-                }
+                rg_system_write_log(&panicTrace.log, fp);
                 fputs("\n\nEnd of log\n", fp);
                 fclose(fp);
                 strcat(message, "\nLog saved to SD Card.");
@@ -314,7 +315,7 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
         rg_system_switch_app(RG_APP_LAUNCHER);
     }
 
-    if (strcmp(app.name, RG_APP_LAUNCHER) != 0)
+    if (!app.isLauncher)
     {
         app.startAction = rg_settings_get_int32(SETTING_START_ACTION, 0);
         app.romPath = rg_settings_get_string(SETTING_ROM_FILE_PATH, NULL);
@@ -660,6 +661,17 @@ void rg_system_log(int level, const char *context, const char *format, ...)
 
     logbuf_print(&app.log, buffer);
     fwrite(buffer, len, 1, stdout);
+}
+
+void rg_system_write_log(log_buffer_t *log, FILE *fp)
+{
+    assert(log && fp);
+    for (size_t i = 0; i < LOG_BUFFER_SIZE; i++)
+    {
+        size_t index = (log->cursor + i) % LOG_BUFFER_SIZE;
+        if (log->buffer[index])
+            fputc(log->buffer[index], fp);
+    }
 }
 
 void rg_system_halt()

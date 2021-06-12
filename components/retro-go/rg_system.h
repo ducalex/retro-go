@@ -107,11 +107,13 @@ typedef struct
     const char *version;
     const char *buildDate;
     const char *buildTime;
+    const char *buildUser;
     int speedupEnabled;
     int refreshRate;
     int sampleRate;
     int startAction;
     int logLevel;
+    int isLauncher;
     const char *romPath;
     void *mainTaskHandle;
     rg_emu_proc_t handlers;
@@ -154,6 +156,7 @@ void rg_system_set_led(int value);
 int  rg_system_get_led(void);
 void rg_system_tick(bool skippedFrame, bool fullFrame, int busyTime);
 void rg_system_log(int level, const char *context, const char *format, ...);
+void rg_system_write_log(log_buffer_t *log, FILE *fp);
 rg_app_desc_t *rg_system_get_app();
 runtime_stats_t rg_system_get_stats();
 
