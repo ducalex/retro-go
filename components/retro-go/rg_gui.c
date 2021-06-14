@@ -927,7 +927,7 @@ int rg_gui_game_menu(void)
         #ifdef ENABLE_NETPLAY
         {5000, "Netplay", NULL, 1, NULL},
         #endif
-        {6000, "About", NULL, 1, NULL},
+        {6000, "More", NULL, 1, NULL},
         {7000, "Quit", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };

@@ -98,15 +98,15 @@ An up to date list of incompatible/broken games can be found on the [ODROID-GO f
 
 
 # Future plans / Feature requests
-- SNES emulation (In progress)
+- Recently played games (In progress)
 - Cheats support (In progress)
 - Famicom Disk System (In progress)
-- Netplay (On hold)
+- SNES emulation (Stalled)
+- Netplay (Stalled)
 - Multiple save states
 - Atari 2600 or 5200 or 7800
 - Neo Geo Pocket Color
 - Folders support
-- Recently played games
 - Game Boy BIOS
 - Chip sound player
 - Sleep mode
