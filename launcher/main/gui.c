@@ -150,6 +150,9 @@ void gui_sort_list(tab_t *tab, int sort_mode)
     if (tab->listbox.length == 0)
         return;
 
+    if (sort_mode == -1)
+        return
+
     qsort((void*)tab->listbox.items, tab->listbox.length, sizeof(listbox_item_t), list_comparator);
 }
 

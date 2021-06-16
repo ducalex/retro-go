@@ -6,7 +6,7 @@
 #include <unistd.h>
 
 #include "emulators.h"
-#include "favorites.h"
+#include "bookmarks.h"
 #include "gui.h"
 
 static const char *SETTING_SELECTED_TAB  = "SelectedTab";
@@ -275,7 +275,7 @@ void app_main(void)
     rg_system_init(32000, NULL);
 
     emulators_init();
-    favorites_init();
+    bookmarks_init();
 
     retro_loop();
 }

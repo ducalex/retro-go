@@ -52,6 +52,7 @@
 #define RG_BASE_PATH_SAVES     RG_BASE_PATH "/odroid/data"
 #define RG_BASE_PATH_TEMP      RG_BASE_PATH "/odroid/temp"
 #define RG_BASE_PATH_CACHE     RG_BASE_PATH "/odroid/cache"
+#define RG_BASE_PATH_SYS       RG_BASE_PATH "/odroid"
 #define RG_BASE_PATH_ROMART    RG_BASE_PATH "/romart"
 
 // Partitions

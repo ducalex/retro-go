@@ -8,7 +8,7 @@
 
 #define USE_CONFIG_FILE 1
 
-#define CONFIG_FILE_PATH "/sd/odroid/retro-go.json"
+#define CONFIG_FILE_PATH RG_BASE_PATH_SYS "/retro-go.json"
 #define CONFIG_NAMESPACE "retro-go"
 #define CONFIG_NVS_STORE "config"
 #define CONFIG_VERSION    0x01

@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 #include "emulators.h"
-#include "favorites.h"
+#include "bookmarks.h"
 #include "images.h"
 #include "gui.h"
 
@@ -492,7 +492,7 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
     char *scrn_path = rg_emu_get_path(RG_PATH_SCREENSHOT, emu_get_file_path(file));
     bool has_save = rg_vfs_filesize(save_path) > 0;
     bool has_sram = rg_vfs_filesize(sram_path) > 0;
-    bool is_fav = favorite_find(file) != NULL;
+    bool is_fav = bookmark_find(BOOK_TYPE_FAVORITE, file) != NULL;
 
     dialog_option_t choices[] = {
         {0, "Resume game", NULL, has_save, NULL},
@@ -507,6 +507,7 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
     if (sel == 0 || sel == 1) {
         crc_cache_save();
         gui_save_position(0); // emulator_start will commit
+        bookmark_add(BOOK_TYPE_RECENT, file);
         emulator_start(file, sel == 0);
     }
     else if (sel == 2) {
@@ -524,9 +525,9 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
     }
     else if (sel == 3) {
         if (is_fav)
-            favorite_remove(file);
+            bookmark_remove(BOOK_TYPE_FAVORITE, file);
         else
-            favorite_add(file);
+            bookmark_add(BOOK_TYPE_FAVORITE, file);
     }
 
     free(save_path);
