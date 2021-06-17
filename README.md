@@ -98,7 +98,6 @@ An up to date list of incompatible/broken games can be found on the [ODROID-GO f
 
 
 # Future plans / Feature requests
-- Recently played games (In progress)
 - Cheats support (In progress)
 - Famicom Disk System (In progress)
 - SNES emulation (Stalled)

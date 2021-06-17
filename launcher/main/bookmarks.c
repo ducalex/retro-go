@@ -19,10 +19,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
 
     if (event == TAB_INIT)
     {
-        if (tab->is_empty)
-        {
-            tab->listbox.cursor = 3;
-        }
+        //
     }
     else if (event == TAB_ENTER)
     {
@@ -70,44 +67,44 @@ static void tab_refresh(book_type_t book_type)
     book_t *book = &books[book_type];
     int list_index = 0;
 
-    if (book->tab)
-    {
-        memset(&book->tab->status, 0, sizeof(book->tab->status));
-        book->tab->is_empty = book->count <= 0;
+    if (!book->tab)
+        return;
 
-        if (book->count > 0)
+    memset(&book->tab->status, 0, sizeof(book->tab->status));
+    book->tab->is_empty = true;
+
+    if (book->count)
+    {
+        gui_resize_list(book->tab, book->count);
+        for (int i = 0; i < book->count; i++)
         {
-            gui_resize_list(book->tab, book->count);
-            for (int i = 0; i < book->count; i++)
+            retro_emulator_file_t *file = &book->items[i];
+            if (file->is_valid)
             {
-                retro_emulator_file_t *file = &book->items[i];
-                if (file->name[0])
-                {
-                    listbox_item_t *listitem = &book->tab->listbox.items[list_index++];
-                    snprintf(listitem->text, 128, "[%-3s] %.100s", file->ext, file->name);
-                    listitem->arg = file;
-                }
+                listbox_item_t *listitem = &book->tab->listbox.items[list_index++];
+                snprintf(listitem->text, 128, "[%-3s] %.100s", file->ext, file->name);
+                listitem->arg = file;
+                listitem->id = i;
+                book->tab->is_empty = false;
             }
-            gui_resize_list(book->tab, list_index);
-            gui_sort_list(book->tab, book->sort_mode);
         }
-        else
-        {
-            gui_resize_list(book->tab, 6);
-            sprintf(book->tab->listbox.items[0].text, "Welcome to Retro-Go!");
-            sprintf(book->tab->listbox.items[2].text, "You have no %s games.", book->name);
-            sprintf(book->tab->listbox.items[4].text, "Use SELECT and START to navigate.");
-            book->tab->listbox.cursor = 3;
-        }
+        gui_resize_list(book->tab, list_index);
+        gui_sort_list(book->tab, book->sort_mode);
+    }
+
+    if (book->tab->is_empty)
+    {
+        gui_resize_list(book->tab, 6);
+        sprintf(book->tab->listbox.items[0].text, "Welcome to Retro-Go!");
+        sprintf(book->tab->listbox.items[2].text, "You have no %s games.", book->name);
+        sprintf(book->tab->listbox.items[4].text, "Use SELECT and START to navigate.");
+        book->tab->listbox.cursor = 3;
     }
 }
 
-static retro_emulator_file_t *book_get_free_slot(book_type_t book_type)
+static void book_append(book_type_t book_type, retro_emulator_file_t *new_item)
 {
     book_t *book = &books[book_type];
-
-    // for (int i = 0; i < book->count; i++)
-    //     if (book->items[i].removed)
 
     if (book->capacity <= book->count + 1)
     {
@@ -115,7 +112,9 @@ static retro_emulator_file_t *book_get_free_slot(book_type_t book_type)
         book->items = realloc(book->items, book->capacity * sizeof(retro_emulator_file_t));
     }
 
-    return &book->items[book->count++];
+    book->items[book->count] = *new_item;
+    book->items[book->count].is_valid = true;
+    book->count++;
 }
 
 static void book_load(book_type_t book_type)
@@ -136,9 +135,7 @@ static void book_load(book_type_t book_type)
                 line_buffer[len - 1] = 0;
 
             if (emulator_build_file_object(line_buffer, &tmp_file))
-            {
-                *book_get_free_slot(book_type) = tmp_file;
-            }
+                book_append(book_type, &tmp_file);
             else
                 RG_LOGW("Unknown path form: '%s'\n", line_buffer);
         }
@@ -156,14 +153,15 @@ static void book_save(book_type_t book_type)
         for (int i = 0; i < book->count; i++)
         {
             retro_emulator_file_t *file = &book->items[i];
-            if (file->folder[0] && file->name[0])
+            if (file->is_valid)
                 fprintf(fp, "%s/%s.%s\n", file->folder, file->name, file->ext);
         }
         fclose(fp);
     }
 }
 
-static void book_init(book_type_t book_type, const char *name, int sort_mode, const binfile_t *logo, const binfile_t *header)
+static void book_init(book_type_t book_type, const char *name, int capacity, int sort_mode,
+                      const binfile_t *logo, const binfile_t *header)
 {
     rg_image_t *logo_img = logo ? rg_image_load_from_memory(logo->data, logo->size, 0) : NULL;
     rg_image_t *header_img = header ? rg_image_load_from_memory(header->data, header->size, 0) : NULL;
@@ -176,6 +174,9 @@ static void book_init(book_type_t book_type, const char *name, int sort_mode, co
     book->sort_mode = sort_mode;
     book->initialized = true;
 
+    if (book_type == BOOK_TYPE_RECENT)
+        book->tab->listbox.cursor = 0;
+
     book_load(book_type);
     tab_refresh(book_type);
 }
@@ -183,13 +184,13 @@ static void book_init(book_type_t book_type, const char *name, int sort_mode, co
 
 retro_emulator_file_t *bookmark_find(book_type_t book_type, retro_emulator_file_t *file)
 {
-    book_t *book = &books[book_type];
-
     RG_ASSERT(file, "bad param");
+
+    book_t *book = &books[book_type];
 
     for (int i = 0; i < book->count; i++)
     {
-        if (book->items[i].emulator == file->emulator
+        if (book->items[i].is_valid && book->items[i].emulator == file->emulator
             && strcmp(book->items[i].name, file->name) == 0)
         {
             return &book->items[i];
@@ -201,16 +202,15 @@ retro_emulator_file_t *bookmark_find(book_type_t book_type, retro_emulator_file_
 
 bool bookmark_add(book_type_t book, retro_emulator_file_t *file)
 {
+    RG_ASSERT(file, "bad param");
     // For most book types we want unique entries. I'd prefer to keep the old one and let the calling
     // code decide what to do, but deleting the old entry is simpler for most book types who try
     // to update something... For the RECENT type we also don't want to disturb the order
     retro_emulator_file_t *bookmark;
     while ((bookmark = bookmark_find(book, file)))
-        *bookmark = (retro_emulator_file_t){0};
-    // if (bookmark_find(book, file))
-    //     return false;
+        bookmark->is_valid = false;
 
-    *book_get_free_slot(book) = *file;
+    book_append(book, file);
     tab_refresh(book);
     book_save(book);
 
@@ -221,15 +221,22 @@ bool bookmark_remove(book_type_t book, retro_emulator_file_t *file)
 {
     RG_ASSERT(file, "bad param");
 
-    retro_emulator_file_t *bookmark = bookmark_find(book, file);
-    if (bookmark)
+    retro_emulator_file_t *bookmark;
+    int found = 0;
+
+    while ((bookmark = bookmark_find(book, file)))
     {
-        *bookmark = (retro_emulator_file_t){0};
-        tab_refresh(book);
-        book_save(book);
-        return true;
+        bookmark->is_valid = false;
+        found++;
     }
-    return false;
+
+    if (found == 0)
+        return false;
+
+    tab_refresh(book);
+    book_save(book);
+
+    return true;
 }
 
 void bookmarks_init()
@@ -250,6 +257,6 @@ void bookmarks_init()
         free(old_favorites);
     }
 
-    book_init(BOOK_TYPE_FAVORITE, "favorite", 0, &logo_fav, &header_fav);
-    book_init(BOOK_TYPE_RECENT, "recent", -1, &logo_recent, &header_recent);
+    book_init(BOOK_TYPE_FAVORITE, "favorite", -1, SORT_TEXT_ASC, &logo_fav, &header_fav);
+    book_init(BOOK_TYPE_RECENT, "recent", 16, SORT_ID_DESC, &logo_recent, &header_recent);
 }

@@ -28,6 +28,14 @@ typedef enum {
 } scroll_mode_t;
 
 typedef enum {
+    SORT_NONE = 0,
+    SORT_ID_ASC,
+    SORT_ID_DESC,
+    SORT_TEXT_ASC,
+    SORT_TEXT_DESC,
+} sort_mode_t;
+
+typedef enum {
     PREVIEW_MODE_NONE = 0,
     PREVIEW_MODE_COVER_SAVE,
     PREVIEW_MODE_SAVE_COVER,

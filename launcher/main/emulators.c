@@ -204,7 +204,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
                 tab->listbox.items[i].arg = &emu->roms.files[i];
             }
 
-            gui_sort_list(tab, 0);
+            gui_sort_list(tab, SORT_TEXT_ASC);
             tab->is_empty = false;
         }
         else
@@ -350,6 +350,7 @@ void emulator_init(retro_emulator_t *emu)
             file->emulator = (void*)emu;
             file->checksum = 0;
             file->missing_cover = 0;
+            file->is_valid = 1;
         }
     }
     free(files);
@@ -393,6 +394,7 @@ bool emulator_build_file_object(const char *path, retro_emulator_file_t *file)
         if (strcmp(emulators[i].dirname, dirname) == 0)
         {
             file->emulator = &emulators[i];
+            file->is_valid = true;
             return true;
         }
     }

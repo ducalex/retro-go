@@ -32,6 +32,7 @@ typedef struct
     uint32_t checksum;
     uint32_t missing_cover;
     retro_emulator_t *emulator;
+    bool is_valid;
 } retro_emulator_file_t;
 
 typedef struct retro_emulator_s

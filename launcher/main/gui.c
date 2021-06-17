@@ -62,6 +62,7 @@ tab_t *gui_add_tab(const char *name, const rg_image_t *logo, const rg_image_t *h
     tab->initialized = false;
     tab->is_empty = false;
     tab->arg = arg;
+    tab->listbox.cursor = -1;
 
     gui.tabs[gui.tabcount++] = tab;
 
@@ -78,13 +79,32 @@ void gui_init_tab(tab_t *tab)
     tab->initialized = true;
     // tab->status[0] = 0;
 
-    char key_name[32];
-    sprintf(key_name, "Sel.%.11s", tab->name);
-    tab->listbox.cursor = rg_settings_get_app_int32(key_name, 0);
-
     gui_event(TAB_INIT, tab);
 
-    tab->listbox.cursor = RG_MAX(RG_MIN(tab->listbox.cursor, tab->listbox.length - 1), 0);
+    // -1 means that we should find our last saved position
+    if (tab->listbox.cursor == -1)
+    {
+        tab->listbox.cursor = 0;
+        if (!tab->is_empty)
+        {
+            char key_name[32];
+            sprintf(key_name, "SelectedItem.%.16s", tab->name);
+            char *selected = rg_settings_get_app_string(key_name, NULL);
+            if (selected && strlen(selected) > 1)
+            {
+                for (int i = 0; i < tab->listbox.length; i++)
+                {
+                    if (strcmp(selected, tab->listbox.items[i].text) == 0)
+                    {
+                        tab->listbox.cursor = i;
+                        break;
+                    }
+                }
+            }
+            free(selected);
+        }
+    }
+
     gui_event(TAB_SCROLL, tab);
 }
 
@@ -123,11 +143,15 @@ void gui_set_status(tab_t *tab, const char *left, const char *right)
 void gui_save_position(bool commit)
 {
     tab_t *tab = gui_get_current_tab();
+    listbox_item_t *item = gui_get_selected_item(tab);
     char key_name[32];
-    sprintf(key_name, "Sel.%.11s", tab->name);
-    rg_settings_set_app_int32(key_name, tab->listbox.cursor);
+
+    sprintf(key_name, "SelectedItem.%.16s", tab->name);
+    rg_settings_set_app_string(key_name, item ? item->text : "");
     rg_settings_set_app_int32("SelectedTab", gui.selected);
-    if (commit) rg_settings_save();
+
+    if (commit)
+        rg_settings_save();
 }
 
 listbox_item_t *gui_get_selected_item(tab_t *tab)
@@ -140,9 +164,24 @@ listbox_item_t *gui_get_selected_item(tab_t *tab)
     return NULL;
 }
 
-static int list_comparator(const void *p, const void *q)
+static int list_comp_text_asc(const void *a, const void *b)
 {
-    return strcasecmp(((listbox_item_t*)p)->text, ((listbox_item_t*)q)->text);
+    return strcasecmp(((listbox_item_t*)a)->text, ((listbox_item_t*)b)->text);
+}
+
+static int list_comp_text_desc(const void *a, const void *b)
+{
+    return strcasecmp(((listbox_item_t*)b)->text, ((listbox_item_t*)a)->text);
+}
+
+static int list_comp_id_asc(const void *a, const void *b)
+{
+    return ((listbox_item_t*)a)->id - ((listbox_item_t*)b)->id;
+}
+
+static int list_comp_id_desc(const void *a, const void *b)
+{
+    return ((listbox_item_t*)b)->id - ((listbox_item_t*)a)->id;
 }
 
 void gui_sort_list(tab_t *tab, int sort_mode)
@@ -150,10 +189,14 @@ void gui_sort_list(tab_t *tab, int sort_mode)
     if (tab->listbox.length == 0)
         return;
 
-    if (sort_mode == -1)
-        return
-
-    qsort((void*)tab->listbox.items, tab->listbox.length, sizeof(listbox_item_t), list_comparator);
+    if (sort_mode == SORT_TEXT_ASC)
+        qsort((void*)tab->listbox.items, tab->listbox.length, sizeof(listbox_item_t), list_comp_text_asc);
+    else if (sort_mode == SORT_TEXT_DESC)
+        qsort((void*)tab->listbox.items, tab->listbox.length, sizeof(listbox_item_t), list_comp_text_desc);
+    else if (sort_mode == SORT_ID_ASC)
+        qsort((void*)tab->listbox.items, tab->listbox.length, sizeof(listbox_item_t), list_comp_id_asc);
+    else if (sort_mode == SORT_ID_DESC)
+        qsort((void*)tab->listbox.items, tab->listbox.length, sizeof(listbox_item_t), list_comp_id_desc);
 }
 
 void gui_resize_list(tab_t *tab, int new_size)
@@ -176,7 +219,9 @@ void gui_resize_list(tab_t *tab, int new_size)
     }
 
     tab->listbox.length = new_size;
-    tab->listbox.cursor = RG_MAX(RG_MIN(tab->listbox.cursor, new_size - 1), 0);
+
+    if (tab->listbox.cursor >= new_size)
+        tab->listbox.cursor = new_size - 1;
 
     gui_event(TAB_SCROLL, tab);
 
