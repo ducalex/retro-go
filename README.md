@@ -162,7 +162,7 @@ I don't want to maintain non-ESP32 ports in this repository but let me know if I
 - The SNES emulator is a port of [Snes9x](https://github.com/snes9xgit/snes9x/).
 - PNG support is provided by [luPng](https://github.com/jansol/LuPng) and miniz.
 - PCE cover art is from Christian_Haitian.
-
+- Some icons from [Rokey](https://iconarchive.com/show/seed-icons-by-rokey.html)
 
 # License
 Everything in this project is licensed under the [GPLv2 license](COPYING) with the exception of the following components:

@@ -15,7 +15,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
 {
     listbox_item_t *item = gui_get_selected_item(tab);
     retro_emulator_file_t *file = (retro_emulator_file_t *)(item ? item->arg : NULL);
-    book_t *list = (book_t *)tab->arg;
+    book_t *book = (book_t *)tab->arg;
 
     if (event == TAB_INIT)
     {
@@ -37,7 +37,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
         if (!tab->is_empty && tab->listbox.length)
             snprintf(tab->status[0].left, 24, "%d / %d", (tab->listbox.cursor + 1) % 10000, tab->listbox.length % 10000);
         else
-            snprintf(tab->status[0].left, 24, "No %s", list ? list->name : "bookmarks");
+            snprintf(tab->status[0].left, 24, "No %.20s", book ? book->name : "bookmark");
         gui_set_status(tab, NULL, "");
     }
     else if (event == TAB_REDRAW)
@@ -84,7 +84,7 @@ static void tab_refresh(book_type_t book_type)
                 if (file->name[0])
                 {
                     listbox_item_t *listitem = &book->tab->listbox.items[list_index++];
-                    snprintf(listitem->text, 128, "[%-3s] %s", file->ext, file->name);
+                    snprintf(listitem->text, 128, "[%-3s] %.100s", file->ext, file->name);
                     listitem->arg = file;
                 }
             }
@@ -95,7 +95,7 @@ static void tab_refresh(book_type_t book_type)
         {
             gui_resize_list(book->tab, 6);
             sprintf(book->tab->listbox.items[0].text, "Welcome to Retro-Go!");
-            sprintf(book->tab->listbox.items[2].text, "You have no favorites.");
+            sprintf(book->tab->listbox.items[2].text, "You have no %s games.", book->name);
             sprintf(book->tab->listbox.items[4].text, "Use SELECT and START to navigate.");
             book->tab->listbox.cursor = 3;
         }
@@ -163,13 +163,16 @@ static void book_save(book_type_t book_type)
     }
 }
 
-static void book_init(book_type_t book_type, const char *name, int sort_mode, const rg_image_t *logo, const rg_image_t *header)
+static void book_init(book_type_t book_type, const char *name, int sort_mode, const binfile_t *logo, const binfile_t *header)
 {
+    rg_image_t *logo_img = logo ? rg_image_load_from_memory(logo->data, logo->size, 0) : NULL;
+    rg_image_t *header_img = header ? rg_image_load_from_memory(header->data, header->size, 0) : NULL;
+
     book_t *book = &books[book_type];
 
     strcpy(book->name, name);
     sprintf(book->path, "%s/%s.txt", RG_BASE_PATH_SYS, book->name);
-    book->tab = gui_add_tab(name, logo, header, book, event_handler);
+    book->tab = gui_add_tab(name, logo_img, header_img, book, event_handler);
     book->sort_mode = sort_mode;
     book->initialized = true;
 
@@ -231,13 +234,13 @@ bool bookmark_remove(book_type_t book, retro_emulator_file_t *file)
 
 void bookmarks_init()
 {
-    // In older retro-go the favorites were stored in retro-go.json
+    // In older retro-go <= 1.25 the favorites were stored in retro-go.json
     // Try to import and then clear them...
     char *old_favorites = rg_settings_get_string("Favorites", NULL);
     if (old_favorites && old_favorites[0])
     {
         RG_LOGI("Importing old favorites....\n");
-        FILE *fp = fopen(RG_BASE_PATH_SYS "/favorites.txt", "a");
+        FILE *fp = fopen(RG_BASE_PATH_SYS "/favorite.txt", "a");
         if (fp)
         {
             fputs(old_favorites, fp);
@@ -247,9 +250,6 @@ void bookmarks_init()
         free(old_favorites);
     }
 
-    rg_image_t *logo = rg_image_load_from_memory(logo_fav.data, logo_fav.size, 0);
-    rg_image_t *header = rg_image_load_from_memory(header_fav.data, header_fav.size, 0);
-
-    book_init(BOOK_TYPE_FAVORITE, "favorites", 0, logo, header);
-    book_init(BOOK_TYPE_RECENT, "recent", -1, logo, header);
+    book_init(BOOK_TYPE_FAVORITE, "favorite", 0, &logo_fav, &header_fav);
+    book_init(BOOK_TYPE_RECENT, "recent", -1, &logo_recent, &header_recent);
 }

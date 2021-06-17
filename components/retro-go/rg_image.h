@@ -36,3 +36,6 @@ bool rg_image_build_palette(rg_palette_t *out, const rg_image_t *img);
 bool rg_image_save_to_file(const char *filename, const rg_image_t *img, uint32_t flags);
 bool rg_image_save_to_memory(const uint8_t *data, size_t data_len, const rg_image_t *img, uint32_t flags);
 void rg_image_free(rg_image_t *img);
+
+// Loads a binfile_t* in a rg_image_t*
+#define IMG_BUILT_IN(binfile) rg_image_load_from_memory((binfile)->data, (binfile)->size, 0)
