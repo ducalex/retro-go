@@ -51,7 +51,7 @@ void rg_audio_init(int sample_rate)
             .sample_rate = audioSampleRate,
             .bits_per_sample = 16,
             .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,                           // 2-channels
-            .communication_format = I2S_COMM_FORMAT_I2S_MSB,
+            .communication_format = I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_LSB,
             .dma_buf_count = 2,
             .dma_buf_len = RG_MIN(sample_rate / 50 + 1, 640),                       // The unit is stereo samples (4 bytes)
             .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,                               // Interrupt level 1

@@ -914,6 +914,7 @@ static void draw_game_status_bar(void)
 
 int rg_gui_game_settings_menu(const dialog_option_t *extra_options)
 {
+    rg_audio_clear_buffer();
     draw_game_status_bar();
     return rg_gui_settings_menu(extra_options);
 }
@@ -939,6 +940,7 @@ int rg_gui_game_menu(void)
         RG_DIALOG_CHOICE_LAST
     };
 
+    rg_audio_clear_buffer();
     draw_game_status_bar();
 
     int sel = rg_gui_dialog("Retro-Go", choices, 0);
