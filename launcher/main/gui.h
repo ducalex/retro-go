@@ -28,7 +28,7 @@ typedef enum {
 } scroll_mode_t;
 
 typedef enum {
-    SORT_NONE = 0,
+    SORT_NONE,
     SORT_ID_ASC,
     SORT_ID_DESC,
     SORT_TEXT_ASC,
@@ -69,6 +69,7 @@ typedef struct {
     listbox_item_t *items;
     int length;
     int cursor;
+    int sort_mode;
 } listbox_t;
 
 typedef void (*gui_event_handler_t)(gui_event_t event, void *arg);
@@ -111,7 +112,7 @@ tab_t *gui_set_current_tab(int index);
 void gui_set_status(tab_t *tab, const char *left, const char *right);
 void gui_init_tab(tab_t *tab);
 
-void gui_sort_list(tab_t *tab, int sort_mode);
+void gui_sort_list(tab_t *tab);
 void gui_scroll_list(tab_t *tab, scroll_mode_t mode, int arg);
 void gui_resize_list(tab_t *tab, int new_size);
 listbox_item_t *gui_get_selected_item(tab_t *tab);

@@ -30,9 +30,9 @@ typedef struct
     char folder[32];
     size_t size;
     uint32_t checksum;
-    uint32_t missing_cover;
+    uint16_t missing_cover;
+    uint8_t  is_valid;
     retro_emulator_t *emulator;
-    bool is_valid;
 } retro_emulator_file_t;
 
 typedef struct retro_emulator_s

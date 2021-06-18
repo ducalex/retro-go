@@ -204,7 +204,6 @@ static void event_handler(gui_event_t event, tab_t *tab)
                 tab->listbox.items[i].arg = &emu->roms.files[i];
             }
 
-            gui_sort_list(tab, SORT_TEXT_ASC);
             tab->is_empty = false;
         }
         else

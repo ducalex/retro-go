@@ -89,7 +89,7 @@ static void tab_refresh(book_type_t book_type)
             }
         }
         gui_resize_list(book->tab, list_index);
-        gui_sort_list(book->tab, book->sort_mode);
+        gui_sort_list(book->tab);
     }
 
     if (book->tab->is_empty)
@@ -160,7 +160,7 @@ static void book_save(book_type_t book_type)
     }
 }
 
-static void book_init(book_type_t book_type, const char *name, int capacity, int sort_mode,
+static void book_init(book_type_t book_type, const char *name, int capacity,
                       const binfile_t *logo, const binfile_t *header)
 {
     rg_image_t *logo_img = logo ? rg_image_load_from_memory(logo->data, logo->size, 0) : NULL;
@@ -171,11 +171,13 @@ static void book_init(book_type_t book_type, const char *name, int capacity, int
     strcpy(book->name, name);
     sprintf(book->path, "%s/%s.txt", RG_BASE_PATH_SYS, book->name);
     book->tab = gui_add_tab(name, logo_img, header_img, book, event_handler);
-    book->sort_mode = sort_mode;
     book->initialized = true;
 
     if (book_type == BOOK_TYPE_RECENT)
+    {
+        book->tab->listbox.sort_mode = SORT_ID_DESC;
         book->tab->listbox.cursor = 0;
+    }
 
     book_load(book_type);
     tab_refresh(book_type);
@@ -241,22 +243,21 @@ bool bookmark_remove(book_type_t book, retro_emulator_file_t *file)
 
 void bookmarks_init()
 {
-    // In older retro-go <= 1.25 the favorites were stored in retro-go.json
-    // Try to import and then clear them...
     char *old_favorites = rg_settings_get_string("Favorites", NULL);
     if (old_favorites && old_favorites[0])
     {
-        RG_LOGI("Importing old favorites....\n");
+        RG_LOGI("Importing favorites frp, retro-go <= 1.25....\n");
         FILE *fp = fopen(RG_BASE_PATH_SYS "/favorite.txt", "a");
         if (fp)
         {
             fputs(old_favorites, fp);
             fclose(fp);
             rg_settings_set_string("Favorites", "");
+            rg_settings_save();
         }
-        free(old_favorites);
     }
+    free(old_favorites);
 
-    book_init(BOOK_TYPE_FAVORITE, "favorite", -1, SORT_TEXT_ASC, &logo_fav, &header_fav);
-    book_init(BOOK_TYPE_RECENT, "recent", 16, SORT_ID_DESC, &logo_recent, &header_recent);
+    book_init(BOOK_TYPE_FAVORITE, "favorite", -1, &logo_fav, &header_fav);
+    book_init(BOOK_TYPE_RECENT, "recent", 16, &logo_recent, &header_recent);
 }

@@ -62,6 +62,7 @@ tab_t *gui_add_tab(const char *name, const rg_image_t *logo, const rg_image_t *h
     tab->initialized = false;
     tab->is_empty = false;
     tab->arg = arg;
+    tab->listbox.sort_mode = SORT_TEXT_ASC;
     tab->listbox.cursor = -1;
 
     gui.tabs[gui.tabcount++] = tab;
@@ -81,12 +82,14 @@ void gui_init_tab(tab_t *tab)
 
     gui_event(TAB_INIT, tab);
 
-    // -1 means that we should find our last saved position
-    if (tab->listbox.cursor == -1)
+    if (!tab->is_empty)
     {
-        tab->listbox.cursor = 0;
-        if (!tab->is_empty)
+        gui_sort_list(tab);
+
+        // -1 means that we should find our last saved position
+        if (tab->listbox.cursor == -1)
         {
+            tab->listbox.cursor = 0;
             char key_name[32];
             sprintf(key_name, "SelectedItem.%.16s", tab->name);
             char *selected = rg_settings_get_app_string(key_name, NULL);
@@ -184,19 +187,18 @@ static int list_comp_id_desc(const void *a, const void *b)
     return ((listbox_item_t*)b)->id - ((listbox_item_t*)a)->id;
 }
 
-void gui_sort_list(tab_t *tab, int sort_mode)
+void gui_sort_list(tab_t *tab)
 {
-    if (tab->listbox.length == 0)
+    void *comp[] = {&list_comp_id_asc, &list_comp_id_desc, &list_comp_text_asc, &list_comp_text_desc};
+    int sort_mode = tab->listbox.sort_mode - 1;
+
+    if (tab->is_empty || !tab->listbox.length)
         return;
 
-    if (sort_mode == SORT_TEXT_ASC)
-        qsort((void*)tab->listbox.items, tab->listbox.length, sizeof(listbox_item_t), list_comp_text_asc);
-    else if (sort_mode == SORT_TEXT_DESC)
-        qsort((void*)tab->listbox.items, tab->listbox.length, sizeof(listbox_item_t), list_comp_text_desc);
-    else if (sort_mode == SORT_ID_ASC)
-        qsort((void*)tab->listbox.items, tab->listbox.length, sizeof(listbox_item_t), list_comp_id_asc);
-    else if (sort_mode == SORT_ID_DESC)
-        qsort((void*)tab->listbox.items, tab->listbox.length, sizeof(listbox_item_t), list_comp_id_desc);
+    if (sort_mode < 0 || sort_mode > 3)
+        return;
+
+    qsort((void*)tab->listbox.items, tab->listbox.length, sizeof(listbox_item_t), comp[sort_mode]);
 }
 
 void gui_resize_list(tab_t *tab, int new_size)

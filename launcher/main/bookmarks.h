@@ -9,12 +9,13 @@ typedef enum
     BOOK_TYPE_COUNT,
 } book_type_t;
 
+typedef retro_emulator_file_t bookmark_t;
+
 typedef struct
 {
     char name[64];
     char path[168];
     bool initialized;
-    long sort_mode;
     long capacity;
     long count;
     retro_emulator_file_t *items;
