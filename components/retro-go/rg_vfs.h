@@ -3,6 +3,13 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#define RG_BASE_PATH           "/sd"
+#define RG_BASE_PATH_ROMS      RG_BASE_PATH "/roms"
+#define RG_BASE_PATH_SAVES     RG_BASE_PATH "/odroid/data"
+#define RG_BASE_PATH_CACHE     RG_BASE_PATH "/odroid/cache"
+#define RG_BASE_PATH_CONFIG    RG_BASE_PATH "/odroid"
+#define RG_BASE_PATH_ROMART    RG_BASE_PATH "/romart"
+
 typedef enum
 {
     RG_SDCARD,

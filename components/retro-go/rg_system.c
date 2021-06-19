@@ -248,7 +248,7 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
     app.buildUser = RG_BUILD_USER;
     app.refreshRate = 1;
     app.sampleRate = sampleRate;
-    app.logLevel = RG_LOG_LEVEL;
+    app.logLevel = RG_LOG_INFO;
     app.isLauncher = (strcmp(app.name, RG_APP_LAUNCHER) == 0);
     app.mainTaskHandle = xTaskGetCurrentTaskHandle();
     if (handlers)
@@ -389,10 +389,6 @@ char *rg_emu_get_path(rg_path_type_t type, const char *_romPath)
             strcpy(buffer, RG_BASE_PATH_SAVES);
             strcat(buffer, fileName);
             strcat(buffer, ".png");
-            break;
-
-        case RG_PATH_TEMP_FILE:
-            sprintf(buffer, "%s/%X%X.tmp", RG_BASE_PATH_TEMP, (uint32_t)get_elapsed_time(), rand());
             break;
 
         case RG_PATH_ROM_FILE:
@@ -633,7 +629,7 @@ void rg_system_log(int level, const char *context, const char *format, ...)
     size_t len = 0;
     va_list args;
 
-    if (level > RG_LOG_LEVEL) // app.logLevel
+    if (app.logLevel && level > app.logLevel)
         return;
 
     if (level > RG_LOG_DEBUG)

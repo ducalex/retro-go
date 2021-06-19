@@ -169,7 +169,7 @@ static void book_init(book_type_t book_type, const char *name, int capacity,
     book_t *book = &books[book_type];
 
     strcpy(book->name, name);
-    sprintf(book->path, "%s/%s.txt", RG_BASE_PATH_SYS, book->name);
+    sprintf(book->path, "%s/%s.txt", RG_BASE_PATH_CONFIG, book->name);
     book->tab = gui_add_tab(name, logo_img, header_img, book, event_handler);
     book->initialized = true;
 
@@ -247,7 +247,7 @@ void bookmarks_init()
     if (old_favorites && old_favorites[0])
     {
         RG_LOGI("Importing favorites frp, retro-go <= 1.25....\n");
-        FILE *fp = fopen(RG_BASE_PATH_SYS "/favorite.txt", "a");
+        FILE *fp = fopen(RG_BASE_PATH_CONFIG "/favorite.txt", "a");
         if (fp)
         {
             fputs(old_favorites, fp);

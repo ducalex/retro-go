@@ -26,9 +26,13 @@ def debug_print(text):
 
 os.chdir(PRJ_PATH)
 
-if os.path.exists("fw-config.py"):
-    exec(read_file("fw-config.py"))
-elif os.path.exists("config.py"):
+# These can be overridden in config.py if needed
+PROJECT_NAME = os.path.basename(PRJ_PATH).title()
+PROJECT_VER  = shell_exec("git describe --tags --abbrev=5 --dirty --always")
+PROJECT_TILE = "icon.raw"
+PROJECT_APPS = {} # TO DO: discover subprojects automatically
+
+if os.path.exists("config.py"):
     exec(read_file("config.py"))
 
 symbols_cache = dict()
@@ -106,7 +110,7 @@ def analyze_profile(frames):
         debug_print("")
 
 
-def build_firmware(targets, part_size=None):
+def build_firmware(targets, shrink=False):
     os.chdir(PRJ_PATH)
     args = [
         sys.executable,
@@ -117,11 +121,7 @@ def build_firmware(targets, part_size=None):
     ]
     for target in targets:
         part = PROJECT_APPS[target]
-        size = part[1]
-        if part_size == "auto":
-            size = 0
-        elif part_size == "oversize":
-            size = max(512 * 1024, size + 65536)
+        size = 0 if shrink else part[1]
         args += [str(0), str(part[0]), str(size), target, os.path.join(target, "build", target + ".bin")]
 
     commandline = ' '.join(shlex.quote(arg) for arg in args[1:]) # shlex.join()
@@ -129,22 +129,25 @@ def build_firmware(targets, part_size=None):
     subprocess.run(args, check=True)
 
 
-def clean_app(target):
+def clean_app(target, fullclean=False):
     print("Cleaning up app '%s'..." % target)
-    try:  # idf.py fullclean
+    try:
+        if fullclean:
+            try: os.unlink(os.path.join(PRJ_PATH, target, "sdkconfig"))
+            except: pass
         shutil.rmtree(os.path.join(PRJ_PATH, target, "build"))
-        print("Done.\n")
-    except FileNotFoundError:
-        print("Nothing to do.\n")
+    except:
+        pass
+    print("Done.\n")
 
 
-def build_app(target, with_debugging=False, with_profiling=False, with_netplay=False):
+def build_app(target, build_type=None, with_netplay=False):
     # To do: clean up if any of the flags changed since last build
     print("Building app '%s'" % target)
     os.chdir(os.path.join(PRJ_PATH, target))
-    os.putenv("ENABLE_PROFILING", "1" if with_profiling else "0")
-    os.putenv("ENABLE_DEBUGGING", "1" if with_debugging else "0")
+    os.putenv("ENABLE_PROFILING", "1" if build_type == "profile" else "0")
     os.putenv("ENABLE_NETPLAY", "1" if with_netplay else "0")
+    os.putenv("PROJECT_VER", PROJECT_VER)
     subprocess.run("idf.py app", shell=True, check=True)
 
     print("Patching esp_image_header_t to skip sha256 on boot...")
@@ -249,22 +252,22 @@ def monitor_app(target, port, baudrate=115200):
 parser = argparse.ArgumentParser(description="Retro-Go build tool")
 parser.add_argument(
 # To do: Learn to use subcommands instead...
-    "command", choices=["build-fw", "build", "clean", "flash", "monitor", "run"],
+    "command", choices=["build-fw", "build", "clean", "fullclean", "flash", "monitor", "run"],
 )
 parser.add_argument(
-    "targets", nargs="*", default="all", choices=["all"] + list(PROJECT_APPS.keys())
+    "apps", nargs="*", default="all", choices=["all"] + list(PROJECT_APPS.keys())
 )
 parser.add_argument(
-    "--part-size", default="normal", choices=["auto", "normal", "oversize"], help="Adjust partition size"
+    "--shrink", action="store_const", const=True, help="Reduce partition size where possible"
+)
+parser.add_argument(
+    "--target", default="odroid-go", choices=["odroid-go", "esp32s2", "gbc32"], help="Device to target"
+)
+parser.add_argument(
+    "--build-type", default="release", choices=["release", "debug", "profile"], help="Build type"
 )
 parser.add_argument(
     "--with-netplay", action="store_const", const=True, help="Build with netplay enabled"
-)
-parser.add_argument(
-    "--with-profiling", action="store_const", const=True, help="Build with profiling enabled"
-)
-parser.add_argument(
-    "--with-debugging", action="store_const", const=True, help="Build with debugging enabled"
 )
 parser.add_argument(
     "--port", default="COM3", help="Serial port to use for flash and monitor"
@@ -279,37 +282,41 @@ args = parser.parse_args()
 
 
 command = args.command
-targets = args.targets if "all" not in args.targets else PROJECT_APPS.keys()
+apps = args.apps if "all" not in args.apps else PROJECT_APPS.keys()
 
 
 if command == "build-fw":
-    for target in targets:
-        clean_app(target)
-        build_app(target, args.with_debugging, args.with_profiling, args.with_netplay)
-    build_firmware(targets, args.part_size)
+    for target in apps:
+        clean_app(target, True)
+        build_app(target, args.build_type, args.with_netplay)
+    build_firmware(apps, args.shrink)
 
 if command == "build":
-    for target in targets:
-        build_app(target,args.with_debugging, args.with_profiling, args.with_netplay)
+    for target in apps:
+        build_app(target, args.build_type, args.with_netplay)
+
+if command == "fullclean":
+    for target in apps:
+        clean_app(target, True)
 
 if command == "clean":
-    for target in targets:
-        clean_app(target)
+    for target in apps:
+        clean_app(target, False)
 
 if command == "flash":
-    for target in targets:
+    for target in apps:
         flash_app(target, args.port, find_app(target, args.offset, args.app_offset))
 
 if command == "monitor":
-    if len(targets) == 1:
-        monitor_app(targets[0], args.port)
+    if len(apps) == 1:
+        monitor_app(apps[0], args.port)
     else:
         monitor_app("dummy", args.port)
 
 if command == "run":
-    build_app(targets[0], args.with_debugging, args.with_profiling, args.with_netplay)
-    flash_app(targets[0], args.port, find_app(targets[0], args.offset, args.app_offset))
-    monitor_app(targets[0], args.port)
+    build_app(apps[0], args.build_type, args.with_netplay)
+    flash_app(apps[0], args.port, find_app(apps[0], args.offset, args.app_offset))
+    monitor_app(apps[0], args.port)
 
 
 print("All done!")

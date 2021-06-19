@@ -25,10 +25,6 @@ macro(rg_setup_compile_options)
         component_compile_options(-DENABLE_PROFILING -finstrument-functions)
     endif()
 
-    if($ENV{ENABLE_DEBUGGING})
-        component_compile_options(-DENABLE_DEBUGGING)
-    endif()
-
     if($ENV{ENABLE_NETPLAY})
         component_compile_options(-DENABLE_NETPLAY)
     endif()

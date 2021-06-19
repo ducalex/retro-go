@@ -10,7 +10,11 @@ extern "C" {
 #include <stdint.h>
 #include <stdio.h>
 
-#include "config.h"
+#if defined(RG_TARGET_ODROID_GO) || 1
+    #include "devices/odroid-go.h"
+#else
+    #error "Target device not defined"
+#endif
 
 #include "rg_audio.h"
 #include "rg_display.h"
@@ -51,7 +55,6 @@ typedef enum
     RG_PATH_SAVE_STATE_3,
     RG_PATH_SCREENSHOT,
     RG_PATH_SAVE_SRAM,
-    RG_PATH_TEMP_FILE,
     RG_PATH_ROM_FILE,
     RG_PATH_ART_FILE,
 } rg_path_type_t;
@@ -73,6 +76,9 @@ enum {
 };
 
 #define RG_STRUCT_MAGIC 0x12345678
+
+#define RG_APP_LAUNCHER "launcher"
+#define RG_APP_FACTORY  NULL
 
 typedef bool (*rg_state_handler_t)(const char *filename);
 typedef bool (*rg_reset_handler_t)(bool hard);

@@ -175,7 +175,7 @@ battery_state_t rg_input_read_battery()
 
     for (int i = 0; i < sampleCount; ++i)
     {
-        adcSample += esp_adc_cal_raw_to_voltage(adc1_get_raw(ADC1_CHANNEL_0), &adc_chars) * 0.001f;
+        adcSample += esp_adc_cal_raw_to_voltage(adc1_get_raw(RG_BATT_ADC_CHAN), &adc_chars) * 0.001f;
     }
     adcSample /= sampleCount;
 
@@ -189,13 +189,8 @@ battery_state_t rg_input_read_battery()
         adcValue /= 2.0f;
     }
 
-    const float Vs = (adcValue / RG_BATT_DIVIDER_R2 * (RG_BATT_DIVIDER_R1 + RG_BATT_DIVIDER_R2));
-    const float Vconst = RG_MAX(RG_BATT_VOLTAGE_EMPTY, RG_MIN(Vs, RG_BATT_VOLTAGE_FULL));
-
-    battery_state_t out_state = {
-        .millivolts = (int)(Vs * 1000),
-        .percentage = (int)((Vconst - RG_BATT_VOLTAGE_EMPTY) / (RG_BATT_VOLTAGE_FULL - RG_BATT_VOLTAGE_EMPTY) * 100.0f),
+    return (battery_state_t) {
+        .millivolts = (int)(RG_BATT_CALC_VOLTAGE(adcValue) * 1000),
+        .percentage = (int)(RG_BATT_CALC_PERCENT(adcValue)),
     };
-
-    return out_state;
 }
