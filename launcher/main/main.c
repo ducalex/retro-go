@@ -214,7 +214,11 @@ void retro_loop()
         }
 
         if (last_key == GAMEPAD_KEY_MENU) {
-            if (rg_gui_about_menu(NULL) == 3000) {
+            const dialog_option_t options[] = {
+                {1, "Clear cache", NULL, 1, NULL},
+                RG_DIALOG_CHOICE_LAST
+            };
+            if (rg_gui_about_menu(options) == 1) {
                 rg_vfs_delete(CRC_CACHE_PATH);
                 rg_system_restart();
             }

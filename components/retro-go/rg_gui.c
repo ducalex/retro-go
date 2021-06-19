@@ -782,7 +782,6 @@ int rg_gui_about_menu(const dialog_option_t *extra_options)
         RG_DIALOG_SEPARATOR,
         {1000, "Reboot to firmware", NULL, 1, NULL},
         {2000, "Reset settings", NULL, 1, NULL},
-        {3000, "Clear cache", NULL, 1, NULL},
         {4000, "Debug", NULL, 1, NULL},
         {0000, "Close", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
@@ -817,8 +816,6 @@ int rg_gui_about_menu(const dialog_option_t *extra_options)
                 rg_system_restart();
             }
             break;
-        case 3000:
-            break;
         case 4000:
             rg_gui_debug_menu(NULL);
             break;
@@ -844,7 +841,7 @@ int rg_gui_debug_menu(const dialog_option_t *extra_options)
         {0, "Uptime    ", uptime, 1, NULL},
         RG_DIALOG_SEPARATOR,
         {1000, "Save screenshot", NULL, 1, NULL},
-        {2000, "Save app log", NULL, 1, NULL},
+        {2000, "Save trace", NULL, 1, NULL},
         {3000, "Cheats", NULL, 1, NULL},
         {4000, "Crash", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
@@ -852,7 +849,6 @@ int rg_gui_debug_menu(const dialog_option_t *extra_options)
 
     runtime_stats_t stats = rg_system_get_stats();
     rg_display_t display = rg_display_get_status();
-    rg_app_desc_t *app = rg_system_get_app();
     time_t now = time(NULL);
 
     strftime(system_rtc, 20, "%F %T", localtime(&now));
@@ -872,9 +868,7 @@ int rg_gui_debug_menu(const dialog_option_t *extra_options)
     }
     else if (sel == 2000)
     {
-        FILE *fp = fopen(RG_BASE_PATH "/log.txt", "wb");
-        rg_system_write_log(&app->log, fp);
-        fclose(fp);
+        rg_system_save_trace(RG_BASE_PATH "/trace.txt", 0);
     }
     else if (sel == 4000)
     {

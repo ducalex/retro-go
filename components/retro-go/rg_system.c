@@ -275,26 +275,12 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
 
         if (panicTrace.magicWord == RG_STRUCT_MAGIC)
         {
+            RG_LOGI("Panic log found, saving to sdcard...\n");
             if (panicTrace.message[0])
                 strcpy(message, panicTrace.message);
 
-            RG_LOGI("Panic log found, saving to sdcard...\n");
-            FILE *fp = fopen(RG_BASE_PATH "/crash.log", "w");
-            if (fp)
-            {
-                fprintf(fp, "Application: %s %s\n", app.name, app.version);
-                fprintf(fp, "Build date: %s %s\n", app.buildDate, app.buildTime);
-                fprintf(fp, "Free memory: %d + %d\n", panicTrace.statistics.freeMemoryInt, panicTrace.statistics.freeMemoryExt);
-                fprintf(fp, "Free block: %d + %d\n", panicTrace.statistics.freeBlockInt, panicTrace.statistics.freeBlockExt);
-                fprintf(fp, "Stack HWM: %d\n", panicTrace.statistics.freeStackMain);
-                fprintf(fp, "Message: %.256s\n", panicTrace.message);
-                fprintf(fp, "Context: %.256s\n", panicTrace.context);
-                fputs("\nConsole:\n", fp);
-                rg_system_write_log(&panicTrace.log, fp);
-                fputs("\n\nEnd of log\n", fp);
-                fclose(fp);
+            if (rg_system_save_trace(RG_BASE_PATH "/crash.log", 1))
                 strcat(message, "\nLog saved to SD Card.");
-            }
         }
 
         rg_display_clear(C_BLUE);
@@ -663,15 +649,39 @@ void rg_system_log(int level, const char *context, const char *format, ...)
     fwrite(buffer, len, 1, stdout);
 }
 
-void rg_system_write_log(log_buffer_t *log, FILE *fp)
+bool rg_system_save_trace(const char *filename, bool panic_trace)
 {
-    assert(log && fp);
-    for (size_t i = 0; i < LOG_BUFFER_SIZE; i++)
+    runtime_stats_t *stats = panic_trace ? &panicTrace.statistics : &statistics;
+    log_buffer_t *log = panic_trace ? &panicTrace.log : &app.log;
+    RG_ASSERT(filename, "bad param");
+
+    FILE *fp = fopen(filename, "w");
+    if (fp)
     {
-        size_t index = (log->cursor + i) % LOG_BUFFER_SIZE;
-        if (log->buffer[index])
-            fputc(log->buffer[index], fp);
+        fprintf(fp, "Application: %s\n", app.name);
+        fprintf(fp, "Version: %s\n", app.version);
+        fprintf(fp, "Build date: %s %s\n", app.buildDate, app.buildTime);
+        fprintf(fp, "ESP-IDF: %s\n", esp_get_idf_version());
+        fprintf(fp, "Free memory: %d + %d\n", stats->freeMemoryInt, stats->freeMemoryExt);
+        fprintf(fp, "Free block: %d + %d\n", stats->freeBlockInt, stats->freeBlockExt);
+        fprintf(fp, "Stack HWM: %d\n", stats->freeStackMain);
+        fprintf(fp, "Uptime: %ds\n", (int)(get_elapsed_time() / 1000 / 1000));
+        if (panic_trace && panicTrace.message[0])
+            fprintf(fp, "Panic message: %.256s\n", panicTrace.message);
+        if (panic_trace && panicTrace.context[0])
+            fprintf(fp, "Panic context: %.256s\n", panicTrace.context);
+        fputs("\nLog output:\n", fp);
+        for (size_t i = 0; i < LOG_BUFFER_SIZE; i++)
+        {
+            size_t index = (log->cursor + i) % LOG_BUFFER_SIZE;
+            if (log->buffer[index])
+                fputc(log->buffer[index], fp);
+        }
+        fputs("\n\nEnd of trace\n\n", fp);
+        fclose(fp);
     }
+
+    return (fp != NULL);
 }
 
 void rg_system_halt()
