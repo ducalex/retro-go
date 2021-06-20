@@ -35,6 +35,7 @@ typedef enum
 
 void rg_audio_init(int sample_rate);
 void rg_audio_deinit(void);
+const char *rg_audio_get_sink_name(audio_sink_t sink);
 void rg_audio_set_sink(audio_sink_t sink);
 audio_sink_t rg_audio_get_sink(void);
 void rg_audio_set_volume(audio_volume_t level);

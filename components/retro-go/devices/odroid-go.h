@@ -34,6 +34,7 @@
 #define RG_GPIO_SD_CLK              GPIO_NUM_18
 #define RG_GPIO_SD_CS               GPIO_NUM_22
 // External I2S DAC
-#define RG_GPIO_EXT_I2S_DAC_BCK     GPIO_NUM_4
-#define RG_GPIO_EXT_I2S_DAC_WS      GPIO_NUM_12
-#define RG_GPIO_EXT_I2S_DAC_DATA    GPIO_NUM_15
+#define RG_GPIO_SND_I2S_BCK         GPIO_NUM_4
+#define RG_GPIO_SND_I2S_WS          GPIO_NUM_12
+#define RG_GPIO_SND_I2S_DATA        GPIO_NUM_15
+#define RG_GPIO_SND_AMP_ENABLE      GPIO_NUM_NC
