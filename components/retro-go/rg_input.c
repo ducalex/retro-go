@@ -122,11 +122,12 @@ void rg_input_init(void)
 
     input_initialized = true;
 
-      RG_LOGI("init done.\n");
+    RG_LOGI("Input ready.\n");
 }
 
 void rg_input_deinit(void)
 {
+    RG_LOGI("Input terminated.\n");
     input_initialized = false;
 }
 
