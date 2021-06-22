@@ -9,12 +9,6 @@
 #include "bookmarks.h"
 #include "gui.h"
 
-static const char *SETTING_SELECTED_TAB  = "SelectedTab";
-static const char *SETTING_GUI_THEME     = "ColorTheme";
-static const char *SETTING_SHOW_EMPTY    = "ShowEmptyTabs";
-static const char *SETTING_SHOW_PREVIEW  = "ShowPreview";
-static const char *SETTING_PREVIEW_SPEED = "PreviewSpeed";
-
 
 static dialog_return_t font_type_cb(dialog_option_t *option, dialog_event_t event)
 {
@@ -37,13 +31,33 @@ static dialog_return_t font_type_cb(dialog_option_t *option, dialog_event_t even
     return RG_DIALOG_IGNORE;
 }
 
-static dialog_return_t show_empty_cb(dialog_option_t *option, dialog_event_t event)
+static dialog_return_t toggle_tab_cb(dialog_option_t *option, dialog_event_t event)
 {
+    tab_t *tab = gui.tabs[option->id];
+
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
-        gui.show_empty = !gui.show_empty;
-        rg_settings_set_app_int32(SETTING_SHOW_EMPTY, gui.show_empty);
+        tab->enabled = !tab->enabled;
     }
-    strcpy(option->value, gui.show_empty ? "Show" : "Hide");
+
+    strcpy(option->value, tab->enabled ? "Show" : "Hide");
+    return RG_DIALOG_IGNORE;
+}
+
+static dialog_return_t toggle_tabs_cb(dialog_option_t *option, dialog_event_t event)
+{
+    if (event == RG_DIALOG_ENTER) {
+        dialog_option_t options[gui.tabcount + 1];
+        dialog_option_t *option = &options[0];
+
+        for (int i = 0; i < gui.tabcount; ++i)
+        {
+            *option++ = (dialog_option_t) {i, gui.tabs[i]->name, "...", 1, &toggle_tab_cb};
+        }
+
+        *option++ = (dialog_option_t)RG_DIALOG_CHOICE_LAST;
+
+        rg_gui_dialog("Toggle Tabs", options, 0);
+    }
     return RG_DIALOG_IGNORE;
 }
 
@@ -73,11 +87,9 @@ static dialog_return_t show_preview_cb(dialog_option_t *option, dialog_event_t e
 {
     if (event == RG_DIALOG_PREV) {
         if (--gui.show_preview < 0) gui.show_preview = PREVIEW_MODE_COUNT - 1;
-        rg_settings_set_app_int32(SETTING_SHOW_PREVIEW, gui.show_preview);
     }
     if (event == RG_DIALOG_NEXT) {
         if (++gui.show_preview >= PREVIEW_MODE_COUNT) gui.show_preview = 0;
-        rg_settings_set_app_int32(SETTING_SHOW_PREVIEW, gui.show_preview);
     }
     const char *values[] = {"None      ", "Cover,Save", "Save,Cover", "Cover only", "Save only "};
     strcpy(option->value, values[gui.show_preview % PREVIEW_MODE_COUNT]);
@@ -88,7 +100,6 @@ static dialog_return_t show_preview_speed_cb(dialog_option_t *option, dialog_eve
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         gui.show_preview_fast = gui.show_preview_fast ? 0 : 1;
-        rg_settings_set_app_int32(SETTING_PREVIEW_SPEED, gui.show_preview_fast);
     }
     strcpy(option->value, gui.show_preview_fast ? "Short" : "Long");
     return RG_DIALOG_IGNORE;
@@ -99,31 +110,14 @@ static dialog_return_t color_shift_cb(dialog_option_t *option, dialog_event_t ev
     int max = gui_themes_count - 1;
     if (event == RG_DIALOG_PREV) {
         if (--gui.theme < 0) gui.theme = max;
-        rg_settings_set_app_int32(SETTING_GUI_THEME, gui.theme);
         gui_redraw();
     }
     if (event == RG_DIALOG_NEXT) {
         if (++gui.theme > max) gui.theme = 0;
-        rg_settings_set_app_int32(SETTING_GUI_THEME, gui.theme);
         gui_redraw();
     }
     sprintf(option->value, "%d/%d", gui.theme + 1, max + 1);
     return RG_DIALOG_IGNORE;
-}
-
-static inline bool tab_enabled(tab_t *tab)
-{
-    int disabled_tabs = 0;
-
-    if (gui.show_empty)
-        return true;
-
-    // If all tabs are disabled then we always return true, otherwise it's an endless loop
-    for (int i = 0; i < gui.tabcount; ++i)
-        if (gui.tabs[i]->initialized && gui.tabs[i]->is_empty)
-            disabled_tabs++;
-
-    return (disabled_tabs == gui.tabcount) || (tab->initialized && !tab->is_empty);
 }
 
 void retro_loop()
@@ -133,55 +127,31 @@ void retro_loop()
     int repeat = 0;
     int selected_tab_last = -1;
 
-    gui.selected     = rg_settings_get_app_int32(SETTING_SELECTED_TAB, 0);
-    gui.theme        = rg_settings_get_app_int32(SETTING_GUI_THEME, 0);
-    gui.show_empty   = rg_settings_get_app_int32(SETTING_SHOW_EMPTY, 1);
-    gui.show_preview = rg_settings_get_app_int32(SETTING_SHOW_PREVIEW, 1);
-    gui.show_preview_fast = rg_settings_get_app_int32(SETTING_PREVIEW_SPEED, 0);
-
-    if (!gui.show_empty)
-    {
-        // If we're hiding empty tabs then we must preload all files
-        // to avoid flicker and delays when skipping empty tabs...
-        for (int i = 0; i < gui.tabcount; i++)
-        {
-            gui_init_tab(gui.tabs[i]);
-        }
-    }
-
-    rg_display_clear(C_BLACK);
-
     while (true)
     {
         if (gui.selected != selected_tab_last)
         {
             int direction = (gui.selected - selected_tab_last) < 0 ? -1 : 1;
+            int skipped = 0;
 
             gui_event(TAB_LEAVE, tab);
 
             tab = gui_set_current_tab(gui.selected);
 
+            while (!tab->enabled && skipped < gui.tabcount)
+            {
+                gui.selected += direction;
+                tab = gui_set_current_tab(gui.selected);
+                skipped++;
+            }
+
             if (!tab->initialized)
             {
                 gui_redraw();
                 gui_init_tab(tab);
-
-                if (tab_enabled(tab))
-                {
-                    gui_draw_status(tab);
-                    gui_draw_list(tab);
-                }
-            }
-            else if (tab_enabled(tab))
-            {
-                gui_redraw();
             }
 
-            if (!tab_enabled(tab))
-            {
-                gui.selected += direction;
-                continue;
-            }
+            gui_redraw();
 
             gui_event(TAB_ENTER, tab);
 
@@ -229,14 +199,15 @@ void retro_loop()
                 RG_DIALOG_SEPARATOR,
                 {0, "Color theme", "...", 1, &color_shift_cb},
                 {0, "Font type  ", "...", 1, &font_type_cb},
-                {0, "Empty tabs ", "...", 1, &show_empty_cb},
                 {0, "Preview    ", "...", 1, &show_preview_cb},
                 {0, "    - Delay", "...", 1, &show_preview_speed_cb},
+                {0, "Toggle tabs", "Press A", 1, &toggle_tabs_cb},
                 {0, "Startup app", "...", 1, &startup_app_cb},
                 {0, "Disk LED   ", "...", 1, &disk_activity_cb},
                 RG_DIALOG_CHOICE_LAST
             };
             rg_gui_settings_menu(options);
+            gui_save_config(true);
             gui_redraw();
         }
         else if (last_key == GAMEPAD_KEY_SELECT) {
@@ -277,6 +248,8 @@ void retro_loop()
 void app_main(void)
 {
     rg_system_init(32000, NULL);
+
+    gui_init();
 
     emulators_init();
     bookmarks_init();

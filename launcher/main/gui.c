@@ -42,6 +42,24 @@ const int gui_themes_count = sizeof(gui_themes) / sizeof(theme_t);
 
 retro_gui_t gui;
 
+#define CONCAT(a, b) ({char buffer[128]; strcat(strcpy(buffer, a), b);})
+#define SETTING_SELECTED_TAB    "SelectedTab"
+#define SETTING_GUI_THEME       "ColorTheme"
+#define SETTING_SHOW_PREVIEW    "ShowPreview"
+#define SETTING_PREVIEW_SPEED   "PreviewSpeed"
+#define SETTING_TAB_ENABLED(a)   CONCAT("TabEnabled.", a)
+#define SETTING_TAB_SELECTION(a) CONCAT("TabSelection.", a)
+
+
+void gui_init(void)
+{
+    memset(&gui, 0, sizeof(retro_gui_t));
+    gui.selected     = rg_settings_get_app_int32(SETTING_SELECTED_TAB, 0);
+    gui.theme        = rg_settings_get_app_int32(SETTING_GUI_THEME, 0);
+    gui.show_preview = rg_settings_get_app_int32(SETTING_SHOW_PREVIEW, 1);
+    gui.show_preview_fast = rg_settings_get_app_int32(SETTING_PREVIEW_SPEED, 0);
+    rg_display_clear(C_BLACK);
+}
 
 void gui_event(gui_event_t event, tab_t *tab)
 {
@@ -60,6 +78,7 @@ tab_t *gui_add_tab(const char *name, const rg_image_t *logo, const rg_image_t *h
     tab->img_header = header;
     tab->img_logo = logo;
     tab->initialized = false;
+    tab->enabled = rg_settings_get_app_int32(SETTING_TAB_ENABLED(tab->name), 1);
     tab->is_empty = false;
     tab->arg = arg;
     tab->listbox.sort_mode = SORT_TEXT_ASC;
@@ -90,9 +109,7 @@ void gui_init_tab(tab_t *tab)
         if (tab->listbox.cursor == -1)
         {
             tab->listbox.cursor = 0;
-            char key_name[32];
-            sprintf(key_name, "SelectedItem.%.16s", tab->name);
-            char *selected = rg_settings_get_app_string(key_name, NULL);
+            char *selected = rg_settings_get_app_string(SETTING_TAB_SELECTION(tab->name), NULL);
             if (selected && strlen(selected) > 1)
             {
                 for (int i = 0; i < tab->listbox.length; i++)
@@ -147,11 +164,24 @@ void gui_save_position(bool commit)
 {
     tab_t *tab = gui_get_current_tab();
     listbox_item_t *item = gui_get_selected_item(tab);
-    char key_name[32];
 
-    sprintf(key_name, "SelectedItem.%.16s", tab->name);
-    rg_settings_set_app_string(key_name, item ? item->text : "");
-    rg_settings_set_app_int32("SelectedTab", gui.selected);
+    rg_settings_set_app_string(SETTING_TAB_SELECTION(tab->name), item ? item->text : "");
+    rg_settings_set_app_int32(SETTING_SELECTED_TAB, gui.selected);
+
+    if (commit)
+        rg_settings_save();
+}
+
+void gui_save_config(bool commit)
+{
+    rg_settings_set_app_int32(SETTING_SHOW_PREVIEW, gui.show_preview);
+    rg_settings_set_app_int32(SETTING_PREVIEW_SPEED, gui.show_preview_fast);
+    rg_settings_set_app_int32(SETTING_GUI_THEME, gui.theme);
+
+    for (int i = 0; i < gui.tabcount; i++)
+    {
+        rg_settings_set_app_int32(SETTING_TAB_ENABLED(gui.tabs[i]->name), gui.tabs[i]->enabled);
+    }
 
     if (commit)
         rg_settings_save();
