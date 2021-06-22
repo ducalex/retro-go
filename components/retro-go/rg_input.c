@@ -9,9 +9,9 @@
 #include "rg_input.h"
 
 static bool input_initialized = false;
-static bool use_external_gamepad = false;
 static int64_t last_gamepad_read = 0;
 static gamepad_state_t gamepad_state;
+static gamepad_type_t gamepad_type;
 
 
 static inline uint32_t console_gamepad_read(void)
@@ -61,11 +61,6 @@ static void input_task(void *arg)
     while (input_initialized)
     {
         uint32_t state = console_gamepad_read();
-
-        if (use_external_gamepad)
-        {
-            state |= external_gamepad_read();
-        }
 
         for (int i = 0; i < GAMEPAD_KEY_COUNT; ++i)
         {

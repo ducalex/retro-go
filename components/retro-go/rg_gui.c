@@ -527,7 +527,6 @@ int rg_gui_dialog(const char *header, const dialog_option_t *options_const, int 
         }
     }
 
-    rg_audio_clear_buffer();
     rg_input_wait_for_key(GAMEPAD_KEY_ALL, false);
     rg_gui_draw_dialog(header, options, sel);
 
@@ -929,9 +928,11 @@ static void draw_game_status_bar(void)
 
 int rg_gui_game_settings_menu(const dialog_option_t *extra_options)
 {
-    rg_audio_clear_buffer();
+    rg_audio_set_mute(true);
     draw_game_status_bar();
-    return rg_gui_settings_menu(extra_options);
+    int sel = rg_gui_settings_menu(extra_options);
+    rg_audio_set_mute(false);
+    return sel;
 }
 
 int rg_gui_game_menu(void)
@@ -955,7 +956,7 @@ int rg_gui_game_menu(void)
         RG_DIALOG_CHOICE_LAST
     };
 
-    rg_audio_clear_buffer();
+    rg_audio_set_mute(true);
     draw_game_status_bar();
 
     int sel = rg_gui_dialog("Retro-Go", choices, 0);
@@ -978,6 +979,8 @@ int rg_gui_game_menu(void)
         case 6000: rg_gui_about_menu(NULL); break;
         case 7000: rg_system_switch_app(RG_APP_LAUNCHER); break;
     }
+
+    rg_audio_set_mute(false);
 
     return sel;
 }

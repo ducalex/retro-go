@@ -210,6 +210,7 @@ void osd_input_read(void)
     uint32_t joystick = rg_input_read_gamepad();
     uint32_t buttons = 0;
 
+    // TO DO: We should pause the audio task when entering a menu...
     if (joystick & GAMEPAD_KEY_MENU)
     {
         rg_gui_game_menu();
