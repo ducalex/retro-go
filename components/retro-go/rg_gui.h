@@ -63,6 +63,7 @@ typedef struct
     uint16_t box_border;
     uint16_t item_standard;
     uint16_t item_disabled;
+    uint16_t scrollbar;
 } dialog_theme_t;
 
 typedef struct
