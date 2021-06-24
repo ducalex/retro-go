@@ -1,4 +1,5 @@
 #include <esp_err.h>
+#include <unistd.h>
 #include <string.h>
 #include <stdio.h>
 #include <cJSON.h>
@@ -148,7 +149,7 @@ bool rg_settings_save(void)
     if (!fp)
     {
         // Sometimes the FAT is left in an inconsistent state and this might help
-        rg_vfs_delete(CONFIG_FILE_PATH);
+        unlink(CONFIG_FILE_PATH);
         fp = fopen(CONFIG_FILE_PATH, "wb");
     }
     if (fp)

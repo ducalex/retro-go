@@ -154,7 +154,7 @@ static void book_save(book_type_t book_type)
         {
             retro_emulator_file_t *file = &book->items[i];
             if (file->is_valid)
-                fprintf(fp, "%s/%s.%s\n", file->folder, file->name, file->ext);
+                fprintf(fp, "%s\n", emu_get_file_path(file));
         }
         fclose(fp);
     }

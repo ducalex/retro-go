@@ -458,7 +458,7 @@ void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file)
         else
             continue;
 
-        if (rg_vfs_filesize(path) > 0)
+        if (access(path, F_OK) == 0)
         {
             img = rg_image_load_from_file(path, 0);
             if (!img)

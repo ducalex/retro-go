@@ -11,7 +11,7 @@ extern "C" {
 #include <stdio.h>
 
 #if defined(RG_TARGET_ODROID_GO) || 1
-    #include "devices/odroid-go.h"
+    #include "targets/odroid.h"
 #else
     #error "Target device not defined"
 #endif
@@ -20,7 +20,7 @@ extern "C" {
 #include "rg_display.h"
 #include "rg_input.h"
 #include "rg_netplay.h"
-#include "rg_vfs.h"
+#include "rg_sdcard.h"
 #include "rg_image.h"
 #include "rg_gui.h"
 #include "rg_profiler.h"
@@ -174,7 +174,7 @@ bool rg_emu_save_state(int slot);
 bool rg_emu_load_state(int slot);
 bool rg_emu_reset(int hard);
 bool rg_emu_notify(int msg, void *arg);
-bool rg_emu_screenshot(const char *file, int width, int height);
+bool rg_emu_screenshot(const char *filename, int width, int height);
 void rg_emu_start_game(const char *emulator, const char *romPath, rg_start_action_t action);
 
 int32_t rg_system_get_startup_app(void);

@@ -74,12 +74,10 @@ static dialog_return_t startup_app_cb(dialog_option_t *option, dialog_event_t ev
 
 static dialog_return_t disk_activity_cb(dialog_option_t *option, dialog_event_t event)
 {
-    int disk_activity = rg_vfs_get_enable_disk_led();
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
-        disk_activity = !disk_activity;
-        rg_vfs_set_enable_disk_led(disk_activity);
+        rg_sdcard_set_enable_activity_led(!rg_sdcard_get_enable_activity_led());
     }
-    strcpy(option->value, disk_activity ? "On " : "Off");
+    strcpy(option->value, rg_sdcard_get_enable_activity_led() ? "On " : "Off");
     return RG_DIALOG_IGNORE;
 }
 
@@ -189,7 +187,7 @@ void retro_loop()
                 RG_DIALOG_CHOICE_LAST
             };
             if (rg_gui_about_menu(options) == 1) {
-                rg_vfs_delete(CRC_CACHE_PATH);
+                unlink(CRC_CACHE_PATH);
                 rg_system_restart();
             }
             gui_redraw();

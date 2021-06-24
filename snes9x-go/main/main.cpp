@@ -41,7 +41,8 @@ static const char *SETTING_KEYMAP = "keymap";
 
 const char *S9xBasename(const char *f)
 {
-	return rg_vfs_basename(f);
+	const char *s = strrchr(f, '/');
+	return s ? s + 1 : f;
 }
 
 void S9xTextMode(void)
@@ -161,7 +162,7 @@ static bool load_state_handler(const char *filename)
 {
 	bool ret = false;
 
-	if (rg_vfs_filesize(filename) > 0)
+	if (access(filename, F_OK) == 0)
 	{
 		ret = S9xUnfreezeGame(filename) == SUCCESS;
 	}

@@ -1,3 +1,6 @@
+// Target definition
+#define RG_TARGET_NAME             "ODROID-GO"
+
 // Video
 #define RG_SCREEN_WIDTH             (320)
 #define RG_SCREEN_HEIGHT            (240)

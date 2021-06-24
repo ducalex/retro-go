@@ -259,8 +259,7 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
     gpio_set_level(RG_GPIO_LED, 0);
 
     // This must be before rg_display_init() and rg_settings_init()
-    rg_vfs_init();
-    bool sd_init = rg_vfs_mount(RG_SDCARD);
+    bool sd_init = rg_sdcard_mount();
     rg_settings_init(app.name);
     rg_display_init();
     rg_gui_init();
@@ -286,8 +285,8 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
         rg_display_clear(C_BLUE);
         // rg_gui_set_font_size(12);
         rg_gui_alert("System Panic!", message);
-        rg_vfs_deinit();
         rg_audio_deinit();
+        rg_sdcard_unmount();
         rg_system_switch_app(RG_APP_LAUNCHER);
     }
 
@@ -448,14 +447,13 @@ bool rg_emu_save_state(int slot)
     rg_gui_draw_hourglass();
 
     char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE, app.romPath);
-    char *dirname = rg_vfs_dirname(filename);
     char path_buffer[PATH_MAX + 1];
     bool success = false;
 
     // Increased input timeout, this might take a while
     inputTimeout = INPUT_TIMEOUT * 5;
 
-    if (!rg_vfs_mkdir(dirname))
+    if (!rg_mkdir(rg_dirname(filename)))
     {
         RG_LOGE("Unable to create dir, save might fail...\n");
     }
@@ -503,12 +501,11 @@ bool rg_emu_save_state(int slot)
     rg_system_set_led(0);
 
     free(filename);
-    free(dirname);
 
     return success;
 }
 
-bool rg_emu_screenshot(const char *file, int width, int height)
+bool rg_emu_screenshot(const char *filename, int width, int height)
 {
     if (!app.handlers.screenshot)
     {
@@ -516,20 +513,18 @@ bool rg_emu_screenshot(const char *file, int width, int height)
         return false;
     }
 
-    RG_LOGI("Saving screenshot %dx%d to '%s'.\n", width, height, file);
+    RG_LOGI("Saving screenshot %dx%d to '%s'.\n", width, height, filename);
 
     rg_system_set_led(1);
 
-    char *dirname = rg_vfs_dirname(file);
-    if (!rg_vfs_mkdir(dirname))
+    if (!rg_mkdir(rg_dirname(filename)))
     {
         RG_LOGE("Unable to create dir, save might fail...\n");
     }
-    free(dirname);
 
     // FIXME: We should allocate a framebuffer to pass to the handler and ask it
     // to fill it, then we'd resize and save to png from here...
-    bool success = (*app.handlers.screenshot)(file, width, height);
+    bool success = (*app.handlers.screenshot)(filename, width, height);
 
     rg_system_set_led(0);
 
@@ -578,7 +573,7 @@ void rg_system_switch_app(const char *app)
     rg_system_set_boot_app(app);
 
     rg_audio_deinit();
-    rg_vfs_deinit();
+    rg_sdcard_unmount();
     // rg_display_deinit();
 
     esp_restart();

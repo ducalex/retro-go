@@ -28,7 +28,6 @@ typedef struct
     char name[128];
     char ext[8];
     char folder[32];
-    size_t size;
     uint32_t checksum;
     uint16_t missing_cover;
     uint8_t  is_valid;
