@@ -361,6 +361,7 @@ void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int 
     int box_width = box_padding * 2;
     int box_height = box_padding * 2 + (header ? font_height + 6 : 0);
     int inner_width = rg_gui_calc_text_size(header, 0).width;
+    int max_inner_width = max_box_width - sep_width - (row_padding_x + box_padding) * 2;
     int col1_width = -1;
     int col2_width = -1;
     int row_height[options_count];
@@ -372,13 +373,13 @@ void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int 
 
         if (options[i].label)
         {
-            label = rg_gui_calc_text_size(options[i].label, max_box_width);
+            label = rg_gui_calc_text_size(options[i].label, max_inner_width);
             inner_width = RG_MAX(inner_width, label.width);
         }
 
         if (options[i].value)
         {
-            value = rg_gui_calc_text_size(options[i].value, max_box_width - label.width);
+            value = rg_gui_calc_text_size(options[i].value, max_inner_width - label.width);
             col1_width = RG_MAX(col1_width, label.width);
             col2_width = RG_MAX(col2_width, value.width);
         }

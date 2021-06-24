@@ -225,17 +225,19 @@ rg_strings_t *rg_readdir(const char* path, int flags)
 const char *rg_dirname(const char *path)
 {
     static char buffer[100];
-    char *ptr = strrchr(path, '/');
+    const char *basename = strrchr(path, '/');
+    ptrdiff_t length = path - basename;
 
-    if (!path || !ptr)
+    if (!path || !basename)
         return ".";
 
     if (path[0] == '/' && path[1] == 0)
         return "/";
 
-    size_t len = RG_MIN(path - ptr, sizeof(buffer));
-    strncpy(buffer, path, len);
-    buffer[len] = 0;
+    RG_ASSERT(length < 100, "overflow");
+
+    strncpy(buffer, path, length);
+    buffer[length] = 0;
 
     return buffer;
 }
