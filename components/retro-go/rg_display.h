@@ -3,7 +3,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef enum {
+typedef enum
+{
     RG_UPDATE_EMPTY = 0,
     RG_UPDATE_FULL,
     RG_UPDATE_PARTIAL,
@@ -107,7 +108,7 @@ void rg_display_reset_config(void);
 void rg_display_show_info(const char *text, int timeout_ms);
 bool rg_display_save_frame(const char *filename, rg_video_frame_t *frame, int width, int height);
 rg_update_t rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *previousFrame);
-rg_display_t rg_display_get_status(void);
+const rg_display_t *rg_display_get_status(void);
 
 
 void rg_display_set_scaling(display_scaling_t scaling);

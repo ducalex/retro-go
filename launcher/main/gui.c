@@ -12,8 +12,8 @@
 #define IMAGE_BANNER_WIDTH  (272)
 #define IMAGE_BANNER_HEIGHT (32)
 
-#define LIST_WIDTH          (RG_SCREEN_WIDTH)
-#define LIST_HEIGHT         (RG_SCREEN_HEIGHT - LIST_Y_OFFSET)
+#define LIST_WIDTH          (gui.width)
+#define LIST_HEIGHT         (gui.height - LIST_Y_OFFSET)
 #define LIST_LINE_COUNT     (LIST_HEIGHT / rg_gui_get_font_info().height)
 #define LIST_X_OFFSET       (0)
 #define LIST_Y_OFFSET       (48 + 8)
@@ -58,6 +58,8 @@ void gui_init(void)
     gui.theme        = rg_settings_get_app_int32(SETTING_GUI_THEME, 0);
     gui.show_preview = rg_settings_get_app_int32(SETTING_SHOW_PREVIEW, 1);
     gui.show_preview_fast = rg_settings_get_app_int32(SETTING_PREVIEW_SPEED, 0);
+    gui.width = rg_display_get_status()->screen.width;
+    gui.height = rg_display_get_status()->screen.height;
     rg_display_clear(C_BLACK);
 }
 
@@ -334,8 +336,8 @@ void gui_draw_header(tab_t *tab)
     int x_pos = IMAGE_LOGO_WIDTH;
     int y_pos = IMAGE_LOGO_HEIGHT;
 
-    rg_gui_draw_fill_rect(x_pos, 0, RG_SCREEN_WIDTH - x_pos, LIST_Y_OFFSET, C_BLACK);
-    rg_gui_draw_fill_rect(0, y_pos, RG_SCREEN_WIDTH, LIST_Y_OFFSET - y_pos, C_BLACK);
+    rg_gui_draw_fill_rect(x_pos, 0, gui.width - x_pos, LIST_Y_OFFSET, C_BLACK);
+    rg_gui_draw_fill_rect(0, y_pos, gui.width, LIST_Y_OFFSET - y_pos, C_BLACK);
 
     if (tab->img_logo)
         rg_gui_draw_image(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, tab->img_logo);
@@ -356,7 +358,7 @@ void gui_draw_status(tab_t *tab)
     char *txt_right = tab->status[tab->status[1].right[0] ? 1 : 0].right;
 
     rg_gui_draw_battery(-27, 3);
-    rg_gui_draw_text(status_x, status_y, RG_SCREEN_WIDTH, txt_right, C_SNOW, C_BLACK, RG_TEXT_ALIGN_LEFT);
+    rg_gui_draw_text(status_x, status_y, gui.width, txt_right, C_SNOW, C_BLACK, RG_TEXT_ALIGN_LEFT);
     rg_gui_draw_text(status_x, status_y, 0, txt_left, C_WHITE, C_BLACK, RG_TEXT_ALIGN_RIGHT);
 }
 
@@ -370,6 +372,7 @@ void gui_draw_list(tab_t *tab)
 
     int lines = LIST_LINE_COUNT;
     int y = LIST_Y_OFFSET;
+    int y_max = y + LIST_HEIGHT;
 
     for (int i = 0; i < lines; i++)
     {
@@ -387,8 +390,8 @@ void gui_draw_list(tab_t *tab)
         y += rg_gui_draw_text(LIST_X_OFFSET, y, LIST_WIDTH, text_label, color_fg, color_bg, 0).height;
     }
 
-    if (y < RG_SCREEN_HEIGHT)
-        rg_gui_draw_fill_rect(0, y, LIST_WIDTH, RG_SCREEN_HEIGHT - y, color_bg);
+    if (y < y_max)
+        rg_gui_draw_fill_rect(0, y, LIST_WIDTH, y_max - y, color_bg);
 }
 
 void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file)

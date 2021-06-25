@@ -793,11 +793,14 @@ void rg_display_reset_config(void)
     display.filter = rg_settings_get_app_int32(SETTING_FILTER, RG_DISPLAY_FILTER_HORIZ);
     display.rotation = rg_settings_get_app_int32(SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO);
     display.changed = true;
+
+    display.screen.width = SCREEN_WIDTH;
+    display.screen.height = SCREEN_HEIGHT;
 }
 
-rg_display_t rg_display_get_status(void)
+const rg_display_t *rg_display_get_status(void)
 {
-    return display;
+    return &display;
 }
 
 void rg_display_set_scaling(display_scaling_t scaling)

@@ -868,14 +868,14 @@ int rg_gui_debug_menu(const dialog_option_t *extra_options)
         RG_DIALOG_CHOICE_LAST
     };
 
-    runtime_stats_t stats = rg_system_get_stats();
-    rg_display_t display = rg_display_get_status();
+    const runtime_stats_t stats = rg_system_get_stats();
+    const rg_display_t *display = rg_display_get_status();
     time_t now = time(NULL);
 
     strftime(system_rtc, 20, "%F %T", localtime(&now));
-    sprintf(screen_res, "%dx%d", RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT);
-    sprintf(game_res, "%dx%d", display.source.width, display.source.height);
-    sprintf(scaled_res, "%dx%d", display.viewport.width, display.viewport.height);
+    sprintf(screen_res, "%dx%d", display->screen.width, display->screen.height);
+    sprintf(game_res, "%dx%d", display->source.width, display->source.height);
+    sprintf(scaled_res, "%dx%d", display->viewport.width, display->viewport.height);
     sprintf(stack_hwm, "%d", stats.freeStackMain);
     sprintf(heap_free, "%d+%d", stats.freeMemoryInt, stats.freeMemoryExt);
     sprintf(block_free, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);

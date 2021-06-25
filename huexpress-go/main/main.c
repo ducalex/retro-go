@@ -95,8 +95,9 @@ void osd_gfx_init(void)
 
 void osd_gfx_set_mode(int width, int height)
 {
-    int crop_h = MAX(0, width - RG_SCREEN_WIDTH);
-    int crop_v = MAX(0, height - RG_SCREEN_HEIGHT) + (overscan ? 6 : 0);
+    const rg_display_t *display = rg_display_get_status();
+    int crop_h = MAX(0, width - display->screen.width);
+    int crop_v = MAX(0, height - display->screen.height) + (overscan ? 6 : 0);
 
     // We center the content vertically and horizontally to allow overflows all around
     int offset_center = (((XBUF_HEIGHT - height) / 2 + 16) * XBUF_WIDTH + (XBUF_WIDTH - width) / 2);
