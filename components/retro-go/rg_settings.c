@@ -7,7 +7,7 @@
 #include "rg_system.h"
 #include "rg_settings.h"
 
-#define USE_CONFIG_FILE 1
+#define USE_CONFIG_FILE (RG_DRIVER_SETTINGS == 1)
 
 #define CONFIG_FILE_PATH RG_BASE_PATH_CONFIG "/retro-go.json"
 #define CONFIG_NAMESPACE "retro-go"

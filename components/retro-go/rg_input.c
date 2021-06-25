@@ -7,16 +7,18 @@
 
 #include "rg_system.h"
 #include "rg_input.h"
+#include "rg_i2c.h"
 
 static bool input_initialized = false;
 static int64_t last_gamepad_read = 0;
 static gamepad_state_t gamepad_state;
-static gamepad_type_t gamepad_type;
 
 
-static inline uint32_t console_gamepad_read(void)
+static inline uint32_t gamepad_read(void)
 {
     uint32_t state = 0;
+
+#if RG_DRIVER_GAMEPAD == 1    // GPIO
 
     int joyX = adc1_get_raw(RG_GPIO_GAMEPAD_X);
     int joyY = adc1_get_raw(RG_GPIO_GAMEPAD_Y);
@@ -33,18 +35,17 @@ static inline uint32_t console_gamepad_read(void)
     if (!gpio_get_level(RG_GPIO_GAMEPAD_A))      state |= GAMEPAD_KEY_A;
     if (!gpio_get_level(RG_GPIO_GAMEPAD_B))      state |= GAMEPAD_KEY_B;
 
-    return state;
-}
+#elif RG_DRIVER_GAMEPAD == 2  // Serial
 
-static inline uint32_t external_gamepad_read(void)
-{
-    uint32_t state = 0;
+#elif RG_DRIVER_GAMEPAD == 3  // I2C
 
-    // Unfortunately the GO doesn't bring out enough GPIO for both ext DAC and controller...
-    if (rg_audio_get_sink() != RG_AUDIO_SINK_EXT_DAC)
+    uint8_t data[5];
+    if (rg_i2c_read(0x20, -1, &data, 5))
     {
-        // NES / SNES shift register
+        // ...
     }
+
+#endif
 
     return state;
 }
@@ -60,7 +61,7 @@ static void input_task(void *arg)
 
     while (input_initialized)
     {
-        uint32_t state = console_gamepad_read();
+        uint32_t state = gamepad_read();
 
         for (int i = 0; i < GAMEPAD_KEY_COUNT; ++i)
         {
@@ -89,7 +90,8 @@ void rg_input_init(void)
 {
     if (input_initialized)
         return;
-    }
+
+#if RG_DRIVER_GAMEPAD == 1    // GPIO
 
     adc1_config_width(ADC_WIDTH_12Bit);
     adc1_config_channel_atten(RG_GPIO_GAMEPAD_X, ADC_ATTEN_11db);
@@ -109,6 +111,18 @@ void rg_input_init(void)
     gpio_set_pull_mode(RG_GPIO_GAMEPAD_A, GPIO_PULLUP_ONLY);
     gpio_set_direction(RG_GPIO_GAMEPAD_B, GPIO_MODE_INPUT);
     gpio_set_pull_mode(RG_GPIO_GAMEPAD_B, GPIO_PULLUP_ONLY);
+
+#elif RG_DRIVER_GAMEPAD == 2  // Serial
+
+    gpio_set_direction(RG_GPIO_GAMEPAD_CLOCK, GPIO_MODE_OUTPUT);
+    gpio_set_direction(RG_GPIO_GAMEPAD_LATCH, GPIO_MODE_OUTPUT);
+    gpio_set_direction(RG_GPIO_GAMEPAD_DATA, GPIO_MODE_INPUT);
+
+#elif RG_DRIVER_GAMEPAD == 3  // I2C
+
+    rg_i2c_init();
+
+#endif
 
     // Start background polling
     xTaskCreatePinnedToCore(&input_task, "input_task", 1024, NULL, 5, NULL, 1);

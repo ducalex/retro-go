@@ -23,6 +23,7 @@ extern "C" {
 #include "rg_sdcard.h"
 #include "rg_image.h"
 #include "rg_gui.h"
+#include "rg_i2c.h"
 #include "rg_profiler.h"
 #include "rg_settings.h"
 #include "rg_cheats.h"

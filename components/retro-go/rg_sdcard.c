@@ -48,19 +48,15 @@ static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
 
 bool rg_sdcard_mount(void)
 {
-    if (card != NULL)
-        rg_sdcard_unmount();
+    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
+        .format_if_mount_failed = false,
+        .allocation_unit_size = 0,
+        .max_files = 5,
+    };
 
-#ifdef RG_SDCARD_USE_SDMMC_HOST
+    esp_err_t err = ESP_FAIL;
 
-    sdmmc_host_t host_config = SDMMC_HOST_DEFAULT();
-    host_config.flags = SDMMC_HOST_FLAG_1BIT;
-    host_config.max_freq_khz = SDMMC_FREQ_HIGHSPEED;
-
-    sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
-    slot_config.width = 1;
-
-#else
+#if RG_DRIVER_SDCARD == 1
 
     sdmmc_host_t host_config = SDSPI_HOST_DEFAULT();
     host_config.slot = HSPI_HOST;
@@ -73,14 +69,23 @@ bool rg_sdcard_mount(void)
     slot_config.gpio_sck  = RG_GPIO_SD_CLK;
     slot_config.gpio_cs = RG_GPIO_SD_CS;
 
+#elif RG_DRIVER_SDCARD == 2
+
+    sdmmc_host_t host_config = SDMMC_HOST_DEFAULT();
+    host_config.flags = SDMMC_HOST_FLAG_1BIT;
+    host_config.max_freq_khz = SDMMC_FREQ_HIGHSPEED;
+
+    sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
+    slot_config.width = 1;
+
+#else
+
+    #error "No SD Card driver selected"
+
 #endif
 
-    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
-        .format_if_mount_failed = false,
-        .allocation_unit_size = 0,
-        .max_files = 5,
-    };
-    esp_err_t err;
+    if (card != NULL)
+        rg_sdcard_unmount();
 
     err = esp_vfs_fat_sdmmc_mount(RG_BASE_PATH, &host_config, &slot_config, &mount_config, &card);
 

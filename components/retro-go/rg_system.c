@@ -228,6 +228,8 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
 
     RG_LOGX("\n========================================================\n");
     RG_LOGX("%s %s (%s %s)\n", esp_app->project_name, esp_app->version, esp_app->date, esp_app->time);
+    RG_LOGX(" built for: %s. aud=%d disp=%d pad=%d sd=%d cfg=%d\n", RG_TARGET_NAME, RG_DRIVER_AUDIO,
+             RG_DRIVER_DISPLAY, RG_DRIVER_GAMEPAD, RG_DRIVER_SDCARD, RG_DRIVER_SETTINGS);
     RG_LOGX("========================================================\n\n");
 
     #if USE_SPI_MUTEX

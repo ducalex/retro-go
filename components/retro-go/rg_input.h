@@ -5,13 +5,6 @@
 
 typedef enum
 {
-    GAMEPAD_TYPE_GPIO = 0,  // RAW GPIO (ODROID-GO style)
-    GAMEPAD_TYPE_SERIAL,    // Shift register (NES style)
-    GAMEPAD_TYPE_I2C,       // I2C gpio extender (espgbc style)
-} gamepad_type_t;
-
-typedef enum
-{
     GAMEPAD_KEY_UP      = (1 << 0),
     GAMEPAD_KEY_RIGHT   = (1 << 1),
     GAMEPAD_KEY_DOWN    = (1 << 2),

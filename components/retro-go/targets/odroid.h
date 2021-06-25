@@ -1,13 +1,20 @@
 // Target definition
 #define RG_TARGET_NAME             "ODROID-GO"
 
+// Driver selection
+#define RG_DRIVER_AUDIO             1   // 1 = I2S
+#define RG_DRIVER_DISPLAY           1   // 1 = ili9341, 2 = ili9342
+#define RG_DRIVER_GAMEPAD           1   // 1 = GPIO, 2 = Serial, 3 = I2C
+#define RG_DRIVER_SDCARD            1   // 1 = SDSPI, 2 = SDMMC
+#define RG_DRIVER_SETTINGS          1   // 1 = SD Card, 2 = NVS
+
 // Video
 #define RG_SCREEN_WIDTH             (320)
 #define RG_SCREEN_HEIGHT            (240)
 
 // Battery ADC
-#define RG_BATT_CALC_PERCENT(adc) RG_MAX(0, RG_MIN(100, (RG_BATT_CALC_VOLTAGE(adc) - 3.5f) / (4.2f - 3.5f) * 100))
-#define RG_BATT_CALC_VOLTAGE(adc) ((adc) * 2.f)
+#define RG_BATT_CALC_PERCENT(adc)   RG_MAX(0, RG_MIN(100, (RG_BATT_CALC_VOLTAGE(adc) - 3.5f) / (4.2f - 3.5f) * 100))
+#define RG_BATT_CALC_VOLTAGE(adc)   ((adc) * 2.f)
 #define RG_BATT_ADC_CHAN            ADC1_CHANNEL_0
 
 // LED
@@ -25,6 +32,9 @@
 #define RG_GPIO_GAMEPAD_LATCH       GPIO_NUM_15
 #define RG_GPIO_GAMEPAD_CLOCK       GPIO_NUM_12
 #define RG_GPIO_GAMEPAD_DATA        GPIO_NUM_4
+// I2C BUS
+#define RG_GPIO_I2C_SDA             GPIO_NUM_15
+#define RG_GPIO_I2C_SCL             GPIO_NUM_4
 // SPI BUS
 #define RG_GPIO_LCD_MISO            GPIO_NUM_19
 #define RG_GPIO_LCD_MOSI            GPIO_NUM_23
