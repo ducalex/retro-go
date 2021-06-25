@@ -17,7 +17,6 @@ static bool i2cStarted = false;
 
 bool rg_i2c_init(void)
 {
-    esp_err_t err = ESP_FAIL;
 #if USE_I2C_DRIVER
     const i2c_config_t i2c_config = {
         .mode = I2C_MODE_MASTER,
@@ -27,6 +26,7 @@ bool rg_i2c_init(void)
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
         .master.clk_speed = 200000,
     };
+    esp_err_t err = ESP_FAIL;
 
     TRY(i2c_param_config(I2C_NUM_0, &i2c_config));
     TRY(i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0));
@@ -34,19 +34,22 @@ bool rg_i2c_init(void)
     i2cStarted = true;
     return true;
 fail:
-#endif
     RG_LOGE("Failed to initialize I2C driver. err=0x%x\n", err);
     return false;
+#else
+    RG_PANIC("I2C driver is not available.");
+#endif
 }
 
 bool rg_i2c_deinit(void)
 {
 #if USE_I2C_DRIVER
-    esp_err_t err = ESP_FAIL;
-    TRY(i2c_driver_delete(I2C_NUM_0));
-    i2cStarted = false;
-    return true;
-fail:
+    if (i2c_driver_delete(I2C_NUM_0) == ESP_OK)
+    {
+        RG_LOGI("I2C driver terminated.\n");
+        i2cStarted = false;
+        return true;
+    }
 #endif
     return false;
 }
