@@ -226,7 +226,7 @@ const char *rg_dirname(const char *path)
 {
     static char buffer[100];
     const char *basename = strrchr(path, '/');
-    ptrdiff_t length = path - basename;
+    ptrdiff_t length = basename - path;
 
     if (!path || !basename)
         return ".";
@@ -234,7 +234,7 @@ const char *rg_dirname(const char *path)
     if (path[0] == '/' && path[1] == 0)
         return "/";
 
-    RG_ASSERT(length < 100, "overflow");
+    RG_ASSERT(length < 100, "to do: use heap");
 
     strncpy(buffer, path, length);
     buffer[length] = 0;
