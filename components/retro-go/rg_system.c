@@ -258,7 +258,7 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
     gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
     gpio_set_level(RG_GPIO_LED, 0);
 
-    // This must be before rg_display_init() and rg_settings_init()
+    // sdcard must be first because it fails if the SPI bus is already initialized
     bool sd_init = rg_sdcard_mount();
     rg_settings_init(app.name);
     rg_display_init();
@@ -342,7 +342,7 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
     inputTimeout = INPUT_TIMEOUT * 5;
     initialized = true;
 
-    RG_LOGI("Retro-Go init done.\n\n");
+    RG_LOGI("Retro-Go ready.\n\n");
 
     return &app;
 }

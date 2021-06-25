@@ -62,7 +62,7 @@ static void json_set(cJSON *root, const char *key, cJSON *value)
 void rg_settings_init(const char *app_name)
 {
     char *buffer = NULL;
-    char *source;
+    const char *source;
     size_t length = 0;
 
 #if USE_CONFIG_FILE
@@ -76,7 +76,7 @@ void rg_settings_init(const char *app_name)
         fread(buffer, 1, length, fp);
         fclose(fp);
     }
-    source = "SD Card";
+    source = "sdcard";
 #else
     if (nvs_flash_init() != ESP_OK)
     {
@@ -103,11 +103,11 @@ void rg_settings_init(const char *app_name)
 
     if (root)
     {
-        RG_LOGI("Config loaded from %s!\n", source);
+        RG_LOGI("Settings ready. source=%s\n", source);
     }
     else
     {
-        RG_LOGE("Config failed to load from %s!\n", source);
+        RG_LOGE("Failed to initialize settings. source=%s!\n", source);
         root = cJSON_CreateObject();
     }
 

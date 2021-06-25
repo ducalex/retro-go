@@ -86,12 +86,12 @@ bool rg_sdcard_mount(void)
 
     if (err == ESP_OK)
     {
-        RG_LOGI("SD Card mounted, serial=%08X\n", card->cid.serial);
+        RG_LOGI("SD Card mounted. serial=%08X\n", card->cid.serial);
         return true;
     }
     else
     {
-        RG_LOGE("SD Card mounting failed, err=0x%x\n", err);
+        RG_LOGE("SD Card mounting failed. err=0x%x\n", err);
         card = NULL;
         return false;
     }
@@ -108,7 +108,7 @@ bool rg_sdcard_unmount(void)
         return true;
     }
 
-    RG_LOGE("SD Card unmounting failed, err=0x%x\n", err);
+    RG_LOGE("SD Card unmounting failed. err=0x%x\n", err);
     return false;
 }
 

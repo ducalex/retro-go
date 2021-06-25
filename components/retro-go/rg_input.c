@@ -88,8 +88,6 @@ static void input_task(void *arg)
 void rg_input_init(void)
 {
     if (input_initialized)
-    {
-        RG_LOGE("Input already initialized...\n");
         return;
     }
 

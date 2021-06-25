@@ -78,7 +78,7 @@ void rg_audio_init(int sample_rate)
     {
         audioSink = RG_AUDIO_SINK_DUMMY;
         audioSampleRate = sample_rate;
-        RG_LOGE("Failed to initialize audio! sink='%s' (%d), samplerate=%d, err=0x%x\n",
+        RG_LOGE("Failed to initialize audio. sink='%s' %d, samplerate=%d, err=0x%x\n",
             rg_audio_get_sink_name(sink), sink, sample_rate, ret);
     }
 

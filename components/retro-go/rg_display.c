@@ -965,8 +965,6 @@ void rg_display_show_info(const char *text, int timeout_ms)
 
 void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t* buffer)
 {
-    rg_display_drain_spi();
-
     lcd_set_window(left, top, width, height);
 
     size_t lines_per_buffer = SPI_BUFFER_LENGTH / width;
@@ -1002,8 +1000,6 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
 
 void rg_display_clear(uint16_t color)
 {
-    rg_display_drain_spi();
-
     lcd_set_window(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     color = (color << 8) | (color >> 8);
@@ -1035,21 +1031,16 @@ void rg_display_deinit()
     // To do: Stop SPI task...
 
     lcd_deinit();
+
+    RG_LOGI("Display terminated.\n");
 }
 
 void rg_display_init()
 {
-    RG_LOGI("Initialization:\n");
+    RG_LOGI("Initialization...\n");
     rg_display_reset_config();
-
-    RG_LOGI(" - calling spi_init.\n");
     spi_init();
-
-    RG_LOGI(" - calling lcd_init.\n");
     lcd_init();
-
-    RG_LOGI(" - starting display_task.\n");
     xTaskCreatePinnedToCore(&display_task, "display_task", 2048, NULL, 5, NULL, 1);
-
-    RG_LOGI("init done.\n");
+    RG_LOGI("Display ready.\n");
 }
