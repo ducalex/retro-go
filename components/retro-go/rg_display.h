@@ -13,15 +13,22 @@ typedef enum
 
 typedef enum
 {
+    RG_DISPLAY_UPDATE_PARTIAL = 0,
+    RG_DISPLAY_UPDATE_FULL,
+    // RG_DISPLAY_UPDATE_INTERLACE,
+    // RG_DISPLAY_UPDATE_SMART,
+    RG_DISPLAY_UPDATE_COUNT,
+} display_update_t;
+
+typedef enum
+{
     RG_DISPLAY_BACKLIGHT_0 = 0,
     RG_DISPLAY_BACKLIGHT_1,
     RG_DISPLAY_BACKLIGHT_2,
     RG_DISPLAY_BACKLIGHT_3,
     RG_DISPLAY_BACKLIGHT_4,
     RG_DISPLAY_BACKLIGHT_5,
-    RG_DISPLAY_BACKLIGHT_MIN = RG_DISPLAY_BACKLIGHT_0,
-    RG_DISPLAY_BACKLIGHT_MAX = RG_DISPLAY_BACKLIGHT_5,
-    RG_DISPLAY_BACKLIGHT_DEFAULT = RG_DISPLAY_BACKLIGHT_3,
+    RG_DISPLAY_BACKLIGHT_COUNT,
 } display_backlight_t;
 
 typedef enum
@@ -60,10 +67,13 @@ enum
 };
 
 typedef struct {
-    display_backlight_t backlight; // _level
-    display_rotation_t rotation; // _mode
-    display_scaling_t scaling; // _mode
-    display_filter_t filter; // _mode
+    struct {
+        display_backlight_t backlight;
+        display_rotation_t rotation;
+        display_scaling_t scaling;
+        display_filter_t filter;
+        display_update_t update;
+    } config;
     struct {
         uint32_t width;
         uint32_t height;
@@ -104,7 +114,7 @@ void rg_display_deinit(void);
 void rg_display_drain_spi(void);
 void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t* buffer);
 void rg_display_clear(uint16_t colorLE);
-void rg_display_reset_config(void);
+void rg_display_load_config(void);
 void rg_display_show_info(const char *text, int timeout_ms);
 bool rg_display_save_frame(const char *filename, rg_video_frame_t *frame, int width, int height);
 rg_update_t rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *previousFrame);
@@ -119,3 +129,6 @@ void rg_display_set_rotation(display_rotation_t rotation);
 display_rotation_t rg_display_get_rotation(void);
 void rg_display_set_backlight(display_backlight_t backlight);
 display_backlight_t rg_display_get_backlight(void);
+
+void rg_display_set_update_mode(display_update_t update);
+display_update_t rg_display_get_update_mode(void);

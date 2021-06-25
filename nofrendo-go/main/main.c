@@ -301,7 +301,7 @@ void osd_setpalette(rgb_t *pal)
         uint16_t c = (pal[i].b >> 3) + ((pal[i].g >> 2) << 5) + ((pal[i].r >> 3) << 11);
         myPalette[i] = (c >> 8) | ((c & 0xff) << 8);
     }
-    rg_display_reset_config();
+    rg_display_load_config();
 }
 
 void osd_blitscreen(uint8 *bmp)

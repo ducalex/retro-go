@@ -34,7 +34,8 @@ static rg_display_t display;
 static const char *SETTING_BACKLIGHT = "Backlight";
 static const char *SETTING_SCALING   = "DispScaling";
 static const char *SETTING_FILTER    = "DispFilter";
-static const char *SETTING_ROTATION  = "DistRotation";
+static const char *SETTING_ROTATION  = "DispRotation";
+static const char *SETTING_UPDATE    = "DispUpdate";
 
 #define SCREEN_WIDTH  RG_SCREEN_WIDTH // (display.screen.width)
 #define SCREEN_HEIGHT RG_SCREEN_HEIGHT // (display.screen.height)
@@ -253,7 +254,7 @@ static void ili9341_init()
         {0x29, {0}, 0x00},                                  // Display on
     };
 
-    float level = (float)display.backlight / RG_DISPLAY_BACKLIGHT_MAX;
+    float level = (float)display.config.backlight / (RG_DISPLAY_BACKLIGHT_COUNT - 1);
 
     ledc_timer_config_t ledc_timer = {
         .duty_resolution = LEDC_TIMER_13_BIT,
@@ -443,6 +444,7 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
     const int screen_bottom = RG_MIN(screen_top + scaled_height, SCREEN_HEIGHT);
     const int ix_acc = (x_inc * scaled_left) % SCREEN_WIDTH;
     const int lines_per_buffer = SPI_BUFFER_LENGTH / scaled_width;
+    const int filter_mode = display.config.scaling ? display.config.filter : 0;
 
     if (scaled_width < 1 || scaled_height < 1)
     {
@@ -469,7 +471,7 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
         }
 
         // The vertical filter requires a block to start and end with unscaled lines
-        if (display.filter == RG_DISPLAY_FILTER_VERT || display.filter == RG_DISPLAY_FILTER_BOTH)
+        if (filter_mode == RG_DISPLAY_FILTER_VERT || filter_mode == RG_DISPLAY_FILTER_BOTH)
         {
             while (lines_to_copy > 1 && (screen_line_is_empty[screen_y + lines_to_copy - 1] ||
                                          screen_line_is_empty[screen_y + lines_to_copy]))
@@ -530,11 +532,10 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
             }
         }
 
-        if (display.filter && display.scaling)
+        if (filter_mode)
         {
             bilinear_filter(line_buffer, screen_y - lines_to_copy, scaled_left, scaled_width, lines_to_copy,
-                            display.filter != RG_DISPLAY_FILTER_VERT,
-                            display.filter != RG_DISPLAY_FILTER_HORIZ);
+                            filter_mode != RG_DISPLAY_FILTER_VERT, filter_mode != RG_DISPLAY_FILTER_HORIZ);
         }
 
         lcd_send_data(line_buffer, scaled_width * lines_to_copy * 2);
@@ -593,7 +594,8 @@ static inline int frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFram
         }
     }
 
-    if (display.scaling && display.filter != RG_DISPLAY_FILTER_OFF)
+    // If filtering is enabled we must adjust our diff blocks to be on appropriate boundaries
+    if (display.config.filter && display.config.scaling)
     {
         for (int y = 0; y < frame->height; ++y)
         {
@@ -748,15 +750,15 @@ static void display_task(void *arg)
         if (display.changed)
         {
             double ratio = 0.0;
-            if (display.scaling == RG_DISPLAY_SCALING_FILL) {
+            if (display.config.scaling == RG_DISPLAY_SCALING_FILL) {
                 ratio = SCREEN_WIDTH / (double)SCREEN_HEIGHT;
             }
-            else if (display.scaling == RG_DISPLAY_SCALING_FIT) {
+            else if (display.config.scaling == RG_DISPLAY_SCALING_FIT) {
                 ratio = update->width / (double)update->height;
             }
             update_viewport_size(update->width, update->height, ratio);
             // We must clear garbage that won't be covered
-            if (display.scaling != RG_DISPLAY_SCALING_FILL) {
+            if (display.config.scaling != RG_DISPLAY_SCALING_FILL) {
                 rg_display_clear(C_BLACK);
             }
             display.changed = false;
@@ -786,12 +788,14 @@ static void display_task(void *arg)
     vTaskDelete(NULL);
 }
 
-void rg_display_reset_config(void)
+void rg_display_load_config(void)
 {
-    display.backlight = rg_settings_get_int32(SETTING_BACKLIGHT, RG_DISPLAY_BACKLIGHT_DEFAULT);
-    display.scaling = rg_settings_get_app_int32(SETTING_SCALING, RG_DISPLAY_SCALING_FILL);
-    display.filter = rg_settings_get_app_int32(SETTING_FILTER, RG_DISPLAY_FILTER_HORIZ);
-    display.rotation = rg_settings_get_app_int32(SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO);
+    // TO DO: We probably should call the setters to ensure valid values...
+    display.config.backlight = rg_settings_get_int32(SETTING_BACKLIGHT, RG_DISPLAY_BACKLIGHT_3);
+    display.config.scaling = rg_settings_get_app_int32(SETTING_SCALING, RG_DISPLAY_SCALING_FILL);
+    display.config.filter = rg_settings_get_app_int32(SETTING_FILTER, RG_DISPLAY_FILTER_HORIZ);
+    display.config.rotation = rg_settings_get_app_int32(SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO);
+    display.config.update = rg_settings_get_app_int32(SETTING_UPDATE, RG_DISPLAY_UPDATE_PARTIAL);
     display.changed = true;
 
     display.screen.width = SCREEN_WIDTH;
@@ -803,52 +807,64 @@ const rg_display_t *rg_display_get_status(void)
     return &display;
 }
 
+void rg_display_set_update_mode(display_update_t update)
+{
+    display.config.update = RG_MIN(RG_MAX(0, update), RG_DISPLAY_UPDATE_COUNT - 1);
+    rg_settings_set_app_int32(SETTING_UPDATE, display.config.update);
+    display.changed = true;
+}
+
+display_update_t rg_display_get_update_mode(void)
+{
+    return display.config.update;
+}
+
 void rg_display_set_scaling(display_scaling_t scaling)
 {
-    display.scaling = RG_MIN(RG_MAX(0, scaling), RG_DISPLAY_SCALING_COUNT - 1);
-    rg_settings_set_app_int32(SETTING_SCALING, display.scaling);
+    display.config.scaling = RG_MIN(RG_MAX(0, scaling), RG_DISPLAY_SCALING_COUNT - 1);
+    rg_settings_set_app_int32(SETTING_SCALING, display.config.scaling);
     display.changed = true;
 }
 
 display_scaling_t rg_display_get_scaling(void)
 {
-    return display.scaling;
+    return display.config.scaling;
 }
 
 void rg_display_set_filter(display_filter_t filter)
 {
-    display.filter = RG_MIN(RG_MAX(0, filter), RG_DISPLAY_FILTER_COUNT - 1);
-    rg_settings_set_app_int32(SETTING_FILTER, display.filter);
+    display.config.filter = RG_MIN(RG_MAX(0, filter), RG_DISPLAY_FILTER_COUNT - 1);
+    rg_settings_set_app_int32(SETTING_FILTER, display.config.filter);
     display.changed = true;
 }
 
 display_filter_t rg_display_get_filter(void)
 {
-    return display.filter;
+    return display.config.filter;
 }
 
 void rg_display_set_rotation(display_rotation_t rotation)
 {
-    display.rotation = RG_MIN(RG_MAX(0, rotation), RG_DISPLAY_ROTATION_COUNT - 1);
-    rg_settings_set_app_int32(SETTING_SCALING, display.rotation);
+    display.config.rotation = RG_MIN(RG_MAX(0, rotation), RG_DISPLAY_ROTATION_COUNT - 1);
+    rg_settings_set_app_int32(SETTING_SCALING, display.config.rotation);
     display.changed = true;
 }
 
 display_rotation_t rg_display_get_rotation(void)
 {
-    return display.rotation;
+    return display.config.rotation;
 }
 
 void rg_display_set_backlight(display_backlight_t backlight)
 {
-    display.backlight = RG_MIN(RG_MAX(0, backlight), RG_DISPLAY_BACKLIGHT_MAX);
-    rg_settings_set_int32(SETTING_BACKLIGHT, display.backlight);
-    lcd_set_backlight((float)display.backlight / RG_DISPLAY_BACKLIGHT_MAX);
+    display.config.backlight = RG_MIN(RG_MAX(0, backlight), RG_DISPLAY_BACKLIGHT_COUNT - 1);
+    rg_settings_set_int32(SETTING_BACKLIGHT, display.config.backlight);
+    lcd_set_backlight((float)display.config.backlight / (RG_DISPLAY_BACKLIGHT_COUNT - 1));
 }
 
 display_backlight_t rg_display_get_backlight(void)
 {
-    return display.backlight;
+    return display.config.backlight;
 }
 
 bool rg_display_save_frame(const char *filename, rg_video_frame_t *frame, int width, int height)
@@ -920,7 +936,7 @@ rg_update_t rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *p
         display.changed = true;
     }
 
-    if (previousFrame && !display.changed)
+    if (previousFrame && !display.changed && display.config.update != RG_DISPLAY_UPDATE_FULL)
     {
         linesChanged = frame_diff(frame, previousFrame);
     }
@@ -1038,7 +1054,7 @@ void rg_display_deinit()
 void rg_display_init()
 {
     RG_LOGI("Initialization...\n");
-    rg_display_reset_config();
+    rg_display_load_config();
     spi_init();
     lcd_init();
     xTaskCreatePinnedToCore(&display_task, "display_task", 2048, NULL, 5, NULL, 1);

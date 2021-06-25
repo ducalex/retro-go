@@ -135,9 +135,11 @@ void app_main(void)
         RG_PANIC("ROM file loading failed!");
     }
 
-    if (IS_TMS) rg_settings_set_app_name("smsplusgx-col");
-    if (IS_GG) rg_settings_set_app_name("smsplusgx-gg");
-    rg_display_reset_config();
+    if (IS_GG || IS_TMS)
+    {
+        rg_settings_set_app_name(IS_GG ? "smsplusgx-gg" : "smsplusgx-col");
+        rg_display_load_config();
+    }
 
     bitmap.width = SMS_WIDTH;
     bitmap.height = SMS_HEIGHT;

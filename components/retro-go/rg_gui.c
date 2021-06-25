@@ -626,7 +626,7 @@ int rg_gui_dialog(const char *header, const dialog_option_t *options_const, int 
     rg_input_wait_for_key(last_key, false);
 
     if (!rg_emu_notify(RG_MSG_REDRAW, NULL))
-        rg_display_reset_config();
+        rg_display_load_config();
 
     for (int i = 0; i < options_count; i++)
     {
@@ -681,7 +681,7 @@ static dialog_return_t volume_update_cb(dialog_option_t *option, dialog_event_t 
 static dialog_return_t brightness_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     int8_t level = rg_display_get_backlight();
-    int8_t max = RG_DISPLAY_BACKLIGHT_MAX;
+    int8_t max = RG_DISPLAY_BACKLIGHT_COUNT - 1;
 
     if (event == RG_DIALOG_PREV && level > 0) {
         rg_display_set_backlight(--level);
@@ -752,6 +752,26 @@ static dialog_return_t scaling_update_cb(dialog_option_t *option, dialog_event_t
     return RG_DIALOG_IGNORE;
 }
 
+static dialog_return_t update_mode_update_cb(dialog_option_t *option, dialog_event_t event)
+{
+    int8_t max = RG_DISPLAY_UPDATE_COUNT - 1;
+    int8_t mode = rg_display_get_update_mode();
+    int8_t prev = mode;
+
+    if (event == RG_DIALOG_PREV && --mode < 0) mode =  max; // 0;
+    if (event == RG_DIALOG_NEXT && ++mode > max) mode = 0;  // max;
+
+    if (mode != prev) {
+        rg_display_set_update_mode(mode);
+    }
+
+    if (mode == RG_DISPLAY_UPDATE_PARTIAL)   strcpy(option->value, "Partial");
+    if (mode == RG_DISPLAY_UPDATE_FULL)      strcpy(option->value, "Full   ");
+    // if (mode == RG_DISPLAY_UPDATE_INTERLACE) strcpy(option->value, "Interlace");
+
+    return RG_DIALOG_IGNORE;
+}
+
 static dialog_return_t speedup_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     rg_app_desc_t *app = rg_system_get_app();
@@ -775,11 +795,13 @@ int rg_gui_settings_menu(const dialog_option_t *extra_options)
     if (!rg_system_get_app()->isLauncher)
     {
         *opt++ = (dialog_option_t){0, "Scaling", "Full", 1, &scaling_update_cb};
-        *opt++ = (dialog_option_t){0, "Filtering", "None", 1, &filter_update_cb};
+        *opt++ = (dialog_option_t){0, "Filter", "None", 1, &filter_update_cb};
+        *opt++ = (dialog_option_t){0, "Update", "Partial", 1, &update_mode_update_cb};
         *opt++ = (dialog_option_t){0, "Speed", "1x", 1, &speedup_update_cb};
     }
 
-    while (extra_options && (*extra_options).flags != RG_DIALOG_FLAG_LAST) {
+    while (extra_options && (*extra_options).flags != RG_DIALOG_FLAG_LAST)
+    {
         *opt++ = *extra_options++;
     }
 
