@@ -35,10 +35,10 @@ bool rg_i2c_init(void)
     return true;
 fail:
     RG_LOGE("Failed to initialize I2C driver. err=0x%x\n", err);
-    return false;
 #else
-    RG_PANIC("I2C driver is not available.");
+    RG_LOGE("I2C driver is not available on this device.");
 #endif
+    return false;
 }
 
 bool rg_i2c_deinit(void)
