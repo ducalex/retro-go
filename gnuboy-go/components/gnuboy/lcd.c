@@ -480,7 +480,7 @@ static inline void spr_scan(int ns)
 
 static inline void lcd_beginframe()
 {
-	vdest = fb.ptr;
+	vdest = fb.buffer;
 	WY = R_WY;
 }
 
@@ -490,6 +490,16 @@ void lcd_reset(bool hard)
 	{
 		memset(&lcd, 0, sizeof(lcd));
 	}
+
+	memset(BG, 0, sizeof(BG));
+	memset(WND, 0, sizeof(WND));
+	memset(BUF, 0, sizeof(BUF));
+	memset(PRI, 0, sizeof(PRI));
+	memset(PAL, 0, sizeof(PAL));
+	memset(VS, 0, sizeof(VS));
+
+	WX = WY = WT = WV = 0;
+	S = T = U = V = 0;
 
 	lcd_beginframe();
 	pal_set_dmg(dmg_selected_pal);
@@ -551,6 +561,7 @@ static inline void lcd_renderline()
 	if (fb.format == GB_PIXEL_PALETTED)
 	{
 		memcpy(vdest, BUF, 160);
+		vdest += 160;
 	}
 	else
 	{
@@ -558,9 +569,9 @@ static inline void lcd_renderline()
 
 		for (int i = 0; i < 160; ++i)
 			dst[i] = PAL[BUF[i]];
-	}
 
-	vdest += fb.pitch;
+		vdest += 160 * 2;
+	}
 }
 
 static inline void pal_update(byte i)

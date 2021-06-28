@@ -38,9 +38,7 @@ enum {
 
 typedef struct
 {
-	byte *ptr;
-	int w, h;
-	int pitch;
+	byte *buffer;
 	int format;
 	int enabled;
 	void (*blit_func)();

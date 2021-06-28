@@ -58,7 +58,7 @@ typedef struct
 
 static un32 ver;
 
-static svar_t svars[] =
+static const svar_t svars[] =
 {
 	I4("GbSs", &ver),
 
