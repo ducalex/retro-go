@@ -30,10 +30,7 @@ static rg_video_frame_t frames[2];
 static rg_video_frame_t *currentUpdate = &frames[0];
 static int current_height, current_width;
 static bool overscan = false;
-
 static int skipFrames = 0;
-static int blitFrames = 0;
-static int fullFrames = 0;
 
 static rg_app_desc_t *app;
 
@@ -133,11 +130,7 @@ void osd_gfx_blit(void)
     if (drawFrame)
     {
         rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
-        if (rg_display_queue_update(currentUpdate, NULL) == RG_UPDATE_FULL)
-        {
-            fullFrames++;
-        }
-        blitFrames++;
+        rg_display_queue_update(currentUpdate, NULL);
 
         currentUpdate = previousUpdate;
         clear_buffer(currentUpdate);
@@ -292,9 +285,7 @@ void osd_vsync(void)
         skipFrames++;
     }
 
-    rg_system_tick(blitFrames == 0, fullFrames > 0, curtime - prevtime);
-    blitFrames = 0;
-    fullFrames = 0;
+    rg_system_tick(curtime - prevtime);
 
     prevtime = get_elapsed_time();
     lasttime += frametime;

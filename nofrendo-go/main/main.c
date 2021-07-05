@@ -278,7 +278,7 @@ void osd_vsync()
     }
 
     // Tick before submitting audio/syncing
-    rg_system_tick(!nes->drawframe, fullFrame, elapsed);
+    rg_system_tick(elapsed);
 
     nes->drawframe = (skipFrames == 0);
 

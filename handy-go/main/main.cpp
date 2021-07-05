@@ -262,7 +262,7 @@ extern "C" void app_main(void)
             skipFrames--;
         }
 
-        rg_system_tick(!drawFrame, fullFrame, elapsed);
+        rg_system_tick(elapsed);
 
         if (!app->speedupEnabled)
         {

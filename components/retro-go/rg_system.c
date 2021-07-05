@@ -188,20 +188,26 @@ static void system_monitor_task(void *arg)
     vTaskDelete(NULL);
 }
 
-IRAM_ATTR void rg_system_tick(bool skippedFrame, bool fullFrame, int busyTime)
+IRAM_ATTR void rg_system_tick(int busyTime)
 {
-    if (skippedFrame)
+    static uint32_t totalFrames = 0;
+    static uint32_t fullFrames = 0;
+
+    const rg_display_t *disp = rg_display_get_status();
+
+    if (disp->counters.totalFrames == totalFrames)
         counters.skippedFrames++;
-    else if (fullFrame)
+    else if (disp->counters.fullFrames > fullFrames)
         counters.fullFrames++;
 
-    counters.busyTime += busyTime;
+    totalFrames = disp->counters.totalFrames;
+    fullFrames = disp->counters.fullFrames;
 
     counters.totalFrames++;
-    counters.ticks++;
+    counters.busyTime += busyTime;
 
     // Reduce the inputTimeout once the emulation is running
-    if (counters.ticks == 1)
+    if (counters.totalFrames == 1)
     {
         inputTimeout = INPUT_TIMEOUT;
     }

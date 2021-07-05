@@ -134,7 +134,6 @@ typedef struct
     uint32_t fullFrames;
     uint32_t busyTime;
     uint64_t resetTime;
-    uint32_t ticks;
 } runtime_counters_t;
 
 typedef struct
@@ -161,7 +160,7 @@ void rg_system_set_boot_app(const char *app);
 bool rg_system_find_app(const char *app);
 void rg_system_set_led(int value);
 int  rg_system_get_led(void);
-void rg_system_tick(bool skippedFrame, bool fullFrame, int busyTime);
+void rg_system_tick(int busyTime);
 void rg_system_log(int level, const char *context, const char *format, ...);
 bool rg_system_save_trace(const char *filename, bool append);
 rg_app_desc_t *rg_system_get_app();
@@ -233,6 +232,8 @@ extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 #ifndef DRAM_ATTR
 #define DRAM_ATTR
 #endif
+
+#define autofree __attribute__(cleanup(free))
 
 #ifdef __cplusplus
 }

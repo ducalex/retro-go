@@ -325,7 +325,7 @@ void app_main(void)
         }
 
         // Tick before submitting audio/syncing
-        rg_system_tick(!drawFrame, fullFrame, elapsed);
+        rg_system_tick(elapsed);
 
         if (!app->speedupEnabled)
         {
