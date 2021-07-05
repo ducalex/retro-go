@@ -148,10 +148,11 @@ When a panic occurs, Retro-Go has the ability to save debugging information to `
 
 # Porting
 I don't want to maintain non-ESP32 ports in this repository but let me know if I can make small changes to make your own port easier! The absolute minimum requirements for Retro-Go are roughly:
-- Processor: 200Mhz 32bit little-endian with unaligned memory access support
+- Processor: 200Mhz 32bit little-endian with unaligned memory access support ¹
 - Memory: 2MB
 - Compiler: C99 and C++03 (for lynx and snes)
 
+¹ _The unaligned support isn't a hard requirement but I know that unaligned access have sneaked into the code and it's safer to use a mcu that at leasts traps unaligned accesses (like the ESP32 does). I'd be more than happy to accept patches that reduce or remove unaligned memory accesses!_
 
 # Acknowledgements
 - The design of the launcher was inspired (copied) from [pelle7's go-emu](https://github.com/pelle7/odroid-go-emu-launcher).

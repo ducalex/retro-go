@@ -27,7 +27,7 @@ static spi_device_handle_t spi_dev;
 static SemaphoreHandle_t spi_count_semaphore;
 static QueueHandle_t spi_buffers_queue;
 static QueueHandle_t spi_queue;
-static QueueHandle_t video_task_queue;
+static QueueHandle_t display_task_queue;
 
 static rg_display_t display;
 
@@ -207,7 +207,22 @@ static void spi_init()
     spi_bus_add_device(HSPI_HOST, &devcfg, &spi_dev);
     //assert(ret==ESP_OK);
 
-    xTaskCreatePinnedToCore(&spi_task, "spi_task", 1024 + 768, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(&spi_task, "spi_task", 1024, NULL, 5, NULL, 1);
+}
+
+static void spi_drain_queue()
+{
+    if (uxQueueSpacesAvailable(spi_queue)) {
+        for (size_t i = 0; i < SPI_TRANSACTION_COUNT; ++i) {
+            spi_transaction_t *t;
+            xQueueReceive(spi_queue, &t, portMAX_DELAY);
+        }
+
+        for (size_t i = 0; i < SPI_TRANSACTION_COUNT; ++i) {
+            spi_transaction_t *t = &spi_trans[i];
+            xQueueSend(spi_queue, &t, portMAX_DELAY);
+        }
+    }
 }
 
 static void ili9341_cmd(uint8_t cmd, const void *data, size_t data_len)
@@ -282,7 +297,7 @@ static void ili9341_init()
         ili9341_cmd(commands[i].cmd, commands[i].data, commands[i].databytes & 0x7F);
         if (commands[i].databytes & 0x80)
         {
-            rg_display_drain_spi();
+            spi_drain_queue();
             // usleep(5000);
         }
     }
@@ -309,43 +324,14 @@ static void ili9341_deinit()
 
 static void ili9341_set_window(int left, int top, int width, int height)
 {
-    static int last_left = -1;
-    static int last_right = -1;
-    static int last_top = -1;
-    static int last_bottom = -1;
-
     int right = left + width - 1;
     int bottom = SCREEN_HEIGHT - 1;
 
-    // rg_display_drain_spi();
-
-    if (height == 1)
-    {
-        if (last_right > right) right = last_right;
-        else right = SCREEN_WIDTH - 1;
-    }
-    if (left != last_left || right != last_right)
-    {
-        const uint8_t data[] = { left >> 8, left & 0xff, right >> 8, right & 0xff };
-        ili9341_cmd(0x2A, data, (right != last_right) ?  4 : 2);
-        last_left = left;
-        last_right = right;
-    }
-
-    if (top != last_top || bottom != last_bottom)
-    {
-        const uint8_t data[] = { top >> 8, top & 0xff, bottom >> 8, bottom & 0xff };
-        ili9341_cmd(0x2B, data, (bottom != last_bottom) ? 4 : 2);
-        last_top = top;
-        last_bottom = bottom;
-    }
-
-    // Memory write
-    ili9341_cmd(0x2C, NULL, 0);
-
-    // Memory write continue
+    ili9341_cmd(0x2A, (uint8_t[]){left >> 8, left & 0xff, right >> 8, right & 0xff}, 4); // Horiz
+    ili9341_cmd(0x2B, (uint8_t[]){top >> 8, top & 0xff, bottom >> 8, bottom & 0xff}, 4); // Vert
+    ili9341_cmd(0x2C, NULL, 0); // Memory write
     if (height > 1)
-        ili9341_cmd(0x3C, NULL, 0);
+        ili9341_cmd(0x3C, NULL, 0); // Memory write continue
 
     RG_LOGD("LCD DRAW: left:%d top:%d width:%d height:%d\n", left, top, width, height);
 }
@@ -559,12 +545,9 @@ static inline int frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFram
 
     for (int y = 0, i = 0; y < frame->height; ++y, i += frame->stride)
     {
-        out_diff[y].left = 0;
-        out_diff[y].width = 0;
-        out_diff[y].repeat = 1;
-
         uint32_t *buffer = frame->buffer + i;
         uint32_t *prevBuffer = prevFrame->buffer + i;
+        int left = 0, width = 0;
 
         for (int x = 0; x < u32_blocks; ++x)
         {
@@ -573,8 +556,8 @@ static inline int frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFram
                 for (int xl = u32_blocks - 1; xl >= x; --xl)
                 {
                     if (buffer[xl] != prevBuffer[xl]) {
-                        out_diff[y].left = x * u32_pixels;
-                        out_diff[y].width = ((xl + 1) - x) * u32_pixels;
+                        left = x * u32_pixels;
+                        width = ((xl + 1) - x) * u32_pixels;
                         lines_changed++;
                         break;
                     }
@@ -583,7 +566,7 @@ static inline int frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFram
             }
         }
 
-        threshold_remaining -= out_diff[y].width;
+        threshold_remaining -= width;
 
         if (threshold_remaining <= 0)
         {
@@ -592,6 +575,10 @@ static inline int frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFram
             out_diff[0].repeat = frame->height;
             return frame->height; // Stop scan and do full update
         }
+
+        out_diff[y].left = left;
+        out_diff[y].width = width;
+        out_diff[y].repeat = 1;
     }
 
     // If filtering is enabled we must adjust our diff blocks to be on appropriate boundaries
@@ -635,44 +622,69 @@ static inline int frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFram
     }
 
     // Combine consecutive lines with similar changes location to optimize the SPI transfer
-    for (int y = frame->height - 1; y > 0; --y)
+    rg_line_diff_t *line = &out_diff[frame->height - 1];
+    rg_line_diff_t *prev_line = line - 1;
+
+    for (; line > out_diff; --line, --prev_line)
     {
-        if (abs(out_diff[y].left - out_diff[y-1].left) > 8)
-            continue;
+        int right = line->left + line->width;
+        int right_prev = prev_line->left + prev_line->width;
 
-        int right = out_diff[y].left + out_diff[y].width;
-        int right_prev = out_diff[y-1].left + out_diff[y-1].width;
-        if (abs(right - right_prev) > 8)
-            continue;
-
-        if (out_diff[y].left < out_diff[y-1].left)
-          out_diff[y-1].left = out_diff[y].left;
-        out_diff[y-1].width = (right > right_prev) ?
-          right - out_diff[y-1].left : right_prev - out_diff[y-1].left;
-        out_diff[y-1].repeat = out_diff[y].repeat + 1;
+        if (abs(line->left - prev_line->left) <= 8 && abs(right - right_prev) <= 8)
+        {
+            if (line->left < prev_line->left) prev_line->left = line->left;
+            prev_line->width = RG_MAX(right, right_prev) - prev_line->left;
+            prev_line->repeat = line->repeat + 1;
+        }
     }
 
     return lines_changed;
 }
 
-static void generate_filter_structures(size_t width, size_t height)
+static void update_viewport_size(int src_width, int src_height, float new_ratio)
 {
-    memset(frame_filter_lines,   0, sizeof(frame_filter_lines));
-    memset(screen_line_is_empty, 0, sizeof(screen_line_is_empty));
+    int new_width = src_width;
+    int new_height = src_height;
+    float x_scale = 1.0;
+    float y_scale = 1.0;
 
-    int x_acc = (x_inc * display.viewport.x) % SCREEN_WIDTH;
-    int y_acc = (y_inc * display.viewport.y) % SCREEN_HEIGHT;
-
-    for (int x = 0, screen_x = display.viewport.x; x < width && screen_x < SCREEN_WIDTH; ++screen_x)
+    if (new_ratio > 0.0)
     {
-        x_acc += x_inc;
-        while (x_acc >= SCREEN_WIDTH) {
-            ++x;
-            x_acc -= SCREEN_WIDTH;
+        new_width = SCREEN_HEIGHT * new_ratio;
+        new_height = SCREEN_HEIGHT;
+
+        if (new_width > SCREEN_WIDTH)
+        {
+            RG_LOGW("new_width too large: %d, reducing new_height to maintain ratio.\n", new_width);
+            new_height = SCREEN_HEIGHT * (SCREEN_WIDTH / (float)new_width);
+            new_width = SCREEN_WIDTH;
         }
+
+        x_scale = new_width / (float)src_width;
+        y_scale = new_height / (float)src_height;
     }
 
-    for (int y = 0, screen_y = display.viewport.y; y < height && screen_y < SCREEN_HEIGHT; ++screen_y)
+    x_inc = SCREEN_WIDTH / x_scale;
+    y_inc = SCREEN_HEIGHT / y_scale;
+
+    display.viewport.x = (SCREEN_WIDTH - new_width) / 2;
+    display.viewport.y = (SCREEN_HEIGHT - new_height) / 2;
+    display.viewport.width = new_width;
+    display.viewport.height = new_height;
+    display.screen.width = SCREEN_WIDTH;
+    display.screen.height = SCREEN_HEIGHT;
+    display.source.width = src_width;
+    display.source.height = src_height;
+
+
+    // Build boundary tables used by filtering
+
+    memset(frame_filter_lines, 1, sizeof(frame_filter_lines));
+    memset(screen_line_is_empty, 0, sizeof(screen_line_is_empty));
+
+    int y_acc = (y_inc * display.viewport.y) % SCREEN_HEIGHT;
+
+    for (int y = 0, screen_y = display.viewport.y; y < src_height && screen_y < SCREEN_HEIGHT; ++screen_y)
     {
         int repeat = ++frame_filter_lines[y].repeat;
 
@@ -688,73 +700,40 @@ static void generate_filter_structures(size_t width, size_t height)
         }
     }
 
-    frame_filter_lines[0].start = frame_filter_lines[height-1].stop  = true;
-}
-
-static void update_viewport_size(int src_width, int src_height, double new_ratio)
-{
-    int new_width = src_width;
-    int new_height = src_height;
-    double x_scale = 1.0;
-    double y_scale = 1.0;
-
-    if (new_ratio > 0.0)
-    {
-        new_width = SCREEN_HEIGHT * new_ratio;
-        new_height = SCREEN_HEIGHT;
-
-        if (new_width > SCREEN_WIDTH)
-        {
-            RG_LOGW("new_width too large: %d, reducing new_height to maintain ratio.\n", new_width);
-            new_height = SCREEN_HEIGHT * (SCREEN_WIDTH / (double)new_width);
-            new_width = SCREEN_WIDTH;
-        }
-
-        x_scale = new_width / (double)src_width;
-        y_scale = new_height / (double)src_height;
-    }
-
-    x_inc = SCREEN_WIDTH / x_scale;
-    y_inc = SCREEN_HEIGHT / y_scale;
-
-    display.viewport.x = (SCREEN_WIDTH - new_width) / 2;
-    display.viewport.y = (SCREEN_HEIGHT - new_height) / 2;
-    display.viewport.width = new_width;
-    display.viewport.height = new_height;
-    display.screen.width = SCREEN_WIDTH;
-    display.screen.height = SCREEN_HEIGHT;
-    display.source.width = src_width;
-    display.source.height = src_height;
-
-    generate_filter_structures(src_width, src_height);
-
     RG_LOGI("%dx%d@%.3f => %dx%d@%.3f x_inc:%d y_inc:%d x_scale:%.3f y_scale:%.3f x_origin:%d y_origin:%d\n",
-           src_width, src_height, src_width/(double)src_height, new_width, new_height, new_ratio,
+           src_width, src_height, src_width/(float)src_height, new_width, new_height, new_ratio,
            x_inc, y_inc, x_scale, y_scale, display.viewport.x, display.viewport.y);
 }
 
 IRAM_ATTR
 static void display_task(void *arg)
 {
-    video_task_queue = xQueueCreate(1, sizeof(void*));
-
-    rg_video_frame_t *update;
+    display_task_queue = xQueueCreate(1, sizeof(void*));
 
     while (1)
     {
-        xQueuePeek(video_task_queue, &update, portMAX_DELAY);
-        // xQueueReceive(video_task_queue, &update, portMAX_DELAY);
+        rg_video_frame_t *update;
+
+        xQueuePeek(display_task_queue, &update, portMAX_DELAY);
+        // xQueueReceive(display_task_queue, &update, portMAX_DELAY);
 
         if (!update) break;
 
+        RG_ASSERT((update->flags & RG_PIXEL_PAL) == 0 || update->palette, "Palette not defined");
+
+        // It's better to update the counters before we start the transfer, in case someone needs it
+        if (update->diff[0].width == update->width && update->diff[0].repeat == update->height)
+            display.counters.fullFrames++;
+        display.counters.totalFrames++;
+
         if (display.changed)
         {
-            double ratio = 0.0;
+            float ratio = 0.0;
             if (display.config.scaling == RG_DISPLAY_SCALING_FILL) {
-                ratio = SCREEN_WIDTH / (double)SCREEN_HEIGHT;
+                ratio = SCREEN_WIDTH / (float)SCREEN_HEIGHT;
             }
             else if (display.config.scaling == RG_DISPLAY_SCALING_FIT) {
-                ratio = update->width / (double)update->height;
+                ratio = update->width / (float)update->height;
             }
             update_viewport_size(update->width, update->height, ratio);
             // We must clear garbage that won't be covered
@@ -763,8 +742,6 @@ static void display_task(void *arg)
             }
             display.changed = false;
         }
-
-        RG_ASSERT((update->flags & RG_PIXEL_PAL) == 0 || update->palette, "Palette not defined");
 
         for (int y = 0; y < update->height;)
         {
@@ -777,13 +754,10 @@ static void display_task(void *arg)
             y += diff->repeat;
         }
 
-        // if (updateCallback)
-        //     updateCallback(update);
-
-        xQueueReceive(video_task_queue, &update, portMAX_DELAY);
+        xQueueReceive(display_task_queue, &update, portMAX_DELAY);
     }
 
-    video_task_queue = NULL;
+    display_task_queue = NULL;
 
     vTaskDelete(NULL);
 }
@@ -948,7 +922,7 @@ rg_update_t rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *p
         linesChanged = frame->height;
     }
 
-    xQueueSend(video_task_queue, &frame, portMAX_DELAY);
+    xQueueSend(display_task_queue, &frame, portMAX_DELAY);
 
     if (linesChanged == frame->height)
         return RG_UPDATE_FULL;
@@ -957,20 +931,6 @@ rg_update_t rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *p
         return RG_UPDATE_EMPTY;
 
     return RG_UPDATE_PARTIAL;
-}
-
-void rg_display_drain_spi()
-{
-    if (uxQueueSpacesAvailable(spi_queue)) {
-        for (size_t i = 0; i < SPI_TRANSACTION_COUNT; ++i) {
-            spi_transaction_t *t;
-            xQueueReceive(spi_queue, &t, portMAX_DELAY);
-        }
-        for (size_t i = 0; i < SPI_TRANSACTION_COUNT; ++i) {
-            spi_transaction_t *t = &spi_trans[i];
-            xQueueSend(spi_queue, &t, portMAX_DELAY);
-        }
-    }
 }
 
 void rg_display_show_info(const char *text, int timeout_ms)
@@ -1011,7 +971,7 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
         lcd_send_data(line_buffer, width * lines_per_buffer * 2);
     }
 
-    rg_display_drain_spi();
+    spi_drain_queue();
 }
 
 void rg_display_clear(uint16_t color)
@@ -1035,14 +995,14 @@ void rg_display_clear(uint16_t color)
         remaining -= count;
     }
 
-    rg_display_drain_spi();
+    spi_drain_queue();
 }
 
 void rg_display_deinit()
 {
     void *stop = NULL;
 
-    xQueueSend(video_task_queue, &stop, portMAX_DELAY);
+    xQueueSend(display_task_queue, &stop, portMAX_DELAY);
     vTaskDelay(10);
     // To do: Stop SPI task...
 
@@ -1054,9 +1014,13 @@ void rg_display_deinit()
 void rg_display_init()
 {
     RG_LOGI("Initialization...\n");
+
+    memset(&display, 0, sizeof(rg_display_t));
+
     rg_display_load_config();
     spi_init();
     lcd_init();
     xTaskCreatePinnedToCore(&display_task, "display_task", 2048, NULL, 5, NULL, 1);
+
     RG_LOGI("Display ready.\n");
 }

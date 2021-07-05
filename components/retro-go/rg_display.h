@@ -88,13 +88,19 @@ typedef struct {
         uint32_t height;
         uint32_t x, y;
     } source;
+    struct {
+        uint32_t totalFrames;
+        uint32_t fullFrames;
+        uint32_t spiTransactions;
+    } counters;
+    bool lastUpdateType;
     bool changed;
 } rg_display_t;
 
 typedef struct {
-    short left;     // uint32_t left:10;
-    short width;    // uint32_t width:10;
-    short repeat;   // uint32_t repeat:10;
+    short left;     // int32_t left:10;
+    short width;    // int32_t width:10;
+    short repeat;   // int32_t repeat:10;
 } rg_line_diff_t;
 
 typedef struct {
@@ -111,7 +117,6 @@ typedef struct {
 
 void rg_display_init(void);
 void rg_display_deinit(void);
-void rg_display_drain_spi(void);
 void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t* buffer);
 void rg_display_clear(uint16_t colorLE);
 void rg_display_load_config(void);
@@ -119,7 +124,6 @@ void rg_display_show_info(const char *text, int timeout_ms);
 bool rg_display_save_frame(const char *filename, rg_video_frame_t *frame, int width, int height);
 rg_update_t rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *previousFrame);
 const rg_display_t *rg_display_get_status(void);
-
 
 void rg_display_set_scaling(display_scaling_t scaling);
 display_scaling_t rg_display_get_scaling(void);
@@ -129,6 +133,5 @@ void rg_display_set_rotation(display_rotation_t rotation);
 display_rotation_t rg_display_get_rotation(void);
 void rg_display_set_backlight(display_backlight_t backlight);
 display_backlight_t rg_display_get_backlight(void);
-
 void rg_display_set_update_mode(display_update_t update);
 display_update_t rg_display_get_update_mode(void);
