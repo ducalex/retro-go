@@ -26,13 +26,20 @@ static const dialog_theme_t default_theme = {
 static dialog_theme_t theme;
 static font_info_t font_info = {0, 8, 8, 8, &font_basic8x8};
 
+static int screen_width = -1;
+static int screen_height = -1;
+
 // static const char *SETTING_FONTSIZE     = "FontSize";
 static const char *SETTING_FONTTYPE     = "FontType";
 
 
 void rg_gui_init(void)
 {
-    overlay_buffer = (uint16_t *)rg_alloc(RG_SCREEN_WIDTH * 32 * 2, MEM_SLOW);
+    screen_width = rg_display_get_status()->screen.width;
+    screen_height = rg_display_get_status()->screen.height;
+    RG_ASSERT(screen_width && screen_height, "Bad screen res");
+
+    overlay_buffer = (uint16_t *)rg_alloc(screen_width * 32 * 2, MEM_SLOW);
     rg_gui_set_font_type(rg_settings_get_int32(SETTING_FONTTYPE, 0));
     rg_gui_set_theme(&default_theme);
 }
@@ -151,7 +158,7 @@ font_info_t rg_gui_get_font_info(void)
 rg_rect_t rg_gui_calc_text_size(const char *text, int wrap_width)
 {
     if (wrap_width > 0)
-        return rg_gui_draw_text(RG_SCREEN_WIDTH - wrap_width, 0, 0, text, 0, 0, RG_TEXT_MULTILINE|RG_TEXT_DUMMY_DRAW);
+        return rg_gui_draw_text(screen_width - wrap_width, 0, 0, text, 0, 0, RG_TEXT_MULTILINE|RG_TEXT_DUMMY_DRAW);
     else
         return rg_gui_draw_text(0, 0, 0, text, 0, 0, RG_TEXT_DUMMY_DRAW);
 }
@@ -159,8 +166,8 @@ rg_rect_t rg_gui_calc_text_size(const char *text, int wrap_width)
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
                            uint16_t color_fg, uint16_t color_bg, uint32_t flags)
 {
-    if (x_pos < 0) x_pos += RG_SCREEN_WIDTH;
-    if (y_pos < 0) y_pos += RG_SCREEN_HEIGHT;
+    if (x_pos < 0) x_pos += screen_width;
+    if (y_pos < 0) y_pos += screen_height;
     if (!text || *text == 0) text = " ";
 
     // FIX ME: We should cache get_glyph().width to avoid calling it up to 3 times.
@@ -183,7 +190,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
         }
     }
 
-    int draw_width = RG_MIN(width, RG_SCREEN_WIDTH - x_pos);
+    int draw_width = RG_MIN(width, screen_width - x_pos);
     int font_height = font_info.height;
     int y_offset = 0;
     const char *ptr = text;
@@ -257,8 +264,8 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border, u
     if (width <= 0 || height <= 0 || border <= 0)
         return;
 
-    if (x_pos < 0) x_pos += RG_SCREEN_WIDTH;
-    if (y_pos < 0) y_pos += RG_SCREEN_HEIGHT;
+    if (x_pos < 0) x_pos += screen_width;
+    if (y_pos < 0) y_pos += screen_height;
 
     for (int p = border * RG_MAX(width, height); p >= 0; --p)
         overlay_buffer[p] = color;
@@ -274,8 +281,8 @@ void rg_gui_draw_fill_rect(int x_pos, int y_pos, int width, int height, uint16_t
     if (width <= 0 || height <= 0)
         return;
 
-    if (x_pos < 0) x_pos += RG_SCREEN_WIDTH;
-    if (y_pos < 0) y_pos += RG_SCREEN_HEIGHT;
+    if (x_pos < 0) x_pos += screen_width;
+    if (y_pos < 0) y_pos += screen_height;
 
     for (int p = width * 16; p >= 0; --p)
         overlay_buffer[p] = color;
@@ -289,13 +296,13 @@ void rg_gui_draw_fill_rect(int x_pos, int y_pos, int width, int height, uint16_t
 
 void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, const rg_image_t *img)
 {
-    if (x_pos < 0) x_pos += RG_SCREEN_WIDTH;
-    if (y_pos < 0) y_pos += RG_SCREEN_HEIGHT;
+    if (x_pos < 0) x_pos += screen_width;
+    if (y_pos < 0) y_pos += screen_height;
 
-    if (img && x_pos < RG_SCREEN_WIDTH && y_pos < RG_SCREEN_HEIGHT)
+    if (img && x_pos < screen_width && y_pos < screen_height)
     {
-        width = RG_MIN(width > 0 ? width : img->width, RG_SCREEN_WIDTH);
-        height = RG_MIN(height > 0 ? height : img->height, RG_SCREEN_HEIGHT);
+        width = RG_MIN(width > 0 ? width : img->width, screen_width);
+        height = RG_MIN(height > 0 ? height : img->height, screen_height);
         rg_display_write(x_pos, y_pos, width, height, img->width * 2, img->data);
     }
 }
@@ -314,8 +321,8 @@ void rg_gui_draw_battery(int x_pos, int y_pos)
     else if (percentage < 40)
         color_fill = C_ORANGE;
 
-    if (x_pos < 0) x_pos += RG_SCREEN_WIDTH;
-    if (y_pos < 0) y_pos += RG_SCREEN_HEIGHT;
+    if (x_pos < 0) x_pos += screen_width;
+    if (y_pos < 0) y_pos += screen_height;
 
     rg_gui_draw_rect(x_pos, y_pos, 22, 10, 1, color_border);
     rg_gui_draw_rect(x_pos + 22, y_pos + 2, 2, 6, 1, color_border);
@@ -325,8 +332,8 @@ void rg_gui_draw_battery(int x_pos, int y_pos)
 
 void rg_gui_draw_hourglass(void)
 {
-    rg_display_write((RG_SCREEN_WIDTH / 2) - (image_hourglass.width / 2),
-        (RG_SCREEN_HEIGHT / 2) - (image_hourglass.height / 2),
+    rg_display_write((screen_width / 2) - (image_hourglass.width / 2),
+        (screen_height / 2) - (image_hourglass.height / 2),
         image_hourglass.width,
         image_hourglass.height,
         image_hourglass.width * 2,
@@ -352,8 +359,8 @@ void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int 
     const int options_count = get_dialog_items_count(options);
     const int sep_width = rg_gui_calc_text_size(": ", 0).width;
     const int font_height = font_info.height;
-    const int max_box_width = 0.82f * RG_SCREEN_WIDTH;
-    const int max_box_height = 0.82f * RG_SCREEN_HEIGHT;
+    const int max_box_width = 0.82f * screen_width;
+    const int max_box_height = 0.82f * screen_height;
     const int box_padding = 6;
     const int row_padding_y = 1;
     const int row_padding_x = 8;
@@ -399,8 +406,8 @@ void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int 
     box_width += inner_width + row_padding_x * 2;
     box_height = RG_MIN(box_height, max_box_height);
 
-    const int box_x = (RG_SCREEN_WIDTH - box_width) / 2;
-    const int box_y = (RG_SCREEN_HEIGHT - box_height) / 2;
+    const int box_x = (screen_width - box_width) / 2;
+    const int box_y = (screen_height - box_height) / 2;
 
     int x = box_x + box_padding;
     int y = box_y + box_padding;
@@ -923,7 +930,7 @@ int rg_gui_debug_menu(const dialog_option_t *extra_options)
 
 static void draw_game_status_bar(void)
 {
-    int width = RG_SCREEN_WIDTH, height = 16;
+    int width = screen_width, height = 16;
     int pad_text = (height - font_info.height) / 2;
     char header[41] = {0};
     char footer[41] = {0};
@@ -943,9 +950,9 @@ static void draw_game_status_bar(void)
     rg_input_wait_for_key(GAMEPAD_KEY_ALL, false);
 
     rg_gui_draw_fill_rect(0, 0, width, height, C_BLACK);
-    rg_gui_draw_fill_rect(0, RG_SCREEN_HEIGHT - height, width, height, C_BLACK);
+    rg_gui_draw_fill_rect(0, screen_height - height, width, height, C_BLACK);
     rg_gui_draw_text(0, pad_text, width, header, C_LIGHT_GRAY, C_BLACK, 0);
-    rg_gui_draw_text(0, RG_SCREEN_HEIGHT - height + pad_text, width, footer, C_LIGHT_GRAY, C_BLACK, 0);
+    rg_gui_draw_text(0, screen_height - height + pad_text, width, footer, C_LIGHT_GRAY, C_BLACK, 0);
     rg_gui_draw_battery(width - 26, 3);
 }
 

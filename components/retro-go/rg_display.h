@@ -64,6 +64,7 @@ enum
     RG_PIXEL_PAL = 0b0001, // Use palette
     RG_PIXEL_BE  = 0b0000, // big endian
     RG_PIXEL_LE  = 0b0100, // little endian
+    RG_PIXEL_MASK = 0b1111,
 };
 
 typedef struct {
@@ -77,16 +78,23 @@ typedef struct {
     struct {
         uint32_t width;
         uint32_t height;
+        uint32_t format;
     } screen;
     struct {
         uint32_t width;
         uint32_t height;
-        uint32_t x, y;
+        uint32_t x_pos;
+        uint32_t y_pos;
+        float x_scale;
+        float y_scale;
     } viewport;
     struct {
         uint32_t width;
         uint32_t height;
-        uint32_t x, y;
+        struct {
+            uint32_t left, right, top, bottom;
+        } crop;
+        uint32_t format;
     } source;
     struct {
         uint32_t totalFrames;

@@ -37,12 +37,7 @@ static const char *SETTING_FILTER    = "DispFilter";
 static const char *SETTING_ROTATION  = "DispRotation";
 static const char *SETTING_UPDATE    = "DispUpdate";
 
-#define SCREEN_WIDTH  RG_SCREEN_WIDTH // (display.screen.width)
-#define SCREEN_HEIGHT RG_SCREEN_HEIGHT // (display.screen.height)
-
-static int x_inc = SCREEN_WIDTH;
-static int y_inc = SCREEN_HEIGHT;
-static bool screen_line_is_empty[SCREEN_HEIGHT];
+static bool screen_line_is_empty[RG_SCREEN_HEIGHT];
 
 typedef struct {
     uint8_t start  : 1; // Indicates this line or column is safe to start an update on
@@ -325,15 +320,22 @@ static void ili9341_deinit()
 static void ili9341_set_window(int left, int top, int width, int height)
 {
     int right = left + width - 1;
-    int bottom = SCREEN_HEIGHT - 1;
+    int bottom = top + height - 1;
+    // int bottom = display.screen.height - 1;
 
-    ili9341_cmd(0x2A, (uint8_t[]){left >> 8, left & 0xff, right >> 8, right & 0xff}, 4); // Horiz
-    ili9341_cmd(0x2B, (uint8_t[]){top >> 8, top & 0xff, bottom >> 8, bottom & 0xff}, 4); // Vert
-    ili9341_cmd(0x2C, NULL, 0); // Memory write
-    if (height > 1)
-        ili9341_cmd(0x3C, NULL, 0); // Memory write continue
-
-    RG_LOGD("LCD DRAW: left:%d top:%d width:%d height:%d\n", left, top, width, height);
+    if (right > 0 && bottom > 0)
+    {
+        ili9341_cmd(0x2A, (uint8_t[]){left >> 8, left & 0xff, right >> 8, right & 0xff}, 4); // Horiz
+        ili9341_cmd(0x2B, (uint8_t[]){top >> 8, top & 0xff, bottom >> 8, bottom & 0xff}, 4); // Vert
+        ili9341_cmd(0x2C, NULL, 0); // Memory write
+        if (height > 1)
+            ili9341_cmd(0x3C, NULL, 0); // Memory write continue
+    }
+    else
+    {
+        RG_LOGE("Bad window: left:%d top:%d width:%d height:%d\n", left, top, width, height);
+        RG_PANIC("Bad window");
+    }
 }
 
 static void ili9341_send_data(void *buffer, size_t length)
@@ -371,12 +373,15 @@ static inline uint blend_pixels(uint a, uint b)
 static inline void bilinear_filter(uint16_t *line_buffer, int top, int left, int width, int height,
                                    bool filter_x, bool filter_y)
 {
-    int ix_acc = (x_inc * left) % SCREEN_WIDTH;
+    int screen_width = display.screen.width;
+    int x_inc = screen_width / display.viewport.x_scale;
+    int ix_acc = (x_inc * left) % screen_width;
+    bool *line_is_empty = &screen_line_is_empty[top];
     int fill_line = -1;
 
     for (int y = 0; y < height; y++)
     {
-        if (filter_y && y > 0 && screen_line_is_empty[top + y])
+        if (filter_y && y && *(line_is_empty++))
         {
             fill_line = y;
             continue;
@@ -395,9 +400,9 @@ static inline void bilinear_filter(uint16_t *line_buffer, int top, int left, int
                 prev_frame_x = frame_x;
 
                 x_acc += x_inc;
-                while (x_acc >= SCREEN_WIDTH) {
+                while (x_acc >= screen_width) {
                     ++frame_x;
-                    x_acc -= SCREEN_WIDTH;
+                    x_acc -= screen_width;
                 }
             }
         }
@@ -419,16 +424,20 @@ static inline void bilinear_filter(uint16_t *line_buffer, int top, int left, int
 
 static inline void write_rect(rg_video_frame_t *frame, int left, int top, int width, int height)
 {
-    const int scaled_left = ((SCREEN_WIDTH * left) + (x_inc - 1)) / x_inc;
-    const int scaled_top = ((SCREEN_HEIGHT * top) + (y_inc - 1)) / y_inc;
-    const int scaled_right = ((SCREEN_WIDTH * (left + width)) + (x_inc - 1)) / x_inc;
-    const int scaled_bottom = ((SCREEN_HEIGHT * (top + height)) + (y_inc - 1)) / y_inc;
+    const int screen_width = display.screen.width;
+    const int screen_height = display.screen.height;
+    const int x_inc = screen_width / display.viewport.x_scale;
+    const int y_inc = screen_height / display.viewport.y_scale;
+    const int scaled_left = ((screen_width * left) + (x_inc - 1)) / x_inc;
+    const int scaled_top = ((screen_height * top) + (y_inc - 1)) / y_inc;
+    const int scaled_right = ((screen_width * (left + width)) + (x_inc - 1)) / x_inc;
+    const int scaled_bottom = ((screen_height * (top + height)) + (y_inc - 1)) / y_inc;
     const int scaled_width = scaled_right - scaled_left;
     const int scaled_height = scaled_bottom - scaled_top;
-    const int screen_top = display.viewport.y + scaled_top;
-    const int screen_left = display.viewport.x + scaled_left;
-    const int screen_bottom = RG_MIN(screen_top + scaled_height, SCREEN_HEIGHT);
-    const int ix_acc = (x_inc * scaled_left) % SCREEN_WIDTH;
+    const int screen_top = display.viewport.y_pos + scaled_top;
+    const int screen_left = display.viewport.x_pos + scaled_left;
+    const int screen_bottom = RG_MIN(screen_top + scaled_height, screen_height);
+    const int ix_acc = (x_inc * scaled_left) % screen_width;
     const int lines_per_buffer = SPI_BUFFER_LENGTH / scaled_width;
     const int filter_mode = display.config.scaling ? display.config.filter : 0;
 
@@ -437,13 +446,11 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
         return;
     }
 
-    uint32_t pixel_format = frame->flags;
-    uint32_t pixel_mask = frame->pixel_mask;
+    uint32_t pixel_format = frame->flags & RG_PIXEL_MASK;
     uint32_t stride = frame->stride;
-
-    // Set buffer to the correct starting point
-    uint8_t *buffer = frame->buffer + (top * stride) + (left * (pixel_format & RG_PIXEL_PAL ? 1 : 2));
-    uint16_t *palette = frame->palette;
+    uint32_t palette_mask = frame->pixel_mask ? frame->pixel_mask : 0xFF;
+    uint16_t *palette = (pixel_format & RG_PIXEL_PAL) ? frame->palette : NULL;
+    uint8_t *buffer = frame->buffer + (top * stride) + (left * (palette ? 1 : 2));
 
     lcd_set_window(screen_left, screen_top, scaled_width, scaled_height);
 
@@ -474,7 +481,7 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
 
         for (int i = 0; i < lines_to_copy; ++i)
         {
-            if (screen_line_is_empty[screen_y] && i > 0)
+            if (i > 0 && screen_line_is_empty[screen_y])
             {
                 uint16_t *buffer = &line_buffer[line_buffer_index];
                 memcpy(buffer, buffer - scaled_width, scaled_width * 2);
@@ -486,17 +493,17 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
                 {
                     uint32_t pixel;
 
-                    if (pixel_format & RG_PIXEL_PAL)
-                        pixel = palette[buffer[x] & pixel_mask];
+                    if (palette)
+                        pixel = palette[buffer[x] & palette_mask];
                     else
                         pixel = ((uint16_t*)buffer)[x];
 
                     line_buffer[line_buffer_index++] = pixel;
 
                     x_acc += x_inc;
-                    while (x_acc >= SCREEN_WIDTH) {
+                    while (x_acc >= screen_width) {
                         ++x;
-                        x_acc -= SCREEN_WIDTH;
+                        x_acc -= screen_width;
                     }
                 }
             }
@@ -645,46 +652,38 @@ static void update_viewport_size(int src_width, int src_height, float new_ratio)
 {
     int new_width = src_width;
     int new_height = src_height;
-    float x_scale = 1.0;
-    float y_scale = 1.0;
 
     if (new_ratio > 0.0)
     {
-        new_width = SCREEN_HEIGHT * new_ratio;
-        new_height = SCREEN_HEIGHT;
+        new_width = display.screen.height * new_ratio;
+        new_height = display.screen.height;
 
-        if (new_width > SCREEN_WIDTH)
+        if (new_width > display.screen.width)
         {
             RG_LOGW("new_width too large: %d, reducing new_height to maintain ratio.\n", new_width);
-            new_height = SCREEN_HEIGHT * (SCREEN_WIDTH / (float)new_width);
-            new_width = SCREEN_WIDTH;
+            new_height = display.screen.height * (display.screen.width / (float)new_width);
+            new_width = display.screen.width;
         }
-
-        x_scale = new_width / (float)src_width;
-        y_scale = new_height / (float)src_height;
     }
 
-    x_inc = SCREEN_WIDTH / x_scale;
-    y_inc = SCREEN_HEIGHT / y_scale;
-
-    display.viewport.x = (SCREEN_WIDTH - new_width) / 2;
-    display.viewport.y = (SCREEN_HEIGHT - new_height) / 2;
+    display.viewport.x_pos = (display.screen.width - new_width) / 2;
+    display.viewport.y_pos = (display.screen.height - new_height) / 2;
+    display.viewport.x_scale = new_width / (float)src_width;
+    display.viewport.y_scale = new_height / (float)src_height;
     display.viewport.width = new_width;
     display.viewport.height = new_height;
-    display.screen.width = SCREEN_WIDTH;
-    display.screen.height = SCREEN_HEIGHT;
     display.source.width = src_width;
     display.source.height = src_height;
-
 
     // Build boundary tables used by filtering
 
     memset(frame_filter_lines, 1, sizeof(frame_filter_lines));
     memset(screen_line_is_empty, 0, sizeof(screen_line_is_empty));
 
-    int y_acc = (y_inc * display.viewport.y) % SCREEN_HEIGHT;
+    int y_inc = display.screen.height / display.viewport.y_scale;
+    int y_acc = (y_inc * display.viewport.y_pos) % display.screen.height;
 
-    for (int y = 0, screen_y = display.viewport.y; y < src_height && screen_y < SCREEN_HEIGHT; ++screen_y)
+    for (int y = 0, screen_y = display.viewport.y_pos; y < src_height && screen_y < display.screen.height; ++screen_y)
     {
         int repeat = ++frame_filter_lines[y].repeat;
 
@@ -694,15 +693,15 @@ static void update_viewport_size(int src_width, int src_height, float new_ratio)
         screen_line_is_empty[screen_y] = repeat > 1;
 
         y_acc += y_inc;
-        while (y_acc >= SCREEN_HEIGHT) {
+        while (y_acc >= display.screen.height) {
             ++y;
-            y_acc -= SCREEN_HEIGHT;
+            y_acc -= display.screen.height;
         }
     }
 
-    RG_LOGI("%dx%d@%.3f => %dx%d@%.3f x_inc:%d y_inc:%d x_scale:%.3f y_scale:%.3f x_origin:%d y_origin:%d\n",
+    RG_LOGI("%dx%d@%.3f => %dx%d@%.3f x_pos:%d y_pos:%d x_scale:%.3f y_scale:%.3f\n",
            src_width, src_height, src_width/(float)src_height, new_width, new_height, new_ratio,
-           x_inc, y_inc, x_scale, y_scale, display.viewport.x, display.viewport.y);
+           display.viewport.x_pos, display.viewport.y_pos, display.viewport.x_scale, display.viewport.y_scale);
 }
 
 IRAM_ATTR
@@ -730,7 +729,7 @@ static void display_task(void *arg)
         {
             float ratio = 0.0;
             if (display.config.scaling == RG_DISPLAY_SCALING_FILL) {
-                ratio = SCREEN_WIDTH / (float)SCREEN_HEIGHT;
+                ratio = display.screen.width / (float)display.screen.height;
             }
             else if (display.config.scaling == RG_DISPLAY_SCALING_FIT) {
                 ratio = update->width / (float)update->height;
@@ -771,9 +770,6 @@ void rg_display_load_config(void)
     display.config.rotation = rg_settings_get_app_int32(SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO);
     display.config.update = rg_settings_get_app_int32(SETTING_UPDATE, RG_DISPLAY_UPDATE_PARTIAL);
     display.changed = true;
-
-    display.screen.width = SCREEN_WIDTH;
-    display.screen.height = SCREEN_HEIGHT;
 }
 
 const rg_display_t *rg_display_get_status(void)
@@ -976,11 +972,11 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
 
 void rg_display_clear(uint16_t color)
 {
-    lcd_set_window(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    lcd_set_window(0, 0, display.screen.width, display.screen.height);
 
     color = (color << 8) | (color >> 8);
 
-    size_t remaining = SCREEN_WIDTH * SCREEN_HEIGHT;
+    size_t remaining = display.screen.width * display.screen.height;
     while (remaining > 0)
     {
         size_t count = RG_MIN(SPI_BUFFER_LENGTH, remaining);
@@ -1015,7 +1011,11 @@ void rg_display_init()
 {
     RG_LOGI("Initialization...\n");
 
-    memset(&display, 0, sizeof(rg_display_t));
+    display = (rg_display_t) {
+        .screen.width = RG_SCREEN_WIDTH,
+        .screen.height = RG_SCREEN_HEIGHT,
+        .changed = true,
+    };
 
     rg_display_load_config();
     spi_init();
