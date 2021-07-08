@@ -1,8 +1,5 @@
-#include <freertos/FreeRTOS.h>
 #include <driver/i2s.h>
-#include <esp_system.h>
 #include <driver/dac.h>
-#include <string.h>
 #include <unistd.h>
 
 #include "rg_system.h"

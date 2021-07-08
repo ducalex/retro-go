@@ -13,6 +13,7 @@
 static uint16_t myPalette[64];
 static rg_video_frame_t frames[2];
 static rg_video_frame_t *currentUpdate = &frames[0];
+static rg_video_frame_t *previousUpdate = NULL;
 
 static gamepad_state_t joystick1;
 static gamepad_state_t *localJoystick = &joystick1;
@@ -301,7 +302,7 @@ void osd_setpalette(rgb_t *pal)
         uint16_t c = (pal[i].b >> 3) + ((pal[i].g >> 2) << 5) + ((pal[i].r >> 3) << 11);
         myPalette[i] = (c >> 8) | ((c & 0xff) << 8);
     }
-    rg_display_load_config();
+    previousUpdate = NULL;
 }
 
 void osd_blitscreen(uint8 *bmp)
@@ -312,15 +313,13 @@ void osd_blitscreen(uint8 *bmp)
     // A rolling average should be used for autocrop == 1, it causes jitter in some games...
 
     currentUpdate->buffer = NES_SCREEN_GETPTR(bmp, crop_h, crop_v);
-    currentUpdate->stride = NES_SCREEN_PITCH;
     currentUpdate->width = NES_SCREEN_WIDTH - (crop_h * 2);
     currentUpdate->height = NES_SCREEN_HEIGHT - (crop_v * 2);
 
-    rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
-
     fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
 
-    currentUpdate = previousUpdate;
+    previousUpdate = currentUpdate;
+    currentUpdate = &frames[currentUpdate == &frames[0]];
 }
 
 void osd_getinput(void)
@@ -385,6 +384,7 @@ void app_main(void)
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
 
     frames[0].flags = RG_PIXEL_PAL|RG_PIXEL_565|RG_PIXEL_BE;
+    frames[0].stride = NES_SCREEN_PITCH;
     frames[0].pixel_mask = 0x3F;
     frames[0].palette = myPalette;
     frames[1] = frames[0];

@@ -1,10 +1,10 @@
 #include <freertos/FreeRTOS.h>
-#include <esp_system.h>
-#include <esp_event.h>
-#include <driver/gpio.h>
+#include <freertos/semphr.h>
+#include <freertos/queue.h>
+#include <freertos/task.h>
 #include <driver/spi_master.h>
+#include <driver/gpio.h>
 #include <driver/ledc.h>
-#include <driver/rtc_io.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -88,25 +88,25 @@ static inline void spi_queue_transaction(const void *data, size_t length, uint32
 
     xQueueReceive(spi_queue, &t, portMAX_DELAY);
 
-    memset(t, 0, sizeof(*t));
-
-    t->length = length * 8; // In bits
-    t->user = (void*)dc_line;
+    *t = (spi_transaction_t) {
+        .tx_buffer = NULL,
+        .length = length * 8, // In bits
+        .user = (void*)dc_line,
+        .flags = 0,
+    };
 
     if (PTR_IS_SPI_BUFFER(data))
     {
         t->tx_buffer = data;
-        t->flags = 0;
     }
     else if (length < 5)
     {
         memcpy(t->tx_data, data, length);
-        t->flags = SPI_TRANS_USE_TXDATA|SPI_TRANS_USE_RXDATA;
+        t->flags = SPI_TRANS_USE_TXDATA;
     }
     else
     {
         t->tx_buffer = memcpy(spi_get_buffer(), data, length);
-        t->flags = 0;
     }
 
     rg_spi_lock_acquire(SPI_LOCK_DISPLAY);
@@ -293,12 +293,12 @@ static void ili9341_init()
         if (commands[i].databytes & 0x80)
         {
             spi_drain_queue();
-            // usleep(5000);
+            // usleep(5 * 1000U);
         }
     }
 
     rg_display_clear(C_BLACK);
-    usleep(20000);
+    usleep(20 * 1000U);
 
     // Do this last to avoid a flash
     // lcd_set_backlight(initial_brightness);
@@ -999,7 +999,7 @@ void rg_display_deinit()
     void *stop = NULL;
 
     xQueueSend(display_task_queue, &stop, portMAX_DELAY);
-    vTaskDelay(10);
+    usleep(100 * 1000U);
     // To do: Stop SPI task...
 
     lcd_deinit();

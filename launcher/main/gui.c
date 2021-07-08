@@ -326,8 +326,7 @@ void gui_draw_navbar()
 {
     for (int i = 0; i < gui.tabcount; i++)
     {
-        rg_display_write(i * IMAGE_LOGO_WIDTH, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, 0,
-            gui.tabs[i]->img_logo->data);
+        rg_gui_draw_image(i * IMAGE_LOGO_WIDTH, 0, 0, 0, gui.tabs[i]->img_logo);
     }
 }
 

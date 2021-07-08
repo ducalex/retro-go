@@ -1,8 +1,8 @@
 #include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <esp_adc_cal.h>
 #include <driver/gpio.h>
 #include <driver/adc.h>
-#include <driver/i2c.h>
 #include <string.h>
 
 #include "rg_system.h"

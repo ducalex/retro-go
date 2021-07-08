@@ -1,7 +1,6 @@
-#include <esp_err.h>
-#include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
+#include <unistd.h>
 #include <cJSON.h>
 
 #include "rg_system.h"
@@ -15,6 +14,7 @@
 #define CONFIG_VERSION    0x01
 
 #if !USE_CONFIG_FILE
+    #include <esp_err.h>
     #include <nvs_flash.h>
     static nvs_handle my_handle = 0;
 #endif

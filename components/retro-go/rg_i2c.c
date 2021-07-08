@@ -1,5 +1,4 @@
 #include <freertos/FreeRTOS.h>
-#include <esp_system.h>
 #include <driver/i2c.h>
 #include <stdbool.h>
 #include <stdint.h>
