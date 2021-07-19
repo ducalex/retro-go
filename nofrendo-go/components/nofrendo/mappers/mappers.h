@@ -35,6 +35,7 @@ extern mapintf_t map64_intf;
 extern mapintf_t map65_intf;
 extern mapintf_t map66_intf;
 extern mapintf_t map70_intf;
+extern mapintf_t map71_intf;
 extern mapintf_t map73_intf;
 extern mapintf_t map75_intf;
 extern mapintf_t map78_intf;
@@ -86,6 +87,7 @@ static const mapintf_t *mappers[] =
     &map65_intf,
     &map66_intf,
     &map70_intf,
+    &map71_intf,
     &map73_intf,
     &map75_intf,
     &map78_intf,
