@@ -370,18 +370,22 @@ static inline uint blend_pixels(uint a, uint b)
     return v;
 }
 
-static inline void bilinear_filter(uint16_t *line_buffer, int top, int left, int width, int height,
-                                   bool filter_x, bool filter_y)
+static inline void bilinear_filter(uint16_t *line_buffer, int top, int left, int width, int height)
 {
-    int screen_width = display.screen.width;
-    int x_inc = screen_width / display.viewport.x_scale;
-    int ix_acc = (x_inc * left) % screen_width;
-    bool *line_is_empty = &screen_line_is_empty[top];
+    // It crashes when we use display.screen.width
+    // I don't fully understand why because assert(display.screen.width == RG_SCREEN_WIDTH) is always good
+    // A memory access race between the cores maybe? A conflicting optimization?
+    const int screen_width = RG_SCREEN_WIDTH; // display.screen.width;
+    const int x_inc = screen_width / display.viewport.x_scale;
+    const int ix_acc = (x_inc * left) % screen_width;
+    const int filter_y = display.config.filter == RG_DISPLAY_FILTER_VERT || display.config.filter == RG_DISPLAY_FILTER_BOTH;
+    const int filter_x = display.config.filter == RG_DISPLAY_FILTER_HORIZ || display.config.filter == RG_DISPLAY_FILTER_BOTH;
+    const bool *line_is_empty = &screen_line_is_empty[top];
     int fill_line = -1;
 
     for (int y = 0; y < height; y++)
     {
-        if (filter_y && y && *(line_is_empty++))
+        if (filter_y && y && *line_is_empty++)
         {
             fill_line = y;
             continue;
@@ -527,8 +531,7 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
 
         if (filter_mode)
         {
-            bilinear_filter(line_buffer, screen_y - lines_to_copy, scaled_left, scaled_width, lines_to_copy,
-                            filter_mode != RG_DISPLAY_FILTER_VERT, filter_mode != RG_DISPLAY_FILTER_HORIZ);
+            bilinear_filter(line_buffer, screen_y - lines_to_copy, scaled_left, scaled_width, lines_to_copy);
         }
 
         lcd_send_data(line_buffer, scaled_width * lines_to_copy * 2);
