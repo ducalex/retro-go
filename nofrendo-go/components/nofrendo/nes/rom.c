@@ -29,6 +29,7 @@
 #include "mmc.h"
 #include "ppu.h"
 #include "nes.h"
+#include "../database.h"
 
 static rom_t rom;
 
@@ -119,6 +120,57 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
          rom.mirroring = PPU_MIRROR_FOUR;
       else if (rom.flags & ROM_FLAG_VERTICAL)
          rom.mirroring = PPU_MIRROR_VERT;
+
+      const db_game_t *entry = games_database;
+      while (entry->crc && entry->crc != rom.checksum)
+         entry++;
+
+      if (entry->crc == rom.checksum)
+      {
+         MESSAGE_INFO("ROM: Game found in database.\n");
+
+         rom.system = entry->system;
+
+         if (entry->mapper != rom.mapper_number)
+         {
+            MESSAGE_WARN("ROM: mapper mismatch! (DB: %d, ROM: %d)\n", entry->mapper, rom.mapper_number);
+            rom.mapper_number = entry->mapper;
+         }
+
+         if (entry->mirror != rom.mirroring)
+         {
+            MESSAGE_WARN("ROM: mirroring mismatch! (DB: %d, ROM: %d)\n", entry->mirror, rom.mirroring);
+            rom.mirroring = entry->mirror;
+         }
+
+         if (entry->prg_rom != rom.prg_rom_banks)
+         {
+            MESSAGE_WARN("ROM: prg_rom_banks mismatch! (DB: %d, ROM: %d)\n", entry->prg_rom, rom.prg_rom_banks);
+            // rom.prg_rom_banks = entry->prg_rom;
+         }
+
+         if (entry->prg_ram != rom.prg_ram_banks)
+         {
+            MESSAGE_WARN("ROM: prg_ram_banks mismatch! (DB: %d, ROM: %d)\n", entry->prg_ram, rom.prg_ram_banks);
+            // rom.prg_rom_banks = entry->prg_ram;
+         }
+
+         if (entry->chr_rom > -1 && entry->chr_rom != rom.chr_rom_banks)
+         {
+            MESSAGE_WARN("ROM: chr_rom_banks mismatch! (DB: %d, ROM: %d)\n", entry->chr_rom, rom.chr_rom_banks);
+            // rom.chr_rom_banks = entry->chr_rom;
+         }
+
+         if (entry->chr_ram > -1 && entry->chr_ram != rom.chr_ram_banks)
+         {
+            MESSAGE_WARN("ROM: chr_ram_banks mismatch! (DB: %d, ROM: %d)\n", entry->chr_ram, rom.chr_ram_banks);
+            // rom.chr_ram_banks = entry->chr_ram;
+         }
+      }
+      else
+      {
+         MESSAGE_INFO("ROM: Game not found in database.\n");
+      }
 
       rom.prg_ram = malloc(rom.prg_ram_banks * ROM_PRG_BANK_SIZE);
       rom.chr_ram = malloc(rom.chr_ram_banks * ROM_CHR_BANK_SIZE);
