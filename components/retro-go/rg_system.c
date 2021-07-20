@@ -28,6 +28,7 @@
 #define SETTING_ROM_FILE_PATH "RomFilePath"
 #define SETTING_START_ACTION  "StartAction"
 #define SETTING_STARTUP_APP   "StartupApp"
+#define SETTING_RTC_DRIVER    "RTCDriver"
 #define SETTING_RTC_VALUE     "CurrentTime"
 
 typedef struct
@@ -55,7 +56,7 @@ static const char *htime(time_t ts)
 {
     static char buffer[32];
     strftime(buffer, sizeof(buffer), "%a, %d %b %Y %T", gmtime(&ts));
-    return &buffer;
+    return buffer;
 }
 
 static inline void logbuf_print(log_buffer_t *buf, const char *str)
