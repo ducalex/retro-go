@@ -51,6 +51,13 @@ static SemaphoreHandle_t spiMutex = NULL;
 static spi_lock_res_t spiMutexOwner = -1;
 
 
+static const char *htime(time_t ts)
+{
+    static char buffer[32];
+    strftime(buffer, sizeof(buffer), "%a, %d %b %Y %T", gmtime(&ts));
+    return &buffer;
+}
+
 static inline void logbuf_print(log_buffer_t *buf, const char *str)
 {
     while (*str)
@@ -157,7 +164,9 @@ static void system_monitor_task(void *arg)
 
         if (abs(time(NULL) - lastTime) > 60)
         {
-            RG_LOGI("System time suddenly changed! Saving...\n");
+            RG_LOGI("System time suddenly changed!\n");
+            RG_LOGI("    old time: %s\n", htime(lastTime));
+            RG_LOGI("    new time: %s\n", htime(time(NULL)));
             rg_system_time_save();
         }
         lastTime = time(NULL);
@@ -208,15 +217,78 @@ runtime_stats_t rg_system_get_stats()
     return statistics;
 }
 
+static uint8_t bcd2dec(uint8_t val)
+{
+    return (val >> 4) * 10 + (val & 0x0f);
+}
+
+static uint8_t dec2bcd(uint8_t val)
+{
+    return ((val / 10) << 4) + (val % 10);
+}
+
 void rg_system_time_init()
 {
-    time_t now = time(NULL);
-    RG_LOGI("System time is now %s", ctime(&now));
+    struct timeval tv = {946702800, 0}; // 2000-01-01 00:00:00
+    uint8_t data[7];
+
+    // Try reading DS3231
+    if (rg_i2c_read(0x68, 0x00, data, sizeof(data)))
+    {
+        struct tm rtc;
+        rtc.tm_sec = bcd2dec(data[0]);
+        rtc.tm_min = bcd2dec(data[1]);
+        if (data[2] & 0x40) // 12H
+        {
+            rtc.tm_hour = bcd2dec(data[2] & 0x1F) - 1;
+            if (data[2] & 0x20) rtc.tm_hour += 12;
+        }
+        else rtc.tm_hour = bcd2dec(data[2]); /* 24H */
+        rtc.tm_wday = bcd2dec(data[3]) - 1;
+        rtc.tm_mday = bcd2dec(data[4]);
+        rtc.tm_mon  = bcd2dec(data[5] & 0x1F) - 1;
+        rtc.tm_year = bcd2dec(data[6]) + 2000;
+        rtc.tm_isdst = 0;
+        tv.tv_sec = mktime(&rtc);
+        RG_LOGI("System time loaded from DS3231.\n");
+    }
+    else if (rg_settings_get_int32(SETTING_RTC_VALUE, 0))
+    {
+        tv.tv_sec = rg_settings_get_int32(SETTING_RTC_VALUE, 0);
+        RG_LOGI("System time loaded from settings.\n");
+    }
+
+    settimeofday(&tv, NULL);
+
+    RG_LOGI("System time is now: %s\n", htime(time(NULL)));
 }
 
 void rg_system_time_save()
 {
-    // Update external RTC or save timestamp to disk
+    time_t now = time(NULL);
+    struct tm *tmp = gmtime(&now);
+    uint8_t data[7];
+
+    data[0] = dec2bcd(tmp->tm_sec);
+    data[1] = dec2bcd(tmp->tm_min);
+    data[2] = dec2bcd(tmp->tm_hour);
+    data[3] = dec2bcd(tmp->tm_wday + 1);
+    data[4] = dec2bcd(tmp->tm_mday);
+    data[5] = dec2bcd(tmp->tm_mon + 1);
+    data[6] = dec2bcd(tmp->tm_year - 2000);
+
+    if (rg_i2c_write(0x68, 0x00, data, sizeof(data)))
+    {
+        RG_LOGI("System time saved to DS3231.\n");
+    }
+    else
+    {
+        rg_settings_set_int32(SETTING_RTC_VALUE, now);
+        rg_settings_save();
+        RG_LOGI("System time saved to settings.\n");
+    }
+
+    RG_LOGI("System time is now: %s\n", htime(now));
 }
 
 rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)

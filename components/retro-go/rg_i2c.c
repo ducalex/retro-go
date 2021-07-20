@@ -51,11 +51,20 @@ bool rg_i2c_deinit(void)
     return false;
 }
 
+bool rg_i2c_available(void)
+{
+#ifdef USE_I2C_DRIVER
+    return i2cStarted || rg_i2c_init();
+#else
+    return false;
+#endif
+}
+
 bool rg_i2c_read(uint8_t addr, int reg, void *read_data, size_t read_len)
 {
     esp_err_t err = ESP_FAIL;
 
-    if (!i2cStarted && !rg_i2c_init())
+    if (!rg_i2c_available())
         goto fail;
 
 #ifdef USE_I2C_DRIVER
@@ -76,7 +85,7 @@ bool rg_i2c_read(uint8_t addr, int reg, void *read_data, size_t read_len)
 #endif
 
 fail:
-    RG_LOGE("Read from 0x%02x failed. reg=%d, err=0x%x", addr, reg, err);
+    RG_LOGE("Read from 0x%02x failed. reg=%d, err=0x%x\n", addr, reg, err);
     return false;
 }
 
@@ -84,7 +93,7 @@ bool rg_i2c_write(uint8_t addr, int reg, const void *write_data, size_t write_le
 {
     esp_err_t err = ESP_FAIL;
 
-    if (!i2cStarted && !rg_i2c_init())
+    if (!rg_i2c_available())
         goto fail;
 
 #ifdef USE_I2C_DRIVER
@@ -103,6 +112,6 @@ bool rg_i2c_write(uint8_t addr, int reg, const void *write_data, size_t write_le
 #endif
 
 fail:
-    RG_LOGE("Write to 0x%02x failed. reg=%d, err=0x%x", addr, reg, err);
+    RG_LOGE("Write to 0x%02x failed. reg=%d, err=0x%x\n", addr, reg, err);
     return false;
 }

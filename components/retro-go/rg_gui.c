@@ -1,3 +1,4 @@
+#include <sys/time.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -892,6 +893,7 @@ int rg_gui_debug_menu(const dialog_option_t *extra_options)
         {2000, "Save trace", NULL, 1, NULL},
         {3000, "Cheats", NULL, 1, NULL},
         {4000, "Crash", NULL, 1, NULL},
+        {5000, "Random time", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
 
@@ -899,7 +901,7 @@ int rg_gui_debug_menu(const dialog_option_t *extra_options)
     const rg_display_t *display = rg_display_get_status();
     time_t now = time(NULL);
 
-    strftime(system_rtc, 20, "%F %T", localtime(&now));
+    strftime(system_rtc, 20, "%F %T", gmtime(&now));
     sprintf(screen_res, "%dx%d", display->screen.width, display->screen.height);
     sprintf(game_res, "%dx%d", display->source.width, display->source.height);
     sprintf(scaled_res, "%dx%d", display->viewport.width, display->viewport.height);
@@ -921,6 +923,11 @@ int rg_gui_debug_menu(const dialog_option_t *extra_options)
     else if (sel == 4000)
     {
         RG_PANIC("Crash test!");
+    }
+    else if (sel == 5000)
+    {
+        struct timeval tv = {rand() % 1893474000, 0};
+        settimeofday(&tv, NULL);
     }
 
     return sel;
