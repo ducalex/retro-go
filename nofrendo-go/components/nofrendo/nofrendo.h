@@ -107,7 +107,7 @@ typedef struct
 
 /* End basic types */
 
-extern int nofrendo_start(const char *filename, int region, int sample_rate, bool stereo);
+extern int nofrendo_start(const char *filename, int system, int sample_rate, bool stereo);
 extern void nofrendo_stop(void);
 
 #endif /* !_NOFRENDO_H_ */

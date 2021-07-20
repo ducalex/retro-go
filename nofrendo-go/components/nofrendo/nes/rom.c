@@ -77,15 +77,18 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
    if (!data || size < 16)
       return NULL;
 
+   rom = (rom_t) {
+      .data_ptr = data,
+      .data_len = size,
+      .system = SYS_UNKNOWN,
+      .mirroring = PPU_MIRROR_HORI,
+   };
+
    if (!memcmp(data, ROM_INES_MAGIC, 4))
    {
       inesheader_t *header = (inesheader_t *)data;
 
       MESSAGE_INFO("ROM: Found iNES file of size %d.\n", size);
-
-      memset(&rom, 0, sizeof(rom_t));
-      rom.data_ptr = data;
-      rom.data_len = size;
 
       rom.prg_rom = data + sizeof(inesheader_t);
 
@@ -111,6 +114,11 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
          // of the mapper number or simply refuse to load the ROM.
          rom.mapper_number |= (header->mapper_hinybble & 0xF0);
       }
+
+      if (rom.flags & ROM_FLAG_FOURSCREEN)
+         rom.mirroring = PPU_MIRROR_FOUR;
+      else if (rom.flags & ROM_FLAG_VERTICAL)
+         rom.mirroring = PPU_MIRROR_VERT;
 
       rom.prg_ram = malloc(rom.prg_ram_banks * ROM_PRG_BANK_SIZE);
       rom.chr_ram = malloc(rom.chr_ram_banks * ROM_CHR_BANK_SIZE);
@@ -141,10 +149,6 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
    else if (!memcmp(data, FDS_DISK_MAGIC, 15) || !memcmp(data + 16, FDS_DISK_MAGIC, 15))
    {
       MESSAGE_INFO("ROM: Found FDS file of size %d.\n", size);
-
-      memset(&rom, 0, sizeof(rom_t));
-      rom.data_ptr = data;
-      rom.data_len = size;
 
       rom.prg_ram_banks = 4;
       rom.chr_ram_banks = 1;
@@ -214,8 +218,16 @@ rom_t *rom_loadfile(const char *filename)
    else
    {
       fclose(fp);
-      strncpy(rom.filename, filename, PATH_MAX);
+      if (rom.system == SYS_UNKNOWN)
+      {
+         if (strstr(filename, "(E)")
+            || strstr(filename, "(Europe)")
+            || strstr(filename, "(A)")
+            || strstr(filename, "(Australia)"))
+            rom.system = SYS_NES_PAL;
+      }
       rom.flags |= ROM_FLAG_FREE_DATA;
+      strncpy(rom.filename, filename, PATH_MAX);
       #ifdef USE_SRAM_FILE
          rom_loadsram();
       #endif

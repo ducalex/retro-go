@@ -54,10 +54,11 @@
 
 typedef enum
 {
-    NES_AUTO,
-    NES_NTSC,
-    NES_PAL
-} region_t;
+    SYS_UNKNOWN,
+    SYS_NES_NTSC,
+    SYS_NES_PAL,
+    SYS_FAMICOM,
+} system_t;
 
 typedef void (nes_timer_t)(int cycles);
 
@@ -76,7 +77,7 @@ typedef struct
     uint8 *vidbuf;
 
     /* Misc */
-    region_t region;
+    system_t system;
     int overscan;
 
     /* Timing constants */
@@ -103,9 +104,8 @@ typedef struct
 } nes_t;
 
 extern nes_t *nes_getptr(void);
-extern bool nes_init(region_t region, int sample_rate, bool stereo);
+extern bool nes_init(system_t system, int sample_rate, bool stereo);
 extern void nes_shutdown(void);
-extern void nes_setregion(region_t region);
 extern bool nes_insertcart(const char *filename);
 extern bool nes_insertdisk(const char *filename);
 extern void nes_settimer(nes_timer_t *func, long period);

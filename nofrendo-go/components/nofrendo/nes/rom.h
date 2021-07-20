@@ -77,6 +77,8 @@ typedef struct
 
    uint32 mapper_number;
    uint32 flags;
+   uint32 system;
+   uint32 mirroring;
    uint32 checksum;
 } rom_t;
 

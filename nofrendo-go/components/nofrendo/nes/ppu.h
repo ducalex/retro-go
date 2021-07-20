@@ -81,11 +81,11 @@ typedef enum
 
 typedef enum
 {
-   PPU_MIRROR_HORI,
-   PPU_MIRROR_VERT,
-   PPU_MIRROR_SCR0,
-   PPU_MIRROR_SCR1,
-   PPU_MIRROR_FOUR,
+   PPU_MIRROR_SCR0 = 0,
+   PPU_MIRROR_SCR1 = 1,
+   PPU_MIRROR_HORI = 2,
+   PPU_MIRROR_VERT = 3,
+   PPU_MIRROR_FOUR = 4,
 } ppu_mirror_t;
 
 typedef struct

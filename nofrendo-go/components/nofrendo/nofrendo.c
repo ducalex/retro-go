@@ -35,12 +35,12 @@ void nofrendo_stop(void)
     osd_shutdown();
 }
 
-int nofrendo_start(const char *filename, int region, int sample_rate, bool stereo)
+int nofrendo_start(const char *filename, int system, int sample_rate, bool stereo)
 {
     if (osd_init())
         return -1;
 
-    if (!nes_init(region, sample_rate, stereo))
+    if (!nes_init(system, sample_rate, stereo))
     {
         MESSAGE_ERROR("Failed to create NES instance.\n");
         return -1;

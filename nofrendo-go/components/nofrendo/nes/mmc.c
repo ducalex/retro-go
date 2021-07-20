@@ -157,12 +157,7 @@ void mmc_reset(void)
       mmc_bankchr(8, 0x0000, 0, CHR_RAM);
 
    /* Setup name table mirroring */
-   if (cart->flags & ROM_FLAG_FOURSCREEN)
-      ppu_setmirroring(PPU_MIRROR_FOUR);
-   else if (cart->flags & ROM_FLAG_VERTICAL)
-      ppu_setmirroring(PPU_MIRROR_VERT);
-   else
-      ppu_setmirroring(PPU_MIRROR_HORI);
+   ppu_setmirroring(cart->mirroring);
 
    /* Clear special callbacks */
    ppu_setlatchfunc(NULL);

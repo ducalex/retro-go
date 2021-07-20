@@ -131,7 +131,6 @@ void nes_setcompathacks(void)
 {
     // Hack to fix many MMC3 games with status bar vertical alignment issues
     // The issue is that the CPU and PPU aren't running in sync
-    // if (nes.region == NES_NTSC && nes.cart->mapper_number == 4)
     if (nes.cart->checksum == 0xD8578BFD || // Zen Intergalactic
         nes.cart->checksum == 0x2E6301ED || // Super Mario Bros 3
         nes.cart->checksum == 0x5ED6F221 || // Kirby's Adventure
@@ -159,7 +158,39 @@ bool nes_insertcart(const char *filename)
     nes.ppu->vram_present = (nes.cart->chr_rom == NULL);
     // nes.ppu->vram_present = (NULL != nes.cart->chr_ram); // FIX ME: This is always true?
 
-    nes_setregion(nes.region);
+    /* Detect system type */
+    if (nes.system == SYS_UNKNOWN && nes.cart->system != SYS_UNKNOWN)
+    {
+        nes.system = nes.cart->system;
+    }
+
+    if (nes.system == SYS_UNKNOWN)
+        MESSAGE_INFO("NES: System type: UNKNOWN  (NTSC-U)\n");
+    else if (nes.system == SYS_NES_NTSC)
+        MESSAGE_INFO("NES: System type: NES-NTSC (NTSC-U)\n");
+    else if (nes.system == SYS_NES_PAL)
+        MESSAGE_INFO("NES: System type: NES-PAL  (PAL)\n");
+    else if (nes.system == SYS_FAMICOM)
+        MESSAGE_INFO("NES: System type: FAMICOM  (NTSC-J)\n");
+
+    /* Apply proper system timings (See https://wiki.nesdev.com/w/index.php/Cycle_reference_chart) */
+    if (nes.system == SYS_NES_PAL)
+    {
+        nes.cpu_clock = NES_CPU_CLOCK_PAL;
+        nes.refresh_rate = NES_REFRESH_RATE_PAL;
+        nes.scanlines_per_frame = NES_SCANLINES_PAL;
+        nes.cycles_per_scanline = nes.cpu_clock / nes.refresh_rate / nes.scanlines_per_frame;
+        nes.overscan = 0;
+    }
+    else
+    {
+        nes.cpu_clock = NES_CPU_CLOCK_NTSC;
+        nes.refresh_rate = NES_REFRESH_RATE_NTSC;
+        nes.scanlines_per_frame = NES_SCANLINES_NTSC;
+        nes.cycles_per_scanline = nes.cpu_clock / nes.refresh_rate / nes.scanlines_per_frame;
+        nes.overscan = 8;
+    }
+
     nes_setcompathacks();
 
     nes_reset(true);
@@ -214,45 +245,8 @@ void nes_shutdown(void)
     free(nes.framebuffers[1]);
 }
 
-/* Setup region-dependant timings */
-void nes_setregion(region_t region)
-{
-    nes.region = region;
-
-    if (region == NES_AUTO && nes.cart != NULL)
-    {
-        if (strstr(nes.cart->filename, "(E)") != NULL ||
-            strstr(nes.cart->filename, "(Europe)") != NULL ||
-            strstr(nes.cart->filename, "(A)") != NULL ||
-            strstr(nes.cart->filename, "(Australia)") != NULL)
-            region = NES_PAL;
-        else
-            region = NES_NTSC;
-    }
-
-    // https://wiki.nesdev.com/w/index.php/Cycle_reference_chart
-    if (region == NES_PAL)
-    {
-        nes.cpu_clock = NES_CPU_CLOCK_PAL;
-        nes.refresh_rate = NES_REFRESH_RATE_PAL;
-        nes.scanlines_per_frame = NES_SCANLINES_PAL;
-        nes.cycles_per_scanline = nes.cpu_clock / nes.refresh_rate / nes.scanlines_per_frame;
-        nes.overscan = 0;
-        MESSAGE_INFO("NES: System region: PAL\n");
-    }
-    else
-    {
-        nes.cpu_clock = NES_CPU_CLOCK_NTSC;
-        nes.refresh_rate = NES_REFRESH_RATE_NTSC;
-        nes.scanlines_per_frame = NES_SCANLINES_NTSC;
-        nes.cycles_per_scanline = nes.cpu_clock / nes.refresh_rate / nes.scanlines_per_frame;
-        nes.overscan = 8;
-        MESSAGE_INFO("NES: System region: NTSC\n");
-    }
-}
-
 /* Initialize NES CPU, hardware, etc. */
-bool nes_init(region_t region, int sample_rate, bool stereo)
+bool nes_init(system_t system, int sample_rate, bool stereo)
 {
     memset(&nes, 0, sizeof(nes_t));
 
@@ -260,10 +254,8 @@ bool nes_init(region_t region, int sample_rate, bool stereo)
     nes.poweroff = false;
     nes.pause = false;
     nes.drawframe = true;
-    nes.region = region;
+    nes.system = system;
     nes.refresh_rate = 60;
-
-    // nes_setregion(region);
 
     /* Framebuffers */
     nes.framebuffers[0] = rg_alloc(NES_SCREEN_PITCH * NES_SCREEN_HEIGHT, MEM_FAST);

@@ -174,9 +174,9 @@ static dialog_return_t region_update_cb(dialog_option_t *option, dialog_event_t 
         rg_settings_set_app_int32(SETTING_REGION, val);
     }
 
-    if (val == NES_AUTO) strcpy(option->value, "Auto");
-    if (val == NES_NTSC) strcpy(option->value, "NTSC");
-    if (val == NES_PAL)  strcpy(option->value, "PAL ");
+    if (val == SYS_UNKNOWN)  strcpy(option->value, "Auto");
+    if (val == SYS_NES_NTSC) strcpy(option->value, "NTSC");
+    if (val == SYS_NES_PAL)  strcpy(option->value, "PAL ");
 
     return RG_DIALOG_IGNORE;
 }
@@ -391,9 +391,9 @@ void app_main(void)
 
     osd_init();
 
-    int region = rg_settings_get_app_int32(SETTING_REGION, NES_AUTO);
+    int system = rg_settings_get_app_int32(SETTING_REGION, SYS_UNKNOWN);
 
-    if (!nes_init(region, AUDIO_SAMPLE_RATE, true))
+    if (!nes_init(system, AUDIO_SAMPLE_RATE, true))
     {
         RG_PANIC("Init failed.");
     }
