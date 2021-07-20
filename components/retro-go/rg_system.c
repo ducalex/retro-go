@@ -230,10 +230,10 @@ static uint8_t dec2bcd(uint8_t val)
 
 void rg_system_time_init()
 {
-    struct timeval tv = {946702800, 0}; // 2000-01-01 00:00:00
+    const char *source = "hardcoded";
+    time_t timestamp = 946702800; // 2000-01-01 00:00:00
     uint8_t data[7];
 
-    // Try reading DS3231
     if (rg_i2c_read(0x68, 0x00, data, sizeof(data)))
     {
         struct tm rtc;
@@ -250,18 +250,19 @@ void rg_system_time_init()
         rtc.tm_mon  = bcd2dec(data[5] & 0x1F) - 1;
         rtc.tm_year = bcd2dec(data[6]) + 2000;
         rtc.tm_isdst = 0;
-        tv.tv_sec = mktime(&rtc);
-        RG_LOGI("System time loaded from DS3231.\n");
+        timestamp = mktime(&rtc);
+        source = "DS3231";
     }
     else if (rg_settings_get_int32(SETTING_RTC_VALUE, 0))
     {
-        tv.tv_sec = rg_settings_get_int32(SETTING_RTC_VALUE, 0);
-        RG_LOGI("System time loaded from settings.\n");
+        timestamp = rg_settings_get_int32(SETTING_RTC_VALUE, 0);
+        source = "settings";
     }
 
-    settimeofday(&tv, NULL);
+    settimeofday(&(struct timeval){timestamp, 0}, NULL);
 
-    RG_LOGI("System time is now: %s\n", htime(time(NULL)));
+    RG_LOGI("Time is now: %s\n", htime(time(NULL)));
+    RG_LOGI("Time loaded from %s\n", source);
 }
 
 void rg_system_time_save()
@@ -288,8 +289,6 @@ void rg_system_time_save()
         rg_settings_save();
         RG_LOGI("System time saved to settings.\n");
     }
-
-    RG_LOGI("System time is now: %s\n", htime(now));
 }
 
 rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
