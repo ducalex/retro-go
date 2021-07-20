@@ -380,12 +380,11 @@ static inline void bilinear_filter(uint16_t *line_buffer, int top, int left, int
     const int ix_acc = (x_inc * left) % screen_width;
     const int filter_y = display.config.filter == RG_DISPLAY_FILTER_VERT || display.config.filter == RG_DISPLAY_FILTER_BOTH;
     const int filter_x = display.config.filter == RG_DISPLAY_FILTER_HORIZ || display.config.filter == RG_DISPLAY_FILTER_BOTH;
-    const bool *line_is_empty = &screen_line_is_empty[top];
     int fill_line = -1;
 
     for (int y = 0; y < height; y++)
     {
-        if (filter_y && y && *line_is_empty++)
+        if (filter_y && y && screen_line_is_empty[top + y])
         {
             fill_line = y;
             continue;
