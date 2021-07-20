@@ -8,21 +8,12 @@
 #include <esp_sleep.h>
 #include <driver/gpio.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <stdarg.h>
 #include <assert.h>
 #include <string.h>
 
 #include "rg_system.h"
-
-// On the Odroid-GO the SPI bus is shared between the SD Card and the LCD
-// That isn't the case on other devices, so for performance we disable the mutex
-#if (RG_GPIO_LCD_MISO == RG_GPIO_SD_MISO || \
-     RG_GPIO_LCD_MOSI == RG_GPIO_SD_MOSI || \
-     RG_GPIO_LCD_CLK == RG_GPIO_SD_CLK)
-#define USE_SPI_MUTEX 1
-#else
-#define USE_SPI_MUTEX 0
-#endif
 
 #ifdef ENABLE_PROFILING
 #define INPUT_TIMEOUT -1
@@ -37,6 +28,7 @@
 #define SETTING_ROM_FILE_PATH "RomFilePath"
 #define SETTING_START_ACTION  "StartAction"
 #define SETTING_STARTUP_APP   "StartupApp"
+#define SETTING_RTC_VALUE     "CurrentTime"
 
 typedef struct
 {
@@ -55,10 +47,8 @@ static rg_app_desc_t app;
 static long inputTimeout = -1;
 static bool initialized = false;
 
-#if USE_SPI_MUTEX
-static SemaphoreHandle_t spiMutex;
-static spi_lock_res_t spiMutexOwner;
-#endif
+static SemaphoreHandle_t spiMutex = NULL;
+static spi_lock_res_t spiMutexOwner = -1;
 
 
 static inline void logbuf_print(log_buffer_t *buf, const char *str)
@@ -220,7 +210,8 @@ runtime_stats_t rg_system_get_stats()
 
 void rg_system_time_init()
 {
-    // Query an external RTC or NTP or load saved timestamp from disk
+    time_t now = time(NULL);
+    RG_LOGI("System time is now %s", ctime(&now));
 }
 
 void rg_system_time_save()
@@ -238,12 +229,14 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
              RG_DRIVER_DISPLAY, RG_DRIVER_GAMEPAD, RG_DRIVER_SDCARD, RG_DRIVER_SETTINGS);
     RG_LOGX("========================================================\n\n");
 
-    #if USE_SPI_MUTEX
-    // spiMutex = xSemaphoreCreateMutex();
-    spiMutex = xSemaphoreCreateBinary();
-    xSemaphoreGive(spiMutex);
-    spiMutexOwner = -1;
-    #endif
+    // On the Odroid-GO the SPI bus is shared between the SD Card and the LCD
+    // That isn't the case on other devices, so for performance we don't initialize the mutex
+    if (RG_GPIO_LCD_MISO == RG_GPIO_SD_MISO || RG_GPIO_LCD_MOSI == RG_GPIO_SD_MOSI || RG_GPIO_LCD_CLK == RG_GPIO_SD_CLK)
+    {
+        spiMutex = xSemaphoreCreateBinary(); // xSemaphoreCreateMutex();
+        spiMutexOwner = -1;
+        xSemaphoreGive(spiMutex);
+    }
 
     // Seed C's pseudo random number generator
     srand(esp_random());
@@ -293,8 +286,6 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
         rg_display_clear(C_BLUE);
         // rg_gui_set_font_size(12);
         rg_gui_alert("System Panic!", message);
-        rg_audio_deinit();
-        rg_sdcard_unmount();
         rg_system_switch_app(RG_APP_LAUNCHER);
     }
 
@@ -555,36 +546,55 @@ bool rg_emu_notify(int msg, void *arg)
 
 void rg_emu_start_game(const char *emulator, const char *romPath, rg_start_action_t action)
 {
+    RG_ASSERT(emulator && romPath, "bad param");
     rg_settings_set_string(SETTING_ROM_FILE_PATH, romPath);
     rg_settings_set_int32(SETTING_START_ACTION, action);
-    rg_settings_save();
+    rg_system_switch_app(emulator);
+}
 
-    if (emulator)
-        rg_system_switch_app(emulator);
-    else
-        esp_restart();
+static void shutdown_cleanup()
+{
+    // Prepare the system for a power change (deep sleep, restart, shutdown)
+    // Wait for all keys to be released, they could interfer with the restart process
+    rg_input_wait_for_key(GAMEPAD_KEY_ALL, false);
+    rg_system_time_save();
+    rg_settings_save();
+    rg_audio_deinit();
+    rg_input_deinit();
+    rg_i2c_deinit();
+    rg_sdcard_unmount();
+    // rg_display_deinit();
+}
+
+void rg_system_shutdown()
+{
+    RG_LOGI("System halted.\n");
+    shutdown_cleanup();
+    vTaskSuspendAll();
+    while (1);
+}
+
+void rg_system_sleep()
+{
+    RG_LOGI("Going to sleep!\n");
+    shutdown_cleanup();
+    vTaskDelay(100);
+    esp_deep_sleep_start();
 }
 
 void rg_system_restart()
 {
-    // FIX ME: Ensure the boot loader points to us
+    shutdown_cleanup();
     esp_restart();
 }
 
 void rg_system_switch_app(const char *app)
 {
     RG_LOGI("Switching to app '%s'.\n", app ? app : "NULL");
-
     rg_display_clear(C_BLACK);
     rg_gui_draw_hourglass();
-
     rg_system_set_boot_app(app);
-
-    rg_audio_deinit();
-    rg_sdcard_unmount();
-    // rg_display_deinit();
-
-    esp_restart();
+    rg_system_restart();
 }
 
 bool rg_system_find_app(const char *app)
@@ -683,24 +693,6 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
     return (fp != NULL);
 }
 
-void rg_system_halt()
-{
-    RG_LOGI("Halting system!\n");
-    vTaskSuspendAll();
-    while (1);
-}
-
-void rg_system_sleep()
-{
-    RG_LOGI("Going to sleep!\n");
-
-    // Wait for button release
-    rg_input_wait_for_key(GAMEPAD_KEY_MENU, false);
-    rg_audio_deinit();
-    vTaskDelay(100);
-    esp_deep_sleep_start();
-}
-
 void rg_system_set_led(int value)
 {
     gpio_set_level(RG_GPIO_LED, value);
@@ -723,7 +715,9 @@ void rg_system_set_startup_app(int32_t value)
 
 IRAM_ATTR void rg_spi_lock_acquire(spi_lock_res_t owner)
 {
-#if USE_SPI_MUTEX
+    if (spiMutex == NULL)
+        return;
+
     if (owner == spiMutexOwner)
     {
         return;
@@ -736,18 +730,18 @@ IRAM_ATTR void rg_spi_lock_acquire(spi_lock_res_t owner)
     {
         RG_PANIC("SPI Mutex Lock Acquisition failed!");
     }
-#endif
 }
 
 IRAM_ATTR void rg_spi_lock_release(spi_lock_res_t owner)
 {
-#if USE_SPI_MUTEX
+    if (spiMutex == NULL)
+        return;
+
     if (owner == spiMutexOwner || owner == SPI_LOCK_ANY)
     {
         xSemaphoreGive(spiMutex);
         spiMutexOwner = SPI_LOCK_ANY;
     }
-#endif
 }
 
 // Note: You should use calloc/malloc everywhere possible. This function is used to ensure

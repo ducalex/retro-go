@@ -152,7 +152,7 @@ typedef struct
 
 rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers);
 void rg_system_panic(const char *reason, const char *context) __attribute__((noreturn));
-void rg_system_halt() __attribute__((noreturn));
+void rg_system_shutdown() __attribute__((noreturn));
 void rg_system_sleep() __attribute__((noreturn));
 void rg_system_restart() __attribute__((noreturn));
 void rg_system_switch_app(const char *app) __attribute__((noreturn));
