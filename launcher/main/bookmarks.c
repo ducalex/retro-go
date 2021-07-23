@@ -56,9 +56,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
     }
     else if (event == KEY_PRESS_B)
     {
-        if (file)
-            emulator_show_file_info(file);
-        gui_redraw();
+        // This is now reserved for subfolder navigation (go back)
     }
 }
 
@@ -82,7 +80,8 @@ static void tab_refresh(book_type_t book_type)
             if (file->is_valid)
             {
                 listbox_item_t *listitem = &book->tab->listbox.items[list_index++];
-                snprintf(listitem->text, 128, "[%-3s] %.100s", file->ext, file->name);
+                const char *type = file->emulator ? file->emulator->short_name : "n/a";
+                snprintf(listitem->text, 128, "[%-3s] %.100s", type, file->name);
                 listitem->arg = file;
                 listitem->id = i;
                 book->tab->is_empty = false;
@@ -154,7 +153,7 @@ static void book_save(book_type_t book_type)
         {
             retro_emulator_file_t *file = &book->items[i];
             if (file->is_valid)
-                fprintf(fp, "%s\n", emu_get_file_path(file));
+                fprintf(fp, "%s\n", emulator_get_file_path(file));
         }
         fclose(fp);
     }

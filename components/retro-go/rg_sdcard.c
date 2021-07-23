@@ -1,7 +1,6 @@
 #include <esp_vfs_fat.h>
 #include <esp_event.h>
 #include <sys/stat.h>
-#include <dirent.h>
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
@@ -154,77 +153,6 @@ bool rg_mkdir(const char *dir)
     }
 
     return (ret == 0);
-}
-
-rg_strings_t *rg_readdir(const char* path, int flags)
-{
-    RG_ASSERT(path, "Bad param");
-
-    DIR* dir = opendir(path);
-    if (!dir)
-        return NULL;
-
-    size_t buffer_size = 512;
-    rg_strings_t *files = calloc(1, sizeof(rg_strings_t) + buffer_size);
-    char pathbuf[PATH_MAX + 1];
-    struct dirent* file;
-
-    while ((file = readdir(dir)))
-    {
-        const char *name = file->d_name;
-        size_t name_len = strlen(name) + 1;
-        bool is_directory = (file->d_type == DT_DIR);
-
-        if (name[0] == '.')
-        {
-            if (flags & RG_SKIP_HIDDEN)
-                continue;
-            else if (name_len <= 3)
-                continue;
-        }
-
-        if (!is_directory || !(flags & RG_FILES_ONLY))
-        {
-            if ((files->length + name_len) >= buffer_size)
-            {
-                buffer_size += 1024;
-                files = realloc(files, sizeof(rg_strings_t) + buffer_size);
-            }
-
-            memcpy(&files->buffer[files->length], name, name_len);
-            files->length += name_len;
-            files->count++;
-        }
-
-        // FIX ME: This won't work correctly on more than one nesting level
-        // That is because we don't carry the base path around so we'll store an
-        // incomplete relative path beyond the first level...
-        if (is_directory && (flags & RG_RECURSIVE))
-        {
-            sprintf(pathbuf, "%.120s/%.120s", path, name);
-            rg_strings_t *sub = rg_readdir(pathbuf, flags);
-            if (sub && sub->count > 0)
-            {
-                buffer_size = files->length + sub->length + (name_len * sub->count) + 128;
-                files = realloc(files, sizeof(rg_strings_t) + buffer_size);
-
-                char *ptr = sub->buffer;
-                for (size_t i = 0; i < sub->count; i++)
-                {
-                    files->length += sprintf(&files->buffer[files->length], "%s/%s", name, ptr) + 1;
-                    files->count++;
-                    ptr += strlen(sub->buffer) + 1;
-                }
-            }
-            free(sub);
-        }
-    }
-
-    files->buffer[files->length] = 0;
-
-    closedir(dir);
-
-    return files;
 }
 
 const char *rg_dirname(const char *path)

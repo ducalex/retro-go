@@ -26,8 +26,8 @@ typedef struct retro_emulator_s retro_emulator_t;
 typedef struct
 {
     char name[128];
-    char ext[8];
-    char folder[32];
+    const char *folder;
+    // uint32_t type;
     uint32_t checksum;
     uint16_t missing_cover;
     uint8_t  is_valid;
@@ -37,12 +37,18 @@ typedef struct
 typedef struct retro_emulator_s
 {
     char system_name[64];
+    char short_name[16];
     char partition[16];
-    char dirname[16];
     char extensions[32];
     size_t crc_offset;
     struct {
+        char **folders;
+        size_t capacity;
+        size_t count;
+    } roms_folders;
+    struct {
         retro_emulator_file_t *files;
+        size_t capacity;
         size_t count;
     } roms;
     bool crc_scan_done;
@@ -54,12 +60,12 @@ typedef struct tab_s tab_t;
 void emulators_init();
 void emulator_init(retro_emulator_t *emu);
 void emulator_start(retro_emulator_file_t *file, bool load_state);
+int  emulator_scan_folder(retro_emulator_t *emu, const char* path, int flags);
 void emulator_show_file_menu(retro_emulator_file_t *file);
 void emulator_show_file_info(retro_emulator_file_t *file);
-bool emulator_crc32_file(retro_emulator_file_t *file);
+bool emulator_get_file_crc32(retro_emulator_file_t *file);
+const char *emulator_get_file_path(retro_emulator_file_t *file);
 bool emulator_build_file_object(const char *path, retro_emulator_file_t *out_file);
-const char *emu_get_file_path(retro_emulator_file_t *file);
-size_t emu_get_file_crc_offset(retro_emulator_file_t *file);
 
 void crc_cache_init(void);
 void crc_cache_idle_task(tab_t *tab);

@@ -395,7 +395,7 @@ void gui_draw_list(tab_t *tab)
 
 void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file)
 {
-    const char *dirname = file->emulator->dirname;
+    const char *dirname = file->emulator->short_name;
     bool show_missing_cover = false;
     uint32_t order;
     char path[256];
@@ -441,7 +441,7 @@ void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file)
 
         if (type == 0x1 || type == 0x2)
         {
-            emulator_crc32_file(file);
+            emulator_get_file_crc32(file);
         }
 
         if (gui.joystick & GAMEPAD_KEY_ANY)
@@ -454,7 +454,7 @@ void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file)
         else if (type == 0x2) // Game cover (png)
             sprintf(path, RG_BASE_PATH_ROMART "/%s/%X/%08X.png", dirname, file->checksum >> 28, file->checksum);
         else if (type == 0x3) // Save state screenshot (png)
-            sprintf(path, "%s/%s/%s.%s.png", RG_BASE_PATH_SAVES, dirname, file->name, file->ext);
+            sprintf(path, "%s/%s/%s.png", RG_BASE_PATH_SAVES, dirname, file->name);
         else if (type == 0x4) // use default image (not currently used)
             sprintf(path, RG_BASE_PATH_ROMART "/%s/default.png", dirname);
         else

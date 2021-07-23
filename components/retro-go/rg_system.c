@@ -28,8 +28,8 @@
 #define SETTING_ROM_FILE_PATH "RomFilePath"
 #define SETTING_START_ACTION  "StartAction"
 #define SETTING_STARTUP_APP   "StartupApp"
-#define SETTING_RTC_DRIVER    "RTCDriver"
-#define SETTING_RTC_VALUE     "CurrentTime"
+#define SETTING_RTC_DRIVER    "RTCInitSource"
+#define SETTING_RTC_VALUE     "RTCSavedValue"
 
 typedef struct
 {
