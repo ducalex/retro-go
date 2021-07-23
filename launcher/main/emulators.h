@@ -61,7 +61,7 @@ void emulators_init();
 void emulator_init(retro_emulator_t *emu);
 void emulator_start(retro_emulator_file_t *file, bool load_state);
 int  emulator_scan_folder(retro_emulator_t *emu, const char* path, int flags);
-void emulator_show_file_menu(retro_emulator_file_t *file);
+void emulator_show_file_menu(retro_emulator_file_t *file, bool simplified);
 void emulator_show_file_info(retro_emulator_file_t *file);
 bool emulator_get_file_crc32(retro_emulator_file_t *file);
 const char *emulator_get_file_path(retro_emulator_file_t *file);

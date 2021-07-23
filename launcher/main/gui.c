@@ -105,7 +105,7 @@ void gui_init_tab(tab_t *tab)
 
     if (!tab->is_empty)
     {
-        gui_sort_list(tab);
+        // gui_sort_list(tab);
 
         // -1 means that we should find our last saved position
         if (tab->listbox.cursor == -1)

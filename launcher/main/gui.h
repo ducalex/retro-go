@@ -13,6 +13,7 @@ typedef enum {
     TAB_LEAVE,
     TAB_SAVE,
     TAB_IDLE,
+    TAB_REFRESH,
     TAB_REDRAW,
 } gui_event_t;
 

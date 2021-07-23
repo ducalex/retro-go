@@ -21,6 +21,10 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         //
     }
+    // else if (event == TAB_REFRESH)
+    // {
+    //     tab_refresh(tab);
+    // }
     else if (event == TAB_ENTER)
     {
         //
@@ -51,7 +55,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
     else if (event == KEY_PRESS_A)
     {
         if (file)
-            emulator_show_file_menu(file);
+            emulator_show_file_menu(file, false);
         gui_redraw();
     }
     else if (event == KEY_PRESS_B)
@@ -63,13 +67,12 @@ static void event_handler(gui_event_t event, tab_t *tab)
 static void tab_refresh(book_type_t book_type)
 {
     book_t *book = &books[book_type];
-    int list_index = 0;
+    int items_count = 0;
 
     if (!book->tab)
         return;
 
     memset(&book->tab->status, 0, sizeof(book->tab->status));
-    book->tab->is_empty = true;
 
     if (book->count)
     {
@@ -79,19 +82,22 @@ static void tab_refresh(book_type_t book_type)
             retro_emulator_file_t *file = &book->items[i];
             if (file->is_valid)
             {
-                listbox_item_t *listitem = &book->tab->listbox.items[list_index++];
+                listbox_item_t *listitem = &book->tab->listbox.items[items_count++];
                 const char *type = file->emulator ? file->emulator->short_name : "n/a";
                 snprintf(listitem->text, 128, "[%-3s] %.100s", type, file->name);
                 listitem->arg = file;
                 listitem->id = i;
-                book->tab->is_empty = false;
             }
         }
-        gui_resize_list(book->tab, list_index);
+    }
+    book->tab->is_empty = items_count == 0;
+
+    if (!book->tab->is_empty)
+    {
+        gui_resize_list(book->tab, items_count);
         gui_sort_list(book->tab);
     }
-
-    if (book->tab->is_empty)
+    else
     {
         gui_resize_list(book->tab, 6);
         sprintf(book->tab->listbox.items[0].text, "Welcome to Retro-Go!");

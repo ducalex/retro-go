@@ -280,7 +280,7 @@ int emulator_scan_folder(retro_emulator_t *emu, const char* path, int flags)
             file->emulator = (void*)emu;
             file->checksum = 0;
             file->missing_cover = 0;
-            file->is_valid = 1;
+            file->is_valid = true;
         }
         else if (ent->d_type == DT_DIR)
         {
@@ -296,6 +296,56 @@ int emulator_scan_folder(retro_emulator_t *emu, const char* path, int flags)
     return 0;
 }
 
+static void tab_refresh(tab_t *tab)
+{
+    retro_emulator_t *emu = (retro_emulator_t *)tab->arg;
+
+    memset(&tab->status, 0, sizeof(tab->status));
+
+    size_t base_len = strlen(RG_BASE_PATH_ROMS) + 1 + strlen(emu->short_name);
+    size_t items_count = 0;
+    char *ext = NULL;
+
+    if (emu->roms.count > 0)
+    {
+        gui_resize_list(tab, emu->roms.count);
+
+        for (size_t i = 0; i < emu->roms.count; i++)
+        {
+            retro_emulator_file_t *file = &emu->roms.files[i];
+            if (file->is_valid)
+            {
+                listbox_item_t *item = &tab->listbox.items[items_count++];
+
+                if (strlen(file->folder) > base_len)
+                    snprintf(item->text, 128, "%s/%s", file->folder + base_len, file->name);
+                else
+                    snprintf(item->text, 128, "%s", file->name);
+
+                if ((ext = strrchr(item->text, '.')))
+                    *ext = 0;
+
+                item->arg = file;
+            }
+        }
+    }
+    tab->is_empty = items_count == 0;
+
+    if (!tab->is_empty)
+    {
+        gui_resize_list(tab, items_count);
+        gui_sort_list(tab);
+    }
+    else
+    {
+        gui_resize_list(tab, 8);
+        sprintf(tab->listbox.items[0].text, "Place roms in folder: /roms/%s", emu->short_name);
+        sprintf(tab->listbox.items[2].text, "With file extension: %s", emu->extensions);
+        sprintf(tab->listbox.items[4].text, "Use SELECT and START to navigate.");
+        tab->listbox.cursor = 3;
+    }
+}
+
 static void event_handler(gui_event_t event, tab_t *tab)
 {
     retro_emulator_t *emu = (retro_emulator_t *)tab->arg;
@@ -305,32 +355,11 @@ static void event_handler(gui_event_t event, tab_t *tab)
     if (event == TAB_INIT)
     {
         emulator_init(emu);
-
-        memset(&tab->status, 0, sizeof(tab->status));
-        if (emu->roms.count > 0)
-        {
-            char *ext = NULL;
-            gui_resize_list(tab, emu->roms.count);
-
-            for (int i = 0; i < emu->roms.count; i++)
-            {
-                strcpy(tab->listbox.items[i].text, emu->roms.files[i].name);
-                if ((ext = strrchr(tab->listbox.items[i].text, '.')))
-                    *ext = 0;
-                tab->listbox.items[i].arg = &emu->roms.files[i];
-            }
-
-            tab->is_empty = false;
-        }
-        else
-        {
-            gui_resize_list(tab, 8);
-            sprintf(tab->listbox.items[0].text, "Place roms in folder: /roms/%s", emu->short_name);
-            sprintf(tab->listbox.items[2].text, "With file extension: %s", emu->extensions);
-            sprintf(tab->listbox.items[4].text, "Use SELECT and START to navigate.");
-            tab->listbox.cursor = 3;
-            tab->is_empty = true;
-        }
+        tab_refresh(tab);
+    }
+    else if (event == TAB_REFRESH)
+    {
+        tab_refresh(tab);
     }
     else if (event == TAB_ENTER)
     {
@@ -362,7 +391,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
     else if (event == KEY_PRESS_A)
     {
         if (file)
-            emulator_show_file_menu(file);
+            emulator_show_file_menu(file, false);
         gui_redraw();
     }
     else if (event == KEY_PRESS_B)
@@ -523,7 +552,7 @@ void emulator_show_file_info(retro_emulator_file_t *file)
     }
 }
 
-void emulator_show_file_menu(retro_emulator_file_t *file)
+void emulator_show_file_menu(retro_emulator_file_t *file, bool advanced)
 {
     char *save_path = rg_emu_get_path(RG_PATH_SAVE_STATE, emulator_get_file_path(file));
     char *sram_path = rg_emu_get_path(RG_PATH_SAVE_SRAM, emulator_get_file_path(file));
@@ -539,38 +568,62 @@ void emulator_show_file_menu(retro_emulator_file_t *file)
         {3, is_fav ? "Del favorite" : "Add favorite", NULL, 1, NULL},
         {2, "Delete save", NULL, has_save || has_sram, NULL},
         {0, "------------", NULL, -1, NULL},
+        {5, "Delete file", NULL, 1, NULL},
         {4, "Properties", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
-    int sel = rg_gui_dialog(NULL, choices, has_save ? 0 : 1);
 
-    if (sel == 0 || sel == 1) {
+    int sel = rg_gui_dialog(NULL, choices, has_save ? 0 : 1);
+    switch (sel)
+    {
+    case 0:
+    case 1:
         crc_cache_save();
         gui_save_position(0); // emulator_start will commit
         bookmark_add(BOOK_TYPE_RECENT, file);
         emulator_start(file, sel == 0);
-    }
-    else if (sel == 2) {
-        if (has_save) {
-            if (rg_gui_confirm("Delete save state?", 0, 0)) {
-                unlink(save_path);
-                unlink(scrn_path);
-            }
+        break;
+
+    case 2:
+        if (has_save && rg_gui_confirm("Delete save state?", 0, 0))
+        {
+            unlink(save_path);
+            unlink(scrn_path);
         }
-        if (has_sram) {
-            if (rg_gui_confirm("Delete sram file?", 0, 0)) {
-                unlink(sram_path);
-            }
+        if (has_sram && rg_gui_confirm("Delete sram file?", 0, 0))
+        {
+            unlink(sram_path);
         }
-    }
-    else if (sel == 3) {
+        break;
+
+    case 3:
         if (is_fav)
             bookmark_remove(BOOK_TYPE_FAVORITE, file);
         else
             bookmark_add(BOOK_TYPE_FAVORITE, file);
-    }
-    else if (sel == 4) {
+        break;
+
+    case 4:
         emulator_show_file_info(file);
+        break;
+
+    case 5:
+        if (rg_gui_confirm("Delete selected file?", 0, 0))
+        {
+            if (is_fav)
+            {
+                bookmark_remove(BOOK_TYPE_FAVORITE, file);
+            }
+            if (unlink(emulator_get_file_path(file)) == 0)
+            {
+                file->is_valid = false;
+                gui_event(TAB_REFRESH, gui_get_current_tab());
+            }
+        }
+        break;
+
+    default:
+        break;
     }
 
     free(save_path);
