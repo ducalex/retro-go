@@ -218,6 +218,7 @@ runtime_stats_t rg_system_get_stats()
     return statistics;
 }
 
+#if 0
 static uint8_t bcd2dec(uint8_t val)
 {
     return (val >> 4) * 10 + (val & 0x0f);
@@ -227,13 +228,14 @@ static uint8_t dec2bcd(uint8_t val)
 {
     return ((val / 10) << 4) + (val % 10);
 }
+#endif
 
 void rg_system_time_init()
 {
     const char *source = "hardcoded";
     time_t timestamp = 946702800; // 2000-01-01 00:00:00
+#if 0
     uint8_t data[7];
-
     if (rg_i2c_read(0x68, 0x00, data, sizeof(data)))
     {
         struct tm rtc;
@@ -253,7 +255,9 @@ void rg_system_time_init()
         timestamp = mktime(&rtc);
         source = "DS3231";
     }
-    else if (rg_settings_get_int32(SETTING_RTC_VALUE, 0))
+    else
+#endif
+    if (rg_settings_get_int32(SETTING_RTC_VALUE, 0))
     {
         timestamp = rg_settings_get_int32(SETTING_RTC_VALUE, 0);
         source = "settings";
@@ -268,6 +272,7 @@ void rg_system_time_init()
 void rg_system_time_save()
 {
     time_t now = time(NULL);
+#if 0
     struct tm *tmp = gmtime(&now);
     uint8_t data[7];
 
@@ -284,6 +289,7 @@ void rg_system_time_save()
         RG_LOGI("System time saved to DS3231.\n");
     }
     else
+#endif
     {
         rg_settings_set_int32(SETTING_RTC_VALUE, now);
         rg_settings_save();
