@@ -25,7 +25,7 @@ typedef struct retro_emulator_s retro_emulator_t;
 
 typedef struct
 {
-    char name[128];
+    const char *name;
     const char *folder;
     // uint32_t type;
     uint32_t checksum;
@@ -36,20 +36,16 @@ typedef struct
 
 typedef struct retro_emulator_s
 {
-    char system_name[64];
-    char short_name[16];
-    char partition[16];
-    char extensions[32];
+    const char *system_name;
+    const char *short_name;
+    const char *partition;
+    const char *extensions[16];
     size_t crc_offset;
     struct {
-        char **folders;
-        size_t capacity;
-        size_t count;
-    } roms_folders;
-    struct {
         retro_emulator_file_t *files;
-        size_t capacity;
-        size_t count;
+        size_t files_count;
+        const char **folders;
+        size_t folders_count;
     } roms;
     bool crc_scan_done;
     bool initialized;

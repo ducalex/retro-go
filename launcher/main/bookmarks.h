@@ -13,11 +13,11 @@ typedef retro_emulator_file_t bookmark_t;
 
 typedef struct
 {
-    char name[64];
-    char path[168];
+    const char *name;
+    const char *path;
     bool initialized;
-    long capacity;
-    long count;
+    size_t capacity;
+    size_t count;
     retro_emulator_file_t *items;
     tab_t *tab;
 } book_t;

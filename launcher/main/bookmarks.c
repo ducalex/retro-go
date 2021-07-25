@@ -172,9 +172,12 @@ static void book_init(book_type_t book_type, const char *name, int capacity,
     rg_image_t *header_img = header ? rg_image_load_from_memory(header->data, header->size, 0) : NULL;
 
     book_t *book = &books[book_type];
+    char path[PATH_MAX + 1];
 
-    strcpy(book->name, name);
-    sprintf(book->path, "%s/%s.txt", RG_BASE_PATH_CONFIG, book->name);
+    sprintf(path, "%s/%s.txt", RG_BASE_PATH_CONFIG, name);
+
+    book->name = strdup(name);
+    book->path = strdup(path);
     book->tab = gui_add_tab(name, logo_img, header_img, book, event_handler);
     book->initialized = true;
 
