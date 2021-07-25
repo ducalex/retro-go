@@ -20,6 +20,7 @@ static gamepad_state_t *localJoystick = &joystick1;
 
 static bool overscan = true;
 static long autocrop = 0;
+static long region = 0;
 
 static bool fullFrame = 0;
 static long frameTime = 0;
@@ -163,15 +164,16 @@ static dialog_return_t autocrop_update_cb(dialog_option_t *option, dialog_event_
 
 static dialog_return_t region_update_cb(dialog_option_t *option, dialog_event_t event)
 {
-    int val = rg_settings_get_app_int32(SETTING_REGION, 0);
+    int val = region;
     int max = 2;
 
     if (event == RG_DIALOG_PREV) val = val > 0 ? val - 1 : max;
     if (event == RG_DIALOG_NEXT) val = val < max ? val + 1 : 0;
 
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    if (val != region)
     {
-        rg_settings_set_app_int32(SETTING_REGION, val);
+        rg_settings_set_app_int32(SETTING_REGION, region);
+        region = val;
     }
 
     if (val == SYS_UNKNOWN)  strcpy(option->value, "Auto");
@@ -227,10 +229,7 @@ void osd_loadstate()
 
     ppu_setopt(PPU_LIMIT_SPRITES, rg_settings_get_app_int32(SETTING_SPRITELIMIT, 1));
     ppu_setopt(PPU_PALETTE_RGB, rg_settings_get_app_int32(SETTING_PALETTE, 0));
-    overscan = rg_settings_get_app_int32(SETTING_OVERSCAN, 1);
-    autocrop = rg_settings_get_app_int32(SETTING_AUTOCROP, 0);
 
-    nes = nes_getptr();
     frameTime = get_frame_time(nes->refresh_rate);
 
     app->refreshRate = nes->refresh_rate;
@@ -389,11 +388,14 @@ void app_main(void)
     frames[0].palette = myPalette;
     frames[1] = frames[0];
 
+    overscan = rg_settings_get_app_int32(SETTING_OVERSCAN, 1);
+    autocrop = rg_settings_get_app_int32(SETTING_AUTOCROP, 0);
+    region = rg_settings_get_app_int32(SETTING_REGION, SYS_UNKNOWN);
+
     osd_init();
 
-    int system = rg_settings_get_app_int32(SETTING_REGION, SYS_UNKNOWN);
-
-    if (!nes_init(system, AUDIO_SAMPLE_RATE, true))
+    nes = nes_init(region, AUDIO_SAMPLE_RATE, true);
+    if (!nes)
     {
         RG_PANIC("Init failed.");
     }

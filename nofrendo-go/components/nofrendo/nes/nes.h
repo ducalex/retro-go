@@ -104,10 +104,10 @@ typedef struct
 } nes_t;
 
 extern nes_t *nes_getptr(void);
-extern bool nes_init(system_t system, int sample_rate, bool stereo);
+extern nes_t *nes_init(system_t system, int sample_rate, bool stereo);
 extern void nes_shutdown(void);
-extern bool nes_insertcart(const char *filename);
-extern bool nes_insertdisk(const char *filename);
+extern rom_t *nes_insertcart(const char *filename);
+extern rom_t *nes_insertdisk(const char *filename);
 extern void nes_settimer(nes_timer_t *func, long period);
 extern void nes_emulate(void);
 extern void nes_reset(bool hard_reset);

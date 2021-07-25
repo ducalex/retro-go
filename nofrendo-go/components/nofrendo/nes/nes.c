@@ -142,7 +142,7 @@ void nes_setcompathacks(void)
 }
 
 /* insert a cart into the NES */
-bool nes_insertcart(const char *filename)
+rom_t *nes_insertcart(const char *filename)
 {
     /* rom file */
     nes.cart = rom_loadfile(filename);
@@ -195,17 +195,17 @@ bool nes_insertcart(const char *filename)
 
     nes_reset(true);
 
-    return true;
+    return nes.cart;
 
 _fail:
     nes_shutdown();
-    return false;
+    return NULL;
 }
 
 /* insert a disk into the FDS */
-bool nes_insertdisk(const char *filename)
+rom_t *nes_insertdisk(const char *filename)
 {
-    return false;
+    return NULL;
 }
 
 /* Reset NES hardware */
@@ -246,7 +246,7 @@ void nes_shutdown(void)
 }
 
 /* Initialize NES CPU, hardware, etc. */
-bool nes_init(system_t system, int sample_rate, bool stereo)
+nes_t *nes_init(system_t system, int sample_rate, bool stereo)
 {
     memset(&nes, 0, sizeof(nes_t));
 
@@ -284,10 +284,10 @@ bool nes_init(system_t system, int sample_rate, bool stereo)
         goto _fail;
 
     MESSAGE_INFO("NES: System initialized!\n");
-    return true;
+    return &nes;
 
 _fail:
     MESSAGE_ERROR("NES: System initialized failed!\n");
     nes_shutdown();
-    return false;
+    return NULL;
 }

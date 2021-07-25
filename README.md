@@ -115,9 +115,9 @@ An up to date list of incompatible/broken games can be found on the [ODROID-GO f
 # Building Retro-Go
 
 ## Prerequisites
-You will need a working installation of esp-idf [4.1.x](https://docs.espressif.com/projects/esp-idf/en/v4.1/) or [4.0.2](https://docs.espressif.com/projects/esp-idf/en/v4.0.2/) and only the CMake build system is supported.
+You will need a working installation of esp-idf [4.0.2](https://docs.espressif.com/projects/esp-idf/en/v4.0.2/) or [4.1.x](https://docs.espressif.com/projects/esp-idf/en/v4.1/) or [4.2.x](https://docs.espressif.com/projects/esp-idf/en/v4.2/) and only the CMake build system is supported.
 
-_Note: Other esp-idf versions may work (>=3.3.3) but I cannot provide help for them. Many are known to have problems: for example 3.3.0 and 4.0.0 have broken sound driver and 4.2 and 4.3 have broken SD Card support. If you can make retro-go work with 4.2 or 4.3 then please send me a pull request :)._
+_Note: Other esp-idf versions may work (>=3.3.3) but I cannot provide help for them. Some are known to have problems: for example 3.3.0 and 4.0.0 have broken sound driver._
 
 ### ESP-IDF Patches
 Retro-Go will build and most likely run without any changes to esp-idf, but patches do provide significant advantages. The patches are located in `tools/patches`. Here's the list:
@@ -161,7 +161,7 @@ I don't want to maintain non-ESP32 ports in this repository but let me know if I
 - The Lynx emulator is a port of [libretro-handy](https://github.com/libretro/libretro-handy).
 - The SNES emulator is a port of [Snes9x](https://github.com/snes9xgit/snes9x/).
 - PNG support is provided by [luPng](https://github.com/jansol/LuPng) and miniz.
-- PCE cover art is from Christian_Haitian.
+- PCE cover art is from [Christian_Haitian](https://github.com/christianhaitian).
 - Some icons from [Rokey](https://iconarchive.com/show/seed-icons-by-rokey.html)
 
 # License
