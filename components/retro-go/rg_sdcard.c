@@ -58,10 +58,14 @@ bool rg_sdcard_mount(void)
 #if RG_DRIVER_SDCARD == 1
 
     sdmmc_host_t host_config = SDSPI_HOST_DEFAULT();
-    host_config.flags = SDMMC_HOST_FLAG_SPI;
     host_config.slot = HSPI_HOST;
     host_config.max_freq_khz = SDMMC_FREQ_DEFAULT; // SDMMC_FREQ_26M;
     host_config.do_transaction = &sdcard_do_transaction;
+
+    // These are for esp-idf 4.2 compatibility
+    host_config.flags = SDMMC_HOST_FLAG_SPI;
+    host_config.init = &sdspi_host_init;
+    host_config.deinit = &sdspi_host_deinit;
 
     sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
     slot_config.gpio_miso = RG_GPIO_SD_MISO;

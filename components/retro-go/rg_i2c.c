@@ -41,7 +41,7 @@ fail:
 bool rg_i2c_deinit(void)
 {
 #ifdef USE_I2C_DRIVER
-    if (i2c_driver_delete(I2C_NUM_0) == ESP_OK)
+    if (i2cStarted && i2c_driver_delete(I2C_NUM_0) == ESP_OK)
     {
         RG_LOGI("I2C driver terminated.\n");
         i2cStarted = false;
