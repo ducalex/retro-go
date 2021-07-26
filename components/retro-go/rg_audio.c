@@ -1,3 +1,4 @@
+#include <freertos/FreeRTOS.h>
 #include <driver/i2s.h>
 #include <driver/dac.h>
 #include <unistd.h>
