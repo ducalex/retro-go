@@ -1,3 +1,13 @@
+# Retro-Go 1.26 (2021-07-29)
+- GBC: Experimental BIOS support (put your files in /bios/gb_bios.bin /bios/gbc_bios.bin)
+- NES: Added Mesen roms database to patch wrong headers
+- All: Option to disable partial screen updating (it seems to cause glitches for some people)
+- Launcher: Option to enable/disable any tab
+- Launcher: Fixed subdirectory display
+- Launcher: Fixed sorting bugs
+- Launcher: Recently played list
+- Dev: Now able to build on esp-idf 4.1 and 4.2
+
 # Retro-Go 1.25.3  (2021-05-30)
 This is a bug fix release that fixes the following issues:
 - Occasional crash when saving a game
