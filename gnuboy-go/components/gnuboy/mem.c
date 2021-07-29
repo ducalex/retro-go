@@ -38,9 +38,6 @@ void IRAM_ATTR mem_updatemap()
 		rom_loadbank(mbc.rombank);
 	}
 
-	memset(mbc.rmap, 0, sizeof(mbc.rmap));
-	memset(mbc.wmap, 0, sizeof(mbc.wmap));
-
 	// ROM
 	mbc.rmap[0x0] = rom.bank[0];
 	mbc.rmap[0x1] = rom.bank[0];
@@ -54,20 +51,27 @@ void IRAM_ATTR mem_updatemap()
 		mbc.rmap[0x6] = rom.bank[mbc.rombank] - 0x4000;
 		mbc.rmap[0x7] = rom.bank[mbc.rombank] - 0x4000;
 	}
+	else
+	{
+		mbc.rmap[0x4] = NULL;
+		mbc.rmap[0x5] = NULL;
+		mbc.rmap[0x6] = NULL;
+		mbc.rmap[0x7] = NULL;
+	}
 
 	// Video RAM
 	mbc.rmap[0x8] = mbc.wmap[0x8] = lcd.vbank[R_VBK & 1] - 0x8000;
 	mbc.rmap[0x9] = mbc.wmap[0x9] = lcd.vbank[R_VBK & 1] - 0x8000;
 
 	// Backup RAM
-	if (mbc.enableram && !(rtc.sel & 8))
-	{
-	 	// mbc.rmap[0xA] = mbc.wmap[0xA] = ram.sbank[mbc.rambank] - 0xA000;
-	 	// mbc.rmap[0xB] = mbc.wmap[0xB] = ram.sbank[mbc.rambank] - 0xA000;
-	}
+	mbc.rmap[0xA] = NULL;
+	mbc.rmap[0xB] = NULL;
 
 	// Work RAM
 	mbc.rmap[0xC] = mbc.wmap[0xC] = ram.ibank[0] - 0xC000;
+
+	// ?
+	mbc.rmap[0xD] = NULL;
 
 	// IO port and registers
 	mbc.rmap[0xF] = mbc.wmap[0xF] = NULL;
@@ -564,6 +568,9 @@ void mem_reset(bool hard)
 		memset(ram.ibank, 0xff, 4096 * 8);
 		memset(ram.sbank, 0xff, 8192 * mbc.ramsize);
 	}
+
+	memset(mbc.rmap, 0, sizeof(mbc.rmap));
+	memset(mbc.wmap, 0, sizeof(mbc.wmap));
 
 	// Mark all sectors as dirty and wait for sram_dirty to trigger
 	memset(ram.sram_dirty_sector, 1, 256);
