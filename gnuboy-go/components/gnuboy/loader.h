@@ -4,6 +4,8 @@
 int rom_loadbank(int);
 int rom_load(const char *file);
 void rom_unload(void);
+int bios_load(const char *file);
+void bios_unload(void);
 
 int sram_load(const char *file);
 int sram_save(const char *file);

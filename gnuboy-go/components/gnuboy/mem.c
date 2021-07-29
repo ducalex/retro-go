@@ -44,6 +44,12 @@ void IRAM_ATTR mem_updatemap()
 	mbc.rmap[0x2] = rom.bank[0];
 	mbc.rmap[0x3] = rom.bank[0];
 
+	// Force bios to go through mem_read (speed doesn't really matter here)
+	if (hw.bios && (R_BIOS & 1) == 0)
+	{
+		mbc.rmap[0x0] = NULL;
+	}
+
 	if (mbc.rombank < mbc.romsize)
 	{
 		mbc.rmap[0x4] = rom.bank[mbc.rombank] - 0x4000;
@@ -198,6 +204,10 @@ static inline void ioreg_write(byte r, byte b)
 	case RI_KEY1:
 		REG(r) = (REG(r) & 0x80) | (b & 0x01);
 		break;
+	case RI_BIOS:
+		REG(r) = b;
+		mem_updatemap();
+		break;
 	case RI_HDMA1:
 	case RI_HDMA2:
 	case RI_HDMA3:
@@ -250,6 +260,7 @@ static inline byte ioreg_read(byte r)
 	case RI_OCPD:
 	case RI_SVBK:
 	case RI_KEY1:
+	case RI_BIOS:
 	case RI_HDMA1:
 	case RI_HDMA2:
 	case RI_HDMA3:
@@ -514,6 +525,14 @@ byte IRAM_ATTR mem_read(addr_t a)
 	switch (ha)
 	{
 	case 0x0:
+		if (a < 0x900 && (R_BIOS & 1) == 0)
+		{
+			if (a < 0x100)
+				return hw.bios[a];
+			if (hw.cgb && a >= 0x200)
+				return hw.bios[a];
+		}
+		// fall through
 	case 0x2:
 		return rom.bank[0][a & 0x3fff];
 

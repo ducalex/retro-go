@@ -45,6 +45,8 @@
 
 #define RI_VBK   0x4F
 
+#define RI_BIOS  0x50
+
 #define RI_HDMA1 0x51
 #define RI_HDMA2 0x52
 #define RI_HDMA3 0x53
@@ -127,6 +129,8 @@
 #define R_OBP1  REG(RI_OBP1)
 #define R_WY    REG(RI_WY)
 #define R_WX    REG(RI_WX)
+
+#define R_BIOS  REG(RI_BIOS)
 
 #define R_VBK   REG(RI_VBK)
 

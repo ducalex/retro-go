@@ -254,6 +254,12 @@ void app_main(void)
     // Load ROM
     rom_load(app->romPath);
 
+    // Load BIOS
+    if (hw.cgb)
+        bios_load(RG_BASE_PATH "/bios/gbc_bios.bin");
+    else
+        bios_load(RG_BASE_PATH "/bios/gb_bios.bin");
+
     // Set palette for non-gbc games (must be after rom_load)
     pal_set_dmg(rg_settings_get_app_int32(SETTING_PALETTE, 0));
 

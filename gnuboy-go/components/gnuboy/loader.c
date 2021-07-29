@@ -170,7 +170,7 @@ int rom_loadbank(int bank)
 
 int rom_load(const char *file)
 {
-    MESSAGE_INFO("Loading file: '%s'\n", file);
+	MESSAGE_INFO("Loading file: '%s'\n", file);
 
 	fpRomFile = fopen(file, "rb");
 	if (fpRomFile == NULL)
@@ -565,6 +565,9 @@ int state_load(const char *file)
 	fclose(fp);
 	free(buf);
 
+	// Disable BIOS. This is a hack to support old saves
+	R_BIOS = 0x1;
+
 	pal_dirty();
 	sound_dirty();
 	mem_updatemap();
@@ -576,4 +579,30 @@ _error:
 	if (buf) free(buf);
 
 	return -1;
+}
+
+
+int bios_load(const char *file)
+{
+	MESSAGE_INFO("Loading BIOS file: '%s'\n", file);
+
+	FILE *fpBiosFile = fopen(file, "rb");
+	if (fpBiosFile == NULL)
+	{
+		MESSAGE_ERROR("BIOS fopen failed");
+		return -1;
+	}
+
+	hw.bios = malloc(0x900);
+	if (!hw.bios)
+		emu_die("Out of memory");
+
+	if (fread(hw.bios, 1, 0x900, fpBiosFile) >= 0x100)
+	{
+		MESSAGE_INFO("BIOS loaded\n");
+	}
+
+	fclose(fpBiosFile);
+
+	return 0;
 }

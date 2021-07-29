@@ -280,14 +280,12 @@ void cpu_reset(bool hard)
 	IME = 0;
 	IMA = 0;
 
-	PC = 0x0100;
+	PC = hw.bios ? 0x0000 : 0x0100;
 	SP = 0xFFFE;
-	AF = 0x01B0;
+	AF = hw.cgb ? 0x11B0 : 0x01B0;
 	BC = 0x0013;
 	DE = 0x00D8;
 	HL = 0x014D;
-
-	if (hw.cgb) A = 0x11;
 }
 
 /* cnt - time to emulate, expressed in real clock cycles */

@@ -28,6 +28,7 @@ typedef struct
 	un32 cgb;
 	n32 hdma;
 	n32 serial;
+	un8 *bios;
 } hw_t;
 
 
