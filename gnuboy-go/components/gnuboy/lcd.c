@@ -11,42 +11,29 @@
 
 #include "palettes.h"
 
-typedef struct
-{
-	int pat, x, v, pal, pri;
-} vissprite_t;
-
-static int BG[64];
-static int WND[64];
-static byte BUF[0x100];
-static byte PRI[0x100];
-static un16 PAL[64];
-static vissprite_t VS[16];
-
-static int S; /* tilemap position */
-static int T;
-static int U; /* position within tile */
-static int V;
-
-static int WX;
-static int WY;
-static int WT;
-static int WV;
-
+#define BG (lcd.BG)
+#define WND (lcd.WND)
+#define BUF (lcd.BUF)
+#define PRI (lcd.PRI)
+#define VS (lcd.VS)
 #define CYCLES (lcd.cycles)
+#define S lcd.S /* tilemap position */
+#define T lcd.T
+#define U lcd.U /* position within tile */
+#define V lcd.V
+#define WX lcd.WX
+#define WY lcd.WY
+#define WT lcd.WT
+#define WV lcd.WV
+
+lcd_t lcd;
+fb_t fb;
 
 static uint16_t dmg_pal[4][4] = {
 	GB_DEFAULT_PALETTE, GB_DEFAULT_PALETTE,
 	GB_DEFAULT_PALETTE, GB_DEFAULT_PALETTE,
 };
 static int dmg_selected_pal = 0;
-
-static byte *vdest;
-
-
-lcd_t lcd;
-fb_t fb;
-
 
 #define priused(attr) ({un32 *a = (un32*)(attr); (int)((a[0]|a[1]|a[2]|a[3]|a[4]|a[5]|a[6]|a[7])&0x80808080);})
 
@@ -64,8 +51,7 @@ __attribute__((optimize("unroll-loops")))
 static inline byte *get_patpix(int tile, int x)
 {
 	const byte *vram = lcd.vbank[0];
-
-	static byte pix[8];
+	byte *pix = lcd.pix_buf;
 
 	if (tile & (1 << 11)) // Vertical Flip
 		vram += ((tile & 0x3FF) << 4) | ((7 - x) << 1);
@@ -480,7 +466,7 @@ static inline void spr_scan(int ns)
 
 static inline void lcd_beginframe()
 {
-	vdest = fb.buffer;
+	fb.vdest = fb.buffer;
 	WY = R_WY;
 }
 
@@ -490,16 +476,17 @@ void lcd_reset(bool hard)
 	{
 		memset(&lcd, 0, sizeof(lcd));
 	}
+	else
+	{
+		memset(BG, 0, sizeof(BG));
+		memset(WND, 0, sizeof(WND));
+		memset(BUF, 0, sizeof(BUF));
+		memset(PRI, 0, sizeof(PRI));
+		memset(VS, 0, sizeof(VS));
 
-	memset(BG, 0, sizeof(BG));
-	memset(WND, 0, sizeof(WND));
-	memset(BUF, 0, sizeof(BUF));
-	memset(PRI, 0, sizeof(PRI));
-	memset(PAL, 0, sizeof(PAL));
-	memset(VS, 0, sizeof(VS));
-
-	WX = WY = WT = WV = 0;
-	S = T = U = V = 0;
+		WX = WY = WT = WV = 0;
+		S = T = U = V = 0;
+	}
 
 	lcd_beginframe();
 	pal_set_dmg(dmg_selected_pal);
@@ -560,36 +547,39 @@ static inline void lcd_renderline()
 
 	if (fb.format == GB_PIXEL_PALETTED)
 	{
-		memcpy(vdest, BUF, 160);
-		vdest += 160;
+		memcpy(fb.vdest, BUF, 160);
+		fb.vdest += 160;
 	}
 	else
 	{
-		un16* dst = (un16*)vdest;
+		un16 *dst = (un16*)fb.vdest;
+		un16 *pal = (un16*)fb.palette;
 
 		for (int i = 0; i < 160; ++i)
-			dst[i] = PAL[BUF[i]];
+			dst[i] = pal[BUF[i]];
 
-		vdest += 160 * 2;
+		fb.vdest += 160 * 2;
 	}
 }
 
 static inline void pal_update(byte i)
 {
-	int low = lcd.pal[i << 1];
-	int high = lcd.pal[(i << 1) | 1];
+#ifdef IS_LITTLE_ENDIAN
+	un32 c = ((un16*)lcd.pal)[i];
+#else
+	un32 c = ((lcd.pal[i << 1]) | ((lcd.pal[(i << 1) | 1]) << 8));
+#endif
+	un32 r = c & 0x1f;         // bit 0-4 red
+	un32 g = (c >> 5) & 0x1f;  // bit 5-9 green
+	un32 b = (c >> 10) & 0x1f; // bit 10-14 blue
 
-	int c = (low | (high << 8)) & 0x7fff;
-
-	int r = c & 0x1f;         // bit 0-4 red
-	int g = (c >> 5) & 0x1f;  // bit 5-9 green
-	int b = (c >> 10) & 0x1f; // bit 10-14 blue
-
-	PAL[i] = (r << 11) | (g << (5 + 1)) | (b);
+	un32 out = (r << 11) | (g << (5 + 1)) | (b);
 
 	if (fb.format == GB_PIXEL_565_BE) {
-		PAL[i] = (PAL[i] << 8) | (PAL[i] >> 8);
+		out = (out << 8) | (out >> 8);
 	}
+
+	fb.palette[i] = out;
 }
 
 static inline void pal_detect_dmg()
@@ -625,16 +615,16 @@ static inline void pal_detect_dmg()
 		}
 	}
 
-    uint8_t palette = colorization_palette_info[infoIdx] & 0x1F;
-    uint8_t flags = (colorization_palette_info[infoIdx] & 0xE0) >> 5;
+	uint8_t palette = colorization_palette_info[infoIdx] & 0x1F;
+	uint8_t flags = (colorization_palette_info[infoIdx] & 0xE0) >> 5;
 
 	bgp  = dmg_game_palettes[palette][2];
-    obp0 = dmg_game_palettes[palette][(flags & 1) ? 0 : 1];
-    obp1 = dmg_game_palettes[palette][(flags & 2) ? 0 : 1];
+	obp0 = dmg_game_palettes[palette][(flags & 1) ? 0 : 1];
+	obp1 = dmg_game_palettes[palette][(flags & 2) ? 0 : 1];
 
-    if (!(flags & 4)) {
-        obp1 = dmg_game_palettes[palette][2];
-    }
+	if (!(flags & 4)) {
+		obp1 = dmg_game_palettes[palette][2];
+	}
 
 	MESSAGE_INFO("Using GBC palette %d\n", palette);
 
@@ -653,10 +643,11 @@ void pal_write(byte i, byte b)
 
 void pal_write_dmg(byte i, byte mapnum, byte d)
 {
-	mapnum &= 3;
+	un16 *map = dmg_pal[mapnum & 3];
+
 	for (int j = 0; j < 8; j += 2)
 	{
-		int c = dmg_pal[mapnum][(d >> j) & 3];
+		int c = map[(d >> j) & 3];
 		/* FIXME - handle directly without faking cgb */
 		pal_write(i+j, c & 0xff);
 		pal_write(i+j+1, c >> 8);

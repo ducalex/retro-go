@@ -4,8 +4,13 @@
 #include "emu.h"
 
 /* Quick access CPU registers */
-#define LB(r) ((r).b[LO])
-#define HB(r) ((r).b[HI])
+#ifdef IS_LITTLE_ENDIAN
+#define LB(r) ((r).b[0])
+#define HB(r) ((r).b[1])
+#else
+#define LB(r) ((r).b[1])
+#define HB(r) ((r).b[0])
+#endif
 #define W(r) ((r).w)
 
 #define A HB(cpu.af)

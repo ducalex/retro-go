@@ -16,6 +16,11 @@ typedef struct
 
 typedef struct
 {
+	int pat, x, v, pal, pri;
+} vissprite_t;
+
+typedef struct
+{
 	byte vbank[2][8192];
 	union
 	{
@@ -23,6 +28,17 @@ typedef struct
 		obj_t obj[40];
 	} oam;
 	byte pal[128];
+
+	int BG[64];
+	int WND[64];
+	byte BUF[0x100];
+	byte PRI[0x100];
+	vissprite_t VS[16];
+
+	byte pix_buf[8];
+
+	int S, T, U, V;
+	int WX, WY, WT, WV;
 
 	int cycles;
 
@@ -39,6 +55,8 @@ enum {
 typedef struct
 {
 	byte *buffer;
+	byte *vdest;
+	un16 palette[64];
 	int format;
 	int enabled;
 	void (*blit_func)();

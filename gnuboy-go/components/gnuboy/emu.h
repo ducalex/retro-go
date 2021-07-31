@@ -9,14 +9,6 @@
 #include <stdarg.h>
 #include <rg_system.h>
 
-#ifdef IS_LITTLE_ENDIAN
-#define LO 0
-#define HI 1
-#else
-#define LO 1
-#define HI 0
-#endif
-
 #define MESSAGE_ERROR(x, ...) printf("!! %s: " x, __func__, ## __VA_ARGS__)
 #define MESSAGE_INFO(x, ...) printf("%s: " x, __func__, ## __VA_ARGS__)
 // #define MESSAGE_DEBUG(x, ...) printf("> %s: " x, __func__, ## __VA_ARGS__)

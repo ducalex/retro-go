@@ -552,12 +552,12 @@ static const byte operand_count[256] =
 
 void debug_disassemble(addr_t a, int c)
 {
-	static int i, j, k;
-	static byte code;
-	static byte ops[3];
-	static int opaddr;
-	static char mnemonic[256];
-	static const char *pattern;
+	int i, j, k;
+	byte code;
+	byte ops[3];
+	int opaddr;
+	char mnemonic[256];
+	const char *pattern;
 
 	while (c > 0)
 	{
