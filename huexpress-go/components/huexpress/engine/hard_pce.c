@@ -101,7 +101,7 @@ pce_run(void)
     while (!host.paused) {
         osd_input_read();
 
-        for (Scanline = 0; Scanline < 263; ++Scanline) {
+        for (PCE.Scanline = 0; PCE.Scanline < 263; ++PCE.Scanline) {
             PCE.MaxCycles += CYCLES_PER_LINE;
             h6280_run();
             timer_run();
@@ -338,7 +338,7 @@ IO_write(uint16_t A, uint8_t V)
                    return;
                  */
                 gfx_latch_context(0);
-                ScrollYDiff = Scanline - 1 - IO_VDC_MINLINE;
+                scroll_y_diff = PCE.Scanline - 1 - IO_VDC_MINLINE;
                 break;
 
             case MWR:                           // Memory Width Register
@@ -419,9 +419,9 @@ IO_write(uint16_t A, uint8_t V)
 
             case BYR:                           // Vertical screen offset
                 gfx_latch_context(0);
-                ScrollYDiff = Scanline - 1 - IO_VDC_MINLINE;
-                if (ScrollYDiff < 0) {
-                    MESSAGE_DEBUG("ScrollYDiff went negative when substraction VPR.h/.l (%d,%d)\n",
+                scroll_y_diff = PCE.Scanline - 1 - IO_VDC_MINLINE;
+                if (scroll_y_diff < 0) {
+                    MESSAGE_DEBUG("scroll_y_diff went negative when substraction VPR.h/.l (%d,%d)\n",
                         IO_VDC_REG[VPR].B.h, IO_VDC_REG[VPR].B.l);
                 }
                 break;

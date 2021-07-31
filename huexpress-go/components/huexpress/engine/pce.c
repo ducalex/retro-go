@@ -205,7 +205,7 @@ LoadCard(const char *name)
 void
 ResetPCE(bool hard)
 {
-	gfx_clear_cache();
+	gfx_reset(hard);
 	pce_reset(hard);
 }
 
@@ -281,7 +281,7 @@ LoadState(const char *name)
 		pce_bank_set(i, PCE.MMR[i]);
 	}
 
-	gfx_clear_cache();
+	gfx_reset(true);
 
 	osd_gfx_set_mode(IO_VDC_SCREEN_WIDTH, IO_VDC_SCREEN_HEIGHT);
 

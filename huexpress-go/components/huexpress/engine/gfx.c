@@ -5,7 +5,7 @@
 static gfx_context_t gfx_context;
 
 // Active screen buffer
-static uint8_t* screen_buffer;
+static uint8_t *screen_buffer;
 
 // Cache for linear tiles and sprites. This is basically a decoded VRAM
 static uint32_t *OBJ_CACHE;
@@ -13,7 +13,9 @@ bool TILE_CACHE[2048];
 bool SPR_CACHE[512];
 
 //
-int ScrollYDiff;
+static int line_counter = 0;
+static int last_line_counter = 0;
+int scroll_y_diff = 0;
 
 #define PAL(nibble) (PAL[(L >> ((nibble) * 4)) & 15])
 
@@ -339,7 +341,7 @@ gfx_latch_context(int force)
 {
 	if (!gfx_context.latched || force) { // Context is already saved + we haven't render the line using it
 		gfx_context.scroll_x = IO_VDC_REG[BXR].W;
-		gfx_context.scroll_y = IO_VDC_REG[BYR].W - ScrollYDiff;
+		gfx_context.scroll_y = IO_VDC_REG[BYR].W - scroll_y_diff;
 		gfx_context.control = IO_VDC_REG[CR].W;
 		gfx_context.latched = 1;
 	}
@@ -354,6 +356,7 @@ render_lines(int min_line, int max_line)
 {
 	gfx_context.latched = 0;
 
+	screen_buffer = osd_gfx_framebuffer();
 	if (!screen_buffer) {
 		return;
 	}
@@ -379,20 +382,20 @@ int
 gfx_init(void)
 {
 	OBJ_CACHE = osd_alloc(0x10000);
-
-	gfx_clear_cache();
-
+	gfx_reset(true);
 	osd_gfx_init();
-
 	return 0;
 }
 
 
 void
-gfx_clear_cache(void)
+gfx_reset(bool hard)
 {
-	memset(&SPR_CACHE, 0, sizeof(SPR_CACHE));
-	memset(&TILE_CACHE, 0, sizeof(TILE_CACHE));
+	memset(OBJ_CACHE, 0, 0x10000);
+	memset(SPR_CACHE, 0, sizeof(SPR_CACHE));
+	memset(TILE_CACHE, 0, sizeof(TILE_CACHE));
+	last_line_counter = 0;
+	line_counter = 0;
 }
 
 
@@ -441,10 +444,7 @@ gfx_irq(int type)
 void
 gfx_run(void)
 {
-	static int line_counter = 0;
-	static int last_line_counter = 0;
-
-	screen_buffer = osd_gfx_framebuffer();
+	int scanline = PCE.Scanline;
 
 	/* DMA Transfer in "progress" */
 	if (PCE.VDC.satb > DMA_TRANSFER_COUNTER) {
@@ -458,20 +458,20 @@ gfx_run(void)
 	/* Test raster hit */
 	if (RasHitON) {
 		int raster_hit = (IO_VDC_REG[RCR].W & 0x3FF) - 64;
-		int current_line = Scanline - IO_VDC_MINLINE + 1;
+		int current_line = scanline - IO_VDC_MINLINE + 1;
 		if (current_line == raster_hit && raster_hit < 263) {
-			TRACE_GFX("\n-----------------RASTER HIT (%d)------------------\n", Scanline);
+			TRACE_GFX("\n-----------------RASTER HIT (%d)------------------\n", scanline);
 			gfx_irq(VDC_STAT_RR);
 		}
 	}
 
 	/* Visible area */
-	if (Scanline >= 14 && Scanline <= 255) {
-		if (Scanline == IO_VDC_MINLINE) {
+	if (scanline >= 14 && scanline <= 255) {
+		if (scanline == IO_VDC_MINLINE) {
 			gfx_latch_context(1);
 		}
 
-		if (Scanline >= IO_VDC_MINLINE && Scanline <= IO_VDC_MAXLINE) {
+		if (scanline >= IO_VDC_MINLINE && scanline <= IO_VDC_MAXLINE) {
 			if (gfx_context.latched) {
 				render_lines(last_line_counter, line_counter);
 				last_line_counter = line_counter;
@@ -480,7 +480,7 @@ gfx_run(void)
 		}
 	}
 	/* V Blank trigger line */
-	else if (Scanline == 256) {
+	else if (scanline == 256) {
 
 		// Draw any lines left in the context
 		gfx_latch_context(0);
@@ -514,7 +514,7 @@ gfx_run(void)
 		gfx_context.latched = 0;
 		last_line_counter = 0;
 		line_counter = 0;
-		ScrollYDiff = 0;
+		scroll_y_diff = 0;
 	}
 
 	/* Always call at least once (to handle pending IRQs) */

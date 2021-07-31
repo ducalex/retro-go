@@ -120,7 +120,7 @@ typedef struct {
 	uint8_t Palette[512];
 
 	// The current rendered line on screen
-	uint16_t Scanline;
+	uint32_t Scanline;
 
 	// Number of executed CPU cycles
 	uint32_t Cycles;
@@ -193,7 +193,6 @@ extern uint8_t *PageW[8];
 extern uint8_t *MemoryMapR[256];
 extern uint8_t *MemoryMapW[256];
 
-#define Scanline PCE.Scanline
 #define Cycles PCE.Cycles
 
 #define IO_VDC_REG           PCE.VDC.regs

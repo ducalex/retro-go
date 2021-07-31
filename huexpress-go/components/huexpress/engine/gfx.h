@@ -45,7 +45,7 @@ typedef struct {
 extern bool TILE_CACHE[2048];
 extern bool SPR_CACHE[512];
 
-extern int ScrollYDiff;
+extern int scroll_y_diff;
 
 #define OBJ_CACHE_INVALIDATE(x) { \
 	TILE_CACHE[((x) / 16) & 0x7FF] = 0; \
@@ -65,7 +65,7 @@ int gfx_init(void);
 void gfx_run(void);
 void gfx_term(void);
 void gfx_irq(int type);
-void gfx_clear_cache(void);
+void gfx_reset(bool hard);
 void gfx_latch_context(int slot_number);
 void gfx_set_scroll_diff(void);
 
