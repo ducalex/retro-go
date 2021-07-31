@@ -1,3 +1,7 @@
+# Retro-Go 1.26.1 (2021-07-31)
+- Launcher: Fixed subdirectory display (again)
+
+
 # Retro-Go 1.26 (2021-07-29)
 - GBC: Experimental BIOS support (put your files in /bios/gb_bios.bin /bios/gbc_bios.bin)
 - NES: Added Mesen roms database to patch wrong headers
@@ -8,13 +12,13 @@
 - Launcher: Recently played list
 - Dev: Now able to build on esp-idf 4.1 and 4.2
 
+
 # Retro-Go 1.25.3  (2021-05-30)
 This is a bug fix release that fixes the following issues:
 - Occasional crash when saving a game
 - Corrupted or missing save screenshot
 - Menu dialog sometimes cut off with big fonts (now can scroll)
 - Games in subfolders now shown in the launcher (still no sub navigation but everything will be listed at least)
-
 
 
 # Retro-Go 1.25.1  (2021-04-28)

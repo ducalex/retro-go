@@ -93,6 +93,13 @@ On real hardware, Game Boy games save their state to a battery-backed SRAM chip 
 To recap: If you set a reasonable save delay (10-30s) and you briefly open the menu before powering down, and don't use save states, you will have close to the "real hardware experience".
 
 
+# BIOS
+Some emulators support loading a BIOS. The files should be placed as follows:
+- GB: /bios/gb_bios.bin
+- GBC: /bios/gbc_bios.bin
+- FDS: /bios/fds_bios.bin
+
+
 # Known issues
 An up to date list of incompatible/broken games can be found on the [ODROID-GO forum](https://forum.odroid.com/viewtopic.php?f=159&t=37599). This is also the place to submit bug reports and feature requests.
 
@@ -105,8 +112,6 @@ An up to date list of incompatible/broken games can be found on the [ODROID-GO f
 - Multiple save states
 - Atari 2600 or 5200 or 7800
 - Neo Geo Pocket Color
-- Folders support
-- Game Boy BIOS
 - Chip sound player
 - Sleep mode
 - Arduboy compatibility?
