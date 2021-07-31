@@ -250,6 +250,8 @@ int emulator_scan_folder(retro_emulator_t *emu, const char* path, int flags)
 {
     RG_ASSERT(emu && path, "Bad param");
 
+    RG_LOGI("Scanning directory %s\n", path);
+
     DIR* dir = opendir(path);
     if (!dir)
         return -1;
@@ -303,7 +305,7 @@ int emulator_scan_folder(retro_emulator_t *emu, const char* path, int flags)
         {
             strcpy(pathbuf, path);
             strcat(pathbuf, "/");
-            strcpy(pathbuf, name);
+            strcat(pathbuf, name);
             emulator_scan_folder(emu, pathbuf, flags);
         }
     }
