@@ -130,6 +130,7 @@ typedef struct
 
    uint8 volume;
    uint8 xor_tap;
+   uint16 shift_reg;
 
    int vbl_length;
 } noise_t;
@@ -192,6 +193,8 @@ typedef struct
    dmc_t dmc;
    uint8 control_reg;
 
+   int32 prev_sample;
+
    uint32 samples_per_frame;
    uint32 sample_rate;
    bool stereo;
@@ -207,6 +210,11 @@ typedef struct
       bool irq_occurred;
       bool disable_irq;
    } fc;
+
+   /* look up table madness */
+   int32 decay_lut[16];
+   int32 vbl_lut[32];
+   int32 trilength_lut[128];
 
    /* external sound chip */
    apuext_t *ext;
