@@ -454,7 +454,7 @@ void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file)
         else if (type == 0x2) // Game cover (png)
             sprintf(path, RG_BASE_PATH_ROMART "/%s/%X/%08X.png", dirname, file->checksum >> 28, file->checksum);
         else if (type == 0x3) // Save state screenshot (png)
-            sprintf(path, "%s/%s/%s.png", RG_BASE_PATH_SAVES, dirname, file->name);
+            sprintf(path, RG_BASE_PATH_SAVES "/%s/%s.png", file->folder + strlen(RG_BASE_PATH_ROMS), file->name);
         else if (type == 0x4) // use default image (not currently used)
             sprintf(path, RG_BASE_PATH_ROMART "/%s/default.png", dirname);
         else
