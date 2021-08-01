@@ -35,6 +35,19 @@ static inline void copy_rgb888_to_rgb565(uint16_t *dest, const uint8_t *src, siz
     }
 }
 
+static inline void copy_rgb8888_to_rgb565(uint16_t *dest, const uint8_t *src, size_t pixel_count)
+{
+    RG_ASSERT(dest && src, "bad param");
+
+    for (int i = 0; i < pixel_count; ++i)
+    {
+        dest[i] = (((src[0] >> 3) & 0x1F) << 11)
+                | (((src[1] >> 2) & 0x3F) << 5)
+                | (((src[2] >> 3) & 0x1F));
+        src += 4;
+    }
+}
+
 rg_image_t *rg_image_load_from_file(const char *filename, uint32_t flags)
 {
     RG_ASSERT(filename, "bad param");
@@ -84,7 +97,10 @@ rg_image_t *rg_image_load_from_memory(const uint8_t *data, size_t data_len, uint
         rg_image_t *img = rg_image_alloc(png->width, png->height);
         if (img)
         {
-            copy_rgb888_to_rgb565(img->data, png->data, img->width * img->height);
+            if (png->channels == 4)
+                copy_rgb8888_to_rgb565(img->data, png->data, img->width * img->height);
+            else
+                copy_rgb888_to_rgb565(img->data, png->data, img->width * img->height);
         }
         luImageRelease(png, NULL);
         return img;
@@ -147,14 +163,15 @@ bool rg_image_save_to_file(const char *filename, const rg_image_t *img, uint32_t
 
     copy_rgb565_to_rgb888(png->data, img->data, img->width * img->height);
 
-    if (luPngWriteFile(filename, png))
+    if (luPngWriteFile(filename, png) != PNG_OK)
     {
+        RG_LOGE("luPngWriteFile failed!\n");
         luImageRelease(png, 0);
-        return true;
+        return false;
     }
 
     luImageRelease(png, 0);
-    return false;
+    return true;
 }
 
 rg_image_t *rg_image_alloc(size_t width, size_t height)

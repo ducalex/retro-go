@@ -666,10 +666,7 @@ static LU_INLINE int parseIdat(PngInfoStruct *info, PngChunk *chunk)
         int decompressed = BUF_SIZE - info->stream.avail_out;
         int i = 0;
 
-        if (status != MZ_OK &&
-            status != MZ_STREAM_END &&
-            status != MZ_BUF_ERROR &&
-            status != MZ_NEED_DICT)
+        if (status < 0)
         {
             LUPNG_WARN(info, "inflate error (%d)!", status);
             return PNG_ERROR;
@@ -1233,7 +1230,7 @@ int luPngWriteFile(const char *filename, const LuImage *img)
     if (!img || !filename)
         return PNG_ERROR;
 
-    FILE *f = fopen(filename,"wb");
+    FILE *f = fopen(filename, "wb");
     if (f)
     {
         userCtx.writeProc = internalFwrite;
@@ -1354,7 +1351,7 @@ void luUserContextInitDefault(LuUserContext *userCtx)
 
     userCtx->writeProc=NULL;
     userCtx->writeProcUserPtr=NULL;
-    userCtx->compressionLevel=MZ_DEFAULT_COMPRESSION;
+    userCtx->compressionLevel=6;
 
     userCtx->allocProc=internalMalloc;
     userCtx->allocProcUserPtr=NULL;
