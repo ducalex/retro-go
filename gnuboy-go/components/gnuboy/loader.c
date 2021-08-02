@@ -258,10 +258,10 @@ int rom_load(const char *file)
 
 	int preload = mbc.romsize < 64 ? mbc.romsize : 64;
 
-	if (strncmp(rom.name, "RAYMAN", 6) == 0 || strncmp(rom.name, "NONAME", 6) == 0)
+	if (mbc.romsize > 64 && (strncmp(rom.name, "RAYMAN", 6) == 0 || strncmp(rom.name, "NONAME", 6) == 0))
 	{
 		MESSAGE_INFO("Special preloading for Rayman 1/2\n");
-		preload = mbc.romsize - 8;
+		preload = mbc.romsize - 40;
 	}
 
 	MESSAGE_INFO("Preloading the first %d banks\n", preload);

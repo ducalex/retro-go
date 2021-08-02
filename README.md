@@ -165,7 +165,7 @@ I don't want to maintain non-ESP32 ports in this repository but let me know if I
 - The PCE emulator is a port of [HuExpress](https://github.com/kallisti5/huexpress) and [pelle7's port](https://github.com/pelle7/odroid-go-pcengine-huexpress/) was used as reference.
 - The Lynx emulator is a port of [libretro-handy](https://github.com/libretro/libretro-handy).
 - The SNES emulator is a port of [Snes9x](https://github.com/snes9xgit/snes9x/).
-- PNG support is provided by [luPng](https://github.com/jansol/LuPng) and miniz.
+- PNG support is provided by [luPng](https://github.com/jansol/LuPng) and [zlib](http://zlib.net).
 - PCE cover art is from [Christian_Haitian](https://github.com/christianhaitian).
 - Some icons from [Rokey](https://iconarchive.com/show/seed-icons-by-rokey.html)
 
@@ -173,4 +173,5 @@ I don't want to maintain non-ESP32 ports in this repository but let me know if I
 Everything in this project is licensed under the [GPLv2 license](COPYING) with the exception of the following components:
 - components/lupng (PNG library, MIT)
 - components/retro-go (Retro-Go's framework, MIT)
+- components/zlib (zlib library, zlib)
 - handy-go/components/handy (Lynx emulator, BSD)

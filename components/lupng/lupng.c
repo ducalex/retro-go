@@ -27,9 +27,8 @@
 #include <string.h>
 #include <stdarg.h>
 #include <ctype.h>
-// #include "<zlib.h>"
+#include <zlib.h>
 
-#include "miniz.h"
 #include "lupng.h"
 
 #define PNG_NONE 0x00
@@ -163,7 +162,7 @@ typedef struct
     size_t  paletteItems;
 
     /* fields used for (de)compression & (de-)filtering */
-    mz_stream stream;
+    z_stream stream;
     int32_t scanlineBytes;
     int32_t bytesPerPixel;
     int32_t currentByte;
@@ -652,7 +651,7 @@ static LU_INLINE int parseIdat(PngInfoStruct *info, PngChunk *chunk)
         return PNG_ERROR;
     }
 
-    // mz_inflateReset(&info->stream);
+    // inflateReset(&info->stream);
 
     info->chunksFound |= PNG_IDAT;
     info->stream.next_in = chunk->data;
@@ -662,7 +661,7 @@ static LU_INLINE int parseIdat(PngInfoStruct *info, PngChunk *chunk)
         info->stream.next_out = info->buffer;
         info->stream.avail_out = BUF_SIZE;
 
-        int status = mz_inflate(&info->stream, MZ_NO_FLUSH);
+        int status = inflate(&info->stream, Z_NO_FLUSH);
         int decompressed = BUF_SIZE - info->stream.avail_out;
         int i = 0;
 
@@ -831,7 +830,7 @@ LuImage *luPngReadUC(const LuUserContext *userCtx)
     memset(info, 0, sizeof(PngInfoStruct));
     info->userCtx = userCtx;
 
-    if (mz_inflateInit(&info->stream) != MZ_OK)
+    if (inflateInit(&info->stream) != Z_OK)
     {
         LUPNG_WARN(info, "inflateInit failed!");
         return NULL;
@@ -848,7 +847,7 @@ LuImage *luPngReadUC(const LuUserContext *userCtx)
 
     img = info->img;
 
-    mz_inflateEnd(&info->stream);
+    inflateEnd(&info->stream);
     userCtx->freeProc(info->currentScanline, userCtx->freeProcUserPtr);
     userCtx->freeProc(info->previousScanline, userCtx->freeProcUserPtr);
     userCtx->freeProc(info, userCtx->freeProcUserPtr);
@@ -1022,7 +1021,7 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
 {
     uint8_t *filterCandidate = (uint8_t *)info->userCtx->allocProc(info->scanlineBytes+1, info->userCtx->allocProcUserPtr);
     uint8_t *bestCandidate = (uint8_t *)info->userCtx->allocProc(info->scanlineBytes+1, info->userCtx->allocProcUserPtr);
-    int status = MZ_OK;
+    int status = Z_OK;
     int is16bit = info->cimg->depth == 16;
 
     if (!filterCandidate || !bestCandidate)
@@ -1031,7 +1030,7 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
         goto _error;
     }
 
-    mz_deflateReset(&info->stream);
+    deflateReset(&info->stream);
 
     memcpy(info->buffer, "IDAT", 4);
 
@@ -1040,7 +1039,7 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
 
     for (info->currentRow = 0; info->currentRow < info->img->height; ++info->currentRow)
     {
-        int flush = (info->currentRow < info->img->height-1) ? MZ_NO_FLUSH : MZ_FINISH;
+        int flush = (info->currentRow < info->img->height-1) ? Z_NO_FLUSH : Z_FINISH;
 
         /*
          * 1st time it doesn't matter, the filters never look at the previous
@@ -1136,7 +1135,7 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
         /* compress bestCandidate */
         do
         {
-            status = mz_deflate(&info->stream, flush);
+            status = deflate(&info->stream, flush);
 
             if (status < 0)
             {
@@ -1153,8 +1152,8 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
                 info->stream.next_out = info->buffer + 4;
                 info->stream.avail_out = BUF_SIZE;
             }
-        } while ((flush == MZ_FINISH && status != MZ_STREAM_END)
-                    || (flush == MZ_NO_FLUSH && info->stream.avail_in));
+        } while ((flush == Z_FINISH && status != Z_STREAM_END)
+                    || (flush == Z_NO_FLUSH && info->stream.avail_in));
     }
 
     info->userCtx->freeProc(filterCandidate, info->userCtx->freeProcUserPtr);
@@ -1182,7 +1181,7 @@ int luPngWriteUC(const LuUserContext *userCtx, const LuImage *img)
     info->bytesPerPixel = (img->channels * img->depth) >> 3;
     info->scanlineBytes = info->bytesPerPixel * img->width;
 
-    if (mz_deflateInit(&info->stream, info->userCtx->compressionLevel) != MZ_OK)
+    if (deflateInit(&info->stream, info->userCtx->compressionLevel) != Z_OK)
     {
         LUPNG_WARN(info, "deflateInit failed!");
         goto _cleanup;
@@ -1201,7 +1200,7 @@ int luPngWriteUC(const LuUserContext *userCtx, const LuImage *img)
     status = writeChunk(info, "IEND", 4);
 
 _cleanup:
-    mz_deflateEnd(&info->stream);
+    deflateEnd(&info->stream);
     userCtx->freeProc(info, userCtx->freeProcUserPtr);
     return status;
 }
