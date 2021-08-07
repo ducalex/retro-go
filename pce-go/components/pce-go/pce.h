@@ -1,8 +1,7 @@
-#ifndef _INCLUDE_HARD_PCE_H
-#define _INCLUDE_HARD_PCE_H
+#pragma once
 
-#include "../config.h"
-#include "stddef.h"
+#include <stddef.h>
+#include "config.h"
 #include "utils.h"
 
 // System clocks (hz)
@@ -85,7 +84,10 @@ typedef struct {
 	uint32_t dda_index;
 
 	uint32_t wave_accum;
-	uint32_t noise_accum;
+
+	int32_t noise_accum;
+	int32_t noise_level;
+	int32_t noise_rand;
 } psg_chan_t;
 
 typedef struct {
@@ -121,6 +123,9 @@ typedef struct {
 
 	// The current rendered line on screen
 	uint32_t Scanline;
+
+	//
+	int ScrollYDiff;
 
 	// Number of executed CPU cycles
 	uint32_t Cycles;
@@ -226,9 +231,9 @@ int  pce_init(void);
 void pce_reset(bool hard);
 void pce_term(void);
 void pce_run(void);
-
-void IO_write(uint16_t A, uint8_t V);
-uint8_t IO_read(uint16_t A);
+void pce_pause(void);
+void pce_writeIO(uint16_t A, uint8_t V);
+uint8_t pce_readIO(uint16_t A);
 
 
 /**
@@ -240,13 +245,13 @@ uint8_t IO_read(uint16_t A);
 #define pce_read8(addr) ({							\
 	uint32_t a = (addr);							\
 	uint8_t *page = PageR[a >> 13]; 				\
-	(page == PCE.IOAREA) ? IO_read(a) : page[a]; 	\
+	(page == PCE.IOAREA) ? pce_readIO(a) : page[a]; \
 })
 
 #define pce_write8(addr, byte) {					\
 	uint32_t a = (addr), b = (byte); 				\
 	uint8_t *page = PageW[a >> 13]; 				\
-	if (page == PCE.IOAREA) IO_write(a, b); 		\
+	if (page == PCE.IOAREA) pce_writeIO(a, b); 		\
 	else page[a] = b;								\
 }
 
@@ -268,7 +273,7 @@ pce_read8(uint16_t addr)
 	uint8_t *page = PageR[addr >> 13];
 
 	if (page == PCE.IOAREA)
-		return IO_read(addr);
+		return pce_readIO(addr);
 	else
 		return page[addr];
 }
@@ -279,7 +284,7 @@ pce_write8(uint16_t addr, uint8_t byte)
 	uint8_t *page = PageW[addr >> 13];
 
 	if (page == PCE.IOAREA)
-		IO_write(addr, byte);
+		pce_writeIO(addr, byte);
 	else
 		page[addr] = byte;
 }
@@ -308,5 +313,3 @@ pce_bank_set(uint8_t P, uint8_t V)
 	PageR[P] = (MemoryMapR[V] == PCE.IOAREA) ? (PCE.IOAREA) : (MemoryMapR[V] - P * 0x2000);
 	PageW[P] = (MemoryMapW[V] == PCE.IOAREA) ? (PCE.IOAREA) : (MemoryMapW[V] - P * 0x2000);
 }
-
-#endif

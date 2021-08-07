@@ -1,18 +1,35 @@
-// pce.c - Entry file to start/stop/reset/save emulation
+// pce-go.c - Entry file to start/stop/reset/save emulation
 //
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+
+#include "pce-go.h"
+#include "gfx.h"
+#include "psg.h"
 #include "pce.h"
 
 host_machine_t host;
-
-const char SAVESTATE_HEADER[8] = "PCE_V004";
 
 /**
  * Describes what is saved in a save state. Changing the order will break
  * previous saves so add a place holder if necessary. Eventually we could use
  * the keys to make order irrelevant...
  */
+#define SVAR_1(k, v) { 1, k, &v }
+#define SVAR_2(k, v) { 2, k, &v }
+#define SVAR_4(k, v) { 4, k, &v }
+#define SVAR_A(k, v) { sizeof(v), k, &v }
+#define SVAR_N(k, v, n) { n, k, &v }
+#define SVAR_END { 0, "\0\0\0\0", 0 }
 
-const svar_t SaveStateVars[] =
+static const char SAVESTATE_HEADER[8] = "PCE_V004";
+static const struct
+{
+	size_t len;
+	char key[16];
+	void *ptr;
+} SaveStateVars[] =
 {
 	// Arrays
 	SVAR_A("RAM", PCE.RAM),      SVAR_A("VRAM", PCE.VRAM),  SVAR_A("SPRAM", PCE.SPRAM),
@@ -234,6 +251,48 @@ InitPCE(const char *name)
 	ResetPCE(0);
 
 	return 0;
+}
+
+
+/**
+ * Returns a 256 colors palette in the chosen depth
+ */
+void *
+PalettePCE(int colordepth)
+{
+	if (colordepth == 15) {
+		uint16_t *palette = osd_alloc(256 * 2);
+		// ...
+		return palette;
+	}
+
+	if (colordepth == 16) {
+		uint16_t *palette = osd_alloc(256 * 2);
+		for (int i = 0; i < 255; i++) {
+			int r = (i & 0x1C) >> 1;
+			int g = (i & 0xe0) >> 4;
+			int b = (i & 0x03) << 2;
+			palette[i] = (((r << 12) & 0xf800) + ((g << 7) & 0x07e0) + ((b << 1) & 0x001f));
+		}
+		palette[255] = 0xFFFF;
+		return palette;
+	}
+
+	if (colordepth == 24) {
+		uint8_t *palette = osd_alloc(256 * 3);
+		uint8_t *ptr = palette;
+		for (int i = 0; i < 255; i++) {
+			*ptr++ = (i & 0x1C) << 2;
+			*ptr++ = (i & 0xe0) >> 1;
+			*ptr++ = (i & 0x03) << 4;
+		}
+		*ptr++ = 0xFF;
+		*ptr++ = 0xFF;
+		*ptr++ = 0xFF;
+		return palette;
+	}
+
+	return NULL;
 }
 
 

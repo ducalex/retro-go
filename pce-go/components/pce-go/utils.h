@@ -19,6 +19,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "config.h"
+
 #define MESSAGE_ERROR(x...) osd_log(1, "!! " x)
 #define MESSAGE_WARN(x...)  osd_log(2, " ! " x)
 #define MESSAGE_INFO(x...)  osd_log(3, " * " x)

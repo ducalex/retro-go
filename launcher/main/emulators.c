@@ -686,7 +686,7 @@ void emulators_init()
     add_emulator("Sega Master System",            "sms",  "sms",     "smsplusgx-go", 0, &logo_sms, &header_sms);
     add_emulator("Sega Game Gear",                "gg",   "gg",      "smsplusgx-go", 0, &logo_gg,  &header_gg);
     add_emulator("ColecoVision",                  "col",  "col",     "smsplusgx-go", 0, &logo_col, &header_col);
-    add_emulator("PC Engine",                     "pce",  "pce",     "huexpress-go", 0, &logo_pce, &header_pce);
+    add_emulator("PC Engine",                     "pce",  "pce",     "pce-go",       0, &logo_pce, &header_pce);
     add_emulator("Atari Lynx",                    "lnx",  "lnx",     "handy-go",    64, &logo_lnx, &header_lnx);
     add_emulator("Atari 2600",                    "a26",  "a26",     "stella-go",    0, NULL,      NULL);
     add_emulator("Super Nintendo",                "snes", "smc sfc", "snes9x-go",    0, &logo_snes, &header_snes);

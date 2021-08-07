@@ -1,23 +1,58 @@
 // gfx.c - VDC/VCE Emulation
 //
+#include <stdlib.h>
+#include <string.h>
+#include "osd.h"
 #include "pce.h"
+#include "gfx.h"
 
-static gfx_context_t gfx_context;
+typedef struct
+{
+	uint16_t y; 	/* Vertical position */
+	uint16_t x; 	/* Horizontal position */
+	uint16_t no;   	/* Offset in VRAM */
+	uint16_t attr; 	/* Attributes */
+	/*
+		* bit 0-4 : number of the palette to be used
+		* bit 7 : background sprite
+		*          0 -> must be drawn behind tiles
+		*          1 -> must be drawn in front of tiles
+		* bit 8 : width
+		*          0 -> 16 pixels
+		*          1 -> 32 pixels
+		* bit 11 : horizontal flip
+		*          0 -> normal shape
+		*          1 -> must be draw horizontally flipped
+		* bit 13-12 : height
+		*          00 -> 16 pixels
+		*          01 -> 32 pixels
+		*          10 -> 48 pixels
+		*          11 -> 64 pixels
+		* bit 15 : vertical flip
+		*          0 -> normal shape
+		*          1 -> must be drawn vertically flipped
+	*/
+} sprite_t;
 
-// Active screen buffer
-static uint8_t *screen_buffer;
+#define PAL(nibble) (PAL[(L >> ((nibble) * 4)) & 15])
+
+#define V_FLIP  0x8000
+#define H_FLIP  0x0800
 
 // Cache for linear tiles and sprites. This is basically a decoded VRAM
 static uint32_t *OBJ_CACHE;
-bool TILE_CACHE[2048];
-bool SPR_CACHE[512];
+static bool TILE_CACHE[2048];
+static bool SPR_CACHE[512];
 
-//
-static int line_counter = 0;
 static int last_line_counter = 0;
-int scroll_y_diff = 0;
+static int line_counter = 0;
 
-#define PAL(nibble) (PAL[(L >> ((nibble) * 4)) & 15])
+static struct {
+	int scroll_x;
+	int scroll_y;
+	int control;
+	int latched;
+} gfx_context;
 
 
 /*
@@ -77,7 +112,7 @@ tile2pixel(int no)
 	Draw background tiles between two lines
 */
 static void // Do not inline
-draw_tiles(int Y1, int Y2, int scroll_x, int scroll_y)
+draw_tiles(uint8_t *screen_buffer, int Y1, int Y2, int scroll_x, int scroll_y)
 {
 	const uint8_t _bg_w[] = { 32, 64, 128, 128 };
 	const uint8_t _bg_h[] = { 32, 64 };
@@ -224,7 +259,7 @@ draw_sprite(uint8_t *P, uint16_t *C, uint32_t *C2, int height, uint16_t attr)
 	Draw sprites between two lines
 */
 static void // Do not inline
-draw_sprites(int Y1, int Y2, int priority)
+draw_sprites(uint8_t *screen_buffer, int Y1, int Y2, int priority)
 {
 	// NOTE: At this time we do not respect bg sprites priority over top sprites.
 	// Example: Assume that sprite #2 is priority=0 and sprite #5 is priority=1. If they
@@ -341,10 +376,21 @@ gfx_latch_context(int force)
 {
 	if (!gfx_context.latched || force) { // Context is already saved + we haven't render the line using it
 		gfx_context.scroll_x = IO_VDC_REG[BXR].W;
-		gfx_context.scroll_y = IO_VDC_REG[BYR].W - scroll_y_diff;
+		gfx_context.scroll_y = IO_VDC_REG[BYR].W - PCE.ScrollYDiff;
 		gfx_context.control = IO_VDC_REG[CR].W;
 		gfx_context.latched = 1;
 	}
+}
+
+/*
+	In my testing this function is called between 0 and 400 times per frame.
+	Having TILE/SPR globals was slightly faster but it seems negligible right now...
+ */
+void
+gfx_obj_cache_invalidate(int num)
+{
+	TILE_CACHE[((num) / 16) & 0x7FF] = 0;
+    SPR_CACHE[((num) / 64) & 0x1FF] = 0;
 }
 
 
@@ -356,24 +402,31 @@ render_lines(int min_line, int max_line)
 {
 	gfx_context.latched = 0;
 
-	screen_buffer = osd_gfx_framebuffer();
+	uint8_t *screen_buffer = osd_gfx_framebuffer();
 	if (!screen_buffer) {
 		return;
 	}
 
+	// We must fill the region with color 0 first
+	// memset(screen_buffer + (min_line * XBUF_WIDTH), PCE.Palette[0], XBUF_WIDTH * (max_line - min_line + 1));
+	size_t screen_width = IO_VDC_SCREEN_WIDTH;
+	for (int y = min_line; y <= max_line; y++) {
+		memset(screen_buffer + (y * XBUF_WIDTH), PCE.Palette[0], screen_width);
+	}
+
 	// Sprites with priority 0 are drawn behind the tiles
 	if (gfx_context.control & 0x40) {
-		draw_sprites(min_line, max_line, 0);
+		draw_sprites(screen_buffer, min_line, max_line, 0);
 	}
 
 	// Draw the background tiles
 	if (gfx_context.control & 0x80) {
-		draw_tiles(min_line, max_line, gfx_context.scroll_x, gfx_context.scroll_y);
+		draw_tiles(screen_buffer, min_line, max_line, gfx_context.scroll_x, gfx_context.scroll_y);
 	}
 
 	// Draw regular sprites
 	if (gfx_context.control & 0x40) {
-		draw_sprites(min_line, max_line, 1);
+		draw_sprites(screen_buffer, min_line, max_line, 1);
 	}
 }
 
@@ -514,7 +567,7 @@ gfx_run(void)
 		gfx_context.latched = 0;
 		last_line_counter = 0;
 		line_counter = 0;
-		scroll_y_diff = 0;
+		PCE.ScrollYDiff = 0;
 	}
 
 	/* Always call at least once (to handle pending IRQs) */

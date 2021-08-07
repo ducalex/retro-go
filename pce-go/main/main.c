@@ -16,15 +16,14 @@
 #include <unistd.h>
 #include <stdio.h>
 
-#include "../components/huexpress/engine/osd.h"
+#include <osd.h>
 
 #define AUDIO_SAMPLE_RATE 22050
 // #define AUDIO_BUFFER_LENGTH  (AUDIO_SAMPLE_RATE / 60)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 / 5)
 
-static short audiobuffer[AUDIO_BUFFER_LENGTH * 2];
-
-static uint16_t mypalette[256];
+static int16_t audiobuffer[AUDIO_BUFFER_LENGTH * 2];
+static uint16_t *mypalette;
 static uint8_t *framebuffers[2];
 static rg_video_frame_t frames[2];
 static rg_video_frame_t *currentUpdate = &frames[0];
@@ -43,29 +42,6 @@ static const char *SETTING_OVERSCAN  = "overscan";
 // --- MAIN
 
 
-static inline void clear_buffer(rg_video_frame_t *update)
-{
-    void *buffer = update->buffer;
-    for (int i = 0; i < update->height; ++i)
-    {
-        memset(buffer, PCE.Palette[0], update->width);
-        buffer += update->stride;
-    }
-}
-
-static inline void set_color(int index, uint8_t r, uint8_t g, uint8_t b)
-{
-    #define COLOR_RGB(r, g, b) ((((r) << 12) & 0xf800) + (((g) << 7) & 0x07e0) + (((b) << 1) & 0x001f))
-
-    uint16_t col = 0xffff;
-    if (index != 255)
-    {
-        col = COLOR_RGB(r >> 2, g >> 2, b >> 2);
-        col = (col << 8) | (col >> 8);
-    }
-    mypalette[index] = col;
-}
-
 uint8_t *osd_gfx_framebuffer(void)
 {
     if (skipFrames > 0)
@@ -80,12 +56,10 @@ void osd_gfx_init(void)
 
     overscan = rg_settings_get_app_int32(SETTING_OVERSCAN, 1);
 
-    // Build palette
-    for (int i = 0; i < 255; i++)
-    {
-        set_color(i, (i & 0x1C) << 1, (i & 0xe0) >> 2, (i & 0x03) << 4);
+    mypalette = PalettePCE(16);
+    for (int i = 0; i < 256; i++) {
+        mypalette[i] = (mypalette[i] << 8) | (mypalette[i] >> 8);
     }
-    set_color(255, 0x3f, 0x3f, 0x3f);
 
     osd_gfx_set_mode(256, 240);
 }
@@ -103,7 +77,7 @@ void osd_gfx_set_mode(int width, int height)
     current_width = width;
     current_height = height;
 
-    MESSAGE_INFO("[GFX] Resolution: %dx%d / Cropping: H: %d V: %d\n", width, height, crop_h, crop_v);
+    RG_LOGI("Resolution: %dx%d / Cropping: H: %d V: %d\n", width, height, crop_h, crop_v);
 
     frames[0].flags = RG_PIXEL_PAL|RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].width = width - crop_h;
@@ -120,7 +94,6 @@ void osd_gfx_set_mode(int width, int height)
     frames[1].my_arg = framebuffers[1] + offset_center;
 
     currentUpdate = &frames[0];
-    clear_buffer(currentUpdate);
 }
 
 void osd_gfx_blit(void)
@@ -133,7 +106,6 @@ void osd_gfx_blit(void)
         rg_display_queue_update(currentUpdate, NULL);
 
         currentUpdate = previousUpdate;
-        clear_buffer(currentUpdate);
     }
 
     // See if we need to skip a frame to keep up
@@ -152,7 +124,7 @@ void osd_gfx_blit(void)
 
 void osd_gfx_shutdown(void)
 {
-    MESSAGE_INFO("Goodbye...\n");
+    RG_LOGI("Goodbye...\n");
 }
 
 static dialog_return_t overscan_update_cb(dialog_option_t *option, dialog_event_t event)
@@ -231,7 +203,7 @@ void osd_input_read(void)
 
 static void audioTask(void *arg)
 {
-    MESSAGE_INFO("[PSG] task started.\n");
+    RG_LOGI("task started.\n");
 
     while (1)
     {
@@ -274,7 +246,7 @@ void osd_vsync(void)
 
     if (sleep > frametime)
     {
-        MESSAGE_ERROR("Our vsync timer seems to have overflowed! (%dus)\n", sleep);
+        RG_LOGE("Our vsync timer seems to have overflowed! (%dus)\n", sleep);
     }
     else if (sleep > 0)
     {
@@ -338,10 +310,6 @@ void app_main(void)
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
 
-    // Clearing the buffer on the display core is somewhat faster, but it
-    // prevents us from doing partial updates and screenshots.
-    // rg_display_set_callback(clear_buffer);
-
     InitPCE(app->romPath);
 
     if (app->startAction == RG_START_ACTION_RESUME)
@@ -351,5 +319,5 @@ void app_main(void)
 
     RunPCE();
 
-    RG_PANIC("HuExpress-GO died.");
+    RG_PANIC("PCE-GO died.");
 }

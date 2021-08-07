@@ -2,7 +2,8 @@
 //
 #pragma once
 
-#include "pce.h"
+#include <stdarg.h>
+#include "pce-go.h"
 
 #define JOY_A       0x01
 #define JOY_B       0x02

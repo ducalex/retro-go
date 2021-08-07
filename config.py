@@ -15,7 +15,7 @@ PROJECT_APPS = {
   'nofrendo-go':  [0,  393216],
   'gnuboy-go':    [0,  393216],
   'smsplusgx-go': [0,  393216],
-  'huexpress-go': [0,  393216],
+  'pce-go':       [0,  393216],
   'handy-go':     [0,  393216],
   'snes9x-go':    [0,  851968], # 1048576
 }

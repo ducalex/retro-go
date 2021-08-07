@@ -1,7 +1,10 @@
 // psg.c - Programmable Sound Generator
 //
-#include "psg.h"
+#include <stdlib.h>
+#include <string.h>
+#include "osd.h"
 #include "pce.h"
+#include "psg.h"
 
 static const uint8_t vol_tbl[32] = {
     100 >> 8, 451 >> 8, 508 >> 8, 573 >> 8, 646 >> 8, 728 >> 8, 821 >> 8, 925 >> 8,
@@ -15,10 +18,6 @@ static const uint8_t vol_tbl[32] = {
 // In some games it also sounds better in 8 bit than in 16...
 // typedef uint8_t sample_t;
 typedef int16_t sample_t;
-
-static uint32_t noise_rand[PSG_CHANNELS];
-static int32_t noise_level[PSG_CHANNELS];
-static sample_t mix_buffer[44100 / 60 * 2];
 
 
 static inline void
@@ -98,20 +97,20 @@ psg_update_chan(sample_t *buf, int ch, size_t dwSize)
             chan->noise_accum += 3000 + Np * 512;
 
             if ((Tp = (chan->noise_accum / host.sound.sample_freq)) >= 1) {
-                if (noise_rand[ch] & 0x00080000) {
-                    noise_rand[ch] = ((noise_rand[ch] ^ 0x0004) << 1) + 1;
-                    noise_level[ch] = -15;
+                if (chan->noise_rand & 0x00080000) {
+                    chan->noise_rand = ((chan->noise_rand ^ 0x0004) << 1) + 1;
+                    chan->noise_level = -15;
                 } else {
-                    noise_rand[ch] <<= 1;
-                    noise_level[ch] = 15;
+                    chan->noise_rand <<= 1;
+                    chan->noise_level = 15;
                 }
                 chan->noise_accum -= host.sound.sample_freq * Tp;
             }
 
-            *buf++ = (noise_level[ch] * lvol);
+            *buf++ = (chan->noise_level * lvol);
 
             if (host.sound.stereo) {
-                *buf++ = (noise_level[ch] * rvol);
+                *buf++ = (chan->noise_level * rvol);
             }
         }
     }
@@ -175,8 +174,8 @@ psg_update_chan(sample_t *buf, int ch, size_t dwSize)
 int
 psg_init(void)
 {
-    noise_rand[4] = 0x51F63101;
-    noise_rand[5] = 0x1F631042;
+    PCE.PSG.chan[4].noise_rand = 0x51F63101;
+    PCE.PSG.chan[5].noise_rand = 0x1F631042;
 
     osd_snd_init();
 
@@ -205,6 +204,8 @@ psg_update(int16_t *output, size_t length)
 
     for (int i = 0; i < PSG_CHANNELS; i++)
     {
+        sample_t mix_buffer[length];
+
         psg_update_chan((void*)mix_buffer, i, length);
 
         if (host.sound.sample_uint8) {

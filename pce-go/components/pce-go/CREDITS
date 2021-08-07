@@ -1,11 +1,11 @@
 
-                                 HuExpress-GO
+                                 PCE-GO
 
                         PC Engine / TurboGrafx-16 Emulator
 
 --[ INTRODUCTION ]-----------------------------------------------------------
 
-    HuExpress-GO is a PCE emulator for constrained systems such as microcontrollers.
+    PCE-GO is a PCE emulator for constrained systems such as microcontrollers.
     It is derived from the great HuExpress (https://github.com/kallisti5/huexpress).
 
     HuExpress itself is a fork/rewrite of Hu-Go! (https://www.zeograd.com/parse.php?src=hugof&path=0,1,).
@@ -14,7 +14,7 @@
 
 --[ CREDITS ]-------------------------------------------------
 
-HuExpress-GO authors:
+PCE-GO authors:
 - Alex Duchesne (ducalex)
 
 HuExpress authors:

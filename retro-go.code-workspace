@@ -10,13 +10,13 @@
 			"path": "handy-go"
 		},
 		{
-			"path": "huexpress-go"
-		},
-		{
 			"path": "launcher"
 		},
 		{
 			"path": "nofrendo-go"
+		},
+		{
+			"path": "pce-go"
 		},
 		{
 			"path": "smsplusgx-go"
@@ -56,7 +56,6 @@
 		"C_Cpp.default.cppStandard": "c++11",
 		"C_Cpp.default.intelliSenseMode": "gcc-x86",
 		"cSpell.words": [
-			"huexpress",
 			"nofrendo",
 			"smsplusgx",
 			"supergraphx"

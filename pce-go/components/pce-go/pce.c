@@ -1,7 +1,11 @@
-// hard_pce.c - Memory/IO/Timer emulation
+// pce.c - Machine emulation (Memory/IO/Timer)
 //
-#include "hard_pce.h"
+#include <stdlib.h>
+#include <string.h>
+
+#include "pce-go.h"
 #include "pce.h"
+#include "gfx.h"
 
 // Global struct containing our emulated hardware status
 PCE_t PCE;
@@ -126,20 +130,20 @@ pce_run(void)
 static inline void
 timer_run(void)
 {
-	PCE.Timer.cycles_counter -= CYCLES_PER_LINE;
+    PCE.Timer.cycles_counter -= CYCLES_PER_LINE;
 
-	// Trigger when it underflows
-	if (PCE.Timer.cycles_counter > CYCLES_PER_TIMER_TICK) {
-		PCE.Timer.cycles_counter += CYCLES_PER_TIMER_TICK;
-		if (PCE.Timer.running) {
-			// Trigger when it underflows from 0
-			if (PCE.Timer.counter > 0x7F) {
-				PCE.Timer.counter = PCE.Timer.reload;
-				CPU.irq_lines |= INT_TIMER;
-			}
-			PCE.Timer.counter--;
-		}
-	}
+    // Trigger when it underflows
+    if (PCE.Timer.cycles_counter > CYCLES_PER_TIMER_TICK) {
+        PCE.Timer.cycles_counter += CYCLES_PER_TIMER_TICK;
+        if (PCE.Timer.running) {
+            // Trigger when it underflows from 0
+            if (PCE.Timer.counter > 0x7F) {
+                PCE.Timer.counter = PCE.Timer.reload;
+                CPU.irq_lines |= INT_TIMER;
+            }
+            PCE.Timer.counter--;
+        }
+    }
 }
 
 
@@ -170,7 +174,7 @@ cart_write(uint16_t A, uint8_t V)
 
 
 IRAM_ATTR inline uint8_t
-IO_read(uint16_t A)
+pce_readIO(uint16_t A)
 {
     uint8_t ret = 0xFF; // Open Bus
 
@@ -281,7 +285,7 @@ IO_read(uint16_t A)
 
 
 IRAM_ATTR inline void
-IO_write(uint16_t A, uint8_t V)
+pce_writeIO(uint16_t A, uint8_t V)
 {
     TRACE_IO("IO Write %02x at %04x\n", V, A);
 
@@ -338,7 +342,7 @@ IO_write(uint16_t A, uint8_t V)
                    return;
                  */
                 gfx_latch_context(0);
-                scroll_y_diff = PCE.Scanline - 1 - IO_VDC_MINLINE;
+                PCE.ScrollYDiff = PCE.Scanline - 1 - IO_VDC_MINLINE;
                 break;
 
             case MWR:                           // Memory Width Register
@@ -390,7 +394,7 @@ IO_write(uint16_t A, uint8_t V)
                 // I am not 100% sure if MAWR should wrap instead, eg IO_VDC_REG[MAWR].W & 0x7FFF
                 if (IO_VDC_REG[MAWR].W < 0x8000) {
                     PCE.VRAM[IO_VDC_REG[MAWR].W] = (V << 8) | IO_VDC_REG_ACTIVE.B.l;
-                    OBJ_CACHE_INVALIDATE(IO_VDC_REG[MAWR].W);
+                    gfx_obj_cache_invalidate(IO_VDC_REG[MAWR].W);
                 }
                 IO_VDC_REG_INC(MAWR);
                 break;
@@ -419,9 +423,9 @@ IO_write(uint16_t A, uint8_t V)
 
             case BYR:                           // Vertical screen offset
                 gfx_latch_context(0);
-                scroll_y_diff = PCE.Scanline - 1 - IO_VDC_MINLINE;
-                if (scroll_y_diff < 0) {
-                    MESSAGE_DEBUG("scroll_y_diff went negative when substraction VPR.h/.l (%d,%d)\n",
+                PCE.ScrollYDiff = PCE.Scanline - 1 - IO_VDC_MINLINE;
+                if (PCE.ScrollYDiff < 0) {
+                    MESSAGE_DEBUG("PCE.ScrollYDiff went negative when substraction VPR.h/.l (%d,%d)\n",
                         IO_VDC_REG[VPR].B.h, IO_VDC_REG[VPR].B.l);
                 }
                 break;
@@ -461,7 +465,7 @@ IO_write(uint16_t A, uint8_t V)
                 while (IO_VDC_REG[LENR].W != 0xFFFF) {
                     if (IO_VDC_REG[DISTR].W < 0x8000) {
                         PCE.VRAM[IO_VDC_REG[DISTR].W] = PCE.VRAM[IO_VDC_REG[SOUR].W];
-                        OBJ_CACHE_INVALIDATE(IO_VDC_REG[DISTR].W);
+                        gfx_obj_cache_invalidate(IO_VDC_REG[DISTR].W);
                     }
                     IO_VDC_REG[SOUR].W += src_inc;
                     IO_VDC_REG[DISTR].W += dst_inc;

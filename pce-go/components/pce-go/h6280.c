@@ -3,11 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "hard_pce.h"
-#include "gfx.h"
 #include "pce.h"
+#include "osd.h"
 
 #include "h6280_instr.h"
+#include "h6280_dbg.h"
 
 #define OPCODE(n, f) case n: f; break;
 
@@ -330,41 +330,6 @@ h6280_run(void)
 				// Illegal opcodes are treated as NOP
 				MESSAGE_DEBUG("Illegal opcode 0x%02X at pc=0x%04X!\n", opcode, CPU.PC);
 				nop();
-		}
-	}
-}
-
-
-void
-h6280_print_state()
-{
-	MESSAGE_INFO("Current h6280 status:\n");
-
-	MESSAGE_INFO("PC = 0x%04x\n", CPU.PC);
-	MESSAGE_INFO("A = 0x%02x\n", CPU.A);
-	MESSAGE_INFO("X = 0x%02x\n", CPU.X);
-	MESSAGE_INFO("Y = 0x%02x\n", CPU.Y);
-	MESSAGE_INFO("P = 0x%02x\n", CPU.P);
-	MESSAGE_INFO("S = 0x%02x\n", CPU.S);
-
-	for (int i = 0; i < 8; i++) {
-		MESSAGE_INFO("MMR[%d] = 0x%02x\n", i, PCE.MMR[i]);
-	}
-
-	// TODO: Add zero page dump
-
-	for (int i = 0x2000; i < 0xFFFF; i++) {
-
-		if ((i & 0xF) == 0) {
-			MESSAGE_INFO("%04X: ", i);
-		}
-
-		MESSAGE_INFO("%02x ", pce_read8(i));
-		if ((i & 0xF) == 0xF) {
-			MESSAGE_INFO("\n");
-		}
-		if ((i & 0x1FFF) == 0x1FFF) {
-			MESSAGE_INFO("\n-------------------------------------------------------------\n");
 		}
 	}
 }
