@@ -13,8 +13,6 @@ PCE_t PCE;
 // Memory Mapping
 uint8_t *PageR[8];
 uint8_t *PageW[8];
-uint8_t *MemoryMapR[256];
-uint8_t *MemoryMapW[256];
 
 static bool running = false;
 
@@ -70,14 +68,14 @@ int
 pce_init(void)
 {
     for (int i = 0; i < 0xFF; i++) {
-        MemoryMapR[i] = PCE.NULLRAM;
-        MemoryMapW[i] = PCE.NULLRAM;
+        PCE.MemoryMapR[i] = PCE.NULLRAM;
+        PCE.MemoryMapW[i] = PCE.NULLRAM;
     }
 
-    MemoryMapR[0xF8] = PCE.RAM;
-    MemoryMapW[0xF8] = PCE.RAM;
-    MemoryMapR[0xFF] = PCE.IOAREA;
-    MemoryMapW[0xFF] = PCE.IOAREA;
+    PCE.MemoryMapR[0xF8] = PCE.RAM;
+    PCE.MemoryMapW[0xF8] = PCE.RAM;
+    PCE.MemoryMapR[0xFF] = PCE.IOAREA;
+    PCE.MemoryMapW[0xFF] = PCE.IOAREA;
 
     // pce_reset();
 
@@ -173,7 +171,7 @@ cart_write(uint16_t A, uint8_t V)
             uint8_t *base = PCE.ROM_DATA + PCE.SF2 * (512 * 1024);
             for (int i = 0x40; i < 0x80; i++)
             {
-                MemoryMapR[i] = base + i * 0x2000;
+                PCE.MemoryMapR[i] = base + i * 0x2000;
             }
             for (int i = 0; i < 8; i++)
             {
@@ -406,7 +404,6 @@ pce_writeIO(uint16_t A, uint8_t V)
                 // I am not 100% sure if MAWR should wrap instead, eg IO_VDC_REG[MAWR].W & 0x7FFF
                 if (IO_VDC_REG[MAWR].W < 0x8000) {
                     PCE.VRAM[IO_VDC_REG[MAWR].W] = (V << 8) | IO_VDC_REG_ACTIVE.B.l;
-                    gfx_obj_cache_invalidate(IO_VDC_REG[MAWR].W);
                 }
                 IO_VDC_REG_INC(MAWR);
                 break;
@@ -477,7 +474,6 @@ pce_writeIO(uint16_t A, uint8_t V)
                 while (IO_VDC_REG[LENR].W != 0xFFFF) {
                     if (IO_VDC_REG[DISTR].W < 0x8000) {
                         PCE.VRAM[IO_VDC_REG[DISTR].W] = PCE.VRAM[IO_VDC_REG[SOUR].W];
-                        gfx_obj_cache_invalidate(IO_VDC_REG[DISTR].W);
                     }
                     IO_VDC_REG[SOUR].W += src_inc;
                     IO_VDC_REG[DISTR].W += dst_inc;

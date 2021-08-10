@@ -19,9 +19,7 @@ static const uint8_t vol_tbl[32] = {
 // typedef uint8_t sample_t;
 typedef int16_t sample_t;
 
-
 static int samplerate = 22050;
-static int downsample = false;
 static int stereo = true;
 
 
@@ -175,13 +173,12 @@ psg_update_chan(sample_t *buf, int ch, size_t dwSize)
 
 
 int
-psg_init(int _samplerate, bool _stereo, bool _downsample)
+psg_init(int _samplerate, bool _stereo)
 {
     PCE.PSG.chan[4].noise_rand = 0x51F63101;
     PCE.PSG.chan[5].noise_rand = 0x1F631042;
 
     samplerate = _samplerate;
-    downsample = _downsample;
     stereo = _stereo;
 
     return 0;
@@ -196,7 +193,7 @@ psg_term(void)
 
 
 void
-psg_update(int16_t *output, size_t length)
+psg_update(int16_t *output, size_t length, bool downsample)
 {
     int lvol = (PCE.PSG.volume >> 4);
     int rvol = (PCE.PSG.volume & 0x0F);
@@ -205,13 +202,12 @@ psg_update(int16_t *output, size_t length)
         length *= 2;
     }
 
-    memset(output, 0, length * 2);
+    memset(output, 0, length * sizeof(int16_t));
 
     for (int i = 0; i < PSG_CHANNELS; i++)
     {
         sample_t mix_buffer[length + 1];
-
-        psg_update_chan(&mix_buffer, i, length);
+        psg_update_chan(mix_buffer, i, length);
 
         if (downsample) {
             for (int j = 0; j < length; j += 2) {

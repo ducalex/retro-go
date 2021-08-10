@@ -3,6 +3,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-int psg_init(int samplerate, bool stereo, bool downsample);
+int psg_init(int samplerate, bool stereo);
 void psg_term(void);
-void psg_update(int16_t *output, size_t length);
+void psg_update(int16_t *output, size_t length, bool downsample);

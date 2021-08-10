@@ -23,7 +23,7 @@
 // #define AUDIO_BUFFER_LENGTH  (AUDIO_SAMPLE_RATE / 60)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 / 5)
 
-static int16_t audiobuffer[AUDIO_BUFFER_LENGTH * 2];
+static int16_t audiobuffer[AUDIO_BUFFER_LENGTH * 4];
 static uint16_t *mypalette;
 static uint8_t *framebuffers[2];
 static rg_video_frame_t frames[2];
@@ -131,7 +131,6 @@ static dialog_return_t sampletype_update_cb(dialog_option_t *option, dialog_even
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         downsample ^= 1;
         rg_settings_set_app_int32(SETTING_AUDIOTYPE, downsample);
-        psg_init(AUDIO_SAMPLE_RATE, true, downsample);
     }
 
     strcpy(option->value, downsample ? "On " : "Off");
@@ -188,7 +187,7 @@ static void audioTask(void *arg)
 
     while (1)
     {
-        psg_update(audiobuffer, AUDIO_BUFFER_LENGTH);
+        psg_update(audiobuffer, AUDIO_BUFFER_LENGTH, downsample);
         rg_audio_submit(audiobuffer, AUDIO_BUFFER_LENGTH);
     }
 
@@ -272,8 +271,8 @@ void app_main(void)
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
 
-    framebuffers[0] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
-    framebuffers[1] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
+    framebuffers[0] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_FAST);
+    framebuffers[1] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_FAST);
 
     overscan = rg_settings_get_app_int32(SETTING_OVERSCAN, 1);
     downsample = rg_settings_get_app_int32(SETTING_AUDIOTYPE, 0);
@@ -284,14 +283,14 @@ void app_main(void)
     }
     osd_gfx_set_mode(256, 240);
 
-    InitPCE(AUDIO_SAMPLE_RATE, true, downsample, app->romPath);
+    InitPCE(AUDIO_SAMPLE_RATE, true, app->romPath);
 
     if (app->startAction == RG_START_ACTION_RESUME)
     {
         rg_emu_load_state(0);
     }
 
-    xTaskCreatePinnedToCore(&audioTask, "audioTask", 1024 * 3, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(&audioTask, "audioTask", 1024 * 2, NULL, 5, NULL, 1);
 
     RunPCE();
 

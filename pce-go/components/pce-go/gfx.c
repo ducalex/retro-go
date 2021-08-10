@@ -39,11 +39,6 @@ typedef struct
 #define V_FLIP  0x8000
 #define H_FLIP  0x0800
 
-// Cache for linear tiles and sprites. This is basically a decoded VRAM
-static uint32_t *OBJ_CACHE;
-static bool TILE_CACHE[2048];
-static bool SPR_CACHE[512];
-
 static int last_line_counter = 0;
 static int line_counter = 0;
 
@@ -56,59 +51,6 @@ static struct {
 
 
 /*
-	Convert a PCE coded sprite into a linear one
-*/
-static inline void
-spr2pixel(int no)
-{
-	uint8_t *C = (uint8_t *)(PCE.VRAM + no * 64);
-	uint32_t *C2 = OBJ_CACHE + no * 32;
-	// 2 longs -> 16 nibbles => 32 loops for a 16*16 spr
-
-	TRACE_SPR("Planing sprite %d\n", no);
-	for (int i = 0; i < 32; i++, C++, C2++) {
-		uint32_t M, L;
-		M = C[0];
-		L = ((M & 0x88) >> 3) | ((M & 0x44) << 6) | ((M & 0x22) << 15) | ((M & 0x11) << 24);
-		M = C[32];
-		L |= ((M & 0x88) >> 2) | ((M & 0x44) << 7) | ((M & 0x22) << 16) | ((M & 0x11) << 25);
-		M = C[64];
-		L |= ((M & 0x88) >> 1) | ((M & 0x44) << 8) | ((M & 0x22) << 17) | ((M & 0x11) << 26);
-		M = C[96];
-		L |= ((M & 0x88)) | ((M & 0x44) << 9) | ((M & 0x22) << 18) | ((M & 0x11) << 27);
-		C2[0] = L;
-	}
-	SPR_CACHE[no] = 1;
-}
-
-
-/*
-	Convert a PCE coded tile into a linear one
-*/
-static inline void
-tile2pixel(int no)
-{
-	uint8_t *C = (uint8_t *)(PCE.VRAM + no * 16);
-	uint32_t *C2 = OBJ_CACHE + no * 8;
-
-	TRACE_SPR("Planing tile %d\n", no);
-	for (int i = 0; i < 8; i++, C += 2, C2++) {
-		uint32_t M, L;
-		M = C[0];
-		L = ((M & 0x88) >> 3) | ((M & 0x44) << 6) | ((M & 0x22) << 15) | ((M & 0x11) << 24);
-		M = C[1];
-		L |= ((M & 0x88) >> 2) | ((M & 0x44) << 7) | ((M & 0x22) << 16) | ((M & 0x11) << 25);
-		M = C[16];
-		L |= ((M & 0x88) >> 1) | ((M & 0x44) << 8) | ((M & 0x22) << 17) | ((M & 0x11) << 26);
-		M = C[17];
-		L |= ((M & 0x88)) | ((M & 0x44) << 9) | ((M & 0x22) << 18) | ((M & 0x11) << 27);
-		C2[0] = L;
-	}
-	TILE_CACHE[no] = 1;
-}
-
-
-/*
 	Draw background tiles between two lines
 */
 static void // Do not inline
@@ -117,12 +59,11 @@ draw_tiles(uint8_t *screen_buffer, int Y1, int Y2, int scroll_x, int scroll_y)
 	const uint8_t _bg_w[] = { 32, 64, 128, 128 };
 	const uint8_t _bg_h[] = { 32, 64 };
 
-	uint8_t bg_w = _bg_w[(IO_VDC_REG[MWR].W >> 4) & 3]; // Bits 5-4 select the width
-    uint8_t bg_h = _bg_h[(IO_VDC_REG[MWR].W >> 6) & 1]; // Bit 6 selects the height
+	int bg_w = _bg_w[(IO_VDC_REG[MWR].W >> 4) & 3]; // Bits 5-4 select the width
+    int bg_h = _bg_h[(IO_VDC_REG[MWR].W >> 6) & 1]; // Bit 6 selects the height
 
 	int XW, no, x, y, h, offset;
 	uint8_t *PP, *PAL, *P, *C;
-	uint32_t *C2;
 
 	if (Y1 == 0) {
 		TRACE_GFX("\n=================================================\n");
@@ -153,22 +94,25 @@ draw_tiles(uint8_t *screen_buffer, int Y1, int Y2, int scroll_x, int scroll_y)
 			// PCE has max of 2048 tiles
 			no &= 0x7FF;
 
-			if (TILE_CACHE[no] == 0) {
-				tile2pixel(no);
-			}
-
-			C2 = OBJ_CACHE + (no * 8 + offset);
 			C = (uint8_t*)(PCE.VRAM + no * 16 + offset);
 			P = PP;
-			for (int i = 0; i < h; i++, P += XBUF_WIDTH, C2++, C += 2) {
-				uint32_t J, L;
+			for (int i = 0; i < h; i++, P += XBUF_WIDTH, C += 2) {
+				uint32_t J, L, M;
 
 				J = C[0] | C[1] | C[16] | C[17];
 
 				if (!J)
 					continue;
 
-				L = C2[0];
+				M = C[0];
+				L = ((M & 0x88) >> 3) | ((M & 0x44) << 6) | ((M & 0x22) << 15) | ((M & 0x11) << 24);
+				M = C[1];
+				L |= ((M & 0x88) >> 2) | ((M & 0x44) << 7) | ((M & 0x22) << 16) | ((M & 0x11) << 25);
+				M = C[16];
+				L |= ((M & 0x88) >> 1) | ((M & 0x44) << 8) | ((M & 0x22) << 17) | ((M & 0x11) << 26);
+				M = C[17];
+				L |= ((M & 0x88) >> 0) | ((M & 0x44) << 9) | ((M & 0x22) << 18) | ((M & 0x11) << 27);
+
 				if (J & 0x80) P[0] = PAL(1);
 				if (J & 0x40) P[1] = PAL(3);
 				if (J & 0x20) P[2] = PAL(5);
@@ -193,24 +137,36 @@ draw_tiles(uint8_t *screen_buffer, int Y1, int Y2, int scroll_x, int scroll_y)
 	Draw sprite C to framebuffer P
 */
 static void // Do not inline (take advantage of xtensa's windowed registers)
-draw_sprite(uint8_t *P, uint16_t *C, uint32_t *C2, int height, uint16_t attr)
+draw_sprite(uint8_t *P, uint16_t *C, int height, uint16_t attr)
 {
 	uint8_t *PAL = &PCE.Palette[256 + ((attr & 0xF) << 4)];
 
 	bool hflip = attr & H_FLIP;
 	int inc = (attr & V_FLIP) ? -1 : 1;
-	int inc2 = inc * 2;
 
-	for (int i = 0; i < height; i++, C += inc, C2 += inc2, P += XBUF_WIDTH) {
+	for (int i = 0; i < height; i++, C += inc, P += XBUF_WIDTH) {
 
 		uint16_t J = C[0] | C[16] | C[32] | C[48];
-		uint32_t L;
+		uint32_t L1, L2, L, M;
 
 		if (!J)
 			continue;
 
+		M = C[0];
+		L1 = ((M & 0x88) >> 3) | ((M & 0x44) << 6) | ((M & 0x22) << 15) | ((M & 0x11) << 24);
+		L2 = ((M & 0x8800) >> 11) | ((M & 0x4400) >> 2) | ((M & 0x2200) << 7) | ((M & 0x1100) << 16);
+		M = C[16];
+		L1 |= ((M & 0x88) >> 2) | ((M & 0x44) << 7) | ((M & 0x22) << 16) | ((M & 0x11) << 25);
+		L2 |= ((M & 0x8800) >> 10) | ((M & 0x4400) >> 1) | ((M & 0x2200) << 8) | ((M & 0x1100) << 17);
+		M = C[32];
+		L1 |= ((M & 0x88) >> 1) | ((M & 0x44) << 8) | ((M & 0x22) << 17) | ((M & 0x11) << 26);
+		L2 |= ((M & 0x8800) >> 9) | ((M & 0x4400) >> 0) | ((M & 0x2200) << 9) | ((M & 0x1100) << 18);
+		M = C[48];
+		L1 |= ((M & 0x88) >> 0) | ((M & 0x44) << 9) | ((M & 0x22) << 18) | ((M & 0x11) << 27);
+		L2 |= ((M & 0x8800) >> 8) | ((M & 0x4400) << 1) | ((M & 0x2200) << 10) | ((M & 0x1100) << 19);
+
 		if (hflip) {
-			L = C2[1];
+			L = L2;
 			if ((J & 0x8000)) P[15] = PAL(1);
 			if ((J & 0x4000)) P[14] = PAL(3);
 			if ((J & 0x2000)) P[13] = PAL(5);
@@ -220,7 +176,7 @@ draw_sprite(uint8_t *P, uint16_t *C, uint32_t *C2, int height, uint16_t attr)
 			if ((J & 0x0200)) P[9]  = PAL(4);
 			if ((J & 0x0100)) P[8]  = PAL(6);
 
-			L = C2[0];
+			L = L1;
 			if ((J & 0x80)) P[7] = PAL(1);
 			if ((J & 0x40)) P[6] = PAL(3);
 			if ((J & 0x20)) P[5] = PAL(5);
@@ -231,7 +187,7 @@ draw_sprite(uint8_t *P, uint16_t *C, uint32_t *C2, int height, uint16_t attr)
 			if ((J & 0x01)) P[0] = PAL(6);
 		}
 		else {
-			L = C2[1];
+			L = L2;
 			if ((J & 0x8000)) P[0] = PAL(1);
 			if ((J & 0x4000)) P[1] = PAL(3);
 			if ((J & 0x2000)) P[2] = PAL(5);
@@ -241,7 +197,7 @@ draw_sprite(uint8_t *P, uint16_t *C, uint32_t *C2, int height, uint16_t attr)
 			if ((J & 0x0200)) P[6] = PAL(4);
 			if ((J & 0x0100)) P[7] = PAL(6);
 
-			L = C2[0];
+			L = L1;
 			if ((J & 0x80)) P[8]  = PAL(1);
 			if ((J & 0x40)) P[9]  = PAL(3);
 			if ((J & 0x20)) P[10] = PAL(5);
@@ -294,23 +250,13 @@ draw_sprites(uint8_t *screen_buffer, int Y1, int Y2, int priority)
 			continue;
 		}
 
-		for (int i = 0; i < cgy * 2 + cgx + 1; i++) {
-			if (SPR_CACHE[no + i] == 0) {
-				spr2pixel(no + i);
-			}
-			if (!cgx)
-				i++;
-		}
-
 		uint8_t *P = screen_buffer + (XBUF_WIDTH * y + x);
 		uint16_t *C = PCE.VRAM + (no * 64);
-		uint32_t *C2 = OBJ_CACHE + (no * 32);
 
 		cgy *= 16;
 
 		if (attr & V_FLIP) {
 			C += 15 * 2 + cgy * 8;
-			C2 += 15 * 2 + cgy * 4;
 		}
 
 		for (int yy = 0; yy <= cgy; yy += 16) {
@@ -319,7 +265,6 @@ draw_sprites(uint8_t *screen_buffer, int Y1, int Y2, int priority)
 
 			if (t > 0) {
 				C += t * inc;
-				C2 += t * inc * 2;
 				h -= t;
 				P += t * XBUF_WIDTH;
 			}
@@ -329,17 +274,16 @@ draw_sprites(uint8_t *screen_buffer, int Y1, int Y2, int priority)
 
 			if (attr & H_FLIP) {
 				for (int j = 0; j <= cgx; j++) {
-					draw_sprite(P + (cgx - j) * 16, C + j * 64, C2 + j * 32, h, attr);
+					draw_sprite(P + (cgx - j) * 16, C + j * 64, h, attr);
 				}
 			} else {
 				for (int j = 0; j <= cgx; j++) {
-					draw_sprite(P + j * 16, C + j * 64, C2 + j * 32, h, attr);
+					draw_sprite(P + j * 16, C + j * 64, h, attr);
 				}
 			}
 
 			P += h * XBUF_WIDTH;
 			C += (h + 16 * 7) * inc;
-			C2 += (h + 16) * (inc * 2);
 		}
 	}
 }
@@ -380,17 +324,6 @@ gfx_latch_context(int force)
 		gfx_context.control = IO_VDC_REG[CR].W;
 		gfx_context.latched = 1;
 	}
-}
-
-/*
-	In my testing this function is called between 0 and 400 times per frame.
-	Having TILE/SPR globals was slightly faster but it seems negligible right now...
- */
-void
-gfx_obj_cache_invalidate(int num)
-{
-	TILE_CACHE[((num) / 16) & 0x7FF] = 0;
-    SPR_CACHE[((num) / 64) & 0x1FF] = 0;
 }
 
 
@@ -434,9 +367,7 @@ render_lines(int min_line, int max_line)
 int
 gfx_init(void)
 {
-	OBJ_CACHE = osd_alloc(0x10000);
 	gfx_reset(true);
-	osd_gfx_init();
 	return 0;
 }
 
@@ -444,9 +375,6 @@ gfx_init(void)
 void
 gfx_reset(bool hard)
 {
-	memset(OBJ_CACHE, 0, 0x10000);
-	memset(SPR_CACHE, 0, sizeof(SPR_CACHE));
-	memset(TILE_CACHE, 0, sizeof(TILE_CACHE));
 	last_line_counter = 0;
 	line_counter = 0;
 }
@@ -455,12 +383,7 @@ gfx_reset(bool hard)
 void
 gfx_term(void)
 {
-	if (OBJ_CACHE) {
-		free(OBJ_CACHE);
-		OBJ_CACHE = NULL;
-	}
-
-	osd_gfx_shutdown();
+	//
 }
 
 

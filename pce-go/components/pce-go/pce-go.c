@@ -178,38 +178,38 @@ LoadCard(const char *name)
 			case 0x00:
 			case 0x10:
 			case 0x50:
-				MemoryMapR[i] = PCE.ROM_DATA + (i & ROM_MASK) * 0x2000;
+				PCE.MemoryMapR[i] = PCE.ROM_DATA + (i & ROM_MASK) * 0x2000;
 				break;
 			case 0x20:
 			case 0x60:
-				MemoryMapR[i] = PCE.ROM_DATA + ((i - 0x20) & ROM_MASK) * 0x2000;
+				PCE.MemoryMapR[i] = PCE.ROM_DATA + ((i - 0x20) & ROM_MASK) * 0x2000;
 				break;
 			case 0x30:
 			case 0x70:
-				MemoryMapR[i] = PCE.ROM_DATA + ((i - 0x10) & ROM_MASK) * 0x2000;
+				PCE.MemoryMapR[i] = PCE.ROM_DATA + ((i - 0x10) & ROM_MASK) * 0x2000;
 				break;
 			case 0x40:
-				MemoryMapR[i] = PCE.ROM_DATA + ((i - 0x20) & ROM_MASK) * 0x2000;
+				PCE.MemoryMapR[i] = PCE.ROM_DATA + ((i - 0x20) & ROM_MASK) * 0x2000;
 				break;
 			}
 		} else {
-			MemoryMapR[i] = PCE.ROM_DATA + (i & ROM_MASK) * 0x2000;
+			PCE.MemoryMapR[i] = PCE.ROM_DATA + (i & ROM_MASK) * 0x2000;
 		}
-		MemoryMapW[i] = PCE.NULLRAM;
+		PCE.MemoryMapW[i] = PCE.NULLRAM;
 	}
 
 	// Allocate the card's onboard ram
 	if (romFlags[IDX].Flags & ONBOARD_RAM) {
 		PCE.ExRAM = PCE.ExRAM ?: malloc(0x8000);
-		MemoryMapR[0x40] = MemoryMapW[0x40] = PCE.ExRAM;
-		MemoryMapR[0x41] = MemoryMapW[0x41] = PCE.ExRAM + 0x2000;
-		MemoryMapR[0x42] = MemoryMapW[0x42] = PCE.ExRAM + 0x4000;
-		MemoryMapR[0x43] = MemoryMapW[0x43] = PCE.ExRAM + 0x6000;
+		PCE.MemoryMapR[0x40] = PCE.MemoryMapW[0x40] = PCE.ExRAM;
+		PCE.MemoryMapR[0x41] = PCE.MemoryMapW[0x41] = PCE.ExRAM + 0x2000;
+		PCE.MemoryMapR[0x42] = PCE.MemoryMapW[0x42] = PCE.ExRAM + 0x4000;
+		PCE.MemoryMapR[0x43] = PCE.MemoryMapW[0x43] = PCE.ExRAM + 0x6000;
 	}
 
 	// Mapper for roms >= 1.5MB (SF2, homebrews)
 	if (PCE.ROM_SIZE >= 192)
-		MemoryMapW[0x00] = PCE.IOAREA;
+		PCE.MemoryMapW[0x00] = PCE.IOAREA;
 
 	return 0;
 }
@@ -230,12 +230,12 @@ ResetPCE(bool hard)
  * Initialize the emulator (allocate memory, call osd_init* functions)
  */
 int
-InitPCE(int samplerate, bool stereo, bool downsample, const char *huecard)
+InitPCE(int samplerate, bool stereo, const char *huecard)
 {
 	if (gfx_init())
 		return 1;
 
-	if (psg_init(samplerate, stereo, downsample))
+	if (psg_init(samplerate, stereo))
 		return 1;
 
 	if (pce_init())

@@ -10,7 +10,7 @@ int SaveState(const char *name);
 void ResetPCE(bool);
 void RunPCE(void);
 void ShutdownPCE();
-int InitPCE(int samplerate, bool stereo, bool downsample, const char *huecard);
+int InitPCE(int samplerate, bool stereo, const char *huecard);
 int LoadCard(const char *name);
 void *PalettePCE(int colordepth);
 

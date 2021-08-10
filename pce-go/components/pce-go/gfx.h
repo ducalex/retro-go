@@ -8,4 +8,3 @@ void gfx_term(void);
 void gfx_irq(int type);
 void gfx_reset(bool hard);
 void gfx_latch_context(int force);
-void gfx_obj_cache_invalidate(int num);

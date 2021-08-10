@@ -134,6 +134,10 @@ typedef struct {
 	// Value of each of the MMR registers
 	uint8_t MMR[8];
 
+	// Effective memory map
+	uint8_t *MemoryMapR[256];
+	uint8_t *MemoryMapW[256];
+
 	// Street Fighter 2 Mapper
 	uint8_t SF2;
 
@@ -193,8 +197,6 @@ extern PCE_t PCE;
 // physical address on emulator machine of each of the 256 banks
 extern uint8_t *PageR[8];
 extern uint8_t *PageW[8];
-extern uint8_t *MemoryMapR[256];
-extern uint8_t *MemoryMapW[256];
 
 #define Cycles PCE.Cycles
 
@@ -308,6 +310,6 @@ pce_bank_set(uint8_t P, uint8_t V)
 	TRACE_IO("Bank switching (MMR[%d] = %d)\n", P, V);
 
 	PCE.MMR[P] = V;
-	PageR[P] = (MemoryMapR[V] == PCE.IOAREA) ? (PCE.IOAREA) : (MemoryMapR[V] - P * 0x2000);
-	PageW[P] = (MemoryMapW[V] == PCE.IOAREA) ? (PCE.IOAREA) : (MemoryMapW[V] - P * 0x2000);
+	PageR[P] = (PCE.MemoryMapR[V] == PCE.IOAREA) ? (PCE.IOAREA) : (PCE.MemoryMapR[V] - P * 0x2000);
+	PageW[P] = (PCE.MemoryMapW[V] == PCE.IOAREA) ? (PCE.IOAREA) : (PCE.MemoryMapW[V] - P * 0x2000);
 }
