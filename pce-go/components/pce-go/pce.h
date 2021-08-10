@@ -1,8 +1,6 @@
 #pragma once
 
-#include <stddef.h>
-#include "config.h"
-#include "utils.h"
+#include "pce-go.h"
 
 // System clocks (hz)
 #define CLOCK_MASTER           (21477270)

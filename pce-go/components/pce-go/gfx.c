@@ -2,7 +2,7 @@
 //
 #include <stdlib.h>
 #include <string.h>
-#include "osd.h"
+#include "utils.h"
 #include "pce.h"
 #include "gfx.h"
 

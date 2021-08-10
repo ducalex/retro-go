@@ -16,7 +16,8 @@
 #include <unistd.h>
 #include <stdio.h>
 
-#include <osd.h>
+#include <pce-go.h>
+#include <psg.h>
 
 #define AUDIO_SAMPLE_RATE 22050
 // #define AUDIO_BUFFER_LENGTH  (AUDIO_SAMPLE_RATE / 60)
@@ -29,6 +30,7 @@ static rg_video_frame_t frames[2];
 static rg_video_frame_t *currentUpdate = &frames[0];
 static int current_height, current_width;
 static bool overscan = false;
+static bool downsample = false;
 static int skipFrames = 0;
 
 static rg_app_desc_t *app;
@@ -49,26 +51,14 @@ uint8_t *osd_gfx_framebuffer(void)
     return (uint8_t *)currentUpdate->my_arg;
 }
 
-void osd_gfx_init(void)
-{
-    framebuffers[0] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
-    framebuffers[1] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
-
-    overscan = rg_settings_get_app_int32(SETTING_OVERSCAN, 1);
-
-    mypalette = PalettePCE(16);
-    for (int i = 0; i < 256; i++) {
-        mypalette[i] = (mypalette[i] << 8) | (mypalette[i] >> 8);
-    }
-
-    osd_gfx_set_mode(256, 240);
-}
-
 void osd_gfx_set_mode(int width, int height)
 {
     const rg_display_t *display = rg_display_get_status();
-    int crop_h = MAX(0, width - (int)display->screen.width);
-    int crop_v = MAX(0, height - (int)display->screen.height) + (overscan ? 6 : 0);
+    int crop_h = width - (int)display->screen.width;
+    int crop_v = height - (int)display->screen.height + (overscan ? 6 : 0);
+
+    if (crop_h < 0) crop_h = 0;
+    if (crop_v < 0) crop_v = 0;
 
     // We center the content vertically and horizontally to allow overflows all around
     int offset_center = (((XBUF_HEIGHT - height) / 2 + 16) * XBUF_WIDTH + (XBUF_WIDTH - width) / 2);
@@ -122,11 +112,6 @@ void osd_gfx_blit(void)
     }
 }
 
-void osd_gfx_shutdown(void)
-{
-    RG_LOGI("Goodbye...\n");
-}
-
 static dialog_return_t overscan_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
@@ -144,11 +129,12 @@ static dialog_return_t overscan_update_cb(dialog_option_t *option, dialog_event_
 static dialog_return_t sampletype_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
-        host.sound.sample_uint8 ^= 1;
-        rg_settings_set_app_int32(SETTING_AUDIOTYPE, host.sound.sample_uint8);
+        downsample ^= 1;
+        rg_settings_set_app_int32(SETTING_AUDIOTYPE, downsample);
+        psg_init(AUDIO_SAMPLE_RATE, true, downsample);
     }
 
-    strcpy(option->value, host.sound.sample_uint8 ? "On " : "Off");
+    strcpy(option->value, downsample ? "On " : "Off");
 
     return RG_DIALOG_IGNORE;
 }
@@ -166,12 +152,7 @@ static dialog_return_t advanced_settings_cb(dialog_option_t *option, dialog_even
     return RG_DIALOG_IGNORE;
 }
 
-int osd_input_init(void)
-{
-    return 0;
-}
-
-void osd_input_read(void)
+void osd_input_read(uint8_t joypads[8])
 {
     uint32_t joystick = rg_input_read_gamepad();
     uint32_t buttons = 0;
@@ -198,7 +179,7 @@ void osd_input_read(void)
     if (joystick & GAMEPAD_KEY_START)  buttons |= JOY_RUN;
     if (joystick & GAMEPAD_KEY_SELECT) buttons |= JOY_SELECT;
 
-    PCE.Joypad.regs[0] = buttons;
+    joypads[0] = buttons;
 }
 
 static void audioTask(void *arg)
@@ -212,20 +193,6 @@ static void audioTask(void *arg)
     }
 
     vTaskDelete(NULL);
-}
-
-void osd_snd_init(void)
-{
-    host.sound.stereo = true;
-    host.sound.sample_freq = AUDIO_SAMPLE_RATE;
-    host.sound.sample_uint8 = rg_settings_get_app_int32(SETTING_AUDIOTYPE, 0);
-
-    xTaskCreatePinnedToCore(&audioTask, "audioTask", 1024 * 2, NULL, 5, NULL, 1);
-}
-
-void osd_snd_shutdown(void)
-{
-    rg_audio_deinit();
 }
 
 void osd_log(int type, const char *format, ...)
@@ -264,11 +231,6 @@ void osd_vsync(void)
 
     if ((lasttime + frametime) < prevtime)
         lasttime = prevtime;
-}
-
-void *osd_alloc(size_t size)
-{
-    return rg_alloc(size, (size <= 0x10000) ? MEM_FAST : MEM_SLOW);
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)
@@ -310,12 +272,26 @@ void app_main(void)
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
 
-    InitPCE(app->romPath);
+    framebuffers[0] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
+    framebuffers[1] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_SLOW);
+
+    overscan = rg_settings_get_app_int32(SETTING_OVERSCAN, 1);
+    downsample = rg_settings_get_app_int32(SETTING_AUDIOTYPE, 0);
+
+    mypalette = PalettePCE(16);
+    for (int i = 0; i < 256; i++) {
+        mypalette[i] = (mypalette[i] << 8) | (mypalette[i] >> 8);
+    }
+    osd_gfx_set_mode(256, 240);
+
+    InitPCE(AUDIO_SAMPLE_RATE, true, downsample, app->romPath);
 
     if (app->startAction == RG_START_ACTION_RESUME)
     {
         rg_emu_load_state(0);
     }
+
+    xTaskCreatePinnedToCore(&audioTask, "audioTask", 1024 * 3, NULL, 5, NULL, 1);
 
     RunPCE();
 

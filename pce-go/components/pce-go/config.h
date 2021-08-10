@@ -1,3 +1,5 @@
+#include <rg_system.h>
+
 // Enable debugging messages (hardware faults, fix-me, etc)
 #define DEBUG_ENABLED          0
 

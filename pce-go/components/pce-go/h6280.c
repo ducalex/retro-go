@@ -3,8 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "pce-go.h"
+#include "utils.h"
 #include "pce.h"
-#include "osd.h"
 
 #include "h6280_instr.h"
 #include "h6280_dbg.h"

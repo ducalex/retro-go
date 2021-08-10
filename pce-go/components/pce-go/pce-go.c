@@ -5,11 +5,10 @@
 #include <stdio.h>
 
 #include "pce-go.h"
+#include "utils.h"
 #include "gfx.h"
 #include "psg.h"
 #include "pce.h"
-
-host_machine_t host;
 
 /**
  * Describes what is saved in a save state. Changing the order will break
@@ -113,7 +112,7 @@ LoadCard(const char *name)
 	offset = fsize & 0x1fff;
 
 	// read ROM
-	PCE.ROM = osd_alloc(fsize);
+	PCE.ROM = malloc(fsize);
 
 	if (PCE.ROM == NULL)
 	{
@@ -201,7 +200,7 @@ LoadCard(const char *name)
 
 	// Allocate the card's onboard ram
 	if (romFlags[IDX].Flags & ONBOARD_RAM) {
-		PCE.ExRAM = PCE.ExRAM ?: osd_alloc(0x8000);
+		PCE.ExRAM = PCE.ExRAM ?: malloc(0x8000);
 		MemoryMapR[0x40] = MemoryMapW[0x40] = PCE.ExRAM;
 		MemoryMapR[0x41] = MemoryMapW[0x41] = PCE.ExRAM + 0x2000;
 		MemoryMapR[0x42] = MemoryMapW[0x42] = PCE.ExRAM + 0x4000;
@@ -231,21 +230,18 @@ ResetPCE(bool hard)
  * Initialize the emulator (allocate memory, call osd_init* functions)
  */
 int
-InitPCE(const char *name)
+InitPCE(int samplerate, bool stereo, bool downsample, const char *huecard)
 {
-	if (osd_input_init())
-		return 1;
-
 	if (gfx_init())
 		return 1;
 
-	if (psg_init())
+	if (psg_init(samplerate, stereo, downsample))
 		return 1;
 
 	if (pce_init())
 		return 1;
 
-	if (LoadCard(name))
+	if (huecard && LoadCard(huecard))
 		return 1;
 
 	ResetPCE(0);
@@ -261,13 +257,13 @@ void *
 PalettePCE(int colordepth)
 {
 	if (colordepth == 15) {
-		uint16_t *palette = osd_alloc(256 * 2);
+		uint16_t *palette = malloc(256 * 2);
 		// ...
 		return palette;
 	}
 
 	if (colordepth == 16) {
-		uint16_t *palette = osd_alloc(256 * 2);
+		uint16_t *palette = malloc(256 * 2);
 		for (int i = 0; i < 255; i++) {
 			int r = (i & 0x1C) >> 1;
 			int g = (i & 0xe0) >> 4;
@@ -279,7 +275,7 @@ PalettePCE(int colordepth)
 	}
 
 	if (colordepth == 24) {
-		uint8_t *palette = osd_alloc(256 * 3);
+		uint8_t *palette = malloc(256 * 3);
 		uint8_t *ptr = palette;
 		for (int i = 0; i < 255; i++) {
 			*ptr++ = (i & 0x1C) << 2;

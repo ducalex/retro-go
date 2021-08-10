@@ -2,8 +2,8 @@
 //
 #include <stdlib.h>
 #include <string.h>
-
 #include "pce-go.h"
+#include "utils.h"
 #include "pce.h"
 #include "gfx.h"
 
@@ -15,6 +15,8 @@ uint8_t *PageR[8];
 uint8_t *PageW[8];
 uint8_t *MemoryMapR[256];
 uint8_t *MemoryMapW[256];
+
+static bool running = false;
 
 static inline void timer_run(void);
 
@@ -84,6 +86,16 @@ pce_init(void)
 
 
 /**
+  * Terminate the emulation loop
+  **/
+void
+pce_pause(void)
+{
+    running = false;
+}
+
+
+/**
   * Terminate the hardware
   **/
 void
@@ -100,10 +112,10 @@ pce_term(void)
 void
 pce_run(void)
 {
-    host.paused = 0;
+    running = true;
 
-    while (!host.paused) {
-        osd_input_read();
+    while (running) {
+        osd_input_read(PCE.Joypad.regs);
 
         for (PCE.Scanline = 0; PCE.Scanline < 263; ++PCE.Scanline) {
             PCE.MaxCycles += CYCLES_PER_LINE;
