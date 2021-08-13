@@ -42,7 +42,20 @@ static inline uint32_t gamepad_read(void)
     uint8_t data[5];
     if (rg_i2c_read(0x20, -1, &data, 5))
     {
-        // ...
+        int bat = data[4];
+
+        // if (bat>200)
+        //     batlevel=4;
+        // else if(bat>190)
+        //     batlevel=3;
+        // else if(bat>180)
+        //     batlevel=2;
+        // else if(bat>170)
+        //     batlevel=1;
+        // else
+        //     batlevel=0;
+
+        state = (data[2] << 8) | data[1];
     }
 
 #endif
@@ -167,6 +180,7 @@ void rg_input_wait_for_key(gamepad_key_t key, bool pressed)
 
 battery_state_t rg_input_read_battery()
 {
+#if RG_DRIVER_BATTERY == 1
     static esp_adc_cal_characteristics_t adc_chars;
     static float adcValue = 0.0f;
 
@@ -196,6 +210,7 @@ battery_state_t rg_input_read_battery()
         adcValue += adcSample;
         adcValue /= 2.0f;
     }
+#endif
 
     return (battery_state_t) {
         .millivolts = (int)(RG_BATT_CALC_VOLTAGE(adcValue) * 1000),

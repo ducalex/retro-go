@@ -12,6 +12,8 @@ extern "C" {
 
 #if defined(RG_TARGET_ODROID_GO) || 1
     #include "targets/odroid-go.h"
+#elif defined(RG_TARGET_MRGC_G32)
+    #include "targets/mrgc-g32.h"
 #else
     #error "Target device not defined"
 #endif

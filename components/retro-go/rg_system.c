@@ -309,12 +309,14 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
 
     // On the Odroid-GO the SPI bus is shared between the SD Card and the LCD
     // That isn't the case on other devices, so for performance we don't initialize the mutex
+#if defined(RG_GPIO_LCD_MISO) && defined(RG_GPIO_SD_MISO)
     if (RG_GPIO_LCD_MISO == RG_GPIO_SD_MISO || RG_GPIO_LCD_MOSI == RG_GPIO_SD_MOSI || RG_GPIO_LCD_CLK == RG_GPIO_SD_CLK)
     {
         spiMutex = xSemaphoreCreateBinary(); // xSemaphoreCreateMutex();
         spiMutexOwner = -1;
         xSemaphoreGive(spiMutex);
     }
+#endif
 
     // Seed C's pseudo random number generator
     srand(esp_random());

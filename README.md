@@ -115,6 +115,7 @@ An up to date list of incompatible/broken games can be found on the [ODROID-GO f
 - Chip sound player
 - Sleep mode
 - Arduboy compatibility?
+- WiFi file manager
 
 
 # Building Retro-Go

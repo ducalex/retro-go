@@ -1,3 +1,4 @@
+#include <driver/sdmmc_host.h>
 #include <esp_vfs_fat.h>
 #include <esp_event.h>
 #include <sys/stat.h>
