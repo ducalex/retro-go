@@ -21,9 +21,6 @@
 **
 */
 
-#ifndef _DIS6502_H_
-#define _DIS6502_H_
+#pragma once
 
-extern char *nes6502_disasm(uint32 PC, uint8 P, uint8 A, uint8 X, uint8 Y, uint8 S);
-
-#endif /* !_DIS6502_H_ */
+char *nes6502_disasm(uint32 PC, uint8 P, uint8 A, uint8 X, uint8 Y, uint8 S);

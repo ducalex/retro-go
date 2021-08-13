@@ -21,8 +21,7 @@
 **
 */
 
-#ifndef _NES_PPU_H_
-#define _NES_PPU_H_
+#pragma once
 
 /* PPU register defines */
 #define  PPU_CTRL0            0x2000
@@ -63,9 +62,6 @@
 /* Maximum number of sprites per horizontal scanline */
 #define  PPU_MAXSPRITE        8
 
-/* Predefined input palette count */
-#define  PPU_PAL_COUNT        6
-
 /* Some mappers need to hook into the PPU's internals */
 typedef void (*ppu_latchfunc_t)(uint32 address, uint8 value);
 typedef uint8 (*ppu_vreadfunc_t)(uint32 address, uint8 value);
@@ -75,7 +71,6 @@ typedef enum
    PPU_DRAW_SPRITES,
    PPU_DRAW_BACKGROUND,
    PPU_LIMIT_SPRITES,
-   PPU_PALETTE_RGB,
    PPU_OPTIONS_COUNT,
 } ppu_option_t;
 
@@ -110,16 +105,13 @@ typedef struct
    /* VRAM (CHR RAM/ROM) paging */
    uint8 *page[16];
 
-   /* Framebuffer palette */
-   rgb_t curpal[256];
-
    /* Hardware registers */
    uint8 ctrl0, ctrl1, stat, oam_addr, nametab_base;
    uint8 latch, vdata_latch, tile_xofs, flipflop;
-   int32 vaddr, vaddr_latch, vaddr_inc;
+   int   vaddr, vaddr_latch, vaddr_inc;
    uint8 nt1, nt2, nt3, nt4;
 
-   int32 obj_height, obj_base, bg_base;
+   int  obj_height, obj_base, bg_base;
    bool left_bg_on, left_obj_on;
    bool bg_on, obj_on;
 
@@ -150,58 +142,36 @@ typedef struct
 } palette_t;
 
 /* Mirroring / Paging */
-extern void ppu_setpage(int size, int page_num, uint8 *location);
-extern void ppu_setnametables(int nt1, int nt2, int nt3, int nt4);
-extern void ppu_setmirroring(ppu_mirror_t type);
-extern uint8 *ppu_getpage(int page_num);
-extern uint8 *ppu_getnametable(int nt);
+void ppu_setpage(int size, int page_num, uint8 *location);
+void ppu_setnametables(int nt1, int nt2, int nt3, int nt4);
+void ppu_setmirroring(ppu_mirror_t type);
+uint8 *ppu_getpage(int page_num);
+uint8 *ppu_getnametable(int nt);
 
 /* Control */
-extern ppu_t *ppu_init(void);
-extern void ppu_refresh(void);
-extern void ppu_reset(void);
-extern void ppu_shutdown(void);
-extern bool ppu_enabled(void);
-extern bool ppu_inframe(void);
-extern void ppu_setopt(ppu_option_t n, int val);
-extern int  ppu_getopt(ppu_option_t n);
+ppu_t *ppu_init(void);
+void ppu_refresh(void);
+void ppu_reset(void);
+void ppu_shutdown(void);
+bool ppu_enabled(void);
+bool ppu_inframe(void);
+void ppu_setopt(ppu_option_t n, int val);
+int  ppu_getopt(ppu_option_t n);
 
-extern void ppu_setlatchfunc(ppu_latchfunc_t func);
-extern void ppu_setvreadfunc(ppu_vreadfunc_t func);
+void ppu_setlatchfunc(ppu_latchfunc_t func);
+void ppu_setvreadfunc(ppu_vreadfunc_t func);
 
-extern void ppu_getcontext(ppu_t *dest_ppu);
-extern void ppu_setcontext(ppu_t *src_ppu);
+void ppu_getcontext(ppu_t *dest_ppu);
+void ppu_setcontext(ppu_t *src_ppu);
 
 /* IO */
-extern uint8 ppu_read(uint32 address);
-extern void ppu_write(uint32 address, uint8 value);
+uint8 ppu_read(uint32 address);
+void ppu_write(uint32 address, uint8 value);
 
 /* Rendering */
-extern void ppu_scanline(uint8 *bmp, int scanline, bool draw_flag);
-extern void ppu_endscanline(void);
-extern void ppu_setpalette(rgb_t *pal);
-extern const palette_t *ppu_getpalette(int n);
+void ppu_scanline(uint8 *bmp, int scanline, bool draw_flag);
+void ppu_endscanline(void);
 
 /* Debugging */
-extern void ppu_dumppattern(uint8 *bmp, int table_num, int x_loc, int y_loc, int col);
-extern void ppu_dumpoam(uint8 *bmp, int x_loc, int y_loc);
-
-/* PPU debug drawing */
-#define  GUI_FIRSTENTRY 192
-
-enum
-{
-   GUI_BLACK = GUI_FIRSTENTRY,
-   GUI_DKGRAY,
-   GUI_GRAY,
-   GUI_LTGRAY,
-   GUI_WHITE,
-   GUI_RED,
-   GUI_GREEN,
-   GUI_BLUE,
-   GUI_LASTENTRY
-};
-
-#define  GUI_TOTALCOLORS   (GUI_LASTENTRY - GUI_FIRSTENTRY)
-
-#endif /* _NES_PPU_H_ */
+void ppu_dumppattern(uint8 *bmp, int table_num, int x_loc, int y_loc, int col);
+void ppu_dumpoam(uint8 *bmp, int x_loc, int y_loc);

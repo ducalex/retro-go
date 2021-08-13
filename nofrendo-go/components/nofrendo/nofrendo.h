@@ -22,8 +22,7 @@
 **
 */
 
-#ifndef _NOFRENDO_H_
-#define _NOFRENDO_H_
+#pragma once
 
 #define APP_STRING  "Nofrendo"
 #define APP_VERSION "3.0"
@@ -61,19 +60,19 @@
 
 #ifdef NOFRENDO_DEBUG
 #define UNUSED(x)
-#define ASSERT(expr) while (!(expr)) { osd_log(1, "ASSERTION FAILED IN %s: " #expr "\n", __func__); abort(); }
-#define MESSAGE_TRACE(x...)   osd_log(5, "~ %s: " x, __func__, ## __VA_ARGS__)
-#define MESSAGE_DEBUG(x...)   osd_log(4, "> %s: " x, __func__, ## __VA_ARGS__)
-#define MESSAGE_INFO(x, ...)  osd_log(3, "* %s: " x, __func__, ## __VA_ARGS__)
-#define MESSAGE_WARN(x, ...)  osd_log(2, "* %s: " x, __func__, ## __VA_ARGS__)
-#define MESSAGE_ERROR(x, ...) osd_log(1, "!! %s: " x, __func__, ## __VA_ARGS__)
+#define ASSERT(expr) while (!(expr)) { nofrendo_log(1, "ASSERTION FAILED IN %s: " #expr "\n", __func__); abort(); }
+#define MESSAGE_TRACE(x...)   nofrendo_log(5, "~ %s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_DEBUG(x...)   nofrendo_log(4, "> %s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_INFO(x, ...)  nofrendo_log(3, "* %s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_WARN(x, ...)  nofrendo_log(2, "* %s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_ERROR(x, ...) nofrendo_log(1, "!! %s: " x, __func__, ## __VA_ARGS__)
 #else
 #define UNUSED(x) (void)x
 #define ASSERT(expr)
 #define MESSAGE_DEBUG(x, ...)
-#define MESSAGE_INFO(x...)  osd_log(3, x)
-#define MESSAGE_WARN(x...)  osd_log(2, " ! " x)
-#define MESSAGE_ERROR(x...) osd_log(1, "!! " x)
+#define MESSAGE_INFO(x...)  nofrendo_log(3, x)
+#define MESSAGE_WARN(x...)  nofrendo_log(2, " ! " x)
+#define MESSAGE_ERROR(x...) nofrendo_log(1, "!! " x)
 #endif
 
 /* End macros */
@@ -84,30 +83,41 @@
 #include <stdint.h>
 
 typedef int8_t int8;
-typedef int16_t int16;
-typedef int32_t int32;
-typedef int64_t int64;
 typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
-typedef uint64_t uint64;
 
-typedef uint_fast16_t addr_t;
-
-typedef struct
+typedef enum
 {
-    uint8 r, g, b;
-} rgb_t;
+    NES_PALETTE_NOFRENDO = 0,
+    NES_PALETTE_COMPOSITE,
+    NES_PALETTE_NESCLASSIC,
+    NES_PALETTE_NTSC,
+    NES_PALETTE_PVM,
+    NES_PALETTE_SMOOTH,
+    NES_PALETTE_COUNT,
+} nespal_t;
 
+enum
+{
+    // Start at 192 because it's unlikely that a pixel will have both BG_TRANS|SP_PIXEL
+    NES_GUI_BLACK = 192,
+    NES_GUI_DKGRAY,
+    NES_GUI_GRAY,
+    NES_GUI_LTGRAY,
+    NES_GUI_WHITE,
+    NES_GUI_RED,
+    NES_GUI_GREEN,
+    NES_GUI_BLUE,
+};
 
-#include <stdlib.h>
 #include <rg_system.h>
-#include <osd.h>
 #include <nes.h>
 
 /* End basic types */
 
-extern int nofrendo_start(const char *filename, int system, int sample_rate, bool stereo);
-extern void nofrendo_stop(void);
-
-#endif /* !_NOFRENDO_H_ */
+int nofrendo_init(int system, int sample_rate, bool stereo, void *blit, void *vsync, void *input);
+int nofrendo_start(const char *filename, const char *savefile);
+void nofrendo_stop(void);
+void nofrendo_log(int type, const char *format, ...);
+void *nofrendo_buildpalette(nespal_t n, int bitdepth);

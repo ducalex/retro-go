@@ -37,8 +37,8 @@ static uint16 chr_banks[12];
 static uint16 chr_upper_bits;
 static uint16 chr_banks_count;
 
-static int16 split_tile, split_tile_number, split_region;
-static int16 scanline;
+static int split_tile, split_tile_number, split_region;
+static int scanline;
 
 #define IN_FRAME    0x40
 #define IRQ_PENDING 0x80
@@ -71,7 +71,7 @@ static struct
 
 static struct
 {
-   int16 scanline;
+   short scanline;
    uint8 enabled;
    uint8 status;
 } irq;

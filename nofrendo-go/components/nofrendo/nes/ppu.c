@@ -29,9 +29,6 @@
 #include "ppu.h"
 #include "nes.h"
 
-/* static const palette_t nes_palettes[PPU_PAL_COUNT] */
-#include <palettes.h>
-
 /* PPU access */
 #define PPU_MEM_READ(x)      (ppu.page[(x) >> 10][(x)])
 #define PPU_MEM_WRITE(x,v)   (ppu.page[(x) >> 10][(x)] = (v))
@@ -51,18 +48,6 @@
 
 /* the NES PPU */
 static ppu_t ppu;
-
-static rgb_t gui_pal[] =
-{
-   { 0x00, 0x00, 0x00 }, /* black      */
-   { 0x3F, 0x3F, 0x3F }, /* dark gray  */
-   { 0x7F, 0x7F, 0x7F }, /* gray       */
-   { 0xBF, 0xBF, 0xBF }, /* light gray */
-   { 0xFF, 0xFF, 0xFF }, /* white      */
-   { 0xFF, 0x00, 0x00 }, /* red        */
-   { 0x00, 0xFF, 0x00 }, /* green      */
-   { 0x00, 0x00, 0xFF }, /* blue       */
-};
 
 
 #ifndef PPU_MEM_READ
@@ -356,44 +341,11 @@ IRAM_ATTR void ppu_write(uint32 address, uint8 value)
    }
 }
 
-/* Builds a 256 color 8-bit palette based on a 64-color NES palette
-** Note that we set it up 3 times so that we flip bits on the primary
-** NES buffer for priorities
-*/
-void ppu_setpalette(rgb_t *pal)
-{
-   /* Set it up 3 times, for sprite priority/BG transparency trickery */
-   for (int i = 0; i < 64; i++)
-   {
-      ppu.curpal[i].r = ppu.curpal[i + 64].r = ppu.curpal[i + 128].r = pal[i].r;
-      ppu.curpal[i].g = ppu.curpal[i + 64].g = ppu.curpal[i + 128].g = pal[i].g;
-      ppu.curpal[i].b = ppu.curpal[i + 64].b = ppu.curpal[i + 128].b = pal[i].b;
-   }
-
-   for (int i = 0; i < GUI_TOTALCOLORS; i++)
-   {
-      ppu.curpal[i + 192].r = gui_pal[i].r;
-      ppu.curpal[i + 192].g = gui_pal[i].g;
-      ppu.curpal[i + 192].b = gui_pal[i].b;
-   }
-
-   osd_setpalette((rgb_t *)&ppu.curpal);
-}
-
-const palette_t *ppu_getpalette(int n)
-{
-   return &nes_palettes[n % PPU_PAL_COUNT];
-}
-
 void ppu_setopt(ppu_option_t n, int val)
 {
    // Some options need special care
    switch (n)
    {
-      case PPU_PALETTE_RGB:
-      ppu_setpalette((rgb_t*)nes_palettes[val % PPU_PAL_COUNT].data);
-      break;
-
       default:
       break;
    }
@@ -417,7 +369,7 @@ void ppu_setvreadfunc(ppu_vreadfunc_t func)
 }
 
 /* rendering routines */
-INLINE uint16 get_patpix(uint16 tile_addr)
+INLINE uint32 get_patpix(uint32 tile_addr)
 {
    uint8 pat1 = PPU_MEM_READ(tile_addr);
    uint8 pat2 = PPU_MEM_READ(tile_addr + 8);
@@ -425,7 +377,7 @@ INLINE uint16 get_patpix(uint16 tile_addr)
         | ((pat1 & 0xAA) << 7) | (pat1 & 0x55);
 }
 
-INLINE void build_tile_colors(bool flip, uint16 pattern, uint8 *colors)
+INLINE void build_tile_colors(bool flip, uint32 pattern, uint8 *colors)
 {
    /* swap pixels around if our tile is flipped */
    if (flip)
@@ -456,7 +408,7 @@ INLINE void build_tile_colors(bool flip, uint16 pattern, uint8 *colors)
 ** where the sprite 0 strike is going to occur (in terms of
 ** cpu cycles), using the relation that 3 pixels == 1 cpu cycle
 */
-INLINE void check_strike(uint8 *surface, uint8 attrib, uint16 pattern)
+INLINE void check_strike(uint8 *surface, uint8 attrib, uint32 pattern)
 {
    uint8 colors[8];
 
@@ -482,7 +434,7 @@ INLINE void check_strike(uint8 *surface, uint8 attrib, uint16 pattern)
    }
 }
 
-INLINE void draw_bgtile(uint8 *surface, uint16 pattern, const uint8 *colors)
+INLINE void draw_bgtile(uint8 *surface, uint32 pattern, const uint8 *colors)
 {
    *surface++ = colors[(pattern >> 14) & 3];
    *surface++ = colors[(pattern >> 6) & 3];
@@ -494,7 +446,7 @@ INLINE void draw_bgtile(uint8 *surface, uint16 pattern, const uint8 *colors)
    *surface   = colors[pattern & 3];
 }
 
-INLINE void draw_oamtile(uint8 *surface, uint8 attrib, uint16 pattern, const uint8 *col_tbl)
+INLINE void draw_oamtile(uint8 *surface, uint8 attrib, uint32 pattern, const uint8 *col_tbl)
 {
    uint8 colors[8];
 
@@ -682,12 +634,12 @@ INLINE void ppu_renderoam(uint8 *vidbuf, int scanline, bool draw)
    }
 }
 
-IRAM_ATTR bool ppu_enabled(void)
+bool ppu_enabled(void)
 {
    return (ppu.bg_on || ppu.obj_on);
 }
 
-IRAM_ATTR bool ppu_inframe(void)
+bool ppu_inframe(void)
 {
    return (ppu.scanline < 240);
 }
@@ -792,7 +744,6 @@ ppu_t *ppu_init(void)
    ppu_setopt(PPU_DRAW_BACKGROUND, true);
    ppu_setopt(PPU_DRAW_SPRITES, true);
    ppu_setopt(PPU_LIMIT_SPRITES, true);
-   ppu_setopt(PPU_PALETTE_RGB, 0);
 
    return &ppu;
 }
@@ -816,23 +767,23 @@ INLINE void draw_box(uint8 *bmp, int x, int y, int height)
    vid = NES_SCREEN_GETPTR(bmp, x, y);
 
    for (i = 0; i < 10; i++)
-      *vid++ = GUI_GRAY;
+      *vid++ = NES_GUI_GRAY;
    vid += (NES_SCREEN_PITCH - 10);
    for (i = 0; i < height; i++)
    {
-      vid[0] = vid[9] = GUI_GRAY;
+      vid[0] = vid[9] = NES_GUI_GRAY;
       vid += NES_SCREEN_PITCH;
    }
    for (i = 0; i < 10; i++)
-      *vid++ = GUI_GRAY;
+      *vid++ = NES_GUI_GRAY;
 }
 
 INLINE void draw_deadsprite(uint8 *bmp, int x, int y, int height)
 {
    int i, j, index;
    uint8 *vid;
-   uint8 colbuf[8] = { GUI_BLACK, GUI_BLACK, GUI_BLACK, GUI_BLACK,
-                       GUI_BLACK, GUI_BLACK, GUI_BLACK, GUI_DKGRAY };
+   uint8 colbuf[8] = { NES_GUI_BLACK, NES_GUI_BLACK, NES_GUI_BLACK, NES_GUI_BLACK,
+                       NES_GUI_BLACK, NES_GUI_BLACK, NES_GUI_BLACK, NES_GUI_DKGRAY };
 
    vid = NES_SCREEN_GETPTR(bmp, x, y);
 

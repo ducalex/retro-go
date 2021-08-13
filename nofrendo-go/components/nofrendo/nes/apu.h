@@ -21,8 +21,7 @@
 **
 */
 
-#ifndef _NES_APU_H_
-#define _NES_APU_H_
+#pragma once
 
 // This is the worst case scenario, 48khz stereo running PAL
 #define  APU_SAMPLES_PER_FRAME ((48000 / 50 + 1) * 2)
@@ -66,27 +65,26 @@ typedef struct
    bool enabled;
 
    float accum;
-   int32 freq;
-   int32 output_vol;
-   bool fixed_envelope;
-   bool holdnote;
-   uint8 volume;
+   int freq;
+   int output_vol;
+   int fixed_envelope;
+   int holdnote;
+   int volume;
 
-   int32 sweep_phase;
-   int32 sweep_delay;
-   bool sweep_on;
-   uint8 sweep_shifts;
-   uint8 sweep_length;
-   bool sweep_inc;
+   int sweep_phase;
+   int sweep_delay;
+   int sweep_on;
+   int sweep_shifts;
+   int sweep_inc;
 
    /* this may not be necessary in the future */
-   int32 freq_limit;
-   int32 env_phase;
-   int32 env_delay;
-   uint8 env_vol;
+   int freq_limit;
+   int env_phase;
+   int env_delay;
+   int env_vol;
 
    int vbl_length;
-   uint8 adder;
+   int adder;
    int duty_flip;
 } rectangle_t;
 
@@ -97,17 +95,16 @@ typedef struct
    bool enabled;
 
    float accum;
-   int32 freq;
-   int32 output_vol;
+   int freq;
+   int output_vol;
 
-   uint8 adder;
-
-   bool holdnote;
-   bool counter_started;
+   int holdnote;
+   int counter_started;
    /* quasi-hack */
    int write_latency;
 
    int vbl_length;
+   int adder;
    int linear_length;
 } triangle_t;
 
@@ -119,14 +116,14 @@ typedef struct
    bool enabled;
 
    float accum;
-   int32 freq;
-   int32 output_vol;
+   int freq;
+   int output_vol;
 
-   int32 env_phase;
-   int32 env_delay;
-   uint8 env_vol;
-   bool fixed_envelope;
-   bool holdnote;
+   int env_phase;
+   int env_delay;
+   int env_vol;
+   int fixed_envelope;
+   int holdnote;
 
    uint8 volume;
    uint8 xor_tap;
@@ -141,21 +138,19 @@ typedef struct
 
    /* bodge for timestamp queue */
    bool enabled;
-
-   float accum;
-   int32 freq;
-   int32 output_vol;
-
-   uint32 address;
-   uint32 cached_addr;
-   int dma_length;
-   int cached_dmalength;
-   uint8 cur_byte;
-
    bool looping;
    bool irq_gen;
    bool irq_occurred;
 
+   float accum;
+   int freq;
+   int output_vol;
+
+   int address;
+   int cached_addr;
+   int dma_length;
+   int cached_dmalength;
+   int cur_byte;
 } dmc_t;
 
 enum
@@ -171,7 +166,7 @@ typedef struct
    int   (*init)(void);
    void  (*shutdown)(void);
    void  (*reset)(void);
-   int32 (*process)(void);
+   int   (*process)(void);
 } apuext_t;
 
 typedef enum
@@ -193,28 +188,28 @@ typedef struct
    dmc_t dmc;
    uint8 control_reg;
 
-   int32 prev_sample;
-
-   uint32 samples_per_frame;
-   uint32 sample_rate;
+   int samples_per_frame;
+   int sample_rate;
    bool stereo;
 
-   int16 buffer[APU_SAMPLES_PER_FRAME];
+   short buffer[APU_SAMPLES_PER_FRAME];
+
+   int prev_sample;
 
    float cycle_rate;
 
    struct {
       uint8 state;
-      uint32 step;
-      uint32 cycles;
+      uint step;
+      uint cycles;
       bool irq_occurred;
       bool disable_irq;
    } fc;
 
    /* look up table madness */
-   int32 decay_lut[16];
-   int32 vbl_lut[32];
-   int32 trilength_lut[128];
+   int decay_lut[16];
+   int vbl_lut[32];
+   int trilength_lut[128];
 
    /* external sound chip */
    apuext_t *ext;
@@ -224,24 +219,21 @@ typedef struct
 } apu_t;
 
 /* Function prototypes */
-extern apu_t *apu_init(int sample_rate, bool stereo);
-extern void apu_refresh(void);
-extern void apu_reset(void);
-extern void apu_shutdown(void);
-extern void apu_setext(apuext_t *ext);
+apu_t *apu_init(int sample_rate, bool stereo);
+void apu_reset(void);
+void apu_shutdown(void);
+void apu_setext(apuext_t *ext);
 
-extern void apu_emulate(void);
+void apu_emulate(void);
 
-extern void apu_setopt(apu_option_t n, int val);
-extern int  apu_getopt(apu_option_t n);
+void apu_setopt(apu_option_t n, int val);
+int  apu_getopt(apu_option_t n);
 
-extern void apu_setcontext(apu_t *src_apu);
-extern void apu_getcontext(apu_t *dest_apu);
+void apu_setcontext(apu_t *src_apu);
+void apu_getcontext(apu_t *dest_apu);
 
-extern void apu_process(int16 *buffer, size_t num_samples, bool stereo);
-extern void apu_fc_advance(int cycles);
+void apu_process(short *buffer, size_t num_samples, bool stereo);
+void apu_fc_advance(int cycles);
 
-extern uint8 apu_read(uint32 address);
-extern void apu_write(uint32 address, uint8 value);
-
-#endif /* _NES_APU_H_ */
+uint8 apu_read(uint address);
+void apu_write(uint address, uint8 value);

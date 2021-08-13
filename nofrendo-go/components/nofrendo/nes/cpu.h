@@ -21,12 +21,11 @@
 **
 */
 
+#pragma once
+
 /* NOTE: 16-bit addresses avoided like the plague: use 32-bit values
 **       wherever humanly possible
 */
-#ifndef _NES6502_H_
-#define _NES6502_H_
-
 #include "mem.h"
 
 /* P (flag) register bitmasks */
@@ -68,19 +67,16 @@ typedef struct
 } nes6502_t;
 
 /* Functions which govern the 6502's execution */
-extern int nes6502_execute(int cycles);
-extern void nes6502_nmi(void);
-extern void nes6502_irq(void);
-extern void nes6502_irq_clear(void);
-extern uint32 nes6502_getcycles(void);
-extern void nes6502_burn(int cycles);
+int nes6502_execute(int cycles);
+void nes6502_nmi(void);
+void nes6502_irq(void);
+void nes6502_irq_clear(void);
+uint32 nes6502_getcycles(void);
+void nes6502_burn(int cycles);
 
-extern nes6502_t *nes6502_init(mem_t *mem);
-extern void nes6502_refresh(void);
-extern void nes6502_reset(void);
-extern void nes6502_shutdown(void);
+nes6502_t *nes6502_init(mem_t *mem);
+void nes6502_reset(void);
+void nes6502_shutdown(void);
 
-extern void nes6502_setcontext(nes6502_t *cpu);
-extern void nes6502_getcontext(nes6502_t *cpu);
-
-#endif /* _NES6502_H_ */
+void nes6502_setcontext(nes6502_t *cpu);
+void nes6502_getcontext(nes6502_t *cpu);

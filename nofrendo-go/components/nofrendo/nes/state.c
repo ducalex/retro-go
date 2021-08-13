@@ -26,6 +26,13 @@
 #include "state.h"
 #include "cpu.h"
 
+typedef struct
+{
+    uint8  type[4];
+    uint32 blockVersion;
+    uint32 blockLength;
+} SnssBlockHeader;
+
 #define _fread(buffer, size) {                       \
    if (fread(buffer, size, 1, file) != 1)            \
    {                                                 \
@@ -57,18 +64,6 @@
    #define swap32(x) (x)
 #endif
 
-static int save_slot = 0;
-
-
-/* Set the state-save slot to use (0 - 9) */
-void state_setslot(int slot)
-{
-   if (save_slot != slot && slot >= 0 && slot <= 9)
-   {
-      save_slot = slot;
-      MESSAGE_INFO("Save slot changed to %d\n", slot);
-   }
-}
 
 int state_save(const char* fn)
 {
@@ -245,7 +240,7 @@ int state_save(const char* fn)
 
    fclose(file);
 
-   MESSAGE_INFO("state_save: Game %d saved!\n", save_slot);
+   MESSAGE_INFO("state_save: Game saved!\n");
 
    return 0;
 
@@ -429,7 +424,7 @@ int state_load(const char* fn)
    /* close file, we're done */
    fclose(file);
 
-   MESSAGE_INFO("state_load: Game %d restored\n", save_slot);
+   MESSAGE_INFO("state_load: Game restored\n");
 
    return 0;
 

@@ -96,7 +96,7 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
       if (header->rom_type & ROM_FLAG_TRAINER)
       {
          MESSAGE_INFO("ROM: Trainer found and skipped.\n");
-         rom.prg_rom += TRAINER_LENGTH;
+         rom.prg_rom += 0x200;
       }
 
       rom.checksum = crc32_le(0, rom.prg_rom, size - (rom.prg_rom - data));

@@ -21,8 +21,7 @@
 **
 */
 
-#ifndef _NES_H_
-#define _NES_H_
+#pragma once
 
 #include <nofrendo.h>
 #include "apu.h"
@@ -58,7 +57,21 @@ typedef enum
     SYS_NES_NTSC,
     SYS_NES_PAL,
     SYS_FAMICOM,
-} system_t;
+    SYS_DETECT = 0,
+} nes_type_t;
+
+typedef enum
+{
+    NES_NOTHING,
+    NES_JOYPAD,
+    NES_ZAPPER,
+} nes_dev_t;
+
+typedef enum
+{
+    NES_PORT0,
+    NES_PORT1,
+} nes_port_t;
 
 typedef void (nes_timer_t)(int cycles);
 
@@ -77,7 +90,7 @@ typedef struct
     uint8 *vidbuf;
 
     /* Misc */
-    system_t system;
+    nes_type_t system;
     int overscan;
 
     /* Timing constants */
@@ -95,23 +108,25 @@ typedef struct
     nes_timer_t *timer_func;
     long timer_period;
 
+    /* Port functions */
+    void (*blit_func)(uint8 *);
+    void (*vsync_func)(void);
+    void (*input_func)(void); // uint8 *, uint8 *
+
     /* Control */
-    bool autoframeskip;
+    bool frameskip;
     bool poweroff;
     bool pause;
-    bool drawframe;
 
 } nes_t;
 
-extern nes_t *nes_getptr(void);
-extern nes_t *nes_init(system_t system, int sample_rate, bool stereo);
-extern void nes_shutdown(void);
-extern rom_t *nes_insertcart(const char *filename);
-extern rom_t *nes_insertdisk(const char *filename);
-extern void nes_settimer(nes_timer_t *func, long period);
-extern void nes_emulate(void);
-extern void nes_reset(bool hard_reset);
-extern void nes_poweroff(void);
-extern void nes_togglepause(void);
-
-#endif /* _NES_H_ */
+nes_t *nes_getptr(void);
+nes_t *nes_init(nes_type_t system, int sample_rate, bool stereo);
+void nes_shutdown(void);
+rom_t *nes_insertcart(const char *filename);
+rom_t *nes_insertdisk(const char *filename);
+void nes_settimer(nes_timer_t *func, long period);
+void nes_emulate(bool draw);
+void nes_reset(bool hard_reset);
+void nes_poweroff(void);
+void nes_togglepause(void);

@@ -27,6 +27,7 @@
 
 #include <nofrendo.h>
 #include <string.h>
+#include <stdlib.h>
 #include <mmc.h>
 #include <nes.h>
 

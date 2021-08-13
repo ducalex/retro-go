@@ -21,8 +21,7 @@
 **
 */
 
-#ifndef _NES_ROM_H_
-#define _NES_ROM_H_
+#pragma once
 
 #define  ROM_INES_MAGIC          "NES\x1A"
 #define  FDS_HEAD_MAGIC          "FDS\x1A"
@@ -36,9 +35,6 @@
 
 #define  ROM_PRG_BANK_SIZE       0x2000
 #define  ROM_CHR_BANK_SIZE       0x2000
-
-#define  TRAINER_OFFSET          0x1000
-#define  TRAINER_LENGTH          0x200
 
 typedef struct __attribute__((packed))
 {
@@ -83,8 +79,6 @@ typedef struct
 } rom_t;
 
 
-extern rom_t *rom_loadfile(const char *filename);
-extern rom_t *rom_loadmem(uint8 *data, size_t size);
-extern void rom_free(void);
-
-#endif /* _NES_ROM_H_ */
+rom_t *rom_loadfile(const char *filename);
+rom_t *rom_loadmem(uint8 *data, size_t size);
+void rom_free(void);

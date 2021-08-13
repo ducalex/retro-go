@@ -21,8 +21,7 @@
 **
 */
 
-#ifndef _NES_MEM_H_
-#define _NES_MEM_H_
+#pragma once
 
 #define MEM_PAGEBITS  5
 #define MEM_PAGESHIFT (16 - MEM_PAGEBITS)
@@ -73,14 +72,11 @@ typedef struct
    mem_write_handler_t write_handlers[MEM_HANDLERS_MAX];
 } mem_t;
 
-extern mem_t *mem_create(void);
-extern void mem_shutdown(void);
-extern void mem_reset(void);
-extern void mem_setpage(uint32 page, uint8 *ptr);
-extern uint8 *mem_getpage(uint32 page);
-
-extern uint8 mem_getbyte(uint32 address);
-extern uint32 mem_getword(uint32 address);
-extern void mem_putbyte(uint32 address, uint8 value);
-
-#endif
+mem_t *mem_create(void);
+void mem_shutdown(void);
+void mem_reset(void);
+void mem_setpage(uint32 page, uint8 *ptr);
+uint8 *mem_getpage(uint32 page);
+uint8 mem_getbyte(uint32 address);
+uint32 mem_getword(uint32 address);
+void mem_putbyte(uint32 address, uint8 value);

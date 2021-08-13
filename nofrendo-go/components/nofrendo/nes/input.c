@@ -24,84 +24,68 @@
 #include <nofrendo.h>
 #include "input.h"
 
-static nesinput_t nes_inputs[INP_TYPE_MAX];
+typedef struct
+{
+    nes_dev_t type;
+    uint8 state;
+    uint8 reads;
+} nesinput_t;
+
+static nesinput_t ports[2];
 static int strobe = 0;
 
-IRAM_ATTR void input_write(uint32 address, uint8 value)
-{
-    if (address != INP_REG_JOY0)
-        return;
 
+void input_write(uint32 address, uint8 value)
+{
     value &= 1;
 
-    if (0 == value && strobe)
+    if (!value && strobe)
     {
-        for (int i = 0; i < INP_TYPE_MAX; ++i)
-            nes_inputs[i].reads = 0;
+        ports[0].reads = 0;
+        ports[1].reads = 0;
     }
 
     strobe = value;
 }
 
-IRAM_ATTR uint8 input_read(uint32 address)
+uint8 input_read(uint32 address)
 {
-    uint8 retval = 0, value = 0;
+    /* 0x4016 = JOY0, 0x4017 = JOY1 */
+    nesinput_t *port = &ports[address & 1];
+    unsigned retval = 0;
+    unsigned value = 0;
 
-    if (address == INP_REG_JOY0)
+    if (port->type == NES_JOYPAD)
     {
-        value = nes_inputs[INP_JOYPAD0].state;
-
-        /* mask out left/right simultaneous keypresses */
-        if ((value & INP_PAD_UP) && (value & INP_PAD_DOWN))
-            value &= ~(INP_PAD_UP | INP_PAD_DOWN);
-
-        if ((value & INP_PAD_LEFT) && (value & INP_PAD_RIGHT))
-            value &= ~(INP_PAD_LEFT | INP_PAD_RIGHT);
-
-        /* return (0x40 | value) due to bus conflicts */
-        retval |= (0x40 | ((value >> nes_inputs[INP_JOYPAD0].reads++) & 1));
+        value = port->state;
     }
-    else if (address == INP_REG_JOY1)
+
+    /* mask out left/right simultaneous keypresses */
+    if ((value & NES_PAD_UP) && (value & NES_PAD_DOWN))
+        value &= ~(NES_PAD_UP | NES_PAD_DOWN);
+
+    if ((value & NES_PAD_LEFT) && (value & NES_PAD_RIGHT))
+        value &= ~(NES_PAD_LEFT | NES_PAD_RIGHT);
+
+    /* return (0x40 | value) due to bus conflicts */
+    retval |= (0x40 | ((value >> port->reads++) & 1));
+
+    if (address == 0x4017 && port->type == NES_ZAPPER) // JOY1 also manages the zapper
     {
-        value = nes_inputs[INP_JOYPAD1].state;
-
-        /* mask out left/right simultaneous keypresses */
-        if ((value & INP_PAD_UP) && (value & INP_PAD_DOWN))
-            value &= ~(INP_PAD_UP | INP_PAD_DOWN);
-
-        if ((value & INP_PAD_LEFT) && (value & INP_PAD_RIGHT))
-            value &= ~(INP_PAD_LEFT | INP_PAD_RIGHT);
-
-        /* return (0x40 | value) due to bus conflicts */
-        retval |= (0x40 | ((value >> nes_inputs[INP_JOYPAD1].reads++) & 1));
-
-        retval |= nes_inputs[INP_ZAPPER].state;
-    }
-    else
-    {
-        retval = 0xFF;
+        retval |= port->state;
     }
 
     return retval;
 }
 
-void input_connect(nesinput_type_t input)
+void input_connect(int port, nes_dev_t type)
 {
-    ASSERT(input < INP_TYPE_MAX);
-
-    nes_inputs[input].connected = true;
+    ports[port & 1].type = type;
+    ports[port & 1].reads = 0;
+    ports[port & 1].state = 0;
 }
 
-void input_disconnect(nesinput_type_t input)
+void input_update(int port, int state)
 {
-    ASSERT(input < INP_TYPE_MAX);
-
-    nes_inputs[input].connected = false;
-}
-
-void input_update(nesinput_type_t input, uint8 state)
-{
-    ASSERT(input < INP_TYPE_MAX);
-
-    nes_inputs[input].state = state;
+    ports[port & 1].state = state;
 }

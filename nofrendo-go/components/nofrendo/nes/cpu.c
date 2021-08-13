@@ -1121,7 +1121,7 @@ void nes6502_getcontext(nes6502_t *context)
 }
 
 /* get number of elapsed cycles */
-IRAM_ATTR uint32 nes6502_getcycles()
+uint32 nes6502_getcycles()
 {
    return cpu.total_cycles;
 }

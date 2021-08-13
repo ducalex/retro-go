@@ -24,6 +24,7 @@
 #include <nofrendo.h>
 #include <mappers.h>
 #include <string.h>
+#include <stdlib.h>
 #include "ppu.h"
 #include "mmc.h"
 #include "rom.h"

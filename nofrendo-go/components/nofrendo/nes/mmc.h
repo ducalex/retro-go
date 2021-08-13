@@ -21,8 +21,7 @@
 **
 */
 
-#ifndef _NES_MMC_H_
-#define _NES_MMC_H_
+#pragma once
 
 typedef struct mapper_s mapper_t;
 typedef const mapper_t mapintf_t;
@@ -59,10 +58,8 @@ struct mapper_s
 #define mmc_bankvrom(a, b, c) mmc_bankchr(a, b, c, CHR_ANY)
 #define mmc_bankrom(a, b, c) mmc_bankprg(a, b, c, PRG_ROM)
 
-extern mapper_t *mmc_init(rom_t *cart);
-extern void mmc_shutdown(void);
-extern void mmc_reset(void);
-extern void mmc_bankprg(int size, uint32 address, int bank, uint8 *base);
-extern void mmc_bankchr(int size, uint32 address, int bank, uint8 *base);
-
-#endif /* _NES_MMC_H_ */
+mapper_t *mmc_init(rom_t *cart);
+void mmc_shutdown(void);
+void mmc_reset(void);
+void mmc_bankprg(int size, uint32 address, int bank, uint8 *base);
+void mmc_bankchr(int size, uint32 address, int bank, uint8 *base);

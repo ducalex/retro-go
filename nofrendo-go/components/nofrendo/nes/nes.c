@@ -23,6 +23,7 @@
 
 #include <nofrendo.h>
 #include <string.h>
+#include <stdlib.h>
 #include "input.h"
 #include "nes.h"
 
@@ -33,16 +34,21 @@ nes_t *nes_getptr(void)
     return &nes;
 }
 
-/* Emulate one frame */
-INLINE void renderframe()
+/* run emulation for one frame */
+void nes_emulate(bool draw)
 {
     int elapsed_cycles = 0;
+
+    if (nes.input_func)
+    {
+        nes.input_func();
+    }
 
     while (nes.scanline < nes.scanlines_per_frame)
     {
         nes.cycles += nes.cycles_per_scanline;
 
-        ppu_scanline(nes.vidbuf, nes.scanline, nes.drawframe);
+        ppu_scanline(nes.vidbuf, nes.scanline, draw);
 
         if (nes.scanline == 241)
         {
@@ -82,31 +88,18 @@ INLINE void renderframe()
     }
 
     nes.scanline = 0;
-}
 
-/* main emulation loop */
-void nes_emulate(void)
-{
-    // Discard the garbage frames
-    renderframe();
-    renderframe();
-
-    osd_loadstate();
-
-    while (false == nes.poweroff)
+    if (draw && nes.blit_func)
     {
-        osd_getinput();
-        renderframe();
+        nes.blit_func(nes.vidbuf);
+        nes.vidbuf = nes.framebuffers[nes.vidbuf == nes.framebuffers[0]];
+    }
 
-        if (nes.drawframe)
-        {
-            osd_blitscreen(nes.vidbuf);
-            nes.vidbuf = nes.framebuffers[nes.vidbuf == nes.framebuffers[0]];
-        }
+    apu_emulate();
 
-        apu_emulate();
-
-        osd_vsync();
+    if (nes.vsync_func)
+    {
+        nes.vsync_func();
     }
 }
 
@@ -159,7 +152,7 @@ rom_t *nes_insertcart(const char *filename)
     // nes.ppu->vram_present = (NULL != nes.cart->chr_ram); // FIX ME: This is always true?
 
     /* Detect system type */
-    if (nes.system == SYS_UNKNOWN && nes.cart->system != SYS_UNKNOWN)
+    if (nes.system == SYS_DETECT && nes.cart->system != SYS_UNKNOWN)
     {
         nes.system = nes.cart->system;
     }
@@ -246,14 +239,12 @@ void nes_shutdown(void)
 }
 
 /* Initialize NES CPU, hardware, etc. */
-nes_t *nes_init(system_t system, int sample_rate, bool stereo)
+nes_t *nes_init(nes_type_t system, int sample_rate, bool stereo)
 {
     memset(&nes, 0, sizeof(nes_t));
 
-    nes.autoframeskip = true;
     nes.poweroff = false;
     nes.pause = false;
-    nes.drawframe = true;
     nes.system = system;
     nes.refresh_rate = 60;
 
@@ -282,6 +273,9 @@ nes_t *nes_init(system_t system, int sample_rate, bool stereo)
     nes.apu = apu_init(sample_rate, stereo);
     if (NULL == nes.apu)
         goto _fail;
+
+    /* input */
+    input_connect(0, NES_JOYPAD);
 
     MESSAGE_INFO("NES: System initialized!\n");
     return &nes;

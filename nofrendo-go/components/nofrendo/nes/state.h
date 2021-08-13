@@ -21,18 +21,7 @@
 **
 */
 
-#ifndef _NESSTATE_H_
-#define _NESSTATE_H_
+#pragma once
 
-typedef struct
-{
-    uint8  type[4];
-    uint32 blockVersion;
-    uint32 blockLength;
-} SnssBlockHeader;
-
-extern void state_setslot(int slot);
-extern int state_load(const char *fn);
-extern int state_save(const char *fn);
-
-#endif /* _NESSTATE_H_ */
+int state_load(const char *fn);
+int state_save(const char *fn);
