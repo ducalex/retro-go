@@ -1,8 +1,8 @@
-#include "emu.h"
+#include <string.h>
+#include "gnuboy.h"
 #include "sound.h"
 #include "cpu.h"
 #include "hw.h"
-#include "regs.h"
 #include "noise.h"
 
 static const byte dmgwave[16] =
@@ -41,11 +41,11 @@ static const int freqtab[8] =
 	(1<<14)/7
 };
 
-pcm_t pcm;
-snd_t snd;
+gb_pcm_t pcm;
+gb_snd_t snd;
 
 #define RATE (snd.rate)
-#define WAVE (snd.wave) /* ram.hi+0x30 */
+#define WAVE (snd.wave) /* hw.ioregs+0x30 */
 #define S1 (snd.ch[0])
 #define S2 (snd.ch[1])
 #define S3 (snd.ch[2])
@@ -90,7 +90,7 @@ static inline void s3_init()
 	S3.on = R_NR30 >> 7;
 	if (!S3.on) return;
 	for (int i = 0; i < 16; i++)
-		ram.hi[i+0x30] = 0x13 ^ ram.hi[i+0x31];
+		hw.ioregs[i+0x30] = 0x13 ^ hw.ioregs[i+0x31];
 }
 
 static inline void s4_init()
@@ -164,7 +164,7 @@ void sound_reset(bool hard)
 {
 	memset(&snd, 0, sizeof snd);
 	memcpy(WAVE, hw.cgb ? cgbwave : dmgwave, 16);
-	memcpy(ram.hi + 0x30, WAVE, 16);
+	memcpy(hw.ioregs + 0x30, WAVE, 16);
 	snd.rate = pcm.hz ? (int)(((1<<21) / (double)pcm.hz) + 0.5) : 0;
 	pcm.pos = 0;
 	sound_off();
@@ -342,7 +342,7 @@ void sound_write(byte r, byte b)
 	{
 		if (S3.on) sound_mix();
 		if (!S3.on)
-			WAVE[r-0x30] = ram.hi[r] = b;
+			WAVE[r-0x30] = hw.ioregs[r] = b;
 		return;
 	}
 

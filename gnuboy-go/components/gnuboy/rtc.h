@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-#include "emu.h"
+#include "gnuboy.h"
 
 typedef struct
 {
@@ -14,9 +14,9 @@ typedef struct
 	n32 d, h, m, s, flags;
 	// Latched time
 	n32 regs[8];
-} rtc_t;
+} gb_rtc_t;
 
-extern rtc_t rtc;
+extern gb_rtc_t rtc;
 
 void rtc_latch(byte b);
 void rtc_write(byte b);

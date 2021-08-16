@@ -1,12 +1,12 @@
 #include <sys/time.h>
+#include <string.h>
 #include <stdio.h>
 #include <time.h>
 
-#include "emu.h"
-#include "mem.h"
+#include "gnuboy.h"
 #include "rtc.h"
 
-rtc_t rtc;
+gb_rtc_t rtc;
 
 // Set in the far future for VBA-M support
 #define RT_BASE 1893456000

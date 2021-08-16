@@ -1,14 +1,14 @@
 #include <string.h>
-
-#include "emu.h"
+#include "gnuboy.h"
+#include "save.h"
+#include "sound.h"
 #include "cpu.h"
 #include "hw.h"
-#include "regs.h"
 #include "lcd.h"
-#include "mem.h"
+#include "rtc.h"
 
-
-hw_t hw;
+gb_cart_t cart;
+gb_hw_t hw;
 
 
 /*
@@ -43,7 +43,7 @@ void hw_interrupt(byte i, int level)
  * continues running during this mode of dma, so no special tricks to
  * stall the cpu are necessary.
  */
-void hw_dma(byte b)
+static void hw_dma(byte b)
 {
 	addr_t a = ((addr_t)b) << 8;
 	for (int i = 0; i < 160; i++, a++)
@@ -51,7 +51,7 @@ void hw_dma(byte b)
 }
 
 
-void hw_hdma_cmd(byte c)
+static void hw_hdma_cmd(byte c)
 {
 	/* Begin or cancel HDMA */
 	if ((hw.hdma|c) & 0x80)
@@ -100,7 +100,7 @@ void hw_hdma()
  * the appropriate interrupts (by quickly raising and lowering the
  * interrupt line) if a transition has been made.
  */
-void IRAM_ATTR pad_refresh()
+static inline void pad_refresh()
 {
 	byte oldp1 = R_P1;
 	R_P1 &= 0x30;
@@ -117,10 +117,10 @@ void IRAM_ATTR pad_refresh()
 
 
 /*
- * pad_set updates the state of one or more buttons on the pad and calls
+ * hw_setpad updates the state of one or more buttons on the pad and calls
  * pad_refresh() to fire an interrupt if the pad changed.
  */
-void IRAM_ATTR pad_set(byte btn, int set)
+void IRAM_ATTR hw_setpad(byte btn, int set)
 {
 	un32 new_pad = hw.pad;
 
@@ -136,6 +136,7 @@ void IRAM_ATTR pad_set(byte btn, int set)
 	}
 }
 
+
 void hw_reset(bool hard)
 {
 	hw.ilines = 0;
@@ -143,7 +144,7 @@ void hw_reset(bool hard)
 	hw.hdma = 0;
 	hw.pad = 0;
 
-	memset(ram.hi, 0, sizeof(ram.hi));
+	memset(hw.ioregs, 0, sizeof(hw.ioregs));
 	R_P1 = 0xFF;
 	R_LCDC = 0x91;
 	R_BGP = 0xFC;
@@ -152,4 +153,508 @@ void hw_reset(bool hard)
 	R_SVBK = 0xF9;
 	R_HDMA5 = 0xFF;
 	R_VBK = 0xFE;
+
+	if (hard)
+	{
+		memset(hw.rambanks, 0xff, 4096 * 8);
+		memset(cart.rambanks, 0xff, 8192 * cart.ramsize);
+	}
+
+	memset(hw.rmap, 0, sizeof(hw.rmap));
+	memset(hw.wmap, 0, sizeof(hw.wmap));
+
+	cart.sram_dirty = 0;
+	cart.bankmode = 0;
+	cart.rombank = 1;
+	cart.rambank = 0;
+	cart.enableram = 0;
+	hw_updatemap();
+}
+
+
+
+/*
+ * In order to make reads and writes efficient, we keep tables
+ * (indexed by the high nibble of the address) specifying which
+ * regions can be read/written without a function call. For such
+ * ranges, the pointer in the map table points to the base of the
+ * region in host system memory. For ranges that require special
+ * processing, the pointer is NULL.
+ *
+ * hw_updatemap is called whenever bank changes or other operations
+ * make the old maps potentially invalid.
+ */
+void IRAM_ATTR hw_updatemap(void)
+{
+	cart.rombank &= (cart.romsize - 1);
+	cart.rambank &= (cart.ramsize - 1);
+
+	if (cart.rombanks[cart.rombank] == NULL)
+	{
+		gnuboy_load_bank(cart.rombank);
+	}
+
+	// ROM
+	hw.rmap[0x0] = cart.rombanks[0];
+	hw.rmap[0x1] = cart.rombanks[0];
+	hw.rmap[0x2] = cart.rombanks[0];
+	hw.rmap[0x3] = cart.rombanks[0];
+
+	// Force bios to go through hw_read (speed doesn't really matter here)
+	if (hw.bios && (R_BIOS & 1) == 0)
+	{
+		hw.rmap[0x0] = NULL;
+	}
+
+	if (cart.rombank < cart.romsize)
+	{
+		hw.rmap[0x4] = cart.rombanks[cart.rombank] - 0x4000;
+		hw.rmap[0x5] = cart.rombanks[cart.rombank] - 0x4000;
+		hw.rmap[0x6] = cart.rombanks[cart.rombank] - 0x4000;
+		hw.rmap[0x7] = cart.rombanks[cart.rombank] - 0x4000;
+	}
+	else
+	{
+		hw.rmap[0x4] = NULL;
+		hw.rmap[0x5] = NULL;
+		hw.rmap[0x6] = NULL;
+		hw.rmap[0x7] = NULL;
+	}
+
+	// Video RAM
+	hw.rmap[0x8] = hw.wmap[0x8] = lcd.vbank[R_VBK & 1] - 0x8000;
+	hw.rmap[0x9] = hw.wmap[0x9] = lcd.vbank[R_VBK & 1] - 0x8000;
+
+	// Backup RAM
+	hw.rmap[0xA] = NULL;
+	hw.rmap[0xB] = NULL;
+
+	// Work RAM
+	hw.rmap[0xC] = hw.wmap[0xC] = hw.rambanks[0] - 0xC000;
+
+	// ?
+	hw.rmap[0xD] = NULL;
+
+	// IO port and registers
+	hw.rmap[0xF] = hw.wmap[0xF] = NULL;
+}
+
+
+/*
+ * Memory bank controllers typically intercept write attempts to
+ * 0000-7FFF, using the address and byte written as instructions to
+ * change cart or sram banks, control special hardware, etc.
+ *
+ * mbc_write takes an address (which should be in the proper range)
+ * and a byte value written to the address.
+ */
+static inline void mbc_write(addr_t a, byte b)
+{
+	byte ha = (a >> 12);
+
+	MESSAGE_DEBUG("mbc %d: cart bank %02X -[%04X:%02X]-> ", cart.mbc, cart.rombank, a, b);
+
+	switch (cart.mbc)
+	{
+	case MBC_MBC1:
+		switch (ha & 0xE)
+		{
+		case 0x0:
+			cart.enableram = ((b & 0x0F) == 0x0A);
+			break;
+		case 0x2:
+			if ((b & 0x1F) == 0) b = 0x01;
+			cart.rombank = (cart.rombank & 0x60) | (b & 0x1F);
+			break;
+		case 0x4:
+			if (cart.bankmode)
+				cart.rambank = b & 0x03;
+			else
+				cart.rombank = (cart.rombank & 0x1F) | ((int)(b&3)<<5);
+			break;
+		case 0x6:
+			cart.bankmode = b & 0x1;
+			break;
+		}
+		break;
+
+	case MBC_MBC2: /* is this at all right? */
+		if ((a & 0x0100) == 0x0000)
+		{
+			cart.enableram = ((b & 0x0F) == 0x0A);
+			break;
+		}
+		if ((a & 0xE100) == 0x2100)
+		{
+			cart.rombank = b & 0x0F;
+			break;
+		}
+		break;
+
+	case MBC_MBC3:
+		switch (ha & 0xE)
+		{
+		case 0x0:
+			cart.enableram = ((b & 0x0F) == 0x0A);
+			break;
+		case 0x2:
+			if ((b & 0x7F) == 0) b = 0x01;
+			cart.rombank = b & 0x7F;
+			break;
+		case 0x4:
+			rtc.sel = b & 0x0f;
+			cart.rambank = b & 0x03;
+			break;
+		case 0x6:
+			rtc_latch(b);
+			break;
+		}
+		break;
+
+	case MBC_MBC5:
+		switch (ha & 0x7)
+		{
+		case 0x0:
+		case 0x1:
+			cart.enableram = ((b & 0x0F) == 0x0A);
+			break;
+		case 0x2:
+			cart.rombank = (cart.rombank & 0x100) | (b);
+			break;
+		case 0x3:
+			cart.rombank = (cart.rombank & 0xFF) | ((int)(b & 1) << 8);
+			break;
+		case 0x4:
+		case 0x5:
+			if (cart.rumble)
+				cart.rambank = b & 0x0F;
+			else
+				cart.rambank = b & ~8;
+			break;
+		case 0x6:
+		case 0x7:
+			// Nothing but Radikal Bikers tries to access it.
+			break;
+		default:
+			MESSAGE_ERROR("MBC_MBC5: invalid write to 0x%x (0x%x)\n", a, b);
+			break;
+		}
+		break;
+
+	case MBC_HUC1: /* FIXME - this is all guesswork -- is it right??? */
+		switch (ha & 0xE)
+		{
+		case 0x0:
+			cart.enableram = ((b & 0x0F) == 0x0A);
+			break;
+		case 0x2:
+			if ((b & 0x1F) == 0) b = 0x01;
+			cart.rombank = (cart.rombank & 0x60) | (b & 0x1F);
+			break;
+		case 0x4:
+			if (cart.bankmode)
+				cart.rambank = b & 0x03;
+			else
+				cart.rombank = (cart.rombank & 0x1F) | ((int)(b&3)<<5);
+			break;
+		case 0x6:
+			cart.bankmode = b & 0x1;
+			break;
+		}
+		break;
+
+	case MBC_HUC3:
+		switch (ha & 0xE)
+		{
+		case 0x0:
+			cart.enableram = ((b & 0x0F) == 0x0A);
+			break;
+		case 0x2:
+			b &= 0x7F;
+			cart.rombank = b ? b : 1;
+			break;
+		case 0x4:
+			rtc.sel = b & 0x0f;
+			cart.rambank = b & 0x03;
+			break;
+		case 0x6:
+			rtc_latch(b);
+			break;
+		}
+		break;
+	}
+
+	MESSAGE_DEBUG("%02X\n", cart.rombank);
+
+	hw_updatemap();
+}
+
+
+/*
+ * hw_write is the basic write function. Although it should only be
+ * called when the write map contains a NULL for the requested address
+ * region, it accepts writes to any address.
+ */
+void IRAM_ATTR hw_write(addr_t a, byte b)
+{
+	MESSAGE_DEBUG("write to 0x%04X: 0x%02X\n", a, b);
+
+	switch (a & 0xE000)
+	{
+	case 0x0000: // MBC control (Cart ROM address space)
+	case 0x2000:
+	case 0x4000:
+	case 0x6000:
+		mbc_write(a, b);
+		break;
+
+	case 0x8000: // Video RAM
+		lcd.vbank[R_VBK&1][a & 0x1FFF] = b;
+		break;
+
+	case 0xA000: // Save RAM or RTC
+		if (cart.enableram)
+		{
+			if (rtc.sel & 8)
+			{
+				rtc_write(b);
+			}
+			else
+			{
+				if (cart.rambanks[cart.rambank][a & 0x1FFF] != b)
+				{
+					cart.rambanks[cart.rambank][a & 0x1FFF] = b;
+					cart.sram_dirty |= (1 << cart.rambank);
+				}
+			}
+		}
+		break;
+
+	case 0xC000: // System RAM
+		if ((a & 0xF000) == 0xC000)
+			hw.rambanks[0][a & 0x0FFF] = b;
+		else
+			hw.rambanks[(R_SVBK & 0x7) ?: 1][a & 0x0FFF] = b;
+		break;
+
+	case 0xE000: // Memory mapped IO
+		if (a < 0xFE00)
+		{
+			writeb(a & 0xDFFF, b);
+		}
+		else if ((a & 0xFF00) == 0xFE00)
+		{
+			if (a < 0xFEA0) lcd.oam.mem[a & 0xFF] = b;
+		}
+		else if (a >= 0xFF10 && a <= 0xFF3F)
+		{
+			sound_write(a & 0xFF, b);
+		}
+		else if ((a & 0xFF80) == 0xFF80 && a != 0xFFFF)
+		{
+			REG(a & 0xFF) = b;
+		}
+		else
+		{
+			int r = a & 0xFF;
+			if (!hw.cgb)
+			{
+				switch (r)
+				{
+				case RI_BGP:
+					pal_write_dmg(0, 0, b);
+					pal_write_dmg(8, 1, b);
+					break;
+				case RI_OBP0:
+					pal_write_dmg(64, 2, b);
+					break;
+				case RI_OBP1:
+					pal_write_dmg(72, 3, b);
+					break;
+
+				// These don't exist on DMG:
+				case RI_VBK:
+				case RI_BCPS:
+				case RI_OCPS:
+				case RI_BCPD:
+				case RI_OCPD:
+				case RI_SVBK:
+				case RI_KEY1:
+				case RI_HDMA1:
+				case RI_HDMA2:
+				case RI_HDMA3:
+				case RI_HDMA4:
+				case RI_HDMA5:
+					return;
+				}
+			}
+
+			switch(r)
+			{
+			case RI_TIMA:
+			case RI_TMA:
+			case RI_TAC:
+			case RI_SCY:
+			case RI_SCX:
+			case RI_WY:
+			case RI_WX:
+			case RI_BGP:
+			case RI_OBP0:
+			case RI_OBP1:
+				REG(r) = b;
+				break;
+			case RI_IF:
+			case RI_IE:
+				REG(r) = b & 0x1F;
+				break;
+			case RI_P1:
+				REG(r) = b;
+				pad_refresh();
+				break;
+			case RI_SC:
+				if ((b & 0x81) == 0x81)
+					hw.serial = 1952; // 8 * 122us;
+				else
+					hw.serial = 0;
+				R_SC = b; /* & 0x7f; */
+				break;
+			case RI_SB:
+				REG(r) = b;
+				break;
+			case RI_DIV:
+				REG(r) = 0;
+				break;
+			case RI_LCDC:
+				lcd_lcdc_change(b);
+				break;
+			case RI_STAT:
+				R_STAT = (R_STAT & 0x07) | (b & 0x78);
+				if (!hw.cgb && !(R_STAT & 2)) /* DMG STAT write bug => interrupt */
+					hw_interrupt(IF_STAT, 1);
+				lcd_stat_trigger();
+				break;
+			case RI_LYC:
+				REG(r) = b;
+				lcd_stat_trigger();
+				break;
+			case RI_VBK:
+				REG(r) = b | 0xFE;
+				hw_updatemap();
+				break;
+			case RI_BCPS:
+				R_BCPS = b & 0xBF;
+				R_BCPD = lcd.pal[b & 0x3F];
+				break;
+			case RI_OCPS:
+				R_OCPS = b & 0xBF;
+				R_OCPD = lcd.pal[64 + (b & 0x3F)];
+				break;
+			case RI_BCPD:
+				R_BCPD = b;
+				pal_write_cgb(R_BCPS & 0x3F, b);
+				if (R_BCPS & 0x80) R_BCPS = (R_BCPS+1) & 0xBF;
+				break;
+			case RI_OCPD:
+				R_OCPD = b;
+				pal_write_cgb(64 + (R_OCPS & 0x3F), b);
+				if (R_OCPS & 0x80) R_OCPS = (R_OCPS+1) & 0xBF;
+				break;
+			case RI_SVBK:
+				REG(r) = b | 0xF8;
+				hw_updatemap();
+				break;
+			case RI_DMA:
+				hw_dma(b);
+				break;
+			case RI_KEY1:
+				REG(r) = (REG(r) & 0x80) | (b & 0x01);
+				break;
+			case RI_BIOS:
+				REG(r) = b;
+				hw_updatemap();
+				break;
+			case RI_HDMA1:
+			case RI_HDMA2:
+			case RI_HDMA3:
+			case RI_HDMA4:
+				REG(r) = b;
+				break;
+			case RI_HDMA5:
+				hw_hdma_cmd(b);
+				break;
+			}
+		}
+	}
+}
+
+
+/*
+ * hw_read is the basic read function...not useful for much anymore
+ * with the read map, but it's still necessary for the final messy
+ * region.
+ */
+byte IRAM_ATTR hw_read(addr_t a)
+{
+	MESSAGE_DEBUG("read %04x\n", a);
+
+	switch (a & 0xE000)
+	{
+	case 0x0000: // Cart ROM bank 0
+		// BIOS is overlayed part of bank 0
+		if (a < 0x900 && (R_BIOS & 1) == 0)
+		{
+			if (a < 0x100)
+				return hw.bios[a];
+			if (hw.cgb && a >= 0x200)
+				return hw.bios[a];
+		}
+		// fall through
+	case 0x2000:
+		return cart.rombanks[0][a & 0x3fff];
+
+	case 0x4000: // Cart ROM
+	case 0x6000:
+		return cart.rombanks[cart.rombank][a & 0x3FFF];
+
+	case 0x8000: // Video RAM
+		return lcd.vbank[R_VBK&1][a & 0x1FFF];
+
+	case 0xA000: // Cart RAM or RTC
+		if (!cart.enableram)
+			return (cart.mbc == MBC_HUC3) ? 0x01 : 0xFF;
+		else if (rtc.sel & 8)
+			return rtc.regs[rtc.sel & 7];
+		return cart.rambanks[cart.rambank][a & 0x1FFF];
+
+	case 0xC000: // System RAM
+		if ((a & 0xF000) == 0xC000)
+			return hw.rambanks[0][a & 0x0FFF];
+		return hw.rambanks[(R_SVBK & 0x7) ?: 1][a & 0x0FFF];
+
+	case 0xE000: // Memory mapped IO
+		if (a < 0xFE00)
+		{
+			return readb(a & 0xDFFF);
+		}
+		else if ((a & 0xFF00) == 0xFE00)
+		{
+			return (a < 0xFEA0) ? lcd.oam.mem[a & 0xFF] : 0xFF;
+		}
+		else if (a >= 0xFF10 && a <= 0xFF3F)
+		{
+			return sound_read(a & 0xFF);
+		}
+		// else if ((a & 0xFF80) == 0xFF80)
+		// {
+		// 	return REG(a & 0xFF);
+		// }
+		else
+		{
+			// We should check that the reg is valid, otherwise return 0xFF.
+			// However invalid address should already contain 0xFF (unless incorrectly overwritten)
+			// So, for speed, we'll assume that this is correct and always return REG(a)
+			return REG(a & 0xFF);
+		}
+	}
+	return 0xFF;
 }

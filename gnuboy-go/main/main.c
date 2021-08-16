@@ -2,15 +2,13 @@
 #include <sys/time.h>
 #include <string.h>
 
-#include "../components/gnuboy/loader.h"
+#include "../components/gnuboy/save.h"
 #include "../components/gnuboy/hw.h"
 #include "../components/gnuboy/lcd.h"
 #include "../components/gnuboy/cpu.h"
-#include "../components/gnuboy/mem.h"
 #include "../components/gnuboy/sound.h"
-#include "../components/gnuboy/regs.h"
 #include "../components/gnuboy/rtc.h"
-#include "../components/gnuboy/emu.h"
+#include "../components/gnuboy/gnuboy.h"
 
 #define AUDIO_SAMPLE_RATE   (32000)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 16 + 1)
@@ -54,7 +52,7 @@ static bool load_state_handler(const char *filename)
     {
         // If a state fails to load then we should behave as we do on boot
         // which is a hard reset and load sram if present
-        emu_reset(true);
+        gnuboy_reset(true);
         sram_load(sramFile);
 
         return false;
@@ -69,7 +67,7 @@ static bool load_state_handler(const char *filename)
 
 static bool reset_handler(bool hard)
 {
-    emu_reset(hard);
+    gnuboy_reset(hard);
 
     fullFrame = false;
     skipFrames = 20;
@@ -80,8 +78,8 @@ static bool reset_handler(bool hard)
 
 static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t event)
 {
-    int pal = pal_get_dmg();
-    int max = pal_count_dmg();
+    int pal = fb.colorize;
+    int max = GB_PALETTE_COUNT - 1;
 
     if (event == RG_DIALOG_PREV)
         pal = pal > 0 ? pal - 1 : max;
@@ -89,11 +87,12 @@ static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t
     if (event == RG_DIALOG_NEXT)
         pal = pal < max ? pal + 1 : 0;
 
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    if (pal != fb.colorize)
     {
         rg_settings_set_app_int32(SETTING_PALETTE, pal);
-        pal_set_dmg(pal);
-        emu_run(true);
+        fb.colorize = pal;
+        lcd_rebuildpal();
+        gnuboy_run(true);
     }
 
     if (pal == 0) strcpy(option->value, "GBC");
@@ -189,8 +188,8 @@ static dialog_return_t advanced_settings_cb(dialog_option_t *option, dialog_even
         dialog_option_t options[] = {
             {101, "Set clock", "00:00", 1, &rtc_update_cb},
             RG_DIALOG_SEPARATOR,
-            {111, "Auto save SRAM", "Off", mbc.batt && mbc.ramsize, &sram_autosave_cb},
-            {112, "Save SRAM now ", NULL, mbc.batt && mbc.ramsize, &sram_save_now_cb},
+            {111, "Auto save SRAM", "Off", 1, &sram_autosave_cb},
+            {112, "Save SRAM now ", NULL, cart.ramsize, &sram_save_now_cb},
             RG_DIALOG_CHOICE_LAST
         };
         rg_gui_dialog("Advanced", options, 0);
@@ -211,11 +210,11 @@ static void screen_blit(void)
 
 static void auto_sram_update(void)
 {
-    if (autoSaveSRAM > 0 && ram.sram_dirty)
+    if (autoSaveSRAM > 0 && cart.sram_dirty)
     {
         rg_system_set_led(1);
         sram_update(sramFile);
-        if (ram.sram_dirty)
+        if (cart.sram_dirty)
         {
             MESSAGE_ERROR("sram still dirty after sram_update(), trying full save...\n");
             sram_save(sramFile);
@@ -252,27 +251,25 @@ void app_main(void)
         RG_LOGW("Unable to create SRAM folder...");
 
     // Load ROM
-    rom_load(app->romPath);
+    gnuboy_load_rom(app->romPath);
 
     // Load BIOS
     if (hw.cgb)
-        bios_load(RG_BASE_PATH "/bios/gbc_bios.bin");
+        gnuboy_load_bios(RG_BASE_PATH "/bios/gbc_bios.bin");
     else
-        bios_load(RG_BASE_PATH "/bios/gb_bios.bin");
-
-    // Set palette for non-gbc games (must be after rom_load)
-    pal_set_dmg(rg_settings_get_app_int32(SETTING_PALETTE, 0));
+        gnuboy_load_bios(RG_BASE_PATH "/bios/gb_bios.bin");
 
     // Video
-    fb = (fb_t) {
+    fb = (gb_fb_t) {
         .buffer = currentUpdate->buffer,
         .format = GB_PIXEL_565_BE,
+        .colorize = rg_settings_get_app_int32(SETTING_PALETTE, 0),
         .enabled = 1,
         .blit_func = &screen_blit,
     };
 
     // Audio
-    pcm = (pcm_t) {
+    pcm = (gb_pcm_t) {
         .hz = AUDIO_SAMPLE_RATE,
         .stereo = 1,
         .len = AUDIO_BUFFER_LENGTH * 2, // count of 16bit samples (x2 for stereo)
@@ -280,7 +277,7 @@ void app_main(void)
         .pos = 0,
     };
 
-    emu_init();
+    gnuboy_init();
 
     if (app->startAction == RG_START_ACTION_RESUME)
     {
@@ -312,20 +309,20 @@ void app_main(void)
         int64_t startTime = get_elapsed_time();
         bool drawFrame = !skipFrames;
 
-        pad_set(PAD_UP, joystick & GAMEPAD_KEY_UP);
-        pad_set(PAD_RIGHT, joystick & GAMEPAD_KEY_RIGHT);
-        pad_set(PAD_DOWN, joystick & GAMEPAD_KEY_DOWN);
-        pad_set(PAD_LEFT, joystick & GAMEPAD_KEY_LEFT);
-        pad_set(PAD_SELECT, joystick & GAMEPAD_KEY_SELECT);
-        pad_set(PAD_START, joystick & GAMEPAD_KEY_START);
-        pad_set(PAD_A, joystick & GAMEPAD_KEY_A);
-        pad_set(PAD_B, joystick & GAMEPAD_KEY_B);
+        hw_setpad(PAD_UP, joystick & GAMEPAD_KEY_UP);
+        hw_setpad(PAD_RIGHT, joystick & GAMEPAD_KEY_RIGHT);
+        hw_setpad(PAD_DOWN, joystick & GAMEPAD_KEY_DOWN);
+        hw_setpad(PAD_LEFT, joystick & GAMEPAD_KEY_LEFT);
+        hw_setpad(PAD_SELECT, joystick & GAMEPAD_KEY_SELECT);
+        hw_setpad(PAD_START, joystick & GAMEPAD_KEY_START);
+        hw_setpad(PAD_A, joystick & GAMEPAD_KEY_A);
+        hw_setpad(PAD_B, joystick & GAMEPAD_KEY_B);
 
-        emu_run(drawFrame);
+        gnuboy_run(drawFrame);
 
         if (autoSaveSRAM > 0)
         {
-            if (ram.sram_dirty && autoSaveSRAM_Timer == 0)
+            if (cart.sram_dirty && autoSaveSRAM_Timer == 0)
             {
                 autoSaveSRAM_Timer = autoSaveSRAM * 60;
             }

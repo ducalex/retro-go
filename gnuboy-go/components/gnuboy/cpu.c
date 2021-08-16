@@ -1,9 +1,7 @@
-#include "emu.h"
-#include "regs.h"
+#include "gnuboy.h"
 #include "hw.h"
 #include "lcd.h"
 #include "cpu.h"
-#include "mem.h"
 #include "sound.h"
 
 // For cycle accurate emulation this needs to be 1
@@ -865,9 +863,9 @@ next:
 		break;
 
 	default:
-		emu_die(
+		gnuboy_die(
 			"invalid opcode 0x%02X at address 0x%04X, rombank = %d\n",
-			op, (PC-1) & 0xffff, mbc.rombank);
+			op, (PC-1) & 0xffff, cart.rombank);
 		break;
 	}
 
