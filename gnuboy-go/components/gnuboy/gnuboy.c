@@ -51,7 +51,7 @@ void gnuboy_reset(bool hard)
 */
 void gnuboy_run(bool draw)
 {
-    fb.enabled = draw;
+    lcd.out.enabled = draw;
     pcm.pos = 0;
 
     /* FIXME: judging by the time specified this was intended
@@ -67,8 +67,8 @@ void gnuboy_run(bool draw)
     }
 
     /* VBLANK BEGIN */
-    if (draw && fb.blit_func) {
-		(fb.blit_func)();
+    if (draw && lcd.out.blit_func) {
+		(lcd.out.blit_func)();
     }
 
     rtc_tick();
@@ -128,20 +128,18 @@ int gnuboy_load_bios(const char *file)
 }
 
 
-int gnuboy_load_bank(int bank)
+void gnuboy_load_bank(int bank)
 {
 	const size_t BANK_SIZE = 0x4000;
 	const size_t OFFSET = bank * BANK_SIZE;
 
-	if (cart.rombanks[bank])
-	{
-		MESSAGE_INFO("bank %d already loaded!\n", bank);
-		free(cart.rombanks[bank]);
-		// return 0;
-	}
+	if (!cart.rombanks[bank])
+		cart.rombanks[bank] = malloc(BANK_SIZE);
+
+	if (!cart.romFile)
+		return;
 
 	MESSAGE_INFO("loading bank %d.\n", bank);
-	cart.rombanks[bank] = (byte*)malloc(BANK_SIZE);
 	while (!cart.rombanks[bank])
 	{
 		int i = rand() & 0xFF;
@@ -163,8 +161,6 @@ int gnuboy_load_bank(int bank)
 		else
 			gnuboy_die("ROM bank loading failed");
 	}
-
-	return 0;
 }
 
 

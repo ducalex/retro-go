@@ -73,9 +73,6 @@ static const uint16_t colorization_palettes[32][3][4] = {
 #define WV lcd.WV
 
 gb_lcd_t lcd;
-gb_fb_t fb;
-
-static int dmg_selected_pal = 0;
 
 #define priused(attr) ({un32 *a = (un32*)(attr); (int)((a[0]|a[1]|a[2]|a[3]|a[4]|a[5]|a[6]|a[7])&0x80808080);})
 
@@ -93,7 +90,7 @@ __attribute__((optimize("unroll-loops")))
 static inline byte *get_patpix(int tile, int x)
 {
 	const byte *vram = lcd.vbank[0];
-	byte *pix = lcd.pix_buf;
+	static byte pix[8];
 
 	if (tile & (1 << 11)) // Vertical Flip
 		vram += ((tile & 0x3FF) << 4) | ((7 - x) << 1);
@@ -506,17 +503,11 @@ static inline void spr_scan(int ns)
 	}
 }
 
-static inline void lcd_beginframe()
-{
-	fb.vdest = fb.buffer;
-	WY = R_WY;
-}
-
 void lcd_reset(bool hard)
 {
 	if (hard)
 	{
-		memset(&lcd, 0, sizeof(lcd));
+		memset(&lcd, 0, sizeof(lcd) - sizeof(lcd.out));
 	}
 	else
 	{
@@ -530,13 +521,13 @@ void lcd_reset(bool hard)
 		S = T = U = V = 0;
 	}
 
-	lcd_beginframe();
+	WY = R_WY;
 	lcd_rebuildpal();
 }
 
 static inline void lcd_renderline()
 {
-	if (!fb.enabled)
+	if (!lcd.out.enabled)
 		return;
 
 	if (!(R_LCDC & 0x80))
@@ -587,20 +578,17 @@ static inline void lcd_renderline()
 
 	spr_scan(NS);
 
-	if (fb.format == GB_PIXEL_PALETTED)
+	if (lcd.out.format == GB_PIXEL_PALETTED)
 	{
-		memcpy(fb.vdest, BUF, 160);
-		fb.vdest += 160;
+		memcpy(lcd.out.buffer + SL * 160 , BUF, 160);
 	}
 	else
 	{
-		un16 *dst = (un16*)fb.vdest;
-		un16 *pal = (un16*)fb.cgb_pal;
+		un16 *dst = (un16*)lcd.out.buffer + SL * 160;
+		un16 *pal = (un16*)lcd.out.cgb_pal;
 
 		for (int i = 0; i < 160; ++i)
 			dst[i] = pal[BUF[i]];
-
-		fb.vdest += 160 * 2;
 	}
 }
 
@@ -617,11 +605,11 @@ static inline void pal_update(byte i)
 
 	un32 out = (r << 11) | (g << (5 + 1)) | (b);
 
-	if (fb.format == GB_PIXEL_565_BE) {
+	if (lcd.out.format == GB_PIXEL_565_BE) {
 		out = (out << 8) | (out >> 8);
 	}
 
-	fb.cgb_pal[i] = out;
+	lcd.out.cgb_pal[i] = out;
 }
 
 void pal_write_cgb(byte i, byte b)
@@ -633,7 +621,7 @@ void pal_write_cgb(byte i, byte b)
 
 void pal_write_dmg(byte i, byte mapnum, byte d)
 {
-	un16 *map = fb.dmg_pal[mapnum & 3];
+	un16 *map = lcd.out.dmg_pal[mapnum & 3];
 
 	for (int j = 0; j < 8; j += 2)
 	{
@@ -650,7 +638,7 @@ void lcd_rebuildpal()
 	{
 		const uint16_t *bgp, *obp0, *obp1;
 
-		int palette = dmg_selected_pal % (GB_PALETTE_COUNT - 1);
+		int palette = lcd.out.colorize % GB_PALETTE_COUNT;
 
 		if (palette == GB_PALETTE_GBCBIOS && cart.colorize)
 		{
@@ -676,10 +664,10 @@ void lcd_rebuildpal()
 			MESSAGE_INFO("Using Built-in palette %d\n", palette);
 		}
 
-		memcpy(&fb.dmg_pal[0], bgp, 8);
-		memcpy(&fb.dmg_pal[1], bgp, 8);
-		memcpy(&fb.dmg_pal[2], obp0, 8);
-		memcpy(&fb.dmg_pal[3], obp1, 8);
+		memcpy(&lcd.out.dmg_pal[0], bgp, 8);
+		memcpy(&lcd.out.dmg_pal[1], bgp, 8);
+		memcpy(&lcd.out.dmg_pal[2], obp0, 8);
+		memcpy(&lcd.out.dmg_pal[3], obp1, 8);
 
 		pal_write_dmg(0, 0, R_BGP);
 		pal_write_dmg(8, 1, R_BGP);
@@ -747,7 +735,7 @@ void lcd_lcdc_change(byte b)
 		R_LY = 0;
 		stat_change(2);
 		CYCLES = 40;  // Correct value seems to be 38
-		lcd_beginframe();
+		WY = R_WY;
 	}
 }
 
@@ -855,7 +843,7 @@ void lcd_emulate()
 			}
 			if (R_LY == 0)
 			{
-				lcd_beginframe();
+				WY = R_WY;
 				stat_change(2); /* -> search */
 				CYCLES += 40;
 				break;

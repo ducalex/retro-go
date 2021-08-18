@@ -33,8 +33,6 @@ typedef struct
 	byte PRI[0x100];
 	gb_vs_t VS[16];
 
-	byte pix_buf[8];
-
 	int S, T, U, V;
 	int WX, WY, WT, WV;
 
@@ -42,6 +40,16 @@ typedef struct
 
 	// Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
 	int enable_window_offset_hack;
+
+	struct {
+		byte *buffer;
+		un16 cgb_pal[64];
+		un16 dmg_pal[4][4];
+		int colorize;
+		int format;
+		int enabled;
+		void (*blit_func)();
+	} out;
 } gb_lcd_t;
 
 enum {
@@ -64,20 +72,8 @@ enum {
     GB_PALETTE_COUNT,
 };
 
-typedef struct
-{
-	byte *buffer;
-	byte *vdest;
-	un16 cgb_pal[64];
-	un16 dmg_pal[4][4];
-	int colorize;
-	int format;
-	int enabled;
-	void (*blit_func)();
-} gb_fb_t;
 
 extern gb_lcd_t lcd;
-extern gb_fb_t fb;
 
 void lcd_reset(bool hard);
 void lcd_emulate(void);

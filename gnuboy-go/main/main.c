@@ -1,5 +1,6 @@
 #include <rg_system.h>
 #include <sys/time.h>
+#include <unistd.h>
 #include <string.h>
 
 #include "../components/gnuboy/save.h"
@@ -78,7 +79,7 @@ static bool reset_handler(bool hard)
 
 static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t event)
 {
-    int pal = fb.colorize;
+    int pal = lcd.out.colorize;
     int max = GB_PALETTE_COUNT - 1;
 
     if (event == RG_DIALOG_PREV)
@@ -87,12 +88,13 @@ static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t
     if (event == RG_DIALOG_NEXT)
         pal = pal < max ? pal + 1 : 0;
 
-    if (pal != fb.colorize)
+    if (pal != lcd.out.colorize)
     {
         rg_settings_set_app_int32(SETTING_PALETTE, pal);
-        fb.colorize = pal;
+        lcd.out.colorize = pal;
         lcd_rebuildpal();
         gnuboy_run(true);
+        usleep(50000);
     }
 
     if (pal == 0) strcpy(option->value, "GBC");
@@ -205,7 +207,7 @@ static void screen_blit(void)
 
     // swap buffers
     currentUpdate = previousUpdate;
-    fb.buffer = currentUpdate->buffer;
+    lcd.out.buffer = currentUpdate->buffer;
 }
 
 static void auto_sram_update(void)
@@ -260,13 +262,10 @@ void app_main(void)
         gnuboy_load_bios(RG_BASE_PATH "/bios/gb_bios.bin");
 
     // Video
-    fb = (gb_fb_t) {
-        .buffer = currentUpdate->buffer,
-        .format = GB_PIXEL_565_BE,
-        .colorize = rg_settings_get_app_int32(SETTING_PALETTE, 0),
-        .enabled = 1,
-        .blit_func = &screen_blit,
-    };
+    lcd.out.buffer = currentUpdate->buffer;
+    lcd.out.colorize = rg_settings_get_app_int32(SETTING_PALETTE, 0);
+    lcd.out.blit_func = screen_blit;
+    lcd.out.format = GB_PIXEL_565_BE;
 
     // Audio
     pcm = (gb_pcm_t) {

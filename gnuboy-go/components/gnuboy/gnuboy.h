@@ -29,4 +29,4 @@ void gnuboy_run(bool draw);
 void gnuboy_die(const char *fmt, ...);
 
 
-int gnuboy_load_bank(int);
+void gnuboy_load_bank(int);
