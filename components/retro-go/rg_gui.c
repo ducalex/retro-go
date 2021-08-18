@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include <lupng.h>
 
 #include "bitmaps/image_hourglass.h"
 #include "fonts/fonts.h"
@@ -1018,4 +1019,145 @@ int rg_gui_game_menu(void)
     rg_audio_set_mute(false);
 
     return sel;
+}
+
+rg_image_t *rg_image_load_from_file(const char *filename, uint32_t flags)
+{
+    RG_ASSERT(filename, "bad param");
+
+    FILE *fp = fopen(filename, "rb");
+    if (!fp)
+    {
+        RG_LOGE("Unable to open image file '%s'!\n", filename);
+        return NULL;
+    }
+
+    fseek(fp, 0, SEEK_END);
+
+    size_t data_len = ftell(fp);
+    uint8_t *data = malloc(data_len);
+    if (!data)
+    {
+        RG_LOGE("Memory allocation failed (%d bytes)!\n", data_len);
+        fclose(fp);
+        return NULL;
+    }
+
+    fseek(fp, 0, SEEK_SET);
+    fread(data, data_len, 1, fp);
+    fclose(fp);
+
+    rg_image_t *img = rg_image_load_from_memory(data, data_len, flags);
+    free(data);
+
+    return img;
+}
+
+rg_image_t *rg_image_load_from_memory(const uint8_t *data, size_t data_len, uint32_t flags)
+{
+    RG_ASSERT(data && data_len >= 16, "bad param");
+
+    if (memcmp(data, "\x89PNG", 4) == 0)
+    {
+        LuImage *png = luPngReadMem(data, data_len);
+        if (!png)
+        {
+            RG_LOGE("PNG parsing failed!\n");
+            return NULL;
+        }
+
+        rg_image_t *img = rg_image_alloc(png->width, png->height);
+        if (img)
+        {
+            size_t pixel_count = img->width * img->height;
+            size_t pizel_size = png->channels;
+            const uint16_t *src = img->data;
+            uint8_t *dest = png->data;
+
+            // RGB888 or RGBA8888 to RGB565
+            for (int i = 0; i < pixel_count; ++i)
+            {
+                dest[i] = (((src[0] >> 3) & 0x1F) << 11)
+                        | (((src[1] >> 2) & 0x3F) << 5)
+                        | (((src[2] >> 3) & 0x1F));
+                src += pizel_size;
+            }
+        }
+        luImageRelease(png, NULL);
+        return img;
+    }
+    else // RAW565 (uint16 width, uint16 height, uint16 data[])
+    {
+        int img_width = ((uint16_t *)data)[0];
+        int img_height = ((uint16_t *)data)[1];
+        int size_diff = (img_width * img_height * 2 + 4) - data_len;
+
+        if (size_diff >= 0 && size_diff <= 100)
+        {
+            rg_image_t *img = rg_image_alloc(img_width, img_height);
+            if (img)
+            {
+                // Image is already RGB565 little endian, just copy it
+                memcpy(img->data, data + 4, data_len - 4);
+            }
+            // else Maybe we could just return (rg_image_t *)buffer; ?
+            return img;
+        }
+    }
+
+    RG_LOGE("Image format not recognized!\n");
+    return NULL;
+}
+
+bool rg_image_save_to_file(const char *filename, const rg_image_t *img, uint32_t flags)
+{
+    RG_ASSERT(filename && img, "bad param");
+
+    LuImage *png = luImageCreate(img->width, img->height, 3, 8, 0, 0);
+    if (!png)
+    {
+        RG_LOGE("LuImage allocation failed!\n");
+        return false;
+    }
+
+    size_t pixel_count = img->width * img->height;
+    const uint16_t *src = img->data;
+    uint8_t *dest = png->data;
+
+    // RGB565 to RGB888
+    for (int i = 0; i < pixel_count; ++i)
+    {
+        dest[0] = ((src[i] >> 11) & 0x1F) << 3;
+        dest[1] = ((src[i] >> 5) & 0x3F) << 2;
+        dest[2] = ((src[i] & 0x1F) << 3);
+        dest += 3;
+    }
+
+    if (luPngWriteFile(filename, png) != PNG_OK)
+    {
+        RG_LOGE("luPngWriteFile failed!\n");
+        luImageRelease(png, 0);
+        return false;
+    }
+
+    luImageRelease(png, 0);
+    return true;
+}
+
+rg_image_t *rg_image_alloc(size_t width, size_t height)
+{
+    rg_image_t *img = malloc(sizeof(rg_image_t) + width * height * 2);
+    if (!img)
+    {
+        RG_LOGE("Image alloc failed (%dx%d)\n", width, height);
+        return NULL;
+    }
+    img->width = width;
+    img->height = height;
+    return img;
+}
+
+void rg_image_free(rg_image_t *img)
+{
+    free(img);
 }

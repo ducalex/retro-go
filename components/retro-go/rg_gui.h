@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "rg_image.h"
-
 typedef enum
 {
     RG_DIALOG_INIT,
@@ -45,6 +43,23 @@ typedef struct
 
 typedef struct
 {
+    uint8_t type;
+    uint8_t width;
+    uint8_t height;
+    uint8_t points;
+    const rg_font_t *font;
+} font_info_t;
+
+// rg_image_t contains an RGB565 (LE) image
+typedef struct
+{
+    uint16_t width;
+    uint16_t height;
+    uint16_t data[];
+} rg_image_t;
+
+typedef struct
+{
     uint16_t width;
     uint16_t height;
     uint16_t bitmap[24];
@@ -65,15 +80,6 @@ typedef struct
     uint16_t item_disabled;
     uint16_t scrollbar;
 } dialog_theme_t;
-
-typedef struct
-{
-    uint8_t type;
-    uint8_t width;
-    uint8_t height;
-    uint8_t points;
-    const rg_font_t *font;
-} font_info_t;
 
 typedef struct dialog_option_s dialog_option_t;
 typedef dialog_return_t (*dialog_callback_t)(dialog_option_t *, dialog_event_t);
@@ -108,6 +114,12 @@ void rg_gui_draw_battery(int x_pos, int y_pos);
 void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int sel);
 void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, const rg_image_t *img);
 void rg_gui_draw_hourglass(void);
+
+rg_image_t *rg_image_load_from_file(const char *filename, uint32_t flags);
+rg_image_t *rg_image_load_from_memory(const uint8_t *data, size_t data_len, uint32_t flags);
+rg_image_t *rg_image_alloc(size_t width, size_t height);
+bool rg_image_save_to_file(const char *filename, const rg_image_t *img, uint32_t flags);
+void rg_image_free(rg_image_t *img);
 
 int  rg_gui_dialog(const char *header, const dialog_option_t *options, int selected_initial);
 bool rg_gui_confirm(const char *title, const char *message, bool yes_selected);
