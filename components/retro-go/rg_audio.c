@@ -21,10 +21,10 @@ static const char *SETTING_VOLUME = "Volume";
 void rg_audio_init(int sample_rate)
 {
     int volume = rg_settings_get_int32(SETTING_VOLUME, RG_AUDIO_VOL_DEFAULT);
-    int sink = rg_settings_get_int32(SETTING_OUTPUT, RG_AUDIO_SINK_SPEAKER);
+    int sink =  rg_settings_get_int32(SETTING_OUTPUT, RG_AUDIO_SINK_DEFAULT);
 
     i2s_config_t i2s_config = {
-        .mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN,
+        .mode = I2S_MODE_MASTER | I2S_MODE_TX,
         .sample_rate = sample_rate,
         .bits_per_sample = 16,
         .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
@@ -41,6 +41,7 @@ void rg_audio_init(int sample_rate)
 
     if (sink == RG_AUDIO_SINK_SPEAKER)
     {
+        i2s_config.mode |= I2S_MODE_DAC_BUILT_IN;
         if (i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL) == ESP_OK)
         {
             ret = i2s_set_pin(I2S_NUM_0, NULL);
@@ -48,7 +49,6 @@ void rg_audio_init(int sample_rate)
     }
     else if (sink == RG_AUDIO_SINK_EXT_DAC)
     {
-        i2s_config.mode &= ~I2S_MODE_DAC_BUILT_IN;
         i2s_config.communication_format = I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB;
         i2s_config.use_apll = 1;
         if (i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL) == ESP_OK)

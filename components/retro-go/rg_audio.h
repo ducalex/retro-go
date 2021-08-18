@@ -15,7 +15,7 @@ typedef enum
     RG_AUDIO_VOL_7 = 7,
     RG_AUDIO_VOL_8 = 8,
     RG_AUDIO_VOL_MAX = 9,
-    RG_AUDIO_VOL_DEFAULT = 4,
+    RG_AUDIO_VOL_DEFAULT = RG_AUDIO_VOL_4,
 } audio_volume_t;
 
 typedef enum
@@ -23,6 +23,11 @@ typedef enum
     RG_AUDIO_SINK_SPEAKER = 0,
     RG_AUDIO_SINK_EXT_DAC,
     RG_AUDIO_SINK_DUMMY,
+#if RG_DRIVER_AUDIO == 1
+    RG_AUDIO_SINK_DEFAULT = RG_AUDIO_SINK_SPEAKER,
+#else
+    RG_AUDIO_SINK_DEFAULT = RG_AUDIO_SINK_EXT_DAC,
+#endif
 } audio_sink_t;
 
 typedef enum

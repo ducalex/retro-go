@@ -36,7 +36,11 @@ static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
     if (use_led)
         rg_system_set_led(1);
 
+#if RG_DRIVER_SDCARD == 1
     esp_err_t ret = sdspi_host_do_transaction(slot, cmdinfo);
+#else
+    esp_err_t ret = sdmmc_host_do_transaction(slot, cmdinfo);
+#endif
 
     if (use_led)
         rg_system_set_led(0);
@@ -79,6 +83,7 @@ bool rg_sdcard_mount(void)
     sdmmc_host_t host_config = SDMMC_HOST_DEFAULT();
     host_config.flags = SDMMC_HOST_FLAG_1BIT;
     host_config.max_freq_khz = SDMMC_FREQ_HIGHSPEED;
+    host_config.do_transaction = &sdcard_do_transaction;
 
     sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
     slot_config.width = 1;

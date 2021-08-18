@@ -12,8 +12,8 @@
 #define RG_DRIVER_SETTINGS          1   // 1 = SD Card, 2 = NVS
 
 // Video
-#define RG_SCREEN_WIDTH             (320)
-#define RG_SCREEN_HEIGHT            (240)
+#define RG_SCREEN_WIDTH             (240)
+#define RG_SCREEN_HEIGHT            (216)
 
 // Battery ADC
 #define RG_BATT_CALC_PERCENT(adc)   50

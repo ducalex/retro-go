@@ -16,6 +16,7 @@ fw_name = sys.argv[1]
 
 fw_data = struct.pack(
     "<24s40s8256s", b"ODROIDGO_FIRMWARE_V00_01", sys.argv[2].encode(), readfile(sys.argv[3])
+    # "<22s40s8256s", b"ESPLAY_FIRMWARE_V00_01", sys.argv[2].encode(), readfile(sys.argv[3])
 )
 
 fw_size = 0
