@@ -7,7 +7,6 @@
 #include "../components/gnuboy/hw.h"
 #include "../components/gnuboy/lcd.h"
 #include "../components/gnuboy/sound.h"
-#include "../components/gnuboy/rtc.h"
 #include "../components/gnuboy/gnuboy.h"
 
 #define AUDIO_SAMPLE_RATE   (32000)

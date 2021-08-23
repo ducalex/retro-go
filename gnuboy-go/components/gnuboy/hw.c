@@ -172,6 +172,11 @@ void hw_reset(bool hard)
 }
 
 
+void hw_vblank(void)
+{
+	//
+}
+
 
 /*
  * In order to make reads and writes efficient, we keep tables
@@ -186,12 +191,11 @@ void hw_reset(bool hard)
  */
 void IRAM_ATTR hw_updatemap(void)
 {
-	cart.rombank &= (cart.romsize - 1);
-	cart.rambank &= (cart.ramsize - 1);
+	int rombank = cart.rombank % cart.romsize;
 
-	if (cart.rombanks[cart.rombank] == NULL)
+	if (cart.rombanks[rombank] == NULL)
 	{
-		gnuboy_load_bank(cart.rombank);
+		gnuboy_load_bank(rombank);
 	}
 
 	// ROM
@@ -206,34 +210,28 @@ void IRAM_ATTR hw_updatemap(void)
 		hw.rmap[0x0] = NULL;
 	}
 
-	if (cart.rombank < cart.romsize)
-	{
-		hw.rmap[0x4] = cart.rombanks[cart.rombank] - 0x4000;
-		hw.rmap[0x5] = cart.rombanks[cart.rombank] - 0x4000;
-		hw.rmap[0x6] = cart.rombanks[cart.rombank] - 0x4000;
-		hw.rmap[0x7] = cart.rombanks[cart.rombank] - 0x4000;
-	}
-	else
-	{
-		hw.rmap[0x4] = NULL;
-		hw.rmap[0x5] = NULL;
-		hw.rmap[0x6] = NULL;
-		hw.rmap[0x7] = NULL;
-	}
+	// Cartridge ROM
+	hw.rmap[0x4] = cart.rombanks[rombank] - 0x4000;
+	hw.rmap[0x5] = hw.rmap[0x4];
+	hw.rmap[0x6] = hw.rmap[0x4];
+	hw.rmap[0x7] = hw.rmap[0x4];
 
 	// Video RAM
 	hw.rmap[0x8] = hw.wmap[0x8] = lcd.vbank[R_VBK & 1] - 0x8000;
 	hw.rmap[0x9] = hw.wmap[0x9] = lcd.vbank[R_VBK & 1] - 0x8000;
 
-	// Backup RAM
-	hw.rmap[0xA] = NULL;
-	hw.rmap[0xB] = NULL;
+	// Cartridge RAM
+	hw.rmap[0xA] = hw.wmap[0xA] = NULL;
+	hw.rmap[0xB] = hw.wmap[0xB] = NULL;
 
 	// Work RAM
 	hw.rmap[0xC] = hw.wmap[0xC] = hw.rambanks[0] - 0xC000;
 
-	// ?
-	hw.rmap[0xD] = NULL;
+	// Work RAM (GBC)
+	hw.rmap[0xD] = hw.wmap[0xD] = hw.cgb ? (hw.rambanks[(R_SVBK & 0x7) ?: 1] - 0xD000) : NULL;
+
+	// Mirror of 0xC000
+	hw.rmap[0xE] = hw.wmap[0xE] = hw.rambanks[0] - 0xE000;
 
 	// IO port and registers
 	hw.rmap[0xF] = hw.wmap[0xF] = NULL;
@@ -413,22 +411,27 @@ void IRAM_ATTR hw_write(addr_t a, byte b)
 		break;
 
 	case 0xE000: // Memory mapped IO
+		// Mirror RAM: 0xE000 - 0xFDFF
 		if (a < 0xFE00)
 		{
-			writeb(a & 0xDFFF, b);
+			hw.rambanks[(a >> 12) & 1][a & 0xFFF] = b;
 		}
+		// Video: 0xFE00 - 0xFE9F
 		else if ((a & 0xFF00) == 0xFE00)
 		{
 			if (a < 0xFEA0) lcd.oam.mem[a & 0xFF] = b;
 		}
+		// Sound: 0xFF10 - 0xFF3F
 		else if (a >= 0xFF10 && a <= 0xFF3F)
 		{
 			sound_write(a & 0xFF, b);
 		}
-		else if ((a & 0xFF80) == 0xFF80 && a != 0xFFFF)
+		// High RAM: 0xFF80 - 0xFFFE
+		else if (a >= 0xFF80 && a <= 0xFFFE)
 		{
 			REG(a & 0xFF) = b;
 		}
+		// Hardware registers: 0xFF00 - 0xFF7F and 0xFFFF
 		else
 		{
 			int r = a & 0xFF;
@@ -603,33 +606,40 @@ byte IRAM_ATTR hw_read(addr_t a)
 
 	case 0xC000: // System RAM
 		if ((a & 0xF000) == 0xC000)
-			return hw.rambanks[0][a & 0x0FFF];
-		return hw.rambanks[(R_SVBK & 0x7) ?: 1][a & 0x0FFF];
+			return hw.rambanks[0][a & 0xFFF];
+		return hw.rambanks[(R_SVBK & 0x7) ?: 1][a & 0xFFF];
 
 	case 0xE000: // Memory mapped IO
+		// Mirror RAM: 0xE000 - 0xFDFF
 		if (a < 0xFE00)
 		{
-			return readb(a & 0xDFFF);
+			return hw.rambanks[(a >> 12) & 1][a & 0xFFF];
 		}
+		// Video: 0xFE00 - 0xFE9F
 		else if ((a & 0xFF00) == 0xFE00)
 		{
 			return (a < 0xFEA0) ? lcd.oam.mem[a & 0xFF] : 0xFF;
 		}
+		// Sound: 0xFF10 - 0xFF3F
 		else if (a >= 0xFF10 && a <= 0xFF3F)
 		{
-			return sound_read(a & 0xFF);
+			// Make sure sound emulation is all caught up
+			sound_mix();
 		}
+		// High RAM: 0xFF80 - 0xFFFE
 		// else if ((a & 0xFF80) == 0xFF80)
 		// {
 		// 	return REG(a & 0xFF);
 		// }
-		else
-		{
+		// Hardware registers: 0xFF00 - 0xFF7F and 0xFFFF
+		// else
+		// {
+
 			// We should check that the reg is valid, otherwise return 0xFF.
 			// However invalid address should already contain 0xFF (unless incorrectly overwritten)
 			// So, for speed, we'll assume that this is correct and always return REG(a)
 			return REG(a & 0xFF);
-		}
+		// }
 	}
 	return 0xFF;
 }
