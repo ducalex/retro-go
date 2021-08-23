@@ -52,13 +52,15 @@ typedef struct
 	} out;
 } gb_lcd_t;
 
-enum {
+enum
+{
 	GB_PIXEL_PALETTED,
 	GB_PIXEL_565_LE,
 	GB_PIXEL_565_BE,
 };
 
-enum {
+enum
+{
     GB_PALETTE_GBCBIOS,
     GB_PALETTE_DEFAULT,
     GB_PALETTE_2BGRAYS,

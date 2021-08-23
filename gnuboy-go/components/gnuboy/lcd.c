@@ -507,19 +507,20 @@ void lcd_reset(bool hard)
 {
 	if (hard)
 	{
-		memset(&lcd, 0, sizeof(lcd) - sizeof(lcd.out));
+		memset(&lcd.vbank, 0, sizeof(lcd.vbank));
+		memset(&lcd.oam, 0, sizeof(lcd.oam));
+		memset(&lcd.pal, 0, sizeof(lcd.pal));
+		memset(&lcd.pal, 0, sizeof(lcd.pal));
 	}
-	else
-	{
-		memset(BG, 0, sizeof(BG));
-		memset(WND, 0, sizeof(WND));
-		memset(BUF, 0, sizeof(BUF));
-		memset(PRI, 0, sizeof(PRI));
-		memset(VS, 0, sizeof(VS));
 
-		WX = WY = WT = WV = 0;
-		S = T = U = V = 0;
-	}
+	memset(BG, 0, sizeof(BG));
+	memset(WND, 0, sizeof(WND));
+	memset(BUF, 0, sizeof(BUF));
+	memset(PRI, 0, sizeof(PRI));
+	memset(VS, 0, sizeof(VS));
+
+	WX = WY = WT = WV = 0;
+	S = T = U = V = 0;
 
 	WY = R_WY;
 	lcd_rebuildpal();

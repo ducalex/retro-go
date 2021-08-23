@@ -299,17 +299,20 @@ void fds_init(rom_t *cart)
     {
         fds->sides = ((fdsheader_t *)disk_ptr)->sides;
         disk_ptr += 16;
+        MESSAGE_INFO("FDS header present. Sides = %d\n", fds->sides);
     }
     else
     {
         fds->sides = cart->data_len / 65500;
+        MESSAGE_INFO("FDS header absent. Sides = %d\n", fds->sides);
     }
 
-    fds->sides = MIN(MAX(fds->sides, 1), 8);
-
-    for (int i = 0; i < fds->sides; i++)
+    for (int i = 0; i < 8; i++)
     {
-        fds->disk[i] = disk_ptr + (i * 65500);
+        if (i < fds->sides || cart->data_len > i * 65500)
+            fds->disk[i] = disk_ptr + (i * 65500);
+        else
+            fds->disk[i] = NULL;
     }
     fds->block_ptr = &fds->disk[0][0];
 
