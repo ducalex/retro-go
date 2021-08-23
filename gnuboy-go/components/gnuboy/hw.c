@@ -250,89 +250,84 @@ void IRAM_ATTR hw_updatemap(void)
  */
 static inline void mbc_write(addr_t a, byte b)
 {
-	byte ha = (a >> 12);
-
 	MESSAGE_DEBUG("mbc %d: cart bank %02X -[%04X:%02X]-> ", cart.mbc, cart.rombank, a, b);
 
 	switch (cart.mbc)
 	{
 	case MBC_MBC1:
-		switch (ha & 0xE)
+		switch (a & 0xE000)
 		{
-		case 0x0:
+		case 0x0000:
 			cart.enableram = ((b & 0x0F) == 0x0A);
 			break;
-		case 0x2:
+		case 0x2000:
 			if ((b & 0x1F) == 0) b = 0x01;
 			cart.rombank = (cart.rombank & 0x60) | (b & 0x1F);
 			break;
-		case 0x4:
+		case 0x4000:
 			if (cart.bankmode)
 				cart.rambank = b & 0x03;
 			else
 				cart.rombank = (cart.rombank & 0x1F) | ((int)(b&3)<<5);
 			break;
-		case 0x6:
+		case 0x6000:
 			cart.bankmode = b & 0x1;
 			break;
 		}
 		break;
 
-	case MBC_MBC2: /* is this at all right? */
-		if ((a & 0x0100) == 0x0000)
-		{
+	case MBC_MBC2:
+		// 0x0000 - 0x3FFF, bit 0x0100 clear = RAM, set = ROM
+		if ((a & 0xC100) == 0x0000)
 			cart.enableram = ((b & 0x0F) == 0x0A);
-			break;
-		}
-		if ((a & 0xE100) == 0x2100)
-		{
+		else if ((a & 0xC100) == 0x0100)
 			cart.rombank = b & 0x0F;
-			break;
-		}
 		break;
 
+	case MBC_HUC3:
+		// FIX ME: This isn't right but the previous implementation was wronger...
 	case MBC_MBC3:
-		switch (ha & 0xE)
+		switch (a & 0xE000)
 		{
-		case 0x0:
+		case 0x0000:
 			cart.enableram = ((b & 0x0F) == 0x0A);
 			break;
-		case 0x2:
+		case 0x2000:
 			if ((b & 0x7F) == 0) b = 0x01;
 			cart.rombank = b & 0x7F;
 			break;
-		case 0x4:
+		case 0x4000:
 			rtc.sel = b & 0x0f;
 			cart.rambank = b & 0x03;
 			break;
-		case 0x6:
+		case 0x6000:
 			rtc_latch(b);
 			break;
 		}
 		break;
 
 	case MBC_MBC5:
-		switch (ha & 0x7)
+		switch (a & 0x7000)
 		{
-		case 0x0:
-		case 0x1:
+		case 0x0000:
+		case 0x1000:
 			cart.enableram = ((b & 0x0F) == 0x0A);
 			break;
-		case 0x2:
+		case 0x2000:
 			cart.rombank = (cart.rombank & 0x100) | (b);
 			break;
-		case 0x3:
+		case 0x3000:
 			cart.rombank = (cart.rombank & 0xFF) | ((int)(b & 1) << 8);
 			break;
-		case 0x4:
-		case 0x5:
+		case 0x4000:
+		case 0x5000:
 			if (cart.has_rumble)
 				cart.rambank = b & 0x0F;
 			else
 				cart.rambank = b & ~8;
 			break;
-		case 0x6:
-		case 0x7:
+		case 0x6000:
+		case 0x7000:
 			// Nothing but Radikal Bikers tries to access it.
 			break;
 		default:
@@ -342,43 +337,23 @@ static inline void mbc_write(addr_t a, byte b)
 		break;
 
 	case MBC_HUC1: /* FIXME - this is all guesswork -- is it right??? */
-		switch (ha & 0xE)
+		switch (a & 0xE000)
 		{
-		case 0x0:
+		case 0x0000:
 			cart.enableram = ((b & 0x0F) == 0x0A);
 			break;
-		case 0x2:
+		case 0x2000:
 			if ((b & 0x1F) == 0) b = 0x01;
 			cart.rombank = (cart.rombank & 0x60) | (b & 0x1F);
 			break;
-		case 0x4:
+		case 0x4000:
 			if (cart.bankmode)
 				cart.rambank = b & 0x03;
 			else
 				cart.rombank = (cart.rombank & 0x1F) | ((int)(b&3)<<5);
 			break;
-		case 0x6:
+		case 0x6000:
 			cart.bankmode = b & 0x1;
-			break;
-		}
-		break;
-
-	case MBC_HUC3:
-		switch (ha & 0xE)
-		{
-		case 0x0:
-			cart.enableram = ((b & 0x0F) == 0x0A);
-			break;
-		case 0x2:
-			b &= 0x7F;
-			cart.rombank = b ? b : 1;
-			break;
-		case 0x4:
-			rtc.sel = b & 0x0f;
-			cart.rambank = b & 0x03;
-			break;
-		case 0x6:
-			rtc_latch(b);
 			break;
 		}
 		break;
