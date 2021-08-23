@@ -123,7 +123,7 @@ int sram_load(const char *file)
 	int ret = -1;
 	FILE *f;
 
-	if (!cart.batt || !cart.ramsize || !file || !*file)
+	if (!cart.has_battery || !cart.ramsize || !file || !*file)
 		return -1;
 
 	if ((f = fopen(file, "rb")))
@@ -147,7 +147,7 @@ int sram_save(const char *file)
 	int ret = -1;
 	FILE *f;
 
-	if (!cart.batt || !cart.ramsize || !file || !*file)
+	if (!cart.has_battery || !cart.ramsize || !file || !*file)
 		return -1;
 
 	if ((f = fopen(file, "wb")))
@@ -168,7 +168,7 @@ int sram_save(const char *file)
 
 int sram_update(const char *file)
 {
-	if (!cart.batt || !cart.ramsize || !file || !*file)
+	if (!cart.has_battery || !cart.ramsize || !file || !*file)
 		return -1;
 
 	return -9000;

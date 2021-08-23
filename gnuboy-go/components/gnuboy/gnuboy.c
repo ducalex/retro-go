@@ -12,7 +12,7 @@
 int gnuboy_init(void)
 {
 	gnuboy_reset(true);
-    return 0;
+	return 0;
 }
 
 
@@ -51,41 +51,41 @@ void gnuboy_reset(bool hard)
 */
 void gnuboy_run(bool draw)
 {
-    lcd.out.enabled = draw;
-    pcm.pos = 0;
+	lcd.out.enabled = draw;
+	pcm.pos = 0;
 
-    /* FIXME: judging by the time specified this was intended
-    to emulate through vblank phase which is handled at the
-    end of the loop. */
-    cpu_emulate(2280);
+	/* FIXME: judging by the time specified this was intended
+	to emulate through vblank phase which is handled at the
+	end of the loop. */
+	cpu_emulate(2280);
 
-    /* FIXME: R_LY >= 0; comparsion to zero can also be removed
-    altogether, R_LY is always 0 at this point */
-    while (R_LY > 0 && R_LY < 144) {
-        /* Step through visible line scanning phase */
-        cpu_emulate(lcd.cycles);
-    }
+	/* FIXME: R_LY >= 0; comparsion to zero can also be removed
+	altogether, R_LY is always 0 at this point */
+	while (R_LY > 0 && R_LY < 144) {
+		/* Step through visible line scanning phase */
+		cpu_emulate(lcd.cycles);
+	}
 
-    /* VBLANK BEGIN */
-    if (draw && lcd.out.blit_func) {
+	/* VBLANK BEGIN */
+	if (draw && lcd.out.blit_func) {
 		(lcd.out.blit_func)();
-    }
+	}
 
     rtc_tick();
 	sound_mix();
 
-    if (!(R_LCDC & 0x80)) {
-        /* LCDC operation stopped */
-        /* FIXME: judging by the time specified, this is
-        intended to emulate through visible line scanning
-        phase, even though we are already at vblank here */
-        cpu_emulate(32832);
-    }
+	if (!(R_LCDC & 0x80)) {
+		/* LCDC operation stopped */
+		/* FIXME: judging by the time specified, this is
+		intended to emulate through visible line scanning
+		phase, even though we are already at vblank here */
+		cpu_emulate(32832);
+	}
 
-    while (R_LY > 0) {
-        /* Step through vblank phase */
-        cpu_emulate(lcd.cycles);
-    }
+	while (R_LY > 0) {
+		/* Step through vblank phase */
+		cpu_emulate(lcd.cycles);
+	}
 }
 
 
@@ -97,7 +97,7 @@ void gnuboy_die(const char *fmt, ...)
 	vfprintf(stderr, fmt, ap);
 	va_end(ap);
 
-    // abort();
+	// abort();
 	RG_PANIC(fmt); // Lazy
 }
 
@@ -199,11 +199,11 @@ int gnuboy_load_rom(const char *file)
 	memcpy(&cart.name, header + 0x0134, 16);
 	cart.name[16] = 0;
 
-	cart.batt = (type == 3 || type == 6 || type == 9 || type == 13 || type == 15 ||
-				type == 16 || type == 19 || type == 27 || type == 30 || type == 255);
-	cart.rtc  = (type == 15 || type == 16);
-	cart.rumble = (type == 28 || type == 29 || type == 30);
-	cart.sensor = (type == 34);
+	cart.has_battery = (type == 3 || type == 6 || type == 9 || type == 13 || type == 15 ||
+						type == 16 || type == 19 || type == 27 || type == 30 || type == 255);
+	cart.has_rtc  = (type == 15 || type == 16);
+	cart.has_rumble = (type == 28 || type == 29 || type == 30);
+	cart.has_sensor = (type == 34);
 	cart.colorize = 0;
 
 	if (type >= 1 && type <= 3)
@@ -364,7 +364,7 @@ int gnuboy_load_rom(const char *file)
 void gnuboy_free_rom(void)
 {
 	for (int i = 0; i < 512; i++)
-    {
+	{
 		if (cart.rombanks[i]) {
 			free(cart.rombanks[i]);
 			cart.rombanks[i] = NULL;

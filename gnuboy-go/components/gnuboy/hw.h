@@ -192,10 +192,10 @@ typedef struct
 	un32 ramsize;
 
 	// Extra hardware
-	bool rumble;
-	bool sensor;
-	bool batt;
-	bool rtc;
+	bool has_rumble;
+	bool has_sensor;
+	bool has_battery;
+	bool has_rtc;
 
 	// MBC stuff
 	int mbc;

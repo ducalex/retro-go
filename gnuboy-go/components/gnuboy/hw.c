@@ -326,7 +326,7 @@ static inline void mbc_write(addr_t a, byte b)
 			break;
 		case 0x4:
 		case 0x5:
-			if (cart.rumble)
+			if (cart.has_rumble)
 				cart.rambank = b & 0x0F;
 			else
 				cart.rambank = b & ~8;

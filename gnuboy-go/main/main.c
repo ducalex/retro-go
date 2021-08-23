@@ -6,7 +6,6 @@
 #include "../components/gnuboy/save.h"
 #include "../components/gnuboy/hw.h"
 #include "../components/gnuboy/lcd.h"
-#include "../components/gnuboy/cpu.h"
 #include "../components/gnuboy/sound.h"
 #include "../components/gnuboy/rtc.h"
 #include "../components/gnuboy/gnuboy.h"
