@@ -388,19 +388,19 @@ void IRAM_ATTR hw_write(addr_t a, byte b)
 		break;
 
 	case 0xA000: // Save RAM or RTC
-		if (cart.enableram)
+		if (!cart.enableram)
+			break;
+
+		if (rtc.sel & 8)
 		{
-			if (rtc.sel & 8)
+			rtc_write(b);
+		}
+		else
+		{
+			if (cart.rambanks[cart.rambank][a & 0x1FFF] != b)
 			{
-				rtc_write(b);
-			}
-			else
-			{
-				if (cart.rambanks[cart.rambank][a & 0x1FFF] != b)
-				{
-					cart.rambanks[cart.rambank][a & 0x1FFF] = b;
-					cart.sram_dirty |= (1 << cart.rambank);
-				}
+				cart.rambanks[cart.rambank][a & 0x1FFF] = b;
+				cart.sram_dirty |= (1 << cart.rambank);
 			}
 		}
 		break;
@@ -596,8 +596,8 @@ byte IRAM_ATTR hw_read(addr_t a)
 
 	case 0xA000: // Cart RAM or RTC
 		if (!cart.enableram)
-			return (cart.mbc == MBC_HUC3) ? 0x01 : 0xFF;
-		else if (rtc.sel & 8)
+			return 0xFF;
+		if (rtc.sel & 8)
 			return rtc.regs[rtc.sel & 7];
 		return cart.rambanks[cart.rambank][a & 0x1FFF];
 

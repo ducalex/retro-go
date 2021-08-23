@@ -1,3 +1,4 @@
+#include <sys/param.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -386,4 +387,24 @@ void gnuboy_free_rom(void)
 	}
 
 	memset(&cart, 0, sizeof(cart));
+}
+
+
+void gnuboy_get_time(int *day, int *hour, int *minute, int *second)
+{
+	if (day) *day = rtc.d;
+	if (hour) *hour = rtc.h;
+	if (minute) *minute = rtc.m;
+	if (second) *second = rtc.s;
+}
+
+
+void gnuboy_set_time(int day, int hour, int minute, int second)
+{
+	rtc.d = MIN(MAX(day, 0), 365);
+	rtc.h = MIN(MAX(hour, 0), 24);
+	rtc.m = MIN(MAX(minute, 0), 60);
+	rtc.s = MIN(MAX(second, 0), 60);
+	rtc.ticks = 0;
+	rtc.dirty = 0;
 }

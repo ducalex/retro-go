@@ -179,6 +179,7 @@ typedef struct
 	n32 hdma;
 	n32 serial;
 	un8 *bios;
+	n32 frames;
 } gb_hw_t;
 
 typedef struct
@@ -222,6 +223,7 @@ void hw_hdma(void);
 void hw_updatemap(void);
 void hw_write(addr_t a, byte b);
 byte hw_read(addr_t a);
+void hw_vblank(void);
 
 
 static inline byte readb(addr_t a)

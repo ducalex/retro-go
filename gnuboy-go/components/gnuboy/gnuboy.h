@@ -28,5 +28,7 @@ void gnuboy_reset(bool hard);
 void gnuboy_run(bool draw);
 void gnuboy_die(const char *fmt, ...);
 
+void gnuboy_get_time(int *day, int *hour, int *minute, int *second);
+void gnuboy_set_time(int day, int hour, int minute, int second);
 
 void gnuboy_load_bank(int);

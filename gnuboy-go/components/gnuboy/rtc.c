@@ -1,7 +1,5 @@
-#include <sys/time.h>
 #include <string.h>
 #include <stdio.h>
-#include <time.h>
 
 #include "gnuboy.h"
 #include "rtc.h"
@@ -17,21 +15,7 @@ void rtc_reset(bool hard)
 	if (hard)
 	{
 		memset(&rtc, 0, sizeof(rtc));
-		rtc_sync();
 	}
-}
-
-void rtc_sync()
-{
-	time_t timer = time(NULL);
-	struct tm *info = localtime(&timer);
-
-	rtc.d = info->tm_yday;
-	rtc.h = info->tm_hour;
-	rtc.m = info->tm_min;
-	rtc.s = info->tm_sec;
-
-	MESSAGE_INFO("Clock set to day %03d at %02d:%02d:%02d\n", rtc.d, rtc.h, rtc.m, rtc.s);
 }
 
 void rtc_latch(byte b)
@@ -43,16 +27,13 @@ void rtc_latch(byte b)
 		rtc.regs[2] = rtc.h;
 		rtc.regs[3] = rtc.d;
 		rtc.regs[4] = rtc.flags;
-		rtc.regs[5] = 0xff;
-		rtc.regs[6] = 0xff;
-		rtc.regs[7] = 0xff;
 	}
-	rtc.latch = b;
+	rtc.latch = b & 1;
 }
 
 void rtc_write(byte b)
 {
-	MESSAGE_DEBUG("write %02X: %02X (%d)\n", rtc.sel, b, b);
+	MESSAGE_DEBUG("write %02X: %d\n", rtc.sel, b);
 
 	switch (rtc.sel & 0xf)
 	{
@@ -78,6 +59,7 @@ void rtc_write(byte b)
 		rtc.d = ((rtc.d & 0xff) | ((b&1)<<9)) % 365;
 		break;
 	}
+	rtc.dirty = 1;
 }
 
 void rtc_tick()

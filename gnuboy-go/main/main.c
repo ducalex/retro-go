@@ -73,6 +73,13 @@ static bool reset_handler(bool hard)
     skipFrames = 20;
     autoSaveSRAM_Timer = 0;
 
+    if (hard)
+    {
+        time_t timer = time(NULL);
+        struct tm *info = localtime(&timer);
+        gnuboy_set_time(info->tm_yday, info->tm_hour, info->tm_min, info->tm_sec);
+    }
+
     return true;
 }
 
@@ -141,26 +148,32 @@ static dialog_return_t sram_autosave_cb(dialog_option_t *option, dialog_event_t 
 
 static dialog_return_t rtc_t_update_cb(dialog_option_t *option, dialog_event_t event)
 {
+    int d, h, m, s;
+
+    gnuboy_get_time(&d, &h, &m, &s);
+
     if (option->id == 'd') {
-        if (event == RG_DIALOG_PREV && --rtc.d < 0) rtc.d = 364;
-        if (event == RG_DIALOG_NEXT && ++rtc.d > 364) rtc.d = 0;
-        sprintf(option->value, "%03d", rtc.d);
+        if (event == RG_DIALOG_PREV && --d < 0) d = 364;
+        if (event == RG_DIALOG_NEXT && ++d > 364) d = 0;
+        sprintf(option->value, "%02d", d);
     }
     if (option->id == 'h') {
-        if (event == RG_DIALOG_PREV && --rtc.h < 0) rtc.h = 23;
-        if (event == RG_DIALOG_NEXT && ++rtc.h > 23) rtc.h = 0;
-        sprintf(option->value, "%02d", rtc.h);
+        if (event == RG_DIALOG_PREV && --h < 0) h = 23;
+        if (event == RG_DIALOG_NEXT && ++h > 23) h = 0;
+        sprintf(option->value, "%02d", h);
     }
     if (option->id == 'm') {
-        if (event == RG_DIALOG_PREV && --rtc.m < 0) rtc.m = 59;
-        if (event == RG_DIALOG_NEXT && ++rtc.m > 59) rtc.m = 0;
-        sprintf(option->value, "%02d", rtc.m);
+        if (event == RG_DIALOG_PREV && --m < 0) m = 59;
+        if (event == RG_DIALOG_NEXT && ++m > 59) m = 0;
+        sprintf(option->value, "%02d", m);
     }
     if (option->id == 's') {
-        if (event == RG_DIALOG_PREV && --rtc.s < 0) rtc.s = 59;
-        if (event == RG_DIALOG_NEXT && ++rtc.s > 59) rtc.s = 0;
-        sprintf(option->value, "%02d", rtc.s);
+        if (event == RG_DIALOG_PREV && --s < 0) s = 59;
+        if (event == RG_DIALOG_NEXT && ++s > 59) s = 0;
+        sprintf(option->value, "%02d", s);
     }
+
+    gnuboy_set_time(d, h, m, s);
 
     // TO DO: Update system clock
 
@@ -179,7 +192,9 @@ static dialog_return_t rtc_update_cb(dialog_option_t *option, dialog_event_t eve
         };
         rg_gui_dialog("Set Clock", choices, 0);
     }
-    sprintf(option->value, "%02d:%02d", rtc.h, rtc.m);
+    int h, m;
+    gnuboy_get_time(NULL, &h, &m, NULL);
+    sprintf(option->value, "%02d:%02d", h, m);
     return RG_DIALOG_IGNORE;
 }
 
@@ -317,6 +332,14 @@ void app_main(void)
         hw_setpad(PAD_B, joystick & GAMEPAD_KEY_B);
 
         gnuboy_run(drawFrame);
+
+        // if (rtc.dirty)
+        // {
+            // At this point we know the time probably changed, we could update our
+            // internal or external clock.
+        //     printf("Time changed in game!\n");
+        //     rtc.dirty = 0;
+        // }
 
         if (autoSaveSRAM > 0)
         {
