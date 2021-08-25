@@ -1,3 +1,11 @@
+# Retro-Go 1.26.2 (2021-08-25)
+- PCE: Performance improvement
+- GBC: Performance improvement
+- GBC: Fixed score not shown in Donkey Kong
+- Launcher: Improved PNG support
+- All: Replaced miniz by zlib which should resolves all save-related crashes
+
+
 # Retro-Go 1.26.1 (2021-07-31)
 - Launcher: Fixed subdirectory display (again)
 
