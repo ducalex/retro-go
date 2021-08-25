@@ -57,8 +57,10 @@
 		"C_Cpp.default.intelliSenseMode": "gcc-x86",
 		"cSpell.words": [
 			"nofrendo",
-			"smsplusgx",
-			"supergraphx"
+			"gnuboy",
+			"newfrendo",
+			"newboy",
+			"smsplusgx"
 		],
 		"files.trimTrailingWhitespace": true,
 		"files.exclude": {

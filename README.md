@@ -69,12 +69,12 @@ For a quick start you can copy the folder `covers` of this repository to the roo
 rename it `romart`. I also periodically upload zips to the release page.
 
 ## Adding missing covers
-First identify the CRC32 of your game (in the launcher press B). Now, let's assume that the CRC32 of your
-NES game is ABCDE123, you must place the file (format described above) at: `sdcard:/romart/nes/A/ABCDE123.png`.
+First identify the CRC32 of your game (in the launcher press A -> Properties). Now, let's assume that 
+the CRC32 of your NES game is ABCDE123, you must place the file at: `sdcard:/romart/nes/A/ABCDE123.png`.
 
 _Note: If you need to compute the CRC32 outside of retro-go, please be mindful that certain systems 
 skip the file header in their CRC calculation (eg NES skips 16 bytes and Lynx skips 64 bytes). 
-The number must also be zero padded to be 8 chars._
+The number must also be zero left-padded to be 8 chars._
 
 
 # Sound quality
@@ -85,7 +85,7 @@ required, twisting the wires tightly will work just fine.
 [A more involved solution can be seen here.](https://wiki.odroid.com/odroid_go/silent_volume)
 
 
-# Game Boy SRAM *(Save RAM, Battery RAM, Backup RAM)*
+# Game Boy SRAM *(aka Save/Battery/Backup RAM)*
 In Retro-Go, save states will provide you with the best and most reliable save experience. That being said, please read on if you need or want SRAM saves. The SRAM format is compatible with VisualBoyAdvance so it may be used to import or export saves.
 
 On real hardware, Game Boy games save their state to a battery-backed SRAM chip in the cartridge. A typical emulator on the deskop would save the SRAM to disk periodically or when leaving the emulator, and reload it when you restart the game. This isn't possible on the Odroid-GO because we can't detect when the device is about to be powered down and we can't save too often because it causes stuttering. That is why the auto save delay is configurable (disabled by default) and pausing the emulation (opening a menu) will also save to disk if needed. The SRAM file is then reloaded on startup (unless a save state loading was requested via "Resume").
@@ -110,12 +110,13 @@ An up to date list of incompatible/broken games can be found on the [ODROID-GO f
 - SNES emulation (Stalled)
 - Netplay (Stalled)
 - Multiple save states
-- Atari 2600 or 5200 or 7800
-- Neo Geo Pocket Color
+- More emulators (Atari 2600/5200/7800, NGP Color)
 - Chip sound player
 - Sleep mode
 - Arduboy compatibility?
 - WiFi file manager
+
+I'm also working on a combined application where a single binary would contain all the emulators. This will provide faster boot times, much much smaller firmware size, faster builds, and support for platforms where having multiple binaries is inconvenient (SDL/Desktop) or impossible (some ARM mcu).
 
 
 # Building Retro-Go
@@ -134,11 +135,11 @@ Retro-Go will build and most likely run without any changes to esp-idf, but patc
 ## Build everything and generate .fw:
 1. `rg_tool.py build-fw`
 
-For a smaller build you can also specify which apps you want, for example the launcher + nes/gameboy only:
+For a smaller build you can also specify which apps you want, for example the launcher + nes + gameboy only:
 1. `rg_tool.py build-fw launcher nofrendo-go gnuboy-go`
 
 ## Build, flash, and monitor individual apps for faster development:
-1. `rg_tool.py run nofrendo-go --offset=0x100000 --port=COM3`
+1. `rg_tool.py --offset=0x100000 --port=COM3 run nofrendo-go`
 * Offset is required only if you use my multi-firmware AND retro-go isn't the first installed application, in which case the offset is shown in the multi-firmware.
 
 ## Changing the launcher's images
@@ -154,11 +155,10 @@ When a panic occurs, Retro-Go has the ability to save debugging information to `
 
 # Porting
 I don't want to maintain non-ESP32 ports in this repository but let me know if I can make small changes to make your own port easier! The absolute minimum requirements for Retro-Go are roughly:
-- Processor: 200Mhz 32bit little-endian with unaligned memory access support ¹
+- Processor: 200Mhz 32bit little-endian
 - Memory: 2MB
 - Compiler: C99 and C++03 (for lynx and snes)
 
-¹ _The unaligned support isn't a hard requirement but I know that unaligned access have sneaked into the code and it's safer to use a mcu that at leasts traps unaligned accesses (like the ESP32 does). I'd be more than happy to accept patches that reduce or remove unaligned memory accesses!_
 
 # Acknowledgements
 - The design of the launcher was inspired (copied) from [pelle7's go-emu](https://github.com/pelle7/odroid-go-emu-launcher).
