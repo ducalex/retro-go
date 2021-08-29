@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "ftp_server.h"
 #include "emulators.h"
 #include "bookmarks.h"
 #include "gui.h"
@@ -251,6 +252,8 @@ void app_main(void)
 
     emulators_init();
     bookmarks_init();
+
+    ftp_server_start();
 
     retro_loop();
 }

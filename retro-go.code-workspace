@@ -39,7 +39,8 @@
 			"IS_LITTLE_ENDIAN",
 			"INLINE=",
 			"uint=unsigned int",
-			"CONFIG_FREERTOS_HZ=100"
+			"CONFIG_FREERTOS_HZ=100",
+			"CONFIG_TCPIP_LWIP=1"
 		],
 		"C_Cpp.default.includePath": [
 			"${workspaceFolder}/components/**",
@@ -60,7 +61,8 @@
 			"gnuboy",
 			"newfrendo",
 			"newboy",
-			"smsplusgx"
+			"smsplusgx",
+			"TCPIP"
 		],
 		"files.trimTrailingWhitespace": true,
 		"files.exclude": {

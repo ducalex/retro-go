@@ -145,3 +145,4 @@ CONFIG_LOG_COLORS=y
 #
 # ODROID-GO partition table doesn't use any checksum
 CONFIG_PARTITION_TABLE_MD5=n
+CONFIG_APP_BUILD_BOOTLOADER=n
