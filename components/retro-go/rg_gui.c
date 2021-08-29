@@ -1070,9 +1070,9 @@ rg_image_t *rg_image_load_from_memory(const uint8_t *data, size_t data_len, uint
         if (img)
         {
             size_t pixel_count = img->width * img->height;
-            size_t pizel_size = png->channels;
-            const uint16_t *src = img->data;
-            uint8_t *dest = png->data;
+            size_t pixel_size = png->channels;
+            const uint8_t *src = png->data;
+            uint16_t *dest = img->data;
 
             // RGB888 or RGBA8888 to RGB565
             for (int i = 0; i < pixel_count; ++i)
@@ -1080,7 +1080,7 @@ rg_image_t *rg_image_load_from_memory(const uint8_t *data, size_t data_len, uint
                 dest[i] = (((src[0] >> 3) & 0x1F) << 11)
                         | (((src[1] >> 2) & 0x3F) << 5)
                         | (((src[2] >> 3) & 0x1F));
-                src += pizel_size;
+                src += pixel_size;
             }
         }
         luImageRelease(png, NULL);
