@@ -123,8 +123,8 @@ typedef struct
 nes_t *nes_getptr(void);
 nes_t *nes_init(nes_type_t system, int sample_rate, bool stereo);
 void nes_shutdown(void);
-rom_t *nes_insertcart(const char *filename);
-rom_t *nes_insertdisk(const char *filename);
+int nes_insertcart(const char *filename, const char *biosfile);
+int nes_insertdisk(const char *filename, const char *biosfile);
 void nes_settimer(nes_timer_t *func, long period);
 void nes_emulate(bool draw);
 void nes_reset(bool hard_reset);

@@ -107,7 +107,7 @@ int nofrendo_run(const char *filename, const char *savefile)
 {
     nes_t *nes = nes_getptr();
 
-    if (!nes_insertcart(filename))
+    if (nes_insertcart(filename, NULL) < 0)
     {
         MESSAGE_ERROR("Failed to insert NES cart.\n");
         return -2;

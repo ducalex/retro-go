@@ -34,7 +34,7 @@
 #define FDS_CLOCK (NES_CPU_CLOCK_NTSC / 2)
 #define SEEK_TIME 100 // 150
 #define CLEAR_IRQ() irq.seek_counter = irq.transfer_done = irq.timer_fired = 0; nes6502_irq_clear();
-#define TIMER_RELOAD() irq.timer_counter = (fds->regs[1] << 8) | fds->regs[0];
+#define TIMER_RELOAD() irq.timer_counter = (fds.regs[1] << 8) | fds.regs[0];
 
 #define REG2_IRQ_REPEAT         (1 << 0)
 #define REG2_IRQ_ENABLED        (1 << 1)
@@ -80,18 +80,18 @@ struct
     bool transfer_done;
 } irq;
 
-static fds_t *fds;
+static fds_t fds;
 
 
 static void fds_cpu_timer(int cycles)
 {
-    if (irq.timer_counter > 0 && (fds->regs[2] & REG2_IRQ_ENABLED))
+    if (irq.timer_counter > 0 && (fds.regs[2] & REG2_IRQ_ENABLED))
     {
         irq.timer_counter -= cycles;
         if (irq.timer_counter <= 0)
         {
-            if (!(fds->regs[2] & REG2_IRQ_REPEAT))
-                fds->regs[2] &= ~REG2_IRQ_ENABLED;
+            if (!(fds.regs[2] & REG2_IRQ_REPEAT))
+                fds.regs[2] &= ~REG2_IRQ_ENABLED;
 
             TIMER_RELOAD();
             nes6502_irq();
@@ -105,7 +105,7 @@ static void fds_cpu_timer(int cycles)
         irq.seek_counter -= cycles;
         if (irq.seek_counter <= 0)
         {
-            if (fds->regs[5] & REG5_USE_INTERRUPT)
+            if (fds.regs[5] & REG5_USE_INTERRUPT)
             {
                 nes6502_irq();
             }
@@ -133,13 +133,13 @@ static uint8 fds_read(uint32 address)
             return ret;
 
         case 0x4031:                    // Read data register
-            if (fds->regs[5] & 0x04)
+            if (fds.regs[5] & 0x04)
             {
                 CLEAR_IRQ();
                 irq.seek_counter = SEEK_TIME;
 
-                if (fds->block_pos < fds->block_size)
-                    return fds->block_ptr[fds->block_pos++];
+                if (fds.block_pos < fds.block_size)
+                    return fds.block_ptr[fds.block_pos++];
                 else
                     return 0;
             }
@@ -147,7 +147,7 @@ static uint8 fds_read(uint32 address)
 
         case 0x4032:                    // Disk drive status register
             // wprotect|/ready|/inserted
-            if (!(fds->regs[5] & 1) || (fds->regs[5] & 2))
+            if (!(fds.regs[5] & 1) || (fds.regs[5] & 2))
                 return 0b110;
             return 0b100;
 
@@ -191,42 +191,42 @@ static void fds_write(uint32 address, uint8 value)
             // Transfer Reset
             if (value & 0x02)
             {
-                fds->block_type = BLOCK_INIT;
-                fds->block_ptr = &fds->disk[0][0];
-                fds->block_filesize = 0;
-                fds->block_size = 0;
-                fds->block_pos = 0;
+                fds.block_type = BLOCK_INIT;
+                fds.block_ptr = &fds.disk[0][0];
+                fds.block_filesize = 0;
+                fds.block_size = 0;
+                fds.block_pos = 0;
             }
 
             // New transfer
-            if (value & 0x40 && ~(fds->regs[5]) & 0x40)
+            if (value & 0x40 && ~(fds.regs[5]) & 0x40)
             {
-                fds->block_ptr = fds->block_ptr + fds->block_pos;
-                fds->block_pos = 0;
+                fds.block_ptr = fds.block_ptr + fds.block_pos;
+                fds.block_pos = 0;
 
-                switch (fds->block_type + 1)
+                switch (fds.block_type + 1)
                 {
                     case BLOCK_VOLUME:
-                        fds->block_type = BLOCK_VOLUME;
-                        fds->block_size = 0x38;
+                        fds.block_type = BLOCK_VOLUME;
+                        fds.block_size = 0x38;
                         break;
                     case BLOCK_FILECOUNT:
-                        fds->block_type = BLOCK_FILECOUNT;
-                        fds->block_size = 0x02;
+                        fds.block_type = BLOCK_FILECOUNT;
+                        fds.block_size = 0x02;
                         break;
                     case BLOCK_FILEHEADER:
                     case BLOCK_NEXT:
-                        fds->block_type = BLOCK_FILEHEADER;
-                        fds->block_size = 0x10;
-                        fds->block_filesize = (fds->block_ptr[13]) | (fds->block_ptr[14]) << 8;
+                        fds.block_type = BLOCK_FILEHEADER;
+                        fds.block_size = 0x10;
+                        fds.block_filesize = (fds.block_ptr[13]) | (fds.block_ptr[14]) << 8;
                         break;
                     case BLOCK_FILEDATA:
-                        fds->block_type = BLOCK_FILEDATA;
-                        fds->block_size = 0x01 + fds->block_filesize;
+                        fds.block_type = BLOCK_FILEDATA;
+                        fds.block_size = 0x01 + fds.block_filesize;
                         break;
                 }
 
-                MESSAGE_INFO("Block type %d with size %d bytes\n", fds->block_type, fds->block_size);
+                MESSAGE_INFO("Block type %d with size %d bytes\n", fds.block_type, fds.block_size);
             }
 
             // Turn on motor
@@ -236,7 +236,7 @@ static void fds_write(uint32 address, uint8 value)
             }
 
             // Update mirroring
-            if ((value & REG5_MIRRORING) != (fds->regs[5] & REG5_MIRRORING) || fds->regs[5] == 0)
+            if ((value & REG5_MIRRORING) != (fds.regs[5] & REG5_MIRRORING) || fds.regs[5] == 0)
             {
                 ppu_setmirroring((value & REG5_MIRRORING) ? PPU_MIRROR_HORI : PPU_MIRROR_VERT);
             }
@@ -244,7 +244,7 @@ static void fds_write(uint32 address, uint8 value)
             break;
     }
 
-    fds->regs[address & 7] = value;
+    fds.regs[address & 7] = value;
 }
 
 static uint8 fds_sound_read(uint32 address)
@@ -281,40 +281,28 @@ static void fds_setstate(void *state)
 
 void fds_init(rom_t *cart)
 {
-    if (!fds)
-    {
-        fds = calloc(1, sizeof(fds_t));
-
-        // I'm not sure yet where we should load the bios
-        // so it shall be hardcoded here while I work on
-        // the actual hardware emulation...
-        FILE *fp = fopen("/sd/roms/fds/disksys.rom", "rb");
-        fread(cart->prg_rom, 0x2000, 1, fp);
-        fclose(fp);
-    }
-
     uint8 *disk_ptr = cart->data_ptr;
 
     if (memcmp(disk_ptr, FDS_HEAD_MAGIC, 4) == 0)
     {
-        fds->sides = ((fdsheader_t *)disk_ptr)->sides;
+        fds.sides = ((fdsheader_t *)disk_ptr)->sides;
         disk_ptr += 16;
-        MESSAGE_INFO("FDS header present. Sides = %d\n", fds->sides);
+        MESSAGE_INFO("FDS header present. Sides = %d\n", fds.sides);
     }
     else
     {
-        fds->sides = cart->data_len / 65500;
-        MESSAGE_INFO("FDS header absent. Sides = %d\n", fds->sides);
+        fds.sides = cart->data_len / 65500;
+        MESSAGE_INFO("FDS header absent. Sides = %d\n", fds.sides);
     }
 
     for (int i = 0; i < 8; i++)
     {
-        if (i < fds->sides || cart->data_len > i * 65500)
-            fds->disk[i] = disk_ptr + (i * 65500);
+        if (i < fds.sides || cart->data_len > i * 65500)
+            fds.disk[i] = disk_ptr + (i * 65500);
         else
-            fds->disk[i] = NULL;
+            fds.disk[i] = NULL;
     }
-    fds->block_ptr = &fds->disk[0][0];
+    fds.block_ptr = &fds.disk[0][0];
 
     mmc_bankprg(32, 0x6000, 0, PRG_RAM); // PRG-RAM 0x6000-0xDFFF
     mmc_bankprg(8,  0xE000, 0, PRG_ROM); // BIOS 0xE000-0xFFFF

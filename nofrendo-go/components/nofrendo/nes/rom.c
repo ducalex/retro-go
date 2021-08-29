@@ -107,6 +107,8 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
       rom.flags = header->rom_type;
       rom.mapper_number = header->rom_type >> 4;
 
+      MESSAGE_INFO("ROM: CRC32:  %08X\n", rom.checksum);
+
       if (header->reserved2 == 0)
       {
          // https://wiki.nesdev.com/w/index.php/INES
@@ -186,7 +188,6 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
          rom.chr_rom = rom.prg_rom + (rom.prg_rom_banks * ROM_PRG_BANK_SIZE);
       }
 
-      MESSAGE_INFO("ROM: CRC32:  %08X\n", rom.checksum);
       MESSAGE_INFO("ROM: Mapper: %d, PRG:%dK, CHR:%dK, Flags: %c%c%c%c\n",
                   rom.mapper_number,
                   rom.prg_rom_banks * 8, rom.chr_rom_banks * 8,
@@ -202,24 +203,25 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
    {
       MESSAGE_INFO("ROM: Found FDS file of size %d.\n", size);
 
+      rom.flags = ROM_FLAG_FDS_DISK|ROM_FLAG_BATTERY;
       rom.prg_ram_banks = 4;
       rom.chr_ram_banks = 1;
       rom.prg_rom_banks = 1;
-
-      rom.prg_ram = malloc(0x8000 + 0x2000);
-      rom.chr_ram = malloc(0x2000);
-      rom.prg_rom = rom.prg_ram + 0x8000;
-
-      if (!rom.prg_ram || !rom.chr_ram)
-      {
-         MESSAGE_ERROR("ROM: Memory allocation failed!\n");
-         return NULL;
-      }
-
       rom.checksum = crc32_le(0, rom.data_ptr, rom.data_len);
       rom.mapper_number = 20;
 
       MESSAGE_INFO("ROM: CRC32:  %08X\n", rom.checksum);
+
+      rom.prg_ram = malloc((rom.prg_ram_banks + rom.prg_rom_banks) * ROM_PRG_BANK_SIZE);
+      rom.chr_ram = malloc(rom.chr_ram_banks * ROM_CHR_BANK_SIZE);
+      // We do it this way because only rom.prg_ram is freed in rom_free
+      rom.prg_rom = rom.prg_ram + (rom.prg_ram_banks * ROM_PRG_BANK_SIZE);
+
+      if (!rom.prg_ram || !rom.chr_ram || !rom.prg_rom)
+      {
+         MESSAGE_ERROR("ROM: Memory allocation failed!\n");
+         return NULL;
+      }
 
       strncpy(rom.filename, "filename.fds", PATH_MAX);
       return &rom;

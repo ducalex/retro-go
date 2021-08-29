@@ -257,10 +257,15 @@ void app_main(void)
         RG_PANIC("Init failed.");
     }
 
-    if (!nes_insertcart(app->romPath))
-    {
+    int ret = nes_insertcart(app->romPath, "/sd/bios/fds_bios.bin");
+    if (ret == -1)
+        RG_PANIC("ROM load failed.");
+    else if (ret == -2)
+        RG_PANIC("Unsupported mapper.");
+    else if (ret == -3)
+        RG_PANIC("BIOS file required.");
+    else if (ret < 0)
         RG_PANIC("Unsupported ROM.");
-    }
 
     app->refreshRate = nes->refresh_rate;
     nes->blit_func = osd_blitscreen;

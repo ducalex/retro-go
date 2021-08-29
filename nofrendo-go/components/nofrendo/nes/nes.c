@@ -135,17 +135,25 @@ void nes_setcompathacks(void)
 }
 
 /* insert a cart into the NES */
-rom_t *nes_insertcart(const char *filename)
+int nes_insertcart(const char *filename, const char *biosfile)
 {
+    int status = 0;
+
     /* rom file */
     nes.cart = rom_loadfile(filename);
     if (NULL == nes.cart)
+    {
+        status = -1;
         goto _fail;
+    }
 
     /* mapper */
     nes.mapper = mmc_init(nes.cart);
     if (NULL == nes.mapper)
+    {
+        status = -2;
         goto _fail;
+    }
 
     /* if we're using VRAM, let the PPU know */
     nes.ppu->vram_present = (nes.cart->chr_rom == NULL);
@@ -184,21 +192,42 @@ rom_t *nes_insertcart(const char *filename)
         nes.overscan = 8;
     }
 
+    /* Load BIOS file if required (currently only for Famicom Disk System) */
+    if (nes.cart->flags & ROM_FLAG_FDS_DISK)
+    {
+        if (biosfile == NULL)
+        {
+            // TO DO: Try biosfile = dirname(filename) / disksys.rom
+            status = -3;
+            goto _fail;
+        }
+        FILE *fp = fopen(biosfile, "rb");
+        if (!fp || !fread(nes.cart->prg_rom, ROM_PRG_BANK_SIZE, nes.cart->prg_rom_banks, fp))
+        {
+            MESSAGE_ERROR("NES: BIOS file load failed from '%s'.\n", biosfile);
+            status = -3;
+            fclose(fp);
+            goto _fail;
+        }
+        fclose(fp);
+        MESSAGE_INFO("NES: BIOS file loaded from '%s'.\n", biosfile);
+    }
+
     nes_setcompathacks();
 
     nes_reset(true);
 
-    return nes.cart;
+    return status;
 
 _fail:
     nes_shutdown();
-    return NULL;
+    return status;
 }
 
 /* insert a disk into the FDS */
-rom_t *nes_insertdisk(const char *filename)
+int nes_insertdisk(const char *filename, const char *biosfile)
 {
-    return NULL;
+    return nes_insertcart(filename, biosfile);
 }
 
 /* Reset NES hardware */

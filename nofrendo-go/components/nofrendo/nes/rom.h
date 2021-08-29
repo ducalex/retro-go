@@ -32,6 +32,7 @@
 #define  ROM_FLAG_BATTERY        0x02
 #define  ROM_FLAG_VERTICAL       0x01
 #define  ROM_FLAG_FREE_DATA      0x100
+#define  ROM_FLAG_FDS_DISK       0x200
 
 #define  ROM_PRG_BANK_SIZE       0x2000
 #define  ROM_CHR_BANK_SIZE       0x2000
