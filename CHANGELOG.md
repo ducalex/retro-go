@@ -1,3 +1,7 @@
+# Retro-Go 1.26.3 (2021-08-29)
+- Fixed typo resulting in corrupt PNG decoding
+
+
 # Retro-Go 1.26.2 (2021-08-25)
 - PCE: Performance improvement
 - GBC: Performance improvement
