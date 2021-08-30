@@ -1,14 +1,5 @@
 #pragma once
 
-#define PAD_RIGHT  0x01
-#define PAD_LEFT   0x02
-#define PAD_UP     0x04
-#define PAD_DOWN   0x08
-#define PAD_A      0x10
-#define PAD_B      0x20
-#define PAD_SELECT 0x40
-#define PAD_START  0x80
-
 #define IF_VBLANK 0x01
 #define IF_STAT   0x02
 #define IF_TIMER  0x04
@@ -217,50 +208,46 @@ extern gb_cart_t cart;
 extern gb_hw_t hw;
 
 void hw_reset(bool hard);
-void hw_setpad(byte btn, int set);
+void hw_setpad(un32 new_pad);
 void hw_interrupt(byte i, int level);
 void hw_hdma(void);
 void hw_updatemap(void);
-void hw_write(addr_t a, byte b);
-byte hw_read(addr_t a);
+void hw_write(uint a, byte b);
+byte hw_read(uint a);
 void hw_vblank(void);
 
 
-static inline byte readb(addr_t a)
+static inline byte readb(uint a)
 {
 	byte *p = hw.rmap[a>>12];
 	if (p) return p[a];
 	return hw_read(a);
 }
 
-static inline void writeb(addr_t a, byte b)
+static inline void writeb(uint a, byte b)
 {
 	byte *p = hw.wmap[a>>12];
 	if (p) p[a] = b;
 	else hw_write(a, b);
 }
 
-static inline word readw(addr_t a)
+static inline un16 readw(uint a)
 {
-#ifdef IS_LITTLE_ENDIAN
-	if ((a & 0xFFF) == 0xFFF)
-#endif
+	if ((a & 0xFFF) == 0xFFF) // Page crossing
 	{
 		return readb(a) | (readb(a + 1) << 8);
 	}
 	byte *p = hw.rmap[a >> 12];
 	if (p)
 	{
-		return *(word *)(p + a);
+		return *(un16 *)(p + a);
 	}
 	return hw_read(a) | (hw_read(a + 1) << 8);
 }
 
-static inline void writew(addr_t a, word w)
+static inline void writew(uint a, un16 w)
 {
-#ifdef IS_LITTLE_ENDIAN
-	if ((a & 0xFFF) == 0xFFF)
-#endif
+	if ((a & 0xFFF) == 0xFFF) // Page crossing
 	{
 		writeb(a, w);
 		writeb(a + 1, w >> 8);
@@ -269,7 +256,7 @@ static inline void writew(addr_t a, word w)
 	byte *p = hw.wmap[a >> 12];
 	if (p)
 	{
-		*(word *)(p + a) = w;
+		*(un16 *)(p + a) = w;
 		return;
 	}
 	hw_write(a, w);

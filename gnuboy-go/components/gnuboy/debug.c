@@ -549,7 +549,7 @@ static const byte operand_count[256] =
 
 /* replace with a real interactive debugger eventually... */
 
-void cpu_disassemble(addr_t a, int c)
+void cpu_disassemble(uint a, int c)
 {
 	int i, j, k;
 	byte code;

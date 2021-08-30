@@ -4,7 +4,6 @@
 #include <string.h>
 
 #include "../components/gnuboy/save.h"
-#include "../components/gnuboy/hw.h"
 #include "../components/gnuboy/lcd.h"
 #include "../components/gnuboy/sound.h"
 #include "../components/gnuboy/gnuboy.h"
@@ -204,7 +203,7 @@ static dialog_return_t advanced_settings_cb(dialog_option_t *option, dialog_even
             {101, "Set clock", "00:00", 1, &rtc_update_cb},
             RG_DIALOG_SEPARATOR,
             {111, "Auto save SRAM", "Off", 1, &sram_autosave_cb},
-            {112, "Save SRAM now ", NULL, cart.ramsize, &sram_save_now_cb},
+            {112, "Save SRAM now ", NULL, 1, &sram_save_now_cb},
             RG_DIALOG_CHOICE_LAST
         };
         rg_gui_dialog("Advanced", options, 0);
@@ -225,11 +224,10 @@ static void screen_blit(void)
 
 static void auto_sram_update(void)
 {
-    if (autoSaveSRAM > 0 && cart.sram_dirty)
+    if (autoSaveSRAM > 0 && gnuboy_sram_dirty())
     {
         rg_system_set_led(1);
-        sram_update(sramFile);
-        if (cart.sram_dirty)
+        if (sram_update(sramFile) != 0)
         {
             MESSAGE_ERROR("sram still dirty after sram_update(), trying full save...\n");
             sram_save(sramFile);
@@ -269,7 +267,7 @@ void app_main(void)
     gnuboy_load_rom(app->romPath);
 
     // Load BIOS
-    if (hw.cgb)
+    if (gnuboy_get_hwtype() == GB_HW_CGB)
         gnuboy_load_bios(RG_BASE_PATH "/bios/gbc_bios.bin");
     else
         gnuboy_load_bios(RG_BASE_PATH "/bios/gb_bios.bin");
@@ -300,35 +298,46 @@ void app_main(void)
         sram_load(sramFile);
     }
 
+    uint32_t joystick_old = -1;
+    uint32_t joystick = 0;
+
     while (true)
     {
-        uint32_t joystick = rg_input_read_gamepad();
+        joystick = rg_input_read_gamepad();
 
-        if (joystick & GAMEPAD_KEY_MENU) {
+        if (joystick & GAMEPAD_KEY_MENU)
+        {
             auto_sram_update();
             rg_gui_game_menu();
         }
-        else if (joystick & GAMEPAD_KEY_VOLUME) {
+        else if (joystick & GAMEPAD_KEY_VOLUME)
+        {
+            bool is_cgb = gnuboy_get_hwtype() == GB_HW_CGB;
             dialog_option_t options[] = {
-                {100, "Palette", "7/7", !hw.cgb, &palette_update_cb},
+                {100, "Palette", "7/7", is_cgb ? RG_DIALOG_FLAG_SKIP : 1, &palette_update_cb},
                 {101, "More...", NULL, 1, &advanced_settings_cb},
                 RG_DIALOG_CHOICE_LAST
             };
             auto_sram_update();
             rg_gui_game_settings_menu(options);
         }
+        else if (joystick != joystick_old)
+        {
+            int pad = 0;
+            if (joystick & GAMEPAD_KEY_UP) pad |= GB_PAD_UP;
+            if (joystick & GAMEPAD_KEY_RIGHT) pad |= GB_PAD_RIGHT;
+            if (joystick & GAMEPAD_KEY_DOWN) pad |= GB_PAD_DOWN;
+            if (joystick & GAMEPAD_KEY_LEFT) pad |= GB_PAD_LEFT;
+            if (joystick & GAMEPAD_KEY_SELECT) pad |= GB_PAD_SELECT;
+            if (joystick & GAMEPAD_KEY_START) pad |= GB_PAD_START;
+            if (joystick & GAMEPAD_KEY_A) pad |= GB_PAD_A;
+            if (joystick & GAMEPAD_KEY_B) pad |= GB_PAD_B;
+            gnuboy_set_pad(pad);
+            joystick_old = joystick;
+        }
 
         int64_t startTime = get_elapsed_time();
         bool drawFrame = !skipFrames;
-
-        hw_setpad(PAD_UP, joystick & GAMEPAD_KEY_UP);
-        hw_setpad(PAD_RIGHT, joystick & GAMEPAD_KEY_RIGHT);
-        hw_setpad(PAD_DOWN, joystick & GAMEPAD_KEY_DOWN);
-        hw_setpad(PAD_LEFT, joystick & GAMEPAD_KEY_LEFT);
-        hw_setpad(PAD_SELECT, joystick & GAMEPAD_KEY_SELECT);
-        hw_setpad(PAD_START, joystick & GAMEPAD_KEY_START);
-        hw_setpad(PAD_A, joystick & GAMEPAD_KEY_A);
-        hw_setpad(PAD_B, joystick & GAMEPAD_KEY_B);
 
         gnuboy_run(drawFrame);
 
@@ -342,12 +351,14 @@ void app_main(void)
 
         if (autoSaveSRAM > 0)
         {
-            if (cart.sram_dirty && autoSaveSRAM_Timer == 0)
+            if (autoSaveSRAM_Timer <= 0)
             {
-                autoSaveSRAM_Timer = autoSaveSRAM * 60;
+                if (gnuboy_sram_dirty())
+                {
+                    autoSaveSRAM_Timer = autoSaveSRAM * 60;
+                }
             }
-
-            if (autoSaveSRAM_Timer > 0 && --autoSaveSRAM_Timer == 0)
+            else if (--autoSaveSRAM_Timer == 0)
             {
                 auto_sram_update();
                 skipFrames += 5;

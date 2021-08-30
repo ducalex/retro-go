@@ -52,29 +52,6 @@ typedef struct
 	} out;
 } gb_lcd_t;
 
-enum
-{
-	GB_PIXEL_PALETTED,
-	GB_PIXEL_565_LE,
-	GB_PIXEL_565_BE,
-};
-
-enum
-{
-	GB_PALETTE_GBCBIOS,
-	GB_PALETTE_DEFAULT,
-	GB_PALETTE_2BGRAYS,
-	GB_PALETTE_LINKSAW,
-	GB_PALETTE_NSUPRGB,
-	GB_PALETTE_NGBARNE,
-	GB_PALETTE_GRAPEFR,
-	GB_PALETTE_MEGAMAN,
-	GB_PALETTE_POKEMON,
-	GB_PALETTE_DMGREEN,
-	GB_PALETTE_COUNT,
-};
-
-
 extern gb_lcd_t lcd;
 
 void lcd_reset(bool hard);

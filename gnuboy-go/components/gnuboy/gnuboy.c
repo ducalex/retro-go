@@ -90,6 +90,12 @@ void gnuboy_run(bool draw)
 }
 
 
+void gnuboy_set_pad(int pad)
+{
+	hw_setpad(pad);
+}
+
+
 void gnuboy_die(const char *fmt, ...)
 {
 	va_list ap;
@@ -98,8 +104,7 @@ void gnuboy_die(const char *fmt, ...)
 	vfprintf(stderr, fmt, ap);
 	va_end(ap);
 
-	// abort();
-	RG_PANIC(fmt); // Lazy
+	abort();
 }
 
 
@@ -407,4 +412,22 @@ void gnuboy_set_time(int day, int hour, int minute, int second)
 	rtc.s = MIN(MAX(second, 0), 60);
 	rtc.ticks = 0;
 	rtc.dirty = 0;
+}
+
+
+int gnuboy_get_hwtype(void)
+{
+	return hw.cgb ? GB_HW_CGB : GB_HW_DMG;
+}
+
+
+void gnuboy_set_hwtype(int type)
+{
+	// nothing for now
+}
+
+
+bool gnuboy_sram_dirty(void)
+{
+	return cart.sram_dirty != 0;
 }

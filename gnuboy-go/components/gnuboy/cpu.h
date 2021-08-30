@@ -41,7 +41,7 @@
 typedef union
 {
 	byte b[2];
-	word w;
+	un16 w;
 } cpu_reg_t;
 
 typedef struct
@@ -60,4 +60,4 @@ extern cpu_t cpu;
 void cpu_reset(bool hard);
 int  cpu_emulate(int cycles);
 void cpu_burn(int cycles);
-void cpu_disassemble(addr_t a, int c);
+void cpu_disassemble(uint a, int c);

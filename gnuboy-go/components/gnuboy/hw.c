@@ -1,6 +1,5 @@
 #include <string.h>
 #include "gnuboy.h"
-#include "save.h"
 #include "sound.h"
 #include "cpu.h"
 #include "hw.h"
@@ -43,9 +42,9 @@ void hw_interrupt(byte i, int level)
  * continues running during this mode of dma, so no special tricks to
  * stall the cpu are necessary.
  */
-static void hw_dma(byte b)
+static void hw_dma(uint b)
 {
-	addr_t a = ((addr_t)b) << 8;
+	uint a = b << 8;
 	for (int i = 0; i < 160; i++, a++)
 		lcd.oam.mem[i] = readb(a);
 }
@@ -62,34 +61,39 @@ static void hw_hdma_cmd(byte c)
 	}
 
 	/* Perform GDMA */
-	addr_t sa = ((addr_t)R_HDMA1 << 8) | (R_HDMA2&0xf0);
-	addr_t da = 0x8000 | ((addr_t)(R_HDMA3&0x1f) << 8) | (R_HDMA4&0xf0);
-	size_t cnt = ((int)c)+1;
+	uint src = (R_HDMA1 << 8) | (R_HDMA2 & 0xF0);
+	uint dst = 0x8000 | ((R_HDMA3 & 0x1F) << 8) | (R_HDMA4 & 0xF0);
+	uint cnt = c + 1;
+
 	/* FIXME - this should use cpu time! */
 	/*cpu_timers(102 * cnt);*/
+
 	cnt <<= 4;
+
 	while (cnt--)
-		writeb(da++, readb(sa++));
-	R_HDMA1 = sa >> 8;
-	R_HDMA2 = sa & 0xF0;
-	R_HDMA3 = 0x1F & (da >> 8);
-	R_HDMA4 = da & 0xF0;
+		writeb(dst++, readb(src++));
+
+	R_HDMA1 = src >> 8;
+	R_HDMA2 = src & 0xF0;
+	R_HDMA3 = (dst >> 8) & 0x1F;
+	R_HDMA4 = dst & 0xF0;
 	R_HDMA5 = 0xFF;
 }
 
 
 void hw_hdma()
 {
-	addr_t sa = ((addr_t)R_HDMA1 << 8) | (R_HDMA2&0xf0);
-	addr_t da = 0x8000 | ((addr_t)(R_HDMA3&0x1f) << 8) | (R_HDMA4&0xf0);
-	size_t cnt = 16;
+	uint src = (R_HDMA1 << 8) | (R_HDMA2 & 0xF0);
+	uint dst = 0x8000 | ((R_HDMA3 & 0x1F) << 8) | (R_HDMA4 & 0xF0);
+	uint cnt = 16;
 
 	while (cnt--)
-		writeb(da++, readb(sa++));
-	R_HDMA1 = sa >> 8;
-	R_HDMA2 = sa & 0xF0;
-	R_HDMA3 = 0x1F & (da >> 8);
-	R_HDMA4 = da & 0xF0;
+		writeb(dst++, readb(src++));
+
+	R_HDMA1 = src >> 8;
+	R_HDMA2 = src & 0xF0;
+	R_HDMA3 = (dst >> 8) & 0x1F;
+	R_HDMA4 = dst & 0xF0;
 	R_HDMA5--;
 	hw.hdma--;
 }
@@ -120,18 +124,11 @@ static inline void pad_refresh()
  * hw_setpad updates the state of one or more buttons on the pad and calls
  * pad_refresh() to fire an interrupt if the pad changed.
  */
-void IRAM_ATTR hw_setpad(byte btn, int set)
+void hw_setpad(un32 new_pad)
 {
-	un32 new_pad = hw.pad;
-
-	if (set)
-		new_pad |= btn;
-	else
-		new_pad &= ~btn;
-
 	if (hw.pad != new_pad)
 	{
-		hw.pad = new_pad;
+		hw.pad = new_pad & 0xFF;
 		pad_refresh();
 	}
 }
@@ -189,7 +186,7 @@ void hw_vblank(void)
  * hw_updatemap is called whenever bank changes or other operations
  * make the old maps potentially invalid.
  */
-void IRAM_ATTR hw_updatemap(void)
+void hw_updatemap(void)
 {
 	int rombank = cart.rombank % cart.romsize;
 
@@ -246,7 +243,7 @@ void IRAM_ATTR hw_updatemap(void)
  * mbc_write takes an address (which should be in the proper range)
  * and a byte value written to the address.
  */
-static inline void mbc_write(addr_t a, byte b)
+static inline void mbc_write(uint a, byte b)
 {
 	MESSAGE_DEBUG("mbc %d: cart bank %02X -[%04X:%02X]-> ", cart.mbc, cart.rombank, a, b);
 
@@ -368,7 +365,7 @@ static inline void mbc_write(addr_t a, byte b)
  * called when the write map contains a NULL for the requested address
  * region, it accepts writes to any address.
  */
-void IRAM_ATTR hw_write(addr_t a, byte b)
+void hw_write(uint a, byte b)
 {
 	MESSAGE_DEBUG("write to 0x%04X: 0x%02X\n", a, b);
 
@@ -571,7 +568,7 @@ void IRAM_ATTR hw_write(addr_t a, byte b)
  * with the read map, but it's still necessary for the final messy
  * region.
  */
-byte IRAM_ATTR hw_read(addr_t a)
+byte hw_read(uint a)
 {
 	MESSAGE_DEBUG("read %04x\n", a);
 
