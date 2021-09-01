@@ -72,4 +72,4 @@ bool gnuboy_sram_dirty(void);
 void gnuboy_get_time(int *day, int *hour, int *minute, int *second);
 void gnuboy_set_time(int day, int hour, int minute, int second);
 void gnuboy_load_bank(int);
-void gnuboy_set_pad(int);
+void gnuboy_set_pad(un32);

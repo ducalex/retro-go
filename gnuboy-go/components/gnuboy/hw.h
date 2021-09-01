@@ -179,6 +179,7 @@ typedef struct
 	byte *rombanks[512];
 	byte (*rambanks)[8192];
 	un32 sram_dirty;
+	un32 sram_saved;
 
 	un32 romsize;
 	un32 ramsize;
@@ -204,7 +205,16 @@ typedef struct
 	char name[20];
 } gb_cart_t;
 
+typedef struct
+{
+	n32 sel, flags, latch, dirty;
+	n32 ticks; // Ticks (60 = +1s)
+	n32 d, h, m, s; // Current time
+	n32 regs[5]; // Latched time
+} gb_rtc_t;
+
 extern gb_cart_t cart;
+extern gb_rtc_t rtc;
 extern gb_hw_t hw;
 
 void hw_reset(bool hard);

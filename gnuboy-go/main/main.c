@@ -113,7 +113,7 @@ static dialog_return_t sram_save_now_cb(dialog_option_t *option, dialog_event_t 
     {
         rg_system_set_led(1);
 
-        if (sram_save(sramFile) != 0)
+        if (sram_save(sramFile, false) != 0)
         {
             rg_gui_alert("Save failed!", sramFile);
         }
@@ -227,10 +227,9 @@ static void auto_sram_update(void)
     if (autoSaveSRAM > 0 && gnuboy_sram_dirty())
     {
         rg_system_set_led(1);
-        if (sram_update(sramFile) != 0)
+        if (sram_save(sramFile, true) != 0)
         {
-            MESSAGE_ERROR("sram still dirty after sram_update(), trying full save...\n");
-            sram_save(sramFile);
+            MESSAGE_ERROR("sram_save() failed...\n");
         }
         rg_system_set_led(0);
     }

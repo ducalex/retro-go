@@ -4,10 +4,83 @@
 #include "cpu.h"
 #include "hw.h"
 #include "lcd.h"
-#include "rtc.h"
 
 gb_cart_t cart;
+gb_rtc_t rtc;
 gb_hw_t hw;
+
+
+static void rtc_latch(byte b)
+{
+	if ((rtc.latch ^ b) & b & 1)
+	{
+		rtc.regs[0] = rtc.s;
+		rtc.regs[1] = rtc.m;
+		rtc.regs[2] = rtc.h;
+		rtc.regs[3] = rtc.d;
+		rtc.regs[4] = rtc.flags;
+	}
+	rtc.latch = b & 1;
+}
+
+
+static void rtc_write(byte b)
+{
+	switch (rtc.sel & 0xf)
+	{
+	case 0x8: // Seconds
+		rtc.regs[0] = b;
+		rtc.s = b % 60;
+		break;
+	case 0x9: // Minutes
+		rtc.regs[1] = b;
+		rtc.m = b % 60;
+		break;
+	case 0xA: // Hours
+		rtc.regs[2] = b;
+		rtc.h = b % 24;
+		break;
+	case 0xB: // Days (lower 8 bits)
+		rtc.regs[3] = b;
+		rtc.d = ((rtc.d & 0x100) | b) % 365;
+		break;
+	case 0xC: // Flags (days upper 1 bit, carry, stop)
+		rtc.regs[4] = b;
+		rtc.flags = b;
+		rtc.d = ((rtc.d & 0xff) | ((b&1)<<9)) % 365;
+		break;
+	}
+	rtc.dirty = 1;
+}
+
+
+static void rtc_tick()
+{
+	if ((rtc.flags & 0x40))
+		return; // rtc stop
+
+	if (++rtc.ticks >= 60)
+	{
+		if (++rtc.s >= 60)
+		{
+			if (++rtc.m >= 60)
+			{
+				if (++rtc.h >= 24)
+				{
+					if (++rtc.d >= 365)
+					{
+						rtc.d = 0;
+						rtc.flags |= 0x80;
+					}
+					rtc.h = 0;
+				}
+				rtc.m = 0;
+			}
+			rtc.s = 0;
+		}
+		rtc.ticks = 0;
+	}
+}
 
 
 /*
@@ -126,11 +199,8 @@ static inline void pad_refresh()
  */
 void hw_setpad(un32 new_pad)
 {
-	if (hw.pad != new_pad)
-	{
-		hw.pad = new_pad & 0xFF;
-		pad_refresh();
-	}
+	hw.pad = new_pad & 0xFF;
+	pad_refresh();
 }
 
 
@@ -155,6 +225,7 @@ void hw_reset(bool hard)
 	{
 		memset(hw.rambanks, 0xff, 4096 * 8);
 		memset(cart.rambanks, 0xff, 8192 * cart.ramsize);
+		memset(&rtc, 0, sizeof(rtc));
 	}
 
 	memset(hw.rmap, 0, sizeof(hw.rmap));
@@ -169,9 +240,15 @@ void hw_reset(bool hard)
 }
 
 
+/*
+ * hw_vblank is called once per frame at vblank and should take care
+ * of things like rtc/sound/serial advance, emulation throttling, etc.
+ */
 void hw_vblank(void)
 {
-	//
+	hw.frames++;
+	rtc_tick();
+	sound_mix();
 }
 
 

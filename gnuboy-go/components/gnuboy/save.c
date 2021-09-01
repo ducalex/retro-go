@@ -9,7 +9,6 @@
 #include "gnuboy.h"
 #include "hw.h"
 #include "lcd.h"
-#include "rtc.h"
 #include "cpu.h"
 #include "sound.h"
 
@@ -76,7 +75,6 @@ static const svar_t svars[] =
 	I4("romb", &cart.rombank),
 	I4("ramb", &cart.rambank),
 	I4("enab", &cart.enableram),
-	// I4("batt", &cart.batt),
 
 	I4("rtcR", &rtc.sel),
 	I4("rtcL", &rtc.latch),
@@ -116,114 +114,113 @@ static const svar_t svars[] =
 	END
 };
 
+// Set in the far future for VBA-M support
+#define RTC_BASE 1893456000
 
 
 int sram_load(const char *file)
 {
-	int ret = -1;
-	FILE *f;
-
 	if (!cart.has_battery || !cart.ramsize || !file || !*file)
 		return -1;
 
-	if ((f = fopen(file, "rb")))
+	FILE *f = fopen(file, "rb");
+	if (!f)
+		return -2;
+
+	MESSAGE_INFO("Loading SRAM from '%s'\n", file);
+
+	cart.sram_dirty = 0;
+	cart.sram_saved = 0;
+
+	if (fread(cart.rambanks, cart.ramsize * 8192, 1, f) == 1)
 	{
-		MESSAGE_INFO("Loading SRAM from '%s'\n", file);
-		if (fread(cart.rambanks, 8192, cart.ramsize, f))
+		cart.sram_saved = (1 << cart.ramsize) - 1;
+
+		if (cart.has_rtc)
 		{
-			cart.sram_dirty = 0;
-			rtc_load(f);
-			ret = 0;
+			// Load RTC: Try old format
+			int tmp = fscanf(f, "%d %*d %d %02d %02d %02d %02d\n%*d\n",
+				&rtc.flags, &rtc.d, &rtc.h, &rtc.m, &rtc.s, &rtc.ticks);
+			// Fallback to new format (VBA-M)
+			if (tmp < 5)
+			{
+				fseek(f, cart.ramsize * 8192, SEEK_SET);
+				fread(&rtc.s, 4, 1, f);
+				fread(&rtc.m, 4, 1, f);
+				fread(&rtc.h, 4, 1, f);
+				fread(&rtc.d, 4, 1, f);
+				fread(&rtc.flags, 4, 1, f);
+				fread(&rtc.regs[0], 4, 1, f);
+				fread(&rtc.regs[1], 4, 1, f);
+				fread(&rtc.regs[2], 4, 1, f);
+				fread(&rtc.regs[3], 4, 1, f);
+				fread(&rtc.regs[4], 4, 1, f);
+				// fread(&rt, 8, 1, f); // don't care
+			}
 		}
-		fclose(f);
 	}
 
-	return ret;
+	fclose(f);
+
+	return cart.sram_saved ? 0 : -1;
 }
 
 
-int sram_save(const char *file)
-{
-	int ret = -1;
-	FILE *f;
-
-	if (!cart.has_battery || !cart.ramsize || !file || !*file)
-		return -1;
-
-	if ((f = fopen(file, "wb")))
-	{
-		MESSAGE_INFO("Saving SRAM to '%s'\n", file);
-		if (fwrite(cart.rambanks, 8192, cart.ramsize, f))
-		{
-			cart.sram_dirty = 0;
-			rtc_save(f);
-			ret = 0;
-		}
-		fclose(f);
-	}
-
-	return ret;
-}
-
-
-int sram_update(const char *file)
+/**
+ * If quick_save is set to true, sram_save will only save the sectors that
+ * changed + the RTC. If set to false then a full sram file is created.
+ */
+int sram_save(const char *file, bool quick_save)
 {
 	if (!cart.has_battery || !cart.ramsize || !file || !*file)
 		return -1;
 
-	return -9000;
-#if 0
-	FILE *fp = fopen(file, "wb");
-	if (!fp)
+	FILE *f = fopen(file, "wb");
+	if (!f)
+		return -2;
+
+	MESSAGE_INFO("Saving SRAM to '%s'...\n", file);
+
+	// Mark everything as dirty and unsaved (do a full save)
+	if (!quick_save)
 	{
-		MESSAGE_ERROR("Unable to open SRAM file: %s", file);
-		goto _cleanup;
+		cart.sram_dirty = (1 << cart.ramsize) - 1;
+		cart.sram_saved = 0;
 	}
 
-	for (int pos = 0; pos < (cart.ramsize * 8192); pos += SRAM_SECTOR_SIZE)
+	for (int i = 0; i < cart.ramsize; i++)
 	{
-		int sector = pos / SRAM_SECTOR_SIZE;
-
-		if (cart.sram_dirty_sector[sector])
+		if (!(cart.sram_saved & (1 << i)) || (cart.sram_dirty & (1 << i)))
 		{
-			// MESSAGE_INFO("Writing sram sector #%d @ %ld\n", sector, pos);
-
-			if (fseek(fp, pos, SEEK_SET) != 0)
+			if (fseek(f, i * 8192, SEEK_SET) == 0 && fwrite(cart.rambanks, 8192, 1, f) == 1)
 			{
-				MESSAGE_ERROR("Failed to seek sram sector #%d\n", sector);
-				goto _cleanup;
+				MESSAGE_INFO("Saved SRAM bank %d.\n", i);
+				cart.sram_dirty &= ~(1 << i);
+				cart.sram_saved |= (1 << i);
 			}
-
-			if (fwrite(&cart.sram[pos], SRAM_SECTOR_SIZE, 1, fp) != 1)
-			{
-				MESSAGE_ERROR("Failed to write sram sector #%d\n", sector);
-				goto _cleanup;
-			}
-
-			cart.sram_dirty_sector[sector] = 0;
 		}
 	}
 
-	if (fseek(fp, cart.ramsize * 8192, SEEK_SET) == 0)
+	if (cart.has_rtc)
 	{
-		rtc_save(fp);
+		int64_t rt = RTC_BASE + (rtc.s + (rtc.m * 60) + (rtc.h * 3600) + (rtc.d * 86400));
+		fseek(f, cart.ramsize * 8192, SEEK_SET);
+		fwrite(&rtc.s, 4, 1, f);
+		fwrite(&rtc.m, 4, 1, f);
+		fwrite(&rtc.h, 4, 1, f);
+		fwrite(&rtc.d, 4, 1, f);
+		fwrite(&rtc.flags, 4, 1, f);
+		fwrite(&rtc.regs[0], 4, 1, f);
+		fwrite(&rtc.regs[1], 4, 1, f);
+		fwrite(&rtc.regs[2], 4, 1, f);
+		fwrite(&rtc.regs[3], 4, 1, f);
+		fwrite(&rtc.regs[4], 4, 1, f);
+		fwrite(&rt, 8, 1, f);
 	}
 
-_cleanup:
-	// Keeping the file open between calls is dangerous unfortunately
+	fclose(f);
 
-	// if (cart.romsize < 64)
-	// {
-	// 	fflush(cart.sramFile);
-	// }
-	// else
-
-	if (fclose(fp) == 0)
-	{
-		cart.sram_dirty = 0;
-	}
-	return 0;
-#endif
+	return cart.sram_dirty ? -1 : 0;
 }
 
 
@@ -391,4 +388,3 @@ _error:
 
 	return -1;
 }
-

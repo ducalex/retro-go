@@ -7,7 +7,6 @@
 #include "cpu.h"
 #include "sound.h"
 #include "lcd.h"
-#include "rtc.h"
 
 
 int gnuboy_init(void)
@@ -25,7 +24,6 @@ int gnuboy_init(void)
 void gnuboy_reset(bool hard)
 {
 	hw_reset(hard);
-	rtc_reset(hard);
 	lcd_reset(hard);
 	cpu_reset(hard);
 	sound_reset(hard);
@@ -72,8 +70,7 @@ void gnuboy_run(bool draw)
 		(lcd.out.blit_func)();
 	}
 
-    rtc_tick();
-	sound_mix();
+    hw_vblank();
 
 	if (!(R_LCDC & 0x80)) {
 		/* LCDC operation stopped */
@@ -90,9 +87,12 @@ void gnuboy_run(bool draw)
 }
 
 
-void gnuboy_set_pad(int pad)
+void gnuboy_set_pad(un32 pad)
 {
-	hw_setpad(pad);
+	if (hw.pad != pad)
+	{
+		hw_setpad(pad);
+	}
 }
 
 
