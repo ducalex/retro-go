@@ -506,8 +506,8 @@ INLINE void ppu_renderbg(uint8 *vidbuf)
       /* Tile number from nametable */
       int tile_index = PPU_MEM_READ(refresh_vaddr + x_tile);
 
-      /* Handle $FD/$FE tile VROM switching (PunchOut) */
-      if (ppu.latchfunc)
+      /* Handle $FD/$FE magic tile CHR-ROM switching (MMC2/MMC4) */
+      if (ppu.latchfunc && (tile_index == 0xFD || tile_index == 0xFE))
          ppu.latchfunc(ppu.bg_base, tile_index);
 
       /* Fetch tile and draw it */
@@ -563,23 +563,24 @@ INLINE void ppu_renderoam(uint8 *vidbuf, int scanline, bool draw)
       ppu_obj_t *sprite = (ppu_obj_t *)ppu.oam + sprite_num;
 
       int sprite_y = sprite->y_loc + 1;
+      int tile_index = sprite->tile;
 
       /* Check to see if sprite is out of range */
       if ((sprite_y > scanline) || (sprite_y <= (scanline - sprite_height))
           || (0 == sprite_y) || (sprite_y >= 240))
          continue;
 
-      /* Handle $FD/$FE tile VROM switching (PunchOut) */
-      if (ppu.latchfunc)
-         ppu.latchfunc(sprite_offset, sprite->tile);
+      /* Handle $FD/$FE magic tile CHR-ROM switching (MMC2/MMC4) */
+      if (ppu.latchfunc && (tile_index == 0xFD || tile_index == 0xFE))
+         ppu.latchfunc(sprite_offset, tile_index);
 
       int tile_addr, y_offset;
 
       /* 8x16 even sprites use $0000, odd use $1000 */
       if (16 == sprite_height)
-         tile_addr = ((sprite->tile & 1) << 12) | ((sprite->tile & 0xFE) << 4);
+         tile_addr = ((tile_index & 1) << 12) | ((tile_index & 0xFE) << 4);
       else
-         tile_addr = sprite_offset + (sprite->tile << 4);
+         tile_addr = sprite_offset + (tile_index << 4);
 
       /* Calculate offset (line within the sprite) */
       y_offset = scanline - sprite_y;

@@ -51,6 +51,8 @@ struct mapper_s
    mem_read_handler_t mem_read[4];     /* memory read structure */
    mem_write_handler_t mem_write[4];   /* memory write structure */
    // apuext_t *sound_ext;                /* external sound device */
+   // ppu_latchfunc_t ppu_latch;
+   // ppu_vreadfunc_t ppu_vread;
 };
 
 #define MMC_LASTBANK      -1

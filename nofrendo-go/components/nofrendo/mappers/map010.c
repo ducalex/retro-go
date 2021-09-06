@@ -31,23 +31,20 @@ static uint8 regs[4];
 /* Used when tile $FD/$FE is accessed */
 static void mmc10_latchfunc(uint32 address, uint8 value)
 {
-   if (0xFD == value || 0xFE == value)
-   {
-      int reg;
+    int reg;
 
-      if (address)
-      {
-         latch[1] = value;
-         reg = 2 + (value - 0xFD);
-      }
-      else
-      {
-         latch[0] = value;
-         reg = value - 0xFD;
-      }
+    if (address)
+    {
+        latch[1] = value;
+        reg = 2 + (value - 0xFD);
+    }
+    else
+    {
+        latch[0] = value;
+        reg = value - 0xFD;
+    }
 
-      mmc_bankvrom(4, address, regs[reg]);
-   }
+    mmc_bankvrom(4, address, regs[reg]);
 }
 
 static void map_write(uint32 address, uint8 value)

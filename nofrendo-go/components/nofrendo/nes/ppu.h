@@ -125,8 +125,8 @@ typedef struct
    int left_bg_counter;
 
    /* Callbacks for naughty mappers */
-   ppu_latchfunc_t latchfunc;
-   ppu_vreadfunc_t vreadfunc;
+   ppu_latchfunc_t latchfunc; // For MMC2 and MMC4
+   ppu_vreadfunc_t vreadfunc; // For MMC5
 
    bool vram_accessible;
    bool vram_present;
@@ -134,12 +134,6 @@ typedef struct
    /* Misc runtime options */
    int options[16];
 } ppu_t;
-
-typedef struct
-{
-   char  name[16];
-   uint8 data[192]; // rgb_t
-} palette_t;
 
 /* Mirroring / Paging */
 void ppu_setpage(int size, int page_num, uint8 *location);
