@@ -25,45 +25,37 @@
 #include <mmc.h>
 
 
-static void map34_init(rom_t *cart)
+static void map_write(uint32 address, uint8 value)
 {
-   UNUSED(cart);
-
-   mmc_bankrom(32, 0x8000, MMC_LASTBANK);
+    if ((address & 0x8000) || (0x7FFD == address))
+    {
+        mmc_bankrom(32, 0x8000, value);
+    }
+    else if (0x7FFE == address)
+    {
+        mmc_bankvrom(4, 0x0000, value);
+    }
+    else if (0x7FFF == address)
+    {
+        mmc_bankvrom(4, 0x1000, value);
+    }
 }
 
-static void map34_write(uint32 address, uint8 value)
+static void map_init(rom_t *cart)
 {
-   if ((address & 0x8000) || (0x7FFD == address))
-   {
-      mmc_bankrom(32, 0x8000, value);
-   }
-   else if (0x7FFE == address)
-   {
-      mmc_bankvrom(4, 0x0000, value);
-   }
-   else if (0x7FFF == address)
-   {
-      mmc_bankvrom(4, 0x1000, value);
-   }
+    mmc_bankrom(32, 0x8000, MMC_LASTBANK);
 }
 
-static const mem_write_handler_t map34_memwrite[] =
-{
-   { 0x7FFD, 0xFFFF, map34_write },
-   LAST_MEMORY_HANDLER
-};
 
 mapintf_t map34_intf =
 {
-   34,               /* mapper number */
-   "Nina-1",         /* mapper name */
-   map34_init,       /* init routine */
-   NULL,             /* vblank callback */
-   NULL,             /* hblank callback */
-   NULL,             /* get state (snss) */
-   NULL,             /* set state (snss) */
-   NULL,             /* memory read structure */
-   map34_memwrite,   /* memory write structure */
-   NULL              /* external sound device */
+    .number     = 34,
+    .name       = "Nina-1",
+    .init       = map_init,
+    .vblank     = NULL,
+    .hblank     = NULL,
+    .get_state  = NULL,
+    .set_state  = NULL,
+    .mem_read   = {},
+    .mem_write  = {{0x7FFD, 0xFFFF, map_write}},
 };

@@ -25,40 +25,32 @@
 #include <mmc.h>
 
 
-static void map231_init(rom_t *cart)
+static void map_write(uint32 address, uint8 value)
 {
-   UNUSED(cart);
+    int prg_bank = ((value & 0x80) >> 5) | (value & 0x03);
+    int chr_bank = (value >> 4) & 0x07;
 
+    mmc_bankrom(32, 0x8000, prg_bank);
+    mmc_bankvrom(8, 0x0000, chr_bank);
+}
+
+static void map_init(rom_t *cart)
+{
    mmc_bankrom(32, 0x8000, MMC_LASTBANK);
 }
 
-static void map231_write(uint32 address, uint8 value)
-{
-   UNUSED(address);
-
-   int bank = ((value & 0x80) >> 5) | (value & 0x03);
-   int vbank = (value >> 4) & 0x07;
-
-   mmc_bankrom(32, 0x8000, bank);
-   mmc_bankvrom(8, 0x0000, vbank);
-}
-
-static const mem_write_handler_t map231_memwrite[] =
-{
-   { 0x8000, 0xFFFF, map231_write },
-   LAST_MEMORY_HANDLER
-};
 
 mapintf_t map231_intf =
 {
-   231,              /* mapper number */
-   "NINA-07",        /* mapper name */
-   map231_init,      /* init routine */
-   NULL,             /* vblank callback */
-   NULL,             /* hblank callback */
-   NULL,             /* get state (snss) */
-   NULL,             /* set state (snss) */
-   NULL,             /* memory read structure */
-   map231_memwrite,  /* memory write structure */
-   NULL              /* external sound device */
+    .number     = 231,
+    .name       = "NINA-07",
+    .init       = map_init,
+    .vblank     = NULL,
+    .hblank     = NULL,
+    .get_state  = NULL,
+    .set_state  = NULL,
+    .mem_read   = {},
+    .mem_write  = {
+        { 0x8000, 0xFFFF, map_write }
+    },
 };

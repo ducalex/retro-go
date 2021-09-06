@@ -25,101 +25,86 @@
 #include <mmc.h>
 #include <nes.h>
 
-// Shouldn't that be packed? (It wasn't packed in SNSS...)
-typedef struct
-{
-   unsigned char irqCounter;
-   unsigned char irqCounterEnabled;
-} mapper40Data;
-
 #define  MAP40_IRQ_PERIOD  (4096 / NES_CYCLES_PER_SCANLINE)
 
 static struct
 {
-   bool  enabled;
-   uint8 counter;
+    bool  enabled;
+    uint8 counter;
 } irq;
 
 
-static void map40_init(rom_t *cart)
+static void map_hblank(int scanline)
 {
-   UNUSED(cart);
-
-   mmc_bankrom(8, 0x6000, 6);
-   mmc_bankrom(8, 0x8000, 4);
-   mmc_bankrom(8, 0xA000, 5);
-   mmc_bankrom(8, 0xE000, 7);
-
-   irq.enabled = false;
-   irq.counter = MAP40_IRQ_PERIOD;
+    if (irq.enabled && irq.counter)
+    {
+        if (0 == --irq.counter)
+        {
+            nes6502_irq();
+            irq.enabled = false;
+        }
+    }
 }
 
-static void map40_hblank(int scanline)
+static void map_write(uint32 address, uint8 value)
 {
-   UNUSED(scanline);
+    int range = (address >> 13) - 4;
 
-   if (irq.enabled && irq.counter)
-   {
-      if (0 == --irq.counter)
-      {
-         nes6502_irq();
-         irq.enabled = false;
-      }
-   }
+    switch (range)
+    {
+    case 0: /* 0x8000-0x9FFF */
+        irq.enabled = false;
+        irq.counter = MAP40_IRQ_PERIOD;
+        break;
+
+    case 1: /* 0xA000-0xBFFF */
+        irq.enabled = true;
+        break;
+
+    case 3: /* 0xE000-0xFFFF */
+        mmc_bankrom(8, 0xC000, value & 7);
+        break;
+
+    default:
+        break;
+    }
 }
 
-static void map40_write(uint32 address, uint8 value)
+static void map_getstate(uint8 *state)
 {
-   int range = (address >> 13) - 4;
-
-   switch (range)
-   {
-   case 0: /* 0x8000-0x9FFF */
-      irq.enabled = false;
-      irq.counter = MAP40_IRQ_PERIOD;
-      break;
-
-   case 1: /* 0xA000-0xBFFF */
-      irq.enabled = true;
-      break;
-
-   case 3: /* 0xE000-0xFFFF */
-      mmc_bankrom(8, 0xC000, value & 7);
-      break;
-
-   default:
-      break;
-   }
+    state[0] = irq.counter;
+    state[1] = irq.enabled;
 }
 
-static void map40_getstate(void *state)
+static void map_setstate(uint8 *state)
 {
-   ((mapper40Data*)state)->irqCounter = irq.counter;
-   ((mapper40Data*)state)->irqCounterEnabled = irq.enabled;
+    irq.counter = state[0];
+    irq.enabled = state[1];
 }
 
-static void map40_setstate(void *state)
+static void map_init(rom_t *cart)
 {
-   irq.counter = ((mapper40Data*)state)->irqCounter;
-   irq.enabled = ((mapper40Data*)state)->irqCounterEnabled;
+    mmc_bankrom(8, 0x6000, 6);
+    mmc_bankrom(8, 0x8000, 4);
+    mmc_bankrom(8, 0xA000, 5);
+    mmc_bankrom(8, 0xE000, 7);
+
+    irq.enabled = false;
+    irq.counter = MAP40_IRQ_PERIOD;
 }
 
-static const mem_write_handler_t map40_memwrite[] =
-{
-   { 0x8000, 0xFFFF, map40_write },
-   LAST_MEMORY_HANDLER
-};
 
 mapintf_t map40_intf =
 {
-   40,               /* mapper number */
-   "SMB 2j (hack)",  /* mapper name */
-   map40_init,       /* init routine */
-   NULL,             /* vblank callback */
-   map40_hblank,     /* hblank callback */
-   map40_getstate,   /* get state (snss) */
-   map40_setstate,   /* set state (snss) */
-   NULL,             /* memory read structure */
-   map40_memwrite,   /* memory write structure */
-   NULL              /* external sound device */
+    .number     = 40,
+    .name       = "SMB 2j (hack)",
+    .init       = map_init,
+    .vblank     = NULL,
+    .hblank     = map_hblank,
+    .get_state  = map_getstate,
+    .set_state  = map_setstate,
+    .mem_read   = {},
+    .mem_write  = {
+        { 0x8000, 0xFFFF, map_write }
+    },
 };

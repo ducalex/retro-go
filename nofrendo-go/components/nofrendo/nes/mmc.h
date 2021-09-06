@@ -41,16 +41,16 @@ typedef const mapper_t mapintf_t;
 
 struct mapper_s
 {
-   int number;
-   const char *name;
-   void (*init)(rom_t *cart);
-   void (*vblank)(void);
-   void (*hblank)(int scanline);
-   void (*get_state)(void *state); // State is a 128 bytes buffer
-   void (*set_state)(void *state); // State is a 128 bytes buffer
-   const mem_read_handler_t *mem_read;
-   const mem_write_handler_t *mem_write;
-   apuext_t *sound_ext;
+   int number;                         /* mapper number */
+   const char *name;                   /* mapper name */
+   void (*init)(rom_t *cart);          /* init routine */
+   void (*vblank)(void);               /* vblank callback */
+   void (*hblank)(int scanline);       /* hblank callback */
+   void (*get_state)(uint8 *state);    /* get state (uint8 *(state[128])) */
+   void (*set_state)(uint8 *state);    /* set state (uint8 *(state[128])) */
+   mem_read_handler_t mem_read[4];     /* memory read structure */
+   mem_write_handler_t mem_write[4];   /* memory write structure */
+   // apuext_t *sound_ext;                /* external sound device */
 };
 
 #define MMC_LASTBANK      -1

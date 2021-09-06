@@ -25,35 +25,29 @@
 #include <mmc.h>
 
 
-static void map93_write(uint32 address, uint8 value)
+static void map_write(uint32 address, uint8 value)
 {
-   UNUSED(address);
+    /* ($8000-$FFFF) D7-D4 = switch $8000-$BFFF D0: mirror */
+    mmc_bankrom(16, 0x8000, value >> 4);
 
-   /* ($8000-$FFFF) D7-D4 = switch $8000-$BFFF D0: mirror */
-   mmc_bankrom(16, 0x8000, value >> 4);
-
-   if (value & 1)
-      ppu_setmirroring(PPU_MIRROR_VERT);
-   else
-      ppu_setmirroring(PPU_MIRROR_HORI);
+    if (value & 1)
+        ppu_setmirroring(PPU_MIRROR_VERT);
+    else
+        ppu_setmirroring(PPU_MIRROR_HORI);
 }
 
-static const mem_write_handler_t map93_memwrite[] =
-{
-   { 0x8000, 0xFFFF, map93_write },
-   LAST_MEMORY_HANDLER
-};
 
 mapintf_t map93_intf =
 {
-   93,               /* mapper number */
-   "Mapper 93",      /* mapper name */
-   NULL,             /* init routine */
-   NULL,             /* vblank callback */
-   NULL,             /* hblank callback */
-   NULL,             /* get state (snss) */
-   NULL,             /* set state (snss) */
-   NULL,             /* memory read structure */
-   map93_memwrite,   /* memory write structure */
-   NULL              /* external sound device */
+    .number     = 93,
+    .name       = "Mapper 93",
+    .init       = NULL,
+    .vblank     = NULL,
+    .hblank     = NULL,
+    .get_state  = NULL,
+    .set_state  = NULL,
+    .mem_read   = {},
+    .mem_write  = {
+        { 0x8000, 0xFFFF, map_write }
+    },
 };

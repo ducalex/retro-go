@@ -25,30 +25,23 @@
 #include <mmc.h>
 
 
-static void map94_write(uint32 address, uint8 value)
+static void map_write(uint32 address, uint8 value)
 {
-   UNUSED(address);
-
-   /* ($8000-$FFFF) D7-D2 = switch $8000-$BFFF */
-   mmc_bankrom(16, 0x8000, value >> 2);
+    mmc_bankrom(16, 0x8000, value >> 2);
 }
 
-static const mem_write_handler_t map94_memwrite[] =
-{
-   { 0x8000, 0xFFFF, map94_write },
-   LAST_MEMORY_HANDLER
-};
 
 mapintf_t map94_intf =
 {
-   94,               /* mapper number */
-   "Mapper 94",      /* mapper name */
-   NULL,             /* init routine */
-   NULL,             /* vblank callback */
-   NULL,             /* hblank callback */
-   NULL,             /* get state (snss) */
-   NULL,             /* set state (snss) */
-   NULL,             /* memory read structure */
-   map94_memwrite,   /* memory write structure */
-   NULL              /* external sound device */
+    .number     = 94,
+    .name       = "Mapper 94",
+    .init       = NULL,
+    .vblank     = NULL,
+    .hblank     = NULL,
+    .get_state  = NULL,
+    .set_state  = NULL,
+    .mem_read   = {},
+    .mem_write  = {
+        { 0x8000, 0xFFFF, map_write }
+    },
 };

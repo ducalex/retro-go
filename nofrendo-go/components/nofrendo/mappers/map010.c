@@ -23,20 +23,9 @@
 
 #include <nofrendo.h>
 #include <mmc.h>
-#include <string.h>
 
 static uint8 latch[2];
 static uint8 regs[4];
-
-// Shouldn't that be packed? (It wasn't packed in SNSS...)
-typedef struct
-{
-   unsigned char latch[2];
-   unsigned char lastB000Write;
-   unsigned char lastC000Write;
-   unsigned char lastD000Write;
-   unsigned char lastE000Write;
-} mapper10Data;
 
 
 /* Used when tile $FD/$FE is accessed */
@@ -61,103 +50,93 @@ static void mmc10_latchfunc(uint32 address, uint8 value)
    }
 }
 
-/* mapper 10: MMC4 */
-/* MMC4: Fire Emblem */
-static void map10_write(uint32 address, uint8 value)
+static void map_write(uint32 address, uint8 value)
 {
-   switch ((address & 0xF000) >> 12)
-   {
-   case 0xA:
-      mmc_bankrom(16, 0x8000, value);
-      break;
+    switch ((address & 0xF000) >> 12)
+    {
+    case 0xA:
+        mmc_bankrom(16, 0x8000, value);
+        break;
 
-   case 0xB:
-      regs[0] = value;
-      if (0xFD == latch[0])
-         mmc_bankvrom(4, 0x0000, value);
-      break;
+    case 0xB:
+        regs[0] = value;
+        if (0xFD == latch[0])
+            mmc_bankvrom(4, 0x0000, value);
+        break;
 
-   case 0xC:
-      regs[1] = value;
-      if (0xFE == latch[0])
-         mmc_bankvrom(4, 0x0000, value);
-      break;
+    case 0xC:
+        regs[1] = value;
+        if (0xFE == latch[0])
+            mmc_bankvrom(4, 0x0000, value);
+        break;
 
-   case 0xD:
-      regs[2] = value;
-      if (0xFD == latch[1])
-         mmc_bankvrom(4, 0x1000, value);
-      break;
+    case 0xD:
+        regs[2] = value;
+        if (0xFD == latch[1])
+            mmc_bankvrom(4, 0x1000, value);
+        break;
 
-   case 0xE:
-      regs[3] = value;
-      if (0xFE == latch[1])
-         mmc_bankvrom(4, 0x1000, value);
-      break;
+    case 0xE:
+        regs[3] = value;
+        if (0xFE == latch[1])
+            mmc_bankvrom(4, 0x1000, value);
+        break;
 
-   case 0xF:
-      if (value & 1)
-         ppu_setmirroring(PPU_MIRROR_HORI);
-      else
-         ppu_setmirroring(PPU_MIRROR_VERT);
-      break;
+    case 0xF:
+        if (value & 1)
+            ppu_setmirroring(PPU_MIRROR_HORI);
+        else
+            ppu_setmirroring(PPU_MIRROR_VERT);
+        break;
 
-   default:
-      break;
-   }
+    default:
+        break;
+    }
 }
 
-static void map10_init(rom_t *cart)
+static void map_getstate(uint8 *state)
 {
-   UNUSED(cart);
-
-   memset(regs, 0, sizeof(regs));
-
-   mmc_bankrom(16, 0x8000, 0);
-   mmc_bankrom(16, 0xC000, MMC_LASTBANK);
-
-   latch[0] = 0xFE;
-   latch[1] = 0xFE;
-
-   ppu_setlatchfunc(mmc10_latchfunc);
+    state[0] = latch[0];
+    state[1] = latch[1];
+    state[2] = regs[0];
+    state[3] = regs[1];
+    state[4] = regs[2];
+    state[5] = regs[3];
 }
 
-static void map10_getstate(void *state)
+static void map_setstate(uint8 *state)
 {
-   ((mapper10Data*)state)->latch[0] = latch[0];
-   ((mapper10Data*)state)->latch[1] = latch[1];
-   ((mapper10Data*)state)->lastB000Write = regs[0];
-   ((mapper10Data*)state)->lastC000Write = regs[1];
-   ((mapper10Data*)state)->lastD000Write = regs[2];
-   ((mapper10Data*)state)->lastE000Write = regs[3];
+    latch[0] = state[0];
+    latch[1] = state[1];
+    regs[0]  = state[2];
+    regs[1]  = state[3];
+    regs[2]  = state[4];
+    regs[3]  = state[5];
 }
 
-static void map10_setstate(void *state)
+static void map_init(rom_t *cart)
 {
-   latch[0] = ((mapper10Data*)state)->latch[0];
-   latch[1] = ((mapper10Data*)state)->latch[1];
-   regs[0]  = ((mapper10Data*)state)->lastB000Write;
-   regs[1]  = ((mapper10Data*)state)->lastC000Write;
-   regs[2]  = ((mapper10Data*)state)->lastD000Write;
-   regs[3]  = ((mapper10Data*)state)->lastE000Write;
+    regs[0] = regs[1] = regs[2] = regs[3] = 0x00;
+    latch[0] = latch[1] = 0xFE;
+
+    mmc_bankrom(16, 0x8000, 0);
+    mmc_bankrom(16, 0xC000, MMC_LASTBANK);
+
+    ppu_setlatchfunc(mmc10_latchfunc);
 }
 
-static const mem_write_handler_t map10_memwrite[] =
-{
-   { 0x8000, 0xFFFF, map10_write },
-   LAST_MEMORY_HANDLER
-};
 
 mapintf_t map10_intf =
 {
-   10,               /* mapper number */
-   "MMC4",           /* mapper name */
-   map10_init,       /* init routine */
-   NULL,             /* vblank callback */
-   NULL,             /* hblank callback */
-   map10_getstate,   /* get state (snss) */
-   map10_setstate,   /* set state (snss) */
-   NULL,             /* memory read structure */
-   map10_memwrite,   /* memory write structure */
-   NULL              /* external sound device */
+    .number     = 10,
+    .name       = "MMC4",
+    .init       = map_init,
+    .vblank     = NULL,
+    .hblank     = NULL,
+    .get_state  = map_getstate,
+    .set_state  = map_setstate,
+    .mem_read   = {},
+    .mem_write  = {
+        { 0x8000, 0xFFFF, map_write }
+    },
 };

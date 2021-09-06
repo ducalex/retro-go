@@ -28,107 +28,80 @@
 
 static struct
 {
-   uint16 enabled;
-   uint16 counter;
+    uint16 enabled;
+    uint16 counter;
 } irq;
 
-/********************************/
-/* Mapper #42 IRQ reset routine */
-/********************************/
-static void map42_irq_reset (void)
+
+static void map_irq_reset(void)
 {
-  /* Turn off IRQs */
-  irq.enabled = false;
-  irq.counter = 0x0000;
+    /* Turn off IRQs */
+    irq.enabled = false;
+    irq.counter = 0x0000;
 }
 
-/********************************************/
-/* Mapper #42: Baby Mario bootleg cartridge */
-/********************************************/
-static void map42_init(rom_t *cart)
+static void map_hblank(int scanline)
 {
-   UNUSED(cart);
+    /* Increment the counter if it is enabled and check for strike */
+    if (irq.enabled)
+    {
+        irq.counter += NES_CYCLES_PER_SCANLINE;
 
-   /* Set the hardwired pages */
-   mmc_bankrom (8, 0x8000, 0x0C);
-   mmc_bankrom (8, 0xA000, 0x0D);
-   mmc_bankrom (8, 0xC000, 0x0E);
-   mmc_bankrom (8, 0xE000, 0x0F);
-
-   /* Reset the IRQ counter */
-   map42_irq_reset();
+        /* IRQ is triggered after 24576 M2 cycles */
+        if (irq.counter >= 0x6000)
+        {
+            nes6502_irq();
+            map_irq_reset();
+        }
+    }
 }
 
-/****************************************/
-/* Mapper #42 callback for IRQ handling */
-/****************************************/
-static void map42_hblank(int scanline)
+static void map_write(uint32 address, uint8 value)
 {
-   UNUSED(scanline);
+    switch (address & 0x03)
+    {
+        /* Register 0: Select ROM page at $6000-$7FFF */
+        case 0x00:
+            mmc_bankrom(8, 0x6000, value & 0x0F);
+            break;
 
-   /* Increment the counter if it is enabled and check for strike */
-   if (irq.enabled)
-   {
-      irq.counter += NES_CYCLES_PER_SCANLINE;
+        /* Register 1: mirroring */
+        case 0x01:
+            if (value & 0x08) ppu_setmirroring(PPU_MIRROR_HORI);
+            else              ppu_setmirroring(PPU_MIRROR_VERT);
+            break;
 
-      /* IRQ is triggered after 24576 M2 cycles */
-      if (irq.counter >= 0x6000)
-      {
-         /* Trigger the IRQ */
-         nes6502_irq();
+        /* Register 2: IRQ */
+        case 0x02:
+            if (value & 0x02) irq.enabled = true;
+            else              map_irq_reset();
+            break;
 
-         /* Reset the counter */
-         map42_irq_reset();
-      }
-   }
+        /* Register 3: unused */
+        default:
+            break;
+    }
 }
 
-/******************************************/
-/* Mapper #42 write handler ($E000-$FFFF) */
-/******************************************/
-static void map42_write(uint32 address, uint8 value)
+static void map_init(rom_t *cart)
 {
-   switch (address & 0x03)
-   {
-      /* Register 0: Select ROM page at $6000-$7FFF */
-      case 0x00:
-         mmc_bankrom(8, 0x6000, value & 0x0F);
-         break;
-
-      /* Register 1: mirroring */
-      case 0x01:
-         if (value & 0x08) ppu_setmirroring(PPU_MIRROR_HORI);
-         else              ppu_setmirroring(PPU_MIRROR_VERT);
-         break;
-
-      /* Register 2: IRQ */
-      case 0x02:
-         if (value & 0x02) irq.enabled = true;
-         else              map42_irq_reset();
-         break;
-
-      /* Register 3: unused */
-      default:
-         break;
-   }
+    mmc_bankrom(8, 0x8000, 0x0C);
+    mmc_bankrom(8, 0xA000, 0x0D);
+    mmc_bankrom(8, 0xC000, 0x0E);
+    mmc_bankrom(8, 0xE000, 0x0F);
+    map_irq_reset();
 }
 
-static const mem_write_handler_t map42_memwrite[] =
-{
-   { 0xE000, 0xFFFF, map42_write },
-   LAST_MEMORY_HANDLER
-};
 
 mapintf_t map42_intf =
 {
-   42,                      /* Mapper number */
-   "Baby Mario (bootleg)",  /* Mapper name */
-   map42_init,              /* Initialization routine */
-   NULL,                    /* VBlank callback */
-   map42_hblank,            /* HBlank callback */
-   NULL,                    /* Get state (SNSS) */
-   NULL,                    /* Set state (SNSS) */
-   NULL,                    /* Memory read structure */
-   map42_memwrite,          /* Memory write structure */
-   NULL                     /* External sound device */
+    .number     = 42,
+    .name       = "Baby Mario (bootleg)",
+    .init       = map_init,
+    .vblank     = NULL,
+    .hblank     = map_hblank,
+    .get_state  = NULL,
+    .set_state  = NULL,
+    .mem_read   = {},
+    .mem_write  = {{0xE000, 0xFFFF, map_write}},
 };

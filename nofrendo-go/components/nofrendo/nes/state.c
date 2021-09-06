@@ -224,7 +224,7 @@ int state_save(const char* fn)
 
       if (machine->mapper->get_state)
       {
-         machine->mapper->get_state(&state);
+         machine->mapper->get_state(state);
          memcpy(buffer + 0x18, state, 0x80);
       }
 

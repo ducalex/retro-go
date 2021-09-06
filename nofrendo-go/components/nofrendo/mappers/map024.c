@@ -27,149 +27,132 @@
 
 static struct
 {
-   bool enabled, wait_state;
-   int counter, latch;
+    bool enabled, wait_state;
+    int counter, latch;
 } irq;
 
-// Shouldn't that be packed? (It wasn't packed in SNSS...)
-typedef struct
+
+static void map_hblank(int scanline)
 {
-   unsigned char irqCounter;
-   unsigned char irqCounterEnabled;
-} mapper24Data;
-
-
-static void map24_init(rom_t *cart)
-{
-   UNUSED(cart);
-
-   irq.enabled = irq.wait_state = 0;
-   irq.counter = irq.latch = 0;
+    if (irq.enabled)
+    {
+        if (256 == ++irq.counter)
+        {
+            irq.counter = irq.latch;
+            nes6502_irq();
+            //irq.enabled = false;
+            irq.enabled = irq.wait_state;
+        }
+    }
 }
 
-static void map24_hblank(int scanline)
+static void map_write(uint32 address, uint8 value)
 {
-   UNUSED(scanline);
+    switch (address & 0xF003)
+    {
+    case 0x8000:
+        mmc_bankrom(16, 0x8000, value);
+        break;
 
-   if (irq.enabled)
-   {
-      if (256 == ++irq.counter)
-      {
-         irq.counter = irq.latch;
-         nes6502_irq();
-         //irq.enabled = false;
-         irq.enabled = irq.wait_state;
-      }
-   }
+    case 0x9003:
+        /* ??? */
+        break;
+
+    case 0xB003:
+        switch (value & 0x0C)
+        {
+            case 0x0: ppu_setmirroring(PPU_MIRROR_VERT); break;
+            case 0x4: ppu_setmirroring(PPU_MIRROR_HORI); break;
+            case 0x8: ppu_setmirroring(PPU_MIRROR_SCR0); break;
+            case 0xC: ppu_setmirroring(PPU_MIRROR_SCR1); break;
+        }
+        break;
+
+    case 0xC000:
+        mmc_bankrom(8, 0xC000, value);
+        break;
+
+    case 0xD000:
+        mmc_bankvrom(1, 0x0000, value);
+        break;
+
+    case 0xD001:
+        mmc_bankvrom(1, 0x0400, value);
+        break;
+
+    case 0xD002:
+        mmc_bankvrom(1, 0x0800, value);
+        break;
+
+    case 0xD003:
+        mmc_bankvrom(1, 0x0C00, value);
+        break;
+
+    case 0xE000:
+        mmc_bankvrom(1, 0x1000, value);
+        break;
+
+    case 0xE001:
+        mmc_bankvrom(1, 0x1400, value);
+        break;
+
+    case 0xE002:
+        mmc_bankvrom(1, 0x1800, value);
+        break;
+
+    case 0xE003:
+        mmc_bankvrom(1, 0x1C00, value);
+        break;
+
+    case 0xF000:
+        irq.latch = value;
+        break;
+
+    case 0xF001:
+        irq.enabled = (value >> 1) & 0x01;
+        irq.wait_state = value & 0x01;
+        if (irq.enabled)
+            irq.counter = irq.latch;
+        break;
+
+    case 0xF002:
+        irq.enabled = irq.wait_state;
+        break;
+
+    default:
+        MESSAGE_DEBUG("invalid VRC6 write: $%02X to $%04X", value, address);
+        break;
+    }
 }
 
-static void map24_write(uint32 address, uint8 value)
+static void map_getstate(uint8 *state)
 {
-   switch (address & 0xF003)
-   {
-   case 0x8000:
-      mmc_bankrom(16, 0x8000, value);
-      break;
-
-   case 0x9003:
-      /* ??? */
-      break;
-
-   case 0xB003:
-      switch (value & 0x0C)
-      {
-         case 0x0: ppu_setmirroring(PPU_MIRROR_VERT); break;
-         case 0x4: ppu_setmirroring(PPU_MIRROR_HORI); break;
-         case 0x8: ppu_setmirroring(PPU_MIRROR_SCR0); break;
-         case 0xC: ppu_setmirroring(PPU_MIRROR_SCR1); break;
-      }
-      break;
-
-   case 0xC000:
-      mmc_bankrom(8, 0xC000, value);
-      break;
-
-   case 0xD000:
-      mmc_bankvrom(1, 0x0000, value);
-      break;
-
-   case 0xD001:
-      mmc_bankvrom(1, 0x0400, value);
-      break;
-
-   case 0xD002:
-      mmc_bankvrom(1, 0x0800, value);
-      break;
-
-   case 0xD003:
-      mmc_bankvrom(1, 0x0C00, value);
-      break;
-
-   case 0xE000:
-      mmc_bankvrom(1, 0x1000, value);
-      break;
-
-   case 0xE001:
-      mmc_bankvrom(1, 0x1400, value);
-      break;
-
-   case 0xE002:
-      mmc_bankvrom(1, 0x1800, value);
-      break;
-
-   case 0xE003:
-      mmc_bankvrom(1, 0x1C00, value);
-      break;
-
-   case 0xF000:
-      irq.latch = value;
-      break;
-
-   case 0xF001:
-      irq.enabled = (value >> 1) & 0x01;
-      irq.wait_state = value & 0x01;
-      if (irq.enabled)
-         irq.counter = irq.latch;
-      break;
-
-   case 0xF002:
-      irq.enabled = irq.wait_state;
-      break;
-
-   default:
-      MESSAGE_DEBUG("invalid VRC6 write: $%02X to $%04X", value, address);
-      break;
-   }
+    state[0] = irq.counter;
+    state[1] = irq.enabled;
 }
 
-static void map24_getstate(void *state)
+static void map_setstate(uint8 *state)
 {
-   ((mapper24Data*)state)->irqCounter = irq.counter;
-   ((mapper24Data*)state)->irqCounterEnabled = irq.enabled;
+    irq.counter = state[0];
+    irq.enabled = state[1];
 }
 
-static void map24_setstate(void *state)
+static void map_init(rom_t *cart)
 {
-   irq.counter = ((mapper24Data*)state)->irqCounter;
-   irq.enabled = ((mapper24Data*)state)->irqCounterEnabled;
+    irq.enabled = irq.wait_state = 0;
+    irq.counter = irq.latch = 0;
 }
 
-static const mem_write_handler_t map24_memwrite[] =
-{
-   { 0x8000, 0xF002, map24_write },
-   LAST_MEMORY_HANDLER
-};
 
 mapintf_t map24_intf =
 {
-   24,               /* mapper number */
-   "Konami VRC6",    /* mapper name */
-   map24_init,       /* init routine */
-   NULL,             /* vblank callback */
-   map24_hblank,     /* hblank callback */
-   map24_getstate,   /* get state (snss) */
-   map24_setstate,   /* set state (snss) */
-   NULL,             /* memory read structure */
-   map24_memwrite,   /* memory write structure */
-   NULL              /* external sound device */
+    .number     = 24,
+    .name       = "Konami VRC6",
+    .init       = map_init,
+    .vblank     = NULL,
+    .hblank     = map_hblank,
+    .get_state  = map_getstate,
+    .set_state  = map_setstate,
+    .mem_read   = {},
+    .mem_write  = {{0x8000, 0xF002, map_write}},
 };

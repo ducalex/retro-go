@@ -25,39 +25,31 @@
 #include <mmc.h>
 
 
-static void map79_write(uint32 address, uint8 value)
+static void map_write(uint32 address, uint8 value)
 {
-   if ((address & 0x5100) == 0x4100)
-   {
-      mmc_bankrom(32, 0x8000, (value >> 3) & 1);
-      mmc_bankvrom(8, 0x0000, value & 7);
-   }
+    if ((address & 0x5100) == 0x4100)
+    {
+        mmc_bankrom(32, 0x8000, (value >> 3) & 1);
+        mmc_bankvrom(8, 0x0000, value & 7);
+    }
 }
 
-static void map79_init(rom_t *cart)
+static void map_init(rom_t *cart)
 {
-   UNUSED(cart);
-
-   mmc_bankrom(32, 0x8000, 0);
-   mmc_bankvrom(8, 0x0000, 0);
+    mmc_bankrom(32, 0x8000, 0);
+    mmc_bankvrom(8, 0x0000, 0);
 }
 
-static const mem_write_handler_t map79_memwrite[] =
-{
-   { 0x4100, 0x5FFF, map79_write }, /* ????? incorrect range ??? */
-   LAST_MEMORY_HANDLER
-};
 
 mapintf_t map79_intf =
 {
-   79,               /* mapper number */
-   "NINA-03/06",     /* mapper name */
-   map79_init,       /* init routine */
-   NULL,             /* vblank callback */
-   NULL,             /* hblank callback */
-   NULL,             /* get state (snss) */
-   NULL,             /* set state (snss) */
-   NULL,             /* memory read structure */
-   map79_memwrite,   /* memory write structure */
-   NULL              /* external sound device */
+    .number     = 79,
+    .name       = "NINA-03/06",
+    .init       = map_init,
+    .vblank     = NULL,
+    .hblank     = NULL,
+    .get_state  = NULL,
+    .set_state  = NULL,
+    .mem_read   = {},
+    .mem_write  = {{0x4100, 0x5FFF, map_write}},
 };

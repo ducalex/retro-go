@@ -25,39 +25,33 @@
 #include <mmc.h>
 
 
-static void map71_init(rom_t *cart)
+static void map_write(uint32 address, uint8 value)
 {
-   UNUSED(cart);
-
-   mmc_bankrom(16, 0xc000, MMC_LASTBANK);
-   mmc_bankrom(16, 0x8000, 0);
+    // SCR0/1 mirroring only used by Fire Hawk
+    if ((address & 0xF000) == 0x9000)
+        ppu_setmirroring((value & 4) ? PPU_MIRROR_SCR1 : PPU_MIRROR_SCR0);
+    else
+        mmc_bankrom(16, 0x8000, value);
 }
 
-static void map71_write(uint32 address, uint8 value)
+static void map_init(rom_t *cart)
 {
-   // SCR0/1 mirroring only used by Fire Hawk
-   if ((address & 0xF000) == 0x9000)
-      ppu_setmirroring((value & 4) ? PPU_MIRROR_SCR1 : PPU_MIRROR_SCR0);
-   else
-      mmc_bankrom(16, 0x8000, value);
+    mmc_bankrom(16, 0xc000, MMC_LASTBANK);
+    mmc_bankrom(16, 0x8000, 0);
 }
 
-static const mem_write_handler_t map71_memwrite[] =
-{
-   { 0x8000, 0xFFFF, map71_write },
-   LAST_MEMORY_HANDLER
-};
 
 mapintf_t map71_intf =
 {
-   71,               /* mapper number */
-   "Mapper 71",      /* mapper name */
-   map71_init,       /* init routine */
-   NULL,             /* vblank callback */
-   NULL,             /* hblank callback */
-   NULL,             /* get state (snss) */
-   NULL,             /* set state (snss) */
-   NULL,             /* memory read structure */
-   map71_memwrite,   /* memory write structure */
-   NULL              /* external sound device */
+    .number     = 71,
+    .name       = "Mapper 71",
+    .init       = map_init,
+    .vblank     = NULL,
+    .hblank     = NULL,
+    .get_state  = NULL,
+    .set_state  = NULL,
+    .mem_read   = {},
+    .mem_write  = {
+        { 0x8000, 0xFFFF, map_write }
+    },
 };

@@ -269,12 +269,12 @@ static void fds_wave_write(uint32 address, uint8 value)
     MESSAGE_INFO("FDS wave write at %04X: %02X\n", address, value);
 }
 
-static void fds_getstate(void *state)
+static void fds_getstate(uint8 *state)
 {
     //
 }
 
-static void fds_setstate(void *state)
+static void fds_setstate(uint8 *state)
 {
     //
 }
@@ -311,32 +311,24 @@ void fds_init(rom_t *cart)
     // nes_settimer(fds_cpu_timer, 10);
 }
 
-static const mem_read_handler_t fds_memread[] =
-{
-    {0x4030, 0x4035, fds_read},
-    {0x4040, 0x407F, fds_wave_read},
-    {0x4090, 0x4092, fds_sound_read},
-    LAST_MEMORY_HANDLER
-};
-
-static const mem_write_handler_t fds_memwrite[] =
-{
-    {0x4020, 0x4025, fds_write},
-    {0x4040, 0x407F, fds_wave_write},
-    {0x4080, 0x408A, fds_sound_write},
-    LAST_MEMORY_HANDLER
-};
 
 mapintf_t map20_intf =
 {
-    20,                     /* mapper number */
-    "Famicom Disk System",  /* mapper name */
-    fds_init,               /* init routine */
-    NULL,                   /* vblank callback */
-    fds_hblank,             /* hblank callback */
-    fds_getstate,           /* get state (snss) */
-    fds_setstate,           /* set state (snss) */
-    fds_memread,            /* memory read structure */
-    fds_memwrite,           /* memory write structure */
-    NULL                    /* external sound device */
+    .number     = 20,
+    .name       = "Famicom Disk System",
+    .init       = fds_init,
+    .vblank     = NULL,
+    .hblank     = fds_hblank,
+    .get_state  = fds_getstate,
+    .set_state  = fds_setstate,
+    .mem_read   = {
+        { 0x4030, 0x4035, fds_read },
+        { 0x4040, 0x407F, fds_wave_read },
+        { 0x4090, 0x4092, fds_sound_read },
+    },
+    .mem_write  = {
+        { 0x4020, 0x4025, fds_write },
+        { 0x4040, 0x407F, fds_wave_write },
+        { 0x4080, 0x408A, fds_sound_write },
+    },
 };

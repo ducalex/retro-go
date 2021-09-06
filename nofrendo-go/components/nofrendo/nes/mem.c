@@ -166,14 +166,14 @@ void mem_reset(void)
    mapper_t *mapper = nes_getptr()->mapper;
 
    // NES cartridge handlers
-   if (mapper && (mapper->mem_read || mapper->mem_write))
+   if (mapper)
    {
-      for (int i = 0, rc = 0, wc = 0; i < MEM_HANDLERS_MAX; i++)
+      for (int i = 0, rc = 0, wc = 0; i < 4; i++)
       {
-         if (mapper->mem_read && mapper->mem_read[rc].read_func)
+         if (mapper->mem_read[rc].read_func)
             mem.read_handlers[num_read_handlers++] = mapper->mem_read[rc++];
 
-         if (mapper->mem_write && mapper->mem_write[wc].write_func)
+         if (mapper->mem_write[wc].write_func)
             mem.write_handlers[num_write_handlers++] = mapper->mem_write[wc++];
       }
    }

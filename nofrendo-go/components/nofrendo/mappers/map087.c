@@ -24,36 +24,23 @@
 
 #include <nofrendo.h>
 #include <mmc.h>
-#include <nes.h>
 
 
-static void map87_write(uint32 address, uint8 value)
+static void map_write(uint32 address, uint8 value)
 {
-   UNUSED(address);
-/***
-   value:  [.... ..LH]
-   This reg selects 8k CHR @ $0000.  Note the reversed bit orders.  Most games using this
-   mapper only have 16k CHR, so the 'H' bit is usually unused.
-***/
-   mmc_bankvrom(8, 0x0000, (value & 3) >> 1);
+    mmc_bankvrom(8, 0x0000, (value & 3) >> 1);
 }
 
-static const mem_write_handler_t map87_memwrite[] =
-{
-   { 0x6000, 0x7FFF, map87_write },
-   LAST_MEMORY_HANDLER
-};
 
 mapintf_t map87_intf =
 {
-   87,               /* Mapper number */
-   "Mapper 087",     /* Mapper name */
-   NULL,             /* Initialization routine */
-   NULL,             /* VBlank callback */
-   NULL,             /* HBlank callback */
-   NULL,             /* Get state (SNSS) */
-   NULL,             /* Set state (SNSS) */
-   NULL,             /* Memory read structure */
-   map87_memwrite,   /* Memory write structure */
-   NULL              /* External sound device */
+    .number     = 87,
+    .name       = "Mapper 087",
+    .init       = NULL,
+    .vblank     = NULL,
+    .hblank     = NULL,
+    .get_state  = NULL,
+    .set_state  = NULL,
+    .mem_read   = {},
+    .mem_write  = {{0x6000, 0x7FFF, map_write}},
 };

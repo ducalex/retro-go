@@ -27,58 +27,51 @@
 static int select_c000 = 0;
 
 
-static void map32_write(uint32 address, uint8 value)
+static void map_write(uint32 address, uint8 value)
 {
-   switch (address >> 12)
-   {
-   case 0x08:
-      if (select_c000)
-         mmc_bankrom(8, 0xC000, value);
-      else
-         mmc_bankrom(8, 0x8000, value);
-      break;
+    switch (address >> 12)
+    {
+    case 0x08:
+        if (select_c000)
+            mmc_bankrom(8, 0xC000, value);
+        else
+            mmc_bankrom(8, 0x8000, value);
+        break;
 
-   case 0x09:
-      if (value & 1)
-         ppu_setmirroring(PPU_MIRROR_HORI);
-      else
-         ppu_setmirroring(PPU_MIRROR_VERT);
+    case 0x09:
+        if (value & 1)
+            ppu_setmirroring(PPU_MIRROR_HORI);
+        else
+            ppu_setmirroring(PPU_MIRROR_VERT);
 
-      select_c000 = (value & 0x02);
-      break;
+        select_c000 = (value & 0x02);
+        break;
 
-   case 0x0A:
-      mmc_bankrom(8, 0xA000, value);
-      break;
+    case 0x0A:
+        mmc_bankrom(8, 0xA000, value);
+        break;
 
-   case 0x0B:
-      {
-         int loc = (address & 0x07) << 10;
-         mmc_bankvrom(1, loc, value);
-      }
-      break;
+    case 0x0B:
+        mmc_bankvrom(1, (address & 0x07) << 10, value);
+        break;
 
-   default:
-      break;
-   }
+    default:
+        break;
+    }
 }
 
-static const mem_write_handler_t map32_memwrite[] =
-{
-   { 0x8000, 0xFFFF, map32_write },
-   LAST_MEMORY_HANDLER
-};
 
 mapintf_t map32_intf =
 {
-   32,               /* mapper number */
-   "Irem G-101",     /* mapper name */
-   NULL,             /* init routine */
-   NULL,             /* vblank callback */
-   NULL,             /* hblank callback */
-   NULL,             /* get state (snss) */
-   NULL,             /* set state (snss) */
-   NULL,             /* memory read structure */
-   map32_memwrite,   /* memory write structure */
-   NULL              /* external sound device */
+    .number     = 32,
+    .name       = "Irem G-101",
+    .init       = NULL,
+    .vblank     = NULL,
+    .hblank     = NULL,
+    .get_state  = NULL,
+    .set_state  = NULL,
+    .mem_read   = {},
+    .mem_write  = {
+        { 0x8000, 0xFFFF, map_write }
+    },
 };

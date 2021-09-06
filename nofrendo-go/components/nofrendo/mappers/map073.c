@@ -28,85 +28,74 @@
 
 static struct
 {
-   bool enabled;
-   uint32 counter;
+    uint32 counter;
+    bool enabled;
 } irq;
 
 
-static void map73_init(rom_t *cart)
+static void map_hblank(int scanline)
 {
-   UNUSED(cart);
+    /* Increment the counter if it is enabled and check for strike */
+    if (irq.enabled)
+    {
+        irq.counter += NES_CYCLES_PER_SCANLINE;
 
-   irq.enabled = false;
-   irq.counter = 0x0000;
+        /* Counter triggered on overflow into Q16 */
+        if (irq.counter & 0x10000)
+        {
+                /* Clip to sixteen-bit word */
+                irq.counter &= 0xFFFF;
+
+                /* Trigger the IRQ */
+                nes6502_irq();
+
+                /* Shut off IRQ counter */
+                irq.enabled = false;
+        }
+    }
 }
 
-static void map73_hblank(int scanline)
+static void map_write(uint32 address, uint8 value)
 {
-   UNUSED(scanline);
-
-   /* Increment the counter if it is enabled and check for strike */
-   if (irq.enabled)
-   {
-      irq.counter += NES_CYCLES_PER_SCANLINE;
-
-      /* Counter triggered on overflow into Q16 */
-      if (irq.counter & 0x10000)
-      {
-            /* Clip to sixteen-bit word */
-            irq.counter &= 0xFFFF;
-
-            /* Trigger the IRQ */
-            nes6502_irq();
-
-            /* Shut off IRQ counter */
-            irq.enabled = false;
-      }
-   }
+    switch (address & 0xF000)
+    {
+        case 0x8000: irq.counter &= 0xFFF0;
+                    irq.counter |= (uint32) (value);
+                    break;
+        case 0x9000: irq.counter &= 0xFF0F;
+                    irq.counter |= (uint32) (value << 4);
+                    break;
+        case 0xA000: irq.counter &= 0xF0FF;
+                    irq.counter |= (uint32) (value << 8);
+                    break;
+        case 0xB000: irq.counter &= 0x0FFF;
+                    irq.counter |= (uint32) (value << 12);
+                    break;
+        case 0xC000: irq.enabled = (value & 0x02);
+                    break;
+        case 0xF000: mmc_bankrom (16, 0x8000, value);
+        default:     break;
+    }
 }
 
-/******************************************/
-/* Mapper #73 write handler ($8000-$FFFF) */
-/******************************************/
-static void map73_write(uint32 address, uint8 value)
+static void map_init(rom_t *cart)
 {
-   switch (address & 0xF000)
-   {
-      case 0x8000: irq.counter &= 0xFFF0;
-                   irq.counter |= (uint32) (value);
-                   break;
-      case 0x9000: irq.counter &= 0xFF0F;
-                   irq.counter |= (uint32) (value << 4);
-                   break;
-      case 0xA000: irq.counter &= 0xF0FF;
-                   irq.counter |= (uint32) (value << 8);
-                   break;
-      case 0xB000: irq.counter &= 0x0FFF;
-                   irq.counter |= (uint32) (value << 12);
-                   break;
-      case 0xC000: irq.enabled = (value & 0x02);
-                   break;
-      case 0xF000: mmc_bankrom (16, 0x8000, value);
-      default:     break;
-   }
+    irq.enabled = false;
+    irq.counter = 0x0000;
 }
 
-static const mem_write_handler_t map73_memwrite[] =
-{
-   { 0x8000, 0xFFFF, map73_write },
-   LAST_MEMORY_HANDLER
-};
 
 mapintf_t map73_intf =
 {
-   73,               /* Mapper number */
-   "Konami VRC3",    /* Mapper name */
-   map73_init,       /* Initialization routine */
-   NULL,             /* VBlank callback */
-   map73_hblank,     /* HBlank callback */
-   NULL,             /* Get state (SNSS) */
-   NULL,             /* Set state (SNSS) */
-   NULL,             /* Memory read structure */
-   map73_memwrite,   /* Memory write structure */
-   NULL              /* External sound device */
+    .number     = 73,
+    .name       = "Konami VRC3",
+    .init       = map_init,
+    .vblank     = NULL,
+    .hblank     = map_hblank,
+    .get_state  = NULL,
+    .set_state  = NULL,
+    .mem_read   = {},
+    .mem_write  = {
+        { 0x8000, 0xFFFF, map_write }
+    },
 };
