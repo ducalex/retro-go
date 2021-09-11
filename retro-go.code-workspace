@@ -57,12 +57,17 @@
 		"C_Cpp.default.cppStandard": "c++11",
 		"C_Cpp.default.intelliSenseMode": "gcc-x86",
 		"cSpell.words": [
-			"nofrendo",
+			"espressif",
 			"gnuboy",
-			"newfrendo",
+			"MOSI",
+			"MRGC",
 			"newboy",
+			"newfrendo",
+			"nofrendo",
+			"SDSPI",
 			"smsplusgx",
-			"TCPIP"
+			"TCPIP",
+			"WROVER"
 		],
 		"files.trimTrailingWhitespace": true,
 		"files.exclude": {
