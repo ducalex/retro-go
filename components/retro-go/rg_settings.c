@@ -6,14 +6,12 @@
 #include "rg_system.h"
 #include "rg_settings.h"
 
-#define USE_CONFIG_FILE (RG_DRIVER_SETTINGS == 1)
-
 #define CONFIG_FILE_PATH RG_BASE_PATH_CONFIG "/retro-go.json"
 #define CONFIG_NAMESPACE "retro-go"
 #define CONFIG_NVS_STORE "config"
 #define CONFIG_VERSION    0x01
 
-#if !USE_CONFIG_FILE
+#if RG_SETTINGS_USE_NVS
     #include <esp_err.h>
     #include <nvs_flash.h>
     static nvs_handle my_handle = 0;
@@ -65,7 +63,22 @@ void rg_settings_init(const char *app_name)
     const char *source;
     size_t length = 0;
 
-#if USE_CONFIG_FILE
+#if RG_SETTINGS_USE_NVS
+    if (nvs_flash_init() != ESP_OK)
+    {
+        nvs_flash_erase();
+        nvs_flash_init();
+    }
+    if (nvs_open(CONFIG_NAMESPACE, NVS_READWRITE, &my_handle) == ESP_OK)
+    {
+        if (nvs_get_str(my_handle, CONFIG_NVS_STORE, NULL, &length) == ESP_OK)
+        {
+            buffer = calloc(1, length + 1);
+            nvs_get_str(my_handle, CONFIG_NVS_STORE, buffer, &length);
+        }
+    }
+    source = "NVS";
+#else
     FILE *fp = fopen(CONFIG_FILE_PATH, "rb");
     if (fp)
     {
@@ -77,22 +90,6 @@ void rg_settings_init(const char *app_name)
         fclose(fp);
     }
     source = "sdcard";
-#else
-    if (nvs_flash_init() != ESP_OK)
-    {
-        nvs_flash_erase();
-        nvs_flash_init();
-    }
-
-    if (nvs_open(CONFIG_NAMESPACE, NVS_READWRITE, &my_handle) == ESP_OK)
-    {
-        if (nvs_get_str(my_handle, CONFIG_NVS_STORE, NULL, &length) == ESP_OK)
-        {
-            buffer = calloc(1, length + 1);
-            nvs_get_str(my_handle, CONFIG_NVS_STORE, buffer, &length);
-        }
-    }
-    source = "NVS";
 #endif
 
     if (buffer)
@@ -144,7 +141,10 @@ bool rg_settings_save(void)
         return false;
     }
 
-#if USE_CONFIG_FILE
+#if RG_SETTINGS_USE_NVS
+    if (nvs_set_str(my_handle, CONFIG_NVS_STORE, buffer) == ESP_OK
+        && nvs_commit(my_handle) == ESP_OK) unsaved_changes = 0;
+#else
     FILE *fp = fopen(CONFIG_FILE_PATH, "wb");
     if (!fp)
     {
@@ -158,9 +158,6 @@ bool rg_settings_save(void)
             unsaved_changes = 0;
         fclose(fp);
     }
-#else
-    if (nvs_set_str(my_handle, CONFIG_NVS_STORE, buffer) == ESP_OK
-        && nvs_commit(my_handle) == ESP_OK) unsaved_changes = 0;
 #endif
 
     cJSON_free(buffer);

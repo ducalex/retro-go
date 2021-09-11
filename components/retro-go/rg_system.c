@@ -267,8 +267,7 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
 
     RG_LOGX("\n========================================================\n");
     RG_LOGX("%s %s (%s %s)\n", esp_app->project_name, esp_app->version, esp_app->date, esp_app->time);
-    RG_LOGX(" built for: %s. aud=%d disp=%d pad=%d sd=%d cfg=%d\n", RG_TARGET_NAME, RG_DRIVER_AUDIO,
-             RG_DRIVER_DISPLAY, RG_DRIVER_GAMEPAD, RG_DRIVER_SDCARD, RG_DRIVER_SETTINGS);
+    RG_LOGX(" built for: %s. aud=%d disp=%d pad=%d sd=%d cfg=%d\n", RG_TARGET_NAME, 0, 0, 0, 0, 0);
     RG_LOGX("========================================================\n\n");
 
     // On the Odroid-GO the SPI bus is shared between the SD Card and the LCD
@@ -300,7 +299,8 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
         app.handlers = *handlers;
 
     // Status LED
-    gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
+    if (RG_GPIO_LED != GPIO_NUM_NC)
+        gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
     rg_system_set_led(0);
 
     // sdcard must be first because it fails if the SPI bus is already initialized

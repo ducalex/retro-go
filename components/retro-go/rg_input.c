@@ -42,20 +42,18 @@ static inline uint32_t gamepad_read(void)
     uint8_t data[5];
     if (rg_i2c_read(0x20, -1, &data, 5))
     {
-        int bat = data[4];
+        int buttons = ~((data[2] << 8) | data[1]);
 
-        // if (bat>200)
-        //     batlevel=4;
-        // else if(bat>190)
-        //     batlevel=3;
-        // else if(bat>180)
-        //     batlevel=2;
-        // else if(bat>170)
-        //     batlevel=1;
-        // else
-        //     batlevel=0;
-
-        state = (data[2] << 8) | data[1];
+        if (buttons & (1 << 2)) state |= GAMEPAD_KEY_UP;
+        if (buttons & (1 << 3)) state |= GAMEPAD_KEY_DOWN;
+        if (buttons & (1 << 4)) state |= GAMEPAD_KEY_LEFT;
+        if (buttons & (1 << 5)) state |= GAMEPAD_KEY_RIGHT;
+        if (buttons & (1 << 8)) state |= GAMEPAD_KEY_MENU;
+        // if (buttons & (1 << 0)) state |= GAMEPAD_KEY_VOLUME;
+        if (buttons & (1 << 1)) state |= GAMEPAD_KEY_SELECT;
+        if (buttons & (1 << 0)) state |= GAMEPAD_KEY_START;
+        if (buttons & (1 << 6)) state |= GAMEPAD_KEY_A;
+        if (buttons & (1 << 7)) state |= GAMEPAD_KEY_B;
     }
 
 #endif
@@ -106,6 +104,8 @@ void rg_input_init(void)
 
 #if RG_DRIVER_GAMEPAD == 1    // GPIO
 
+    const char *driver = "GPIO";
+
     adc1_config_width(ADC_WIDTH_12Bit);
     adc1_config_channel_atten(RG_GPIO_GAMEPAD_X, ADC_ATTEN_11db);
     adc1_config_channel_atten(RG_GPIO_GAMEPAD_Y, ADC_ATTEN_11db);
@@ -114,12 +114,10 @@ void rg_input_init(void)
     gpio_set_pull_mode(RG_GPIO_GAMEPAD_MENU, GPIO_PULLUP_ONLY);
     gpio_set_direction(RG_GPIO_GAMEPAD_VOLUME, GPIO_MODE_INPUT);
     // gpio_set_pull_mode(RG_GPIO_GAMEPAD_VOLUME, GPIO_PULLUP_ONLY);
-
     gpio_set_direction(RG_GPIO_GAMEPAD_SELECT, GPIO_MODE_INPUT);
     gpio_set_pull_mode(RG_GPIO_GAMEPAD_SELECT, GPIO_PULLUP_ONLY);
     gpio_set_direction(RG_GPIO_GAMEPAD_START, GPIO_MODE_INPUT);
     // gpio_set_direction(RG_GPIO_GAMEPAD_START, GPIO_PULLUP_ONLY);
-
     gpio_set_direction(RG_GPIO_GAMEPAD_A, GPIO_MODE_INPUT);
     gpio_set_pull_mode(RG_GPIO_GAMEPAD_A, GPIO_PULLUP_ONLY);
     gpio_set_direction(RG_GPIO_GAMEPAD_B, GPIO_MODE_INPUT);
@@ -127,13 +125,22 @@ void rg_input_init(void)
 
 #elif RG_DRIVER_GAMEPAD == 2  // Serial
 
+    const char *driver = "SERIAL";
+
     gpio_set_direction(RG_GPIO_GAMEPAD_CLOCK, GPIO_MODE_OUTPUT);
     gpio_set_direction(RG_GPIO_GAMEPAD_LATCH, GPIO_MODE_OUTPUT);
     gpio_set_direction(RG_GPIO_GAMEPAD_DATA, GPIO_MODE_INPUT);
 
 #elif RG_DRIVER_GAMEPAD == 3  // I2C
 
-    rg_i2c_init();
+    const char *driver = "MRGC-I2C";
+
+    // This will initialize i2c and discard the first read (garbage)
+    gamepad_read();
+
+#else
+
+    #error "No gamepad driver selected"
 
 #endif
 
@@ -142,7 +149,7 @@ void rg_input_init(void)
 
     input_initialized = true;
 
-    RG_LOGI("Input ready.\n");
+    RG_LOGI("Input ready. driver='%s'\n", driver);
 }
 
 void rg_input_deinit(void)

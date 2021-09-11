@@ -15,11 +15,12 @@ typedef enum
     GAMEPAD_KEY_B       = (1 << 7),
     GAMEPAD_KEY_MENU    = (1 << 8),
     GAMEPAD_KEY_VOLUME  = (1 << 9),
+    GAMEPAD_KEY_X       = (1 << 10),
+    GAMEPAD_KEY_Y       = (1 << 11),
     GAMEPAD_KEY_ANY     = 0xFFFF,
     GAMEPAD_KEY_ALL     = 0xFFFF,
+    GAMEPAD_KEY_COUNT   = 12,
 } gamepad_key_t;
-
-#define GAMEPAD_KEY_COUNT 16
 
 typedef uint32_t gamepad_state_t;
 

@@ -33,12 +33,16 @@
 #define RG_TARGET_NAME             "MRGC-G32"
 
 // Driver selection
-#define RG_DRIVER_AUDIO             2   // 1 = Built-in I2S DAC, 2 = Ext I2S
 #define RG_DRIVER_BATTERY           2   // 1 = ADC, 2 = MCP23008
-#define RG_DRIVER_DISPLAY           1   // 1 = ili9341, 2 = ili9342
 #define RG_DRIVER_GAMEPAD           3   // 1 = GPIO, 2 = Serial, 3 = MCP23008
 #define RG_DRIVER_SDCARD            2   // 1 = SDSPI, 2 = SDMMC
-#define RG_DRIVER_SETTINGS          1   // 1 = SD Card, 2 = NVS
+
+// Settings
+#define RG_SETTINGS_USE_NVS         0
+
+// Audio
+#define RG_AUDIO_USE_SPEAKER        0
+#define RG_AUDIO_USE_EXT_DAC        1
 
 // Video
 #define RG_SCREEN_TYPE              (0)
