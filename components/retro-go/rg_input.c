@@ -180,12 +180,11 @@ void rg_input_wait_for_key(gamepad_key_t key, bool pressed)
 
 battery_state_t rg_input_read_battery()
 {
-#if RG_DRIVER_BATTERY == 1
-    static esp_adc_cal_characteristics_t adc_chars;
     static float adcValue = 0.0f;
 
-    const int sampleCount = 4;
-    float adcSample = 0.0f;
+#if defined(RG_BATT_ADC_CHANNEL)
+    static esp_adc_cal_characteristics_t adc_chars;
+    uint32_t adcSample = 0;
 
     // ADC not initialized
     if (adc_chars.vref == 0)
@@ -195,25 +194,28 @@ battery_state_t rg_input_read_battery()
         esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_11db, ADC_WIDTH_BIT_12, 1100, &adc_chars);
     }
 
-    for (int i = 0; i < sampleCount; ++i)
+    for (int i = 0; i < 4; ++i)
     {
-        adcSample += esp_adc_cal_raw_to_voltage(adc1_get_raw(RG_BATT_ADC_CHAN), &adc_chars) * 0.001f;
+        adcSample += esp_adc_cal_raw_to_voltage(adc1_get_raw(RG_BATT_ADC_CHANNEL), &adc_chars);
     }
-    adcSample /= sampleCount;
+    adcSample /= 4;
 
     if (adcValue == 0.0f)
     {
-        adcValue = adcSample;
+        adcValue = adcSample * 0.001f;
     }
     else
     {
-        adcValue += adcSample;
+        adcValue += adcSample * 0.001f;
         adcValue /= 2.0f;
     }
 #endif
 
+    float volts = adcValue * RG_BATT_MULTIPLIER;
+    float percent = ((volts) - RG_BATT_VOLT_MIN) / (RG_BATT_VOLT_MAX - RG_BATT_VOLT_MIN) * 100;
+
     return (battery_state_t) {
-        .millivolts = (int)(RG_BATT_CALC_VOLTAGE(adcValue) * 1000),
-        .percentage = (int)(RG_BATT_CALC_PERCENT(adcValue)),
+        .millivolts = (int)(volts * 1000),
+        .percentage = RG_MAX(0, RG_MIN(100, (int)percent)),
     };
 }

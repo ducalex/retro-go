@@ -45,7 +45,8 @@ static RTC_NOINIT_ATTR panic_trace_t panicTrace;
 static runtime_stats_t statistics;
 static runtime_counters_t counters;
 static rg_app_desc_t app;
-static long inputTimeout = -1;
+static int inputTimeout = -1;
+static int ledValue = 0;
 static bool initialized = false;
 
 static SemaphoreHandle_t spiMutex = NULL;
@@ -218,41 +219,14 @@ runtime_stats_t rg_system_get_stats()
     return statistics;
 }
 
-#if 0
-static uint8_t bcd2dec(uint8_t val)
-{
-    return (val >> 4) * 10 + (val & 0x0f);
-}
-
-static uint8_t dec2bcd(uint8_t val)
-{
-    return ((val / 10) << 4) + (val % 10);
-}
-#endif
-
 void rg_system_time_init()
 {
     const char *source = "hardcoded";
     time_t timestamp = 946702800; // 2000-01-01 00:00:00
 #if 0
-    uint8_t data[7];
     if (rg_i2c_read(0x68, 0x00, data, sizeof(data)))
     {
-        struct tm rtc;
-        rtc.tm_sec = bcd2dec(data[0]);
-        rtc.tm_min = bcd2dec(data[1]);
-        if (data[2] & 0x40) // 12H
-        {
-            rtc.tm_hour = bcd2dec(data[2] & 0x1F) - 1;
-            if (data[2] & 0x20) rtc.tm_hour += 12;
-        }
-        else rtc.tm_hour = bcd2dec(data[2]); /* 24H */
-        rtc.tm_wday = bcd2dec(data[3]) - 1;
-        rtc.tm_mday = bcd2dec(data[4]);
-        rtc.tm_mon  = bcd2dec(data[5] & 0x1F) - 1;
-        rtc.tm_year = bcd2dec(data[6]) + 2000;
-        rtc.tm_isdst = 0;
-        timestamp = mktime(&rtc);
+        // ...
         source = "DS3231";
     }
     else
@@ -273,17 +247,7 @@ void rg_system_time_save()
 {
     time_t now = time(NULL);
 #if 0
-    struct tm *tmp = gmtime(&now);
-    uint8_t data[7];
-
-    data[0] = dec2bcd(tmp->tm_sec);
-    data[1] = dec2bcd(tmp->tm_min);
-    data[2] = dec2bcd(tmp->tm_hour);
-    data[3] = dec2bcd(tmp->tm_wday + 1);
-    data[4] = dec2bcd(tmp->tm_mday);
-    data[5] = dec2bcd(tmp->tm_mon + 1);
-    data[6] = dec2bcd(tmp->tm_year - 2000);
-
+    // ...
     if (rg_i2c_write(0x68, 0x00, data, sizeof(data)))
     {
         RG_LOGI("System time saved to DS3231.\n");
@@ -335,9 +299,9 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
     if (handlers)
         app.handlers = *handlers;
 
-    // Blue LED
+    // Status LED
     gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
-    gpio_set_level(RG_GPIO_LED, 0);
+    rg_system_set_led(0);
 
     // sdcard must be first because it fails if the SPI bus is already initialized
     bool sd_init = rg_sdcard_mount();
@@ -407,8 +371,8 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
     }
 
     #ifdef ENABLE_PROFILING
-        RG_LOGI("Profiling has been enabled at compile time!\n");
-        rg_profiler_init();
+    RG_LOGI("Profiling has been enabled at compile time!\n");
+    rg_profiler_init();
     #endif
 
     #ifdef ENABLE_NETPLAY
@@ -775,12 +739,14 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
 
 void rg_system_set_led(int value)
 {
-    gpio_set_level(RG_GPIO_LED, value);
+    if (RG_GPIO_LED != GPIO_NUM_NC)
+        gpio_set_level(RG_GPIO_LED, value);
+    ledValue = value;
 }
 
 int rg_system_get_led(void)
 {
-    return gpio_get_level(RG_GPIO_LED);
+    return ledValue;
 }
 
 int32_t rg_system_get_startup_app(void)

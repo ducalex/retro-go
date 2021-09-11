@@ -12,15 +12,18 @@
 #define RG_DRIVER_SETTINGS          1   // 1 = SD Card, 2 = NVS
 
 // Video
+#define RG_SCREEN_TYPE              (0)
 #define RG_SCREEN_WIDTH             (320)
 #define RG_SCREEN_HEIGHT            (240)
+#define RG_SCREEN_ROTATE            (0)
 
 // Battery ADC
-#define RG_BATT_CALC_PERCENT(adc)   RG_MAX(0, RG_MIN(100, (RG_BATT_CALC_VOLTAGE(adc) - 3.5f) / (4.2f - 3.5f) * 100))
-#define RG_BATT_CALC_VOLTAGE(adc)   ((adc) * 2.f)
-#define RG_BATT_ADC_CHAN            ADC1_CHANNEL_0
+#define RG_BATT_ADC_CHANNEL         ADC1_CHANNEL_0
+#define RG_BATT_MULTIPLIER          2.0f
+#define RG_BATT_VOLT_MIN            3.5f
+#define RG_BATT_VOLT_MAX            4.2f
 
-// LED
+// Status LED
 #define RG_GPIO_LED                 GPIO_NUM_2
 
 // I2C BUS
