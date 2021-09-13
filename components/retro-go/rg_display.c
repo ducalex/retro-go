@@ -365,9 +365,7 @@ static inline uint blend_pixels(uint a, uint b)
     uint v = (rv << 11) | (gv << 5) | (bv);
 
     // Back to Big-Endian
-    v = (v << 8) | (v >> 8);
-
-    return v;
+    return (v << 8) | (v >> 8);
 }
 
 static inline void bilinear_filter(uint16_t *line_buffer, int top, int left, int width, int height)

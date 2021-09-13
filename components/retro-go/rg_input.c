@@ -18,7 +18,7 @@ static inline uint32_t gamepad_read(void)
 {
     uint32_t state = 0;
 
-#if RG_DRIVER_GAMEPAD == 1    // GPIO
+#if RG_GAMEPAD_DRIVER == 1    // GPIO
 
     int joyX = adc1_get_raw(RG_GPIO_GAMEPAD_X);
     int joyY = adc1_get_raw(RG_GPIO_GAMEPAD_Y);
@@ -35,9 +35,9 @@ static inline uint32_t gamepad_read(void)
     if (!gpio_get_level(RG_GPIO_GAMEPAD_A))      state |= GAMEPAD_KEY_A;
     if (!gpio_get_level(RG_GPIO_GAMEPAD_B))      state |= GAMEPAD_KEY_B;
 
-#elif RG_DRIVER_GAMEPAD == 2  // Serial
+#elif RG_GAMEPAD_DRIVER == 2  // Serial
 
-#elif RG_DRIVER_GAMEPAD == 3  // I2C
+#elif RG_GAMEPAD_DRIVER == 3  // I2C
 
     uint8_t data[5];
     if (rg_i2c_read(0x20, -1, &data, 5))
@@ -102,7 +102,7 @@ void rg_input_init(void)
     if (input_initialized)
         return;
 
-#if RG_DRIVER_GAMEPAD == 1    // GPIO
+#if RG_GAMEPAD_DRIVER == 1    // GPIO
 
     const char *driver = "GPIO";
 
@@ -123,7 +123,7 @@ void rg_input_init(void)
     gpio_set_direction(RG_GPIO_GAMEPAD_B, GPIO_MODE_INPUT);
     gpio_set_pull_mode(RG_GPIO_GAMEPAD_B, GPIO_PULLUP_ONLY);
 
-#elif RG_DRIVER_GAMEPAD == 2  // Serial
+#elif RG_GAMEPAD_DRIVER == 2  // Serial
 
     const char *driver = "SERIAL";
 
@@ -131,7 +131,7 @@ void rg_input_init(void)
     gpio_set_direction(RG_GPIO_GAMEPAD_LATCH, GPIO_MODE_OUTPUT);
     gpio_set_direction(RG_GPIO_GAMEPAD_DATA, GPIO_MODE_INPUT);
 
-#elif RG_DRIVER_GAMEPAD == 3  // I2C
+#elif RG_GAMEPAD_DRIVER == 3  // I2C
 
     const char *driver = "MRGC-I2C";
 

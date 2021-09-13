@@ -31,13 +31,10 @@
 
 // Target definition
 #define RG_TARGET_NAME             "MRGC-G32"
+#define RG_TARGET_MRGC_G32
 
-// Driver selection
-#define RG_DRIVER_BATTERY           2   // 1 = ADC, 2 = MCP23008
-#define RG_DRIVER_GAMEPAD           3   // 1 = GPIO, 2 = Serial, 3 = MCP23008
-#define RG_DRIVER_SDCARD            2   // 1 = SDSPI, 2 = SDMMC
-
-// Settings
+// Storage and Settings
+#define RG_STORAGE_DRIVER           2   // 1 = SDSPI, 2 = SDMMC, 3 = USB
 #define RG_SETTINGS_USE_NVS         0
 
 // Audio
@@ -45,18 +42,20 @@
 #define RG_AUDIO_USE_EXT_DAC        1
 
 // Video
-#define RG_SCREEN_TYPE              (0)
-#define RG_SCREEN_WIDTH             (240)
-#define RG_SCREEN_HEIGHT            (216)
-#define RG_SCREEN_ROTATE            (0)
+#define RG_SCREEN_TYPE              0
+#define RG_SCREEN_WIDTH             320 // 240
+#define RG_SCREEN_HEIGHT            240 // 220
+#define RG_SCREEN_ROTATE            0
 
-// Battery ADC
-#define RG_BATT_MULTIPLIER          2.0f
-#define RG_BATT_VOLT_MIN            3.5f
-#define RG_BATT_VOLT_MAX            4.2f
+// Input
+#define RG_GAMEPAD_DRIVER           3   // 1 = ODROID-GO, 2 = Serial, 3 = MRGC-IO
+// #define RG_BATT_ADC_CHANNEL         ADC1_CHANNEL_0
+#define RG_BATT_MULTIPLIER          4.0f
+#define RG_BATT_VOLT_MIN            7.0f
+#define RG_BATT_VOLT_MAX            8.4f
 
 // Status LED
-#define RG_GPIO_LED                 GPIO_NUM_NC
+// #define RG_GPIO_LED                 GPIO_NUM_NC
 
 // I2C BUS
 #define RG_GPIO_I2C_SDA             GPIO_NUM_21

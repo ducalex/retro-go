@@ -36,7 +36,7 @@ static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
     if (use_led)
         rg_system_set_led(1);
 
-#if RG_DRIVER_SDCARD == 1
+#if RG_STORAGE_DRIVER == 1
     esp_err_t ret = sdspi_host_do_transaction(slot, cmdinfo);
 #else
     esp_err_t ret = sdmmc_host_do_transaction(slot, cmdinfo);
@@ -60,7 +60,7 @@ bool rg_sdcard_mount(void)
 
     esp_err_t err = ESP_FAIL;
 
-#if RG_DRIVER_SDCARD == 1
+#if RG_STORAGE_DRIVER == 1
 
     sdmmc_host_t host_config = SDSPI_HOST_DEFAULT();
     host_config.slot = HSPI_HOST;
@@ -78,7 +78,7 @@ bool rg_sdcard_mount(void)
     slot_config.gpio_sck  = RG_GPIO_SD_CLK;
     slot_config.gpio_cs = RG_GPIO_SD_CS;
 
-#elif RG_DRIVER_SDCARD == 2
+#elif RG_STORAGE_DRIVER == 2
 
     sdmmc_host_t host_config = SDMMC_HOST_DEFAULT();
     host_config.flags = SDMMC_HOST_FLAG_1BIT;
@@ -99,17 +99,15 @@ bool rg_sdcard_mount(void)
 
     err = esp_vfs_fat_sdmmc_mount(RG_BASE_PATH, &host_config, &slot_config, &mount_config, &card);
 
-    if (err == ESP_OK)
+    if (err != ESP_OK)
     {
-        RG_LOGI("SD Card mounted. serial=%08X\n", card->cid.serial);
-        return true;
-    }
-    else
-    {
-        RG_LOGE("SD Card mounting failed. err=0x%x\n", err);
+        RG_LOGE("SD Card mounting failed. driver=%d, err=0x%x\n", RG_STORAGE_DRIVER, err);
         card = NULL;
         return false;
     }
+
+    RG_LOGI("SD Card mounted. driver=%d, serial=%08X\n", RG_STORAGE_DRIVER, card->cid.serial);
+    return true;
 }
 
 bool rg_sdcard_unmount(void)

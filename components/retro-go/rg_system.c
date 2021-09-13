@@ -299,8 +299,9 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
         app.handlers = *handlers;
 
     // Status LED
-    if (RG_GPIO_LED != GPIO_NUM_NC)
+    #ifdef RG_GPIO_LED
         gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
+    #endif
     rg_system_set_led(0);
 
     // sdcard must be first because it fails if the SPI bus is already initialized
@@ -739,8 +740,9 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
 
 void rg_system_set_led(int value)
 {
-    if (RG_GPIO_LED != GPIO_NUM_NC)
+    #ifdef RG_GPIO_LED
         gpio_set_level(RG_GPIO_LED, value);
+    #endif
     ledValue = value;
 }
 

@@ -2,26 +2,24 @@
 
 // Target definition
 #define RG_TARGET_NAME             "ODROID-GO"
-
-// Driver selection
-#define RG_DRIVER_BATTERY           1   // 1 = ADC, 2 = MCP23008
-#define RG_DRIVER_GAMEPAD           1   // 1 = GPIO, 2 = Serial, 3 = MCP23008
-#define RG_DRIVER_SDCARD            1   // 1 = SDSPI, 2 = SDMMC
+#define RG_TARGET_ODROID_GO
 
 // Storage and Settings
+#define RG_STORAGE_DRIVER           2   // 1 = SDSPI, 2 = SDMMC, 3 = USB
 #define RG_SETTINGS_USE_NVS         0
 
 // Audio
-#define RG_AUDIO_USE_SPEAKER        0
+#define RG_AUDIO_USE_SPEAKER        1
 #define RG_AUDIO_USE_EXT_DAC        1
 
 // Video
-#define RG_SCREEN_TYPE              (0)
-#define RG_SCREEN_WIDTH             (320)
-#define RG_SCREEN_HEIGHT            (240)
-#define RG_SCREEN_ROTATE            (0)
+#define RG_SCREEN_TYPE              0
+#define RG_SCREEN_WIDTH             320
+#define RG_SCREEN_HEIGHT            240
+#define RG_SCREEN_ROTATE            0
 
-// Battery ADC
+// Input
+#define RG_GAMEPAD_DRIVER           3   // 1 = ODROID-GO, 2 = Serial, 3 = MRGC-IO
 #define RG_BATT_ADC_CHANNEL         ADC1_CHANNEL_0
 #define RG_BATT_MULTIPLIER          2.0f
 #define RG_BATT_VOLT_MIN            3.5f
