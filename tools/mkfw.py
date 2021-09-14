@@ -8,28 +8,34 @@ def readfile(filepath):
     except FileNotFoundError as err:
         exit("\nERROR: Unable to open partition file '%s' !\n" % err.filename)
 
-if len(sys.argv) < 4:
+if len(sys.argv) < 9:
     exit("usage: mkfw.py output_file.fw 'description' tile.raw type subtype size label file.bin "
          "[type subtype size label file.bin, ...]")
 
-fw_name = sys.argv[1]
+args = sys.argv[1:]
 
-fw_data = struct.pack(
-    "<24s40s8256s", b"ODROIDGO_FIRMWARE_V00_01", sys.argv[2].encode(), readfile(sys.argv[3])
-    # "<22s40s8256s", b"ESPLAY_FIRMWARE_V00_01", sys.argv[2].encode(), readfile(sys.argv[3])
-)
+try:
+    args.remove("--esplay")
+    fw_head = b"ESPLAY_FIRMWARE_V00_01"
+    fw_pack = "<22s40s8256s"
+except:
+    fw_head = b"ODROIDGO_FIRMWARE_V00_01"
+    fw_pack = "<24s40s8256s"
 
+fw_name = args.pop(0)
+fw_desc = args.pop(0)
+fw_tile = args.pop(0)
 fw_size = 0
 fw_part = 0
-pos = 4
 
-while pos < len(sys.argv):
-    partype = int(sys.argv[pos + 0], 0)
-    subtype = int(sys.argv[pos + 1], 0)
-    size = int(sys.argv[pos + 2], 0)
-    label = sys.argv[pos + 3]
-    filename = sys.argv[pos + 4]
-    pos += 5
+fw_data = struct.pack(fw_pack, fw_head, fw_desc.encode(), readfile(fw_tile))
+
+while len(args) >= 5:
+    partype = int(args.pop(0), 0)
+    subtype = int(args.pop(0), 0)
+    size = int(args.pop(0), 0)
+    label = args.pop(0)
+    filename = args.pop(0)
 
     if not subtype:
         subtype = 16 + fw_part # OTA starts at 16

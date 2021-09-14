@@ -10,12 +10,14 @@ extern "C" {
 #include <stdint.h>
 #include <stdio.h>
 
-#if defined(RG_TARGET_ODROID_GO) || 1
+#if defined(RG_TARGET_ODROID_GO)
     #include "targets/odroid-go.h"
 #elif defined(RG_TARGET_MRGC_G32)
     #include "targets/mrgc-g32.h"
 #else
-    #error "Target device not defined"
+    #warning "No target defined. Defaulting to ODROID-GO."
+    #include "targets/odroid-go.h"
+    #define RG_TARGET_ODROID_GO
 #endif
 
 #include "rg_audio.h"

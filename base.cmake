@@ -28,4 +28,14 @@ macro(rg_setup_compile_options)
     if($ENV{ENABLE_NETPLAY})
         component_compile_options(-DENABLE_NETPLAY)
     endif()
+
+    # Is there a way to simply import all RG_TARGET_* ?
+    if($ENV{RG_TARGET_MRGC_G32})
+        component_compile_options(-DRG_TARGET_MRGC_G32)
+    endif()
+
+    if($ENV{RG_TARGET_ODROID_GO})
+        component_compile_options(-DRG_TARGET_ODROID_GO)
+    endif()
+
 endmacro()

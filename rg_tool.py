@@ -110,7 +110,7 @@ def analyze_profile(frames):
         debug_print("")
 
 
-def build_firmware(targets, shrink=False):
+def build_firmware(targets, shrink=False, device_type=None):
     os.chdir(PRJ_PATH)
     args = [
         sys.executable,
@@ -119,6 +119,10 @@ def build_firmware(targets, shrink=False):
         ("%s %s" % (PROJECT_NAME, PROJECT_VER)),
         PROJECT_TILE
     ]
+
+    if device_type in ["mrgc-g32", "esplay"]:
+        args.append("--esplay")
+
     for target in targets:
         part = PROJECT_APPS[target]
         size = 0 if shrink else part[1]
@@ -129,25 +133,29 @@ def build_firmware(targets, shrink=False):
     subprocess.run(args, check=True)
 
 
-def clean_app(target, fullclean=False):
+def clean_app(target):
     print("Cleaning up app '%s'..." % target)
     try:
-        if fullclean:
-            try: os.unlink(os.path.join(PRJ_PATH, target, "sdkconfig"))
-            except: pass
+        os.unlink(os.path.join(PRJ_PATH, target, "sdkconfig"))
+        os.unlink(os.path.join(PRJ_PATH, target, "sdkconfig.old"))
+    except:
+        pass
+    try:
         shutil.rmtree(os.path.join(PRJ_PATH, target, "build"))
     except:
         pass
     print("Done.\n")
 
 
-def build_app(target, build_type=None, with_netplay=False):
+def build_app(target, build_type=None, with_netplay=False, build_target=None):
     # To do: clean up if any of the flags changed since last build
     print("Building app '%s'" % target)
     os.chdir(os.path.join(PRJ_PATH, target))
     os.putenv("ENABLE_PROFILING", "1" if build_type == "profile" else "0")
     os.putenv("ENABLE_NETPLAY", "1" if with_netplay else "0")
     os.putenv("PROJECT_VER", PROJECT_VER)
+    if build_target:
+        os.putenv("RG_TARGET_" + re.sub(r'[^A-Z0-9]', '_', build_target.upper()), "1")
     subprocess.run("idf.py app", shell=True, check=True)
 
     print("Patching esp_image_header_t to skip sha256 on boot...")
@@ -252,7 +260,7 @@ def monitor_app(target, port, baudrate=115200):
 parser = argparse.ArgumentParser(description="Retro-Go build tool")
 parser.add_argument(
 # To do: Learn to use subcommands instead...
-    "command", choices=["build-fw", "build", "clean", "fullclean", "flash", "monitor", "run"],
+    "command", choices=["build-fw", "mkfw", "build", "clean", "flash", "monitor", "run"],
 )
 parser.add_argument(
     "apps", nargs="*", default="all", choices=["all"] + list(PROJECT_APPS.keys())
@@ -261,7 +269,7 @@ parser.add_argument(
     "--shrink", action="store_const", const=True, help="Reduce partition size where possible"
 )
 parser.add_argument(
-    "--target", default="odroid-go", choices=["odroid-go", "esp32s2", "gbc32"], help="Device to target"
+    "--target", default="odroid-go", choices=["odroid-go", "esp32s2", "mrgc-g32"], help="Device to target"
 )
 parser.add_argument(
     "--build-type", default="release", choices=["release", "debug", "profile"], help="Build type"
@@ -285,38 +293,30 @@ command = args.command
 apps = args.apps if "all" not in args.apps else PROJECT_APPS.keys()
 
 
-if command == "build-fw":
-    for target in apps:
-        clean_app(target, True)
-        build_app(target, args.build_type, args.with_netplay)
-    build_firmware(apps, args.shrink)
+if command in ["clean", "build-fw"]:
+    print("=== Step: Cleaning ===\n")
+    for app in apps:
+        clean_app(app)
 
-if command == "build":
-    for target in apps:
-        build_app(target, args.build_type, args.with_netplay)
+if command in ["build", "build-fw", "run"]:
+    print("=== Step: Building ===\n")
+    for app in apps:
+        build_app(app, args.build_type, args.with_netplay, args.target)
 
-if command == "fullclean":
-    for target in apps:
-        clean_app(target, True)
+if command in ["mkfw", "build-fw"]:
+    print("=== Step: Packing ===\n")
+    build_firmware(apps, args.shrink, args.target)
 
-if command == "clean":
-    for target in apps:
-        clean_app(target, False)
+if command in ["flash", "run"]:
+    print("=== Step: Flashing ===\n")
+    for app in apps:
+        flash_app(app, args.port, find_app(app, args.offset, args.app_offset))
 
-if command == "flash":
-    for target in apps:
-        flash_app(target, args.port, find_app(target, args.offset, args.app_offset))
-
-if command == "monitor":
+if command in ["monitor", "run"]:
+    print("=== Step: Monitoring ===\n")
     if len(apps) == 1:
         monitor_app(apps[0], args.port)
     else:
         monitor_app("dummy", args.port)
-
-if command == "run":
-    build_app(apps[0], args.build_type, args.with_netplay)
-    flash_app(apps[0], args.port, find_app(apps[0], args.offset, args.app_offset))
-    monitor_app(apps[0], args.port)
-
 
 print("All done!")

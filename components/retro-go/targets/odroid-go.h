@@ -2,7 +2,6 @@
 
 // Target definition
 #define RG_TARGET_NAME             "ODROID-GO"
-#define RG_TARGET_ODROID_GO
 
 // Storage and Settings
 #define RG_STORAGE_DRIVER           2   // 1 = SDSPI, 2 = SDMMC, 3 = USB

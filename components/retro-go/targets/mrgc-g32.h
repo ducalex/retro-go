@@ -31,7 +31,6 @@
 
 // Target definition
 #define RG_TARGET_NAME             "MRGC-G32"
-#define RG_TARGET_MRGC_G32
 
 // Storage and Settings
 #define RG_STORAGE_DRIVER           2   // 1 = SDSPI, 2 = SDMMC, 3 = USB
