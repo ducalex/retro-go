@@ -155,7 +155,7 @@ def build_app(target, build_type=None, with_netplay=False, build_target=None):
     os.putenv("ENABLE_NETPLAY", "1" if with_netplay else "0")
     os.putenv("PROJECT_VER", PROJECT_VER)
     if build_target:
-        os.putenv("RG_TARGET_" + re.sub(r'[^A-Z0-9]', '_', build_target.upper()), "1")
+        os.putenv("RG_TARGET", re.sub(r'[^A-Z0-9]', '_', build_target.upper()))
     subprocess.run("idf.py app", shell=True, check=True)
 
     print("Patching esp_image_header_t to skip sha256 on boot...")
