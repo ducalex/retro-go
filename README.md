@@ -107,6 +107,7 @@ An up to date list of incompatible/broken games can be found on the [ODROID-GO f
 # Future plans / Feature requests
 - Cheats support (In progress)
 - Famicom Disk System (In progress)
+- SGB enhanced palette support (In progress)
 - SNES emulation (Stalled)
 - Netplay (Stalled)
 - Multiple save states

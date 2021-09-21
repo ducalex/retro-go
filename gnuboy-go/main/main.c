@@ -113,10 +113,12 @@ static dialog_return_t sram_save_now_cb(dialog_option_t *option, dialog_event_t 
     {
         rg_system_set_led(1);
 
-        if (sram_save(sramFile, false) != 0)
-        {
-            rg_gui_alert("Save failed!", sramFile);
-        }
+        int ret = sram_save(sramFile, false);
+
+        if (ret == -1)
+            rg_gui_alert("Nothing to save", "Cart has no Battery or SRAM!");
+        else if (ret < 0)
+            rg_gui_alert("Save write failed!", sramFile);
 
         rg_system_set_led(0);
 
