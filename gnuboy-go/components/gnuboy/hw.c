@@ -376,9 +376,9 @@ static inline void mbc_write(uint a, byte b)
 		case 0x4000:
 		case 0x5000:
 			if (cart.has_rumble)
-				cart.rambank = b & 0x0F;
+				cart.rambank = b & 0x7;
 			else
-				cart.rambank = b & ~8;
+				cart.rambank = b & 0xF;
 			break;
 		case 0x6000:
 		case 0x7000:
