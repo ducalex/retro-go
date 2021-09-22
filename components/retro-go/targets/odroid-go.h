@@ -4,7 +4,7 @@
 #define RG_TARGET_NAME             "ODROID-GO"
 
 // Storage and Settings
-#define RG_STORAGE_DRIVER           2   // 1 = SDSPI, 2 = SDMMC, 3 = USB
+#define RG_STORAGE_DRIVER           1   // 1 = SDSPI, 2 = SDMMC, 3 = USB
 #define RG_SETTINGS_USE_NVS         0
 
 // Audio
@@ -18,7 +18,7 @@
 #define RG_SCREEN_ROTATE            0
 
 // Input
-#define RG_GAMEPAD_DRIVER           3   // 1 = ODROID-GO, 2 = Serial, 3 = MRGC-IO
+#define RG_GAMEPAD_DRIVER           1   // 1 = ODROID-GO, 2 = Serial, 3 = MRGC-IO
 #define RG_BATT_ADC_CHANNEL         ADC1_CHANNEL_0
 #define RG_BATT_MULTIPLIER          2.0f
 #define RG_BATT_VOLT_MIN            3.5f

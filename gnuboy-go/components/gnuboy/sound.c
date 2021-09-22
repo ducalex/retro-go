@@ -44,17 +44,16 @@ static const int freqtab[8] =
 gb_pcm_t pcm;
 gb_snd_t snd;
 
-#define RATE (snd.rate)
 #define WAVE (snd.wave) /* hw.ioregs+0x30 */
 #define S1 (snd.ch[0])
 #define S2 (snd.ch[1])
 #define S3 (snd.ch[2])
 #define S4 (snd.ch[3])
 
-#define s1_freq() {int d = 2048 - (((R_NR14&7)<<8) + R_NR13); S1.freq = (RATE > (d<<4)) ? 0 : (RATE << 17)/d;}
-#define s2_freq() {int d = 2048 - (((R_NR24&7)<<8) + R_NR23); S2.freq = (RATE > (d<<4)) ? 0 : (RATE << 17)/d;}
-#define s3_freq() {int d = 2048 - (((R_NR34&7)<<8) + R_NR33); S3.freq = (RATE > (d<<3)) ? 0 : (RATE << 21)/d;}
-#define s4_freq() {S4.freq = (freqtab[R_NR43&7] >> (R_NR43 >> 4)) * RATE; if (S4.freq >> 18) S4.freq = 1<<18;}
+#define s1_freq() {int d = 2048 - (((R_NR14&7)<<8) + R_NR13); S1.freq = (snd.rate > (d<<4)) ? 0 : (snd.rate << 17)/d;}
+#define s2_freq() {int d = 2048 - (((R_NR24&7)<<8) + R_NR23); S2.freq = (snd.rate > (d<<4)) ? 0 : (snd.rate << 17)/d;}
+#define s3_freq() {int d = 2048 - (((R_NR34&7)<<8) + R_NR33); S3.freq = (snd.rate > (d<<3)) ? 0 : (snd.rate << 21)/d;}
+#define s4_freq() {S4.freq = (freqtab[R_NR43&7] >> (R_NR43 >> 4)) * snd.rate; if (S4.freq >> 18) S4.freq = 1<<18;}
 
 
 static inline void s1_init()
@@ -163,7 +162,7 @@ void sound_off()
 void sound_reset(bool hard)
 {
 	memset(&snd, 0, sizeof snd);
-	memcpy(WAVE, hw.cgb ? cgbwave : dmgwave, 16);
+	memcpy(WAVE, hw.hwtype == GB_HW_CGB ? cgbwave : dmgwave, 16);
 	memcpy(hw.ioregs + 0x30, WAVE, 16);
 	snd.rate = pcm.hz ? (int)(((1<<21) / (double)pcm.hz) + 0.5) : 0;
 	pcm.pos = 0;
@@ -173,10 +172,10 @@ void sound_reset(bool hard)
 
 void sound_mix()
 {
-	if (!RATE || snd.cycles < RATE)
+	if (!snd.rate || snd.cycles < snd.rate)
 		return;
 
-	for (; snd.cycles >= RATE; snd.cycles -= RATE)
+	for (; snd.cycles >= snd.rate; snd.cycles -= snd.rate)
 	{
 		int l = 0;
 		int r = 0;
@@ -186,10 +185,10 @@ void sound_mix()
 			int s = sqwave[R_NR11>>6][(S1.pos>>18)&7] & S1.envol;
 			S1.pos += S1.freq;
 
-			if ((R_NR14 & 64) && ((S1.cnt += RATE) >= S1.len))
+			if ((R_NR14 & 64) && ((S1.cnt += snd.rate) >= S1.len))
 				S1.on = 0;
 
-			if (S1.enlen && (S1.encnt += RATE) >= S1.enlen)
+			if (S1.enlen && (S1.encnt += snd.rate) >= S1.enlen)
 			{
 				S1.encnt -= S1.enlen;
 				S1.envol += S1.endir;
@@ -197,7 +196,7 @@ void sound_mix()
 				if (S1.envol > 15) S1.envol = 15;
 			}
 
-			if (S1.swlen && (S1.swcnt += RATE) >= S1.swlen)
+			if (S1.swlen && (S1.swcnt += snd.rate) >= S1.swlen)
 			{
 				S1.swcnt -= S1.swlen;
 				int f = S1.swfreq;
@@ -227,10 +226,10 @@ void sound_mix()
 			int s = sqwave[R_NR21>>6][(S2.pos>>18)&7] & S2.envol;
 			S2.pos += S2.freq;
 
-			if ((R_NR24 & 64) && ((S2.cnt += RATE) >= S2.len))
+			if ((R_NR24 & 64) && ((S2.cnt += snd.rate) >= S2.len))
 				S2.on = 0;
 
-			if (S2.enlen && (S2.encnt += RATE) >= S2.enlen)
+			if (S2.enlen && (S2.encnt += snd.rate) >= S2.enlen)
 			{
 				S2.encnt -= S2.enlen;
 				S2.envol += S2.endir;
@@ -254,7 +253,7 @@ void sound_mix()
 			s -= 8;
 			S3.pos += S3.freq;
 
-			if ((R_NR34 & 64) && ((S3.cnt += RATE) >= S3.len))
+			if ((R_NR34 & 64) && ((S3.cnt += snd.rate) >= S3.len))
 				S3.on = 0;
 
 			if (R_NR32 & 96)
@@ -278,10 +277,10 @@ void sound_mix()
 			s = (-s) & S4.envol;
 			S4.pos += S4.freq;
 
-			if ((R_NR44 & 64) && ((S4.cnt += RATE) >= S4.len))
+			if ((R_NR44 & 64) && ((S4.cnt += snd.rate) >= S4.len))
 				S4.on = 0;
 
-			if (S4.enlen && (S4.encnt += RATE) >= S4.enlen)
+			if (S4.enlen && (S4.encnt += snd.rate) >= S4.enlen)
 			{
 				S4.encnt -= S4.enlen;
 				S4.envol += S4.endir;
