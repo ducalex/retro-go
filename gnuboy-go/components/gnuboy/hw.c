@@ -123,7 +123,7 @@ static void hw_dma(uint b)
 }
 
 
-static void hw_hdma_cmd(byte c)
+static void hw_hdma(byte c)
 {
 	/* Begin or cancel HDMA */
 	if ((hw.hdma|c) & 0x80)
@@ -152,25 +152,6 @@ static void hw_hdma_cmd(byte c)
 	R_HDMA4 = dst & 0xF0;
 	R_HDMA5 = 0xFF;
 }
-
-
-void hw_hdma()
-{
-	uint src = (R_HDMA1 << 8) | (R_HDMA2 & 0xF0);
-	uint dst = 0x8000 | ((R_HDMA3 & 0x1F) << 8) | (R_HDMA4 & 0xF0);
-	uint cnt = 16;
-
-	while (cnt--)
-		writeb(dst++, readb(src++));
-
-	R_HDMA1 = src >> 8;
-	R_HDMA2 = src & 0xF0;
-	R_HDMA3 = (dst >> 8) & 0x1F;
-	R_HDMA4 = dst & 0xF0;
-	R_HDMA5--;
-	hw.hdma--;
-}
-
 
 /*
  * pad_refresh updates the P1 register from the pad states, generating
@@ -248,7 +229,7 @@ void hw_vblank(void)
 {
 	hw.frames++;
 	rtc_tick();
-	sound_mix();
+	sound_emulate();
 }
 
 
@@ -302,7 +283,8 @@ void hw_updatemap(void)
 	hw.rmap[0xC] = hw.wmap[0xC] = hw.rambanks[0] - 0xC000;
 
 	// Work RAM (GBC)
-	hw.rmap[0xD] = hw.wmap[0xD] = hw.cgb ? (hw.rambanks[(R_SVBK & 0x7) ?: 1] - 0xD000) : NULL;
+	if (hw.hwtype == GB_HW_CGB)
+		hw.rmap[0xD] = hw.wmap[0xD] = hw.rambanks[(R_SVBK & 0x7) ?: 1] - 0xD000;
 
 	// Mirror of 0xC000
 	hw.rmap[0xE] = hw.wmap[0xE] = hw.rambanks[0] - 0xE000;
@@ -509,7 +491,7 @@ void hw_write(uint a, byte b)
 		else
 		{
 			int r = a & 0xFF;
-			if (!hw.cgb)
+			if (hw.hwtype != GB_HW_CGB)
 			{
 				switch (r)
 				{
@@ -581,7 +563,7 @@ void hw_write(uint a, byte b)
 				break;
 			case RI_STAT:
 				R_STAT = (R_STAT & 0x07) | (b & 0x78);
-				if (!hw.cgb && !(R_STAT & 2)) /* DMG STAT write bug => interrupt */
+				if (hw.hwtype != GB_HW_CGB && !(R_STAT & 2)) /* DMG STAT write bug => interrupt */
 					hw_interrupt(IF_STAT, 1);
 				lcd_stat_trigger();
 				break;
@@ -632,7 +614,7 @@ void hw_write(uint a, byte b)
 				REG(r) = b;
 				break;
 			case RI_HDMA5:
-				hw_hdma_cmd(b);
+				hw_hdma(b);
 				break;
 			}
 		}
@@ -657,7 +639,7 @@ byte hw_read(uint a)
 		{
 			if (a < 0x100)
 				return hw.bios[a];
-			if (hw.cgb && a >= 0x200)
+			if (a >= 0x200 && hw.hwtype == GB_HW_CGB)
 				return hw.bios[a];
 		}
 		// fall through
@@ -698,7 +680,7 @@ byte hw_read(uint a)
 		else if (a >= 0xFF10 && a <= 0xFF3F)
 		{
 			// Make sure sound emulation is all caught up
-			sound_mix();
+			sound_emulate();
 		}
 		// High RAM: 0xFF80 - 0xFFFE
 		// else if ((a & 0xFF80) == 0xFF80)

@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#define GB_WIDTH (160)
+#define GB_HEIGHT (144)
+
 #define MESSAGE_ERROR(x, ...) printf("!! %s: " x, __func__, ## __VA_ARGS__)
 #define MESSAGE_INFO(x, ...) printf("%s: " x, __func__, ## __VA_ARGS__)
 // #define MESSAGE_DEBUG(x, ...) printf("> %s: " x, __func__, ## __VA_ARGS__)
@@ -22,7 +25,7 @@ typedef enum
 	GB_HW_DMG,
 	GB_HW_CGB,
 	GB_HW_SGB,
-} gb_hw_type_t;
+} gb_hwtype_t;
 
 typedef enum
 {
@@ -34,18 +37,17 @@ typedef enum
 	GB_PAD_B = 0x20,
 	GB_PAD_SELECT = 0x40,
 	GB_PAD_START = 0x80,
-} gb_pad_btn_t;
+} gb_padbtn_t;
 
 typedef enum
 {
 	GB_PIXEL_PALETTED,
 	GB_PIXEL_565_LE,
 	GB_PIXEL_565_BE,
-} gb_pixel_format_t;
+} gb_pixformat_t;
 
 typedef enum
 {
-	GB_PALETTE_GBCBIOS,
 	GB_PALETTE_DEFAULT,
 	GB_PALETTE_2BGRAYS,
 	GB_PALETTE_LINKSAW,
@@ -55,10 +57,12 @@ typedef enum
 	GB_PALETTE_MEGAMAN,
 	GB_PALETTE_POKEMON,
 	GB_PALETTE_DMGREEN,
+	GB_PALETTE_GBC,
+	GB_PALETTE_SGB,
 	GB_PALETTE_COUNT,
 } gb_palette_t;
 
-int  gnuboy_init(void);
+int  gnuboy_init(int samplerate, bool stereo, int pixformat, void *vblank_func);
 int  gnuboy_load_bios(const char *file);
 void gnuboy_free_bios(void);
 int  gnuboy_load_rom(const char *file);
@@ -66,10 +70,13 @@ void gnuboy_free_rom(void);
 void gnuboy_reset(bool hard);
 void gnuboy_run(bool draw);
 void gnuboy_die(const char *fmt, ...);
-int  gnuboy_get_hwtype(void);
-void gnuboy_set_hwtype(int type);
 bool gnuboy_sram_dirty(void);
+void gnuboy_load_bank(int);
+void gnuboy_set_pad(uint);
+
 void gnuboy_get_time(int *day, int *hour, int *minute, int *second);
 void gnuboy_set_time(int day, int hour, int minute, int second);
-void gnuboy_load_bank(int);
-void gnuboy_set_pad(un32);
+int  gnuboy_get_hwtype(void);
+void gnuboy_set_hwtype(gb_hwtype_t type);
+int  gnuboy_get_palette(void);
+void gnuboy_set_palette(gb_palette_t pal);

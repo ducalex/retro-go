@@ -2,9 +2,6 @@
 
 #include "gnuboy.h"
 
-#define GB_WIDTH (160)
-#define GB_HEIGHT (144)
-
 typedef struct
 {
 	byte y;
@@ -48,14 +45,13 @@ typedef struct
 		int colorize;
 		int format;
 		int enabled;
-		void (*blit_func)();
 	} out;
 } gb_lcd_t;
 
 extern gb_lcd_t lcd;
 
 void lcd_reset(bool hard);
-void lcd_emulate(void);
+void lcd_emulate(int cycles);
 void lcd_rebuildpal(void);
 void lcd_stat_trigger(void);
 void lcd_lcdc_change(byte b);

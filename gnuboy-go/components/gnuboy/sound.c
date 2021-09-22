@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdlib.h>
 #include "gnuboy.h"
 #include "sound.h"
 #include "cpu.h"
@@ -41,10 +42,8 @@ static const int freqtab[8] =
 	(1<<14)/7
 };
 
-gb_pcm_t pcm;
 gb_snd_t snd;
 
-#define WAVE (snd.wave) /* hw.ioregs+0x30 */
 #define S1 (snd.ch[0])
 #define S2 (snd.ch[1])
 #define S3 (snd.ch[2])
@@ -159,18 +158,38 @@ void sound_off()
 	sound_dirty();
 }
 
+void sound_init(int samplerate, bool stereo)
+{
+	snd = (gb_snd_t){
+		.samplerate = samplerate,
+		.stereo = stereo,
+		.rate = (int)(((1<<21) / (double)samplerate) + 0.5),
+		.cycles = 0,
+		.output = {
+			.buf = malloc(samplerate / 4),
+			.len = samplerate / 8,
+			.pos = 0,
+		},
+	};
+}
+
+void sound_advance(int cycles)
+{
+	snd.cycles += cycles;
+}
+
 void sound_reset(bool hard)
 {
-	memset(&snd, 0, sizeof snd);
-	memcpy(WAVE, hw.hwtype == GB_HW_CGB ? cgbwave : dmgwave, 16);
-	memcpy(hw.ioregs + 0x30, WAVE, 16);
-	snd.rate = pcm.hz ? (int)(((1<<21) / (double)pcm.hz) + 0.5) : 0;
-	pcm.pos = 0;
+	memset(snd.ch, 0, sizeof(snd.ch));
+	memcpy(snd.wave, hw.hwtype == GB_HW_CGB ? cgbwave : dmgwave, 16);
+	memcpy(hw.ioregs + 0x30, snd.wave, 16);
+	snd.cycles = 0;
+	snd.output.pos = 0;
 	sound_off();
 	R_NR52 = 0xF1;
 }
 
-void sound_mix()
+void sound_emulate(void)
 {
 	if (!snd.rate || snd.cycles < snd.rate)
 		return;
@@ -243,7 +262,7 @@ void sound_mix()
 
 		if (S3.on)
 		{
-			int s = WAVE[(S3.pos>>22) & 15];
+			int s = snd.wave[(S3.pos>>22) & 15];
 
 			if (S3.pos & (1<<21))
 				s &= 15;
@@ -296,40 +315,30 @@ void sound_mix()
 
 		l *= (R_NR50 & 0x07);
 		r *= ((R_NR50 & 0x70)>>4);
-		// l >>= 4;
-		// r >>= 4;
 
 		l <<= 4;
 		r <<= 4;
 
-		// if (l > 127) l = 127;
-		// else if (l < -128) l = -128;
-		// if (r > 127) r = 127;
-		// else if (r < -128) r = -128;
-
-		if (pcm.buf)
+		if (snd.output.buf == NULL)
 		{
-			if (pcm.pos >= pcm.len)
-			{
-				//pcm_submit();
-				MESSAGE_ERROR("buffer overflow. (pcm.len=%d)\n", pcm.len);
-				//abort();
-			}
-			else if (pcm.stereo)
-			{
-				pcm.buf[pcm.pos++] = (n16)l; //+128;
-				pcm.buf[pcm.pos++] = (n16)r; //+128;
-			}
-			else pcm.buf[pcm.pos++] = (n16)((l+r)>>1); //+128;
+			MESSAGE_DEBUG("no audio buffer... (output.len=%d)\n", snd.output.len);
+		}
+		else if (snd.output.pos >= snd.output.len)
+		{
+			MESSAGE_ERROR("buffer overflow. (output.len=%d)\n", snd.output.len);
+			snd.output.pos = 0;
+		}
+		else if (snd.stereo)
+		{
+			snd.output.buf[snd.output.pos++] = (n16)l; //+128;
+			snd.output.buf[snd.output.pos++] = (n16)r; //+128;
+		}
+		else
+		{
+			snd.output.buf[snd.output.pos++] = (n16)((l+r)>>1); //+128;
 		}
 	}
 	R_NR52 = (R_NR52&0xf0) | S1.on | (S2.on<<1) | (S3.on<<2) | (S4.on<<3);
-}
-
-byte sound_read(byte r)
-{
-	sound_mix();
-	return REG(r);
 }
 
 void sound_write(byte r, byte b)
@@ -339,13 +348,15 @@ void sound_write(byte r, byte b)
 
 	if ((r & 0xF0) == 0x30)
 	{
-		if (S3.on) sound_mix();
+		if (S3.on && snd.cycles >= snd.rate)
+			sound_emulate();
 		if (!S3.on)
-			WAVE[r-0x30] = hw.ioregs[r] = b;
+			snd.wave[r-0x30] = hw.ioregs[r] = b;
 		return;
 	}
 
-	sound_mix();
+	if (snd.cycles >= snd.rate)
+		sound_emulate();
 
 	switch (r)
 	{

@@ -8,10 +8,14 @@
 #include "sound.h"
 #include "lcd.h"
 
+static void (*vblank_callback)(void);
 
-int gnuboy_init(void)
+int gnuboy_init(int samplerate, bool stereo, int pixformat, void *vblank_func)
 {
-	gnuboy_reset(true);
+	sound_init(samplerate, stereo);
+	lcd.out.format = pixformat;
+	vblank_callback = vblank_func;
+	// gnuboy_reset(true);
 	return 0;
 }
 
@@ -51,7 +55,7 @@ void gnuboy_reset(bool hard)
 void gnuboy_run(bool draw)
 {
 	lcd.out.enabled = draw;
-	pcm.pos = 0;
+	snd.output.pos = 0;
 
 	/* FIXME: judging by the time specified this was intended
 	to emulate through vblank phase which is handled at the
@@ -66,11 +70,11 @@ void gnuboy_run(bool draw)
 	}
 
 	/* VBLANK BEGIN */
-	if (draw && lcd.out.blit_func) {
-		(lcd.out.blit_func)();
+	if (draw && vblank_callback) {
+		(vblank_callback)();
 	}
 
-    hw_vblank();
+	hw_vblank();
 
 	if (!(R_LCDC & 0x80)) {
 		/* LCDC operation stopped */
@@ -87,7 +91,7 @@ void gnuboy_run(bool draw)
 }
 
 
-void gnuboy_set_pad(un32 pad)
+void gnuboy_set_pad(uint pad)
 {
 	if (hw.pad != pad)
 	{
@@ -179,6 +183,9 @@ int gnuboy_load_rom(const char *file)
 		"MBC_HUC3", "MBC_MMM01", "INVALID", "INVALID",
 		"INVALID", "INVALID", "INVALID", "INVALID",
 	};
+	const char *hw_types[] = {
+		"DMG", "CGB", "SGB", "AGB", "???"
+	};
 
 	MESSAGE_INFO("Loading file: '%s'\n", file);
 
@@ -199,7 +206,12 @@ int gnuboy_load_rom(const char *file)
 	int romsize = header[0x0148];
 	int ramsize = header[0x0149];
 
-	hw.cgb = (header[0x0143] == 0x80 || header[0x0143] == 0xC0);
+	if (header[0x0143] == 0x80 || header[0x0143] == 0xC0)
+		hw.hwtype = GB_HW_CGB; // Game supports CGB mode so we go for that
+	else if (header[0x0146] == 0x03)
+		hw.hwtype = GB_HW_SGB; // Game supports SGB features
+	else
+		hw.hwtype = GB_HW_DMG; // Games supports DMG only
 
 	memcpy(&cart.checksum, header + 0x014E, 2);
 	memcpy(&cart.name, header + 0x0134, 16);
@@ -264,7 +276,7 @@ int gnuboy_load_rom(const char *file)
 	}
 
 	// Detect colorization palette that the real GBC would be using
-	if (!hw.cgb)
+	if (hw.hwtype != GB_HW_CGB)
 	{
 		//
 		// The following algorithm was adapted from visualboyadvance-m at
@@ -336,8 +348,8 @@ int gnuboy_load_rom(const char *file)
 		cart.colorize = col_palette_info[infoIdx];
 	}
 
-	MESSAGE_INFO("Cart loaded: name='%s', cgb=%d, mbc=%s, romsize=%dK, ramsize=%dK, colorize=%d\n",
-		cart.name, hw.cgb, mbc_names[cart.mbc], cart.romsize * 16, cart.ramsize * 8, cart.colorize);
+	MESSAGE_INFO("Cart loaded: name='%s', hw=%s, mbc=%s, romsize=%dK, ramsize=%dK, colorize=%d\n",
+		cart.name, hw_types[hw.hwtype], mbc_names[cart.mbc], cart.romsize * 16, cart.ramsize * 8, cart.colorize);
 
 	// Gameboy color games can be very large so we only load 1024K for faster boot
 	// Also 4/8MB games do not fully fit, our bank manager takes care of swapping.
@@ -417,13 +429,29 @@ void gnuboy_set_time(int day, int hour, int minute, int second)
 
 int gnuboy_get_hwtype(void)
 {
-	return hw.cgb ? GB_HW_CGB : GB_HW_DMG;
+	return hw.hwtype;
 }
 
 
-void gnuboy_set_hwtype(int type)
+void gnuboy_set_hwtype(gb_hwtype_t type)
 {
 	// nothing for now
+}
+
+
+int gnuboy_get_palette(void)
+{
+	return lcd.out.colorize;
+}
+
+
+void gnuboy_set_palette(gb_palette_t pal)
+{
+	if (lcd.out.colorize != pal)
+	{
+		lcd.out.colorize = pal;
+		lcd_rebuildpal();
+	}
 }
 
 

@@ -9,9 +9,6 @@
 #include "../components/gnuboy/gnuboy.h"
 
 #define AUDIO_SAMPLE_RATE   (32000)
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 16 + 1)
-
-static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
 static rg_video_frame_t frames[2];
 static rg_video_frame_t *currentUpdate = &frames[0];
@@ -24,10 +21,6 @@ static long skipFrames = 20; // The 20 is to hide startup flicker in some games
 static const char *sramFile;
 static long autoSaveSRAM = 0;
 static long autoSaveSRAM_Timer = 0;
-
-#ifdef ENABLE_NETPLAY
-static bool netplay = false;
-#endif
 
 static const char *SETTING_SAVESRAM = "SaveSRAM";
 static const char *SETTING_PALETTE  = "Palette";
@@ -83,7 +76,7 @@ static bool reset_handler(bool hard)
 
 static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t event)
 {
-    int pal = lcd.out.colorize;
+    int pal = gnuboy_get_palette();
     int max = GB_PALETTE_COUNT - 1;
 
     if (event == RG_DIALOG_PREV)
@@ -92,17 +85,20 @@ static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t
     if (event == RG_DIALOG_NEXT)
         pal = pal < max ? pal + 1 : 0;
 
-    if (pal != lcd.out.colorize)
+    if (pal != gnuboy_get_palette())
     {
         rg_settings_set_app_int32(SETTING_PALETTE, pal);
-        lcd.out.colorize = pal;
-        lcd_rebuildpal();
+        gnuboy_set_palette(pal);
         gnuboy_run(true);
         usleep(50000);
     }
 
-    if (pal == 0) strcpy(option->value, "GBC");
-    else sprintf(option->value, "%d/%d", pal, max);
+    if (pal == GB_PALETTE_GBC)
+        strcpy(option->value, "GBC");
+    else if (pal == GB_PALETTE_SGB)
+        strcpy(option->value, "SGB");
+    else
+        sprintf(option->value, "%d/%d", pal + 1, max - 1);
 
     return RG_DIALOG_IGNORE;
 }
@@ -213,7 +209,7 @@ static dialog_return_t advanced_settings_cb(dialog_option_t *option, dialog_even
     return RG_DIALOG_IGNORE;
 }
 
-static void screen_blit(void)
+static void vblank_callback(void)
 {
     rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
 
@@ -264,8 +260,10 @@ void app_main(void)
     if (!rg_mkdir(rg_dirname(sramFile)))
         RG_LOGW("Unable to create SRAM folder...");
 
-    // Load ROM
+    // Initialize the emulator and load the ROM
+    gnuboy_init(AUDIO_SAMPLE_RATE, true, GB_PIXEL_565_BE, vblank_callback);
     gnuboy_load_rom(app->romPath);
+    gnuboy_set_palette(rg_settings_get_app_int32(SETTING_PALETTE, GB_PALETTE_GBC));
 
     // Load BIOS
     if (gnuboy_get_hwtype() == GB_HW_CGB)
@@ -273,31 +271,16 @@ void app_main(void)
     else
         gnuboy_load_bios(RG_BASE_PATH "/bios/gb_bios.bin");
 
-    // Video
-    lcd.out.buffer = currentUpdate->buffer;
-    lcd.out.colorize = rg_settings_get_app_int32(SETTING_PALETTE, 0);
-    lcd.out.blit_func = screen_blit;
-    lcd.out.format = GB_PIXEL_565_BE;
+    // Hard reset to have a clean slate
+    gnuboy_reset(true);
 
-    // Audio
-    pcm = (gb_pcm_t) {
-        .hz = AUDIO_SAMPLE_RATE,
-        .stereo = 1,
-        .len = AUDIO_BUFFER_LENGTH * 2, // count of 16bit samples (x2 for stereo)
-        .buf = (n16 *)&audioBuffer,
-        .pos = 0,
-    };
-
-    gnuboy_init();
-
+    // Load saved state or SRAM
     if (app->startAction == RG_START_ACTION_RESUME)
-    {
         rg_emu_load_state(0);
-    }
     else
-    {
         sram_load(sramFile);
-    }
+
+    // Ready!
 
     uint32_t joystick_old = -1;
     uint32_t joystick = 0;
@@ -387,7 +370,7 @@ void app_main(void)
 
         if (!app->speedupEnabled)
         {
-            rg_audio_submit(pcm.buf, pcm.pos >> 1);
+            rg_audio_submit(snd.output.buf, snd.output.pos >> 1);
         }
     }
 }

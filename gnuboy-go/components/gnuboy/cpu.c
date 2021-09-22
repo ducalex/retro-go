@@ -280,7 +280,7 @@ void cpu_reset(bool hard)
 
 	PC = hw.bios ? 0x0000 : 0x0100;
 	SP = 0xFFFE;
-	AF = hw.cgb ? 0x11B0 : 0x01B0;
+	AF = (hw.hwtype == GB_HW_CGB) ? 0x11B0 : 0x01B0;
 	BC = 0x0013;
 	DE = 0x00D8;
 	HL = 0x014D;
@@ -329,28 +329,6 @@ static inline void serial_advance(int cycles)
 			hw_interrupt(IF_SERIAL, 0);
 		}
 	}
-}
-
-/* cnt - time to emulate, expressed in double-speed cycles
-	Will call lcd_emulate() if CPU emulation caught up or
-	went ahead of LCDC, so that lcd never falls	behind
-*/
-static inline void lcdc_advance(int cycles)
-{
-	lcd.cycles -= cycles;
-	if (lcd.cycles <= 0) lcd_emulate();
-}
-
-/* cnt - time to emulate, expressed in double-speed cycles */
-static inline void sound_advance(int cycles)
-{
-	snd.cycles += cycles;
-}
-
-/* burn cpu cycles without running any instructions */
-void cpu_burn(int cycles)
-{
-
 }
 
 /* cpu_emulate()
@@ -886,8 +864,9 @@ _skip:
 			count <<= 1;
 
 		/* Advance fixed-speed counters */
-		lcdc_advance(count);
-		sound_advance(count);
+		lcd_emulate(count);
+		snd.cycles += count;
+		// sound_emulate(count);
 
 		// Here we could calculate when the next event is going to happen
 		// So that we can skip even more cycles, but it doesn't seem to save

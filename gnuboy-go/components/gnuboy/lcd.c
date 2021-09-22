@@ -9,7 +9,6 @@
 
 // Our custom colorization palettes
 static const uint16_t custom_palettes[][4] = {
-	{ 0x0000, 0x0000, 0x0000, 0x0000 }, // GB_PALETTE_GBCBIOS
 	{ 0x6BDD, 0x3ED4, 0x1D86, 0x0860 }, // GB_PALETTE_DEFAULT
 	{ 0x7FFF, 0x5AD6, 0x318C, 0x0000 }, // GB_PALETTE_2BGRAYS
 	{ 0x5BFF, 0x3F0F, 0x222D, 0x10EB }, // GB_PALETTE_LINKSAW
@@ -131,7 +130,7 @@ static inline void tilebuf()
 	tilebuf = BG;
 	cnt = ((WX + 7) >> 3) + 1;
 
-	if (hw.cgb)
+	if (hw.hwtype == GB_HW_CGB)
 	{
 		if (R_LCDC & 0x10)
 			for (int i = cnt; i > 0; i--)
@@ -180,7 +179,7 @@ static inline void tilebuf()
 	tilebuf = WND;
 	cnt = ((160 - WX) >> 3) + 1;
 
-	if (hw.cgb)
+	if (hw.hwtype == GB_HW_CGB)
 	{
 		if (R_LCDC & 0x10)
 			for (int i = cnt; i > 0; i--)
@@ -385,7 +384,7 @@ static inline int spr_enum()
 		VS[NS].x = (int)obj->x - 8;
 		v = line - (int)obj->y + 16;
 
-		if (hw.cgb)
+		if (hw.hwtype == GB_HW_CGB)
 		{
 			pat = obj->pat | (((int)obj->flags & 0x60) << 5)
 				| (((int)obj->flags & 0x08) << 6);
@@ -417,7 +416,7 @@ static inline int spr_enum()
 	}
 
 	// Sort sprites
-	if (!hw.cgb)
+	if (hw.hwtype != GB_HW_CGB)
 	{
 		/* not quite optimal but it finally works! */
 		for (int i = 0; i < NS; ++i)
@@ -485,7 +484,7 @@ static inline void spr_scan(int ns)
 				if (b && !(bg[i]&3)) dest[i] = pal|b;
 			}
 		}
-		else if (hw.cgb)
+		else if (hw.hwtype == GB_HW_CGB)
 		{
 			bg = bgdup + (dest - BUF);
 			pri = PRI + (dest - BUF);
@@ -524,73 +523,6 @@ void lcd_reset(bool hard)
 
 	WY = R_WY;
 	lcd_rebuildpal();
-}
-
-static inline void lcd_renderline()
-{
-	if (!lcd.out.enabled)
-		return;
-
-	if (!(R_LCDC & 0x80))
-		return; /* should not happen... */
-
-	int SX, SY, SL, NS;
-
-	SL = R_LY;
-	SX = R_SCX;
-	SY = (R_SCY + SL) & 0xff;
-	S = SX >> 3;
-	T = SY >> 3;
-	U = SX & 7;
-	V = SY & 7;
-
-	WX = R_WX - 7;
-	if (WY>SL || WY<0 || WY>143 || WX<-7 || WX>160 || !(R_LCDC&0x20))
-		WX = 160;
-	WT = (SL - WY) >> 3;
-	WV = (SL - WY) & 7;
-
-	// Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
-	// This is a hack, the real problem is elsewhere
-	if (lcd.enable_window_offset_hack && (R_LCDC & 0x20))
-	{
-		WT %= 12;
-	}
-
-	NS = spr_enum();
-	tilebuf();
-
-	if (hw.cgb)
-	{
-		bg_scan_color();
-		wnd_scan_color();
-		if (NS)
-		{
-			bg_scan_pri();
-			wnd_scan_pri();
-		}
-	}
-	else
-	{
-		bg_scan();
-		wnd_scan();
-		blendcpy(BUF+WX, BUF+WX, 0x04, 160-WX);
-	}
-
-	spr_scan(NS);
-
-	if (lcd.out.format == GB_PIXEL_PALETTED)
-	{
-		memcpy(lcd.out.buffer + SL * 160 , BUF, 160);
-	}
-	else
-	{
-		un16 *dst = (un16*)lcd.out.buffer + SL * 160;
-		un16 *pal = (un16*)lcd.out.cgb_pal;
-
-		for (int i = 0; i < 160; ++i)
-			dst[i] = pal[BUF[i]];
-	}
 }
 
 static inline void pal_update(byte i)
@@ -635,13 +567,13 @@ void pal_write_dmg(byte i, byte mapnum, byte d)
 
 void lcd_rebuildpal()
 {
-	if (!hw.cgb)
+	if (hw.hwtype != GB_HW_CGB)
 	{
 		const uint16_t *bgp, *obp0, *obp1;
 
 		int palette = lcd.out.colorize % GB_PALETTE_COUNT;
 
-		if (palette == GB_PALETTE_GBCBIOS && cart.colorize)
+		if (palette == GB_PALETTE_GBC && cart.colorize)
 		{
 			uint8_t palette = cart.colorize & 0x1F;
 			uint8_t flags = (cart.colorize & 0xE0) >> 5;
@@ -656,12 +588,14 @@ void lcd_rebuildpal()
 
 			MESSAGE_INFO("Using GBC palette %d\n", palette);
 		}
+		else if (palette == GB_PALETTE_SGB)
+		{
+			bgp = obp0 = obp1 = custom_palettes[0];
+			MESSAGE_INFO("Using SGB palette %d\n", palette);
+		}
 		else
 		{
-			palette = palette ? palette : 1; // This shouldn't happen
-
 			bgp = obp0 = obp1 = custom_palettes[palette];
-
 			MESSAGE_INFO("Using Built-in palette %d\n", palette);
 		}
 
@@ -688,30 +622,6 @@ void lcd_rebuildpal()
  */
 
 /*
- * lcd_stat_trigger updates the STAT interrupt line to reflect whether any
- * of the conditions set to be tested (by bits 3-6 of R_STAT) are met.
- * This function should be called whenever any of the following occur:
- * 1) LY or LYC changes.
- * 2) A state transition affects the low 2 bits of R_STAT (see below).
- * 3) The program writes to the upper bits of R_STAT.
- * lcd_stat_trigger also updates bit 2 of R_STAT to reflect whether LY=LYC.
- */
-
-void lcd_stat_trigger()
-{
-	int condbits[4] = { 0x08, 0x10, 0x20, 0x00 };
-	int mask = condbits[R_STAT & 3];
-
-	if (R_LY == R_LYC)
-		R_STAT |= 0x04;
-	else
-		R_STAT &= ~0x04;
-
-	hw_interrupt(IF_STAT, (R_LCDC & 0x80) && ((R_STAT & 0x44) == 0x44 || (R_STAT & mask)));
-}
-
-
-/*
  * stat_change is called when a transition results in a change to the
  * LCD STAT condition (the low 2 bits of R_STAT).  It raises or lowers
  * the VBLANK interrupt line appropriately and calls lcd_stat_trigger to
@@ -724,6 +634,29 @@ static void inline stat_change(int stat)
 	if (stat != 1)
 		hw_interrupt(IF_VBLANK, 0);
 	lcd_stat_trigger();
+}
+
+
+/*
+ * lcd_stat_trigger updates the STAT interrupt line to reflect whether any
+ * of the conditions set to be tested (by bits 3-6 of R_STAT) are met.
+ * This function should be called whenever any of the following occur:
+ * 1) LY or LYC changes.
+ * 2) A state transition affects the low 2 bits of R_STAT (see below).
+ * 3) The program writes to the upper bits of R_STAT.
+ * lcd_stat_trigger also updates bit 2 of R_STAT to reflect whether LY=LYC.
+ */
+void lcd_stat_trigger()
+{
+	int condbits[4] = { 0x08, 0x10, 0x20, 0x00 };
+	int mask = condbits[R_STAT & 3];
+
+	if (R_LY == R_LYC)
+		R_STAT |= 0x04;
+	else
+		R_STAT &= ~0x04;
+
+	hw_interrupt(IF_STAT, (R_LCDC & 0x80) && ((R_STAT & 0x44) == 0x44 || (R_STAT & mask)));
 }
 
 
@@ -740,6 +673,26 @@ void lcd_lcdc_change(byte b)
 	}
 }
 
+
+static void lcd_hdma_cont()
+{
+	uint src = (R_HDMA1 << 8) | (R_HDMA2 & 0xF0);
+	uint dst = 0x8000 | ((R_HDMA3 & 0x1F) << 8) | (R_HDMA4 & 0xF0);
+	uint cnt = 16;
+
+	// if (!(hw.hdma & 0x80))
+	// 	return;
+
+	while (cnt--)
+		writeb(dst++, readb(src++));
+
+	R_HDMA1 = src >> 8;
+	R_HDMA2 = src & 0xF0;
+	R_HDMA3 = (dst >> 8) & 0x1F;
+	R_HDMA4 = dst & 0xF0;
+	R_HDMA5--;
+	hw.hdma--;
+}
 
 /*
 	LCD controller operates with 154 lines per frame, of which lines
@@ -772,8 +725,77 @@ void lcd_lcdc_change(byte b)
 	sprites on the line and probably other factors. States 1, 2 and 3
 	do not require precise sub-line CPU-LCDC sync, but state 0 might do.
 */
-void lcd_emulate()
+static inline void lcd_renderline()
 {
+	if (!lcd.out.enabled || !lcd.out.buffer)
+		return;
+
+	int SX, SY, SL, NS;
+
+	SL = R_LY;
+	SX = R_SCX;
+	SY = (R_SCY + SL) & 0xff;
+	S = SX >> 3;
+	T = SY >> 3;
+	U = SX & 7;
+	V = SY & 7;
+
+	WX = R_WX - 7;
+	if (WY>SL || WY<0 || WY>143 || WX<-7 || WX>160 || !(R_LCDC&0x20))
+		WX = 160;
+	WT = (SL - WY) >> 3;
+	WV = (SL - WY) & 7;
+
+	// Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
+	// This is a hack, the real problem is elsewhere
+	if (lcd.enable_window_offset_hack && (R_LCDC & 0x20))
+	{
+		WT %= 12;
+	}
+
+	NS = spr_enum();
+	tilebuf();
+
+	if (hw.hwtype == GB_HW_CGB)
+	{
+		bg_scan_color();
+		wnd_scan_color();
+		if (NS)
+		{
+			bg_scan_pri();
+			wnd_scan_pri();
+		}
+	}
+	else
+	{
+		bg_scan();
+		wnd_scan();
+		blendcpy(BUF+WX, BUF+WX, 0x04, 160-WX);
+	}
+
+	spr_scan(NS);
+
+	if (lcd.out.format == GB_PIXEL_PALETTED)
+	{
+		memcpy(lcd.out.buffer + SL * 160 , BUF, 160);
+	}
+	else
+	{
+		un16 *dst = (un16*)lcd.out.buffer + SL * 160;
+		un16 *pal = (un16*)lcd.out.cgb_pal;
+
+		for (int i = 0; i < 160; ++i)
+			dst[i] = pal[BUF[i]];
+	}
+}
+
+void lcd_emulate(int cycles)
+{
+	lcd.cycles -= cycles;
+
+	if (lcd.cycles > 0)
+		return;
+
 	/* LCD disabled */
 	if (!(R_LCDC & 0x80))
 	{
@@ -796,7 +818,7 @@ void lcd_emulate()
 				stat_change(0);
 				/* FIXME: check docs; HDMA might require operating LCDC */
 				if (hw.hdma & 0x80)
-					hw_hdma();
+					lcd_hdma_cont();
 				else
 					CYCLES += 102;
 				break;
@@ -873,7 +895,7 @@ void lcd_emulate()
 			/* transfer -> */
 			stat_change(0); /* -> hblank */
 			if (hw.hdma & 0x80)
-				hw_hdma();
+				lcd_hdma_cont();
 			/* FIXME -- how much of the hblank does hdma use?? */
 			/* else */
 			CYCLES += 102;

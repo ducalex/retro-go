@@ -67,7 +67,6 @@ static const svar_t svars[] =
 
 	I4("ints", &hw.ilines),
 	I4("pad ", &hw.pad),
-	I4("cgb ", &hw.cgb),
 	I4("hdma", &hw.hdma),
 	I4("seri", &hw.serial),
 
@@ -248,10 +247,12 @@ int state_save(const char *file)
 	FILE *fp = fopen(file, "wb");
 	if (!fp) goto _error;
 
+	bool is_cgb = hw.hwtype == GB_HW_CGB;
+
 	sblock_t blocks[] = {
 		{buf, 1},
-		{hw.rambanks, hw.cgb ? 8 : 2},
-		{lcd.vbank, hw.cgb ? 4 : 2},
+		{hw.rambanks, is_cgb ? 8 : 2},
+		{lcd.vbank, is_cgb ? 4 : 2},
 		{cart.rambanks, cart.ramsize * 2},
 		{NULL, 0},
 	};
@@ -316,10 +317,12 @@ int state_load(const char *file)
 	FILE *fp = fopen(file, "rb");
 	if (!fp) goto _error;
 
+	bool is_cgb = hw.hwtype == GB_HW_CGB;
+
 	sblock_t blocks[] = {
 		{buf, 1},
-		{hw.rambanks, hw.cgb ? 8 : 2},
-		{lcd.vbank, hw.cgb ? 4 : 2},
+		{hw.rambanks, is_cgb ? 8 : 2},
+		{lcd.vbank, is_cgb ? 4 : 2},
 		{cart.rambanks, cart.ramsize * 2},
 		{NULL, 0},
 	};

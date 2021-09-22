@@ -166,23 +166,36 @@ typedef struct
 	byte *wmap[0x10];
 	un32 ilines;
 	un32 pad;
-	un32 cgb;
 	n32 hdma;
 	n32 serial;
 	un8 *bios;
-	n32 frames;
+
+	un32 hwtype;
+	un32 frames;
 } gb_hw_t;
 
 typedef struct
 {
+	n32 sel, flags, latch, dirty;
+	n32 ticks; // Ticks (60 = +1s)
+	n32 d, h, m, s; // Current time
+	n32 regs[5]; // Latched time
+} gb_rtc_t;
+
+typedef struct
+{
+	// Meta information
+	char name[20];
+	un16 checksum;
+	un16 colorize;
+	un32 romsize;
+	un32 ramsize;
+
 	// Memory
 	byte *rombanks[512];
 	byte (*rambanks)[8192];
 	un32 sram_dirty;
 	un32 sram_saved;
-
-	un32 romsize;
-	un32 ramsize;
 
 	// Extra hardware
 	bool has_rumble;
@@ -197,21 +210,10 @@ typedef struct
 	int rombank;
 	int rambank;
 
+	// File descriptors that we keep open
 	FILE *romFile;
 	FILE *sramFile;
-
-	un16 colorize;
-	un16 checksum;
-	char name[20];
 } gb_cart_t;
-
-typedef struct
-{
-	n32 sel, flags, latch, dirty;
-	n32 ticks; // Ticks (60 = +1s)
-	n32 d, h, m, s; // Current time
-	n32 regs[5]; // Latched time
-} gb_rtc_t;
 
 extern gb_cart_t cart;
 extern gb_rtc_t rtc;
@@ -220,7 +222,6 @@ extern gb_hw_t hw;
 void hw_reset(bool hard);
 void hw_setpad(un32 new_pad);
 void hw_interrupt(byte i, int level);
-void hw_hdma(void);
 void hw_updatemap(void);
 void hw_write(uint a, byte b);
 byte hw_read(uint a);
