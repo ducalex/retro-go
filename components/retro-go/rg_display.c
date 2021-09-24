@@ -289,7 +289,7 @@ static void ili9341_init()
     // Initialize LCD
     for (int i = 0; i < (sizeof(commands)/sizeof(commands[0])); i++)
     {
-        ili9341_cmd(commands[i].cmd, commands[i].data, commands[i].databytes & 0x7F);
+        ili9341_cmd(commands[i].cmd, &commands[i].data, commands[i].databytes & 0x1F);
         if (commands[i].databytes & 0x80)
         {
             spi_drain_queue();

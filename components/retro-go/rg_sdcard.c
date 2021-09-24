@@ -31,21 +31,19 @@ static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
 {
     bool use_led = (rg_sdcard_get_enable_activity_led() && !rg_system_get_led());
 
-    rg_spi_lock_acquire(SPI_LOCK_SDCARD);
-
     if (use_led)
         rg_system_set_led(1);
 
 #if RG_STORAGE_DRIVER == 1
+    rg_spi_lock_acquire(SPI_LOCK_SDCARD);
     esp_err_t ret = sdspi_host_do_transaction(slot, cmdinfo);
+    rg_spi_lock_release(SPI_LOCK_SDCARD);
 #else
     esp_err_t ret = sdmmc_host_do_transaction(slot, cmdinfo);
 #endif
 
     if (use_led)
         rg_system_set_led(0);
-
-    rg_spi_lock_release(SPI_LOCK_SDCARD);
 
     return ret;
 }
