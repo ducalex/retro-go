@@ -205,21 +205,6 @@ static void spi_init()
     xTaskCreatePinnedToCore(&spi_task, "spi_task", 1024, NULL, 5, NULL, 1);
 }
 
-static void spi_drain_queue()
-{
-    if (uxQueueSpacesAvailable(spi_queue)) {
-        for (size_t i = 0; i < SPI_TRANSACTION_COUNT; ++i) {
-            spi_transaction_t *t;
-            xQueueReceive(spi_queue, &t, portMAX_DELAY);
-        }
-
-        for (size_t i = 0; i < SPI_TRANSACTION_COUNT; ++i) {
-            spi_transaction_t *t = &spi_trans[i];
-            xQueueSend(spi_queue, &t, portMAX_DELAY);
-        }
-    }
-}
-
 static void ili9341_cmd(uint8_t cmd, const void *data, size_t data_len)
 {
     spi_queue_transaction(&cmd, 1, 0);
@@ -264,16 +249,28 @@ static void ili9341_init()
         {0x29, {0}, 0x00},                                  // Display on
     };
 
+    // Initialize LCD
+    for (int i = 0; i < (sizeof(commands)/sizeof(commands[0])); i++)
+    {
+        ili9341_cmd(commands[i].cmd, &commands[i].data, commands[i].databytes & 0x1F);
+        if (commands[i].databytes & 0x80)
+        {
+            usleep(5 * 1000U);
+        }
+    }
+    rg_display_clear(C_BLACK);
+
+    // Initialize backlight
     float level = (float)display.config.backlight / (RG_DISPLAY_BACKLIGHT_COUNT - 1);
 
-    ledc_timer_config_t ledc_timer = {
+    const ledc_timer_config_t ledc_timer = {
         .duty_resolution = LEDC_TIMER_13_BIT,
         .freq_hz = 5000,
         .speed_mode = LEDC_LOW_SPEED_MODE,
         .timer_num = LEDC_TIMER_0,
     };
 
-    ledc_channel_config_t ledc_channel = {
+    const ledc_channel_config_t ledc_channel = {
         .channel = LEDC_CHANNEL_0,
         .duty = BACKLIGHT_DUTY_MAX * RG_MIN(RG_MAX(level, 0.01f), 1.0f),
         .gpio_num = RG_GPIO_LCD_BCKL,
@@ -285,23 +282,6 @@ static void ili9341_init()
     ledc_timer_config(&ledc_timer);
     ledc_channel_config(&ledc_channel);
     ledc_fade_func_install(0);
-
-    // Initialize LCD
-    for (int i = 0; i < (sizeof(commands)/sizeof(commands[0])); i++)
-    {
-        ili9341_cmd(commands[i].cmd, &commands[i].data, commands[i].databytes & 0x1F);
-        if (commands[i].databytes & 0x80)
-        {
-            spi_drain_queue();
-            // usleep(5 * 1000U);
-        }
-    }
-
-    rg_display_clear(C_BLACK);
-    usleep(20 * 1000U);
-
-    // Do this last to avoid a flash
-    // lcd_set_backlight(initial_brightness);
 }
 
 static void ili9341_deinit()
@@ -966,8 +946,6 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
 
         lcd_send_data(line_buffer, width * lines_per_buffer * 2);
     }
-
-    spi_drain_queue();
 }
 
 void rg_display_clear(uint16_t color)
@@ -990,8 +968,6 @@ void rg_display_clear(uint16_t color)
         lcd_send_data(buffer, count * 2);
         remaining -= count;
     }
-
-    spi_drain_queue();
 }
 
 void rg_display_deinit()
