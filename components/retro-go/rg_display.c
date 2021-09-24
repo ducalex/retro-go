@@ -63,7 +63,7 @@ typedef struct {
 #define lcd_init() ili9341_init()
 #define lcd_deinit() ili9341_deinit()
 #define lcd_set_window(left, top, width, height) ili9341_set_window(left, top, width, height)
-#define lcd_send_data(buffer, length) ili9341_send_data(buffer, length)
+#define lcd_send_data(buffer, length) spi_queue_transaction(buffer, length, 1)
 #define lcd_set_backlight(percent) ili9341_set_backlight(percent)
 
 
@@ -213,8 +213,7 @@ static void ili9341_cmd(uint8_t cmd, const void *data, size_t data_len)
 
 static void ili9341_set_backlight(float level)
 {
-    #define BACKLIGHT_DUTY_MAX 0x1fff
-    uint32_t duty = BACKLIGHT_DUTY_MAX * RG_MIN(RG_MAX(level, 0.01f), 1.0f);
+    uint32_t duty = 0x1FFF * RG_MIN(RG_MAX(level, 0.01f), 1.0f);
 
     ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty, 50);
     ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
@@ -250,6 +249,8 @@ static void ili9341_init()
         {0x29, {0}, 0x00},                                  // Display on
     };
 
+    spi_init();
+
     for (int i = 0; i < (sizeof(commands)/sizeof(commands[0])); i++)
     {
         ili9341_cmd(commands[i].cmd, &commands[i].data, commands[i].databytes & 0x1F);
@@ -273,7 +274,7 @@ static void ili9341_init()
 
     const ledc_channel_config_t ledc_channel = {
         .channel = LEDC_CHANNEL_0,
-        .duty = BACKLIGHT_DUTY_MAX * RG_MIN(RG_MAX(level, 0.01f), 1.0f),
+        .duty = 0x1FFF * RG_MIN(RG_MAX(level, 0.01f), 1.0f),
         .gpio_num = RG_GPIO_LCD_BCKL,
         .speed_mode = LEDC_LOW_SPEED_MODE,
         .timer_sel = LEDC_TIMER_0,
@@ -295,32 +296,27 @@ static void ili9341_deinit()
     ili9341_cmd(0x01, NULL, 0); // Reset
     ili9341_cmd(0x28, NULL, 0); // Display off
     ili9341_cmd(0x10, NULL, 0); // Sleep
+
+    // SPI
+    // spi_deinit();
 }
 
 static void ili9341_set_window(int left, int top, int width, int height)
 {
     int right = left + width - 1;
     int bottom = top + height - 1;
-    // int bottom = display.screen.height - 1;
 
-    if (right > 0 && bottom > 0)
-    {
-        ili9341_cmd(0x2A, (uint8_t[]){left >> 8, left & 0xff, right >> 8, right & 0xff}, 4); // Horiz
-        ili9341_cmd(0x2B, (uint8_t[]){top >> 8, top & 0xff, bottom >> 8, bottom & 0xff}, 4); // Vert
-        ili9341_cmd(0x2C, NULL, 0); // Memory write
-        if (height > 1)
-            ili9341_cmd(0x3C, NULL, 0); // Memory write continue
-    }
-    else
+    if (right <= 0 || bottom <= 0)
     {
         RG_LOGE("Bad window: left:%d top:%d width:%d height:%d\n", left, top, width, height);
         RG_PANIC("Bad window");
     }
-}
 
-static void ili9341_send_data(void *buffer, size_t length)
-{
-    spi_queue_transaction(buffer, length, 1);
+    ili9341_cmd(0x2A, (uint8_t[]){left >> 8, left & 0xff, right >> 8, right & 0xff}, 4); // Horiz
+    ili9341_cmd(0x2B, (uint8_t[]){top >> 8, top & 0xff, bottom >> 8, bottom & 0xff}, 4); // Vert
+    ili9341_cmd(0x2C, NULL, 0); // Memory write
+    // if (height > 1)
+    //     ili9341_cmd(0x3C, NULL, 0); // Memory write continue
 }
 
 static inline uint blend_pixels(uint a, uint b)
@@ -741,15 +737,19 @@ static void display_task(void *arg)
     vTaskDelete(NULL);
 }
 
-void rg_display_load_config(void)
+void rg_display_reset_config(void)
 {
-    // TO DO: We probably should call the setters to ensure valid values...
-    display.config.backlight = rg_settings_get_int32(SETTING_BACKLIGHT, RG_DISPLAY_BACKLIGHT_3);
-    display.config.scaling = rg_settings_get_app_int32(SETTING_SCALING, RG_DISPLAY_SCALING_FILL);
-    display.config.filter = rg_settings_get_app_int32(SETTING_FILTER, RG_DISPLAY_FILTER_HORIZ);
-    display.config.rotation = rg_settings_get_app_int32(SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO);
-    display.config.update = rg_settings_get_app_int32(SETTING_UPDATE, RG_DISPLAY_UPDATE_PARTIAL);
-    display.changed = true;
+    display = (rg_display_t){
+        // TO DO: We probably should call the setters to ensure valid values...
+        .screen.width = RG_SCREEN_WIDTH,
+        .screen.height = RG_SCREEN_HEIGHT,
+        .config.backlight = rg_settings_get_int32(SETTING_BACKLIGHT, RG_DISPLAY_BACKLIGHT_3),
+        .config.scaling = rg_settings_get_app_int32(SETTING_SCALING, RG_DISPLAY_SCALING_FILL),
+        .config.filter = rg_settings_get_app_int32(SETTING_FILTER, RG_DISPLAY_FILTER_HORIZ),
+        .config.rotation = rg_settings_get_app_int32(SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO),
+        .config.update = rg_settings_get_app_int32(SETTING_UPDATE, RG_DISPLAY_UPDATE_PARTIAL),
+        .changed = true,
+    };
 }
 
 const rg_display_t *rg_display_get_status(void)
@@ -986,17 +986,8 @@ void rg_display_deinit()
 void rg_display_init()
 {
     RG_LOGI("Initialization...\n");
-
-    display = (rg_display_t) {
-        .screen.width = RG_SCREEN_WIDTH,
-        .screen.height = RG_SCREEN_HEIGHT,
-        .changed = true,
-    };
-
-    rg_display_load_config();
-    spi_init();
+    rg_display_reset_config();
     lcd_init();
     xTaskCreatePinnedToCore(&display_task, "display_task", 2048, NULL, 5, NULL, 1);
-
     RG_LOGI("Display ready.\n");
 }

@@ -127,7 +127,7 @@ void rg_display_init(void);
 void rg_display_deinit(void);
 void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t* buffer);
 void rg_display_clear(uint16_t colorLE);
-void rg_display_load_config(void);
+void rg_display_reset_config(void);
 void rg_display_show_info(const char *text, int timeout_ms);
 bool rg_display_save_frame(const char *filename, rg_video_frame_t *frame, int width, int height);
 rg_update_t rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *previousFrame);
