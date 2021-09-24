@@ -224,6 +224,7 @@ static void ili9341_set_backlight(float level)
 
 static void ili9341_init()
 {
+    // Initialize LCD
     const ili_cmd_t commands[] = {
         {0x01, {0}, 0x80},                                  // Reset
         {0xCF, {0x00, 0xc3, 0x30}, 3},
@@ -249,7 +250,6 @@ static void ili9341_init()
         {0x29, {0}, 0x00},                                  // Display on
     };
 
-    // Initialize LCD
     for (int i = 0; i < (sizeof(commands)/sizeof(commands[0])); i++)
     {
         ili9341_cmd(commands[i].cmd, &commands[i].data, commands[i].databytes & 0x1F);
@@ -259,6 +259,7 @@ static void ili9341_init()
         }
     }
     rg_display_clear(C_BLACK);
+
 
     // Initialize backlight
     float level = (float)display.config.backlight / (RG_DISPLAY_BACKLIGHT_COUNT - 1);
@@ -278,7 +279,6 @@ static void ili9341_init()
         .timer_sel = LEDC_TIMER_0,
     };
 
-    // Initialize backlight
     ledc_timer_config(&ledc_timer);
     ledc_channel_config(&ledc_channel);
     ledc_fade_func_install(0);

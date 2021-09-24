@@ -32,10 +32,10 @@ PROJECT_VER  = shell_exec("git describe --tags --abbrev=5 --dirty --always")
 PROJECT_TILE = "icon.raw"
 PROJECT_APPS = {} # TO DO: discover subprojects automatically
 
-DEFAULT_TARGET = os.getenv("RG_TARGET") or "odroid-go"
-DEFAULT_OFFSET = os.getenv("RG_OFFSET") or "0x100000"
-DEFAULT_BAUD = os.getenv("RG_BAUD") or "1152000"
-DEFAULT_PORT = os.getenv("RG_PORT") or "COM3"
+DEFAULT_TARGET = os.getenv("RG_TOOL_TARGET", "odroid-go")
+DEFAULT_OFFSET = os.getenv("RG_TOOL_OFFSET", "0x100000")
+DEFAULT_BAUD = os.getenv("RG_TOOL_BAUD", "1152000")
+DEFAULT_PORT = os.getenv("RG_TOOL_PORT", "COM3")
 
 if os.path.exists("config.py"):
     exec(read_file("config.py"))
