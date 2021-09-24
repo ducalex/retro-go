@@ -143,6 +143,13 @@ For a smaller build you can also specify which apps you want, for example the la
 1. `rg_tool.py --offset=0x100000 --port=COM3 run nofrendo-go`
 * Offset is required only if you use my multi-firmware AND retro-go isn't the first installed application, in which case the offset is shown in the multi-firmware.
 
+## Environment variables 
+rg_tool.py supports a few environment variables if you want to avoid passing flags all the time:
+- `RG_TARGET` represents --target
+- `RG_OFFSET` represents --offset
+- `RG_BAUD` represents --baud
+- `RG_PORT` represents --port
+
 ## Changing the launcher's images
 All images used by the launcher (headers, logos) are located in `launcher/images`. If you edit them you must run the `launcher/gen_images.py` script to regenerate `images.h`. The format must be PNG 255 colors.
 

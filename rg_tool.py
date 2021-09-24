@@ -32,6 +32,11 @@ PROJECT_VER  = shell_exec("git describe --tags --abbrev=5 --dirty --always")
 PROJECT_TILE = "icon.raw"
 PROJECT_APPS = {} # TO DO: discover subprojects automatically
 
+DEFAULT_TARGET = os.getenv("RG_TARGET") or "odroid-go"
+DEFAULT_OFFSET = os.getenv("RG_OFFSET") or "0x100000"
+DEFAULT_BAUD = os.getenv("RG_BAUD") or "1152000"
+DEFAULT_PORT = os.getenv("RG_PORT") or "COM3"
+
 if os.path.exists("config.py"):
     exec(read_file("config.py"))
 
@@ -176,14 +181,14 @@ def find_app(target, offset, app_offset=None):
         offset += math.ceil(value[1] / 0x10000) * 0x10000
 
 
-def flash_app(target, port, offset=0x100000):
+def flash_app(target, port, offset=DEFAULT_OFFSET, baud=DEFAULT_BAUD):
     print("Flashing app '%s' at offset %s" % (target, hex(offset)))
     subprocess.run([
         sys.executable,
         os.path.join(IDF_PATH, "components", "esptool_py", "esptool", "esptool.py"),
         "--chip", "esp32",
         "--port", port,
-        "--baud", "1152000",
+        "--baud", baud,
         "--before", "default_reset",
         "write_flash",
         "--flash_mode", "qio",
@@ -269,7 +274,7 @@ parser.add_argument(
     "--shrink", action="store_const", const=True, help="Reduce partition size where possible"
 )
 parser.add_argument(
-    "--target", default="odroid-go", choices=["odroid-go", "esp32s2", "mrgc-g32"], help="Device to target"
+    "--target", default=DEFAULT_TARGET, choices=["odroid-go", "esp32s2", "mrgc-g32"], help="Device to target"
 )
 parser.add_argument(
     "--build-type", default="release", choices=["release", "debug", "profile"], help="Build type"
@@ -278,13 +283,16 @@ parser.add_argument(
     "--with-netplay", action="store_const", const=True, help="Build with netplay enabled"
 )
 parser.add_argument(
-    "--port", default="COM3", help="Serial port to use for flash and monitor"
+    "--port", default=DEFAULT_PORT, help="Serial port to use for flash and monitor"
 )
 parser.add_argument(
-    "--offset", default="0x100000", help="Flash offset where %s is installed" % PROJECT_NAME,
+    "--baud", default=DEFAULT_BAUD, help="Serial baudrate to use for flashing"
 )
 parser.add_argument(
-    "--app-offset", default=None, help="Absolute offset where target will be flashed"
+    "--offset", default=DEFAULT_OFFSET, help="Flash offset where %s is installed" % PROJECT_NAME,
+)
+parser.add_argument(
+    "--app-offset", default=None, help="Absolute offset where the app will be flashed (ignores partition table)"
 )
 args = parser.parse_args()
 
@@ -310,7 +318,7 @@ if command in ["mkfw", "build-fw"]:
 if command in ["flash", "run"]:
     print("=== Step: Flashing ===\n")
     for app in apps:
-        flash_app(app, args.port, find_app(app, args.offset, args.app_offset))
+        flash_app(app, args.port, find_app(app, args.offset, args.app_offset), args.baud)
 
 if command in ["monitor", "run"]:
     print("=== Step: Monitoring ===\n")

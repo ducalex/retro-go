@@ -9,7 +9,7 @@ def readfile(filepath):
         exit("\nERROR: Unable to open partition file '%s' !\n" % err.filename)
 
 if len(sys.argv) < 9:
-    exit("usage: mkfw.py output_file.fw 'description' tile.raw type subtype size label file.bin "
+    exit("usage: mkfw.py [--esplay] output_file.fw 'description' tile.raw type subtype size label file.bin "
          "[type subtype size label file.bin, ...]")
 
 args = sys.argv[1:]
