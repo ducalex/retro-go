@@ -42,8 +42,8 @@
 
 // Video
 #define RG_SCREEN_TYPE              0
-#define RG_SCREEN_WIDTH             240 // 240
-#define RG_SCREEN_HEIGHT            240 // 220
+#define RG_SCREEN_WIDTH             240
+#define RG_SCREEN_HEIGHT            230
 #define RG_SCREEN_ROTATE            0
 
 // Input

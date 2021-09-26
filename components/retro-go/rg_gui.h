@@ -58,6 +58,9 @@ typedef struct
     uint16_t data[];
 } rg_image_t;
 
+// color must accept 0-0xFFFF and -1 (transparent)
+typedef int rg_color_t;
+
 typedef struct
 {
     uint16_t width;
@@ -73,12 +76,12 @@ typedef struct
 
 typedef struct
 {
-    uint16_t box_background;
-    uint16_t box_header;
-    uint16_t box_border;
-    uint16_t item_standard;
-    uint16_t item_disabled;
-    uint16_t scrollbar;
+    rg_color_t box_background;
+    rg_color_t box_header;
+    rg_color_t box_border;
+    rg_color_t item_standard;
+    rg_color_t item_disabled;
+    rg_color_t scrollbar;
 } dialog_theme_t;
 
 typedef struct dialog_option_s dialog_option_t;
@@ -107,9 +110,8 @@ bool rg_gui_set_theme(const dialog_theme_t *new_theme);
 bool rg_gui_set_font_type(int type);
 font_info_t rg_gui_get_font_info(void);
 rg_rect_t rg_gui_calc_text_size(const char *text, int max_width);
-rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, uint16_t color_fg, uint16_t color_bg, uint32_t flags);
-void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border, uint16_t color);
-void rg_gui_draw_fill_rect(int x_pos, int y_pos, int width, int height, uint16_t color);
+rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, rg_color_t color_fg, rg_color_t color_bg, uint32_t flags);
+void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size, rg_color_t border_color, rg_color_t fill_color);
 void rg_gui_draw_battery(int x_pos, int y_pos);
 void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int sel);
 void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, const rg_image_t *img);
@@ -276,4 +278,5 @@ enum colors565
     C_GAINSBORO                = 0xDEDB,
     C_WHITE_SMOKE              = 0xF7BE,
     C_WHITE                    = 0xFFFF,
+    C_TRANSPARENT              = -1,
 };

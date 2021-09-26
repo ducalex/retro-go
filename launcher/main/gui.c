@@ -335,18 +335,18 @@ void gui_draw_header(tab_t *tab)
     int x_pos = IMAGE_LOGO_WIDTH;
     int y_pos = IMAGE_LOGO_HEIGHT;
 
-    rg_gui_draw_fill_rect(x_pos, 0, gui.width - x_pos, LIST_Y_OFFSET, C_BLACK);
-    rg_gui_draw_fill_rect(0, y_pos, gui.width, LIST_Y_OFFSET - y_pos, C_BLACK);
+    rg_gui_draw_rect(x_pos, 0, gui.width - x_pos, LIST_Y_OFFSET, 0, 0, C_BLACK);
+    rg_gui_draw_rect(0, y_pos, gui.width, LIST_Y_OFFSET - y_pos, 0, 0, C_BLACK);
 
     if (tab->img_logo)
         rg_gui_draw_image(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, tab->img_logo);
     else
-        rg_gui_draw_fill_rect(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, C_BLACK);
+        rg_gui_draw_rect(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, 0, 0, C_BLACK);
 
     if (tab->img_header)
         rg_gui_draw_image(x_pos + 1, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, tab->img_header);
     else
-        rg_gui_draw_fill_rect(x_pos + 1, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, C_BLACK);
+        rg_gui_draw_rect(x_pos + 1, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, 0, 0, C_BLACK);
 }
 
 void gui_draw_status(tab_t *tab)
@@ -390,7 +390,7 @@ void gui_draw_list(tab_t *tab)
     }
 
     if (y < y_max)
-        rg_gui_draw_fill_rect(0, y, LIST_WIDTH, y_max - y, color_bg);
+        rg_gui_draw_rect(0, y, LIST_WIDTH, y_max - y, 0, 0, color_bg);
 }
 
 void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file)

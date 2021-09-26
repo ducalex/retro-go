@@ -308,8 +308,8 @@ static void ili9341_set_window(int left, int top, int width, int height)
 
     if (right <= 0 || bottom <= 0)
     {
-        RG_LOGE("Bad window: left:%d top:%d width:%d height:%d\n", left, top, width, height);
-        RG_PANIC("Bad window");
+        RG_LOGE("Bad lcd window: left:%d top:%d width:%d height:%d\n", left, top, width, height);
+        RG_PANIC("Bad lcd window");
     }
 
     ili9341_cmd(0x2A, (uint8_t[]){left >> 8, left & 0xff, right >> 8, right & 0xff}, 4); // Horiz
@@ -917,13 +917,22 @@ void rg_display_show_info(const char *text, int timeout_ms)
 
 void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t* buffer)
 {
+    // Offsets can be negative to indicate N pixels from the end
+    if (left < 0)
+        left += display.screen.width;
+    if (top < 0)
+        top += display.screen.height;
+
+    // calc stride before clipping width
+    stride = RG_MAX(stride, width * 2);
+
+    // Clipping
+    width = RG_MIN(width, display.screen.width - left);
+    height = RG_MIN(height, display.screen.height - top);
+
     lcd_set_window(left, top, width, height);
 
     size_t lines_per_buffer = SPI_BUFFER_LENGTH / width;
-
-    if (stride < width * 2) {
-        stride = width * 2;
-    }
 
     for (size_t y = 0; y < height; y += lines_per_buffer)
     {
