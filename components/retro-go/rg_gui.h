@@ -128,7 +128,7 @@ bool rg_gui_confirm(const char *title, const char *message, bool yes_selected);
 void rg_gui_alert(const char *title, const char *message);
 
 int rg_gui_settings_menu(const dialog_option_t *extra_options);
-int rg_gui_game_settings_menu(const dialog_option_t *extra_options);
+int rg_gui_game_settings_menu(void);
 int rg_gui_game_menu(void);
 int rg_gui_about_menu(const dialog_option_t *extra_options);
 int rg_gui_debug_menu(const dialog_option_t *extra_options);

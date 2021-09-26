@@ -200,7 +200,7 @@ void retro_loop()
                 {0, "Font type  ", "...", 1, &font_type_cb},
                 {0, "Preview    ", "...", 1, &show_preview_cb},
                 {0, "    - Delay", "...", 1, &show_preview_speed_cb},
-                {0, "Toggle tabs", "Press A", 1, &toggle_tabs_cb},
+                {0, "Toggle tabs", "...", 1, &toggle_tabs_cb},
                 {0, "Startup app", "...", 1, &startup_app_cb},
                 {0, "Disk LED   ", "...", 1, &disk_activity_cb},
                 RG_DIALOG_CHOICE_LAST

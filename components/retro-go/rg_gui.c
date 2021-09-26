@@ -791,16 +791,27 @@ static dialog_return_t speedup_update_cb(dialog_option_t *option, dialog_event_t
     return RG_DIALOG_IGNORE;
 }
 
+static dialog_return_t more_settings_cb(dialog_option_t *option, dialog_event_t event)
+{
+    rg_app_desc_t *app = rg_system_get_app();
+    if (event == RG_DIALOG_ENTER && app->handlers.settings)
+    {
+        (app->handlers.settings)();
+    }
+    return RG_DIALOG_IGNORE;
+}
+
 int rg_gui_settings_menu(const dialog_option_t *extra_options)
 {
     dialog_option_t options[16 + get_dialog_items_count(extra_options)];
     dialog_option_t *opt = &options[0];
+    rg_app_desc_t *app = rg_system_get_app();
 
     *opt++ = (dialog_option_t){0, "Brightness", "50%",  1, &brightness_update_cb};
     *opt++ = (dialog_option_t){0, "Volume    ", "50%",  1, &volume_update_cb};
     *opt++ = (dialog_option_t){0, "Audio out ", "Speaker", 1, &audio_update_cb};
 
-    if (!rg_system_get_app()->isLauncher)
+    if (!app->isLauncher)
     {
         *opt++ = (dialog_option_t){0, "Scaling", "Full", 1, &scaling_update_cb};
         *opt++ = (dialog_option_t){0, "Filter", "None", 1, &filter_update_cb};
@@ -811,6 +822,11 @@ int rg_gui_settings_menu(const dialog_option_t *extra_options)
     while (extra_options && (*extra_options).flags != RG_DIALOG_FLAG_LAST)
     {
         *opt++ = *extra_options++;
+    }
+
+    if (app->handlers.settings)
+    {
+        *opt++ = (dialog_option_t){0, "More...", NULL, 1, &more_settings_cb};
     }
 
     *opt++ = (dialog_option_t)RG_DIALOG_CHOICE_LAST;
@@ -963,11 +979,11 @@ static void draw_game_status_bars(void)
     rg_gui_draw_battery(-26, 3);
 }
 
-int rg_gui_game_settings_menu(const dialog_option_t *extra_options)
+int rg_gui_game_settings_menu(void)
 {
     rg_audio_set_mute(true);
     draw_game_status_bars();
-    int sel = rg_gui_settings_menu(extra_options);
+    int sel = rg_gui_settings_menu(NULL);
     rg_audio_set_mute(false);
     return sel;
 }
@@ -981,7 +997,10 @@ int rg_gui_game_menu(void)
         #ifdef ENABLE_NETPLAY
         {5000, "Netplay", NULL, 1, NULL},
         #endif
-        {6000, "More", NULL, 1, NULL},
+        #ifdef RG_TARGET_MRGC_G32
+        {5500, "Settings", NULL, 1, NULL},
+        #endif
+        {6000, "About", NULL, 1, NULL},
         {7000, "Quit", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
@@ -1012,6 +1031,9 @@ int rg_gui_game_menu(void)
         case 3003: rg_emu_reset(true); break;
     #ifdef ENABLE_NETPLAY
         case 5000: rg_netplay_quick_start(); break;
+    #endif
+    #ifdef RG_TARGET_MRGC_G32
+        case 5500: rg_gui_game_settings_menu(); break;
     #endif
         case 6000: rg_gui_about_menu(NULL); break;
         case 7000: rg_system_switch_app(RG_APP_LAUNCHER); break;

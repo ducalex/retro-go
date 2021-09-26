@@ -177,7 +177,7 @@ void app_main(void)
             rg_gui_game_menu();
         }
         else if (*localJoystick & GAMEPAD_KEY_VOLUME) {
-            rg_gui_game_settings_menu(NULL);
+            rg_gui_game_settings_menu();
         }
 
         int64_t startTime = get_elapsed_time();

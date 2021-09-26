@@ -148,6 +148,15 @@ static dialog_return_t menu_keymap_cb(dialog_option_t *option, dialog_event_t ev
     return RG_DIALOG_IGNORE;
 }
 
+static void settings_handler(void)
+{
+	dialog_option_t options[] = {
+		{2, "Controls", NULL, 1, &menu_keymap_cb},
+		RG_DIALOG_CHOICE_LAST
+	};
+    rg_gui_dialog("Advanced", options, 0);
+}
+
 static bool screenshot_handler(const char *filename, int width, int height)
 {
 	return rg_display_save_frame(filename, currentUpdate, width, height);
@@ -241,10 +250,7 @@ static void snes9x_task(void *arg)
 		}
 		else if (joystick & GAMEPAD_KEY_VOLUME)
 		{
-			dialog_option_t options[] = {
-				{2, "Controls", NULL, 1, &menu_keymap_cb},
-				RG_DIALOG_CHOICE_LAST};
-			rg_gui_game_settings_menu(options);
+			rg_gui_game_settings_menu();
 		}
 
 		int64_t startTime = get_elapsed_time();
@@ -289,6 +295,7 @@ extern "C" void app_main(void)
 		.reset = &reset_handler,
 		.netplay = NULL,
 		.screenshot = &screenshot_handler,
+		.settings = &settings_handler,
 	};
 
 	app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);

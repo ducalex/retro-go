@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <nofrendo.h>
 #include <nes/input.h>
 #include <nes/state.h>
@@ -169,21 +170,6 @@ static dialog_return_t autocrop_update_cb(dialog_option_t *option, dialog_event_
     return RG_DIALOG_IGNORE;
 }
 
-static dialog_return_t advanced_settings_cb(dialog_option_t *option, dialog_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-    {
-        dialog_option_t options[] = {
-            {2, "Overscan    ", "Auto ", 1, &overscan_update_cb},
-            {3, "Crop sides  ", "Never", 1, &autocrop_update_cb},
-            {4, "Sprite limit", "On   ", 1, &sprite_limit_cb},
-            RG_DIALOG_CHOICE_LAST
-        };
-        rg_gui_dialog("Advanced", options, 0);
-    }
-    return RG_DIALOG_IGNORE;
-}
-
 static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t event)
 {
     int pal = palette;
@@ -199,6 +185,7 @@ static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t
         build_palette(pal);
         rg_display_queue_update(currentUpdate, NULL);
         rg_display_queue_update(currentUpdate, NULL);
+        usleep(50000);
     }
 
     if (pal == NES_PALETTE_NOFRENDO) sprintf(option->value, "%.7s", "Default");
@@ -209,6 +196,18 @@ static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t
     if (pal == NES_PALETTE_SMOOTH) sprintf(option->value, "%.7s", "Smooth");
 
     return RG_DIALOG_IGNORE;
+}
+
+static void settings_handler(void)
+{
+    const dialog_option_t options[] = {
+        {1, "Palette     ", "Default", 1, &palette_update_cb},
+        {2, "Overscan    ", "Auto ", 1, &overscan_update_cb},
+        {3, "Crop sides  ", "Never", 1, &autocrop_update_cb},
+        {4, "Sprite limit", "On   ", 1, &sprite_limit_cb},
+        RG_DIALOG_CHOICE_LAST
+    };
+    rg_gui_dialog("Advanced", options, 0);
 }
 
 
@@ -237,6 +236,7 @@ void app_main(void)
         .reset = &reset_handler,
         .netplay = &netplay_handler,
         .screenshot = &screenshot_handler,
+        .settings = &settings_handler,
     };
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
@@ -300,11 +300,7 @@ void app_main(void)
         }
         else if (*localJoystick & GAMEPAD_KEY_VOLUME)
         {
-            dialog_option_t options[] = {
-                {100, "Palette", "Default", 1, &palette_update_cb},
-                {101, "More...", NULL, 1, &advanced_settings_cb},
-                RG_DIALOG_CHOICE_LAST};
-            rg_gui_game_settings_menu(options);
+            rg_gui_game_settings_menu();
         }
 
     #ifdef ENABLE_NETPLAY

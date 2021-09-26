@@ -89,6 +89,7 @@ typedef bool (*rg_message_handler_t)(int msg, void *arg);
 typedef bool (*rg_screenshot_handler_t)(const char *filename, int width, int height);
 typedef int  (*rg_mem_read_handler_t)(int addr);
 typedef bool (*rg_mem_write_handler_t)(int addr, int value);
+typedef void (*rg_settings_handler_t)(void);
 
 typedef struct
 {
@@ -100,6 +101,7 @@ typedef struct
     rg_screenshot_handler_t screenshot;
     rg_mem_read_handler_t memRead;    // Used by for cheats and debugging
     rg_mem_write_handler_t memWrite;  // Used by for cheats and debugging
+    rg_settings_handler_t settings;  // Called by the "More..." in options menu
 } rg_emu_proc_t;
 
 // TO DO: Make it an abstract ring buffer implementation?

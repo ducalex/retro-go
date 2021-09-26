@@ -194,19 +194,18 @@ static dialog_return_t rtc_update_cb(dialog_option_t *option, dialog_event_t eve
     return RG_DIALOG_IGNORE;
 }
 
-static dialog_return_t advanced_settings_cb(dialog_option_t *option, dialog_event_t event)
+static void settings_handler(void)
 {
-    if (event == RG_DIALOG_ENTER) {
-        dialog_option_t options[] = {
-            {101, "Set clock", "00:00", 1, &rtc_update_cb},
-            RG_DIALOG_SEPARATOR,
-            {111, "Auto save SRAM", "Off", 1, &sram_autosave_cb},
-            {112, "Save SRAM now ", NULL, 1, &sram_save_now_cb},
-            RG_DIALOG_CHOICE_LAST
-        };
-        rg_gui_dialog("Advanced", options, 0);
-    }
-    return RG_DIALOG_IGNORE;
+    bool is_cgb = gnuboy_get_hwtype() == GB_HW_CGB;
+    dialog_option_t options[] = {
+        {100, "Palette", "7/7", is_cgb ? RG_DIALOG_FLAG_SKIP : 1, &palette_update_cb},
+        {101, "Set clock", "00:00", 1, &rtc_update_cb},
+        RG_DIALOG_SEPARATOR,
+        {111, "Auto save SRAM", "Off", 1, &sram_autosave_cb},
+        {112, "Save SRAM now ", NULL, 1, &sram_save_now_cb},
+        RG_DIALOG_CHOICE_LAST
+    };
+    rg_gui_dialog("Advanced", options, 0);
 }
 
 static void vblank_callback(void)
@@ -241,6 +240,7 @@ void app_main(void)
         .reset = &reset_handler,
         .netplay = NULL,
         .screenshot = &screenshot_handler,
+        .settings = &settings_handler,
     };
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
@@ -296,14 +296,8 @@ void app_main(void)
         }
         else if (joystick & GAMEPAD_KEY_VOLUME)
         {
-            bool is_cgb = gnuboy_get_hwtype() == GB_HW_CGB;
-            dialog_option_t options[] = {
-                {100, "Palette", "7/7", is_cgb ? RG_DIALOG_FLAG_SKIP : 1, &palette_update_cb},
-                {101, "More...", NULL, 1, &advanced_settings_cb},
-                RG_DIALOG_CHOICE_LAST
-            };
             auto_sram_update();
-            rg_gui_game_settings_menu(options);
+            rg_gui_game_settings_menu();
         }
         else if (joystick != joystick_old)
         {
