@@ -176,7 +176,8 @@ I don't want to maintain non-ESP32 ports in this repository but let me know if I
 - The SNES emulator is a port of [Snes9x](https://github.com/snes9xgit/snes9x/).
 - PNG support is provided by [luPng](https://github.com/jansol/LuPng) and [zlib](http://zlib.net).
 - PCE cover art is from [Christian_Haitian](https://github.com/christianhaitian).
-- Some icons from [Rokey](https://iconarchive.com/show/seed-icons-by-rokey.html)
+- Some icons from [Rokey](https://iconarchive.com/show/seed-icons-by-rokey.html).
+- Special thanks to [RGHandhelds](https://www.rghandhelds.com/) and [MyRetroGamecase](https://www.myretrogamecase.com/) for sending me a [G32](https://www.myretrogamecase.com/products/game-mini-g32-esp32-retro-gaming-console-1) device.
 
 # License
 Everything in this project is licensed under the [GPLv2 license](COPYING) with the exception of the following components:

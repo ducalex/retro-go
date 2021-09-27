@@ -1,3 +1,11 @@
+# Retro-Go 1.27 (2021-09-27)
+- NES: Implemented mappers 76 and 206
+- NES: Optimized mappers 9 and 10
+- GBC: Fixed Dinky Kong & Dixie Kong
+- Minor menu reorganization
+- First alpha build for MRGC-G32 (GBC) devices
+
+
 # Retro-Go 1.26.3 (2021-08-29)
 - Fixed typo resulting in corrupt PNG decoding
 
