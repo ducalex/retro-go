@@ -105,6 +105,16 @@ bool rg_sdcard_mount(void)
     }
 
     RG_LOGI("SD Card mounted. driver=%d, serial=%08X\n", RG_STORAGE_DRIVER, card->cid.serial);
+
+    // I was worried but the delay this introduces is minimal
+    rg_mkdir(RG_BASE_PATH_CACHE);
+    rg_mkdir(RG_BASE_PATH_CONFIG);
+    // rg_mkdir(RG_BASE_PATH_ROMART);
+    // rg_mkdir(RG_BASE_PATH_ROMS);
+    // rg_mkdir(RG_BASE_PATH_SAVES);
+    rg_mkdir(RG_BASE_PATH_SYSTEM);
+    rg_mkdir(RG_BASE_PATH_TEMP);
+
     return true;
 }
 

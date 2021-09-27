@@ -30,16 +30,6 @@ void crc_cache_init(void)
     }
 
     FILE *fp = fopen(CRC_CACHE_PATH, "rb");
-    if (!fp)
-    {
-        rg_mkdir(RG_BASE_PATH_CACHE);
-        fp = fopen(CRC_CACHE_PATH, "wb");
-        fwrite(crc_cache, sizeof(retro_crc_cache_t), 1, fp);
-        fclose(fp);
-
-        fp = fopen(CRC_CACHE_PATH, "rb");
-    }
-
     if (fp)
     {
         fread(crc_cache, offsetof(retro_crc_cache_t, entries), 1, fp);

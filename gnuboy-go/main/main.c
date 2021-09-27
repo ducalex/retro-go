@@ -267,9 +267,9 @@ void app_main(void)
 
     // Load BIOS
     if (gnuboy_get_hwtype() == GB_HW_CGB)
-        gnuboy_load_bios(RG_BASE_PATH "/bios/gbc_bios.bin");
+        gnuboy_load_bios(RG_BASE_PATH_SYSTEM "/gbc_bios.bin");
     else
-        gnuboy_load_bios(RG_BASE_PATH "/bios/gb_bios.bin");
+        gnuboy_load_bios(RG_BASE_PATH_SYSTEM "/gb_bios.bin");
 
     // Hard reset to have a clean slate
     gnuboy_reset(true);

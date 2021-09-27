@@ -141,7 +141,7 @@ static dialog_return_t menu_keymap_cb(dialog_option_t *option, dialog_event_t ev
 
 		RG_DIALOG_MAKE_LAST(option);
 
-		rg_gui_dialog("SNES  :ODROID", options, -1);
+		rg_gui_dialog("SNES  :HANDHELD", options, -1);
 		rg_display_clear(C_BLACK);
 	}
 
@@ -195,7 +195,7 @@ static bool reset_handler(bool hard)
 
 static void snes9x_task(void *arg)
 {
-	printf("\nSnes9x " VERSION " for ODROID-GO\n");
+	printf("\nSnes9x " VERSION " for ESP32\n");
 
 	vTaskDelay(5); // Make sure app_main() returned and freed its stack
 

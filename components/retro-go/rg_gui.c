@@ -953,29 +953,32 @@ int rg_gui_debug_menu(const dialog_option_t *extra_options)
 
 static void draw_game_status_bars(void)
 {
-    int height = 16;
-    int pad_text = (height - font_info.height) / 2;
-    char header[41] = {0};
-    char footer[41] = {0};
+    int height = RG_MAX(font_info.height + 4, 16);
+    int padding = (height - font_info.height) / 2;
+    int max_len = RG_MIN(screen_width / font_info.width, 99);
+    char header[100] = {0};
+    char footer[100] = {0};
 
     const runtime_stats_t stats = rg_system_get_stats();
     const rg_app_desc_t *app = rg_system_get_app();
 
-    snprintf(header, 40, "SPEED: %.0f%% (%.0f/%.0f) / BUSY: %.0f%%",
+    snprintf(header, 100, "SPEED: %.0f%% (%.0f/%.0f) / BUSY: %.0f%%",
         round(stats.totalFPS / app->refreshRate * 100.f),
         round(stats.totalFPS - stats.skippedFPS),
         round(stats.totalFPS),
         round(stats.busyPercent));
 
-    if (app->romPath)
-        snprintf(footer, 40, "%s", app->romPath + strlen(RG_BASE_PATH_ROMS));
+    if (app->romPath && strlen(app->romPath) > max_len)
+        snprintf(footer, 100, "...%s", app->romPath + (strlen(app->romPath) - (max_len - 3)));
+    else if (app->romPath)
+        snprintf(footer, 100, "%s", app->romPath);
 
     rg_input_wait_for_key(GAMEPAD_KEY_ALL, false);
 
     rg_gui_draw_rect(0, 0, screen_width, height, 0, 0, C_BLACK);
     rg_gui_draw_rect(0, -height, screen_width, height, 0, 0, C_BLACK);
-    rg_gui_draw_text(0, pad_text, screen_width, header, C_LIGHT_GRAY, C_BLACK, 0);
-    rg_gui_draw_text(0, -height + pad_text, screen_width, footer, C_LIGHT_GRAY, C_BLACK, 0);
+    rg_gui_draw_text(0, padding, screen_width, header, C_LIGHT_GRAY, C_BLACK, 0);
+    rg_gui_draw_text(0, -height + padding, screen_width, footer, C_LIGHT_GRAY, C_BLACK, 0);
     rg_gui_draw_battery(-26, 3);
 }
 

@@ -70,7 +70,7 @@ rename it `romart`. I also periodically upload zips to the release page.
 
 ## Adding missing covers
 First identify the CRC32 of your game (in the launcher press A -> Properties). Now, let's assume that 
-the CRC32 of your NES game is ABCDE123, you must place the file at: `sdcard:/romart/nes/A/ABCDE123.png`.
+the CRC32 of your NES game is ABCDE123, you must place the file at: `/romart/nes/A/ABCDE123.png`.
 
 _Note: If you need to compute the CRC32 outside of retro-go, please be mindful that certain systems 
 skip the file header in their CRC calculation (eg NES skips 16 bytes and Lynx skips 64 bytes). 
@@ -95,9 +95,9 @@ To recap: If you set a reasonable save delay (10-30s) and you briefly open the m
 
 # BIOS
 Some emulators support loading a BIOS. The files should be placed as follows:
-- GB: /bios/gb_bios.bin
-- GBC: /bios/gbc_bios.bin
-- FDS: /bios/fds_bios.bin
+- GB: `/retro-go/system/gb_bios.bin`
+- GBC: `/retro-go/system/gbc_bios.bin`
+- FDS: `/retro-go/system/fds_bios.bin`
 
 
 # Known issues
