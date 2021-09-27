@@ -176,7 +176,7 @@ void app_main(void)
         if (*localJoystick & GAMEPAD_KEY_MENU) {
             rg_gui_game_menu();
         }
-        else if (*localJoystick & GAMEPAD_KEY_VOLUME) {
+        else if (*localJoystick & GAMEPAD_KEY_OPTION) {
             rg_gui_game_settings_menu();
         }
 

@@ -294,7 +294,7 @@ void app_main(void)
             auto_sram_update();
             rg_gui_game_menu();
         }
-        else if (joystick & GAMEPAD_KEY_VOLUME)
+        else if (joystick & GAMEPAD_KEY_OPTION)
         {
             auto_sram_update();
             rg_gui_game_settings_menu();

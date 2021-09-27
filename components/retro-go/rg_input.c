@@ -29,7 +29,7 @@ static inline uint32_t gamepad_read(void)
     else if (joyX > 1024)   state |= GAMEPAD_KEY_RIGHT;
 
     if (!gpio_get_level(RG_GPIO_GAMEPAD_MENU))   state |= GAMEPAD_KEY_MENU;
-    if (!gpio_get_level(RG_GPIO_GAMEPAD_VOLUME)) state |= GAMEPAD_KEY_VOLUME;
+    if (!gpio_get_level(RG_GPIO_GAMEPAD_OPTION)) state |= GAMEPAD_KEY_OPTION;
     if (!gpio_get_level(RG_GPIO_GAMEPAD_SELECT)) state |= GAMEPAD_KEY_SELECT;
     if (!gpio_get_level(RG_GPIO_GAMEPAD_START))  state |= GAMEPAD_KEY_START;
     if (!gpio_get_level(RG_GPIO_GAMEPAD_A))      state |= GAMEPAD_KEY_A;
@@ -49,7 +49,7 @@ static inline uint32_t gamepad_read(void)
         if (buttons & (1 << 4)) state |= GAMEPAD_KEY_LEFT;
         if (buttons & (1 << 5)) state |= GAMEPAD_KEY_RIGHT;
         if (buttons & (1 << 8)) state |= GAMEPAD_KEY_MENU;
-        // if (buttons & (1 << 0)) state |= GAMEPAD_KEY_VOLUME;
+        // if (buttons & (1 << 0)) state |= GAMEPAD_KEY_OPTION;
         if (buttons & (1 << 1)) state |= GAMEPAD_KEY_SELECT;
         if (buttons & (1 << 0)) state |= GAMEPAD_KEY_START;
         if (buttons & (1 << 6)) state |= GAMEPAD_KEY_A;
@@ -112,8 +112,8 @@ void rg_input_init(void)
 
     gpio_set_direction(RG_GPIO_GAMEPAD_MENU, GPIO_MODE_INPUT);
     gpio_set_pull_mode(RG_GPIO_GAMEPAD_MENU, GPIO_PULLUP_ONLY);
-    gpio_set_direction(RG_GPIO_GAMEPAD_VOLUME, GPIO_MODE_INPUT);
-    // gpio_set_pull_mode(RG_GPIO_GAMEPAD_VOLUME, GPIO_PULLUP_ONLY);
+    gpio_set_direction(RG_GPIO_GAMEPAD_OPTION, GPIO_MODE_INPUT);
+    // gpio_set_pull_mode(RG_GPIO_GAMEPAD_OPTION, GPIO_PULLUP_ONLY);
     gpio_set_direction(RG_GPIO_GAMEPAD_SELECT, GPIO_MODE_INPUT);
     gpio_set_pull_mode(RG_GPIO_GAMEPAD_SELECT, GPIO_PULLUP_ONLY);
     gpio_set_direction(RG_GPIO_GAMEPAD_START, GPIO_MODE_INPUT);

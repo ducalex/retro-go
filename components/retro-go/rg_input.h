@@ -14,7 +14,7 @@ typedef enum
     GAMEPAD_KEY_A       = (1 << 6),
     GAMEPAD_KEY_B       = (1 << 7),
     GAMEPAD_KEY_MENU    = (1 << 8),
-    GAMEPAD_KEY_VOLUME  = (1 << 9),
+    GAMEPAD_KEY_OPTION  = (1 << 9),
     GAMEPAD_KEY_X       = (1 << 10),
     GAMEPAD_KEY_Y       = (1 << 11),
     GAMEPAD_KEY_ANY     = 0xFFFF,

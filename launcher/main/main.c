@@ -193,7 +193,7 @@ void retro_loop()
             }
             gui_redraw();
         }
-        else if (last_key == GAMEPAD_KEY_VOLUME) {
+        else if (last_key == GAMEPAD_KEY_OPTION) {
             const dialog_option_t options[] = {
                 RG_DIALOG_SEPARATOR,
                 {0, "Color theme", "...", 1, &color_shift_cb},

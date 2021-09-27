@@ -218,7 +218,7 @@ extern "C" void app_main(void)
         if (joystick & GAMEPAD_KEY_MENU) {
             rg_gui_game_menu();
         }
-        else if (joystick & GAMEPAD_KEY_VOLUME) {
+        else if (joystick & GAMEPAD_KEY_OPTION) {
             rg_gui_game_settings_menu();
         }
 

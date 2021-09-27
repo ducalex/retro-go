@@ -39,7 +39,7 @@
 #define RG_GPIO_GAMEPAD_A           GPIO_NUM_32
 #define RG_GPIO_GAMEPAD_B           GPIO_NUM_33
 #define RG_GPIO_GAMEPAD_MENU        GPIO_NUM_13
-#define RG_GPIO_GAMEPAD_VOLUME      GPIO_NUM_0
+#define RG_GPIO_GAMEPAD_OPTION      GPIO_NUM_0
 
 // SNES-style gamepad
 #define RG_GPIO_GAMEPAD_LATCH       GPIO_NUM_NC

@@ -563,8 +563,8 @@ int rg_gui_dialog(const char *header, const dialog_option_t *options_const, int 
                 last_key = GAMEPAD_KEY_B;
                 select = RG_DIALOG_CANCEL;
             }
-            else if (joystick & GAMEPAD_KEY_VOLUME) {
-                last_key = GAMEPAD_KEY_VOLUME;
+            else if (joystick & GAMEPAD_KEY_OPTION) {
+                last_key = GAMEPAD_KEY_OPTION;
                 select = RG_DIALOG_CANCEL;
             }
             else if (joystick & GAMEPAD_KEY_MENU) {

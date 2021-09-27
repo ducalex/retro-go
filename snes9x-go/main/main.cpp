@@ -248,7 +248,7 @@ static void snes9x_task(void *arg)
 			}
 			menuCancelled = false;
 		}
-		else if (joystick & GAMEPAD_KEY_VOLUME)
+		else if (joystick & GAMEPAD_KEY_OPTION)
 		{
 			rg_gui_game_settings_menu();
 		}
