@@ -7,6 +7,7 @@ It comes with many emulators!
 - Gameboy
 - Gameboy Color
 - Sega Master System
+- Sega SG-1000
 - Sega Game Gear
 - Colecovision
 - PC Engine

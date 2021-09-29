@@ -673,7 +673,7 @@ void emulators_init()
     // add_emulator("Nintendo Famicom Disk System",  "fds",  "fds",     "nofrendo-go", 16, &logo_nes, &header_nes);
     add_emulator("Nintendo Gameboy",              "gb",   "gb gbc",  "gnuboy-go",    0, &logo_gb,  &header_gb);
     add_emulator("Nintendo Gameboy Color",        "gbc",  "gbc gb",  "gnuboy-go",    0, &logo_gbc, &header_gbc);
-    add_emulator("Sega Master System",            "sms",  "sms",     "smsplusgx-go", 0, &logo_sms, &header_sms);
+    add_emulator("Sega Master System",            "sms",  "sms sg",  "smsplusgx-go", 0, &logo_sms, &header_sms);
     add_emulator("Sega Game Gear",                "gg",   "gg",      "smsplusgx-go", 0, &logo_gg,  &header_gg);
     add_emulator("ColecoVision",                  "col",  "col",     "smsplusgx-go", 0, &logo_col, &header_col);
     add_emulator("PC Engine",                     "pce",  "pce",     "pce-go",       0, &logo_pce, &header_pce);

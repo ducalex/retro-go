@@ -226,8 +226,10 @@ const char *rg_audio_get_sink_name(audio_sink_t sink)
         return "Built-in DAC";
     else if (sink == RG_AUDIO_SINK_EXT_DAC)
         return "External DAC";
+    else if (sink == RG_AUDIO_SINK_BT_A2DP)
+        return "Bluetooth";
     else if (sink == RG_AUDIO_SINK_DUMMY)
-        return "Dummy DAC";
+        return "Dummy";
 
     return "Unknown";
 }
