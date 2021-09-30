@@ -11,7 +11,7 @@
 #define AUDIO_SAMPLE_RATE   (32000)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
 
-static uint16_t myPalette[64];
+static uint16_t myPalette[256];
 static rg_video_frame_t frames[2];
 static rg_video_frame_t *currentUpdate = &frames[0];
 static rg_video_frame_t *previousUpdate = NULL;
@@ -114,7 +114,7 @@ static bool reset_handler(bool hard)
 static void build_palette(int n)
 {
     uint16_t *pal = nofrendo_buildpalette(n, 16);
-    for (int i = 0; i < 64; i++)
+    for (int i = 0; i < 256; i++)
         myPalette[i] = (pal[i] >> 8) | ((pal[i]) << 8);
     free(pal);
     previousUpdate = NULL;
@@ -243,7 +243,6 @@ void app_main(void)
 
     frames[0].flags = RG_PIXEL_PAL|RG_PIXEL_565|RG_PIXEL_BE;
     frames[0].stride = NES_SCREEN_PITCH;
-    frames[0].pixel_mask = 0x3F;
     frames[0].palette = myPalette;
     frames[1] = frames[0];
 

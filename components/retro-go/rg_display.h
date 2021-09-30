@@ -116,7 +116,6 @@ typedef struct {
     uint32_t width;         // In px
     uint32_t height;        // In px
     uint32_t stride;        // In bytes
-    uint32_t pixel_mask;    // Used only with palette
     void *buffer;           // Should be at least height*stride bytes. expects uint8_t * | uint16_t *
     void *palette;          // rg_video_palette_t expects uint16_t * of size pixel_mask
     void *my_arg;           // Reserved for user usage

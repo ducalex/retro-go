@@ -73,7 +73,6 @@ void osd_gfx_set_mode(int width, int height)
     frames[0].width = width - crop_h;
     frames[0].height = height - crop_v;
     frames[0].stride = XBUF_WIDTH;
-    frames[0].pixel_mask = 0xFF;
     frames[0].palette = mypalette;
     frames[1] = frames[0];
 

@@ -426,7 +426,6 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
 
     uint32_t pixel_format = frame->flags & RG_PIXEL_MASK;
     uint32_t stride = frame->stride;
-    uint32_t palette_mask = frame->pixel_mask ? frame->pixel_mask : 0xFF;
     uint16_t *palette = (pixel_format & RG_PIXEL_PAL) ? frame->palette : NULL;
     uint8_t *buffer = frame->buffer + (top * stride) + (left * (palette ? 1 : 2));
 
@@ -472,7 +471,7 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
                     uint32_t pixel;
 
                     if (palette)
-                        pixel = palette[buffer[x] & palette_mask];
+                        pixel = palette[buffer[x]];
                     else
                         pixel = ((uint16_t*)buffer)[x];
 
@@ -854,7 +853,7 @@ bool rg_display_save_frame(const char *filename, rg_video_frame_t *frame, int wi
             uint32_t pixel;
 
             if (frame->flags & RG_PIXEL_PAL)
-                pixel = ((uint16_t*)frame->palette)[line[(int)(x * step_x)] & frame->pixel_mask];
+                pixel = ((uint16_t*)frame->palette)[line[(int)(x * step_x)]];
             else
                 pixel = ((uint16_t*)line)[(int)(x * step_x)];
 
