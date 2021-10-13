@@ -39,7 +39,7 @@ void rg_gui_init(void)
     screen_height = rg_display_get_status()->screen.height;
     RG_ASSERT(screen_width && screen_height, "Bad screen res");
 
-    overlay_buffer = (uint16_t *)rg_alloc(screen_width * 32 * 2, MEM_SLOW);
+    overlay_buffer = (uint16_t *)rg_alloc(RG_MAX(screen_width, screen_height) * 32 * 2, MEM_SLOW);
     rg_gui_set_font_type(rg_settings_get_int32(SETTING_FONTTYPE, 0));
     rg_gui_set_theme(&default_theme);
 }
@@ -199,9 +199,9 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
     {
         int x_offset = 0;
 
-        for (int y = 0; y < font_height; y++)
-            for (int x = 0; x < draw_width; x++)
-                overlay_buffer[(draw_width * y) + x] = color_bg;
+        size_t p = draw_width * font_height;
+        while (p--)
+            overlay_buffer[p] = color_bg;
 
         if (flags & (RG_TEXT_ALIGN_LEFT|RG_TEXT_ALIGN_CENTER))
         {
@@ -231,13 +231,16 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
                 break;
             }
 
-            for (int y = 0; y < font_height; y++)
+            if (!(flags & RG_TEXT_DUMMY_DRAW))
             {
-                uint16_t *output = &overlay_buffer[x_offset + (draw_width * y)];
-
-                for (int x = 0; x < glyph.width; x++)
+                for (int y = 0; y < font_height; y++)
                 {
-                    output[x] = (glyph.bitmap[y] & (1 << x)) ? color_fg : color_bg;
+                    uint16_t *output = &overlay_buffer[x_offset + (draw_width * y)];
+
+                    for (int x = 0; x < glyph.width; x++)
+                    {
+                        output[x] = (glyph.bitmap[y] & (1 << x)) ? color_fg : color_bg;
+                    }
                 }
             }
 
@@ -272,7 +275,8 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_si
 
     if (border_size > 0)
     {
-        for (int p = border_size * RG_MAX(width, height); p >= 0; --p)
+        size_t p = border_size * RG_MAX(width, height);
+        while (p--)
             overlay_buffer[p] = border_color;
 
         rg_display_write(x_pos, y_pos, width, border_size, 0, overlay_buffer); // Top
@@ -286,9 +290,10 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_si
         height -= border_size * 2;
     }
 
-    if (fill_color >= 0)
+    if (height > 0 && fill_color != -1)
     {
-        for (int p = width * RG_MIN(height, 16); p >= 0; --p)
+        size_t p = width * RG_MIN(height, 16);
+        while (p--)
             overlay_buffer[p] = fill_color;
 
         for (int y = 0; y < height; y += 16)
@@ -541,6 +546,9 @@ int rg_gui_dialog(const char *header, const dialog_option_t *options_const, int 
             options[i].value = new_value;
         }
     }
+
+    // Constrain initial cursor and skip FLAG_SKIP items
+    sel = RG_MIN(RG_MAX(0, sel), options_count - 1);
 
     rg_input_wait_for_key(RG_KEY_ALL, false);
     rg_gui_draw_dialog(header, options, sel);
