@@ -17,6 +17,10 @@ static const char *SETTING_OUTPUT = "AudioSink";
 static const char *SETTING_VOLUME = "Volume";
 // static const char *SETTING_FILTER = "AudioFilter";
 
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 2, 0)
+    #define I2S_COMM_FORMAT_STAND_I2S (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB)
+#endif
+
 
 void rg_audio_init(int sample_rate)
 {
@@ -28,7 +32,7 @@ void rg_audio_init(int sample_rate)
         .sample_rate = sample_rate,
         .bits_per_sample = 16,
         .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
-        .communication_format = I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_LSB,
+        .communication_format = I2S_COMM_FORMAT_STAND_I2S,
         .dma_buf_count = 2,
         .dma_buf_len = RG_MIN(sample_rate / 50 + 1, 640), // The unit is stereo samples (4 bytes)
         .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,         // Interrupt level 1
@@ -49,7 +53,6 @@ void rg_audio_init(int sample_rate)
     }
     else if (sink == RG_AUDIO_SINK_EXT_DAC)
     {
-        i2s_config.communication_format = I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB;
         i2s_config.use_apll = 1;
         if (i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL) == ESP_OK)
         {
