@@ -1184,6 +1184,41 @@ bool rg_image_save_to_file(const char *filename, const rg_image_t *img, uint32_t
     return true;
 }
 
+rg_image_t *rg_image_copy_resized(const rg_image_t *img, int new_width, int new_height)
+{
+    RG_ASSERT(img, "bad param");
+
+    if (new_width <= 0 && new_height <= 0)
+    {
+        new_width = img->width;
+        new_height = img->height;
+    }
+    else if (new_width <= 0)
+    {
+        new_width = img->width * ((float)new_height / img->height);
+    }
+    else if (new_height <= 0)
+    {
+        new_height = img->height * ((float)new_width / img->width);
+    }
+
+    rg_image_t *new_img = rg_image_alloc(new_width, new_height);
+    if (new_img)
+    {
+        float step_x = (float)img->width / new_width;
+        float step_y = (float)img->height / new_height;
+        uint16_t *dst = new_img->data;
+        for (int y = 0; y < new_height; y++)
+        {
+            for (int x = 0; x < new_width; x++)
+            {
+                *(dst++) = img->data[((int)(y * step_y) * img->width) + (int)(x * step_x)];
+            }
+        }
+    }
+    return new_img;
+}
+
 rg_image_t *rg_image_alloc(size_t width, size_t height)
 {
     rg_image_t *img = malloc(sizeof(rg_image_t) + width * height * 2);
