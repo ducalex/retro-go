@@ -108,7 +108,7 @@ static bool reset_handler(bool hard)
 
 void app_main(void)
 {
-    rg_emu_proc_t handlers = {
+    const rg_emu_proc_t handlers = {
         .loadState = &load_state_handler,
         .saveState = &save_state_handler,
         .netplay = &netplay_handler,

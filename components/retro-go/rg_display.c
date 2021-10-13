@@ -176,7 +176,7 @@ static void spi_init()
         xQueueSend(spi_queue, &trans, portMAX_DELAY);
     }
 
-    spi_bus_config_t buscfg = {
+    const spi_bus_config_t buscfg = {
         .miso_io_num = RG_GPIO_LCD_MISO,
         .mosi_io_num = RG_GPIO_LCD_MOSI,
         .sclk_io_num = RG_GPIO_LCD_CLK,
@@ -184,7 +184,7 @@ static void spi_init()
         .quadhd_io_num = -1,
     };
 
-    spi_device_interface_config_t devcfg = {
+    const spi_device_interface_config_t devcfg = {
         .clock_speed_hz = SPI_MASTER_FREQ_40M,  // 80Mhz causes glitches unfortunately
         .mode = 0,                              // SPI mode 0
         .spics_io_num = RG_GPIO_LCD_CS,         // CS pin
@@ -424,7 +424,7 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
         return;
     }
 
-    uint32_t pixel_format = frame->flags & RG_PIXEL_MASK;
+    uint32_t pixel_format = frame->flags;
     uint32_t stride = frame->stride;
     uint16_t *palette = (pixel_format & RG_PIXEL_PAL) ? frame->palette : NULL;
     uint8_t *buffer = frame->buffer + (top * stride) + (left * (palette ? 1 : 2));

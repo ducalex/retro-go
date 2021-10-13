@@ -24,9 +24,10 @@ static int dpad_mapped_right;
 // static bool netplay = false;
 // --- MAIN
 
-static void set_rotation()
+static void set_display_mode(void)
 {
     display_rotation_t rotation = rg_display_get_rotation();
+    int width, height;
 
     if (rotation == RG_DISPLAY_ROTATION_AUTO)
     {
@@ -56,8 +57,8 @@ static void set_rotation()
     switch(rotation)
     {
         case RG_DISPLAY_ROTATION_LEFT:
-            frames[0].width = frames[1].width = HANDY_SCREEN_HEIGHT;
-            frames[0].height = frames[1].height = HANDY_SCREEN_WIDTH;
+            width = HANDY_SCREEN_HEIGHT;
+            height = HANDY_SCREEN_WIDTH;
             lynx->mMikie->SetRotation(MIKIE_ROTATE_L);
             dpad_mapped_up    = BUTTON_RIGHT;
             dpad_mapped_down  = BUTTON_LEFT;
@@ -65,8 +66,8 @@ static void set_rotation()
             dpad_mapped_right = BUTTON_DOWN;
             break;
         case RG_DISPLAY_ROTATION_RIGHT:
-            frames[0].width = frames[1].width = HANDY_SCREEN_HEIGHT;
-            frames[0].height = frames[1].height = HANDY_SCREEN_WIDTH;
+            width = HANDY_SCREEN_HEIGHT;
+            height = HANDY_SCREEN_WIDTH;
             lynx->mMikie->SetRotation(MIKIE_ROTATE_R);
             dpad_mapped_up    = BUTTON_LEFT;
             dpad_mapped_down  = BUTTON_RIGHT;
@@ -74,8 +75,8 @@ static void set_rotation()
             dpad_mapped_right = BUTTON_UP;
             break;
         default:
-            frames[0].width = frames[1].width = HANDY_SCREEN_WIDTH;
-            frames[0].height = frames[1].height = HANDY_SCREEN_HEIGHT;
+            width = HANDY_SCREEN_WIDTH;
+            height = HANDY_SCREEN_HEIGHT;
             lynx->mMikie->SetRotation(MIKIE_NO_ROTATE);
             dpad_mapped_up    = BUTTON_UP;
             dpad_mapped_down  = BUTTON_DOWN;
@@ -83,6 +84,8 @@ static void set_rotation()
             dpad_mapped_right = BUTTON_RIGHT;
             break;
     }
+    frames[0].width = frames[1].width = width;
+    frames[0].height = frames[1].height = height;
 }
 
 
@@ -93,12 +96,12 @@ static dialog_return_t rotation_cb(dialog_option_t *option, dialog_event_t event
     if (event == RG_DIALOG_PREV) {
         if (--rotation < 0) rotation = RG_DISPLAY_ROTATION_COUNT - 1;
         rg_display_set_rotation((display_rotation_t)rotation);
-        set_rotation();
+        set_display_mode();
     }
     if (event == RG_DIALOG_NEXT) {
         if (++rotation > RG_DISPLAY_ROTATION_COUNT - 1) rotation = 0;
         rg_display_set_rotation((display_rotation_t)rotation);
-        set_rotation();
+        set_display_mode();
     }
 
     strcpy(option->value, "Off  ");
@@ -163,7 +166,7 @@ static bool reset_handler(bool hard)
 
 extern "C" void app_main(void)
 {
-    rg_emu_proc_t handlers = {
+    const rg_emu_proc_t handlers = {
         .loadState = &load_state_handler,
         .saveState = &save_state_handler,
         .reset = &reset_handler,
@@ -204,7 +207,7 @@ extern "C" void app_main(void)
         rg_emu_load_state(0);
     }
 
-    set_rotation();
+    set_display_mode();
 
     float sampleTime = AUDIO_SAMPLE_RATE / 1000000.f;
     long skipFrames = 0;

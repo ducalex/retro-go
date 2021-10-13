@@ -153,23 +153,23 @@ void osd_input_read(uint8_t joypads[8])
     uint32_t buttons = 0;
 
     // TO DO: We should pause the audio task when entering a menu...
-    if (joystick & GAMEPAD_KEY_MENU)
+    if (joystick & RG_KEY_MENU)
     {
         rg_gui_game_menu();
     }
-    else if (joystick & GAMEPAD_KEY_OPTION)
+    else if (joystick & RG_KEY_OPTION)
     {
         rg_gui_game_settings_menu();
     }
 
-    if (joystick & GAMEPAD_KEY_LEFT)   buttons |= JOY_LEFT;
-    if (joystick & GAMEPAD_KEY_RIGHT)  buttons |= JOY_RIGHT;
-    if (joystick & GAMEPAD_KEY_UP)     buttons |= JOY_UP;
-    if (joystick & GAMEPAD_KEY_DOWN)   buttons |= JOY_DOWN;
-    if (joystick & GAMEPAD_KEY_A)      buttons |= JOY_A;
-    if (joystick & GAMEPAD_KEY_B)      buttons |= JOY_B;
-    if (joystick & GAMEPAD_KEY_START)  buttons |= JOY_RUN;
-    if (joystick & GAMEPAD_KEY_SELECT) buttons |= JOY_SELECT;
+    if (joystick & RG_KEY_LEFT)   buttons |= JOY_LEFT;
+    if (joystick & RG_KEY_RIGHT)  buttons |= JOY_RIGHT;
+    if (joystick & RG_KEY_UP)     buttons |= JOY_UP;
+    if (joystick & RG_KEY_DOWN)   buttons |= JOY_DOWN;
+    if (joystick & RG_KEY_A)      buttons |= JOY_A;
+    if (joystick & RG_KEY_B)      buttons |= JOY_B;
+    if (joystick & RG_KEY_START)  buttons |= JOY_RUN;
+    if (joystick & RG_KEY_SELECT) buttons |= JOY_SELECT;
 
     joypads[0] = buttons;
 }
@@ -255,7 +255,7 @@ static bool reset_handler(bool hard)
 
 void app_main(void)
 {
-    rg_emu_proc_t handlers = {
+    const rg_emu_proc_t handlers = {
         .loadState = &load_state_handler,
         .saveState = &save_state_handler,
         .reset = &reset_handler,

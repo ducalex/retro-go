@@ -59,12 +59,17 @@ typedef enum
 
 enum
 {
+    // These are legacy flags, don't use them. Still needed for now
     RG_PIXEL_565 = 0b0000, // 16bit 565
     RG_PIXEL_555 = 0b0010, // 16bit 555
     RG_PIXEL_PAL = 0b0001, // Use palette
     RG_PIXEL_BE  = 0b0000, // big endian
     RG_PIXEL_LE  = 0b0100, // little endian
-    RG_PIXEL_MASK = 0b1111,
+    // These are the ones that should be used by applications:
+    RG_PIXEL_565_BE = RG_PIXEL_565|RG_PIXEL_BE,
+    RG_PIXEL_565_LE = RG_PIXEL_565|RG_PIXEL_LE,
+    RG_PIXEL_PAL565_BE = RG_PIXEL_565|RG_PIXEL_BE|RG_PIXEL_PAL,
+    RG_PIXEL_PAL565_LE = RG_PIXEL_565|RG_PIXEL_LE|RG_PIXEL_PAL,
 };
 
 typedef struct {
@@ -124,8 +129,8 @@ typedef struct {
 
 void rg_display_init(void);
 void rg_display_deinit(void);
-void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t* buffer);
-void rg_display_clear(uint16_t colorLE);
+void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer); // , bool little_endian);
+void rg_display_clear(uint16_t color_le);
 void rg_display_reset_config(void);
 void rg_display_force_redraw(void);
 void rg_display_show_info(const char *text, int timeout_ms);

@@ -23,7 +23,7 @@ void rg_sdcard_set_enable_activity_led(bool enable)
 bool rg_sdcard_get_enable_activity_led(void)
 {
     if (diskActivity == -1 && rg_settings_ready())
-        diskActivity = rg_settings_get_int32(SETTING_DISK_ACTIVITY, false);
+        diskActivity = rg_settings_get_int32(SETTING_DISK_ACTIVITY, 1);
     return diskActivity;
 }
 

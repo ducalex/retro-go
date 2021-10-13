@@ -1,3 +1,10 @@
+# Retro-Go 1.27.2 (2021-10-13)
+- SMS: Enabled SG-1000 support
+- GBC: Hide palette option when running GBC game
+- Launcher: Adapt cover art size to screen resolution
+- Fixed multiple display corruption issues with dialogs
+
+
 # Retro-Go 1.27 (2021-09-27)
 - NES: Implemented mappers 76 and 206
 - NES: Optimized mappers 9 and 10

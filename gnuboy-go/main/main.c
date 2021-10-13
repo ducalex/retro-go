@@ -238,7 +238,7 @@ static void auto_sram_update(void)
 
 void app_main(void)
 {
-    rg_emu_proc_t handlers = {
+    const rg_emu_proc_t handlers = {
         .loadState = &load_state_handler,
         .saveState = &save_state_handler,
         .reset = &reset_handler,

@@ -230,7 +230,7 @@ static void osd_blitscreen(uint8 *bmp)
 
 void app_main(void)
 {
-    rg_emu_proc_t handlers = {
+    const rg_emu_proc_t handlers = {
         .loadState = &load_state_handler,
         .saveState = &save_state_handler,
         .reset = &reset_handler,
@@ -256,7 +256,7 @@ void app_main(void)
         RG_PANIC("Init failed.");
     }
 
-    int ret = nes_insertcart(app->romPath, "/sd/bios/fds_bios.bin");
+    int ret = nes_insertcart(app->romPath, RG_BASE_PATH_SYSTEM "/fds_bios.bin");
     if (ret == -1)
         RG_PANIC("ROM load failed.");
     else if (ret == -2)
