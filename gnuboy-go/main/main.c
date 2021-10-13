@@ -196,16 +196,20 @@ static dialog_return_t rtc_update_cb(dialog_option_t *option, dialog_event_t eve
 
 static void settings_handler(void)
 {
-    bool is_cgb = gnuboy_get_hwtype() == GB_HW_CGB;
     dialog_option_t options[] = {
-        {100, "Palette", "7/7", is_cgb ? RG_DIALOG_FLAG_SKIP : 1, &palette_update_cb},
+        {100, "Palette", "7/7", 1, &palette_update_cb},
         {101, "Set clock", "00:00", 1, &rtc_update_cb},
         RG_DIALOG_SEPARATOR,
         {111, "Auto save SRAM", "Off", 1, &sram_autosave_cb},
         {112, "Save SRAM now ", NULL, 1, &sram_save_now_cb},
         RG_DIALOG_CHOICE_LAST
     };
-    rg_gui_dialog("Advanced", options, 0);
+
+    // Don't show palette option for GBC
+    if (gnuboy_get_hwtype() == GB_HW_CGB)
+        rg_gui_dialog("Advanced", options + 1, 0);
+    else
+        rg_gui_dialog("Advanced", options, 0);
 }
 
 static void vblank_callback(void)

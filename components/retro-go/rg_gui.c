@@ -1014,8 +1014,8 @@ int rg_gui_game_menu(void)
         #ifdef ENABLE_NETPLAY
         {5000, "Netplay", NULL, 1, NULL},
         #endif
-        #ifdef RG_TARGET_MRGC_G32
-        {5500, "Settings", NULL, 1, NULL},
+        #if !RG_GAMEPAD_OPTION_BTN
+        {5500, "Options", NULL, 1, NULL},
         #endif
         {6000, "About", NULL, 1, NULL},
         {7000, "Quit", NULL, 1, NULL},
@@ -1049,7 +1049,7 @@ int rg_gui_game_menu(void)
     #ifdef ENABLE_NETPLAY
         case 5000: rg_netplay_quick_start(); break;
     #endif
-    #ifdef RG_TARGET_MRGC_G32
+    #if !RG_GAMEPAD_OPTION_BTN
         case 5500: rg_gui_game_settings_menu(); break;
     #endif
         case 6000: rg_gui_about_menu(NULL); break;
