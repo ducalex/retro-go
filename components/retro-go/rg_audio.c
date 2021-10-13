@@ -220,7 +220,7 @@ void rg_audio_clear_buffer()
     }
 }
 
-const char *rg_audio_get_sink_name(audio_sink_t sink)
+const char *rg_audio_get_sink_name(rg_sink_t sink)
 {
     if (sink == RG_AUDIO_SINK_SPEAKER)
         return "Built-in DAC";
@@ -234,24 +234,24 @@ const char *rg_audio_get_sink_name(audio_sink_t sink)
     return "Unknown";
 }
 
-audio_sink_t rg_audio_get_sink(void)
+rg_sink_t rg_audio_get_sink(void)
 {
     return audioSink;
 }
 
-void rg_audio_set_sink(audio_sink_t sink)
+void rg_audio_set_sink(rg_sink_t sink)
 {
     rg_settings_set_int32(SETTING_OUTPUT, sink);
     rg_audio_deinit();
     rg_audio_init(audioSampleRate);
 }
 
-audio_volume_t rg_audio_get_volume(void)
+rg_volume_t rg_audio_get_volume(void)
 {
     return volumeLevel;
 }
 
-void rg_audio_set_volume(audio_volume_t level)
+void rg_audio_set_volume(rg_volume_t level)
 {
     volumeLevel = RG_MIN(RG_AUDIO_VOL_MAX, RG_MAX(RG_AUDIO_VOL_MIN, level));
     rg_settings_set_int32(SETTING_VOLUME, volumeLevel);

@@ -13,7 +13,7 @@
 
 static dialog_return_t font_type_cb(dialog_option_t *option, dialog_event_t event)
 {
-    font_info_t info = rg_gui_get_font_info();
+    rg_gui_font_t info = rg_gui_get_font_info();
 
     if (event == RG_DIALOG_PREV) {
         rg_gui_set_font_type((int)info.type - 1);
@@ -159,7 +159,7 @@ void retro_loop()
 
         gui.joystick = rg_input_read_gamepad();
 
-        if (gui.idle_counter > 0 && (gui.joystick & GAMEPAD_KEY_ANY) == 0)
+        if (gui.idle_counter > 0 && (gui.joystick & RG_KEY_ANY) == 0)
         {
             gui_event(TAB_IDLE, tab);
 
@@ -172,17 +172,17 @@ void retro_loop()
             last_key |= (1 << 24); // No repeat
             if (--repeat == 0)
             {
-                last_key &= GAMEPAD_KEY_ANY;
+                last_key &= RG_KEY_ANY;
                 repeat = 4;
             }
         }
         else
         {
-            last_key = gui.joystick & GAMEPAD_KEY_ANY;
+            last_key = gui.joystick & RG_KEY_ANY;
             repeat = 25;
         }
 
-        if (last_key == GAMEPAD_KEY_MENU) {
+        if (last_key == RG_KEY_MENU) {
             const dialog_option_t options[] = {
                 {1, "Clear cache", NULL, 1, NULL},
                 RG_DIALOG_CHOICE_LAST
@@ -193,7 +193,7 @@ void retro_loop()
             }
             gui_redraw();
         }
-        else if (last_key == GAMEPAD_KEY_OPTION) {
+        else if (last_key == RG_KEY_OPTION) {
             const dialog_option_t options[] = {
                 RG_DIALOG_SEPARATOR,
                 {0, "Color theme", "...", 1, &color_shift_cb},
@@ -209,32 +209,32 @@ void retro_loop()
             gui_save_config(true);
             gui_redraw();
         }
-        else if (last_key == GAMEPAD_KEY_SELECT) {
+        else if (last_key == RG_KEY_SELECT) {
             gui.selected--;
         }
-        else if (last_key == GAMEPAD_KEY_START) {
+        else if (last_key == RG_KEY_START) {
             gui.selected++;
         }
-        else if (last_key == GAMEPAD_KEY_UP) {
+        else if (last_key == RG_KEY_UP) {
             gui_scroll_list(tab, SCROLL_LINE_UP, 0);
         }
-        else if (last_key == GAMEPAD_KEY_DOWN) {
+        else if (last_key == RG_KEY_DOWN) {
             gui_scroll_list(tab, SCROLL_LINE_DOWN, 0);
         }
-        else if (last_key == GAMEPAD_KEY_LEFT) {
+        else if (last_key == RG_KEY_LEFT) {
             gui_scroll_list(tab, SCROLL_PAGE_UP, 0);
         }
-        else if (last_key == GAMEPAD_KEY_RIGHT) {
+        else if (last_key == RG_KEY_RIGHT) {
             gui_scroll_list(tab, SCROLL_PAGE_DOWN, 0);
         }
-        else if (last_key == GAMEPAD_KEY_A) {
+        else if (last_key == RG_KEY_A) {
             gui_event(KEY_PRESS_A, tab);
         }
-        else if (last_key == GAMEPAD_KEY_B) {
+        else if (last_key == RG_KEY_B) {
             gui_event(KEY_PRESS_B, tab);
         }
 
-        if (gui.joystick & GAMEPAD_KEY_ANY) {
+        if (gui.joystick & RG_KEY_ANY) {
             gui.idle_counter = 0;
         } else {
             gui.idle_counter++;

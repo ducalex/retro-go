@@ -14,7 +14,7 @@
 
 static uint16_t *overlay_buffer = NULL;
 
-static const dialog_theme_t default_theme = {
+static const rg_gui_theme_t default_theme = {
     .box_background = C_NAVY,
     .box_header = C_WHITE,
     .box_border = C_DIM_GRAY,
@@ -23,8 +23,8 @@ static const dialog_theme_t default_theme = {
     .scrollbar = C_RED,
 };
 
-static dialog_theme_t theme;
-static font_info_t font_info = {0, 8, 8, 8, &font_basic8x8};
+static rg_gui_theme_t theme;
+static rg_gui_font_t font_info = {0, 8, 8, 8, &font_basic8x8};
 
 static int screen_width = -1;
 static int screen_height = -1;
@@ -44,7 +44,7 @@ void rg_gui_init(void)
     rg_gui_set_theme(&default_theme);
 }
 
-bool rg_gui_set_theme(const dialog_theme_t *new_theme)
+bool rg_gui_set_theme(const rg_gui_theme_t *new_theme)
 {
     if (!new_theme)
         return false;
@@ -150,7 +150,7 @@ bool rg_gui_set_font_type(int type)
     return true;
 }
 
-font_info_t rg_gui_get_font_info(void)
+rg_gui_font_t rg_gui_get_font_info(void)
 {
     return font_info;
 }
@@ -310,25 +310,31 @@ void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, const rg_ima
 
 void rg_gui_draw_battery(int x_pos, int y_pos)
 {
-    int percentage = rg_input_read_battery().percentage;
-    int width_fill = 20.f / 100 * percentage;
-    int width_empty = 20 - width_fill;
-    rg_color_t color_fill = C_FOREST_GREEN;
+    int width = 20, height = 10;
+    int width_fill = width;
+    float percentage;
+    rg_color_t color_fill = C_RED;
     rg_color_t color_border = C_SILVER;
     rg_color_t color_empty = C_BLACK;
 
-    if (percentage < 20)
-        color_fill = C_RED;
-    else if (percentage < 40)
-        color_fill = C_ORANGE;
+    if (rg_input_read_battery(&percentage, NULL))
+    {
+        width_fill = width / 100.f * percentage;
+        if (percentage < 20.f)
+            color_fill = C_RED;
+        else if (percentage < 40.f)
+            color_fill = C_ORANGE;
+        else
+            color_fill = C_FOREST_GREEN;
+    }
 
     if (x_pos < 0) x_pos += screen_width;
     if (y_pos < 0) y_pos += screen_height;
 
-    rg_gui_draw_rect(x_pos, y_pos, 22, 10, 1, color_border, -1);
-    rg_gui_draw_rect(x_pos + 22, y_pos + 2, 2, 6, 1, color_border, -1);
-    rg_gui_draw_rect(x_pos + 1, y_pos + 1, width_fill, 8, 0, 0, color_fill);
-    rg_gui_draw_rect(x_pos + 1 + width_fill, y_pos + 1, width_empty, 8, 0, 0, color_empty);
+    rg_gui_draw_rect(x_pos, y_pos, width + 2, height, 1, color_border, -1);
+    rg_gui_draw_rect(x_pos + width + 2, y_pos + 2, 2, height - 4, 1, color_border, -1);
+    rg_gui_draw_rect(x_pos + 1, y_pos + 1, width_fill, height - 2, 0, 0, color_fill);
+    rg_gui_draw_rect(x_pos + 1 + width_fill, y_pos + 1, width - width_fill, 8, 0, 0, color_empty);
 }
 
 void rg_gui_draw_hourglass(void)
@@ -536,7 +542,7 @@ int rg_gui_dialog(const char *header, const dialog_option_t *options_const, int 
         }
     }
 
-    rg_input_wait_for_key(GAMEPAD_KEY_ALL, false);
+    rg_input_wait_for_key(RG_KEY_ALL, false);
     rg_gui_draw_dialog(header, options, sel);
 
     while (1)
@@ -551,50 +557,51 @@ int rg_gui_dialog(const char *header, const dialog_option_t *options_const, int 
         else {
             dialog_return_t select = RG_DIALOG_IGNORE;
 
-            if (joystick & GAMEPAD_KEY_UP) {
-                last_key = GAMEPAD_KEY_UP;
+            if (joystick & RG_KEY_UP) {
+                last_key = RG_KEY_UP;
                 if (--sel < 0) sel = options_count - 1;
             }
-            else if (joystick & GAMEPAD_KEY_DOWN) {
-                last_key = GAMEPAD_KEY_DOWN;
+            else if (joystick & RG_KEY_DOWN) {
+                last_key = RG_KEY_DOWN;
                 if (++sel > options_count - 1) sel = 0;
             }
-            else if (joystick & GAMEPAD_KEY_B) {
-                last_key = GAMEPAD_KEY_B;
+            else if (joystick & RG_KEY_B) {
+                last_key = RG_KEY_B;
                 select = RG_DIALOG_CANCEL;
             }
-            else if (joystick & GAMEPAD_KEY_OPTION) {
-                last_key = GAMEPAD_KEY_OPTION;
+            else if (joystick & RG_KEY_OPTION) {
+                last_key = RG_KEY_OPTION;
                 select = RG_DIALOG_CANCEL;
             }
-            else if (joystick & GAMEPAD_KEY_MENU) {
-                last_key = GAMEPAD_KEY_MENU;
+            else if (joystick & RG_KEY_MENU) {
+                last_key = RG_KEY_MENU;
                 select = RG_DIALOG_CANCEL;
             }
-            if (options[sel].flags != RG_DIALOG_FLAG_DISABLED) {
-                if (joystick & GAMEPAD_KEY_LEFT) {
-                    last_key = GAMEPAD_KEY_LEFT;
+            // if (options[sel].flags == RG_DIALOG_FLAG_NORMAL) {
+            if (options[sel].flags != RG_DIALOG_FLAG_DISABLED && options[sel].flags != RG_DIALOG_FLAG_SKIP) {
+                if (joystick & RG_KEY_LEFT) {
+                    last_key = RG_KEY_LEFT;
                     if (options[sel].update_cb != NULL) {
                         select = options[sel].update_cb(&options[sel], RG_DIALOG_PREV);
                         sel_old = -1;
                     }
                 }
-                else if (joystick & GAMEPAD_KEY_RIGHT) {
-                    last_key = GAMEPAD_KEY_RIGHT;
+                else if (joystick & RG_KEY_RIGHT) {
+                    last_key = RG_KEY_RIGHT;
                     if (options[sel].update_cb != NULL) {
                         select = options[sel].update_cb(&options[sel], RG_DIALOG_NEXT);
                         sel_old = -1;
                     }
                 }
-                else if (joystick & GAMEPAD_KEY_START) {
-                    last_key = GAMEPAD_KEY_START;
+                else if (joystick & RG_KEY_START) {
+                    last_key = RG_KEY_START;
                     if (options[sel].update_cb != NULL) {
                         select = options[sel].update_cb(&options[sel], RG_DIALOG_ALT);
                         sel_old = -1;
                     }
                 }
-                else if (joystick & GAMEPAD_KEY_A) {
-                    last_key = GAMEPAD_KEY_A;
+                else if (joystick & RG_KEY_A) {
+                    last_key = RG_KEY_A;
                     if (options[sel].update_cb != NULL) {
                         select = options[sel].update_cb(&options[sel], RG_DIALOG_ENTER);
                         sel_old = -1;
@@ -616,7 +623,7 @@ int rg_gui_dialog(const char *header, const dialog_option_t *options_const, int 
         {
             while (options[sel].flags == RG_DIALOG_FLAG_SKIP && sel_old != sel)
             {
-                sel += (last_key == GAMEPAD_KEY_DOWN) ? 1 : -1;
+                sel += (last_key == RG_KEY_DOWN) ? 1 : -1;
 
                 if (sel < 0)
                     sel = options_count - 1;
@@ -633,8 +640,7 @@ int rg_gui_dialog(const char *header, const dialog_option_t *options_const, int 
 
     rg_input_wait_for_key(last_key, false);
 
-    if (!rg_emu_notify(RG_MSG_REDRAW, NULL))
-        rg_display_reset_config();
+    rg_display_force_redraw();
 
     for (int i = 0; i < options_count; i++)
     {
@@ -782,7 +788,7 @@ static dialog_return_t update_mode_update_cb(dialog_option_t *option, dialog_eve
 
 static dialog_return_t speedup_update_cb(dialog_option_t *option, dialog_event_t event)
 {
-    rg_app_desc_t *app = rg_system_get_app();
+    rg_app_t *app = rg_system_get_app();
     if (event == RG_DIALOG_PREV && --app->speedupEnabled < 0) app->speedupEnabled = 2;
     if (event == RG_DIALOG_NEXT && ++app->speedupEnabled > 2) app->speedupEnabled = 0;
 
@@ -793,7 +799,7 @@ static dialog_return_t speedup_update_cb(dialog_option_t *option, dialog_event_t
 
 static dialog_return_t more_settings_cb(dialog_option_t *option, dialog_event_t event)
 {
-    rg_app_desc_t *app = rg_system_get_app();
+    rg_app_t *app = rg_system_get_app();
     if (event == RG_DIALOG_ENTER && app->handlers.settings)
     {
         (app->handlers.settings)();
@@ -805,7 +811,7 @@ int rg_gui_settings_menu(const dialog_option_t *extra_options)
 {
     dialog_option_t options[16 + get_dialog_items_count(extra_options)];
     dialog_option_t *opt = &options[0];
-    rg_app_desc_t *app = rg_system_get_app();
+    rg_app_t *app = rg_system_get_app();
 
     *opt++ = (dialog_option_t){0, "Brightness", "50%",  1, &brightness_update_cb};
     *opt++ = (dialog_option_t){0, "Volume    ", "50%",  1, &volume_update_cb};
@@ -854,7 +860,7 @@ int rg_gui_about_menu(const dialog_option_t *extra_options)
         RG_DIALOG_CHOICE_LAST
     };
 
-    const rg_app_desc_t *app = rg_system_get_app();
+    const rg_app_t *app = rg_system_get_app();
 
     sprintf(build_ver, "%.30s", app->version);
     sprintf(build_date, "%s %.5s", app->buildDate, app->buildTime);
@@ -893,13 +899,13 @@ int rg_gui_about_menu(const dialog_option_t *extra_options)
 
 int rg_gui_debug_menu(const dialog_option_t *extra_options)
 {
-    char screen_res[20], game_res[20], scaled_res[20];
+    char screen_res[20], source_res[20], scaled_res[20];
     char stack_hwm[20], heap_free[20], block_free[20];
     char system_rtc[20], uptime[20];
 
     const dialog_option_t options[] = {
         {0, "Screen Res", screen_res, 1, NULL},
-        {0, "Game Res  ", game_res, 1, NULL},
+        {0, "Source Res", source_res, 1, NULL},
         {0, "Scaled Res", scaled_res, 1, NULL},
         {0, "Stack HWM ", stack_hwm, 1, NULL},
         {0, "Heap free ", heap_free, 1, NULL},
@@ -915,13 +921,13 @@ int rg_gui_debug_menu(const dialog_option_t *extra_options)
         RG_DIALOG_CHOICE_LAST
     };
 
-    const runtime_stats_t stats = rg_system_get_stats();
+    const rg_stats_t stats = rg_system_get_stats();
     const rg_display_t *display = rg_display_get_status();
     time_t now = time(NULL);
 
     strftime(system_rtc, 20, "%F %T", gmtime(&now));
     sprintf(screen_res, "%dx%d", display->screen.width, display->screen.height);
-    sprintf(game_res, "%dx%d", display->source.width, display->source.height);
+    sprintf(source_res, "%dx%d", display->source.width, display->source.height);
     sprintf(scaled_res, "%dx%d", display->viewport.width, display->viewport.height);
     sprintf(stack_hwm, "%d", stats.freeStackMain);
     sprintf(heap_free, "%d+%d", stats.freeMemoryInt, stats.freeMemoryExt);
@@ -959,8 +965,8 @@ static void draw_game_status_bars(void)
     char header[100] = {0};
     char footer[100] = {0};
 
-    const runtime_stats_t stats = rg_system_get_stats();
-    const rg_app_desc_t *app = rg_system_get_app();
+    const rg_stats_t stats = rg_system_get_stats();
+    const rg_app_t *app = rg_system_get_app();
 
     snprintf(header, 100, "SPEED: %.0f%% (%.0f/%.0f) / BUSY: %.0f%%",
         round(stats.totalFPS / app->refreshRate * 100.f),
@@ -973,7 +979,7 @@ static void draw_game_status_bars(void)
     else if (app->romPath)
         snprintf(footer, 100, "%s", app->romPath);
 
-    rg_input_wait_for_key(GAMEPAD_KEY_ALL, false);
+    rg_input_wait_for_key(RG_KEY_ALL, false);
 
     rg_gui_draw_rect(0, 0, screen_width, height, 0, 0, C_BLACK);
     rg_gui_draw_rect(0, -height, screen_width, height, 0, 0, C_BLACK);

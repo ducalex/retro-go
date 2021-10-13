@@ -254,15 +254,15 @@ InitPCE(int samplerate, bool stereo, const char *huecard)
  * Returns a 256 colors palette in the chosen depth
  */
 void *
-PalettePCE(int colordepth)
+PalettePCE(int bitdepth)
 {
-	if (colordepth == 15) {
+	if (bitdepth == 15) {
 		uint16_t *palette = malloc(256 * 2);
 		// ...
 		return palette;
 	}
 
-	if (colordepth == 16) {
+	if (bitdepth == 16) {
 		uint16_t *palette = malloc(256 * 2);
 		for (int i = 0; i < 255; i++) {
 			int r = (i & 0x1C) >> 1;
@@ -274,7 +274,7 @@ PalettePCE(int colordepth)
 		return palette;
 	}
 
-	if (colordepth == 24) {
+	if (bitdepth == 24) {
 		uint8_t *palette = malloc(256 * 3);
 		uint8_t *ptr = palette;
 		for (int i = 0; i < 255; i++) {

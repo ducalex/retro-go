@@ -33,7 +33,7 @@ static bool overscan = false;
 static bool downsample = false;
 static int skipFrames = 0;
 
-static rg_app_desc_t *app;
+static rg_app_t *app;
 
 #ifdef ENABLE_NETPLAY
 static bool netplay = false;

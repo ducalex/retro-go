@@ -10,7 +10,7 @@ typedef struct
     uint32_t enter_time;
     uint32_t num_calls;
     uint32_t run_time;
-} profile_frame_t;
+} rg_profile_frame_t;
 
 typedef struct
 {
@@ -18,8 +18,8 @@ typedef struct
     int64_t time_stopped;
     int32_t total_frames;
     int32_t locked;
-    profile_frame_t frames[512];
-} profile_t;
+    rg_profile_frame_t frames[512];
+} rg_profile_t;
 
 #ifdef __cplusplus
 extern "C" {

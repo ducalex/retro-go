@@ -102,7 +102,7 @@ typedef struct {
     int last_key;
     int width;
     int height;
-    gamepad_state_t joystick;
+    uint32_t joystick;
 } retro_gui_t;
 
 extern retro_gui_t gui;

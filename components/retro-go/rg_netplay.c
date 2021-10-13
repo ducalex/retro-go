@@ -423,7 +423,7 @@ bool rg_netplay_quick_start(void)
             screen_msg = status_msg;
         }
 
-        if (rg_input_key_is_pressed(GAMEPAD_KEY_B))
+        if (rg_input_key_is_pressed(RG_KEY_B))
             break;
 
         vTaskDelay(pdMS_TO_TICKS(10));

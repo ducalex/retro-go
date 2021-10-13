@@ -752,6 +752,11 @@ void rg_display_reset_config(void)
     };
 }
 
+void rg_display_force_redraw(void)
+{
+    display.changed = true;
+}
+
 const rg_display_t *rg_display_get_status(void)
 {
     return &display;

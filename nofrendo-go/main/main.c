@@ -16,8 +16,8 @@ static rg_video_frame_t frames[2];
 static rg_video_frame_t *currentUpdate = &frames[0];
 static rg_video_frame_t *previousUpdate = NULL;
 
-static gamepad_state_t joystick1;
-static gamepad_state_t *localJoystick = &joystick1;
+static uint32_t joystick1;
+static uint32_t *localJoystick = &joystick1;
 
 static bool overscan = true;
 static long autocrop = 0;
@@ -25,11 +25,11 @@ static bool fullFrame = 0;
 static long palette = 0;
 static nes_t *nes;
 
-static rg_app_desc_t *app;
+static rg_app_t *app;
 
 #ifdef ENABLE_NETPLAY
-static gamepad_state_t *remoteJoystick = &joystick2;
-static gamepad_state_t joystick2;
+static uint32_t *remoteJoystick = &joystick2;
+static uint32_t joystick2;
 
 static bool netplay = false;
 #endif
@@ -293,11 +293,11 @@ void app_main(void)
 
         *localJoystick = rg_input_read_gamepad();
 
-        if (*localJoystick & GAMEPAD_KEY_MENU)
+        if (*localJoystick & RG_KEY_MENU)
         {
             rg_gui_game_menu();
         }
-        else if (*localJoystick & GAMEPAD_KEY_OPTION)
+        else if (*localJoystick & RG_KEY_OPTION)
         {
             rg_gui_game_settings_menu();
         }
@@ -305,28 +305,28 @@ void app_main(void)
     #ifdef ENABLE_NETPLAY
         if (netplay)
         {
-            rg_netplay_sync(localJoystick, remoteJoystick, sizeof(gamepad_state_t));
-            if (joystick2 & GAMEPAD_KEY_START)  input |= NES_PAD_START;
-            if (joystick2 & GAMEPAD_KEY_SELECT) input |= NES_PAD_SELECT;
-            if (joystick2 & GAMEPAD_KEY_UP)     input |= NES_PAD_UP;
-            if (joystick2 & GAMEPAD_KEY_RIGHT)  input |= NES_PAD_RIGHT;
-            if (joystick2 & GAMEPAD_KEY_DOWN)   input |= NES_PAD_DOWN;
-            if (joystick2 & GAMEPAD_KEY_LEFT)   input |= NES_PAD_LEFT;
-            if (joystick2 & GAMEPAD_KEY_A)      input |= NES_PAD_A;
-            if (joystick2 & GAMEPAD_KEY_B)      input |= NES_PAD_B;
+            rg_netplay_sync(localJoystick, remoteJoystick, sizeof(*localJoystick));
+            if (joystick2 & RG_KEY_START)  input |= NES_PAD_START;
+            if (joystick2 & RG_KEY_SELECT) input |= NES_PAD_SELECT;
+            if (joystick2 & RG_KEY_UP)     input |= NES_PAD_UP;
+            if (joystick2 & RG_KEY_RIGHT)  input |= NES_PAD_RIGHT;
+            if (joystick2 & RG_KEY_DOWN)   input |= NES_PAD_DOWN;
+            if (joystick2 & RG_KEY_LEFT)   input |= NES_PAD_LEFT;
+            if (joystick2 & RG_KEY_A)      input |= NES_PAD_A;
+            if (joystick2 & RG_KEY_B)      input |= NES_PAD_B;
         }
         input_update(1, input);
         input = 0;
     #endif
 
-        if (joystick1 & GAMEPAD_KEY_START)  input |= NES_PAD_START;
-        if (joystick1 & GAMEPAD_KEY_SELECT) input |= NES_PAD_SELECT;
-        if (joystick1 & GAMEPAD_KEY_UP)     input |= NES_PAD_UP;
-        if (joystick1 & GAMEPAD_KEY_RIGHT)  input |= NES_PAD_RIGHT;
-        if (joystick1 & GAMEPAD_KEY_DOWN)   input |= NES_PAD_DOWN;
-        if (joystick1 & GAMEPAD_KEY_LEFT)   input |= NES_PAD_LEFT;
-        if (joystick1 & GAMEPAD_KEY_A)      input |= NES_PAD_A;
-        if (joystick1 & GAMEPAD_KEY_B)      input |= NES_PAD_B;
+        if (joystick1 & RG_KEY_START)  input |= NES_PAD_START;
+        if (joystick1 & RG_KEY_SELECT) input |= NES_PAD_SELECT;
+        if (joystick1 & RG_KEY_UP)     input |= NES_PAD_UP;
+        if (joystick1 & RG_KEY_RIGHT)  input |= NES_PAD_RIGHT;
+        if (joystick1 & RG_KEY_DOWN)   input |= NES_PAD_DOWN;
+        if (joystick1 & RG_KEY_LEFT)   input |= NES_PAD_LEFT;
+        if (joystick1 & RG_KEY_A)      input |= NES_PAD_A;
+        if (joystick1 & RG_KEY_B)      input |= NES_PAD_B;
 
         input_update(0, input);
 

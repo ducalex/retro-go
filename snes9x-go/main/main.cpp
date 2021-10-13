@@ -29,7 +29,7 @@ static uint32_t frames_counter = 0;
 static int keymap_id = 0;
 static keymap_t keymap;
 
-static rg_app_desc_t *app;
+static rg_app_t *app;
 
 #ifdef ENABLE_NETPLAY
 static bool netplay = false;
@@ -139,7 +139,8 @@ static dialog_return_t menu_keymap_cb(dialog_option_t *option, dialog_event_t ev
 		option->flags = RG_DIALOG_FLAG_NORMAL;
 		option++;
 
-		RG_DIALOG_MAKE_LAST(option);
+		option->label = NULL;
+		option->flags = RG_DIALOG_FLAG_LAST;
 
 		rg_gui_dialog("SNES  :HANDHELD", options, -1);
 		rg_display_clear(C_BLACK);
@@ -239,7 +240,7 @@ static void snes9x_task(void *arg)
 	{
 		uint32_t joystick = rg_input_read_gamepad();
 
-		if (menuPressed && !(joystick & GAMEPAD_KEY_MENU))
+		if (menuPressed && !(joystick & RG_KEY_MENU))
 		{
 			if (!menuCancelled)
 			{
@@ -248,16 +249,16 @@ static void snes9x_task(void *arg)
 			}
 			menuCancelled = false;
 		}
-		else if (joystick & GAMEPAD_KEY_OPTION)
+		else if (joystick & RG_KEY_OPTION)
 		{
 			rg_gui_game_settings_menu();
 		}
 
 		int64_t startTime = get_elapsed_time();
 
-		menuPressed = joystick & GAMEPAD_KEY_MENU;
+		menuPressed = joystick & RG_KEY_MENU;
 
-		if (menuPressed && (joystick & (GAMEPAD_KEY_B|GAMEPAD_KEY_A|GAMEPAD_KEY_START|GAMEPAD_KEY_SELECT)))
+		if (menuPressed && (joystick & (RG_KEY_B|RG_KEY_A|RG_KEY_START|RG_KEY_SELECT)))
 		{
 			menuCancelled = true;
 		}

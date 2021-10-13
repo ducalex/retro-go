@@ -36,15 +36,15 @@ typedef struct
     uint32_t magicWord;
     char message[256];
     char context[128];
-    runtime_stats_t statistics;
-    log_buffer_t log;
+    rg_stats_t statistics;
+    rg_logbuf_t log;
 } panic_trace_t;
 
 // These will survive a software reset
 static RTC_NOINIT_ATTR panic_trace_t panicTrace;
-static runtime_stats_t statistics;
-static runtime_counters_t counters;
-static rg_app_desc_t app;
+static rg_stats_t statistics;
+static rg_counters_t counters;
+static rg_app_t app;
 static int inputTimeout = -1;
 static int ledValue = 0;
 static bool initialized = false;
@@ -60,7 +60,7 @@ static const char *htime(time_t ts)
     return buffer;
 }
 
-static inline void logbuf_print(log_buffer_t *buf, const char *str)
+static inline void logbuf_print(rg_logbuf_t *buf, const char *str)
 {
     while (*str)
     {
@@ -89,7 +89,7 @@ IRAM_ATTR void esp_panic_putchar_hook(char c)
 
 static void system_monitor_task(void *arg)
 {
-    runtime_counters_t current = {0};
+    rg_counters_t current = {0};
     multi_heap_info_t heap_info = {0};
     time_t lastTime = time(NULL);
     bool ledState = false;
@@ -111,7 +111,8 @@ static void system_monitor_task(void *arg)
         counters.skippedFrames = counters.busyTime = 0;
         counters.resetTime = get_elapsed_time();
 
-        statistics.battery = rg_input_read_battery();
+        rg_input_read_battery(&statistics.batteryPercent, &statistics.batteryVoltage);
+
         statistics.busyPercent = RG_MIN(current.busyTime / tickTime * 100.f, 100.f);
         statistics.skippedFPS = current.skippedFrames / (tickTime / 1000000.f);
         statistics.totalFPS = current.totalFrames / (tickTime / 1000000.f);
@@ -125,7 +126,7 @@ static void system_monitor_task(void *arg)
         statistics.freeMemoryExt = heap_info.total_free_bytes;
         statistics.freeBlockExt = heap_info.largest_free_block;
 
-        if (statistics.battery.percentage < 2)
+        if (statistics.batteryPercent < 2)
         {
             ledState = !ledState;
             rg_system_set_led(ledState);
@@ -136,7 +137,7 @@ static void system_monitor_task(void *arg)
             rg_system_set_led(ledState);
         }
 
-        RG_LOGX("STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%.2f, FPS:%.2f (SKIP:%d, PART:%d, FULL:%d), BATT:%d\n",
+        RG_LOGX("STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%.2f, FPS:%.2f (SKIP:%d, PART:%d, FULL:%d), BATT:%.2f\n",
             statistics.freeStackMain,
             statistics.freeMemoryInt / 1024,
             statistics.freeMemoryExt / 1024,
@@ -147,7 +148,7 @@ static void system_monitor_task(void *arg)
             current.skippedFrames,
             current.totalFrames - current.fullFrames - current.skippedFrames,
             current.fullFrames,
-            statistics.battery.millivolts);
+            statistics.batteryPercent);
 
         // if (statistics.freeStackMain < 1024)
         // {
@@ -214,7 +215,7 @@ IRAM_ATTR void rg_system_tick(int busyTime)
     }
 }
 
-runtime_stats_t rg_system_get_stats()
+rg_stats_t rg_system_get_stats()
 {
     return statistics;
 }
@@ -261,7 +262,7 @@ void rg_system_time_save()
     }
 }
 
-rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
+rg_app_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
 {
     const esp_app_desc_t *esp_app = esp_ota_get_app_description();
 
@@ -351,7 +352,7 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
         app.refreshRate = 60;
 
         // If any key is pressed we abort and go back to the launcher
-        if (rg_input_key_is_pressed(GAMEPAD_KEY_ANY))
+        if (rg_input_key_is_pressed(RG_KEY_ANY))
         {
             rg_system_switch_app(RG_APP_LAUNCHER);
         }
@@ -391,7 +392,7 @@ rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
     return &app;
 }
 
-rg_app_desc_t *rg_system_get_app()
+rg_app_t *rg_system_get_app()
 {
     return &app;
 }
@@ -601,7 +602,7 @@ static void shutdown_cleanup()
 {
     // Prepare the system for a power change (deep sleep, restart, shutdown)
     // Wait for all keys to be released, they could interfer with the restart process
-    rg_input_wait_for_key(GAMEPAD_KEY_ALL, false);
+    rg_input_wait_for_key(RG_KEY_ALL, false);
     rg_system_time_save();
     rg_settings_save();
     rg_audio_deinit();
@@ -705,8 +706,8 @@ void rg_system_log(int level, const char *context, const char *format, ...)
 
 bool rg_system_save_trace(const char *filename, bool panic_trace)
 {
-    runtime_stats_t *stats = panic_trace ? &panicTrace.statistics : &statistics;
-    log_buffer_t *log = panic_trace ? &panicTrace.log : &app.log;
+    rg_stats_t *stats = panic_trace ? &panicTrace.statistics : &statistics;
+    rg_logbuf_t *log = panic_trace ? &panicTrace.log : &app.log;
     RG_ASSERT(filename, "bad param");
 
     FILE *fp = fopen(filename, "w");

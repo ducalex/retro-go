@@ -48,7 +48,7 @@ typedef struct
     uint8_t height;
     uint8_t points;
     const rg_font_t *font;
-} font_info_t;
+} rg_gui_font_t;
 
 // rg_image_t contains an RGB565 (LE) image
 typedef struct
@@ -82,7 +82,7 @@ typedef struct
     rg_color_t item_standard;
     rg_color_t item_disabled;
     rg_color_t scrollbar;
-} dialog_theme_t;
+} rg_gui_theme_t;
 
 typedef struct dialog_option_s dialog_option_t;
 typedef dialog_return_t (*dialog_callback_t)(dialog_option_t *, dialog_event_t);
@@ -103,12 +103,11 @@ struct dialog_option_s
 
 #define RG_DIALOG_CHOICE_LAST {0, NULL, NULL, RG_DIALOG_FLAG_LAST, NULL}
 #define RG_DIALOG_SEPARATOR   {0, "----", NULL, RG_DIALOG_FLAG_SKIP, NULL}
-#define RG_DIALOG_MAKE_LAST(ptr) {dialog_option_t *p = (ptr); p->flags = RG_DIALOG_FLAG_LAST;}
 
 void rg_gui_init(void);
-bool rg_gui_set_theme(const dialog_theme_t *new_theme);
+bool rg_gui_set_theme(const rg_gui_theme_t *new_theme);
 bool rg_gui_set_font_type(int type);
-font_info_t rg_gui_get_font_info(void);
+rg_gui_font_t rg_gui_get_font_info(void);
 rg_rect_t rg_gui_calc_text_size(const char *text, int max_width);
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, rg_color_t color_fg, rg_color_t color_bg, uint32_t flags);
 void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size, rg_color_t border_color, rg_color_t fill_color);

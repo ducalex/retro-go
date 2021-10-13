@@ -12,18 +12,18 @@
 // We also need to add multi-core support. Currently it's not an issue
 // because all our profiled code runs on the same core.
 
-static profile_t *profile;
+static rg_profile_t *profile;
 static SemaphoreHandle_t lock;
 static bool enabled = false;
 
 #define LOCK_PROFILE()   xSemaphoreTake(lock, pdMS_TO_TICKS(10000)); // {while(lock);lock=true;}
 #define UNLOCK_PROFILE() xSemaphoreGive(lock);                       // {lock = false;}
 
-NO_PROFILE static inline profile_frame_t *find_frame(void *this_fn, void *call_site)
+NO_PROFILE static inline rg_profile_frame_t *find_frame(void *this_fn, void *call_site)
 {
     for (int i = 0; i < 512; ++i)
     {
-        profile_frame_t *frame = &profile->frames[i];
+        rg_profile_frame_t *frame = &profile->frames[i];
 
         if (frame->func_ptr == 0)
         {
@@ -43,7 +43,7 @@ NO_PROFILE static inline profile_frame_t *find_frame(void *this_fn, void *call_s
 
 NO_PROFILE void rg_profiler_init(void)
 {
-    profile = rg_alloc(sizeof(profile_t), MEM_SLOW);
+    profile = rg_alloc(sizeof(rg_profile_t), MEM_SLOW);
     lock = xSemaphoreCreateMutex();
     RG_LOGI("init done.\n");
 }
@@ -52,7 +52,7 @@ NO_PROFILE void rg_profiler_start(void)
 {
     LOCK_PROFILE();
 
-    memset(profile, 0, sizeof(profile_t));
+    memset(profile, 0, sizeof(rg_profile_t));
     profile->time_started = get_elapsed_time();
     enabled = true;
 
@@ -75,7 +75,7 @@ NO_PROFILE void rg_profiler_print(void)
 
     for (int i = 0; i < profile->total_frames; ++i)
     {
-        profile_frame_t *frame = &profile->frames[i];
+        rg_profile_frame_t *frame = &profile->frames[i];
 
         printf(
             "RGD:PROF:DATA %p\t%p\t%u\t%u\n",
@@ -110,7 +110,7 @@ NO_PROFILE void __cyg_profile_func_enter(void *this_fn, void *call_site)
 
     LOCK_PROFILE();
 
-    profile_frame_t *fn = find_frame(this_fn, call_site);
+    rg_profile_frame_t *fn = find_frame(this_fn, call_site);
 
     // Recursion will need a real stack, this is absurd
     if (fn->enter_time != 0)
@@ -131,7 +131,7 @@ NO_PROFILE void __cyg_profile_func_exit(void *this_fn, void *call_site)
 
     LOCK_PROFILE();
 
-    profile_frame_t *fn = find_frame(this_fn, call_site);
+    rg_profile_frame_t *fn = find_frame(this_fn, call_site);
 
     // Ignore if profiler was disabled when function entered
     if (fn->enter_time != 0)

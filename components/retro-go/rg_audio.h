@@ -16,7 +16,7 @@ typedef enum
     RG_AUDIO_VOL_8 = 8,
     RG_AUDIO_VOL_MAX = 9,
     RG_AUDIO_VOL_DEFAULT = RG_AUDIO_VOL_4,
-} audio_volume_t;
+} rg_volume_t;
 
 typedef enum
 {
@@ -31,23 +31,15 @@ typedef enum
 #else
     RG_AUDIO_SINK_DEFAULT = RG_AUDIO_SINK_DUMMY,
 #endif
-} audio_sink_t;
-
-typedef enum
-{
-    RG_AUDIO_FILTER_NONE = 0,
-    RG_AUDIO_FILTER_LOW_PASS,
-    RG_AUDIO_FILTER_HIGH_PASS,
-    RG_AUDIO_FILTER_WEIGHTED,
-} audio_filter_t;
+} rg_sink_t;
 
 void rg_audio_init(int sample_rate);
 void rg_audio_deinit(void);
-const char *rg_audio_get_sink_name(audio_sink_t sink);
-void rg_audio_set_sink(audio_sink_t sink);
-audio_sink_t rg_audio_get_sink(void);
-void rg_audio_set_volume(audio_volume_t level);
-audio_volume_t rg_audio_get_volume(void);
+const char *rg_audio_get_sink_name(rg_sink_t sink);
+void rg_audio_set_sink(rg_sink_t sink);
+rg_sink_t rg_audio_get_sink(void);
+void rg_audio_set_volume(rg_volume_t level);
+rg_volume_t rg_audio_get_volume(void);
 void rg_audio_set_mute(bool mute);
 void rg_audio_submit(short *stereoAudioBuffer, size_t frameCount);
 int  rg_audio_get_sample_rate(void);

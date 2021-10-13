@@ -13,7 +13,7 @@
 static rg_video_frame_t frames[2];
 static rg_video_frame_t *currentUpdate = &frames[0];
 
-static rg_app_desc_t *app;
+static rg_app_t *app;
 
 static bool fullFrame = false;
 static long skipFrames = 20; // The 20 is to hide startup flicker in some games
@@ -289,12 +289,12 @@ void app_main(void)
     {
         joystick = rg_input_read_gamepad();
 
-        if (joystick & GAMEPAD_KEY_MENU)
+        if (joystick & RG_KEY_MENU)
         {
             auto_sram_update();
             rg_gui_game_menu();
         }
-        else if (joystick & GAMEPAD_KEY_OPTION)
+        else if (joystick & RG_KEY_OPTION)
         {
             auto_sram_update();
             rg_gui_game_settings_menu();
@@ -302,14 +302,14 @@ void app_main(void)
         else if (joystick != joystick_old)
         {
             int pad = 0;
-            if (joystick & GAMEPAD_KEY_UP) pad |= GB_PAD_UP;
-            if (joystick & GAMEPAD_KEY_RIGHT) pad |= GB_PAD_RIGHT;
-            if (joystick & GAMEPAD_KEY_DOWN) pad |= GB_PAD_DOWN;
-            if (joystick & GAMEPAD_KEY_LEFT) pad |= GB_PAD_LEFT;
-            if (joystick & GAMEPAD_KEY_SELECT) pad |= GB_PAD_SELECT;
-            if (joystick & GAMEPAD_KEY_START) pad |= GB_PAD_START;
-            if (joystick & GAMEPAD_KEY_A) pad |= GB_PAD_A;
-            if (joystick & GAMEPAD_KEY_B) pad |= GB_PAD_B;
+            if (joystick & RG_KEY_UP) pad |= GB_PAD_UP;
+            if (joystick & RG_KEY_RIGHT) pad |= GB_PAD_RIGHT;
+            if (joystick & RG_KEY_DOWN) pad |= GB_PAD_DOWN;
+            if (joystick & RG_KEY_LEFT) pad |= GB_PAD_LEFT;
+            if (joystick & RG_KEY_SELECT) pad |= GB_PAD_SELECT;
+            if (joystick & RG_KEY_START) pad |= GB_PAD_START;
+            if (joystick & RG_KEY_A) pad |= GB_PAD_A;
+            if (joystick & RG_KEY_B) pad |= GB_PAD_B;
             gnuboy_set_pad(pad);
             joystick_old = joystick;
         }

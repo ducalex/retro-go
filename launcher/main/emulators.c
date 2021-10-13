@@ -161,7 +161,7 @@ void crc_cache_idle_task(tab_t *tab)
                     remaining--;
                 }
 
-                if (gui.joystick & GAMEPAD_KEY_ANY)
+                if (gui.joystick & RG_KEY_ANY)
                     remaining = -1;
             }
 
@@ -518,7 +518,7 @@ bool emulator_get_file_crc32(retro_emulator_file_t *file)
             {
                 gui.joystick = rg_input_read_gamepad();
 
-                if (gui.joystick & GAMEPAD_KEY_ANY)
+                if (gui.joystick & RG_KEY_ANY)
                     break;
 
                 count = fread(buffer, 1, sizeof(buffer), fp);

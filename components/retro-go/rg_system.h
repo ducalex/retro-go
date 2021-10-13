@@ -110,7 +110,16 @@ typedef struct
 {
     char buffer[LOG_BUFFER_SIZE];
     size_t cursor;
-} log_buffer_t;
+} rg_logbuf_t;
+
+typedef struct
+{
+    uint32_t totalFrames;
+    uint32_t skippedFrames;
+    uint32_t fullFrames;
+    uint32_t busyTime;
+    uint64_t resetTime;
+} rg_counters_t;
 
 typedef struct
 {
@@ -128,21 +137,13 @@ typedef struct
     const char *romPath;
     void *mainTaskHandle;
     rg_emu_proc_t handlers;
-    log_buffer_t log;
-} rg_app_desc_t;
+    rg_logbuf_t log;
+} rg_app_t;
 
 typedef struct
 {
-    uint32_t totalFrames;
-    uint32_t skippedFrames;
-    uint32_t fullFrames;
-    uint32_t busyTime;
-    uint64_t resetTime;
-} runtime_counters_t;
-
-typedef struct
-{
-    battery_state_t battery;
+    float batteryPercent;
+    float batteryVoltage;
     float partialFPS;
     float skippedFPS;
     float totalFPS;
@@ -152,9 +153,9 @@ typedef struct
     uint32_t freeBlockInt;
     uint32_t freeBlockExt;
     uint32_t freeStackMain;
-} runtime_stats_t;
+} rg_stats_t;
 
-rg_app_desc_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers);
+rg_app_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers);
 void rg_system_panic(const char *reason, const char *context) __attribute__((noreturn));
 void rg_system_shutdown() __attribute__((noreturn));
 void rg_system_sleep() __attribute__((noreturn));
@@ -167,8 +168,8 @@ int  rg_system_get_led(void);
 void rg_system_tick(int busyTime);
 void rg_system_log(int level, const char *context, const char *format, ...);
 bool rg_system_save_trace(const char *filename, bool append);
-rg_app_desc_t *rg_system_get_app();
-runtime_stats_t rg_system_get_stats();
+rg_app_t *rg_system_get_app();
+rg_stats_t rg_system_get_stats();
 
 void rg_system_time_init();
 void rg_system_time_save();

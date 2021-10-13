@@ -18,8 +18,8 @@
 #define LIST_X_OFFSET       (0)
 #define LIST_Y_OFFSET       (48 + 8)
 
-#define COVER_MAX_HEIGHT    (184)
-#define COVER_MAX_WIDTH     (184)
+#define COVER_MAX_HEIGHT    ((int)(gui.height * 0.70f))
+#define COVER_MAX_WIDTH     ((int)(gui.width * 0.50f))
 
 static const theme_t gui_themes[] = {
     {0, C_GRAY, C_WHITE, C_AQUA},
@@ -444,7 +444,7 @@ void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file)
             emulator_get_file_crc32(file);
         }
 
-        if (gui.joystick & GAMEPAD_KEY_ANY)
+        if (gui.joystick & RG_KEY_ANY)
         {
             break;
         }
