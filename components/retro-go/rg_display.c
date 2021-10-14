@@ -351,7 +351,7 @@ static inline void bilinear_filter(uint16_t *line_buffer, int top, int left, int
     // I don't fully understand why because assert(display.screen.width == RG_SCREEN_WIDTH) is always good
     // A memory access race between the cores maybe? A conflicting optimization?
     const int screen_width = RG_SCREEN_WIDTH; // display.screen.width;
-    const int x_inc = screen_width / display.viewport.x_scale;
+    const int x_inc = display.viewport.x_inc;
     const int ix_acc = (x_inc * left) % screen_width;
     const int filter_y = display.config.filter == RG_DISPLAY_FILTER_VERT || display.config.filter == RG_DISPLAY_FILTER_BOTH;
     const int filter_x = display.config.filter == RG_DISPLAY_FILTER_HORIZ || display.config.filter == RG_DISPLAY_FILTER_BOTH;
@@ -379,8 +379,8 @@ static inline void bilinear_filter(uint16_t *line_buffer, int top, int left, int
 
                 x_acc += x_inc;
                 while (x_acc >= screen_width) {
-                    ++frame_x;
                     x_acc -= screen_width;
+                    ++frame_x;
                 }
             }
         }
@@ -404,8 +404,8 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
 {
     const int screen_width = display.screen.width;
     const int screen_height = display.screen.height;
-    const int x_inc = screen_width / display.viewport.x_scale;
-    const int y_inc = screen_height / display.viewport.y_scale;
+    const int x_inc = display.viewport.x_inc;
+    const int y_inc = display.viewport.y_inc;
     const int scaled_left = ((screen_width * left) + (x_inc - 1)) / x_inc;
     const int scaled_top = ((screen_height * top) + (y_inc - 1)) / y_inc;
     const int scaled_right = ((screen_width * (left + width)) + (x_inc - 1)) / x_inc;
@@ -424,7 +424,7 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
         return;
     }
 
-    uint32_t pixel_format = frame->flags;
+    uint32_t pixel_format = frame->format;
     uint32_t stride = frame->stride;
     uint16_t *palette = (pixel_format & RG_PIXEL_PAL) ? frame->palette : NULL;
     uint8_t *buffer = frame->buffer + (top * stride) + (left * (palette ? 1 : 2));
@@ -479,8 +479,8 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
 
                     x_acc += x_inc;
                     while (x_acc >= screen_width) {
-                        ++x;
                         x_acc -= screen_width;
+                        ++x;
                     }
                 }
             }
@@ -520,7 +520,7 @@ static inline int frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFram
     rg_line_diff_t *out_diff = frame->diff;
 
     int threshold_remaining = frame->width * frame->height * FULL_UPDATE_THRESHOLD;
-    int pixel_size = (frame->flags & RG_PIXEL_PAL) ? 1 : 2;
+    int pixel_size = (frame->format & RG_PIXEL_PAL) ? 1 : 2;
     int lines_changed = 0;
 
     uint32_t u32_blocks = (frame->width * pixel_size / 4);
@@ -644,8 +644,8 @@ static void update_viewport_size(int src_width, int src_height, float new_ratio)
 
     display.viewport.x_pos = (display.screen.width - new_width) / 2;
     display.viewport.y_pos = (display.screen.height - new_height) / 2;
-    display.viewport.x_scale = new_width / (float)src_width;
-    display.viewport.y_scale = new_height / (float)src_height;
+    display.viewport.x_inc = display.screen.width / (new_width / (float)src_width);
+    display.viewport.y_inc = display.screen.height / (new_height / (float)src_height);
     display.viewport.width = new_width;
     display.viewport.height = new_height;
     display.source.width = src_width;
@@ -656,8 +656,7 @@ static void update_viewport_size(int src_width, int src_height, float new_ratio)
     memset(frame_filter_lines, 1, sizeof(frame_filter_lines));
     memset(screen_line_is_empty, 0, sizeof(screen_line_is_empty));
 
-    int y_inc = display.screen.height / display.viewport.y_scale;
-    int y_acc = (y_inc * display.viewport.y_pos) % display.screen.height;
+    int y_acc = (display.viewport.y_inc * display.viewport.y_pos) % display.screen.height;
 
     for (int y = 0, screen_y = display.viewport.y_pos; y < src_height && screen_y < display.screen.height; ++screen_y)
     {
@@ -668,16 +667,16 @@ static void update_viewport_size(int src_width, int src_height, float new_ratio)
 
         screen_line_is_empty[screen_y] = repeat > 1;
 
-        y_acc += y_inc;
+        y_acc += display.viewport.y_inc;
         while (y_acc >= display.screen.height) {
-            ++y;
             y_acc -= display.screen.height;
+            ++y;
         }
     }
 
-    RG_LOGI("%dx%d@%.3f => %dx%d@%.3f x_pos:%d y_pos:%d x_scale:%.3f y_scale:%.3f\n",
+    RG_LOGI("%dx%d@%.3f => %dx%d@%.3f x_pos:%d y_pos:%d x_inc:%d y_inc:%d\n",
            src_width, src_height, src_width/(float)src_height, new_width, new_height, new_ratio,
-           display.viewport.x_pos, display.viewport.y_pos, display.viewport.x_scale, display.viewport.y_scale);
+           display.viewport.x_pos, display.viewport.y_pos, display.viewport.x_inc, display.viewport.y_inc);
 }
 
 IRAM_ATTR
@@ -693,8 +692,6 @@ static void display_task(void *arg)
         // xQueueReceive(display_task_queue, &update, portMAX_DELAY);
 
         if (!update) break;
-
-        RG_ASSERT((update->flags & RG_PIXEL_PAL) == 0 || update->palette, "Palette not defined");
 
         // It's better to update the counters before we start the transfer, in case someone needs it
         if (update->diff[0].width == update->width && update->diff[0].repeat == update->height)
@@ -857,12 +854,12 @@ bool rg_display_save_frame(const char *filename, rg_video_frame_t *frame, int wi
         {
             uint32_t pixel;
 
-            if (frame->flags & RG_PIXEL_PAL)
+            if (frame->format & RG_PIXEL_PAL)
                 pixel = ((uint16_t*)frame->palette)[line[(int)(x * step_x)]];
             else
                 pixel = ((uint16_t*)line)[(int)(x * step_x)];
 
-            if ((frame->flags & RG_PIXEL_LE) == 0) // BE to LE
+            if ((frame->format & RG_PIXEL_LE) == 0) // BE to LE
                 pixel = (pixel << 8) | (pixel >> 8);
 
             *(img_ptr++) = pixel;

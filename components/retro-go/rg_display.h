@@ -81,33 +81,33 @@ typedef struct {
         display_update_t update;
     } config;
     struct {
-        uint32_t width;
-        uint32_t height;
-        uint32_t format;
+        int width;
+        int height;
+        int format;
     } screen;
     struct {
-        uint32_t width;
-        uint32_t height;
-        uint32_t x_pos;
-        uint32_t y_pos;
-        float x_scale;
-        float y_scale;
+        int width;
+        int height;
+        int x_pos;
+        int y_pos;
+        int x_inc;
+        int y_inc;
     } viewport;
     struct {
-        uint32_t width;
-        uint32_t height;
-        struct {
-            uint32_t left, right, top, bottom;
-        } crop;
-        uint32_t format;
+        int width;
+        int height;
+        int stride;
+        int crop_w;
+        int crop_h;
+        int format;
     } source;
     struct {
         uint32_t totalFrames;
         uint32_t fullFrames;
         uint32_t spiTransactions;
     } counters;
-    bool lastUpdateType;
     bool changed;
+    bool redraw;
 } rg_display_t;
 
 typedef struct {
@@ -117,12 +117,12 @@ typedef struct {
 } rg_line_diff_t;
 
 typedef struct {
-    uint32_t flags;         // bitwise of RG_PIXEL_*
+    uint32_t format;        // bitwise of RG_PIXEL_*
     uint32_t width;         // In px
     uint32_t height;        // In px
     uint32_t stride;        // In bytes
+    uint16_t palette[256];  // Used in RG_PIXEL_PAL is set
     void *buffer;           // Should be at least height*stride bytes. expects uint8_t * | uint16_t *
-    void *palette;          // rg_video_palette_t expects uint16_t * of size pixel_mask
     void *my_arg;           // Reserved for user usage
     rg_line_diff_t diff[256];
 } rg_video_frame_t;

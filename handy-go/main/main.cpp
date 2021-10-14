@@ -177,7 +177,7 @@ extern "C" void app_main(void)
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
 
-    frames[0].flags = RG_PIXEL_565|RG_PIXEL_BE;
+    frames[0].format = RG_PIXEL_565_BE;
     frames[0].width = HANDY_SCREEN_WIDTH;
     frames[0].height = HANDY_SCREEN_WIDTH;
     frames[0].stride = HANDY_SCREEN_WIDTH * 2;

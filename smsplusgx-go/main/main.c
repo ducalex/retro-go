@@ -13,7 +13,6 @@
 
 static int16_t audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
-static uint16_t palettes[2][256];
 static rg_video_frame_t frames[2];
 static rg_video_frame_t *currentUpdate = &frames[0];
 
@@ -118,14 +117,11 @@ void app_main(void)
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
 
-    frames[0].flags = RG_PIXEL_PAL|RG_PIXEL_565|RG_PIXEL_BE;
+    frames[0].format = RG_PIXEL_PAL565_BE;
     frames[1] = frames[0];
 
     frames[0].buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
     frames[1].buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
-
-    frames[0].palette = (uint16_t*)&palettes[0];
-    frames[1].palette = (uint16_t*)&palettes[1];
 
     system_reset_config();
 
@@ -295,13 +291,8 @@ void app_main(void)
         if (drawFrame)
         {
             rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
-            uint16_t *palette = currentUpdate->palette;
-            if (render_copy_palette(palette))
-            {
-                for (int i = PALETTE_SIZE; i < 256; i += PALETTE_SIZE)
-                    memcpy(palette + i, palette, PALETTE_SIZE * 2);
+            if (render_copy_palette(currentUpdate->palette))
                 fullFrame = rg_display_queue_update(currentUpdate, NULL) == RG_UPDATE_FULL;
-            }
             else
                 fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
 

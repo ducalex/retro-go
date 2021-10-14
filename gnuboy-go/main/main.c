@@ -249,7 +249,7 @@ void app_main(void)
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
 
-    frames[0].flags = RG_PIXEL_565|RG_PIXEL_BE;
+    frames[0].format = RG_PIXEL_565_BE;
     frames[0].width = GB_WIDTH;
     frames[0].height = GB_HEIGHT;
     frames[0].stride = GB_WIDTH * 2;

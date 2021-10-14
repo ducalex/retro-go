@@ -301,7 +301,7 @@ extern "C" void app_main(void)
 
 	app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
 
-	frames[0].flags = RG_PIXEL_565|RG_PIXEL_LE;
+	frames[0].format = RG_PIXEL_565_LE;
 	frames[0].width = SNES_WIDTH;
 	frames[0].height = SNES_HEIGHT;
 	frames[0].stride = SNES_WIDTH * 2;

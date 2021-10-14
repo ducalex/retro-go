@@ -24,7 +24,6 @@
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 / 5)
 
 static int16_t audiobuffer[AUDIO_BUFFER_LENGTH * 4];
-static uint16_t *mypalette;
 static uint8_t *framebuffers[2];
 static rg_video_frame_t frames[2];
 static rg_video_frame_t *currentUpdate = &frames[0];
@@ -69,11 +68,10 @@ void osd_gfx_set_mode(int width, int height)
 
     RG_LOGI("Resolution: %dx%d / Cropping: H: %d V: %d\n", width, height, crop_h, crop_v);
 
-    frames[0].flags = RG_PIXEL_PAL|RG_PIXEL_565|RG_PIXEL_BE;
+    frames[0].format = RG_PIXEL_PAL565_BE;
     frames[0].width = width - crop_h;
     frames[0].height = height - crop_v;
     frames[0].stride = XBUF_WIDTH;
-    frames[0].palette = mypalette;
     frames[1] = frames[0];
 
     frames[0].buffer = framebuffers[0] + offset_center + offset_cropping;
@@ -271,10 +269,14 @@ void app_main(void)
     overscan = rg_settings_get_app_int32(SETTING_OVERSCAN, 1);
     downsample = rg_settings_get_app_int32(SETTING_AUDIOTYPE, 0);
 
-    mypalette = PalettePCE(16);
-    for (int i = 0; i < 256; i++) {
-        mypalette[i] = (mypalette[i] << 8) | (mypalette[i] >> 8);
+    uint16_t *palette = PalettePCE(16);
+    for (int i = 0; i < 256; i++)
+    {
+        uint16_t color = (palette[i] << 8) | (palette[i] >> 8);
+        frames[0].palette[i] = color;
+        frames[1].palette[i] = color;
     }
+    free(palette);
     osd_gfx_set_mode(256, 240);
 
     InitPCE(AUDIO_SAMPLE_RATE, true, app->romPath);
