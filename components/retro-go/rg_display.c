@@ -37,15 +37,15 @@ static const char *SETTING_FILTER    = "DispFilter";
 static const char *SETTING_ROTATION  = "DispRotation";
 static const char *SETTING_UPDATE    = "DispUpdate";
 
-static bool screen_line_is_empty[RG_SCREEN_HEIGHT];
-
-typedef struct {
+static struct {
     uint8_t start  : 1; // Indicates this line or column is safe to start an update on
     uint8_t stop   : 1; // Indicates this line or column is safe to end an update on
     uint8_t repeat : 6; // How many times the line or column is repeated by the scaler or filter
-} frame_filter_cap_t;
+} filter_lines[320];
 
-static frame_filter_cap_t frame_filter_lines[256];
+static struct {
+    uint8_t empty;
+} screen_lines[RG_SCREEN_HEIGHT];
 
 typedef struct {
     uint8_t cmd;
@@ -160,8 +160,8 @@ static void spi_task(void *arg)
 
 static void spi_init()
 {
-    spi_queue = xQueueCreate(SPI_TRANSACTION_COUNT, sizeof(void*));
-    spi_buffers_queue = xQueueCreate(SPI_BUFFER_COUNT, sizeof(void*));
+    spi_queue = xQueueCreate(SPI_TRANSACTION_COUNT, sizeof(spi_transaction_t *));
+    spi_buffers_queue = xQueueCreate(SPI_BUFFER_COUNT, sizeof(uint16_t *));
     spi_count_semaphore = xSemaphoreCreateCounting(SPI_TRANSACTION_COUNT, 0);
 
     for (size_t x = 0; x < SPI_BUFFER_COUNT; x++)
@@ -359,7 +359,7 @@ static inline void bilinear_filter(uint16_t *line_buffer, int top, int left, int
 
     for (int y = 0; y < height; y++)
     {
-        if (filter_y && y && screen_line_is_empty[top + y])
+        if (filter_y && y && screen_lines[top + y].empty)
         {
             fill_line = y;
             continue;
@@ -429,7 +429,12 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
     uint16_t *palette = (pixel_format & RG_PIXEL_PAL) ? frame->palette : NULL;
     uint8_t *buffer = frame->buffer + (top * stride) + (left * (palette ? 1 : 2));
 
-    lcd_set_window(screen_left, screen_top, scaled_width, scaled_height);
+    lcd_set_window(
+        screen_left + RG_SCREEN_MARGIN_LEFT,
+        screen_top + RG_SCREEN_MARGIN_TOP,
+        scaled_width,
+        scaled_height
+    );
 
     for (int y = 0, screen_y = screen_top; y < height;)
     {
@@ -443,8 +448,8 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
         // The vertical filter requires a block to start and end with unscaled lines
         if (filter_mode == RG_DISPLAY_FILTER_VERT || filter_mode == RG_DISPLAY_FILTER_BOTH)
         {
-            while (lines_to_copy > 1 && (screen_line_is_empty[screen_y + lines_to_copy - 1] ||
-                                         screen_line_is_empty[screen_y + lines_to_copy]))
+            while (lines_to_copy > 1 && (screen_lines[screen_y + lines_to_copy - 1].empty ||
+                                         screen_lines[screen_y + lines_to_copy].empty))
                 --lines_to_copy;
         }
 
@@ -458,7 +463,7 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
 
         for (int i = 0; i < lines_to_copy; ++i)
         {
-            if (i > 0 && screen_line_is_empty[screen_y])
+            if (i > 0 && screen_lines[screen_y].empty)
             {
                 uint16_t *buffer = &line_buffer[line_buffer_index];
                 memcpy(buffer, buffer - scaled_width, scaled_width * 2);
@@ -485,7 +490,7 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
                 }
             }
 
-            if (!screen_line_is_empty[++screen_y])
+            if (!screen_lines[++screen_y].empty)
             {
                 buffer += stride;
                 ++y;
@@ -576,10 +581,10 @@ static inline int frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFram
                 int left = out_diff[y].left;
                 int right = left + out_diff[y].width;
 
-                while (block_start > 0 && (out_diff[block_start].width > 0 || !frame_filter_lines[block_start].start))
+                while (block_start > 0 && (out_diff[block_start].width > 0 || !filter_lines[block_start].start))
                     block_start--;
 
-                while (block_end < frame->height - 1 && (out_diff[block_end].width > 0 || !frame_filter_lines[block_end].stop))
+                while (block_end < frame->height - 1 && (out_diff[block_end].width > 0 || !filter_lines[block_end].stop))
                     block_end++;
 
                 for (int i = block_start; i <= block_end; i++)
@@ -653,19 +658,18 @@ static void update_viewport_size(int src_width, int src_height, float new_ratio)
 
     // Build boundary tables used by filtering
 
-    memset(frame_filter_lines, 1, sizeof(frame_filter_lines));
-    memset(screen_line_is_empty, 0, sizeof(screen_line_is_empty));
+    memset(filter_lines, 1, sizeof(filter_lines));
+    memset(screen_lines, 0, sizeof(screen_lines));
 
     int y_acc = (display.viewport.y_inc * display.viewport.y_pos) % display.screen.height;
 
     for (int y = 0, screen_y = display.viewport.y_pos; y < src_height && screen_y < display.screen.height; ++screen_y)
     {
-        int repeat = ++frame_filter_lines[y].repeat;
+        int repeat = ++filter_lines[y].repeat;
 
-        frame_filter_lines[y].start = repeat == 1 || repeat == 2;
-        frame_filter_lines[y].stop  = repeat == 1;
-
-        screen_line_is_empty[screen_y] = repeat > 1;
+        filter_lines[y].start = repeat == 1 || repeat == 2;
+        filter_lines[y].stop  = repeat == 1;
+        screen_lines[screen_y].empty = repeat > 1;
 
         y_acc += display.viewport.y_inc;
         while (y_acc >= display.screen.height) {
@@ -738,8 +742,8 @@ void rg_display_reset_config(void)
 {
     display = (rg_display_t){
         // TO DO: We probably should call the setters to ensure valid values...
-        .screen.width = RG_SCREEN_WIDTH,
-        .screen.height = RG_SCREEN_HEIGHT,
+        .screen.width = RG_SCREEN_WIDTH - RG_SCREEN_MARGIN_LEFT - RG_SCREEN_MARGIN_RIGHT,
+        .screen.height = RG_SCREEN_HEIGHT - RG_SCREEN_MARGIN_TOP - RG_SCREEN_MARGIN_BOTTOM,
         .config.backlight = rg_settings_get_int32(SETTING_BACKLIGHT, RG_DISPLAY_BACKLIGHT_3),
         .config.scaling = rg_settings_get_app_int32(SETTING_SCALING, RG_DISPLAY_SCALING_FILL),
         .config.filter = rg_settings_get_app_int32(SETTING_FILTER, RG_DISPLAY_FILTER_HORIZ),
@@ -917,7 +921,7 @@ void rg_display_show_info(const char *text, int timeout_ms)
     // It would make more sense in rg_gui, but for efficiency I think here will be best...
 }
 
-void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t* buffer)
+void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer)
 {
     // Offsets can be negative to indicate N pixels from the end
     if (left < 0)
@@ -932,52 +936,56 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
     width = RG_MIN(width, display.screen.width - left);
     height = RG_MIN(height, display.screen.height - top);
 
-    lcd_set_window(left, top, width, height);
+    lcd_set_window(left + RG_SCREEN_MARGIN_LEFT, top + RG_SCREEN_MARGIN_TOP, width, height);
 
     size_t lines_per_buffer = SPI_BUFFER_LENGTH / width;
 
     for (size_t y = 0; y < height; y += lines_per_buffer)
     {
-        uint16_t* line_buffer = spi_get_buffer();
+        uint16_t *line_buffer = spi_get_buffer();
 
         if (y + lines_per_buffer > height)
             lines_per_buffer = height - y;
 
+        // Copy line by line because stride may not match width
         for (size_t line = 0; line < lines_per_buffer; ++line)
         {
-            // We void* the buffer because stride is a byte length, not uint16
-            const uint16_t *buf = (void*)buffer + ((y + line) * stride);
-            const size_t offset = line * width;
-
-            for (size_t i = 0; i < width; ++i)
+            uint16_t *src = (void*)buffer + ((y + line) * stride);
+            uint16_t *dst = line_buffer + (line * width);
+            // if (little_endian)
             {
-                line_buffer[offset + i] = buf[i] << 8 | buf[i] >> 8;
+                for (size_t i = 0; i < width; ++i)
+                {
+                    dst[i] = (src[i] >> 8) | (src[i] << 8);
+                }
             }
+            // else
+            // {
+            //     memcpy(dst, src, width * 2);
+            // }
         }
 
         lcd_send_data(line_buffer, width * lines_per_buffer * 2);
     }
 }
 
-void rg_display_clear(uint16_t color)
+void rg_display_clear(uint16_t color_le)
 {
-    lcd_set_window(0, 0, display.screen.width, display.screen.height);
+    size_t pixels = RG_SCREEN_WIDTH * RG_SCREEN_HEIGHT;
+    uint16_t color = (color_le << 8) | (color_le >> 8);
 
-    color = (color << 8) | (color >> 8);
+    lcd_set_window(0, 0, RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT);
 
-    size_t remaining = display.screen.width * display.screen.height;
-    while (remaining > 0)
+    while (pixels > 0)
     {
-        size_t count = RG_MIN(SPI_BUFFER_LENGTH, remaining);
+        size_t count = RG_MIN(SPI_BUFFER_LENGTH, pixels);
         uint16_t *buffer = spi_get_buffer();
 
         for (size_t j = 0; j < count; ++j)
-        {
             buffer[j] = color;
-        }
 
         lcd_send_data(buffer, count * 2);
-        remaining -= count;
+        pixels -= count;
     }
 }
 
