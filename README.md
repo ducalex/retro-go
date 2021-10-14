@@ -130,9 +130,9 @@ _Note: Other esp-idf versions may work (>=3.3.3) but I cannot provide help for t
 
 ### ESP-IDF Patches
 Retro-Go will build and most likely run without any changes to esp-idf, but patches do provide significant advantages. The patches are located in `tools/patches`. Here's the list:
-- `esp-idf-X.X_sdcard-fix`: This improves SD Card compatibility significantly but can also reduce transfer speed a lot. The patch is usually required if you intend to distribute your build.
-- `esp-idf-4.0-panic-hook`: This is to help users report bugs, see `Capturing crash logs` bellow for more details. The patch is optional but recommended.
-- `esp-idf_enable-exfat`:  Enable exFAT support. The patch is entirely optional.
+- `esp-idf-4.x_sdcard-fix`: This improves SD Card compatibility significantly but can also reduce transfer speed a lot. The patch is usually required if you intend to distribute your build.
+- `esp-idf-4.x_panic-hook`: This is to help users report bugs, see `Capturing crash logs` bellow for more details. The patch is optional but recommended.
+- `esp-idf-4.x_enable-exfat`: Enable exFAT support. The patch is entirely optional.
 
 ## Build everything and generate .fw:
 1. `rg_tool.py build-fw`
