@@ -185,9 +185,6 @@ void rg_emu_start_game(const char *emulator, const char *romPath, rg_start_actio
 int32_t rg_system_get_startup_app(void);
 void rg_system_set_startup_app(int32_t value);
 
-void rg_spi_lock_acquire(spi_lock_res_t);
-void rg_spi_lock_release(spi_lock_res_t);
-
 void *rg_alloc(size_t size, uint32_t caps);
 
 #define MEM_ANY   (0)

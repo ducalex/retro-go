@@ -24,7 +24,6 @@
 static DMA_ATTR uint16_t spi_buffers[SPI_BUFFER_COUNT][SPI_BUFFER_LENGTH];
 static spi_transaction_t spi_trans[SPI_TRANSACTION_COUNT];
 static spi_device_handle_t spi_dev;
-static SemaphoreHandle_t spi_count_semaphore;
 static QueueHandle_t spi_buffers_queue;
 static QueueHandle_t spi_queue;
 static QueueHandle_t display_task_queue;
@@ -109,14 +108,10 @@ static inline void spi_queue_transaction(const void *data, size_t length, uint32
         t->tx_buffer = memcpy(spi_get_buffer(), data, length);
     }
 
-    rg_spi_lock_acquire(SPI_LOCK_DISPLAY);
-
     if (spi_device_queue_trans(spi_dev, t, pdMS_TO_TICKS(2500)) != ESP_OK)
     {
         RG_PANIC("display");
     }
-
-    xSemaphoreGive(spi_count_semaphore);
 }
 
 IRAM_ATTR
@@ -133,10 +128,7 @@ static void spi_task(void *arg)
 
     while (1)
     {
-        // Wait for a transaction to be queued
-        xSemaphoreTake(spi_count_semaphore, portMAX_DELAY);
-
-        if (spi_device_get_trans_result(spi_dev, &t, 100) == ESP_OK)
+        if (spi_device_get_trans_result(spi_dev, &t, portMAX_DELAY) == ESP_OK)
         {
             if (PTR_IS_SPI_BUFFER(t->tx_buffer) && !(t->flags & SPI_TRANS_USE_TXDATA))
             {
@@ -147,12 +139,6 @@ static void spi_task(void *arg)
                 RG_PANIC("spi_queue full..?");
             }
         }
-
-        // if (uxQueueSpacesAvailable(spi_queue) == 0)
-        if (uxQueueMessagesWaiting(spi_count_semaphore) == 0)
-        {
-            rg_spi_lock_release(SPI_LOCK_DISPLAY);
-        }
     }
 
     vTaskDelete(NULL);
@@ -162,7 +148,6 @@ static void spi_init()
 {
     spi_queue = xQueueCreate(SPI_TRANSACTION_COUNT, sizeof(spi_transaction_t *));
     spi_buffers_queue = xQueueCreate(SPI_BUFFER_COUNT, sizeof(uint16_t *));
-    spi_count_semaphore = xSemaphoreCreateCounting(SPI_TRANSACTION_COUNT, 0);
 
     for (size_t x = 0; x < SPI_BUFFER_COUNT; x++)
     {

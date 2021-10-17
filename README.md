@@ -78,6 +78,10 @@ skip the file header in their CRC calculation (eg NES skips 16 bytes and Lynx sk
 The number must also be zero left-padded to be 8 chars._
 
 
+# Display update mode
+The 40Mhz SPI speed gives us a fill rate of 28 frames per second. Because of this, I have developed a partial update mode that refreshes only the portions of the screen that have changed. This result in an effective framerate of 60 most of the time and much reduced tearing. However, this process uses more CPU and is overall more complex to deal with (scaling, filtering), so in some instances it might cause more issues than it solves. That is why there is a toggle to disable it. Use the setting that works best for you but please report issues you encounter in Partial mode so that I can keep improving it!
+
+
 # Sound quality
 The volume isn't correctly attenuated on the GO, resulting in upper volume levels that are too loud and 
 lower levels that are distorted due to DAC resolution. A quick way to improve the audio is to cut one
@@ -124,15 +128,15 @@ I'm also working on a combined application where a single binary would contain a
 # Building Retro-Go
 
 ## Prerequisites
-You will need a working installation of esp-idf [4.0.2](https://docs.espressif.com/projects/esp-idf/en/v4.0.2/) or [4.1.x](https://docs.espressif.com/projects/esp-idf/en/v4.1/) or [4.2.x](https://docs.espressif.com/projects/esp-idf/en/v4.2/) and only the CMake build system is supported.
+You will need a working installation of [esp-idf 4.0.2](https://docs.espressif.com/projects/esp-idf/en/v4.0.2/) or superior and only the CMake (default) build system is supported.
 
-_Note: Other esp-idf versions may work (>=3.3.3) but I cannot provide help for them. Some are known to have problems: for example 3.3.0 and 4.0.0 have broken sound driver._
+_Note: Using esp-idf 4.2 results in degraded emulation performance and should be avoided. Official builds of retro-go use 4.1.x, which I recommend._
 
 ### ESP-IDF Patches
-Retro-Go will build and most likely run without any changes to esp-idf, but patches do provide significant advantages. The patches are located in `tools/patches`. Here's the list:
-- `esp-idf-4.x_sdcard-fix`: This improves SD Card compatibility significantly but can also reduce transfer speed a lot. The patch is usually required if you intend to distribute your build.
-- `esp-idf-4.x_panic-hook`: This is to help users report bugs, see `Capturing crash logs` bellow for more details. The patch is optional but recommended.
-- `esp-idf-4.x_enable-exfat`: Enable exFAT support. The patch is entirely optional.
+Patching esp-idf may be required for full functionality. Patches are located in `tools/patches` and can be applied to your global esp-idf installation, they will not break your other projects/devices.
+- `sdcard-fix`: This patch is mandatory for the ODROID-GO (and clones).
+- `panic-hook`: This is to help users report bugs, see `Capturing crash logs` bellow for more details. The patch is optional but recommended.
+- `enable-exfat`: Enable exFAT support. I don't recommended it but it works if you need it.
 
 ## Build everything and generate .fw:
 1. `rg_tool.py build-fw`

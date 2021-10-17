@@ -49,9 +49,6 @@ static int inputTimeout = -1;
 static int ledValue = 0;
 static bool initialized = false;
 
-static SemaphoreHandle_t spiMutex = NULL;
-static spi_lock_res_t spiMutexOwner = -1;
-
 
 static const char *htime(time_t ts)
 {
@@ -270,17 +267,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
     RG_LOGX("%s %s (%s %s)\n", esp_app->project_name, esp_app->version, esp_app->date, esp_app->time);
     RG_LOGX(" built for: %s. aud=%d disp=%d pad=%d sd=%d cfg=%d\n", RG_TARGET_NAME, 0, 0, 0, 0, 0);
     RG_LOGX("========================================================\n\n");
-
-    // On the Odroid-GO the SPI bus is shared between the SD Card and the LCD
-    // That isn't the case on other devices, so for performance we don't initialize the mutex
-#if defined(RG_GPIO_LCD_MISO) && defined(RG_GPIO_SD_MISO)
-    if (RG_GPIO_LCD_MISO == RG_GPIO_SD_MISO || RG_GPIO_LCD_MOSI == RG_GPIO_SD_MOSI || RG_GPIO_LCD_CLK == RG_GPIO_SD_CLK)
-    {
-        spiMutex = xSemaphoreCreateBinary(); // xSemaphoreCreateMutex();
-        spiMutexOwner = -1;
-        xSemaphoreGive(spiMutex);
-    }
-#endif
 
     // Seed C's pseudo random number generator
     srand(esp_random());
@@ -760,37 +746,6 @@ int32_t rg_system_get_startup_app(void)
 void rg_system_set_startup_app(int32_t value)
 {
     rg_settings_set_int32(SETTING_STARTUP_APP, value);
-}
-
-IRAM_ATTR void rg_spi_lock_acquire(spi_lock_res_t owner)
-{
-    if (spiMutex == NULL)
-        return;
-
-    if (owner == spiMutexOwner)
-    {
-        return;
-    }
-    else if (xSemaphoreTake(spiMutex, pdMS_TO_TICKS(10000)) == pdPASS)
-    {
-        spiMutexOwner = owner;
-    }
-    else
-    {
-        RG_PANIC("SPI Mutex Lock Acquisition failed!");
-    }
-}
-
-IRAM_ATTR void rg_spi_lock_release(spi_lock_res_t owner)
-{
-    if (spiMutex == NULL)
-        return;
-
-    if (owner == spiMutexOwner || owner == SPI_LOCK_ANY)
-    {
-        xSemaphoreGive(spiMutex);
-        spiMutexOwner = SPI_LOCK_ANY;
-    }
 }
 
 // Note: You should use calloc/malloc everywhere possible. This function is used to ensure

@@ -11,6 +11,7 @@
 #define SETTING_DISK_ACTIVITY "DiskActivity"
 
 static sdmmc_card_t *card = NULL;
+// static spi_device_handle_t *spi_handle;
 static int diskActivity = -1;
 
 
@@ -35,9 +36,9 @@ static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
         rg_system_set_led(1);
 
 #if RG_STORAGE_DRIVER == 1
-    rg_spi_lock_acquire(SPI_LOCK_SDCARD);
+    //spi_device_acquire_bus(spi_handle, portMAX_DELAY);
     esp_err_t ret = sdspi_host_do_transaction(slot, cmdinfo);
-    rg_spi_lock_release(SPI_LOCK_SDCARD);
+    //spi_device_release_bus(spi_handle);
 #else
     esp_err_t ret = sdmmc_host_do_transaction(slot, cmdinfo);
 #endif
@@ -57,6 +58,9 @@ bool rg_sdcard_mount(void)
     };
 
     esp_err_t err = ESP_FAIL;
+
+    if (card != NULL)
+        rg_sdcard_unmount();
 
 #if RG_STORAGE_DRIVER == 1
 
@@ -91,9 +95,6 @@ bool rg_sdcard_mount(void)
     #error "No SD Card driver selected"
 
 #endif
-
-    if (card != NULL)
-        rg_sdcard_unmount();
 
     err = esp_vfs_fat_sdmmc_mount(RG_BASE_PATH, &host_config, &slot_config, &mount_config, &card);
 

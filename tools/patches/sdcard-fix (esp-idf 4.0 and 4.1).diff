@@ -1,0 +1,28 @@
+diff --git a/components/driver/sdspi_host.c b/components/driver/sdspi_host.c
+index b9e32ea60..28a0d3f7f 100644
+--- a/components/driver/sdspi_host.c
++++ b/components/driver/sdspi_host.c
+@@ -454,6 +454,7 @@ esp_err_t sdspi_host_start_command(int slot, sdspi_hw_cmd_t *cmd, void *data,
+     }
+     // actual transaction
+     esp_err_t ret = ESP_OK;
++    spi_device_acquire_bus(s_slots[slot].handle, portMAX_DELAY);
+     cs_low(slot);
+     if (flags & SDSPI_CMD_FLAG_DATA) {
+         const bool multi_block = flags & SDSPI_CMD_FLAG_MULTI_BLK;
+@@ -462,6 +463,7 @@ esp_err_t sdspi_host_start_command(int slot, sdspi_hw_cmd_t *cmd, void *data,
+         if (flags & SDSPI_CMD_FLAG_WRITE) {
+             ret = start_command_write_blocks(slot, cmd, data, data_size, multi_block, stop_transmission);
+         } else {
++            go_idle_clockout(slot);
+             ret = start_command_read_blocks(slot, cmd, data, data_size, stop_transmission);
+         }
+     } else {
+@@ -470,6 +472,7 @@ esp_err_t sdspi_host_start_command(int slot, sdspi_hw_cmd_t *cmd, void *data,
+     cs_high(slot);
+
+     release_bus(slot);
++    spi_device_release_bus(s_slots[slot].handle);
+
+     if (ret != ESP_OK) {
+         ESP_LOGD(TAG, "%s: cmd=%d error=0x%x", __func__, cmd_index, ret);
