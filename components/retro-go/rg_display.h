@@ -22,20 +22,9 @@ typedef enum
 
 typedef enum
 {
-    RG_DISPLAY_BACKLIGHT_0 = 0,
-    RG_DISPLAY_BACKLIGHT_1,
-    RG_DISPLAY_BACKLIGHT_2,
-    RG_DISPLAY_BACKLIGHT_3,
-    RG_DISPLAY_BACKLIGHT_4,
-    RG_DISPLAY_BACKLIGHT_5,
-    RG_DISPLAY_BACKLIGHT_COUNT,
-} display_backlight_t;
-
-typedef enum
-{
-    RG_DISPLAY_SCALING_OFF = 0,  // No scaling, center image on screen
-    RG_DISPLAY_SCALING_FIT,       // Scale and preserve aspect ratio
-    RG_DISPLAY_SCALING_FILL,      // Scale and stretch to fill screen
+    RG_DISPLAY_SCALING_OFF = 0,     // No scaling, center image on screen
+    RG_DISPLAY_SCALING_FIT,         // Scale and preserve aspect ratio
+    RG_DISPLAY_SCALING_FILL,        // Scale and stretch to fill screen
     RG_DISPLAY_SCALING_COUNT
 } display_scaling_t;
 
@@ -74,11 +63,11 @@ enum
 
 typedef struct {
     struct {
-        display_backlight_t backlight;
         display_rotation_t rotation;
         display_scaling_t scaling;
         display_filter_t filter;
         display_update_t update;
+        int backlight;
     } config;
     struct {
         int width;
@@ -144,7 +133,7 @@ void rg_display_set_filter(display_filter_t filter);
 display_filter_t rg_display_get_filter(void);
 void rg_display_set_rotation(display_rotation_t rotation);
 display_rotation_t rg_display_get_rotation(void);
-void rg_display_set_backlight(display_backlight_t backlight);
-display_backlight_t rg_display_get_backlight(void);
+void rg_display_set_backlight(int percent);
+int rg_display_get_backlight(void);
 void rg_display_set_update_mode(display_update_t update);
 display_update_t rg_display_get_update_mode(void);
