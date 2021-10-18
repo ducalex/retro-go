@@ -49,6 +49,7 @@ static uint8 internal_buffer[0x200];
 
 /* Precalculated pixel table */
 static uint16 pixel[PALETTE_SIZE];
+static int pal_dirty = 0;
 
 /* Region-specific drawing area */
 static int active_scanlines;
@@ -764,8 +765,9 @@ void palette_sync(int index)
     }
   }
 
-  uint16 color = MAKE_PIXEL(r, g, b);
+  unsigned color = MAKE_PIXEL(r, g, b);
   pixel[index] = (color >> 8) | (color << 8);
+  pal_dirty++;
 }
 
 
@@ -838,8 +840,10 @@ static inline void parse_satb(int line)
 
 bool render_copy_palette(uint16* palette)
 {
-  if (memcmp(palette, pixel, sizeof(pixel)) == 0)
+  if (pal_dirty == 0)
     return false;
-  memcpy(palette, pixel, sizeof(pixel));
+  for (int i = 0; i < 256; i += PALETTE_SIZE)
+    memcpy(palette + i, pixel, PALETTE_SIZE * 2);
+  pal_dirty = 0;
   return true;
 }
