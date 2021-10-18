@@ -28,6 +28,9 @@ static uint8_t *framebuffers[2];
 static rg_video_frame_t frames[2];
 static rg_video_frame_t *currentUpdate = &frames[0];
 static int current_height, current_width;
+static int offset_center = 0;
+static int offset_cropping = 0;
+
 static bool overscan = false;
 static bool downsample = false;
 static int skipFrames = 0;
@@ -47,7 +50,7 @@ uint8_t *osd_gfx_framebuffer(void)
 {
     if (skipFrames > 0)
         return NULL;
-    return (uint8_t *)currentUpdate->my_arg;
+    return (uint8_t *)currentUpdate->buffer - offset_cropping;
 }
 
 void osd_gfx_set_mode(int width, int height)
@@ -60,8 +63,8 @@ void osd_gfx_set_mode(int width, int height)
     if (crop_v < 0) crop_v = 0;
 
     // We center the content vertically and horizontally to allow overflows all around
-    int offset_center = (((XBUF_HEIGHT - height) / 2 + 16) * XBUF_WIDTH + (XBUF_WIDTH - width) / 2);
-    int offset_cropping = (crop_v / 2) * XBUF_WIDTH + (crop_h / 2);
+    offset_center = (((XBUF_HEIGHT - height) / 2 + 16) * XBUF_WIDTH + (XBUF_WIDTH - width) / 2);
+    offset_cropping = (crop_v / 2) * XBUF_WIDTH + (crop_h / 2);
 
     current_width = width;
     current_height = height;
@@ -76,9 +79,6 @@ void osd_gfx_set_mode(int width, int height)
 
     frames[0].buffer = framebuffers[0] + offset_center + offset_cropping;
     frames[1].buffer = framebuffers[1] + offset_center + offset_cropping;
-
-    frames[0].my_arg = framebuffers[0] + offset_center;
-    frames[1].my_arg = framebuffers[1] + offset_center;
 
     currentUpdate = &frames[0];
 }

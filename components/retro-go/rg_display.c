@@ -332,10 +332,7 @@ static inline uint blend_pixels(uint a, uint b)
 
 static inline void bilinear_filter(uint16_t *line_buffer, int top, int left, int width, int height)
 {
-    // It crashes when we use display.screen.width
-    // I don't fully understand why because assert(display.screen.width == RG_SCREEN_WIDTH) is always good
-    // A memory access race between the cores maybe? A conflicting optimization?
-    const int screen_width = RG_SCREEN_WIDTH; // display.screen.width;
+    const int screen_width = display.screen.width;
     const int x_inc = display.viewport.x_inc;
     const int ix_acc = (x_inc * left) % screen_width;
     const int filter_y = display.config.filter == RG_DISPLAY_FILTER_VERT || display.config.filter == RG_DISPLAY_FILTER_BOTH;
@@ -501,7 +498,7 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
     }
 }
 
-static inline int frame_diff(rg_video_frame_t *frame, rg_video_frame_t *prevFrame)
+static inline int frame_diff(rg_video_frame_t *frame, const rg_video_frame_t *prevFrame)
 {
     // NOTE: We no longer use the palette when comparing pixels. It is now the emulator's
     // responsibility to force a full redraw when its palette changes.
@@ -671,7 +668,7 @@ static void update_viewport_size(int src_width, int src_height, float new_ratio)
 IRAM_ATTR
 static void display_task(void *arg)
 {
-    display_task_queue = xQueueCreate(1, sizeof(void*));
+    display_task_queue = xQueueCreate(1, sizeof(rg_video_frame_t *));
 
     while (1)
     {
@@ -697,11 +694,16 @@ static void display_task(void *arg)
                 ratio = update->width / (float)update->height;
             }
             update_viewport_size(update->width, update->height, ratio);
-            // We must clear garbage that won't be covered
-            if (display.config.scaling != RG_DISPLAY_SCALING_FILL) {
-                rg_display_clear(C_BLACK);
-            }
             display.changed = false;
+            display.redraw = true;
+        }
+
+        if (display.redraw)
+        {
+            update->diff[0] = (rg_line_diff_t){0, update->width, update->height};
+            if (display.config.scaling != RG_DISPLAY_SCALING_FILL)
+                rg_display_clear(C_BLACK);
+            display.redraw = false;
         }
 
         for (int y = 0; y < update->height;)
@@ -740,7 +742,7 @@ void rg_display_reset_config(void)
 
 void rg_display_force_redraw(void)
 {
-    display.changed = true;
+    display.redraw = true;
 }
 
 const rg_display_t *rg_display_get_status(void)
@@ -808,64 +810,44 @@ display_backlight_t rg_display_get_backlight(void)
     return display.config.backlight;
 }
 
-bool rg_display_save_frame(const char *filename, rg_video_frame_t *frame, int width, int height)
+bool rg_display_save_frame(const char *filename, const rg_video_frame_t *frame, int width, int height)
 {
-    if (width <= 0 && height <= 0)
+    rg_image_t *original = rg_image_alloc(frame->width, frame->height);
+    if (!original) return false;
+
+    uint16_t *dst_ptr = original->data;
+
+    for (int y = 0; y < frame->height; y++)
     {
-        width = frame->width;
-        height = frame->height;
-    }
-    else if (width <= 0)
-    {
-        width = frame->width * ((float)height / frame->height);
-    }
-    else if (height <= 0)
-    {
-        height = frame->height * ((float)width / frame->width);
-    }
-
-    float step_x = (float)frame->width / width;
-    float step_y = (float)frame->height / height;
-
-    RG_LOGI("Saving frame: %dx%d to PNG %dx%d. Step: X=%.3f Y=%.3f\n",
-        frame->width, frame->height, width, height, step_x, step_y);
-
-    rg_image_t *img = rg_image_alloc(width, height);
-    if (!img) return false;
-
-    uint16_t *img_ptr = img->data;
-
-    for (int y = 0; y < height; y++)
-    {
-        uint8_t *line = frame->buffer + ((int)(y * step_y) * frame->stride);
+        uint8_t *src_ptr = frame->buffer + (y * frame->stride);
 
         for (int x = 0; x < width; x++)
         {
             uint32_t pixel;
 
             if (frame->format & RG_PIXEL_PAL)
-                pixel = ((uint16_t*)frame->palette)[line[(int)(x * step_x)]];
+                pixel = frame->palette[src_ptr[x]];
             else
-                pixel = ((uint16_t*)line)[(int)(x * step_x)];
+                pixel = ((uint16_t*)src_ptr)[x];
 
             if ((frame->format & RG_PIXEL_LE) == 0) // BE to LE
                 pixel = (pixel << 8) | (pixel >> 8);
 
-            *(img_ptr++) = pixel;
+            *(dst_ptr++) = pixel;
         }
     }
 
-    bool status = rg_image_save_to_file(filename, img, 0);
+    rg_image_t *img = rg_image_copy_resized(original, width, height);
+    rg_image_free(original);
+
+    bool success = img && rg_image_save_to_file(filename, img, 0);
     rg_image_free(img);
 
-    if (!status)
-        RG_LOGE("rg_image_write_file() failed!\n");
-
-    return status;
+    return success;
 }
 
 IRAM_ATTR
-rg_update_t rg_display_queue_update(rg_video_frame_t *frame, rg_video_frame_t *previousFrame)
+rg_update_t rg_display_queue_update(/*const*/ rg_video_frame_t *frame, const rg_video_frame_t *previousFrame)
 {
     int linesChanged = 0;
 

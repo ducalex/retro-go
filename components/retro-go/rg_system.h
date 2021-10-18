@@ -62,14 +62,6 @@ typedef enum
     RG_PATH_ART_FILE,
 } rg_path_type_t;
 
-typedef enum
-{
-    SPI_LOCK_ANY = 0,
-    SPI_LOCK_SDCARD = 1,
-    SPI_LOCK_DISPLAY = 2,
-    SPI_LOCK_OTHER = 3,
-} spi_lock_res_t;
-
 enum {
     RG_LOG_PRINT = 0,
     RG_LOG_ERROR,
