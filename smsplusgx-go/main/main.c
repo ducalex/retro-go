@@ -163,6 +163,7 @@ void app_main(void)
 
     long frameTime = get_frame_time(app->refreshRate);
     long skipFrames = 0;
+    bool copyPalette = false;
 
     while (true)
     {
@@ -292,12 +293,17 @@ void app_main(void)
         {
             rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
             if (render_copy_palette(currentUpdate->palette))
-                fullFrame = rg_display_queue_update(currentUpdate, NULL) == RG_UPDATE_FULL;
-            else
-                fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
-
-            // Swap buffers
-            currentUpdate = previousUpdate;
+            {
+                previousUpdate = NULL;
+                copyPalette = true;
+            }
+            else if (copyPalette)
+            {
+                memcpy(currentUpdate->palette, previousUpdate->palette, 512);
+                copyPalette = false;
+            }
+            fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
+            currentUpdate = &frames[currentUpdate == &frames[0]]; // Swap
             bitmap.data = currentUpdate->buffer - bitmap.viewport.x;
         }
 
