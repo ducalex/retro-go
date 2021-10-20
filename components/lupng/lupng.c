@@ -22,6 +22,7 @@
  * SOFTWARE.
  */
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -551,7 +552,7 @@ static LU_INLINE void stretchBits(uint8_t inByte, uint8_t outBytes[8], int depth
 static LU_INLINE int insertByte(PngInfoStruct *info, uint8_t byte)
 {
     const uint8_t scale[] = {0x00, 0xFF, 0x55, 0x00, 0x11, 0x00, 0x00, 0x00};
-    int advance = 0;
+    bool advance = false;
 
     /* for paletted images currentElem will always be 0 */
     size_t idx = info->currentRow * info->width * info->channels
@@ -587,7 +588,7 @@ static LU_INLINE int insertByte(PngInfoStruct *info, uint8_t byte)
         ++info->currentElem;
         if (info->currentElem >= info->channels)
         {
-            advance = 1;
+            advance = true;
             info->currentElem = 0;
         }
     }
@@ -604,7 +605,7 @@ static LU_INLINE int insertByte(PngInfoStruct *info, uint8_t byte)
         {
             LUPNG_WARN(info, "invalid palette index encountered!");
         }
-        advance = 1;
+        advance = true;
     }
 
     if (advance)
@@ -975,22 +976,24 @@ static LU_INLINE int buildPalette(PngInfoStruct *info)
 {
     LuImage *img = info->img;
 
+    info->paletteItems = 0;
+
     if (img->channels != 3 || img->depth != 8)
     {
         LUPNG_WARN(info, "can only build palette for 8bit / 3 channels!");
         return PNG_ERROR;
     }
 
-    info->paletteItems = 0;
-
     for (int i = 0; i < img->dataSize; i += 3)
     {
-        int found = 0;
+        const uint8_t *pixel = img->data + i;
+        bool found = false;
+
         for (int j = 0; j < info->paletteItems; j++)
         {
-            if (memcmp(info->palette[j], img->data + i, 3) == 0)
+            if (memcmp(info->palette[j], pixel, 3) == 0)
             {
-                found = 1;
+                found = true;
                 break;
             }
         }
@@ -1004,7 +1007,7 @@ static LU_INLINE int buildPalette(PngInfoStruct *info)
                 return PNG_ERROR;
             }
 
-            memcpy(&info->palette[info->paletteItems++], img->data + i, 3);
+            memcpy(&info->palette[info->paletteItems++], pixel, 3);
         }
     }
 
@@ -1107,6 +1110,16 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
 
                     filterCandidate[fc++] = val;
                     curSum += val;
+
+                    if (is16bit)
+                    {
+                        if (info->currentByte%2)
+                            --info->currentByte;
+                        else
+                            info->currentByte+=3;
+                    }
+                    else
+                        ++info->currentByte;
                 }
 
                 if (curSum < minSum)
@@ -1116,16 +1129,6 @@ static LU_INLINE int processPixels(PngInfoStruct *info)
                     filterCandidate = tmp;
                     minSum = curSum;
                 }
-
-                if (is16bit)
-                {
-                    if (info->currentByte%2)
-                        --info->currentByte;
-                    else
-                        info->currentByte+=3;
-                }
-                else
-                    ++info->currentByte;
             }
 
             info->stream.avail_in = (unsigned int)info->scanlineBytes+1;
