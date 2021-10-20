@@ -46,19 +46,6 @@ static struct {
     uint8_t empty;
 } screen_lines[RG_SCREEN_HEIGHT];
 
-typedef struct {
-    uint8_t cmd;
-    uint8_t data[16];
-    uint8_t databytes; // No of bytes in data; bit 7 = delay after set;
-} ili_cmd_t;
-
-#define MADCTL_MY   0x80
-#define MADCTL_MX   0x40
-#define MADCTL_MV   0x20
-#define MADCTL_ML   0x10
-#define MADCTL_MH   0x04
-#define TFT_RGB_BGR 0x08
-
 #define lcd_init() ili9341_init()
 #define lcd_deinit() ili9341_deinit()
 #define lcd_set_window(left, top, width, height) ili9341_set_window(left, top, width, height)
@@ -194,7 +181,10 @@ static void spi_init()
 static void ili9341_cmd(uint8_t cmd, const void *data, size_t data_len)
 {
     spi_queue_transaction(&cmd, 1, 0);
-    spi_queue_transaction(data, data_len, 1);
+    if (data && data_len > 0)
+        spi_queue_transaction(data, data_len, 1);
+    if ((cmd & 0xE0) == 0x00)
+        usleep(5000);
 }
 
 static void ili9341_set_backlight(int percent)
@@ -209,9 +199,14 @@ static void ili9341_set_backlight(int percent)
 
 static void ili9341_init()
 {
-    // Initialize LCD
-    const ili_cmd_t commands[] = {
-        {0x01, {0}, 0x80},                                  // Reset
+    const struct {
+        uint8_t cmd;
+        uint8_t data[16];
+        uint8_t length;
+    } commands[] = {
+#if defined(RG_TARGET_ODROID_GO)
+        {0x01, {}, 0},                                      // Reset
+        {0x3A, {0x55}, 1},                                  // Pixel Format Set
         {0xCF, {0x00, 0xc3, 0x30}, 3},
         {0xED, {0x64, 0x03, 0x12, 0x81}, 4},
         {0xE8, {0x85, 0x00, 0x78}, 3},
@@ -222,8 +217,7 @@ static void ili9341_init()
         {0xC1, {0x12}, 1},                                  // Power control   //SAP[2:0];BT[3:0]
         {0xC5, {0x32, 0x3C}, 2},                            // VCM control
         {0xC7, {0x91}, 1},                                  // VCM control2
-        {0x36, {(MADCTL_MV|MADCTL_MY|TFT_RGB_BGR)}, 1},     // Memory Access Control
-        {0x3A, {0x55}, 1},
+        {0x36, {(0x20|0x80|0x08)}, 1},                      // Memory Access Control
         {0xB1, {0x00, 0x10}, 2},                            // Frame Rate Control (1B=70, 1F=61, 10=119)
         {0xB6, {0x0A, 0xA2}, 2},                            // Display Function Control
         {0xF6, {0x01, 0x30}, 2},
@@ -231,20 +225,36 @@ static void ili9341_init()
         {0x26, {0x01}, 1},                                  // Gamma curve selected
         {0xE0, {0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, 0x4E, 0xF1, 0x37, 0x07, 0x10, 0x03, 0x0E, 0x09, 0x00}, 15}, // Set Gamma
         {0XE1, {0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F}, 15}, // Set Gamma
-        {0x11, {0}, 0x80},                                  // Exit Sleep
-        {0x29, {0}, 0x00},                                  // Display on
+        {0x11, {}, 0},                                      // Exit Sleep
+        {0x29, {}, 0},                                      // Display on
+#elif defined(RG_TARGET_MRGC_G32)
+        {0x01, {}, 0},                                      // Reset
+        {0x3A, {0x55}, 1},                                  // Pixel Format Set
+        {0x36, {(0x00|0x00|0x00)}, 1},
+        {0xB1, {0x00, 0x10}, 2},                            // Frame Rate Control (1B=70, 1F=61, 10=119)
+        {0xB2, {0x0c, 0x0c, 0x00, 0x33, 0x33}, 5},
+        {0xB7, {0x35}, 1},
+        {0xBB, {0x24}, 1},
+        {0xC0, {0x2C}, 1},
+        {0xC2, {0x01, 0xFF}, 2},
+        {0xC3, {0x11}, 1},
+        {0xC4, {0x20}, 1},
+        {0xC6, {0x0f}, 1},
+        {0xD0, {0xA4, 0xA1}, 2},
+        {0xE0, {0xD0, 0x00, 0x03, 0x09, 0x13, 0x1C, 0x3A, 0x55, 0x48, 0x18, 0x12, 0x0E, 0x19, 0x1E}, 15},
+        {0xE1, {0xD0, 0x00, 0x03, 0x09, 0x05, 0x25, 0x3A, 0x55, 0x50, 0x3D, 0x1C, 0x1D, 0x1D, 0x1E}, 15},
+        {0x11, {}, 0},                                      // Exit Sleep
+        {0x29, {}, 0},                                      // Display on
+#else
+    #error "LCD init sequence is not defined for this device!"
+#endif
     };
 
     spi_init();
 
     for (int i = 0; i < (sizeof(commands)/sizeof(commands[0])); i++)
-    {
-        ili9341_cmd(commands[i].cmd, &commands[i].data, commands[i].databytes & 0x1F);
-        if (commands[i].databytes & 0x80)
-        {
-            usleep(5 * 1000U);
-        }
-    }
+        ili9341_cmd(commands[i].cmd, &commands[i].data, commands[i].length);
+
     rg_display_clear(C_BLACK);
 
     // Initialize backlight
