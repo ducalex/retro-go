@@ -304,6 +304,10 @@ static void ili9341_set_window(int left, int top, int width, int height)
 
 static inline uint blend_pixels(uint a, uint b)
 {
+    // Fast path
+    if (a == b)
+        return a;
+
     // Input in Big-Endian, swap to Little Endian
     a = (a << 8) | (a >> 8);
     b = (b << 8) | (b >> 8);
@@ -327,58 +331,6 @@ static inline uint blend_pixels(uint a, uint b)
     return (v << 8) | (v >> 8);
 }
 
-static inline void bilinear_filter(uint16_t *line_buffer, int top, int left, int width, int height)
-{
-    const int screen_width = display.screen.width;
-    const int x_inc = display.viewport.x_inc;
-    const int ix_acc = (x_inc * left) % screen_width;
-    const int filter_y = display.config.filter == RG_DISPLAY_FILTER_VERT || display.config.filter == RG_DISPLAY_FILTER_BOTH;
-    const int filter_x = display.config.filter == RG_DISPLAY_FILTER_HORIZ || display.config.filter == RG_DISPLAY_FILTER_BOTH;
-    int fill_line = -1;
-
-    for (int y = 0; y < height; y++)
-    {
-        if (filter_y && y && screen_lines[top + y].empty)
-        {
-            fill_line = y;
-            continue;
-        }
-
-        // Filter X
-        if (filter_x)
-        {
-            uint16_t *buffer = line_buffer + y * width;
-            for (int x = 0, frame_x = 0, prev_frame_x = -1, x_acc = ix_acc; x < width; ++x)
-            {
-                if (frame_x == prev_frame_x && x > 0 && x + 1 < width)
-                {
-                    buffer[x] = blend_pixels(buffer[x - 1], buffer[x + 1]);
-                }
-                prev_frame_x = frame_x;
-
-                x_acc += x_inc;
-                while (x_acc >= screen_width) {
-                    x_acc -= screen_width;
-                    ++frame_x;
-                }
-            }
-        }
-
-        // Filter Y
-        if (filter_y && fill_line > 0)
-        {
-            uint16_t *lineA = line_buffer + (fill_line - 1) * width;
-            uint16_t *lineB = line_buffer + (fill_line + 0) * width;
-            uint16_t *lineC = line_buffer + (fill_line + 1) * width;
-            for (size_t x = 0; x < width; ++x)
-            {
-                lineB[x] = blend_pixels(lineA[x], lineC[x]);
-            }
-            fill_line = -1;
-        }
-    }
-}
-
 static inline void write_rect(rg_video_frame_t *frame, int left, int top, int width, int height)
 {
     const int screen_width = display.screen.width;
@@ -395,18 +347,19 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
     const int screen_left = display.viewport.x_pos + scaled_left;
     const int screen_bottom = RG_MIN(screen_top + scaled_height, screen_height);
     const int ix_acc = (x_inc * scaled_left) % screen_width;
-    const int lines_per_buffer = SPI_BUFFER_LENGTH / scaled_width;
     const int filter_mode = display.config.scaling ? display.config.filter : 0;
+    const bool filter_y = filter_mode == RG_DISPLAY_FILTER_VERT || filter_mode == RG_DISPLAY_FILTER_BOTH;
+    const bool filter_x = filter_mode == RG_DISPLAY_FILTER_HORIZ || filter_mode == RG_DISPLAY_FILTER_BOTH;
+    const int pixel_format = frame->format;
+    const uint16_t *palette = frame->palette;
+    union { const uint8_t *u8; const uint16_t *u16; } buffer;
 
     if (scaled_width < 1 || scaled_height < 1)
     {
         return;
     }
 
-    uint32_t pixel_format = frame->format;
-    uint32_t stride = frame->stride;
-    uint16_t *palette = (pixel_format & RG_PIXEL_PAL) ? frame->palette : NULL;
-    uint8_t *buffer = frame->buffer + (top * stride) + (left * (palette ? 1 : 2));
+    buffer.u8 = frame->buffer + (top * frame->stride) + (left * (pixel_format & RG_PIXEL_PAL ? 1 : 2));
 
     lcd_set_window(
         screen_left + RG_SCREEN_MARGIN_LEFT,
@@ -417,7 +370,7 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
 
     for (int y = 0, screen_y = screen_top; y < height;)
     {
-        int lines_to_copy = lines_per_buffer;
+        int lines_to_copy = SPI_BUFFER_LENGTH / scaled_width;
 
         if (lines_to_copy > screen_bottom - screen_y)
         {
@@ -425,7 +378,7 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
         }
 
         // The vertical filter requires a block to start and end with unscaled lines
-        if (filter_mode == RG_DISPLAY_FILTER_VERT || filter_mode == RG_DISPLAY_FILTER_BOTH)
+        if (filter_y)
         {
             while (lines_to_copy > 1 && (screen_lines[screen_y + lines_to_copy - 1].empty ||
                                          screen_lines[screen_y + lines_to_copy].empty))
@@ -438,28 +391,29 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
         }
 
         uint16_t *line_buffer = spi_get_buffer();
-        size_t line_buffer_index = 0;
+        uint16_t *line_buffer_ptr = line_buffer;
 
         for (int i = 0; i < lines_to_copy; ++i)
         {
             if (i > 0 && screen_lines[screen_y].empty)
             {
-                uint16_t *buffer = &line_buffer[line_buffer_index];
-                memcpy(buffer, buffer - scaled_width, scaled_width * 2);
-                line_buffer_index += scaled_width;
+                memcpy(line_buffer_ptr, line_buffer_ptr - scaled_width, scaled_width * 2);
+                line_buffer_ptr += scaled_width;
             }
             else
             {
                 for (int x = 0, x_acc = ix_acc; x < width;)
                 {
-                    uint32_t pixel;
+                    uint16_t pixel;
 
-                    if (palette)
-                        pixel = palette[buffer[x]];
+                    if (pixel_format & RG_PIXEL_PAL)
+                        pixel = palette[buffer.u8[x]];
+                    else if (pixel_format & RG_PIXEL_LE)
+                        pixel = (buffer.u16[x] << 8) | (buffer.u16[x] >> 8);
                     else
-                        pixel = ((uint16_t*)buffer)[x];
+                        pixel = buffer.u16[x];
 
-                    line_buffer[line_buffer_index++] = pixel;
+                    *(line_buffer_ptr++) = pixel;
 
                     x_acc += x_inc;
                     while (x_acc >= screen_width) {
@@ -471,24 +425,56 @@ static inline void write_rect(rg_video_frame_t *frame, int left, int top, int wi
 
             if (!screen_lines[++screen_y].empty)
             {
-                buffer += stride;
+                buffer.u8 += frame->stride;
                 ++y;
             }
         }
 
-        // Swap endianness (looping over a second time is slower, but it should be unusual)
-        if (pixel_format & RG_PIXEL_LE)
+        if (filter_y || filter_x)
         {
-            while (line_buffer_index--)
-            {
-                uint32_t pixel = line_buffer[line_buffer_index];
-                line_buffer[line_buffer_index] = (pixel >> 8) | (pixel << 8);
-            }
-        }
+            const int top = screen_y - lines_to_copy;
 
-        if (filter_mode)
-        {
-            bilinear_filter(line_buffer, screen_y - lines_to_copy, scaled_left, scaled_width, lines_to_copy);
+            for (int y = 0, fill_line = -1; y < lines_to_copy; y++)
+            {
+                if (filter_y && y && screen_lines[top + y].empty)
+                {
+                    fill_line = y;
+                    continue;
+                }
+
+                // Filter X
+                if (filter_x)
+                {
+                    uint16_t *buffer = line_buffer + y * scaled_width;
+                    for (int x = 0, frame_x = 0, prev_frame_x = -1, x_acc = ix_acc; x < scaled_width; ++x)
+                    {
+                        if (frame_x == prev_frame_x && x > 0 && x + 1 < scaled_width)
+                        {
+                            buffer[x] = blend_pixels(buffer[x - 1], buffer[x + 1]);
+                        }
+                        prev_frame_x = frame_x;
+
+                        x_acc += x_inc;
+                        while (x_acc >= screen_width) {
+                            x_acc -= screen_width;
+                            ++frame_x;
+                        }
+                    }
+                }
+
+                // Filter Y
+                if (filter_y && fill_line > 0)
+                {
+                    uint16_t *lineA = line_buffer + (fill_line - 1) * scaled_width;
+                    uint16_t *lineB = line_buffer + (fill_line + 0) * scaled_width;
+                    uint16_t *lineC = line_buffer + (fill_line + 1) * scaled_width;
+                    for (size_t x = 0; x < scaled_width; ++x)
+                    {
+                        lineB[x] = blend_pixels(lineA[x], lineC[x]);
+                    }
+                    fill_line = -1;
+                }
+            }
         }
 
         lcd_send_data(line_buffer, scaled_width * lines_to_copy * 2);
@@ -818,18 +804,19 @@ bool rg_display_save_frame(const char *filename, const rg_video_frame_t *frame, 
 
     for (int y = 0; y < frame->height; y++)
     {
-        uint8_t *src_ptr = frame->buffer + (y * frame->stride);
+        const uint8_t *src_ptr8 = frame->buffer + (y * frame->stride);
+        const uint16_t *src_ptr16 = (const uint16_t *)src_ptr8;
 
         for (int x = 0; x < width; x++)
         {
-            uint32_t pixel;
+            uint16_t pixel;
 
             if (frame->format & RG_PIXEL_PAL)
-                pixel = frame->palette[src_ptr[x]];
+                pixel = frame->palette[src_ptr8[x]];
             else
-                pixel = ((uint16_t*)src_ptr)[x];
+                pixel = src_ptr16[x];
 
-            if ((frame->format & RG_PIXEL_LE) == 0) // BE to LE
+            if (!(frame->format & RG_PIXEL_LE))
                 pixel = (pixel << 8) | (pixel >> 8);
 
             *(dst_ptr++) = pixel;
