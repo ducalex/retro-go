@@ -817,7 +817,7 @@ bool rg_display_save_frame(const char *filename, const rg_video_frame_t *frame, 
         const uint8_t *src_ptr8 = frame->buffer + (y * frame->stride);
         const uint16_t *src_ptr16 = (const uint16_t *)src_ptr8;
 
-        for (int x = 0; x < width; x++)
+        for (int x = 0; x < frame->width; x++)
         {
             uint16_t pixel;
 
