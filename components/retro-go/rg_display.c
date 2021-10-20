@@ -197,14 +197,14 @@ static void ili9341_cmd(uint8_t cmd, const void *data, size_t data_len)
     spi_queue_transaction(data, data_len, 1);
 }
 
-static void ili9341_set_backlight(float level)
+static void ili9341_set_backlight(int percent)
 {
-    uint32_t duty = 0x1FFF * RG_MIN(RG_MAX(level, 0.01f), 1.0f);
+    uint32_t duty = 0x1FFF * (RG_MIN(RG_MAX(percent, 0), 100) / 100.f);
 
     ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty, 50);
     ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
 
-    RG_LOGI("backlight set to %0.f%%\n", level * 100);
+    RG_LOGI("backlight set to %02d%%\n", percent);
 }
 
 static void ili9341_init()
@@ -257,7 +257,7 @@ static void ili9341_init()
 
     const ledc_channel_config_t ledc_channel = {
         .channel = LEDC_CHANNEL_0,
-        .duty = (0x1FFF / 100 * display.config.backlight),
+        .duty = 0x1FFF * (display.config.backlight / 100.f),
         .gpio_num = RG_GPIO_LCD_BCKL,
         .speed_mode = LEDC_LOW_SPEED_MODE,
         .timer_sel = LEDC_TIMER_0,
@@ -728,7 +728,7 @@ void rg_display_reset_config(void)
         // TO DO: We probably should call the setters to ensure valid values...
         .screen.width = RG_SCREEN_WIDTH - RG_SCREEN_MARGIN_LEFT - RG_SCREEN_MARGIN_RIGHT,
         .screen.height = RG_SCREEN_HEIGHT - RG_SCREEN_MARGIN_TOP - RG_SCREEN_MARGIN_BOTTOM,
-        .config.backlight = RG_MIN(RG_MAX(0, rg_settings_get_int32(SETTING_BACKLIGHT, 50)), 100),
+        .config.backlight = RG_MIN(RG_MAX(rg_settings_get_int32(SETTING_BACKLIGHT, 40), 0), 100),
         .config.scaling = rg_settings_get_app_int32(SETTING_SCALING, RG_DISPLAY_SCALING_FILL),
         .config.filter = rg_settings_get_app_int32(SETTING_FILTER, RG_DISPLAY_FILTER_HORIZ),
         .config.rotation = rg_settings_get_app_int32(SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO),
@@ -799,9 +799,9 @@ display_rotation_t rg_display_get_rotation(void)
 
 void rg_display_set_backlight(int percent)
 {
-    display.config.backlight = RG_MIN(RG_MAX(0, percent), 100);
+    display.config.backlight = RG_MIN(RG_MAX(percent, 0), 100);
     rg_settings_set_int32(SETTING_BACKLIGHT, display.config.backlight);
-    lcd_set_backlight(display.config.backlight / 100.f);
+    lcd_set_backlight(display.config.backlight);
 }
 
 int rg_display_get_backlight(void)
