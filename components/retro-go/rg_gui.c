@@ -702,18 +702,19 @@ static dialog_return_t volume_update_cb(dialog_option_t *option, dialog_event_t 
 
 static dialog_return_t brightness_update_cb(dialog_option_t *option, dialog_event_t event)
 {
-    int8_t max_levels = 5;
-    int8_t level = rg_display_get_backlight() / (100 / max_levels);
+    const int levels = 5;
+    float step = 100.f / levels;
+    int level = rg_display_get_backlight() / step;
 
     if (event == RG_DIALOG_PREV && level > 0) {
-        rg_display_set_backlight(--level * 20);
+        rg_display_set_backlight(RG_MAX(--level * step, 10));
     }
 
-    if (event == RG_DIALOG_NEXT && level < max_levels) {
-        rg_display_set_backlight(++level * 20);
+    if (event == RG_DIALOG_NEXT && level < levels) {
+        rg_display_set_backlight(++level * step);
     }
 
-    sprintf(option->value, "%d/%d", level, max_levels);
+    sprintf(option->value, "%d/%d", level, levels);
 
     return RG_DIALOG_IGNORE;
 }

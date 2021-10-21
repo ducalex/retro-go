@@ -11,11 +11,9 @@
 #include "rg_system.h"
 #include "rg_display.h"
 
-#define SPI_TRANSACTION_COUNT (8)
+#define SPI_TRANSACTION_COUNT (10)
 #define SPI_BUFFER_COUNT (6)
 #define SPI_BUFFER_LENGTH (4 * 320) // In pixels (uint16)
-
-#define PTR_IS_SPI_BUFFER(ptr) ((((intptr_t)(ptr) - (intptr_t)&spi_buffers) % sizeof(spi_buffers[0])) == 0)
 
 // Maximum amount of change (percent) in a frame before we trigger a full transfer
 // instead of a partial update (faster). This also allows us to stop the diff early!
@@ -81,7 +79,7 @@ static inline void spi_queue_transaction(const void *data, size_t length, uint32
         .flags = 0,
     };
 
-    if (PTR_IS_SPI_BUFFER(data))
+    if (((((intptr_t)(data) - (intptr_t)&spi_buffers) % sizeof(spi_buffers[0])) == 0))
     {
         t->tx_buffer = data;
     }
@@ -117,7 +115,7 @@ static void spi_task(void *arg)
     {
         if (spi_device_get_trans_result(spi_dev, &t, portMAX_DELAY) == ESP_OK)
         {
-            if (PTR_IS_SPI_BUFFER(t->tx_buffer) && !(t->flags & SPI_TRANS_USE_TXDATA))
+            if (!(t->flags & SPI_TRANS_USE_TXDATA))
             {
                 xQueueSend(spi_buffers_queue, &t->tx_buffer, 0);
             }
