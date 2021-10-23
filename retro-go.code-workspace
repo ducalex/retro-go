@@ -30,7 +30,7 @@
 		}
 	],
 	"settings": {
-		"esp.sdk-path": "C:/Users/alex/Apps/esp-idf/4.0",
+		"esp.sdk-path": "C:/Users/alex/Apps/esp-idf/4.1",
 		"esp.tools-path": "C:/Users/alex/Apps/esp-idf/tools/tools/xtensa-esp32-elf/esp-2019r2-8.2.0/xtensa-esp32-elf",
 
 		"git.confirmForcePush": false,

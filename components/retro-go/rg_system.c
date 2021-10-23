@@ -367,7 +367,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
     rg_netplay_init(app.netplay_handler);
     #endif
 
-    xTaskCreate(&system_monitor_task, "sysmon", 2048, NULL, 7, NULL);
+    xTaskCreate(&system_monitor_task, "sysmon", 2560, NULL, 7, NULL);
 
     // This is to allow time for app starting
     inputTimeout = INPUT_TIMEOUT * 5;
