@@ -19,7 +19,6 @@
 // instead of a partial update (faster). This also allows us to stop the diff early!
 #define FULL_UPDATE_THRESHOLD (0.6f) // 0.4f
 
-static DMA_ATTR uint16_t spi_buffers[SPI_BUFFER_COUNT][SPI_BUFFER_LENGTH];
 static spi_transaction_t spi_trans[SPI_TRANSACTION_COUNT];
 static spi_device_handle_t spi_dev;
 static QueueHandle_t spi_buffers_queue;
@@ -47,7 +46,7 @@ static struct {
 #define lcd_init() ili9341_init()
 #define lcd_deinit() ili9341_deinit()
 #define lcd_set_window(left, top, width, height) ili9341_set_window(left, top, width, height)
-#define lcd_send_data(buffer, length) spi_queue_transaction(buffer, length, 1)
+#define lcd_send_data(buffer, length) spi_queue_transaction(buffer, length, 3)
 #define lcd_set_backlight(percent) ili9341_set_backlight(percent)
 
 
@@ -63,7 +62,7 @@ static inline uint16_t *spi_get_buffer()
     return buffer;
 }
 
-static inline void spi_queue_transaction(const void *data, size_t length, uint32_t dc_line)
+static inline void spi_queue_transaction(const void *data, size_t length, uint32_t type)
 {
     spi_transaction_t *t;
 
@@ -75,11 +74,11 @@ static inline void spi_queue_transaction(const void *data, size_t length, uint32
     *t = (spi_transaction_t) {
         .tx_buffer = NULL,
         .length = length * 8, // In bits
-        .user = (void*)dc_line,
+        .user = (void*)type,
         .flags = 0,
     };
 
-    if (((((intptr_t)(data) - (intptr_t)&spi_buffers) % sizeof(spi_buffers[0])) == 0))
+    if (type & 2)
     {
         t->tx_buffer = data;
     }
@@ -115,7 +114,7 @@ static void spi_task(void *arg)
     {
         if (spi_device_get_trans_result(spi_dev, &t, portMAX_DELAY) == ESP_OK)
         {
-            if (!(t->flags & SPI_TRANS_USE_TXDATA))
+            if ((int)t->user & 2)
             {
                 xQueueSend(spi_buffers_queue, &t->tx_buffer, 0);
             }
@@ -134,16 +133,16 @@ static void spi_init()
     spi_queue = xQueueCreate(SPI_TRANSACTION_COUNT, sizeof(spi_transaction_t *));
     spi_buffers_queue = xQueueCreate(SPI_BUFFER_COUNT, sizeof(uint16_t *));
 
-    for (size_t x = 0; x < SPI_BUFFER_COUNT; x++)
-    {
-        void *buffer = &spi_buffers[x];
-        xQueueSend(spi_buffers_queue, &buffer, portMAX_DELAY);
-    }
-
     for (size_t x = 0; x < SPI_TRANSACTION_COUNT; x++)
     {
         void *trans = &spi_trans[x];
         xQueueSend(spi_queue, &trans, portMAX_DELAY);
+    }
+
+    while (uxQueueSpacesAvailable(spi_buffers_queue))
+    {
+        void *buffer = rg_alloc(SPI_BUFFER_LENGTH * 2, MEM_DMA);
+        xQueueSend(spi_buffers_queue, &buffer, portMAX_DELAY);
     }
 
     const spi_bus_config_t buscfg = {
@@ -939,7 +938,7 @@ void rg_display_clear(uint16_t color_le)
 
     while (pixels > 0)
     {
-        size_t count = RG_MIN(SPI_BUFFER_LENGTH, pixels);
+        size_t count = RG_MIN(pixels, SPI_BUFFER_LENGTH);
         uint16_t *buffer = spi_get_buffer();
 
         for (size_t j = 0; j < count; ++j)
