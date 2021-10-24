@@ -22,14 +22,15 @@
 
 // static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
-static rg_video_frame_t frames[2];
-static rg_video_frame_t *currentUpdate = &frames[0];
+static rg_video_update_t updates[2];
+static rg_video_update_t *currentUpdate = &updates[0];
+
+static rg_app_t *app;
+
 static uint32_t frames_counter = 0;
 
 static int keymap_id = 0;
 static keymap_t keymap;
-
-static rg_app_t *app;
 
 #ifdef ENABLE_NETPLAY
 static bool netplay = false;
@@ -274,7 +275,7 @@ static void snes9x_task(void *arg)
 
 		if (IPPU.RenderThisFrame)
 		{
-			rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
+			rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
 			rg_display_queue_update(currentUpdate, previousUpdate);
 			currentUpdate = previousUpdate;
 		}
@@ -301,14 +302,10 @@ extern "C" void app_main(void)
 
 	app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
 
-	frames[0].format = RG_PIXEL_565_LE;
-	frames[0].width = SNES_WIDTH;
-	frames[0].height = SNES_HEIGHT;
-	frames[0].stride = SNES_WIDTH * 2;
-	frames[1] = frames[0];
+	updates[0].buffer = rg_alloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2, MEM_SLOW);
+	updates[1].buffer = rg_alloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2, MEM_SLOW);
 
-	frames[0].buffer = rg_alloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2, MEM_SLOW);
-	frames[1].buffer = rg_alloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2, MEM_SLOW);
+	rg_display_set_source_format(SNES_WIDTH, SNES_HEIGHT, 0, 0, SNES_WIDTH * 2, RG_PIXEL_565_LE);
 
 	snes9x_task(NULL);
 }

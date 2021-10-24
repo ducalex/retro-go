@@ -86,6 +86,8 @@ typedef struct {
         int width;
         int height;
         int stride;
+        int offset;
+        int pixlen;
         int crop_h;
         int crop_v;
         int format;
@@ -105,14 +107,11 @@ typedef struct {
 } rg_line_diff_t;
 
 typedef struct {
-    uint32_t format;        // bitwise of RG_PIXEL_*
-    uint32_t width;         // In px
-    uint32_t height;        // In px
-    uint32_t stride;        // In bytes
-    uint16_t palette[256];  // Used in RG_PIXEL_PAL is set
+    rg_update_t type;
     void *buffer;           // Should be at least height*stride bytes. expects uint8_t * | uint16_t *
+    uint16_t palette[256];  // Used in RG_PIXEL_PAL is set
     rg_line_diff_t diff[256];
-} rg_video_frame_t;
+} rg_video_update_t;
 
 void rg_display_init(void);
 void rg_display_deinit(void);
@@ -121,10 +120,10 @@ void rg_display_clear(uint16_t color_le);
 void rg_display_reset_config(void);
 void rg_display_force_redraw(void);
 void rg_display_show_info(const char *text, int timeout_ms);
-bool rg_display_save_frame(const char *filename, const rg_video_frame_t *frame, int width, int height);
+bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame, int width, int height);
 void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, int format);
 void rg_display_set_source_palette(const uint16_t *data, size_t colors);
-rg_update_t rg_display_queue_update(/*const*/ rg_video_frame_t *frame, const rg_video_frame_t *previousFrame);
+rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const rg_video_update_t *previousUpdate);
 const rg_display_t *rg_display_get_status(void);
 
 void rg_display_set_scaling(display_scaling_t scaling);

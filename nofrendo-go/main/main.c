@@ -11,20 +11,21 @@
 #define AUDIO_SAMPLE_RATE   (32000)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
 
-static rg_video_frame_t frames[2];
-static rg_video_frame_t *currentUpdate = &frames[0];
-static rg_video_frame_t *previousUpdate = NULL;
+static rg_video_update_t updates[2];
+static rg_video_update_t *currentUpdate = &updates[0];
+static rg_video_update_t *previousUpdate = NULL;
+
+static rg_app_t *app;
 
 static uint32_t joystick1;
 static uint32_t *localJoystick = &joystick1;
 
-static bool overscan = true;
-static long autocrop = 0;
-static bool fullFrame = 0;
-static long palette = 0;
+static int fullFrame = 0;
+static int overscan = true;
+static int autocrop = 0;
+static int palette = 0;
+static int crop_h, crop_v;
 static nes_t *nes;
-
-static rg_app_t *app;
 
 #ifdef ENABLE_NETPLAY
 static uint32_t *remoteJoystick = &joystick2;
@@ -110,14 +111,26 @@ static bool reset_handler(bool hard)
 }
 
 
+static void set_display_mode(void)
+{
+    crop_v = (overscan) ? nes->overscan : 0;
+    crop_h = (autocrop) ? 8 : 0;
+    // int crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
+
+    int width = NES_SCREEN_WIDTH - (crop_h * 2);
+    int height = NES_SCREEN_HEIGHT - (crop_v * 2);
+
+    rg_display_set_source_format(width, height, 0, 0, NES_SCREEN_PITCH, RG_PIXEL_PAL565_BE);
+}
+
 static void build_palette(int n)
 {
     uint16_t *pal = nofrendo_buildpalette(n, 16);
     for (int i = 0; i < 256; i++)
     {
         uint16_t color = (pal[i] >> 8) | ((pal[i]) << 8);
-        frames[0].palette[i] = color;
-        frames[1].palette[i] = color;
+        updates[0].palette[i] = color;
+        updates[1].palette[i] = color;
     }
     free(pal);
     previousUpdate = NULL;
@@ -145,6 +158,7 @@ static dialog_return_t overscan_update_cb(dialog_option_t *option, dialog_event_
     {
         overscan = !overscan;
         rg_settings_set_app_int32(SETTING_OVERSCAN, overscan);
+        set_display_mode();
     }
 
     strcpy(option->value, overscan ? "Auto" : "Off ");
@@ -162,8 +176,9 @@ static dialog_return_t autocrop_update_cb(dialog_option_t *option, dialog_event_
 
     if (val != autocrop)
     {
-        rg_settings_set_app_int32(SETTING_AUTOCROP, val);
         autocrop = val;
+        rg_settings_set_app_int32(SETTING_AUTOCROP, val);
+        set_display_mode();
     }
 
     if (val == 0) strcpy(option->value, "Never ");
@@ -216,19 +231,12 @@ static void settings_handler(void)
 
 static void osd_blitscreen(uint8 *bmp)
 {
-    int crop_v = (overscan) ? nes->overscan : 0;
-    int crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
-
     // A rolling average should be used for autocrop == 1, it causes jitter in some games...
-
+    // int crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
     currentUpdate->buffer = NES_SCREEN_GETPTR(bmp, crop_h, crop_v);
-    currentUpdate->width = NES_SCREEN_WIDTH - (crop_h * 2);
-    currentUpdate->height = NES_SCREEN_HEIGHT - (crop_v * 2);
-
     fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
-
     previousUpdate = currentUpdate;
-    currentUpdate = &frames[currentUpdate == &frames[0]];
+    currentUpdate = &updates[currentUpdate == &updates[0]];
 }
 
 void app_main(void)
@@ -243,10 +251,6 @@ void app_main(void)
     };
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
-
-    frames[0].format = RG_PIXEL_PAL565_BE;
-    frames[0].stride = NES_SCREEN_PITCH;
-    frames[1] = frames[0];
 
     overscan = rg_settings_get_app_int32(SETTING_OVERSCAN, 1);
     autocrop = rg_settings_get_app_int32(SETTING_AUTOCROP, 0);
@@ -272,7 +276,9 @@ void app_main(void)
     nes->blit_func = osd_blitscreen;
 
     ppu_setopt(PPU_LIMIT_SPRITES, rg_settings_get_app_int32(SETTING_SPRITELIMIT, 1));
+
     build_palette(palette);
+    set_display_mode();
 
     // This is necessary for successful state restoration
     // I have not yet investigated why that is...

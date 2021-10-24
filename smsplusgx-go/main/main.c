@@ -13,8 +13,8 @@
 
 static int16_t audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
-static rg_video_frame_t frames[2];
-static rg_video_frame_t *currentUpdate = &frames[0];
+static rg_video_update_t updates[2];
+static rg_video_update_t *currentUpdate = &updates[0];
 
 static rg_app_t *app;
 
@@ -117,11 +117,8 @@ void app_main(void)
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
 
-    frames[0].format = RG_PIXEL_PAL565_BE;
-    frames[1] = frames[0];
-
-    frames[0].buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
-    frames[1].buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
+    updates[0].buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
+    updates[1].buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
 
     system_reset_config();
 
@@ -150,11 +147,10 @@ void app_main(void)
 
     app->refreshRate = (sms.display == DISPLAY_NTSC) ? 60 : 50;
 
-    frames[0].width  = frames[1].width  = bitmap.viewport.w;
-    frames[0].height = frames[1].height = bitmap.viewport.h;
-    frames[0].stride  = frames[1].stride  = bitmap.pitch;
-    frames[0].buffer += bitmap.viewport.x;
-    frames[1].buffer += bitmap.viewport.x;
+    updates[0].buffer += bitmap.viewport.x;
+    updates[1].buffer += bitmap.viewport.x;
+
+    rg_display_set_source_format(bitmap.viewport.w, bitmap.viewport.h, 0, 0, bitmap.pitch, RG_PIXEL_PAL565_BE);
 
     if (app->startAction == RG_START_ACTION_RESUME)
     {
@@ -291,7 +287,7 @@ void app_main(void)
 
         if (drawFrame)
         {
-            rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
+            rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
             if (render_copy_palette(currentUpdate->palette))
             {
                 previousUpdate = NULL;
@@ -303,7 +299,7 @@ void app_main(void)
                 copyPalette = false;
             }
             fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
-            currentUpdate = &frames[currentUpdate == &frames[0]]; // Swap
+            currentUpdate = &updates[currentUpdate == &updates[0]]; // Swap
             bitmap.data = currentUpdate->buffer - bitmap.viewport.x;
         }
 

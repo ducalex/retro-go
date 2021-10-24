@@ -25,16 +25,15 @@
 
 static int16_t audiobuffer[AUDIO_BUFFER_LENGTH * 4];
 static uint8_t *framebuffers[2];
-static rg_video_frame_t frames[2];
-static rg_video_frame_t *currentUpdate = &frames[0];
-static int current_height, current_width;
-static int offset_center = 0;
-static int offset_cropping = 0;
 
-static bool overscan = false;
-static bool downsample = false;
+static int current_height = 0;
+static int current_width = 0;
+static int overscan = false;
+static int downsample = false;
 static int skipFrames = 0;
 
+static rg_video_update_t updates[2];
+static rg_video_update_t *currentUpdate = &updates[0];
 static rg_app_t *app;
 
 #ifdef ENABLE_NETPLAY
@@ -50,37 +49,28 @@ uint8_t *osd_gfx_framebuffer(void)
 {
     if (skipFrames > 0)
         return NULL;
-    return (uint8_t *)currentUpdate->buffer - offset_cropping;
+    return (uint8_t *)currentUpdate->buffer;
 }
 
 void osd_gfx_set_mode(int width, int height)
 {
-    const rg_display_t *display = rg_display_get_status();
-    int crop_h = width - (int)display->screen.width;
-    int crop_v = height - (int)display->screen.height + (overscan ? 6 : 0);
+    if (width != current_width || height != current_height)
+    {
+        RG_LOGI("Resolution changed to: %dx%d\n", width, height);
 
-    if (crop_h < 0) crop_h = 0;
-    if (crop_v < 0) crop_v = 0;
+        // We center the content vertically and horizontally to allow overflows all around
+        int offset_center = (((XBUF_HEIGHT - height) / 2 + 16) * XBUF_WIDTH + (XBUF_WIDTH - width) / 2);
 
-    // We center the content vertically and horizontally to allow overflows all around
-    offset_center = (((XBUF_HEIGHT - height) / 2 + 16) * XBUF_WIDTH + (XBUF_WIDTH - width) / 2);
-    offset_cropping = (crop_v / 2) * XBUF_WIDTH + (crop_h / 2);
+        updates[0].buffer = framebuffers[0] + offset_center;
+        updates[1].buffer = framebuffers[1] + offset_center;
 
-    current_width = width;
-    current_height = height;
+        rg_display_set_source_format(width, height, 0, 0, XBUF_WIDTH, RG_PIXEL_PAL565_BE);
 
-    RG_LOGI("Resolution: %dx%d / Cropping: H: %d V: %d\n", width, height, crop_h, crop_v);
+        current_width = width;
+        current_height = height;
+    }
 
-    frames[0].format = RG_PIXEL_PAL565_BE;
-    frames[0].width = width - crop_h;
-    frames[0].height = height - crop_v;
-    frames[0].stride = XBUF_WIDTH;
-    frames[1] = frames[0];
-
-    frames[0].buffer = framebuffers[0] + offset_center + offset_cropping;
-    frames[1].buffer = framebuffers[1] + offset_center + offset_cropping;
-
-    currentUpdate = &frames[0];
+    currentUpdate = &updates[0];
 }
 
 void osd_gfx_blit(void)
@@ -89,7 +79,7 @@ void osd_gfx_blit(void)
 
     if (drawFrame)
     {
-        rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
+        rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
         rg_display_queue_update(currentUpdate, NULL);
 
         currentUpdate = previousUpdate;
@@ -226,7 +216,7 @@ void osd_vsync(void)
 static bool screenshot_handler(const char *filename, int width, int height)
 {
     // We must use previous update because at this point current has been wiped.
-    rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
+    rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
     return rg_display_save_frame(filename, previousUpdate, width, height);
 }
 
@@ -273,8 +263,8 @@ void app_main(void)
     for (int i = 0; i < 256; i++)
     {
         uint16_t color = (palette[i] << 8) | (palette[i] >> 8);
-        frames[0].palette[i] = color;
-        frames[1].palette[i] = color;
+        updates[0].palette[i] = color;
+        updates[1].palette[i] = color;
     }
     free(palette);
     osd_gfx_set_mode(256, 240);

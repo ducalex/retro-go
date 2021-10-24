@@ -10,8 +10,8 @@
 
 #define AUDIO_SAMPLE_RATE   (32000)
 
-static rg_video_frame_t frames[2];
-static rg_video_frame_t *currentUpdate = &frames[0];
+static rg_video_update_t updates[2];
+static rg_video_update_t *currentUpdate = &updates[0];
 
 static rg_app_t *app;
 
@@ -214,7 +214,7 @@ static void settings_handler(void)
 
 static void vblank_callback(void)
 {
-    rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
+    rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
 
     fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
 
@@ -249,14 +249,10 @@ void app_main(void)
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
 
-    frames[0].format = RG_PIXEL_565_BE;
-    frames[0].width = GB_WIDTH;
-    frames[0].height = GB_HEIGHT;
-    frames[0].stride = GB_WIDTH * 2;
-    frames[1] = frames[0];
+    updates[0].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
+    updates[1].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
 
-    frames[0].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
-    frames[1].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
+    rg_display_set_source_format(GB_WIDTH, GB_HEIGHT, 0, 0, GB_WIDTH * 2, RG_PIXEL_565_BE);
 
     autoSaveSRAM = rg_settings_get_app_int32(SETTING_SAVESRAM, 0);
     sramFile = rg_emu_get_path(RG_PATH_SAVE_SRAM, 0);

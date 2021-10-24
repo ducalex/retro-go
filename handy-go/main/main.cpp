@@ -12,8 +12,8 @@ extern "C" {
 
 static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
-static rg_video_frame_t frames[2];
-static rg_video_frame_t *currentUpdate = &frames[0];
+static rg_video_update_t updates[2];
+static rg_video_update_t *currentUpdate = &updates[0];
 static rg_app_t *app = NULL;
 static CSystem *lynx = NULL;
 
@@ -84,8 +84,8 @@ static void set_display_mode(void)
             dpad_mapped_right = BUTTON_RIGHT;
             break;
     }
-    frames[0].width = frames[1].width = width;
-    frames[0].height = frames[1].height = height;
+
+    rg_display_set_source_format(width, height, 0, 0, HANDY_SCREEN_WIDTH * 2, RG_PIXEL_565_BE);
 }
 
 
@@ -177,15 +177,9 @@ extern "C" void app_main(void)
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
 
-    frames[0].format = RG_PIXEL_565_BE;
-    frames[0].width = HANDY_SCREEN_WIDTH;
-    frames[0].height = HANDY_SCREEN_WIDTH;
-    frames[0].stride = HANDY_SCREEN_WIDTH * 2;
-    frames[1] = frames[0];
-
     // the HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH is deliberate because of rotation
-    frames[0].buffer = (void*)rg_alloc(HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH * 2, MEM_FAST);
-    frames[1].buffer = (void*)rg_alloc(HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH * 2, MEM_FAST);
+    updates[0].buffer = (void*)rg_alloc(HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH * 2, MEM_FAST);
+    updates[1].buffer = (void*)rg_alloc(HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH * 2, MEM_FAST);
 
     // The Lynx has a variable framerate but 60 is typical
     app->refreshRate = 60;
@@ -245,7 +239,7 @@ extern "C" void app_main(void)
 
         if (drawFrame)
         {
-            rg_video_frame_t *previousUpdate = &frames[currentUpdate == &frames[0]];
+            rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
 
             fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
 
