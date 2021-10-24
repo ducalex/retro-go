@@ -847,6 +847,8 @@ bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame,
 IRAM_ATTR
 rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const rg_video_update_t *previousUpdate)
 {
+    // RG_ASSERT(display.source.width && display.source.height, "Source format not set!");
+
     if (!update)
         return RG_UPDATE_ERROR;
 

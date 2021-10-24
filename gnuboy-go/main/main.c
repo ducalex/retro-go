@@ -260,16 +260,20 @@ void app_main(void)
     if (!rg_mkdir(rg_dirname(sramFile)))
         RG_LOGW("Unable to create SRAM folder...");
 
-    // Initialize the emulator and load the ROM
+    // Initialize the emulator
     gnuboy_init(AUDIO_SAMPLE_RATE, true, GB_PIXEL_565_BE, vblank_callback);
-    gnuboy_load_rom(app->romPath);
-    gnuboy_set_palette(rg_settings_get_app_int32(SETTING_PALETTE, GB_PALETTE_GBC));
+
+    // Load ROM
+    if (gnuboy_load_rom(app->romPath) < 0)
+        RG_PANIC("ROM Loading failed!");
 
     // Load BIOS
     if (gnuboy_get_hwtype() == GB_HW_CGB)
         gnuboy_load_bios(RG_BASE_PATH_SYSTEM "/gbc_bios.bin");
     else
         gnuboy_load_bios(RG_BASE_PATH_SYSTEM "/gb_bios.bin");
+
+    gnuboy_set_palette(rg_settings_get_app_int32(SETTING_PALETTE, GB_PALETTE_GBC));
 
     // Hard reset to have a clean slate
     gnuboy_reset(true);

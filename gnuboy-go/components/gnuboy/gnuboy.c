@@ -116,25 +116,22 @@ int gnuboy_load_bios(const char *file)
 {
 	MESSAGE_INFO("Loading BIOS file: '%s'\n", file);
 
+	if (!(hw.bios = malloc(0x900)))
+	{
+		MESSAGE_ERROR("Mem alloc failed.\n");
+		return -2;
+	}
+
 	FILE *fp = fopen(file, "rb");
-	if (fp == NULL)
+	if (!fp || fread(hw.bios, 1, 0x900, fp) < 0x100)
 	{
-		MESSAGE_ERROR("BIOS fopen failed");
-		return -1;
+		MESSAGE_ERROR("File read failed.\n");
+		free(hw.bios);
+		hw.bios = NULL;
 	}
-
-	hw.bios = malloc(0x900);
-	if (!hw.bios)
-		gnuboy_die("Out of memory");
-
-	if (fread(hw.bios, 1, 0x900, fp) >= 0x100)
-	{
-		MESSAGE_INFO("BIOS loaded\n");
-	}
-
 	fclose(fp);
 
-	return 0;
+	return hw.bios ? 0 : -1;
 }
 
 
@@ -194,12 +191,15 @@ int gnuboy_load_rom(const char *file)
 	cart.romFile = fopen(file, "rb");
 	if (cart.romFile == NULL)
 	{
-		gnuboy_die("ROM fopen failed");
+		MESSAGE_ERROR("ROM fopen failed");
+		return -1;
 	}
 
 	if (fread(&header, 0x200, 1, cart.romFile) != 1)
 	{
-		gnuboy_die("ROM fread failed");
+		MESSAGE_ERROR("ROM fread failed");
+		fclose(cart.romFile);
+		return -1;
 	}
 
 	int type = header[0x0147];
@@ -255,7 +255,8 @@ int gnuboy_load_rom(const char *file)
 	}
 	else
 	{
-		gnuboy_die("Invalid ROM size: %d\n", romsize);
+		MESSAGE_ERROR("Invalid ROM size: %d\n", romsize);
+		return -2;
 	}
 
 	if (ramsize < 6)
@@ -272,7 +273,8 @@ int gnuboy_load_rom(const char *file)
 	cart.rambanks = malloc(8192 * cart.ramsize);
 	if (!cart.rambanks)
 	{
-		gnuboy_die("SRAM alloc failed");
+		MESSAGE_ERROR("SRAM alloc failed");
+		return -3;
 	}
 
 	// Detect colorization palette that the real GBC would be using
@@ -369,7 +371,7 @@ int gnuboy_load_rom(const char *file)
 	}
 
 	// Apply game-specific hacks
-	if (strncmp(cart.name, "SIREN GB2 ", 11) == 0 || strncmp(cart.name, "DONKEY KONG", 11) == 0)
+	if (strncmp(cart.name, "SIREN GB2 ", 11) == 0 || strncmp(cart.name, "DONKEY KONG", 16) == 0)
 	{
 		MESSAGE_INFO("HACK: Window offset hack enabled\n");
 		lcd.enable_window_offset_hack = 1;
