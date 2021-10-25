@@ -11,7 +11,7 @@ static int audioSampleRate = 0;
 static int audioFilter = 0;
 static bool audioMuted = false;
 static int volumeLevel = RG_AUDIO_VOL_DEFAULT;
-static int volumeMap[] = {0, 7, 15, 28, 39, 50, 61, 74, 88, 100};
+static int volumeMap[] = {0, 7, 15, 28, 39, 47, 56, 65, 74, 88, 100};
 
 static const char *SETTING_OUTPUT = "AudioSink";
 static const char *SETTING_VOLUME = "Volume";
@@ -258,9 +258,9 @@ rg_volume_t rg_audio_get_volume(void)
 
 void rg_audio_set_volume(rg_volume_t level)
 {
-    volumeLevel = RG_MIN(RG_AUDIO_VOL_MAX, RG_MAX(RG_AUDIO_VOL_MIN, level));
+    volumeLevel = RG_MIN(RG_MAX(level, RG_AUDIO_VOL_MIN), RG_AUDIO_VOL_MAX);
     rg_settings_set_int32(SETTING_VOLUME, volumeLevel);
-    RG_LOGI("Volume set to %d%%\n", volumeMap[volumeLevel]);
+    RG_LOGI("Volume set to %d%% (%d)\n", volumeMap[volumeLevel], volumeLevel);
 }
 
 void rg_audio_set_mute(bool mute)

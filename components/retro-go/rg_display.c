@@ -23,7 +23,7 @@ static QueueHandle_t display_task_queue;
 
 static rg_display_t display;
 
-static const char *SETTING_BACKLIGHT = "Backlight";
+static const char *SETTING_BACKLIGHT = "DispBacklight";
 static const char *SETTING_SCALING   = "DispScaling";
 static const char *SETTING_FILTER    = "DispFilter";
 static const char *SETTING_ROTATION  = "DispRotation";
@@ -613,8 +613,6 @@ void rg_display_reset_config(void)
         .config.update = rg_settings_get_app_int32(SETTING_UPDATE, RG_DISPLAY_UPDATE_PARTIAL),
         .changed = true,
     };
-    if (display.config.backlight <= 5) // import old style
-        display.config.backlight *= 20;
 }
 
 void rg_display_force_redraw(void)

@@ -683,38 +683,36 @@ void rg_gui_alert(const char *title, const char *message)
 
 static dialog_return_t volume_update_cb(dialog_option_t *option, dialog_event_t event)
 {
-    int8_t level = rg_audio_get_volume();
-    int8_t min = RG_AUDIO_VOL_MIN;
-    int8_t max = RG_AUDIO_VOL_MAX;
+    int old_level = rg_audio_get_volume();
+    int level = old_level;
 
-    if (event == RG_DIALOG_PREV && level > min) {
-        rg_audio_set_volume(--level);
-    }
+    if (event == RG_DIALOG_PREV) level -= 1;
+    if (event == RG_DIALOG_NEXT) level += 1;
 
-    if (event == RG_DIALOG_NEXT && level < max) {
-        rg_audio_set_volume(++level);
-    }
+    level = RG_MIN(RG_MAX(level, RG_AUDIO_VOL_MIN), RG_AUDIO_VOL_MAX);
 
-    sprintf(option->value, "%d/%d", level, max);
+    if (level != old_level)
+        rg_audio_set_volume(level);
+
+    sprintf(option->value, "%d%%", level * RG_AUDIO_VOL_MAX);
 
     return RG_DIALOG_IGNORE;
 }
 
 static dialog_return_t brightness_update_cb(dialog_option_t *option, dialog_event_t event)
 {
-    const int levels = 5;
-    float step = 100.f / levels;
-    int level = rg_display_get_backlight() / step;
+    int old_level = rg_display_get_backlight();
+    int level = old_level;
 
-    if (event == RG_DIALOG_PREV && level > 0) {
-        rg_display_set_backlight(RG_MAX(--level * step, 10));
-    }
+    if (event == RG_DIALOG_PREV) level -= 10;
+    if (event == RG_DIALOG_NEXT) level += 10;
 
-    if (event == RG_DIALOG_NEXT && level < levels) {
-        rg_display_set_backlight(++level * step);
-    }
+    level = RG_MIN(RG_MAX(level, 10), 100);
 
-    sprintf(option->value, "%d/%d", level, levels);
+    if (level != old_level)
+        rg_display_set_backlight(level);
+
+    sprintf(option->value, "%d%%", level);
 
     return RG_DIALOG_IGNORE;
 }
