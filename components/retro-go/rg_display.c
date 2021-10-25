@@ -15,10 +15,6 @@
 #define SPI_BUFFER_COUNT (6)
 #define SPI_BUFFER_LENGTH (4 * 320) // In pixels (uint16)
 
-// Maximum amount of change (percent) in a frame before we trigger a full transfer
-// instead of a partial update (faster). This also allows us to stop the diff early!
-#define FULL_UPDATE_THRESHOLD (0.6f) // 0.4f
-
 static spi_transaction_t spi_trans[SPI_TRANSACTION_COUNT];
 static spi_device_handle_t spi_dev;
 static QueueHandle_t spi_buffers_queue;
@@ -485,122 +481,6 @@ static inline void write_rect(int left, int top, int width, int height,
     }
 }
 
-static inline rg_update_t frame_diff(rg_video_update_t *frame, const rg_video_update_t *prevFrame)
-{
-    const int frame_width = display.source.width;
-    const int frame_height = display.source.height;
-    const int stride = display.source.stride;
-    const int u32_blocks = (frame_width * display.source.pixlen / 4);
-    const int u32_pixels = 4 / display.source.pixlen;
-    int threshold_remaining = frame_width * frame_height * FULL_UPDATE_THRESHOLD;
-    int lines_changed = 0;
-
-    uint32_t *frame_buffer = frame->buffer + display.source.offset;
-    uint32_t *prev_buffer = prevFrame->buffer + display.source.offset;
-
-    rg_line_diff_t *out_diff = frame->diff;
-
-    // NOTE: We no longer use the palette when comparing pixels. It is now the emulator's
-    // responsibility to force a full redraw when its palette changes.
-    // In most games a palette change is unusual so we get a performance increase by not checking.
-
-    for (int y = 0; y < frame_height; ++y)
-    {
-        int left = 0, width = 0;
-
-        for (int x = 0; x < u32_blocks; ++x)
-        {
-            if (frame_buffer[x] != prev_buffer[x])
-            {
-                for (int xl = u32_blocks - 1; xl >= x; --xl)
-                {
-                    if (frame_buffer[xl] != prev_buffer[xl]) {
-                        left = x * u32_pixels;
-                        width = ((xl + 1) - x) * u32_pixels;
-                        lines_changed++;
-                        break;
-                    }
-                }
-                break;
-            }
-        }
-
-        threshold_remaining -= width;
-
-        if (threshold_remaining <= 0)
-            return RG_UPDATE_FULL; // Stop scan and do full update
-
-        out_diff[y].left = left;
-        out_diff[y].width = width;
-        out_diff[y].repeat = 1;
-
-        frame_buffer = (void*)frame_buffer + stride;
-        prev_buffer = (void*)prev_buffer + stride;
-    }
-
-    // If filtering is enabled we must adjust our diff blocks to be on appropriate boundaries
-    if (display.config.filter && display.config.scaling)
-    {
-        for (int y = 0; y < frame_height; ++y)
-        {
-            if (out_diff[y].width > 0)
-            {
-                int block_start = y;
-                int block_end = y;
-                int left = out_diff[y].left;
-                int right = left + out_diff[y].width;
-
-                while (block_start > 0 && (out_diff[block_start].width > 0 || !filter_lines[block_start].start))
-                    block_start--;
-
-                while (block_end < frame_height - 1 && (out_diff[block_end].width > 0 || !filter_lines[block_end].stop))
-                    block_end++;
-
-                for (int i = block_start; i <= block_end; i++)
-                {
-                    if (out_diff[i].width > 0) {
-                        if (out_diff[i].left + out_diff[i].width > right) right = out_diff[i].left + out_diff[i].width;
-                        if (out_diff[i].left < left) left = out_diff[i].left;
-                    }
-                }
-
-                if (--left < 0) left = 0;
-                if (++right > frame_width) right = frame_width;
-
-                for (int i = block_start; i <= block_end; i++)
-                {
-                    out_diff[i].left = left;
-                    out_diff[i].width = right - left;
-                }
-
-                y = block_end;
-            }
-        }
-    }
-
-    if (lines_changed == 0)
-        return RG_UPDATE_EMPTY;
-
-    // Combine consecutive lines with similar changes location to optimize the SPI transfer
-    rg_line_diff_t *line = &out_diff[frame_height - 1];
-    rg_line_diff_t *prev_line = line - 1;
-
-    for (; line > out_diff; --line, --prev_line)
-    {
-        int right = line->left + line->width;
-        int right_prev = prev_line->left + prev_line->width;
-
-        if (abs(line->left - prev_line->left) <= 8 && abs(right - right_prev) <= 8)
-        {
-            if (line->left < prev_line->left) prev_line->left = line->left;
-            prev_line->width = RG_MAX(right, right_prev) - prev_line->left;
-            prev_line->repeat = line->repeat + 1;
-        }
-    }
-
-    return RG_UPDATE_PARTIAL;
-}
-
 static void update_viewport_scaling(void)
 {
     int src_width = display.source.width;
@@ -852,13 +732,120 @@ rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const r
     if (!update)
         return RG_UPDATE_ERROR;
 
+    update->type = RG_UPDATE_FULL;
+
     if (previousUpdate && !display.changed && display.config.update != RG_DISPLAY_UPDATE_FULL)
     {
-        update->type = frame_diff(update, previousUpdate);
-    }
-    else
-    {
-        update->type = RG_UPDATE_FULL;
+        const int *frame_buffer = update->buffer + display.source.offset; // int64_t is 0.7% faster!
+        const int *prev_buffer = previousUpdate->buffer + display.source.offset;
+        const int frame_width = display.source.width;
+        const int frame_height = display.source.height;
+        const int stride = display.source.stride;
+        const int blocks = (frame_width * display.source.pixlen) / sizeof(*frame_buffer);
+        const int pixels_per_block = sizeof(*frame_buffer) / display.source.pixlen;
+        rg_line_diff_t *out_diff = update->diff;
+
+        // If more than 50% of the screen has changed then stop the comparison and assume that the
+        // rest also changed. This is true in 77% of the cases in Pokemon, resulting in a net
+        // benefit. The other 23% of cases would have benefited from finishing the diff, so a better
+        // heuristic might be preferable (interlaced compare perhaps?).
+        int threshold = (frame_width * frame_height) / 2;
+        int changed = 0;
+
+        for (int y = 0; y < frame_height; ++y)
+        {
+            int left = 0, width = 0;
+
+            for (int x = 0; x < blocks && changed < threshold; ++x)
+            {
+                if (frame_buffer[x] != prev_buffer[x])
+                {
+                    for (int xl = blocks - 1; xl >= x; --xl)
+                    {
+                        if (frame_buffer[xl] != prev_buffer[xl]) {
+                            left = x * pixels_per_block;
+                            width = ((xl + 1) - x) * pixels_per_block;
+                            changed += width;
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+
+            out_diff[y].left = left;
+            out_diff[y].width = width;
+            out_diff[y].repeat = 1;
+
+            frame_buffer = (void*)frame_buffer + stride;
+            prev_buffer = (void*)prev_buffer + stride;
+        }
+
+        if (changed == 0)
+        {
+            update->type = RG_UPDATE_EMPTY;
+        }
+        else if (changed < threshold)
+        {
+            update->type = RG_UPDATE_PARTIAL;
+
+            // If filtering is enabled we must adjust our diff blocks to be on appropriate boundaries
+            if (display.config.filter && display.config.scaling)
+            {
+                for (int y = 0; y < frame_height; ++y)
+                {
+                    if (out_diff[y].width < 1)
+                        continue;
+
+                    int block_start = y;
+                    int block_end = y;
+                    int left = out_diff[y].left;
+                    int right = left + out_diff[y].width;
+
+                    while (block_start > 0 && (out_diff[block_start].width > 0 || !filter_lines[block_start].start))
+                        block_start--;
+
+                    while (block_end < frame_height - 1 && (out_diff[block_end].width > 0 || !filter_lines[block_end].stop))
+                        block_end++;
+
+                    for (int i = block_start; i <= block_end; i++)
+                    {
+                        if (out_diff[i].width > 0) {
+                            right = RG_MAX(right, out_diff[i].left + out_diff[i].width);
+                            left = RG_MIN(left, out_diff[i].left);
+                        }
+                    }
+
+                    left = RG_MAX(left - 1, 0);
+                    right = RG_MIN(right + 1, frame_width);
+
+                    for (int i = block_start; i <= block_end; i++)
+                    {
+                        out_diff[i].left = left;
+                        out_diff[i].width = right - left;
+                    }
+
+                    y = block_end;
+                }
+            }
+
+            // Combine consecutive lines with similar changes location to optimize the SPI transfer
+            rg_line_diff_t *line = &out_diff[frame_height - 1];
+            rg_line_diff_t *prev_line = line - 1;
+
+            for (; line > out_diff; --line, --prev_line)
+            {
+                int right = line->left + line->width;
+                int right_prev = prev_line->left + prev_line->width;
+
+                if (abs(line->left - prev_line->left) <= 8 && abs(right - right_prev) <= 8)
+                {
+                    if (line->left < prev_line->left) prev_line->left = line->left;
+                    prev_line->width = RG_MAX(right, right_prev) - prev_line->left;
+                    prev_line->repeat = line->repeat + 1;
+                }
+            }
+        }
     }
 
     xQueueSend(display_task_queue, &update, portMAX_DELAY);
@@ -868,7 +855,14 @@ rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const r
 
 void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, int format)
 {
-    while (uxQueueMessagesWaiting(display_task_queue)); // Not ideal...
+    while (uxQueueMessagesWaiting(display_task_queue))
+        ; // Wait until display queue is done
+
+    if (width % sizeof(int)) // frame diff doesn't handle non word multiple well right now...
+    {
+        RG_LOGW("Horizontal resolution (%d) isn't a word size multiple!\n", width);
+        width -= width % sizeof(int);
+    }
     display.source.crop_h = RG_MAX(RG_MAX(0, width - display.screen.width) / 2, crop_h);
     display.source.crop_v = RG_MAX(RG_MAX(0, height - display.screen.height) / 2, crop_v);
     display.source.width  = width - display.source.crop_h * 2;
