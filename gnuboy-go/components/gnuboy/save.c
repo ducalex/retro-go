@@ -379,6 +379,9 @@ int state_load(const char *file)
 	// Disable BIOS. This is a hack to support old saves
 	R_BIOS = 0x1;
 
+	// Older saves might overflow this
+	cart.rambank &= (cart.ramsize - 1);
+
 	lcd_rebuildpal();
 	sound_dirty();
 	hw_updatemap();

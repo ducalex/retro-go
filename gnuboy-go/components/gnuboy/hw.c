@@ -246,7 +246,7 @@ void hw_vblank(void)
  */
 void hw_updatemap(void)
 {
-	int rombank = cart.rombank % cart.romsize;
+	int rombank = cart.rombank & (cart.romsize - 1);
 
 	if (cart.rombanks[rombank] == NULL)
 	{
@@ -375,10 +375,8 @@ static inline void mbc_write(uint a, byte b)
 			break;
 		case 0x4000:
 		case 0x5000:
-			if (cart.has_rumble)
-				cart.rambank = b & 0x7;
-			else
-				cart.rambank = b & 0xF;
+			cart.rambank = b & (cart.has_rumble ? 0x7 : 0xF);
+			cart.rambank &= (cart.ramsize - 1);
 			break;
 		case 0x6000:
 		case 0x7000:
@@ -402,7 +400,7 @@ static inline void mbc_write(uint a, byte b)
 			break;
 		case 0x4000:
 			if (cart.bankmode)
-				cart.rambank = b & 0x03;
+				cart.rambank = b & 0x03 & (cart.ramsize - 1);
 			else
 				cart.rombank = (cart.rombank & 0x1F) | ((int)(b&3)<<5);
 			break;
