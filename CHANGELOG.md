@@ -1,3 +1,12 @@
+# Retro-Go 1.28 (2021-11-?? upcoming)
+- GBC: Dinky Kong & Dixie Kong (and probably others)
+- NES: Added basic NSF support
+- NES: Added support for mapper 30
+- SMS: Performance improvement
+- Launcher: Got rid of the occasional SPI mutex error
+- MRGC G32 (GBC) is now fully supported (Hopefully)
+
+
 # Retro-Go 1.27.2 (2021-10-13)
 - SMS: Enabled SG-1000 support
 - GBC: Hide palette option when running GBC game

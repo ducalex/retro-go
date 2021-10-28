@@ -16,16 +16,17 @@ It comes with many emulators!
 
 ### Retro-Go features:
 - In-game menu
-- Favorites support
+- Favorites and recently played
 - GB RTC adjust and save
 - GB GBC colorization palettes
 - More scaling options
 - Bilinear filtering
 - NES color palettes
+- NES NSF (music) support
 - PAL roms support
 - Smoother performance
 - Better compatibility
-- Double/Triple Speed
+- Turbo Speed/Fast forward
 - Customizable launcher
 - PNG cover art
 - Saved state screenshots
