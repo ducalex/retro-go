@@ -27,7 +27,7 @@
 #include "cpu.h"
 #include "dis.h"
 
-#ifdef NES6502_DEBUG
+#ifdef NES6502_DISASM
 
 /* addressing modes */
 enum

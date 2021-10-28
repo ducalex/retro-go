@@ -23,9 +23,10 @@
 
 #pragma once
 
-#define  ROM_INES_MAGIC          "NES\x1A"
-#define  FDS_HEAD_MAGIC          "FDS\x1A"
-#define  FDS_DISK_MAGIC          "\x01*NINTENDO-HVC*"
+#define  ROM_INES_MAGIC         "NES\x1A"
+#define  ROM_NSF_MAGIC          "NESM\x1A"
+#define  ROM_FDS_MAGIC          "FDS\x1A"
+#define  ROM_FDS_RAW_MAGIC      "\x01*NINTENDO-HVC*"
 
 #define  ROM_FLAG_FOURSCREEN     0x08
 #define  ROM_FLAG_TRAINER        0x04
@@ -54,6 +55,25 @@ typedef struct __attribute__((packed))
    uint8 sides;
    uint8 reserved[11];
 } fdsheader_t;
+
+typedef struct __attribute__((packed))
+{
+   uint8 magic[5];
+   uint8 version;
+   uint8 total_songs;
+   uint8 first_song;
+   uint16 load_addr;
+   uint16 init_addr;
+   uint16 play_addr;
+   char name[32];
+   char artist[32];
+   char copyright[32];
+   uint16 ntsc_speed;
+   uint8 banks[8];
+   uint16 pal_speed;
+   uint8 region;
+   uint8 expansion;
+} nsfheader_t;
 
 typedef struct
 {

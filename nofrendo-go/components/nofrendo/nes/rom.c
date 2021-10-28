@@ -17,7 +17,7 @@
 ** must bear this legend.
 **
 **
-** nes/rom.c: ROM loader
+** nes/rom.c: NES file loader (ROM, FDS, NSF, SAV, etc)
 **
 */
 
@@ -199,14 +199,14 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
       strncpy(rom.filename, "filename.nes", PATH_MAX);
       return &rom;
    }
-   else if (!memcmp(data, FDS_DISK_MAGIC, 15) || !memcmp(data + 16, FDS_DISK_MAGIC, 15))
+   else if (!memcmp(data, ROM_FDS_MAGIC, 4) || !memcmp(data, ROM_FDS_RAW_MAGIC, 15))
    {
       MESSAGE_INFO("ROM: Found FDS file of size %d.\n", size);
 
       rom.flags = ROM_FLAG_FDS_DISK|ROM_FLAG_BATTERY;
-      rom.prg_ram_banks = 4;
-      rom.chr_ram_banks = 1;
-      rom.prg_rom_banks = 1;
+      rom.prg_ram_banks = 4; // The FDS adapter contains 32KB to store game program
+      rom.chr_ram_banks = 1; // The FDS adapter contains 8KB
+      rom.prg_rom_banks = 1; // This will contain the FDS BIOS
       rom.checksum = crc32_le(0, rom.data_ptr, rom.data_len);
       rom.mapper_number = 20;
 
@@ -224,6 +224,32 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
       }
 
       strncpy(rom.filename, "filename.fds", PATH_MAX);
+      return &rom;
+   }
+   else if (!memcmp(data, ROM_NSF_MAGIC, 5))
+   {
+      MESSAGE_INFO("ROM: Found NSF file of size %d.\n", size);
+
+      rom.prg_ram_banks = 1; // Some songs may need it. I store a bootstrap program there at the moment
+      rom.chr_ram_banks = 1; // Not used but some code might assume it will be present...
+      rom.prg_rom_banks = 4; // This is actually PRG-RAM but some of our code assumes PRG-ROM to be present...
+      rom.checksum = crc32_le(0, rom.data_ptr, rom.data_len);
+      rom.mapper_number = 31;
+
+      MESSAGE_INFO("ROM: CRC32:  %08X\n", rom.checksum);
+
+      rom.prg_ram = malloc((rom.prg_ram_banks + rom.prg_rom_banks) * ROM_PRG_BANK_SIZE);
+      rom.chr_ram = malloc(rom.chr_ram_banks * ROM_CHR_BANK_SIZE);
+      // We do it this way because only rom.prg_ram is freed in rom_free
+      rom.prg_rom = rom.prg_ram + (rom.prg_ram_banks * ROM_PRG_BANK_SIZE);
+
+      if (!rom.prg_ram || !rom.chr_ram || !rom.prg_rom)
+      {
+         MESSAGE_ERROR("ROM: Memory allocation failed!\n");
+         return NULL;
+      }
+
+      strncpy(rom.filename, "filename.nsf", PATH_MAX);
       return &rom;
    }
 

@@ -283,7 +283,7 @@ void fds_init(rom_t *cart)
 {
     uint8 *disk_ptr = cart->data_ptr;
 
-    if (memcmp(disk_ptr, FDS_HEAD_MAGIC, 4) == 0)
+    if (memcmp(disk_ptr, ROM_FDS_MAGIC, 4) == 0)
     {
         fds.sides = ((fdsheader_t *)disk_ptr)->sides;
         disk_ptr += 16;
