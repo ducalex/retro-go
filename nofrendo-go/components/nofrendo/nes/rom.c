@@ -85,7 +85,7 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
       .mirroring = PPU_MIRROR_HORI,
    };
 
-   if (!memcmp(data, ROM_INES_MAGIC, 4))
+   if (!memcmp(data, ROM_NES_MAGIC, 4))
    {
       inesheader_t *header = (inesheader_t *)data;
 
@@ -209,6 +209,7 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
       rom.prg_rom_banks = 1; // This will contain the FDS BIOS
       rom.checksum = crc32_le(0, rom.data_ptr, rom.data_len);
       rom.mapper_number = 20;
+      rom.system = SYS_FAMICOM;
 
       MESSAGE_INFO("ROM: CRC32:  %08X\n", rom.checksum);
 

@@ -23,20 +23,20 @@
 
 #pragma once
 
-#define  ROM_INES_MAGIC         "NES\x1A"
-#define  ROM_NSF_MAGIC          "NESM\x1A"
-#define  ROM_FDS_MAGIC          "FDS\x1A"
-#define  ROM_FDS_RAW_MAGIC      "\x01*NINTENDO-HVC*"
+#define ROM_NES_MAGIC          "NES\x1A"
+#define ROM_NSF_MAGIC          "NESM\x1A"
+#define ROM_FDS_MAGIC          "FDS\x1A"
+#define ROM_FDS_RAW_MAGIC      "\x01*NINTENDO-HVC*"
 
-#define  ROM_FLAG_FOURSCREEN     0x08
-#define  ROM_FLAG_TRAINER        0x04
-#define  ROM_FLAG_BATTERY        0x02
-#define  ROM_FLAG_VERTICAL       0x01
-#define  ROM_FLAG_FREE_DATA      0x100
-#define  ROM_FLAG_FDS_DISK       0x200
+#define ROM_FLAG_FOURSCREEN     0x08
+#define ROM_FLAG_TRAINER        0x04
+#define ROM_FLAG_BATTERY        0x02
+#define ROM_FLAG_VERTICAL       0x01
+#define ROM_FLAG_FREE_DATA      0x100
+#define ROM_FLAG_FDS_DISK       0x200
 
-#define  ROM_PRG_BANK_SIZE       0x2000
-#define  ROM_CHR_BANK_SIZE       0x2000
+#define ROM_PRG_BANK_SIZE       0x2000
+#define ROM_CHR_BANK_SIZE       0x2000
 
 typedef struct __attribute__((packed))
 {
