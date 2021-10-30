@@ -37,6 +37,22 @@
 #define NES_ZAPPER_MISS 0x02
 #define NES_ZAPPER_TRIG 0x04
 
+typedef enum
+{
+    NES_NOTHING,
+    NES_JOYPAD,
+    NES_ZAPPER,
+} nes_dev_t;
+
+typedef struct
+{
+    nes_dev_t type;
+    uint8 state;
+    uint8 reads;
+} input_t;
+
+input_t *input_init(void);
+void input_reset(void);
 void input_connect(int port, nes_dev_t type);
 void input_update(int port, int state);
 uint8 input_read(uint32 address);

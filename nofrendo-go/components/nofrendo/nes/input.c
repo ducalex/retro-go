@@ -24,14 +24,7 @@
 #include <nofrendo.h>
 #include "input.h"
 
-typedef struct
-{
-    nes_dev_t type;
-    uint8 state;
-    uint8 reads;
-} nesinput_t;
-
-static nesinput_t ports[2];
+static input_t ports[2];
 static int strobe = 0;
 
 
@@ -51,7 +44,7 @@ void input_write(uint32 address, uint8 value)
 uint8 input_read(uint32 address)
 {
     /* 0x4016 = JOY0, 0x4017 = JOY1 */
-    nesinput_t *port = &ports[address & 1];
+    input_t *port = &ports[address & 1];
     unsigned retval = 0;
     unsigned value = 0;
 
@@ -88,4 +81,17 @@ void input_connect(int port, nes_dev_t type)
 void input_update(int port, int state)
 {
     ports[port & 1].state = state;
+}
+
+input_t *input_init(void)
+{
+    input_connect(0, NES_JOYPAD);
+    input_connect(1, NES_NOTHING);
+    return (input_t *)ports;
+}
+
+void input_reset(void)
+{
+    ports[0].reads = ports[1].reads = 0;
+    ports[0].state = ports[1].state = 0;
 }

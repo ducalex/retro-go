@@ -30,6 +30,7 @@
 #include "mmc.h"
 #include "mem.h"
 #include "rom.h"
+#include "input.h"
 
 #define NES_SCREEN_WIDTH      (256)
 #define NES_SCREEN_HEIGHT     (240)
@@ -60,19 +61,6 @@ typedef enum
     SYS_DETECT = 0,
 } nes_type_t;
 
-typedef enum
-{
-    NES_NOTHING,
-    NES_JOYPAD,
-    NES_ZAPPER,
-} nes_dev_t;
-
-typedef enum
-{
-    NES_PORT0,
-    NES_PORT1,
-} nes_port_t;
-
 typedef void (nes_timer_t)(int cycles);
 
 typedef struct
@@ -84,6 +72,7 @@ typedef struct
     mem_t *mem;
     rom_t *cart;
     mapper_t *mapper;
+    input_t *input;
 
     /* Video buffer */
     uint8 *framebuffers[2];

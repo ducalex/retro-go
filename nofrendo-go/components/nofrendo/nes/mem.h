@@ -72,7 +72,7 @@ typedef struct
    mem_write_handler_t write_handlers[MEM_HANDLERS_MAX];
 } mem_t;
 
-mem_t *mem_create(void);
+mem_t *mem_init(void);
 void mem_shutdown(void);
 void mem_reset(void);
 void mem_setpage(uint32 page, uint8 *ptr);

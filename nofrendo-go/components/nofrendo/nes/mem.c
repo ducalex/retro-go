@@ -205,14 +205,14 @@ void mem_reset(void)
    ASSERT(num_write_handlers <= MEM_HANDLERS_MAX);
 }
 
-mem_t *mem_create()
+mem_t *mem_init(void)
 {
    // memset(&mem, 0, sizeof(mem));
    mem_reset();
    return &mem;
 }
 
-void mem_shutdown()
+void mem_shutdown(void)
 {
    //
 }

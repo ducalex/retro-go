@@ -245,6 +245,7 @@ void nes_reset(bool hard_reset)
     ppu_reset();
     mem_reset();
     mmc_reset();
+    input_reset();
     nes6502_reset();
 
     nes.vidbuf = nes.framebuffers[0];
@@ -284,7 +285,7 @@ nes_t *nes_init(nes_type_t system, int sample_rate, bool stereo)
         goto _fail;
 
     /* memory */
-    nes.mem = mem_create();
+    nes.mem = mem_init();
     if (NULL == nes.mem)
         goto _fail;
 
@@ -304,7 +305,9 @@ nes_t *nes_init(nes_type_t system, int sample_rate, bool stereo)
         goto _fail;
 
     /* input */
-    input_connect(0, NES_JOYPAD);
+    nes.input = input_init();
+    if (NULL == nes.input)
+        goto _fail;
 
     MESSAGE_INFO("NES: System initialized!\n");
     return &nes;
