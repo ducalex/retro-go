@@ -17,8 +17,12 @@ endif()
 macro(rg_setup_compile_options)
     component_compile_options(-Wno-comment -Wno-error=comment -Wno-missing-field-initializers)
     component_compile_options(-DIS_LITTLE_ENDIAN)
-    component_compile_options(-O3)
     component_compile_options(${ARGV})
+
+    if(NOT ";${ARGV};" MATCHES ";-O[0123gs];")
+        # Only default to -O3 if not specified by the app
+        component_compile_options(-O3)
+    endif()
 
     if($ENV{ENABLE_PROFILING})
         # Still debating whether -fno-inline is necessary or not...

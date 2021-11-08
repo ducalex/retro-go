@@ -1,0 +1,163 @@
+This file is now the amalgamated list of authors, contributors and credits
+for PrBoom. Hopefully by keeping these all in one place, they will remain
+more accurate.
+
+Doom was originally written by id software; when playing with any id main
+wad file, you can see their list of credits, which includes the list of
+programmers. After some years, they released the source code, to allow
+others to work on improving the game.
+
+One of the first projects was DosDoom, by Chi Hoang. This was a quick port
+of the released source code, which was for Linux, to DOS. This was then
+picked up by TeamTNT (http://www.teamtnt.com/), who produced Boom, a greatly
+debugged and extended version of Doom. The Boom programmers were Lee
+Killough, Jim Flynn, Rand Phares, Ty Halderman.
+
+Several projects started working from the Boom source code. One was PrBoom,
+made by Florian Schulze, that ported the code to Windows, added suport for
+higher resolutions and later OpenGL. Another was Marine's Best Friend
+(known as MBF) by Lee Killough, which fixed a lot of Boom bugs and added
+many new game features. Finally, there was LxDoom, a port of Boom to Linux
+by Colin Phipps.
+
+In October 1999, id Software re-released the Doom source code under the
+GNU General Public License. TeamTNT have also changed to the new license,
+and the other sources mentioned above have all allowed their code to be
+GPLed. So PrBoom is covered by the GPL.
+
+In May 2000, LxDoom, PrBoom, and a derived port called LSDLDoom, merged into
+one. The current authors of PrBoom are:
+
+Florian Schulze <florian.schulze@gmx.net>
+Colin Phipps <cph@moria.org.uk>
+Neil Stevens <neil@hakubi.us> - Mac OS X porting
+Andrey Budko <andrey.budko@gmail.com>
+Rob Young (RjY) <rjy@users.sourceforge.net>
+
+Our thanks go to all the authors of the ports mentioned above, and also the
+following people who contributed code to LxDoom or PrBoom:
+
+Jess Haas <JessH@lbjhs.net>
+Of LSDLdoom, who merged his project into PrBoom, contributing his SDL code.
+
+Nicolas Kalkhof	<nkalkhof@gmx.net>
+Much work on the OpenGL renderer.
+
+James "Quasar" Haley <haleyjd@concentric.net>
+Ever willing to talk about source ideas, and has pointed me in the direction of
+a lot of Boom and MBF bugs; also various bits code from his port Eternity have
+been used, such as the BEX enhancements.
+
+Bob Aman (sporkmonger.com)
+Created the RMUDAnsiTextView class used in the Mac launcher.
+
+Gady Kozma	gady@math.tau.ac.il
+Added hires to the SVGALib version of LxDoom, and other useful patches.
+
+Dick Leban
+Lots of feedback about portability issues and helping get the network code
+working properly back at v1.3.6.
+
+Eduardo Casino Almao
+Lots of helpful feedback and suggestions, but more importantly actually getting
+to grips with the code and giving very precise bug reports and patches.
+
+Joey Hess
+For numerous patches, like the glibc fixes and window manager updates, and
+help with the music.
+
+Ben Winslow
+Various useful patches, like the colour ENDOOM code.
+
+Josh Parsons	josh@schlick.anu.edu.au
+Sent me the patches to use autoconf for configuring LxDoom.
+
+Steve Van Devender <stevev@efn.org>
+Found the bug causing slight noise at the start of sounds playing, and other
+patches.
+
+Barry Mead <bmead15@cox.net>
+Improvements to the mouse code and other odd patches.
+
+Mattias Kunkel <mattias@kunkel.freeservers.com>
+Made the lxdoom.spec file for creating LxDoom RPMs.
+
+Vicente Aguilar	vicente@hal.dhis.org
+Handy patch for the file handling
+
+Benjamin L McGee <vuelto@netscape.net>
+Patch fixing the joystick code.
+
+Chris Young <young1@users.sourceforge.net>
+Patch improving the ENDOOM printing
+
+Peter Jay Salzman <p@belial.ucdavis.edu>
+Cleanup patches
+
+Oliver Kraus
+Send bug reports and patches for Solaris/Sparc.
+
+Paul S Jenner <psj@firstlinux.net>
+Nice patch to make RPM building easier
+
+Julian <julian@jplan.cjb.net>
+Fixed inline asm for gcc-2.95 (from Eternity)
+
+Lionel Ulmer <lionel.ulmer@free.fr>
+Patch to fix alignment problems on ARM processors.
+
+Ville Vuorinen <vv@ydin.org>
+Spotted and helped patch the player spawn bug, as well as helping with some
+Win32 issues.
+
+Steven Elliot <selliot4@users.sourceforge.net>
+Misc patches.
+
+Andreas Dehmel <zarquon@t-online.de>
+Spotted & patched a savegame bug.
+
+Jon Dowland
+Bug reports & fixes, documentation improvements.
+
+If you have sent in patches and I forgot to list you, I apologise. Please email
+me and I will add you.
+
+Also, thanks to the following people who have helped in various ways:
+
+Simon "fraggle" Howard <fraggle@alkali.org>
+More MBF bugs.
+
+Robert Phipps <rob@phipps.uklinux.net>
+Network game testing, feature suggestions etc.
+
+Udo Monk
+His port xdoom is very portable, and I referred to his code sometimes for help
+with the X stuff; also his collection of Doom tools (XWadTools) is the
+definitive tools collection for Linux.
+
+Andre Majorel	<amajorel@teaser.fr>
+For Yadex, so I can debug those problematic levels more easily.
+
+Michael Heasley
+Author of musserver, which helped me first add music support.
+
+Rafael Reilova
+Helped with the music server program for LxDoom
+
+Frederic Oghdayan
+For useful feedback on LxDoom v1.0.1, and repeating his bug reports until I
+believed them :-).
+
+Adam Hegyi <ha211@hszk.bme.hu>
+Prompted me to hunt down those last few demo sync bugs, and provided some useful
+insights and example demos to help.
+
+Adam Williamson
+Pointing me toward yet another compatibility bug.
+
+Ingo van Lil
+Another bug spotter.
+
+Everyone who contributed indirectly to MBF and Boom and Doom; see the
+respective documentation files.
+

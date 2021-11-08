@@ -201,6 +201,7 @@ extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 
 #define RG_MIN(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
 #define RG_MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
+#define RG_COUNT(array) (sizeof(array) / sizeof((array)[0]))
 
 // This should really support printf format...
 #define RG_PANIC(x) rg_system_panic(x, __FUNCTION__)

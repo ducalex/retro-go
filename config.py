@@ -13,9 +13,10 @@ PROJECT_APPS = {
   # Project name   Sub, Size
   'launcher':     [0,  327680],
   'nofrendo-go':  [0,  393216],
-  'gnuboy-go':    [0,  393216],
+  'gnuboy-go':    [0,  327680],
   'smsplusgx-go': [0,  393216],
-  'pce-go':       [0,  393216],
+  'pce-go':       [0,  327680],
   'handy-go':     [0,  393216],
-  'snes9x-go':    [0,  851968], # 1048576
+  'snes9x-go':    [0,  786432],
+  'prboom-go':    [0,  983040],
 }

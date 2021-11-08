@@ -9,7 +9,6 @@ rg_setup_compile_options(
     -fomit-frame-pointer
     -fno-stack-protector
     -DRIGHTSHIFT_IS_SAR
-    -DHAVE_STDINT_H
-    -DIS_LITTLE_ENDIAN
     -Wno-error=format-truncation
+    -O2
 )

@@ -111,6 +111,7 @@ typedef struct {
     void *buffer;           // Should be at least height*stride bytes. expects uint8_t * | uint16_t *
     uint16_t palette[256];  // Used in RG_PIXEL_PAL is set
     rg_line_diff_t diff[256];
+    bool synchronous;       // Updates will block until *buffer is no longer needed
 } rg_video_update_t;
 
 void rg_display_init(void);

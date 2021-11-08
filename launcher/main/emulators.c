@@ -681,6 +681,7 @@ void emulators_init()
     add_emulator("Atari 2600",                    "a26",  "a26",     "stella-go",    0, NULL,      NULL);
     add_emulator("Super Nintendo",                "snes", "smc sfc", "snes9x-go",    0, &logo_snes, &header_snes);
     add_emulator("Neo Geo Pocket Color",          "ngp",  "ngp ngc", "ngpocket-go",  0, &logo_ngp,  &header_ngp);
+    add_emulator("DOOM",                          "doom", "wad",     "prboom-go",    0, &logo_doom,  &header_doom);
 
     crc_cache_init();
 }
