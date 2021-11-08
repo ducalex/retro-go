@@ -30,38 +30,54 @@ static const nsfheader_t *header;
 static rom_t *cart;
 static int current_song = 1;
 static bool playing = false;
+#define SYNC_TO_VBLANK 1
 
+
+static void setup_bank(int bank, int value)
+{
+    printf("Bank %02x %02x\n", bank, value);
+    // size_t offset1 = header->load_addr & 0xFFF;
+    memcpy(cart->prg_rom + bank * 0x1000, cart->data_ptr + 128 + value * 0x1000, 0x1000);
+}
 
 static void setup_song(int song)
 {
     song %= (header->total_songs + 1);
 
     const uint8 program[] = {
-        // Init song $6000:
+        // Setup APU:                                               // $6000
+        0xA9, 0x0F,                                                 // LDA #$0F
+        0x8D, 0x15, 0x40,                                           // STA $4015
+        0xA9, 0x40,                                                 // LDA #$40
+        0x8D, 0x17, 0x40,                                           // STA $4017
+        // Init song:
         0xA9, song - 1,                                             // LDA #$song
         0xA2, header->region,                                       // LDX #$region
         0x20, header->init_addr & 0xFF, header->init_addr >> 8,     // JSR $init_addr
-        0xEA,                                                       // NOP
-        // Play song $6008:
+        // Playback loop:                                           // $6011
+#if SYNC_TO_VBLANK
+        0xAD, 0x02, 0x20,                                           // LDA $2002
+        0x29, 0x80,                                                 // AND #$80
+        0x10, 0x03,                                                 // BPL #$03
+#endif
         0x20, header->play_addr & 0xFF, header->play_addr >> 8,     // JSR $play_addr
-        // Latch input
-        0xA2, 0x01,                                                 // LDX #$01
-        0x8E, 0x16, 0x40,                                           // STX $4016
-        0xA2, 0x00,                                                 // LDX #$01
-        0x8E, 0x16, 0x40,                                           // STX $4016
-        // Read input to control playback
-        // ... not written yet
-        // busy loop to tick length
-        // ... not written yet so call the C code below
-        0x8E, 0x51, 0x51,                                           // STX 5151
-        // Loop back to playback
-        0x4C, 0x08, 0x60,                                           // JMP $6000
+        0x8E, 0x00, 0x58,                                           // STX $5800
+        0x4C, 0x11, 0x60,                                           // JMP $6007
     };
-
     memcpy(cart->prg_ram, program, sizeof(program));
-    memcpy(cart->prg_rom + (header->load_addr - 0x8000), cart->data_ptr + 128, cart->data_len - 128);
 
-    // set reset vector
+    // Load song data into ROM
+    if (*((uint64_t*)header->banks) == 0)
+    {
+        size_t offset = header->load_addr - 0x8000;
+        size_t len = MIN(cart->data_len - 128, 0x7FF8 - offset);
+        memcpy(cart->prg_rom + offset, cart->data_ptr + 128, len);
+    }
+    else
+    {
+        for (size_t i = 0; i < 8; i++)
+            setup_bank(i, header->banks[i]);
+    }
     cart->prg_rom[0xFFFC - 0x8000] = 0x00;
     cart->prg_rom[0xFFFD - 0x8000] = 0x60;
 
@@ -73,16 +89,7 @@ static void setup_song(int song)
 // That whole thing should be written in 6502 assembly above instead but for now I'm lazy
 static void map_vblank(void)
 {
-    if (!playing)
-        return;
-
-    int pressed = false;
-    for (int i = 0; i < 8; ++i)
-    {
-        pressed = pressed || (mem_getbyte(0x4016) & 1);
-    }
-
-    if (pressed)
+    if (playing && nes_getptr()->input->state)
     {
         setup_song(++current_song);
         nes6502_reset();
@@ -93,8 +100,17 @@ static void map_vblank(void)
 
 static void map_write(uint32 address, uint8 value)
 {
-    nes6502_burn(header->ntsc_speed * (NES_CPU_CLOCK / 1000000.f) - 214);
-    playing = true;
+    if (address >= 0x5FF8 && address <= 0x5FFF) // bank switching
+    {
+        setup_bank(address - 0x5FF8, value);
+    }
+    else if (address == 0x5800) // playback sync
+    {
+#if !SYNC_TO_VBLANK
+        nes6502_burn(header->ntsc_speed * (NES_CPU_CLOCK / 1000000.f) - 214);
+#endif
+        playing = true;
+    }
 }
 
 static void map_init(rom_t *_cart)
@@ -126,7 +142,8 @@ mapintf_t map31_intf =
     .hblank     = NULL,
     .get_state  = NULL,
     .set_state  = NULL,
+    .mem_read   = {},
     .mem_write  = {
-        { 0x5000, 0x5FFF, map_write }
+        { 0x5800, 0x5FFF, map_write }
     },
 };
