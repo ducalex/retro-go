@@ -18,7 +18,7 @@
 #ifdef ENABLE_PROFILING
 #define INPUT_TIMEOUT -1
 #else
-#define INPUT_TIMEOUT 5000000
+#define INPUT_TIMEOUT 15000000
 #endif
 
 #ifndef RG_BUILD_USER
@@ -370,7 +370,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
     xTaskCreate(&system_monitor_task, "sysmon", 2560, NULL, 7, NULL);
 
     // This is to allow time for app starting
-    inputTimeout = INPUT_TIMEOUT * 5;
+    inputTimeout = INPUT_TIMEOUT * 2;
     initialized = true;
 
     RG_LOGI("Retro-Go ready.\n\n");
@@ -446,7 +446,7 @@ bool rg_emu_load_state(int slot)
     rg_gui_draw_hourglass();
 
     // Increased input timeout, this might take a while
-    inputTimeout = INPUT_TIMEOUT * 5;
+    inputTimeout = INPUT_TIMEOUT * 2;
 
     char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE, app.romPath);
     bool success = (*app.handlers.loadState)(filename);
@@ -482,7 +482,7 @@ bool rg_emu_save_state(int slot)
     bool success = false;
 
     // Increased input timeout, this might take a while
-    inputTimeout = INPUT_TIMEOUT * 5;
+    inputTimeout = INPUT_TIMEOUT * 2;
 
     if (!rg_mkdir(rg_dirname(filename)))
     {

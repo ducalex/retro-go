@@ -76,7 +76,7 @@ typedef struct
 } channel_t;
 
 // the set of channels available
-static channel_t *channels;
+static channel_t channels[16];
 
 // These are not used, but should be (menu).
 // Maximum volume of a sound effect.
@@ -120,7 +120,7 @@ static int S_getChannel(void *origin, sfxinfo_t *sfxinfo, int is_pickup);
 void S_Init(int sfxVolume, int musicVolume)
 {
   //jff 1/22/98 skip sound init if sound not enabled
-  numChannels = default_numChannels;
+  numChannels = MIN(default_numChannels, 16);
   if (snd_card && !nosfxparm)
   {
     int i;
@@ -131,13 +131,6 @@ void S_Init(int sfxVolume, int musicVolume)
     I_SetChannels();
 
     S_SetSfxVolume(sfxVolume);
-
-    // Allocating the internal channels for mixing
-    // (the maximum numer of sounds rendered
-    // simultaneously) within zone memory.
-    // CPhipps - calloc
-    channels =
-      (channel_t *) calloc(numChannels,sizeof(channel_t));
 
     // Note that sounds have not been cached (yet).
     for (i=1 ; i<NUMSFX ; i++)

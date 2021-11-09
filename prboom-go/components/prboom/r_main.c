@@ -55,7 +55,6 @@
 #include "g_game.h"
 #include "r_demo.h"
 #include "r_fps.h"
-#include <rg_system.h>
 
 // Fineangles in the SCREENWIDTH wide window.
 #define FIELDOFVIEW 2048
@@ -527,7 +526,7 @@ int autodetect_hom = 0;       // killough 2/7/98: HOM autodetection flag
 // R_ShowStats
 //
 int rendered_visplanes, rendered_segs, rendered_vissprites;
-boolean rendering_stats=1;
+boolean rendering_stats=0;
 
 static void R_ShowStats(void)
 {
@@ -536,14 +535,9 @@ static void R_ShowStats(void)
   int now = I_GetTime();
 
   if (now - showtime > 35) {
-    rg_stats_t stats = rg_system_get_stats();
-    doom_printf("fps: %d mem: %dK %dK", (35*KEEPTIMES)/(now - keeptime[0]),
-                    stats.freeMemoryInt / 1024, stats.freeMemoryExt / 1024);
-    /*
     doom_printf("Frame rate %d fps\nSegs %d, Visplanes %d, Sprites %d",
     (35*KEEPTIMES)/(now - keeptime[0]), rendered_segs,
     rendered_visplanes, rendered_vissprites);
-    */
     showtime = now;
   }
   memmove(keeptime, keeptime+1, sizeof(keeptime[0]) * (KEEPTIMES-1));

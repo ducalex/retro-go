@@ -36,23 +36,11 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-#ifdef _MSC_VER
-#include <stddef.h>
-#include <io.h>
-#endif
-#include <fcntl.h>
 
 #include "doomstat.h"
 #include "d_net.h"
 #include "doomtype.h"
 #include "i_system.h"
-
-#ifdef __GNUG__
-#pragma implementation "w_wad.h"
-#endif
 #include "w_wad.h"
 #include "lprintf.h"
 
@@ -60,9 +48,13 @@
 // GLOBALS
 //
 
+// Opened WAD files
+wadfile_info_t wadfiles[MAX_WAD_FILES];
+size_t numwadfiles = 0;
+
 // Location of each lump on disk.
 lumpinfo_t *lumpinfo;
-int        numlumps;         // killough
+size_t      numlumps;
 
 void ExtractFileBase (const char *path, char *dest)
 {
@@ -130,9 +122,8 @@ static void W_AddFile(wadfile_info_t *wadfile)
 {
   wadinfo_t   header;
   lumpinfo_t* lump_p;
-  unsigned    i;
-  int         length;
-  int         startlump;
+  size_t      length;
+  size_t      startlump;
   filelump_t  *fileinfo, *fileinfo2free=NULL; //killough
   filelump_t  singleinfo;
 
@@ -196,14 +187,14 @@ static void W_AddFile(wadfile_info_t *wadfile)
 
     lump_p = &lumpinfo[startlump];
 
-    for (i=startlump ; (int)i<numlumps ; i++,lump_p++, fileinfo++)
+    for (size_t i = startlump; i < numlumps; i++, lump_p++, fileinfo++)
       {
         lump_p->wadfile = wadfile;                    //  killough 4/25/98
         lump_p->position = LONG(fileinfo->filepos);
         lump_p->size = LONG(fileinfo->size);
         lump_p->li_namespace = ns_global;              // killough 4/17/98
         strncpy (lump_p->name, fileinfo->name, 8);
-	lump_p->source = wadfile->src;                    // Ty 08/29/98
+        lump_p->source = wadfile->src;                    // Ty 08/29/98
       }
 
     free(fileinfo2free);      // killough
@@ -344,18 +335,16 @@ int (W_CheckNumForName)(register const char *name, register int li_namespace)
 
 void W_HashLumps(void)
 {
-  int i;
-
-  for (i=0; i<numlumps; i++)
+  for (size_t i = 0; i < numlumps; i++)
     lumpinfo[i].index = -1;                     // mark slots empty
 
   // Insert nodes to the beginning of each chain, in first-to-last
   // lump order, so that the last lump of a given name appears first
   // in any chain, observing pwad ordering rules. killough
 
-  for (i=0; i<numlumps; i++)
+  for (size_t i = 0; i < numlumps; i++)
     {                                           // hash function:
-      int j = W_LumpNameHash(lumpinfo[i].name) % (unsigned) numlumps;
+      size_t j = W_LumpNameHash(lumpinfo[i].name) % numlumps;
       lumpinfo[i].next = lumpinfo[j].index;     // Prepend to list
       lumpinfo[j].index = i;
     }
@@ -390,24 +379,14 @@ int W_GetNumForName (const char* name)     // killough -- const added
 // The name searcher looks backwards, so a later file
 //  does override all earlier ones.
 //
-// CPhipps - modified to use the new wadfiles array
-//
-wadfile_info_t *wadfiles=NULL;
-
-size_t numwadfiles = 0; // CPhipps - size of the wadfiles array (dynamic, no limit)
 
 void W_Init(void)
 {
-  // CPhipps - start with nothing
+  lumpinfo = NULL;
+  numlumps = 0;
 
-  numlumps = 0; lumpinfo = NULL;
-
-  { // CPhipps - new wadfiles array used
-    // open all the files, load headers, and count lumps
-    int i;
-    for (i=0; (size_t)i<numwadfiles; i++)
-      W_AddFile(&wadfiles[i]);
-  }
+  for (size_t i = 0; i < numwadfiles; i++)
+    W_AddFile(&wadfiles[i]);
 
   if (!numlumps)
     I_Error ("W_Init: No files found");
@@ -430,25 +409,16 @@ void W_Init(void)
   W_InitCache();
 }
 
-void W_ReleaseAllWads(void)
-{
-	W_DoneCache();
-	numwadfiles = 0;
-	free(wadfiles);
-	wadfiles = NULL;
-	numlumps = 0;
-	free(lumpinfo);
-	lumpinfo = NULL;
-}
-
 //
 // W_LumpLength
 // Returns the buffer size needed to load the given lump.
 //
-int W_LumpLength (int lump)
+int W_LumpLength(int lump)
 {
-  if (lump >= numlumps)
+#ifdef RANGECHECK
+  if ((unsigned)lump >= (unsigned)numlumps)
     I_Error ("W_LumpLength: %i >= numlumps",lump);
+#endif
   return lumpinfo[lump].size;
 }
 
@@ -457,22 +427,17 @@ int W_LumpLength (int lump)
 // Loads the lump into the given buffer,
 //  which must be >= W_LumpLength().
 //
-
 void W_ReadLump(int lump, void *dest)
 {
-  lumpinfo_t *l = lumpinfo + lump;
-
 #ifdef RANGECHECK
-  if (lump >= numlumps)
+  if ((unsigned)lump >= (unsigned)numlumps)
     I_Error ("W_ReadLump: %i >= numlumps",lump);
 #endif
-
-    {
-      if (l->wadfile)
-      {
-        fseek(l->wadfile->handle, l->position, SEEK_SET);
-        fread(dest, l->size, 1, l->wadfile->handle);
-      }
-    }
+  lumpinfo_t *l = lumpinfo + lump;
+  if (l->wadfile)
+  {
+    fseek(l->wadfile->handle, l->position, SEEK_SET);
+    fread(dest, l->size, 1, l->wadfile->handle);
+  }
 }
 

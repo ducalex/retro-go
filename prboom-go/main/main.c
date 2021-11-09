@@ -69,17 +69,6 @@ static int sfx_lengths[NUMSFX];
 static const music_player_t *music_player = &opl_synth_player;
 static bool musicPlaying = false;
 
-#define NO_MMAP_HANDLES 128
-static struct
-{
-    void *file;
-    void *addr;
-    size_t offset;
-    size_t len;
-    int used;
-} mmapHandle[NO_MMAP_HANDLES];
-static int nextHandle = 0;
-
 static int key_yes = 'y';
 static int key_no = 'n';
 
@@ -95,7 +84,7 @@ static const struct {int mask; int *key;} keymap[] = {
     {RG_KEY_B, &key_speed},
     {RG_KEY_B, &key_strafe},
     {RG_KEY_B, &key_menu_backspace},
-    // {RG_KEY_MENU, &key_escape},
+    {RG_KEY_MENU, &key_escape},
     // {RG_KEY_OPTION, &key_map},
     {RG_KEY_OPTION, &key_escape},
     {RG_KEY_START, &key_use},
@@ -242,94 +231,15 @@ char *I_FindFile(const char *fname, const char *ext)
     char filepath[PATH_MAX + 1];
 
     snprintf(filepath, PATH_MAX, "%s/%s", I_DoomExeDir(), fname);
-    RG_LOGI("Looking for file: %s...", fname);
+    RG_LOGI("Looking for file: %s... ", fname);
     if (access(filepath, R_OK) != -1)
     {
-        RG_LOGI("Found file: %s\n", filepath);
+        RG_LOGX("Found: %s\n", filepath);
         return strdup(filepath);
     }
 
-    RG_LOGI("Not found.\n");
+    RG_LOGX("Not found.\n");
     return NULL;
-}
-
-void I_ReclaimMemory(void)
-{
-    RG_LOGI("reclaiming unused mmaps...\n");
-    for (int i = 0; i < NO_MMAP_HANDLES; i++)
-    {
-        if (!mmapHandle[i].used && mmapHandle[i].addr)
-        {
-            free(mmapHandle[i].addr);
-            mmapHandle[i].addr = NULL;
-        }
-    }
-}
-
-void *I_Mmap(void *addr, size_t length, int prot, int flags, void *fd, off_t offset)
-{
-    for (int i = 0; i < NO_MMAP_HANDLES; i++)
-    {
-        if (mmapHandle[i].file == fd && mmapHandle[i].offset == offset && mmapHandle[i].len >= length)
-        {
-            mmapHandle[i].used++;
-            return mmapHandle[i].addr;
-        }
-    }
-
-    int n = NO_MMAP_HANDLES;
-    while (mmapHandle[nextHandle].used != 0)
-    {
-        if (++nextHandle == NO_MMAP_HANDLES)
-            nextHandle = 0;
-        if (--n == 0)
-            RG_PANIC("Out of Mmap handles!");
-    }
-
-    int handle = nextHandle++;
-
-    if (nextHandle == NO_MMAP_HANDLES)
-        nextHandle = 0;
-
-    if (mmapHandle[handle].addr)
-    {
-        free(mmapHandle[handle].addr);
-        mmapHandle[handle].addr = NULL;
-    }
-
-    void *block = malloc(length);
-    if (!block)
-    {
-        I_ReclaimMemory();
-        block = malloc(length);
-    }
-
-    if (!block)
-        RG_PANIC("I_Mmap: Out of memory!");
-
-    fseek(fd, offset, SEEK_SET);
-    fread(block, length, 1, fd);
-
-    mmapHandle[handle].file = fd;
-    mmapHandle[handle].offset = offset;
-    mmapHandle[handle].addr = block;
-    mmapHandle[handle].len = length;
-    mmapHandle[handle].used = 1;
-
-    return block;
-}
-
-int I_Munmap(void *addr, size_t length)
-{
-    for (int i = 0; i < NO_MMAP_HANDLES; i++)
-    {
-        if (mmapHandle[i].addr == addr && mmapHandle[i].len == length)
-        {
-            mmapHandle[i].used--;
-            return 0;
-        }
-    }
-    RG_PANIC("I_Mmap: Freeing non-mmapped address/len combo!");
 }
 
 void I_UpdateSoundParams(int handle, int volume, int seperation, int pitch)
@@ -338,16 +248,6 @@ void I_UpdateSoundParams(int handle, int volume, int seperation, int pitch)
 
 void I_SetChannels()
 {
-}
-
-// Retrieve the raw data lump index
-//  for a given SFX name.
-//
-int I_GetSfxLumpNum(sfxinfo_t *sfx)
-{
-    char namebuf[9];
-    sprintf(namebuf, "ds%s", sfx->name);
-    return W_GetNumForName(namebuf);
 }
 
 int I_StartSound(int sfxid, int channel, int vol, int sep, int pitch, int priority)
@@ -468,6 +368,16 @@ static void soundTask(void *arg)
     }
 }
 
+// Retrieve the raw data lump index
+//  for a given SFX name.
+//
+int I_GetSfxLumpNum(sfxinfo_t *sfx)
+{
+    char namebuf[9];
+    sprintf(namebuf, "ds%s", sfx->name);
+    return W_GetNumForName(namebuf);
+}
+
 void I_InitSound(void)
 {
     RG_LOGI("called\n");
@@ -495,29 +405,23 @@ void I_InitSound(void)
             continue;
         }
 
-        // Get the sound data from the WAD, allocate lump in zone memory.
         sprintf(sfx_name, "ds%s", S_sfx[i].name);
         int sfxlump = W_GetNumForName(sfx_name);
-        int size = W_LumpLength(sfxlump);
-        const void *sfx = W_CacheLumpNum(sfxlump);
+        const void *sfx = W_CacheLumpNum(sfxlump) + 8;
+        size_t size = W_LumpLength(sfxlump) - 8;
 
         // Pads the sound effect out to the mixing buffer size.
-        // The original realloc would interfere with zone memory.
-        int paddedsize = ((size - 8 + (SAMPLECOUNT - 1)) / SAMPLECOUNT) * SAMPLECOUNT;
+        size_t paddedsize = ((size + (SAMPLECOUNT - 1)) / SAMPLECOUNT) * SAMPLECOUNT;
+        void *paddedsfx = Z_Malloc(paddedsize, PU_SOUND, 0);
 
-        // Allocate from zone memory.
-        void *paddedsfx = Z_Malloc(paddedsize + 8, PU_STATIC, 0);
-
-        // Now copy and pad.
         memcpy(paddedsfx, sfx, size);
-        memset(paddedsfx + size, 128, paddedsize + 8 - size);
+        memset(paddedsfx + size, 0x80, paddedsize - size);
 
-        // Remove the cached lump.
-        //Z_Free(sfx);
         W_UnlockLumpNum(sfxlump);
+        Z_FreeTags(PU_CACHE, PU_CACHE);
 
         sfx_lengths[i] = paddedsize;
-        S_sfx[i].data = paddedsfx + 8;
+        S_sfx[i].data = paddedsfx;
     }
     RG_LOGI("pre-cached all sound data!\n");
 
@@ -611,14 +515,15 @@ void I_StartTic(void)
     uint32_t changed = prev_joystick ^ joystick;
     event_t event = {0};
 
-    if (joystick & RG_KEY_MENU)
-    {
-        rg_gui_game_menu();
-    }
-    // else if (joystick & RG_KEY_OPTION)
+    // if (joystick & RG_KEY_MENU)
     // {
-    //     rg_gui_game_settings_menu();
+    //     rg_gui_game_menu();
     // }
+    // else
+    if (joystick & RG_KEY_OPTION)
+    {
+        rg_gui_game_settings_menu();
+    }
     else if (changed)
     {
         for (int i = 0; i < RG_COUNT(keymap); i++)
@@ -643,16 +548,49 @@ void I_Init(void)
     R_InitInterpolation();
 }
 
-void doomEngineTask(void *pvParameters)
+static bool screenshot_handler(const char *filename, int width, int height)
+{
+	return rg_display_save_frame(filename, &update, width, height);
+}
+
+static bool save_state_handler(const char *filename)
+{
+    return false;
+}
+
+static bool load_state_handler(const char *filename)
+{
+    return false;
+}
+
+static bool reset_handler(bool hard)
+{
+    return false;
+}
+
+static void settings_handler(void)
+{
+    return;
+}
+
+static void doomEngineTask(void *pvParameters)
 {
     vTaskDelay(10);
 
-    app = rg_system_init(SAMPLERATE, NULL);
+    const rg_emu_proc_t handlers = {
+        // .loadState = &load_state_handler,
+        // .saveState = &save_state_handler,
+        .reset = &reset_handler,
+        .screenshot = &screenshot_handler,
+        // .settings = &settings_handler,
+    };
+
+    app = rg_system_init(SAMPLERATE, &handlers);
+    app->refreshRate = TICRATE;
 
     myargv = (const char *[]){"doom", "-iwad", rg_basename(app->romPath)};
     myargc = 3;
 
-    RG_LOGI("%s v%s (http://prboom.sourceforge.net/)", PACKAGE, VERSION);
     Z_Init();
     D_DoomMain();
 }

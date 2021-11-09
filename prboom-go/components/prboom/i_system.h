@@ -66,9 +66,4 @@ const char *I_DoomSaveDir(void); // path to savefile dir
 
 char* I_FindFile(const char* wfname, const char* ext);
 
-//HACK mmap support, w_mmap.c
-void *I_Mmap(void *addr, size_t length, int prot, int flags, void *fd, off_t offset);
-int I_Munmap(void *addr, size_t length);
-void I_ReclaimMemory(void);
-
 #endif

@@ -80,7 +80,7 @@ typedef bool (*rg_reset_handler_t)(bool hard);
 typedef bool (*rg_message_handler_t)(int msg, void *arg);
 typedef bool (*rg_screenshot_handler_t)(const char *filename, int width, int height);
 typedef int  (*rg_mem_read_handler_t)(int addr);
-typedef bool (*rg_mem_write_handler_t)(int addr, int value);
+typedef int  (*rg_mem_write_handler_t)(int addr, int value);
 typedef void (*rg_settings_handler_t)(void);
 
 typedef struct

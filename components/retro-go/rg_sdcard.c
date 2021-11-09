@@ -54,7 +54,7 @@ bool rg_sdcard_mount(void)
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
         .format_if_mount_failed = false,
         .allocation_unit_size = 0,
-        .max_files = 5,
+        .max_files = 8,
     };
 
     esp_err_t err = ESP_FAIL;

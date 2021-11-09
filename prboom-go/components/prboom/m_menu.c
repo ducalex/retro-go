@@ -61,6 +61,7 @@
 #include "i_sound.h"
 #include "r_demo.h"
 #include "r_fps.h"
+#include <rg_system.h>
 
 extern patchnum_t hu_font[HU_FONTSIZE];
 extern boolean  message_dontfuckwithme;
@@ -318,7 +319,7 @@ enum
   savegame,
   options,
   readthis,
-  //quitdoom,
+  quitdoom,
   main_end
 } main_e;
 
@@ -338,7 +339,7 @@ menuitem_t MainMenu[]=
   {1,"M_SAVEG", M_SaveGame,'s'},
   // Another hickup with Special edition.
   {1,"M_RDTHIS",M_ReadThis,'r'},
-  //{1,"M_QUITG", M_QuitDOOM,'q'}
+  {1,"M_QUITG", M_QuitDOOM,'q'}
 };
 
 menu_t MainDef =
@@ -1044,7 +1045,10 @@ static void M_QuitResponse(int ch)
       i--;
     }
   }
-  exit(0); // killough
+  // exit(0); // killough
+  // RG: To-do: break the doom loop instead and quit from our main component
+  rg_audio_set_mute(true);
+  rg_system_switch_app(RG_APP_LAUNCHER);
 }
 
 void M_QuitDOOM(int choice)

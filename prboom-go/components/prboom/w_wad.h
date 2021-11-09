@@ -40,7 +40,7 @@
 #endif
 
 //
-// TYPES
+// WADFILE I/O related stuff.
 //
 
 typedef struct
@@ -57,15 +57,9 @@ typedef struct
   char name[8];
 } filelump_t;
 
-//
-// WADFILE I/O related stuff.
-//
-
-// CPhipps - defined enum in wider scope
-// Ty 08/29/98 - add source field to identify where this lump came from
-typedef enum {
-  // CPhipps - define elements in order of 'how new/unusual'
-  source_iwad=0,    // iwad file load 
+typedef enum
+{
+  source_iwad=0,    // iwad file load
   source_pre,       // predefined lump
   source_auto_load, // lump auto-loaded by config file
   source_pwad,      // pwad file load
@@ -73,28 +67,16 @@ typedef enum {
   source_net        // CPhipps
 } wad_source_t;
 
-// CPhipps - changed wad init
-// We _must_ have the wadfiles[] the same as those actually loaded, so there 
-// is no point having these separate entities. This belongs here.
-typedef struct {
+typedef struct
+{
   const char* name;
   wad_source_t src;
   void *handle;
 } wadfile_info_t;
 
-extern wadfile_info_t *wadfiles;
-
-extern size_t numwadfiles; // CPhipps - size of the wadfiles array
-
-void W_Init(void); // CPhipps - uses the above array
-void W_ReleaseAllWads(void); // Proff - Added for iwad switching
-void W_InitCache(void);
-void W_DoneCache(void);
-
 typedef struct
 {
   // WARNING: order of some fields important (see info.c).
-
   char  name[9];
   int   size;
 
@@ -115,14 +97,21 @@ typedef struct
   wad_source_t source;
 } lumpinfo_t;
 
+#define MAX_WAD_FILES 10
+
+extern wadfile_info_t wadfiles[MAX_WAD_FILES];
+extern size_t numwadfiles;
 extern lumpinfo_t *lumpinfo;
-extern int        numlumps;
+extern size_t      numlumps;
 
 extern const unsigned char SINETABL_dat[];
 extern const unsigned char GAMMATBL_dat[];
 extern const unsigned char TANGTABL_dat[];
 extern const unsigned char TANTOANG_dat[];
 
+void W_Init(void); // CPhipps - uses the above array
+void W_InitCache(void);
+void W_DoneCache(void);
 
 // killough 4/17/98: if W_CheckNumForName() called with only
 // one argument, pass ns_global as the default namespace
@@ -132,16 +121,12 @@ int     (W_CheckNumForName)(const char* name, int);   // killough 4/17/98
 int     W_GetNumForName (const char* name);
 int     W_LumpLength (int lump);
 void    W_ReadLump (int lump, void *dest);
-// CPhipps - modified for 'new' lump locking
 const void* W_CacheLumpNum (int lump);
 const void* W_LockLumpNum(int lump);
 void    W_UnlockLumpNum(int lump);
 
 // CPhipps - convenience macros
-//#define W_CacheLumpNum(num) (W_CacheLumpNum)((num),1)
 #define W_CacheLumpName(name) W_CacheLumpNum (W_GetNumForName(name))
-
-//#define W_UnlockLumpNum(num) (W_UnlockLumpNum)((num),1)
 #define W_UnlockLumpName(name) W_UnlockLumpNum (W_GetNumForName(name))
 
 char *AddDefaultExtension(char *, const char *);  // killough 1/18/98

@@ -1041,7 +1041,7 @@ int rg_gui_game_menu(void)
     switch (sel)
     {
         case 1000: rg_emu_save_state(0); break;
-        case 2000: rg_emu_save_state(0); rg_system_switch_app(RG_APP_LAUNCHER); break;
+        case 2000: if (rg_emu_save_state(0)) rg_system_switch_app(RG_APP_LAUNCHER); break;
         case 3001: rg_emu_load_state(0); break; // rg_system_restart();
         case 3002: rg_emu_reset(false); break;
         case 3003: rg_emu_reset(true); break;

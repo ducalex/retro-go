@@ -85,8 +85,6 @@
 void GetFirstMap(int *ep, int *map); // Ty 08/29/98 - add "-warp x" functionality
 static void D_PageDrawer(void);
 
-// CPhipps - removed wadfiles[] stuff
-
 boolean devparm;        // started game with -devparm
 
 // jff 1/24/98 add new versions of these variables to remember command line
@@ -556,17 +554,17 @@ void D_StartTitle (void)
 // Ty 08/29/98 - add source parm to indicate where this came from
 // CPhipps - static, const char* parameter
 //         - source is an enum
-//         - modified to allocate & use new wadfiles array
 void D_AddFile (const char *file, wad_source_t source)
 {
-  wadfiles = realloc(wadfiles, sizeof(*wadfiles)*(numwadfiles+1));
-  wadfiles[numwadfiles].name =
-    AddDefaultExtension(strcpy(malloc(strlen(file)+5), file), ".wad");
-  wadfiles[numwadfiles].src = source; // Ty 08/29/98
+  if (numwadfiles == MAX_WAD_FILES)
+    I_Error("D_AddFile: Can't load more than %d WADs\n", MAX_WAD_FILES);
+
+  wadfiles[numwadfiles].name = AddDefaultExtension(strcpy(malloc(strlen(file)+5), file), ".wad");
+  wadfiles[numwadfiles].src = source;
   numwadfiles++;
+/*
   // proff: automatically try to add the gwa files
   // proff - moved from w_wad.c
-/*
   char *gwa_filename=AddDefaultExtension(strcpy(malloc(strlen(file)+5), file), ".wad");
   if (strlen(gwa_filename)>4)
     if (!strcasecmp(gwa_filename+(strlen(gwa_filename)-4),".wad"))
@@ -574,9 +572,8 @@ void D_AddFile (const char *file, wad_source_t source)
       char *ext;
       ext = &gwa_filename[strlen(gwa_filename)-4];
       ext[1] = 'g'; ext[2] = 'w'; ext[3] = 'a';
-      wadfiles = realloc(wadfiles, sizeof(*wadfiles)*(numwadfiles+1));
       wadfiles[numwadfiles].name = gwa_filename;
-      wadfiles[numwadfiles].src = source; // Ty 08/29/98
+      wadfiles[numwadfiles].src = source;
       numwadfiles++;
     }
 */
@@ -1069,11 +1066,11 @@ static void D_DoomMainSetup(void)
     }
 
     /* cphipps - the main display. This shows the build date, copyright, and game type */
-    lprintf(LO_ALWAYS,"PrBoom (built %s), playing: %s\n"
+    lprintf(LO_ALWAYS,"PrBoom %s (built %s), playing: %s\n"
       "PrBoom is released under the GNU General Public license v2.0.\n"
       "You are welcome to redistribute it under certain conditions.\n"
       "It comes with ABSOLUTELY NO WARRANTY. See the file COPYING for details.\n",
-      version_date, doomverstr);
+      VERSION, version_date, doomverstr);
   }
 
   if (devparm)
