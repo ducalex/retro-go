@@ -640,13 +640,12 @@ void rg_system_set_boot_app(const char *app)
             ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, app);
 
     if (partition == NULL)
-    {
-        // RG_PANIC("Application '%s' not found!", app);
-        RG_PANIC("Application not found!");
-    }
+        RG_PANIC("Unable to set boot app: App not found!");
 
-    if (esp_ota_set_boot_partition(partition) != ESP_OK)
+    esp_err_t err = esp_ota_set_boot_partition(partition);
+    if (err != ESP_OK)
     {
+        RG_LOGE("esp_ota_set_boot_partition returned 0x%02X!\n", err);
         RG_PANIC("Unable to set boot app!");
     }
 
