@@ -225,15 +225,22 @@ char *I_FindFile(const char *fname, const char *ext)
 {
     char filepath[PATH_MAX + 1];
 
+    // Absolute path
+    if (fname[0] == '/' && access(fname, R_OK) != -1)
+    {
+        RG_LOGI("Found %s... ", fname);
+        return strdup(fname);
+    }
+
+    // Relative path
     snprintf(filepath, PATH_MAX, "%s/%s", I_DoomExeDir(), fname);
-    RG_LOGI("Looking for file: %s... ", fname);
     if (access(filepath, R_OK) != -1)
     {
-        RG_LOGX("Found: %s\n", filepath);
+        RG_LOGI("Found: %s\n", filepath);
         return strdup(filepath);
     }
 
-    RG_LOGX("Not found.\n");
+    RG_LOGI("Not found: %s.\n");
     return NULL;
 }
 
@@ -570,6 +577,9 @@ static void settings_handler(void)
 
 static void doomEngineTask(void *pvParameters)
 {
+    const char *romtype = "-iwad";
+    FILE *fp;
+
     vTaskDelay(1);
 
     const rg_emu_proc_t handlers = {
@@ -583,11 +593,16 @@ static void doomEngineTask(void *pvParameters)
     app = rg_system_init(SAMPLERATE, &handlers);
     app->refreshRate = TICRATE;
 
-    myargv = (const char *[]){
-        "doom",
-        "-save", RG_BASE_PATH_SAVES "/doom",
-        "-iwad", rg_basename(app->romPath),
-    };
+    // TO DO: We should probably make prboom detect what we're passing instead
+    // and choose which default IWAD to use, if any.
+    if ((fp = fopen(app->romPath, "rb")))
+    {
+        if (fgetc(fp) == 'P')
+            romtype = "-file";
+        fclose(fp);
+    }
+
+    myargv = (const char *[]){"doom", "-save", RG_BASE_PATH_SAVES "/doom", romtype, app->romPath};
     myargc = 5;
 
     Z_Init();

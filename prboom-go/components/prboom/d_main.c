@@ -119,13 +119,12 @@ const char *basesavegame;  // killough 2/16/98: savegame directory
 //jff 4/19/98 list of standard IWAD names
 const char *const standard_iwads[]=
 {
-  "doom2f.wad",
-  "doom2.wad",
-  "plutonia.wad",
-  "tnt.wad",
-  "doom.wad",
-  "doom1.wad",
-  "doomu.wad", /* CPhipps - alow doomu.wad */
+  "doom.wad",     // Ultimate DOOM
+  "plutonia.wad", // Final DOOM - The Plutonia Experiment
+  "tnt.wad",      // Final Doom - TNT: Evilution
+  "doom2.wad",    // DOOM2
+  "doom2f.wad",   // DOOM2 French
+  "doom1.wad",    // DOOM Shareware
   "freedoom.wad", /* wart@kobold.org:  added freedoom for Fedora Extras */
 };
 static const int nstandard_iwads = sizeof standard_iwads/sizeof*standard_iwads;
