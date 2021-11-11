@@ -97,7 +97,7 @@ typedef struct
   wad_source_t source;
 } lumpinfo_t;
 
-#define MAX_WAD_FILES 10
+#define MAX_WAD_FILES 8
 
 extern wadfile_info_t wadfiles[MAX_WAD_FILES];
 extern size_t numwadfiles;
@@ -105,7 +105,6 @@ extern lumpinfo_t *lumpinfo;
 extern size_t      numlumps;
 
 extern const unsigned char SINETABL_dat[];
-extern const unsigned char GAMMATBL_dat[];
 extern const unsigned char TANGTABL_dat[];
 extern const unsigned char TANTOANG_dat[];
 

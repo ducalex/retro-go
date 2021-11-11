@@ -110,15 +110,11 @@ skill_t startskill;
 int     startepisode;
 int     startmap;
 boolean autostart;
-FILE    *debugfile;
 int ffmap;
 
 boolean advancedemo;
 
-char    wadfile[PATH_MAX+1];       // primary wad file
-char    mapdir[PATH_MAX+1];        // directory of development maps
-char    baseiwad[PATH_MAX+1];      // jff 3/23/98: iwad directory
-char    basesavegame[PATH_MAX+1];  // killough 2/16/98: savegame directory
+const char *basesavegame;  // killough 2/16/98: savegame directory
 
 //jff 4/19/98 list of standard IWAD names
 const char *const standard_iwads[]=
@@ -313,11 +309,6 @@ void D_Display (void)
   }
 }
 
-// CPhipps - Auto screenshot Variables
-
-static int auto_shot_count, auto_shot_time;
-static const char *auto_shot_fname;
-
 //
 //  D_DoomLoop()
 //
@@ -362,12 +353,6 @@ static void D_DoomLoop(void)
         {
         // Update display, next frame, with current state.
         D_Display();
-      }
-
-      // CPhipps - auto screenshot
-      if (auto_shot_fname && !--auto_shot_count) {
-  auto_shot_count = auto_shot_time;
-  M_DoScreenShot(auto_shot_fname);
       }
     }
 }
@@ -562,21 +547,6 @@ void D_AddFile (const char *file, wad_source_t source)
   wadfiles[numwadfiles].name = AddDefaultExtension(strcpy(malloc(strlen(file)+5), file), ".wad");
   wadfiles[numwadfiles].src = source;
   numwadfiles++;
-/*
-  // proff: automatically try to add the gwa files
-  // proff - moved from w_wad.c
-  char *gwa_filename=AddDefaultExtension(strcpy(malloc(strlen(file)+5), file), ".wad");
-  if (strlen(gwa_filename)>4)
-    if (!strcasecmp(gwa_filename+(strlen(gwa_filename)-4),".wad"))
-    {
-      char *ext;
-      ext = &gwa_filename[strlen(gwa_filename)-4];
-      ext[1] = 'g'; ext[2] = 'w'; ext[3] = 'a';
-      wadfiles[numwadfiles].name = gwa_filename;
-      wadfiles[numwadfiles].src = source;
-      numwadfiles++;
-    }
-*/
 }
 
 // killough 10/98: support -dehout filename
@@ -678,31 +648,6 @@ static void CheckIWAD(const char *iwadname,GameMode_t *gmode,boolean *hassec)
       *gmode = shareware;
 }
 
-
-
-// NormalizeSlashes
-//
-// Remove trailing slashes, translate backslashes to slashes
-// The string to normalize is passed and returned in str
-//
-// jff 4/19/98 Make killoughs slash fixer a subroutine
-//
-static void NormalizeSlashes(char *str)
-{
-  int l;
-
-  // killough 1/18/98: Neater / \ handling.
-  // Remove trailing / or \ to prevent // /\ \/ \\, and change \ to /
-
-  if (!str || !(l = strlen(str)))
-    return;
-  if (str[--l]=='/' || str[l]=='\\')     // killough 1/18/98
-    str[l]=0;
-  while (l--)
-    if (str[l]=='\\')
-      str[l]='/';
-}
-
 /*
  * FindIWADFIle
  *
@@ -753,28 +698,15 @@ static void IdentifyVersion (void)
   char *iwad;
 
   // set save path to -save parm or current dir
-
-  //jff 3/27/98 default to current dir
-  //V.Aguilar (5/30/99): In LiNUX, default to $HOME/.lxdoom
-  {
-    // CPhipps - use DOOMSAVEDIR if defined
-    char* p = getenv("DOOMSAVEDIR");
-
-    if (p != NULL)
-      if (strlen(p) > PATH_MAX-12) p = NULL;
-
-    strcpy(basesavegame,(p == NULL) ? I_DoomSaveDir() : p);
-  }
+  basesavegame = I_DoomExeDir();
   if ((i=M_CheckParm("-save")) && i<myargc-1) //jff 3/24/98 if -save present
   {
-    if (!stat(myargv[i+1],&sbuf) && S_ISDIR(sbuf.st_mode)) // and is a dir
-    {
-      strcpy(basesavegame,myargv[i+1]);  //jff 3/24/98 use that for savegame
-      NormalizeSlashes(basesavegame);    //jff 9/22/98 fix c:\ not working
-    }
-    //jff 9/3/98 use logical output routine
-    else lprintf(LO_ERROR,"Error: -save path does not exist, using %s\n", basesavegame);
+    if (!stat(myargv[i+1], &sbuf) && S_ISDIR(sbuf.st_mode))
+      basesavegame = strdup(myargv[i+1]);
+    else
+      lprintf(LO_ERROR,"Error: -save path does not exist!\n");
   }
+  lprintf(LO_CONFIRM,"Save path set to: %s\n", basesavegame);
 
   // locate the IWAD and determine game mode from it
 
@@ -819,142 +751,6 @@ static void IdentifyVersion (void)
   else
     I_Error("IdentifyVersion: IWAD not found\n");
 }
-
-
-
-#define MAXARGVS 100
-
-//
-// DoLooseFiles
-//
-// Take any file names on the command line before the first switch parm
-// and insert the appropriate -file, -deh or -playdemo switch in front
-// of them.
-//
-// Note that more than one -file, etc. entry on the command line won't
-// work, so we have to go get all the valid ones if any that show up
-// after the loose ones.  This means that boom fred.wad -file wilma
-// will still load fred.wad and wilma.wad, in that order.
-// The response file code kludges up its own version of myargv[] and
-// unfortunately we have to do the same here because that kludge only
-// happens if there _is_ a response file.  Truth is, it's more likely
-// that there will be a need to do one or the other so it probably
-// isn't important.  We'll point off to the original argv[], or the
-// area allocated in FindResponseFile, or our own areas from strdups.
-//
-// CPhipps - OUCH! Writing into *myargv is too dodgy, damn
-
-static void DoLooseFiles(void)
-{
-  char *wads[MAXARGVS];  // store the respective loose filenames
-  char *lmps[MAXARGVS];
-  char *dehs[MAXARGVS];
-  int wadcount = 0;      // count the loose filenames
-  int lmpcount = 0;
-  int dehcount = 0;
-  int i,j,p;
-  const char **tmyargv;  // use these to recreate the argv array
-  int tmyargc;
-  boolean skip[MAXARGVS]; // CPhipps - should these be skipped at the end
-
-  for (i=0; i<MAXARGVS; i++)
-    skip[i] = false;
-
-  for (i=1;i<myargc;i++)
-  {
-    if (*myargv[i] == '-') break;  // quit at first switch
-
-    // so now we must have a loose file.  Find out what kind and store it.
-    j = strlen(myargv[i]);
-    if (!stricmp(&myargv[i][j-4],".wad"))
-      wads[wadcount++] = strdup(myargv[i]);
-    if (!stricmp(&myargv[i][j-4],".lmp"))
-      lmps[lmpcount++] = strdup(myargv[i]);
-    if (!stricmp(&myargv[i][j-4],".deh"))
-      dehs[dehcount++] = strdup(myargv[i]);
-    if (!stricmp(&myargv[i][j-4],".bex"))
-      dehs[dehcount++] = strdup(myargv[i]);
-    if (myargv[i][j-4] != '.')  // assume wad if no extension
-      wads[wadcount++] = strdup(myargv[i]);
-    skip[i] = true; // nuke that entry so it won't repeat later
-  }
-
-  // Now, if we didn't find any loose files, we can just leave.
-  if (wadcount+lmpcount+dehcount == 0) return;  // ******* early return ****
-
-  if ((p = M_CheckParm ("-file")))
-  {
-    skip[p] = true;    // nuke the entry
-    while (++p != myargc && *myargv[p] != '-')
-    {
-      wads[wadcount++] = strdup(myargv[p]);
-      skip[p] = true;  // null any we find and save
-    }
-  }
-
-  if ((p = M_CheckParm ("-deh")))
-  {
-    skip[p] = true;    // nuke the entry
-    while (++p != myargc && *myargv[p] != '-')
-    {
-      dehs[dehcount++] = strdup(myargv[p]);
-      skip[p] = true;  // null any we find and save
-    }
-  }
-
-  if ((p = M_CheckParm ("-playdemo")))
-  {
-    skip[p] = true;    // nuke the entry
-    while (++p != myargc && *myargv[p] != '-')
-    {
-      lmps[lmpcount++] = strdup(myargv[p]);
-      skip[p] = true;  // null any we find and save
-    }
-  }
-
-  // Now go back and redo the whole myargv array with our stuff in it.
-  // First, create a new myargv array to copy into
-  tmyargv = calloc(sizeof(char *),MAXARGVS);
-  tmyargv[0] = myargv[0]; // invocation
-  tmyargc = 1;
-
-  // put our stuff into it
-  if (wadcount > 0)
-  {
-    tmyargv[tmyargc++] = strdup("-file"); // put the switch in
-    for (i=0;i<wadcount;)
-      tmyargv[tmyargc++] = wads[i++]; // allocated by strdup above
-  }
-
-  // for -deh
-  if (dehcount > 0)
-  {
-    tmyargv[tmyargc++] = strdup("-deh");
-    for (i=0;i<dehcount;)
-      tmyargv[tmyargc++] = dehs[i++];
-  }
-
-  // for -playdemo
-  if (lmpcount > 0)
-  {
-    tmyargv[tmyargc++] = strdup("-playdemo");
-    for (i=0;i<lmpcount;)
-      tmyargv[tmyargc++] = lmps[i++];
-  }
-
-  // then copy everything that's there now
-  for (i=1;i<myargc;i++)
-  {
-    if (!skip[i])  // skip any zapped entries
-      tmyargv[tmyargc++] = myargv[i];  // pointers are still valid
-  }
-  // now make the global variables point to our array
-  myargv = tmyargv;
-  myargc = tmyargc;
-}
-
-/* cph - MBF-like wad/deh/bex autoload code */
-const char *wad_files[MAXLOADFILES], *deh_files[MAXLOADFILES];
 
 // CPhipps - misc screen stuff
 unsigned int desired_screenwidth, desired_screenheight;
@@ -1009,7 +805,6 @@ static void D_DoomMainSetup(void)
   lprintf(LO_INFO,"M_LoadDefaults: Load system defaults.\n");
   M_LoadDefaults();              // load before initing other systems
 
-  DoLooseFiles();  // Ty 08/29/98 - handle "loose" files on command line
   IdentifyVersion();
 
   // e6y: DEH files preloaded in wrong order
@@ -1185,34 +980,11 @@ static void D_DoomMainSetup(void)
   lprintf(LO_INFO,"V_Init: allocate screens.\n");
   V_Init();
 
-  // CPhipps - autoloading of wads
-  // Designed to be general, instead of specific to boomlump.wad
-  // Some people might find this useful
-  // cph - support MBF -noload parameter
-  if (!M_CheckParm("-noload")) {
-    int i;
-
-    for (i=0; i<MAXLOADFILES*2; i++) {
-      const char *fname = (i < MAXLOADFILES) ? wad_files[i]
-  : deh_files[i - MAXLOADFILES];
-      char *fpath;
-
-      if (!(fname && *fname)) continue;
-      // Filename is now stored as a zero terminated string
-      fpath = I_FindFile(fname, (i < MAXLOADFILES) ? ".wad" : ".bex");
-      if (!fpath)
-        lprintf(LO_WARN, "Failed to autoload %s\n", fname);
-      else {
-        if (i >= MAXLOADFILES)
-          ProcessDehFile(fpath, D_dehout(), 0);
-        else {
-          D_AddFile(fpath,source_auto_load);
-        }
-        modifiedgame = true;
-        free(fpath);
-      }
-    }
-  }
+  // Autoload prboom.wad
+  const char *prboom = I_FindFile("prboom.wad", "");
+  if (!prboom)
+    I_Error("Couldn't find prboom.wad!\n");
+  D_AddFile(prboom, source_auto_load);
 
   // e6y: DEH files preloaded in wrong order
   // http://sourceforge.net/tracker/index.php?func=detail&aid=1418158&group_id=148658&atid=772943
@@ -1357,11 +1129,6 @@ static void D_DoomMainSetup(void)
   ST_Init();
 
   idmusnum = -1; //jff 3/17/98 insure idmus number is blank
-
-  // CPhipps - auto screenshots
-  if ((p = M_CheckParm("-autoshot")) && (p < myargc-2))
-    if ((auto_shot_count = auto_shot_time = atoi(myargv[p+1])))
-      auto_shot_fname = myargv[p+2];
 
   // start the apropriate game based on parms
 

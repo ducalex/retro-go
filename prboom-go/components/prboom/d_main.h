@@ -41,7 +41,7 @@
 #pragma interface
 #endif
 
-extern char basesavegame[];     // killough 2/16/98: savegame path
+extern const char *basesavegame;     // killough 2/16/98: savegame path
 
 //jff 1/24/98 make command line copies of play modes available
 extern boolean clnomonsters; // checkparm of -nomonsters
@@ -70,11 +70,5 @@ void D_PageTicker(void);
 void D_StartTitle(void);
 void D_DoomMain(void);
 void D_AddFile (const char *file, wad_source_t source);
-
-/* cph - MBF-like wad/deh/bex autoload code */
-/* proff 2001/7/1 - added prboom.wad as last entry so it's always loaded and
-   doesn't overlap with the cfg settings */
-#define MAXLOADFILES 3
-extern const char *wad_files[MAXLOADFILES], *deh_files[MAXLOADFILES];
 
 #endif

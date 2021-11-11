@@ -18,31 +18,31 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <rg_system.h>
-#include <i_system.h>
 #include <sys/unistd.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <doomtype.h>
+#include <doomstat.h>
+#include <doomdef.h>
+#include <d_main.h>
+#include <g_game.h>
+#include <i_system.h>
+#include <i_video.h>
+#include <i_sound.h>
+#include <i_main.h>
+#include <m_argv.h>
+#include <m_fixed.h>
+#include <m_misc.h>
+#include <r_draw.h>
+#include <r_fps.h>
+#include <s_sound.h>
+#include <st_stuff.h>
+#include <mmus2mid.h>
+#include <midifile.h>
+#include <oplplayer.h>
 
-#include "doomtype.h"
-#include "doomstat.h"
-#include "doomdef.h"
-#include "d_main.h"
-#include "g_game.h"
-#include "i_system.h"
-#include "i_video.h"
-#include "i_sound.h"
-#include "i_main.h"
-#include "m_argv.h"
-#include "m_fixed.h"
-#include "m_misc.h"
-#include "r_draw.h"
-#include "r_fps.h"
-#include "s_sound.h"
-#include "st_stuff.h"
-#include "mmus2mid.h"
-#include "midifile.h"
-#include "oplplayer.h"
+#include "prboom.h"
 
 #define SAMPLERATE 11025
 #define SAMPLECOUNT (SAMPLERATE / TICRATE + 1)
@@ -219,11 +219,6 @@ void I_uSleep(unsigned long usecs)
 const char *I_DoomExeDir(void)
 {
     return RG_BASE_PATH_ROMS "/doom";
-}
-
-const char *I_DoomSaveDir(void)
-{
-    return RG_BASE_PATH_SAVES "/doom";
 }
 
 char *I_FindFile(const char *fname, const char *ext)
@@ -575,7 +570,7 @@ static void settings_handler(void)
 
 static void doomEngineTask(void *pvParameters)
 {
-    vTaskDelay(10);
+    vTaskDelay(1);
 
     const rg_emu_proc_t handlers = {
         // .loadState = &load_state_handler,
@@ -588,8 +583,12 @@ static void doomEngineTask(void *pvParameters)
     app = rg_system_init(SAMPLERATE, &handlers);
     app->refreshRate = TICRATE;
 
-    myargv = (const char *[]){"doom", "-iwad", rg_basename(app->romPath)};
-    myargc = 3;
+    myargv = (const char *[]){
+        "doom",
+        "-save", RG_BASE_PATH_SAVES "/doom",
+        "-iwad", rg_basename(app->romPath),
+    };
+    myargc = 5;
 
     Z_Init();
     D_DoomMain();

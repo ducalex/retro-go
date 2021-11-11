@@ -899,8 +899,8 @@ void M_LoadDefaults (void)
   if (i && i < myargc-1)
     defaultfile = myargv[i+1];
   else {
-    // const char* exedir = I_DoomExeDir();
-    defaultfile = strdup("prboom.cfg");
+    const char *exedir = I_DoomExeDir();
+    defaultfile = strcat(strcpy(malloc(strlen(exedir) + 32), exedir), "/prboom.cfg");
   }
 
   lprintf (LO_CONFIRM, " default file: %s\n",defaultfile);
@@ -970,10 +970,6 @@ void M_LoadDefaults (void)
 
     fclose (f);
     }
-  //jff 3/4/98 redundant range checks for hud deleted here
-  /* proff 2001/7/1 - added prboom.wad as last entry so it's always loaded and
-     doesn't overlap with the cfg settings */
-  wad_files[MAXLOADFILES-1]="prboom.wad";
 }
 
 

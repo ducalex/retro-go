@@ -137,25 +137,13 @@ static void W_AddFile(wadfile_info_t *wadfile)
 #endif
 
   if (!wadfile->handle)
-    {
-      if (  strlen(wadfile->name)<=4 ||      // add error check -- killough
-	         (strcasecmp(wadfile->name+strlen(wadfile->name)-4 , ".lmp" ) &&
-	          strcasecmp(wadfile->name+strlen(wadfile->name)-4 , ".gwa" ) )
-         )
-	I_Error("W_AddFile: couldn't open %s",wadfile->name);
-      return;
-    }
+    I_Error("W_AddFile: couldn't open %s",wadfile->name);
 
   //jff 8/3/98 use logical output routine
   lprintf (LO_INFO," adding %s\n",wadfile->name);
   startlump = numlumps;
 
-  if (  strlen(wadfile->name)<=4 ||
-	      (
-          strcasecmp(wadfile->name+strlen(wadfile->name)-4,".wad") &&
-	        strcasecmp(wadfile->name+strlen(wadfile->name)-4,".gwa")
-        )
-     )
+  if (strlen(wadfile->name)<=4 || strcasecmp(wadfile->name+strlen(wadfile->name)-4,".wad"))
     {
       // single lump file
       fileinfo = &singleinfo;
@@ -170,8 +158,7 @@ static void W_AddFile(wadfile_info_t *wadfile)
     {
       // WAD file
       fread(&header, sizeof(header), 1, wadfile->handle);
-      if (strncmp(header.identification,"IWAD",4) &&
-          strncmp(header.identification,"PWAD",4))
+      if (strncmp(header.identification,"IWAD",4) && strncmp(header.identification,"PWAD",4))
         I_Error("W_AddFile: Wad file %s doesn't have IWAD or PWAD id", wadfile->name);
       header.numlumps = LONG(header.numlumps);
       header.infotableofs = LONG(header.infotableofs);
