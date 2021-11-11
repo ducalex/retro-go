@@ -513,15 +513,23 @@ void I_StartTic(void)
 {
     static uint64_t last_time = 0;
     static uint32_t prev_joystick = 0x0000;
+    static uint32_t rg_menu_delay = 0;
     uint32_t joystick = rg_input_read_gamepad();
     uint32_t changed = prev_joystick ^ joystick;
     event_t event = {0};
 
-    // if (joystick & RG_KEY_MENU)
-    // {
-    //     rg_gui_game_menu();
-    // }
-    // else
+    // Long press on menu will open retro-go's menu if needed, instead of DOOM's.
+    // This is still needed to quit (DOOM 2) and for the debug menu. We'll unify that mess soon...
+    if (joystick & RG_KEY_MENU)
+    {
+        if (rg_menu_delay++ == TICRATE / 2)
+            rg_gui_game_menu();
+    }
+    else
+    {
+        rg_menu_delay = 0;
+    }
+
     if (joystick & RG_KEY_OPTION)
     {
         rg_gui_game_settings_menu();
@@ -575,6 +583,18 @@ static void settings_handler(void)
     return;
 }
 
+static void event_handler(int event, void *arg)
+{
+    if (event == RG_EVENT_SHUTDOWN)
+    {
+        // DOOM fully fills the internal heap and this causes some shutdown
+        // steps to fail so we try to free everything!
+        Z_FreeTags(PU_STATIC, PU_CACHE);
+        rg_audio_set_mute(true);
+    }
+    return;
+}
+
 static void doomEngineTask(void *pvParameters)
 {
     const char *romtype = "-iwad";
@@ -587,7 +607,8 @@ static void doomEngineTask(void *pvParameters)
         // .saveState = &save_state_handler,
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
-        // .settings = &settings_handler,
+        .settings = &settings_handler,
+        .event = &event_handler,
     };
 
     app = rg_system_init(SAMPLERATE, &handlers);

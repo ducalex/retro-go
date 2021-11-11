@@ -32,19 +32,6 @@ extern "C" {
 
 typedef enum
 {
-    RG_MSG_SHUTDOWN,
-    RG_MSG_RESTART,
-    RG_MSG_RESET,
-    RG_MSG_REDRAW,
-    RG_MSG_NETPLAY,
-    RG_MSG_SAVE_STATE,
-    RG_MSG_LOAD_STATE,
-    RG_MSG_SAVE_SRAM,
-    RG_MSG_LOAD_SRAM,
-} rg_msg_t;
-
-typedef enum
-{
     RG_START_ACTION_RESUME = 0,
     RG_START_ACTION_NEWGAME,
     RG_START_ACTION_NETPLAY
@@ -62,7 +49,8 @@ typedef enum
     RG_PATH_ART_FILE,
 } rg_path_type_t;
 
-enum {
+enum
+{
     RG_LOG_PRINT = 0,
     RG_LOG_ERROR,
     RG_LOG_WARN,
@@ -70,14 +58,21 @@ enum {
     RG_LOG_DEBUG,
 };
 
-#define RG_STRUCT_MAGIC 0x12345678
+typedef enum
+{
+    RG_EVENT_SHUTDOWN,
+    RG_EVENT_SLEEP,
+    RG_EVENT_UNRESPONSIVE,
+    RG_EVENT_LOWMEMORY,
+    RG_EVENT_REDRAW,
+} rg_event_t;
 
 #define RG_APP_LAUNCHER "launcher"
 #define RG_APP_FACTORY  NULL
 
 typedef bool (*rg_state_handler_t)(const char *filename);
 typedef bool (*rg_reset_handler_t)(bool hard);
-typedef bool (*rg_message_handler_t)(int msg, void *arg);
+typedef void (*rg_event_handler_t)(int event, void *arg);
 typedef bool (*rg_screenshot_handler_t)(const char *filename, int width, int height);
 typedef int  (*rg_mem_read_handler_t)(int addr);
 typedef int  (*rg_mem_write_handler_t)(int addr, int value);
@@ -85,15 +80,15 @@ typedef void (*rg_settings_handler_t)(void);
 
 typedef struct
 {
-    rg_state_handler_t loadState;
-    rg_state_handler_t saveState;
-    rg_reset_handler_t reset;
-    rg_message_handler_t message;
-    rg_netplay_handler_t netplay;
-    rg_screenshot_handler_t screenshot;
-    rg_mem_read_handler_t memRead;    // Used by for cheats and debugging
-    rg_mem_write_handler_t memWrite;  // Used by for cheats and debugging
-    rg_settings_handler_t settings;  // Called by the "More..." in options menu
+    rg_state_handler_t loadState;       // rg_emu_load_state() handler
+    rg_state_handler_t saveState;       // rg_emu_save_state() handler
+    rg_reset_handler_t reset;           // rg_emu_reset() handler
+    rg_screenshot_handler_t screenshot; // rg_emu_screenshot() handler
+    rg_event_handler_t event;           // listen to retro-go system events
+    rg_netplay_handler_t netplay;       // netplay handler
+    rg_mem_read_handler_t memRead;      // Used by for cheats and debugging
+    rg_mem_write_handler_t memWrite;    // Used by for cheats and debugging
+    rg_settings_handler_t settings;     // Called by "More..." in rg_gui_settings_menu()
 } rg_emu_proc_t;
 
 // TO DO: Make it an abstract ring buffer implementation?
@@ -160,6 +155,7 @@ int  rg_system_get_led(void);
 void rg_system_tick(int busyTime);
 void rg_system_log(int level, const char *context, const char *format, ...);
 bool rg_system_save_trace(const char *filename, bool append);
+void rg_system_event(rg_event_t event, void *arg);
 rg_app_t *rg_system_get_app();
 rg_stats_t rg_system_get_stats();
 
@@ -170,7 +166,6 @@ char *rg_emu_get_path(rg_path_type_t type, const char *romPath);
 bool rg_emu_save_state(int slot);
 bool rg_emu_load_state(int slot);
 bool rg_emu_reset(int hard);
-bool rg_emu_notify(int msg, void *arg);
 bool rg_emu_screenshot(const char *filename, int width, int height);
 void rg_emu_start_game(const char *emulator, const char *romPath, rg_start_action_t action);
 

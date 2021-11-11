@@ -31,6 +31,8 @@
 #define SETTING_RTC_DRIVER    "RTCInitSource"
 #define SETTING_RTC_VALUE     "RTCSavedValue"
 
+#define RG_STRUCT_MAGIC 0x12345678
+
 typedef struct
 {
     uint32_t magicWord;
@@ -383,6 +385,13 @@ rg_app_t *rg_system_get_app()
     return &app;
 }
 
+void rg_system_event(rg_event_t event, void *arg)
+{
+    RG_LOGD("Event %d(%p)\n", event, arg);
+    if (app.handlers.event)
+        app.handlers.event(event, arg);
+}
+
 char *rg_emu_get_path(rg_path_type_t type, const char *_romPath)
 {
     const char *fileName = _romPath ?: app.romPath;
@@ -566,13 +575,6 @@ bool rg_emu_reset(int hard)
 {
     if (app.handlers.reset)
         return app.handlers.reset(hard);
-    return rg_emu_notify(RG_MSG_RESET, (void*)hard);
-}
-
-bool rg_emu_notify(int msg, void *arg)
-{
-    if (app.handlers.message)
-        return app.handlers.message(msg, arg);
     return false;
 }
 
@@ -589,6 +591,7 @@ static void shutdown_cleanup()
     // Prepare the system for a power change (deep sleep, restart, shutdown)
     // Wait for all keys to be released, they could interfer with the restart process
     rg_input_wait_for_key(RG_KEY_ALL, false);
+    rg_system_event(RG_EVENT_SHUTDOWN, NULL);
     rg_system_time_save();
     rg_settings_save();
     rg_audio_deinit();

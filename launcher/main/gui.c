@@ -404,15 +404,15 @@ void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file)
     {
         case PREVIEW_MODE_COVER_SAVE:
             show_missing_cover = true;
-            order = 0x0312;
+            order = 0x3412;
             break;
         case PREVIEW_MODE_SAVE_COVER:
             show_missing_cover = true;
-            order = 0x0123;
+            order = 0x4123;
             break;
         case PREVIEW_MODE_COVER_ONLY:
             show_missing_cover = true;
-            order = 0x0012;
+            order = 0x0412;
             break;
         case PREVIEW_MODE_SAVE_ONLY:
             show_missing_cover = false;
@@ -455,7 +455,9 @@ void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file)
             sprintf(path, RG_BASE_PATH_ROMART "/%s/%X/%08X.png", dirname, file->checksum >> 28, file->checksum);
         else if (type == 0x3) // Save state screenshot (png)
             sprintf(path, RG_BASE_PATH_SAVES "/%s/%s.png", file->folder + strlen(RG_BASE_PATH_ROMS), file->name);
-        else if (type == 0x4) // use default image (not currently used)
+        else if (type == 0x4) // Game cover (based on filename)
+            sprintf(path, RG_BASE_PATH_ROMART "/%s/%s.png", dirname, file->name);
+        else if (type == 0xF) // use generic cover image (not currently used)
             sprintf(path, RG_BASE_PATH_ROMART "/%s/default.png", dirname);
         else
             continue;
