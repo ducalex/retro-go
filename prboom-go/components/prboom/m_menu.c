@@ -173,10 +173,6 @@ short itemOn;           // menu item skull is on (for Big Font menus)
 short skullAnimCounter; // skull animation counter
 short whichSkull;       // which skull to draw (he blinks)
 
-// graphic name of skulls
-
-const char skullName[2][/*8*/9] = {"M_SKULL1","M_SKULL2"};
-
 menu_t* currentMenu; // current menudef
 
 // phares 3/30/98
@@ -4942,7 +4938,7 @@ void M_Drawer (void)
 
   // CPhipps - patch drawing updated
   V_DrawNamePatch(x + SKULLXOFF, currentMenu->y - 5 + itemOn*LINEHEIGHT,0,
-      skullName[whichSkull], CR_DEFAULT, VPT_STRETCH);
+      whichSkull ? "M_SKULL2" : "M_SKULL1", CR_DEFAULT, VPT_STRETCH);
       }
 }
 

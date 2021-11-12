@@ -42,8 +42,6 @@
 #include <midifile.h>
 #include <oplplayer.h>
 
-#include "prboom.h"
-
 #define SAMPLERATE 11025
 #define SAMPLECOUNT (SAMPLERATE / TICRATE + 1)
 #define NUM_MIX_CHANNELS 8

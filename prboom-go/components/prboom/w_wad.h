@@ -104,10 +104,6 @@ extern size_t numwadfiles;
 extern lumpinfo_t *lumpinfo;
 extern size_t      numlumps;
 
-extern const unsigned char SINETABL_dat[];
-extern const unsigned char TANGTABL_dat[];
-extern const unsigned char TANTOANG_dat[];
-
 void W_Init(void); // CPhipps - uses the above array
 void W_InitCache(void);
 void W_DoneCache(void);

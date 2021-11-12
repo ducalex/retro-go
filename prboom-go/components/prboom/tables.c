@@ -53,26 +53,14 @@
 #include "w_wad.h"
 #include "tables.h"
 
-// killough 5/3/98: reformatted
+extern const unsigned char SINETABL_dat[];
+extern const unsigned char TANGTABL_dat[];
+extern const unsigned char TANTOANG_dat[];
 
-int SlopeDiv(unsigned num, unsigned den)
-{
-  unsigned ans;
-
-  if (den < 512)
-    return SLOPERANGE;
-  ans = (num<<3)/(den>>8);
-  return ans <= SLOPERANGE ? ans : SLOPERANGE;
-}
-
-//fixed_t finetangent[4096];
-//fixed_t finesine[10240];
-//angle_t tantoangle[2049];
-
-fixed_t *finetangent;
-fixed_t *finesine;
-angle_t *tantoangle;
-fixed_t * finecosine;
+const fixed_t *finetangent = TANGTABL_dat;
+const fixed_t *finesine = SINETABL_dat;
+const angle_t *tantoangle = TANTOANG_dat;
+const fixed_t *finecosine = SINETABL_dat + (FINEANGLES/4);
 
 #include "m_swap.h"
 #include "lprintf.h"
@@ -83,13 +71,7 @@ fixed_t * finecosine;
 //
 void R_LoadTrigTables(void)
 {
-	finetangent=(fixed_t*)&TANGTABL_dat[0];
-	finesine=(fixed_t*)&SINETABL_dat[0];
-	tantoangle=(angle_t*)&TANTOANG_dat[0];
-	finecosine = finesine + (FINEANGLES/4);
-
 #if 0
-	I_Error("Loading trig tables");
 	finetangent=malloc(4096*sizeof(fixed_t));
 	finesine=malloc(10240*sizeof(fixed_t));
 	tantoangle=malloc(2049*sizeof(angle_t));

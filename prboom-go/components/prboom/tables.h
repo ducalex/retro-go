@@ -75,22 +75,19 @@ void R_LoadTrigTables(void);
 
 // Effective size is 10240.
 //extern fixed_t finesine[5*FINEANGLES/4];
-extern fixed_t *finesine;
+extern const fixed_t *finesine;
 
 // Re-use data, is just PI/2 phase shift.
-extern fixed_t *finecosine;
+extern const fixed_t *finecosine;
 
 // Effective size is 4096.
 //extern fixed_t finetangent[FINEANGLES/2];
-extern fixed_t *finetangent;
+extern const fixed_t *finetangent;
 
 // Effective size is 2049;
 // The +1 size is to handle the case when x==y without additional checking.
 
 //extern angle_t tantoangle[SLOPERANGE+1];
-extern angle_t *tantoangle;
-
-// Utility function, called by R_PointToAngle.
-int SlopeDiv(unsigned num, unsigned den);
+extern const angle_t *tantoangle;
 
 #endif

@@ -2417,13 +2417,6 @@ void P_SpawnSpecials (void)
   // See if -timer needs to be used.
   levelTimer = false;
 
-  i = M_CheckParm("-avg");   // Austin Virtual Gaming 20 min timer on DM play
-  if (i && deathmatch)
-  {
-    levelTimer = true;
-    levelTimeCount = 20 * 60 * TICRATE;
-  }
-
   i = M_CheckParm("-timer"); // user defined timer on game play
   if (i && deathmatch)
   {

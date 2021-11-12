@@ -177,6 +177,16 @@ PUREFUNC int R_PointOnSegSide(fixed_t x, fixed_t y, const seg_t *line)
 
 #include <math.h>
 
+static int SlopeDiv(unsigned num, unsigned den)
+{
+  unsigned ans;
+
+  if (den < 512)
+    return SLOPERANGE;
+  ans = (num<<3)/(den>>8);
+  return ans <= SLOPERANGE ? ans : SLOPERANGE;
+}
+
 angle_t R_PointToAngle(fixed_t x, fixed_t y)
 {
   static fixed_t oldx, oldy;
