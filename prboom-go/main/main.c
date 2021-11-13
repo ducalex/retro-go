@@ -593,13 +593,8 @@ static void event_handler(int event, void *arg)
     return;
 }
 
-static void doomEngineTask(void *pvParameters)
+void app_main()
 {
-    const char *romtype = "-iwad";
-    FILE *fp;
-
-    vTaskDelay(1);
-
     const rg_emu_proc_t handlers = {
         // .loadState = &load_state_handler,
         // .saveState = &save_state_handler,
@@ -611,6 +606,9 @@ static void doomEngineTask(void *pvParameters)
 
     app = rg_system_init(SAMPLERATE, &handlers);
     app->refreshRate = TICRATE;
+
+    const char *romtype = "-iwad";
+    FILE *fp;
 
     // TO DO: We should probably make prboom detect what we're passing instead
     // and choose which default IWAD to use, if any.
@@ -626,12 +624,4 @@ static void doomEngineTask(void *pvParameters)
 
     Z_Init();
     D_DoomMain();
-}
-
-void app_main()
-{
-    // Switch immediately to increase our stack size
-    // xTaskCreate(&doomEngineTask, "doomEngine", 14000, NULL, uxTaskPriorityGet(NULL), NULL);
-    xTaskCreatePinnedToCore(&doomEngineTask, "doomEngine", 12000, NULL, uxTaskPriorityGet(NULL), NULL, 0);
-    vTaskDelete(NULL);
 }

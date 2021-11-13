@@ -445,10 +445,6 @@ const char *startup3     = "";
 const char *startup4     = "";
 const char *startup5     = "";
 
-/* Ty 05/03/98 - externalized
- * cph - updated for prboom */
-const char *savegamename = "prbmsav";
-
 // end d_deh.h variable declarations
 // ====================================================================
 
@@ -781,11 +777,9 @@ static const deh_strs deh_strlookup[] = {
   {&startup3,"STARTUP3"},
   {&startup4,"STARTUP4"},
   {&startup5,"STARTUP5"},
-  {&savegamename,"SAVEGAMENAME"},  // Ty 05/03/98
 };
 
-static int deh_numstrlookup =
-sizeof(deh_strlookup)/sizeof(deh_strlookup[0]);
+static int deh_numstrlookup = sizeof(deh_strlookup)/sizeof(deh_strlookup[0]);
 
 const char *deh_newlevel = "NEWLEVEL"; // CPhipps - const
 
@@ -962,12 +956,12 @@ const char **const mapnamest[] = // TNT WAD map names.
 };
 
 // Function prototypes
-void    lfstrip(char *);     // strip the \r and/or \n off of a line
-void    rstrip(char *);      // strip trailing whitespace
-char *  ptr_lstrip(char *);  // point past leading whitespace
-boolean deh_GetData(char *, char *, uint_64_t *, char **, FILE *);
-boolean deh_procStringSub(char *, char *, char *, FILE *);
-char *  dehReformatStr(char *);
+static void    lfstrip(char *);     // strip the \r and/or \n off of a line
+static void    rstrip(char *);      // strip trailing whitespace
+static char *  ptr_lstrip(char *);  // point past leading whitespace
+static boolean deh_GetData(char *, char *, uint_64_t *, char **, FILE *);
+static boolean deh_procStringSub(char *, char *, char *, FILE *);
+static char *  dehReformatStr(char *);
 
 // Prototypes for block processing functions
 // Pointers to these functions are used as the blocks are encountered.
@@ -1035,6 +1029,8 @@ static const deh_block deh_blocks[] = { // CPhipps - static const
 
 // flag to skip included deh-style text, used with INCLUDE NOTEXT directive
 static boolean includenotext = false;
+
+static boolean deh_initialized = false;
 
 // MOBJINFO - Dehacked block name = "Thing"
 // Usage: Thing nn (name)
@@ -1353,33 +1349,10 @@ static const deh_bexptr deh_bexptrs[] = // CPhipps - static const
 
 // to hold startup code pointers from INFO.C
 // CPhipps - static
-static actionf_t deh_codeptr[NUMSTATES];
-
-// haleyjd: support for BEX SPRITES, SOUNDS, and MUSIC
-char *deh_spritenames[];
-char *deh_musicnames[NUMMUSIC + 1];
-char *deh_soundnames[NUMSFX + 1];
-
-void D_BuildBEXTables(void)
-{
-   int i;
-
-   // moved from ProcessDehFile, then we don't need the static int i
-   for (i = 0; i < NUMSTATES; i++)  // remember what they start as for deh xref
-     deh_codeptr[i] = states[i].action;
-
-  *deh_spritenames = sprnames;
-//Disabled - JD
-#if 0
-   for(i = 1; i < NUMMUSIC; i++)
-      deh_musicnames[i] = strdup(S_music[i].name);
-   deh_musicnames[0] = deh_musicnames[NUMMUSIC] = NULL;
-
-   for(i = 1; i < NUMSFX; i++)
-      deh_soundnames[i] = strdup(S_sfx[i].name);
-   deh_soundnames[0] = deh_soundnames[NUMSFX] = NULL;
-#endif
-}
+static actionf_t *deh_codeptr;
+static char **deh_spritenames;
+static char **deh_musicnames;
+static char **deh_soundnames;
 
 // ====================================================================
 // ProcessDehFile
@@ -1391,11 +1364,32 @@ void D_BuildBEXTables(void)
 // killough 10/98:
 // substantially modified to allow input from wad lumps instead of .deh files.
 
-void ProcessDehFile(const char *filename, const char *outfilename, int lumpnum)
+void D_ProcessDehFile(const char *filename, const char *outfilename, int lumpnum)
 {
   static FILE *fileout;       // In case -dehout was used
   DEHFILE infile, *filein = &infile;    // killough 10/98
   char inbuffer[DEH_BUFFERMAX];  // Place to put the primary infostring
+
+  // Initialize structures only if needed
+  if (!deh_initialized)
+  {
+    lprintf(LO_WARN, "D_ProcessDehFile: Initializing DEH engine...\n");
+
+    deh_codeptr = calloc(NUMSTATES + 1, sizeof(actionf_t));
+    deh_spritenames = calloc(NUMSPRITES + 1, sizeof(char *));
+    deh_musicnames = calloc(NUMMUSIC + 1, sizeof(char *));
+    deh_soundnames = calloc(NUMSFX + 1, sizeof(char *));
+
+    // Keep a copy of the original values
+    for (int i = 0; i < NUMSTATES; i++)
+      deh_codeptr[i] = states[i].action;
+    for (int i = 0; i < NUMSPRITES; i++)
+      deh_spritenames[i] = sprnames[i];
+    for(int i = 1; i < NUMMUSIC; i++)
+      deh_musicnames[i] = S_music[i].name;
+    for(int i = 1; i < NUMSFX; i++)
+      deh_soundnames[i] = S_sfx[i].name;
+  }
 
   // Open output file if we're writing output
   if (outfilename && *outfilename && !fileout)
@@ -1404,8 +1398,7 @@ void ProcessDehFile(const char *filename, const char *outfilename, int lumpnum)
       if (!strcmp(outfilename, "-"))
         fileout = stdout;
       else
-//        if (!(fileout=fopen(outfilename, firstfile ? "wt" : "at")))
-        if (0) 
+       if (!(fileout=fopen(outfilename, firstfile ? "wt" : "at")))
           {
             lprintf(LO_WARN, "Could not open -dehout file %s\n... using stdout.\n",
                    outfilename);
@@ -1418,8 +1411,7 @@ void ProcessDehFile(const char *filename, const char *outfilename, int lumpnum)
 
   if (filename)
     {
-      //if (!(infile.f = fopen(filename,"rt")))
-		if(0) 
+      if (!(infile.f = fopen(filename,"rt")))
         {
           lprintf(LO_WARN, "-deh file %s not found\n",filename);
           return;  // should be checked up front anyway
@@ -1436,8 +1428,6 @@ void ProcessDehFile(const char *filename, const char *outfilename, int lumpnum)
   lprintf(LO_INFO, "Loading DEH file %s\n",filename);
   lprintf(LO_INFO, "Lump number %d, address: %p\n",lumpnum, infile.lump);
   if (fileout) fprintf(fileout,"\nLoading DEH file %s\n\n",filename);
-
-  // move deh_codeptr initialisation to D_BuildBEXTables
 
   // loop until end of file
 
@@ -1487,7 +1477,7 @@ void ProcessDehFile(const char *filename, const char *outfilename, int lumpnum)
           // killough 10/98:
           // Second argument must be NULL to prevent closing fileout too soon
 
-          ProcessDehFile(nextfile,NULL,0); // do the included file
+          D_ProcessDehFile(nextfile,NULL,0); // do the included file
 
           includenotext = oldnotext;
           if (fileout) fprintf(fileout,"...continuing with %s\n",filename);
@@ -1594,7 +1584,7 @@ static void deh_procBexCodePointers(DEHFILE *fpin, FILE* fpout, char *line)
 // to prboom types - POPE
 //---------------------------------------------------------------------------
 static uint_64_t getConvertedDEHBits(uint_64_t bits) {
-  static const uint_64_t bitMap[32] = {
+  const uint_64_t bitMap[32] = {
     /* cf linuxdoom-1.10 p_mobj.h */
     MF_SPECIAL, // 0 Can be picked up - When touched the thing can be picked up.
     MF_SOLID, // 1 Obstacle - The thing is solid and will not let you (or others) pass through it
@@ -2949,11 +2939,13 @@ static void deh_procBexMusic(DEHFILE *fpin, FILE *fpout, char *line)
 // Args:    string -- the string to convert
 // Returns: the converted string (converted in a static buffer)
 //
-char *dehReformatStr(char *string)
+static char *dehReformatStr(char *string)
 {
-  static char buff[DEH_BUFFERMAX]; // only processing the changed string,
-  //  don't need double buffer
+  static char *buff = NULL; // only processing the changed string,
   char *s, *t;
+
+  if (!buff)
+    buff = malloc(DEH_BUFFERMAX);
 
   s = string;  // source
   t = buff;    // target
@@ -2978,7 +2970,7 @@ char *dehReformatStr(char *string)
 //
 // killough 10/98: only strip at end of line, not entire string
 
-void lfstrip(char *s)  // strip the \r and/or \n off of a line
+static void lfstrip(char *s)  // strip the \r and/or \n off of a line
 {
   char *p = s+strlen(s);
   while (p > s && (*--p=='\r' || *p=='\n'))
@@ -2991,7 +2983,7 @@ void lfstrip(char *s)  // strip the \r and/or \n off of a line
 // Args:    s -- the string to work on
 // Returns: void -- the string is modified in place
 //
-void rstrip(char *s)  // strip trailing whitespace
+static void rstrip(char *s)  // strip trailing whitespace
 {
   char *p = s+strlen(s);         // killough 4/4/98: same here
   while (p > s && isspace(*--p)) // break on first non-whitespace
@@ -3005,7 +2997,7 @@ void rstrip(char *s)  // strip trailing whitespace
 // Returns: char * pointing to the first nonblank character in the
 //          string.  The original string is not changed.
 //
-char *ptr_lstrip(char *p)  // point past leading whitespace
+static char *ptr_lstrip(char *p)  // point past leading whitespace
 {
   while (isspace(*p))
     p++;
@@ -3016,7 +3008,7 @@ char *ptr_lstrip(char *p)  // point past leading whitespace
 // No more desync on HACX demos.
 // FIXME!!! (lame)
 static boolean StrToInt(char *s, long *l)
-{      
+{
   return (
     (sscanf(s, " 0x%lx", l) == 1) ||
     (sscanf(s, " 0X%lx", l) == 1) ||
@@ -3039,7 +3031,7 @@ static boolean StrToInt(char *s, long *l)
 //          as a long just in case.  The passed pointer to hold
 //          the key must be DEH_MAXKEYLEN in size.
 
-boolean deh_GetData(char *s, char *k, uint_64_t *l, char **strval, FILE *fpout)
+static boolean deh_GetData(char *s, char *k, uint_64_t *l, char **strval, FILE *fpout)
 {
   char *t;  // current char
   long val; // to hold value of pair

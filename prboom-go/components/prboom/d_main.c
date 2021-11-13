@@ -922,8 +922,6 @@ static void D_DoomMainSetup(void)
   // Using -deh in BOOM, others use -dehacked.
   // Ty 03/18/98 also allow .bex extension.  .bex overrides if both exist.
 
-  D_BuildBEXTables(); // haleyjd
-
   if ((p = M_CheckParm ("-deh")))
     {
       char file[PATH_MAX+1];      // cph - localised
@@ -941,7 +939,7 @@ static void D_DoomMainSetup(void)
                 I_Error("D_DoomMainSetup: Cannot find .deh or .bex file named %s",myargv[p]);
             }
           // during the beta we have debug output to dehout.txt
-          ProcessDehFile(file,D_dehout(),0);
+          D_ProcessDehFile(file,D_dehout(),0);
         }
     }
   // ty 03/09/98 end of do dehacked stuff
@@ -1001,7 +999,7 @@ static void D_DoomMainSetup(void)
   // option to disable automatic loading of dehacked-in-wad lump
   if (!M_CheckParm ("-nodeh"))
     if ((p = W_CheckNumForName("DEHACKED")) != -1) // cph - add dehacked-in-a-wad support
-      ProcessDehFile(NULL, D_dehout(), p);
+      D_ProcessDehFile(NULL, D_dehout(), p);
 
   V_InitColorTranslation(); //jff 4/24/98 load color translation lumps
 

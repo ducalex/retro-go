@@ -29,7 +29,7 @@
  * DESCRIPTION:
  *  Dehacked file support
  *  New for the TeamTNT "Boom" engine
- * 
+ *
  *  Author: Ty Halderman, TeamTNT
  *
  *  Description: This file translates the #defined string constants
@@ -42,7 +42,7 @@
 #ifndef __D_DEH__
 #define __D_DEH__
 
-void ProcessDehFile(const char *filename, const char *outfilename, int lumpnum);
+void D_ProcessDehFile(const char *filename, const char *outfilename, int lumpnum);
 
 //
 //      Ty 03/22/98 - note that we are keeping the english versions and
@@ -1109,10 +1109,5 @@ extern const char* startup3;
 extern const char* startup4;
 // char*        startup5 = "";
 extern const char* startup5;
-
-// from g_game.c, prefix for savegame name like "boomsav"
-extern const char* savegamename;
-
-void D_BuildBEXTables(void);
 
 #endif

@@ -65,8 +65,6 @@
 #define NORM_SEP 128
 #define S_STEREO_SWING (96<<FRACBITS)
 
-const char* S_music_files[NUMMUSIC]; // cournia - stores music file names
-
 typedef struct
 {
   sfxinfo_t *sfxinfo;  // sound information (if null, channel avail.)
@@ -456,11 +454,7 @@ void S_StartMusic(int m_id)
 void S_ChangeMusic(int musicnum, int looping)
 {
   musicinfo_t *music;
-#if 0
-  int music_file_failed; // cournia - if true load the default MIDI music
-  char* music_filename;  // cournia
-#endif
-  //jff 1/22/98 return if music is not enabled
+
   if (!mus_card || nomusicparm)
     return;
 
@@ -482,31 +476,10 @@ void S_ChangeMusic(int musicnum, int looping)
       sprintf(namebuf, "d_%s", music->name);
       music->lumpnum = W_GetNumForName(namebuf);
     }
-#if 0
-  music_file_failed = 1;
 
-  // proff_fs - only load when from IWAD
-  if (lumpinfo[music->lumpnum].source == source_iwad)
-    {
-      // cournia - check to see if we can play a higher quality music file
-      //           rather than the default MIDI
-      music_filename = I_FindFile(S_music_files[musicnum], "");
-      if (music_filename)
-        {
-          music_file_failed = I_RegisterMusic(music_filename, music);
-          free(music_filename);
-        }
-    }
-
-  if (music_file_failed)
-#endif
-    {
-      //cournia - could not load music file, play default MIDI music
-
-      // load & register it
-      music->data = W_CacheLumpNum(music->lumpnum);
-      music->handle = I_RegisterSong(music->data, W_LumpLength(music->lumpnum));
-    }
+  // load & register it
+  music->data = W_CacheLumpNum(music->lumpnum);
+  music->handle = I_RegisterSong(music->data, W_LumpLength(music->lumpnum));
 
   // play it
   I_PlaySong(music->handle, looping);
