@@ -75,12 +75,6 @@ void M_ResetMenu(void);      // killough 11/98: reset main menu ordering
 
 void M_DrawCredits(void);    // killough 11/98
 
-/* killough 8/15/98: warn about changes not being committed until next game */
-#define warn_about_changes(x) (warning_about_changes=(x), \
-             print_warning_about_changes = 2)
-
-extern int warning_about_changes, print_warning_about_changes;
-
 /****************************
  *
  *  The following #defines are for the m_flags field of each item on every

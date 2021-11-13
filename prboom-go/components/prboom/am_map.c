@@ -74,6 +74,7 @@ int mapcolor_frnd;    // friendly sprite color
 int mapcolor_enemy;   // enemy sprite color
 int mapcolor_hair;    // crosshair color
 int mapcolor_sngl;    // single player arrow color
+int mapcolor_me;      // consoleplayer's chosen colour
 int mapcolor_plyr[4] = { 112, 88, 64, 32 }; // colors for player arrows in multiplayer
 
 //jff 3/9/98 add option to not show secret sectors until entered
@@ -674,7 +675,7 @@ boolean AM_Responder
     }
     else if (ch == key_map_mark)
     {
-      /* Ty 03/27/98 - *not* externalized     
+      /* Ty 03/27/98 - *not* externalized
        * cph 2001/11/20 - use doom_printf so we don't have our own buffer */
       doom_printf("%s %d", s_AMSTR_MARKEDSPOT, markpointnum);
       AM_addMark();
@@ -1472,7 +1473,7 @@ static void AM_drawThings(void)
         NUMTHINTRIANGLEGUYLINES,
         16<<MAPBITS,//e6y
         t->angle,
-	t->flags & MF_FRIEND && !t->player ? mapcolor_frnd : 
+	t->flags & MF_FRIEND && !t->player ? mapcolor_frnd :
 	/* cph 2006/07/30 - Show count-as-kills in red. */
           ((t->flags & (MF_COUNTKILL | MF_CORPSE)) == MF_COUNTKILL) ? mapcolor_enemy :
         /* bbm 2/28/03 Show countable items in yellow. */

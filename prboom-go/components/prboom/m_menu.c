@@ -65,82 +65,73 @@
 
 extern patchnum_t hu_font[HU_FONTSIZE];
 extern boolean  message_dontfuckwithme;
-
+extern int map_point_coordinates; // killough 10/98
+extern int mousebfire, mousebstrafe, mousebforward;
+extern int joybfire, joybstrafe, joybuse, joybspeed;
 extern boolean chat_on;          // in heads-up code
+extern char* chat_macros[];  // chat macros
+extern const char* shiftxform;
+extern default_t defaults[];
+extern int numdefaults;
 
 //
 // defaulted values
 //
-
 int mouseSensitivity_horiz; // has default   //  killough
 int mouseSensitivity_vert;  // has default
+int showMessages;           // Show messages has default, 0 = off, 1 = on
+int hide_setup=1;           // killough 5/15/98
+int screenblocks;           // has default
+int screenSize;             // temp for screenblocks (0-9)
+int quickSaveSlot;          // -1 = no quicksave slot picked!
+int messageToPrint;         // 1 = message to be printed
 
-int showMessages;    // Show messages has default, 0 = off, 1 = on
+static int set_menu_itemon; // which setup item is selected?   // phares 3/98
+static setup_menu_t *current_setup_menu; // points to current setup menu table
+static int setup_screen; // the current setup screen. takes values from setup_e
+static int mult_screens_index; // the index of the current screen in a set
+static int extended_help_count;   // number of user-defined help screens found
+static int extended_help_index;   // index of current extended help screen
 
-int hide_setup=1; // killough 5/15/98
-
-// Blocky mode, has default, 0 = high, 1 = normal
-//int     detailLevel;    obsolete -- killough
-int screenblocks;    // has default
-
-int screenSize;      // temp for screenblocks (0-9)
-
-int quickSaveSlot;   // -1 = no quicksave slot picked!
-
-int messageToPrint;  // 1 = message to be printed
-
-// CPhipps - static const
 static const char* messageString; // ...and here is the message string!
+static int messageLastMenuActive;
+static int messageNeedsInput; // timed message = no input from user
+static void (*messageRoutine)(int response);
 
-// message x & y
-int     messx;
-int     messy;
-int     messageLastMenuActive;
+static int itemOn;           // menu item skull is on (for Big Font menus)
+static int skullAnimCounter; // skull animation counter
+static int whichSkull;       // which skull to draw (he blinks)
+static boolean shiftdown = false; // phares 4/10/98: SHIFT key down or not
 
-boolean messageNeedsInput; // timed message = no input from user
-
-void (*messageRoutine)(int response);
-
-#define SAVESTRINGSIZE  24
-
-/* killough 8/15/98: when changes are allowed to sync-critical variables */
-static int allow_changes(void)
-{
- return !(demoplayback || demorecording || netgame);
-}
-
-static void M_UpdateCurrent(default_t* def)
-{
-  /* cph - requires rewrite of m_misc.c */
-  if (def->current) {
-    if (allow_changes())  /* killough 8/15/98 */
-  *def->current = *def->location.pi;
-    else if (*def->current != *def->location.pi)
-  warn_about_changes(S_LEVWARN); /* killough 8/15/98 */
-  }
-}
-
-int warning_about_changes, print_warning_about_changes;
-
-/* cphipps - M_DrawBackground renamed and moved to v_video.c */
-#define M_DrawBackground V_DrawBackground
+static int warning_about_changes, print_warning_about_changes;
 
 // we are going to be entering a savegame string
+#define SAVESTRINGSIZE  24
 
-int saveStringEnter;
-int saveSlot;        // which slot to save in
-int saveCharIndex;   // which char we're editing
-// old save description before edit
-char saveOldString[SAVESTRINGSIZE];
+static int saveStringEnter;
+static int saveSlot;        // which slot to save in
+static int saveCharIndex;   // which char we're editing
+static char saveOldString[SAVESTRINGSIZE];
+static char savegamestrings[10][SAVESTRINGSIZE];
+
+// The menu_buffer is used to construct strings for display on the screen.
+static char menu_buffer[64];
+
+static int   chat_index;
+static char *chat_string_buffer; // points to new chat strings while editing
 
 boolean inhelpscreens; // indicates we are in or just left a help screen
-
 int menuactive;    // The menus are up
 
 #define SKULLXOFF  -32
 #define LINEHEIGHT  16
 
-char savegamestrings[10][SAVESTRINGSIZE];
+#define warn_about_changes(x) (warning_about_changes=(x), \
+             print_warning_about_changes = 2)
+
+/* cphipps - M_DrawBackground renamed and moved to v_video.c */
+#define M_DrawBackground V_DrawBackground
+
 
 //
 // MENU TYPEDEFS
@@ -169,34 +160,7 @@ typedef struct menu_s
   short           lastOn;       // last item user was on in menu
 } menu_t;
 
-short itemOn;           // menu item skull is on (for Big Font menus)
-short skullAnimCounter; // skull animation counter
-short whichSkull;       // which skull to draw (he blinks)
-
-menu_t* currentMenu; // current menudef
-
-// phares 3/30/98
-// externs added for setup menus
-
-extern int mousebfire;
-extern int mousebstrafe;
-extern int mousebforward;
-// proff 08/17/98: Added backward to mousebuttons
-extern int mousebbackward;
-extern int joybfire;
-extern int joybstrafe;
-extern int joybuse;
-extern int joybspeed;
-int mapcolor_me;    // cph
-
-extern int map_point_coordinates; // killough 10/98
-
-extern char* chat_macros[];  // chat macros
-extern const char* shiftxform;
-extern default_t defaults[];
-extern int numdefaults;
-
-// end of externs added for setup menus
+static menu_t* currentMenu; // current menudef
 
 //
 // PROTOTYPES
@@ -214,7 +178,6 @@ void M_QuitDOOM(int choice);
 
 void M_SfxVol(int choice);
 void M_MusicVol(int choice);
-/* void M_ChangeDetail(int choice);  unused -- killough */
 void M_SizeDisplay(int choice);
 void M_StartGame(int choice);
 void M_Sound(int choice);
@@ -932,7 +895,6 @@ enum
   setup,                                                    // phares 3/21/98
   scrnsize,
   option_empty1,
-  // mousesens,
   soundvol,
   cheats,
   levelselect,
@@ -968,9 +930,6 @@ menu_t OptionsDef =
 //
 // M_Options
 //
-char detailNames[2][9] = {"M_GDHIGH","M_GDLOW"};
-char msgNames[2][9]  = {"M_MSGOFF","M_MSGON"};
-
 
 void M_DrawOptions(void)
 {
@@ -978,6 +937,7 @@ void M_DrawOptions(void)
   // proff/nicolas 09/20/98 -- changed for hi-res
   V_DrawNamePatch(108, 15, 0, "M_OPTTTL", CR_DEFAULT, VPT_STRETCH);
 
+  // char msgNames[2][9]  = {"M_MSGOFF","M_MSGON"};
   // V_DrawNamePatch(OptionsDef.x + 120, OptionsDef.y+LINEHEIGHT*messages, 0,
   //     msgNames[showMessages], CR_DEFAULT, VPT_STRETCH);
 
@@ -994,7 +954,7 @@ void M_Options(int choice)
 //
 // M_QuitDOOM
 //
-int quitsounds[8] =
+static byte quitsounds[8] =
 {
   sfx_pldeth,
   sfx_dmpain,
@@ -1006,7 +966,7 @@ int quitsounds[8] =
   sfx_sgtatk
 };
 
-int quitsounds2[8] =
+static byte quitsounds2[8] =
 {
   sfx_vilact,
   sfx_getpow,
@@ -1124,12 +1084,10 @@ menuitem_t CheatsMenu[]=
   //{1,"", M_CheatSelect,'0'},
 };
 
-typedef struct {
-  char code[10];
-  char desc[20];
-} menu_cheat_t;
-
-static const menu_cheat_t cheats_list[] = {
+static const struct {
+  const char *code;
+  const char *desc;
+} cheats_list[] = {
   {"idkfa",      "All Weapons + Keys"},
   {"iddqd",      "Invulnerability"},
   {"idbeholdh",  "200% Health"},
@@ -1254,8 +1212,6 @@ void M_MusicVol(int choice)
 //    M_QuickSave
 //
 
-char tempstring[80];
-
 static void M_QuickSaveResponse(int ch)
 {
   if (ch == 'y')  {
@@ -1281,8 +1237,8 @@ void M_QuickSave(void)
     quickSaveSlot = -2; // means to pick a slot now
     return;
   }
-  sprintf(tempstring,s_QSPROMPT,savegamestrings[quickSaveSlot]); // Ty 03/27/98 - externalized
-  M_StartMessage(tempstring,M_QuickSaveResponse,true);
+  sprintf(menu_buffer,s_QSPROMPT,savegamestrings[quickSaveSlot]); // Ty 03/27/98 - externalized
+  M_StartMessage(menu_buffer,M_QuickSaveResponse,true);
 }
 
 /////////////////////////////
@@ -1313,8 +1269,8 @@ void M_QuickLoad(void)
     M_StartMessage(s_QSAVESPOT,NULL,false); // Ty 03/27/98 - externalized
     return;
   }
-  sprintf(tempstring,s_QLPROMPT,savegamestrings[quickSaveSlot]); // Ty 03/27/98 - externalized
-  M_StartMessage(tempstring,M_QuickLoadResponse,true);
+  sprintf(menu_buffer,s_QLPROMPT,savegamestrings[quickSaveSlot]); // Ty 03/27/98 - externalized
+  M_StartMessage(menu_buffer,M_QuickLoadResponse,true);
 }
 
 /////////////////////////////
@@ -1429,15 +1385,6 @@ boolean set_compat_active = false;
 //
 // current_setup_menu is a pointer to the current setup menu table.
 
-static int set_menu_itemon; // which setup item is selected?   // phares 3/98
-setup_menu_t* current_setup_menu; // points to current setup menu table
-
-/////////////////////////////
-//
-// The menu_buffer is used to construct strings for display on the screen.
-
-static char menu_buffer[64];
-
 /////////////////////////////
 //
 // The setup_e enum is used to provide a unique number for each group of Setup
@@ -1456,8 +1403,6 @@ enum
   //set_chatstrings,
   set_setup_end
 } setup_e;
-
-int setup_screen; // the current setup screen. takes values from setup_e
 
 /////////////////////////////
 //
@@ -1673,9 +1618,6 @@ void M_Setup(int choice)
 // killough 10/98: reduced, for more general uses
 #define MAXCHATWIDTH         272
 
-int   chat_index;
-char* chat_string_buffer; // points to new chat strings while editing
-
 /////////////////////////////
 //
 // phares 4/17/98:
@@ -1683,8 +1625,6 @@ char* chat_string_buffer; // points to new chat strings while editing
 // This is a small button that sits in the upper-right-hand corner of
 // the first screen for each group. It blinks when selected, thus the
 // two patches, which it toggles back and forth.
-
-char ResetButtonName[2][8] = {"M_BUTT1","M_BUTT2"};
 
 /////////////////////////////
 //
@@ -1698,6 +1638,7 @@ char ResetButtonName[2][8] = {"M_BUTT1","M_BUTT2"};
 // CPhipps - static, hanging else removed, const parameter
 static void M_DrawItem(const setup_menu_t* s)
 {
+  const char ResetButtonName[2][8] = {"M_BUTT1","M_BUTT2"};
   int x = s->m_x;
   int y = s->m_y;
   int flags = s->m_flags;
@@ -1973,9 +1914,6 @@ static void M_DrawScreenItems(const setup_menu_t* src)
 
 #define VERIFYBOXXORG 66
 #define VERIFYBOXYORG 88
-#define PAL_GRAY1  91
-#define PAL_GRAY2  98
-#define PAL_GRAY3 105
 
 // And the routine to draw it.
 
@@ -2036,10 +1974,8 @@ static void M_DrawInstructions(void)
       break;
     case S_RESET:
       break;
-#ifdef SIMPLECHECKS
     default:
       lprintf(LO_WARN,"Unrecognised menu item type %d", flags);
-#endif
     }
   } else {
     if (flags & S_RESET)
@@ -2083,8 +2019,6 @@ setup_menu_t* keys_settings[] =
   keys_settings4,
   NULL
 };
-
-int mult_screens_index; // the index of the current screen in a set
 
 // Here's an example from this first screen, with explanations.
 //
@@ -2501,8 +2435,6 @@ void M_DrawStatusHUD(void)
 
 #define AU_X    250
 #define AU_Y     31
-#define AU_PREV KB_PREV
-#define AU_NEXT KB_NEXT
 
 setup_menu_t auto_settings1[];
 setup_menu_t auto_settings2[];
@@ -2539,7 +2471,7 @@ setup_menu_t auto_settings1[] =  // 1st AutoMap Settings screen
   // Button for resetting to defaults
   {0,S_RESET,m_null,X_BUTTON,Y_BUTTON},
 
-  {"NEXT ->",S_SKIP|S_NEXT,m_null,AU_NEXT,AU_Y+20*8, {auto_settings2}},
+  {"NEXT ->",S_SKIP|S_NEXT,m_null,KB_NEXT,AU_Y+20*8, {auto_settings2}},
 
   // Final entry
   {0,S_SKIP|S_END,m_null}
@@ -2563,7 +2495,7 @@ setup_menu_t auto_settings2[] =  // 2nd AutoMap Settings screen
 
   {"friends"                        ,S_COLOR ,m_null,AU_X,AU_Y+12*8, {"mapcolor_frnd"}},        // killough 8/8/98
 
-  {"<- PREV",S_SKIP|S_PREV,m_null,AU_PREV,AU_Y+20*8, {auto_settings1}},
+  {"<- PREV",S_SKIP|S_PREV,m_null,KB_PREV,AU_Y+20*8, {auto_settings1}},
 
   // Final entry
 
@@ -2780,18 +2712,9 @@ void M_DrawEnemy(void)
 // The General table.
 // killough 10/10/98
 
-extern int usejoystick, usemouse, default_mus_card, default_snd_card;
-extern int detect_voices, realtic_clock_rate, tran_filter_pct;
-
-setup_menu_t gen_settings3[];
-
-setup_menu_t* gen_settings[] =
-{
-  gen_settings3,
-  NULL
-};
-
 enum {
+  general_trans,
+  general_transpct,
   general_filterwall,
   general_filterfloor,
   general_filtersprite,
@@ -2800,15 +2723,10 @@ enum {
   general_spriteedges,
   general_patchedges,
   general_hom,
-  general_spacer1,
-  general_title1,
-  general_sndcard,
-  general_sndchan,
-  general_pitch,
-  general_spacer2,
-  general_title2,
-  general_diskicon,
-  general_reset,
+  general_corpse,
+  general_realtic,
+  general_smooth,
+  general_smoothfactor,
 };
 
 #define G_X 250
@@ -2817,9 +2735,13 @@ enum {
 static const char *renderfilters[] = {"none", "point", "linear", "rounded"};
 static const char *edgetypes[] = {"jagged", "sloped"};
 
-setup_menu_t gen_settings3[] = { // General Settings screen2
+setup_menu_t gen_settings3[] = { // General Settings
 
-  {"Renderer settings"     ,S_SKIP|S_TITLE, m_null, G_X, G_YC - 12},
+  {"Enable Translucency", S_YESNO, m_null, G_X,
+   G_YC + general_trans*8, {"translucency"}, 0, 0, M_Trans},
+
+  {"Translucency filter percentage", S_NUM, m_null, G_X,
+   G_YC + general_transpct*8, {"tran_filter_pct"}, 0, 0, M_Trans},
 
   {"Filter for walls", S_CHOICE, m_null, G_X,
    G_YC + general_filterwall*8, {"filter_wall"}, 0, 0, NULL, renderfilters},
@@ -2845,9 +2767,30 @@ setup_menu_t gen_settings3[] = { // General Settings screen2
   {"Flashing HOM indicator", S_YESNO, m_null, G_X,
    G_YC + general_hom*8, {"flashing_hom"}},
 
+  {"Maximum number of player corpses", S_NUM|S_PRGWARN, m_null, G_X,
+   G_YC + general_corpse*8, {"max_player_corpse"}},
+
+  {"Game speed, percentage of normal", S_NUM|S_PRGWARN, m_null, G_X,
+   G_YC + general_realtic*8, {"realtic_clock_rate"}},
+
+  {"Smooth Demo Playback", S_YESNO, m_null, G_X,
+   G_YC + general_smooth*8, {"demo_smoothturns"}, 0, 0, M_ChangeDemoSmoothTurns},
+
+  {"Smooth Demo Playback Factor", S_NUM, m_null, G_X,
+   G_YC + general_smoothfactor*8, {"demo_smoothturnsfactor"}, 0, 0, M_ChangeDemoSmoothTurns},
+
+  // Button for resetting to defaults
+  {0,S_RESET,m_null,X_BUTTON,Y_BUTTON},
+
   // Final entry
 
   {0,S_SKIP|S_END,m_null}
+};
+
+setup_menu_t* gen_settings[] =
+{
+  gen_settings3,
+  NULL
 };
 
 void M_Trans(void) // To reset translucency after setting it in menu
@@ -3132,37 +3075,14 @@ setup_menu_t mess_settings1[] =  // Messages screen
   {"Message Color During Play", S_CRITEM, m_null, M_X,
    M_Y + mess_color_play*8, {"hudcolor_mesg"}},
 
-#if 0
-  {"Message Duration During Play (ms)", S_NUM, m_null, M_X,
-   M_Y  + mess_timer*8, {"message_timer"}},
-#endif
-
   {"Chat Message Color", S_CRITEM, m_null, M_X,
    M_Y + mess_color_chat*8, {"hudcolor_chat"}},
-
-#if 0
-  {"Chat Message Duration (ms)", S_NUM, m_null, M_X,
-   M_Y  + mess_chat_timer*8, {"chat_msg_timer"}},
-#endif
 
   {"Message Review Color", S_CRITEM, m_null, M_X,
    M_Y + mess_color_review*8, {"hudcolor_list"}},
 
-#if 0
-  {"Message Listing Review is Temporary",  S_YESNO,  m_null,  M_X,
-   M_Y + mess_timed*8, {"hud_msg_timed"}},
-
-  {"Message Review Duration (ms)", S_NUM, m_null, M_X,
-   M_Y  + mess_hud_timer*8, {"hud_msg_timer"}},
-#endif
-
   {"Number of Review Message Lines", S_NUM, m_null,  M_X,
    M_Y + mess_lines*8, {"hud_msg_lines"}},
-
-#if 0
-  {"Message Listing Scrolls Upwards",  S_YESNO,  m_null,  M_X,
-   M_Y + mess_scrollup*8, {"hud_msg_scrollup"}},
-#endif
 
   {"Message Background",  S_YESNO,  m_null,  M_X,
    M_Y + mess_background*8, {"hud_list_bgon"}},
@@ -3173,6 +3093,7 @@ setup_menu_t mess_settings1[] =  // Messages screen
   // Final entry
 
   {0,S_SKIP|S_END,m_null}
+
 };
 
 
@@ -3218,8 +3139,6 @@ void M_DrawMessages(void)
 //
 // General routines used by the Setup screens.
 //
-
-static boolean shiftdown = false; // phares 4/10/98: SHIFT key down or not
 
 // phares 4/17/98:
 // M_SelectDone() gets called when you have finished entering your
@@ -3354,9 +3273,6 @@ static void M_InitDefaults(void)
 
 // phares 3/30/98:
 // Extended Help Screen variables
-
-int extended_help_count;   // number of user-defined help screens found
-int extended_help_index;   // index of current extended help screen
 
 menuitem_t ExtHelpMenu[] =
 {
@@ -3759,6 +3675,17 @@ static int M_IndexInChoices(const char *str, const char **choices) {
     choices++;
   }
   return 0;
+}
+
+static void M_UpdateCurrent(default_t* def)
+{
+  /* cph - requires rewrite of m_misc.c */
+  if (def->current) {
+    if (!(demoplayback || demorecording || netgame))  /* killough 8/15/98 */
+      *def->current = *def->location.pi;
+    else if (*def->current != *def->location.pi)
+      warn_about_changes(S_LEVWARN); /* killough 8/15/98 */
+  }
 }
 
 /////////////////////////////////////////////////////////////////////////////

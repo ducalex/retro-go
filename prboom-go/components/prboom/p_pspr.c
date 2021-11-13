@@ -155,15 +155,14 @@ int weapon_preferences[2][NUMWEAPONS+1] = {
 
 int P_SwitchWeapon(player_t *player)
 {
-  int *prefer = weapon_preferences[demo_compatibility!=0]; // killough 3/22/98
   int currentweapon = player->readyweapon;
   int newweapon = currentweapon;
-  int i = NUMWEAPONS+1;   // killough 5/2/98
 
-  // killough 2/8/98: follow preferences and fix BFG/SSG bugs
-
-  do
-    switch (*prefer++)
+  for (int i = 0; i < NUMWEAPONS+1 && newweapon == currentweapon; ++i)
+  {
+    // RG: Sequential works better with our one button setup
+    int next = demo_compatibility ? weapon_preferences[1][i] : (currentweapon + i + 1);
+    switch (next % 10)
       {
       case 1:
         if (!player->powers[pw_strength])      // allow chainsaw override
@@ -207,7 +206,7 @@ int P_SwitchWeapon(player_t *player)
           newweapon = wp_supershotgun;
         break;
       }
-  while (newweapon==currentweapon && --i);          // killough 5/2/98
+  }
   return newweapon;
 }
 
