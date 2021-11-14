@@ -42,27 +42,18 @@
 
 typedef struct
 {
-  void *file;
   void *ptr;
-  size_t offset;
-  size_t len;
-  int locks;
+  short lump;
+  short locks;
 } segment_t;
 
-#define NO_MMAP_HANDLES 128
-static segment_t segments[NO_MMAP_HANDLES];
+#define MAX_CACHE_HANDLES 192
+static segment_t segments[MAX_CACHE_HANDLES];
 static int cursor = 0;
-// static byte *lumpmap;
 
-//
-// RG: Using a lumpmap would avoid scanning segments[] on every W_CacheLumpNum and
-// W_UnlockLumpNum calls. But it is causing some issues at the moment so we'll live
-// with the small delay. Which is still less than what it was in the previous implementation!
-//
 void W_InitCache(void)
 {
-  // lumpmap = malloc(numlumps);
-  // memset(lumpmap, 0xFF, numlumps);
+  //
 }
 
 void W_DoneCache(void)
@@ -77,17 +68,11 @@ const void *W_CacheLumpNum(int lump)
     I_Error("W_CacheLumpNum: %d >= numlumps(%d)", lump, numlumps);
 #endif
 
-  FILE *fd = lumpinfo[lump].wadfile->handle;
-  size_t length = lumpinfo[lump].size;
-  off_t offset = lumpinfo[lump].position;
-
-  for (int i = 0; i < NO_MMAP_HANDLES; i++)
+  for (int i = 0; i < MAX_CACHE_HANDLES; i++)
   {
-    if (segments[i].file == fd && segments[i].offset == offset && segments[i].len >= length && segments[i].ptr)
+    if (segments[i].lump == lump && segments[i].ptr)
     {
-      segments[i].locks++;
-
-      if (segments[i].locks <= 1)
+      if (++segments[i].locks <= 1)
       {
         Z_ChangeTag(segments[i].ptr, PU_STATIC);
         segments[i].locks = 1;
@@ -96,34 +81,29 @@ const void *W_CacheLumpNum(int lump)
     }
   }
 
-  int n = NO_MMAP_HANDLES;
+  int n = MAX_CACHE_HANDLES;
   while (segments[cursor].locks > 0)
   {
-    if (++cursor == NO_MMAP_HANDLES)
+    if (++cursor == MAX_CACHE_HANDLES)
       cursor = 0;
     if (--n == 0)
-      I_Error("Out of Mmap handles!");
+      I_Error("Out of cache handles!");
   }
 
   int handle = cursor++;
 
-  if (cursor == NO_MMAP_HANDLES)
+  if (cursor == MAX_CACHE_HANDLES)
     cursor = 0;
 
   if (segments[handle].ptr)
     Z_Free(segments[handle].ptr);
 
-  void *block = Z_Malloc(length, PU_STATIC, &segments[handle].ptr);
+  W_ReadLump(lump, Z_Malloc(W_LumpLength(lump), PU_STATIC, &segments[handle].ptr));
 
-  segments[handle].file = fd;
-  segments[handle].offset = offset;
-  segments[handle].len = length;
+  segments[handle].lump = lump;
   segments[handle].locks = 1;
 
-  fseek(fd, offset, SEEK_SET);
-  fread(block, length, 1, fd);
-
-  return block;
+  return segments[handle].ptr;
 }
 
 void W_UnlockLumpNum(int lump)
@@ -133,16 +113,11 @@ void W_UnlockLumpNum(int lump)
     I_Error("W_UnlockLumpNum: %d >= numlumps(%d)", lump, numlumps);
 #endif
 
-  size_t length = lumpinfo[lump].size;
-  void *fd = lumpinfo[lump].wadfile->handle;
-  off_t offset = lumpinfo[lump].position;
-
-  for (int i = 0; i < NO_MMAP_HANDLES; i++)
+  for (int i = 0; i < MAX_CACHE_HANDLES; i++)
   {
-    if (segments[i].file == fd && segments[i].offset == offset && segments[i].len >= length && segments[i].ptr)
+    if (segments[i].lump == lump && segments[i].ptr)
     {
-      segments[i].locks--;
-      if (segments[i].locks == 0)
+      if (--segments[i].locks == 0)
       {
         Z_ChangeTag(segments[i].ptr, PU_CACHE);
         return;
