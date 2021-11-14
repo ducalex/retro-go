@@ -514,7 +514,7 @@ void V_UpdateTrueColorPalette(video_mode_t mode) {
   static int usegammaOnLastPaletteGeneration = -1;
 
   int pplump = W_GetNumForName("PLAYPAL");
-  int gtlump = (W_CheckNumForName)("GAMMATBL",ns_prboom);
+  int gtlump = W_CheckNumForNameNs("GAMMATBL",ns_prboom);
   const byte *pal = W_CacheLumpNum(pplump);
   const byte *gtable = W_CacheLumpNum(gtlump) + 256*(usegamma);
 

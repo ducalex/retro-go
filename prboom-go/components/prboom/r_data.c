@@ -158,7 +158,7 @@ static void R_InitTextures (void)
           // appear first in a wad. This is a kludgy solution to the wad
           // lump namespace problem.
 
-          patchlookup[i] = (W_CheckNumForName)(name, ns_sprites);
+          patchlookup[i] = W_CheckNumForNameNs(name, ns_sprites);
 
           if (patchlookup[i] == -1 && devparm)
             //jff 8/3/98 use logical output routine
@@ -393,7 +393,7 @@ int R_ColormapNumForName(const char *name)
 {
   register int i = 0;
   if (strncasecmp(name,"COLORMAP",8))     // COLORMAP predefined to return 0
-    if ((i = (W_CheckNumForName)(name, ns_colormaps)) != -1)
+    if ((i = W_CheckNumForNameNs(name, ns_colormaps)) != -1)
       i -= firstcolormaplump;
   return i;
 }
@@ -544,7 +544,7 @@ void R_InitData(void)
 
 int R_FlatNumForName(const char *name)    // killough -- const added
 {
-  int i = (W_CheckNumForName)(name, ns_flats);
+  int i = W_CheckNumForNameNs(name, ns_flats);
   if (i == -1)
     I_Error("R_FlatNumForName: %.8s not found", name);
   return i - firstflat;

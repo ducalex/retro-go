@@ -181,7 +181,6 @@ static void W_AddFile(wadfile_info_t *wadfile)
         lump_p->size = LONG(fileinfo->size);
         lump_p->li_namespace = ns_global;              // killough 4/17/98
         strncpy (lump_p->name, fileinfo->name, 8);
-        lump_p->source = wadfile->src;                    // Ty 08/29/98
       }
 
     free(fileinfo2free);      // killough
@@ -293,7 +292,7 @@ unsigned W_LumpNameHash(const char *s)
 // between different resources such as flats, sprites, colormaps
 //
 
-int (W_CheckNumForName)(register const char *name, register int li_namespace)
+int W_CheckNumForNameNs(register const char *name, register int li_namespace)
 {
   // Hash function maps the name to one of possibly numlump chains.
   // It has been tuned so that the average chain length never exceeds 2.
@@ -346,7 +345,7 @@ void W_HashLumps(void)
 //
 int W_GetNumForName (const char* name)     // killough -- const added
 {
-  int i = W_CheckNumForName (name);
+  int i = W_CheckNumForName(name);
   if (i == -1)
     I_Error("W_GetNumForName: %.8s not found", name);
   return i;
