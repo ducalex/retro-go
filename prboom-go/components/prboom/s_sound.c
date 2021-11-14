@@ -75,6 +75,7 @@ typedef struct
 
 // the set of channels available
 static channel_t channels[16];
+static int numChannels;
 
 // These are not used, but should be (menu).
 // Maximum volume of a sound effect.
@@ -84,17 +85,14 @@ int snd_SfxVolume = 15;
 // Maximum volume of music. Useless so far.
 int snd_MusicVolume = 15;
 
+// Default amount of channels to use (set in M_misc)
+int snd_channels;
+
 // whether songs are mus_paused
 static boolean mus_paused;
 
 // music currently being played
 static musicinfo_t *mus_playing;
-
-// following is set
-//  by the defaults code in M_misc:
-// number of channels available
-int default_numChannels;
-int numChannels;
 
 //jff 3/17/98 to keep track of last IDMUS specified music num
 int idmusnum;
@@ -117,31 +115,41 @@ static int S_getChannel(void *origin, sfxinfo_t *sfxinfo, int is_pickup);
 
 void S_Init(int sfxVolume, int musicVolume)
 {
-  //jff 1/22/98 skip sound init if sound not enabled
-  numChannels = MIN(default_numChannels, 16);
-  if (snd_card && !nosfxparm)
+  char namebuf[16];
+
+  bool sfx_enabled = snd_card && !nosfxparm;
+  bool mus_enabled = mus_card && !nomusicparm;
+
+  numChannels = MIN(snd_channels, 16);
+
+  lprintf(LO_CONFIRM, "S_Init: channels=%d, sfx=%d, music=%d\n",
+          numChannels, sfx_enabled, mus_enabled);
+
+  if (sfx_enabled)
   {
-    int i;
-
-    lprintf(LO_CONFIRM, "S_Init: default sfx volume %d\n", sfxVolume);
-
-    // Whatever these did with DMX, these are rather dummies now.
-    I_SetChannels();
-
-    S_SetSfxVolume(sfxVolume);
-
-    // Note that sounds have not been cached (yet).
-    for (i=1 ; i<NUMSFX ; i++)
-      S_sfx[i].lumpnum = S_sfx[i].usefulness = -1;
+    for (size_t i = 1; i < NUMSFX; i++)
+    {
+      sprintf(namebuf, "ds%s", S_sfx[i].name);
+      S_sfx[i].lumpnum = W_CheckNumForName(namebuf);
+      S_sfx[i].usefulness = -1;
+    }
   }
 
-  // CPhipps - music init reformatted
-  if (mus_card && !nomusicparm) {
-    S_SetMusicVolume(musicVolume);
-
-    // no sounds are playing, and they are not mus_paused
+  if (mus_enabled)
+  {
+    for (size_t i = 1; i < NUMMUSIC; i++)
+    {
+      sprintf(namebuf, "d_%s", S_music[i].name);
+      S_music[i].lumpnum = W_CheckNumForName(namebuf);
+    }
     mus_paused = 0;
   }
+
+  if (sfx_enabled || mus_enabled)
+    I_InitSound();
+
+  S_SetSfxVolume(sfxVolume);
+  S_SetMusicVolume(musicVolume);
 }
 
 void S_Stop(void)
@@ -285,9 +293,8 @@ void S_StartSoundAtVolume(void *origin_p, int sfx_id, int volume)
   if (cnum<0)
     return;
 
-  // get lumpnum if necessary
   // killough 2/28/98: make missing sounds non-fatal
-  if (sfx->lumpnum < 0 && (sfx->lumpnum = I_GetSfxLumpNum(sfx)) < 0)
+  if (sfx->lumpnum < 0)
     return;
 
   // increase the usefulness
@@ -416,25 +423,16 @@ void S_UpdateSounds(void* listener_p)
 
 void S_SetMusicVolume(int volume)
 {
-  //jff 1/22/98 return if music is not enabled
-  if (!mus_card || nomusicparm)
-    return;
-  if (volume < 0 || volume > 15)
-    I_Error("S_SetMusicVolume: Attempt to set music volume at %d", volume);
-  I_SetMusicVolume(volume);
-  snd_MusicVolume = volume;
+  snd_MusicVolume = MIN(MAX(volume, 0), 15);
+  if (mus_card && !nomusicparm)
+    I_SetMusicVolume(snd_MusicVolume);
 }
 
 
 
 void S_SetSfxVolume(int volume)
 {
-  //jff 1/22/98 return if sound is not enabled
-  if (!snd_card || nosfxparm)
-    return;
-  if (volume < 0 || volume > 127)
-    I_Error("S_SetSfxVolume: Attempt to set sfx volume at %d", volume);
-  snd_SfxVolume = volume;
+  snd_SfxVolume = MIN(MAX(volume, 0), 15);
 }
 
 
@@ -469,17 +467,13 @@ void S_ChangeMusic(int musicnum, int looping)
   // shutdown old music
   S_StopMusic();
 
-  // get lumpnum if neccessary
-  if (!music->lumpnum)
-    {
-      char namebuf[9];
-      sprintf(namebuf, "d_%s", music->name);
-      music->lumpnum = W_GetNumForName(namebuf);
-    }
+  // check if we have the track
+  if (music->lumpnum < 0)
+    return;
 
   // load & register it
-  music->data = W_CacheLumpNum(music->lumpnum);
-  music->handle = I_RegisterSong(music->data, W_LumpLength(music->lumpnum));
+  music->handle = I_RegisterSong(W_CacheLumpNum(music->lumpnum), W_LumpLength(music->lumpnum));
+  W_UnlockLumpNum(music->lumpnum); // Release it, I_RegisterSong makes a copy
 
   // play it
   I_PlaySong(music->handle, looping);
@@ -501,10 +495,7 @@ void S_StopMusic(void)
 
       I_StopSong(mus_playing->handle);
       I_UnRegisterSong(mus_playing->handle);
-      if (mus_playing->lumpnum >= 0)
-  W_UnlockLumpNum(mus_playing->lumpnum); // cph - release the music data
 
-      mus_playing->data = 0;
       mus_playing = 0;
     }
 }

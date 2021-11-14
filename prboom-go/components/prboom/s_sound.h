@@ -91,8 +91,7 @@ void S_SetMusicVolume(int volume);
 void S_SetSfxVolume(int volume);
 
 // machine-independent sound params
-extern int default_numChannels;
-extern int numChannels;
+extern int snd_channels;
 
 //jff 3/17/98 holds last IDMUS number, or -1
 extern int idmusnum;

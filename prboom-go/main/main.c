@@ -62,8 +62,11 @@ static struct {
     int start;       // Time/gametic that the channel started playing
     int sfxid;       // SFX id of the playing sound effect.
 } channels[NUM_MIX_CHANNELS];
+static struct {
+    void *data;
+    size_t length;
+} sfx[NUMSFX];
 static short mixbuffer[SAMPLECOUNT * 2];
-static int sfx_lengths[NUMSFX];
 static const music_player_t *music_player = &opl_synth_player;
 static bool musicPlaying = false;
 
@@ -246,10 +249,6 @@ void I_UpdateSoundParams(int handle, int volume, int seperation, int pitch)
 {
 }
 
-void I_SetChannels()
-{
-}
-
 int I_StartSound(int sfxid, int channel, int vol, int sep, int pitch, int priority)
 {
     int oldest = gametic;
@@ -282,8 +281,8 @@ int I_StartSound(int sfxid, int channel, int vol, int sep, int pitch, int priori
     }
 
     // Use empty channel if available, otherwise reuse the oldest one
-    channels[slot].data = S_sfx[sfxid].data;
-    channels[slot].endptr = channels[slot].data + sfx_lengths[sfxid];
+    channels[slot].data = sfx[sfxid].data;
+    channels[slot].endptr = channels[slot].data + sfx[sfxid].length;
     channels[slot].sfxid = sfxid;
 
     return 1;
@@ -368,67 +367,37 @@ static void soundTask(void *arg)
     }
 }
 
-// Retrieve the raw data lump index
-//  for a given SFX name.
-//
-int I_GetSfxLumpNum(sfxinfo_t *sfx)
-{
-    char namebuf[9];
-    sprintf(namebuf, "ds%s", sfx->name);
-    return W_GetNumForName(namebuf);
-}
-
 void I_InitSound(void)
 {
     RG_LOGI("called\n");
 
-    char sfx_name[32];
-
-    for (int i = 2; i < NUMSFX; i++)
-    {
-        // Map unknown sounds to pistol
-        sprintf(sfx_name, "ds%s", S_sfx[i].name);
-
-        if (!S_sfx[i].link && W_CheckNumForName(sfx_name) == -1)
-        {
-            S_sfx[i].link = &S_sfx[1];
-        }
-    }
-
     for (int i = 1; i < NUMSFX; i++)
     {
-        // Previously loaded already (alias)?
-        if (S_sfx[i].link)
+        // Map unknown sounds to pistol
+        if (S_sfx[i].lumpnum == -1)
         {
-            S_sfx[i].data = S_sfx[i].link->data;
-            sfx_lengths[i] = sfx_lengths[(S_sfx[i].link - S_sfx) / sizeof(sfxinfo_t)];
+            sfx[i] = sfx[1];
             continue;
         }
 
-        sprintf(sfx_name, "ds%s", S_sfx[i].name);
-        int sfxlump = W_GetNumForName(sfx_name);
-        const void *sfx = W_CacheLumpNum(sfxlump) + 8;
+        int sfxlump = S_sfx[i].lumpnum;
+        const void *data = W_CacheLumpNum(sfxlump) + 8;
         size_t size = W_LumpLength(sfxlump) - 8;
 
         // Pads the sound effect out to the mixing buffer size.
         size_t paddedsize = ((size + (SAMPLECOUNT - 1)) / SAMPLECOUNT) * SAMPLECOUNT;
         void *paddedsfx = Z_Malloc(paddedsize, PU_SOUND, 0);
 
-        memcpy(paddedsfx, sfx, size);
+        memcpy(paddedsfx, data, size);
         memset(paddedsfx + size, 0x80, paddedsize - size);
+
+        sfx[i].data = paddedsfx;
+        sfx[i].length = paddedsize;
 
         W_UnlockLumpNum(sfxlump);
         Z_FreeTags(PU_CACHE, PU_CACHE);
-
-        sfx_lengths[i] = paddedsize;
-        S_sfx[i].data = paddedsfx;
     }
     RG_LOGI("pre-cached all sound data!\n");
-
-    default_numChannels = NUM_MIX_CHANNELS;
-    snd_samplerate = SAMPLERATE;
-    snd_MusicVolume = 15;
-    snd_SfxVolume = 15;
 
     music_player->init(snd_samplerate);
     music_player->setvolume(snd_MusicVolume);
@@ -504,7 +473,7 @@ int I_RegisterSong(const void *data, size_t len)
 
 void I_SetMusicVolume(int volume)
 {
-    //music_player->setvolume(volume);
+    music_player->setvolume(volume);
 }
 
 void I_StartTic(void)
@@ -552,7 +521,10 @@ void I_StartTic(void)
 
 void I_Init(void)
 {
-    I_InitSound();
+    snd_channels = NUM_MIX_CHANNELS;
+    snd_samplerate = SAMPLERATE;
+    snd_MusicVolume = 15;
+    snd_SfxVolume = 15;
     R_InitInterpolation();
 }
 

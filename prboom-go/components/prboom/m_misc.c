@@ -266,7 +266,6 @@ default_t defaults[] =
   {"comp_soul",{&default_comp[comp_soul]},{0},0,1,def_bool,ss_comp,&comp[comp_soul]},
   {"comp_maskedanim",{&default_comp[comp_maskedanim]},{0},0,1,def_bool,ss_comp,&comp[comp_maskedanim]},
 
-#if 0
   {"Sound settings",{NULL},{0},UL,UL,def_none,ss_none},
   {"sound_card",{&snd_card},{-1},-1,7,       // jff 1/18/98 allow Allegro drivers
    def_int,ss_none}, // select sounds driver (DOS), -1 is autodetect, 0 is none; in Linux, non-zero enables sound
@@ -279,9 +278,8 @@ default_t defaults[] =
   {"music_volume",{&snd_MusicVolume},{8},0,15, def_int,ss_none},
   {"mus_pause_opt",{&mus_pause_opt},{2},0,2, // CPhipps - music pausing
    def_int, ss_none}, // 0 = kill music when paused, 1 = pause music, 2 = let music continue
-  {"snd_channels",{&default_numChannels},{8},1,32,
+  {"snd_channels",{&snd_channels},{8},1,32,
    def_int,ss_none}, // number of audio events simultaneously // killough
-#endif
 
   {"Video settings",{NULL},{0},UL,UL,def_none,ss_none},
 #if 0
