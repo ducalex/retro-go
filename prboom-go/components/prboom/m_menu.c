@@ -115,7 +115,7 @@ static char saveOldString[SAVESTRINGSIZE];
 static char savegamestrings[10][SAVESTRINGSIZE];
 
 // The menu_buffer is used to construct strings for display on the screen.
-static char menu_buffer[64];
+static char menu_buffer[160];
 
 static int   chat_index;
 static char *chat_string_buffer; // points to new chat strings while editing
@@ -1008,17 +1008,8 @@ static void M_QuitResponse(int ch)
 
 void M_QuitDOOM(int choice)
 {
-  static char endstring[160];
-
-  // We pick index 0 which is language sensitive,
-  // or one at random, between 1 and maximum number.
-  // Ty 03/27/98 - externalized DOSY as a string s_DOSY that's in the sprintf
-  if (language != english)
-    sprintf(endstring,"%s\n\n%s",s_DOSY, endmsg[0] );
-  else         // killough 1/18/98: fix endgame message calculation:
-    sprintf(endstring,"%s\n\n%s", endmsg[gametic%(NUM_QUITMESSAGES-1)+1], s_DOSY);
-
-  M_StartMessage(endstring,M_QuitResponse,true);
+  sprintf(menu_buffer,"%s\n\n%s", endmsg[gametic%(NUM_QUITMESSAGES-1)+1], s_DOSY);
+  M_StartMessage(menu_buffer,M_QuitResponse,true);
 }
 
 /////////////////////////////
@@ -2116,7 +2107,6 @@ setup_menu_t keys_settings2[] =  // Key Binding screen strings
   {"SPY"         ,S_KEY       ,m_scrn,KB_X,KB_Y+ 8*8,{&key_spy}},
   {"LARGER VIEW" ,S_KEY       ,m_scrn,KB_X,KB_Y+ 9*8,{&key_zoomin}},
   {"SMALLER VIEW",S_KEY       ,m_scrn,KB_X,KB_Y+10*8,{&key_zoomout}},
-  {"SCREENSHOT"  ,S_KEY       ,m_scrn,KB_X,KB_Y+11*8,{&key_screenshot}},
   {"GAME"        ,S_SKIP|S_TITLE,m_null,KB_X,KB_Y+12*8},
   {"SAVE"        ,S_KEY       ,m_scrn,KB_X,KB_Y+13*8,{&key_savegame}},
   {"LOAD"        ,S_KEY       ,m_scrn,KB_X,KB_Y+14*8,{&key_loadgame}},
@@ -2542,6 +2532,10 @@ byte palette_background[16*(CHIP_SIZE+1)+8];
 static void M_DrawColPal(void)
 {
   int cpx, cpy;
+
+  // RG: The built-in prboom.wad has M_COLORS removed (for size)
+  if (W_CheckNumForName("M_COLORS") == -1)
+    return;
 
   // Draw a background, border, and paint chips
 
@@ -3480,7 +3474,6 @@ setup_menu_t helpstrings[] =  // HELP screen strings
   {"SPY"         ,S_SKIP|S_KEY,m_null,KT_X1,KT_Y1+10*8,{&key_spy}},
   {"LARGER VIEW" ,S_SKIP|S_KEY,m_null,KT_X1,KT_Y1+11*8,{&key_zoomin}},
   {"SMALLER VIEW",S_SKIP|S_KEY,m_null,KT_X1,KT_Y1+12*8,{&key_zoomout}},
-  {"SCREENSHOT"  ,S_SKIP|S_KEY,m_null,KT_X1,KT_Y1+13*8,{&key_screenshot}},
 
   {"AUTOMAP"     ,S_SKIP|S_TITLE,m_null,KT_X1,KT_Y2},
   {"FOLLOW MODE" ,S_SKIP|S_KEY,m_null,KT_X1,KT_Y2+ 1*8,{&key_map_follow}},
@@ -3839,15 +3832,6 @@ boolean M_Responder (event_t* ev) {
     S_StartSound(NULL,sfx_swtchx);
     return true;
   }
-
-  /* killough 2/22/98: add support for screenshot key:
-   * cph 2001/02/04: no need for this to be a gameaction, just do it
-   */
-  if (ch == key_screenshot)
-    {
-    M_ScreenShot ();
-    // Don't eat the keypress in this case. See sf bug #1843280.
-    }
 
   // If there is no active menu displayed...
 

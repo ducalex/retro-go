@@ -105,8 +105,6 @@ void I_UpdateNoBlit(void)
 
 void I_FinishUpdate(void)
 {
-    update.buffer = screens[0].data;
-    update.synchronous = true;
     rg_display_queue_update(&update, NULL);
 }
 
@@ -140,36 +138,28 @@ void I_SetRes(void)
     {
         screens[i].width = SCREENWIDTH;
         screens[i].height = SCREENHEIGHT;
-        screens[i].byte_pitch = SCREENPITCH;
-        screens[i].short_pitch = SCREENPITCH / V_GetModePixelDepth(VID_MODE16);
-        screens[i].int_pitch = SCREENPITCH / V_GetModePixelDepth(VID_MODE32);
+        screens[i].byte_pitch = SCREENWIDTH;
     }
+
+    // Main screen uses internal ram for speed
+    screens[0].data = update.buffer;
+    screens[0].not_on_heap = true;
 
     // statusbar
     screens[4].width = SCREENWIDTH;
     screens[4].height = (ST_SCALED_HEIGHT + 1);
-    screens[4].byte_pitch = SCREENPITCH;
-    screens[4].short_pitch = SCREENPITCH / V_GetModePixelDepth(VID_MODE16);
-    screens[4].int_pitch = SCREENPITCH / V_GetModePixelDepth(VID_MODE32);
+    screens[4].byte_pitch = SCREENWIDTH;
 
-    rg_display_set_source_format(SCREENWIDTH, SCREENHEIGHT, 0, 0, SCREENPITCH, RG_PIXEL_PAL565_BE);
-
-    RG_LOGI("Using resolution %dx%d\n", SCREENWIDTH, SCREENHEIGHT);
+    rg_display_set_source_format(SCREENWIDTH, SCREENHEIGHT, 0, 0, SCREENWIDTH, RG_PIXEL_PAL565_BE);
 }
 
 void I_InitGraphics(void)
 {
     V_InitMode(VID_MODE8);
-    V_DestroyUnusedTrueColorPalettes();
     V_FreeScreens();
     I_SetRes();
     V_AllocScreens();
     R_InitBuffer(SCREENWIDTH, SCREENHEIGHT);
-}
-
-void I_CalculateRes(unsigned int width, unsigned int height)
-{
-    //
 }
 
 int I_GetTime_RealTime(void)
@@ -578,6 +568,9 @@ void app_main()
 
     app = rg_system_init(SAMPLERATE, &handlers);
     app->refreshRate = TICRATE;
+
+    update.buffer = rg_alloc(SCREENHEIGHT*SCREENWIDTH, MEM_FAST);
+    update.synchronous = true;
 
     const char *romtype = "-iwad";
     FILE *fp;

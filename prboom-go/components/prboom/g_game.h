@@ -156,7 +156,6 @@ extern int  key_map_clear;                                          //    |
 extern int  key_map_grid;                                           // phares
 extern int  key_map_rotate; // cph - map rotation
 extern int  key_map_overlay;// cph - map overlay
-extern int  key_screenshot;    // killough 2/22/98 -- add key for screenshot
 extern int  autorun;           // always running?                   // phares
 
 extern int  defaultskill;      //jff 3/24/98 default skill

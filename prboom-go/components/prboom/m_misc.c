@@ -39,12 +39,7 @@
 
 #include <stdio.h>
 #include <errno.h>
-#ifdef HAVE_UNISTD_H
 #include <unistd.h>
-#endif
-#ifdef _MSC_VER
-#include <io.h>
-#endif
 #include <fcntl.h>
 #include <sys/stat.h>
 
@@ -482,10 +477,6 @@ default_t defaults[] =
    0,MAX_KEY,def_key,ss_keys}, // key to switch to weapon 9 (supershotgun)    // phares
 
 #if 0
-  // killough 2/22/98: screenshot key
-  {"key_screenshot",  {&key_screenshot},      {'*'}            ,
-   0,MAX_KEY,def_key,ss_keys}, // key to take a screenshot
-
   {"Joystick settings",{NULL},{0},UL,UL,def_none,ss_none},
   {"use_joystick",{&usejoystick},{0},0,2,
    def_int,ss_none}, // number of joystick to use (0 for none)
@@ -819,66 +810,4 @@ void M_LoadDefaults (void)
 
     fclose (f);
     }
-}
-
-
-//
-// SCREEN SHOTS
-//
-
-//
-// M_ScreenShot
-//
-// Modified by Lee Killough so that any number of shots can be taken,
-// the code is faster, and no annoying "screenshot" message appears.
-
-// CPhipps - modified to use its own buffer for the image
-//         - checks for the case where no file can be created (doesn't occur on POSIX systems, would on DOS)
-//         - track errors better
-//         - split into 2 functions
-
-//
-// M_DoScreenShot
-// Takes a screenshot into the names file
-
-void M_DoScreenShot (const char* fname)
-{
-//  if (I_ScreenShot(fname) != 0)
-    doom_printf("M_ScreenShot: Error writing screenshot\n");
-}
-
-#ifndef SCREENSHOT_DIR
-#define SCREENSHOT_DIR "."
-#endif
-
-#ifdef HAVE_LIBPNG
-#define SCREENSHOT_EXT ".png"
-#else
-#define SCREENSHOT_EXT ".bmp"
-#endif
-
-void M_ScreenShot(void)
-{
-  static int shot;
-  char       lbmname[PATH_MAX + 1];
-  int        startshot;
-
-  if (!access(SCREENSHOT_DIR,2))
-  {
-    startshot = shot; // CPhipps - prevent infinite loop
-
-    do {
-      sprintf(lbmname,"%s/doom%02d" SCREENSHOT_EXT, SCREENSHOT_DIR, shot++);
-    } while (!access(lbmname,0) && (shot != startshot) && (shot < 10000));
-
-    if (access(lbmname,0))
-    {
-      S_StartSound(NULL,gamemode==commercial ? sfx_radio : sfx_tink);
-      M_DoScreenShot(lbmname); // cph
-      return;
-    }
-  }
-
-  doom_printf ("M_ScreenShot: Couldn't create screenshot");
-  return;
 }

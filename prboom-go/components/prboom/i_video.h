@@ -54,8 +54,6 @@ void I_SetPalette(int pal); /* CPhipps - pass down palette number */
 void I_UpdateNoBlit (void);
 void I_FinishUpdate (void);
 
-int I_ScreenShot (const char *fname);
-
 /* I_StartTic
  * Called by D_DoomLoop,
  * called before processing each tic in a frame.

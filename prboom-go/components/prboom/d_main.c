@@ -114,7 +114,8 @@ int ffmap;
 boolean advancedemo;
 
 const char *basesavegame;
-const char* doomverstr;
+const char *doomverstr;
+const char *iwad;
 
 //jff 4/19/98 list of standard IWAD names
 const char *standard_iwads[]=
@@ -742,9 +743,7 @@ static void D_DoomMainSetup(void)
   case commercial:  // Ty 08/27/98 - fixed gamemode vs gamemission
       i = strlen(iwad);
       gamemission = doom2;
-      if (i>=10 && !strnicmp(iwad+i-10,"doom2f.wad",10))
-        language=french;
-      else if (i>=7 && !strnicmp(iwad+i-7,"tnt.wad",7))
+      if (i>=7 && !strnicmp(iwad+i-7,"tnt.wad",7))
         gamemission = pack_tnt;
       else if (i>=12 && !strnicmp(iwad+i-12,"plutonia.wad",12))
         gamemission = pack_plut;
@@ -804,7 +803,7 @@ static void D_DoomMainSetup(void)
     deathmatch = 1;
 
   if ((devparm = M_CheckParm("-devparm")))
-    lprintf(LO_CONFIRM,"%s",D_DEVSTR);
+    lprintf(LO_CONFIRM,"%s",s_D_DEVSTR);
 
   // turbo option
   if ((p=M_CheckParm ("-turbo")))

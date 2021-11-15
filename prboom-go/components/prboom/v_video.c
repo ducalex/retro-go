@@ -48,9 +48,6 @@
 // Each screen is [SCREENWIDTH*SCREENHEIGHT];
 screeninfo_t screens[NUM_SCREENS];
 
-/* jff 4/24/98 initialize this at runtime */
-const byte *colrngs[CR_LIMIT];
-
 int usegamma;
 
 /*
@@ -70,31 +67,29 @@ int usegamma;
 
 typedef struct {
   const char *name;
-  const byte **map;
+  const byte *map;
 } crdef_t;
 
 // killough 5/2/98: table-driven approach
-static const crdef_t crdefs[] = {
-  {"CRBRICK",  &colrngs[CR_BRICK ]},
-  {"CRTAN",    &colrngs[CR_TAN   ]},
-  {"CRGRAY",   &colrngs[CR_GRAY  ]},
-  {"CRGREEN",  &colrngs[CR_GREEN ]},
-  {"CRBROWN",  &colrngs[CR_BROWN ]},
-  {"CRGOLD",   &colrngs[CR_GOLD  ]},
-  {"CRRED",    &colrngs[CR_RED   ]},
-  {"CRBLUE",   &colrngs[CR_BLUE  ]},
-  {"CRORANGE", &colrngs[CR_ORANGE]},
-  {"CRYELLOW", &colrngs[CR_YELLOW]},
-  {"CRBLUE2",  &colrngs[CR_BLUE2]},
-  {NULL}
+static crdef_t crdefs[CR_LIMIT] = {
+  {"CRBRICK",  NULL},
+  {"CRTAN",    NULL},
+  {"CRGRAY",   NULL},
+  {"CRGREEN",  NULL},
+  {"CRBROWN",  NULL},
+  {"CRGOLD",   NULL},
+  {"CRRED",    NULL},
+  {"CRBLUE",   NULL},
+  {"CRORANGE", NULL},
+  {"CRYELLOW", NULL},
+  {"CRBLUE2",  NULL},
 };
 
 // killough 5/2/98: tiny engine driven by table above
 void V_InitColorTranslation(void)
 {
-  register const crdef_t *p;
-  for (p=crdefs; p->name; p++)
-    *p->map = W_CacheLumpName(p->name);
+  for (size_t i = 0; i < CR_LIMIT; i++)
+    crdefs[i].map = W_CacheLumpName(crdefs[i].name);
 }
 
 //
@@ -175,7 +170,9 @@ static void FUNC_V_DrawBackground(const char* flatname, int scrn)
       src += width;
       dest += screens[scrn].byte_pitch;
     }
-  } else if (V_GetMode() == VID_MODE15) {
+  }
+#ifndef NOTRUECOLOR
+  else if (V_GetMode() == VID_MODE15) {
     unsigned short *dest = (unsigned short *)screens[scrn].data;
 
     while (height--) {
@@ -209,6 +206,7 @@ static void FUNC_V_DrawBackground(const char* flatname, int scrn)
       dest += screens[scrn].int_pitch;
     }
   }
+#endif
   /* end V_DrawBlock */
 
   for (y=0 ; y<SCREENHEIGHT ; y+=64)
@@ -259,7 +257,7 @@ static void V_DrawMemPatch(int x, int y, int scrn, const rpatch_t *patch,
   const byte *trans;
 
   if (cm<CR_LIMIT)
-    trans=colrngs[cm];
+    trans=crdefs[cm].map;
   else
     trans=translationtables + 256*((cm-CR_LIMIT)-1);
   y -= patch->topoffset;
@@ -483,10 +481,6 @@ static void V_DrawMemPatch(int x, int y, int scrn, const rpatch_t *patch,
 
 // CPhipps - some simple, useful wrappers for that function, for drawing patches from wads
 
-// CPhipps - GNU C only suppresses generating a copy of a function if it is
-// static inline; other compilers have different behaviour.
-// This inline is _only_ for the function below
-
 static void FUNC_V_DrawNumPatch(int x, int y, int scrn, int lump,
          int cm, enum patch_translation_e flags)
 {
@@ -494,6 +488,7 @@ static void FUNC_V_DrawNumPatch(int x, int y, int scrn, int lump,
   R_UnlockPatchNum(lump);
 }
 
+#ifndef NOTRUECOLOR
 unsigned short *V_Palette15 = NULL;
 unsigned short *V_Palette16 = NULL;
 unsigned int *V_Palette32 = NULL;
@@ -654,6 +649,7 @@ void V_DestroyUnusedTrueColorPalettes(void) {
   if (V_GetMode() != VID_MODE16) V_DestroyTrueColorPalette(VID_MODE16);
   if (V_GetMode() != VID_MODE32) V_DestroyTrueColorPalette(VID_MODE32);
 }
+#endif
 
 //
 // V_SetPalette
@@ -663,17 +659,36 @@ void V_DestroyUnusedTrueColorPalettes(void) {
 
 void V_SetPalette(int pal)
 {
+#ifndef NOTRUECOLOR
   currentPaletteIndex = pal;
+  if (V_GetMode() != VID_MODE8 && W_CheckNumForName("PLAYPAL") != -1) {
+    V_UpdateTrueColorPalette(V_GetMode());
+  }
+#endif
 
   I_SetPalette(pal);
-  if (V_GetMode() == VID_MODE15 || V_GetMode() == VID_MODE16 || V_GetMode() == VID_MODE32) {
-    // V_SetPalette can be called as part of the gamma setting before
-    // we've loaded any wads, which prevents us from reading the palette - POPE
-    if (W_CheckNumForName("PLAYPAL") >= 0) {
-      V_UpdateTrueColorPalette(V_GetMode());
-    }
-  }
 }
+
+//
+// V_PlotPixel
+//
+static void V_PlotPixel8(int scrn, int x, int y, byte color) {
+  screens[scrn].data[x+screens[scrn].byte_pitch*y] = color;
+}
+
+#ifndef NOTRUECOLOR
+static void V_PlotPixel15(int scrn, int x, int y, byte color) {
+  ((unsigned short *)screens[scrn].data)[x+screens[scrn].short_pitch*y] = VID_PAL15(color, VID_COLORWEIGHTMASK);
+}
+
+static void V_PlotPixel16(int scrn, int x, int y, byte color) {
+  ((unsigned short *)screens[scrn].data)[x+screens[scrn].short_pitch*y] = VID_PAL16(color, VID_COLORWEIGHTMASK);
+}
+
+static void V_PlotPixel32(int scrn, int x, int y, byte color) {
+  ((unsigned int *)screens[scrn].data)[x+screens[scrn].int_pitch*y] = VID_PAL32(color, VID_COLORWEIGHTMASK);
+}
+#endif
 
 //
 // V_FillRect
@@ -688,6 +703,7 @@ static void V_FillRect8(int scrn, int x, int y, int width, int height, byte colo
   }
 }
 
+#ifndef NOTRUECOLOR
 static void V_FillRect15(int scrn, int x, int y, int width, int height, byte colour)
 {
   unsigned short* dest = (unsigned short *)screens[scrn].data + x + y*screens[scrn].short_pitch;
@@ -726,19 +742,13 @@ static void V_FillRect32(int scrn, int x, int y, int width, int height, byte col
     dest += screens[scrn].int_pitch;
   }
 }
-
-static void WRAP_V_DrawLine(fline_t* fl, int color);
-static void V_PlotPixel8(int scrn, int x, int y, byte color);
-static void V_PlotPixel15(int scrn, int x, int y, byte color);
-static void V_PlotPixel16(int scrn, int x, int y, byte color);
-static void V_PlotPixel32(int scrn, int x, int y, byte color);
+#endif
 
 static void NULL_FillRect(int scrn, int x, int y, int width, int height, byte colour) {}
 static void NULL_CopyRect(int srcx, int srcy, int srcscrn, int width, int height, int destx, int desty, int destscrn, enum patch_translation_e flags) {}
 static void NULL_DrawBackground(const char *flatname, int n) {}
 static void NULL_DrawNumPatch(int x, int y, int scrn, int lump, int cm, enum patch_translation_e flags) {}
 static void NULL_PlotPixel(int scrn, int x, int y, byte color) {}
-static void NULL_DrawLine(fline_t* fl, int color) {}
 
 const char *default_videomode;
 static video_mode_t current_videomode = VID_MODE8;
@@ -748,7 +758,6 @@ V_FillRect_f V_FillRect = NULL_FillRect;
 V_DrawNumPatch_f V_DrawNumPatch = NULL_DrawNumPatch;
 V_DrawBackground_f V_DrawBackground = NULL_DrawBackground;
 V_PlotPixel_f V_PlotPixel = NULL_PlotPixel;
-V_DrawLine_f V_DrawLine = NULL_DrawLine;
 
 //
 // V_InitMode
@@ -762,9 +771,9 @@ void V_InitMode(video_mode_t mode) {
       V_DrawNumPatch = FUNC_V_DrawNumPatch;
       V_DrawBackground = FUNC_V_DrawBackground;
       V_PlotPixel = V_PlotPixel8;
-      V_DrawLine = WRAP_V_DrawLine;
       current_videomode = VID_MODE8;
       break;
+#ifndef NOTRUECOLOR
     case VID_MODE15:
       lprintf(LO_INFO, "V_InitMode: using 15 bit video mode\n");
       V_CopyRect = FUNC_V_CopyRect;
@@ -772,7 +781,6 @@ void V_InitMode(video_mode_t mode) {
       V_DrawNumPatch = FUNC_V_DrawNumPatch;
       V_DrawBackground = FUNC_V_DrawBackground;
       V_PlotPixel = V_PlotPixel15;
-      V_DrawLine = WRAP_V_DrawLine;
       current_videomode = VID_MODE15;
       break;
     case VID_MODE16:
@@ -782,7 +790,6 @@ void V_InitMode(video_mode_t mode) {
       V_DrawNumPatch = FUNC_V_DrawNumPatch;
       V_DrawBackground = FUNC_V_DrawBackground;
       V_PlotPixel = V_PlotPixel16;
-      V_DrawLine = WRAP_V_DrawLine;
       current_videomode = VID_MODE16;
       break;
     case VID_MODE32:
@@ -792,9 +799,9 @@ void V_InitMode(video_mode_t mode) {
       V_DrawNumPatch = FUNC_V_DrawNumPatch;
       V_DrawBackground = FUNC_V_DrawBackground;
       V_PlotPixel = V_PlotPixel32;
-      V_DrawLine = WRAP_V_DrawLine;
       current_videomode = VID_MODE32;
       break;
+#endif
   default:
     I_Error("V_InitMode: Invalid video mode %d\n", mode);
   }
@@ -814,9 +821,11 @@ video_mode_t V_GetMode(void) {
 int V_GetModePixelDepth(video_mode_t mode) {
   switch (mode) {
     case VID_MODE8: return 1;
+#ifndef NOTRUECOLOR
     case VID_MODE15: return 2;
     case VID_MODE16: return 2;
     case VID_MODE32: return 4;
+#endif
     default: return 0;
   }
 }
@@ -827,9 +836,11 @@ int V_GetModePixelDepth(video_mode_t mode) {
 int V_GetNumPixelBits(void) {
   switch (current_videomode) {
     case VID_MODE8: return 8;
+#ifndef NOTRUECOLOR
     case VID_MODE15: return 15;
     case VID_MODE16: return 16;
     case VID_MODE32: return 32;
+#endif
     default: return 0;
   }
 }
@@ -880,24 +891,8 @@ void V_FreeScreens(void) {
     V_FreeScreen(&screens[i]);
 }
 
-static void V_PlotPixel8(int scrn, int x, int y, byte color) {
-  screens[scrn].data[x+screens[scrn].byte_pitch*y] = color;
-}
-
-static void V_PlotPixel15(int scrn, int x, int y, byte color) {
-  ((unsigned short *)screens[scrn].data)[x+screens[scrn].short_pitch*y] = VID_PAL15(color, VID_COLORWEIGHTMASK);
-}
-
-static void V_PlotPixel16(int scrn, int x, int y, byte color) {
-  ((unsigned short *)screens[scrn].data)[x+screens[scrn].short_pitch*y] = VID_PAL16(color, VID_COLORWEIGHTMASK);
-}
-
-static void V_PlotPixel32(int scrn, int x, int y, byte color) {
-  ((unsigned int *)screens[scrn].data)[x+screens[scrn].int_pitch*y] = VID_PAL32(color, VID_COLORWEIGHTMASK);
-}
-
 //
-// WRAP_V_DrawLine()
+// V_DrawLine()
 //
 // Draw a line in the frame buffer.
 // Classic Bresenham w/ whatever optimizations needed for speed
@@ -905,7 +900,7 @@ static void V_PlotPixel32(int scrn, int x, int y, byte color) {
 // Passed the frame coordinates of line, and the color to be drawn
 // Returns nothing
 //
-static void WRAP_V_DrawLine(fline_t* fl, int color)
+void V_DrawLine(fline_t* fl, int color)
 {
   register int x;
   register int y;

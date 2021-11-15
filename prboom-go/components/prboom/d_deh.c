@@ -51,70 +51,11 @@
 // CPhipps - modify to use logical output routine
 #include "lprintf.h"
 
-#define TRUE 1
-#define FALSE 0
-
-#ifndef HAVE_STRLWR
-#include <ctype.h>
-
-static char* strlwr(char* str)
-{
-  char* p;
-  for (p=str; *p; p++) *p = tolower(*p);
-  return str;
-}
-#endif
-
-// killough 10/98: new functions, to allow processing DEH files in-memory
-// (e.g. from wads)
-
-typedef struct {
-  /* cph 2006/08/06 - 
-   * if lump != NULL, lump is the start of the lump, 
-   * inp is the current read pos. */
-  const byte *inp, *lump;
-  long size;
-  /* else, !lump, and f is the file being read */
-  FILE* f;
-} DEHFILE;
-
-// killough 10/98: emulate IO whether input really comes from a file or not
-
-static char *dehfgets(char *buf, size_t n, DEHFILE *fp)
-{
-  if (!fp->lump)                                     // If this is a real file,
-    return (fgets)(buf, n, fp->f);                   // return regular fgets
-  if (!n || !*fp->inp || fp->size<=0)                // If no more characters
-    return NULL;
-  if (n==1)
-    fp->size--, *buf = *fp->inp++;
-  else
-    {                                                // copy buffer
-      char *p = buf;
-      while (n>1 && *fp->inp && fp->size &&
-             (n--, fp->size--, *p++ = *fp->inp++) != '\n')
-        ;
-      *p = 0;
-    }
-  return buf;                                        // Return buffer pointer
-}
-
-static int dehfeof(DEHFILE *fp)
-{
-  return !fp->lump ? feof(fp->f) : !*fp->inp || fp->size<=0;
-}
-
-static int dehfgetc(DEHFILE *fp)
-{
-  return !fp->lump ? fgetc(fp->f) : fp->size > 0 ?
-    fp->size--, *fp->inp++ : EOF;
-}
-
 // haleyjd 9/22/99
 int HelperThing = -1;     // in P_SpawnMapThing to substitute helper thing
 
 // variables used in other routines
-boolean deh_pars = FALSE; // in wi_stuff to allow pars in modified games
+boolean deh_pars = false; // in wi_stuff to allow pars in modified games
 
 // #include "d_deh.h" -- we don't do that here but we declare the
 // variables.  This externalizes everything that there is a string
@@ -448,6 +389,231 @@ const char *startup5     = "";
 // end d_deh.h variable declarations
 // ====================================================================
 
+const char *deh_newlevel = "NEWLEVEL"; // CPhipps - const
+
+// DOOM shareware/registered/retail (Ultimate) names.
+// CPhipps - const**const
+const char **const mapnames[] =
+{
+  &s_HUSTR_E1M1,
+  &s_HUSTR_E1M2,
+  &s_HUSTR_E1M3,
+  &s_HUSTR_E1M4,
+  &s_HUSTR_E1M5,
+  &s_HUSTR_E1M6,
+  &s_HUSTR_E1M7,
+  &s_HUSTR_E1M8,
+  &s_HUSTR_E1M9,
+
+  &s_HUSTR_E2M1,
+  &s_HUSTR_E2M2,
+  &s_HUSTR_E2M3,
+  &s_HUSTR_E2M4,
+  &s_HUSTR_E2M5,
+  &s_HUSTR_E2M6,
+  &s_HUSTR_E2M7,
+  &s_HUSTR_E2M8,
+  &s_HUSTR_E2M9,
+
+  &s_HUSTR_E3M1,
+  &s_HUSTR_E3M2,
+  &s_HUSTR_E3M3,
+  &s_HUSTR_E3M4,
+  &s_HUSTR_E3M5,
+  &s_HUSTR_E3M6,
+  &s_HUSTR_E3M7,
+  &s_HUSTR_E3M8,
+  &s_HUSTR_E3M9,
+
+  &s_HUSTR_E4M1,
+  &s_HUSTR_E4M2,
+  &s_HUSTR_E4M3,
+  &s_HUSTR_E4M4,
+  &s_HUSTR_E4M5,
+  &s_HUSTR_E4M6,
+  &s_HUSTR_E4M7,
+  &s_HUSTR_E4M8,
+  &s_HUSTR_E4M9,
+
+  &deh_newlevel,  // spares?  Unused.
+  &deh_newlevel,
+  &deh_newlevel,
+  &deh_newlevel,
+  &deh_newlevel,
+  &deh_newlevel,
+  &deh_newlevel,
+  &deh_newlevel,
+  &deh_newlevel
+};
+
+// CPhipps - const**const
+const char **const mapnames2[] = // DOOM 2 map names.
+{
+  &s_HUSTR_1,
+  &s_HUSTR_2,
+  &s_HUSTR_3,
+  &s_HUSTR_4,
+  &s_HUSTR_5,
+  &s_HUSTR_6,
+  &s_HUSTR_7,
+  &s_HUSTR_8,
+  &s_HUSTR_9,
+  &s_HUSTR_10,
+  &s_HUSTR_11,
+
+  &s_HUSTR_12,
+  &s_HUSTR_13,
+  &s_HUSTR_14,
+  &s_HUSTR_15,
+  &s_HUSTR_16,
+  &s_HUSTR_17,
+  &s_HUSTR_18,
+  &s_HUSTR_19,
+  &s_HUSTR_20,
+
+  &s_HUSTR_21,
+  &s_HUSTR_22,
+  &s_HUSTR_23,
+  &s_HUSTR_24,
+  &s_HUSTR_25,
+  &s_HUSTR_26,
+  &s_HUSTR_27,
+  &s_HUSTR_28,
+  &s_HUSTR_29,
+  &s_HUSTR_30,
+  &s_HUSTR_31,
+  &s_HUSTR_32,
+};
+
+// CPhipps - const**const
+const char **const mapnamesp[] = // Plutonia WAD map names.
+{
+  &s_PHUSTR_1,
+  &s_PHUSTR_2,
+  &s_PHUSTR_3,
+  &s_PHUSTR_4,
+  &s_PHUSTR_5,
+  &s_PHUSTR_6,
+  &s_PHUSTR_7,
+  &s_PHUSTR_8,
+  &s_PHUSTR_9,
+  &s_PHUSTR_10,
+  &s_PHUSTR_11,
+
+  &s_PHUSTR_12,
+  &s_PHUSTR_13,
+  &s_PHUSTR_14,
+  &s_PHUSTR_15,
+  &s_PHUSTR_16,
+  &s_PHUSTR_17,
+  &s_PHUSTR_18,
+  &s_PHUSTR_19,
+  &s_PHUSTR_20,
+
+  &s_PHUSTR_21,
+  &s_PHUSTR_22,
+  &s_PHUSTR_23,
+  &s_PHUSTR_24,
+  &s_PHUSTR_25,
+  &s_PHUSTR_26,
+  &s_PHUSTR_27,
+  &s_PHUSTR_28,
+  &s_PHUSTR_29,
+  &s_PHUSTR_30,
+  &s_PHUSTR_31,
+  &s_PHUSTR_32,
+};
+
+// CPhipps - const**const
+const char **const mapnamest[] = // TNT WAD map names.
+{
+  &s_THUSTR_1,
+  &s_THUSTR_2,
+  &s_THUSTR_3,
+  &s_THUSTR_4,
+  &s_THUSTR_5,
+  &s_THUSTR_6,
+  &s_THUSTR_7,
+  &s_THUSTR_8,
+  &s_THUSTR_9,
+  &s_THUSTR_10,
+  &s_THUSTR_11,
+
+  &s_THUSTR_12,
+  &s_THUSTR_13,
+  &s_THUSTR_14,
+  &s_THUSTR_15,
+  &s_THUSTR_16,
+  &s_THUSTR_17,
+  &s_THUSTR_18,
+  &s_THUSTR_19,
+  &s_THUSTR_20,
+
+  &s_THUSTR_21,
+  &s_THUSTR_22,
+  &s_THUSTR_23,
+  &s_THUSTR_24,
+  &s_THUSTR_25,
+  &s_THUSTR_26,
+  &s_THUSTR_27,
+  &s_THUSTR_28,
+  &s_THUSTR_29,
+  &s_THUSTR_30,
+  &s_THUSTR_31,
+  &s_THUSTR_32,
+};
+
+
+#ifndef NODEHSUPPORT
+
+#define TRUE 1
+#define FALSE 0
+
+// killough 10/98: new functions, to allow processing DEH files in-memory
+// (e.g. from wads)
+
+typedef struct {
+  /* cph 2006/08/06 -
+   * if lump != NULL, lump is the start of the lump,
+   * inp is the current read pos. */
+  const byte *inp, *lump;
+  long size;
+  /* else, !lump, and f is the file being read */
+  FILE* f;
+} DEHFILE;
+
+// killough 10/98: emulate IO whether input really comes from a file or not
+
+static char *dehfgets(char *buf, size_t n, DEHFILE *fp)
+{
+  if (!fp->lump)                                     // If this is a real file,
+    return (fgets)(buf, n, fp->f);                   // return regular fgets
+  if (!n || !*fp->inp || fp->size<=0)                // If no more characters
+    return NULL;
+  if (n==1)
+    fp->size--, *buf = *fp->inp++;
+  else
+    {                                                // copy buffer
+      char *p = buf;
+      while (n>1 && *fp->inp && fp->size &&
+             (n--, fp->size--, *p++ = *fp->inp++) != '\n')
+        ;
+      *p = 0;
+    }
+  return buf;                                        // Return buffer pointer
+}
+
+static int dehfeof(DEHFILE *fp)
+{
+  return !fp->lump ? feof(fp->f) : !*fp->inp || fp->size<=0;
+}
+
+static int dehfgetc(DEHFILE *fp)
+{
+  return !fp->lump ? fgetc(fp->f) : fp->size > 0 ?
+    fp->size--, *fp->inp++ : EOF;
+}
+
 // Do this for a lookup--the pointer (loaded above) is cross-referenced
 // to a string key that is the same as the define above.  We will use
 // strdups to set these new values that we read from the file, orphaning
@@ -780,180 +946,6 @@ static const deh_strs deh_strlookup[] = {
 };
 
 static int deh_numstrlookup = sizeof(deh_strlookup)/sizeof(deh_strlookup[0]);
-
-const char *deh_newlevel = "NEWLEVEL"; // CPhipps - const
-
-// DOOM shareware/registered/retail (Ultimate) names.
-// CPhipps - const**const
-const char **const mapnames[] =
-{
-  &s_HUSTR_E1M1,
-  &s_HUSTR_E1M2,
-  &s_HUSTR_E1M3,
-  &s_HUSTR_E1M4,
-  &s_HUSTR_E1M5,
-  &s_HUSTR_E1M6,
-  &s_HUSTR_E1M7,
-  &s_HUSTR_E1M8,
-  &s_HUSTR_E1M9,
-
-  &s_HUSTR_E2M1,
-  &s_HUSTR_E2M2,
-  &s_HUSTR_E2M3,
-  &s_HUSTR_E2M4,
-  &s_HUSTR_E2M5,
-  &s_HUSTR_E2M6,
-  &s_HUSTR_E2M7,
-  &s_HUSTR_E2M8,
-  &s_HUSTR_E2M9,
-
-  &s_HUSTR_E3M1,
-  &s_HUSTR_E3M2,
-  &s_HUSTR_E3M3,
-  &s_HUSTR_E3M4,
-  &s_HUSTR_E3M5,
-  &s_HUSTR_E3M6,
-  &s_HUSTR_E3M7,
-  &s_HUSTR_E3M8,
-  &s_HUSTR_E3M9,
-
-  &s_HUSTR_E4M1,
-  &s_HUSTR_E4M2,
-  &s_HUSTR_E4M3,
-  &s_HUSTR_E4M4,
-  &s_HUSTR_E4M5,
-  &s_HUSTR_E4M6,
-  &s_HUSTR_E4M7,
-  &s_HUSTR_E4M8,
-  &s_HUSTR_E4M9,
-
-  &deh_newlevel,  // spares?  Unused.
-  &deh_newlevel,
-  &deh_newlevel,
-  &deh_newlevel,
-  &deh_newlevel,
-  &deh_newlevel,
-  &deh_newlevel,
-  &deh_newlevel,
-  &deh_newlevel
-};
-
-// CPhipps - const**const
-const char **const mapnames2[] = // DOOM 2 map names.
-{
-  &s_HUSTR_1,
-  &s_HUSTR_2,
-  &s_HUSTR_3,
-  &s_HUSTR_4,
-  &s_HUSTR_5,
-  &s_HUSTR_6,
-  &s_HUSTR_7,
-  &s_HUSTR_8,
-  &s_HUSTR_9,
-  &s_HUSTR_10,
-  &s_HUSTR_11,
-
-  &s_HUSTR_12,
-  &s_HUSTR_13,
-  &s_HUSTR_14,
-  &s_HUSTR_15,
-  &s_HUSTR_16,
-  &s_HUSTR_17,
-  &s_HUSTR_18,
-  &s_HUSTR_19,
-  &s_HUSTR_20,
-
-  &s_HUSTR_21,
-  &s_HUSTR_22,
-  &s_HUSTR_23,
-  &s_HUSTR_24,
-  &s_HUSTR_25,
-  &s_HUSTR_26,
-  &s_HUSTR_27,
-  &s_HUSTR_28,
-  &s_HUSTR_29,
-  &s_HUSTR_30,
-  &s_HUSTR_31,
-  &s_HUSTR_32,
-};
-
-// CPhipps - const**const
-const char **const mapnamesp[] = // Plutonia WAD map names.
-{
-  &s_PHUSTR_1,
-  &s_PHUSTR_2,
-  &s_PHUSTR_3,
-  &s_PHUSTR_4,
-  &s_PHUSTR_5,
-  &s_PHUSTR_6,
-  &s_PHUSTR_7,
-  &s_PHUSTR_8,
-  &s_PHUSTR_9,
-  &s_PHUSTR_10,
-  &s_PHUSTR_11,
-
-  &s_PHUSTR_12,
-  &s_PHUSTR_13,
-  &s_PHUSTR_14,
-  &s_PHUSTR_15,
-  &s_PHUSTR_16,
-  &s_PHUSTR_17,
-  &s_PHUSTR_18,
-  &s_PHUSTR_19,
-  &s_PHUSTR_20,
-
-  &s_PHUSTR_21,
-  &s_PHUSTR_22,
-  &s_PHUSTR_23,
-  &s_PHUSTR_24,
-  &s_PHUSTR_25,
-  &s_PHUSTR_26,
-  &s_PHUSTR_27,
-  &s_PHUSTR_28,
-  &s_PHUSTR_29,
-  &s_PHUSTR_30,
-  &s_PHUSTR_31,
-  &s_PHUSTR_32,
-};
-
-// CPhipps - const**const
-const char **const mapnamest[] = // TNT WAD map names.
-{
-  &s_THUSTR_1,
-  &s_THUSTR_2,
-  &s_THUSTR_3,
-  &s_THUSTR_4,
-  &s_THUSTR_5,
-  &s_THUSTR_6,
-  &s_THUSTR_7,
-  &s_THUSTR_8,
-  &s_THUSTR_9,
-  &s_THUSTR_10,
-  &s_THUSTR_11,
-
-  &s_THUSTR_12,
-  &s_THUSTR_13,
-  &s_THUSTR_14,
-  &s_THUSTR_15,
-  &s_THUSTR_16,
-  &s_THUSTR_17,
-  &s_THUSTR_18,
-  &s_THUSTR_19,
-  &s_THUSTR_20,
-
-  &s_THUSTR_21,
-  &s_THUSTR_22,
-  &s_THUSTR_23,
-  &s_THUSTR_24,
-  &s_THUSTR_25,
-  &s_THUSTR_26,
-  &s_THUSTR_27,
-  &s_THUSTR_28,
-  &s_THUSTR_29,
-  &s_THUSTR_30,
-  &s_THUSTR_31,
-  &s_THUSTR_32,
-};
 
 // Function prototypes
 static void    lfstrip(char *);     // strip the \r and/or \n off of a line
@@ -2012,7 +2004,7 @@ static void deh_procSounds(DEHFILE *fpin, FILE* fpout, char *line)
                   S_sfx[indexnum].volume = (int)value;
                 else
                   if (!strcasecmp(key,deh_sfxinfo[6]))  // Zero 4
-                    S_sfx[indexnum].data = (void *) value; // killough 5/3/98: changed cast
+                    (void *) value;// S_sfx[indexnum].data = (void *) value; // killough 5/3/98: changed cast
                   else
                     if (!strcasecmp(key,deh_sfxinfo[7]))  // Neg. One 1
                       S_sfx[indexnum].usefulness = (int)value;
@@ -3083,3 +3075,9 @@ static boolean deh_GetData(char *s, char *k, uint_64_t *l, char **strval, FILE *
 
   return(okrc);
 }
+#else
+void D_ProcessDehFile(const char *filename, const char *outfilename, int lumpnum)
+{
+  lprintf(LO_WARN, "D_ProcessDehFile: deh support has been disabled at build time!\n");
+}
+#endif

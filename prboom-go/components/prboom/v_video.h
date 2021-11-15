@@ -51,9 +51,6 @@
 // Screen 0 is the screen updated by I_Update screen.
 // Screen 1 is an extra buffer.
 
-// array of pointers to color translation tables
-extern const byte *colrngs[];
-
 // symbolic indices into color translation table pointer array
 typedef enum
 {
@@ -113,9 +110,11 @@ extern unsigned int *V_Palette32;
 // The available bit-depth modes
 typedef enum {
   VID_MODE8,
+#ifndef NOTRUECOLOR
   VID_MODE15,
   VID_MODE16,
   VID_MODE32,
+#endif
   VID_MODEMAX
 } video_mode_t;
 
@@ -192,8 +191,7 @@ typedef struct
 } fline_t;
 
 // V_DrawLine
-typedef void (*V_DrawLine_f)(fline_t* fl, int color);
-extern V_DrawLine_f V_DrawLine;
+void V_DrawLine(fline_t* fl, int color);
 
 void V_AllocScreen(screeninfo_t *scrn);
 void V_AllocScreens();

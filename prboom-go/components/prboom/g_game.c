@@ -203,7 +203,6 @@ int     key_weapon7;                                                //    ^
 int     key_weapon8;                                                //    |
 int     key_weapon9;                                                // phares
 
-int     key_screenshot;             // killough 2/22/98: screenshot key
 int     mousebfire;
 int     mousebstrafe;
 int     mousebforward;

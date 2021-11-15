@@ -39,11 +39,7 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-
-// killough 4/25/98: Make gcc extensions mean nothing on other compilers
-#ifndef __GNUC__
-#define __attribute__(x)
-#endif
+#include "esp_attr.h"
 
 // This must come first, since it redefines malloc(), free(), etc. -- killough:
 #include "z_zone.h"
@@ -53,11 +49,6 @@
 #include <string.h>
 #include <ctype.h>
 #include <limits.h>
-
-// this should go here, not in makefile/configure.ac -- josh
-#ifndef O_BINARY
-#define O_BINARY 0
-#endif
 
 #include "m_swap.h"
 #include "version.h"
@@ -80,14 +71,6 @@ typedef enum {
   pack_plut,    // Plutonia pack
   none
 } GameMission_t;
-
-// Identify language to use, software localization.
-typedef enum {
-  english,
-  french,
-  german,
-  unknown
-} Language_t;
 
 //
 // For resize of screen, at start of game.
@@ -113,11 +96,6 @@ typedef enum {
 // SCREENWIDTH and SCREENHEIGHT define the visible size
 #define SCREENWIDTH 320
 #define SCREENHEIGHT 240
-// SCREENPITCH is the size of one line in the buffer and
-// can be bigger than the SCREENWIDTH depending on the size
-// of one pixel (8, 16 or 32 bit) and the padding at the
-// end of the line caused by hardware considerations
-#define SCREENPITCH (1*SCREENWIDTH)
 
 // The maximum number of players, multiplayer/networking.
 #define MAXPLAYERS       4

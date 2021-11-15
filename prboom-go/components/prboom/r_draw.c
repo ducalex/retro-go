@@ -88,8 +88,10 @@ typedef enum
 static int    temp_x = 0;
 static int    tempyl[4], tempyh[4];
 static byte           byte_tempbuf[MAX_SCREENHEIGHT * 4];
+#ifndef NOTRUECOLOR
 static unsigned short short_tempbuf[MAX_SCREENHEIGHT * 4];
 static unsigned int   int_tempbuf[MAX_SCREENHEIGHT * 4];
+#endif
 static int    startx = 0;
 static int    temptype = COL_NONE;
 static int    commontop, commonbot;
@@ -228,6 +230,7 @@ void R_ResetColumnBuffer(void)
 #define R_FLUSHQUAD_FUNCNAME R_FlushQuadFuzz8
 #include "r_drawflush.inl"
 
+#ifndef NOTRUECOLOR
 #define R_DRAWCOLUMN_PIPELINE RDC_STANDARD
 #define R_DRAWCOLUMN_PIPELINE_BITS 15
 #define R_FLUSHWHOLE_FUNCNAME R_FlushWhole15
@@ -290,7 +293,7 @@ void R_ResetColumnBuffer(void)
 #define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTFuzz32
 #define R_FLUSHQUAD_FUNCNAME R_FlushQuadFuzz32
 #include "r_drawflush.inl"
-
+#endif
 //
 // R_DrawColumn
 //
@@ -303,6 +306,7 @@ void R_ResetColumnBuffer(void)
 //  be used. It has also been used with Wolfenstein 3D.
 //
 
+byte playernumtotrans[MAXPLAYERS];
 byte *translationtables;
 
 #define R_DRAWCOLUMN_PIPELINE_TYPE RDC_PIPELINE_STANDARD
@@ -315,6 +319,7 @@ byte *translationtables;
 #define R_FLUSHQUAD_FUNCNAME R_FlushQuad8
 #include "r_drawcolpipeline.inl"
 
+#ifndef NOTRUECOLOR
 #define R_DRAWCOLUMN_PIPELINE_BITS 15
 #define R_DRAWCOLUMN_FUNCNAME_COMPOSITE(postfix) R_DrawColumn15 ## postfix
 #define R_FLUSHWHOLE_FUNCNAME R_FlushWhole15
@@ -335,6 +340,7 @@ byte *translationtables;
 #define R_FLUSHHEADTAIL_FUNCNAME R_FlushHT32
 #define R_FLUSHQUAD_FUNCNAME R_FlushQuad32
 #include "r_drawcolpipeline.inl"
+#endif
 
 #undef R_DRAWCOLUMN_PIPELINE_BASE
 #undef R_DRAWCOLUMN_PIPELINE_TYPE
@@ -361,6 +367,7 @@ byte *translationtables;
 #define R_FLUSHQUAD_FUNCNAME R_FlushQuadTL8
 #include "r_drawcolpipeline.inl"
 
+#ifndef NOTRUECOLOR
 #define R_DRAWCOLUMN_PIPELINE_BITS 15
 #define R_DRAWCOLUMN_FUNCNAME_COMPOSITE(postfix) R_DrawTLColumn15 ## postfix
 #define R_FLUSHWHOLE_FUNCNAME R_FlushWholeTL15
@@ -381,6 +388,7 @@ byte *translationtables;
 #define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTTL32
 #define R_FLUSHQUAD_FUNCNAME R_FlushQuadTL32
 #include "r_drawcolpipeline.inl"
+#endif
 
 #undef R_DRAWCOLUMN_PIPELINE_BASE
 #undef R_DRAWCOLUMN_PIPELINE_TYPE
@@ -405,6 +413,7 @@ byte *translationtables;
 #define R_FLUSHQUAD_FUNCNAME R_FlushQuad8
 #include "r_drawcolpipeline.inl"
 
+#ifndef NOTRUECOLOR
 #define R_DRAWCOLUMN_PIPELINE_BITS 15
 #define R_DRAWCOLUMN_FUNCNAME_COMPOSITE(postfix) R_DrawTranslatedColumn15 ## postfix
 #define R_FLUSHWHOLE_FUNCNAME R_FlushWhole15
@@ -425,6 +434,7 @@ byte *translationtables;
 #define R_FLUSHHEADTAIL_FUNCNAME R_FlushHT32
 #define R_FLUSHQUAD_FUNCNAME R_FlushQuad32
 #include "r_drawcolpipeline.inl"
+#endif
 
 #undef R_DRAWCOLUMN_PIPELINE_BASE
 #undef R_DRAWCOLUMN_PIPELINE_TYPE
@@ -448,6 +458,7 @@ byte *translationtables;
 #define R_FLUSHQUAD_FUNCNAME R_FlushQuadFuzz8
 #include "r_drawcolpipeline.inl"
 
+#ifndef NOTRUECOLOR
 #define R_DRAWCOLUMN_PIPELINE_BITS 15
 #define R_DRAWCOLUMN_FUNCNAME_COMPOSITE(postfix) R_DrawFuzzColumn15 ## postfix
 #define R_FLUSHWHOLE_FUNCNAME R_FlushWholeFuzz15
@@ -468,6 +479,7 @@ byte *translationtables;
 #define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTFuzz32
 #define R_FLUSHQUAD_FUNCNAME R_FlushQuadFuzz32
 #include "r_drawcolpipeline.inl"
+#endif
 
 #undef R_DRAWCOLUMN_PIPELINE_BASE
 #undef R_DRAWCOLUMN_PIPELINE_TYPE
@@ -520,6 +532,7 @@ static R_DrawColumn_f drawcolumnfuncs[VID_MODEMAX][RDRAW_FILTER_MAXFILTERS][RDRA
        R_DrawFuzzColumn8_RoundedUV_LinearZ,},
     },
   },
+#ifndef NOTRUECOLOR
   {
     {
       {NULL, NULL, NULL, NULL,},
@@ -661,6 +674,7 @@ static R_DrawColumn_f drawcolumnfuncs[VID_MODEMAX][RDRAW_FILTER_MAXFILTERS][RDRA
        R_DrawFuzzColumn32_RoundedUV_LinearZ,},
     },
   },
+#endif
 };
 
 R_DrawColumn_f R_GetDrawColumnFunc(enum column_pipeline_e type,
@@ -690,9 +704,6 @@ void R_SetDefaultDrawColumnVars(draw_column_vars_t *dcvars) {
 // Assumes a given structure of the PLAYPAL.
 // Could be read from a lump instead.
 //
-
-byte playernumtotrans[MAXPLAYERS];
-extern lighttable_t *(*c_zlight)[LIGHTLEVELS][MAXLIGHTZ];
 
 void R_InitTranslationTables (void)
 {
@@ -774,6 +785,7 @@ void R_InitTranslationTables (void)
 #define R_DRAWSPAN_PIPELINE (RDC_STANDARD | RDC_ROUNDED | RDC_DITHERZ)
 #include "r_drawspan.inl"
 
+#ifndef NOTRUECOLOR
 #define R_DRAWSPAN_FUNCNAME R_DrawSpan15_PointUV_PointZ
 #define R_DRAWSPAN_PIPELINE_BITS 15
 #define R_DRAWSPAN_PIPELINE (RDC_STANDARD)
@@ -863,6 +875,7 @@ void R_InitTranslationTables (void)
 #define R_DRAWSPAN_PIPELINE_BITS 32
 #define R_DRAWSPAN_PIPELINE (RDC_STANDARD | RDC_ROUNDED | RDC_DITHERZ)
 #include "r_drawspan.inl"
+#endif
 
 static R_DrawSpan_f drawspanfuncs[VID_MODEMAX][RDRAW_FILTER_MAXFILTERS][RDRAW_FILTER_MAXFILTERS] = {
   {
@@ -891,6 +904,7 @@ static R_DrawSpan_f drawspanfuncs[VID_MODEMAX][RDRAW_FILTER_MAXFILTERS][RDRAW_FI
       NULL,
     },
   },
+#ifndef NOTRUECOLOR
   {
     {
       NULL,
@@ -969,6 +983,7 @@ static R_DrawSpan_f drawspanfuncs[VID_MODEMAX][RDRAW_FILTER_MAXFILTERS][RDRAW_FI
       NULL,
     },
   },
+#endif
 };
 
 R_DrawSpan_f R_GetDrawSpanFunc(enum draw_filter_type_e filter,
@@ -1015,13 +1030,16 @@ void R_InitBuffer(int width, int height)
   if (V_GetMode() == VID_MODE8) {
     for (i=0; i<FUZZTABLE; i++)
       fuzzoffset[i] = fuzzoffset_org[i]*screens[0].byte_pitch;
-  } else if ((V_GetMode() == VID_MODE15) || (V_GetMode() == VID_MODE16)) {
+  }
+#ifndef NOTRUECOLOR
+  else if ((V_GetMode() == VID_MODE15) || (V_GetMode() == VID_MODE16)) {
     for (i=0; i<FUZZTABLE; i++)
       fuzzoffset[i] = fuzzoffset_org[i]*screens[0].short_pitch;
   } else if (V_GetMode() == VID_MODE32) {
     for (i=0; i<FUZZTABLE; i++)
       fuzzoffset[i] = fuzzoffset_org[i]*screens[0].int_pitch;
   }
+#endif
 }
 
 //
