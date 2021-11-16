@@ -41,9 +41,7 @@
 			"PROJECT_VER",
 			"IS_LITTLE_ENDIAN",
 			"INLINE=",
-			"uint=unsigned int",
-			"CONFIG_FREERTOS_HZ=100",
-			"CONFIG_TCPIP_LWIP=1"
+			"uint=unsigned int"
 		],
 		"C_Cpp.default.includePath": [
 			"${workspaceFolder}/components/**",
@@ -78,6 +76,10 @@
 		"files.exclude": {
 			"**/build": true,
 			"root": true
+		},
+		"files.watcherExclude": {
+			"**/build/**": true,
+			"**/.git/**": true
 		}
 	}
 }

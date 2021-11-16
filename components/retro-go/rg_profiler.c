@@ -1,3 +1,5 @@
+#ifdef ENABLE_PROFILING
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <string.h>
@@ -141,3 +143,5 @@ NO_PROFILE void __cyg_profile_func_exit(void *this_fn, void *call_site)
 
     UNLOCK_PROFILE();
 }
+
+#endif

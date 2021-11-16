@@ -1,6 +1,3 @@
-#include "rg_system.h"
-#include "rg_netplay.h"
-
 #ifdef ENABLE_NETPLAY
 
 #include <freertos/FreeRTOS.h>
@@ -15,6 +12,9 @@
 #include <unistd.h>
 #include <assert.h>
 #include <netdb.h>
+
+#include "rg_system.h"
+#include "rg_netplay.h"
 
 #define NETPLAY_VERSION 0x01
 #define MAX_PLAYERS 8

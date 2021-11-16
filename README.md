@@ -139,6 +139,7 @@ Patching esp-idf may be required for full functionality. Patches are located in 
 - `sdcard-fix`: This patch is mandatory for the ODROID-GO (and clones).
 - `panic-hook`: This is to help users report bugs, see `Capturing crash logs` bellow for more details. The patch is optional but recommended.
 - `enable-exfat`: Enable exFAT support. I don't recommended it but it works if you need it.
+- `disable-boot-sha256`: This patch allows for faster boot and 5KB less flash usage! This patch is fully optional.
 
 ## Build everything and generate .fw:
 1. `rg_tool.py build-fw`
