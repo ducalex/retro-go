@@ -37,22 +37,12 @@
 #include "doomtype.h"
 #include "v_video.h"
 
-#ifdef __GNUG__
-#pragma interface
-#endif
-
-void I_PreInitGraphics(void); /* CPhipps - do stuff immediately on start */
-void I_CalculateRes(unsigned int width, unsigned int height); /* calculate resolution */
-void I_SetRes(void); /* set resolution */
-void I_InitGraphics (void);
+void I_InitGraphics(void);
 void I_UpdateVideoMode(void);
 void I_ShutdownGraphics(void);
-
-/* Takes full 8 bit values. */
-void I_SetPalette(int pal); /* CPhipps - pass down palette number */
-
-void I_UpdateNoBlit (void);
-void I_FinishUpdate (void);
+void I_SetPalette(int pal); /* Takes full 8 bit values. */
+void I_UpdateNoBlit(void);
+void I_FinishUpdate(void);
 
 /* I_StartTic
  * Called by D_DoomLoop,
@@ -60,7 +50,7 @@ void I_FinishUpdate (void);
  * Quick syncronous operations are performed here.
  * Can call D_PostEvent.
  */
-void I_StartTic (void);
+void I_StartTic(void);
 
 /* I_StartFrame
  * Called by D_DoomLoop,
@@ -70,7 +60,6 @@ void I_StartTic (void);
  * are performed here (joystick reading).
  * Can call D_PostEvent.
  */
-
-void I_StartFrame (void);
+void I_StartFrame(void);
 
 #endif

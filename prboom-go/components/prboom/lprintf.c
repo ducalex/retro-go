@@ -36,25 +36,15 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#endif
-#ifdef _MSC_VER
-#include <io.h>
-#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
 #include "doomtype.h"
+#include "doomdef.h"
 #include "lprintf.h"
 #include "i_main.h"
 #include "m_argv.h"
-
-#include <rg_system.h>
 
 int cons_error_mask = -1-LO_INFO; /* all but LO_INFO when redir'd */
 int cons_output_mask = -1;        /* all output enabled */

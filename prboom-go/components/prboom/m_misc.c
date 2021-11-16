@@ -727,9 +727,9 @@ void M_LoadDefaults (void)
 
   numdefaults = sizeof(defaults)/sizeof(defaults[0]);
   for (i = 0 ; i < numdefaults ; i++) {
-    if (defaults[i].location.ppsz)
+    if (defaults[i].type == def_str && defaults[i].location.ppsz)
       *defaults[i].location.ppsz = strdup(defaults[i].defaultvalue.psz);
-    if (defaults[i].location.pi)
+    if (defaults[i].type != def_str && defaults[i].location.pi)
       *defaults[i].location.pi = defaults[i].defaultvalue.i;
   }
 

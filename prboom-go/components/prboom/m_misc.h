@@ -53,6 +53,17 @@ struct default_s *M_LookupDefault(const char *name);     /* killough 11/98 */
 
 // phares 4/21/98:
 // Moved from m_misc.c so m_menu.c could see it.
+typedef enum
+{
+  def_none, // Dummy entry
+  def_str,  // A string
+  def_int,  // Integer
+  def_hex,  // Integer (write in hex)
+  def_bool = def_int,  // Boolean
+  def_key = def_hex,   // Key code (byte)
+  def_mouseb = def_int,// Mouse button
+  def_colour = def_hex // Colour (256 colour palette entry)
+} def_type_t;
 
 // CPhipps - struct to hold a value in a config file
 // Cannot be a union, as it must be initialised
@@ -68,40 +79,22 @@ typedef struct default_s
    *  m_menu.c cast it back when they need to change it. Possibly this is
    *  more trouble than it's worth.
    */
-  struct {
-    int* pi;
-    const char** ppsz;
-  } location;
-  struct {
-    int i;
-    const char* psz;
-  } defaultvalue; // CPhipps - default value
-  // Limits (for an int)
-  int   minvalue;         // jff 3/3/98 minimum allowed value
-  int   maxvalue;         // jff 3/3/98 maximum allowed value
-  enum {
-    def_none, // Dummy entry
-    def_str,  // A string
-    def_int,  // Integer
-    def_hex,  // Integer (write in hex)
-    def_bool = def_int,  // Boolean
-    def_key = def_hex,   // Key code (byte)
-    def_mouseb = def_int,// Mouse button
-    def_colour = def_hex // Colour (256 colour palette entry)
-  } type; // CPhipps - type of entry
-  int   setupscreen;      // phares 4/19/98: setup screen where this appears
-  int  *current;          /* cph - MBF-like pointer to current value */
-  // cph - removed the help strings from the config file
-  // const char* help;       // jff 3/3/98 description of parameter
-  // CPhipps - remove unused "lousy hack" code
-  struct setup_menu_s *setup_menu;   /* Xref to setup menu item, if any */
+  // RG: Changed to unions and added a few type checks to not clash
+  // It seems to work for now and uses half the memory!
+  union {int *pi; const char **ppsz;} location;
+  union {int i; const char *psz;} defaultvalue;
+  short       minvalue;     // min value for ints
+  short       maxvalue;     // max value for ints
+  short       type;         // def_type_t
+  short       setupscreen;  // phares 4/19/98: setup screen where this appears
+  int         *current;     // cph - MBF-like pointer to current value
 } default_t;
 
 #define IS_STRING(dv) ((dv).type == def_str)
-// CPhipps - What is the max. key code that X will send us?
-#define MAX_KEY 65536
+
+#define MAX_KEY 32000
 #define MAX_MOUSEB 2
 
-#define UL (-123456789) /* magic number for no min or max for parameter */
+#define UL (-12345) /* magic number for no min or max for parameter */
 
 #endif

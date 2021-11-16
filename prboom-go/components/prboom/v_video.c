@@ -36,6 +36,7 @@
  */
 
 #include "doomdef.h"
+#include "doomstat.h"
 #include "r_main.h"
 #include "r_draw.h"
 #include "m_bbox.h"
@@ -49,21 +50,6 @@
 screeninfo_t screens[NUM_SCREENS];
 
 int usegamma;
-
-/*
- * V_InitColorTranslation
- *
- * Loads the color translation tables from predefined lumps at game start
- * No return
- *
- * Used for translating text colors from the red palette range
- * to other colors. The first nine entries can be used to dynamically
- * switch the output of text color thru the HUlib_drawText routine
- * by embedding ESCn in the text to obtain color n. Symbols for n are
- * provided in v_video.h.
- *
- * cphipps - constness of crdef_t stuff fixed
- */
 
 typedef struct {
   const char *name;
@@ -84,13 +70,6 @@ static crdef_t crdefs[CR_LIMIT] = {
   {"CRYELLOW", NULL},
   {"CRBLUE2",  NULL},
 };
-
-// killough 5/2/98: tiny engine driven by table above
-void V_InitColorTranslation(void)
-{
-  for (size_t i = 0; i < CR_LIMIT; i++)
-    crdefs[i].map = W_CacheLumpName(crdefs[i].name);
-}
 
 //
 // V_CopyRect
@@ -223,12 +202,14 @@ static void FUNC_V_DrawBackground(const char* flatname, int scrn)
 // No return
 //
 
-void V_Init (void)
+void V_Init(int width, int height, video_mode_t mode)
 {
-  int  i;
+  // Load color translation tables from predefined lumps
+  for (int i = 0; i < CR_LIMIT; i++)
+    crdefs[i].map = W_CacheLumpName(crdefs[i].name);
 
-  // reset the all
-  for (i = 0; i<NUM_SCREENS; i++) {
+  // Reset all screens
+  for (int i = 0; i < NUM_SCREENS; i++) {
     screens[i].data = NULL;
     screens[i].not_on_heap = false;
     screens[i].width = 0;
@@ -236,6 +217,14 @@ void V_Init (void)
     screens[i].byte_pitch = 0;
     screens[i].short_pitch = 0;
     screens[i].int_pitch = 0;
+  }
+
+  // Init host video if we're drawing
+  if (!nodrawers)
+  {
+    V_InitMode(mode);
+    I_InitGraphics();
+    V_AllocScreens();
   }
 }
 
@@ -750,8 +739,8 @@ static void NULL_DrawBackground(const char *flatname, int n) {}
 static void NULL_DrawNumPatch(int x, int y, int scrn, int lump, int cm, enum patch_translation_e flags) {}
 static void NULL_PlotPixel(int scrn, int x, int y, byte color) {}
 
-const char *default_videomode;
-static video_mode_t current_videomode = VID_MODE8;
+video_mode_t default_videomode = VID_MODE8;
+video_mode_t current_videomode = VID_MODE8;
 
 V_CopyRect_f V_CopyRect = NULL_CopyRect;
 V_FillRect_f V_FillRect = NULL_FillRect;

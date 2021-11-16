@@ -78,13 +78,14 @@ typedef enum {
 typedef struct
 {
   const char* name;
-  wad_source_t src;
+  const void *data;
+  size_t size;
   void *handle;
 } wadfile_info_t;
 
 typedef struct
 {
-  char   name[9];         // lump name, uppercased
+  char   name[8];         // lump name, uppercased
   short  li_namespace;    // lump namespace
   short  index, next;     // Index in lumpinfo[]
   size_t size;            // lump size
@@ -108,10 +109,11 @@ void W_DoneCache(void);
 
 #define W_CheckNumForName(name) W_CheckNumForNameNs(name, ns_global)
 int     W_CheckNumForNameNs(const char* name, int);   // killough 4/17/98
-int     W_GetNumForName (const char* name);
-int     W_LumpLength (int lump);
-void    W_ReadLump (int lump, void *dest);
-const void* W_CacheLumpNum (int lump);
+int     W_GetNumForName(const char* name);
+int     W_LumpLength(int lump);
+int     W_Read(void *dest, size_t size, size_t offset, wadfile_info_t *wad);
+void    W_ReadLump(void *dest, int lump);
+const void* W_CacheLumpNum(int lump);
 const void* W_LockLumpNum(int lump);
 void    W_UnlockLumpNum(int lump);
 

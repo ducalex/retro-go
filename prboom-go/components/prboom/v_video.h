@@ -118,7 +118,8 @@ typedef enum {
   VID_MODEMAX
 } video_mode_t;
 
-extern const char *default_videomode;
+extern video_mode_t default_videomode;
+extern video_mode_t current_videomode;
 
 void V_InitMode(video_mode_t mode);
 
@@ -128,11 +129,8 @@ int V_GetModePixelDepth(video_mode_t mode);
 int V_GetNumPixelBits(void);
 int V_GetPixelDepth(void);
 
-//jff 4/24/98 loads color translation lumps
-void V_InitColorTranslation(void);
-
 // Allocates buffer screens, call before R_Init.
-void V_Init (void);
+void V_Init(int width, int height, video_mode_t mode);
 
 // V_CopyRect
 typedef void (*V_CopyRect_f)(int srcx,  int srcy,  int srcscrn,

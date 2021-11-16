@@ -98,7 +98,7 @@ const void *W_CacheLumpNum(int lump)
   if (segments[handle].ptr)
     Z_Free(segments[handle].ptr);
 
-  W_ReadLump(lump, Z_Malloc(W_LumpLength(lump), PU_STATIC, &segments[handle].ptr));
+  W_ReadLump(Z_Malloc(W_LumpLength(lump), PU_STATIC, &segments[handle].ptr), lump);
 
   segments[handle].lump = lump;
   segments[handle].locks = 1;

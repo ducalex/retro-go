@@ -61,7 +61,6 @@
 #include "i_sound.h"
 #include "r_demo.h"
 #include "r_fps.h"
-#include <rg_system.h>
 
 extern patchnum_t hu_font[HU_FONTSIZE];
 extern boolean  message_dontfuckwithme;
@@ -3242,7 +3241,7 @@ static void M_InitDefaults(void)
     if (!(dp = M_LookupDefault(t->var.name)))
       I_Error("M_InitDefaults: Couldn't find config variable %s", t->var.name);
     else
-      (t->var.def = dp)->setup_menu = t;
+      t->var.def = dp;
   }
 }
 

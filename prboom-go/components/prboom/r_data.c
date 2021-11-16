@@ -370,19 +370,18 @@ static void R_InitSpriteLumps(void)
 // and to remove unnecessary 256-byte alignment
 //
 // killough 4/4/98: Add support for C_START/C_END markers
+// 2021-11-14: Don't crash if C_START/C_END are missing
 //
 
 static void R_InitColormaps(void)
 {
-  int i;
-  firstcolormaplump = W_GetNumForName("C_START");
-  lastcolormaplump  = W_GetNumForName("C_END");
-  numcolormaps = lastcolormaplump - firstcolormaplump;
+  firstcolormaplump = W_CheckNumForName("C_START");
+  lastcolormaplump  = W_CheckNumForName("C_END");
+  numcolormaps = MAX(lastcolormaplump - firstcolormaplump, 1);
   colormaps = Z_Malloc(sizeof(*colormaps) * numcolormaps, PU_STATIC, 0);
-  colormaps[0] = (const lighttable_t *)W_CacheLumpName("COLORMAP");
-  for (i=1; i<numcolormaps; i++)
-    colormaps[i] = (const lighttable_t *)W_CacheLumpNum(i+firstcolormaplump);
-  // cph - always lock
+  colormaps[0] = W_CacheLumpName("COLORMAP");
+  for (int i = 1; i<numcolormaps; i++)
+    colormaps[i] = W_CacheLumpNum(i+firstcolormaplump);
 }
 
 // killough 4/4/98: get colormap number from name
@@ -392,7 +391,7 @@ static void R_InitColormaps(void)
 int R_ColormapNumForName(const char *name)
 {
   register int i = 0;
-  if (strncasecmp(name,"COLORMAP",8))     // COLORMAP predefined to return 0
+  if (numcolormaps > 1 && strncasecmp(name, "COLORMAP", 8))      // COLORMAP predefined to return 0
     if ((i = W_CheckNumForNameNs(name, ns_colormaps)) != -1)
       i -= firstcolormaplump;
   return i;

@@ -131,7 +131,7 @@ void I_SetPalette(int pal)
     W_UnlockLumpNum(pplump);
 }
 
-void I_SetRes(void)
+void I_InitGraphics(void)
 {
     // set first three to standard values
     for (int i = 0; i < 3; i++)
@@ -151,15 +151,6 @@ void I_SetRes(void)
     screens[4].byte_pitch = SCREENWIDTH;
 
     rg_display_set_source_format(SCREENWIDTH, SCREENHEIGHT, 0, 0, SCREENWIDTH, RG_PIXEL_PAL565_BE);
-}
-
-void I_InitGraphics(void)
-{
-    V_InitMode(VID_MODE8);
-    V_FreeScreens();
-    I_SetRes();
-    V_AllocScreens();
-    R_InitBuffer(SCREENWIDTH, SCREENHEIGHT);
 }
 
 int I_GetTime_RealTime(void)
@@ -359,8 +350,6 @@ static void soundTask(void *arg)
 
 void I_InitSound(void)
 {
-    RG_LOGI("called\n");
-
     for (int i = 1; i < NUMSFX; i++)
     {
         // Map unknown sounds to pistol
@@ -511,11 +500,11 @@ void I_StartTic(void)
 
 void I_Init(void)
 {
+    default_videomode = VID_MODE8;
     snd_channels = NUM_MIX_CHANNELS;
     snd_samplerate = SAMPLERATE;
     snd_MusicVolume = 15;
     snd_SfxVolume = 15;
-    R_InitInterpolation();
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)

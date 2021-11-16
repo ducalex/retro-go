@@ -39,7 +39,8 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-#include "esp_attr.h"
+
+#include <rg_system.h>
 
 // This must come first, since it redefines malloc(), free(), etc. -- killough:
 #include "z_zone.h"
