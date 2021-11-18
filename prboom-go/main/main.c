@@ -70,24 +70,20 @@ static short mixbuffer[SAMPLECOUNT * 2];
 static const music_player_t *music_player = &opl_synth_player;
 static bool musicPlaying = false;
 
-static int key_yes = 'y';
-static int key_no = 'n';
+// TO DO: Detect when menu is open so we can send better keys.
 
 static const struct {int mask; int *key;} keymap[] = {
     {RG_KEY_UP, &key_up},
     {RG_KEY_DOWN, &key_down},
     {RG_KEY_LEFT, &key_left},
     {RG_KEY_RIGHT, &key_right},
-    {RG_KEY_A, &key_yes},
     {RG_KEY_A, &key_fire},
     {RG_KEY_A, &key_menu_enter},
-    {RG_KEY_B, &key_no},
     {RG_KEY_B, &key_speed},
     {RG_KEY_B, &key_strafe},
-    {RG_KEY_B, &key_menu_backspace},
+    {RG_KEY_B, &key_backspace},
     {RG_KEY_MENU, &key_escape},
-    // {RG_KEY_OPTION, &key_map},
-    {RG_KEY_OPTION, &key_escape},
+    {RG_KEY_OPTION, &key_map},
     {RG_KEY_START, &key_use},
     {RG_KEY_SELECT, &key_weapontoggle},
 };
@@ -201,29 +197,6 @@ void I_uSleep(unsigned long usecs)
 const char *I_DoomExeDir(void)
 {
     return RG_BASE_PATH_ROMS "/doom";
-}
-
-char *I_FindFile(const char *fname, const char *ext)
-{
-    char filepath[PATH_MAX + 1];
-
-    // Absolute path
-    if (fname[0] == '/' && access(fname, R_OK) != -1)
-    {
-        RG_LOGI("Found %s... ", fname);
-        return strdup(fname);
-    }
-
-    // Relative path
-    snprintf(filepath, PATH_MAX, "%s/%s", I_DoomExeDir(), fname);
-    if (access(filepath, R_OK) != -1)
-    {
-        RG_LOGI("Found: %s\n", filepath);
-        return strdup(filepath);
-    }
-
-    RG_LOGI("Not found: %s.\n");
-    return NULL;
 }
 
 void I_UpdateSoundParams(int handle, int volume, int seperation, int pitch)

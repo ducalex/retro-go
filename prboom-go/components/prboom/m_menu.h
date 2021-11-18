@@ -45,7 +45,7 @@
 // this can resize the view and change game parameters.
 // Does all the real work of the menu interaction.
 
-boolean M_Responder (event_t *ev);
+bool M_Responder (event_t *ev);
 
 // Called by main loop,
 // only used for menu (skull cursor) animation.
@@ -68,10 +68,6 @@ void M_Init (void);
 void M_StartControlPanel (void);
 
 void M_ForcedLoadGame(const char *msg); // killough 5/15/98: forced loadgames
-
-void M_Trans(void);          // killough 11/98: reset translucency
-
-void M_ResetMenu(void);      // killough 11/98: reset main menu ordering
 
 void M_DrawCredits(void);    // killough 11/98
 
@@ -167,8 +163,6 @@ typedef struct setup_menu_s
     struct setup_menu_s *menu;  /* next or prev menu */
   } var;
 
-  int         *m_mouse; /* mouse button value, or 0 if not shown */
-  int         *m_joy;   /* joystick button value, or 0 if not shown */
   void (*action)(void); /* killough 10/98: function to call after changing */
   const char **selectstrings; /* list of strings for choice value */
 } setup_menu_t;
