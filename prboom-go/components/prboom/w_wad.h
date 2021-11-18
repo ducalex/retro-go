@@ -35,10 +35,6 @@
 #ifndef __W_WAD__
 #define __W_WAD__
 
-#ifdef __GNUG__
-#pragma interface
-#endif
-
 //
 // WADFILE I/O related stuff.
 //
@@ -56,16 +52,6 @@ typedef struct
   int  size;
   char name[8];
 } filelump_t;
-
-typedef enum
-{
-  source_iwad=0,    // iwad file load
-  source_pre,       // predefined lump
-  source_auto_load, // lump auto-loaded by config file
-  source_pwad,      // pwad file load
-  source_lmp,       // lmp file load
-  source_net        // CPhipps
-} wad_source_t;
 
 typedef enum {
   ns_global=0,
@@ -86,11 +72,13 @@ typedef struct
 typedef struct
 {
   char   name[8];         // lump name, uppercased
-  short  li_namespace;    // lump namespace
+  short  li_namespace:5;  // lump namespace
+  short  locks:11;        // ptr locks
   short  index, next;     // Index in lumpinfo[]
   size_t size;            // lump size
   size_t position;        // position in wadfile
   wadfile_info_t *wadfile;// source file
+  void *ptr;              // data/cache pointer
 } lumpinfo_t;
 
 #define MAX_WAD_FILES 8
@@ -100,30 +88,28 @@ extern size_t numwadfiles;
 extern lumpinfo_t *lumpinfo;
 extern size_t      numlumps;
 
-void W_Init(void); // CPhipps - uses the above array
-void W_InitCache(void);
-void W_DoneCache(void);
-
-// killough 4/17/98: if W_CheckNumForName() called with only
-// one argument, pass ns_global as the default namespace
-
-#define W_CheckNumForName(name) W_CheckNumForNameNs(name, ns_global)
-int     W_CheckNumForNameNs(const char* name, int);   // killough 4/17/98
+void    W_Init(void);
+int     W_CheckNumForNameNs(const char* name, int);
 int     W_GetNumForName(const char* name);
 int     W_LumpLength(int lump);
 int     W_Read(void *dest, size_t size, size_t offset, wadfile_info_t *wad);
 void    W_ReadLump(void *dest, int lump);
+void    W_HashLumps(void);
+unsigned W_LumpNameHash(const char *s);
+
+void    W_InitCache(void);
+void    W_DoneCache(void);
 const void* W_CacheLumpNum(int lump);
-const void* W_LockLumpNum(int lump);
 void    W_UnlockLumpNum(int lump);
 
 // CPhipps - convenience macros
-#define W_CacheLumpName(name) W_CacheLumpNum (W_GetNumForName(name))
-#define W_UnlockLumpName(name) W_UnlockLumpNum (W_GetNumForName(name))
+#define W_CheckNumForName(name) W_CheckNumForNameNs(name, ns_global)
+#define W_CacheLumpName(name) W_CacheLumpNum(W_GetNumForName(name))
+#define W_UnlockLumpName(name) W_UnlockLumpNum(W_GetNumForName(name))
+#define W_LockLumpName(name) W_CacheLumpName(name)
+#define W_LockLumpNum(n) W_CacheLumpNum(n)
 
 char *AddDefaultExtension(char *, const char *);  // killough 1/18/98
 void ExtractFileBase(const char *, char *);       // killough
-unsigned W_LumpNameHash(const char *s);           // killough 1/31/98
-void W_HashLumps(void);                           // cph 2001/07/07 - made public
 
 #endif

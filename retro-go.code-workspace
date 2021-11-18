@@ -41,7 +41,9 @@
 			"PROJECT_VER",
 			"IS_LITTLE_ENDIAN",
 			"INLINE=",
-			"uint=unsigned int"
+			"uint=unsigned int",
+			"CONFIG_FREERTOS_HZ=100",
+			"CONFIG_TCPIP_LWIP=1"
 		],
 		"C_Cpp.default.includePath": [
 			"${workspaceFolder}/components/**",

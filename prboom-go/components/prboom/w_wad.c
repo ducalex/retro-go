@@ -173,6 +173,8 @@ static void W_AddFile(wadfile_info_t *wadfile)
     lump_p->position = LONG(fileinfo->filepos);
     lump_p->size = LONG(fileinfo->size);
     lump_p->li_namespace = ns_global;              // killough 4/17/98
+    lump_p->locks = 0;
+    lump_p->ptr = NULL;
     memcpy(lump_p->name, fileinfo->name, 8);
   }
 
@@ -342,7 +344,6 @@ void W_HashLumps(void)
 // End of lump hashing -- killough 1/31/98
 
 
-
 // W_GetNumForName
 // Calls W_CheckNumForName, but bombs out if not found.
 //
@@ -353,7 +354,6 @@ int W_GetNumForName (const char* name)     // killough -- const added
     I_Error("W_GetNumForName: %.8s not found", name);
   return i;
 }
-
 
 
 // W_Init
@@ -380,18 +380,11 @@ void W_Init(void)
   if (!numlumps)
     I_Error ("W_Init: No files found");
 
-  //jff 1/23/98
-  // get all the sprites and flats into one marked block each
-  // killough 1/24/98: change interface to use M_START/M_END explicitly
-  // killough 4/17/98: Add namespace tags to each entry
-  // killough 4/4/98: add colormap markers
   W_CoalesceMarkedResource("S_START", "S_END", ns_sprites);
   W_CoalesceMarkedResource("F_START", "F_END", ns_flats);
   W_CoalesceMarkedResource("C_START", "C_END", ns_colormaps);
-  W_CoalesceMarkedResource("B_START", "B_END", ns_prboom);
 
-  W_HashLumps(); // killough 1/31/98: initialize lump hash table
-  W_InitCache(); // cph 2001/07/07 - separated cache setup
+  W_HashLumps();
 }
 
 //
@@ -400,11 +393,11 @@ void W_Init(void)
 //
 int W_Read(void *dest, size_t size, size_t offset, wadfile_info_t *wad)
 {
-#ifdef RANGECHECK
   if (offset + size >= wad->size)
-    I_Error("W_Read: %d+%d >= wad->size", offset, size);
-#endif
-  if (wad->data)
+  {
+    lprintf(LO_WARN, "W_Read: %d+%d >= %d\n", offset, size, wad->size);
+  }
+  else if (wad->data)
   {
     memcpy(dest, wad->data + offset, size);
     return size;
@@ -424,10 +417,9 @@ int W_Read(void *dest, size_t size, size_t offset, wadfile_info_t *wad)
 //
 int W_LumpLength(int lump)
 {
-#ifdef RANGECHECK
-  if ((unsigned)lump >= (unsigned)numlumps)
-    I_Error ("W_LumpLength: %i >= numlumps",lump);
-#endif
+  if ((unsigned)lump >= numlumps)
+    I_Error("W_LumpLength: index out of bounds");
+
   return lumpinfo[lump].size;
 }
 
@@ -438,13 +430,53 @@ int W_LumpLength(int lump)
 //
 void W_ReadLump(void *dest, int lump)
 {
-#ifdef RANGECHECK
-  if ((unsigned)lump >= (unsigned)numlumps)
-    I_Error ("W_ReadLump: %i >= numlumps",lump);
-#endif
+  if ((unsigned)lump >= numlumps)
+    I_Error("W_ReadLump: index out of bounds");
+
   lumpinfo_t *l = lumpinfo + lump;
   if (l->wadfile)
   {
     W_Read(dest, l->size, l->position, l->wadfile);
   }
+}
+
+//
+// W_CacheLumpNum
+//
+const void *W_CacheLumpNum(int lump)
+{
+  if ((unsigned)lump >= numlumps)
+    I_Error("W_CacheLumpNum: index out of bounds");
+
+  lumpinfo_t *l = &lumpinfo[lump];
+
+  if (!l->ptr)
+  {
+    // Bypass caching if we have the WAD mapped in memory
+    if (l->wadfile && l->wadfile->data)
+      return l->wadfile->data + l->position;
+    W_ReadLump(Z_Malloc(W_LumpLength(lump), PU_STATIC, &l->ptr), lump);
+    l->locks = 0;
+  }
+
+  if (++l->locks == 1)
+  {
+    Z_ChangeTag(l->ptr, PU_STATIC);
+    l->locks = 1;
+  }
+
+  return l->ptr;
+}
+
+//
+// W_UnlockLumpNum
+//
+void W_UnlockLumpNum(int lump)
+{
+  if ((unsigned)lump >= numlumps)
+    I_Error("W_UnlockLumpNum: index out of bounds");
+
+  lumpinfo_t *l = &lumpinfo[lump];
+  if (l->ptr && l->locks && --l->locks == 0)
+    Z_ChangeTag(l->ptr, PU_CACHE);
 }

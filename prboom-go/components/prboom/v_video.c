@@ -490,21 +490,24 @@ static int currentPaletteIndex = 0;
 // V_UpdateTrueColorPalette
 //
 void V_UpdateTrueColorPalette(video_mode_t mode) {
+  static int usegammaOnLastPaletteGeneration = -1;
   int i, w, p;
   byte r,g,b;
   int nr,ng,nb;
   float t;
   int paletteNum = currentPaletteIndex;
-  static int usegammaOnLastPaletteGeneration = -1;
-
   int pplump = W_GetNumForName("PLAYPAL");
-  int gtlump = W_CheckNumForNameNs("GAMMATBL",ns_prboom);
   const byte *pal = W_CacheLumpNum(pplump);
-  const byte *gtable = W_CacheLumpNum(gtlump) + 256*(usegamma);
-
   int numPals = W_LumpLength(pplump) / (3*256);
   const float dontRoundAbove = 220;
   float roundUpR, roundUpG, roundUpB;
+
+  byte gtable[256];
+
+  // Note: this isn't right but I haven't reverse engineered how GAMMATBL
+  // was generated yet and we don't even use truecolors for now...
+  for (i = 0; i < 256; i++)
+    gtable[i] = i << usegamma;
 
   if (usegammaOnLastPaletteGeneration != usegamma) {
     if (Palettes15) free(Palettes15);
@@ -608,7 +611,6 @@ void V_UpdateTrueColorPalette(video_mode_t mode) {
   }
 
   W_UnlockLumpNum(pplump);
-  W_UnlockLumpNum(gtlump);
 }
 
 

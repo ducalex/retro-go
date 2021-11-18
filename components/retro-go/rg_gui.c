@@ -710,7 +710,7 @@ static dialog_return_t brightness_update_cb(dialog_option_t *option, dialog_even
     if (event == RG_DIALOG_PREV) level -= 10;
     if (event == RG_DIALOG_NEXT) level += 10;
 
-    level = RG_MIN(RG_MAX(level, 10), 100);
+    level = RG_MIN(RG_MAX(level & ~1, 1), 100);
 
     if (level != old_level)
         rg_display_set_backlight(level);

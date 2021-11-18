@@ -178,7 +178,7 @@ default_t defaults[] =
    def_int,ss_none}, // 1=take special steps ensuring demo sync, 2=only during recordings
   // {"endoom_mode", {&endoom_mode},{5},0,7, // CPhipps - endoom flags
   //  def_hex, ss_none}, // 0, +1 for colours, +2 for non-ascii chars, +4 for skip-last-line
-  {"level_precache",{(int*)&precache},{0},0,1,
+  {"level_precache",{(int*)&precache},{1},0,1,
    def_bool,ss_none}, // precache level data?
   {"demo_smoothturns", {&demo_smoothturns},  {0},0,1,
    def_bool,ss_stat},

@@ -519,7 +519,7 @@ void D_StartTitle (void)
 //
 // Add files to be loaded later by W_Init()
 //
-boolean D_AddFile(const char *file, wad_source_t source)
+bool D_AddFile(const char *file)
 {
   char relpath[PATH_MAX + 1];
 
@@ -691,11 +691,11 @@ static void D_DoomMainSetup(void)
 
   // Try loading iwad specified as parameter
   if ((p = M_CheckParm("-iwad")) && (++p < myargc))
-    D_AddFile(myargv[p], source_iwad);
+    D_AddFile(myargv[p]);
 
   // If that fails then try known standard iwad names
   for (int i = 0; !numwadfiles && standard_iwads[i]; i++)
-    D_AddFile(standard_iwads[i], source_iwad);
+    D_AddFile(standard_iwads[i]);
 
   if (!numwadfiles)
     I_Error("IWAD not found\n");
@@ -744,6 +744,20 @@ static void D_DoomMainSetup(void)
     "You are welcome to redistribute it under certain conditions.\n"
     "It comes with ABSOLUTELY NO WARRANTY. See the file COPYING for details.\n",
     PACKAGE, VERSION, version_date, doomverstr);
+
+  // Add prboom.wad at the very beginning so it can be overriden by mods
+#ifdef PRBOOMWAD
+  #include "prboom_wad.h"
+  wadfiles[numwadfiles++] = (wadfile_info_t){
+      .name = "prboom.wad",
+      .data = prboom_wad,
+      .size = prboom_wad_size,
+      .handle = NULL,
+  };
+#else
+  if (!D_AddFile("prboom.wad"))
+    I_Error("PRBOOM.WAD not found\n");
+#endif
 
   if ((devparm = M_CheckParm("-devparm")))
     lprintf(LO_CONFIRM, "%s", s_D_DEVSTR);
@@ -901,7 +915,7 @@ static void D_DoomMainSetup(void)
       // the parms after p are wadfile/lump names,
       // until end of parms or another - preceded parm
       while (++p != myargc && *myargv[p] != '-')
-        if (D_AddFile(myargv[p], source_pwad))
+        if (D_AddFile(myargv[p]))
           modifiedgame = true;
     }
 
@@ -917,31 +931,13 @@ static void D_DoomMainSetup(void)
       char file[PATH_MAX+1];      // cph - localised
       strcpy(file,myargv[p+1]);
       AddDefaultExtension(file,".lmp");     // killough
-      D_AddFile (file,source_lmp);
+      D_AddFile (file);
       //jff 9/3/98 use logical output routine
       lprintf(LO_CONFIRM,"Playing demo %s\n",file);
       if ((p = M_CheckParm ("-ffmap")) && p < myargc-1) {
         ffmap = atoi(myargv[p+1]);
       }
-
     }
-
-  // Add prboom.wad at the very end
-  if (!D_AddFile("prboom.wad", source_auto_load))
-  {
-#ifdef PRBOOMWAD
-    lprintf(LO_WARN, "PRBOOM.WAD not found. Using bundled version.\n");
-    #include "prboom_wad.h"
-    wadfiles[numwadfiles++] = (wadfile_info_t){
-        .name = "prboom.wad",
-        .data = prboom_wad,
-        .size = prboom_wad_size,
-        .handle = NULL,
-    };
-#else
-    I_Error("PRBOOM.WAD not found\n");
-#endif
-  }
 
   // internal translucency set to config file value               // phares
   general_translucency = default_translucency;                    // phares

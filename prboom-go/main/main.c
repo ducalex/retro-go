@@ -325,31 +325,18 @@ void I_InitSound(void)
 {
     for (int i = 1; i < NUMSFX; i++)
     {
-        // Map unknown sounds to pistol
         if (S_sfx[i].lumpnum == -1)
+            sfx[i] = sfx[1]; // Map unknown sounds to pistol
+        else
         {
-            sfx[i] = sfx[1];
-            continue;
+            size_t size = W_LumpLength(S_sfx[i].lumpnum);
+            sfx[i].length = ((size + (SAMPLECOUNT - 1)) / SAMPLECOUNT) * SAMPLECOUNT;
+            sfx[i].data = Z_Malloc(sfx[i].length, PU_SOUND, 0);
+            W_ReadLump(sfx[i].data, S_sfx[i].lumpnum);
+            memset(sfx[i].data + size, 0x80, sfx[i].length - size);
         }
-
-        int sfxlump = S_sfx[i].lumpnum;
-        const void *data = W_CacheLumpNum(sfxlump) + 8;
-        size_t size = W_LumpLength(sfxlump) - 8;
-
-        // Pads the sound effect out to the mixing buffer size.
-        size_t paddedsize = ((size + (SAMPLECOUNT - 1)) / SAMPLECOUNT) * SAMPLECOUNT;
-        void *paddedsfx = Z_Malloc(paddedsize, PU_SOUND, 0);
-
-        memcpy(paddedsfx, data, size);
-        memset(paddedsfx + size, 0x80, paddedsize - size);
-
-        sfx[i].data = paddedsfx;
-        sfx[i].length = paddedsize;
-
-        W_UnlockLumpNum(sfxlump);
-        Z_FreeTags(PU_CACHE, PU_CACHE);
     }
-    RG_LOGI("pre-cached all sound data!\n");
+    RG_LOGI("all sound effects loaded.\n");
 
     music_player->init(snd_samplerate);
     music_player->setvolume(snd_MusicVolume);
@@ -482,6 +469,7 @@ void I_Init(void)
 
 static bool screenshot_handler(const char *filename, int width, int height)
 {
+    Z_FreeTags(PU_CACHE, PU_CACHE); // At this point the heap is usually full. Let's reclaim some!
 	return rg_display_save_frame(filename, &update, width, height);
 }
 
@@ -511,7 +499,7 @@ static void event_handler(int event, void *arg)
     {
         // DOOM fully fills the internal heap and this causes some shutdown
         // steps to fail so we try to free everything!
-        Z_FreeTags(PU_STATIC, PU_CACHE);
+        Z_FreeTags(0, PU_MAX);
         rg_audio_set_mute(true);
     }
     return;

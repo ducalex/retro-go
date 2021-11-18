@@ -66,13 +66,13 @@ enum {PU_FREE, PU_STATIC, PU_SOUND, PU_MUSIC, PU_LEVEL, PU_LEVSPEC, PU_CACHE,
 #define DA(x,y) ,x,y
 #define DAC(x,y) x,y
 #else
-#define DA(x,y) 
+#define DA(x,y)
 #define DAC(x,y)
 #endif
 
 void *(Z_Malloc)(size_t size, int tag, void **ptr DA(const char *, int));
 void (Z_Free)(void *ptr DA(const char *, int));
-void (Z_FreeTags)(int lowtag, int hightag DA(const char *, int));
+void (Z_FreeTags)(int lowtag, int hightag, int max DA(const char *, int));
 void (Z_ChangeTag)(void *ptr, int tag DA(const char *, int));
 void (Z_Init)(void);
 void Z_Close(void);
@@ -81,18 +81,21 @@ void *(Z_Realloc)(void *p, size_t n, int tag, void **user DA(const char *, int))
 char *(Z_Strdup)(const char *s, int tag, void **user DA(const char *, int));
 void (Z_CheckHeap)(DAC(const char *,int));   // killough 3/22/98: add file/line info
 void Z_DumpHistory(char *);
+void Z_ZoneHistory(char *);
 
 #ifdef INSTRUMENTED
-/* cph - save space if not debugging, don't require file 
+/* cph - save space if not debugging, don't require file
  * and line to memory calls */
 #define Z_Free(a)          (Z_Free)     (a,      __FILE__,__LINE__)
-#define Z_FreeTags(a,b)    (Z_FreeTags) (a,b,    __FILE__,__LINE__)
+#define Z_FreeTags(a,b)    (Z_FreeTags) (a,b,-1, __FILE__,__LINE__)
 #define Z_ChangeTag(a,b)   (Z_ChangeTag)(a,b,    __FILE__,__LINE__)
 #define Z_Malloc(a,b,c)    (Z_Malloc)   (a,b,c,  __FILE__,__LINE__)
 #define Z_Strdup(a,b,c)    (Z_Strdup)   (a,b,c,  __FILE__,__LINE__)
 #define Z_Calloc(a,b,c,d)  (Z_Calloc)   (a,b,c,d,__FILE__,__LINE__)
 #define Z_Realloc(a,b,c,d) (Z_Realloc)  (a,b,c,d,__FILE__,__LINE__)
 #define Z_CheckHeap()      (Z_CheckHeap)(__FILE__,__LINE__)
+#else
+#define Z_FreeTags(a,b)    (Z_FreeTags) (a,b,-1)
 #endif
 
 /* cphipps 2001/11/18 -
@@ -101,9 +104,6 @@ void Z_DumpHistory(char *);
  * directly, for efficiency. Except we do need a wrapper to handle out of memory
  * errors... damn, ok, we'll leave it for now.
  */
-#ifndef HAVE_LIBDMALLOC
-// Remove all definitions before including system definitions
-
 #undef malloc
 #undef free
 #undef realloc
@@ -115,15 +115,5 @@ void Z_DumpHistory(char *);
 #define realloc(p,n)       Z_Realloc(p,n,PU_STATIC,0)
 #define calloc(n1,n2)      Z_Calloc(n1,n2,PU_STATIC,0)
 #define strdup(s)          Z_Strdup(s,PU_STATIC,0)
-
-#else
-
-#ifdef HAVE_LIBDMALLOC
-#include <dmalloc.h>
-#endif
-
-#endif
-
-void Z_ZoneHistory(char *);
 
 #endif

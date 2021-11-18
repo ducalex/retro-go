@@ -456,20 +456,19 @@ void R_InitTranMap(int progress)
   // If a tranlucency filter map lump is present, use it
   if ((lump = W_CheckNumForName("TRANMAP")) != -1)
     {
-      lprintf(LO_INFO, "R_InitTranMap: TRANMAP lump: %d\n", lump);
+      lprintf(LO_INFO, "R_InitTranMap: Using TRANMAP(%d) directly\n", lump);
       main_tranmap = W_CacheLumpNum(lump);
     }
   // Compose a default transparent filter map based on PLAYPAL.
   else if ((lump = W_CheckNumForName("PLAYPAL")) != -1)
     {
-      lprintf(LO_INFO, "R_InitTranMap: PLAYPAL lump: %d\n", lump);
-      if (progress)
-        lprintf(LO_INFO, "Tranmap build [        ]\x08\x08\x08\x08\x08\x08\x08\x08\x08");
+      lprintf(LO_INFO, "R_InitTranMap: Gen from PLAYPAL(%d) [        ]"
+              "\x08\x08\x08\x08\x08\x08\x08\x08\x08", lump);
 
       const struct PACKEDATTR {byte r, g, b;} *pal = W_CacheLumpNum(lump);
       byte *my_tranmap = Z_Malloc(256*256, PU_STATIC, 0);
-      int w1 = ((unsigned)tran_filter_pct<<TSC)/100;
-      int w2 = (1l<<TSC)-w1;
+      int w1 = (tran_filter_pct << TSC) / 100;
+      int w2 = (1 << TSC) - w1;
       int total[256];
 
       for (int i = 0; i < 256; ++i)
@@ -491,24 +490,27 @@ void R_InitTranMap(int progress)
           if (!(i & 31) && progress)
             lprintf(LO_INFO,".");
 
-          for (int j = 0; j < 256; j++, tp++)
+          for (int j = 0; j < 256; j++)
             {
               int r = r1 + (pal[j].r * w1);
               int g = g1 + (pal[j].g * w1);
               int b = b1 + (pal[j].b * w1);
-              int best = INT_MAX;
+              int bc = 0, best = INT_MAX;
               for (int color = 255; color >= 0; --color)
                 {
                   int err = total[color] - pal[color].r*r - pal[color].g*g - pal[color].b*b;
                   if (err < best)
-                    best = err, *tp = color;
+                    best = err, bc = color;
                 }
+                *tp++ = bc;
             }
         }
 
       main_tranmap = my_tranmap;
 
       W_UnlockLumpName("PLAYPAL");
+
+      lprintf(LO_INFO, "\n");
     }
 }
 
@@ -615,79 +617,85 @@ static inline void precache_lump(int l)
 
 void R_PrecacheLevel(void)
 {
-  register int i;
-  register byte *hitlist;
-
   if (demoplayback)
     return;
 
-  {
-    size_t size = numflats > numsprites  ? numflats : numsprites;
-    hitlist = malloc((size_t)numtextures > size ? numtextures : size);
-  }
+  size_t maxitems = MAX(numtextures, MAX(numflats, numsprites));
+  byte hitlist[maxitems];
+  size_t count = 0;
 
   // Precache flats.
+  memset(hitlist, 0, maxitems);
+  count = 0;
 
-  memset(hitlist, 0, numflats);
+  for (int i = numsectors; --i >= 0; )
+  {
+    hitlist[sectors[i].floorpic] = 1;
+    hitlist[sectors[i].ceilingpic] = 1;
+  }
 
-  for (i = numsectors; --i >= 0; )
-    hitlist[sectors[i].floorpic] = hitlist[sectors[i].ceilingpic] = 1;
-
-  for (i = numflats; --i >= 0; )
+  for (int i = numflats; --i >= 0; )
+  {
     if (hitlist[i])
+    {
       precache_lump(firstflat + i);
+      count++;
+    }
+  }
+
+  lprintf(LO_INFO, "R_PrecacheLevel: pre-cached %d flats\n", count);
+
 
   // Precache textures.
+  memset(hitlist, 0, maxitems);
+  count = 0;
 
-  memset(hitlist, 0, numtextures);
-
-  for (i = numsides; --i >= 0;)
-    hitlist[sides[i].bottomtexture] =
-      hitlist[sides[i].toptexture] =
-      hitlist[sides[i].midtexture] = 1;
-
-  // Sky texture is always present.
-  // Note that F_SKY1 is the name used to
-  //  indicate a sky floor/ceiling as a flat,
-  //  while the sky texture is stored like
-  //  a wall texture, with an episode dependend
-  //  name.
-
+  for (int i = numsides; --i >= 0; )
+  {
+    hitlist[sides[i].bottomtexture] = 1;
+    hitlist[sides[i].toptexture] = 1;
+    hitlist[sides[i].midtexture] = 1;
+  }
   hitlist[skytexture] = 1;
 
-  for (i = numtextures; --i >= 0; )
+  for (int i = numtextures; --i >= 0; )
     if (hitlist[i])
       {
         texture_t *texture = textures[i];
-        int j = texture->patchcount;
-        while (--j >= 0)
+        for (int j = texture->patchcount; --j >= 0; )
+        {
           precache_lump(texture->patches[j].patch);
+          count++;
+        }
       }
+
+  lprintf(LO_INFO, "R_PrecacheLevel: pre-cached %d textures\n", count);
+
 
   // Precache sprites.
-  memset(hitlist, 0, numsprites);
+  memset(hitlist, 0, maxitems);
+  count = 0;
 
-  {
-    thinker_t *th = NULL;
-    while ((th = P_NextThinker(th,th_all)) != NULL)
-      if (th->function == P_MobjThinker)
-        hitlist[((mobj_t *)th)->sprite] = 1;
-  }
+  thinker_t *th = NULL;
+  while ((th = P_NextThinker(th,th_all)))
+    if (th->function == P_MobjThinker)
+      hitlist[((mobj_t *)th)->sprite] = 1;
 
-  for (i=numsprites; --i >= 0;)
+  for (int i = numsprites; --i >= 0; )
     if (hitlist[i])
       {
-        int j = sprites[i].numframes;
-        while (--j >= 0)
+        for (int j = sprites[i].numframes; --j >= 0; )
           {
             short *sflump = sprites[i].spriteframes[j].lump;
-            int k = 7;
-            do
+            for (int k = 7; --k >= 0; )
+            {
               precache_lump(firstspritelump + sflump[k]);
-            while (--k >= 0);
+              count++;
+            }
           }
       }
-  free(hitlist);
+
+  lprintf(LO_INFO, "R_PrecacheLevel: pre-cached %d sprites\n", count);
 }
 
 // Proff - Added for OpenGL

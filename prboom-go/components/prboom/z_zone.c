@@ -57,10 +57,6 @@
 #include "lprintf.h"
 #include "i_system.h"
 
-#ifdef DJGPP
-#include <dpmi.h>
-#endif
-
 // Tunables
 
 // Alignment of zone memory (benefit may be negated by HEADER_SIZE, CHUNK_SIZE)
@@ -387,11 +383,7 @@ void *(Z_Malloc)(size_t size, int tag, void **user
     block = NULL;
   }
 
-#ifdef HAVE_LIBDMALLOC
-  while (!(block = dmalloc_malloc(file,line,size + HEADER_SIZE,DMALLOC_FUNC_MALLOC,0,0))) {
-#else
   while (!(block = (malloc)(size + HEADER_SIZE))) {
-#endif
     if (!blockbytag[PU_CACHE])
       I_Error ("Z_Malloc: Failure trying to allocate %lu bytes"
 #ifdef INSTRUMENTED
@@ -402,7 +394,8 @@ void *(Z_Malloc)(size_t size, int tag, void **user
                , file, line
 #endif
       );
-    Z_FreeTags(PU_CACHE,PU_CACHE);
+    // RG: Don't nuke the whole cache at once!
+    (Z_FreeTags)(PU_CACHE, PU_CACHE, 2);
   }
 
   if (!blockbytag[tag])
@@ -506,17 +499,14 @@ void (Z_Free)(void *p
   memset(block, gametic & 0xff, block->size + HEADER_SIZE);
 #endif
 
-#ifdef HAVE_LIBDMALLOC
-  dmalloc_free(file,line,block,DMALLOC_FUNC_MALLOC);
-#else
   (free)(block);
-#endif
+
 #ifdef INSTRUMENTED
       Z_DrawStats();           // print memory allocation stats
 #endif
 }
 
-void (Z_FreeTags)(int lowtag, int hightag
+void (Z_FreeTags)(int lowtag, int hightag, int max
 #ifdef INSTRUMENTED
                   , const char *file, int line
 #endif
@@ -539,7 +529,7 @@ void (Z_FreeTags)(int lowtag, int hightag
     if (!block)
       continue;
     end_block = block->prev;
-    while (1)
+    while (max--)
     {
       memblock_t *next = block->next;
 #ifdef INSTRUMENTED

@@ -606,7 +606,7 @@ void rg_display_reset_config(void)
         // TO DO: We probably should call the setters to ensure valid values...
         .screen.width = RG_SCREEN_WIDTH - RG_SCREEN_MARGIN_LEFT - RG_SCREEN_MARGIN_RIGHT,
         .screen.height = RG_SCREEN_HEIGHT - RG_SCREEN_MARGIN_TOP - RG_SCREEN_MARGIN_BOTTOM,
-        .config.backlight = RG_MIN(RG_MAX(rg_settings_get_int32(SETTING_BACKLIGHT, 40), 0), 100),
+        .config.backlight = RG_MIN(RG_MAX(rg_settings_get_int32(SETTING_BACKLIGHT, 80), 0), 100),
         .config.scaling = rg_settings_get_app_int32(SETTING_SCALING, RG_DISPLAY_SCALING_FILL),
         .config.filter = rg_settings_get_app_int32(SETTING_FILTER, RG_DISPLAY_FILTER_HORIZ),
         .config.rotation = rg_settings_get_app_int32(SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO),

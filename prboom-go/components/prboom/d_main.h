@@ -69,6 +69,6 @@ void D_Display(void);
 void D_PageTicker(void);
 void D_StartTitle(void);
 void D_DoomMain(void);
-boolean D_AddFile(const char *file, wad_source_t source);
+bool D_AddFile(const char *file);
 
 #endif
