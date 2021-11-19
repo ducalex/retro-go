@@ -463,7 +463,7 @@ void TryRunTics (void)
           I_WaitForPacket(ms_to_next_tick);
         else
 #endif
-          I_uSleep(ms_to_next_tick*1000);
+          // I_uSleep(ms_to_next_tick*1000);
       }
       if (I_GetTime() - entertime > 10) {
 #ifdef HAVE_NET
@@ -497,7 +497,11 @@ void TryRunTics (void)
     if (advancedemo)
       D_DoAdvanceDemo ();
     M_Ticker ();
-    I_GetTime_SaveMS();
+    if (movement_smooth) {
+      tic_vars.start = I_GetTimeMS();
+      tic_vars.next = (unsigned int)((tic_vars.start * tic_vars.msec + 1.0f) / tic_vars.msec);
+      tic_vars.step = tic_vars.next - tic_vars.start;
+    }
     G_Ticker ();
     gametic++;
 #ifdef HAVE_NET

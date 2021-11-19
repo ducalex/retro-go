@@ -34,35 +34,14 @@
 #ifndef __I_SYSTEM__
 #define __I_SYSTEM__
 
-#ifdef __GNUG__
-#pragma interface
-#endif
-
-extern int ms_to_next_tick;
 bool I_StartDisplay(void);
 void I_EndDisplay(void);
-int I_GetTime_RealTime(void);     /* killough */
-#ifndef PRBOOM_SERVER
-int I_GetTimeFrac (void);
-#endif
-void I_GetTime_SaveMS(void);
 
-unsigned long I_GetRandomTimeSeed(void); /* cphipps */
-
+int I_GetTimeMS(void);  // Clock time
+int I_GetTime(void);    // Tics
 void I_uSleep(unsigned long usecs);
 
-/* cphipps - I_GetVersionString
- * Returns a version string in the given buffer
- */
-const char* I_GetVersionString(char* buf, size_t sz);
-
-/* cphipps - I_SigString
- * Returns a string describing a signal number
- */
-const char* I_SigString(char* buf, size_t sz, int signum);
-
 const char *I_DoomExeDir(void); // killough 2/16/98: path to executable's dir
-
-char* I_FindFile(const char* wfname, const char* ext);
+const char* I_SigString(char* buf, size_t sz, int signum);
 
 #endif

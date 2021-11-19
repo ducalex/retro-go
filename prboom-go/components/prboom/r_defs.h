@@ -90,12 +90,9 @@ typedef struct
 
 typedef struct
 {
-  int iSectorID; // proff 04/05/2000: needed for OpenGL and used in debugmode by the HUD to draw sectornum
-  boolean no_toptextures;
-  boolean no_bottomtextures;
   fixed_t floorheight;
   fixed_t ceilingheight;
-  int nexttag,firsttag;  // killough 1/30/98: improves searches for tags.
+  short nexttag,firsttag;  // killough 1/30/98: improves searches for tags.
   int soundtraversed;    // 0 = untraversed, 1,2 = sndlines-1
   mobj_t *soundtarget;   // thing that made a sound (or null)
   int blockbox[4];       // mapblock bounding box for height changes
@@ -187,9 +184,17 @@ typedef enum
   ST_NEGATIVE
 } slopetype_t;
 
+typedef enum
+{                 // cph:
+  RF_TOP_TILE  = 1,     // Upper texture needs tiling
+  RF_MID_TILE = 2,     // Mid texture needs tiling
+  RF_BOT_TILE = 4,     // Lower texture needs tiling
+  RF_IGNORE   = 8,     // Renderer can skip this line
+  RF_CLOSED   =16,     // Line blocks view
+} r_flags_t;
+
 typedef struct line_s
 {
-  int iLineID;           // proff 04/05/2000: needed for OpenGL
   vertex_t *v1, *v2;     // Vertices, from v1 to v2.
   fixed_t dx, dy;        // Precalculated v2 - v1 for side checking.
   unsigned short flags;           // Animation related.
@@ -201,17 +206,10 @@ typedef struct line_s
   sector_t *frontsector; // Front and back sector.
   sector_t *backsector;
   int validcount;        // if == validcount, already checked
-  void *specialdata;     // thinker_t for reversable actions
-  int tranlump;          // killough 4/11/98: translucency filter, -1 == none
-  int firsttag,nexttag;  // killough 4/17/98: improves searches for tags.
+  short firsttag,nexttag;// killough 4/17/98: improves searches for tags.
   int r_validcount;      // cph: if == gametic, r_flags already done
-  enum {                 // cph:
-    RF_TOP_TILE  = 1,     // Upper texture needs tiling
-    RF_MID_TILE = 2,     // Mid texture needs tiling
-    RF_BOT_TILE = 4,     // Lower texture needs tiling
-    RF_IGNORE   = 8,     // Renderer can skip this line
-    RF_CLOSED   =16,     // Line blocks view
-  } r_flags;
+  short tranlump;        // killough 4/11/98: translucency filter, -1 == none
+  short r_flags;         // r_flags_t
   degenmobj_t soundorg;  // sound origin for switches/buttons
 } line_t;
 
@@ -254,11 +252,7 @@ typedef struct
   side_t* sidedef;
   line_t* linedef;
 
-  int iSegID; // proff 11/05/2000: needed for OpenGL
-  // figgi -- needed for glnodes
-  float     length;
   boolean   miniseg;
-
 
   // Sector references.
   // Could be retrieved from linedef, too
@@ -320,8 +314,8 @@ typedef struct drawseg_s
   fixed_t tsilheight;                   // do not clip sprites below this
 
   // Added for filtering (fractional texture u coord) support - POPE
-  fixed_t rw_offset, rw_distance, rw_centerangle; 
-  
+  fixed_t rw_offset, rw_distance, rw_centerangle;
+
   // Pointers to lists for sprite clipping,
   // all three adjusted so [x1] is first value.
 

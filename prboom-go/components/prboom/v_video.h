@@ -96,16 +96,14 @@ extern int          usegamma;
 #define VID_COLORWEIGHTMASK (VID_NUMCOLORWEIGHTS-1)
 #define VID_COLORWEIGHTBITS 6
 
-// Palettes for converting from 8 bit color to 16 and 32 bit. Also
+// Macros for converting from 8 bit color to 16 and 32 bit. Also
 // contains the weighted versions of each palette color for filtering
 // operations
-extern unsigned short *V_Palette15;
-extern unsigned short *V_Palette16;
-extern unsigned int *V_Palette32;
+extern void *V_Palette;
 
-#define VID_PAL15(color, weight) V_Palette15[ (color)*VID_NUMCOLORWEIGHTS + (weight) ]
-#define VID_PAL16(color, weight) V_Palette16[ (color)*VID_NUMCOLORWEIGHTS + (weight) ]
-#define VID_PAL32(color, weight) V_Palette32[ (color)*VID_NUMCOLORWEIGHTS + (weight) ]
+#define VID_PAL15(color, weight) ((uint16_t *)V_Palette)[ (color)*VID_NUMCOLORWEIGHTS + (weight) ]
+#define VID_PAL16(color, weight) ((uint16_t *)V_Palette)[ (color)*VID_NUMCOLORWEIGHTS + (weight) ]
+#define VID_PAL32(color, weight) ((uint32_t *)V_Palette)[ (color)*VID_NUMCOLORWEIGHTS + (weight) ]
 
 // The available bit-depth modes
 typedef enum {
@@ -121,16 +119,15 @@ typedef enum {
 extern video_mode_t default_videomode;
 extern video_mode_t current_videomode;
 
+// Allocates buffer screens, call before R_Init.
+void V_Init(int width, int height, video_mode_t mode);
 void V_InitMode(video_mode_t mode);
-
-// video mode query interface
+void V_SetPalette(int pal);
+void *V_BuildPalette(int paletteNum, int bitdepth);
 video_mode_t V_GetMode(void);
 int V_GetModePixelDepth(video_mode_t mode);
 int V_GetNumPixelBits(void);
 int V_GetPixelDepth(void);
-
-// Allocates buffer screens, call before R_Init.
-void V_Init(int width, int height, video_mode_t mode);
 
 // V_CopyRect
 typedef void (*V_CopyRect_f)(int srcx,  int srcy,  int srcscrn,
@@ -167,10 +164,6 @@ extern V_DrawNumPatch_f V_DrawNumPatch;
 /* cphipps 10/99: function to tile a flat over the screen */
 typedef void (*V_DrawBackground_f)(const char* flatname, int scrn);
 extern V_DrawBackground_f V_DrawBackground;
-
-void V_DestroyUnusedTrueColorPalettes(void);
-// CPhipps - function to set the palette to palette number pal.
-void V_SetPalette(int pal);
 
 // CPhipps - function to plot a pixel
 

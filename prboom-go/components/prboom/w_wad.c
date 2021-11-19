@@ -393,9 +393,9 @@ void W_Init(void)
 //
 int W_Read(void *dest, size_t size, size_t offset, wadfile_info_t *wad)
 {
-  if (offset + size >= wad->size)
+  if (offset >= wad->size)
   {
-    lprintf(LO_WARN, "W_Read: %d+%d >= %d\n", offset, size, wad->size);
+    lprintf(LO_WARN, "W_Read: offset %d > %d\n", offset, wad->size);
   }
   else if (wad->data)
   {

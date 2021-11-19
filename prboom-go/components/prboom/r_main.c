@@ -481,8 +481,8 @@ subsector_t *R_PointInSubsector(fixed_t x, fixed_t y)
 
 static void R_SetupFrame (player_t *player)
 {
+  bool NoInterpolate = paused || (menuactive && !demoplayback);
   int cm;
-  boolean NoInterpolate = paused || (menuactive && !demoplayback);
 
   viewplayer = player;
 
@@ -491,9 +491,21 @@ static void R_SetupFrame (player_t *player)
     R_ResetViewInterpolation ();
     oviewer = player->mo;
   }
-  tic_vars.frac = I_GetTimeFrac ();
-  if (NoInterpolate)
+
+  if (NoInterpolate || tic_vars.step == 0)
+  {
     tic_vars.frac = FRACUNIT;
+  }
+  else
+  {
+    fixed_t frac = (fixed_t)((I_GetTimeMS() - tic_vars.start) * FRACUNIT / tic_vars.step);
+    if (frac < 0)
+        frac = 0;
+    if (frac > FRACUNIT)
+        frac = FRACUNIT;
+    tic_vars.frac = frac;
+  }
+
   R_InterpolateView (player, tic_vars.frac);
 
   extralight = player->extralight;

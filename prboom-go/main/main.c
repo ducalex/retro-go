@@ -50,11 +50,10 @@ static rg_video_update_t update;
 static rg_app_t *app;
 
 // Expected variables by doom
-int ms_to_next_tick = 0;
 int snd_card = 1, mus_card = 1;
 int snd_samplerate = SAMPLERATE;
 int realtic_clock_rate = 100;
-int (*I_GetTime)(void) = I_GetTime_RealTime;
+int current_palette = 0;
 
 static struct {
     uint8_t *data;   // Sample
@@ -88,6 +87,34 @@ static const struct {int mask; int *key;} keymap[] = {
     {RG_KEY_SELECT, &key_weapontoggle},
 };
 
+static const char *SETTING_GAMMA = "Gamma";
+
+
+static dialog_return_t gamma_update_cb(dialog_option_t *option, dialog_event_t event)
+{
+    int gamma = usegamma;
+    int max = 9;
+
+    if (event == RG_DIALOG_PREV)
+        gamma = gamma > 0 ? gamma - 1 : max;
+
+    if (event == RG_DIALOG_NEXT)
+        gamma = gamma < max ? gamma + 1 : 0;
+
+    if (gamma != usegamma)
+    {
+        usegamma = gamma;
+        I_SetPalette(current_palette);
+        rg_display_queue_update(&update, NULL);
+        rg_settings_set_app_int32(SETTING_GAMMA, gamma);
+        usleep(50000);
+    }
+
+    sprintf(option->value, "%d/%d", gamma, max);
+
+    return RG_DIALOG_IGNORE;
+}
+
 
 void I_StartFrame(void)
 {
@@ -116,15 +143,11 @@ void I_EndDisplay(void)
 
 void I_SetPalette(int pal)
 {
-    int pplump = W_GetNumForName("PLAYPAL");
-    const byte *palette = W_CacheLumpNum(pplump) + (pal * 3 * 256);
-    for (int i = 0; i < 255; i++)
-    {
-        unsigned v = ((palette[0] >> 3) << 11) + ((palette[1] >> 2) << 5) + (palette[2] >> 3);
-        update.palette[i] = (v << 8) | (v >> 8);
-        palette += 3;
-    }
-    W_UnlockLumpNum(pplump);
+    uint16_t *palette = V_BuildPalette(pal, 16);
+    for (int i = 0; i < 256; i++)
+        update.palette[i] = palette[i] << 8 | palette[i] >> 8;
+    Z_Free(palette);
+    current_palette = pal;
 }
 
 void I_InitGraphics(void)
@@ -149,44 +172,14 @@ void I_InitGraphics(void)
     rg_display_set_source_format(SCREENWIDTH, SCREENHEIGHT, 0, 0, SCREENWIDTH, RG_PIXEL_PAL565_BE);
 }
 
-int I_GetTime_RealTime(void)
+int I_GetTimeMS(void)
+{
+    return esp_timer_get_time() / 1000;
+}
+
+int I_GetTime(void)
 {
     return ((esp_timer_get_time() * TICRATE) / 1000000);
-}
-
-int I_GetTimeFrac(void)
-{
-    unsigned long now;
-    fixed_t frac;
-
-    now = esp_timer_get_time() / 1000;
-
-    if (tic_vars.step == 0)
-        return FRACUNIT;
-    else
-    {
-        frac = (fixed_t)((now - tic_vars.start) * FRACUNIT / tic_vars.step);
-        if (frac < 0)
-            frac = 0;
-        if (frac > FRACUNIT)
-            frac = FRACUNIT;
-        return frac;
-    }
-}
-
-void I_GetTime_SaveMS(void)
-{
-    if (!movement_smooth)
-        return;
-
-    tic_vars.start = esp_timer_get_time() / 1000;
-    tic_vars.next = (unsigned int)((tic_vars.start * tic_vars.msec + 1.0f) / tic_vars.msec);
-    tic_vars.step = tic_vars.next - tic_vars.start;
-}
-
-unsigned long I_GetRandomTimeSeed(void)
-{
-    return 4; //per https://xkcd.com/221/
 }
 
 void I_uSleep(unsigned long usecs)
@@ -439,6 +432,7 @@ void I_StartTic(void)
     if (joystick & RG_KEY_OPTION)
     {
         rg_gui_game_settings_menu();
+        // realtic_clock_rate = (app->speedupEnabled + 1) * 100;
     }
     else if (changed)
     {
@@ -460,11 +454,11 @@ void I_StartTic(void)
 
 void I_Init(void)
 {
-    default_videomode = VID_MODE8;
     snd_channels = NUM_MIX_CHANNELS;
     snd_samplerate = SAMPLERATE;
     snd_MusicVolume = 15;
     snd_SfxVolume = 15;
+    usegamma = rg_settings_get_app_int32(SETTING_GAMMA, 0);
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)
@@ -490,7 +484,11 @@ static bool reset_handler(bool hard)
 
 static void settings_handler(void)
 {
-    return;
+    dialog_option_t options[] = {
+        {100, "Gamma Boost", "0/5", 1, &gamma_update_cb},
+        RG_DIALOG_CHOICE_LAST
+    };
+    rg_gui_dialog("Advanced", options, 0);
 }
 
 static void event_handler(int event, void *arg)

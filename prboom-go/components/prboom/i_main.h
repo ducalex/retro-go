@@ -39,6 +39,4 @@
 void I_Init(void);
 void I_SafeExit(int rc);
 
-extern int (*I_GetTime)(void);
-
 #endif
