@@ -49,13 +49,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "z_zone.h"
 #include "doomstat.h"
-#include "m_argv.h"
-#include "v_video.h"
-#include "g_game.h"
 #include "lprintf.h"
-#include "i_system.h"
+#include "z_zone.h"
 
 // Tunables
 
@@ -63,16 +59,7 @@
 #define CACHE_ALIGN 32
 
 // Minimum chunk size at which blocks are allocated
-#define CHUNK_SIZE 32
-
-// Minimum size a block must be to become part of a split
-#define MIN_BLOCK_SPLIT (1024)
-
-// How much RAM to leave aside for other libraries
-#define LEAVE_ASIDE (128*1024)
-
-// Amount to subtract when retrying failed attempts to allocate initial pool
-#define RETRY_AMOUNT (256*1024)
+#define CHUNK_SIZE 4
 
 // signature for block header
 #define ZONEID  0x931d4a11
@@ -82,16 +69,17 @@
 
 // End Tunables
 
-typedef struct memblock {
-
+typedef struct memblock
+{
 #ifdef ZONEIDCHECK
   unsigned id;
 #endif
 
+  unsigned tag: 10;
+  unsigned size:22;
+
   struct memblock *next,*prev;
-  size_t size;
   void **user;
-  unsigned char tag;
 
 #ifdef INSTRUMENTED
   const char *file;

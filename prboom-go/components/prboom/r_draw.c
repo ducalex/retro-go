@@ -307,7 +307,7 @@ void R_ResetColumnBuffer(void)
 //
 
 byte playernumtotrans[MAXPLAYERS];
-byte *translationtables;
+byte translationtables[3 * 256];
 
 #define R_DRAWCOLUMN_PIPELINE_TYPE RDC_PIPELINE_STANDARD
 #define R_DRAWCOLUMN_PIPELINE_BASE RDC_STANDARD
@@ -713,9 +713,6 @@ void R_InitTranslationTables (void)
 
   // killough 5/2/98:
   // Remove dependency of colormaps aligned on 256-byte boundary
-
-  if (translationtables == NULL) // CPhipps - allow multiple calls
-    translationtables = Z_Malloc(256*MAXTRANS, PU_STATIC, 0);
 
   for (i=0; i<MAXTRANS; i++) transtocolour[i] = 255;
 

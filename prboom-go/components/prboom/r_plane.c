@@ -97,25 +97,13 @@ static fixed_t planeheight;
 // killough 2/8/98: make variables static
 
 static fixed_t basexscale, baseyscale;
-static fixed_t *cachedheight;//[MAX_SCREENHEIGHT];
-static fixed_t *cacheddistance;//[MAX_SCREENHEIGHT];
-static fixed_t *cachedxstep;//[MAX_SCREENHEIGHT];
-static fixed_t *cachedystep;//[MAX_SCREENHEIGHT];
+static fixed_t cachedheight[MAX_SCREENHEIGHT];
+static fixed_t cacheddistance[MAX_SCREENHEIGHT];
+static fixed_t cachedxstep[MAX_SCREENHEIGHT];
+static fixed_t cachedystep[MAX_SCREENHEIGHT];
 static fixed_t xoffs,yoffs;    // killough 2/28/98: flat offsets
 
 fixed_t yslope[MAX_SCREENHEIGHT], distscale[MAX_SCREENWIDTH];
-
-//
-// R_InitPlanes
-// Only at game startup.
-//
-void R_InitPlanes (void)
-{
-  cachedheight = malloc(MAX_SCREENHEIGHT * sizeof(fixed_t));
-  cacheddistance = malloc(MAX_SCREENHEIGHT * sizeof(fixed_t));
-  cachedxstep = malloc(MAX_SCREENHEIGHT * sizeof(fixed_t));
-  cachedystep = malloc(MAX_SCREENHEIGHT * sizeof(fixed_t));
-}
 
 //
 // R_MapPlane
@@ -211,7 +199,7 @@ void R_ClearPlanes(void)
   lastopening = openings;
 
   // texture calculation
-  memset (cachedheight, 0, MAX_SCREENHEIGHT * sizeof(fixed_t));
+  memset(cachedheight, 0, sizeof(cachedheight));
 
   // scale will be unit scale at SCREENWIDTH/2 distance
   basexscale = FixedDiv (viewsin,projection);

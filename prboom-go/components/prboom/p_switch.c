@@ -43,7 +43,6 @@
 // killough 2/8/98: Remove switch limit
 
 static int *switchlist;                           // killough
-static int max_numswitches;                       // killough
 static int numswitches;                           // killough
 
 button_t  buttonlist[MAXBUTTONS];
@@ -69,38 +68,34 @@ button_t  buttonlist[MAXBUTTONS];
 //
 void P_InitSwitchList(void)
 {
-  int i, index = 0;
-  int episode = (gamemode == registered || gamemode==retail) ?
-                 2 : gamemode == commercial ? 3 : 1;
-  const switchlist_t *alphSwitchList;         //jff 3/23/98 pointer to switch table
+  int episode = (gamemode == registered || gamemode==retail) ? 2 : gamemode == commercial ? 3 : 1;
   int lump = W_GetNumForName("SWITCHES"); // cph - new wad lump handling
+  const switchlist_t *alphSwitchList = W_CacheLumpNum(lump); //jff 3/23/98 pointer to switch table
+  size_t max_numswitches = W_LumpLength(lump) / sizeof(switchlist_t);
+  int index = 0;
 
-  //jff 3/23/98 read the switch table from a predefined lump
-  alphSwitchList = (const switchlist_t *)W_CacheLumpNum(lump);
+  switchlist = Z_Calloc(max_numswitches * 2 + 1, sizeof(*switchlist), PU_STATIC, 0);
 
-  for (i=0;;i++)
+  for (int i=0; i < max_numswitches; i++)
   {
-    if (index+1 >= max_numswitches)
-      switchlist = realloc(switchlist, sizeof *switchlist *
-          (max_numswitches = max_numswitches ? max_numswitches*2 : 8));
-    if (SHORT(alphSwitchList[i].episode) <= episode) //jff 5/11/98 endianess
-    {
-      int texture1, texture2;
+    int swepisode = SHORT(alphSwitchList[i].episode);
+    if (!swepisode)
+      break;
 
-      if (!SHORT(alphSwitchList[i].episode))
-        break;
+    if (swepisode <= episode) //jff 5/11/98 endianess
+    {
+      int texture1 = R_CheckTextureNumForName(alphSwitchList[i].name1);
+      int texture2 = R_CheckTextureNumForName(alphSwitchList[i].name2);
+
+      // Warn if either one is missing, but only add if both are valid.
+      if (texture1 == -1)
+        lprintf(LO_WARN, "P_InitSwitchList: unknown texture %s\n", alphSwitchList[i].name1);
+      if (texture2 == -1)
+        lprintf(LO_WARN, "P_InitSwitchList: unknown texture %s\n", alphSwitchList[i].name2);
 
       // Ignore switches referencing unknown texture names, instead of exiting.
-      // Warn if either one is missing, but only add if both are valid.
-      texture1 = R_CheckTextureNumForName(alphSwitchList[i].name1);
-      if (texture1 == -1)
-        lprintf(LO_WARN, "P_InitSwitchList: unknown texture %s\n",
-            alphSwitchList[i].name1);
-      texture2 = R_CheckTextureNumForName(alphSwitchList[i].name2);
-      if (texture2 == -1)
-        lprintf(LO_WARN, "P_InitSwitchList: unknown texture %s\n",
-            alphSwitchList[i].name2);
-      if (texture1 != -1 && texture2 != -1) {
+      if (texture1 != -1 && texture2 != -1)
+      {
         switchlist[index++] = texture1;
         switchlist[index++] = texture2;
       }

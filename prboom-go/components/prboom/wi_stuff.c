@@ -380,6 +380,20 @@ static const char bstar[] = {"STFDEAD0"};
 static const char facebackp[] = {"STPB0"};
 
 //
+// Statistics
+//
+static short dm_frags[MAXPLAYERS][MAXPLAYERS];  // frags matrix
+static short dm_totals[MAXPLAYERS];  // totals by player
+static int dm_state;
+
+static short cnt_kills[MAXPLAYERS];
+static short cnt_items[MAXPLAYERS];
+static short cnt_secret[MAXPLAYERS];
+static short cnt_frags[MAXPLAYERS];
+static int    dofrags;
+static int    ng_state;
+
+//
 // CODE
 //
 
@@ -1004,11 +1018,6 @@ int WI_fragSum(int playernum)
   return frags;
 }
 
-static int          dm_state;
-// CPhipps - short, dynamically allocated
-static short int  **dm_frags;  // frags matrix
-static short int   *dm_totals;  // totals by player
-
 // ====================================================================
 // WI_initDeathmatchStats
 // Purpose: Set up to display DM stats at end of level.  Calculate
@@ -1018,11 +1027,8 @@ static short int   *dm_totals;  // totals by player
 //
 void WI_initDeathmatchStats(void)
 {
-  int   i; // looping variables
-
-  // CPhipps - allocate data structures needed
-  dm_frags  = calloc(MAXPLAYERS, sizeof(*dm_frags));
-  dm_totals = calloc(MAXPLAYERS, sizeof(*dm_totals));
+  memset(dm_frags, 0, sizeof(dm_frags));
+  memset(dm_totals, 0, sizeof(dm_totals));
 
   state = StatCount;  // We're doing stats
   acceleratestage = 0;
@@ -1030,16 +1036,6 @@ void WI_initDeathmatchStats(void)
 
   cnt_pause = TICRATE;
 
-  for (i=0 ; i<MAXPLAYERS ; i++)
-  {
-    if (playeringame[i])
-    {
-      // CPhipps - allocate frags line
-      dm_frags[i] = calloc(MAXPLAYERS, sizeof(**dm_frags)); // set all counts to zero
-
-      dm_totals[i] = 0;
-    }
-  }
   WI_initAnimatedBack();
 }
 
@@ -1052,11 +1048,7 @@ void WI_initDeathmatchStats(void)
 
 void WI_endDeathmatchStats(void)
 {
-  int i;
-  for (i=0; i<MAXPLAYERS; i++)
-    free(dm_frags[i]);
-
-  free(dm_frags); free(dm_totals);
+  //
 }
 
 // ====================================================================
@@ -1249,15 +1241,6 @@ void WI_drawDeathmatchStats(void)
 }
 
 
-//
-// Note: The term "Netgame" means a coop game
-//
-static short *cnt_kills;
-static short *cnt_items;
-static short *cnt_secret;
-static short *cnt_frags;
-static int    dofrags;
-static int    ng_state;
 
 // ====================================================================
 // CPhipps - WI_endNetgameStats
@@ -1267,10 +1250,7 @@ static int    ng_state;
 //
 static void WI_endNetgameStats(void)
 {
-  free(cnt_frags); cnt_frags = NULL;
-  free(cnt_secret); cnt_secret = NULL;
-  free(cnt_items); cnt_items = NULL;
-  free(cnt_kills); cnt_kills = NULL;
+  //
 }
 
 // ====================================================================
@@ -1289,11 +1269,10 @@ void WI_initNetgameStats(void)
 
   cnt_pause = TICRATE;
 
-  // CPhipps - allocate these dynamically, blank with calloc
-  cnt_kills = calloc(MAXPLAYERS, sizeof(*cnt_kills));
-  cnt_items = calloc(MAXPLAYERS, sizeof(*cnt_items));
-  cnt_secret= calloc(MAXPLAYERS, sizeof(*cnt_secret));
-  cnt_frags = calloc(MAXPLAYERS, sizeof(*cnt_frags));
+  memset(cnt_kills, 0, sizeof(cnt_kills));
+  memset(cnt_items, 0, sizeof(cnt_items));
+  memset(cnt_secret, 0, sizeof(cnt_secret));
+  memset(cnt_frags, 0, sizeof(cnt_frags));
 
   for (i=0 ; i<MAXPLAYERS ; i++)
     if (playeringame[i])
@@ -1525,17 +1504,14 @@ void WI_drawNetgameStats(void)
       V_DrawNamePatch(x-fwidth, y, FB, star, CR_DEFAULT, VPT_STRETCH);
 
     x += NG_SPACINGX;
-    if (cnt_kills)
-      WI_drawPercent(x-pwidth, y+10, cnt_kills[i]);
+    WI_drawPercent(x-pwidth, y+10, cnt_kills[i]);
     x += NG_SPACINGX;
-    if (cnt_items)
-      WI_drawPercent(x-pwidth, y+10, cnt_items[i]);
+    WI_drawPercent(x-pwidth, y+10, cnt_items[i]);
     x += NG_SPACINGX;
-    if (cnt_secret)
-      WI_drawPercent(x-pwidth, y+10, cnt_secret[i]);
+    WI_drawPercent(x-pwidth, y+10, cnt_secret[i]);
     x += NG_SPACINGX;
 
-    if (dofrags && cnt_frags)
+    if (dofrags)
       WI_drawNum(x, y+10, cnt_frags[i], -1);
 
     y += WI_SPACINGY;
@@ -1562,10 +1538,7 @@ void WI_initStats(void)
   acceleratestage = 0;
   sp_state = 1;
 
-  // CPhipps - allocate (awful code, I know, but saves changing it all) and initialise
-  *(cnt_kills = malloc(sizeof(*cnt_kills))) =
-  *(cnt_items = malloc(sizeof(*cnt_items))) =
-  *(cnt_secret= malloc(sizeof(*cnt_secret))) = -1;
+  cnt_kills[0] = cnt_items[0] = cnt_secret[0] = -1;
   cnt_time = cnt_par = cnt_total_time = -1;
   cnt_pause = TICRATE;
 
@@ -1718,16 +1691,13 @@ void WI_drawStats(void)
   WI_drawLF();
 
   V_DrawNamePatch(SP_STATSX, SP_STATSY, FB, kills, CR_DEFAULT, VPT_STRETCH);
-  if (cnt_kills)
-    WI_drawPercent(320 - SP_STATSX, SP_STATSY, cnt_kills[0]);
+  WI_drawPercent(320 - SP_STATSX, SP_STATSY, cnt_kills[0]);
 
   V_DrawNamePatch(SP_STATSX, SP_STATSY+lh, FB, items, CR_DEFAULT, VPT_STRETCH);
-  if (cnt_items)
-    WI_drawPercent(320 - SP_STATSX, SP_STATSY+lh, cnt_items[0]);
+  WI_drawPercent(320 - SP_STATSX, SP_STATSY+lh, cnt_items[0]);
 
   V_DrawNamePatch(SP_STATSX, SP_STATSY+2*lh, FB, sp_secret, CR_DEFAULT, VPT_STRETCH);
-  if (cnt_secret)
-    WI_drawPercent(320 - SP_STATSX, SP_STATSY+2*lh, cnt_secret[0]);
+  WI_drawPercent(320 - SP_STATSX, SP_STATSY+2*lh, cnt_secret[0]);
 
   WI_drawTimeStats(cnt_time, cnt_total_time, cnt_par);
 }

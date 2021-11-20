@@ -57,7 +57,7 @@ enum draw_filter_type_e {
   RDRAW_FILTER_MAXFILTERS
 };
 
-// Used to specify what kind of column edge rendering to use on masked 
+// Used to specify what kind of column edge rendering to use on masked
 // columns. SQUARE = standard, SLOPED = slope the column edge up or down
 // based on neighboring columns
 enum sloped_edge_type_e {
@@ -131,7 +131,7 @@ typedef struct {
 extern draw_vars_t drawvars;
 
 extern byte playernumtotrans[MAXPLAYERS]; // CPhipps - what translation table for what player
-extern byte       *translationtables;
+extern byte translationtables[3 * 256];
 
 typedef void (*R_DrawColumn_f)(draw_column_vars_t *dcvars);
 R_DrawColumn_f R_GetDrawColumnFunc(enum column_pipeline_e type,

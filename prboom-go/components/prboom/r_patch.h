@@ -39,7 +39,7 @@ typedef enum {
   RDRAW_EDGESLOPE_BOT_UP   = (1<<2),
   RDRAW_EDGESLOPE_BOT_DOWN = (1<<3),
   RDRAW_EDGESLOPE_TOP_MASK = 0x3,
-  RDRAW_EDGESLOPE_BOT_MASK = 0xc,  
+  RDRAW_EDGESLOPE_BOT_MASK = 0xc,
 } edgeslope_t;
 
 typedef struct {
@@ -106,6 +106,5 @@ const rcolumn_t *R_GetPatchColumn(const rpatch_t *patch, int columnIndex);
 
 
 void R_InitPatches();
-void R_FlushAllPatches();
 
 #endif

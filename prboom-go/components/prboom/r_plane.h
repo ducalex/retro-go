@@ -49,9 +49,8 @@ extern int *lastopening; // dropoff overflow
 extern int floorclip[], ceilingclip[]; // dropoff overflow
 extern fixed_t yslope[], distscale[];
 
-void R_InitPlanes(void);
 void R_ClearPlanes(void);
-void R_DrawPlanes (void);
+void R_DrawPlanes(void);
 
 visplane_t *R_FindPlane(
                         fixed_t height,

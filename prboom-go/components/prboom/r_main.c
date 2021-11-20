@@ -257,7 +257,8 @@ static void R_InitTextureMapping (void)
   //
   // Calc focallength
   //  so FIELDOFVIEW angles covers SCREENWIDTH.
-  viewangletox = malloc((FINEANGLES/2)*sizeof(int)) ;
+  if (!viewangletox)
+    viewangletox = Z_Calloc(FINEANGLES/2, sizeof(int), PU_STATIC, 0);
   focallength = FixedDiv(centerxfrac, finetangent[FINEANGLES/4+FIELDOFVIEW/2]);
 
   for (i=0 ; i<FINEANGLES/2 ; i++)
@@ -314,7 +315,7 @@ static void R_InitLightTables (void)
   int i;
 
   // killough 4/4/98: dynamic colormaps
-  c_zlight = malloc(sizeof(*c_zlight) * numcolormaps);
+  c_zlight = Z_Calloc(numcolormaps, sizeof(*c_zlight), PU_STATIC, 0);
 
   // Calculate the light levels to use
   //  for each level / distance combination.
@@ -443,8 +444,6 @@ void R_Init (void)
   lprintf(LO_INFO, "R_InitData: \n");
   R_InitData();
   R_SetViewSize(screenblocks);
-  lprintf(LO_INFO, "R_Init: R_InitPlanes ");
-  R_InitPlanes();
   lprintf(LO_INFO, "R_InitLightTables ");
   R_InitLightTables();
   lprintf(LO_INFO, "R_InitSkyMap ");

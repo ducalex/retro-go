@@ -106,7 +106,6 @@ typedef struct
 
 static anim_t*  lastanim;
 static anim_t*  anims;                // new structure w/o limits -- killough
-static size_t maxanims;
 
 // killough 3/7/98: Initialize generalized scrolling
 static void P_SpawnScrollers(void);
@@ -138,26 +137,15 @@ static void P_SpawnPushers(void);     // phares 3/20/98
 //
 void P_InitPicAnims (void)
 {
-  int         i;
-  const animdef_t *animdefs; //jff 3/23/98 pointer to animation lump
-  int         lump = W_GetNumForName("ANIMATED"); // cph - new wad lump handling
-  //  Init animation
+  int lump = W_GetNumForName("ANIMATED"); // cph - new wad lump handling
+  const animdef_t *animdefs = W_CacheLumpNum(lump); //jff 3/23/98 pointer to animation lump
+  size_t numanims = W_LumpLength(lump) / sizeof(animdef_t);
 
-  //jff 3/23/98 read from predefined or wad lump instead of table
-  animdefs = (const animdef_t *)W_CacheLumpNum(lump);
-
+  anims = Z_Calloc(numanims, sizeof(*anims), PU_STATIC, 0);
   lastanim = anims;
-  for (i=0 ; animdefs[i].istexture != -1 ; i++)
-  {
-    // 1/11/98 killough -- removed limit by array-doubling
-    if (lastanim >= anims + maxanims)
-    {
-      size_t newmax = maxanims ? maxanims*2 : MAXANIMS;
-      anims = realloc(anims, newmax*sizeof(*anims));   // killough
-      lastanim = anims + maxanims;
-      maxanims = newmax;
-    }
 
+  for (int i = 0; i < numanims && animdefs[i].istexture != -1; i++)
+  {
     if (animdefs[i].istexture)
     {
       // different episode ?
