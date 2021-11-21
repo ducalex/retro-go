@@ -73,30 +73,22 @@ typedef enum {
   none
 } GameMission_t;
 
-//
-// For resize of screen, at start of game.
-//
-
-#define BASE_WIDTH 320
-
-// It is educational but futile to change this
-//  scaling e.g. to 2. Drawing of status bar,
-//  menues etc. is tied to the scale implied
-//  by the graphics.
-
-#define INV_ASPECT_RATIO   0.625 /* 0.75, ideally */
+// SCREENWIDTH and SCREENHEIGHT define the visible size
+#if defined(RG_SCREEN_WIDTH) && defined(RG_SCREEN_HEIGHT)
+#define SCREENWIDTH  RG_SCREEN_WIDTH
+#define SCREENHEIGHT RG_SCREEN_HEIGHT
+#else
+#define SCREENWIDTH  320
+#define SCREENHEIGHT 240
+#endif
 
 // killough 2/8/98: MAX versions for maximum screen sizes
 // allows us to avoid the overhead of dynamic allocation
 // when multiple screen sizes are supported
 
 // proff 08/17/98: Changed for high-res
-#define MAX_SCREENWIDTH  320
-#define MAX_SCREENHEIGHT 240
-
-// SCREENWIDTH and SCREENHEIGHT define the visible size
-#define SCREENWIDTH 320
-#define SCREENHEIGHT 240
+#define MAX_SCREENWIDTH  SCREENWIDTH
+#define MAX_SCREENHEIGHT SCREENHEIGHT
 
 // The maximum number of players, multiplayer/networking.
 #define MAXPLAYERS       4

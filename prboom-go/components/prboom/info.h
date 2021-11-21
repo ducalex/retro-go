@@ -1253,16 +1253,14 @@ typedef enum PACKEDATTR
 /********************************************************************
  * Definition of the state (frames) structure                       *
  ********************************************************************/
-// RG: frame, tics, misc1, and misc2 were originally longs, changed for lower memory usage
-// It might overflow when using deh, I'm not sure... Change back if strange bugs!
 typedef struct
 {
   spritenum_t sprite;       /* sprite number to show                       */
-  int         frame:20;     /* which frame/subframe of the sprite is shown */
-  int         tics:12;      /* number of gametics this frame should last   */
+  long        frame;        /* which frame/subframe of the sprite is shown */
+  long        tics;         /* number of gametics this frame should last   */
   actionf_t   action;       /* code pointer to function for action if any  */
   statenum_t  nextstate;    /* linked list pointer to next state or zero   */
-  byte        misc1, misc2; /* apparently never used in DOOM               */
+  byte        misc1, misc2; /* apparently never used in DOOM (RG: was long)*/
 } state_t;
 
 /* these are in info.c */

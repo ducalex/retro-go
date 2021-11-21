@@ -176,7 +176,7 @@ void HUlib_drawTextLine
     else  if (c != ' ' && c >= l->sc && c <= 127)
     {
       w = l->f[c - l->sc].width;
-      if (x+w > BASE_WIDTH)
+      if (x+w > SCREENWIDTH)
         break;
       // killough 1/18/98 -- support multiple lines:
       // CPhipps - patch drawing updated
@@ -186,14 +186,14 @@ void HUlib_drawTextLine
     else
     {
       x += 4;
-      if (x >= BASE_WIDTH)
+      if (x >= SCREENWIDTH)
       break;
     }
   }
   l->cm = oc; //jff 2/17/98 restore original color
 
   // draw the cursor if requested
-  if (drawcursor && x + l->f['_' - l->sc].width <= BASE_WIDTH)
+  if (drawcursor && x + l->f['_' - l->sc].width <= SCREENWIDTH)
   {
     // killough 1/18/98 -- support multiple lines
     // CPhipps - patch drawing updated

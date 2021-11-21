@@ -57,13 +57,14 @@ typedef struct {
 typedef struct {
   int width;
   int height;
-  unsigned  widthmask;
-    
-  unsigned char isNotTileable;
-  
+
   int leftoffset;
   int topoffset;
   
+  unsigned isNotTileable:2; // changed from char
+  unsigned widthmask:22;    // changed from unsigned
+  unsigned locks:8;         // changed from unsigned
+
   // this is the single malloc'ed/free'd array 
   // for this patch
   unsigned char *data;
@@ -76,7 +77,6 @@ typedef struct {
 #ifdef TIMEDIAG
   int locktic;
 #endif
-  unsigned int locks;
 } rpatch_t;
 
 
