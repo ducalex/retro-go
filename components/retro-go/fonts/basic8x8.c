@@ -1,4 +1,4 @@
-#include "fonts.h"
+#include "../rg_gui.h"
 
 /**
  * 8x8 monochrome bitmap fonts for rendering

@@ -42,8 +42,8 @@ void rg_gui_init(void)
     screen_height = rg_display_get_status()->screen.height;
     RG_ASSERT(screen_width && screen_height, "Bad screen res");
 
-    overlay_buffer = (uint16_t *)rg_alloc(RG_MAX(screen_width, screen_height) * 32 * 2, MEM_SLOW);
-    rg_gui_set_font_type(rg_settings_get_int32(SETTING_FONTTYPE, 0));
+    overlay_buffer = (uint16_t *)rg_alloc(RG_MAX(screen_width, screen_height) * 20 * 2, MEM_SLOW);
+    rg_gui_set_font_type(rg_settings_get_int32(SETTING_FONTTYPE, RG_FONT_VERA_12));
     rg_gui_set_theme(&default_theme);
 }
 
@@ -133,9 +133,9 @@ static rg_glyph_t get_glyph(const rg_font_t *font, int points, int c)
 bool rg_gui_set_font_type(int type)
 {
     if (type < 0)
-        type += fonts_count;
+        type += RG_FONT_MAX;
 
-    if (type < 0 || type > fonts_count - 1)
+    if (type < 0 || type > RG_FONT_MAX - 1)
         return false;
 
     font_info.type = type;

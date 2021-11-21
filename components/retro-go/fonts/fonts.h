@@ -1,4 +1,4 @@
-#include <rg_gui.h>
+#include "../rg_gui.h"
 
 /**
  * This file can be edited to add fonts to retro-go.
@@ -13,7 +13,18 @@ extern const rg_font_t font_DejaVu15;
 extern const rg_font_t font_VeraBold12;
 extern const rg_font_t font_VeraBold15;
 
-static const rg_font_t *fonts[] = {
+enum {
+    RG_FONT_BASIC_8,
+    RG_FONT_BASIC_12,
+    RG_FONT_BASIC_16,
+    RG_FONT_DEJAVU_12,
+    RG_FONT_DEJAVU_15,
+    RG_FONT_VERA_12,
+    RG_FONT_VERA_15,
+    RG_FONT_MAX,
+};
+
+static const rg_font_t *fonts[RG_FONT_MAX] = {
     &font_basic8x8,
     &font_basic8x8,
     &font_basic8x8,
@@ -22,4 +33,3 @@ static const rg_font_t *fonts[] = {
     &font_VeraBold12,
     &font_VeraBold15,
 };
-static const size_t fonts_count = sizeof(fonts) / sizeof(rg_font_t*);
