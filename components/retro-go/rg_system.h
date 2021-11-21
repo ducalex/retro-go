@@ -121,6 +121,7 @@ typedef struct
     int startAction;
     int logLevel;
     int isLauncher;
+    int inputTimeout;
     const char *romPath;
     void *mainTaskHandle;
     rg_emu_proc_t handlers;

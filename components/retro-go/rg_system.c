@@ -15,11 +15,10 @@
 
 #include "rg_system.h"
 
-#ifdef ENABLE_PROFILING
-#define INPUT_TIMEOUT -1
-#else
+// To disable timeout set app->inputTimeout = -1 after call rg_system_init()
+// Early timeout applies until the first call to rg_system_tick()
+#define EARLY_INPUT_TIMEOUT 30000001
 #define INPUT_TIMEOUT 15000000
-#endif
 
 #ifndef RG_BUILD_USER
 #define RG_BUILD_USER "ducalex"
@@ -47,7 +46,6 @@ static RTC_NOINIT_ATTR panic_trace_t panicTrace;
 static rg_stats_t statistics;
 static rg_counters_t counters;
 static rg_app_t app;
-static int inputTimeout = -1;
 static int ledValue = 0;
 static bool initialized = false;
 
@@ -159,9 +157,13 @@ static void system_monitor_task(void *arg)
         //     RG_LOGW("Running out of heap space!");
         // }
 
-        if (rg_input_gamepad_last_read() > (unsigned long)inputTimeout)
+        if (rg_input_gamepad_last_read() > (unsigned long)app.inputTimeout)
         {
+        #ifdef ENABLE_PROFILING
+            RG_LOGW("Application unresponsive");
+        #else
             RG_PANIC("Application unresponsive");
+        #endif
         }
 
         if (abs(time(NULL) - lastTime) > 60)
@@ -208,9 +210,9 @@ IRAM_ATTR void rg_system_tick(int busyTime)
     counters.busyTime += busyTime;
 
     // Reduce the inputTimeout once the emulation is running
-    if (counters.totalFrames == 1)
+    if (app.inputTimeout == EARLY_INPUT_TIMEOUT)
     {
-        inputTimeout = INPUT_TIMEOUT;
+        app.inputTimeout = INPUT_TIMEOUT;
     }
 }
 
@@ -282,6 +284,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
     app.refreshRate = 1;
     app.sampleRate = sampleRate;
     app.logLevel = RG_LOG_INFO;
+    app.inputTimeout = EARLY_INPUT_TIMEOUT;
     app.isLauncher = (strcmp(app.name, RG_APP_LAUNCHER) == 0);
     app.mainTaskHandle = xTaskGetCurrentTaskHandle();
     if (handlers)
@@ -371,8 +374,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
 
     xTaskCreate(&system_monitor_task, "sysmon", 2560, NULL, 7, NULL);
 
-    // This is to allow time for app starting
-    inputTimeout = INPUT_TIMEOUT * 2;
     initialized = true;
 
     RG_LOGI("Retro-Go ready.\n\n");
@@ -455,13 +456,13 @@ bool rg_emu_load_state(int slot)
     rg_gui_draw_hourglass();
 
     // Increased input timeout, this might take a while
-    inputTimeout = INPUT_TIMEOUT * 2;
+    app.inputTimeout *= 4;
 
     char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE, app.romPath);
     bool success = (*app.handlers.loadState)(filename);
     // bool success = rg_emu_notify(RG_MSG_LOAD_STATE, filename);
 
-    inputTimeout = INPUT_TIMEOUT;
+    app.inputTimeout /= 4;
 
     if (!success)
     {
@@ -491,7 +492,7 @@ bool rg_emu_save_state(int slot)
     bool success = false;
 
     // Increased input timeout, this might take a while
-    inputTimeout = INPUT_TIMEOUT * 2;
+    app.inputTimeout *= 4;
 
     if (!rg_mkdir(rg_dirname(filename)))
     {
@@ -536,7 +537,7 @@ bool rg_emu_save_state(int slot)
         free(fileName);
     }
 
-    inputTimeout = INPUT_TIMEOUT;
+    app.inputTimeout /= 4;
 
     rg_system_set_led(0);
 
