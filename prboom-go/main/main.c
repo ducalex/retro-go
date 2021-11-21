@@ -38,7 +38,7 @@
 #include <r_fps.h>
 #include <s_sound.h>
 #include <st_stuff.h>
-#include <mmus2mid.h>
+#include <mus2mid.h>
 #include <midifile.h>
 #include <oplplayer.h>
 
@@ -379,26 +379,18 @@ void I_UnRegisterSong(int handle)
 
 int I_RegisterSong(const void *data, size_t len)
 {
-    const uint16_t *header = data;
-    MIDI mididata;
-    uint8_t *mid;
+    uint8_t *mid = NULL;
+    size_t midlen;
     int handle = 0;
-    int midlen;
 
-    RG_LOGI("Length: %d, Start: %d, Channels: %d, SecChannels: %d, Instruments: %d.\n",
-            header[2], header[3], header[4], header[5], header[6]);
+    if (mus2mid(data, len, &mid, &midlen, 64) == 0)
+        handle = (int)music_player->registersong(mid, midlen);
+    else
+        handle = (int)music_player->registersong(data, len);
 
-    if (mmus2mid(data, &mididata, 64, 1) != 0)
-    {
-        return 0;
-    }
+    free(mid);
 
-    if (MIDIToMidi(&mididata, &mid, &midlen) == 0)
-    {
-        free_mididata(&mididata);
-        handle = (intptr_t)music_player->registersong(mid, midlen);
-        free(mid);
-    }
+    RG_LOGI("handle: %d\n", handle);
 
     return handle;
 }
