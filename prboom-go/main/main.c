@@ -42,8 +42,8 @@
 #include <midifile.h>
 #include <oplplayer.h>
 
-#define SAMPLERATE 11025
-#define SAMPLECOUNT (SAMPLERATE / TICRATE + 1)
+#define AUDIO_SAMPLE_RATE 11025 // 22050
+#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / TICRATE + 1)
 #define NUM_MIX_CHANNELS 8
 
 static rg_video_update_t update;
@@ -51,20 +51,27 @@ static rg_app_t *app;
 
 // Expected variables by doom
 int snd_card = 1, mus_card = 1;
-int snd_samplerate = SAMPLERATE;
+int snd_samplerate = AUDIO_SAMPLE_RATE;
 int current_palette = 0;
 
-static struct {
-    uint8_t *data;   // Sample
-    uint8_t *endptr; // End of data
-    int start;       // Time/gametic that the channel started playing
-    int sfxid;       // SFX id of the playing sound effect.
-} channels[NUM_MIX_CHANNELS];
-static struct {
-    void *data;
-    size_t length;
-} sfx[NUMSFX];
-static short mixbuffer[SAMPLECOUNT * 2];
+typedef struct {
+    uint16_t unused1;
+    uint16_t samplerate;
+    uint16_t length;
+    uint16_t unused2;
+    byte samples[];
+} doom_sfx_t;
+
+typedef struct {
+    const doom_sfx_t *sfx;
+    size_t pos;
+    float factor;
+    int starttic;
+} channel_t;
+
+static channel_t channels[NUM_MIX_CHANNELS];
+static const doom_sfx_t *sfx[NUMSFX];
+static short mixbuffer[AUDIO_BUFFER_LENGTH * 2];
 static const music_player_t *music_player = &opl_synth_player;
 static bool musicPlaying = false;
 
@@ -200,51 +207,61 @@ int I_StartSound(int sfxid, int channel, int vol, int sep, int pitch, int priori
     int oldest = gametic;
     int slot = 0;
 
+    // Unknown sound
+    if (!sfx[sfxid])
+        return -1;
+
     // These sound are played only once at a time. Stop any running ones.
     if (sfxid == sfx_sawup || sfxid == sfx_sawidl || sfxid == sfx_sawful
         || sfxid == sfx_sawhit || sfxid == sfx_stnmov || sfxid == sfx_pistol)
     {
         for (int i = 0; i < NUM_MIX_CHANNELS; i++)
         {
-            if (channels[i].sfxid == sfxid)
-                channels[i].data = NULL;
+            if (channels[i].sfx == sfx[sfxid])
+                channels[i].sfx = NULL;
         }
     }
 
     // Find available channel or steal the oldest
     for (int i = 0; i < NUM_MIX_CHANNELS; i++)
     {
-        if (channels[i].data == NULL)
+        if (channels[i].sfx == NULL)
         {
             slot = i;
             break;
         }
-        else if (channels[i].start < oldest)
+        else if (channels[i].starttic < oldest)
         {
             slot = i;
-            oldest = channels[i].start;
+            oldest = channels[i].starttic;
         }
     }
 
-    // Use empty channel if available, otherwise reuse the oldest one
-    channels[slot].data = sfx[sfxid].data;
-    channels[slot].endptr = channels[slot].data + sfx[sfxid].length;
-    channels[slot].sfxid = sfxid;
+    channel_t *chan = &channels[slot];
+    chan->sfx = sfx[sfxid];
+    chan->factor = (float)chan->sfx->samplerate / AUDIO_SAMPLE_RATE;
+    chan->pos = 0;
 
-    return 1;
+    return slot;
 }
 
 void I_StopSound(int handle)
 {
+    if (handle < NUM_MIX_CHANNELS)
+        channels[handle].sfx = NULL;
 }
 
 bool I_SoundIsPlaying(int handle)
 {
-    return gametic < handle;
+    // return (handle < NUM_MIX_CHANNELS && channels[handle].sfx);
+    return false;
 }
 
 bool I_AnySoundStillPlaying(void)
 {
+    for (int i = 0; i < NUM_MIX_CHANNELS; i++)
+        if (channels[i].sfx)
+            return true;
     return false;
 }
 
@@ -253,9 +270,10 @@ static void soundTask(void *arg)
     while (1)
     {
         short *audioBuffer = mixbuffer;
+        short *audioBufferEnd = audioBuffer + AUDIO_BUFFER_LENGTH * 2;
         short stream[2];
 
-        for (int i = 0; i < SAMPLECOUNT; ++i)
+        while (audioBuffer < audioBufferEnd)
         {
             int totalSample = 0;
             int totalSources = 0;
@@ -263,26 +281,26 @@ static void soundTask(void *arg)
 
             if (snd_SfxVolume > 0)
             {
-                for (int chan = 0; chan < NUM_MIX_CHANNELS; chan++)
+                for (int i = 0; i < NUM_MIX_CHANNELS; i++)
                 {
-                    if (!channels[chan].data)
+                    channel_t *chan = &channels[i];
+                    if (!chan->sfx)
                         continue;
 
-                    sample = *channels[chan].data++;
+                    size_t pos = (int)(chan->pos++ * chan->factor);
 
-                    if (sample != 0)
+                    if (pos >= chan->sfx->length)
                     {
-                        totalSample += sample;
-                        totalSources++;
+                        chan->sfx = NULL;
                     }
-
-                    if (channels[chan].data >= channels[chan].endptr)
+                    else if ((sample = chan->sfx->samples[pos]))
                     {
-                        channels[chan].data = NULL;
+                        totalSample += sample - 127;
+                        totalSources++;
                     }
                 }
 
-                totalSample <<= 6;
+                totalSample <<= 7;
                 totalSample /= (16 - snd_SfxVolume);
             }
 
@@ -298,6 +316,8 @@ static void soundTask(void *arg)
                 }
             }
 
+            // TO DO: I guess we could add stereo support, we're already writing all the samples...
+
             if (totalSources == 0)
             {
                 *(audioBuffer++) = 0;
@@ -309,7 +329,7 @@ static void soundTask(void *arg)
                 *(audioBuffer++) = (short)(totalSample / totalSources);
             }
         }
-        rg_audio_submit(mixbuffer, SAMPLECOUNT);
+        rg_audio_submit(mixbuffer, AUDIO_BUFFER_LENGTH);
     }
 }
 
@@ -317,23 +337,14 @@ void I_InitSound(void)
 {
     for (int i = 1; i < NUMSFX; i++)
     {
-        if (S_sfx[i].lumpnum == -1)
-            sfx[i] = sfx[1]; // Map unknown sounds to pistol
-        else
-        {
-            size_t size = W_LumpLength(S_sfx[i].lumpnum);
-            sfx[i].length = ((size + (SAMPLECOUNT - 1)) / SAMPLECOUNT) * SAMPLECOUNT;
-            sfx[i].data = Z_Malloc(sfx[i].length, PU_SOUND, 0);
-            W_ReadLump(sfx[i].data, S_sfx[i].lumpnum);
-            memset(sfx[i].data + size, 0x80, sfx[i].length - size);
-        }
+        if (S_sfx[i].lumpnum != -1)
+            sfx[i] = W_CacheLumpNum(S_sfx[i].lumpnum);
     }
-    RG_LOGI("all sound effects loaded.\n");
 
     music_player->init(snd_samplerate);
     music_player->setvolume(snd_MusicVolume);
 
-    xTaskCreatePinnedToCore(&soundTask, "soundTask", 1024, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(&soundTask, "soundTask", 1536, NULL, 5, NULL, 1);
 }
 
 void I_ShutdownSound(void)
@@ -446,7 +457,7 @@ void I_StartTic(void)
 void I_Init(void)
 {
     snd_channels = NUM_MIX_CHANNELS;
-    snd_samplerate = SAMPLERATE;
+    snd_samplerate = AUDIO_SAMPLE_RATE;
     snd_MusicVolume = 15;
     snd_SfxVolume = 15;
     usegamma = rg_settings_get_app_int32(SETTING_GAMMA, 0);
@@ -505,7 +516,7 @@ void app_main()
         .event = &event_handler,
     };
 
-    app = rg_system_init(SAMPLERATE, &handlers);
+    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
     app->refreshRate = TICRATE;
 
     update.buffer = rg_alloc(SCREENHEIGHT*SCREENWIDTH, MEM_FAST);

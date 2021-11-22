@@ -501,33 +501,9 @@ static boolean ReadTrack(midi_track_t *track, midimem_t *mf)
         return false;
     }
 
-
-    // Dry run to get memory size. Without it the loop below does a lot of reallocs which
-    // fragments our heap. Walking the events twice takes less than one millisecond extra.
-
-    midi_event_t event_buf;
-    midimem_t tmp_mf = *mf;
-    last_event_type = 0;
-
-    for (;;)
-    {
-        event = &event_buf;
-        if (!ReadEvent(event, &last_event_type, &tmp_mf))
-            return false;
-
-        if (event->event_type >= 0xf0)
-            FreeEvent(event);
-
-        ++track->num_event_mem;
-
-        if (event->event_type == MIDI_EVENT_META
-         && event->data.meta.type == MIDI_META_END_OF_TRACK)
-        {
-            break;
-        }
-    }
-    new_events = malloc(sizeof(midi_event_t) * track->num_event_mem);
-
+    // This is typically a good guess and avoids the multitude of reallocs below
+    track->num_event_mem = track->data_len / 4 + 5;
+    new_events = calloc(track->num_event_mem, sizeof(midi_event_t));
 
     // Then the events:
 
@@ -543,7 +519,7 @@ static boolean ReadTrack(midi_track_t *track, midimem_t *mf)
         if (track->num_events == track->num_event_mem)
         { // depending on the state of the heap and the malloc implementation, realloc()
           // one more event at a time can be VERY slow.  10sec+ in MSVC
-          track->num_event_mem += 100; 
+          track->num_event_mem += 10;
           new_events = realloc (track->events, sizeof (midi_event_t) * track->num_event_mem);
         }
 
