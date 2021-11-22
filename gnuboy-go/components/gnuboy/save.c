@@ -191,7 +191,7 @@ int sram_save(const char *file, bool quick_save)
 	{
 		if (!(cart.sram_saved & (1 << i)) || (cart.sram_dirty & (1 << i)))
 		{
-			if (fseek(f, i * 8192, SEEK_SET) == 0 && fwrite(cart.rambanks, 8192, 1, f) == 1)
+			if (fseek(f, i * 8192, SEEK_SET) == 0 && fwrite(cart.rambanks[i], 8192, 1, f) == 1)
 			{
 				MESSAGE_INFO("Saved SRAM bank %d.\n", i);
 				cart.sram_dirty &= ~(1 << i);
