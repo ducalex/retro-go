@@ -360,12 +360,6 @@ default_t defaults[] =
    0,MAX_KEY,def_key,ss_keys}, // key to move up in a menu
   {"key_menu_down",   {&key_menu_down},      {KEYD_DOWNARROW} ,
    0,MAX_KEY,def_key,ss_keys}, // key to move down in a menu
-  {"key_menu_backspace",{&key_menu_backspace},{KEYD_BACKSPACE} ,
-   0,MAX_KEY,def_key,ss_keys}, // delete key in a menu
-  {"key_menu_escape", {&key_menu_escape},    {KEYD_ESCAPE}    ,
-   0,MAX_KEY,def_key,ss_keys}, // key to leave a menu      ,   // phares 3/7/98
-  {"key_menu_enter",  {&key_menu_enter},     {KEYD_ENTER}     ,
-   0,MAX_KEY,def_key,ss_keys}, // key to select from menu
   {"key_strafeleft",  {&key_strafeleft},     {','}           ,
    0,MAX_KEY,def_key,ss_keys}, // key to strafe left
   {"key_straferight", {&key_straferight},    {'.'}           ,

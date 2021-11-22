@@ -1316,7 +1316,7 @@ static void M_DrawNewGame(void)
 
 static void M_RestartLevelResponse(int ch)
 {
-  if (ch != key_menu_enter)
+  if (ch != key_enter)
     return;
 
   if (demorecording)
@@ -1346,7 +1346,7 @@ static void M_NewGame(int choice)
 
 static void M_VerifyNightmare(int ch)
 {
-  if (ch != key_menu_enter)
+  if (ch != key_enter)
     return;
 
   G_DeferedInitNew(sk_nightmare,epi+1,1);
@@ -1411,7 +1411,7 @@ static void M_LoadSelect(int choice)
 
 static void M_VerifyForcedLoadGame(int ch)
 {
-  if (ch == key_menu_enter)
+  if (ch == key_enter)
     G_ForcedLoadGame();
   free((char*)messageString);       // free the message strdup()'ed below
   M_ClearMenus();
@@ -1498,7 +1498,7 @@ static void M_QuitResponse(int ch)
     {sfx_vilact, sfx_getpow, sfx_boscub, sfx_slop,sfx_skeswg, sfx_kntdth, sfx_bspact, sfx_sgtatk},
   };
 
-  if (ch != key_menu_enter)
+  if (ch != key_enter)
     return;
 
   if ((!netgame || demoplayback) && !nosfxparm && snd_card) // avoid delay if no sound card
@@ -1596,7 +1596,7 @@ static void M_MusicVol(int choice)
 
 static void M_QuickSaveResponse(int ch)
 {
-  if (ch == key_menu_enter)  {
+  if (ch == key_enter)  {
     M_DoSave(quickSaveSlot);
     S_StartSound(NULL,sfx_swtchx);
   }
@@ -1625,7 +1625,7 @@ static void M_QuickSave(void)
 
 static void M_QuickLoadResponse(int ch)
 {
-  if (ch == key_menu_enter) {
+  if (ch == key_enter) {
     M_LoadSelect(quickSaveSlot);
     S_StartSound(NULL,sfx_swtchx);
   }
@@ -1649,7 +1649,7 @@ static void M_QuickLoad(void)
 
 static void M_EndGameResponse(int ch)
 {
-  if (ch != key_menu_enter)
+  if (ch != key_enter)
     return;
 
   // killough 5/26/98: make endgame quit if recording or playing back demo
@@ -1725,7 +1725,7 @@ bool M_Responder(event_t* ev)
   if (messageToPrint)
   {
     lprintf(LO_INFO, "M_Responder: message needs input %d\n", messageNeedsInput);
-    if (messageNeedsInput && !(ch == ' ' || ch == key_menu_enter || ch == key_menu_backspace || ch == key_menu_escape))
+    if (messageNeedsInput && !(ch == ' ' || ch == key_enter || ch == key_backspace || ch == key_escape))
       return false;
     menuactive = messageLastMenuActive;
     messageToPrint = 0;
@@ -1853,12 +1853,12 @@ bool M_Responder(event_t* ev)
     // Catch the response to the 'reset to default?' verification
     if (default_verify)
     {
-      if (ch == key_menu_enter) {
+      if (ch == key_enter) {
         M_ResetDefaults();
         default_verify = false;
         M_SelectDone(ptr1);
       }
-      else if (ch == key_menu_escape || ch == key_menu_backspace) {
+      else if (ch == key_escape || ch == key_backspace) {
         default_verify = false;
         M_SelectDone(ptr1);
       }
@@ -1869,7 +1869,7 @@ bool M_Responder(event_t* ev)
 
     if (setup_select)  // changing an entry
     {
-      if (ch == key_menu_escape) // Exit key = no change
+      if (ch == key_escape) // Exit key = no change
       {
         M_SelectDone(ptr1);                           // phares 4/17/98
         return true;
@@ -1885,7 +1885,7 @@ bool M_Responder(event_t* ev)
           else
             M_UpdateCurrent(ptr1->var.def);
         }
-        else if (ch == key_menu_enter)
+        else if (ch == key_enter)
         {
           if (ptr1->action)
             ptr1->action();
@@ -1910,7 +1910,7 @@ bool M_Responder(event_t* ev)
 
         *ptr1->var.def->location.pi = value;
 
-        if (ch == key_menu_enter)
+        if (ch == key_enter)
         {
           if (ptr1->action)
             ptr1->action();
@@ -1939,7 +1939,7 @@ bool M_Responder(event_t* ev)
           }
         }
 
-        if (ch == key_menu_enter)
+        if (ch == key_enter)
         {
           if (ptr1->m_flags & (S_LEVWARN | S_PRGWARN))
             warn_about_changes(ptr1->m_flags &
@@ -2008,7 +2008,7 @@ bool M_Responder(event_t* ev)
             *ptr1->var.def->location.ppsz = ptr1->selectstrings[value];
           }
         }
-        else if (ch == key_menu_enter)
+        else if (ch == key_enter)
         {
           // phares 4/14/98:
           // If not in demoplayback, demorecording, or netgame,
@@ -2062,7 +2062,7 @@ bool M_Responder(event_t* ev)
       M_SelectDone(&setup_screens[current_setup_page][set_menu_itemon]);
       return true;
     }
-    else if (ch == key_menu_enter)
+    else if (ch == key_enter)
     {
       if (ptr1->m_flags & S_RESET)
         default_verify = true;
@@ -2071,11 +2071,11 @@ bool M_Responder(event_t* ev)
       S_StartSound(NULL, sfx_itemup);
       return true;
     }
-    else if ((ch == key_menu_escape) || (ch == key_menu_backspace))
+    else if ((ch == key_escape) || (ch == key_backspace))
     {
-      if (ch == key_menu_escape) // Clear all menus
+      if (ch == key_escape) // Clear all menus
         M_ClearMenus();
-      else if (currentMenu->prevMenu) // key_menu_backspace = return to Setup Menu
+      else if (currentMenu->prevMenu) // key_backspace = return to Setup Menu
       {
         currentMenu = currentMenu->prevMenu;
         itemOn = currentMenu->lastOn;
@@ -2160,7 +2160,7 @@ bool M_Responder(event_t* ev)
     }
     return true;
   }
-  else if (ch == key_menu_enter)
+  else if (ch == key_enter)
   {
     if (currentMenu->menuitems[itemOn].routine && currentMenu->menuitems[itemOn].status)
     {
@@ -2178,14 +2178,14 @@ bool M_Responder(event_t* ev)
     }
     return true;
   }
-  else if (ch == key_menu_escape)
+  else if (ch == key_escape)
   {
     currentMenu->lastOn = itemOn;
     M_ClearMenus();
     S_StartSound(NULL,sfx_swtchx);
     return true;
   }
-  else if (ch == key_menu_backspace)
+  else if (ch == key_backspace)
   {
     currentMenu->lastOn = itemOn;
     if (currentMenu->prevMenu)

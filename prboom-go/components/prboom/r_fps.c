@@ -63,14 +63,6 @@ tic_vars_t tic_vars;
 
 view_vars_t original_view_vars;
 
-extern int realtic_clock_rate;
-void D_Display(void);
-
-void R_InitInterpolation(void)
-{
-  tic_vars.msec = realtic_clock_rate * TICRATE / 100000.0f;
-}
-
 typedef fixed_t fixed2_t[2];
 static fixed2_t *oldipos;
 static fixed2_t *bakipos;
@@ -79,6 +71,14 @@ static interpolation_t *curipos;
 static boolean NoInterpolateView;
 static boolean didInterp;
 boolean WasRenderedInTryRunTics;
+
+int realtic_clock_rate = 100;
+
+
+void R_InitInterpolation(void)
+{
+  tic_vars.msec = realtic_clock_rate * TICRATE / 100000.0f;
+}
 
 void R_InterpolateView (player_t *player, fixed_t frac)
 {
@@ -236,15 +236,15 @@ static void R_SetInterpolation(interpolation_type_e type, void *posptr)
   int i;
   if (!movement_smooth)
     return;
-  
+
   if (numinterpolations >= interpolations_max) {
     interpolations_max = interpolations_max ? interpolations_max * 2 : 256;
-    
+
     oldipos = (fixed2_t*)realloc(oldipos, sizeof(*oldipos) * interpolations_max);
     bakipos = (fixed2_t*)realloc(bakipos, sizeof(*bakipos) * interpolations_max);
     curipos = (interpolation_t*)realloc(curipos, sizeof(*curipos) * interpolations_max);
   }
-  
+
   for(i = numinterpolations-1; i >= 0; i--)
     if (curipos[i].address == posptr && curipos[i].type == type)
       return;
@@ -253,7 +253,7 @@ static void R_SetInterpolation(interpolation_type_e type, void *posptr)
   curipos[numinterpolations].type = type;
   R_CopyInterpToOld (numinterpolations);
   numinterpolations++;
-} 
+}
 
 static void R_StopInterpolation(interpolation_type_e type, void *posptr)
 {
@@ -280,7 +280,7 @@ static void R_StopInterpolation(interpolation_type_e type, void *posptr)
 void R_StopAllInterpolations(void)
 {
   int i;
-  
+
   if (!movement_smooth)
     return;
 
@@ -318,7 +318,7 @@ void R_DoInterpolations(fixed_t smoothratio)
 void R_RestoreInterpolations()
 {
   int i;
-  
+
   if (!movement_smooth)
     return;
 
@@ -423,7 +423,7 @@ void R_ActivateThinkerInterpolations(thinker_t *th)
   if(posptr1)
   {
     R_SetInterpolation (type1, posptr1);
-    
+
     if(posptr2)
       R_SetInterpolation (type2, posptr2);
   }

@@ -95,9 +95,6 @@ extern int  key_menu_right;                                  // phares 3/7/98
 extern int  key_menu_left;                                   //     |
 extern int  key_menu_up;                                     //     V
 extern int  key_menu_down;
-extern int  key_menu_backspace;                              //     ^
-extern int  key_menu_escape;                                 //     |
-extern int  key_menu_enter;                                  // phares 3/7/98
 extern int  key_strafeleft;
 extern int  key_straferight;
 
@@ -112,6 +109,7 @@ extern int  key_autorun;
 extern int  key_reverse;
 extern int  key_zoomin;
 extern int  key_zoomout;
+extern int  key_lastmessage;
 extern int  key_chat;
 extern int  key_backspace;
 extern int  key_enter;

@@ -1485,7 +1485,7 @@ boolean HU_Responder(event_t *ev)
 
   if (!chat_on)
   {
-    if (ev->data1 == key_enter)                                 // phares
+    if (ev->data1 == key_lastmessage)                                 // phares
     {
 #ifndef INSTRUMENTED  // never turn on message review if INSTRUMENTED defined
       if (hud_msg_lines>1)  // it posts multi-line messages that will trash

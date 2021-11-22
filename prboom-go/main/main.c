@@ -52,7 +52,6 @@ static rg_app_t *app;
 // Expected variables by doom
 int snd_card = 1, mus_card = 1;
 int snd_samplerate = SAMPLERATE;
-int realtic_clock_rate = 100;
 int current_palette = 0;
 
 static struct {
@@ -77,7 +76,7 @@ static const struct {int mask; int *key;} keymap[] = {
     {RG_KEY_LEFT, &key_left},
     {RG_KEY_RIGHT, &key_right},
     {RG_KEY_A, &key_fire},
-    {RG_KEY_A, &key_menu_enter},
+    {RG_KEY_A, &key_enter},
     {RG_KEY_B, &key_speed},
     {RG_KEY_B, &key_strafe},
     {RG_KEY_B, &key_backspace},

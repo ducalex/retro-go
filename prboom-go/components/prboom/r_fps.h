@@ -38,6 +38,7 @@
 #include "doomstat.h"
 
 extern int movement_smooth;
+extern int realtic_clock_rate;
 
 typedef struct {
   fixed_t viewx;
