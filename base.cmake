@@ -15,9 +15,17 @@ if(NOT PROJECT_VER)
 endif()
 
 macro(rg_setup_compile_options)
-    component_compile_options(-Wno-comment -Wno-error=comment -Wno-missing-field-initializers)
-    component_compile_options(-DIS_LITTLE_ENDIAN)
-    component_compile_options(${ARGV})
+    set(RG_TARGET "RG_TARGET_$ENV{RG_TARGET}")
+    message("Target: ${RG_TARGET}")
+
+    component_compile_options(
+        -Wno-comment
+        -Wno-error=comment
+        -Wno-missing-field-initializers
+        -DIS_LITTLE_ENDIAN
+        -D${RG_TARGET}
+        ${ARGV}
+    )
 
     if(NOT ";${ARGV};" MATCHES ";-O[0123gs];")
         # Only default to -O3 if not specified by the app
@@ -32,8 +40,4 @@ macro(rg_setup_compile_options)
     if($ENV{ENABLE_NETPLAY})
         component_compile_options(-DENABLE_NETPLAY)
     endif()
-
-    set(RG_TARGET "RG_TARGET_$ENV{RG_TARGET}")
-    component_compile_options(-D${RG_TARGET})
-    message("Target: ${RG_TARGET}")
 endmacro()
