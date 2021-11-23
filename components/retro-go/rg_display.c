@@ -899,6 +899,10 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
     width = RG_MIN(width, display.screen.width - left);
     height = RG_MIN(height, display.screen.height - top);
 
+    // This can happen when left or top is out of bound
+    if (width < 0 || height < 0)
+        return;
+
     lcd_set_window(left + RG_SCREEN_MARGIN_LEFT, top + RG_SCREEN_MARGIN_TOP, width, height);
 
     size_t lines_per_buffer = SPI_BUFFER_LENGTH / width;
