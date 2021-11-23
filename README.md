@@ -1,8 +1,9 @@
 # Description
-Retro-Go is a launcher and framework to run emulators on the ODROID-GO and compatible ESP32(-S2) devices. 
-It comes with many emulators!
+Retro-Go is a launcher and framework to run emulators on ESP32-based devices (officially supported
+are ODROID-GO and MRGC-G32). The included applications have been heavily optimized to reduce their
+cpu, memory, and flash needs without reducing compatibility (hopefully!).
 
-### Supported systems:
+### Included emulators:
 - NES
 - Gameboy
 - Gameboy Color
@@ -12,8 +13,8 @@ It comes with many emulators!
 - Colecovision
 - PC Engine
 - Lynx
-- SNES (work in progress)
-- DOOM
+- SNES (WIP, not playable)
+- DOOM (mods also supported!)
 
 ### Retro-Go features:
 - In-game menu
@@ -148,8 +149,14 @@ For a smaller build you can also specify which apps you want, for example the la
 1. `rg_tool.py build-fw launcher nofrendo-go gnuboy-go`
 
 ## Build, flash, and monitor individual apps for faster development:
-1. `rg_tool.py --offset=0x100000 --port=COM3 run nofrendo-go`
-* Offset is required only if you use my multi-firmware AND retro-go isn't the first installed application, in which case the offset is shown in the multi-firmware.
+It would be tedious to build, move to SD, and flash a full .fw all the time during development. Instead you can:
+1. Flash: `rg_tool.py --port=COM3 --offset=0x100000 flash nofrendo-go`
+2. Monitor: `rg_tool.py --port=COM3 monitor nofrendo-go`
+3. Flash then monitor: `rg_tool.py --port=COM3 --offset=0x100000 run nofrendo-go`
+
+Note: You will need to know where retro-go is located on your device. Typically it is 0x100000 for 
+the ODROID-GO and 0x50000 for the MRGC-G32. You can confirm that by searching the serial output for
+the line `launcher  OTA app  00 10 00100000 00050000` where 100000 is the offset in hex.
 
 ## Environment variables 
 rg_tool.py supports a few environment variables if you want to avoid passing flags all the time:

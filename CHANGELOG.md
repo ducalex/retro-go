@@ -1,8 +1,10 @@
-# Retro-Go 1.28 (2021-11-?? upcoming)
+# Retro-Go 1.28 (2021-11-23)
 - GBC: Dinky Kong & Dixie Kong (and probably others)
+- GBC: Fixed SRAM saving not working correctly (thanks to Jarrad Edwards!)
 - NES: Added basic NSF support
 - NES: Added support for mapper 30
 - SMS: Performance improvement
+- DOOM: New PrBoom port included. (DOOM I, II, SIGIL, and Freedoom work well but occasional OOM crashes remain)
 - Launcher: Got rid of the occasional SPI mutex error
 - MRGC G32 (GBC) is now fully supported (Hopefully)
 

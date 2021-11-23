@@ -181,7 +181,7 @@ def find_app(target, offset, app_offset=None):
         offset += math.ceil(value[1] / 0x10000) * 0x10000
 
 
-def flash_app(target, port, offset=DEFAULT_OFFSET, baud=DEFAULT_BAUD):
+def flash_app(target, port, offset, baud):
     print("Flashing app '%s' at offset %s" % (target, hex(offset)))
     subprocess.run([
         sys.executable,
