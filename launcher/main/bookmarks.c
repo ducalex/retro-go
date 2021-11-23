@@ -99,11 +99,12 @@ static void tab_refresh(book_type_t book_type)
     }
     else
     {
-        gui_resize_list(book->tab, 6);
+        gui_resize_list(book->tab, 8);
         sprintf(book->tab->listbox.items[0].text, "Welcome to Retro-Go!");
         sprintf(book->tab->listbox.items[2].text, "You have no %s games.", book->name);
-        sprintf(book->tab->listbox.items[4].text, "Use SELECT and START to navigate.");
-        book->tab->listbox.cursor = 3;
+        sprintf(book->tab->listbox.items[5].text, "You can hide this tab in the menu");
+        sprintf(book->tab->listbox.items[7].text, "Use SELECT and START to navigate.");
+        book->tab->listbox.cursor = 4;
     }
 }
 

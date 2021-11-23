@@ -355,10 +355,12 @@ static void tab_refresh(tab_t *tab)
         }
 
         gui_resize_list(tab, 8);
-        sprintf(tab->listbox.items[0].text, "Place roms in folder: /roms/%s", emu->short_name);
-        sprintf(tab->listbox.items[2].text, "With file extension: %s", extensions);
-        sprintf(tab->listbox.items[4].text, "Use SELECT and START to navigate.");
-        tab->listbox.cursor = 3;
+        sprintf(tab->listbox.items[0].text, "Welcome to Retro-Go!");
+        sprintf(tab->listbox.items[2].text, "Place roms in folder: /roms/%s", emu->short_name);
+        sprintf(tab->listbox.items[3].text, "With file extension: %s", extensions);
+        sprintf(tab->listbox.items[5].text, "You can hide this tab in the menu");
+        sprintf(tab->listbox.items[7].text, "Use SELECT and START to navigate");
+        tab->listbox.cursor = 4;
     }
 }
 

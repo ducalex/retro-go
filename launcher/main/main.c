@@ -119,7 +119,42 @@ static dialog_return_t color_shift_cb(dialog_option_t *option, dialog_event_t ev
     return RG_DIALOG_IGNORE;
 }
 
-void retro_loop()
+static void show_about_dialog(void)
+{
+    const dialog_option_t options[] = {
+        {1, "Clear cache", NULL, 1, NULL},
+        RG_DIALOG_CHOICE_LAST
+    };
+    if (rg_gui_about_menu(options) == 1) {
+        unlink(CRC_CACHE_PATH);
+        rg_system_restart();
+    }
+}
+
+static void show_options_dialog(void)
+{
+    const dialog_option_t options[] = {
+        RG_DIALOG_SEPARATOR,
+        {0, "Color theme", "...", 1, &color_shift_cb},
+        {0, "Font type  ", "...", 1, &font_type_cb},
+        {0, "Preview    ", "...", 1, &show_preview_cb},
+        {0, "    - Delay", "...", 1, &show_preview_speed_cb},
+        {0, "Toggle tabs", "...", 1, &toggle_tabs_cb},
+        {0, "Startup app", "...", 1, &startup_app_cb},
+        {0, "Disk LED   ", "...", 1, &disk_activity_cb},
+        #if !RG_GAMEPAD_OPTION_BTN
+        RG_DIALOG_SEPARATOR,
+        {100, "About... ", NULL,  1, NULL},
+        #endif
+        RG_DIALOG_CHOICE_LAST
+    };
+    int sel = rg_gui_settings_menu(options);
+    gui_save_config(true);
+    if (sel == 100)
+        show_about_dialog();
+}
+
+static void retro_loop(void)
 {
     tab_t *tab = gui_get_current_tab();
     int last_key = -1;
@@ -183,30 +218,15 @@ void retro_loop()
         }
 
         if (last_key == RG_KEY_MENU) {
-            const dialog_option_t options[] = {
-                {1, "Clear cache", NULL, 1, NULL},
-                RG_DIALOG_CHOICE_LAST
-            };
-            if (rg_gui_about_menu(options) == 1) {
-                unlink(CRC_CACHE_PATH);
-                rg_system_restart();
-            }
+        #if !RG_GAMEPAD_OPTION_BTN
+            show_options_dialog();
+        #else
+            show_about_dialog();
+        #endif
             gui_redraw();
         }
         else if (last_key == RG_KEY_OPTION) {
-            const dialog_option_t options[] = {
-                RG_DIALOG_SEPARATOR,
-                {0, "Color theme", "...", 1, &color_shift_cb},
-                {0, "Font type  ", "...", 1, &font_type_cb},
-                {0, "Preview    ", "...", 1, &show_preview_cb},
-                {0, "    - Delay", "...", 1, &show_preview_speed_cb},
-                {0, "Toggle tabs", "...", 1, &toggle_tabs_cb},
-                {0, "Startup app", "...", 1, &startup_app_cb},
-                {0, "Disk LED   ", "...", 1, &disk_activity_cb},
-                RG_DIALOG_CHOICE_LAST
-            };
-            rg_gui_settings_menu(options);
-            gui_save_config(true);
+            show_options_dialog();
             gui_redraw();
         }
         else if (last_key == RG_KEY_SELECT) {
