@@ -754,36 +754,38 @@ void rg_system_set_startup_app(int32_t value)
 // Note: You should use calloc/malloc everywhere possible. This function is used to ensure
 // that some memory is put in specific regions for performance or hardware reasons.
 // Memory from this function should be freed with free()
-void *rg_alloc(size_t size, uint32_t mem_type)
+void *rg_alloc(size_t size, uint32_t caps)
 {
-    uint32_t caps = 0;
+    char caps_list[100] = {0};
+    uint32_t esp_caps = 0;
+    void *ptr;
 
-    if (mem_type & MEM_SLOW)  caps |= MALLOC_CAP_SPIRAM;
-    if (mem_type & MEM_FAST)  caps |= MALLOC_CAP_INTERNAL;
-    if (mem_type & MEM_DMA)   caps |= MALLOC_CAP_DMA;
-    if (mem_type & MEM_32BIT) caps |= MALLOC_CAP_32BIT;
-    else caps |= MALLOC_CAP_8BIT;
+    esp_caps |= (caps & MEM_SLOW ? MALLOC_CAP_SPIRAM : (caps & MEM_FAST ? MALLOC_CAP_INTERNAL : 0));
+    esp_caps |= (caps & MEM_DMA ? MALLOC_CAP_DMA : 0);
+    esp_caps |= (caps & MEM_EXEC ? MALLOC_CAP_EXEC : 0);
+    esp_caps |= (caps & MEM_32BIT ? MALLOC_CAP_32BIT : MALLOC_CAP_8BIT);
 
-    void *ptr = heap_caps_calloc(1, size, caps);
+    if (esp_caps & MALLOC_CAP_SPIRAM)   strcat(caps_list, "SPIRAM|");
+    if (esp_caps & MALLOC_CAP_INTERNAL) strcat(caps_list, "INTERNAL|");
+    if (esp_caps & MALLOC_CAP_DMA)      strcat(caps_list, "DMA|");
+    if (esp_caps & MALLOC_CAP_EXEC)     strcat(caps_list, "IRAM|");
+    strcat(caps_list, (esp_caps & MALLOC_CAP_32BIT) ? "32BIT" : "8BIT");
 
-    RG_LOGX("[RG_ALLOC] SIZE: %u  [SPIRAM: %u; 32BIT: %u; DMA: %u]  PTR: %p\n",
-            size, (caps & MALLOC_CAP_SPIRAM) != 0, (caps & MALLOC_CAP_32BIT) != 0,
-            (caps & MALLOC_CAP_DMA) != 0, ptr);
-
-    if (!ptr)
+    if ((ptr = heap_caps_calloc(1, size, esp_caps)))
     {
-        size_t availaible = heap_caps_get_largest_free_block(caps);
-
-        // Loosen the caps and try again
-        ptr = heap_caps_calloc(1, size, caps & ~(MALLOC_CAP_SPIRAM|MALLOC_CAP_INTERNAL));
-        if (!ptr)
-        {
-            RG_LOGX("[RG_ALLOC] ^-- Allocation failed! (available: %d)\n", availaible);
-            RG_PANIC("Memory allocation failed!");
-        }
-
-        RG_LOGX("[RG_ALLOC] ^-- CAPS not fully met! (available: %d)\n", availaible);
+        RG_LOGI("SIZE=%u, CAPS=%s, PTR=%p\n", size, caps_list, ptr);
+        return ptr;
     }
 
-    return ptr;
+    size_t available = heap_caps_get_largest_free_block(esp_caps);
+    // Loosen the caps and try again
+    if ((ptr = heap_caps_calloc(1, size, esp_caps & ~(MALLOC_CAP_SPIRAM|MALLOC_CAP_INTERNAL))))
+    {
+        RG_LOGW("SIZE=%u, CAPS=%s, PTR=%p << CAPS not fully met! (available: %d)\n",
+                    size, caps_list, ptr, available);
+        return ptr;
+    }
+
+    RG_LOGE("SIZE=%u, CAPS=%s << FAILED! (available: %d)\n", size, caps_list, ptr, available);
+    RG_PANIC("Memory allocation failed!");
 }

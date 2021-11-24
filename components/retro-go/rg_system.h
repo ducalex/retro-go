@@ -181,6 +181,7 @@ void *rg_alloc(size_t size, uint32_t caps);
 #define MEM_DMA   (4)
 #define MEM_8BIT  (8)
 #define MEM_32BIT (16)
+#define MEM_EXEC  (32)
 
 /* Utilities */
 
