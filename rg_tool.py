@@ -163,12 +163,15 @@ def build_app(target, build_type=None, with_netplay=False, build_target=None):
         os.putenv("RG_TARGET", re.sub(r'[^A-Z0-9]', '_', build_target.upper()))
     subprocess.run("idf.py app", shell=True, check=True)
 
-    # print("Patching esp_image_header_t to skip sha256 on boot...")
-    # with open("build/" + target + ".bin", "r+b") as fp:
-    #     fp.seek(23)
-    #     fp.write(b"\0")
-
-    print("Done.\n")
+    try:
+        print("\nPatching esp_image_header_t to skip sha256 on boot... ", end="")
+        with open("build/" + target + ".bin", "r+b") as fp:
+            fp.seek(23)
+            fp.write(b"\0")
+        print("done!\n")
+    except: # don't really care if that fails
+        print("failed!\n")
+        pass
 
 
 def find_app(target, offset, app_offset=None):

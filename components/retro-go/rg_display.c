@@ -282,7 +282,6 @@ static void ili9341_deinit()
 {
     // Normally we skip these steps to avoid LCD flicker, but it
     // is necessary on the G32 because of a bug in the bootmenu
-
     #ifdef RG_TARGET_MRGC_G32
     ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0, 50);
     ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
@@ -293,8 +292,8 @@ static void ili9341_deinit()
 
     spi_deinit();
 
-    // Do this last, by now the fade is probably done :)
-    ledc_fade_func_uninstall();
+    // gpio_reset_pin(RG_GPIO_LCD_BCKL);
+    // gpio_reset_pin(RG_GPIO_LCD_DC);
 }
 
 static void ili9341_set_window(int left, int top, int width, int height)
