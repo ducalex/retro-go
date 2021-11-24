@@ -125,7 +125,7 @@ bool rg_sdcard_unmount(void)
 
     if (err == ESP_OK)
     {
-        RG_LOGI("SD Card unmounted\n");
+        RG_LOGI("SD Card unmounted.\n");
         card = NULL;
         return true;
     }

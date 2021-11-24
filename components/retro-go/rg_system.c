@@ -599,7 +599,7 @@ static void shutdown_cleanup()
     rg_input_deinit();
     rg_i2c_deinit();
     rg_sdcard_unmount();
-    // rg_display_deinit();
+    rg_display_deinit();
 }
 
 void rg_system_shutdown()

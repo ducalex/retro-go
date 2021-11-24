@@ -171,6 +171,13 @@ static void spi_init()
     xTaskCreatePinnedToCore(&spi_task, "spi_task", 1024, NULL, 5, NULL, 1);
 }
 
+static void spi_deinit(void)
+{
+    // To do: Stop SPI task...
+    spi_bus_remove_device(spi_dev);
+    spi_bus_free(HSPI_HOST);
+}
+
 static void ili9341_cmd(uint8_t cmd, const void *data, size_t data_len)
 {
     spi_queue_transaction(&cmd, 1, 0);
@@ -273,18 +280,21 @@ static void ili9341_init()
 
 static void ili9341_deinit()
 {
-    // Backlight
+    // Normally we skip these steps to avoid LCD flicker, but it
+    // is necessary on the G32 because of a bug in the bootmenu
+
+    #ifdef RG_TARGET_MRGC_G32
     ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0, 50);
-    ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_WAIT_DONE);
-    ledc_fade_func_uninstall();
-
-    // Panel
+    ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
     ili9341_cmd(0x01, NULL, 0); // Reset
-    ili9341_cmd(0x28, NULL, 0); // Display off
-    ili9341_cmd(0x10, NULL, 0); // Sleep
+    // ili9341_cmd(0x28, NULL, 0); // Display off
+    // ili9341_cmd(0x10, NULL, 0); // Sleep
+    #endif
 
-    // SPI
-    // spi_deinit();
+    spi_deinit();
+
+    // Do this last, by now the fade is probably done :)
+    ledc_fade_func_uninstall();
 }
 
 static void ili9341_set_window(int left, int top, int width, int height)
@@ -595,6 +605,7 @@ static void display_task(void *arg)
         xQueueReceive(display_task_queue, &update, portMAX_DELAY);
     }
 
+    vQueueDelete(display_task_queue);
     display_task_queue = NULL;
 
     vTaskDelete(NULL);
@@ -959,13 +970,10 @@ void rg_display_clear(uint16_t color_le)
 void rg_display_deinit()
 {
     void *stop = NULL;
-
     xQueueSend(display_task_queue, &stop, portMAX_DELAY);
-    usleep(100 * 1000U);
-    // To do: Stop SPI task...
-
+    while (display_task_queue)
+        vTaskDelay(1);
     lcd_deinit();
-
     RG_LOGI("Display terminated.\n");
 }
 
