@@ -126,6 +126,7 @@ void gui_save_config(bool commit);
 void gui_event(gui_event_t event, tab_t *tab);
 void gui_redraw(void);
 void gui_draw_navbar(void);
+void gui_draw_tablist(void);
 void gui_draw_header(tab_t *tab);
 void gui_draw_status(tab_t *tab);
 void gui_draw_list(tab_t *tab);
