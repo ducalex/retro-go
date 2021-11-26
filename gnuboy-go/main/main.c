@@ -343,7 +343,11 @@ void app_main(void)
             else if (--autoSaveSRAM_Timer == 0)
             {
                 auto_sram_update();
+
+                #ifdef RG_TARGET_ODROID_GO
+                // This is only necessary on the odroid-go
                 skipFrames += 5;
+                #endif
             }
         }
 
