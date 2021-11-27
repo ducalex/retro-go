@@ -320,6 +320,7 @@ void gui_redraw()
     gui_draw_status(tab);
     gui_draw_list(tab);
     gui_event(TAB_REDRAW, tab);
+    rg_gui_flush();
 }
 
 void gui_draw_navbar()
@@ -486,4 +487,6 @@ void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file)
         gui_set_status(tab, NULL, errors ? "Bad cover" : "No cover");
         gui_draw_status(tab);
     }
+
+    rg_gui_flush();
 }

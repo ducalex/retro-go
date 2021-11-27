@@ -105,6 +105,8 @@ struct dialog_option_s
 #define RG_DIALOG_SEPARATOR   {0, "----", NULL, RG_DIALOG_FLAG_SKIP, NULL}
 
 void rg_gui_init(void);
+void rg_gui_flush(void); // no effect if buffered = false
+void rg_gui_set_buffered(bool buffered);
 bool rg_gui_set_theme(const rg_gui_theme_t *new_theme);
 bool rg_gui_set_font_type(int type);
 rg_gui_font_t rg_gui_get_font_info(void);
@@ -278,5 +280,6 @@ enum colors565
     C_GAINSBORO                = 0xDEDB,
     C_WHITE_SMOKE              = 0xF7BE,
     C_WHITE                    = 0xFFFF,
-    C_TRANSPARENT              = -1,
+    // C_TRANSPARENT              = -1,
+    C_TRANSPARENT              = 54321,
 };

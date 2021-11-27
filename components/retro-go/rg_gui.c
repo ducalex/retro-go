@@ -15,8 +15,6 @@
 #include "rg_system.h"
 #include "rg_gui.h"
 
-static uint16_t *overlay_buffer = NULL;
-
 static const rg_gui_theme_t default_theme = {
     .box_background = C_NAVY,
     .box_header = C_WHITE,
@@ -29,6 +27,8 @@ static const rg_gui_theme_t default_theme = {
 static rg_gui_theme_t theme;
 static rg_gui_font_t font_info = {0, 8, 8, 8, &font_basic8x8};
 
+static uint16_t *overlay_buffer = NULL;
+static uint16_t *screen_buffer = NULL;
 static int screen_width = -1;
 static int screen_height = -1;
 
@@ -42,7 +42,7 @@ void rg_gui_init(void)
     screen_height = rg_display_get_status()->screen.height;
     RG_ASSERT(screen_width && screen_height, "Bad screen res");
 
-    overlay_buffer = (uint16_t *)rg_alloc(RG_MAX(screen_width, screen_height) * 20 * 2, MEM_SLOW);
+    overlay_buffer = rg_alloc(RG_MAX(screen_width, screen_height) * 20 * 2, MEM_SLOW);
     rg_gui_set_font_type(rg_settings_get_int32(SETTING_FONTTYPE, RG_FONT_VERA_12));
     rg_gui_set_theme(&default_theme);
 }
@@ -54,6 +54,42 @@ bool rg_gui_set_theme(const rg_gui_theme_t *new_theme)
 
     theme = *new_theme;
     return true;
+}
+
+void rg_gui_set_buffered(bool buffered)
+{
+    if (!buffered)
+        free(screen_buffer), screen_buffer = NULL;
+    else if (!screen_buffer)
+        screen_buffer = rg_alloc(screen_width * screen_height * 2, MEM_SLOW);
+}
+
+void rg_gui_flush(void)
+{
+    if (screen_buffer)
+        rg_display_write(0, 0, screen_width, screen_height, 0, screen_buffer);
+}
+
+static void draw_buffer(int left, int top, int width, int height, const uint16_t *buffer)
+{
+    if (screen_buffer)
+    {
+        if (left < 0) left += screen_width;
+        if (top < 0) top += screen_height;
+
+        for (int y = 0; y < height; ++y)
+        {
+            const uint16_t *src = buffer + y * width;
+            uint16_t *dst = screen_buffer + (top + y) * screen_width + left;
+            for (int x = 0; x < width; ++x)
+                if (src[x] != C_TRANSPARENT)
+                    dst[x] = src[x];
+        }
+    }
+    else
+    {
+        rg_display_write(left, top, width, height, 0, buffer);
+    }
 }
 
 static rg_glyph_t get_glyph(const rg_font_t *font, int points, int c)
@@ -254,7 +290,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
         }
 
         if (!(flags & RG_TEXT_DUMMY_DRAW))
-            rg_display_write(x_pos, y_pos + y_offset, draw_width, font_height, 0, overlay_buffer);
+            draw_buffer(x_pos, y_pos + y_offset, draw_width, font_height, overlay_buffer);
 
         y_offset += font_height;
 
@@ -282,10 +318,10 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_si
         while (p--)
             overlay_buffer[p] = border_color;
 
-        rg_display_write(x_pos, y_pos, width, border_size, 0, overlay_buffer); // Top
-        rg_display_write(x_pos, y_pos + height - border_size, width, border_size, 0, overlay_buffer); // Bottom
-        rg_display_write(x_pos, y_pos, border_size, height, 0, overlay_buffer); // Left
-        rg_display_write(x_pos + width - border_size, y_pos, border_size, height, 0, overlay_buffer); // Right
+        draw_buffer(x_pos, y_pos, width, border_size, overlay_buffer); // Top
+        draw_buffer(x_pos, y_pos + height - border_size, width, border_size, overlay_buffer); // Bottom
+        draw_buffer(x_pos, y_pos, border_size, height, overlay_buffer); // Left
+        draw_buffer(x_pos + width - border_size, y_pos, border_size, height, overlay_buffer); // Right
 
         x_pos += border_size;
         y_pos += border_size;
@@ -300,7 +336,7 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_si
             overlay_buffer[p] = fill_color;
 
         for (int y = 0; y < height; y += 16)
-            rg_display_write(x_pos, y_pos + y, width, RG_MIN(height - y, 16), 0, overlay_buffer);
+            draw_buffer(x_pos, y_pos + y, width, RG_MIN(height - y, 16), overlay_buffer);
     }
 }
 
@@ -313,7 +349,7 @@ void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, const rg_ima
     if (height <= 0)
         height = img->height;
 
-    rg_display_write(x_pos, y_pos, width, height, img->width * 2, img->data);
+    draw_buffer(x_pos, y_pos, width, height, img->data);
 }
 
 void rg_gui_draw_battery(int x_pos, int y_pos)
@@ -516,6 +552,8 @@ void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int 
         rg_gui_draw_rect(x + 6, y, 3, 3, 0, 0, theme.scrollbar);
         rg_gui_draw_rect(x + 12, y, 3, 3, 0, 0, theme.scrollbar);
     }
+
+    rg_gui_flush();
 }
 
 int rg_gui_dialog(const char *header, const dialog_option_t *options_const, int selected)
