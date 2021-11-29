@@ -205,10 +205,10 @@ static const uint8_t PNG_SIG[] =
 /*        P     N     G    \r    \n   SUB    \n   */
 {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
 
-static const int8_t startingRow[] =  { 0, 0, 0, 4, 0, 2, 0, 1 };
-static const int8_t startingCol[] =  { 0, 0, 4, 0, 2, 0, 1, 0 };
-static const int8_t rowIncrement[] = { 1, 8, 8, 8, 4, 4, 2, 2 };
-static const int8_t colIncrement[] = { 1, 8, 8, 4, 4, 2, 2, 1 };
+static const int startingRow[] =  { 0, 0, 0, 4, 0, 2, 0, 1 };
+static const int startingCol[] =  { 0, 0, 4, 0, 2, 0, 1, 0 };
+static const int rowIncrement[] = { 1, 8, 8, 8, 4, 4, 2, 2 };
+static const int colIncrement[] = { 1, 8, 8, 4, 4, 2, 2, 1 };
 
 
 
@@ -255,7 +255,7 @@ static int bytesEqual(const uint8_t *a, const uint8_t *b, size_t count)
 static void* internalMalloc(size_t size, void *userPtr)
 {
     (void)userPtr; /* not used */
-    return calloc(1, size);
+    return malloc(size);
 }
 
 static void internalFree(void *ptr, void *userPtr)
@@ -549,7 +549,7 @@ static LU_INLINE void stretchBits(uint8_t inByte, uint8_t outBytes[8], int depth
 }
 
 /* returns: 1 if at end of scanline, 0 otherwise */
-static LU_INLINE int insertByte(PngInfoStruct *info, uint8_t byte)
+static LU_INLINE void insertByte(PngInfoStruct *info, uint8_t byte)
 {
     const uint8_t scale[] = {0x00, 0xFF, 0x55, 0x00, 0x11, 0x00, 0x00, 0x00};
     bool advance = false;
@@ -562,10 +562,10 @@ static LU_INLINE int insertByte(PngInfoStruct *info, uint8_t byte)
     if (info->colorType != PNG_PALETTED)
     {
         if (info->depth == 8)
-            info->cimg->data[idx] = byte;
+            info->img->data[idx] = byte;
 
         else if (info->depth < 8)
-            info->cimg->data[idx] = byte * scale[info->depth];
+            info->img->data[idx] = byte * scale[info->depth];
 
         else /* depth == 16 */
         {
@@ -576,12 +576,12 @@ static LU_INLINE int insertByte(PngInfoStruct *info, uint8_t byte)
                 val = swap16(val);
                 info->tmpCount = 0;
 
-                ((uint16_t *)(info->cimg->data))[idx] = val;
+                ((uint16_t *)(info->img->data))[idx] = val;
             }
             else
             {
                 ++info->tmpCount;
-                return 0;
+                return;
             }
         }
 
@@ -597,9 +597,11 @@ static LU_INLINE int insertByte(PngInfoStruct *info, uint8_t byte)
         /* The spec limits palette size to 256 entries */
         if (byte < info->paletteItems)
         {
-            info->img->data[idx  ] = info->palette[byte][0];
-            info->img->data[idx+1] = info->palette[byte][1];
-            info->img->data[idx+2] = info->palette[byte][2];
+            uint8_t *ptr = &info->img->data[idx];
+            uint8_t *pal = info->palette[byte];
+            ptr[0] = pal[0];
+            ptr[1] = pal[1];
+            ptr[2] = pal[2];
         }
         else
         {
@@ -631,11 +633,8 @@ static LU_INLINE int insertByte(PngInfoStruct *info, uint8_t byte)
                     ++info->interlacePass;
                 info->currentRow = startingRow[info->interlacePass];
             }
-            return 1;
         }
     }
-
-    return 0;
 }
 
 static LU_INLINE int parseIdat(PngInfoStruct *info, PngChunk *chunk)
@@ -683,8 +682,7 @@ static LU_INLINE int parseIdat(PngInfoStruct *info, PngChunk *chunk)
             }
             else
             {
-                uint8_t rawByte = 0;
-                uint8_t fullBytes[8] = {0};
+                unsigned rawByte = 0;
                 switch (info->currentFilter)
                 {
                     case PNG_FILTER_NONE:
@@ -707,15 +705,27 @@ static LU_INLINE int parseIdat(PngInfoStruct *info, PngChunk *chunk)
                 info->currentScanline[info->currentByte] = rawByte;
                 ++info->currentByte;
 
-                if (info->depth < 8)
+                switch (info->depth)
                 {
-                    stretchBits(rawByte, fullBytes, info->depth);
-                    for (int j = 0; j < 8/info->depth; ++j)
-                        if (insertByte(info, fullBytes[j]))
-                            break;
+                    case 1:
+                        for (int i = 7; i >= 0; i -= 1)
+                            insertByte(info, (rawByte >> i) & 0x01);
+                        break;
+
+                    case 2:
+                        for (int i = 6; i >= 0; i -= 2)
+                            insertByte(info, (rawByte >> i) & 0x03);
+                        break;
+
+                    case 4:
+                        for (int i = 4; i >= 0; i -= 4)
+                            insertByte(info, (rawByte >> i) & 0x0F);
+                        break;
+
+                    default:
+                        insertByte(info, rawByte);
+                        break;
                 }
-                else
-                    insertByte(info, rawByte);
             }
         }
     } while ((info->stream.avail_in > 0 || info->stream.avail_out == 0)
@@ -1179,6 +1189,7 @@ int luPngWriteUC(const LuUserContext *userCtx, const LuImage *img)
     if (!info)
         return status;
 
+    memset(info, 0, sizeof(PngInfoStruct));
     info->userCtx = userCtx;
     info->cimg = img;
     info->bytesPerPixel = (img->channels * img->depth) >> 3;

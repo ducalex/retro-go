@@ -196,6 +196,11 @@ extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 // int64_t microseconds
 #define get_elapsed_time_since(start) (esp_timer_get_time() - (start))
 
+#define RG_TIMER_INIT() int _rgts_ = get_elapsed_time(), _rgtl_ = get_elapsed_time();
+#define RG_TIMER_LAP(name) \
+    printf("Lap %s: %.2f   Total: %.2f\n", #name, get_elapsed_time_since(_rgtl_) / 1000.f, \
+            get_elapsed_time_since(_rgts_) / 1000.f); _rgtl_ = get_elapsed_time();
+
 #define RG_MIN(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
 #define RG_MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
 #define RG_COUNT(array) (sizeof(array) / sizeof((array)[0]))

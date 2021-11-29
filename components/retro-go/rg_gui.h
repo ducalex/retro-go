@@ -281,5 +281,5 @@ enum colors565
     C_WHITE_SMOKE              = 0xF7BE,
     C_WHITE                    = 0xFFFF,
     // C_TRANSPARENT              = -1,
-    C_TRANSPARENT              = 54321,
+    C_TRANSPARENT              = C_MAGENTA,
 };
