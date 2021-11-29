@@ -411,25 +411,22 @@ static inline void write_rect(int left, int top, int width, int height,
             }
             else
             {
-                for (int x = 0, x_acc = ix_acc; x < width;)
-                {
-                    uint16_t pixel;
-
-                    if (format & RG_PIXEL_PAL)
-                        pixel = palette[buffer.u8[x]];
-                    else if (format & RG_PIXEL_LE)
-                        pixel = (buffer.u16[x] << 8) | (buffer.u16[x] >> 8);
-                    else
-                        pixel = buffer.u16[x];
-
-                    *(line_buffer_ptr++) = pixel;
-
-                    x_acc += x_inc;
-                    while (x_acc >= screen_width) {
-                        x_acc -= screen_width;
-                        ++x;
-                    }
+                #define RENDER_LINE(pixel) { \
+                    for (int x = 0, x_acc = ix_acc; x < width;) { \
+                        *line_buffer_ptr++ = (pixel); \
+                        x_acc += x_inc; \
+                        while (x_acc >= screen_width) { \
+                            x_acc -= screen_width; \
+                            ++x; \
+                        } \
+                    } \
                 }
+                if (format & RG_PIXEL_PAL)
+                    RENDER_LINE(palette[buffer.u8[x]])
+                else if (format & RG_PIXEL_LE)
+                    RENDER_LINE((buffer.u16[x] << 8) | (buffer.u16[x] >> 8))
+                else
+                    RENDER_LINE(buffer.u16[x])
             }
 
             if (!screen_lines[++screen_y].empty)
