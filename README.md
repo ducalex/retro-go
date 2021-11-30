@@ -192,6 +192,7 @@ I don't want to maintain non-ESP32 ports in this repository but let me know if I
 - PNG support is provided by [luPng](https://github.com/jansol/LuPng) and [zlib](http://zlib.net).
 - PCE cover art is from [Christian_Haitian](https://github.com/christianhaitian).
 - Some icons from [Rokey](https://iconarchive.com/show/seed-icons-by-rokey.html).
+- Background images from [es-theme-gbz35](https://github.com/rxbrad/es-theme-gbz35).
 - Special thanks to [RGHandhelds](https://www.rghandhelds.com/) and [MyRetroGamecase](https://www.myretrogamecase.com/) for sending me a [G32](https://www.myretrogamecase.com/products/game-mini-g32-esp32-retro-gaming-console-1) device.
 
 # License

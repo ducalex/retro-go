@@ -9,7 +9,6 @@
 
 #include "emulators.h"
 #include "bookmarks.h"
-#include "images.h"
 #include "gui.h"
 
 static retro_emulator_t emulators[32];
@@ -119,7 +118,7 @@ void crc_cache_idle_task(tab_t *tab)
     if (!crc_cache)
         return;
 
-    if (gui.idle_counter >= 2000 && crc_cache->count < CRC_CACHE_MAX_ENTRIES)
+    if (crc_cache->count < CRC_CACHE_MAX_ENTRIES)
     {
         int start_offset = 0;
         int remaining = 20;
@@ -143,7 +142,7 @@ void crc_cache_idle_task(tab_t *tab)
                 continue;
 
             gui_set_status(tab, "BUILDING CACHE...", "SCANNING");
-            gui_draw_status(tab);
+            gui_redraw(); // gui_draw_status(tab);
 
             if (!emulator->initialized)
                 emulator_init(emulator);
@@ -169,7 +168,7 @@ void crc_cache_idle_task(tab_t *tab)
                 emulator->crc_scan_done = true;
 
             gui_set_status(tab, "", "");
-            gui_draw_status(tab);
+            gui_redraw(); // gui_draw_status(tab);
         }
     }
 
@@ -379,30 +378,25 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         tab_refresh(tab);
     }
-    else if (event == TAB_ENTER)
-    {
-        //
-    }
-    else if (event == TAB_LEAVE)
-    {
-        //
-    }
-    else if (event == TAB_SCROLL)
+    else if (event == TAB_ENTER || event == TAB_SCROLL)
     {
         if (!tab->is_empty && tab->listbox.length)
             sprintf(tab->status[0].left, "%d / %d", (tab->listbox.cursor + 1) % 10000, tab->listbox.length % 10000);
         else
             strcpy(tab->status[0].left, "No Games");
         gui_set_status(tab, NULL, "");
+
+        rg_image_free(tab->preview);
+        tab->preview = NULL;
     }
-    else if (event == TAB_REDRAW)
+    else if (event == TAB_LEAVE)
     {
-        // gui_draw_preview(tab, file);
+        //
     }
     else if (event == TAB_IDLE)
     {
-        if (file && gui.show_preview && gui.idle_counter == (gui.show_preview_fast ? 1 : 8))
-            gui_draw_preview(tab, file);
+        if (file && !tab->preview && gui.idle_counter == 1)
+            gui_load_preview(tab);
         else if ((gui.idle_counter % 100) == 0)
             crc_cache_idle_task(tab);
     }
@@ -419,8 +413,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
 }
 
 static void add_emulator(const char *system_name, const char *short_name, const char* extensions,
-                         const char *partition, uint16_t crc_offset, const binfile_t *logo,
-                         const binfile_t *header)
+                         const char *partition, uint16_t crc_offset)
 {
     if (!rg_system_find_app(partition))
     {
@@ -451,12 +444,7 @@ static void add_emulator(const char *system_name, const char *short_name, const 
     }
     free(buffer);
 
-    gui_add_tab(
-        short_name,
-        logo ? rg_image_load_from_memory(logo->data, logo->size, 0) : NULL,
-        header ? rg_image_load_from_memory(header->data, header->size, 0) : NULL,
-        emulator,
-        event_handler);
+    gui_add_tab(short_name, system_name, emulator, event_handler);
 }
 
 void emulator_init(retro_emulator_t *emu)
@@ -510,7 +498,7 @@ bool emulator_get_file_crc32(retro_emulator_file_t *file)
     {
         tab_t *tab = gui_get_current_tab();
         gui_set_status(tab, NULL, "CRC32...");
-        gui_draw_status(tab);
+        gui_redraw(); // gui_draw_status(tab);
 
         if ((fp = fopen(emulator_get_file_path(file), "rb")))
         {
@@ -537,7 +525,7 @@ bool emulator_get_file_crc32(retro_emulator_file_t *file)
         }
 
         gui_set_status(tab, NULL, "");
-        gui_draw_status(tab);
+        gui_redraw(); // gui_draw_status(tab);
     }
 
     return file->checksum > 0;
@@ -671,19 +659,19 @@ void emulator_start(retro_emulator_file_t *file, bool load_state)
 
 void emulators_init()
 {
-    add_emulator("Nintendo Entertainment System", "nes",  "nes fds nsf", "nofrendo-go", 16, &logo_nes, &header_nes);
-    // add_emulator("Nintendo Famicom Disk System",  "fds",  "fds",     "nofrendo-go", 16, &logo_nes, &header_nes);
-    add_emulator("Nintendo Gameboy",              "gb",   "gb gbc",  "gnuboy-go",    0, &logo_gb,  &header_gb);
-    add_emulator("Nintendo Gameboy Color",        "gbc",  "gbc gb",  "gnuboy-go",    0, &logo_gbc, &header_gbc);
-    add_emulator("Sega Master System",            "sms",  "sms sg",  "smsplusgx-go", 0, &logo_sms, &header_sms);
-    add_emulator("Sega Game Gear",                "gg",   "gg",      "smsplusgx-go", 0, &logo_gg,  &header_gg);
-    add_emulator("ColecoVision",                  "col",  "col",     "smsplusgx-go", 0, &logo_col, &header_col);
-    add_emulator("PC Engine",                     "pce",  "pce",     "pce-go",       0, &logo_pce, &header_pce);
-    add_emulator("Atari Lynx",                    "lnx",  "lnx",     "handy-go",    64, &logo_lnx, &header_lnx);
-    add_emulator("Atari 2600",                    "a26",  "a26",     "stella-go",    0, NULL,      NULL);
-    add_emulator("Super Nintendo",                "snes", "smc sfc", "snes9x-go",    0, &logo_snes, &header_snes);
-    add_emulator("Neo Geo Pocket Color",          "ngp",  "ngp ngc", "ngpocket-go",  0, &logo_ngp,  &header_ngp);
-    add_emulator("DOOM",                          "doom", "wad",     "prboom-go",    0, &logo_doom,  &header_doom);
+    add_emulator("Nintendo Entertainment System", "nes", "nes fds nsf", "nofrendo-go", 16);
+    // add_emulator("Nintendo Famicom Disk System",  "fds",  "fds",     "nofrendo-go", 16);
+    add_emulator("Nintendo Gameboy", "gb", "gb gbc", "gnuboy-go", 0);
+    add_emulator("Nintendo Gameboy Color", "gbc", "gbc gb", "gnuboy-go", 0);
+    add_emulator("Sega Master System", "sms", "sms sg", "smsplusgx-go", 0);
+    add_emulator("Sega Game Gear", "gg", "gg", "smsplusgx-go", 0);
+    add_emulator("ColecoVision", "col", "col", "smsplusgx-go", 0);
+    add_emulator("PC Engine", "pce", "pce", "pce-go", 0);
+    add_emulator("Atari Lynx", "lnx", "lnx", "handy-go", 64);
+    add_emulator("Atari 2600", "a26", "a26", "stella-go", 0);
+    add_emulator("Super Nintendo", "snes", "smc sfc", "snes9x-go", 0);
+    add_emulator("Neo Geo Pocket Color", "ngp", "ngp ngc", "ngpocket-go", 0);
+    add_emulator("DOOM", "doom", "wad", "prboom-go", 0);
 
     crc_cache_init();
 }

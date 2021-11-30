@@ -74,13 +74,18 @@ static void draw_buffer(int left, int top, int width, int height, const uint16_t
 {
     if (screen_buffer)
     {
+        size_t stride = width * 2;
+
         if (left < 0) left += screen_width;
         if (top < 0) top += screen_height;
 
+        width = RG_MIN(width, screen_width - left);
+        height = RG_MIN(height, screen_height - top);
+
         for (int y = 0; y < height; ++y)
         {
-            const uint16_t *src = buffer + y * width;
             uint16_t *dst = screen_buffer + (top + y) * screen_width + left;
+            const uint16_t *src = (void*)buffer + y * stride;
             for (int x = 0; x < width; ++x)
                 if (src[x] != C_TRANSPARENT)
                     dst[x] = src[x];
@@ -343,13 +348,7 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_si
 void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, const rg_image_t *img)
 {
     RG_ASSERT(img && img->data, "Bad image");
-
-    if (width <= 0)
-        width = img->width;
-    if (height <= 0)
-        height = img->height;
-
-    draw_buffer(x_pos, y_pos, width, height, img->data);
+    draw_buffer(x_pos, y_pos, width ? width : img->width, height ? height : img->height, img->data);
 }
 
 void rg_gui_draw_battery(int x_pos, int y_pos)

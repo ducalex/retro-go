@@ -5,7 +5,6 @@
 #include <stdio.h>
 
 #include "bookmarks.h"
-#include "images.h"
 #include "gui.h"
 
 static book_t books[BOOK_TYPE_COUNT];
@@ -21,34 +20,29 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         //
     }
-    // else if (event == TAB_REFRESH)
-    // {
-    //     tab_refresh(tab);
-    // }
-    else if (event == TAB_ENTER)
+    else if (event == TAB_REFRESH)
     {
-        //
+        // tab_refresh(tab);
     }
-    else if (event == TAB_LEAVE)
-    {
-        //
-    }
-    else if (event == TAB_SCROLL)
+    else if (event == TAB_ENTER || event == TAB_SCROLL)
     {
         if (!tab->is_empty && tab->listbox.length)
             snprintf(tab->status[0].left, 24, "%d / %d", (tab->listbox.cursor + 1) % 10000, tab->listbox.length % 10000);
         else
             snprintf(tab->status[0].left, 24, "No %.20s", book ? book->name : "bookmark");
         gui_set_status(tab, NULL, "");
+
+        rg_image_free(tab->preview);
+        tab->preview = NULL;
     }
-    else if (event == TAB_REDRAW)
+    else if (event == TAB_LEAVE)
     {
-        // gui_draw_preview(tab, file);
+        //
     }
     else if (event == TAB_IDLE)
     {
-        if (file && gui.show_preview && gui.idle_counter == (gui.show_preview_fast ? 1 : 8))
-            gui_draw_preview(tab, file);
+        if (file && !tab->preview && gui.idle_counter == 1)
+            gui_load_preview(tab);
         else if ((gui.idle_counter % 100) == 0)
             crc_cache_idle_task(tab);
     }
@@ -166,12 +160,8 @@ static void book_save(book_type_t book_type)
     }
 }
 
-static void book_init(book_type_t book_type, const char *name, int capacity,
-                      const binfile_t *logo, const binfile_t *header)
+static void book_init(book_type_t book_type, const char *name, const char *desc, int capacity)
 {
-    rg_image_t *logo_img = logo ? rg_image_load_from_memory(logo->data, logo->size, 0) : NULL;
-    rg_image_t *header_img = header ? rg_image_load_from_memory(header->data, header->size, 0) : NULL;
-
     book_t *book = &books[book_type];
     char path[PATH_MAX + 1];
 
@@ -179,7 +169,7 @@ static void book_init(book_type_t book_type, const char *name, int capacity,
 
     book->name = strdup(name);
     book->path = strdup(path);
-    book->tab = gui_add_tab(name, logo_img, header_img, book, event_handler);
+    book->tab = gui_add_tab(name, desc, book, event_handler);
     book->initialized = true;
 
     if (book_type == BOOK_TYPE_RECENT)
@@ -255,7 +245,7 @@ void bookmarks_init()
     char *old_favorites = rg_settings_get_string("Favorites", NULL);
     if (old_favorites && old_favorites[0])
     {
-        RG_LOGI("Importing favorites frp, retro-go <= 1.25....\n");
+        RG_LOGI("Importing favorites from retro-go <= 1.25....\n");
         FILE *fp = fopen(RG_BASE_PATH_CONFIG "/favorite.txt", "a");
         if (fp)
         {
@@ -267,6 +257,6 @@ void bookmarks_init()
     }
     free(old_favorites);
 
-    book_init(BOOK_TYPE_FAVORITE, "favorite", -1, &logo_fav, &header_fav);
-    book_init(BOOK_TYPE_RECENT, "recent", 16, &logo_recent, &header_recent);
+    book_init(BOOK_TYPE_FAVORITE, "favorite", "Favorites", -1);
+    book_init(BOOK_TYPE_RECENT, "recent", "Recently played", 16);
 }

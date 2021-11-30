@@ -1,16 +1,11 @@
 import os, sys, glob, textwrap
 
-# This scripts should be run to update images.h when you edit images
+# This scripts should be run to update images.c when you edit images
 
 os.chdir(sys.path[0])
 
-output  = """
-typedef struct {
-    size_t size;
-    const uint8_t data[];
-} binfile_t;
-
-"""
+output = '#include "gui.h"\n\n'
+refs = ""
 
 for file in glob.glob("images/*.png"):
     with open(file, "rb") as f:
@@ -19,13 +14,17 @@ for file in glob.glob("images/*.png"):
         struct_name = os.path.basename(file)[0:-4]
         hexdata = ""
         for c in data:
-            hexdata += "0x%02X, " % c
+            hexdata += "\\x%02X" % c
 
-        hexdata = "\n".join(textwrap.wrap(hexdata[0:-2], 100))
+        output += 'static const binfile_t %s = {"%s", %d, {\n"%s"\n}\n};\n\n' % (
+            struct_name,
+            os.path.basename(file),
+            len(data),
+            '"\n"'.join(textwrap.wrap(hexdata, 100)),
+        )
+        refs += "&%s,\n" % struct_name
 
-        output += "static const binfile_t %s = {" % struct_name
-        output += ".size = %d, .data = {\n%s\n} " % (size, hexdata)
-        output += "};\n\n"
+output += "\nconst binfile_t *builtin_images[] = {%s\n0\n};\n" % refs
 
-with open("main/images.h", "w", newline='') as f:
+with open("main/images.c", "w", newline="") as f:
     f.write(output)

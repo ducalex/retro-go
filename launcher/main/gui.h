@@ -1,6 +1,7 @@
 #pragma once
 
 #include <rg_input.h>
+#include <rg_gui.h>
 #include <stdbool.h>
 #include "emulators.h"
 
@@ -11,10 +12,8 @@ typedef enum {
     TAB_INIT,
     TAB_ENTER,
     TAB_LEAVE,
-    TAB_SAVE,
     TAB_IDLE,
     TAB_REFRESH,
-    TAB_REDRAW,
 } gui_event_t;
 
 typedef enum {
@@ -51,10 +50,12 @@ typedef struct {
 } preview_mode_t;
 
 typedef struct {
-    uint16_t list_background;
-    uint16_t list_standard;
-    uint16_t list_selected;
-    uint16_t list_disabled;
+    struct {
+        uint16_t standard_bg;
+        uint16_t standard_fg;
+        uint16_t selected_bg;
+        uint16_t selected_fg;
+    } list;
 } theme_t;
 
 typedef struct {
@@ -73,21 +74,32 @@ typedef struct {
     int sort_mode;
 } listbox_t;
 
+typedef struct {
+    const char *name;
+    size_t size;
+    uint8_t data[];
+} binfile_t;
+
+typedef struct {
+    unsigned int id;
+    rg_image_t *img;
+} image_t;
+
 typedef void (*gui_event_handler_t)(gui_event_t event, void *arg);
 
 typedef struct tab_s {
     char name[64];
+    char desc[128];
     struct {
         char left[24];
         char right[24];
     } status[2];
-    const rg_image_t *img_logo;
-    const rg_image_t *img_header;
     bool initialized;
     bool is_empty;
     bool enabled;
     void *arg;
     listbox_t listbox;
+    rg_image_t *preview;
     gui_event_handler_t event_handler;
 } tab_t;
 
@@ -95,6 +107,7 @@ typedef struct {
     tab_t *tabs[32];
     int tabcount;
     int selected;
+    int browse;
     int theme;
     int show_preview;
     int show_preview_fast;
@@ -102,18 +115,22 @@ typedef struct {
     int last_key;
     int width;
     int height;
+    image_t images[128];
     uint32_t joystick;
 } retro_gui_t;
 
 extern retro_gui_t gui;
 extern const int gui_themes_count;
+extern const binfile_t *builtin_images[];
 
-tab_t *gui_add_tab(const char *name, const rg_image_t *logo, const rg_image_t *header, void *arg, void *event_handler);
+tab_t *gui_add_tab(const char *name, const char *desc, void *arg, void *event_handler);
 tab_t *gui_get_tab(int index);
 tab_t *gui_get_current_tab();
 tab_t *gui_set_current_tab(int index);
 void gui_set_status(tab_t *tab, const char *left, const char *right);
 void gui_init_tab(tab_t *tab);
+
+const rg_image_t *gui_get_image(const char *type, const char *subtype);
 
 void gui_sort_list(tab_t *tab);
 void gui_scroll_list(tab_t *tab, scroll_mode_t mode, int arg);
@@ -125,9 +142,8 @@ void gui_save_position(bool commit);
 void gui_save_config(bool commit);
 void gui_event(gui_event_t event, tab_t *tab);
 void gui_redraw(void);
-void gui_draw_navbar(void);
-void gui_draw_tablist(void);
-void gui_draw_header(tab_t *tab);
+void gui_load_preview(tab_t *tab);
+void gui_draw_background(tab_t *tab, int shade);
+void gui_draw_header(tab_t *tab, int offset);
 void gui_draw_status(tab_t *tab);
 void gui_draw_list(tab_t *tab);
-void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file);

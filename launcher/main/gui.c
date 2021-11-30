@@ -22,21 +22,10 @@
 #define COVER_MAX_WIDTH     ((int)(gui.width * 0.50f))
 
 static const theme_t gui_themes[] = {
-    {0, C_GRAY, C_WHITE, C_AQUA},
-    {0, C_GRAY, C_GREEN, C_AQUA},
-    {0, C_WHITE, C_GREEN, C_AQUA},
-
-    {5, C_GRAY, C_WHITE, C_AQUA},
-    {5, C_GRAY, C_GREEN, C_AQUA},
-    {5, C_WHITE, C_GREEN, C_AQUA},
-
-    {11, C_GRAY, C_WHITE, C_AQUA},
-    {11, C_GRAY, C_GREEN, C_AQUA},
-    {11, C_WHITE, C_GREEN, C_AQUA},
-
-    {16, C_GRAY, C_WHITE, C_AQUA},
-    {16, C_GRAY, C_GREEN, C_AQUA},
-    {16, C_WHITE, C_GREEN, C_AQUA},
+    {{C_TRANSPARENT, C_GRAY, C_TRANSPARENT, C_WHITE}},
+    {{C_TRANSPARENT, C_GRAY, C_TRANSPARENT, C_GREEN}},
+    {{C_TRANSPARENT, C_GRAY, C_WHITE, C_BLACK}},
+    {{C_TRANSPARENT, C_DARK_GRAY, C_WHITE, C_BLACK}},
 };
 const int gui_themes_count = sizeof(gui_themes) / sizeof(theme_t);
 
@@ -56,6 +45,7 @@ void gui_init(void)
     memset(&gui, 0, sizeof(retro_gui_t));
     gui.selected     = rg_settings_get_app_int32(SETTING_SELECTED_TAB, 0);
     gui.theme        = rg_settings_get_app_int32(SETTING_GUI_THEME, 0);
+    gui.browse       = rg_settings_get_app_int32("OPENLASTTABTEST", 1);
     gui.show_preview = rg_settings_get_app_int32(SETTING_SHOW_PREVIEW, 1);
     gui.show_preview_fast = rg_settings_get_app_int32(SETTING_PREVIEW_SPEED, 0);
     gui.width = rg_display_get_status()->screen.width;
@@ -69,16 +59,15 @@ void gui_event(gui_event_t event, tab_t *tab)
         (*tab->event_handler)(event, tab);
 }
 
-tab_t *gui_add_tab(const char *name, const rg_image_t *logo, const rg_image_t *header, void *arg, void *event_handler)
+tab_t *gui_add_tab(const char *name, const char *desc, void *arg, void *event_handler)
 {
     tab_t *tab = calloc(1, sizeof(tab_t));
 
     sprintf(tab->name, "%.63s", name);
+    sprintf(tab->desc, "%.127s", desc);
     sprintf(tab->status[1].left, "Loading...");
 
     tab->event_handler = event_handler;
-    tab->img_header = header;
-    tab->img_logo = logo;
     tab->initialized = false;
     tab->enabled = rg_settings_get_app_int32(SETTING_TAB_ENABLED(tab->name), 1);
     tab->is_empty = false;
@@ -133,6 +122,44 @@ void gui_init_tab(tab_t *tab)
 tab_t *gui_get_tab(int index)
 {
     return (index >= 0 && index < gui.tabcount) ? gui.tabs[index] : NULL;
+}
+
+const rg_image_t *gui_get_image(const char *type, const char *subtype)
+{
+    char path[256], name[64];
+
+    if (subtype && *subtype)
+        sprintf(name, "%s_%s.png", type, subtype);
+    else
+        sprintf(name, "%s.png", type);
+
+    uint32_t fileid = crc32_le(0, (uint8_t *)name, strlen(name));
+    image_t *image = gui.images;
+
+    for (; image->id; ++image)
+    {
+        if (image->id == fileid)
+            return image->img;
+    }
+
+    // Append to list
+    image->id = fileid;
+
+    // Try SD card, then search the built-ins
+    sprintf(path, RG_BASE_PATH "/retro-go/theme/%s", name);
+    if (!(image->img = rg_image_load_from_file(name, 0)))
+    {
+        for (const binfile_t **img = builtin_images; *img; img++)
+        {
+            if (strcmp((*img)->name, name) == 0)
+            {
+                image->img = rg_image_load_from_memory((*img)->data, (*img)->size, 0);
+                break;
+            }
+        }
+    }
+
+    return image->img;
 }
 
 tab_t *gui_get_current_tab()
@@ -307,47 +334,84 @@ void gui_scroll_list(tab_t *tab, scroll_mode_t mode, int arg)
 
     if (cur_cursor != old_cursor)
     {
-        gui_draw_status(tab);
-        gui_draw_list(tab);
-        gui_event(TAB_REDRAW, tab);
+        gui_redraw();
     }
 }
 
-void gui_redraw()
+void gui_redraw(void)
 {
     tab_t *tab = gui_get_current_tab();
-    gui_draw_header(tab);
-    gui_draw_status(tab);
-    gui_draw_list(tab);
-    gui_event(TAB_REDRAW, tab);
+    if (gui.browse)
+    {
+        gui_draw_background(tab, 4);
+        gui_draw_header(tab, 0);
+        gui_draw_status(tab);
+        gui_draw_list(tab);
+        if (tab->preview)
+        {
+            int height = RG_MIN(tab->preview->height, COVER_MAX_HEIGHT);
+            int width = RG_MIN(tab->preview->width, COVER_MAX_WIDTH);
+            rg_gui_draw_image(-width, -height, width, height, tab->preview);
+        }
+    }
+    else
+    {
+        gui_draw_background(tab, 0);
+        gui_draw_header(tab, 90);
+    }
     rg_gui_flush();
 }
 
-void gui_draw_navbar()
+void gui_draw_background(tab_t *tab, int shade)
 {
-    for (int i = 0; i < gui.tabcount; i++)
+    static rg_image_t *buffer = NULL;
+    static void *buffer_content = 0;
+
+    const rg_image_t *img = gui_get_image("background", tab->name);
+
+    if (img && shade > 0)
     {
-        rg_gui_draw_image(i * IMAGE_LOGO_WIDTH, 0, 0, 0, gui.tabs[i]->img_logo);
+        // Only regenerate the shaded buffer if the background has changed
+        if (buffer_content != (void*)img + shade)
+        {
+            if (!buffer) buffer = rg_image_alloc(gui.width, gui.height);
+            for (int x = 0; x < buffer->width * buffer->height; ++x)
+            {
+                int pixel = img->data[x];
+                int r = ((pixel >> 11) & 0x1F) / shade;
+                int g = ((pixel >> 5) & 0x3F) / shade;
+                int b = ((pixel) & 0x1F) / shade;
+                buffer->data[x] = ((r & 0x1F) << 11) | ((g & 0x3F) << 5) | ((b & 0x1F) << 0);
+            }
+            buffer_content = (void*)img + shade;
+        }
+        img = buffer;
     }
+
+    if (img)
+        rg_gui_draw_image(0, 0, gui.width, gui.height, img);
+    else
+        rg_gui_draw_rect(0, 0, gui.width, gui.height, 0, 0, C_BLACK);
 }
 
-void gui_draw_header(tab_t *tab)
+void gui_draw_header(tab_t *tab, int offset)
 {
     int x_pos = IMAGE_LOGO_WIDTH;
-    int y_pos = IMAGE_LOGO_HEIGHT;
+    // int y_pos = IMAGE_LOGO_HEIGHT;
+    const rg_image_t *img;
 
-    rg_gui_draw_rect(x_pos, 0, gui.width - x_pos, LIST_Y_OFFSET, 0, 0, C_BLACK);
-    rg_gui_draw_rect(0, y_pos, gui.width, LIST_Y_OFFSET - y_pos, 0, 0, C_BLACK);
+    // rg_gui_draw_rect(x_pos, offset + 0, gui.width - x_pos, LIST_Y_OFFSET, 0, 0, C_BLACK);
+    // rg_gui_draw_rect(0, offset + y_pos, gui.width, LIST_Y_OFFSET - y_pos, 0, 0, C_BLACK);
 
-    if (tab->img_logo)
-        rg_gui_draw_image(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, tab->img_logo);
+    if ((img = gui_get_image("logo", tab->name)))
+        rg_gui_draw_image(0, offset, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, img);
     else
-        rg_gui_draw_rect(0, 0, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, 0, 0, C_BLACK);
+        rg_gui_draw_rect(0, offset, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, 0, 0, C_BLACK);
 
-    if (tab->img_header)
-        rg_gui_draw_image(x_pos + 1, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, tab->img_header);
+    if ((img = gui_get_image("banner", tab->name)))
+        rg_gui_draw_image(x_pos + 1, offset, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, img);
     else
-        rg_gui_draw_rect(x_pos + 1, 0, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, 0, 0, C_BLACK);
+        rg_gui_draw_rect(x_pos + 1, offset, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, 0, 0, C_BLACK);
 }
 
 void gui_draw_status(tab_t *tab)
@@ -358,8 +422,8 @@ void gui_draw_status(tab_t *tab)
     char *txt_right = tab->status[tab->status[1].right[0] ? 1 : 0].right;
 
     rg_gui_draw_battery(-27, 3);
-    rg_gui_draw_text(status_x, status_y, gui.width, txt_right, C_SNOW, C_BLACK, RG_TEXT_ALIGN_LEFT);
-    rg_gui_draw_text(status_x, status_y, 0, txt_left, C_WHITE, C_BLACK, RG_TEXT_ALIGN_RIGHT);
+    rg_gui_draw_text(status_x, status_y, gui.width, txt_right, C_SNOW, C_TRANSPARENT, RG_TEXT_ALIGN_LEFT);
+    rg_gui_draw_text(status_x, status_y, 0, txt_left, C_WHITE, C_TRANSPARENT, RG_TEXT_ALIGN_RIGHT);
 }
 
 void gui_draw_list(tab_t *tab)
@@ -367,12 +431,12 @@ void gui_draw_list(tab_t *tab)
     const theme_t *theme = &gui_themes[gui.theme % gui_themes_count];
     const listbox_t *list = &tab->listbox;
     char text_label[64];
-    uint16_t color_fg = theme->list_standard;
-    uint16_t color_bg = theme->list_background;
+    uint16_t color_fg = C_WHITE;
+    uint16_t color_bg = C_BLACK;
 
     int lines = LIST_LINE_COUNT;
     int y = LIST_Y_OFFSET;
-    int y_max = y + LIST_HEIGHT;
+    // int y_max = y + LIST_HEIGHT;
 
     for (int i = 0; i < lines; i++)
     {
@@ -384,22 +448,27 @@ void gui_draw_list(tab_t *tab)
             text_label[0] = '\0';
         }
 
-        color_fg = (entry == list->cursor) ? theme->list_selected : theme->list_standard;
-        color_bg = (int)(16.f / lines * i) << theme->list_background;
+        color_fg = (entry == list->cursor) ? theme->list.selected_fg : theme->list.standard_fg;
+        color_bg = (entry == list->cursor) ? theme->list.selected_bg : theme->list.standard_bg;
 
         y += rg_gui_draw_text(LIST_X_OFFSET, y, LIST_WIDTH, text_label, color_fg, color_bg, 0).height;
     }
 
-    if (y < y_max)
-        rg_gui_draw_rect(0, y, LIST_WIDTH, y_max - y, 0, 0, color_bg);
+    // if (y < y_max)
+    //     rg_gui_draw_rect(0, y, LIST_WIDTH, y_max - y, 0, 0, color_bg);
 }
 
-void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file)
+void gui_load_preview(tab_t *tab)
 {
-    const char *dirname = file->emulator->short_name;
     bool show_missing_cover = false;
     uint32_t order;
     char path[256];
+
+    rg_image_free(tab->preview);
+    tab->preview = NULL;
+
+    if (!gui_get_selected_item(tab))
+        return;
 
     switch (gui.show_preview)
     {
@@ -424,10 +493,11 @@ void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file)
             order = 0x0000;
     }
 
-    rg_image_t *img = NULL;
+    retro_emulator_file_t *file = gui_get_selected_item(tab)->arg;
+    const char *dirname = file->emulator->short_name;
     uint32_t errors = 0;
 
-    while (order && !img)
+    while (order && !tab->preview)
     {
         int type = order & 0xF;
 
@@ -465,28 +535,18 @@ void gui_draw_preview(tab_t *tab, retro_emulator_file_t *file)
 
         if (access(path, F_OK) == 0)
         {
-            img = rg_image_load_from_file(path, 0);
-            if (!img)
+            tab->preview = rg_image_load_from_file(path, 0);
+            if (!tab->preview)
                 errors++;
         }
 
-        file->missing_cover |= (img ? 0 : 1) << type;
+        file->missing_cover |= (tab->preview ? 0 : 1) << type;
     }
 
-    if (img)
-    {
-        int height = RG_MIN(img->height, COVER_MAX_HEIGHT);
-        int width = RG_MIN(img->width, COVER_MAX_WIDTH);
-
-        rg_gui_draw_image(-width, -height, width, height, img);
-        rg_image_free(img);
-    }
-    else if (file->checksum && (show_missing_cover || errors))
+    if (!tab->preview && file->checksum && (show_missing_cover || errors))
     {
         RG_LOGI("No image found for '%s'\n", file->name);
         gui_set_status(tab, NULL, errors ? "Bad cover" : "No cover");
-        gui_draw_status(tab);
+        // gui_draw_status(tab);
     }
-
-    rg_gui_flush();
 }
