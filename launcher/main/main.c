@@ -57,7 +57,8 @@ static dialog_return_t toggle_tabs_cb(dialog_option_t *option, dialog_event_t ev
 
         *option++ = (dialog_option_t)RG_DIALOG_CHOICE_LAST;
 
-        rg_gui_dialog("Toggle Tabs", options, 0);
+        rg_gui_dialog("Tabs Visibility", options, 0);
+        gui_redraw();
     }
     return RG_DIALOG_IGNORE;
 }
@@ -141,7 +142,7 @@ static void show_options_dialog(void)
         {0, "Font type  ", "...", 1, &font_type_cb},
         {0, "Preview    ", "...", 1, &show_preview_cb},
         // {0, "    - Delay", "...", 1, &show_preview_speed_cb},
-        {0, "Toggle tabs", "...", 1, &toggle_tabs_cb},
+        {0, "Hide tabs",   "...", 1, &toggle_tabs_cb},
         {0, "Startup app", "...", 1, &startup_app_cb},
         {0, "Disk LED   ", "...", 1, &disk_activity_cb},
         #if !RG_GAMEPAD_OPTION_BTN

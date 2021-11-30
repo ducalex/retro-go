@@ -70,14 +70,13 @@ void rg_gui_flush(void)
         rg_display_write(0, 0, screen_width, screen_height, 0, screen_buffer);
 }
 
-static void draw_buffer(int left, int top, int width, int height, const uint16_t *buffer)
+void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer)
 {
     if (screen_buffer)
     {
-        size_t stride = width * 2;
-
         if (left < 0) left += screen_width;
         if (top < 0) top += screen_height;
+        if (stride < width) stride = width * 2;
 
         width = RG_MIN(width, screen_width - left);
         height = RG_MIN(height, screen_height - top);
@@ -93,7 +92,7 @@ static void draw_buffer(int left, int top, int width, int height, const uint16_t
     }
     else
     {
-        rg_display_write(left, top, width, height, 0, buffer);
+        rg_display_write(left, top, width, height, stride, buffer);
     }
 }
 
@@ -199,14 +198,6 @@ rg_gui_font_t rg_gui_get_font_info(void)
     return font_info;
 }
 
-rg_rect_t rg_gui_calc_text_size(const char *text, int wrap_width)
-{
-    if (wrap_width > 0)
-        return rg_gui_draw_text(-wrap_width, 0, 0, text, 0, 0, RG_TEXT_MULTILINE|RG_TEXT_DUMMY_DRAW);
-    else
-        return rg_gui_draw_text(0, 0, 0, text, 0, 0, RG_TEXT_DUMMY_DRAW);
-}
-
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
                            rg_color_t color_fg, rg_color_t color_bg, uint32_t flags)
 {
@@ -295,7 +286,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
         }
 
         if (!(flags & RG_TEXT_DUMMY_DRAW))
-            draw_buffer(x_pos, y_pos + y_offset, draw_width, font_height, overlay_buffer);
+            rg_gui_copy_buffer(x_pos, y_pos + y_offset, draw_width, font_height, 0, overlay_buffer);
 
         y_offset += font_height;
 
@@ -323,10 +314,10 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_si
         while (p--)
             overlay_buffer[p] = border_color;
 
-        draw_buffer(x_pos, y_pos, width, border_size, overlay_buffer); // Top
-        draw_buffer(x_pos, y_pos + height - border_size, width, border_size, overlay_buffer); // Bottom
-        draw_buffer(x_pos, y_pos, border_size, height, overlay_buffer); // Left
-        draw_buffer(x_pos + width - border_size, y_pos, border_size, height, overlay_buffer); // Right
+        rg_gui_copy_buffer(x_pos, y_pos, width, border_size, 0, overlay_buffer); // Top
+        rg_gui_copy_buffer(x_pos, y_pos + height - border_size, width, border_size, 0, overlay_buffer); // Bottom
+        rg_gui_copy_buffer(x_pos, y_pos, border_size, height, 0, overlay_buffer); // Left
+        rg_gui_copy_buffer(x_pos + width - border_size, y_pos, border_size, height, 0, overlay_buffer); // Right
 
         x_pos += border_size;
         y_pos += border_size;
@@ -341,14 +332,14 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_si
             overlay_buffer[p] = fill_color;
 
         for (int y = 0; y < height; y += 16)
-            draw_buffer(x_pos, y_pos + y, width, RG_MIN(height - y, 16), overlay_buffer);
+            rg_gui_copy_buffer(x_pos, y_pos + y, width, RG_MIN(height - y, 16), 0, overlay_buffer);
     }
 }
 
 void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, const rg_image_t *img)
 {
     RG_ASSERT(img && img->data, "Bad image");
-    draw_buffer(x_pos, y_pos, width ? width : img->width, height ? height : img->height, img->data);
+    rg_gui_copy_buffer(x_pos, y_pos, width ?: img->width, height ?: img->height, img->width * 2, img->data);
 }
 
 void rg_gui_draw_battery(int x_pos, int y_pos)
@@ -407,7 +398,7 @@ static int get_dialog_items_count(const dialog_option_t *options)
 void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int sel)
 {
     const int options_count = get_dialog_items_count(options);
-    const int sep_width = rg_gui_calc_text_size(": ", 0).width;
+    const int sep_width = TEXT_RECT(": ", 0).width;
     const int font_height = font_info.height;
     const int max_box_width = 0.82f * screen_width;
     const int max_box_height = 0.82f * screen_height;
@@ -417,7 +408,7 @@ void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int 
 
     int box_width = box_padding * 2;
     int box_height = box_padding * 2 + (header ? font_height + 6 : 0);
-    int inner_width = rg_gui_calc_text_size(header, 0).width;
+    int inner_width = TEXT_RECT(header, 0).width;
     int max_inner_width = max_box_width - sep_width - (row_padding_x + box_padding) * 2;
     int col1_width = -1;
     int col2_width = -1;
@@ -430,13 +421,13 @@ void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int 
 
         if (options[i].label)
         {
-            label = rg_gui_calc_text_size(options[i].label, max_inner_width);
+            label = TEXT_RECT(options[i].label, max_inner_width);
             inner_width = RG_MAX(inner_width, label.width);
         }
 
         if (options[i].value)
         {
-            value = rg_gui_calc_text_size(options[i].value, max_inner_width - label.width);
+            value = TEXT_RECT(options[i].value, max_inner_width - label.width);
             col1_width = RG_MAX(col1_width, label.width);
             col2_width = RG_MAX(col2_width, value.width);
         }

@@ -104,14 +104,16 @@ struct dialog_option_s
 #define RG_DIALOG_CHOICE_LAST {0, NULL, NULL, RG_DIALOG_FLAG_LAST, NULL}
 #define RG_DIALOG_SEPARATOR   {0, "----", NULL, RG_DIALOG_FLAG_SKIP, NULL}
 
+#define TEXT_RECT(text, max) rg_gui_draw_text(-(max), 0, 0, (text), 0, 0, RG_TEXT_MULTILINE|RG_TEXT_DUMMY_DRAW)
+
 void rg_gui_init(void);
 void rg_gui_flush(void); // no effect if buffered = false
 void rg_gui_set_buffered(bool buffered);
 bool rg_gui_set_theme(const rg_gui_theme_t *new_theme);
 bool rg_gui_set_font_type(int type);
 rg_gui_font_t rg_gui_get_font_info(void);
-rg_rect_t rg_gui_calc_text_size(const char *text, int max_width);
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, rg_color_t color_fg, rg_color_t color_bg, uint32_t flags);
+void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer);
 void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size, rg_color_t border_color, rg_color_t fill_color);
 void rg_gui_draw_battery(int x_pos, int y_pos);
 void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int sel);

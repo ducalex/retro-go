@@ -7,16 +7,16 @@
 
 #include "gui.h"
 
-#define IMAGE_LOGO_WIDTH    (47)
-#define IMAGE_LOGO_HEIGHT   (51)
-#define IMAGE_BANNER_WIDTH  (272)
-#define IMAGE_BANNER_HEIGHT (32)
+#define HEADER_WIDTH        (gui.width)
+#define HEADER_HEIGHT       (50)
+#define LOGO_WIDTH          (46)
+#define LOGO_HEIGHT         (50)
 
+#define LIST_LEFT           (0)
+#define LIST_TOP            (HEADER_HEIGHT + 6)
 #define LIST_WIDTH          (gui.width)
-#define LIST_HEIGHT         (gui.height - LIST_Y_OFFSET)
+#define LIST_HEIGHT         (gui.height - LIST_TOP)
 #define LIST_LINE_COUNT     (LIST_HEIGHT / rg_gui_get_font_info().height)
-#define LIST_X_OFFSET       (0)
-#define LIST_Y_OFFSET       (48 + 8)
 
 #define COVER_MAX_HEIGHT    ((int)(gui.height * 0.70f))
 #define COVER_MAX_WIDTH     ((int)(gui.width * 0.50f))
@@ -45,7 +45,7 @@ void gui_init(void)
     memset(&gui, 0, sizeof(retro_gui_t));
     gui.selected     = rg_settings_get_app_int32(SETTING_SELECTED_TAB, 0);
     gui.theme        = rg_settings_get_app_int32(SETTING_GUI_THEME, 0);
-    gui.browse       = rg_settings_get_app_int32("OPENLASTTABTEST", 1);
+    gui.browse       = rg_settings_get_app_int32("OPENLASTTABTEST", 0);
     gui.show_preview = rg_settings_get_app_int32(SETTING_SHOW_PREVIEW, 1);
     gui.show_preview_fast = rg_settings_get_app_int32(SETTING_PREVIEW_SPEED, 0);
     gui.width = rg_display_get_status()->screen.width;
@@ -396,28 +396,27 @@ void gui_draw_background(tab_t *tab, int shade)
 
 void gui_draw_header(tab_t *tab, int offset)
 {
-    int x_pos = IMAGE_LOGO_WIDTH;
-    // int y_pos = IMAGE_LOGO_HEIGHT;
     const rg_image_t *img;
 
-    // rg_gui_draw_rect(x_pos, offset + 0, gui.width - x_pos, LIST_Y_OFFSET, 0, 0, C_BLACK);
-    // rg_gui_draw_rect(0, offset + y_pos, gui.width, LIST_Y_OFFSET - y_pos, 0, 0, C_BLACK);
-
     if ((img = gui_get_image("logo", tab->name)))
-        rg_gui_draw_image(0, offset, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, img);
+        rg_gui_draw_image(0, offset, LOGO_WIDTH, LOGO_HEIGHT, img);
     else
-        rg_gui_draw_rect(0, offset, IMAGE_LOGO_WIDTH, IMAGE_LOGO_HEIGHT, 0, 0, C_BLACK);
+        rg_gui_draw_rect(0, offset, LOGO_WIDTH, LOGO_HEIGHT, 0, 0, C_BLACK);
 
     if ((img = gui_get_image("banner", tab->name)))
-        rg_gui_draw_image(x_pos + 1, offset, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, img);
+    {
+        int width = RG_MIN(HEADER_WIDTH - LOGO_WIDTH - 1, img->width);
+        int height = RG_MIN(HEADER_HEIGHT - 8, img->height);
+        rg_gui_draw_image(LOGO_WIDTH + 1, offset + 8, width, height, img);
+    }
     else
-        rg_gui_draw_rect(x_pos + 1, offset, IMAGE_BANNER_WIDTH, IMAGE_BANNER_HEIGHT, 0, 0, C_BLACK);
+        rg_gui_draw_rect(LOGO_WIDTH + 1, offset, HEADER_WIDTH - LOGO_WIDTH, HEADER_HEIGHT, 0, 0, C_BLACK);
 }
 
 void gui_draw_status(tab_t *tab)
 {
-    int status_x = IMAGE_LOGO_WIDTH + 11;
-    int status_y = IMAGE_BANNER_HEIGHT + 1;
+    const int status_x = LOGO_WIDTH + 12;
+    const int status_y = HEADER_HEIGHT - 16;
     char *txt_left = tab->status[tab->status[1].left[0] ? 1 : 0].left;
     char *txt_right = tab->status[tab->status[1].right[0] ? 1 : 0].right;
 
@@ -435,7 +434,7 @@ void gui_draw_list(tab_t *tab)
     uint16_t color_bg = C_BLACK;
 
     int lines = LIST_LINE_COUNT;
-    int y = LIST_Y_OFFSET;
+    int y = LIST_TOP;
     // int y_max = y + LIST_HEIGHT;
 
     for (int i = 0; i < lines; i++)
@@ -451,7 +450,7 @@ void gui_draw_list(tab_t *tab)
         color_fg = (entry == list->cursor) ? theme->list.selected_fg : theme->list.standard_fg;
         color_bg = (entry == list->cursor) ? theme->list.selected_bg : theme->list.standard_bg;
 
-        y += rg_gui_draw_text(LIST_X_OFFSET, y, LIST_WIDTH, text_label, color_fg, color_bg, 0).height;
+        y += rg_gui_draw_text(LIST_LEFT, y, LIST_WIDTH, text_label, color_fg, color_bg, 0).height;
     }
 
     // if (y < y_max)
