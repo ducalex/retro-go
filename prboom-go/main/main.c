@@ -42,7 +42,13 @@
 #include <midifile.h>
 #include <oplplayer.h>
 
-#define AUDIO_SAMPLE_RATE 11025 // 22050
+// 22050 reduces perf by almost 15% but 11025 sounds awful on the G32...
+#ifdef RG_TARGET_MRGC_G32
+#define AUDIO_SAMPLE_RATE 22050
+#else
+#define AUDIO_SAMPLE_RATE 11025
+#endif
+
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / TICRATE + 1)
 #define NUM_MIX_CHANNELS 8
 
@@ -307,7 +313,7 @@ static void soundTask(void *arg)
             if (musicPlaying && snd_MusicVolume > 0)
             {
                 music_player->render(&stream, 1); // It returns 2 (stereo) 16bits values per sample
-                sample = (stream[0] + stream[1]) >> 1;
+                sample = stream[0]; // [0] and [1] are the same value
                 if (sample > 0)
                 {
                     totalSample += sample / (16 - snd_MusicVolume);

@@ -189,6 +189,7 @@ static void M_Setup(int choice);
 static void M_SizeDisplay(int choice);
 static void M_Sound(int choice);
 static void M_Cheats(int choice);
+static void M_ToggleMap(int choice);
 static void M_LevelSelect(int choice);
 static void M_LevelSelectSelect(int choice);
 static void M_CheatSelect(int choice);
@@ -370,6 +371,7 @@ static menuitem_t OptionsMenu[]=
   {1,"M_SVOL",   M_Sound,'s'},
   {1,":Cheats", M_Cheats, 'e'},
   {1,":Level Select", M_LevelSelect,'s'},
+  {1,":Toggle Map", M_ToggleMap, 's'},
   {1,"M_ENDGAM", M_EndGame,'e'},
 };
 
@@ -1528,6 +1530,11 @@ static void M_QuitDOOM(int choice)
 static void M_LevelSelect(int choice)
 {
   M_SetupNextMenu(&LevelSelectDef);
+}
+
+static void M_ToggleMap(int choice)
+{
+  AM_Responder(&(event_t){ev_keydown, key_map});
 }
 
 static void M_DrawLevelSelect(void)
