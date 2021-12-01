@@ -125,8 +125,6 @@ An up to date list of incompatible/broken games can be found on the [ODROID-GO f
 - Arduboy compatibility?
 - WiFi file manager
 
-I'm also working on a combined application where a single binary would contain all the emulators. This will provide faster boot times, much much smaller firmware size, faster builds, and support for platforms where having multiple binaries is inconvenient (SDL/Desktop) or impossible (some ARM mcu).
-
 
 # Building Retro-Go
 
@@ -165,7 +163,7 @@ rg_tool.py supports a few environment variables if you want to avoid passing fla
 - `RG_TOOL_PORT` represents --port
 
 ## Changing the launcher's images
-All images used by the launcher (headers, logos) are located in `launcher/images`. If you edit them you must run the `launcher/gen_images.py` script to regenerate `images.h`. The format must be PNG 255 colors.
+All images used by the launcher (headers, logos) are located in `launcher/images`. If you edit them you must run the `launcher/gen_images.py` script to regenerate `images.c`. Magenta (rgb(255, 0, 255) / 0xF81F) is used as the transparency colour.
 
 ## Changing or adding fonts
 Fonts are found in `components/retro-go/fonts`. There are basic instructions in `fonts.h` on how to add fonts. 

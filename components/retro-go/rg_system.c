@@ -15,11 +15,6 @@
 
 #include "rg_system.h"
 
-// To disable timeout set app->inputTimeout = -1 after call rg_system_init()
-// Early timeout applies until the first call to rg_system_tick()
-#define EARLY_INPUT_TIMEOUT 30000001
-#define INPUT_TIMEOUT 15000000
-
 #ifndef RG_BUILD_USER
 #define RG_BUILD_USER "ducalex"
 #endif
@@ -47,7 +42,11 @@ static rg_stats_t statistics;
 static rg_counters_t counters;
 static rg_app_t app;
 static int ledValue = 0;
+static int wdtCounter = 0;
 static bool initialized = false;
+
+#define WDT_TIMEOUT 15000000
+#define WDT_RELOAD(val) wdtCounter = (val)
 
 
 static const char *htime(time_t ts)
@@ -86,8 +85,8 @@ IRAM_ATTR void esp_panic_putchar_hook(char c)
 
 static void system_monitor_task(void *arg)
 {
-    rg_counters_t current = {0};
     multi_heap_info_t heap_info = {0};
+    time_t lastLoop = get_elapsed_time();
     time_t lastTime = time(NULL);
     bool ledState = false;
 
@@ -96,32 +95,29 @@ static void system_monitor_task(void *arg)
 
     // Give the app a few seconds to start before monitoring
     vTaskDelay(pdMS_TO_TICKS(2000));
+    WDT_RELOAD(WDT_TIMEOUT);
 
     while (1)
     {
-        float tickTime = get_elapsed_time() - counters.resetTime;
-        // long  ticks = counters.ticks - current.ticks;
+        float loopTime = get_elapsed_time_since(lastLoop);
+        rg_counters_t current = counters;
 
-        // Make a copy and reset counters immediately because processing could take 1-2ms
-        current = counters;
-        counters.totalFrames = counters.fullFrames = 0;
-        counters.skippedFrames = counters.busyTime = 0;
-        counters.resetTime = get_elapsed_time();
+        counters = (rg_counters_t){0};
+        lastLoop = get_elapsed_time();
 
-        rg_input_read_battery(&statistics.batteryPercent, &statistics.batteryVoltage);
-
-        statistics.busyPercent = RG_MIN(current.busyTime / tickTime * 100.f, 100.f);
-        statistics.skippedFPS = current.skippedFrames / (tickTime / 1000000.f);
-        statistics.totalFPS = current.totalFrames / (tickTime / 1000000.f);
+        statistics.busyPercent = RG_MIN(current.busyTime / loopTime * 100.f, 100.f);
+        statistics.skippedFPS = current.skippedFrames / (loopTime / 1000000.f);
+        statistics.totalFPS = current.totalFrames / (loopTime / 1000000.f);
         statistics.freeStackMain = uxTaskGetStackHighWaterMark(app.mainTaskHandle);
 
         heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
         statistics.freeMemoryInt = heap_info.total_free_bytes;
         statistics.freeBlockInt = heap_info.largest_free_block;
-
         heap_caps_get_info(&heap_info, MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
         statistics.freeMemoryExt = heap_info.total_free_bytes;
         statistics.freeBlockExt = heap_info.largest_free_block;
+
+        rg_input_read_battery(&statistics.batteryPercent, &statistics.batteryVoltage);
 
         if (statistics.batteryPercent < 2)
         {
@@ -157,13 +153,16 @@ static void system_monitor_task(void *arg)
         //     RG_LOGW("Running out of heap space!");
         // }
 
-        if (rg_input_gamepad_last_read() > (unsigned long)app.inputTimeout)
+        if ((wdtCounter -= loopTime) <= 0)
         {
-        #ifdef ENABLE_PROFILING
-            RG_LOGW("Application unresponsive");
-        #else
-            RG_PANIC("Application unresponsive");
-        #endif
+            if (rg_input_gamepad_last_read() > WDT_TIMEOUT)
+            {
+                RG_LOGW("Application unresponsive!\n");
+            #ifndef ENABLE_PROFILING
+                RG_PANIC("Application unresponsive!");
+            #endif
+            }
+            WDT_RELOAD(WDT_TIMEOUT);
         }
 
         if (abs(time(NULL) - lastTime) > 60)
@@ -209,11 +208,7 @@ IRAM_ATTR void rg_system_tick(int busyTime)
     counters.totalFrames++;
     counters.busyTime += busyTime;
 
-    // Reduce the inputTimeout once the emulation is running
-    if (app.inputTimeout == EARLY_INPUT_TIMEOUT)
-    {
-        app.inputTimeout = INPUT_TIMEOUT;
-    }
+    // WDT_RELOAD(WDT_TIMEOUT);
 }
 
 rg_stats_t rg_system_get_stats()
@@ -284,7 +279,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
     app.refreshRate = 1;
     app.sampleRate = sampleRate;
     app.logLevel = RG_LOG_INFO;
-    app.inputTimeout = EARLY_INPUT_TIMEOUT;
     app.isLauncher = (strcmp(app.name, RG_APP_LAUNCHER) == 0);
     app.mainTaskHandle = xTaskGetCurrentTaskHandle();
     if (handlers)
@@ -453,16 +447,12 @@ bool rg_emu_load_state(int slot)
 
     RG_LOGI("Loading state %d.\n", slot);
 
-    rg_gui_draw_hourglass();
+    WDT_RELOAD(30 * 1000000);
 
-    // Increased input timeout, this might take a while
-    app.inputTimeout *= 4;
+    rg_gui_draw_hourglass();
 
     char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE, app.romPath);
     bool success = (*app.handlers.loadState)(filename);
-    // bool success = rg_emu_notify(RG_MSG_LOAD_STATE, filename);
-
-    app.inputTimeout /= 4;
 
     if (!success)
     {
@@ -470,6 +460,8 @@ bool rg_emu_load_state(int slot)
     }
 
     free(filename);
+
+    WDT_RELOAD(WDT_TIMEOUT);
 
     return success;
 }
@@ -484,15 +476,14 @@ bool rg_emu_save_state(int slot)
 
     RG_LOGI("Saving state %d.\n", slot);
 
+    WDT_RELOAD(30 * 1000000);
+
     rg_system_set_led(1);
     rg_gui_draw_hourglass();
 
     char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE, app.romPath);
     char path_buffer[PATH_MAX + 1];
     bool success = false;
-
-    // Increased input timeout, this might take a while
-    app.inputTimeout *= 4;
 
     if (!rg_mkdir(rg_dirname(filename)))
     {
@@ -537,11 +528,11 @@ bool rg_emu_save_state(int slot)
         free(fileName);
     }
 
-    app.inputTimeout /= 4;
-
     rg_system_set_led(0);
 
     free(filename);
+
+    WDT_RELOAD(WDT_TIMEOUT);
 
     return success;
 }

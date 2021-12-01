@@ -105,7 +105,6 @@ typedef struct
     uint32_t skippedFrames;
     uint32_t fullFrames;
     uint32_t busyTime;
-    uint64_t resetTime;
 } rg_counters_t;
 
 typedef struct
@@ -121,7 +120,7 @@ typedef struct
     int startAction;
     int logLevel;
     int isLauncher;
-    int inputTimeout;
+    int wdtTimeout;
     const char *romPath;
     void *mainTaskHandle;
     rg_emu_proc_t handlers;
