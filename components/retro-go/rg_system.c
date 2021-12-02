@@ -19,9 +19,8 @@
 #define RG_BUILD_USER "ducalex"
 #endif
 
-#define SETTING_ROM_FILE_PATH "RomFilePath"
-#define SETTING_START_ACTION  "StartAction"
-#define SETTING_STARTUP_APP   "StartupApp"
+#define SETTING_BOOT_FLAGS    "BootFlags"
+#define SETTING_BOOT_ARGS     "BootArgs"
 #define SETTING_RTC_DRIVER    "RTCInitSource"
 #define SETTING_RTC_VALUE     "RTCSavedValue"
 
@@ -315,9 +314,8 @@ rg_app_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
         }
 
         rg_display_clear(C_BLUE);
-        // rg_gui_set_font_size(12);
         rg_gui_alert("System Panic!", message);
-        rg_system_switch_app(RG_APP_LAUNCHER);
+        rg_system_start_app(RG_APP_LAUNCHER, 0, 0);
     }
 
     panicTrace.magicWord = 0;
@@ -325,30 +323,23 @@ rg_app_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
     if (!sd_init)
     {
         rg_display_clear(C_SKY_BLUE);
-        // rg_gui_set_font_size(12);
         rg_gui_alert("SD Card Error", "Mount failed."); // esp_err_to_name(ret)
         rg_system_switch_app(RG_APP_LAUNCHER);
     }
 
     if (!app.isLauncher)
     {
-        app.startAction = rg_settings_get_int32(SETTING_START_ACTION, 0);
-        app.romPath = rg_settings_get_string(SETTING_ROM_FILE_PATH, NULL);
+        app.bootFlags = rg_settings_get_app_int32(SETTING_BOOT_FLAGS, 0);
+        app.romPath = rg_settings_get_app_string(SETTING_BOOT_ARGS, NULL);
         app.refreshRate = 60;
 
         // If any key is pressed we abort and go back to the launcher
         if (rg_input_key_is_pressed(RG_KEY_ANY))
-        {
             rg_system_switch_app(RG_APP_LAUNCHER);
-        }
 
         // Only boot this app once, next time will return to launcher
-        if (rg_system_get_startup_app() == 0)
-        {
-            // This might interfer with our panic capture above and, at the very least, make
-            // it report wrong app/version...
+        if (app.bootFlags & RG_BOOT_ONCE)
             rg_system_set_boot_app(RG_APP_LAUNCHER);
-        }
 
         if (!app.romPath || strlen(app.romPath) < 4)
         {
@@ -501,11 +492,7 @@ bool rg_emu_save_state(int slot)
         {
             sprintf(path_buffer, "%s.bak", filename);
             unlink(path_buffer);
-
             success = true;
-
-            rg_settings_set_int32(SETTING_START_ACTION, RG_START_ACTION_RESUME);
-            rg_settings_save();
         }
     }
 
@@ -526,6 +513,14 @@ bool rg_emu_save_state(int slot)
         char *fileName = rg_emu_get_path(RG_PATH_SCREENSHOT, app.romPath);
         rg_emu_screenshot(fileName, rg_display_get_status()->screen.width / 2, 0);
         free(fileName);
+
+        // And set bootflags to resume from this state on next boot
+        if ((app.bootFlags & (RG_BOOT_ONCE|RG_BOOT_RESUME)) == 0)
+        {
+            app.bootFlags |= RG_BOOT_RESUME;
+            rg_settings_set_int32(SETTING_BOOT_FLAGS, app.bootFlags);
+            rg_settings_save();
+        }
     }
 
     rg_system_set_led(0);
@@ -568,14 +563,6 @@ bool rg_emu_reset(int hard)
     if (app.handlers.reset)
         return app.handlers.reset(hard);
     return false;
-}
-
-void rg_emu_start_game(const char *emulator, const char *romPath, rg_start_action_t action)
-{
-    RG_ASSERT(emulator && romPath, "bad param");
-    rg_settings_set_string(SETTING_ROM_FILE_PATH, romPath);
-    rg_settings_set_int32(SETTING_START_ACTION, action);
-    rg_system_switch_app(emulator);
 }
 
 static void shutdown_cleanup()
@@ -622,6 +609,15 @@ void rg_system_switch_app(const char *app)
     rg_gui_draw_hourglass();
     rg_system_set_boot_app(app);
     rg_system_restart();
+}
+
+void rg_system_start_app(const char *name, const char *args, int flags)
+{
+    rg_settings_set_app_name(name);
+    rg_settings_set_app_string(SETTING_BOOT_ARGS, args);
+    rg_settings_set_app_int32(SETTING_BOOT_FLAGS, flags);
+    rg_settings_set_app_name(app.name);
+    rg_system_switch_app(name);
 }
 
 bool rg_system_find_app(const char *app)
@@ -730,16 +726,6 @@ void rg_system_set_led(int value)
 int rg_system_get_led(void)
 {
     return ledValue;
-}
-
-int32_t rg_system_get_startup_app(void)
-{
-    return rg_settings_get_int32(SETTING_STARTUP_APP, 1);
-}
-
-void rg_system_set_startup_app(int32_t value)
-{
-    rg_settings_set_int32(SETTING_STARTUP_APP, value);
 }
 
 // Note: You should use calloc/malloc everywhere possible. This function is used to ensure

@@ -285,7 +285,7 @@ void app_main(void)
     nes_emulate(false);
     nes_emulate(false);
 
-    if (app->startAction == RG_START_ACTION_RESUME)
+    if (app->bootFlags & RG_BOOT_RESUME)
     {
         rg_emu_load_state(0);
     }

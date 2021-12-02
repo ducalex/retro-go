@@ -227,7 +227,7 @@ static void snes9x_task(void *arg)
 	if (!S9xLoadROM(app->romPath))
 		RG_PANIC("ROM loading failed!");
 
-    if (app->startAction == RG_START_ACTION_RESUME)
+    if (app->bootFlags & RG_BOOT_RESUME)
     {
         rg_emu_load_state(0);
     }

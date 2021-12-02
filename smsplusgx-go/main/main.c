@@ -152,7 +152,7 @@ void app_main(void)
 
     rg_display_set_source_format(bitmap.viewport.w, bitmap.viewport.h, 0, 0, bitmap.pitch, RG_PIXEL_PAL565_BE);
 
-    if (app->startAction == RG_START_ACTION_RESUME)
+    if (app->bootFlags & RG_BOOT_RESUME)
     {
         rg_emu_load_state(0);
     }

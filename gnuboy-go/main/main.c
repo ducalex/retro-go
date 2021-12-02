@@ -279,7 +279,7 @@ void app_main(void)
     gnuboy_reset(true);
 
     // Load saved state or SRAM
-    if (app->startAction == RG_START_ACTION_RESUME)
+    if (app->bootFlags & RG_BOOT_RESUME)
         rg_emu_load_state(0);
     else
         sram_load(sramFile);

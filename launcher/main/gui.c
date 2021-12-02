@@ -1,4 +1,5 @@
 #include <rg_system.h>
+#include <esp_system.h>
 #include <stdio.h>
 #include <string.h>
 #include <dirent.h>
@@ -34,6 +35,7 @@ retro_gui_t gui;
 #define CONCAT(a, b) ({char buffer[128]; strcat(strcpy(buffer, a), b);})
 #define SETTING_SELECTED_TAB    "SelectedTab"
 #define SETTING_BROWSE_TAB      "BrowseTab"
+#define SETTING_STARTUP_MODE    "StartupMode"
 #define SETTING_GUI_THEME       "ColorTheme"
 #define SETTING_SHOW_PREVIEW    "ShowPreview"
 #define SETTING_TAB_ENABLED(a)   CONCAT("TabEnabled.", a)
@@ -45,11 +47,17 @@ void gui_init(void)
     gui = (retro_gui_t){
         .selected     = rg_settings_get_app_int32(SETTING_SELECTED_TAB, 0),
         .theme        = rg_settings_get_app_int32(SETTING_GUI_THEME, 0),
+        .startup      = rg_settings_get_app_int32(SETTING_STARTUP_MODE, 0),
         .browse       = rg_settings_get_app_int32(SETTING_BROWSE_TAB, 0),
         .show_preview = rg_settings_get_app_int32(SETTING_SHOW_PREVIEW, 1),
         .width        = rg_display_get_status()->screen.width,
         .height       = rg_display_get_status()->screen.height,
-    }; // rg_display_clear(C_BLACK);
+    };
+    rg_display_clear(C_BLACK);
+
+    // Always enter browse mode when leaving an emulator
+    // boot reason should probably be abstracted by rg_system >_<
+    gui.browse = gui.browse || esp_reset_reason() != ESP_RST_POWERON;
 }
 
 void gui_event(gui_event_t event, tab_t *tab)
@@ -197,6 +205,7 @@ void gui_save_config(bool commit)
     rg_settings_set_app_int32(SETTING_SELECTED_TAB, gui.selected);
     rg_settings_set_app_int32(SETTING_SHOW_PREVIEW, gui.show_preview);
     rg_settings_set_app_int32(SETTING_GUI_THEME, gui.theme);
+    rg_settings_set_app_int32(SETTING_STARTUP_MODE, gui.startup);
 
     for (int i = 0; i < gui.tabcount; i++)
     {

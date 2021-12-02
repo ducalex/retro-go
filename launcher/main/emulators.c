@@ -653,8 +653,8 @@ void emulator_start(retro_emulator_file_t *file, bool load_state)
     if (file == NULL)
         RG_PANIC("Unable to find file...");
 
-    rg_start_action_t action = load_state ? RG_START_ACTION_RESUME : RG_START_ACTION_NEWGAME;
-    rg_emu_start_game(file->emulator->partition, emulator_get_file_path(file), action);
+    rg_system_start_app(file->emulator->partition, emulator_get_file_path(file),
+        (load_state ? RG_BOOT_RESUME : 0) | (gui.startup ? RG_BOOT_ONCE : 0));
 }
 
 void emulators_init()

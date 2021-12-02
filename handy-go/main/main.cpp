@@ -197,7 +197,7 @@ extern "C" void app_main(void)
     gAudioBuffer = (SWORD*)&audioBuffer;
     gAudioEnabled = 1;
 
-    if (app->startAction == RG_START_ACTION_RESUME)
+    if (app->bootFlags & RG_BOOT_RESUME)
     {
         rg_emu_load_state(0);
     }

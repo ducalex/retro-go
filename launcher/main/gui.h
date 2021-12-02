@@ -107,11 +107,11 @@ typedef struct {
     tab_t *tabs[32];
     int tabcount;
     int selected;
+    int startup;
     int browse;
     int theme;
     int show_preview;
     int idle_counter;
-    int last_key;
     int width;
     int height;
     image_t images[128];

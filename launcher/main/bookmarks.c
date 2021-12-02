@@ -163,9 +163,15 @@ static void book_save(book_type_t book_type)
 static void book_init(book_type_t book_type, const char *name, const char *desc, int capacity)
 {
     book_t *book = &books[book_type];
+    char oldpath[PATH_MAX + 1];
     char path[PATH_MAX + 1];
 
     sprintf(path, "%s/%s.txt", RG_BASE_PATH_CONFIG, name);
+
+    #ifdef RG_TARGET_ODROID_GO
+    sprintf(oldpath, "%s/%s.txt", RG_BASE_PATH "/odroid", name);
+    rename(oldpath, path);
+    #endif
 
     book->name = strdup(name);
     book->path = strdup(path);
@@ -242,21 +248,6 @@ bool bookmark_remove(book_type_t book, retro_emulator_file_t *file)
 
 void bookmarks_init()
 {
-    char *old_favorites = rg_settings_get_string("Favorites", NULL);
-    if (old_favorites && old_favorites[0])
-    {
-        RG_LOGI("Importing favorites from retro-go <= 1.25....\n");
-        FILE *fp = fopen(RG_BASE_PATH_CONFIG "/favorite.txt", "a");
-        if (fp)
-        {
-            fputs(old_favorites, fp);
-            fclose(fp);
-            rg_settings_set_string("Favorites", "");
-            rg_settings_save();
-        }
-    }
-    free(old_favorites);
-
     book_init(BOOK_TYPE_FAVORITE, "favorite", "Favorites", -1);
     book_init(BOOK_TYPE_RECENT, "recent", "Recently played", 16);
 }

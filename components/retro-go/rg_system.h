@@ -32,13 +32,6 @@ extern "C" {
 
 typedef enum
 {
-    RG_START_ACTION_RESUME = 0,
-    RG_START_ACTION_NEWGAME,
-    RG_START_ACTION_NETPLAY
-} rg_start_action_t;
-
-typedef enum
-{
     RG_PATH_SAVE_STATE = 0,
     RG_PATH_SAVE_STATE_1,
     RG_PATH_SAVE_STATE_2,
@@ -48,6 +41,15 @@ typedef enum
     RG_PATH_ROM_FILE,
     RG_PATH_ART_FILE,
 } rg_path_type_t;
+
+enum
+{
+    RG_BOOT_NORMAL = 0x0,
+    RG_BOOT_RESUME = 0x1,
+    RG_BOOT_ONCE   = 0x2,
+    RG_BOOT_RESET  = 0x4,
+    RG_BOOT_NETPLAY= 0x8,
+};
 
 enum
 {
@@ -117,7 +119,7 @@ typedef struct
     int speedupEnabled;
     int refreshRate;
     int sampleRate;
-    int startAction;
+    int bootFlags;
     int logLevel;
     int isLauncher;
     int wdtTimeout;
@@ -148,6 +150,7 @@ void rg_system_shutdown() __attribute__((noreturn));
 void rg_system_sleep() __attribute__((noreturn));
 void rg_system_restart() __attribute__((noreturn));
 void rg_system_switch_app(const char *app) __attribute__((noreturn));
+void rg_system_start_app(const char *app, const char *args, int flags) __attribute__((noreturn));
 void rg_system_set_boot_app(const char *app);
 bool rg_system_find_app(const char *app);
 void rg_system_set_led(int value);
@@ -167,10 +170,6 @@ bool rg_emu_save_state(int slot);
 bool rg_emu_load_state(int slot);
 bool rg_emu_reset(int hard);
 bool rg_emu_screenshot(const char *filename, int width, int height);
-void rg_emu_start_game(const char *emulator, const char *romPath, rg_start_action_t action);
-
-int32_t rg_system_get_startup_app(void);
-void rg_system_set_startup_app(int32_t value);
 
 void *rg_alloc(size_t size, uint32_t caps);
 
