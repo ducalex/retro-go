@@ -110,7 +110,6 @@ typedef struct {
     int browse;
     int theme;
     int show_preview;
-    int show_preview_fast;
     int idle_counter;
     int last_key;
     int width;
@@ -125,7 +124,7 @@ extern const binfile_t *builtin_images[];
 
 tab_t *gui_add_tab(const char *name, const char *desc, void *arg, void *event_handler);
 tab_t *gui_get_tab(int index);
-tab_t *gui_get_current_tab();
+tab_t *gui_get_current_tab(void);
 tab_t *gui_set_current_tab(int index);
 void gui_set_status(tab_t *tab, const char *left, const char *right);
 void gui_init_tab(tab_t *tab);
@@ -138,7 +137,6 @@ void gui_resize_list(tab_t *tab, int new_size);
 listbox_item_t *gui_get_selected_item(tab_t *tab);
 
 void gui_init(void);
-void gui_save_position(bool commit);
 void gui_save_config(bool commit);
 void gui_event(gui_event_t event, tab_t *tab);
 void gui_redraw(void);

@@ -596,7 +596,7 @@ void emulator_show_file_menu(retro_emulator_file_t *file, bool advanced)
     case 0:
     case 1:
         crc_cache_save();
-        gui_save_position(0); // emulator_start will commit
+        gui_save_config(false); // emulator_start will commit
         bookmark_add(BOOK_TYPE_RECENT, file);
         emulator_start(file, sel == 0);
         break;

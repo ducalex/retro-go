@@ -33,24 +33,23 @@ retro_gui_t gui;
 
 #define CONCAT(a, b) ({char buffer[128]; strcat(strcpy(buffer, a), b);})
 #define SETTING_SELECTED_TAB    "SelectedTab"
+#define SETTING_BROWSE_TAB      "BrowseTab"
 #define SETTING_GUI_THEME       "ColorTheme"
 #define SETTING_SHOW_PREVIEW    "ShowPreview"
-#define SETTING_PREVIEW_SPEED   "PreviewSpeed"
 #define SETTING_TAB_ENABLED(a)   CONCAT("TabEnabled.", a)
 #define SETTING_TAB_SELECTION(a) CONCAT("TabSelection.", a)
 
 
 void gui_init(void)
 {
-    memset(&gui, 0, sizeof(retro_gui_t));
-    gui.selected     = rg_settings_get_app_int32(SETTING_SELECTED_TAB, 0);
-    gui.theme        = rg_settings_get_app_int32(SETTING_GUI_THEME, 0);
-    gui.browse       = rg_settings_get_app_int32("OPENLASTTABTEST", 0);
-    gui.show_preview = rg_settings_get_app_int32(SETTING_SHOW_PREVIEW, 1);
-    gui.show_preview_fast = rg_settings_get_app_int32(SETTING_PREVIEW_SPEED, 0);
-    gui.width = rg_display_get_status()->screen.width;
-    gui.height = rg_display_get_status()->screen.height;
-    rg_display_clear(C_BLACK);
+    gui = (retro_gui_t){
+        .selected     = rg_settings_get_app_int32(SETTING_SELECTED_TAB, 0),
+        .theme        = rg_settings_get_app_int32(SETTING_GUI_THEME, 0),
+        .browse       = rg_settings_get_app_int32(SETTING_BROWSE_TAB, 0),
+        .show_preview = rg_settings_get_app_int32(SETTING_SHOW_PREVIEW, 1),
+        .width        = rg_display_get_status()->screen.width,
+        .height       = rg_display_get_status()->screen.height,
+    }; // rg_display_clear(C_BLACK);
 }
 
 void gui_event(gui_event_t event, tab_t *tab)
@@ -162,7 +161,7 @@ const rg_image_t *gui_get_image(const char *type, const char *subtype)
     return image->img;
 }
 
-tab_t *gui_get_current_tab()
+tab_t *gui_get_current_tab(void)
 {
     return gui_get_tab(gui.selected);
 }
@@ -189,22 +188,14 @@ void gui_set_status(tab_t *tab, const char *left, const char *right)
         strcpy(tab->status[1].right, right);
 }
 
-void gui_save_position(bool commit)
+void gui_save_config(bool commit)
 {
     tab_t *tab = gui_get_current_tab();
     listbox_item_t *item = gui_get_selected_item(tab);
 
     rg_settings_set_app_string(SETTING_TAB_SELECTION(tab->name), item ? item->text : "");
     rg_settings_set_app_int32(SETTING_SELECTED_TAB, gui.selected);
-
-    if (commit)
-        rg_settings_save();
-}
-
-void gui_save_config(bool commit)
-{
     rg_settings_set_app_int32(SETTING_SHOW_PREVIEW, gui.show_preview);
-    rg_settings_set_app_int32(SETTING_PREVIEW_SPEED, gui.show_preview_fast);
     rg_settings_set_app_int32(SETTING_GUI_THEME, gui.theme);
 
     for (int i = 0; i < gui.tabcount; i++)
@@ -374,7 +365,7 @@ void gui_draw_background(tab_t *tab, int shade)
         // Only regenerate the shaded buffer if the background has changed
         if (buffer_content != (void*)img + shade)
         {
-            if (!buffer) buffer = rg_image_alloc(gui.width, gui.height);
+            if (!buffer) buffer = rg_image_alloc(img->width, img->height);
             for (int x = 0; x < buffer->width * buffer->height; ++x)
             {
                 int pixel = img->data[x];
@@ -542,7 +533,20 @@ void gui_load_preview(tab_t *tab)
         file->missing_cover |= (tab->preview ? 0 : 1) << type;
     }
 
-    if (!tab->preview && file->checksum && (show_missing_cover || errors))
+    if (tab->preview)
+    {
+        // Resizing is "slow", so only do it if it's grossly oversized, otherwise we'll simply crop...
+        if (tab->preview->width > COVER_MAX_WIDTH + 16 || tab->preview->height > COVER_MAX_HEIGHT + 16)
+        {
+            rg_image_t *temp = rg_image_copy_resized(tab->preview, COVER_MAX_WIDTH, COVER_MAX_HEIGHT);
+            if (temp)
+            {
+                rg_image_free(tab->preview);
+                tab->preview = temp;
+            }
+        }
+    }
+    else if (file->checksum && (show_missing_cover || errors))
     {
         RG_LOGI("No image found for '%s'\n", file->name);
         gui_set_status(tab, NULL, errors ? "Bad cover" : "No cover");
