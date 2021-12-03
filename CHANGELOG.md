@@ -1,3 +1,9 @@
+# Retro-Go 1.29 (202?-??-?? upcoming)
+- Launcher: New look and feel
+- DOOM: Added `Toggle Map` in the DOOM menu
+- DOOM: Fixed issues affecting the MRGC-G32 (sound and image)
+
+
 # Retro-Go 1.28 (2021-11-23)
 - GBC: Dinky Kong & Dixie Kong (and probably others)
 - GBC: Fixed SRAM saving not working correctly (thanks to Jarrad Edwards!)

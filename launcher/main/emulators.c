@@ -78,6 +78,10 @@ void crc_cache_save(void)
     RG_LOGI("Saving cache\n");
 
     FILE *fp = fopen(CRC_CACHE_PATH, "wb");
+    if (!fp && rg_mkdir(rg_dirname(CRC_CACHE_PATH)))
+    {
+        fp = fopen(CRC_CACHE_PATH, "wb");
+    }
     if (fp)
     {
         size_t unused = CRC_CACHE_MAX_ENTRIES - RG_MIN(crc_cache->count, CRC_CACHE_MAX_ENTRIES);
@@ -353,12 +357,11 @@ static void tab_refresh(tab_t *tab)
             strcat(extensions, " ");
         }
 
-        gui_resize_list(tab, 8);
+        gui_resize_list(tab, 6);
         sprintf(tab->listbox.items[0].text, "Welcome to Retro-Go!");
         sprintf(tab->listbox.items[2].text, "Place roms in folder: /roms/%s", emu->short_name);
         sprintf(tab->listbox.items[3].text, "With file extension: %s", extensions);
         sprintf(tab->listbox.items[5].text, "You can hide this tab in the menu");
-        sprintf(tab->listbox.items[7].text, "Use SELECT and START to navigate");
         tab->listbox.cursor = 4;
     }
 }
@@ -457,6 +460,9 @@ void emulator_init(retro_emulator_t *emu)
     RG_LOGI("Initializing emulator '%s'\n", emu->system_name);
 
     emu->initialized = true;
+
+    sprintf(path, RG_BASE_PATH_COVERS "/%s", emu->short_name);
+    rg_mkdir(path);
 
     sprintf(path, RG_BASE_PATH_SAVES "/%s", emu->short_name);
     rg_mkdir(path);
@@ -657,7 +663,7 @@ void emulator_start(retro_emulator_file_t *file, bool load_state)
         (load_state ? RG_BOOT_RESUME : 0) | (gui.startup ? RG_BOOT_ONCE : 0));
 }
 
-void emulators_init()
+void emulators_init(void)
 {
     add_emulator("Nintendo Entertainment System", "nes", "nes fds nsf", "nofrendo-go", 16);
     // add_emulator("Nintendo Famicom Disk System",  "fds",  "fds",     "nofrendo-go", 16);

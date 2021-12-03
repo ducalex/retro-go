@@ -976,11 +976,11 @@ int rg_gui_debug_menu(const dialog_option_t *extra_options)
 
     if (sel == 1000)
     {
-        rg_emu_screenshot(RG_BASE_PATH "/screenshot.png", 0, 0);
+        rg_emu_screenshot(RG_ROOT_PATH "/screenshot.png", 0, 0);
     }
     else if (sel == 2000)
     {
-        rg_system_save_trace(RG_BASE_PATH "/trace.txt", 0);
+        rg_system_save_trace(RG_ROOT_PATH "/trace.txt", 0);
     }
     else if (sel == 4000)
     {

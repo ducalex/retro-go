@@ -309,7 +309,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
             if (panicTrace.message[0])
                 strcpy(message, panicTrace.message);
 
-            if (rg_system_save_trace(RG_BASE_PATH "/crash.log", 1))
+            if (rg_system_save_trace(RG_ROOT_PATH "/crash.log", 1))
                 strcat(message, "\nLog saved to SD Card.");
         }
 

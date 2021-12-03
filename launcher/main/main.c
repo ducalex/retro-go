@@ -293,11 +293,42 @@ static void retro_loop(void)
     }
 }
 
+static void try_migrate(void)
+{
+    if (rg_settings_get_int32("migration", 0) < 129)
+    {
+#if 0
+        rmdir(RG_BASE_PATH_COVERS); // Remove if present but empty
+        rmdir(RG_BASE_PATH_SAVES);  // Remove if present but empty
+        bool mv_data = !access("/sd/odroid/data", F_OK) && access(RG_BASE_PATH_SAVES, F_OK);
+        bool mv_art = !access("/sd/romart", F_OK) && access(RG_BASE_PATH_COVERS, F_OK);
+
+        if (mv_data && rg_gui_confirm("New save path in 1.29", "Can I move /odroid/data to /retro-go/saves?", true))
+            rename("/sd/odroid/data", RG_BASE_PATH_SAVES);
+
+        if (mv_art && rg_gui_confirm("New cover path in 1.29", "Can I move /romart to /retro-go/covers?", true))
+            rename("/sd/romart", RG_BASE_PATH_COVERS);
+#endif
+        // These don't conflict, no need to ask
+        rename(RG_ROOT_PATH "/odroid/favorite.txt", RG_BASE_PATH_CONFIG "/favorite.txt");
+        rename(RG_ROOT_PATH "/odroid/recent.txt", RG_BASE_PATH_CONFIG "/recent.txt");
+
+        rg_settings_set_int32("migration", 129);
+    }
+
+    rg_settings_save();
+}
+
 void app_main(void)
 {
     rg_system_init(32000, NULL);
     rg_gui_set_buffered(true);
 
+    rg_mkdir(RG_BASE_PATH_CACHE);
+    rg_mkdir(RG_BASE_PATH_CONFIG);
+    rg_mkdir(RG_BASE_PATH_SYSTEM);
+
+    try_migrate();
     gui_init();
 
     emulators_init();

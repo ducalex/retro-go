@@ -29,7 +29,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
         if (!tab->is_empty && tab->listbox.length)
             snprintf(tab->status[0].left, 24, "%d / %d", (tab->listbox.cursor + 1) % 10000, tab->listbox.length % 10000);
         else
-            snprintf(tab->status[0].left, 24, "No %.20s", book ? book->name : "bookmark");
+            snprintf(tab->status[0].left, 24, "No games");
         gui_set_status(tab, NULL, "");
 
         rg_image_free(tab->preview);
@@ -93,12 +93,11 @@ static void tab_refresh(book_type_t book_type)
     }
     else
     {
-        gui_resize_list(book->tab, 8);
+        gui_resize_list(book->tab, 6);
         sprintf(book->tab->listbox.items[0].text, "Welcome to Retro-Go!");
         sprintf(book->tab->listbox.items[2].text, "You have no %s games", book->name);
-        sprintf(book->tab->listbox.items[5].text, "You can hide this tab in the menu");
-        sprintf(book->tab->listbox.items[7].text, "Use SELECT and START to navigate");
-        book->tab->listbox.cursor = 4;
+        sprintf(book->tab->listbox.items[4].text, "You can hide this tab in the menu");
+        book->tab->listbox.cursor = 3;
     }
 }
 
@@ -148,6 +147,10 @@ static void book_save(book_type_t book_type)
     book_t *book = &books[book_type];
 
     FILE *fp = fopen(book->path, "w");
+    if (!fp && rg_mkdir(rg_dirname(book->path)))
+    {
+        fp = fopen(book->path, "w");
+    }
     if (fp)
     {
         for (int i = 0; i < book->count; i++)
@@ -167,11 +170,6 @@ static void book_init(book_type_t book_type, const char *name, const char *desc,
     char path[PATH_MAX + 1];
 
     sprintf(path, "%s/%s.txt", RG_BASE_PATH_CONFIG, name);
-
-    #ifdef RG_TARGET_ODROID_GO
-    sprintf(oldpath, "%s/%s.txt", RG_BASE_PATH "/odroid", name);
-    rename(oldpath, path);
-    #endif
 
     book->name = strdup(name);
     book->path = strdup(path);
@@ -246,7 +244,7 @@ bool bookmark_remove(book_type_t book, retro_emulator_file_t *file)
     return true;
 }
 
-void bookmarks_init()
+void bookmarks_init(void)
 {
     book_init(BOOK_TYPE_FAVORITE, "favorite", "Favorites", -1);
     book_init(BOOK_TYPE_RECENT, "recent", "Recently played", 16);

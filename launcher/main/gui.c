@@ -53,8 +53,6 @@ void gui_init(void)
         .width        = rg_display_get_status()->screen.width,
         .height       = rg_display_get_status()->screen.height,
     };
-    rg_display_clear(C_BLACK);
-
     // Always enter browse mode when leaving an emulator
     // boot reason should probably be abstracted by rg_system >_<
     gui.browse = gui.browse || esp_reset_reason() != ESP_RST_POWERON;
@@ -153,8 +151,8 @@ const rg_image_t *gui_get_image(const char *type, const char *subtype)
     image->id = fileid;
 
     // Try SD card, then search the built-ins
-    sprintf(path, RG_BASE_PATH "/retro-go/theme/%s", name);
-    if (!(image->img = rg_image_load_from_file(name, 0)))
+    sprintf(path, RG_BASE_PATH "/theme/%s", name);
+    if (!(image->img = rg_image_load_from_file(path, 0)))
     {
         for (const binfile_t **img = builtin_images; *img; img++)
         {
@@ -520,15 +518,15 @@ void gui_load_preview(tab_t *tab)
         }
 
         if (type == 0x1) // Game cover (old format)
-            sprintf(path, RG_BASE_PATH_ROMART "/%s/%X/%08X.art", dirname, file->checksum >> 28, file->checksum);
+            sprintf(path, RG_BASE_PATH_COVERS "/%s/%X/%08X.art", dirname, file->checksum >> 28, file->checksum);
         else if (type == 0x2) // Game cover (png)
-            sprintf(path, RG_BASE_PATH_ROMART "/%s/%X/%08X.png", dirname, file->checksum >> 28, file->checksum);
+            sprintf(path, RG_BASE_PATH_COVERS "/%s/%X/%08X.png", dirname, file->checksum >> 28, file->checksum);
         else if (type == 0x3) // Save state screenshot (png)
             sprintf(path, RG_BASE_PATH_SAVES "/%s/%s.png", file->folder + strlen(RG_BASE_PATH_ROMS), file->name);
         else if (type == 0x4) // Game cover (based on filename)
-            sprintf(path, RG_BASE_PATH_ROMART "/%s/%s.png", dirname, file->name);
+            sprintf(path, RG_BASE_PATH_COVERS "/%s/%s.png", dirname, file->name);
         else if (type == 0xF) // use generic cover image (not currently used)
-            sprintf(path, RG_BASE_PATH_ROMART "/%s/default.png", dirname);
+            sprintf(path, RG_BASE_PATH_COVERS "/%s/default.png", dirname);
         else
             continue;
 

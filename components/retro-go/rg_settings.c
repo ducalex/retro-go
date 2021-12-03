@@ -148,8 +148,8 @@ bool rg_settings_save(void)
     FILE *fp = fopen(CONFIG_FILE_PATH, "wb");
     if (!fp)
     {
-        // Sometimes the FAT is left in an inconsistent state and this might help
-        unlink(CONFIG_FILE_PATH);
+        if (unlink(CONFIG_FILE_PATH) == -1)
+            rg_mkdir(rg_dirname(CONFIG_FILE_PATH));
         fp = fopen(CONFIG_FILE_PATH, "wb");
     }
     if (fp)

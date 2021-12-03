@@ -64,17 +64,19 @@ Note: If you are stuck in an emulator, hold MENU while powering up the device to
 
 
 # Game covers 
-The preferred cover art format is PNG with a resolution of 160x168 and I recommend post-processing your 
+Game covers should be placed in the `romart` folder at the base of your sd card. You can obtain a pre-made pack from 
+this repository or from the release page. Retro-Go is also compatible with the older Go-Play romart pack.
+
+## Adding covers
+The preferred cover art format is PNG with a resolution of max 160x168 and I recommend post-processing your 
 PNG with [pngquant](https://pngquant.org/) or [imagemagick](https://imagemagick.org/script/index.php)'s 
-`-colors 255` for smaller file sizes. Retro-Go is also backwards-compatible with the official RAW565 Go-Play 
-romart pack that you may already have.
+`-colors 255` for smaller file sizes.
 
-For a quick start you can copy the folder `covers` of this repository to the root of your sdcard and 
-rename it `romart`. I also periodically upload zips to the release page.
-
-## Adding missing covers
-First identify the CRC32 of your game (in the launcher press A -> Properties). Now, let's assume that 
-the CRC32 of your NES game is ABCDE123, you must place the file at: `/romart/nes/A/ABCDE123.png`.
+You can use one of two naming schemes:
+- Using the CRC32 (press A -> Properties in the launcher to find it). Assuming a CRC of ABCDE123, the cover file 
+  will be `/romart/nes/A/ABCDE123.png`.
+- Using the rom file name. Assuming a rom named `myrom.nes`, the cover file will be 
+  `/romart/nes/myrom.nes.png` (notice the inclusion of the rom extension).
 
 _Note: If you need to compute the CRC32 outside of retro-go, please be mindful that certain systems 
 skip the file header in their CRC calculation (eg NES skips 16 bytes and Lynx skips 64 bytes). 

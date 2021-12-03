@@ -3,6 +3,7 @@
 #include <esp_event.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
 
@@ -96,7 +97,7 @@ bool rg_sdcard_mount(void)
 
 #endif
 
-    err = esp_vfs_fat_sdmmc_mount(RG_BASE_PATH, &host_config, &slot_config, &mount_config, &card);
+    err = esp_vfs_fat_sdmmc_mount(RG_ROOT_PATH, &host_config, &slot_config, &mount_config, &card);
 
     if (err != ESP_OK)
     {
@@ -105,16 +106,7 @@ bool rg_sdcard_mount(void)
         return false;
     }
 
-    RG_LOGI("SD Card mounted. driver=%d, serial=%08X\n", RG_STORAGE_DRIVER, card->cid.serial);
-
-    // I was worried but the delay this introduces is minimal
-    rg_mkdir(RG_BASE_PATH_CACHE);
-    rg_mkdir(RG_BASE_PATH_CONFIG);
-    // rg_mkdir(RG_BASE_PATH_ROMART);
-    // rg_mkdir(RG_BASE_PATH_ROMS);
-    // rg_mkdir(RG_BASE_PATH_SAVES);
-    rg_mkdir(RG_BASE_PATH_SYSTEM);
-    rg_mkdir(RG_BASE_PATH_TEMP);
+    RG_LOGI("SD Card mounted at %s. driver=%d\n", RG_ROOT_PATH, RG_STORAGE_DRIVER);
 
     return true;
 }
@@ -150,7 +142,7 @@ bool rg_mkdir(const char *dir)
         char temp[PATH_MAX + 1];
         strncpy(temp, dir, sizeof(temp) - 1);
 
-        for (char *p = temp + strlen(RG_BASE_PATH) + 1; *p; p++) {
+        for (char *p = temp + strlen(RG_ROOT_PATH) + 1; *p; p++) {
             if (*p == '/') {
                 *p = 0;
                 if (strlen(temp) > 0) {
