@@ -58,6 +58,7 @@ enum
     RG_LOG_WARN,
     RG_LOG_INFO,
     RG_LOG_DEBUG,
+    RG_LOG_MAX,
 };
 
 typedef enum

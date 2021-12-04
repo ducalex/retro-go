@@ -978,6 +978,6 @@ void rg_display_init()
     RG_LOGI("Initialization...\n");
     rg_display_reset_config();
     lcd_init();
-    xTaskCreatePinnedToCore(&display_task, "display_task", 2048, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(&display_task, "display_task", 2560, NULL, 5, NULL, 1);
     RG_LOGI("Display ready.\n");
 }
