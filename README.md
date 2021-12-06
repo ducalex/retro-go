@@ -142,7 +142,7 @@ Patching esp-idf may be required for full functionality. Patches are located in 
 - `enable-exfat`: Enable exFAT support. I don't recommended it but it works if you need it.
 
 ## Build everything and generate .fw:
-1. `rg_tool.py build-fw`
+1. `rg_tool.py build-fw` or `rg_tool.py release` (clean build)
 
 For a smaller build you can also specify which apps you want, for example the launcher + nes + gameboy only:
 1. `rg_tool.py build-fw launcher nofrendo-go gnuboy-go`

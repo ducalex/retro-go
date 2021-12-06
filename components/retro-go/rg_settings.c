@@ -59,9 +59,34 @@ static void json_set(cJSON *root, const char *key, cJSON *value)
 
 void rg_settings_init(const char *app_name)
 {
+    rg_settings_load();
+    rg_settings_set_app_name(app_name);
+}
+
+void rg_settings_set_app_name(const char *app_name)
+{
+    app_name = app_name ? app_name : "__app__";
+    app_root = cJSON_GetObjectItem(root, app_name);
+
+    if (!app_root)
+    {
+        app_root = cJSON_AddObjectToObject(root, app_name);
+    }
+    else if (!cJSON_IsObject(app_root))
+    {
+        app_root = cJSON_CreateObject();
+        cJSON_ReplaceItemInObject(root, app_name, app_root);
+    }
+}
+
+bool rg_settings_load(void)
+{
     char *buffer = NULL;
     const char *source;
     size_t length = 0;
+
+    free(root), root = NULL;
+    unsaved_changes = 0;
 
 #if RG_SETTINGS_USE_NVS
     if (nvs_flash_init() != ESP_OK)
@@ -108,25 +133,9 @@ void rg_settings_init(const char *app_name)
         root = cJSON_CreateObject();
     }
 
-    rg_settings_set_app_name(app_name);
-
     json_set(root, "version", cJSON_CreateNumber(CONFIG_VERSION));
-}
 
-void rg_settings_set_app_name(const char *app_name)
-{
-    app_name = app_name ? app_name : "__app__";
-    app_root = cJSON_GetObjectItem(root, app_name);
-
-    if (!app_root)
-    {
-        app_root = cJSON_AddObjectToObject(root, app_name);
-    }
-    else if (!cJSON_IsObject(app_root))
-    {
-        app_root = cJSON_CreateObject();
-        cJSON_ReplaceItemInObject(root, app_name, app_root);
-    }
+    return root != NULL;
 }
 
 bool rg_settings_save(void)

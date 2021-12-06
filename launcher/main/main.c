@@ -297,7 +297,7 @@ static void try_migrate(void)
 {
     if (rg_settings_get_int32("migration", 0) < 129)
     {
-#if 0
+#if 0 // Changed my mind for now, it might be a hassle to some users
         rmdir(RG_BASE_PATH_COVERS); // Remove if present but empty
         rmdir(RG_BASE_PATH_SAVES);  // Remove if present but empty
         bool mv_data = !access("/sd/odroid/data", F_OK) && access(RG_BASE_PATH_SAVES, F_OK);
@@ -309,6 +309,7 @@ static void try_migrate(void)
         if (mv_art && rg_gui_confirm("New cover path in 1.29", "Can I move /romart to /retro-go/covers?", true))
             rename("/sd/romart", RG_BASE_PATH_COVERS);
 #endif
+
         // These don't conflict, no need to ask
         rename(RG_ROOT_PATH "/odroid/favorite.txt", RG_BASE_PATH_CONFIG "/favorite.txt");
         rename(RG_ROOT_PATH "/odroid/recent.txt", RG_BASE_PATH_CONFIG "/recent.txt");

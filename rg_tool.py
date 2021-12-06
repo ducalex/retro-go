@@ -268,7 +268,7 @@ def monitor_app(target, port, baudrate=115200):
 parser = argparse.ArgumentParser(description="Retro-Go build tool")
 parser.add_argument(
 # To do: Learn to use subcommands instead...
-    "command", choices=["build-fw", "mkfw", "build", "clean", "flash", "monitor", "run"],
+    "command", choices=["build-fw", "release", "build", "clean", "flash", "monitor", "run"],
 )
 parser.add_argument(
     "apps", nargs="*", default="all", choices=["all"] + list(PROJECT_APPS.keys())
@@ -304,17 +304,17 @@ command = args.command
 apps = args.apps if "all" not in args.apps else PROJECT_APPS.keys()
 
 
-if command in ["clean", "build-fw"]:
+if command in ["clean", "release"]:
     print("=== Step: Cleaning ===\n")
     for app in apps:
         clean_app(app)
 
-if command in ["build", "build-fw", "run"]:
+if command in ["build", "build-fw", "release", "run"]:
     print("=== Step: Building ===\n")
     for app in apps:
         build_app(app, args.build_type, args.with_netplay, args.target)
 
-if command in ["mkfw", "build-fw"]:
+if command in ["build-fw", "release"]:
     print("=== Step: Packing ===\n")
     build_firmware(apps, args.shrink, args.target)
 
