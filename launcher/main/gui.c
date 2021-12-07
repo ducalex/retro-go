@@ -8,19 +8,11 @@
 
 #include "gui.h"
 
-#define HEADER_WIDTH        (gui.width)
 #define HEADER_HEIGHT       (50)
 #define LOGO_WIDTH          (46)
-#define LOGO_HEIGHT         (50)
-
-#define LIST_LEFT           (0)
-#define LIST_TOP            (HEADER_HEIGHT + 6)
-#define LIST_WIDTH          (gui.width)
-#define LIST_HEIGHT         (gui.height - LIST_TOP)
-#define LIST_LINE_COUNT     (LIST_HEIGHT / rg_gui_get_font_info().height)
-
-#define COVER_MAX_HEIGHT    ((int)(gui.height * 0.70f))
-#define COVER_MAX_WIDTH     ((int)(gui.width * 0.50f))
+#define LIST_LINE_COUNT     ((gui.height - (HEADER_HEIGHT + 6)) / rg_gui_get_font_info().height)
+#define PREVIEW_HEIGHT      ((int)(gui.height * 0.70f))
+#define PREVIEW_WIDTH       ((int)(gui.width * 0.50f))
 
 static const theme_t gui_themes[] = {
     {{C_TRANSPARENT, C_GRAY, C_TRANSPARENT, C_WHITE}},
@@ -160,6 +152,20 @@ const rg_image_t *gui_get_image(const char *type, const char *subtype)
             {
                 image->img = rg_image_load_from_memory((*img)->data, (*img)->size, 0);
                 break;
+            }
+        }
+    }
+
+    // All built-in images assume a 320x240 resolution. Rescale if current res is different!
+    if (gui.width != 320 || gui.height != 240)
+    {
+        if (strcmp(type, "background") == 0)
+        {
+            rg_image_t *temp = rg_image_copy_resampled(image->img, gui.width, gui.height, 0);
+            if (temp)
+            {
+                rg_image_free(image->img);
+                image->img = temp;
             }
         }
     }
@@ -347,15 +353,15 @@ void gui_redraw(void)
         gui_draw_list(tab);
         if (tab->preview)
         {
-            int height = RG_MIN(tab->preview->height, COVER_MAX_HEIGHT);
-            int width = RG_MIN(tab->preview->width, COVER_MAX_WIDTH);
+            int height = RG_MIN(tab->preview->height, PREVIEW_HEIGHT);
+            int width = RG_MIN(tab->preview->width, PREVIEW_WIDTH);
             rg_gui_draw_image(-width, -height, width, height, tab->preview);
         }
     }
     else
     {
         gui_draw_background(tab, 0);
-        gui_draw_header(tab, 90);
+        gui_draw_header(tab, (gui.height - HEADER_HEIGHT) / 2);
     }
     rg_gui_flush();
 }
@@ -386,29 +392,13 @@ void gui_draw_background(tab_t *tab, int shade)
         img = buffer;
     }
 
-    if (img)
-        rg_gui_draw_image(0, 0, gui.width, gui.height, img);
-    else
-        rg_gui_draw_rect(0, 0, gui.width, gui.height, 0, 0, C_BLACK);
+    rg_gui_draw_image(0, 0, gui.width, gui.height, img);
 }
 
 void gui_draw_header(tab_t *tab, int offset)
 {
-    const rg_image_t *img;
-
-    if ((img = gui_get_image("logo", tab->name)))
-        rg_gui_draw_image(0, offset, LOGO_WIDTH, LOGO_HEIGHT, img);
-    else
-        rg_gui_draw_rect(0, offset, LOGO_WIDTH, LOGO_HEIGHT, 0, 0, C_BLACK);
-
-    if ((img = gui_get_image("banner", tab->name)))
-    {
-        int width = RG_MIN(HEADER_WIDTH - LOGO_WIDTH - 1, img->width);
-        int height = RG_MIN(HEADER_HEIGHT - 8, img->height);
-        rg_gui_draw_image(LOGO_WIDTH + 1, offset + 8, width, height, img);
-    }
-    else
-        rg_gui_draw_rect(LOGO_WIDTH + 1, offset, HEADER_WIDTH - LOGO_WIDTH, HEADER_HEIGHT, 0, 0, C_BLACK);
+    rg_gui_draw_image(0, offset, LOGO_WIDTH, HEADER_HEIGHT, gui_get_image("logo", tab->name));
+    rg_gui_draw_image(LOGO_WIDTH + 1, offset + 8, 0, HEADER_HEIGHT - 8, gui_get_image("banner", tab->name));
 }
 
 void gui_draw_status(tab_t *tab)
@@ -426,33 +416,20 @@ void gui_draw_status(tab_t *tab)
 void gui_draw_list(tab_t *tab)
 {
     const theme_t *theme = &gui_themes[gui.theme % gui_themes_count];
+    rg_color_t fg[2] = {theme->list.standard_fg, theme->list.selected_fg};
+    rg_color_t bg[2] = {theme->list.standard_bg, theme->list.selected_bg};
+
     const listbox_t *list = &tab->listbox;
-    char text_label[64];
-    uint16_t color_fg = C_WHITE;
-    uint16_t color_bg = C_BLACK;
+    int top = HEADER_HEIGHT + 6;
 
-    int lines = LIST_LINE_COUNT;
-    int y = LIST_TOP;
-    // int y_max = y + LIST_HEIGHT;
-
-    for (int i = 0; i < lines; i++)
+    for (int i = 0, lines = LIST_LINE_COUNT; i < lines; i++)
     {
-        int entry = list->cursor + i - (lines / 2);
+        int idx = list->cursor + i - (lines / 2);
+        int selected = idx == list->cursor;
+        char *label = (idx >= 0 && idx < list->length) ? list->items[idx].text : "";
 
-        if (entry >= 0 && entry < list->length) {
-            sprintf(text_label, "%.63s", list->items[entry].text);
-        } else {
-            text_label[0] = '\0';
-        }
-
-        color_fg = (entry == list->cursor) ? theme->list.selected_fg : theme->list.standard_fg;
-        color_bg = (entry == list->cursor) ? theme->list.selected_bg : theme->list.standard_bg;
-
-        y += rg_gui_draw_text(LIST_LEFT, y, LIST_WIDTH, text_label, color_fg, color_bg, 0).height;
+        top += rg_gui_draw_text(0, top, gui.width, label, fg[selected], bg[selected], 0).height;
     }
-
-    // if (y < y_max)
-    //     rg_gui_draw_rect(0, y, LIST_WIDTH, y_max - y, 0, 0, color_bg);
 }
 
 void gui_load_preview(tab_t *tab)
@@ -542,10 +519,9 @@ void gui_load_preview(tab_t *tab)
 
     if (tab->preview)
     {
-        // Resizing is "slow", so only do it if it's grossly oversized, otherwise we'll simply crop...
-        if (tab->preview->width > COVER_MAX_WIDTH + 16 || tab->preview->height > COVER_MAX_HEIGHT + 16)
+        if (tab->preview->width > PREVIEW_WIDTH || tab->preview->height > PREVIEW_HEIGHT)
         {
-            rg_image_t *temp = rg_image_copy_resized(tab->preview, COVER_MAX_WIDTH, COVER_MAX_HEIGHT);
+            rg_image_t *temp = rg_image_copy_resampled(tab->preview, PREVIEW_WIDTH, PREVIEW_HEIGHT, 0);
             if (temp)
             {
                 rg_image_free(tab->preview);

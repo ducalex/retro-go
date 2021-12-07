@@ -336,10 +336,16 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_si
     }
 }
 
-void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, const rg_image_t *img)
+void rg_gui_draw_image(int x_pos, int y_pos, int max_width, int max_height, const rg_image_t *img)
 {
-    RG_ASSERT(img && img->data, "Bad image");
-    rg_gui_copy_buffer(x_pos, y_pos, width ?: img->width, height ?: img->height, img->width * 2, img->data);
+    if (img)
+    {
+        int width = max_width ? RG_MIN(max_width, img->width) : img->width;
+        int height = max_height ? RG_MIN(max_height, img->height) : img->height;
+        rg_gui_copy_buffer(x_pos, y_pos, width, height, img->width * 2, img->data);
+    }
+    else // We fill a rect to show something is missing instead of abort...
+        rg_gui_draw_rect(x_pos, y_pos, max_width, max_height, 2, C_RED, C_BLACK);
 }
 
 void rg_gui_draw_battery(int x_pos, int y_pos)
@@ -1215,7 +1221,7 @@ bool rg_image_save_to_file(const char *filename, const rg_image_t *img, uint32_t
     return true;
 }
 
-rg_image_t *rg_image_copy_resized(const rg_image_t *img, int new_width, int new_height)
+rg_image_t *rg_image_copy_resampled(const rg_image_t *img, int new_width, int new_height, int new_format)
 {
     RG_ASSERT(img, "bad param");
 
@@ -1234,7 +1240,15 @@ rg_image_t *rg_image_copy_resized(const rg_image_t *img, int new_width, int new_
     }
 
     rg_image_t *new_img = rg_image_alloc(new_width, new_height);
-    if (new_img)
+    if (!new_img)
+    {
+        RG_LOGW("Out of memory!\n");
+    }
+    else if (new_width == img->width && new_height == img->height)
+    {
+        memcpy(new_img, img, (2 + new_width * new_height) * 2);
+    }
+    else
     {
         float step_x = (float)img->width / new_width;
         float step_y = (float)img->height / new_height;

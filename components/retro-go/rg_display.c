@@ -15,10 +15,9 @@
 #define SPI_BUFFER_COUNT (6)
 #define SPI_BUFFER_LENGTH (4 * 320) // In pixels (uint16)
 
-static spi_transaction_t spi_trans[SPI_TRANSACTION_COUNT];
 static spi_device_handle_t spi_dev;
-static QueueHandle_t spi_buffers_queue;
-static QueueHandle_t spi_queue;
+static QueueHandle_t spi_transactions;
+static QueueHandle_t spi_buffers;
 static QueueHandle_t display_task_queue;
 
 static rg_display_t display;
@@ -50,7 +49,7 @@ static inline uint16_t *spi_get_buffer()
 {
     uint16_t *buffer;
 
-    if (xQueueReceive(spi_buffers_queue, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
+    if (xQueueReceive(spi_buffers, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
     {
         RG_PANIC("display");
     }
@@ -65,7 +64,7 @@ static inline void spi_queue_transaction(const void *data, size_t length, uint32
     if (!data || length < 1)
         return;
 
-    xQueueReceive(spi_queue, &t, portMAX_DELAY);
+    xQueueReceive(spi_transactions, &t, portMAX_DELAY);
 
     *t = (spi_transaction_t) {
         .tx_buffer = NULL,
@@ -112,11 +111,11 @@ static void spi_task(void *arg)
         {
             if ((int)t->user & 2)
             {
-                xQueueSend(spi_buffers_queue, &t->tx_buffer, 0);
+                xQueueSend(spi_buffers, &t->tx_buffer, 0);
             }
-            if (xQueueSend(spi_queue, &t, 0) != pdTRUE)
+            if (xQueueSend(spi_transactions, &t, 0) != pdTRUE)
             {
-                RG_PANIC("spi_queue full..?");
+                RG_PANIC("spi_transactions full..?");
             }
         }
     }
@@ -126,19 +125,19 @@ static void spi_task(void *arg)
 
 static void spi_init()
 {
-    spi_queue = xQueueCreate(SPI_TRANSACTION_COUNT, sizeof(spi_transaction_t *));
-    spi_buffers_queue = xQueueCreate(SPI_BUFFER_COUNT, sizeof(uint16_t *));
+    spi_transactions = xQueueCreate(SPI_TRANSACTION_COUNT, sizeof(spi_transaction_t *));
+    spi_buffers = xQueueCreate(SPI_BUFFER_COUNT, sizeof(uint16_t *));
 
-    for (size_t x = 0; x < SPI_TRANSACTION_COUNT; x++)
+    while (uxQueueSpacesAvailable(spi_transactions))
     {
-        void *trans = &spi_trans[x];
-        xQueueSend(spi_queue, &trans, portMAX_DELAY);
+        void *trans = malloc(sizeof(spi_transaction_t));
+        xQueueSend(spi_transactions, &trans, portMAX_DELAY);
     }
 
-    while (uxQueueSpacesAvailable(spi_buffers_queue))
+    while (uxQueueSpacesAvailable(spi_buffers))
     {
         void *buffer = rg_alloc(SPI_BUFFER_LENGTH * 2, MEM_DMA);
-        xQueueSend(spi_buffers_queue, &buffer, portMAX_DELAY);
+        xQueueSend(spi_buffers, &buffer, portMAX_DELAY);
     }
 
     const spi_bus_config_t buscfg = {
@@ -720,7 +719,7 @@ bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame,
         }
     }
 
-    rg_image_t *img = rg_image_copy_resized(original, width, height);
+    rg_image_t *img = rg_image_copy_resampled(original, width, height, 0);
     rg_image_free(original);
 
     bool success = img && rg_image_save_to_file(filename, img, 0);
