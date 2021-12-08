@@ -95,7 +95,7 @@ static void update_keymap(int id)
 	}
 }
 
-static dialog_return_t menu_keymap_cb(dialog_option_t *option, dialog_event_t event)
+static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
 	const int max = KEYMAPS_COUNT - 1;
 	const int prev = keymap_id;
@@ -113,8 +113,8 @@ static dialog_return_t menu_keymap_cb(dialog_option_t *option, dialog_event_t ev
 
 	if (event == RG_DIALOG_ENTER)
 	{
-		dialog_option_t options[keymap.size + 2] = {0};
-		dialog_option_t *option = options;
+		rg_gui_option_t options[keymap.size + 2] = {0};
+		rg_gui_option_t *option = options;
 		char values[keymap.size + 2][16] = {0};
 
 		for (int i = 0; i < keymap.size; i++)
@@ -147,16 +147,7 @@ static dialog_return_t menu_keymap_cb(dialog_option_t *option, dialog_event_t ev
 		rg_display_clear(C_BLACK);
 	}
 
-    return RG_DIALOG_IGNORE;
-}
-
-static void settings_handler(void)
-{
-	dialog_option_t options[] = {
-		{2, "Controls", NULL, 1, &menu_keymap_cb},
-		RG_DIALOG_CHOICE_LAST
-	};
-    rg_gui_dialog("Advanced", options, 0);
+    return RG_DIALOG_VOID;
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)
@@ -197,9 +188,31 @@ static bool reset_handler(bool hard)
 
 static void snes9x_task(void *arg)
 {
-	printf("\nSnes9x " VERSION " for ESP32\n");
+}
 
-	vTaskDelay(5); // Make sure app_main() returned and freed its stack
+extern "C" void app_main(void)
+{
+	const rg_handlers_t handlers = {
+		.loadState = &load_state_handler,
+		.saveState = &save_state_handler,
+		.reset = &reset_handler,
+		.screenshot = &screenshot_handler,
+		.event = NULL,
+		.netplay = NULL,
+	};
+	const rg_gui_option_t options[] = {
+		{2, "Controls", NULL, 1, &menu_keymap_cb},
+		RG_DIALOG_CHOICE_LAST
+	};
+
+	app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
+
+	updates[0].buffer = rg_alloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2, MEM_SLOW);
+	updates[1].buffer = rg_alloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2, MEM_SLOW);
+
+	rg_display_set_source_format(SNES_WIDTH, SNES_HEIGHT, 0, 0, SNES_WIDTH * 2, RG_PIXEL_565_LE);
+
+	printf("\nSnes9x " VERSION " for ESP32\n");
 
 	S9xInitSettings();
 
@@ -285,28 +298,4 @@ static void snes9x_task(void *arg)
 		IPPU.RenderThisFrame = (((++frames_counter) & 3) == 3);
 		GFX.Screen = (uint16*)currentUpdate->buffer;
 	}
-
-	vTaskDelete(NULL);
-}
-
-extern "C" void app_main(void)
-{
-	const rg_handlers_t handlers = {
-		.loadState = &load_state_handler,
-		.saveState = &save_state_handler,
-		.reset = &reset_handler,
-		.screenshot = &screenshot_handler,
-		.event = NULL,
-		.netplay = NULL,
-		.settings = &settings_handler,
-	};
-
-	app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
-
-	updates[0].buffer = rg_alloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2, MEM_SLOW);
-	updates[1].buffer = rg_alloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2, MEM_SLOW);
-
-	rg_display_set_source_format(SNES_WIDTH, SNES_HEIGHT, 0, 0, SNES_WIDTH * 2, RG_PIXEL_565_LE);
-
-	snes9x_task(NULL);
 }

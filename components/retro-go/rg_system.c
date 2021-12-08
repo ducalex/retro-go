@@ -257,7 +257,7 @@ void rg_system_time_save()
     }
 }
 
-rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers)
+rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options)
 {
     const esp_app_desc_t *esp_app = esp_ota_get_app_description();
 
@@ -281,6 +281,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers)
     app.logLevel = RG_LOG_INFO;
     app.isLauncher = (strcmp(app.realname, RG_APP_LAUNCHER) == 0);
     app.mainTaskHandle = xTaskGetCurrentTaskHandle();
+    app.options = options; // Todo: We should make a copy of it
     if (handlers)
         app.handlers = *handlers;
 

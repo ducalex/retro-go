@@ -89,7 +89,7 @@ static void set_display_mode(void)
 }
 
 
-static dialog_return_t rotation_cb(dialog_option_t *option, dialog_event_t event)
+static rg_gui_event_t rotation_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int rotation = (int)rg_display_get_rotation();
 
@@ -109,16 +109,7 @@ static dialog_return_t rotation_cb(dialog_option_t *option, dialog_event_t event
     if (rotation == RG_DISPLAY_ROTATION_LEFT)  strcpy(option->value, "Left ");
     if (rotation == RG_DISPLAY_ROTATION_RIGHT) strcpy(option->value, "Right");
 
-    return RG_DIALOG_IGNORE;
-}
-
-static void settings_handler(void)
-{
-    const dialog_option_t options[] = {
-        {100, "Rotation", NULL, 1, &rotation_cb},
-        RG_DIALOG_CHOICE_LAST
-    };
-    rg_gui_dialog("Advanced", options, 0);
+    return RG_DIALOG_VOID;
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)
@@ -173,10 +164,13 @@ extern "C" void app_main(void)
         .screenshot = &screenshot_handler,
         .event = NULL,
         .netplay = NULL,
-        .settings = &settings_handler,
+    };
+    const rg_gui_option_t options[] = {
+        {100, "Rotation", NULL, 1, &rotation_cb},
+        RG_DIALOG_CHOICE_LAST
     };
 
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
+    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
 
     // the HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH is deliberate because of rotation
     updates[0].buffer = (void*)rg_alloc(HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH * 2, MEM_FAST);

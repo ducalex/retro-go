@@ -50,7 +50,6 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         if (file)
             emulator_show_file_menu(file, false);
-        gui_redraw();
     }
     else if (event == KEY_PRESS_B)
     {

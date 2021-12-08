@@ -11,36 +11,36 @@
 #include "gui.h"
 
 
-static dialog_return_t toggle_tab_cb(dialog_option_t *option, dialog_event_t event)
+static rg_gui_event_t toggle_tab_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     tab_t *tab = gui.tabs[option->id];
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         tab->enabled = !tab->enabled;
     }
     strcpy(option->value, tab->enabled ? "Show" : "Hide");
-    return RG_DIALOG_IGNORE;
+    return RG_DIALOG_VOID;
 }
 
-static dialog_return_t toggle_tabs_cb(dialog_option_t *option, dialog_event_t event)
+static rg_gui_event_t toggle_tabs_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER) {
-        dialog_option_t options[gui.tabcount + 1];
-        dialog_option_t *option = &options[0];
+        rg_gui_option_t options[gui.tabcount + 1];
+        rg_gui_option_t *option = &options[0];
 
         for (int i = 0; i < gui.tabcount; ++i)
         {
-            *option++ = (dialog_option_t) {i, gui.tabs[i]->name, "...", 1, &toggle_tab_cb};
+            *option++ = (rg_gui_option_t) {i, gui.tabs[i]->name, "...", 1, &toggle_tab_cb};
         }
 
-        *option++ = (dialog_option_t)RG_DIALOG_CHOICE_LAST;
+        *option++ = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
 
         rg_gui_dialog("Tabs Visibility", options, 0);
         gui_redraw();
     }
-    return RG_DIALOG_IGNORE;
+    return RG_DIALOG_VOID;
 }
 
-static dialog_return_t startup_app_cb(dialog_option_t *option, dialog_event_t event)
+static rg_gui_event_t startup_app_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     const char *modes[] = {"Last app", "Launcher"};
     int max = 1;
@@ -49,10 +49,10 @@ static dialog_return_t startup_app_cb(dialog_option_t *option, dialog_event_t ev
     if (event == RG_DIALOG_NEXT && ++gui.startup > max) gui.startup = 0;
 
     strcpy(option->value, modes[gui.startup % (max+1)]);
-    return RG_DIALOG_IGNORE;
+    return RG_DIALOG_VOID;
 }
 
-static dialog_return_t show_preview_cb(dialog_option_t *option, dialog_event_t event)
+static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV) {
         if (--gui.show_preview < 0) gui.show_preview = PREVIEW_MODE_COUNT - 1;
@@ -64,10 +64,10 @@ static dialog_return_t show_preview_cb(dialog_option_t *option, dialog_event_t e
     }
     const char *values[] = {"None      ", "Cover,Save", "Save,Cover", "Cover only", "Save only "};
     strcpy(option->value, values[gui.show_preview % PREVIEW_MODE_COUNT]);
-    return RG_DIALOG_IGNORE;
+    return RG_DIALOG_VOID;
 }
 
-static dialog_return_t color_shift_cb(dialog_option_t *option, dialog_event_t event)
+static rg_gui_event_t color_shift_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int max = gui_themes_count - 1;
     if (event == RG_DIALOG_PREV) {
@@ -79,7 +79,7 @@ static dialog_return_t color_shift_cb(dialog_option_t *option, dialog_event_t ev
         gui_redraw();
     }
     sprintf(option->value, "%d/%d", gui.theme + 1, max + 1);
-    return RG_DIALOG_IGNORE;
+    return RG_DIALOG_VOID;
 }
 
 static void retro_loop(void)
@@ -151,18 +151,7 @@ static void retro_loop(void)
         if (joystick == RG_KEY_OPTION)
         #endif
         {
-            const dialog_option_t options[] = {
-                {0, "Color theme", "...", 1, &color_shift_cb},
-                {0, "Preview    ", "...", 1, &show_preview_cb},
-                {0, "Startup    ", "...", 1, &startup_app_cb},
-                {0, "Hide tabs  ", "...", 1, &toggle_tabs_cb},
-                #if !RG_GAMEPAD_OPTION_BTN
-                RG_DIALOG_SEPARATOR,
-                {1, "About... ", NULL,  1, NULL},
-                #endif
-                RG_DIALOG_CHOICE_LAST
-            };
-            if (rg_gui_settings_menu(options) == 1)
+            if (rg_gui_settings_menu() == 123)
                 rg_gui_about_menu(NULL);
             gui_save_config();
             redraw_pending = true;
@@ -276,8 +265,19 @@ void app_main(void)
     const rg_handlers_t handlers = {
         .event = &event_handler,
     };
+    const rg_gui_option_t options[] = {
+        {0, "Color theme", "...", 1, &color_shift_cb},
+        {0, "Preview    ", "...", 1, &show_preview_cb},
+        {0, "Startup    ", "...", 1, &startup_app_cb},
+        {0, "Hide tabs  ", "...", 1, &toggle_tabs_cb},
+        #if !RG_GAMEPAD_OPTION_BTN
+        RG_DIALOG_SEPARATOR,
+        {123, "About... ", NULL,  1, NULL},
+        #endif
+        RG_DIALOG_CHOICE_LAST
+    };
 
-    rg_system_init(32000, &handlers);
+    rg_system_init(32000, &handlers, options);
     rg_gui_set_buffered(true);
 
     rg_mkdir(RG_BASE_PATH_CACHE);

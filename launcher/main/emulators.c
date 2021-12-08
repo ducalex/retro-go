@@ -407,7 +407,6 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         if (file)
             emulator_show_file_menu(file, false);
-        gui_redraw();
     }
     else if (event == KEY_PRESS_B)
     {
@@ -549,7 +548,7 @@ void emulator_show_file_info(retro_emulator_file_t *file)
         return;
     }
 
-    dialog_option_t options[] = {
+    rg_gui_option_t options[] = {
         {0, "Name", (char *)file->name, 1, NULL},
         // {0, "Type", (char *)file->emulator->short_name, 1, NULL},
         {0, "Folder", (char *)file->folder, 1, NULL},
@@ -584,7 +583,7 @@ void emulator_show_file_menu(retro_emulator_file_t *file, bool advanced)
     bool has_sram = access(sram_path, F_OK) == 0;
     bool is_fav = bookmark_find(BOOK_TYPE_FAVORITE, file) != NULL;
 
-    dialog_option_t choices[] = {
+    rg_gui_option_t choices[] = {
         {0, "Resume game", NULL, has_save, NULL},
         {1, "New game    ", NULL, 1, NULL},
         {0, "------------", NULL, -1, NULL},
@@ -652,6 +651,8 @@ void emulator_show_file_menu(retro_emulator_file_t *file, bool advanced)
     free(save_path);
     free(sram_path);
     free(scrn_path);
+
+    gui_redraw();
 }
 
 void emulator_start(retro_emulator_file_t *file, bool load_state)

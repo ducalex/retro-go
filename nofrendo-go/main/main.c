@@ -136,7 +136,7 @@ static void build_palette(int n)
     previousUpdate = NULL;
 }
 
-static dialog_return_t sprite_limit_cb(dialog_option_t *option, dialog_event_t event)
+static rg_gui_event_t sprite_limit_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     bool spritelimit = ppu_getopt(PPU_LIMIT_SPRITES);
 
@@ -149,10 +149,10 @@ static dialog_return_t sprite_limit_cb(dialog_option_t *option, dialog_event_t e
 
     strcpy(option->value, spritelimit ? "On " : "Off");
 
-    return RG_DIALOG_IGNORE;
+    return RG_DIALOG_VOID;
 }
 
-static dialog_return_t overscan_update_cb(dialog_option_t *option, dialog_event_t event)
+static rg_gui_event_t overscan_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
@@ -163,10 +163,10 @@ static dialog_return_t overscan_update_cb(dialog_option_t *option, dialog_event_
 
     strcpy(option->value, overscan ? "Auto" : "Off ");
 
-    return RG_DIALOG_IGNORE;
+    return RG_DIALOG_VOID;
 }
 
-static dialog_return_t autocrop_update_cb(dialog_option_t *option, dialog_event_t event)
+static rg_gui_event_t autocrop_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int val = autocrop;
     int max = 2;
@@ -185,10 +185,10 @@ static dialog_return_t autocrop_update_cb(dialog_option_t *option, dialog_event_
     if (val == 1) strcpy(option->value, "Auto  ");
     if (val == 2) strcpy(option->value, "Always");
 
-    return RG_DIALOG_IGNORE;
+    return RG_DIALOG_VOID;
 }
 
-static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t event)
+static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int pal = palette;
     int max = NES_PALETTE_COUNT - 1;
@@ -213,19 +213,7 @@ static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t
     if (pal == NES_PALETTE_PVM) sprintf(option->value, "%.7s", "PVM");
     if (pal == NES_PALETTE_SMOOTH) sprintf(option->value, "%.7s", "Smooth");
 
-    return RG_DIALOG_IGNORE;
-}
-
-static void settings_handler(void)
-{
-    const dialog_option_t options[] = {
-        {1, "Palette     ", "Default", 1, &palette_update_cb},
-        {2, "Overscan    ", "Auto ", 1, &overscan_update_cb},
-        {3, "Crop sides  ", "Never", 1, &autocrop_update_cb},
-        {4, "Sprite limit", "On   ", 1, &sprite_limit_cb},
-        RG_DIALOG_CHOICE_LAST
-    };
-    rg_gui_dialog("Advanced", options, 0);
+    return RG_DIALOG_VOID;
 }
 
 
@@ -247,10 +235,16 @@ void app_main(void)
         .reset = &reset_handler,
         .netplay = &netplay_handler,
         .screenshot = &screenshot_handler,
-        .settings = &settings_handler,
+    };
+    const rg_gui_option_t options[] = {
+        {1, "Palette     ", "Default", 1, &palette_update_cb},
+        {2, "Overscan    ", "Auto ", 1, &overscan_update_cb},
+        {3, "Crop sides  ", "Never", 1, &autocrop_update_cb},
+        {4, "Sprite limit", "On   ", 1, &sprite_limit_cb},
+        RG_DIALOG_CHOICE_LAST
     };
 
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
+    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
 
     overscan = rg_settings_get_number(NS_APP, SETTING_OVERSCAN, 1);
     autocrop = rg_settings_get_number(NS_APP, SETTING_AUTOCROP, 0);

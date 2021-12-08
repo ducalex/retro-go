@@ -99,7 +99,7 @@ void osd_gfx_blit(void)
     }
 }
 
-static dialog_return_t overscan_update_cb(dialog_option_t *option, dialog_event_t event)
+static rg_gui_event_t overscan_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
@@ -110,10 +110,10 @@ static dialog_return_t overscan_update_cb(dialog_option_t *option, dialog_event_
 
     strcpy(option->value, overscan ? "On " : "Off");
 
-    return RG_DIALOG_IGNORE;
+    return RG_DIALOG_VOID;
 }
 
-static dialog_return_t sampletype_update_cb(dialog_option_t *option, dialog_event_t event)
+static rg_gui_event_t sampletype_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         downsample ^= 1;
@@ -122,17 +122,7 @@ static dialog_return_t sampletype_update_cb(dialog_option_t *option, dialog_even
 
     strcpy(option->value, downsample ? "On " : "Off");
 
-    return RG_DIALOG_IGNORE;
-}
-
-static void settings_handler(void)
-{
-    const dialog_option_t options[] = {
-        {2, "Overscan      ", "On ", 1, &overscan_update_cb},
-        {3, "Unsigned audio", "Off", 1, &sampletype_update_cb},
-        RG_DIALOG_CHOICE_LAST
-    };
-    rg_gui_dialog("Advanced", options, 0);
+    return RG_DIALOG_VOID;
 }
 
 void osd_input_read(uint8_t joypads[8])
@@ -248,10 +238,14 @@ void app_main(void)
         .saveState = &save_state_handler,
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
-        .settings = &settings_handler,
+    };
+    const rg_gui_option_t options[] = {
+        {2, "Overscan      ", "On ", 1, &overscan_update_cb},
+        {3, "Unsigned audio", "Off", 1, &sampletype_update_cb},
+        RG_DIALOG_CHOICE_LAST
     };
 
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
+    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
 
     framebuffers[0] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_FAST);
     framebuffers[1] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_FAST);

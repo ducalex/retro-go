@@ -74,7 +74,7 @@ static bool reset_handler(bool hard)
     return true;
 }
 
-static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t event)
+static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int pal = gnuboy_get_palette();
     int max = GB_PALETTE_COUNT - 1;
@@ -100,10 +100,10 @@ static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t
     else
         sprintf(option->value, "%d/%d", pal + 1, max - 1);
 
-    return RG_DIALOG_IGNORE;
+    return RG_DIALOG_VOID;
 }
 
-static dialog_return_t sram_save_now_cb(dialog_option_t *option, dialog_event_t event)
+static rg_gui_event_t sram_save_now_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
     {
@@ -118,13 +118,13 @@ static dialog_return_t sram_save_now_cb(dialog_option_t *option, dialog_event_t 
 
         rg_system_set_led(0);
 
-        return RG_DIALOG_SELECT;
+        return RG_DIALOG_CLOSE;
     }
 
-    return RG_DIALOG_IGNORE;
+    return RG_DIALOG_VOID;
 }
 
-static dialog_return_t sram_autosave_cb(dialog_option_t *option, dialog_event_t event)
+static rg_gui_event_t sram_autosave_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV) autoSaveSRAM--;
     if (event == RG_DIALOG_NEXT) autoSaveSRAM++;
@@ -139,10 +139,10 @@ static dialog_return_t sram_autosave_cb(dialog_option_t *option, dialog_event_t 
     if (autoSaveSRAM == 0) strcpy(option->value, "Off ");
     else sprintf(option->value, "%lds", autoSaveSRAM);
 
-    return RG_DIALOG_IGNORE;
+    return RG_DIALOG_VOID;
 }
 
-static dialog_return_t rtc_t_update_cb(dialog_option_t *option, dialog_event_t event)
+static rg_gui_event_t rtc_t_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int d, h, m, s;
 
@@ -173,13 +173,13 @@ static dialog_return_t rtc_t_update_cb(dialog_option_t *option, dialog_event_t e
 
     // TO DO: Update system clock
 
-    return RG_DIALOG_IGNORE;
+    return RG_DIALOG_VOID;
 }
 
-static dialog_return_t rtc_update_cb(dialog_option_t *option, dialog_event_t event)
+static rg_gui_event_t rtc_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER) {
-        dialog_option_t choices[] = {
+        rg_gui_option_t choices[] = {
             {'d', "Day", "000", 1, &rtc_t_update_cb},
             {'h', "Hour", "00", 1, &rtc_t_update_cb},
             {'m', "Min",  "00", 1, &rtc_t_update_cb},
@@ -191,25 +191,7 @@ static dialog_return_t rtc_update_cb(dialog_option_t *option, dialog_event_t eve
     int h, m;
     gnuboy_get_time(NULL, &h, &m, NULL);
     sprintf(option->value, "%02d:%02d", h, m);
-    return RG_DIALOG_IGNORE;
-}
-
-static void settings_handler(void)
-{
-    dialog_option_t options[] = {
-        {100, "Palette", "7/7", 1, &palette_update_cb},
-        {101, "Set clock", "00:00", 1, &rtc_update_cb},
-        RG_DIALOG_SEPARATOR,
-        {111, "Auto save SRAM", "Off", 1, &sram_autosave_cb},
-        {112, "Save SRAM now ", NULL, 1, &sram_save_now_cb},
-        RG_DIALOG_CHOICE_LAST
-    };
-
-    // Don't show palette option for GBC
-    if (gnuboy_get_hwtype() == GB_HW_CGB)
-        rg_gui_dialog("Advanced", options + 1, 0);
-    else
-        rg_gui_dialog("Advanced", options, 0);
+    return RG_DIALOG_VOID;
 }
 
 static void vblank_callback(void)
@@ -244,10 +226,17 @@ void app_main(void)
         .reset = &reset_handler,
         .netplay = NULL,
         .screenshot = &screenshot_handler,
-        .settings = &settings_handler,
+    };
+    const rg_gui_option_t options[] = {
+        {100, "Palette", "7/7", 1, &palette_update_cb},
+        {101, "Set clock", "00:00", 1, &rtc_update_cb},
+        RG_DIALOG_SEPARATOR,
+        {111, "Auto save SRAM", "Off", 1, &sram_autosave_cb},
+        {112, "Save SRAM now ", NULL, 1, &sram_save_now_cb},
+        RG_DIALOG_CHOICE_LAST
     };
 
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
+    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
 
     updates[0].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
     updates[1].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
@@ -283,6 +272,10 @@ void app_main(void)
         rg_emu_load_state(0);
     else
         sram_load(sramFile);
+
+    // Don't show palette option for GBC
+    if (gnuboy_get_hwtype() == GB_HW_CGB)
+        app->options++;
 
     // Ready!
 

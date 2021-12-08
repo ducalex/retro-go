@@ -102,7 +102,7 @@ static const struct {int mask; int *key;} keymap[] = {
 static const char *SETTING_GAMMA = "Gamma";
 
 
-static dialog_return_t gamma_update_cb(dialog_option_t *option, dialog_event_t event)
+static rg_gui_event_t gamma_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int gamma = usegamma;
     int max = 9;
@@ -124,7 +124,7 @@ static dialog_return_t gamma_update_cb(dialog_option_t *option, dialog_event_t e
 
     sprintf(option->value, "%d/%d", gamma, max);
 
-    return RG_DIALOG_IGNORE;
+    return RG_DIALOG_VOID;
 }
 
 
@@ -490,15 +490,6 @@ static bool reset_handler(bool hard)
     return false;
 }
 
-static void settings_handler(void)
-{
-    dialog_option_t options[] = {
-        {100, "Gamma Boost", "0/5", 1, &gamma_update_cb},
-        RG_DIALOG_CHOICE_LAST
-    };
-    rg_gui_dialog("Advanced", options, 0);
-}
-
 static void event_handler(int event, void *arg)
 {
     if (event == RG_EVENT_SHUTDOWN)
@@ -518,11 +509,14 @@ void app_main()
         // .saveState = &save_state_handler,
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
-        .settings = &settings_handler,
         .event = &event_handler,
     };
+    const rg_gui_option_t options[] = {
+        {100, "Gamma Boost", "0/5", 1, &gamma_update_cb},
+        RG_DIALOG_CHOICE_LAST
+    };
 
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
+    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
     app->refreshRate = TICRATE;
 
     update.buffer = rg_alloc(SCREENHEIGHT*SCREENWIDTH, MEM_FAST);

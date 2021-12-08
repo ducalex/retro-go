@@ -78,7 +78,6 @@ typedef void (*rg_event_handler_t)(int event, void *arg);
 typedef bool (*rg_screenshot_handler_t)(const char *filename, int width, int height);
 typedef int  (*rg_mem_read_handler_t)(int addr);
 typedef int  (*rg_mem_write_handler_t)(int addr, int value);
-typedef void (*rg_settings_handler_t)(void);
 
 typedef struct
 {
@@ -90,7 +89,6 @@ typedef struct
     rg_netplay_handler_t netplay;       // netplay handler
     rg_mem_read_handler_t memRead;      // Used by for cheats and debugging
     rg_mem_write_handler_t memWrite;    // Used by for cheats and debugging
-    rg_settings_handler_t settings;     // Called by "More..." in rg_gui_settings_menu()
 } rg_handlers_t;
 
 // TO DO: Make it an abstract ring buffer implementation?
@@ -126,6 +124,7 @@ typedef struct
     int wdtTimeout;
     const char *romPath;
     void *mainTaskHandle;
+    const rg_gui_option_t *options;
     rg_handlers_t handlers;
     rg_logbuf_t log;
 } rg_app_t;
@@ -145,7 +144,7 @@ typedef struct
     uint32_t freeStackMain;
 } rg_stats_t;
 
-rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers);
+rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options);
 void rg_system_panic(const char *reason, const char *context) __attribute__((noreturn));
 void rg_system_shutdown() __attribute__((noreturn));
 void rg_system_sleep() __attribute__((noreturn));
