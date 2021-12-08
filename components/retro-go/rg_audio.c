@@ -25,8 +25,8 @@ static const char *SETTING_VOLUME = "Volume";
 
 void rg_audio_init(int sample_rate)
 {
-    int volume = rg_settings_get_int32(SETTING_VOLUME, RG_AUDIO_VOL_DEFAULT);
-    int sink =  rg_settings_get_int32(SETTING_OUTPUT, RG_AUDIO_SINK_DEFAULT);
+    int volume = rg_settings_get_number(NS_GLOBAL, SETTING_VOLUME, RG_AUDIO_VOL_DEFAULT);
+    int sink =  rg_settings_get_number(NS_GLOBAL, SETTING_OUTPUT, RG_AUDIO_SINK_DEFAULT);
 
     i2s_config_t i2s_config = {
         .mode = I2S_MODE_MASTER | I2S_MODE_TX,
@@ -246,7 +246,7 @@ rg_sink_t rg_audio_get_sink(void)
 
 void rg_audio_set_sink(rg_sink_t sink)
 {
-    rg_settings_set_int32(SETTING_OUTPUT, sink);
+    rg_settings_set_number(NS_GLOBAL, SETTING_OUTPUT, sink);
     rg_audio_deinit();
     rg_audio_init(audioSampleRate);
 }
@@ -259,7 +259,7 @@ rg_volume_t rg_audio_get_volume(void)
 void rg_audio_set_volume(rg_volume_t level)
 {
     volumeLevel = RG_MIN(RG_MAX(level, RG_AUDIO_VOL_MIN), RG_AUDIO_VOL_MAX);
-    rg_settings_set_int32(SETTING_VOLUME, volumeLevel);
+    rg_settings_set_number(NS_GLOBAL, SETTING_VOLUME, volumeLevel);
     RG_LOGI("Volume set to %d%% (%d)\n", volumeMap[volumeLevel], volumeLevel);
 }
 

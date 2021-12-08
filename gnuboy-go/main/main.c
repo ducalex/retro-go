@@ -87,7 +87,7 @@ static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t
 
     if (pal != gnuboy_get_palette())
     {
-        rg_settings_set_app_int32(SETTING_PALETTE, pal);
+        rg_settings_set_number(NS_APP, SETTING_PALETTE, pal);
         gnuboy_set_palette(pal);
         gnuboy_run(true);
         usleep(50000);
@@ -133,7 +133,7 @@ static dialog_return_t sram_autosave_cb(dialog_option_t *option, dialog_event_t 
 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
-        rg_settings_set_app_int32(SETTING_SAVESRAM, autoSaveSRAM);
+        rg_settings_set_number(NS_APP, SETTING_SAVESRAM, autoSaveSRAM);
     }
 
     if (autoSaveSRAM == 0) strcpy(option->value, "Off ");
@@ -238,7 +238,7 @@ static void auto_sram_update(void)
 
 void app_main(void)
 {
-    const rg_emu_proc_t handlers = {
+    const rg_handlers_t handlers = {
         .loadState = &load_state_handler,
         .saveState = &save_state_handler,
         .reset = &reset_handler,
@@ -254,7 +254,7 @@ void app_main(void)
 
     rg_display_set_source_format(GB_WIDTH, GB_HEIGHT, 0, 0, GB_WIDTH * 2, RG_PIXEL_565_BE);
 
-    autoSaveSRAM = rg_settings_get_app_int32(SETTING_SAVESRAM, 0);
+    autoSaveSRAM = rg_settings_get_number(NS_APP, SETTING_SAVESRAM, 0);
     sramFile = rg_emu_get_path(RG_PATH_SAVE_SRAM, 0);
 
     if (!rg_mkdir(rg_dirname(sramFile)))
@@ -273,7 +273,7 @@ void app_main(void)
     else
         gnuboy_load_bios(RG_BASE_PATH_SYSTEM "/gb_bios.bin");
 
-    gnuboy_set_palette(rg_settings_get_app_int32(SETTING_PALETTE, GB_PALETTE_GBC));
+    gnuboy_set_palette(rg_settings_get_number(NS_APP, SETTING_PALETTE, GB_PALETTE_GBC));
 
     // Hard reset to have a clean slate
     gnuboy_reset(true);

@@ -606,21 +606,6 @@ static void display_task(void *arg)
     vTaskDelete(NULL);
 }
 
-void rg_display_reset_config(void)
-{
-    display = (rg_display_t){
-        // TO DO: We probably should call the setters to ensure valid values...
-        .screen.width = RG_SCREEN_WIDTH - RG_SCREEN_MARGIN_LEFT - RG_SCREEN_MARGIN_RIGHT,
-        .screen.height = RG_SCREEN_HEIGHT - RG_SCREEN_MARGIN_TOP - RG_SCREEN_MARGIN_BOTTOM,
-        .config.backlight = RG_MIN(RG_MAX(rg_settings_get_int32(SETTING_BACKLIGHT, 80), 0), 100),
-        .config.scaling = rg_settings_get_app_int32(SETTING_SCALING, RG_DISPLAY_SCALING_FILL),
-        .config.filter = rg_settings_get_app_int32(SETTING_FILTER, RG_DISPLAY_FILTER_HORIZ),
-        .config.rotation = rg_settings_get_app_int32(SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO),
-        .config.update = rg_settings_get_app_int32(SETTING_UPDATE, RG_DISPLAY_UPDATE_PARTIAL),
-        .changed = true,
-    };
-}
-
 void rg_display_force_redraw(void)
 {
     display.changed = true;
@@ -634,7 +619,7 @@ const rg_display_t *rg_display_get_status(void)
 void rg_display_set_update_mode(display_update_t update)
 {
     display.config.update = RG_MIN(RG_MAX(0, update), RG_DISPLAY_UPDATE_COUNT - 1);
-    rg_settings_set_app_int32(SETTING_UPDATE, display.config.update);
+    rg_settings_set_number(NS_APP, SETTING_UPDATE, display.config.update);
     display.changed = true;
 }
 
@@ -646,7 +631,7 @@ display_update_t rg_display_get_update_mode(void)
 void rg_display_set_scaling(display_scaling_t scaling)
 {
     display.config.scaling = RG_MIN(RG_MAX(0, scaling), RG_DISPLAY_SCALING_COUNT - 1);
-    rg_settings_set_app_int32(SETTING_SCALING, display.config.scaling);
+    rg_settings_set_number(NS_APP, SETTING_SCALING, display.config.scaling);
     display.changed = true;
 }
 
@@ -658,7 +643,7 @@ display_scaling_t rg_display_get_scaling(void)
 void rg_display_set_filter(display_filter_t filter)
 {
     display.config.filter = RG_MIN(RG_MAX(0, filter), RG_DISPLAY_FILTER_COUNT - 1);
-    rg_settings_set_app_int32(SETTING_FILTER, display.config.filter);
+    rg_settings_set_number(NS_APP, SETTING_FILTER, display.config.filter);
     display.changed = true;
 }
 
@@ -670,7 +655,7 @@ display_filter_t rg_display_get_filter(void)
 void rg_display_set_rotation(display_rotation_t rotation)
 {
     display.config.rotation = RG_MIN(RG_MAX(0, rotation), RG_DISPLAY_ROTATION_COUNT - 1);
-    rg_settings_set_app_int32(SETTING_SCALING, display.config.rotation);
+    rg_settings_set_number(NS_APP, SETTING_SCALING, display.config.rotation);
     display.changed = true;
 }
 
@@ -682,7 +667,7 @@ display_rotation_t rg_display_get_rotation(void)
 void rg_display_set_backlight(int percent)
 {
     display.config.backlight = RG_MIN(RG_MAX(percent, 0), 100);
-    rg_settings_set_int32(SETTING_BACKLIGHT, display.config.backlight);
+    rg_settings_set_number(NS_GLOBAL, SETTING_BACKLIGHT, display.config.backlight);
     lcd_set_backlight(display.config.backlight);
 }
 
@@ -975,7 +960,17 @@ void rg_display_deinit()
 void rg_display_init()
 {
     RG_LOGI("Initialization...\n");
-    rg_display_reset_config();
+    // TO DO: We probably should call the setters to ensure valid values...
+    display = (rg_display_t){
+        .screen.width = RG_SCREEN_WIDTH - RG_SCREEN_MARGIN_LEFT - RG_SCREEN_MARGIN_RIGHT,
+        .screen.height = RG_SCREEN_HEIGHT - RG_SCREEN_MARGIN_TOP - RG_SCREEN_MARGIN_BOTTOM,
+        .config.backlight = RG_MIN(RG_MAX(rg_settings_get_number(NS_GLOBAL, SETTING_BACKLIGHT, 80), 0), 100),
+        .config.scaling = rg_settings_get_number(NS_APP, SETTING_SCALING, RG_DISPLAY_SCALING_FILL),
+        .config.filter = rg_settings_get_number(NS_APP, SETTING_FILTER, RG_DISPLAY_FILTER_HORIZ),
+        .config.rotation = rg_settings_get_number(NS_APP, SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO),
+        .config.update = rg_settings_get_number(NS_APP, SETTING_UPDATE, RG_DISPLAY_UPDATE_PARTIAL),
+        .changed = true,
+    };
     lcd_init();
     xTaskCreatePinnedToCore(&display_task, "display_task", 2560, NULL, 5, NULL, 1);
     RG_LOGI("Display ready.\n");

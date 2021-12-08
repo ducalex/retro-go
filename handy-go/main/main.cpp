@@ -166,7 +166,7 @@ static bool reset_handler(bool hard)
 
 extern "C" void app_main(void)
 {
-    const rg_emu_proc_t handlers = {
+    const rg_handlers_t handlers = {
         .loadState = &load_state_handler,
         .saveState = &save_state_handler,
         .reset = &reset_handler,

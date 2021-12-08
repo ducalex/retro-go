@@ -9,10 +9,10 @@
 #include "rg_input.h"
 #include "rg_i2c.h"
 
-static bool input_initialized = false;
+static bool input_task_running = false;
 static int64_t last_gamepad_read = 0;
 // Keep the following <= 32bit to ensure atomic access without mutexes
-static uint32_t gamepad_state = 0;
+static uint32_t gamepad_state = -1;
 static float battery_level = -1;
 static float battery_volts = 0;
 
@@ -74,8 +74,9 @@ static void input_task(void *arg)
 
     // Initialize debounce state
     memset(debounce, 0xFF, sizeof(debounce));
+    input_task_running = true;
 
-    while (input_initialized)
+    while (input_task_running)
     {
         uint32_t state = gamepad_read();
 
@@ -99,12 +100,14 @@ static void input_task(void *arg)
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 
+    input_task_running = false;
+    gamepad_state = -1;
     vTaskDelete(NULL);
 }
 
 void rg_input_init(void)
 {
-    if (input_initialized)
+    if (input_task_running)
         return;
 
 #if RG_GAMEPAD_DRIVER == 1    // GPIO
@@ -151,16 +154,15 @@ void rg_input_init(void)
 
     // Start background polling
     xTaskCreatePinnedToCore(&input_task, "input_task", 1024, NULL, 5, NULL, 1);
-
-    input_initialized = true;
-
+    // while (gamepad_state == -1) vPortYield();
     RG_LOGI("Input ready. driver='%s'\n", driver);
 }
 
 void rg_input_deinit(void)
 {
+    input_task_running = false;
+    // while (gamepad_state == -1) vPortYield();
     RG_LOGI("Input terminated.\n");
-    input_initialized = false;
 }
 
 long rg_input_gamepad_last_read(void)

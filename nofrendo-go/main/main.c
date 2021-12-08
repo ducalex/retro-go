@@ -143,7 +143,7 @@ static dialog_return_t sprite_limit_cb(dialog_option_t *option, dialog_event_t e
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
         spritelimit = !spritelimit;
-        rg_settings_set_app_int32(SETTING_SPRITELIMIT, spritelimit);
+        rg_settings_set_number(NS_APP, SETTING_SPRITELIMIT, spritelimit);
         ppu_setopt(PPU_LIMIT_SPRITES, spritelimit);
     }
 
@@ -157,7 +157,7 @@ static dialog_return_t overscan_update_cb(dialog_option_t *option, dialog_event_
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
         overscan = !overscan;
-        rg_settings_set_app_int32(SETTING_OVERSCAN, overscan);
+        rg_settings_set_number(NS_APP, SETTING_OVERSCAN, overscan);
         set_display_mode();
     }
 
@@ -177,7 +177,7 @@ static dialog_return_t autocrop_update_cb(dialog_option_t *option, dialog_event_
     if (val != autocrop)
     {
         autocrop = val;
-        rg_settings_set_app_int32(SETTING_AUTOCROP, val);
+        rg_settings_set_number(NS_APP, SETTING_AUTOCROP, val);
         set_display_mode();
     }
 
@@ -199,7 +199,7 @@ static dialog_return_t palette_update_cb(dialog_option_t *option, dialog_event_t
     if (pal != palette)
     {
         palette = pal;
-        rg_settings_set_app_int32(SETTING_PALETTE, pal);
+        rg_settings_set_number(NS_APP, SETTING_PALETTE, pal);
         build_palette(pal);
         rg_display_queue_update(currentUpdate, NULL);
         rg_display_queue_update(currentUpdate, NULL);
@@ -241,7 +241,7 @@ static void osd_blitscreen(uint8 *bmp)
 
 void app_main(void)
 {
-    const rg_emu_proc_t handlers = {
+    const rg_handlers_t handlers = {
         .loadState = &load_state_handler,
         .saveState = &save_state_handler,
         .reset = &reset_handler,
@@ -252,9 +252,9 @@ void app_main(void)
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers);
 
-    overscan = rg_settings_get_app_int32(SETTING_OVERSCAN, 1);
-    autocrop = rg_settings_get_app_int32(SETTING_AUTOCROP, 0);
-    palette = rg_settings_get_app_int32(SETTING_PALETTE, 0);
+    overscan = rg_settings_get_number(NS_APP, SETTING_OVERSCAN, 1);
+    autocrop = rg_settings_get_number(NS_APP, SETTING_AUTOCROP, 0);
+    palette = rg_settings_get_number(NS_APP, SETTING_PALETTE, 0);
 
     nes = nes_init(SYS_DETECT, AUDIO_SAMPLE_RATE, true);
     if (!nes)
@@ -275,7 +275,7 @@ void app_main(void)
     app->refreshRate = nes->refresh_rate;
     nes->blit_func = osd_blitscreen;
 
-    ppu_setopt(PPU_LIMIT_SPRITES, rg_settings_get_app_int32(SETTING_SPRITELIMIT, 1));
+    ppu_setopt(PPU_LIMIT_SPRITES, rg_settings_get_number(NS_APP, SETTING_SPRITELIMIT, 1));
 
     build_palette(palette);
     set_display_mode();

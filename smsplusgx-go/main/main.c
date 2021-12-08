@@ -107,7 +107,7 @@ static bool reset_handler(bool hard)
 
 void app_main(void)
 {
-    const rg_emu_proc_t handlers = {
+    const rg_handlers_t handlers = {
         .loadState = &load_state_handler,
         .saveState = &save_state_handler,
         .netplay = &netplay_handler,
@@ -125,12 +125,6 @@ void app_main(void)
     if (!load_rom(app->romPath))
     {
         RG_PANIC("ROM file loading failed!");
-    }
-
-    if (IS_GG || IS_TMS)
-    {
-        rg_settings_set_app_name(IS_GG ? "smsplusgx-gg" : "smsplusgx-col");
-        rg_display_reset_config();
     }
 
     bitmap.width = SMS_WIDTH;

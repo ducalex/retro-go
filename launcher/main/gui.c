@@ -24,24 +24,23 @@ const int gui_themes_count = sizeof(gui_themes) / sizeof(theme_t);
 
 retro_gui_t gui;
 
-#define CONCAT(a, b) ({char buffer[128]; strcat(strcpy(buffer, a), b);})
 #define SETTING_SELECTED_TAB    "SelectedTab"
-#define SETTING_BROWSE_TAB      "BrowseTab"
+#define SETTING_BROWSE_MODE     "BrowseTab"
 #define SETTING_STARTUP_MODE    "StartupMode"
 #define SETTING_GUI_THEME       "ColorTheme"
 #define SETTING_SHOW_PREVIEW    "ShowPreview"
-#define SETTING_TAB_ENABLED(a)   CONCAT("TabEnabled.", a)
-#define SETTING_TAB_SELECTION(a) CONCAT("TabSelection.", a)
+#define SETTING_TAB_SELECTION   "TabSelection"
+#define SETTING_TAB_HIDDEN      "TabHidden"
 
 
 void gui_init(void)
 {
     gui = (retro_gui_t){
-        .selected     = rg_settings_get_app_int32(SETTING_SELECTED_TAB, 0),
-        .theme        = rg_settings_get_app_int32(SETTING_GUI_THEME, 0),
-        .startup      = rg_settings_get_app_int32(SETTING_STARTUP_MODE, 0),
-        .browse       = rg_settings_get_app_int32(SETTING_BROWSE_TAB, 0),
-        .show_preview = rg_settings_get_app_int32(SETTING_SHOW_PREVIEW, 1),
+        .selected     = rg_settings_get_number(NS_APP, SETTING_SELECTED_TAB, 0),
+        .theme        = rg_settings_get_number(NS_APP, SETTING_GUI_THEME, 0),
+        .startup      = rg_settings_get_number(NS_APP, SETTING_STARTUP_MODE, 0),
+        .browse       = rg_settings_get_number(NS_APP, SETTING_BROWSE_MODE, 0),
+        .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, 1),
         .width        = rg_display_get_status()->screen.width,
         .height       = rg_display_get_status()->screen.height,
     };
@@ -66,7 +65,7 @@ tab_t *gui_add_tab(const char *name, const char *desc, void *arg, void *event_ha
 
     tab->event_handler = event_handler;
     tab->initialized = false;
-    tab->enabled = rg_settings_get_app_int32(SETTING_TAB_ENABLED(tab->name), 1);
+    tab->enabled = !rg_settings_get_number(tab->name, SETTING_TAB_HIDDEN, 0);
     tab->is_empty = false;
     tab->arg = arg;
     tab->listbox.sort_mode = SORT_TEXT_ASC;
@@ -97,7 +96,7 @@ void gui_init_tab(tab_t *tab)
         if (tab->listbox.cursor == -1)
         {
             tab->listbox.cursor = 0;
-            char *selected = rg_settings_get_app_string(SETTING_TAB_SELECTION(tab->name), NULL);
+            char *selected = rg_settings_get_string(tab->name, SETTING_TAB_SELECTION, NULL);
             if (selected && strlen(selected) > 1)
             {
                 for (int i = 0; i < tab->listbox.length; i++)
@@ -156,10 +155,9 @@ const rg_image_t *gui_get_image(const char *type, const char *subtype)
         }
     }
 
-    // All built-in images assume a 320x240 resolution. Rescale if current res is different!
-    if (gui.width != 320 || gui.height != 240)
+    if (strcmp(type, "background") == 0)
     {
-        if (strcmp(type, "background") == 0)
+        if (image->img && (image->img->width != gui.width || image->img->height != gui.height))
         {
             rg_image_t *temp = rg_image_copy_resampled(image->img, gui.width, gui.height, 0);
             if (temp)
@@ -200,24 +198,29 @@ void gui_set_status(tab_t *tab, const char *left, const char *right)
         strcpy(tab->status[1].right, right);
 }
 
-void gui_save_config(bool commit)
+void gui_save_config(void)
 {
-    tab_t *tab = gui_get_current_tab();
-    listbox_item_t *item = gui_get_selected_item(tab);
-
-    rg_settings_set_app_string(SETTING_TAB_SELECTION(tab->name), item ? item->text : "");
-    rg_settings_set_app_int32(SETTING_SELECTED_TAB, gui.selected);
-    rg_settings_set_app_int32(SETTING_SHOW_PREVIEW, gui.show_preview);
-    rg_settings_set_app_int32(SETTING_GUI_THEME, gui.theme);
-    rg_settings_set_app_int32(SETTING_STARTUP_MODE, gui.startup);
+    rg_settings_set_number(NS_APP, SETTING_SELECTED_TAB, gui.selected);
+    rg_settings_set_number(NS_APP, SETTING_SHOW_PREVIEW, gui.show_preview);
+    rg_settings_set_number(NS_APP, SETTING_GUI_THEME, gui.theme);
+    rg_settings_set_number(NS_APP, SETTING_STARTUP_MODE, gui.startup);
 
     for (int i = 0; i < gui.tabcount; i++)
     {
-        rg_settings_set_app_int32(SETTING_TAB_ENABLED(gui.tabs[i]->name), gui.tabs[i]->enabled);
-    }
+        tab_t *tab = gui.tabs[i];
 
-    if (commit)
-        rg_settings_save();
+        if (tab->enabled)
+        {
+            listbox_item_t *item = gui_get_selected_item(tab);
+            rg_settings_set_string(tab->name, SETTING_TAB_SELECTION, item ? item->text : NULL);
+            rg_settings_delete(tab->name, SETTING_TAB_HIDDEN);
+        }
+        else
+        {
+            rg_settings_delete(tab->name, SETTING_TAB_SELECTION);
+            rg_settings_set_number(tab->name, SETTING_TAB_HIDDEN, 1);
+        }
+    }
 }
 
 listbox_item_t *gui_get_selected_item(tab_t *tab)
@@ -448,15 +451,15 @@ void gui_load_preview(tab_t *tab)
     {
         case PREVIEW_MODE_COVER_SAVE:
             show_missing_cover = true;
-            order = 0x3412;
+            order = 0x3124;
             break;
         case PREVIEW_MODE_SAVE_COVER:
             show_missing_cover = true;
-            order = 0x4123;
+            order = 0x1243;
             break;
         case PREVIEW_MODE_COVER_ONLY:
             show_missing_cover = true;
-            order = 0x0412;
+            order = 0x0124;
             break;
         case PREVIEW_MODE_SAVE_ONLY:
             show_missing_cover = false;

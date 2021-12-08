@@ -24,11 +24,10 @@ extern "C" {
 #include "rg_display.h"
 #include "rg_input.h"
 #include "rg_netplay.h"
-#include "rg_sdcard.h"
+#include "rg_storage.h"
 #include "rg_gui.h"
 #include "rg_i2c.h"
 #include "rg_profiler.h"
-#include "rg_settings.h"
 
 typedef enum
 {
@@ -92,7 +91,7 @@ typedef struct
     rg_mem_read_handler_t memRead;      // Used by for cheats and debugging
     rg_mem_write_handler_t memWrite;    // Used by for cheats and debugging
     rg_settings_handler_t settings;     // Called by "More..." in rg_gui_settings_menu()
-} rg_emu_proc_t;
+} rg_handlers_t;
 
 // TO DO: Make it an abstract ring buffer implementation?
 #define LOG_BUFFER_SIZE 2048
@@ -112,21 +111,22 @@ typedef struct
 
 typedef struct
 {
+    const char *realname;
     const char *name;
     const char *version;
     const char *buildDate;
     const char *buildTime;
     const char *buildUser;
+    int bootFlags;
     int speedupEnabled;
     int refreshRate;
     int sampleRate;
-    int bootFlags;
     int logLevel;
     int isLauncher;
     int wdtTimeout;
     const char *romPath;
     void *mainTaskHandle;
-    rg_emu_proc_t handlers;
+    rg_handlers_t handlers;
     rg_logbuf_t log;
 } rg_app_t;
 
@@ -145,13 +145,13 @@ typedef struct
     uint32_t freeStackMain;
 } rg_stats_t;
 
-rg_app_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers);
+rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers);
 void rg_system_panic(const char *reason, const char *context) __attribute__((noreturn));
 void rg_system_shutdown() __attribute__((noreturn));
 void rg_system_sleep() __attribute__((noreturn));
 void rg_system_restart() __attribute__((noreturn));
 void rg_system_switch_app(const char *app) __attribute__((noreturn));
-void rg_system_start_app(const char *app, const char *args, int flags) __attribute__((noreturn));
+void rg_system_start_app(const char *app, const char *name, const char *args, int flags) __attribute__((noreturn));
 void rg_system_set_boot_app(const char *app);
 bool rg_system_find_app(const char *app);
 void rg_system_set_led(int value);

@@ -14,7 +14,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
 {
     listbox_item_t *item = gui_get_selected_item(tab);
     retro_emulator_file_t *file = (retro_emulator_file_t *)(item ? item->arg : NULL);
-    book_t *book = (book_t *)tab->arg;
+    // book_t *book = (book_t *)tab->arg;
 
     if (event == TAB_INIT)
     {
@@ -166,7 +166,6 @@ static void book_save(book_type_t book_type)
 static void book_init(book_type_t book_type, const char *name, const char *desc, int capacity)
 {
     book_t *book = &books[book_type];
-    char oldpath[PATH_MAX + 1];
     char path[PATH_MAX + 1];
 
     sprintf(path, "%s/%s.txt", RG_BASE_PATH_CONFIG, name);

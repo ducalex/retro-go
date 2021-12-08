@@ -11,35 +11,12 @@
 #include "gui.h"
 
 
-static dialog_return_t font_type_cb(dialog_option_t *option, dialog_event_t event)
-{
-    rg_gui_font_t info = rg_gui_get_font_info();
-
-    if (event == RG_DIALOG_PREV) {
-        rg_gui_set_font_type((int)info.type - 1);
-        info = rg_gui_get_font_info();
-        gui_redraw();
-    }
-    if (event == RG_DIALOG_NEXT) {
-        if (!rg_gui_set_font_type((int)info.type + 1))
-            rg_gui_set_font_type(0);
-        info = rg_gui_get_font_info();
-        gui_redraw();
-    }
-
-    sprintf(option->value, "%s %d", info.font->name, info.height);
-
-    return RG_DIALOG_IGNORE;
-}
-
 static dialog_return_t toggle_tab_cb(dialog_option_t *option, dialog_event_t event)
 {
     tab_t *tab = gui.tabs[option->id];
-
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         tab->enabled = !tab->enabled;
     }
-
     strcpy(option->value, tab->enabled ? "Show" : "Hide");
     return RG_DIALOG_IGNORE;
 }
@@ -75,15 +52,6 @@ static dialog_return_t startup_app_cb(dialog_option_t *option, dialog_event_t ev
     return RG_DIALOG_IGNORE;
 }
 
-static dialog_return_t disk_activity_cb(dialog_option_t *option, dialog_event_t event)
-{
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
-        rg_sdcard_set_enable_activity_led(!rg_sdcard_get_enable_activity_led());
-    }
-    strcpy(option->value, rg_sdcard_get_enable_activity_led() ? "On " : "Off");
-    return RG_DIALOG_IGNORE;
-}
-
 static dialog_return_t show_preview_cb(dialog_option_t *option, dialog_event_t event)
 {
     if (event == RG_DIALOG_PREV) {
@@ -98,15 +66,6 @@ static dialog_return_t show_preview_cb(dialog_option_t *option, dialog_event_t e
     strcpy(option->value, values[gui.show_preview % PREVIEW_MODE_COUNT]);
     return RG_DIALOG_IGNORE;
 }
-
-// static dialog_return_t show_preview_speed_cb(dialog_option_t *option, dialog_event_t event)
-// {
-//     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
-//         gui.show_preview_fast = gui.show_preview_fast ? 0 : 1;
-//     }
-//     strcpy(option->value, gui.show_preview_fast ? "Short" : "Long");
-//     return RG_DIALOG_IGNORE;
-// }
 
 static dialog_return_t color_shift_cb(dialog_option_t *option, dialog_event_t event)
 {
@@ -123,41 +82,6 @@ static dialog_return_t color_shift_cb(dialog_option_t *option, dialog_event_t ev
     return RG_DIALOG_IGNORE;
 }
 
-static void show_about_dialog(void)
-{
-    const dialog_option_t options[] = {
-        {1, "Clear cache", NULL, 1, NULL},
-        RG_DIALOG_CHOICE_LAST
-    };
-    if (rg_gui_about_menu(options) == 1) {
-        unlink(CRC_CACHE_PATH);
-        rg_system_restart();
-    }
-}
-
-static void show_options_dialog(void)
-{
-    const dialog_option_t options[] = {
-        RG_DIALOG_SEPARATOR,
-        {0, "Color theme", "...", 1, &color_shift_cb},
-        {0, "Font type  ", "...", 1, &font_type_cb},
-        {0, "Preview    ", "...", 1, &show_preview_cb},
-        // {0, "    - Delay", "...", 1, &show_preview_speed_cb},
-        {0, "Hide tabs  ", "...", 1, &toggle_tabs_cb},
-        {0, "Startup app", "...", 1, &startup_app_cb},
-        {0, "Disk LED   ", "...", 1, &disk_activity_cb},
-        #if !RG_GAMEPAD_OPTION_BTN
-        RG_DIALOG_SEPARATOR,
-        {100, "About... ", NULL,  1, NULL},
-        #endif
-        RG_DIALOG_CHOICE_LAST
-    };
-    int sel = rg_gui_settings_menu(options);
-    gui_save_config(true);
-    if (sel == 100)
-        show_about_dialog();
-}
-
 static void retro_loop(void)
 {
     tab_t *tab = gui_get_current_tab();
@@ -167,6 +91,7 @@ static void retro_loop(void)
     int selected_tab_last = -1;
     int browse_last = -1;
     int next_idle_event = 0;
+    bool redraw_pending = true;
 
     while (true)
     {
@@ -196,10 +121,9 @@ static void retro_loop(void)
                 gui_event(TAB_ENTER, tab);
             }
 
-            gui_redraw();
-
             selected_tab_last = gui.selected;
             browse_last = gui.browse;
+            redraw_pending = true;
         }
 
         prev_joystick = gui.joystick;
@@ -221,17 +145,31 @@ static void retro_loop(void)
             }
         }
 
-        if (joystick == RG_KEY_MENU) {
         #if !RG_GAMEPAD_OPTION_BTN
-            show_options_dialog();
+        if (joystick == RG_KEY_MENU)
         #else
-            show_about_dialog();
+        if (joystick == RG_KEY_OPTION)
         #endif
-            gui_redraw();
+        {
+            const dialog_option_t options[] = {
+                {0, "Color theme", "...", 1, &color_shift_cb},
+                {0, "Preview    ", "...", 1, &show_preview_cb},
+                {0, "Startup    ", "...", 1, &startup_app_cb},
+                {0, "Hide tabs  ", "...", 1, &toggle_tabs_cb},
+                #if !RG_GAMEPAD_OPTION_BTN
+                RG_DIALOG_SEPARATOR,
+                {1, "About... ", NULL,  1, NULL},
+                #endif
+                RG_DIALOG_CHOICE_LAST
+            };
+            if (rg_gui_settings_menu(options) == 1)
+                rg_gui_about_menu(NULL);
+            gui_save_config();
+            redraw_pending = true;
         }
-        else if (joystick == RG_KEY_OPTION) {
-            show_options_dialog();
-            gui_redraw();
+        else if (joystick == RG_KEY_MENU) {
+            rg_gui_about_menu(NULL);
+            redraw_pending = true;
         }
 
         if (gui.browse)
@@ -274,6 +212,12 @@ static void retro_loop(void)
             }
         }
 
+        if (redraw_pending)
+        {
+            redraw_pending = false;
+            gui_redraw();
+        }
+
         if ((gui.joystick|joystick) & RG_KEY_ANY)
         {
             gui.idle_counter = 0;
@@ -283,8 +227,9 @@ static void retro_loop(void)
         {
             gui.idle_counter++;
             gui_event(TAB_IDLE, tab);
-            gui_redraw();
             next_idle_event = get_elapsed_time() + 100000;
+            redraw_pending = true;
+            gui.joystick = 0;
         }
         else if (gui.idle_counter)
         {
@@ -295,7 +240,7 @@ static void retro_loop(void)
 
 static void try_migrate(void)
 {
-    if (rg_settings_get_int32("migration", 0) < 129)
+    if (rg_settings_get_number(NS_GLOBAL, "Migration", 0) < 129)
     {
 #if 0 // Changed my mind for now, it might be a hassle to some users
         rmdir(RG_BASE_PATH_COVERS); // Remove if present but empty
@@ -314,15 +259,25 @@ static void try_migrate(void)
         rename(RG_ROOT_PATH "/odroid/favorite.txt", RG_BASE_PATH_CONFIG "/favorite.txt");
         rename(RG_ROOT_PATH "/odroid/recent.txt", RG_BASE_PATH_CONFIG "/recent.txt");
 
-        rg_settings_set_int32("migration", 129);
-    }
+        rg_settings_set_number(NS_GLOBAL, "Migration", 129);
 
-    rg_settings_save();
+        rg_storage_commit();
+    }
+}
+
+void event_handler(int event, void *arg)
+{
+    if (event == RG_EVENT_REDRAW)
+        gui_redraw();
 }
 
 void app_main(void)
 {
-    rg_system_init(32000, NULL);
+    const rg_handlers_t handlers = {
+        .event = &event_handler,
+    };
+
+    rg_system_init(32000, &handlers);
     rg_gui_set_buffered(true);
 
     rg_mkdir(RG_BASE_PATH_CACHE);

@@ -19,10 +19,11 @@
 #define RG_BUILD_USER "ducalex"
 #endif
 
-#define SETTING_BOOT_FLAGS    "BootFlags"
-#define SETTING_BOOT_ARGS     "BootArgs"
-#define SETTING_RTC_DRIVER    "RTCInitSource"
-#define SETTING_RTC_VALUE     "RTCSavedValue"
+#define SETTING_BOOT_NAME   "BootName"
+#define SETTING_BOOT_PART   "BootPart"
+#define SETTING_BOOT_ARGS   "BootArgs"
+#define SETTING_BOOT_FLAGS  "BootFlags"
+#define SETTING_RTC_TIME    "RTCTime"
 
 #define RG_STRUCT_MAGIC 0x12345678
 
@@ -217,8 +218,8 @@ rg_stats_t rg_system_get_stats()
 
 void rg_system_time_init()
 {
-    const char *source = "hardcoded";
-    time_t timestamp = 946702800; // 2000-01-01 00:00:00
+    const char *source = "settings";
+    time_t timestamp;
 #if 0
     if (rg_i2c_read(0x68, 0x00, data, sizeof(data)))
     {
@@ -227,10 +228,10 @@ void rg_system_time_init()
     }
     else
 #endif
-    if (rg_settings_get_int32(SETTING_RTC_VALUE, 0))
+    if (!(timestamp = rg_settings_get_number(NS_GLOBAL, SETTING_RTC_TIME, 0)))
     {
-        timestamp = rg_settings_get_int32(SETTING_RTC_VALUE, 0);
-        source = "settings";
+        timestamp = 946702800; // 2000-01-01 00:00:00
+        source = "hardcoded";
     }
 
     settimeofday(&(struct timeval){timestamp, 0}, NULL);
@@ -251,13 +252,12 @@ void rg_system_time_save()
     else
 #endif
     {
-        rg_settings_set_int32(SETTING_RTC_VALUE, now);
-        rg_settings_save();
+        rg_settings_set_number(NS_GLOBAL, SETTING_RTC_TIME, now);
         RG_LOGI("System time saved to settings.\n");
     }
 }
 
-rg_app_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
+rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers)
 {
     const esp_app_desc_t *esp_app = esp_ota_get_app_description();
 
@@ -270,15 +270,16 @@ rg_app_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
     srand(esp_random());
 
     memset(&app, 0, sizeof(app));
-    app.name = esp_app->project_name;
+    app.realname = esp_app->project_name;
+    app.name = app.realname;
     app.version = esp_app->version;
     app.buildDate = esp_app->date;
     app.buildTime = esp_app->time;
     app.buildUser = RG_BUILD_USER;
-    app.refreshRate = 1;
+    app.refreshRate = 60;
     app.sampleRate = sampleRate;
     app.logLevel = RG_LOG_INFO;
-    app.isLauncher = (strcmp(app.name, RG_APP_LAUNCHER) == 0);
+    app.isLauncher = (strcmp(app.realname, RG_APP_LAUNCHER) == 0);
     app.mainTaskHandle = xTaskGetCurrentTaskHandle();
     if (handlers)
         app.handlers = *handlers;
@@ -290,15 +291,33 @@ rg_app_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
     rg_system_set_led(0);
 
     // sdcard must be first because it fails if the SPI bus is already initialized
-    bool sd_init = rg_sdcard_mount();
-    rg_settings_init(app.name);
+    rg_storage_init();
+    rg_input_init();
+
+    if (!app.isLauncher)
+    {
+        app.name = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_NAME, app.realname);
+        app.romPath = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_ARGS, "");
+        app.bootFlags = rg_settings_get_number(NS_GLOBAL, SETTING_BOOT_FLAGS, 0);
+        if (app.bootFlags & RG_BOOT_ONCE)
+            rg_system_set_boot_app(RG_APP_LAUNCHER);
+    }
+
     rg_display_init();
     rg_gui_init();
     rg_gui_draw_hourglass();
     rg_audio_init(sampleRate);
-    rg_input_init();
     rg_system_time_init();
 
+    // Force return to launcher (recovery)
+    if (rg_input_key_is_pressed(RG_KEY_ANY))
+    {
+        if (app.isLauncher) rg_settings_reset();
+        rg_input_wait_for_key(RG_KEY_ALL, 0);
+        rg_system_switch_app(RG_APP_LAUNCHER);
+    }
+
+    // Show alert if we've just rebooted from a panic
     if (esp_reset_reason() == ESP_RST_PANIC)
     {
         char message[400] = "Application crashed";
@@ -315,38 +334,18 @@ rg_app_t *rg_system_init(int sampleRate, const rg_emu_proc_t *handlers)
 
         rg_display_clear(C_BLUE);
         rg_gui_alert("System Panic!", message);
-        rg_system_start_app(RG_APP_LAUNCHER, 0, 0);
+        rg_system_switch_app(RG_APP_LAUNCHER);
     }
 
-    panicTrace.magicWord = 0;
-
-    if (!sd_init)
+    // Show alert if storage isn't available
+    if (!rg_storage_ready())
     {
         rg_display_clear(C_SKY_BLUE);
         rg_gui_alert("SD Card Error", "Mount failed."); // esp_err_to_name(ret)
         rg_system_switch_app(RG_APP_LAUNCHER);
     }
 
-    if (!app.isLauncher)
-    {
-        app.bootFlags = rg_settings_get_app_int32(SETTING_BOOT_FLAGS, 0);
-        app.romPath = rg_settings_get_app_string(SETTING_BOOT_ARGS, NULL);
-        app.refreshRate = 60;
-
-        // If any key is pressed we abort and go back to the launcher
-        if (rg_input_key_is_pressed(RG_KEY_ANY))
-            rg_system_switch_app(RG_APP_LAUNCHER);
-
-        // Only boot this app once, next time will return to launcher
-        if (app.bootFlags & RG_BOOT_ONCE)
-            rg_system_set_boot_app(RG_APP_LAUNCHER);
-
-        if (!app.romPath || strlen(app.romPath) < 4)
-        {
-            rg_gui_alert("SD Card Error", "Invalid ROM Path.");
-            rg_system_switch_app(RG_APP_LAUNCHER);
-        }
-    }
+    panicTrace.magicWord = 0;
 
     #ifdef ENABLE_PROFILING
     RG_LOGI("Profiling has been enabled at compile time!\n");
@@ -518,11 +517,11 @@ bool rg_emu_save_state(int slot)
         if ((app.bootFlags & (RG_BOOT_ONCE|RG_BOOT_RESUME)) == 0)
         {
             app.bootFlags |= RG_BOOT_RESUME;
-            rg_settings_set_int32(SETTING_BOOT_FLAGS, app.bootFlags);
-            rg_settings_save();
+            rg_settings_set_number(NS_GLOBAL, SETTING_BOOT_FLAGS, app.bootFlags);
         }
     }
 
+    rg_storage_commit();
     rg_system_set_led(0);
 
     free(filename);
@@ -553,6 +552,7 @@ bool rg_emu_screenshot(const char *filename, int width, int height)
     // to fill it, then we'd resize and save to png from here...
     bool success = (*app.handlers.screenshot)(filename, width, height);
 
+    rg_storage_commit();
     rg_system_set_led(0);
 
     return success;
@@ -572,11 +572,10 @@ static void shutdown_cleanup()
     rg_input_wait_for_key(RG_KEY_ALL, false);
     rg_system_event(RG_EVENT_SHUTDOWN, NULL);
     rg_system_time_save();
-    rg_settings_save();
     rg_audio_deinit();
     rg_input_deinit();
     rg_i2c_deinit();
-    rg_sdcard_unmount();
+    rg_storage_deinit();
     rg_display_deinit();
 }
 
@@ -611,13 +610,13 @@ void rg_system_switch_app(const char *app)
     rg_system_restart();
 }
 
-void rg_system_start_app(const char *name, const char *args, int flags)
+void rg_system_start_app(const char *app, const char *name, const char *args, int flags)
 {
-    rg_settings_set_app_name(name);
-    rg_settings_set_app_string(SETTING_BOOT_ARGS, args);
-    rg_settings_set_app_int32(SETTING_BOOT_FLAGS, flags);
-    rg_settings_set_app_name(app.name);
-    rg_system_switch_app(name);
+    rg_settings_set_string(NS_GLOBAL, SETTING_BOOT_PART, app);
+    rg_settings_set_string(NS_GLOBAL, SETTING_BOOT_NAME, name);
+    rg_settings_set_string(NS_GLOBAL, SETTING_BOOT_ARGS, args);
+    rg_settings_set_number(NS_GLOBAL, SETTING_BOOT_FLAGS, flags);
+    rg_system_switch_app(app);
 }
 
 bool rg_system_find_app(const char *app)
@@ -689,7 +688,7 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
     FILE *fp = fopen(filename, "w");
     if (fp)
     {
-        fprintf(fp, "Application: %s\n", app.name);
+        fprintf(fp, "Application: %s\n", app.realname);
         fprintf(fp, "Version: %s\n", app.version);
         fprintf(fp, "Build date: %s %s\n", app.buildDate, app.buildTime);
         fprintf(fp, "ESP-IDF: %s\n", esp_get_idf_version());

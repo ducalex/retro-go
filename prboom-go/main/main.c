@@ -118,7 +118,7 @@ static dialog_return_t gamma_update_cb(dialog_option_t *option, dialog_event_t e
         usegamma = gamma;
         I_SetPalette(current_palette);
         rg_display_queue_update(&update, NULL);
-        rg_settings_set_app_int32(SETTING_GAMMA, gamma);
+        rg_settings_set_number(NS_APP, SETTING_GAMMA, gamma);
         usleep(50000);
     }
 
@@ -466,7 +466,7 @@ void I_Init(void)
     snd_samplerate = AUDIO_SAMPLE_RATE;
     snd_MusicVolume = 15;
     snd_SfxVolume = 15;
-    usegamma = rg_settings_get_app_int32(SETTING_GAMMA, 0);
+    usegamma = rg_settings_get_number(NS_APP, SETTING_GAMMA, 0);
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)
@@ -513,7 +513,7 @@ static void event_handler(int event, void *arg)
 
 void app_main()
 {
-    const rg_emu_proc_t handlers = {
+    const rg_handlers_t handlers = {
         // .loadState = &load_state_handler,
         // .saveState = &save_state_handler,
         .reset = &reset_handler,

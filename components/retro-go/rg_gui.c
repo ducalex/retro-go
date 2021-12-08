@@ -24,8 +24,9 @@ static const rg_gui_theme_t default_theme = {
     .scrollbar = C_RED,
 };
 
-static rg_gui_theme_t theme;
-static rg_gui_font_t font_info = {0, 8, 8, 8, &font_basic8x8};
+static rg_gui_theme_t gui_theme;
+static rg_gui_font_t gui_font;
+static bool gui_initialized = false;
 
 static uint16_t *overlay_buffer = NULL;
 static uint16_t *screen_buffer = NULL;
@@ -43,16 +44,20 @@ void rg_gui_init(void)
     RG_ASSERT(screen_width && screen_height, "Bad screen res");
 
     overlay_buffer = rg_alloc(RG_MAX(screen_width, screen_height) * 20 * 2, MEM_SLOW);
-    rg_gui_set_font_type(rg_settings_get_int32(SETTING_FONTTYPE, RG_FONT_VERA_12));
+    rg_gui_set_font_type(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_12));
     rg_gui_set_theme(&default_theme);
+    gui_initialized = true;
 }
 
-bool rg_gui_set_theme(const rg_gui_theme_t *new_theme)
+bool rg_gui_set_theme(const rg_gui_theme_t *theme)
 {
-    if (!new_theme)
+    if (!theme)
         return false;
 
-    theme = *new_theme;
+    gui_theme = *theme;
+    if (gui_initialized)
+        rg_system_event(RG_EVENT_REDRAW, NULL);
+
     return true;
 }
 
@@ -178,24 +183,27 @@ bool rg_gui_set_font_type(int type)
     if (type < 0 || type > RG_FONT_MAX - 1)
         return false;
 
-    font_info.type = type;
-    font_info.font = fonts[font_info.type];
-    font_info.points = (font_info.type < 3) ? (8 + font_info.type * 4) : font_info.font->height;
-    font_info.width  = RG_MAX(font_info.font->width, 4);
-    font_info.height = font_info.points;
+    gui_font.type = type;
+    gui_font.font = fonts[gui_font.type];
+    gui_font.points = (gui_font.type < 3) ? (8 + gui_font.type * 4) : gui_font.font->height;
+    gui_font.width  = RG_MAX(gui_font.font->width, 4);
+    gui_font.height = gui_font.points;
 
-    rg_settings_set_int32(SETTING_FONTTYPE, font_info.type);
+    rg_settings_set_number(NS_GLOBAL, SETTING_FONTTYPE, gui_font.type);
 
     RG_LOGI("Font set to: points=%d, size=%dx%d, scaling=%.2f\n",
-        font_info.points, font_info.width, font_info.height,
-        (float)font_info.points / font_info.font->height);
+        gui_font.points, gui_font.width, gui_font.height,
+        (float)gui_font.points / gui_font.font->height);
+
+    if (gui_initialized)
+        rg_system_event(RG_EVENT_REDRAW, NULL);
 
     return true;
 }
 
 rg_gui_font_t rg_gui_get_font_info(void)
 {
-    return font_info;
+    return gui_font;
 }
 
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
@@ -215,7 +223,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
         while (*ptr)
         {
             int chr = *ptr++;
-            line_width += get_glyph(font_info.font, font_info.points, chr).width;
+            line_width += get_glyph(gui_font.font, gui_font.points, chr).width;
 
             if (chr == '\n' || *ptr == 0)
             {
@@ -226,7 +234,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
     }
 
     int draw_width = RG_MIN(width, screen_width - x_pos);
-    int font_height = font_info.height;
+    int font_height = gui_font.height;
     int y_offset = 0;
     const char *ptr = text;
 
@@ -244,7 +252,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
             const char *line = ptr;
             while (x_offset < draw_width && *line && *line != '\n')
             {
-                int width = get_glyph(font_info.font, font_info.points, *line++).width;
+                int width = get_glyph(gui_font.font, gui_font.points, *line++).width;
                 if (draw_width - x_offset < width) // Do not truncate glyphs
                     break;
                 x_offset += width;
@@ -257,7 +265,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
 
         while (x_offset < draw_width)
         {
-            rg_glyph_t glyph = get_glyph(font_info.font, font_info.points, *ptr++);
+            rg_glyph_t glyph = get_glyph(gui_font.font, gui_font.points, *ptr++);
 
             if (draw_width - x_offset < glyph.width) // Do not truncate glyphs
             {
@@ -405,7 +413,7 @@ void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int 
 {
     const int options_count = get_dialog_items_count(options);
     const int sep_width = TEXT_RECT(": ", 0).width;
-    const int font_height = font_info.height;
+    const int font_height = gui_font.height;
     const int max_box_width = 0.82f * screen_width;
     const int max_box_height = 0.82f * screen_height;
     const int box_padding = 6;
@@ -462,8 +470,8 @@ void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int 
     if (header)
     {
         int width = inner_width + row_padding_x * 2;
-        rg_gui_draw_text(x, y, width, header, theme.box_header, theme.box_background, RG_TEXT_ALIGN_CENTER);
-        rg_gui_draw_rect(x, y + font_height, width, 6, 0, 0, theme.box_background);
+        rg_gui_draw_text(x, y, width, header, gui_theme.box_header, gui_theme.box_background, RG_TEXT_ALIGN_CENTER);
+        rg_gui_draw_rect(x, y + font_height, width, 6, 0, 0, gui_theme.box_background);
         y += font_height + 6;
     }
 
@@ -490,9 +498,9 @@ void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int 
     int i = top_i;
     for (; i < options_count; i++)
     {
-        uint16_t color = (options[i].flags == RG_DIALOG_FLAG_NORMAL) ? theme.item_standard : theme.item_disabled;
-        uint16_t fg = (i == sel) ? theme.box_background : color;
-        uint16_t bg = (i == sel) ? color : theme.box_background;
+        uint16_t color = (options[i].flags == RG_DIALOG_FLAG_NORMAL) ? gui_theme.item_standard : gui_theme.item_disabled;
+        uint16_t fg = (i == sel) ? gui_theme.box_background : color;
+        uint16_t bg = (i == sel) ? color : gui_theme.box_background;
         int xx = x + row_padding_x;
         int yy = y + row_padding_y;
         int height = 8;
@@ -524,29 +532,29 @@ void rg_gui_draw_dialog(const char *header, const dialog_option_t *options, int 
 
     if (y < (box_y + box_height))
     {
-        rg_gui_draw_rect(box_x, y, box_width, (box_y + box_height) - y, 0, 0, theme.box_background);
+        rg_gui_draw_rect(box_x, y, box_width, (box_y + box_height) - y, 0, 0, gui_theme.box_background);
     }
 
-    rg_gui_draw_rect(box_x, box_y, box_width, box_height, box_padding, theme.box_background, -1);
-    rg_gui_draw_rect(box_x - 1, box_y - 1, box_width + 2, box_height + 2, 1, theme.box_border, -1);
+    rg_gui_draw_rect(box_x, box_y, box_width, box_height, box_padding, gui_theme.box_background, -1);
+    rg_gui_draw_rect(box_x - 1, box_y - 1, box_width + 2, box_height + 2, 1, gui_theme.box_border, -1);
 
     // Basic scroll indicators are overlayed at the end...
     if (top_i > 0)
     {
         int x = box_x + inner_width + box_padding;
         int y = box_y + box_padding - 1;
-        rg_gui_draw_rect(x, y, 3, 3, 0, 0, theme.scrollbar);
-        rg_gui_draw_rect(x + 6, y, 3, 3, 0, 0, theme.scrollbar);
-        rg_gui_draw_rect(x + 12, y, 3, 3, 0, 0, theme.scrollbar);
+        rg_gui_draw_rect(x, y, 3, 3, 0, 0, gui_theme.scrollbar);
+        rg_gui_draw_rect(x + 6, y, 3, 3, 0, 0, gui_theme.scrollbar);
+        rg_gui_draw_rect(x + 12, y, 3, 3, 0, 0, gui_theme.scrollbar);
     }
 
     if (i < options_count)
     {
         int x = box_x + inner_width + box_padding;
         int y = box_y + box_height - box_padding - 1;
-        rg_gui_draw_rect(x, y, 3, 3, 0, 0, theme.scrollbar);
-        rg_gui_draw_rect(x + 6, y, 3, 3, 0, 0, theme.scrollbar);
-        rg_gui_draw_rect(x + 12, y, 3, 3, 0, 0, theme.scrollbar);
+        rg_gui_draw_rect(x, y, 3, 3, 0, 0, gui_theme.scrollbar);
+        rg_gui_draw_rect(x + 6, y, 3, 3, 0, 0, gui_theme.scrollbar);
+        rg_gui_draw_rect(x + 12, y, 3, 3, 0, 0, gui_theme.scrollbar);
     }
 
     rg_gui_flush();
@@ -851,6 +859,27 @@ static dialog_return_t more_settings_cb(dialog_option_t *option, dialog_event_t 
     return RG_DIALOG_IGNORE;
 }
 
+static dialog_return_t disk_activity_cb(dialog_option_t *option, dialog_event_t event)
+{
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
+        rg_storage_set_activity_led(!rg_storage_get_activity_led());
+    }
+    strcpy(option->value, rg_storage_get_activity_led() ? "On " : "Off");
+    return RG_DIALOG_IGNORE;
+}
+
+static dialog_return_t font_type_cb(dialog_option_t *option, dialog_event_t event)
+{
+    if (event == RG_DIALOG_PREV && !rg_gui_set_font_type((int)gui_font.type - 1)) {
+        rg_gui_set_font_type(0);
+    }
+    if (event == RG_DIALOG_NEXT && !rg_gui_set_font_type((int)gui_font.type + 1)) {
+        rg_gui_set_font_type(0);
+    }
+    sprintf(option->value, "%s %d", gui_font.font->name, gui_font.height);
+    return RG_DIALOG_IGNORE;
+}
+
 int rg_gui_settings_menu(const dialog_option_t *extra_options)
 {
     dialog_option_t options[16 + get_dialog_items_count(extra_options)];
@@ -859,9 +888,16 @@ int rg_gui_settings_menu(const dialog_option_t *extra_options)
 
     *opt++ = (dialog_option_t){0, "Brightness", "50%",  1, &brightness_update_cb};
     *opt++ = (dialog_option_t){0, "Volume    ", "50%",  1, &volume_update_cb};
-    *opt++ = (dialog_option_t){0, "Audio out ", "Speaker", 1, &audio_update_cb};
 
-    if (!app->isLauncher)
+    // Global settings that aren't essential to show when inside a game
+    if (app->isLauncher)
+    {
+        *opt++ = (dialog_option_t){0, "Audio out ", "Speaker", 1, &audio_update_cb};
+        *opt++ = (dialog_option_t){0, "Disk LED   ", "...", 1, &disk_activity_cb};
+        *opt++ = (dialog_option_t){0, "Font type  ", "...", 1, &font_type_cb};
+    }
+    // App settings that are shown only inside a game
+    else
     {
         *opt++ = (dialog_option_t){0, "Scaling", "Full", 1, &scaling_update_cb};
         *opt++ = (dialog_option_t){0, "Filter", "None", 1, &filter_update_cb};
@@ -883,7 +919,7 @@ int rg_gui_settings_menu(const dialog_option_t *extra_options)
 
     int sel = rg_gui_dialog("Options", options, 0);
 
-    rg_settings_save();
+    rg_storage_commit();
 
     return sel;
 }
@@ -899,6 +935,7 @@ int rg_gui_about_menu(const dialog_option_t *extra_options)
         RG_DIALOG_SEPARATOR,
         {1000, "Reboot to firmware", NULL, 1, NULL},
         {2000, "Reset settings", NULL, 1, NULL},
+        {3000, "Clear cache", NULL, 1, NULL},
         {4000, "Debug", NULL, 1, NULL},
         {0000, "Close", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
@@ -932,6 +969,10 @@ int rg_gui_about_menu(const dialog_option_t *extra_options)
                 rg_settings_reset();
                 rg_system_restart();
             }
+            break;
+        case 3000:
+            unlink(RG_BASE_PATH_CACHE "/crc32.bin");
+            rg_system_restart();
             break;
         case 4000:
             rg_gui_debug_menu(NULL);
@@ -1003,9 +1044,9 @@ int rg_gui_debug_menu(const dialog_option_t *extra_options)
 
 static void draw_game_status_bars(void)
 {
-    int height = RG_MAX(font_info.height + 4, 16);
-    int padding = (height - font_info.height) / 2;
-    int max_len = RG_MIN(screen_width / font_info.width, 99);
+    int height = RG_MAX(gui_font.height + 4, 16);
+    int padding = (height - gui_font.height) / 2;
+    int max_len = RG_MIN(screen_width / gui_font.width, 99);
     char header[100] = {0};
     char footer[100] = {0};
 

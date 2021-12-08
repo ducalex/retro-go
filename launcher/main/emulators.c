@@ -485,7 +485,7 @@ const char *emulator_get_file_path(retro_emulator_file_t *file)
 
 bool emulator_get_file_crc32(retro_emulator_file_t *file)
 {
-    uint8_t buffer[0x1000];
+    uint8_t buffer[0x800];
     uint32_t crc_tmp = 0;
     int count = -1;
     FILE *fp;
@@ -602,7 +602,7 @@ void emulator_show_file_menu(retro_emulator_file_t *file, bool advanced)
     case 0:
     case 1:
         crc_cache_save();
-        gui_save_config(false); // emulator_start will commit
+        gui_save_config();
         bookmark_add(BOOK_TYPE_RECENT, file);
         emulator_start(file, sel == 0);
         break;
@@ -656,11 +656,11 @@ void emulator_show_file_menu(retro_emulator_file_t *file, bool advanced)
 
 void emulator_start(retro_emulator_file_t *file, bool load_state)
 {
-    if (file == NULL)
-        RG_PANIC("Unable to find file...");
-
-    rg_system_start_app(file->emulator->partition, emulator_get_file_path(file),
-        (load_state ? RG_BOOT_RESUME : 0) | (gui.startup ? RG_BOOT_ONCE : 0));
+    RG_ASSERT(file, "Unable to find file...");
+    const char *path = emulator_get_file_path(file);
+    const char *name = file->emulator->short_name;
+    int flags = (load_state ? RG_BOOT_RESUME : 0) | (gui.startup ? RG_BOOT_ONCE : 0);
+    rg_system_start_app(file->emulator->partition, name, path, flags);
 }
 
 void emulators_init(void)
