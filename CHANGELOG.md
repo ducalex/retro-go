@@ -1,5 +1,6 @@
 # Retro-Go 1.29 (202?-??-?? upcoming)
 - Launcher: New look and feel
+- NES: Show when NSF is playing
 - DOOM: Added `Toggle Map` in the DOOM menu
 - DOOM: Fixed issues affecting the MRGC-G32 (sound and image)
 
