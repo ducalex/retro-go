@@ -39,14 +39,18 @@
 #include "config.h"
 #endif
 
-#ifndef __BYTEBOOL__
-#define __BYTEBOOL__
 #include <stdbool.h>
+#include <stdint.h>
+#include <limits.h>
+
 // RG: using `bool` crashes. I fixed many places that used `boolean` as an int but I must have missed one
 // typedef bool boolean;
 typedef unsigned int boolean;
-typedef unsigned char byte;
-#endif
+typedef uint8_t byte;
+
+typedef int64_t int_64_t;
+typedef uint64_t uint_64_t;
+#define LONGLONG(num)   (uint_64_t)num ## ll
 
 //e6y
 #ifndef MAX
@@ -56,38 +60,12 @@ typedef unsigned char byte;
 #define MIN(a,b) ((a)<(b)?(a):(b))
 #endif
 
-/* cph - Wrapper for the long long type, as Win32 used a different name.
- * Except I don't know what to test as it's compiler specific
- * Proff - I fixed it */
-#ifndef _MSC_VER
-typedef signed long long int_64_t;
-typedef unsigned long long uint_64_t;
-// define compiled-specific long-long contstant notation here
-#define LONGLONG(num)   (uint_64_t)num ## ll
-#else
-typedef __int64 int_64_t;
-typedef unsigned __int64 uint_64_t;
-// define compiled-specific long-long contstant notation here
-#define LONGLONG(num) (uint_64_t)num
 #undef PATH_MAX
 #define PATH_MAX 512
-#define strcasecmp _stricmp
-#define strncasecmp _strnicmp
-#define S_ISDIR(x) (((sbuf.st_mode & S_IFDIR)==S_IFDIR)?1:0)
-#endif
 
-#ifdef __GNUC__
 #define CONSTFUNC __attribute__((const))
 #define PUREFUNC __attribute__((pure))
 #define NORETURN __attribute__ ((noreturn))
-#else
-#define CONSTFUNC
-#define PUREFUNC
-#define NORETURN
-#endif
-
-/* CPhipps - use limits.h instead of depreciated values.h */
-#include <limits.h>
 
 /* cph - move compatibility levels here so we can use them in d_server.c */
 typedef enum {
