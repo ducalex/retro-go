@@ -77,7 +77,7 @@ typedef struct __attribute__((packed))
 
 typedef struct
 {
-   char filename[PATH_MAX + 1];
+   char filename[256];
 
    uint8 *data_ptr; // Top of our allocation
    size_t data_len; // Size of our allocation

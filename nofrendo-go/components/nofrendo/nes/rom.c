@@ -38,12 +38,12 @@ static rom_t rom;
 /* Save battery-backed RAM */
 static void rom_savesram(void)
 {
-   char fn[PATH_MAX + 1];
+   char fn[sizeof(rom.filename)+8];
    FILE *fp;
 
    if ((rom.flags & ROM_FLAG_BATTERY) && rom.prg_ram_banks > 0)
    {
-      snprintf(fn, PATH_MAX, "%s.sav", rom.filename);
+      snprintf(fn, sizeof(fn), "%s.sav", rom.filename);
       if ((fp = fopen(fn, "wb")))
       {
          fwrite(rom.prg_ram, ROM_PRG_BANK_SIZE, rom.prg_ram_banks, fp);
@@ -56,12 +56,12 @@ static void rom_savesram(void)
 /* Load battery-backed RAM from disk */
 static void rom_loadsram(void)
 {
-   char fn[PATH_MAX + 1];
+   char fn[sizeof(rom.filename)+8];
    FILE *fp;
 
    if ((rom.flags & ROM_FLAG_BATTERY) && rom.prg_ram_banks > 0)
    {
-      snprintf(fn, PATH_MAX, "%s.sav", rom.filename);
+      snprintf(fn, sizeof(fn), "%s.sav", rom.filename);
       if ((fp = fopen(fn, "rb")))
       {
          fread(rom.prg_ram, ROM_PRG_BANK_SIZE, rom.prg_ram_banks, fp);
@@ -196,7 +196,7 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
                   (rom.flags & ROM_FLAG_TRAINER) ? 'T' : '-',
                   (rom.flags & ROM_FLAG_FOURSCREEN) ? '4' : '-');
 
-      strncpy(rom.filename, "filename.nes", PATH_MAX);
+      strcpy(rom.filename, "filename.nes");
       return &rom;
    }
    else if (!memcmp(data, ROM_FDS_MAGIC, 4) || !memcmp(data, ROM_FDS_RAW_MAGIC, 15))
@@ -224,7 +224,7 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
          return NULL;
       }
 
-      strncpy(rom.filename, "filename.fds", PATH_MAX);
+      strcpy(rom.filename, "filename.fds");
       return &rom;
    }
    else if (!memcmp(data, ROM_NSF_MAGIC, 5))
@@ -250,7 +250,7 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
          return NULL;
       }
 
-      strncpy(rom.filename, "filename.nsf", PATH_MAX);
+      strcpy(rom.filename, "filename.nsf");
       return &rom;
    }
 
@@ -308,7 +308,7 @@ rom_t *rom_loadfile(const char *filename)
             rom.system = SYS_NES_PAL;
       }
       rom.flags |= ROM_FLAG_FREE_DATA;
-      strncpy(rom.filename, filename, PATH_MAX);
+      snprintf(rom.filename, sizeof(rom.filename), "%s", filename);
       #ifdef USE_SRAM_FILE
          rom_loadsram();
       #endif

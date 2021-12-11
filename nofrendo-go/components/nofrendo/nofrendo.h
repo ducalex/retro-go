@@ -46,11 +46,6 @@
 
 /* Macros */
 
-#undef PATH_MAX
-#define PATH_MAX 512
-#undef PATH_SEP
-#define PATH_SEP '/'
-
 #define INLINE static inline __attribute__((__always_inline__))
 
 #if !defined(MIN)
