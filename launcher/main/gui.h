@@ -110,6 +110,7 @@ typedef struct {
     int startup;
     int browse;
     int theme;
+    int start_screen;
     int show_preview;
     int idle_counter;
     int width;
@@ -137,7 +138,7 @@ void gui_resize_list(tab_t *tab, int new_size);
 listbox_item_t *gui_get_selected_item(tab_t *tab);
 
 void gui_init(void);
-void gui_save_config(void);
+void gui_save_config(bool commit);
 void gui_event(gui_event_t event, tab_t *tab);
 void gui_redraw(void);
 void gui_load_preview(tab_t *tab);

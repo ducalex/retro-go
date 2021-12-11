@@ -40,15 +40,15 @@ static rg_gui_event_t toggle_tabs_cb(rg_gui_option_t *option, rg_gui_event_t eve
     return RG_DIALOG_VOID;
 }
 
-static rg_gui_event_t startup_app_cb(rg_gui_option_t *option, rg_gui_event_t event)
+static rg_gui_event_t start_screen_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    const char *modes[] = {"Last app", "Launcher"};
-    int max = 1;
+    const char *modes[] = {"Auto", "Carousel", "Browser"};
+    int max = 2;
 
-    if (event == RG_DIALOG_PREV && --gui.startup < 0) gui.startup = max;
-    if (event == RG_DIALOG_NEXT && ++gui.startup > max) gui.startup = 0;
+    if (event == RG_DIALOG_PREV && --gui.start_screen < 0) gui.start_screen = max;
+    if (event == RG_DIALOG_NEXT && ++gui.start_screen > max) gui.start_screen = 0;
 
-    strcpy(option->value, modes[gui.startup % (max+1)]);
+    strcpy(option->value, modes[gui.start_screen % (max+1)]);
     return RG_DIALOG_VOID;
 }
 
@@ -67,7 +67,7 @@ static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t ev
     return RG_DIALOG_VOID;
 }
 
-static rg_gui_event_t color_shift_cb(rg_gui_option_t *option, rg_gui_event_t event)
+static rg_gui_event_t color_theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int max = gui_themes_count - 1;
     if (event == RG_DIALOG_PREV) {
@@ -79,6 +79,18 @@ static rg_gui_event_t color_shift_cb(rg_gui_option_t *option, rg_gui_event_t eve
         gui_redraw();
     }
     sprintf(option->value, "%d/%d", gui.theme + 1, max + 1);
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t startup_app_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    const char *modes[] = {"Last game", "Launcher"};
+    int max = 1;
+
+    if (event == RG_DIALOG_PREV && --gui.startup < 0) gui.startup = max;
+    if (event == RG_DIALOG_NEXT && ++gui.startup > max) gui.startup = 0;
+
+    strcpy(option->value, modes[gui.startup % (max+1)]);
     return RG_DIALOG_VOID;
 }
 
@@ -153,7 +165,7 @@ static void retro_loop(void)
         {
             if (rg_gui_settings_menu() == 123)
                 rg_gui_about_menu(NULL);
-            gui_save_config();
+            gui_save_config(true);
             redraw_pending = true;
         }
         else if (joystick == RG_KEY_MENU) {
@@ -266,13 +278,15 @@ void app_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, "Color theme", "...", 1, &color_shift_cb},
-        {0, "Preview    ", "...", 1, &show_preview_cb},
-        {0, "Startup    ", "...", 1, &startup_app_cb},
-        {0, "Hide tabs  ", "...", 1, &toggle_tabs_cb},
+        {0, "Color theme ", "...", 1, &color_theme_cb},
+        {0, "Preview     ", "...", 1, &show_preview_cb},
+        {0, "Start screen", "...", 1, &start_screen_cb},
+        {0, "Hide tabs   ", "...", 1, &toggle_tabs_cb},
+        RG_DIALOG_SEPARATOR,
+        {0, "Startup app ", "...", 1, &startup_app_cb},
         #if !RG_GAMEPAD_OPTION_BTN
         RG_DIALOG_SEPARATOR,
-        {123, "About... ", NULL,  1, NULL},
+        {123, "About...  ", NULL,  1, NULL},
         #endif
         RG_DIALOG_CHOICE_LAST
     };

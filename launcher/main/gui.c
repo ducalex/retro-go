@@ -25,7 +25,7 @@ const int gui_themes_count = sizeof(gui_themes) / sizeof(theme_t);
 retro_gui_t gui;
 
 #define SETTING_SELECTED_TAB    "SelectedTab"
-#define SETTING_BROWSE_MODE     "BrowseTab"
+#define SETTING_START_SCREEN    "StartScreen"
 #define SETTING_STARTUP_MODE    "StartupMode"
 #define SETTING_GUI_THEME       "ColorTheme"
 #define SETTING_SHOW_PREVIEW    "ShowPreview"
@@ -39,14 +39,14 @@ void gui_init(void)
         .selected     = rg_settings_get_number(NS_APP, SETTING_SELECTED_TAB, 0),
         .theme        = rg_settings_get_number(NS_APP, SETTING_GUI_THEME, 0),
         .startup      = rg_settings_get_number(NS_APP, SETTING_STARTUP_MODE, 0),
-        .browse       = rg_settings_get_number(NS_APP, SETTING_BROWSE_MODE, 0),
+        .start_screen = rg_settings_get_number(NS_APP, SETTING_START_SCREEN, 0),
         .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, 1),
         .width        = rg_display_get_status()->screen.width,
         .height       = rg_display_get_status()->screen.height,
     };
     // Always enter browse mode when leaving an emulator
     // boot reason should probably be abstracted by rg_system >_<
-    gui.browse = gui.browse || esp_reset_reason() != ESP_RST_POWERON;
+    gui.browse = gui.start_screen == 2 || (!gui.start_screen && esp_reset_reason() != ESP_RST_POWERON);
 }
 
 void gui_event(gui_event_t event, tab_t *tab)
@@ -198,9 +198,10 @@ void gui_set_status(tab_t *tab, const char *left, const char *right)
         strcpy(tab->status[1].right, right);
 }
 
-void gui_save_config(void)
+void gui_save_config(bool commit)
 {
     rg_settings_set_number(NS_APP, SETTING_SELECTED_TAB, gui.selected);
+    rg_settings_set_number(NS_APP, SETTING_START_SCREEN, gui.start_screen);
     rg_settings_set_number(NS_APP, SETTING_SHOW_PREVIEW, gui.show_preview);
     rg_settings_set_number(NS_APP, SETTING_GUI_THEME, gui.theme);
     rg_settings_set_number(NS_APP, SETTING_STARTUP_MODE, gui.startup);
@@ -221,6 +222,9 @@ void gui_save_config(void)
             rg_settings_set_number(tab->name, SETTING_TAB_HIDDEN, 1);
         }
     }
+
+    if (commit)
+        rg_storage_commit();
 }
 
 listbox_item_t *gui_get_selected_item(tab_t *tab)

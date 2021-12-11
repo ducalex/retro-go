@@ -849,14 +849,6 @@ static rg_gui_event_t speedup_update_cb(rg_gui_option_t *option, rg_gui_event_t 
     return RG_DIALOG_VOID;
 }
 
-static rg_gui_event_t more_settings_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    rg_app_t *app = rg_system_get_app();
-    if (event == RG_DIALOG_ENTER)
-        rg_gui_dialog("Advanced", app->options, 0);
-    return RG_DIALOG_VOID;
-}
-
 static rg_gui_event_t disk_activity_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
