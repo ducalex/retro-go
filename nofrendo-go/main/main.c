@@ -227,6 +227,23 @@ static void osd_blitscreen(uint8 *bmp)
     currentUpdate = &updates[currentUpdate == &updates[0]];
 }
 
+static void nsf_draw_overlay(void)
+{
+    extern int nsf_current_song;
+    char song[32];
+    const nsfheader_t *header = nes->cart->data_ptr;
+    const rg_gui_option_t options[] = {
+        {0, "Name      ", (char *)header->name, 1, NULL},
+        {0, "Artist    ", (char *)header->artist, 1, NULL},
+        {0, "Copyright ", (char *)header->copyright, 1, NULL},
+        {0, "Playing   ", (char *)song, 1, NULL},
+        RG_DIALOG_CHOICE_LAST,
+    };
+    snprintf(song, sizeof(song), "%d / %d", nsf_current_song, header->total_songs);
+    rg_gui_draw_dialog("NSF Player", options, -1);
+}
+
+
 void app_main(void)
 {
     const rg_handlers_t handlers = {
@@ -287,6 +304,7 @@ void app_main(void)
     int frameTime = get_frame_time(nes->refresh_rate);
     int drawframe = false;
     int skipFrames = 0;
+    int nsfPlayer = nes->cart->mapper_number == 31;
 
     while (true)
     {
@@ -344,6 +362,11 @@ void app_main(void)
                 skipFrames = 1;
             else if (drawframe && fullFrame) // This could be avoided when scaling != full
                 skipFrames = 1;
+            else if (nsfPlayer)
+            {
+                nsf_draw_overlay();
+                skipFrames = 15;
+            }
         }
         else if (skipFrames > 0)
         {

@@ -32,6 +32,9 @@ static int current_song = 1;
 static bool playing = false;
 #define SYNC_TO_VBLANK 1
 
+// Ugly hack to access from the gui until we make a nice
+// GUI running on the NES in here.
+int nsf_current_song = 0;
 
 static void setup_bank(int bank, int value)
 {
@@ -81,6 +84,7 @@ static void setup_song(int song)
     cart->prg_rom[0xFFFC - 0x8000] = 0x00;
     cart->prg_rom[0xFFFD - 0x8000] = 0x60;
 
+    nsf_current_song = song;
     playing = false;
 
     printf("song #%d is ready to play!\n", song);
