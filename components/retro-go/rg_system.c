@@ -44,6 +44,7 @@ static rg_app_t app;
 static int ledValue = 0;
 static int wdtCounter = 0;
 static bool initialized = false;
+static bool exit_called = false;
 
 #define WDT_TIMEOUT 15000000
 #define WDT_RELOAD(val) wdtCounter = (val)
@@ -54,6 +55,56 @@ static const char *htime(time_t ts)
     static char buffer[32];
     strftime(buffer, sizeof(buffer), "%a, %d %b %Y %T", gmtime(&ts));
     return buffer;
+}
+
+static void rtc_time_init(void)
+{
+    const char *source = "settings";
+    time_t timestamp;
+#if 0
+    if (rg_i2c_read(0x68, 0x00, data, sizeof(data)))
+    {
+        source = "DS3231";
+    }
+    else
+#endif
+    if (!(timestamp = rg_settings_get_number(NS_GLOBAL, SETTING_RTC_TIME, 0)))
+    {
+        timestamp = 946702800; // 2000-01-01 00:00:00
+        source = "hardcoded";
+    }
+
+    settimeofday(&(struct timeval){timestamp, 0}, NULL);
+
+    RG_LOGI("Time is now: %s\n", htime(time(NULL)));
+    RG_LOGI("Time loaded from %s\n", source);
+}
+
+static void rtc_time_save(void)
+{
+    time_t now = time(NULL);
+#if 0
+    if (rg_i2c_write(0x68, 0x00, data, sizeof(data)))
+    {
+        RG_LOGI("System time saved to DS3231.\n");
+    }
+    else
+#endif
+    {
+        rg_settings_set_number(NS_GLOBAL, SETTING_RTC_TIME, now);
+        RG_LOGI("System time saved to settings.\n");
+    }
+}
+
+static void exit_handler(void)
+{
+    RG_LOGI("Exit handler called.\n");
+    if (!exit_called)
+    {
+        exit_called = true;
+        rg_system_set_boot_app(RG_APP_LAUNCHER);
+        rg_system_restart();
+    }
 }
 
 static inline void logbuf_print(rg_logbuf_t *buf, const char *str)
@@ -99,15 +150,16 @@ static void system_monitor_task(void *arg)
 
     while (1)
     {
-        float loopTime = get_elapsed_time_since(lastLoop);
+        int loopTime_us = get_elapsed_time_since(lastLoop);
+        float loopTime = loopTime_us / 1000000.f;
         rg_counters_t current = counters;
 
         counters = (rg_counters_t){0};
         lastLoop = get_elapsed_time();
 
-        statistics.busyPercent = RG_MIN(current.busyTime / loopTime * 100.f, 100.f);
-        statistics.skippedFPS = current.skippedFrames / (loopTime / 1000000.f);
-        statistics.totalFPS = current.totalFrames / (loopTime / 1000000.f);
+        statistics.busyPercent = RG_MIN(current.busyTime / (float)loopTime_us * 100.f, 100.f);
+        statistics.skippedFPS = current.skippedFrames / loopTime;
+        statistics.totalFPS = current.totalFrames / loopTime;
         statistics.freeStackMain = uxTaskGetStackHighWaterMark(app.mainTaskHandle);
 
         heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
@@ -153,7 +205,7 @@ static void system_monitor_task(void *arg)
         //     RG_LOGW("Running out of heap space!");
         // }
 
-        if ((wdtCounter -= loopTime) <= 0)
+        if ((wdtCounter -= loopTime_us) <= 0)
         {
             if (rg_input_gamepad_last_read() > WDT_TIMEOUT)
             {
@@ -165,12 +217,12 @@ static void system_monitor_task(void *arg)
             WDT_RELOAD(WDT_TIMEOUT);
         }
 
-        if (abs(time(NULL) - lastTime) > 60)
+        if (abs(time(NULL) - lastTime) > loopTime * 2)
         {
             RG_LOGI("System time suddenly changed!\n");
             RG_LOGI("    old time: %s\n", htime(lastTime));
             RG_LOGI("    new time: %s\n", htime(time(NULL)));
-            rg_system_time_save();
+            rtc_time_save();
         }
         lastTime = time(NULL);
 
@@ -211,50 +263,9 @@ IRAM_ATTR void rg_system_tick(int busyTime)
     // WDT_RELOAD(WDT_TIMEOUT);
 }
 
-rg_stats_t rg_system_get_stats()
+rg_stats_t rg_system_get_stats(void)
 {
     return statistics;
-}
-
-void rg_system_time_init()
-{
-    const char *source = "settings";
-    time_t timestamp;
-#if 0
-    if (rg_i2c_read(0x68, 0x00, data, sizeof(data)))
-    {
-        // ...
-        source = "DS3231";
-    }
-    else
-#endif
-    if (!(timestamp = rg_settings_get_number(NS_GLOBAL, SETTING_RTC_TIME, 0)))
-    {
-        timestamp = 946702800; // 2000-01-01 00:00:00
-        source = "hardcoded";
-    }
-
-    settimeofday(&(struct timeval){timestamp, 0}, NULL);
-
-    RG_LOGI("Time is now: %s\n", htime(time(NULL)));
-    RG_LOGI("Time loaded from %s\n", source);
-}
-
-void rg_system_time_save()
-{
-    time_t now = time(NULL);
-#if 0
-    // ...
-    if (rg_i2c_write(0x68, 0x00, data, sizeof(data)))
-    {
-        RG_LOGI("System time saved to DS3231.\n");
-    }
-    else
-#endif
-    {
-        rg_settings_set_number(NS_GLOBAL, SETTING_RTC_TIME, now);
-        RG_LOGI("System time saved to settings.\n");
-    }
 }
 
 rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options)
@@ -266,7 +277,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     RG_LOGX(" built for: %s. aud=%d disp=%d pad=%d sd=%d cfg=%d\n", RG_TARGET_NAME, 0, 0, 0, 0, 0);
     RG_LOGX("========================================================\n\n");
 
-    // Seed C's pseudo random number generator
+    // This must be done before any peripheral init
     srand(esp_random());
 
     memset(&app, 0, sizeof(app));
@@ -308,14 +319,14 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     rg_gui_init();
     rg_gui_draw_hourglass();
     rg_audio_init(sampleRate);
-    rg_system_time_init();
 
     // Force return to launcher (recovery)
-    if (rg_input_key_is_pressed(RG_KEY_ANY))
+    if (rg_input_key_is_pressed(RG_KEY_UP|RG_KEY_DOWN|RG_KEY_LEFT|RG_KEY_RIGHT))
     {
-        if (app.isLauncher) rg_settings_reset();
         rg_input_wait_for_key(RG_KEY_ALL, 0);
-        rg_system_switch_app(RG_APP_LAUNCHER);
+        rg_settings_reset();
+        rg_system_set_boot_app(RG_APP_LAUNCHER);
+        rg_system_restart();
     }
 
     // Show alert if we've just rebooted from a panic
@@ -335,7 +346,8 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 
         rg_display_clear(C_BLUE);
         rg_gui_alert("System Panic!", message);
-        rg_system_switch_app(RG_APP_LAUNCHER);
+        rg_system_set_boot_app(RG_APP_LAUNCHER);
+        rg_system_restart();
     }
 
     // Show alert if storage isn't available
@@ -343,7 +355,8 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     {
         rg_display_clear(C_SKY_BLUE);
         rg_gui_alert("SD Card Error", "Mount failed."); // esp_err_to_name(ret)
-        rg_system_switch_app(RG_APP_LAUNCHER);
+        rg_system_set_boot_app(RG_APP_LAUNCHER);
+        rg_system_restart();
     }
 
     panicTrace.magicWord = 0;
@@ -357,6 +370,10 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     rg_netplay_init(app.netplay_handler);
     #endif
 
+    // Do this last to not interfere with panic handling above
+    atexit(&exit_handler);
+    rtc_time_init();
+
     xTaskCreate(&system_monitor_task, "sysmon", 2560, NULL, 7, NULL);
 
     initialized = true;
@@ -366,7 +383,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     return &app;
 }
 
-rg_app_t *rg_system_get_app()
+rg_app_t *rg_system_get_app(void)
 {
     return &app;
 }
@@ -566,13 +583,15 @@ bool rg_emu_reset(int hard)
     return false;
 }
 
-static void shutdown_cleanup()
+static void shutdown_cleanup(void)
 {
     // Prepare the system for a power change (deep sleep, restart, shutdown)
     // Wait for all keys to be released, they could interfer with the restart process
+    rg_display_clear(C_BLACK);
+    rg_gui_draw_hourglass();
     rg_input_wait_for_key(RG_KEY_ALL, false);
     rg_system_event(RG_EVENT_SHUTDOWN, NULL);
-    rg_system_time_save();
+    rtc_time_save();
     rg_audio_deinit();
     rg_input_deinit();
     rg_i2c_deinit();
@@ -580,15 +599,16 @@ static void shutdown_cleanup()
     rg_display_deinit();
 }
 
-void rg_system_shutdown()
+void rg_system_shutdown(void)
 {
-    RG_LOGI("System halted.\n");
+    RG_LOGI("Halting system.\n");
+    exit_called = true;
     shutdown_cleanup();
     vTaskSuspendAll();
     while (1);
 }
 
-void rg_system_sleep()
+void rg_system_sleep(void)
 {
     RG_LOGI("Going to sleep!\n");
     shutdown_cleanup();
@@ -596,19 +616,11 @@ void rg_system_sleep()
     esp_deep_sleep_start();
 }
 
-void rg_system_restart()
+void rg_system_restart(void)
 {
+    exit_called = true;
     shutdown_cleanup();
     esp_restart();
-}
-
-void rg_system_switch_app(const char *app)
-{
-    RG_LOGI("Switching to app '%s'.\n", app ? app : "NULL");
-    rg_display_clear(C_BLACK);
-    rg_gui_draw_hourglass();
-    rg_system_set_boot_app(app);
-    rg_system_restart();
 }
 
 void rg_system_start_app(const char *app, const char *name, const char *args, int flags)
@@ -617,7 +629,8 @@ void rg_system_start_app(const char *app, const char *name, const char *args, in
     rg_settings_set_string(NS_GLOBAL, SETTING_BOOT_NAME, name);
     rg_settings_set_string(NS_GLOBAL, SETTING_BOOT_ARGS, args);
     rg_settings_set_number(NS_GLOBAL, SETTING_BOOT_FLAGS, flags);
-    rg_system_switch_app(app);
+    rg_system_set_boot_app(app);
+    rg_system_restart();
 }
 
 bool rg_system_find_app(const char *app)

@@ -146,10 +146,9 @@ typedef struct
 
 rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options);
 void rg_system_panic(const char *reason, const char *context) __attribute__((noreturn));
-void rg_system_shutdown() __attribute__((noreturn));
-void rg_system_sleep() __attribute__((noreturn));
-void rg_system_restart() __attribute__((noreturn));
-void rg_system_switch_app(const char *app) __attribute__((noreturn));
+void rg_system_shutdown(void) __attribute__((noreturn));
+void rg_system_sleep(void) __attribute__((noreturn));
+void rg_system_restart(void) __attribute__((noreturn));
 void rg_system_start_app(const char *app, const char *name, const char *args, int flags) __attribute__((noreturn));
 void rg_system_set_boot_app(const char *app);
 bool rg_system_find_app(const char *app);
@@ -159,11 +158,8 @@ void rg_system_tick(int busyTime);
 void rg_system_log(int level, const char *context, const char *format, ...);
 bool rg_system_save_trace(const char *filename, bool append);
 void rg_system_event(rg_event_t event, void *arg);
-rg_app_t *rg_system_get_app();
-rg_stats_t rg_system_get_stats();
-
-void rg_system_time_init();
-void rg_system_time_save();
+rg_app_t *rg_system_get_app(void);
+rg_stats_t rg_system_get_stats(void);
 
 char *rg_emu_get_path(rg_path_type_t type, const char *romPath);
 bool rg_emu_save_state(int slot);

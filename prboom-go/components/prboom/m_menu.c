@@ -1516,9 +1516,7 @@ static void M_QuitResponse(int ch)
       i--;
     }
   }
-  // exit(0); // killough
-  // RG: To-do: break the doom loop instead and quit from our main component
-  rg_system_switch_app(RG_APP_LAUNCHER);
+  exit(0); // killough
 }
 
 static void M_QuitDOOM(int choice)

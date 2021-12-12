@@ -241,7 +241,7 @@ static void retro_loop(void)
 
 static void try_migrate(void)
 {
-    if (rg_settings_get_number(NS_GLOBAL, "Migration", 0) < 129)
+    if (rg_settings_get_number(NS_GLOBAL, "Migration", 0) < 1290)
     {
 #if 0 // Changed my mind for now, it might be a hassle to some users
         rmdir(RG_BASE_PATH_COVERS); // Remove if present but empty
@@ -257,10 +257,11 @@ static void try_migrate(void)
 #endif
 
         // These don't conflict, no need to ask
+        rg_mkdir(RG_BASE_PATH_CONFIG);
         rename(RG_ROOT_PATH "/odroid/favorite.txt", RG_BASE_PATH_CONFIG "/favorite.txt");
         rename(RG_ROOT_PATH "/odroid/recent.txt", RG_BASE_PATH_CONFIG "/recent.txt");
 
-        rg_settings_set_number(NS_GLOBAL, "Migration", 129);
+        rg_settings_set_number(NS_GLOBAL, "Migration", 1290);
 
         rg_storage_commit();
     }
