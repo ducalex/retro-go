@@ -6,7 +6,6 @@
 
 #define CRC_CACHE_MAGIC 0x21112222
 #define CRC_CACHE_MAX_ENTRIES (0x10000 / sizeof(retro_crc_entry_t) - 1)
-#define CRC_CACHE_PATH RG_BASE_PATH_CACHE "/crc32.bin"
 
 typedef struct __attribute__((__packed__))
 {

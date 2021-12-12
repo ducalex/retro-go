@@ -292,7 +292,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     app.logLevel = RG_LOG_INFO;
     app.isLauncher = (strcmp(app.realname, RG_APP_LAUNCHER) == 0);
     app.mainTaskHandle = xTaskGetCurrentTaskHandle();
-    app.options = options; // Todo: We should make a copy of it
+    app.options = options; // TODO: We should make a copy of it
     if (handlers)
         app.handlers = *handlers;
 
@@ -395,79 +395,72 @@ void rg_system_event(rg_event_t event, void *arg)
         app.handlers.event(event, arg);
 }
 
-char *rg_emu_get_path(rg_path_type_t type, const char *_romPath)
+char *rg_system_get_path(char *buffer, rg_path_type_t pathType, const char *filename)
 {
-    const char *fileName = _romPath ?: app.romPath;
-    char buffer[PATH_MAX + 1];
+    int type = pathType & ~0xFF;
+    int slot = pathType & 0xFF;
 
-    if (strstr(fileName, RG_BASE_PATH_ROMS) == fileName)
-    {
-        fileName += strlen(RG_BASE_PATH_ROMS);
-    }
+    if (!buffer)
+        buffer = malloc(RG_PATH_MAX + 1);
 
-    if (!fileName || strlen(fileName) < 4)
-    {
-        RG_PANIC("Invalid ROM path!");
-    }
+    if (type == RG_PATH_SAVE_STATE || type == RG_PATH_SAVE_SRAM)
+        strcpy(buffer, RG_BASE_PATH_SAVES);
+    else if (type == RG_PATH_SCREENSHOT)
+        strcpy(buffer, RG_BASE_PATH_SAVES);
+    else if (type == RG_PATH_ROM_FILE)
+        strcpy(buffer, RG_BASE_PATH_ROMS);
+    else if (type == RG_PATH_CACHE_FILE)
+        strcpy(buffer, RG_BASE_PATH_CACHE);
+    else
+        strcpy(buffer, RG_ROOT_PATH);
 
-    switch (type)
+    if (filename != NULL)
     {
-        case RG_PATH_SAVE_STATE:
-        case RG_PATH_SAVE_STATE_1:
-        case RG_PATH_SAVE_STATE_2:
-        case RG_PATH_SAVE_STATE_3:
-            strcpy(buffer, RG_BASE_PATH_SAVES);
-            strcat(buffer, fileName);
+        // Often filename will be an absolute ROM, let's remove that part!
+        if (strstr(filename, RG_BASE_PATH_ROMS) == filename)
+            filename += strlen(RG_BASE_PATH_ROMS) + 1;
+
+        // TODO: We probably should append app->name when needed...
+
+        strcat(buffer, "/");
+        strcat(buffer, filename);
+
+        if (slot > 0)
+            sprintf(buffer + strlen(buffer), "-%d", slot);
+
+        if (type == RG_PATH_SAVE_STATE)
             strcat(buffer, ".sav");
-            break;
-
-        case RG_PATH_SAVE_SRAM:
-            strcpy(buffer, RG_BASE_PATH_SAVES);
-            strcat(buffer, fileName);
+        else if (type == RG_PATH_SAVE_SRAM)
             strcat(buffer, ".sram");
-            break;
-
-        case RG_PATH_SCREENSHOT:
-            strcpy(buffer, RG_BASE_PATH_SAVES);
-            strcat(buffer, fileName);
+        else if (type == RG_PATH_SCREENSHOT)
             strcat(buffer, ".png");
-            break;
-
-        case RG_PATH_ROM_FILE:
-            strcpy(buffer, RG_BASE_PATH_ROMS);
-            strcat(buffer, fileName);
-            break;
-
-        default:
-            RG_PANIC("Unknown path type");
     }
 
-    return strdup(buffer);
+    return buffer;
 }
 
 bool rg_emu_load_state(int slot)
 {
+    char filename[RG_PATH_MAX + 1];
+    bool success = false;
+
     if (!app.romPath || !app.handlers.loadState)
     {
         RG_LOGE("No rom or handler defined...\n");
         return false;
     }
 
-    RG_LOGI("Loading state %d.\n", slot);
+    rg_system_get_path(filename, RG_PATH_SAVE_STATE + slot, app.romPath);
 
+    RG_LOGI("Loading state from '%s'.\n", filename);
     WDT_RELOAD(30 * 1000000);
 
     rg_gui_draw_hourglass();
 
-    char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE, app.romPath);
-    bool success = (*app.handlers.loadState)(filename);
-
-    if (!success)
+    if (!(success = (*app.handlers.loadState)(filename)))
     {
         RG_LOGE("Load failed!\n");
     }
-
-    free(filename);
 
     WDT_RELOAD(WDT_TIMEOUT);
 
@@ -476,39 +469,40 @@ bool rg_emu_load_state(int slot)
 
 bool rg_emu_save_state(int slot)
 {
+    char filename[RG_PATH_MAX + 1];
+    char tempname[RG_PATH_MAX + 8];
+    bool success = false;
+
     if (!app.romPath || !app.handlers.saveState)
     {
         RG_LOGE("No rom or handler defined...\n");
         return false;
     }
 
-    RG_LOGI("Saving state %d.\n", slot);
+    rg_system_get_path(filename, RG_PATH_SAVE_STATE + slot, app.romPath);
 
+    RG_LOGI("Saving state to '%s'.\n", filename);
     WDT_RELOAD(30 * 1000000);
 
     rg_system_set_led(1);
     rg_gui_draw_hourglass();
-
-    char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE, app.romPath);
-    char path_buffer[PATH_MAX + 1];
-    bool success = false;
 
     if (!rg_mkdir(rg_dirname(filename)))
     {
         RG_LOGE("Unable to create dir, save might fail...\n");
     }
 
-    sprintf(path_buffer, "%s.new", filename);
-    if ((*app.handlers.saveState)(path_buffer))
+    snprintf(tempname, sizeof(tempname), "%s.new", filename);
+    if ((*app.handlers.saveState)(tempname))
     {
-        sprintf(path_buffer, "%s.bak", filename);
-        rename(filename, path_buffer);
+        snprintf(tempname, sizeof(tempname), "%s.bak", filename);
+        rename(filename, tempname);
 
-        sprintf(path_buffer, "%s.new", filename);
-        if (rename(path_buffer, filename) == 0)
+        snprintf(tempname, sizeof(tempname), "%s.new", filename);
+        if (rename(tempname, filename) == 0)
         {
-            sprintf(path_buffer, "%s.bak", filename);
-            unlink(path_buffer);
+            sprintf(tempname, "%s.bak", filename);
+            unlink(tempname);
             success = true;
         }
     }
@@ -517,19 +511,18 @@ bool rg_emu_save_state(int slot)
     {
         RG_LOGE("Save failed!\n");
 
-        sprintf(path_buffer, "%s.bak", filename);
-        rename(filename, path_buffer);
-        sprintf(path_buffer, "%s.new", filename);
-        unlink(path_buffer);
+        snprintf(tempname, sizeof(tempname), "%s.bak", filename);
+        rename(filename, tempname);
+        snprintf(tempname, sizeof(tempname), "%s.new", filename);
+        unlink(tempname);
 
         rg_gui_alert("Save failed", NULL);
     }
     else
     {
         // Save succeeded, let's take a pretty screenshot for the launcher!
-        char *fileName = rg_emu_get_path(RG_PATH_SCREENSHOT, app.romPath);
-        rg_emu_screenshot(fileName, rg_display_get_status()->screen.width / 2, 0);
-        free(fileName);
+        rg_system_get_path(filename, RG_PATH_SCREENSHOT + slot, app.romPath);
+        rg_emu_screenshot(filename, rg_display_get_status()->screen.width / 2, 0);
 
         // And set bootflags to resume from this state on next boot
         if ((app.bootFlags & (RG_BOOT_ONCE|RG_BOOT_RESUME)) == 0)
@@ -541,8 +534,6 @@ bool rg_emu_save_state(int slot)
 
     rg_storage_commit();
     rg_system_set_led(0);
-
-    free(filename);
 
     WDT_RELOAD(WDT_TIMEOUT);
 

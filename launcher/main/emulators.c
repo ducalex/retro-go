@@ -15,10 +15,12 @@ static retro_emulator_t emulators[32];
 static int emulators_count = 0;
 static retro_crc_cache_t *crc_cache;
 static bool crc_cache_dirty = false;
+static char *crc_cache_path = NULL;
 
 
 void crc_cache_init(void)
 {
+    crc_cache_path = rg_system_get_path(NULL, RG_PATH_CACHE_FILE, "crc32.bin");
     crc_cache = calloc(1, sizeof(retro_crc_cache_t));
     crc_cache_dirty = true;
 
@@ -28,7 +30,7 @@ void crc_cache_init(void)
         return;
     }
 
-    FILE *fp = fopen(CRC_CACHE_PATH, "rb");
+    FILE *fp = fopen(crc_cache_path, "rb");
     if (fp)
     {
         fread(crc_cache, offsetof(retro_crc_cache_t, entries), 1, fp);
@@ -77,10 +79,10 @@ void crc_cache_save(void)
 
     RG_LOGI("Saving cache\n");
 
-    FILE *fp = fopen(CRC_CACHE_PATH, "wb");
-    if (!fp && rg_mkdir(rg_dirname(CRC_CACHE_PATH)))
+    FILE *fp = fopen(crc_cache_path, "wb");
+    if (!fp && rg_mkdir(rg_dirname(crc_cache_path)))
     {
-        fp = fopen(CRC_CACHE_PATH, "wb");
+        fp = fopen(crc_cache_path, "wb");
     }
     if (fp)
     {
@@ -250,7 +252,7 @@ int emulator_scan_folder(retro_emulator_t *emu, const char* path, int flags)
         return -1;
 
     const char *folder = roms_folder(emu, path);
-    char pathbuf[PATH_MAX + 1];
+    char pathbuf[RG_PATH_MAX + 1];
     struct dirent* ent;
 
     while ((ent = readdir(dir)))
@@ -451,7 +453,7 @@ static void add_emulator(const char *system_name, const char *short_name, const 
 
 void emulator_init(retro_emulator_t *emu)
 {
-    char path[PATH_MAX + 1];
+    char path[RG_PATH_MAX + 1];
 
     if (emu->initialized)
         return;
@@ -474,7 +476,7 @@ void emulator_init(retro_emulator_t *emu)
 
 const char *emulator_get_file_path(retro_emulator_file_t *file)
 {
-    static char buffer[PATH_MAX + 1];
+    static char buffer[RG_PATH_MAX + 1];
     if (file == NULL) return NULL;
     strcpy(buffer, file->folder);
     strcat(buffer, "/");
@@ -576,9 +578,9 @@ void emulator_show_file_info(retro_emulator_file_t *file)
 
 void emulator_show_file_menu(retro_emulator_file_t *file, bool advanced)
 {
-    char *save_path = rg_emu_get_path(RG_PATH_SAVE_STATE, emulator_get_file_path(file));
-    char *sram_path = rg_emu_get_path(RG_PATH_SAVE_SRAM, emulator_get_file_path(file));
-    char *scrn_path = rg_emu_get_path(RG_PATH_SCREENSHOT, emulator_get_file_path(file));
+    char *save_path = rg_system_get_path(NULL, RG_PATH_SAVE_STATE, emulator_get_file_path(file));
+    char *sram_path = rg_system_get_path(NULL, RG_PATH_SAVE_SRAM, emulator_get_file_path(file));
+    char *scrn_path = rg_system_get_path(NULL, RG_PATH_SCREENSHOT, emulator_get_file_path(file));
     bool has_save = access(save_path, F_OK) == 0;
     bool has_sram = access(sram_path, F_OK) == 0;
     bool is_fav = bookmark_find(BOOK_TYPE_FAVORITE, file) != NULL;

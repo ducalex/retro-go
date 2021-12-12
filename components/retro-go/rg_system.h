@@ -31,14 +31,11 @@ extern "C" {
 
 typedef enum
 {
-    RG_PATH_SAVE_STATE = 0,
-    RG_PATH_SAVE_STATE_1,
-    RG_PATH_SAVE_STATE_2,
-    RG_PATH_SAVE_STATE_3,
-    RG_PATH_SCREENSHOT,
-    RG_PATH_SAVE_SRAM,
-    RG_PATH_ROM_FILE,
-    RG_PATH_ART_FILE,
+    RG_PATH_SAVE_STATE = 0x100,
+    RG_PATH_SAVE_SRAM  = 0x200,
+    RG_PATH_SCREENSHOT = 0x300,
+    RG_PATH_ROM_FILE   = 0x400,
+    RG_PATH_CACHE_FILE = 0x500,
 } rg_path_type_t;
 
 enum
@@ -158,10 +155,10 @@ void rg_system_tick(int busyTime);
 void rg_system_log(int level, const char *context, const char *format, ...);
 bool rg_system_save_trace(const char *filename, bool append);
 void rg_system_event(rg_event_t event, void *arg);
+char *rg_system_get_path(char *buffer, rg_path_type_t type, const char *filename);
 rg_app_t *rg_system_get_app(void);
 rg_stats_t rg_system_get_stats(void);
 
-char *rg_emu_get_path(rg_path_type_t type, const char *romPath);
 bool rg_emu_save_state(int slot);
 bool rg_emu_load_state(int slot);
 bool rg_emu_reset(int hard);
@@ -211,10 +208,9 @@ extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 
 #define RG_DUMP(...) {}
 
-// Attributes
+#define RG_PATH_MAX 255
 
-#undef PATH_MAX
-#define PATH_MAX 255
+// Attributes
 
 #ifndef IRAM_ATTR
 #define IRAM_ATTR

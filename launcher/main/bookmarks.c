@@ -165,7 +165,7 @@ static void book_save(book_type_t book_type)
 static void book_init(book_type_t book_type, const char *name, const char *desc, int capacity)
 {
     book_t *book = &books[book_type];
-    char path[PATH_MAX + 1];
+    char path[RG_PATH_MAX + 1];
 
     sprintf(path, "%s/%s.txt", RG_BASE_PATH_CONFIG, name);
 

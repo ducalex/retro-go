@@ -443,7 +443,8 @@ void gui_load_preview(tab_t *tab)
 {
     bool show_missing_cover = false;
     uint32_t order;
-    char path[256];
+    char path[RG_PATH_MAX + 1] = RG_BASE_PATH_COVERS;
+    char *name_ptr = path + strlen(path);
 
     rg_image_free(tab->preview);
     tab->preview = NULL;
@@ -502,15 +503,15 @@ void gui_load_preview(tab_t *tab)
         }
 
         if (type == 0x1) // Game cover (old format)
-            sprintf(path, RG_BASE_PATH_COVERS "/%s/%X/%08X.art", dirname, file->checksum >> 28, file->checksum);
+            sprintf(name_ptr, "/%s/%X/%08X.art", dirname, file->checksum >> 28, file->checksum);
         else if (type == 0x2) // Game cover (png)
-            sprintf(path, RG_BASE_PATH_COVERS "/%s/%X/%08X.png", dirname, file->checksum >> 28, file->checksum);
+            sprintf(name_ptr, "/%s/%X/%08X.png", dirname, file->checksum >> 28, file->checksum);
         else if (type == 0x3) // Save state screenshot (png)
-            sprintf(path, RG_BASE_PATH_SAVES "/%s/%s.png", file->folder + strlen(RG_BASE_PATH_ROMS), file->name);
+            sprintf(name_ptr, "/%s/%s.png", file->folder + strlen(RG_BASE_PATH_ROMS), file->name);
         else if (type == 0x4) // Game cover (based on filename)
-            sprintf(path, RG_BASE_PATH_COVERS "/%s/%s.png", dirname, file->name);
+            sprintf(name_ptr, "/%s/%s.png", dirname, file->name);
         else if (type == 0xF) // use generic cover image (not currently used)
-            sprintf(path, RG_BASE_PATH_COVERS "/%s/default.png", dirname);
+            sprintf(name_ptr, "/%s/default.png", dirname);
         else
             continue;
 

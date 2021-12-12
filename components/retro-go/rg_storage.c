@@ -10,13 +10,13 @@
 
 #include "rg_system.h"
 
-#define CONFIG_FILE_PATH RG_BASE_PATH_CONFIG "/retro-go.json"
-#define SETTING_DISK_ACTIVITY "DiskActivity"
-
+static const char *config_file_path = RG_BASE_PATH_CONFIG "/retro-go.json";
+static cJSON *config_root = NULL;
+static int unsaved_changes = 0;
 static esp_err_t sdcard_mount = ESP_FAIL;
 static bool disk_led = true;
-static cJSON *root = NULL;
-static int unsaved_changes = 0;
+
+#define SETTING_DISK_ACTIVITY "DiskActivity"
 
 
 void rg_storage_set_activity_led(bool enable)
@@ -103,7 +103,7 @@ void rg_storage_init(void)
         RG_LOGE("SD Card mounting failed. driver=%d, err=0x%x\n", RG_STORAGE_DRIVER, sdcard_mount);
 
     // Now we can load settings from SD Card
-    FILE *fp = fopen(CONFIG_FILE_PATH, "rb");
+    FILE *fp = fopen(config_file_path, "rb");
     if (fp)
     {
         fseek(fp, 0, SEEK_END);
@@ -111,20 +111,20 @@ void rg_storage_init(void)
         fseek(fp, 0, SEEK_SET);
         char *buffer = calloc(1, length + 1);
         if (fread(buffer, 1, length, fp))
-            root = cJSON_Parse(buffer);
+            config_root = cJSON_Parse(buffer);
         free(buffer);
         fclose(fp);
     }
 
-    if (root)
+    if (config_root)
     {
-        RG_LOGI("Settings loaded from %s.\n", CONFIG_FILE_PATH);
+        RG_LOGI("Settings loaded from %s.\n", config_file_path);
         disk_led = rg_settings_get_number(NS_GLOBAL, SETTING_DISK_ACTIVITY, 1);
     }
     else
     {
-        RG_LOGW("Failed to load settings from %s.\n", CONFIG_FILE_PATH);
-        root = cJSON_CreateObject();
+        RG_LOGW("Failed to load settings from %s.\n", config_file_path);
+        config_root = cJSON_CreateObject();
     }
 }
 
@@ -152,15 +152,15 @@ void rg_storage_commit(void)
 {
     if (unsaved_changes > 0)
     {
-        char *buffer = cJSON_Print(root);
+        char *buffer = cJSON_Print(config_root);
         if (buffer)
         {
-            FILE *fp = fopen(CONFIG_FILE_PATH, "wb");
+            FILE *fp = fopen(config_file_path, "wb");
             if (!fp)
             {
-                if (unlink(CONFIG_FILE_PATH) == -1)
-                    rg_mkdir(rg_dirname(CONFIG_FILE_PATH));
-                fp = fopen(CONFIG_FILE_PATH, "wb");
+                if (unlink(config_file_path) == -1)
+                    rg_mkdir(rg_dirname(config_file_path));
+                fp = fopen(config_file_path, "wb");
             }
             if (fp)
             {
@@ -182,22 +182,22 @@ void rg_storage_commit(void)
 
 static cJSON *json_root(const char *name)
 {
-    RG_ASSERT(root, "json_root called before settings were initialized!");
+    RG_ASSERT(config_root, "json_root called before settings were initialized!");
 
     cJSON *myroot;
 
     if (!name)
     {
-        myroot = root;
+        myroot = config_root;
     }
-    else if (!(myroot = cJSON_GetObjectItem(root, name)))
+    else if (!(myroot = cJSON_GetObjectItem(config_root, name)))
     {
-        myroot = cJSON_AddObjectToObject(root, name);
+        myroot = cJSON_AddObjectToObject(config_root, name);
     }
     else if (!cJSON_IsObject(myroot))
     {
         myroot = cJSON_CreateObject();
-        cJSON_ReplaceItemInObject(root, name, myroot);
+        cJSON_ReplaceItemInObject(config_root, name, myroot);
     }
 
     return myroot;
@@ -205,8 +205,8 @@ static cJSON *json_root(const char *name)
 
 void rg_settings_reset(void)
 {
-    cJSON_Delete(root);
-    root = cJSON_CreateObject();
+    cJSON_Delete(config_root);
+    config_root = cJSON_CreateObject();
     unsaved_changes++;
     rg_storage_commit();
 }
@@ -266,7 +266,7 @@ void rg_settings_delete(const char *section, const char *key)
     if (key)
         cJSON_DeleteItemFromObject(json_root(section), key);
     else
-        cJSON_DeleteItemFromObject(root, section);
+        cJSON_DeleteItemFromObject(config_root, section);
     unsaved_changes++;
 }
 
@@ -275,20 +275,20 @@ bool rg_mkdir(const char *dir)
 {
     RG_ASSERT(dir, "Bad param");
 
+    char temp[RG_PATH_MAX + 1];
     int ret = mkdir(dir, 0777);
 
     if (ret == -1)
     {
         if (errno == EEXIST)
-        {
             return true;
-        }
 
-        char temp[PATH_MAX + 1];
-        strncpy(temp, dir, sizeof(temp) - 1);
+        strncpy(temp, dir, RG_PATH_MAX);
 
-        for (char *p = temp + strlen(RG_ROOT_PATH) + 1; *p; p++) {
-            if (*p == '/') {
+        for (char *p = temp + strlen(RG_ROOT_PATH) + 1; *p; p++)
+        {
+            if (*p == '/')
+            {
                 *p = 0;
                 if (strlen(temp) > 0) {
                     RG_LOGI("Creating %s\n", temp);

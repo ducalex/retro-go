@@ -54,6 +54,8 @@
 
 static rg_video_update_t update;
 static rg_app_t *app;
+static const char *iwad_path;
+static const char *save_path;
 
 // Expected variables by doom
 int snd_card = 1, mus_card = 1;
@@ -201,7 +203,7 @@ void I_uSleep(unsigned long usecs)
 
 const char *I_DoomExeDir(void)
 {
-    return RG_BASE_PATH_ROMS "/doom";
+    return iwad_path;
 }
 
 void I_UpdateSoundParams(int handle, int volume, int seperation, int pitch)
@@ -534,7 +536,10 @@ void app_main()
         fclose(fp);
     }
 
-    myargv = (const char *[]){"doom", "-save", RG_BASE_PATH_SAVES "/doom", romtype, app->romPath};
+    iwad_path = RG_BASE_PATH_ROMS "/doom";
+    save_path = RG_BASE_PATH_SAVES "/doom";
+
+    myargv = (const char *[]){"doom", "-save", save_path, romtype, app->romPath};
     myargc = 5;
 
     Z_Init();

@@ -959,7 +959,7 @@ int rg_gui_about_menu(const rg_gui_option_t *extra_options)
             }
             break;
         case 3000:
-            unlink(RG_BASE_PATH_CACHE "/crc32.bin");
+            unlink(rg_system_get_path(NULL, RG_PATH_CACHE_FILE, "crc32.bin"));
             rg_system_restart();
             break;
         case 4000:
