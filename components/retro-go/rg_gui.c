@@ -950,7 +950,8 @@ int rg_gui_about_menu(const rg_gui_option_t *extra_options)
     switch (sel)
     {
         // case 1000:
-        //     rg_system_switch_app(RG_APP_FACTORY);
+        //     rg_system_set_boot_app(RG_APP_FACTORY);
+        //     rg_system_restart();
         //     break;
         case 2000:
             if (rg_gui_confirm("Reset all settings?", NULL, false)) {

@@ -152,17 +152,18 @@ static void book_save(book_type_t book_type)
     }
     if (fp)
     {
-        for (int i = 0; i < book->count; i++)
+        int remaining = book->max_items;
+        for (int i = book->count - 1; i >= 0; i--)
         {
             retro_emulator_file_t *file = &book->items[i];
-            if (file->is_valid)
+            if (file->is_valid && remaining-- > 0)
                 fprintf(fp, "%s\n", emulator_get_file_path(file));
         }
         fclose(fp);
     }
 }
 
-static void book_init(book_type_t book_type, const char *name, const char *desc, int capacity)
+static void book_init(book_type_t book_type, const char *name, const char *desc, size_t max_items)
 {
     book_t *book = &books[book_type];
     char path[RG_PATH_MAX + 1];
@@ -173,10 +174,11 @@ static void book_init(book_type_t book_type, const char *name, const char *desc,
     book->path = strdup(path);
     book->tab = gui_add_tab(name, desc, book, event_handler);
     book->initialized = true;
+    book->max_items = max_items;
 
     if (book_type == BOOK_TYPE_RECENT)
     {
-        book->tab->listbox.sort_mode = SORT_ID_DESC;
+        book->tab->listbox.sort_mode = SORT_ID_ASC;
         book->tab->listbox.cursor = 0;
     }
 
@@ -244,6 +246,6 @@ bool bookmark_remove(book_type_t book, retro_emulator_file_t *file)
 
 void bookmarks_init(void)
 {
-    book_init(BOOK_TYPE_FAVORITE, "favorite", "Favorites", -1);
-    book_init(BOOK_TYPE_RECENT, "recent", "Recently played", 16);
+    book_init(BOOK_TYPE_FAVORITE, "favorite", "Favorites", 1000);
+    book_init(BOOK_TYPE_RECENT, "recent", "Recently played", 32);
 }

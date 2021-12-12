@@ -16,6 +16,7 @@ typedef struct
     const char *name;
     const char *path;
     bool initialized;
+    size_t max_items;
     size_t capacity;
     size_t count;
     retro_emulator_file_t *items;

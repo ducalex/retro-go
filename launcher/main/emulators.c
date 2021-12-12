@@ -578,6 +578,11 @@ void emulator_show_file_info(retro_emulator_file_t *file)
 
 void emulator_show_file_menu(retro_emulator_file_t *file, bool advanced)
 {
+    // Okay this isn't great but our stupid bookmark code might realloc and move *file
+    // before we're done with it. This should be fixed in bookmarks.c but this is easier...
+    retro_emulator_file_t tmp_file = *file;
+    file = &tmp_file;
+
     char *save_path = rg_system_get_path(NULL, RG_PATH_SAVE_STATE, emulator_get_file_path(file));
     char *sram_path = rg_system_get_path(NULL, RG_PATH_SAVE_SRAM, emulator_get_file_path(file));
     char *scrn_path = rg_system_get_path(NULL, RG_PATH_SCREENSHOT, emulator_get_file_path(file));
