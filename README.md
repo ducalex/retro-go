@@ -1,66 +1,32 @@
 # Description
 Retro-Go is a launcher and framework to run emulators on ESP32-based devices (officially supported
 are ODROID-GO and MRGC-G32). The included applications have been heavily optimized to reduce their
-cpu, memory, and flash needs without reducing compatibility (hopefully!).
+cpu, memory, and flash needs without reducing compatibility.
 
-### Included emulators:
-- NES
-- Gameboy
-- Gameboy Color
-- Sega Master System
-- Sega SG-1000
-- Sega Game Gear
-- Colecovision
-- PC Engine
-- Lynx
-- SNES (WIP, not playable)
-- DOOM (mods also supported!)
+### Supported systems:
+- Nintendo: **NES, Gameboy, Gameboy Color, SNES** (very slow)
+- Sega: **Master System, SG-1000, Game Gear**
+- Coleco: **Colecovision**
+- NEC: **PC Engine**
+- Atari: **Lynx**
+- Others: **DOOM** (including mods!)
 
 ### Retro-Go features:
 - In-game menu
 - Favorites and recently played
-- GB RTC adjust and save
-- GB GBC colorization palettes
-- More scaling options
-- Bilinear filtering
-- NES color palettes
-- NES NSF (music) support
-- PAL roms support
-- Smoother performance
-- Better compatibility
+- GB color palettes, RTC adjust and save
+- NES color palettes, PAL roms, NSF support
+- More emulators, applications
+- Scaling and filtering options
+- Better performance and compatibility
 - Turbo Speed/Fast forward
 - Customizable launcher
-- PNG cover art
-- Saved state screenshots
+- Cover art and save state previews
 - exFAT support
 - And more!
 
-
-# Screenshot
+### Screenshots
 ![Preview](retro-go-preview.jpg)
-
-
-# Key Mappings
-
-## In the launcher
-| Button  | Action |
-| ------- | ------ |
-| Menu    | Version information  |
-| Volume  | Options menu  |
-| Select  | Previous emulator |
-| Start   | Next emulator |
-| A       | Start game |
-| B       | File properties |
-| Left    | Page up |
-| Right   | Page down |
-
-## In game
-| Button  | Action |
-| ------- | ------ |
-| Menu    | Game menu (save/quit)  |
-| Volume  | Options menu  |
-
-Note: If you are stuck in an emulator, hold MENU while powering up the device to return to the launcher.
 
 
 # Game covers 
@@ -78,62 +44,61 @@ You can use one of two naming schemes:
 - Using the rom file name. Assuming a rom named `myrom.nes`, the cover file will be 
   `/romart/nes/myrom.nes.png` (notice the inclusion of the rom extension).
 
-_Note: If you need to compute the CRC32 outside of retro-go, please be mindful that certain systems 
-skip the file header in their CRC calculation (eg NES skips 16 bytes and Lynx skips 64 bytes). 
-The number must also be zero left-padded to be 8 chars._
 
+# Problems and solutions
 
-# Display update mode
-The 40Mhz SPI speed gives us a fill rate of 28 frames per second. Because of this, I have developed a partial update mode that refreshes only the portions of the screen that have changed. This result in an effective framerate of 60 most of the time and much reduced tearing. However, this process uses more CPU and is overall more complex to deal with (scaling, filtering), so in some instances it might cause more issues than it solves. That is why there is a toggle to disable it. Use the setting that works best for you but please report issues you encounter in Partial mode so that I can keep improving it!
+### Black screen / Boot loops
+Retro-Go typically detects and resolves application crashes and freezes automatically. However, if you do
+get stuck in a boot loop, you can hold `DOWN` while powering up the device to return to the launcher. 
 
+### Display update mode
+The maximum fill rate of the LCD is ~30fps. To work around that limitation, retro-go implements a partial
+update mode that refreshes only the portions of the screen that have changed. This process works very well at 
+reducing tearing and improving animations smoothness. However if you notice glitches or stuttering you can try 
+setting `Update: Full` in the options.
 
-# Sound quality
+### Sound quality
 The volume isn't correctly attenuated on the GO, resulting in upper volume levels that are too loud and 
 lower levels that are distorted due to DAC resolution. A quick way to improve the audio is to cut one
 of the speaker wire and add a `15 Ohm (or thereabout)` resistor in series. Soldering is better but not 
 required, twisting the wires tightly will work just fine.
 [A more involved solution can be seen here.](https://wiki.odroid.com/odroid_go/silent_volume)
 
-
-# Game Boy SRAM *(aka Save/Battery/Backup RAM)*
+### Game Boy SRAM *(aka Save/Battery/Backup RAM)*
 In Retro-Go, save states will provide you with the best and most reliable save experience. That being said, please read on if you need or want SRAM saves. The SRAM format is compatible with VisualBoyAdvance so it may be used to import or export saves.
 
 On real hardware, Game Boy games save their state to a battery-backed SRAM chip in the cartridge. A typical emulator on the deskop would save the SRAM to disk periodically or when leaving the emulator, and reload it when you restart the game. This isn't possible on the Odroid-GO because we can't detect when the device is about to be powered down and we can't save too often because it causes stuttering. That is why the auto save delay is configurable (disabled by default) and pausing the emulation (opening a menu) will also save to disk if needed. The SRAM file is then reloaded on startup (unless a save state loading was requested via "Resume").
 
-To recap: If you set a reasonable save delay (10-30s) and you briefly open the menu before powering down, and don't use save states, you will have close to the "real hardware experience".
+
+### Other issues
+An up to date list of incompatible/broken games can be found on the [ODROID-GO forum](https://forum.odroid.com/viewtopic.php?f=159&t=37599). This is also the place to submit bug reports and feature requests.
 
 
-# BIOS
+# BIOS files
 Some emulators support loading a BIOS. The files should be placed as follows:
 - GB: `/retro-go/system/gb_bios.bin`
 - GBC: `/retro-go/system/gbc_bios.bin`
 - FDS: `/retro-go/system/fds_bios.bin`
 
 
-# Known issues
-An up to date list of incompatible/broken games can be found on the [ODROID-GO forum](https://forum.odroid.com/viewtopic.php?f=159&t=37599). This is also the place to submit bug reports and feature requests.
-
-
 # Future plans / Feature requests
 - Cheats support (In progress)
 - Famicom Disk System (In progress)
 - SGB enhanced palette support (In progress)
-- SNES emulation (Stalled)
 - Netplay (Stalled)
 - Multiple save states
-- More emulators (Atari 2600/5200/7800, NGP Color)
+- More emulators (Atari 2600/5200/7800, Neo Geo Pocket, Arduboy)
+- WiFi file manager
 - Chip sound player
 - Sleep mode
-- Arduboy compatibility?
-- WiFi file manager
 
 
 # Building Retro-Go
 
 ## Prerequisites
-You will need a working installation of [esp-idf 4.0.2](https://docs.espressif.com/projects/esp-idf/en/v4.0.2/) or superior and only the CMake (default) build system is supported.
+You will need a working installation of esp-idf [4.0.x](https://docs.espressif.com/projects/esp-idf/en/release-v4.0/get-started/index.html#get-started-get-prerequisites) or [4.1.x](https://docs.espressif.com/projects/esp-idf/en/release-v4.1/get-started/index.html#get-started-get-prerequisites) and only the CMake (default) build system is supported.
 
-_Note: Using esp-idf 4.2 results in degraded emulation performance and should be avoided. Official builds of retro-go use 4.1.x, which I recommend._
+_Note: Versions 4.2 and 4.3 will also work but there are unresolved performance issues at this time._
 
 ### ESP-IDF Patches
 Patching esp-idf may be required for full functionality. Patches are located in `tools/patches` and can be applied to your global esp-idf installation, they will not break your other projects/devices.
@@ -174,8 +139,7 @@ In short you need to generate a font.c file and add it to fonts.h. It'll try to 
 ## Capturing crash logs
 When a panic occurs, Retro-Go has the ability to save debugging information to `/sd/crash.log`. This provides users with a simple way of recovering a backtrace (and often more) without having to install drivers and serial console software. A weak hook is installed into esp-idf panic's putchar, allowing us to save each chars in RTC RAM. Then, after the system resets, we can move that data to the sd card. You will find a small esp-idf patch to enable this feature in tools/patches.
 
-
-# Porting
+## Porting
 I don't want to maintain non-ESP32 ports in this repository but let me know if I can make small changes to make your own port easier! The absolute minimum requirements for Retro-Go are roughly:
 - Processor: 200Mhz 32bit little-endian
 - Memory: 2MB
@@ -194,6 +158,7 @@ I don't want to maintain non-ESP32 ports in this repository but let me know if I
 - Some icons from [Rokey](https://iconarchive.com/show/seed-icons-by-rokey.html).
 - Background images from [es-theme-gbz35](https://github.com/rxbrad/es-theme-gbz35).
 - Special thanks to [RGHandhelds](https://www.rghandhelds.com/) and [MyRetroGamecase](https://www.myretrogamecase.com/) for sending me a [G32](https://www.myretrogamecase.com/products/game-mini-g32-esp32-retro-gaming-console-1) device.
+
 
 # License
 Everything in this project is licensed under the [GPLv2 license](COPYING) with the exception of the following components:
