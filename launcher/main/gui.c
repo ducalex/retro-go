@@ -40,7 +40,7 @@ void gui_init(void)
         .theme        = rg_settings_get_number(NS_APP, SETTING_GUI_THEME, 0),
         .startup      = rg_settings_get_number(NS_APP, SETTING_STARTUP_MODE, 0),
         .start_screen = rg_settings_get_number(NS_APP, SETTING_START_SCREEN, 0),
-        .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, 1),
+        .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, 2),
         .width        = rg_display_get_status()->screen.width,
         .height       = rg_display_get_status()->screen.height,
     };
@@ -486,21 +486,14 @@ void gui_load_preview(tab_t *tab)
         order >>= 4;
 
         if (file->missing_cover & (1 << type))
-        {
             continue;
-        }
-
-        gui.joystick = rg_input_read_gamepad();
 
         if (type == 0x1 || type == 0x2)
-        {
             emulator_get_file_crc32(file);
-        }
 
-        if (gui.joystick & RG_KEY_ANY)
-        {
+        // Give up on any button press to improve responsiveness
+        if ((gui.joystick |= rg_input_read_gamepad()))
             break;
-        }
 
         if (type == 0x1) // Game cover (old format)
             sprintf(name_ptr, "/%s/%X/%08X.art", dirname, file->checksum >> 28, file->checksum);

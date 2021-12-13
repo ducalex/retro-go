@@ -127,7 +127,7 @@ void crc_cache_idle_task(tab_t *tab)
     if (crc_cache->count < CRC_CACHE_MAX_ENTRIES)
     {
         int start_offset = 0;
-        int remaining = 20;
+        int remaining = 100;
 
         // Find the currently focused emulator, if any
         for (int i = 0; i < emulators_count; i++)
@@ -153,6 +153,9 @@ void crc_cache_idle_task(tab_t *tab)
             if (!emulator->initialized)
                 emulator_init(emulator);
 
+            if ((gui.joystick |= rg_input_read_gamepad()))
+                remaining = -1;
+
             for (int j = 0; j < emulator->roms.files_count && remaining > 0; j++)
             {
                 retro_emulator_file_t *file = &emulator->roms.files[j];
@@ -166,7 +169,8 @@ void crc_cache_idle_task(tab_t *tab)
                     remaining--;
                 }
 
-                if (gui.joystick & RG_KEY_ANY)
+                // Give up on any button press to improve responsiveness
+                if ((gui.joystick |= rg_input_read_gamepad()))
                     remaining = -1;
             }
 
@@ -400,7 +404,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
     }
     else if (event == TAB_IDLE)
     {
-        if (file && !tab->preview && gui.idle_counter == 1)
+        if (file && !tab->preview && gui.browse && gui.idle_counter == 1)
             gui_load_preview(tab);
         else if ((gui.idle_counter % 100) == 0)
             crc_cache_idle_task(tab);
@@ -513,9 +517,8 @@ bool emulator_get_file_crc32(retro_emulator_file_t *file)
 
             while (count != 0)
             {
-                gui.joystick = rg_input_read_gamepad();
-
-                if (gui.joystick & RG_KEY_ANY)
+                // Give up on any button press to improve responsiveness
+                if ((gui.joystick = rg_input_read_gamepad()))
                     break;
 
                 count = fread(buffer, 1, sizeof(buffer), fp);

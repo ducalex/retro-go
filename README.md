@@ -52,6 +52,10 @@ You can use one of two naming schemes:
 Retro-Go typically detects and resolves application crashes and freezes automatically. However, if you do
 get stuck in a boot loop, you can hold `DOWN` while powering up the device to return to the launcher. 
 
+### CRC32... is annoying!
+Let your device sit idle for a while, it will scan your files preemptively. Alternatively you can disable 
+cover display in the options menu.
+
 ### Display update mode
 The maximum fill rate of the LCD is ~30fps. To work around that limitation, retro-go implements a partial
 update mode that refreshes only the portions of the screen that have changed. This process works very well at 
@@ -69,7 +73,6 @@ required, twisting the wires tightly will work just fine.
 In Retro-Go, save states will provide you with the best and most reliable save experience. That being said, please read on if you need or want SRAM saves. The SRAM format is compatible with VisualBoyAdvance so it may be used to import or export saves.
 
 On real hardware, Game Boy games save their state to a battery-backed SRAM chip in the cartridge. A typical emulator on the deskop would save the SRAM to disk periodically or when leaving the emulator, and reload it when you restart the game. This isn't possible on the Odroid-GO because we can't detect when the device is about to be powered down and we can't save too often because it causes stuttering. That is why the auto save delay is configurable (disabled by default) and pausing the emulation (opening a menu) will also save to disk if needed. The SRAM file is then reloaded on startup (unless a save state loading was requested via "Resume").
-
 
 ### Other issues
 An up to date list of incompatible/broken games can be found on the [ODROID-GO forum](https://forum.odroid.com/viewtopic.php?f=159&t=37599). This is also the place to submit bug reports and feature requests.
