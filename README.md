@@ -1,7 +1,8 @@
 # Description
-Retro-Go is a launcher and framework to run emulators on ESP32-based devices (officially supported
-are ODROID-GO and MRGC-G32). The included applications have been heavily optimized to reduce their
-cpu, memory, and flash needs without reducing compatibility.
+Retro-Go is a firmware to play retro games on ESP32-based devices (officially supported are 
+ODROID-GO and MRGC-G32). The project consists of a launcher and half a dozen applications that 
+have been heavily optimized to reduce their cpu, memory, and flash needs without reducing 
+compatibility!
 
 ### Supported systems:
 - Nintendo: **NES, Gameboy, Gameboy Color, SNES** (very slow)
@@ -144,6 +145,9 @@ I don't want to maintain non-ESP32 ports in this repository but let me know if I
 - Processor: 200Mhz 32bit little-endian
 - Memory: 2MB
 - Compiler: C99 and C++03 (for lynx and snes)
+
+Whilst all applications were heavily modified or even redesigned for our constrained needs, special care is taken to keep 
+Retro-Go and ESP32-specific code exclusively in their port file (main.c). This makes reusing them in your own codebase very easy!
 
 
 # Acknowledgements
