@@ -2311,6 +2311,12 @@ void M_Init(void)
     }
   }
 
+  // DOOM 2 has no episodes
+  if (!EpiDef.numitems || gamemode == commercial)
+  {
+    NewDef.prevMenu = &MainDef;
+  }
+
   setup_menu_t *src = helpstrings;
   while (!(src->m_flags & S_END))
   {
