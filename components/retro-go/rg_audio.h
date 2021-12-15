@@ -25,23 +25,23 @@ typedef enum
     RG_AUDIO_SINK_EXT_DAC,
     RG_AUDIO_SINK_BT_A2DP,
     RG_AUDIO_SINK_DUMMY,
-#if RG_AUDIO_USE_SPEAKER
-    RG_AUDIO_SINK_DEFAULT = RG_AUDIO_SINK_SPEAKER,
-#elif RG_AUDIO_USE_EXT_DAC
-    RG_AUDIO_SINK_DEFAULT = RG_AUDIO_SINK_EXT_DAC,
-#else
-    RG_AUDIO_SINK_DEFAULT = RG_AUDIO_SINK_DUMMY,
-#endif
+} rg_sink_type_t;
+
+typedef struct
+{
+    rg_sink_type_t type;
+    uint32_t device;
+    const char *name;
 } rg_sink_t;
 
 void rg_audio_init(int sample_rate);
 void rg_audio_deinit(void);
-const char *rg_audio_get_sink_name(rg_sink_t sink);
-void rg_audio_set_sink(rg_sink_t sink);
-rg_sink_t rg_audio_get_sink(void);
-void rg_audio_set_volume(rg_volume_t level);
+void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount);
+
+const rg_sink_t *rg_audio_get_sinks(size_t *count);
+const rg_sink_t *rg_audio_get_sink(void);
+void rg_audio_set_sink(rg_sink_type_t sink);
+
 rg_volume_t rg_audio_get_volume(void);
+void rg_audio_set_volume(rg_volume_t level);
 void rg_audio_set_mute(bool mute);
-void rg_audio_submit(short *stereoAudioBuffer, size_t frameCount);
-int  rg_audio_get_sample_rate(void);
-void rg_audio_clear_buffer();

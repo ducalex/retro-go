@@ -7,11 +7,23 @@
 #include "rg_audio.h"
 
 static int audioSink = -1;
+// static const rg_sink_t *audioSink;
 static int audioSampleRate = 0;
 static int audioFilter = 0;
 static bool audioMuted = false;
 static int volumeLevel = RG_AUDIO_VOL_DEFAULT;
 static int volumeMap[] = {0, 7, 15, 28, 39, 47, 56, 65, 74, 88, 100};
+
+static const rg_sink_t sinks[] = {
+    {RG_AUDIO_SINK_DUMMY,   0, "Dummy"},
+#if RG_AUDIO_USE_SPEAKER
+    {RG_AUDIO_SINK_SPEAKER, 0, "Speaker"},
+#endif
+#if RG_AUDIO_USE_EXT_DAC
+    {RG_AUDIO_SINK_EXT_DAC, 0, "Ext DAC"},
+#endif
+    // {RG_AUDIO_SINK_BT_A2DP, 0, "Bluetooth"},
+};
 
 static const char *SETTING_OUTPUT = "AudioSink";
 static const char *SETTING_VOLUME = "Volume";
@@ -26,7 +38,7 @@ static const char *SETTING_VOLUME = "Volume";
 void rg_audio_init(int sample_rate)
 {
     int volume = rg_settings_get_number(NS_GLOBAL, SETTING_VOLUME, RG_AUDIO_VOL_DEFAULT);
-    int sink =  rg_settings_get_number(NS_GLOBAL, SETTING_OUTPUT, RG_AUDIO_SINK_DEFAULT);
+    int sinkType = rg_settings_get_number(NS_GLOBAL, SETTING_OUTPUT, sinks[1].type);
 
     i2s_config_t i2s_config = {
         .mode = I2S_MODE_MASTER | I2S_MODE_TX,
@@ -44,7 +56,10 @@ void rg_audio_init(int sample_rate)
     if (audioSink != -1)
         rg_audio_deinit();
 
-    if (sink == RG_AUDIO_SINK_SPEAKER)
+    audioSampleRate = sample_rate;
+    audioSink = sinkType;
+
+    if (audioSink == RG_AUDIO_SINK_SPEAKER)
     {
         i2s_config.mode |= I2S_MODE_DAC_BUILT_IN;
         if (i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL) == ESP_OK)
@@ -52,7 +67,7 @@ void rg_audio_init(int sample_rate)
             ret = i2s_set_pin(I2S_NUM_0, NULL);
         }
     }
-    else if (sink == RG_AUDIO_SINK_EXT_DAC)
+    else if (audioSink == RG_AUDIO_SINK_EXT_DAC)
     {
         i2s_config.communication_format = I2S_COMM_FORMAT_STAND_I2S;
         i2s_config.use_apll = 1;
@@ -66,23 +81,20 @@ void rg_audio_init(int sample_rate)
             });
         }
     }
-    else if (sink == RG_AUDIO_SINK_DUMMY)
+    else if (audioSink == RG_AUDIO_SINK_DUMMY)
     {
         ret = ESP_OK;
     }
 
     if (ret == ESP_OK)
     {
-        audioSink = sink;
-        audioSampleRate = sample_rate;
-        RG_LOGI("Audio ready. sink='%s', samplerate=%d\n", rg_audio_get_sink_name(sink), sample_rate);
+        RG_LOGI("Audio ready. sink='%s', samplerate=%d\n", rg_audio_get_sink()->name, sample_rate);
     }
     else
     {
-        audioSink = RG_AUDIO_SINK_DUMMY;
-        audioSampleRate = sample_rate;
         RG_LOGE("Failed to initialize audio. sink='%s' %d, samplerate=%d, err=0x%x\n",
-            rg_audio_get_sink_name(sink), sink, sample_rate, ret);
+            rg_audio_get_sink()->name, sinkType, sample_rate, ret);
+        audioSink = RG_AUDIO_SINK_DUMMY;
     }
 
     rg_audio_set_volume(volume);
@@ -115,7 +127,7 @@ void rg_audio_deinit(void)
         gpio_reset_pin(RG_GPIO_SND_AMP_ENABLE);
     }
 
-    RG_LOGI("Audio terminated. sink='%s'\n", rg_audio_get_sink_name(audioSink));
+    RG_LOGI("Audio terminated. sink='%s'\n", rg_audio_get_sink()->name);
     audioSink = -1;
 }
 
@@ -124,10 +136,10 @@ static inline void filter_samples(short *samples, size_t count)
 
 }
 
-void rg_audio_submit(short *stereoAudioBuffer, size_t frameCount)
+void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
 {
     size_t sampleCount = frameCount * 2;
-    size_t bufferSize = sampleCount * sizeof(short);
+    size_t bufferSize = sampleCount * sizeof(*stereoAudioBuffer);
     size_t written = 0;
     float volume = volumeMap[volumeLevel] * 0.01f;
 
@@ -151,27 +163,23 @@ void rg_audio_submit(short *stereoAudioBuffer, size_t frameCount)
     {
         // In speaker mode we use dac left and right as a single channel
         // to increase resolution.
+        float multiplier = (127 + 127) * volume;
         for (size_t i = 0; i < sampleCount; i += 2)
         {
             // Down mix stereo to mono
-            int32_t sample = (stereoAudioBuffer[i] + stereoAudioBuffer[i + 1]) >> 1;
-
-            // Normalize
-            const float sn = (float)sample / 0x8000;
+            int sample = (stereoAudioBuffer[i] + stereoAudioBuffer[i + 1]) >> 1;
 
             // Scale
-            const int magnitude = 127 + 127;
-            const float range = magnitude * sn * volume;
-
-            uint16_t dac0, dac1;
+            int range = (float)sample / 0x8000 * multiplier;
+            int dac0, dac1;
 
             // Convert to differential output
-            if (range > 127.f)
+            if (range > 127)
             {
                 dac1 = (range - 127);
                 dac0 = 127;
             }
-            else if (range < -127.f)
+            else if (range < -127)
             {
                 dac1 = (range + 127);
                 dac0 = -127;
@@ -188,8 +196,8 @@ void rg_audio_submit(short *stereoAudioBuffer, size_t frameCount)
             dac0 <<= 8;
             dac1 <<= 8;
 
-            stereoAudioBuffer[i] = (short)dac1;
-            stereoAudioBuffer[i + 1] = (short)dac0;
+            stereoAudioBuffer[i] = dac1;
+            stereoAudioBuffer[i + 1] = dac0;
         }
         i2s_write(I2S_NUM_0, (const void *)stereoAudioBuffer, bufferSize, &written, 1000);
         RG_ASSERT(written > 0, "i2s_write failed.");
@@ -198,7 +206,7 @@ void rg_audio_submit(short *stereoAudioBuffer, size_t frameCount)
     {
         for (size_t i = 0; i < sampleCount; ++i)
         {
-            int32_t sample = stereoAudioBuffer[i] * volume;
+            int sample = stereoAudioBuffer[i] * volume;
 
             // Clip
             if (sample > 32767)
@@ -206,7 +214,7 @@ void rg_audio_submit(short *stereoAudioBuffer, size_t frameCount)
             else if (sample < -32768)
                 sample = -32767;
 
-            stereoAudioBuffer[i] = (short)sample;
+            stereoAudioBuffer[i] = sample;
         }
         i2s_write(I2S_NUM_0, (const void *)stereoAudioBuffer, bufferSize, &written, 1000);
         RG_ASSERT(written > 0, "i2s_write failed.");
@@ -217,34 +225,21 @@ void rg_audio_submit(short *stereoAudioBuffer, size_t frameCount)
     }
 }
 
-void rg_audio_clear_buffer()
+const rg_sink_t *rg_audio_get_sinks(size_t *count)
 {
-    if (audioSink == RG_AUDIO_SINK_SPEAKER || audioSink == RG_AUDIO_SINK_EXT_DAC)
-    {
-        i2s_zero_dma_buffer(I2S_NUM_0);
-    }
+    if (count) *count = RG_COUNT(sinks);
+    return sinks;
 }
 
-const char *rg_audio_get_sink_name(rg_sink_t sink)
+const rg_sink_t *rg_audio_get_sink(void)
 {
-    if (sink == RG_AUDIO_SINK_SPEAKER)
-        return "Built-in DAC";
-    else if (sink == RG_AUDIO_SINK_EXT_DAC)
-        return "External DAC";
-    else if (sink == RG_AUDIO_SINK_BT_A2DP)
-        return "Bluetooth";
-    else if (sink == RG_AUDIO_SINK_DUMMY)
-        return "Dummy";
-
-    return "Unknown";
+    for (size_t i = 0; i < RG_COUNT(sinks); ++i)
+        if (sinks[i].type == audioSink)
+            return &sinks[i];
+    return &sinks[0];
 }
 
-rg_sink_t rg_audio_get_sink(void)
-{
-    return audioSink;
-}
-
-void rg_audio_set_sink(rg_sink_t sink)
+void rg_audio_set_sink(rg_sink_type_t sink)
 {
     rg_settings_set_number(NS_GLOBAL, SETTING_OUTPUT, sink);
     rg_audio_deinit();
@@ -270,6 +265,9 @@ void rg_audio_set_mute(bool mute)
         gpio_set_direction(RG_GPIO_SND_AMP_ENABLE, GPIO_MODE_OUTPUT);
         gpio_set_level(RG_GPIO_SND_AMP_ENABLE, mute ? 0 : 1);
     }
+    if (audioSink == RG_AUDIO_SINK_SPEAKER || audioSink == RG_AUDIO_SINK_EXT_DAC)
+    {
+        i2s_zero_dma_buffer(I2S_NUM_0);
+    }
     audioMuted = mute;
-    rg_audio_clear_buffer();
 }

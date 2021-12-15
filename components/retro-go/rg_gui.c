@@ -728,15 +728,15 @@ void rg_gui_alert(const char *title, const char *message)
 
 static rg_gui_event_t volume_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    int old_level = rg_audio_get_volume();
-    int level = old_level;
+    int level = rg_audio_get_volume();
+    int prev_level = level;
 
     if (event == RG_DIALOG_PREV) level -= 1;
     if (event == RG_DIALOG_NEXT) level += 1;
 
     level = RG_MIN(RG_MAX(level, RG_AUDIO_VOL_MIN), RG_AUDIO_VOL_MAX);
 
-    if (level != old_level)
+    if (level != prev_level)
         rg_audio_set_volume(level);
 
     sprintf(option->value, "%d%%", level * RG_AUDIO_VOL_MAX);
@@ -746,15 +746,15 @@ static rg_gui_event_t volume_update_cb(rg_gui_option_t *option, rg_gui_event_t e
 
 static rg_gui_event_t brightness_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    int old_level = rg_display_get_backlight();
-    int level = old_level;
+    int level = rg_display_get_backlight();
+    int prev_level = level;
 
     if (event == RG_DIALOG_PREV) level -= 10;
     if (event == RG_DIALOG_NEXT) level += 10;
 
     level = RG_MIN(RG_MAX(level & ~1, 1), 100);
 
-    if (level != old_level)
+    if (level != prev_level)
         rg_display_set_backlight(level);
 
     sprintf(option->value, "%d%%", level);
@@ -764,31 +764,40 @@ static rg_gui_event_t brightness_update_cb(rg_gui_option_t *option, rg_gui_event
 
 static rg_gui_event_t audio_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    int8_t sink = rg_audio_get_sink();
+    size_t count = 0;
+    const rg_sink_t *sinks = rg_audio_get_sinks(&count);
+    const rg_sink_t *ssink = rg_audio_get_sink();
+    int max = count - 1;
+    int sink = 0;
 
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
-        sink = (sink == RG_AUDIO_SINK_SPEAKER) ? RG_AUDIO_SINK_EXT_DAC : RG_AUDIO_SINK_SPEAKER;
-        rg_audio_set_sink(sink);
-    }
+    for (int i = 0; i < count; ++i)
+        if (sinks[i].type == ssink->type)
+            sink = i;
 
-    strcpy(option->value, (sink == RG_AUDIO_SINK_EXT_DAC) ? "Ext DAC" : "Speaker");
+    int prev_sink = sink;
+
+    if (event == RG_DIALOG_PREV && --sink < 0) sink = max;
+    if (event == RG_DIALOG_NEXT && ++sink > max) sink = 0;
+
+    if (sink != prev_sink)
+        rg_audio_set_sink(sinks[sink].type);
+
+    strcpy(option->value, sinks[sink].name);
 
     return RG_DIALOG_VOID;
 }
 
 static rg_gui_event_t filter_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    int8_t max = RG_DISPLAY_FILTER_COUNT - 1;
-    int8_t mode = rg_display_get_filter();
-    int8_t prev = mode;
+    int max = RG_DISPLAY_FILTER_COUNT - 1;
+    int mode = rg_display_get_filter();
+    int prev_mode = mode;
 
-    if (event == RG_DIALOG_PREV && --mode < 0) mode = max; // 0;
-    if (event == RG_DIALOG_NEXT && ++mode > max) mode = 0; // max;
+    if (event == RG_DIALOG_PREV && --mode < 0) mode = max;
+    if (event == RG_DIALOG_NEXT && ++mode > max) mode = 0;
 
-    if (mode != prev)
-    {
+    if (mode != prev_mode)
         rg_display_set_filter(mode);
-    }
 
     if (mode == RG_DISPLAY_FILTER_OFF)   strcpy(option->value, "Off  ");
     if (mode == RG_DISPLAY_FILTER_HORIZ) strcpy(option->value, "Horiz");
@@ -800,16 +809,15 @@ static rg_gui_event_t filter_update_cb(rg_gui_option_t *option, rg_gui_event_t e
 
 static rg_gui_event_t scaling_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    int8_t max = RG_DISPLAY_SCALING_COUNT - 1;
-    int8_t mode = rg_display_get_scaling();
-    int8_t prev = mode;
+    int max = RG_DISPLAY_SCALING_COUNT - 1;
+    int mode = rg_display_get_scaling();
+    int prev_mode = mode;
 
     if (event == RG_DIALOG_PREV && --mode < 0) mode =  max; // 0;
     if (event == RG_DIALOG_NEXT && ++mode > max) mode = 0;  // max;
 
-    if (mode != prev) {
+    if (mode != prev_mode)
         rg_display_set_scaling(mode);
-    }
 
     if (mode == RG_DISPLAY_SCALING_OFF)  strcpy(option->value, "Off  ");
     if (mode == RG_DISPLAY_SCALING_FIT)  strcpy(option->value, "Fit ");
@@ -820,16 +828,15 @@ static rg_gui_event_t scaling_update_cb(rg_gui_option_t *option, rg_gui_event_t 
 
 static rg_gui_event_t update_mode_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    int8_t max = RG_DISPLAY_UPDATE_COUNT - 1;
-    int8_t mode = rg_display_get_update_mode();
-    int8_t prev = mode;
+    int max = RG_DISPLAY_UPDATE_COUNT - 1;
+    int mode = rg_display_get_update_mode();
+    int prev_mode = mode;
 
     if (event == RG_DIALOG_PREV && --mode < 0) mode =  max; // 0;
     if (event == RG_DIALOG_NEXT && ++mode > max) mode = 0;  // max;
 
-    if (mode != prev) {
+    if (mode != prev_mode)
         rg_display_set_update_mode(mode);
-    }
 
     if (mode == RG_DISPLAY_UPDATE_PARTIAL)   strcpy(option->value, "Partial");
     if (mode == RG_DISPLAY_UPDATE_FULL)      strcpy(option->value, "Full   ");
