@@ -182,99 +182,95 @@ static void ili9341_cmd(uint8_t cmd, const void *data, size_t data_len)
     spi_queue_transaction(&cmd, 1, 0);
     if (data && data_len > 0)
         spi_queue_transaction(data, data_len, 1);
-    if ((cmd & 0xE0) == 0x00)
-        usleep(5000);
+    // if ((cmd & 0xE0) == 0x00)
+    //     usleep(5000);
 }
 
 static void ili9341_set_backlight(int percent)
 {
     uint32_t duty = 0x1FFF * (RG_MIN(RG_MAX(percent, 0), 100) / 100.f);
-
-    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty, 50);
-    ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
-
-    RG_LOGI("backlight set to %02d%%\n", percent);
+    if (ledc_set_fade_time_and_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty, 50, 0) == ESP_OK)
+        RG_LOGI("backlight set to %02d%%\n", percent);
+    else
+        RG_LOGE("failed setting backlight to %02d%% (%04X)\n", percent, duty);
 }
 
 static void ili9341_init()
 {
-    const struct {
-        uint8_t cmd;
-        uint8_t data[16];
-        uint8_t length;
-    } commands[] = {
-#if defined(RG_TARGET_ODROID_GO)
-        {0x01, {}, 0},                                      // Reset
-        {0x3A, {0x55}, 1},                                  // Pixel Format Set
-        {0xCF, {0x00, 0xc3, 0x30}, 3},
-        {0xED, {0x64, 0x03, 0x12, 0x81}, 4},
-        {0xE8, {0x85, 0x00, 0x78}, 3},
-        {0xCB, {0x39, 0x2c, 0x00, 0x34, 0x02}, 5},
-        {0xF7, {0x20}, 1},
-        {0xEA, {0x00, 0x00}, 2},
-        {0xC0, {0x1B}, 1},                                  // Power control   //VRH[5:0]
-        {0xC1, {0x12}, 1},                                  // Power control   //SAP[2:0];BT[3:0]
-        {0xC5, {0x32, 0x3C}, 2},                            // VCM control
-        {0xC7, {0x91}, 1},                                  // VCM control2
-        {0x36, {(0x20|0x80|0x08)}, 1},                      // Memory Access Control
-        {0xB1, {0x00, 0x10}, 2},                            // Frame Rate Control (1B=70, 1F=61, 10=119)
-        {0xB6, {0x0A, 0xA2}, 2},                            // Display Function Control
-        {0xF6, {0x01, 0x30}, 2},
-        {0xF2, {0x00}, 1},                                  // 3Gamma Function Disable
-        {0x26, {0x01}, 1},                                  // Gamma curve selected
-        {0xE0, {0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, 0x4E, 0xF1, 0x37, 0x07, 0x10, 0x03, 0x0E, 0x09, 0x00}, 15}, // Set Gamma
-        {0XE1, {0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F}, 15}, // Set Gamma
-        {0x11, {}, 0},                                      // Exit Sleep
-        {0x29, {}, 0},                                      // Display on
-#elif defined(RG_TARGET_MRGC_G32)
-        {0x01, {}, 0},                                      // Reset
-        {0x3A, {0x55}, 1},                                  // Pixel Format Set
-        {0x36, {(0x00|0x00|0x00)}, 1},
-        {0xB1, {0x00, 0x10}, 2},                            // Frame Rate Control (1B=70, 1F=61, 10=119)
-        {0xB2, {0x0c, 0x0c, 0x00, 0x33, 0x33}, 5},
-        {0xB7, {0x35}, 1},
-        {0xBB, {0x24}, 1},
-        {0xC0, {0x2C}, 1},
-        {0xC2, {0x01, 0xFF}, 2},
-        {0xC3, {0x11}, 1},
-        {0xC4, {0x20}, 1},
-        {0xC6, {0x0f}, 1},
-        {0xD0, {0xA4, 0xA1}, 2},
-        {0xE0, {0xD0, 0x00, 0x03, 0x09, 0x13, 0x1C, 0x3A, 0x55, 0x48, 0x18, 0x12, 0x0E, 0x19, 0x1E}, 15},
-        {0xE1, {0xD0, 0x00, 0x03, 0x09, 0x05, 0x25, 0x3A, 0x55, 0x50, 0x3D, 0x1C, 0x1D, 0x1D, 0x1E}, 15},
-        {0x11, {}, 0},                                      // Exit Sleep
-        {0x29, {}, 0},                                      // Display on
-#else
-    #error "LCD init sequence is not defined for this device!"
-#endif
-    };
-
-    spi_init();
-
-    for (int i = 0; i < (sizeof(commands)/sizeof(commands[0])); i++)
-        ili9341_cmd(commands[i].cmd, &commands[i].data, commands[i].length);
-
-    rg_display_clear(C_BLACK);
-
-    // Initialize backlight
+    // Initialize backlight at 0% to avoid the lcd reset flash
     const ledc_timer_config_t ledc_timer = {
         .duty_resolution = LEDC_TIMER_13_BIT,
         .freq_hz = 5000,
         .speed_mode = LEDC_LOW_SPEED_MODE,
         .timer_num = LEDC_TIMER_0,
     };
-
     const ledc_channel_config_t ledc_channel = {
         .channel = LEDC_CHANNEL_0,
-        .duty = 0x1FFF * (display.config.backlight / 100.f),
+        .duty = 0,
         .gpio_num = RG_GPIO_LCD_BCKL,
         .speed_mode = LEDC_LOW_SPEED_MODE,
         .timer_sel = LEDC_TIMER_0,
     };
-
     ledc_timer_config(&ledc_timer);
     ledc_channel_config(&ledc_channel);
     ledc_fade_func_install(0);
+
+    spi_init();
+
+#define ILI9341_CMD(cmd, data...) {const uint8_t x[] = data; ili9341_cmd(cmd, x, sizeof(x));}
+#if defined(RG_TARGET_ODROID_GO)
+    ILI9341_CMD(0x01, {});     // Reset
+    ILI9341_CMD(0x3A, {0x55}); // Pixel Format Set RGB565
+    ILI9341_CMD(0xCF, {0x00, 0xc3, 0x30});
+    ILI9341_CMD(0xED, {0x64, 0x03, 0x12, 0x81});
+    ILI9341_CMD(0xE8, {0x85, 0x00, 0x78});
+    ILI9341_CMD(0xCB, {0x39, 0x2c, 0x00, 0x34, 0x02});
+    ILI9341_CMD(0xF7, {0x20});
+    ILI9341_CMD(0xEA, {0x00, 0x00});
+    ILI9341_CMD(0xC0, {0x1B});                                  // Power control   //VRH[5:0]
+    ILI9341_CMD(0xC1, {0x12});                                  // Power control   //SAP[2:0];BT[3:0]
+    ILI9341_CMD(0xC5, {0x32, 0x3C});                            // VCM control
+    ILI9341_CMD(0xC7, {0x91});                                  // VCM control2
+    ILI9341_CMD(0x36, {(0x20|0x80|0x08)});                      // Memory Access Control
+    ILI9341_CMD(0xB1, {0x00, 0x10});                            // Frame Rate Control (1B=70, 1F=61, 10=119)
+    ILI9341_CMD(0xB6, {0x0A, 0xA2});                            // Display Function Control
+    ILI9341_CMD(0xF6, {0x01, 0x30});
+    ILI9341_CMD(0xF2, {0x00});                                  // 3Gamma Function Disable
+    ILI9341_CMD(0x26, {0x01});                                  // Gamma curve selected
+    ILI9341_CMD(0xE0, {0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, 0x4E, 0xF1, 0x37, 0x07, 0x10, 0x03, 0x0E, 0x09, 0x00}); // Set Gamma
+    ILI9341_CMD(0xE1, {0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F}); // Set Gamma
+    ILI9341_CMD(0x11, {}); // Exit Sleep
+    ILI9341_CMD(0x29, {}); // Display on
+#elif defined(RG_TARGET_MRGC_G32)
+    ILI9341_CMD(0x01, {});     // Reset
+    ILI9341_CMD(0x3A, {0x55}); // Pixel Format Set RGB565
+    ILI9341_CMD(0x36, {(0x00|0x00|0x00)});
+    ILI9341_CMD(0xB1, {0x00, 0x10});                            // Frame Rate Control (1B=70, 1F=61, 10=119)
+    ILI9341_CMD(0xB2, {0x0c, 0x0c, 0x00, 0x33, 0x33});
+    ILI9341_CMD(0xB7, {0x35});
+    ILI9341_CMD(0xBB, {0x24});
+    ILI9341_CMD(0xC0, {0x2C});
+    ILI9341_CMD(0xC2, {0x01, 0xFF});
+    ILI9341_CMD(0xC3, {0x11});
+    ILI9341_CMD(0xC4, {0x20});
+    ILI9341_CMD(0xC6, {0x0f});
+    ILI9341_CMD(0xD0, {0xA4, 0xA1});
+    ILI9341_CMD(0xE0, {0xD0, 0x00, 0x03, 0x09, 0x13, 0x1C, 0x3A, 0x55, 0x48, 0x18, 0x12, 0x0E, 0x19, 0x1E});
+    ILI9341_CMD(0xE1, {0xD0, 0x00, 0x03, 0x09, 0x05, 0x25, 0x3A, 0x55, 0x50, 0x3D, 0x1C, 0x1D, 0x1D, 0x1E});
+    ILI9341_CMD(0x11, {}); // Exit Sleep
+    ILI9341_CMD(0x29, {}); // Display on
+#else
+    #error "LCD init sequence is not defined for this device!"
+#endif
+
+    rg_display_clear(C_BLACK);
+
+    // The delay is not necessary when switching apps
+    if (esp_reset_reason() != ESP_RST_SW)
+        usleep(80000);
+
+    // And finally, let there be light!
+    ili9341_set_backlight(display.config.backlight);
 }
 
 static void ili9341_deinit()
@@ -282,8 +278,7 @@ static void ili9341_deinit()
     // Normally we skip these steps to avoid LCD flicker, but it
     // is necessary on the G32 because of a bug in the bootmenu
     #ifdef RG_TARGET_MRGC_G32
-    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0, 50);
-    ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
+    ili9341_set_backlight(0);
     ili9341_cmd(0x01, NULL, 0); // Reset
     // ili9341_cmd(0x28, NULL, 0); // Display off
     // ili9341_cmd(0x10, NULL, 0); // Sleep

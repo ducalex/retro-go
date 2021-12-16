@@ -302,28 +302,15 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     #endif
     rg_system_set_led(0);
 
-    // sdcard must be first because it fails if the SPI bus is already initialized
-    rg_storage_init();
-    rg_input_init();
-
-    if (!app.isLauncher)
-    {
-        app.name = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_NAME, app.realname);
-        app.romPath = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_ARGS, "");
-        app.bootFlags = rg_settings_get_number(NS_GLOBAL, SETTING_BOOT_FLAGS, 0);
-        if (app.bootFlags & RG_BOOT_ONCE)
-            rg_system_set_boot_app(RG_APP_LAUNCHER);
-    }
-
+    rg_storage_init(); // This must be first
     rg_display_init();
     rg_gui_init();
-    rg_gui_draw_hourglass();
+    rg_input_init();
     rg_audio_init(sampleRate);
 
-    // Force return to launcher (recovery)
+    // Clear settings and return to launcher (recovery)
     if (rg_input_key_is_pressed(RG_KEY_UP|RG_KEY_DOWN|RG_KEY_LEFT|RG_KEY_RIGHT))
     {
-        rg_input_wait_for_key(RG_KEY_ALL, 0);
         rg_settings_reset();
         rg_system_set_boot_app(RG_APP_LAUNCHER);
         rg_system_restart();
@@ -357,6 +344,16 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         rg_gui_alert("SD Card Error", "Mount failed."); // esp_err_to_name(ret)
         rg_system_set_boot_app(RG_APP_LAUNCHER);
         rg_system_restart();
+    }
+
+    if (!app.isLauncher)
+    {
+        app.name = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_NAME, app.realname);
+        app.romPath = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_ARGS, "");
+        app.bootFlags = rg_settings_get_number(NS_GLOBAL, SETTING_BOOT_FLAGS, 0);
+        if (app.bootFlags & RG_BOOT_ONCE)
+            rg_system_set_boot_app(RG_APP_LAUNCHER);
+        rg_gui_draw_hourglass();
     }
 
     panicTrace.magicWord = 0;
@@ -576,18 +573,16 @@ bool rg_emu_reset(int hard)
 
 static void shutdown_cleanup(void)
 {
-    // Prepare the system for a power change (deep sleep, restart, shutdown)
-    // Wait for all keys to be released, they could interfer with the restart process
-    rg_display_clear(C_BLACK);
-    rg_gui_draw_hourglass();
-    rg_input_wait_for_key(RG_KEY_ALL, false);
-    rg_system_event(RG_EVENT_SHUTDOWN, NULL);
-    rtc_time_save();
-    rg_audio_deinit();
-    rg_input_deinit();
-    rg_i2c_deinit();
-    rg_storage_deinit();
-    rg_display_deinit();
+    rg_display_clear(C_BLACK);                  // Let the user know that something is happening
+    rg_gui_draw_hourglass();                    // ...
+    rg_system_event(RG_EVENT_SHUTDOWN, NULL);   // Allow apps to save their state if they want
+    rg_audio_deinit();                          // Disable sound ASAP to avoid audio garbage
+    rtc_time_save();                            // RTC might save to storage, do it before
+    rg_storage_deinit();                        // Unmount storage
+    rg_input_wait_for_key(RG_KEY_ALL, false);   // Wait for all keys to be released
+    rg_input_deinit();                          // Now we can shutdown input
+    rg_i2c_deinit();                            // Must be after input, sound, and rtc
+    rg_display_deinit();                        // Do this very last to reduce flicker time
 }
 
 void rg_system_shutdown(void)
