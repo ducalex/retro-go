@@ -158,9 +158,9 @@ Retro-Go and ESP32-specific code exclusively in their port file (main.c). This m
 - The NES/GBC/SMS emulators and base library were originally from the "Triforce" fork of the [official Go-Play firmware](https://github.com/othercrashoverride/go-play) by crashoverride, Nemo1984, and many others.
 - PCE-GO is a fork of [HuExpress](https://github.com/kallisti5/huexpress) and [pelle7's port](https://github.com/pelle7/odroid-go-pcengine-huexpress/) was used as reference.
 - The Lynx emulator is a port of [libretro-handy](https://github.com/libretro/libretro-handy).
-- The SNES emulator is a port of [Snes9x](https://github.com/snes9xgit/snes9x/).
+- The SNES emulator is a port of [Snes9x 1.60](https://github.com/snes9xgit/snes9x/).
 - The DOOM engine is a port of [PrBoom 2.5.0](http://prboom.sourceforge.net/).
-- PNG support is provided by [luPng](https://github.com/jansol/LuPng) and [zlib](http://zlib.net).
+- PNG support is provided by [lodepng](https://github.com/lvandeve/lodepng/).
 - PCE cover art is from [Christian_Haitian](https://github.com/christianhaitian).
 - Some icons from [Rokey](https://iconarchive.com/show/seed-icons-by-rokey.html).
 - Background images from [es-theme-gbz35](https://github.com/rxbrad/es-theme-gbz35).
@@ -169,7 +169,5 @@ Retro-Go and ESP32-specific code exclusively in their port file (main.c). This m
 
 # License
 Everything in this project is licensed under the [GPLv2 license](COPYING) with the exception of the following components:
-- components/lupng (PNG library, MIT)
-- components/retro-go (Retro-Go's framework, MIT)
-- components/zlib (zlib library, zlib)
+- components/retro-go (Retro-Go's framework, zlib)
 - handy-go/components/handy (Lynx emulator, zlib)

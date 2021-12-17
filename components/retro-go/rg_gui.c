@@ -8,12 +8,12 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
-#include <lupng.h>
 
 #include "bitmaps/image_hourglass.h"
 #include "fonts/fonts.h"
 #include "rg_system.h"
 #include "rg_gui.h"
+#include "lodepng.h"
 
 static const rg_gui_theme_t default_theme = {
     .box_background = C_NAVY,
@@ -1172,19 +1172,21 @@ rg_image_t *rg_image_load_from_memory(const uint8_t *data, size_t data_len, uint
 
     if (memcmp(data, "\x89PNG", 4) == 0)
     {
-        LuImage *png = luPngReadMem(data, data_len);
-        if (!png)
+        unsigned error, width, height;
+        uint8_t *image = NULL;
+
+        error = lodepng_decode24(&image, &width, &height, data, data_len);
+        if (error)
         {
-            RG_LOGE("PNG parsing failed!\n");
+            RG_LOGE("PNG decoding failed: %d\n", error);
             return NULL;
         }
 
-        rg_image_t *img = rg_image_alloc(png->width, png->height);
+        rg_image_t *img = rg_image_alloc(width, height);
         if (img)
         {
-            size_t pixel_count = img->width * img->height;
-            size_t pixel_size = png->channels;
-            const uint8_t *src = png->data;
+            size_t pixel_count = width * height;
+            const uint8_t *src = image;
             uint16_t *dest = img->data;
 
             // RGB888 or RGBA8888 to RGB565
@@ -1194,21 +1196,21 @@ rg_image_t *rg_image_load_from_memory(const uint8_t *data, size_t data_len, uint
                 *dest++ = (((src[0] >> 3) & 0x1F) << 11)
                         | (((src[1] >> 2) & 0x3F) << 5)
                         | (((src[2] >> 3) & 0x1F));
-                src += pixel_size;
+                src += 3;
             }
         }
-        luImageRelease(png, NULL);
+        free(image);
         return img;
     }
     else // RAW565 (uint16 width, uint16 height, uint16 data[])
     {
-        int img_width = ((uint16_t *)data)[0];
-        int img_height = ((uint16_t *)data)[1];
-        int size_diff = (img_width * img_height * 2 + 4) - data_len;
+        int width = ((uint16_t *)data)[0];
+        int height = ((uint16_t *)data)[1];
+        int size_diff = (width * height * 2 + 4) - data_len;
 
         if (size_diff >= 0 && size_diff <= 100)
         {
-            rg_image_t *img = rg_image_alloc(img_width, img_height);
+            rg_image_t *img = rg_image_alloc(width, height);
             if (img)
             {
                 // Image is already RGB565 little endian, just copy it
@@ -1227,34 +1229,35 @@ bool rg_image_save_to_file(const char *filename, const rg_image_t *img, uint32_t
 {
     RG_ASSERT(filename && img, "bad param");
 
-    LuImage *png = luImageCreate(img->width, img->height, 3, 8, 0, 0);
-    if (!png)
+    size_t pixel_count = img->width * img->height;
+    uint8_t *image = malloc(pixel_count * 3);
+    uint8_t *dest = image;
+    unsigned error;
+
+    if (!image)
     {
-        RG_LOGE("LuImage allocation failed!\n");
+        RG_LOGE("Memory alloc failed!\n");
         return false;
     }
-
-    size_t pixel_count = img->width * img->height;
-    const uint16_t *src = img->data;
-    uint8_t *dest = png->data;
 
     // RGB565 to RGB888
     for (int i = 0; i < pixel_count; ++i)
     {
-        dest[0] = ((src[i] >> 11) & 0x1F) << 3;
-        dest[1] = ((src[i] >> 5) & 0x3F) << 2;
-        dest[2] = ((src[i] & 0x1F) << 3);
+        dest[0] = ((img->data[i] >> 11) & 0x1F) << 3;
+        dest[1] = ((img->data[i] >> 5) & 0x3F) << 2;
+        dest[2] = ((img->data[i] & 0x1F) << 3);
         dest += 3;
     }
 
-    if (luPngWriteFile(filename, png) != PNG_OK)
+    error = lodepng_encode24_file(filename, image, img->width, img->height);
+    free(image);
+
+    if (error)
     {
-        RG_LOGE("luPngWriteFile failed!\n");
-        luImageRelease(png, 0);
+        RG_LOGE("PNG encoding failed: %d\n", error);
         return false;
     }
 
-    luImageRelease(png, 0);
     return true;
 }
 
