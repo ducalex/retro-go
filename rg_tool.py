@@ -120,7 +120,7 @@ def build_firmware(targets, shrink=False, device_type=None):
     args = [
         sys.executable,
         "tools/mkfw.py",
-        ("%s_%s.fw" % (PROJECT_NAME, PROJECT_VER)).lower(),
+        ("%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, device_type)).lower(),
         ("%s %s" % (PROJECT_NAME, PROJECT_VER)),
         PROJECT_TILE
     ]

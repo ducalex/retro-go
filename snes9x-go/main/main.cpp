@@ -186,10 +186,6 @@ static bool reset_handler(bool hard)
     return true;
 }
 
-static void snes9x_task(void *arg)
-{
-}
-
 extern "C" void app_main(void)
 {
 	const rg_handlers_t handlers = {
