@@ -172,4 +172,4 @@ Everything in this project is licensed under the [GPLv2 license](COPYING) with t
 - components/lupng (PNG library, MIT)
 - components/retro-go (Retro-Go's framework, MIT)
 - components/zlib (zlib library, zlib)
-- handy-go/components/handy (Lynx emulator, BSD)
+- handy-go/components/handy (Lynx emulator, zlib)
