@@ -718,15 +718,15 @@ static rg_gui_event_t volume_update_cb(rg_gui_option_t *option, rg_gui_event_t e
     int level = rg_audio_get_volume();
     int prev_level = level;
 
-    if (event == RG_DIALOG_PREV) level -= 1;
-    if (event == RG_DIALOG_NEXT) level += 1;
+    if (event == RG_DIALOG_PREV) level -= 5;
+    if (event == RG_DIALOG_NEXT) level += 5;
 
-    level = RG_MIN(RG_MAX(level, RG_AUDIO_VOL_MIN), RG_AUDIO_VOL_MAX);
+    level = RG_MIN(RG_MAX(level, 0), 100);
 
     if (level != prev_level)
         rg_audio_set_volume(level);
 
-    sprintf(option->value, "%d%%", level * RG_AUDIO_VOL_MAX);
+    sprintf(option->value, "%d%%", rg_audio_get_volume());
 
     return RG_DIALOG_VOID;
 }
@@ -736,8 +736,8 @@ static rg_gui_event_t brightness_update_cb(rg_gui_option_t *option, rg_gui_event
     int level = rg_display_get_backlight();
     int prev_level = level;
 
-    if (event == RG_DIALOG_PREV) level -= 10;
-    if (event == RG_DIALOG_NEXT) level += 10;
+    if (event == RG_DIALOG_PREV) level -= 5;
+    if (event == RG_DIALOG_NEXT) level += 5;
 
     level = RG_MIN(RG_MAX(level & ~1, 1), 100);
 
@@ -903,11 +903,11 @@ int rg_gui_options_menu(void)
 
     *opt++ = (rg_gui_option_t){0, "Brightness", "50%",  1, &brightness_update_cb};
     *opt++ = (rg_gui_option_t){0, "Volume    ", "50%",  1, &volume_update_cb};
+    *opt++ = (rg_gui_option_t){0, "Audio out ", "Speaker", 1, &audio_update_cb};
 
     // Global settings that aren't essential to show when inside a game
     if (app->isLauncher)
     {
-        *opt++ = (rg_gui_option_t){0, "Audio out ", "Speaker", 1, &audio_update_cb};
         *opt++ = (rg_gui_option_t){0, "Disk LED   ", "...", 1, &disk_activity_cb};
         *opt++ = (rg_gui_option_t){0, "Font type  ", "...", 1, &font_type_cb};
     }

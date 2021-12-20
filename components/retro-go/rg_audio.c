@@ -11,8 +11,7 @@ static int audioSink = -1;
 static int audioSampleRate = 0;
 static int audioFilter = 0;
 static bool audioMuted = false;
-static int volumeLevel = RG_AUDIO_VOL_DEFAULT;
-static int volumeMap[] = {0, 7, 15, 28, 39, 47, 56, 65, 74, 88, 100};
+static int audioVolume = 50;
 
 static const rg_sink_t sinks[] = {
     {RG_AUDIO_SINK_DUMMY,   0, "Dummy"},
@@ -37,7 +36,7 @@ static const char *SETTING_VOLUME = "Volume";
 
 void rg_audio_init(int sample_rate)
 {
-    int volume = rg_settings_get_number(NS_GLOBAL, SETTING_VOLUME, RG_AUDIO_VOL_DEFAULT);
+    int volume = rg_settings_get_number(NS_GLOBAL, SETTING_VOLUME, audioVolume);
     int sinkType = rg_settings_get_number(NS_GLOBAL, SETTING_OUTPUT, sinks[1].type);
 
     i2s_config_t i2s_config = {
@@ -141,7 +140,7 @@ void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
     size_t sampleCount = frameCount * 2;
     size_t bufferSize = sampleCount * sizeof(*stereoAudioBuffer);
     size_t written = 0;
-    float volume = volumeMap[volumeLevel] * 0.01f;
+    float volume = audioVolume * 0.01f;
 
     if (bufferSize == 0)
     {
@@ -246,16 +245,16 @@ void rg_audio_set_sink(rg_sink_type_t sink)
     rg_audio_init(audioSampleRate);
 }
 
-rg_volume_t rg_audio_get_volume(void)
+int rg_audio_get_volume(void)
 {
-    return volumeLevel;
+    return audioVolume;
 }
 
-void rg_audio_set_volume(rg_volume_t level)
+void rg_audio_set_volume(int percent)
 {
-    volumeLevel = RG_MIN(RG_MAX(level, RG_AUDIO_VOL_MIN), RG_AUDIO_VOL_MAX);
-    rg_settings_set_number(NS_GLOBAL, SETTING_VOLUME, volumeLevel);
-    RG_LOGI("Volume set to %d%% (%d)\n", volumeMap[volumeLevel], volumeLevel);
+    audioVolume = RG_MIN(RG_MAX(percent, 0), 100);
+    rg_settings_set_number(NS_GLOBAL, SETTING_VOLUME, audioVolume);
+    RG_LOGI("Volume set to %d%%\n", audioVolume);
 }
 
 void rg_audio_set_mute(bool mute)
