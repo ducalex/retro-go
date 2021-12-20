@@ -163,7 +163,7 @@ static void retro_loop(void)
         if (joystick == RG_KEY_OPTION)
         #endif
         {
-            if (rg_gui_settings_menu() == 123)
+            if (rg_gui_options_menu() == 123)
                 rg_gui_about_menu(NULL);
             gui_save_config(true);
             redraw_pending = true;

@@ -319,7 +319,7 @@ void app_main(void)
         }
         else if (*localJoystick & RG_KEY_OPTION)
         {
-            rg_gui_game_settings_menu();
+            rg_gui_options_menu();
         }
 
     #ifdef ENABLE_NETPLAY

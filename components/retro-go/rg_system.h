@@ -59,6 +59,13 @@ enum
 
 typedef enum
 {
+    RG_OK    = 0,
+    RG_FAIL  = 1,
+    RG_NOMEM = 2,
+} rg_err_t;
+
+typedef enum
+{
     RG_EVENT_SHUTDOWN,
     RG_EVENT_SLEEP,
     RG_EVENT_UNRESPONSIVE,

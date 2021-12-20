@@ -36,15 +36,6 @@ typedef struct
     uint8_t data[];
 } rg_font_t;
 
-typedef struct
-{
-    uint8_t type;
-    uint8_t width;
-    uint8_t height;
-    uint8_t points;
-    const rg_font_t *font;
-} rg_gui_font_t;
-
 // rg_image_t contains an RGB565 (LE) image
 typedef struct
 {
@@ -79,6 +70,19 @@ typedef struct
     rg_color_t scrollbar;
 } rg_gui_theme_t;
 
+typedef struct
+{
+    uint16_t *screen_buffer;
+    uint16_t *draw_buffer;
+    size_t screen_width;
+    size_t screen_height;
+    size_t font_points;
+    const rg_font_t *font;
+    int font_type;
+    rg_gui_theme_t theme;
+    bool initialized;
+} rg_gui_t;
+
 typedef struct rg_gui_option_s rg_gui_option_t;
 typedef rg_gui_event_t (*rg_gui_callback_t)(rg_gui_option_t *, rg_gui_event_t);
 
@@ -103,10 +107,10 @@ struct rg_gui_option_s
 
 void rg_gui_init(void);
 void rg_gui_flush(void); // no effect if buffered = false
+const rg_gui_t *rg_gui_get_info(void);
 void rg_gui_set_buffered(bool buffered);
 bool rg_gui_set_theme(const rg_gui_theme_t *new_theme);
 bool rg_gui_set_font_type(int type);
-rg_gui_font_t rg_gui_get_font_info(void);
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, rg_color_t color_fg, rg_color_t color_bg, uint32_t flags);
 void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer);
 void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size, rg_color_t border_color, rg_color_t fill_color);
@@ -126,8 +130,7 @@ int  rg_gui_dialog(const char *header, const rg_gui_option_t *options, int selec
 bool rg_gui_confirm(const char *title, const char *message, bool yes_selected);
 void rg_gui_alert(const char *title, const char *message);
 
-int rg_gui_settings_menu(void);
-int rg_gui_game_settings_menu(void);
+int rg_gui_options_menu(void);
 int rg_gui_game_menu(void);
 int rg_gui_about_menu(const rg_gui_option_t *extra_options);
 int rg_gui_debug_menu(const rg_gui_option_t *extra_options);

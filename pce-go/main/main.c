@@ -137,7 +137,7 @@ void osd_input_read(uint8_t joypads[8])
     }
     else if (joystick & RG_KEY_OPTION)
     {
-        rg_gui_game_settings_menu();
+        rg_gui_options_menu();
     }
 
     if (joystick & RG_KEY_LEFT)   buttons |= JOY_LEFT;

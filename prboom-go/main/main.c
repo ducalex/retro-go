@@ -441,7 +441,7 @@ void I_StartTic(void)
 
     if (joystick & RG_KEY_OPTION)
     {
-        rg_gui_game_settings_menu();
+        rg_gui_options_menu();
         // realtic_clock_rate = (app->speedupEnabled + 1) * 100;
     }
     else if (changed)

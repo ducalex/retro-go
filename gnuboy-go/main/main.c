@@ -301,7 +301,7 @@ void app_main(void)
         else if (joystick & RG_KEY_OPTION)
         {
             auto_sram_update();
-            rg_gui_game_settings_menu();
+            rg_gui_options_menu();
         }
         else if (joystick != joystick_old)
         {

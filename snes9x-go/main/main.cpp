@@ -261,7 +261,7 @@ extern "C" void app_main(void)
 		}
 		else if (joystick & RG_KEY_OPTION)
 		{
-			rg_gui_game_settings_menu();
+			rg_gui_options_menu();
 		}
 
 		int64_t startTime = get_elapsed_time();

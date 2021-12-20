@@ -10,7 +10,7 @@
 
 #define HEADER_HEIGHT       (50)
 #define LOGO_WIDTH          (46)
-#define LIST_LINE_COUNT     ((gui.height - (HEADER_HEIGHT + 6)) / rg_gui_get_font_info().height)
+#define LIST_LINE_COUNT     ((gui.height - (HEADER_HEIGHT + 6)) / rg_gui_get_info()->font_points)
 #define PREVIEW_HEIGHT      ((int)(gui.height * 0.70f))
 #define PREVIEW_WIDTH       ((int)(gui.width * 0.50f))
 

@@ -163,7 +163,7 @@ void app_main(void)
             rg_gui_game_menu();
         }
         else if (*localJoystick & RG_KEY_OPTION) {
-            rg_gui_game_settings_menu();
+            rg_gui_options_menu();
         }
 
         int64_t startTime = get_elapsed_time();

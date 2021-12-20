@@ -46,7 +46,7 @@ static int wdtCounter = 0;
 static bool initialized = false;
 static bool exit_called = false;
 
-#define WDT_TIMEOUT 15000000
+#define WDT_TIMEOUT 10000000
 #define WDT_RELOAD(val) wdtCounter = (val)
 
 
@@ -145,7 +145,7 @@ static void system_monitor_task(void *arg)
     memset(&counters, 0, sizeof(counters));
 
     // Give the app a few seconds to start before monitoring
-    vTaskDelay(pdMS_TO_TICKS(2000));
+    vTaskDelay(pdMS_TO_TICKS(2500));
     WDT_RELOAD(WDT_TIMEOUT);
 
     while (1)
