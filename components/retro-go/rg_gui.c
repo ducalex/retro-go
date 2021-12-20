@@ -721,8 +721,6 @@ static rg_gui_event_t volume_update_cb(rg_gui_option_t *option, rg_gui_event_t e
     if (event == RG_DIALOG_PREV) level -= 5;
     if (event == RG_DIALOG_NEXT) level += 5;
 
-    level = RG_MIN(RG_MAX(level, 0), 100);
-
     if (level != prev_level)
         rg_audio_set_volume(level);
 
@@ -739,12 +737,10 @@ static rg_gui_event_t brightness_update_cb(rg_gui_option_t *option, rg_gui_event
     if (event == RG_DIALOG_PREV) level -= 5;
     if (event == RG_DIALOG_NEXT) level += 5;
 
-    level = RG_MIN(RG_MAX(level & ~1, 1), 100);
-
     if (level != prev_level)
-        rg_display_set_backlight(level);
+        rg_display_set_backlight(RG_MAX(level, 1));
 
-    sprintf(option->value, "%d%%", level);
+    sprintf(option->value, "%d%%", rg_display_get_backlight());
 
     return RG_DIALOG_VOID;
 }

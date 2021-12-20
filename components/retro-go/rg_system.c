@@ -305,8 +305,8 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     rg_storage_init(); // This must be first
     rg_display_init();
     rg_gui_init();
-    rg_input_init();
     rg_audio_init(sampleRate);
+    rg_input_init();
 
     // Clear settings and return to launcher (recovery)
     if (rg_input_key_is_pressed(RG_KEY_UP|RG_KEY_DOWN|RG_KEY_LEFT|RG_KEY_RIGHT))
