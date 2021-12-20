@@ -205,6 +205,11 @@ static cJSON *json_root(const char *name)
 
 void rg_settings_reset(void)
 {
+    // Get rid of everything in RG_BASE_PATH_CONFIG...
+    // opendir(RG_BASE_PATH_CONFIG);
+    unlink(RG_BASE_PATH_CONFIG "/favorite.txt");
+    unlink(RG_BASE_PATH_CONFIG "/recent.txt");
+
     cJSON_Delete(config_root);
     config_root = cJSON_CreateObject();
     unsaved_changes++;
