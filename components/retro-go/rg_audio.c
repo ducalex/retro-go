@@ -30,7 +30,7 @@ static const char *SETTING_VOLUME = "Volume";
 
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 2, 0)
     #define I2S_COMM_FORMAT_STAND_I2S (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB)
-    #define I2S_COMM_FORMAT_STAND_MSB (I2S_COMM_FORMAT_I2S |I2S_COMM_FORMAT_I2S_LSB)
+    #define I2S_COMM_FORMAT_STAND_MSB (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_LSB)
 #endif
 
 
@@ -40,7 +40,7 @@ void rg_audio_init(int sample_rate)
     int sinkType = rg_settings_get_number(NS_GLOBAL, SETTING_OUTPUT, sinks[1].type);
 
     i2s_config_t i2s_config = {
-        .mode = I2S_MODE_MASTER | I2S_MODE_TX,
+        .mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN,
         .sample_rate = sample_rate,
         .bits_per_sample = 16,
         .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
@@ -60,17 +60,17 @@ void rg_audio_init(int sample_rate)
 
     if (audioSink == RG_AUDIO_SINK_SPEAKER)
     {
-        i2s_config.mode |= I2S_MODE_DAC_BUILT_IN;
-        if (i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL) == ESP_OK)
+        if ((ret = i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL)) == ESP_OK)
         {
             ret = i2s_set_pin(I2S_NUM_0, NULL);
         }
     }
     else if (audioSink == RG_AUDIO_SINK_EXT_DAC)
     {
+        i2s_config.mode = I2S_MODE_MASTER | I2S_MODE_TX;
         i2s_config.communication_format = I2S_COMM_FORMAT_STAND_I2S;
         i2s_config.use_apll = 1;
-        if (i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL) == ESP_OK)
+        if ((ret = i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL)) == ESP_OK)
         {
             ret = i2s_set_pin(I2S_NUM_0, &(i2s_pin_config_t) {
                 .bck_io_num = RG_GPIO_SND_I2S_BCK,

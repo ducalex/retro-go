@@ -739,7 +739,7 @@ static rg_gui_event_t brightness_update_cb(rg_gui_option_t *option, rg_gui_event
     if (event == RG_DIALOG_PREV) level -= 5;
     if (event == RG_DIALOG_NEXT) level += 5;
 
-    level = RG_MIN(RG_MAX(level & ~1, 1), 100);
+    level = RG_MIN(RG_MAX(level - (level % 5), 1), 100);
 
     if (level != prev_level)
         rg_display_set_backlight(level);
