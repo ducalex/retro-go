@@ -91,26 +91,20 @@ void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, co
     }
 }
 
-static rg_glyph_t get_glyph(const rg_font_t *font, int points, int c)
+static size_t get_glyph(uint16_t *output, const rg_font_t *font, int points, uint8_t c)
 {
-    rg_glyph_t out = {
-        .width  = font->width ? font->width : 8,
-        .height = font->height,
-        .bitmap = {0},
-    };
+    size_t glyph_width = 8;
 
-    if (c == '\n') // Some glyphs are always zero width
+    // Some glyphs are always zero width
+    if (c == '\r' || c == '\n')
+        return 0;
+
+    if (font->type == 0) // Bitmap
     {
-        out.width = 0;
-    }
-    else if (font->type == 0) // bitmap
-    {
-        if (c < font->chars)
-        {
-            for (int y = 0; y < font->height; y++) {
-                out.bitmap[y] = font->data[(c * font->height) + y];
-            }
-        }
+        if (output && c < font->chars)
+            for (int y = 0; y < font->height; y++)
+                output[y] = font->data[(c * font->height) + y];
+        glyph_width = font->width;
     }
     else // Proportional
     {
@@ -133,36 +127,35 @@ static rg_glyph_t get_glyph(const rg_font_t *font, int points, int c)
 
         if (c == charCode)
         {
-            out.width = ((width > xDelta) ? width : xDelta);
-            // out.height = height;
-
-            int ch = 0, mask = 0x80;
-
-            for (int y = 0; y < height; y++) {
-                for (int x = 0; x < width; x++) {
-                    if (((x + (y * width)) % 8) == 0) {
-                        mask = 0x80;
-                        ch = *data++;
+            glyph_width = ((width > xDelta) ? width : xDelta);
+            if (output)
+            {
+                int ch = 0, mask = 0x80;
+                for (int y = 0; y < height; y++) {
+                    output[adjYOffset + y] = 0;
+                    for (int x = 0; x < width; x++) {
+                        if (((x + (y * width)) % 8) == 0) {
+                            mask = 0x80;
+                            ch = *data++;
+                        }
+                        if ((ch & mask) != 0)
+                            output[adjYOffset + y] |= (1 << (xOffset + x));
+                        mask >>= 1;
                     }
-                    if ((ch & mask) != 0) {
-                        out.bitmap[adjYOffset + y] |= (1 << (xOffset + x));
-                    }
-                    mask >>= 1;
                 }
             }
         }
     }
 
-    if (points && points != font->height)
+    // Vertical stretching
+    if (output && points && points != font->height)
     {
         float scale = (float)points / font->height;
-        rg_glyph_t out2 = out;
-        out.height = points;
-        for (int y = 0; y < out.height; y++)
-            out.bitmap[y] = out2.bitmap[(int)(y / scale)];
+        for (int y = points - 1; y >= 0; y--)
+            output[y] = output[(int)(y / scale)];
     }
 
-    return out;
+    return glyph_width;
 }
 
 bool rg_gui_set_font_type(int type)
@@ -200,8 +193,6 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
     if (y_pos < 0) y_pos += gui.screen_height;
     if (!text || *text == 0) text = " ";
 
-    // FIX ME: We should cache get_glyph().width to avoid calling it up to 3 times.
-
     if (width == 0)
     {
         // Find the longest line to determine our box width
@@ -210,7 +201,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
         while (*ptr)
         {
             int chr = *ptr++;
-            line_width += get_glyph(gui.font, gui.font_points, chr).width;
+            line_width += get_glyph(0, gui.font, gui.font_points, chr);
 
             if (chr == '\n' || *ptr == 0)
             {
@@ -239,7 +230,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
             const char *line = ptr;
             while (x_offset < draw_width && *line && *line != '\n')
             {
-                int width = get_glyph(gui.font, gui.font_points, *line++).width;
+                int width = get_glyph(0, gui.font, gui.font_points, *line++);
                 if (draw_width - x_offset < width) // Do not truncate glyphs
                     break;
                 x_offset += width;
@@ -252,9 +243,10 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
 
         while (x_offset < draw_width)
         {
-            rg_glyph_t glyph = get_glyph(gui.font, gui.font_points, *ptr++);
+            uint16_t bitmap[24] = {0};
+            int width = get_glyph(bitmap, gui.font, gui.font_points, *ptr++);
 
-            if (draw_width - x_offset < glyph.width) // Do not truncate glyphs
+            if (draw_width - x_offset < width) // Do not truncate glyphs
             {
                 if (flags & RG_TEXT_MULTILINE)
                     ptr--;
@@ -266,15 +258,12 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
                 for (int y = 0; y < font_height; y++)
                 {
                     uint16_t *output = &gui.draw_buffer[x_offset + (draw_width * y)];
-
-                    for (int x = 0; x < glyph.width; x++)
-                    {
-                        output[x] = (glyph.bitmap[y] & (1 << x)) ? color_fg : color_bg;
-                    }
+                    for (int x = 0; x < width; x++)
+                        output[x] = (bitmap[y] & (1 << x)) ? color_fg : color_bg;
                 }
             }
 
-            x_offset += glyph.width;
+            x_offset += width;
 
             if (*ptr == 0 || *ptr == '\n')
                 break;

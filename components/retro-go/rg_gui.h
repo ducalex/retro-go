@@ -51,13 +51,6 @@ typedef struct
 {
     uint16_t width;
     uint16_t height;
-    uint16_t bitmap[24];
-} rg_glyph_t;
-
-typedef struct
-{
-    uint16_t width;
-    uint16_t height;
 } rg_rect_t;
 
 typedef struct
