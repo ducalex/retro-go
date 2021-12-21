@@ -189,16 +189,11 @@ void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
                 dac0 = range;
             }
 
-            dac0 += 0x80;
-            dac1 = 0x80 - dac1;
-
-            dac0 <<= 8;
-            dac1 <<= 8;
-
-            stereoAudioBuffer[i] = dac1;
-            stereoAudioBuffer[i + 1] = dac0;
+            // Push the differential output in the upper byte of each channel
+            stereoAudioBuffer[i + 0] = ((dac1 - 0x80) << 8);
+            stereoAudioBuffer[i + 1] = ((dac0 + 0x80) << 8);
         }
-        i2s_write(I2S_NUM_0, (const void *)stereoAudioBuffer, bufferSize, &written, 1000);
+        i2s_write(I2S_NUM_0, stereoAudioBuffer, bufferSize, &written, 1000);
         RG_ASSERT(written > 0, "i2s_write failed.");
     }
     else if (audioSink == RG_AUDIO_SINK_EXT_DAC)
@@ -206,6 +201,11 @@ void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
         for (size_t i = 0; i < sampleCount; ++i)
         {
             int sample = stereoAudioBuffer[i] * volume;
+
+            // Attenuate because it's too loud on some devices
+            #ifdef RG_TARGET_MRGC_G32
+            sample >>= 1;
+            #endif
 
             // Clip
             if (sample > 32767)
@@ -215,7 +215,7 @@ void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
 
             stereoAudioBuffer[i] = sample;
         }
-        i2s_write(I2S_NUM_0, (const void *)stereoAudioBuffer, bufferSize, &written, 1000);
+        i2s_write(I2S_NUM_0, stereoAudioBuffer, bufferSize, &written, 1000);
         RG_ASSERT(written > 0, "i2s_write failed.");
     }
     else
