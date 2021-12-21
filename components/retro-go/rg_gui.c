@@ -891,7 +891,7 @@ int rg_gui_options_menu(void)
     *opt++ = (rg_gui_option_t){0, "Audio out ", "Speaker", 1, &audio_update_cb};
 
     // Global settings that aren't essential to show when inside a game
-    if (app->isLauncher)
+    if (strcmp(app->name, RG_APP_LAUNCHER) == 0)
     {
         *opt++ = (rg_gui_option_t){0, "Disk LED   ", "...", 1, &disk_activity_cb};
         *opt++ = (rg_gui_option_t){0, "Font type  ", "...", 1, &font_type_cb};

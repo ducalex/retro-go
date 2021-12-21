@@ -20,8 +20,9 @@
 #define RG_BASE_PATH_SAVES     RG_ROOT_PATH "/odroid/data"
 #endif
 
+// TO DO: This should be an enum, not strings and even less a function call...
 #define NS_GLOBAL  "global"
-#define NS_APP     rg_system_get_app()->name
+#define NS_APP     rg_system_get_app()->configNs
 #define NS_FILE    rg_system_get_app()->romPath
 
 void rg_storage_init(void);

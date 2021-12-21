@@ -961,7 +961,7 @@ void rg_display_init()
         .screen.height = RG_SCREEN_HEIGHT - RG_SCREEN_MARGIN_TOP - RG_SCREEN_MARGIN_BOTTOM,
         .config.backlight = RG_MIN(RG_MAX(rg_settings_get_number(NS_GLOBAL, SETTING_BACKLIGHT, 80), 0), 100),
         .config.scaling = rg_settings_get_number(NS_APP, SETTING_SCALING, RG_DISPLAY_SCALING_FILL),
-        .config.filter = rg_settings_get_number(NS_APP, SETTING_FILTER, RG_DISPLAY_FILTER_HORIZ),
+        .config.filter = rg_settings_get_number(NS_APP, SETTING_FILTER, RG_DISPLAY_FILTER_BOTH),
         .config.rotation = rg_settings_get_number(NS_APP, SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO),
         .config.update = rg_settings_get_number(NS_APP, SETTING_UPDATE, RG_DISPLAY_UPDATE_PARTIAL),
         .changed = true,

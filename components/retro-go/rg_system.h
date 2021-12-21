@@ -113,24 +113,23 @@ typedef struct
 
 typedef struct
 {
-    const char *realname;
+    // const char *partition;
     const char *name;
     const char *version;
     const char *buildDate;
     const char *buildTime;
     const char *buildUser;
+    const char *configNs;
     int bootFlags;
     int speedupEnabled;
     int refreshRate;
     int sampleRate;
     int logLevel;
-    int isLauncher;
     int wdtTimeout;
     const char *romPath;
     void *mainTaskHandle;
     const rg_gui_option_t *options;
     rg_handlers_t handlers;
-    rg_logbuf_t log;
 } rg_app_t;
 
 typedef struct

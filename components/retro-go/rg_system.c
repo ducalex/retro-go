@@ -36,15 +36,16 @@ typedef struct
     rg_logbuf_t log;
 } panic_trace_t;
 
-// These will survive a software reset
+// The trace will survive a software reset
 static RTC_NOINIT_ATTR panic_trace_t panicTrace;
 static rg_stats_t statistics;
 static rg_counters_t counters;
 static rg_app_t app;
+static rg_logbuf_t logbuf;
 static int ledValue = 0;
 static int wdtCounter = 0;
+static bool exitCalled = false;
 static bool initialized = false;
-static bool exit_called = false;
 
 #define WDT_TIMEOUT 10000000
 #define WDT_RELOAD(val) wdtCounter = (val)
@@ -99,9 +100,9 @@ static void rtc_time_save(void)
 static void exit_handler(void)
 {
     RG_LOGI("Exit handler called.\n");
-    if (!exit_called)
+    if (!exitCalled)
     {
-        exit_called = true;
+        exitCalled = true;
         rg_system_set_boot_app(RG_APP_LAUNCHER);
         rg_system_restart();
     }
@@ -123,7 +124,7 @@ static inline void begin_panic_trace()
     panicTrace.message[0] = 0;
     panicTrace.context[0] = 0;
     panicTrace.statistics = statistics;
-    panicTrace.log = app.log;
+    panicTrace.log = logbuf;
     logbuf_print(&panicTrace.log, "\n\n*** PANIC TRACE: ***\n\n");
 }
 
@@ -271,6 +272,7 @@ rg_stats_t rg_system_get_stats(void)
 rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options)
 {
     const esp_app_desc_t *esp_app = esp_ota_get_app_description();
+    // const esp_partition_t *esp_part = esp_ota_get_boot_partition();
 
     RG_LOGX("\n========================================================\n");
     RG_LOGX("%s %s (%s %s)\n", esp_app->project_name, esp_app->version, esp_app->date, esp_app->time);
@@ -280,31 +282,43 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     // This must be done before any peripheral init
     srand(esp_random());
 
-    memset(&app, 0, sizeof(app));
-    app.realname = esp_app->project_name;
-    app.name = app.realname;
-    app.version = esp_app->version;
-    app.buildDate = esp_app->date;
-    app.buildTime = esp_app->time;
-    app.buildUser = RG_BUILD_USER;
-    app.refreshRate = 60;
-    app.sampleRate = sampleRate;
-    app.logLevel = RG_LOG_INFO;
-    app.isLauncher = (strcmp(app.realname, RG_APP_LAUNCHER) == 0);
-    app.mainTaskHandle = xTaskGetCurrentTaskHandle();
-    app.options = options; // TODO: We should make a copy of it
-    if (handlers)
-        app.handlers = *handlers;
-
-    // Status LED
     #ifdef RG_GPIO_LED
-        gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
+    gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
     #endif
     rg_system_set_led(0);
 
-    rg_storage_init(); // This must be first
+    // Storage must be initialized first (SPI bus, settings, assets, etc)
+    rg_storage_init();
+
+    app = (rg_app_t){
+        .name = esp_app->project_name,
+        .version = esp_app->version,
+        .buildDate = esp_app->date,
+        .buildTime = esp_app->time,
+        .buildUser = RG_BUILD_USER,
+        .configNs = esp_app->project_name,
+        .refreshRate = 60,
+        .sampleRate = sampleRate,
+        .logLevel = RG_LOG_INFO,
+        .mainTaskHandle = xTaskGetCurrentTaskHandle(),
+        .options = options, // TO DO: We should make a copy of it
+    };
+    if (handlers)
+        app.handlers = *handlers;
+
+    if (strcmp(app.name, RG_APP_LAUNCHER) != 0)
+    {
+        app.configNs = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_NAME, app.name);
+        app.romPath = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_ARGS, "");
+        app.bootFlags = rg_settings_get_number(NS_GLOBAL, SETTING_BOOT_FLAGS, 0);
+        if (app.bootFlags & RG_BOOT_ONCE)
+            rg_system_set_boot_app(RG_APP_LAUNCHER);
+    }
+
+    // Now we init everything else!
     rg_display_init();
     rg_gui_init();
+    rg_gui_draw_hourglass();
     rg_audio_init(sampleRate);
     rg_input_init();
 
@@ -344,16 +358,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         rg_gui_alert("SD Card Error", "Mount failed."); // esp_err_to_name(ret)
         rg_system_set_boot_app(RG_APP_LAUNCHER);
         rg_system_restart();
-    }
-
-    if (!app.isLauncher)
-    {
-        app.name = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_NAME, app.realname);
-        app.romPath = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_ARGS, "");
-        app.bootFlags = rg_settings_get_number(NS_GLOBAL, SETTING_BOOT_FLAGS, 0);
-        if (app.bootFlags & RG_BOOT_ONCE)
-            rg_system_set_boot_app(RG_APP_LAUNCHER);
-        rg_gui_draw_hourglass();
     }
 
     panicTrace.magicWord = 0;
@@ -417,7 +421,7 @@ char *rg_system_get_path(char *buffer, rg_path_type_t pathType, const char *file
         if (strstr(filename, RG_BASE_PATH_ROMS) == filename)
             filename += strlen(RG_BASE_PATH_ROMS) + 1;
 
-        // TODO: We probably should append app->name when needed...
+        // TO DO: We probably should append app->name when needed...
 
         strcat(buffer, "/");
         strcat(buffer, filename);
@@ -588,7 +592,7 @@ static void shutdown_cleanup(void)
 void rg_system_shutdown(void)
 {
     RG_LOGI("Halting system.\n");
-    exit_called = true;
+    exitCalled = true;
     shutdown_cleanup();
     vTaskSuspendAll();
     while (1);
@@ -604,7 +608,7 @@ void rg_system_sleep(void)
 
 void rg_system_restart(void)
 {
-    exit_called = true;
+    exitCalled = true;
     shutdown_cleanup();
     esp_restart();
 }
@@ -675,20 +679,20 @@ void rg_system_log(int level, const char *context, const char *format, ...)
     len += vsnprintf(buffer + len, sizeof(buffer) - len, format, args);
     va_end(args);
 
-    logbuf_print(&app.log, buffer);
+    logbuf_print(&logbuf, buffer);
     fwrite(buffer, len, 1, stdout);
 }
 
 bool rg_system_save_trace(const char *filename, bool panic_trace)
 {
     rg_stats_t *stats = panic_trace ? &panicTrace.statistics : &statistics;
-    rg_logbuf_t *log = panic_trace ? &panicTrace.log : &app.log;
+    rg_logbuf_t *log = panic_trace ? &panicTrace.log : &logbuf;
     RG_ASSERT(filename, "bad param");
 
     FILE *fp = fopen(filename, "w");
     if (fp)
     {
-        fprintf(fp, "Application: %s\n", app.realname);
+        fprintf(fp, "Application: %s\n", app.name);
         fprintf(fp, "Version: %s\n", app.version);
         fprintf(fp, "Build date: %s %s\n", app.buildDate, app.buildTime);
         fprintf(fp, "ESP-IDF: %s\n", esp_get_idf_version());
@@ -717,7 +721,7 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
 void rg_system_set_led(int value)
 {
     #ifdef RG_GPIO_LED
-        gpio_set_level(RG_GPIO_LED, value);
+    gpio_set_level(RG_GPIO_LED, value);
     #endif
     ledValue = value;
 }
