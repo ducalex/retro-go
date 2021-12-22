@@ -935,7 +935,7 @@ int rg_gui_about_menu(const rg_gui_option_t *extra_options)
         {0, "Date", build_date, 1, NULL},
         {0, "By", build_user, 1, NULL},
         RG_DIALOG_SEPARATOR,
-        // {1000, "Reboot to firmware", NULL, 1, NULL},
+        {1000, "Reboot to firmware", NULL, 1, NULL},
         {2000, "Reset settings", NULL, 1, NULL},
         {3000, "Clear cache", NULL, 1, NULL},
         {4000, "Debug", NULL, 1, NULL},
@@ -963,10 +963,10 @@ int rg_gui_about_menu(const rg_gui_option_t *extra_options)
 
     switch (sel)
     {
-        // case 1000:
-        //     rg_system_set_boot_app(RG_APP_FACTORY);
-        //     rg_system_restart();
-        //     break;
+        case 1000:
+            rg_system_set_boot_app(RG_APP_FACTORY);
+            rg_system_restart();
+            break;
         case 2000:
             if (rg_gui_confirm("Reset all settings?", NULL, false)) {
                 rg_settings_reset();
