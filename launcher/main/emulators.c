@@ -581,11 +581,6 @@ void emulator_show_file_info(retro_emulator_file_t *file)
 
 void emulator_show_file_menu(retro_emulator_file_t *file, bool advanced)
 {
-    // Okay this isn't great but our stupid bookmark code might realloc and move *file
-    // before we're done with it. This should be fixed in bookmarks.c but this is easier...
-    retro_emulator_file_t tmp_file = *file;
-    file = &tmp_file;
-
     char *save_path = rg_system_get_path(NULL, RG_PATH_SAVE_STATE, emulator_get_file_path(file));
     char *sram_path = rg_system_get_path(NULL, RG_PATH_SAVE_SRAM, emulator_get_file_path(file));
     char *scrn_path = rg_system_get_path(NULL, RG_PATH_SCREENSHOT, emulator_get_file_path(file));
@@ -612,7 +607,6 @@ void emulator_show_file_menu(retro_emulator_file_t *file, bool advanced)
     case 1:
         crc_cache_save();
         gui_save_config(false); // emulator_start will trigger a commit
-        bookmark_add(BOOK_TYPE_RECENT, file);
         emulator_start(file, sel == 0);
         break;
 
@@ -632,7 +626,7 @@ void emulator_show_file_menu(retro_emulator_file_t *file, bool advanced)
         if (is_fav)
             bookmark_remove(BOOK_TYPE_FAVORITE, file);
         else
-            bookmark_add(BOOK_TYPE_FAVORITE, file);
+            bookmark_add(BOOK_TYPE_FAVORITE, file); // This could relocate *file
         break;
 
     case 4:
@@ -642,12 +636,10 @@ void emulator_show_file_menu(retro_emulator_file_t *file, bool advanced)
     case 5:
         if (rg_gui_confirm("Delete selected file?", 0, 0))
         {
-            if (is_fav)
-            {
-                bookmark_remove(BOOK_TYPE_FAVORITE, file);
-            }
             if (unlink(emulator_get_file_path(file)) == 0)
             {
+                bookmark_remove(BOOK_TYPE_FAVORITE, file);
+                bookmark_remove(BOOK_TYPE_RECENT, file);
                 file->is_valid = false;
                 gui_event(TAB_REFRESH, gui_get_current_tab());
             }
@@ -668,10 +660,12 @@ void emulator_show_file_menu(retro_emulator_file_t *file, bool advanced)
 void emulator_start(retro_emulator_file_t *file, bool load_state)
 {
     RG_ASSERT(file, "Unable to find file...");
-    const char *path = emulator_get_file_path(file);
-    const char *name = file->emulator->short_name;
     int flags = (load_state ? RG_BOOT_RESUME : 0) | (gui.startup ? RG_BOOT_ONCE : 0);
-    rg_system_start_app(file->emulator->partition, name, path, flags);
+    char *part = strdup(file->emulator->partition);
+    char *name = strdup(file->emulator->short_name);
+    char *path = strdup(emulator_get_file_path(file));
+    bookmark_add(BOOK_TYPE_RECENT, file); // This could relocate *file, but we no longer need it
+    rg_system_start_app(part, name, path, flags);
 }
 
 void emulators_init(void)
