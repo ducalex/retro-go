@@ -680,14 +680,12 @@ static void D_DoomMainSetup(void)
   L_SetupConsoleMasks();
   setbuf(stdout,NULL);
 
-	states = malloc(sizeof(rostates));
-	memcpy(states, rostates, sizeof(rostates));
+	states = memcpy(malloc(sizeof(rostates)), rostates, sizeof(rostates));
+  modifiedgame = false;
+  numwadfiles = 0;
 
   lprintf(LO_INFO, "M_LoadDefaults: Load system defaults.\n");
   M_LoadDefaults(); // load before initing other systems
-
-  modifiedgame = false;
-  numwadfiles = 0;
 
   // Try loading iwad specified as parameter
   if ((p = M_CheckParm("-iwad")) && (++p < myargc))
@@ -721,10 +719,10 @@ static void D_DoomMainSetup(void)
     break;
   case commercial:  // Ty 08/27/98 - fixed gamemode vs gamemission
       p = strlen(iwad);
-      if (p>=7 && !strnicmp(iwad+p-7,"tnt.wad",7)) {
+      if (p>=7 && !strncasecmp(iwad+p-7,"tnt.wad",7)) {
         doomverstr = "DOOM 2: TNT - Evilution";
         gamemission = pack_tnt;
-      } else if (p>=12 && !strnicmp(iwad+p-12,"plutonia.wad",12)) {
+      } else if (p>=12 && !strncasecmp(iwad+p-12,"plutonia.wad",12)) {
         doomverstr = "DOOM 2: Plutonia Experiment";
         gamemission = pack_plut;
       } else {

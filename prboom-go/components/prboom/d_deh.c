@@ -1438,7 +1438,7 @@ void D_ProcessDehFile(const char *filename, const char *outfilename, int lumpnum
       // killough 10/98: INCLUDE code rewritten to allow arbitrary nesting,
       // and to greatly simplify code, fix memory leaks, other bugs
 
-      if (!strnicmp(inbuffer,"INCLUDE",7)) // include a file
+      if (!strncasecmp(inbuffer,"INCLUDE",7)) // include a file
         {
           // preserve state while including a file
           // killough 10/98: moved to here
@@ -1460,7 +1460,7 @@ void D_ProcessDehFile(const char *filename, const char *outfilename, int lumpnum
           // check for no-text directive, used when including a DEH
           // file but using the BEX format to handle strings
 
-          if (!strnicmp(nextfile = ptr_lstrip(inbuffer+7),"NOTEXT",6))
+          if (!strncasecmp(nextfile = ptr_lstrip(inbuffer+7),"NOTEXT",6))
             includenotext = true, nextfile = ptr_lstrip(nextfile+6);
 
           if (fileout)
@@ -1529,7 +1529,7 @@ static void deh_procBexCodePointers(DEHFILE *fpin, FILE* fpout, char *line)
 
       // killough 8/98: allow hex numbers in input:
       if ( (3 != sscanf(inbuffer,"%s %i = %s", key, &indexnum, mnemonic))
-           || (stricmp(key,"FRAME")) )  // NOTE: different format from normal
+           || (strcasecmp(key,"FRAME")) )  // NOTE: different format from normal
         {
           if (fpout) fprintf(fpout,
                              "Invalid BEX codepointer line - must start with 'FRAME': '%s'\n",
@@ -1553,7 +1553,7 @@ static void deh_procBexCodePointers(DEHFILE *fpin, FILE* fpout, char *line)
       do  // Ty 05/16/98 - fix loop logic to look for null ending entry
         {
           ++i;
-          if (!stricmp(key,deh_bexptrs[i].lookup))
+          if (!strcasecmp(key,deh_bexptrs[i].lookup))
             {  // Ty 06/01/98  - add  to states[].action for new djgcc version
               states[indexnum].action = deh_bexptrs[i].cptr; // assign
               if (fpout) fprintf(fpout,
@@ -2280,7 +2280,7 @@ static void deh_procCheat(DEHFILE *fpin, FILE* fpout, char *line) // done
       for (ix=0; cheat[ix].cheat; ix++)
         if (cheat[ix].deh_cheat)   // killough 4/18/98: skip non-deh
           {
-            if (!stricmp(key,cheat[ix].deh_cheat))  // found the cheat, ignored case
+            if (!strcasecmp(key,cheat[ix].deh_cheat))  // found the cheat, ignored case
               {
                 // replace it but don't overflow it.  Use current length as limit.
                 // Ty 03/13/98 - add 0xff code
@@ -2464,7 +2464,7 @@ static void deh_procText(DEHFILE *fpin, FILE* fpout, char *line)
       i=0;
       while (sprnames[i])  // null terminated list in info.c //jff 3/19/98
         {                                                      //check pointer
-          if (!strnicmp(sprnames[i],inbuffer,fromlen))         //not first char
+          if (!strncasecmp(sprnames[i],inbuffer,fromlen))         //not first char
             {
               if (fpout) fprintf(fpout,
                                  "Changing name of sprite at index %d from %s to %*s\n",
@@ -2499,7 +2499,7 @@ static void deh_procText(DEHFILE *fpin, FILE* fpout, char *line)
           {
             // avoid short prefix erroneous match
             if (strlen(S_sfx[i].name) != (size_t)fromlen) continue;
-            if (!strnicmp(S_sfx[i].name,inbuffer,fromlen))
+            if (!strncasecmp(S_sfx[i].name,inbuffer,fromlen))
               {
                 if (fpout) fprintf(fpout,
                                    "Changing name of sfx from %s to %*s\n",
@@ -2517,7 +2517,7 @@ static void deh_procText(DEHFILE *fpin, FILE* fpout, char *line)
               {
                 // avoid short prefix erroneous match
                 if (strlen(S_music[i].name) != (size_t)fromlen) continue;
-                if (!strnicmp(S_music[i].name,inbuffer,fromlen))
+                if (!strncasecmp(S_music[i].name,inbuffer,fromlen))
                   {
                     if (fpout) fprintf(fpout,
                                        "Changing name of music from %s to %*s\n",
@@ -2652,8 +2652,8 @@ boolean deh_procStringSub(char *key, char *lookfor, char *newstring, FILE *fpout
   for (i=0;i<deh_numstrlookup;i++)
     {
       found = lookfor ?
-        !stricmp(*deh_strlookup[i].ppstr,lookfor) :
-        !stricmp(deh_strlookup[i].lookup,key);
+        !strcasecmp(*deh_strlookup[i].ppstr,lookfor) :
+        !strcasecmp(deh_strlookup[i].lookup,key);
 
       if (found)
         {
@@ -2721,7 +2721,7 @@ static void deh_procHelperThing(DEHFILE *fpin, FILE *fpout, char *line)
   {
       if (!dehfgets(inbuffer, sizeof(inbuffer), fpin)) break;
       lfstrip(inbuffer);
-      if (!*inbuffer) break;    
+      if (!*inbuffer) break;
       if (!deh_GetData(inbuffer,key,&value,NULL,fpout)) // returns TRUE if ok
       {
           if (fpout) fprintf(fpout,"Bad data pair in '%s'\n",inbuffer);
@@ -2756,7 +2756,7 @@ static void deh_procBexSprites(DEHFILE *fpin, FILE *fpout, char *line)
 
    if(fpout)
       fprintf(fpout,"Processing sprite name substitution\n");
-   
+
    strncpy(inbuffer,line,DEH_BUFFERMAX - 1);
 
    while(!dehfeof(fpin) && *inbuffer && (*inbuffer != ' '))
@@ -2766,7 +2766,7 @@ static void deh_procBexSprites(DEHFILE *fpin, FILE *fpout, char *line)
       if(*inbuffer == '#')
         continue;  // skip comment lines
       lfstrip(inbuffer);
-      if(!*inbuffer) 
+      if(!*inbuffer)
         break;  // killough 11/98
       if(!deh_GetData(inbuffer,key,&value,&strval,fpout)) // returns TRUE if ok
       {
@@ -2811,10 +2811,10 @@ static void deh_procBexSounds(DEHFILE *fpin, FILE *fpout, char *line)
    char *strval;  // holds the string value of the line
    char candidate[7];
    int  rover, len;
-   
+
    if(fpout)
       fprintf(fpout,"Processing sound name substitution\n");
-   
+
    strncpy(inbuffer,line,DEH_BUFFERMAX - 1);
 
    while(!dehfeof(fpin) && *inbuffer && (*inbuffer != ' '))
@@ -2824,7 +2824,7 @@ static void deh_procBexSounds(DEHFILE *fpin, FILE *fpout, char *line)
       if(*inbuffer == '#')
 	 continue;  // skip comment lines
       lfstrip(inbuffer);
-      if(!*inbuffer) 
+      if(!*inbuffer)
 	 break;  // killough 11/98
       if(!deh_GetData(inbuffer,key,&value,&strval,fpout)) // returns TRUE if ok
       {
@@ -2870,10 +2870,10 @@ static void deh_procBexMusic(DEHFILE *fpin, FILE *fpout, char *line)
    char *strval;  // holds the string value of the line
    char candidate[7];
    int  rover, len;
-   
+
    if(fpout)
       fprintf(fpout,"Processing music name substitution\n");
-   
+
    strncpy(inbuffer,line,DEH_BUFFERMAX - 1);
 
    while(!dehfeof(fpin) && *inbuffer && (*inbuffer != ' '))
@@ -2883,7 +2883,7 @@ static void deh_procBexMusic(DEHFILE *fpin, FILE *fpout, char *line)
       if(*inbuffer == '#')
 	 continue;  // skip comment lines
       lfstrip(inbuffer);
-      if(!*inbuffer) 
+      if(!*inbuffer)
 	 break;  // killough 11/98
       if(!deh_GetData(inbuffer,key,&value,&strval,fpout)) // returns TRUE if ok
       {

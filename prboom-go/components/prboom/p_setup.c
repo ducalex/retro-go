@@ -875,21 +875,12 @@ typedef struct linelist_t        // type used to list lines in each block
 // It simply returns if the line is already in the block
 //
 
-static void AddBlockLine
-(
-  linelist_t **lists,
-  int *count,
-  int *done,
-  int blockno,
-  long lineno
-)
+static void AddBlockLine(linelist_t **lists, int *count, int *done, int blockno, long lineno)
 {
-  linelist_t *l;
-
   if (done[blockno])
     return;
 
-  l = malloc(sizeof(linelist_t));
+  linelist_t *l = Z_Malloc(sizeof(linelist_t), PU_STATIC, 0);
   l->num = lineno;
   l->next = lists[blockno];
   lists[blockno] = l;
@@ -951,18 +942,16 @@ static void P_CreateBlockMap(void)
   // create the array of pointers on NBlocks to blocklists
   // also create an array of linelist counts on NBlocks
   // finally make an array in which we can mark blocks done per line
-
-  // CPhipps - calloc's
-  blocklists = calloc(NBlocks,sizeof(linelist_t *));
-  blockcount = calloc(NBlocks,sizeof(int));
-  blockdone = malloc(NBlocks*sizeof(int));
+  blocklists = Z_Calloc(NBlocks, sizeof(linelist_t *), PU_STATIC, 0);
+  blockcount = Z_Calloc(NBlocks, sizeof(int), PU_STATIC, 0);
+  blockdone = Z_Calloc(NBlocks, sizeof(int), PU_STATIC, 0);
 
   // initialize each blocklist, and enter the trailing -1 in all blocklists
   // note the linked list of lines grows backwards
 
   for (i=0;i<NBlocks;i++)
   {
-    blocklists[i] = malloc(sizeof(linelist_t));
+    blocklists[i] = Z_Malloc(sizeof(linelist_t), PU_STATIC, 0);
     blocklists[i]->num = -1;
     blocklists[i]->next = NULL;
     blockcount[i]++;
@@ -1214,8 +1203,7 @@ static void P_LoadBlockMap (int lump)
       bmapheight = blockmaplump[3];
     }
 
-  // clear out mobj chains - CPhipps - use calloc
-  blocklinks = Z_Calloc (bmapwidth*bmapheight,sizeof(*blocklinks),PU_LEVEL,0);
+  blocklinks = Z_Calloc(bmapwidth*bmapheight, sizeof(*blocklinks), PU_LEVEL, 0);
   blockmap = blockmaplump+4;
 }
 
@@ -1512,7 +1500,7 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
   // Make sure all sounds are stopped before Z_FreeTags.
   S_Start();
 
-  Z_FreeTags(PU_LEVEL, PU_PURGELEVEL-1);
+  Z_FreeTags(PU_LEVEL, PU_PURGELEVEL);
   if (rejectlump != -1) { // cph - unlock the reject table
     W_UnlockLumpNum(rejectlump);
     rejectlump = -1;

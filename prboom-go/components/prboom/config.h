@@ -5,9 +5,6 @@
 /* Define for support for MBF helper dogs */
 //#define DOGS 0
 
-/* Define to 1 if you have the `getopt' function. */
-//#undef HAVE_GETOPT
-
 /* Uncomment this to cause heap dumps to be generated. Only useful if
    INSTRUMENTED is also defined. */
 /* #undef HEAPDUMP */
@@ -45,10 +42,6 @@
 /* Version number of package */
 #define VERSION "2.5.0"
 
-/* Define this to perform id checks on zone blocks, to detect corrupted and
-   illegally freed blocks */
-#define ZONEIDCHECK
-
 /* Define to remove DEH support */
 #define NODEHSUPPORT
 
@@ -57,11 +50,3 @@
 
 /* Define to bundle prboom.wad (minus the trig tables, which we always include) */
 #define PRBOOMWAD
-
-/* Define to strcasecmp, if we have it */
-#define stricmp strcasecmp
-
-/* Define to strncasecmp, if we have it */
-#define strnicmp strncasecmp
-
-#define atexit(a)

@@ -133,9 +133,11 @@ int M_ReadFile(char const *name, byte **buffer)
 // DEFAULTS
 //
 
-int usemouse;
-boolean    precache = true; /* if true, load all graphics at start */
+int precache = true; /* if true, load all graphics at start */
+int mus_pause_opt; // 0 = kill music, 1 = pause, 2 = continue
+int endoom_mode;
 
+extern int usemouse;
 extern int mousebfire;
 extern int mousebstrafe;
 extern int mousebforward;
@@ -149,20 +151,11 @@ extern int tran_filter_pct;            // killough 2/21/98
 extern int screenblocks;
 extern int showMessages;
 
-#ifndef DJGPP
-int         mus_pause_opt; // 0 = kill music, 1 = pause, 2 = continue
-#endif
-
 extern const char* chat_macros[];
 
-extern int endoom_mode;
+extern int map_point_coordinates;
 
-/* cph - Some MBF stuff parked here for now
- * killough 10/98
- */
-int map_point_coordinates;
-
-default_t defaults[] =
+static default_t defaults[] =
 {
   {"Misc settings",{NULL},{0},UL,UL,def_none,ss_none},
   {"default_compatibility_level",{(int*)&default_compatibility_level},
@@ -176,8 +169,8 @@ default_t defaults[] =
    def_bool,ss_none}, // killough 10/98 - enable flashing HOM indicator
   {"demo_insurance",{&default_demo_insurance},{2},0,2,  // killough 3/31/98
    def_int,ss_none}, // 1=take special steps ensuring demo sync, 2=only during recordings
-  // {"endoom_mode", {&endoom_mode},{5},0,7, // CPhipps - endoom flags
-  //  def_hex, ss_none}, // 0, +1 for colours, +2 for non-ascii chars, +4 for skip-last-line
+  {"endoom_mode", {&endoom_mode},{5},0,7, // CPhipps - endoom flags
+   def_hex, ss_none}, // 0, +1 for colours, +2 for non-ascii chars, +4 for skip-last-line
   {"level_precache",{(int*)&precache},{1},0,1,
    def_bool,ss_none}, // precache level data?
   {"demo_smoothturns", {&demo_smoothturns},  {0},0,1,
@@ -638,51 +631,43 @@ default_t defaults[] =
 
 };
 
-int numdefaults;
-static const char* defaultfile; // CPhipps - static, const
+static const int numdefaults = sizeof(defaults)/sizeof(defaults[0]);
+static const char* configfile;
 
 //
 // M_SaveDefaults
 //
 
-void M_SaveDefaults (void)
-  {
-  int   i;
-  FILE* f;
-
-  f = fopen (defaultfile, "w");
+void M_SaveDefaults(void)
+{
+  FILE *f = fopen(configfile, "w");
   if (!f)
     return; // can't write the file, but don't complain
 
-  // 3/3/98 explain format of file
+  fprintf(f, "# Doom config file\n");
+  fprintf(f, "# Format:\n");
+  fprintf(f, "# variable   value\n");
 
-  fprintf(f,"# Doom config file\n");
-  fprintf(f,"# Format:\n");
-  fprintf(f,"# variable   value\n");
-
-  for (i = 0 ; i < numdefaults ; i++) {
-    if (defaults[i].type == def_none) {
-      // CPhipps - pure headers
+  for (int i = 0; i < numdefaults; i++)
+  {
+    if (defaults[i].type == def_none)
+    {
       fprintf(f, "\n# %s\n", defaults[i].name);
-    } else
-    // CPhipps - modified for new default_t form
-    if (!IS_STRING(defaults[i])) //jff 4/10/98 kill super-hack on pointer value
-      {
-      // CPhipps - remove keycode hack
-      // killough 3/6/98: use spaces instead of tabs for uniform justification
-      if (defaults[i].type == def_hex)
-  fprintf (f,"%-25s 0x%x\n",defaults[i].name,*(defaults[i].location.pi));
-      else
-  fprintf (f,"%-25s %5i\n",defaults[i].name,*(defaults[i].location.pi));
-      }
-    else
-      {
-      fprintf (f,"%-25s \"%s\"\n",defaults[i].name,*(defaults[i].location.ppsz));
-      }
     }
-
-  fclose (f);
+    else if (!IS_STRING(defaults[i]))
+    {
+      if (defaults[i].type == def_hex)
+        fprintf(f, "%-25s 0x%x\n", defaults[i].name, *(defaults[i].location.pi));
+      else
+        fprintf(f, "%-25s %5i\n", defaults[i].name, *(defaults[i].location.pi));
+    }
+    else
+    {
+      fprintf(f, "%-25s \"%s\"\n", defaults[i].name, *(defaults[i].location.ppsz));
+    }
   }
+  fclose (f);
+}
 
 /*
  * M_LookupDefault
@@ -692,8 +677,7 @@ void M_SaveDefaults (void)
 
 struct default_s *M_LookupDefault(const char *name)
 {
-  int i;
-  for (i = 0 ; i < numdefaults ; i++)
+  for (int i = 0 ; i < numdefaults ; i++)
     if ((defaults[i].type != def_none) && !strcmp(name, defaults[i].name))
       return (default_t*)&defaults[i];
   I_Error("M_LookupDefault: %s not found",name);
@@ -704,104 +688,77 @@ struct default_s *M_LookupDefault(const char *name)
 // M_LoadDefaults
 //
 
-#define NUMCHATSTRINGS 10 // phares 4/13/98
-
-void M_LoadDefaults (void)
+void M_LoadDefaults(void)
 {
-  int   i;
-  int   len;
-  FILE* f;
-  char  def[80];
-  char  strparm[100];
-  char* newstring = NULL;   // killough
-  int   parm;
-  boolean isstring;
+  // check for a custom default file
+  int i = M_CheckParm ("-config");
+  if (i && i < myargc-1)
+    configfile = myargv[i+1];
+  else {
+    const char *exedir = I_DoomExeDir();
+    configfile = strcat(strcpy(malloc(strlen(exedir) + 32), exedir), "/prboom.cfg");
+  }
 
   // set everything to base values
-
-  numdefaults = sizeof(defaults)/sizeof(defaults[0]);
-  for (i = 0 ; i < numdefaults ; i++) {
+  for (int i = 0 ; i < numdefaults ; i++) {
     if (defaults[i].type == def_str && defaults[i].location.ppsz)
       *defaults[i].location.ppsz = strdup(defaults[i].defaultvalue.psz);
     if (defaults[i].type != def_str && defaults[i].location.pi)
       *defaults[i].location.pi = defaults[i].defaultvalue.i;
   }
 
-  // check for a custom default file
-
-  i = M_CheckParm ("-config");
-  if (i && i < myargc-1)
-    defaultfile = myargv[i+1];
-  else {
-    const char *exedir = I_DoomExeDir();
-    defaultfile = strcat(strcpy(malloc(strlen(exedir) + 32), exedir), "/prboom.cfg");
+  // read the file in, overriding any set defaults
+  FILE* f = fopen(configfile, "r");
+  if (!f)
+  {
+    lprintf(LO_WARN, " failed to read config from: %s\n", configfile);
+    return;
   }
 
-  lprintf (LO_CONFIRM, " default file: %s\n",defaultfile);
+  lprintf(LO_CONFIRM, " reading config from: %s\n", configfile);
+  while (!feof(f))
+  {
+    char def[80], strparm[100];
+    int parm = 0;
 
-  // read the file in, overriding any set defaults
+    if (fscanf (f, "%79s %[^\n]\n", def, strparm) != 2)
+      continue;
 
-  f = fopen (defaultfile, "r");
-  if (f)
-    {
-    while (!feof(f))
-      {
-      isstring = false;
-      if (fscanf (f, "%79s %[^\n]\n", def, strparm) == 2)
-        {
+    if (!isalnum(def[0]))
+      continue;
 
-        //jff 3/3/98 skip lines not starting with an alphanum
-
-        if (!isalnum(def[0]))
-          continue;
-
-        if (strparm[0] == '"') {
-          // get a string default
-
-          isstring = true;
-          len = strlen(strparm);
-          newstring = (char *) malloc(len);
-          strparm[len-1] = 0; // clears trailing double-quote mark
-          strcpy(newstring, strparm+1); // clears leading double-quote mark
-        } else if ((strparm[0] == '0') && (strparm[1] == 'x')) {
-          // CPhipps - allow ints to be specified in hex
-          sscanf(strparm+2, "%x", &parm);
-        } else {
-          sscanf(strparm, "%i", &parm);
-          // Keycode hack removed
-        }
-
-        for (i = 0 ; i < numdefaults ; i++)
-          if ((defaults[i].type != def_none) && !strcmp(def, defaults[i].name))
-            {
-      // CPhipps - safety check
-            if (isstring != IS_STRING(defaults[i])) {
-              lprintf(LO_WARN, "M_LoadDefaults: Type mismatch reading %s\n", defaults[i].name);
-              continue;
-            }
-            if (!isstring)
-              {
-
-              //jff 3/4/98 range check numeric parameters
-
-              if ((defaults[i].minvalue==UL || defaults[i].minvalue<=parm) &&
-                  (defaults[i].maxvalue==UL || defaults[i].maxvalue>=parm))
-                *(defaults[i].location.pi) = parm;
-              }
-            else
-              {
-              free((char*)*(defaults[i].location.ppsz));  /* phares 4/13/98 */
-              *(defaults[i].location.ppsz) = newstring;
-              newstring = NULL;
-              }
-            break;
-            }
-
-          if (newstring != NULL)
-            free(newstring);
-        }
-      }
-
-    fclose (f);
+    bool isstring = (strparm[0] == '"');
+    if (isstring) {
+      size_t len = strlen(strparm);
+      memmove(strparm, strparm + 1, len - 2);
+      strparm[len-2] = 0;
+    } else if ((strparm[0] == '0') && (strparm[1] == 'x')) {
+      sscanf(strparm+2, "%x", &parm);
+    } else {
+      sscanf(strparm, "%i", &parm);
     }
+
+    for (i = 0 ; i < numdefaults ; i++)
+      if ((defaults[i].type != def_none) && !strcmp(def, defaults[i].name))
+      {
+        if (isstring != IS_STRING(defaults[i])) {
+          lprintf(LO_WARN, "M_LoadDefaults: Type mismatch reading %s\n", defaults[i].name);
+          continue;
+        }
+        if (!isstring)
+        {
+        //jff 3/4/98 range check numeric parameters
+        if ((defaults[i].minvalue==UL || defaults[i].minvalue<=parm) &&
+            (defaults[i].maxvalue==UL || defaults[i].maxvalue>=parm))
+          *(defaults[i].location.pi) = parm;
+        }
+        else
+        {
+        free((char*)*(defaults[i].location.ppsz));  /* phares 4/13/98 */
+        *(defaults[i].location.ppsz) = strdup(strparm);
+        }
+        break;
+      }
+  }
+  fclose(f);
 }

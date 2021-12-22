@@ -60,8 +60,6 @@
 #include "r_fps.h"
 
 extern patchnum_t hu_font[HU_FONTSIZE];
-extern default_t defaults[];
-extern int numdefaults;
 
 int showMessages;           // Show messages has default, 0 = off, 1 = on
 bool inhelpscreens;      // indicates we are in or just left a help screen
@@ -952,26 +950,24 @@ static void M_DrawItem(const setup_menu_t* s)
   }
   else
   { // Draw the item string
-    char *p, *t;
-    int w = 0;
-    int color =
-      flags & S_SELECT ? CR_SELECT :
-      flags & S_HILITE ? CR_HILITE :
-      flags & (S_TITLE|S_NEXT|S_PREV) ? CR_TITLE : CR_ITEM; // killough 10/98
+    int color = flags & S_SELECT ? CR_SELECT :
+                flags & S_HILITE ? CR_HILITE :
+                flags & (S_TITLE|S_NEXT|S_PREV) ? CR_TITLE : CR_ITEM; // killough 10/98
 
-    /* killough 10/98:
-     * Enhance to support multiline text separated by newlines.
-     * This supports multiline items on horizontally-crowded menus.
-     */
-
-    for (p = t = strdup(s->m_text); (p = strtok(p,"\n")); y += 8, p = NULL)
-    {      /* killough 10/98: support left-justification: */
-      strcpy(menu_buffer,p);
-      if (!(flags & S_LEFTJUST))
-        w = M_StringWidth(menu_buffer) + 4;
-      M_DrawMenuString(x - w, y ,color);
+    const char *p = s->m_text;
+    int pos = 0, w = 0, c = -1;
+    while (c)
+    {
+      menu_buffer[pos++] = c = *p++;
+      if (c == 0 || c == '\n')
+      {
+        menu_buffer[pos - 1] = 0;
+        if (!(flags & S_LEFTJUST))
+          w = M_StringWidth(menu_buffer) + 4;
+        M_DrawMenuString(x - w, y, color);
+        pos = 0;
+      }
     }
-    free(t);
   }
 }
 
@@ -1415,13 +1411,12 @@ static void M_VerifyForcedLoadGame(int ch)
 {
   if (ch == key_enter)
     G_ForcedLoadGame();
-  free((char*)messageString);       // free the message strdup()'ed below
   M_ClearMenus();
 }
 
 void M_ForcedLoadGame(const char *msg)
 {
-  M_StartMessage(strdup(msg), M_VerifyForcedLoadGame, true); // free()'d above
+  M_StartMessage(msg, M_VerifyForcedLoadGame, true); // free()'d above
 }
 
 static void M_LoadGame(int choice)
@@ -2237,23 +2232,20 @@ void M_Drawer(void)
   // killough 9/29/98: simplified code, removed 40-character width limit
   if (messageToPrint)
   {
-    /* cph - strdup string to writable memory */
-    char *ms = strdup(messageString);
-    char *p = ms;
-
-    int y = 100 - M_StringHeight(messageString)/2;
-    while (*p)
+    const char *p = messageString;
+    int y = 100 - M_StringHeight(p) / 2;
+    int pos = 0, c = -1;
+    while (c)
     {
-      char *string = p, c;
-      while ((c = *p) && *p != '\n')
-        p++;
-      *p = 0;
-      M_WriteText(160 - M_StringWidth(string)/2, y, string);
-      y += hu_font[0].height;
-      if ((*p = c))
-        p++;
+      menu_buffer[pos++] = c = *p++;
+      if (c == 0 || c == '\n')
+      {
+        menu_buffer[pos-1] = 0;
+        M_WriteText(160 - M_StringWidth(menu_buffer)/2, y, menu_buffer);
+        y += hu_font[0].height;
+        pos = 0;
+      }
     }
-    free(ms);
   }
   else if (menuactive)
   {

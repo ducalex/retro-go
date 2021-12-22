@@ -53,30 +53,14 @@
 #include "lprintf.h"
 #include "z_zone.h"
 
-// Tunables
-
-// Alignment of zone memory (benefit may be negated by HEADER_SIZE, CHUNK_SIZE)
-#define CACHE_ALIGN 32
-
-// Minimum chunk size at which blocks are allocated
-#define CHUNK_SIZE 4
-
-// signature for block header
-#define ZONEID  0x931d4a11
-
-// Number of mallocs & frees kept in history buffer (must be a power of 2)
-#define ZONE_HISTORY 4
-
-// End Tunables
+#define CHUNK_SIZE 4        // Minimum chunk size at which blocks are allocated
+#define ZONEID  0x931d4a11  // signature for block header
 
 typedef struct memblock
 {
-#ifdef ZONEIDCHECK
-  unsigned id;
-#endif
-
-  unsigned tag: 10;
-  unsigned size:22;
+  uint32_t zoneid;
+  uint32_t tag: 10;
+  uint32_t size:22;
 
   struct memblock *next,*prev;
   void **user;
@@ -95,11 +79,6 @@ static const size_t HEADER_SIZE = (sizeof(memblock_t)+CHUNK_SIZE-1) & ~(CHUNK_SI
 
 static memblock_t *blockbytag[PU_MAX];
 
-// 0 means unlimited, any other value is a hard limit
-//static int memory_size = 8192*1024;
-static int memory_size = 0;
-static int free_memory = 0;
-
 #ifdef INSTRUMENTED
 
 // statistics for evaluating performance
@@ -111,23 +90,6 @@ static void Z_DrawStats(void)            // Print allocation statistics
   if (gamestate != GS_LEVEL)
     return;
 
-  if (memory_size > 0) {
-    unsigned long total_memory = free_memory + memory_size + active_memory + purgable_memory;
-    double s = 100.0 / total_memory;
-
-    doom_printf("%-5i\t%6.01f%%\tstatic\n"
-            "%-5i\t%6.01f%%\tpurgable\n"
-            "%-5i\t%6.01f%%\tfree\n"
-            "%-5li\t\ttotal\n",
-            active_memory,
-            active_memory*s,
-            purgable_memory,
-            purgable_memory*s,
-            (free_memory + memory_size),
-            (free_memory + memory_size)*s,
-            total_memory
-            );
-  } else {
     unsigned long total_memory = active_memory + purgable_memory;
     double s = 100.0 / total_memory;
 
@@ -140,7 +102,6 @@ static void Z_DrawStats(void)            // Print allocation statistics
             purgable_memory*s,
             total_memory
             );
-  }
 }
 
 #ifdef HEAPDUMP
@@ -205,122 +166,21 @@ void Z_DumpMemory(void)
 #endif
 #endif
 
-#ifdef INSTRUMENTED
-
-// killough 4/26/98: Add history information
-
-enum {malloc_history, free_history, NUM_HISTORY_TYPES};
-
-static const char *file_history[NUM_HISTORY_TYPES][ZONE_HISTORY];
-static int line_history[NUM_HISTORY_TYPES][ZONE_HISTORY];
-static int history_index[NUM_HISTORY_TYPES];
-static const char *const desc[NUM_HISTORY_TYPES] = {"malloc()'s", "free()'s"};
-
-void Z_DumpHistory(char *buf)
-{
-  int i,j;
-  char s[1024];
-  strcat(buf,"\n");
-  for (i=0;i<NUM_HISTORY_TYPES;i++)
-    {
-      sprintf(s,"\nLast several %s:\n\n", desc[i]);
-      strcat(buf,s);
-      for (j=0; j<ZONE_HISTORY; j++)
-        {
-          int k = (history_index[i]-j-1) & (ZONE_HISTORY-1);
-          if (file_history[i][k])
-            {
-              sprintf(s, "File: %s, Line: %d\n", file_history[i][k],
-                      line_history[i][k]);
-              strcat(buf,s);
-            }
-        }
-    }
-}
-#else
-
-void Z_DumpHistory(char *buf)
-{
-}
-
-#endif
-
 void Z_Close(void)
 {
-#if 0
-  (free)(zonebase);
-  zone = rover = zonebase = NULL;
+#ifdef INSTRUMENTED
+  Z_DumpMemory();
 #endif
+  // Release everything
+  Z_FreeTags(PU_FREE, PU_MAX);
 }
 
 void Z_Init(void)
 {
-#if 0
-  size_t size = zone_size*1000;
-
-#ifdef HAVE_MMAP
-  return; /* cphipps - if we have mmap, we don't need our own heap */
-#endif
-
-#ifdef INSTRUMENTED
-  if (!(HEADER_SIZE >= sizeof(memblock_t) && size > HEADER_SIZE))
-    I_Error("Z_Init: Sanity check failed");
-#endif
-
-  size = (size+CHUNK_SIZE-1) & ~(CHUNK_SIZE-1);  // round to chunk size
-  size += HEADER_SIZE + CACHE_ALIGN;
-
-  // Allocate the memory
-
-  zonebase=(malloc)(size);
-  if (!zonebase)
-    I_Error("Z_Init: Failed on allocation of %lu bytes", (unsigned long)size);
-
-  lprintf(LO_INFO,"Z_Init : Allocated %lukb zone memory\n",
-      (long unsigned)size / 1000);
-
-  // Align on cache boundary
-
-  zone = (memblock_t *) ((char *) zonebase + CACHE_ALIGN -
-                         ((unsigned) zonebase & (CACHE_ALIGN-1)));
-
-  rover = zone;                            // Rover points to base of zone mem
-  zone->next = zone->prev = zone;          // Single node
-  zone->size = size;                       // All memory in one block
-  zone->tag = PU_FREE;                     // A free block
-  zone->vm  = 0;
-
-#ifdef ZONEIDCHECK
-  zone->id  = 0;
-#endif
-
-#ifdef INSTRUMENTED
-  free_memory = size;
-  /* cph - remove unnecessary initialisations to 0 */
-#endif
-#ifdef HEAPDUMP
-  atexit(Z_DumpMemory);
-#endif
-#endif
+  // Nothing to do
 }
 
-/* Z_Malloc
- * You can pass a NULL user if the tag is < PU_PURGELEVEL.
- *
- * cph - the algorithm here was a very simple first-fit round-robin
- *  one - just keep looping around, freeing everything we can until
- *  we get a large enough space
- *
- * This has been changed now; we still do the round-robin first-fit,
- * but we only free the blocks we actually end up using; we don't
- * free all the stuff we just pass on the way.
- */
-
-void *(Z_Malloc)(size_t size, int tag, void **user
-#ifdef INSTRUMENTED
-     , const char *file, int line
-#endif
-     )
+void *(Z_Malloc)(size_t size, int tag, void **user DA(const char *file, int line))
 {
   memblock_t *block = NULL;
 
@@ -329,12 +189,6 @@ void *(Z_Malloc)(size_t size, int tag, void **user
   Z_CheckHeap();
 #endif
 
-  file_history[malloc_history][history_index[malloc_history]] = file;
-  line_history[malloc_history][history_index[malloc_history]++] = line;
-  history_index[malloc_history] &= ZONE_HISTORY-1;
-#endif
-
-#ifdef ZONEIDCHECK
   if (tag >= PU_PURGELEVEL && !user)
     I_Error ("Z_Malloc: An owner is required for purgable blocks"
 #ifdef INSTRUMENTED
@@ -347,29 +201,6 @@ void *(Z_Malloc)(size_t size, int tag, void **user
     return user ? *user = NULL : NULL;           // malloc(0) returns NULL
 
   size = (size+CHUNK_SIZE-1) & ~(CHUNK_SIZE-1);  // round to chunk size
-
-  if (memory_size > 0 && ((free_memory + memory_size) < (int)(size + HEADER_SIZE)))
-  {
-    memblock_t *end_block;
-    block = blockbytag[PU_CACHE];
-    if (block)
-    {
-      end_block = block->prev;
-      while (1)
-      {
-        memblock_t *next = block->next;
-#ifdef INSTRUMENTED
-        (Z_Free)((char *) block + HEADER_SIZE, file, line);
-#else
-        (Z_Free)((char *) block + HEADER_SIZE);
-#endif
-        if (((free_memory + memory_size) >= (int)(size + HEADER_SIZE)) || (block == end_block))
-          break;
-        block = next;               // Advance to next block
-      }
-    }
-    block = NULL;
-  }
 
   while (!(block = (malloc)(size + HEADER_SIZE))) {
     if (!blockbytag[PU_CACHE])
@@ -407,16 +238,13 @@ void *(Z_Malloc)(size_t size, int tag, void **user
   else
     active_memory += block->size;
 #endif
-  free_memory -= block->size;
 
 #ifdef INSTRUMENTED
   block->file = file;
   block->line = line;
 #endif
 
-#ifdef ZONEIDCHECK
-  block->id = ZONEID;         // signature required in block header
-#endif
+  block->zoneid = ZONEID;     // signature required in block header
   block->tag = tag;           // tag
   block->user = user;         // user
   block = (memblock_t *)((char *) block + HEADER_SIZE);
@@ -432,11 +260,7 @@ void *(Z_Malloc)(size_t size, int tag, void **user
   return block;
 }
 
-void (Z_Free)(void *p
-#ifdef INSTRUMENTED
-              , const char *file, int line
-#endif
-             )
+void (Z_Free)(void *p DA(const char *file, int line))
 {
   memblock_t *block = (memblock_t *)((char *) p - HEADER_SIZE);
 
@@ -444,17 +268,12 @@ void (Z_Free)(void *p
 #ifdef CHECKHEAP
   Z_CheckHeap();
 #endif
-  file_history[free_history][history_index[free_history]] = file;
-  line_history[free_history][history_index[free_history]++] = line;
-  history_index[free_history] &= ZONE_HISTORY-1;
 #endif
 
   if (!p)
     return;
 
-
-#ifdef ZONEIDCHECK
-  if (block->id != ZONEID)
+  if (block->zoneid != ZONEID)
     I_Error("Z_Free: freed a pointer without ZONEID"
 #ifdef INSTRUMENTED
             "\nSource: %s:%d"
@@ -462,8 +281,7 @@ void (Z_Free)(void *p
             , file, line, block->file, block->line
 #endif
            );
-  block->id = 0;              // Nullify id so another free fails
-#endif
+  block->zoneid = 0;          // Nullify id so another free fails
 
   if (block->user)            // Nullify user if one exists
     *block->user = NULL;
@@ -476,7 +294,6 @@ void (Z_Free)(void *p
   block->prev->next = block->next;
   block->next->prev = block->prev;
 
-  free_memory += block->size;
 #ifdef INSTRUMENTED
   if (block->tag >= PU_PURGELEVEL)
     purgable_memory -= block->size;
@@ -494,29 +311,21 @@ void (Z_Free)(void *p
 #endif
 }
 
-void (Z_FreeTags)(int lowtag, int hightag, int max
-#ifdef INSTRUMENTED
-                  , const char *file, int line
-#endif
-                 )
+void (Z_FreeTags)(int lowtag, int hightag, int max DA(const char *file, int line))
 {
 #ifdef HEAPDUMP
   Z_DumpMemory();
 #endif
 
-  if (lowtag <= PU_FREE)
-    lowtag = PU_FREE+1;
+  lowtag = MAX(lowtag, PU_FREE+1);
+  hightag = MIN(hightag, PU_MAX-1);
 
-  if (hightag > PU_CACHE)
-    hightag = PU_CACHE;
-
-  for (;lowtag <= hightag; lowtag++)
+  for (;lowtag <= hightag; hightag--)
   {
-    memblock_t *block, *end_block;
-    block = blockbytag[lowtag];
-    if (!block)
+    if (!blockbytag[hightag])
       continue;
-    end_block = block->prev;
+    memblock_t *block = blockbytag[hightag];
+    memblock_t *end_block = block->prev;
     while (max--)
     {
       memblock_t *next = block->next;
@@ -532,37 +341,17 @@ void (Z_FreeTags)(int lowtag, int hightag, int max
   }
 }
 
-void (Z_ChangeTag)(void *ptr, int tag
-#ifdef INSTRUMENTED
-       , const char *file, int line
-#endif
-       )
+void (Z_ChangeTag)(void *ptr, int tag DA(const char *file, int line))
 {
   memblock_t *block = (memblock_t *)((char *) ptr - HEADER_SIZE);
 
-  // proff - added sanity check, this can happen when an empty lump is locked
-  if (!ptr)
-    return;
-
-  // proff - do nothing if tag doesn't differ
-  if (tag == block->tag)
+  if (!ptr || tag == block->tag)
     return;
 
 #ifdef INSTRUMENTED
 #ifdef CHECKHEAP
   Z_CheckHeap();
 #endif
-#endif
-
-#ifdef ZONEIDCHECK
-  if (block->id != ZONEID)
-    I_Error ("Z_ChangeTag: freed a pointer without ZONEID"
-#ifdef INSTRUMENTED
-             "\nSource: %s:%d"
-             "\nSource of malloc: %s:%d"
-             , file, line, block->file, block->line
-#endif
-            );
 
   if (tag >= PU_PURGELEVEL && !block->user)
     I_Error ("Z_ChangeTag: an owner is required for purgable blocks\n"
@@ -572,8 +361,16 @@ void (Z_ChangeTag)(void *ptr, int tag
              , file, line, block->file, block->line
 #endif
             );
+#endif
 
-#endif // ZONEIDCHECK
+  if (block->zoneid != ZONEID)
+    I_Error ("Z_ChangeTag: freed a pointer without ZONEID"
+#ifdef INSTRUMENTED
+             "\nSource: %s:%d"
+             "\nSource of malloc: %s:%d"
+             , file, line, block->file, block->line
+#endif
+            );
 
   if (block == block->next)
     blockbytag[block->tag] = NULL;
@@ -613,11 +410,7 @@ void (Z_ChangeTag)(void *ptr, int tag
   block->tag = tag;
 }
 
-void *(Z_Realloc)(void *ptr, size_t n, int tag, void **user
-#ifdef INSTRUMENTED
-                  , const char *file, int line
-#endif
-                 )
+void *(Z_Realloc)(void *ptr, size_t n, int tag, void **user DA(const char *file, int line))
 {
   void *p = (Z_Malloc)(n, tag, user DA(file, line));
   if (ptr)
@@ -631,32 +424,18 @@ void *(Z_Realloc)(void *ptr, size_t n, int tag, void **user
   return p;
 }
 
-void *(Z_Calloc)(size_t n1, size_t n2, int tag, void **user
-#ifdef INSTRUMENTED
-                 , const char *file, int line
-#endif
-                )
+void *(Z_Calloc)(size_t n1, size_t n2, int tag, void **user DA(const char *file, int line))
 {
-  return
-    (n1*=n2) ? memset((Z_Malloc)(n1, tag, user DA(file, line)), 0, n1) : NULL;
+  return (n1*=n2) ? memset((Z_Malloc)(n1, tag, user DA(file, line)), 0, n1) : NULL;
 }
 
-char *(Z_Strdup)(const char *s, int tag, void **user
-#ifdef INSTRUMENTED
-                 , const char *file, int line
-#endif
-                )
+char *(Z_Strdup)(const char *s, int tag, void **user DA(const char *file, int line))
 {
-  return strcpy((Z_Malloc)(strlen(s)+1, tag, user DA(file, line)), s);
+  size_t len = strlen(s) + 1;
+  return memcpy((Z_Malloc)(len, tag, user DA(file, line)), s, len);
 }
 
-void (Z_CheckHeap)(
-#ifdef INSTRUMENTED
-       const char *file, int line
-#else
-       void
-#endif
-       )
+void (Z_CheckHeap)(DAC(const char *file, int line))
 {
 #if 0
   memblock_t *block;   // Start at base of zone mem

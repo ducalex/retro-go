@@ -231,7 +231,7 @@ extern char **mapnames2[];
 extern char **mapnamesp[];
 extern char **mapnamest[];
 
-extern int map_point_coordinates;
+int map_point_coordinates;
 
 // key tables
 // jff 5/10/98 french support removed,

@@ -190,11 +190,8 @@ static void R_InitTextures (void)
     }
   numtextures = numtextures1 + numtextures2;
 
-  // killough 4/9/98: make column offsets 32-bit;
-  // clean up malloc-ing to use sizeof
-
-  textures = Z_Malloc(numtextures*sizeof*textures, PU_STATIC, 0);
-  textureheight = Z_Malloc(numtextures*sizeof*textureheight, PU_STATIC, 0);
+  textures = Z_Malloc(numtextures * sizeof(*textures), PU_STATIC, 0);
+  textureheight = Z_Malloc(numtextures * sizeof(*textureheight), PU_STATIC, 0);
 
   totalwidth = 0;
 

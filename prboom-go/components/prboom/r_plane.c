@@ -212,10 +212,9 @@ static visplane_t *new_visplane(unsigned hash)
 {
   visplane_t *check = freetail;
   if (!check)
-    check = calloc(1, sizeof *check);
-  else
-    if (!(freetail = freetail->next))
-      freehead = &freetail;
+    check = Z_Calloc(1, sizeof(*check), PU_STATIC, 0);
+  else if (!(freetail = freetail->next))
+    freehead = &freetail;
   check->next = visplanes[hash];
   visplanes[hash] = check;
   return check;

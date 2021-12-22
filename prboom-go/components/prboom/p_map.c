@@ -1112,7 +1112,7 @@ void P_HitSlideLine (line_t* ld)
     icyfloor = !compatibility &&
     variable_friction &&
     slidemo->player &&
-    onground && 
+    onground &&
     slidemo->friction > ORIG_FRICTION;
   }
 
@@ -2005,20 +2005,67 @@ boolean P_CheckSector(sector_t* sector,boolean crunch)
 // CPhipps -
 // Use block memory allocator here
 
-#include "z_bmalloc.h"
+void *secnodezone = NULL;
 
-IMPLEMENT_BLOCK_MEMORY_ALLOC_ZONE(secnodezone, sizeof(msecnode_t), PU_LEVEL, 32, "SecNodes");
+typedef struct bmalpool_s {
+  struct bmalpool_s *nextpool;
+  uint32_t used;
+  msecnode_t blocks[32];
+} bmalpool_t;
 
-inline static msecnode_t* P_GetSecnode(void)
+// P_GetSecnode() gets a node from the freelist.
+
+static inline msecnode_t *P_GetSecnode(void)
 {
-  return (msecnode_t*)Z_BMalloc(&secnodezone);
+  bmalpool_t **pool = (bmalpool_t **)&secnodezone;
+
+  // Skip to the first pool with free blocks
+  while (*pool && ~((*pool)->used) == 0)
+    pool = &((*pool)->nextpool);
+
+  if (*pool)
+  {
+    for (int i = 0; i < 32; ++i)
+    {
+      if (((*pool)->used & (1 << i)) == 0)
+      {
+        (*pool)->used |= (1 << i);
+        return &((*pool)->blocks[i]);
+      }
+    }
+  }
+
+  *pool = Z_Malloc(sizeof(bmalpool_t), PU_LEVEL, NULL);
+  (*pool)->nextpool = NULL;
+  (*pool)->used = 1;
+  return &((*pool)->blocks[0]);
 }
 
 // P_PutSecnode() returns a node to the freelist.
 
-inline static void P_PutSecnode(msecnode_t* node)
+static inline void P_PutSecnode(msecnode_t *node)
 {
-  Z_BFree(&secnodezone, node);
+  bmalpool_t **pool = (bmalpool_t **)&secnodezone;
+  while (*pool)
+  {
+    for (int i = 0; i < 32; ++i)
+    {
+      if (&(*pool)->blocks[i] == node)
+      {
+        (*pool)->used &= ~(1 << i);
+        if ((*pool)->used == 0)
+        {
+          // Block is all unused, can be freed
+          bmalpool_t *oldpool = *pool;
+          *pool = (*pool)->nextpool;
+          Z_Free(oldpool);
+        }
+        return;
+      }
+    }
+    pool = &((*pool)->nextpool);
+  }
+  I_Error("P_PutSecnode: Free not in zone");
 }
 
 // phares 3/16/98
@@ -2262,7 +2309,7 @@ void P_CreateSecNodeList(mobj_t* thing,fixed_t x,fixed_t y)
   }
 }
 
-/* cphipps 2004/08/30 - 
+/* cphipps 2004/08/30 -
  * Must clear tmthing at tic end, as it might contain a pointer to a removed thinker, or the level might have ended/been ended and we clear the objects it was pointing too. Hopefully we don't need to carry this between tics for sync. */
 void P_MapStart(void) {
 	if (tmthing) I_Error("P_MapStart: tmthing set!");
@@ -2284,7 +2331,7 @@ static void SpechitOverrun(line_t *ld)
   if (compatibility_level == dosdoom_compatibility || compatibility_level == tasdoom_compatibility)
   {
     // e6y
-    // There are no more desyncs in the following dosdoom demos: 
+    // There are no more desyncs in the following dosdoom demos:
     // flsofdth.wad\fod3uv.lmp - http://www.doomworld.com/sda/flsofdth.htm
     // hr.wad\hf181430.lmp - http://www.doomworld.com/tas/hf181430.zip
     // hr.wad\hr181329.lmp - http://www.doomworld.com/tas/hr181329.zip
@@ -2293,13 +2340,13 @@ static void SpechitOverrun(line_t *ld)
     switch(numspechit)
     {
     case 8: break; /* strange cph's code */
-    case 9: 
+    case 9:
       tmfloorz = addr;
       break;
     case 10:
       tmceilingz = addr;
       break;
-      
+
     default:
         lprintf(LO_ERROR, "SpechitOverrun: Warning: unable to emulate"
                           " an overrun where numspechit=%i\n",
@@ -2312,16 +2359,16 @@ static void SpechitOverrun(line_t *ld)
     switch(numspechit)
     {
       case 8: break; /* numspechit, not significant it seems - cph */
-      case 9: 
+      case 9:
       case 10:
       case 11:
       case 12:
         tmbbox[numspechit-9] = addr;
         break;
-      case 13: 
+      case 13:
         nofit = addr;
         break;
-      case 14: 
+      case 14:
         crushchange = addr;
         break;
       default:

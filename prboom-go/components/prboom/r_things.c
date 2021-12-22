@@ -152,7 +152,7 @@ static void R_InstallSpriteLump(int lump, unsigned frame,
 static void R_InitSpriteDefs(const char * const * namelist)
 {
   size_t numentries = lastspritelump-firstspritelump+1;
-  struct { int index, next; } *hash;
+  struct { short index, next; } *hash;
   int i;
 
   if (!numentries || !*namelist)
@@ -164,12 +164,8 @@ static void R_InitSpriteDefs(const char * const * namelist)
 
   numsprites = i;
 
-  sprites = Z_Malloc(numsprites *sizeof(*sprites), PU_STATIC, NULL);
-
-  // Create hash table based on just the first four letters of each sprite
-  // killough 1/31/98
-
-  hash = malloc(sizeof(*hash)*numentries); // allocate hash table
+  sprites = Z_Malloc(numsprites * sizeof(*sprites), PU_STATIC, NULL);
+  hash = Z_Malloc(numentries * sizeof(*hash), PU_STATIC, NULL);
 
   for (i=0; (size_t)i<numentries; i++)             // initialize hash table as empty
     hash[i].index = -1;

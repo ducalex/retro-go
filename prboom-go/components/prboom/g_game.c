@@ -479,7 +479,6 @@ void G_RestartLevel(void)
   special_event = BT_SPECIAL | (BTS_RESTARTLEVEL & BT_SPECIALMASK);
 }
 
-#include "z_bmalloc.h"
 //
 // G_DoLoadLevel
 //
@@ -549,8 +548,8 @@ static void G_DoLoadLevel (void)
   // died.
 
   {
-    DECLARE_BLOCK_MEMORY_ALLOC_ZONE(secnodezone);
-    NULL_BLOCK_MEMORY_ALLOC_ZONE(secnodezone);
+    extern void *secnodezone;
+    secnodezone = NULL;
       //extern msecnode_t *headsecnode; // phares 3/25/98
       //headsecnode = NULL;
   }
@@ -1542,22 +1541,14 @@ void G_DoLoadGame(void)
   // CPhipps - always check savegames even when forced,
   //  only print a warning if forced
   {  // killough 3/16/98: check lump name checksum (independent of order)
-    uint_64_t checksum = 0;
-
-    checksum = G_Signature();
+    uint_64_t checksum = G_Signature();
 
     if (memcmp(&checksum, save_p, sizeof checksum)) {
+      lprintf(LO_WARN, "G_DoLoadGame: Incompatible savegame (checksum mismatch)\n");
       if (!forced_loadgame) {
-        char *msg = malloc(strlen(save_p + sizeof checksum) + 128);
-        strcpy(msg,"Incompatible Savegame!!!\n");
-        if (save_p[sizeof checksum])
-          strcat(strcat(msg,"Wads expected:\n\n"), save_p + sizeof checksum);
-        strcat(msg, "\nAre you sure?");
-        G_LoadGameErr(msg);
-        free(msg);
+        G_LoadGameErr("Incompatible Savegame, checksum mismatch!\n\nAre you sure (y/n)? ");
         return;
-      } else
-  lprintf(LO_WARN, "G_DoLoadGame: Incompatible savegame\n");
+      }
     }
     save_p += sizeof checksum;
    }
@@ -2433,8 +2424,8 @@ const byte *G_ReadOptions(const byte *demo_p)
 void G_BeginRecording (void)
 {
   int i;
-  byte *demostart, *demo_p;
-  demostart = demo_p = malloc(1000);
+  byte demostart[1000];
+  byte *demo_p = demostart;
   longtics = 0;
 
   /* cph - 3 demo record formats supported: MBF+, BOOM, and Doom v1.9 */
@@ -2542,7 +2533,6 @@ void G_BeginRecording (void)
 
   if (!demofp || fwrite(demostart, 1, demo_p-demostart, demofp) != (size_t)(demo_p-demostart))
     I_Error("G_BeginRecording: Error writing demo header");
-  free(demostart);
 }
 
 //

@@ -244,7 +244,7 @@ extern wbstartstruct_t wminfo;
 //
 
 // if true, load all graphics at level load
-extern  boolean precache;
+extern  int precache;
 
 // wipegamestate can be set to -1
 //  to force a wipe on the next draw
