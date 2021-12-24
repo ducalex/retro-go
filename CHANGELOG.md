@@ -1,3 +1,10 @@
+# Retro-Go 1.29.1 (2021-12-23)
+- Fixed settings not remembered per emulator
+- Fixed recent/favorites should be cleared on settings reset
+- Added back "Reboot to firmware" in about dialog
+- Fixed other minor bugs
+
+
 # Retro-Go 1.29 (2021-12-20)
 - Launcher: New look and feel
 - NES: Show when NSF is playing
