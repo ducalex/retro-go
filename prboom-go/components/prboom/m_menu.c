@@ -950,23 +950,25 @@ static void M_DrawItem(const setup_menu_t* s)
   }
   else
   { // Draw the item string
-    int color = flags & S_SELECT ? CR_SELECT :
-                flags & S_HILITE ? CR_HILITE :
-                flags & (S_TITLE|S_NEXT|S_PREV) ? CR_TITLE : CR_ITEM; // killough 10/98
+    char temp[strlen(s->m_text) + 1];
+    int w = 0;
+    int color =
+      flags & S_SELECT ? CR_SELECT :
+      flags & S_HILITE ? CR_HILITE :
+      flags & (S_TITLE|S_NEXT|S_PREV) ? CR_TITLE : CR_ITEM; // killough 10/98
 
-    const char *p = s->m_text;
-    int pos = 0, w = 0, c = -1;
-    while (c)
-    {
-      menu_buffer[pos++] = c = *p++;
-      if (c == 0 || c == '\n')
-      {
-        menu_buffer[pos - 1] = 0;
-        if (!(flags & S_LEFTJUST))
-          w = M_StringWidth(menu_buffer) + 4;
-        M_DrawMenuString(x - w, y, color);
-        pos = 0;
-      }
+    /* killough 10/98:
+     * Enhance to support multiline text separated by newlines.
+     * This supports multiline items on horizontally-crowded menus.
+     */
+
+    memcpy(temp, s->m_text, sizeof(temp));
+    for (char *p = temp; (p = strtok(p, "\n")); y += 8, p = NULL)
+    {      /* killough 10/98: support left-justification: */
+      strcpy(menu_buffer, p);
+      if (!(flags & S_LEFTJUST))
+        w = M_StringWidth(menu_buffer) + 4;
+      M_DrawMenuString(x - w, y ,color);
     }
   }
 }
@@ -2232,19 +2234,20 @@ void M_Drawer(void)
   // killough 9/29/98: simplified code, removed 40-character width limit
   if (messageToPrint)
   {
-    const char *p = messageString;
-    int y = 100 - M_StringHeight(p) / 2;
-    int pos = 0, c = -1;
-    while (c)
+    char temp[strlen(messageString) + 1];
+    memcpy(temp, messageString, sizeof(temp));
+
+    int y = 100 - M_StringHeight(messageString)/2;
+    for (char *p = temp; *p;)
     {
-      menu_buffer[pos++] = c = *p++;
-      if (c == 0 || c == '\n')
-      {
-        menu_buffer[pos-1] = 0;
-        M_WriteText(160 - M_StringWidth(menu_buffer)/2, y, menu_buffer);
-        y += hu_font[0].height;
-        pos = 0;
-      }
+      char *string = p, c;
+      while ((c = *p) && *p != '\n')
+        p++;
+      *p = 0;
+      M_WriteText(160 - M_StringWidth(string)/2, y, string);
+      y += hu_font[0].height;
+      if ((*p = c))
+        p++;
     }
   }
   else if (menuactive)
