@@ -23,6 +23,8 @@
 
 #include <nofrendo.h>
 #include <mmc.h>
+#include <stdlib.h>
+#include <string.h>
 
 static struct
 {
@@ -31,8 +33,7 @@ static struct
     uint8 enabled;
 } irq;
 
-static uint8 reg;
-static uint8 reg8000;
+static uint32 reg8000;
 static uint16 vrombase;
 static bool fourscreen;
 
@@ -89,14 +90,12 @@ static void map_write(uint32 address, uint8 value)
         break;
 
     case 0xA000:
-        /* four screen mirroring crap */
-        if (fourscreen == false)
-        {
-            if (value & 1)
-                ppu_setmirroring(PPU_MIRROR_HORI);
-            else
-                ppu_setmirroring(PPU_MIRROR_VERT);
-        }
+        if (fourscreen)
+            ppu_setmirroring(PPU_MIRROR_FOUR);
+        else if (value & 1)
+            ppu_setmirroring(PPU_MIRROR_HORI);
+        else
+            ppu_setmirroring(PPU_MIRROR_VERT);
         break;
 
     case 0xA001:
@@ -128,22 +127,19 @@ static void map_write(uint32 address, uint8 value)
 
 static void map_hblank(int scanline)
 {
-    if (scanline < 241 && ppu_enabled())
-    {
-        if (irq.counter == 0)
-        {
-            irq.counter = irq.latch;
-        }
-        else
-        {
-            irq.counter--;
-        }
+    if (scanline > 240)
+        return;
 
-        if (irq.enabled && irq.counter == 0)
-        {
-            nes6502_irq();
-        }
-    }
+    if (!ppu_enabled())
+        return;
+
+    if (irq.counter == 0)
+        irq.counter = irq.latch;
+    else
+        irq.counter--;
+
+    if (irq.enabled && irq.counter == 0)
+        nes6502_irq();
 }
 
 static void map_getstate(uint8 *state)
@@ -164,10 +160,24 @@ static void map_setstate(uint8 *state)
 
 static void map_init(rom_t *cart)
 {
-    irq.counter = irq.latch = 0;
-    irq.enabled = false;
-    reg = reg8000 = vrombase = 0;
+    irq.enabled = irq.counter = irq.latch = 0;
+    reg8000 = vrombase = 0;
     fourscreen = cart->flags & ROM_FLAG_FOURSCREEN;
+
+    // This is a very bad, and hopefully temporary, hack.
+    if (cart->mapper_number != 4)
+    {
+        if (cart->chr_rom_banks > 0)
+        {
+            MESSAGE_INFO("Using MMC3 variant, growing CHR-RAM to match CHR-ROM...\n");
+            cart->chr_ram = realloc(cart->chr_ram, 0x2000 * cart->chr_ram_banks);
+            cart->chr_ram_banks = cart->chr_rom_banks;
+            // This will prevent re-triggering on reset as well as make CHR_ANY=>CHR_RAM
+            cart->chr_rom_banks = 0;
+        }
+        memcpy(cart->chr_ram, cart->chr_rom, 0x2000 * cart->chr_ram_banks);
+        mmc_bankchr(8, 0x0000, 0, CHR_RAM);
+    }
 }
 
 
@@ -175,6 +185,118 @@ mapintf_t map4_intf =
 {
     .number     = 4,
     .name       = "MMC3",
+    .init       = map_init,
+    .vblank     = NULL,
+    .hblank     = map_hblank,
+    .get_state  = map_getstate,
+    .set_state  = map_setstate,
+    .mem_read   = {},
+    .mem_write  = {
+        { 0x8000, 0xFFFF, map_write }
+    },
+};
+
+
+mapintf_t map74_intf =
+{
+    .number     = 74,
+    .name       = "MMC3-Alt",
+    .init       = map_init,
+    .vblank     = NULL,
+    .hblank     = map_hblank,
+    .get_state  = map_getstate,
+    .set_state  = map_setstate,
+    .mem_read   = {},
+    .mem_write  = {
+        { 0x8000, 0xFFFF, map_write }
+    },
+};
+
+
+mapintf_t map119_intf =
+{
+    .number     = 119,
+    .name       = "MMC3-Alt",
+    .init       = map_init,
+    .vblank     = NULL,
+    .hblank     = map_hblank,
+    .get_state  = map_getstate,
+    .set_state  = map_setstate,
+    .mem_read   = {},
+    .mem_write  = {
+        { 0x8000, 0xFFFF, map_write }
+    },
+};
+
+
+mapintf_t map176_intf =
+{
+    .number     = 176,
+    .name       = "MMC3-Alt",
+    .init       = map_init,
+    .vblank     = NULL,
+    .hblank     = map_hblank,
+    .get_state  = map_getstate,
+    .set_state  = map_setstate,
+    .mem_read   = {},
+    .mem_write  = {
+        { 0x8000, 0xFFFF, map_write }
+    },
+};
+
+
+mapintf_t map191_intf =
+{
+    .number     = 191,
+    .name       = "MMC3-Alt",
+    .init       = map_init,
+    .vblank     = NULL,
+    .hblank     = map_hblank,
+    .get_state  = map_getstate,
+    .set_state  = map_setstate,
+    .mem_read   = {},
+    .mem_write  = {
+        { 0x8000, 0xFFFF, map_write }
+    },
+};
+
+
+mapintf_t map192_intf =
+{
+    .number     = 192,
+    .name       = "MMC3-Alt",
+    .init       = map_init,
+    .vblank     = NULL,
+    .hblank     = map_hblank,
+    .get_state  = map_getstate,
+    .set_state  = map_setstate,
+    .mem_read   = {},
+    .mem_write  = {
+        { 0x8000, 0xFFFF, map_write }
+    },
+};
+
+
+mapintf_t map194_intf =
+{
+    .number     = 194,
+    .name       = "MMC3-Alt",
+    .init       = map_init,
+    .vblank     = NULL,
+    .hblank     = map_hblank,
+    .get_state  = map_getstate,
+    .set_state  = map_setstate,
+    .mem_read   = {},
+    .mem_write  = {
+        { 0x8000, 0xFFFF, map_write }
+    },
+};
+
+
+mapintf_t map195_intf =
+{
+    .number     = 195,
+    .name       = "MMC3-Alt",
     .init       = map_init,
     .vblank     = NULL,
     .hblank     = map_hblank,

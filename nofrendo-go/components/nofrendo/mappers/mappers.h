@@ -39,6 +39,7 @@ extern mapintf_t map66_intf;
 extern mapintf_t map70_intf;
 extern mapintf_t map71_intf;
 extern mapintf_t map73_intf;
+extern mapintf_t map74_intf;
 extern mapintf_t map75_intf;
 extern mapintf_t map76_intf;
 extern mapintf_t map78_intf;
@@ -47,10 +48,16 @@ extern mapintf_t map85_intf;
 extern mapintf_t map87_intf;
 extern mapintf_t map93_intf;
 extern mapintf_t map94_intf;
+extern mapintf_t map119_intf;
 extern mapintf_t map160_intf;
 extern mapintf_t map162_intf;
 extern mapintf_t map163_intf;
+extern mapintf_t map176_intf;
+extern mapintf_t map191_intf;
+extern mapintf_t map192_intf;
 extern mapintf_t map193_intf;
+extern mapintf_t map194_intf;
+extern mapintf_t map195_intf;
 extern mapintf_t map206_intf;
 extern mapintf_t map228_intf;
 extern mapintf_t map229_intf;
@@ -95,6 +102,7 @@ static const mapintf_t *mappers[] =
     &map70_intf,
     &map71_intf,
     &map73_intf,
+    &map74_intf,
     &map75_intf,
     &map76_intf,
     &map78_intf,
@@ -103,10 +111,16 @@ static const mapintf_t *mappers[] =
     &map87_intf,
     &map93_intf,
     &map94_intf,
+    &map119_intf,
     &map160_intf,
     &map162_intf,
     &map163_intf,
+    &map176_intf,
+    &map191_intf,
+    &map192_intf,
     &map193_intf,
+    &map194_intf,
+    &map195_intf,
     &map206_intf,
     &map228_intf,
     &map229_intf,

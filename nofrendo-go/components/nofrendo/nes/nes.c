@@ -155,10 +155,6 @@ int nes_insertcart(const char *filename, const char *biosfile)
         goto _fail;
     }
 
-    /* if we're using VRAM, let the PPU know */
-    nes.ppu->vram_present = (nes.cart->chr_rom == NULL);
-    // nes.ppu->vram_present = (NULL != nes.cart->chr_ram); // FIX ME: This is always true?
-
     /* Detect system type */
     if (nes.system == SYS_DETECT && nes.cart->system != SYS_UNKNOWN)
     {
@@ -251,6 +247,9 @@ void nes_reset(bool hard_reset)
     nes.vidbuf = nes.framebuffers[0];
     nes.scanline = 241;
     nes.cycles = 0;
+
+    /* if we're using VRAM, let the PPU know */
+    nes.ppu->vram_present = (nes.cart->chr_rom_banks == 0);
 
     MESSAGE_INFO("NES: System reset (%s)\n", hard_reset ? "hard" : "soft");
 }
