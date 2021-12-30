@@ -46,8 +46,8 @@
  * - BASR: 6449 bytes
  * - INFO: 256 bytes
  * - SOUN: 22 bytes
- * - SRAM: 8193 bytes
- * - VRAM: 8192 bytes
+ * - SRAM: prg-ram + 1 bytes
+ * - VRAM: chr-ram bytes
  * - MPRD: 152 bytes
  */
 
@@ -95,6 +95,28 @@ typedef struct
    #define swap16(x) (x)
    #define swap32(x) (x)
 #endif
+
+
+static bool memory_zone_dirty(const void *ptr, size_t size)
+{
+   size_t pos = 0;
+
+   while (size - pos >= 4)
+   {
+      if (*((uint32 *)(ptr + pos)) != 0)
+         return true;
+      pos += 4;
+   }
+
+   while (pos < size)
+   {
+      if (*((uint8 *)(ptr + pos)) != 0)
+         return true;
+      pos += 1;
+   }
+
+   return false;
+}
 
 
 int state_save(const char* fn)
@@ -192,26 +214,26 @@ int state_save(const char* fn)
 
    /****************************************************/
 
-   if (machine->cart->chr_ram_banks > 0)
+   if (memory_zone_dirty(machine->cart->chr_ram, 0x2000 * machine->cart->chr_ram_banks))
    {
       MESSAGE_INFO("  - Saving VRAM block\n");
 
       _fwrite("VRAM\x00\x00\x00\x01\x00\x00\x20\x00", 12);
-      _fwrite(machine->cart->chr_ram, 0x2000);
+      _fwrite(machine->cart->chr_ram, 0x2000 * machine->cart->chr_ram_banks);
       numberOfBlocks++;
    }
 
 
    /****************************************************/
 
-   if (machine->cart->prg_ram_banks > 0)
+   if (memory_zone_dirty(machine->cart->prg_ram, 0x2000 * machine->cart->prg_ram_banks))
    {
       MESSAGE_INFO("  - Saving SRAM block\n");
 
       // Byte 0 = SRAM enabled (unused)
       // Length is always $2001
       _fwrite("SRAM\x00\x00\x00\x01\x00\x00\x20\x01\x01", 13);
-      _fwrite(machine->cart->prg_ram, 0x2000);
+      _fwrite(machine->cart->prg_ram, 0x2000 * machine->cart->prg_ram_banks);
       numberOfBlocks++;
    }
 

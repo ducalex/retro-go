@@ -38,7 +38,7 @@ void mmc_bankprg(int size, uint32 address, int bank, uint8 *base)
    size_t banks = 16;
 
    // if (base == PRG_ANY)
-   //    base = cart->prg_rom ? PRG_ROM : PRG_RAM;
+   //    base = cart->prg_rom_banks ? PRG_ROM : PRG_RAM;
 
    if (base == PRG_ROM)
    {
@@ -88,11 +88,9 @@ void mmc_bankchr(int size, uint32 address, int bank, uint8 *base)
    size_t banks = 128;
 
    if (base == CHR_ANY)
-   {
-      base = cart->chr_rom ?: cart->chr_ram;
-      banks = cart->chr_rom_banks ?: cart->chr_ram_banks;
-   }
-   else if (base == CHR_ROM)
+      base = cart->chr_rom_banks ? CHR_ROM : CHR_RAM;
+
+   if (base == CHR_ROM)
    {
       base = cart->chr_rom;
       banks = cart->chr_rom_banks;
@@ -136,9 +134,7 @@ void mmc_reset(void)
 {
    /* Switch PRG-RAM into CPU space */
    if (cart->prg_ram_banks > 0)
-   {
       mmc_bankprg(8, 0x6000, 0, PRG_RAM);
-   }
 
    /* Switch PRG-ROM into CPU space */
    if (cart->prg_rom_banks > 1)
@@ -152,10 +148,7 @@ void mmc_reset(void)
    }
 
    /* Switch CHR-ROM/RAM into PPU space */
-   if (cart->chr_rom_banks > 0)
-      mmc_bankchr(8, 0x0000, 0, CHR_ROM);
-   else
-      mmc_bankchr(8, 0x0000, 0, CHR_RAM);
+   mmc_bankchr(8, 0x0000, 0, CHR_ANY);
 
    /* Setup name table mirroring */
    ppu_setmirroring(cart->mirroring);
@@ -191,7 +184,7 @@ mapper_t *mmc_init(rom_t *_cart)
          MESSAGE_INFO("MMC: Mapper %s (iNES %03d)\n", mapper.name, mapper.number);
          MESSAGE_INFO("MMC: PRG-ROM: %d banks\n", cart->prg_rom_banks);
          MESSAGE_INFO("MMC: PRG-RAM: %d banks\n", cart->prg_ram_banks);
-         if (cart->chr_rom)
+         if (cart->chr_rom_banks > 0)
             MESSAGE_INFO("MMC: CHR-ROM: %d banks\n", cart->chr_rom_banks);
          else
             MESSAGE_INFO("MMC: CHR-RAM: %d banks\n", cart->chr_ram_banks);
