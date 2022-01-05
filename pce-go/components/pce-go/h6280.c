@@ -21,10 +21,10 @@ h6280_t CPU;
 void
 h6280_reset(void)
 {
-    CPU.A = CPU.X = CPU.Y = 0x00;
-    CPU.P = (FL_I|FL_B);
-    CPU.S = 0xFF;
-    CPU.PC = pce_read16(VEC_RESET);
+	CPU.A = CPU.X = CPU.Y = 0x00;
+	CPU.P = (FL_I|FL_B);
+	CPU.S = 0xFF;
+	CPU.PC = pce_read16(VEC_RESET);
 	CPU.irq_mask = CPU.irq_lines = 0;
 }
 
