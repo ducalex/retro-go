@@ -2401,7 +2401,7 @@ OPCODE_FUNC interrupt(int type)
 	// pcetech.txt says the program should clear the irq line by reading 0x1403
 	// however in practice it seems to break many games if we don't clear it?
 
-	TRACE_CPU("CPU interrupt: %d\n", irq);
+	TRACE_CPU("CPU interrupt: %d\n", type);
 	push_16bit(CPU.PC);
 	push_8bit(CPU.P);
 	CPU.P &= ~(FL_D|FL_T);
@@ -2413,7 +2413,7 @@ OPCODE_FUNC interrupt(int type)
 		CPU.irq_lines &= ~INT_IRQ2;
 		CPU.PC = pce_read16(VEC_IRQ2);
 	} else {
-		CPU.irq_lines &= ~VEC_TIMER;
+		CPU.irq_lines &= ~INT_TIMER;
 		CPU.PC = pce_read16(VEC_TIMER);
 	}
 	Cycles += 7;

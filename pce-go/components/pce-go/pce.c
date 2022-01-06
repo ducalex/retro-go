@@ -628,10 +628,10 @@ pce_writeIO(uint16_t A, uint8_t V)
         switch (A & 3) {
         case 2:
             CPU.irq_mask = V & INT_MASK;
-            break;
+            return;
         case 3:
             CPU.irq_lines &= ~INT_TIMER;
-            break;
+            return;
         }
         break;
 

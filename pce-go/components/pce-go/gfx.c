@@ -137,12 +137,17 @@ draw_tiles(uint8_t *screen_buffer, int Y1, int Y2, int scroll_x, int scroll_y)
 	Draw sprite C to framebuffer P
 */
 static void // Do not inline (take advantage of xtensa's windowed registers)
-draw_sprite(uint8_t *P, uint16_t *C, int height, uint16_t attr)
+draw_sprite(uint8_t *P, uint16_t *C, int height, uint32_t attr)
 {
 	uint8_t *PAL = &PCE.Palette[256 + ((attr & 0xF) << 4)];
 
 	bool hflip = attr & H_FLIP;
-	int inc = (attr & V_FLIP) ? -1 : 1;
+	int inc = 1; //(attr & V_FLIP) ? -1 : 1;
+
+	if (attr & V_FLIP) {
+		inc = -1;
+		C = C + height - 1;
+	}
 
 	for (int i = 0; i < height; i++, C += inc, P += XBUF_WIDTH) {
 
@@ -226,7 +231,7 @@ draw_sprites(uint8_t *screen_buffer, int Y1, int Y2, int priority)
 
 	for (int n = 63; n >= 0; n--) {
 		sprite_t *spr = (sprite_t *)PCE.SPRAM + n;
-		uint16_t attr = spr->attr;
+		uint32_t attr = spr->attr;
 
 		if (((attr >> 7) & 1) != priority)
 			continue;
@@ -256,34 +261,53 @@ draw_sprites(uint8_t *screen_buffer, int Y1, int Y2, int priority)
 		cgy *= 16;
 
 		if (attr & V_FLIP) {
-			C += 15 * 2 + cgy * 8;
-		}
+			P = P + cgy * XBUF_WIDTH;
+			for (int yy = cgy; yy >= 0; yy -= 16) {
+				int h = 16;
 
-		for (int yy = 0; yy <= cgy; yy += 16) {
-			int t = Y1 - y - yy;
-			int h = 16;
+				if (h > Y2 - y - yy)
+					h = Y2 - y - yy;
 
-			if (t > 0) {
-				C += t * inc;
-				h -= t;
-				P += t * XBUF_WIDTH;
-			}
-
-			if (h > Y2 - y - yy)
-				h = Y2 - y - yy;
-
-			if (attr & H_FLIP) {
-				for (int j = 0; j <= cgx; j++) {
-					draw_sprite(P + (cgx - j) * 16, C + j * 64, h, attr);
+				if (attr & H_FLIP) {
+					for (int j = 0; j <= cgx; j++) {
+						draw_sprite(P + (cgx - j) * 16, C + j * 64, h, attr);
+					}
+				} else {
+					for (int j = 0; j <= cgx; j++) {
+						draw_sprite(P + j * 16, C + j * 64, h, attr);
+					}
 				}
-			} else {
-				for (int j = 0; j <= cgx; j++) {
-					draw_sprite(P + j * 16, C + j * 64, h, attr);
-				}
-			}
 
-			P += h * XBUF_WIDTH;
-			C += (h + 16 * 7) * inc;
+				P -= h * XBUF_WIDTH;
+				C += (h + 16 * 7);// * inc;
+			}
+		} else {
+			for (int yy = 0; yy <= cgy; yy += 16) {
+				int t = Y1 - y - yy;
+				int h = 16;
+
+				if (t > 0) {
+					C += t * inc;
+					h -= t;
+					P += t * XBUF_WIDTH;
+				}
+
+				if (h > Y2 - y - yy)
+					h = Y2 - y - yy;
+
+				if (attr & H_FLIP) {
+					for (int j = 0; j <= cgx; j++) {
+						draw_sprite(P + (cgx - j) * 16, C + j * 64, h, attr);
+					}
+				} else {
+					for (int j = 0; j <= cgx; j++) {
+						draw_sprite(P + j * 16, C + j * 64, h, attr);
+					}
+				}
+
+				P += h * XBUF_WIDTH;
+				C += (h + 16 * 7);// * inc;
+			}
 		}
 	}
 }
