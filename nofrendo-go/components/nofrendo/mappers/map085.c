@@ -26,88 +26,111 @@
 
 static struct
 {
-    int counter, latch;
-    int wait_state;
-    bool enabled;
+    uint counter, latch;
+    bool enabled, wait_state;
 } irq;
 
 
 static void map_write(uint32 address, uint8 value)
 {
-    uint8 bank = address >> 12;
-    uint8 reg = (address & 0x10) | ((address & 0x08) << 1);
-
-    switch (bank)
+    switch (address)
     {
-    case 0x08:
-        if (0x10 == reg)
-            mmc_bankrom(8, 0xA000, value);
-        else
-            mmc_bankrom(8, 0x8000, value);
+    // PRG Select 0
+    case 0x8000:
+        mmc_bankrom(8, 0x8000, value);
         break;
 
-    case 0x09:
-        /* 0x10 & 0x30 should be trapped by sound emulation */
+    // PRG Select 1
+    case 0x8008:
+    case 0x8010:
+        mmc_bankrom(8, 0xA000, value);
+        break;
+
+    // PRG Select 2
+    case 0x9000:
         mmc_bankrom(8, 0xC000, value);
         break;
 
-    case 0x0A:
-        if (0x10 == reg)
-            mmc_bankvrom(1, 0x0400, value);
-        else
-            mmc_bankvrom(1, 0x0000, value);
+    // Sound
+    case 0x9010:
+    case 0x9030:
+        // VRC Sound not implemented
         break;
 
-    case 0x0B:
-        if (0x10 == reg)
-            mmc_bankvrom(1, 0x0C00, value);
-        else
-            mmc_bankvrom(1, 0x0800, value);
+    // CHR Select 0
+    case 0xA000:
+        mmc_bankvrom(1, 0x0000, value);
         break;
 
-    case 0x0C:
-        if (0x10 == reg)
-            mmc_bankvrom(1, 0x1400, value);
-        else
-            mmc_bankvrom(1, 0x1000, value);
+    // CHR Select 1
+    case 0xA008:
+    case 0xA010:
+        mmc_bankvrom(1, 0x0400, value);
         break;
 
-    case 0x0D:
-        if (0x10 == reg)
-            mmc_bankvrom(1, 0x1C00, value);
-        else
-            mmc_bankvrom(1, 0x1800, value);
+    // CHR Select 2
+    case 0xB000:
+        mmc_bankvrom(1, 0x0800, value);
         break;
 
-    case 0x0E:
-        if (0x10 == reg)
+    // CHR Select 3
+    case 0xB008:
+    case 0xB010:
+        mmc_bankvrom(1, 0x0C00, value);
+        break;
+
+    // CHR Select 4
+    case 0xC000:
+        mmc_bankvrom(1, 0x1000, value);
+        break;
+
+    // CHR Select 5
+    case 0xC008:
+    case 0xC010:
+        mmc_bankvrom(1, 0x1400, value);
+        break;
+
+    // CHR Select 6
+    case 0xD000:
+        mmc_bankvrom(1, 0x1800, value);
+        break;
+
+    // CHR Select 7
+    case 0xD008:
+    case 0xD010:
+        mmc_bankvrom(1, 0x1C00, value);
+        break;
+
+    // Mirroring
+    case 0xE000:
+        switch (value & 3)
         {
-            irq.latch = value;
-        }
-        else
-        {
-            switch (value & 3)
-            {
-            case 0: ppu_setmirroring(PPU_MIRROR_VERT); break;
-            case 1: ppu_setmirroring(PPU_MIRROR_HORI); break;
-            case 2: ppu_setmirroring(PPU_MIRROR_SCR0); break;
-            case 3: ppu_setmirroring(PPU_MIRROR_SCR1); break;
-            }
+        case 0: ppu_setmirroring(PPU_MIRROR_VERT); break;
+        case 1: ppu_setmirroring(PPU_MIRROR_HORI); break;
+        case 2: ppu_setmirroring(PPU_MIRROR_SCR0); break;
+        case 3: ppu_setmirroring(PPU_MIRROR_SCR1); break;
         }
         break;
 
-    case 0x0F:
-        if (0x10 == reg)
-        {
-            irq.enabled = irq.wait_state;
-        }
-        else
-        {
-            irq.wait_state = value & 0x01;
-            irq.enabled = (value & 0x02) ? true : false;
-            if (true == irq.enabled)
-                irq.counter = irq.latch;
-        }
+    // IRQ Latch
+    case 0xE008:
+    case 0xE010:
+        irq.latch = value;
+        break;
+
+    // IRQ Control
+    case 0xF000:
+        irq.wait_state = (value >> 0) & 1;
+        irq.enabled = (value >> 1) & 1;
+        // irq.mode = (value >> 2) & 1;
+        if (irq.enabled)
+            irq.counter = irq.latch;
+        break;
+
+    // IRQ Acknowledge
+    case 0xF008:
+    case 0xF010:
+        irq.enabled = irq.wait_state;
         break;
 
     default:
@@ -118,17 +141,32 @@ static void map_write(uint32 address, uint8 value)
 
 static void map_hblank(int scanline)
 {
-    if (irq.enabled)
-    {
-        if (++irq.counter > 0xFF)
-        {
-            irq.counter = irq.latch;
-            nes6502_irq();
+    if (!irq.enabled)
+        return;
 
-            //return;
-        }
-        //irq.counter++;
+    if (++irq.counter > 0xFF)
+    {
+        irq.counter = irq.latch;
+        nes6502_irq();
     }
+}
+
+static void map_getstate(uint8 *state)
+{
+    state[0] = irq.counter;
+    state[1] = irq.latch;
+    state[2] = irq.enabled;
+    state[3] = irq.wait_state;
+    // state[4] = irq.mode;
+}
+
+static void map_setstate(uint8 *state)
+{
+    irq.counter = state[0];
+    irq.latch = state[1];
+    irq.enabled = state[2];
+    irq.wait_state = state[3];
+    // irq.mode = state[4];
 }
 
 static void map_init(rom_t *cart)
@@ -138,8 +176,7 @@ static void map_init(rom_t *cart)
     mmc_bankvrom(8, 0x0000, 0);
 
     irq.counter = irq.latch = 0;
-    irq.wait_state = 0;
-    irq.enabled = false;
+    irq.enabled = irq.wait_state = 0;
 }
 
 
@@ -150,8 +187,8 @@ mapintf_t map85_intf =
     .init       = map_init,
     .vblank     = NULL,
     .hblank     = map_hblank,
-    .get_state  = NULL,
-    .set_state  = NULL,
+    .get_state  = map_getstate,
+    .set_state  = map_setstate,
     .mem_read   = {},
     .mem_write  = {
         { 0x8000, 0xFFFF, map_write }
