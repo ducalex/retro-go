@@ -310,7 +310,6 @@ static void ili9341_set_window(int left, int top, int width, int height)
         RG_PANIC("Bad lcd window");
     }
 
-    //RG_LOGI("TFT window: left:%d top:%d width:%d height:%d\n", left, top, width, height);
     ili9341_cmd(0x2A, (uint8_t[]){left >> 8, left & 0xff, right >> 8, right & 0xff}, 4); // Horiz
     ili9341_cmd(0x2B, (uint8_t[]){top >> 8, top & 0xff, bottom >> 8, bottom & 0xff}, 4); // Vert
     ili9341_cmd(0x2C, NULL, 0); // Memory write

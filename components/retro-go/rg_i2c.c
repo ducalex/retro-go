@@ -99,7 +99,6 @@ bool rg_i2c_write(uint8_t addr, int reg, const void *write_data, size_t write_le
 #ifdef USE_I2C_DRIVER
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     TRY(i2c_master_start(cmd));
-    RG_LOGI("Writing 0x%02x to 0x%02x\n", ((uint8_t *)write_data)[0], reg);
  
     TRY(i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_WRITE, true));
     if (reg >= 0)

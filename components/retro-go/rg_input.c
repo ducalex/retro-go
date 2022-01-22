@@ -85,7 +85,7 @@ static inline uint32_t gamepad_read(void)
 
 #elif RG_GAMEPAD_DRIVER == 4  // I2C via AW9523
     state = 0;
-    battery_level = 69;
+    battery_level = 99;
 
     uint16_t aw_buttons = 0;
     uint8_t aw_data;
