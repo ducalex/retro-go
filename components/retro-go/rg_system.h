@@ -14,6 +14,8 @@ extern "C" {
     #include "targets/odroid-go.h"
 #elif defined(RG_TARGET_MRGC_G32)
     #include "targets/mrgc-g32.h"
+#elif defined(RG_TARGET_QTPY_GAMER)
+    #include "targets/qtpy-gamer.h"
 #else
     #warning "No target defined. Defaulting to ODROID-GO."
     #include "targets/odroid-go.h"

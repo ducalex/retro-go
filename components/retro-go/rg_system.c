@@ -316,11 +316,11 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     }
 
     // Now we init everything else!
+    rg_input_init(); // aw9523 goes first!
     rg_display_init();
     rg_gui_init();
     rg_gui_draw_hourglass();
     rg_audio_init(sampleRate);
-    rg_input_init();
 
     // Clear settings and return to launcher (recovery)
     if (rg_input_key_is_pressed(RG_KEY_UP|RG_KEY_DOWN|RG_KEY_LEFT|RG_KEY_RIGHT))
