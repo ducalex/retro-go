@@ -14,6 +14,8 @@ Retro-Go's shared library (or framework) provides an easy way to port emulators 
 ## lodepng
 - Lode Vandevenne (lvandeve)
 
+## printf
+- Marco Paland (mpaland)
 
 # License
 Zlib

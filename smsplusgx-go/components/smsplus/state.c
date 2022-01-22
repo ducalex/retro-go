@@ -43,11 +43,6 @@ int system_save_state(void *mem)
 {
   int i;
 
-  printf("%s: sizeof sms=%d\n", __func__, sizeof(sms));
-  printf("%s: sizeof vdp=%d\n", __func__, sizeof(vdp));
-  printf("%s: sizeof Z80=%d\n", __func__, sizeof(Z80));
-  printf("%s: sizeof SN76489_Context=%d\n", __func__, sizeof(SN76489_Context));
-
   /*** Save SMS Context ***/
   fwrite(&sms, sizeof(sms), 1, mem);
 
@@ -82,11 +77,6 @@ int system_save_state(void *mem)
 void system_load_state(void *mem)
 {
   int i;
-
-  printf("%s: sizeof sms=%d\n", __func__, sizeof(sms));
-  printf("%s: sizeof vdp=%d\n", __func__, sizeof(vdp));
-  printf("%s: sizeof Z80=%d\n", __func__, sizeof(Z80));
-  printf("%s: sizeof SN76489_Context=%d\n", __func__, sizeof(SN76489_Context));
 
   /* Initialize everything */
   system_reset();

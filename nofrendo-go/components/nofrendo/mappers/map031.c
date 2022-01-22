@@ -38,7 +38,7 @@ int nsf_current_song = 0;
 
 static void setup_bank(int bank, int value)
 {
-    printf("Bank %02x %02x\n", bank, value);
+    MESSAGE_INFO("Bank %02x %02x\n", bank, value);
     // size_t offset1 = header->load_addr & 0xFFF;
     memcpy(cart->prg_rom + bank * 0x1000, cart->data_ptr + 128 + value * 0x1000, 0x1000);
 }
@@ -87,7 +87,7 @@ static void setup_song(int song)
     nsf_current_song = song;
     playing = false;
 
-    printf("song #%d is ready to play!\n", song);
+    MESSAGE_INFO("song #%d is ready to play!\n", song);
 }
 
 // That whole thing should be written in 6502 assembly above instead but for now I'm lazy

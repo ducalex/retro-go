@@ -12,6 +12,7 @@
 #include "bitmaps/image_hourglass.h"
 #include "fonts/fonts.h"
 #include "rg_system.h"
+#include "rg_printf.h"
 #include "rg_gui.h"
 #include "lodepng.h"
 

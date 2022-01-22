@@ -1,4 +1,5 @@
 #include <rg_system.h>
+#include <rg_printf.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>

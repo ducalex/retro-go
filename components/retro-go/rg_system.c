@@ -14,6 +14,7 @@
 #include <string.h>
 
 #include "rg_system.h"
+#include "rg_printf.h"
 
 #ifndef RG_BUILD_USER
 #define RG_BUILD_USER "ducalex"

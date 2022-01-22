@@ -131,8 +131,6 @@ parse_end:
 
 void render_obj_tms(int line)
 {
-    //printf("%s\n", __func__);
-
     int i, x = 0;
     int size, start, end, mode;
     uint8 *lb, *lut, *ex[2];

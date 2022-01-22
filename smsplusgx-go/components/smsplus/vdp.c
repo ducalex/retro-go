@@ -115,13 +115,11 @@ static void viewport_check(void)
   {
     render_bg  = render_bg_sms;
     render_obj = render_obj_sms;
-    //printf("%s: render_bg = render_bg_sms, render_obj = render_obj_sms\n", __func__);
   }
   else
   {
     render_bg  = render_bg_tms;
     render_obj = render_obj_tms;
-    //printf("%s: render_bg = render_bg_tms, render_obj = render_obj_tms\n", __func__);
   }
 }
 

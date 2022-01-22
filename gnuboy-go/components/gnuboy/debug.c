@@ -211,7 +211,7 @@ static const char *mnemonic_table[256] =
 	"RET Z",
 	"RET",
 	"JP Z,%w",
-	NULL,
+	"***INVALID***",
 	"CALL Z,%w",
 	"CALL %w",
 	"ADC A,%b",
@@ -219,7 +219,7 @@ static const char *mnemonic_table[256] =
 	"RET NC",
 	"POP DE",
 	"JP NC,%w",
-	NULL,
+	"***INVALID***",
 	"CALL NC,%w",
 	"PUSH DE",
 	"SUB %b",
@@ -227,32 +227,32 @@ static const char *mnemonic_table[256] =
 	"RET C",
 	"RETI",
 	"JP C,%w",
-	NULL,
+	"***INVALID***",
 	"CALL C,%w",
-	NULL,
+	"***INVALID***",
 	"SBC A,%b",
 	"RST 18h",
 	"LD (FF00+%b),A",
 	"POP HL",
 	"LD (FF00+C),A",
-	NULL,
-	NULL,
+	"***INVALID***",
+	"***INVALID***",
 	"PUSH HL",
 	"AND %b",
 	"RST 20h",
 	"ADD SP,%o",
 	"JP HL",
 	"LD (%w),A",
-	NULL,
-	NULL,
-	NULL,
+	"***INVALID***",
+	"***INVALID***",
+	"***INVALID***",
 	"XOR %b",
 	"RST 28h",
 	"LD A,(FF00+%b)",
 	"POP AF",
 	"LD A,(FF00+C)",
 	"DI",
-	NULL,
+	"***INVALID***",
 	"PUSH AF",
 	"OR %b",
 	"RST 30h",
@@ -260,8 +260,8 @@ static const char *mnemonic_table[256] =
 	"LD SP,HL",
 	"LD A,(%w)",
 	"EI",
-	NULL,
-	NULL,
+	"***INVALID***",
+	"***INVALID***",
 	"CP %b",
 	"RST 38h"
 };
@@ -551,35 +551,30 @@ static const byte operand_count[256] =
 
 void cpu_disassemble(uint a, int c)
 {
-	int i, j, k;
-	byte code;
-	byte ops[3];
-	int opaddr;
-	char mnemonic[256];
-	const char *pattern;
-
 	while (c > 0)
 	{
-		k = 0;
-		opaddr = a;
-		code = ops[k++] = readb(a++);
-		if (code != 0xCB)
+		char operands[64];
+		char mnemonic[64];
+		byte ops[3];
+		int j = 0, k = 0;
+		int opaddr = a;
+		int opcode = readb(a++);
+		const char *pattern = mnemonic_table[opcode];
+
+		ops[k++] = opcode;
+
+		if (opcode == 0xCB)
 		{
-			pattern = mnemonic_table[code];
-			if (!pattern)
-				pattern = "***INVALID***";
+			opcode = ops[k++] = readb(a++);
+			pattern = cb_mnemonic_table[opcode];
 		}
-		else
+
+		while (*pattern)
 		{
-			code = ops[k++] = readb(a++);
-			pattern = cb_mnemonic_table[code];
-		}
-		i = j = 0;
-		while (pattern[i])
-		{
-			if (pattern[i] == '%')
+			if (*pattern == '%')
 			{
-				switch (pattern[++i])
+				pattern++;
+				switch (*pattern)
 				{
 				case 'B':
 				case 'b':
@@ -599,30 +594,35 @@ void cpu_disassemble(uint a, int c)
 					j += sprintf(mnemonic + j, "%+d", (n8)(ops[k++]));
 					break;
 				}
-				i++;
 			}
 			else
 			{
-				mnemonic[j++] = pattern[i++];
+				mnemonic[j++] = *pattern++;
 			}
 		}
 		mnemonic[j] = 0;
-		printf("%04X ", opaddr);
-		switch (operand_count[ops[0]]) {
+
+		switch (operand_count[ops[0]])
+		{
 		case 1:
-			printf("%02X       ", ops[0]);
+			sprintf(operands, "%02X       ", ops[0]);
 			break;
 		case 2:
-			printf("%02X %02X    ", ops[0], ops[1]);
+			sprintf(operands, "%02X %02X    ", ops[0], ops[1]);
 			break;
 		case 3:
-			printf("%02X %02X %02X ", ops[0], ops[1], ops[2]);
+			sprintf(operands, "%02X %02X %02X ", ops[0], ops[1], ops[2]);
 			break;
 		}
-		printf("%-16.16s", mnemonic);
 		printf(
-			" SP=%04X.%04X BC=%04X.%02X.%02X DE=%04X.%02X "
-			"HL=%04X.%02X A=%02X F=%02X %c%c%c%c%c",
+			"%04X: %s %-16.16s"
+			" SP=%04X.%04X BC=%04X.%02X.%02X DE=%04X.%02X"
+			" HL=%04X.%02X A=%02X F=%02X %c%c%c%c%c"
+			" IE=%02X IF=%02X LCDC=%02X STAT=%02X LY=%02X LYC=%02X"
+			" \n",
+			opaddr,
+			operands,
+			mnemonic,
 			SP, readw(SP),
 			BC, readb(BC), readb(0xFF00 | C),
 			DE, readb(DE),
@@ -631,14 +631,9 @@ void cpu_disassemble(uint a, int c)
 			((F & 0x80) ? 'Z' : '-'),
 			((F & 0x40) ? 'N' : '-'),
 			((F & 0x20) ? 'H' : '-'),
-			((F & 0x10) ? 'C' : '-')
-		);
-		printf(
-			" IE=%02X IF=%02X LCDC=%02X STAT=%02X LY=%02X LYC=%02X",
+			((F & 0x10) ? 'C' : '-'),
 			R_IE, R_IF, R_LCDC, R_STAT, R_LY, R_LYC
 		);
-		printf("\n");
-		fflush(stdout);
 		c--;
 	}
 }

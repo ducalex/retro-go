@@ -333,13 +333,11 @@ void render_reset(void)
   {
     render_bg = render_bg_sms;
     render_obj = render_obj_sms;
-    //printf("%s: render_bg = render_bg_sms, render_obj = render_obj_sms\n", __func__);
   }
   else
   {
     render_bg = render_bg_tms;
     render_obj = render_obj_tms;
-    //printf("%s: render_bg = render_bg_tms, render_obj = render_obj_tms\n", __func__);
   }
 
   if (sms.display == 0) // NTSC
