@@ -84,6 +84,26 @@ static inline uint32_t gamepad_read(void)
     state = 0;
     battery_level = 69;
 
+    uint16_t aw_buttons = 0;
+    uint8_t aw_data;
+    rg_i2c_read(AW9523_DEFAULT_ADDR, AW9523_REG_INPUT0+1, &aw_data, 1);
+    aw_buttons = aw_data;
+    aw_buttons <<= 8;
+    rg_i2c_read(AW9523_DEFAULT_ADDR, AW9523_REG_INPUT0, &aw_data, 1);
+    aw_buttons |= aw_data;
+    aw_buttons = ~aw_buttons;
+
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_UP)) state |= RG_KEY_UP;
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_DOWN)) state |= RG_KEY_DOWN;
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_LEFT)) state |= RG_KEY_LEFT;
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_RIGHT)) state |= RG_KEY_RIGHT;
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_A)) state |= RG_KEY_A;
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_B)) state |= RG_KEY_B;
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_SELECT)) state |= RG_KEY_SELECT;
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_START)) state |= RG_KEY_START;
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_MENU)) state |= RG_KEY_MENU;
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_OPTION)) state |= RG_KEY_OPTION;
+
 #endif
 
     return state;
@@ -190,7 +210,7 @@ void rg_input_init(void)
     uint16_t buttonmask = (1<<AW_GAMEPAD_IO_UP) | (1<<AW_GAMEPAD_IO_DOWN) |
       (1<<AW_GAMEPAD_IO_LEFT) | (1<<AW_GAMEPAD_IO_RIGHT) | (1<<AW_GAMEPAD_IO_SELECT) |
       (1<<AW_GAMEPAD_IO_START) | (1<<AW_GAMEPAD_IO_A) | (1<<AW_GAMEPAD_IO_B) |
-      (1<<AW_GAMEPAD_IO_MENU) | (1<<AW_GAMEPAD_IO_VOLUME) | (1<<AW_CARDDET);
+      (1<<AW_GAMEPAD_IO_MENU) | (1<<AW_GAMEPAD_IO_OPTION) | (1<<AW_CARDDET);
     val = buttonmask & 0xFF;
     rg_i2c_write(AW9523_DEFAULT_ADDR, AW9523_REG_CONFIG0, &val, 1);
     val = buttonmask >> 8;

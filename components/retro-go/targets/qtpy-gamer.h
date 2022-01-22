@@ -9,14 +9,15 @@
 
 // Audio
 //#define RG_AUDIO_USE_SPEAKER        1
+#define RG_AUDIO_USE_EXT_DAC          1 // for now!
 
 // Video
 #define RG_SCREEN_TYPE              0
 #define RG_SCREEN_WIDTH             240
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
-#define RG_SCREEN_MARGIN_TOP        0
-#define RG_SCREEN_MARGIN_BOTTOM     0
+#define RG_SCREEN_MARGIN_TOP        +80
+#define RG_SCREEN_MARGIN_BOTTOM     -80
 #define RG_SCREEN_MARGIN_LEFT       0
 #define RG_SCREEN_MARGIN_RIGHT      0
 
@@ -57,7 +58,7 @@
 #define AW_GAMEPAD_IO_A 6
 #define AW_GAMEPAD_IO_B 7
 #define AW_GAMEPAD_IO_MENU 11
-#define AW_GAMEPAD_IO_VOLUME 5
+#define AW_GAMEPAD_IO_OPTION 5
 #define AW_CARDDET 1
 #define AW_TFT_RESET 8
 #define AW_TFT_BACKLIGHT 3
@@ -74,7 +75,7 @@
 #define RG_GPIO_SD_MISO             GPIO_NUM_12
 #define RG_GPIO_SD_MOSI             GPIO_NUM_13
 #define RG_GPIO_SD_CLK              GPIO_NUM_14
-#define RG_GPIO_SD_CS               GPIO_NUM_22
+#define RG_GPIO_SD_CS               GPIO_NUM_32
 
 
 // External I2S DAC UNUSED

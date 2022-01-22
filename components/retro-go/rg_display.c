@@ -261,21 +261,12 @@ static void ili9341_init()
     ILI9341_CMD(0x29, {}); // Display on
 #elif defined(RG_TARGET_QTPY_GAMER)
     ILI9341_CMD(0x01, {});     // Reset
-    ILI9341_CMD(0x3A, {0x55}); // Pixel Format Set RGB565
-    ILI9341_CMD(0x36, {(0x00|0x00|0x00)});
-    ILI9341_CMD(0xB1, {0x00, 0x10});                            // Frame Rate Control (1B=70, 1F=61, 10=119)
-    ILI9341_CMD(0xB2, {0x0c, 0x0c, 0x00, 0x33, 0x33});
-    ILI9341_CMD(0xB7, {0x35});
-    ILI9341_CMD(0xBB, {0x24});
-    ILI9341_CMD(0xC0, {0x2C});
-    ILI9341_CMD(0xC2, {0x01, 0xFF});
-    ILI9341_CMD(0xC3, {0x11});
-    ILI9341_CMD(0xC4, {0x20});
-    ILI9341_CMD(0xC6, {0x0f});
-    ILI9341_CMD(0xD0, {0xA4, 0xA1});
-    ILI9341_CMD(0xE0, {0xD0, 0x00, 0x03, 0x09, 0x13, 0x1C, 0x3A, 0x55, 0x48, 0x18, 0x12, 0x0E, 0x19, 0x1E});
-    ILI9341_CMD(0xE1, {0xD0, 0x00, 0x03, 0x09, 0x05, 0x25, 0x3A, 0x55, 0x50, 0x3D, 0x1C, 0x1D, 0x1D, 0x1E});
     ILI9341_CMD(0x11, {}); // Exit Sleep
+    ILI9341_CMD(0x3A, {0x55}); // Pixel Format Set RGB565
+    ILI9341_CMD(0x36, {0xC0});
+    ILI9341_CMD(0x2A, {0, 0, 0, 240}); // CASET
+    ILI9341_CMD(0x2B, {0, 0, 320>>8, 320&0xFF}); // RASET
+    ILI9341_CMD(0x21, {});
     ILI9341_CMD(0x29, {}); // Display on
 #else
     #error "LCD init sequence is not defined for this device!"
@@ -319,6 +310,7 @@ static void ili9341_set_window(int left, int top, int width, int height)
         RG_PANIC("Bad lcd window");
     }
 
+    //RG_LOGI("TFT window: left:%d top:%d width:%d height:%d\n", left, top, width, height);
     ili9341_cmd(0x2A, (uint8_t[]){left >> 8, left & 0xff, right >> 8, right & 0xff}, 4); // Horiz
     ili9341_cmd(0x2B, (uint8_t[]){top >> 8, top & 0xff, bottom >> 8, bottom & 0xff}, 4); // Vert
     ili9341_cmd(0x2C, NULL, 0); // Memory write

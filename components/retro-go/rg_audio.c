@@ -108,10 +108,10 @@ void rg_audio_deinit(void)
     {
         gpio_num_t pin;
         i2s_driver_uninstall(I2S_NUM_0);
-        dac_pad_get_io_num(DAC_CHANNEL_1, &pin);
-        gpio_reset_pin(pin);
-        dac_pad_get_io_num(DAC_CHANNEL_2, &pin);
-        gpio_reset_pin(pin);
+        //dac_pad_get_io_num(DAC_CHANNEL_1, &pin);
+        //gpio_reset_pin(pin);
+        //dac_pad_get_io_num(DAC_CHANNEL_2, &pin);
+        //gpio_reset_pin(pin);
     }
     else if (audioSink == RG_AUDIO_SINK_EXT_DAC)
     {
