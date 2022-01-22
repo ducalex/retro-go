@@ -275,6 +275,7 @@ void event_handler(int event, void *arg)
 
 void app_main(void)
 {
+RG_LOGE("Hi there!\n");
     const rg_handlers_t handlers = {
         .event = &event_handler,
     };

@@ -16,6 +16,8 @@ static uint32_t gamepad_state = -1;
 static float battery_level = -1;
 static float battery_volts = 0;
 
+
+#if RG_GAMEPAD_DRIVER == 4
 bool aw_digitalWrite(uint8_t pin, bool value) {
   uint16_t pins;
   uint8_t c;
@@ -35,6 +37,7 @@ bool aw_digitalWrite(uint8_t pin, bool value) {
   c = pins >> 8;
   return rg_i2c_write(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0+1, &c, 1);
 }
+#endif
 
 static inline uint32_t gamepad_read(void)
 {
