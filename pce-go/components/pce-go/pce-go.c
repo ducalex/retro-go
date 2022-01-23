@@ -15,20 +15,22 @@
  * previous saves so add a place holder if necessary. Eventually we could use
  * the keys to make order irrelevant...
  */
-#define SVAR_1(k, v) { 1, k, &v }
-#define SVAR_2(k, v) { 2, k, &v }
-#define SVAR_4(k, v) { 4, k, &v }
-#define SVAR_A(k, v) { sizeof(v), k, &v }
-#define SVAR_N(k, v, n) { n, k, &v }
-#define SVAR_END { 0, "\0\0\0\0", 0 }
+#define SVAR_1(k, v) { k, 1, &v }
+#define SVAR_2(k, v) { k, 2, &v }
+#define SVAR_4(k, v) { k, 4, &v }
+#define SVAR_A(k, v) { k, sizeof(v), &v }
+#define SVAR_N(k, v, n) { k, n, &v }
+#define SVAR_END { "END", 0, NULL }
+
+typedef const struct
+{
+	char key[12];
+	size_t len;
+	void *ptr;
+} save_var_t;
 
 static const char SAVESTATE_HEADER[8] = "PCE_V004";
-static const struct
-{
-	size_t len;
-	char key[16];
-	void *ptr;
-} SaveStateVars[] =
+static save_var_t SaveStateVars[] =
 {
 	// Arrays
 	SVAR_A("RAM", PCE.RAM),      SVAR_A("VRAM", PCE.VRAM),  SVAR_A("SPRAM", PCE.SPRAM),
@@ -43,27 +45,27 @@ static const struct
 	SVAR_1("SF2", PCE.SF2),
 
 	// IRQ
-	SVAR_1("irq_mask", CPU.irq_mask),           SVAR_1("irq_lines", CPU.irq_lines),
+	SVAR_1("IRQ.mask", CPU.irq_mask),           SVAR_1("IRQ.lines", CPU.irq_lines),
 
 	// PSG
-	SVAR_1("psg.ch", PCE.PSG.ch),               SVAR_1("psg.vol", PCE.PSG.volume),
-	SVAR_1("psg.lfo_f", PCE.PSG.lfo_freq),      SVAR_1("psg.lfo_c", PCE.PSG.lfo_ctrl),
-	SVAR_N("psg.ch0", PCE.PSG.chan[0], 40),     SVAR_N("psg.ch1", PCE.PSG.chan[1], 40),
-	SVAR_N("psg.ch2", PCE.PSG.chan[2], 40),     SVAR_N("psg.ch3", PCE.PSG.chan[3], 40),
-	SVAR_N("psg.ch4", PCE.PSG.chan[4], 40),     SVAR_N("psg.ch5", PCE.PSG.chan[5], 40),
+	SVAR_1("PSG.ch", PCE.PSG.ch),               SVAR_1("PSG.vol", PCE.PSG.volume),
+	SVAR_1("PSG.lfo_f", PCE.PSG.lfo_freq),      SVAR_1("PSG.lfo_c", PCE.PSG.lfo_ctrl),
+	SVAR_N("PSG.ch0", PCE.PSG.chan[0], 40),     SVAR_N("PSG.ch1", PCE.PSG.chan[1], 40),
+	SVAR_N("PSG.ch2", PCE.PSG.chan[2], 40),     SVAR_N("PSG.ch3", PCE.PSG.chan[3], 40),
+	SVAR_N("PSG.ch4", PCE.PSG.chan[4], 40),     SVAR_N("PSG.ch5", PCE.PSG.chan[5], 40),
 
 	// VCE
-	SVAR_A("vce_regs", PCE.VCE.regs),           SVAR_2("vce_reg", PCE.VCE.reg),
+	SVAR_A("VCE.regs", PCE.VCE.regs),           SVAR_2("VCE.reg", PCE.VCE.reg),
 
 	// VDC
-	SVAR_A("vdc_regs", PCE.VDC.regs),           SVAR_1("vdc_reg", PCE.VDC.reg),
-	SVAR_1("vdc_status", PCE.VDC.status),       SVAR_1("vdc_satb", PCE.VDC.satb),
-	SVAR_4("vdc_pending_irqs", PCE.VDC.pending_irqs),
+	SVAR_A("VDC.regs", PCE.VDC.regs),           SVAR_1("VDC.reg", PCE.VDC.reg),
+	SVAR_1("VDC.status", PCE.VDC.status),       SVAR_1("VDC.satb", PCE.VDC.satb),
+	SVAR_4("VDC.pending_irqs", PCE.VDC.pending_irqs),
 
 	// Timer
-	SVAR_4("timer_reload", PCE.Timer.reload),   SVAR_4("timer_running", PCE.Timer.running),
-	SVAR_4("timer_counter", PCE.Timer.counter), SVAR_4("timer_next", PCE.Timer.cycles_counter),
-	SVAR_4("timer_freq", PCE.Timer.cycles_per_line),
+	SVAR_4("TMR.reload", PCE.Timer.reload),   SVAR_4("TMR.running", PCE.Timer.running),
+	SVAR_4("TMR.counter", PCE.Timer.counter), SVAR_4("TMR.next", PCE.Timer.cycles_counter),
+	SVAR_4("TMR.freq", PCE.Timer.cycles_per_line),
 
 	SVAR_END
 };
@@ -311,7 +313,7 @@ LoadState(const char *name)
 {
 	MESSAGE_INFO("Loading state from %s...\n", name);
 
-	char buffer[512];
+	char buffer[32];
 
 	FILE *fp = fopen(name, "rb");
 	if (fp == NULL)
@@ -326,16 +328,21 @@ LoadState(const char *name)
 		return -1;
 	}
 
-	for (int i = 0; SaveStateVars[i].len > 0; i++)
+	for (save_var_t *var = &SaveStateVars; var->ptr; var++)
 	{
-		MESSAGE_INFO("Loading %s (%d)\n", SaveStateVars[i].key, SaveStateVars[i].len);
-		fread(SaveStateVars[i].ptr, SaveStateVars[i].len, 1, fp);
+		MESSAGE_INFO("Loading %s (%d)\n", var->key, var->len);
+		fread(var->ptr, var->len, 1, fp);
 	}
 
-	for(int i = 0; i < 8; i++)
+	for (int i = 0; i < 8; i++)
 	{
 		pce_bank_set(i, PCE.MMR[i]);
 	}
+
+	// Constrain buggy values from previous save state code
+	PCE.Timer.counter &= 0xFF;
+	PCE.Timer.reload &= 0xFF;
+	PCE.Timer.running &= 0xFF;
 
 	gfx_reset(true);
 
@@ -361,10 +368,10 @@ SaveState(const char *name)
 
 	fwrite(SAVESTATE_HEADER, sizeof(SAVESTATE_HEADER), 1, fp);
 
-	for (int i = 0; SaveStateVars[i].len > 0; i++)
+	for (save_var_t *var = &SaveStateVars; var->ptr; var++)
 	{
-		MESSAGE_INFO("Saving %s (%d)\n", SaveStateVars[i].key, SaveStateVars[i].len);
-		fwrite(SaveStateVars[i].ptr, SaveStateVars[i].len, 1, fp);
+		MESSAGE_INFO("Saving %s (%d)\n", var->key, var->len);
+		fwrite(var->ptr, var->len, 1, fp);
 	}
 
 	fclose(fp);

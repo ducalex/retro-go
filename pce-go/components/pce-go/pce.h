@@ -148,10 +148,10 @@ typedef struct {
 	// Timer
 	struct {
 		uint32_t cycles_per_line;
-		uint16_t cycles_counter;
-		uint16_t counter;
-		uint16_t reload;
-		uint16_t running;
+		uint32_t cycles_counter;
+		uint32_t counter;
+		uint32_t reload;
+		uint32_t running;
 	} Timer;
 
 	// Joypad
