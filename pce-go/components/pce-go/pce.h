@@ -12,6 +12,7 @@
 #define CYCLES_PER_FRAME       (CLOCK_CPU / 60)
 #define CYCLES_PER_LINE        (CYCLES_PER_FRAME / 263 + 1)
 #define CYCLES_PER_TIMER_TICK  (1024) // 1097
+//#define CYCLES_PER_TIMER_TICK  (1097)
 
 // VDC Status Flags (vdc_status bit)
 typedef enum {
@@ -146,6 +147,7 @@ typedef struct {
 
 	// Timer
 	struct {
+		uint32_t cycles_per_line;
 		uint16_t cycles_counter;
 		uint16_t counter;
 		uint16_t reload;
@@ -307,7 +309,7 @@ pce_write16(uint16_t addr, uint16_t word)
 static inline void
 pce_bank_set(uint8_t P, uint8_t V)
 {
-	TRACE_IO("Bank switching (MMR[%d] = %d)\n", P, V);
+	//TRACE_IO("Bank switching (MMR[%d] = %d)\n", P, V);
 
 	PCE.MMR[P] = V;
 	PageR[P] = (PCE.MemoryMapR[V] == PCE.IOAREA) ? (PCE.IOAREA) : (PCE.MemoryMapR[V] - P * 0x2000);

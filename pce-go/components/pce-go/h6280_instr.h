@@ -65,10 +65,11 @@ static const UBYTE bcd2bin[0x100] = {
 #define put_8bit_zp(zp_addr, byte) (*(ZP_BASE + (zp_addr)) = (byte))
 
 // Stack access
-#define push_8bit(byte) (*(SP_BASE + CPU.S--) = (byte))
+#define push_8bit(byte) ({*(SP_BASE + CPU.S) = (byte); CPU.S--;})
 #define push_16bit(addr) ({UWORD x = addr; push_8bit(x >> 8); push_8bit(x & 0xFF);})
-#define pull_8bit() (*(SP_BASE + ++CPU.S))
-#define pull_16bit() (pull_8bit() | pull_8bit() << 8)
+//#define pull_8bit() (*(SP_BASE + ++CPU.S))
+#define pull_8bit(x) ({ ++CPU.S; x = *(SP_BASE + CPU.S);})
+//#define pull_16bit() (pull_8bit() | pull_8bit() << 8)
 
 //
 // Implementation of actual opcodes:
@@ -1683,7 +1684,7 @@ OPCODE_FUNC phy(void)
 
 OPCODE_FUNC pla(void)
 {
-	CPU.A = pull_8bit();
+	pull_8bit(CPU.A);
 	chk_flnz_8bit(CPU.A);
 	CPU.PC++;
 	Cycles += 4;
@@ -1691,14 +1692,14 @@ OPCODE_FUNC pla(void)
 
 OPCODE_FUNC plp(void)
 {
-	CPU.P = pull_8bit();
+	pull_8bit(CPU.P);
 	CPU.PC++;
 	Cycles += 4;
 }
 
 OPCODE_FUNC plx(void)
 {
-	CPU.X = pull_8bit();
+	pull_8bit(CPU.X);
 	chk_flnz_8bit(CPU.X);
 	CPU.PC++;
 	Cycles += 4;
@@ -1706,7 +1707,7 @@ OPCODE_FUNC plx(void)
 
 OPCODE_FUNC ply(void)
 {
-	CPU.Y = pull_8bit();
+	pull_8bit(CPU.Y);
 	chk_flnz_8bit(CPU.Y);
 	CPU.PC++;
 	Cycles += 4;
@@ -1838,15 +1839,22 @@ OPCODE_FUNC ror_zpx(void)
 OPCODE_FUNC rti(void)
 {
 	/* FL_B reset in RTI */
-	CPU.P = pull_8bit() & ~FL_B;
-	CPU.PC = pull_16bit();
+	pull_8bit(CPU.P);
+	CPU.P &= ~FL_B;
+	uint8_t t, t2;
+	pull_8bit(t);
+	pull_8bit(t2);
+	CPU.PC = (t | t2 << 8);
 	Cycles += 7;
 }
 
 OPCODE_FUNC rts(void)
 {
 	CPU.P &= ~FL_T;
-	CPU.PC = pull_16bit() + 1;
+	uint8_t t, t2;
+	pull_8bit(t);
+	pull_8bit(t2);
+	CPU.PC = (t | t2 << 8) + 1;
 	Cycles += 7;
 }
 
@@ -2154,6 +2162,7 @@ OPCODE_FUNC tai(void)
 	UWORD from = pce_read16(CPU.PC + 1);
 	UWORD to = pce_read16(CPU.PC + 3);
 	UWORD len = pce_read16(CPU.PC + 5);
+	if ( len == 0 ) len = 0xffff;
 	UWORD alternate = 0;
 
 	Cycles += (6 * len) + 17;
@@ -2165,15 +2174,34 @@ OPCODE_FUNC tai(void)
 	CPU.PC += 7;
 }
 
+OPCODE_FUNC csh(void)
+{
+	PCE.Timer.cycles_per_line = 454; /* 21477270 / 3 / 60 / 263 */ /* 7.16 Mhz CPU clock */
+	CPU.PC++;
+	Cycles+=3;
+}
+
+OPCODE_FUNC csl(void)
+{
+	PCE.Timer.cycles_per_line = 113; /* 21477270 / 12 / 60 / 263 */ /* 1.78 Mhz CPU clock */
+	CPU.PC++;
+	Cycles+=3;
+}
+
+static int tamwrite = -1;
+static int tamread = 0;
+
 OPCODE_FUNC tam(void)
 {
 	UBYTE bitfld = imm_operand(CPU.PC + 1);
 
+	tamwrite = -1;
 	for (int i = 0; i < 8; i++)
 	{
 		if (bitfld & (1 << i))
 		{
 			pce_bank_set(i, CPU.A);
+			tamwrite = CPU.A;
 		}
 	}
 
@@ -2204,6 +2232,7 @@ OPCODE_FUNC tdd(void)
 	UWORD from = pce_read16(CPU.PC + 1);
 	UWORD to = pce_read16(CPU.PC + 3);
 	UWORD len = pce_read16(CPU.PC + 5);
+	if ( len == 0 ) len = 0xffff;
 
 	Cycles += (6 * len) + 17;
 	while (len-- != 0)
@@ -2219,6 +2248,7 @@ OPCODE_FUNC tia(void)
 	UWORD from = pce_read16(CPU.PC + 1);
 	UWORD to = pce_read16(CPU.PC + 3);
 	UWORD len = pce_read16(CPU.PC + 5);
+	if ( len == 0 ) len = 0xffff;
 	UWORD alternate = 0;
 
 	Cycles += (6 * len) + 17;
@@ -2236,6 +2266,7 @@ OPCODE_FUNC tii(void)
 	UWORD from = pce_read16(CPU.PC + 1);
 	UWORD to = pce_read16(CPU.PC + 3);
 	UWORD len = pce_read16(CPU.PC + 5);
+	if ( len == 0 ) len = 0xffff;
 
 	Cycles += (6 * len) + 17;
 	while (len-- != 0)
@@ -2251,6 +2282,7 @@ OPCODE_FUNC tin(void)
 	UWORD from = pce_read16(CPU.PC + 1);
 	UWORD to = pce_read16(CPU.PC + 3);
 	UWORD len = pce_read16(CPU.PC + 5);
+	if ( len == 0 ) len = 0xffff;
 
 	Cycles += (6 * len) + 17;
 	while (len-- != 0)
@@ -2264,12 +2296,18 @@ OPCODE_FUNC tma(void)
 {
 	UBYTE bitfld = imm_operand(CPU.PC + 1);
 
-	for (int i = 0; i < 8; i++)
+	if ( bitfld & 0xff )
 	{
-		if (bitfld & (1 << i))
+		for (int i = 0; i < 8; i++)
 		{
-			CPU.A = PCE.MMR[i];
+			if (bitfld & (1 << i))
+			{
+				CPU.A = PCE.MMR[i];
+			}
 		}
+		tamread = CPU.A;
+	} else {
+		CPU.A = ( tamwrite != -1 ) ? tamwrite : tamread ;
 	}
 	CPU.P &= ~FL_T;
 	CPU.PC += 2;

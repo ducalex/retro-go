@@ -63,6 +63,7 @@ static const struct
 	// Timer
 	SVAR_4("timer_reload", PCE.Timer.reload),   SVAR_4("timer_running", PCE.Timer.running),
 	SVAR_4("timer_counter", PCE.Timer.counter), SVAR_4("timer_next", PCE.Timer.cycles_counter),
+	SVAR_4("timer_freq", PCE.Timer.cycles_per_line),
 
 	SVAR_END
 };

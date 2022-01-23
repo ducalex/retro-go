@@ -160,7 +160,7 @@ h6280_run(void)
 			OPCODE(0x51, eor_zpindy());			// EOR (IND),Y
 			OPCODE(0x52, eor_zpind());			// EOR (IND)
 			OPCODE(0x53, tam());				// TAMi
-			OPCODE(0x54, nop());				// CSL
+			OPCODE(0x54, csl());				// CSL
 			OPCODE(0x55, eor_zpx());			// EOR $ZZ,X
 			OPCODE(0x56, lsr_zpx());			// LSR $ZZ,X
 			OPCODE(0x57, rmb(5));				// RMB5 $ZZ
@@ -286,7 +286,7 @@ h6280_run(void)
 			OPCODE(0xD1, cmp_zpindy());			// CMP (IND),Y
 			OPCODE(0xD2, cmp_zpind());			// CMP (IND)
 			OPCODE(0xD3, tin());				// TIN $SHSL,$DHDL,$LHLL
-			OPCODE(0xD4, nop());				// CSH
+			OPCODE(0xD4, csh());				// CSH
 			OPCODE(0xD5, cmp_zpx());			// CMP $ZZ,X
 			OPCODE(0xD6, dec_zpx());			// DEC $ZZ,X
 			OPCODE(0xD7, smb(5));				// SMB5 $ZZ

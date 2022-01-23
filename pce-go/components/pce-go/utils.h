@@ -24,7 +24,7 @@
 #define MESSAGE_ERROR(x...) osd_log(1, "!! " x)
 #define MESSAGE_WARN(x...)  osd_log(2, " ! " x)
 #define MESSAGE_INFO(x...)  osd_log(3, " * " x)
-#define MESSAGE_TRACE(tag, x...) osd_log(4, " & (" tag ") ", x)
+#define MESSAGE_TRACE(tag, x...) osd_log(4, " & (" tag ") " x)
 #if DEBUG_ENABLED
 #define MESSAGE_DEBUG(x...) osd_log(5, " > " x)
 #else

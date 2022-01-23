@@ -38,7 +38,7 @@ pce_reset(bool hard)
     }
 
     PCE.SF2 = 0;
-
+    PCE.Timer.cycles_per_line = 113;
     Cycles = 0;
 
     // Reset sound generator values
@@ -116,7 +116,7 @@ pce_run(void)
         osd_input_read(PCE.Joypad.regs);
 
         for (PCE.Scanline = 0; PCE.Scanline < 263; ++PCE.Scanline) {
-            PCE.MaxCycles += CYCLES_PER_LINE;
+            PCE.MaxCycles += PCE.Timer.cycles_per_line;
             h6280_run();
             timer_run();
             gfx_run();
@@ -140,7 +140,7 @@ pce_run(void)
 static inline void
 timer_run(void)
 {
-    PCE.Timer.cycles_counter -= CYCLES_PER_LINE;
+    PCE.Timer.cycles_counter -= PCE.Timer.cycles_per_line;
 
     // Trigger when it underflows
     if (PCE.Timer.cycles_counter > CYCLES_PER_TIMER_TICK) {
@@ -248,7 +248,10 @@ pce_readIO(uint16_t A)
         break;
 
     case 0x0C00:                /* Timer */
-        ret = PCE.Timer.counter | (PCE.io_buffer & ~0x7F);
+        switch (A & 1) {
+        case 0: ret = PCE.Timer.counter | (PCE.io_buffer & ~0x7F); break;
+        case 1: ret = PCE.Timer.counter | (PCE.io_buffer & ~0x01); break;
+        }
         break;
 
     case 0x1000:                /* Joypad */
@@ -420,7 +423,7 @@ pce_writeIO(uint16_t A, uint8_t V)
                 break;
 
             case RCR:                           // Raster Compare Register
-                IO_VDC_REG_ACTIVE.B.h &= 0x03;
+                V &= 0x3FF;
                 break;
 
             case BXR:                           // Horizontal screen offset
@@ -432,6 +435,7 @@ pce_writeIO(uint16_t A, uint8_t V)
 
             case BYR:                           // Vertical screen offset
                 gfx_latch_context(0);
+                V &= 1;
                 PCE.ScrollYDiff = PCE.Scanline - 1 - IO_VDC_MINLINE;
                 if (PCE.ScrollYDiff < 0) {
                     MESSAGE_DEBUG("PCE.ScrollYDiff went negative when substraction VPR.h/.l (%d,%d)\n",
@@ -648,5 +652,5 @@ pce_writeIO(uint16_t A, uint8_t V)
         return;
     }
 
-    MESSAGE_DEBUG("ignored I/O write: %04x,%02x at PC = %04X\n", A, V, reg_pc);
+    MESSAGE_DEBUG("ignored I/O write: %04x,%02x at PC = %04X\n", A, V, CPU.PC);
 }
