@@ -229,6 +229,8 @@ void rg_input_init(void)
 
     // turn on backlight!
     aw_digitalWrite(AW_TFT_BACKLIGHT, 1);
+    // turn on headphones
+    aw_digitalWrite(AW_HEADPHONE_EN, 1);
 
     // tft reset
     aw_digitalWrite(AW_TFT_RESET, 0);

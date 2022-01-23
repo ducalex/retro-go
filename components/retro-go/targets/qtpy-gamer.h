@@ -8,8 +8,8 @@
 #define RG_SETTINGS_USE_NVS         0
 
 // Audio
-//#define RG_AUDIO_USE_SPEAKER        1
-#define RG_AUDIO_USE_EXT_DAC          1 // for now!
+#define RG_AUDIO_USE_SPEAKER        1
+//#define RG_AUDIO_USE_EXT_DAC          1 // for now!
 
 // Video
 #define RG_SCREEN_TYPE              0
@@ -30,7 +30,7 @@
 //#define RG_BATT_VOLT_MIN            3.5f
 //#define RG_BATT_VOLT_MAX            4.2f
 
-// Status LED
+// Status LED - not actually used, we've got neopixels instead :/
 #define RG_GPIO_LED                 GPIO_NUM_2
 
 // I2C BUS
@@ -62,6 +62,7 @@
 #define AW_CARDDET 1
 #define AW_TFT_RESET 8
 #define AW_TFT_BACKLIGHT 3
+#define AW_HEADPHONE_EN 15
 
 // SPI Display
 #define RG_GPIO_LCD_MISO            GPIO_NUM_12
