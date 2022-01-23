@@ -203,6 +203,7 @@ void rg_input_init(void)
 
     val = 0;
     rg_i2c_write(AW9523_DEFAULT_ADDR, AW9523_REG_SOFTRESET, &val, 1);
+    vTaskDelay(pdMS_TO_TICKS(10));
     // check id?
     uint8_t id=0;
     rg_i2c_read(AW9523_DEFAULT_ADDR, AW9523_REG_CHIPID, &id, 1);

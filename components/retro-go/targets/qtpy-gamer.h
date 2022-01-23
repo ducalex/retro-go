@@ -9,7 +9,6 @@
 
 // Audio
 #define RG_AUDIO_USE_SPEAKER        1
-//#define RG_AUDIO_USE_EXT_DAC          1 // for now!
 
 // Video
 #define RG_SCREEN_TYPE              0
