@@ -30,11 +30,26 @@ compatibility!
 ![Preview](retro-go-preview.jpg)
 
 
+# Installation
+### ODROID-GO
+  1. Download `retro-go_1.x_odroid-go.fw` from the release page and copy it to `/odroid/firmware` on your sdcard.
+  2. Power up the device while holding down B.
+  3. Select retro-go in the files list and flash it.
+
+### MyRetroGameCase G32 (GBC)
+  1. Download `retro-go_1.x_mrgc-g32.fw` from the release page and copy it to `/espgbc/firmware` on your sdcard.
+  2. Power up the device while holding down MENU (the volume knob).
+  3. Select retro-go in the files list and flash it.
+
+### Generic ESP32
+Instructions to flash with esptool coming soon...
+
+
 # Game covers 
 Game covers should be placed in the `romart` folder at the base of your sd card. You can obtain a pre-made pack from 
 this repository or from the release page. Retro-Go is also compatible with the older Go-Play romart pack.
 
-## Adding covers
+### Adding covers
 The preferred cover art format is PNG with a resolution of max 160x168 and I recommend post-processing your 
 PNG with [pngquant](https://pngquant.org/) or [imagemagick](https://imagemagick.org/script/index.php)'s 
 `-colors 255` for smaller file sizes.
