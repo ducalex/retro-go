@@ -259,6 +259,15 @@ static void ili9341_init()
     ILI9341_CMD(0xE1, {0xD0, 0x00, 0x03, 0x09, 0x05, 0x25, 0x3A, 0x55, 0x50, 0x3D, 0x1C, 0x1D, 0x1D, 0x1E});
     ILI9341_CMD(0x11, {}); // Exit Sleep
     ILI9341_CMD(0x29, {}); // Display on
+#elif defined(RG_TARGET_QTPY_GAMER)
+    ILI9341_CMD(0x01, {});     // Reset
+    ILI9341_CMD(0x11, {}); // Exit Sleep
+    ILI9341_CMD(0x3A, {0x55}); // Pixel Format Set RGB565
+    ILI9341_CMD(0x36, {0xC0});
+    ILI9341_CMD(0x2A, {0, 0, 0, 240}); // CASET
+    ILI9341_CMD(0x2B, {0, 0, 320>>8, 320&0xFF}); // RASET
+    ILI9341_CMD(0x21, {});
+    ILI9341_CMD(0x29, {}); // Display on
 #else
     #error "LCD init sequence is not defined for this device!"
 #endif
@@ -927,7 +936,7 @@ void rg_display_clear(uint16_t color_le)
     size_t pixels = RG_SCREEN_WIDTH * RG_SCREEN_HEIGHT;
     uint16_t color = (color_le << 8) | (color_le >> 8);
 
-    lcd_set_window(0, 0, RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT);
+    lcd_set_window(RG_SCREEN_MARGIN_LEFT, RG_SCREEN_MARGIN_TOP, RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT);
 
     while (pixels > 0)
     {

@@ -62,7 +62,12 @@ void rg_audio_init(int sample_rate)
     {
         if ((ret = i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL)) == ESP_OK)
         {
-            ret = i2s_set_pin(I2S_NUM_0, NULL);
+#ifdef RG_TARGET_QTPY_GAMER
+          // we only use DAC2/GPIO26 for audio anyways
+          ret = i2s_set_dac_mode(I2S_DAC_CHANNEL_LEFT_EN);
+#else
+          ret = i2s_set_pin(I2S_NUM_0, NULL);
+#endif
         }
     }
     else if (audioSink == RG_AUDIO_SINK_EXT_DAC)
@@ -108,8 +113,10 @@ void rg_audio_deinit(void)
     {
         gpio_num_t pin;
         i2s_driver_uninstall(I2S_NUM_0);
+#ifndef RG_TARGET_QTPY_GAMER // dont reset dac1 on qtpy
         dac_pad_get_io_num(DAC_CHANNEL_1, &pin);
         gpio_reset_pin(pin);
+#endif
         dac_pad_get_io_num(DAC_CHANNEL_2, &pin);
         gpio_reset_pin(pin);
     }

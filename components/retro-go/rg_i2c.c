@@ -21,7 +21,7 @@ bool rg_i2c_init(void)
         .sda_pullup_en = GPIO_PULLUP_ENABLE,
         .scl_io_num = RG_GPIO_I2C_SCL,
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = 200000,
+        .master.clk_speed = 400000,
     };
     esp_err_t err = ESP_FAIL;
 

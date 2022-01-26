@@ -17,6 +17,28 @@ static float battery_level = -1;
 static float battery_volts = 0;
 
 
+#if RG_GAMEPAD_DRIVER == 4
+bool aw_digitalWrite(uint8_t pin, bool value) {
+  uint16_t pins;
+  uint8_t c;
+  rg_i2c_read(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0+1, &c, 1);
+  pins = c;
+  pins <<= 8;
+  rg_i2c_read(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0, &c, 1);
+  pins |= c;
+
+  if (value) {
+    pins |= 1UL << pin;
+  } else {
+    pins &= ~(1UL << pin);
+  }
+  c = pins & 0xFF;
+  rg_i2c_write(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0, &c, 1);
+  c = pins >> 8;
+  return rg_i2c_write(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0+1, &c, 1);
+}
+#endif
+
 static inline uint32_t gamepad_read(void)
 {
     uint32_t state = 0;
@@ -60,6 +82,30 @@ static inline uint32_t gamepad_read(void)
 
         battery_level = RG_MAX(0.f, RG_MIN(100.f, ((int)data[4] - 170) / 30.f * 100.f));
     }
+
+#elif RG_GAMEPAD_DRIVER == 4  // I2C via AW9523
+    state = 0;
+    battery_level = 99;
+
+    uint16_t aw_buttons = 0;
+    uint8_t aw_data;
+    rg_i2c_read(AW9523_DEFAULT_ADDR, AW9523_REG_INPUT0+1, &aw_data, 1);
+    aw_buttons = aw_data;
+    aw_buttons <<= 8;
+    rg_i2c_read(AW9523_DEFAULT_ADDR, AW9523_REG_INPUT0, &aw_data, 1);
+    aw_buttons |= aw_data;
+    aw_buttons = ~aw_buttons;
+
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_UP)) state |= RG_KEY_UP;
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_DOWN)) state |= RG_KEY_DOWN;
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_LEFT)) state |= RG_KEY_LEFT;
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_RIGHT)) state |= RG_KEY_RIGHT;
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_A)) state |= RG_KEY_A;
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_B)) state |= RG_KEY_B;
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_SELECT)) state |= RG_KEY_SELECT;
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_START)) state |= RG_KEY_START;
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_MENU)) state |= RG_KEY_MENU;
+    if (aw_buttons & (1<<AW_GAMEPAD_IO_OPTION)) state |= RG_KEY_OPTION;
 
 #endif
 
@@ -146,8 +192,57 @@ void rg_input_init(void)
     // This will initialize i2c and discard the first read (garbage)
     gamepad_read();
 
-#else
+#elif RG_GAMEPAD_DRIVER == 4  // I2C w/AW9523
 
+    const char *driver = "QTPY-AW9523";
+    rg_i2c_init();
+
+    // soft reset
+    RG_LOGI("AW9523 Reset\n");
+    uint8_t val;
+
+    val = 0;
+    rg_i2c_write(AW9523_DEFAULT_ADDR, AW9523_REG_SOFTRESET, &val, 1);
+    vTaskDelay(pdMS_TO_TICKS(10));
+    // check id?
+    uint8_t id=0;
+    rg_i2c_read(AW9523_DEFAULT_ADDR, AW9523_REG_CHIPID, &id, 1);
+    RG_LOGI("AW9523 ID code 0x%x found\n", id);
+    assert(id == 0x23);
+
+    // set gpio to input!
+    uint16_t buttonmask = (1<<AW_GAMEPAD_IO_UP) | (1<<AW_GAMEPAD_IO_DOWN) |
+      (1<<AW_GAMEPAD_IO_LEFT) | (1<<AW_GAMEPAD_IO_RIGHT) | (1<<AW_GAMEPAD_IO_SELECT) |
+      (1<<AW_GAMEPAD_IO_START) | (1<<AW_GAMEPAD_IO_A) | (1<<AW_GAMEPAD_IO_B) |
+      (1<<AW_GAMEPAD_IO_MENU) | (1<<AW_GAMEPAD_IO_OPTION) | (1<<AW_CARDDET);
+    val = buttonmask & 0xFF;
+    rg_i2c_write(AW9523_DEFAULT_ADDR, AW9523_REG_CONFIG0, &val, 1);
+    val = buttonmask >> 8;
+    rg_i2c_write(AW9523_DEFAULT_ADDR, AW9523_REG_CONFIG0+1, &val, 1);
+
+    val = 0xFF;
+    rg_i2c_write(AW9523_DEFAULT_ADDR, AW9523_REG_LEDMODE, &val, 1);
+    rg_i2c_write(AW9523_DEFAULT_ADDR, AW9523_REG_LEDMODE+1, &val, 1);
+    
+    // pushpull mode
+    val = 1<<4;
+    rg_i2c_write(AW9523_DEFAULT_ADDR, AW9523_REG_GCR, &val, 1);
+
+    // turn on backlight!
+    aw_digitalWrite(AW_TFT_BACKLIGHT, 1);
+    // turn on headphones
+    aw_digitalWrite(AW_HEADPHONE_EN, 1);
+
+    // tft reset
+    aw_digitalWrite(AW_TFT_RESET, 0);
+    vTaskDelay(pdMS_TO_TICKS(10));
+    aw_digitalWrite(AW_TFT_RESET, 1);
+    vTaskDelay(pdMS_TO_TICKS(10));
+
+    // This will initialize i2c and discard the first read (garbage)
+    gamepad_read();
+
+#else
     #error "No gamepad driver selected"
 
 #endif
