@@ -1,6 +1,7 @@
 #include <freertos/FreeRTOS.h>
 #include <driver/i2s.h>
 #include <driver/dac.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "rg_system.h"
@@ -155,14 +156,21 @@ void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
         return;
     }
 
-    if (audioFilter)
+    if (audioMuted)
+    {
+        // Some DACs do not like if we stop sending sound when muted. On some devices we can
+        // disable the AMP, but on others we must send zeroes to avoid buzzing...
+        memset(stereoAudioBuffer, 0, bufferSize);
+    }
+    else if (audioFilter)
     {
         filter_samples(stereoAudioBuffer, bufferSize);
     }
 
-    if (audioMuted || audioSink == RG_AUDIO_SINK_DUMMY)
+    if (audioSink == RG_AUDIO_SINK_DUMMY)
     {
-        // Simulate i2s_write_bytes delay
+        // Simulate i2s_write delay. This isn't actually correct, we'd need to keep an internal
+        // timer to properly simulate that 1s elapses between calls to rg_audio_submit
         usleep((audioSampleRate * 1000) / sampleCount);
     }
     else if (audioSink == RG_AUDIO_SINK_SPEAKER)
