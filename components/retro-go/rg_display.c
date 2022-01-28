@@ -936,7 +936,11 @@ void rg_display_clear(uint16_t color_le)
     size_t pixels = RG_SCREEN_WIDTH * RG_SCREEN_HEIGHT;
     uint16_t color = (color_le << 8) | (color_le >> 8);
 
+#ifdef RG_TARGET_QTPY_GAMER
     lcd_set_window(RG_SCREEN_MARGIN_LEFT, RG_SCREEN_MARGIN_TOP, RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT);
+#else
+    lcd_set_window(0, 0, RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT);
+#endif
 
     while (pixels > 0)
     {
