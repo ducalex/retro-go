@@ -15,21 +15,27 @@
  * previous saves so add a place holder if necessary. Eventually we could use
  * the keys to make order irrelevant...
  */
-#define SVAR_1(k, v) { k, 1, &v }
-#define SVAR_2(k, v) { k, 2, &v }
-#define SVAR_4(k, v) { k, 4, &v }
-#define SVAR_A(k, v) { k, sizeof(v), &v }
-#define SVAR_N(k, v, n) { k, n, &v }
-#define SVAR_END { "END", 0, NULL }
+#define SVAR_1(k, v) { {k, 1, 1}, &v }
+#define SVAR_2(k, v) { {k, 2, 2}, &v }
+#define SVAR_4(k, v) { {k, 4, 4}, &v }
+#define SVAR_A(k, v) { {k, 0, sizeof(v)}, &v }
+#define SVAR_N(k, v, n) { {k, 0, n}, &v }
+#define SVAR_END { {"END", 0, 0}, NULL }
+
+typedef struct __attribute__((packed))
+{
+	char key[12];
+	uint32_t type:8;
+	uint32_t len:24;
+} block_hdr_t;
 
 typedef const struct
 {
-	char key[12];
-	size_t len;
+	block_hdr_t desc;
 	void *ptr;
 } save_var_t;
 
-static const char SAVESTATE_HEADER[8] = "PCE_V004";
+static const char SAVESTATE_HEADER[8] = "PCE_V010";
 static save_var_t SaveStateVars[] =
 {
 	// Arrays
@@ -60,7 +66,7 @@ static save_var_t SaveStateVars[] =
 	// VDC
 	SVAR_A("VDC.regs", PCE.VDC.regs),           SVAR_1("VDC.reg", PCE.VDC.reg),
 	SVAR_1("VDC.status", PCE.VDC.status),       SVAR_1("VDC.satb", PCE.VDC.satb),
-	SVAR_4("VDC.pending_irqs", PCE.VDC.pending_irqs),
+	SVAR_4("VDC.irqs", PCE.VDC.pending_irqs),
 
 	// Timer
 	SVAR_4("TMR.reload", PCE.Timer.reload),   SVAR_4("TMR.running", PCE.Timer.running),
@@ -314,43 +320,50 @@ LoadState(const char *name)
 	MESSAGE_INFO("Loading state from %s...\n", name);
 
 	char buffer[32];
+	block_hdr_t block;
+	int ret = -1;
 
 	FILE *fp = fopen(name, "rb");
 	if (fp == NULL)
 		return -1;
 
-	fread(&buffer, 8, 1, fp);
-
-	if (memcmp(&buffer, SAVESTATE_HEADER, 8) != 0)
+	if (!fread(&buffer, 8, 1, fp) || memcmp(&buffer, SAVESTATE_HEADER, 8) != 0)
 	{
 		MESSAGE_ERROR("Loading state failed: Header mismatch\n");
-		fclose(fp);
-		return -1;
+		goto _cleanup;
 	}
 
-	for (save_var_t *var = &SaveStateVars; var->ptr; var++)
+	while (fread(&block, sizeof(block), 1, fp))
 	{
-		MESSAGE_INFO("Loading %s (%d)\n", var->key, var->len);
-		fread(var->ptr, var->len, 1, fp);
+		size_t block_end = ftell(fp) + block.len;
+
+		for (save_var_t *var = SaveStateVars; var->ptr; var++)
+		{
+			if (strncmp(var->desc.key, block.key, 12) == 0)
+			{
+				if (!fread(var->ptr, var->desc.len, 1, fp))
+				{
+					MESSAGE_ERROR("fread error reading block data\n");
+					goto _cleanup;
+				}
+				MESSAGE_INFO("Loaded %s\n", var->desc.key);
+				break;
+			}
+		}
+		fseek(fp, block_end, SEEK_SET);
 	}
 
 	for (int i = 0; i < 8; i++)
-	{
 		pce_bank_set(i, PCE.MMR[i]);
-	}
-
-	// Constrain buggy values from previous save state code
-	PCE.Timer.counter &= 0xFF;
-	PCE.Timer.reload &= 0xFF;
-	PCE.Timer.running &= 0xFF;
 
 	gfx_reset(true);
-
 	osd_gfx_set_mode(IO_VDC_SCREEN_WIDTH, IO_VDC_SCREEN_HEIGHT);
+	ret = 0;
 
+_cleanup:
 	fclose(fp);
 
-	return 0;
+	return ret;
 }
 
 
@@ -362,21 +375,35 @@ SaveState(const char *name)
 {
 	MESSAGE_INFO("Saving state to %s...\n", name);
 
+	int ret = -1;
+
 	FILE *fp = fopen(name, "wb");
 	if (fp == NULL)
 		return -1;
 
 	fwrite(SAVESTATE_HEADER, sizeof(SAVESTATE_HEADER), 1, fp);
 
-	for (save_var_t *var = &SaveStateVars; var->ptr; var++)
+	for (save_var_t *var = SaveStateVars; var->ptr; var++)
 	{
-		MESSAGE_INFO("Saving %s (%d)\n", var->key, var->len);
-		fwrite(var->ptr, var->len, 1, fp);
+		if (!fwrite(&var->desc, sizeof(var->desc), 1, fp))
+		{
+			MESSAGE_ERROR("fwrite error desc\n");
+			goto _cleanup;
+		}
+		if (!fwrite(var->ptr, var->desc.len, 1, fp))
+		{
+			MESSAGE_ERROR("fwrite error value\n");
+			goto _cleanup;
+		}
+		MESSAGE_INFO("Saved %s\n", var->desc.key);
 	}
 
+	ret = 0;
+
+_cleanup:
 	fclose(fp);
 
-	return 0;
+	return ret;
 }
 
 
