@@ -542,7 +542,6 @@ int rg_gui_dialog(const char *header, const rg_gui_option_t *options_const, int 
     int options_count = get_dialog_items_count(options_const);
     int sel = selected < 0 ? (options_count + selected) : selected;
     int sel_old = sel;
-    int last_key = -1;
 
     // We create a copy of options because the callbacks might modify it (ie option->value)
     rg_gui_option_t options[options_count + 1];
@@ -575,85 +574,64 @@ int rg_gui_dialog(const char *header, const rg_gui_option_t *options_const, int 
     rg_input_wait_for_key(RG_KEY_ALL, false);
     rg_gui_draw_dialog(header, options, sel);
 
-    while (1)
-    {
-        uint32_t joystick = rg_input_read_gamepad();
+    rg_gui_event_t event = RG_DIALOG_INIT;
+    uint32_t joystick = 0, joystick_old;
+    uint64_t joystick_last = 0;
 
-        if (last_key >= 0) {
-            if (!(joystick & last_key)) {
-                last_key = -1;
-            }
-        }
-        else {
-            rg_gui_event_t select = RG_DIALOG_VOID;
+    while (event != RG_DIALOG_CLOSE)
+    {
+        // TO DO: Add acceleration!
+        joystick_old = (get_elapsed_time_since(joystick_last) > 300000) ? 0 : joystick;
+        joystick = rg_input_read_gamepad();
+        event = RG_DIALOG_VOID;
+
+        if (joystick ^ joystick_old)
+        {
+            bool selected = options[sel].flags != RG_DIALOG_FLAG_DISABLED && options[sel].flags != RG_DIALOG_FLAG_SKIP;
+            rg_gui_callback_t callback = selected ? options[sel].update_cb : NULL;
 
             if (joystick & RG_KEY_UP) {
-                last_key = RG_KEY_UP;
                 if (--sel < 0) sel = options_count - 1;
             }
             else if (joystick & RG_KEY_DOWN) {
-                last_key = RG_KEY_DOWN;
                 if (++sel > options_count - 1) sel = 0;
             }
-            else if (joystick & RG_KEY_B) {
-                last_key = RG_KEY_B;
-                select = RG_DIALOG_DISMISS;
+            else if (joystick & (RG_KEY_B|RG_KEY_OPTION|RG_KEY_MENU)) {
+                event = RG_DIALOG_DISMISS;
             }
-            else if (joystick & RG_KEY_OPTION) {
-                last_key = RG_KEY_OPTION;
-                select = RG_DIALOG_DISMISS;
+            else if (joystick & RG_KEY_LEFT && callback) {
+                event = callback(&options[sel], RG_DIALOG_PREV);
+                sel_old = -1;
             }
-            else if (joystick & RG_KEY_MENU) {
-                last_key = RG_KEY_MENU;
-                select = RG_DIALOG_DISMISS;
+            else if (joystick & RG_KEY_RIGHT && callback) {
+                event = callback(&options[sel], RG_DIALOG_NEXT);
+                sel_old = -1;
             }
-            // if (options[sel].flags == RG_DIALOG_FLAG_NORMAL) {
-            if (options[sel].flags != RG_DIALOG_FLAG_DISABLED && options[sel].flags != RG_DIALOG_FLAG_SKIP) {
-                if (joystick & RG_KEY_LEFT) {
-                    last_key = RG_KEY_LEFT;
-                    if (options[sel].update_cb != NULL) {
-                        select = options[sel].update_cb(&options[sel], RG_DIALOG_PREV);
-                        sel_old = -1;
-                    }
-                }
-                else if (joystick & RG_KEY_RIGHT) {
-                    last_key = RG_KEY_RIGHT;
-                    if (options[sel].update_cb != NULL) {
-                        select = options[sel].update_cb(&options[sel], RG_DIALOG_NEXT);
-                        sel_old = -1;
-                    }
-                }
-                else if (joystick & RG_KEY_START) {
-                    last_key = RG_KEY_START;
-                    if (options[sel].update_cb != NULL) {
-                        select = options[sel].update_cb(&options[sel], RG_DIALOG_ALT);
-                        sel_old = -1;
-                    }
-                }
-                else if (joystick & RG_KEY_A) {
-                    last_key = RG_KEY_A;
-                    if (options[sel].update_cb != NULL) {
-                        select = options[sel].update_cb(&options[sel], RG_DIALOG_ENTER);
-                        sel_old = -1;
-                    } else {
-                        select = RG_DIALOG_CLOSE;
-                    }
-                }
+            else if (joystick & RG_KEY_START && callback) {
+                event = callback(&options[sel], RG_DIALOG_ALT);
+                sel_old = -1;
+            }
+            else if (joystick & RG_KEY_A && callback) {
+                event = callback(&options[sel], RG_DIALOG_ENTER);
+                sel_old = -1;
+            }
+            else if (joystick & RG_KEY_A && selected) {
+                event = RG_DIALOG_CLOSE;
             }
 
-            if (select == RG_DIALOG_DISMISS) {
+            if (event == RG_DIALOG_DISMISS) {
+                event = RG_DIALOG_CLOSE;
                 sel = -1;
-                break;
             }
-            if (select == RG_DIALOG_CLOSE) {
-                break;
-            }
+
+            joystick_last = get_elapsed_time();
         }
+
         if (sel_old != sel)
         {
             while (options[sel].flags == RG_DIALOG_FLAG_SKIP && sel_old != sel)
             {
-                sel += (last_key == RG_KEY_DOWN) ? 1 : -1;
+                sel += (joystick == RG_KEY_DOWN) ? 1 : -1;
 
                 if (sel < 0)
                     sel = options_count - 1;
@@ -668,7 +646,7 @@ int rg_gui_dialog(const char *header, const rg_gui_option_t *options_const, int 
         usleep(20 * 1000UL);
     }
 
-    rg_input_wait_for_key(last_key, false);
+    rg_input_wait_for_key(joystick, false);
 
     rg_display_force_redraw();
 
