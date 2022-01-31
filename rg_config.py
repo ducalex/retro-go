@@ -6,7 +6,9 @@
 # - Partitions must be 64K aligned
 
 PROJECT_NAME = "Retro-Go"
-PROJECT_VER  = shell_exec("git describe --tags --abbrev=5 --dirty --always")
+PROJECT_VER  = subprocess.check_output(
+  "git describe --tags --abbrev=5 --dirty --always", shell=True
+).decode().rstrip()
 PROJECT_TILE = "icon.raw"
 PROJECT_APPS = {
   # Note: Size will be adjusted if needed but flashmon needs accurate values to work correctly

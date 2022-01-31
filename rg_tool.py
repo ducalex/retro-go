@@ -5,42 +5,40 @@ import subprocess
 import hashlib
 import shutil
 import shlex
-import serial
 import time
 import sys
 import re
 import os
 
-IDF_PATH = os.getenv("IDF_PATH")
-PRJ_PATH = sys.path[0]  # os.getcwd()
-
-if not IDF_PATH:
-    exit("IDF_PATH is not defined.")
-
-def read_file(filepath):
-    with open(filepath, "rb") as f: return f.read()
-def shell_exec(cmd):
-    return subprocess.check_output(cmd, shell=True).decode().rstrip()
-def debug_print(text):
-    print("\033[0;33m%s\033[0m" % text)
-
-os.chdir(PRJ_PATH)
-
-# These can be overridden in config.py if needed
-PROJECT_NAME = os.path.basename(PRJ_PATH).title()
-PROJECT_VER  = shell_exec("git describe --tags --abbrev=5 --dirty --always")
-PROJECT_TILE = "icon.raw"
-PROJECT_APPS = {} # TO DO: discover subprojects automatically
+try:
+    import serial
+except:
+    serial = None
 
 DEFAULT_TARGET = os.getenv("RG_TOOL_TARGET", "odroid-go")
 DEFAULT_OFFSET = os.getenv("RG_TOOL_OFFSET", "0x100000")
 DEFAULT_BAUD = os.getenv("RG_TOOL_BAUD", "1152000")
 DEFAULT_PORT = os.getenv("RG_TOOL_PORT", "COM3")
 
-if os.path.exists("config.py"):
-    exec(read_file("config.py"))
+PROJECT_PATH = os.getcwd() if os.path.exists("rg_config.py") else sys.path[0]
+IDF_PATH = os.getenv("IDF_PATH")
+
+if not IDF_PATH:
+    exit("IDF_PATH is not defined.")
+
+os.chdir(PROJECT_PATH)
+
+try:
+    with open("rg_config.py", "rb") as f:
+        exec(f.read())
+except:
+    PROJECT_NAME = os.path.basename(PROJECT_PATH).title()
+    PROJECT_VER = subprocess.check_output("git describe --dirty --always", shell=True).decode().rstrip()
+    PROJECT_TILE = "icon.raw"
+    PROJECT_APPS = {} # TO DO: discover subprojects automatically
 
 symbols_cache = dict()
+
 
 class Symbol:
     def __init__(self, address, name, source="??:?", inlined=None):
@@ -73,11 +71,16 @@ class CallBranch:
         self.run_time += run_time
 
 
+def debug_print(text):
+    print("\033[0;33m%s\033[0m" % text)
+
+
 def find_symbol(elf_file, addr):
     try:
         if addr not in symbols_cache:
             symbols_cache[addr] = Symbol(0, "??")
-            lines = shell_exec(["xtensa-esp32-elf-addr2line", "-ifCe", elf_file, addr]).splitlines()
+            out = subprocess.check_output(["xtensa-esp32-elf-addr2line", "-ifCe", elf_file, addr], shell=True)
+            lines = out.decode().rstrip().splitlines()
             if len(lines) > 2:
                 symbols_cache[addr] = Symbol(addr, lines[0], lines[1], Symbol(0, lines[2], lines[3]))
             elif len(lines) == 2:
@@ -116,7 +119,6 @@ def analyze_profile(frames):
 
 
 def build_firmware(targets, shrink=False, device_type=None):
-    os.chdir(PRJ_PATH)
     args = [
         sys.executable,
         "tools/mkfw.py",
@@ -135,18 +137,18 @@ def build_firmware(targets, shrink=False, device_type=None):
 
     commandline = ' '.join(shlex.quote(arg) for arg in args[1:]) # shlex.join()
     print("Building firmware: %s\n" % commandline)
-    subprocess.run(args, check=True)
+    subprocess.run(args, check=True, cwd=PROJECT_PATH)
 
 
 def clean_app(target):
     print("Cleaning up app '%s'..." % target)
     try:
-        os.unlink(os.path.join(PRJ_PATH, target, "sdkconfig"))
-        os.unlink(os.path.join(PRJ_PATH, target, "sdkconfig.old"))
+        os.unlink(os.path.join(target, "sdkconfig"))
+        os.unlink(os.path.join(target, "sdkconfig.old"))
     except:
         pass
     try:
-        shutil.rmtree(os.path.join(PRJ_PATH, target, "build"))
+        shutil.rmtree(os.path.join(target, "build"))
     except:
         pass
     print("Done.\n")
@@ -155,17 +157,16 @@ def clean_app(target):
 def build_app(target, build_type=None, with_netplay=False, build_target=None):
     # To do: clean up if any of the flags changed since last build
     print("Building app '%s'" % target)
-    os.chdir(os.path.join(PRJ_PATH, target))
     os.putenv("ENABLE_PROFILING", "1" if build_type == "profile" else "0")
     os.putenv("ENABLE_NETPLAY", "1" if with_netplay else "0")
     os.putenv("PROJECT_VER", PROJECT_VER)
     if build_target:
         os.putenv("RG_TARGET", re.sub(r'[^A-Z0-9]', '_', build_target.upper()))
-    subprocess.run("idf.py app", shell=True, check=True)
+    subprocess.run("idf.py app", shell=True, check=True, cwd=os.path.join(PROJECT_PATH, target))
 
     try:
         print("\nPatching esp_image_header_t to skip sha256 on boot... ", end="")
-        with open("build/" + target + ".bin", "r+b") as fp:
+        with open(os.path.join(target, "build", target + ".bin", "r+b")) as fp:
             fp.seek(23)
             fp.write(b"\0")
         print("done!\n")
@@ -198,15 +199,17 @@ def flash_app(target, port, offset, baud):
         "--flash_freq", "80m",
         "--flash_size", "detect",
         hex(offset),
-        os.path.join(PRJ_PATH, target, "build", target + ".bin"),
+        os.path.join(target, "build", target + ".bin"),
     ], check=True)
     print("Done.\n")
 
 
 def monitor_app(target, port, baudrate=115200):
+    if not serial:
+        exit("serial module not installed. You can try running 'pip install pyserial'.")
     print("Starting monitor for app '%s'" % target)
     mon = serial.Serial(port, baudrate=baudrate, timeout=0)
-    elf = os.path.join(PRJ_PATH, target, "build", target + ".elf")
+    elf = os.path.join(target, "build", target + ".elf")
 
     mon.setDTR(False)
     mon.setRTS(False)
