@@ -1,3 +1,13 @@
+# Retro-Go 1.30 (2022-02-02)
+- NES: Fixed Lagrange Point
+- NES: Added support for a few untested mappers
+- NES: State files are now smaller (faster load/save)
+- PCE: Many sprites issues fixed by Macs75
+- PCE: New save state format (incompatible with old saves, but extensible going forward...)
+- Added key repetition in dialogs (when holding an arrow key, for example)
+- We now have continuous integration thanks to tomzx 
+
+
 # Retro-Go 1.29.1 (2021-12-23)
 - Fixed settings not remembered per emulator
 - Fixed recent/favorites should be cleared on settings reset
