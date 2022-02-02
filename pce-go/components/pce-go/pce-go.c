@@ -11,9 +11,7 @@
 #include "pce.h"
 
 /**
- * Describes what is saved in a save state. Changing the order will break
- * previous saves so add a place holder if necessary. Eventually we could use
- * the keys to make order irrelevant...
+ * Save state file description.
  */
 #define SVAR_1(k, v) { {k, 1, 1}, &v }
 #define SVAR_2(k, v) { {k, 2, 2}, &v }
@@ -341,10 +339,15 @@ LoadState(const char *name)
 		{
 			if (strncmp(var->desc.key, block.key, 12) == 0)
 			{
-				if (!fread(var->ptr, var->desc.len, 1, fp))
+				size_t len = MIN((size_t)var->desc.len, (size_t)block.len);
+				if (!fread(var->ptr, len, 1, fp))
 				{
 					MESSAGE_ERROR("fread error reading block data\n");
 					goto _cleanup;
+				}
+				if (len < var->desc.len)
+				{
+					memset(var->ptr + len, 0, var->desc.len - len);
 				}
 				MESSAGE_INFO("Loaded %s\n", var->desc.key);
 				break;

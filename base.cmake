@@ -2,18 +2,6 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 set(EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/components")
 set(SDKCONFIG_DEFAULTS "${CMAKE_CURRENT_LIST_DIR}/base.sdkconfig")
 
-execute_process(
-  COMMAND git describe --tags --abbrev=5 --long --dirty=*
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  OUTPUT_VARIABLE PROJECT_VER
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-
-if(NOT PROJECT_VER)
-    string(TIMESTAMP TODAY "%Y.%m.%d")
-    set(PROJECT_VER "${TODAY}-nogit")
-endif()
-
 macro(rg_setup_compile_options)
     set(RG_TARGET "RG_TARGET_$ENV{RG_TARGET}")
     message("Target: ${RG_TARGET}")
