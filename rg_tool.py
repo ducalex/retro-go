@@ -166,7 +166,7 @@ def build_app(target, build_type=None, with_netplay=False, build_target=None):
 
     try:
         print("\nPatching esp_image_header_t to skip sha256 on boot... ", end="")
-        with open(os.path.join(target, "build", target + ".bin", "r+b")) as fp:
+        with open(os.path.join(target, "build", target + ".bin"), "r+b") as fp:
             fp.seek(23)
             fp.write(b"\0")
         print("done!\n")
