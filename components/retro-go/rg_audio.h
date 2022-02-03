@@ -18,7 +18,7 @@ typedef struct
     const char *name;
 } rg_sink_t;
 
-void rg_audio_init(int sample_rate);
+void rg_audio_init(int sampleRate);
 void rg_audio_deinit(void);
 void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount);
 

@@ -1,4 +1,5 @@
 #include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 #include <driver/i2s.h>
 #include <driver/dac.h>
 #include <string.h>
@@ -8,11 +9,11 @@
 #include "rg_audio.h"
 
 static int audioSink = -1;
-// static const rg_sink_t *audioSink;
 static int audioSampleRate = 0;
 static int audioFilter = 0;
-static bool audioMuted = false;
 static int audioVolume = 50;
+static bool audioMuted = false;
+static SemaphoreHandle_t audioDevLock;
 
 static const rg_sink_t sinks[] = {
     {RG_AUDIO_SINK_DUMMY,   0, "Dummy"},
@@ -27,7 +28,7 @@ static const rg_sink_t sinks[] = {
 
 static const char *SETTING_OUTPUT = "AudioSink";
 static const char *SETTING_VOLUME = "Volume";
-// static const char *SETTING_FILTER = "AudioFilter";
+static const char *SETTING_FILTER = "AudioFilter";
 
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 2, 0)
     #define I2S_COMM_FORMAT_STAND_I2S (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB)
@@ -41,29 +42,33 @@ static const char *SETTING_VOLUME = "Volume";
 #endif
 
 
-void rg_audio_init(int sample_rate)
+void rg_audio_init(int sampleRate)
 {
-    int volume = rg_settings_get_number(NS_GLOBAL, SETTING_VOLUME, audioVolume);
-    int sinkType = rg_settings_get_number(NS_GLOBAL, SETTING_OUTPUT, sinks[1].type);
+    RG_ASSERT(audioSink == -1, "Audio sink already initialized!");
 
     i2s_config_t i2s_config = {
         .mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN,
-        .sample_rate = sample_rate,
+        .sample_rate = sampleRate,
         .bits_per_sample = 16,
         .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
         .communication_format = I2S_COMM_FORMAT_STAND_MSB,
         .dma_buf_count = 2,
-        .dma_buf_len = RG_MIN(sample_rate / 50 + 1, 640), // The unit is stereo samples (4 bytes)
+        .dma_buf_len = RG_MIN(sampleRate / 50 + 1, 640), // The unit is stereo samples (4 bytes)
         .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,         // Interrupt level 1
         .use_apll = 0
     };
     esp_err_t ret = ESP_FAIL;
 
-    if (audioSink != -1)
-        RG_PANIC("Audio sink already initialized!");
+    if (audioDevLock == NULL)
+        audioDevLock = xSemaphoreCreateMutex();
 
-    audioSampleRate = sample_rate;
-    audioSink = sinkType;
+    xSemaphoreTake(audioDevLock, 1000);
+
+    audioSampleRate = sampleRate;
+    audioSink = (int)rg_settings_get_number(NS_GLOBAL, SETTING_OUTPUT, sinks[1].type);
+    audioFilter = (int)rg_settings_get_number(NS_GLOBAL, SETTING_FILTER, audioFilter);
+    audioVolume = (int)rg_settings_get_number(NS_GLOBAL, SETTING_VOLUME, audioVolume);
+    // audioMuted = false;
 
     if (audioSink == RG_AUDIO_SINK_SPEAKER)
     {
@@ -92,24 +97,31 @@ void rg_audio_init(int sample_rate)
         ret = ESP_OK;
     }
 
+    if (RG_GPIO_SND_AMP_ENABLE != GPIO_NUM_NC)
+    {
+        gpio_set_direction(RG_GPIO_SND_AMP_ENABLE, GPIO_MODE_OUTPUT);
+        gpio_set_level(RG_GPIO_SND_AMP_ENABLE, audioMuted ? 0 : 1);
+    }
+
     if (ret == ESP_OK)
     {
-        RG_LOGI("Audio ready. sink='%s', samplerate=%d\n", rg_audio_get_sink()->name, sample_rate);
+        RG_LOGI("Audio ready. sink='%s', samplerate=%d, volume=%d\n",
+            rg_audio_get_sink()->name, audioSampleRate, audioVolume);
     }
     else
     {
         RG_LOGE("Failed to initialize audio. sink='%s' %d, samplerate=%d, err=0x%x\n",
-            rg_audio_get_sink()->name, sinkType, sample_rate, ret);
+            rg_audio_get_sink()->name, audioSink, audioSampleRate, ret);
         audioSink = RG_AUDIO_SINK_DUMMY;
     }
 
-    rg_audio_set_volume(volume);
-    rg_audio_set_mute(false);
+    xSemaphoreGive(audioDevLock);
 }
 
 void rg_audio_deinit(void)
 {
-    rg_audio_set_mute(true);
+    // We'll go ahead even if we can't acquire the lock...
+    xSemaphoreTake(audioDevLock, 1000);
 
     if (audioSink == RG_AUDIO_SINK_SPEAKER)
     {
@@ -135,6 +147,8 @@ void rg_audio_deinit(void)
 
     RG_LOGI("Audio terminated. sink='%s'\n", rg_audio_get_sink()->name);
     audioSink = -1;
+
+    xSemaphoreGive(audioDevLock);
 }
 
 static inline void filter_samples(short *samples, size_t count)
@@ -150,6 +164,9 @@ void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
     float volume = audioVolume * 0.01f;
 
     if (bufferSize == 0)
+        return;
+
+    if (!xSemaphoreTake(audioDevLock, 0))
         return;
 
     if (audioMuted)
@@ -233,6 +250,8 @@ void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
     {
         RG_LOGW("Submission error: %d/%d bytes sent.\n", written, bufferSize);
     }
+
+    xSemaphoreGive(audioDevLock);
 }
 
 const rg_sink_t *rg_audio_get_sinks(size_t *count)
@@ -270,14 +289,13 @@ void rg_audio_set_volume(int percent)
 
 void rg_audio_set_mute(bool mute)
 {
-    if (RG_GPIO_SND_AMP_ENABLE != GPIO_NUM_NC)
+    if (xSemaphoreTake(audioDevLock, 1000) == pdTRUE)
     {
-        gpio_set_direction(RG_GPIO_SND_AMP_ENABLE, GPIO_MODE_OUTPUT);
-        gpio_set_level(RG_GPIO_SND_AMP_ENABLE, mute ? 0 : 1);
-    }
-    if (audioSink == RG_AUDIO_SINK_SPEAKER || audioSink == RG_AUDIO_SINK_EXT_DAC)
-    {
-        i2s_zero_dma_buffer(I2S_NUM_0);
+        if (RG_GPIO_SND_AMP_ENABLE != GPIO_NUM_NC)
+            gpio_set_level(RG_GPIO_SND_AMP_ENABLE, mute ? 0 : 1);
+        if (audioSink == RG_AUDIO_SINK_SPEAKER || audioSink == RG_AUDIO_SINK_EXT_DAC)
+            i2s_zero_dma_buffer(I2S_NUM_0);
+        xSemaphoreGive(audioDevLock);
     }
     audioMuted = mute;
 }
