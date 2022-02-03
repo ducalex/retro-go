@@ -34,6 +34,12 @@ static const char *SETTING_VOLUME = "Volume";
     #define I2S_COMM_FORMAT_STAND_MSB (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_LSB)
 #endif
 
+#ifdef RG_TARGET_QTPY_GAMER
+    #define SPEAKER_DAC_MODE I2S_DAC_CHANNEL_LEFT_EN
+#else
+    #define SPEAKER_DAC_MODE I2S_DAC_CHANNEL_BOTH_EN
+#endif
+
 
 void rg_audio_init(int sample_rate)
 {
@@ -54,7 +60,7 @@ void rg_audio_init(int sample_rate)
     esp_err_t ret = ESP_FAIL;
 
     if (audioSink != -1)
-        rg_audio_deinit();
+        RG_PANIC("Audio sink already initialized!");
 
     audioSampleRate = sample_rate;
     audioSink = sinkType;
@@ -63,12 +69,7 @@ void rg_audio_init(int sample_rate)
     {
         if ((ret = i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL)) == ESP_OK)
         {
-#ifdef RG_TARGET_QTPY_GAMER
-          // we only use DAC2/GPIO26 for audio anyways
-          ret = i2s_set_dac_mode(I2S_DAC_CHANNEL_LEFT_EN);
-#else
-          ret = i2s_set_pin(I2S_NUM_0, NULL);
-#endif
+            ret = i2s_set_dac_mode(SPEAKER_DAC_MODE);
         }
     }
     else if (audioSink == RG_AUDIO_SINK_EXT_DAC)
@@ -112,14 +113,12 @@ void rg_audio_deinit(void)
 
     if (audioSink == RG_AUDIO_SINK_SPEAKER)
     {
-        gpio_num_t pin;
         i2s_driver_uninstall(I2S_NUM_0);
-#ifndef RG_TARGET_QTPY_GAMER // dont reset dac1 on qtpy
-        dac_pad_get_io_num(DAC_CHANNEL_1, &pin);
-        gpio_reset_pin(pin);
-#endif
-        dac_pad_get_io_num(DAC_CHANNEL_2, &pin);
-        gpio_reset_pin(pin);
+        if (SPEAKER_DAC_MODE & I2S_DAC_CHANNEL_RIGHT_EN)
+            dac_output_disable(DAC_CHANNEL_1);
+        if (SPEAKER_DAC_MODE & I2S_DAC_CHANNEL_LEFT_EN)
+            dac_output_disable(DAC_CHANNEL_2);
+        dac_i2s_disable();
     }
     else if (audioSink == RG_AUDIO_SINK_EXT_DAC)
     {
@@ -151,16 +150,13 @@ void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
     float volume = audioVolume * 0.01f;
 
     if (bufferSize == 0)
-    {
-        RG_LOGW("Empty buffer?\n");
         return;
-    }
 
     if (audioMuted)
     {
         // Some DACs do not like if we stop sending sound when muted. On some devices we can
-        // disable the AMP, but on others we must send zeroes to avoid buzzing...
-        memset(stereoAudioBuffer, 0, bufferSize);
+        // disable the AMP, but on others we must send silence to avoid buzzing...
+        volume = 0.f;
     }
     else if (audioFilter)
     {
@@ -172,6 +168,7 @@ void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
         // Simulate i2s_write delay. This isn't actually correct, we'd need to keep an internal
         // timer to properly simulate that 1s elapses between calls to rg_audio_submit
         usleep((audioSampleRate * 1000) / sampleCount);
+        written = bufferSize;
     }
     else if (audioSink == RG_AUDIO_SINK_SPEAKER)
     {
@@ -209,7 +206,6 @@ void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
             stereoAudioBuffer[i + 1] = ((dac0 + 0x80) << 8);
         }
         i2s_write(I2S_NUM_0, stereoAudioBuffer, bufferSize, &written, 1000);
-        RG_ASSERT(written > 0, "i2s_write failed.");
     }
     else if (audioSink == RG_AUDIO_SINK_EXT_DAC)
     {
@@ -231,11 +227,11 @@ void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
             stereoAudioBuffer[i] = sample;
         }
         i2s_write(I2S_NUM_0, stereoAudioBuffer, bufferSize, &written, 1000);
-        RG_ASSERT(written > 0, "i2s_write failed.");
     }
-    else
+
+    if (written < bufferSize)
     {
-        RG_PANIC("Audio Sink Unknown");
+        RG_LOGW("Submission error: %d/%d bytes sent.\n", written, bufferSize);
     }
 }
 
