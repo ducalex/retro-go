@@ -254,7 +254,7 @@ void app_main(void)
     sramFile = rg_system_get_path(NULL, RG_PATH_SAVE_SRAM, app->romPath);
 
     if (!rg_mkdir(rg_dirname(sramFile)))
-        RG_LOGW("Unable to create SRAM folder...");
+        MESSAGE_ERROR("Unable to create SRAM folder...");
 
     // Initialize the emulator
     gnuboy_init(AUDIO_SAMPLE_RATE, true, GB_PIXEL_565_BE, vblank_callback);
@@ -327,7 +327,7 @@ void app_main(void)
         // {
             // At this point we know the time probably changed, we could update our
             // internal or external clock.
-        //     printf("Time changed in game!\n");
+        //     MESSAGE_INFO("Time changed in game!\n");
         //     rtc.dirty = 0;
         // }
 

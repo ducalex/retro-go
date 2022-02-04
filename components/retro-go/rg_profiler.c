@@ -73,13 +73,13 @@ NO_PROFILE void rg_profiler_print(void)
 
     LOCK_PROFILE();
 
-    RG_LOGX("RGD:PROF:BEGIN %d %lld\n", profile->total_frames, get_elapsed_time_since(profile->time_started));
+    printf("RGD:PROF:BEGIN %d %lld\n", profile->total_frames, get_elapsed_time_since(profile->time_started));
 
     for (int i = 0; i < profile->total_frames; ++i)
     {
         rg_profile_frame_t *frame = &profile->frames[i];
 
-        RG_LOGX(
+        printf(
             "RGD:PROF:DATA %p\t%p\t%u\t%u\n",
             frame->caller_ptr,
             frame->func_ptr,
@@ -88,7 +88,7 @@ NO_PROFILE void rg_profiler_print(void)
         );
     }
 
-    RG_LOGX("RGD:PROF:END\n");
+    printf("RGD:PROF:END\n");
 
     UNLOCK_PROFILE();
 }

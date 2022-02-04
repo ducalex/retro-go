@@ -52,6 +52,7 @@ enum
 enum
 {
     RG_LOG_PRINT = 0,
+    RG_LOG_USER,
     RG_LOG_ERROR,
     RG_LOG_WARN,
     RG_LOG_INFO,
@@ -208,11 +209,15 @@ extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 #define RG_PANIC(x) rg_system_panic(x, __FUNCTION__)
 #define RG_ASSERT(cond, msg) while (!(cond)) { RG_PANIC("Assertion failed: `" #cond "` : " msg); }
 
-#define RG_LOGX(x, ...) rg_system_log(RG_LOG_PRINT, __func__, x, ## __VA_ARGS__)
-#define RG_LOGE(x, ...) rg_system_log(RG_LOG_ERROR, __func__, x, ## __VA_ARGS__)
-#define RG_LOGW(x, ...) rg_system_log(RG_LOG_WARN, __func__, x, ## __VA_ARGS__)
-#define RG_LOGI(x, ...) rg_system_log(RG_LOG_INFO, __func__, x, ## __VA_ARGS__)
-#define RG_LOGD(x, ...) rg_system_log(RG_LOG_DEBUG, __func__, x, ## __VA_ARGS__)
+#ifndef RG_LOG_TAG
+#define RG_LOG_TAG __func__
+#endif
+
+#define RG_LOGX(x, ...) rg_system_log(RG_LOG_PRINT, RG_LOG_TAG, x, ## __VA_ARGS__)
+#define RG_LOGE(x, ...) rg_system_log(RG_LOG_ERROR, RG_LOG_TAG, x, ## __VA_ARGS__)
+#define RG_LOGW(x, ...) rg_system_log(RG_LOG_WARN, RG_LOG_TAG, x, ## __VA_ARGS__)
+#define RG_LOGI(x, ...) rg_system_log(RG_LOG_INFO, RG_LOG_TAG, x, ## __VA_ARGS__)
+#define RG_LOGD(x, ...) rg_system_log(RG_LOG_DEBUG, RG_LOG_TAG, x, ## __VA_ARGS__)
 
 #define RG_DUMP(...) {}
 

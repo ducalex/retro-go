@@ -663,18 +663,21 @@ void rg_system_panic(const char *message, const char *context)
 
 void rg_system_log(int level, const char *context, const char *format, ...)
 {
-    static const char *levels[RG_LOG_MAX] = {NULL, "error", "warn", "info", "debug"};
-    char buffer[256];
+    const char *levels[RG_LOG_MAX] = {NULL, "=", "error", "warn", "info", "debug"};
+    char buffer[300];
     size_t len = 0;
     va_list args;
 
     if (app.logLevel && level > app.logLevel)
         return;
 
-    if (level < 0 || level >= RG_LOG_MAX)
-        len += sprintf(buffer, "[log:%d] %s: ", level, context);
-    else if (levels[level])
-        len += sprintf(buffer, "[%s] %s: ", levels[level], context);
+    if (level > RG_LOG_PRINT && level < RG_LOG_MAX)
+    {
+        if (levels[level])
+            len += sprintf(buffer + len, "[%s] ", levels[level]);
+        if (context)
+            len += sprintf(buffer + len, "%s: ", context);
+    }
 
     va_start(args, format);
     len += vsnprintf(buffer + len, sizeof(buffer) - len, format, args);

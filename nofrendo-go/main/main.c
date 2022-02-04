@@ -217,7 +217,7 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t 
 }
 
 
-static void osd_blitscreen(uint8 *bmp)
+static void blit_screen(uint8 *bmp)
 {
     // A rolling average should be used for autocrop == 1, it causes jitter in some games...
     // int crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
@@ -284,7 +284,7 @@ void app_main(void)
         RG_PANIC("Unsupported ROM.");
 
     app->refreshRate = nes->refresh_rate;
-    nes->blit_func = osd_blitscreen;
+    nes->blit_func = blit_screen;
 
     ppu_setopt(PPU_LIMIT_SPRITES, rg_settings_get_number(NS_APP, SETTING_SPRITELIMIT, 1));
 
