@@ -1,5 +1,4 @@
 #include <rg_system.h>
-#include <rg_printf.h>
 #include <esp_system.h>
 #include <stdio.h>
 #include <string.h>

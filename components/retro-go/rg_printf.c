@@ -100,18 +100,18 @@
 
 
 // output function type
-typedef void (*out_fct_type)(char character, void* buffer, size_t idx, size_t maxlen);
+typedef void (*out_fct_type)(int character, void* buffer, size_t idx, size_t maxlen);
 
 
 // wrapper (used as buffer) for output function type
 typedef struct {
-  void  (*fct)(char character, void* arg);
+  void  (*fct)(int character, void* arg);
   void* arg;
 } out_fct_wrap_type;
 
 
 // internal buffer output
-static inline void _out_buffer(char character, void* buffer, size_t idx, size_t maxlen)
+static inline void _out_buffer(int character, void* buffer, size_t idx, size_t maxlen)
 {
   if (idx < maxlen) {
     ((char*)buffer)[idx] = character;
@@ -120,14 +120,14 @@ static inline void _out_buffer(char character, void* buffer, size_t idx, size_t 
 
 
 // internal null output
-static inline void _out_null(char character, void* buffer, size_t idx, size_t maxlen)
+static inline void _out_null(int character, void* buffer, size_t idx, size_t maxlen)
 {
   (void)character; (void)buffer; (void)idx; (void)maxlen;
 }
 
 
 // internal output function wrapper
-static inline void _out_fct(char character, void* buffer, size_t idx, size_t maxlen)
+static inline void _out_fct(int character, void* buffer, size_t idx, size_t maxlen)
 {
   (void)idx; (void)maxlen;
   if (character) {
@@ -149,7 +149,7 @@ static inline unsigned int _strnlen_s(const char* str, size_t maxsize)
 
 // internal test if char is a digit (0-9)
 // \return true if char is a digit
-static inline bool _is_digit(char ch)
+static inline bool _is_digit(int ch)
 {
   return (ch >= '0') && (ch <= '9');
 }
@@ -262,7 +262,7 @@ static size_t _ntoa_long(out_fct_type out, char* buffer, size_t idx, size_t maxl
   // write if precision != 0 and value is != 0
   if (!(flags & FLAGS_PRECISION) || value) {
     do {
-      const char digit = (char)(value % base);
+      const int digit = (value % base);
       buf[len++] = digit < 10 ? '0' + digit : (flags & FLAGS_UPPERCASE ? 'A' : 'a') + digit - 10;
       value /= base;
     } while (value && (len < PRINTF_NTOA_BUFFER_SIZE));
@@ -287,7 +287,7 @@ static size_t _ntoa_long_long(out_fct_type out, char* buffer, size_t idx, size_t
   // write if precision != 0 and value is != 0
   if (!(flags & FLAGS_PRECISION) || value) {
     do {
-      const char digit = (char)(value % base);
+      const int digit = (value % base);
       buf[len++] = digit < 10 ? '0' + digit : (flags & FLAGS_UPPERCASE ? 'A' : 'a') + digit - 10;
       value /= base;
     } while (value && (len < PRINTF_NTOA_BUFFER_SIZE));
@@ -621,7 +621,7 @@ static int _vsnprintf(out_fct_type out, char* buffer, const size_t maxlen, const
           }
         }
         // char output
-        out((char)va_arg(va, int), buffer, idx++, maxlen);
+        out(va_arg(va, int), buffer, idx++, maxlen);
         // post padding
         if (flags & FLAGS_LEFT) {
           while (l++ < width) {
@@ -698,7 +698,7 @@ static int _vsnprintf(out_fct_type out, char* buffer, const size_t maxlen, const
 
 ///////////////////////////////////////////////////////////////////////////////
 
-int rg_printf(void (*out)(char character, void* arg), void* arg, const char* format, ...)
+int rg_printf(void (*out)(int character, void* arg), void* arg, const char* format, ...)
 {
   va_list va;
   va_start(va, format);
@@ -709,7 +709,7 @@ int rg_printf(void (*out)(char character, void* arg), void* arg, const char* for
 }
 
 
-int rg_vprintf(void (*out)(char character, void* arg), void* arg, const char* format, va_list va)
+int rg_vprintf(void (*out)(int character, void* arg), void* arg, const char* format, va_list va)
 {
   const out_fct_wrap_type out_fct_wrap = { out, arg };
   return _vsnprintf(_out_fct, (char*)(uintptr_t)&out_fct_wrap, (size_t)-1, format, va);

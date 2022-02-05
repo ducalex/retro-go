@@ -32,7 +32,7 @@
 #ifndef _PRINTF_H_
 #define _PRINTF_H_
 
-// Override newlib's version
+#ifdef PRINTF_REPLACE_STDIO_FUNCTIONS
 #define printf(...)         rg_printf((void*)putc, stdout, __VA_ARGS__)
 #define vprintf(...)        rg_vprintf((void*)putc, stdout, __VA_ARGS__)
 #define fprintf(fp, ...)    rg_printf((void*)fputc, fp, __VA_ARGS__)
@@ -40,7 +40,7 @@
 #define sprintf             rg_sprintf
 #define snprintf            rg_snprintf
 #define vsnprintf           rg_vsnprintf
-// end overrides
+#endif
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -57,8 +57,8 @@ extern "C" {
  * \param va A value identifying a variable arguments list
  * \return The number of characters that are sent to the output function, not counting the terminating null character
  */
-int rg_printf(void (*out)(char character, void* arg), void* arg, const char* format, ...);
-int rg_vprintf(void (*out)(char character, void* arg), void* arg, const char* format, va_list va);
+int rg_printf(void (*out)(int character, void* arg), void* arg, const char* format, ...);
+int rg_vprintf(void (*out)(int character, void* arg), void* arg, const char* format, va_list va);
 
 
 /**

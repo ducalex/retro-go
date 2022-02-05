@@ -119,20 +119,20 @@ static inline void logbuf_print(rg_logbuf_t *buf, const char *str)
     buf->buffer[buf->cursor] = 0;
 }
 
-static inline void begin_panic_trace()
+static inline void begin_panic_trace(const char *message, const char *context)
 {
     panicTrace.magicWord = RG_STRUCT_MAGIC;
-    panicTrace.message[0] = 0;
-    panicTrace.context[0] = 0;
     panicTrace.statistics = statistics;
     panicTrace.log = logbuf;
+    snprintf(panicTrace.message, sizeof(panicTrace.message), "%s", message);
+    snprintf(panicTrace.context, sizeof(panicTrace.context), "%s", context);
     logbuf_print(&panicTrace.log, "\n\n*** PANIC TRACE: ***\n\n");
 }
 
 IRAM_ATTR void esp_panic_putchar_hook(char c)
 {
     if (panicTrace.magicWord != RG_STRUCT_MAGIC)
-        begin_panic_trace();
+        begin_panic_trace("esp_panic", NULL);
     logbuf_print(&panicTrace.log, (char[2]){c, 0});
 }
 
@@ -196,16 +196,6 @@ static void system_monitor_task(void *arg)
             current.totalFrames - current.fullFrames - current.skippedFrames,
             current.fullFrames,
             statistics.batteryPercent);
-
-        // if (statistics.freeStackMain < 1024)
-        // {
-        //     RG_LOGW("Running out of stack space!");
-        // }
-
-        // if (RG_MAX(statistics.freeBlockInt, statistics.freeBlockExt) < 8192)
-        // {
-        //     RG_LOGW("Running out of heap space!");
-        // }
 
         if ((wdtCounter -= loopTime_us) <= 0)
         {
@@ -275,10 +265,10 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     const esp_app_desc_t *esp_app = esp_ota_get_app_description();
     // const esp_partition_t *esp_part = esp_ota_get_boot_partition();
 
-    RG_LOGX("\n========================================================\n");
-    RG_LOGX("%s %s (%s %s)\n", esp_app->project_name, esp_app->version, esp_app->date, esp_app->time);
-    RG_LOGX(" built for: %s. aud=%d disp=%d pad=%d sd=%d cfg=%d\n", RG_TARGET_NAME, 0, 0, 0, 0, 0);
-    RG_LOGX("========================================================\n\n");
+    printf("\n========================================================\n");
+    printf("%s %s (%s %s)\n", esp_app->project_name, esp_app->version, esp_app->date, esp_app->time);
+    printf(" built for: %s. aud=%d disp=%d pad=%d sd=%d cfg=%d\n", RG_TARGET_NAME, 0, 0, 0, 0, 0);
+    printf("========================================================\n\n");
 
     // This must be done before any peripheral init
     srand(esp_random());
@@ -494,17 +484,15 @@ bool rg_emu_save_state(int slot)
         RG_LOGE("Unable to create dir, save might fail...\n");
     }
 
-    snprintf(tempname, sizeof(tempname), "%s.new", filename);
-    if ((*app.handlers.saveState)(tempname))
-    {
-        snprintf(tempname, sizeof(tempname), "%s.bak", filename);
-        rename(filename, tempname);
+    #define tempname(ext) strcat(strcpy(tempname, filename), ext)
 
-        snprintf(tempname, sizeof(tempname), "%s.new", filename);
-        if (rename(tempname, filename) == 0)
+    if ((*app.handlers.saveState)(tempname(".new")))
+    {
+        rename(filename, tempname(".bak"));
+
+        if (rename(tempname(".new"), filename) == 0)
         {
-            sprintf(tempname, "%s.bak", filename);
-            unlink(tempname);
+            unlink(tempname(".bak"));
             success = true;
         }
     }
@@ -512,12 +500,8 @@ bool rg_emu_save_state(int slot)
     if (!success)
     {
         RG_LOGE("Save failed!\n");
-
-        snprintf(tempname, sizeof(tempname), "%s.bak", filename);
-        rename(filename, tempname);
-        snprintf(tempname, sizeof(tempname), "%s.new", filename);
-        unlink(tempname);
-
+        rename(filename, tempname(".bak"));
+        unlink(tempname(".new"));
         rg_gui_alert("Save failed", NULL);
     }
     else
@@ -533,6 +517,8 @@ bool rg_emu_save_state(int slot)
             rg_settings_set_number(NS_GLOBAL, SETTING_BOOT_FLAGS, app.bootFlags);
         }
     }
+
+    #undef tempname
 
     rg_storage_commit();
     rg_system_set_led(0);
@@ -649,15 +635,8 @@ void rg_system_set_boot_app(const char *app)
 
 void rg_system_panic(const char *message, const char *context)
 {
-    if (panicTrace.magicWord != RG_STRUCT_MAGIC)
-        begin_panic_trace();
-
-    strcpy(panicTrace.message, message ? message : "");
-    strcpy(panicTrace.context, context ? context : "");
-
-    RG_LOGX("*** PANIC  : %s\n", panicTrace.message);
-    RG_LOGX("*** CONTEXT: %s\n", panicTrace.context);
-
+    printf("*** RG_PANIC CALLED IN '%s': %s ***\n", context, message);
+    begin_panic_trace(message, context);
     abort();
 }
 
