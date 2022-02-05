@@ -1,5 +1,4 @@
 #include <sys/param.h>
-#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include "gnuboy.h"
@@ -100,18 +99,6 @@ void gnuboy_set_pad(uint pad)
 }
 
 
-void gnuboy_die(const char *fmt, ...)
-{
-	va_list ap;
-
-	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	va_end(ap);
-
-	abort();
-}
-
-
 int gnuboy_load_bios(const char *file)
 {
 	MESSAGE_INFO("Loading BIOS file: '%s'\n", file);
@@ -163,10 +150,9 @@ void gnuboy_load_bank(int bank)
 	if (fseek(cart.romFile, OFFSET, SEEK_SET)
 		|| !fread(cart.rombanks[bank], BANK_SIZE, 1, cart.romFile))
 	{
-		if (feof(cart.romFile))
-			MESSAGE_ERROR("End of file reached, the cart's header is probably incorrect!\n");
-		else
-			gnuboy_die("ROM bank loading failed");
+		MESSAGE_WARN("ROM bank loading failed\n");
+		if (!feof(cart.romFile))
+			abort(); // This indicates an SD Card failure
 	}
 }
 

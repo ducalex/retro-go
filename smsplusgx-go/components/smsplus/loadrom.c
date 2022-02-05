@@ -406,7 +406,7 @@ int load_rom(const char *filename)
 
   set_rom_config();
 
-  printf("%s: OK. cart.size=%d, cart.crc=%#010lx\n", __func__, (int)cart.size, cart.crc);
+  MESSAGE_INFO("OK. cart.size=%d, cart.crc=%#010lx\n", (int)cart.size, cart.crc);
 
   return 1;
 }

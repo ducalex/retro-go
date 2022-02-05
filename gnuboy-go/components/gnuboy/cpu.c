@@ -841,10 +841,9 @@ next:
 		break;
 
 	default:
-		gnuboy_die(
-			"invalid opcode 0x%02X at address 0x%04X, rombank = %d\n",
+		MESSAGE_ERROR("invalid opcode 0x%02X at address 0x%04X, rombank = %d\n",
 			op, (PC-1) & 0xffff, cart.rombank);
-		break;
+		break; // abort();
 	}
 
 _skip:

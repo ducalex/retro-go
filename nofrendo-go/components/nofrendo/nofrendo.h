@@ -28,49 +28,21 @@
 #define APP_VERSION "3.0"
 
 /* Configuration */
-/* uncomment option to enable */
 
-/* Enable debugging messages */
+/* Uncomment to enable debugging messages */
 // #define NOFRENDO_DEBUG
 
-/* Enable live dissassembler */
+/* Uncomment to enable live dissassembler */
 // #define NES6502_DISASM
 
-/* Save/load a game's SRAM from disk */
+/* Uncomment to save/load a game's SRAM to disk */
 // #define USE_SRAM_FILE
 
-/* Undef this if running on big-endian (68k) systems */
+/* Uncomment on big-endian machines */
 // #define IS_LITTLE_ENDIAN
 
 /* End configuration */
 
-/* Macros */
-
-#define INLINE static inline __attribute__((__always_inline__))
-
-#if !defined(MIN)
-#define MIN(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
-#define MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
-#endif
-
-#ifdef NOFRENDO_DEBUG
-#define UNUSED(x)
-#define ASSERT(expr) while (!(expr)) { nofrendo_log(1, "ASSERTION FAILED IN %s: " #expr "\n", __func__); abort(); }
-#define MESSAGE_TRACE(x...)   nofrendo_log(5, "~ %s: " x, __func__, ## __VA_ARGS__)
-#define MESSAGE_DEBUG(x...)   nofrendo_log(4, "> %s: " x, __func__, ## __VA_ARGS__)
-#define MESSAGE_INFO(x, ...)  nofrendo_log(3, "* %s: " x, __func__, ## __VA_ARGS__)
-#define MESSAGE_WARN(x, ...)  nofrendo_log(2, "* %s: " x, __func__, ## __VA_ARGS__)
-#define MESSAGE_ERROR(x, ...) nofrendo_log(1, "!! %s: " x, __func__, ## __VA_ARGS__)
-#else
-#define UNUSED(x) (void)x
-#define ASSERT(expr)
-#define MESSAGE_DEBUG(x, ...)
-#define MESSAGE_INFO(x...)  nofrendo_log(3, x)
-#define MESSAGE_WARN(x...)  nofrendo_log(2, " ! " x)
-#define MESSAGE_ERROR(x...) nofrendo_log(1, "!! " x)
-#endif
-
-/* End macros */
 
 /* Basic types */
 
@@ -106,13 +78,42 @@ enum
     NES_GUI_BLUE,
 };
 
+/* End basic types */
+
+/* Macros */
+
+#define LOG_PRINTF(level, x...) rg_system_log(RG_LOG_USER, NULL, x)
+// #define LOG_PRINTF(level, x...) printf(x)
+
+#ifdef NOFRENDO_DEBUG
+#define MESSAGE_ERROR(x, ...) LOG_PRINTF(1, "!! %s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_WARN(x, ...)  LOG_PRINTF(2, "** %s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_INFO(x, ...)  LOG_PRINTF(3, "%s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_DEBUG(x, ...) LOG_PRINTF(4, "> %s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_TRACE(x, ...) LOG_PRINTF(4, "~ %s: " x, __func__, ## __VA_ARGS__)
+#define ASSERT(expr) while (!(expr)) { LOG_PRINTF(1, "ASSERTION FAILED IN %s: " #expr "\n", __func__); abort(); }
+#else
+#define MESSAGE_ERROR(x...) LOG_PRINTF(1, "!! " x)
+#define MESSAGE_WARN(x...)  LOG_PRINTF(2, " ! " x)
+#define MESSAGE_INFO(x...)  LOG_PRINTF(3, x)
+#define MESSAGE_DEBUG(x...)
+#define ASSERT(expr)
+#endif
+
+#if !defined(MIN)
+#define MIN(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
+#define MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
+#endif
+
+#define INLINE static inline __attribute__((__always_inline__))
+#define UNUSED(x) (void)x
+
+/* End macros */
+
 #include <rg_system.h>
 #include <nes.h>
-
-/* End basic types */
 
 int nofrendo_init(int system, int sample_rate, bool stereo, void *blit, void *vsync, void *input);
 int nofrendo_start(const char *filename, const char *savefile);
 void nofrendo_stop(void);
-void nofrendo_log(int type, const char *format, ...);
 void *nofrendo_buildpalette(nespal_t n, int bitdepth);

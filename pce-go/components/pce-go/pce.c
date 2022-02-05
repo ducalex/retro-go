@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "pce-go.h"
-#include "utils.h"
 #include "pce.h"
 #include "gfx.h"
 
@@ -392,7 +391,7 @@ pce_writeIO(uint16_t A, uint8_t V)
                 break;
             }
             IO_VDC_REG_ACTIVE.B.l = V;
-            TRACE_GFX2("VDC[%02x].l=0x%02x\n", PCE.VDC.reg, V);
+            TRACE_GFX("VDC[%02x].l=0x%02x\n", PCE.VDC.reg, V);
             return;
 
         case 3: // VDC data (MSB)
@@ -451,7 +450,7 @@ pce_writeIO(uint16_t A, uint8_t V)
                 break;
 
             case HDR:                           // Horizontal Definition
-                TRACE_GFX2("VDC[HDR].h = %d\n", V);
+                TRACE_GFX("VDC[HDR].h = %d\n", V);
                 break;
 
             case VPR:
@@ -492,7 +491,7 @@ pce_writeIO(uint16_t A, uint8_t V)
                 break;
             }
             IO_VDC_REG_ACTIVE.B.h = V;
-            TRACE_GFX2("VDC[%02x].h=0x%02x\n", PCE.VDC.reg, V);
+            TRACE_GFX("VDC[%02x].h=0x%02x\n", PCE.VDC.reg, V);
             return;
         }
         break;

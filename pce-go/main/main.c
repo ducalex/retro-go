@@ -56,7 +56,7 @@ void osd_gfx_set_mode(int width, int height)
 {
     if (width != current_width || height != current_height)
     {
-        RG_LOGI("Resolution changed to: %dx%d\n", width, height);
+        MESSAGE_INFO("Resolution changed to: %dx%d\n", width, height);
 
         // We center the content vertically and horizontally to allow overflows all around
         int offset_center = (((XBUF_HEIGHT - height) / 2 + 16) * XBUF_WIDTH + (XBUF_WIDTH - width) / 2);
@@ -154,7 +154,7 @@ void osd_input_read(uint8_t joypads[8])
 
 static void audioTask(void *arg)
 {
-    RG_LOGI("task started.\n");
+    MESSAGE_INFO("task started.\n");
 
     while (1)
     {
@@ -163,14 +163,6 @@ static void audioTask(void *arg)
     }
 
     vTaskDelete(NULL);
-}
-
-void osd_log(int type, const char *format, ...)
-{
-    va_list ap;
-    va_start(ap, format);
-    vprintf(format, ap);
-    va_end(ap);
 }
 
 void osd_vsync(void)
@@ -183,7 +175,7 @@ void osd_vsync(void)
 
     if (sleep > frametime)
     {
-        RG_LOGE("Our vsync timer seems to have overflowed! (%dus)\n", sleep);
+        MESSAGE_ERROR("Our vsync timer seems to have overflowed! (%dus)\n", sleep);
     }
     else if (sleep > 0)
     {

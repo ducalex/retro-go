@@ -45,24 +45,9 @@ typedef enum                /* Logical output levels */
   LO_ALWAYS=64,
 } OutputLevels;
 
-#ifndef __GNUC__
-#define __attribute__(x)
-#endif
-
-extern int lprintf(OutputLevels pri, const char *fmt, ...) __attribute__((format(printf,2,3)));
-extern int cons_output_mask;
-extern int cons_error_mask;
-
-/* killough 3/20/98: add const
- * killough 4/25/98: add gcc attributes
- * cphipps 01/11- moved from i_system.h */
+void lprintf(OutputLevels pri, const char *fmt, ...) __attribute__((format(printf,2,3)));
 void I_Error(const char *error, ...) __attribute__((format(printf,1,2)));
 
-#ifdef _WIN32
-void I_ConTextAttr(unsigned char a);
-void I_UpdateConsole(void);
-int Init_ConsoleWin(void);
-void Done_ConsoleWin(void);
-#endif
+extern int cons_output_mask;
 
 #endif

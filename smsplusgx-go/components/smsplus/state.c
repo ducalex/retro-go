@@ -86,8 +86,8 @@ void system_load_state(void *mem)
   fread(&sms, sizeof(sms), 1, mem);
   if(sms.console != current_console)
   {
+      MESSAGE_ERROR("Bad save data\n");
       system_reset();
-      printf("%s: Bad save data\n", __func__);
       return;
   }
 

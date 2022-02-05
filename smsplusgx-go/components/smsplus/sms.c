@@ -110,7 +110,7 @@ void sms_init(void)
   z80_init(0, 0, 0, sms_irq_callback);
 
   /* Initialize port handlers */
-  printf("%s: sms.console= %#04x\n", __func__, sms.console);
+  MESSAGE_INFO("sms.console= %#04x\n", sms.console);
 
   switch(sms.console)
   {

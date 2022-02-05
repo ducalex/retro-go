@@ -1,5 +1,6 @@
 #pragma once
 
+#include <rg_system.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -7,10 +8,14 @@
 #define GB_WIDTH (160)
 #define GB_HEIGHT (144)
 
-#define MESSAGE_ERROR(x, ...) printf("!! %s: " x, __func__, ## __VA_ARGS__)
-#define MESSAGE_INFO(x, ...) printf("%s: " x, __func__, ## __VA_ARGS__)
-// #define MESSAGE_DEBUG(x, ...) printf("> %s: " x, __func__, ## __VA_ARGS__)
-#define MESSAGE_DEBUG(x...) {}
+#define LOG_PRINTF(level, x...) rg_system_log(RG_LOG_USER, NULL, x)
+// #define LOG_PRINTF(level, x...) printf(x)
+
+#define MESSAGE_ERROR(x, ...) LOG_PRINTF(1, "!! %s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_WARN(x, ...)  LOG_PRINTF(2, "** %s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_INFO(x, ...)  LOG_PRINTF(3, " * %s: " x, __func__, ## __VA_ARGS__)
+// #define MESSAGE_DEBUG(x, ...) LOG_PRINTF(4, ">> %s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_DEBUG(x, ...) {}
 
 typedef uint8_t byte;
 typedef uint8_t un8;
@@ -69,7 +74,6 @@ int  gnuboy_load_rom(const char *file);
 void gnuboy_free_rom(void);
 void gnuboy_reset(bool hard);
 void gnuboy_run(bool draw);
-void gnuboy_die(const char *fmt, ...);
 bool gnuboy_sram_dirty(void);
 void gnuboy_load_bank(int);
 void gnuboy_set_pad(uint);

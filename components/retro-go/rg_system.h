@@ -99,10 +99,10 @@ typedef struct
 } rg_handlers_t;
 
 // TO DO: Make it an abstract ring buffer implementation?
-#define LOG_BUFFER_SIZE 2048
+#define RG_LOGBUF_SIZE 2048
 typedef struct
 {
-    char buffer[LOG_BUFFER_SIZE];
+    char buffer[RG_LOGBUF_SIZE];
     size_t cursor;
 } rg_logbuf_t;
 

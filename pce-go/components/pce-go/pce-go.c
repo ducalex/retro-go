@@ -5,7 +5,6 @@
 #include <stdio.h>
 
 #include "pce-go.h"
-#include "utils.h"
 #include "gfx.h"
 #include "psg.h"
 #include "pce.h"

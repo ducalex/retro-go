@@ -114,7 +114,7 @@ static inline void logbuf_print(rg_logbuf_t *buf, const char *str)
     while (*str)
     {
         buf->buffer[buf->cursor++] = *str++;
-        buf->cursor %= LOG_BUFFER_SIZE;
+        buf->cursor %= RG_LOGBUF_SIZE;
     }
     buf->buffer[buf->cursor] = 0;
 }
@@ -709,9 +709,9 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
         if (panic_trace && panicTrace.context[0])
             fprintf(fp, "Panic context: %.256s\n", panicTrace.context);
         fputs("\nLog output:\n", fp);
-        for (size_t i = 0; i < LOG_BUFFER_SIZE; i++)
+        for (size_t i = 0; i < RG_LOGBUF_SIZE; i++)
         {
-            size_t index = (log->cursor + i) % LOG_BUFFER_SIZE;
+            size_t index = (log->cursor + i) % RG_LOGBUF_SIZE;
             if (log->buffer[index])
                 fputc(log->buffer[index], fp);
         }

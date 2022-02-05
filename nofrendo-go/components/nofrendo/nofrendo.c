@@ -21,8 +21,6 @@
 **
 */
 
-#include <stdio.h>
-#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <nofrendo.h>
@@ -130,13 +128,4 @@ void nofrendo_stop(void)
 {
     nes_poweroff();
     nes_shutdown();
-}
-
-void nofrendo_log(int type, const char *format, ...)
-{
-    // TO DO: call osd_log if available
-    va_list arg;
-    va_start(arg, format);
-    vprintf(format, arg);
-    va_end(arg);
 }

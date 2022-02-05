@@ -77,11 +77,8 @@ int sound_init(void)
 
   /* Calculate number of samples generated per frame */
   snd.sample_count = (snd.sample_rate / snd.fps) + 1;
-  printf("%s: sample_count=%d fps=%d (actual=%f)\n", __func__, snd.sample_count, snd.fps, (float)snd.sample_rate / (float)snd.fps);
-
-  /* Calculate size of sample buffer */
   snd.buffer_size = snd.sample_count * 2;
-  printf("%s: snd.buffer_size=%d\n", __func__, snd.buffer_size);
+  MESSAGE_INFO("sample_count=%d fps=%d (actual=%f)\n", snd.sample_count, snd.fps, (float)snd.sample_rate / snd.fps);
 
   /* Prepare incremental info */
   snd.done_so_far = 0;
@@ -287,6 +284,6 @@ void fmunit_detect_w(int data)
 void fmunit_write(int offset, int data)
 {
   if(!snd.enabled || !sms.use_fm) return;
-  printf("fmunit_write: FM Not supported write %02x at %04x\n", data, offset);
+  MESSAGE_ERROR("FM Not supported write %02x at %04x\n", data, offset);
   // FM_Write(offset, data);
 }

@@ -642,23 +642,11 @@ static void L_SetupConsoleMasks(void) {
 
   //jff 9/3/98 get mask for console output filter
   if ((p = M_CheckParm ("-cout"))) {
-    lprintf(LO_DEBUG, "mask for stdout console output: ");
+    lprintf(LO_DEBUG, "mask for console output: ");
     if (++p != myargc && *myargv[p] != '-')
       for (i=0,cons_output_mask=0;(size_t)i<strlen(myargv[p]);i++)
         if ((pos = strchr(cena,toupper(myargv[p][i])))) {
           cons_output_mask |= (1<<(pos-cena));
-          lprintf(LO_DEBUG, "%c", toupper(myargv[p][i]));
-        }
-    lprintf(LO_DEBUG, "\n");
-  }
-
-  //jff 9/3/98 get mask for redirected console error filter
-  if ((p = M_CheckParm ("-cerr"))) {
-    lprintf(LO_DEBUG, "mask for stderr console output: ");
-    if (++p != myargc && *myargv[p] != '-')
-      for (i=0,cons_error_mask=0;(size_t)i<strlen(myargv[p]);i++)
-        if ((pos = strchr(cena,toupper(myargv[p][i])))) {
-          cons_error_mask |= (1<<(pos-cena));
           lprintf(LO_DEBUG, "%c", toupper(myargv[p][i]));
         }
     lprintf(LO_DEBUG, "\n");

@@ -18,6 +18,14 @@ typedef signed long int int32;
 #include <math.h>
 #include <rg_system.h>
 
+#define LOG_PRINTF(level, x...) rg_system_log(RG_LOG_USER, NULL, x)
+// #define LOG_PRINTF(level, x...) printf(x)
+
+#define MESSAGE_ERROR(x, ...) LOG_PRINTF(1, "!! %s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_WARN(x, ...)  LOG_PRINTF(2, "** %s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_INFO(x, ...)  LOG_PRINTF(3, " * %s: " x, __func__, ## __VA_ARGS__)
+#define MESSAGE_DEBUG(x, ...) LOG_PRINTF(4, ">> %s: " x, __func__, ## __VA_ARGS__)
+
 #include "z80.h"
 #include "sms.h"
 #include "pio.h"

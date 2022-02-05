@@ -46,46 +46,21 @@
 #include "i_main.h"
 #include "m_argv.h"
 
-int cons_error_mask = -1-LO_INFO; /* all but LO_INFO when redir'd */
 int cons_output_mask = -1;        /* all output enabled */
 
-/* cphipps - enlarged message buffer and made non-static
- * We still have to be careful here, this function can be called after exit
- */
-#define MAX_MESSAGE_SIZE 2048
 
-int lprintf(OutputLevels pri, const char *s, ...)
+void lprintf(OutputLevels lvl, const char *s, ...)
 {
-  va_list arg;
-  va_start(arg, s);
-  int r = vprintf(s, arg);
-  va_end(arg);
-#if 0
-  int r=0;
-  char msg[MAX_MESSAGE_SIZE];
-  int lvl=pri;
-
-  va_list v;
-  va_start(v,s);
-#ifdef HAVE_VSNPRINTF
-  vsnprintf(msg,sizeof(msg),s,v);         /* print message in buffer  */
-#else
-  vsprintf(msg,s,v);
-#endif
-  va_end(v);
-
-  if (lvl&cons_output_mask)               /* mask output as specified */
+  if (lvl & cons_output_mask)
   {
-    r=fprintf(stdout,"%s",msg);
-#ifdef _WIN32
-    I_ConPrintString(msg);
-#endif
+    // rg_system_log(RG_LOG_USER, NULL, x)
+    va_list arg;
+    va_start(arg, s);
+    vprintf(s, arg);
+    va_end(arg);
   }
-  if (!isatty(1) && lvl&cons_error_mask)  /* if stdout redirected     */
-    r=fprintf(stderr,"%s",msg);           /* select output at console */
-#endif
-  return r;
 }
+
 
 /*
  * I_Error
@@ -98,9 +73,10 @@ int lprintf(OutputLevels pri, const char *s, ...)
 
 void I_Error(const char *error, ...)
 {
+  char buffer[256];
   va_list arg;
   va_start(arg, error);
-  vprintf(error, arg);
+  vsnprintf(buffer, sizeof(buffer), error, arg);
   va_end(arg);
-  RG_PANIC(error);
+  RG_PANIC(buffer);
 }
