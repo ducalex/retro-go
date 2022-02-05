@@ -129,7 +129,7 @@ typedef struct
     int refreshRate;
     int sampleRate;
     int logLevel;
-    int wdtTimeout;
+    int isLauncher;
     const char *romPath;
     void *mainTaskHandle;
     const rg_gui_option_t *options;

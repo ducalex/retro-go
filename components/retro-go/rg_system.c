@@ -288,16 +288,20 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .buildTime = esp_app->time,
         .buildUser = RG_BUILD_USER,
         .configNs = esp_app->project_name,
+        .bootFlags = 0,
+        .speedupEnabled = 0,
         .refreshRate = 60,
         .sampleRate = sampleRate,
         .logLevel = RG_LOG_INFO,
+        .isLauncher = strcmp(esp_app->project_name, RG_APP_LAUNCHER) == 0,
+        .romPath = NULL,
         .mainTaskHandle = xTaskGetCurrentTaskHandle(),
         .options = options, // TO DO: We should make a copy of it
     };
     if (handlers)
         app.handlers = *handlers;
 
-    if (strcmp(app.name, RG_APP_LAUNCHER) != 0)
+    if (!app.isLauncher)
     {
         app.configNs = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_NAME, app.name);
         app.romPath = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_ARGS, "");
@@ -313,10 +317,11 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     rg_gui_draw_hourglass();
     rg_audio_init(sampleRate);
 
-    // Clear settings and return to launcher (recovery)
+    // Force return to launcher on key held and clear settings if we're already in launcher
     if (rg_input_key_is_pressed(RG_KEY_UP|RG_KEY_DOWN|RG_KEY_LEFT|RG_KEY_RIGHT))
     {
-        rg_settings_reset();
+        if (app.isLauncher)
+            rg_settings_reset();
         rg_system_set_boot_app(RG_APP_LAUNCHER);
         rg_system_restart();
     }
