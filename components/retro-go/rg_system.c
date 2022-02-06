@@ -317,15 +317,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     rg_gui_draw_hourglass();
     rg_audio_init(sampleRate);
 
-    // Force return to launcher on key held and clear settings if we're already in launcher
-    if (rg_input_key_is_pressed(RG_KEY_UP|RG_KEY_DOWN|RG_KEY_LEFT|RG_KEY_RIGHT))
-    {
-        if (app.isLauncher)
-            rg_settings_reset();
-        rg_system_set_boot_app(RG_APP_LAUNCHER);
-        rg_system_restart();
-    }
-
     // Show alert if we've just rebooted from a panic
     if (esp_reset_reason() == ESP_RST_PANIC)
     {
@@ -343,6 +334,15 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 
         rg_display_clear(C_BLUE);
         rg_gui_alert("System Panic!", message);
+        rg_system_set_boot_app(RG_APP_LAUNCHER);
+        rg_system_restart();
+    }
+
+    // Force return to launcher on key held and clear settings if we're already in launcher
+    if (rg_input_key_is_pressed(RG_KEY_UP|RG_KEY_DOWN|RG_KEY_LEFT|RG_KEY_RIGHT))
+    {
+        if (app.isLauncher)
+            rg_settings_reset();
         rg_system_set_boot_app(RG_APP_LAUNCHER);
         rg_system_restart();
     }
