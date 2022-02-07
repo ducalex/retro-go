@@ -1233,8 +1233,7 @@ void HU_Drawer(void)
         HUlib_clearTextLine(&w_monsec);
         //jff 3/26/98 use ESC not '\' for paths
         // build the init string with fixed colors
-        sprintf
-        (
+        sprintf(
           hud_monsecstr,
           "STS \x1b\x36K \x1b\x33%d \x1b\x36M \x1b\x33%d \x1b\x37I \x1b\x33%d/%d \x1b\x35S \x1b\x33%d/%d",
           plr->killcount,totallive,

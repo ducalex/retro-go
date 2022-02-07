@@ -754,6 +754,6 @@ void *rg_alloc(size_t size, uint32_t caps)
         return ptr;
     }
 
-    RG_LOGE("SIZE=%u, CAPS=%s << FAILED! (available: %d)\n", size, caps_list, ptr, available);
+    RG_LOGE("SIZE=%u, CAPS=%s << FAILED! (available: %d)\n", size, caps_list, available);
     RG_PANIC("Memory allocation failed!");
 }

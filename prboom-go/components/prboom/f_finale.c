@@ -624,7 +624,7 @@ static void F_BunnyScroll (void)
     laststage = stage;
   }
 
-  sprintf (name,"END%i",stage);
+  sprintf(name, "END%i", stage);
   // CPhipps - patch drawing updated
   V_DrawNamePatch((320-13*8)/2, (200-8*8)/2, 0, name, CR_DEFAULT, VPT_STRETCH);
 }

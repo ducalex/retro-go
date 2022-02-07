@@ -60,7 +60,7 @@ void S9xMessage(int type, int number, const char *message)
 {
 	static char buffer[36 * 3];
 
-	fprintf(stdout, "%s\n", message);
+	puts(message);
 	strncpy(buffer, message, sizeof(buffer));
 	buffer[sizeof(buffer) - 1] = 0;
 	S9xSetInfoString(buffer);
@@ -208,7 +208,7 @@ extern "C" void app_main(void)
 
 	rg_display_set_source_format(SNES_WIDTH, SNES_HEIGHT, 0, 0, SNES_WIDTH * 2, RG_PIXEL_565_LE);
 
-	printf("\nSnes9x " VERSION " for ESP32\n");
+	puts("\nSnes9x " VERSION " for ESP32\n");
 
 	S9xInitSettings();
 

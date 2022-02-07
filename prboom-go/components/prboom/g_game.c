@@ -1520,7 +1520,7 @@ void G_DoLoadGame(void)
   for (i=0; (size_t)i<num_version_headers; i++) {
     char vcheck[VERSIONSIZE];
     // killough 2/22/98: "proprietary" version string :-)
-    sprintf (vcheck, version_headers[i].ver_printf, version_headers[i].version);
+    sprintf(vcheck, version_headers[i].ver_printf, version_headers[i].version);
 
     if (!strncmp(save_p, vcheck, VERSIONSIZE)) {
       savegame_compatibility = version_headers[i].comp_level;
@@ -1713,7 +1713,7 @@ static void G_DoSaveGame (boolean menu)
   for (i=0; (size_t)i<num_version_headers; i++)
     if (version_headers[i].comp_level == best_compatibility) {
       // killough 2/22/98: "proprietary" version string :-)
-      sprintf (name2,version_headers[i].ver_printf,version_headers[i].version);
+      sprintf(name2,version_headers[i].ver_printf,version_headers[i].version);
       memcpy (save_p, name2, VERSIONSIZE);
       i = num_version_headers+1;
     }
