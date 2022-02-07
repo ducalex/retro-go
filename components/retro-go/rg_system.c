@@ -124,8 +124,8 @@ static inline void begin_panic_trace(const char *message, const char *context)
     panicTrace.magicWord = RG_STRUCT_MAGIC;
     panicTrace.statistics = statistics;
     panicTrace.log = logbuf;
-    snprintf(panicTrace.message, sizeof(panicTrace.message), "%s", message);
-    snprintf(panicTrace.context, sizeof(panicTrace.context), "%s", context);
+    snprintf(panicTrace.message, sizeof(panicTrace.message), "%s", message ?: "(none)");
+    snprintf(panicTrace.context, sizeof(panicTrace.context), "%s", context ?: "(none)");
     logbuf_print(&panicTrace.log, "\n\n*** PANIC TRACE: ***\n\n");
 }
 

@@ -100,14 +100,8 @@
 
 
 // output function type
-typedef void (*out_fct_type)(int character, void* buffer, size_t idx, size_t maxlen);
-
-
-// wrapper (used as buffer) for output function type
-typedef struct {
-  void  (*fct)(int character, void* arg);
-  void* arg;
-} out_fct_wrap_type;
+typedef void (*out_fct_type)(int ch, void* arg, size_t idx, size_t maxlen);
+typedef struct {char *ptr, *end;} out_str_type;
 
 
 // internal buffer output
@@ -126,13 +120,13 @@ static inline void _out_null(int character, void* buffer, size_t idx, size_t max
 }
 
 
-// internal output function wrapper
-static inline void _out_fct(int character, void* buffer, size_t idx, size_t maxlen)
+// internal file output
+static inline void _out_file(int character, void* arg, size_t idx, size_t maxlen)
 {
   (void)idx; (void)maxlen;
   if (character) {
-    // buffer is the output fct pointer
-    ((out_fct_wrap_type*)buffer)->fct(character, ((out_fct_wrap_type*)buffer)->arg);
+    extern int fputc(int ch, void* file);
+    fputc(character, arg);
   }
 }
 
@@ -426,7 +420,7 @@ static size_t _ftoa(out_fct_type out, char* buffer, size_t idx, size_t maxlen, d
 
 
 // internal vsnprintf
-static int _vsnprintf(out_fct_type out, char* buffer, const size_t maxlen, const char* format, va_list va)
+static int _vsnprintf(out_fct_type out, void* buffer, const size_t maxlen, const char* format, va_list va)
 {
   unsigned int flags, width, precision, n;
   size_t idx = 0U;
@@ -698,21 +692,35 @@ static int _vsnprintf(out_fct_type out, char* buffer, const size_t maxlen, const
 
 ///////////////////////////////////////////////////////////////////////////////
 
-int rg_printf(void (*out)(int character, void* arg), void* arg, const char* format, ...)
+int rg_xprintf(out_fct_type out, void* arg, const char* format, ...)
 {
   va_list va;
   va_start(va, format);
-  const out_fct_wrap_type out_fct_wrap = { out, arg };
-  const int ret = _vsnprintf(_out_fct, (char*)(uintptr_t)&out_fct_wrap, (size_t)-1, format, va);
+  const int ret = _vsnprintf(out, arg, (size_t)-1, format, va);
   va_end(va);
   return ret;
 }
 
 
-int rg_vprintf(void (*out)(int character, void* arg), void* arg, const char* format, va_list va)
+int rg_vxprintf(out_fct_type out, void* arg, const char* format, va_list va)
 {
-  const out_fct_wrap_type out_fct_wrap = { out, arg };
-  return _vsnprintf(_out_fct, (char*)(uintptr_t)&out_fct_wrap, (size_t)-1, format, va);
+  return _vsnprintf(out, arg, (size_t)-1, format, va);
+}
+
+
+int rg_fprintf(void* fp, const char* format, ...)
+{
+  va_list va;
+  va_start(va, format);
+  const int ret = _vsnprintf(_out_file, fp, (size_t)-1, format, va);
+  va_end(va);
+  return ret;
+}
+
+
+int rg_vfprintf(void* fp, const char* format, va_list va)
+{
+  return _vsnprintf(_out_file, fp, (size_t)-1, format, va);
 }
 
 
