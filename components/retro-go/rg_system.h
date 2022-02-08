@@ -152,7 +152,7 @@ typedef struct
 } rg_stats_t;
 
 rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options);
-void rg_system_panic(const char *reason, const char *context) __attribute__((noreturn));
+void rg_system_panic(const char *context, const char *message) __attribute__((noreturn));
 void rg_system_shutdown(void) __attribute__((noreturn));
 void rg_system_sleep(void) __attribute__((noreturn));
 void rg_system_restart(void) __attribute__((noreturn));
@@ -208,7 +208,7 @@ extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 #define RG_COUNT(array) (sizeof(array) / sizeof((array)[0]))
 
 // This should really support printf format...
-#define RG_PANIC(x) rg_system_panic(x, __FUNCTION__)
+#define RG_PANIC(x) rg_system_panic(__func__, x)
 #define RG_ASSERT(cond, msg) while (!(cond)) { RG_PANIC("Assertion failed: `" #cond "` : " msg); }
 
 #ifndef RG_LOG_TAG

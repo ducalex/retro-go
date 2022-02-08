@@ -119,20 +119,22 @@ static inline void logbuf_print(rg_logbuf_t *buf, const char *str)
     buf->buffer[buf->cursor] = 0;
 }
 
-static inline void begin_panic_trace(const char *message, const char *context)
+static inline void begin_panic_trace(const char *context, const char *message)
 {
     panicTrace.magicWord = RG_STRUCT_MAGIC;
     panicTrace.statistics = statistics;
     panicTrace.log = logbuf;
-    snprintf(panicTrace.message, sizeof(panicTrace.message), "%s", message ?: "(none)");
-    snprintf(panicTrace.context, sizeof(panicTrace.context), "%s", context ?: "(none)");
+    strncpy(panicTrace.message, message ?: "(none)", sizeof(panicTrace.message) - 1);
+    strncpy(panicTrace.context, context ?: "(none)", sizeof(panicTrace.context) - 1);
+    panicTrace.message[sizeof(panicTrace.message) - 1] = 0;
+    panicTrace.context[sizeof(panicTrace.context) - 1] = 0;
     logbuf_print(&panicTrace.log, "\n\n*** PANIC TRACE: ***\n\n");
 }
 
 IRAM_ATTR void esp_panic_putchar_hook(char c)
 {
     if (panicTrace.magicWord != RG_STRUCT_MAGIC)
-        begin_panic_trace("esp_panic", NULL);
+        begin_panic_trace("esp_panic", "esp_panic");
     logbuf_print(&panicTrace.log, (char[2]){c, 0});
 }
 
@@ -638,10 +640,16 @@ void rg_system_set_boot_app(const char *app)
     RG_LOGI("Boot partition set to %d '%s'\n", partition->subtype, partition->label);
 }
 
-void rg_system_panic(const char *message, const char *context)
+void rg_system_panic(const char *context, const char *message)
 {
-    printf("*** RG_PANIC CALLED IN '%s': %s ***\n", context, message);
-    begin_panic_trace(message, context);
+    // Call begin_panic_trace first, it will normalize context and message for us
+    begin_panic_trace(context, message);
+    // Avoid using printf functions in case we're crashing because of a busted stack
+    fputs("\n*** RG_PANIC() CALLED IN '", stdout);
+    fputs(panicTrace.context, stdout);
+    fputs("' ***\n*** ", stdout);
+    fputs(panicTrace.message, stdout);
+    fputs(" ***\n\n", stdout);
     abort();
 }
 
@@ -665,7 +673,7 @@ void rg_system_vlog(int level, const char *context, const char *format, va_list 
     len += vsnprintf(buffer + len, sizeof(buffer) - len, format, va);
 
     logbuf_print(&logbuf, buffer);
-    fwrite(buffer, len, 1, stdout);
+    fputs(buffer, stdout);
 }
 
 void rg_system_log(int level, const char *context, const char *format, ...)
