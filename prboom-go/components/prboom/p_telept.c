@@ -196,7 +196,7 @@ int EV_SilentTeleport(line_t *line, int side, mobj_t *thing)
               // Reset the delta to have the same dynamics as before
               player->deltaviewheight = deltaviewheight;
             }
-          
+
           // e6y
           if (player && player->mo == thing)
             R_ResetAfterTeleport(player);
@@ -291,9 +291,9 @@ int EV_SilentLineTeleport(line_t *line, int side, mobj_t *thing,
         // Make sure we are on correct side of exit linedef.
         while (P_PointOnLineSide(x, y, l) != side && --fudge>=0)
           if (D_abs(l->dx) > D_abs(l->dy))
-            y -= l->dx < 0 != side ? -1 : 1;
+            y -= (l->dx < 0) != side ? -1 : 1;
           else
-            x += l->dy < 0 != side ? -1 : 1;
+            x += (l->dy < 0) != side ? -1 : 1;
 
         // Attempt to teleport, aborting if blocked
         if (!P_TeleportMove(thing, x, y, false)) /* killough 8/9/98 */

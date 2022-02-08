@@ -645,12 +645,11 @@ void rg_system_panic(const char *message, const char *context)
     abort();
 }
 
-void rg_system_log(int level, const char *context, const char *format, ...)
+void rg_system_vlog(int level, const char *context, const char *format, va_list va)
 {
     const char *levels[RG_LOG_MAX] = {NULL, "=", "error", "warn", "info", "debug"};
     char buffer[300];
     size_t len = 0;
-    va_list args;
 
     if (app.logLevel && level > app.logLevel)
         return;
@@ -663,12 +662,18 @@ void rg_system_log(int level, const char *context, const char *format, ...)
             len += sprintf(buffer + len, "%s: ", context);
     }
 
-    va_start(args, format);
-    len += vsnprintf(buffer + len, sizeof(buffer) - len, format, args);
-    va_end(args);
+    len += vsnprintf(buffer + len, sizeof(buffer) - len, format, va);
 
     logbuf_print(&logbuf, buffer);
     fwrite(buffer, len, 1, stdout);
+}
+
+void rg_system_log(int level, const char *context, const char *format, ...)
+{
+    va_list va;
+    va_start(va, format);
+    rg_system_vlog(level, context, format, va);
+    va_end(va);
 }
 
 bool rg_system_save_trace(const char *filename, bool panic_trace)

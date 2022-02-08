@@ -933,16 +933,6 @@ static void ST_loadGraphics(boolean doload)
   R_SetPatchNum(&faces[facenum++], "STFDEAD0");
 }
 
-static void ST_loadData(void)
-{
-  ST_loadGraphics(true);
-}
-
-static void ST_unloadData(void)
-{
-  ST_loadGraphics(false);
-}
-
 static void ST_initData(void)
 {
   int i;
@@ -1151,5 +1141,5 @@ static void ST_Stop(void)
 void ST_Init(void)
 {
   veryfirsttime = 0;
-  ST_loadData();
+  ST_loadGraphics(true);
 }

@@ -457,6 +457,7 @@ static Bits Operator__TemplateVolume(Operator *self, OperatorState yes) {
     if ( self->reg20 & MASK_SUSTAIN ) {
       return vol;
     }
+    /* fallthrough */
     //In sustain phase, but not sustaining, do regular release
   case RELEASE:
     vol += Operator__RateForward( self, self->releaseAdd );;
@@ -1351,7 +1352,7 @@ void Chip__Setup(Chip *self, Bit32u rate ) {
     guessAdd = (Bit32u)( scale * (EnvelopeIncreaseTable[ index ] << ( RATE_SH - shift - 3 )));
     bestAdd = guessAdd;
     bestDiff = 1 << 30;
-              
+
     for ( passes = 0; passes < 16; passes ++ ) {
       Bit32s diff, lDiff;
       Bit32s volume = ENV_MAX;

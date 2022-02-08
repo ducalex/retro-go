@@ -53,10 +53,10 @@ void lprintf(OutputLevels lvl, const char *s, ...)
 {
   if (lvl & cons_output_mask)
   {
-    // rg_system_log(RG_LOG_USER, NULL, x)
     va_list arg;
     va_start(arg, s);
-    vprintf(s, arg);
+    rg_system_vlog(RG_LOG_USER, NULL, s, arg);
+    // vprintf(s, arg);
     va_end(arg);
   }
 }

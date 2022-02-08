@@ -357,41 +357,35 @@ void I_InitSound(void)
 
 void I_ShutdownSound(void)
 {
-    RG_LOGI("called\n");
     music_player->shutdown();
 }
 
 void I_PlaySong(int handle, int looping)
 {
-    RG_LOGI("%d %d\n", handle, looping);
     music_player->play((void *)handle, looping);
     musicPlaying = true;
 }
 
 void I_PauseSong(int handle)
 {
-    RG_LOGI("handle: %d.\n", handle);
     music_player->pause();
     musicPlaying = false;
 }
 
 void I_ResumeSong(int handle)
 {
-    RG_LOGI("handle: %d.\n", handle);
     music_player->resume();
     musicPlaying = true;
 }
 
 void I_StopSong(int handle)
 {
-    RG_LOGI("handle: %d.\n", handle);
     music_player->stop();
     musicPlaying = false;
 }
 
 void I_UnRegisterSong(int handle)
 {
-    RG_LOGI("handle: %d\n", handle);
     music_player->unregistersong((void *)handle);
 }
 
@@ -407,8 +401,6 @@ int I_RegisterSong(const void *data, size_t len)
         handle = (int)music_player->registersong(data, len);
 
     free(mid);
-
-    RG_LOGI("handle: %d\n", handle);
 
     return handle;
 }
@@ -479,11 +471,13 @@ static bool screenshot_handler(const char *filename, int width, int height)
 
 static bool save_state_handler(const char *filename)
 {
+    rg_gui_alert("Not implemented", "Please use the in-game menu");
     return false;
 }
 
 static bool load_state_handler(const char *filename)
 {
+    rg_gui_alert("Not implemented", "Please use the in-game menu");
     return false;
 }
 
@@ -507,8 +501,8 @@ static void event_handler(int event, void *arg)
 void app_main()
 {
     const rg_handlers_t handlers = {
-        // .loadState = &load_state_handler,
-        // .saveState = &save_state_handler,
+        .loadState = &load_state_handler,
+        .saveState = &save_state_handler,
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
         .event = &event_handler,

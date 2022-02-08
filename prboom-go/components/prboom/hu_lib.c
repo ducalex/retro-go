@@ -519,7 +519,7 @@ void HUlib_drawMBg
 //
 void HUlib_drawMText(hu_mtext_t* m)
 {
-  int i, idx, y;
+  int i, idx;
   hu_textline_t *l;
 
   if (!*m->on)
@@ -528,7 +528,7 @@ void HUlib_drawMText(hu_mtext_t* m)
   // draw everything
   if (hud_list_bgon)
     HUlib_drawMBg(m->x,m->y,m->w,m->h,m->bg);
-  y = m->y + HU_REFRESHSPACING;
+  // y = m->y + HU_REFRESHSPACING;
   for (i=0 ; i<m->nl ; i++)
   {
     idx = m->cl - i;
@@ -653,20 +653,6 @@ void HUlib_initIText
 static void HUlib_delCharFromIText(hu_itext_t* it)
 {
   if (it->l.len != it->lm)
-    HUlib_delCharFromTextLine(&it->l);
-}
-
-//
-// HUlib_eraseLineFromIText()
-//
-// Deletes all characters from a hu_itext_t widget
-//
-// Passed the hu_itext_t
-// Returns nothing
-//
-static void HUlib_eraseLineFromIText(hu_itext_t* it)
-{
-  while (it->lm != it->l.len)
     HUlib_delCharFromTextLine(&it->l);
 }
 

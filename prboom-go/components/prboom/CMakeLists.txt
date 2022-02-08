@@ -9,11 +9,6 @@ register_component()
 
 rg_setup_compile_options(
     -mfix-esp32-psram-cache-issue
-    -Wno-error=maybe-uninitialized
-    -Wno-error=parentheses
-    -Wno-error=unused-value
-    -Wno-pointer-sign
-    -Wno-implicit-fallthrough
     -DHAVE_CONFIG_H
     -O2
 )

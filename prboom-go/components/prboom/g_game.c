@@ -1344,6 +1344,7 @@ void G_WorldDone (void)
         case 31:
           if (!secretexit)
             break;
+          /* fallthrough */
         case 6:
         case 11:
         case 20:
@@ -1522,7 +1523,7 @@ void G_DoLoadGame(void)
     // killough 2/22/98: "proprietary" version string :-)
     sprintf(vcheck, version_headers[i].ver_printf, version_headers[i].version);
 
-    if (!strncmp(save_p, vcheck, VERSIONSIZE)) {
+    if (!strncmp((char*)save_p, vcheck, VERSIONSIZE)) {
       savegame_compatibility = version_headers[i].comp_level;
       i = num_version_headers;
     }
@@ -1553,7 +1554,8 @@ void G_DoLoadGame(void)
     save_p += sizeof checksum;
    }
 
-  save_p += strlen(save_p)+1;
+  // save_p += strlen(save_p)+1;
+  while (*save_p++);
 
   compatibility_level = (savegame_compatibility >= prboom_4_compatibility) ? *save_p : savegame_compatibility;
   if (savegame_compatibility < prboom_6_compatibility)
@@ -1574,7 +1576,7 @@ void G_DoLoadGame(void)
   /* killough 3/1/98: Read game options
    * killough 11/98: move down to here
    */
-  save_p = (char*)G_ReadOptions(save_p);
+  save_p = (byte*)G_ReadOptions(save_p);
 
   // load a base level
   G_InitNew (gameskill, gameepisode, gamemap);
@@ -1733,9 +1735,10 @@ static void G_DoSaveGame (boolean menu)
     for (i = 0; i<numwadfiles; i++)
       {
         const char *const w = wadfiles[i].name;
-        CheckSaveGame(strlen(w)+2);
-        strcpy(save_p, w);
-        save_p += strlen(save_p);
+        size_t l = strlen(w);
+        CheckSaveGame(l+2);
+        memcpy(save_p, w, l);
+        save_p += l;
         *save_p++ = '\n';
       }
     *save_p++ = 0;
@@ -2181,7 +2184,7 @@ void G_WriteDemoTiccmd (ticcmd_t* cmd)
     I_Error("G_WriteDemoTiccmd: error writing demo");
 
   /* cph - alias demo_p to it so we can read it back */
-  demo_p = buf;
+  demo_p = (byte*)buf;
   G_ReadDemoTiccmd (cmd);         // make SURE it is exactly the same
 }
 
@@ -2410,7 +2413,7 @@ const byte *G_ReadOptions(const byte *demo_p)
     comp[i] = *demo_p++;
       }
 
-      *demo_p++; // forceOldBsp
+      demo_p++; // forceOldBsp
     }
   else  /* defaults for versions <= 2.02 */
     {

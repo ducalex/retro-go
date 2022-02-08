@@ -32,6 +32,9 @@
  *       e.g. inline assembly, different algorithms.
  *
  *-----------------------------------------------------------------------------*/
+// This is required because of macro hell
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#pragma GCC diagnostic ignored "-Wunused-variable"
 
 #include "doomstat.h"
 #include "w_wad.h"

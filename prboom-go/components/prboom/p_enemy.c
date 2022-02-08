@@ -1095,7 +1095,7 @@ void A_Look(mobj_t *actor)
 // killough 10/98:
 // Allows monsters to continue movement while attacking
 //
-
+#if 0
 static void A_KeepChasing(mobj_t *actor)
 {
   if (actor->movecount)
@@ -1106,6 +1106,7 @@ static void A_KeepChasing(mobj_t *actor)
       P_SmartMove(actor);
     }
 }
+#endif
 
 //
 // A_Chase
@@ -1691,7 +1692,7 @@ void A_VileChase(mobj_t* actor)
 
 		  if (!((corpsehit->flags ^ MF_COUNTKILL) & (MF_FRIEND | MF_COUNTKILL)))
 		    totallive++;
-		  
+
                   corpsehit->health = info->spawnhealth;
       P_SetTarget(&corpsehit->target, NULL);  // killough 11/98
 
@@ -2119,7 +2120,7 @@ void A_BossDeath(mobj_t *mo)
   else
     {
       // e6y
-      // Additional check of gameepisode is necessary, because 
+      // Additional check of gameepisode is necessary, because
       // there is no right or wrong solution for E4M6 in original EXEs,
       // there's nothing to emulate.
       if (comp[comp_666] && gameepisode < 4)
@@ -2131,7 +2132,7 @@ void A_BossDeath(mobj_t *mo)
         // http://www.doomworld.com/idgames/index.php?id=6909
         if (gamemap != 8)
           return;
-        if (mo->type == MT_BRUISER && gameepisode != 1) 
+        if (mo->type == MT_BRUISER && gameepisode != 1)
           return;
       }
       else

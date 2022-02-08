@@ -201,10 +201,11 @@ void T_VerticalDoor (vldoor_t* door)
           case blazeRaise:
           case genBlazeRaise:
             door->direction = 1;
-	    if (!comp[comp_blazing]) {
-	      S_StartSound((mobj_t *)&door->sector->soundorg,sfx_bdopn);
-	      break;
-	    }
+            if (!comp[comp_blazing]) {
+              S_StartSound((mobj_t *)&door->sector->soundorg,sfx_bdopn);
+              break;
+            }
+            /* fallthrough */
 
           default:             // other types bounce off the obstruction
             door->direction = 1;

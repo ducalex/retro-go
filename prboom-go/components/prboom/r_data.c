@@ -459,8 +459,7 @@ void R_InitTranMap(int progress)
   // Compose a default transparent filter map based on PLAYPAL.
   else if ((lump = W_CheckNumForName("PLAYPAL")) != -1)
     {
-      lprintf(LO_INFO, "R_InitTranMap: Gen from PLAYPAL(%d) [        ]"
-              "\x08\x08\x08\x08\x08\x08\x08\x08\x08", lump);
+      lprintf(LO_INFO, "R_InitTranMap: Gen from PLAYPAL(%d)...\n", lump);
 
       const struct PACKEDATTR {byte r, g, b;} *pal = W_CacheLumpNum(lump);
       byte *my_tranmap = Z_Malloc(256*256, PU_STATIC, 0);
@@ -484,9 +483,6 @@ void R_InitTranMap(int progress)
           int g1 = pal[i].g * w2;
           int b1 = pal[i].b * w2;
 
-          if (!(i & 31) && progress)
-            lprintf(LO_INFO,".");
-
           for (int j = 0; j < 256; j++)
             {
               int r = r1 + (pal[j].r * w1);
@@ -507,7 +503,7 @@ void R_InitTranMap(int progress)
 
       W_UnlockLumpName("PLAYPAL");
 
-      lprintf(LO_INFO, "\n");
+      lprintf(LO_INFO, "done.\n");
     }
 }
 

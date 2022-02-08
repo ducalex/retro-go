@@ -141,13 +141,19 @@ void D_PostEvent(event_t *ev)
   /* cph - suppress all input events at game start
    * FIXME: This is a lousy kludge */
   if (gametic < 3) return;
-  M_Responder(ev) ||
-	  (gamestate == GS_LEVEL && (
-				     HU_Responder(ev) ||
-				     ST_Responder(ev) ||
-				     AM_Responder(ev)
-				     )
-	  ) ||
+
+  if (M_Responder(ev))
+    return;
+
+  if (gamestate == GS_LEVEL) {
+    if (HU_Responder(ev))
+        return;
+    if (ST_Responder(ev))
+        return;
+    if (AM_Responder(ev))
+        return;
+  }
+
 	G_Responder(ev);
 }
 

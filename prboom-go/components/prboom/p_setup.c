@@ -335,11 +335,11 @@ static int checkGLVertex(int num)
 }
 
 
-static float GetDistance(int dx, int dy)
-{
-  float fx = (float)(dx)/FRACUNIT, fy = (float)(dy)/FRACUNIT;
-  return (float)sqrt(fx*fx + fy*fy);
-}
+// static float GetDistance(int dx, int dy)
+// {
+//   float fx = (float)(dx)/FRACUNIT, fy = (float)(dy)/FRACUNIT;
+//   return (float)sqrt(fx*fx + fy*fy);
+// }
 
 
 static int GetOffset(vertex_t *v1, vertex_t *v2)

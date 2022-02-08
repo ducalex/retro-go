@@ -2781,6 +2781,7 @@ static void P_SpawnScrollers(void)
             Add_Scroller(sc_floor, -dx, dy, control, s, accel);
           if (special != 253)
             break;
+        /* fallthrough */
 
         case 252: // carry objects on floor
           dx = FixedMul(dx,CARRYFACTOR);

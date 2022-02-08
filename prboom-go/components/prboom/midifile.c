@@ -181,12 +181,11 @@ static boolean ReadMultipleBytes (void *dest, size_t len, midimem_t *mf)
 
 static boolean ReadVariableLength(unsigned int *result, midimem_t *mf)
 {
-    int i;
-    byte b;
+    byte b = 0;
 
     *result = 0;
 
-    for (i=0; i<4; ++i)
+    for (int i=0; i<4; ++i)
     {
         if (!ReadByte(&b, mf))
         {
@@ -214,7 +213,7 @@ static boolean ReadVariableLength(unsigned int *result, midimem_t *mf)
 }
 
 // Read a byte sequence into the data buffer.
-static char *emptyEvent[4] = {0};
+static byte emptyEvent[4] = {0};
 
 static void *ReadByteSequence(unsigned int num_bytes, midimem_t *mf)
 {
@@ -258,7 +257,7 @@ static boolean ReadChannelEvent(midi_event_t *event,
                                 byte event_type, boolean two_param,
                                 midimem_t *mf)
 {
-    byte b;
+    byte b = 0;
 
     // Set basics:
 
@@ -324,7 +323,7 @@ static boolean ReadSysExEvent(midi_event_t *event, int event_type,
 
 static boolean ReadMetaEvent(midi_event_t *event, midimem_t *mf)
 {
-    byte b;
+    byte b = 0;
 
     event->event_type = MIDI_EVENT_META;
 
@@ -363,7 +362,7 @@ static boolean ReadMetaEvent(midi_event_t *event, midimem_t *mf)
 static boolean ReadEvent(midi_event_t *event, unsigned int *last_event_type,
                           midimem_t *mf)
 {
-    byte event_type;
+    byte event_type = 0;
 
     if (!ReadVariableLength(&event->delta_time, mf))
     {
@@ -759,7 +758,7 @@ void MIDI_RestartIterator(midi_track_iter_t *iter)
 }
 
 
-
+#if 0
 static void MIDI_PrintFlatListDBG (const midi_event_t **evs)
 {
   const midi_event_t *event;
@@ -830,7 +829,7 @@ static void MIDI_PrintFlatListDBG (const midi_event_t **evs)
     }
   }
 }
-    
+#endif
 
 
 
@@ -908,14 +907,14 @@ midi_event_t **MIDI_GenerateFlatList (midi_file_t *file)
     }
     epos++;
   }
-  
+
   if (trackactive)
   { // unexpected EOF
     lprintf (LO_WARN, "MIDI_GenerateFlatList: Unexpected end of midi file\n");
     free (ret);
     return NULL;
   }
-  
+
   // last end of track event is preserved though
   epos[-1]->data.meta.type = MIDI_META_END_OF_TRACK;
 
@@ -1051,7 +1050,7 @@ midi_file_t *MIDI_LoadFileSpecial (midimem_t *mf)
   midi_event_t **flatlist;
   midi_file_t *base = MIDI_LoadFile (mf);
   midi_file_t *ret;
-  
+
   double opi;
 
   int epos = 0;
@@ -1089,8 +1088,8 @@ midi_file_t *MIDI_LoadFileSpecial (midimem_t *mf)
     midi_event_t *nextev;
 
     if (ret->tracks->num_events == ret->tracks->num_event_mem)
-    { 
-      ret->tracks->num_event_mem += 100; 
+    {
+      ret->tracks->num_event_mem += 100;
       ret->tracks->events = realloc (ret->tracks->events, sizeof (midi_event_t) * ret->tracks->num_event_mem);
     }
 
