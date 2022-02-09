@@ -26,8 +26,8 @@
 // OpCodes
 static const struct
 {
-   uint32_t addr_mode;
-   const char name[6];
+	uint32_t addr_mode;
+	const char name[6];
 } opcodes[0x100] = {
 	{AM_IMMED, "BRK"},		/* $00 */
 	{AM_ZPINDX, "ORA"},		/* $01 */
