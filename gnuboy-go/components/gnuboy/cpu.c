@@ -340,7 +340,7 @@ static inline void serial_advance(int cycles)
 	Might emulate up to cycles+(11) time units (longest op takes 12
 	cycles in single-speed mode)
 */
-int cpu_emulate(int cycles)
+IRAM_ATTR int cpu_emulate(int cycles)
 {
 	int clen, temp;
 	int remaining = cycles;

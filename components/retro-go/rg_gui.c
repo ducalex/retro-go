@@ -1,6 +1,3 @@
-// This saves almost 10KB when the rest is compiled with -O3!
-#pragma GCC optimize ("-O2")
-
 #include <sys/time.h>
 #include <unistd.h>
 #include <stdlib.h>

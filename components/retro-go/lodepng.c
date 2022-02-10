@@ -24,7 +24,6 @@ freely, subject to the following restrictions:
 */
 
 /* Retro-Go config (this should be in CMakeLists.txt...) */
-#pragma GCC optimize ("-O2")
 #define LODEPNG_NO_COMPILE_ANCILLARY_CHUNKS
 #define LODEPNG_NO_COMPILE_ERROR_TEXT
 /* End Retro-Go config */

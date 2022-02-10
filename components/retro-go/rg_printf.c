@@ -29,7 +29,6 @@
 //        malloc for printf (and may not be thread safe).
 //
 ///////////////////////////////////////////////////////////////////////////////
-#pragma GCC optimize ("-Os")
 
 #include <stdbool.h>
 #include <stdint.h>

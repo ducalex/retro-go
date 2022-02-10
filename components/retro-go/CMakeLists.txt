@@ -3,7 +3,7 @@ set(COMPONENT_ADD_INCLUDEDIRS ".")
 set(COMPONENT_REQUIRES "spi_flash fatfs app_update esp_adc_cal esp32 json")
 register_component()
 
-component_compile_options(-O3 -DRG_REPLACE_PRINTF_FUNCTIONS)
+component_compile_options(-O2 -DRG_REPLACE_PRINTF_FUNCTIONS)
 
 if($ENV{ENABLE_PROFILING})
     component_compile_options(-DENABLE_PROFILING)
