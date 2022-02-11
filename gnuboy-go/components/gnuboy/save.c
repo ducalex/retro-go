@@ -1,10 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <malloc.h>
-#include <unistd.h>
-#include <time.h>
-#include <ctype.h>
 
 #include "gnuboy.h"
 #include "hw.h"
@@ -42,6 +38,14 @@ typedef struct
 	void *ptr;
 	int len;
 } sblock_t;
+
+// This is the format used by VBA, maybe others
+typedef struct
+{
+	un32 s, m, h, d, flags;
+	un32 regs[5];
+	un64 rt;
+} srtc_t;
 
 static un32 ver;
 
@@ -131,31 +135,32 @@ int sram_load(const char *file)
 	cart.sram_dirty = 0;
 	cart.sram_saved = 0;
 
-	if (fread(cart.rambanks, cart.ramsize * 8192, 1, f) == 1)
+	for (int i = 0; i < cart.ramsize; i++)
 	{
-		cart.sram_saved = (1 << cart.ramsize) - 1;
-
-		if (cart.has_rtc)
+		if (fseek(f, i * 8192, SEEK_SET) == 0 && fread(cart.rambanks[i], 8192, 1, f) == 1)
 		{
-			// Load RTC: Try old format
-			int tmp = fscanf(f, "%d %*d %d %02d %02d %02d %02d\n%*d\n",
-				&rtc.flags, &rtc.d, &rtc.h, &rtc.m, &rtc.s, &rtc.ticks);
-			// Fallback to new format (VBA-M)
-			if (tmp < 5)
-			{
-				fseek(f, cart.ramsize * 8192, SEEK_SET);
-				fread(&rtc.s, 4, 1, f);
-				fread(&rtc.m, 4, 1, f);
-				fread(&rtc.h, 4, 1, f);
-				fread(&rtc.d, 4, 1, f);
-				fread(&rtc.flags, 4, 1, f);
-				fread(&rtc.regs[0], 4, 1, f);
-				fread(&rtc.regs[1], 4, 1, f);
-				fread(&rtc.regs[2], 4, 1, f);
-				fread(&rtc.regs[3], 4, 1, f);
-				fread(&rtc.regs[4], 4, 1, f);
-				// fread(&rt, 8, 1, f); // don't care
-			}
+			MESSAGE_INFO("Loaded SRAM bank %d.\n", i);
+			cart.sram_saved = (1 << i);
+		}
+	}
+
+	if (cart.has_rtc)
+	{
+		srtc_t rtc_buf;
+
+		if (fseek(f, cart.ramsize * 8192, SEEK_SET) == 0 && fread(&rtc_buf, 48, 1, f) == 1)
+		{
+			rtc.s = rtc_buf.s;
+			rtc.m = rtc_buf.m;
+			rtc.h = rtc_buf.h;
+			rtc.d = rtc_buf.d;
+			rtc.flags = rtc_buf.flags;
+			rtc.regs[0] = rtc_buf.regs[0];
+			rtc.regs[1] = rtc_buf.regs[1];
+			rtc.regs[2] = rtc_buf.regs[2];
+			rtc.regs[3] = rtc_buf.regs[3];
+			rtc.regs[4] = rtc_buf.regs[4];
+			MESSAGE_INFO("Loaded RTC section %03d %02d:%02d:%02d.\n", rtc.d, rtc.h, rtc.m, rtc.s);
 		}
 	}
 
@@ -202,19 +207,16 @@ int sram_save(const char *file, bool quick_save)
 
 	if (cart.has_rtc)
 	{
-		int64_t rt = RTC_BASE + (rtc.s + (rtc.m * 60) + (rtc.h * 3600) + (rtc.d * 86400));
-		fseek(f, cart.ramsize * 8192, SEEK_SET);
-		fwrite(&rtc.s, 4, 1, f);
-		fwrite(&rtc.m, 4, 1, f);
-		fwrite(&rtc.h, 4, 1, f);
-		fwrite(&rtc.d, 4, 1, f);
-		fwrite(&rtc.flags, 4, 1, f);
-		fwrite(&rtc.regs[0], 4, 1, f);
-		fwrite(&rtc.regs[1], 4, 1, f);
-		fwrite(&rtc.regs[2], 4, 1, f);
-		fwrite(&rtc.regs[3], 4, 1, f);
-		fwrite(&rtc.regs[4], 4, 1, f);
-		fwrite(&rt, 8, 1, f);
+		srtc_t rtc_buf = {
+			rtc.s, rtc.m, rtc.h, rtc.d, rtc.flags,
+			rtc.regs[0], rtc.regs[1], rtc.regs[2],
+			rtc.regs[3], rtc.regs[4],
+			RTC_BASE + rtc.s + (rtc.m * 60) + (rtc.h * 3600) + (rtc.d * 86400),
+		};
+		if (fseek(f, cart.ramsize * 8192, SEEK_SET) == 0 && fwrite(&rtc_buf, 48, 1, f) == 1)
+		{
+			MESSAGE_INFO("Saved RTC section.\n");
+		}
 	}
 
 	fclose(f);
