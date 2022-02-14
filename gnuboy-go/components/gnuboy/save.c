@@ -209,8 +209,7 @@ int sram_save(const char *file, bool quick_save)
 	{
 		srtc_t rtc_buf = {
 			rtc.s, rtc.m, rtc.h, rtc.d, rtc.flags,
-			rtc.regs[0], rtc.regs[1], rtc.regs[2],
-			rtc.regs[3], rtc.regs[4],
+			{rtc.regs[0], rtc.regs[1], rtc.regs[2], rtc.regs[3], rtc.regs[4]},
 			RTC_BASE + rtc.s + (rtc.m * 60) + (rtc.h * 3600) + (rtc.d * 86400),
 		};
 		if (fseek(f, cart.ramsize * 8192, SEEK_SET) == 0 && fwrite(&rtc_buf, 48, 1, f) == 1)

@@ -134,7 +134,7 @@ static inline void begin_panic_trace(const char *context, const char *message)
 IRAM_ATTR void esp_panic_putchar_hook(char c)
 {
     if (panicTrace.magicWord != RG_STRUCT_MAGIC)
-        begin_panic_trace("esp_panic", "esp_panic");
+        begin_panic_trace("esp_panic", NULL);
     logbuf_print(&panicTrace.log, (char[2]){c, 0});
 }
 
@@ -327,7 +327,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         if (panicTrace.magicWord == RG_STRUCT_MAGIC)
         {
             RG_LOGI("Panic log found, saving to sdcard...\n");
-            if (panicTrace.message[0])
+            if (panicTrace.message[0] && strcmp(panicTrace.message, "(none)") != 0)
                 strcpy(message, panicTrace.message);
 
             if (rg_system_save_trace(RG_ROOT_PATH "/crash.log", 1))
