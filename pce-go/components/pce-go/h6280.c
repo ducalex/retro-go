@@ -24,7 +24,7 @@ h6280_reset(void)
 	CPU.P = (FL_I|FL_B);
 	CPU.S = 0xFF;
 	CPU.PC = pce_read16(VEC_RESET);
-	CPU.irq_mask = CPU.irq_lines = 0;
+	CPU.irq_mask = CPU.irq_mask_delay = CPU.irq_lines = 0;
 }
 
 
@@ -62,7 +62,7 @@ h6280_run(void)
 	}
 
 	/* Handle pending interrupts (Should be in the loop, but it's too slow) */
-	uint8_t irq = CPU.irq_lines & ~CPU.irq_mask & INT_MASK;
+	unsigned irq = CPU.irq_lines & ~CPU.irq_mask & INT_MASK;
 	if ((CPU.P & FL_I) == 0 && irq) {
 		interrupt(irq);
 	}

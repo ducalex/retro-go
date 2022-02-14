@@ -495,13 +495,13 @@ gfx_run(void)
 		}
 
 		/* VRAM to SATB DMA */
-		if (PCE.VDC.satb == DMA_TRANSFER_PENDING || IO_VDC_REG[DCR].W & 0x0010) {
+		if (PCE.VDC.satb == DMA_TRANSFER_PENDING || AutoSATBON) {
 			memcpy(PCE.SPRAM, PCE.VRAM + IO_VDC_REG[SATB].W, 512);
 			PCE.VDC.satb = DMA_TRANSFER_COUNTER + 4;
 		}
 
 		/* Frame done, we can now process pending res change. */
-		if (PCE.VDC.mode_chg && IO_VDC_REG[VCR].W != 0) {
+		if (PCE.VDC.mode_chg) {
 			TRACE_GFX("Changing mode: VDS = %04x VSW = %04x VDW = %04x VCR = %04x\n",
 				IO_VDC_REG[VPR].B.h, IO_VDC_REG[VPR].B.l,
 				IO_VDC_REG[VDW].W, IO_VDC_REG[VCR].W);

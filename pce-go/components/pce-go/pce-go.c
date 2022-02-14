@@ -49,6 +49,7 @@ static save_var_t SaveStateVars[] =
 
 	// IRQ
 	SVAR_1("IRQ.mask", CPU.irq_mask),           SVAR_1("IRQ.lines", CPU.irq_lines),
+	SVAR_1("IRQ.m_delay", CPU.irq_mask_delay),
 
 	// PSG
 	SVAR_1("PSG.ch", PCE.PSG.ch),               SVAR_1("PSG.vol", PCE.PSG.volume),
@@ -63,7 +64,7 @@ static save_var_t SaveStateVars[] =
 	// VDC
 	SVAR_A("VDC.regs", PCE.VDC.regs),           SVAR_1("VDC.reg", PCE.VDC.reg),
 	SVAR_1("VDC.status", PCE.VDC.status),       SVAR_1("VDC.satb", PCE.VDC.satb),
-	SVAR_4("VDC.irqs", PCE.VDC.pending_irqs),
+	SVAR_4("VDC.irqs", PCE.VDC.pending_irqs),   SVAR_1("VDC.vram", PCE.VDC.vram),
 
 	// Timer
 	SVAR_4("TMR.reload", PCE.Timer.reload),   SVAR_4("TMR.running", PCE.Timer.running),

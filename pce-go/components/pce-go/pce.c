@@ -36,6 +36,9 @@ pce_reset(bool hard)
 		memset(&PCE.NULLRAM, 0xFF, sizeof(PCE.NULLRAM));
 	}
 
+	IO_VDC_REG[VPR].B.h = 0x0f;
+	IO_VDC_REG[VPR].B.l = 0x02;
+
 	PCE.SF2 = 0;
 	PCE.Timer.cycles_per_line = 113;
 	Cycles = 0;
@@ -228,7 +231,12 @@ pce_readIO(uint16_t A)
 		case 2: ret = 0xFF; break; // Write only
 		case 3: ret = 0xFF; break; // Write only
 		case 4: ret = PCE.VCE.regs[PCE.VCE.reg.W].B.l; break; // Color LSB (8 bit)
-		case 5: ret = PCE.VCE.regs[PCE.VCE.reg.W++].B.h | 0xFE; break; // Color MSB (1 bit)
+		case 5: {
+			ret = (PCE.VCE.regs[PCE.VCE.reg.W].B.h & 1) | 0xFE; // Color MSB (1 bit)
+			PCE.VCE.reg.W++;
+			PCE.VCE.reg.W &= 0x1FF;
+			break;
+		}
 		case 6: ret = 0xFF; break; // Unused
 		}
 		break;
@@ -343,11 +351,8 @@ pce_writeIO(uint16_t A, uint8_t V)
 				break;
 
 			case BXR:
-				/*
-					if (IO_VDC_REG[BXR].B.l == V)
-					return;
-					*/
-				gfx_latch_context(0);
+				if (IO_VDC_REG_ACTIVE.B.l != V)
+					gfx_latch_context(0);
 				break;
 
 			case BYR:                           // Vertical screen offset
@@ -363,6 +368,7 @@ pce_writeIO(uint16_t A, uint8_t V)
 				break;
 
 			case HSR:
+				V = 0x1F;
 				PCE.VDC.mode_chg = 1;
 				break;
 
@@ -372,6 +378,9 @@ pce_writeIO(uint16_t A, uint8_t V)
 				break;
 
 			case VPR:
+				V &= 0x1F;
+				PCE.VDC.mode_chg = 1;
+				break;
 			case VDW:
 			case VCR:
 				PCE.VDC.mode_chg = 1;
@@ -424,11 +433,11 @@ pce_writeIO(uint16_t A, uint8_t V)
 				break;
 
 			case RCR:                           // Raster Compare Register
-				V &= 0x3FF;
+				V &= 0x3;
 				break;
 
 			case BXR:                           // Horizontal screen offset
-				V &= 3;
+				V &= 0x3;
 				if (IO_VDC_REG_ACTIVE.B.h != V) {
 					gfx_latch_context(0);
 				}
@@ -436,7 +445,7 @@ pce_writeIO(uint16_t A, uint8_t V)
 
 			case BYR:                           // Vertical screen offset
 				gfx_latch_context(0);
-				V &= 1;
+				V &= 0x1;
 				PCE.ScrollYDiff = PCE.Scanline - 1 - IO_VDC_MINLINE;
 				if (PCE.ScrollYDiff < 0) {
 					MESSAGE_DEBUG("PCE.ScrollYDiff went negative when substraction VPR.h/.l (%d,%d)\n",
@@ -448,18 +457,26 @@ pce_writeIO(uint16_t A, uint8_t V)
 				break;
 
 			case HSR:
+				V &= 0x7F;
 				PCE.VDC.mode_chg = 1;
 				break;
 
 			case HDR:                           // Horizontal Definition
+				V &= 0x7F;
 				TRACE_GFX("VDC[HDR].h = %d\n", V);
 				break;
 
 			case VPR:
-			case VDW:
-			case VCR:
+				V &= 0x7F;
 				PCE.VDC.mode_chg = 1;
 				break;
+			case VDW:
+				V &= 0x1;
+				PCE.VDC.mode_chg = 1;
+				break;
+			case VCR:
+				PCE.VDC.mode_chg = 1;
+				return;//not interested in the MSB of VCR
 
 			case DCR:                           // DMA Control
 				break;

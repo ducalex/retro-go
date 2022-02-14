@@ -20,6 +20,7 @@ typedef struct
 
 	/* Interrupts */
 	uint8_t irq_mask;
+	uint8_t irq_mask_delay;
 	uint8_t irq_lines;
 
 	/* Misc */
