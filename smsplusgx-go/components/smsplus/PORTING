@@ -172,7 +172,7 @@
  I'm not sure the 8-bit pixel to 16-bit pixel conversion function
  in 'render.c' is endian safe.
 
- You need to either define or not define 'IS_LITTLE_ENDIAN' in your makefile,
+ You need to either define or not define 'IS_BIG_ENDIAN' in your makefile,
  depending on your needs.
 
  1.) Graphics

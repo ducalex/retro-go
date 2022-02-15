@@ -75,28 +75,30 @@
 // Opcode execution
 //
 
-//#define	xADC()\
-//{\
-//	UBYTE	value=CPU_PEEK(mOperand);\
-//	UBYTE	oldA=mA;\
-//	if(!mD)\
-//	{\
-//		SWORD sum=(SWORD)((SBYTE)mA)+(SWORD)((SBYTE)value)+(mC?1:0);\
-//		mV=((sum > 127) || (sum < -128));\
-//		sum=(SWORD)mA + (SWORD)value + (mC?1:0);\
-//		mA=(UBYTE)sum;\
-//		mC=(sum>0xff);\
-//		SET_NZ(mA);\
-//	}\
-//	else\
-//	{\
-//		SWORD sum=mBCDTable[0][mA]+mBCDTable[0][value]+(mC?1:0);\
-//		mC=(sum > 99);\
-//		mA=mBCDTable[1][sum & 0xff];\
-//		SET_NZ(mA);\
-//		mV=((oldA^mA)&0x80) && ((mA^value)&0x80);\
-//	}\
-//}
+/*
+#define	xADC()\
+{\
+	UBYTE	value=CPU_PEEK(mOperand);\
+	UBYTE	oldA=mA;\
+	if(!mD)\
+	{\
+		SWORD sum=(SWORD)((SBYTE)mA)+(SWORD)((SBYTE)value)+(mC?1:0);\
+		mV=((sum > 127) || (sum < -128));\
+		sum=(SWORD)mA + (SWORD)value + (mC?1:0);\
+		mA=(UBYTE)sum;\
+		mC=(sum>0xff);\
+		SET_NZ(mA);\
+	}\
+	else\
+	{\
+		SWORD sum=mBCDTable[0][mA]+mBCDTable[0][value]+(mC?1:0);\
+		mC=(sum > 99);\
+		mA=mBCDTable[1][sum & 0xff];\
+		SET_NZ(mA);\
+		mV=((oldA^mA)&0x80) && ((mA^value)&0x80);\
+	}\
+}
+*/
 
 #define xADC()\
 {\
@@ -222,14 +224,15 @@
 //
 // DONT USE THIS VERSION OF BIT, IT BREAKS CALGAMES TITLE SCREEN !!!!
 //
-//#define	xBIT()\
-//{\
-//	int value=CPU_PEEK(mOperand);\
-//	SET_Z(mA&value);\
-//\
-//	mN=value&0x80;\
-//	mV=value&0x40;\
-//}
+/*
+#define	xBIT()\
+{\
+	int value=CPU_PEEK(mOperand);\
+	SET_Z(mA&value);\
+	mN=value&0x80;\
+	mV=value&0x40;\
+}
+*/
 
 #define	xBMI()\
 {\
@@ -287,18 +290,19 @@
 	mPC&=0xffff;\
 }
 
-//#define	xBRK()\
-//{\
-//	mPC++;\
-//    PUSH(mPC>>8);\
-//	PUSH(mPC&0xff);\
-//	PUSH(PS()|0x10);\
-//\
-//	mD=FALSE;\
-//	mI=TRUE;\
-//\
-//	mPC=CPU_PEEKW(IRQ_VECTOR);\
-//}
+/*
+#define	xBRK()\
+{\
+	mPC++;\
+    PUSH(mPC>>8);\
+	PUSH(mPC&0xff);\
+	PUSH(PS()|0x10);\
+	mD=FALSE;\
+	mI=TRUE;\
+	mPC=CPU_PEEKW(IRQ_VECTOR);\
+}
+*/
+
 #define	xBRK()\
 {\
 	mPC++;\
@@ -368,39 +372,56 @@
 //
 // Alternate CMP code
 //
-//#define	xCMP()\
-//{\
-//	UBYTE value=CPU_PEEK(mOperand);\
-//	if(mA+0x100-value>0xff) mC=TRUE; else mC=FALSE;\
-//	value=mA+0x100-value;\
-//	mZ=!value;\
-//	mN=value&0x0080;\
-//}
-//
-//#define	xCPX()\
-//{\
-//	UBYTE value=CPU_PEEK(mOperand);\
-//	if(mX+0x100-value>0xff) mC=TRUE; else mC=FALSE;\
-//	value=mX+0x100-value;\
-//	mZ=!value;\
-//	mN=value&0x0080;\
-//}
-//
-//#define	xCPY()\
-//{\
-//	UBYTE value=CPU_PEEK(mOperand);\
-//	if(mY+0x100-value>0xff) mC=TRUE; else mC=FALSE;\
-//	value=mY+0x100-value;\
-//	mZ=!value;\
-//	mN=value&0x0080;\
-//}
+/*
+#define	xCMP()\
+{\
+	UBYTE value=CPU_PEEK(mOperand);\
+	if(mA+0x100-value>0xff) mC=TRUE; else mC=FALSE;\
+	value=mA+0x100-value;\
+	mZ=!value;\
+	mN=value&0x0080;\
+}
 
-//#define	xCMP()\
-//{\
-//	UWORD value=(UWORD)mA-CPU_PEEK(mOperand);\
-//	SET_NZ(value);\
-//	mC=!(value&0x0100);\
-//}
+#define	xCPX()\
+{\
+	UBYTE value=CPU_PEEK(mOperand);\
+	if(mX+0x100-value>0xff) mC=TRUE; else mC=FALSE;\
+	value=mX+0x100-value;\
+	mZ=!value;\
+	mN=value&0x0080;\
+}
+
+#define	xCPY()\
+{\
+	UBYTE value=CPU_PEEK(mOperand);\
+	if(mY+0x100-value>0xff) mC=TRUE; else mC=FALSE;\
+	value=mY+0x100-value;\
+	mZ=!value;\
+	mN=value&0x0080;\
+}
+
+#define	xCMP()\
+{\
+	UWORD value=(UWORD)mA-CPU_PEEK(mOperand);\
+	SET_NZ(value);\
+	mC=!(value&0x0100);\
+}
+
+#define	xCPX()\
+{\
+	UWORD value=(UWORD)mX-CPU_PEEK(mOperand);\
+	SET_NZ(value);\
+	mC=!(value&0x0100);\
+}
+
+#define	xCPY()\
+{\
+	UWORD value=(UWORD)mY-CPU_PEEK(mOperand);\
+	SET_NZ(value);\
+	mC=!(value&0x0100);\
+}
+*/
+
 #define	xCMP()\
 {\
 	int value=CPU_PEEK(mOperand);\
@@ -409,12 +430,6 @@
 	SET_NZ((UBYTE)(mA - value))\
 }
 
-//#define	xCPX()\
-//{\
-//	UWORD value=(UWORD)mX-CPU_PEEK(mOperand);\
-//	SET_NZ(value);\
-//	mC=!(value&0x0100);\
-//}
 #define	xCPX()\
 {\
 	int value=CPU_PEEK(mOperand);\
@@ -423,12 +438,6 @@
 	SET_NZ((UBYTE)(mX - value))\
 }
 
-//#define	xCPY()\
-//{\
-//	UWORD value=(UWORD)mY-CPU_PEEK(mOperand);\
-//	SET_NZ(value);\
-//	mC=!(value&0x0100);\
-//}
 #define	xCPY()\
 {\
 	int value=CPU_PEEK(mOperand);\
@@ -661,30 +670,32 @@
 	mPC++;\
 }
 
-//#define	xSBC()\
-//{\
-//	UBYTE oldA=mA;\
-//	if(!mD)\
-//	{\
-//		UBYTE value=~(CPU_PEEK(mOperand));\
-//		SWORD difference=(SWORD)((SBYTE)mA)+(SWORD)((SBYTE)value)+(mC?1:0);\
-//		mV=((difference>127)||(difference<-128));\
-//		difference=((SWORD)mA)+((SWORD)value)+ (mC?1:0);\
-//		mA=(UBYTE)difference;\
-//		mC=(difference>0xff);\
-//		SET_NZ(mA);\
-//	}\
-//	else\
-//	{\
-//		UBYTE value=CPU_PEEK(mOperand);\
-//		SWORD difference=mBCDTable[0][mA]-mBCDTable[0][value]-(mC?0:1);\
-//		if(difference<0) difference+=100;\
-//		mA=mBCDTable[1][difference];\
-//		mC=(oldA>=(value+(mC?0:1)));\
-//		mV=((oldA^mA)&0x80)&&((mA^value)&0x80);\
-//		SET_NZ(mA);\
-//	}\
-//}
+/*
+#define	xSBC()\
+{\
+	UBYTE oldA=mA;\
+	if(!mD)\
+	{\
+		UBYTE value=~(CPU_PEEK(mOperand));\
+		SWORD difference=(SWORD)((SBYTE)mA)+(SWORD)((SBYTE)value)+(mC?1:0);\
+		mV=((difference>127)||(difference<-128));\
+		difference=((SWORD)mA)+((SWORD)value)+ (mC?1:0);\
+		mA=(UBYTE)difference;\
+		mC=(difference>0xff);\
+		SET_NZ(mA);\
+	}\
+	else\
+	{\
+		UBYTE value=CPU_PEEK(mOperand);\
+		SWORD difference=mBCDTable[0][mA]-mBCDTable[0][value]-(mC?0:1);\
+		if(difference<0) difference+=100;\
+		mA=mBCDTable[1][difference];\
+		mC=(oldA>=(value+(mC?0:1)));\
+		mV=((oldA^mA)&0x80)&&((mA^value)&0x80);\
+		SET_NZ(mA);\
+	}\
+}
+*/
 
 #define	xSBC()\
 {\
@@ -780,14 +791,15 @@
 // THE COMMENTED OUT CODE IS DERIVED FROM THE MAME 65C02 MODEL AND
 // LOOKS TO BE INCORRECT i.e When plugged into Handy things stop working
 //
-//#define	xTRB()\
-//{\
-//	int value=CPU_PEEK(mOperand);\
-//	value &= ~mA;\
-//	SET_NZ(value);\
-//	CPU_POKE(mOperand,value);\
-//}
-
+/*
+#define	xTRB()\
+{\
+	int value=CPU_PEEK(mOperand);\
+	value &= ~mA;\
+	SET_NZ(value);\
+	CPU_POKE(mOperand,value);\
+}
+*/
 #define	xTSB()\
 {\
 	int value=CPU_PEEK(mOperand);\
@@ -799,13 +811,15 @@
 // THE COMMENTED OUT CODE IS DERIVED FROM THE MAME 65C02 MODEL AND
 // LOOKS TO BE INCORRECT i.e When plugged into Handy things stop working
 //
-//#define	xTSB()\
-//{\
-//	int value=CPU_PEEK(mOperand);\
-//	value |= mA;\
-//	SET_NZ(value);\
-//	CPU_POKE(mOperand,value);\
-//}
+/*
+#define	xTSB()\
+{\
+	int value=CPU_PEEK(mOperand);\
+	value |= mA;\
+	SET_NZ(value);\
+	CPU_POKE(mOperand,value);\
+}
+*/
 
 #define	xTSX()\
 {\

@@ -153,7 +153,7 @@ static inline uint32 read_dword(void *address)
 {
   if ((uint32)address & 3)
   {
-#ifdef IS_LITTLE_ENDIAN  /* little endian version */
+#ifndef IS_BIG_ENDIAN  /* little endian version */
     return ( *((uint8 *)address) +
             (*((uint8 *)address+1) << 8)  +
             (*((uint8 *)address+2) << 16) +
@@ -173,7 +173,7 @@ static inline void write_dword(void *address, uint32 data)
 {
   if ((uint32)address & 3)
   {
-#ifdef IS_LITTLE_ENDIAN
+#ifndef IS_BIG_ENDIAN
     *((uint8 *)address) =  data;
     *((uint8 *)address+1) = (data >> 8);
     *((uint8 *)address+2) = (data >> 16);
@@ -294,7 +294,7 @@ void render_init(void)
       out |= (j & (0x80 >> x)) ? (uint32)(8 << (x << 2)) : 0;
       out |= (i & (0x80 >> x)) ? (uint32)(4 << (x << 2)) : 0;
     }
-#if IS_LITTLE_ENDIAN
+#ifndef IS_BIG_ENDIAN
     _bp_lut[(j << 8) | (i)] = out;
 #else
     _bp_lut[(i << 8) | (j)] = out;
@@ -551,9 +551,10 @@ IRAM_ATTR void render_bg_sms(int line)
     /* Get name table attribute word */
     attr = nt[(column + nt_scroll) & 0x1F];
 
-#ifndef IS_LITTLE_ENDIAN
-    attr = (((attr & 0xFF) << 8) | ((attr & 0xFF00) >> 8));
+#ifdef IS_BIG_ENDIAN
+    attr = (attr << 8) | (attr >> 8);
 #endif
+
     /* Expand priority and palette bits */
     atex_mask = atex[(attr >> 11) & 3];
 
@@ -575,9 +576,10 @@ IRAM_ATTR void render_bg_sms(int line)
 
     attr = nt[(column + nt_scroll) & 0x1F];
 
-#ifndef IS_LITTLE_ENDIAN
-    attr = (((attr & 0xFF) << 8) | ((attr & 0xFF00) >> 8));
+#ifdef IS_BIG_ENDIAN
+    attr = (attr << 8) | (attr >> 8);
 #endif
+
     a = (attr >> 7) & 0x30;
 
     uint8* ptr = (uint8*)tile_get(attr, v_row >> 3);

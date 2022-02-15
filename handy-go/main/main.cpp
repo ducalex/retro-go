@@ -164,6 +164,8 @@ extern "C" void app_main(void)
         .screenshot = &screenshot_handler,
         .event = NULL,
         .netplay = NULL,
+        .memRead = NULL,
+        .memWrite = NULL,
     };
     const rg_gui_option_t options[] = {
         {100, "Rotation", NULL, 1, &rotation_cb},

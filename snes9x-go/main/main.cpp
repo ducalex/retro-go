@@ -113,7 +113,7 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
 
 	if (event == RG_DIALOG_ENTER)
 	{
-		rg_gui_option_t options[keymap.size + 2] = {0};
+		rg_gui_option_t options[keymap.size + 2] = {};
 		rg_gui_option_t *option = options;
 		char values[keymap.size + 2][16] = {0};
 
@@ -195,6 +195,8 @@ extern "C" void app_main(void)
 		.screenshot = &screenshot_handler,
 		.event = NULL,
 		.netplay = NULL,
+		.memRead = NULL,
+		.memWrite = NULL,
 	};
 	const rg_gui_option_t options[] = {
 		{2, "Controls", NULL, 1, &menu_keymap_cb},

@@ -81,7 +81,7 @@ typedef struct
    }                                                 \
 }
 
-#ifdef IS_LITTLE_ENDIAN
+#ifndef IS_BIG_ENDIAN
    static inline uint16 swap16(uint16 x)
    {
       return (x << 8) | (x >> 8);

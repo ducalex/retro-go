@@ -39,7 +39,7 @@
 // #define USE_SRAM_FILE
 
 /* Uncomment on big-endian machines */
-// #define IS_LITTLE_ENDIAN
+// #define IS_BIG_ENDIAN
 
 /* End configuration */
 

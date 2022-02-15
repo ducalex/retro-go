@@ -53,7 +53,7 @@ __extension__ typedef signed long long      INT64;
  * which expects 'int' really.
  ******************************************************************************/
 typedef union {
-#ifdef IS_LITTLE_ENDIAN
+#ifndef IS_BIG_ENDIAN
   struct { UINT8 l,h,h2,h3; } b;
   struct { UINT16 l,h; } w;
 #else

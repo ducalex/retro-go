@@ -527,7 +527,7 @@ void lcd_reset(bool hard)
 
 static inline void pal_update(byte i)
 {
-#ifdef IS_LITTLE_ENDIAN
+#ifndef IS_BIG_ENDIAN
 	un32 c = ((un16*)lcd.pal)[i];
 #else
 	un32 c = ((lcd.pal[i << 1]) | ((lcd.pal[(i << 1) | 1]) << 8));

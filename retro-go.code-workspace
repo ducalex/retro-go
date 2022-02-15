@@ -39,7 +39,6 @@
 		"git.confirmForcePush": false,
 		"C_Cpp.default.defines": [
 			"PROJECT_VER",
-			"IS_LITTLE_ENDIAN",
 			"INLINE=",
 			"uint=unsigned int",
 			"CONFIG_FREERTOS_HZ=100",

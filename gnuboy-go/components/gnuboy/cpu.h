@@ -3,7 +3,7 @@
 #include "gnuboy.h"
 
 /* Quick access CPU registers */
-#ifdef IS_LITTLE_ENDIAN
+#ifndef IS_BIG_ENDIAN
 #define LB(r) ((r).b[0])
 #define HB(r) ((r).b[1])
 #else
