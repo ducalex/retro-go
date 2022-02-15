@@ -1,3 +1,12 @@
+# Retro-Go 1.31 (2022-02-15)
+- Launcher: Fixed occasional crash when changing tab
+- GBC: Fixed high cpu usage / slowdowns
+- GBC: Fixed RTC format in SRAM
+- All: Fixed crash when changing audio sink in game
+- All: Fixed occasional settings reset if a panic occurred while a key held down
+- All: Improved panic handling, more detailed crash.log
+
+
 # Retro-Go 1.30 (2022-02-02)
 - NES: Fixed Lagrange Point
 - NES: Added support for a few untested mappers
