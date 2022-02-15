@@ -121,7 +121,7 @@ static void fds_hblank(int scanline)
 
 static uint8 fds_read(uint32 address)
 {
-    // MESSAGE_INFO("FDS read at %04X\n", address);
+    MESSAGE_INFO("FDS read at %04X\n", address);
     uint8 ret = 0;
 
     switch (address)
@@ -133,21 +133,20 @@ static uint8 fds_read(uint32 address)
             return ret;
 
         case 0x4031:                    // Read data register
-            if (fds.regs[5] & 0x04)
+            if (fds.regs[5] & REG5_READ_MODE)
             {
                 CLEAR_IRQ();
                 irq.seek_counter = SEEK_TIME;
 
                 if (fds.block_pos < fds.block_size)
                     return fds.block_ptr[fds.block_pos++];
-                else
-                    return 0;
+                return 0;
             }
             return 0xFF;
 
         case 0x4032:                    // Disk drive status register
             // wprotect|/ready|/inserted
-            if (!(fds.regs[5] & 1) || (fds.regs[5] & 2))
+            if (!(fds.regs[5] & REG5_MOTOR_ON) || (fds.regs[5] & REG5_TRANSFER_RESET))
                 return 0b110;
             return 0b100;
 
@@ -162,7 +161,7 @@ static uint8 fds_read(uint32 address)
 
 static void fds_write(uint32 address, uint8 value)
 {
-    // MESSAGE_INFO("FDS write at %04X: %02X\n", address, value);
+    MESSAGE_INFO("FDS write at %04X: %02X\n", address, value);
 
     switch (address)
     {
@@ -279,7 +278,7 @@ static void fds_setstate(uint8 *state)
     //
 }
 
-void fds_init(rom_t *cart)
+static void fds_init(rom_t *cart)
 {
     uint8 *disk_ptr = cart->data_ptr;
 

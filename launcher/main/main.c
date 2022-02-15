@@ -100,27 +100,22 @@ static void retro_loop(void)
     int next_repeat = 0;
     int repeats = 0;
     int joystick, prev_joystick;
-    int selected_tab_last = -1;
+    int change_tab = 0;
     int browse_last = -1;
     int next_idle_event = 0;
     bool redraw_pending = true;
 
     while (true)
     {
-        if (gui.selected != selected_tab_last || gui.browse != browse_last)
+        if (change_tab || gui.browse != browse_last)
         {
-            int direction = (gui.selected - selected_tab_last) < 0 ? -1 : 1;
-            int skipped = 0;
-
-            gui_event(TAB_LEAVE, tab);
-
-            tab = gui_set_current_tab(gui.selected);
-
-            while (!tab->enabled && skipped < gui.tabcount)
+            if (change_tab)
             {
-                gui.selected += direction;
-                tab = gui_set_current_tab(gui.selected);
-                skipped++;
+                gui_event(TAB_LEAVE, tab);
+                tab = gui_set_current_tab(gui.selected + change_tab);
+                for (int tabs = gui.tabcount; !tab->enabled && --tabs > 0;)
+                    tab = gui_set_current_tab(gui.selected + change_tab);
+                change_tab = 0;
             }
 
             if (gui.browse)
@@ -133,7 +128,6 @@ static void retro_loop(void)
                 gui_event(TAB_ENTER, tab);
             }
 
-            selected_tab_last = gui.selected;
             browse_last = gui.browse;
             redraw_pending = true;
         }
@@ -176,10 +170,10 @@ static void retro_loop(void)
         if (gui.browse)
         {
             if (joystick == RG_KEY_SELECT) {
-                gui.selected--;
+                change_tab = -1;
             }
             else if (joystick == RG_KEY_START) {
-                gui.selected++;
+                change_tab = 1;
             }
             else if (joystick == RG_KEY_UP) {
                 gui_scroll_list(tab, SCROLL_LINE_UP, 0);
@@ -203,10 +197,10 @@ static void retro_loop(void)
         else
         {
             if (joystick & (RG_KEY_UP|RG_KEY_LEFT|RG_KEY_SELECT)) {
-                gui.selected--;
+                change_tab = -1;
             }
             else if (joystick & (RG_KEY_DOWN|RG_KEY_RIGHT|RG_KEY_START)) {
-                gui.selected++;
+                change_tab = 1;
             }
             else if (joystick == RG_KEY_A) {
                 gui.browse = true;

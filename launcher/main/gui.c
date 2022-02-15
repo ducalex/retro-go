@@ -173,7 +173,9 @@ const rg_image_t *gui_get_image(const char *type, const char *subtype)
 
 tab_t *gui_get_current_tab(void)
 {
-    return gui_get_tab(gui.selected);
+    tab_t *tab =gui_get_tab(gui.selected);
+    RG_ASSERT(tab, "current tab is NULL!");
+    return tab;
 }
 
 tab_t *gui_set_current_tab(int index)
