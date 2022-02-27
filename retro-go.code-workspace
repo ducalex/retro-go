@@ -34,7 +34,7 @@
 	],
 	"settings": {
 		"esp.sdk-path": "C:/Users/alex/Apps/esp-idf/frameworks/esp-idf-v4.1.2",
-		"esp.tools-path": "C:/Users/alex/Apps/esp-idf/tools/tools/xtensa-esp32-elf/esp-2020r3-8.4.0/xtensa-esp32-elf",
+		"esp.tools-path": "C:/Users/alex/Apps/esp-idf/tools/xtensa-esp32-elf/esp-2020r3-8.4.0/xtensa-esp32-elf",
 
 		"git.confirmForcePush": false,
 		"C_Cpp.default.defines": [

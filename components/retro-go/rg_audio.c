@@ -54,7 +54,7 @@ void rg_audio_init(int sampleRate)
         .communication_format = I2S_COMM_FORMAT_STAND_MSB,
         .dma_buf_count = 2,
         .dma_buf_len = RG_MIN(sampleRate / 50 + 1, 640), // The unit is stereo samples (4 bytes)
-        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,         // Interrupt level 1
+        .intr_alloc_flags = 0, // ESP_INTR_FLAG_LEVEL1
         .use_apll = 0
     };
     esp_err_t ret = ESP_FAIL;
