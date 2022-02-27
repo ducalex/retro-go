@@ -14,6 +14,7 @@ static int audioFilter = 0;
 static int audioVolume = 50;
 static bool audioMuted = false;
 static SemaphoreHandle_t audioDevLock;
+static int64_t dummyBusyUntil = 0;
 
 static const rg_sink_t sinks[] = {
     {RG_AUDIO_SINK_DUMMY,   0, "Dummy"},
@@ -182,9 +183,8 @@ void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
 
     if (audioSink == RG_AUDIO_SINK_DUMMY)
     {
-        // Simulate i2s_write delay. This isn't actually correct, we'd need to keep an internal
-        // timer to properly simulate that 1s elapses between calls to rg_audio_submit
-        usleep((audioSampleRate * 1000) / sampleCount);
+        usleep(RG_MAX(dummyBusyUntil - get_elapsed_time(), 1000));
+        dummyBusyUntil = get_elapsed_time() + ((audioSampleRate * 1000) / sampleCount);
         written = bufferSize;
     }
     else if (audioSink == RG_AUDIO_SINK_SPEAKER)
