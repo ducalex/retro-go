@@ -80,7 +80,7 @@ setting `Update: Full` in the options.
 ### Sound quality
 The volume isn't correctly attenuated on the GO, resulting in upper volume levels that are too loud and 
 lower levels that are distorted due to DAC resolution. A quick way to improve the audio is to cut one
-of the speaker wire and add a `15 Ohm (or thereabout)` resistor in series. Soldering is better but not 
+of the speaker wire and add a `33 Ohm (or thereabout)` resistor in series. Soldering is better but not 
 required, twisting the wires tightly will work just fine.
 [A more involved solution can be seen here.](https://wiki.odroid.com/odroid_go/silent_volume)
 
