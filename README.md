@@ -89,9 +89,6 @@ In Retro-Go, save states will provide you with the best and most reliable save e
 
 On real hardware, Game Boy games save their state to a battery-backed SRAM chip in the cartridge. A typical emulator on the deskop would save the SRAM to disk periodically or when leaving the emulator, and reload it when you restart the game. This isn't possible on the Odroid-GO because we can't detect when the device is about to be powered down and we can't save too often because it causes stuttering. That is why the auto save delay is configurable (disabled by default) and pausing the emulation (opening a menu) will also save to disk if needed. The SRAM file is then reloaded on startup (unless a save state loading was requested via "Resume").
 
-### Other issues
-An up to date list of incompatible/broken games can be found on the [ODROID-GO forum](https://forum.odroid.com/viewtopic.php?f=159&t=37599). This is also the place to submit bug reports and feature requests.
-
 
 # BIOS files
 Some emulators support loading a BIOS. The files should be placed as follows:
@@ -126,16 +123,16 @@ Patching esp-idf may be required for full functionality. Patches are located in 
 - `enable-exfat`: Enable exFAT support. I don't recommended it but it works if you need it.
 
 ## Build everything and generate .fw:
-1. `rg_tool.py build-fw` or `rg_tool.py release` (clean build)
+1. `./rg_tool.py build-fw` or `./rg_tool.py release` (clean build)
 
 For a smaller build you can also specify which apps you want, for example the launcher + nes + gameboy only:
-1. `rg_tool.py build-fw launcher nofrendo-go gnuboy-go`
+1. `./rg_tool.py build-fw launcher nofrendo-go gnuboy-go`
 
 ## Build, flash, and monitor individual apps for faster development:
 It would be tedious to build, move to SD, and flash a full .fw all the time during development. Instead you can:
-1. Flash: `rg_tool.py --port=COM3 --offset=0x100000 flash nofrendo-go`
-2. Monitor: `rg_tool.py --port=COM3 monitor nofrendo-go`
-3. Flash then monitor: `rg_tool.py --port=COM3 --offset=0x100000 run nofrendo-go`
+1. Flash: `./rg_tool.py --port=COM3 --offset=0x100000 flash nofrendo-go`
+2. Monitor: `./rg_tool.py --port=COM3 monitor nofrendo-go`
+3. Flash then monitor: `./rg_tool.py --port=COM3 --offset=0x100000 run nofrendo-go`
 
 Note: You will need to know where retro-go is located on your device. Typically it is 0x100000 for 
 the ODROID-GO and 0x50000 for the MRGC-G32. You can confirm that by searching the serial output for
@@ -180,7 +177,7 @@ Retro-Go and ESP32-specific code exclusively in their port file (main.c). This m
 - Some icons from [Rokey](https://iconarchive.com/show/seed-icons-by-rokey.html).
 - Background images from [es-theme-gbz35](https://github.com/rxbrad/es-theme-gbz35).
 - Special thanks to [RGHandhelds](https://www.rghandhelds.com/) and [MyRetroGamecase](https://www.myretrogamecase.com/) for sending me a [G32](https://www.myretrogamecase.com/products/game-mini-g32-esp32-retro-gaming-console-1) device.
-
+- The [ODROID-GO](https://forum.odroid.com/viewtopic.php?f=159&t=37599) community for encouraging the development of retro-go!
 
 # License
 Everything in this project is licensed under the [GPLv2 license](COPYING) with the exception of the following components:
