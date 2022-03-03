@@ -33,10 +33,14 @@
 		}
 	],
 	"settings": {
-		"esp.sdk-path": "C:/Users/alex/Apps/esp-idf/frameworks/esp-idf-v4.1.2",
-		"esp.tools-path": "C:/Users/alex/Apps/esp-idf/tools/xtensa-esp32-elf/esp-2020r3-8.4.0/xtensa-esp32-elf",
+		/*
+		For C_cpp to work you must add these variables to your vs code config:
+		(This isn't ideal but I can't think of a better way...)
 
-		"git.confirmForcePush": false,
+		"retro-go.sdk-path": "/path/to/esp-idf/frameworks/esp-idf-v4.1.2",
+		"retro-go.tools-path": "/path/to/esp-idf/tools/xtensa-esp32-elf/esp-2020r3-8.4.0/xtensa-esp32-elf",
+		*/
+
 		"C_Cpp.default.defines": [
 			"PROJECT_VER",
 			"INLINE=",
@@ -47,14 +51,14 @@
 		"C_Cpp.default.includePath": [
 			"${workspaceFolder}/components/**",
 			"${workspaceFolder}/../components/**",
-			"${config:esp.sdk-path}/components/**",
-			"${config:esp.tools-path}/include/**"
+			"${config:retro-go.sdk-path}/components/**",
+			"${config:retro-go.tools-path}/include/**"
 		],
 		"C_Cpp.default.forcedInclude": [
 			"${workspaceFolder}/build/config/sdkconfig.h",
 			"${workspaceFolder}/build/sdkconfig.h",
 		],
-		"C_Cpp.default.compilerPath": "${config:esp.tools-path}/bin/xtensa-esp32-elf-g++.exe",
+		"C_Cpp.default.compilerPath": "${config:retro-go.tools-path}/bin/xtensa-esp32-elf-g++.exe",
 		"C_Cpp.default.cStandard": "c11",
 		"C_Cpp.default.cppStandard": "c++11",
 		"C_Cpp.default.intelliSenseMode": "gcc-x86",
@@ -81,7 +85,6 @@
 		},
 		"files.watcherExclude": {
 			"**/build/**": true,
-			"**/.git/**": true
-		}
+		},
 	}
 }
