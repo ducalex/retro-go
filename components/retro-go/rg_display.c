@@ -218,7 +218,7 @@ static void ili9341_init()
     spi_init();
 
 #define ILI9341_CMD(cmd, data...) {const uint8_t x[] = data; ili9341_cmd(cmd, x, sizeof(x));}
-#if defined(RG_TARGET_ODROID_GO)
+#if defined(RG_TARGET_ODROID_GO) || defined(RG_TARGET_RETRO_ESP32)
     ILI9341_CMD(0x01, {});     // Reset
     ILI9341_CMD(0x3A, {0x55}); // Pixel Format Set RGB565
     ILI9341_CMD(0xCF, {0x00, 0xc3, 0x30});
@@ -232,6 +232,12 @@ static void ili9341_init()
     ILI9341_CMD(0xC5, {0x32, 0x3C});                            // VCM control
     ILI9341_CMD(0xC7, {0x91});                                  // VCM control2
     ILI9341_CMD(0x36, {(0x20|0x80|0x08)});                      // Memory Access Control
+
+    #if defined(RG_TARGET_RETRO_ESP32)
+        ILI9341_CMD(0x36, {(0x40|0x80|0x08)});                      // Memory Access Control
+        ILI9341_CMD(0x21, {0x80});                                  // invert colors
+    #endif
+
     ILI9341_CMD(0xB1, {0x00, 0x10});                            // Frame Rate Control (1B=70, 1F=61, 10=119)
     ILI9341_CMD(0xB6, {0x0A, 0xA2});                            // Display Function Control
     ILI9341_CMD(0xF6, {0x01, 0x30});

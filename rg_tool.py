@@ -280,7 +280,7 @@ parser.add_argument(
     "--shrink", action="store_const", const=True, help="Reduce partition size where possible"
 )
 parser.add_argument(
-    "--target", default=DEFAULT_TARGET, choices=["odroid-go", "esp32s2", "mrgc-g32", "qtpy-gamer"], help="Device to target"
+    "--target", default=DEFAULT_TARGET, choices=["odroid-go", "esp32s2", "mrgc-g32", "qtpy-gamer", "retro-esp32"], help="Device to target"
 )
 parser.add_argument(
     "--build-type", default="release", choices=["release", "debug", "profile"], help="Build type"
