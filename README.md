@@ -130,18 +130,13 @@ For a smaller build you can also specify which apps you want, for example the la
 
 ## Build, flash, and monitor individual apps for faster development:
 It would be tedious to build, move to SD, and flash a full .fw all the time during development. Instead you can:
-1. Flash: `./rg_tool.py --port=COM3 --offset=0x100000 flash nofrendo-go`
+1. Flash: `./rg_tool.py --port=COM3 flash nofrendo-go`
 2. Monitor: `./rg_tool.py --port=COM3 monitor nofrendo-go`
-3. Flash then monitor: `./rg_tool.py --port=COM3 --offset=0x100000 run nofrendo-go`
-
-Note: You will need to know where retro-go is located on your device. Typically it is 0x100000 for 
-the ODROID-GO and 0x50000 for the MRGC-G32. You can confirm that by searching the serial output for
-the line `launcher  OTA app  00 10 00100000 00050000` where 100000 is the offset in hex.
+3. Flash then monitor: `./rg_tool.py --port=COM3 run nofrendo-go`
 
 ## Environment variables 
 rg_tool.py supports a few environment variables if you want to avoid passing flags all the time:
 - `RG_TOOL_TARGET` represents --target
-- `RG_TOOL_OFFSET` represents --offset
 - `RG_TOOL_BAUD` represents --baud
 - `RG_TOOL_PORT` represents --port
 

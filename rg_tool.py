@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 import argparse
-import math
-import subprocess
 import hashlib
+import subprocess
 import shutil
 import shlex
 import time
@@ -15,15 +14,18 @@ try:
 except:
     serial = None
 
+try:
+    sys.path.append(os.path.join(os.environ["IDF_PATH"], "components", "partition_table"))
+    import parttool
+except:
+    pass
+
 DEFAULT_TARGET = os.getenv("RG_TOOL_TARGET", "odroid-go")
-DEFAULT_OFFSET = os.getenv("RG_TOOL_OFFSET", "0x100000")
 DEFAULT_BAUD = os.getenv("RG_TOOL_BAUD", "1152000")
 DEFAULT_PORT = os.getenv("RG_TOOL_PORT", "COM3")
-
 PROJECT_PATH = os.getcwd() if os.path.exists("rg_config.py") else sys.path[0]
-IDF_PATH = os.getenv("IDF_PATH")
 
-if not IDF_PATH:
+if not os.getenv("IDF_PATH"):
     exit("IDF_PATH is not defined.")
 
 os.chdir(PROJECT_PATH)
@@ -175,35 +177,6 @@ def build_app(target, build_type=None, with_netplay=False, build_target=None):
         pass
 
 
-def find_app(target, offset, app_offset=None):
-    if app_offset != None:
-        return int(str(app_offset), 0)
-    offset = int(str(offset), 0)
-    for key, value in PROJECT_APPS.items():
-        if key == target:
-            return offset
-        offset += math.ceil(value[1] / 0x10000) * 0x10000
-
-
-def flash_app(target, port, offset, baud):
-    print("Flashing app '%s' at offset %s" % (target, hex(offset)))
-    subprocess.run([
-        sys.executable,
-        os.path.join(IDF_PATH, "components", "esptool_py", "esptool", "esptool.py"),
-        "--chip", "esp32",
-        "--port", port,
-        "--baud", baud,
-        "--before", "default_reset",
-        "write_flash",
-        "--flash_mode", "qio",
-        "--flash_freq", "80m",
-        "--flash_size", "detect",
-        hex(offset),
-        os.path.join(target, "build", target + ".bin"),
-    ], check=True)
-    print("Done.\n")
-
-
 def monitor_app(target, port, baudrate=115200):
     if not serial:
         exit("serial module not installed. You can try running 'pip install pyserial'.")
@@ -294,12 +267,6 @@ parser.add_argument(
 parser.add_argument(
     "--baud", default=DEFAULT_BAUD, help="Serial baudrate to use for flashing"
 )
-parser.add_argument(
-    "--offset", default=DEFAULT_OFFSET, help="Flash offset where %s is installed" % PROJECT_NAME,
-)
-parser.add_argument(
-    "--app-offset", default=None, help="Absolute offset where the app will be flashed (ignores partition table)"
-)
 args = parser.parse_args()
 
 
@@ -323,8 +290,20 @@ if command in ["build-fw", "release"]:
 
 if command in ["flash", "run"]:
     print("=== Step: Flashing ===\n")
-    for app in apps:
-        flash_app(app, args.port, find_app(app, args.offset, args.app_offset), args.baud)
+    try:
+        pt = parttool.ParttoolTarget(args.port, args.baud)
+    except:
+        exit("Failed to read device's partition table!")
+    try:
+        for app in apps:
+            print("Flashing app '%s'" % app)
+            pt.write_partition(parttool.PartitionName(app), os.path.join(app, "build", app + ".bin"))
+    except Exception as e:
+        print("Error: {}".format(e))
+        if "does not exist" in str(e):
+            print("This indicates that the partition table on your device is incorrect.")
+            print("Make sure you've installed a recent retro-go-*.fw!")
+        exit("Task failed.")
 
 if command in ["monitor", "run"]:
     print("=== Step: Monitoring ===\n")
