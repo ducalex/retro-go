@@ -1,0 +1,394 @@
+
+                PART I : "PC Engine Programmable Sound Generator"
+                =================================================
+
+                   by Paul Clifford (paul@plasma.demon.co.uk)
+
+
+    1/ Introduction
+       ------------
+
+        The PSG provides 6 sound channels, which can be conveniently paired
+        according to the functionality they provide:
+
+        0-1 - Waveform playback
+              Frequency modulation (channel 1 muted)
+
+        2-3 - Waveform playback only
+
+        4-5 - Waveform playback
+              White noise generation
+
+        Waveform playback is the most common and allows a 32 byte, 5 bit
+        unsigned linear sample to be played back at selected frequencies.
+        Frequency modulation takes this one step further, allowing the
+        playback frequency to be dynamically adjusted according to a
+        specified pattern. White noise is used to simulate percussion
+        instruments and effects such as explosions, by means of a pseudo
+        random square wave.
+
+        Alternatively, each channel can be individually switched to
+        "Direct D/A" mode whereby the programmer can send data directly
+        to the sound mixer, allowing more complex sound patterns to be
+        generated, such as speech.  Inevitably this requires more
+        programming effort and CPU time.
+
+
+    2/ PSG registers
+       -------------
+
+        $0800 - Channel select
+
+                Bit 7-3 - (unused)
+                Bit 2-0 - Channel number (only 0-5 valid)
+
+                This selects the channel used for operations on registers
+                $0802 to $0807.  Be aware that the noise register is only
+                valid for channels 4 and 5, and that the LFO registers
+                will affect channels 0 and 1 only, irrespective of what
+                values you set here.
+
+
+        $0801 - Global sound balance
+
+                Bit 7-4 - Volume from left output
+                Bit 3-0 - Volume from right output
+
+                This alters the overall sound volume once all the channels
+                have been mixed together.
+
+
+        $0802 - Fine frequency adjust
+
+                Bit 7-0 - The lower 8 bits of the 12 bit channel frequency
+
+                The channel frequency is a 12 bit value used as a divider
+                into the 3.58MHz clock.  The exact use depends on what type
+                of sound the channel is being used for at the time.
+                For waveform output, a copy of this value is, in effect,
+                decremented 3,580,000 times a second until zero is reached.
+                When this happens the PSG advances an internal pointer into
+                the channel's waveform buffer by one.  Since the buffer
+                is 32 bytes long, this frequency value can be converted
+                into more familiar units as follows:
+
+                                            3580000
+                    frequency (Hz) = ---------------------
+                                      32 x (12 bit value)
+
+                Hence, in the opposite direction we would have:
+
+                                            3580000
+                      12 bit value = ---------------------
+                                      32 x frequency (Hz)
+
+
+        $0803 - Rough frequency adjust
+
+                Bit 7-4 - (unused)
+                Bit 3-0 - The upper 4 bits of the 12 bit channel frequency
+
+                See above for explanation.
+
+
+        $0804 - Channel on/off, DDA on/off, channel volume
+
+                Bit 7   - Channel on (1) or off (0)
+                Bit 6   - DDA output on (1) or off (0)
+                Bit 5   - (unused)
+                Bit 4-0 - Overall channel volume
+
+                Depending on the setting of bit 6 and 7, a channel can be
+                in one of four states:
+
+                    ch on  dda  state
+
+                      0     0   Writes to $0806 will store the value in the
+                                waveform buffer and advance the waveform
+                                write index.
+
+                      0     1   The waveform write index is reset to 0,
+                                so that further writes to $0806 will start
+                                from the beginning of the waveform buffer.
+
+                      1     0   Waveform output is enabled.  The channel
+                                output is generated from the waveform buffer,
+                                advancing an internal read index at the rate
+                                specified by the channel frequency registers
+                                ($0802 and $0803).
+
+                      1     1   Direct D/A mode enabled.  Any value written
+                                to $0806 is immediately mixed into the
+                                overall sound output.
+
+                The overall channel volume can be used to fade in and out
+                individual channels (see $0805 for altering channel balance).
+
+
+        $0805 - Channel balance
+
+                Bit 7-4 - Volume to left output
+                Bit 3-0 - Volume to right output
+
+                This allows you to alter the balance of an individual channel.
+
+
+        $0806 - Channel sound data
+
+                Bit 7-5 - (unused)
+                Bit 4-0 - 5 bit unsigned linear sample data
+
+                A write to this location will have different effects depending
+                on the settings of bit 6 and 7 of register $0804.  When DDA
+                is enabled, data written here is mixed in directly with the
+                outputs from the other channels (you also need to turn the
+                channel on if you actually want to hear it though!).
+                This is useful for handling things like speech which are
+                not easy (possible?) to do with the waveform buffer.
+
+                When the channel is turned off and DDA disabled, data written
+                here is copied into the channel's waveform buffer and the
+                internal write index incremented by one, wrapping round at
+                32 to 0.  For example, to make a sine wave you could write
+                the following hex values into the waveform buffer
+                (shamelessly plundered from the PSG patent):
+
+                    0f, 12, 15, 17, 19, 1b, 1d, 1e,
+                    1e, 1e, 1d, 1b, 19, 17, 15, 12,
+                    0f, 0c, 09, 07, 05, 03, 01, 00,
+                    00, 00, 01, 03, 05, 07, 09, 0c
+
+
+        $0807 - Noise enable, noise frequency
+
+                Bit 7   - Noise on (1) or off (0)
+                Bit 6-5 - (unused)
+                Bit 4-0 - Noise frequency
+
+                This register is only effective for channels 4 and 5.
+                The output of white noise is enabled by setting bit 7,
+                at which point the PSG will stop reading data from the
+                channel's waveform buffer and begin generating a random
+                rectangular waveform with a frequency defined by the
+                lower 5 bits of the register.
+
+                After a little experimenting I found that it is easiest
+                to imagine you are dealing with a 64 byte waveform buffer
+                divided into two parts.  The first half randomly contains
+                either all 0 or all 31, and likewise with the second half,
+                so that you have either a complete or a partial cycle of
+                a square wave, ie one of the following:
+
+                ----+                +----       ---------
+                    |                |
+                    +----        ----+                           ---------
+                0  32  64        0  32  64       0  32  64       0  32  64
+
+                (A new "waveform" is automatically generated each time the
+                 read index wraps back around to zero).
+
+                Contrarily to the channel frequency, the noise frequency field
+                is bit inverted, so it is necessary to XOR it by 31 (%11111)
+                for correct results.
+
+                The formula for the actual noise frequency is therefore:
+
+                                              3580000
+                    frequency (Hz) = ---------------------------
+                                      64 x (5 bit value XOR 31)
+
+                Hence, in the opposite direction we would have:
+
+                                           3580000
+                       5 bit value = --------------------- XOR 31
+                                      64 x frequency (Hz)
+
+
+        $0808 - LFO frequency
+
+                Bit 7-0 - LFO frequency
+
+                When the LFO is active (see $0809), the channel 1 waveform
+                buffer is assumed to contain frequency modulation data rather
+                than samples (and hence channel 1 is automatically muted).
+                The frequency at which this buffer is read from is defined
+                by multiplying the LFO frequency by the 12 bit frequency
+                ($0802 and $0803) from channel 1.  This leads to the
+                following formula:
+
+                                                   3580000
+                frequency (Hz) = -------------------------------------------
+                                  32 x (12 bit frequency) x (LFO frequency)
+
+                The values in channel 1's waveform buffer are treated as
+                5 bit signed integers which are shifted left as necessary
+                (see $0809) and added to channel 0's frequency.  This result
+                then becomes the new frequency for channel 0 until a new
+                byte of FM data is read, at which point the frequency
+                is recalculated again.
+
+
+        $0809 - LFO trigger, LFO control
+
+                Bit 7   - LFO trigger (0 = LFO on, 1 = LFO off/reset)
+                Bit 6-2 - (unused)
+                Bit 1-0 - LFO control
+
+                Bit 7 controls whether the low frequency oscillator (LFO)
+                is active or not.  When set it causes the LFO to switch off
+                and resets the channel 1 waveform read position to 0.
+                When clear, the LFO is activated, causing the data in
+                channel 1's waveform buffer to be used to frequency modulate
+                the output from channel 0.  The process by which this is
+                achieved depends on the value in "LFO control" (the lower
+                two bits):
+
+                    00 - No frequency modulation is performed, so the output
+                         from channel 0 is unchanged.
+
+                    01 - The FM data is added directly to channel 0's
+                         frequency.
+
+                    10 - The FM data is shifted left by four places then
+                         added to the frequency.
+
+                    11 - The FM data is shifted left by eight places then
+                         added to the frequency.
+
+                For example, if "LFO control" was set to 2 and the value read
+                from the channel 1 waveform buffer was binary 10111 then
+                (-9 << 4) would be added to channel 0's frequency.
+
+
+
+
+                  PART II : "Small Sound Programming Example"
+                  ===========================================
+
+                     by David Michel (dmichel@easynet.fr)
+
+
+    1/ Waveform
+       --------
+
+        As seen above small waveforms of 32 samples (5-bit unsigned) are used
+        to produce sound. Let's see a small example on how to initialize the
+        first channel with a sine waveform:
+
+                lda     #0      ; Load the channel index in register A
+                                ; channel 0 here
+                sta     $0800   ; The PSG has 10 registers called R0-R9
+                                ; located at address $800 in the hardware
+                                ; page.
+                                ; The first register R0 ($0800) is the index
+                                ; register, it selects the channel
+
+        ; Before changing a waveform, we have to disable the channel
+        ; and reset the internal waveform index. It's bit 7-6 of R4 ($0804)
+        ; that control that: 01 disable the channel and reset the index
+        ; and 00 enable waveform transfer. R4 is also used to set the
+        ; channel volume (bit 0-4).
+
+                lda     #%010_00000
+                sta     $0804
+                lda     #%000_00000
+                sta     $0804
+
+        ; The new waveform is transferred by writing the 32 samples
+        ; to R6 ($0806), each channel has an internal waveform index
+        ; that is automatically incremented after a write to R6.
+
+                clx             ; We will use X as an index in the
+                                ; sine data table
+        load:   lda     sine,x  ; Load a sample in A
+                sta     $0806   ; Write the sample
+                inx             ; Increment the table index
+                cpx     #32     ; Have we reached the end?
+                bne     load    ; If no continue
+
+        ; Now that the waveform is loaded we can program the frequency.
+        ; Registers R2/R3 contain a 12-bit frequency counter, here is
+        ; the formula to calculate the value for a given frequency:
+        ;
+        ;                3 580 000
+        ;       value = -----------
+        ;                32 x freq
+        ;
+        ; For a frequency of 440Hz the value will be:
+        ;
+        ;       3580000 / (32 x 440) = 254
+
+                lda     #LOW(254)
+                sta     $0802
+                lda     #HIGH(254)
+                sta     $0803
+
+        ; Rest just to set the volume and we can restart the channel.
+        ; We have seen above that R4 was controlling the volume,
+        ; but we can also control the left/right balance. It's the job
+        ; of R5, the upper 4-bit are for the left, and the lower 4-bit
+        ; for the right.
+
+                lda     #$FF            ; No balance here, both
+                sta     $0805           ; side will have the same
+                                        ; volume
+
+        ; We must take care of the master volume too.
+
+                lda     #$EE
+                sta     $0801
+
+        ; Restart the channel!
+
+                lda     #%100_11111     ; Set bit 7 to turn the channel
+                                        ; on, and set the volume to the
+                                        ; maximun: %11111 (31)
+                sta     $0804
+                rts
+
+        ; The sine waveform data
+
+        sine:   db      18,22,24,26,28,28,30,30
+                db      30,30,28,28,26,24,22,18
+                db      12,8,6,4,2,2,0,0
+                db      0,0,2,2,4,6,8,12
+
+
+        That's done, we have programmed a channel. As you can see this is
+        a pretty simple task...
+
+        A special note for those who use MagicEngine to test their code,
+        R1, R8 and R9 are not emulated in version 0.91 or lower, so don't
+        become crazy if you play with these registers but hear no change
+        in the emulator. :)
+
+
+    2/ Noise
+       -----
+
+        The PSG has two noise generators, they use channels 5 & 6.
+        These two channels work either in waveform mode or in noise mode,
+        it's not possible to mix the two modes.
+
+        It's register R7 ($0807) that controls if noise is played or not,
+        bit 7 is the ON/OFF toggle (1=ON/0=OFF) and the five lower bits set
+        the  frequency of the noise. Here is the formula to calculate the
+        noise frequency:
+
+                     3 580 000
+            value = ----------- XOR $1F
+                     64 x freq
+
+        The lowest frequency is 1804Hz and the highest 55.93KHz.
+
+        Here is a small example to play noise on channel 5 at 1928Hz:
+
+                lda     #4              ; Select channel 5
+                sta     $800
+                lda     #%000_11111     ; Stop playing waveform
+                sta     $804            ; and set volume to $1F
+                lda     #$FF            ; Balance settings
+                sta     $805
+                lda     #$80+2          ; Noise ON and set frequency
+                sta     $807
+

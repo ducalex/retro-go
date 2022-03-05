@@ -1,0 +1,46 @@
+
+                                 PCE-GO
+
+                        PC Engine / TurboGrafx-16 Emulator
+
+--[ INTRODUCTION ]-----------------------------------------------------------
+
+    PCE-GO is a PCE emulator for constrained systems such as microcontrollers.
+    It is derived from the great HuExpress (https://github.com/kallisti5/huexpress).
+
+    HuExpress itself is a fork/rewrite of Hu-Go! (https://www.zeograd.com/parse.php?src=hugof&path=0,1,).
+
+    And finally Hu-Go! is a direct fork of Bero's PCE emulator (http://www.geocities.co.jp/Playtown/2004/).
+
+--[ CREDITS ]-------------------------------------------------
+
+PCE-GO authors:
+- Alex Duchesne (ducalex)
+- Macs75
+
+HuExpress authors:
+- Alex von Gluck IV (kallisti5)
+
+Hu-Go! authors:
+- Zeograd (Olivier Jolly) zeograd@zeograd.com
+- David Shadoff (new kernel code, ideas, ...)
+- Nyef (cd emulation, ...)
+- Ixion (linux coding, sdl joypad, cd emulation, sound emulation, ...)
+- Black- (gfx bug fixes, gp32 port, ...)
+- Cleaner (freeBSD port fixes)
+- Laurent Desnogues (cpu coding, ps2 port, ...)
+- Erich Kitzmuller (sound improvement, dma bug fixes)
+- Pit (gfx)
+- David Michel (ideas, ...)
+- Lester Barrow (linux coding, joypad support, ...)
+- Mooz (ideas, ...)
+- Bt Garner (ideas, ...)
+- Littletux (mandrake packages, ...)
+- Zoop & his gf (gfx bug fixes)
+
+Bero's PCE Emulator authors:
+- BERO bero@geocities.co.jp
+- hmmx hmmx@geocities.co.jp
+
+Technical documentation:
+- Charles MacDonald (http://cgfm2.emuviews.com/)

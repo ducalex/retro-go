@@ -1,0 +1,43 @@
+Gilgamesh --
+concept
+research
+testing
+debug and tools coding
+website and build maintainence
+publicity
+dos and windows builds
+
+Laguna --
+design
+main program
+asm optimizations
+documentation
+publicity
+
+Damian M Gryski --
+SDL port
+various bugfix patches
+
+Mattias Wadman --
+help with OpenBSD portability issues
+LCDC behavior information
+
+Magnus Damm --
+YUV colorspace code
+SDL YUV hardware scaling support
+
+Jonathan Gevaryahu AKA Lord Nightmare --
+tons of help improving sound emulation!
+color filter code and default filter values
+misc debugging support
+
+Neil Stevens --
+collecting samples for sound channel 4 (noise)
+
+Hii (author of TGB) --
+lots of info on various memory mappers
+
+Alex Duchesne --
+ODROID-GO port
+Optimizations and compatibility improvements
+GBC Colorization palettes
