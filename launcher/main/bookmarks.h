@@ -9,8 +9,6 @@ typedef enum
     BOOK_TYPE_COUNT,
 } book_type_t;
 
-typedef retro_emulator_file_t bookmark_t;
-
 typedef struct
 {
     const char *name;

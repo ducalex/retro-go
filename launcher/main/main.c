@@ -56,11 +56,11 @@ static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t ev
 {
     if (event == RG_DIALOG_PREV) {
         if (--gui.show_preview < 0) gui.show_preview = PREVIEW_MODE_COUNT - 1;
-        gui_load_preview(gui_get_current_tab());
+        gui_set_preview(gui_get_current_tab(), NULL);
     }
     if (event == RG_DIALOG_NEXT) {
         if (++gui.show_preview >= PREVIEW_MODE_COUNT) gui.show_preview = 0;
-        gui_load_preview(gui_get_current_tab());
+        gui_set_preview(gui_get_current_tab(), NULL);
     }
     const char *values[] = {"None      ", "Cover,Save", "Save,Cover", "Cover only", "Save only "};
     strcpy(option->value, values[gui.show_preview % PREVIEW_MODE_COUNT]);

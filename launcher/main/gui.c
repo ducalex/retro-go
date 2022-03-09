@@ -68,8 +68,13 @@ tab_t *gui_add_tab(const char *name, const char *desc, void *arg, void *event_ha
     tab->enabled = !rg_settings_get_number(tab->name, SETTING_TAB_HIDDEN, 0);
     tab->is_empty = false;
     tab->arg = arg;
-    tab->listbox.sort_mode = SORT_TEXT_ASC;
-    tab->listbox.cursor = -1;
+    tab->listbox = (listbox_t){
+        .items = calloc(10, sizeof(listbox_item_t)),
+        .capacity = 10,
+        .length = 0,
+        .cursor = -1,
+        .sort_mode = SORT_TEXT_ASC,
+    };
 
     gui.tabs[gui.tabcount++] = tab;
 
@@ -275,31 +280,26 @@ void gui_sort_list(tab_t *tab)
 
 void gui_resize_list(tab_t *tab, int new_size)
 {
-    int cur_size = tab->listbox.length;
+    listbox_t *list = &tab->listbox;
 
-    if (new_size == cur_size)
+    if (new_size == list->length)
         return;
 
-    if (new_size == 0)
+    // Always grow but only shrink past a certain threshold
+    if (new_size >= list->capacity || list->capacity - new_size >= 20)
     {
-        free(tab->listbox.items);
-        tab->listbox.items = NULL;
-    }
-    else
-    {
-        tab->listbox.items = realloc(tab->listbox.items, new_size * sizeof(listbox_item_t));
-        for (int i = cur_size; i < new_size; i++)
-            memset(&tab->listbox.items[i], 0, sizeof(listbox_item_t));
+        list->capacity = new_size + 10;
+        list->items = realloc(list->items, list->capacity * sizeof(listbox_item_t));
+        for (int i = list->length; i < list->capacity; i++)
+            memset(&list->items[i], 0, sizeof(listbox_item_t));
+        RG_LOGI("Resized list '%s' from %d to %d items (new capacity: %d)\n",
+            tab->name, list->length, new_size, list->capacity);
     }
 
-    tab->listbox.length = new_size;
+    list->length = new_size;
 
-    if (tab->listbox.cursor >= new_size)
-        tab->listbox.cursor = new_size - 1;
-
-    gui_event(TAB_SCROLL, tab);
-
-    RG_LOGI("Resized list '%s' from %d to %d items\n", tab->name, cur_size, new_size);
+    if (list->cursor >= new_size)
+        list->cursor = new_size - 1;
 }
 
 void gui_scroll_list(tab_t *tab, scroll_mode_t mode, int arg)
@@ -441,14 +441,34 @@ void gui_draw_list(tab_t *tab)
     }
 }
 
+void gui_set_preview(tab_t *tab, rg_image_t *preview)
+{
+    RG_ASSERT(tab, "bad params");
+
+    rg_image_free(tab->preview);
+    tab->preview = preview;
+
+    if (!preview)
+        return;
+
+    if (preview->width > PREVIEW_WIDTH || preview->height > PREVIEW_HEIGHT)
+    {
+        rg_image_t *temp = rg_image_copy_resampled(preview, PREVIEW_WIDTH, PREVIEW_HEIGHT, 0);
+        if (temp)
+        {
+            rg_image_free(preview);
+            preview = temp;
+        }
+    }
+}
+
 void gui_load_preview(tab_t *tab)
 {
     bool show_missing_cover = false;
     uint32_t order;
     char path[RG_PATH_MAX + 1];
 
-    rg_image_free(tab->preview);
-    tab->preview = NULL;
+    gui_set_preview(tab, NULL);
 
     if (!gui_get_selected_item(tab))
         return;
@@ -511,7 +531,7 @@ void gui_load_preview(tab_t *tab)
 
         if (access(path, F_OK) == 0)
         {
-            tab->preview = rg_image_load_from_file(path, 0);
+            gui_set_preview(tab, rg_image_load_from_file(path, 0));
             if (!tab->preview)
                 errors++;
         }
@@ -519,19 +539,7 @@ void gui_load_preview(tab_t *tab)
         file->missing_cover |= (tab->preview ? 0 : 1) << type;
     }
 
-    if (tab->preview)
-    {
-        if (tab->preview->width > PREVIEW_WIDTH || tab->preview->height > PREVIEW_HEIGHT)
-        {
-            rg_image_t *temp = rg_image_copy_resampled(tab->preview, PREVIEW_WIDTH, PREVIEW_HEIGHT, 0);
-            if (temp)
-            {
-                rg_image_free(tab->preview);
-                tab->preview = temp;
-            }
-        }
-    }
-    else if (file->checksum && (show_missing_cover || errors))
+    if (!tab->preview && file->checksum && (show_missing_cover || errors))
     {
         RG_LOGI("No image found for '%s'\n", file->name);
         gui_set_status(tab, NULL, errors ? "Bad cover" : "No cover");

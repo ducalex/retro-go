@@ -69,6 +69,7 @@ typedef struct {
 typedef struct {
     // listbox_item_t **items;
     listbox_item_t *items;
+    int capacity;
     int length;
     int cursor;
     int sort_mode;
@@ -141,6 +142,7 @@ void gui_init(void);
 void gui_save_config(bool commit);
 void gui_event(gui_event_t event, tab_t *tab);
 void gui_redraw(void);
+void gui_set_preview(tab_t *tab, rg_image_t *preview);
 void gui_load_preview(tab_t *tab);
 void gui_draw_background(tab_t *tab, int shade);
 void gui_draw_header(tab_t *tab, int offset);
