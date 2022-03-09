@@ -8,6 +8,7 @@
 #include "ftp_server.h"
 #include "emulators.h"
 #include "bookmarks.h"
+#include "themes.h"
 #include "gui.h"
 
 
@@ -71,14 +72,14 @@ static rg_gui_event_t color_theme_cb(rg_gui_option_t *option, rg_gui_event_t eve
 {
     int max = gui_themes_count - 1;
     if (event == RG_DIALOG_PREV) {
-        if (--gui.theme < 0) gui.theme = max;
+        if (--gui.color_theme < 0) gui.color_theme = max;
         gui_redraw();
     }
     if (event == RG_DIALOG_NEXT) {
-        if (++gui.theme > max) gui.theme = 0;
+        if (++gui.color_theme > max) gui.color_theme = 0;
         gui_redraw();
     }
-    sprintf(option->value, "%d/%d", gui.theme + 1, max + 1);
+    sprintf(option->value, "%d/%d", gui.color_theme + 1, max + 1);
     return RG_DIALOG_VOID;
 }
 
@@ -298,6 +299,7 @@ void app_main(void)
 
     emulators_init();
     bookmarks_init();
+    themes_init();
 
     ftp_server_start();
 

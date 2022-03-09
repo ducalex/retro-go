@@ -27,7 +27,7 @@ retro_gui_t gui;
 #define SETTING_SELECTED_TAB    "SelectedTab"
 #define SETTING_START_SCREEN    "StartScreen"
 #define SETTING_STARTUP_MODE    "StartupMode"
-#define SETTING_GUI_THEME       "ColorTheme"
+#define SETTING_COLOR_THEME     "ColorTheme"
 #define SETTING_SHOW_PREVIEW    "ShowPreview"
 #define SETTING_TAB_SELECTION   "TabSelection"
 #define SETTING_TAB_HIDDEN      "TabHidden"
@@ -37,7 +37,7 @@ void gui_init(void)
 {
     gui = (retro_gui_t){
         .selected     = rg_settings_get_number(NS_APP, SETTING_SELECTED_TAB, 0),
-        .theme        = rg_settings_get_number(NS_APP, SETTING_GUI_THEME, 0),
+        .color_theme  = rg_settings_get_number(NS_APP, SETTING_COLOR_THEME, 0),
         .startup      = rg_settings_get_number(NS_APP, SETTING_STARTUP_MODE, 0),
         .start_screen = rg_settings_get_number(NS_APP, SETTING_START_SCREEN, 0),
         .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, 2),
@@ -127,7 +127,7 @@ tab_t *gui_get_tab(int index)
 
 const rg_image_t *gui_get_image(const char *type, const char *subtype)
 {
-    char path[256], name[64];
+    char path[RG_PATH_MAX], name[64];
 
     if (subtype && *subtype)
         sprintf(name, "%s_%s.png", type, subtype);
@@ -145,10 +145,17 @@ const rg_image_t *gui_get_image(const char *type, const char *subtype)
 
     // Append to list
     image->id = fileid;
+    image->img = NULL;
 
-    // Try SD card, then search the built-ins
-    sprintf(path, RG_BASE_PATH "/theme/%s", name);
-    if (!(image->img = rg_image_load_from_file(path, 0)))
+    // Try SD card if a theme is selected
+    if (gui.theme)
+    {
+        sprintf(path, RG_BASE_PATH_THEMES "/%s/%s", gui.theme, name);
+        image->img = rg_image_load_from_file(path, 0);
+    }
+
+    // Then fallback to built-in images
+    if (!image->img)
     {
         for (const binfile_t **img = builtin_images; *img; img++)
         {
@@ -160,6 +167,7 @@ const rg_image_t *gui_get_image(const char *type, const char *subtype)
         }
     }
 
+    // Some images might need resampling
     if (strcmp(type, "background") == 0)
     {
         if (image->img && (image->img->width != gui.width || image->img->height != gui.height))
@@ -205,12 +213,30 @@ void gui_set_status(tab_t *tab, const char *left, const char *right)
         strcpy(tab->status[1].right, right);
 }
 
+void gui_set_theme(const char *name)
+{
+    free(gui.theme);
+    gui.theme = NULL;
+
+    for (image_t *image = gui.images; image->id; ++image)
+    {
+        rg_image_free(image->img);
+        image->id = 0;
+        image->img = NULL;
+    }
+
+    if (name)
+    {
+        gui.theme = strdup(name);
+    }
+}
+
 void gui_save_config(bool commit)
 {
     rg_settings_set_number(NS_APP, SETTING_SELECTED_TAB, gui.selected);
     rg_settings_set_number(NS_APP, SETTING_START_SCREEN, gui.start_screen);
     rg_settings_set_number(NS_APP, SETTING_SHOW_PREVIEW, gui.show_preview);
-    rg_settings_set_number(NS_APP, SETTING_GUI_THEME, gui.theme);
+    rg_settings_set_number(NS_APP, SETTING_COLOR_THEME, gui.color_theme);
     rg_settings_set_number(NS_APP, SETTING_STARTUP_MODE, gui.startup);
 
     for (int i = 0; i < gui.tabcount; i++)
@@ -424,7 +450,7 @@ void gui_draw_status(tab_t *tab)
 
 void gui_draw_list(tab_t *tab)
 {
-    const theme_t *theme = &gui_themes[gui.theme % gui_themes_count];
+    const theme_t *theme = &gui_themes[gui.color_theme % gui_themes_count];
     rg_color_t fg[2] = {theme->list.standard_fg, theme->list.selected_fg};
     rg_color_t bg[2] = {theme->list.standard_bg, theme->list.selected_bg};
 
@@ -445,13 +471,11 @@ void gui_set_preview(tab_t *tab, rg_image_t *preview)
 {
     RG_ASSERT(tab, "bad params");
 
-    rg_image_free(tab->preview);
-    tab->preview = preview;
+    if (tab->preview)
+        rg_image_free(tab->preview);
 
-    if (!preview)
-        return;
-
-    if (preview->width > PREVIEW_WIDTH || preview->height > PREVIEW_HEIGHT)
+    // Resize if necessary (gui_set_preview() takes ownership of *preview so we must free it too)
+    if (preview && (preview->width > PREVIEW_WIDTH || preview->height > PREVIEW_HEIGHT))
     {
         rg_image_t *temp = rg_image_copy_resampled(preview, PREVIEW_WIDTH, PREVIEW_HEIGHT, 0);
         if (temp)
@@ -460,6 +484,8 @@ void gui_set_preview(tab_t *tab, rg_image_t *preview)
             preview = temp;
         }
     }
+
+    tab->preview = preview;
 }
 
 void gui_load_preview(tab_t *tab)
