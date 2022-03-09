@@ -8,6 +8,7 @@ register_component()
 # but I guess we'll have to live with it in at least the prboom-go module...
 
 rg_setup_compile_options(
+    -Wno-missing-field-initializers
     -mfix-esp32-psram-cache-issue
     -DHAVE_CONFIG_H
     -O2
