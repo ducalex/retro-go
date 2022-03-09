@@ -146,12 +146,12 @@ CSystem::CSystem(const char* gamefile, long displayformat, long samplerate)
       filememory=(UBYTE*) new UBYTE[filesize];
 
       if(fread(filememory, 1, filesize,fp)!=filesize) {
-         fprintf(stderr, "Invalid Cart (filesize).\n");
+         log_printf("Invalid cart (filesize).\n");
       }
 
       fclose(fp);
    } else {
-      fprintf(stderr, "Invalid Cart.\n");
+      log_printf("Invalid cart (fopen failed).\n");
    }
 
    // Now try and determine the filetype we have opened
@@ -164,10 +164,10 @@ CSystem::CSystem(const char* gamefile, long displayformat, long samplerate)
       if(!strcmp(&clip[6],"BS93")) mFileType=HANDY_FILETYPE_HOMEBREW;
       else if(!strcmp(&clip[0],"LYNX")) mFileType=HANDY_FILETYPE_LNX;
       else if(filesize==128*1024 || filesize==256*1024 || filesize==512*1024) {
-         fprintf(stderr, "Invalid Cart (type). but 128/256/512k size -> set to RAW and try to load raw rom image\n");
+         log_printf("Invalid cart (type). but 128/256/512k size -> set to RAW and try to load raw rom image\n");
          mFileType=HANDY_FILETYPE_RAW;
       } else {
-         fprintf(stderr, "Invalid Cart (type). -> set to RAW and try to load raw rom image\n");
+         log_printf("Invalid cart (type). -> set to RAW and try to load raw rom image\n");
          mFileType=HANDY_FILETYPE_RAW;
       }
    }
@@ -420,10 +420,10 @@ bool CSystem::ContextLoad(LSS_FILE *fp)
       ULONG checksum;
       // Read CRC32 and check against the CART for a match
       lss_read(&checksum,sizeof(ULONG),1,fp);
-      // if(mCart->CRC32()!=checksum) {
-      //    fprintf(stderr, "[handy]LSS Snapshot CRC does not match the loaded cartridge image, aborting load.\n");
-      //    return 0;
-      // }
+      if(mCart->CRC32()!=checksum) {
+         log_printf("CSystem::ContextLoad() LSS Snapshot CRC does not match the loaded cartridge image...\n");
+         // return 0;
+      }
 
       // Check our block header
       if(!lss_read(teststr,sizeof(char),20,fp)) status=0;
@@ -462,7 +462,7 @@ bool CSystem::ContextLoad(LSS_FILE *fp)
 
       gAudioBufferPointer = 0;
    } else {
-      fprintf(stderr, "[handy]Not a recognised LSS file\n");
+      log_printf("CSystem::ContextLoad() Not a recognised LSS file!\n");
    }
 
    return status;
@@ -475,7 +475,7 @@ void CSystem::DebugTrace(int address)
    char message[1024+1];
    int count=0;
 
-   sprintf(message,"%08x - DebugTrace(): ",gSystemCycleCount);
+   log_printf(message,"%08x - DebugTrace(): ",gSystemCycleCount);
    count=strlen(message);
 
    if(address) {
@@ -484,7 +484,7 @@ void CSystem::DebugTrace(int address)
          char linetext[1024];
          // Register dump
          mCpu->GetRegs(regs);
-         sprintf(linetext,"PC=$%04x SP=$%02x PS=0x%02x A=0x%02x X=0x%02x Y=0x%02x",regs.PC,regs.SP, regs.PS,regs.A,regs.X,regs.Y);
+         log_printf(linetext,"PC=$%04x SP=$%02x PS=0x%02x A=0x%02x X=0x%02x Y=0x%02x",regs.PC,regs.SP, regs.PS,regs.A,regs.X,regs.Y);
          strcat(message,linetext);
          count=strlen(message);
       } else {

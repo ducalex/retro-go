@@ -44,7 +44,6 @@
 
 //#define   TRACE_CART
 
-#include <rg_system.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -79,14 +78,14 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
       if(mFileHeader.magic[0]!='L' || mFileHeader.magic[1]!='Y' || mFileHeader.magic[2]!='N'
          || mFileHeader.magic[3]!='X' || mFileHeader.version!=1) {
 
-        fprintf(stderr, "Invalid cart (no header?).\nGuessing a ROM layout...\n");
+        log_printf("Invalid cart (magic number).\n");
         strncpy((char*)&mFileHeader.cartname,"NO HEADER",32);
         strncpy((char*)&mFileHeader.manufname,"HANDY",16);
         mFileHeader.page_size_bank0=gamesize>>8;// Hard workaround...
       } else {
          headersize=sizeof(LYNX_HEADER);
          mCRC32=crc32_le(0, gamedata+headersize, gamesize-headersize);
-         printf("Cart '%s' loaded, CRC32=%08X\n", mFileHeader.cartname, mCRC32);
+         log_printf("Cart '%s' loaded, CRC32=%08X\n", mFileHeader.cartname, mCRC32);
       }
 
       // As this is a cartridge boot unset the boot address
@@ -123,7 +122,7 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
          mCountMask0=0x7ff;
          break;
       default:
-         fprintf(stderr, "Invalid cart (bank0 size).\n");
+         log_printf("Invalid cart (bank0 size = %06x).\n", mFileHeader.page_size_bank0);
          break;
    }
    TRACE_CART1("CCart() - Bank0 = $%06x",mMaskBank0);
@@ -158,7 +157,7 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
          mCountMask1=0x7ff;
          break;
       default:
-         fprintf(stderr, "Invalid cart (bank1 size).\n");
+         log_printf("Invalid cart (bank1 size = %06x).\n", mFileHeader.page_size_bank1);
          break;
    }
    TRACE_CART1("CCart() - Bank1 = $%06x",mMaskBank1);

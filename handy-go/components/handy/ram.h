@@ -83,7 +83,7 @@ class CRam : public CLynxBase
             memcpy(&mFileHeader, filememory, sizeof(HOME_HEADER));
             if(mFileHeader.magic[0]!='B' || mFileHeader.magic[1]!='S' ||
                mFileHeader.magic[2]!='9' || mFileHeader.magic[3]!='3') {
-               fprintf(stderr, "Invalid cart.\n");
+               log_printf("Invalid cart (header).\n");
             } else {
             #ifndef MSB_FIRST
                mFileHeader.load_address = mFileHeader.load_address<<8 | mFileHeader.load_address>>8;

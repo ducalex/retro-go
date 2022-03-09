@@ -66,8 +66,6 @@ typedef uint32_t ULONG;
 #define FALSE	false
 #endif
 
-#include "lynxbase.h"
-
 #define HANDY_SYSTEM_FREQ                       16000000
 #define HANDY_TIMER_FREQ                        20
 #define HANDY_AUDIO_SAMPLE_FREQ                 24000 // 48000
@@ -139,6 +137,14 @@ extern UBYTE    *gPrimaryFrameBuffer;
 #define lss_write(s, vs, vc, fp) (fwrite(s, vs, vc, fp) > 0)
 #define lss_printf(fp, str) (fputs(str, fp) >= 0)
 
+//
+// Define logging functions
+//
+
+#include <rg_system.h>
+// #define log_printf(x...) printf(x)
+#define log_printf(x...) rg_system_log(RG_LOG_USER, NULL, x)
+
 
 //
 // Define the interfaces before we start pulling in the classes
@@ -185,7 +191,6 @@ class CSystem : public CSystemBase
 
       inline void Update(void)
       {
-         //         fprintf(stderr, "sys update\n");
          //
          // Only update if there is a predicted timer event
          //
@@ -197,7 +202,6 @@ class CSystem : public CSystemBase
          // Step the processor through 1 instruction
          //
          mCpu->Update();
-         //         fprintf(stderr, "end cpu update\n");
 
 #ifdef _LYNXDBG
          // Check breakpoint
@@ -216,8 +220,6 @@ class CSystem : public CSystemBase
          {
             gSystemCycleCount=gNextTimerEvent;
          }
-
-         //         fprintf(stderr, "end sys update\n");
       }
 
       inline void UpdateFrame(bool draw)

@@ -1006,7 +1006,7 @@ ULONG CSusie::PaintSprites(void)
          // Perform Sprite debugging if required, single step on sprite draw
          if(gSingleStepModeSprites) {
             // char message[256];
-            //sprintf("CSusie:PaintSprites() - Rendered Sprite %03d\n",sprcount);
+            //log_printf("CSusie:PaintSprites() - Rendered Sprite %03d\n",sprcount);
             //SingleStepModeSprites=0;
          }
       } else {
@@ -1030,7 +1030,7 @@ ULONG CSusie::PaintSprites(void)
          // Stop the system, otherwise we may just come straight back in.....
          gSystemHalt=TRUE;
          // Display warning message
-         printf("CSusie:PaintSprites(): Single draw sprite limit exceeded (>4096). The SCB is most likely looped back on itself. Reset/Exit is recommended\n");
+         log_printf("CSusie:PaintSprites(): Single draw sprite limit exceeded (>4096). The SCB is most likely looped back on itself. Reset/Exit is recommended\n");
          // Signal error to the caller
          return 0;
       }

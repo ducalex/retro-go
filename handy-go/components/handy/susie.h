@@ -419,7 +419,7 @@ class CSusie : public CLynxBase
 
          if(voff>101)
          {
-            printf("CSusie::LineInit() Out of bounds (voff)\n");
+            log_printf("CSusie::LineInit() Out of bounds (voff)\n");
             voff=0;
          }
 

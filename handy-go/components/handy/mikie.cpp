@@ -96,15 +96,6 @@ static inline ULONG GetLfsrNext(ULONG current)
 #endif
 }
 
-void CMikie::BlowOut(void)
-{
-   C6502_REGS regs;
-   mSystem.mCpu->GetRegs(regs);
-   printf("Runtime Error - System Halted\nCMikie::Poke() - Read/Write to counter clocks at PC=$%04x.\n",regs.PC);
-   gSystemHalt=TRUE;
-   abort();
-}
-
 
 CMikie::CMikie(CSystem& parent, ULONG displayformat, ULONG samplerate)
 :mSystem(parent)
@@ -1573,7 +1564,7 @@ void CMikie::Poke(ULONG addr,UBYTE data)
          if(!(data&0x02)) {
             C6502_REGS regs;
             mSystem.mCpu->GetRegs(regs);
-            printf("Runtime Alert - System Halted\nCMikie::Poke(SYSCTL1) - Lynx power down occurred at PC=$%04x.\nResetting system.\n",regs.PC);
+            log_printf("CMikie::Poke(SYSCTL1) - Lynx power down occurred at PC=$%04x.\nResetting system.\n", regs.PC);
             mSystem.Reset();
             gSystemHalt=TRUE;
          }
@@ -1701,7 +1692,7 @@ void CMikie::Poke(ULONG addr,UBYTE data)
             case 0xFE19+3: mSystem.HLE_BIOS_FE19(); break;
             case 0xFE4A+3: mSystem.HLE_BIOS_FE4A(); break;
             case 0xFF80+3: mSystem.HLE_BIOS_FF80(); break;
-            default: printf("ROM code missing...\n");
+            default: log_printf("BIOS: Missing function $%04X\n", mSystem.mCpu->GetPC());
          }
          break;
       case (GREEN0&0xff):
@@ -3023,7 +3014,6 @@ inline void CMikie::Update(void)
       UpdateSound();
    }
 
-   //			printf("CMikie::Update() - gSystemCycleCount==gNextTimerEvent, system lock likely\n");
    //			TRACE_MIKIE1("Update() - NextTimerEvent = %012d",gNextTimerEvent);
 
    // Update system IRQ status as a result of timer activity

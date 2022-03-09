@@ -243,8 +243,6 @@ class C65C02
          //				mPC=CPU_PEEKW(NMI_VECTOR);
          //			}
 
-         //    fprintf(stderr, "cpu update\n");
-
          if(gSystemIRQ && !mI)
          {
             TRACE_CPU1("Update() IRQ taken at PC=%04x",mPC);
@@ -1756,9 +1754,7 @@ class C65C02
 
       inline void xILLEGAL(void)
       {
-         //char addr[1024];
-         //sprintf(addr,"C65C02::Update() - Illegal opcode (%02x) at PC=$%04x.",mOpcode,mPC);
-         fprintf(stderr, "C65C02::Update() - Illegal opcode (%02x) at PC=$%04x.",mOpcode,mPC);
+         log_printf("CPU: Illegal opcode $%02x at PC=$%04x.\n", mOpcode, mPC);
       }
 
    private:

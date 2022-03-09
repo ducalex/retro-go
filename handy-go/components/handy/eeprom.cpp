@@ -44,7 +44,7 @@ void CEEPROM::Load(void)
    if(!Available()) return;
    FILE *fe;
    if((fe=fopen(filename,"rb"))!=NULL){
-      printf("EEPROM LOAD %s\n",filename);
+      log_printf("EEPROM: Loading from '%s'\n",filename);
       fread(romdata,1,1024,fe);
       fclose(fe);
    }
@@ -55,7 +55,7 @@ void CEEPROM::Save(void)
    if(!Available()) return;
    FILE *fe;
    if((fe=fopen(filename,"wb+"))!=NULL){
-      printf("EEPROM SAVE %s\n",filename);
+      log_printf("EEPROM: Saving to '%s'\n",filename);
       fwrite(romdata,1,Size(),fe);
       fclose(fe);
    }
@@ -111,55 +111,54 @@ bool CEEPROM::ContextLoad(LSS_FILE *fp)
 void CEEPROM::SetEEPROMType(UBYTE b)
 {
    type=b;
-   printf("\nEEPROM: ");
+   const char *type = "none";
    switch(b&0x7) {
       case 1: // 93C46 , 8 bit mode
          ADDR_MASK =  0x7F;
          CMD_BITS  =  10;
          ADDR_BITS =  7;
-         printf("93C46 ");
+         type = "93C46";
          break;
       case 2: // 93C56 , 8 bit mode
          ADDR_MASK =  0xFF;
          CMD_BITS  =  12;
          ADDR_BITS =  9;
-         printf("93C56 ");
+         type = "93C56";
          break;
       case 3: // 93C66 , 8 bit mode
          ADDR_MASK =  0x1FF;
          CMD_BITS  =  12;
          ADDR_BITS =  9;
-         printf("93C66 ");
+         type = "93C66";
          break;
       case 4: // 93C76 , 8 bit mode
          ADDR_MASK =  0x3FF;
          CMD_BITS  =  14;
          ADDR_BITS =  11;
-         printf("93C76 ");
+         type = "93C76";
          break;
       case 5: // 93C86 , 8 bit mode
          ADDR_MASK =  0x7FF;
          CMD_BITS  =  14;
          ADDR_BITS =  11;
-         printf("93C86 ");
+         type = "93C86";
          break;
       case 0: // NONE, fallthrou
       default:
          ADDR_MASK =  0;
          CMD_BITS  =  1;
          ADDR_BITS =  1;
-         printf("none ");
          break;
    }
    if(b&0x80) { // 8 bit access
       DONE_MASK =  0x100;
-      printf("8 bit\n");
+      log_printf("EEPROM: Type: %s 8bit\n", type);
    } else { // 16 bit access
       ADDR_MASK>>=1;
       CMD_BITS--;
       ADDR_BITS--;
       DONE_MASK = 0x10000;
-      printf("16 bit\n");
+      log_printf("EEPROM: Type: %s 16bit\n", type);
    }
 }
 

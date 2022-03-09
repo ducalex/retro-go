@@ -1,3 +1,7 @@
+# Retro-Go 1.31.1 (2022-03-08)
+- All: Fixed sound on MRGC-G32
+
+
 # Retro-Go 1.31 (2022-02-15)
 - Launcher: Fixed occasional crash when changing tab
 - GBC: Fixed high cpu usage / slowdowns
