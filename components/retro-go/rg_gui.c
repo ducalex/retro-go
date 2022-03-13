@@ -334,12 +334,12 @@ void rg_gui_draw_battery(int x_pos, int y_pos)
 {
     int width = 20, height = 10;
     int width_fill = width;
-    float percentage;
-    rg_color_t color_fill = C_RED;
+    rg_color_t color_fill = C_DARK_GRAY;
     rg_color_t color_border = C_SILVER;
     rg_color_t color_empty = C_BLACK;
 
-    if (rg_input_read_battery(&percentage, NULL))
+    float percentage = rg_system_get_stats().batteryPercent;
+    if (percentage >= 0.f && percentage <= 100.f)
     {
         width_fill = width / 100.f * percentage;
         if (percentage < 20.f)

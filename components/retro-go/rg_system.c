@@ -37,10 +37,15 @@ typedef struct
     rg_logbuf_t log;
 } panic_trace_t;
 
+typedef struct
+{
+    uint32_t totalFrames, fullFrames, ticks, busyTime;
+    uint64_t updateTime;
+} counters_t;
+
 // The trace will survive a software reset
 static RTC_NOINIT_ATTR panic_trace_t panicTrace;
 static rg_stats_t statistics;
-static rg_counters_t counters;
 static rg_app_t app;
 static rg_logbuf_t logbuf;
 static int ledValue = 0;
@@ -138,15 +143,47 @@ IRAM_ATTR void esp_panic_putchar_hook(char c)
     logbuf_print(&panicTrace.log, (char[2]){c, 0});
 }
 
+static void update_statistics(void)
+{
+    static counters_t counters = {0};
+    const counters_t previous = counters;
+    const rg_display_t *disp = rg_display_get_status();
+
+    counters.totalFrames = disp->counters.totalFrames;
+    counters.fullFrames = disp->counters.fullFrames;
+    counters.busyTime = statistics.busyTime;
+    counters.ticks = statistics.ticks;
+    counters.updateTime = get_elapsed_time();
+
+    float elapsedTime = (counters.updateTime - previous.updateTime) / 1000000.f;
+    statistics.busyPercent = RG_MIN((counters.busyTime - previous.busyTime) / (elapsedTime * 1000000.f) * 100.f, 100.f);
+    statistics.totalFPS = (counters.ticks - previous.ticks) / elapsedTime;
+    statistics.skippedFPS = statistics.totalFPS - ((counters.totalFrames - previous.totalFrames) / elapsedTime);
+    statistics.fullFPS = (counters.fullFrames - previous.fullFrames) / elapsedTime;
+
+    multi_heap_info_t heap_info = {0};
+    heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
+    statistics.freeMemoryInt = heap_info.total_free_bytes;
+    statistics.freeBlockInt = heap_info.largest_free_block;
+    statistics.totalMemoryInt = heap_info.total_free_bytes + heap_info.total_allocated_bytes;
+    heap_caps_get_info(&heap_info, MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
+    statistics.freeMemoryExt = heap_info.total_free_bytes;
+    statistics.freeBlockExt = heap_info.largest_free_block;
+    statistics.totalMemoryExt = heap_info.total_free_bytes + heap_info.total_allocated_bytes;
+
+    statistics.freeStackMain = uxTaskGetStackHighWaterMark(app.mainTaskHandle);
+
+    if (!rg_input_read_battery(&statistics.batteryPercent, &statistics.batteryVoltage))
+    {
+        statistics.batteryPercent = -1.f;
+        statistics.batteryVoltage = -1.f;
+    }
+}
+
 static void system_monitor_task(void *arg)
 {
-    multi_heap_info_t heap_info = {0};
     time_t lastLoop = get_elapsed_time();
-    time_t lastTime = time(NULL);
     bool ledState = false;
-
-    memset(&statistics, 0, sizeof(statistics));
-    memset(&counters, 0, sizeof(counters));
 
     // Give the app a few seconds to start before monitoring
     vTaskDelay(pdMS_TO_TICKS(2500));
@@ -155,25 +192,9 @@ static void system_monitor_task(void *arg)
     while (1)
     {
         int loopTime_us = get_elapsed_time_since(lastLoop);
-        float loopTime = loopTime_us / 1000000.f;
-        rg_counters_t current = counters;
-
-        counters = (rg_counters_t){0};
         lastLoop = get_elapsed_time();
 
-        statistics.busyPercent = RG_MIN(current.busyTime / (float)loopTime_us * 100.f, 100.f);
-        statistics.skippedFPS = current.skippedFrames / loopTime;
-        statistics.totalFPS = current.totalFrames / loopTime;
-        statistics.freeStackMain = uxTaskGetStackHighWaterMark(app.mainTaskHandle);
-
-        heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
-        statistics.freeMemoryInt = heap_info.total_free_bytes;
-        statistics.freeBlockInt = heap_info.largest_free_block;
-        heap_caps_get_info(&heap_info, MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
-        statistics.freeMemoryExt = heap_info.total_free_bytes;
-        statistics.freeBlockExt = heap_info.largest_free_block;
-
-        rg_input_read_battery(&statistics.batteryPercent, &statistics.batteryVoltage);
+        update_statistics();
 
         if (statistics.batteryPercent < 2)
         {
@@ -194,9 +215,9 @@ static void system_monitor_task(void *arg)
             statistics.freeBlockExt / 1024,
             statistics.busyPercent,
             statistics.totalFPS,
-            current.skippedFrames,
-            current.totalFrames - current.fullFrames - current.skippedFrames,
-            current.fullFrames,
+            (int)(statistics.skippedFPS + 0.9f),
+            (int)(statistics.totalFPS - statistics.skippedFPS - statistics.fullFPS + 0.9f),
+            (int)(statistics.fullFPS + 0.9f),
             statistics.batteryPercent);
 
         if ((wdtCounter -= loopTime_us) <= 0)
@@ -210,15 +231,6 @@ static void system_monitor_task(void *arg)
             }
             WDT_RELOAD(WDT_TIMEOUT);
         }
-
-        if (abs(time(NULL) - lastTime) > loopTime * 2)
-        {
-            RG_LOGI("System time suddenly changed!\n");
-            RG_LOGI("    old time: %s\n", htime(lastTime));
-            RG_LOGI("    new time: %s\n", htime(time(NULL)));
-            rtc_time_save();
-        }
-        lastTime = time(NULL);
 
         #ifdef ENABLE_PROFILING
             static long loops = 0;
@@ -238,22 +250,8 @@ static void system_monitor_task(void *arg)
 
 IRAM_ATTR void rg_system_tick(int busyTime)
 {
-    static uint32_t totalFrames = 0;
-    static uint32_t fullFrames = 0;
-
-    const rg_display_t *disp = rg_display_get_status();
-
-    if (disp->counters.totalFrames == totalFrames)
-        counters.skippedFrames++;
-    else if (disp->counters.fullFrames > fullFrames)
-        counters.fullFrames++;
-
-    totalFrames = disp->counters.totalFrames;
-    fullFrames = disp->counters.fullFrames;
-
-    counters.totalFrames++;
-    counters.busyTime += busyTime;
-
+    statistics.busyTime += busyTime;
+    statistics.ticks++;
     // WDT_RELOAD(WDT_TIMEOUT);
 }
 
@@ -318,6 +316,9 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     rg_gui_init();
     rg_gui_draw_hourglass();
     rg_audio_init(sampleRate);
+
+    // Init last but before panic check, it could be useful
+    update_statistics();
 
     // Show alert if we've just rebooted from a panic
     if (esp_reset_reason() == ESP_RST_PANIC)
@@ -697,10 +698,11 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
         fprintf(fp, "Version: %s\n", app.version);
         fprintf(fp, "Build date: %s %s\n", app.buildDate, app.buildTime);
         fprintf(fp, "ESP-IDF: %s\n", esp_get_idf_version());
+        fprintf(fp, "Total memory: %d + %d\n", stats->totalMemoryInt, stats->totalMemoryExt);
         fprintf(fp, "Free memory: %d + %d\n", stats->freeMemoryInt, stats->freeMemoryExt);
         fprintf(fp, "Free block: %d + %d\n", stats->freeBlockInt, stats->freeBlockExt);
         fprintf(fp, "Stack HWM: %d\n", stats->freeStackMain);
-        fprintf(fp, "Uptime: %ds\n", (int)(get_elapsed_time() / 1000 / 1000));
+        fprintf(fp, "Uptime: %ds (%d ticks)\n", (int)(get_elapsed_time() / 1000000), stats->ticks);
         if (panic_trace && panicTrace.message[0])
             fprintf(fp, "Panic message: %.256s\n", panicTrace.message);
         if (panic_trace && panicTrace.context[0])

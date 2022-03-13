@@ -109,14 +109,6 @@ typedef struct
 
 typedef struct
 {
-    uint32_t totalFrames;
-    uint32_t skippedFrames;
-    uint32_t fullFrames;
-    uint32_t busyTime;
-} rg_counters_t;
-
-typedef struct
-{
     // const char *partition;
     const char *name;
     const char *version;
@@ -140,10 +132,15 @@ typedef struct
 {
     float batteryPercent;
     float batteryVoltage;
-    float partialFPS;
     float skippedFPS;
+    float fullFPS;
     float totalFPS;
     float busyPercent;
+    uint32_t totalFrames;
+    uint32_t busyTime;
+    uint32_t ticks;
+    uint32_t totalMemoryInt;
+    uint32_t totalMemoryExt;
     uint32_t freeMemoryInt;
     uint32_t freeMemoryExt;
     uint32_t freeBlockInt;
