@@ -1,0 +1,20 @@
+# Notes:
+# - Enabling netplay in an emulator increases its size by ~350KB (~450KB in esp-idf 4.0)
+# - Enabling profiling in an emulator increases its size by ~75KB (without no-inline)
+# - Keep at least 32KB free in a partition for future updates
+# - Partitions must be 64K aligned
+# - Partitions of type data are ignored when building a .fw.
+# - Subtypes and offsets and size may be adjusted when building a .fw or .img
+
+# Name,       Type, SubType, Offset,  Size
+nvs,          data,   nvs,   36864,  16384
+otadata,      data,   ota,   53248,   8192
+phy_init,     data,   phy,   61440,   4096
+launcher,     app,  ota_0,   65536, 327680
+nofrendo-go,  app,  ota_1,        , 393216
+gnuboy-go,    app,  ota_2,        , 327680
+smsplusgx-go, app,  ota_3,        , 393216
+pce-go,       app,  ota_4,        , 327680
+handy-go,     app,  ota_5,        , 393216
+snes9x-go,    app,  ota_6,        , 786432
+prboom-go,    app,  ota_7,        , 720896

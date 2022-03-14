@@ -23,23 +23,33 @@ except:
 DEFAULT_TARGET = os.getenv("RG_TOOL_TARGET", "odroid-go")
 DEFAULT_BAUD = os.getenv("RG_TOOL_BAUD", "1152000")
 DEFAULT_PORT = os.getenv("RG_TOOL_PORT", "COM3")
-PROJECT_PATH = os.getcwd() if os.path.exists("rg_config.py") else sys.path[0]
+PROJECT_NAME = os.getenv("PROJECT_NAME", os.path.basename(os.getcwd()).title())
+PROJECT_ICON = os.getenv("PROJECT_ICON", "icon.raw")
+PROJECT_APPS = os.getenv("PROJECT_APPS", "partitions.csv")
+try:
+    PROJECT_VER = os.getenv("PROJECT_VER") or subprocess.check_output(
+        "git describe --tags --abbrev=5 --dirty --always", shell=True
+    ).decode().rstrip()
+except:
+    PROJECT_VER = "unknown"
+
+if type(PROJECT_APPS) is str: # Assume it's a partitions.csv, we must then parse it
+    csv = re.compile(r"^\s*([^#]+)\s*,\s*(app|0)\s*,\s*(.+)\s*,\s*(.+)\s*,\s*(.+)\s*(#.+)?$")
+    filename = PROJECT_APPS
+    PROJECT_APPS = {}
+    try:
+        with open(filename, "r") as f:
+            for line in f:
+                if m := csv.match(line):
+                    PROJECT_APPS[m[1]] = [0, int(m[5], base=0), m[2], m[3]]
+    except:
+        exit("Failed reading partitions from '%s' (PROJECT_APPS)." % filename)
+
+if not PROJECT_APPS:
+    exit("No subprojects defined. Are you running from the project's directory?")
 
 if not os.getenv("IDF_PATH"):
-    exit("IDF_PATH is not defined.")
-
-os.chdir(PROJECT_PATH)
-
-try:
-    with open("rg_config.py", "rb") as f:
-        exec(f.read())
-except:
-    PROJECT_NAME = os.path.basename(PROJECT_PATH).title()
-    PROJECT_VER = subprocess.check_output("git describe --dirty --always", shell=True).decode().rstrip()
-    PROJECT_TILE = "icon.raw"
-    PROJECT_APPS = {} # TO DO: discover subprojects automatically
-
-symbols_cache = dict()
+    exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
 
 
 class Symbol:
@@ -90,6 +100,7 @@ def find_symbol(elf_file, addr):
     except:
         pass
     return symbols_cache[addr]
+symbols_cache = dict()
 
 
 def analyze_profile(frames):
@@ -126,7 +137,7 @@ def build_firmware(targets, shrink=False, device_type=None):
         "tools/mkfw.py",
         ("%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, device_type)).lower(),
         ("%s %s" % (PROJECT_NAME, PROJECT_VER)),
-        PROJECT_TILE
+        PROJECT_ICON
     ]
 
     if device_type in ["mrgc-g32", "esplay"]:
@@ -139,7 +150,7 @@ def build_firmware(targets, shrink=False, device_type=None):
 
     commandline = ' '.join(shlex.quote(arg) for arg in args[1:]) # shlex.join()
     print("Building firmware: %s\n" % commandline)
-    subprocess.run(args, check=True, cwd=PROJECT_PATH)
+    subprocess.run(args, check=True)
 
 
 def clean_app(target):
@@ -164,7 +175,7 @@ def build_app(target, build_type=None, with_netplay=False, build_target=None):
     os.putenv("PROJECT_VER", PROJECT_VER)
     if build_target:
         os.putenv("RG_TARGET", re.sub(r'[^A-Z0-9]', '_', build_target.upper()))
-    subprocess.run("idf.py app", shell=True, check=True, cwd=os.path.join(PROJECT_PATH, target))
+    subprocess.run("idf.py app", shell=True, check=True, cwd=os.path.join(os.getcwd(), target))
 
     try:
         print("\nPatching esp_image_header_t to skip sha256 on boot... ", end="")
