@@ -10,13 +10,8 @@ import re
 import os
 
 try:
-    import serial
-except:
-    serial = None
-
-try:
     sys.path.append(os.path.join(os.environ["IDF_PATH"], "components", "partition_table"))
-    import parttool
+    import serial, parttool
 except:
     pass
 
@@ -34,13 +29,13 @@ except:
     PROJECT_VER = "unknown"
 
 if type(PROJECT_APPS) is str: # Assume it's a partitions.csv, we must then parse it
-    csv = re.compile(r"^\s*([^#]+)\s*,\s*(app|0)\s*,\s*(.+)\s*,\s*(.+)\s*,\s*(.+)\s*(#.+)?$")
     filename = PROJECT_APPS
     PROJECT_APPS = {}
     try:
         with open(filename, "r") as f:
             for line in f:
-                if m := csv.match(line):
+                m = re.match(r"^\s*([^#]+)\s*,\s*(.+)\s*,\s*(.+)\s*,\s*(.+)\s*,\s*([^#]+)", line)
+                if m and m[2] in ["app", "0"]:
                     PROJECT_APPS[m[1]] = [0, int(m[5], base=0), m[2], m[3]]
     except:
         exit("Failed reading partitions from '%s' (PROJECT_APPS)." % filename)
@@ -189,8 +184,6 @@ def build_app(target, build_type=None, with_netplay=False, build_target=None):
 
 
 def monitor_app(target, port, baudrate=115200):
-    if not serial:
-        exit("serial module not installed. You can try running 'pip install pyserial'.")
     print("Starting monitor for app '%s'" % target)
     mon = serial.Serial(port, baudrate=baudrate, timeout=0)
     elf = os.path.join(target, "build", target + ".elf")
@@ -301,6 +294,8 @@ if command in ["build-fw", "release"]:
 
 if command in ["flash", "run"]:
     print("=== Step: Flashing ===\n")
+    if "parttool" not in globals():
+        exit("Failed to load the parttool module from your esp-idf framework.")
     try:
         pt = parttool.ParttoolTarget(args.port, args.baud)
     except:
@@ -318,6 +313,8 @@ if command in ["flash", "run"]:
 
 if command in ["monitor", "run"]:
     print("=== Step: Monitoring ===\n")
+    if "serial" not in globals():
+        exit("Failed to load the serial module. You can try running 'pip install pyserial'.")
     if len(apps) == 1:
         monitor_app(apps[0], args.port)
     else:
