@@ -33,6 +33,7 @@ void rg_storage_commit(void);
 void rg_storage_set_activity_led(bool enable);
 bool rg_storage_get_activity_led(void);
 
+void rg_settings_commit(void);
 void rg_settings_reset(void);
 double rg_settings_get_number(const char *section, const char *key, double default_value);
 void rg_settings_set_number(const char *section, const char *key, double value);

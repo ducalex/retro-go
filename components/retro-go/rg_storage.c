@@ -150,31 +150,8 @@ bool rg_storage_ready(void)
 
 void rg_storage_commit(void)
 {
-    if (unsaved_changes > 0)
-    {
-        char *buffer = cJSON_Print(config_root);
-        if (buffer)
-        {
-            FILE *fp = fopen(config_file_path, "wb");
-            if (!fp)
-            {
-                if (unlink(config_file_path) == -1)
-                    rg_mkdir(rg_dirname(config_file_path));
-                fp = fopen(config_file_path, "wb");
-            }
-            if (fp)
-            {
-                if (fputs(buffer, fp) > 0)
-                    unsaved_changes = 0;
-                fclose(fp);
-            }
-            cJSON_free(buffer);
-        }
-        else
-        {
-            RG_LOGE("cJSON_Print() failed.\n");
-        }
-    }
+    // This shouldn't be done here, but changing it affects too many files right now...
+    rg_settings_commit();
 
     // flush buffers();
 }
@@ -201,6 +178,35 @@ static cJSON *json_root(const char *name)
     }
 
     return myroot;
+}
+
+void rg_settings_commit(void)
+{
+    if (!unsaved_changes)
+        return;
+
+    char *buffer = cJSON_Print(config_root);
+    if (!buffer)
+    {
+        RG_LOGE("cJSON_Print() failed.\n");
+        return;
+    }
+
+    FILE *fp = fopen(config_file_path, "wb");
+    if (!fp)
+    {
+        if (unlink(config_file_path) == -1)
+            rg_mkdir(rg_dirname(config_file_path));
+        fp = fopen(config_file_path, "wb");
+    }
+    if (fp)
+    {
+        if (fputs(buffer, fp) > 0)
+            unsaved_changes = 0;
+        fclose(fp);
+    }
+
+    cJSON_free(buffer);
 }
 
 void rg_settings_reset(void)

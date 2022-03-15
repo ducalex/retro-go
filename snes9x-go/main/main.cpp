@@ -36,6 +36,7 @@ static keymap_t keymap;
 static bool netplay = false;
 #endif
 
+static const char *SETTING_NOTIFIED = "notified";
 static const char *SETTING_KEYMAP = "keymap";
 // --- MAIN
 
@@ -238,10 +239,18 @@ extern "C" void app_main(void)
 	if (!S9xLoadROM(app->romPath))
 		RG_PANIC("ROM loading failed!");
 
-    if (app->bootFlags & RG_BOOT_RESUME)
-    {
-        rg_emu_load_state(0);
-    }
+	if (app->bootFlags & RG_BOOT_RESUME)
+	{
+		rg_emu_load_state(0);
+	}
+
+	// Do this last to make sure the user sees it only the first time a game is about to start
+	if (!rg_settings_get_number(NS_APP, SETTING_NOTIFIED, 0))
+	{
+		rg_gui_alert("Important!", "SNES support is experimental.\nIt is slow and has no sound.");
+		rg_settings_set_number(NS_APP, SETTING_NOTIFIED, 1);
+		rg_settings_commit();
+	}
 
 	app->refreshRate = Settings.FrameRate;
 
