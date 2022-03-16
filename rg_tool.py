@@ -18,7 +18,7 @@ except:
 DEFAULT_TARGET = os.getenv("RG_TOOL_TARGET", "odroid-go")
 DEFAULT_BAUD = os.getenv("RG_TOOL_BAUD", "1152000")
 DEFAULT_PORT = os.getenv("RG_TOOL_PORT", "COM3")
-PROJECT_NAME = os.getenv("PROJECT_NAME", os.path.basename(os.getcwd()).title())
+PROJECT_NAME = os.getenv("PROJECT_NAME", "Retro-Go") # os.path.basename(os.getcwd()).title()
 PROJECT_ICON = os.getenv("PROJECT_ICON", "icon.raw")
 PROJECT_APPS = os.getenv("PROJECT_APPS", "partitions.csv")
 try:
