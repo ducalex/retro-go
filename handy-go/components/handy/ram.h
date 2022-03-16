@@ -46,15 +46,6 @@
 #define RAM_H
 
 #define RAM_SIZE				   65536
-#define RAM_ADDR_MASK			0xffff
-#define DEFAULT_RAM_CONTENTS	0xff
-
-#ifndef __min
-#define __min(a,b) \
-   ({ __typeof__ (a) _a = (a); \
-       __typeof__ (b) _b = (b); \
-     _a > _b ? _b : _a; })
-#endif
 
 typedef struct
 {
@@ -64,7 +55,6 @@ typedef struct
    UBYTE   magic[4];
 }HOME_HEADER;
 
-
 static UBYTE STATIC_RAM[RAM_SIZE];
 
 class CRam : public CLynxBase
@@ -73,51 +63,47 @@ class CRam : public CLynxBase
 
    public:
 
-      CRam(UBYTE *filememory,ULONG filesize)
+      CRam(UBYTE *filedata, ULONG filesize)
       {
          mRamData = (UBYTE*)&STATIC_RAM;
-         mFileData = NULL;
-
-         if (filesize >= sizeof(HOME_HEADER)) {
-            // Sanity checks on the header
-            memcpy(&mFileHeader, filememory, sizeof(HOME_HEADER));
-            if(mFileHeader.magic[0]!='B' || mFileHeader.magic[1]!='S' ||
-               mFileHeader.magic[2]!='9' || mFileHeader.magic[3]!='3') {
-               log_printf("Invalid cart (header).\n");
-            } else {
-            #ifndef MSB_FIRST
-               mFileHeader.load_address = mFileHeader.load_address<<8 | mFileHeader.load_address>>8;
-               mFileHeader.size = mFileHeader.size<<8 | mFileHeader.size>>8;
+         if (filedata && filesize > 64 && memcmp(filedata + 6, "BS93", 4) == 0) {
+            #ifdef MSB_FIRST
+            mHomebrewAddr = filedata[2] << 8 | filedata[3];
+            mHomebrewSize = filedata[4] << 8 | filedata[5];
+            #else
+            mHomebrewAddr = filedata[3] << 8 | filedata[2];
+            mHomebrewSize = filedata[5] << 8 | filedata[4];
             #endif
-               mFileHeader.load_address-=10;
-            }
-
-            // Take a copy of the ram data
-            mFileSize = filesize;
-            mFileData = new UBYTE[mFileSize];
-            memcpy(mFileData, filememory, mFileSize);
+            mHomebrewSize = filesize > mHomebrewSize ? mHomebrewSize : filesize;
+            mHomebrewAddr -= 10;
+            mHomebrewData = new UBYTE[mHomebrewSize];
+            memcpy(mHomebrewData, filedata, mHomebrewSize);
+            log_printf("Homebrew found: size=%d, addr=0x%04X\n", mHomebrewSize, mHomebrewAddr);
+         } else {
+            mHomebrewData = NULL;
+            mHomebrewAddr = 0;
+            mHomebrewSize = 0;
          }
-
          Reset();
       }
 
       ~CRam()
       {
-         if (mFileData) delete[] mFileData;
-         mFileData=NULL;
+         if (mHomebrewData) {
+            delete[] mHomebrewData;
+            mHomebrewData=NULL;
+         }
       }
 
       void Reset(void)
       {
-         if (mFileData) {
+         if (mHomebrewData) {
             // Load the cart into RAM
-            int data_size = __min(int(mFileHeader.size), (int)(mFileSize));
-            memset(mRamData, 0x00, mFileHeader.load_address);
-            memcpy(mRamData+mFileHeader.load_address, mFileData, data_size);
-            memset(mRamData+mFileHeader.load_address+data_size, 0x00, RAM_SIZE-mFileHeader.load_address-data_size);
-            gCPUBootAddress=mFileHeader.load_address;
+            memset(mRamData, 0x00, RAM_SIZE);
+            memcpy(mRamData+mHomebrewAddr, mHomebrewData, mHomebrewSize);
+            gCPUBootAddress = mHomebrewAddr;
          } else {
-            memset(mRamData, DEFAULT_RAM_CONTENTS, RAM_SIZE);
+            memset(mRamData, 0xFF, RAM_SIZE);
          }
       }
 
@@ -151,9 +137,9 @@ class CRam : public CLynxBase
 
    private:
       UBYTE	*mRamData;
-      UBYTE	*mFileData;
-      ULONG	mFileSize;
-      HOME_HEADER mFileHeader;
+      UBYTE	*mHomebrewData;
+      ULONG	mHomebrewSize;
+      ULONG mHomebrewAddr;
 };
 
 #endif

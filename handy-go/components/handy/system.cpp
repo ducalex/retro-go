@@ -118,7 +118,7 @@ int lss_printf(LSS_FILE *fp, const char *str)
 #endif
 
 
-CSystem::CSystem(const char* gamefile, long displayformat, long samplerate)
+CSystem::CSystem(const char* filename, long displayformat, long samplerate)
  : mCart(NULL),
    mRam(NULL),
    mCpu(NULL),
@@ -126,90 +126,55 @@ CSystem::CSystem(const char* gamefile, long displayformat, long samplerate)
    mSusie(NULL),
    mEEPROM(NULL)
 {
-   mpDebugCallback=NULL;
-   mDebugCallbackObject=0;
-
-   // Select the default filetype
-   UBYTE *filememory=NULL;
-   ULONG filesize=0;
-
-   mFileType=HANDY_FILETYPE_ILLEGAL;
-   // Open the file and load the file
+   UBYTE *filedata = NULL;
+   ULONG filesize = 0;
    FILE *fp;
 
-   // Open the cartridge file for reading
-   if((fp=fopen(gamefile,"rb"))!=NULL) {
-      // How big is the file ??
-      fseek(fp,0,SEEK_END);
-      filesize=ftell(fp);
-      fseek(fp,0,SEEK_SET);
-      filememory=(UBYTE*) new UBYTE[filesize];
+   log_printf("Loading '%s'...\n", filename);
 
-      if(fread(filememory, 1, filesize,fp)!=filesize) {
-         log_printf("Invalid cart (filesize).\n");
+   if ((fp = fopen(filename, "rb"))) {
+      fseek(fp, 0, SEEK_END);
+      filesize = ftell(fp);
+      filedata = (UBYTE*)malloc(filesize);
+      fseek(fp, 0, SEEK_SET);
+      if (!filedata) {
+         log_printf("-> memory allocation failed (%d bytes)!\n", filesize);
+      } else if (fread(filedata, filesize, 1, fp) != 1) {
+         log_printf("-> fread failed (%d bytes)!\n", filesize);
+      } else {
+         log_printf("-> read ok. size=%d, crc32=%08X\n", filesize, crc32_le(0, filedata, filesize));
       }
-
       fclose(fp);
    } else {
-      log_printf("Invalid cart (fopen failed).\n");
+      log_printf("-> fopen failed!\n");
    }
 
    // Now try and determine the filetype we have opened
-   if(filesize) {
-      char clip[11];
-      memcpy(clip,filememory,11);
-      clip[4]=0;
-      clip[10]=0;
+   if (!filedata || filesize < 16) {
+      mFileType = HANDY_FILETYPE_ILLEGAL;
+      mCart = new CCart(0, 0);
+      mRam = new CRam(0, 0);
+   } else if (!memcmp(filedata + 6, "BS93", 4)) {
+      mFileType = HANDY_FILETYPE_HOMEBREW;
+      mCart = new CCart(0, 0);
+      mRam = new CRam(filedata, filesize);
+   } else {
+      mFileType = memcmp(filedata, "LYNX", 4) ? HANDY_FILETYPE_RAW : HANDY_FILETYPE_LNX;
+      mCart = new CCart(filedata, filesize);
+      mRam = new CRam(0, 0);
 
-      if(!strcmp(&clip[6],"BS93")) mFileType=HANDY_FILETYPE_HOMEBREW;
-      else if(!strcmp(&clip[0],"LYNX")) mFileType=HANDY_FILETYPE_LNX;
-      else if(filesize==128*1024 || filesize==256*1024 || filesize==512*1024) {
-         log_printf("Invalid cart (type). but 128/256/512k size -> set to RAW and try to load raw rom image\n");
-         mFileType=HANDY_FILETYPE_RAW;
-      } else {
-         log_printf("Invalid cart (type). -> set to RAW and try to load raw rom image\n");
-         mFileType=HANDY_FILETYPE_RAW;
-      }
-   }
-
-   mCycleCountBreakpoint=0xffffffff;
-
-   // Create the system objects that we'll use
-
-   switch(mFileType) {
-      case HANDY_FILETYPE_RAW:
-      case HANDY_FILETYPE_LNX:
-         mCart = new CCart(filememory,filesize);
-         mRam = new CRam(0,0);
-         break;
-      case HANDY_FILETYPE_HOMEBREW:
-         mCart = new CCart(0,0);
-         mRam = new CRam(filememory,filesize);
-         break;
-      case HANDY_FILETYPE_ILLEGAL:
-      default:
-         mCart = new CCart(0,0);
-         mRam = new CRam(0,0);
-         break;
-   }
-
-   if(filememory) delete[] filememory;
-
-   memset(mBiosRom, 0x88, sizeof(mBiosRom));
-   if (mFileType != HANDY_FILETYPE_HOMEBREW) {
+      // Setup BIOS
+      memset(mBiosRom, 0x88, sizeof(mBiosRom));
       mBiosRom[0x00] = 0x8d;
       mBiosRom[0x01] = 0x97;
       mBiosRom[0x02] = 0xfd;
       mBiosRom[0x03] = 0x60; // RTS
-
       mBiosRom[0x19] = 0x8d;
       mBiosRom[0x20] = 0x97;
       mBiosRom[0x21] = 0xfd;
-
       mBiosRom[0x4A] = 0x8d;
       mBiosRom[0x4B] = 0x97;
       mBiosRom[0x4C] = 0xfd;
-
       mBiosRom[0x180] = 0x8d;
       mBiosRom[0x181] = 0x97;
       mBiosRom[0x182] = 0xfd;
@@ -223,8 +188,15 @@ CSystem::CSystem(const char* gamefile, long displayformat, long samplerate)
    mBiosVectors[4] = 0x80;
    mBiosVectors[5] = 0xFF;
 
+   // Regain some memory before initializing the rest
+   free(filedata);
+
    mRamPointer = mRam->GetRamPointer();
    mMemMapReg = 0x00;
+
+   mCycleCountBreakpoint = 0xffffffff;
+   mpDebugCallback = NULL;
+   mDebugCallbackObject = 0;
 
    mMikie = new CMikie(*this, displayformat, samplerate);
    mSusie = new CSusie(*this);

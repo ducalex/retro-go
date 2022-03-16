@@ -54,7 +54,6 @@
 
 CCart::CCart(UBYTE *gamedata,ULONG gamesize)
 {
-   int headersize=0
    TRACE_CART1("CCart() called with %s",gamefile);
 
    mWriteEnableBank1=FALSE;
@@ -62,37 +61,35 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
    mCRC32=0;
    mBank=bank0;
 
+   mFileHeader = (LYNX_HEADER){
+      .magic = {0, 0, 0, 0},
+      .page_size_bank0 = UWORD(gamesize >> 8),
+      .page_size_bank1 = 0,
+      .version = 0,
+      .cartname = {'N','O',' ','H','E','A','D','E','R'},
+      .manufname = {'H','A','N','D','Y'},
+      .rotation = 0,
+      .aud_bits = 0,
+      .eeprom = 0,
+      .spare = {0, 0, 0},
+   };
+
    // Open up the file
-   if (gamesize > sizeof(LYNX_HEADER)) {
-      // Checkout the header bytes
-      memcpy(&mFileHeader,gamedata,sizeof(LYNX_HEADER));
-
-#ifdef MSB_FIRST
-      mFileHeader.page_size_bank0 = ((mFileHeader.page_size_bank0>>8) | (mFileHeader.page_size_bank0<<8));
-      mFileHeader.page_size_bank1 = ((mFileHeader.page_size_bank1>>8) | (mFileHeader.page_size_bank1<<8));
-      mFileHeader.version         = ((mFileHeader.version>>8) | (mFileHeader.version<<8));
-#endif
-
-      // Sanity checks on the header
-
-      if(mFileHeader.magic[0]!='L' || mFileHeader.magic[1]!='Y' || mFileHeader.magic[2]!='N'
-         || mFileHeader.magic[3]!='X' || mFileHeader.version!=1) {
-
-        log_printf("Invalid cart (magic number).\n");
-        strncpy((char*)&mFileHeader.cartname,"NO HEADER",32);
-        strncpy((char*)&mFileHeader.manufname,"HANDY",16);
-        mFileHeader.page_size_bank0=gamesize>>8;// Hard workaround...
+   if (gamedata && gamesize > sizeof(LYNX_HEADER)) {
+      if (memcmp(gamedata, "LYNX", 4) == 0) {
+         memcpy(&mFileHeader, gamedata, sizeof(LYNX_HEADER));
+         #ifdef MSB_FIRST
+         mFileHeader.page_size_bank0 = ((mFileHeader.page_size_bank0>>8) | (mFileHeader.page_size_bank0<<8));
+         mFileHeader.page_size_bank1 = ((mFileHeader.page_size_bank1>>8) | (mFileHeader.page_size_bank1<<8));
+         mFileHeader.version         = ((mFileHeader.version>>8) | (mFileHeader.version<<8));
+         #endif
+         gamedata += sizeof(LYNX_HEADER);
+         gamesize -= sizeof(LYNX_HEADER);
       } else {
-         headersize=sizeof(LYNX_HEADER);
-         mCRC32=crc32_le(0, gamedata+headersize, gamesize-headersize);
-         log_printf("Cart '%s' loaded, CRC32=%08X\n", mFileHeader.cartname, mCRC32);
+         log_printf("No header found: %02X %02X %02X %02X.\n", gamedata[0], gamedata[1], gamedata[2], gamedata[3]);
       }
-
-      // As this is a cartridge boot unset the boot address
-
-      gCPUBootAddress=0;
-   } else {
-      memset(&mFileHeader,0,sizeof(LYNX_HEADER));
+      mCRC32 = crc32_le(0, gamedata, gamesize);
+      gCPUBootAddress = 0;
    }
 
    switch(mFileHeader.page_size_bank0) {
@@ -122,7 +119,7 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
          mCountMask0=0x7ff;
          break;
       default:
-         log_printf("Invalid cart (bank0 size = %06x).\n", mFileHeader.page_size_bank0);
+         log_printf("Invalid bank0 size (0x%03X).\n", mFileHeader.page_size_bank0);
          break;
    }
    TRACE_CART1("CCart() - Bank0 = $%06x",mMaskBank0);
@@ -157,7 +154,7 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
          mCountMask1=0x7ff;
          break;
       default:
-         log_printf("Invalid cart (bank1 size = %06x).\n", mFileHeader.page_size_bank1);
+         log_printf("Invalid bank1 size (0x%03X).\n", mFileHeader.page_size_bank1);
          break;
    }
    TRACE_CART1("CCart() - Bank1 = $%06x",mMaskBank1);
@@ -172,32 +169,37 @@ CCart::CCart(UBYTE *gamedata,ULONG gamesize)
    memset(mCartBank0, DEFAULT_CART_CONTENTS, mMaskBank0+1);
    memset(mCartBank1, DEFAULT_CART_CONTENTS, mMaskBank1+1);
 
+   // Stop here if running homebrew from RAM
+   if (!gamedata)
+      return;
+
+   log_printf("Cart name='%s', crc32=%08X, bank0=%d, bank1=%d\n",
+      mFileHeader.cartname, mCRC32, mMaskBank0+1, mMaskBank1+1);
+
    // TODO: the following code to read the banks is not very nice .. should be reworked
    // TODO: actually its dangerous, if more than one bank is used ... (only homebrews)
-   int cartsize = __max(0, int(gamesize - headersize));
+   int cartsize = gamesize;
    int bank0size = __min(cartsize, (int)(mMaskBank0+1));
    int bank1size = __min(cartsize, (int)(mMaskBank1+1));
    if(bank0size==1) bank0size=0;// workaround ...
    if(bank1size==1) bank1size=0;// workaround ...
 
-   memcpy(mCartBank0, gamedata+(headersize), bank0size);
+   memcpy(mCartBank0, gamedata, bank0size);
    cartsize = __max(0, cartsize - bank0size);
 
-   memcpy(mCartBank1, gamedata+(headersize+bank0size), __min(cartsize, bank1size));
+   memcpy(mCartBank1, gamedata+bank0size, __min(cartsize, bank1size));
    cartsize = __max(0, cartsize - bank1size);
 
-   if(CartGetAudin()){// TODO clean up code
+   if (CartGetAudin()){// TODO clean up code
       mCartBank0A = (UBYTE*) new UBYTE[mMaskBank0+1];
       mCartBank1A = (UBYTE*) new UBYTE[mMaskBank1+1];
       memset(mCartBank0A, DEFAULT_CART_CONTENTS, mMaskBank0+1);
       memset(mCartBank1A, DEFAULT_CART_CONTENTS, mMaskBank1+1);
 
-      memcpy(mCartBank0A, gamedata+(headersize+bank0size+bank1size),
-         __min(cartsize, bank0size));
+      memcpy(mCartBank0A, gamedata+(bank0size+bank1size), __min(cartsize, bank0size));
       cartsize = __max(0, cartsize - bank0size);
 
-      memcpy(mCartBank1A, gamedata+(headersize+bank0size+bank1size+bank0size),
-            __min(cartsize, bank1size));
+      memcpy(mCartBank1A, gamedata+(bank0size+bank1size+bank0size), __min(cartsize, bank1size));
       cartsize = __max(0, cartsize - bank1size);
    }
 }
