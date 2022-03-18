@@ -14,12 +14,6 @@
 
 enum
 {
-	ROM_MAX_SIZE  = 0x300000,
-	ROM_BLOCK_SIZE = 0x10000
-};
-
-enum
-{
 	MAP_TYPE_I_O,
 	MAP_TYPE_ROM,
 	MAP_TYPE_RAM
@@ -89,6 +83,7 @@ typedef struct
 	uint32	CalculatedChecksum;
 
 	// uint32	ROM_BLOCKS[ROM_MAX_SIZE / ROM_BLOCK_SIZE];
+	uint32	ROM_MAX_SIZE;
 	uint32	ROM_SIZE;
 } CMemory;
 

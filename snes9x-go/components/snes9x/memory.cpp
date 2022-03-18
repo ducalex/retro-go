@@ -624,9 +624,11 @@ bool8 S9xMemoryInit (void)
 	Memory.RAM  = (uint8 *) calloc(1, 0x20000);
 	Memory.VRAM = (uint8 *) calloc(1, 0x10000);
 	Memory.SRAM = (uint8 *) calloc(1, 0x8000);
-	Memory.ROM  = (uint8 *) calloc(1, ROM_MAX_SIZE);
+	Memory.ROM  = (uint8 *) calloc(1, Memory.ROM_MAX_SIZE = 0x300000);
+	// Note: we don't care if ROM alloc fails. It's just to grab a large heap block
+	//       before it gets fragmented. The actual useful alloc is done in S9xLoadROM()
 
-	if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM || !Memory.ROM)
+	if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM)
 	{
 		S9xMemoryDeinit();
 		return (FALSE);
@@ -655,20 +657,24 @@ bool8 S9xLoadROM (const char *filename)
 		return (FALSE);
 
 	fseek(stream, 0, SEEK_END);
-
 	Memory.ROM_SIZE = ftell(stream);
 
-	if (Memory.ROM_SIZE > ROM_MAX_SIZE)
-		Memory.ROM_SIZE = ROM_MAX_SIZE;
-
-	Memory.ROM = (uint8 *)realloc(Memory.ROM, Memory.ROM_SIZE);
-
-	if (Memory.ROM)
+	// We shrink if possible because we need all the memory we can get for savestates and buffers
+	uint8 *temp = (uint8 *)realloc(Memory.ROM, Memory.ROM_SIZE);
+	if (temp)
 	{
-		fseek(stream, 0, SEEK_SET);
-		fread(Memory.ROM, Memory.ROM_SIZE, 1, stream);
+		Memory.ROM_MAX_SIZE = Memory.ROM_SIZE;
+		Memory.ROM = temp;
 	}
 
+	if (!Memory.ROM || Memory.ROM_MAX_SIZE < Memory.ROM_SIZE)
+	{
+		fclose(stream);
+		return (FALSE);
+	}
+
+	fseek(stream, 0, SEEK_SET);
+	fread(Memory.ROM, Memory.ROM_SIZE, 1, stream);
 	fclose(stream);
 
 	return InitROM();
@@ -730,7 +736,7 @@ static bool8 ReadIPSPatch (Stream *r, long offset, int32 &rom_size)
 
 		if (len)
 		{
-			if (ofs + len > CMemory::ROM_MAX_SIZE)
+			if (ofs + len > Memory.ROM_SIZE)
 				return (0);
 
 			while (len--)
@@ -754,7 +760,7 @@ static bool8 ReadIPSPatch (Stream *r, long offset, int32 &rom_size)
 			if (rchar == EOF)
 				return (0);
 
-			if (ofs + rlen > CMemory::ROM_MAX_SIZE)
+			if (ofs + rlen > Memory.ROM_SIZE)
 				return (0);
 
 			while (rlen--)
