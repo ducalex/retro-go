@@ -66,7 +66,6 @@ tab_t *gui_add_tab(const char *name, const char *desc, void *arg, void *event_ha
     tab->event_handler = event_handler;
     tab->initialized = false;
     tab->enabled = !rg_settings_get_number(tab->name, SETTING_TAB_HIDDEN, 0);
-    tab->is_empty = false;
     tab->arg = arg;
     tab->listbox = (listbox_t){
         .items = calloc(10, sizeof(listbox_item_t)),
@@ -93,28 +92,23 @@ void gui_init_tab(tab_t *tab)
 
     gui_event(TAB_INIT, tab);
 
-    if (!tab->is_empty)
+    // -1 means that we should find our last saved position
+    if (tab->listbox.length && tab->listbox.cursor == -1)
     {
-        // gui_sort_list(tab);
-
-        // -1 means that we should find our last saved position
-        if (tab->listbox.cursor == -1)
+        tab->listbox.cursor = 0;
+        char *selected = rg_settings_get_string(tab->name, SETTING_TAB_SELECTION, NULL);
+        if (selected && strlen(selected) > 1)
         {
-            tab->listbox.cursor = 0;
-            char *selected = rg_settings_get_string(tab->name, SETTING_TAB_SELECTION, NULL);
-            if (selected && strlen(selected) > 1)
+            for (int i = 0; i < tab->listbox.length; i++)
             {
-                for (int i = 0; i < tab->listbox.length; i++)
+                if (strcmp(selected, tab->listbox.items[i].text) == 0)
                 {
-                    if (strcmp(selected, tab->listbox.items[i].text) == 0)
-                    {
-                        tab->listbox.cursor = i;
-                        break;
-                    }
+                    tab->listbox.cursor = i;
+                    break;
                 }
             }
-            free(selected);
         }
+        free(selected);
     }
 
     gui_event(TAB_SCROLL, tab);
@@ -295,7 +289,7 @@ void gui_sort_list(tab_t *tab)
     void *comp[] = {&list_comp_id_asc, &list_comp_id_desc, &list_comp_text_asc, &list_comp_text_desc};
     int sort_mode = tab->listbox.sort_mode - 1;
 
-    if (tab->is_empty || !tab->listbox.length)
+    if (!tab->listbox.length)
         return;
 
     if (sort_mode < 0 || sort_mode > 3)
@@ -316,16 +310,17 @@ void gui_resize_list(tab_t *tab, int new_size)
     {
         list->capacity = new_size + 10;
         list->items = realloc(list->items, list->capacity * sizeof(listbox_item_t));
-        for (int i = list->length; i < list->capacity; i++)
-            memset(&list->items[i], 0, sizeof(listbox_item_t));
         RG_LOGI("Resized list '%s' from %d to %d items (new capacity: %d)\n",
             tab->name, list->length, new_size, list->capacity);
     }
 
+    for (int i = list->length; i < list->capacity; i++)
+        memset(&list->items[i], 0, sizeof(listbox_item_t));
+
     list->length = new_size;
 
     if (list->cursor >= new_size)
-        list->cursor = new_size - 1;
+        list->cursor = new_size ? new_size - 1 : 0;
 }
 
 void gui_scroll_list(tab_t *tab, scroll_mode_t mode, int arg)
@@ -456,8 +451,17 @@ void gui_draw_list(tab_t *tab)
 
     const listbox_t *list = &tab->listbox;
     int top = HEADER_HEIGHT + 6;
+    int lines = LIST_LINE_COUNT;
 
-    for (int i = 0, lines = LIST_LINE_COUNT; i < lines; i++)
+    if (tab->navpath)
+    {
+        char buffer[64];
+        snprintf(buffer, 63, "[%s]",  tab->navpath);
+        top += rg_gui_draw_text(0, top, gui.width, buffer, fg[0], bg[0], 0).height;
+        lines -= 1;
+    }
+
+    for (int i = 0; i < lines; i++)
     {
         int idx = list->cursor + i - (lines / 2);
         int selected = idx == list->cursor;
@@ -523,7 +527,8 @@ void gui_load_preview(tab_t *tab)
     }
 
     retro_emulator_file_t *file = gui_get_selected_item(tab)->arg;
-    const char *dirname = file->emulator->short_name;
+    retro_emulator_t *emu = file->emulator;
+    const char *relpath =  file->folder + strlen(emu->paths.roms);
     uint32_t errors = 0;
 
     while (order && !tab->preview)
@@ -543,15 +548,15 @@ void gui_load_preview(tab_t *tab)
             break;
 
         if (type == 0x1) // Game cover (old format)
-            sprintf(path, RG_BASE_PATH_COVERS "/%s/%X/%08X.art", dirname, file->checksum >> 28, file->checksum);
+            sprintf(path, "%s/%X/%08X.art", emu->paths.covers, file->checksum >> 28, file->checksum);
         else if (type == 0x2) // Game cover (png)
-            sprintf(path, RG_BASE_PATH_COVERS "/%s/%X/%08X.png", dirname, file->checksum >> 28, file->checksum);
+            sprintf(path, "%s/%X/%08X.png", emu->paths.covers, file->checksum >> 28, file->checksum);
         else if (type == 0x3) // Save state screenshot (png)
-            sprintf(path, RG_BASE_PATH_SAVES "/%s/%s.png", file->folder + strlen(RG_BASE_PATH_ROMS), file->name);
+            sprintf(path, "%s/%s/%s.png", emu->paths.saves, relpath, file->name);
         else if (type == 0x4) // Game cover (based on filename)
-            sprintf(path, RG_BASE_PATH_COVERS "/%s/%s.png", dirname, file->name);
+            sprintf(path, "%s/%s.png", emu->paths.covers, file->name);
         else if (type == 0xF) // use generic cover image (not currently used)
-            sprintf(path, RG_BASE_PATH_COVERS "/%s/default.png", dirname);
+            sprintf(path, "%s/default.png", emu->paths.covers);
         else
             continue;
 

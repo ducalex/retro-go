@@ -21,6 +21,14 @@ static void event_handler(gui_event_t event, tab_t *tab)
         DIR* dir;
 
         memset(&tab->status, 0, sizeof(tab->status));
+        gui_resize_list(tab, 1);
+
+        tab->listbox.items[0] = (listbox_item_t){
+            .text = "[Built-in theme]",
+            .enabled = true,
+            .id = -1,
+            .arg = NULL,
+        };
 
         if ((dir = opendir(themes_path)))
         {
@@ -43,28 +51,16 @@ static void event_handler(gui_event_t event, tab_t *tab)
             closedir(dir);
         }
 
-        if (items_count > 1)
-        {
-            tab->listbox.items[0] = (listbox_item_t){
-                .text = "[Built-in theme]",
-                .enabled = true,
-                .id = -1,
-                .arg_type = 0,
-                .arg = NULL,
-            };
-            gui_resize_list(tab, items_count);
-            gui_sort_list(tab);
-            tab->listbox.cursor = 0;
-            tab->is_empty = false;
-        }
-        else
+        gui_resize_list(tab, items_count);
+        gui_sort_list(tab);
+
+        if (items_count < 2)
         {
             gui_resize_list(tab, 6);
             sprintf(tab->listbox.items[0].text, "Welcome to Retro-Go!");
             sprintf(tab->listbox.items[2].text, "Place themes in folder: %s", themes_path + strlen(RG_ROOT_PATH));
             sprintf(tab->listbox.items[4].text, "You can hide this tab in the menu");
             tab->listbox.cursor = 3;
-            tab->is_empty = true;
         }
     }
     else if (event == TAB_REFRESH)
@@ -73,10 +69,10 @@ static void event_handler(gui_event_t event, tab_t *tab)
     }
     else if (event == TAB_ENTER || event == TAB_SCROLL)
     {
-        if (!tab->is_empty && tab->listbox.length)
+        if (item->arg)
             snprintf(tab->status[0].left, 24, "%d / %d", (tab->listbox.cursor + 1) % 10000, tab->listbox.length % 10000);
         else
-            snprintf(tab->status[0].left, 24, "No themes");
+            strcpy(tab->status[0].left, "No themes");
         gui_set_status(tab, NULL, "");
         gui_set_preview(tab, NULL);
     }
@@ -95,7 +91,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
         else if ((gui.idle_counter % 100) == 0)
             crc_cache_idle_task(tab);
     }
-    else if (event == KEY_PRESS_A)
+    else if (event == TAB_ACTION)
     {
         if (item && item->enabled)
         {
@@ -103,7 +99,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
             rg_gui_alert("Success!", "Theme activated.");
         }
     }
-    else if (event == KEY_PRESS_B)
+    else if (event == TAB_BACK)
     {
         // This is now reserved for subfolder navigation (go back)
     }

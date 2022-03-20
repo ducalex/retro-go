@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <ctype.h>
 #include <string.h>
 #include <errno.h>
 
@@ -16,7 +17,33 @@ static int emulators_count = 0;
 static retro_crc_cache_t *crc_cache;
 static bool crc_cache_dirty = false;
 static char *crc_cache_path = NULL;
+static const char **strings;
+static size_t strings_count;
 
+
+static const char *const_string(const char *str)
+{
+    // To do : use hashmap or something faster
+    for (int i = 0; i < strings_count; i++)
+        if (strcmp(strings[i], str) == 0)
+            return strings[i];
+
+    str = strdup(str);
+
+    strings = realloc(strings, (strings_count + 1) * sizeof(char*));
+    RG_ASSERT(strings && str, "alloc failed");
+
+    strings[strings_count++] = str;
+
+    return str;
+}
+
+static inline char *strtolower(char *str)
+{
+    for (char *c = str; *c; c++)
+        *c = tolower(*c);
+    return str;
+}
 
 void crc_cache_init(void)
 {
@@ -156,9 +183,9 @@ void crc_cache_idle_task(tab_t *tab)
             if ((gui.joystick |= rg_input_read_gamepad()))
                 remaining = -1;
 
-            for (int j = 0; j < emulator->roms.files_count && remaining > 0; j++)
+            for (int j = 0; j < emulator->files_count && remaining > 0; j++)
             {
-                retro_emulator_file_t *file = &emulator->roms.files[j];
+                retro_emulator_file_t *file = &emulator->files[j];
 
                 if (file->checksum == 0)
                     file->checksum = crc_cache_lookup(file);
@@ -183,27 +210,6 @@ void crc_cache_idle_task(tab_t *tab)
     }
 
     crc_cache_save();
-}
-
-static const char *roms_folder(retro_emulator_t *emu, const char* path)
-{
-    // To do : use hashmap or something faster
-    for (int i = 0; i < emu->roms.folders_count; i++)
-    {
-        if (strcmp(emu->roms.folders[i], path) == 0)
-        {
-            return emu->roms.folders[i];
-        }
-    }
-
-    const char *folder = strdup(path);
-
-    emu->roms.folders = realloc(emu->roms.folders, (emu->roms.folders_count + 1) * sizeof(char*));
-    RG_ASSERT(emu->roms.folders && folder, "alloc failed");
-
-    emu->roms.folders[emu->roms.folders_count++] = folder;
-
-    return folder;
 }
 
 bool emulator_build_file_object(const char *path, retro_emulator_file_t *file)
@@ -234,7 +240,7 @@ bool emulator_build_file_object(const char *path, retro_emulator_file_t *file)
 
             *file = (retro_emulator_file_t) {
                 .name = strdup(name),
-                .folder = roms_folder(&emulators[i], rg_dirname(path)),
+                .folder = const_string(rg_dirname(path)),
                 .emulator = &emulators[i],
                 .is_valid = true,
             };
@@ -245,7 +251,7 @@ bool emulator_build_file_object(const char *path, retro_emulator_file_t *file)
     return false;
 }
 
-int emulator_scan_folder(retro_emulator_t *emu, const char* path, int flags)
+int emulator_scan_folder(retro_emulator_t *emu, const char* path, void *parent)
 {
     RG_ASSERT(emu && path, "Bad param");
 
@@ -255,57 +261,58 @@ int emulator_scan_folder(retro_emulator_t *emu, const char* path, int flags)
     if (!dir)
         return -1;
 
-    const char *folder = roms_folder(emu, path);
-    char pathbuf[RG_PATH_MAX + 1];
+    const char *folder = const_string(path);
+    char buffer[RG_PATH_MAX];
     struct dirent* ent;
 
     while ((ent = readdir(dir)))
     {
         const char *name = ent->d_name;
+        uint8_t is_valid = false;
+        uint8_t type = 0x00;
 
         if (name[0] == '.')
             continue;
 
         if (ent->d_type == DT_REG)
         {
-            const char *ext = strrchr(name, '.') + 1;
-            const char **emu_ext = emu->extensions;
-            bool ext_match = false;
-
-            while (ext > name && *emu_ext && !ext_match)
-            {
-                ext_match = strcasecmp(ext, *emu_ext++) == 0;
-            }
-
-            if (!ext_match)
-                continue;
-
-            if ((emu->roms.files_count % 10) == 0)
-            {
-                size_t new_size = (emu->roms.files_count + 10 + 2) * sizeof(retro_emulator_file_t);
-                retro_emulator_file_t *new_buf = realloc(emu->roms.files, new_size);
-                if (!new_buf)
-                {
-                    RG_LOGW("Ran out of memory, file scanning stopped at %d entries ...\n", emu->roms.files_count);
-                    break;
-                }
-                emu->roms.files = new_buf;
-            }
-
-            retro_emulator_file_t *file = &emu->roms.files[emu->roms.files_count++];
-            *file = (retro_emulator_file_t) {
-                .name = strdup(name), // TO DO: Use a memory pool instead?
-                .folder = folder,
-                .emulator = (void*)emu,
-                .is_valid = true,
-            };
+            snprintf(buffer, RG_PATH_MAX, " %s ", rg_extension(name));
+            is_valid = strstr(emu->extensions, strtolower(buffer)) != NULL;
+            type = 0x00;
         }
         else if (ent->d_type == DT_DIR)
         {
-            strcpy(pathbuf, path);
-            strcat(pathbuf, "/");
-            strcat(pathbuf, name);
-            emulator_scan_folder(emu, pathbuf, flags);
+            is_valid = true;
+            type = 0xFF;
+        }
+
+        if (!is_valid)
+            continue;
+
+        emu->files[emu->files_count++] = (retro_emulator_file_t) {
+            .name = strdup(name),
+            .folder = folder,
+            .emulator = (void*)emu,
+            .type = type,
+            .is_valid = true,
+        };
+
+        if ((emu->files_count % 10) == 0)
+        {
+            size_t new_size = (emu->files_count + 10 + 2) * sizeof(retro_emulator_file_t);
+            retro_emulator_file_t *new_buf = realloc(emu->files, new_size);
+            if (!new_buf)
+            {
+                RG_LOGW("Ran out of memory, file scanning stopped at %d entries ...\n", emu->files_count);
+                break;
+            }
+            emu->files = new_buf;
+        }
+
+        if (type == 0xFF)
+        {
+            retro_emulator_file_t *file = &emu->files[emu->files_count-1];
+            emulator_scan_folder(emu, emulator_get_file_path(file), file);
         }
     }
 
@@ -320,56 +327,58 @@ static void tab_refresh(tab_t *tab)
 
     memset(&tab->status, 0, sizeof(tab->status));
 
-    size_t base_len = strlen(RG_BASE_PATH_ROMS) + 1 + strlen(emu->short_name);
+    const char *folder = tab->navpath ? tab->navpath : emu->paths.roms;
     size_t items_count = 0;
     char *ext = NULL;
 
-    if (emu->roms.files_count > 0)
+    if (emu->files_count > 0)
     {
-        gui_resize_list(tab, emu->roms.files_count);
+        gui_resize_list(tab, emu->files_count);
 
-        for (size_t i = 0; i < emu->roms.files_count; i++)
+        for (size_t i = 0; i < emu->files_count; i++)
         {
-            retro_emulator_file_t *file = &emu->roms.files[i];
-            if (file->is_valid)
+            retro_emulator_file_t *file = &emu->files[i];
+
+            if (!file->is_valid)
+                continue;
+
+            if (file->folder != folder && strcmp(file->folder, folder) != 0)
+                continue;
+
+            listbox_item_t *item = &tab->listbox.items[items_count++];
+
+            if (file->type == 0xFF)
             {
-                listbox_item_t *item = &tab->listbox.items[items_count++];
-
-                if (strlen(file->folder) > base_len)
-                    snprintf(item->text, 128, "%s/%s", file->folder + base_len, file->name);
-                else
-                    snprintf(item->text, 128, "%s", file->name);
-
+                snprintf(item->text, 128, "[%s]", file->name);
+                // snprintf(item->text, 128, "/%s/", file->name);
+            }
+            else
+            {
+                snprintf(item->text, 128, "%s", file->name);
                 if ((ext = strrchr(item->text, '.')))
                     *ext = 0;
-
-                item->arg = file;
             }
+
+            item->arg = file;
         }
     }
-    tab->is_empty = items_count == 0;
 
-    if (!tab->is_empty)
-    {
-        gui_resize_list(tab, items_count);
-        gui_sort_list(tab);
-    }
-    else
-    {
-        char extensions[64] = "";
-        for (const char **ext = emu->extensions; *ext; ext++)
-        {
-            strcat(extensions, *ext);
-            strcat(extensions, " ");
-        }
+    gui_resize_list(tab, items_count);
+    gui_sort_list(tab);
 
+    if (items_count == 0)
+    {
         gui_resize_list(tab, 6);
         sprintf(tab->listbox.items[0].text, "Welcome to Retro-Go!");
-        sprintf(tab->listbox.items[2].text, "Place roms in folder: /roms/%s", emu->short_name);
-        sprintf(tab->listbox.items[3].text, "With file extension: %s", extensions);
+        sprintf(tab->listbox.items[1].text, " ");
+        sprintf(tab->listbox.items[2].text, "Place roms in folder: %s", emu->paths.roms + strlen(RG_ROOT_PATH));
+        sprintf(tab->listbox.items[3].text, "With file extension: %s", emu->extensions);
+        sprintf(tab->listbox.items[4].text, " ");
         sprintf(tab->listbox.items[5].text, "You can hide this tab in the menu");
         tab->listbox.cursor = 4;
     }
+
+    gui_event(TAB_SCROLL, tab);
 }
 
 static void event_handler(gui_event_t event, tab_t *tab)
@@ -389,7 +398,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
     }
     else if (event == TAB_ENTER || event == TAB_SCROLL)
     {
-        if (!tab->is_empty && tab->listbox.length)
+        if (file)
             sprintf(tab->status[0].left, "%d / %d", (tab->listbox.cursor + 1) % 10000, tab->listbox.length % 10000);
         else
             strcpy(tab->status[0].left, "No Games");
@@ -407,13 +416,47 @@ static void event_handler(gui_event_t event, tab_t *tab)
         else if ((gui.idle_counter % 100) == 0)
             crc_cache_idle_task(tab);
     }
-    else if (event == KEY_PRESS_A)
+    else if (event == TAB_ACTION)
     {
         if (file)
-            emulator_show_file_menu(file, false);
+        {
+            if (file->type == 0xFF)
+            {
+                tab->navpath = const_string(emulator_get_file_path(file));
+                tab->listbox.cursor = 0;
+                tab_refresh(tab);
+            }
+            else
+            {
+                emulator_show_file_menu(file, false);
+            }
+        }
     }
-    else if (event == KEY_PRESS_B)
+    else if (event == TAB_BACK)
     {
+        if (tab->navpath)
+        {
+            const char *from = rg_basename(const_string(tab->navpath));
+
+            tab->navpath = const_string(rg_dirname(tab->navpath));
+            tab->listbox.cursor = 0;
+
+            if (strcmp(tab->navpath, emu->paths.roms) == 0)
+                tab->navpath = NULL;
+
+            tab_refresh(tab);
+
+            // This seems bad but keep in mind that folders are sorted to the top of items[]
+            for (int i = 0; i < tab->listbox.length; ++i)
+            {
+                retro_emulator_file_t *item = tab->listbox.items[i].arg;
+                if (strcmp(item->name, from) == 0)
+                {
+                    tab->listbox.cursor = i;
+                    break;
+                }
+            }
+        }
         // This is now reserved for subfolder navigation (go back)
     }
 }
@@ -429,51 +472,40 @@ static void add_emulator(const char *system_name, const char *short_name, const 
 
     retro_emulator_t *emulator = &emulators[emulators_count++];
 
-    *emulator = (retro_emulator_t) {
-        .system_name = strdup(system_name),
-        .partition = strdup(partition),
-        .short_name = strdup(short_name),
-        .crc_offset = crc_offset,
-        .roms.folders = calloc(1, sizeof(char *)),
-        // .roms.files = calloc(10, sizeof(retro_emulator_file_t *)),
-        .roms.files = calloc(10, sizeof(retro_emulator_file_t)),
-        .initialized = false,
-    };
+    memset(emulator, 0, sizeof(retro_emulator_t));
 
-    const char **ext = emulator->extensions;
-    char *buffer = strdup(extensions);
-    char *token = strtok(buffer, " ");
-    while (token)
-    {
-        *ext++ = strdup(token);
-        token = strtok(NULL, " ");
-    }
-    free(buffer);
+    snprintf(emulator->system_name, 60, "%s", system_name);
+    snprintf(emulator->partition, 60, "%s", partition);
+    snprintf(emulator->short_name, 60, "%s", short_name);
+    snprintf(emulator->extensions, 60, " %s ", extensions);
+    snprintf(emulator->paths.covers, RG_PATH_MAX, RG_BASE_PATH_COVERS "/%s", short_name);
+    snprintf(emulator->paths.saves, RG_PATH_MAX, RG_BASE_PATH_SAVES "/%s", short_name);
+    snprintf(emulator->paths.roms, RG_PATH_MAX, RG_BASE_PATH_ROMS "/%s", short_name);
+    emulator->files = calloc(10, sizeof(retro_emulator_file_t));
+    emulator->crc_offset = crc_offset;
+    emulator->initialized = false;
+
+    // These fields must be lowercased
+    strtolower(emulator->partition);
+    strtolower(emulator->short_name);
+    strtolower(emulator->extensions);
 
     gui_add_tab(short_name, system_name, emulator, event_handler);
 }
 
 void emulator_init(retro_emulator_t *emu)
 {
-    char path[RG_PATH_MAX + 1];
-
     if (emu->initialized)
         return;
 
     RG_LOGI("Initializing emulator '%s'\n", emu->system_name);
 
+    rg_mkdir(emu->paths.covers);
+    rg_mkdir(emu->paths.saves);
+    rg_mkdir(emu->paths.roms);
+    emulator_scan_folder(emu, emu->paths.roms, 0);
+
     emu->initialized = true;
-
-    sprintf(path, RG_BASE_PATH_COVERS "/%s", emu->short_name);
-    rg_mkdir(path);
-
-    sprintf(path, RG_BASE_PATH_SAVES "/%s", emu->short_name);
-    rg_mkdir(path);
-
-    sprintf(path, RG_BASE_PATH_ROMS "/%s", emu->short_name);
-    rg_mkdir(path);
-
-    emulator_scan_folder(emu, path, 0);
 }
 
 const char *emulator_get_file_path(retro_emulator_file_t *file)
@@ -553,7 +585,6 @@ void emulator_show_file_info(retro_emulator_file_t *file)
 
     rg_gui_option_t options[] = {
         {0, "Name", (char *)file->name, 1, NULL},
-        // {0, "Type", (char *)file->emulator->short_name, 1, NULL},
         {0, "Folder", (char *)file->folder, 1, NULL},
         {0, "Size", filesize, 1, NULL},
         {3, "CRC32", filecrc, 1, NULL},
@@ -579,9 +610,10 @@ void emulator_show_file_info(retro_emulator_file_t *file)
 
 void emulator_show_file_menu(retro_emulator_file_t *file, bool advanced)
 {
-    char *save_path = rg_system_get_path(NULL, RG_PATH_SAVE_STATE, emulator_get_file_path(file));
-    char *sram_path = rg_system_get_path(NULL, RG_PATH_SAVE_SRAM, emulator_get_file_path(file));
-    char *scrn_path = rg_system_get_path(NULL, RG_PATH_SCREENSHOT, emulator_get_file_path(file));
+    const char *rom_path = emulator_get_file_path(file);
+    char *save_path = rg_system_get_path(NULL, RG_PATH_SAVE_STATE, rom_path);
+    char *sram_path = rg_system_get_path(NULL, RG_PATH_SAVE_SRAM, rom_path);
+    char *scrn_path = rg_system_get_path(NULL, RG_PATH_SCREENSHOT, rom_path);
     bool has_save = access(save_path, F_OK) == 0;
     bool has_sram = access(sram_path, F_OK) == 0;
     bool is_fav = bookmark_find(BOOK_TYPE_FAVORITE, file) != NULL;
@@ -634,7 +666,7 @@ void emulator_show_file_menu(retro_emulator_file_t *file, bool advanced)
     case 5:
         if (rg_gui_confirm("Delete selected file?", 0, 0))
         {
-            if (unlink(emulator_get_file_path(file)) == 0)
+            if (unlink(rom_path) == 0)
             {
                 bookmark_remove(BOOK_TYPE_FAVORITE, file);
                 bookmark_remove(BOOK_TYPE_RECENT, file);
@@ -652,7 +684,7 @@ void emulator_show_file_menu(retro_emulator_file_t *file, bool advanced)
     free(sram_path);
     free(scrn_path);
 
-    gui_redraw();
+    // gui_redraw();
 }
 
 void emulator_start(retro_emulator_file_t *file, bool load_state)

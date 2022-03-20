@@ -6,8 +6,8 @@
 #include "emulators.h"
 
 typedef enum {
-    KEY_PRESS_A,
-    KEY_PRESS_B,
+    TAB_ACTION,
+    TAB_BACK,
     TAB_SCROLL,
     TAB_INIT,
     TAB_ENTER,
@@ -62,7 +62,6 @@ typedef struct {
     char text[128];
     int enabled;
     int id;
-    int arg_type;
     void *arg;
 } listbox_item_t;
 
@@ -88,6 +87,12 @@ typedef struct {
 
 typedef void (*gui_event_handler_t)(gui_event_t event, void *arg);
 
+// typedef struct {
+//     navpath_t *parent;
+//     char label[32];
+//     void *arg;
+// } navpath_t;
+
 typedef struct tab_s {
     char name[64];
     char desc[128];
@@ -96,9 +101,9 @@ typedef struct tab_s {
         char right[24];
     } status[2];
     bool initialized;
-    bool is_empty;
     bool enabled;
     void *arg;
+    const char *navpath;
     listbox_t listbox;
     rg_image_t *preview;
     gui_event_handler_t event_handler;

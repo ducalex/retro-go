@@ -26,10 +26,10 @@ static void event_handler(gui_event_t event, tab_t *tab)
     }
     else if (event == TAB_ENTER || event == TAB_SCROLL)
     {
-        if (!tab->is_empty && tab->listbox.length)
+        if (file)
             snprintf(tab->status[0].left, 24, "%d / %d", (tab->listbox.cursor + 1) % 10000, tab->listbox.length % 10000);
         else
-            snprintf(tab->status[0].left, 24, "No games");
+            strcpy(tab->status[0].left, "No games");
         gui_set_status(tab, NULL, "");
         gui_set_preview(tab, NULL);
     }
@@ -44,12 +44,12 @@ static void event_handler(gui_event_t event, tab_t *tab)
         else if ((gui.idle_counter % 100) == 0)
             crc_cache_idle_task(tab);
     }
-    else if (event == KEY_PRESS_A)
+    else if (event == TAB_ACTION)
     {
         if (file)
             emulator_show_file_menu(file, false);
     }
-    else if (event == KEY_PRESS_B)
+    else if (event == TAB_BACK)
     {
         // This is now reserved for subfolder navigation (go back)
     }
@@ -58,22 +58,23 @@ static void event_handler(gui_event_t event, tab_t *tab)
 static void tab_refresh(book_type_t book_type)
 {
     book_t *book = &books[book_type];
-    int items_count = 0;
+    tab_t *tab = book->tab;
+    size_t items_count = 0;
 
-    if (!book->tab)
+    if (!tab)
         return;
 
-    memset(&book->tab->status, 0, sizeof(book->tab->status));
+    memset(&tab->status, 0, sizeof(tab->status));
 
     if (book->count)
     {
-        gui_resize_list(book->tab, book->count);
+        gui_resize_list(tab, book->count);
         for (int i = 0; i < book->count; i++)
         {
             retro_emulator_file_t *file = &book->items[i];
             if (file->is_valid)
             {
-                listbox_item_t *listitem = &book->tab->listbox.items[items_count++];
+                listbox_item_t *listitem = &tab->listbox.items[items_count++];
                 const char *type = file->emulator ? file->emulator->short_name : "n/a";
                 snprintf(listitem->text, 128, "[%-3s] %.100s", type, file->name);
                 listitem->arg = file;
@@ -81,20 +82,19 @@ static void tab_refresh(book_type_t book_type)
             }
         }
     }
-    book->tab->is_empty = items_count == 0;
 
-    if (!book->tab->is_empty)
+    gui_resize_list(tab, items_count);
+    gui_sort_list(tab);
+
+    if (items_count == 0)
     {
-        gui_resize_list(book->tab, items_count);
-        gui_sort_list(book->tab);
-    }
-    else
-    {
-        gui_resize_list(book->tab, 6);
-        sprintf(book->tab->listbox.items[0].text, "Welcome to Retro-Go!");
-        sprintf(book->tab->listbox.items[2].text, "You have no %s games", book->name);
-        sprintf(book->tab->listbox.items[4].text, "You can hide this tab in the menu");
-        book->tab->listbox.cursor = 3;
+        gui_resize_list(tab, 6);
+        sprintf(tab->listbox.items[0].text, "Welcome to Retro-Go!");
+        sprintf(tab->listbox.items[1].text, " ");
+        sprintf(tab->listbox.items[2].text, "You have no %s games", book->name);
+        sprintf(tab->listbox.items[3].text, " ");
+        sprintf(tab->listbox.items[4].text, "You can hide this tab in the menu");
+        tab->listbox.cursor = 3;
     }
 }
 

@@ -189,10 +189,15 @@ static void retro_loop(void)
                 gui_scroll_list(tab, SCROLL_PAGE_DOWN, 0);
             }
             else if (joystick == RG_KEY_A) {
-                gui_event(KEY_PRESS_A, tab);
+                gui_event(TAB_ACTION, tab);
+                redraw_pending = true;
             }
             else if (joystick == RG_KEY_B) {
-                gui.browse = false;
+                if (tab->navpath)
+                    gui_event(TAB_BACK, tab);
+                else
+                    gui.browse = false;
+                redraw_pending = true;
             }
         }
         else
