@@ -126,7 +126,7 @@ def analyze_profile(frames):
         debug_print("")
 
 
-def build_firmware(targets, shrink=False, device_type=None):
+def build_firmware(targets, device_type):
     args = [
         sys.executable,
         "tools/mkfw.py",
@@ -140,8 +140,7 @@ def build_firmware(targets, shrink=False, device_type=None):
 
     for target in targets:
         part = PROJECT_APPS[target]
-        size = 0 if shrink else part[1]
-        args += [str(0), str(part[0]), str(size), target, os.path.join(target, "build", target + ".bin")]
+        args += [str(0), str(part[0]), str(part[1]), target, os.path.join(target, "build", target + ".bin")]
 
     commandline = ' '.join(shlex.quote(arg) for arg in args[1:]) # shlex.join()
     print("Building firmware: %s\n" % commandline)
@@ -162,14 +161,13 @@ def clean_app(target):
     print("Done.\n")
 
 
-def build_app(target, build_type=None, with_netplay=False, build_target=None):
+def build_app(target, device_type, with_profiling=False, with_netplay=False):
     # To do: clean up if any of the flags changed since last build
     print("Building app '%s'" % target)
-    os.putenv("ENABLE_PROFILING", "1" if build_type == "profile" else "0")
+    os.putenv("ENABLE_PROFILING", "1" if with_profiling else "0")
     os.putenv("ENABLE_NETPLAY", "1" if with_netplay else "0")
     os.putenv("PROJECT_VER", PROJECT_VER)
-    if build_target:
-        os.putenv("RG_TARGET", re.sub(r'[^A-Z0-9]', '_', build_target.upper()))
+    os.putenv("RG_TARGET", re.sub(r'[^A-Z0-9]', '_', device_type.upper()))
     subprocess.run("idf.py app", shell=True, check=True, cwd=os.path.join(os.getcwd(), target))
 
     try:
@@ -248,19 +246,13 @@ def monitor_app(target, port, baudrate=115200):
 parser = argparse.ArgumentParser(description="Retro-Go build tool")
 parser.add_argument(
 # To do: Learn to use subcommands instead...
-    "command", choices=["build-fw", "release", "build", "clean", "flash", "monitor", "run"],
+    "command", choices=["build-fw", "build-img", "release", "build", "clean", "flash", "monitor", "run", "profile"],
 )
 parser.add_argument(
     "apps", nargs="*", default="all", choices=["all"] + list(PROJECT_APPS.keys())
 )
 parser.add_argument(
-    "--shrink", action="store_const", const=True, help="Reduce partition size where possible"
-)
-parser.add_argument(
     "--target", default=DEFAULT_TARGET, choices=["odroid-go", "esp32s2", "mrgc-g32", "qtpy-gamer"], help="Device to target"
-)
-parser.add_argument(
-    "--build-type", default="release", choices=["release", "debug", "profile"], help="Build type"
 )
 parser.add_argument(
     "--with-netplay", action="store_const", const=True, help="Build with netplay enabled"
@@ -283,16 +275,20 @@ if command in ["clean", "release"]:
     for app in apps:
         clean_app(app)
 
-if command in ["build", "build-fw", "release", "run"]:
+if command in ["build", "build-fw", "build-img", "release", "run", "profile"]:
     print("=== Step: Building ===\n")
     for app in apps:
-        build_app(app, args.build_type, args.with_netplay, args.target)
+        build_app(app, args.target, command == "profile", args.with_netplay)
 
 if command in ["build-fw", "release"]:
     print("=== Step: Packing ===\n")
-    build_firmware(apps, args.shrink, args.target)
+    build_firmware(apps, args.target)
 
-if command in ["flash", "run"]:
+# if command in ["build-img", "release"]:
+#     print("=== Step: Packing ===\n")
+#     build_image(apps, args.target)
+
+if command in ["flash", "run", "profile"]:
     print("=== Step: Flashing ===\n")
     if "parttool" not in globals():
         exit("Failed to load the parttool module from your esp-idf framework.")
@@ -311,7 +307,7 @@ if command in ["flash", "run"]:
             print("Make sure you've installed a recent retro-go-*.fw!")
         exit("Task failed.")
 
-if command in ["monitor", "run"]:
+if command in ["monitor", "run", "profile"]:
     print("=== Step: Monitoring ===\n")
     if "serial" not in globals():
         exit("Failed to load the serial module. You can try running 'pip install pyserial'.")
