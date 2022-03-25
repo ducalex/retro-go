@@ -10,6 +10,7 @@
 
 #include "emulators.h"
 #include "bookmarks.h"
+#include "utils.h"
 #include "gui.h"
 
 static retro_emulator_t emulators[32];
@@ -17,33 +18,7 @@ static int emulators_count = 0;
 static retro_crc_cache_t *crc_cache;
 static bool crc_cache_dirty = false;
 static char *crc_cache_path = NULL;
-static const char **strings;
-static size_t strings_count;
 
-
-static const char *const_string(const char *str)
-{
-    // To do : use hashmap or something faster
-    for (int i = 0; i < strings_count; i++)
-        if (strcmp(strings[i], str) == 0)
-            return strings[i];
-
-    str = strdup(str);
-
-    strings = realloc(strings, (strings_count + 1) * sizeof(char*));
-    RG_ASSERT(strings && str, "alloc failed");
-
-    strings[strings_count++] = str;
-
-    return str;
-}
-
-static inline char *strtolower(char *str)
-{
-    for (char *c = str; *c; c++)
-        *c = tolower(*c);
-    return str;
-}
 
 void crc_cache_init(void)
 {
@@ -215,31 +190,15 @@ void crc_cache_idle_task(tab_t *tab)
 bool emulator_build_file_object(const char *path, retro_emulator_file_t *file)
 {
     RG_ASSERT(path && file, "Bad param");
-
-    if (strstr(path, RG_BASE_PATH_ROMS "/") != path)
-        return false;
-
-    const char *ptr = path + strlen(RG_BASE_PATH_ROMS "/");
-    ptrdiff_t namelen = strchr(ptr, '/') - ptr;
-    char short_name[64] = {0};
-
-    if (namelen < 1 || namelen > 32)
-        return false;
-
-    strncpy(short_name, ptr, namelen);
+    char emu_path[RG_PATH_MAX + 1];
 
     for (int i = 0; i < emulators_count; ++i)
     {
-        if (strcmp(short_name, emulators[i].short_name) == 0)
+        snprintf(emu_path, RG_PATH_MAX, "%s/", emulators[i].paths.roms);
+        if (strncmp(emu_path, path, strlen(emu_path)) == 0)
         {
-            const char *name = rg_basename(path);
-            const char *ext = rg_extension(name);
-
-            if (!ext || !name)
-                return false;
-
             *file = (retro_emulator_file_t) {
-                .name = strdup(name),
+                .name = strdup(rg_basename(path)),
                 .folder = const_string(rg_dirname(path)),
                 .emulator = &emulators[i],
                 .is_valid = true,
@@ -378,7 +337,7 @@ static void tab_refresh(tab_t *tab)
         tab->listbox.cursor = 4;
     }
 
-    gui_event(TAB_SCROLL, tab);
+    gui_scroll_list(tab, SCROLL_SET, tab->listbox.cursor);
 }
 
 static void event_handler(gui_event_t event, tab_t *tab)
@@ -398,10 +357,6 @@ static void event_handler(gui_event_t event, tab_t *tab)
     }
     else if (event == TAB_ENTER || event == TAB_SCROLL)
     {
-        if (file)
-            sprintf(tab->status[0].left, "%d / %d", (tab->listbox.cursor + 1) % 10000, tab->listbox.length % 10000);
-        else
-            strcpy(tab->status[0].left, "No Games");
         gui_set_status(tab, NULL, "");
         gui_set_preview(tab, NULL);
     }

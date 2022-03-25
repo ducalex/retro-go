@@ -177,16 +177,16 @@ static void retro_loop(void)
                 change_tab = 1;
             }
             else if (joystick == RG_KEY_UP) {
-                gui_scroll_list(tab, SCROLL_LINE_UP, 0);
+                gui_scroll_list(tab, SCROLL_LINE, -1);
             }
             else if (joystick == RG_KEY_DOWN) {
-                gui_scroll_list(tab, SCROLL_LINE_DOWN, 0);
+                gui_scroll_list(tab, SCROLL_LINE, 1);
             }
             else if (joystick == RG_KEY_LEFT) {
-                gui_scroll_list(tab, SCROLL_PAGE_UP, 0);
+                gui_scroll_list(tab, SCROLL_PAGE, -1);
             }
             else if (joystick == RG_KEY_RIGHT) {
-                gui_scroll_list(tab, SCROLL_PAGE_DOWN, 0);
+                gui_scroll_list(tab, SCROLL_PAGE, 1);
             }
             else if (joystick == RG_KEY_A) {
                 gui_event(TAB_ACTION, tab);

@@ -17,14 +17,11 @@ typedef enum {
 } gui_event_t;
 
 typedef enum {
-    SCROLL_UPDATE,
-    SCROLL_ABSOLUTE,
-    SCROLL_LINE_UP,
-    SCROLL_LINE_DOWN,
-    SCROLL_PAGE_UP,
-    SCROLL_PAGE_DOWN,
-    SCROLL_FIRST_ROW,
-    SCROLL_LAST_ROW,
+    SCROLL_RESET,
+    SCROLL_SET,
+    SCROLL_END,
+    SCROLL_LINE,
+    SCROLL_PAGE,
 } scroll_mode_t;
 
 typedef enum {
@@ -43,11 +40,6 @@ typedef enum {
     PREVIEW_MODE_SAVE_ONLY,
     PREVIEW_MODE_COUNT
 } preview_modes_t;
-
-typedef struct {
-    const char *name;
-    uint16_t order;
-} preview_mode_t;
 
 typedef struct {
     struct {
@@ -115,7 +107,7 @@ typedef struct {
     int selected;
     int startup;
     int browse;
-    char *theme;
+    const char *theme;
     int color_theme;
     int start_screen;
     int show_preview;

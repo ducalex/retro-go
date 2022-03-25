@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "utils.h"
 #include "gui.h"
 
 #define HEADER_HEIGHT       (50)
@@ -27,6 +28,7 @@ retro_gui_t gui;
 #define SETTING_SELECTED_TAB    "SelectedTab"
 #define SETTING_START_SCREEN    "StartScreen"
 #define SETTING_STARTUP_MODE    "StartupMode"
+#define SETTING_THEME           "Theme"
 #define SETTING_COLOR_THEME     "ColorTheme"
 #define SETTING_SHOW_PREVIEW    "ShowPreview"
 #define SETTING_TAB_SELECTION   "TabSelection"
@@ -47,6 +49,7 @@ void gui_init(void)
     // Always enter browse mode when leaving an emulator
     // boot reason should probably be abstracted by rg_system >_<
     gui.browse = gui.start_screen == 2 || (!gui.start_screen && esp_reset_reason() != ESP_RST_POWERON);
+    gui_set_theme(rg_settings_get_string(NS_APP, SETTING_THEME, NULL));
 }
 
 void gui_event(gui_event_t event, tab_t *tab)
@@ -111,7 +114,7 @@ void gui_init_tab(tab_t *tab)
         free(selected);
     }
 
-    gui_event(TAB_SCROLL, tab);
+    gui_scroll_list(tab, SCROLL_SET, tab->listbox.cursor);
 }
 
 tab_t *gui_get_tab(int index)
@@ -180,7 +183,7 @@ const rg_image_t *gui_get_image(const char *type, const char *subtype)
 
 tab_t *gui_get_current_tab(void)
 {
-    tab_t *tab =gui_get_tab(gui.selected);
+    tab_t *tab = gui_get_tab(gui.selected);
     RG_ASSERT(tab, "current tab is NULL!");
     return tab;
 }
@@ -209,9 +212,6 @@ void gui_set_status(tab_t *tab, const char *left, const char *right)
 
 void gui_set_theme(const char *name)
 {
-    free(gui.theme);
-    gui.theme = NULL;
-
     for (image_t *image = gui.images; image->id; ++image)
     {
         rg_image_free(image->img);
@@ -219,10 +219,7 @@ void gui_set_theme(const char *name)
         image->img = NULL;
     }
 
-    if (name)
-    {
-        gui.theme = strdup(name);
-    }
+    gui.theme = const_string(name);
 }
 
 void gui_save_config(bool commit)
@@ -232,6 +229,7 @@ void gui_save_config(bool commit)
     rg_settings_set_number(NS_APP, SETTING_SHOW_PREVIEW, gui.show_preview);
     rg_settings_set_number(NS_APP, SETTING_COLOR_THEME, gui.color_theme);
     rg_settings_set_number(NS_APP, SETTING_STARTUP_MODE, gui.startup);
+    rg_settings_set_string(NS_APP, SETTING_THEME, gui.theme);
 
     for (int i = 0; i < gui.tabcount; i++)
     {
@@ -329,34 +327,31 @@ void gui_scroll_list(tab_t *tab, scroll_mode_t mode, int arg)
 
     int cur_cursor = RG_MAX(RG_MIN(list->cursor, list->length - 1), 0);
     int old_cursor = list->cursor;
-    int max = LIST_LINE_COUNT - 2;
 
-    if (mode == SCROLL_ABSOLUTE)
+    if (list->length == 0)
+    {
+        // cur_cursor = -1;
+        cur_cursor = 0;
+    }
+    else if (mode == SCROLL_SET)
     {
         cur_cursor = arg;
     }
-    else if (mode == SCROLL_LINE_UP)
+    else if (mode == SCROLL_LINE)
     {
-        cur_cursor--;
+        cur_cursor += arg;
     }
-    else if (mode == SCROLL_LINE_DOWN)
+    else if (mode == SCROLL_PAGE)
     {
-        cur_cursor++;
-    }
-    else if (mode == SCROLL_PAGE_UP)
-    {
-        char start = list->items[cur_cursor].text[0];
-        while (--cur_cursor > 0 && max-- > 0)
+        int start = list->items[cur_cursor].text[0];
+        int direction = arg > 0 ? 1 : -1;
+        for (int max = LIST_LINE_COUNT - 2; max > 0; --max)
         {
-           if (start != list->items[cur_cursor].text[0]) break;
-        }
-    }
-    else if (mode == SCROLL_PAGE_DOWN)
-    {
-        char start = list->items[cur_cursor].text[0];
-        while (++cur_cursor < list->length - 1 && max-- > 0)
-        {
-           if (start != list->items[cur_cursor].text[0]) break;
+            cur_cursor += direction;
+            if (cur_cursor < 0 || cur_cursor >= list->length)
+                break;
+            if (start != list->items[cur_cursor].text[0])
+                break;
         }
     }
 
@@ -364,6 +359,12 @@ void gui_scroll_list(tab_t *tab, scroll_mode_t mode, int arg)
     if (cur_cursor >= list->length) cur_cursor = 0;
 
     list->cursor = cur_cursor;
+
+    if (list->length && list->items[list->cursor].arg)
+        sprintf(tab->status[0].left, "%d / %d", (list->cursor + 1) % 10000, list->length % 10000);
+    else
+        strcpy(tab->status[0].left, "List empty");
+
     gui_event(TAB_SCROLL, tab);
 
     if (cur_cursor != old_cursor)
