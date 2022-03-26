@@ -655,7 +655,7 @@ void emulator_start(retro_emulator_file_t *file, bool load_state)
 
 void emulators_init(void)
 {
-    add_emulator("Nintendo Entertainment System", "nes", "nes fds nsf", "nofrendo-go", 16);
+    add_emulator("Nintendo Entertainment System", "nes", "nes fc fds nsf", "nofrendo-go", 16);
     // add_emulator("Nintendo Famicom Disk System",  "fds",  "fds",     "nofrendo-go", 16);
     add_emulator("Nintendo Gameboy", "gb", "gb gbc", "gnuboy-go", 0);
     add_emulator("Nintendo Gameboy Color", "gbc", "gbc gb", "gnuboy-go", 0);
