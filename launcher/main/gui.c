@@ -222,7 +222,7 @@ void gui_set_theme(const char *name)
     gui.theme = const_string(name);
 }
 
-void gui_save_config(bool commit)
+void gui_save_config(void)
 {
     rg_settings_set_number(NS_APP, SETTING_SELECTED_TAB, gui.selected);
     rg_settings_set_number(NS_APP, SETTING_START_SCREEN, gui.start_screen);
@@ -247,9 +247,6 @@ void gui_save_config(bool commit)
             rg_settings_set_number(tab->name, SETTING_TAB_HIDDEN, 1);
         }
     }
-
-    if (commit)
-        rg_storage_commit();
 }
 
 listbox_item_t *gui_get_selected_item(tab_t *tab)

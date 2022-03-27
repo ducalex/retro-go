@@ -182,16 +182,15 @@ static void book_init(book_type_t book_type, const char *name, const char *desc,
 }
 
 
-retro_emulator_file_t *bookmark_find(book_type_t book_type, retro_emulator_file_t *file)
+retro_emulator_file_t *bookmark_find_first(book_type_t book_type, retro_emulator_t *emulator)
 {
-    RG_ASSERT(file, "bad param");
+    RG_ASSERT(emulator, "bad param");
 
     book_t *book = &books[book_type];
 
     for (int i = 0; i < book->count; i++)
     {
-        if (book->items[i].is_valid && book->items[i].emulator == file->emulator
-            && strcmp(book->items[i].name, file->name) == 0)
+        if (book->items[i].is_valid && (!emulator || book->items[i].emulator == emulator))
         {
             return &book->items[i];
         }
@@ -200,15 +199,34 @@ retro_emulator_file_t *bookmark_find(book_type_t book_type, retro_emulator_file_
     return NULL;
 }
 
+bool bookmark_exists(book_type_t book, retro_emulator_file_t *file)
+{
+    RG_ASSERT(file, "bad param");
+
+    for (int i = 0; i < books[book].count; i++)
+    {
+        retro_emulator_file_t *entry = &books[book].items[i];
+        if (entry->is_valid && entry->folder == file->folder && !strcmp(entry->name, file->name))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool bookmark_add(book_type_t book, retro_emulator_file_t *file)
 {
     RG_ASSERT(file, "bad param");
     // For most book types we want unique entries. I'd prefer to keep the old one and let the calling
     // code decide what to do, but deleting the old entry is simpler for most book types who try
     // to update something... For the RECENT type we also don't want to disturb the order
-    retro_emulator_file_t *bookmark;
-    while ((bookmark = bookmark_find(book, file)))
-        bookmark->is_valid = false;
+    for (int i = 0; i < books[book].count; i++)
+    {
+        retro_emulator_file_t *entry = &books[book].items[i];
+        if (entry->is_valid && entry->folder == file->folder && !strcmp(entry->name, file->name))
+            entry->is_valid = false;
+    }
 
     book_append(book, file);
     tab_refresh(book);
@@ -221,13 +239,16 @@ bool bookmark_remove(book_type_t book, retro_emulator_file_t *file)
 {
     RG_ASSERT(file, "bad param");
 
-    retro_emulator_file_t *bookmark;
-    int found = 0;
+    size_t found = 0;
 
-    while ((bookmark = bookmark_find(book, file)))
+    for (int i = 0; i < books[book].count; i++)
     {
-        bookmark->is_valid = false;
-        found++;
+        retro_emulator_file_t *entry = &books[book].items[i];
+        if (entry->is_valid && entry->folder == file->folder && !strcmp(entry->name, file->name))
+        {
+            entry->is_valid = false;
+            found++;
+        }
     }
 
     if (found == 0)

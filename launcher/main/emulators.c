@@ -412,7 +412,6 @@ static void event_handler(gui_event_t event, tab_t *tab)
                 }
             }
         }
-        // This is now reserved for subfolder navigation (go back)
     }
 }
 
@@ -571,7 +570,7 @@ void emulator_show_file_menu(retro_emulator_file_t *file, bool advanced)
     char *scrn_path = rg_system_get_path(NULL, RG_PATH_SCREENSHOT, rom_path);
     bool has_save = access(save_path, F_OK) == 0;
     bool has_sram = access(sram_path, F_OK) == 0;
-    bool is_fav = bookmark_find(BOOK_TYPE_FAVORITE, file) != NULL;
+    bool is_fav = bookmark_exists(BOOK_TYPE_FAVORITE, file);
 
     rg_gui_option_t choices[] = {
         {0, "Resume game", NULL, has_save, NULL},
@@ -591,7 +590,7 @@ void emulator_show_file_menu(retro_emulator_file_t *file, bool advanced)
     case 0:
     case 1:
         crc_cache_save();
-        gui_save_config(false); // emulator_start will trigger a commit
+        gui_save_config();
         emulator_start(file, sel == 0);
         break;
 
