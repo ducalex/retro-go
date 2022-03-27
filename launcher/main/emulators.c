@@ -286,9 +286,13 @@ static void tab_refresh(tab_t *tab)
 
     memset(&tab->status, 0, sizeof(tab->status));
 
-    const char *folder = tab->navpath ? tab->navpath : emu->paths.roms;
+    const char *basepath = const_string(emu->paths.roms);
+    const char *folder = tab->navpath ?: basepath;
     size_t items_count = 0;
     char *ext = NULL;
+
+    if (folder == basepath)
+        tab->navpath = NULL;
 
     if (emu->files_count > 0)
     {
@@ -348,8 +352,24 @@ static void event_handler(gui_event_t event, tab_t *tab)
 
     if (event == TAB_INIT)
     {
+        retro_emulator_file_t *selected = bookmark_find_first(BOOK_TYPE_RECENT, emu);
+        tab->navpath = selected ? selected->folder : NULL;
+
         emulator_init(emu);
         tab_refresh(tab);
+
+        if (selected)
+        {
+            for (int i = 0; i < tab->listbox.length; i++)
+            {
+                retro_emulator_file_t *file = tab->listbox.items[i].arg;
+                if (strcmp(file->name, selected->name) == 0)
+                {
+                    gui_scroll_list(tab, SCROLL_SET, i);
+                    break;
+                }
+            }
+        }
     }
     else if (event == TAB_REFRESH)
     {
@@ -395,9 +415,6 @@ static void event_handler(gui_event_t event, tab_t *tab)
 
             tab->navpath = const_string(rg_dirname(tab->navpath));
             tab->listbox.cursor = 0;
-
-            if (strcmp(tab->navpath, emu->paths.roms) == 0)
-                tab->navpath = NULL;
 
             tab_refresh(tab);
 

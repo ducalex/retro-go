@@ -31,8 +31,7 @@ retro_gui_t gui;
 #define SETTING_THEME           "Theme"
 #define SETTING_COLOR_THEME     "ColorTheme"
 #define SETTING_SHOW_PREVIEW    "ShowPreview"
-#define SETTING_TAB_SELECTION   "TabSelection"
-#define SETTING_TAB_HIDDEN      "TabHidden"
+#define SETTING_HIDE_TAB(name)  strcat((char[99]){"HideTab."}, (name))
 
 
 void gui_init(void)
@@ -68,13 +67,13 @@ tab_t *gui_add_tab(const char *name, const char *desc, void *arg, void *event_ha
 
     tab->event_handler = event_handler;
     tab->initialized = false;
-    tab->enabled = !rg_settings_get_number(tab->name, SETTING_TAB_HIDDEN, 0);
+    tab->enabled = !rg_settings_get_number(NS_APP, SETTING_HIDE_TAB(name), 0);
     tab->arg = arg;
     tab->listbox = (listbox_t){
         .items = calloc(10, sizeof(listbox_item_t)),
         .capacity = 10,
         .length = 0,
-        .cursor = -1,
+        .cursor = 0,
         .sort_mode = SORT_TEXT_ASC,
     };
 
@@ -94,26 +93,6 @@ void gui_init_tab(tab_t *tab)
     // tab->status[0] = 0;
 
     gui_event(TAB_INIT, tab);
-
-    // -1 means that we should find our last saved position
-    if (tab->listbox.length && tab->listbox.cursor == -1)
-    {
-        tab->listbox.cursor = 0;
-        char *selected = rg_settings_get_string(tab->name, SETTING_TAB_SELECTION, NULL);
-        if (selected && strlen(selected) > 1)
-        {
-            for (int i = 0; i < tab->listbox.length; i++)
-            {
-                if (strcmp(selected, tab->listbox.items[i].text) == 0)
-                {
-                    tab->listbox.cursor = i;
-                    break;
-                }
-            }
-        }
-        free(selected);
-    }
-
     gui_scroll_list(tab, SCROLL_SET, tab->listbox.cursor);
 }
 
@@ -230,23 +209,8 @@ void gui_save_config(void)
     rg_settings_set_number(NS_APP, SETTING_COLOR_THEME, gui.color_theme);
     rg_settings_set_number(NS_APP, SETTING_STARTUP_MODE, gui.startup);
     rg_settings_set_string(NS_APP, SETTING_THEME, gui.theme);
-
     for (int i = 0; i < gui.tabcount; i++)
-    {
-        tab_t *tab = gui.tabs[i];
-
-        if (tab->enabled)
-        {
-            listbox_item_t *item = gui_get_selected_item(tab);
-            rg_settings_set_string(tab->name, SETTING_TAB_SELECTION, item ? item->text : NULL);
-            rg_settings_delete(tab->name, SETTING_TAB_HIDDEN);
-        }
-        else
-        {
-            rg_settings_delete(tab->name, SETTING_TAB_SELECTION);
-            rg_settings_set_number(tab->name, SETTING_TAB_HIDDEN, 1);
-        }
-    }
+        rg_settings_set_number(NS_APP, SETTING_HIDE_TAB(gui.tabs[i]->name), !gui.tabs[i]->enabled);
 }
 
 listbox_item_t *gui_get_selected_item(tab_t *tab)
