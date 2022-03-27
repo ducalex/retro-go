@@ -1,5 +1,5 @@
 /*****************************************/
-/* ESP32 (Odroid GO) Graphics Engine     */
+/* ESP32 (retro-go) Graphics Engine     */
 /* Released under the GPL license        */
 /*                                       */
 /* Original Author:                      */

@@ -242,28 +242,28 @@ static void retro_loop(void)
 
 static void try_migrate(void)
 {
+    // A handful of retro-go versions used the weird /odroid/*.txt to store books. Let's move them!
     if (rg_settings_get_number(NS_GLOBAL, "Migration", 0) < 1290)
     {
-#if 0 // Changed my mind for now, it might be a hassle to some users
-        rmdir(RG_BASE_PATH_COVERS); // Remove if present but empty
-        rmdir(RG_BASE_PATH_SAVES);  // Remove if present but empty
-        bool mv_data = !access("/sd/odroid/data", F_OK) && access(RG_BASE_PATH_SAVES, F_OK);
-        bool mv_art = !access("/sd/romart", F_OK) && access(RG_BASE_PATH_COVERS, F_OK);
-
-        if (mv_data && rg_gui_confirm("New save path in 1.29", "Can I move /odroid/data to /retro-go/saves?", true))
-            rename("/sd/odroid/data", RG_BASE_PATH_SAVES);
-
-        if (mv_art && rg_gui_confirm("New cover path in 1.29", "Can I move /romart to /retro-go/covers?", true))
-            rename("/sd/romart", RG_BASE_PATH_COVERS);
-#endif
-
-        // These don't conflict, no need to ask
+    #ifdef RG_TARGET_ODROID_GO
         rg_mkdir(RG_BASE_PATH_CONFIG);
         rename(RG_ROOT_PATH "/odroid/favorite.txt", RG_BASE_PATH_CONFIG "/favorite.txt");
         rename(RG_ROOT_PATH "/odroid/recent.txt", RG_BASE_PATH_CONFIG "/recent.txt");
-
+    #endif
         rg_settings_set_number(NS_GLOBAL, "Migration", 1290);
+        rg_storage_commit();
+    }
 
+    // Some of our save formats have diverged and cause issue when they're shared with Go-Play
+    if (rg_settings_get_number(NS_GLOBAL, "Migration", 0) < 1390)
+    {
+    #ifdef RG_TARGET_ODROID_GO
+        if (access(RG_ROOT_PATH"/odroid/data", F_OK) == 0)
+            rg_gui_alert("Save path changed in 1.32",
+                "Save format is no longer fully compatible with Go-Play and can cause corruption.\n\n"
+                "Please copy the contents of:\n /odroid/data\nto\n /retro-go/saves.");
+    #endif
+        rg_settings_set_number(NS_GLOBAL, "Migration", 1390);
         rg_storage_commit();
     }
 }

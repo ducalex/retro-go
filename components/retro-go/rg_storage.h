@@ -15,11 +15,6 @@
 #define RG_BASE_PATH_SYSTEM     RG_BASE_PATH "/system"
 #define RG_BASE_PATH_THEMES     RG_BASE_PATH "/themes"
 
-#ifdef RG_TARGET_ODROID_GO
-#undef RG_BASE_PATH_SAVES
-#define RG_BASE_PATH_SAVES     RG_ROOT_PATH "/odroid/data"
-#endif
-
 // TO DO: This should be an enum, not strings and even less a function call...
 #define NS_GLOBAL  "global"
 #define NS_APP     rg_system_get_app()->configNs
