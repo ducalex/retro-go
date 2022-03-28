@@ -159,7 +159,18 @@ static void retro_loop(void)
             }
         }
 
-        if (joystick == RG_KEY_MENU || joystick == RG_KEY_OPTION)
+        if (joystick == RG_KEY_MENU)
+        {
+        #ifdef RG_TARGET_ODROID_GO
+            rg_gui_about_menu(NULL);
+        #else
+            rg_gui_options_menu();
+        #endif
+            gui_save_config();
+            rg_storage_commit();
+            redraw_pending = true;
+        }
+        else if (joystick == RG_KEY_OPTION)
         {
             rg_gui_options_menu();
             gui_save_config();

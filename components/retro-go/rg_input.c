@@ -81,6 +81,10 @@ static inline uint32_t gamepad_read(void)
         if (buttons & (1 << 6)) state |= RG_KEY_A;
         if (buttons & (1 << 7)) state |= RG_KEY_B;
 
+        // Virtual option btn (start+select). maybe there's a more appropriate combo?
+        if (state == (RG_KEY_START|RG_KEY_SELECT))
+            state = RG_KEY_OPTION;
+
         battery_level = RG_MAX(0.f, RG_MIN(100.f, ((int)data[4] - 170) / 30.f * 100.f));
     }
 
