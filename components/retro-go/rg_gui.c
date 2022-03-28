@@ -1032,22 +1032,13 @@ int rg_gui_game_menu(void)
     const rg_gui_option_t choices[] = {
         {1000, "Save & Continue", NULL,  1, NULL},
         {2000, "Save & Quit", NULL, 1, NULL},
-        {3000, "Restart", NULL, 1, NULL},
+        {3000, "Reset game", NULL, 1, NULL},
         #ifdef ENABLE_NETPLAY
         {5000, "Netplay", NULL, 1, NULL},
         #endif
-        #if !RG_GAMEPAD_OPTION_BTN
         {5500, "Options", NULL, 1, NULL},
-        #endif
         {6000, "About", NULL, 1, NULL},
         {7000, "Quit", NULL, 1, NULL},
-        RG_DIALOG_CHOICE_LAST
-    };
-
-    const rg_gui_option_t choices_restart[] = {
-        {3001, "Reload save", NULL,  1, NULL},
-        {3002, "Soft reset", NULL, 1, NULL},
-        {3003, "Hard reset", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
 
@@ -1058,7 +1049,13 @@ int rg_gui_game_menu(void)
 
     if (sel == 3000)
     {
-        sel = rg_gui_dialog("Restart", choices_restart, 0);
+        const rg_gui_option_t choices[] = {
+            {3001, "Reload save", NULL,  1, NULL},
+            {3002, "Soft reset", NULL, 1, NULL},
+            {3003, "Hard reset", NULL, 1, NULL},
+            RG_DIALOG_CHOICE_LAST
+        };
+        sel = rg_gui_dialog("Reset Emulation", choices, 0);
     }
 
     switch (sel)
@@ -1071,9 +1068,7 @@ int rg_gui_game_menu(void)
     #ifdef ENABLE_NETPLAY
         case 5000: rg_netplay_quick_start(); break;
     #endif
-    #if !RG_GAMEPAD_OPTION_BTN
         case 5500: rg_gui_options_menu(); break;
-    #endif
         case 6000: rg_gui_about_menu(NULL); break;
         case 7000: exit(0); break;
     }

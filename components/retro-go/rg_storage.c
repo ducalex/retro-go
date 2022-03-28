@@ -185,6 +185,8 @@ void rg_settings_commit(void)
     if (!unsaved_changes)
         return;
 
+    RG_LOGI("Saving %d change(s)...\n", unsaved_changes);
+
     char *buffer = cJSON_Print(config_root);
     if (!buffer)
     {
@@ -201,7 +203,7 @@ void rg_settings_commit(void)
     }
     if (fp)
     {
-        if (fputs(buffer, fp) > 0)
+        if (fputs(buffer, fp) >= 0)
             unsaved_changes = 0;
         fclose(fp);
     }
@@ -253,17 +255,21 @@ void rg_settings_set_string(const char *section, const char *key, const char *va
 {
     cJSON *root = json_root(section);
     cJSON *obj = cJSON_GetObjectItem(root, key);
+    cJSON *newobj = value ? cJSON_CreateString(value) : cJSON_CreateNull();
 
-    if (!value || !cJSON_IsString(obj))
+    if (obj == NULL)
     {
-        cJSON_Delete(cJSON_DetachItemViaPointer(root, obj));
-        cJSON_AddStringToObject(root, key, value);
+        cJSON_AddItemToObject(root, key, newobj);
         unsaved_changes++;
     }
-    else if (strcmp(obj->valuestring, value) != 0)
+    else if (!cJSON_Compare(obj, newobj, true))
     {
-        cJSON_ReplaceItemInObject(root, key, cJSON_CreateString(value));
+        cJSON_ReplaceItemInObject(root, key, newobj);
         unsaved_changes++;
+    }
+    else
+    {
+        cJSON_Delete(newobj);
     }
 }
 

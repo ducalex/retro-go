@@ -95,6 +95,13 @@ static rg_gui_event_t startup_app_cb(rg_gui_option_t *option, rg_gui_event_t eve
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t about_app_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+        rg_gui_about_menu(NULL);
+    return RG_DIALOG_VOID;
+}
+
 static void retro_loop(void)
 {
     tab_t *tab = gui_get_current_tab();
@@ -152,20 +159,11 @@ static void retro_loop(void)
             }
         }
 
-        #if !RG_GAMEPAD_OPTION_BTN
-        if (joystick == RG_KEY_MENU)
-        #else
-        if (joystick == RG_KEY_OPTION)
-        #endif
+        if (joystick == RG_KEY_MENU || joystick == RG_KEY_OPTION)
         {
-            if (rg_gui_options_menu() == 123)
-                rg_gui_about_menu(NULL);
+            rg_gui_options_menu();
             gui_save_config();
             rg_storage_commit();
-            redraw_pending = true;
-        }
-        else if (joystick == RG_KEY_MENU) {
-            rg_gui_about_menu(NULL);
             redraw_pending = true;
         }
 
@@ -284,12 +282,9 @@ void app_main(void)
         {0, "Preview     ", "...", 1, &show_preview_cb},
         {0, "Start screen", "...", 1, &start_screen_cb},
         {0, "Hide tabs   ", "...", 1, &toggle_tabs_cb},
-        RG_DIALOG_SEPARATOR,
         {0, "Startup app ", "...", 1, &startup_app_cb},
-        #if !RG_GAMEPAD_OPTION_BTN
         RG_DIALOG_SEPARATOR,
-        {123, "About...  ", NULL,  1, NULL},
-        #endif
+        {0, "About Retro-Go", NULL,  1, &about_app_cb},
         RG_DIALOG_CHOICE_LAST
     };
 

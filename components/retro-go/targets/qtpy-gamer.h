@@ -22,8 +22,6 @@
 
 // Input
 #define RG_GAMEPAD_DRIVER           4   // 1 = ODROID-GO, 2 = Serial, 3 = MRGC-IO, 4 = QT PY AW9325
-//#define RG_GAMEPAD_MENU_BTN         1
-//#define RG_GAMEPAD_OPTION_BTN       1
 //#define RG_BATT_ADC_CHANNEL         ADC1_CHANNEL_0
 //#define RG_BATT_MULTIPLIER          2.0f
 //#define RG_BATT_VOLT_MIN            3.5f

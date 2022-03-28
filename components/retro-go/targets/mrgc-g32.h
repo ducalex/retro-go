@@ -52,8 +52,6 @@
 
 // Input
 #define RG_GAMEPAD_DRIVER           3   // 1 = ODROID-GO, 2 = Serial, 3 = MRGC-IO
-#define RG_GAMEPAD_MENU_BTN         1
-#define RG_GAMEPAD_OPTION_BTN       0
 // #define RG_BATT_ADC_CHANNEL         ADC1_CHANNEL_0
 #define RG_BATT_MULTIPLIER          4.0f
 #define RG_BATT_VOLT_MIN            7.0f
