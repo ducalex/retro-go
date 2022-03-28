@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "applications.h"
 #include "utils.h"
 #include "gui.h"
 
@@ -456,13 +457,14 @@ void gui_set_preview(tab_t *tab, rg_image_t *preview)
 
 void gui_load_preview(tab_t *tab)
 {
+    listbox_item_t *item = gui_get_selected_item(tab);
     bool show_missing_cover = false;
-    uint32_t order;
     char path[RG_PATH_MAX + 1];
+    uint32_t order;
 
     gui_set_preview(tab, NULL);
 
-    if (!gui_get_selected_item(tab))
+    if (!item || !item->arg)
         return;
 
     switch (gui.show_preview)
@@ -488,9 +490,8 @@ void gui_load_preview(tab_t *tab)
             order = 0x0000;
     }
 
-    retro_emulator_file_t *file = gui_get_selected_item(tab)->arg;
-    retro_emulator_t *emu = file->emulator;
-    const char *relpath =  file->folder + strlen(emu->paths.roms);
+    retro_file_t *file = item->arg;
+    retro_app_t *app = file->app;
     uint32_t errors = 0;
 
     while (order && !tab->preview)
@@ -503,22 +504,22 @@ void gui_load_preview(tab_t *tab)
             continue;
 
         if (type == 0x1 || type == 0x2)
-            emulator_get_file_crc32(file);
+            application_get_file_crc32(file);
 
         // Give up on any button press to improve responsiveness
         if ((gui.joystick |= rg_input_read_gamepad()))
             break;
 
         if (type == 0x1) // Game cover (old format)
-            sprintf(path, "%s/%X/%08X.art", emu->paths.covers, file->checksum >> 28, file->checksum);
+            sprintf(path, "%s/%X/%08X.art", app->paths.covers, file->checksum >> 28, file->checksum);
         else if (type == 0x2) // Game cover (png)
-            sprintf(path, "%s/%X/%08X.png", emu->paths.covers, file->checksum >> 28, file->checksum);
+            sprintf(path, "%s/%X/%08X.png", app->paths.covers, file->checksum >> 28, file->checksum);
         else if (type == 0x3) // Save state screenshot (png)
-            sprintf(path, "%s/%s/%s.png", emu->paths.saves, relpath, file->name);
+            sprintf(path, "%s/%s/%s.png", app->paths.saves, file->folder + strlen(app->paths.roms), file->name);
         else if (type == 0x4) // Game cover (based on filename)
-            sprintf(path, "%s/%s.png", emu->paths.covers, file->name);
+            sprintf(path, "%s/%s.png", app->paths.covers, file->name);
         else if (type == 0xF) // use generic cover image (not currently used)
-            sprintf(path, "%s/default.png", emu->paths.covers);
+            sprintf(path, "%s/default.png", app->paths.covers);
         else
             continue;
 

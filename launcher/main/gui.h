@@ -1,9 +1,7 @@
 #pragma once
 
-#include <rg_input.h>
 #include <rg_gui.h>
 #include <stdbool.h>
-#include "emulators.h"
 
 typedef enum {
     TAB_ACTION,

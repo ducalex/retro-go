@@ -5,8 +5,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "ftp_server.h"
-#include "emulators.h"
+#include "applications.h"
+#include "fileserver.h"
 #include "bookmarks.h"
 #include "themes.h"
 #include "gui.h"
@@ -309,7 +309,7 @@ void app_main(void)
     try_migrate();
     gui_init();
 
-    emulators_init();
+    applications_init();
     bookmarks_init();
     themes_init();
 

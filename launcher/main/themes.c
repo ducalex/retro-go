@@ -5,7 +5,9 @@
 #include <stdio.h>
 #include <dirent.h>
 
+#include "applications.h"
 #include "themes.h"
+#include "utils.h"
 #include "gui.h"
 
 
