@@ -67,10 +67,6 @@ You can use one of two naming schemes:
 Retro-Go typically detects and resolves application crashes and freezes automatically. However, if you do
 get stuck in a boot loop, you can hold `DOWN` while powering up the device to return to the launcher. 
 
-### CRC32... is annoying!
-Let your device sit idle for a while, it will scan your files preemptively. Alternatively you can disable 
-cover display in the options menu.
-
 ### Display update mode
 The maximum fill rate of the LCD is ~30fps. To work around that limitation, retro-go implements a partial
 update mode that refreshes only the portions of the screen that have changed. This process works very well at 
@@ -123,7 +119,10 @@ Patching esp-idf may be required for full functionality. Patches are located in 
 - `enable-exfat`: Enable exFAT support. I don't recommended it but it works if you need it.
 
 ## Build everything and generate .fw:
-1. `./rg_tool.py build-fw` or `./rg_tool.py release` (clean build)
+- Generate a .fw file to be installed with odroid-go-firmware (SD Card):  
+    `./rg_tool.py build-fw` or `./rg_tool.py release` (clean build)
+- Generate a .img to be flashed with esptool.py (Serial):  
+   `./rg_tool.py build-img` or `./rg_tool.py release` (clean build)
 
 For a smaller build you can also specify which apps you want, for example the launcher + nes + gameboy only:
 1. `./rg_tool.py build-fw launcher nofrendo-go gnuboy-go`

@@ -5,13 +5,14 @@ import subprocess
 import shutil
 import shlex
 import time
+import math
 import sys
 import re
 import os
 
 try:
     sys.path.append(os.path.join(os.environ["IDF_PATH"], "components", "partition_table"))
-    import serial, parttool
+    import serial, parttool, gen_esp32part
 except:
     pass
 
@@ -20,7 +21,7 @@ DEFAULT_BAUD = os.getenv("RG_TOOL_BAUD", "1152000")
 DEFAULT_PORT = os.getenv("RG_TOOL_PORT", "COM3")
 PROJECT_NAME = os.getenv("PROJECT_NAME", "Retro-Go") # os.path.basename(os.getcwd()).title()
 PROJECT_ICON = os.getenv("PROJECT_ICON", "icon.raw")
-PROJECT_APPS = os.getenv("PROJECT_APPS", "partitions.csv")
+PROJECT_APPS = {}
 try:
     PROJECT_VER = os.getenv("PROJECT_VER") or subprocess.check_output(
         "git describe --tags --abbrev=5 --dirty --always", shell=True
@@ -28,20 +29,13 @@ try:
 except:
     PROJECT_VER = "unknown"
 
-if type(PROJECT_APPS) is str: # Assume it's a partitions.csv, we must then parse it
-    filename = PROJECT_APPS
-    PROJECT_APPS = {}
-    try:
-        with open(filename, "r") as f:
-            for line in f:
-                m = re.match(r"^\s*([^#]+)\s*,\s*(.+)\s*,\s*(.+)\s*,\s*(.+)\s*,\s*([^#]+)", line)
-                if m and m[2] in ["app", "0"]:
-                    PROJECT_APPS[m[1]] = [0, int(m[5], base=0), m[2], m[3]]
-    except:
-        exit("Failed reading partitions from '%s' (PROJECT_APPS)." % filename)
+if os.path.exists("rg_config.py"):
+    with open("rg_config.py", "rb") as f:
+        exec(f.read())
+# else: something like
+#     for file in glob(*/CMakeLists.txt):
+#       PROJECT_APPS[basename(dirname(file))] = [0, 0, 0, 0]
 
-if not PROJECT_APPS:
-    exit("No subprojects defined. Are you running from the project's directory?")
 
 if not os.getenv("IDF_PATH"):
     exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
@@ -127,6 +121,7 @@ def analyze_profile(frames):
 
 
 def build_firmware(targets, device_type):
+    print("Building firmware with: %s\n" % " ".join(targets))
     args = [
         sys.executable,
         "tools/mkfw.py",
@@ -140,11 +135,51 @@ def build_firmware(targets, device_type):
 
     for target in targets:
         part = PROJECT_APPS[target]
-        args += [str(0), str(part[0]), str(part[1]), target, os.path.join(target, "build", target + ".bin")]
+        args += [str(part[0]), str(part[1]), str(part[2]), target, os.path.join(target, "build", target + ".bin")]
 
-    commandline = ' '.join(shlex.quote(arg) for arg in args[1:]) # shlex.join()
-    print("Building firmware: %s\n" % commandline)
+    print("Running: %s" % ' '.join(shlex.quote(arg) for arg in args[1:]))
     subprocess.run(args, check=True)
+
+
+def build_image(targets, device_type):
+    print("Building image with: %s\n" % " ".join(targets))
+    image_file = ("%s_%s_%s.img" % (PROJECT_NAME, PROJECT_VER, device_type)).lower()
+    image_data = bytearray(b"\xFF" * 0x10000)
+    table_ota = 0
+    table_csv = [
+        "nvs, data, nvs, 36864, 16384",
+        "otadata, data, ota, 53248, 8192",
+        "phy_init, data, phy, 61440, 4096",
+    ]
+
+    for target in targets:
+        part = PROJECT_APPS[target]
+        with open(os.path.join(target, "build", target + ".bin"), "rb") as f:
+            data = f.read()
+        part_size = max(part[2], math.ceil(len(data) / 0x10000) * 0x10000)
+        table_csv.append("%s, app, ota_%d, %d, %d" % (target, table_ota, len(image_data), part_size))
+        table_ota += 1
+        image_data += data + b"\xFF" * (part_size - len(data))
+
+    try:
+        cwd = os.path.join(os.getcwd(), list(targets)[0])
+        subprocess.run("idf.py bootloader", stdout=subprocess.DEVNULL, shell=True, check=True, cwd=cwd)
+        with open(os.path.join(cwd, "build", "bootloader", "bootloader.bin"), "rb") as f:
+            bootloader_bin = f.read()
+        image_data[0x1000:0x1000+len(bootloader_bin)] = bootloader_bin
+    except:
+        exit("Error building bootloader")
+
+    try:
+        table_bin = gen_esp32part.PartitionTable.from_csv("\n".join(table_csv)).to_binary()
+        image_data[0x8000:0x8000+len(table_bin)] = table_bin
+    except:
+        exit("Error generating partition table")
+
+    with open(image_file, "wb") as f:
+        f.write(image_data)
+
+    print("Saved image '%s' (%d bytes)\n" % (image_file, len(image_data)))
 
 
 def clean_app(target):
@@ -284,9 +319,9 @@ if command in ["build-fw", "release"]:
     print("=== Step: Packing ===\n")
     build_firmware(apps, args.target)
 
-# if command in ["build-img", "release"]:
-#     print("=== Step: Packing ===\n")
-#     build_image(apps, args.target)
+if command in ["build-img", "release"]:
+    print("=== Step: Packing ===\n")
+    build_image(apps, args.target)
 
 if command in ["flash", "run", "profile"]:
     print("=== Step: Flashing ===\n")

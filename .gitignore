@@ -5,5 +5,6 @@ build/
 sdkconfig.old
 sdkconfig
 /*.fw
+/*.img
 /*.zip
 __pycache__/
