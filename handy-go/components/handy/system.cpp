@@ -142,7 +142,8 @@ CSystem::CSystem(const char* filename, long displayformat, long samplerate)
       } else if (fread(filedata, filesize, 1, fp) != 1) {
          log_printf("-> fread failed (%d bytes)!\n", filesize);
       } else {
-         log_printf("-> read ok. size=%d, crc32=%08X\n", filesize, crc32_le(0, filedata, filesize));
+         // log_printf("-> read ok. size=%d, crc32=%08X\n", filesize, crc32_le(0, filedata, filesize));
+         log_printf("-> read ok. size=%d\n", filesize);
       }
       fclose(fp);
    } else {
