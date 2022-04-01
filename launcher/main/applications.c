@@ -114,7 +114,19 @@ static void application_init(retro_app_t *app)
 
     RG_LOGI("Initializing application '%s' (%s)\n", app->description, app->partition);
 
-    rg_mkdir(app->paths.covers);
+    // This checks if we have crc cover folders, the idea is to skip the crc later on if we don't!
+    // It adds very little delay but it could become an issue if someone has thousands of named files...
+    DIR *dir = opendir(app->paths.covers);
+    if (!dir)
+        rg_mkdir(app->paths.covers);
+    else
+    {
+        struct dirent* ent;
+        while ((ent = readdir(dir)) && !app->use_crc_covers)
+            app->use_crc_covers = ent->d_name[1] == 0 && isalnum(ent->d_name[0]);
+        closedir(dir);
+    }
+
     rg_mkdir(app->paths.saves);
     rg_mkdir(app->paths.roms);
     scan_folder(app, app->paths.roms, 0);

@@ -32,6 +32,7 @@ typedef struct retro_app_s
     size_t crc_offset;
     retro_file_t *files;
     size_t files_count;
+    bool use_crc_covers;
     bool crc_scan_done;
     bool initialized;
     bool available;

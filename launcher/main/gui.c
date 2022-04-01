@@ -503,16 +503,9 @@ void gui_load_preview(tab_t *tab)
         if (file->missing_cover & (1 << type))
             continue;
 
-        if (type == 0x1 || type == 0x2)
-            application_get_file_crc32(file);
-
-        // Give up on any button press to improve responsiveness
-        if ((gui.joystick |= rg_input_read_gamepad()))
-            break;
-
-        if (type == 0x1) // Game cover (old format)
+        if (type == 0x1 && app->use_crc_covers && application_get_file_crc32(file)) // Game cover (old format)
             sprintf(path, "%s/%X/%08X.art", app->paths.covers, file->checksum >> 28, file->checksum);
-        else if (type == 0x2) // Game cover (png)
+        else if (type == 0x2 && app->use_crc_covers && application_get_file_crc32(file)) // Game cover (png)
             sprintf(path, "%s/%X/%08X.png", app->paths.covers, file->checksum >> 28, file->checksum);
         else if (type == 0x3) // Save state screenshot (png)
             sprintf(path, "%s/%s/%s.png", app->paths.saves, file->folder + strlen(app->paths.roms), file->name);
@@ -522,6 +515,10 @@ void gui_load_preview(tab_t *tab)
             sprintf(path, "%s/default.png", app->paths.covers);
         else
             continue;
+
+        // Give up on any button press to improve responsiveness
+        if ((gui.joystick |= rg_input_read_gamepad()))
+            break;
 
         if (access(path, F_OK) == 0)
         {
