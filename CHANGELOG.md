@@ -1,3 +1,11 @@
+# Retro-Go 1.32 (2022-04-??)
+- Launcher: Added subfolder navigation (there are still some sorting issues)
+- Launcher: Improved responsiveness when covers are enabled but not installed
+- All: Moved saves on retro-go to be in line with other device (a notice will be displayed on first boot)
+- All: Added .img generator, to use with esptool.py
+- All: Pressing start+select will open options menu (on devices with no option button)
+
+
 # Retro-Go 1.31.1 (2022-03-08)
 - All: Fixed sound on MRGC-G32
 
