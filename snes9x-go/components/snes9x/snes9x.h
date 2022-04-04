@@ -13,7 +13,13 @@
 
 #include "port.h"
 
+#ifdef RETRO_GO
 #include <rg_system.h>
+#else
+#define IRAM_ATTR
+#define rg_alloc(size, type) calloc(1, size)
+#define crc32_le(a, b, c) (0)
+#endif
 
 /* Experimental retro-go flags */
 

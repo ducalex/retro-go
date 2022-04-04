@@ -1,21 +1,25 @@
 #pragma once
 
-#include <rg_system.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 
-#define GB_WIDTH (160)
-#define GB_HEIGHT (144)
-
+#ifdef RETRO_GO
+#include <rg_system.h>
 #define LOG_PRINTF(level, x...) rg_system_log(RG_LOG_USER, NULL, x)
-// #define LOG_PRINTF(level, x...) printf(x)
+#else
+#define LOG_PRINTF(level, x...) printf(x)
+#define IRAM_ATTR
+#endif
 
 #define MESSAGE_ERROR(x, ...) LOG_PRINTF(1, "!! %s: " x, __func__, ## __VA_ARGS__)
 #define MESSAGE_WARN(x, ...)  LOG_PRINTF(2, "** %s: " x, __func__, ## __VA_ARGS__)
 #define MESSAGE_INFO(x, ...)  LOG_PRINTF(3, " * %s: " x, __func__, ## __VA_ARGS__)
 // #define MESSAGE_DEBUG(x, ...) LOG_PRINTF(4, ">> %s: " x, __func__, ## __VA_ARGS__)
 #define MESSAGE_DEBUG(x, ...) {}
+
+#define GB_WIDTH (160)
+#define GB_HEIGHT (144)
 
 typedef uint8_t byte;
 typedef uint8_t un8;

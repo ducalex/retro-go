@@ -570,9 +570,9 @@ static void show_file_info(retro_file_t *file)
 void application_show_file_menu(retro_file_t *file, bool advanced)
 {
     const char *rom_path = get_file_path(file);
-    char *save_path = rg_system_get_path(NULL, RG_PATH_SAVE_STATE, rom_path);
-    char *sram_path = rg_system_get_path(NULL, RG_PATH_SAVE_SRAM, rom_path);
-    char *scrn_path = rg_system_get_path(NULL, RG_PATH_SCREENSHOT, rom_path);
+    char *save_path = rg_emu_get_path(RG_PATH_SAVE_STATE, rom_path);
+    char *sram_path = rg_emu_get_path(RG_PATH_SAVE_SRAM, rom_path);
+    char *scrn_path = rg_emu_get_path(RG_PATH_SCREENSHOT, rom_path);
     bool has_save = access(save_path, F_OK) == 0;
     bool has_sram = access(sram_path, F_OK) == 0;
     bool is_fav = bookmark_exists(BOOK_TYPE_FAVORITE, file);

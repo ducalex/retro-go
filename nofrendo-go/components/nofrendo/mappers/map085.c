@@ -26,7 +26,7 @@
 
 static struct
 {
-    uint counter, latch;
+    unsigned counter, latch;
     bool enabled, wait_state;
 } irq;
 

@@ -251,7 +251,7 @@ static void netplay_task()
         }
 
         netplay_player_t *packet_from = &players[packet.player_id];
-        packet_from->last_contact = get_elapsed_time();
+        packet_from->last_contact = rg_system_timer();
 
         switch (packet.cmd)
         {
@@ -517,7 +517,7 @@ void rg_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
         return;
     }
 
-    start_time = get_elapsed_time();
+    start_time = rg_system_timer();
 
     memcpy(&local_player->sync_data, data_in, data_len);
 
@@ -564,7 +564,7 @@ void rg_netplay_sync(void *data_in, void *data_out, uint8_t data_len)
     }
 #endif
 
-    sync_time += get_elapsed_time_since(start_time);
+    sync_time += rg_system_timer() - start_time;
 
     if (++sync_count == 60)
     {

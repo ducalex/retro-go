@@ -14,7 +14,6 @@ CMemory		Memory;
 uint32		OpenBus = 0;
 
 #define match_nn(str) (strncmp(Memory.ROMName, (str), strlen((str))) == 0)
-extern uint32 crc32_le(uint32 crc, uint8 const * buf, uint32 len);
 
 static int First512BytesCountZeroes(void)
 {

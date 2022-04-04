@@ -140,11 +140,14 @@ extern UBYTE    *gPrimaryFrameBuffer;
 //
 // Define logging functions
 //
-
+#ifdef RETRO_GO
 #include <rg_system.h>
-// #define log_printf(x...) printf(x)
 #define log_printf(x...) rg_system_log(RG_LOG_USER, NULL, x)
-
+#else
+#include <stdio.h>
+#define log_printf(x...) printf(x)
+#define rg_crc32(a, b, c) (0)
+#endif
 
 //
 // Define the interfaces before we start pulling in the classes

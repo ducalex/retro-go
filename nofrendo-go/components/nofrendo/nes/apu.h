@@ -199,9 +199,9 @@ typedef struct
    float cycle_rate;
 
    struct {
-      uint8 state;
-      uint step;
-      uint cycles;
+      unsigned state;
+      unsigned step;
+      unsigned cycles;
       bool irq_occurred;
       bool disable_irq;
    } fc;
@@ -235,5 +235,5 @@ void apu_getcontext(apu_t *dest_apu);
 void apu_process(short *buffer, size_t num_samples, bool stereo);
 void apu_fc_advance(int cycles);
 
-uint8 apu_read(uint address);
-void apu_write(uint address, uint8 value);
+uint8 apu_read(uint32 address);
+void apu_write(uint32 address, uint8 value);

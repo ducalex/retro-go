@@ -40,7 +40,14 @@
 #include "config.h"
 #endif
 
+#ifdef RETRO_GO
 #include <rg_system.h>
+#define SCREENWIDTH  (RG_SCREEN_WIDTH - RG_SCREEN_MARGIN_LEFT - RG_SCREEN_MARGIN_RIGHT)
+#define SCREENHEIGHT (RG_SCREEN_HEIGHT - RG_SCREEN_MARGIN_TOP - RG_SCREEN_MARGIN_BOTTOM)
+#else
+#define SCREENWIDTH  320
+#define SCREENHEIGHT 240
+#endif
 
 // This must come first, since it redefines malloc(), free(), etc. -- killough:
 #include "z_zone.h"
@@ -72,15 +79,6 @@ typedef enum {
   pack_plut,    // Plutonia pack
   none
 } GameMission_t;
-
-// SCREENWIDTH and SCREENHEIGHT define the visible size
-#if defined(RG_SCREEN_WIDTH) && defined(RG_SCREEN_HEIGHT)
-#define SCREENWIDTH  (RG_SCREEN_WIDTH - RG_SCREEN_MARGIN_LEFT - RG_SCREEN_MARGIN_RIGHT)
-#define SCREENHEIGHT (RG_SCREEN_HEIGHT - RG_SCREEN_MARGIN_TOP - RG_SCREEN_MARGIN_BOTTOM)
-#else
-#define SCREENWIDTH  320
-#define SCREENHEIGHT 240
-#endif
 
 // killough 2/8/98: MAX versions for maximum screen sizes
 // allows us to avoid the overhead of dynamic allocation

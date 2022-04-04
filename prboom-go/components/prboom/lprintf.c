@@ -55,7 +55,11 @@ void lprintf(OutputLevels lvl, const char *s, ...)
   {
     va_list arg;
     va_start(arg, s);
+#ifdef RETRO_GO
     rg_system_vlog(RG_LOG_USER, NULL, s, arg);
+#else
+    vprintf(s, arg);
+#endif
     // vprintf(s, arg);
     va_end(arg);
   }
@@ -73,10 +77,15 @@ void lprintf(OutputLevels lvl, const char *s, ...)
 
 void I_Error(const char *error, ...)
 {
-  char buffer[256];
   va_list arg;
   va_start(arg, error);
+#ifdef RETRO_GO
+  char buffer[256];
   vsnprintf(buffer, sizeof(buffer), error, arg);
-  va_end(arg);
   RG_PANIC(buffer);
+#else
+  vprintf(error, arg);
+  abort();
+#endif
+  va_end(arg);
 }

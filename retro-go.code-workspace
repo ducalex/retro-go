@@ -42,7 +42,7 @@
 		*/
 
 		"C_Cpp.default.defines": [
-			"PROJECT_VER",
+			"RETRO_GO",
 			"INLINE=",
 			"uint=unsigned int",
 			"CONFIG_FREERTOS_HZ=100",

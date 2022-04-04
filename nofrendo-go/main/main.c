@@ -231,7 +231,7 @@ static void nsf_draw_overlay(void)
 {
     extern int nsf_current_song;
     char song[32];
-    const nsfheader_t *header = nes->cart->data_ptr;
+    const nsfheader_t *header = (nsfheader_t *)nes->cart->data_ptr;
     const rg_gui_option_t options[] = {
         {0, "Name      ", (char *)header->name, 1, NULL},
         {0, "Artist    ", (char *)header->artist, 1, NULL},

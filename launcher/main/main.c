@@ -105,12 +105,12 @@ static rg_gui_event_t about_app_cb(rg_gui_option_t *option, rg_gui_event_t event
 static void retro_loop(void)
 {
     tab_t *tab = gui_get_current_tab();
-    int next_repeat = 0;
+    int64_t next_repeat = 0;
+    int64_t next_idle_event = 0;
     int repeats = 0;
     int joystick, prev_joystick;
     int change_tab = 0;
     int browse_last = -1;
-    int next_idle_event = 0;
     bool redraw_pending = true;
 
     while (true)
@@ -149,13 +149,13 @@ static void retro_loop(void)
             {
                 joystick = gui.joystick;
                 repeats = 0;
-                next_repeat = get_elapsed_time() + 400000;
+                next_repeat = rg_system_timer() + 400000;
             }
-            else if (get_elapsed_time_since(next_repeat) >= 0)
+            else if ((rg_system_timer() - next_repeat) >= 0)
             {
                 joystick = gui.joystick;
                 repeats++;
-                next_repeat = get_elapsed_time() + 400000 / (repeats + 1);
+                next_repeat = rg_system_timer() + 400000 / (repeats + 1);
             }
         }
 
@@ -232,13 +232,13 @@ static void retro_loop(void)
         if ((gui.joystick|joystick) & RG_KEY_ANY)
         {
             gui.idle_counter = 0;
-            next_idle_event = get_elapsed_time() + 100000;
+            next_idle_event = rg_system_timer() + 100000;
         }
-        else if (get_elapsed_time() >= next_idle_event)
+        else if (rg_system_timer() >= next_idle_event)
         {
             gui.idle_counter++;
             gui_event(TAB_IDLE, tab);
-            next_idle_event = get_elapsed_time() + 100000;
+            next_idle_event = rg_system_timer() + 100000;
             redraw_pending = true;
             gui.joystick = 0;
         }

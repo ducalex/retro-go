@@ -22,6 +22,11 @@ extern "C" {
     #define RG_TARGET_ODROID_GO
 #endif
 
+#define RG_APP_LAUNCHER "launcher"
+#define RG_APP_FACTORY  NULL
+
+#define RG_PATH_MAX 255
+
 #include "rg_audio.h"
 #include "rg_display.h"
 #include "rg_input.h"
@@ -76,9 +81,6 @@ typedef enum
     RG_EVENT_LOWMEMORY,
     RG_EVENT_REDRAW,
 } rg_event_t;
-
-#define RG_APP_LAUNCHER "launcher"
-#define RG_APP_FACTORY  NULL
 
 typedef bool (*rg_state_handler_t)(const char *filename);
 typedef bool (*rg_reset_handler_t)(bool hard);
@@ -163,10 +165,11 @@ void rg_system_vlog(int level, const char *context, const char *format, va_list 
 void rg_system_log(int level, const char *context, const char *format, ...) __attribute__((format(printf,3,4)));
 bool rg_system_save_trace(const char *filename, bool append);
 void rg_system_event(rg_event_t event, void *arg);
-char *rg_system_get_path(char *buffer, rg_path_type_t type, const char *filename);
+int64_t rg_system_timer(void);
 rg_app_t *rg_system_get_app(void);
 rg_stats_t rg_system_get_stats(void);
 
+char *rg_emu_get_path(rg_path_type_t type, const char *arg);
 bool rg_emu_save_state(int slot);
 bool rg_emu_load_state(int slot);
 bool rg_emu_reset(int hard);
@@ -185,20 +188,19 @@ void *rg_alloc(size_t size, uint32_t caps);
 /* Utilities */
 
 // Functions from esp-idf, we don't include their header but they will be linked
-extern int64_t esp_timer_get_time();
 extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 
-// long microseconds
+// These older macros do not guarantee a time unit in case retro-go was ported to a platform where
+// divisions were too slow or overflows were likely. However at this time it doesn't matter and much
+// of the code assumes microseconds so I will replace them by rg_system_timer() for clarity.
 #define get_frame_time(refresh_rate) (1000000 / (refresh_rate))
-// int64_t microseconds
-#define get_elapsed_time() esp_timer_get_time()
-// int64_t microseconds
-#define get_elapsed_time_since(start) (esp_timer_get_time() - (start))
+#define get_elapsed_time() (rg_system_timer())
+#define get_elapsed_time_since(start) (get_elapsed_time() - (start))
 
-#define RG_TIMER_INIT() int _rgts_ = get_elapsed_time(), _rgtl_ = get_elapsed_time();
+#define RG_TIMER_INIT() int64_t _rgts_ = rg_system_timer(), _rgtl_ = rg_system_timer();
 #define RG_TIMER_LAP(name) \
-    RG_LOGX("Lap %s: %.2f   Total: %.2f\n", #name, get_elapsed_time_since(_rgtl_) / 1000.f, \
-            get_elapsed_time_since(_rgts_) / 1000.f); _rgtl_ = get_elapsed_time();
+    RG_LOGX("Lap %s: %.2f   Total: %.2f\n", #name, (rg_system_timer() - _rgtl_) / 1000.f, \
+            (rg_system_timer() - _rgts_) / 1000.f); _rgtl_ = rg_system_timer();
 
 #define RG_MIN(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
 #define RG_MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
@@ -219,8 +221,6 @@ extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 #define RG_LOGD(x, ...) rg_system_log(RG_LOG_DEBUG, RG_LOG_TAG, x, ## __VA_ARGS__)
 
 #define RG_DUMP(...) {}
-
-#define RG_PATH_MAX 255
 
 // Attributes
 

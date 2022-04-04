@@ -183,8 +183,8 @@ void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
 
     if (audioSink == RG_AUDIO_SINK_DUMMY)
     {
-        usleep(RG_MAX(dummyBusyUntil - get_elapsed_time(), 1000));
-        dummyBusyUntil = get_elapsed_time() + ((audioSampleRate * 1000) / sampleCount);
+        usleep(RG_MAX(dummyBusyUntil - rg_system_timer(), 1000));
+        dummyBusyUntil = rg_system_timer() + ((audioSampleRate * 1000) / sampleCount);
         written = bufferSize;
     }
     else if (audioSink == RG_AUDIO_SINK_SPEAKER)

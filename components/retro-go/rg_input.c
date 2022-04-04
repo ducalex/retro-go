@@ -271,12 +271,12 @@ long rg_input_gamepad_last_read(void)
     if (!last_gamepad_read)
         return 0;
 
-    return get_elapsed_time_since(last_gamepad_read);
+    return rg_system_timer() - last_gamepad_read;
 }
 
 uint32_t rg_input_read_gamepad(void)
 {
-    last_gamepad_read = get_elapsed_time();
+    last_gamepad_read = rg_system_timer();
     return gamepad_state;
 }
 

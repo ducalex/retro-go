@@ -25,6 +25,8 @@
 #ifndef _RENDER_H_
 #define _RENDER_H_
 
+#include <stdbool.h>
+
 /* Pack RGB data into a 16-bit RGB 5:6:5 format */
 #define MAKE_PIXEL(r,g,b)   (((r << 8) & 0xF800) | ((g << 3) & 0x07E0) | ((b >> 3) & 0x001F))
 

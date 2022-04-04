@@ -251,7 +251,7 @@ void app_main(void)
     rg_display_set_source_format(GB_WIDTH, GB_HEIGHT, 0, 0, GB_WIDTH * 2, RG_PIXEL_565_BE);
 
     autoSaveSRAM = rg_settings_get_number(NS_APP, SETTING_SAVESRAM, 0);
-    sramFile = rg_system_get_path(NULL, RG_PATH_SAVE_SRAM, app->romPath);
+    sramFile = rg_emu_get_path(RG_PATH_SAVE_SRAM, app->romPath);
 
     if (!rg_mkdir(rg_dirname(sramFile)))
         MESSAGE_ERROR("Unable to create SRAM folder...");

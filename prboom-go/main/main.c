@@ -188,12 +188,12 @@ void I_InitGraphics(void)
 
 int I_GetTimeMS(void)
 {
-    return esp_timer_get_time() / 1000;
+    return rg_system_timer() / 1000;
 }
 
 int I_GetTime(void)
 {
-    return ((esp_timer_get_time() * TICRATE) / 1000000);
+    return ((rg_system_timer() * TICRATE) / 1000000);
 }
 
 void I_uSleep(unsigned long usecs)
@@ -412,9 +412,9 @@ void I_SetMusicVolume(int volume)
 
 void I_StartTic(void)
 {
-    static uint64_t last_time = 0;
-    static uint32_t prev_joystick = 0x0000;
-    static uint32_t rg_menu_delay = 0;
+    static int64_t last_time = 0;
+    static int32_t prev_joystick = 0x0000;
+    static int32_t rg_menu_delay = 0;
     uint32_t joystick = rg_input_read_gamepad();
     uint32_t changed = prev_joystick ^ joystick;
     event_t event = {0};
@@ -449,8 +449,8 @@ void I_StartTic(void)
         }
     }
 
-    rg_system_tick(get_elapsed_time_since(last_time));
-    last_time = get_elapsed_time();
+    rg_system_tick(rg_system_timer() - last_time);
+    last_time = rg_system_timer();
     prev_joystick = joystick;
 }
 

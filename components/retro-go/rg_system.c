@@ -153,7 +153,7 @@ static void update_statistics(void)
     counters.fullFrames = disp->counters.fullFrames;
     counters.busyTime = statistics.busyTime;
     counters.ticks = statistics.ticks;
-    counters.updateTime = get_elapsed_time();
+    counters.updateTime = rg_system_timer();
 
     float elapsedTime = (counters.updateTime - previous.updateTime) / 1000000.f;
     statistics.busyPercent = RG_MIN((counters.busyTime - previous.busyTime) / (elapsedTime * 1000000.f) * 100.f, 100.f);
@@ -182,7 +182,7 @@ static void update_statistics(void)
 
 static void system_monitor_task(void *arg)
 {
-    time_t lastLoop = get_elapsed_time();
+    int64_t lastLoop = rg_system_timer();
     bool ledState = false;
 
     // Give the app a few seconds to start before monitoring
@@ -191,8 +191,8 @@ static void system_monitor_task(void *arg)
 
     while (1)
     {
-        int loopTime_us = get_elapsed_time_since(lastLoop);
-        lastLoop = get_elapsed_time();
+        int loopTime_us = lastLoop - rg_system_timer();
+        lastLoop = rg_system_timer();
 
         update_statistics();
 
@@ -233,7 +233,7 @@ static void system_monitor_task(void *arg)
         }
 
         #ifdef ENABLE_PROFILING
-            static long loops = 0;
+            static int loops = 0;
             if (((loops++) % 10) == 0)
             {
                 rg_profiler_stop();
@@ -253,6 +253,11 @@ IRAM_ATTR void rg_system_tick(int busyTime)
     statistics.busyTime += busyTime;
     statistics.ticks++;
     // WDT_RELOAD(WDT_TIMEOUT);
+}
+
+IRAM_ATTR int64_t rg_system_timer(void)
+{
+    return esp_timer_get_time();
 }
 
 rg_stats_t rg_system_get_stats(void)
@@ -395,13 +400,14 @@ void rg_system_event(rg_event_t event, void *arg)
         app.handlers.event(event, arg);
 }
 
-char *rg_system_get_path(char *buffer, rg_path_type_t pathType, const char *filename)
+char *rg_emu_get_path(rg_path_type_t pathType, const char *filename)
 {
+    char *buffer = malloc(RG_PATH_MAX + 1);
     int type = pathType & ~0xFF;
     int slot = pathType & 0xFF;
 
     if (!buffer)
-        buffer = malloc(RG_PATH_MAX + 1);
+        RG_PANIC("Out of memory!");
 
     if (type == RG_PATH_SAVE_STATE || type == RG_PATH_SAVE_SRAM)
         strcpy(buffer, RG_BASE_PATH_SAVES);
@@ -436,12 +442,12 @@ char *rg_system_get_path(char *buffer, rg_path_type_t pathType, const char *file
             strcat(buffer, ".png");
     }
 
+    // Don't shrink the buffer, we could use the extra space (append extension, etc).
     return buffer;
 }
 
 bool rg_emu_load_state(int slot)
 {
-    char filename[RG_PATH_MAX + 1];
     bool success = false;
 
     if (!app.romPath || !app.handlers.loadState)
@@ -450,8 +456,7 @@ bool rg_emu_load_state(int slot)
         return false;
     }
 
-    rg_system_get_path(filename, RG_PATH_SAVE_STATE + slot, app.romPath);
-
+    char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + slot, app.romPath);
     RG_LOGI("Loading state from '%s'.\n", filename);
     WDT_RELOAD(30 * 1000000);
 
@@ -463,23 +468,22 @@ bool rg_emu_load_state(int slot)
     }
 
     WDT_RELOAD(WDT_TIMEOUT);
+    free(filename);
 
     return success;
 }
 
 bool rg_emu_save_state(int slot)
 {
-    char filename[RG_PATH_MAX + 1];
-    char tempname[RG_PATH_MAX + 8];
-    bool success = false;
-
     if (!app.romPath || !app.handlers.saveState)
     {
         RG_LOGE("No rom or handler defined...\n");
         return false;
     }
 
-    rg_system_get_path(filename, RG_PATH_SAVE_STATE + slot, app.romPath);
+    char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + slot, app.romPath);
+    char tempname[RG_PATH_MAX + 8];
+    bool success = false;
 
     RG_LOGI("Saving state to '%s'.\n", filename);
     WDT_RELOAD(30 * 1000000);
@@ -515,8 +519,7 @@ bool rg_emu_save_state(int slot)
     else
     {
         // Save succeeded, let's take a pretty screenshot for the launcher!
-        rg_system_get_path(filename, RG_PATH_SCREENSHOT + slot, app.romPath);
-        rg_emu_screenshot(filename, rg_display_get_status()->screen.width / 2, 0);
+        rg_emu_screenshot(strcat(filename, ".png"), rg_display_get_status()->screen.width / 2, 0);
 
         // And set bootflags to resume from this state on next boot
         if ((app.bootFlags & (RG_BOOT_ONCE|RG_BOOT_RESUME)) == 0)
@@ -527,6 +530,7 @@ bool rg_emu_save_state(int slot)
     }
 
     #undef tempname
+    free(filename);
 
     rg_storage_commit();
     rg_system_set_led(0);
@@ -702,7 +706,7 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
         fprintf(fp, "Free memory: %d + %d\n", stats->freeMemoryInt, stats->freeMemoryExt);
         fprintf(fp, "Free block: %d + %d\n", stats->freeBlockInt, stats->freeBlockExt);
         fprintf(fp, "Stack HWM: %d\n", stats->freeStackMain);
-        fprintf(fp, "Uptime: %ds (%d ticks)\n", (int)(get_elapsed_time() / 1000000), stats->ticks);
+        fprintf(fp, "Uptime: %ds (%d ticks)\n", (int)(rg_system_timer() / 1000000), stats->ticks);
         if (panic_trace && panicTrace.message[0])
             fprintf(fp, "Panic message: %.256s\n", panicTrace.message);
         if (panic_trace && panicTrace.context[0])

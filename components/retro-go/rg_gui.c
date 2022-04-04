@@ -578,7 +578,7 @@ int rg_gui_dialog(const char *header, const rg_gui_option_t *options_const, int 
     while (event != RG_DIALOG_CLOSE)
     {
         // TO DO: Add acceleration!
-        joystick_old = (get_elapsed_time_since(joystick_last) > 300000) ? 0 : joystick;
+        joystick_old = ((rg_system_timer() - joystick_last) > 300000) ? 0 : joystick;
         joystick = rg_input_read_gamepad();
         event = RG_DIALOG_VOID;
 
@@ -621,7 +621,7 @@ int rg_gui_dialog(const char *header, const rg_gui_option_t *options_const, int 
                 sel = -1;
             }
 
-            joystick_last = get_elapsed_time();
+            joystick_last = rg_system_timer();
         }
 
         if (sel_old != sel)
@@ -956,7 +956,7 @@ int rg_gui_about_menu(const rg_gui_option_t *extra_options)
             }
             break;
         case 3000:
-            unlink(rg_system_get_path(NULL, RG_PATH_CACHE_FILE, "crc32.bin"));
+            unlink(RG_BASE_PATH_CACHE "/crc32.bin");
             rg_system_restart();
             break;
         case 4000:
@@ -1002,7 +1002,7 @@ int rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     sprintf(stack_hwm, "%d", stats.freeStackMain);
     sprintf(heap_free, "%d+%d", stats.freeMemoryInt, stats.freeMemoryExt);
     sprintf(block_free, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);
-    sprintf(uptime, "%ds", (int)(get_elapsed_time() / 1000 / 1000));
+    sprintf(uptime, "%ds", (int)(rg_system_timer() / 1000000));
 
     int sel = rg_gui_dialog("Debugging", options, 0);
 

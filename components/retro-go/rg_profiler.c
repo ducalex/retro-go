@@ -55,7 +55,7 @@ NO_PROFILE void rg_profiler_start(void)
     LOCK_PROFILE();
 
     memset(profile, 0, sizeof(rg_profile_t));
-    profile->time_started = get_elapsed_time();
+    profile->time_started = rg_system_timer();
     enabled = true;
 
     UNLOCK_PROFILE();
@@ -73,7 +73,7 @@ NO_PROFILE void rg_profiler_print(void)
 
     LOCK_PROFILE();
 
-    printf("RGD:PROF:BEGIN %d %lld\n", profile->total_frames, get_elapsed_time_since(profile->time_started));
+    printf("RGD:PROF:BEGIN %d %d\n", profile->total_frames, (int)(rg_system_timer() - profile->time_started));
 
     for (int i = 0; i < profile->total_frames; ++i)
     {
@@ -108,7 +108,7 @@ NO_PROFILE void __cyg_profile_func_enter(void *this_fn, void *call_site)
     if (!enabled)
         return;
 
-    int64_t now = get_elapsed_time();
+    int64_t now = rg_system_timer();
 
     LOCK_PROFILE();
 
@@ -118,7 +118,7 @@ NO_PROFILE void __cyg_profile_func_enter(void *this_fn, void *call_site)
     if (fn->enter_time != 0)
         fn->run_time += now - fn->enter_time;
 
-    fn->enter_time = get_elapsed_time(); // not now, because we delayed execution
+    fn->enter_time = rg_system_timer(); // not now, because we delayed execution
     fn->num_calls++;
 
     UNLOCK_PROFILE();
@@ -129,7 +129,7 @@ NO_PROFILE void __cyg_profile_func_exit(void *this_fn, void *call_site)
     if (!enabled)
         return;
 
-    int64_t now = get_elapsed_time();
+    int64_t now = rg_system_timer();
 
     LOCK_PROFILE();
 
