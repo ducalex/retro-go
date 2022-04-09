@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <assert.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "rg_system.h"
 #include "rg_printf.h"
@@ -275,9 +276,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     printf(" built for: %s. aud=%d disp=%d pad=%d sd=%d cfg=%d\n", RG_TARGET_NAME, 0, 0, 0, 0, 0);
     printf("========================================================\n\n");
 
-    // This must be done before any peripheral init
-    srand(esp_random());
-
     #ifdef RG_GPIO_LED
     gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
     #endif
@@ -321,6 +319,9 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     rg_gui_init();
     rg_gui_draw_hourglass();
     rg_audio_init(sampleRate);
+
+    // At this point the timer will provide enough entropy
+    srand((unsigned)rg_system_timer());
 
     // Init last but before panic check, it could be useful
     update_statistics();
