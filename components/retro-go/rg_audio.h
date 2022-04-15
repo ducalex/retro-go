@@ -29,3 +29,5 @@ void rg_audio_set_sink(rg_sink_type_t sink);
 int  rg_audio_get_volume(void);
 void rg_audio_set_volume(int percent);
 void rg_audio_set_mute(bool mute);
+int  rg_audio_get_sample_rate(int sampleRate);
+void rg_audio_set_sample_rate(int sampleRate);

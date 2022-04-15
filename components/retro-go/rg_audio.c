@@ -42,6 +42,9 @@ static const char *SETTING_FILTER = "AudioFilter";
     #define SPEAKER_DAC_MODE I2S_DAC_CHANNEL_BOTH_EN
 #endif
 
+#define ACQUIRE_DEVICE(timeout) ({int x=xSemaphoreTake(audioDevLock, timeout);if(!x)RG_LOGE("Failed to acquire lock!\n");x;})
+#define RELEASE_DEVICE() xSemaphoreGive(audioDevLock);
+
 
 void rg_audio_init(int sampleRate)
 {
@@ -63,7 +66,7 @@ void rg_audio_init(int sampleRate)
     if (audioDevLock == NULL)
         audioDevLock = xSemaphoreCreateMutex();
 
-    xSemaphoreTake(audioDevLock, 1000);
+    ACQUIRE_DEVICE(1000);
 
     audioSampleRate = sampleRate;
     audioSink = (int)rg_settings_get_number(NS_GLOBAL, SETTING_OUTPUT, sinks[1].type);
@@ -116,13 +119,13 @@ void rg_audio_init(int sampleRate)
         audioSink = RG_AUDIO_SINK_DUMMY;
     }
 
-    xSemaphoreGive(audioDevLock);
+    RELEASE_DEVICE();
 }
 
 void rg_audio_deinit(void)
 {
     // We'll go ahead even if we can't acquire the lock...
-    xSemaphoreTake(audioDevLock, 1000);
+    ACQUIRE_DEVICE(1000);
 
     if (audioSink == RG_AUDIO_SINK_SPEAKER)
     {
@@ -149,7 +152,7 @@ void rg_audio_deinit(void)
     RG_LOGI("Audio terminated. sink='%s'\n", rg_audio_get_sink()->name);
     audioSink = -1;
 
-    xSemaphoreGive(audioDevLock);
+    RELEASE_DEVICE();
 }
 
 static inline void filter_samples(short *samples, size_t count)
@@ -167,7 +170,7 @@ void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
     if (bufferSize == 0)
         return;
 
-    if (!xSemaphoreTake(audioDevLock, 0))
+    if (!ACQUIRE_DEVICE(0))
         return;
 
     if (audioMuted)
@@ -251,7 +254,7 @@ void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
         RG_LOGW("Submission error: %d/%d bytes sent.\n", written, bufferSize);
     }
 
-    xSemaphoreGive(audioDevLock);
+    RELEASE_DEVICE();
 }
 
 const rg_sink_t *rg_audio_get_sinks(size_t *count)
@@ -289,13 +292,40 @@ void rg_audio_set_volume(int percent)
 
 void rg_audio_set_mute(bool mute)
 {
-    if (xSemaphoreTake(audioDevLock, 1000) == pdTRUE)
-    {
-        if (RG_GPIO_SND_AMP_ENABLE != GPIO_NUM_NC)
-            gpio_set_level(RG_GPIO_SND_AMP_ENABLE, mute ? 0 : 1);
-        if (audioSink == RG_AUDIO_SINK_SPEAKER || audioSink == RG_AUDIO_SINK_EXT_DAC)
-            i2s_zero_dma_buffer(I2S_NUM_0);
-        xSemaphoreGive(audioDevLock);
-    }
+    // if (audioMuted == mute)
+    //     return;
+
+    if (!ACQUIRE_DEVICE(1000))
+        return;
+
+    if (RG_GPIO_SND_AMP_ENABLE != GPIO_NUM_NC)
+        gpio_set_level(RG_GPIO_SND_AMP_ENABLE, mute ? 0 : 1);
+    if (audioSink == RG_AUDIO_SINK_SPEAKER || audioSink == RG_AUDIO_SINK_EXT_DAC)
+        i2s_zero_dma_buffer(I2S_NUM_0);
+
     audioMuted = mute;
+    RELEASE_DEVICE();
+}
+
+int rg_audio_get_sample_rate(int sampleRate)
+{
+    return audioSampleRate;
+}
+
+void rg_audio_set_sample_rate(int sampleRate)
+{
+    if (audioSampleRate == sampleRate)
+        return;
+
+    if (!ACQUIRE_DEVICE(1000))
+        return;
+
+    if (audioSink == RG_AUDIO_SINK_SPEAKER || audioSink == RG_AUDIO_SINK_EXT_DAC)
+    {
+        RG_LOGI("i2s_set_sample_rates(%d)\n", sampleRate);
+        i2s_set_sample_rates(I2S_NUM_0, sampleRate);
+    }
+    audioSampleRate = sampleRate;
+
+    RELEASE_DEVICE();
 }
