@@ -119,7 +119,7 @@ typedef struct
     const char *buildUser;
     const char *configNs;
     int bootFlags;
-    int speedupEnabled;
+    float speed;
     int refreshRate;
     int sampleRate;
     int logLevel;

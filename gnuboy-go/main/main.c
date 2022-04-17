@@ -286,22 +286,23 @@ void app_main(void)
 
     // Ready!
 
-    uint32_t joystick_old = -1;
-    uint32_t joystick = 0;
+    int frameTime = get_frame_time(60);
+    int joystick_old = -1;
+    int joystick = 0;
 
     while (true)
     {
         joystick = rg_input_read_gamepad();
 
-        if (joystick & RG_KEY_MENU)
+        if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
         {
             auto_sram_update();
-            rg_gui_game_menu();
-        }
-        else if (joystick & RG_KEY_OPTION)
-        {
-            auto_sram_update();
-            rg_gui_options_menu();
+            if (joystick & RG_KEY_MENU)
+                rg_gui_game_menu();
+            else
+                rg_gui_options_menu();
+            frameTime = get_frame_time(app->refreshRate * app->speed);
+            rg_audio_set_sample_rate(app->sampleRate * app->speed);
         }
         else if (joystick != joystick_old)
         {
@@ -314,7 +315,7 @@ void app_main(void)
             if (joystick & RG_KEY_START) pad |= GB_PAD_START;
             if (joystick & RG_KEY_A) pad |= GB_PAD_A;
             if (joystick & RG_KEY_B) pad |= GB_PAD_B;
-            gnuboy_set_pad(pad);
+            gnuboy_set_pad(pad); // That call is somewhat costly, that's why we try to avoid it
             joystick_old = joystick;
         }
 
@@ -351,16 +352,16 @@ void app_main(void)
             }
         }
 
-        long elapsed = get_elapsed_time_since(startTime);
+        int elapsed = get_elapsed_time_since(startTime);
 
         if (skipFrames == 0)
         {
-            if (app->speedupEnabled)
-                skipFrames = app->speedupEnabled * 2;
-            else if (elapsed >= get_frame_time(60)) // Frame took too long
-                skipFrames = 1;
+            if (elapsed > frameTime - 2000) // It takes about 2ms to copy the audio buffer
+                skipFrames = (elapsed + frameTime / 2) / frameTime;
             else if (drawFrame && fullFrame) // This could be avoided when scaling != full
                 skipFrames = 1;
+            if (app->speed > 1.f) // This is a hack until we account for audio speed...
+                skipFrames += (int)app->speed;
         }
         else if (skipFrames > 0)
         {
@@ -370,9 +371,7 @@ void app_main(void)
         // Tick before submitting audio/syncing
         rg_system_tick(elapsed);
 
-        if (!app->speedupEnabled)
-        {
-            rg_audio_submit(snd.output.buf, snd.output.pos >> 1);
-        }
+        // Audio is used to pace emulation :)
+        rg_audio_submit(snd.output.buf, snd.output.pos >> 1);
     }
 }

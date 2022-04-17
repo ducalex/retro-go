@@ -800,10 +800,11 @@ static rg_gui_event_t update_mode_update_cb(rg_gui_option_t *option, rg_gui_even
 static rg_gui_event_t speedup_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     rg_app_t *app = rg_system_get_app();
-    if (event == RG_DIALOG_PREV && --app->speedupEnabled < 0) app->speedupEnabled = 2;
-    if (event == RG_DIALOG_NEXT && ++app->speedupEnabled > 2) app->speedupEnabled = 0;
 
-    sprintf(option->value, "%dx", app->speedupEnabled + 1);
+    if (event == RG_DIALOG_PREV && (app->speed -= 0.5f) < 0.5f) app->speed = 2.5f;
+    if (event == RG_DIALOG_NEXT && (app->speed += 0.5f) > 2.5f) app->speed = 0.5f;
+
+    sprintf(option->value, "%.1fx", app->speed);
 
     return RG_DIALOG_VOID;
 }

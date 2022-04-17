@@ -209,16 +209,18 @@ extern "C" void app_main(void)
     {
         uint32_t joystick = rg_input_read_gamepad();
 
-        if (joystick & RG_KEY_MENU) {
-            rg_gui_game_menu();
-        }
-        else if (joystick & RG_KEY_OPTION) {
-            rg_gui_options_menu();
+        if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
+        {
+            if (joystick & RG_KEY_MENU)
+                rg_gui_game_menu();
+            else
+                rg_gui_options_menu();
+            sampleTime = AUDIO_SAMPLE_RATE / 1000000.f * app->speed;
+            rg_audio_set_sample_rate(app->sampleRate * app->speed);
         }
 
         int64_t startTime = get_elapsed_time();
         bool drawFrame = !skipFrames;
-
         ULONG buttons = 0;
 
     	if (joystick & RG_KEY_UP)     buttons |= dpad_mapped_up;
@@ -244,13 +246,13 @@ extern "C" void app_main(void)
             gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;
         }
 
-        long elapsed = get_elapsed_time_since(startTime);
+        int elapsed = get_elapsed_time_since(startTime);
 
         // See if we need to skip a frame to keep up
         if (skipFrames == 0)
         {
-            if (app->speedupEnabled)
-                skipFrames += app->speedupEnabled * 2.5;
+            if (app->speed > 1.f)
+                skipFrames += (int)app->speed * 2;
             // The Lynx uses a variable framerate so we use the count of generated audio samples as reference instead
             else if (elapsed > ((gAudioBufferPointer/2) * sampleTime))
                 skipFrames += 1;
@@ -264,10 +266,7 @@ extern "C" void app_main(void)
 
         rg_system_tick(elapsed);
 
-        if (!app->speedupEnabled)
-        {
-            rg_audio_submit(gAudioBuffer, gAudioBufferPointer >> 1);
-            gAudioBufferPointer = 0;
-        }
+        rg_audio_submit(gAudioBuffer, gAudioBufferPointer >> 1);
+        gAudioBufferPointer = 0;
     }
 }

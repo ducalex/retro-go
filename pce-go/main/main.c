@@ -31,6 +31,7 @@ static int current_width = 0;
 static int overscan = false;
 static int downsample = false;
 static int skipFrames = 0;
+static int frameTime = get_frame_time(60);
 
 static rg_video_update_t updates[2];
 static rg_video_update_t *currentUpdate = &updates[0];
@@ -88,10 +89,10 @@ void osd_gfx_blit(void)
     // See if we need to skip a frame to keep up
     if (skipFrames == 0)
     {
-        skipFrames++;
-
-        if (app->speedupEnabled)
-            skipFrames += app->speedupEnabled * 2.5;
+        if (app->speed > 1.f)
+            skipFrames = app->speed * 2.5f;
+        else
+            skipFrames = 1;
     }
     else if (skipFrames > 0)
     {
@@ -131,13 +132,14 @@ void osd_input_read(uint8_t joypads[8])
     uint32_t buttons = 0;
 
     // TO DO: We should pause the audio task when entering a menu...
-    if (joystick & RG_KEY_MENU)
+    if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
     {
-        rg_gui_game_menu();
-    }
-    else if (joystick & RG_KEY_OPTION)
-    {
-        rg_gui_options_menu();
+        if (joystick & RG_KEY_MENU)
+            rg_gui_game_menu();
+        else
+            rg_gui_options_menu();
+        frameTime = get_frame_time(app->refreshRate * app->speed);
+        rg_audio_set_sample_rate(app->sampleRate * app->speed);
     }
 
     if (joystick & RG_KEY_LEFT)   buttons |= JOY_LEFT;
@@ -167,13 +169,12 @@ static void audioTask(void *arg)
 
 void osd_vsync(void)
 {
-    const int32_t frametime = get_frame_time(60);
     static int64_t lasttime, prevtime;
 
     int64_t curtime = get_elapsed_time();
-    int32_t sleep = frametime - (curtime - lasttime);
+    int32_t sleep = frameTime - (curtime - lasttime);
 
-    if (sleep > frametime)
+    if (sleep > frameTime)
     {
         MESSAGE_ERROR("Our vsync timer seems to have overflowed! (%dus)\n", sleep);
     }
@@ -181,7 +182,7 @@ void osd_vsync(void)
     {
         usleep(sleep);
     }
-    else if (sleep < -(frametime / 2))
+    else if (sleep < -(frameTime / 2))
     {
         skipFrames++;
     }
@@ -189,9 +190,9 @@ void osd_vsync(void)
     rg_system_tick(curtime - prevtime);
 
     prevtime = get_elapsed_time();
-    lasttime += frametime;
+    lasttime += frameTime;
 
-    if ((lasttime + frametime) < prevtime)
+    if ((lasttime + frameTime) < prevtime)
         lasttime = prevtime;
 }
 

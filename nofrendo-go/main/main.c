@@ -301,68 +301,70 @@ void app_main(void)
         rg_emu_load_state(0);
     }
 
-    int frameTime = get_frame_time(nes->refresh_rate);
+    int frameTime = get_frame_time(app->refreshRate);
     int drawframe = false;
     int skipFrames = 0;
     int nsfPlayer = nes->cart->mapper_number == 31;
 
     while (true)
     {
-        int64_t startTime = get_elapsed_time();
-        unsigned input = 0;
-
         *localJoystick = rg_input_read_gamepad();
 
-        if (*localJoystick & RG_KEY_MENU)
+        if (*localJoystick & (RG_KEY_MENU|RG_KEY_OPTION))
         {
-            rg_gui_game_menu();
+            if (*localJoystick & RG_KEY_MENU)
+                rg_gui_game_menu();
+            else
+                rg_gui_options_menu();
+            frameTime = get_frame_time(app->refreshRate * app->speed);
+            rg_audio_set_sample_rate(app->sampleRate * app->speed);
         }
-        else if (*localJoystick & RG_KEY_OPTION)
-        {
-            rg_gui_options_menu();
-        }
+
+        int64_t startTime = get_elapsed_time();
+        bool drawFrame = !skipFrames;
+        int buttons = 0;
+
+        if (joystick1 & RG_KEY_START)  buttons |= NES_PAD_START;
+        if (joystick1 & RG_KEY_SELECT) buttons |= NES_PAD_SELECT;
+        if (joystick1 & RG_KEY_UP)     buttons |= NES_PAD_UP;
+        if (joystick1 & RG_KEY_RIGHT)  buttons |= NES_PAD_RIGHT;
+        if (joystick1 & RG_KEY_DOWN)   buttons |= NES_PAD_DOWN;
+        if (joystick1 & RG_KEY_LEFT)   buttons |= NES_PAD_LEFT;
+        if (joystick1 & RG_KEY_A)      buttons |= NES_PAD_A;
+        if (joystick1 & RG_KEY_B)      buttons |= NES_PAD_B;
+        input_update(0, buttons);
 
     #ifdef ENABLE_NETPLAY
         if (netplay)
         {
             rg_netplay_sync(localJoystick, remoteJoystick, sizeof(*localJoystick));
-            if (joystick2 & RG_KEY_START)  input |= NES_PAD_START;
-            if (joystick2 & RG_KEY_SELECT) input |= NES_PAD_SELECT;
-            if (joystick2 & RG_KEY_UP)     input |= NES_PAD_UP;
-            if (joystick2 & RG_KEY_RIGHT)  input |= NES_PAD_RIGHT;
-            if (joystick2 & RG_KEY_DOWN)   input |= NES_PAD_DOWN;
-            if (joystick2 & RG_KEY_LEFT)   input |= NES_PAD_LEFT;
-            if (joystick2 & RG_KEY_A)      input |= NES_PAD_A;
-            if (joystick2 & RG_KEY_B)      input |= NES_PAD_B;
+            uint buttons = 0;
+            if (joystick2 & RG_KEY_START)  buttons |= NES_PAD_START;
+            if (joystick2 & RG_KEY_SELECT) buttons |= NES_PAD_SELECT;
+            if (joystick2 & RG_KEY_UP)     buttons |= NES_PAD_UP;
+            if (joystick2 & RG_KEY_RIGHT)  buttons |= NES_PAD_RIGHT;
+            if (joystick2 & RG_KEY_DOWN)   buttons |= NES_PAD_DOWN;
+            if (joystick2 & RG_KEY_LEFT)   buttons |= NES_PAD_LEFT;
+            if (joystick2 & RG_KEY_A)      buttons |= NES_PAD_A;
+            if (joystick2 & RG_KEY_B)      buttons |= NES_PAD_B;
+            input_update(1, buttons);
         }
-        input_update(1, input);
-        input = 0;
     #endif
 
-        if (joystick1 & RG_KEY_START)  input |= NES_PAD_START;
-        if (joystick1 & RG_KEY_SELECT) input |= NES_PAD_SELECT;
-        if (joystick1 & RG_KEY_UP)     input |= NES_PAD_UP;
-        if (joystick1 & RG_KEY_RIGHT)  input |= NES_PAD_RIGHT;
-        if (joystick1 & RG_KEY_DOWN)   input |= NES_PAD_DOWN;
-        if (joystick1 & RG_KEY_LEFT)   input |= NES_PAD_LEFT;
-        if (joystick1 & RG_KEY_A)      input |= NES_PAD_A;
-        if (joystick1 & RG_KEY_B)      input |= NES_PAD_B;
-
-        input_update(0, input);
-
-        nes_emulate(drawframe);
+        nes_emulate(drawFrame);
 
         int elapsed = get_elapsed_time_since(startTime);
 
         if (skipFrames == 0)
         {
-            if (app->speedupEnabled)
-                skipFrames = app->speedupEnabled * 2;
-            else if (elapsed >= frameTime) // Frame took too long
+            if (elapsed > frameTime - 2000) // It takes about 2ms to copy the audio buffer
+                skipFrames = (elapsed + frameTime / 2) / frameTime;
+            else if (drawFrame && fullFrame) // This could be avoided when scaling != full
                 skipFrames = 1;
-            else if (drawframe && fullFrame) // This could be avoided when scaling != full
-                skipFrames = 1;
-            else if (nsfPlayer)
+            if (app->speed > 1.f) // This is a hack until we account for audio speed...
+                skipFrames += (int)app->speed;
+
+            if (nsfPlayer)
             {
                 nsf_draw_overlay();
                 skipFrames = 15;
@@ -376,13 +378,8 @@ void app_main(void)
         // Tick before submitting audio/syncing
         rg_system_tick(elapsed);
 
-        drawframe = (skipFrames == 0);
-
-        // Use audio to throttle emulation
-        if (!app->speedupEnabled)
-        {
-            rg_audio_submit(nes->apu->buffer, nes->apu->samples_per_frame);
-        }
+        // Audio is used to pace emulation :)
+        rg_audio_submit(nes->apu->buffer, nes->apu->samples_per_frame);
     }
 
     RG_PANIC("Nofrendo died!");

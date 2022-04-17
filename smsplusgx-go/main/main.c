@@ -151,19 +151,22 @@ void app_main(void)
         rg_emu_load_state(0);
     }
 
-    long frameTime = get_frame_time(app->refreshRate);
-    long skipFrames = 0;
-    bool copyPalette = false;
+    int frameTime = get_frame_time(app->refreshRate);
+    int skipFrames = 0;
+    int copyPalette = 0;
 
     while (true)
     {
         *localJoystick = rg_input_read_gamepad();
 
-        if (*localJoystick & RG_KEY_MENU) {
-            rg_gui_game_menu();
-        }
-        else if (*localJoystick & RG_KEY_OPTION) {
-            rg_gui_options_menu();
+        if (*localJoystick & (RG_KEY_MENU|RG_KEY_OPTION))
+        {
+            if (*localJoystick & RG_KEY_MENU)
+                rg_gui_game_menu();
+            else
+                rg_gui_options_menu();
+            frameTime = get_frame_time(app->refreshRate * app->speed);
+            rg_audio_set_sample_rate(app->sampleRate * app->speed);
         }
 
         int64_t startTime = get_elapsed_time();
@@ -297,17 +300,17 @@ void app_main(void)
             bitmap.data = currentUpdate->buffer - bitmap.viewport.x;
         }
 
-        long elapsed = get_elapsed_time_since(startTime);
+        int elapsed = get_elapsed_time_since(startTime);
 
         // See if we need to skip a frame to keep up
         if (skipFrames == 0)
         {
-            if (app->speedupEnabled)
-                skipFrames = app->speedupEnabled * 2.5;
-            else if (elapsed >= frameTime) // Frame took too long
-                skipFrames = 1;
+            if (elapsed > frameTime - 2000) // It takes about 2ms to copy the audio buffer
+                skipFrames = (elapsed + frameTime / 2) / frameTime;
             else if (drawFrame && fullFrame) // This could be avoided when scaling != full
                 skipFrames = 1;
+            if (app->speed > 1.f) // This is a hack until we account for audio speed...
+                skipFrames += (int)app->speed;
         }
         else if (skipFrames > 0)
         {
@@ -317,15 +320,13 @@ void app_main(void)
         // Tick before submitting audio/syncing
         rg_system_tick(elapsed);
 
-        if (!app->speedupEnabled)
+        // Audio is used to pace emulation :)
+        size_t length = snd.sample_count;
+        for (size_t i = 0, out = 0; i < length; i++, out += 2)
         {
-            size_t length = snd.sample_count;
-            for (size_t i = 0, out = 0; i < length; i++, out += 2)
-            {
-                audioBuffer[out] = snd.stream[0][i] * 2.75f;
-                audioBuffer[out + 1] = snd.stream[1][i] * 2.75f;
-            }
-            rg_audio_submit(audioBuffer, length);
+            audioBuffer[out] = snd.stream[0][i] * 2.75f;
+            audioBuffer[out + 1] = snd.stream[1][i] * 2.75f;
         }
+        rg_audio_submit(audioBuffer, length);
     }
 }

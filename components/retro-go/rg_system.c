@@ -292,7 +292,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .buildUser = RG_BUILD_USER,
         .configNs = esp_app->project_name,
         .bootFlags = 0,
-        .speedupEnabled = 0,
+        .speed = 1.f,
         .refreshRate = 60,
         .sampleRate = sampleRate,
         .logLevel = RG_LOG_INFO,

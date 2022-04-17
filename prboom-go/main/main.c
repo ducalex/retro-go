@@ -193,7 +193,7 @@ int I_GetTimeMS(void)
 
 int I_GetTime(void)
 {
-    return ((rg_system_timer() * TICRATE) / 1000000);
+    return I_GetTimeMS() * TICRATE * realtic_clock_rate / 100000;
 }
 
 void I_uSleep(unsigned long usecs)
@@ -421,22 +421,26 @@ void I_StartTic(void)
 
     // Long press on menu will open retro-go's menu if needed, instead of DOOM's.
     // This is still needed to quit (DOOM 2) and for the debug menu. We'll unify that mess soon...
-    if (joystick & RG_KEY_MENU)
+    if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
     {
-        if (rg_menu_delay++ == TICRATE / 2)
+        if (joystick & RG_KEY_OPTION)
+        {
+            rg_gui_options_menu();
+            changed = 0;
+        }
+        else if (rg_menu_delay++ == TICRATE / 2)
+        {
             rg_gui_game_menu();
+        }
+        realtic_clock_rate = app->speed * 100;
+        R_InitInterpolation();
     }
     else
     {
         rg_menu_delay = 0;
     }
 
-    if (joystick & RG_KEY_OPTION)
-    {
-        rg_gui_options_menu();
-        // realtic_clock_rate = (app->speedupEnabled + 1) * 100;
-    }
-    else if (changed)
+    if (changed)
     {
         for (int i = 0; i < RG_COUNT(keymap); i++)
         {
