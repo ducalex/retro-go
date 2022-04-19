@@ -115,6 +115,11 @@ static void retro_loop(void)
 
     while (true)
     {
+        if (!tab->enabled && !change_tab)
+        {
+            change_tab = 1;
+        }
+
         if (change_tab || gui.browse != browse_last)
         {
             if (change_tab)
@@ -159,20 +164,15 @@ static void retro_loop(void)
             }
         }
 
-        if (joystick == RG_KEY_MENU)
+        if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
         {
         #ifdef RG_TARGET_ODROID_GO
-            rg_gui_about_menu(NULL);
-        #else
-            rg_gui_options_menu();
+            if (joystick == RG_KEY_MENU)
+                rg_gui_about_menu(NULL);
+            else
         #endif
-            gui_save_config();
-            rg_storage_commit();
-            redraw_pending = true;
-        }
-        else if (joystick == RG_KEY_OPTION)
-        {
             rg_gui_options_menu();
+
             gui_save_config();
             rg_storage_commit();
             redraw_pending = true;

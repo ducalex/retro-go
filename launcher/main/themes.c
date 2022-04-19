@@ -112,7 +112,6 @@ bool theme_install(const char *filename)
 
 void themes_init(void)
 {
-    tab_t *tab = gui_add_tab("themes", "Themes", NULL, event_handler);
+    gui_add_tab("themes", "Themes", NULL, event_handler);
     // tab->enabled = false; // Hide by default, will only show when called by settings
-    tab->enabled = true;
 }
