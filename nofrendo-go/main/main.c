@@ -302,9 +302,7 @@ void app_main(void)
     }
 
     int frameTime = get_frame_time(app->refreshRate);
-    int drawframe = false;
     int skipFrames = 0;
-    int nsfPlayer = nes->cart->mapper_number == 31;
 
     while (true)
     {
@@ -361,14 +359,13 @@ void app_main(void)
                 skipFrames = (elapsed + frameTime / 2) / frameTime;
             else if (drawFrame && fullFrame) // This could be avoided when scaling != full
                 skipFrames = 1;
-            if (app->speed > 1.f) // This is a hack until we account for audio speed...
-                skipFrames += (int)app->speed;
-
-            if (nsfPlayer)
-            {
+            else if (nes->cart->mapper_number == 31) {
                 nsf_draw_overlay();
                 skipFrames = 15;
             }
+
+            if (app->speed > 1.f) // This is a hack until we account for audio speed...
+                skipFrames += (int)app->speed;
         }
         else if (skipFrames > 0)
         {

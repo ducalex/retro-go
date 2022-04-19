@@ -56,8 +56,8 @@ void rg_audio_init(int sampleRate)
         .bits_per_sample = 16,
         .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
         .communication_format = I2S_COMM_FORMAT_STAND_MSB,
-        .dma_buf_count = 2,
-        .dma_buf_len = RG_MIN(sampleRate / 50 + 1, 640), // The unit is stereo samples (4 bytes)
+        .dma_buf_count = 4, // Goal is to have ~800 samples over 2-8 buffers (optimize for 533 usage)
+        .dma_buf_len = 180, // The unit is stereo samples (4 bytes)
         .intr_alloc_flags = 0, // ESP_INTR_FLAG_LEVEL1
         .use_apll = 0
     };
