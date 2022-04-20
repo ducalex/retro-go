@@ -303,6 +303,7 @@ void app_main(void)
 
     int frameTime = get_frame_time(app->refreshRate);
     int skipFrames = 0;
+    int nsfPlayer = nes->cart->mapper_number == 31;
 
     while (true)
     {
@@ -316,10 +317,12 @@ void app_main(void)
                 rg_gui_options_menu();
             frameTime = get_frame_time(app->refreshRate * app->speed);
             rg_audio_set_sample_rate(app->sampleRate * app->speed);
+            if (nsfPlayer)
+                rg_display_clear(C_BLACK);
         }
 
         int64_t startTime = get_elapsed_time();
-        bool drawFrame = !skipFrames;
+        bool drawFrame = !skipFrames && !nsfPlayer;
         int buttons = 0;
 
         if (joystick1 & RG_KEY_START)  buttons |= NES_PAD_START;
@@ -359,10 +362,8 @@ void app_main(void)
                 skipFrames = (elapsed + frameTime / 2) / frameTime;
             else if (drawFrame && fullFrame) // This could be avoided when scaling != full
                 skipFrames = 1;
-            else if (nes->cart->mapper_number == 31) {
-                nsf_draw_overlay();
-                skipFrames = 15;
-            }
+            else if (nsfPlayer)
+                skipFrames = 10, nsf_draw_overlay();
 
             if (app->speed > 1.f) // This is a hack until we account for audio speed...
                 skipFrames += (int)app->speed;

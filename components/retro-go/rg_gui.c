@@ -369,6 +369,18 @@ void rg_gui_draw_hourglass(void)
         (uint16_t*)image_hourglass.pixel_data);
 }
 
+void rg_gui_clear(rg_color_t color)
+{
+    if (gui.screen_buffer)
+    {
+        size_t pixels = gui.screen_width * gui.screen_height;
+        while (pixels > 0)
+            gui.screen_buffer[--pixels] = color;
+    }
+    else
+        rg_display_clear(color);
+}
+
 static int get_dialog_items_count(const rg_gui_option_t *options)
 {
     if (options == NULL)

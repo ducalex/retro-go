@@ -100,6 +100,7 @@ struct rg_gui_option_s
 
 void rg_gui_init(void);
 void rg_gui_flush(void); // no effect if buffered = false
+void rg_gui_clear(rg_color_t color); // like rg_display_clear but takes gui screen buffering into account
 const rg_gui_t *rg_gui_get_info(void);
 void rg_gui_set_buffered(bool buffered);
 bool rg_gui_set_theme(const rg_gui_theme_t *new_theme);
@@ -110,7 +111,7 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_si
 void rg_gui_draw_battery(int x_pos, int y_pos);
 void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int sel);
 void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, const rg_image_t *img);
-void rg_gui_draw_hourglass(void);
+void rg_gui_draw_hourglass(void); // This should be moved to system or display...
 
 rg_image_t *rg_image_load_from_file(const char *filename, uint32_t flags);
 rg_image_t *rg_image_load_from_memory(const uint8_t *data, size_t data_len, uint32_t flags);
