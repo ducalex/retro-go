@@ -168,7 +168,7 @@ void rg_input_init(void)
 
     const char *driver = "GPIO";
 
-    adc1_config_width(ADC_WIDTH_12Bit);
+    adc1_config_width(ADC_WIDTH_MAX - 1);
     adc1_config_channel_atten(RG_GPIO_GAMEPAD_X, ADC_ATTEN_11db);
     adc1_config_channel_atten(RG_GPIO_GAMEPAD_Y, ADC_ATTEN_11db);
 
@@ -303,9 +303,9 @@ bool rg_input_read_battery(float *percent, float *volts)
     // ADC not initialized
     if (adc_chars.vref == 0)
     {
-        adc1_config_width(ADC_WIDTH_12Bit);
+        adc1_config_width(ADC_WIDTH_MAX - 1);
         adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_11db);
-        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_11db, ADC_WIDTH_BIT_12, 1100, &adc_chars);
+        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_11db, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
     }
 
     for (int i = 0; i < 4; ++i)

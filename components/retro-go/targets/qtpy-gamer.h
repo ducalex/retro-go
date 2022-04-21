@@ -11,7 +11,8 @@
 #define RG_AUDIO_USE_SPEAKER        1
 
 // Video
-#define RG_SCREEN_TYPE              0
+#define RG_SCREEN_DRIVER            0   // 0 = ILI9341
+#define RG_SCREEN_TYPE              2
 #define RG_SCREEN_WIDTH             240
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0

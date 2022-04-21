@@ -4,6 +4,7 @@ import hashlib
 import subprocess
 import shutil
 import shlex
+import glob
 import time
 import math
 import sys
@@ -16,7 +17,11 @@ try:
 except:
     pass
 
-DEFAULT_TARGET = os.getenv("RG_TOOL_TARGET", "odroid-go")
+TARGETS = ["odroid-go", "mrgc-g32", "qtpy-gamer"]
+for t in glob.glob("components/retro-go/targets/*.h"):
+    TARGETS.append(os.path.basename(t)[0:-2])
+
+DEFAULT_TARGET = os.getenv("RG_TOOL_TARGET", TARGETS[0])
 DEFAULT_BAUD = os.getenv("RG_TOOL_BAUD", "1152000")
 DEFAULT_PORT = os.getenv("RG_TOOL_PORT", "COM3")
 PROJECT_NAME = os.getenv("PROJECT_NAME", "Retro-Go") # os.path.basename(os.getcwd()).title()
@@ -120,8 +125,8 @@ def analyze_profile(frames):
         debug_print("")
 
 
-def build_firmware(targets, device_type):
-    print("Building firmware with: %s\n" % " ".join(targets))
+def build_firmware(apps, device_type):
+    print("Building firmware with: %s\n" % " ".join(apps))
     args = [
         sys.executable,
         "tools/mkfw.py",
@@ -133,16 +138,16 @@ def build_firmware(targets, device_type):
     if device_type in ["mrgc-g32", "esplay"]:
         args.append("--esplay")
 
-    for target in targets:
-        part = PROJECT_APPS[target]
-        args += [str(part[0]), str(part[1]), str(part[2]), target, os.path.join(target, "build", target + ".bin")]
+    for app in apps:
+        part = PROJECT_APPS[app]
+        args += [str(part[0]), str(part[1]), str(part[2]), app, os.path.join(app, "build", app + ".bin")]
 
     print("Running: %s" % ' '.join(shlex.quote(arg) for arg in args[1:]))
     subprocess.run(args, check=True)
 
 
-def build_image(targets, device_type):
-    print("Building image with: %s\n" % " ".join(targets))
+def build_image(apps, device_type):
+    print("Building image with: %s\n" % " ".join(apps))
     image_file = ("%s_%s_%s.img" % (PROJECT_NAME, PROJECT_VER, device_type)).lower()
     image_data = bytearray(b"\xFF" * 0x10000)
     table_ota = 0
@@ -152,17 +157,17 @@ def build_image(targets, device_type):
         "phy_init, data, phy, 61440, 4096",
     ]
 
-    for target in targets:
-        part = PROJECT_APPS[target]
-        with open(os.path.join(target, "build", target + ".bin"), "rb") as f:
+    for app in apps:
+        part = PROJECT_APPS[app]
+        with open(os.path.join(app, "build", app + ".bin"), "rb") as f:
             data = f.read()
         part_size = max(part[2], math.ceil(len(data) / 0x10000) * 0x10000)
-        table_csv.append("%s, app, ota_%d, %d, %d" % (target, table_ota, len(image_data), part_size))
+        table_csv.append("%s, app, ota_%d, %d, %d" % (app, table_ota, len(image_data), part_size))
         table_ota += 1
         image_data += data + b"\xFF" * (part_size - len(data))
 
     try:
-        cwd = os.path.join(os.getcwd(), list(targets)[0])
+        cwd = os.path.join(os.getcwd(), list(apps)[0])
         subprocess.run("idf.py bootloader", stdout=subprocess.DEVNULL, shell=True, check=True, cwd=cwd)
         with open(os.path.join(cwd, "build", "bootloader", "bootloader.bin"), "rb") as f:
             bootloader_bin = f.read()
@@ -182,32 +187,32 @@ def build_image(targets, device_type):
     print("Saved image '%s' (%d bytes)\n" % (image_file, len(image_data)))
 
 
-def clean_app(target):
-    print("Cleaning up app '%s'..." % target)
+def clean_app(app):
+    print("Cleaning up app '%s'..." % app)
     try:
-        os.unlink(os.path.join(target, "sdkconfig"))
-        os.unlink(os.path.join(target, "sdkconfig.old"))
+        os.unlink(os.path.join(app, "sdkconfig"))
+        os.unlink(os.path.join(app, "sdkconfig.old"))
     except:
         pass
     try:
-        shutil.rmtree(os.path.join(target, "build"))
+        shutil.rmtree(os.path.join(app, "build"))
     except:
         pass
     print("Done.\n")
 
 
-def build_app(target, device_type, with_profiling=False, with_netplay=False):
+def build_app(app, device_type, with_profiling=False, with_netplay=False):
     # To do: clean up if any of the flags changed since last build
-    print("Building app '%s'" % target)
+    print("Building app '%s'" % app)
     os.putenv("ENABLE_PROFILING", "1" if with_profiling else "0")
     os.putenv("ENABLE_NETPLAY", "1" if with_netplay else "0")
     os.putenv("PROJECT_VER", PROJECT_VER)
     os.putenv("RG_TARGET", re.sub(r'[^A-Z0-9]', '_', device_type.upper()))
-    subprocess.run("idf.py app", shell=True, check=True, cwd=os.path.join(os.getcwd(), target))
+    subprocess.run("idf.py app", shell=True, check=True, cwd=os.path.join(os.getcwd(), app))
 
     try:
         print("\nPatching esp_image_header_t to skip sha256 on boot... ", end="")
-        with open(os.path.join(target, "build", target + ".bin"), "r+b") as fp:
+        with open(os.path.join(app, "build", app + ".bin"), "r+b") as fp:
             fp.seek(23)
             fp.write(b"\0")
         print("done!\n")
@@ -216,10 +221,10 @@ def build_app(target, device_type, with_profiling=False, with_netplay=False):
         pass
 
 
-def monitor_app(target, port, baudrate=115200):
-    print("Starting monitor for app '%s'" % target)
+def monitor_app(app, port, baudrate=115200):
+    print("Starting monitor for app '%s'" % app)
     mon = serial.Serial(port, baudrate=baudrate, timeout=0)
-    elf = os.path.join(target, "build", target + ".elf")
+    elf = os.path.join(app, "build", app + ".elf")
 
     mon.setDTR(False)
     mon.setRTS(False)
@@ -287,7 +292,7 @@ parser.add_argument(
     "apps", nargs="*", default="all", choices=["all"] + list(PROJECT_APPS.keys())
 )
 parser.add_argument(
-    "--target", default=DEFAULT_TARGET, choices=["odroid-go", "esp32s2", "mrgc-g32", "qtpy-gamer"], help="Device to target"
+    "--target", default=DEFAULT_TARGET, choices=set(TARGETS), help="Device to target"
 )
 parser.add_argument(
     "--with-netplay", action="store_const", const=True, help="Build with netplay enabled"

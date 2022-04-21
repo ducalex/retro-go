@@ -65,7 +65,7 @@ void rg_storage_init(void)
 #if RG_STORAGE_DRIVER == 1
 
     sdmmc_host_t host_config = SDSPI_HOST_DEFAULT();
-    host_config.slot = HSPI_HOST;
+    host_config.slot = SPI2_HOST;
     host_config.max_freq_khz = SDMMC_FREQ_DEFAULT; // SDMMC_FREQ_26M;
     host_config.do_transaction = &sdcard_do_transaction;
 

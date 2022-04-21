@@ -164,8 +164,8 @@ static void spi_init()
     gpio_set_level(RG_GPIO_LCD_DC, 1);
 
     //Initialize the SPI bus
-    spi_bus_initialize(HSPI_HOST, &buscfg, 1);
-    spi_bus_add_device(HSPI_HOST, &devcfg, &spi_dev);
+    spi_bus_initialize(SPI2_HOST, &buscfg, 1);
+    spi_bus_add_device(SPI2_HOST, &devcfg, &spi_dev);
     //assert(ret==ESP_OK);
 
     xTaskCreatePinnedToCore(&spi_task, "spi_task", 1024, NULL, 5, NULL, 1);
@@ -175,7 +175,7 @@ static void spi_deinit(void)
 {
     // To do: Stop SPI task...
     spi_bus_remove_device(spi_dev);
-    spi_bus_free(HSPI_HOST);
+    spi_bus_free(SPI2_HOST);
 }
 
 static void ili9341_cmd(uint8_t cmd, const void *data, size_t data_len)
@@ -219,7 +219,7 @@ static void ili9341_init()
     spi_init();
 
 #define ILI9341_CMD(cmd, data...) {const uint8_t x[] = data; ili9341_cmd(cmd, x, sizeof(x));}
-#if defined(RG_TARGET_ODROID_GO)
+#if RG_SCREEN_TYPE == 0 // LCD Model (ODROID-GO)
     ILI9341_CMD(0x01, {});     // Reset
     ILI9341_CMD(0x3A, {0x55}); // Pixel Format Set RGB565
     ILI9341_CMD(0xCF, {0x00, 0xc3, 0x30});
@@ -242,7 +242,7 @@ static void ili9341_init()
     ILI9341_CMD(0xE1, {0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F}); // Set Gamma
     ILI9341_CMD(0x11, {}); // Exit Sleep
     ILI9341_CMD(0x29, {}); // Display on
-#elif defined(RG_TARGET_MRGC_G32)
+#elif RG_SCREEN_TYPE == 1 // LCD Model (MRGC-G32)
     ILI9341_CMD(0x01, {});     // Reset
     ILI9341_CMD(0x3A, {0x55}); // Pixel Format Set RGB565
     ILI9341_CMD(0x36, {(0x00|0x00|0x00)});
@@ -260,7 +260,7 @@ static void ili9341_init()
     ILI9341_CMD(0xE1, {0xD0, 0x00, 0x03, 0x09, 0x05, 0x25, 0x3A, 0x55, 0x50, 0x3D, 0x1C, 0x1D, 0x1D, 0x1E});
     ILI9341_CMD(0x11, {}); // Exit Sleep
     ILI9341_CMD(0x29, {}); // Display on
-#elif defined(RG_TARGET_QTPY_GAMER)
+#elif RG_SCREEN_TYPE == 2 // LCD Model (QT-PY Gamer)
     ILI9341_CMD(0x01, {});     // Reset
     ILI9341_CMD(0x11, {}); // Exit Sleep
     ILI9341_CMD(0x3A, {0x55}); // Pixel Format Set RGB565
