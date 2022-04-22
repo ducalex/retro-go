@@ -1,12 +1,16 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
+#include <driver/gpio.h>
 #include <driver/i2s.h>
-#include <driver/dac.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "rg_system.h"
 #include "rg_audio.h"
+
+#if RG_AUDIO_USE_SPEAKER
+#include <driver/dac.h>
+#endif
 
 static int audioSink = -1;
 static int audioSampleRate = 0;
@@ -19,10 +23,10 @@ static int64_t dummyBusyUntil = 0;
 static const rg_sink_t sinks[] = {
     {RG_AUDIO_SINK_DUMMY,   0, "Dummy"},
 #if RG_AUDIO_USE_SPEAKER
-    {RG_AUDIO_SINK_SPEAKER, 0, "Speaker"},
+    {RG_AUDIO_SINK_I2S_DAC, 0, "Speaker"},
 #endif
 #if RG_AUDIO_USE_EXT_DAC
-    {RG_AUDIO_SINK_EXT_DAC, 0, "Ext DAC"},
+    {RG_AUDIO_SINK_I2S_EXT, 0, "Ext DAC"},
 #endif
     // {RG_AUDIO_SINK_BT_A2DP, 0, "Bluetooth"},
 };
@@ -50,19 +54,6 @@ void rg_audio_init(int sampleRate)
 {
     RG_ASSERT(audioSink == -1, "Audio sink already initialized!");
 
-    i2s_config_t i2s_config = {
-        .mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN,
-        .sample_rate = sampleRate,
-        .bits_per_sample = 16,
-        .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
-        .communication_format = I2S_COMM_FORMAT_STAND_MSB,
-        .dma_buf_count = 3, // Goal is to have ~800 samples over 2-8 buffers (3x270 or 5x180 are pretty good)
-        .dma_buf_len = 270, // The unit is stereo samples (4 bytes) (optimize for 533 usage)
-        .intr_alloc_flags = 0, // ESP_INTR_FLAG_LEVEL1
-        .use_apll = 0
-    };
-    esp_err_t ret = ESP_FAIL;
-
     if (audioDevLock == NULL)
         audioDevLock = xSemaphoreCreateMutex();
 
@@ -74,18 +65,35 @@ void rg_audio_init(int sampleRate)
     audioVolume = (int)rg_settings_get_number(NS_GLOBAL, SETTING_VOLUME, audioVolume);
     // audioMuted = false;
 
-    if (audioSink == RG_AUDIO_SINK_SPEAKER)
+    i2s_config_t i2s_config = {
+        .mode = I2S_MODE_MASTER | I2S_MODE_TX,
+        .sample_rate = sampleRate,
+        .bits_per_sample = 16,
+        .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
+        .communication_format = I2S_COMM_FORMAT_STAND_I2S,
+        .intr_alloc_flags = 0, // ESP_INTR_FLAG_LEVEL1
+        .dma_buf_count = 3, // Goal is to have ~800 samples over 2-8 buffers (3x270 or 5x180 are pretty good)
+        .dma_buf_len = 270, // The unit is stereo samples (4 bytes) (optimize for 533 usage)
+        .use_apll = true, // External DAC may care about accuracy
+    };
+    esp_err_t ret = ESP_FAIL;
+
+    if (audioSink == RG_AUDIO_SINK_I2S_DAC)
     {
+    #if RG_AUDIO_USE_SPEAKER
+        i2s_config.mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN;
+        i2s_config.communication_format = I2S_COMM_FORMAT_STAND_MSB;
+        i2s_config.use_apll = false;
         if ((ret = i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL)) == ESP_OK)
         {
             ret = i2s_set_dac_mode(SPEAKER_DAC_MODE);
         }
+    #else
+        RG_LOGE("This device does not support internal DAC mode!\n");
+    #endif
     }
-    else if (audioSink == RG_AUDIO_SINK_EXT_DAC)
+    else if (audioSink == RG_AUDIO_SINK_I2S_EXT)
     {
-        i2s_config.mode = I2S_MODE_MASTER | I2S_MODE_TX;
-        i2s_config.communication_format = I2S_COMM_FORMAT_STAND_I2S;
-        i2s_config.use_apll = 1;
         if ((ret = i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL)) == ESP_OK)
         {
             ret = i2s_set_pin(I2S_NUM_0, &(i2s_pin_config_t) {
@@ -111,6 +119,7 @@ void rg_audio_init(int sampleRate)
     {
         RG_LOGI("Audio ready. sink='%s', samplerate=%d, volume=%d\n",
             rg_audio_get_sink()->name, audioSampleRate, audioVolume);
+        // RG_LOGI("Real I2S samplerate: %f\n", i2s_get_clk(I2S_NUM_0));
     }
     else
     {
@@ -127,16 +136,20 @@ void rg_audio_deinit(void)
     // We'll go ahead even if we can't acquire the lock...
     ACQUIRE_DEVICE(1000);
 
-    if (audioSink == RG_AUDIO_SINK_SPEAKER)
+    if (audioSink == RG_AUDIO_SINK_I2S_DAC)
     {
+    #if RG_AUDIO_USE_SPEAKER
         i2s_driver_uninstall(I2S_NUM_0);
         if (SPEAKER_DAC_MODE & I2S_DAC_CHANNEL_RIGHT_EN)
             dac_output_disable(DAC_CHANNEL_1);
         if (SPEAKER_DAC_MODE & I2S_DAC_CHANNEL_LEFT_EN)
             dac_output_disable(DAC_CHANNEL_2);
         dac_i2s_disable();
+    #else
+        RG_LOGE("This device does not support internal DAC mode!\n");
+    #endif
     }
-    else if (audioSink == RG_AUDIO_SINK_EXT_DAC)
+    else if (audioSink == RG_AUDIO_SINK_I2S_EXT)
     {
         i2s_driver_uninstall(I2S_NUM_0);
         gpio_reset_pin(RG_GPIO_SND_I2S_BCK);
@@ -190,7 +203,7 @@ void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
         dummyBusyUntil = rg_system_timer() + ((audioSampleRate * 1000) / sampleCount);
         written = bufferSize;
     }
-    else if (audioSink == RG_AUDIO_SINK_SPEAKER)
+    else if (audioSink == RG_AUDIO_SINK_I2S_DAC)
     {
         // In speaker mode we use dac left and right as a single channel
         // to increase resolution.
@@ -227,7 +240,7 @@ void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
         }
         i2s_write(I2S_NUM_0, stereoAudioBuffer, bufferSize, &written, 1000);
     }
-    else if (audioSink == RG_AUDIO_SINK_EXT_DAC)
+    else if (audioSink == RG_AUDIO_SINK_I2S_EXT)
     {
         for (size_t i = 0; i < sampleCount; ++i)
         {
@@ -299,8 +312,8 @@ void rg_audio_set_mute(bool mute)
         return;
 
     if (RG_GPIO_SND_AMP_ENABLE != GPIO_NUM_NC)
-        gpio_set_level(RG_GPIO_SND_AMP_ENABLE, mute ? 0 : 1);
-    if (audioSink == RG_AUDIO_SINK_SPEAKER || audioSink == RG_AUDIO_SINK_EXT_DAC)
+        gpio_set_level(RG_GPIO_SND_AMP_ENABLE, !mute);
+    if (audioSink == RG_AUDIO_SINK_I2S_DAC || audioSink == RG_AUDIO_SINK_I2S_EXT)
         i2s_zero_dma_buffer(I2S_NUM_0);
 
     audioMuted = mute;
@@ -320,12 +333,12 @@ void rg_audio_set_sample_rate(int sampleRate)
     if (!ACQUIRE_DEVICE(1000))
         return;
 
-    if (audioSink == RG_AUDIO_SINK_SPEAKER || audioSink == RG_AUDIO_SINK_EXT_DAC)
+    if (audioSink == RG_AUDIO_SINK_I2S_DAC || audioSink == RG_AUDIO_SINK_I2S_EXT)
     {
         RG_LOGI("i2s_set_sample_rates(%d)\n", sampleRate);
         i2s_set_sample_rates(I2S_NUM_0, sampleRate);
     }
-    audioSampleRate = sampleRate;
 
+    audioSampleRate = sampleRate;
     RELEASE_DEVICE();
 }
