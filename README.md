@@ -42,7 +42,10 @@ compatibility!
   3. Select retro-go in the files list and flash it.
 
 ### Generic ESP32
-Instructions to flash with esptool coming soon...
+This method is intended to be used when .fw support isn't available (when porting to a new device) or undesirable (devices with less than 4MB of flash).
+  1. Build a .img file (refer to **Building Retro-Go** below)
+  2. Erase the flash: `esptool.py erase_flash`
+  3. Flash the image: `esptool.py -b 921600 write_flash 0x0 retro-go_*.img`
 
 
 # Game covers 
