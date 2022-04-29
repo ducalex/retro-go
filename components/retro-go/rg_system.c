@@ -520,7 +520,9 @@ bool rg_emu_save_state(int slot)
     else
     {
         // Save succeeded, let's take a pretty screenshot for the launcher!
-        rg_emu_screenshot(strcat(filename, ".png"), rg_display_get_status()->screen.width / 2, 0);
+        char *filename = rg_emu_get_path(RG_PATH_SCREENSHOT + slot, app.romPath);
+        rg_emu_screenshot(filename, rg_display_get_status()->screen.width / 2, 0);
+        free(filename);
 
         // And set bootflags to resume from this state on next boot
         if ((app.bootFlags & (RG_BOOT_ONCE|RG_BOOT_RESUME)) == 0)
