@@ -1,3 +1,7 @@
+# Retro-Go 1.32.1 (2022-05-21)
+- Launcher: Fixed savestate screenshot using the wrong file name (#13) 
+
+
 # Retro-Go 1.32 (2022-04-27)
 - Launcher: Added subfolder navigation (there are still some sorting issues)
 - Launcher: Improved responsiveness when covers are enabled but not installed
