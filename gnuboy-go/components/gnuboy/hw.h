@@ -164,11 +164,11 @@ typedef struct
 	byte ioregs[256];
 	byte *rmap[0x10];
 	byte *wmap[0x10];
+	byte *bios;
 	un32 ilines;
 	un32 pad;
-	n32 hdma;
 	n32 serial;
-	un8 *bios;
+	n32 hdma;
 
 	un32 hwtype;
 	un32 frames;
@@ -186,16 +186,16 @@ typedef struct
 {
 	// Meta information
 	char name[20];
-	un16 checksum;
-	un16 colorize;
-	un32 romsize;
-	un32 ramsize;
+	uint checksum;
+	uint colorize;
+	uint romsize;
+	uint ramsize;
 
 	// Memory
 	byte *rombanks[512];
 	byte (*rambanks)[8192];
-	un32 sram_dirty;
-	un32 sram_saved;
+	uint sram_dirty;
+	uint sram_saved;
 
 	// Extra hardware
 	bool has_rumble;
