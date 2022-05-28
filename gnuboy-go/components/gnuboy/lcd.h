@@ -38,14 +38,8 @@ typedef struct
 	// Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
 	int enable_window_offset_hack;
 
-	struct {
-		byte *buffer;
-		un16 cgb_pal[64];
-		un16 dmg_pal[4][4];
-		int colorize;
-		int format;
-		int enabled;
-	} out;
+	uint16_t dmg_pal[4][4];
+
 } gb_lcd_t;
 
 extern gb_lcd_t lcd;

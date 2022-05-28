@@ -4,17 +4,8 @@
 
 typedef struct
 {
-	int samplerate;
-	bool stereo;
-
-	struct {
-		int pos, len;
-		n16* buf;
-	} output;
-
 	int rate, cycles;
 	byte wave[16];
-
 	struct {
 		unsigned on, pos;
 		int cnt, encnt, swcnt;
@@ -26,7 +17,6 @@ typedef struct
 
 extern gb_snd_t snd;
 
-void sound_init(int samplerate, bool stereo);
 void sound_write(byte r, byte b);
 void sound_dirty(void);
 void sound_reset(bool hard);

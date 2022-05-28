@@ -2,11 +2,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <string.h>
-
-#include "../components/gnuboy/save.h"
-#include "../components/gnuboy/lcd.h"
-#include "../components/gnuboy/sound.h"
-#include "../components/gnuboy/gnuboy.h"
+#include <gnuboy.h>
 
 #define AUDIO_SAMPLE_RATE   (32000)
 
@@ -34,17 +30,17 @@ static bool screenshot_handler(const char *filename, int width, int height)
 
 static bool save_state_handler(const char *filename)
 {
-    return state_save(filename) == 0;
+    return gnuboy_save_state(filename) == 0;
 }
 
 static bool load_state_handler(const char *filename)
 {
-    if (state_load(filename) != 0)
+    if (gnuboy_load_state(filename) != 0)
     {
         // If a state fails to load then we should behave as we do on boot
         // which is a hard reset and load sram if present
         gnuboy_reset(true);
-        sram_load(sramFile);
+        gnuboy_load_sram(sramFile);
 
         return false;
     }
@@ -188,7 +184,7 @@ static rg_gui_event_t sram_settings_cb(rg_gui_option_t *option, rg_gui_event_t e
         {
             rg_system_set_led(1);
 
-            int ret = sram_save(sramFile, false);
+            int ret = gnuboy_save_sram(sramFile, false);
 
             if (ret == -1)
                 rg_gui_alert("Nothing to save", "Cart has no Battery or SRAM!");
@@ -211,7 +207,7 @@ static void vblank_callback(void)
 
     // swap buffers
     currentUpdate = previousUpdate;
-    lcd.out.buffer = currentUpdate->buffer;
+    host.lcd.buffer = currentUpdate->buffer;
 }
 
 static void auto_sram_update(void)
@@ -219,7 +215,7 @@ static void auto_sram_update(void)
     if (autoSaveSRAM > 0 && gnuboy_sram_dirty())
     {
         rg_system_set_led(1);
-        if (sram_save(sramFile, true) != 0)
+        if (gnuboy_save_sram(sramFile, true) != 0)
         {
             MESSAGE_ERROR("sram_save() failed...\n");
         }
@@ -278,7 +274,7 @@ void app_main(void)
     if (app->bootFlags & RG_BOOT_RESUME)
         rg_emu_load_state(0);
     else
-        sram_load(sramFile);
+        gnuboy_load_sram(sramFile);
 
     // Don't show palette option for GBC
     if (gnuboy_get_hwtype() == GB_HW_CGB)
@@ -324,14 +320,6 @@ void app_main(void)
 
         gnuboy_run(drawFrame);
 
-        // if (rtc.dirty)
-        // {
-            // At this point we know the time probably changed, we could update our
-            // internal or external clock.
-        //     MESSAGE_INFO("Time changed in game!\n");
-        //     rtc.dirty = 0;
-        // }
-
         if (autoSaveSRAM > 0)
         {
             if (autoSaveSRAM_Timer <= 0)
@@ -372,6 +360,6 @@ void app_main(void)
         rg_system_tick(elapsed);
 
         // Audio is used to pace emulation :)
-        rg_audio_submit(snd.output.buf, snd.output.pos >> 1);
+        rg_audio_submit(host.snd.buffer, host.snd.pos >> 1);
     }
 }

@@ -538,11 +538,11 @@ static inline void pal_update(byte i)
 
 	un32 out = (r << 11) | (g << (5 + 1)) | (b);
 
-	if (lcd.out.format == GB_PIXEL_565_BE) {
+	if (host.lcd.format == GB_PIXEL_565_BE) {
 		out = (out << 8) | (out >> 8);
 	}
 
-	lcd.out.cgb_pal[i] = out;
+	host.lcd.palette[i] = out;
 }
 
 void pal_write_cgb(byte i, byte b)
@@ -554,7 +554,7 @@ void pal_write_cgb(byte i, byte b)
 
 void pal_write_dmg(byte i, byte mapnum, byte d)
 {
-	un16 *map = lcd.out.dmg_pal[mapnum & 3];
+	un16 *map = lcd.dmg_pal[mapnum & 3];
 
 	for (int j = 0; j < 8; j += 2)
 	{
@@ -571,7 +571,7 @@ void lcd_rebuildpal()
 	{
 		const uint16_t *bgp, *obp0, *obp1;
 
-		int palette = lcd.out.colorize % GB_PALETTE_COUNT;
+		int palette = host.lcd.colorize % GB_PALETTE_COUNT;
 
 		if (palette == GB_PALETTE_GBC && cart.colorize)
 		{
@@ -599,10 +599,10 @@ void lcd_rebuildpal()
 			MESSAGE_INFO("Using Built-in palette %d\n", palette);
 		}
 
-		memcpy(&lcd.out.dmg_pal[0], bgp, 8);
-		memcpy(&lcd.out.dmg_pal[1], bgp, 8);
-		memcpy(&lcd.out.dmg_pal[2], obp0, 8);
-		memcpy(&lcd.out.dmg_pal[3], obp1, 8);
+		memcpy(&lcd.dmg_pal[0], bgp, 8);
+		memcpy(&lcd.dmg_pal[1], bgp, 8);
+		memcpy(&lcd.dmg_pal[2], obp0, 8);
+		memcpy(&lcd.dmg_pal[3], obp1, 8);
 
 		pal_write_dmg(0, 0, R_BGP);
 		pal_write_dmg(8, 1, R_BGP);
@@ -727,7 +727,7 @@ static void lcd_hdma_cont()
 */
 static inline void lcd_renderline()
 {
-	if (!lcd.out.enabled || !lcd.out.buffer)
+	if (!host.lcd.enabled || !host.lcd.buffer)
 		return;
 
 	int SX, SY, SL, NS;
@@ -775,14 +775,14 @@ static inline void lcd_renderline()
 
 	spr_scan(NS);
 
-	if (lcd.out.format == GB_PIXEL_PALETTED)
+	if (host.lcd.format == GB_PIXEL_PALETTED)
 	{
-		memcpy(lcd.out.buffer + SL * 160 , BUF, 160);
+		memcpy(host.lcd.buffer + SL * 160 , BUF, 160);
 	}
 	else
 	{
-		un16 *dst = (un16*)lcd.out.buffer + SL * 160;
-		un16 *pal = (un16*)lcd.out.cgb_pal;
+		un16 *dst = (un16*)host.lcd.buffer + SL * 160;
+		un16 *pal = (un16*)host.lcd.palette;
 
 		for (int i = 0; i < 160; ++i)
 			dst[i] = pal[BUF[i]];

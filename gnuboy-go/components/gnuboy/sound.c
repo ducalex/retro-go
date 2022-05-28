@@ -158,21 +158,6 @@ void sound_off()
 	sound_dirty();
 }
 
-void sound_init(int samplerate, bool stereo)
-{
-	snd = (gb_snd_t){
-		.samplerate = samplerate,
-		.stereo = stereo,
-		.rate = (int)(((1<<21) / (double)samplerate) + 0.5),
-		.cycles = 0,
-		.output = {
-			.buf = malloc(samplerate / 4),
-			.len = samplerate / 8,
-			.pos = 0,
-		},
-	};
-}
-
 void sound_advance(int cycles)
 {
 	snd.cycles += cycles;
@@ -180,11 +165,11 @@ void sound_advance(int cycles)
 
 void sound_reset(bool hard)
 {
-	memset(snd.ch, 0, sizeof(snd.ch));
+	memset(&snd, 0, sizeof(snd));
 	memcpy(snd.wave, hw.hwtype == GB_HW_CGB ? cgbwave : dmgwave, 16);
 	memcpy(hw.ioregs + 0x30, snd.wave, 16);
-	snd.cycles = 0;
-	snd.output.pos = 0;
+	snd.rate = (int)(((1<<21) / (double)host.snd.samplerate) + 0.5);
+	host.snd.pos = 0;
 	sound_off();
 	R_NR52 = 0xF1;
 }
@@ -319,23 +304,23 @@ void sound_emulate(void)
 		l <<= 4;
 		r <<= 4;
 
-		if (snd.output.buf == NULL)
+		if (host.snd.buffer == NULL)
 		{
-			MESSAGE_DEBUG("no audio buffer... (output.len=%d)\n", snd.output.len);
+			MESSAGE_DEBUG("no audio buffer... (output.len=%d)\n", host.snd.len);
 		}
-		else if (snd.output.pos >= snd.output.len)
+		else if (host.snd.pos >= host.snd.len)
 		{
-			MESSAGE_ERROR("buffer overflow. (output.len=%d)\n", snd.output.len);
-			snd.output.pos = 0;
+			MESSAGE_ERROR("buffer overflow. (output.len=%d)\n", host.snd.len);
+			host.snd.pos = 0;
 		}
-		else if (snd.stereo)
+		else if (host.snd.stereo)
 		{
-			snd.output.buf[snd.output.pos++] = (n16)l; //+128;
-			snd.output.buf[snd.output.pos++] = (n16)r; //+128;
+			host.snd.buffer[host.snd.pos++] = (n16)l; //+128;
+			host.snd.buffer[host.snd.pos++] = (n16)r; //+128;
 		}
 		else
 		{
-			snd.output.buf[snd.output.pos++] = (n16)((l+r)>>1); //+128;
+			host.snd.buffer[host.snd.pos++] = (n16)((l+r)>>1); //+128;
 		}
 	}
 	R_NR52 = (R_NR52&0xf0) | S1.on | (S2.on<<1) | (S3.on<<2) | (S4.on<<3);

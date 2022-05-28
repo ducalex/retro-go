@@ -25,7 +25,6 @@ typedef uint8_t byte;
 typedef uint8_t un8;
 typedef uint16_t un16;
 typedef uint32_t un32;
-typedef uint64_t un64;
 typedef int8_t n8;
 typedef int16_t n16;
 typedef int32_t n32;
@@ -72,6 +71,27 @@ typedef enum
 	GB_PALETTE_COUNT,
 } gb_palette_t;
 
+typedef struct
+{
+	struct {
+		uint16_t palette[64];
+		void *buffer;
+		int colorize;
+		int format;
+		int enabled;
+		void (*vblank)(void);
+	} lcd;
+
+	struct {
+		uint samplerate;
+		bool stereo;
+		size_t pos, len;
+		int16_t *buffer;
+	} snd;
+} gb_host_t;
+
+extern gb_host_t host;
+
 int  gnuboy_init(int samplerate, bool stereo, int pixformat, void *vblank_func);
 int  gnuboy_load_bios(const char *file);
 void gnuboy_free_bios(void);
@@ -89,3 +109,8 @@ int  gnuboy_get_hwtype(void);
 void gnuboy_set_hwtype(gb_hwtype_t type);
 int  gnuboy_get_palette(void);
 void gnuboy_set_palette(gb_palette_t pal);
+
+int gnuboy_load_sram(const char *file);
+int gnuboy_save_sram(const char *file, bool quick_save);
+int gnuboy_load_state(const char *file);
+int gnuboy_save_state(const char *file);
