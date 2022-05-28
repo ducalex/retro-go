@@ -166,7 +166,7 @@ static void spi_init()
     //Initialize the SPI bus
     spi_bus_initialize(SPI2_HOST, &buscfg, 1);
     spi_bus_add_device(SPI2_HOST, &devcfg, &spi_dev);
-    //assert(ret==ESP_OK);
+    //RG_ASSERT(ret==ESP_OK, "SPI init failed");
 
     xTaskCreatePinnedToCore(&spi_task, "spi_task", 1024, NULL, 5, NULL, 1);
 }
@@ -305,10 +305,9 @@ static void ili9341_set_window(int left, int top, int width, int height)
     int right = left + width - 1;
     int bottom = top + height - 1;
 
-    if (right <= 0 || bottom <= 0)
+    if (left < 0 || top < 0 || right >= RG_SCREEN_WIDTH || bottom >= RG_SCREEN_HEIGHT)
     {
-        RG_LOGE("Bad lcd window: left:%d top:%d width:%d height:%d\n", left, top, width, height);
-        RG_PANIC("Bad lcd window");
+        RG_LOGW("Bad lcd window (x0=%d, y0=%d, x1=%d, y1=%d)", left, top, right, bottom);
     }
 
     ili9341_cmd(0x2A, (uint8_t[]){left >> 8, left & 0xff, right >> 8, right & 0xff}, 4); // Horiz
