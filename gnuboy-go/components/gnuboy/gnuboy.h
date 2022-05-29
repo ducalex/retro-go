@@ -74,19 +74,20 @@ typedef enum
 typedef struct
 {
 	struct {
-		uint16_t palette[64];
-		void *buffer;
-		int colorize;
-		int format;
-		int enabled;
+		bool enabled;
+		uint format; // gb_pixformat_t
+		uint colorize; // gb_palette_t
 		void (*vblank)(void);
+		void *buffer;
+		uint16_t palette[64];
 	} lcd;
 
 	struct {
-		uint samplerate;
+		bool enabled;
 		bool stereo;
-		size_t pos, len;
+		uint samplerate;
 		int16_t *buffer;
+		size_t pos, len;
 	} snd;
 } gb_host_t;
 
@@ -98,7 +99,7 @@ void gnuboy_free_bios(void);
 int  gnuboy_load_rom(const char *file);
 void gnuboy_free_rom(void);
 void gnuboy_reset(bool hard);
-void gnuboy_run(bool draw);
+void gnuboy_run(void);
 bool gnuboy_sram_dirty(void);
 void gnuboy_load_bank(int);
 void gnuboy_set_pad(uint);

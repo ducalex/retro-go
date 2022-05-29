@@ -178,7 +178,7 @@ static inline void pad_refresh()
  * hw_setpad updates the state of one or more buttons on the pad and calls
  * pad_refresh() to fire an interrupt if the pad changed.
  */
-void hw_setpad(un32 new_pad)
+void hw_setpad(uint new_pad)
 {
 	hw.pad = new_pad & 0xFF;
 	pad_refresh();

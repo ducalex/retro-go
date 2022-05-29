@@ -528,21 +528,20 @@ void lcd_reset(bool hard)
 static inline void pal_update(byte i)
 {
 #ifndef IS_BIG_ENDIAN
-	un32 c = ((un16*)lcd.pal)[i];
+	uint c = ((un16*)lcd.pal)[i];
 #else
-	un32 c = ((lcd.pal[i << 1]) | ((lcd.pal[(i << 1) | 1]) << 8));
+	uint c = ((lcd.pal[i << 1]) | ((lcd.pal[(i << 1) | 1]) << 8));
 #endif
-	un32 r = c & 0x1f;         // bit 0-4 red
-	un32 g = (c >> 5) & 0x1f;  // bit 5-9 green
-	un32 b = (c >> 10) & 0x1f; // bit 10-14 blue
+	uint r = c & 0x1f;         // bit 0-4 red
+	uint g = (c >> 5) & 0x1f;  // bit 5-9 green
+	uint b = (c >> 10) & 0x1f; // bit 10-14 blue
 
-	un32 out = (r << 11) | (g << (5 + 1)) | (b);
+	uint out = (r << 11) | (g << (5 + 1)) | (b);
 
-	if (host.lcd.format == GB_PIXEL_565_BE) {
-		out = (out << 8) | (out >> 8);
-	}
-
-	host.lcd.palette[i] = out;
+	if (host.lcd.format == GB_PIXEL_565_BE)
+		host.lcd.palette[i] = (out << 8) | (out >> 8);
+	else
+		host.lcd.palette[i] = out;
 }
 
 void pal_write_cgb(byte i, byte b)
@@ -575,8 +574,8 @@ void lcd_rebuildpal()
 
 		if (palette == GB_PALETTE_GBC && cart.colorize)
 		{
-			uint8_t palette = cart.colorize & 0x1F;
-			uint8_t flags = (cart.colorize & 0xE0) >> 5;
+			uint palette = cart.colorize & 0x1F;
+			uint flags = (cart.colorize & 0xE0) >> 5;
 
 			bgp  = colorization_palettes[palette][2];
 			obp0 = colorization_palettes[palette][(flags & 1) ? 0 : 1];

@@ -84,8 +84,10 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t 
     if (pal != gnuboy_get_palette())
     {
         rg_settings_set_number(NS_APP, SETTING_PALETTE, pal);
+        host.lcd.buffer = currentUpdate->buffer;
+        host.lcd.enabled = true;
         gnuboy_set_palette(pal);
-        gnuboy_run(true);
+        gnuboy_run();
         usleep(50000);
     }
 
@@ -201,13 +203,12 @@ static rg_gui_event_t sram_settings_cb(rg_gui_option_t *option, rg_gui_event_t e
 
 static void vblank_callback(void)
 {
-    rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
-
-    fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
-
-    // swap buffers
-    currentUpdate = previousUpdate;
-    host.lcd.buffer = currentUpdate->buffer;
+    if (host.lcd.enabled)
+    {
+        rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
+        fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
+        currentUpdate = previousUpdate;
+    }
 }
 
 static void auto_sram_update(void)
@@ -318,7 +319,11 @@ void app_main(void)
         int64_t startTime = get_elapsed_time();
         bool drawFrame = !skipFrames;
 
-        gnuboy_run(drawFrame);
+        host.lcd.buffer = currentUpdate->buffer;
+        host.lcd.enabled = drawFrame;
+        host.snd.pos = 0;
+
+        gnuboy_run();
 
         if (autoSaveSRAM > 0)
         {

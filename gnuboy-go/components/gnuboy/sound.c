@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include "gnuboy.h"
 #include "sound.h"
-#include "cpu.h"
 #include "hw.h"
 #include "noise.h"
 
@@ -55,55 +54,7 @@ gb_snd_t snd;
 #define s4_freq() {S4.freq = (freqtab[R_NR43&7] >> (R_NR43 >> 4)) * snd.rate; if (S4.freq >> 18) S4.freq = 1<<18;}
 
 
-static inline void s1_init()
-{
-	S1.swcnt = 0;
-	S1.swfreq = ((R_NR14&7)<<8) + R_NR13;
-	S1.envol = R_NR12 >> 4;
-	S1.endir = (R_NR12>>3) & 1;
-	S1.endir |= S1.endir - 1;
-	S1.enlen = (R_NR12 & 7) << 15;
-	if (!S1.on) S1.pos = 0;
-	S1.on = 1;
-	S1.cnt = 0;
-	S1.encnt = 0;
-}
-
-static inline void s2_init()
-{
-	S2.envol = R_NR22 >> 4;
-	S2.endir = (R_NR22>>3) & 1;
-	S2.endir |= S2.endir - 1;
-	S2.enlen = (R_NR22 & 7) << 15;
-	if (!S2.on) S2.pos = 0;
-	S2.on = 1;
-	S2.cnt = 0;
-	S2.encnt = 0;
-}
-
-static inline void s3_init()
-{
-	if (!S3.on) S3.pos = 0;
-	S3.cnt = 0;
-	S3.on = R_NR30 >> 7;
-	if (!S3.on) return;
-	for (int i = 0; i < 16; i++)
-		hw.ioregs[i+0x30] = 0x13 ^ hw.ioregs[i+0x31];
-}
-
-static inline void s4_init()
-{
-	S4.envol = R_NR42 >> 4;
-	S4.endir = (R_NR42>>3) & 1;
-	S4.endir |= S4.endir - 1;
-	S4.enlen = (R_NR42 & 7) << 15;
-	S4.on = 1;
-	S4.pos = 0;
-	S4.cnt = 0;
-	S4.encnt = 0;
-}
-
-void sound_dirty()
+void sound_dirty(void)
 {
 	S1.swlen = ((R_NR10>>4) & 7) << 14;
 	S1.len = (64-(R_NR11&63)) << 13;
@@ -131,7 +82,7 @@ void sound_dirty()
 	s4_freq();
 }
 
-void sound_off()
+void sound_off(void)
 {
 	memset(&S1, 0, sizeof S1);
 	memset(&S2, 0, sizeof S2);
@@ -178,6 +129,10 @@ void sound_emulate(void)
 {
 	if (!snd.rate || snd.cycles < snd.rate)
 		return;
+
+	n16 *output_buf = host.snd.buffer + host.snd.pos;
+	n16 *output_end = host.snd.buffer + host.snd.len;
+	bool stereo = host.snd.stereo;
 
 	for (; snd.cycles >= snd.rate; snd.cycles -= snd.rate)
 	{
@@ -304,25 +259,23 @@ void sound_emulate(void)
 		l <<= 4;
 		r <<= 4;
 
-		if (host.snd.buffer == NULL)
+		if (!output_buf || output_buf >= output_end)
 		{
-			MESSAGE_DEBUG("no audio buffer... (output.len=%d)\n", host.snd.len);
+			continue;
 		}
-		else if (host.snd.pos >= host.snd.len)
+		else if (stereo)
 		{
-			MESSAGE_ERROR("buffer overflow. (output.len=%d)\n", host.snd.len);
-			host.snd.pos = 0;
-		}
-		else if (host.snd.stereo)
-		{
-			host.snd.buffer[host.snd.pos++] = (n16)l; //+128;
-			host.snd.buffer[host.snd.pos++] = (n16)r; //+128;
+			*output_buf++ = (n16)l; //+128;
+			*output_buf++ = (n16)r; //+128;
 		}
 		else
 		{
-			host.snd.buffer[host.snd.pos++] = (n16)((l+r)>>1); //+128;
+			*output_buf++ = (n16)((l+r)>>1); //+128;
 		}
 	}
+
+	host.snd.pos = output_buf - host.snd.buffer;
+
 	R_NR52 = (R_NR52&0xf0) | S1.on | (S2.on<<1) | (S3.on<<2) | (S4.on<<3);
 }
 
@@ -331,20 +284,12 @@ void sound_write(byte r, byte b)
 	if (!(R_NR52 & 128) && r != RI_NR52)
 		return;
 
-	if ((r & 0xF0) == 0x30)
-	{
-		if (S3.on && snd.cycles >= snd.rate)
-			sound_emulate();
-		if (!S3.on)
-			snd.wave[r-0x30] = hw.ioregs[r] = b;
-		return;
-	}
-
 	if (snd.cycles >= snd.rate)
 		sound_emulate();
 
 	switch (r)
 	{
+	/* Square 1 */
 	case RI_NR10:
 		R_NR10 = b;
 		S1.swlen = ((R_NR10>>4) & 7) << 14;
@@ -368,8 +313,21 @@ void sound_write(byte r, byte b)
 	case RI_NR14:
 		R_NR14 = b;
 		s1_freq();
-		if (b & 128) s1_init();
+		if (b & 0x80) // Trigger
+		{
+			S1.swcnt = 0;
+			S1.swfreq = ((R_NR14&7)<<8) + R_NR13;
+			S1.envol = R_NR12 >> 4;
+			S1.endir = (R_NR12>>3) & 1;
+			S1.endir |= S1.endir - 1;
+			S1.enlen = (R_NR12 & 7) << 15;
+			S1.cnt = S1.encnt = 0;
+			if (!S1.on)
+				S1.on = 1, S1.pos = 0;
+		}
 		break;
+
+	/* Square 2 */
 	case RI_NR21:
 		R_NR21 = b;
 		S2.len = (64-(R_NR21&63)) << 13;
@@ -388,11 +346,22 @@ void sound_write(byte r, byte b)
 	case RI_NR24:
 		R_NR24 = b;
 		s2_freq();
-		if (b & 128) s2_init();
+		if (b & 0x80) // Trigger
+		{
+			S2.envol = R_NR22 >> 4;
+			S2.endir = (R_NR22>>3) & 1;
+			S2.endir |= S2.endir - 1;
+			S2.enlen = (R_NR22 & 7) << 15;
+			S2.cnt = S2.encnt = 0;
+			if (!S2.on)
+				S2.on = 1, S2.pos = 0;
+		}
 		break;
+
+	/* Wave */
 	case RI_NR30:
 		R_NR30 = b;
-		if (!(b & 128)) S3.on = 0;
+		if (!(b & 0x80)) S3.on = 0;
 		break;
 	case RI_NR31:
 		R_NR31 = b;
@@ -408,8 +377,18 @@ void sound_write(byte r, byte b)
 	case RI_NR34:
 		R_NR34 = b;
 		s3_freq();
-		if (b & 128) s3_init();
+		if (b & 0x80) // Trigger
+		{
+			if (!S3.on) S3.pos = 0;
+			S3.cnt = 0;
+			S3.on = R_NR30 >> 7;
+			if (!S3.on) return;
+			for (int i = 0; i < 16; i++)
+				REG(i+0x30) = 0x13 ^ REG(i+0x31);
+		}
 		break;
+
+	/* Noise */
 	case RI_NR41:
 		R_NR41 = b;
 		S4.len = (64-(R_NR41&63)) << 13;
@@ -427,8 +406,18 @@ void sound_write(byte r, byte b)
 		break;
 	case RI_NR44:
 		R_NR44 = b;
-		if (b & 128) s4_init();
+		if (b & 0x80) // Trigger
+		{
+			S4.envol = R_NR42 >> 4;
+			S4.endir = (R_NR42>>3) & 1;
+			S4.endir |= S4.endir - 1;
+			S4.enlen = (R_NR42 & 7) << 15;
+			S4.cnt = S4.encnt = 0;
+			S4.on = 1, S4.pos = 0;
+		}
 		break;
+
+	/* Control */
 	case RI_NR50:
 		R_NR50 = b;
 		break;
@@ -440,7 +429,30 @@ void sound_write(byte r, byte b)
 		if (!(R_NR52 & 128))
 			sound_off();
 		break;
+
+	/* Wave Table */
+	case 0x30:
+	case 0x31:
+	case 0x32:
+	case 0x33:
+	case 0x34:
+	case 0x35:
+	case 0x36:
+	case 0x37:
+	case 0x38:
+	case 0x39:
+	case 0x3A:
+	case 0x3B:
+	case 0x3C:
+	case 0x3D:
+	case 0x3E:
+	case 0x3F:
+		if (!S3.on) // Wave table writes only go through when the channel is disabled
+			snd.wave[r & 0xF] = REG(r) = b;
+		break;
+
 	default:
-		return;
+		MESSAGE_DEBUG("Invalid sound register: %02X %02X\n", r, b);
+		break;
 	}
 }

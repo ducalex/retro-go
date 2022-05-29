@@ -58,11 +58,8 @@ void gnuboy_reset(bool hard)
 		visible lines x144 = 32832 dsc (15.66ms)
 		vblank lines x10 = 2280 dsc (1.08ms)
 */
-void gnuboy_run(bool draw)
+void gnuboy_run(void)
 {
-	host.lcd.enabled = draw;
-	host.snd.pos = 0;
-
 	/* FIXME: judging by the time specified this was intended
 	to emulate through vblank phase which is handled at the
 	end of the loop. */
@@ -75,8 +72,9 @@ void gnuboy_run(bool draw)
 		cpu_emulate(lcd.cycles);
 	}
 
-	/* VBLANK BEGIN */
-	if (draw && host.lcd.vblank) {
+	/* When using GB_PIXEL_PALETTED, the host should draw the frame in this callback because
+	   the palette can be modified below before gnuboy_run returns. */
+	if (host.lcd.vblank) {
 		(host.lcd.vblank)();
 	}
 

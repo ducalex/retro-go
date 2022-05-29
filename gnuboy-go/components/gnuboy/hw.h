@@ -220,7 +220,7 @@ extern gb_rtc_t rtc;
 extern gb_hw_t hw;
 
 void hw_reset(bool hard);
-void hw_setpad(un32 new_pad);
+void hw_setpad(uint new_pad);
 void hw_interrupt(byte i, int level);
 void hw_updatemap(void);
 void hw_write(uint a, byte b);
