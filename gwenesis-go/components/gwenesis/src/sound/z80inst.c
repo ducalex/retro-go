@@ -32,7 +32,7 @@ __license__ = "GPLv3"
 static int bus_ack = 0;
 static int reset = 0;
 static int reset_once = 0;
-static uint64_t zclk = 0;
+uint64_t zclk = 0;
 static int initialized = 0;
 
 unsigned char *Z80_RAM;

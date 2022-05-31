@@ -8,11 +8,11 @@
 #include "gwenesis_io.h"
 #include "gwenesis_vdp.h"
 
-unsigned int scan_line;
-uint64_t m68k_clock;
-
 uint8_t *ROM_DATA;
 size_t ROM_DATA_LENGTH;
+uint8_t emulator_framebuffer[1024*64];
+unsigned int scan_line;
+uint64_t m68k_clock;
 
 #define AUDIO_SAMPLE_RATE (53267)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 1)
@@ -24,9 +24,13 @@ static rg_video_update_t *currentUpdate = &updates[0];
 
 static rg_app_t *app;
 
-uint8_t emulator_framebuffer[1024*64];
+static bool yfm_enabled = true;
+static bool z80_enabled = true;
 
+static const char *SETTING_YFM_EMULATION = "yfm_enable";
+static const char *SETTING_Z80_EMULATION = "z80_enable";
 // --- MAIN
+
 
 void gwenesis_io_get_buttons()
 {
@@ -38,16 +42,73 @@ static inline void m68k_run(uint64_t target)
     m68k_clock = target;
 }
 
+static rg_gui_event_t yfm_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
+        yfm_enabled = !yfm_enabled;
+        rg_settings_set_number(NS_APP, SETTING_YFM_EMULATION, yfm_enabled);
+    }
+    strcpy(option->value, yfm_enabled ? "On " : "Off");
+
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t z80_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
+        z80_enabled = !z80_enabled;
+        rg_settings_set_number(NS_APP, SETTING_Z80_EMULATION, z80_enabled);
+    }
+    strcpy(option->value, z80_enabled ? "On " : "Off");
+
+    return RG_DIALOG_VOID;
+}
+
+static bool screenshot_handler(const char *filename, int width, int height)
+{
+    return rg_display_save_frame(filename, currentUpdate, width, height);
+}
+
+static bool save_state_handler(const char *filename)
+{
+    return false;
+}
+
+static bool load_state_handler(const char *filename)
+{
+    reset_emulation();
+    return false;
+}
+
+static bool reset_handler(bool hard)
+{
+    reset_emulation();
+    return true;
+}
+
 void app_main(void)
 {
-    const rg_handlers_t handlers = {0};
+    const rg_handlers_t handlers = {
+        .loadState = &load_state_handler,
+        .saveState = &save_state_handler,
+        .reset = &reset_handler,
+        .screenshot = &screenshot_handler,
+    };
+    const rg_gui_option_t options[] = {
+        {1, "YFM emulation", "On", 1, &yfm_update_cb},
+        {2, "Z80 emulation", "On", 1, &z80_update_cb},
+        RG_DIALOG_CHOICE_LAST
+    };
 
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, NULL);
+    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
+
+    yfm_enabled = rg_settings_get_number(NS_APP, SETTING_YFM_EMULATION, 1);
+    z80_enabled = rg_settings_get_number(NS_APP, SETTING_Z80_EMULATION, 1);
 
     updates[0].buffer = rg_alloc(320 * 240 * 2, MEM_FAST);
-    updates[1].buffer = rg_alloc(320 * 240 * 2, MEM_SLOW);
-
-    rg_display_set_source_format(320, 240, 0, 0, 320 * 2, RG_PIXEL_565_LE);
+    updates[1].buffer = rg_alloc(320 * 240 * 2, MEM_FAST);
 
     RG_LOGI("Genesis start\n");
 
@@ -71,7 +132,9 @@ void app_main(void)
     extern unsigned char gwenesis_vdp_regs[0x20];
     extern unsigned int gwenesis_vdp_status;
     extern unsigned int screen_width, screen_height;
+    extern int mode_pal;
     extern int hint_pending;
+    extern uint64_t zclk;
 
     uint32_t keymap[8] = {RG_KEY_UP, RG_KEY_DOWN, RG_KEY_LEFT, RG_KEY_RIGHT, RG_KEY_A, RG_KEY_B, RG_KEY_SELECT, RG_KEY_START};
     uint32_t samples_per_frame = AUDIO_SAMPLE_RATE / 60;
@@ -88,6 +151,9 @@ void app_main(void)
 
     RG_LOGI("reset_emulation()\n");
     reset_emulation();
+
+    RG_LOGI("rg_display_set_source_format()\n");
+    rg_display_set_source_format(320, mode_pal ? 240 : 224, 0, 0, 320 * 2, RG_PIXEL_565_LE);
 
     RG_LOGI("emulation loop\n");
     while (true)
@@ -124,6 +190,12 @@ void app_main(void)
 
         gwenesis_vdp_set_buffer(currentUpdate->buffer + (320 - screen_width)); // / 2 * 2
         gwenesis_vdp_render_config();
+
+        if (!z80_enabled) // This will prevent z80_run/z80_sync from doing anything
+            zclk = system_clock + 262 * VDP_CYCLES_PER_LINE;
+
+        if (!yfm_enabled)
+            audio_index = samples_per_frame;
 
         for (scan_line = 0; scan_line < 262; scan_line++)
         {
@@ -185,6 +257,7 @@ void app_main(void)
         int elapsed = get_elapsed_time_since(startTime);
         rg_system_tick(elapsed);
 
-        rg_audio_submit(audioBuffer, audio_index);
+        if (yfm_enabled)
+            rg_audio_submit(audioBuffer, audio_index);
     }
 }
