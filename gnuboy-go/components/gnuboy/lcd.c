@@ -509,7 +509,6 @@ void lcd_reset(bool hard)
 		memset(&lcd.vbank, 0, sizeof(lcd.vbank));
 		memset(&lcd.oam, 0, sizeof(lcd.oam));
 		memset(&lcd.pal, 0, sizeof(lcd.pal));
-		memset(&lcd.pal, 0, sizeof(lcd.pal));
 	}
 
 	memset(BG, 0, sizeof(BG));
@@ -523,6 +522,14 @@ void lcd_reset(bool hard)
 
 	WY = R_WY;
 	lcd_rebuildpal();
+
+	/* set lcdc ahead of cpu by 19us; see A
+			Set lcdc ahead of cpu by 19us (matches minimal hblank duration according
+			to some docs). Value from lcd.cycles (when positive) is used to drive CPU,
+			setting some ahead-time at startup is necessary to begin emulation.
+	FIXME: leave value at 0, use lcd_emulate() to actually send lcdc ahead
+	*/
+	lcd.cycles = 40;
 }
 
 static inline void pal_update(byte i)

@@ -196,7 +196,7 @@ case (base)+7: b = A; \
 label: op(b); break;
 
 
-cpu_t cpu;
+gb_cpu_t cpu;
 
 
 void cpu_reset(bool hard)
@@ -205,13 +205,6 @@ void cpu_reset(bool hard)
 	cpu.halted = 0;
 	cpu.div = 0;
 	cpu.timer = 0;
-	/* set lcdc ahead of cpu by 19us; see A
-			Set lcdc ahead of cpu by 19us (matches minimal hblank duration according
-			to some docs). Value from lcd.cycles (when positive) is used to drive CPU,
-			setting some ahead-time at startup is necessary to begin emulation.
-	FIXME: leave value at 0, use lcd_emulate() to actually send lcdc ahead
-	*/
-	lcd.cycles = 40;
 
 	IME = 0;
 	IMA = 0;

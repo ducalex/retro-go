@@ -53,9 +53,9 @@ typedef struct
 	un32 halted;
 	un32 double_speed;
 	un32 disassemble;
-} cpu_t;
+} gb_cpu_t;
 
-extern cpu_t cpu;
+extern gb_cpu_t cpu;
 
 void cpu_reset(bool hard);
 int  cpu_emulate(int cycles);
