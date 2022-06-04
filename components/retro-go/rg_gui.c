@@ -416,7 +416,7 @@ void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int 
 
     for (int i = 0; i < options_count; i++)
     {
-        rg_rect_t label = {0};
+        rg_rect_t label = {0, font_height};
         rg_rect_t value = {0};
 
         if (options[i].label)

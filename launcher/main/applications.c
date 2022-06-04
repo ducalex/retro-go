@@ -580,10 +580,10 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
     rg_gui_option_t choices[] = {
         {0, "Resume game", NULL, has_save, NULL},
         {1, "New game    ", NULL, 1, NULL},
-        {0, "------------", NULL, -1, NULL},
+        RG_DIALOG_SEPARATOR,
         {3, is_fav ? "Del favorite" : "Add favorite", NULL, 1, NULL},
         {2, "Delete save", NULL, has_save || has_sram, NULL},
-        {0, "------------", NULL, -1, NULL},
+        RG_DIALOG_SEPARATOR,
         {5, "Delete file", NULL, 1, NULL},
         {4, "Properties", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
