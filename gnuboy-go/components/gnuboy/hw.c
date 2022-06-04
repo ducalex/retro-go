@@ -153,6 +153,26 @@ static void hw_hdma(byte c)
 	R_HDMA5 = 0xFF;
 }
 
+void hw_hdma_cont(void)
+{
+	uint src = (R_HDMA1 << 8) | (R_HDMA2 & 0xF0);
+	uint dst = 0x8000 | ((R_HDMA3 & 0x1F) << 8) | (R_HDMA4 & 0xF0);
+	uint cnt = 16;
+
+	// if (!(hw.hdma & 0x80))
+	// 	return;
+
+	while (cnt--)
+		writeb(dst++, readb(src++));
+
+	R_HDMA1 = src >> 8;
+	R_HDMA2 = src & 0xF0;
+	R_HDMA3 = (dst >> 8) & 0x1F;
+	R_HDMA4 = dst & 0xF0;
+	R_HDMA5--;
+	hw.hdma--;
+}
+
 /*
  * pad_refresh updates the P1 register from the pad states, generating
  * the appropriate interrupts (by quickly raising and lowering the
@@ -489,36 +509,15 @@ void hw_write(uint a, byte b)
 		else
 		{
 			int r = a & 0xFF;
+
 			if (hw.hwtype != GB_HW_CGB)
 			{
-				switch (r)
-				{
-				case RI_BGP:
-					pal_write_dmg(0, 0, b);
-					pal_write_dmg(8, 1, b);
-					break;
-				case RI_OBP0:
-					pal_write_dmg(64, 2, b);
-					break;
-				case RI_OBP1:
-					pal_write_dmg(72, 3, b);
-					break;
-
-				// These don't exist on DMG:
-				case RI_VBK:
-				case RI_BCPS:
-				case RI_OCPS:
-				case RI_BCPD:
-				case RI_OCPD:
-				case RI_SVBK:
-				case RI_KEY1:
-				case RI_HDMA1:
-				case RI_HDMA2:
-				case RI_HDMA3:
-				case RI_HDMA4:
-				case RI_HDMA5:
+				if (r >= 0x51 && r <= 0x70)
 					return;
-				}
+				if (r >= 0x47 && r <= 0x49)
+					lcd.pal_dirty |= REG(r) != b;
+				// The few other GBC-only registers are harmless
+				// and we let them fall through.
 			}
 
 			switch(r)
@@ -569,49 +568,50 @@ void hw_write(uint a, byte b)
 				REG(r) = b;
 				lcd_stat_trigger();
 				break;
-			case RI_VBK:
+			case RI_VBK: // GBC only
 				REG(r) = b | 0xFE;
 				hw_updatemap();
 				break;
-			case RI_BCPS:
+			case RI_BCPS: // GBC only
 				R_BCPS = b & 0xBF;
 				R_BCPD = lcd.pal[b & 0x3F];
 				break;
-			case RI_OCPS:
+			case RI_OCPS: // GBC only
 				R_OCPS = b & 0xBF;
 				R_OCPD = lcd.pal[64 + (b & 0x3F)];
 				break;
-			case RI_BCPD:
-				R_BCPD = b;
-				pal_write_cgb(R_BCPS & 0x3F, b);
+			case RI_BCPD: // GBC only
+				lcd.pal[R_BCPS & 0x3F] = b;
+				lcd.pal_dirty = true;
 				if (R_BCPS & 0x80) R_BCPS = (R_BCPS+1) & 0xBF;
 				break;
-			case RI_OCPD:
+			case RI_OCPD: // GBC only
+				lcd.pal[64 + (R_OCPS & 0x3F)] = b;
+				lcd.pal_dirty = true;
 				R_OCPD = b;
-				pal_write_cgb(64 + (R_OCPS & 0x3F), b);
 				if (R_OCPS & 0x80) R_OCPS = (R_OCPS+1) & 0xBF;
 				break;
-			case RI_SVBK:
+			case RI_SVBK: // GBC only
 				REG(r) = b | 0xF8;
 				hw_updatemap();
 				break;
 			case RI_DMA:
 				hw_dma(b);
 				break;
-			case RI_KEY1:
+			case RI_KEY1: // GBC only
 				REG(r) = (REG(r) & 0x80) | (b & 0x01);
 				break;
 			case RI_BIOS:
 				REG(r) = b;
 				hw_updatemap();
 				break;
-			case RI_HDMA1:
-			case RI_HDMA2:
-			case RI_HDMA3:
-			case RI_HDMA4:
+			case RI_HDMA1: // GBC only
+			case RI_HDMA2: // GBC only
+			case RI_HDMA3: // GBC only
+			case RI_HDMA4: // GBC only
 				REG(r) = b;
 				break;
-			case RI_HDMA5:
+			case RI_HDMA5: // GBC only
 				hw_hdma(b);
 				break;
 			}

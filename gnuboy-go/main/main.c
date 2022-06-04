@@ -91,12 +91,18 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t 
         usleep(50000);
     }
 
-    if (pal == GB_PALETTE_GBC)
-        strcpy(option->value, "GBC");
+    if (pal == GB_PALETTE_DMG)
+        strcpy(option->value, "GB DMG   ");
+    else if (pal == GB_PALETTE_MGB0)
+        strcpy(option->value, "GB Pocket");
+    else if (pal == GB_PALETTE_MGB1)
+        strcpy(option->value, "GB Light ");
+    else if (pal == GB_PALETTE_CGB)
+        strcpy(option->value, "GB Color ");
     else if (pal == GB_PALETTE_SGB)
-        strcpy(option->value, "SGB");
+        strcpy(option->value, "Super GB ");
     else
-        sprintf(option->value, "%d/%d", pal + 1, max - 1);
+        sprintf(option->value, "%d/%d   ", pal + 1, max - 1);
 
     return RG_DIALOG_VOID;
 }
@@ -266,7 +272,7 @@ void app_main(void)
     else
         gnuboy_load_bios(RG_BASE_PATH_SYSTEM "/gb_bios.bin");
 
-    gnuboy_set_palette(rg_settings_get_number(NS_APP, SETTING_PALETTE, GB_PALETTE_GBC));
+    gnuboy_set_palette(rg_settings_get_number(NS_APP, SETTING_PALETTE, GB_PALETTE_CGB));
 
     // Hard reset to have a clean slate
     gnuboy_reset(true);

@@ -23,6 +23,7 @@ typedef struct
 		gb_obj_t obj[40];
 	} oam;
 	byte pal[128];
+	bool pal_dirty;
 
 	int BG[64];
 	int WND[64];
@@ -38,17 +39,11 @@ typedef struct
 	// Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
 	int enable_window_offset_hack;
 
-	uint16_t dmg_pal[4][4];
-
 } gb_lcd_t;
 
 extern gb_lcd_t lcd;
 
 void lcd_reset(bool hard);
 void lcd_emulate(int cycles);
-void lcd_rebuildpal(void);
 void lcd_stat_trigger(void);
 void lcd_lcdc_change(byte b);
-
-void pal_write_cgb(byte i, byte b);
-void pal_write_dmg(byte i, byte mapnum, byte d);

@@ -7,21 +7,8 @@
 #include "lcd.h"
 #include "cpu.h"
 
-// Our custom colorization palettes
-static const uint16_t custom_palettes[][4] = {
-	{ 0x6BDD, 0x3ED4, 0x1D86, 0x0860 }, // GB_PALETTE_DEFAULT
-	{ 0x7FFF, 0x5AD6, 0x318C, 0x0000 }, // GB_PALETTE_2BGRAYS
-	{ 0x5BFF, 0x3F0F, 0x222D, 0x10EB }, // GB_PALETTE_LINKSAW
-	{ 0x639E, 0x263A, 0x10D4, 0x2866 }, // GB_PALETTE_NSUPRGB
-	{ 0x36D5, 0x260E, 0x1D47, 0x18C4 }, // GB_PALETTE_NGBARNE
-	{ 0x6FDF, 0x36DE, 0x4996, 0x34AC }, // GB_PALETTE_GRAPEFR
-	{ 0x6739, 0x6E6D, 0x4588, 0x1882 }, // GB_PALETTE_MEGAMAN
-	{ 0x7FBF, 0x46DE, 0x4DD0, 0x0843 }, // GB_PALETTE_POKEMON
-	{ 0x0272, 0x0DCA, 0x0D45, 0x0102 }, // GB_PALETTE_DMGREEN
-};
-
-// Game-specific colorization palettes extracted from GBC's BIOS
-static const uint16_t colorization_palettes[32][3][4] = {
+static const uint16_t colorization_palettes[48][3][4] = {
+// 0x00 - 0x1F: Game-specific colorization palettes extracted from GBC's BIOS
 	{{0x7FFF, 0x01DF, 0x0112, 0x0000}, {0x7FFF, 0x7EEB, 0x001F, 0x7C00}, {0x7FFF, 0x42B5, 0x3DC8, 0x0000}},
 	{{0x231F, 0x035F, 0x00F2, 0x0009}, {0x7FFF, 0x421F, 0x1CF2, 0x0000}, {0x4FFF, 0x7ED2, 0x3A4C, 0x1CE0}},
 	{{0x7FFF, 0x7FFF, 0x7E8C, 0x7C00}, {0x7FFF, 0x32BF, 0x00D0, 0x0000}, {0x03ED, 0x7FFF, 0x255F, 0x0000}},
@@ -53,7 +40,17 @@ static const uint16_t colorization_palettes[32][3][4] = {
 	{{0x7FFF, 0x421F, 0x1CF2, 0x0000}, {0x7FFF, 0x7E8C, 0x7C00, 0x0000}, {0x7FFF, 0x1BEF, 0x6180, 0x0000}},
 	{{0x2120, 0x8022, 0x8281, 0x1110}, {0xFF7F, 0xDF7F, 0x1201, 0x0001}, {0xFF00, 0xFF7F, 0x1F03, 0x0000}},
 	{{0x7FFF, 0x32BF, 0x00D0, 0x0000}, {0x7FFF, 0x32BF, 0x00D0, 0x0000}, {0x7FFF, 0x32BF, 0x00D0, 0x0000}},
-	{{0x7FFF, 0x32BF, 0x00D0, 0x0000}, {0x7FFF, 0x32BF, 0x00D0, 0x0000}, {0x7FFF, 0x32BF, 0x00D0, 0x0000}}
+	{{0x7FFF, 0x32BF, 0x00D0, 0x0000}, {0x7FFF, 0x32BF, 0x00D0, 0x0000}, {0x7FFF, 0x32BF, 0x00D0, 0x0000}},
+
+// 0x20 - 0x24 : Console-based colorization palettes
+	{{0x0272, 0x0DCA, 0x0D45, 0x0102}, {0x0272, 0x0DCA, 0x0D45, 0x0102}, {0x0272, 0x0DCA, 0x0D45, 0x0102}}, // GB_PALETTE_DMG
+	{{0x7FFF, 0x5AD6, 0x318C, 0x0000}, {0x7FFF, 0x5AD6, 0x318C, 0x0000}, {0x7FFF, 0x5AD6, 0x318C, 0x0000}}, // GB_PALETTE_MGB0
+	{{0x36D5, 0x260E, 0x1D47, 0x18C4}, {0x36D5, 0x260E, 0x1D47, 0x18C4}, {0x36D5, 0x260E, 0x1D47, 0x18C4}}, // GB_PALETTE_MGB1
+	{{0x6BDD, 0x3ED4, 0x1D86, 0x0860}, {0x6BDD, 0x3ED4, 0x1D86, 0x0860}, {0x6BDD, 0x3ED4, 0x1D86, 0x0860}}, // GB_PALETTE_CGB (real colors calculated in code)
+	{{0x6BDD, 0x3ED4, 0x1D86, 0x0860}, {0x6BDD, 0x3ED4, 0x1D86, 0x0860}, {0x6BDD, 0x3ED4, 0x1D86, 0x0860}}, // GB_PALETTE_SGB (real colors calculated in code)
+
+// 0x25 - 0x2F : Other misc palettes
+	{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}, // Bleh
 };
 
 #define BG (lcd.BG)
@@ -61,7 +58,6 @@ static const uint16_t colorization_palettes[32][3][4] = {
 #define BUF (lcd.BUF)
 #define PRI (lcd.PRI)
 #define VS (lcd.VS)
-#define CYCLES (lcd.cycles)
 #define S lcd.S /* tilemap position */
 #define T lcd.T
 #define U lcd.U /* position within tile */
@@ -521,7 +517,7 @@ void lcd_reset(bool hard)
 	S = T = U = V = 0;
 
 	WY = R_WY;
-	lcd_rebuildpal();
+	lcd.pal_dirty = 1;
 
 	/* set lcdc ahead of cpu by 19us; see A
 			Set lcdc ahead of cpu by 19us (matches minimal hblank duration according
@@ -530,96 +526,6 @@ void lcd_reset(bool hard)
 	FIXME: leave value at 0, use lcd_emulate() to actually send lcdc ahead
 	*/
 	lcd.cycles = 40;
-}
-
-static inline void pal_update(byte i)
-{
-#ifndef IS_BIG_ENDIAN
-	uint c = ((un16*)lcd.pal)[i];
-#else
-	uint c = ((lcd.pal[i << 1]) | ((lcd.pal[(i << 1) | 1]) << 8));
-#endif
-	uint r = c & 0x1f;         // bit 0-4 red
-	uint g = (c >> 5) & 0x1f;  // bit 5-9 green
-	uint b = (c >> 10) & 0x1f; // bit 10-14 blue
-
-	uint out = (r << 11) | (g << (5 + 1)) | (b);
-
-	if (host.lcd.format == GB_PIXEL_565_BE)
-		host.lcd.palette[i] = (out << 8) | (out >> 8);
-	else
-		host.lcd.palette[i] = out;
-}
-
-void pal_write_cgb(byte i, byte b)
-{
-	if (lcd.pal[i] == b) return;
-	lcd.pal[i] = b;
-	pal_update(i >> 1);
-}
-
-void pal_write_dmg(byte i, byte mapnum, byte d)
-{
-	un16 *map = lcd.dmg_pal[mapnum & 3];
-
-	for (int j = 0; j < 8; j += 2)
-	{
-		int c = map[(d >> j) & 3];
-		/* FIXME - handle directly without faking cgb */
-		pal_write_cgb(i+j, c & 0xff);
-		pal_write_cgb(i+j+1, c >> 8);
-	}
-}
-
-void lcd_rebuildpal()
-{
-	if (hw.hwtype != GB_HW_CGB)
-	{
-		const uint16_t *bgp, *obp0, *obp1;
-
-		int palette = host.lcd.colorize % GB_PALETTE_COUNT;
-
-		if (palette == GB_PALETTE_GBC && cart.colorize)
-		{
-			uint palette = cart.colorize & 0x1F;
-			uint flags = (cart.colorize & 0xE0) >> 5;
-
-			bgp  = colorization_palettes[palette][2];
-			obp0 = colorization_palettes[palette][(flags & 1) ? 0 : 1];
-			obp1 = colorization_palettes[palette][(flags & 2) ? 0 : 1];
-
-			if (!(flags & 4)) {
-				obp1 = colorization_palettes[palette][2];
-			}
-
-			MESSAGE_INFO("Using GBC palette %d\n", palette);
-		}
-		else if (palette == GB_PALETTE_SGB)
-		{
-			bgp = obp0 = obp1 = custom_palettes[0];
-			MESSAGE_INFO("Using SGB palette %d\n", palette);
-		}
-		else
-		{
-			bgp = obp0 = obp1 = custom_palettes[palette];
-			MESSAGE_INFO("Using Built-in palette %d\n", palette);
-		}
-
-		memcpy(&lcd.dmg_pal[0], bgp, 8);
-		memcpy(&lcd.dmg_pal[1], bgp, 8);
-		memcpy(&lcd.dmg_pal[2], obp0, 8);
-		memcpy(&lcd.dmg_pal[3], obp1, 8);
-
-		pal_write_dmg(0, 0, R_BGP);
-		pal_write_dmg(8, 1, R_BGP);
-		pal_write_dmg(64, 2, R_OBP0);
-		pal_write_dmg(72, 3, R_OBP1);
-	}
-
-	for (int i = 0; i < 64; i++)
-	{
-		pal_update(i);
-	}
 }
 
 
@@ -674,31 +580,66 @@ void lcd_lcdc_change(byte b)
 	{
 		R_LY = 0;
 		stat_change(2);
-		CYCLES = 40;  // Correct value seems to be 38
+		lcd.cycles = 40;  // Correct value seems to be 38
 		WY = R_WY;
 	}
 }
 
 
-static void lcd_hdma_cont()
+static inline void sync_palette(void)
 {
-	uint src = (R_HDMA1 << 8) | (R_HDMA2 & 0xF0);
-	uint dst = 0x8000 | ((R_HDMA3 & 0x1F) << 8) | (R_HDMA4 & 0xF0);
-	uint cnt = 16;
+	MESSAGE_DEBUG("Syncing palette...\n");
 
-	// if (!(hw.hdma & 0x80))
-	// 	return;
+	un16 *lcd_pal = (un16 *)lcd.pal;
 
-	while (cnt--)
-		writeb(dst++, readb(src++));
+	if (hw.hwtype != GB_HW_CGB)
+	{
+		uint palette = host.lcd.colorize % GB_PALETTE_COUNT;
+		uint flags = 0b110;
+		const un16 *bgp, *obp0, *obp1;
 
-	R_HDMA1 = src >> 8;
-	R_HDMA2 = src & 0xF0;
-	R_HDMA3 = (dst >> 8) & 0x1F;
-	R_HDMA4 = dst & 0xF0;
-	R_HDMA5--;
-	hw.hdma--;
+		if (palette == GB_PALETTE_CGB && cart.colorize)
+		{
+			palette = cart.colorize & 0x1F;
+			flags = (cart.colorize & 0xE0) >> 5;
+		}
+
+		bgp = colorization_palettes[palette][2];
+		obp0 = colorization_palettes[palette][(flags & 1) ? 0 : 1];
+		obp1 = colorization_palettes[palette][(flags & 2) ? 0 : 1];
+
+		// Some special cases
+		if (!(flags & 4)) {
+			obp1 = colorization_palettes[palette][2];
+		}
+
+		for (int j = 0; j < 8; j += 2)
+		{
+			lcd_pal[(0+j) >> 1] = bgp[(R_BGP >> j) & 3];
+			lcd_pal[(8+j) >> 1] = bgp[(R_BGP >> j) & 3];
+			lcd_pal[(64+j) >> 1] = obp0[(R_OBP0 >> j) & 3];
+			lcd_pal[(72+j) >> 1] = obp1[(R_OBP1 >> j) & 3];
+		}
+	}
+
+	for (int i = 0; i < 64; ++i)
+	{
+		uint c = lcd_pal[i];
+		uint r = c & 0x1f;         // bit 0-4 red
+		uint g = (c >> 5) & 0x1f;  // bit 5-9 green
+		uint b = (c >> 10) & 0x1f; // bit 10-14 blue
+
+		uint out = (r << 11) | (g << 6) | (b);
+
+		if (host.lcd.format == GB_PIXEL_565_BE)
+			host.lcd.palette[i] = (out << 8) | (out >> 8);
+		else
+			host.lcd.palette[i] = out;
+	}
+
+	lcd.pal_dirty = false;
 }
+
 
 /*
 	LCD controller operates with 154 lines per frame, of which lines
@@ -781,6 +722,13 @@ static inline void lcd_renderline()
 
 	spr_scan(NS);
 
+	// Real hardware allows palette change to occur between each scanline but very few games take
+	// advantage of this. So we can switch to once per frame if performance becomes a problem...
+	if (lcd.pal_dirty) // && SL == 0)
+	{
+		sync_palette();
+	}
+
 	if (host.lcd.format == GB_PIXEL_PALETTED)
 	{
 		memcpy(host.lcd.buffer + SL * 160 , BUF, 160);
@@ -806,7 +754,7 @@ void lcd_emulate(int cycles)
 	if (!(R_LCDC & 0x80))
 	{
 		/* LCDC operation disabled (short route) */
-		while (CYCLES <= 0)
+		while (lcd.cycles <= 0)
 		{
 			switch (R_STAT & 3)
 			{
@@ -814,26 +762,26 @@ void lcd_emulate(int cycles)
 			case 1: /* vblank */
 				// lcd_renderline();
 				stat_change(2);
-				CYCLES += 40;
+				lcd.cycles += 40;
 				break;
 			case 2: /* search */
 				stat_change(3);
-				CYCLES += 86;
+				lcd.cycles += 86;
 				break;
 			case 3: /* transfer */
 				stat_change(0);
 				/* FIXME: check docs; HDMA might require operating LCDC */
 				if (hw.hdma & 0x80)
-					lcd_hdma_cont();
+					hw_hdma_cont();
 				else
-					CYCLES += 102;
+					lcd.cycles += 102;
 				break;
 			}
 			return;
 		}
 	}
 
-	while (CYCLES <= 0)
+	while (lcd.cycles <= 0)
 	{
 		switch (R_STAT & 3)
 		{
@@ -848,9 +796,9 @@ void lcd_emulate(int cycles)
 				if (cpu.halted)
 				{
 					hw_interrupt(IF_VBLANK, 1);
-					CYCLES += 228;
+					lcd.cycles += 228;
 				}
-				else CYCLES += 10;
+				else lcd.cycles += 10;
 				stat_change(1); /* -> vblank */
 				break;
 			}
@@ -860,33 +808,33 @@ void lcd_emulate(int cycles)
 				hw_interrupt(IF_STAT, 0);
 
 			stat_change(2); /* -> search */
-			CYCLES += 40;
+			lcd.cycles += 40;
 			break;
 		case 1:
 			/* vblank -> */
 			if (!(hw.ilines & IF_VBLANK))
 			{
 				hw_interrupt(IF_VBLANK, 1);
-				CYCLES += 218;
+				lcd.cycles += 218;
 				break;
 			}
 			if (R_LY == 0)
 			{
 				WY = R_WY;
 				stat_change(2); /* -> search */
-				CYCLES += 40;
+				lcd.cycles += 40;
 				break;
 			}
 			else if (R_LY < 152)
-				CYCLES += 228;
+				lcd.cycles += 228;
 			else if (R_LY == 152)
 				/* Handling special case on the last line; see
 				docs/HACKING */
-				CYCLES += 28;
+				lcd.cycles += 28;
 			else
 			{
 				R_LY = -1;
-				CYCLES += 200;
+				lcd.cycles += 200;
 			}
 			R_LY++;
 			lcd_stat_trigger();
@@ -895,16 +843,16 @@ void lcd_emulate(int cycles)
 			/* search -> */
 			lcd_renderline();
 			stat_change(3); /* -> transfer */
-			CYCLES += 86;
+			lcd.cycles += 86;
 			break;
 		case 3:
 			/* transfer -> */
 			stat_change(0); /* -> hblank */
 			if (hw.hdma & 0x80)
-				lcd_hdma_cont();
+				hw_hdma_cont();
 			/* FIXME -- how much of the hblank does hdma use?? */
 			/* else */
-			CYCLES += 102;
+			lcd.cycles += 102;
 			break;
 		}
 	}

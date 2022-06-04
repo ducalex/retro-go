@@ -223,6 +223,7 @@ void hw_reset(bool hard);
 void hw_setpad(uint new_pad);
 void hw_interrupt(byte i, int level);
 void hw_updatemap(void);
+void hw_hdma_cont(void);
 void hw_write(uint a, byte b);
 byte hw_read(uint a);
 void hw_vblank(void);
@@ -230,9 +231,8 @@ void hw_vblank(void);
 
 static inline byte readb(uint a)
 {
-	byte *p = hw.rmap[a>>12];
-	if (p) return p[a];
-	return hw_read(a);
+	const byte *p = hw.rmap[a>>12];
+	return p ? p[a] : hw_read(a);
 }
 
 static inline void writeb(uint a, byte b)
@@ -244,32 +244,24 @@ static inline void writeb(uint a, byte b)
 
 static inline un16 readw(uint a)
 {
-	if ((a & 0xFFF) == 0xFFF) // Page crossing
+	const byte *p = hw.rmap[a >> 12];
+	if ((a & 0xFFF) == 0xFFF || !p) // Page crossed or not mapped
 	{
 		return readb(a) | (readb(a + 1) << 8);
 	}
-	byte *p = hw.rmap[a >> 12];
-	if (p)
-	{
-		return *(un16 *)(p + a);
-	}
-	return hw_read(a) | (hw_read(a + 1) << 8);
+	return *(un16 *)(p + a);
 }
 
 static inline void writew(uint a, un16 w)
 {
-	if ((a & 0xFFF) == 0xFFF) // Page crossing
+	byte *p = hw.wmap[a >> 12];
+	if ((a & 0xFFF) == 0xFFF || !p) // Page crossed or not mapped
 	{
 		writeb(a, w);
 		writeb(a + 1, w >> 8);
-		return;
 	}
-	byte *p = hw.wmap[a >> 12];
-	if (p)
+	else
 	{
 		*(un16 *)(p + a) = w;
-		return;
 	}
-	hw_write(a, w);
-	hw_write(a + 1, w >> 8);
 }

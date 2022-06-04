@@ -14,6 +14,7 @@ gb_host_t host;
 int gnuboy_init(int samplerate, bool stereo, int pixformat, void *vblank_func)
 {
 	host = (gb_host_t){
+		.lcd.colorize = GB_PALETTE_CGB,
 		.lcd.format = pixformat,
 		.lcd.vblank = vblank_func,
 		.snd.buffer = malloc(samplerate / 4),
@@ -440,11 +441,8 @@ int gnuboy_get_palette(void)
 
 void gnuboy_set_palette(gb_palette_t pal)
 {
-	if (host.lcd.colorize != pal)
-	{
-		host.lcd.colorize = pal;
-		lcd_rebuildpal();
-	}
+	host.lcd.colorize = pal;
+	lcd.pal_dirty = true;
 }
 
 
@@ -833,7 +831,7 @@ int gnuboy_load_state(const char *file)
 	// Older saves might overflow this
 	cart.rambank &= (cart.ramsize - 1);
 
-	lcd_rebuildpal();
+	lcd.pal_dirty = true;
 	sound_dirty();
 	hw_updatemap();
 
