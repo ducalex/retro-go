@@ -96,57 +96,72 @@ static void update_keymap(int id)
 	}
 }
 
-static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t event)
+static rg_gui_event_t change_keymap_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-	const int max = KEYMAPS_COUNT - 1;
-	const int prev = keymap_id;
-
-    if (event == RG_DIALOG_PREV && --keymap_id < 0) keymap_id = max;
-    if (event == RG_DIALOG_NEXT && ++keymap_id > max) keymap_id = 0;
-
-	if (keymap_id != prev)
+	if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
 	{
+		if (event == RG_DIALOG_PREV && --keymap_id < 0) keymap_id = KEYMAPS_COUNT - 1;
+		if (event == RG_DIALOG_NEXT && ++keymap_id > KEYMAPS_COUNT - 1) keymap_id = 0;
 		update_keymap(keymap_id);
 		rg_settings_set_number(NS_APP, SETTING_KEYMAP, keymap_id);
+		return RG_DIALOG_CLOSE;
 	}
-
-    strcpy(option->value, keymap.name);
-
-	if (event == RG_DIALOG_ENTER)
+	else if (event == RG_DIALOG_ENTER || event == RG_DIALOG_ALT)
 	{
-		rg_gui_option_t options[keymap.size + 2] = {};
-		rg_gui_option_t *option = options;
-		char values[keymap.size + 2][16] = {0};
+		return RG_DIALOG_DISMISS;
+	}
+	return RG_DIALOG_VOID;
+}
 
-		for (int i = 0; i < keymap.size; i++)
+static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+	{
+		rg_gui_option_t options[16 + 4] = {};
+		char values[16][16];
+		char profile[32];
+		bool dismissed = false;
+
+		while (!dismissed)
 		{
-			// keys[i].key_id contains a bitmask, convert to bit number
-			int key_id = log2(keymap.keys[i].key_id);
+			rg_gui_option_t *option = options;
 
-			// For now we don't display the D-PAD because it doesn't fit on large font
-			if (key_id < 4)
-				continue;
+			option->label = "Profile";
+			option->value = strcat(strcat(strcpy(profile, "< "), keymap.name), " >");
+			option->flags = RG_DIALOG_FLAG_NORMAL;
+			option->update_cb = &change_keymap_cb;
+			option++;
 
-			const char *key = KEYNAMES[key_id];
-			const char *mod = (keymap.keys[i].mod1) ? "MENU + " : "";
-			option->value = (char*)&values[i];
-			strcpy(option->value, mod);
-			strcat(option->value, key);
-			option->label = keymap.keys[i].action;
 			option->flags = RG_DIALOG_FLAG_NORMAL;
 			option++;
+
+			for (int i = 0; i < keymap.size; i++)
+			{
+				// keys[i].key_id contains a bitmask, convert to bit number
+				int key_id = log2(keymap.keys[i].key_id);
+
+				// For now we don't display the D-PAD because it doesn't fit on large font
+				if (key_id < 4)
+					continue;
+
+				const char *key = KEYNAMES[key_id];
+				const char *mod = (keymap.keys[i].mod1) ? "MENU + " : "";
+				option->label = keymap.keys[i].action;
+				option->value = strcat(strcpy(values[i], mod), key);
+				option->flags = RG_DIALOG_FLAG_NORMAL;
+				option->update_cb = &change_keymap_cb;
+				option++;
+			}
+
+			option->flags = RG_DIALOG_FLAG_LAST;
+			option++;
+
+			dismissed = rg_gui_dialog("Controls", options, 0) == -1;
+			rg_display_clear(C_BLACK);
 		}
-
-		option->label = "Close";
-		option->flags = RG_DIALOG_FLAG_NORMAL;
-		option++;
-
-		option->label = NULL;
-		option->flags = RG_DIALOG_FLAG_LAST;
-
-		rg_gui_dialog("SNES  :HANDHELD", options, -1);
-		rg_display_clear(C_BLACK);
 	}
+
+	strcpy(option->value, keymap.name);
 
     return RG_DIALOG_VOID;
 }
