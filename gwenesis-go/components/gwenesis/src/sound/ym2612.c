@@ -133,8 +133,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
-#include <malloc.h>
 #include <math.h>
 typedef uint32_t UINT32;
 typedef uint16_t UINT16;
@@ -182,12 +180,14 @@ typedef int8_t INT8;
 *   TL_RES_LEN - sinus resolution (X axis)
 */
 #define TL_TAB_LEN (13*2*TL_RES_LEN)
-static signed int *tl_tab; //[TL_TAB_LEN];
+// static signed int tl_tab[TL_TAB_LEN];
+static INT16 tl_tab[2*TL_RES_LEN];
 
 #define ENV_QUIET    (TL_TAB_LEN>>3)
 
 /* sin waveform table in 'decibel' scale */
-static unsigned int sin_tab[SIN_LEN] ;
+// static unsigned int sin_tab[SIN_LEN];
+static UINT16 sin_tab[SIN_LEN];
 
 /* sustain level table (3dB per step) */
 /* bit0, bit1, bit2, bit3, bit4, bit5, bit6 */
@@ -482,7 +482,8 @@ static const UINT8 lfo_pm_output[7*8][8]={
 
 /* all 128 LFO PM waveforms */
 #if GW_TARGET
-static INT16 *lfo_pm_table; //[128*8*16];// __attribute__((section("._dtcram")));  /* 128 combinations of 7 bits meaningful (of F-NUMBER), 8 LFO depths, 32 LFO output levels per one depth */
+// static INT16 lfo_pm_table[128*8*16];// __attribute__((section("._dtcram")));  /* 128 combinations of 7 bits meaningful (of F-NUMBER), 8 LFO depths, 32 LFO output levels per one depth */
+static UINT8 lfo_pm_table[128*8*16];
 
 //only positive value
 //static INT32 lfo_pm_table[128*8*16];// __attribute__((section("._dtcram")));  /* 128 combinations of 7 bits meaningful (of F-NUMBER), 8 LFO depths, 32 LFO output levels per one depth */
@@ -1448,7 +1449,8 @@ INLINE signed int op_calc(UINT32 phase, unsigned int env, unsigned int pm)
 
   if (p >= TL_TAB_LEN)
     return 0;
-  return tl_tab[p];
+  // return tl_tab[p];
+  return tl_tab[p & 0x1FF] >> (p >> 9);
 }
 
 INLINE signed int op_calc1(UINT32 phase, unsigned int env, unsigned int pm)
@@ -1457,7 +1459,8 @@ INLINE signed int op_calc1(UINT32 phase, unsigned int env, unsigned int pm)
 
   if (p >= TL_TAB_LEN)
     return 0;
-  return tl_tab[p];
+  // return tl_tab[p];
+  return tl_tab[p & 0x1FF] >> (p >> 9);
 }
 
 INLINE void chan_calc(FM_CH *CH, int num)
@@ -1824,9 +1827,6 @@ static void init_tables(void)
   double o,m;
 
   /* build Linear Power Table */
-  tl_tab = calloc(TL_TAB_LEN, sizeof(*tl_tab));
-  assert(tl_tab != NULL);
-
   for (x=0; x<TL_RES_LEN; x++)
   {
     m = (1<<16) / pow(2,(x+1) * (ENV_STEP/4.0) / 8.0);
@@ -1853,11 +1853,11 @@ static void init_tables(void)
     /* yyyyyyyy = 8-bits decimal part (0-TL_RES_LEN)                                            */
     /* xxxxx    = 5-bits integer 'shift' value (0-31) but, since Power table output is 13 bits, */
     /*            any value above 13 (included) would be discarded.                             */
-    for (i=1; i<13; i++)
-    {
-      tl_tab[ x*2+0 + i*2*TL_RES_LEN ] =  tl_tab[ x*2+0 ]>>i;
-      tl_tab[ x*2+1 + i*2*TL_RES_LEN ] = -tl_tab[ x*2+0 + i*2*TL_RES_LEN ];
-    }
+    // for (i=1; i<13; i++)
+    // {
+    //   tl_tab[ x*2+0 + i*2*TL_RES_LEN ] =  tl_tab[ x*2+0 ]>>i;
+    //   tl_tab[ x*2+1 + i*2*TL_RES_LEN ] = -tl_tab[ x*2+0 + i*2*TL_RES_LEN ];
+    // }
   }
 
 # define M_PI		3.14159265358979323846	/* pi */
@@ -1887,9 +1887,6 @@ static void init_tables(void)
   }
 
   /* build LFO PM modulation table */
-  lfo_pm_table = calloc(128*8*16, sizeof(*lfo_pm_table));
-  assert(lfo_pm_table != NULL);
-  
   for(i = 0; i < 8; i++) /* 8 PM depths */
   {
     UINT8 fnum;
@@ -2160,7 +2157,7 @@ void YM2612Update(int16_t *buffer, int length)
     out_fm[5] =__SSAT(out_fm[5], 14);
 
 #endif
-    
+
     /* stereo DAC channels outputs mixing  */
     #if 0
     lt  = ((out_fm[0]) & ym2612.OPN.pan[0]);

@@ -10,7 +10,7 @@
 
 uint8_t *ROM_DATA;
 size_t ROM_DATA_LENGTH;
-uint8_t emulator_framebuffer[1024*64];
+unsigned char *VRAM;
 unsigned int scan_line;
 uint64_t m68k_clock;
 
@@ -106,6 +106,8 @@ void app_main(void)
 
     yfm_enabled = rg_settings_get_number(NS_APP, SETTING_YFM_EMULATION, 1);
     z80_enabled = rg_settings_get_number(NS_APP, SETTING_Z80_EMULATION, 1);
+
+    VRAM = rg_alloc(VRAM_MAX_SIZE, MEM_FAST);
 
     updates[0].buffer = rg_alloc(320 * 240 * 2, MEM_FAST);
     updates[1].buffer = rg_alloc(320 * 240 * 2, MEM_FAST);

@@ -38,9 +38,10 @@ __license__ = "GPLv3"
 #ifdef _HOST_
     unsigned char VRAM[VRAM_MAX_SIZE];
 #else
-    extern uint8_t emulator_framebuffer[1024*64];
-    unsigned char* VRAM = &emulator_framebuffer[0];
+    //extern uint8_t emulator_framebuffer[1024*64];
+    //unsigned char* VRAM = &emulator_framebuffer[0];
     //unsigned char VRAM[VRAM_MAX_SIZE] __attribute__((section("._dtcram")));
+    extern unsigned char *VRAM;
 #endif
 
 unsigned short CRAM[CRAM_MAX_SIZE];
