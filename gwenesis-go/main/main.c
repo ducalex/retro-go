@@ -1,3 +1,7 @@
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <freertos/queue.h>
+#include <freertos/semphr.h>
 #include <rg_system.h>
 
 /* Gwenesis Emulator */
@@ -23,6 +27,9 @@ static rg_video_update_t updates[2];
 static rg_video_update_t *currentUpdate = &updates[0];
 
 static rg_app_t *app;
+
+#define WAIT_FOR_Z80_RUN() while (uxQueueMessagesWaiting(sound_task_run));
+static QueueHandle_t sound_task_run;
 
 static bool yfm_enabled = true;
 static bool z80_enabled = true;
@@ -88,6 +95,52 @@ static bool reset_handler(bool hard)
     return true;
 }
 
+static void sound_task(void *arg)
+{
+    sound_task_run = xQueueCreate(1, sizeof(uint64_t));
+
+    uint64_t system_clock;
+    size_t audio_index = 0;
+
+    while (true)
+    {
+        xQueuePeek(sound_task_run, &system_clock, portMAX_DELAY);
+        z80_run(system_clock);
+        xQueueReceive(sound_task_run, &system_clock, portMAX_DELAY);
+
+        if (!yfm_enabled)
+            continue;
+
+        // This is essentially magic to get close enough. Not accurate at all.
+        size_t audio_step = 3 + (scan_line & 1);
+        YM2612Update(&audioBuffer[audio_index * 2], audio_step);
+        audio_index += audio_step;
+
+        if (audio_index >= AUDIO_BUFFER_LENGTH - 4)
+        {
+            rg_audio_submit(audioBuffer, audio_index);
+            audio_index = 0;
+        }
+    }
+
+    vQueueDelete(sound_task_run);
+    sound_task_run = NULL;
+
+    vTaskDelete(NULL);
+}
+
+#if 0
+void z80_sync(void)
+{
+    uint64_t target = m68k_cycles_run() * M68K_FREQ_DIVISOR + m68k_clock;
+    extern uint64_t zclk;
+    if (zclk >= target)
+        return;
+    // WAIT_FOR_Z80_RUN(); // m68k_run might call z80_sync, we don't want to conflict
+    z80_run(target);
+}
+#endif
+
 void app_main(void)
 {
     const rg_handlers_t handlers = {
@@ -111,6 +164,8 @@ void app_main(void)
 
     updates[0].buffer = rg_alloc(320 * 240 * 2, MEM_FAST);
     updates[1].buffer = rg_alloc(320 * 240 * 2, MEM_FAST);
+
+    xTaskCreatePinnedToCore(&sound_task, "gen_sound", 2048, NULL, 7, NULL, 1);
 
     RG_LOGI("Genesis start\n");
 
@@ -136,11 +191,8 @@ void app_main(void)
     extern unsigned int screen_width, screen_height;
     extern int mode_pal;
     extern int hint_pending;
-    extern uint64_t zclk;
 
     uint32_t keymap[8] = {RG_KEY_UP, RG_KEY_DOWN, RG_KEY_LEFT, RG_KEY_RIGHT, RG_KEY_A, RG_KEY_B, RG_KEY_SELECT, RG_KEY_START};
-    uint32_t samples_per_frame = AUDIO_SAMPLE_RATE / 60;
-    uint32_t samples_per_line = AUDIO_SAMPLE_RATE / 60 / 262;
     uint32_t joystick = 0, joystick_old;
     uint64_t system_clock = 0;
     uint32_t frames = 0;
@@ -185,7 +237,6 @@ void app_main(void)
         bool drawFrame = (frames++ & 3) == 3;
 
         int hint_counter = gwenesis_vdp_regs[10];
-        int audio_index = 0;
 
         screen_width = REG12_MODE_H40 ? 320 : 256;
         screen_height = 224;
@@ -193,27 +244,16 @@ void app_main(void)
         gwenesis_vdp_set_buffer(currentUpdate->buffer + (320 - screen_width)); // / 2 * 2
         gwenesis_vdp_render_config();
 
-        if (!z80_enabled) // This will prevent z80_run/z80_sync from doing anything
-            zclk = system_clock + 262 * VDP_CYCLES_PER_LINE;
-
-        if (!yfm_enabled)
-            audio_index = samples_per_frame;
-
         for (scan_line = 0; scan_line < 262; scan_line++)
         {
-            m68k_run(system_clock + VDP_CYCLES_PER_LINE);
-            z80_run(system_clock + VDP_CYCLES_PER_LINE);
+            system_clock += VDP_CYCLES_PER_LINE;
+
+            WAIT_FOR_Z80_RUN(); // m68k_run might call z80_sync, we don't want to conflict
+            m68k_run(system_clock);
+            xQueueSend(sound_task_run, &system_clock, portMAX_DELAY);
 
             if (drawFrame && scan_line < screen_height)
                 gwenesis_vdp_render_line(scan_line);
-
-            // This is essentially magic to get close enough. Not accurate at all.
-            if (audio_index < samples_per_frame)
-            {
-                int audio_step = (scan_line & 1) ? 4 : 3;
-                YM2612Update(&audioBuffer[audio_index * 2], audio_step);
-                audio_index += audio_step;
-            }
 
             // On these lines, the line counter interrupt is reloaded
             if ((scan_line == 0) || (scan_line > screen_height))
@@ -239,14 +279,14 @@ void app_main(void)
                     gwenesis_vdp_status |= STATUS_VIRQPENDING;
                     m68k_set_irq(6);
                 }
+                WAIT_FOR_Z80_RUN();
                 z80_irq_line(1);
             }
             else if (scan_line == screen_height)
             {
+                WAIT_FOR_Z80_RUN();
                 z80_irq_line(0);
             }
-
-            system_clock += VDP_CYCLES_PER_LINE;
         }
 
         if (drawFrame)
@@ -258,8 +298,5 @@ void app_main(void)
 
         int elapsed = get_elapsed_time_since(startTime);
         rg_system_tick(elapsed);
-
-        if (yfm_enabled)
-            rg_audio_submit(audioBuffer, audio_index);
     }
 }
