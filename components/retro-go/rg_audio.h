@@ -16,18 +16,24 @@ typedef struct
     rg_sink_type_t type;
     uint32_t device;
     const char *name;
-} rg_sink_t;
+} rg_audio_sink_t;
+
+typedef struct __attribute__((packed))
+{
+    int16_t left;
+    int16_t right;
+} rg_audio_sample_t;
 
 void rg_audio_init(int sampleRate);
 void rg_audio_deinit(void);
-void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount);
+void rg_audio_submit(rg_audio_sample_t *samples, size_t count);
 
-const rg_sink_t *rg_audio_get_sinks(size_t *count);
-const rg_sink_t *rg_audio_get_sink(void);
+const rg_audio_sink_t *rg_audio_get_sinks(size_t *count);
+const rg_audio_sink_t *rg_audio_get_sink(void);
 void rg_audio_set_sink(rg_sink_type_t sink);
 
 int  rg_audio_get_volume(void);
 void rg_audio_set_volume(int percent);
 void rg_audio_set_mute(bool mute);
-int  rg_audio_get_sample_rate(int sampleRate);
+int  rg_audio_get_sample_rate(void);
 void rg_audio_set_sample_rate(int sampleRate);

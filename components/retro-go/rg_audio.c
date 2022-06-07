@@ -20,7 +20,7 @@ static bool audioMuted = false;
 static SemaphoreHandle_t audioDevLock;
 static int64_t dummyBusyUntil = 0;
 
-static const rg_sink_t sinks[] = {
+static const rg_audio_sink_t sinks[] = {
     {RG_AUDIO_SINK_DUMMY,   0, "Dummy"},
 #if RG_AUDIO_USE_SPEAKER
     {RG_AUDIO_SINK_I2S_DAC, 0, "Speaker"},
@@ -168,15 +168,14 @@ void rg_audio_deinit(void)
     RELEASE_DEVICE();
 }
 
-static inline void filter_samples(short *samples, size_t count)
+static inline void filter_samples(rg_audio_sample_t *samples, size_t count)
 {
 
 }
 
-void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
+void rg_audio_submit(rg_audio_sample_t *samples, size_t count)
 {
-    size_t sampleCount = frameCount * 2;
-    size_t bufferSize = sampleCount * sizeof(*stereoAudioBuffer);
+    size_t bufferSize = count * sizeof(rg_audio_sample_t);
     size_t written = 0;
     float volume = audioVolume * 0.01f;
 
@@ -194,72 +193,74 @@ void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
     }
     else if (audioFilter)
     {
-        filter_samples(stereoAudioBuffer, bufferSize);
+        filter_samples(samples, count);
     }
 
     if (audioSink == RG_AUDIO_SINK_DUMMY)
     {
         usleep(RG_MAX(dummyBusyUntil - rg_system_timer(), 1000));
-        dummyBusyUntil = rg_system_timer() + ((audioSampleRate * 1000) / sampleCount);
+        dummyBusyUntil = rg_system_timer() + ((audioSampleRate * 1000) / count);
         written = bufferSize;
     }
     else if (audioSink == RG_AUDIO_SINK_I2S_DAC)
     {
         // In speaker mode we use dac left and right as a single channel
         // to increase resolution.
-        float multiplier = (127 + 127) * volume;
-        for (size_t i = 0; i < sampleCount; i += 2)
+        float multiplier = ((127.f + 127.f) * volume) / 0x8000;
+        for (size_t i = 0; i < count; ++i)
         {
-            // Down mix stereo to mono
-            int sample = (stereoAudioBuffer[i] + stereoAudioBuffer[i + 1]) >> 1;
-
-            // Scale
-            int range = (float)sample / 0x8000 * multiplier;
-            int dac0, dac1;
+            int range = ((samples[i].left + samples[i].right) >> 1) * multiplier;
+            int dac0 = -0x80;
+            int dac1 = 0x80;
 
             // Convert to differential output
             if (range > 127)
             {
-                dac1 = (range - 127);
-                dac0 = 127;
+                dac1 += (range - 127);
+                dac0 += 127;
             }
             else if (range < -127)
             {
-                dac1 = (range + 127);
-                dac0 = -127;
+                dac1 += (range + 127);
+                dac0 += -127;
             }
             else
             {
-                dac1 = 0;
-                dac0 = range;
+                dac1 += 0;
+                dac0 += range;
             }
 
             // Push the differential output in the upper byte of each channel
-            stereoAudioBuffer[i + 0] = ((dac1 - 0x80) << 8);
-            stereoAudioBuffer[i + 1] = ((dac0 + 0x80) << 8);
+            samples[i] = (rg_audio_sample_t){dac1 << 8, dac0 << 8};
         }
-        i2s_write(I2S_NUM_0, stereoAudioBuffer, bufferSize, &written, 1000);
+        i2s_write(I2S_NUM_0, samples, bufferSize, &written, 1000);
     }
     else if (audioSink == RG_AUDIO_SINK_I2S_EXT)
     {
-        for (size_t i = 0; i < sampleCount; ++i)
+        for (size_t i = 0; i < count; ++i)
         {
-            int sample = stereoAudioBuffer[i] * volume;
+            int left = samples[i].left * volume;
+            int right = samples[i].right * volume;
 
             // Attenuate because it's too loud on some devices
             #ifdef RG_TARGET_MRGC_G32
-            sample >>= 1;
+            left >>= 1;
+            right >>= 1;
             #endif
 
             // Clip
-            if (sample > 32767)
-                sample = 32767;
-            else if (sample < -32768)
-                sample = -32767;
+            if (left > 32767)
+                left = 32767;
+            else if (left < -32768)
+                left = -32767;
+            if (right > 32767)
+                right = 32767;
+            else if (right < -32768)
+                right = -32767;
 
-            stereoAudioBuffer[i] = sample;
+            samples[i] = (rg_audio_sample_t){left, right};
         }
-        i2s_write(I2S_NUM_0, stereoAudioBuffer, bufferSize, &written, 1000);
+        i2s_write(I2S_NUM_0, samples, bufferSize, &written, 1000);
     }
 
     if (written < bufferSize)
@@ -270,13 +271,13 @@ void rg_audio_submit(int16_t *stereoAudioBuffer, size_t frameCount)
     RELEASE_DEVICE();
 }
 
-const rg_sink_t *rg_audio_get_sinks(size_t *count)
+const rg_audio_sink_t *rg_audio_get_sinks(size_t *count)
 {
     if (count) *count = RG_COUNT(sinks);
     return sinks;
 }
 
-const rg_sink_t *rg_audio_get_sink(void)
+const rg_audio_sink_t *rg_audio_get_sink(void)
 {
     for (size_t i = 0; i < RG_COUNT(sinks); ++i)
         if (sinks[i].type == audioSink)
@@ -320,7 +321,7 @@ void rg_audio_set_mute(bool mute)
     RELEASE_DEVICE();
 }
 
-int rg_audio_get_sample_rate(int sampleRate)
+int rg_audio_get_sample_rate(void)
 {
     return audioSampleRate;
 }

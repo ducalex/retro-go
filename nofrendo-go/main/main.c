@@ -377,7 +377,7 @@ void app_main(void)
         rg_system_tick(elapsed);
 
         // Audio is used to pace emulation :)
-        rg_audio_submit(nes->apu->buffer, nes->apu->samples_per_frame);
+        rg_audio_submit((void*)nes->apu->buffer, nes->apu->samples_per_frame);
     }
 
     RG_PANIC("Nofrendo died!");

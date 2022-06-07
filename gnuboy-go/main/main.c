@@ -371,6 +371,6 @@ void app_main(void)
         rg_system_tick(elapsed);
 
         // Audio is used to pace emulation :)
-        rg_audio_submit(host.snd.buffer, host.snd.pos >> 1);
+        rg_audio_submit((void*)host.snd.buffer, host.snd.pos >> 1);
     }
 }

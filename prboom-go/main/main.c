@@ -79,7 +79,7 @@ typedef struct {
 
 static channel_t channels[NUM_MIX_CHANNELS];
 static const doom_sfx_t *sfx[NUMSFX];
-static short mixbuffer[AUDIO_BUFFER_LENGTH * 2];
+static rg_audio_sample_t mixbuffer[AUDIO_BUFFER_LENGTH];
 static const music_player_t *music_player = &opl_synth_player;
 static bool musicPlaying = false;
 
@@ -277,7 +277,7 @@ static void soundTask(void *arg)
 {
     while (1)
     {
-        short *audioBuffer = mixbuffer;
+        short *audioBuffer = (short *)mixbuffer;
         short *audioBufferEnd = audioBuffer + AUDIO_BUFFER_LENGTH * 2;
         short stream[2];
 

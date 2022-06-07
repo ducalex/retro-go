@@ -10,7 +10,7 @@ extern "C" {
 #define AUDIO_SAMPLE_RATE   (HANDY_AUDIO_SAMPLE_FREQ)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 40)
 
-static short audioBuffer[AUDIO_BUFFER_LENGTH * 2];
+static rg_audio_sample_t audioBuffer[AUDIO_BUFFER_LENGTH];
 
 static rg_video_update_t updates[2];
 static rg_video_update_t *currentUpdate = &updates[0];
@@ -266,7 +266,7 @@ extern "C" void app_main(void)
 
         rg_system_tick(elapsed);
 
-        rg_audio_submit(gAudioBuffer, gAudioBufferPointer >> 1);
+        rg_audio_submit(audioBuffer, gAudioBufferPointer >> 1);
         gAudioBufferPointer = 0;
     }
 }

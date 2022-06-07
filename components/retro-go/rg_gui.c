@@ -729,8 +729,8 @@ static rg_gui_event_t brightness_update_cb(rg_gui_option_t *option, rg_gui_event
 static rg_gui_event_t audio_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     size_t count = 0;
-    const rg_sink_t *sinks = rg_audio_get_sinks(&count);
-    const rg_sink_t *ssink = rg_audio_get_sink();
+    const rg_audio_sink_t *sinks = rg_audio_get_sinks(&count);
+    const rg_audio_sink_t *ssink = rg_audio_get_sink();
     int max = count - 1;
     int sink = 0;
 

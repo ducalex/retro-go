@@ -20,11 +20,7 @@
 #include <psg.h>
 
 #define AUDIO_SAMPLE_RATE 22050
-// #define AUDIO_BUFFER_LENGTH  (AUDIO_SAMPLE_RATE / 60)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 / 5)
-
-static int16_t audiobuffer[AUDIO_BUFFER_LENGTH * 4];
-static uint8_t *framebuffers[2];
 
 static int current_height = 0;
 static int current_width = 0;
@@ -32,7 +28,9 @@ static int overscan = false;
 static int downsample = false;
 static int skipFrames = 0;
 static int frameTime = get_frame_time(60);
+static uint8_t *framebuffers[2];
 
+static rg_audio_sample_t audiobuffer[AUDIO_BUFFER_LENGTH * 2];
 static rg_video_update_t updates[2];
 static rg_video_update_t *currentUpdate = &updates[0];
 static rg_app_t *app;
@@ -160,7 +158,7 @@ static void audioTask(void *arg)
 
     while (1)
     {
-        psg_update(audiobuffer, AUDIO_BUFFER_LENGTH, downsample);
+        psg_update((void*)audiobuffer, AUDIO_BUFFER_LENGTH, downsample);
         rg_audio_submit(audiobuffer, AUDIO_BUFFER_LENGTH);
     }
 

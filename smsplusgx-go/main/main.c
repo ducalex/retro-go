@@ -11,7 +11,7 @@
 #define GG_WIDTH 160
 #define GG_HEIGHT 144
 
-static int16_t audioBuffer[AUDIO_BUFFER_LENGTH * 2];
+static rg_audio_sample_t audioBuffer[AUDIO_BUFFER_LENGTH];
 
 static rg_video_update_t updates[2];
 static rg_video_update_t *currentUpdate = &updates[0];
@@ -324,8 +324,8 @@ void app_main(void)
         size_t length = snd.sample_count;
         for (size_t i = 0, out = 0; i < length; i++, out += 2)
         {
-            audioBuffer[out] = snd.stream[0][i] * 2.75f;
-            audioBuffer[out + 1] = snd.stream[1][i] * 2.75f;
+            audioBuffer[out].left = snd.stream[0][i] * 2.75f;
+            audioBuffer[out].right = snd.stream[1][i] * 2.75f;
         }
         rg_audio_submit(audioBuffer, length);
     }
