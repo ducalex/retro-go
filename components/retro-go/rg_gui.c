@@ -580,8 +580,9 @@ int rg_gui_dialog(const char *header, const rg_gui_option_t *options_const, int 
     // Constrain initial cursor and skip FLAG_SKIP items
     sel = RG_MIN(RG_MAX(0, sel), options_count - 1);
 
-    rg_input_wait_for_key(RG_KEY_ALL, false);
     rg_gui_draw_dialog(header, options, sel);
+    rg_input_wait_for_key(RG_KEY_ALL, false);
+    usleep(100 * 1000UL);
 
     rg_gui_event_t event = RG_DIALOG_INIT;
     uint32_t joystick = 0, joystick_old;
@@ -864,8 +865,6 @@ static void draw_game_status_bars(void)
     else if (app->romPath)
         snprintf(footer, 100, "%s", app->romPath);
 
-    rg_input_wait_for_key(RG_KEY_ALL, false);
-
     rg_gui_draw_rect(0, 0, gui.screen_width, height, 0, 0, C_BLACK);
     rg_gui_draw_rect(0, -height, gui.screen_width, height, 0, 0, C_BLACK);
     rg_gui_draw_text(0, padding, gui.screen_width, header, C_LIGHT_GRAY, C_BLACK, 0);
@@ -909,7 +908,9 @@ int rg_gui_options_menu(void)
     *opt++ = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
 
     rg_audio_set_mute(true);
-    draw_game_status_bars();
+
+    if (!app->isLauncher)
+        draw_game_status_bars();
 
     int sel = rg_gui_dialog("Options", options, 0);
 
