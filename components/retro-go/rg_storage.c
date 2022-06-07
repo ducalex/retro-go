@@ -213,6 +213,7 @@ void rg_settings_commit(void)
 
 void rg_settings_reset(void)
 {
+    RG_LOGI("Clearing settings...\n");
     cJSON_Delete(config_root);
     config_root = cJSON_CreateObject();
     unsaved_changes++;

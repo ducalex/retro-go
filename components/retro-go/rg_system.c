@@ -276,13 +276,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     printf(" built for: %s. aud=%d disp=%d pad=%d sd=%d cfg=%d\n", RG_TARGET_NAME, 0, 0, 0, 0, 0);
     printf("========================================================\n\n");
 
-    #ifdef RG_GPIO_LED
-    gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
-    #endif
-    rg_system_set_led(0);
-
-    // Storage must be initialized first (SPI bus, settings, assets, etc)
-    rg_storage_init();
+    RG_LOGI("Welcome! Reset reason: %d\n", esp_reset_reason());
 
     app = (rg_app_t){
         .name = esp_app->project_name,
@@ -303,6 +297,14 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     };
     if (handlers)
         app.handlers = *handlers;
+
+    #ifdef RG_GPIO_LED
+    gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
+    #endif
+    rg_system_set_led(0);
+
+    // Storage must be initialized first (SPI bus, settings, assets, etc)
+    rg_storage_init();
 
     if (!app.isLauncher)
     {
@@ -341,6 +343,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
                 strcat(message, "\nLog saved to SD Card.");
         }
 
+        RG_LOGW("Aborting: panic!\n");
         rg_display_clear(C_BLUE);
         rg_gui_alert("System Panic!", message);
         rg_system_set_boot_app(RG_APP_LAUNCHER);
@@ -350,7 +353,8 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     // Force return to launcher on key held and clear settings if we're already in launcher
     if (rg_input_key_is_pressed(RG_KEY_UP|RG_KEY_DOWN|RG_KEY_LEFT|RG_KEY_RIGHT))
     {
-        if (app.isLauncher)
+        RG_LOGW("Aborting: key held down!\n");
+        if (rg_gui_confirm("Recovery", "Reset all settings?", false))
             rg_settings_reset();
         rg_system_set_boot_app(RG_APP_LAUNCHER);
         rg_system_restart();
@@ -359,6 +363,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     // Show alert if storage isn't available
     if (!rg_storage_ready())
     {
+        RG_LOGW("Aborting: storage unavailable!\n");
         rg_display_clear(C_SKY_BLUE);
         rg_gui_alert("SD Card Error", "Mount failed."); // esp_err_to_name(ret)
         rg_system_set_boot_app(RG_APP_LAUNCHER);
@@ -697,6 +702,8 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
     rg_stats_t *stats = panic_trace ? &panicTrace.statistics : &statistics;
     rg_logbuf_t *log = panic_trace ? &panicTrace.log : &logbuf;
     RG_ASSERT(filename, "bad param");
+
+    RG_LOGI("Saving debug trace to '%s'...\n", filename);
 
     FILE *fp = fopen(filename, "w");
     if (fp)
