@@ -19,7 +19,7 @@ unsigned int scan_line;
 uint64_t m68k_clock;
 
 #define AUDIO_SAMPLE_RATE (53267)
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 1)
+#define AUDIO_BUFFER_LENGTH (512)
 
 static int16_t audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
@@ -32,10 +32,10 @@ static rg_app_t *app;
 static QueueHandle_t sound_task_run;
 
 static bool yfm_enabled = true;
-static bool z80_enabled = true;
+static bool yfm_resample = true;
 
 static const char *SETTING_YFM_EMULATION = "yfm_enable";
-static const char *SETTING_Z80_EMULATION = "z80_enable";
+static const char *SETTING_YFM_RESAMPLE = "sampling";
 // --- MAIN
 
 
@@ -61,14 +61,15 @@ static rg_gui_event_t yfm_update_cb(rg_gui_option_t *option, rg_gui_event_t even
     return RG_DIALOG_VOID;
 }
 
-static rg_gui_event_t z80_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
+static rg_gui_event_t sampling_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
-        z80_enabled = !z80_enabled;
-        rg_settings_set_number(NS_APP, SETTING_Z80_EMULATION, z80_enabled);
+        yfm_resample = !yfm_resample;
+        rg_settings_set_number(NS_APP, SETTING_YFM_RESAMPLE, yfm_resample);
+        rg_audio_set_sample_rate(yfm_resample ? 26634 : 53267);
     }
-    strcpy(option->value, z80_enabled ? "On " : "Off");
+    strcpy(option->value, yfm_resample ? "On " : "Off");
 
     return RG_DIALOG_VOID;
 }
@@ -116,10 +117,31 @@ static void sound_task(void *arg)
         YM2612Update(&audioBuffer[audio_index * 2], audio_step);
         audio_index += audio_step;
 
-        if (audio_index >= AUDIO_BUFFER_LENGTH - 4)
+        // Submit at end of frame or whenever the buffer is full
+        if (scan_line == 261 || audio_index >= AUDIO_BUFFER_LENGTH - 4)
         {
+            int carry = 0;
+
+            if (yfm_resample > 0)
+            {
+                // Resampling deals with even number of samples, carry what's left
+                carry = (audio_index & 1) ? (audio_index - 1) : 0;
+                for (size_t i = 0; i < audio_index - 1; ++i)
+                {
+                    audioBuffer[i] = (audioBuffer[i*2] + audioBuffer[(i+1)*2]) >> 1;
+                }
+                audio_index >>= 1;
+            }
+
             rg_audio_submit(audioBuffer, audio_index);
             audio_index = 0;
+
+            if (carry)
+            {
+                audioBuffer[0] = audioBuffer[carry*2-1];
+                audioBuffer[1] = audioBuffer[carry*2-0];
+                audio_index = 1;
+            }
         }
     }
 
@@ -151,21 +173,22 @@ void app_main(void)
     };
     const rg_gui_option_t options[] = {
         {1, "YFM emulation", "On", 1, &yfm_update_cb},
-        {2, "Z80 emulation", "On", 1, &z80_update_cb},
+        {2, "Down sampling", "On", 1, &sampling_update_cb},
         RG_DIALOG_CHOICE_LAST
     };
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
 
     yfm_enabled = rg_settings_get_number(NS_APP, SETTING_YFM_EMULATION, 1);
-    z80_enabled = rg_settings_get_number(NS_APP, SETTING_Z80_EMULATION, 1);
+    yfm_resample = rg_settings_get_number(NS_APP, SETTING_YFM_RESAMPLE, 1);
 
     VRAM = rg_alloc(VRAM_MAX_SIZE, MEM_FAST);
 
     updates[0].buffer = rg_alloc(320 * 240 * 2, MEM_FAST);
-    updates[1].buffer = rg_alloc(320 * 240 * 2, MEM_FAST);
+    // updates[1].buffer = rg_alloc(320 * 240 * 2, MEM_FAST);
 
     xTaskCreatePinnedToCore(&sound_task, "gen_sound", 2048, NULL, 7, NULL, 1);
+    rg_audio_set_sample_rate(yfm_resample ? 26634 : 53267);
 
     RG_LOGI("Genesis start\n");
 
@@ -291,9 +314,9 @@ void app_main(void)
 
         if (drawFrame)
         {
-            rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
+            // rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
             rg_display_queue_update(currentUpdate, NULL);
-            currentUpdate = previousUpdate;
+            // currentUpdate = previousUpdate;
         }
 
         int elapsed = get_elapsed_time_since(startTime);
