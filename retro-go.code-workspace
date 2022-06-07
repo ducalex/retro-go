@@ -7,6 +7,9 @@
 			"path": "gnuboy-go"
 		},
 		{
+			"path": "gwenesis-go"
+		},
+		{
 			"path": "handy-go"
 		},
 		{
@@ -66,6 +69,7 @@
 			"espressif",
 			"gnuboy",
 			"GPIO",
+			"gwenesis",
 			"IRAM",
 			"mkfw",
 			"mkimg",

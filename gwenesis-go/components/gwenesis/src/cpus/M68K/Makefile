@@ -1,0 +1,53 @@
+# Just a basic makefile to quickly test that everyting is working, it just
+# compiles the .o and the generator
+
+MUSASHIFILES     = m68kcpu.c m68kdasm.c softfloat/softfloat.c
+
+MUSASHIGENCFILES = m68kops.c
+MUSASHIGENHFILES = m68kops.h
+
+MUSASHIOPGENFILE = m68kinst.c
+
+MUSASHIGENERATOR = m68kmake
+MUSASHIOPCODEGEN = m68kops_gen
+
+EXE =
+EXEPATH = ./
+
+.CFILES   = $(MAINFILES) $(OSDFILES) $(MUSASHIFILES) $(MUSASHIGENCFILES)
+.OFILES   = $(.CFILES:%.c=%.o)
+
+CC        = $(GCC_PATH)arm-none-eabi-gcc
+CCHOST    = gcc
+WARNINGS  = -Wall -Wextra -pedantic
+CFLAGS    = $(WARNINGS)
+LFLAGS    = $(WARNINGS)
+
+DELETEFILES = $(MUSASHIGENCFILES) $(MUSASHIGENHFILES) $(.OFILES) $(TARGET) $(MUSASHIGENERATOR)$(EXE) $(MUSASHIOPCODEGEN)$(EXE) $(MUSASHIOPCODEGEN).c
+
+
+all: $(.OFILES)
+
+clean:
+	rm -f $(DELETEFILES)
+
+m68kcpu.o: $(MUSASHIGENHFILES) m68kfpu.c m68kmmu.h softfloat/softfloat.c softfloat/softfloat.h
+
+$(MUSASHIGENCFILES) $(MUSASHIGENHFILES): $(MUSASHIGENERATOR)$(EXE)
+	$(EXEPATH)$(MUSASHIGENERATOR)$(EXE)
+
+$(MUSASHIGENERATOR)$(EXE):  $(MUSASHIGENERATOR).c
+	$(CCHOST) -o  $(MUSASHIGENERATOR)$(EXE)  $(MUSASHIGENERATOR).c
+
+# Constant jump table generation
+$(MUSASHIOPCODEGEN).c: $(MUSASHIGENERATOR)$(EXE)
+	$(EXEPATH)$(MUSASHIGENERATOR)$(EXE) --constant
+
+$(MUSASHIOPCODEGEN)$(EXE):  $(MUSASHIOPCODEGEN).c
+	$(CCHOST) -o  $(MUSASHIOPCODEGEN)$(EXE)  $(MUSASHIOPCODEGEN).c
+
+constant: $(MUSASHIOPCODEGEN)$(EXE)
+	$(EXEPATH)$(MUSASHIOPCODEGEN)$(EXE) 
+	rm -r $(MUSASHIOPCODEGEN).c $(MUSASHIOPCODEGEN)$(EXE) 
+
+	
