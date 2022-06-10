@@ -28,14 +28,6 @@ void rg_storage_commit(void);
 void rg_storage_set_activity_led(bool enable);
 bool rg_storage_get_activity_led(void);
 
-void rg_settings_commit(void);
-void rg_settings_reset(void);
-double rg_settings_get_number(const char *section, const char *key, double default_value);
-void rg_settings_set_number(const char *section, const char *key, double value);
-void rg_settings_set_string(const char *section, const char *key, const char *value);
-char*rg_settings_get_string(const char *section, const char *key, const char *default_value);
-void rg_settings_delete(const char *section, const char *key);
-
 bool rg_mkdir(const char *dir);
 const char *rg_dirname(const char *path);
 const char *rg_basename(const char *path);

@@ -6,13 +6,9 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
-#include <cJSON.h>
 
 #include "rg_system.h"
 
-static const char *config_file_path = RG_BASE_PATH_CONFIG "/retro-go.json";
-static cJSON *config_root = NULL;
-static int unsaved_changes = 0;
 static esp_err_t sdcard_mount = ESP_FAIL;
 static bool disk_led = true;
 
@@ -102,30 +98,9 @@ void rg_storage_init(void)
     else
         RG_LOGE("SD Card mounting failed. driver=%d, err=0x%x\n", RG_STORAGE_DRIVER, sdcard_mount);
 
-    // Now we can load settings from SD Card
-    FILE *fp = fopen(config_file_path, "rb");
-    if (fp)
-    {
-        fseek(fp, 0, SEEK_END);
-        long length = ftell(fp);
-        fseek(fp, 0, SEEK_SET);
-        char *buffer = calloc(1, length + 1);
-        if (fread(buffer, 1, length, fp))
-            config_root = cJSON_Parse(buffer);
-        free(buffer);
-        fclose(fp);
-    }
+    rg_settings_init();
 
-    if (config_root)
-    {
-        RG_LOGI("Settings loaded from %s.\n", config_file_path);
-        disk_led = rg_settings_get_number(NS_GLOBAL, SETTING_DISK_ACTIVITY, 1);
-    }
-    else
-    {
-        RG_LOGW("Failed to load settings from %s.\n", config_file_path);
-        config_root = cJSON_CreateObject();
-    }
+    disk_led = rg_settings_get_number(NS_GLOBAL, SETTING_DISK_ACTIVITY, 1);
 }
 
 void rg_storage_deinit(void)
@@ -152,137 +127,8 @@ void rg_storage_commit(void)
 {
     // This shouldn't be done here, but changing it affects too many files right now...
     rg_settings_commit();
-
     // flush buffers();
 }
-
-
-static cJSON *json_root(const char *name)
-{
-    RG_ASSERT(config_root, "json_root called before settings were initialized!");
-
-    cJSON *myroot;
-
-    if (!name)
-    {
-        myroot = config_root;
-    }
-    else if (!(myroot = cJSON_GetObjectItem(config_root, name)))
-    {
-        myroot = cJSON_AddObjectToObject(config_root, name);
-    }
-    else if (!cJSON_IsObject(myroot))
-    {
-        myroot = cJSON_CreateObject();
-        cJSON_ReplaceItemInObject(config_root, name, myroot);
-    }
-
-    return myroot;
-}
-
-void rg_settings_commit(void)
-{
-    if (!unsaved_changes)
-        return;
-
-    RG_LOGI("Saving %d change(s)...\n", unsaved_changes);
-
-    char *buffer = cJSON_Print(config_root);
-    if (!buffer)
-    {
-        RG_LOGE("cJSON_Print() failed.\n");
-        return;
-    }
-
-    FILE *fp = fopen(config_file_path, "wb");
-    if (!fp)
-    {
-        if (unlink(config_file_path) == -1)
-            rg_mkdir(rg_dirname(config_file_path));
-        fp = fopen(config_file_path, "wb");
-    }
-    if (fp)
-    {
-        if (fputs(buffer, fp) >= 0)
-            unsaved_changes = 0;
-        fclose(fp);
-    }
-
-    cJSON_free(buffer);
-}
-
-void rg_settings_reset(void)
-{
-    RG_LOGI("Clearing settings...\n");
-    cJSON_Delete(config_root);
-    config_root = cJSON_CreateObject();
-    unsaved_changes++;
-    rg_storage_commit();
-}
-
-double rg_settings_get_number(const char *section, const char *key, double default_value)
-{
-    cJSON *obj = cJSON_GetObjectItem(json_root(section), key);
-    return obj ? obj->valuedouble : default_value;
-}
-
-void rg_settings_set_number(const char *section, const char *key, double value)
-{
-    cJSON *root = json_root(section);
-    cJSON *obj = cJSON_GetObjectItem(root, key);
-
-    if (!cJSON_IsNumber(obj))
-    {
-        cJSON_Delete(cJSON_DetachItemViaPointer(root, obj));
-        cJSON_AddNumberToObject(root, key, value);
-        unsaved_changes++;
-    }
-    else if (obj->valuedouble != value)
-    {
-        cJSON_SetNumberHelper(obj, value);
-        unsaved_changes++;
-    }
-}
-
-char *rg_settings_get_string(const char *section, const char *key, const char *default_value)
-{
-    cJSON *obj = cJSON_GetObjectItem(json_root(section), key);
-    if (cJSON_IsString(obj))
-        return strdup(obj->valuestring);
-    return default_value ? strdup(default_value) : NULL;
-}
-
-void rg_settings_set_string(const char *section, const char *key, const char *value)
-{
-    cJSON *root = json_root(section);
-    cJSON *obj = cJSON_GetObjectItem(root, key);
-    cJSON *newobj = value ? cJSON_CreateString(value) : cJSON_CreateNull();
-
-    if (obj == NULL)
-    {
-        cJSON_AddItemToObject(root, key, newobj);
-        unsaved_changes++;
-    }
-    else if (!cJSON_Compare(obj, newobj, true))
-    {
-        cJSON_ReplaceItemInObject(root, key, newobj);
-        unsaved_changes++;
-    }
-    else
-    {
-        cJSON_Delete(newobj);
-    }
-}
-
-void rg_settings_delete(const char *section, const char *key)
-{
-    if (key)
-        cJSON_DeleteItemFromObject(json_root(section), key);
-    else
-        cJSON_DeleteItemFromObject(config_root, section);
-    unsaved_changes++;
-}
-
 
 bool rg_mkdir(const char *dir)
 {
