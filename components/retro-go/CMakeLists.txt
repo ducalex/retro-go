@@ -1,5 +1,5 @@
-set(COMPONENT_SRCDIRS ". fonts")
-set(COMPONENT_ADD_INCLUDEDIRS ".")
+set(COMPONENT_SRCDIRS ". fonts netplay")
+set(COMPONENT_ADD_INCLUDEDIRS ". netplay")
 set(COMPONENT_REQUIRES "spi_flash fatfs app_update esp_adc_cal esp32 json")
 register_component()
 
