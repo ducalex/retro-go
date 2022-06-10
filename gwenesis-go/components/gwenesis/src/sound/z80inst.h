@@ -34,6 +34,9 @@ unsigned int z80_read_memory_16(unsigned int address);
 unsigned int z80_read_memory_8(unsigned int address);
 void z80_irq_line(unsigned int value);
 
+void gwenesis_z80inst_save_state();
+void gwenesis_z80inst_load_state();
+
 #ifdef _HOST_
 static const char *Mnemonics[256] =
 {

@@ -3,6 +3,7 @@
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
 #include <rg_system.h>
+#include <stdio.h>
 
 /* Gwenesis Emulator */
 #include "m68k.h"
@@ -11,15 +12,16 @@
 #include "gwenesis_bus.h"
 #include "gwenesis_io.h"
 #include "gwenesis_vdp.h"
+#include "gwenesis_savestate.h"
 
-uint8_t *ROM_DATA;
+const unsigned char *ROM_DATA;
 size_t ROM_DATA_LENGTH;
 unsigned char *VRAM;
 unsigned int scan_line;
 uint64_t m68k_clock;
 
 #define AUDIO_SAMPLE_RATE (53267)
-#define AUDIO_BUFFER_LENGTH (512)
+#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 120 + 1)
 
 static int16_t audioBuffer[AUDIO_BUFFER_LENGTH * 2];
 
@@ -34,20 +36,82 @@ static QueueHandle_t sound_task_run;
 static bool yfm_enabled = true;
 static bool yfm_resample = true;
 
+static FILE *savestate_fp = NULL;
+
 static const char *SETTING_YFM_EMULATION = "yfm_enable";
 static const char *SETTING_YFM_RESAMPLE = "sampling";
 // --- MAIN
 
+typedef struct {
+    char key[28];
+    uint32_t length;
+} svar_t;
+
+SaveState* saveGwenesisStateOpenForRead(const char* fileName)
+{
+    return (void*)1;
+}
+
+SaveState* saveGwenesisStateOpenForWrite(const char* fileName)
+{
+    return (void*)1;
+}
+
+int saveGwenesisStateGet(SaveState* state, const char* tagName)
+{
+    int value = 0;
+    saveGwenesisStateGetBuffer(state, tagName, &value, sizeof(int));
+    return value;
+}
+
+void saveGwenesisStateSet(SaveState* state, const char* tagName, int value)
+{
+    saveGwenesisStateSetBuffer(state, tagName, &value, sizeof(int));
+}
+
+void saveGwenesisStateGetBuffer(SaveState* state, const char* tagName, void* buffer, int length)
+{
+    size_t initial_pos = ftell(savestate_fp);
+    svar_t var;
+
+    // Odds are that calls to this func will be in order, so try searching from current file position.
+    while (true)
+    {
+        if (!fread(&var, sizeof(var), 1, savestate_fp))
+        {
+            if (initial_pos != 0)
+            {
+                fseek(savestate_fp, SEEK_SET, 0);
+                initial_pos = 0;
+                continue;
+            }
+            break;
+        }
+        if (strncmp(var.key, tagName, sizeof(var.key)) == 0)
+        {
+            fread(buffer, RG_MIN(var.length, length), 1, savestate_fp);
+            RG_LOGI("Loaded key '%s'\n", tagName);
+            return;
+        }
+        fseek(savestate_fp, var.length, SEEK_CUR);
+    }
+    RG_LOGI("Key %s NOT FOUND!\n", tagName);
+}
+
+void saveGwenesisStateSetBuffer(SaveState* state, const char* tagName, void* buffer, int length)
+{
+    // TO DO: seek the file to find if the key already exists. It's possible it could be written twice.
+    svar_t var = {{0}, length};
+    strncpy(var.key, tagName, sizeof(var.key) - 1);
+    fwrite(&var, sizeof(var), 1, savestate_fp);
+    fwrite(buffer, length, 1, savestate_fp);
+    RG_LOGI("Saved key '%s'\n", tagName);
+}
 
 void gwenesis_io_get_buttons()
 {
 }
 
-static inline void m68k_run(uint64_t target)
-{
-    m68k_execute((target - m68k_clock) / M68K_FREQ_DIVISOR);
-    m68k_clock = target;
-}
 
 static rg_gui_event_t yfm_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
@@ -81,11 +145,23 @@ static bool screenshot_handler(const char *filename, int width, int height)
 
 static bool save_state_handler(const char *filename)
 {
+    if ((savestate_fp = fopen(filename, "wb")))
+    {
+        gwenesis_save_state();
+        fclose(savestate_fp);
+        return true;
+    }
     return false;
 }
 
 static bool load_state_handler(const char *filename)
 {
+    if ((savestate_fp = fopen(filename, "rb")))
+    {
+        gwenesis_load_state();
+        fclose(savestate_fp);
+        return true;
+    }
     reset_emulation();
     return false;
 }
@@ -133,7 +209,7 @@ static void sound_task(void *arg)
                 audio_index >>= 1;
             }
 
-            rg_audio_submit(audioBuffer, audio_index);
+            rg_audio_submit((void*)audioBuffer, audio_index);
             audio_index = 0;
 
             if (carry)
@@ -195,13 +271,14 @@ void app_main(void)
     FILE *fp = fopen(app->romPath, "rb");
     if (fp)
     {
-        ROM_DATA = rg_alloc(0x300000, MEM_SLOW);
-        ROM_DATA_LENGTH = fread(ROM_DATA, 1, 0x300000, fp);
+        uint8_t *buffer = rg_alloc(0x300000, MEM_SLOW);
+        ROM_DATA = buffer;
+        ROM_DATA_LENGTH = fread(buffer, 1, 0x300000, fp);
         for (size_t i = 0; i < ROM_DATA_LENGTH; i += 2)
         {
-            char z = ROM_DATA[i];
-            ROM_DATA[i] = ROM_DATA[i + 1];
-            ROM_DATA[i + 1] = z;
+            uint8_t z = buffer[i];
+            buffer[i] = buffer[i + 1];
+            buffer[i + 1] = z;
         }
         fclose(fp);
         RG_LOGI("ROM SIZE = %d\n", ROM_DATA_LENGTH);
@@ -228,6 +305,11 @@ void app_main(void)
 
     RG_LOGI("reset_emulation()\n");
     reset_emulation();
+
+    if (app->bootFlags & RG_BOOT_RESUME)
+    {
+        rg_emu_load_state(0);
+    }
 
     RG_LOGI("rg_display_set_source_format()\n");
     rg_display_set_source_format(320, mode_pal ? 240 : 224, 0, 0, 320 * 2, RG_PIXEL_565_LE);
@@ -272,7 +354,8 @@ void app_main(void)
             system_clock += VDP_CYCLES_PER_LINE;
 
             WAIT_FOR_Z80_RUN(); // m68k_run might call z80_sync, we don't want to conflict
-            m68k_run(system_clock);
+            m68k_execute((system_clock - m68k_clock) / M68K_FREQ_DIVISOR);
+            m68k_clock = system_clock;
             xQueueSend(sound_task_run, &system_clock, portMAX_DELAY);
 
             if (drawFrame && scan_line < screen_height)

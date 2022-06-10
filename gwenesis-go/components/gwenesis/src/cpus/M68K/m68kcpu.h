@@ -1035,6 +1035,8 @@ char* m68ki_disassemble_quick(unsigned int pc, unsigned int cpu_type);
 /* =========================== UTILITY FUNCTIONS ========================== */
 /* ======================================================================== */
 
+void gwenesis_m68k_save_state();
+void gwenesis_m68k_load_state();
 
 /* ---------------------------- Read Immediate ---------------------------- */
 

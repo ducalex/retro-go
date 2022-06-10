@@ -147,4 +147,9 @@ void gwenesis_vdp_get_vram(unsigned char *raw_buffer, int palette);
 void gwenesis_vdp_get_vram_raw(unsigned char *raw_buffer);
 void gwenesis_vdp_get_cram_raw(unsigned char *raw_buffer);
 
+void gwenesis_vdp_gfx_save_state();
+void gwenesis_vdp_gfx_load_state();
+void gwenesis_vdp_mem_save_state();
+void gwenesis_vdp_mem_load_state();
+
 #endif

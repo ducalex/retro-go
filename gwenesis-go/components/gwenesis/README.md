@@ -5,4 +5,4 @@ You can find an example of instance for the device Game & Watch (Mario or Zelda)
 https://github.com/bzhxx/game-and-watch-retro-go
 
 # Info 
-This is a snapshot of https://github.com/bzhxx/gwenesis @ fe02566
+This is a snapshot of https://github.com/bzhxx/gwenesis @ 858ea15

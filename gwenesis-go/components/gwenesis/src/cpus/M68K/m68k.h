@@ -50,9 +50,7 @@ extern "C" {
 #ifdef _HOST_
 	extern unsigned char ROM_DATA[];
 #else
-//	extern const unsigned char* ROM_DATA;
-	extern unsigned char* ROM_DATA;
-
+	extern const unsigned char* ROM_DATA;
 #endif
 
 extern unsigned char M68K_RAM[];

@@ -21,10 +21,11 @@ __license__ = "GPLv3"
 #include <string.h>
 
 #include "gwenesis_io.h"
+#include "gwenesis_savestate.h"
 
 unsigned short button_state[3];
-unsigned short gwenesis_io_pad_state[3];
-unsigned char io_reg[16] = {0x80, 0x7f, 0x7f, 0x00, 0x7f, 0x7f, 0x40, 0xff, 0, 0, 0xff, 0, 0, 0xff, 0, 0}; /* initial state */
+static unsigned short gwenesis_io_pad_state[3];
+static unsigned char io_reg[16] = {0x80, 0x7f, 0x7f, 0x00, 0x7f, 0x7f, 0x40, 0xff, 0, 0, 0xff, 0, 0, 0xff, 0, 0}; /* initial state */
 
 void gwenesis_io_pad_press_button(int pad, int button)
 {
@@ -109,4 +110,19 @@ unsigned int gwenesis_io_read_ctrl(unsigned int address)
 void gwenesis_io_set_reg(unsigned int reg, unsigned int value) {
     io_reg[reg] = value;
     return;
+}
+
+void gwenesis_io_save_state() {
+    SaveState* state;
+    state = saveGwenesisStateOpenForWrite("io");
+    saveGwenesisStateSetBuffer(state, "button_state", button_state, sizeof(button_state));
+    saveGwenesisStateSetBuffer(state, "gwenesis_io_pad_state", gwenesis_io_pad_state, sizeof(gwenesis_io_pad_state));
+    saveGwenesisStateSetBuffer(state, "io_reg", io_reg, sizeof(io_reg));
+}
+
+void gwenesis_io_load_state() {
+    SaveState* state = saveGwenesisStateOpenForRead("io");
+    saveGwenesisStateGetBuffer(state, "button_state", button_state, sizeof(button_state));
+    saveGwenesisStateGetBuffer(state, "gwenesis_io_pad_state", gwenesis_io_pad_state, sizeof(gwenesis_io_pad_state));
+    saveGwenesisStateGetBuffer(state, "io_reg", io_reg, sizeof(io_reg));
 }

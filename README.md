@@ -5,8 +5,8 @@ have been heavily optimized to reduce their cpu, memory, and flash needs without
 compatibility!
 
 ### Supported systems:
-- Nintendo: **NES, Gameboy, Gameboy Color, SNES** (very slow)
-- Sega: **Master System, SG-1000, Game Gear**
+- Nintendo: **NES, SNES (slow), Gameboy, Gameboy Color**
+- Sega: **SG-1000, Master System, Mega Drive / Genesis, Game Gear**
 - Coleco: **Colecovision**
 - NEC: **PC Engine**
 - Atari: **Lynx**
@@ -169,6 +169,7 @@ Retro-Go and ESP32-specific code exclusively in their port file (main.c). This m
 - The Lynx emulator is a port of [libretro-handy](https://github.com/libretro/libretro-handy).
 - The SNES emulator is a port of [Snes9x 1.60](https://github.com/snes9xgit/snes9x/).
 - The DOOM engine is a port of [PrBoom 2.5.0](http://prboom.sourceforge.net/).
+- The Mega Drive emulator is a port of [Gwenesis](https://github.com/bzhxx/gwenesis/) by bzhxx.
 - PNG support is provided by [lodepng](https://github.com/lvandeve/lodepng/).
 - PCE cover art is from [Christian_Haitian](https://github.com/christianhaitian).
 - Some icons from [Rokey](https://iconarchive.com/show/seed-icons-by-rokey.html).

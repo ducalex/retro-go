@@ -38,6 +38,7 @@
 /* ================================ INCLUDES ============================== */
 /* ======================================================================== */
 
+#include "gwenesis_savestate.h"
 #include "m68kops.h"
 // #pragma GCC optimize("Ofast")
 
@@ -671,7 +672,8 @@ unsigned int m68k_get_reg(void* context, m68k_register_t regnum)
 		case M68K_REG_PPC:	return MASK_OUT_ABOVE_32(cpu->ppc);
 		case M68K_REG_IR:	return cpu->ir;
 		case M68K_REG_CPU_TYPE:
-			switch(cpu->cpu_type)
+			return (unsigned int)M68K_CPU_TYPE_68000;
+/*			switch(cpu->cpu_type)
 			{
 				case CPU_TYPE_000:		return (unsigned int)M68K_CPU_TYPE_68000;
 				case CPU_TYPE_010:		return (unsigned int)M68K_CPU_TYPE_68010;
@@ -679,7 +681,7 @@ unsigned int m68k_get_reg(void* context, m68k_register_t regnum)
 				case CPU_TYPE_020:		return (unsigned int)M68K_CPU_TYPE_68020;
 				case CPU_TYPE_040:		return (unsigned int)M68K_CPU_TYPE_68040;
 			}
-			return M68K_CPU_TYPE_INVALID;
+			return M68K_CPU_TYPE_INVALID;*/
 		default:			return 0;
 	}
 	return 0;
@@ -1191,6 +1193,71 @@ unsigned int m68k_get_context(void* dst)
 void m68k_set_context(void* src)
 {
 	if(src) m68ki_cpu = *(m68ki_cpu_core*)src;
+}
+
+void gwenesis_m68k_save_state() {
+    SaveState* state;
+    state = saveGwenesisStateOpenForWrite("m68k");
+    saveGwenesisStateSetBuffer(state, "REG_D", REG_D, sizeof(REG_D));
+    saveGwenesisStateSet(state, "REG_PPC", REG_PPC);
+    saveGwenesisStateSet(state, "REG_PC", REG_PC);
+    saveGwenesisStateSet(state, "REG_SP", REG_SP);
+    saveGwenesisStateSet(state, "REG_USP", REG_USP);
+    saveGwenesisStateSet(state, "REG_ISP", REG_ISP);
+    saveGwenesisStateSet(state, "REG_MSP", REG_MSP);
+    saveGwenesisStateSet(state, "REG_VBR", REG_VBR);
+    saveGwenesisStateSet(state, "REG_SFC", REG_SFC);
+    saveGwenesisStateSet(state, "REG_DFC", REG_DFC);
+    saveGwenesisStateSet(state, "REG_CACR", REG_CACR);
+    saveGwenesisStateSet(state, "REG_CAAR", REG_CAAR);
+    saveGwenesisStateSet(state, "SR", m68ki_get_sr());
+    saveGwenesisStateSet(state, "CPU_INT_LEVEL", CPU_INT_LEVEL);
+    saveGwenesisStateSet(state, "CPU_STOPPED", CPU_STOPPED);
+    saveGwenesisStateSet(state, "CPU_PREF_ADDR", CPU_PREF_ADDR);
+    saveGwenesisStateSet(state, "CPU_PREF_DATA", CPU_PREF_DATA);
+    saveGwenesisStateSet(state, "m68ki_cpu.virq_state", m68ki_cpu.virq_state);
+    saveGwenesisStateSet(state, "m68ki_cpu.nmi_pending", m68ki_cpu.nmi_pending);
+    saveGwenesisStateSet(state, "m68ki_initial_cycles", m68ki_initial_cycles);
+    saveGwenesisStateSet(state, "m68ki_remaining_cycles", m68ki_remaining_cycles);
+    saveGwenesisStateSet(state, "m68ki_tracing", m68ki_tracing);
+    saveGwenesisStateSet(state, "m68ki_address_space", m68ki_address_space);
+    saveGwenesisStateSet(state, "m68ki_aerr_address", m68ki_aerr_address);
+    saveGwenesisStateSet(state, "m68ki_aerr_write_mode", m68ki_aerr_write_mode);
+    saveGwenesisStateSet(state, "m68ki_aerr_fc", m68ki_aerr_fc);
+    saveGwenesisStateSetBuffer(state, "m68ki_bus_error_jmp_buf", m68ki_bus_error_jmp_buf, sizeof(m68ki_bus_error_jmp_buf));
+}
+
+void gwenesis_m68k_load_state() {
+    SaveState* state = saveGwenesisStateOpenForRead("m68k");
+    m68k_set_cpu_type(M68K_CPU_TYPE_68000);
+    saveGwenesisStateGetBuffer(state, "REG_D", REG_D, sizeof(REG_D));
+    REG_PPC = saveGwenesisStateGet(state, "REG_PPC");
+    REG_PC = saveGwenesisStateGet(state, "REG_PC");
+    REG_SP = saveGwenesisStateGet(state, "REG_SP");
+    REG_USP = saveGwenesisStateGet(state, "REG_USP");
+    REG_ISP = saveGwenesisStateGet(state, "REG_ISP");
+    REG_MSP = saveGwenesisStateGet(state, "REG_MSP");
+    REG_VBR = saveGwenesisStateGet(state, "REG_VBR");
+    REG_SFC = saveGwenesisStateGet(state, "REG_SFC");
+    REG_DFC = saveGwenesisStateGet(state, "REG_DFC");
+    REG_CACR = saveGwenesisStateGet(state, "REG_CACR");
+    REG_CAAR = saveGwenesisStateGet(state, "REG_CAAR");
+    m68ki_set_sr_noint_nosp(saveGwenesisStateGet(state, "SR"));
+    CPU_INT_LEVEL = saveGwenesisStateGet(state, "CPU_INT_LEVEL");
+    CPU_STOPPED = saveGwenesisStateGet(state, "CPU_STOPPED");
+    CPU_PREF_ADDR = saveGwenesisStateGet(state, "CPU_PREF_ADDR");
+    CPU_PREF_DATA = saveGwenesisStateGet(state, "CPU_PREF_DATA");
+    m68ki_cpu.virq_state = saveGwenesisStateGet(state, "m68ki_cpu.virq_state");
+    m68ki_cpu.nmi_pending = saveGwenesisStateGet(state, "m68ki_cpu.nmi_pending");
+    m68ki_initial_cycles = saveGwenesisStateGet(state, "m68ki_initial_cycles");
+    m68ki_remaining_cycles = saveGwenesisStateGet(state, "m68ki_remaining_cycles");
+    m68ki_tracing = saveGwenesisStateGet(state, "m68ki_tracing");
+    m68ki_address_space = saveGwenesisStateGet(state, "m68ki_address_space");
+    m68ki_aerr_address = saveGwenesisStateGet(state, "m68ki_aerr_address");
+    m68ki_aerr_write_mode = saveGwenesisStateGet(state, "m68ki_aerr_write_mode");
+    m68ki_aerr_fc = saveGwenesisStateGet(state, "m68ki_aerr_fc");
+    saveGwenesisStateGetBuffer(state, "m68ki_bus_error_jmp_buf", m68ki_bus_error_jmp_buf, sizeof(m68ki_bus_error_jmp_buf));
+	m68ki_jump(REG_PC);
 }
 
 /* ======================================================================== */
