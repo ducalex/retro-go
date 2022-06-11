@@ -186,6 +186,8 @@ void *rg_alloc(size_t size, uint32_t caps);
 #define MEM_32BIT (16)
 #define MEM_EXEC  (32)
 
+#define PTR_IN_SPIRAM(ptr) ((void*)(ptr) >= (void*)0x3F800000 && (void*)(ptr) < (void*)0x3FC00000)
+
 /* Utilities */
 
 // Functions from esp-idf, we don't include their header but they will be linked

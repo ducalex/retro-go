@@ -45,15 +45,11 @@ static struct {
 #define lcd_set_backlight(percent) ili9341_set_backlight(percent)
 
 
-static inline uint16_t *spi_get_buffer()
+static inline uint16_t *spi_get_buffer(void)
 {
     uint16_t *buffer;
-
     if (xQueueReceive(spi_buffers, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
-    {
         RG_PANIC("display");
-    }
-
     return buffer;
 }
 
@@ -123,7 +119,7 @@ static void spi_task(void *arg)
     vTaskDelete(NULL);
 }
 
-static void spi_init()
+static void spi_init(void)
 {
     spi_transactions = xQueueCreate(SPI_TRANSACTION_COUNT, sizeof(spi_transaction_t *));
     spi_buffers = xQueueCreate(SPI_BUFFER_COUNT, sizeof(uint16_t *));
@@ -196,7 +192,7 @@ static void ili9341_set_backlight(int percent)
         RG_LOGE("failed setting backlight to %02d%% (%04X)\n", percent, duty);
 }
 
-static void ili9341_init()
+static void ili9341_init(void)
 {
     // Initialize backlight at 0% to avoid the lcd reset flash
     const ledc_timer_config_t ledc_timer = {
@@ -283,7 +279,7 @@ static void ili9341_init()
     ili9341_set_backlight(display.config.backlight);
 }
 
-static void ili9341_deinit()
+static void ili9341_deinit(void)
 {
     // Normally we skip these steps to avoid LCD flicker, but it
     // is necessary on the G32 because of a bug in the bootmenu
@@ -721,16 +717,22 @@ IRAM_ATTR
 rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const rg_video_update_t *previousUpdate)
 {
     // RG_ASSERT(display.source.width && display.source.height, "Source format not set!");
+    RG_ASSERT(update, "update is null!");
 
-    if (!update)
-        return RG_UPDATE_ERROR;
-
-    update->type = RG_UPDATE_FULL;
-
-    if (previousUpdate && !display.changed && display.config.update != RG_DISPLAY_UPDATE_FULL)
+    if (!previousUpdate || display.changed || display.config.update == RG_DISPLAY_UPDATE_FULL)
     {
-        const int *frame_buffer = update->buffer + display.source.offset; // int64_t is 0.7% faster!
-        const int *prev_buffer = previousUpdate->buffer + display.source.offset;
+        update->type = RG_UPDATE_FULL;
+    }
+    else if (PTR_IN_SPIRAM(update->buffer) && PTR_IN_SPIRAM(previousUpdate->buffer))
+    {
+        // There's no speed benefit in trying to diff when both buffers are in SPIRAM,
+        // it will almost always be faster to just update it everything...
+        update->type = RG_UPDATE_FULL;
+    }
+    else // RG_UPDATE_PARTIAL
+    {
+        const uint32_t *frame_buffer = update->buffer + display.source.offset; // uint64_t is 0.7% faster!
+        const uint32_t *prev_buffer = previousUpdate->buffer + display.source.offset;
         const int frame_width = display.source.width;
         const int frame_height = display.source.height;
         const int stride = display.source.stride;
@@ -778,7 +780,11 @@ rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const r
         {
             update->type = RG_UPDATE_EMPTY;
         }
-        else if (changed < threshold)
+        else if (changed >= threshold)
+        {
+            update->type = RG_UPDATE_FULL;
+        }
+        else
         {
             update->type = RG_UPDATE_PARTIAL;
 
@@ -955,7 +961,7 @@ void rg_display_clear(uint16_t color_le)
     }
 }
 
-void rg_display_deinit()
+void rg_display_deinit(void)
 {
     void *stop = NULL;
     xQueueSend(display_task_queue, &stop, portMAX_DELAY);
@@ -965,7 +971,7 @@ void rg_display_deinit()
     RG_LOGI("Display terminated.\n");
 }
 
-void rg_display_init()
+void rg_display_init(void)
 {
     RG_LOGI("Initialization...\n");
     // TO DO: We probably should call the setters to ensure valid values...
