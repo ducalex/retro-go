@@ -551,19 +551,39 @@ static void show_file_info(retro_file_t *file)
         {0, "Size", filesize, 1, NULL},
         {3, "CRC32", filecrc, 1, NULL},
         RG_DIALOG_SEPARATOR,
+        {5, "Delete file", NULL, 1, NULL},
         {1, "Close", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
 
     sprintf(filesize, "%ld KB", st.st_size / 1024);
 
-    while (true)
+    while (true) // We loop in case we need to update the CRC
     {
         if (file->checksum)
             sprintf(filecrc, "%08X (%d)", file->checksum, file->app->crc_offset);
-        if (rg_gui_dialog("File properties", options, -1) != 3)
-            break;
-        application_get_file_crc32(file);
+
+        switch (rg_gui_dialog("File properties", options, -1))
+        {
+        case 3:
+            application_get_file_crc32(file);
+            continue;
+        case 5:
+            if (rg_gui_confirm("Delete selected file?", 0, 0))
+            {
+                if (unlink(get_file_path(file)) == 0)
+                {
+                    bookmark_remove(BOOK_TYPE_FAVORITE, file);
+                    bookmark_remove(BOOK_TYPE_RECENT, file);
+                    file->is_valid = false;
+                    gui_event(TAB_REFRESH, gui_get_current_tab());
+                    return;
+                }
+            }
+            continue;
+        default:
+            return;
+        }
     }
 }
 
@@ -584,7 +604,6 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
         {3, is_fav ? "Del favorite" : "Add favorite", NULL, 1, NULL},
         {2, "Delete save", NULL, has_save || has_sram, NULL},
         RG_DIALOG_SEPARATOR,
-        {5, "Delete file", NULL, 1, NULL},
         {4, "Properties", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
@@ -620,19 +639,6 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
 
     case 4:
         show_file_info(file);
-        break;
-
-    case 5:
-        if (rg_gui_confirm("Delete selected file?", 0, 0))
-        {
-            if (unlink(rom_path) == 0)
-            {
-                bookmark_remove(BOOK_TYPE_FAVORITE, file);
-                bookmark_remove(BOOK_TYPE_RECENT, file);
-                file->is_valid = false;
-                gui_event(TAB_REFRESH, gui_get_current_tab());
-            }
-        }
         break;
 
     default:
