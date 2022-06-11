@@ -273,7 +273,7 @@ void app_main(void)
 
     VRAM = rg_alloc(VRAM_MAX_SIZE, MEM_FAST);
 
-    updates[0].buffer = rg_alloc(320 * 240 * 2, MEM_FAST);
+    updates[0].buffer = rg_alloc(320 * 240, MEM_FAST);
     // updates[1].buffer = rg_alloc(320 * 240 * 2, MEM_FAST);
 
     xTaskCreatePinnedToCore(&sound_task, "gen_sound", 2048, NULL, 7, NULL, 1);
@@ -301,6 +301,7 @@ void app_main(void)
 
     extern unsigned char gwenesis_vdp_regs[0x20];
     extern unsigned int gwenesis_vdp_status;
+    extern unsigned short CRAM565[256];
     extern unsigned int screen_width, screen_height;
     extern int mode_pal;
     extern int hint_pending;
@@ -325,7 +326,7 @@ void app_main(void)
     }
 
     RG_LOGI("rg_display_set_source_format()\n");
-    rg_display_set_source_format(320, mode_pal ? 240 : 224, 0, 0, 320 * 2, RG_PIXEL_565_LE);
+    rg_display_set_source_format(320, mode_pal ? 240 : 224, 0, 0, 320, RG_PIXEL_PAL565_BE);
 
     RG_LOGI("emulation loop\n");
     while (true)
@@ -410,6 +411,8 @@ void app_main(void)
 
         if (drawFrame)
         {
+            for (int i = 0; i < 256; ++i)
+                currentUpdate->palette[i] = (CRAM565[i] << 8) | (CRAM565[i] >> 8);
             // rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
             rg_display_queue_update(currentUpdate, NULL);
             // currentUpdate = previousUpdate;

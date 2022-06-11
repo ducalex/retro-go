@@ -850,18 +850,14 @@ rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const r
     xQueueSend(display_task_queue, &update, portMAX_DELAY);
 
     if (update->synchronous)
-    {
-        // Wait until display queue is done
-        while (uxQueueMessagesWaiting(display_task_queue));
-    }
+        rg_display_sync();
 
     return update->type;
 }
 
 void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, int format)
 {
-    while (uxQueueMessagesWaiting(display_task_queue))
-        ; // Wait until display queue is done
+    rg_display_sync();
 
     if (width % sizeof(int)) // frame diff doesn't handle non word multiple well right now...
     {
@@ -877,6 +873,12 @@ void rg_display_set_source_format(int width, int height, int crop_h, int crop_v,
     display.source.pixlen = format & RG_PIXEL_PAL ? 1 : 2;
     display.source.offset = (display.source.crop_v * stride) + (display.source.crop_h * display.source.pixlen);
     display.changed = true;
+}
+
+void rg_display_sync(void)
+{
+    while (uxQueueMessagesWaiting(display_task_queue))
+        ; // Wait until display queue is done
 }
 
 void rg_display_show_info(const char *text, int timeout_ms)

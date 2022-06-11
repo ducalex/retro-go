@@ -56,8 +56,8 @@ extern unsigned short VSRAM[];        // VSRAM - Scrolling
 unsigned char *screen, *scaled_screen;
 
 // Define screen buffers for embedded 565 format
-static unsigned short *screen_buffer_line=0;
-static unsigned short *screen_buffer=0;
+static uint8_t *screen_buffer_line=0;
+static uint8_t *screen_buffer=0;
 
     // Overflow is the maximum size we can draw outside to avoid
     // wasting time and code in clipping. The maximum object is a 4x4 sprite,
@@ -983,7 +983,7 @@ void gwenesis_vdp_render_line(int line)
 #else
   screen_buffer_line = &screen_buffer[line * 320];
   /* clean up line screen not refreshed when mode is !H40 */
-  if (REG12_MODE_H40 == 0) memset(screen_buffer_line - (320-256)/2, 0, 320*2);
+  if (REG12_MODE_H40 == 0) memset(screen_buffer_line - (320-256)/2, 0, 320 * sizeof(screen_buffer_line[0]));
 
 #endif
 
@@ -1076,33 +1076,36 @@ void gwenesis_vdp_render_line(int line)
         switch (sprite & 0x3F) {
         // Palette=3, Sprite=14 :> draw plane, force highlight
         case 0x3E:
-          screen_buffer_line[x] = 0x8410 | CRAM565[plane] >> 1;
+          screen_buffer_line[x] = plane; // 0x8410 | CRAM565[plane] >> 1;
           break;
         // Palette=3, Sprite=15 :> draw plane, force shadow
         case 0x3F:
-          screen_buffer_line[x] = CRAM565[plane] >> 1;
+          screen_buffer_line[x] = plane; // CRAM565[plane] >> 1;
           break;
         // draw sprite, normal
         default:
-          screen_buffer_line[x] = CRAM565[sprite];
+          screen_buffer_line[x] = sprite;
           break;
         }
       } else {
-        screen_buffer_line[x] = CRAM565[plane];
+        screen_buffer_line[x] = plane;
       }
     }
 
     /* Normal mode*/
   } else {
-
+#if 0
     uint32_t *video_out = (uint32_t *) &screen_buffer_line[0];
 
     for (int x = 0; x < screen_width; x+=2) {
 
       //screen_buffer_line[x] = CRAM565[pb[x]];
-      // 2 pixels : 32 bits write  access is faster 
+      // 2 pixels : 32 bits write  access is faster
       *video_out++ = CRAM565[pb[x]] | CRAM565[pb[x+1]] << 16;
     }
+#else
+  memcpy(screen_buffer_line, pb, screen_width);
+#endif
   }
 
   #endif
