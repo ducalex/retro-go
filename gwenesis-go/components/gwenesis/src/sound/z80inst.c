@@ -33,7 +33,7 @@ __license__ = "GPLv3"
 static int bus_ack = 0;
 static int reset = 0;
 static int reset_once = 0;
-static uint64_t zclk = 0;
+uint64_t zclk = 0;
 static int initialized = 0;
 
 unsigned char *Z80_RAM;
@@ -500,7 +500,7 @@ byte RdZ80(register word Addr)
         return Z80_RAM[Addr];
 
     case 1:
-        return 0xff; 
+        return 0xff;
 
     case 2:
         return YM2612Read();

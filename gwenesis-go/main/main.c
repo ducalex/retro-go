@@ -19,6 +19,7 @@ size_t ROM_DATA_LENGTH;
 unsigned char *VRAM;
 unsigned int scan_line;
 uint64_t m68k_clock;
+extern uint64_t zclk;
 
 #define AUDIO_SAMPLE_RATE (53267)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 120 + 1)
@@ -35,12 +36,14 @@ static QueueHandle_t sound_task_run;
 
 static bool yfm_enabled = true;
 static bool yfm_resample = true;
+static bool z80_enabled = true;
 
 static FILE *savestate_fp = NULL;
 static int savestate_errors = 0;
 
 static const char *SETTING_YFM_EMULATION = "yfm_enable";
 static const char *SETTING_YFM_RESAMPLE = "sampling";
+static const char *SETTING_Z80_EMULATION = "z80_enable";
 // --- MAIN
 
 typedef struct {
@@ -128,6 +131,18 @@ static rg_gui_event_t yfm_update_cb(rg_gui_option_t *option, rg_gui_event_t even
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t z80_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
+        z80_enabled = !z80_enabled;
+        rg_settings_set_number(NS_APP, SETTING_Z80_EMULATION, z80_enabled);
+    }
+    strcpy(option->value, z80_enabled ? "On " : "Off");
+
+    return RG_DIALOG_VOID;
+}
+
 static rg_gui_event_t sampling_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
@@ -188,6 +203,8 @@ static void sound_task(void *arg)
     while (true)
     {
         xQueuePeek(sound_task_run, &system_clock, portMAX_DELAY);
+        if (!z80_enabled)
+            zclk = system_clock * 2; // To infinity, and beyond!
         z80_run(system_clock);
         xQueueReceive(sound_task_run, &system_clock, portMAX_DELAY);
 
@@ -233,18 +250,6 @@ static void sound_task(void *arg)
     vTaskDelete(NULL);
 }
 
-#if 0
-void z80_sync(void)
-{
-    uint64_t target = m68k_cycles_run() * M68K_FREQ_DIVISOR + m68k_clock;
-    extern uint64_t zclk;
-    if (zclk >= target)
-        return;
-    // WAIT_FOR_Z80_RUN(); // m68k_run might call z80_sync, we don't want to conflict
-    z80_run(target);
-}
-#endif
-
 void app_main(void)
 {
     const rg_handlers_t handlers = {
@@ -256,6 +261,7 @@ void app_main(void)
     const rg_gui_option_t options[] = {
         {1, "YFM emulation", "On", 1, &yfm_update_cb},
         {2, "Down sampling", "On", 1, &sampling_update_cb},
+        {3, "Z80 emulation", "On", 1, &z80_update_cb},
         RG_DIALOG_CHOICE_LAST
     };
 
@@ -263,6 +269,7 @@ void app_main(void)
 
     yfm_enabled = rg_settings_get_number(NS_APP, SETTING_YFM_EMULATION, 1);
     yfm_resample = rg_settings_get_number(NS_APP, SETTING_YFM_RESAMPLE, 1);
+    z80_enabled = rg_settings_get_number(NS_APP, SETTING_Z80_EMULATION, 1);
 
     VRAM = rg_alloc(VRAM_MAX_SIZE, MEM_FAST);
 
@@ -360,8 +367,8 @@ void app_main(void)
             system_clock += VDP_CYCLES_PER_LINE;
 
             WAIT_FOR_Z80_RUN(); // m68k_run might call z80_sync, we don't want to conflict
-            m68k_execute((system_clock - m68k_clock) / M68K_FREQ_DIVISOR);
-            m68k_clock = system_clock;
+            m68k_execute(VDP_CYCLES_PER_LINE / M68K_FREQ_DIVISOR);
+            // system_clock -= m68k_cycles_remaining() * M68K_FREQ_DIVISOR;
             xQueueSend(sound_task_run, &system_clock, portMAX_DELAY);
 
             if (drawFrame && scan_line < screen_height)
