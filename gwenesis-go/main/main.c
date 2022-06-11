@@ -37,6 +37,7 @@ static bool yfm_enabled = true;
 static bool yfm_resample = true;
 
 static FILE *savestate_fp = NULL;
+static int savestate_errors = 0;
 
 static const char *SETTING_YFM_EMULATION = "yfm_enable";
 static const char *SETTING_YFM_RESAMPLE = "sampling";
@@ -72,17 +73,18 @@ void saveGwenesisStateSet(SaveState* state, const char* tagName, int value)
 void saveGwenesisStateGetBuffer(SaveState* state, const char* tagName, void* buffer, int length)
 {
     size_t initial_pos = ftell(savestate_fp);
+    bool from_start = false;
     svar_t var;
 
     // Odds are that calls to this func will be in order, so try searching from current file position.
-    while (true)
+    while (!from_start || ftell(savestate_fp) < initial_pos)
     {
-        if (!fread(&var, sizeof(var), 1, savestate_fp))
+        if (!fread(&var, sizeof(svar_t), 1, savestate_fp))
         {
-            if (initial_pos != 0)
+            if (!from_start)
             {
-                fseek(savestate_fp, SEEK_SET, 0);
-                initial_pos = 0;
+                fseek(savestate_fp, 0, SEEK_SET);
+                from_start = true;
                 continue;
             }
             break;
@@ -95,7 +97,8 @@ void saveGwenesisStateGetBuffer(SaveState* state, const char* tagName, void* buf
         }
         fseek(savestate_fp, var.length, SEEK_CUR);
     }
-    RG_LOGI("Key %s NOT FOUND!\n", tagName);
+    RG_LOGW("Key %s NOT FOUND!\n", tagName);
+    savestate_errors++;
 }
 
 void saveGwenesisStateSetBuffer(SaveState* state, const char* tagName, void* buffer, int length)
@@ -147,9 +150,10 @@ static bool save_state_handler(const char *filename)
 {
     if ((savestate_fp = fopen(filename, "wb")))
     {
+        savestate_errors = 0;
         gwenesis_save_state();
         fclose(savestate_fp);
-        return true;
+        return savestate_errors == 0;
     }
     return false;
 }
@@ -158,9 +162,11 @@ static bool load_state_handler(const char *filename)
 {
     if ((savestate_fp = fopen(filename, "rb")))
     {
+        savestate_errors = 0;
         gwenesis_load_state();
         fclose(savestate_fp);
-        return true;
+        if (savestate_errors == 0)
+            return true;
     }
     reset_emulation();
     return false;
