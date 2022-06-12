@@ -42,6 +42,22 @@
 #define vsnprintf(...)      rg_vsnprintf(__VA_ARGS__)
 #endif
 
+#define PRINTF_BINARY_8 "%c%c%c%c%c%c%c%c"
+#define PRINTF_BINVAL_8(i)\
+    (((i) & 0x80) ? '1' : '0'), \
+    (((i) & 0x40) ? '1' : '0'), \
+    (((i) & 0x20) ? '1' : '0'), \
+    (((i) & 0x10) ? '1' : '0'), \
+    (((i) & 0x08) ? '1' : '0'), \
+    (((i) & 0x04) ? '1' : '0'), \
+    (((i) & 0x02) ? '1' : '0'), \
+    (((i) & 0x01) ? '1' : '0')
+
+#define PRINTF_BINARY_16 PRINTF_BINARY_8 " " PRINTF_BINARY_8
+#define PRINTF_BINVAL_16(i) PRINTF_BINVAL_8((i) >> 8), PRINTF_BINVAL_8(i)
+#define PRINTF_BINARY_32 PRINTF_BINARY_16 " " PRINTF_BINARY_16
+#define PRINTF_BINVAL_32(i) PRINTF_BINVAL_16((i) >> 16), PRINTF_BINVAL_16(i)
+
 #include <stdarg.h>
 #include <stddef.h>
 

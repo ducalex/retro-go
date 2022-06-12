@@ -584,7 +584,7 @@ static void shutdown_cleanup(void)
     rg_audio_deinit();                          // Disable sound ASAP to avoid audio garbage
     rtc_time_save();                            // RTC might save to storage, do it before
     rg_storage_deinit();                        // Unmount storage
-    rg_input_wait_for_key(RG_KEY_ALL, false);   // Wait for all keys to be released
+    rg_input_wait_for_key(RG_KEY_ALL, false);   // Wait for all keys to be released (boot is sensitive to GPIO0,32,33)
     rg_input_deinit();                          // Now we can shutdown input
     rg_i2c_deinit();                            // Must be after input, sound, and rtc
     rg_display_deinit();                        // Do this very last to reduce flicker time
