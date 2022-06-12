@@ -300,15 +300,23 @@ void app_main(void)
     };
 
     rg_system_init(32000, &handlers, options);
+
+    if (!rg_storage_ready())
+    {
+        rg_display_clear(C_SKY_BLUE);
+        rg_gui_alert("SD Card Error", "Storage mount failed.\nMake sure the card is FAT32.");
+    }
+    else
+    {
+        rg_mkdir(RG_BASE_PATH_CACHE);
+        rg_mkdir(RG_BASE_PATH_CONFIG);
+        rg_mkdir(RG_BASE_PATH_SYSTEM);
+        try_migrate();
+    }
+
     rg_gui_set_buffered(true);
 
-    rg_mkdir(RG_BASE_PATH_CACHE);
-    rg_mkdir(RG_BASE_PATH_CONFIG);
-    rg_mkdir(RG_BASE_PATH_SYSTEM);
-
-    try_migrate();
     gui_init();
-
     applications_init();
     bookmarks_init();
     themes_init();

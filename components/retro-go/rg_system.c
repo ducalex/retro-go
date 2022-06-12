@@ -350,24 +350,18 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         rg_system_restart();
     }
 
-    // Force return to launcher on key held and clear settings if we're already in launcher
-    if (rg_input_key_is_pressed(RG_KEY_UP|RG_KEY_DOWN|RG_KEY_LEFT|RG_KEY_RIGHT))
+    // Start a recovery mode (returns to launcher at the moment) when a key is held during boot
+    if (rg_input_key_is_pressed(RG_KEY_ANY))
     {
-        RG_LOGW("Aborting: key held down!\n");
-        if (rg_gui_confirm("Recovery", "Reset all settings?", false))
-            rg_settings_reset();
-        rg_system_set_boot_app(RG_APP_LAUNCHER);
-        rg_system_restart();
-    }
-
-    // Show alert if storage isn't available
-    if (!rg_storage_ready())
-    {
-        RG_LOGW("Aborting: storage unavailable!\n");
-        rg_display_clear(C_SKY_BLUE);
-        rg_gui_alert("SD Card Error", "Mount failed."); // esp_err_to_name(ret)
-        rg_system_set_boot_app(RG_APP_LAUNCHER);
-        rg_system_restart();
+        vTaskDelay(pdMS_TO_TICKS(500));
+        if (rg_input_key_is_pressed(RG_KEY_ANY))
+        {
+            RG_LOGW("Button 0x%04X being held down, entering recovery...\n", rg_input_read_gamepad());
+            if (rg_gui_confirm("Recovery mode", "Rebooting to launcher!\nAlso reset all settings?", 0))
+                rg_settings_reset();
+            rg_system_set_boot_app(RG_APP_LAUNCHER);
+            rg_system_restart();
+        }
     }
 
     panicTrace.magicWord = 0;
