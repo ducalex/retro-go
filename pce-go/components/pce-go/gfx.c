@@ -358,7 +358,7 @@ render_lines(int min_line, int max_line)
 {
 	gfx_context.latched = 0;
 
-	uint8_t *screen_buffer = osd_gfx_framebuffer();
+	uint8_t *screen_buffer = osd_gfx_framebuffer(PCE.VDC.screen_width, PCE.VDC.screen_height);
 	if (!screen_buffer) {
 		return;
 	}
@@ -498,15 +498,6 @@ gfx_run(void)
 		if (PCE.VDC.satb == DMA_TRANSFER_PENDING || AutoSATBON) {
 			memcpy(PCE.SPRAM, PCE.VRAM + IO_VDC_REG[SATB].W, 512);
 			PCE.VDC.satb = DMA_TRANSFER_COUNTER + 4;
-		}
-
-		/* Frame done, we can now process pending res change. */
-		if (PCE.VDC.mode_chg) {
-			TRACE_GFX("Changing mode: VDS = %04x VSW = %04x VDW = %04x VCR = %04x\n",
-				IO_VDC_REG[VPR].B.h, IO_VDC_REG[VPR].B.l,
-				IO_VDC_REG[VDW].W, IO_VDC_REG[VCR].W);
-			PCE.VDC.mode_chg = 0;
-			osd_gfx_set_mode(IO_VDC_SCREEN_WIDTH, IO_VDC_SCREEN_HEIGHT);
 		}
 	}
 	/* V Blank area */

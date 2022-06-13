@@ -44,14 +44,7 @@ static const char *SETTING_OVERSCAN  = "overscan";
 // --- MAIN
 
 
-uint8_t *osd_gfx_framebuffer(void)
-{
-    if (skipFrames > 0)
-        return NULL;
-    return (uint8_t *)currentUpdate->buffer;
-}
-
-void osd_gfx_set_mode(int width, int height)
+uint8_t *osd_gfx_framebuffer(int width, int height)
 {
     if (width != current_width || height != current_height)
     {
@@ -68,8 +61,7 @@ void osd_gfx_set_mode(int width, int height)
         current_width = width;
         current_height = height;
     }
-
-    currentUpdate = &updates[0];
+    return skipFrames ? NULL : currentUpdate->buffer;
 }
 
 void osd_gfx_blit(void)
@@ -104,7 +96,7 @@ static rg_gui_event_t overscan_update_cb(rg_gui_option_t *option, rg_gui_event_t
     {
         overscan = !overscan;
         rg_settings_set_number(NS_APP, SETTING_OVERSCAN, overscan);
-        osd_gfx_set_mode(current_width, current_height);
+        current_width = current_height = 0;
     }
 
     strcpy(option->value, overscan ? "On " : "Off");
@@ -252,7 +244,6 @@ void app_main(void)
         updates[1].palette[i] = color;
     }
     free(palette);
-    osd_gfx_set_mode(256, 240);
 
     InitPCE(AUDIO_SAMPLE_RATE, true, app->romPath);
 

@@ -176,6 +176,8 @@ typedef struct {
 		uint8_t satb;			/* DMA transfer status to happen in vblank */
 		uint8_t mode_chg;       /* Video mode change needed at next frame */
 		uint32_t pending_irqs;	/* Pending VDC IRQs (we use it as a stack of 4bit events) */
+		uint32_t screen_width;	/* Effective resolution updated by mode_chg */
+		uint32_t screen_height;	/* Effective resolution updated by mode_chg */
 	} VDC;
 
 	// Programmable Sound Generator

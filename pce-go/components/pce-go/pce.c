@@ -13,8 +13,6 @@ PCE_t PCE;
 uint8_t *PageR[8];
 uint8_t *PageW[8];
 
-static bool running = false;
-
 static inline void timer_run(void);
 
 /**
@@ -86,16 +84,6 @@ pce_init(void)
 
 
 /**
-  * Terminate the emulation loop
-  **/
-void
-pce_pause(void)
-{
-	running = false;
-}
-
-
-/**
   * Terminate the hardware
   **/
 void
@@ -109,31 +97,28 @@ pce_term(void)
 
 
 /**
-  * Main emulation loop
+  * Run emulation for one frame
   **/
 void
 pce_run(void)
 {
-	running = true;
-
-	while (running) {
-		osd_input_read(PCE.Joypad.regs);
-
-		for (PCE.Scanline = 0; PCE.Scanline < 263; ++PCE.Scanline) {
-			PCE.MaxCycles += PCE.Timer.cycles_per_line;
-			h6280_run();
-			timer_run();
-			gfx_run();
-		}
-
-		osd_gfx_blit();
-		osd_vsync();
-
-		// Prevent Overflowing
-		int trim = MIN(Cycles, PCE.MaxCycles);
-		PCE.MaxCycles -= trim;
-		Cycles -= trim;
+	// Handle pending video mode changes
+	if (PCE.VDC.mode_chg) {
+		PCE.VDC.screen_width = IO_VDC_SCREEN_WIDTH;
+		PCE.VDC.screen_height = IO_VDC_SCREEN_HEIGHT;
+		PCE.VDC.mode_chg = 0;
 	}
+	// Emulate!
+	for (PCE.Scanline = 0; PCE.Scanline < 263; ++PCE.Scanline) {
+		PCE.MaxCycles += PCE.Timer.cycles_per_line;
+		h6280_run();
+		timer_run();
+		gfx_run();
+	}
+	// Prevent overflowing counters
+	int trim = MIN(Cycles, PCE.MaxCycles);
+	PCE.MaxCycles -= trim;
+	Cycles -= trim;
 }
 
 

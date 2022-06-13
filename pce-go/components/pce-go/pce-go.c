@@ -91,6 +91,8 @@ static const struct {
 	{0x00000000, "Unknown", 0},
 };
 
+static bool running = false;
+
 /**
  * Load card into memory and set its memory map
  */
@@ -305,7 +307,15 @@ PalettePCE(int bitdepth)
 void
 RunPCE(void)
 {
-	pce_run();
+	running = true;
+
+	while (running)
+	{
+		osd_input_read(PCE.Joypad.regs);
+		pce_run();
+		osd_gfx_blit();
+		osd_vsync();
+	}
 }
 
 
@@ -360,7 +370,7 @@ LoadState(const char *name)
 		pce_bank_set(i, PCE.MMR[i]);
 
 	gfx_reset(true);
-	osd_gfx_set_mode(IO_VDC_SCREEN_WIDTH, IO_VDC_SCREEN_HEIGHT);
+	PCE.VDC.mode_chg = 1;
 	ret = 0;
 
 _cleanup:
