@@ -269,7 +269,7 @@ uint8_t pce_readIO(uint16_t A);
 
 #define pce_write16(addr, word) {					\
 	uint32_t a = (addr), w = (word); 				\
-	*((uint16_t*)(PageR[a >> 13] + a)) = w;			\
+	*((uint16_t*)(PageW[a >> 13] + a)) = w;			\
 }
 
 #else
@@ -305,7 +305,7 @@ pce_read16(uint16_t addr)
 static inline void
 pce_write16(uint16_t addr, uint16_t word)
 {
-	*((uint16_t*)(PageR[addr >> 13] + (addr))) = word;
+	*((uint16_t*)(PageW[addr >> 13] + (addr))) = word;
 }
 
 #endif
