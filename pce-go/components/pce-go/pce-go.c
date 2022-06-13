@@ -313,7 +313,6 @@ RunPCE(void)
 	{
 		osd_input_read(PCE.Joypad.regs);
 		pce_run();
-		osd_gfx_blit();
 		osd_vsync();
 	}
 }

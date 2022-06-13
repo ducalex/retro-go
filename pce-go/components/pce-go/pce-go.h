@@ -80,7 +80,6 @@ int InitPCE(int samplerate, bool stereo, const char *huecard);
 int LoadCard(const char *name);
 void *PalettePCE(int bitdepth);
 
-extern void osd_gfx_blit(void);
 extern uint8_t *osd_gfx_framebuffer(int width, int height);
 extern void osd_input_read(uint8_t joypads[8]);
 extern void osd_vsync(void);

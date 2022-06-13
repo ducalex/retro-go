@@ -44,52 +44,6 @@ static const char *SETTING_OVERSCAN  = "overscan";
 // --- MAIN
 
 
-uint8_t *osd_gfx_framebuffer(int width, int height)
-{
-    if (width != current_width || height != current_height)
-    {
-        MESSAGE_INFO("Resolution changed to: %dx%d\n", width, height);
-
-        // We center the content vertically and horizontally to allow overflows all around
-        int offset_center = (((XBUF_HEIGHT - height) / 2 + 16) * XBUF_WIDTH + (XBUF_WIDTH - width) / 2);
-
-        updates[0].buffer = framebuffers[0] + offset_center;
-        updates[1].buffer = framebuffers[1] + offset_center;
-
-        rg_display_set_source_format(width, height, 0, 0, XBUF_WIDTH, RG_PIXEL_PAL565_BE);
-
-        current_width = width;
-        current_height = height;
-    }
-    return skipFrames ? NULL : currentUpdate->buffer;
-}
-
-void osd_gfx_blit(void)
-{
-    bool drawFrame = !skipFrames;
-
-    if (drawFrame)
-    {
-        rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
-        rg_display_queue_update(currentUpdate, NULL);
-
-        currentUpdate = previousUpdate;
-    }
-
-    // See if we need to skip a frame to keep up
-    if (skipFrames == 0)
-    {
-        if (app->speed > 1.f)
-            skipFrames = app->speed * 2.5f;
-        else
-            skipFrames = 1;
-    }
-    else if (skipFrames > 0)
-    {
-        skipFrames--;
-    }
-}
-
 static rg_gui_event_t overscan_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
@@ -114,6 +68,75 @@ static rg_gui_event_t sampletype_update_cb(rg_gui_option_t *option, rg_gui_event
     strcpy(option->value, downsample ? "On " : "Off");
 
     return RG_DIALOG_VOID;
+}
+
+uint8_t *osd_gfx_framebuffer(int width, int height)
+{
+    if (width != current_width || height != current_height)
+    {
+        MESSAGE_INFO("Resolution changed to: %dx%d\n", width, height);
+
+        // We center the content vertically and horizontally to allow overflows all around
+        int offset_center = (((XBUF_HEIGHT - height) / 2 + 16) * XBUF_WIDTH + (XBUF_WIDTH - width) / 2);
+
+        updates[0].buffer = framebuffers[0] + offset_center;
+        updates[1].buffer = framebuffers[1] + offset_center;
+
+        rg_display_set_source_format(width, height, 0, 0, XBUF_WIDTH, RG_PIXEL_PAL565_BE);
+
+        current_width = width;
+        current_height = height;
+    }
+    return skipFrames ? NULL : currentUpdate->buffer;
+}
+
+void osd_vsync(void)
+{
+    static int64_t lasttime, prevtime;
+
+    if (skipFrames == 0)
+    {
+        rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
+        rg_display_queue_update(currentUpdate, NULL);
+        currentUpdate = previousUpdate;
+    }
+
+    // See if we need to skip a frame to keep up
+    if (skipFrames == 0)
+    {
+        if (app->speed > 1.f)
+            skipFrames = app->speed * 2.5f;
+        else
+            skipFrames = 1;
+    }
+    else if (skipFrames > 0)
+    {
+        skipFrames--;
+    }
+
+    int64_t curtime = get_elapsed_time();
+    int32_t sleep = frameTime - (curtime - lasttime);
+
+    if (sleep > frameTime)
+    {
+        MESSAGE_ERROR("Our vsync timer seems to have overflowed! (%dus)\n", sleep);
+    }
+    else if (sleep > 0)
+    {
+        usleep(sleep);
+    }
+    else if (sleep < -(frameTime / 2))
+    {
+        skipFrames++;
+    }
+
+    rg_system_tick(curtime - prevtime);
+
+    prevtime = get_elapsed_time();
+    lasttime += frameTime;
+
+    if ((lasttime + frameTime) < prevtime)
+        lasttime = prevtime;
 }
 
 void osd_input_read(uint8_t joypads[8])
@@ -155,35 +178,6 @@ static void audioTask(void *arg)
     }
 
     vTaskDelete(NULL);
-}
-
-void osd_vsync(void)
-{
-    static int64_t lasttime, prevtime;
-
-    int64_t curtime = get_elapsed_time();
-    int32_t sleep = frameTime - (curtime - lasttime);
-
-    if (sleep > frameTime)
-    {
-        MESSAGE_ERROR("Our vsync timer seems to have overflowed! (%dus)\n", sleep);
-    }
-    else if (sleep > 0)
-    {
-        usleep(sleep);
-    }
-    else if (sleep < -(frameTime / 2))
-    {
-        skipFrames++;
-    }
-
-    rg_system_tick(curtime - prevtime);
-
-    prevtime = get_elapsed_time();
-    lasttime += frameTime;
-
-    if ((lasttime + frameTime) < prevtime)
-        lasttime = prevtime;
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)
