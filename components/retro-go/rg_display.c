@@ -303,7 +303,7 @@ static void ili9341_set_window(int left, int top, int width, int height)
 
     if (left < 0 || top < 0 || right >= RG_SCREEN_WIDTH || bottom >= RG_SCREEN_HEIGHT)
     {
-        RG_LOGW("Bad lcd window (x0=%d, y0=%d, x1=%d, y1=%d)", left, top, right, bottom);
+        RG_LOGW("Bad lcd window (x0=%d, y0=%d, x1=%d, y1=%d)\n", left, top, right, bottom);
     }
 
     ili9341_cmd(0x2A, (uint8_t[]){left >> 8, left & 0xff, right >> 8, right & 0xff}, 4); // Horiz
@@ -492,13 +492,13 @@ static void update_viewport_scaling(void)
     int src_height = display.source.height;
     int new_width = src_width;
     int new_height = src_height;
-    float new_ratio = 0.0;
+    double new_ratio = 0.0;
 
     if (display.config.scaling == RG_DISPLAY_SCALING_FILL) {
-        new_ratio = display.screen.width / (float)display.screen.height;
+        new_ratio = display.screen.width / (double)display.screen.height;
     }
     else if (display.config.scaling == RG_DISPLAY_SCALING_FIT) {
-        new_ratio = src_width / (float)src_height;
+        new_ratio = src_width / (double)src_height;
     }
 
     if (new_ratio > 0.0)
@@ -509,15 +509,15 @@ static void update_viewport_scaling(void)
         if (new_width > display.screen.width)
         {
             RG_LOGW("new_width too large: %d, reducing new_height to maintain ratio.\n", new_width);
-            new_height = display.screen.height * (display.screen.width / (float)new_width);
+            new_height = display.screen.height * (display.screen.width / (double)new_width);
             new_width = display.screen.width;
         }
     }
 
     display.viewport.x_pos = (display.screen.width - new_width) / 2;
     display.viewport.y_pos = (display.screen.height - new_height) / 2;
-    display.viewport.x_inc = display.screen.width / (new_width / (float)src_width);
-    display.viewport.y_inc = display.screen.height / (new_height / (float)src_height);
+    display.viewport.x_inc = display.screen.width / (new_width / (double)src_width);
+    display.viewport.y_inc = display.screen.height / (new_height / (double)src_height);
     display.viewport.width = new_width;
     display.viewport.height = new_height;
 
@@ -544,7 +544,7 @@ static void update_viewport_scaling(void)
     }
 
     RG_LOGI("%dx%d@%.3f => %dx%d@%.3f x_pos:%d y_pos:%d x_inc:%d y_inc:%d\n",
-           src_width, src_height, src_width/(float)src_height, new_width, new_height, new_ratio,
+           src_width, src_height, src_width/(double)src_height, new_width, new_height, new_ratio,
            display.viewport.x_pos, display.viewport.y_pos, display.viewport.x_inc, display.viewport.y_inc);
 }
 
