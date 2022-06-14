@@ -21,7 +21,7 @@
 #define MESSAGE_WARN(x...)  LOG_PRINTF(2, " ! " x)
 #define MESSAGE_INFO(x...)  LOG_PRINTF(3, " * " x)
 #define MESSAGE_TRACE(tag, x...) LOG_PRINTF(4, " & (" tag ") " x)
-#if ENABLE_DEBUGG
+#if ENABLE_DEBUG
 #define MESSAGE_DEBUG(x...) LOG_PRINTF(4, " > " x)
 #else
 #define MESSAGE_DEBUG(x...) {}

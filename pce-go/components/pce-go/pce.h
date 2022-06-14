@@ -250,25 +250,25 @@ uint8_t pce_readIO(uint16_t A);
 #if USE_MEM_MACROS
 
 #define pce_read8(addr) ({							\
-	uint32_t a = (addr);							\
+	uint16_t a = (addr); 							\
 	uint8_t *page = PageR[a >> 13]; 				\
 	(page == PCE.IOAREA) ? pce_readIO(a) : page[a]; \
 })
 
 #define pce_write8(addr, byte) {					\
-	uint32_t a = (addr), b = (byte); 				\
+	uint16_t a = (addr), b = (byte); 				\
 	uint8_t *page = PageW[a >> 13]; 				\
 	if (page == PCE.IOAREA) pce_writeIO(a, b); 		\
 	else page[a] = b;								\
 }
 
 #define pce_read16(addr) ({							\
-	uint32_t a = (addr); 							\
+	uint16_t a = (addr); 							\
 	*((uint16_t*)(PageR[a >> 13] + a));				\
 })
 
 #define pce_write16(addr, word) {					\
-	uint32_t a = (addr), w = (word); 				\
+	uint16_t a = (addr), w = (word); 				\
 	*((uint16_t*)(PageW[a >> 13] + a)) = w;			\
 }
 
