@@ -41,6 +41,7 @@ struct ClipData
 struct InternalPPU
 {
 	struct ClipData Clip[2][6];
+	bool8	ColorsChanged;
 	bool8	OBJChanged;
 	uint8	*TileCacheData;
 	uint8	TileCache[4096];
@@ -137,19 +138,21 @@ struct SPPU
 	uint8	VBeamFlip;
 	uint16	HBeamPosLatched;
 	uint16	VBeamPosLatched;
+	uint16	GunHLatch;
+	uint16	GunVLatch;
 	uint8	HVBeamCounterLatched;
 
 	bool8	Mode7HFlip;
 	bool8	Mode7VFlip;
 	uint8	Mode7Repeat;
-	int16	MatrixA;
-	int16	MatrixB;
-	int16	MatrixC;
-	int16	MatrixD;
-	int16	CentreX;
-	int16	CentreY;
-	int16	M7HOFS;
-	int16	M7VOFS;
+	short	MatrixA;
+	short	MatrixB;
+	short	MatrixC;
+	short	MatrixD;
+	short	CentreX;
+	short	CentreY;
+	short	M7HOFS;
+	short	M7VOFS;
 
 	uint8	Mosaic;
 	uint8	MosaicStart;
@@ -203,7 +206,7 @@ void S9xDoAutoJoypad (void);
 
 #include "gfx.h"
 #include "tile.h"
-#include "memory.h"
+#include "memmap.h"
 
 static inline void FLUSH_REDRAW (void)
 {
@@ -236,7 +239,7 @@ static inline void REGISTER_2104 (uint8 Byte)
 
 	if (PPU.OAMAddr & 0x100)
 	{
-		uint32 addr = ((PPU.OAMAddr & 0x10f) << 1) + (PPU.OAMFlip & 1);
+		int addr = ((PPU.OAMAddr & 0x10f) << 1) + (PPU.OAMFlip & 1);
 		if (Byte != PPU.OAMData[addr])
 		{
 			FLUSH_REDRAW();

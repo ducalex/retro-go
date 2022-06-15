@@ -11,7 +11,9 @@
 #include "memmap.h"
 #include "dma.h"
 #include "apu/apu.h"
+#include "display.h"
 #include "debug.h"
+#include "missing.h"
 
 // #include "apu/apu.hpp"
 
@@ -48,8 +50,9 @@ static const char	*HelpMessage[] =
 	"p                      - Proceed to next instruction [step-over]",
 	"s                      - Skip to next instruction    [skip]",
 	"T                      - Toggle CPU instruction tracing to trace.log",
+	"TS                     - Toggle SA-1 instruction tracing to trace_sa1.log",
 	"E                      - Toggle HC-based event tracing to trace.log",
-	"V                      - Toggle non-DMA V-` read/write tracing to stdout",
+	"V                      - Toggle non-DMA V-RAM read/write tracing to stdout",
 	"D                      - Toggle on-screen DMA tracing",
 	"H                      - Toggle on-screen HDMA tracing",
 	"U                      - Toggle on-screen unknown register read/write tracing",
@@ -146,13 +149,17 @@ static int	AddrModes[256] =
 
 static uint8 S9xDebugGetByte (uint32);
 static uint16 S9xDebugGetWord (uint32);
+static uint8 S9xDebugSA1GetByte (uint32);
+static uint16 S9xDebugSA1GetWord (uint32);
 static uint8 debug_cpu_op_print (char *, uint8, uint16);
+static uint8 debug_sa1_op_print (char *, uint8, uint16);
 static void debug_line_print (const char *);
 static int debug_get_number (char *, uint16 *);
 static short debug_get_start_address (char *, uint8 *, uint32 *);
 static void debug_print_window (uint8 *);
 static const char * debug_clip_fn (int);
 static void debug_whats_used (void);
+static void debug_whats_missing (void);
 
 
 static uint8 S9xDebugGetByte (uint32 Address)

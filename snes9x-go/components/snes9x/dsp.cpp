@@ -5,9 +5,9 @@
 \*****************************************************************************/
 
 #include "snes9x.h"
-#include "memory.h"
+#include "memmap.h"
 #ifdef DEBUGGER
-#include "debug.h"
+#include "missing.h"
 #endif
 
 uint8	(*GetDSP) (uint16)        = NULL;
@@ -44,6 +44,7 @@ uint8 S9xGetDSP (uint16 address)
 void S9xSetDSP (uint8 byte, uint16 address)
 {
 #ifdef DEBUGGER
+	missing.unknowndsp_write = address;
 	if (Settings.TraceDSP)
 	{
 		sprintf(String, "DSP write: 0x%04X=0x%02X", address, byte);

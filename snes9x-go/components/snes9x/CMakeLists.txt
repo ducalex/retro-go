@@ -12,5 +12,6 @@ rg_setup_compile_options(
     -DIS_LITTLE_ENDIAN
     -Wno-missing-field-initializers
     -Wno-error=format-truncation
+    -Wno-unused-function
     -O2
 )

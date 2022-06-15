@@ -5,7 +5,7 @@
 \*****************************************************************************/
 
 #include "snes9x.h"
-#include "memory.h"
+#include "memmap.h"
 #include "apu/apu.h"
 #ifdef DEBUGGER
 #include "debug.h"

@@ -9,7 +9,7 @@
 #include <math.h>
 
 #include "../components/snes9x/snes9x.h"
-#include "../components/snes9x/memory.h"
+#include "../components/snes9x/memmap.h"
 #include "../components/snes9x/apu/apu.h"
 #include "../components/snes9x/gfx.h"
 #include "../components/snes9x/snapshot.h"

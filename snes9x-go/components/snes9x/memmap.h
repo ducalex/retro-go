@@ -4,8 +4,8 @@
    For further information, consult the LICENSE file in the root directory.
 \*****************************************************************************/
 
-#ifndef _MEMORY_H_
-#define _MEMORY_H_
+#ifndef _MEMMAP_H_
+#define _MEMMAP_H_
 
 #define MEMMAP_BLOCK_SIZE	(0x1000)
 #define MEMMAP_NUM_BLOCKS	(0x1000000 / MEMMAP_BLOCK_SIZE)
@@ -52,6 +52,7 @@ typedef struct
 	uint8	*ROM;
 	uint8	*SRAM;
 	uint8	*VRAM;
+	uint8	*OBC1RAM;
 
 #if RETRO_COMBINED_MEMORY_MAP
 	union {

@@ -70,39 +70,57 @@ void S9xInitTileRenderer (void)
 	S9xBuildDirectColourMaps();
 	S9xFixColourBrightness();
 
-	for (int i = 0; i < 16; i++)
+	int	i;
+
+	for (i = 0; i < 16; i++)
 	{
 		uint32	b = 0;
 
 	#ifdef LSB_FIRST
-		if (i & 8) b |= 1;
-		if (i & 4) b |= 1 << 8;
-		if (i & 2) b |= 1 << 16;
-		if (i & 1) b |= 1 << 24;
+		if (i & 8)
+			b |= 1;
+		if (i & 4)
+			b |= 1 << 8;
+		if (i & 2)
+			b |= 1 << 16;
+		if (i & 1)
+			b |= 1 << 24;
 	#else
-		if (i & 8) b |= 1 << 24;
-		if (i & 4) b |= 1 << 16;
-		if (i & 2) b |= 1 << 8;
-		if (i & 1) b |= 1;
+		if (i & 8)
+			b |= 1 << 24;
+		if (i & 4)
+			b |= 1 << 16;
+		if (i & 2)
+			b |= 1 << 8;
+		if (i & 1)
+			b |= 1;
 	#endif
 
-		for (int bitshift = 0; bitshift < 8; bitshift++)
+		for (uint8 bitshift = 0; bitshift < 8; bitshift++)
 			pixbit[bitshift][i] = b << bitshift;
 	}
 
-	for (int i = 0; i < 256; i++)
+	for (i = 0; i < 256; i++)
 	{
-		uint32	m = 0;
-		uint32	s = 0;
+		uint8	m = 0;
+		uint8	s = 0;
 
-		if (i & 0x80) s |= 8;
-		if (i & 0x40) m |= 8;
-		if (i & 0x20) s |= 4;
-		if (i & 0x10) m |= 4;
-		if (i & 0x08) s |= 2;
-		if (i & 0x04) m |= 2;
-		if (i & 0x02) s |= 1;
-		if (i & 0x01) m |= 1;
+		if (i & 0x80)
+			s |= 8;
+		if (i & 0x40)
+			m |= 8;
+		if (i & 0x20)
+			s |= 4;
+		if (i & 0x10)
+			m |= 4;
+		if (i & 0x08)
+			s |= 2;
+		if (i & 0x04)
+			m |= 2;
+		if (i & 0x02)
+			s |= 1;
+		if (i & 0x01)
+			m |= 1;
 
 		hrbit_odd[i]  = m;
 		hrbit_even[i] = s;
@@ -223,16 +241,16 @@ static inline uint16 COLOR_SUB (uint32 C1, uint32 C2)
 		p2 |= pixbit[(i)][pix & 0xf]; \
 	}
 
-static uint8 ConvertTile2 (uint8 *pCache, uint32 TileAddr, uint32 Unused)
+static uint8 ConvertTile2 (uint8 *pCache, uint32 TileAddr, uint32)
 {
 	uint8	*tp      = &Memory.VRAM[TileAddr];
-	uint32	*p       = (uint32 *) pCache;
-	uint32	non_zero = 0;
+	uint32			*p       = (uint32 *) pCache;
+	uint32			non_zero = 0;
 
 	for (int line = 8; line != 0; line--, tp += 2)
 	{
-		uint32	p1 = 0;
-		uint32	p2 = 0;
+		uint32			p1 = 0;
+		uint32			p2 = 0;
 		uint32	pix;
 
 		DOBIT( 0, 0);
@@ -245,16 +263,16 @@ static uint8 ConvertTile2 (uint8 *pCache, uint32 TileAddr, uint32 Unused)
 	return (non_zero ? TRUE : BLANK_TILE);
 }
 
-static uint8 ConvertTile4 (uint8 *pCache, uint32 TileAddr, uint32 Unused)
+static uint8 ConvertTile4 (uint8 *pCache, uint32 TileAddr, uint32)
 {
 	uint8	*tp      = &Memory.VRAM[TileAddr];
-	uint32	*p       = (uint32 *) pCache;
-	uint32	non_zero = 0;
+	uint32			*p       = (uint32 *) pCache;
+	uint32			non_zero = 0;
 
 	for (int line = 8; line != 0; line--, tp += 2)
 	{
-		uint32	p1 = 0;
-		uint32	p2 = 0;
+		uint32			p1 = 0;
+		uint32			p2 = 0;
 		uint32	pix;
 
 		DOBIT( 0, 0);
@@ -269,16 +287,16 @@ static uint8 ConvertTile4 (uint8 *pCache, uint32 TileAddr, uint32 Unused)
 	return (non_zero ? TRUE : BLANK_TILE);
 }
 
-static uint8 ConvertTile8 (uint8 *pCache, uint32 TileAddr, uint32 Unused)
+static uint8 ConvertTile8 (uint8 *pCache, uint32 TileAddr, uint32)
 {
 	uint8	*tp      = &Memory.VRAM[TileAddr];
-	uint32	*p       = (uint32 *) pCache;
-	uint32	non_zero = 0;
+	uint32			*p       = (uint32 *) pCache;
+	uint32			non_zero = 0;
 
 	for (int line = 8; line != 0; line--, tp += 2)
 	{
-		uint32	p1 = 0;
-		uint32	p2 = 0;
+		uint32			p1 = 0;
+		uint32			p2 = 0;
 		uint32	pix;
 
 		DOBIT( 0, 0);
@@ -308,8 +326,8 @@ static uint8 ConvertTile8 (uint8 *pCache, uint32 TileAddr, uint32 Unused)
 static uint8 ConvertTile2h_odd (uint8 *pCache, uint32 TileAddr, uint32 Tile)
 {
 	uint8	*tp1     = &Memory.VRAM[TileAddr], *tp2;
-	uint32	*p       = (uint32 *) pCache;
-	uint32	non_zero = 0;
+	uint32			*p       = (uint32 *) pCache;
+	uint32			non_zero = 0;
 
 	if (Tile == 0x3ff)
 		tp2 = tp1 - (0x3ff << 4);
@@ -318,8 +336,8 @@ static uint8 ConvertTile2h_odd (uint8 *pCache, uint32 TileAddr, uint32 Tile)
 
 	for (int line = 8; line != 0; line--, tp1 += 2, tp2 += 2)
 	{
-		uint32	p1 = 0;
-		uint32	p2 = 0;
+		uint32			p1 = 0;
+		uint32			p2 = 0;
 		uint32	pix;
 
 		DOBIT( 0, 0);
@@ -335,8 +353,8 @@ static uint8 ConvertTile2h_odd (uint8 *pCache, uint32 TileAddr, uint32 Tile)
 static uint8 ConvertTile4h_odd (uint8 *pCache, uint32 TileAddr, uint32 Tile)
 {
 	uint8	*tp1     = &Memory.VRAM[TileAddr], *tp2;
-	uint32	*p       = (uint32 *) pCache;
-	uint32	non_zero = 0;
+	uint32			*p       = (uint32 *) pCache;
+	uint32			non_zero = 0;
 
 	if (Tile == 0x3ff)
 		tp2 = tp1 - (0x3ff << 5);
@@ -372,8 +390,8 @@ static uint8 ConvertTile4h_odd (uint8 *pCache, uint32 TileAddr, uint32 Tile)
 static uint8 ConvertTile2h_even (uint8 *pCache, uint32 TileAddr, uint32 Tile)
 {
 	uint8	*tp1     = &Memory.VRAM[TileAddr], *tp2;
-	uint32	*p       = (uint32 *) pCache;
-	uint32	non_zero = 0;
+	uint32			*p       = (uint32 *) pCache;
+	uint32			non_zero = 0;
 
 	if (Tile == 0x3ff)
 		tp2 = tp1 - (0x3ff << 4);
@@ -382,8 +400,8 @@ static uint8 ConvertTile2h_even (uint8 *pCache, uint32 TileAddr, uint32 Tile)
 
 	for (int line = 8; line != 0; line--, tp1 += 2, tp2 += 2)
 	{
-		uint32	p1 = 0;
-		uint32	p2 = 0;
+		uint32			p1 = 0;
+		uint32			p2 = 0;
 		uint32	pix;
 
 		DOBIT( 0, 0);
@@ -399,8 +417,8 @@ static uint8 ConvertTile2h_even (uint8 *pCache, uint32 TileAddr, uint32 Tile)
 static uint8 ConvertTile4h_even (uint8 *pCache, uint32 TileAddr, uint32 Tile)
 {
 	uint8	*tp1     = &Memory.VRAM[TileAddr], *tp2;
-	uint32	*p       = (uint32 *) pCache;
-	uint32	non_zero = 0;
+	uint32			*p       = (uint32 *) pCache;
+	uint32			non_zero = 0;
 
 	if (Tile == 0x3ff)
 		tp2 = tp1 - (0x3ff << 5);
@@ -409,8 +427,8 @@ static uint8 ConvertTile4h_even (uint8 *pCache, uint32 TileAddr, uint32 Tile)
 
 	for (int line = 8; line != 0; line--, tp1 += 2, tp2 += 2)
 	{
-		uint32	p1 = 0;
-		uint32	p2 = 0;
+		uint32			p1 = 0;
+		uint32			p2 = 0;
 		uint32	pix;
 
 		DOBIT( 0, 0);
@@ -477,6 +495,7 @@ void S9xSelectTileRenderers (int BGMode, bool8 sub, bool8 obj)
 			else if (i == 3)
 				i = 8;
 		}
+
 	}
 
 	GFX.DrawTileMath        = DT[i];
@@ -708,7 +727,7 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 #define Z2	GFX.Z2
 
 #define DRAW_TILE() \
-	uint8	*pCache; \
+	uint8			*pCache; \
 	int32	l; \
 	uint8	*bp, Pix, w; \
 	\
@@ -1089,7 +1108,7 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 		\
 		if (!PPU.Mode7Repeat) \
 		{ \
-			for (int x = MLeft; x < MRight; x++, AA += aa, CC += cc) \
+			for (int32 x = MLeft; x < MRight; x++, AA += aa, CC += cc) \
 			{ \
 				if (--ctr) \
 					continue; \
@@ -1103,9 +1122,9 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 				\
 				if ((Pix = (b & MASK))) \
 				{ \
-					for (int h = MosaicStart; h < VMosaic; h++) \
+					for (int32 h = MosaicStart; h < VMosaic; h++) \
 					{ \
-						for (int w = x + HMosaic - 1; w >= x; w--) \
+						for (int32 w = x + HMosaic - 1; w >= x; w--) \
 							DRAW_PIXEL(w + h * GFX.PPL, (w >= (int32) Left && w < (int32) Right)); \
 					} \
 				} \
@@ -1113,7 +1132,7 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 		} \
 		else \
 		{ \
-			for (int x = MLeft; x < MRight; x++, AA += aa, CC += cc) \
+			for (int32 x = MLeft; x < MRight; x++, AA += aa, CC += cc) \
 			{ \
 				if (--ctr) \
 					continue; \
@@ -1137,9 +1156,9 @@ void S9xSelectTileConverter (int depth, bool8 hires, bool8 sub, bool8 mosaic)
 				\
 				if ((Pix = (b & MASK))) \
 				{ \
-					for (int h = MosaicStart; h < VMosaic; h++) \
+					for (int32 h = MosaicStart; h < VMosaic; h++) \
 					{ \
-						for (int w = x + HMosaic - 1; w >= x; w--) \
+						for (int32 w = x + HMosaic - 1; w >= x; w--) \
 							DRAW_PIXEL(w + h * GFX.PPL, (w >= (int32) Left && w < (int32) Right)); \
 					} \
 				} \

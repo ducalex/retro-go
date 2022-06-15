@@ -5,11 +5,11 @@
 \*****************************************************************************/
 
 #include "snes9x.h"
-#include "memory.h"
+#include "memmap.h"
 #include "dma.h"
 #include "apu/apu.h"
 #ifdef DEBUGGER
-#include "debug.h"
+#include "missing.h"
 #endif
 
 #define ADD_CYCLES(n)	{ CPU.Cycles += (n); }

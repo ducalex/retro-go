@@ -12,6 +12,7 @@
 #endif
 
 #include "port.h"
+#include "messages.h"
 
 #ifdef RETRO_GO
 #include <rg_system.h>
@@ -31,6 +32,30 @@
 #define RETRO_LESS_ACCURATE_APU 0
 #define RETRO_COMBINED_MEMORY_MAP 1
 
+#ifdef ZLIB
+#include <zlib.h>
+#define FSTREAM					gzFile
+#define READ_FSTREAM(p, l, s)	gzread(s, p, l)
+#define WRITE_FSTREAM(p, l, s)	gzwrite(s, p, l)
+#define GETS_FSTREAM(p, l, s)	gzgets(s, p, l)
+#define GETC_FSTREAM(s)			gzgetc(s)
+#define OPEN_FSTREAM(f, m)		gzopen(f, m)
+#define REOPEN_FSTREAM(f, m)		gzdopen(f, m)
+#define FIND_FSTREAM(f)			gztell(f)
+#define REVERT_FSTREAM(s, o, p)	gzseek(s, o, p)
+#define CLOSE_FSTREAM(s)			gzclose(s)
+#else
+#define FSTREAM					FILE *
+#define READ_FSTREAM(p, l, s)	fread(p, 1, l, s)
+#define WRITE_FSTREAM(p, l, s)	fwrite(p, 1, l, s)
+#define GETS_FSTREAM(p, l, s)	fgets(p, l, s)
+#define GETC_FSTREAM(s)			fgetc(s)
+#define OPEN_FSTREAM(f, m)		fopen(f, m)
+#define REOPEN_FSTREAM(f, m)		fdopen(f, m)
+#define FIND_FSTREAM(s)			ftell(s)
+#define REVERT_FSTREAM(s, o, p)	fseek(s, o, p)
+#define CLOSE_FSTREAM(s)			fclose(s)
+#endif
 #define SNES_WIDTH					256
 #define SNES_HEIGHT					224
 #define SNES_HEIGHT_EXTENDED		224 // 239 This will cause problem in some games, but it saves a lot of memory...
@@ -129,11 +154,14 @@ struct SCPUState
 {
 	uint32	Flags;
 	int32	Cycles;
+	int32	PrevCycles;
 	int32	V_Counter;
 	uint8	*PCBase;
 	bool8	NMIPending;
 	bool8	IRQLine;
+	bool8	IRQTransition;
 	bool8	IRQLastState;
+	bool8	IRQExternal;
 	int32	IRQPending;
 	int32	MemSpeed;
 	int32	MemSpeedx2;
@@ -153,6 +181,8 @@ struct SCPUState
 	int32	NMITriggerPos;
 	int32	NextIRQTimer;
 	int32	IRQFlagChanging;	// This value is just a hack.
+	int32	APUSpeedup;
+	bool8	APUAllowTimeOverflow;
 };
 
 struct SSettings
@@ -163,22 +193,43 @@ struct SSettings
 	uint8	DSP;
 
 	bool8	SoundSync;
+	bool8	SixteenBitSound;
 	uint32	SoundPlaybackRate;
 	uint32	SoundInputRate;
 	bool8	Stereo;
+	bool8	ReverseStereo;
 	bool8	Mute;
 	int32	DynamicRateLimit;
 
+	bool8	SupportHiRes;
 	bool8	Transparency;
 	uint8	BG_Forced;
+	bool8	DisableGraphicWindows;
 
 	uint32	InitialInfoStringTimeout;
 	uint16	DisplayColor;
+	bool8	BilinearFilter;
 
+	bool8	ForcedPause;
 	bool8	Paused;
+	bool8	StopEmulation;
 
 	uint32	SkipFrames;
+	uint32	TurboSkipFrames;
+	uint32	AutoMaxSkipFrames;
 	bool8	TurboMode;
+	uint32	HighSpeedSeek;
+	bool8	FrameAdvance;
+	bool8	Rewinding;
+	bool8	MovieTruncate;
+	bool8	MovieNotifyIgnored;
+	bool8	WrongMovieStateProtection;
+	bool8	DumpStreams;
+	int		DumpStreamsMaxFrames;
+
+	bool8	TakeScreenshot;
+	int8	StretchScreenshots;
+	bool8	SnapshotScreenshots;
 
 	bool8	DisableGameSpecificHacks;
 
@@ -210,46 +261,8 @@ enum s9x_getdirtype
 	LAST_DIR
 };
 
-// Types of message sent to S9xMessage()
-enum
-{
-	S9X_TRACE,
-	S9X_DEBUG,
-	S9X_WARNING,
-	S9X_INFO,
-	S9X_ERROR,
-	S9X_FATAL_ERROR
-};
-
-// Individual message numbers
-enum
-{
-	S9X_NO_INFO,
-	S9X_ROM_INFO,
-	S9X_HEADERS_INFO,
-	S9X_CONFIG_INFO,
-	S9X_ROM_CONFUSING_FORMAT_INFO,
-	S9X_ROM_INTERLEAVED_INFO,
-	S9X_SOUND_DEVICE_OPEN_FAILED,
-	S9X_APU_STOPPED,
-	S9X_USAGE,
-	S9X_DEBUG_OUTPUT,
-	S9X_DMA_TRACE,
-	S9X_HDMA_TRACE,
-	S9X_WRONG_FORMAT,
-	S9X_WRONG_VERSION,
-	S9X_ROM_NOT_FOUND,
-	S9X_FREEZE_FILE_NOT_FOUND,
-	S9X_PPU_TRACE,
-	S9X_TRACE_DSP1,
-	S9X_FREEZE_ROM_NAME,
-	S9X_HEADER_WARNING,
-	S9X_FREEZE_FILE_INFO,
-	S9X_TURBO_MODE,
-	S9X_SOUND_NOT_BUILT,
-	S9X_PRESSED_KEYS_INFO
-};
-
+void S9xSetPause(uint32);
+void S9xClearPause(uint32);
 void S9xExit(void);
 void S9xMessage(int, int, const char *);
 void S9xInitSettings(void);

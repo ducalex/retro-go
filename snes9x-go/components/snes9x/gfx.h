@@ -15,17 +15,21 @@ struct SGFX
 	uint16	*SubScreen;
 	uint8	*ZBuffer;
 	uint8	*SubZBuffer;
-	uint16	*ZERO;
 	uint32	Pitch;
 	uint32	ScreenSize;
 	uint16	*S;
 	uint8	*DB;
-	uint32	PPL;				// number of pixels on each line
+	uint16	*ZERO;
+	uint32	RealPPL;			// true PPL of Screen buffer
+	uint32	PPL;				// number of pixels on each of Screen buffer
+	uint32	LinesPerTile;		// number of lines in 1 tile (4 or 8 due to interlace)
 	uint16	*ScreenColors;		// screen colors for rendering main
 	uint16	*RealScreenColors;	// screen colors, ignoring color window clipping
 	uint8	Z1;					// depth for comparison
 	uint8	Z2;					// depth to save
 	uint32	FixedColour;
+	uint8	DoInterlace;
+	uint8	InterlaceFrame;
 	uint32	StartY;
 	uint32	EndY;
 	uint32	ClipColors;
@@ -36,13 +40,13 @@ struct SGFX
 
 	struct
 	{
-		int16	RTOFlags;
+		uint8	RTOFlags;
 		int16	Tiles;
 
 		struct
 		{
-			int16	Sprite;
-			int16	Line;
+			int8	Sprite;
+			uint8	Line;
 		}	OBJ[32];
 	}	OBJLines[SNES_HEIGHT_EXTENDED];
 
@@ -80,7 +84,8 @@ struct SBG
 	uint32	StartPalette;
 	uint32	PaletteShift;
 	uint32	PaletteMask;
-	uint32	EnableMath;
+	uint8	EnableMath;
+	uint8	InterlaceLine;
 
 	uint32	Buffered;
 	uint32	BufferedFlip;

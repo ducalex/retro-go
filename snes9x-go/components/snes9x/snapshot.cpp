@@ -6,23 +6,13 @@
 
 #include <assert.h>
 #include "snes9x.h"
-#include "memory.h"
+#include "memmap.h"
 #include "dma.h"
 #include "apu/apu.h"
 #include "snapshot.h"
+#include "language.h"
 #include "controls.h"
 #include "gfx.h"
-
-#define SNAPSHOT_MAGIC			"#!s9x-rg"
-#define SNAPSHOT_VERSION		11
-
-#define SAVE_INFO_SNAPSHOT				"Saved"
-#define SAVE_INFO_LOAD					"Loaded"
-#define SAVE_INFO_OOPS					"Auto-saving 'oops' snapshot"
-#define SAVE_ERR_WRONG_FORMAT			"File not in Snes9x snapshot format"
-#define SAVE_ERR_WRONG_VERSION			"Incompatible snapshot version"
-#define SAVE_ERR_ROM_NOT_FOUND			"ROM image \"%s\" for snapshot not found"
-#define SAVE_ERR_SAVE_NOT_FOUND			"Snapshot %s does not exist"
 
 #ifndef min
 #define min(a,b)	(((a) < (b)) ? (a) : (b))
@@ -561,7 +551,7 @@ static void SkipBlockWithName(FILE *, const char *);
 
 // QuickSave
 
-int S9xFreezeGame (const char *filename)
+bool8 S9xFreezeGame (const char *filename)
 {
 	FILE *stream = fopen(filename, "wb");
 
@@ -621,7 +611,7 @@ int S9xFreezeGame (const char *filename)
 
 // QuickLoad
 
-int S9xUnfreezeGame (const char *filename)
+bool8 S9xUnfreezeGame (const char *filename)
 {
 	FILE *stream = fopen(filename, "rb");
 

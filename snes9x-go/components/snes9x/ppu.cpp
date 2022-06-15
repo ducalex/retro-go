@@ -5,13 +5,18 @@
 \*****************************************************************************/
 
 #include "snes9x.h"
-#include "memory.h"
+#include "memmap.h"
 #include "dma.h"
-#include "tile.h"
 #include "apu/apu.h"
 #include "controls.h"
+#include "movie.h"
+#include "display.h"
+#ifdef NETPLAY_SUPPORT
+#include "netplay.h"
+#endif
 #ifdef DEBUGGER
 #include "debug.h"
+#include "missing.h"
 #endif
 
 struct SPPU				PPU;
@@ -23,6 +28,9 @@ static inline void S9xLatchCounters (bool force)
 	if (force || (Memory.CPU_IO[0x213] & 0x80))
 	{
 		// Latch h and v counters, like the gun
+	#ifdef DEBUGGER
+		missing.h_v_latch = 1;
+	#endif
 
 		PPU.HVBeamCounterLatched = 1;
 		PPU.VBeamPosLatched = (uint16) CPU.V_Counter;
@@ -172,6 +180,7 @@ void S9xSetPPU (uint8 Byte, uint32 Address)
 
 					if (PPU.Brightness != (Byte & 0xf))
 					{
+						IPPU.ColorsChanged = TRUE;
 						PPU.Brightness = Byte & 0xf;
 						S9xFixColourBrightness();
 						S9xBuildDirectColourMaps();
@@ -181,6 +190,7 @@ void S9xSetPPU (uint8 Byte, uint32 Address)
 
 					if ((Memory.PPU_IO[0x100] & 0x80) != (Byte & 0x80))
 					{
+						IPPU.ColorsChanged = TRUE;
 						PPU.ForcedBlanking = (Byte >> 7) & 1;
 					}
 				}
@@ -1087,6 +1097,11 @@ void S9xSetCPU (uint8 Byte, uint32 Address)
 				if (Byte & 0x20)
 				{
 					PPU.VTimerEnabled = TRUE;
+
+					#ifdef DEBUGGER
+					missing.virq = 1;
+					missing.virq_pos = PPU.IRQVBeamPos;
+					#endif
 				}
 				else
 					PPU.VTimerEnabled = FALSE;
@@ -1094,6 +1109,11 @@ void S9xSetCPU (uint8 Byte, uint32 Address)
 				if (Byte & 0x10)
 				{
 					PPU.HTimerEnabled = TRUE;
+
+					#ifdef DEBUGGER
+					missing.hirq = 1;
+					missing.hirq_pos = PPU.IRQHBeamPos;
+					#endif
 				}
 				else
 					PPU.HTimerEnabled = FALSE;
@@ -1101,6 +1121,7 @@ void S9xSetCPU (uint8 Byte, uint32 Address)
 				if (!(Byte & 0x10) && !(Byte & 0x20))
 				{
 					CPU.IRQLine = FALSE;
+					CPU.IRQTransition = FALSE;
 				}
 
 				if ((Byte & 0x30) != (Memory.CPU_IO[0x200] & 0x30))
@@ -1219,6 +1240,10 @@ void S9xSetCPU (uint8 Byte, uint32 Address)
 					S9xDoDMA(6);
 				if (Byte & 0x80)
 					S9xDoDMA(7);
+			#ifdef DEBUGGER
+				missing.dma_this_frame = Byte;
+				missing.dma_channels = Byte;
+			#endif
 				break;
 
 			case 0x420c: // HDMAEN
@@ -1227,13 +1252,22 @@ void S9xSetCPU (uint8 Byte, uint32 Address)
 				Memory.CPU_IO[0x20c] = Byte;
 				// Yoshi's Island, Genjyu Ryodan, Mortal Kombat, Tales of Phantasia
 				PPU.HDMA = Byte & ~PPU.HDMAEnded;
+			#ifdef DEBUGGER
+				missing.hdma_this_frame |= Byte;
+				missing.hdma_channels |= Byte;
+			#endif
 				break;
 
 			case 0x420d: // MEMSEL
 				if ((Byte & 1) != (Memory.CPU_IO[0x20d] & 1))
 				{
 					if (Byte & 1)
+					{
 						CPU.FastROMSpeed = ONE_CYCLE;
+					#ifdef DEBUGGER
+						missing.fast_rom = 1;
+					#endif
+					}
 					else
 						CPU.FastROMSpeed = SLOW_ONE_CYCLE;
 					// we might currently be in FastROMSpeed region, S9xSetPCBase will update CPU.MemSpeed
@@ -1358,6 +1392,7 @@ uint8 S9xGetCPU (uint32 Address)
 				{
 					byte = 0x80;
 					CPU.IRQLine = FALSE;
+					CPU.IRQTransition = FALSE;
 				}
 
 				return (byte | (OpenBus & 0x7f));
@@ -1398,6 +1433,7 @@ void S9xResetPPU (void)
 void S9xResetPPUFast (void)
 {
 	PPU.RecomputeClipWindows = TRUE;
+	IPPU.ColorsChanged = TRUE;
 	IPPU.OBJChanged = TRUE;
 	memset(IPPU.TileCache, 0, sizeof(IPPU.TileCache));
 
@@ -1479,6 +1515,8 @@ void S9xSoftResetPPU (void)
 	PPU.VBeamFlip = 0;
 	PPU.HBeamPosLatched = 0;
 	PPU.VBeamPosLatched = 0;
+	PPU.GunHLatch = 0;
+	PPU.GunVLatch = 1000;
 	PPU.HVBeamCounterLatched = 0;
 
 	PPU.Mode7HFlip = FALSE;
@@ -1532,6 +1570,7 @@ void S9xSoftResetPPU (void)
 
 	for (int c = 0; c < 2; c++)
 		memset(&IPPU.Clip[c], 0, sizeof(struct ClipData));
+	IPPU.ColorsChanged = TRUE;
 	IPPU.OBJChanged = TRUE;
 	memset(IPPU.TileCache, 0, sizeof(IPPU.TileCache));
 	PPU.VRAMReadBuffer = 0; // XXX: FIXME: anything better?

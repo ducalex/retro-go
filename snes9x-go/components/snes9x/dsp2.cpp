@@ -5,7 +5,7 @@
 \*****************************************************************************/
 
 #include "snes9x.h"
-#include "memory.h"
+#include "memmap.h"
 
 static void DSP2_Op01 (void);
 static void DSP2_Op03 (void);
@@ -115,7 +115,7 @@ static void DSP2_Op05 (void)
 
 	color = DSP2.Op05Transparent & 0x0f;
 
-	for (int n = 0; n < DSP2.Op05Len; n++)
+	for (int32 n = 0; n < DSP2.Op05Len; n++)
 	{
 		c1 = *p1++;
 		c2 = *p2++;
@@ -130,7 +130,7 @@ static void DSP2_Op06 (void)
 	//    size
 	//    bitmap
 
-	for (int i = 0, j = DSP2.Op06Len - 1; i < DSP2.Op06Len; i++, j--)
+	for (int32 i = 0, j = DSP2.Op06Len - 1; i < DSP2.Op06Len; i++, j--)
 		DSP2.output[j] = (DSP2.parameters[i] << 4) | (DSP2.parameters[i] >> 4);
 }
 
@@ -175,7 +175,7 @@ static void DSP2_Op0D (void)
 
 	pixloc = 0;
 
-	for (int i = 0; i < DSP2.Op0DOutLen * 2; i++)
+	for (int32 i = 0; i < DSP2.Op0DOutLen * 2; i++)
 	{
 		int32	j = pixloc >> 16;
 
@@ -187,7 +187,7 @@ static void DSP2_Op0D (void)
 		pixloc += multiplier;
 	}
 
-	for (int i = 0; i < DSP2.Op0DOutLen; i++)
+	for (int32 i = 0; i < DSP2.Op0DOutLen; i++)
 		DSP2.output[i] = (pixelarray[i << 1] << 4) | pixelarray[(i << 1) + 1];
 }
 
@@ -205,7 +205,7 @@ static void DSP2_Op0D (void)
 	int32	pixel_offset;
 	uint8	pixelarray[512];
 
-	for (int i = 0; i < DSP2.Op0DOutLen * 2; i++)
+	for (int32 i = 0; i < DSP2.Op0DOutLen * 2; i++)
 	{
 		pixel_offset = (i * DSP2.Op0DInLen) / DSP2.Op0DOutLen;
 
@@ -215,7 +215,7 @@ static void DSP2_Op0D (void)
 			pixelarray[i] = DSP2.parameters[pixel_offset >> 1] & 0x0f;
 	}
 
-	for (int i = 0; i < DSP2.Op0DOutLen; i++)
+	for (int32 i = 0; i < DSP2.Op0DOutLen; i++)
 		DSP2.output[i] = (pixelarray[i << 1] << 4) | pixelarray[(i << 1) + 1];
 }
 */

@@ -26,7 +26,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 
 #include "snes9x.h"
-#include "memory.h"
+#include "memmap.h"
 
 #ifdef DEBUGGER
 //#define DebugDSP1

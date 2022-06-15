@@ -9,15 +9,25 @@
 
 #include "snes9x.h"
 
-enum
-{
-	SUCCESS = 1,
-	WRONG_FORMAT = -1,
-	WRONG_VERSION = -2,
-	FILE_NOT_FOUND = -3,
-};
+#define SNAPSHOT_MAGIC			"#!s9x-rg"
+#define SNAPSHOT_VERSION_IRQ		7
+#define SNAPSHOT_VERSION_BAPU		8
+#define SNAPSHOT_VERSION_IRQ_2018	11		// irq changes were introduced earlier, since this we store NextIRQTimer directly
+#define SNAPSHOT_VERSION			11
 
-int S9xFreezeGame (const char *);
-int S9xUnfreezeGame (const char *);
+#define SUCCESS					1
+#define WRONG_FORMAT			(-1)
+#define WRONG_VERSION			(-2)
+#define FILE_NOT_FOUND			(-3)
+#define WRONG_MOVIE_SNAPSHOT	(-4)
+#define NOT_A_MOVIE_SNAPSHOT	(-5)
+#define SNAPSHOT_INCONSISTENT	(-6)
+
+void S9xResetSaveTimer (bool8);
+bool8 S9xFreezeGame (const char *);
+uint32 S9xFreezeSize (void);
+bool8 S9xFreezeGameMem (uint8 *);
+bool8 S9xUnfreezeGame (const char *);
+int S9xUnfreezeGameMem (const uint8 *,uint32);
 
 #endif

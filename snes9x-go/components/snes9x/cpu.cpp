@@ -5,7 +5,7 @@
 \*****************************************************************************/
 
 #include "snes9x.h"
-#include "memory.h"
+#include "memmap.h"
 #include "dma.h"
 #include "apu/apu.h"
 #include "snapshot.h"
@@ -347,6 +347,7 @@ IRAM_ATTR void S9xDoHEventProcessing (void)
 static void S9xSoftResetCPU (void)
 {
 	CPU.Cycles = 182; // Or 188. This is the cycle count just after the jump to the Reset Vector.
+	CPU.PrevCycles = CPU.Cycles;
 	CPU.V_Counter = 0;
 	CPU.Flags = CPU.Flags & (DEBUG_MODE_FLAG | TRACE_FLAG);
 	CPU.PCBase = NULL;
