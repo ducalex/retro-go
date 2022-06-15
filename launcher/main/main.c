@@ -237,10 +237,11 @@ static void retro_loop(void)
         else if (rg_system_timer() >= next_idle_event)
         {
             gui.idle_counter++;
+            gui.joystick = 0;
+            prev_joystick = 0;
             gui_event(TAB_IDLE, tab);
             next_idle_event = rg_system_timer() + 100000;
             redraw_pending = true;
-            gui.joystick = 0;
         }
         else if (gui.idle_counter)
         {
@@ -294,8 +295,10 @@ void app_main(void)
         {0, "Start screen", "...", 1, &start_screen_cb},
         {0, "Hide tabs   ", "...", 1, &toggle_tabs_cb},
         {0, "Startup app ", "...", 1, &startup_app_cb},
+    #ifndef RG_TARGET_ODROID_GO
         RG_DIALOG_SEPARATOR,
         {0, "About Retro-Go", NULL,  1, &about_app_cb},
+    #endif
         RG_DIALOG_CHOICE_LAST
     };
 

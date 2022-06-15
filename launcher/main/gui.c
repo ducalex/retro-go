@@ -500,6 +500,10 @@ void gui_load_preview(tab_t *tab)
 
         order >>= 4;
 
+        // Give up on any button press to improve responsiveness
+        if ((gui.joystick |= rg_input_read_gamepad()))
+            break;
+
         if (file->missing_cover & (1 << type))
             continue;
 
@@ -515,10 +519,6 @@ void gui_load_preview(tab_t *tab)
             sprintf(path, "%s/default.png", app->paths.covers);
         else
             continue;
-
-        // Give up on any button press to improve responsiveness
-        if ((gui.joystick |= rg_input_read_gamepad()))
-            break;
 
         if (access(path, F_OK) == 0)
         {
