@@ -322,10 +322,10 @@ void app_main(void)
 
         // Audio is used to pace emulation :)
         size_t length = snd.sample_count;
-        for (size_t i = 0, out = 0; i < length; i++, out += 2)
+        for (size_t i = 0; i < length; i++)
         {
-            audioBuffer[out].left = snd.stream[0][i] * 2.75f;
-            audioBuffer[out].right = snd.stream[1][i] * 2.75f;
+            audioBuffer[i].left = snd.stream[0][i] * 2.75f;
+            audioBuffer[i].right = snd.stream[1][i] * 2.75f;
         }
         rg_audio_submit(audioBuffer, length);
     }
