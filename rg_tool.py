@@ -307,8 +307,12 @@ args = parser.parse_args()
 
 
 command = args.command
-apps = args.apps if "all" not in args.apps else PROJECT_APPS.keys()
+apps = [app for app in PROJECT_APPS.keys() if app in args.apps or "all" in args.apps]
 
+if command in ["build-fw", "build-img", "release"]:
+    if "launcher" not in apps:
+        print("\nWARNING: The launcher is mandatory for those apps and will be included!\n")
+        apps.insert(0, "launcher")
 
 if command in ["clean", "release"]:
     print("=== Step: Cleaning ===\n")
