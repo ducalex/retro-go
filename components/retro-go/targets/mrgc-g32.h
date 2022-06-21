@@ -59,7 +59,7 @@
 #define RG_BATT_VOLT_MAX            8.4f
 
 // Status LED
-// #define RG_GPIO_LED                 GPIO_NUM_NC
+#define RG_GPIO_LED                 GPIO_NUM_NC
 
 // I2C BUS
 #define RG_GPIO_I2C_SDA             GPIO_NUM_21

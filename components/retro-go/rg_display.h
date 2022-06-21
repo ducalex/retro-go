@@ -120,7 +120,6 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
 void rg_display_clear(uint16_t color_le);
 void rg_display_sync(void);
 void rg_display_force_redraw(void);
-void rg_display_show_info(const char *text, int timeout_ms);
 bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame, int width, int height);
 void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, int format);
 void rg_display_set_source_palette(const uint16_t *data, size_t colors);

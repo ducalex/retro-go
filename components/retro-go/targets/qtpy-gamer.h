@@ -29,7 +29,7 @@
 //#define RG_BATT_VOLT_MAX            4.2f
 
 // Status LED - not actually used, we've got neopixels instead :/
-#define RG_GPIO_LED                 GPIO_NUM_2
+#define RG_GPIO_LED                 GPIO_NUM_NC
 
 // I2C BUS
 #define RG_GPIO_I2C_SDA             GPIO_NUM_25

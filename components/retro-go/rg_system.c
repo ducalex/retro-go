@@ -49,7 +49,7 @@ static RTC_NOINIT_ATTR panic_trace_t panicTrace;
 static rg_stats_t statistics;
 static rg_app_t app;
 static rg_logbuf_t logbuf;
-static int ledValue = 0;
+static int ledValue = -1;
 static int wdtCounter = 0;
 static bool exitCalled = false;
 static bool initialized = false;
@@ -298,9 +298,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     if (handlers)
         app.handlers = *handlers;
 
-    #ifdef RG_GPIO_LED
-    gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
-    #endif
     rg_system_set_led(0);
 
     // Storage must be initialized first (SPI bus, settings, assets, etc)
@@ -311,12 +308,9 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         app.configNs = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_NAME, app.name);
         app.romPath = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_ARGS, "");
         app.bootFlags = rg_settings_get_number(NS_GLOBAL, SETTING_BOOT_FLAGS, 0);
-        if (app.bootFlags & RG_BOOT_ONCE)
-            rg_system_set_boot_app(RG_APP_LAUNCHER);
     }
 
-    // Now we init everything else!
-    rg_input_init(); // aw9523 goes first!
+    rg_input_init(); // Must be first for the qtpy (input -> aw9523 -> lcd)
     rg_display_init();
     rg_gui_init();
     rg_gui_draw_hourglass();
@@ -349,6 +343,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         rg_system_set_boot_app(RG_APP_LAUNCHER);
         rg_system_restart();
     }
+    panicTrace.magicWord = 0;
 
     // Start a recovery mode (returns to launcher at the moment) when a key is held during boot
     if (rg_input_key_is_pressed(RG_KEY_ANY))
@@ -364,7 +359,8 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         }
     }
 
-    panicTrace.magicWord = 0;
+    if (app.bootFlags & RG_BOOT_ONCE)
+        rg_system_set_boot_app(RG_APP_LAUNCHER);
 
     #ifdef ENABLE_PROFILING
     RG_LOGI("Profiling has been enabled at compile time!\n");
@@ -552,8 +548,6 @@ bool rg_emu_screenshot(const char *filename, int width, int height)
 
     RG_LOGI("Saving screenshot %dx%d to '%s'.\n", width, height, filename);
 
-    rg_system_set_led(1);
-
     if (!rg_mkdir(rg_dirname(filename)))
     {
         RG_LOGE("Unable to create dir, save might fail...\n");
@@ -564,7 +558,6 @@ bool rg_emu_screenshot(const char *filename, int width, int height)
     bool success = (*app.handlers.screenshot)(filename, width, height);
 
     rg_storage_commit();
-    rg_system_set_led(0);
 
     return success;
 }
@@ -731,9 +724,11 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
 
 void rg_system_set_led(int value)
 {
-    #ifdef RG_GPIO_LED
-    gpio_set_level(RG_GPIO_LED, value);
-    #endif
+    if (ledValue != value && RG_GPIO_LED != GPIO_NUM_NC)
+    {
+        gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
+        gpio_set_level(RG_GPIO_LED, value);
+    }
     ledValue = value;
 }
 

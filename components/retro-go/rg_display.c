@@ -881,12 +881,6 @@ void rg_display_sync(void)
         ; // Wait until display queue is done
 }
 
-void rg_display_show_info(const char *text, int timeout_ms)
-{
-    // Overlay a line of text at the bottom of the screen for approximately timeout_ms
-    // It would make more sense in rg_gui, but for efficiency I think here will be best...
-}
-
 void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer)
 {
     // Offsets can be negative to indicate N pixels from the end
