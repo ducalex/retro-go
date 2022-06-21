@@ -24,6 +24,10 @@ enum
     RG_TEXT_ALIGN_CENTER = (1 << 2),
     RG_TEXT_ALIGN_RIGHT  = (1 << 3),
     RG_TEXT_DUMMY_DRAW   = (1 << 4),
+    RG_TEXT_ALIGN_TOP    = (1 << 5),
+    RG_TEXT_ALIGN_MIDDLE = (1 << 6),
+    RG_TEXT_ALIGN_BOTTOM = (1 << 7),
+    RG_TEXT_NO_PADDING   = (1 << 8),
 };
 
 typedef struct

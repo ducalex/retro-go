@@ -191,15 +191,18 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
     if (y_pos < 0) y_pos += gui.screen_height;
     if (!text || *text == 0) text = " ";
 
+    int padding = (flags & RG_TEXT_NO_PADDING) ? 0 : 1;
+    int font_height = gui.font_points;
+    int line_height = font_height + padding * 2;
+
     if (width == 0)
     {
         // Find the longest line to determine our box width
-        int line_width = 0;
-        const char *ptr = text;
-        while (*ptr)
+        int line_width = padding * 2;
+        for (const char *ptr = text; *ptr; )
         {
             int chr = *ptr++;
-            line_width += get_glyph(0, gui.font, gui.font_points, chr);
+            line_width += get_glyph(0, gui.font, font_height, chr);
 
             if (chr == '\n' || *ptr == 0)
             {
@@ -209,17 +212,22 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
         }
     }
 
+    // TO DO: this should honor wrapping, multiline, etc...
+    if (flags & RG_TEXT_ALIGN_MIDDLE)
+        y_pos = (gui.screen_height - line_height) / 2;
+    else if (flags & RG_TEXT_ALIGN_BOTTOM)
+        y_pos = (gui.screen_height - line_height);
+    else if (flags & RG_TEXT_ALIGN_TOP)
+        y_pos = 0;
+
     int draw_width = RG_MIN(width, gui.screen_width - x_pos);
-    int font_height = gui.font_points;
     int y_offset = 0;
-    const char *ptr = text;
 
-    while (*ptr)
+    for (const char *ptr = text; *ptr;)
     {
-        int x_offset = 0;
+        int x_offset = padding;
 
-        size_t p = draw_width * font_height;
-        while (p--)
+        for (size_t p = draw_width * line_height; p--; )
             gui.draw_buffer[p] = color_bg;
 
         if (flags & (RG_TEXT_ALIGN_LEFT|RG_TEXT_ALIGN_CENTER))
@@ -228,7 +236,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
             const char *line = ptr;
             while (x_offset < draw_width && *line && *line != '\n')
             {
-                int width = get_glyph(0, gui.font, gui.font_points, *line++);
+                int width = get_glyph(0, gui.font, font_height, *line++);
                 if (draw_width - x_offset < width) // Do not truncate glyphs
                     break;
                 x_offset += width;
@@ -242,7 +250,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
         while (x_offset < draw_width)
         {
             uint16_t bitmap[24] = {0};
-            int width = get_glyph(bitmap, gui.font, gui.font_points, *ptr++);
+            int width = get_glyph(bitmap, gui.font, font_height, *ptr++);
 
             if (draw_width - x_offset < width) // Do not truncate glyphs
             {
@@ -255,7 +263,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
             {
                 for (int y = 0; y < font_height; y++)
                 {
-                    uint16_t *output = &gui.draw_buffer[x_offset + (draw_width * y)];
+                    uint16_t *output = &gui.draw_buffer[(draw_width * (y + padding)) + x_offset];
                     for (int x = 0; x < width; x++)
                         output[x] = (bitmap[y] & (1 << x)) ? color_fg : color_bg;
                 }
@@ -268,9 +276,9 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
         }
 
         if (!(flags & RG_TEXT_DUMMY_DRAW))
-            rg_gui_copy_buffer(x_pos, y_pos + y_offset, draw_width, font_height, 0, gui.draw_buffer);
+            rg_gui_copy_buffer(x_pos, y_pos + y_offset, draw_width, line_height, 0, gui.draw_buffer);
 
-        y_offset += font_height;
+        y_offset += line_height;
 
         if (!(flags & RG_TEXT_MULTILINE))
             break;
@@ -403,7 +411,7 @@ void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int 
     const int max_box_width = 0.82f * gui.screen_width;
     const int max_box_height = 0.82f * gui.screen_height;
     const int box_padding = 6;
-    const int row_padding_y = 1;
+    const int row_padding_y = 0; // now handled by draw_text
     const int row_padding_x = 8;
 
     int box_width = box_padding * 2;
@@ -845,8 +853,6 @@ static rg_gui_event_t font_type_cb(rg_gui_option_t *option, rg_gui_event_t event
 
 static void draw_game_status_bars(void)
 {
-    int height = RG_MAX(gui.font_points + 4, 16);
-    int padding = (height - gui.font_points) / 2;
     int max_len = RG_MIN(gui.screen_width / RG_MAX(gui.font->width, 7), 99);
     char header[100] = {0};
     char footer[100] = {0};
@@ -865,10 +871,8 @@ static void draw_game_status_bars(void)
     else if (app->romPath)
         snprintf(footer, 100, "%s", app->romPath);
 
-    rg_gui_draw_rect(0, 0, gui.screen_width, height, 0, 0, C_BLACK);
-    rg_gui_draw_rect(0, -height, gui.screen_width, height, 0, 0, C_BLACK);
-    rg_gui_draw_text(0, padding, gui.screen_width, header, C_LIGHT_GRAY, C_BLACK, 0);
-    rg_gui_draw_text(0, -height + padding, gui.screen_width, footer, C_LIGHT_GRAY, C_BLACK, 0);
+    rg_gui_draw_text(0, 0, gui.screen_width, header, C_WHITE, C_BLACK, RG_TEXT_ALIGN_TOP);
+    rg_gui_draw_text(0, 0, gui.screen_width, footer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_BOTTOM);
     rg_gui_draw_battery(-26, 3);
 }
 
