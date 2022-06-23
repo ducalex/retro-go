@@ -21,7 +21,14 @@ static const rg_gui_theme_t default_theme = {
     .item_disabled = C_GRAY, // C_DIM_GRAY
     .scrollbar = C_RED,
 };
-static rg_gui_t gui;
+static struct {
+    uint16_t *screen_buffer, *draw_buffer;
+    int screen_width, screen_height;
+    int font_points, font_type;
+    const rg_font_t *font;
+    rg_gui_theme_t theme;
+    bool initialized;
+} gui;
 
 // static const char *SETTING_FONTSIZE     = "FontSize";
 static const char *SETTING_FONTTYPE     = "FontType";
@@ -177,11 +184,6 @@ bool rg_gui_set_font_type(int type)
         rg_system_event(RG_EVENT_REDRAW, NULL);
 
     return true;
-}
-
-const rg_gui_t *rg_gui_get_info(void)
-{
-    return &gui;
 }
 
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,

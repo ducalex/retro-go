@@ -67,19 +67,6 @@ typedef struct
     rg_color_t scrollbar;
 } rg_gui_theme_t;
 
-typedef struct
-{
-    uint16_t *screen_buffer;
-    uint16_t *draw_buffer;
-    size_t screen_width;
-    size_t screen_height;
-    size_t font_points;
-    const rg_font_t *font;
-    int font_type;
-    rg_gui_theme_t theme;
-    bool initialized;
-} rg_gui_t;
-
 typedef struct rg_gui_option_s rg_gui_option_t;
 typedef rg_gui_event_t (*rg_gui_callback_t)(rg_gui_option_t *, rg_gui_event_t);
 
@@ -105,7 +92,6 @@ struct rg_gui_option_s
 void rg_gui_init(void);
 void rg_gui_flush(void); // no effect if buffered = false
 void rg_gui_clear(rg_color_t color); // like rg_display_clear but takes gui screen buffering into account
-const rg_gui_t *rg_gui_get_info(void);
 void rg_gui_set_buffered(bool buffered);
 bool rg_gui_set_theme(const rg_gui_theme_t *new_theme);
 bool rg_gui_set_font_type(int type);

@@ -12,7 +12,6 @@
 
 #define HEADER_HEIGHT       (50)
 #define LOGO_WIDTH          (46)
-#define LIST_LINE_COUNT     ((gui.height - (HEADER_HEIGHT + 6)) / rg_gui_get_info()->font_points)
 #define PREVIEW_HEIGHT      ((int)(gui.height * 0.70f))
 #define PREVIEW_WIDTH       ((int)(gui.width * 0.50f))
 
@@ -22,7 +21,7 @@ static const theme_t gui_themes[] = {
     {{C_TRANSPARENT, C_GRAY, C_WHITE, C_BLACK}},
     {{C_TRANSPARENT, C_DARK_GRAY, C_WHITE, C_BLACK}},
 };
-const int gui_themes_count = sizeof(gui_themes) / sizeof(theme_t);
+const int gui_themes_count = RG_COUNT(gui_themes);
 
 retro_gui_t gui;
 
@@ -34,6 +33,12 @@ retro_gui_t gui;
 #define SETTING_SHOW_PREVIEW    "ShowPreview"
 #define SETTING_HIDE_TAB(name)  strcat((char[99]){"HideTab."}, (name))
 
+static int max_visible_lines(const tab_t *tab, int *_line_height)
+{
+    int line_height = TEXT_RECT("ABC123", 0).height;
+    if (_line_height) *_line_height = line_height;
+    return (gui.height - (HEADER_HEIGHT + 6) - (tab->navpath ? line_height : 0)) / line_height;
+}
 
 void gui_init(void)
 {
@@ -307,7 +312,7 @@ void gui_scroll_list(tab_t *tab, scroll_mode_t mode, int arg)
     {
         int start = list->items[cur_cursor].text[0];
         int direction = arg > 0 ? 1 : -1;
-        for (int max = LIST_LINE_COUNT - 2; max > 0; --max)
+        for (int max = max_visible_lines(tab, NULL) - 2; max > 0; --max)
         {
             cur_cursor += direction;
             if (cur_cursor < 0 || cur_cursor >= list->length)
@@ -413,23 +418,23 @@ void gui_draw_list(tab_t *tab)
     rg_color_t bg[2] = {theme->list.standard_bg, theme->list.selected_bg};
 
     const listbox_t *list = &tab->listbox;
-    int top = HEADER_HEIGHT + 6;
-    int lines = LIST_LINE_COUNT;
+    int line_height, top = HEADER_HEIGHT + 6;
+    int lines = max_visible_lines(tab, &line_height);
 
     if (tab->navpath)
     {
         char buffer[64];
         snprintf(buffer, 63, "[%s]",  tab->navpath);
         top += rg_gui_draw_text(0, top, gui.width, buffer, fg[0], bg[0], 0).height;
-        lines -= 1;
     }
+
+    top += ((gui.height - top) - (lines * line_height)) / 2;
 
     for (int i = 0; i < lines; i++)
     {
         int idx = list->cursor + i - (lines / 2);
         int selected = idx == list->cursor;
         char *label = (idx >= 0 && idx < list->length) ? list->items[idx].text : "";
-
         top += rg_gui_draw_text(0, top, gui.width, label, fg[selected], bg[selected], 0).height;
     }
 }
