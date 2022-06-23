@@ -43,8 +43,7 @@ static void rom_savesram(void)
 
    if ((rom.flags & ROM_FLAG_BATTERY) && rom.prg_ram_banks > 0)
    {
-      snprintf(fn, sizeof(fn), "%s.sav", rom.filename);
-      if ((fp = fopen(fn, "wb")))
+      if ((fp = fopen(strcat(strcpy(fn, rom.filename), ".sav"), "wb")))
       {
          fwrite(rom.prg_ram, ROM_PRG_BANK_SIZE, rom.prg_ram_banks, fp);
          fclose(fp);
@@ -61,8 +60,7 @@ static void rom_loadsram(void)
 
    if ((rom.flags & ROM_FLAG_BATTERY) && rom.prg_ram_banks > 0)
    {
-      snprintf(fn, sizeof(fn), "%s.sav", rom.filename);
-      if ((fp = fopen(fn, "rb")))
+      if ((fp = fopen(strcat(strcpy(fn, rom.filename), ".sav"), "rb")))
       {
          fread(rom.prg_ram, ROM_PRG_BANK_SIZE, rom.prg_ram_banks, fp);
          fclose(fp);
@@ -308,7 +306,8 @@ rom_t *rom_loadfile(const char *filename)
             rom.system = SYS_NES_PAL;
       }
       rom.flags |= ROM_FLAG_FREE_DATA;
-      snprintf(rom.filename, sizeof(rom.filename), "%s", filename);
+      // This is fine, rom_loadmem zeroes `rom`.
+      strncpy(rom.filename, filename, sizeof(rom.filename) - 1);
       #ifdef USE_SRAM_FILE
          rom_loadsram();
       #endif

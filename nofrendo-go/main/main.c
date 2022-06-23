@@ -206,12 +206,12 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t 
         usleep(50000);
     }
 
-    if (pal == NES_PALETTE_NOFRENDO) sprintf(option->value, "%.7s", "Default");
-    if (pal == NES_PALETTE_COMPOSITE) sprintf(option->value, "%.7s", "Composite");
-    if (pal == NES_PALETTE_NESCLASSIC) sprintf(option->value, "%.7s", "NES Classic");
-    if (pal == NES_PALETTE_NTSC) sprintf(option->value, "%.7s", "NTSC");
-    if (pal == NES_PALETTE_PVM) sprintf(option->value, "%.7s", "PVM");
-    if (pal == NES_PALETTE_SMOOTH) sprintf(option->value, "%.7s", "Smooth");
+    if (pal == NES_PALETTE_NOFRENDO)    strcpy(option->value, "Default    ");
+    if (pal == NES_PALETTE_COMPOSITE)   strcpy(option->value, "Composite  ");
+    if (pal == NES_PALETTE_NESCLASSIC)  strcpy(option->value, "NES Classic");
+    if (pal == NES_PALETTE_NTSC)        strcpy(option->value, "NTSC       ");
+    if (pal == NES_PALETTE_PVM)         strcpy(option->value, "PVM        ");
+    if (pal == NES_PALETTE_SMOOTH)      strcpy(option->value, "Smooth     ");
 
     return RG_DIALOG_VOID;
 }
