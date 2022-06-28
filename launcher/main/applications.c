@@ -683,6 +683,7 @@ static void application(const char *desc, const char *name, const char *exts, co
 void applications_init(void)
 {
     application("Nintendo Entertainment System", "nes", "nes fc fds nsf", "nofrendo-go", 16);
+    application("Super Nintendo", "snes", "smc sfc", "snes9x-go", 0);
     application("Nintendo Gameboy", "gb", "gb gbc", "gnuboy-go", 0);
     application("Nintendo Gameboy Color", "gbc", "gbc gb", "gnuboy-go", 0);
     application("Sega Master System", "sms", "sms sg", "smsplusgx-go", 0);
@@ -692,7 +693,6 @@ void applications_init(void)
     application("PC Engine", "pce", "pce", "pce-go", 0);
     application("Atari Lynx", "lnx", "lnx", "handy-go", 64);
     application("Atari 2600", "a26", "a26", "stella-go", 0);
-    application("Super Nintendo", "snes", "smc sfc", "snes9x-go", 0);
     application("Neo Geo Pocket Color", "ngp", "ngp ngc", "ngpocket-go", 0);
     application("DOOM", "doom", "wad", "prboom-go", 0);
     // Special app to bootstrap native esp32 binaries from the SD card
