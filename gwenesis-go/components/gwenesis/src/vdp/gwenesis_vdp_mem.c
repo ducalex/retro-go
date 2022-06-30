@@ -30,7 +30,7 @@ __license__ = "GPLv3"
 
 #include <assert.h>
 
-#pragma GCC optimize("Ofast")
+// #pragma GCC optimize("Ofast")
 //#define _DMA_TRACE_
 
 /* Setup VDP Memories */

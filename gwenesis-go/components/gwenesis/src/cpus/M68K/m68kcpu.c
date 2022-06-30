@@ -40,7 +40,7 @@
 
 #include "gwenesis_savestate.h"
 #include "m68kops.h"
-// #pragma GCC optimize("Ofast")
+#pragma GCC optimize("Os")
 
  extern void m68040_fpu_op0(void);
  extern void m68040_fpu_op1(void);

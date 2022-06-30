@@ -25,7 +25,7 @@ __license__ = "GPLv3"
 #include "gwenesis_savestate.h"
 #include "ym2612.h"
 
-#pragma GCC optimize("Ofast")
+// #pragma GCC optimize("Ofast")
 
 #define M68K_FREQ_DIVISOR   7
 #define Z80_FREQ_DIVISOR    14
@@ -36,14 +36,14 @@ static int reset_once = 0;
 uint64_t zclk = 0;
 static int initialized = 0;
 
-unsigned char *Z80_RAM;
+static unsigned char *Z80_RAM;
 
 static Z80 cpu;
 
 void ResetZ80(register Z80 *R);
 
 // Bank register used by Z80 to access M68K Memory space 1 BANK=32KByte
-int Z80_BANK;
+static int Z80_BANK;
 
 /** DAsm() ***************************************************/
 /** DAsm() will disassemble the code at adress A and put    **/

@@ -12,7 +12,7 @@
 /**     commercially. Please, notify me, if you make any    **/   
 /**     changes to this file.                               **/
 /*************************************************************/
-#pragma GCC optimize("Ofast")
+// #pragma GCC optimize("Ofast")
 
 #include "Z80.h"
 #include "Tables.h"
