@@ -23,8 +23,8 @@
 
 #pragma once
 
-// This is the worst case scenario, 48khz stereo running PAL
-#define  APU_SAMPLES_PER_FRAME ((48000 / 50 + 1) * 2)
+// This is the worst case scenario, 44.1khz stereo running PAL
+#define  APU_SAMPLES_PER_FRAME ((44100 / 50 + 1) * 2)
 
 #define  APU_WRA0       0x4000
 #define  APU_WRA1       0x4001

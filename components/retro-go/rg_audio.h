@@ -26,7 +26,7 @@ typedef struct __attribute__((packed))
 
 void rg_audio_init(int sampleRate);
 void rg_audio_deinit(void);
-void rg_audio_submit(rg_audio_sample_t *samples, size_t count);
+void rg_audio_submit(const rg_audio_sample_t *samples, size_t count);
 
 const rg_audio_sink_t *rg_audio_get_sinks(size_t *count);
 const rg_audio_sink_t *rg_audio_get_sink(void);

@@ -8,7 +8,8 @@
 #define RG_SETTINGS_USE_NVS         0
 
 // Audio
-#define RG_AUDIO_USE_SPEAKER        1
+#define RG_AUDIO_USE_INT_DAC        1
+#define RG_AUDIO_USE_EXT_DAC        0
 
 // Video
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341

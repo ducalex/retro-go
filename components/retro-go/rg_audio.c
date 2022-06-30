@@ -8,7 +8,7 @@
 #include "rg_system.h"
 #include "rg_audio.h"
 
-#if RG_AUDIO_USE_SPEAKER
+#if RG_AUDIO_USE_INT_DAC
 #include <driver/dac.h>
 #endif
 
@@ -22,7 +22,7 @@ static int64_t dummyBusyUntil = 0;
 
 static const rg_audio_sink_t sinks[] = {
     {RG_AUDIO_SINK_DUMMY,   0, "Dummy"},
-#if RG_AUDIO_USE_SPEAKER
+#if RG_AUDIO_USE_INT_DAC
     {RG_AUDIO_SINK_I2S_DAC, 0, "Speaker"},
 #endif
 #if RG_AUDIO_USE_EXT_DAC
@@ -72,15 +72,15 @@ void rg_audio_init(int sampleRate)
         .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
         .communication_format = I2S_COMM_FORMAT_STAND_I2S,
         .intr_alloc_flags = 0, // ESP_INTR_FLAG_LEVEL1
-        .dma_buf_count = 3, // Goal is to have ~800 samples over 2-8 buffers (3x270 or 5x180 are pretty good)
-        .dma_buf_len = 270, // The unit is stereo samples (4 bytes) (optimize for 533 usage)
+        .dma_buf_count = 4, // Goal is to have ~800 samples over 2-8 buffers (3x270 or 5x180 are pretty good)
+        .dma_buf_len = 180, // The unit is stereo samples (4 bytes) (optimize for 533 usage)
         .use_apll = true, // External DAC may care about accuracy
     };
     esp_err_t ret = ESP_FAIL;
 
     if (audioSink == RG_AUDIO_SINK_I2S_DAC)
     {
-    #if RG_AUDIO_USE_SPEAKER
+    #if RG_AUDIO_USE_INT_DAC
         i2s_config.mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN;
         i2s_config.communication_format = I2S_COMM_FORMAT_STAND_MSB;
         i2s_config.use_apll = false;
@@ -119,7 +119,6 @@ void rg_audio_init(int sampleRate)
     {
         RG_LOGI("Audio ready. sink='%s', samplerate=%d, volume=%d\n",
             rg_audio_get_sink()->name, audioSampleRate, audioVolume);
-        // RG_LOGI("Real I2S samplerate: %f\n", i2s_get_clk(I2S_NUM_0));
     }
     else
     {
@@ -138,7 +137,7 @@ void rg_audio_deinit(void)
 
     if (audioSink == RG_AUDIO_SINK_I2S_DAC)
     {
-    #if RG_AUDIO_USE_SPEAKER
+    #if RG_AUDIO_USE_INT_DAC
         i2s_driver_uninstall(I2S_NUM_0);
         if (SPEAKER_DAC_MODE & I2S_DAC_CHANNEL_RIGHT_EN)
             dac_output_disable(DAC_CHANNEL_1);
@@ -168,104 +167,75 @@ void rg_audio_deinit(void)
     RELEASE_DEVICE();
 }
 
-static inline void filter_samples(rg_audio_sample_t *samples, size_t count)
+void rg_audio_submit(const rg_audio_sample_t *samples, size_t count)
 {
-
-}
-
-void rg_audio_submit(rg_audio_sample_t *samples, size_t count)
-{
-    size_t bufferSize = count * sizeof(rg_audio_sample_t);
-    size_t written = 0;
-    float volume = audioVolume * 0.01f;
-
-    if (bufferSize == 0)
+    if (!samples || !count)
         return;
 
     if (!ACQUIRE_DEVICE(0))
         return;
 
-    if (audioMuted)
+    if (audioSink == RG_AUDIO_SINK_I2S_DAC || audioSink == RG_AUDIO_SINK_I2S_EXT)
     {
-        // Some DACs do not like if we stop sending sound when muted. On some devices we can
-        // disable the AMP, but on others we must send silence to avoid buzzing...
-        volume = 0.f;
-    }
-    else if (audioFilter)
-    {
-        filter_samples(samples, count);
-    }
+        float volume = audioMuted ? 0.f : (audioVolume * 0.01f);
+        rg_audio_sample_t buffer[180];
+        size_t written = 0;
+        size_t pos = 0;
 
-    if (audioSink == RG_AUDIO_SINK_DUMMY)
-    {
-        usleep(RG_MAX(dummyBusyUntil - rg_system_timer(), 1000));
-        dummyBusyUntil = rg_system_timer() + ((audioSampleRate * 1000) / count);
-        written = bufferSize;
-    }
-    else if (audioSink == RG_AUDIO_SINK_I2S_DAC)
-    {
-        // In speaker mode we use dac left and right as a single channel
-        // to increase resolution.
-        float multiplier = ((127.f + 127.f) * volume) / 0x8000;
-        for (size_t i = 0; i < count; ++i)
-        {
-            int range = ((samples[i].left + samples[i].right) >> 1) * multiplier;
-            int dac0 = -0x80;
-            int dac1 = 0x80;
-
-            // Convert to differential output
-            if (range > 127)
-            {
-                dac1 += (range - 127);
-                dac0 += 127;
-            }
-            else if (range < -127)
-            {
-                dac1 += (range + 127);
-                dac0 += -127;
-            }
-            else
-            {
-                dac1 += 0;
-                dac0 += range;
-            }
-
-            // Push the differential output in the upper byte of each channel
-            samples[i] = (rg_audio_sample_t){dac1 << 8, dac0 << 8};
-        }
-        i2s_write(I2S_NUM_0, samples, bufferSize, &written, 1000);
-    }
-    else if (audioSink == RG_AUDIO_SINK_I2S_EXT)
-    {
         for (size_t i = 0; i < count; ++i)
         {
             int left = samples[i].left * volume;
             int right = samples[i].right * volume;
 
-            // Attenuate because it's too loud on some devices
-            #ifdef RG_TARGET_MRGC_G32
-            left >>= 1;
-            right >>= 1;
-            #endif
+            // In speaker mode we use left and right as a differential mono output to increase resolution.
+            if (audioSink == RG_AUDIO_SINK_I2S_DAC)
+            {
+                int sample = (left + right) >> 1;
+                if (sample > 0x7F00)
+                {
+                    left  =  0x8000 + (sample - 0x7F00);
+                    right = -0x8000 + 0x7F00;
+                }
+                else if (sample < -0x7F00)
+                {
+                    left  =  0x8000 + (sample + 0x7F00);
+                    right = -0x8000 + -0x7F00;
+                }
+                else
+                {
+                    left  =  0x8000;
+                    right = -0x8000 + sample;
+                }
+            }
 
-            // Clip
-            if (left > 32767)
-                left = 32767;
-            else if (left < -32768)
-                left = -32767;
-            if (right > 32767)
-                right = 32767;
-            else if (right < -32768)
-                right = -32767;
+            // Clipping   (not necessary, we have (int16 * vol) and volume is never more than 1.0)
+            // if (left > 32767) left = 32767; else if (left < -32768) left = -32767;
+            // if (right > 32767) right = 32767; else if (right < -32768) right = -32767;
 
-            samples[i] = (rg_audio_sample_t){left, right};
+            // Queue
+            buffer[pos].left = left;
+            buffer[pos].right = right;
+
+            if (i == count - 1 || ++pos == RG_COUNT(buffer))
+            {
+                if (i2s_write(I2S_NUM_0, (void*)buffer, pos * 4, &written, 1000) != ESP_OK)
+                    RG_LOGW("I2S Submission error! Written: %d/%d\n", written, pos * 4);
+                pos = 0;
+            }
         }
-        i2s_write(I2S_NUM_0, samples, bufferSize, &written, 1000);
     }
-
-    if (written < bufferSize)
+    else if (audioSink == RG_AUDIO_SINK_BT_A2DP)
     {
-        RG_LOGW("Submission error: %d/%d bytes sent.\n", written, bufferSize);
+        // Removed
+    }
+    else if (audioSink == RG_AUDIO_SINK_DUMMY)
+    {
+        usleep(RG_MAX(dummyBusyUntil - rg_system_timer(), 1000));
+        dummyBusyUntil = rg_system_timer() + ((audioSampleRate * 1000) / count);
+    }
+    else
+    {
+        RG_LOGE("Unknown audio sink: %d\n", audioSink);
     }
 
     RELEASE_DEVICE();

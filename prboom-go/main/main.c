@@ -352,7 +352,7 @@ void I_InitSound(void)
     music_player->init(snd_samplerate);
     music_player->setvolume(snd_MusicVolume);
 
-    xTaskCreatePinnedToCore(&soundTask, "soundTask", 1536, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(&soundTask, "soundTask", 2048, NULL, 5, NULL, 1);
 }
 
 void I_ShutdownSound(void)
