@@ -18,14 +18,14 @@
 #define min(a,b)	(((a) < (b)) ? (a) : (b))
 #endif
 
-typedef struct
+typedef struct __attribute__ ((packed))
 {
-	int			offset;
-	int			offset2;
-	int			size;
-	int			type;
-	uint16		debuted_in;
-	uint16		deleted_in;
+	int			offset:13;
+	int			offset2:1; // unused in retro-go, 13 otherwise
+	int			size:13;
+	int			type:5;
+	uint8		debuted_in;
+	uint8		deleted_in;
 	const char	*name;
 }	FreezeData;
 
@@ -54,7 +54,7 @@ enum
 	sizeof(((STRUCT *) NULL)->field), \
 	INT_V, \
 	save_version_introduced, \
-	9999, \
+	99, \
 	#field \
 }
 
@@ -65,7 +65,7 @@ enum
 	count, \
 	elemType, \
 	save_version_introduced, \
-	9999, \
+	99, \
 	#field \
 }
 
@@ -76,7 +76,7 @@ enum
 	4, \
 	POINTER_V, \
 	save_version_introduced, \
-	9999, \
+	99, \
 	#field \
 }
 
