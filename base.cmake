@@ -6,7 +6,12 @@ macro(rg_setup_compile_options)
     set(RG_TARGET "RG_TARGET_$ENV{RG_TARGET}")
     message("Target: ${RG_TARGET}")
 
-    component_compile_options(-DRETRO_GO -D${RG_TARGET} ${ARGV})
+    component_compile_options(
+        -DRG_REPLACE_PRINTF_FUNCTIONS
+        -D${RG_TARGET}
+        -DRETRO_GO
+        ${ARGV}
+    )
 
     if(NOT ";${ARGV};" MATCHES ";-O[0123gs];")
         # Only default to -O3 if not specified by the app
