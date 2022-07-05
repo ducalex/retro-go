@@ -84,10 +84,8 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t 
     if (pal != gnuboy_get_palette())
     {
         rg_settings_set_number(NS_APP, SETTING_PALETTE, pal);
-        host.lcd.buffer = currentUpdate->buffer;
-        host.lcd.enabled = true;
         gnuboy_set_palette(pal);
-        gnuboy_run();
+        gnuboy_run(true);
         usleep(50000);
     }
 
@@ -207,14 +205,12 @@ static rg_gui_event_t sram_settings_cb(rg_gui_option_t *option, rg_gui_event_t e
     return RG_DIALOG_VOID;
 }
 
-static void vblank_callback(void)
+static void blit_frame(void)
 {
-    if (host.lcd.enabled)
-    {
-        rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
-        fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
-        currentUpdate = previousUpdate;
-    }
+    rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
+    fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
+    currentUpdate = previousUpdate;
+    host.lcd.buffer = currentUpdate->buffer;
 }
 
 static void auto_sram_update(void)
@@ -260,7 +256,7 @@ void app_main(void)
         MESSAGE_ERROR("Unable to create SRAM folder...");
 
     // Initialize the emulator
-    gnuboy_init(AUDIO_SAMPLE_RATE, true, GB_PIXEL_565_BE, vblank_callback);
+    gnuboy_init(AUDIO_SAMPLE_RATE, true, GB_PIXEL_565_BE, &blit_frame);
 
     // Load ROM
     if (gnuboy_load_rom(app->romPath) < 0)
@@ -292,6 +288,8 @@ void app_main(void)
     int frameTime = get_frame_time(60);
     int joystick_old = -1;
     int joystick = 0;
+
+    host.lcd.buffer = currentUpdate->buffer;
 
     while (true)
     {
@@ -325,11 +323,7 @@ void app_main(void)
         int64_t startTime = get_elapsed_time();
         bool drawFrame = !skipFrames;
 
-        host.lcd.buffer = currentUpdate->buffer;
-        host.lcd.enabled = drawFrame;
-        host.snd.pos = 0;
-
-        gnuboy_run();
+        gnuboy_run(drawFrame);
 
         if (autoSaveSRAM > 0)
         {
@@ -372,5 +366,6 @@ void app_main(void)
 
         // Audio is used to pace emulation :)
         rg_audio_submit((void*)host.snd.buffer, host.snd.pos >> 1);
+        host.snd.pos = 0;
     }
 }

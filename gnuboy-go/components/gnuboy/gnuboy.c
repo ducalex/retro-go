@@ -11,12 +11,12 @@ gb_host_t host;
 
 // Note: Eventually we'll just pass a gb_host_t to init...
 // But for now assume it's been configured before we were alled!
-int gnuboy_init(int samplerate, bool stereo, int pixformat, void *vblank_func)
+int gnuboy_init(int samplerate, bool stereo, int pixformat, void *blit_func)
 {
 	host = (gb_host_t){
 		.lcd.colorize = GB_PALETTE_CGB,
 		.lcd.format = pixformat,
-		.lcd.vblank = vblank_func,
+		.lcd.blit_func = blit_func,
 		.snd.buffer = malloc(samplerate / 4),
 		.snd.len = samplerate / 8,
 		.snd.samplerate = samplerate,
@@ -59,8 +59,9 @@ void gnuboy_reset(bool hard)
 		visible lines x144 = 32832 dsc (15.66ms)
 		vblank lines x10 = 2280 dsc (1.08ms)
 */
-void gnuboy_run(void)
+void gnuboy_run(bool draw)
 {
+	host.lcd.enabled = draw;
 	/* FIXME: judging by the time specified this was intended
 	to emulate through vblank phase which is handled at the
 	end of the loop. */
@@ -75,8 +76,8 @@ void gnuboy_run(void)
 
 	/* When using GB_PIXEL_PALETTED, the host should draw the frame in this callback because
 	   the palette can be modified below before gnuboy_run returns. */
-	if (host.lcd.vblank) {
-		(host.lcd.vblank)();
+	if (draw && host.lcd.blit_func) {
+		(host.lcd.blit_func)();
 	}
 
 	hw_vblank();
