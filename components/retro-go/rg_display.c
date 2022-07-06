@@ -900,6 +900,11 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
     if (width < 0 || height < 0)
         return;
 
+    // This will work for now because we rarely draw from different threads (so all we need is ensure
+    // that we're not interrupting a display update). But what we SHOULD be doing is acquire a lock
+    // before every call to lcd_set_window and release it only after the last call to lcd_send_data.
+    rg_display_sync();
+
     lcd_set_window(left + RG_SCREEN_MARGIN_LEFT, top + RG_SCREEN_MARGIN_TOP, width, height);
 
     size_t lines_per_buffer = SPI_BUFFER_LENGTH / width;
