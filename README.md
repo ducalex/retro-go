@@ -42,11 +42,10 @@ compatibility!
   3. Select retro-go in the files list and flash it.
 
 ### Generic ESP32
-This method is intended to be used when .fw support isn't available (when porting to a new device) or undesirable (devices with less than 4MB of flash).
-  1. Build a .img file (refer to **Building Retro-Go** below)
-  2. Erase the flash: `esptool.py erase_flash`
-  3. Flash the image: `esptool.py -b 921600 write_flash 0x0 retro-go_*.img`
-
+This method is intended to be used when .fw support isn't available (when porting to a new device) or undesirable (devices with smaller flash).
+  1. Build a .img file (refer to [Building Retro-Go](#building-retro-go) below)
+  2. Flash the image: `esptool.py write_flash --flash_size detect 0x0 retro-go_*.img`  
+      _Note: Your particular device may require extra steps (like holding a button during power up) or different esptool flags._
 
 # Game covers 
 Game covers should be placed in the `romart` folder at the base of your sd card. You can obtain a pre-made pack from 
@@ -125,7 +124,7 @@ Patching esp-idf may be required for full functionality. Patches are located in 
 - Generate a .fw file to be installed with odroid-go-firmware (SD Card):  
     `./rg_tool.py build-fw` or `./rg_tool.py release` (clean build)
 - Generate a .img to be flashed with esptool.py (Serial):  
-   `./rg_tool.py build-img` or `./rg_tool.py release` (clean build)
+    `./rg_tool.py build-img` or `./rg_tool.py release` (clean build)
 
 For a smaller build you can also specify which apps you want, for example the launcher + nes + gameboy only:
 1. `./rg_tool.py build-fw launcher nofrendo-go gnuboy-go`
