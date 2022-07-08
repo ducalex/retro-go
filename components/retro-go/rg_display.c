@@ -849,9 +849,6 @@ rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const r
 
     xQueueSend(display_task_queue, &update, portMAX_DELAY);
 
-    if (update->synchronous)
-        rg_display_sync();
-
     return update->type;
 }
 

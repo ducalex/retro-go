@@ -18,9 +18,11 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <rg_system.h>
+#include <sys/dirent.h>
 #include <sys/unistd.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <string.h>
 #include <errno.h>
 #include <doomtype.h>
 #include <doomstat.h>
@@ -54,8 +56,6 @@
 
 static rg_video_update_t update;
 static rg_app_t *app;
-static const char *iwad_path;
-static const char *save_path;
 
 // Expected variables by doom
 int snd_card = 1, mus_card = 1;
@@ -143,6 +143,7 @@ void I_UpdateNoBlit(void)
 void I_FinishUpdate(void)
 {
     rg_display_queue_update(&update, NULL);
+    rg_display_sync(); // Wait for update->buffer to be released
 }
 
 bool I_StartDisplay(void)
@@ -203,7 +204,7 @@ void I_uSleep(unsigned long usecs)
 
 const char *I_DoomExeDir(void)
 {
-    return iwad_path;
+    return RG_BASE_PATH_ROMS "/doom";
 }
 
 void I_UpdateSoundParams(int handle, int volume, int seperation, int pitch)
@@ -502,6 +503,46 @@ static void event_handler(int event, void *arg)
     return;
 }
 
+const char *iwad_picker(const char *path)
+{
+    rg_gui_option_t files[32];
+    char buffer[1024];
+    char *ptr = buffer;
+    size_t count = 0;
+    struct dirent* ent;
+    size_t len;
+    FILE *fp;
+    DIR* dir = opendir(path);
+    if (!dir)
+        return NULL;
+
+    while ((ent = readdir(dir)) && count < 32)
+    {
+        if ((len = strlen(ent->d_name)) < 4 || strcasecmp(ent->d_name + (len - 4), ".wad") != 0)
+            continue;
+
+        snprintf(ptr, RG_PATH_MAX, "%s/%s", path, ent->d_name);
+        if ((fp = fopen(ptr, "rb")) && fgetc(fp) == 'I' && fgetc(fp) == 'W')
+        {
+            files[count] = (rg_gui_option_t){count, strcpy(ptr, ent->d_name), NULL, 1};
+            ptr += len + 1;
+            count++;
+        }
+        fclose(fp);
+    }
+    closedir(dir);
+
+    if (count > 1)
+    {
+        files[count] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
+        int sel = rg_gui_dialog("Select WAD file", files, 0);
+        if (sel >= 0 && sel < count)
+            return strdup(files[sel].label);
+    }
+
+    return strdup(count ? buffer : "(none)");
+}
+
 void app_main()
 {
     const rg_handlers_t handlers = {
@@ -520,25 +561,34 @@ void app_main()
     app->refreshRate = TICRATE;
 
     update.buffer = rg_alloc(SCREENHEIGHT*SCREENWIDTH, MEM_FAST);
-    update.synchronous = true;
 
-    const char *romtype = "-iwad";
+    const char *save = RG_BASE_PATH_SAVES "/doom";
+    const char *iwad = NULL;
+    const char *pwad = NULL;
     FILE *fp;
 
-    // TO DO: We should probably make prboom detect what we're passing instead
-    // and choose which default IWAD to use, if any.
     if ((fp = fopen(app->romPath, "rb")))
     {
         if (fgetc(fp) == 'P')
-            romtype = "-file";
+            pwad = app->romPath;
+        else
+            iwad = app->romPath;
         fclose(fp);
     }
 
-    iwad_path = RG_BASE_PATH_ROMS "/doom";
-    save_path = RG_BASE_PATH_SAVES "/doom";
+    if (!iwad)
+        iwad = iwad_picker(I_DoomExeDir());
 
-    myargv = (const char *[]){"doom", "-save", save_path, romtype, app->romPath};
-    myargc = 5;
+    if (pwad)
+    {
+        myargv = (const char *[]){"doom", "-save", save, "-iwad", iwad, "-file", pwad};
+        myargc = 7;
+    }
+    else
+    {
+        myargv = (const char *[]){"doom", "-save", save, "-iwad", iwad};
+        myargc = 5;
+    }
 
     Z_Init();
     D_DoomMain();
