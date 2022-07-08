@@ -29,6 +29,7 @@ void rg_storage_set_activity_led(bool enable);
 bool rg_storage_get_activity_led(void);
 
 bool rg_mkdir(const char *dir);
+bool rg_delete(const char *path);
 const char *rg_dirname(const char *path);
 const char *rg_basename(const char *path);
 const char *rg_extension(const char *path);

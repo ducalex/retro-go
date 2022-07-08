@@ -1,6 +1,7 @@
 #include <driver/sdmmc_host.h>
 #include <esp_vfs_fat.h>
 #include <esp_event.h>
+#include <sys/dirent.h>
 #include <sys/stat.h>
 #include <string.h>
 #include <unistd.h>
@@ -167,6 +168,48 @@ bool rg_mkdir(const char *dir)
     }
 
     return (ret == 0);
+}
+
+bool rg_delete(const char *path)
+{
+    RG_ASSERT(path, "Bad param");
+    DIR *dir;
+
+    if (unlink(path) == 0)
+    {
+        RG_LOGI("Deleted file %s\n", path);
+        return true;
+    }
+    else if (errno == ENOENT)
+    {
+        // The path already doesn't exist!
+        return true;
+    }
+    else if (rmdir(path) == 0)
+    {
+        RG_LOGI("Deleted empty folder %s\n", path);
+        return true;
+    }
+    else if ((dir = opendir(path)))
+    {
+        char pathbuf[128]; // Smaller than RG_PATH_MAX to prevent issues due to lazy recursion...
+        struct dirent* ent;
+        while ((ent = readdir(dir)))
+        {
+            if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+                continue;
+            snprintf(pathbuf, sizeof(pathbuf), "%s/%s", path, ent->d_name);
+            rg_delete(pathbuf);
+        }
+        closedir(dir);
+        if (rmdir(path) == 0)
+        {
+            RG_LOGI("Deleted folder %s\n", path);
+            return true;
+        }
+    }
+
+    return false;
 }
 
 const char *rg_dirname(const char *path)

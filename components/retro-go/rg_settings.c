@@ -1,6 +1,5 @@
 #include <malloc.h>
 #include <string.h>
-#include <unistd.h>
 #include <stdio.h>
 #include <cJSON.h>
 
@@ -76,7 +75,7 @@ void rg_settings_commit(void)
     FILE *fp = fopen(config_file_path, "wb");
     if (!fp)
     {
-        if (unlink(config_file_path) == -1)
+        if (!rg_delete(config_file_path))
             rg_mkdir(rg_dirname(config_file_path));
         fp = fopen(config_file_path, "wb");
     }
