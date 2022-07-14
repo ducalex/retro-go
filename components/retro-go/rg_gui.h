@@ -13,6 +13,7 @@ typedef enum
     RG_DIALOG_ENTER,
     RG_DIALOG_BACK,
     RG_DIALOG_ALT,
+    RG_DIALOG_FOCUS,
     RG_DIALOG_CLOSE,
     RG_DIALOG_DISMISS,
 } rg_gui_event_t;

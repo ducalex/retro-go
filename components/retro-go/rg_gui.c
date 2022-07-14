@@ -317,7 +317,7 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_si
         height -= border_size * 2;
     }
 
-    if (height > 0 && fill_color != -1)
+    if (height > 0 && fill_color != -1) // C_TRANSPARENT
     {
         size_t p = width * RG_MIN(height, 16);
         while (p--)
@@ -560,7 +560,7 @@ int rg_gui_dialog(const char *header, const rg_gui_option_t *options_const, int 
 {
     int options_count = get_dialog_items_count(options_const);
     int sel = selected < 0 ? (options_count + selected) : selected;
-    int sel_old = sel;
+    int sel_old = -1;
 
     // We create a copy of options because the callbacks might modify it (ie option->value)
     rg_gui_option_t options[options_count + 1];
@@ -647,6 +647,9 @@ int rg_gui_dialog(const char *header, const rg_gui_option_t *options_const, int 
             joystick_last = rg_system_timer();
         }
 
+        if (event == RG_DIALOG_CLOSE)
+            break;
+
         if (sel_old != sel)
         {
             while (options[sel].flags == RG_DIALOG_FLAG_SKIP && sel_old != sel)
@@ -659,6 +662,8 @@ int rg_gui_dialog(const char *header, const rg_gui_option_t *options_const, int 
                 if (sel >= options_count)
                     sel = 0;
             }
+            if (options[sel].update_cb)
+                event = options[sel].update_cb(&options[sel], RG_DIALOG_FOCUS);
             rg_gui_draw_dialog(header, options, sel);
             sel_old = sel;
         }

@@ -11,7 +11,8 @@
 typedef struct
 {
     uint32_t magic;
-    uint32_t reserved[7];
+    uint32_t checksum;
+    uint32_t reserved[6];
 } kvs_header_t;
 
 typedef struct

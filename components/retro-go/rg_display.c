@@ -101,20 +101,14 @@ static void spi_task(void *arg)
 {
     spi_transaction_t *t;
 
-    while (1)
+    while (spi_device_get_trans_result(spi_dev, &t, portMAX_DELAY) == ESP_OK)
     {
-        if (spi_device_get_trans_result(spi_dev, &t, portMAX_DELAY) == ESP_OK)
-        {
-            if ((int)t->user & 2)
-            {
-                xQueueSend(spi_buffers, &t->tx_buffer, 0);
-            }
-            if (xQueueSend(spi_transactions, &t, 0) != pdTRUE)
-            {
-                RG_PANIC("spi_transactions full..?");
-            }
-        }
+        if ((int)t->user & 2)
+            xQueueSend(spi_buffers, &t->tx_buffer, 0);
+        xQueueSend(spi_transactions, &t, 0);
     }
+
+    RG_LOGE("SPI task ended. Was the handle freed?!\n");
 
     vTaskDelete(NULL);
 }
@@ -169,7 +163,6 @@ static void spi_init(void)
 
 static void spi_deinit(void)
 {
-    // To do: Stop SPI task...
     spi_bus_remove_device(spi_dev);
     spi_bus_free(SPI2_HOST);
 }
@@ -940,11 +933,8 @@ void rg_display_clear(uint16_t color_le)
     size_t pixels = RG_SCREEN_WIDTH * RG_SCREEN_HEIGHT;
     uint16_t color = (color_le << 8) | (color_le >> 8);
 
-#ifdef RG_TARGET_QTPY_GAMER
-    lcd_set_window(RG_SCREEN_MARGIN_LEFT, RG_SCREEN_MARGIN_TOP, RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT);
-#else
+    // We ignore margins here
     lcd_set_window(0, 0, RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT);
-#endif
 
     while (pixels > 0)
     {

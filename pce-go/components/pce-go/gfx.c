@@ -55,8 +55,8 @@ static struct {
 static void // Do not inline
 draw_tiles(uint8_t *screen_buffer, int Y1, int Y2, int scroll_x, int scroll_y)
 {
-	const uint8_t _bg_w[] = { 32, 64, 128, 128 };
-	const uint8_t _bg_h[] = { 32, 64 };
+	uint32_t _bg_w[] = { 32, 64, 128, 128 };
+	uint32_t _bg_h[] = { 32, 64 };
 
 	uint32_t bg_w = _bg_w[(IO_VDC_REG[MWR].W >> 4) & 3]; // Bits 5-4 select the width
 	uint32_t bg_h = _bg_h[(IO_VDC_REG[MWR].W >> 6) & 1]; // Bit 6 selects the height
