@@ -13,6 +13,10 @@
 static esp_err_t sdcard_mount = ESP_FAIL;
 static bool disk_led = true;
 
+#ifndef SPI_DMA_CH_AUTO
+#define SPI_DMA_CH_AUTO 1
+#endif
+
 #define SETTING_DISK_ACTIVITY "DiskActivity"
 
 
@@ -62,20 +66,20 @@ void rg_storage_init(void)
 #if RG_STORAGE_DRIVER == 1
 
     sdmmc_host_t host_config = SDSPI_HOST_DEFAULT();
-    host_config.slot = SPI2_HOST;
-    host_config.max_freq_khz = SDMMC_FREQ_DEFAULT; // SDMMC_FREQ_26M;
-    host_config.do_transaction = &sdcard_do_transaction;
-
-    // These are for esp-idf 4.2 compatibility
     host_config.flags = SDMMC_HOST_FLAG_SPI;
+    host_config.slot = RG_GPIO_SDSPI_HOST;
+    host_config.max_freq_khz = SDMMC_FREQ_DEFAULT; // SDMMC_FREQ_HIGHSPEED
+    host_config.do_transaction = &sdcard_do_transaction;
+    // These are for esp-idf 4.2 compatibility
     host_config.init = &sdspi_host_init;
     host_config.deinit = &sdspi_host_deinit;
 
     sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
-    slot_config.gpio_miso = RG_GPIO_SD_MISO;
-    slot_config.gpio_mosi = RG_GPIO_SD_MOSI;
-    slot_config.gpio_sck  = RG_GPIO_SD_CLK;
-    slot_config.gpio_cs = RG_GPIO_SD_CS;
+    slot_config.gpio_miso = RG_GPIO_SDSPI_MISO;
+    slot_config.gpio_mosi = RG_GPIO_SDSPI_MOSI;
+    slot_config.gpio_sck  = RG_GPIO_SDSPI_CLK;
+    slot_config.gpio_cs = RG_GPIO_SDSPI_CS;
+    slot_config.dma_channel = SPI_DMA_CH_AUTO;
 
 #elif RG_STORAGE_DRIVER == 2
 

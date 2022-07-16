@@ -109,11 +109,10 @@ void rg_audio_init(int sampleRate)
         ret = ESP_OK;
     }
 
-    if (RG_GPIO_SND_AMP_ENABLE != GPIO_NUM_NC)
-    {
+    #ifdef RG_GPIO_SND_AMP_ENABLE
         gpio_set_direction(RG_GPIO_SND_AMP_ENABLE, GPIO_MODE_OUTPUT);
         gpio_set_level(RG_GPIO_SND_AMP_ENABLE, audioMuted ? 0 : 1);
-    }
+    #endif
 
     if (ret == ESP_OK)
     {
@@ -156,10 +155,9 @@ void rg_audio_deinit(void)
         gpio_reset_pin(RG_GPIO_SND_I2S_WS);
     }
 
-    if (RG_GPIO_SND_AMP_ENABLE != GPIO_NUM_NC)
-    {
+    #ifdef RG_GPIO_SND_AMP_ENABLE
         gpio_reset_pin(RG_GPIO_SND_AMP_ENABLE);
-    }
+    #endif
 
     RG_LOGI("Audio terminated. sink='%s'\n", rg_audio_get_sink()->name);
     audioSink = -1;
@@ -282,8 +280,12 @@ void rg_audio_set_mute(bool mute)
     if (!ACQUIRE_DEVICE(1000))
         return;
 
-    if (RG_GPIO_SND_AMP_ENABLE != GPIO_NUM_NC)
+    #ifdef RG_GPIO_SND_AMP_ENABLE
         gpio_set_level(RG_GPIO_SND_AMP_ENABLE, !mute);
+    #endif
+    #ifdef RG_TARGET_QTPY_GAMER
+        // aw_digitalWrite(AW_HEADPHONE_EN, !mute);
+    #endif
     if (audioSink == RG_AUDIO_SINK_I2S_DAC || audioSink == RG_AUDIO_SINK_I2S_EXT)
         i2s_zero_dma_buffer(I2S_NUM_0);
 

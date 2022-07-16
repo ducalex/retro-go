@@ -724,11 +724,12 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
 
 void rg_system_set_led(int value)
 {
-    if (ledValue != value && RG_GPIO_LED != GPIO_NUM_NC)
-    {
+#ifdef RG_GPIO_LED
+    if (ledValue == -1)
         gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
+    if (ledValue != value)
         gpio_set_level(RG_GPIO_LED, value);
-    }
+#endif
     ledValue = value;
 }
 

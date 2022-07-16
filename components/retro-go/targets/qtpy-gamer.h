@@ -30,7 +30,7 @@
 //#define RG_BATT_VOLT_MAX            4.2f
 
 // Status LED - not actually used, we've got neopixels instead :/
-#define RG_GPIO_LED                 GPIO_NUM_NC
+// #define RG_GPIO_LED                 GPIO_NUM_NC
 
 // I2C BUS
 #define RG_GPIO_I2C_SDA             GPIO_NUM_25
@@ -64,6 +64,7 @@
 #define AW_HEADPHONE_EN 15
 
 // SPI Display
+#define RG_GPIO_LCD_HOST            SPI2_HOST
 #define RG_GPIO_LCD_MISO            GPIO_NUM_12
 #define RG_GPIO_LCD_MOSI            GPIO_NUM_13
 #define RG_GPIO_LCD_CLK             GPIO_NUM_14
@@ -72,14 +73,14 @@
 #define RG_GPIO_LCD_BCKL            GPIO_NUM_5  // not used!
 
 // SPI SD Card
-#define RG_GPIO_SD_MISO             GPIO_NUM_12
-#define RG_GPIO_SD_MOSI             GPIO_NUM_13
-#define RG_GPIO_SD_CLK              GPIO_NUM_14
-#define RG_GPIO_SD_CS               GPIO_NUM_32
-
+#define RG_GPIO_SDSPI_HOST          SPI2_HOST
+#define RG_GPIO_SDSPI_MISO          GPIO_NUM_12
+#define RG_GPIO_SDSPI_MOSI          GPIO_NUM_13
+#define RG_GPIO_SDSPI_CLK           GPIO_NUM_14
+#define RG_GPIO_SDSPI_CS            GPIO_NUM_32
 
 // External I2S DAC UNUSED
 #define RG_GPIO_SND_I2S_BCK         GPIO_NUM_21
 #define RG_GPIO_SND_I2S_WS          GPIO_NUM_20
 #define RG_GPIO_SND_I2S_DATA        GPIO_NUM_2
-#define RG_GPIO_SND_AMP_ENABLE      GPIO_NUM_NC
+// #define RG_GPIO_SND_AMP_ENABLE      GPIO_NUM_NC

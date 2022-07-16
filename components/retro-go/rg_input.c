@@ -1,13 +1,16 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include <esp_adc_cal.h>
 #include <driver/gpio.h>
-#include <driver/adc.h>
 #include <string.h>
 
 #include "rg_system.h"
 #include "rg_input.h"
 #include "rg_i2c.h"
+
+#if defined(RG_BATT_ADC_CHANNEL) || (RG_GAMEPAD_DRIVER == 1)
+#include <esp_adc_cal.h>
+#include <driver/adc.h>
+#endif
 
 static bool input_task_running = false;
 static int64_t last_gamepad_read = 0;
@@ -20,23 +23,15 @@ static float battery_volts = 0;
 #if RG_GAMEPAD_DRIVER == 4
 bool aw_digitalWrite(uint8_t pin, bool value)
 {
-    uint16_t pins;
-    uint8_t c;
-    rg_i2c_read(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0+1, &c, 1);
-    pins = c;
-    pins <<= 8;
-    rg_i2c_read(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0, &c, 1);
-    pins |= c;
-
+    uint16_t pins = (rg_i2c_read_byte(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0+1) << 8)
+                  | (rg_i2c_read_byte(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0));
     if (value) {
         pins |= 1UL << pin;
     } else {
         pins &= ~(1UL << pin);
     }
-    c = pins & 0xFF;
-    rg_i2c_write(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0, &c, 1);
-    c = pins >> 8;
-    return rg_i2c_write(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0+1, &c, 1);
+    return rg_i2c_write_byte(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0, pins & 0xFF)
+        && rg_i2c_write_byte(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0+1, pins >> 8);
 }
 #endif
 
@@ -90,13 +85,8 @@ static inline uint32_t gamepad_read(void)
 
 #elif RG_GAMEPAD_DRIVER == 4  // I2C via AW9523
 
-    uint16_t aw_buttons = 0;
-    uint8_t aw_data;
-    rg_i2c_read(AW9523_DEFAULT_ADDR, AW9523_REG_INPUT0+1, &aw_data, 1);
-    aw_buttons = aw_data;
-    aw_buttons <<= 8;
-    rg_i2c_read(AW9523_DEFAULT_ADDR, AW9523_REG_INPUT0, &aw_data, 1);
-    aw_buttons |= aw_data;
+    uint16_t aw_buttons = (rg_i2c_read_byte(AW9523_DEFAULT_ADDR, AW9523_REG_INPUT0+1) << 8)
+                        | (rg_i2c_read_byte(AW9523_DEFAULT_ADDR, AW9523_REG_INPUT0));
     aw_buttons = ~aw_buttons;
 
     if (aw_buttons & (1<<AW_GAMEPAD_IO_UP)) state |= RG_KEY_UP;
@@ -207,14 +197,11 @@ void rg_input_init(void)
 
     // soft reset
     RG_LOGI("AW9523 Reset\n");
-    uint8_t val;
-
-    val = 0;
-    rg_i2c_write(AW9523_DEFAULT_ADDR, AW9523_REG_SOFTRESET, &val, 1);
+    rg_i2c_write_byte(AW9523_DEFAULT_ADDR, AW9523_REG_SOFTRESET, 0);
     vTaskDelay(pdMS_TO_TICKS(10));
+
     // check id?
-    uint8_t id=0;
-    rg_i2c_read(AW9523_DEFAULT_ADDR, AW9523_REG_CHIPID, &id, 1);
+    uint8_t id=rg_i2c_read_byte(AW9523_DEFAULT_ADDR, AW9523_REG_CHIPID);
     RG_LOGI("AW9523 ID code 0x%x found\n", id);
     assert(id == 0x23);
 
@@ -223,18 +210,14 @@ void rg_input_init(void)
       (1<<AW_GAMEPAD_IO_LEFT) | (1<<AW_GAMEPAD_IO_RIGHT) | (1<<AW_GAMEPAD_IO_SELECT) |
       (1<<AW_GAMEPAD_IO_START) | (1<<AW_GAMEPAD_IO_A) | (1<<AW_GAMEPAD_IO_B) |
       (1<<AW_GAMEPAD_IO_MENU) | (1<<AW_GAMEPAD_IO_OPTION) | (1<<AW_CARDDET);
-    val = buttonmask & 0xFF;
-    rg_i2c_write(AW9523_DEFAULT_ADDR, AW9523_REG_CONFIG0, &val, 1);
-    val = buttonmask >> 8;
-    rg_i2c_write(AW9523_DEFAULT_ADDR, AW9523_REG_CONFIG0+1, &val, 1);
+    rg_i2c_write_byte(AW9523_DEFAULT_ADDR, AW9523_REG_CONFIG0, buttonmask & 0xFF);
+    rg_i2c_write_byte(AW9523_DEFAULT_ADDR, AW9523_REG_CONFIG0+1, buttonmask >> 8);
 
-    val = 0xFF;
-    rg_i2c_write(AW9523_DEFAULT_ADDR, AW9523_REG_LEDMODE, &val, 1);
-    rg_i2c_write(AW9523_DEFAULT_ADDR, AW9523_REG_LEDMODE+1, &val, 1);
+    rg_i2c_write_byte(AW9523_DEFAULT_ADDR, AW9523_REG_LEDMODE, 0xFF);
+    rg_i2c_write_byte(AW9523_DEFAULT_ADDR, AW9523_REG_LEDMODE+1, 0xFF);
 
     // pushpull mode
-    val = 1<<4;
-    rg_i2c_write(AW9523_DEFAULT_ADDR, AW9523_REG_GCR, &val, 1);
+    rg_i2c_write_byte(AW9523_DEFAULT_ADDR, AW9523_REG_GCR, 1<<4);
 
     // turn on backlight!
     aw_digitalWrite(AW_TFT_BACKLIGHT, 1);

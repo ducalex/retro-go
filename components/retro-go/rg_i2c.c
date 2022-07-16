@@ -1,3 +1,4 @@
+#include <esp_system.h>
 #include "rg_system.h"
 #include "rg_i2c.h"
 
@@ -114,4 +115,15 @@ bool rg_i2c_write(uint8_t addr, int reg, const void *write_data, size_t write_le
 fail:
     RG_LOGE("Write to 0x%02x failed. reg=%d, err=0x%x\n", addr, reg, err);
     return false;
+}
+
+bool rg_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t value)
+{
+    return rg_i2c_write(addr, reg, &value, 1);
+}
+
+uint8_t rg_i2c_read_byte(uint8_t addr, uint8_t reg)
+{
+    uint8_t value = 0;
+    return rg_i2c_read(addr, reg, &value, 1) ? value : 0;
 }

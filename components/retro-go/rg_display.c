@@ -15,6 +15,10 @@
 #define SPI_BUFFER_COUNT (6)
 #define SPI_BUFFER_LENGTH (4 * 320) // In pixels (uint16)
 
+#ifndef SPI_DMA_CH_AUTO
+#define SPI_DMA_CH_AUTO 1
+#endif
+
 static spi_device_handle_t spi_dev;
 static QueueHandle_t spi_transactions;
 static QueueHandle_t spi_buffers;
@@ -147,16 +151,14 @@ static void spi_init(void)
         .flags = SPI_DEVICE_NO_DUMMY,           // SPI_DEVICE_HALFDUPLEX;
     };
 
-    // Setup DC line
-    // gpio_iomux_out(RG_GPIO_LCD_DC, PIN_FUNC_GPIO, false);
-    PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[RG_GPIO_LCD_DC], PIN_FUNC_GPIO);
-    gpio_set_direction(RG_GPIO_LCD_DC, GPIO_MODE_OUTPUT);
-    gpio_set_level(RG_GPIO_LCD_DC, 1);
+    esp_err_t ret;
 
     //Initialize the SPI bus
-    spi_bus_initialize(SPI2_HOST, &buscfg, 1);
-    spi_bus_add_device(SPI2_HOST, &devcfg, &spi_dev);
-    //RG_ASSERT(ret==ESP_OK, "SPI init failed");
+    ret = spi_bus_initialize(RG_GPIO_LCD_HOST, &buscfg, SPI_DMA_CH_AUTO);
+    RG_ASSERT(ret == ESP_OK || ret == ESP_ERR_INVALID_STATE, "spi_bus_initialize failed.");
+
+    ret = spi_bus_add_device(RG_GPIO_LCD_HOST, &devcfg, &spi_dev);
+    RG_ASSERT(ret == ESP_OK, "spi_bus_add_device failed.");
 
     xTaskCreatePinnedToCore(&spi_task, "spi_task", 1024, NULL, 5, NULL, 1);
 }
@@ -164,7 +166,7 @@ static void spi_init(void)
 static void spi_deinit(void)
 {
     spi_bus_remove_device(spi_dev);
-    spi_bus_free(SPI2_HOST);
+    spi_bus_free(RG_GPIO_LCD_HOST);
 }
 
 static void ili9341_cmd(uint8_t cmd, const void *data, size_t data_len)
@@ -204,6 +206,12 @@ static void ili9341_init(void)
     ledc_timer_config(&ledc_timer);
     ledc_channel_config(&ledc_channel);
     ledc_fade_func_install(0);
+
+    // Setup DC line
+    // gpio_iomux_out(RG_GPIO_LCD_DC, PIN_FUNC_GPIO, false);
+    PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[RG_GPIO_LCD_DC], PIN_FUNC_GPIO);
+    gpio_set_direction(RG_GPIO_LCD_DC, GPIO_MODE_OUTPUT);
+    gpio_set_level(RG_GPIO_LCD_DC, 1);
 
     spi_init();
 

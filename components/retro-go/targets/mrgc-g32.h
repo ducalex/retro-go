@@ -59,13 +59,14 @@
 #define RG_BATT_VOLT_MAX            8.4f
 
 // Status LED
-#define RG_GPIO_LED                 GPIO_NUM_NC
+// #define RG_GPIO_LED                 GPIO_NUM_NC
 
 // I2C BUS
 #define RG_GPIO_I2C_SDA             GPIO_NUM_21
 #define RG_GPIO_I2C_SCL             GPIO_NUM_22
 
 // Display
+#define RG_GPIO_LCD_HOST            SPI2_HOST
 #define RG_GPIO_LCD_MISO            GPIO_NUM_NC
 #define RG_GPIO_LCD_MOSI            GPIO_NUM_23
 #define RG_GPIO_LCD_CLK             GPIO_NUM_18
