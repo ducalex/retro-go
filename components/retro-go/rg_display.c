@@ -1,15 +1,16 @@
 #include <freertos/FreeRTOS.h>
-#include <freertos/semphr.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
 #include <driver/spi_master.h>
 #include <driver/gpio.h>
-#include <driver/ledc.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "rg_system.h"
 #include "rg_display.h"
+
+#if defined(RG_GPIO_LCD_BCKL)
+#include <driver/ledc.h>
+#endif
 
 #define SPI_TRANSACTION_COUNT (10)
 #define SPI_BUFFER_COUNT (6)
@@ -42,11 +43,7 @@ static struct {
     uint8_t empty;
 } screen_lines[RG_SCREEN_HEIGHT];
 
-#define lcd_init() ili9341_init()
-#define lcd_deinit() ili9341_deinit()
-#define lcd_set_window(left, top, width, height) ili9341_set_window(left, top, width, height)
 #define lcd_send_data(buffer, length) spi_queue_transaction(buffer, length, 3)
-#define lcd_set_backlight(percent) ili9341_set_backlight(percent)
 
 
 static inline uint16_t *spi_get_buffer(void)
@@ -178,36 +175,44 @@ static void ili9341_cmd(uint8_t cmd, const void *data, size_t data_len)
     //     usleep(5000);
 }
 
-static void ili9341_set_backlight(int percent)
+static void lcd_set_backlight(double percent)
 {
-    uint32_t duty = 0x1FFF * (RG_MIN(RG_MAX(percent, 0), 100) / 100.f);
-    if (ledc_set_fade_time_and_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty, 50, 0) == ESP_OK)
-        RG_LOGI("backlight set to %02d%%\n", percent);
+    double level = RG_MIN(RG_MAX(percent / 100.0, 0), 1.0);
+    esp_err_t ret = ESP_OK;
+
+#if defined(RG_GPIO_LCD_BCKL)
+    ret = ledc_set_fade_time_and_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0x1FFF * level, 50, 0);
+#elif defined(RG_TARGET_QTPY_GAMER)
+    // ret = aw_analogWrite(AW_TFT_BACKLIGHT, level * 255);
+#endif
+
+    if (ret != ESP_OK)
+        RG_LOGE("failed setting backlight to %.2f%% (0x%02X)\n", 100 * level, ret);
     else
-        RG_LOGE("failed setting backlight to %02d%% (%04X)\n", percent, duty);
+        RG_LOGI("backlight set to %.2f%%\n", 100 * level);
 }
 
-static void ili9341_init(void)
+static void lcd_init(void)
 {
+#if defined(RG_GPIO_LCD_BCKL)
     // Initialize backlight at 0% to avoid the lcd reset flash
-    const ledc_timer_config_t ledc_timer = {
+    ledc_timer_config(&(ledc_timer_config_t){
         .duty_resolution = LEDC_TIMER_13_BIT,
         .freq_hz = 5000,
         .speed_mode = LEDC_LOW_SPEED_MODE,
         .timer_num = LEDC_TIMER_0,
-    };
-    const ledc_channel_config_t ledc_channel = {
+    });
+    ledc_channel_config(&(ledc_channel_config_t){
         .channel = LEDC_CHANNEL_0,
         .duty = 0,
         .gpio_num = RG_GPIO_LCD_BCKL,
         .speed_mode = LEDC_LOW_SPEED_MODE,
         .timer_sel = LEDC_TIMER_0,
-    };
-    ledc_timer_config(&ledc_timer);
-    ledc_channel_config(&ledc_channel);
+    });
     ledc_fade_func_install(0);
+#endif
 
-    // Setup DC line
+    // Setup Data/Command line
     // gpio_iomux_out(RG_GPIO_LCD_DC, PIN_FUNC_GPIO, false);
     PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[RG_GPIO_LCD_DC], PIN_FUNC_GPIO);
     gpio_set_direction(RG_GPIO_LCD_DC, GPIO_MODE_OUTPUT);
@@ -274,30 +279,26 @@ static void ili9341_init(void)
 
     // The delay is not necessary when switching apps
     if (esp_reset_reason() != ESP_RST_SW)
-        usleep(80000);
+        vTaskDelay(pdMS_TO_TICKS(5));
 
     // And finally, let there be light!
-    ili9341_set_backlight(display.config.backlight);
+    lcd_set_backlight(display.config.backlight);
 }
 
-static void ili9341_deinit(void)
+static void lcd_deinit(void)
 {
+#ifdef RG_TARGET_MRGC_G32
     // Normally we skip these steps to avoid LCD flicker, but it
     // is necessary on the G32 because of a bug in the bootmenu
-    #ifdef RG_TARGET_MRGC_G32
-    ili9341_set_backlight(0);
+    lcd_set_backlight(0);
     ili9341_cmd(0x01, NULL, 0); // Reset
-    // ili9341_cmd(0x28, NULL, 0); // Display off
-    // ili9341_cmd(0x10, NULL, 0); // Sleep
-    #endif
-
+#endif
     spi_deinit();
-
     // gpio_reset_pin(RG_GPIO_LCD_BCKL);
     // gpio_reset_pin(RG_GPIO_LCD_DC);
 }
 
-static void ili9341_set_window(int left, int top, int width, int height)
+static void lcd_set_window(int left, int top, int width, int height)
 {
     int right = left + width - 1;
     int bottom = top + height - 1;

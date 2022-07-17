@@ -70,7 +70,7 @@
 #define RG_GPIO_LCD_CLK             GPIO_NUM_14
 #define RG_GPIO_LCD_CS              GPIO_NUM_27
 #define RG_GPIO_LCD_DC              GPIO_NUM_7
-#define RG_GPIO_LCD_BCKL            GPIO_NUM_5  // not used!
+// #define RG_GPIO_LCD_BCKL            GPIO_NUM_5  // not used!
 
 // SPI SD Card
 #define RG_GPIO_SDSPI_HOST          SPI2_HOST

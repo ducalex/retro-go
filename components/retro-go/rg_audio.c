@@ -280,11 +280,12 @@ void rg_audio_set_mute(bool mute)
     if (!ACQUIRE_DEVICE(1000))
         return;
 
-    #ifdef RG_GPIO_SND_AMP_ENABLE
+    #if defined(RG_GPIO_SND_AMP_ENABLE)
         gpio_set_level(RG_GPIO_SND_AMP_ENABLE, !mute);
-    #endif
-    #ifdef RG_TARGET_QTPY_GAMER
+    #elif defined(RG_TARGET_QTPY_GAMER)
         // aw_digitalWrite(AW_HEADPHONE_EN, !mute);
+    #else
+        // nothing to do
     #endif
     if (audioSink == RG_AUDIO_SINK_I2S_DAC || audioSink == RG_AUDIO_SINK_I2S_EXT)
         i2s_zero_dma_buffer(I2S_NUM_0);
