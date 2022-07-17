@@ -10,7 +10,11 @@
 
 #define TRY(x) if ((err = (x)) != ESP_OK) { goto fail; }
 
-static bool i2cStarted = false;
+static enum {
+    INIT_PENDING,
+    INIT_FAILED,
+    INIT_OK
+} i2cStatus = INIT_PENDING;
 
 
 bool rg_i2c_init(void)
@@ -29,36 +33,35 @@ bool rg_i2c_init(void)
     TRY(i2c_param_config(I2C_NUM_0, &i2c_config));
     TRY(i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0));
     RG_LOGI("I2C driver ready (SDA:%d SCL:%d).\n", i2c_config.sda_io_num, i2c_config.scl_io_num);
-    i2cStarted = true;
+    i2cStatus = INIT_OK;
     return true;
 fail:
     RG_LOGE("Failed to initialize I2C driver. err=0x%x\n", err);
 #else
     RG_LOGE("I2C driver is not available on this device.\n");
 #endif
+    i2cStatus = INIT_FAILED;
     return false;
 }
 
 bool rg_i2c_deinit(void)
 {
 #ifdef USE_I2C_DRIVER
-    if (i2cStarted && i2c_driver_delete(I2C_NUM_0) == ESP_OK)
+    if (i2cStatus != INIT_PENDING)
     {
-        RG_LOGI("I2C driver terminated.\n");
-        i2cStarted = false;
-        return true;
+        if (i2c_driver_delete(I2C_NUM_0) == ESP_OK)
+            RG_LOGI("I2C driver terminated.\n");
     }
 #endif
-    return false;
+    i2cStatus = INIT_PENDING;
+    return true;
 }
 
 bool rg_i2c_available(void)
 {
-#ifdef USE_I2C_DRIVER
-    return i2cStarted || rg_i2c_init();
-#else
-    return false;
-#endif
+    if (i2cStatus == INIT_PENDING)
+        return rg_i2c_init();
+    return i2cStatus == INIT_OK;
 }
 
 bool rg_i2c_read(uint8_t addr, int reg, void *read_data, size_t read_len)
