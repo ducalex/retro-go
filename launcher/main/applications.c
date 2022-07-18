@@ -137,15 +137,15 @@ static void application_init(retro_app_t *app)
 static void application_start(retro_file_t *file, int load_state)
 {
     RG_ASSERT(file, "Unable to find file...");
+    char *part = strdup(file->app->partition);
+    char *name = strdup(file->app->short_name);
+    char *path = strdup(get_file_path(file));
     int flags = (gui.startup ? RG_BOOT_ONCE : 0);
     if (load_state != -1)
     {
         flags |= RG_BOOT_RESUME;
-        flags |= (load_state & 0xFF) << 4;
+        flags |= (load_state << 4) & RG_BOOT_SLOT_MASK;
     }
-    char *part = strdup(file->app->partition);
-    char *name = strdup(file->app->short_name);
-    char *path = strdup(get_file_path(file));
     bookmark_add(BOOK_TYPE_RECENT, file); // This could relocate *file, but we no longer need it
     rg_system_start_app(part, name, path, flags);
 }
