@@ -20,12 +20,15 @@
 #ifndef RG_BUILD_USER
 #define RG_BUILD_USER "ducalex"
 #endif
+// 2020-01-31 00:00:00, first retro-go commit :)
+#ifndef RG_BUILD_TIME
+#define RG_BUILD_TIME 1580446800
+#endif
 
 #define SETTING_BOOT_NAME   "BootName"
 #define SETTING_BOOT_PART   "BootPart"
 #define SETTING_BOOT_ARGS   "BootArgs"
 #define SETTING_BOOT_FLAGS  "BootFlags"
-#define SETTING_RTC_TIME    "RTCTime"
 
 #define RG_STRUCT_MAGIC 0x12345678
 
@@ -58,50 +61,46 @@ static bool initialized = false;
 #define WDT_RELOAD(val) wdtCounter = (val)
 
 
-static const char *htime(time_t ts)
-{
-    static char buffer[32];
-    strftime(buffer, sizeof(buffer), "%a, %d %b %Y %T", gmtime(&ts));
-    return buffer;
-}
-
 static void rtc_time_init(void)
 {
-    const char *source = "settings";
-    time_t timestamp;
+    struct timeval timestamp = {RG_BUILD_TIME, 0};
+    FILE *fp;
 #if 0
     if (rg_i2c_read(0x68, 0x00, data, sizeof(data)))
     {
-        source = "DS3231";
+        RG_LOGI("Time loaded from DS3231\n");
     }
     else
 #endif
-    if (!(timestamp = rg_settings_get_number(NS_GLOBAL, SETTING_RTC_TIME, 0)))
+    if ((fp = fopen(RG_BASE_PATH_CONFIG "/clock.bin", "rb")))
     {
-        timestamp = 946702800; // 2000-01-01 00:00:00
-        source = "hardcoded";
+        fread(&timestamp, sizeof(timestamp), 1, fp);
+        fclose(fp);
+        RG_LOGI("Time loaded from storage\n");
     }
 
-    settimeofday(&(struct timeval){timestamp, 0}, NULL);
-
-    RG_LOGI("Time is now: %s\n", htime(time(NULL)));
-    RG_LOGI("Time loaded from %s\n", source);
+    settimeofday(&timestamp, NULL);
+    gettimeofday(&timestamp, NULL); // Read it back to be sure it's set
+    RG_LOGI("Time is now: %s\n", asctime(localtime(&timestamp.tv_sec)));
 }
 
 static void rtc_time_save(void)
 {
-    time_t now = time(NULL);
+    struct timeval timestamp = {time(NULL), 0};
+    FILE *fp;
+    // We always save to storage in case the RTC disappears.
+    if ((fp = fopen(RG_BASE_PATH_CONFIG "/clock.bin", "wb")))
+    {
+        fwrite(&timestamp, sizeof(timestamp), 1, fp);
+        fclose(fp);
+        RG_LOGI("System time saved to storage.\n");
+    }
 #if 0
     if (rg_i2c_write(0x68, 0x00, data, sizeof(data)))
     {
         RG_LOGI("System time saved to DS3231.\n");
     }
-    else
 #endif
-    {
-        rg_settings_set_number(NS_GLOBAL, SETTING_RTC_TIME, now);
-        RG_LOGI("System time saved to settings.\n");
-    }
 }
 
 static void exit_handler(void)
@@ -225,8 +224,9 @@ static void system_monitor_task(void *arg)
         {
             if (rg_input_gamepad_last_read() > WDT_TIMEOUT)
             {
+            #ifdef ENABLE_PROFILING
                 RG_LOGW("Application unresponsive!\n");
-            #ifndef ENABLE_PROFILING
+            #else
                 RG_PANIC("Application unresponsive!");
             #endif
             }
@@ -530,6 +530,7 @@ bool rg_emu_save_state(int slot)
     #undef tempname
     free(filename);
 
+    rtc_time_save();
     rg_storage_commit();
     rg_system_set_led(0);
 
@@ -562,7 +563,7 @@ bool rg_emu_screenshot(const char *filename, int width, int height)
     return success;
 }
 
-bool rg_emu_reset(int hard)
+bool rg_emu_reset(bool hard)
 {
     if (app.handlers.reset)
         return app.handlers.reset(hard);

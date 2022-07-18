@@ -174,7 +174,7 @@ rg_stats_t rg_system_get_stats(void);
 char *rg_emu_get_path(rg_path_type_t type, const char *arg);
 bool rg_emu_save_state(int slot);
 bool rg_emu_load_state(int slot);
-bool rg_emu_reset(int hard);
+bool rg_emu_reset(bool hard);
 bool rg_emu_screenshot(const char *filename, int width, int height);
 
 void *rg_alloc(size_t size, uint32_t caps);

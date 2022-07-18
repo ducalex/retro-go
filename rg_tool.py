@@ -206,8 +206,9 @@ def build_app(app, device_type, with_profiling=False, with_netplay=False):
     print("Building app '%s'" % app)
     os.putenv("ENABLE_PROFILING", "1" if with_profiling else "0")
     os.putenv("ENABLE_NETPLAY", "1" if with_netplay else "0")
-    os.putenv("PROJECT_VER", PROJECT_VER)
+    os.putenv("RG_BUILD_TIME", str(int(time.time())))
     os.putenv("RG_TARGET", re.sub(r'[^A-Z0-9]', '_', device_type.upper()))
+    os.putenv("PROJECT_VER", PROJECT_VER)
     subprocess.run("idf.py app", shell=True, check=True, cwd=os.path.join(os.getcwd(), app))
 
     try:
