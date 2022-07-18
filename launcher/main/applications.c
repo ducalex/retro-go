@@ -134,10 +134,15 @@ static void application_init(retro_app_t *app)
     app->initialized = true;
 }
 
-static void application_start(retro_file_t *file, bool load_state)
+static void application_start(retro_file_t *file, int load_state)
 {
     RG_ASSERT(file, "Unable to find file...");
-    int flags = (load_state ? RG_BOOT_RESUME : 0) | (gui.startup ? RG_BOOT_ONCE : 0);
+    int flags = (gui.startup ? RG_BOOT_ONCE : 0);
+    if (load_state != -1)
+    {
+        flags |= RG_BOOT_RESUME;
+        flags |= (load_state & 0xFF) << 4;
+    }
     char *part = strdup(file->app->partition);
     char *name = strdup(file->app->short_name);
     char *path = strdup(get_file_path(file));
@@ -590,12 +595,18 @@ static void show_file_info(retro_file_t *file)
 void application_show_file_menu(retro_file_t *file, bool advanced)
 {
     const char *rom_path = get_file_path(file);
-    char *save_path = rg_emu_get_path(RG_PATH_SAVE_STATE, rom_path);
     char *sram_path = rg_emu_get_path(RG_PATH_SAVE_SRAM, rom_path);
-    char *scrn_path = rg_emu_get_path(RG_PATH_SCREENSHOT, rom_path);
-    bool has_save = access(save_path, F_OK) == 0;
+    bool has_save = false;
     bool has_sram = access(sram_path, F_OK) == 0;
     bool is_fav = bookmark_exists(BOOK_TYPE_FAVORITE, file);
+    int slot = -1;
+
+    rg_emu_state_t *slots = rg_emu_get_states(rom_path, 4);
+    for (size_t i = 0; i < 4; ++i)
+    {
+        if ((has_save = slots[i].exists))
+            break;
+    }
 
     rg_gui_option_t choices[] = {
         {0, "Resume game", NULL, has_save, NULL},
@@ -612,17 +623,20 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
     switch (sel)
     {
     case 0:
+        if ((slot = rg_gui_savestate_menu("Resume game", rom_path, 1)) == -1)
+            break;
+        /* fallthrough */
     case 1:
         crc_cache_save();
         gui_save_config();
-        application_start(file, sel == 0);
+        application_start(file, slot);
         break;
 
     case 2:
-        if (has_save && rg_gui_confirm("Delete save state?", 0, 0))
+        while ((slot = rg_gui_savestate_menu("Delete save state?", rom_path, 0)) != -1)
         {
-            unlink(save_path);
-            unlink(scrn_path);
+            unlink(slots[slot].preview);
+            unlink(slots[slot].file);
         }
         if (has_sram && rg_gui_confirm("Delete sram file?", 0, 0))
         {
@@ -645,9 +659,8 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
         break;
     }
 
-    free(save_path);
     free(sram_path);
-    free(scrn_path);
+    free(slots);
 
     // gui_redraw();
 }

@@ -49,12 +49,20 @@ typedef enum
 } rg_path_type_t;
 
 enum
-{
-    RG_BOOT_NORMAL = 0x0,
-    RG_BOOT_RESUME = 0x1,
-    RG_BOOT_ONCE   = 0x2,
-    RG_BOOT_RESET  = 0x4,
-    RG_BOOT_NETPLAY= 0x8,
+{   // bits 0-3: Mode
+    RG_BOOT_NORMAL    = 0x00,
+    RG_BOOT_RESUME    = 0x01,
+    RG_BOOT_ONCE      = 0x02,
+    RG_BOOT_RESET     = 0x04,
+    RG_BOOT_NETPLAY   = 0x08,
+    RG_BOOT_MODE_MASK = 0x0F,
+    // bits 4-7: slot
+    RG_BOOT_SLOT0     = 0x00,
+    RG_BOOT_SLOT1     = 0x10,
+    RG_BOOT_SLOT2     = 0x20,
+    RG_BOOT_SLOT3     = 0x30,
+    RG_BOOT_SLOT_MASK = 0xF0,
+    // bits 8-31: unused...
 };
 
 enum
@@ -103,6 +111,15 @@ typedef struct
     rg_mem_write_handler_t memWrite;    // Used by for cheats and debugging
 } rg_handlers_t;
 
+typedef struct
+{
+    char preview[RG_PATH_MAX];
+    char file[RG_PATH_MAX];
+    time_t mtime;
+    bool exists;
+    bool latest;
+} rg_emu_state_t;
+
 // TO DO: Make it an abstract ring buffer implementation?
 #define RG_LOGBUF_SIZE 2048
 typedef struct
@@ -126,6 +143,7 @@ typedef struct
     int sampleRate;
     int logLevel;
     int isLauncher;
+    int saveSlot;
     const char *romPath;
     void *mainTaskHandle;
     const rg_gui_option_t *options;
@@ -172,10 +190,11 @@ rg_app_t *rg_system_get_app(void);
 rg_stats_t rg_system_get_stats(void);
 
 char *rg_emu_get_path(rg_path_type_t type, const char *arg);
-bool rg_emu_save_state(int slot);
-bool rg_emu_load_state(int slot);
+bool rg_emu_save_state(uint8_t slot);
+bool rg_emu_load_state(uint8_t slot);
 bool rg_emu_reset(bool hard);
 bool rg_emu_screenshot(const char *filename, int width, int height);
+rg_emu_state_t *rg_emu_get_states(const char *romPath, size_t slots);
 
 void *rg_alloc(size_t size, uint32_t caps);
 

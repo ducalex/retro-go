@@ -291,6 +291,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .sampleRate = sampleRate,
         .logLevel = RG_LOG_INFO,
         .isLauncher = strcmp(esp_app->project_name, RG_APP_LAUNCHER) == 0,
+        .saveSlot = 0,
         .romPath = NULL,
         .mainTaskHandle = xTaskGetCurrentTaskHandle(),
         .options = options, // TO DO: We should make a copy of it
@@ -308,6 +309,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         app.configNs = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_NAME, app.name);
         app.romPath = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_ARGS, "");
         app.bootFlags = rg_settings_get_number(NS_GLOBAL, SETTING_BOOT_FLAGS, 0);
+        app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
     }
 
     rg_input_init(); // Must be first for the qtpy (input -> aw9523 -> lcd)
@@ -442,7 +444,7 @@ char *rg_emu_get_path(rg_path_type_t pathType, const char *filename)
     return buffer;
 }
 
-bool rg_emu_load_state(int slot)
+bool rg_emu_load_state(uint8_t slot)
 {
     bool success = false;
 
@@ -462,6 +464,10 @@ bool rg_emu_load_state(int slot)
     {
         RG_LOGE("Load failed!\n");
     }
+    else
+    {
+        app.saveSlot = slot;
+    }
 
     WDT_RELOAD(WDT_TIMEOUT);
     free(filename);
@@ -469,7 +475,7 @@ bool rg_emu_load_state(int slot)
     return success;
 }
 
-bool rg_emu_save_state(int slot)
+bool rg_emu_save_state(uint8_t slot)
 {
     if (!app.romPath || !app.handlers.saveState)
     {
@@ -525,6 +531,8 @@ bool rg_emu_save_state(int slot)
             app.bootFlags |= RG_BOOT_RESUME;
             rg_settings_set_number(NS_GLOBAL, SETTING_BOOT_FLAGS, app.bootFlags);
         }
+
+        app.saveSlot = slot;
     }
 
     #undef tempname
@@ -561,6 +569,35 @@ bool rg_emu_screenshot(const char *filename, int width, int height)
     rg_storage_commit();
 
     return success;
+}
+
+rg_emu_state_t *rg_emu_get_states(const char *romPath, size_t slots)
+{
+    rg_emu_state_t *results = calloc(slots, sizeof(rg_emu_state_t));
+    int most_recent_id = 0;
+
+    for (size_t i = 0; i < slots; i++)
+    {
+        rg_emu_state_t *result = &results[i];
+        char *preview = rg_emu_get_path(RG_PATH_SCREENSHOT + i, romPath);
+        char *file = rg_emu_get_path(RG_PATH_SAVE_STATE + i, romPath);
+        struct stat st;
+        strcpy(result->preview, preview);
+        strcpy(result->file, file);
+        result->exists = stat(result->file, &st) == 0;
+        result->latest = false;
+        result->mtime = st.st_mtime;
+        if (result->exists && result->mtime > results[most_recent_id].mtime)
+        {
+            most_recent_id = i;
+        }
+        free(preview);
+        free(file);
+    }
+    // Only tag latest if it exists
+    results[most_recent_id].latest = results[most_recent_id].exists;
+
+    return results;
 }
 
 bool rg_emu_reset(bool hard)

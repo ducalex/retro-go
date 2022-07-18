@@ -104,6 +104,7 @@ int  rg_gui_dialog(const char *header, const rg_gui_option_t *options, int selec
 bool rg_gui_confirm(const char *title, const char *message, bool default_yes);
 void rg_gui_alert(const char *title, const char *message);
 
+int rg_gui_savestate_menu(const char *title, const char *rom_path, bool quick_return);
 int rg_gui_options_menu(void);
 int rg_gui_game_menu(void);
 int rg_gui_about_menu(const rg_gui_option_t *extra_options);
