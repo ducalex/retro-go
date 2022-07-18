@@ -353,7 +353,7 @@ void gui_redraw(void)
         {
             int height = RG_MIN(tab->preview->height, PREVIEW_HEIGHT);
             int width = RG_MIN(tab->preview->width, PREVIEW_WIDTH);
-            rg_gui_draw_image(-width, -height, width, height, tab->preview);
+            rg_gui_draw_image(-width, -height, width, height, true, tab->preview);
         }
     }
     else
@@ -390,13 +390,13 @@ void gui_draw_background(tab_t *tab, int shade)
         img = buffer;
     }
 
-    rg_gui_draw_image(0, 0, gui.width, gui.height, img);
+    rg_gui_draw_image(0, 0, gui.width, gui.height, false, img);
 }
 
 void gui_draw_header(tab_t *tab, int offset)
 {
-    rg_gui_draw_image(0, offset, LOGO_WIDTH, HEADER_HEIGHT, gui_get_image("logo", tab->name));
-    rg_gui_draw_image(LOGO_WIDTH + 1, offset + 8, 0, HEADER_HEIGHT - 8, gui_get_image("banner", tab->name));
+    rg_gui_draw_image(0, offset, LOGO_WIDTH, HEADER_HEIGHT, false, gui_get_image("logo", tab->name));
+    rg_gui_draw_image(LOGO_WIDTH + 1, offset + 8, 0, HEADER_HEIGHT - 8, false, gui_get_image("banner", tab->name));
 }
 
 void gui_draw_status(tab_t *tab)
@@ -445,17 +445,6 @@ void gui_set_preview(tab_t *tab, rg_image_t *preview)
 
     if (tab->preview)
         rg_image_free(tab->preview);
-
-    // Resize if necessary (gui_set_preview() takes ownership of *preview so we must free it too)
-    if (preview && (preview->width > PREVIEW_WIDTH || preview->height > PREVIEW_HEIGHT))
-    {
-        rg_image_t *temp = rg_image_copy_resampled(preview, PREVIEW_WIDTH, PREVIEW_HEIGHT, 0);
-        if (temp)
-        {
-            rg_image_free(preview);
-            preview = temp;
-        }
-    }
 
     tab->preview = preview;
 }
