@@ -275,7 +275,7 @@ void app_main(void)
 
     // Load saved state or SRAM
     if (app->bootFlags & RG_BOOT_RESUME)
-        rg_emu_load_state(0);
+        rg_emu_load_state(app->saveSlot);
     else
         gnuboy_load_sram(sramFile);
 

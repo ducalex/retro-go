@@ -256,7 +256,7 @@ extern "C" void app_main(void)
 
 	if (app->bootFlags & RG_BOOT_RESUME)
 	{
-		rg_emu_load_state(0);
+		rg_emu_load_state(app->saveSlot);
 	}
 
 	// Do this last to make sure the user sees it only the first time a game is about to start

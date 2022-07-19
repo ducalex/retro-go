@@ -243,7 +243,7 @@ void app_main(void)
 
     if (app->bootFlags & RG_BOOT_RESUME)
     {
-        rg_emu_load_state(0);
+        rg_emu_load_state(app->saveSlot);
     }
 
     xTaskCreatePinnedToCore(&audioTask, "audioTask", 1024 * 2, NULL, 5, NULL, 1);

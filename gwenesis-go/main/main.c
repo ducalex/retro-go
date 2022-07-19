@@ -322,7 +322,7 @@ void app_main(void)
 
     if (app->bootFlags & RG_BOOT_RESUME)
     {
-        rg_emu_load_state(0);
+        rg_emu_load_state(app->saveSlot);
     }
 
     RG_LOGI("rg_display_set_source_format()\n");
