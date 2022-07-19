@@ -1142,7 +1142,7 @@ int rg_gui_game_menu(void)
         // {1000, "Save game", NULL, 1, NULL},
         {3001, "Load game", NULL, 1, NULL},
         {3000, "Reset", NULL, 1, NULL},
-        #ifdef ENABLE_NETPLAY
+        #ifdef RG_ENABLE_NETPLAY
         {5000, "Netplay", NULL, 1, NULL},
         #endif
         {5500, "Options", NULL, 1, NULL},
@@ -1174,7 +1174,7 @@ int rg_gui_game_menu(void)
         case 3001: if ((slot = rg_gui_savestate_menu("Load", 0, 0)) >= 0) rg_emu_load_state(slot); break;
         case 3002: rg_emu_reset(false); break;
         case 3003: rg_emu_reset(true); break;
-    #ifdef ENABLE_NETPLAY
+    #ifdef RG_ENABLE_NETPLAY
         case 5000: rg_netplay_quick_start(); break;
     #endif
         case 5500: rg_gui_options_menu(); break;

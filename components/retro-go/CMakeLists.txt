@@ -18,14 +18,18 @@ set_source_files_properties(
     -O3
 )
 
-if($ENV{ENABLE_PROFILING})
-    component_compile_options(-DENABLE_PROFILING)
+if($ENV{RG_ENABLE_PROFILING})
+    component_compile_options(-DRG_ENABLE_PROFILING -finstrument-functions)
 endif()
 
-if($ENV{ENABLE_NETPLAY})
-    component_compile_options(-DENABLE_NETPLAY)
+if($ENV{RG_ENABLE_NETPLAY})
+    component_compile_options(-DRG_ENABLE_NETPLAY)
 endif()
 
-set(RG_TARGET "RG_TARGET_$ENV{RG_TARGET}")
+if($ENV{RG_BUILD_TIME})
+    component_compile_options(-DRG_BUILD_TIME=$ENV{RG_BUILD_TIME})
+endif()
+
+set(RG_TARGET "RG_TARGET_$ENV{RG_BUILD_TARGET}")
 component_compile_options(-D${RG_TARGET})
 message("Target: ${RG_TARGET}")

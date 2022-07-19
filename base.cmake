@@ -3,7 +3,7 @@ set(EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/components")
 set(SDKCONFIG_DEFAULTS "${CMAKE_CURRENT_LIST_DIR}/base.sdkconfig")
 
 macro(rg_setup_compile_options)
-    set(RG_TARGET "RG_TARGET_$ENV{RG_TARGET}")
+    set(RG_TARGET "RG_TARGET_$ENV{RG_BUILD_TARGET}")
     message("Target: ${RG_TARGET}")
 
     component_compile_options(
@@ -18,12 +18,12 @@ macro(rg_setup_compile_options)
         component_compile_options(-O3)
     endif()
 
-    if($ENV{ENABLE_PROFILING})
+    if($ENV{RG_ENABLE_PROFILING})
         # Still debating whether -fno-inline is necessary or not...
-        component_compile_options(-DENABLE_PROFILING -finstrument-functions)
+        component_compile_options(-DRG_ENABLE_PROFILING -finstrument-functions)
     endif()
 
-    if($ENV{ENABLE_NETPLAY})
-        component_compile_options(-DENABLE_NETPLAY)
+    if($ENV{RG_ENABLE_NETPLAY})
+        component_compile_options(-DRG_ENABLE_NETPLAY)
     endif()
 endmacro()

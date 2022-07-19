@@ -1,4 +1,4 @@
-#ifdef ENABLE_PROFILING
+#ifdef RG_ENABLE_PROFILING
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>

@@ -1,4 +1,4 @@
-#ifdef ENABLE_NETPLAY
+#ifdef RG_ENABLE_NETPLAY
 
 #include <freertos/FreeRTOS.h>
 #include <lwip/ip_addr.h>

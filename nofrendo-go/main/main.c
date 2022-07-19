@@ -27,7 +27,7 @@ static int palette = 0;
 static int crop_h, crop_v;
 static nes_t *nes;
 
-#ifdef ENABLE_NETPLAY
+#ifdef RG_ENABLE_NETPLAY
 static uint32_t *remoteJoystick = &joystick2;
 static uint32_t joystick2;
 
@@ -43,7 +43,7 @@ static const char *SETTING_SPRITELIMIT = "spritelimit";
 
 static void netplay_handler(netplay_event_t event, void *arg)
 {
-#ifdef ENABLE_NETPLAY
+#ifdef RG_ENABLE_NETPLAY
     bool new_netplay;
 
     switch (event)
@@ -335,7 +335,7 @@ void app_main(void)
         if (joystick1 & RG_KEY_B)      buttons |= NES_PAD_B;
         input_update(0, buttons);
 
-    #ifdef ENABLE_NETPLAY
+    #ifdef RG_ENABLE_NETPLAY
         if (netplay)
         {
             rg_netplay_sync(localJoystick, remoteJoystick, sizeof(*localJoystick));

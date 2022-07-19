@@ -35,10 +35,6 @@ static rg_video_update_t updates[2];
 static rg_video_update_t *currentUpdate = &updates[0];
 static rg_app_t *app;
 
-#ifdef ENABLE_NETPLAY
-static bool netplay = false;
-#endif
-
 static const char *SETTING_AUDIOTYPE = "audiotype";
 static const char *SETTING_OVERSCAN  = "overscan";
 // --- MAIN

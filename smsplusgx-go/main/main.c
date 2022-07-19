@@ -21,7 +21,7 @@ static rg_app_t *app;
 static uint32_t joystick1;
 static uint32_t *localJoystick = &joystick1;
 
-#ifdef ENABLE_NETPLAY
+#ifdef RG_ENABLE_NETPLAY
 static uint32_t joystick2;
 static uint32_t *remoteJoystick = &joystick2;
 
@@ -32,7 +32,7 @@ static bool netplay = false;
 
 static void netplay_handler(netplay_event_t event, void *arg)
 {
-#ifdef ENABLE_NETPLAY
+#ifdef RG_ENABLE_NETPLAY
    bool new_netplay;
 
    switch (event)
@@ -177,7 +177,7 @@ void app_main(void)
         input.pad[1] = 0x00;
         input.system = 0x00;
 
-        #ifdef ENABLE_NETPLAY
+        #ifdef RG_ENABLE_NETPLAY
         if (netplay)
         {
             rg_netplay_sync(localJoystick, remoteJoystick, sizeof(*localJoystick));

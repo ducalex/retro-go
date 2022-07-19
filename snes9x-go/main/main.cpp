@@ -32,10 +32,6 @@ static uint32_t frames_counter = 0;
 static int keymap_id = 0;
 static keymap_t keymap;
 
-#ifdef ENABLE_NETPLAY
-static bool netplay = false;
-#endif
-
 static const char *SETTING_NOTIFIED = "notified";
 static const char *SETTING_KEYMAP = "keymap";
 // --- MAIN

@@ -224,7 +224,7 @@ static void system_monitor_task(void *arg)
         {
             if (rg_input_gamepad_last_read() > WDT_TIMEOUT)
             {
-            #ifdef ENABLE_PROFILING
+            #ifdef RG_ENABLE_PROFILING
                 RG_LOGW("Application unresponsive!\n");
             #else
                 RG_PANIC("Application unresponsive!");
@@ -233,7 +233,7 @@ static void system_monitor_task(void *arg)
             WDT_RELOAD(WDT_TIMEOUT);
         }
 
-        #ifdef ENABLE_PROFILING
+        #ifdef RG_ENABLE_PROFILING
             static int loops = 0;
             if (((loops++) % 10) == 0)
             {
@@ -364,12 +364,12 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     if (app.bootFlags & RG_BOOT_ONCE)
         rg_system_set_boot_app(RG_APP_LAUNCHER);
 
-    #ifdef ENABLE_PROFILING
+    #ifdef RG_ENABLE_PROFILING
     RG_LOGI("Profiling has been enabled at compile time!\n");
     rg_profiler_init();
     #endif
 
-    #ifdef ENABLE_NETPLAY
+    #ifdef RG_ENABLE_NETPLAY
     rg_netplay_init(app.netplay_handler);
     #endif
 
@@ -466,6 +466,7 @@ bool rg_emu_load_state(uint8_t slot)
     }
     else
     {
+        // We should write that # to disk, to track the last used slot...
         app.saveSlot = slot;
     }
 
@@ -532,6 +533,7 @@ bool rg_emu_save_state(uint8_t slot)
             rg_settings_set_number(NS_GLOBAL, SETTING_BOOT_FLAGS, app.bootFlags);
         }
 
+        // We should write that # to disk, to track the most recently modified slot...
         app.saveSlot = slot;
     }
 
