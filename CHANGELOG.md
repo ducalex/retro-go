@@ -1,3 +1,10 @@
+# Retro-Go 1.33 (2022-07-??)
+- Added Genesis/Megadrive emulator
+- Added multiple save state support (per game)
+- DOOM: Added IWAD selector when launching a mod (PWAD)
+- Launcher: Fixed buttons not responding during `CRC32...`
+
+
 # Retro-Go 1.32.1 (2022-05-21)
 - Launcher: Fixed savestate screenshot using the wrong file name (#13) 
 
