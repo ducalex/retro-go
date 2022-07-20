@@ -618,13 +618,15 @@ rg_emu_state_t *rg_emu_get_states(const char *romPath, size_t slots)
         {
             if (!result->latest || slot->mtime > result->latest->mtime)
                 result->latest = slot;
-            if (!result->lastused || slot->id == last_used_slot)
+            if (slot->id == last_used_slot)
                 result->lastused = slot;
             result->used++;
         }
         free(preview);
         free(file);
     }
+    if (!result->lastused && result->latest)
+        result->lastused = result->latest;
     result->total = slots;
 
     return result;

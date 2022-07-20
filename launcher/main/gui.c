@@ -47,7 +47,7 @@ void gui_init(void)
         .color_theme  = rg_settings_get_number(NS_APP, SETTING_COLOR_THEME, 0),
         .startup      = rg_settings_get_number(NS_APP, SETTING_STARTUP_MODE, 0),
         .start_screen = rg_settings_get_number(NS_APP, SETTING_START_SCREEN, 0),
-        .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, 2),
+        .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, 3),
         .width        = rg_display_get_status()->screen.width,
         .height       = rg_display_get_status()->screen.height,
     };
