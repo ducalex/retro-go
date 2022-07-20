@@ -596,17 +596,11 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
 {
     const char *rom_path = get_file_path(file);
     char *sram_path = rg_emu_get_path(RG_PATH_SAVE_SRAM, rom_path);
-    bool has_save = false;
+    rg_emu_state_t *savestate = rg_emu_get_states(rom_path, 4);
+    bool has_save = savestate->used > 0;
     bool has_sram = access(sram_path, F_OK) == 0;
     bool is_fav = bookmark_exists(BOOK_TYPE_FAVORITE, file);
     int slot = -1;
-
-    rg_emu_state_t *slots = rg_emu_get_states(rom_path, 4);
-    for (size_t i = 0; i < 4; ++i)
-    {
-        if ((has_save = slots[i].exists))
-            break;
-    }
 
     rg_gui_option_t choices[] = {
         {0, "Resume game", NULL, has_save, NULL},
@@ -623,7 +617,7 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
     switch (sel)
     {
     case 0:
-        if ((slot = rg_gui_savestate_menu("Resume game", rom_path, 1)) == -1)
+        if ((slot = rg_gui_savestate_menu("Resume", rom_path, 1)) == -1)
             break;
         /* fallthrough */
     case 1:
@@ -633,10 +627,10 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
         break;
 
     case 2:
-        while ((slot = rg_gui_savestate_menu("Delete save state?", rom_path, 0)) != -1)
+        while ((slot = rg_gui_savestate_menu("Delete save?", rom_path, 0)) != -1)
         {
-            unlink(slots[slot].preview);
-            unlink(slots[slot].file);
+            unlink(savestate->slots[slot].preview);
+            unlink(savestate->slots[slot].file);
         }
         if (has_sram && rg_gui_confirm("Delete sram file?", 0, 0))
         {
@@ -660,7 +654,7 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
     }
 
     free(sram_path);
-    free(slots);
+    free(savestate);
 
     // gui_redraw();
 }

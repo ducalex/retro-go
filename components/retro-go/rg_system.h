@@ -46,6 +46,7 @@ typedef enum
     RG_PATH_SCREENSHOT = 0x300,
     RG_PATH_ROM_FILE   = 0x400,
     RG_PATH_CACHE_FILE = 0x500,
+    RG_PATH_GAME_CONFIG= 0x600,
 } rg_path_type_t;
 
 enum
@@ -113,11 +114,21 @@ typedef struct
 
 typedef struct
 {
+    uint8_t id;
+    bool exists;
+    size_t size;
+    time_t mtime;
     char preview[RG_PATH_MAX];
     char file[RG_PATH_MAX];
-    time_t mtime;
-    bool exists;
-    bool latest;
+} rg_emu_slot_t;
+
+typedef struct
+{
+    size_t total;
+    size_t used;
+    rg_emu_slot_t *lastused;
+    rg_emu_slot_t *latest;
+    rg_emu_slot_t slots[];
 } rg_emu_state_t;
 
 // TO DO: Make it an abstract ring buffer implementation?

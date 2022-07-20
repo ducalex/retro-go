@@ -1060,30 +1060,30 @@ int rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     return sel;
 }
 
+rg_emu_state_t *savestate;
+
 static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     #define draw_status(x...) snprintf(buffer, sizeof(buffer), x); \
         rg_gui_draw_text(2, margin + 2, gui.screen_width - 4, buffer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_CENTER);
     if (event == RG_DIALOG_FOCUS)
     {
-        int slot_id = option->id & 0xFF;
+        rg_emu_slot_t *slot = &savestate->slots[option->id % 4];
         size_t margin = TEXT_RECT("ABC", 0).height;
         char buffer[100];
-        if (option->id & 0x100)
+        if (slot->exists)
         {
             draw_status("Loading preview...");
-            char *imgfile = rg_emu_get_path(RG_PATH_SCREENSHOT + slot_id, rg_system_get_app()->romPath);
-            rg_image_t *img = rg_image_load_from_file(imgfile, 0);
+            rg_image_t *img = rg_image_load_from_file(slot->preview, 0);
             rg_gui_draw_image(0, margin, gui.screen_width, gui.screen_height - margin * 2, true, img);
             rg_gui_draw_rect(0, margin, gui.screen_width, gui.screen_height - margin * 2, 2, C_BLUE, -1);
-            draw_status((option->id & 0x200) ? "Slot %d (most recent)" : "Slot %d", slot_id);
+            draw_status(slot == savestate->lastused ? "Slot %d (last used)" : "Slot %d", slot->id);
             rg_image_free(img);
-            free(imgfile);
         }
         else
         {
             rg_gui_draw_rect(0, margin, gui.screen_width, gui.screen_height - margin * 2, 2, C_RED, C_BLACK);
-            draw_status("Slot %d is empty", slot_id);
+            draw_status("Slot %d is empty", slot->id);
         }
     }
     else if (event == RG_DIALOG_ENTER)
@@ -1103,35 +1103,22 @@ int rg_gui_savestate_menu(const char *title, const char *rom_path, bool quick_re
         {3, "Slot 3", NULL,  1, &slot_select_cb},
         RG_DIALOG_CHOICE_LAST
     };
-    rg_emu_state_t *slots = rg_emu_get_states(rom_path ?: rg_system_get_app()->romPath, 4);
-    int sel = -1;
-    int files = 0;
+    int sel;
 
-    for (size_t i = 0; i < 4; i++)
-    {
-        rg_emu_state_t *slot = &slots[i];
-        if (slot->exists)
-        {
-            choices[i].id |= 0x100;
-            if (slot->latest)
-            {
-                choices[i].id |= 0x200;
-                sel = i;
-            }
-            files++;
-        }
-    }
+    savestate = rg_emu_get_states(rom_path ?: rg_system_get_app()->romPath, 4);
 
-    if (!rom_path) // While in-game, we respect the user, not the filesystem
+    if (!rom_path)
         sel = rg_system_get_app()->saveSlot;
-
-    free(slots);
-
-    if (quick_return && files < 2)
-        return sel;
+    else if (savestate->lastused)
+        sel = savestate->lastused->id;
+    else
+        sel = 0;
 
     sel = rg_gui_dialog(title, choices, sel);
-    return sel == -1 ? -1 : (sel & 0xFF);
+
+    free(savestate);
+
+    return sel;
 }
 
 int rg_gui_game_menu(void)

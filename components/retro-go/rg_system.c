@@ -444,6 +444,24 @@ char *rg_emu_get_path(rg_path_type_t pathType, const char *filename)
     return buffer;
 }
 
+static void emu_update_save_slot(uint8_t slot)
+{
+    static uint8_t last_written = 0xFF;
+    if (slot != last_written)
+    {
+        char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + 0xFF, app.romPath);
+        FILE *fp = fopen(filename, "wb");
+        if (fp)
+        {
+            fwrite(&slot, 1, 1, fp);
+            fclose(fp);
+            last_written = slot;
+        }
+        free(filename);
+    }
+    app.saveSlot = slot;
+}
+
 bool rg_emu_load_state(uint8_t slot)
 {
     bool success = false;
@@ -466,8 +484,7 @@ bool rg_emu_load_state(uint8_t slot)
     }
     else
     {
-        // We should write that # to disk, to track the last used slot...
-        app.saveSlot = slot;
+        emu_update_save_slot(slot);
     }
 
     WDT_RELOAD(WDT_TIMEOUT);
@@ -533,8 +550,7 @@ bool rg_emu_save_state(uint8_t slot)
             rg_settings_set_number(NS_GLOBAL, SETTING_BOOT_FLAGS, app.bootFlags);
         }
 
-        // We should write that # to disk, to track the most recently modified slot...
-        app.saveSlot = slot;
+        emu_update_save_slot(slot);
     }
 
     #undef tempname
@@ -575,31 +591,43 @@ bool rg_emu_screenshot(const char *filename, int width, int height)
 
 rg_emu_state_t *rg_emu_get_states(const char *romPath, size_t slots)
 {
-    rg_emu_state_t *results = calloc(slots, sizeof(rg_emu_state_t));
-    int most_recent_id = 0;
+    rg_emu_state_t *result = calloc(1, sizeof(rg_emu_state_t) + sizeof(rg_emu_slot_t) * slots);
+    uint8_t last_used_slot = 0xFF;
+
+    char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + 0xFF, romPath);
+    FILE *fp = fopen(filename, "rb");
+    if (fp)
+    {
+        fread(&last_used_slot, 1, 1, fp);
+        fclose(fp);
+    }
+    free(filename);
 
     for (size_t i = 0; i < slots; i++)
     {
-        rg_emu_state_t *result = &results[i];
+        rg_emu_slot_t *slot = &result->slots[i];
         char *preview = rg_emu_get_path(RG_PATH_SCREENSHOT + i, romPath);
         char *file = rg_emu_get_path(RG_PATH_SAVE_STATE + i, romPath);
         struct stat st;
-        strcpy(result->preview, preview);
-        strcpy(result->file, file);
-        result->exists = stat(result->file, &st) == 0;
-        result->latest = false;
-        result->mtime = st.st_mtime;
-        if (result->exists && result->mtime > results[most_recent_id].mtime)
+        strcpy(slot->preview, preview);
+        strcpy(slot->file, file);
+        slot->id = i;
+        slot->exists = stat(slot->file, &st) == 0;
+        slot->mtime = st.st_mtime;
+        if (slot->exists)
         {
-            most_recent_id = i;
+            if (!result->latest || slot->mtime > result->latest->mtime)
+                result->latest = slot;
+            if (!result->lastused || slot->id == last_used_slot)
+                result->lastused = slot;
+            result->used++;
         }
         free(preview);
         free(file);
     }
-    // Only tag latest if it exists
-    results[most_recent_id].latest = results[most_recent_id].exists;
+    result->total = slots;
 
-    return results;
+    return result;
 }
 
 bool rg_emu_reset(bool hard)
