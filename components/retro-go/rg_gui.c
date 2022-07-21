@@ -399,12 +399,12 @@ void rg_gui_clear(rg_color_t color)
         rg_display_clear(color);
 }
 
-static int get_dialog_items_count(const rg_gui_option_t *options)
+static size_t get_dialog_items_count(const rg_gui_option_t *options)
 {
     if (options == NULL)
         return 0;
 
-    for (int i = 0; i < 16; i++)
+    for (int i = 0; i < 32; i++)
     {
         if (options[i].flags == RG_DIALOG_FLAG_LAST) {
             return i;
@@ -415,7 +415,7 @@ static int get_dialog_items_count(const rg_gui_option_t *options)
 
 void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int sel)
 {
-    const int options_count = get_dialog_items_count(options);
+    const size_t options_count = get_dialog_items_count(options);
     const int sep_width = TEXT_RECT(": ", 0).width;
     const int font_height = gui.font_points;
     const int max_box_width = 0.82f * gui.screen_width;
@@ -432,7 +432,7 @@ void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int 
     int col2_width = -1;
     int row_height[options_count];
 
-    for (int i = 0; i < options_count; i++)
+    for (size_t i = 0; i < options_count; i++)
     {
         rg_rect_t label = {0, font_height};
         rg_rect_t value = {0};
@@ -566,37 +566,35 @@ void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int 
 
 int rg_gui_dialog(const char *header, const rg_gui_option_t *options_const, int selected_index)
 {
-    int options_count = get_dialog_items_count(options_const);
+    size_t options_count = get_dialog_items_count(options_const);
     int sel = selected_index < 0 ? (options_count + selected_index) : selected_index;
     int sel_old = -1;
 
-    // We create a copy of options because the callbacks might modify it (ie option->value)
-    rg_gui_option_t options[options_count + 1];
-
-    for (int i = 0; i <= options_count; i++)
-    {
-        char value_buffer[128] = {0xFF, 0};
-
-        options[i] = options_const[i];
-
-        if (options[i].update_cb)
-        {
-            options[i].value = value_buffer;
-            options[i].update_cb(&options[i], RG_DIALOG_INIT);
-            if (value_buffer[0] == 0xFF) // Not updated, reset ptr
-                options[i].value = options_const[i].value;
-        }
-
-        if (options[i].value)
-        {
-            char *new_value = malloc(strlen(options[i].value) + 16);
-            strcpy(new_value, options[i].value);
-            options[i].value = new_value;
-        }
-    }
-
     // Constrain initial cursor and skip FLAG_SKIP items
     sel = RG_MIN(RG_MAX(0, sel), options_count - 1);
+
+    // We create a copy of options because the callbacks might modify it (ie option->value)
+    rg_gui_option_t options[options_count + 1];
+    char *text_buffer = calloc(2, 1024);
+    char *text_buffer_ptr = text_buffer;
+
+    memcpy(options, options_const, sizeof(options));
+
+    for (size_t i = 0; i < options_count; i++)
+    {
+        rg_gui_option_t *option = &options[i];
+        if (option->value && text_buffer) {
+            option->value = strcpy(text_buffer_ptr, option->value);
+            text_buffer_ptr += strlen(text_buffer_ptr) + 24;
+        }
+        if (option->label && text_buffer) {
+            option->label = strcpy(text_buffer_ptr, option->label);
+            text_buffer_ptr += strlen(text_buffer_ptr) + 24;
+        }
+        if (option->update_cb)
+            option->update_cb(option, RG_DIALOG_INIT);
+    }
+    RG_LOGI("text_buffer usage = %d\n", (intptr_t)(text_buffer_ptr - text_buffer));
 
     rg_gui_draw_dialog(header, options, sel);
     rg_input_wait_for_key(RG_KEY_ALL, false);
@@ -683,8 +681,7 @@ int rg_gui_dialog(const char *header, const rg_gui_option_t *options_const, int 
 
     rg_display_force_redraw();
 
-    for (int i = 0; i < options_count; i++)
-        free(options[i].value);
+    free(text_buffer);
 
     if (sel == -1)
         return -1;
@@ -917,13 +914,9 @@ int rg_gui_options_menu(void)
         *opt++ = (rg_gui_option_t){0, "Speed", "1x", 1, &speedup_update_cb};
     }
 
-    int extra_options = get_dialog_items_count(app->options);
-    if (extra_options)
-    {
-        // *opt++ = (rg_gui_option_t)RG_DIALOG_SEPARATOR;
-        for (int i = 0; i < extra_options; i++)
-            *opt++ = app->options[i];
-    }
+    size_t extra_options = get_dialog_items_count(app->options);
+    for (size_t i = 0; i < extra_options; i++)
+        *opt++ = app->options[i];
 
     *opt++ = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
 
