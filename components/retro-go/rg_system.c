@@ -285,6 +285,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .buildTime = esp_app->time,
         .buildUser = RG_BUILD_USER,
         .configNs = esp_app->project_name,
+        .bootArgs = NULL,
         .bootFlags = 0,
         .speed = 1.f,
         .refreshRate = 60,
@@ -307,9 +308,10 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     if (!app.isLauncher)
     {
         app.configNs = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_NAME, app.name);
-        app.romPath = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_ARGS, "");
+        app.bootArgs = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_ARGS, "");
         app.bootFlags = rg_settings_get_number(NS_GLOBAL, SETTING_BOOT_FLAGS, 0);
         app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
+        app.romPath = app.bootArgs;
     }
 
     rg_input_init(); // Must be first for the qtpy (input -> aw9523 -> lcd)
@@ -679,7 +681,7 @@ void rg_system_restart(void)
     esp_restart();
 }
 
-void rg_system_start_app(const char *app, const char *name, const char *args, int flags)
+void rg_system_start_app(const char *app, const char *name, const char *args, uint32_t flags)
 {
     rg_settings_set_string(NS_GLOBAL, SETTING_BOOT_PART, app);
     rg_settings_set_string(NS_GLOBAL, SETTING_BOOT_NAME, name);

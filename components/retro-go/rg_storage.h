@@ -15,11 +15,6 @@
 #define RG_BASE_PATH_SYSTEM     RG_BASE_PATH "/system"
 #define RG_BASE_PATH_THEMES     RG_BASE_PATH "/themes"
 
-// TO DO: This should be an enum, not strings and even less a function call...
-#define NS_GLOBAL  "global"
-#define NS_APP     rg_system_get_app()->configNs
-#define NS_FILE    rg_system_get_app()->romPath
-
 void rg_storage_init(void);
 void rg_storage_deinit(void);
 bool rg_storage_format(void);

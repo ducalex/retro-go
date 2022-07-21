@@ -148,7 +148,8 @@ typedef struct
     const char *buildTime;
     const char *buildUser;
     const char *configNs;
-    int bootFlags;
+    const char *bootArgs;
+    uint32_t bootFlags;
     float speed;
     int refreshRate;
     int sampleRate;
@@ -186,7 +187,7 @@ void rg_system_panic(const char *context, const char *message) __attribute__((no
 void rg_system_shutdown(void) __attribute__((noreturn));
 void rg_system_sleep(void) __attribute__((noreturn));
 void rg_system_restart(void) __attribute__((noreturn));
-void rg_system_start_app(const char *app, const char *name, const char *args, int flags) __attribute__((noreturn));
+void rg_system_start_app(const char *app, const char *name, const char *args, uint32_t flags) __attribute__((noreturn));
 void rg_system_set_boot_app(const char *app);
 bool rg_system_find_app(const char *app);
 void rg_system_set_led(int value);
