@@ -14,7 +14,7 @@
 
 static rg_gui_event_t toggle_tab_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    tab_t *tab = gui.tabs[option->id];
+    tab_t *tab = gui.tabs[option->arg];
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
         tab->enabled = !tab->enabled;
     }

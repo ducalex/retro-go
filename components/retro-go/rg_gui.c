@@ -684,11 +684,12 @@ int rg_gui_dialog(const char *header, const rg_gui_option_t *options_const, int 
     rg_display_force_redraw();
 
     for (int i = 0; i < options_count; i++)
-    {
         free(options[i].value);
-    }
 
-    return sel < 0 ? sel : options[sel].id;
+    if (sel == -1)
+        return -1;
+
+    return options[sel].arg;
 }
 
 bool rg_gui_confirm(const char *title, const char *message, bool default_yes)
@@ -1068,7 +1069,7 @@ static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
         rg_gui_draw_text(2, margin + 2, gui.screen_width - 4, buffer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_CENTER);
     if (event == RG_DIALOG_FOCUS)
     {
-        rg_emu_slot_t *slot = &savestate->slots[option->id % 4];
+        rg_emu_slot_t *slot = &savestate->slots[option->arg % 4];
         size_t margin = TEXT_RECT("ABC", 0).height;
         char buffer[100];
         if (slot->exists)

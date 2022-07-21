@@ -67,12 +67,11 @@ typedef rg_gui_event_t (*rg_gui_callback_t)(rg_gui_option_t *, rg_gui_event_t);
 
 struct rg_gui_option_s
 {
-    int id;
+    intptr_t arg;
     const char *label;
     char *value; /* const */
     int flags;
     rg_gui_callback_t update_cb;
-    // void *user_arg;
 };
 
 #define RG_DIALOG_FLAG_DISABLED  0 // (1 << 0)

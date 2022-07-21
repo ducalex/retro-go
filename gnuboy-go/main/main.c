@@ -129,22 +129,22 @@ static rg_gui_event_t rtc_t_update_cb(rg_gui_option_t *option, rg_gui_event_t ev
 
     gnuboy_get_time(&d, &h, &m, &s);
 
-    if (option->id == 'd') {
+    if (option->arg == 'd') {
         if (event == RG_DIALOG_PREV && --d < 0) d = 364;
         if (event == RG_DIALOG_NEXT && ++d > 364) d = 0;
         sprintf(option->value, "%02d", d);
     }
-    if (option->id == 'h') {
+    if (option->arg == 'h') {
         if (event == RG_DIALOG_PREV && --h < 0) h = 23;
         if (event == RG_DIALOG_NEXT && ++h > 23) h = 0;
         sprintf(option->value, "%02d", h);
     }
-    if (option->id == 'm') {
+    if (option->arg == 'm') {
         if (event == RG_DIALOG_PREV && --m < 0) m = 59;
         if (event == RG_DIALOG_NEXT && ++m > 59) m = 0;
         sprintf(option->value, "%02d", m);
     }
-    if (option->id == 's') {
+    if (option->arg == 's') {
         if (event == RG_DIALOG_PREV && --s < 0) s = 59;
         if (event == RG_DIALOG_NEXT && ++s > 59) s = 0;
         sprintf(option->value, "%02d", s);
@@ -236,9 +236,9 @@ void app_main(void)
         .screenshot = &screenshot_handler,
     };
     const rg_gui_option_t options[] = {
-        {100, "Palette", "7/7", 1, &palette_update_cb},
-        {101, "Set clock", "00:00", 1, &rtc_update_cb},
-        {111, "SRAM options...", NULL, 1, &sram_settings_cb},
+        {0, "Palette", "7/7", 1, &palette_update_cb},
+        {0, "Set clock", "00:00", 1, &rtc_update_cb},
+        {0, "SRAM options...", NULL, 1, &sram_settings_cb},
         RG_DIALOG_CHOICE_LAST
     };
 
