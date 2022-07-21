@@ -460,6 +460,15 @@ static void emu_update_save_slot(uint8_t slot)
         free(filename);
     }
     app.saveSlot = slot;
+
+    // Set bootflags to resume from this state on next boot
+    if ((app.bootFlags & RG_BOOT_ONCE) == 0)
+    {
+        app.bootFlags &= ~RG_BOOT_SLOT_MASK;
+        app.bootFlags |= app.saveSlot << 4;
+        app.bootFlags |= RG_BOOT_RESUME;
+        rg_settings_set_number(NS_GLOBAL, SETTING_BOOT_FLAGS, app.bootFlags);
+    }
 }
 
 bool rg_emu_load_state(uint8_t slot)
@@ -542,13 +551,6 @@ bool rg_emu_save_state(uint8_t slot)
         char *filename = rg_emu_get_path(RG_PATH_SCREENSHOT + slot, app.romPath);
         rg_emu_screenshot(filename, rg_display_get_status()->screen.width / 2, 0);
         free(filename);
-
-        // And set bootflags to resume from this state on next boot
-        if ((app.bootFlags & (RG_BOOT_ONCE|RG_BOOT_RESUME)) == 0)
-        {
-            app.bootFlags |= RG_BOOT_RESUME;
-            rg_settings_set_number(NS_GLOBAL, SETTING_BOOT_FLAGS, app.bootFlags);
-        }
 
         emu_update_save_slot(slot);
     }
