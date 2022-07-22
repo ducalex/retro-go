@@ -278,9 +278,9 @@ static void soundTask(void *arg)
 {
     while (1)
     {
-        short *audioBuffer = (short *)mixbuffer;
-        short *audioBufferEnd = audioBuffer + AUDIO_BUFFER_LENGTH * 2;
-        short stream[2];
+        int16_t *audioBuffer = (int16_t *)mixbuffer;
+        int16_t *audioBufferEnd = audioBuffer + AUDIO_BUFFER_LENGTH * 2;
+        int16_t stream[2];
 
         while (audioBuffer < audioBufferEnd)
         {
@@ -296,7 +296,7 @@ static void soundTask(void *arg)
                     if (!chan->sfx)
                         continue;
 
-                    size_t pos = (int)(chan->pos++ * chan->factor);
+                    size_t pos = (size_t)(chan->pos++ * chan->factor);
 
                     if (pos >= chan->sfx->length)
                     {
@@ -325,19 +325,18 @@ static void soundTask(void *arg)
                 }
             }
 
-            // TO DO: I guess we could add stereo support, we're already writing all the samples...
+            if (totalSources > 0)
+                totalSample /= totalSources;
 
-            if (totalSources == 0)
-            {
-                *(audioBuffer++) = 0;
-                *(audioBuffer++) = 0;
-            }
-            else
-            {
-                *(audioBuffer++) = (short)(totalSample / totalSources);
-                *(audioBuffer++) = (short)(totalSample / totalSources);
-            }
+            if (totalSample > 32767)
+                totalSample = 32767;
+            else if (totalSample < -32768)
+                totalSample = -32768;
+
+            *audioBuffer++ = totalSample;
+            *audioBuffer++ = totalSample;
         }
+
         rg_audio_submit(mixbuffer, AUDIO_BUFFER_LENGTH);
     }
 }
@@ -553,7 +552,7 @@ void app_main()
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {100, "Gamma Boost", "0/5", 1, &gamma_update_cb},
+        {0, "Gamma Boost", "0/5", 1, &gamma_update_cb},
         RG_DIALOG_CHOICE_LAST
     };
 
