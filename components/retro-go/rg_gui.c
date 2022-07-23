@@ -1126,7 +1126,9 @@ int rg_gui_game_menu(void)
         #ifdef RG_ENABLE_NETPLAY
         {5000, "Netplay", NULL, 1, NULL},
         #endif
+        #if !RG_GAMEPAD_HAS_OPTION_BTN
         {5500, "Options", NULL, 1, NULL},
+        #endif
         {6000, "About", NULL, 1, NULL},
         {7000, "Quit", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST

@@ -3,9 +3,8 @@
 // Target definition
 #define RG_TARGET_NAME             "ODROID-GO"
 
-// Storage and Settings
+// Storage
 #define RG_STORAGE_DRIVER           1   // 1 = SDSPI, 2 = SDMMC, 3 = USB
-#define RG_SETTINGS_USE_NVS         0
 
 // Audio
 #define RG_AUDIO_USE_INT_DAC        1
@@ -24,6 +23,8 @@
 
 // Input
 #define RG_GAMEPAD_DRIVER           1   // 1 = ODROID-GO, 2 = Serial, 3 = MRGC-IO
+#define RG_GAMEPAD_HAS_MENU_BTN     1
+#define RG_GAMEPAD_HAS_OPTION_BTN   1
 #define RG_BATT_ADC_CHANNEL         ADC1_CHANNEL_0
 #define RG_BATT_MULTIPLIER          2.0f
 #define RG_BATT_VOLT_MIN            3.5f
@@ -47,9 +48,9 @@
 #define RG_GPIO_GAMEPAD_OPTION      GPIO_NUM_0
 
 // SNES-style gamepad
-#define RG_GPIO_GAMEPAD_LATCH       GPIO_NUM_NC
-#define RG_GPIO_GAMEPAD_CLOCK       GPIO_NUM_NC
-#define RG_GPIO_GAMEPAD_DATA        GPIO_NUM_NC
+// #define RG_GPIO_GAMEPAD_LATCH       GPIO_NUM_NC
+// #define RG_GPIO_GAMEPAD_CLOCK       GPIO_NUM_NC
+// #define RG_GPIO_GAMEPAD_DATA        GPIO_NUM_NC
 
 // SPI Display
 #define RG_GPIO_LCD_HOST            SPI2_HOST
