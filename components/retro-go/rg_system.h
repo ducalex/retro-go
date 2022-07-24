@@ -150,11 +150,13 @@ typedef struct
     const char *configNs;
     const char *bootArgs;
     uint32_t bootFlags;
+    uint32_t resetReason;
     float speed;
     int refreshRate;
     int sampleRate;
     int logLevel;
-    int isLauncher;
+    bool isLauncher;
+    bool isColdBoot;
     int saveSlot;
     const char *romPath;
     void *mainTaskHandle;

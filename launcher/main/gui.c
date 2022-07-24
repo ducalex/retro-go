@@ -1,5 +1,4 @@
 #include <rg_system.h>
-#include <esp_system.h>
 #include <stdio.h>
 #include <string.h>
 #include <dirent.h>
@@ -53,7 +52,7 @@ void gui_init(void)
     };
     // Always enter browse mode when leaving an emulator
     // boot reason should probably be abstracted by rg_system >_<
-    gui.browse = gui.start_screen == 2 || (!gui.start_screen && esp_reset_reason() != ESP_RST_POWERON);
+    gui.browse = gui.start_screen == 2 || (!gui.start_screen && !rg_system_get_app()->isColdBoot);
     gui_set_theme(rg_settings_get_string(NS_APP, SETTING_THEME, NULL));
 }
 

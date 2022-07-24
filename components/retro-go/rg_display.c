@@ -276,12 +276,7 @@ static void lcd_init(void)
 #endif
 
     rg_display_clear(C_BLACK);
-
-    // The delay is not necessary when switching apps
-    if (esp_reset_reason() != ESP_RST_SW)
-        vTaskDelay(pdMS_TO_TICKS(5));
-
-    // And finally, let there be light!
+    vTaskDelay(pdMS_TO_TICKS(5));
     lcd_set_backlight(display.config.backlight);
 }
 
