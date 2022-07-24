@@ -25,10 +25,9 @@
 #define RG_GAMEPAD_DRIVER           1   // 1 = ODROID-GO, 2 = Serial, 3 = MRGC-IO
 #define RG_GAMEPAD_HAS_MENU_BTN     1
 #define RG_GAMEPAD_HAS_OPTION_BTN   1
-#define RG_BATT_ADC_CHANNEL         ADC1_CHANNEL_0
-#define RG_BATT_MULTIPLIER          2.0f
-#define RG_BATT_VOLT_MIN            3.5f
-#define RG_BATT_VOLT_MAX            4.2f
+#define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0
+#define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)
+#define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
 
 // Status LED
 #define RG_GPIO_LED                 GPIO_NUM_2

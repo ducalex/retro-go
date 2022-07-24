@@ -25,10 +25,9 @@
 #define RG_GAMEPAD_DRIVER           4   // 1 = ODROID-GO, 2 = Serial, 3 = MRGC-IO, 4 = QT PY AW9325
 #define RG_GAMEPAD_HAS_MENU_BTN     1
 #define RG_GAMEPAD_HAS_OPTION_BTN   1
-//#define RG_BATT_ADC_CHANNEL         ADC1_CHANNEL_0
-//#define RG_BATT_MULTIPLIER          2.0f
-//#define RG_BATT_VOLT_MIN            3.5f
-//#define RG_BATT_VOLT_MAX            4.2f
+// #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0
+#define RG_BATTERY_CALC_PERCENT(raw) (99)
+#define RG_BATTERY_CALC_VOLTAGE(raw) (0)
 
 // Status LED - not actually used, we've got neopixels instead :/
 // #define RG_GPIO_LED                 GPIO_NUM_NC

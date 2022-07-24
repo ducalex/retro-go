@@ -7,17 +7,16 @@
 #include "rg_input.h"
 #include "rg_i2c.h"
 
-#if defined(RG_BATT_ADC_CHANNEL) || (RG_GAMEPAD_DRIVER == 1)
+#if defined(RG_BATTERY_ADC_CHANNEL) || (RG_GAMEPAD_DRIVER == 1)
 #include <esp_adc_cal.h>
 #include <driver/adc.h>
+static esp_adc_cal_characteristics_t adc_chars;
 #endif
 
 static bool input_task_running = false;
 static int64_t last_gamepad_read = 0;
-// Keep the following <= 32bit to ensure atomic access without mutexes
 static uint32_t gamepad_state = -1;
-static float battery_level = -1;
-static float battery_volts = 0;
+static int battery_level = -1;
 
 
 #if RG_GAMEPAD_DRIVER == 4
@@ -80,7 +79,7 @@ static inline uint32_t gamepad_read(void)
         if (state == (RG_KEY_START|RG_KEY_SELECT))
             state = RG_KEY_OPTION;
 
-        battery_level = RG_MAX(0.f, RG_MIN(100.f, ((int)data[4] - 170) / 30.f * 100.f));
+        battery_level = data[4];
     }
 
 #elif RG_GAMEPAD_DRIVER == 4  // I2C via AW9523
@@ -236,6 +235,12 @@ void rg_input_init(void)
 
 #endif
 
+#if defined(RG_BATTERY_ADC_CHANNEL) || (RG_GAMEPAD_DRIVER == 1)
+    adc1_config_width(ADC_WIDTH_MAX - 1);
+    adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_11db);
+    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_11db, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
+#endif
+
     // Start background polling
     xTaskCreatePinnedToCore(&input_task, "input_task", 1024, NULL, 5, NULL, 1);
     while (gamepad_state == -1) vPortYield();
@@ -278,50 +283,36 @@ void rg_input_wait_for_key(rg_key_t key, bool pressed)
 
 bool rg_input_read_battery(float *percent, float *volts)
 {
-#if defined(RG_BATT_ADC_CHANNEL)
-    static float adcValue = 0.0f;
-    static esp_adc_cal_characteristics_t adc_chars;
-    uint32_t adcSample = 0;
-
-    // ADC not initialized
-    if (adc_chars.vref == 0)
-    {
-        adc1_config_width(ADC_WIDTH_MAX - 1);
-        adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_11db);
-        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_11db, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
-    }
+#if defined(RG_BATTERY_ADC_CHANNEL)
+    uint32_t adc_sample = 0;
 
     for (int i = 0; i < 4; ++i)
     {
-        adcSample += esp_adc_cal_raw_to_voltage(adc1_get_raw(RG_BATT_ADC_CHANNEL), &adc_chars);
+        adc_sample += esp_adc_cal_raw_to_voltage(adc1_get_raw(RG_BATTERY_ADC_CHANNEL), &adc_chars);
     }
-    adcSample /= 4;
+    adc_sample /= 4;
 
-    if (adcValue == 0.0f)
-    {
-        adcValue = adcSample * 0.001f;
-    }
-    else
-    {
-        adcValue += adcSample * 0.001f;
-        adcValue /= 2.0f;
-    }
+    // We no longer do that because time between calls to read_battery can be significant.
+    // If we really care we could average values on the caller side...
+    // adc_sample += battery_level;
+    // adc_sample /= 2;
 
-    battery_volts = adcValue * RG_BATT_MULTIPLIER;
-    battery_level = ((battery_volts) - RG_BATT_VOLT_MIN) / (RG_BATT_VOLT_MAX - RG_BATT_VOLT_MIN) * 100.f;
-    battery_level = RG_MAX(0.f, RG_MIN(100.f, battery_level));
+    battery_level = adc_sample;
 #else
     // We could read i2c here but the i2c API isn't threadsafe, so we'll rely on the input task.
 #endif
 
-    if (battery_level < 0.f)
+    if (battery_level == -1) // No battery or error?
         return false;
 
     if (percent)
-        *percent = battery_level;
+    {
+        *percent = RG_BATTERY_CALC_PERCENT(battery_level);
+        *percent = RG_MAX(0.f, RG_MIN(100.f, *percent));
+    }
 
     if (volts)
-        *volts = battery_volts;
+        *volts = RG_BATTERY_CALC_VOLTAGE(battery_level);
 
     return true;
 }
