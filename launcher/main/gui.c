@@ -46,7 +46,7 @@ void gui_init(void)
         .color_theme  = rg_settings_get_number(NS_APP, SETTING_COLOR_THEME, 0),
         .startup      = rg_settings_get_number(NS_APP, SETTING_STARTUP_MODE, 0),
         .start_screen = rg_settings_get_number(NS_APP, SETTING_START_SCREEN, 0),
-        .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, 3),
+        .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, 2),
         .width        = rg_display_get_status()->screen.width,
         .height       = rg_display_get_status()->screen.height,
     };
@@ -464,19 +464,19 @@ void gui_load_preview(tab_t *tab)
     {
         case PREVIEW_MODE_COVER_SAVE:
             show_missing_cover = true;
-            order = 0x3124;
+            order = 0x4123;
             break;
         case PREVIEW_MODE_SAVE_COVER:
             show_missing_cover = true;
-            order = 0x1243;
+            order = 0x1234;
             break;
         case PREVIEW_MODE_COVER_ONLY:
             show_missing_cover = true;
-            order = 0x0124;
+            order = 0x0123;
             break;
         case PREVIEW_MODE_SAVE_ONLY:
             show_missing_cover = false;
-            order = 0x0003;
+            order = 0x0004;
             break;
         default:
             show_missing_cover = false;
@@ -504,12 +504,18 @@ void gui_load_preview(tab_t *tab)
             sprintf(path, "%s/%X/%08X.art", app->paths.covers, file->checksum >> 28, file->checksum);
         else if (type == 0x2 && app->use_crc_covers && application_get_file_crc32(file)) // Game cover (png)
             sprintf(path, "%s/%X/%08X.png", app->paths.covers, file->checksum >> 28, file->checksum);
-        else if (type == 0x3) // Save state screenshot (png)
-            sprintf(path, "%s/%s/%s.png", app->paths.saves, file->folder + strlen(app->paths.roms), file->name);
-        else if (type == 0x4) // Game cover (based on filename)
+        else if (type == 0x3) // Game cover (based on filename)
             sprintf(path, "%s/%s.png", app->paths.covers, file->name);
-        else if (type == 0xF) // use generic cover image (not currently used)
-            sprintf(path, "%s/default.png", app->paths.covers);
+        else if (type == 0x4) // Save state screenshot (png)
+        {
+            sprintf(path, "%s/%s", file->folder, file->name);
+            rg_emu_state_t *state = rg_emu_get_states(path, 4);
+            if (state->lastused)
+                strcpy(path, state->lastused->preview);
+            else if (state->latest)
+                strcpy(path, state->latest->preview);
+            free(state);
+        }
         else
             continue;
 
@@ -528,5 +534,6 @@ void gui_load_preview(tab_t *tab)
         RG_LOGI("No image found for '%s'\n", file->name);
         gui_set_status(tab, NULL, errors ? "Bad cover" : "No cover");
         // gui_draw_status(tab);
+        // tab->preview = gui_get_image("cover", file->app);
     }
 }

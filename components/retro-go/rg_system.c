@@ -821,7 +821,7 @@ int rg_system_get_led(void)
 // Memory from this function should be freed with free()
 void *rg_alloc(size_t size, uint32_t caps)
 {
-    char caps_list[100] = {0};
+    char caps_list[36] = {0};
     uint32_t esp_caps = 0;
     void *ptr;
 
