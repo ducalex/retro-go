@@ -17,7 +17,7 @@ try:
 except:
     pass
 
-TARGETS = ["odroid-go", "mrgc-g32", "qtpy-gamer"]
+TARGETS = ["odroid-go", "mrgc-g32", "qtpy-gamer", "retro-esp32"]
 for t in glob.glob("components/retro-go/targets/*.h"):
     TARGETS.append(os.path.basename(t)[0:-2])
 
