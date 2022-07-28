@@ -23,8 +23,8 @@
 #define RG_SCREEN_MARGIN_RIGHT      20
 
 // Input
-#define RG_GAMEPAD_DRIVER           32   // 1 = ODROID-GO, 2 = Serial, 3 = MRGC-IO
-#define RG_GAMEPAD_HAS_MENU_BTN     0
+#define RG_GAMEPAD_DRIVER           1   // 1 = ODROID-GO, 2 = Serial, 3 = MRGC-IO
+#define RG_GAMEPAD_HAS_MENU_BTN     1
 #define RG_GAMEPAD_HAS_OPTION_BTN   0
 #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)

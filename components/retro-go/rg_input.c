@@ -75,10 +75,6 @@ static inline uint32_t gamepad_read(void)
         if (buttons & (1 << 6)) state |= RG_KEY_A;
         if (buttons & (1 << 7)) state |= RG_KEY_B;
 
-        // Virtual option btn (start+select). maybe there's a more appropriate combo?
-        if (state == (RG_KEY_START|RG_KEY_SELECT))
-            state = RG_KEY_OPTION;
-
         battery_level = data[4];
     }
 
@@ -101,27 +97,16 @@ static inline uint32_t gamepad_read(void)
 
     battery_level = 99;
 
-#elif RG_GAMEPAD_DRIVER == 32    // GPIO
-
-    int joyX = adc1_get_raw(RG_GPIO_GAMEPAD_X);
-    int joyY = adc1_get_raw(RG_GPIO_GAMEPAD_Y);
-
-    if (joyY > 2048 + 1024) state |= RG_KEY_UP;
-    else if (joyY > 1024)   state |= RG_KEY_DOWN;
-    if (joyX > 2048 + 1024) state |= RG_KEY_LEFT;
-    else if (joyX > 1024)   state |= RG_KEY_RIGHT;
-
-    if (!gpio_get_level(RG_GPIO_GAMEPAD_MENU))   state |= RG_KEY_MENU;
-    //if (!gpio_get_level(RG_GPIO_GAMEPAD_OPTION)) state |= RG_KEY_OPTION;
-    if (!gpio_get_level(RG_GPIO_GAMEPAD_SELECT)) state |= RG_KEY_SELECT;
-    if (!gpio_get_level(RG_GPIO_GAMEPAD_START))  state |= RG_KEY_START;
-    if (!gpio_get_level(RG_GPIO_GAMEPAD_A))      state |= RG_KEY_A;
-    if (!gpio_get_level(RG_GPIO_GAMEPAD_B))      state |= RG_KEY_B;  
-
-    if (state == (RG_KEY_START|RG_KEY_SELECT))
-        state = RG_KEY_OPTION;    
-
 #endif
+
+    // Virtual buttons (combos) to replace essential missing buttons.
+#if !RG_GAMEPAD_HAS_OPTION_BTN
+    if (state == (RG_KEY_START|RG_KEY_SELECT))
+        state = RG_KEY_OPTION;
+    else
+        state &= ~RG_KEY_OPTION;
+#endif
+
     return state;
 }
 
@@ -172,7 +157,7 @@ void rg_input_init(void)
     if (input_task_running)
         return;
 
-#if RG_GAMEPAD_DRIVER == 1 ||  RG_GAMEPAD_DRIVER == 32  // GPIO
+#if RG_GAMEPAD_DRIVER == 1  // GPIO
 
     const char *driver = "GPIO";
 
@@ -187,7 +172,7 @@ void rg_input_init(void)
     gpio_set_direction(RG_GPIO_GAMEPAD_SELECT, GPIO_MODE_INPUT);
     gpio_set_pull_mode(RG_GPIO_GAMEPAD_SELECT, GPIO_PULLUP_ONLY);
     gpio_set_direction(RG_GPIO_GAMEPAD_START, GPIO_MODE_INPUT);
-    // gpio_set_direction(RG_GPIO_GAMEPAD_START, GPIO_PULLUP_ONLY);
+    // gpio_set_pull_mode(RG_GPIO_GAMEPAD_START, GPIO_PULLUP_ONLY);
     gpio_set_direction(RG_GPIO_GAMEPAD_A, GPIO_MODE_INPUT);
     gpio_set_pull_mode(RG_GPIO_GAMEPAD_A, GPIO_PULLUP_ONLY);
     gpio_set_direction(RG_GPIO_GAMEPAD_B, GPIO_MODE_INPUT);
