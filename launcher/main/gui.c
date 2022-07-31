@@ -514,6 +514,8 @@ void gui_load_preview(tab_t *tab)
                 strcpy(path, state->lastused->preview);
             else if (state->latest)
                 strcpy(path, state->latest->preview);
+            else
+                strcpy(path, "/lazy/invalid/path");
             free(state);
         }
         else
