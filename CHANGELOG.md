@@ -1,4 +1,4 @@
-# Retro-Go 1.33 (2022-07-??)
+# Retro-Go 1.33 (2022-08-01)
 - Added Genesis/Megadrive emulator
 - Added multiple save state support (per game)
 - DOOM: Added IWAD selector when launching a mod (PWAD)
