@@ -211,7 +211,7 @@ extern "C" void app_main(void)
 		.memWrite = NULL,
 	};
 	const rg_gui_option_t options[] = {
-		{2, "Controls", NULL, 1, &menu_keymap_cb},
+		{2, "Controls", (char*)"", 1, &menu_keymap_cb},
 		RG_DIALOG_CHOICE_LAST
 	};
 
