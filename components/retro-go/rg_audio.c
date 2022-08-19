@@ -167,6 +167,10 @@ void rg_audio_deinit(void)
 
 void rg_audio_submit(const rg_audio_sample_t *samples, size_t count)
 {
+    // RG_ASSERT(audioSink != -1, "Audio device not ready!");
+    if (audioSink == -1)
+        return;
+
     if (!samples || !count)
         return;
 
@@ -274,6 +278,8 @@ void rg_audio_set_volume(int percent)
 
 void rg_audio_set_mute(bool mute)
 {
+    RG_ASSERT(audioSink != -1, "Audio device not ready!");
+
     // if (audioMuted == mute)
     //     return;
 
@@ -301,6 +307,8 @@ int rg_audio_get_sample_rate(void)
 
 void rg_audio_set_sample_rate(int sampleRate)
 {
+    RG_ASSERT(audioSink != -1, "Audio device not ready!");
+
     if (audioSampleRate == sampleRate)
         return;
 

@@ -30,6 +30,7 @@ static int skipFrames = 0;
 static int frameTime = get_frame_time(60);
 static uint8_t *framebuffers[2];
 
+static bool emulationPaused = false; // This should probably be a mutex
 static rg_audio_sample_t audiobuffer[AUDIO_BUFFER_LENGTH * 2];
 static rg_video_update_t updates[2];
 static rg_video_update_t *currentUpdate = &updates[0];
@@ -140,15 +141,16 @@ void osd_input_read(uint8_t joypads[8])
     uint32_t joystick = rg_input_read_gamepad();
     uint32_t buttons = 0;
 
-    // TO DO: We should pause the audio task when entering a menu...
     if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
     {
+        emulationPaused = true;
         if (joystick & RG_KEY_MENU)
             rg_gui_game_menu();
         else
             rg_gui_options_menu();
         frameTime = get_frame_time(app->refreshRate * app->speed);
         rg_audio_set_sample_rate(app->sampleRate * app->speed);
+        emulationPaused = false;
     }
 
     if (joystick & RG_KEY_LEFT)   buttons |= JOY_LEFT;
@@ -169,6 +171,9 @@ static void audioTask(void *arg)
 
     while (1)
     {
+        // TODO: Clearly we need to add a better way to remain in sync with the main task...
+        while (emulationPaused)
+            vTaskDelay(1);
         psg_update((void*)audiobuffer, AUDIO_BUFFER_LENGTH, downsample);
         rg_audio_submit(audiobuffer, AUDIO_BUFFER_LENGTH);
     }
@@ -242,7 +247,7 @@ void app_main(void)
         rg_emu_load_state(app->saveSlot);
     }
 
-    xTaskCreatePinnedToCore(&audioTask, "audioTask", 1024 * 2, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(&audioTask, "audioTask", 2560, NULL, 5, NULL, 1);
 
     RunPCE();
 
