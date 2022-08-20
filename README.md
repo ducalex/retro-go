@@ -69,11 +69,9 @@ You can use one of two naming schemes:
 Retro-Go typically detects and resolves application crashes and freezes automatically. However, if you do
 get stuck in a boot loop, you can hold `DOWN` while powering up the device to return to the launcher. 
 
-### Display update mode
-The maximum fill rate of the LCD is ~30fps. To work around that limitation, retro-go implements a partial
-update mode that refreshes only the portions of the screen that have changed. This process works very well at 
-reducing tearing and improving animations smoothness. However if you notice glitches or stuttering you can try 
-setting `Update: Full` in the options.
+### Artifacts or tearing
+Retro-Go uses partial screen updating to achieve a higher framerate and reduce tearing. This method isn't
+perfect however, if you notice display issues or stuttering you can try changing the `Update` option.
 
 ### Sound quality
 The volume isn't correctly attenuated on the GO, resulting in upper volume levels that are too loud and 
@@ -83,9 +81,13 @@ required, twisting the wires tightly will work just fine.
 [A more involved solution can be seen here.](https://wiki.odroid.com/odroid_go/silent_volume)
 
 ### Game Boy SRAM *(aka Save/Battery/Backup RAM)*
-In Retro-Go, save states will provide you with the best and most reliable save experience. That being said, please read on if you need or want SRAM saves. The SRAM format is compatible with VisualBoyAdvance so it may be used to import or export saves.
+In Retro-Go, save states will provide you with the best and most reliable save experience. That being said, please 
+read on if you need or want SRAM saves. The SRAM format is compatible with VisualBoyAdvance so it may be used to 
+import or export saves.
 
-On real hardware, Game Boy games save their state to a battery-backed SRAM chip in the cartridge. A typical emulator on the deskop would save the SRAM to disk periodically or when leaving the emulator, and reload it when you restart the game. This isn't possible on the Odroid-GO because we can't detect when the device is about to be powered down and we can't save too often because it causes stuttering. That is why the auto save delay is configurable (disabled by default) and pausing the emulation (opening a menu) will also save to disk if needed. The SRAM file is then reloaded on startup (unless a save state loading was requested via "Resume").
+You can configure automatic SRAM saving in the options menu. A longer delay will reduce stuttering at the cost 
+of losing data when powering down too quickly. Also note that when *resuming* a game, Retro-Go will give priority 
+to a save state if present.
 
 
 # BIOS files
@@ -100,7 +102,6 @@ Some emulators support loading a BIOS. The files should be placed as follows:
 - Famicom Disk System (In progress)
 - SGB enhanced palette support (In progress)
 - Netplay (Stalled)
-- Multiple save states
 - More emulators (Atari 2600/5200/7800, Neo Geo Pocket, Arduboy)
 - WiFi file manager
 - Chip sound player
@@ -150,6 +151,8 @@ In short you need to generate a font.c file and add it to fonts.h. It'll try to 
 
 ## Capturing crash logs
 When a panic occurs, Retro-Go has the ability to save debugging information to `/sd/crash.log`. This provides users with a simple way of recovering a backtrace (and often more) without having to install drivers and serial console software. A weak hook is installed into esp-idf panic's putchar, allowing us to save each chars in RTC RAM. Then, after the system resets, we can move that data to the sd card. You will find a small esp-idf patch to enable this feature in tools/patches.
+
+To resolve the backtrace you will need the application's elf file. If lost, you can recreate it by building the app again **using the same esp-idf and retro-go versions**. Then you can run `xtensa-esp32-elf-addr2line -ifCe app-name/build/app-name.elf`.
 
 ## Porting
 I don't want to maintain non-ESP32 ports in this repository but let me know if I can make small changes to make your own port easier! The absolute minimum requirements for Retro-Go are roughly:

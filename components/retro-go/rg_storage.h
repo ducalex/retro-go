@@ -7,6 +7,7 @@
 
 #define RG_ROOT_PATH            "/sd"
 #define RG_BASE_PATH            RG_ROOT_PATH "/retro-go"
+#define RG_BASE_PATH_BIOS       RG_BASE_PATH "/bios"
 #define RG_BASE_PATH_CACHE      RG_BASE_PATH "/cache"
 #define RG_BASE_PATH_CONFIG     RG_BASE_PATH "/config"
 #define RG_BASE_PATH_COVERS     RG_ROOT_PATH "/romart"
