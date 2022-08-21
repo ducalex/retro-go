@@ -157,7 +157,7 @@ static void spi_init(void)
     ret = spi_bus_add_device(RG_GPIO_LCD_HOST, &devcfg, &spi_dev);
     RG_ASSERT(ret == ESP_OK, "spi_bus_add_device failed.");
 
-    xTaskCreatePinnedToCore(&spi_task, "spi_task", 1024, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(&spi_task, "spi_task", 1024, NULL, RG_TASK_PRIORITY - 1, NULL, 1);
 }
 
 static void spi_deinit(void)
@@ -572,7 +572,6 @@ static void update_viewport_scaling(void)
            display.viewport.x_pos, display.viewport.y_pos, display.viewport.x_inc, display.viewport.y_inc);
 }
 
-IRAM_ATTR
 static void display_task(void *arg)
 {
     display_task_queue = xQueueCreate(1, sizeof(rg_video_update_t *));

@@ -17,7 +17,7 @@ extern "C" {
 #elif defined(RG_TARGET_QTPY_GAMER)
     #include "targets/qtpy-gamer.h"
 #elif defined(RG_TARGET_RETRO_ESP32)
-    #include "targets/retro-esp32.h"            
+    #include "targets/retro-esp32.h"
 #else
     #warning "No target defined. Defaulting to ODROID-GO."
     #include "targets/odroid-go.h"
@@ -28,6 +28,10 @@ extern "C" {
 #define RG_APP_FACTORY  NULL
 
 #define RG_PATH_MAX 255
+
+// This is the base task priority used for system tasks.
+// It should be higher than user tasks but lower than esp-idf's tasks.
+#define RG_TASK_PRIORITY 10
 
 #include "rg_audio.h"
 #include "rg_display.h"

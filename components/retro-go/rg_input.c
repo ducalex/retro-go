@@ -15,7 +15,7 @@ static esp_adc_cal_characteristics_t adc_chars;
 
 static bool input_task_running = false;
 static int64_t last_gamepad_read = 0;
-static uint32_t gamepad_state = -1;
+static uint32_t gamepad_state = -1; // _Atomic
 static int battery_level = -1;
 
 
@@ -246,9 +246,10 @@ void rg_input_init(void)
 #endif
 
     // Start background polling
-    xTaskCreatePinnedToCore(&input_task, "input_task", 1024, NULL, 5, NULL, 1);
-    while (gamepad_state == -1) vPortYield();
-    RG_LOGI("Input ready. driver='%s', state="PRINTF_BINARY_16"\n", driver, PRINTF_BINVAL_16(gamepad_state));
+    xTaskCreatePinnedToCore(&input_task, "input_task", 1024, NULL, RG_TASK_PRIORITY - 1, NULL, 1);
+    while (gamepad_state == -1)
+        vPortYield();
+    RG_LOGI("Input ready. driver='%s', state=" PRINTF_BINARY_16 "\n", driver, PRINTF_BINVAL_16(gamepad_state));
 }
 
 void rg_input_deinit(void)
