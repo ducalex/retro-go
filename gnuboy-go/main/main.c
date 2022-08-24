@@ -252,7 +252,7 @@ void app_main(void)
     autoSaveSRAM = rg_settings_get_number(NS_APP, SETTING_SAVESRAM, 0);
     sramFile = rg_emu_get_path(RG_PATH_SAVE_SRAM, app->romPath);
 
-    if (!rg_mkdir(rg_dirname(sramFile)))
+    if (!rg_storage_mkdir(rg_dirname(sramFile)))
         MESSAGE_ERROR("Unable to create SRAM folder...");
 
     // Initialize the emulator

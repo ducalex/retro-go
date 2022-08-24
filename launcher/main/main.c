@@ -256,7 +256,7 @@ static void try_migrate(void)
     if (rg_settings_get_number(NS_GLOBAL, "Migration", 0) < 1290)
     {
     #ifdef RG_TARGET_ODROID_GO
-        rg_mkdir(RG_BASE_PATH_CONFIG);
+        rg_storage_mkdir(RG_BASE_PATH_CONFIG);
         rename(RG_ROOT_PATH "/odroid/favorite.txt", RG_BASE_PATH_CONFIG "/favorite.txt");
         rename(RG_ROOT_PATH "/odroid/recent.txt", RG_BASE_PATH_CONFIG "/recent.txt");
     #endif
@@ -311,9 +311,9 @@ void app_main(void)
     }
     else
     {
-        rg_mkdir(RG_BASE_PATH_CACHE);
-        rg_mkdir(RG_BASE_PATH_CONFIG);
-        rg_mkdir(RG_BASE_PATH_SYSTEM);
+        rg_storage_mkdir(RG_BASE_PATH_CACHE);
+        rg_storage_mkdir(RG_BASE_PATH_CONFIG);
+        rg_storage_mkdir(RG_BASE_PATH_SYSTEM);
         try_migrate();
     }
 

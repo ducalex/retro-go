@@ -75,8 +75,8 @@ void rg_settings_commit(void)
     FILE *fp = fopen(config_file_path, "wb");
     if (!fp)
     {
-        if (!rg_delete(config_file_path))
-            rg_mkdir(rg_dirname(config_file_path));
+        if (!rg_storage_delete(config_file_path))
+            rg_storage_mkdir(rg_dirname(config_file_path));
         fp = fopen(config_file_path, "wb");
     }
     if (fp)

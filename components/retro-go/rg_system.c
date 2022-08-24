@@ -526,7 +526,7 @@ bool rg_emu_save_state(uint8_t slot)
     rg_system_set_led(1);
     rg_gui_draw_hourglass();
 
-    if (!rg_mkdir(rg_dirname(filename)))
+    if (!rg_storage_mkdir(rg_dirname(filename)))
     {
         RG_LOGE("Unable to create dir, save might fail...\n");
     }
@@ -583,7 +583,7 @@ bool rg_emu_screenshot(const char *filename, int width, int height)
 
     RG_LOGI("Saving screenshot %dx%d to '%s'.\n", width, height, filename);
 
-    if (!rg_mkdir(rg_dirname(filename)))
+    if (!rg_storage_mkdir(rg_dirname(filename)))
     {
         RG_LOGE("Unable to create dir, save might fail...\n");
     }
