@@ -15,11 +15,11 @@
 #define SPI_TRANSACTION_COUNT (10)
 #define SPI_BUFFER_COUNT (6)
 #define SPI_BUFFER_LENGTH (4 * 320) // In pixels (uint16)
-
-#ifndef SPI_DMA_CH_AUTO
-#define SPI_DMA_CH_AUTO 1
+#if CONFIG_IDF_TARGET_ESP32
+	#ifndef SPI_DMA_CH_AUTO
+		#define SPI_DMA_CH_AUTO 1
+	#endif
 #endif
-
 static spi_device_handle_t spi_dev;
 static QueueHandle_t spi_transactions;
 static QueueHandle_t spi_buffers;
@@ -140,7 +140,11 @@ static void spi_init(void)
     };
 
     const spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = SPI_MASTER_FREQ_40M,  // 80Mhz causes glitches unfortunately
+#if defined(RG_TARGET_ESPLAY_S3) == 4
+        .clock_speed_hz = SPI_MASTER_FREQ_80M,  // 80Mhz s3 can run 80M
+#else
+	    .clock_speed_hz = SPI_MASTER_FREQ_40M,  // 80Mhz causes glitches unfortunately
+#endif
         .mode = 0,                              // SPI mode 0
         .spics_io_num = RG_GPIO_LCD_CS,         // CS pin
         .queue_size = SPI_TRANSACTION_COUNT,    // We want to be able to queue 5 transactions at a time
@@ -157,7 +161,7 @@ static void spi_init(void)
     ret = spi_bus_add_device(RG_GPIO_LCD_HOST, &devcfg, &spi_dev);
     RG_ASSERT(ret == ESP_OK, "spi_bus_add_device failed.");
 
-    xTaskCreatePinnedToCore(&spi_task, "spi_task", 1024, NULL, RG_TASK_PRIORITY - 1, NULL, 1);
+    xTaskCreatePinnedToCore(&spi_task, "spi_task", 1024, NULL, 5, NULL, 1);
 }
 
 static void spi_deinit(void)
@@ -298,6 +302,33 @@ static void lcd_init(void)
     ILI9341_CMD(0xE1, {0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F}); // Set Gamma
     ILI9341_CMD(0x11, {}); // Exit Sleep
     ILI9341_CMD(0x29, {}); // Display on
+#elif RG_SCREEN_TYPE == 4
+	gpio_set_direction(RG_GPIO_LCD_RST,GPIO_MODE_OUTPUT);
+	gpio_set_level(RG_GPIO_LCD_RST,0);
+	vTaskDelay(120 / portTICK_RATE_MS);
+	gpio_set_level(RG_GPIO_LCD_RST,1);
+	ILI9341_CMD(0x01, {});  // Reset
+	vTaskDelay(120 / portTICK_RATE_MS);
+	ILI9341_CMD(0x3A, {0X05});  //65k mode
+	ILI9341_CMD(0xC5, {0x1A}); //VCOM
+	ILI9341_CMD(0x36, {0x60}); //Display Rotation
+	ILI9341_CMD(0xB2, {0x05, 0x05, 0x00, 0x33, 0x33});  //Porch Setting
+	ILI9341_CMD(0xB7, {0x05});  //Gate Control //12.2v   -10.43v
+	ILI9341_CMD(0xBB, {0x3F});  //VCOM
+	ILI9341_CMD(0xC0, {0x2c});  //Power control
+	ILI9341_CMD(0xC2, {0x01});  //VDV and VRH Command Enable
+	ILI9341_CMD(0xC3, {0x0F});  //VRH Set 4.3+( vcom+vcom offset+vdv)
+	ILI9341_CMD(0xC4, {0xBE});  //VDV Set 0v
+	ILI9341_CMD(0xC6, {0X01});  //Frame Rate Control in Normal Mode 111Hz
+	ILI9341_CMD(0xD0, {0xA4,0xA1});  //Power Control 1
+	ILI9341_CMD(0xE8, {0x03});   //Power Control 1
+	ILI9341_CMD(0xE9, {0x09,0x09,0x08});  //Equalize time control
+	ILI9341_CMD(0xE0, {0xD0,0x05,0x09,0x09,0x08,0x14,0x28,0x33,0x3F,0x07,0x13,0x14,0x28,0x30});   //Set Gamma
+	ILI9341_CMD(0xE1, {0xD0, 0x05, 0x09, 0x09, 0x08, 0x03, 0x24, 0x32, 0x32, 0x3B, 0x14, 0x13, 0x28, 0x2F, 0x1F});   //Set Gamma
+	ILI9341_CMD(0x20, {0x00});   //Reverse Display
+	ILI9341_CMD(0x11, {0x03});   //Exit Sleep
+	ILI9341_CMD(0x29, {0x03});   //Display on
+	vTaskDelay(100 / portTICK_RATE_MS);
 #else
     #error "LCD init sequence is not defined for this device!"
 #endif
@@ -572,6 +603,7 @@ static void update_viewport_scaling(void)
            display.viewport.x_pos, display.viewport.y_pos, display.viewport.x_inc, display.viewport.y_inc);
 }
 
+IRAM_ATTR
 static void display_task(void *arg)
 {
     display_task_queue = xQueueCreate(1, sizeof(rg_video_update_t *));

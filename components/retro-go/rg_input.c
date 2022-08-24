@@ -15,7 +15,7 @@ static esp_adc_cal_characteristics_t adc_chars;
 
 static bool input_task_running = false;
 static int64_t last_gamepad_read = 0;
-static uint32_t gamepad_state = -1; // _Atomic
+static uint32_t gamepad_state = -1;
 static int battery_level = -1;
 
 
@@ -96,6 +96,27 @@ static inline uint32_t gamepad_read(void)
     if (aw_buttons & (1<<AW_GAMEPAD_IO_OPTION)) state |= RG_KEY_OPTION;
 
     battery_level = 99;
+
+#elif RG_GAMEPAD_DRIVER == 5  // I2C ESPLAY
+
+	uint8_t data[5];
+    if (rg_i2c_read(0x20, -1, &data, 5))
+    {
+        int buttons = ~((data[2] << 8) | data[1]);
+
+        if (buttons & (1 << 2)) state |= RG_KEY_UP;
+        if (buttons & (1 << 3)) state |= RG_KEY_DOWN;
+        if (buttons & (1 << 4)) state |= RG_KEY_LEFT;
+        if (buttons & (1 << 5)) state |= RG_KEY_RIGHT;
+        if (!gpio_get_level(RG_GPIO_GAMEPAD_MENU)) state |= RG_KEY_MENU;
+	    if (!gpio_get_level(RG_GPIO_GAMEPAD_R))    state |= RG_KEY_OPTION;
+//         if (buttons & (1 << 0)) state |= RG_KEY_OPTION;
+        if (buttons & (1 << 1)) state |= RG_KEY_SELECT;
+        if (buttons & (1 << 0)) state |= RG_KEY_START;
+        if (buttons & (1 << 6)) state |= RG_KEY_A;
+        if (buttons & (1 << 7)) state |= RG_KEY_B;
+        battery_level = data[4];
+    }
 
 #endif
 
@@ -233,6 +254,12 @@ void rg_input_init(void)
     aw_digitalWrite(AW_TFT_RESET, 1);
     vTaskDelay(pdMS_TO_TICKS(10));
 
+#elif RG_GAMEPAD_DRIVER == 5 //I2C ESPLAY
+
+	const char *driver = "ESPLAY-I2C";
+
+    rg_i2c_init();
+
 #else
 
     #error "No gamepad driver selected"
@@ -241,15 +268,14 @@ void rg_input_init(void)
 
 #if defined(RG_BATTERY_ADC_CHANNEL) || (RG_GAMEPAD_DRIVER == 1)
     adc1_config_width(ADC_WIDTH_MAX - 1);
-    adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_11db);
+    adc1_config_channel_atten(RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_11db);
     esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_11db, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
 #endif
 
     // Start background polling
-    xTaskCreatePinnedToCore(&input_task, "input_task", 2048, NULL, RG_TASK_PRIORITY - 1, NULL, 1);
-    while (gamepad_state == -1)
-        vPortYield();
-    RG_LOGI("Input ready. driver='%s', state=" PRINTF_BINARY_16 "\n", driver, PRINTF_BINVAL_16(gamepad_state));
+    xTaskCreatePinnedToCore(&input_task, "input_task", 2048, NULL, 5, NULL, 1);
+    while (gamepad_state == -1) vPortYield();
+    RG_LOGI("Input ready. driver='%s', state="PRINTF_BINARY_16"\n", driver, PRINTF_BINVAL_16(gamepad_state));
 }
 
 void rg_input_deinit(void)

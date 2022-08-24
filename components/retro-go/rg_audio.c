@@ -69,12 +69,21 @@ void rg_audio_init(int sampleRate)
         .mode = I2S_MODE_MASTER | I2S_MODE_TX,
         .sample_rate = sampleRate,
         .bits_per_sample = 16,
-        .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
+#ifdef RG_TARGET_ESPLAY_S3
+	    .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
+	    .communication_format = I2S_COMM_FORMAT_STAND_I2S | I2S_COMM_FORMAT_STAND_MSB,
+	    .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1, // ESP_INTR_FLAG_LEVEL1
+	    .dma_buf_count = 8, // Goal is to have ~800 samples over 2-8 buffers (3x270 or 5x180 are pretty good)
+	    .dma_buf_len = 534, // The unit is stereo samples (4 bytes) (optimize for 533 usage)
+	    .use_apll = false, // External DAC may care about accuracy
+#else
+	    .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
         .communication_format = I2S_COMM_FORMAT_STAND_I2S,
-        .intr_alloc_flags = 0, // ESP_INTR_FLAG_LEVEL1
+		.intr_alloc_flags = 0, // ESP_INTR_FLAG_LEVEL1
         .dma_buf_count = 4, // Goal is to have ~800 samples over 2-8 buffers (3x270 or 5x180 are pretty good)
         .dma_buf_len = 180, // The unit is stereo samples (4 bytes) (optimize for 533 usage)
         .use_apll = true, // External DAC may care about accuracy
+#endif
     };
     esp_err_t ret = ESP_FAIL;
 
@@ -100,7 +109,7 @@ void rg_audio_init(int sampleRate)
                 .bck_io_num = RG_GPIO_SND_I2S_BCK,
                 .ws_io_num = RG_GPIO_SND_I2S_WS,
                 .data_out_num = RG_GPIO_SND_I2S_DATA,
-                .data_in_num = GPIO_NUM_NC
+                .data_in_num = I2S_PIN_NO_CHANGE
             });
         }
     }

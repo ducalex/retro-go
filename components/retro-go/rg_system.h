@@ -9,6 +9,20 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+// if you want to use kconfig uncomment this code
+//#include <sdkconfig.h>
+//
+//#if defined(CONFIG_TARGET_ODROID_GO)
+//	#define RG_TARGET_ODROID_GO
+//#elif defined(CONFIG_TARGET_MRGC_G32)
+//	#define RG_TARGET_MRGC_G32
+//#elif defined(CONFIG_TARGET_QTPY_GAMER)
+//	#define RG_TARGET_QTPY_GAMER
+//#elif defined(CONFIG_TARGET_RETRO_ESP32)
+//	#define RG_TARGET_RETRO_ESP32
+//#elif defined(CONFIG_TARGET_ESPLAY_S3)
+//	#define RG_TARGET_ESPLAY_S3
+//#endif
 
 #if defined(RG_TARGET_ODROID_GO)
     #include "targets/odroid-go.h"
@@ -18,6 +32,8 @@ extern "C" {
     #include "targets/qtpy-gamer.h"
 #elif defined(RG_TARGET_RETRO_ESP32)
     #include "targets/retro-esp32.h"
+#elif defined(RG_TARGET_ESPLAY_S3)
+	#include "targets/esplay-s3.h"
 #else
     #warning "No target defined. Defaulting to ODROID-GO."
     #include "targets/odroid-go.h"
@@ -28,10 +44,6 @@ extern "C" {
 #define RG_APP_FACTORY  NULL
 
 #define RG_PATH_MAX 255
-
-// This is the base task priority used for system tasks.
-// It should be higher than user tasks but lower than esp-idf's tasks.
-#define RG_TASK_PRIORITY 10
 
 #include "rg_audio.h"
 #include "rg_display.h"
