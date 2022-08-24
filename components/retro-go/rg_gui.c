@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include <cJSON.h>
 
 #include "bitmaps/image_hourglass.h"
 #include "fonts/fonts.h"
@@ -12,25 +13,25 @@
 #include "rg_printf.h"
 #include "rg_gui.h"
 
-static const rg_gui_theme_t default_theme = {
-    .box_background = C_NAVY,
-    .box_header = C_WHITE,
-    .box_border = C_DIM_GRAY,
-    .item_standard = C_WHITE,
-    .item_disabled = C_GRAY, // C_DIM_GRAY
-    .scrollbar = C_RED,
-};
 static struct {
     uint16_t *screen_buffer, *draw_buffer;
     int screen_width, screen_height;
-    int font_points, font_type;
-    const rg_font_t *font;
-    rg_gui_theme_t theme;
+    struct {
+        const rg_font_t *font;
+        int font_points;
+        rg_color_t box_background;
+        rg_color_t box_header;
+        rg_color_t box_border;
+        rg_color_t item_standard;
+        rg_color_t item_disabled;
+        rg_color_t scrollbar;
+    } style;
+    char theme[32];
     bool initialized;
 } gui;
 
-// static const char *SETTING_FONTSIZE     = "FontSize";
-static const char *SETTING_FONTTYPE     = "FontType";
+static const char *SETTING_FONTTYPE  = "FontType";
+static const char *SETTING_THEME     = "Theme";
 
 
 void rg_gui_init(void)
@@ -39,16 +40,57 @@ void rg_gui_init(void)
     gui.screen_height = rg_display_get_status()->screen.height;
     gui.draw_buffer = rg_alloc(RG_MAX(gui.screen_width, gui.screen_height) * 20 * 2, MEM_SLOW);
     rg_gui_set_font_type(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_12));
-    rg_gui_set_theme(&default_theme);
+    rg_gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
     gui.initialized = true;
 }
 
-bool rg_gui_set_theme(const rg_gui_theme_t *theme)
+static int get_theme_value(cJSON *theme, const char *key, int default_value)
 {
-    if (!theme)
-        return false;
+    cJSON *obj = cJSON_GetObjectItem(theme, key);
+    if (obj && cJSON_IsNumber(obj))
+        return obj->valueint;
+    // TODO: We must parse stringy hex values!
+    return default_value;
+}
 
-    gui.theme = *theme;
+bool rg_gui_set_theme(const char *theme_name)
+{
+    char theme_path[RG_PATH_MAX];
+    cJSON *theme = NULL;
+
+    if (theme_name && theme_name[0])
+    {
+        snprintf(theme_path, RG_PATH_MAX, "%s/%s/theme.json", RG_BASE_PATH_THEMES, theme_name);
+        FILE *fp = fopen(theme_path, "rb");
+        if (fp)
+        {
+            fseek(fp, 0, SEEK_END);
+            long length = ftell(fp);
+            fseek(fp, 0, SEEK_SET);
+            char *buffer = calloc(1, length + 1);
+            if (fread(buffer, 1, length, fp))
+                theme = cJSON_Parse(buffer);
+            free(buffer);
+            fclose(fp);
+        }
+        if (!theme)
+            RG_LOGE("Failed to load theme '%s'!\n", theme_name);
+    }
+
+    gui.style.box_background = get_theme_value(theme, "box_background", C_NAVY);
+    gui.style.box_header = get_theme_value(theme, "box_header", C_WHITE);
+    gui.style.box_border = get_theme_value(theme, "box_border", C_DIM_GRAY);
+    gui.style.item_standard = get_theme_value(theme, "item_standard", C_WHITE);
+    gui.style.item_disabled = get_theme_value(theme, "item_disabled", C_GRAY);
+    gui.style.scrollbar = get_theme_value(theme, "scrollbar", C_RED);
+
+    RG_LOGI("Theme set to '%s'!\n", theme_name ?: "(none)");
+
+    rg_settings_set_string(NS_GLOBAL, SETTING_THEME, theme_name);
+    strcpy(gui.theme, theme_name ?: "");
+
+    cJSON_free(theme);
+
     if (gui.initialized)
         rg_system_event(RG_EVENT_REDRAW, NULL);
 
@@ -170,14 +212,15 @@ bool rg_gui_set_font_type(int type)
     if (type < 0 || type > RG_FONT_MAX - 1)
         return false;
 
-    gui.font = fonts[type];
-    gui.font_type = type;
-    gui.font_points = (type < 3) ? (8 + type * 4) : gui.font->height;
+    const rg_font_t *font = fonts[type];
+
+    gui.style.font = font;
+    gui.style.font_points = (type < 3) ? (8 + type * 4) : font->height;
 
     rg_settings_set_number(NS_GLOBAL, SETTING_FONTTYPE, type);
 
     RG_LOGI("Font set to: points=%d, scaling=%.2f\n",
-        gui.font_points, (float)gui.font_points / gui.font->height);
+        gui.style.font_points, (float)gui.style.font_points / font->height);
 
     if (gui.initialized)
         rg_system_event(RG_EVENT_REDRAW, NULL);
@@ -193,8 +236,9 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
     if (!text || *text == 0) text = " ";
 
     int padding = (flags & RG_TEXT_NO_PADDING) ? 0 : 1;
-    int font_height = gui.font_points;
+    int font_height = gui.style.font_points;
     int line_height = font_height + padding * 2;
+    const rg_font_t *font = gui.style.font;
 
     if (width == 0)
     {
@@ -203,7 +247,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
         for (const char *ptr = text; *ptr; )
         {
             int chr = *ptr++;
-            line_width += get_glyph(0, gui.font, font_height, chr);
+            line_width += get_glyph(0, font, font_height, chr);
 
             if (chr == '\n' || *ptr == 0)
             {
@@ -237,7 +281,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
             const char *line = ptr;
             while (x_offset < draw_width && *line && *line != '\n')
             {
-                int width = get_glyph(0, gui.font, font_height, *line++);
+                int width = get_glyph(0, font, font_height, *line++);
                 if (draw_width - x_offset < width) // Do not truncate glyphs
                     break;
                 x_offset += width;
@@ -251,7 +295,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
         while (x_offset < draw_width)
         {
             uint16_t bitmap[24] = {0};
-            int width = get_glyph(bitmap, gui.font, font_height, *ptr++);
+            int width = get_glyph(bitmap, font, font_height, *ptr++);
 
             if (draw_width - x_offset < width) // Do not truncate glyphs
             {
@@ -417,7 +461,7 @@ void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int 
 {
     const size_t options_count = get_dialog_items_count(options);
     const int sep_width = TEXT_RECT(": ", 0).width;
-    const int font_height = gui.font_points;
+    const int font_height = gui.style.font_points;
     const int max_box_width = 0.82f * gui.screen_width;
     const int max_box_height = 0.82f * gui.screen_height;
     const int box_padding = 6;
@@ -474,8 +518,8 @@ void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int 
     if (header)
     {
         int width = inner_width + row_padding_x * 2;
-        rg_gui_draw_text(x, y, width, header, gui.theme.box_header, gui.theme.box_background, RG_TEXT_ALIGN_CENTER);
-        rg_gui_draw_rect(x, y + font_height, width, 6, 0, 0, gui.theme.box_background);
+        rg_gui_draw_text(x, y, width, header, gui.style.box_header, gui.style.box_background, RG_TEXT_ALIGN_CENTER);
+        rg_gui_draw_rect(x, y + font_height, width, 6, 0, 0, gui.style.box_background);
         y += font_height + 6;
     }
 
@@ -502,9 +546,9 @@ void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int 
     int i = top_i;
     for (; i < options_count; i++)
     {
-        uint16_t color = (options[i].flags == RG_DIALOG_FLAG_NORMAL) ? gui.theme.item_standard : gui.theme.item_disabled;
-        uint16_t fg = (i == sel) ? gui.theme.box_background : color;
-        uint16_t bg = (i == sel) ? color : gui.theme.box_background;
+        uint16_t color = (options[i].flags == RG_DIALOG_FLAG_NORMAL) ? gui.style.item_standard : gui.style.item_disabled;
+        uint16_t fg = (i == sel) ? gui.style.box_background : color;
+        uint16_t bg = (i == sel) ? color : gui.style.box_background;
         int xx = x + row_padding_x;
         int yy = y + row_padding_y;
         int height = 8;
@@ -536,29 +580,29 @@ void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int 
 
     if (y < (box_y + box_height))
     {
-        rg_gui_draw_rect(box_x, y, box_width, (box_y + box_height) - y, 0, 0, gui.theme.box_background);
+        rg_gui_draw_rect(box_x, y, box_width, (box_y + box_height) - y, 0, 0, gui.style.box_background);
     }
 
-    rg_gui_draw_rect(box_x, box_y, box_width, box_height, box_padding, gui.theme.box_background, -1);
-    rg_gui_draw_rect(box_x - 1, box_y - 1, box_width + 2, box_height + 2, 1, gui.theme.box_border, -1);
+    rg_gui_draw_rect(box_x, box_y, box_width, box_height, box_padding, gui.style.box_background, -1);
+    rg_gui_draw_rect(box_x - 1, box_y - 1, box_width + 2, box_height + 2, 1, gui.style.box_border, -1);
 
     // Basic scroll indicators are overlayed at the end...
     if (top_i > 0)
     {
         int x = box_x + inner_width + box_padding;
         int y = box_y + box_padding - 1;
-        rg_gui_draw_rect(x, y, 3, 3, 0, 0, gui.theme.scrollbar);
-        rg_gui_draw_rect(x + 6, y, 3, 3, 0, 0, gui.theme.scrollbar);
-        rg_gui_draw_rect(x + 12, y, 3, 3, 0, 0, gui.theme.scrollbar);
+        rg_gui_draw_rect(x, y, 3, 3, 0, 0, gui.style.scrollbar);
+        rg_gui_draw_rect(x + 6, y, 3, 3, 0, 0, gui.style.scrollbar);
+        rg_gui_draw_rect(x + 12, y, 3, 3, 0, 0, gui.style.scrollbar);
     }
 
     if (i < options_count)
     {
         int x = box_x + inner_width + box_padding;
         int y = box_y + box_height - box_padding - 1;
-        rg_gui_draw_rect(x, y, 3, 3, 0, 0, gui.theme.scrollbar);
-        rg_gui_draw_rect(x + 6, y, 3, 3, 0, 0, gui.theme.scrollbar);
-        rg_gui_draw_rect(x + 12, y, 3, 3, 0, 0, gui.theme.scrollbar);
+        rg_gui_draw_rect(x, y, 3, 3, 0, 0, gui.style.scrollbar);
+        rg_gui_draw_rect(x + 6, y, 3, 3, 0, 0, gui.style.scrollbar);
+        rg_gui_draw_rect(x + 12, y, 3, 3, 0, 0, gui.style.scrollbar);
     }
 
     rg_gui_flush();
@@ -854,19 +898,26 @@ static rg_gui_event_t disk_activity_cb(rg_gui_option_t *option, rg_gui_event_t e
 
 static rg_gui_event_t font_type_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    if (event == RG_DIALOG_PREV && !rg_gui_set_font_type((int)gui.font_type - 1)) {
-        rg_gui_set_font_type(0);
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
+        int font_index = RG_FONT_MAX - 1;
+        while (font_index && fonts[font_index] != gui.style.font)
+            font_index--;
+
+        if (event == RG_DIALOG_PREV && !rg_gui_set_font_type(font_index - 1)) {
+            rg_gui_set_font_type(0);
+        }
+        if (event == RG_DIALOG_NEXT && !rg_gui_set_font_type(font_index + 1)) {
+            rg_gui_set_font_type(0);
+        }
     }
-    if (event == RG_DIALOG_NEXT && !rg_gui_set_font_type((int)gui.font_type + 1)) {
-        rg_gui_set_font_type(0);
-    }
-    sprintf(option->value, "%s %d", gui.font->name, gui.font_points);
+    sprintf(option->value, "%s %d", gui.style.font->name, gui.style.font_points);
     return RG_DIALOG_VOID;
 }
 
 static void draw_game_status_bars(void)
 {
-    int max_len = RG_MIN(gui.screen_width / RG_MAX(gui.font->width, 7), 99);
+    int max_len = RG_MIN(gui.screen_width / RG_MAX(gui.style.font->width, 7), 99);
     char header[100] = {0};
     char footer[100] = {0};
 

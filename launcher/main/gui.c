@@ -53,7 +53,7 @@ void gui_init(void)
     // Always enter browse mode when leaving an emulator
     // boot reason should probably be abstracted by rg_system >_<
     gui.browse = gui.start_screen == 2 || (!gui.start_screen && !rg_system_get_app()->isColdBoot);
-    gui_set_theme(rg_settings_get_string(NS_APP, SETTING_THEME, NULL));
+    gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
 }
 
 void gui_event(gui_event_t event, tab_t *tab)
@@ -213,7 +213,6 @@ void gui_save_config(void)
     rg_settings_set_number(NS_APP, SETTING_SHOW_PREVIEW, gui.show_preview);
     rg_settings_set_number(NS_APP, SETTING_COLOR_THEME, gui.color_theme);
     rg_settings_set_number(NS_APP, SETTING_STARTUP_MODE, gui.startup);
-    rg_settings_set_string(NS_APP, SETTING_THEME, gui.theme);
     for (int i = 0; i < gui.tabcount; i++)
         rg_settings_set_number(NS_APP, SETTING_HIDE_TAB(gui.tabs[i]->name), !gui.tabs[i]->enabled);
 }
