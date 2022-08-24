@@ -355,7 +355,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     if (rg_input_key_is_pressed(RG_KEY_ANY))
     {
         vTaskDelay(pdMS_TO_TICKS(500));
-        if (rg_input_key_is_pressed(RG_KEY_ANY))
+        if (rg_input_key_is_pressed(RG_KEY_B))
         {
             RG_LOGW("Button 0x%04X being held down, entering recovery...\n", rg_input_read_gamepad());
             if (rg_gui_confirm("Recovery mode", "Rebooting to launcher!\nAlso reset all settings?", 0))
@@ -363,8 +363,16 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
             rg_system_set_boot_app(RG_APP_LAUNCHER);
             rg_system_restart();
         }
+	    if (rg_input_key_is_pressed(RG_KEY_A))
+	    {
+		    RG_LOGW("Button A being held down, entering flash select...\n");
+		    if (rg_gui_confirm("Flash mode", "Rebooting to mfw!\n", 0))
+		        rg_system_set_boot_app(RG_APP_MFW);
+		    else
+			    rg_system_set_boot_app(RG_APP_LAUNCHER);
+		    rg_system_restart();
+	    }
     }
-
     if (app.bootFlags & RG_BOOT_ONCE)
         rg_system_set_boot_app(RG_APP_LAUNCHER);
 

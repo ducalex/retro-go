@@ -204,6 +204,10 @@ def clean_app(app):
 def build_app(app, device_type, with_profiling=False, with_netplay=False):
     # To do: clean up if any of the flags changed since last build
     print("Building app '%s'" % app)
+    if device_type == TARGETS[4]:
+        os.putenv("IDF_TARGET","esp32s3")
+    else:
+        os.putenv("IDF_TARGET","esp32")
     os.putenv("RG_ENABLE_PROFILING", "1" if with_profiling else "0")
     os.putenv("RG_ENABLE_NETPLAY", "1" if with_netplay else "0")
     os.putenv("RG_BUILD_TARGET", re.sub(r'[^A-Z0-9]', '_', device_type.upper()))

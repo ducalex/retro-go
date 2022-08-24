@@ -40,6 +40,7 @@ extern "C" {
     #define RG_TARGET_ODROID_GO
 #endif
 
+#define RG_APP_MFW "mfw_app"
 #define RG_APP_LAUNCHER "launcher"
 #define RG_APP_FACTORY  NULL
 
