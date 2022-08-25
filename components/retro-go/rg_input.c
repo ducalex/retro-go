@@ -273,8 +273,9 @@ void rg_input_init(void)
 #endif
 
     // Start background polling
-    xTaskCreatePinnedToCore(&input_task, "input_task", 2048, NULL, 5, NULL, 1);
-    while (gamepad_state == -1) vPortYield();
+    xTaskCreatePinnedToCore(&input_task, "input_task", 2048, NULL, RG_TASK_PRIORITY - 1, NULL, 1);
+    while (gamepad_state == -1) 
+	    vPortYield();
     RG_LOGI("Input ready. driver='%s', state="PRINTF_BINARY_16"\n", driver, PRINTF_BINVAL_16(gamepad_state));
 }
 
