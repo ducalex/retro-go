@@ -46,6 +46,10 @@ extern "C" {
 
 #define RG_PATH_MAX 255
 
+// This is the base task priority used for system tasks.
+// It should be higher than user tasks but lower than esp-idf's tasks.
+#define RG_TASK_PRIORITY 10
+
 #include "rg_audio.h"
 #include "rg_display.h"
 #include "rg_input.h"
