@@ -338,8 +338,7 @@ void app_main(void)
             {
                 auto_sram_update();
 
-                #ifdef RG_TARGET_ODROID_GO
-                // This is only necessary on the odroid-go
+                #if RG_STORAGE_DRIVER == 1 // This is only necessary when the SPI bus is shared
                 skipFrames += 5;
                 #endif
             }
