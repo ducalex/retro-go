@@ -166,7 +166,7 @@ static void retro_loop(void)
 
         if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
         {
-        #if (defined(RG_TARGET_ODROID_GO) || defined(RG_TARGET_ESPLAY_S3))
+        #ifdef RG_TARGET_ODROID_GO
             if (joystick == RG_KEY_MENU)
                 rg_gui_about_menu(NULL);
             else
@@ -255,7 +255,7 @@ static void try_migrate(void)
     // A handful of retro-go versions used the weird /odroid/*.txt to store books. Let's move them!
     if (rg_settings_get_number(NS_GLOBAL, "Migration", 0) < 1290)
     {
-    #if (defined(RG_TARGET_ODROID_GO) || defined(RG_TARGET_ESPLAY_S3))
+    #ifdef RG_TARGET_ODROID_GO
         rg_mkdir(RG_BASE_PATH_CONFIG);
         rename(RG_ROOT_PATH "/odroid/favorite.txt", RG_BASE_PATH_CONFIG "/favorite.txt");
         rename(RG_ROOT_PATH "/odroid/recent.txt", RG_BASE_PATH_CONFIG "/recent.txt");
@@ -267,7 +267,7 @@ static void try_migrate(void)
     // Some of our save formats have diverged and cause issue when they're shared with Go-Play
     if (rg_settings_get_number(NS_GLOBAL, "Migration", 0) < 1390)
     {
-    #if (defined(RG_TARGET_ODROID_GO) || defined(RG_TARGET_ESPLAY_S3))
+    #ifdef RG_TARGET_ODROID_GO
         if (access(RG_ROOT_PATH"/odroid/data", F_OK) == 0)
             rg_gui_alert("Save path changed in 1.32",
                 "Save format is no longer fully compatible with Go-Play and can cause corruption.\n\n"
