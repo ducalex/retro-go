@@ -264,6 +264,8 @@ static void recovery_mode(void)
         switch (rg_gui_dialog("Recovery mode", options, -1))
         {
         case 0:
+            rg_storage_delete(RG_BASE_PATH_CONFIG);
+            rg_storage_delete(RG_BASE_PATH_CACHE);
             rg_settings_reset();
             break;
         case 1:
