@@ -15,7 +15,7 @@ static esp_adc_cal_characteristics_t adc_chars;
 
 static bool input_task_running = false;
 static int64_t last_gamepad_read = 0;
-static uint32_t gamepad_state = -1;
+static uint32_t gamepad_state = -1; // _Atomic
 static int battery_level = -1;
 
 
