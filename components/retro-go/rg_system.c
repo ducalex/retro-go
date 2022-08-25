@@ -389,7 +389,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     atexit(&exit_handler);
     rtc_time_init();
 
-    xTaskCreate(&system_monitor_task, "sysmon", 2560, NULL, 7, NULL);
+    xTaskCreate(&system_monitor_task, "sysmon", 2560, NULL, RG_TASK_PRIORITY, NULL);
 
     initialized = true;
 
