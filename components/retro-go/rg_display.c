@@ -161,7 +161,7 @@ static void spi_init(void)
     ret = spi_bus_add_device(RG_GPIO_LCD_HOST, &devcfg, &spi_dev);
     RG_ASSERT(ret == ESP_OK, "spi_bus_add_device failed.");
 
-    xTaskCreatePinnedToCore(&spi_task, "spi_task", 1024, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(&spi_task, "spi_task", 1024, NULL, RG_TASK_PRIORITY - 1, NULL, 1);
 }
 
 static void spi_deinit(void)
