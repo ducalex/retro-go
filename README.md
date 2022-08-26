@@ -29,16 +29,13 @@ compatibility!
 ### Screenshots
 ![Preview](retro-go-preview.jpg)
 
-# Recovery Mode
-### Reset Data and Boot to Launcher
-  1. Power up the device while holding down B.
-  2. Select ok and press A to conform it.
 
 # Installation
 ### ODROID-GO
   1. Download `retro-go_1.x_odroid-go.fw` from the release page and copy it to `/odroid/firmware` on your sdcard.
-  2. Power up the device while holding down A.
-  3. Select retro-go in the files list and flash it.
+  2. Power up the device while holding down Any Button to start the recovery mode.
+  3. Select `Reboot to factory`
+  4. Select retro-go in the files list and flash it.
 
 ### MyRetroGameCase G32 (GBC)
   1. Download `retro-go_1.x_mrgc-g32.fw` from the release page and copy it to `/espgbc/firmware` on your sdcard.
