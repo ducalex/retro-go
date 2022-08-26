@@ -100,11 +100,10 @@ static inline uint32_t gamepad_read(void)
 #endif
 
     // Virtual buttons (combos) to replace essential missing buttons.
-#if !RG_GAMEPAD_HAS_OPTION_BTN
+#if !RG_GAMEPAD_HAS_MENU_BTN
+    state &= ~RG_KEY_MENU;
     if (state == (RG_KEY_START|RG_KEY_SELECT))
-        state = RG_KEY_OPTION;
-    else
-        state &= ~RG_KEY_OPTION;
+        state = RG_KEY_MENU;
 #endif
 
     return state;
