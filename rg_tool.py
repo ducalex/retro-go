@@ -17,7 +17,7 @@ try:
 except:
     pass
 
-TARGETS = ["odroid-go", "mrgc-g32", "qtpy-gamer", "retro-esp32", "esplay-s3"]
+TARGETS = ["odroid-go"] # We just need to specify the default, the others are discovered below
 for t in glob.glob("components/retro-go/targets/*.h"):
     TARGETS.append(os.path.basename(t)[0:-2])
 
@@ -204,7 +204,8 @@ def clean_app(app):
 def build_app(app, device_type, with_profiling=False, with_netplay=False):
     # To do: clean up if any of the flags changed since last build
     print("Building app '%s'" % app)
-    if device_type == TARGETS[4]:
+    #IDF_TARGET is esp32，but ESPLAY-S3 use esp32s3
+    if device_type == "esplay-s3":
         os.putenv("IDF_TARGET","esp32s3")
     else:
         os.putenv("IDF_TARGET","esp32")

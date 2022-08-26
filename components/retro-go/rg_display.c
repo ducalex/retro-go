@@ -603,7 +603,6 @@ static void update_viewport_scaling(void)
            display.viewport.x_pos, display.viewport.y_pos, display.viewport.x_inc, display.viewport.y_inc);
 }
 
-IRAM_ATTR
 static void display_task(void *arg)
 {
     display_task_queue = xQueueCreate(1, sizeof(rg_video_update_t *));

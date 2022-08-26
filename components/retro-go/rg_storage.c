@@ -56,11 +56,7 @@ void rg_storage_init(void)
 {
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
         .format_if_mount_failed = false,
-#ifdef RG_TARGET_ESPLAY_S3
-        .allocation_unit_size = 32 * 1024,
-#else
-	    .allocation_unit_size = 0,
-#endif
+        .allocation_unit_size = 0,
         .max_files = 8,
     };
 
