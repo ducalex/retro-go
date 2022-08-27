@@ -141,7 +141,7 @@ static void book_save(book_type_t book_type)
     book_t *book = &books[book_type];
 
     FILE *fp = fopen(book->path, "w");
-    if (!fp && rg_mkdir(rg_dirname(book->path)))
+    if (!fp && rg_storage_mkdir(rg_dirname(book->path)))
     {
         fp = fopen(book->path, "w");
     }

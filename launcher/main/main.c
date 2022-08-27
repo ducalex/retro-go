@@ -166,7 +166,7 @@ static void retro_loop(void)
 
         if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
         {
-        #ifdef RG_TARGET_ODROID_GO
+        #if RG_GAMEPAD_HAS_OPTION_BTN
             if (joystick == RG_KEY_MENU)
                 rg_gui_about_menu(NULL);
             else
@@ -256,7 +256,7 @@ static void try_migrate(void)
     if (rg_settings_get_number(NS_GLOBAL, "Migration", 0) < 1290)
     {
     #ifdef RG_TARGET_ODROID_GO
-        rg_mkdir(RG_BASE_PATH_CONFIG);
+        rg_storage_mkdir(RG_BASE_PATH_CONFIG);
         rename(RG_ROOT_PATH "/odroid/favorite.txt", RG_BASE_PATH_CONFIG "/favorite.txt");
         rename(RG_ROOT_PATH "/odroid/recent.txt", RG_BASE_PATH_CONFIG "/recent.txt");
     #endif
@@ -295,7 +295,7 @@ void app_main(void)
         {0, "Start screen", "...", 1, &start_screen_cb},
         {0, "Hide tabs   ", "...", 1, &toggle_tabs_cb},
         {0, "Startup app ", "...", 1, &startup_app_cb},
-    #ifndef RG_TARGET_ODROID_GO
+    #if !RG_GAMEPAD_HAS_OPTION_BTN
         RG_DIALOG_SEPARATOR,
         {0, "About Retro-Go", NULL,  1, &about_app_cb},
     #endif
@@ -311,9 +311,9 @@ void app_main(void)
     }
     else
     {
-        rg_mkdir(RG_BASE_PATH_CACHE);
-        rg_mkdir(RG_BASE_PATH_CONFIG);
-        rg_mkdir(RG_BASE_PATH_SYSTEM);
+        rg_storage_mkdir(RG_BASE_PATH_CACHE);
+        rg_storage_mkdir(RG_BASE_PATH_CONFIG);
+        rg_storage_mkdir(RG_BASE_PATH_SYSTEM);
         try_migrate();
     }
 

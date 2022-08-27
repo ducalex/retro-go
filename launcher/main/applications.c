@@ -118,7 +118,7 @@ static void application_init(retro_app_t *app)
     // It adds very little delay but it could become an issue if someone has thousands of named files...
     DIR *dir = opendir(app->paths.covers);
     if (!dir)
-        rg_mkdir(app->paths.covers);
+        rg_storage_mkdir(app->paths.covers);
     else
     {
         struct dirent* ent;
@@ -127,8 +127,8 @@ static void application_init(retro_app_t *app)
         closedir(dir);
     }
 
-    rg_mkdir(app->paths.saves);
-    rg_mkdir(app->paths.roms);
+    rg_storage_mkdir(app->paths.saves);
+    rg_storage_mkdir(app->paths.roms);
     scan_folder(app, app->paths.roms, 0);
 
     app->initialized = true;
@@ -177,7 +177,7 @@ static void crc_cache_init(void)
     }
     else
     {
-        rg_mkdir(RG_BASE_PATH_CACHE);
+        rg_storage_mkdir(RG_BASE_PATH_CACHE);
     }
 }
 

@@ -146,7 +146,7 @@ void rg_storage_commit(void)
     // flush buffers();
 }
 
-bool rg_mkdir(const char *dir)
+bool rg_storage_mkdir(const char *dir)
 {
     RG_ASSERT(dir, "Bad param");
 
@@ -185,7 +185,7 @@ bool rg_mkdir(const char *dir)
     return (ret == 0);
 }
 
-bool rg_delete(const char *path)
+bool rg_storage_delete(const char *path)
 {
     RG_ASSERT(path, "Bad param");
     DIR *dir;
@@ -214,7 +214,7 @@ bool rg_delete(const char *path)
             if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
                 continue;
             snprintf(pathbuf, sizeof(pathbuf), "%s/%s", path, ent->d_name);
-            rg_delete(pathbuf);
+            rg_storage_delete(pathbuf);
         }
         closedir(dir);
         if (rmdir(path) == 0)

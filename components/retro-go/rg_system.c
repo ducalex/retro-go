@@ -249,6 +249,36 @@ static void system_monitor_task(void *arg)
     vTaskDelete(NULL);
 }
 
+static void recovery_mode(void)
+{
+    RG_LOGW("Entering recovery mode...\n");
+
+    const rg_gui_option_t options[] = {
+        {0, "Reset all settings", NULL, 1, NULL},
+        {1, "Reboot to factory ", NULL, 1, NULL},
+        {2, "Reboot to launcher", NULL, 1, NULL},
+        RG_DIALOG_CHOICE_LAST,
+    };
+    while (true)
+    {
+        switch (rg_gui_dialog("Recovery mode", options, -1))
+        {
+        case 0:
+            rg_storage_delete(RG_BASE_PATH_CONFIG);
+            rg_storage_delete(RG_BASE_PATH_CACHE);
+            rg_settings_reset();
+            break;
+        case 1:
+            rg_system_set_boot_app(RG_APP_FACTORY);
+            rg_system_restart();
+        case 2:
+        default:
+            rg_system_set_boot_app(RG_APP_LAUNCHER);
+            rg_system_restart();
+        }
+    }
+}
+
 IRAM_ATTR void rg_system_tick(int busyTime)
 {
     statistics.busyTime += busyTime;
@@ -319,6 +349,16 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     rg_input_init(); // Must be first for the qtpy (input -> aw9523 -> lcd)
     rg_display_init();
     rg_gui_init();
+
+    // Test for recovery request as early as possible
+    for (int timeout = 5; rg_input_key_is_pressed(RG_KEY_ANY) && timeout >= 0; --timeout)
+    {
+        RG_LOGW("Button 0x%04X being held down...\n", rg_input_read_gamepad());
+        vTaskDelay(pdMS_TO_TICKS(100));
+        if (timeout == 0)
+            recovery_mode();
+    }
+
     rg_gui_draw_hourglass();
     rg_audio_init(sampleRate);
 
@@ -350,20 +390,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         rg_system_restart();
     }
     panicTrace.magicWord = 0;
-
-    // Start a recovery mode (returns to launcher at the moment) when a key is held during boot
-    if (rg_input_key_is_pressed(RG_KEY_ANY))
-    {
-        vTaskDelay(pdMS_TO_TICKS(500));
-        if (rg_input_key_is_pressed(RG_KEY_ANY))
-        {
-            RG_LOGW("Button 0x%04X being held down, entering recovery...\n", rg_input_read_gamepad());
-            if (rg_gui_confirm("Recovery mode", "Rebooting to launcher!\nAlso reset all settings?", 0))
-                rg_settings_reset();
-            rg_system_set_boot_app(RG_APP_LAUNCHER);
-            rg_system_restart();
-        }
-    }
 
     if (app.bootFlags & RG_BOOT_ONCE)
         rg_system_set_boot_app(RG_APP_LAUNCHER);
@@ -526,7 +552,7 @@ bool rg_emu_save_state(uint8_t slot)
     rg_system_set_led(1);
     rg_gui_draw_hourglass();
 
-    if (!rg_mkdir(rg_dirname(filename)))
+    if (!rg_storage_mkdir(rg_dirname(filename)))
     {
         RG_LOGE("Unable to create dir, save might fail...\n");
     }
@@ -583,7 +609,7 @@ bool rg_emu_screenshot(const char *filename, int width, int height)
 
     RG_LOGI("Saving screenshot %dx%d to '%s'.\n", width, height, filename);
 
-    if (!rg_mkdir(rg_dirname(filename)))
+    if (!rg_storage_mkdir(rg_dirname(filename)))
     {
         RG_LOGE("Unable to create dir, save might fail...\n");
     }

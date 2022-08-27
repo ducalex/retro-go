@@ -140,6 +140,9 @@ void rg_audio_init(int sampleRate)
 
 void rg_audio_deinit(void)
 {
+    if (audioSink == -1)
+        return;
+
     // We'll go ahead even if we can't acquire the lock...
     ACQUIRE_DEVICE(1000);
 

@@ -94,6 +94,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
         if (item && item->enabled)
         {
             gui_set_theme(item->arg);
+            rg_gui_set_theme(item->arg);
             rg_gui_alert("Success!", "Theme activated.");
         }
     }
