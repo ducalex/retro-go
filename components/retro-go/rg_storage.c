@@ -13,8 +13,10 @@
 static esp_err_t sdcard_mount = ESP_FAIL;
 static bool disk_led = true;
 
+#if CONFIG_IDF_TARGET_ESP32
 #ifndef SPI_DMA_CH_AUTO
-#define SPI_DMA_CH_AUTO 1
+    #define SPI_DMA_CH_AUTO 1
+#endif
 #endif
 
 #define SETTING_DISK_ACTIVITY "DiskActivity"
@@ -85,11 +87,24 @@ void rg_storage_init(void)
 
     sdmmc_host_t host_config = SDMMC_HOST_DEFAULT();
     host_config.flags = SDMMC_HOST_FLAG_1BIT;
+#if RG_SDSPI_HIGHSPEED == 1
     host_config.max_freq_khz = SDMMC_FREQ_HIGHSPEED;
+#else
+	host_config.max_freq_khz = SDMMC_FREQ_DEFAULT;
+#endif
     host_config.do_transaction = &sdcard_do_transaction;
-
+#if CONFIG_IDF_TARGET_ESP32
     sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
     slot_config.width = 1;
+#elif defined(RG_TARGET_ESPLAY_S3)
+	sdmmc_slot_config_t slot_config = {
+			.width = 1, .flags = 0,
+			.d0 = RG_GPIO_SDSPI_D0, .d1 = -1, .d2 = -1, .d3 = -1, .d4 = -1, .d5 = -1, .d6 = -1, .d7 = -1,
+			.clk = RG_GPIO_SDSPI_CLK, .cmd = RG_GPIO_SDSPI_CMD, .cd = -1, .wp = -1,
+	};
+#else
+    #error "No available SD Card driver slot"
+#endif
 
 #else
 
