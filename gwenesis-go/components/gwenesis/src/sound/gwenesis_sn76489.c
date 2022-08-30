@@ -206,7 +206,7 @@ static inline void gwenesis_SN76489_Update(INT16 *buffer, int length)
 /* SN76589 execution */
 extern int scan_line;
 void gwenesis_SN76489_run(int target) {
-
+ 
 if ( sn76489_clock >= target) return;
 
   int sn76489_prev_index = sn76489_index;
@@ -220,7 +220,6 @@ if ( sn76489_clock >= target) return;
 }
 void gwenesis_SN76489_Write(int data, int target)
 {
-#if 0
   if (GWENESIS_AUDIO_ACCURATE == 1)
     gwenesis_SN76489_run(target);
 
@@ -253,7 +252,6 @@ void gwenesis_SN76489_Write(int data, int target)
         gwenesis_SN76489.NoiseFreq=0x10<<(gwenesis_SN76489.Registers[6]&0x3);     /* set noise signal generator frequency */
 		break;
     }
-#endif
 }
 
 void gwenesis_sn76489_save_state() {

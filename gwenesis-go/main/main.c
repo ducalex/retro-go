@@ -14,7 +14,7 @@
 #include "gwenesis_vdp.h"
 #include "gwenesis_savestate.h"
 
-const unsigned char *ROM_DATA;
+unsigned char *ROM_DATA;
 size_t ROM_DATA_LENGTH;
 unsigned char *VRAM;
 unsigned int scan_line;
@@ -288,15 +288,8 @@ void app_main(void)
     FILE *fp = fopen(app->romPath, "rb");
     if (fp)
     {
-        uint8_t *buffer = rg_alloc(0x300000, MEM_SLOW);
-        ROM_DATA = buffer;
-        ROM_DATA_LENGTH = fread(buffer, 1, 0x300000, fp);
-        for (size_t i = 0; i < ROM_DATA_LENGTH; i += 2)
-        {
-            uint8_t z = buffer[i];
-            buffer[i] = buffer[i + 1];
-            buffer[i + 1] = z;
-        }
+        ROM_DATA = rg_alloc(0x300000, MEM_SLOW);
+        ROM_DATA_LENGTH = fread(ROM_DATA, 1, 0x300000, fp);
         fclose(fp);
         RG_LOGI("ROM SIZE = %d\n", ROM_DATA_LENGTH);
     } else {
@@ -316,7 +309,7 @@ void app_main(void)
     uint32_t frames = 0;
 
     RG_LOGI("load_cartridge()\n");
-    load_cartridge();
+    load_cartridge(ROM_DATA, ROM_DATA_LENGTH);
 
     RG_LOGI("power_on()\n");
     power_on();

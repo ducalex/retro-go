@@ -94,11 +94,15 @@ current_timeslice = 0;
     return;
   }
 
-  int timeslice = (target - zclk) / Z80_FREQ_DIVISOR;
+  current_timeslice = target - zclk;
 
   int rem = 0;
-  if ((reset_once ==1)  && (bus_ack == 0) && (reset == 0) )
-    rem = ExecZ80(&cpu, timeslice);
+  if ((reset_once == 1) && (bus_ack == 0) && (reset == 0)) {
+
+   // z80_log("z80_run", "%1d%1d%1d||zclk=%d,tgt=%d",reset_once, bus_ack, reset, zclk, target);
+    rem = ExecZ80(&cpu, current_timeslice / Z80_FREQ_DIVISOR);
+
+  }
 
   zclk = target - rem * Z80_FREQ_DIVISOR;
 }
@@ -108,10 +112,8 @@ void z80_sync(void) {
   get M68K cycles 
   Execute cycles on z80 to sync with m68K
   */
-  int slice = m68k_cycles_run();
-  slice = slice * M68K_FREQ_DIVISOR;
 
-  z80_run(slice + m68k_clock);
+  z80_run(m68k_cycles_master());
 }
 
 void z80_set_memory(unsigned char *buffer)
@@ -121,10 +123,10 @@ void z80_set_memory(unsigned char *buffer)
 }
 
 void z80_write_ctrl(unsigned int address, unsigned int value) {
+  z80_sync();
 
   if (address == 0x1100) // BUSREQ
   {
-    z80_sync();
     z80_log(__FUNCTION__,"BUSREQ = %d, current=%d", value,bus_ack);
 
     // Bus request. Z80 bus on hold.
@@ -140,7 +142,7 @@ void z80_write_ctrl(unsigned int address, unsigned int value) {
   } else if (address == 0x1200) // RESET
   {
     z80_log(__FUNCTION__,"RESET = %d, current=%d", value,reset);
-
+  
     if (value == 0) {
       reset = 1;
     } else {
@@ -153,6 +155,8 @@ void z80_write_ctrl(unsigned int address, unsigned int value) {
 }
 
 unsigned int z80_read_ctrl(unsigned int address) {
+
+  z80_sync();
 
   if (address == 0x1100) {
 
@@ -307,7 +311,7 @@ void WrZ80(register word Addr, register byte Value) {
     gwenesis_SN76489_Write(Value,zclk + current_timeslice -(cpu.ICount * Z80_FREQ_DIVISOR) );
     return;
   }
-
+ 
   z80_log("Z80","WrZ80  %x %x", Addr, Value);
 
   if (Addr >= 0x8000) {

@@ -50,16 +50,16 @@ extern "C" {
 #ifdef _HOST_
 	extern unsigned char ROM_DATA[];
 #else
-	extern const unsigned char* ROM_DATA;
+	extern unsigned char* ROM_DATA;
 #endif
 
 extern unsigned char M68K_RAM[];
 //extern unsigned char* M68K_RAM;
 
 //#include "main.h"
-
+#define M68K_FREQ_DIVISOR 7      // Frequency divisor to 68K clock
 extern uint64_t m68k_clock;
-#define m68k_cycles_master() m68k_clock
+#define m68k_cycles_master() (m68k_clock + m68k_cycles_run() * M68K_FREQ_DIVISOR)
 
 #if 0
 #define FETCH8ROM(A) ((ROM_DATA[((A) ^ 1)]))

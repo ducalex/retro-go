@@ -64,7 +64,7 @@ void bus_log(const char *subs, const char *fmt, ...) {
 unsigned char *M68K_RAM=(void *)(uint32_t)(0); // 68K RAM
 
 #elif RETRO_GO
-extern const unsigned char *ROM_DATA; // 68K Main Program (uncompressed)
+extern unsigned char *ROM_DATA; // 68K Main Program (uncompressed)
 unsigned char M68K_RAM[MAX_RAM_SIZE];    // 68K RAM
 
 #else
@@ -90,7 +90,7 @@ int tmss_count = 0;
  ******************************************************************************/
 
 
-#if GNW_TARGET_MARIO != 0 | GNW_TARGET_ZELDA != 0 || RETRO_GO
+#if GNW_TARGET_MARIO != 0 | GNW_TARGET_ZELDA != 0
 
 void load_cartridge()
 {
@@ -113,7 +113,7 @@ void load_cartridge(unsigned char *buffer, size_t size)
     // Clear all volatile memory
     memset(M68K_RAM, 0, MAX_RAM_SIZE);
     memset(ZRAM, 0, MAX_Z80_RAM_SIZE);
-    memset(ROM_DATA, 0, MAX_ROM_SIZE);
+    // memset(ROM_DATA, 0, MAX_ROM_SIZE);
 
     // Set Z80 Memory as ZRAM
     z80_set_memory(ZRAM);
@@ -146,7 +146,7 @@ void load_cartridge(unsigned char *buffer, size_t size)
  ******************************************************************************/
 void power_on() {
   // Set M68K CPU as original MOTOROLA 68000
-  m68k_set_cpu_type(M68K_CPU_TYPE_68000);
+  //m68k_set_cpu_type(M68K_CPU_TYPE_68000);
   // Initialize M68K CPU
   m68k_init();
   // Initialize Z80 CPU

@@ -1018,7 +1018,7 @@ blit_4to5_line(uint16_t *in, uint16_t *out) {
 void gwenesis_vdp_render_line(int line)
 {
   mode_h40 = REG12_MODE_H40;
-  mode_pal = REG1_PAL;
+  //mode_pal = REG1_PAL;
 
   vdpg_log(__FUNCTION__,": %3d",line);
 

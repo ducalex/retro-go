@@ -43,7 +43,7 @@ __license__ = "GPLv3"
 #define GWENESIS_REFRESH_RATE_PAL 50
 #define GWENESIS_AUDIO_FREQ_PAL 52781
 
-#define GWENESIS_AUDIO_ACCURATE 1
+#define GWENESIS_AUDIO_ACCURATE 0
 
 #define Z80_FREQ_DIVISOR 14     // Frequency divisor to Z80 clock
 #define VDP_CYCLES_PER_LINE 3420// VDP Cycles per Line
@@ -52,8 +52,6 @@ __license__ = "GPLv3"
 #define AUDIO_FREQ_DIVISOR 1009
 #define GWENESIS_AUDIO_BUFFER_LENGTH_NTSC 888
 #define GWENESIS_AUDIO_BUFFER_LENGTH_PAL 1056
-
-#define M68K_FREQ_DIVISOR 7      // Frequency divisor to 68K clock
 
 /* Audio buffer length */
 
@@ -87,7 +85,7 @@ enum gwenesis_bus_pad_button
     PAD_S
 };
 
-#if GNW_TARGET_MARIO != 0 | GNW_TARGET_ZELDA != 0 || RETRO_GO
+#if GNW_TARGET_MARIO != 0 | GNW_TARGET_ZELDA != 0
 void load_cartridge();
 #else
 void load_cartridge(unsigned char *buffer, size_t size);

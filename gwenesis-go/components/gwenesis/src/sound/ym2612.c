@@ -2015,65 +2015,7 @@ void YM2612ResetChip(void)
   }
 }
 
-/* ym2612 write */
-/* n = number  */
-/* a = address */
-/* v = value   */
-void YM2612Write(unsigned int a, unsigned int v, int target)
-{
-  //printf("YM2612 write @%x:%x \n",a,v);
-
-  v &= 0xff;  /* adjust to 8 bit bus */
-
-  switch( a )
-  {
-    case 0:  /* address port 0 */
-      ym2612.OPN.ST.address = v;
-      break;
-
-    case 2:  /* address port 1 */
-      ym2612.OPN.ST.address = v | 0x100;
-      break;
-
-    default:  /* data port */
-    {
-      int addr = ym2612.OPN.ST.address; /* verified by Nemesis on real YM2612 */
-      switch( addr & 0x1f0 )
-      {
-        case 0x20:  /* 0x20-0x2f Mode */
-          switch( addr )
-          {
-          case 0x2a: /* DAC data (ym2612) */
-            //ym2612.dacout = v << 6; //((int)v - 0x80) << 6; /* convert to 14-bit signed output */
-            ym2612.dacout = ((int)v - 0x80) * 64; /* convert to signed output */
-            //printf("WriteDAC : %x:%x\n",v,ym2612.dacout);
-            break;
-          case 0x2b: /* DAC Sel  (ym2612) */
-            /* b7 = dac enable */
-            //printf("WriteDAC : %x:%x\n",v,ym2612.dacout);
-            ym2612.dacen = v & 0x80;
-            break;
-          default: /* OPN section */
-            /* write register */
-            OPNWriteMode(addr, v);
-          }
-          break;
-        default:  /* 0x30-0xff OPN section */
-          /* write register */
-          OPNWriteReg(addr,v);
-      }
-      break;
-    }
-  }
-}
-
-unsigned int YM2612Read(int target)
-{
-   // //printf("YM2612 read status %x\n",ym2612.OPN.ST.status);
-
-  return ym2612.OPN.ST.status & 0xff;
-}
-
+/* YM2612 execution */
 /* Generate samples for ym2612 */
 void YM2612Update(int16_t *buffer, int length)
 {
@@ -2211,7 +2153,89 @@ void YM2612Update(int16_t *buffer, int length)
   INTERNAL_TIMER_B(length);
 }
 
-void YM2612Config(unsigned char dac_bits)
+void ym2612_run( int target) {
+
+  if ( ym2612_clock >= target) {
+    return;
+  }
+  int ym2612_prev_index = ym2612_index;
+  ym2612_index += (target-ym2612_clock) / ym2612.divisor;
+  if (ym2612_index > ym2612_prev_index) {
+    YM2612Update(gwenesis_ym2612_buffer + ym2612_prev_index, ym2612_index-ym2612_prev_index);
+    ym2612_clock = ym2612_index*ym2612.divisor;
+
+  } else {
+    ym2612_index = ym2612_prev_index;
+  }
+}
+
+/* ym2612 write */
+/* n = number  */
+/* a = address */
+/* v = value   */
+void YM2612Write(unsigned int a, unsigned int v,  int target)
+{
+  ym_log(__FUNCTION__," %06x : %02x",a,v);
+
+  //Sync
+  if (GWENESIS_AUDIO_ACCURATE == 1)
+    ym2612_run(target);
+
+  v &= 0xff;  /* adjust to 8 bit bus */
+
+  switch( a )
+  {
+    case 0:  /* address port 0 */
+      ym2612.OPN.ST.address = v;
+      break;
+
+    case 2:  /* address port 1 */
+      ym2612.OPN.ST.address = v | 0x100;
+      break;
+
+    default:  /* data port */
+    {
+      int addr = ym2612.OPN.ST.address; /* verified by Nemesis on real YM2612 */
+      switch( addr & 0x1f0 )
+      {
+        case 0x20:  /* 0x20-0x2f Mode */
+          switch( addr )
+          {
+          case 0x2a: /* DAC data (ym2612) */
+            ym2612.dacout =((int)v - 0x80) << 6; /* convert to 14-bit signed output */
+            //ym2612.dacout = ((int)v - 0x80) * 64; /* convert to signed output */
+            //printf("WriteDAC : %x:%x\n",v,ym2612.dacout);
+            break;
+          case 0x2b: /* DAC Sel  (ym2612) */
+            /* b7 = dac enable */
+            //printf("WriteDAC : %x:%x\n",v,ym2612.dacout);
+            ym2612.dacen = v & 0x80;
+            break;
+          default: /* OPN section */
+            /* write register */
+            OPNWriteMode(addr, v);
+          }
+          break;
+        default:  /* 0x30-0xff OPN section */
+          /* write register */
+          OPNWriteReg(addr,v);
+      }
+      break;
+    }
+  }
+}
+
+unsigned int YM2612Read(int target)
+{
+  // //Sync
+  if (GWENESIS_AUDIO_ACCURATE == 1)
+    ym2612_run(target);
+  ym_log(__FUNCTION__, "%02x",ym2612.OPN.ST.status & 0xff);
+  return ym2612.OPN.ST.status & 0xff;
+}
+
+
+void YM2612Config(unsigned char dac_bits) //,unsigned int AUDIO_FREQ_DIVISOR)
 {
    int i;
 
