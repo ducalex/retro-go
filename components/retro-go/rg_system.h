@@ -4,6 +4,7 @@
 extern "C" {
 #endif
 
+#include <esp_idf_version.h>
 #include <esp_attr.h>
 #include <stdbool.h>
 #include <stddef.h>
