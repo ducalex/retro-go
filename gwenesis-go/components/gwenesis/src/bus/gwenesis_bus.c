@@ -20,6 +20,7 @@ __license__ = "GPLv3"
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
+#include <ctype.h>
 
 #include "m68k.h"
 
@@ -28,6 +29,7 @@ __license__ = "GPLv3"
 #include "gwenesis_bus.h"
 #include "gwenesis_io.h"
 #include "gwenesis_vdp.h"
+#include "gwenesis_sn76489.h"
 #include "gwenesis_savestate.h"
 
 #ifdef _HOST_
@@ -103,8 +105,6 @@ void load_cartridge()
 
 }
 #endif
-
-
 
 /******************************************************************************
  *

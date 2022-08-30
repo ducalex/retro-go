@@ -18,17 +18,18 @@ __license__ = "GPLv3"
 */
 #include <stdio.h>
 #include <stdint.h>
+#include <assert.h>
 #include "Z80.h"
 #include "z80inst.h"
-#include "m68kcpu.h"
+#include "m68k.h"
 #include "gwenesis_bus.h"
-#include "gwenesis_savestate.h"
 #include "ym2612.h"
+#include "gwenesis_sn76489.h"
+#include "gwenesis_savestate.h"
 
-// #pragma GCC optimize("Ofast")
-
-#define M68K_FREQ_DIVISOR   7
-#define Z80_FREQ_DIVISOR    14
+#if GNW_TARGET_MARIO !=0 || GNW_TARGET_ZELDA!=0
+  #pragma GCC optimize("Ofast")
+#endif
 
 static int bus_ack = 0;
 static int reset = 0;
@@ -165,9 +166,9 @@ void z80_sync(void) {
   z80_run(slice + m68k_clock);
 }
 
-void z80_set_memory(unsigned int *buffer)
+void z80_set_memory(unsigned char *buffer)
 {
-    Z80_RAM = (unsigned char *)buffer;
+    Z80_RAM = buffer;
     initialized = 1;
 }
 

@@ -28,6 +28,35 @@ __license__ = "GPLv3"
 #define MAX_RAM_SIZE 0x10000
 #define MAX_Z80_RAM_SIZE 8192
 
+// NTSC PAL timings
+#define MCLOCK_PAL 53203424
+#define MCLOCK_NTSC 53693175
+
+#define MCYCLES_PER_FRAME_NTSC 896040
+#define MCYCLES_PER_FRAME_PAL 1067040
+#define LINES_PER_FRAME_NTSC 262
+#define LINES_PER_FRAME_PAL 313
+
+#define GWENESIS_REFRESH_RATE_NTSC 60
+#define GWENESIS_AUDIO_FREQ_NTSC 53267
+
+#define GWENESIS_REFRESH_RATE_PAL 50
+#define GWENESIS_AUDIO_FREQ_PAL 52781
+
+#define GWENESIS_AUDIO_ACCURATE 1
+
+#define Z80_FREQ_DIVISOR 14     // Frequency divisor to Z80 clock
+#define VDP_CYCLES_PER_LINE 3420// VDP Cycles per Line
+#define SCREEN_WIDTH 320
+
+#define AUDIO_FREQ_DIVISOR 1009
+#define GWENESIS_AUDIO_BUFFER_LENGTH_NTSC 888
+#define GWENESIS_AUDIO_BUFFER_LENGTH_PAL 1056
+
+#define M68K_FREQ_DIVISOR 7      // Frequency divisor to 68K clock
+
+/* Audio buffer length */
+
 enum mapped_address
 {
     NONE = 0,

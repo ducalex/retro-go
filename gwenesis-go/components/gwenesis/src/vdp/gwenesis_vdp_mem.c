@@ -26,12 +26,14 @@ __license__ = "GPLv3"
 #include "gwenesis_vdp.h"
 #include "gwenesis_io.h"
 #include "gwenesis_bus.h"
+#include "gwenesis_sn76489.h"
 #include "gwenesis_savestate.h"
 
 #include <assert.h>
 
-// #pragma GCC optimize("Ofast")
-//#define _DMA_TRACE_
+#if GNW_TARGET_MARIO !=0 || GNW_TARGET_ZELDA!=0
+  #pragma GCC optimize("Ofast")
+#endif
 
 /* Setup VDP Memories */
 
@@ -160,7 +162,6 @@ unsigned int get_cycle_counter()
  *  Process SEGA 315-5313 HCOUNTER based on M68K Cycles
  *
  ******************************************************************************/
-static inline __attribute__((always_inline))
 int gwenesis_vdp_hcounter()
 {
     int mclk = m68k_cycles_run() * M68K_FREQ_DIVISOR;
@@ -192,7 +193,6 @@ int gwenesis_vdp_hcounter()
  *  Process SEGA 315-5313 VCOUNTER based on M68K Cycles
  *
  ******************************************************************************/
-static inline __attribute__((always_inline))
 int gwenesis_vdp_vcounter()
 {
 
@@ -214,8 +214,7 @@ int gwenesis_vdp_vcounter()
  *  Process SEGA 315-5313 HVCOUNTER based on HCOUNTER and VCOUNTER
  *
  ******************************************************************************/
-static inline __attribute__((always_inline))
-unsigned int gwenesis_vdp_hvcounter()
+unsigned short gwenesis_vdp_hvcounter()
 {
     /* H/V Counter */
     if (hvcounter_latched)
@@ -314,7 +313,7 @@ void gwenesis_vdp_vram_write(unsigned int address, unsigned int value)
     SAT_CACHE[address - REG5_SAT_ADDRESS] = value;
 }
 
-static inline __attribute__((always_inline)) 
+static inline __attribute__((always_inline))
 unsigned short status_register_r(void)
 {
   //  unsigned short status = 0X3400; // gwenesis_vdp_status & 0xFC00;
@@ -375,7 +374,7 @@ unsigned int gwenesis_vdp_get_reg(int reg)
  *   DMA process to fill memory
  *
  ******************************************************************************/
-static inline __attribute__((always_inline)) 
+static inline __attribute__((always_inline))
 void gwenesis_vdp_dma_fill(unsigned int value)
 {
   int dma_length = REG19_DMA_LENGTH;
@@ -453,7 +452,7 @@ void gwenesis_vdp_dma_fill(unsigned int value)
  *   DMA process to copy from m68k to memory
  *
  ******************************************************************************/
-static inline __attribute__((always_inline)) 
+static inline __attribute__((always_inline))
 void gwenesis_vdp_dma_m68k()
 {
     int dma_length = REG19_DMA_LENGTH;
@@ -469,7 +468,7 @@ void gwenesis_vdp_dma_m68k()
     if (dma_length == 0)
         dma_length = 0xFFFF;
 
-    /* Source is : 
+    /* Source is :
         68K_RAM if dma_source_high == 0x00FF : FETCH16RAM(dma_source_low << 1)
         68K_ROM otherwise                    : FETCH16ROM((dma_source_high | dma_source_low) << 1))
     */
@@ -534,7 +533,7 @@ void gwenesis_vdp_dma_m68k()
     /* source is 68K ROM */
     } else {
 
-     // unsigned int dma_source_address = (dma_source_high | dma_source_low) << 1; 
+     // unsigned int dma_source_address = (dma_source_high | dma_source_low) << 1;
 
       switch (code_reg & 0xF) {
 
@@ -818,7 +817,7 @@ void gwenesis_vdp_write_data_port_16(unsigned int value)
             //unsigned short pixel_shadow,pixel_highlight;
 
             // Blue >> 9 << 2
-            pixel = (value & 0xe00) >> 7; 
+            pixel = (value & 0xe00) >> 7;
             // Green  >> 5 << 5 << 3
             pixel |= (value & 0x0e0) << 3;
             // Red  >>1 << 11 << 2
@@ -869,7 +868,7 @@ void gwenesis_vdp_write_data_port_16(unsigned int value)
  *   Select and Enable correct DMA process when triggered
  *
  ******************************************************************************/
-//  static inline 
+//  static inline
 // void gwenesis_vdp_dma_trigger()
 // {
 //     // Check master DMA enable, otherwise skip
@@ -1028,7 +1027,7 @@ void gwenesis_vdp_get_cram_raw(unsigned char *raw_buffer)
  *   and return as byte
  *
  ******************************************************************************/
- //static inline 
+ //static inline
 unsigned int gwenesis_vdp_read_memory_8(unsigned int address)
 {
     unsigned int ret = gwenesis_vdp_read_memory_16(address & ~1);
@@ -1044,7 +1043,7 @@ unsigned int gwenesis_vdp_read_memory_8(unsigned int address)
  *   and return as word
  *
  ******************************************************************************/
- //static inline 
+ //static inline
 unsigned int gwenesis_vdp_read_memory_16(unsigned int address)
 {
 address &= 0x1F;
@@ -1089,7 +1088,7 @@ address &= 0x1F;
  *   Write an byte value to mapped memory on specified address
  *
  ******************************************************************************/
- //static inline 
+ //static inline
 void gwenesis_vdp_write_memory_8(unsigned int address, unsigned int value)
 {
     // switch (address & 0x1F)
@@ -1101,7 +1100,7 @@ void gwenesis_vdp_write_memory_8(unsigned int address, unsigned int value)
     //     // SN76489 TODO
     //     return;
     // default:
-    
+
         gwenesis_vdp_write_memory_16(address & ~1, (value << 8) | value);
     //     return;
     // }

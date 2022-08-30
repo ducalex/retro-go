@@ -81,12 +81,6 @@ __license__ = "GPLv3"
 #define REG_SIZE 0x20            // REGISTERS total
 #define FIFO_SIZE 0x4            // FIFO maximum size
 
-#define M68K_FREQ_DIVISOR 7      // Frequency divisor to 68K clock
-#define Z80_FREQ_DIVISOR 14     // Frequency divisor to Z80 clock
-#define M68K_CYCLES_PER_LINE 3420 // M68K Cycles per Line
-#define VDP_CYCLES_PER_LINE 3420// VDP Cycles per Line
-#define SCREEN_WIDTH 320
-
 #define COLOR_3B_TO_8B(c)  (((c) << 5) | ((c) << 2) | ((c) >> 1))
 #define CRAM_R(c)          COLOR_3B_TO_8B(BITS((c), 1, 3))
 #define CRAM_G(c)          COLOR_3B_TO_8B(BITS((c), 5, 3))
@@ -146,6 +140,10 @@ unsigned short gwenesis_vdp_get_cram(int index);
 void gwenesis_vdp_get_vram(unsigned char *raw_buffer, int palette);
 void gwenesis_vdp_get_vram_raw(unsigned char *raw_buffer);
 void gwenesis_vdp_get_cram_raw(unsigned char *raw_buffer);
+
+int gwenesis_vdp_vcounter();
+int gwenesis_vdp_hcounter();
+unsigned short gwenesis_vdp_hvcounter();
 
 void gwenesis_vdp_gfx_save_state();
 void gwenesis_vdp_gfx_load_state();
