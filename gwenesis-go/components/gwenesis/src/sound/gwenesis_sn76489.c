@@ -107,8 +107,8 @@ void gwenesis_SN76489_Reset()
 
     /* Zero clock */
     gwenesis_SN76489.Clock=0;
-    // sn76489_index=0;
-    // sn76489_clock=0;
+    sn76489_index=0;
+    sn76489_clock=0;
 
 }
 
@@ -207,9 +207,53 @@ static inline void gwenesis_SN76489_Update(INT16 *buffer, int length)
 extern int scan_line;
 void gwenesis_SN76489_run(int target) {
 
+if ( sn76489_clock >= target) return;
+
+  int sn76489_prev_index = sn76489_index;
+  sn76489_index += (target-sn76489_clock) / gwenesis_SN76489.divisor;
+  if (sn76489_index > sn76489_prev_index) {
+    gwenesis_SN76489_Update(gwenesis_sn76489_buffer + sn76489_prev_index, sn76489_index-sn76489_prev_index);
+    sn76489_clock = sn76489_index*gwenesis_SN76489.divisor;
+  } else {
+    sn76489_index = sn76489_prev_index;
+  }
 }
 void gwenesis_SN76489_Write(int data, int target)
 {
+#if 0
+  if (GWENESIS_AUDIO_ACCURATE == 1)
+    gwenesis_SN76489_run(target);
+
+  if (data & 0x80) {
+    /* Latch/data byte  %1 cc t dddd */
+    gwenesis_SN76489.LatchedRegister = ((data >> 4) & 0x07);
+    gwenesis_SN76489.Registers[gwenesis_SN76489.LatchedRegister] =
+        (gwenesis_SN76489.Registers[gwenesis_SN76489.LatchedRegister] &
+         0x3f0)         /* zero low 4 bits */
+        | (data & 0xf); /* and replace with data */
+	} else {
+        /* Data byte        %0 - dddddd */
+        if (!(gwenesis_SN76489.LatchedRegister%2)&&(gwenesis_SN76489.LatchedRegister<5))
+            /* Tone register */
+            gwenesis_SN76489.Registers[gwenesis_SN76489.LatchedRegister]=
+                (gwenesis_SN76489.Registers[gwenesis_SN76489.LatchedRegister] & 0x00f)    /* zero high 6 bits */
+                | ((data&0x3f)<<4);                     /* and replace with data */
+		else
+            /* Other register */
+            gwenesis_SN76489.Registers[gwenesis_SN76489.LatchedRegister]=data&0x0f;       /* Replace with data */
+    }
+    switch (gwenesis_SN76489.LatchedRegister) {
+	case 0:
+	case 2:
+    case 4: /* Tone channels */
+        if (gwenesis_SN76489.Registers[gwenesis_SN76489.LatchedRegister]==0) gwenesis_SN76489.Registers[gwenesis_SN76489.LatchedRegister]=1;    /* Zero frequency changed to 1 to avoid div/0 */
+		break;
+    case 6: /* Noise */
+        gwenesis_SN76489.NoiseShiftRegister=NoiseInitialState;   /* reset shift register */
+        gwenesis_SN76489.NoiseFreq=0x10<<(gwenesis_SN76489.Registers[6]&0x3);     /* set noise signal generator frequency */
+		break;
+    }
+#endif
 }
 
 void gwenesis_sn76489_save_state() {

@@ -59,7 +59,249 @@ extern void m68ki_build_opcode_table(void);
 
 #include "m68kcpu.h"
 
-#include "m68kfpu.c"
+#include <math.h>
+#include <stdio.h>
+#include <assert.h>
+#include <stdarg.h>
+
+static void fatalerror(const char *format, ...) {
+      va_list ap;
+      va_start(ap,format);
+      vfprintf(stderr,format,ap);  // JFF: fixed. Was using fprintf and arguments were wrong
+      va_end(ap);
+      assert(0);
+}
+
+static uint32 READ_EA_32(int ea)
+{
+	int mode = (ea >> 3) & 0x7;
+	int reg = (ea & 0x7);
+
+	switch (mode)
+	{
+		case 0:		// Dn
+		{
+			return REG_D[reg];
+		}
+		case 2:		// (An)
+		{
+			uint32 ea = REG_A[reg];
+			return m68ki_read_32(ea);
+		}
+		case 3:		// (An)+
+		{
+			uint32 ea = EA_AY_PI_32();
+			return m68ki_read_32(ea);
+		}
+		case 5:		// (d16, An)
+		{
+			uint32 ea = EA_AY_DI_32();
+			return m68ki_read_32(ea);
+		}
+		case 6:		// (An) + (Xn) + d8
+		{
+			uint32 ea = EA_AY_IX_32();
+			return m68ki_read_32(ea);
+		}
+		case 7:
+		{
+			switch (reg)
+			{
+				case 0:		// (xxx).W
+				{
+					uint32 ea = (uint32)OPER_I_16();
+					return m68ki_read_32(ea);
+				}
+				case 1:		// (xxx).L
+				{
+					uint32 d1 = OPER_I_16();
+					uint32 d2 = OPER_I_16();
+					uint32 ea = (d1 << 16) | d2;
+					return m68ki_read_32(ea);
+				}
+				case 2:		// (d16, PC)
+				{
+					uint32 ea = EA_PCDI_32();
+					return m68ki_read_32(ea);
+				}
+				case 4:		// #<data>
+				{
+					return  OPER_I_32();
+				}
+				default:	fatalerror("M68kFPU: READ_EA_32: unhandled mode %d, reg %d at %08X\n", mode, reg, REG_PC);
+			}
+			break;
+		}
+		default:	fatalerror("M68kFPU: READ_EA_32: unhandled mode %d, reg %d at %08X\n", mode, reg, REG_PC);
+	}
+	return 0;
+}
+
+static uint64 READ_EA_64(int ea)
+{
+	int mode = (ea >> 3) & 0x7;
+	int reg = (ea & 0x7);
+	uint32 h1, h2;
+
+	switch (mode)
+	{
+		case 2:		// (An)
+		{
+			uint32 ea = REG_A[reg];
+			h1 = m68ki_read_32(ea+0);
+			h2 = m68ki_read_32(ea+4);
+			return  (uint64)(h1) << 32 | (uint64)(h2);
+		}
+		case 3:		// (An)+
+		{
+			uint32 ea = REG_A[reg];
+			REG_A[reg] += 8;
+			h1 = m68ki_read_32(ea+0);
+			h2 = m68ki_read_32(ea+4);
+			return  (uint64)(h1) << 32 | (uint64)(h2);
+		}
+		case 5:		// (d16, An)
+		{
+			uint32 ea = EA_AY_DI_32();
+			h1 = m68ki_read_32(ea+0);
+			h2 = m68ki_read_32(ea+4);
+			return  (uint64)(h1) << 32 | (uint64)(h2);
+		}
+		case 7:
+		{
+			switch (reg)
+			{
+				case 4:		// #<data>
+				{
+					h1 = OPER_I_32();
+					h2 = OPER_I_32();
+					return  (uint64)(h1) << 32 | (uint64)(h2);
+				}
+				case 2:		// (d16, PC)
+				{
+					uint32 ea = EA_PCDI_32();
+					h1 = m68ki_read_32(ea+0);
+					h2 = m68ki_read_32(ea+4);
+					return  (uint64)(h1) << 32 | (uint64)(h2);
+				}
+				default:	fatalerror("M68kFPU: READ_EA_64: unhandled mode %d, reg %d at %08X\n", mode, reg, REG_PC);
+			}
+			break;
+		}
+		default:	fatalerror("M68kFPU: READ_EA_64: unhandled mode %d, reg %d at %08X\n", mode, reg, REG_PC);
+	}
+
+	return 0;
+}
+
+static void WRITE_EA_32(int ea, uint32 data)
+{
+	int mode = (ea >> 3) & 0x7;
+	int reg = (ea & 0x7);
+
+	switch (mode)
+	{
+		case 0:		// Dn
+		{
+			REG_D[reg] = data;
+			break;
+		}
+		case 1:		// An
+		{
+			REG_A[reg] = data;
+			break;
+		}
+		case 2:		// (An)
+		{
+			uint32 ea = REG_A[reg];
+			m68ki_write_32(ea, data);
+			break;
+		}
+		case 3:		// (An)+
+		{
+			uint32 ea = EA_AY_PI_32();
+			m68ki_write_32(ea, data);
+			break;
+		}
+		case 4:		// -(An)
+		{
+			uint32 ea = EA_AY_PD_32();
+			m68ki_write_32(ea, data);
+			break;
+		}
+		case 5:		// (d16, An)
+		{
+			uint32 ea = EA_AY_DI_32();
+			m68ki_write_32(ea, data);
+			break;
+		}
+		case 6:		// (An) + (Xn) + d8
+		{
+			uint32 ea = EA_AY_IX_32();
+			m68ki_write_32(ea, data);
+			break;
+		}
+		case 7:
+		{
+			switch (reg)
+			{
+				case 1:		// (xxx).L
+				{
+					uint32 d1 = OPER_I_16();
+					uint32 d2 = OPER_I_16();
+					uint32 ea = (d1 << 16) | d2;
+					m68ki_write_32(ea, data);
+					break;
+				}
+				case 2:		// (d16, PC)
+				{
+					uint32 ea = EA_PCDI_32();
+					m68ki_write_32(ea, data);
+					break;
+				}
+				default:	fatalerror("M68kFPU: WRITE_EA_32: unhandled mode %d, reg %d at %08X\n", mode, reg, REG_PC);
+			}
+			break;
+		}
+		default:	fatalerror("M68kFPU: WRITE_EA_32: unhandled mode %d, reg %d, data %08X at %08X\n", mode, reg, data, REG_PC);
+	}
+}
+
+static void WRITE_EA_64(int ea, uint64 data)
+{
+	int mode = (ea >> 3) & 0x7;
+	int reg = (ea & 0x7);
+
+	switch (mode)
+	{
+		case 2:		// (An)
+		{
+			uint32 ea = REG_A[reg];
+			m68ki_write_32(ea, (uint32)(data >> 32));
+			m68ki_write_32(ea+4, (uint32)(data));
+			break;
+		}
+		case 4:		// -(An)
+		{
+			uint32 ea;
+			REG_A[reg] -= 8;
+			ea = REG_A[reg];
+			m68ki_write_32(ea+0, (uint32)(data >> 32));
+			m68ki_write_32(ea+4, (uint32)(data));
+			break;
+		}
+		case 5:		// (d16, An)
+		{
+			uint32 ea = EA_AY_DI_32();
+			m68ki_write_32(ea+0, (uint32)(data >> 32));
+			m68ki_write_32(ea+4, (uint32)(data));
+			break;
+		}
+		default:	fatalerror("M68kFPU: WRITE_EA_64: unhandled mode %d, reg %d, data %08X%08X at %08X\n", mode, reg, (uint32)(data >> 32), (uint32)(data), REG_PC);
+	}
+}
+
+
 #include "m68kmmu.h" // uses some functions from m68kfpu.c which are static !
 
 /* ======================================================================== */

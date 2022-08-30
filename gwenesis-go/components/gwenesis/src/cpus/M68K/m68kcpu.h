@@ -93,8 +93,29 @@ typedef uint32 uint64;
 #define S64(val) val
 #endif
 
-#include "softfloat/milieu.h"
-#include "softfloat/softfloat.h"
+#ifdef LSB_FIRST
+#define LITTLEENDIAN
+#else
+#define BIGENDIAN
+#endif
+#define BITS64
+typedef sint8 flag;
+typedef sint8 int8;
+typedef sint16 int16;
+typedef sint32 int32;
+typedef sint64 int64;
+typedef uint8 bits8;
+typedef sint8 sbits8;
+typedef uint16 bits16;
+typedef sint16 sbits16;
+typedef uint32 bits32;
+typedef sint32 sbits32;
+typedef uint64 bits64;
+typedef sint64 sbits64;
+#define LIT64( a ) a##ULL
+#define FALSE 0
+#define TRUE 1
+#include "softfloat.h"
 
 
 /* Allow for architectures that don't have 8-bit sizes */

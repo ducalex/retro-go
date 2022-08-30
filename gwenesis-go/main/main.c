@@ -21,6 +21,10 @@ unsigned int scan_line;
 uint64_t m68k_clock;
 extern int zclk;
 
+int16_t gwenesis_sn76489_buffer[];
+int sn76489_index;
+int sn76489_clock;
+
 #define AUDIO_SAMPLE_RATE (53267)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 120 + 1)
 
