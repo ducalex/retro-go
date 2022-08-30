@@ -19,7 +19,7 @@ size_t ROM_DATA_LENGTH;
 unsigned char *VRAM;
 unsigned int scan_line;
 uint64_t m68k_clock;
-extern uint64_t zclk;
+extern int zclk;
 
 #define AUDIO_SAMPLE_RATE (53267)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 120 + 1)
@@ -205,7 +205,7 @@ static void sound_task(void *arg)
         xQueuePeek(sound_task_run, &system_clock, portMAX_DELAY);
         if (!z80_enabled)
             zclk = system_clock * 2; // To infinity, and beyond!
-        z80_run(system_clock);
+        z80_run((int)system_clock);
         xQueueReceive(sound_task_run, &system_clock, portMAX_DELAY);
 
         if (!yfm_enabled)

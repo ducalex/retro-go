@@ -64,10 +64,10 @@ enum mapped_address
     ROM_ADDR_MIRROR,
     Z80_RAM_ADDR,
     Z80_RAM_ADDR1K,
-    YM2612_ADDR,
+    Z80_YM2612_ADDR,
     Z80_BANK_ADDR,
     Z80_VDP_ADDR,
-    Z80_ROM_ADDR,
+    Z80_SN76489_ADDR,
     IO_CTRL,
     Z80_CTRL,
     TMSS_CTRL,
@@ -86,23 +86,16 @@ enum gwenesis_bus_pad_button
     PAD_A,
     PAD_S
 };
-#ifdef _HOST_
-void load_cartridge(unsigned char *buffer, size_t size);
-#else
+
+#if GNW_TARGET_MARIO != 0 | GNW_TARGET_ZELDA != 0 || RETRO_GO
 void load_cartridge();
+#else
+void load_cartridge(unsigned char *buffer, size_t size);
 #endif
+
 void power_on();
 void reset_emulation();
 void set_region();
-
-unsigned int m68k_read_disassembler_16(unsigned int address);
-unsigned int m68k_read_disassembler_32(unsigned int address);
-unsigned int m68k_read_memory_32(unsigned int address);
-unsigned int m68k_read_memory_16(unsigned int address);
-unsigned int m68k_read_memory_8(unsigned int address);
-void m68k_write_memory_32(unsigned int address,unsigned int value);
-void m68k_write_memory_16(unsigned int address,unsigned int value);
-void m68k_write_memory_8(unsigned int address,unsigned int value);
 
 void gwenesis_bus_save_state();
 void gwenesis_bus_load_state();

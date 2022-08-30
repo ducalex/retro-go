@@ -58,6 +58,9 @@ extern unsigned char M68K_RAM[];
 
 //#include "main.h"
 
+extern uint64_t m68k_clock;
+#define m68k_cycles_master() m68k_clock
+
 #if 0
 #define FETCH8ROM(A) ((ROM_DATA[((A) ^ 1)]))
 #define FETCH16ROM(A) ((*(unsigned short *)&ROM_DATA[(A)]))
@@ -79,7 +82,7 @@ extern unsigned char M68K_RAM[];
 //#define FETCH32RAM(A) ( ( (*(unsigned short *)&M68K_RAM[(A)&0XFFFF]) << 16)  | ( (*(unsigned short *)&M68K_RAM[(A+2)&0XFFFF]) ))
 
 #else
-//#include "stm32h7b0xx.h" 
+//#include "stm32h7b0xx.h"
 #define FETCH8ROM(A) ((ROM_DATA[((A) ^ 1)]))
 #define FETCH16ROM(A) ((*(unsigned short *)&ROM_DATA[(A)]))
 //#define FETCH32ROM(A)  ((ROM_DATA[(A)] << 16) | (ROM_DATA[(A) + 1] << 24) | (ROM_DATA[(A) + 2]) | (ROM_DATA[(A) + 3] << 8))
@@ -159,7 +162,7 @@ extern unsigned char M68K_RAM[];
    (M68K_RAM[(A & 0XFFFF) + 2] << 8) | (M68K_RAM[(A & 0XFFFF) + 3]))
 #endif
 
-//optimized ROM & RAM access using ARM CMIS	
+//optimized ROM & RAM access using ARM CMIS
 #endif
 #if 0
 
@@ -582,5 +585,14 @@ unsigned int m68k_disassemble_raw(char* str_buff, unsigned int pc, const unsigne
 }
 #endif
 
+extern void m68k_set_reg(m68k_register_t reg, unsigned int value);
+
+/* Load/Save state of CPU */
+extern void gwenesis_m68k_save_state();
+extern void gwenesis_m68k_load_state();
+
+/* ======================================================================== */
+/* ============================== END OF FILE ============================= */
+/* ======================================================================== */
 
 #endif /* M68K__HEADER */

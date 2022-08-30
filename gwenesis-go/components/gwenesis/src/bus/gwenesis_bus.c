@@ -32,17 +32,49 @@ __license__ = "GPLv3"
 #include "gwenesis_sn76489.h"
 #include "gwenesis_savestate.h"
 
-#ifdef _HOST_
-unsigned char MD_ROM_DATA[MAX_ROM_SIZE];      // 68K Main Program
-unsigned int MD_ROM_DATA_LENGTH;
-#else
-// #include "rom_manager.h"
-// unsigned char* MD_ROM_DATA[MAX_ROM_SIZE];      // 68K Main Program
-// unsigned int MD_ROM_DATA_LENGTH;
+#if GNW_TARGET_MARIO !=0 || GNW_TARGET_ZELDA!=0
+  #pragma GCC optimize("Ofast")
 #endif
 
-// Setup CPU Memory
-unsigned char M68K_RAM[MAX_RAM_SIZE]; // __attribute__((section("._itcram"))); // 68K RAM  
+#define BUS_DISABLE_LOGGING 1
+
+#if !BUS_DISABLE_LOGGING
+#include <stdarg.h>
+void bus_log(const char *subs, const char *fmt, ...) {
+  extern int frame_counter;
+  extern int scan_line;
+
+  va_list va;
+
+  printf("%06d:%03d :[%s] vc:%04x hc:%04x hv:%04x ", frame_counter, scan_line, subs,gwenesis_vdp_vcounter(),gwenesis_vdp_hcounter(),gwenesis_vdp_hvcounter());
+
+  va_start(va, fmt);
+  vfprintf(stdout, fmt, va);
+  va_end(va);
+  printf("\n");
+}
+#else
+	#define bus_log(...)  do {} while(0)
+#endif
+
+// Setup M68k memories ROM & RAM
+#if GNW_TARGET_MARIO != 0 | GNW_TARGET_ZELDA != 0
+
+#include "rom_manager.h"
+unsigned char *M68K_RAM=(void *)(uint32_t)(0); // 68K RAM
+
+#elif RETRO_GO
+extern const unsigned char *ROM_DATA; // 68K Main Program (uncompressed)
+unsigned char M68K_RAM[MAX_RAM_SIZE];    // 68K RAM
+
+#else
+
+unsigned char ROM_DATA[MAX_ROM_SIZE]; // 68K Main Program (uncompressed)
+unsigned char M68K_RAM[MAX_RAM_SIZE];    // 68K RAM
+#endif
+
+
+// Setup Z80 Memory
 unsigned char ZRAM[MAX_Z80_RAM_SIZE]; // Z80 RAM
 unsigned char TMSS[0x4];
 extern unsigned short gwenesis_vdp_status;
@@ -56,7 +88,26 @@ int tmss_count = 0;
  *   Load a Sega Genesis Cartridge into CPU Memory
  *
  ******************************************************************************/
-#ifdef _HOST_
+
+
+#if GNW_TARGET_MARIO != 0 | GNW_TARGET_ZELDA != 0 || RETRO_GO
+
+void load_cartridge()
+{
+    // Clear all volatile memory
+    memset(M68K_RAM, 0, MAX_RAM_SIZE);
+    memset(ZRAM, 0, MAX_Z80_RAM_SIZE);
+
+    // Set Z80 Memory as Z80_RAM
+    z80_set_memory(ZRAM);
+
+    z80_pulse_reset();
+
+    set_region();
+
+}
+#else
+
 void load_cartridge(unsigned char *buffer, size_t size)
 {
     // Clear all volatile memory
@@ -69,41 +120,22 @@ void load_cartridge(unsigned char *buffer, size_t size)
     z80_pulse_reset();
 
     // Copy file contents to CPU ROM memory
-    ROM_DATA_LENGTH=size;
     memcpy(ROM_DATA, buffer, size);
 
     #ifdef ROM_SWAP
-    printf("--ROM swap mode--\n");
-    for (int i=0; i < ROM_DATA_LENGTH;i++ )
-    {   
-        if (( i & 1) == 0 ) {
+    bus_log(__FUNCTION__,"--ROM swap mode--");
+    for (int i=0; i < size;i+=2 )
+    {
         char z = ROM_DATA[i];
         ROM_DATA[i]=ROM_DATA[i+1];
         ROM_DATA[i+1]=z;
-        }
-
     }
     #endif
 
 
     set_region();
 }
-#else
 
-void load_cartridge()
-{
-    // Clear all volatile memory
-    memset(M68K_RAM, 0, MAX_RAM_SIZE);
-    memset(ZRAM, 0, MAX_Z80_RAM_SIZE);
-
-    // Set Z80 Memory as Z80_RAM
-    z80_set_memory((unsigned int *)ZRAM);
-
-    z80_pulse_reset();
-
-    set_region();
-
-}
 #endif
 
 /******************************************************************************
@@ -122,6 +154,19 @@ void power_on() {
   // Initialize YM2612 chip
   YM2612Init();
   YM2612Config(9);
+  // Initialize PSG SN76489 chip
+  //CLOCK_NTSC      = 3579545,
+  //CLOCK_PAL       = 3546895,
+ // CLOCK_NTSC_SMS1 = 3579527
+
+//  if (mode_pal) {
+//     gwenesis_SN76489_Init(3546895, GWENESIS_AUDIO_BUFFER_LENGTH_PAL*50,AUDIO_FREQ_DIVISOR);
+//   } else{
+//     gwenesis_SN76489_Init(3579545, GWENESIS_AUDIO_BUFFER_LENGTH_NTSC*60,AUDIO_FREQ_DIVISOR);
+//   }
+
+  gwenesis_SN76489_Init(3579545, 888*60,AUDIO_FREQ_DIVISOR);
+
 }
 
 /******************************************************************************
@@ -139,95 +184,9 @@ void reset_emulation() {
   YM2612ResetChip();
   // Send a reset pulse to SEGA 315-5313 chip
   gwenesis_vdp_reset();
-}
-#if 0
-
-typedef void (*Handler_write)(unsigned int address,unsigned int value);
-typedef unsigned int (*Handler_read)(unsigned int address);
-
-
-static Handler_write jump_write8[256] = {0};
-static Handler_write jump_write16[256] = {0};
-
-static Handler_read jump_read8[256] = {0};
-static Handler_read jump_read16[256] = {0};
-
-void wr8ram (unsigned address,unsigned int value)
-{
-  WRITE8RAM(address,value);
-}
-void wr16ram (unsigned address,unsigned int value)
-{
-  WRITE16RAM(address,value);
+  gwenesis_SN76489_Reset();
 }
 
-unsigned int rd8ram (unsigned address)
-{
-  return FETCH8RAM(address);
-}
-unsigned int rd16ram (unsigned address)
-{
-  return FETCH16RAM(address);
-}
-unsigned int rd8rom (unsigned address)
-{
-  return FETCH8ROM(address);
-}
-unsigned int rd16rom (unsigned address)
-{
-  return FETCH16ROM(address);
-}
-
-void init_jump_tables() {
-  for (int i = 0; i < 0x100; i++) {
-
-    // ROM
-    if (i < 0x80) {
-      jump_write8[i] = 0;
-      jump_write16[i] = 0;
-
-      jump_read8[i] = rd8rom;
-      jump_read16[i] = rd16rom;
-    }
-
-    //RAM
-    if (i == 0xFF) {
-      jump_write8[i] = wr8ram;
-      jump_write16[i] = wr16ram;
-
-      jump_read8[i] = rd8ram;
-      jump_read16[i] = rd16ram;
-    }
-
-    // Z80
-    if (i == 0xA0) {
-      jump_write8[i] = wr8ram;
-      jump_write16[i] = wr16ram;
-
-      jump_read8[i] = rd8ram;
-      jump_read16[i] = rd16ram;
-    }
-
-    // IO
-    if (i == 0xA1) {
-      jump_write8[i] = wr8ram;
-      jump_write16[i] = wr16ram;
-
-      jump_read8[i] = rd8ram;
-      jump_read16[i] = rd16ram;
-    }
-
-    // VDP
-    if (i == 0xC0) {
-      jump_write8[i] = gwenesis_vdp_write_memory_8;
-      jump_write16[i] = gwenesis_vdp_write_memory_16;
-
-      jump_read8[i] = gwenesis_vdp_read_memory_8;
-      jump_read16[i] = gwenesis_vdp_read_memory_16;
-    }
-  }
-}
-#endif
 /******************************************************************************
  *
  *   Set Region
@@ -235,33 +194,102 @@ void init_jump_tables() {
  *
  ******************************************************************************/
 void set_region()
-{    
-    extern int mode_pal;
+{
+  /*
+    old style : JUE characters
+    J : Domestic 60Hz (Asia)
+    U : Oversea  60Hz (USA)
+    E : Oversea  50Hz (Europe)
 
-    printf("RegionROM:%c (%02x) ", FETCH8ROM(0x1F0), FETCH8ROM(0x1F0));
+    new style : 1st character
+    bit 0 : +1 Domestic 60Hz (Asia)
+    bit 1 : +2 Domestc  50Hz (Asia)
+    bit 2:  +4 Oversea  60Hz (USA)
+    bit 3:  +4 Oversea  50Hz (Europe)
+  */
 
-    if (FETCH8ROM(0x1F0) == 0x31 || FETCH8ROM(0x1F0) == 0x4a) {
-      gwenesis_io_set_reg(0, 0x00);
-      printf("Domestic-NTSC Japanese model\n");
-      gwenesis_vdp_status &= 0xFFFE;
-      mode_pal = 0;
+   // extern int mode_pal;
+
+    int country = 0;
+
+    char rom_str[3];
+
+    printf("ROM game  : ");
+    for (int j=0; j < 48;j++) printf("%c",(char)FETCH8ROM(0x150+j));
+    printf("\n");
+
+    rom_str[0]=FETCH8ROM(0x1F0);
+    rom_str[1]=FETCH8ROM(0x1F1);
+    rom_str[2]=FETCH8ROM(0x1F2);
+
+    printf("ROM region:%c%c%c (0x%02x 0x%02x 0x%02x)\n", rom_str[0],rom_str[1],rom_str[2],rom_str[0],rom_str[1],rom_str[2]);
+
+    /* from Gens */
+    if (!memcmp(rom_str, "eur", 3)) country |= 8;
+    else if (!memcmp(rom_str, "EUR", 3)) country |= 8;
+    else if (!memcmp(rom_str, "Europe", 3)) country |= 8;
+    else if (!memcmp(rom_str, "jap", 3)) country |= 1;
+    else if (!memcmp(rom_str, "JAP", 3)) country |= 1;
+    else if (!memcmp(rom_str, "usa", 3)) country |= 4;
+    else if (!memcmp(rom_str, "USA", 3)) country |= 4;
+    else
+    {
+      int i;
+      unsigned char c;
+
+      /* look for each characters */
+      for(i = 0; i < 3; i++)
+      {
+        c = rom_str[i];
+
+        if (c == 'U') country |= 4;
+        else if (c == 'E' || c == 'e' ) country |= 8;
+        else if (c == 'J' || c == 'j' ) country |= 1;
+        else if (c == 'K' || c == 'k' ) country |= 1;
+        else if (c < 16) country |= c;
+        else if ((c >= '0') && (c <= '9')) country |= c - '0';
+        else if ((c >= 'A') && (c <= 'F')) country |= c - 'A' + 10;
+      }
     }
+    printf("country code=%01x : ",country);
+      /* set default console region (USA > EUROPE > JAPAN) */
+      /*
+      IO REG0	:	MODE 	VMOD 	DISK 	RSV 	VER3 	VER2 	VER1 	VER0
+      MODE (R) 	0: Domestic Model
+  	            1: Overseas Model
+      VMOD (R) 	0: NTSC CPU clock 7.67 MHz
+  	            1: PAL CPU clock 7.60 MHz
+      */
 
-    else if (FETCH8ROM(0x1F0) == 0x41 || FETCH8ROM(0x1F0) == 0x40 ||
-             FETCH8ROM(0x1F0) == 0x45 || FETCH8ROM(0x1F0) == 0x46 ||
-             FETCH8ROM(0x1F0) == 0x38) {
-      gwenesis_io_set_reg(0, 0xE0);
-      printf("Oversea-PAL\n");
-      gwenesis_vdp_status |= 1;
-      mode_pal = 1;
+    /* USA 60Hz*/
+    if (country & 4){
+      printf("Oversea-NTSC USA 60Hz\n");
+      gwenesis_io_set_reg(0, 0x81);
+   //   gwenesis_vdp_status &= 0xFFFE;
+     // mode_pal = 0;
+      return;
     }
+    /* EUROPE 50Hz */
+    if (country & 8){
+      printf("Oversea-PAL Europe 50Hz\n");
+      gwenesis_io_set_reg(0, 0xC1);
+    //  gwenesis_vdp_status |= 0x1;
+      //mode_pal = 1;
+      return;
+    }
+    /* set Asia 60HZ */
+    if (country & 1){
+      printf("Domestic-NTSC Asia 60Hz\n");
+      gwenesis_io_set_reg(0, 0x1);
+    //  gwenesis_vdp_status &= 0xFFFE;
+      //mode_pal = 0;
+      return;
+    }
+      printf("Oversea-NTSC USA 60Hz no detection>> default mode\n");
+      gwenesis_io_set_reg(0, 0x81);
+     // gwenesis_vdp_status &= 0xFFFE;
+     // mode_pal = 0;
 
-    else {
-      gwenesis_io_set_reg(0, 0xA0);
-      printf("Oversea-NTSC\n");
-      gwenesis_vdp_status &= 0xFFFE;
-      mode_pal = 0;
-    }
 }
 /******************************************************************************
  *
@@ -270,7 +298,6 @@ void set_region()
  *   68K Access to Z80 Memory
  *
  ******************************************************************************/
-#if 1
 static inline unsigned int gwenesis_bus_map_z80_address(unsigned int address) {
 
   unsigned int range = (address & 0xF000);
@@ -280,22 +307,26 @@ static inline unsigned int gwenesis_bus_map_z80_address(unsigned int address) {
     return Z80_RAM_ADDR;
   case 0x2000:
   case 0x3000:
-    return NONE;
+    return Z80_RAM_ADDR1K;
   case 0x4000:
-    return YM2612_ADDR;
-
+    return Z80_YM2612_ADDR;
+  case 0x6000:
+    return Z80_BANK_ADDR;
+  case 0x7000:
+    return Z80_SN76489_ADDR;
   default:
+    bus_log(__FUNCTION__,"no map Z80 %x",address);
+    assert(0);
     return NONE;
   }
 }
-#endif
+
 /******************************************************************************
  *
  *   IO memory address mapper
  *   Map all input/output region address for CPU program
  *
  ******************************************************************************/
-#if 1
 static inline unsigned int gwenesis_bus_map_io_address(unsigned int address)
 {
   unsigned int range = (address & 0x1000) ;
@@ -305,32 +336,20 @@ static inline unsigned int gwenesis_bus_map_io_address(unsigned int address)
   default:
       // if (address >= 0xa14000 && address < 0xa11404)
       // return (tmss_state == 0) ? TMSS_CTRL : NONE;
+      bus_log(__FUNCTION__,"no map io %x",address);
+
     return NONE;
   }
 }
-#endif
+
 /******************************************************************************
  *
  *   Main memory address mapper
  *   Map all main memory region address for CPU program
  *
  ******************************************************************************/
-#if 0
-static inline 
-unsigned int gwenesis_bus_map_address(unsigned int address) {
-  // Mask address page
-  unsigned int range = (address & 0xFF0000) >> 16;
 
-  switch (range) {
-    case 0xA0 : return gwenesis_bus_map_z80_address(address);
-    case 0xA1 : return gwenesis_bus_map_io_address(address);
-    case 0xC0 : return VDP_ADDR;
-    default   : return NONE;
-  }
-}
-#endif
-#if 1
-static inline 
+static inline
 unsigned int gwenesis_bus_map_address(unsigned int address) {
   // Mask address page
   unsigned int range = (address & 0xFF0000) >> 16;
@@ -342,6 +361,7 @@ unsigned int gwenesis_bus_map_address(unsigned int address) {
   else if (range == 0xA0) // Z80 ADDRESS 0xA00000 - 0xA0FFFF
     return gwenesis_bus_map_z80_address(address);
 
+
   else if (range == 0xA1) //                  IO ADDRESS  0xA10000 - 0xA1FFFF
     return gwenesis_bus_map_io_address(address);
 
@@ -350,29 +370,29 @@ unsigned int gwenesis_bus_map_address(unsigned int address) {
   else if (range == 0xFF) // RAM ADDRESS 0xE00000 - 0xFFFFFFF
     return RAM_ADDR;
   // If not a valid address return 0
-  printf("M68K > ?? unmap address %x\n", address);
+  bus_log(__FUNCTION__,"M68K > ?? unnmap address %x", address);
+  //assert(0);
   return NONE;
 }
-#endif
 /******************************************************************************
  *
  *   Main read address routine
  *   Write an value to memory mapped on specified address
  *
  ******************************************************************************/
-#if 1
 static inline unsigned int gwenesis_bus_read_memory_8(unsigned int address) {
- // printf("read8  %x\n", address);
+ bus_log(__FUNCTION__,"read8  %x", address);
 
   switch (gwenesis_bus_map_address(address)) {
+
+  case VDP_ADDR:
+    return gwenesis_vdp_read_memory_8(address);
+
   case ROM_ADDR:
     return FETCH8ROM(address);
 
-  case Z80_RAM_ADDR:
-    return ZRAM[address & 0x1FFF];
-
-  case YM2612_ADDR:
-    return YM2612Read();
+  case RAM_ADDR:
+    return FETCH8RAM(address);
 
   case IO_CTRL:
     return gwenesis_io_read_ctrl(address & 0x1F);
@@ -380,41 +400,37 @@ static inline unsigned int gwenesis_bus_read_memory_8(unsigned int address) {
   case Z80_CTRL:
     return z80_read_ctrl(address & 0xFFFF);
 
+  case Z80_RAM_ADDR:
+  case Z80_RAM_ADDR1K:
+    return ZRAM[address & 0x1FFF];
+
+  case Z80_YM2612_ADDR:
+    return YM2612Read(m68k_cycles_master());
+
+  case Z80_SN76489_ADDR:
+    return 0xff;
+
+  case Z80_BANK_ADDR:
+    return 0xff;
+
   case TMSS_CTRL:
-    printf("TMS\n");
+    bus_log(__FUNCTION__,"TMS");
     if (tmss_state == 0)
       return TMSS[address & 0x4];
     return 0xFF;
 
-  case VDP_ADDR:
-    return gwenesis_vdp_read_memory_8(address);
-
-  case RAM_ADDR:
-    return FETCH8RAM(address);
-
   default:
-     printf(" default read 8 %x\n", address);
+     bus_log(__FUNCTION__," default read 8 %x", address);
     return 0x00;
   }
   return 0x00;
 }
-#endif
-#if 1
+
 static inline unsigned int gwenesis_bus_read_memory_16(unsigned int address) {
-   // printf("read16 %x\n", address);
+   bus_log(__FUNCTION__,"read16 %x", address);
+   unsigned int ret_value;
 
   switch (gwenesis_bus_map_address(address)) {
-  case ROM_ADDR:
-    return FETCH16ROM(address);
-
-  case Z80_RAM_ADDR:
-    return ZRAM[address & 0X7FFF] | (ZRAM[address & 0X7FFF] << 8); 
-
-  case YM2612_ADDR:
-    return YM2612Read();
-
-  case IO_CTRL:
-    return gwenesis_io_read_ctrl(address & 0x1F);
 
   case VDP_ADDR:
     return gwenesis_vdp_read_memory_16(address);
@@ -422,49 +438,87 @@ static inline unsigned int gwenesis_bus_read_memory_16(unsigned int address) {
   case RAM_ADDR:
     return FETCH16RAM(address);
 
+  case ROM_ADDR:
+    return FETCH16ROM(address);
+
+  case IO_CTRL:
+    return gwenesis_io_read_ctrl(address & 0x1F);
+
+  case Z80_CTRL:
+  //  ret_value = z80_read_ctrl(address & 0xFFFF);
+   // return ret_value | ret_value << 8;
+    address &=0xFFFF;
+        return (z80_read_ctrl(address) << 8) | z80_read_ctrl(address | 1);
+
+
+  case Z80_RAM_ADDR:
+  case Z80_RAM_ADDR1K:
+    return ZRAM[address & 0X1FFF] | (ZRAM[address & 0X1FFF] << 8);
+
+  case Z80_YM2612_ADDR:
+    ret_value = YM2612Read(m68k_cycles_master());
+    return ret_value | ret_value << 8;
+
+
+  case Z80_SN76489_ADDR:
+    return 0xff;
+
+  case Z80_BANK_ADDR:
+    return 0xff;
+
   default:
-    printf("read mem 16 default %x\n", address);
+    bus_log(__FUNCTION__,"read mem 16 default %x", address);
     return (gwenesis_bus_read_memory_8(address) << 8) |
            gwenesis_bus_read_memory_8(address + 1);
   }
   return 0x00;
 }
-#endif
+
 /******************************************************************************
  *
  *   Main write address routine
  *   Write an value to memory mapped on specified address
  *
  ******************************************************************************/
-#if 1
 static inline void gwenesis_bus_write_memory_8(unsigned int address,
                                               unsigned int value) {
- // printf("write8  %x\n", address,value);
+  bus_log(__FUNCTION__,"write8  @%x:%x", address,value);
 
   switch (gwenesis_bus_map_address(address)) {
 
   case VDP_ADDR:
-
     gwenesis_vdp_write_memory_16(address & ~1, (value << 8) | value);
     return;
 
-  case Z80_RAM_ADDR:
-    ZRAM[address & 0x1FFF] = value;
+  case RAM_ADDR:
+    WRITE8RAM(address, value);
     return;
 
   case IO_CTRL:
-
     gwenesis_io_write_ctrl(address & 0x1F, value);
     return;
 
   case Z80_CTRL:
-
-    z80_write_ctrl(address & 0xFFFF, value);
+    z80_write_ctrl(address & 0x1FFF, value);
     return;
 
-  case YM2612_ADDR:
+  case Z80_RAM_ADDR:
+  case Z80_RAM_ADDR1K:
+    ZRAM[address & 0x1FFF] = value;
+    return;
 
-    YM2612Write(address & 0x3, value);
+  case Z80_YM2612_ADDR:
+    bus_log(__FUNCTION__,"CPUZ80PSG8 ,m68kclk= %d", m68k_cycles_master());
+    YM2612Write(address & 0x3, value & 0Xff,m68k_cycles_master());
+    return;
+
+  case Z80_SN76489_ADDR:
+    bus_log(__FUNCTION__,"CPUZ80FM8  ,m68kclk= %d", m68k_cycles_master());
+    gwenesis_SN76489_Write( value & 0Xff, m68k_cycles_master());
+    return;
+
+  case Z80_BANK_ADDR:
+  //TODO
     return;
 
   case TMSS_CTRL:
@@ -477,10 +531,7 @@ static inline void gwenesis_bus_write_memory_8(unsigned int address,
     }
     return;
 
-  case RAM_ADDR:
 
-    WRITE8RAM(address, value);
-    return;
 
   default:
     //printf("write(%x, %x)\n", address, value);
@@ -488,42 +539,46 @@ static inline void gwenesis_bus_write_memory_8(unsigned int address,
   }
   return;
 }
-#endif
 
-#if 1
 static inline void gwenesis_bus_write_memory_16(unsigned int address,
                                                unsigned int value) {
-  //printf("write16  %x\n", address,value);
+  bus_log(__FUNCTION__,"write16  @%x:%x", address,value);
 
   switch (gwenesis_bus_map_address(address)) {
 
-  case Z80_RAM_ADDR:
-    ZRAM[address & 0X7FFF]= value >> 8;
-    return;
-
-  case Z80_CTRL:
-
-    z80_write_ctrl(address & 0x1FFF, value);
-    return;
-
-  case YM2612_ADDR:
-
-    YM2612Write(address & 0x3, value & 0Xff);
-    return;
-
   case VDP_ADDR:
-
     gwenesis_vdp_write_memory_16(address, value);
     return;
 
   case RAM_ADDR:
-
     WRITE16RAM(address, value);
     return;
 
-  default:
+  case Z80_RAM_ADDR:
+  case Z80_RAM_ADDR1K:
+    ZRAM[address & 0X1FFF]= value >> 8;
+    return;
 
-    printf("write mem 16 default %x \n", address);
+  case IO_CTRL:
+    gwenesis_io_write_ctrl(address & 0x1F, value);
+    return;
+
+  case Z80_CTRL:
+    z80_write_ctrl(address & 0xFFFF, value >> 8) ;
+    return;
+
+  case Z80_YM2612_ADDR:
+    bus_log(__FUNCTION__,"CZYM16 ,mclk=%d",  m68k_cycles_master());
+    YM2612Write(address & 0x3, value >> 8,m68k_cycles_master() );
+    return;
+
+  case Z80_SN76489_ADDR:
+    bus_log(__FUNCTION__,"CZSN16 ,mclk=%d", m68k_cycles_master());
+    gwenesis_SN76489_Write(value >> 8,m68k_cycles_master() );
+    return;
+
+  default:
+    bus_log(__FUNCTION__,"write mem 16 default %x ", address);
     gwenesis_bus_write_memory_8(address, (value >> 8) & 0xff);
     gwenesis_bus_write_memory_8(address + 1, (value)&0xff);
 
@@ -531,7 +586,7 @@ static inline void gwenesis_bus_write_memory_16(unsigned int address,
   }
   return;
 }
-#endif
+
 /******************************************************************************
  *
  *   68K CPU read address R8

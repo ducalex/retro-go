@@ -2019,7 +2019,7 @@ void YM2612ResetChip(void)
 /* n = number  */
 /* a = address */
 /* v = value   */
-void YM2612Write(unsigned int a, unsigned int v)
+void YM2612Write(unsigned int a, unsigned int v, int target)
 {
   //printf("YM2612 write @%x:%x \n",a,v);
 
@@ -2067,7 +2067,7 @@ void YM2612Write(unsigned int a, unsigned int v)
   }
 }
 
-unsigned int YM2612Read(void)
+unsigned int YM2612Read(int target)
 {
    // //printf("YM2612 read status %x\n",ym2612.OPN.ST.status);
 
@@ -2078,16 +2078,7 @@ unsigned int YM2612Read(void)
 void YM2612Update(int16_t *buffer, int length)
 {
   int i;
-  int lt,rt;
-
-  // extern scan_line;
-  // if (scan_line == 0) {
-  //   printf("\n samples :\n");
-  //   printf("%d ", length);
-
-  // } else {
-  //   printf("%d ", length);
-  // }
+  int lt;
 
   /* refresh PG increments and EG rates if required */
   refresh_fc_eg_chan(&ym2612.CH[0]);
@@ -2096,12 +2087,9 @@ void YM2612Update(int16_t *buffer, int length)
   if (!(ym2612.OPN.ST.mode & 0xC0))
   {
     refresh_fc_eg_chan(&ym2612.CH[2]);
-    //printf("mode CSM\n");
   }
   else
   {
-      //  printf("mode 3SLOT\n");
-
     /* 3SLOT MODE (operator order is 0,1,3,2) */
     if(ym2612.CH[2].SLOT[SLOT1].Incr==-1)
     {

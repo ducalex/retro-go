@@ -21,7 +21,7 @@ __license__ = "GPLv3"
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-#include "m68kcpu.h"
+
 #include "m68k.h"
 #include "gwenesis_io.h"
 #include "gwenesis_bus.h"
@@ -42,7 +42,7 @@ void gwenesis_save_state() {
   gwenesis_vdp_mem_save_state();
   gwenesis_z80inst_save_state();
   gwenesis_ym2612_save_state();
-  // gwenesis_sn76489_save_state();
+  gwenesis_sn76489_save_state();
 
 }
 
@@ -54,6 +54,6 @@ void gwenesis_load_state() {
   gwenesis_vdp_mem_load_state();
   gwenesis_z80inst_load_state();
   gwenesis_ym2612_load_state();
-  // gwenesis_sn76489_load_state();
+  gwenesis_sn76489_load_state();
 
 }

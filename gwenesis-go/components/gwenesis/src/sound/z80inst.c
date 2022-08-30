@@ -34,91 +34,39 @@ __license__ = "GPLv3"
 static int bus_ack = 0;
 static int reset = 0;
 static int reset_once = 0;
-uint64_t zclk = 0;
+int zclk = 0;
 static int initialized = 0;
 
-static unsigned char *Z80_RAM;
+unsigned char *Z80_RAM;
 
 static Z80 cpu;
 
 void ResetZ80(register Z80 *R);
 
-// Bank register used by Z80 to access M68K Memory space 1 BANK=32KByte
-static int Z80_BANK;
+#define Z80_INST_DISABLE_LOGGING 1
 
-/** DAsm() ***************************************************/
-/** DAsm() will disassemble the code at adress A and put    **/
-/** the output text into S. It will return the number of    **/
-/** bytes disassembled.                                     **/
-/*************************************************************/
-#ifdef _HOST_
-int DAsm(char *S,word A)
-{
-  char R[128],H[10],C,*P;
-  const char *T;
-  byte J,Offset;
-  word B;
+#if !Z80_INST_DISABLE_LOGGING
+#include <stdarg.h>
+void z80_log(const char *subs, const char *fmt, ...) {
+  extern int frame_counter;
+  extern int scan_line;
 
-  Offset=0;
-  B=A;
-  C='\0';
-  J=0;
+  va_list va;
 
-  switch(RdZ80(B))
-  {
-    case 0xCB: B++;T=MnemonicsCB[RdZ80(B++)];break;
-    case 0xED: B++;T=MnemonicsED[RdZ80(B++)];break;
-    case 0xDD: B++;C='X';
-               if(RdZ80(B)!=0xCB) T=MnemonicsXX[RdZ80(B++)];
-               else
-               { B++;Offset=RdZ80(B++);J=1;T=MnemonicsXCB[RdZ80(B++)]; }
-               break;
-    case 0xFD: B++;C='Y';
-               if(RdZ80(B)!=0xCB) T=MnemonicsXX[RdZ80(B++)];
-               else
-               { B++;Offset=RdZ80(B++);J=1;T=MnemonicsXCB[RdZ80(B++)]; }
-               break;
-    default:   T=Mnemonics[RdZ80(B++)];
-  }
+  printf("%06d:%03d :[%s]", frame_counter, scan_line, subs);
 
-  if(P=strchr(T,'^'))
-  {
-    strncpy(R,T,P-T);R[P-T]='\0';
-    sprintf(H,"%02X",RdZ80(B++));
-    strcat(R,H);strcat(R,P+1);
-  }
-  else strcpy(R,T);
-  if(P=strchr(R,'%')) *P=C;
-
-  if(P=strchr(R,'*'))
-  {
-    strncpy(S,R,P-R);S[P-R]='\0';
-    sprintf(H,"%02X",RdZ80(B++));
-    strcat(S,H);strcat(S,P+1);
-  }
-  else
-    if(P=strchr(R,'@'))
-    {
-      strncpy(S,R,P-R);S[P-R]='\0';
-      if(!J) Offset=RdZ80(B++);
-      strcat(S,Offset&0x80? "-":"+");
-      J=Offset&0x80? 256-Offset:Offset;
-      sprintf(H,"%02X",J);
-      strcat(S,H);strcat(S,P+1);
-    }
-    else
-      if(P=strchr(R,'#'))
-      {
-        strncpy(S,R,P-R);S[P-R]='\0';
-        sprintf(H,"%04X",RdZ80(B)+256*RdZ80(B+1));
-        strcat(S,H);strcat(S,P+1);
-        B+=2;
-      }
-      else strcpy(S,R);
-
-  return(B-A);
+  va_start(va, fmt);
+  vfprintf(stdout, fmt, va);
+  va_end(va);
+  printf("\n");
 }
+#else
+	#define z80_log(...)  do {} while(0)
 #endif
+
+// Bank register used by Z80 to access M68K Memory space 1 BANK=32KByte
+int Z80_BANK;
+
 
 void z80_start() {
     cpu.IPeriod = 1;
@@ -135,12 +83,16 @@ void z80_start() {
 void z80_pulse_reset() {
   ResetZ80(&cpu);
 }
+static int current_timeslice = 0;
 
-void z80_run(uint64_t target) {
+void z80_run(int target) {
 
   // we are in advance,nothind to do
-  if (zclk >= target)
+current_timeslice = 0;
+  if (zclk >= target) {
+ // z80_log("z80_skip time","%1d%1d%1d||zclk=%d,tgt=%d",reset_once,bus_ack,reset, zclk, target);
     return;
+  }
 
   int timeslice = (target - zclk) / Z80_FREQ_DIVISOR;
 
@@ -151,13 +103,9 @@ void z80_run(uint64_t target) {
   zclk = target - rem * Z80_FREQ_DIVISOR;
 }
 
-//void z80_execute(unsigned int target) { ExecZ80(&cpu, target); }
-
-extern uint64_t m68k_clock;
-
 void z80_sync(void) {
   /*
-  get M68K clock and
+  get M68K cycles 
   Execute cycles on z80 to sync with m68K
   */
   int slice = m68k_cycles_run();
@@ -173,26 +121,29 @@ void z80_set_memory(unsigned char *buffer)
 }
 
 void z80_write_ctrl(unsigned int address, unsigned int value) {
+
   if (address == 0x1100) // BUSREQ
   {
-    //printf("BUSREQ = %d\n", value);
     z80_sync();
+    z80_log(__FUNCTION__,"BUSREQ = %d, current=%d", value,bus_ack);
 
+    // Bus request. Z80 bus on hold.
     if (value) {
       bus_ack = 1;
 
+
+    // Bus request cancel. Z80 runs.
     } else {
-      bus_ack = 0;
+            bus_ack = 0;
     }
 
   } else if (address == 0x1200) // RESET
   {
-    //printf("RESET = %d\n", value);
+    z80_log(__FUNCTION__,"RESET = %d, current=%d", value,reset);
+
     if (value == 0) {
       reset = 1;
-      //printf("RESET REQ = %d\n", value);
     } else {
-     // printf("RESET CANCEL = %d\n", value);
 
       z80_pulse_reset();
       reset = 0;
@@ -202,14 +153,20 @@ void z80_write_ctrl(unsigned int address, unsigned int value) {
 }
 
 unsigned int z80_read_ctrl(unsigned int address) {
+
   if (address == 0x1100) {
-    //printf("CPU RUNNING = %d  \n", bus_ack ? 0 : 1);
-    return bus_ack ? 0 : 1;
+
+    z80_log(__FUNCTION__,"RUNNING = %d ", bus_ack ? 0 : 1);
+    return bus_ack == 1 ? 0 : 1;
+
   } else if (address == 0x1101) {
     return 0x00;
+
   } else if (address == 0x1200) {
-    //printf("CPU RESET = %d  \n", bus_ack ? 0 : 1);
-    return reset ? 0 : 1;
+
+    z80_log(__FUNCTION__,"RESET = %d ", reset );
+    return reset;
+
   } else if (address == 0x1201) {
     return 0x00;
   }
@@ -224,41 +181,12 @@ void z80_irq_line(unsigned int value)
         cpu.IRequest = INT_IRQ;
     else
         cpu.IRequest = INT_NONE;
+
+    z80_log(__FUNCTION__,"Interrupt = %d ", value);
+
 }
 
 #if 0
-void z80_write_memory_8(unsigned int address, unsigned int value)
-{
-  //  printf("Z80W mem8 @%x:%x\n",address,value);
-    WrZ80(address & 0X7FFF, value &0xFF);
-}
-unsigned int z80_read_memory_8(unsigned int address)
-{
-  // printf("Z80R mem @%x\n",address);
-
-    return RdZ80(address & 0X7FFF);
-}
-
-void z80_write_memory_16(unsigned int address, unsigned int value)
-{
- //   printf("Z80W mem16 @%x:%x\n",address,value);
-    WrZ80(address & 0X7FFF, value >> 8);
-    //WrZ80(address+1, value &0xFF);
-}
-unsigned int z80_read_memory_16(unsigned int address)
-{
-    //unsigned int value = (RdZ80(address) << 8) | RdZ80(address+1);
-   // return value;
- //  printf("Z80R mem16 @%x:%x\n",address);
-    unsigned int value = RdZ80(address & 0X7FFF);
-    return (value << 8 ) | value;
-}
-
-unsigned int z80_disassemble(unsigned char *screen_buffer, unsigned int address) {
-    int pc;
-    pc = DAsm(screen_buffer, address);
-    return pc;
-}
 
 word z80_get_reg(int reg_i) {
     switch(reg_i) {
@@ -280,25 +208,15 @@ word z80_get_reg(int reg_i) {
 
 unsigned int zbankreg_mem_r8(unsigned int address)
 {
-    return 0xFF;
-}
+      z80_log(__FUNCTION__,"Z80 bank read pointer : %06x", Z80_BANK);
 
-// void zbankreg_mem_w8(unsigned int address, unsigned int value)
-// {
-//     address &= 0xFFF;
-//     if (address < 0x100)
-//     {
-//         Z80_BANK >>= 1;
-//         Z80_BANK |= (value & 1) << 8;
-//         printf("Z80 bank points to: %06x\n", Z80_BANK << 15);
-//         return;
-//     }
-// }
+    return Z80_BANK;
+}
 
 static inline void zbankreg_mem_w8(unsigned int value) {
   Z80_BANK >>= 1;
   Z80_BANK |= (value & 1) << 8;
-  //printf("Z80 bank points to: %06x\n", Z80_BANK << 15);
+  z80_log(__FUNCTION__,"Z80 bank points to: %06x", Z80_BANK << 15);
   return;
 }
 
@@ -307,32 +225,20 @@ static inline unsigned int zbank_mem_r8(unsigned int address)
     address &= 0x7FFF;
     address |= (Z80_BANK << 15);
 
-    // mem_log("Z80", "bank read: %06x\n", address);
-  //  printf("Z80 bank read: %06x\n", address);
-    if (address >= 0XFF0000)
-      return FETCH8RAM(address);
-    else if (address < 0X800000)
-      return FETCH8ROM(address);
-    else
-     return 0x00;
-    //   return m68k_read_memory_8(address);
+    z80_log(__FUNCTION__,"Z80 bank read: %06x", address);
+    return m68k_read_memory_8(address);
 }
 
 static inline void zbank_mem_w8(unsigned int address, unsigned int value) {
   address &= 0x7FFF;
   address |= (Z80_BANK << 15);
 
-  // mem_log("Z80", "bank write %06x: %02x\n", address, value);
-   //printf("Z80 bank write %06x: %02x\n", address, value);
-   if (address >= 0XFF0000)
-    WRITE8RAM(address, value);
+  z80_log(__FUNCTION__,"Z80 bank write %06x: %02x", address, value);
+  m68k_write_memory_8(address, value);
 
-//   else
-//     m68k_write_memory_8(address, value);
-
-  return;
 }
 
+// TODO ??
 /*
 unsigned int zvdp_mem_r8(unsigned int address)
 {
@@ -348,212 +254,75 @@ void zvdp_mem_w8(unsigned int address, unsigned int value)
 }
 
 */
+
 word LoopZ80(register Z80 *R)
 {
     return 0;
 }
-#if 0
-byte RdZ80(register word Addr)
-{
-    unsigned int range = Addr >> 12;
 
-    switch (range)
-    {
-    case 0:
-    case 1:
-        return Z80_RAM[Addr];
-        break;
-    case 2:
-       // printf("Z80 RD Unknown ? @%x\n", Addr);
-       // return Z80_RAM[Addr & 0x1FFF];
-        return 0xff; //Z80_RAM[Addr & 0x1FFF];
-        break;
-    case 3:
-       // return Z80_RAM[Addr & 0x1FFF];
-       // printf("Z80 RD Unknown ? @%x\n", Addr);
-       // return Z80_RAM[Addr & 0x1FFF];
-        return 0xff; //Z80_RAM[Addr & 0x1FFF];
-        break;
-    case 4:
-        //printf("Z80 RD YM2612W @%x\n", Addr);
-        return YM2612Read();
-        //return ym2612_read_memory_8(Addr);
-        break;
-    case 5:
-        printf("Z80 RD YM2612W @%x\n", Addr);
-        //return ym2612_read_memory_8(Addr);
-        return YM2612Read();
-
-        //return 0;
-        break;
-    case 6: // bank register
-        return 0xFF;
-        break;
-    case 7:
-       // printf("Z80 RD VDP @0x7F12 ?? @%x\n", Addr);
-        return 0;
-        break;
-    default:
-        return zbank_mem_r8(Addr);
-        break;
-    }
-}
-
-void WrZ80(register word Addr, register byte Value)
-
-{
-    unsigned int range = Addr >> 12;
-
-    switch (range)
-    {
-    case 0:
-    case 1:
-        Z80_RAM[Addr] = Value;
-        break;
-    case 2:
-        //printf("Z80 WR Unknown ? @%x\n", Addr);
-        //Z80_RAM[Addr & 0x1FFF] = Value;
-        break;
-    case 3:
-        //printf("Z80 RD Unknown ? @%x\n", Addr);
-        //Z80_RAM[Addr & 0x1FFF] = Value;
-        break;
-    case 4:
-    //printf("Z80 WR YM2612 @%x:%x\n",Addr,Value);
-      // ym2612_write_memory_8(Addr, Value);
-      YM2612Write(Addr & 0x3, Value);
-      break;
-    case 5:
-      //printf("Z80 WR YM2612? @%x:%x\n",Addr,Value);
-      // ym2612_write_memory_8(Addr, Value);
-      YM2612Write(Addr & 0x3, Value);
-
-      break;
-    case 6:
-        zbankreg_mem_w8(Addr, Value);
-        break;
-    case 7:
-        //printf("Z80 WR PSG67489 @0x7F11 ?? @%x\n", Addr);
-        break;
-    default:
-        zbank_mem_w8(Addr, Value);
-        break;
-    }
-}
-#endif
-
-byte RdZ80(register word Addr)
-{
-  //  printf("RdZ80  %x\n", Addr);
-
-
-  if (Addr < 0x2000)
-    return Z80_RAM[Addr];
+byte RdZ80(register word Addr) {
 
   if (Addr < 0x4000)
-    return 0xff;
+    return Z80_RAM[Addr & 0x1FFF];
 
   if (Addr < 0x6000)
-    return YM2612Read();
+    return YM2612Read(zclk + current_timeslice - (cpu.ICount * Z80_FREQ_DIVISOR));
+
+  z80_log(__FUNCTION__, "addr= %x", Addr);
 
   if (Addr >= 0x8000)
     return zbank_mem_r8(Addr);
 
+  z80_log(__FUNCTION__, "addr= %x", Addr);
+
   return 0xFF;
 }
 
+extern int system_clock;
+
 void WrZ80(register word Addr, register byte Value) {
 
-//printf("WrZ80  %x %x\n", Addr, Value);
-
-  if (Addr < 0x2000) {
-    Z80_RAM[Addr] = Value;
-    return;
-  }
-
+  // ZRAM & mirror
   if (Addr < 0x4000) {
+    Z80_RAM[Addr&0x1FFF] = Value;
     return;
   }
 
+  // @4000-4003
   if (Addr < 0x6000) {
-    YM2612Write(Addr & 0x3, Value);
+    z80_log("Z80","ZZYM(%x,%x) zk=%d,tgt=%d",Addr&0x3,Value, zclk, zclk + current_timeslice -(cpu.ICount * Z80_FREQ_DIVISOR) );
+    YM2612Write(Addr&0x3, Value, zclk + current_timeslice -(cpu.ICount * Z80_FREQ_DIVISOR) );
     return;
   }
 
+  // @6000
   if (Addr == 0x6000) {
     zbankreg_mem_w8(Value);
     return;
   }
 
+  // @7F11
+  if (Addr ==  0x7F11) {
+    z80_log("Z80","ZZSN zk=%d,tgt=%d", zclk, zclk + current_timeslice -(cpu.ICount * Z80_FREQ_DIVISOR) );
+    gwenesis_SN76489_Write(Value,zclk + current_timeslice -(cpu.ICount * Z80_FREQ_DIVISOR) );
+    return;
+  }
+
+  z80_log("Z80","WrZ80  %x %x", Addr, Value);
+
   if (Addr >= 0x8000) {
     zbank_mem_w8(Addr, Value);
     return;
   }
-}
-#if 0
-byte RdZ80(register word Addr)
-{
-    unsigned int range = Addr >> 13;
+  z80_log("Z80","WrZ80  %x %x", Addr, Value);
 
-    switch (range)
-    {
-    case 0:
-        return Z80_RAM[Addr];
-
-    case 1:
-        return 0xff;
-
-    case 2:
-        return YM2612Read();
-
-    case 3: // BANK register or PSG76489
-        return 0xff;
-
-    default:
-        return zbank_mem_r8(Addr);
-    }
 }
 
-void WrZ80(register word Addr, register byte Value)
-
-{
-  unsigned int range = Addr >> 13;
-
-  switch (range) {
-  case 0:
-    Z80_RAM[Addr] = Value;
-    return;
-
-  case 1:
-    return;
-
-  case 2:
-    // printf("Z80 WR YM2612 @%x:%x\n",Addr,Value);
-    //  ym2612_write_memory_8(Addr, Value);
-    YM2612Write(Addr & 0x3, Value);
-    return;
-
-  case 3:  // BANK register or PSG76489
-    // printf("Z80 RD Unknown ? @%x\n", Addr);
-    // Z80_RAM[Addr & 0x1FFF] = Value;
-    if (Addr == 0x6000) zbankreg_mem_w8(Value);
-    return;
-    // if (Addr == 6000) return;
-    // else  zbankreg_mem_w8(Addr, Value);
-    // return;
-
-  default:
-    zbank_mem_w8(Addr, Value);
-    return;
-  }
-}
-#endif
 
 byte InZ80(register word Port) {return 0;}
 void OutZ80(register word Port, register byte Value) {;}
 void PatchZ80(register Z80 *R) {;}
 void DebugZ80(register Z80 *R) {;}
-
 
 void gwenesis_z80inst_save_state() {
     SaveState* state;
@@ -562,9 +331,10 @@ void gwenesis_z80inst_save_state() {
     saveGwenesisStateSet(state, "bus_ack", bus_ack);
     saveGwenesisStateSet(state, "reset", reset);
     saveGwenesisStateSet(state, "reset_once", reset_once);
-    saveGwenesisStateSetBuffer(state, "zclk", &zclk, sizeof(uint64_t));
+    saveGwenesisStateSet(state, "zclk", zclk);
     saveGwenesisStateSet(state, "initialized", initialized);
     saveGwenesisStateSet(state, "Z80_BANK", Z80_BANK);
+    saveGwenesisStateSet(state, "current_timeslice",current_timeslice);
 }
 
 void gwenesis_z80inst_load_state() {
@@ -573,7 +343,10 @@ void gwenesis_z80inst_load_state() {
     bus_ack = saveGwenesisStateGet(state, "bus_ack");
     reset = saveGwenesisStateGet(state, "reset");
     reset_once = saveGwenesisStateGet(state, "reset_once");
-    saveGwenesisStateGetBuffer(state, "zclk", &zclk, sizeof(uint64_t));
+    zclk = saveGwenesisStateGet(state, "zclk");
     initialized = saveGwenesisStateGet(state, "initialized");
     Z80_BANK = saveGwenesisStateGet(state, "Z80_BANK");
+    current_timeslice = saveGwenesisStateGet(state, "current_timeslice");
+
 }
+
