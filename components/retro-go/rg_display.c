@@ -16,10 +16,6 @@
 #define SPI_BUFFER_COUNT (6)
 #define SPI_BUFFER_LENGTH (4 * 320) // In pixels (uint16)
 
-#ifndef SPI_DMA_CH_AUTO
-#define SPI_DMA_CH_AUTO 1
-#endif
-
 static spi_device_handle_t spi_dev;
 static QueueHandle_t spi_transactions;
 static QueueHandle_t spi_buffers;

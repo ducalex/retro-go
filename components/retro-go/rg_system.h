@@ -275,6 +275,17 @@ extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 #define DRAM_ATTR
 #endif
 
+// Polyfills to maintain compatibility with older esp-idf
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 3, 0)
+#define SPI_DMA_CH_AUTO 1
+#endif
+
+// The inversion is deliberate, it was a bug in older esp-idf
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 2, 0)
+#define I2S_COMM_FORMAT_STAND_I2S (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB)
+#define I2S_COMM_FORMAT_STAND_MSB (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_LSB)
+#endif
+
 #define autofree __attribute__(cleanup(free))
 
 #ifdef __cplusplus

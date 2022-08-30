@@ -13,10 +13,6 @@
 static esp_err_t sdcard_mount = ESP_FAIL;
 static bool disk_led = true;
 
-#ifndef SPI_DMA_CH_AUTO
-#define SPI_DMA_CH_AUTO 1
-#endif
-
 #define SETTING_DISK_ACTIVITY "DiskActivity"
 
 
