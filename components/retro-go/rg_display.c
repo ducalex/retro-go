@@ -208,11 +208,19 @@ static void lcd_init(void)
     ledc_fade_func_install(0);
 #endif
 
+    spi_init();
+
     // Setup Data/Command line
     gpio_set_direction(RG_GPIO_LCD_DC, GPIO_MODE_OUTPUT);
     gpio_set_level(RG_GPIO_LCD_DC, 1);
 
-    spi_init();
+#if defined(RG_GPIO_LCD_RESET)
+    gpio_set_direction(RG_GPIO_LCD_RESET, GPIO_MODE_OUTPUT);
+    gpio_set_level(RG_GPIO_LCD_RESET, 0);
+    vTaskDelay(pdMS_TO_TICKS(10));
+    gpio_set_level(RG_GPIO_LCD_RESET, 1);
+    vTaskDelay(pdMS_TO_TICKS(10));
+#endif
 
 #define ILI9341_CMD(cmd, data...) {const uint8_t x[] = data; ili9341_cmd(cmd, x, sizeof(x));}
 #if RG_SCREEN_TYPE == 0 // LCD Model (ODROID-GO)
