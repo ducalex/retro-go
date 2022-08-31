@@ -1168,6 +1168,7 @@ void gwenesis_vdp_render_line(int line)
 }
 
 void gwenesis_vdp_gfx_save_state() {
+  /*
   SaveState* state;
   state = saveGwenesisStateOpenForWrite("vdp_gfx");
   saveGwenesisStateSetBuffer(state, "render_buffer", render_buffer, sizeof(render_buffer));
@@ -1183,9 +1184,11 @@ void gwenesis_vdp_gfx_save_state() {
   saveGwenesisStateSet(state, "PlanA_lastcol", PlanA_lastcol);
   saveGwenesisStateSet(state, "Window_firstcol", Window_firstcol);
   saveGwenesisStateSet(state, "Window_lastcol", Window_lastcol);
+  */
 }
 
 void gwenesis_vdp_gfx_load_state() {
+  /*
     SaveState* state = saveGwenesisStateOpenForRead("vdp_gfx");
     saveGwenesisStateGetBuffer(state, "render_buffer", render_buffer, sizeof(render_buffer));
     saveGwenesisStateGetBuffer(state, "sprite_buffer", sprite_buffer, sizeof(sprite_buffer));
@@ -1200,4 +1203,5 @@ void gwenesis_vdp_gfx_load_state() {
     PlanA_lastcol = saveGwenesisStateGet(state, "PlanA_lastcol");
     Window_firstcol = saveGwenesisStateGet(state, "Window_firstcol");
     Window_lastcol = saveGwenesisStateGet(state, "Window_lastcol");
+    */
 }

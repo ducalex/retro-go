@@ -125,17 +125,29 @@ extern bool sprite_collision;
  ******************************************************************************/
 
 int m68k_irq_acked(int irq) {
-  if (irq == 6) {
-  //  printf("ACK IRQ6_%d\n", scan_line);
-    gwenesis_vdp_status &= ~STATUS_VIRQPENDING;
-    return hint_pending ? 4 : 0;
-  } else if (irq == 4) {
-   // printf("ACK IRQ4_%d\n", scan_line);
 
-    hint_pending = 0;
-    return 0;
+  /* VINT has higher priority (Fatal Rewind) */
+  if (REG1_VBLANK_INTERRUPT && (gwenesis_vdp_status & STATUS_VIRQPENDING))
+  {
+    /* Clear VINT pending flag */
+    gwenesis_vdp_status &= ~STATUS_VIRQPENDING;
+
+    if (hint_pending && REG0_LINE_INTERRUPT)
+      m68k_set_irq(4);
+    else
+      m68k_set_irq(0);
+
   }
-  assert(0);
+  else
+  {
+  /* Clear HINT pending flag */
+  hint_pending = 0;
+
+   /* Update IRQ status */
+   m68k_set_irq(0);
+  }
+
+  return M68K_INT_ACK_AUTOVECTOR;
 }
 
 
@@ -169,7 +181,7 @@ void gwenesis_vdp_reset() {
 //static inline __attribute__((always_inline))
 int gwenesis_vdp_hcounter()
 {
-    int mclk = m68k_cycles_run() * M68K_FREQ_DIVISOR;
+    int mclk = m68k_cycles_run() ;
     int pixclk;
 
     // Accurate 9-bit hcounter emulation, from timing posted here:

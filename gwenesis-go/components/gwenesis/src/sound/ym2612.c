@@ -2017,7 +2017,7 @@ void YM2612ResetChip(void)
 
 /* YM2612 execution */
 /* Generate samples for ym2612 */
-void YM2612Update(int16_t *buffer, int length)
+static inline void YM2612Update(int16_t *buffer, int length)
 {
   int i;
   int lt;
@@ -2127,7 +2127,6 @@ void YM2612Update(int16_t *buffer, int length)
     lt += out_fm[5];
    // rt += out_fm[5];
 
-    *buffer++ = lt;
     *buffer++ = lt;
 
     /* CSM mode: if CSM Key ON has occured, CSM Key OFF need to be sent       */
