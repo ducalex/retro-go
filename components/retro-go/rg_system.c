@@ -203,15 +203,9 @@ static void system_monitor_task(void *arg)
         update_statistics();
 
         if (statistics.batteryPercent < 2)
-        {
-            ledState = !ledState;
-            rg_system_set_led(ledState);
-        }
+            rg_system_set_led((ledState ^= 1));
         else if (ledState)
-        {
-            ledState = false;
-            rg_system_set_led(ledState);
-        }
+            rg_system_set_led((ledState = 0));
 
         RG_LOGX("STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%.2f, FPS:%.2f (SKIP:%d, PART:%d, FULL:%d), BATT:%.2f\n",
             statistics.freeStackMain,
@@ -255,7 +249,7 @@ static void system_monitor_task(void *arg)
     vTaskDelete(NULL);
 }
 
-static void recovery_mode(void)
+static void enter_recovery_mode(void)
 {
     RG_LOGW("Entering recovery mode...\n");
 
@@ -285,21 +279,18 @@ static void recovery_mode(void)
     }
 }
 
-IRAM_ATTR void rg_system_tick(int busyTime)
+static void setup_gpios(void)
 {
-    statistics.busyTime += busyTime;
-    statistics.ticks++;
-    // WDT_RELOAD(WDT_TIMEOUT);
-}
-
-IRAM_ATTR int64_t rg_system_timer(void)
-{
-    return esp_timer_get_time();
-}
-
-rg_stats_t rg_system_get_stats(void)
-{
-    return statistics;
+// At boot time those pins are muxed to JTAG and can interfere with other things.
+#if CONFIG_IDF_TARGET_ESP32
+    gpio_reset_pin(GPIO_NUM_12);
+    gpio_reset_pin(GPIO_NUM_13);
+    gpio_reset_pin(GPIO_NUM_14);
+    gpio_reset_pin(GPIO_NUM_15);
+#endif
+#ifdef RG_GPIO_LED
+    gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
+#endif
 }
 
 rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options)
@@ -319,6 +310,8 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     update_memory_statistics();
     RG_LOGI("Internal memory: free=%d, total=%d\n", statistics.freeMemoryInt, statistics.totalMemoryInt);
     RG_LOGI("External memory: free=%d, total=%d\n", statistics.freeMemoryExt, statistics.totalMemoryExt);
+
+    setup_gpios();
 
     app = (rg_app_t){
         .name = esp_app->project_name,
@@ -368,7 +361,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         RG_LOGW("Button 0x%04X being held down...\n", rg_input_read_gamepad());
         vTaskDelay(pdMS_TO_TICKS(100));
         if (timeout == 0)
-            recovery_mode();
+            enter_recovery_mode();
     }
 
     rg_gui_draw_hourglass();
@@ -428,6 +421,23 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 rg_app_t *rg_system_get_app(void)
 {
     return &app;
+}
+
+rg_stats_t rg_system_get_stats(void)
+{
+    return statistics;
+}
+
+IRAM_ATTR void rg_system_tick(int busyTime)
+{
+    statistics.busyTime += busyTime;
+    statistics.ticks++;
+    // WDT_RELOAD(WDT_TIMEOUT);
+}
+
+IRAM_ATTR int64_t rg_system_timer(void)
+{
+    return esp_timer_get_time();
 }
 
 void rg_system_event(rg_event_t event, void *arg)
@@ -838,8 +848,6 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
 void rg_system_set_led(int value)
 {
 #ifdef RG_GPIO_LED
-    if (ledValue == -1)
-        gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
     if (ledValue != value)
         gpio_set_level(RG_GPIO_LED, value);
 #endif
