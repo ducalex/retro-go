@@ -61,15 +61,10 @@ void bus_log(const char *subs, const char *fmt, ...) {
 #if GNW_TARGET_MARIO != 0 | GNW_TARGET_ZELDA != 0
 
 #include "rom_manager.h"
-unsigned char *M68K_RAM=(void *)(uint32_t)(0); // 68K RAM
-
-#elif RETRO_GO
-extern unsigned char *ROM_DATA; // 68K Main Program (uncompressed)
-unsigned char M68K_RAM[MAX_RAM_SIZE];    // 68K RAM
-
+unsigned char *M68K_RAM=(void *)(uint32_t)(0); // 68K RAM 
 #else
 
-unsigned char ROM_DATA[MAX_ROM_SIZE]; // 68K Main Program (uncompressed)
+unsigned char *ROM_DATA; // 68K Main Program (uncompressed)
 unsigned char M68K_RAM[MAX_RAM_SIZE];    // 68K RAM
 #endif
 
@@ -113,23 +108,24 @@ void load_cartridge(unsigned char *buffer, size_t size)
     // Clear all volatile memory
     memset(M68K_RAM, 0, MAX_RAM_SIZE);
     memset(ZRAM, 0, MAX_Z80_RAM_SIZE);
-    // memset(ROM_DATA, 0, MAX_ROM_SIZE);
 
     // Set Z80 Memory as ZRAM
     z80_set_memory(ZRAM);
     z80_pulse_reset();
 
     // Copy file contents to CPU ROM memory
-    memcpy(ROM_DATA, buffer, size);
+    ROM_DATA = malloc(size); // MAX_ROM_SIZE
 
     #ifdef ROM_SWAP
     bus_log(__FUNCTION__,"--ROM swap mode--");
     for (int i=0; i < size;i+=2 )
     {
-        char z = ROM_DATA[i];
-        ROM_DATA[i]=ROM_DATA[i+1];
+        char z = buffer[i];
+        ROM_DATA[i]=buffer[i+1];
         ROM_DATA[i+1]=z;
     }
+    #else
+        memcpy(ROM_DATA, buffer, size);
     #endif
 
 
@@ -164,7 +160,7 @@ void power_on() {
 //   } else{
 //     gwenesis_SN76489_Init(3579545, GWENESIS_AUDIO_BUFFER_LENGTH_NTSC*60,AUDIO_FREQ_DIVISOR);
 //   }
-
+  
   gwenesis_SN76489_Init(3579545, 888*60,AUDIO_FREQ_DIVISOR);
 
 }
@@ -194,18 +190,18 @@ void reset_emulation() {
  *
  ******************************************************************************/
 void set_region()
-{
+{    
   /*
     old style : JUE characters
     J : Domestic 60Hz (Asia)
-    U : Oversea  60Hz (USA)
-    E : Oversea  50Hz (Europe)
+    U : Oversea  60Hz (USA) 
+    E : Oversea  50Hz (Europe) 
 
     new style : 1st character
     bit 0 : +1 Domestic 60Hz (Asia)
     bit 1 : +2 Domestc  50Hz (Asia)
-    bit 2:  +4 Oversea  60Hz (USA)
-    bit 3:  +4 Oversea  50Hz (Europe)
+    bit 2:  +4 Oversea  60Hz (USA) 
+    bit 3:  +4 Oversea  50Hz (Europe) 
   */
 
    // extern int mode_pal;
@@ -349,7 +345,7 @@ static inline unsigned int gwenesis_bus_map_io_address(unsigned int address)
  *
  ******************************************************************************/
 
-static inline
+static inline 
 unsigned int gwenesis_bus_map_address(unsigned int address) {
   // Mask address page
   unsigned int range = (address & 0xFF0000) >> 16;
@@ -384,7 +380,7 @@ static inline unsigned int gwenesis_bus_read_memory_8(unsigned int address) {
  bus_log(__FUNCTION__,"read8  %x", address);
 
   switch (gwenesis_bus_map_address(address)) {
-
+  
   case VDP_ADDR:
     return gwenesis_vdp_read_memory_8(address);
 
@@ -445,7 +441,7 @@ static inline unsigned int gwenesis_bus_read_memory_16(unsigned int address) {
     return gwenesis_io_read_ctrl(address & 0x1F);
 
   case Z80_CTRL:
-  //  ret_value = z80_read_ctrl(address & 0xFFFF);
+  //  ret_value = z80_read_ctrl(address & 0xFFFF); 
    // return ret_value | ret_value << 8;
     address &=0xFFFF;
         return (z80_read_ctrl(address) << 8) | z80_read_ctrl(address | 1);

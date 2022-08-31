@@ -2098,7 +2098,7 @@ static inline void YM2612Update(int16_t *buffer, int length)
     else if (out_fm[4] < -8192) out_fm[4] = -8192;
     if (out_fm[5] > 8191) out_fm[5] = 8191;
     else if (out_fm[5] < -8192) out_fm[5] = -8192;
-
+    
     /* stereo DAC channels outputs mixing  */
     #if 0
     lt  = ((out_fm[0]) & ym2612.OPN.pan[0]);
@@ -2178,7 +2178,7 @@ void YM2612Write(unsigned int a, unsigned int v,  int target)
 
   //Sync
   if (GWENESIS_AUDIO_ACCURATE == 1)
-    ym2612_run(target);
+    ym2612_run(target); 
 
   v &= 0xff;  /* adjust to 8 bit bus */
 

@@ -227,7 +227,7 @@ int gwenesis_vdp_vcounter()
     assert(vc < 0x200);
     */
     if (VERSION_PAL && mode_pal && (vc >= 267))
-        vc = scan_line - 58;
+        vc = scan_line - 58; 
     else if (VERSION_PAL && (mode_pal==0) && (vc >= 259))
         vc = scan_line  - 42;
     else if ((VERSION_PAL == 0 ) && (vc >= 235))
@@ -273,7 +273,7 @@ bool vblank(void)
         return ((vc >= 0xF0) && (vc < 0x1FF));
     else
         return ((vc >= 0xE0) && (vc < 0x1FF));
-
+        
 }
 
 /******************************************************************************
@@ -347,7 +347,7 @@ void gwenesis_vdp_vram_write(unsigned int address, unsigned int value)
     SAT_CACHE[address - REG5_SAT_ADDRESS] = value;
 }
 
-static inline __attribute__((always_inline))
+static inline __attribute__((always_inline)) 
 unsigned short status_register_r(void)
 {
     unsigned short status = gwenesis_vdp_status; // & 0xF800;
@@ -408,7 +408,7 @@ unsigned int gwenesis_vdp_get_reg(int reg)
  *   DMA process to fill memory
  *
  ******************************************************************************/
-static inline __attribute__((always_inline))
+static inline __attribute__((always_inline)) 
 void gwenesis_vdp_dma_fill(unsigned short value)
 {
   //vdpm_log(__FUNCTION__,"@%x len:%x val:%x",REG21_DMA_SRCADDR_LOW,REG19_DMA_LENGTH,value);
@@ -426,7 +426,7 @@ void gwenesis_vdp_dma_fill(unsigned short value)
         (code_reg&0xF)==1 ? "VRAM" : ( (code_reg&0xF)==3 ? "CRAM" : "VSRAM"),
         address_reg, dma_length, REG15_DMA_INCREMENT, value>>8);
         */
-
+        
   switch (code_reg & 0xF) {
   case 0x1:
     do {
@@ -491,7 +491,7 @@ void gwenesis_vdp_dma_fill(unsigned short value)
  *   DMA process to copy from m68k to memory
  *
  ******************************************************************************/
-static inline __attribute__((always_inline))
+static inline __attribute__((always_inline)) 
 void gwenesis_vdp_dma_m68k()
 {
 
@@ -513,7 +513,7 @@ void gwenesis_vdp_dma_m68k()
         (src_addr_high | src_addr_low) << 1, address_reg, dma_length, REG15_DMA_INCREMENT);
     */
 
-    /* Source is :
+    /* Source is : 
         68K_RAM if dma_source_high == 0x00FF : FETCH16RAM(dma_source_low << 1)
         68K_ROM otherwise                    : FETCH16ROM((dma_source_high | dma_source_low) << 1))
     */
@@ -578,7 +578,7 @@ void gwenesis_vdp_dma_m68k()
     /* source is 68K ROM */
     } else {
 
-     // unsigned int dma_source_address = (dma_source_high | dma_source_low) << 1;
+     // unsigned int dma_source_address = (dma_source_high | dma_source_low) << 1; 
 
       switch (code_reg & 0xF) {
 
@@ -851,7 +851,7 @@ void gwenesis_vdp_write_data_port_16(unsigned int value)
             //unsigned short pixel_shadow,pixel_highlight;
 
             // Blue >> 9 << 2
-            pixel = (value & 0xe00) >> 7;
+            pixel = (value & 0xe00) >> 7; 
             // Green  >> 5 << 5 << 3
             pixel |= (value & 0x0e0) << 3;
             // Red  >>1 << 11 << 2
@@ -914,7 +914,7 @@ unsigned int gwenesis_vdp_get_status()
  *   and return as byte
  *
  ******************************************************************************/
- //static inline
+ //static inline 
 unsigned int gwenesis_vdp_read_memory_8(unsigned int address)
 {
     unsigned int ret = gwenesis_vdp_read_memory_16(address & ~1);
@@ -933,19 +933,19 @@ unsigned int gwenesis_vdp_read_memory_8(unsigned int address)
  *   and return as word
  *
  ******************************************************************************/
- //static inline
+ //static inline 
 unsigned int gwenesis_vdp_read_memory_16(unsigned int address)
 {
-
+    
     address &= 0x1F;
-
+    
     if (address < 0X4)
       return gwenesis_vdp_read_data_port_16();
     else if (address < 0x8)
       return status_register_r();
     else if (address < 0xf)
       return gwenesis_vdp_hvcounter();
-    else
+    else 
       return 0xff;
 
 }
@@ -956,7 +956,7 @@ unsigned int gwenesis_vdp_read_memory_16(unsigned int address)
  *   Write an byte value to mapped memory on specified address
  *
  ******************************************************************************/
- //static inline
+ //static inline 
 void gwenesis_vdp_write_memory_8(unsigned int address, unsigned int value)
 {
   gwenesis_vdp_write_memory_16(address & ~1, (value << 8) | value);

@@ -197,7 +197,7 @@ void draw_pattern_fliph_sprite(uint8_t *scr, uint32_t p, uint8_t attrs)
 static inline __attribute__((always_inline))
 void draw_pattern_nofliph_sprite_over_planes(uint8_t *scr, uint32_t p, uint8_t attrs)
 {
-  if (p == 0) return;
+  if (p == 0) return; 
 
   /* High priority */
   if (attrs & PIXATTR_HIPRI) {
@@ -225,7 +225,7 @@ void draw_pattern_nofliph_sprite_over_planes(uint8_t *scr, uint32_t p, uint8_t a
   if (((PIX5(p))) && ((scr[5] & PIXATTR_SPRITE_HIPRI) == 0)) scr[5] = attrs | (PIX5(p));
   if (((PIX6(p))) && ((scr[6] & PIXATTR_SPRITE_HIPRI) == 0)) scr[6] = attrs | (PIX6(p));
   if (((PIX7(p))) && ((scr[7] & PIXATTR_SPRITE_HIPRI) == 0)) scr[7] = attrs | (PIX7(p));
-
+  
   }
 }
 
@@ -260,7 +260,7 @@ void draw_pattern_fliph_sprite_over_planes(uint8_t *scr, uint32_t p, uint8_t att
   if (((PIX2(p))) && ((scr[5] & PIXATTR_SPRITE_HIPRI) == 0)) scr[5] = attrs | (PIX2(p));
   if (((PIX1(p))) && ((scr[6] & PIXATTR_SPRITE_HIPRI) == 0)) scr[6] = attrs | (PIX1(p));
   if (((PIX0(p))) && ((scr[7] & PIXATTR_SPRITE_HIPRI) == 0)) scr[7] = attrs | (PIX0(p));
-
+  
   }
 
 }
@@ -714,7 +714,7 @@ void draw_line_aw(int line) {
  ******************************************************************************/
 
 //__attribute__((optimize("unroll-loops")))
-static inline __attribute__((always_inline))
+static inline __attribute__((always_inline)) 
 void draw_sprites_over_planes(int line)
 {
     uint8_t *scr;
@@ -740,7 +740,7 @@ void draw_sprites_over_planes(int line)
         uint8_t *table = start_table + sidx*8;
         uint8_t *cache = SAT_CACHE + sidx*8;
         //uint8_t *cache = start_table + sidx*8;
-
+        
 
         int sy = ((cache[0] & 0x3) << 8) | cache[1];
         int sx = ((table[6] & 0x3) << 8) | table[7];
@@ -822,7 +822,7 @@ void draw_sprites_over_planes(int line)
   //  if (overdraw)
   //      sprite_collision = true;
 }
-static inline __attribute__((always_inline))
+static inline __attribute__((always_inline)) 
 void draw_sprites(int line)
 {
   uint8_t *scr;

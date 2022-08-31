@@ -29,12 +29,12 @@
     - implemented support for global cycle count (shared by 68k & Z80 CPU)
     - added support for interrupt latency (Sesame's Street Counting Cafe, Fatal Rewind)
     - added proper cycle use on reset
-    - added cycle accurate timings for MUL/DIV instructions (thanks to Jorge Cwik !)
+    - added cycle accurate timings for MUL/DIV instructions (thanks to Jorge Cwik !) 
     - fixed undocumented flags for DIV instructions (Blood Shot)
     - fixed undocumented behaviors for ABCD/SBCD/NBCD instructions (thanks to flamewing for his test ROM)
     - improved auto-vectored interrupts acknowledge cycle timing accuracy
     - added MAIN-CPU & SUB-CPU support for Mega CD emulation
-
+    
   */
 
 /* ======================================================================== */
@@ -155,14 +155,9 @@
 
 	extern unsigned char *ROM_DATA;
 	extern unsigned char *M68K_RAM;
-
-#elif RETRO_GO
-	extern unsigned char *ROM_DATA;
-	extern unsigned char M68K_RAM[];
-
 #else
 
-	extern unsigned char ROM_DATA[];
+	extern unsigned char *ROM_DATA;
 	extern unsigned char M68K_RAM[];
 #endif
 
@@ -298,7 +293,7 @@ typedef enum
 
 
 /* 68k memory map structure */
-typedef struct
+typedef struct 
 {
   unsigned char *base;                             /* memory-based access (ROM, RAM) */
   unsigned int (*read8)(unsigned int address);               /* I/O byte read access */
@@ -321,7 +316,7 @@ typedef struct
 
   cpu_idle_t poll;      /* polling detection */
 
-  uint cycles;          /* current master cycle count */
+  uint cycles;          /* current master cycle count */ 
   uint cycle_end;       /* aimed master cycle count for current execution frame */
 
   uint dar[16];         /* Data and Address Registers */
