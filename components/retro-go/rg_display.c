@@ -16,11 +16,6 @@
 #define SPI_BUFFER_COUNT (6)
 #define SPI_BUFFER_LENGTH (4 * 320) // In pixels (uint16)
 
-#if CONFIG_IDF_TARGET_ESP32
-#ifndef SPI_DMA_CH_AUTO
-    #define SPI_DMA_CH_AUTO 1
-#endif
-#endif
 
 static spi_device_handle_t spi_dev;
 static QueueHandle_t spi_transactions;
@@ -219,11 +214,6 @@ static void lcd_init(void)
 #endif
 
     // Setup Data/Command line
-    // gpio_iomux_out(RG_GPIO_LCD_DC, PIN_FUNC_GPIO, false);
-#if CONFIG_IDF_TARGET_ESP32
-    // gpio_iomux_out(RG_GPIO_LCD_DC, PIN_FUNC_GPIO, false);
-    PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[RG_GPIO_LCD_DC], PIN_FUNC_GPIO);
-#endif
     gpio_set_direction(RG_GPIO_LCD_DC, GPIO_MODE_OUTPUT);
     gpio_set_level(RG_GPIO_LCD_DC, 1);
 

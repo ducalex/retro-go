@@ -35,11 +35,6 @@ static const char *SETTING_OUTPUT = "AudioSink";
 static const char *SETTING_VOLUME = "Volume";
 static const char *SETTING_FILTER = "AudioFilter";
 
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 2, 0)
-    #define I2S_COMM_FORMAT_STAND_I2S (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB)
-    #define I2S_COMM_FORMAT_STAND_MSB (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_LSB)
-#endif
-
 #ifdef RG_TARGET_QTPY_GAMER
     #define SPEAKER_DAC_MODE I2S_DAC_CHANNEL_LEFT_EN
 #else
