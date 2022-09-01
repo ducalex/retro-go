@@ -12,6 +12,8 @@
 #define TRY(x) if ((err = (x)) != ESP_OK) { goto fail; }
 
 static bool i2c_initialized = false;
+static bool gpio_extender_initialized = false;
+static uint8_t gpio_extender_address = 0x00;
 
 
 bool rg_i2c_init(void)
@@ -118,4 +120,76 @@ uint8_t rg_i2c_read_byte(uint8_t addr, uint8_t reg)
 bool rg_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t value)
 {
     return rg_i2c_write(addr, reg, &value, 1);
+}
+
+#define AW9523_REG_CHIPID 0x10     ///< Register for hardcode chip ID
+#define AW9523_REG_SOFTRESET 0x7F  ///< Register for soft resetting
+#define AW9523_REG_INPUT0 0x00     ///< Register for reading input values
+#define AW9523_REG_OUTPUT0 0x02    ///< Register for writing output values
+#define AW9523_REG_CONFIG0 0x04    ///< Register for configuring direction
+#define AW9523_REG_INTENABLE0 0x06 ///< Register for enabling interrupt
+#define AW9523_REG_GCR 0x11        ///< Register for general configuration
+#define AW9523_REG_LEDMODE 0x12    ///< Register for configuring const current
+
+bool rg_i2c_gpio_init(void)
+{
+    if (gpio_extender_initialized)
+        return true;
+
+    if (!i2c_initialized && !rg_i2c_init())
+        return false;
+
+    gpio_extender_initialized = true;
+    gpio_extender_address = 0x58;
+
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_SOFTRESET, 0);
+    vTaskDelay(pdMS_TO_TICKS(10));
+
+    uint8_t id = rg_i2c_read_byte(gpio_extender_address, AW9523_REG_CHIPID);
+    RG_LOGI("AW9523 ID code 0x%x found\n", id);
+    assert(id == 0x23);
+
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0, 0xFF);
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0+1, 0xFF);
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_LEDMODE, 0xFF);
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_LEDMODE+1, 0xFF);
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_GCR, 1<<4);
+
+    return true;
+}
+
+bool rg_i2c_gpio_deinit(void)
+{
+    gpio_extender_initialized = false;
+    gpio_extender_address = 0;
+    return true;
+}
+
+bool rg_i2c_gpio_set_direction(int pin, int mode)
+{
+    uint8_t reg = AW9523_REG_CONFIG0 + (pin >> 3), mask = 1 << (pin & 7);
+    uint8_t val = rg_i2c_read_byte(gpio_extender_address, reg);
+    return rg_i2c_write_byte(gpio_extender_address, reg, mode ? (val | mask) : (val & ~mask));
+}
+
+uint8_t rg_i2c_gpio_read_port(int port)
+{
+    return rg_i2c_read_byte(gpio_extender_address, AW9523_REG_INPUT0 + port);
+}
+
+bool rg_i2c_gpio_write_port(int port, uint8_t value)
+{
+    return rg_i2c_write_byte(gpio_extender_address, AW9523_REG_OUTPUT0 + port, value);
+}
+
+int rg_i2c_gpio_get_level(int pin)
+{
+    return (rg_i2c_gpio_read_port(pin >> 3) >> (pin & 7)) & 1;
+}
+
+bool rg_i2c_gpio_set_level(int pin, int level)
+{
+    uint8_t reg = AW9523_REG_OUTPUT0 + (pin >> 3), mask = 1 << (pin & 7);
+    uint8_t val = rg_i2c_read_byte(gpio_extender_address, reg);
+    return rg_i2c_write_byte(gpio_extender_address, reg, level ? (val | mask) : (val & ~mask));
 }

@@ -19,21 +19,6 @@ static uint32_t gamepad_state = -1; // _Atomic
 static int battery_level = -1;
 
 
-#if RG_GAMEPAD_DRIVER == 4
-bool aw_digitalWrite(uint8_t pin, bool value)
-{
-    uint16_t pins = (rg_i2c_read_byte(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0+1) << 8)
-                  | (rg_i2c_read_byte(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0));
-    if (value) {
-        pins |= 1UL << pin;
-    } else {
-        pins &= ~(1UL << pin);
-    }
-    return rg_i2c_write_byte(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0, pins & 0xFF)
-        && rg_i2c_write_byte(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0+1, pins >> 8);
-}
-#endif
-
 static inline uint32_t gamepad_read(void)
 {
     uint32_t state = 0;
@@ -80,9 +65,7 @@ static inline uint32_t gamepad_read(void)
 
 #elif RG_GAMEPAD_DRIVER == 4  // I2C via AW9523
 
-    uint16_t aw_buttons = (rg_i2c_read_byte(AW9523_DEFAULT_ADDR, AW9523_REG_INPUT0+1) << 8)
-                        | (rg_i2c_read_byte(AW9523_DEFAULT_ADDR, AW9523_REG_INPUT0));
-    aw_buttons = ~aw_buttons;
+    uint16_t aw_buttons = ~(rg_i2c_gpio_read_port(0) | rg_i2c_gpio_read_port(1) << 8);
 
     if (aw_buttons & (1<<AW_GAMEPAD_IO_UP)) state |= RG_KEY_UP;
     if (aw_buttons & (1<<AW_GAMEPAD_IO_DOWN)) state |= RG_KEY_DOWN;
@@ -215,43 +198,20 @@ void rg_input_init(void)
 
     const char *driver = "QTPY-AW9523";
 
-    rg_i2c_init();
+    rg_i2c_gpio_init();
+    rg_i2c_gpio_set_direction(AW_TFT_RESET, 0);
+    rg_i2c_gpio_set_direction(AW_TFT_BACKLIGHT, 0);
+    rg_i2c_gpio_set_direction(AW_HEADPHONE_EN, 0);
 
-    // soft reset
-    RG_LOGI("AW9523 Reset\n");
-    rg_i2c_write_byte(AW9523_DEFAULT_ADDR, AW9523_REG_SOFTRESET, 0);
-    vTaskDelay(pdMS_TO_TICKS(10));
-
-    // check id?
-    uint8_t id=rg_i2c_read_byte(AW9523_DEFAULT_ADDR, AW9523_REG_CHIPID);
-    RG_LOGI("AW9523 ID code 0x%x found\n", id);
-    assert(id == 0x23);
-
-    // set gpio to input!
-    uint16_t buttonmask = (1<<AW_GAMEPAD_IO_UP) | (1<<AW_GAMEPAD_IO_DOWN) |
-      (1<<AW_GAMEPAD_IO_LEFT) | (1<<AW_GAMEPAD_IO_RIGHT) | (1<<AW_GAMEPAD_IO_SELECT) |
-      (1<<AW_GAMEPAD_IO_START) | (1<<AW_GAMEPAD_IO_A) | (1<<AW_GAMEPAD_IO_B) |
-      (1<<AW_GAMEPAD_IO_MENU) | (1<<AW_GAMEPAD_IO_OPTION) | (1<<AW_CARDDET);
-    rg_i2c_write_byte(AW9523_DEFAULT_ADDR, AW9523_REG_CONFIG0, buttonmask & 0xFF);
-    rg_i2c_write_byte(AW9523_DEFAULT_ADDR, AW9523_REG_CONFIG0+1, buttonmask >> 8);
-
-    rg_i2c_write_byte(AW9523_DEFAULT_ADDR, AW9523_REG_LEDMODE, 0xFF);
-    rg_i2c_write_byte(AW9523_DEFAULT_ADDR, AW9523_REG_LEDMODE+1, 0xFF);
-
-    // pushpull mode
-    rg_i2c_write_byte(AW9523_DEFAULT_ADDR, AW9523_REG_GCR, 1<<4);
-
-    // turn on backlight!
-    aw_digitalWrite(AW_TFT_BACKLIGHT, 1);
-    // turn on headphones
-    aw_digitalWrite(AW_HEADPHONE_EN, 1);
+    rg_i2c_gpio_set_level(AW_TFT_BACKLIGHT, 1);
+    rg_i2c_gpio_set_level(AW_HEADPHONE_EN, 1);
 
     // tft reset
-    aw_digitalWrite(AW_TFT_RESET, 0);
+    rg_i2c_gpio_set_level(AW_TFT_RESET, 0);
     vTaskDelay(pdMS_TO_TICKS(10));
-    aw_digitalWrite(AW_TFT_RESET, 1);
+    rg_i2c_gpio_set_level(AW_TFT_RESET, 1);
     vTaskDelay(pdMS_TO_TICKS(10));
-    
+
 #elif RG_GAMEPAD_DRIVER == 5 //I2C ESPLAY
 
 	const char *driver = "ESPLAY-I2C";

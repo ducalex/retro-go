@@ -37,17 +37,6 @@
 #define RG_GPIO_I2C_SDA             GPIO_NUM_25
 #define RG_GPIO_I2C_SCL             GPIO_NUM_33
 
-#define AW9523_DEFAULT_ADDR 0x58
-#define AW9523_REG_CHIPID 0x10     ///< Register for hardcode chip ID
-#define AW9523_REG_SOFTRESET 0x7F  ///< Register for soft resetting
-#define AW9523_REG_INPUT0 0x00     ///< Register for reading input values
-#define AW9523_REG_OUTPUT0 0x02    ///< Register for writing output values
-#define AW9523_REG_CONFIG0 0x04    ///< Register for configuring direction
-#define AW9523_REG_INTENABLE0 0x06 ///< Register for enabling interrupt
-#define AW9523_REG_GCR 0x11        ///< Register for general configuration
-#define AW9523_REG_LEDMODE 0x12    ///< Register for configuring const current
-
-
 // Built-in gamepad
 #define AW_GAMEPAD_IO_UP 10
 #define AW_GAMEPAD_IO_DOWN 13

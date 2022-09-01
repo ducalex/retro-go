@@ -296,7 +296,7 @@ void rg_audio_set_mute(bool mute)
     #if defined(RG_GPIO_SND_AMP_ENABLE)
         gpio_set_level(RG_GPIO_SND_AMP_ENABLE, !mute);
     #elif defined(RG_TARGET_QTPY_GAMER)
-        // aw_digitalWrite(AW_HEADPHONE_EN, !mute);
+        rg_i2c_gpio_set_level(AW_HEADPHONE_EN, !mute);
     #else
         // nothing to do
     #endif

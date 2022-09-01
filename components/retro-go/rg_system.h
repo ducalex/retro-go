@@ -231,6 +231,10 @@ void *rg_alloc(size_t size, uint32_t caps);
 
 /* Utilities */
 
+// #define gpio_set_level(num, level) (((num) & I2C) ? rg_gpio_set_level((num) & ~I2C) : (gpio_set_level)(num, level) == ESP_OK)
+// #define gpio_get_level(num, level) (((num) & I2C) ? rg_gpio_set_level((num) & ~I2C) : (gpio_get_level)(num, level))
+// #define gpio_set_direction(num, mode) (((num) & I2C) ? rg_gpio_set_direction((num) & ~I2C) : (gpio_set_direction)(num, level) == ESP_OK)
+
 // Functions from esp-idf, we don't include their header but they will be linked
 extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 
