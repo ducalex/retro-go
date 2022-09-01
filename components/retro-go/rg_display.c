@@ -219,11 +219,11 @@ static void lcd_init(void)
     gpio_set_direction(RG_GPIO_LCD_DC, GPIO_MODE_OUTPUT);
     gpio_set_level(RG_GPIO_LCD_DC, 1);
 
-#if defined(RG_GPIO_LCD_RESET)
-    gpio_set_direction(RG_GPIO_LCD_RESET, GPIO_MODE_OUTPUT);
-    gpio_set_level(RG_GPIO_LCD_RESET, 0);
-    vTaskDelay(pdMS_TO_TICKS(10));
-    gpio_set_level(RG_GPIO_LCD_RESET, 1);
+#if defined(RG_GPIO_LCD_RST)
+    gpio_set_direction(RG_GPIO_LCD_RST, GPIO_MODE_OUTPUT);
+    gpio_set_level(RG_GPIO_LCD_RST, 0);
+    vTaskDelay(pdMS_TO_TICKS(100));
+    gpio_set_level(RG_GPIO_LCD_RST, 1);
     vTaskDelay(pdMS_TO_TICKS(10));
 #endif
 
@@ -292,10 +292,8 @@ static void lcd_init(void)
     ILI9341_CMD(0xC5, {0x32, 0x3C});                            // VCM control
     ILI9341_CMD(0xC7, {0x91});                                  // VCM control2
     ILI9341_CMD(0x36, {(0x20|0x80|0x08)});                      // Memory Access Control
-
     ILI9341_CMD(0x36, {(0x40|0x80|0x08)});                      // Memory Access Control
     //ILI9341_CMD(0x21, {0x80});                                  // invert colors
-
     ILI9341_CMD(0xB1, {0x00, 0x10});                            // Frame Rate Control (1B=70, 1F=61, 10=119)
     ILI9341_CMD(0xB6, {0x0A, 0xA2});                            // Display Function Control
     ILI9341_CMD(0xF6, {0x01, 0x30});
@@ -306,10 +304,6 @@ static void lcd_init(void)
     ILI9341_CMD(0x11, {}); // Exit Sleep
     ILI9341_CMD(0x29, {}); // Display on
 #elif RG_SCREEN_TYPE == 4
-	gpio_set_direction(RG_GPIO_LCD_RST,GPIO_MODE_OUTPUT);
-	gpio_set_level(RG_GPIO_LCD_RST,0);
-	vTaskDelay(120 / portTICK_RATE_MS);
-	gpio_set_level(RG_GPIO_LCD_RST,1);
 	ILI9341_CMD(0x01, {});  // Reset
 	vTaskDelay(120 / portTICK_RATE_MS);
 	ILI9341_CMD(0x3A, {0X05});  //65k mode
