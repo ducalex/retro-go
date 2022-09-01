@@ -82,6 +82,12 @@ void rg_storage_init(void)
     slot_config.dma_channel = SPI_DMA_CH_AUTO;
 
     esp_err_t err = esp_vfs_fat_sdmmc_mount(RG_ROOT_PATH, &host_config, &slot_config, &mount_config, NULL);
+    if (err == ESP_ERR_TIMEOUT || err == ESP_ERR_INVALID_RESPONSE || err == ESP_ERR_INVALID_CRC)
+    {
+        RG_LOGW("SD Card mounting failed (0x%x), retrying at lower speed...\n", err);
+        host_config.max_freq_khz = SDMMC_FREQ_PROBING;
+        err = esp_vfs_fat_sdmmc_mount(RG_ROOT_PATH, &host_config, &slot_config, &mount_config, NULL);
+    }
 
 #elif RG_STORAGE_DRIVER == 2
 
@@ -103,6 +109,12 @@ void rg_storage_init(void)
 #endif
 
     esp_err_t err = esp_vfs_fat_sdmmc_mount(RG_ROOT_PATH, &host_config, &slot_config, &mount_config, NULL);
+    if (err == ESP_ERR_TIMEOUT || err == ESP_ERR_INVALID_RESPONSE || err == ESP_ERR_INVALID_CRC)
+    {
+        RG_LOGW("SD Card mounting failed (0x%x), retrying at lower speed...\n", err);
+        host_config.max_freq_khz = SDMMC_FREQ_PROBING;
+        err = esp_vfs_fat_sdmmc_mount(RG_ROOT_PATH, &host_config, &slot_config, &mount_config, NULL);
+    }
 
 #elif RG_STORAGE_DRIVER == 4
 
