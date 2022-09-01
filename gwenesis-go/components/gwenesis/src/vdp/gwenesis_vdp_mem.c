@@ -65,7 +65,7 @@ void vdpm_log(const char *subs, const char *fmt, ...) {
   extern uint8_t emulator_framebuffer[1024*64];
   unsigned char* VRAM = &emulator_framebuffer[0];
 #elif RETRO_GO
-    extern unsigned char *VRAM;
+    unsigned char *VRAM;
 #else
   unsigned char VRAM[VRAM_MAX_SIZE];
 #endif

@@ -16,11 +16,9 @@
 #include "gwenesis_sn76489.h"
 
 #define AUDIO_SAMPLE_RATE (53267)
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 120 + 1)
+#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 1)
 
-unsigned char *ROM_DATA;
-size_t ROM_DATA_LENGTH;
-unsigned char *VRAM;
+extern unsigned char* VRAM;
 extern int zclk;
 int system_clock;
 int scan_line;
@@ -228,18 +226,15 @@ void app_main(void)
     RG_LOGI("Genesis start\n");
 
     FILE *fp = fopen(app->romPath, "rb");
-    if (fp)
-    {
-        ROM_DATA = rg_alloc(0x300000, MEM_SLOW);
-        ROM_DATA_LENGTH = fread(ROM_DATA, 1, 0x300000, fp);
-        fclose(fp);
-        RG_LOGI("ROM SIZE = %d\n", ROM_DATA_LENGTH);
-    } else {
+    if (!fp)
         RG_PANIC("Rom load failed");
-    }
+    void *rom_data = malloc(0x300000);
+    size_t rom_size = fread(rom_data, 1, 0x300000, fp);
+    fclose(fp);
 
-    RG_LOGI("load_cartridge()\n");
-    load_cartridge(ROM_DATA, ROM_DATA_LENGTH);
+    RG_LOGI("load_cartridge(%p, %d)\n", rom_data, rom_size);
+    load_cartridge(rom_data, rom_size);
+    free(rom_data);
 
     RG_LOGI("power_on()\n");
     power_on();
@@ -307,7 +302,7 @@ void app_main(void)
         system_clock = 0;
         zclk = 0;
 
-        ym2612_clock = INT_MAX;
+        ym2612_clock = 0;
         ym2612_index = 0;
 
         sn76489_clock = INT_MAX;
@@ -393,5 +388,7 @@ void app_main(void)
 
         int elapsed = get_elapsed_time_since(startTime);
         rg_system_tick(elapsed);
+
+        rg_audio_submit(gwenesis_ym2612_buffer, AUDIO_BUFFER_LENGTH >> 1);
     }
 }
