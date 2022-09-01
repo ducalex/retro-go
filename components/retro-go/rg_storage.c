@@ -10,7 +10,7 @@
 
 #include "rg_system.h"
 
-static esp_err_t sdcard_mount = ESP_FAIL;
+static bool disk_mounted = false;
 static bool disk_led = true;
 
 #define SETTING_DISK_ACTIVITY "DiskActivity"
@@ -27,6 +27,7 @@ bool rg_storage_get_activity_led(void)
     return disk_led;
 }
 
+#if RG_STORAGE_DRIVER == 1 || RG_STORAGE_DRIVER == 2
 static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
 {
     bool use_led = (disk_led && !rg_system_get_led());
@@ -47,16 +48,17 @@ static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
 
     return ret;
 }
+#endif
 
 void rg_storage_init(void)
 {
-    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
+    esp_vfs_fat_mount_config_t mount_config = {
         .format_if_mount_failed = false,
         .allocation_unit_size = 0,
         .max_files = 8,
     };
 
-    if (sdcard_mount == ESP_OK)
+    if (disk_mounted)
         rg_storage_deinit();
 
 #if RG_STORAGE_DRIVER == 1
@@ -64,8 +66,10 @@ void rg_storage_init(void)
     sdmmc_host_t host_config = SDSPI_HOST_DEFAULT();
     host_config.flags = SDMMC_HOST_FLAG_SPI;
     host_config.slot = RG_GPIO_SDSPI_HOST;
-    host_config.max_freq_khz = SDMMC_FREQ_DEFAULT; // SDMMC_FREQ_HIGHSPEED
     host_config.do_transaction = &sdcard_do_transaction;
+#if RG_STORAGE_HIGHSPEED
+    host_config.max_freq_khz = SDMMC_FREQ_HIGHSPEED;
+#endif
     // These are for esp-idf 4.2 compatibility
     host_config.init = &sdspi_host_init;
     host_config.deinit = &sdspi_host_deinit;
@@ -77,43 +81,49 @@ void rg_storage_init(void)
     slot_config.gpio_cs = RG_GPIO_SDSPI_CS;
     slot_config.dma_channel = SPI_DMA_CH_AUTO;
 
+    esp_err_t err = esp_vfs_fat_sdmmc_mount(RG_ROOT_PATH, &host_config, &slot_config, &mount_config, NULL);
+
 #elif RG_STORAGE_DRIVER == 2
 
     sdmmc_host_t host_config = SDMMC_HOST_DEFAULT();
     host_config.flags = SDMMC_HOST_FLAG_1BIT;
-#if RG_SDSPI_HIGHSPEED == 1
-    host_config.max_freq_khz = SDMMC_FREQ_HIGHSPEED;
-#else
-	host_config.max_freq_khz = SDMMC_FREQ_DEFAULT;
-#endif
     host_config.do_transaction = &sdcard_do_transaction;
-#if CONFIG_IDF_TARGET_ESP32
+#if RG_STORAGE_HIGHSPEED
+    host_config.max_freq_khz = SDMMC_FREQ_HIGHSPEED;
+#endif
+
     sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
     slot_config.width = 1;
-#elif defined(RG_TARGET_ESPLAY_S3)
-	sdmmc_slot_config_t slot_config = {
-			.width = 1, .flags = 0,
-			.d0 = RG_GPIO_SDSPI_D0, .d1 = -1, .d2 = -1, .d3 = -1, .d4 = -1, .d5 = -1, .d6 = -1, .d7 = -1,
-			.clk = RG_GPIO_SDSPI_CLK, .cmd = RG_GPIO_SDSPI_CMD, .cd = -1, .wp = -1,
-	};
-#else
-    #error "No available SD Card driver slot"
+#if SOC_SDMMC_USE_GPIO_MATRIX
+    slot_config.clk = RG_GPIO_SDSPI_CLK,
+    slot_config.cmd = RG_GPIO_SDSPI_CMD,
+    slot_config.d0 = RG_GPIO_SDSPI_D0,
+    // d1 and d3 normally not used in width=1 but sdmmc_host_init_slot saves them, so just in case
+    slot_config.d1 = slot_config.d3 = -1;
 #endif
 
+    esp_err_t err = esp_vfs_fat_sdmmc_mount(RG_ROOT_PATH, &host_config, &slot_config, &mount_config, NULL);
+
+#elif RG_STORAGE_DRIVER == 4
+
+    wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
+    esp_err_t err = esp_vfs_fat_spiflash_mount(RG_ROOT_PATH, "storage", &s_wl_handle)
+
 #else
 
-    #error "No SD Card driver selected"
+    #warning "No supported storage driver selected!"
+    esp_err_t err = ESP_ERR_NOT_SUPPORTED;
 
 #endif
 
-    sdcard_mount = esp_vfs_fat_sdmmc_mount(RG_ROOT_PATH, &host_config, &slot_config, &mount_config, NULL);
-    if (sdcard_mount == ESP_OK)
-        RG_LOGI("SD Card mounted at %s. driver=%d\n", RG_ROOT_PATH, RG_STORAGE_DRIVER);
+    if (err == ESP_OK)
+        RG_LOGI("Storage mounted at %s. driver=%d\n", RG_ROOT_PATH, RG_STORAGE_DRIVER);
     else
-        RG_LOGE("SD Card mounting failed. driver=%d, err=0x%x\n", RG_STORAGE_DRIVER, sdcard_mount);
+        RG_LOGE("Storage mounting failed. driver=%d, err=0x%x\n", RG_STORAGE_DRIVER, err);
 
     rg_settings_init();
 
+    disk_mounted = err == ESP_OK;
     disk_led = rg_settings_get_number(NS_GLOBAL, SETTING_DISK_ACTIVITY, 1);
 }
 
@@ -121,25 +131,30 @@ void rg_storage_deinit(void)
 {
     rg_storage_commit();
 
+#if RG_STORAGE_DRIVER == 1 || RG_STORAGE_DRIVER == 2
     esp_err_t err = esp_vfs_fat_sdmmc_unmount();
-    if (err != ESP_OK)
-    {
-        RG_LOGE("SD Card unmounting failed. err=0x%x\n", err);
-        return;
-    }
+#else
+    esp_err_t err = ESP_ERR_NOT_SUPPORTED;
+#endif
 
-    RG_LOGI("SD Card unmounted.\n");
-    sdcard_mount = ESP_FAIL;
+    if (err == ESP_OK)
+        RG_LOGI("Storage unmounted.\n");
+    else
+        RG_LOGE("Storage unmounting failed. err=0x%x\n", err);
+
+    disk_mounted = false;
 }
 
 bool rg_storage_ready(void)
 {
-    return sdcard_mount == ESP_OK;
+    return disk_mounted;
 }
 
 void rg_storage_commit(void)
 {
-    // This shouldn't be done here, but changing it affects too many files right now...
+    if (!disk_mounted)
+        return;
+
     rg_settings_commit();
     // flush buffers();
 }

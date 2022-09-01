@@ -4,7 +4,9 @@
 #define RG_TARGET_NAME             "ESPLAY-S3"
 
 // Storage
-#define RG_STORAGE_DRIVER           2   // 1 = SDSPI, 2 = SDMMC, 3 = USB
+#define RG_STORAGE_DRIVER           2   // 1 = SDSPI, 2 = SDMMC, 3 = USB, 4 = Flash
+#define RG_STORAGE_HIGHSPEED        0
+
 // Audio
 #define RG_AUDIO_USE_INT_DAC        0
 #define RG_AUDIO_USE_EXT_DAC        1
@@ -59,7 +61,6 @@
 #define RG_GPIO_SDSPI_CMD          GPIO_NUM_14
 #define RG_GPIO_SDSPI_CLK          GPIO_NUM_21
 #define RG_GPIO_SDSPI_D0           GPIO_NUM_17
-#define RG_SDSPI_HIGHSPEED         0
 
 // External I2S DAC
 #define RG_GPIO_SND_I2S_BCK         38
