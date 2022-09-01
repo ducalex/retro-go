@@ -97,6 +97,26 @@ static inline uint32_t gamepad_read(void)
 
     battery_level = 99;
 
+#elif RG_GAMEPAD_DRIVER == 5  // I2C ESPLAY
+
+	uint8_t data[5];
+    if (rg_i2c_read(0x20, -1, &data, 5))
+    {
+        int buttons = ~((data[2] << 8) | data[1]);
+
+        if (buttons & (1 << 2)) state |= RG_KEY_UP;
+        if (buttons & (1 << 3)) state |= RG_KEY_DOWN;
+        if (buttons & (1 << 4)) state |= RG_KEY_LEFT;
+        if (buttons & (1 << 5)) state |= RG_KEY_RIGHT;
+        if (!gpio_get_level(RG_GPIO_GAMEPAD_MENU)) state |= RG_KEY_MENU;
+	    if (!gpio_get_level(RG_GPIO_GAMEPAD_R))    state |= RG_KEY_OPTION;
+        if (buttons & (1 << 1)) state |= RG_KEY_SELECT;
+        if (buttons & (1 << 0)) state |= RG_KEY_START;
+        if (buttons & (1 << 6)) state |= RG_KEY_A;
+        if (buttons & (1 << 7)) state |= RG_KEY_B;
+        battery_level = data[4];
+    }
+
 #endif
 
     // Virtual buttons (combos) to replace essential missing buttons.
@@ -231,7 +251,12 @@ void rg_input_init(void)
     vTaskDelay(pdMS_TO_TICKS(10));
     aw_digitalWrite(AW_TFT_RESET, 1);
     vTaskDelay(pdMS_TO_TICKS(10));
+    
+#elif RG_GAMEPAD_DRIVER == 5 //I2C ESPLAY
 
+	const char *driver = "ESPLAY-I2C";
+
+    rg_i2c_init();
 #else
 
     #error "No gamepad driver selected"
