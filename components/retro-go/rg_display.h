@@ -93,8 +93,9 @@ typedef struct {
         int format;
     } source;
     struct {
-        uint32_t totalFrames;
-        uint32_t fullFrames;
+        int32_t totalFrames;
+        int32_t fullFrames;
+        int64_t busyTime; // This is only time spent blocking the main task
     } counters;
     bool changed;
     bool redraw;
@@ -123,7 +124,8 @@ bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame,
 void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, int format);
 void rg_display_set_source_palette(const uint16_t *data, size_t colors);
 rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const rg_video_update_t *previousUpdate);
-const rg_display_t *rg_display_get_status(void);
+const rg_display_t *rg_display_get_info(void);
+#define rg_display_get_status() rg_display_get_info()
 
 void rg_display_set_scaling(display_scaling_t scaling);
 display_scaling_t rg_display_get_scaling(void);

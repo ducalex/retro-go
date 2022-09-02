@@ -662,7 +662,7 @@ void rg_display_force_redraw(void)
     display.changed = true;
 }
 
-const rg_display_t *rg_display_get_status(void)
+const rg_display_t *rg_display_get_info(void)
 {
     return &display;
 }
@@ -767,6 +767,7 @@ bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame,
 IRAM_ATTR
 rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const rg_video_update_t *previousUpdate)
 {
+    const int64_t time_start = rg_system_timer();
     // RG_ASSERT(display.source.width && display.source.height, "Source format not set!");
     RG_ASSERT(update, "update is null!");
 
@@ -899,6 +900,8 @@ rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const r
     }
 
     xQueueSend(display_task_queue, &update, portMAX_DELAY);
+
+    display.counters.busyTime += rg_system_timer() - time_start;
 
     return update->type;
 }

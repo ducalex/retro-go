@@ -43,8 +43,8 @@ typedef struct
 
 typedef struct
 {
-    uint32_t totalFrames, fullFrames, ticks, busyTime;
-    uint64_t updateTime;
+    uint32_t totalFrames, fullFrames, ticks;
+    int64_t busyTime, updateTime;
 } counters_t;
 
 // The trace will survive a software reset
