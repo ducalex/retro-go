@@ -173,8 +173,6 @@ typedef struct
 
 typedef struct
 {
-    float batteryPercent;
-    float batteryVoltage;
     float skippedFPS;
     float fullFPS;
     float totalFPS;

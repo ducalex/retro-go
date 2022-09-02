@@ -399,9 +399,9 @@ void rg_gui_draw_battery(int x_pos, int y_pos)
     rg_color_t color_fill = C_DARK_GRAY;
     rg_color_t color_border = C_SILVER;
     rg_color_t color_empty = C_BLACK;
+    float percentage;
 
-    float percentage = rg_system_get_stats().batteryPercent;
-    if (percentage >= 0.f && percentage <= 100.f)
+    if (rg_input_read_battery(&percentage, NULL))
     {
         width_fill = width / 100.f * percentage;
         if (percentage < 20.f)

@@ -163,10 +163,12 @@ static void update_statistics(void)
 {
     static counters_t counters = {0};
     const counters_t previous = counters;
-    const rg_display_t *disp = rg_display_get_status();
 
-    counters.totalFrames = disp->counters.totalFrames;
-    counters.fullFrames = disp->counters.fullFrames;
+    const rg_display_t *display = rg_display_get_info();
+    const rg_audio_t *audio = rg_audio_get_info();
+
+    counters.totalFrames = display->counters.totalFrames;
+    counters.fullFrames = display->counters.fullFrames;
     counters.busyTime = statistics.busyTime;
     counters.ticks = statistics.ticks;
     counters.updateTime = rg_system_timer();
@@ -177,18 +179,13 @@ static void update_statistics(void)
     statistics.skippedFPS = statistics.totalFPS - ((counters.totalFrames - previous.totalFrames) / elapsedTime);
     statistics.fullFPS = (counters.fullFrames - previous.fullFrames) / elapsedTime;
 
-    if (!rg_input_read_battery(&statistics.batteryPercent, &statistics.batteryVoltage))
-    {
-        statistics.batteryPercent = -1.f;
-        statistics.batteryVoltage = -1.f;
-    }
-
     update_memory_statistics();
 }
 
 static void system_monitor_task(void *arg)
 {
     int64_t lastLoop = rg_system_timer();
+    float batteryPercent = 0.f;
     bool ledState = false;
 
     // Give the app a few seconds to start before monitoring
@@ -202,10 +199,13 @@ static void system_monitor_task(void *arg)
 
         update_statistics();
 
-        if (statistics.batteryPercent < 2)
-            rg_system_set_led((ledState ^= 1));
-        else if (ledState)
-            rg_system_set_led((ledState = 0));
+        if (rg_input_read_battery(&batteryPercent, NULL))
+        {
+            if (batteryPercent < 2)
+                rg_system_set_led((ledState ^= 1));
+            else if (ledState)
+                rg_system_set_led((ledState = 0));
+        }
 
         RG_LOGX("STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%.2f, FPS:%.2f (SKIP:%d, PART:%d, FULL:%d), BATT:%.2f\n",
             statistics.freeStackMain,
@@ -218,7 +218,7 @@ static void system_monitor_task(void *arg)
             (int)(statistics.skippedFPS + 0.9f),
             (int)(statistics.totalFPS - statistics.skippedFPS - statistics.fullFPS + 0.9f),
             (int)(statistics.fullFPS + 0.9f),
-            statistics.batteryPercent);
+            batteryPercent);
 
         if ((wdtCounter -= loopTime_us) <= 0)
         {
