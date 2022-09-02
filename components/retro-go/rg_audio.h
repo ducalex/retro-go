@@ -16,6 +16,11 @@ typedef struct
     rg_sink_type_t type;
     uint32_t device;
     const char *name;
+    // struct {
+    //     void *init;
+    //     void *submit;
+    //     void *deinit;
+    // } methods;
 } rg_audio_sink_t;
 
 typedef struct __attribute__((packed))
@@ -24,9 +29,22 @@ typedef struct __attribute__((packed))
     int16_t right;
 } rg_audio_sample_t;
 
+typedef struct
+{
+    const rg_audio_sink_t *sink;
+    int sampleRate;
+    int filter;
+    int volume;
+    bool muted;
+    struct {
+        int64_t busyTime;
+    } counters;
+} rg_audio_t;
+
 void rg_audio_init(int sampleRate);
 void rg_audio_deinit(void);
 void rg_audio_submit(const rg_audio_sample_t *samples, size_t count);
+const rg_audio_t *rg_audio_get_info(void);
 
 const rg_audio_sink_t *rg_audio_get_sinks(size_t *count);
 const rg_audio_sink_t *rg_audio_get_sink(void);

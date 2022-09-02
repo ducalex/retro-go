@@ -12,14 +12,6 @@
 #include <driver/dac.h>
 #endif
 
-static int audioSink = -1;
-static int audioSampleRate = 0;
-static int audioFilter = 0;
-static int audioVolume = 50;
-static bool audioMuted = false;
-static SemaphoreHandle_t audioDevLock;
-static int64_t dummyBusyUntil = 0;
-
 static const rg_audio_sink_t sinks[] = {
     {RG_AUDIO_SINK_DUMMY,   0, "Dummy"},
 #if RG_AUDIO_USE_INT_DAC
@@ -30,6 +22,10 @@ static const rg_audio_sink_t sinks[] = {
 #endif
     // {RG_AUDIO_SINK_BT_A2DP, 0, "Bluetooth"},
 };
+
+static rg_audio_t audio;
+static SemaphoreHandle_t audioDevLock;
+static int64_t dummyBusyUntil = 0;
 
 static const char *SETTING_OUTPUT = "AudioSink";
 static const char *SETTING_VOLUME = "Volume";
@@ -47,18 +43,22 @@ static const char *SETTING_FILTER = "AudioFilter";
 
 void rg_audio_init(int sampleRate)
 {
-    RG_ASSERT(audioSink == -1, "Audio sink already initialized!");
+    RG_ASSERT(audio.sink == NULL, "Audio sink already initialized!");
 
     if (audioDevLock == NULL)
         audioDevLock = xSemaphoreCreateMutex();
 
     ACQUIRE_DEVICE(1000);
 
-    audioSampleRate = sampleRate;
-    audioSink = (int)rg_settings_get_number(NS_GLOBAL, SETTING_OUTPUT, sinks[1].type);
-    audioFilter = (int)rg_settings_get_number(NS_GLOBAL, SETTING_FILTER, audioFilter);
-    audioVolume = (int)rg_settings_get_number(NS_GLOBAL, SETTING_VOLUME, audioVolume);
-    // audioMuted = false;
+    int sinkType = (int)rg_settings_get_number(NS_GLOBAL, SETTING_OUTPUT, sinks[RG_COUNT(sinks) > 1 ? 1 : 0].type);
+    for (size_t i = 0; i < RG_COUNT(sinks); ++i)
+    {
+        if (!audio.sink || sinks[i].type == sinkType)
+            audio.sink = &sinks[i];
+    }
+    audio.filter = (int)rg_settings_get_number(NS_GLOBAL, SETTING_FILTER, 0);
+    audio.volume = (int)rg_settings_get_number(NS_GLOBAL, SETTING_VOLUME, 50);
+    audio.sampleRate = sampleRate;
 
     i2s_config_t i2s_config = {
         .mode = I2S_MODE_MASTER | I2S_MODE_TX,
@@ -82,7 +82,7 @@ void rg_audio_init(int sampleRate)
     };
     esp_err_t ret = ESP_FAIL;
 
-    if (audioSink == RG_AUDIO_SINK_I2S_DAC)
+    if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC)
     {
     #if RG_AUDIO_USE_INT_DAC
         i2s_config.mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN;
@@ -96,7 +96,7 @@ void rg_audio_init(int sampleRate)
         RG_LOGE("This device does not support internal DAC mode!\n");
     #endif
     }
-    else if (audioSink == RG_AUDIO_SINK_I2S_EXT)
+    else if (audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
     {
         if ((ret = i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL)) == ESP_OK)
         {
@@ -108,26 +108,26 @@ void rg_audio_init(int sampleRate)
             });
         }
     }
-    else if (audioSink == RG_AUDIO_SINK_DUMMY)
+    else if (audio.sink->type == RG_AUDIO_SINK_DUMMY)
     {
         ret = ESP_OK;
     }
 
     #ifdef RG_GPIO_SND_AMP_ENABLE
         gpio_set_direction(RG_GPIO_SND_AMP_ENABLE, GPIO_MODE_OUTPUT);
-        gpio_set_level(RG_GPIO_SND_AMP_ENABLE, audioMuted ? 0 : 1);
+        gpio_set_level(RG_GPIO_SND_AMP_ENABLE, audio.muted ? 0 : 1);
     #endif
 
     if (ret == ESP_OK)
     {
         RG_LOGI("Audio ready. sink='%s', samplerate=%d, volume=%d\n",
-            rg_audio_get_sink()->name, audioSampleRate, audioVolume);
+            audio.sink->name, audio.sampleRate, audio.volume);
     }
     else
     {
-        RG_LOGE("Failed to initialize audio. sink='%s' %d, samplerate=%d, err=0x%x\n",
-            rg_audio_get_sink()->name, audioSink, audioSampleRate, ret);
-        audioSink = RG_AUDIO_SINK_DUMMY;
+        RG_LOGE("Failed to initialize audio. sink='%s', samplerate=%d, err=0x%x\n",
+            audio.sink->name, audio.sampleRate, ret);
+        audio.sink = &sinks[0];
     }
 
     RELEASE_DEVICE();
@@ -135,13 +135,13 @@ void rg_audio_init(int sampleRate)
 
 void rg_audio_deinit(void)
 {
-    if (audioSink == -1)
+    if (!audio.sink)
         return;
 
     // We'll go ahead even if we can't acquire the lock...
     ACQUIRE_DEVICE(1000);
 
-    if (audioSink == RG_AUDIO_SINK_I2S_DAC)
+    if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC)
     {
     #if RG_AUDIO_USE_INT_DAC
         i2s_driver_uninstall(I2S_NUM_0);
@@ -154,7 +154,7 @@ void rg_audio_deinit(void)
         RG_LOGE("This device does not support internal DAC mode!\n");
     #endif
     }
-    else if (audioSink == RG_AUDIO_SINK_I2S_EXT)
+    else if (audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
     {
         i2s_driver_uninstall(I2S_NUM_0);
         gpio_reset_pin(RG_GPIO_SND_I2S_BCK);
@@ -166,16 +166,17 @@ void rg_audio_deinit(void)
         gpio_reset_pin(RG_GPIO_SND_AMP_ENABLE);
     #endif
 
-    RG_LOGI("Audio terminated. sink='%s'\n", rg_audio_get_sink()->name);
-    audioSink = -1;
+    RG_LOGI("Audio terminated. sink='%s'\n", audio.sink->name);
+    audio.sink = NULL;
 
     RELEASE_DEVICE();
 }
 
 void rg_audio_submit(const rg_audio_sample_t *samples, size_t count)
 {
-    // RG_ASSERT(audioSink != -1, "Audio device not ready!");
-    if (audioSink == -1)
+    const int64_t time_start = rg_system_timer();
+
+    if (!audio.sink)
         return;
 
     if (!samples || !count)
@@ -184,9 +185,9 @@ void rg_audio_submit(const rg_audio_sample_t *samples, size_t count)
     if (!ACQUIRE_DEVICE(0))
         return;
 
-    if (audioSink == RG_AUDIO_SINK_I2S_DAC || audioSink == RG_AUDIO_SINK_I2S_EXT)
+    if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC || audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
     {
-        float volume = audioMuted ? 0.f : (audioVolume * 0.01f);
+        float volume = audio.muted ? 0.f : (audio.volume * 0.01f);
         rg_audio_sample_t buffer[180];
         size_t written = 0;
         size_t pos = 0;
@@ -197,7 +198,7 @@ void rg_audio_submit(const rg_audio_sample_t *samples, size_t count)
             int right = samples[i].right * volume;
 
             // In speaker mode we use left and right as a differential mono output to increase resolution.
-            if (audioSink == RG_AUDIO_SINK_I2S_DAC)
+            if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC)
             {
                 int sample = (left + right) >> 1;
                 if (sample > 0x7F00)
@@ -233,21 +234,24 @@ void rg_audio_submit(const rg_audio_sample_t *samples, size_t count)
             }
         }
     }
-    else if (audioSink == RG_AUDIO_SINK_BT_A2DP)
+    else if (audio.sink->type == RG_AUDIO_SINK_DUMMY)
     {
-        // Removed
-    }
-    else if (audioSink == RG_AUDIO_SINK_DUMMY)
-    {
-        usleep(RG_MAX(dummyBusyUntil - rg_system_timer(), 1000));
-        dummyBusyUntil = rg_system_timer() + ((audioSampleRate * 1000) / count);
+        // usleep(RG_MAX(dummyBusyUntil - rg_system_timer(), 1000));
+        dummyBusyUntil = rg_system_timer() + ((audio.sampleRate * 1000) / count);
     }
     else
     {
-        RG_LOGE("Unknown audio sink: %d\n", audioSink);
+        RG_LOGE("Audio sink not implemented: '%s' %d\n", audio.sink->name, audio.sink->type);
     }
 
     RELEASE_DEVICE();
+
+    audio.counters.busyTime += rg_system_timer() - time_start;
+}
+
+const rg_audio_t *rg_audio_get_info(void)
+{
+    return &audio;
 }
 
 const rg_audio_sink_t *rg_audio_get_sinks(size_t *count)
@@ -258,36 +262,33 @@ const rg_audio_sink_t *rg_audio_get_sinks(size_t *count)
 
 const rg_audio_sink_t *rg_audio_get_sink(void)
 {
-    for (size_t i = 0; i < RG_COUNT(sinks); ++i)
-        if (sinks[i].type == audioSink)
-            return &sinks[i];
-    return &sinks[0];
+    return audio.sink ?: &sinks[0];
 }
 
 void rg_audio_set_sink(rg_sink_type_t sink)
 {
     rg_settings_set_number(NS_GLOBAL, SETTING_OUTPUT, sink);
     rg_audio_deinit();
-    rg_audio_init(audioSampleRate);
+    rg_audio_init(audio.sampleRate);
 }
 
 int rg_audio_get_volume(void)
 {
-    return audioVolume;
+    return audio.volume;
 }
 
 void rg_audio_set_volume(int percent)
 {
-    audioVolume = RG_MIN(RG_MAX(percent, 0), 100);
-    rg_settings_set_number(NS_GLOBAL, SETTING_VOLUME, audioVolume);
-    RG_LOGI("Volume set to %d%%\n", audioVolume);
+    audio.volume = RG_MIN(RG_MAX(percent, 0), 100);
+    rg_settings_set_number(NS_GLOBAL, SETTING_VOLUME, audio.volume);
+    RG_LOGI("Volume set to %d%%\n", audio.volume);
 }
 
 void rg_audio_set_mute(bool mute)
 {
-    RG_ASSERT(audioSink != -1, "Audio device not ready!");
+    RG_ASSERT(audio.sink != NULL, "Audio device not ready!");
 
-    // if (audioMuted == mute)
+    // if (audio.muted == mute)
     //     return;
 
     if (!ACQUIRE_DEVICE(1000))
@@ -300,34 +301,34 @@ void rg_audio_set_mute(bool mute)
     #else
         // nothing to do
     #endif
-    if (audioSink == RG_AUDIO_SINK_I2S_DAC || audioSink == RG_AUDIO_SINK_I2S_EXT)
+    if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC || audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
         i2s_zero_dma_buffer(I2S_NUM_0);
 
-    audioMuted = mute;
+    audio.muted = mute;
     RELEASE_DEVICE();
 }
 
 int rg_audio_get_sample_rate(void)
 {
-    return audioSampleRate;
+    return audio.sampleRate;
 }
 
 void rg_audio_set_sample_rate(int sampleRate)
 {
-    RG_ASSERT(audioSink != -1, "Audio device not ready!");
+    RG_ASSERT(audio.sink != NULL, "Audio device not ready!");
 
-    if (audioSampleRate == sampleRate)
+    if (audio.sampleRate == sampleRate)
         return;
 
     if (!ACQUIRE_DEVICE(1000))
         return;
 
-    if (audioSink == RG_AUDIO_SINK_I2S_DAC || audioSink == RG_AUDIO_SINK_I2S_EXT)
+    if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC || audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
     {
         RG_LOGI("i2s_set_sample_rates(%d)\n", sampleRate);
         i2s_set_sample_rates(I2S_NUM_0, sampleRate);
     }
 
-    audioSampleRate = sampleRate;
+    audio.sampleRate = sampleRate;
     RELEASE_DEVICE();
 }
