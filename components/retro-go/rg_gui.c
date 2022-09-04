@@ -252,7 +252,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
             if (chr == '\n' || *ptr == 0)
             {
                 width = RG_MAX(line_width, width);
-                line_width = 0;
+                line_width = padding * 2;
             }
         }
     }
