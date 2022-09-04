@@ -1,12 +1,12 @@
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
 #include <esp_err.h>
+#include <unistd.h>
+
 #include "rg_system.h"
 #include "rg_i2c.h"
 
 #if defined(RG_GPIO_I2C_SDA) && defined(RG_GPIO_I2C_SCL)
-    #include <driver/i2c.h>
-    #define USE_I2C_DRIVER
+#include <driver/i2c.h>
+#define USE_I2C_DRIVER
 #endif
 
 #define TRY(x) if ((err = (x)) != ESP_OK) { goto fail; }
@@ -143,7 +143,7 @@ bool rg_i2c_gpio_init(void)
     gpio_extender_address = 0x58;
 
     rg_i2c_write_byte(gpio_extender_address, AW9523_REG_SOFTRESET, 0);
-    vTaskDelay(pdMS_TO_TICKS(10));
+    usleep(10 * 1000);
 
     uint8_t id = rg_i2c_read_byte(gpio_extender_address, AW9523_REG_CHIPID);
     RG_LOGI("AW9523 ID code 0x%x found\n", id);

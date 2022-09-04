@@ -86,9 +86,9 @@ enum
 
 typedef enum
 {
-    RG_OK    = 0,
-    RG_FAIL  = 1,
-    RG_NOMEM = 2,
+    RG_OK = 0,
+    RG_FAIL,
+    RG_NOMEM,
 } rg_err_t;
 
 typedef enum
@@ -138,17 +138,8 @@ typedef struct
     rg_emu_slot_t slots[];
 } rg_emu_state_t;
 
-// TO DO: Make it an abstract ring buffer implementation?
-#define RG_LOGBUF_SIZE 2048
 typedef struct
 {
-    char buffer[RG_LOGBUF_SIZE];
-    size_t cursor;
-} rg_logbuf_t;
-
-typedef struct
-{
-    // const char *partition;
     const char *name;
     const char *version;
     const char *buildDate;
@@ -206,6 +197,11 @@ void rg_system_event(rg_event_t event, void *arg);
 int64_t rg_system_timer(void);
 rg_app_t *rg_system_get_app(void);
 rg_stats_t rg_system_get_stats(void);
+
+// Wrappers for the OS' task/thread creation API. It also keeps track of handles for debugging purposes...
+void *rg_system_create_task(const char *name, void (*taskFunc)(void* arg), void* arg, size_t stackSize, int priority, int affinity);
+void *rg_system_find_task(const char *name);
+void  rg_system_delete_task(void *handle);
 
 char *rg_emu_get_path(rg_path_type_t type, const char *arg);
 bool rg_emu_save_state(uint8_t slot);

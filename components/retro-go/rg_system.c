@@ -32,13 +32,26 @@
 
 #define RG_STRUCT_MAGIC 0x12345678
 
+// typedef struct {
+// } rg_task_t;
+
+#define RG_LOGBUF_SIZE 2048
+typedef struct
+{
+    char buffer[RG_LOGBUF_SIZE];
+    size_t cursor;
+} logbuf_t;
+
+#define logbuf_putc(buf, c) (buf)->buffer[(buf)->cursor++] = c, (buf)->cursor %= RG_LOGBUF_SIZE;
+#define logbuf_puts(buf, str) for (const char *ptr = str; *ptr; ptr++) logbuf_putc(buf, *ptr);
+
 typedef struct
 {
     uint32_t magicWord;
     char message[256];
     char context[128];
     rg_stats_t statistics;
-    rg_logbuf_t log;
+    logbuf_t logbuf;
 } panic_trace_t;
 
 typedef struct
@@ -51,7 +64,7 @@ typedef struct
 static RTC_NOINIT_ATTR panic_trace_t panicTrace;
 static rg_stats_t statistics;
 static rg_app_t app;
-static rg_logbuf_t logbuf;
+static logbuf_t logbuf;
 static int ledValue = -1;
 static int wdtCounter = 0;
 static bool exitCalled = false;
@@ -114,33 +127,23 @@ static void exit_handler(void)
     }
 }
 
-static inline void logbuf_print(rg_logbuf_t *buf, const char *str)
-{
-    while (*str)
-    {
-        buf->buffer[buf->cursor++] = *str++;
-        buf->cursor %= RG_LOGBUF_SIZE;
-    }
-    buf->buffer[buf->cursor] = 0;
-}
-
 static inline void begin_panic_trace(const char *context, const char *message)
 {
     panicTrace.magicWord = RG_STRUCT_MAGIC;
     panicTrace.statistics = statistics;
-    panicTrace.log = logbuf;
+    panicTrace.logbuf = logbuf;
     strncpy(panicTrace.message, message ?: "(none)", sizeof(panicTrace.message) - 1);
     strncpy(panicTrace.context, context ?: "(none)", sizeof(panicTrace.context) - 1);
     panicTrace.message[sizeof(panicTrace.message) - 1] = 0;
     panicTrace.context[sizeof(panicTrace.context) - 1] = 0;
-    logbuf_print(&panicTrace.log, "\n\n*** PANIC TRACE: ***\n\n");
+    logbuf_puts(&panicTrace.logbuf, "\n\n*** PANIC TRACE: ***\n\n");
 }
 
 IRAM_ATTR void esp_panic_putchar_hook(char c)
 {
     if (panicTrace.magicWord != RG_STRUCT_MAGIC)
         begin_panic_trace("esp_panic", NULL);
-    logbuf_print(&panicTrace.log, (char[2]){c, 0});
+    logbuf_putc(&panicTrace.logbuf, c);
 }
 
 static void update_memory_statistics(void)
@@ -197,6 +200,7 @@ static void system_monitor_task(void *arg)
         int loopTime_us = lastLoop - rg_system_timer();
         lastLoop = rg_system_timer();
 
+        // Maybe we should *try* to wait for vsync before updating?
         update_statistics();
 
         if (rg_input_read_battery(&batteryPercent, NULL))
@@ -246,7 +250,7 @@ static void system_monitor_task(void *arg)
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
-    vTaskDelete(NULL);
+    rg_system_delete_task(NULL);
 }
 
 static void enter_recovery_mode(void)
@@ -409,13 +413,44 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     atexit(&exit_handler);
     rtc_time_init();
 
-    xTaskCreate(&system_monitor_task, "sysmon", 2560, NULL, RG_TASK_PRIORITY, NULL);
+    rg_system_create_task("rg_system", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY, -1);
 
     initialized = true;
 
     RG_LOGI("Retro-Go ready.\n\n");
 
     return &app;
+}
+
+void *rg_system_create_task(const char *name, void (*taskFunc)(void* arg), void* arg, size_t stackSize, int priority, int affinity)
+{
+    TaskHandle_t handle = NULL;
+    BaseType_t ret = pdFAIL;
+
+    if (affinity != -1)
+        ret = xTaskCreatePinnedToCore(taskFunc, name, stackSize, arg, priority, &handle, affinity);
+    else
+        ret = xTaskCreate(taskFunc, name, stackSize, arg, priority, &handle);
+
+    if (ret != pdPASS)
+    {
+        // log error
+        return NULL;
+    }
+
+    // TODO: Add to tasks<rg_task_t>[]
+
+    return handle;
+}
+
+void rg_system_delete_task(void *handle)
+{
+    if (handle == NULL)
+        handle = xTaskGetCurrentTaskHandle();
+
+    // TODO: Remove from tasks<rg_task_t>[]
+
+    vTaskDelete(handle);
 }
 
 rg_app_t *rg_system_get_app(void)
@@ -795,7 +830,7 @@ void rg_system_vlog(int level, const char *context, const char *format, va_list 
 
     len += vsnprintf(buffer + len, sizeof(buffer) - len, format, va);
 
-    logbuf_print(&logbuf, buffer);
+    logbuf_puts(&logbuf, buffer);
     fputs(buffer, stdout);
 }
 
@@ -809,12 +844,12 @@ void rg_system_log(int level, const char *context, const char *format, ...)
 
 bool rg_system_save_trace(const char *filename, bool panic_trace)
 {
-    rg_stats_t *stats = panic_trace ? &panicTrace.statistics : &statistics;
-    rg_logbuf_t *log = panic_trace ? &panicTrace.log : &logbuf;
     RG_ASSERT(filename, "bad param");
 
-    RG_LOGI("Saving debug trace to '%s'...\n", filename);
+    rg_stats_t *stats = panic_trace ? &panicTrace.statistics : &statistics;
+    logbuf_t *log = panic_trace ? &panicTrace.logbuf : &logbuf;
 
+    RG_LOGI("Saving debug trace to '%s'...\n", filename);
     FILE *fp = fopen(filename, "w");
     if (fp)
     {

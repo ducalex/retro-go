@@ -15,8 +15,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
 #include <rg_system.h>
 #include <sys/dirent.h>
 #include <sys/unistd.h>
@@ -352,7 +350,7 @@ void I_InitSound(void)
     music_player->init(snd_samplerate);
     music_player->setvolume(snd_MusicVolume);
 
-    xTaskCreatePinnedToCore(&soundTask, "soundTask", 2048, NULL, 5, NULL, 1);
+    rg_system_create_task("doom_sound", &soundTask, NULL, 2048, 5, 1);
 }
 
 void I_ShutdownSound(void)

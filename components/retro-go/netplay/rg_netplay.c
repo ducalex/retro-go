@@ -321,7 +321,7 @@ static void netplay_task()
         }
     }
 
-    vTaskDelete(NULL);
+    rg_system_delete_task(NULL);
 }
 
 
@@ -347,7 +347,7 @@ static void netplay_init()
         ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE)); // Improves latency a lot
         ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
 
-        xTaskCreatePinnedToCore(&netplay_task, "netplay_task", 4096, NULL, RG_TASK_PRIORITY - 2, NULL, 1);
+        rg_system_create_task("rg_netplay", &netplay_task, NULL, 4096, RG_TASK_PRIORITY - 2, 1);
     }
 }
 

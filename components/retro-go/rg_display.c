@@ -106,9 +106,8 @@ static void spi_task(void *arg)
         xQueueSend(spi_transactions, &t, 0);
     }
 
-    RG_LOGE("SPI task ended. Was the handle freed?!\n");
-
-    vTaskDelete(NULL);
+    // This should never happen
+    rg_system_delete_task(NULL);
 }
 
 static void spi_init(void)
@@ -158,7 +157,7 @@ static void spi_init(void)
     ret = spi_bus_add_device(RG_GPIO_LCD_HOST, &devcfg, &spi_dev);
     RG_ASSERT(ret == ESP_OK, "spi_bus_add_device failed.");
 
-    xTaskCreatePinnedToCore(&spi_task, "spi_task", 1024, NULL, RG_TASK_PRIORITY - 1, NULL, 1);
+    rg_system_create_task("rg_spi", &spi_task, NULL, 1.5 * 1024, RG_TASK_PRIORITY - 1, 1);
 }
 
 static void spi_deinit(void)
@@ -654,7 +653,7 @@ static void display_task(void *arg)
     vQueueDelete(display_task_queue);
     display_task_queue = NULL;
 
-    vTaskDelete(NULL);
+    rg_system_delete_task(NULL);
 }
 
 void rg_display_force_redraw(void)
@@ -929,7 +928,7 @@ void rg_display_set_source_format(int width, int height, int crop_h, int crop_v,
 void rg_display_sync(void)
 {
     while (uxQueueMessagesWaiting(display_task_queue))
-        ; // Wait until display queue is done
+        continue; // Wait until display queue is done
 }
 
 void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer)
@@ -1035,6 +1034,6 @@ void rg_display_init(void)
         .changed = true,
     };
     lcd_init();
-    xTaskCreatePinnedToCore(&display_task, "display_task", 2560, NULL, 5, NULL, 1);
+    rg_system_create_task("rg_display", &display_task, NULL, 3 * 1024, 5, 1);
     RG_LOGI("Display ready.\n");
 }

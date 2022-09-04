@@ -1,5 +1,3 @@
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
 #include <rg_system.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -276,7 +274,7 @@ extern "C" void app_main(void)
 		{
 			if (!menuCancelled)
 			{
-				vTaskDelay(5);
+				usleep(50 * 1000);
 				rg_gui_game_menu();
 			}
 			menuCancelled = false;

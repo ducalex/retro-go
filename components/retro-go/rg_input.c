@@ -151,7 +151,7 @@ static void input_task(void *arg)
 
     input_task_running = false;
     gamepad_state = -1;
-    vTaskDelete(NULL);
+    rg_system_delete_task(NULL);
 }
 
 void rg_input_init(void)
@@ -230,16 +230,17 @@ void rg_input_init(void)
 #endif
 
     // Start background polling
-    xTaskCreatePinnedToCore(&input_task, "input_task", 2048, NULL, RG_TASK_PRIORITY - 1, NULL, 1);
+    rg_system_create_task("rg_input", &input_task, NULL, 2 * 1024, RG_TASK_PRIORITY - 1, 1);
     while (gamepad_state == -1)
-        vPortYield();
+        vTaskDelay(1);
     RG_LOGI("Input ready. driver='%s', state=" PRINTF_BINARY_16 "\n", driver, PRINTF_BINVAL_16(gamepad_state));
 }
 
 void rg_input_deinit(void)
 {
     input_task_running = false;
-    // while (gamepad_state != -1) vPortYield();
+    // while (gamepad_state != -1)
+    //     vTaskDelay(1);
     RG_LOGI("Input terminated.\n");
 }
 
@@ -265,9 +266,7 @@ bool rg_input_key_is_pressed(rg_key_t key)
 void rg_input_wait_for_key(rg_key_t key, bool pressed)
 {
     while (rg_input_key_is_pressed(key) != pressed)
-    {
         vTaskDelay(1);
-    }
 }
 
 bool rg_input_read_battery(float *percent, float *volts)

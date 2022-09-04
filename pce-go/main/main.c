@@ -6,8 +6,6 @@
 /*	ducalex                              */
 /*****************************************/
 
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
 #include <rg_system.h>
 #include <string.h>
 #include <ctype.h>
@@ -173,12 +171,12 @@ static void audioTask(void *arg)
     {
         // TODO: Clearly we need to add a better way to remain in sync with the main task...
         while (emulationPaused)
-            vTaskDelay(1);
+            usleep(20 * 1000);
         psg_update((void*)audiobuffer, AUDIO_BUFFER_LENGTH, downsample);
         rg_audio_submit(audiobuffer, AUDIO_BUFFER_LENGTH);
     }
 
-    vTaskDelete(NULL);
+    rg_system_delete_task(NULL);
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)
@@ -247,7 +245,7 @@ void app_main(void)
         rg_emu_load_state(app->saveSlot);
     }
 
-    xTaskCreatePinnedToCore(&audioTask, "audioTask", 2560, NULL, 5, NULL, 1);
+    rg_system_create_task("pce_sound", &audioTask, NULL, 2560, 5, 1);
 
     RunPCE();
 
