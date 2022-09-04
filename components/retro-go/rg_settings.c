@@ -14,6 +14,13 @@ static cJSON *json_root(const char *name)
 {
     RG_ASSERT(config_root, "json_root called before settings were initialized!");
 
+    if (name == NS_GLOBAL)
+        name = "global";
+    else if (name == NS_APP)
+        name = rg_system_get_app()->configNs;
+    else if (name == NS_FILE)
+        name = rg_system_get_app()->romPath;
+
     cJSON *myroot;
 
     if (!name)
@@ -154,9 +161,10 @@ void rg_settings_set_string(const char *section, const char *key, const char *va
 
 void rg_settings_delete(const char *section, const char *key)
 {
+    cJSON *root = json_root(section);
     if (key)
-        cJSON_DeleteItemFromObject(json_root(section), key);
-    else
-        cJSON_DeleteItemFromObject(config_root, section);
+        cJSON_DeleteItemFromObject(root, key);
+    else if (root != config_root)
+        cJSON_Delete(cJSON_DetachItemViaPointer(config_root, root));
     unsaved_changes++;
 }
