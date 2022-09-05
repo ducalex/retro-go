@@ -1,4 +1,5 @@
 #include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <esp_heap_caps.h>
 #include <esp_partition.h>
 #include <esp_task_wdt.h>
@@ -25,13 +26,6 @@
 #define RG_BUILD_TIME 1580446800
 #endif
 
-#define SETTING_BOOT_NAME   "BootName"
-#define SETTING_BOOT_PART   "BootPart"
-#define SETTING_BOOT_ARGS   "BootArgs"
-#define SETTING_BOOT_FLAGS  "BootFlags"
-
-#define RG_STRUCT_MAGIC 0x12345678
-
 // typedef struct {
 // } rg_task_t;
 
@@ -45,6 +39,10 @@ typedef struct
 #define logbuf_putc(buf, c) (buf)->buffer[(buf)->cursor++] = c, (buf)->cursor %= RG_LOGBUF_SIZE;
 #define logbuf_puts(buf, str) for (const char *ptr = str; *ptr; ptr++) logbuf_putc(buf, *ptr);
 
+#define WDT_TIMEOUT 10000000
+#define WDT_RELOAD(val) wdtCounter = (val)
+
+#define RG_STRUCT_MAGIC 0x12345678
 typedef struct
 {
     uint32_t magicWord;
@@ -70,8 +68,10 @@ static int wdtCounter = 0;
 static bool exitCalled = false;
 static bool initialized = false;
 
-#define WDT_TIMEOUT 10000000
-#define WDT_RELOAD(val) wdtCounter = (val)
+static const char *SETTING_BOOT_NAME = "BootName";
+static const char *SETTING_BOOT_PART = "BootPart";
+static const char *SETTING_BOOT_ARGS = "BootArgs";
+static const char *SETTING_BOOT_FLAGS = "BootFlags";
 
 
 static void rtc_time_init(void)
@@ -150,11 +150,11 @@ static void update_memory_statistics(void)
 {
     multi_heap_info_t heap_info;
 
-    heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
+    heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     statistics.freeMemoryInt = heap_info.total_free_bytes;
     statistics.freeBlockInt = heap_info.largest_free_block;
     statistics.totalMemoryInt = heap_info.total_free_bytes + heap_info.total_allocated_bytes;
-    heap_caps_get_info(&heap_info, MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
+    heap_caps_get_info(&heap_info, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     statistics.freeMemoryExt = heap_info.total_free_bytes;
     statistics.freeBlockExt = heap_info.largest_free_block;
     statistics.totalMemoryExt = heap_info.total_free_bytes + heap_info.total_allocated_bytes;
@@ -168,7 +168,7 @@ static void update_statistics(void)
     const counters_t previous = counters;
 
     const rg_display_t *display = rg_display_get_info();
-    const rg_audio_t *audio = rg_audio_get_info();
+    // const rg_audio_t *audio = rg_audio_get_info();
 
     counters.totalFrames = display->counters.totalFrames;
     counters.fullFrames = display->counters.fullFrames;
@@ -892,6 +892,13 @@ void rg_system_set_led(int value)
 int rg_system_get_led(void)
 {
     return ledValue;
+}
+
+uint32_t rg_crc32(uint32_t crc, const uint8_t* buf, uint32_t len)
+{
+    // This is part of the ROM but finding the correct header is annoying as it differs per SOC...
+    extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
+    return crc32_le(crc, buf, len);
 }
 
 // Note: You should use calloc/malloc everywhere possible. This function is used to ensure

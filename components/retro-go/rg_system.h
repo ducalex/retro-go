@@ -210,6 +210,7 @@ bool rg_emu_reset(bool hard);
 bool rg_emu_screenshot(const char *filename, int width, int height);
 rg_emu_state_t *rg_emu_get_states(const char *romPath, size_t slots);
 
+uint32_t rg_crc32(uint32_t crc, const uint8_t* buf, uint32_t len);
 void *rg_alloc(size_t size, uint32_t caps);
 
 #define MEM_ANY   (0)
@@ -227,9 +228,6 @@ void *rg_alloc(size_t size, uint32_t caps);
 // #define gpio_set_level(num, level) (((num) & I2C) ? rg_gpio_set_level((num) & ~I2C) : (gpio_set_level)(num, level) == ESP_OK)
 // #define gpio_get_level(num, level) (((num) & I2C) ? rg_gpio_set_level((num) & ~I2C) : (gpio_get_level)(num, level))
 // #define gpio_set_direction(num, mode) (((num) & I2C) ? rg_gpio_set_direction((num) & ~I2C) : (gpio_set_direction)(num, level) == ESP_OK)
-
-// Functions from esp-idf, we don't include their header but they will be linked
-extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 
 #define RG_TIMER_INIT() int64_t _rgts_ = rg_system_timer(), _rgtl_ = rg_system_timer();
 #define RG_TIMER_LAP(name) \
@@ -253,8 +251,6 @@ extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 #define RG_LOGW(x, ...) rg_system_log(RG_LOG_WARN, RG_LOG_TAG, x, ## __VA_ARGS__)
 #define RG_LOGI(x, ...) rg_system_log(RG_LOG_INFO, RG_LOG_TAG, x, ## __VA_ARGS__)
 #define RG_LOGD(x, ...) rg_system_log(RG_LOG_DEBUG, RG_LOG_TAG, x, ## __VA_ARGS__)
-
-#define RG_DUMP(...) {}
 
 // Attributes
 

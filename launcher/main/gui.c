@@ -115,7 +115,7 @@ const rg_image_t *gui_get_image(const char *type, const char *subtype)
     else
         sprintf(name, "%s.png", type);
 
-    uint32_t fileid = crc32_le(0, (uint8_t *)name, strlen(name));
+    uint32_t fileid = rg_crc32(0, (uint8_t *)name, strlen(name));
     image_t *image = gui.images;
 
     for (; image->id; ++image)

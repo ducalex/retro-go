@@ -183,9 +183,9 @@ static void crc_cache_init(void)
 
 static uint32_t crc_cache_calc_key(retro_file_t *file)
 {
-    // return ((uint64_t)crc32_le(0, (void *)file->name, strlen(file->name)) << 33 | file->size);
+    // return ((uint64_t)rg_crc32(0, (void *)file->name, strlen(file->name)) << 33 | file->size);
     // This should be reasonably unique
-    return crc32_le(0, (void *)file->name, strlen(file->name));
+    return rg_crc32(0, (void *)file->name, strlen(file->name));
 }
 
 static uint32_t crc_cache_lookup(retro_file_t *file)
@@ -519,7 +519,7 @@ bool application_get_file_crc32(retro_file_t *file)
                     break;
 
                 count = fread(buffer, 1, sizeof(buffer), fp);
-                crc_tmp = crc32_le(crc_tmp, buffer, count);
+                crc_tmp = rg_crc32(crc_tmp, buffer, count);
             }
 
             if (feof(fp))

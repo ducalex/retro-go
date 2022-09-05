@@ -16,6 +16,7 @@
 
 #ifdef RETRO_GO
 #include <rg_system.h>
+#define crc32_le(a, b, c) rg_crc32(a, b, c)
 #else
 #define IRAM_ATTR
 #define rg_alloc(size, type) calloc(1, size)
