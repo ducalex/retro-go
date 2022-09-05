@@ -219,7 +219,7 @@ extern "C" void app_main(void)
             rg_audio_set_sample_rate(app->sampleRate * app->speed);
         }
 
-        int64_t startTime = get_elapsed_time();
+        int64_t startTime = rg_system_timer();
         bool drawFrame = !skipFrames;
         ULONG buttons = 0;
 
@@ -246,7 +246,7 @@ extern "C" void app_main(void)
             gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;
         }
 
-        int elapsed = get_elapsed_time_since(startTime);
+        int elapsed = rg_system_timer() - startTime;
 
         // See if we need to skip a frame to keep up
         if (skipFrames == 0)

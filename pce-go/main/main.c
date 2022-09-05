@@ -25,7 +25,6 @@ static int current_width = 0;
 static int overscan = false;
 static int downsample = false;
 static int skipFrames = 0;
-static int frameTime = get_frame_time(60);
 static uint8_t *framebuffers[2];
 
 static bool emulationPaused = false; // This should probably be a mutex
@@ -109,7 +108,8 @@ void osd_vsync(void)
         skipFrames--;
     }
 
-    int64_t curtime = get_elapsed_time();
+    int32_t frameTime = 1000000 / 60 / app->speed;
+    int64_t curtime = rg_system_timer();
     int32_t sleep = frameTime - (curtime - lasttime);
 
     if (sleep > frameTime)
@@ -127,7 +127,7 @@ void osd_vsync(void)
 
     rg_system_tick(curtime - prevtime);
 
-    prevtime = get_elapsed_time();
+    prevtime = rg_system_timer();
     lasttime += frameTime;
 
     if ((lasttime + frameTime) < prevtime)
@@ -146,7 +146,6 @@ void osd_input_read(uint8_t joypads[8])
             rg_gui_game_menu();
         else
             rg_gui_options_menu();
-        frameTime = get_frame_time(app->refreshRate * app->speed);
         rg_audio_set_sample_rate(app->sampleRate * app->speed);
         emulationPaused = false;
     }

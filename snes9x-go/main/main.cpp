@@ -284,7 +284,7 @@ extern "C" void app_main(void)
 			rg_gui_options_menu();
 		}
 
-		int64_t startTime = get_elapsed_time();
+		int64_t startTime = rg_system_timer();
 
 		menuPressed = joystick & RG_KEY_MENU;
 
@@ -300,7 +300,7 @@ extern "C" void app_main(void)
 
 		S9xMainLoop();
 
-		long elapsed = get_elapsed_time_since(startTime);
+		long elapsed = rg_system_timer() - startTime;
 
 		if (IPPU.RenderThisFrame)
 		{

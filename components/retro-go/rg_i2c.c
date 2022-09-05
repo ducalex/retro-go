@@ -9,11 +9,15 @@
 #define USE_I2C_DRIVER
 #endif
 
-#define TRY(x) if ((err = (x)) != ESP_OK) { goto fail; }
-
 static bool i2c_initialized = false;
 static bool gpio_extender_initialized = false;
 static uint8_t gpio_extender_address = 0x00;
+
+#define TRY(x)                 \
+    if ((err = (x)) != ESP_OK) \
+    {                          \
+        goto fail;             \
+    }
 
 
 bool rg_i2c_init(void)
@@ -80,7 +84,8 @@ bool rg_i2c_read(uint8_t addr, int reg, void *read_data, size_t read_len)
     return true;
 fail:
     i2c_cmd_link_delete(cmd);
-    RG_LOGE("Read from 0x%02x failed. reg=%d, err=0x%x, init=%d\n", addr, reg, err, i2c_initialized);
+    RG_LOGE("Read from 0x%02x failed. reg=%d, err=0x%x, init=%d\n", addr, reg, err,
+            i2c_initialized);
 #endif
     return false;
 }
@@ -122,14 +127,14 @@ bool rg_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t value)
     return rg_i2c_write(addr, reg, &value, 1);
 }
 
-#define AW9523_REG_CHIPID 0x10     ///< Register for hardcode chip ID
-#define AW9523_REG_SOFTRESET 0x7F  ///< Register for soft resetting
-#define AW9523_REG_INPUT0 0x00     ///< Register for reading input values
-#define AW9523_REG_OUTPUT0 0x02    ///< Register for writing output values
-#define AW9523_REG_CONFIG0 0x04    ///< Register for configuring direction
+#define AW9523_REG_CHIPID     0x10 ///< Register for hardcode chip ID
+#define AW9523_REG_SOFTRESET  0x7F ///< Register for soft resetting
+#define AW9523_REG_INPUT0     0x00 ///< Register for reading input values
+#define AW9523_REG_OUTPUT0    0x02 ///< Register for writing output values
+#define AW9523_REG_CONFIG0    0x04 ///< Register for configuring direction
 #define AW9523_REG_INTENABLE0 0x06 ///< Register for enabling interrupt
-#define AW9523_REG_GCR 0x11        ///< Register for general configuration
-#define AW9523_REG_LEDMODE 0x12    ///< Register for configuring const current
+#define AW9523_REG_GCR        0x11 ///< Register for general configuration
+#define AW9523_REG_LEDMODE    0x12 ///< Register for configuring const current
 
 bool rg_i2c_gpio_init(void)
 {
@@ -150,10 +155,10 @@ bool rg_i2c_gpio_init(void)
     assert(id == 0x23);
 
     rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0, 0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0+1, 0xFF);
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0 + 1, 0xFF);
     rg_i2c_write_byte(gpio_extender_address, AW9523_REG_LEDMODE, 0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_LEDMODE+1, 0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_GCR, 1<<4);
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_LEDMODE + 1, 0xFF);
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_GCR, 1 << 4);
 
     return true;
 }

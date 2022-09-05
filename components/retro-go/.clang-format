@@ -1,0 +1,10 @@
+BasedOnStyle: LLVM
+IndentWidth: 4
+BreakBeforeBraces: Allman # Linux
+AllowShortFunctionsOnASingleLine: false
+MaxEmptyLinesToKeep: 2
+ColumnLimit: 120
+SortIncludes: false
+AlignArrayOfStructures: Left
+AlignEscapedNewlines: Left
+AlignConsecutiveMacros: true

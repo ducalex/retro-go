@@ -351,7 +351,7 @@ void app_main(void)
             }
         }
 
-        int64_t startTime = get_elapsed_time();
+        int64_t startTime = rg_system_timer();
         bool drawFrame = (frames++ & 3) == 3;
 
         int hint_counter = gwenesis_vdp_regs[10];
@@ -417,7 +417,7 @@ void app_main(void)
             // currentUpdate = previousUpdate;
         }
 
-        int elapsed = get_elapsed_time_since(startTime);
+        int elapsed = rg_system_timer() - startTime;
         rg_system_tick(elapsed);
     }
 }

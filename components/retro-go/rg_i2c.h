@@ -15,7 +15,7 @@ bool rg_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t value);
 bool rg_i2c_gpio_init(void);
 bool rg_i2c_gpio_deinit(void);
 bool rg_i2c_gpio_set_direction(int pin, int mode);
-int  rg_i2c_gpio_get_level(int pin);
+int rg_i2c_gpio_get_level(int pin);
 bool rg_i2c_gpio_set_level(int pin, int level);
 uint8_t rg_i2c_gpio_read_port(int port);
 bool rg_i2c_gpio_write_port(int port, uint8_t value);

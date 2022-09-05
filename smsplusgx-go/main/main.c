@@ -151,7 +151,6 @@ void app_main(void)
         rg_emu_load_state(app->saveSlot);
     }
 
-    int frameTime = get_frame_time(app->refreshRate);
     int skipFrames = 0;
     int copyPalette = 0;
 
@@ -165,11 +164,10 @@ void app_main(void)
                 rg_gui_game_menu();
             else
                 rg_gui_options_menu();
-            frameTime = get_frame_time(app->refreshRate * app->speed);
             rg_audio_set_sample_rate(app->sampleRate * app->speed);
         }
 
-        int64_t startTime = get_elapsed_time();
+        int64_t startTime = rg_system_timer();
         bool drawFrame = !skipFrames;
         bool fullFrame = true;
 
@@ -300,11 +298,12 @@ void app_main(void)
             bitmap.data = currentUpdate->buffer - bitmap.viewport.x;
         }
 
-        int elapsed = get_elapsed_time_since(startTime);
+        int elapsed = rg_system_timer() - startTime;
 
         // See if we need to skip a frame to keep up
         if (skipFrames == 0)
         {
+            int frameTime = 1000000 / (app->refreshRate * app->speed);
             if (elapsed > frameTime - 2000) // It takes about 2ms to copy the audio buffer
                 skipFrames = (elapsed + frameTime / 2) / frameTime;
             else if (drawFrame && fullFrame) // This could be avoided when scaling != full

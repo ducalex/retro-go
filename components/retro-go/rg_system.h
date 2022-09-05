@@ -231,13 +231,6 @@ void *rg_alloc(size_t size, uint32_t caps);
 // Functions from esp-idf, we don't include their header but they will be linked
 extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
 
-// These older macros do not guarantee a time unit in case retro-go was ported to a platform where
-// divisions were too slow or overflows were likely. However at this time it doesn't matter and much
-// of the code assumes microseconds so I will replace them by rg_system_timer() for clarity.
-#define get_frame_time(refresh_rate) (1000000 / (refresh_rate))
-#define get_elapsed_time() (rg_system_timer())
-#define get_elapsed_time_since(start) (get_elapsed_time() - (start))
-
 #define RG_TIMER_INIT() int64_t _rgts_ = rg_system_timer(), _rgtl_ = rg_system_timer();
 #define RG_TIMER_LAP(name) \
     RG_LOGX("Lap %s: %.2f   Total: %.2f\n", #name, (rg_system_timer() - _rgtl_) / 1000.f, \
