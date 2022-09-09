@@ -2176,7 +2176,7 @@ OPCODE_FUNC tai(void)
 
 OPCODE_FUNC csh(void)
 {
-	PCE.Timer.cycles_per_line = 454; /* 21477270 / 3 / 60 / 263 */ /* 7.16 Mhz CPU clock */
+	PCE.Timer.cycles_per_line = 455; /* 21477270 / 3 / 60 / 263 */ /* 7.16 Mhz CPU clock */
 	CPU.PC++;
 	Cycles+=3;
 }

@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 void h6280_reset(void);
-void h6280_run(void);
+void h6280_run(int cycles);
 void h6280_irq(int);
 void h6280_dump_state(void);
 void h6280_disassemble(void);

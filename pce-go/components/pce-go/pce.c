@@ -13,7 +13,7 @@ PCE_t PCE;
 uint8_t *PageR[8];
 uint8_t *PageW[8];
 
-static inline void timer_run(void);
+static inline void timer_run(int cycles);
 
 /**
   * Reset the hardware
@@ -39,7 +39,7 @@ pce_reset(bool hard)
 
 	PCE.SF2 = 0;
 	PCE.Timer.cycles_per_line = 113;
-	Cycles = 0;
+	PCE.Cycles = 0;
 
 	// Reset sound generator values
 	for (int i = 0; i < PSG_CHANNELS; i++) {
@@ -111,14 +111,14 @@ pce_run(void)
 	// Emulate!
 	for (PCE.Scanline = 0; PCE.Scanline < 263; ++PCE.Scanline) {
 		PCE.MaxCycles += PCE.Timer.cycles_per_line;
-		h6280_run();
-		timer_run();
+		/*while (PCE.MaxCycles > 0) */ {
+			h6280_run(PCE.MaxCycles);
+			timer_run(PCE.Cycles);
+			PCE.MaxCycles -= PCE.Cycles;
+			PCE.Cycles = 0;
+		}
 		gfx_run();
 	}
-	// Prevent overflowing counters
-	int trim = MIN(Cycles, PCE.MaxCycles);
-	PCE.MaxCycles -= trim;
-	Cycles -= trim;
 }
 
 
@@ -127,12 +127,11 @@ pce_run(void)
  **/
 
 static inline void
-timer_run(void)
+timer_run(int cycles)
 {
 	PCE.Timer.cycles_counter -= PCE.Timer.cycles_per_line;
 
-	// Trigger when it underflows
-	if (PCE.Timer.cycles_counter > CYCLES_PER_TIMER_TICK) {
+	if (PCE.Timer.cycles_counter < 0) {
 		PCE.Timer.cycles_counter += CYCLES_PER_TIMER_TICK;
 		if (PCE.Timer.running) {
 			// Trigger when it underflows from 0
@@ -242,10 +241,11 @@ pce_readIO(uint16_t A)
 		break;
 
 	case 0x0C00:                /* Timer */
-		switch (A & 1) {
-		case 0: ret = PCE.Timer.counter | (PCE.io_buffer & ~0x7F); break;
-		case 1: ret = PCE.Timer.counter | (PCE.io_buffer & ~0x01); break;
-		}
+		ret = (PCE.io_buffer & 0x80);
+		if (PCE.Timer.cycles_counter == PCE.Cycles)
+			ret |= (PCE.Timer.counter - 1) & 0x7F;
+		else
+			ret |= PCE.Timer.counter;
 		break;
 
 	case 0x1000:                /* Joypad */
@@ -618,8 +618,10 @@ pce_writeIO(uint16_t A, uint8_t V)
 			return;
 		case 1:
 			V &= 1;
-			if (V && !PCE.Timer.running)
+            if (V && !PCE.Timer.running){
+                // PCE.Timer.cycles_counter = PCE.Cycles + CYCLES_PER_TIMER_TICK;
 				PCE.Timer.counter = PCE.Timer.reload;
+            }
 			PCE.Timer.running = V;
 			return;
 		}

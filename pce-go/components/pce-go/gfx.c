@@ -53,49 +53,39 @@ static uint8_t *framebuffer_top, *framebuffer_bottom;
 /*
 	Draw background tiles between two lines
 */
-static void // Do not inline
+static void
 draw_tiles(uint8_t *screen_buffer, int Y1, int Y2, int scroll_x, int scroll_y)
 {
+	TRACE_GFX("Rendering tiles on lines %3d - %3d\tScroll: (%3d,%3d)\n", Y1, Y2, scroll_x, scroll_y);
+
 	uint32_t _bg_w[] = { 32, 64, 128, 128 };
 	uint32_t _bg_h[] = { 32, 64 };
 
 	uint32_t bg_w = _bg_w[(IO_VDC_REG[MWR].W >> 4) & 3]; // Bits 5-4 select the width
 	uint32_t bg_h = _bg_h[(IO_VDC_REG[MWR].W >> 6) & 1]; // Bit 6 selects the height
 
-	int XW, no, x, y, h, offset;
-	uint8_t *PP, *PAL, *P, *C;
+	int num_tiles = IO_VDC_SCREEN_WIDTH / 8 + 1;
+	int x;
+	int y = Y1 + scroll_y;
+	int offset = y & 7;
+	int h = MIN(8 - offset, Y2 - Y1);
 
-	if (Y1 == 0) {
-		TRACE_GFX("\n=================================================\n");
-	}
-
-	TRACE_GFX("Rendering lines %3d - %3d\tScroll: (%3d,%3d)\n", Y1, Y2, scroll_x, scroll_y);
-
-	y = Y1 + scroll_y;
-	offset = y & 7;
-	h = 8 - offset;
-	if (h > Y2 - Y1)
-		h = Y2 - Y1;
 	y >>= 3;
 
-	PP = (screen_buffer + XBUF_WIDTH * Y1) - (scroll_x & 7);
-	XW = IO_VDC_SCREEN_WIDTH / 8 + 1;
+	uint8_t *PP = (screen_buffer + XBUF_WIDTH * Y1) - (scroll_x & 7);
 
-	for (int Line = Y1; Line < Y2; y++) {
+	for (int line = Y1; line < Y2; y++) {
 		x = scroll_x / 8;
 		y &= bg_h - 1;
-		for (int X1 = 0; X1 < XW; X1++, x++, PP += 8) {
+		for (int n = 0; n < num_tiles; n++, x++, PP += 8) {
 			x &= bg_w - 1;
 
-			no = PCE.VRAM[x + y * bg_w];
+			int no = PCE.VRAM[x + y * bg_w];
 
-			PAL = &PCE.Palette[(no >> 8) & 0x1F0];
+			uint8_t *PAL = &PCE.Palette[(no >> 8) & 0x1F0];
+			uint8_t *C = (uint8_t*)(PCE.VRAM + (no & 0x7FF) * 16 + offset);
+			uint8_t *P = PP;
 
-			// PCE has max of 2048 tiles
-			no &= 0x7FF;
-
-			C = (uint8_t*)(PCE.VRAM + no * 16 + offset);
-			P = PP;
 			for (int i = 0; i < h; i++, P += XBUF_WIDTH, C += 2) {
 				uint32_t J, L, M;
 
@@ -131,12 +121,10 @@ draw_tiles(uint8_t *screen_buffer, int Y1, int Y2, int scroll_x, int scroll_y)
 				if (J & 0x01) P[7] = PAL(6);
 			}
 		}
-		Line += h;
-		PP += XBUF_WIDTH * h - XW * 8;
+		line += h;
+		PP += XBUF_WIDTH * h - num_tiles * 8;
 		offset = 0;
-		h = Y2 - Line;
-		if (h > 8)
-			h = 8;
+		h = MIN(8, Y2 - line);
 	}
 }
 
@@ -144,8 +132,8 @@ draw_tiles(uint8_t *screen_buffer, int Y1, int Y2, int scroll_x, int scroll_y)
 /*
 	Draw sprite C to framebuffer P
 */
-static void // Do not inline (take advantage of xtensa's windowed registers)
-draw_sprite(uint8_t *P, uint16_t *C, int height, uint32_t attr)
+static void
+draw_sprite(uint8_t *P, const uint16_t *C, int height, uint32_t attr)
 {
 	uint8_t *PAL = &PCE.Palette[256 + ((attr & 0xF) << 4)];
 
@@ -159,7 +147,7 @@ draw_sprite(uint8_t *P, uint16_t *C, int height, uint32_t attr)
 
 	for (int i = 0; i < height; i++, C += inc, P += XBUF_WIDTH) {
 
-		uint16_t J = C[0] | C[16] | C[32] | C[48];
+		uint32_t J = C[0] | C[16] | C[32] | C[48];
 		uint32_t L1, L2, L, M;
 
 		if (!J)
@@ -239,6 +227,8 @@ draw_sprite(uint8_t *P, uint16_t *C, int height, uint32_t attr)
 static void // Do not inline
 draw_sprites(uint8_t *screen_buffer, int Y1, int Y2, int priority)
 {
+	TRACE_GFX("Rendering sprites on lines %3d - %3d\tPriority: %d\n", Y1, Y2, priority);
+
 	// NOTE: At this time we do not respect bg sprites priority over top sprites.
 	// Example: Assume that sprite #2 is priority=0 and sprite #5 is priority=1. If they
 	// overlap then sprite #5 shouldn't be drawn because #2 > #5. But currently it will.
@@ -250,81 +240,57 @@ draw_sprites(uint8_t *screen_buffer, int Y1, int Y2, int priority)
 		sprite_t *spr = (sprite_t *)PCE.SPRAM + n;
 		uint32_t attr = spr->attr;
 
-		if (((attr >> 7) & 1) != priority)
+		if (((attr >> 7) & 1) != priority) {
 			continue;
+		}
 
 		int y = (spr->y & 0x3FF) - 64;
 		int x = (spr->x & 0x3FF) - 32;
 		int cgx = (attr >> 8) & 1;
 		int cgy = (attr >> 12) & 3;
-		int inc = (attr & V_FLIP) ? -1 : 1;
 		int no = (spr->no & 0x7FF);
+
+		cgy |= cgy >> 1;
+
+		no = (no >> 1) & ~(cgy * 2 + cgx);
+		no &= 0x1FF; // PCE has max of 512 sprites
 
 		TRACE_SPR("Sprite 0x%02X : X = %d, Y = %d, attr = %d, no = %d\n", n, x, y, attr, no);
 
-		cgy |= cgy >> 1;
-		no = (no >> 1) & ~(cgy * 2 + cgx);
-
-		// PCE has max of 512 sprites
-		no &= 0x1FF;
-
+		// Sprite is completely outside our window, skip it
 		if (y >= Y2 || y + (cgy + 1) * 16 < Y1 || x >= IO_VDC_SCREEN_WIDTH || x + (cgx + 1) * 16 < 0) {
 			continue;
 		}
 
-		uint8_t *P = screen_buffer + (XBUF_WIDTH * y + x);
-		uint16_t *C = PCE.VRAM + (no * 64);
-
 		cgy *= 16;
 
-		if (attr & V_FLIP) {
-			P = P + cgy * XBUF_WIDTH;
-			for (int yy = cgy; yy >= 0; yy -= 16) {
-				int h = 16;
+		uint8_t *P = screen_buffer + ((attr & V_FLIP ? cgy + y : y) * XBUF_WIDTH) + x;
+		uint16_t *C = PCE.VRAM + (no * 64);
 
-				if (h > Y2 - y - yy)
-					h = Y2 - y - yy;
-
-				if (attr & H_FLIP) {
-					for (int j = 0; j <= cgx; j++) {
-						draw_sprite(P + (cgx - j) * 16, C + j * 64, h, attr);
-					}
-				} else {
-					for (int j = 0; j <= cgx; j++) {
-						draw_sprite(P + j * 16, C + j * 64, h, attr);
-					}
-				}
-
-				P -= h * XBUF_WIDTH;
-				C += (h + 16 * 7);// * inc;
-			}
-		} else {
-			for (int yy = 0; yy <= cgy; yy += 16) {
+		for (int yy = 0; yy <= cgy; yy += 16) {
+			int height = 16;
+			if (attr & V_FLIP) {
+				height = MIN(16, Y2 - y - (cgy - yy));
+			} else {
 				int t = Y1 - y - yy;
-				int h = 16;
-
 				if (t > 0) {
-					C += t * inc;
-					h -= t;
 					P += t * XBUF_WIDTH;
+					C += t;
+					height -= t;
 				}
-
-				if (h > Y2 - y - yy)
-					h = Y2 - y - yy;
-
-				if (attr & H_FLIP) {
-					for (int j = 0; j <= cgx; j++) {
-						draw_sprite(P + (cgx - j) * 16, C + j * 64, h, attr);
-					}
-				} else {
-					for (int j = 0; j <= cgx; j++) {
-						draw_sprite(P + j * 16, C + j * 64, h, attr);
-					}
-				}
-
-				P += h * XBUF_WIDTH;
-				C += (h + 16 * 7);// * inc;
+				height = MIN(height, Y2 - y - yy);
 			}
+
+			if (height > 0) {
+				for (int j = 0; j <= cgx; j++) {
+					draw_sprite(P + (attr & H_FLIP ? cgx - j : j) * 16, C + j * 64, height, attr);
+				}
+			} else {
+				MESSAGE_DEBUG("negative sprite height!\n");
+			}
+
+			P += ((attr & V_FLIP) ? -height : height) * XBUF_WIDTH;
+			C += height + 16 * 7;
 		}
 	}
 }

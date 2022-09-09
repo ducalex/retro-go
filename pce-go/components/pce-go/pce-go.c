@@ -44,7 +44,7 @@ static save_var_t SaveStateVars[] =
 	SVAR_1("CPU.Y", CPU.Y),      SVAR_1("CPU.P", CPU.P),    SVAR_1("CPU.S", CPU.S),
 
 	// Misc
-	SVAR_4("Cycles", Cycles),                   SVAR_4("MaxCycles", PCE.MaxCycles),
+	SVAR_4("Cycles", PCE.Cycles),               SVAR_4("MaxCycles", PCE.MaxCycles),
 	SVAR_1("SF2", PCE.SF2),
 
 	// IRQ

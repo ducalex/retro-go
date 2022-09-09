@@ -6,12 +6,13 @@
 #include "pce-go.h"
 #include "pce.h"
 
-#include "h6280_instr.h"
-#include "h6280_dbg.h"
-
 #define OPCODE(n, f) case n: f; break;
+#define Cycles PCE.Cycles
 
 h6280_t CPU;
+
+#include "h6280_instr.h"
+#include "h6280_dbg.h"
 
 
 /**
@@ -52,12 +53,10 @@ h6280_irq(int type)
  * CPU emulation
  **/
 void
-h6280_run(void)
+h6280_run(int max_cycles)
 {
-	int max_cycles = PCE.MaxCycles;
-
 	/* Handle active block transfers, ie: do nothing. (tai/tdd/tia/tin/tii) */
-	if (Cycles > max_cycles) {
+	if (Cycles >= max_cycles) {
 		return;
 	}
 

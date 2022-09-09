@@ -127,10 +127,10 @@ typedef struct {
 	int ScrollYDiff;
 
 	// Number of executed CPU cycles
-	uint32_t Cycles;
+	int32_t Cycles;
 
 	// Run CPU until Cycles >= MaxCycles
-	uint32_t MaxCycles;
+	int32_t MaxCycles;
 
 	// Value of each of the MMR registers
 	uint8_t MMR[8];
@@ -147,8 +147,8 @@ typedef struct {
 
 	// Timer
 	struct {
-		uint32_t cycles_per_line;
-		uint32_t cycles_counter;
+		int32_t cycles_per_line;
+		int32_t cycles_counter;
 		uint32_t counter;
 		uint32_t reload;
 		uint32_t running;
@@ -202,8 +202,6 @@ extern PCE_t PCE;
 // physical address on emulator machine of each of the 256 banks
 extern uint8_t *PageR[8];
 extern uint8_t *PageW[8];
-
-#define Cycles PCE.Cycles
 
 #define IO_VDC_REG           PCE.VDC.regs
 #define IO_VDC_REG_ACTIVE    PCE.VDC.regs[PCE.VDC.reg]

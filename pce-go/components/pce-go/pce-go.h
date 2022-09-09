@@ -66,11 +66,10 @@
 #define JOY_DOWN    0x40
 #define JOY_LEFT    0x80
 
-// The extra 32's are linked to the way the sprite are drawn on screen, which can overlap to near memory
-// If only one pixel is drawn in the screen, the whole sprite is written, which can eventually overlap unexpected area
-// This could be fixed at the cost of performance but we don't need the extra memory
-#define XBUF_WIDTH 	(352 + 32)
-#define	XBUF_HEIGHT	(242 + 32)
+// We need 16 bytes of scratch area on both side of each line. The 16 bytes can be shared by adjacent lines.
+// The buffer should look like [16 bytes] [line 1] [16 bytes] ... [16 bytes] [line 242] [16 bytes]
+#define XBUF_WIDTH 	(352 + 16)
+#define	XBUF_HEIGHT	(242 + 4)
 
 int LoadState(const char *name);
 int SaveState(const char *name);
