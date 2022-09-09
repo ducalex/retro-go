@@ -48,6 +48,7 @@ static struct {
 	int latched;
 } gfx_context;
 
+static uint8_t *framebuffer_top, *framebuffer_bottom;
 
 /*
 	Draw background tiles between two lines
@@ -103,6 +104,14 @@ draw_tiles(uint8_t *screen_buffer, int Y1, int Y2, int scroll_x, int scroll_y)
 				if (!J)
 					continue;
 
+				if (P + 8 >= framebuffer_bottom) {
+					MESSAGE_DEBUG("tile overflow!\n");
+					break;
+				} else if (P < framebuffer_top) {
+					MESSAGE_DEBUG("tile underflow!\n");
+					continue;
+				}
+
 				M = C[0];
 				L = ((M & 0x88) >> 3) | ((M & 0x44) << 6) | ((M & 0x22) << 15) | ((M & 0x11) << 24);
 				M = C[1];
@@ -155,6 +164,15 @@ draw_sprite(uint8_t *P, uint16_t *C, int height, uint32_t attr)
 
 		if (!J)
 			continue;
+
+		// This will also need to be handled in draw_sprites... (it could adjust simply constrain the height)
+		if (P + 16 >= framebuffer_bottom) {
+			MESSAGE_DEBUG("sprite overflow %d!\n", i);
+			break;
+		} else if (P < framebuffer_top) {
+			MESSAGE_DEBUG("sprite underflow %d!\n", i);
+			continue;
+		}
 
 		M = C[0];
 		L1 = ((M & 0x88) >> 3) | ((M & 0x44) << 6) | ((M & 0x22) << 15) | ((M & 0x11) << 24);
@@ -363,8 +381,11 @@ render_lines(int min_line, int max_line)
 		return;
 	}
 
-	// We must fill the region with color 0 first
-	// memset(screen_buffer + (min_line * XBUF_WIDTH), PCE.Palette[0], XBUF_WIDTH * (max_line - min_line + 1));
+	// Assume 16 columns of scratch area around our buffer.
+	framebuffer_top = screen_buffer - 16;
+	framebuffer_bottom = screen_buffer + PCE.VDC.screen_height * XBUF_WIDTH;
+
+	// We must fill the region with color 0 first.
 	size_t screen_width = IO_VDC_SCREEN_WIDTH;
 	for (int y = min_line; y <= max_line; y++) {
 		memset(screen_buffer + (y * XBUF_WIDTH), PCE.Palette[0], screen_width);
@@ -456,9 +477,9 @@ gfx_run(void)
 
 	/* Test raster hit */
 	if (RasHitON) {
-		int temp_rcr = IO_VDC_REG[RCR].W;
-		if (temp_rcr >= 0x40 && temp_rcr <= 0x146) {
-			if (scanline == (temp_rcr - 0x40 + IO_VDC_MINLINE) % 263) {
+		if (IO_VDC_REG[RCR].W >= 0x40 && (IO_VDC_REG[RCR].W <= 0x146)) {
+			uint16_t temp_rcr = (uint16_t)(IO_VDC_REG[RCR].W - 0x40);
+			if (scanline == (temp_rcr + IO_VDC_MINLINE) % 263) {
 				TRACE_GFX("\n-----------------RASTER HIT (%d)------------------\n", scanline);
 				gfx_irq(VDC_STAT_RR);
 			}

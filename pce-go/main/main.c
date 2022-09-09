@@ -70,9 +70,8 @@ uint8_t *osd_gfx_framebuffer(int width, int height)
     {
         MESSAGE_INFO("Resolution changed to: %dx%d\n", width, height);
 
-        // We center the content vertically and horizontally to allow overflows all around
-        int offset_center = (((XBUF_HEIGHT - height) / 2 + 16) * XBUF_WIDTH + (XBUF_WIDTH - width) / 2);
-
+        // PCE-GO needs 16 columns of scratch space + horizontally center
+        int offset_center = 16 + ((XBUF_WIDTH - width) / 2);
         updates[0].buffer = framebuffers[0] + offset_center;
         updates[1].buffer = framebuffers[1] + offset_center;
 
@@ -244,7 +243,7 @@ void app_main(void)
         rg_emu_load_state(app->saveSlot);
     }
 
-    rg_system_create_task("pce_sound", &audioTask, NULL, 2560, 5, 1);
+    rg_system_create_task("pce_sound", &audioTask, NULL, 3 * 1024, 5, 1);
 
     RunPCE();
 
