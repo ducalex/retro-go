@@ -64,13 +64,22 @@ enum
 
 typedef struct
 {
-    struct {
-        display_rotation_t rotation;
-        display_scaling_t scaling;
-        display_filter_t filter;
-        display_update_t update;
-        int backlight;
-    } config;
+    display_rotation_t rotation;
+    display_scaling_t scaling;
+    display_filter_t filter;
+    display_update_t update_mode;
+    int backlight;
+} rg_display_config_t;
+
+typedef struct
+{
+    int32_t totalFrames;
+    int32_t fullFrames;
+    int64_t busyTime; // This is only time spent blocking the main task
+} rg_display_counters_t;
+
+typedef struct
+{
     struct {
         int width;
         int height;
@@ -94,14 +103,7 @@ typedef struct
         int crop_v;
         int format;
     } source;
-    struct
-    {
-        int32_t totalFrames;
-        int32_t fullFrames;
-        int64_t busyTime; // This is only time spent blocking the main task
-    } counters;
     bool changed;
-    bool redraw;
 } rg_display_t;
 
 typedef struct
@@ -128,8 +130,10 @@ void rg_display_sync(void);
 void rg_display_force_redraw(void);
 bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame, int width, int height);
 void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, int format);
-void rg_display_set_source_palette(const uint16_t *data, size_t colors);
 rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const rg_video_update_t *previousUpdate);
+
+rg_display_counters_t rg_display_get_counters(void);
+rg_display_config_t rg_display_get_config(void);
 const rg_display_t *rg_display_get_info(void);
 
 void rg_display_set_scaling(display_scaling_t scaling);

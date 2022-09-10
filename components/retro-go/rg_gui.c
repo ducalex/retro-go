@@ -921,7 +921,7 @@ static void draw_game_status_bars(void)
     char header[100] = {0};
     char footer[100] = {0};
 
-    const rg_stats_t stats = rg_system_get_stats();
+    rg_stats_t stats = rg_system_get_counters();
     const rg_app_t *app = rg_system_get_app();
 
     snprintf(header, 100, "SPEED: %.0f%% (%.0f/%.0f) / BUSY: %.0f%%",
@@ -1073,8 +1073,8 @@ int rg_gui_debug_menu(const rg_gui_option_t *extra_options)
         RG_DIALOG_CHOICE_LAST
     };
 
-    const rg_stats_t stats = rg_system_get_stats();
     const rg_display_t *display = rg_display_get_info();
+    rg_stats_t stats = rg_system_get_counters();
     time_t now = time(NULL);
 
     strftime(system_rtc, 20, "%F %T", gmtime(&now));

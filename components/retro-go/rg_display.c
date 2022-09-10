@@ -21,6 +21,8 @@ static QueueHandle_t spi_transactions;
 static QueueHandle_t spi_buffers;
 static QueueHandle_t display_task_queue;
 
+static rg_display_counters_t counters;
+static rg_display_config_t config;
 static rg_display_t display;
 
 static struct {
@@ -325,7 +327,7 @@ static void lcd_init(void)
 
     rg_display_clear(C_BLACK);
     vTaskDelay(pdMS_TO_TICKS(5));
-    lcd_set_backlight(display.config.backlight);
+    lcd_set_backlight(config.backlight);
 }
 
 static void lcd_deinit(void)
@@ -405,7 +407,7 @@ static inline void write_rect(int left, int top, int width, int height,
     const int screen_bottom = RG_MIN(screen_top + scaled_height, screen_height);
     const int lines_per_buffer = SPI_BUFFER_LENGTH / scaled_width;
     const int ix_acc = (x_inc * scaled_left) % screen_width;
-    const int filter_mode = display.config.scaling ? display.config.filter : 0;
+    const int filter_mode = config.scaling ? config.filter : 0;
     const bool filter_y = filter_mode == RG_DISPLAY_FILTER_VERT || filter_mode == RG_DISPLAY_FILTER_BOTH;
     const bool filter_x = filter_mode == RG_DISPLAY_FILTER_HORIZ || filter_mode == RG_DISPLAY_FILTER_BOTH;
     const int format = display.source.format;
@@ -540,11 +542,11 @@ static void update_viewport_scaling(void)
     int new_height = src_height;
     double new_ratio = 0.0;
 
-    if (display.config.scaling == RG_DISPLAY_SCALING_FILL)
+    if (config.scaling == RG_DISPLAY_SCALING_FILL)
     {
         new_ratio = display.screen.width / (double)display.screen.height;
     }
-    else if (display.config.scaling == RG_DISPLAY_SCALING_FIT)
+    else if (config.scaling == RG_DISPLAY_SCALING_FIT)
     {
         new_ratio = src_width / (double)src_height;
     }
@@ -613,7 +615,7 @@ static void display_task(void *arg)
 
         if (display.changed)
         {
-            if (display.config.scaling != RG_DISPLAY_SCALING_FILL)
+            if (config.scaling != RG_DISPLAY_SCALING_FILL)
                 rg_display_clear(C_BLACK);
             update_viewport_scaling();
             update->type = RG_UPDATE_FULL;
@@ -632,8 +634,8 @@ static void display_task(void *arg)
 
         // It's better to update the counters before we start the transfer, in case someone needs it
         if (update->type == RG_UPDATE_FULL)
-            display.counters.fullFrames++;
-        display.counters.totalFrames++;
+            counters.fullFrames++;
+        counters.totalFrames++;
 
         for (int y = 0; y < display.source.height;)
         {
@@ -665,64 +667,74 @@ const rg_display_t *rg_display_get_info(void)
     return &display;
 }
 
-void rg_display_set_update_mode(display_update_t update)
+rg_display_counters_t rg_display_get_counters(void)
 {
-    display.config.update = RG_MIN(RG_MAX(0, update), RG_DISPLAY_UPDATE_COUNT - 1);
-    rg_settings_set_number(NS_APP, SETTING_UPDATE, display.config.update);
+    return counters;
+}
+
+rg_display_config_t rg_display_get_config(void)
+{
+    return config;
+}
+
+void rg_display_set_update_mode(display_update_t update_mode)
+{
+    config.update_mode = RG_MIN(RG_MAX(0, update_mode), RG_DISPLAY_UPDATE_COUNT - 1);
+    rg_settings_set_number(NS_APP, SETTING_UPDATE, config.update_mode);
     display.changed = true;
 }
 
 display_update_t rg_display_get_update_mode(void)
 {
-    return display.config.update;
+    return config.update_mode;
 }
 
 void rg_display_set_scaling(display_scaling_t scaling)
 {
-    display.config.scaling = RG_MIN(RG_MAX(0, scaling), RG_DISPLAY_SCALING_COUNT - 1);
-    rg_settings_set_number(NS_APP, SETTING_SCALING, display.config.scaling);
+    config.scaling = RG_MIN(RG_MAX(0, scaling), RG_DISPLAY_SCALING_COUNT - 1);
+    rg_settings_set_number(NS_APP, SETTING_SCALING, config.scaling);
     display.changed = true;
 }
 
 display_scaling_t rg_display_get_scaling(void)
 {
-    return display.config.scaling;
+    return config.scaling;
 }
 
 void rg_display_set_filter(display_filter_t filter)
 {
-    display.config.filter = RG_MIN(RG_MAX(0, filter), RG_DISPLAY_FILTER_COUNT - 1);
-    rg_settings_set_number(NS_APP, SETTING_FILTER, display.config.filter);
+    config.filter = RG_MIN(RG_MAX(0, filter), RG_DISPLAY_FILTER_COUNT - 1);
+    rg_settings_set_number(NS_APP, SETTING_FILTER, config.filter);
     display.changed = true;
 }
 
 display_filter_t rg_display_get_filter(void)
 {
-    return display.config.filter;
+    return config.filter;
 }
 
 void rg_display_set_rotation(display_rotation_t rotation)
 {
-    display.config.rotation = RG_MIN(RG_MAX(0, rotation), RG_DISPLAY_ROTATION_COUNT - 1);
-    rg_settings_set_number(NS_APP, SETTING_SCALING, display.config.rotation);
+    config.rotation = RG_MIN(RG_MAX(0, rotation), RG_DISPLAY_ROTATION_COUNT - 1);
+    rg_settings_set_number(NS_APP, SETTING_SCALING, config.rotation);
     display.changed = true;
 }
 
 display_rotation_t rg_display_get_rotation(void)
 {
-    return display.config.rotation;
+    return config.rotation;
 }
 
 void rg_display_set_backlight(int percent)
 {
-    display.config.backlight = RG_MIN(RG_MAX(percent, 0), 100);
-    rg_settings_set_number(NS_GLOBAL, SETTING_BACKLIGHT, display.config.backlight);
-    lcd_set_backlight(display.config.backlight);
+    config.backlight = RG_MIN(RG_MAX(percent, 0), 100);
+    rg_settings_set_number(NS_GLOBAL, SETTING_BACKLIGHT, config.backlight);
+    lcd_set_backlight(config.backlight);
 }
 
 int rg_display_get_backlight(void)
 {
-    return display.config.backlight;
+    return config.backlight;
 }
 
 bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame, int width, int height)
@@ -770,7 +782,7 @@ rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const r
     // RG_ASSERT(display.source.width && display.source.height, "Source format not set!");
     RG_ASSERT(update, "update is null!");
 
-    if (!previousUpdate || display.changed || display.config.update == RG_DISPLAY_UPDATE_FULL)
+    if (!previousUpdate || display.changed || config.update_mode == RG_DISPLAY_UPDATE_FULL)
     {
         update->type = RG_UPDATE_FULL;
     }
@@ -841,7 +853,7 @@ rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const r
             update->type = RG_UPDATE_PARTIAL;
 
             // If filtering is enabled we must adjust our diff blocks to be on appropriate boundaries
-            if (display.config.filter && display.config.scaling)
+            if (config.filter && config.scaling)
             {
                 for (int y = 0; y < frame_height; ++y)
                 {
@@ -903,7 +915,7 @@ rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const r
 
     xQueueSend(display_task_queue, &update, portMAX_DELAY);
 
-    display.counters.busyTime += rg_system_timer() - time_start;
+    counters.busyTime += rg_system_timer() - time_start;
 
     return update->type;
 }
@@ -1026,14 +1038,16 @@ void rg_display_init(void)
 {
     RG_LOGI("Initialization...\n");
     // TO DO: We probably should call the setters to ensure valid values...
+    config = (rg_display_config_t){
+        .backlight = rg_settings_get_number(NS_GLOBAL, SETTING_BACKLIGHT, 80),
+        .scaling = rg_settings_get_number(NS_APP, SETTING_SCALING, RG_DISPLAY_SCALING_FILL),
+        .filter = rg_settings_get_number(NS_APP, SETTING_FILTER, RG_DISPLAY_FILTER_BOTH),
+        .rotation = rg_settings_get_number(NS_APP, SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO),
+        .update_mode = rg_settings_get_number(NS_APP, SETTING_UPDATE, RG_DISPLAY_UPDATE_PARTIAL),
+    };
     display = (rg_display_t){
         .screen.width = RG_SCREEN_WIDTH - RG_SCREEN_MARGIN_LEFT - RG_SCREEN_MARGIN_RIGHT,
         .screen.height = RG_SCREEN_HEIGHT - RG_SCREEN_MARGIN_TOP - RG_SCREEN_MARGIN_BOTTOM,
-        .config.backlight = RG_MIN(RG_MAX(rg_settings_get_number(NS_GLOBAL, SETTING_BACKLIGHT, 80), 0), 100),
-        .config.scaling = rg_settings_get_number(NS_APP, SETTING_SCALING, RG_DISPLAY_SCALING_FILL),
-        .config.filter = rg_settings_get_number(NS_APP, SETTING_FILTER, RG_DISPLAY_FILTER_BOTH),
-        .config.rotation = rg_settings_get_number(NS_APP, SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO),
-        .config.update = rg_settings_get_number(NS_APP, SETTING_UPDATE, RG_DISPLAY_UPDATE_PARTIAL),
         .changed = true,
     };
     lcd_init();

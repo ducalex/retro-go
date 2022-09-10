@@ -167,11 +167,11 @@ static void update_statistics(void)
     static counters_t counters = {0};
     const counters_t previous = counters;
 
-    const rg_display_t *display = rg_display_get_info();
-    // const rg_audio_t *audio = rg_audio_get_info();
+    rg_display_counters_t display = rg_display_get_counters();
+    // rg_audio_counters_t audio = rg_audio_get_counters();
 
-    counters.totalFrames = display->counters.totalFrames;
-    counters.fullFrames = display->counters.fullFrames;
+    counters.totalFrames = display.totalFrames;
+    counters.fullFrames = display.fullFrames;
     counters.busyTime = statistics.busyTime;
     counters.ticks = statistics.ticks;
     counters.updateTime = rg_system_timer();
@@ -458,7 +458,7 @@ rg_app_t *rg_system_get_app(void)
     return &app;
 }
 
-rg_stats_t rg_system_get_stats(void)
+rg_stats_t rg_system_get_counters(void)
 {
     return statistics;
 }

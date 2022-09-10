@@ -196,7 +196,7 @@ bool rg_system_save_trace(const char *filename, bool append);
 void rg_system_event(rg_event_t event, void *arg);
 int64_t rg_system_timer(void);
 rg_app_t *rg_system_get_app(void);
-rg_stats_t rg_system_get_stats(void);
+rg_stats_t rg_system_get_counters(void);
 
 // Wrappers for the OS' task/thread creation API. It also keeps track of handles for debugging purposes...
 void *rg_system_create_task(const char *name, void (*taskFunc)(void* arg), void* arg, size_t stackSize, int priority, int affinity);
