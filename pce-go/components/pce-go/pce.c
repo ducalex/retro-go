@@ -214,11 +214,10 @@ pce_readIO(uint16_t A)
 		case 1: ret = 0xFF; break; // Unused
 		case 2: ret = 0xFF; break; // Write only
 		case 3: ret = 0xFF; break; // Write only
-		case 4: ret = PCE.VCE.regs[PCE.VCE.reg.W].B.l; break; // Color LSB (8 bit)
+		case 4: ret = PCE.VCE.regs[PCE.VCE.reg].B.l; break; // Color LSB (8 bit)
 		case 5: {
-			ret = (PCE.VCE.regs[PCE.VCE.reg.W].B.h & 1) | 0xFE; // Color MSB (1 bit)
-			PCE.VCE.reg.W++;
-			PCE.VCE.reg.W &= 0x1FF;
+			ret = (PCE.VCE.regs[PCE.VCE.reg++].B.h) | 0xFE; // Color MSB (1 bit)
+			PCE.VCE.reg &= 0x1FF;
 			break;
 		}
 		case 6: ret = 0xFF; break; // Unused
@@ -509,18 +508,20 @@ pce_writeIO(uint16_t A, uint8_t V)
 			return;
 
 		case 2:                                 // Color table address (LSB)
-			PCE.VCE.reg.B.l = V;
+			PCE.VCE.reg &= 0x100;
+			PCE.VCE.reg |= V;
 			return;
 
 		case 3:                                 // Color table address (MSB)
-			PCE.VCE.reg.B.h = V & 1;
+			PCE.VCE.reg &= 0xFF;
+			PCE.VCE.reg |= V << 8;
 			return;
 
 		case 4:                                 // Color table data (LSB)
-			PCE.VCE.regs[PCE.VCE.reg.W].B.l = V;
+			PCE.VCE.regs[PCE.VCE.reg].B.l = V;
 			{
-				uint16_t n = PCE.VCE.reg.W;
-				uint8_t c = PCE.VCE.regs[n].W >> 1;
+				size_t n = PCE.VCE.reg;
+				size_t c = PCE.VCE.regs[n].W >> 1;
 				if (n == 0) {
 					for (int i = 0; i < 256; i += 16)
 						PCE.Palette[i] = c;
@@ -530,17 +531,17 @@ pce_writeIO(uint16_t A, uint8_t V)
 			return;
 
 		case 5:                                 // Color table data (MSB)
-			PCE.VCE.regs[PCE.VCE.reg.W].B.h = V;
+			PCE.VCE.regs[PCE.VCE.reg].B.h = V;
 			{
-				uint16_t n = PCE.VCE.reg.W;
-				uint8_t c = PCE.VCE.regs[n].W >> 1;
+				size_t n = PCE.VCE.reg;
+				size_t c = PCE.VCE.regs[n].W >> 1;
 				if (n == 0) {
 					for (int i = 0; i < 256; i += 16)
 						PCE.Palette[i] = c;
 				} else if (n & 15)
 					PCE.Palette[n] = c;
 			}
-			PCE.VCE.reg.W = (PCE.VCE.reg.W + 1) & 0x1FF;
+			PCE.VCE.reg = (PCE.VCE.reg + 1) & 0x1FF;
 			return;
 
 		case 6:                                 // Not used

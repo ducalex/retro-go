@@ -14,6 +14,34 @@
 #define CYCLES_PER_TIMER_TICK  (1024) // 1097
 //#define CYCLES_PER_TIMER_TICK  (1097)
 
+typedef struct __attribute__((packed))
+{
+	uint16_t y; 	/* Vertical position */
+	uint16_t x; 	/* Horizontal position */
+	uint16_t no;   	/* Offset in VRAM */
+	uint16_t attr; 	/* Attributes */
+	/*
+		* bit 0-4 : number of the palette to be used
+		* bit 7 : background sprite
+		*          0 -> must be drawn behind tiles
+		*          1 -> must be drawn in front of tiles
+		* bit 8 : width
+		*          0 -> 16 pixels
+		*          1 -> 32 pixels
+		* bit 11 : horizontal flip
+		*          0 -> normal shape
+		*          1 -> must be draw horizontally flipped
+		* bit 13-12 : height
+		*          00 -> 16 pixels
+		*          01 -> 32 pixels
+		*          10 -> 48 pixels
+		*          11 -> 64 pixels
+		* bit 15 : vertical flip
+		*          0 -> normal shape
+		*          1 -> must be drawn vertically flipped
+	*/
+} sprite_t;
+
 // VDC Status Flags (vdc_status bit)
 typedef enum {
 	VDC_STAT_CR  = 0,	/* Sprite Collision */
@@ -97,7 +125,7 @@ typedef struct {
 	uint16_t VRAM[0x8000];
 
 	// Sprite RAM
-	uint16_t SPRAM[0x100];
+	sprite_t SPRAM[64];
 
 	// Extra RAM contained on the HuCard (Populous)
 	uint8_t *ExRAM;
@@ -121,7 +149,7 @@ typedef struct {
 	uint8_t Palette[512];
 
 	// The current rendered line on screen
-	uint32_t Scanline;
+	int32_t Scanline;
 
 	//
 	int ScrollYDiff;
@@ -164,13 +192,13 @@ typedef struct {
 	// Video Color Encoder
 	struct {
 		UWord regs[0x200];		/* palette info */
-		UWord reg;				/* currently selected color */
+		size_t reg;				/* currently selected color */
 	} VCE;
 
 	// Video Display Controller
 	struct {
 		UWord regs[32];			/* value of each VDC register */
-		uint8_t reg;			/* currently selected VDC register */
+		size_t reg;				/* currently selected VDC register */
 		uint8_t status;			/* current VCD status (end of line, end of screen, ...) */
 		uint8_t vram;			/* VRAM DMA transfer status to happen in vblank */
 		uint8_t satb;			/* DMA transfer status to happen in vblank */

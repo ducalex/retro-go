@@ -5,34 +5,6 @@
 #include "pce.h"
 #include "gfx.h"
 
-typedef struct
-{
-	uint16_t y; 	/* Vertical position */
-	uint16_t x; 	/* Horizontal position */
-	uint16_t no;   	/* Offset in VRAM */
-	uint16_t attr; 	/* Attributes */
-	/*
-		* bit 0-4 : number of the palette to be used
-		* bit 7 : background sprite
-		*          0 -> must be drawn behind tiles
-		*          1 -> must be drawn in front of tiles
-		* bit 8 : width
-		*          0 -> 16 pixels
-		*          1 -> 32 pixels
-		* bit 11 : horizontal flip
-		*          0 -> normal shape
-		*          1 -> must be draw horizontally flipped
-		* bit 13-12 : height
-		*          00 -> 16 pixels
-		*          01 -> 32 pixels
-		*          10 -> 48 pixels
-		*          11 -> 64 pixels
-		* bit 15 : vertical flip
-		*          0 -> normal shape
-		*          1 -> must be drawn vertically flipped
-	*/
-} sprite_t;
-
 #define PAL(nibble) (PAL[(L >> ((nibble) * 4)) & 15])
 
 #define V_FLIP  0x8000
@@ -195,8 +167,7 @@ draw_sprite(uint8_t *P, const uint16_t *C, int height, uint32_t attr)
 			if ((J & 0x04)) P[2] = PAL(2);
 			if ((J & 0x02)) P[1] = PAL(4);
 			if ((J & 0x01)) P[0] = PAL(6);
-		}
-		else {
+		} else {
 			L = L2;
 			if ((J & 0x8000)) P[0] = PAL(1);
 			if ((J & 0x4000)) P[1] = PAL(3);
@@ -237,7 +208,7 @@ draw_sprites(uint8_t *screen_buffer, int Y1, int Y2, int priority)
 	// higher priority and therefore must overwrite later sprites.
 
 	for (int n = 63; n >= 0; n--) {
-		sprite_t *spr = (sprite_t *)PCE.SPRAM + n;
+		const sprite_t *spr = &PCE.SPRAM[n];
 		uint32_t attr = spr->attr;
 
 		if (((attr >> 7) & 1) != priority) {
@@ -302,7 +273,7 @@ draw_sprites(uint8_t *screen_buffer, int Y1, int Y2, int priority)
 static inline bool
 sprite_hit_check(void)
 {
-	sprite_t *spr = (sprite_t *)PCE.SPRAM;
+	const sprite_t *spr = &PCE.SPRAM[0];
 	int x0 = spr->x;
 	int y0 = spr->y;
 	int w0 = (((spr->attr >> 8) & 1) + 1) * 16;
