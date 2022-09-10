@@ -22,9 +22,9 @@ typedef enum
 
 typedef enum
 {
-    RG_DISPLAY_SCALING_OFF = 0,     // No scaling, center image on screen
-    RG_DISPLAY_SCALING_FIT,         // Scale and preserve aspect ratio
-    RG_DISPLAY_SCALING_FILL,        // Scale and stretch to fill screen
+    RG_DISPLAY_SCALING_OFF = 0, // No scaling, center image on screen
+    RG_DISPLAY_SCALING_FIT,     // Scale and preserve aspect ratio
+    RG_DISPLAY_SCALING_FILL,    // Scale and stretch to fill screen
     RG_DISPLAY_SCALING_COUNT
 } display_scaling_t;
 
@@ -39,11 +39,11 @@ typedef enum
 
 typedef enum
 {
-   RG_DISPLAY_ROTATION_OFF = 0,
-   RG_DISPLAY_ROTATION_AUTO,
-   RG_DISPLAY_ROTATION_LEFT,
-   RG_DISPLAY_ROTATION_RIGHT,
-   RG_DISPLAY_ROTATION_COUNT,
+    RG_DISPLAY_ROTATION_OFF = 0,
+    RG_DISPLAY_ROTATION_AUTO,
+    RG_DISPLAY_ROTATION_LEFT,
+    RG_DISPLAY_ROTATION_RIGHT,
+    RG_DISPLAY_ROTATION_COUNT,
 } display_rotation_t;
 
 enum
@@ -52,16 +52,18 @@ enum
     RG_PIXEL_565 = 0b0000, // 16bit 565
     RG_PIXEL_555 = 0b0010, // 16bit 555
     RG_PIXEL_PAL = 0b0001, // Use palette
-    RG_PIXEL_BE  = 0b0000, // big endian
-    RG_PIXEL_LE  = 0b0100, // little endian
+    RG_PIXEL_BE = 0b0000,  // big endian
+    RG_PIXEL_LE = 0b0100,  // little endian
+
     // These are the ones that should be used by applications:
-    RG_PIXEL_565_BE = RG_PIXEL_565|RG_PIXEL_BE,
-    RG_PIXEL_565_LE = RG_PIXEL_565|RG_PIXEL_LE,
-    RG_PIXEL_PAL565_BE = RG_PIXEL_565|RG_PIXEL_BE|RG_PIXEL_PAL,
-    RG_PIXEL_PAL565_LE = RG_PIXEL_565|RG_PIXEL_LE|RG_PIXEL_PAL,
+    RG_PIXEL_565_BE = RG_PIXEL_565 | RG_PIXEL_BE,
+    RG_PIXEL_565_LE = RG_PIXEL_565 | RG_PIXEL_LE,
+    RG_PIXEL_PAL565_BE = RG_PIXEL_565 | RG_PIXEL_BE | RG_PIXEL_PAL,
+    RG_PIXEL_PAL565_LE = RG_PIXEL_565 | RG_PIXEL_LE | RG_PIXEL_PAL,
 };
 
-typedef struct {
+typedef struct
+{
     struct {
         display_rotation_t rotation;
         display_scaling_t scaling;
@@ -92,7 +94,8 @@ typedef struct {
         int crop_v;
         int format;
     } source;
-    struct {
+    struct
+    {
         int32_t totalFrames;
         int32_t fullFrames;
         int64_t busyTime; // This is only time spent blocking the main task
@@ -101,22 +104,25 @@ typedef struct {
     bool redraw;
 } rg_display_t;
 
-typedef struct {
-    short left;     // int32_t left:10;
-    short width;    // int32_t width:10;
-    short repeat;   // int32_t repeat:10;
+typedef struct
+{
+    short left;   // int32_t left:10;
+    short width;  // int32_t width:10;
+    short repeat; // int32_t repeat:10;
 } rg_line_diff_t;
 
-typedef struct {
+typedef struct
+{
     rg_update_t type;
-    void *buffer;           // Should be at least height*stride bytes. expects uint8_t * | uint16_t *
-    uint16_t palette[256];  // Used in RG_PIXEL_PAL is set
+    void *buffer;          // Should be at least height*stride bytes. expects uint8_t * | uint16_t *
+    uint16_t palette[256]; // Used in RG_PIXEL_PAL is set
     rg_line_diff_t diff[256];
 } rg_video_update_t;
 
 void rg_display_init(void);
 void rg_display_deinit(void);
-void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer); // , bool little_endian);
+void rg_display_write(int left, int top, int width, int height, int stride,
+                      const uint16_t *buffer); // , bool little_endian);
 void rg_display_clear(uint16_t color_le);
 void rg_display_sync(void);
 void rg_display_force_redraw(void);
@@ -125,7 +131,6 @@ void rg_display_set_source_format(int width, int height, int crop_h, int crop_v,
 void rg_display_set_source_palette(const uint16_t *data, size_t colors);
 rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const rg_video_update_t *previousUpdate);
 const rg_display_t *rg_display_get_info(void);
-#define rg_display_get_status() rg_display_get_info()
 
 void rg_display_set_scaling(display_scaling_t scaling);
 display_scaling_t rg_display_get_scaling(void);

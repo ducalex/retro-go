@@ -5,7 +5,8 @@
 
 // Storage
 #define RG_STORAGE_DRIVER           1   // 1 = SDSPI, 2 = SDMMC, 3 = USB, 4 = Flash
-#define RG_STORAGE_HIGHSPEED        0
+#define RG_STORAGE_HOST             SPI2_HOST
+#define RG_STORAGE_SPEED            SDMMC_FREQ_DEFAULT
 
 // Audio
 #define RG_AUDIO_USE_INT_DAC        1
@@ -13,6 +14,8 @@
 
 // Video
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341
+#define RG_SCREEN_HOST              SPI2_HOST
+#define RG_SCREEN_SPEED             SPI_MASTER_FREQ_40M
 #define RG_SCREEN_TYPE              2
 #define RG_SCREEN_WIDTH             240
 #define RG_SCREEN_HEIGHT            240
@@ -54,7 +57,6 @@
 #define AW_HEADPHONE_EN 15
 
 // SPI Display
-#define RG_GPIO_LCD_HOST            SPI2_HOST
 #define RG_GPIO_LCD_MISO            GPIO_NUM_12
 #define RG_GPIO_LCD_MOSI            GPIO_NUM_13
 #define RG_GPIO_LCD_CLK             GPIO_NUM_14
@@ -63,7 +65,6 @@
 // #define RG_GPIO_LCD_BCKL            GPIO_NUM_5  // not used!
 
 // SPI SD Card
-#define RG_GPIO_SDSPI_HOST          SPI2_HOST
 #define RG_GPIO_SDSPI_MISO          GPIO_NUM_12
 #define RG_GPIO_SDSPI_MOSI          GPIO_NUM_13
 #define RG_GPIO_SDSPI_CLK           GPIO_NUM_14

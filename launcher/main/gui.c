@@ -47,8 +47,8 @@ void gui_init(void)
         .startup      = rg_settings_get_number(NS_APP, SETTING_STARTUP_MODE, 0),
         .start_screen = rg_settings_get_number(NS_APP, SETTING_START_SCREEN, 0),
         .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, 2),
-        .width        = rg_display_get_status()->screen.width,
-        .height       = rg_display_get_status()->screen.height,
+        .width        = rg_display_get_info()->screen.width,
+        .height       = rg_display_get_info()->screen.height,
     };
     // Always enter browse mode when leaving an emulator
     // boot reason should probably be abstracted by rg_system >_<

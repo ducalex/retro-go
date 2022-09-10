@@ -36,9 +36,9 @@ static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
         rg_system_set_led(1);
 
 #if RG_STORAGE_DRIVER == 1
-    //spi_device_acquire_bus(spi_handle, portMAX_DELAY);
+    // spi_device_acquire_bus(spi_handle, portMAX_DELAY);
     esp_err_t ret = sdspi_host_do_transaction(slot, cmdinfo);
-    //spi_device_release_bus(spi_handle);
+    // spi_device_release_bus(spi_handle);
 #else
     esp_err_t ret = sdmmc_host_do_transaction(slot, cmdinfo);
 #endif
@@ -65,19 +65,21 @@ void rg_storage_init(void)
 
     sdmmc_host_t host_config = SDSPI_HOST_DEFAULT();
     host_config.flags = SDMMC_HOST_FLAG_SPI;
-    host_config.slot = RG_GPIO_SDSPI_HOST;
     host_config.do_transaction = &sdcard_do_transaction;
-#if RG_STORAGE_HIGHSPEED
-    host_config.max_freq_khz = SDMMC_FREQ_HIGHSPEED;
-#endif
     // These are for esp-idf 4.2 compatibility
     host_config.init = &sdspi_host_init;
     host_config.deinit = &sdspi_host_deinit;
+#ifdef RG_STORAGE_HOST
+    host_config.slot = RG_STORAGE_HOST;
+#endif
+#ifdef RG_STORAGE_SPEED
+    host_config.max_freq_khz = RG_STORAGE_SPEED;
+#endif
 
     sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
     slot_config.gpio_miso = RG_GPIO_SDSPI_MISO;
     slot_config.gpio_mosi = RG_GPIO_SDSPI_MOSI;
-    slot_config.gpio_sck  = RG_GPIO_SDSPI_CLK;
+    slot_config.gpio_sck = RG_GPIO_SDSPI_CLK;
     slot_config.gpio_cs = RG_GPIO_SDSPI_CS;
     slot_config.dma_channel = SPI_DMA_CH_AUTO;
 
@@ -94,8 +96,11 @@ void rg_storage_init(void)
     sdmmc_host_t host_config = SDMMC_HOST_DEFAULT();
     host_config.flags = SDMMC_HOST_FLAG_1BIT;
     host_config.do_transaction = &sdcard_do_transaction;
-#if RG_STORAGE_HIGHSPEED
-    host_config.max_freq_khz = SDMMC_FREQ_HIGHSPEED;
+#ifdef RG_STORAGE_HOST
+    host_config.slot = RG_STORAGE_HOST;
+#endif
+#ifdef RG_STORAGE_SPEED
+    host_config.max_freq_khz = RG_STORAGE_SPEED;
 #endif
 
     sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
@@ -190,12 +195,14 @@ bool rg_storage_mkdir(const char *dir)
             if (*p == '/')
             {
                 *p = 0;
-                if (strlen(temp) > 0) {
+                if (strlen(temp) > 0)
+                {
                     RG_LOGI("Creating %s\n", temp);
                     mkdir(temp, 0777);
                 }
                 *p = '/';
-                while (*(p+1) == '/') p++;
+                while (*(p + 1) == '/')
+                    p++;
             }
         }
 
@@ -233,7 +240,7 @@ bool rg_storage_delete(const char *path)
     else if ((dir = opendir(path)))
     {
         char pathbuf[128]; // Smaller than RG_PATH_MAX to prevent issues due to lazy recursion...
-        struct dirent* ent;
+        struct dirent *ent;
         while ((ent = readdir(dir)))
         {
             if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)

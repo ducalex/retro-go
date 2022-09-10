@@ -8,3 +8,7 @@ SortIncludes: false
 AlignArrayOfStructures: Left
 AlignEscapedNewlines: Left
 AlignConsecutiveMacros: true
+# AlignConsecutiveBitFields: true
+# AlignConsecutiveMacros: AcrossEmptyLinesAndComments
+# AlignTrailingComments: true
+# IndentPPDirectives: BeforeHash

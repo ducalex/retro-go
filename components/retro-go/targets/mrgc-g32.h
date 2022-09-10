@@ -34,7 +34,8 @@
 
 // Storage
 #define RG_STORAGE_DRIVER           2   // 1 = SDSPI, 2 = SDMMC, 3 = USB, 4 = Flash
-#define RG_STORAGE_HIGHSPEED        0
+#define RG_STORAGE_HOST             SDMMC_HOST_SLOT_1
+#define RG_STORAGE_SPEED            SDMMC_FREQ_DEFAULT
 
 // Audio
 #define RG_AUDIO_USE_INT_DAC        0
@@ -42,6 +43,8 @@
 
 // Video
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341
+#define RG_SCREEN_HOST              SPI2_HOST
+#define RG_SCREEN_SPEED             SPI_MASTER_FREQ_40M
 #define RG_SCREEN_TYPE              1
 #define RG_SCREEN_WIDTH             240
 #define RG_SCREEN_HEIGHT            320
@@ -67,7 +70,6 @@
 #define RG_GPIO_I2C_SCL             GPIO_NUM_22
 
 // Display
-#define RG_GPIO_LCD_HOST            SPI2_HOST
 #define RG_GPIO_LCD_MISO            GPIO_NUM_NC
 #define RG_GPIO_LCD_MOSI            GPIO_NUM_23
 #define RG_GPIO_LCD_CLK             GPIO_NUM_18

@@ -36,8 +36,8 @@ static const char *SETTING_THEME     = "Theme";
 
 void rg_gui_init(void)
 {
-    gui.screen_width = rg_display_get_status()->screen.width;
-    gui.screen_height = rg_display_get_status()->screen.height;
+    gui.screen_width = rg_display_get_info()->screen.width;
+    gui.screen_height = rg_display_get_info()->screen.height;
     gui.draw_buffer = rg_alloc(RG_MAX(gui.screen_width, gui.screen_height) * 20 * 2, MEM_SLOW);
     rg_gui_set_font_type(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_12));
     rg_gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
@@ -986,12 +986,13 @@ int rg_gui_options_menu(void)
 
 int rg_gui_about_menu(const rg_gui_option_t *extra_options)
 {
-    char build_ver[32], build_date[32], build_user[32];
+    char build_ver[32], build_date[32], build_user[32], network_str[64];
 
     const rg_gui_option_t options[] = {
-        {0, "Ver.", build_ver, 1, NULL},
+        {0, "Version", build_ver, 1, NULL},
         {0, "Date", build_date, 1, NULL},
         {0, "By", build_user, 1, NULL},
+        {0, "Network", network_str, 1, NULL},
         RG_DIALOG_SEPARATOR,
         {1000, "Reboot to firmware", NULL, 1, NULL},
         {2000, "Reset settings", NULL, 1, NULL},
@@ -1016,6 +1017,9 @@ int rg_gui_about_menu(const rg_gui_option_t *extra_options)
         rel_hash[3] = '(';
         strcat(build_ver, ")");
     }
+
+    // rg_network_t *info = rg_network_get_info();
+    sprintf(network_str, "%.30s", "unavailable");
 
     int sel = rg_gui_dialog("Retro-Go", options, -1);
 
@@ -1070,7 +1074,7 @@ int rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     };
 
     const rg_stats_t stats = rg_system_get_stats();
-    const rg_display_t *display = rg_display_get_status();
+    const rg_display_t *display = rg_display_get_info();
     time_t now = time(NULL);
 
     strftime(system_rtc, 20, "%F %T", gmtime(&now));

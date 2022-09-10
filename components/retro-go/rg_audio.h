@@ -31,20 +31,24 @@ typedef struct __attribute__((packed))
 
 typedef struct
 {
+    int64_t busyTime;
+    int32_t samples;
+} rg_audio_counters_t;
+
+typedef struct
+{
     const rg_audio_sink_t *sink;
     int sampleRate;
     int filter;
     int volume;
     bool muted;
-    struct {
-        int64_t busyTime;
-    } counters;
 } rg_audio_t;
 
 void rg_audio_init(int sampleRate);
 void rg_audio_deinit(void);
 void rg_audio_submit(const rg_audio_sample_t *samples, size_t count);
 const rg_audio_t *rg_audio_get_info(void);
+rg_audio_counters_t rg_audio_get_counters(void);
 
 const rg_audio_sink_t *rg_audio_get_sinks(size_t *count);
 const rg_audio_sink_t *rg_audio_get_sink(void);

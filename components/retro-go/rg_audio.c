@@ -24,6 +24,8 @@ static const rg_audio_sink_t sinks[] = {
 };
 
 static rg_audio_t audio;
+static rg_audio_counters_t counters;
+
 static SemaphoreHandle_t audioDevLock;
 static int64_t dummyBusyUntil = 0;
 
@@ -246,7 +248,8 @@ void rg_audio_submit(const rg_audio_sample_t *samples, size_t count)
 
     RELEASE_DEVICE();
 
-    audio.counters.busyTime += rg_system_timer() - time_start;
+    counters.busyTime += rg_system_timer() - time_start;
+    counters.samples += count;
 }
 
 const rg_audio_t *rg_audio_get_info(void)
@@ -254,9 +257,15 @@ const rg_audio_t *rg_audio_get_info(void)
     return &audio;
 }
 
+rg_audio_counters_t rg_audio_get_counters(void)
+{
+    return counters;
+}
+
 const rg_audio_sink_t *rg_audio_get_sinks(size_t *count)
 {
-    if (count) *count = RG_COUNT(sinks);
+    if (count)
+        *count = RG_COUNT(sinks);
     return sinks;
 }
 

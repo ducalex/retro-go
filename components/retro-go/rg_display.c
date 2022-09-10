@@ -13,9 +13,8 @@
 #endif
 
 #define SPI_TRANSACTION_COUNT (10)
-#define SPI_BUFFER_COUNT (6)
-#define SPI_BUFFER_LENGTH (4 * 320) // In pixels (uint16)
-
+#define SPI_BUFFER_COUNT      (6)
+#define SPI_BUFFER_LENGTH     (4 * 320) // In pixels (uint16)
 
 static spi_device_handle_t spi_dev;
 static QueueHandle_t spi_transactions;
@@ -24,21 +23,20 @@ static QueueHandle_t display_task_queue;
 
 static rg_display_t display;
 
-static const char *SETTING_BACKLIGHT = "DispBacklight";
-static const char *SETTING_SCALING   = "DispScaling";
-static const char *SETTING_FILTER    = "DispFilter";
-static const char *SETTING_ROTATION  = "DispRotation";
-static const char *SETTING_UPDATE    = "DispUpdate";
-
 static struct {
     uint8_t start  : 1; // Indicates this line or column is safe to start an update on
     uint8_t stop   : 1; // Indicates this line or column is safe to end an update on
     uint8_t repeat : 6; // How many times the line or column is repeated by the scaler or filter
 } filter_lines[320];
-
 static struct {
     uint8_t empty;
 } screen_lines[RG_SCREEN_HEIGHT];
+
+static const char *SETTING_BACKLIGHT = "DispBacklight";
+static const char *SETTING_SCALING = "DispScaling";
+static const char *SETTING_FILTER = "DispFilter";
+static const char *SETTING_ROTATION = "DispRotation";
+static const char *SETTING_UPDATE = "DispUpdate";
 
 #define lcd_send_data(buffer, length) spi_queue_transaction(buffer, length, 3)
 
@@ -60,10 +58,10 @@ static inline void spi_queue_transaction(const void *data, size_t length, uint32
 
     xQueueReceive(spi_transactions, &t, portMAX_DELAY);
 
-    *t = (spi_transaction_t) {
+    *t = (spi_transaction_t){
         .tx_buffer = NULL,
         .length = length * 8, // In bits
-        .user = (void*)type,
+        .user = (void *)type,
         .flags = 0,
     };
 
@@ -136,25 +134,21 @@ static void spi_init(void)
     };
 
     const spi_device_interface_config_t devcfg = {
-#if defined(RG_TARGET_ESPLAY_S3)
-        .clock_speed_hz = SPI_MASTER_FREQ_80M,  // 80Mhz s3 can run 80M
-#else
-	    .clock_speed_hz = SPI_MASTER_FREQ_40M,  // 80Mhz causes glitches unfortunately
-#endif
-        .mode = 0,                              // SPI mode 0
-        .spics_io_num = RG_GPIO_LCD_CS,         // CS pin
-        .queue_size = SPI_TRANSACTION_COUNT,    // We want to be able to queue 5 transactions at a time
-        .pre_cb = &spi_pre_transfer_cb,         // Specify pre-transfer callback to handle D/C line and SPI lock
-        .flags = SPI_DEVICE_NO_DUMMY,           // SPI_DEVICE_HALFDUPLEX;
+        .clock_speed_hz = RG_SCREEN_SPEED,   // Typically SPI_MASTER_FREQ_40M or SPI_MASTER_FREQ_80M
+        .mode = 0,                           // SPI mode 0
+        .spics_io_num = RG_GPIO_LCD_CS,      // CS pin
+        .queue_size = SPI_TRANSACTION_COUNT, // We want to be able to queue 5 transactions at a time
+        .pre_cb = &spi_pre_transfer_cb,      // Specify pre-transfer callback to handle D/C line and SPI lock
+        .flags = SPI_DEVICE_NO_DUMMY,        // SPI_DEVICE_HALFDUPLEX;
     };
 
     esp_err_t ret;
 
-    //Initialize the SPI bus
-    ret = spi_bus_initialize(RG_GPIO_LCD_HOST, &buscfg, SPI_DMA_CH_AUTO);
+    // Initialize the SPI bus
+    ret = spi_bus_initialize(RG_SCREEN_HOST, &buscfg, SPI_DMA_CH_AUTO);
     RG_ASSERT(ret == ESP_OK || ret == ESP_ERR_INVALID_STATE, "spi_bus_initialize failed.");
 
-    ret = spi_bus_add_device(RG_GPIO_LCD_HOST, &devcfg, &spi_dev);
+    ret = spi_bus_add_device(RG_SCREEN_HOST, &devcfg, &spi_dev);
     RG_ASSERT(ret == ESP_OK, "spi_bus_add_device failed.");
 
     rg_system_create_task("rg_spi", &spi_task, NULL, 1.5 * 1024, RG_TASK_PRIORITY - 1, 1);
@@ -163,7 +157,7 @@ static void spi_init(void)
 static void spi_deinit(void)
 {
     spi_bus_remove_device(spi_dev);
-    spi_bus_free(RG_GPIO_LCD_HOST);
+    spi_bus_free(RG_SCREEN_HOST);
 }
 
 static void ili9341_cmd(uint8_t cmd, const void *data, size_t data_len)
@@ -511,7 +505,8 @@ static inline void write_rect(int left, int top, int width, int height,
                         prev_frame_x = frame_x;
 
                         x_acc += x_inc;
-                        while (x_acc >= screen_width) {
+                        while (x_acc >= screen_width)
+                        {
                             x_acc -= screen_width;
                             ++frame_x;
                         }
@@ -545,10 +540,12 @@ static void update_viewport_scaling(void)
     int new_height = src_height;
     double new_ratio = 0.0;
 
-    if (display.config.scaling == RG_DISPLAY_SCALING_FILL) {
+    if (display.config.scaling == RG_DISPLAY_SCALING_FILL)
+    {
         new_ratio = display.screen.width / (double)display.screen.height;
     }
-    else if (display.config.scaling == RG_DISPLAY_SCALING_FIT) {
+    else if (display.config.scaling == RG_DISPLAY_SCALING_FIT)
+    {
         new_ratio = src_width / (double)src_height;
     }
 
@@ -584,19 +581,20 @@ static void update_viewport_scaling(void)
         int repeat = ++filter_lines[y].repeat;
 
         filter_lines[y].start = repeat == 1 || repeat == 2;
-        filter_lines[y].stop  = repeat == 1;
+        filter_lines[y].stop = repeat == 1;
         screen_lines[screen_y].empty = repeat > 1;
 
         y_acc += display.viewport.y_inc;
-        while (y_acc >= display.screen.height) {
+        while (y_acc >= display.screen.height)
+        {
             y_acc -= display.screen.height;
             ++y;
         }
     }
 
-    RG_LOGI("%dx%d@%.3f => %dx%d@%.3f x_pos:%d y_pos:%d x_inc:%d y_inc:%d\n",
-           src_width, src_height, src_width/(double)src_height, new_width, new_height, new_ratio,
-           display.viewport.x_pos, display.viewport.y_pos, display.viewport.x_inc, display.viewport.y_inc);
+    RG_LOGI("%dx%d@%.3f => %dx%d@%.3f x_pos:%d y_pos:%d x_inc:%d y_inc:%d\n", src_width, src_height,
+            src_width / (double)src_height, new_width, new_height, new_ratio, display.viewport.x_pos,
+            display.viewport.y_pos, display.viewport.x_inc, display.viewport.y_inc);
 }
 
 static void display_task(void *arg)
@@ -610,7 +608,8 @@ static void display_task(void *arg)
         xQueuePeek(display_task_queue, &update, portMAX_DELAY);
         // xQueueReceive(display_task_queue, &update, portMAX_DELAY);
 
-        if (!update) break;
+        if (!update)
+            break;
 
         if (display.changed)
         {
@@ -627,7 +626,7 @@ static void display_task(void *arg)
             update->diff[0] = (rg_line_diff_t){
                 .left = 0,
                 .width = display.source.width,
-                .repeat = display.source.height
+                .repeat = display.source.height,
             };
         }
 
@@ -729,7 +728,8 @@ int rg_display_get_backlight(void)
 bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame, int width, int height)
 {
     rg_image_t *original = rg_image_alloc(display.source.width, display.source.height);
-    if (!original) return false;
+    if (!original)
+        return false;
 
     uint16_t *dst_ptr = original->data;
 
@@ -808,7 +808,8 @@ rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const r
                 {
                     for (int xl = blocks - 1; xl >= x; --xl)
                     {
-                        if (frame_buffer[xl] != prev_buffer[xl]) {
+                        if (frame_buffer[xl] != prev_buffer[xl])
+                        {
                             left = x * pixels_per_block;
                             width = ((xl + 1) - x) * pixels_per_block;
                             changed += width;
@@ -823,8 +824,8 @@ rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const r
             out_diff[y].width = width;
             out_diff[y].repeat = 1;
 
-            frame_buffer = (void*)frame_buffer + stride;
-            prev_buffer = (void*)prev_buffer + stride;
+            frame_buffer = (void *)frame_buffer + stride;
+            prev_buffer = (void *)prev_buffer + stride;
         }
 
         if (changed == 0)
@@ -860,7 +861,8 @@ rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const r
 
                     for (int i = block_start; i <= block_end; i++)
                     {
-                        if (out_diff[i].width > 0) {
+                        if (out_diff[i].width > 0)
+                        {
                             right = RG_MAX(right, out_diff[i].left + out_diff[i].width);
                             left = RG_MIN(left, out_diff[i].left);
                         }
@@ -890,7 +892,8 @@ rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const r
 
                 if (abs(line->left - prev_line->left) <= 8 && abs(right - right_prev) <= 8)
                 {
-                    if (line->left < prev_line->left) prev_line->left = line->left;
+                    if (line->left < prev_line->left)
+                        prev_line->left = line->left;
                     prev_line->width = RG_MAX(right, right_prev) - prev_line->left;
                     prev_line->repeat = line->repeat + 1;
                 }
@@ -916,7 +919,7 @@ void rg_display_set_source_format(int width, int height, int crop_h, int crop_v,
     }
     display.source.crop_h = RG_MAX(RG_MAX(0, width - display.screen.width) / 2, crop_h);
     display.source.crop_v = RG_MAX(RG_MAX(0, height - display.screen.height) / 2, crop_v);
-    display.source.width  = width - display.source.crop_h * 2;
+    display.source.width = width - display.source.crop_h * 2;
     display.source.height = height - display.source.crop_v * 2;
     display.source.format = format;
     display.source.stride = stride;
@@ -969,7 +972,7 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
         // Copy line by line because stride may not match width
         for (size_t line = 0; line < lines_per_buffer; ++line)
         {
-            uint16_t *src = (void*)buffer + ((y + line) * stride);
+            uint16_t *src = (void *)buffer + ((y + line) * stride);
             uint16_t *dst = line_buffer + (line * width);
             // if (little_endian)
             {
