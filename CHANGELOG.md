@@ -1,3 +1,11 @@
+# Retro-Go 1.34 (2022-09-??)
+- SNES: Fixed crash when opening menu
+- NES: Implemented mapper 185
+- PCE: Fixed crash when quitting emulator
+- PCE: Improved stability and compatibility
+- All: Improved SD Card compatibility
+
+
 # Retro-Go 1.33 (2022-08-01)
 - Added Genesis/Megadrive emulator
 - Added multiple save state support (per game)
