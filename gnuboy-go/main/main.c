@@ -210,7 +210,7 @@ static void blit_frame(void)
     rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
     fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
     currentUpdate = previousUpdate;
-    host.lcd.buffer = currentUpdate->buffer;
+    host.video.buffer = currentUpdate->buffer;
 }
 
 static void auto_sram_update(void)
@@ -288,7 +288,7 @@ void app_main(void)
     int joystick_old = -1;
     int joystick = 0;
 
-    host.lcd.buffer = currentUpdate->buffer;
+    host.video.buffer = currentUpdate->buffer;
 
     while (true)
     {
@@ -363,7 +363,7 @@ void app_main(void)
         rg_system_tick(elapsed);
 
         // Audio is used to pace emulation :)
-        rg_audio_submit((void*)host.snd.buffer, host.snd.pos >> 1);
-        host.snd.pos = 0;
+        rg_audio_submit((void*)host.audio.buffer, host.audio.pos >> 1);
+        host.audio.pos = 0;
     }
 }

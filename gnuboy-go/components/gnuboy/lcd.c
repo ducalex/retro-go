@@ -594,7 +594,7 @@ static inline void sync_palette(void)
 
 	if (hw.hwtype != GB_HW_CGB)
 	{
-		uint palette = host.lcd.colorize % GB_PALETTE_COUNT;
+		uint palette = host.video.colorize % GB_PALETTE_COUNT;
 		uint flags = 0b110;
 		const un16 *bgp, *obp0, *obp1;
 
@@ -631,10 +631,10 @@ static inline void sync_palette(void)
 
 		uint out = (r << 11) | (g << 6) | (b);
 
-		if (host.lcd.format == GB_PIXEL_565_BE)
-			host.lcd.palette[i] = (out << 8) | (out >> 8);
+		if (host.video.format == GB_PIXEL_565_BE)
+			host.video.palette[i] = (out << 8) | (out >> 8);
 		else
-			host.lcd.palette[i] = out;
+			host.video.palette[i] = out;
 	}
 
 	lcd.pal_dirty = false;
@@ -674,7 +674,7 @@ static inline void sync_palette(void)
 */
 static inline void lcd_renderline()
 {
-	if (!host.lcd.enabled || !host.lcd.buffer)
+	if (!host.video.enabled || !host.video.buffer)
 		return;
 
 	int SX, SY, SL, NS;
@@ -729,14 +729,14 @@ static inline void lcd_renderline()
 		sync_palette();
 	}
 
-	if (host.lcd.format == GB_PIXEL_PALETTED)
+	if (host.video.format == GB_PIXEL_PALETTED)
 	{
-		memcpy(host.lcd.buffer + SL * 160 , BUF, 160);
+		memcpy(host.video.buffer + SL * 160 , BUF, 160);
 	}
 	else
 	{
-		un16 *dst = (un16*)host.lcd.buffer + SL * 160;
-		un16 *pal = (un16*)host.lcd.palette;
+		un16 *dst = (un16*)host.video.buffer + SL * 160;
+		un16 *pal = (un16*)host.video.palette;
 
 		for (int i = 0; i < 160; ++i)
 			dst[i] = pal[BUF[i]];

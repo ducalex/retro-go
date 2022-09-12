@@ -14,13 +14,13 @@ gb_host_t host;
 int gnuboy_init(int samplerate, bool stereo, int pixformat, void *blit_func)
 {
 	host = (gb_host_t){
-		.lcd.colorize = GB_PALETTE_CGB,
-		.lcd.format = pixformat,
-		.lcd.blit_func = blit_func,
-		.snd.buffer = malloc(samplerate / 4),
-		.snd.len = samplerate / 8,
-		.snd.samplerate = samplerate,
-		.snd.stereo = stereo,
+		.video.colorize = GB_PALETTE_CGB,
+		.video.format = pixformat,
+		.video.blit_func = blit_func,
+		.audio.buffer = malloc(samplerate / 4),
+		.audio.len = samplerate / 8,
+		.audio.samplerate = samplerate,
+		.audio.stereo = stereo,
 	};
 	// gnuboy_reset(true);
 	return 0;
@@ -61,7 +61,7 @@ void gnuboy_reset(bool hard)
 */
 void gnuboy_run(bool draw)
 {
-	host.lcd.enabled = draw;
+	host.video.enabled = draw;
 	/* FIXME: judging by the time specified this was intended
 	to emulate through vblank phase which is handled at the
 	end of the loop. */
@@ -76,8 +76,8 @@ void gnuboy_run(bool draw)
 
 	/* When using GB_PIXEL_PALETTED, the host should draw the frame in this callback because
 	   the palette can be modified below before gnuboy_run returns. */
-	if (draw && host.lcd.blit_func) {
-		(host.lcd.blit_func)();
+	if (draw && host.video.blit_func) {
+		(host.video.blit_func)();
 	}
 
 	hw_vblank();
@@ -413,10 +413,10 @@ void gnuboy_get_time(int *day, int *hour, int *minute, int *second)
 
 void gnuboy_set_time(int day, int hour, int minute, int second)
 {
-	rtc.d = MIN(MAX(day, 0), 365);
-	rtc.h = MIN(MAX(hour, 0), 24);
-	rtc.m = MIN(MAX(minute, 0), 60);
-	rtc.s = MIN(MAX(second, 0), 60);
+	rtc.d = day % 365;
+	rtc.h = hour % 24;
+	rtc.m = minute % 60;
+	rtc.s = second % 60;
 	rtc.ticks = 0;
 	rtc.dirty = 0;
 }
@@ -436,13 +436,13 @@ void gnuboy_set_hwtype(gb_hwtype_t type)
 
 int gnuboy_get_palette(void)
 {
-	return host.lcd.colorize;
+	return host.video.colorize;
 }
 
 
 void gnuboy_set_palette(gb_palette_t pal)
 {
-	host.lcd.colorize = pal;
+	host.video.colorize = pal;
 	lcd.pal_dirty = true;
 }
 

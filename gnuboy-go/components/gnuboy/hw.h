@@ -160,22 +160,6 @@ enum {
 
 typedef struct
 {
-	byte rambanks[8][4096];
-	byte ioregs[256];
-	byte *rmap[0x10];
-	byte *wmap[0x10];
-	byte *bios;
-	un32 ilines;
-	un32 pad;
-	n32 serial;
-	n32 hdma;
-
-	un32 hwtype;
-	un32 frames;
-} gb_hw_t;
-
-typedef struct
-{
 	n32 sel, flags, latch, dirty;
 	n32 ticks; // Ticks (60 = +1s)
 	n32 d, h, m, s; // Current time
@@ -214,6 +198,28 @@ typedef struct
 	FILE *romFile;
 	FILE *sramFile;
 } gb_cart_t;
+
+typedef struct
+{
+	byte rambanks[8][4096];
+	byte ioregs[256];
+	byte *rmap[0x10];
+	byte *wmap[0x10];
+	byte *bios;
+	un32 ilines;
+	un32 pad;
+	n32 serial;
+	n32 hdma;
+
+	un32 hwtype;
+	un32 frames;
+
+	// gb_cpu_t cpu;
+	// gb_lcd_t lcd;
+	// gb_snd_t snd;
+	// gb_cart_t cart;
+	// gb_rtc_t rtc;
+} gb_hw_t;
 
 extern gb_cart_t cart;
 extern gb_rtc_t rtc;

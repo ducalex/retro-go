@@ -119,8 +119,8 @@ void sound_reset(bool hard)
 	memset(&snd, 0, sizeof(snd));
 	memcpy(snd.wave, hw.hwtype == GB_HW_CGB ? cgbwave : dmgwave, 16);
 	memcpy(hw.ioregs + 0x30, snd.wave, 16);
-	snd.rate = (int)(((1<<21) / (double)host.snd.samplerate) + 0.5);
-	host.snd.pos = 0;
+	snd.rate = (int)(((1<<21) / (double)host.audio.samplerate) + 0.5);
+	host.audio.pos = 0;
 	sound_off();
 	R_NR52 = 0xF1;
 }
@@ -130,9 +130,9 @@ void sound_emulate(void)
 	if (!snd.rate || snd.cycles < snd.rate)
 		return;
 
-	n16 *output_buf = host.snd.buffer + host.snd.pos;
-	n16 *output_end = host.snd.buffer + host.snd.len;
-	bool stereo = host.snd.stereo;
+	n16 *output_buf = host.audio.buffer + host.audio.pos;
+	n16 *output_end = host.audio.buffer + host.audio.len;
+	bool stereo = host.audio.stereo;
 
 	for (; snd.cycles >= snd.rate; snd.cycles -= snd.rate)
 	{
@@ -274,7 +274,7 @@ void sound_emulate(void)
 		}
 	}
 
-	host.snd.pos = output_buf - host.snd.buffer;
+	host.audio.pos = output_buf - host.audio.buffer;
 
 	R_NR52 = (R_NR52&0xf0) | S1.on | (S2.on<<1) | (S3.on<<2) | (S4.on<<3);
 }

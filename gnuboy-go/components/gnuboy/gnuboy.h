@@ -106,7 +106,7 @@ typedef struct
 		void (*blit_func)(void);
 		void *buffer;
 		uint16_t palette[64];
-	} lcd;
+	} video;
 
 	struct {
 		bool enabled;
@@ -114,7 +114,7 @@ typedef struct
 		uint samplerate;
 		int16_t *buffer;
 		size_t pos, len;
-	} snd;
+	} audio;
 } gb_host_t;
 
 extern gb_host_t host;
