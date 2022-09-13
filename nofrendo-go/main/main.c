@@ -41,7 +41,7 @@ static const char *SETTING_SPRITELIMIT = "spritelimit";
 // --- MAIN
 
 
-static void netplay_handler(netplay_event_t event, void *arg)
+static void event_handler(int event, void *arg)
 {
 #ifdef RG_ENABLE_NETPLAY
     bool new_netplay;
@@ -250,7 +250,7 @@ void app_main(void)
         .loadState = &load_state_handler,
         .saveState = &save_state_handler,
         .reset = &reset_handler,
-        .event = &netplay_handler,
+        .event = &event_handler,
         .screenshot = &screenshot_handler,
     };
     const rg_gui_option_t options[] = {

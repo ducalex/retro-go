@@ -39,7 +39,6 @@ extern "C" {
 #include "rg_input.h"
 #include "rg_storage.h"
 #include "rg_settings.h"
-#include "rg_kvs.h"
 #include "rg_gui.h"
 #include "rg_i2c.h"
 #include "rg_profiler.h"
@@ -272,6 +271,10 @@ void *rg_alloc(size_t size, uint32_t caps);
 
 #ifndef DRAM_ATTR
 #define DRAM_ATTR
+#endif
+
+#ifndef RTC_NOINIT_ATTR
+#define RTC_NOINIT_ATTR
 #endif
 
 // Polyfills to maintain compatibility with older esp-idf

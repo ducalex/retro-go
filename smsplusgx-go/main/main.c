@@ -30,7 +30,7 @@ static bool netplay = false;
 // --- MAIN
 
 
-static void netplay_handler(netplay_event_t event, void *arg)
+static void event_handler(int event, void *arg)
 {
 #ifdef RG_ENABLE_NETPLAY
    bool new_netplay;
@@ -110,7 +110,7 @@ void app_main(void)
     const rg_handlers_t handlers = {
         .loadState = &load_state_handler,
         .saveState = &save_state_handler,
-        .event = &netplay_handler,
+        .event = &event_handler,
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
     };
