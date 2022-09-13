@@ -104,7 +104,7 @@ static void set_status(netplay_status_t status)
 
     if (changed)
     {
-        (*netplay_callback)(NETPLAY_EVENT_STATUS_CHANGED, &netplay_status);
+        (*netplay_callback)(RG_EVENT_TYPE_NETPLAY|NETPLAY_EVENT_STATUS_CHANGED, &netplay_status);
     }
 }
 

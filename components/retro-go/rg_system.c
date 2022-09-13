@@ -12,6 +12,7 @@
 #include <sys/time.h>
 #include <stdarg.h>
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -406,7 +407,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     #endif
 
     #ifdef RG_ENABLE_NETPLAY
-    rg_netplay_init(app.netplay_handler);
+    rg_netplay_init(app.handlers.event);
     #endif
 
     // Do this last to not interfere with panic handling above

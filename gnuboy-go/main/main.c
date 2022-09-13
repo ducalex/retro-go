@@ -232,7 +232,6 @@ void app_main(void)
         .loadState = &load_state_handler,
         .saveState = &save_state_handler,
         .reset = &reset_handler,
-        .netplay = NULL,
         .screenshot = &screenshot_handler,
     };
     const rg_gui_option_t options[] = {

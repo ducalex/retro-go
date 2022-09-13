@@ -204,7 +204,6 @@ extern "C" void app_main(void)
 		.reset = &reset_handler,
 		.screenshot = &screenshot_handler,
 		.event = NULL,
-		.netplay = NULL,
 		.memRead = NULL,
 		.memWrite = NULL,
 	};

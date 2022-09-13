@@ -37,7 +37,6 @@ extern "C" {
 #include "rg_audio.h"
 #include "rg_display.h"
 #include "rg_input.h"
-#include "rg_netplay.h"
 #include "rg_storage.h"
 #include "rg_settings.h"
 #include "rg_kvs.h"
@@ -45,6 +44,10 @@ extern "C" {
 #include "rg_i2c.h"
 #include "rg_profiler.h"
 #include "rg_printf.h"
+
+#ifdef RG_ENABLE_NETPLAY
+#include "rg_netplay.h"
+#endif
 
 typedef enum
 {
@@ -93,11 +96,21 @@ typedef enum
 
 typedef enum
 {
-    RG_EVENT_SHUTDOWN,
-    RG_EVENT_SLEEP,
-    RG_EVENT_UNRESPONSIVE,
-    RG_EVENT_LOWMEMORY,
-    RG_EVENT_REDRAW,
+    RG_EVENT_TYPE_SYSTEM  = 0xF1000000,
+    RG_EVENT_TYPE_POWER   = 0xF2000000,
+    RG_EVENT_TYPE_NETPLAY = 0xF3000000,
+    RG_EVENT_TYPE_MASK    = 0xFF000000,
+} rg_event_type_t;
+
+typedef enum
+{
+    RG_EVENT_UNRESPONSIVE = RG_EVENT_TYPE_SYSTEM | 1,
+    RG_EVENT_LOWMEMORY    = RG_EVENT_TYPE_SYSTEM | 2,
+    RG_EVENT_REDRAW       = RG_EVENT_TYPE_SYSTEM | 3,
+    RG_EVENT_SHUTDOWN     = RG_EVENT_TYPE_POWER + 1,
+    RG_EVENT_SLEEP        = RG_EVENT_TYPE_POWER + 1,
+    RG_EVENT_NETPLAY      = RG_EVENT_TYPE_NETPLAY,
+    RG_EVENT_MASK         = 0xFFFF,
 } rg_event_t;
 
 typedef bool (*rg_state_handler_t)(const char *filename);
@@ -114,7 +127,6 @@ typedef struct
     rg_reset_handler_t reset;           // rg_emu_reset() handler
     rg_screenshot_handler_t screenshot; // rg_emu_screenshot() handler
     rg_event_handler_t event;           // listen to retro-go system events
-    rg_netplay_handler_t netplay;       // netplay handler
     rg_mem_read_handler_t memRead;      // Used by for cheats and debugging
     rg_mem_write_handler_t memWrite;    // Used by for cheats and debugging
 } rg_handlers_t;

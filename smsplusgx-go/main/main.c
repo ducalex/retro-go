@@ -110,7 +110,7 @@ void app_main(void)
     const rg_handlers_t handlers = {
         .loadState = &load_state_handler,
         .saveState = &save_state_handler,
-        .netplay = &netplay_handler,
+        .event = &netplay_handler,
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
     };
