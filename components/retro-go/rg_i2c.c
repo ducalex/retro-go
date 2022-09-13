@@ -1,4 +1,3 @@
-#include <esp_err.h>
 #include <unistd.h>
 
 #include "rg_system.h"
@@ -6,6 +5,7 @@
 
 #if defined(RG_GPIO_I2C_SDA) && defined(RG_GPIO_I2C_SCL)
 #include <driver/i2c.h>
+#include <esp_err.h>
 #define USE_I2C_DRIVER
 #endif
 
@@ -152,7 +152,7 @@ bool rg_i2c_gpio_init(void)
 
     uint8_t id = rg_i2c_read_byte(gpio_extender_address, AW9523_REG_CHIPID);
     RG_LOGI("AW9523 ID code 0x%x found\n", id);
-    assert(id == 0x23);
+    RG_ASSERT(id == 0x23, "Invalid AW9523 ID");
 
     rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0, 0xFF);
     rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0 + 1, 0xFF);

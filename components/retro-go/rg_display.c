@@ -360,7 +360,7 @@ static void lcd_set_window(int left, int top, int width, int height)
     //     ili9341_cmd(0x3C, NULL, 0); // Memory write continue
 }
 
-static inline uint blend_pixels(uint a, uint b)
+static inline unsigned blend_pixels(unsigned a, unsigned b)
 {
     // Fast path
     if (a == b)
@@ -383,7 +383,7 @@ static inline uint blend_pixels(uint a, uint b)
     int gv = (((g1 - g0) >> 1) + g0);
     int bv = (((b1 - b0) >> 1) + b0);
 
-    uint v = (rv << 11) | (gv << 5) | (bv);
+    unsigned v = (rv << 11) | (gv << 5) | (bv);
 
     // Back to Big-Endian
     return (v << 8) | (v >> 8);
