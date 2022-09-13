@@ -1,6 +1,3 @@
-#include <driver/sdmmc_host.h>
-#include <esp_vfs_fat.h>
-#include <esp_event.h>
 #include <sys/dirent.h>
 #include <sys/stat.h>
 #include <string.h>
@@ -9,6 +6,11 @@
 #include <stdio.h>
 
 #include "rg_system.h"
+
+#if RG_STORAGE_DRIVER == 1 || RG_STORAGE_DRIVER == 2
+#include <driver/sdmmc_host.h>
+#include <esp_vfs_fat.h>
+#endif
 
 static bool disk_mounted = false;
 static bool disk_led = true;
@@ -52,16 +54,10 @@ static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
 
 void rg_storage_init(void)
 {
-    esp_vfs_fat_mount_config_t mount_config = {
-        .format_if_mount_failed = false,
-        .allocation_unit_size = 0,
-        .max_files = 8,
-    };
-
     if (disk_mounted)
         rg_storage_deinit();
 
-#if RG_STORAGE_DRIVER == 1
+#if RG_STORAGE_DRIVER == 1 // SDSPI
 
     sdmmc_host_t host_config = SDSPI_HOST_DEFAULT();
     host_config.flags = SDMMC_HOST_FLAG_SPI;
@@ -83,6 +79,8 @@ void rg_storage_init(void)
     slot_config.gpio_cs = RG_GPIO_SDSPI_CS;
     slot_config.dma_channel = SPI_DMA_CH_AUTO;
 
+    esp_vfs_fat_mount_config_t mount_config = {.max_files = 8};
+
     esp_err_t err = esp_vfs_fat_sdmmc_mount(RG_ROOT_PATH, &host_config, &slot_config, &mount_config, NULL);
     if (err == ESP_ERR_TIMEOUT || err == ESP_ERR_INVALID_RESPONSE || err == ESP_ERR_INVALID_CRC)
     {
@@ -91,7 +89,7 @@ void rg_storage_init(void)
         err = esp_vfs_fat_sdmmc_mount(RG_ROOT_PATH, &host_config, &slot_config, &mount_config, NULL);
     }
 
-#elif RG_STORAGE_DRIVER == 2
+#elif RG_STORAGE_DRIVER == 2 // SDMMC
 
     sdmmc_host_t host_config = SDMMC_HOST_DEFAULT();
     host_config.flags = SDMMC_HOST_FLAG_1BIT;
@@ -113,6 +111,8 @@ void rg_storage_init(void)
     slot_config.d1 = slot_config.d3 = -1;
 #endif
 
+    esp_vfs_fat_mount_config_t mount_config = {.max_files = 8};
+
     esp_err_t err = esp_vfs_fat_sdmmc_mount(RG_ROOT_PATH, &host_config, &slot_config, &mount_config, NULL);
     if (err == ESP_ERR_TIMEOUT || err == ESP_ERR_INVALID_RESPONSE || err == ESP_ERR_INVALID_CRC)
     {
@@ -121,14 +121,23 @@ void rg_storage_init(void)
         err = esp_vfs_fat_sdmmc_mount(RG_ROOT_PATH, &host_config, &slot_config, &mount_config, NULL);
     }
 
-#elif RG_STORAGE_DRIVER == 4
+#elif RG_STORAGE_DRIVER == 3 // USB OTG
+
+    #warning "USB OTG isn't available on your SOC"
+    esp_err_t err = ESP_ERR_NOT_SUPPORTED;
+
+#elif RG_STORAGE_DRIVER == 4 // SPI Flash
 
     wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
     esp_err_t err = esp_vfs_fat_spiflash_mount(RG_ROOT_PATH, "storage", &s_wl_handle)
 
+#elif RG_STORAGE_DRIVER == 5 // Host
+
+        esp_err_t err = ESP_OK;
+
 #else
 
-    #warning "No supported storage driver selected!"
+    #error "No supported storage driver selected!"
     esp_err_t err = ESP_ERR_NOT_SUPPORTED;
 
 #endif
