@@ -77,7 +77,7 @@ static const char *SETTING_BOOT_FLAGS = "BootFlags";
 
 static void rtc_time_init(void)
 {
-    struct timeval timestamp = {RG_BUILD_TIME, 0};
+    time_t time_sec = RG_BUILD_TIME;
     FILE *fp;
 #if 0
     if (rg_i2c_read(0x68, 0x00, data, sizeof(data)))
@@ -88,24 +88,24 @@ static void rtc_time_init(void)
 #endif
     if ((fp = fopen(RG_BASE_PATH_CONFIG "/clock.bin", "rb")))
     {
-        fread(&timestamp, sizeof(timestamp), 1, fp);
+        fread(&time_sec, sizeof(time_sec), 1, fp);
         fclose(fp);
         RG_LOGI("Time loaded from storage\n");
     }
 
-    settimeofday(&timestamp, NULL);
-    gettimeofday(&timestamp, NULL); // Read it back to be sure it's set
-    RG_LOGI("Time is now: %s\n", asctime(localtime(&timestamp.tv_sec)));
+    settimeofday(&(struct timeval){time_sec, 0}, NULL);
+    time_sec = time(NULL); // Read it back to be sure it worked
+    RG_LOGI("Time is now: %s\n", asctime(localtime(&time_sec)));
 }
 
 static void rtc_time_save(void)
 {
-    struct timeval timestamp = {time(NULL), 0};
+    time_t time_sec = time(NULL);
     FILE *fp;
     // We always save to storage in case the RTC disappears.
     if ((fp = fopen(RG_BASE_PATH_CONFIG "/clock.bin", "wb")))
     {
-        fwrite(&timestamp, sizeof(timestamp), 1, fp);
+        fwrite(&time_sec, sizeof(time_sec), 1, fp);
         fclose(fp);
         RG_LOGI("System time saved to storage.\n");
     }
