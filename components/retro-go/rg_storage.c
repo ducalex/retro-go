@@ -92,12 +92,12 @@ void rg_storage_init(void)
 
     esp_vfs_fat_mount_config_t mount_config = {.max_files = 8};
 
-    esp_err_t err = esp_vfs_fat_sdmmc_mount(RG_ROOT_PATH, &host_config, &slot_config, &mount_config, NULL);
+    esp_err_t err = esp_vfs_fat_sdmmc_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, NULL);
     if (err == ESP_ERR_TIMEOUT || err == ESP_ERR_INVALID_RESPONSE || err == ESP_ERR_INVALID_CRC)
     {
         RG_LOGW("SD Card mounting failed (0x%x), retrying at lower speed...\n", err);
         host_config.max_freq_khz = SDMMC_FREQ_PROBING;
-        err = esp_vfs_fat_sdmmc_mount(RG_ROOT_PATH, &host_config, &slot_config, &mount_config, NULL);
+        err = esp_vfs_fat_sdmmc_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, NULL);
     }
     error_code = err;
 
@@ -125,12 +125,12 @@ void rg_storage_init(void)
 
     esp_vfs_fat_mount_config_t mount_config = {.max_files = 8};
 
-    esp_err_t err = esp_vfs_fat_sdmmc_mount(RG_ROOT_PATH, &host_config, &slot_config, &mount_config, NULL);
+    esp_err_t err = esp_vfs_fat_sdmmc_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, NULL);
     if (err == ESP_ERR_TIMEOUT || err == ESP_ERR_INVALID_RESPONSE || err == ESP_ERR_INVALID_CRC)
     {
         RG_LOGW("SD Card mounting failed (0x%x), retrying at lower speed...\n", err);
         host_config.max_freq_khz = SDMMC_FREQ_PROBING;
-        err = esp_vfs_fat_sdmmc_mount(RG_ROOT_PATH, &host_config, &slot_config, &mount_config, NULL);
+        err = esp_vfs_fat_sdmmc_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, NULL);
     }
     error_code = err;
 
@@ -142,7 +142,7 @@ void rg_storage_init(void)
 #elif RG_STORAGE_DRIVER == 4 // SPI Flash
 
     wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
-    esp_err_t err = esp_vfs_fat_spiflash_mount(RG_ROOT_PATH, "storage", &s_wl_handle)
+    esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, "storage", &s_wl_handle)
     error_code = err;
 
 #else
@@ -152,7 +152,7 @@ void rg_storage_init(void)
 #endif
 
     if (!error_code)
-        RG_LOGI("Storage mounted at %s. driver=%d\n", RG_ROOT_PATH, RG_STORAGE_DRIVER);
+        RG_LOGI("Storage mounted at %s. driver=%d\n", RG_STORAGE_ROOT, RG_STORAGE_DRIVER);
     else
         RG_LOGE("Storage mounting failed. driver=%d, err=0x%x\n", RG_STORAGE_DRIVER, error_code);
 
@@ -209,7 +209,7 @@ bool rg_storage_mkdir(const char *dir)
 
         strncpy(temp, dir, RG_PATH_MAX);
 
-        for (char *p = temp + strlen(RG_ROOT_PATH) + 1; *p; p++)
+        for (char *p = temp + strlen(RG_STORAGE_ROOT) + 1; *p; p++)
         {
             if (*p == '/')
             {
@@ -309,4 +309,17 @@ const char *rg_extension(const char *path)
     const char *basename = rg_basename(path);
     const char *ext = strrchr(basename, '.');
     return ext ? ext + 1 : NULL;
+}
+
+const char *rg_relpath(const char *path)
+{
+    if (strncmp(path, RG_STORAGE_ROOT, strlen(RG_STORAGE_ROOT)) == 0)
+    {
+        const char *relpath = path + strlen(RG_STORAGE_ROOT);
+        if (relpath[0] == '/')
+            path = relpath + 1;
+        else if (relpath[0] == 0)
+            path = relpath;
+    }
+    return path;
 }

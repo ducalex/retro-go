@@ -51,8 +51,7 @@ void gui_init(void)
         .height       = rg_display_get_info()->screen.height,
     };
     // Always enter browse mode when leaving an emulator
-    // boot reason should probably be abstracted by rg_system >_<
-    gui.browse = gui.start_screen == 2 || (!gui.start_screen && !rg_system_get_app()->isColdBoot);
+    gui.browse = gui.start_screen == 2 || (!gui.start_screen && rg_system_get_app()->bootType == RG_RST_RESTART);
     gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
 }
 

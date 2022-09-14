@@ -257,8 +257,8 @@ static void try_migrate(void)
     {
     #ifdef RG_TARGET_ODROID_GO
         rg_storage_mkdir(RG_BASE_PATH_CONFIG);
-        rename(RG_ROOT_PATH "/odroid/favorite.txt", RG_BASE_PATH_CONFIG "/favorite.txt");
-        rename(RG_ROOT_PATH "/odroid/recent.txt", RG_BASE_PATH_CONFIG "/recent.txt");
+        rename(RG_STORAGE_ROOT "/odroid/favorite.txt", RG_BASE_PATH_CONFIG "/favorite.txt");
+        rename(RG_STORAGE_ROOT "/odroid/recent.txt", RG_BASE_PATH_CONFIG "/recent.txt");
     #endif
         rg_settings_set_number(NS_GLOBAL, "Migration", 1290);
         rg_storage_commit();
@@ -268,7 +268,7 @@ static void try_migrate(void)
     if (rg_settings_get_number(NS_GLOBAL, "Migration", 0) < 1390)
     {
     #ifdef RG_TARGET_ODROID_GO
-        if (access(RG_ROOT_PATH"/odroid/data", F_OK) == 0)
+        if (access(RG_STORAGE_ROOT "/odroid/data", F_OK) == 0)
             rg_gui_alert("Save path changed in 1.32",
                 "Save format is no longer fully compatible with Go-Play and can cause corruption.\n\n"
                 "Please copy the contents of:\n /odroid/data\nto\n /retro-go/saves.");

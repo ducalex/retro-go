@@ -74,6 +74,13 @@ typedef enum
 
 typedef enum
 {
+    RG_RST_POWERON = 0, // Cold boot
+    RG_RST_RESTART,     // Warm boot
+    RG_RST_PANIC,       // Crash
+} rg_reset_reason_t;
+
+typedef enum
+{
     RG_EVENT_TYPE_SYSTEM  = 0xF1000000,
     RG_EVENT_TYPE_POWER   = 0xF2000000,
     RG_EVENT_TYPE_NETPLAY = 0xF3000000,
@@ -135,16 +142,16 @@ typedef struct
     const char *buildDate;
     const char *buildTime;
     const char *buildUser;
+    const char *toolchain;
     const char *configNs;
     const char *bootArgs;
     uint32_t bootFlags;
-    uint32_t resetReason;
+    uint32_t bootType;
     float speed;
     int refreshRate;
     int sampleRate;
     int logLevel;
     bool isLauncher;
-    bool isColdBoot;
     int saveSlot;
     const char *romPath;
     void *mainTaskHandle;

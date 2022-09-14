@@ -5,13 +5,12 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define RG_ROOT_PATH        "/sd"
-#define RG_BASE_PATH        RG_ROOT_PATH "/retro-go"
+#define RG_BASE_PATH        RG_STORAGE_ROOT "/retro-go"
 #define RG_BASE_PATH_BIOS   RG_BASE_PATH "/bios"
 #define RG_BASE_PATH_CACHE  RG_BASE_PATH "/cache"
 #define RG_BASE_PATH_CONFIG RG_BASE_PATH "/config"
-#define RG_BASE_PATH_COVERS RG_ROOT_PATH "/romart"
-#define RG_BASE_PATH_ROMS   RG_ROOT_PATH "/roms"
+#define RG_BASE_PATH_COVERS RG_STORAGE_ROOT "/romart"
+#define RG_BASE_PATH_ROMS   RG_STORAGE_ROOT "/roms"
 #define RG_BASE_PATH_SAVES  RG_BASE_PATH "/saves"
 #define RG_BASE_PATH_SYSTEM RG_BASE_PATH "/system"
 #define RG_BASE_PATH_THEMES RG_BASE_PATH "/themes"
@@ -31,3 +30,4 @@ bool rg_storage_mkdir(const char *dir);
 const char *rg_dirname(const char *path);
 const char *rg_basename(const char *path);
 const char *rg_extension(const char *path);
+const char *rg_relpath(const char *path);

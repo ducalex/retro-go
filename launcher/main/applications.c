@@ -365,7 +365,7 @@ static void tab_refresh(tab_t *tab)
         gui_resize_list(tab, 6);
         sprintf(tab->listbox.items[0].text, "Welcome to Retro-Go!");
         sprintf(tab->listbox.items[1].text, " ");
-        sprintf(tab->listbox.items[2].text, "Place roms in folder: %s", app->paths.roms + strlen(RG_ROOT_PATH));
+        sprintf(tab->listbox.items[2].text, "Place roms in folder: %s", rg_relpath(app->paths.roms));
         sprintf(tab->listbox.items[3].text, "With file extension: %s", app->extensions);
         sprintf(tab->listbox.items[4].text, " ");
         sprintf(tab->listbox.items[5].text, "You can hide this tab in the menu");

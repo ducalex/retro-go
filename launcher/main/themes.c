@@ -60,7 +60,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
         {
             gui_resize_list(tab, 6);
             sprintf(tab->listbox.items[0].text, "Welcome to Retro-Go!");
-            sprintf(tab->listbox.items[2].text, "Place themes in folder: %s", themes_path + strlen(RG_ROOT_PATH));
+            sprintf(tab->listbox.items[2].text, "Place themes in folder: %s", rg_relpath(themes_path));
             sprintf(tab->listbox.items[4].text, "You can hide this tab in the menu");
             tab->listbox.cursor = 3;
         }

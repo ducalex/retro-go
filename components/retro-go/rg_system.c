@@ -301,13 +301,36 @@ static void setup_gpios(void)
 rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options)
 {
     const esp_app_desc_t *esp_app = esp_ota_get_app_description();
-    esp_chip_info_t chip_info;
+
+    app = (rg_app_t){
+        .name = esp_app->project_name,
+        .version = esp_app->version,
+        .buildDate = esp_app->date,
+        .buildTime = esp_app->time,
+        .buildUser = RG_BUILD_USER,
+        .toolchain = esp_get_idf_version(),
+        .bootArgs = NULL,
+        .bootFlags = 0,
+        .bootType = esp_reset_reason() == ESP_RST_SW ? RG_RST_RESTART : RG_RST_POWERON,
+        .speed = 1.f,
+        .refreshRate = 60,
+        .sampleRate = sampleRate,
+        .logLevel = RG_LOG_INFO,
+        .mainTaskHandle = xTaskGetCurrentTaskHandle(),
+        .options = options, // TO DO: We should make a copy of it?
+    };
+    if (handlers)
+        app.handlers = *handlers;
+
+    // Do this very early, may be needed to enable serial console
+    setup_gpios();
 
     printf("\n========================================================\n");
-    printf("%s %s (%s %s)\n", esp_app->project_name, esp_app->version, esp_app->date, esp_app->time);
+    printf("%s %s (%s %s)\n", app.name, app.version, app.buildDate, app.buildTime);
     printf(" built for: %s. aud=%d disp=%d pad=%d sd=%d cfg=%d\n", RG_TARGET_NAME, 0, 0, 0, 0, 0);
     printf("========================================================\n\n");
 
+    esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
     RG_LOGI("Chip info: model %d rev%d (%d cores), reset reason: %d\n",
         chip_info.model, chip_info.revision, chip_info.cores, esp_reset_reason());
@@ -316,38 +339,16 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     RG_LOGI("Internal memory: free=%d, total=%d\n", statistics.freeMemoryInt, statistics.totalMemoryInt);
     RG_LOGI("External memory: free=%d, total=%d\n", statistics.freeMemoryExt, statistics.totalMemoryExt);
 
-    setup_gpios();
-
-    app = (rg_app_t){
-        .name = esp_app->project_name,
-        .version = esp_app->version,
-        .buildDate = esp_app->date,
-        .buildTime = esp_app->time,
-        .buildUser = RG_BUILD_USER,
-        .configNs = esp_app->project_name,
-        .bootArgs = NULL,
-        .bootFlags = 0,
-        .resetReason = esp_reset_reason(),
-        .speed = 1.f,
-        .refreshRate = 60,
-        .sampleRate = sampleRate,
-        .saveSlot = 0,
-        .logLevel = RG_LOG_INFO,
-        .isLauncher = strcmp(esp_app->project_name, RG_APP_LAUNCHER) == 0,
-        .isColdBoot = esp_reset_reason() == ESP_RST_POWERON,
-        .romPath = NULL,
-        .mainTaskHandle = xTaskGetCurrentTaskHandle(),
-        .options = options, // TO DO: We should make a copy of it
-    };
-    if (handlers)
-        app.handlers = *handlers;
-
     rg_system_set_led(0);
 
     // Storage must be initialized first (SPI bus, settings, assets, etc)
     rg_storage_init();
 
-    if (!app.isLauncher)
+    if ((app.isLauncher = strcmp(app.name, RG_APP_LAUNCHER) == 0))
+    {
+        app.configNs = app.name;
+    }
+    else
     {
         app.configNs = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_NAME, app.name);
         app.bootArgs = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_ARGS, "");
@@ -386,7 +387,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
             if (panicTrace.message[0] && strcmp(panicTrace.message, "(none)") != 0)
                 strcpy(message, panicTrace.message);
 
-            if (rg_system_save_trace(RG_ROOT_PATH "/crash.log", 1))
+            if (rg_system_save_trace(RG_STORAGE_ROOT "/crash.log", 1))
                 strcat(message, "\nLog saved to SD Card.");
         }
 
@@ -501,7 +502,7 @@ char *rg_emu_get_path(rg_path_type_t pathType, const char *filename)
     else if (type == RG_PATH_CACHE_FILE)
         strcpy(buffer, RG_BASE_PATH_CACHE);
     else
-        strcpy(buffer, RG_ROOT_PATH);
+        strcpy(buffer, RG_STORAGE_ROOT);
 
     if (filename != NULL)
     {
@@ -857,7 +858,7 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
         fprintf(fp, "Application: %s\n", app.name);
         fprintf(fp, "Version: %s\n", app.version);
         fprintf(fp, "Build date: %s %s\n", app.buildDate, app.buildTime);
-        fprintf(fp, "ESP-IDF: %s\n", esp_get_idf_version());
+        fprintf(fp, "Toolchain: %s\n", app.toolchain);
         fprintf(fp, "Total memory: %d + %d\n", stats->totalMemoryInt, stats->totalMemoryExt);
         fprintf(fp, "Free memory: %d + %d\n", stats->freeMemoryInt, stats->freeMemoryExt);
         fprintf(fp, "Free block: %d + %d\n", stats->freeBlockInt, stats->freeBlockExt);

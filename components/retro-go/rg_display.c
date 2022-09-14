@@ -174,16 +174,16 @@ static void ili9341_cmd(uint8_t cmd, const void *data, size_t data_len)
 static void lcd_set_backlight(double percent)
 {
     double level = RG_MIN(RG_MAX(percent / 100.0, 0), 1.0);
-    esp_err_t ret = ESP_OK;
+    int error_code = 0;
 
 #if defined(RG_GPIO_LCD_BCKL)
-    ret = ledc_set_fade_time_and_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0x1FFF * level, 50, 0);
+    error_code = ledc_set_fade_time_and_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0x1FFF * level, 50, 0);
 #elif defined(RG_TARGET_QTPY_GAMER)
-    // ret = aw_analogWrite(AW_TFT_BACKLIGHT, level * 255);
+    // error_code = aw_analogWrite(AW_TFT_BACKLIGHT, level * 255);
 #endif
 
-    if (ret != ESP_OK)
-        RG_LOGE("failed setting backlight to %.2f%% (0x%02X)\n", 100 * level, ret);
+    if (error_code)
+        RG_LOGE("failed setting backlight to %.2f%% (0x%02X)\n", 100 * level, error_code);
     else
         RG_LOGI("backlight set to %.2f%%\n", 100 * level);
 }
