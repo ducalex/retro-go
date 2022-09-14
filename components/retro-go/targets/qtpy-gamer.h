@@ -27,9 +27,24 @@
 #define RG_SCREEN_MARGIN_RIGHT      0
 
 // Input
-#define RG_GAMEPAD_DRIVER           4   // 1 = ODROID-GO, 2 = Serial, 3 = MRGC-IO, 4 = QT PY AW9325
+#define RG_GAMEPAD_DRIVER           4   // 1 = ODROID-GO, 2 = Serial, 3 = I2C, 4 = AW9523, 5 = ESPLAY-S3, 6 = SDL2
 #define RG_GAMEPAD_HAS_MENU_BTN     1
 #define RG_GAMEPAD_HAS_OPTION_BTN   1
+// Note: Depending on the driver, the button map can represent bits, registers, keys, or gpios.
+#define RG_GAMEPAD_MAP_MENU         (11)
+#define RG_GAMEPAD_MAP_OPTION       (5)
+#define RG_GAMEPAD_MAP_START        (4)
+#define RG_GAMEPAD_MAP_SELECT       (2)
+#define RG_GAMEPAD_MAP_UP           (10)
+#define RG_GAMEPAD_MAP_RIGHT        (12)
+#define RG_GAMEPAD_MAP_DOWN         (13)
+#define RG_GAMEPAD_MAP_LEFT         (14)
+#define RG_GAMEPAD_MAP_A            (6)
+#define RG_GAMEPAD_MAP_B            (7)
+#define RG_GAMEPAD_MAP_X            (-1)
+#define RG_GAMEPAD_MAP_Y            (-1)
+
+// Battery
 // #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0
 #define RG_BATTERY_CALC_PERCENT(raw) (99)
 #define RG_BATTERY_CALC_VOLTAGE(raw) (0)
@@ -42,16 +57,6 @@
 #define RG_GPIO_I2C_SCL             GPIO_NUM_33
 
 // Built-in gamepad
-#define AW_GAMEPAD_IO_UP 10
-#define AW_GAMEPAD_IO_DOWN 13
-#define AW_GAMEPAD_IO_LEFT 14
-#define AW_GAMEPAD_IO_RIGHT 12
-#define AW_GAMEPAD_IO_SELECT 2
-#define AW_GAMEPAD_IO_START 4
-#define AW_GAMEPAD_IO_A 6
-#define AW_GAMEPAD_IO_B 7
-#define AW_GAMEPAD_IO_MENU 11
-#define AW_GAMEPAD_IO_OPTION 5
 #define AW_CARDDET 1
 #define AW_TFT_RESET 8
 #define AW_TFT_BACKLIGHT 3

@@ -56,9 +56,24 @@
 #define RG_SCREEN_MARGIN_RIGHT      0
 
 // Input
-#define RG_GAMEPAD_DRIVER           3   // 1 = ODROID-GO, 2 = Serial, 3 = MRGC-IO
+#define RG_GAMEPAD_DRIVER           3   // 1 = ODROID-GO, 2 = Serial, 3 = I2C, 4 = AW9523, 5 = ESPLAY-S3, 6 = SDL2
 #define RG_GAMEPAD_HAS_MENU_BTN     1
 #define RG_GAMEPAD_HAS_OPTION_BTN   0
+// Note: Depending on the driver, the button map can represent bits, registers, keys, or gpios.
+#define RG_GAMEPAD_MAP_MENU         (8)
+#define RG_GAMEPAD_MAP_OPTION       (-1)
+#define RG_GAMEPAD_MAP_START        (0)
+#define RG_GAMEPAD_MAP_SELECT       (1)
+#define RG_GAMEPAD_MAP_UP           (2)
+#define RG_GAMEPAD_MAP_RIGHT        (5)
+#define RG_GAMEPAD_MAP_DOWN         (3)
+#define RG_GAMEPAD_MAP_LEFT         (4)
+#define RG_GAMEPAD_MAP_A            (6)
+#define RG_GAMEPAD_MAP_B            (7)
+#define RG_GAMEPAD_MAP_X            (-1)
+#define RG_GAMEPAD_MAP_Y            (-1)
+
+// Battery
 // #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) - 170) / 30.f * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) (0)
