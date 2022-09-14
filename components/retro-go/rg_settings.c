@@ -82,8 +82,8 @@ void rg_settings_commit(void)
     FILE *fp = fopen(config_file_path, "wb");
     if (!fp)
     {
-        if (!rg_storage_delete(config_file_path))
-            rg_storage_mkdir(rg_dirname(config_file_path));
+        rg_storage_delete(config_file_path);
+        rg_storage_mkdir(rg_dirname(config_file_path));
         fp = fopen(config_file_path, "wb");
     }
     if (fp)
@@ -92,6 +92,9 @@ void rg_settings_commit(void)
             unsaved_changes = 0;
         fclose(fp);
     }
+
+    if (unsaved_changes > 0)
+        RG_LOGE("Save failed! %p\n", fp);
 
     cJSON_free(buffer);
 }

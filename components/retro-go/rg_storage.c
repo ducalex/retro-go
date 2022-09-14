@@ -1,9 +1,10 @@
-#include <sys/dirent.h>
+#include <sys/types.h>
 #include <sys/stat.h>
-#include <string.h>
-#include <unistd.h>
+#include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "rg_system.h"
 
@@ -12,10 +13,14 @@
 #include <esp_vfs_fat.h>
 #endif
 
+#if defined(__MINGW32__) || defined(__MINGW64__)
+#define mkdir(A, B) mkdir(A)
+#endif
+
 static bool disk_mounted = false;
 static bool disk_led = true;
 
-#define SETTING_DISK_ACTIVITY "DiskActivity"
+static const char *SETTING_DISK_ACTIVITY = "DiskActivity";
 
 
 void rg_storage_set_activity_led(bool enable)

@@ -6,7 +6,7 @@
 #if defined(RG_GPIO_I2C_SDA) && defined(RG_GPIO_I2C_SCL)
 #include <driver/i2c.h>
 #include <esp_err.h>
-#define USE_I2C_DRIVER
+#define USE_I2C_DRIVER 1
 #endif
 
 static bool i2c_initialized = false;
@@ -22,7 +22,7 @@ static uint8_t gpio_extender_address = 0x00;
 
 bool rg_i2c_init(void)
 {
-#ifdef USE_I2C_DRIVER
+#if USE_I2C_DRIVER
     const i2c_config_t i2c_config = {
         .mode = I2C_MODE_MASTER,
         .sda_io_num = RG_GPIO_I2C_SDA,
@@ -52,7 +52,7 @@ fail:
 
 bool rg_i2c_deinit(void)
 {
-#ifdef USE_I2C_DRIVER
+#if USE_I2C_DRIVER
     if (i2c_initialized && i2c_driver_delete(I2C_NUM_0) == ESP_OK)
         RG_LOGI("I2C driver terminated.\n");
 #endif
@@ -62,7 +62,7 @@ bool rg_i2c_deinit(void)
 
 bool rg_i2c_read(uint8_t addr, int reg, void *read_data, size_t read_len)
 {
-#ifdef USE_I2C_DRIVER
+#if USE_I2C_DRIVER
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     esp_err_t err = ESP_FAIL;
 
@@ -92,7 +92,7 @@ fail:
 
 bool rg_i2c_write(uint8_t addr, int reg, const void *write_data, size_t write_len)
 {
-#ifdef USE_I2C_DRIVER
+#if USE_I2C_DRIVER
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     esp_err_t err = ESP_FAIL;
 

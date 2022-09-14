@@ -7,9 +7,10 @@
 #include "rg_input.h"
 #include "rg_i2c.h"
 
-#if defined(RG_BATTERY_ADC_CHANNEL) || (RG_GAMEPAD_DRIVER == 1)
+#if defined(RG_BATTERY_ADC_CHANNEL) || RG_GAMEPAD_DRIVER == 1
 #include <esp_adc_cal.h>
 #include <driver/adc.h>
+#define USE_ADC_DRIVER 1
 static esp_adc_cal_characteristics_t adc_chars;
 #endif
 
@@ -223,7 +224,7 @@ void rg_input_init(void)
 
 #endif
 
-#if defined(RG_BATTERY_ADC_CHANNEL) || (RG_GAMEPAD_DRIVER == 1)
+#if USE_ADC_DRIVER
     adc1_config_width(ADC_WIDTH_MAX - 1);
     adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_11db);
     esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_11db, ADC_WIDTH_MAX - 1, 1100, &adc_chars);

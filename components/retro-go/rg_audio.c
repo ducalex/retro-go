@@ -1,15 +1,11 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
-#include <string.h>
-#include <unistd.h>
+#include <driver/gpio.h>
 
 #include "rg_system.h"
 #include "rg_audio.h"
 
-#define USE_I2S_DRIVER (RG_AUDIO_USE_INT_DAC || RG_AUDIO_SINK_I2S_EXT)
-
-#if USE_I2S_DRIVER
-#include <driver/gpio.h>
+#if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
 #include <driver/i2s.h>
 #if RG_AUDIO_USE_INT_DAC
 #include <driver/dac.h>
@@ -19,6 +15,7 @@
 #define I2S_COMM_FORMAT_STAND_I2S (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB)
 #define I2S_COMM_FORMAT_STAND_MSB (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_LSB)
 #endif
+#define USE_I2S_DRIVER 1
 #endif
 
 static const rg_audio_sink_t sinks[] = {
