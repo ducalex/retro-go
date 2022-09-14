@@ -18,6 +18,7 @@ static struct {
     int screen_width, screen_height;
     struct {
         const rg_font_t *font;
+        int font_type;
         int font_points;
         rg_color_t box_background;
         rg_color_t box_header;
@@ -215,6 +216,7 @@ bool rg_gui_set_font_type(int type)
     const rg_font_t *font = fonts[type];
 
     gui.style.font = font;
+    gui.style.font_type = type;
     gui.style.font_points = (type < 3) ? (8 + type * 4) : font->height;
 
     rg_settings_set_number(NS_GLOBAL, SETTING_FONTTYPE, type);
@@ -900,14 +902,10 @@ static rg_gui_event_t font_type_cb(rg_gui_option_t *option, rg_gui_event_t event
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
-        int font_index = RG_FONT_MAX - 1;
-        while (font_index && fonts[font_index] != gui.style.font)
-            font_index--;
-
-        if (event == RG_DIALOG_PREV && !rg_gui_set_font_type(font_index - 1)) {
+        if (event == RG_DIALOG_PREV && !rg_gui_set_font_type(gui.style.font_type - 1)) {
             rg_gui_set_font_type(0);
         }
-        if (event == RG_DIALOG_NEXT && !rg_gui_set_font_type(font_index + 1)) {
+        if (event == RG_DIALOG_NEXT && !rg_gui_set_font_type(gui.style.font_type + 1)) {
             rg_gui_set_font_type(0);
         }
     }
