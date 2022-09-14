@@ -100,7 +100,7 @@ typedef enum
 
 typedef bool (*rg_state_handler_t)(const char *filename);
 typedef bool (*rg_reset_handler_t)(bool hard);
-typedef void (*rg_event_handler_t)(int event, void *arg);
+typedef void (*rg_event_handler_t)(int event, void *data);
 typedef bool (*rg_screenshot_handler_t)(const char *filename, int width, int height);
 typedef int  (*rg_mem_read_handler_t)(int addr);
 typedef int  (*rg_mem_write_handler_t)(int addr, int value);
@@ -190,15 +190,16 @@ void rg_system_tick(int busyTime);
 void rg_system_vlog(int level, const char *context, const char *format, va_list va);
 void rg_system_log(int level, const char *context, const char *format, ...) __attribute__((format(printf,3,4)));
 bool rg_system_save_trace(const char *filename, bool append);
-void rg_system_event(rg_event_t event, void *arg);
+void rg_system_event(rg_event_t event, void *data);
 int64_t rg_system_timer(void);
 rg_app_t *rg_system_get_app(void);
 rg_stats_t rg_system_get_counters(void);
 
 // Wrappers for the OS' task/thread creation API. It also keeps track of handles for debugging purposes...
-void *rg_system_create_task(const char *name, void (*taskFunc)(void* arg), void* arg, size_t stackSize, int priority, int affinity);
+void *rg_system_create_task(const char *name, void (*taskFunc)(void *data), void *data, size_t stackSize, int priority, int affinity);
 void *rg_system_find_task(const char *name);
-void  rg_system_delete_task(void *handle);
+void rg_system_delete_task(void *handle);
+void rg_system_delay(int ms);
 
 char *rg_emu_get_path(rg_path_type_t type, const char *arg);
 bool rg_emu_save_state(uint8_t slot);

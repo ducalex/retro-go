@@ -1,21 +1,27 @@
+#include "rg_system.h"
+#include "rg_audio.h"
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <driver/gpio.h>
 
-#include "rg_system.h"
-#include "rg_audio.h"
-
 #if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
+#include <driver/gpio.h>
 #include <driver/i2s.h>
-#if RG_AUDIO_USE_INT_DAC
-#include <driver/dac.h>
-#endif
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 2, 0)
 // The inversion is deliberate, it was a bug in older esp-idf
 #define I2S_COMM_FORMAT_STAND_I2S (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB)
 #define I2S_COMM_FORMAT_STAND_MSB (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_LSB)
 #endif
 #define USE_I2S_DRIVER 1
+#endif
+
+#if RG_AUDIO_USE_INT_DAC
+#include <driver/dac.h>
+#endif
+
+#if RG_AUDIO_USE_SDL2
+#include <SDL2/SDL.h>
 #endif
 
 static const rg_audio_sink_t sinks[] = {
@@ -65,13 +71,6 @@ void rg_audio_init(int sampleRate)
     audio.volume = (int)rg_settings_get_number(NS_GLOBAL, SETTING_VOLUME, 50);
     audio.sampleRate = sampleRate;
 
-    int error_code = -1;
-
-    if (audio.sink->type == RG_AUDIO_SINK_DUMMY)
-    {
-        error_code = 0;
-    }
-
 #if USE_I2S_DRIVER
     i2s_config_t i2s_config = {
         .mode = I2S_MODE_MASTER | I2S_MODE_TX,
@@ -92,8 +91,15 @@ void rg_audio_init(int sampleRate)
         .use_apll = true, // External DAC may care about accuracy
 #endif
     };
+#endif
 
-    if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC)
+    int error_code = -1;
+
+    if (audio.sink->type == RG_AUDIO_SINK_DUMMY)
+    {
+        error_code = 0;
+    }
+    else if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC)
     {
     #if RG_AUDIO_USE_INT_DAC
         i2s_config.mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN;
@@ -109,6 +115,7 @@ void rg_audio_init(int sampleRate)
     }
     else if (audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
     {
+    #if RG_AUDIO_USE_EXT_DAC
         esp_err_t ret = i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
         if (ret == ESP_OK)
         {
@@ -120,8 +127,15 @@ void rg_audio_init(int sampleRate)
             });
         }
         error_code = ret;
+    #else
+        RG_LOGE("This device does not support external DAC mode!\n");
+    #endif
     }
-#endif
+    else if (audio.sink->type == RG_AUDIO_SINK_SDL2)
+    {
+        RG_LOGE("This device does not support SDL2!\n");
+        error_code = -1;
+    }
 
 #ifdef RG_GPIO_SND_AMP_ENABLE
     gpio_set_direction(RG_GPIO_SND_AMP_ENABLE, GPIO_MODE_OUTPUT);

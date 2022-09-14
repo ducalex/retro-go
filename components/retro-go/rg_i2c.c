@@ -1,5 +1,3 @@
-#include <unistd.h>
-
 #include "rg_system.h"
 #include "rg_i2c.h"
 
@@ -8,6 +6,7 @@
 #include <esp_err.h>
 #define USE_I2C_DRIVER 1
 #endif
+#include <unistd.h>
 
 static bool i2c_initialized = false;
 static bool gpio_extender_initialized = false;

@@ -193,7 +193,7 @@ static void system_monitor_task(void *arg)
     bool ledState = false;
 
     // Give the app a few seconds to start before monitoring
-    vTaskDelay(pdMS_TO_TICKS(2500));
+    rg_system_delay(2500);
     WDT_RELOAD(WDT_TIMEOUT);
 
     while (1)
@@ -248,7 +248,7 @@ static void system_monitor_task(void *arg)
             }
         #endif
 
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        rg_system_delay(1000);
     }
 
     rg_system_delete_task(NULL);
@@ -365,7 +365,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     for (int timeout = 5; rg_input_key_is_pressed(RG_KEY_ANY) && timeout >= 0; --timeout)
     {
         RG_LOGW("Button 0x%04X being held down...\n", rg_input_read_gamepad());
-        vTaskDelay(pdMS_TO_TICKS(100));
+        rg_system_delay(100);
         if (timeout == 0)
             enter_recovery_mode();
     }
@@ -424,24 +424,23 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     return &app;
 }
 
-void *rg_system_create_task(const char *name, void (*taskFunc)(void* arg), void* arg, size_t stackSize, int priority, int affinity)
+void *rg_system_create_task(const char *name, void (*taskFunc)(void *data), void *data, size_t stackSize, int priority, int affinity)
 {
-    TaskHandle_t handle = NULL;
-    BaseType_t ret = pdFAIL;
+    void *handle = NULL;
 
-    if (affinity != -1)
-        ret = xTaskCreatePinnedToCore(taskFunc, name, stackSize, arg, priority, &handle, affinity);
-    else
-        ret = xTaskCreate(taskFunc, name, stackSize, arg, priority, &handle);
+    if (affinity < 0)
+        affinity = tskNO_AFFINITY;
 
-    if (ret != pdPASS)
+    if (xTaskCreatePinnedToCore(taskFunc, name, stackSize, data, priority, &handle, affinity) != pdPASS)
+        handle = NULL; // should already be NULL...
+
+    if (!handle)
     {
-        // log error
+        RG_LOGE("Task creation failed: name='%s', fn='%p', stack=%d\n", name, taskFunc, stackSize);
         return NULL;
     }
 
-    // TODO: Add to tasks<rg_task_t>[]
-
+    // Add to tasks<rg_task_t>[]
     return handle;
 }
 
@@ -453,6 +452,13 @@ void rg_system_delete_task(void *handle)
     // TODO: Remove from tasks<rg_task_t>[]
 
     vTaskDelete(handle);
+}
+
+void rg_system_delay(int ms)
+{
+    // Note: rg_system_delay MUST yield at least once, even if ms = 0
+    // Keep in mind that delay may not be very accurate, use usleep().
+    vTaskDelay(pdMS_TO_TICKS(ms));
 }
 
 rg_app_t *rg_system_get_app(void)
@@ -756,7 +762,7 @@ void rg_system_sleep(void)
 {
     RG_LOGI("Going to sleep!\n");
     shutdown_cleanup();
-    vTaskDelay(100);
+    rg_system_delay(1000);
     esp_deep_sleep_start();
 }
 

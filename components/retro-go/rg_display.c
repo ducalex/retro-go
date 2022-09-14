@@ -217,9 +217,9 @@ static void lcd_init(void)
 #if defined(RG_GPIO_LCD_RST)
     gpio_set_direction(RG_GPIO_LCD_RST, GPIO_MODE_OUTPUT);
     gpio_set_level(RG_GPIO_LCD_RST, 0);
-    vTaskDelay(pdMS_TO_TICKS(100));
+    usleep(100 * 1000);
     gpio_set_level(RG_GPIO_LCD_RST, 1);
-    vTaskDelay(pdMS_TO_TICKS(10));
+    usleep(10 * 1000);
 #endif
 
 #define ILI9341_CMD(cmd, data...) {const uint8_t x[] = data; ili9341_cmd(cmd, x, sizeof(x));}
@@ -300,7 +300,7 @@ static void lcd_init(void)
     ILI9341_CMD(0x29, {}); // Display on
 #elif RG_SCREEN_TYPE == 4
 	ILI9341_CMD(0x01, {});  // Reset
-	vTaskDelay(120 / portTICK_RATE_MS);
+	usleep(120 * 1000);
 	ILI9341_CMD(0x3A, {0X05});  //65k mode
 	ILI9341_CMD(0xC5, {0x1A}); //VCOM
 	ILI9341_CMD(0x36, {0x60}); //Display Rotation
@@ -320,13 +320,13 @@ static void lcd_init(void)
 	ILI9341_CMD(0x20, {0x00});   //Reverse Display
 	ILI9341_CMD(0x11, {0x03});   //Exit Sleep
 	ILI9341_CMD(0x29, {0x03});   //Display on
-	vTaskDelay(100 / portTICK_RATE_MS);
+	usleep(100 * 1000);
 #else
     #error "LCD init sequence is not defined for this device!"
 #endif
 
     rg_display_clear(C_BLACK);
-    vTaskDelay(pdMS_TO_TICKS(5));
+    rg_system_delay(10);
     lcd_set_backlight(config.backlight);
 }
 
@@ -1029,7 +1029,7 @@ void rg_display_deinit(void)
     void *stop = NULL;
     xQueueSend(display_task_queue, &stop, portMAX_DELAY);
     while (display_task_queue)
-        vTaskDelay(1);
+        rg_system_delay(1);
     lcd_deinit();
     RG_LOGI("Display terminated.\n");
 }

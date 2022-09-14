@@ -220,7 +220,7 @@ static void netplay_task()
         if (!rx_sock || netplay_status < NETPLAY_STATUS_HANDSHAKE)
     #endif
         {
-            vTaskDelay(pdMS_TO_TICKS(100));
+            rg_system_delay(100);
             continue;
         }
 
@@ -228,7 +228,7 @@ static void netplay_task()
         if ((len = recvfrom(rx_sock, &packet, sizeof packet, 0, NULL, 0)) <= 0)
         {
             RG_LOGE("netplay: Socket disconnected! (recv() failed)\n");
-            vTaskDelay(pdMS_TO_TICKS(100));
+            rg_system_delay(100);
             continue;
         }
 
@@ -426,7 +426,7 @@ bool rg_netplay_quick_start(void)
         if (rg_input_key_is_pressed(RG_KEY_B))
             break;
 
-        vTaskDelay(pdMS_TO_TICKS(10));
+        rg_system_delay(10);
     }
 
     rg_netplay_stop();

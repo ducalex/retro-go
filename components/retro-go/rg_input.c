@@ -1,17 +1,19 @@
+#include "rg_system.h"
+#include "rg_input.h"
+
+#if RG_GAMEPAD_DRIVER == 6
+#include <SDL2/SDL.h>
+#else
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <driver/gpio.h>
-#include <string.h>
+#endif
 
-#include "rg_system.h"
-#include "rg_input.h"
-#include "rg_i2c.h"
-
-#if defined(RG_BATTERY_ADC_CHANNEL) || RG_GAMEPAD_DRIVER == 1
+#if RG_GAMEPAD_DRIVER == 1 || defined(RG_BATTERY_ADC_CHANNEL)
 #include <esp_adc_cal.h>
 #include <driver/adc.h>
-#define USE_ADC_DRIVER 1
 static esp_adc_cal_characteristics_t adc_chars;
+#define USE_ADC_DRIVER 1
 #endif
 
 static bool input_task_running = false;
@@ -108,6 +110,21 @@ static inline uint32_t gamepad_read(void)
         battery_level = data[4];
     }
 
+#elif RG_GAMEPAD_DRIVER == 6
+
+    const uint8_t *keys = SDL_GetKeyboardState(NULL);
+
+    if (keys[RG_GAMEPAD_MAP_MENU]) state |= RG_KEY_MENU;
+    if (keys[RG_GAMEPAD_MAP_OPTION]) state |= RG_KEY_OPTION;
+    if (keys[RG_GAMEPAD_MAP_START]) state |= RG_KEY_START;
+    if (keys[RG_GAMEPAD_MAP_SELECT]) state |= RG_KEY_SELECT;
+    if (keys[RG_GAMEPAD_MAP_UP]) state |= RG_KEY_UP;
+    if (keys[RG_GAMEPAD_MAP_LEFT]) state |= RG_KEY_LEFT;
+    if (keys[RG_GAMEPAD_MAP_DOWN]) state |= RG_KEY_DOWN;
+    if (keys[RG_GAMEPAD_MAP_RIGHT]) state |= RG_KEY_RIGHT;
+    if (keys[RG_GAMEPAD_MAP_A]) state |= RG_KEY_A;
+    if (keys[RG_GAMEPAD_MAP_B]) state |= RG_KEY_B;
+
 #endif
 
     // Virtual buttons (combos) to replace essential missing buttons.
@@ -123,14 +140,12 @@ static inline uint32_t gamepad_read(void)
 static void input_task(void *arg)
 {
     const uint8_t debounce_level = 0x03;
-    uint8_t debounce[RG_KEY_COUNT];
-    uint32_t new_gamepad_state = 0;
+    uint8_t debounce[RG_KEY_COUNT] = {0};
+    uint32_t local_gamepad_state = 0;
 
     // Discard the first read, it contains garbage in certain drivers
     gamepad_read();
 
-    // Initialize debounce state
-    memset(debounce, 0xFF, sizeof(debounce));
     input_task_running = true;
 
     while (input_task_running)
@@ -144,17 +159,17 @@ static void input_task(void *arg)
 
             if (debounce[i] == debounce_level) // Pressed
             {
-                new_gamepad_state |= (1 << i);
+                local_gamepad_state |= (1 << i);
             }
             else if (debounce[i] == 0x00) // Released
             {
-                new_gamepad_state &= ~(1 << i);
+                local_gamepad_state &= ~(1 << i);
             }
         }
 
-        gamepad_state = new_gamepad_state;
+        gamepad_state = local_gamepad_state;
 
-        vTaskDelay(pdMS_TO_TICKS(10));
+        rg_system_delay(10);
     }
 
     input_task_running = false;
@@ -218,9 +233,9 @@ void rg_input_init(void)
 
     // tft reset
     rg_i2c_gpio_set_level(AW_TFT_RESET, 0);
-    vTaskDelay(pdMS_TO_TICKS(10));
+    usleep(10 * 1000);
     rg_i2c_gpio_set_level(AW_TFT_RESET, 1);
-    vTaskDelay(pdMS_TO_TICKS(10));
+    usleep(10 * 1000);
 
 #elif RG_GAMEPAD_DRIVER == 5 // I2C ESPLAY
 
@@ -247,7 +262,7 @@ void rg_input_init(void)
     // Start background polling
     rg_system_create_task("rg_input", &input_task, NULL, 2 * 1024, RG_TASK_PRIORITY - 1, 1);
     while (gamepad_state == -1)
-        vTaskDelay(1);
+        rg_system_delay(1);
     RG_LOGI("Input ready. driver='%s', state=" PRINTF_BINARY_16 "\n", driver, PRINTF_BINVAL_16(gamepad_state));
 }
 
@@ -255,7 +270,7 @@ void rg_input_deinit(void)
 {
     input_task_running = false;
     // while (gamepad_state != -1)
-    //     vTaskDelay(1);
+    //     rg_system_delay(1);
     RG_LOGI("Input terminated.\n");
 }
 
@@ -281,7 +296,7 @@ bool rg_input_key_is_pressed(rg_key_t key)
 void rg_input_wait_for_key(rg_key_t key, bool pressed)
 {
     while (rg_input_key_is_pressed(key) != pressed)
-        vTaskDelay(1);
+        rg_system_delay(1);
 }
 
 bool rg_input_read_battery(float *percent, float *volts)
