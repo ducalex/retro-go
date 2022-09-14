@@ -11,9 +11,14 @@
 #if USE_I2S_DRIVER
 #include <driver/gpio.h>
 #include <driver/i2s.h>
-#endif
 #if RG_AUDIO_USE_INT_DAC
 #include <driver/dac.h>
+#endif
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 2, 0)
+// The inversion is deliberate, it was a bug in older esp-idf
+#define I2S_COMM_FORMAT_STAND_I2S (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB)
+#define I2S_COMM_FORMAT_STAND_MSB (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_LSB)
+#endif
 #endif
 
 static const rg_audio_sink_t sinks[] = {
@@ -23,6 +28,9 @@ static const rg_audio_sink_t sinks[] = {
 #endif
 #if RG_AUDIO_USE_EXT_DAC
     {RG_AUDIO_SINK_I2S_EXT, 0, "Ext DAC"},
+#endif
+#if RG_AUDIO_USE_SDL2
+    {RG_AUDIO_SINK_SDL2, 0, "SDL2"},
 #endif
     // {RG_AUDIO_SINK_BT_A2DP, 0, "Bluetooth"},
 };
@@ -36,12 +44,6 @@ static int64_t dummyBusyUntil = 0;
 static const char *SETTING_OUTPUT = "AudioSink";
 static const char *SETTING_VOLUME = "Volume";
 static const char *SETTING_FILTER = "AudioFilter";
-
-#ifdef RG_TARGET_QTPY_GAMER
-    #define SPEAKER_DAC_MODE I2S_DAC_CHANNEL_LEFT_EN
-#else
-    #define SPEAKER_DAC_MODE I2S_DAC_CHANNEL_BOTH_EN
-#endif
 
 #define ACQUIRE_DEVICE(timeout) ({int x=xSemaphoreTake(audioDevLock, timeout);if(!x)RG_LOGE("Failed to acquire lock!\n");x;})
 #define RELEASE_DEVICE() xSemaphoreGive(audioDevLock);
@@ -66,7 +68,12 @@ void rg_audio_init(int sampleRate)
     audio.volume = (int)rg_settings_get_number(NS_GLOBAL, SETTING_VOLUME, 50);
     audio.sampleRate = sampleRate;
 
-    esp_err_t ret = ESP_FAIL;
+    int error_code = -1;
+
+    if (audio.sink->type == RG_AUDIO_SINK_DUMMY)
+    {
+        error_code = 0;
+    }
 
 #if USE_I2S_DRIVER
     i2s_config_t i2s_config = {
@@ -88,30 +95,25 @@ void rg_audio_init(int sampleRate)
         .use_apll = true, // External DAC may care about accuracy
 #endif
     };
-#endif
 
-    if (audio.sink->type == RG_AUDIO_SINK_DUMMY)
-    {
-        ret = ESP_OK;
-    }
-#if USE_I2S_DRIVER
-    else if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC)
+    if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC)
     {
     #if RG_AUDIO_USE_INT_DAC
         i2s_config.mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN;
         i2s_config.communication_format = I2S_COMM_FORMAT_STAND_MSB;
         i2s_config.use_apll = false;
-        if ((ret = i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL)) == ESP_OK)
-        {
-            ret = i2s_set_dac_mode(SPEAKER_DAC_MODE);
-        }
+        esp_err_t ret = i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
+        if (ret == ESP_OK)
+            ret = i2s_set_dac_mode(RG_AUDIO_USE_INT_DAC);
+        error_code = ret;
     #else
         RG_LOGE("This device does not support internal DAC mode!\n");
     #endif
     }
     else if (audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
     {
-        if ((ret = i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL)) == ESP_OK)
+        esp_err_t ret = i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
+        if (ret == ESP_OK)
         {
             ret = i2s_set_pin(I2S_NUM_0, &(i2s_pin_config_t) {
                 .bck_io_num = RG_GPIO_SND_I2S_BCK,
@@ -120,6 +122,7 @@ void rg_audio_init(int sampleRate)
                 .data_in_num = GPIO_NUM_NC
             });
         }
+        error_code = ret;
     }
 #endif
 
@@ -128,7 +131,7 @@ void rg_audio_init(int sampleRate)
     gpio_set_level(RG_GPIO_SND_AMP_ENABLE, audio.muted ? 0 : 1);
 #endif
 
-    if (ret == ESP_OK)
+    if (!error_code)
     {
         RG_LOGI("Audio ready. sink='%s', samplerate=%d, volume=%d\n",
             audio.sink->name, audio.sampleRate, audio.volume);
@@ -136,7 +139,7 @@ void rg_audio_init(int sampleRate)
     else
     {
         RG_LOGE("Failed to initialize audio. sink='%s', samplerate=%d, err=0x%x\n",
-            audio.sink->name, audio.sampleRate, ret);
+            audio.sink->name, audio.sampleRate, error_code);
         audio.sink = &sinks[0];
     }
 
@@ -156,9 +159,9 @@ void rg_audio_deinit(void)
     {
     #if RG_AUDIO_USE_INT_DAC
         i2s_driver_uninstall(I2S_NUM_0);
-        if (SPEAKER_DAC_MODE & I2S_DAC_CHANNEL_RIGHT_EN)
+        if (RG_AUDIO_USE_INT_DAC & I2S_DAC_CHANNEL_RIGHT_EN)
             dac_output_disable(DAC_CHANNEL_1);
-        if (SPEAKER_DAC_MODE & I2S_DAC_CHANNEL_LEFT_EN)
+        if (RG_AUDIO_USE_INT_DAC & I2S_DAC_CHANNEL_LEFT_EN)
             dac_output_disable(DAC_CHANNEL_2);
         dac_i2s_disable();
     #else

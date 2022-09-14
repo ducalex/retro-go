@@ -11,28 +11,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdio.h>
 
-#if defined(RG_TARGET_ODROID_GO)
-    #include "targets/odroid-go.h"
-#elif defined(RG_TARGET_MRGC_G32)
-    #include "targets/mrgc-g32.h"
-#elif defined(RG_TARGET_QTPY_GAMER)
-    #include "targets/qtpy-gamer.h"
-#elif defined(RG_TARGET_RETRO_ESP32)
-    #include "targets/retro-esp32.h"
-#else
-    #warning "No target defined. Defaulting to ODROID-GO."
-    #include "targets/odroid-go.h"
-    #define RG_TARGET_ODROID_GO
-#endif
-
-#define RG_APP_LAUNCHER "launcher"
-#define RG_APP_FACTORY  NULL
-
-#define RG_PATH_MAX 255
-
-// This is the base task priority used for system tasks.
-// It should be higher than user tasks but lower than esp-idf's tasks.
-#define RG_TASK_PRIORITY 10
+#include "config.h"
 
 #include "rg_audio.h"
 #include "rg_display.h"
@@ -277,18 +256,9 @@ void *rg_alloc(size_t size, uint32_t caps);
 #define RTC_NOINIT_ATTR
 #endif
 
-// Polyfills to maintain compatibility with older esp-idf
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 3, 0)
 #define SPI_DMA_CH_AUTO 1
 #endif
-
-// The inversion is deliberate, it was a bug in older esp-idf
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 2, 0)
-#define I2S_COMM_FORMAT_STAND_I2S (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB)
-#define I2S_COMM_FORMAT_STAND_MSB (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_LSB)
-#endif
-
-#define autofree __attribute__(cleanup(free))
 
 #ifdef __cplusplus
 }

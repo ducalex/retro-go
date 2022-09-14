@@ -4,13 +4,13 @@
 #define RG_TARGET_NAME             "ESPLAY-S3"
 
 // Storage
-#define RG_STORAGE_DRIVER           2   // 1 = SDSPI, 2 = SDMMC, 3 = USB, 4 = Flash
-#define RG_STORAGE_HOST             SDMMC_HOST_SLOT_1
-#define RG_STORAGE_SPEED            SDMMC_FREQ_DEFAULT
+#define RG_STORAGE_DRIVER           2                   // 0 = Host, 1 = SDSPI, 2 = SDMMC, 3 = USB, 4 = Flash
+#define RG_STORAGE_HOST             SDMMC_HOST_SLOT_1   // Used by driver 1 and 2
+#define RG_STORAGE_SPEED            SDMMC_FREQ_DEFAULT  // Used by driver 1 and 2
 
 // Audio
-#define RG_AUDIO_USE_INT_DAC        0
-#define RG_AUDIO_USE_EXT_DAC        1
+#define RG_AUDIO_USE_INT_DAC        0   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
+#define RG_AUDIO_USE_EXT_DAC        1   // 0 = Disable, 1 = Enable
 
 // Video
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341

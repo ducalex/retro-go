@@ -21,6 +21,7 @@
 #define GB_WIDTH (160)
 #define GB_HEIGHT (144)
 
+typedef unsigned int uint;
 typedef uint8_t byte;
 typedef uint8_t un8;
 typedef uint16_t un16;

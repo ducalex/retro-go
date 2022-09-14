@@ -57,7 +57,13 @@ void rg_storage_init(void)
     if (disk_mounted)
         rg_storage_deinit();
 
-#if RG_STORAGE_DRIVER == 1 // SDSPI
+    int error_code = -1;
+
+#if RG_STORAGE_DRIVER == 0 // Host (stdlib)
+
+    error_code = 0;
+
+#elif RG_STORAGE_DRIVER == 1 // SDSPI
 
     sdmmc_host_t host_config = SDSPI_HOST_DEFAULT();
     host_config.flags = SDMMC_HOST_FLAG_SPI;
@@ -88,6 +94,7 @@ void rg_storage_init(void)
         host_config.max_freq_khz = SDMMC_FREQ_PROBING;
         err = esp_vfs_fat_sdmmc_mount(RG_ROOT_PATH, &host_config, &slot_config, &mount_config, NULL);
     }
+    error_code = err;
 
 #elif RG_STORAGE_DRIVER == 2 // SDMMC
 
@@ -120,36 +127,33 @@ void rg_storage_init(void)
         host_config.max_freq_khz = SDMMC_FREQ_PROBING;
         err = esp_vfs_fat_sdmmc_mount(RG_ROOT_PATH, &host_config, &slot_config, &mount_config, NULL);
     }
+    error_code = err;
 
 #elif RG_STORAGE_DRIVER == 3 // USB OTG
 
     #warning "USB OTG isn't available on your SOC"
-    esp_err_t err = ESP_ERR_NOT_SUPPORTED;
+    error_code = -1;
 
 #elif RG_STORAGE_DRIVER == 4 // SPI Flash
 
     wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
     esp_err_t err = esp_vfs_fat_spiflash_mount(RG_ROOT_PATH, "storage", &s_wl_handle)
-
-#elif RG_STORAGE_DRIVER == 5 // Host
-
-        esp_err_t err = ESP_OK;
+    error_code = err;
 
 #else
 
     #error "No supported storage driver selected!"
-    esp_err_t err = ESP_ERR_NOT_SUPPORTED;
 
 #endif
 
-    if (err == ESP_OK)
+    if (!error_code)
         RG_LOGI("Storage mounted at %s. driver=%d\n", RG_ROOT_PATH, RG_STORAGE_DRIVER);
     else
-        RG_LOGE("Storage mounting failed. driver=%d, err=0x%x\n", RG_STORAGE_DRIVER, err);
+        RG_LOGE("Storage mounting failed. driver=%d, err=0x%x\n", RG_STORAGE_DRIVER, error_code);
 
     rg_settings_init();
 
-    disk_mounted = err == ESP_OK;
+    disk_mounted = !error_code;
     disk_led = rg_settings_get_number(NS_GLOBAL, SETTING_DISK_ACTIVITY, 1);
 }
 
@@ -157,16 +161,17 @@ void rg_storage_deinit(void)
 {
     rg_storage_commit();
 
+    int error_code = 0;
+
 #if RG_STORAGE_DRIVER == 1 || RG_STORAGE_DRIVER == 2
     esp_err_t err = esp_vfs_fat_sdmmc_unmount();
-#else
-    esp_err_t err = ESP_ERR_NOT_SUPPORTED;
+    error_code = err;
 #endif
 
-    if (err == ESP_OK)
+    if (!error_code)
         RG_LOGI("Storage unmounted.\n");
     else
-        RG_LOGE("Storage unmounting failed. err=0x%x\n", err);
+        RG_LOGE("Storage unmounting failed. err=0x%x\n", error_code);
 
     disk_mounted = false;
 }

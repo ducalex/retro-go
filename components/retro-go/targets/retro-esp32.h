@@ -4,13 +4,13 @@
 #define RG_TARGET_NAME             "ODROID-GO"
 
 // Storage and Settings
-#define RG_STORAGE_DRIVER           1   // 1 = SDSPI, 2 = SDMMC, 3 = USB, 4 = Flash
-#define RG_STORAGE_HOST             SPI2_HOST
-#define RG_STORAGE_SPEED            SDMMC_FREQ_DEFAULT
+#define RG_STORAGE_DRIVER           1                   // 0 = Host, 1 = SDSPI, 2 = SDMMC, 3 = USB, 4 = Flash
+#define RG_STORAGE_HOST             SPI2_HOST           // Used by SDSPI and SDMMC
+#define RG_STORAGE_SPEED            SDMMC_FREQ_DEFAULT  // Used by SDSPI and SDMMC
 
 // Audio
-#define RG_AUDIO_USE_INT_DAC        1
-#define RG_AUDIO_USE_EXT_DAC        1
+#define RG_AUDIO_USE_INT_DAC        3   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
+#define RG_AUDIO_USE_EXT_DAC        1   // 0 = Disable, 1 = Enable
 
 // Video
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341
