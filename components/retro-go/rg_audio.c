@@ -13,7 +13,6 @@
 #define I2S_COMM_FORMAT_STAND_I2S (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB)
 #define I2S_COMM_FORMAT_STAND_MSB (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_LSB)
 #endif
-#define USE_I2S_DRIVER 1
 #endif
 
 #if RG_AUDIO_USE_INT_DAC
@@ -71,7 +70,7 @@ void rg_audio_init(int sampleRate)
     audio.volume = (int)rg_settings_get_number(NS_GLOBAL, SETTING_VOLUME, 50);
     audio.sampleRate = sampleRate;
 
-#if USE_I2S_DRIVER
+#if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
     i2s_config_t i2s_config = {
         .mode = I2S_MODE_MASTER | I2S_MODE_TX,
         .sample_rate = sampleRate,
@@ -137,11 +136,6 @@ void rg_audio_init(int sampleRate)
         error_code = -1;
     }
 
-#ifdef RG_GPIO_SND_AMP_ENABLE
-    gpio_set_direction(RG_GPIO_SND_AMP_ENABLE, GPIO_MODE_OUTPUT);
-    gpio_set_level(RG_GPIO_SND_AMP_ENABLE, audio.muted ? 0 : 1);
-#endif
-
     if (!error_code)
     {
         RG_LOGI("Audio ready. sink='%s', samplerate=%d, volume=%d\n",
@@ -155,6 +149,9 @@ void rg_audio_init(int sampleRate)
     }
 
     RELEASE_DEVICE();
+
+    // And finally enable the amp, if needed :)
+    rg_audio_set_mute(audio.muted);
 }
 
 void rg_audio_deinit(void)
@@ -165,31 +162,41 @@ void rg_audio_deinit(void)
     // We'll go ahead even if we can't acquire the lock...
     ACQUIRE_DEVICE(1000);
 
-#if USE_I2S_DRIVER
-    if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC)
+    if (audio.sink->type == RG_AUDIO_SINK_DUMMY)
     {
-    #if RG_AUDIO_USE_INT_DAC
+        // Nothing to do!
+    }
+#if RG_AUDIO_USE_INT_DAC
+    else if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC)
+    {
         i2s_driver_uninstall(I2S_NUM_0);
         if (RG_AUDIO_USE_INT_DAC & I2S_DAC_CHANNEL_RIGHT_EN)
             dac_output_disable(DAC_CHANNEL_1);
         if (RG_AUDIO_USE_INT_DAC & I2S_DAC_CHANNEL_LEFT_EN)
             dac_output_disable(DAC_CHANNEL_2);
         dac_i2s_disable();
-    #else
-        RG_LOGE("This device does not support internal DAC mode!\n");
-    #endif
+        #ifdef RG_GPIO_SND_AMP_ENABLE
+        gpio_reset_pin(RG_GPIO_SND_AMP_ENABLE);
+        #endif
     }
+#endif
+#if RG_AUDIO_USE_EXT_DAC
     else if (audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
     {
         i2s_driver_uninstall(I2S_NUM_0);
         gpio_reset_pin(RG_GPIO_SND_I2S_BCK);
         gpio_reset_pin(RG_GPIO_SND_I2S_DATA);
         gpio_reset_pin(RG_GPIO_SND_I2S_WS);
+        #ifdef RG_GPIO_SND_AMP_ENABLE
+        gpio_reset_pin(RG_GPIO_SND_AMP_ENABLE);
+        #endif
     }
 #endif
-
-#ifdef RG_GPIO_SND_AMP_ENABLE
-    gpio_reset_pin(RG_GPIO_SND_AMP_ENABLE);
+#if RG_AUDIO_USE_SDL2
+    else if (audio.sink->type == RG_AUDIO_SINK_SDL2)
+    {
+        // ...
+    }
 #endif
 
     RG_LOGI("Audio terminated. sink='%s'\n", audio.sink->name);
@@ -216,7 +223,7 @@ void rg_audio_submit(const rg_audio_sample_t *samples, size_t count)
         // usleep(RG_MAX(dummyBusyUntil - rg_system_timer(), 1000));
         dummyBusyUntil = rg_system_timer() + ((audio.sampleRate * 1000) / count);
     }
-#if USE_I2S_DRIVER
+#if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
     else if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC || audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
     {
         float volume = audio.muted ? 0.f : (audio.volume * 0.01f);
@@ -267,10 +274,12 @@ void rg_audio_submit(const rg_audio_sample_t *samples, size_t count)
         }
     }
 #endif
-    else
+#if RG_AUDIO_USE_SDL2
+    else if (audio.sink->type == RG_AUDIO_SINK_SDL2)
     {
-        RG_LOGE("Audio sink not implemented: '%s' %d\n", audio.sink->name, audio.sink->type);
+        //
     }
+#endif
 
     RELEASE_DEVICE();
 
@@ -330,12 +339,13 @@ void rg_audio_set_mute(bool mute)
         return;
 
     #if defined(RG_GPIO_SND_AMP_ENABLE)
+        gpio_set_direction(RG_GPIO_SND_AMP_ENABLE, GPIO_MODE_OUTPUT);
         gpio_set_level(RG_GPIO_SND_AMP_ENABLE, !mute);
     #elif defined(RG_TARGET_QTPY_GAMER)
         rg_i2c_gpio_set_level(AW_HEADPHONE_EN, !mute);
     #endif
 
-#if USE_I2S_DRIVER
+#if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
     if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC || audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
         i2s_zero_dma_buffer(I2S_NUM_0);
 #endif
@@ -359,7 +369,7 @@ void rg_audio_set_sample_rate(int sampleRate)
     if (!ACQUIRE_DEVICE(1000))
         return;
 
-#if USE_I2S_DRIVER
+#if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
     if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC || audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
     {
         RG_LOGI("i2s_set_sample_rates(%d)\n", sampleRate);

@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 
 #define RG_BASE_PATH        RG_STORAGE_ROOT "/retro-go"
 #define RG_BASE_PATH_BIOS   RG_BASE_PATH "/bios"

@@ -643,7 +643,7 @@ int rg_gui_dialog(const char *header, const rg_gui_option_t *options_const, int 
 
     rg_gui_draw_dialog(header, options, sel);
     rg_input_wait_for_key(RG_KEY_ALL, false);
-    rg_system_delay(100);
+    rg_task_delay(100);
 
     rg_gui_event_t event = RG_DIALOG_INIT;
     uint32_t joystick = 0, joystick_old;
@@ -719,7 +719,7 @@ int rg_gui_dialog(const char *header, const rg_gui_option_t *options_const, int 
             sel_old = sel;
         }
 
-        rg_system_delay(20);
+        rg_task_delay(20);
     }
 
     rg_input_wait_for_key(joystick, false);

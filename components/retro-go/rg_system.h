@@ -196,10 +196,10 @@ rg_app_t *rg_system_get_app(void);
 rg_stats_t rg_system_get_counters(void);
 
 // Wrappers for the OS' task/thread creation API. It also keeps track of handles for debugging purposes...
-void *rg_system_create_task(const char *name, void (*taskFunc)(void *data), void *data, size_t stackSize, int priority, int affinity);
-void *rg_system_find_task(const char *name);
-void rg_system_delete_task(void *handle);
-void rg_system_delay(int ms);
+void *rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, size_t stackSize, int priority, int affinity);
+void *rg_task_get_handle(const char *name);
+void rg_task_delete(void *handle);
+void rg_task_delay(int ms);
 
 char *rg_emu_get_path(rg_path_type_t type, const char *arg);
 bool rg_emu_save_state(uint8_t slot);

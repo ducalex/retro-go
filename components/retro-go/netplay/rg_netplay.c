@@ -220,7 +220,7 @@ static void netplay_task()
         if (!rx_sock || netplay_status < NETPLAY_STATUS_HANDSHAKE)
     #endif
         {
-            rg_system_delay(100);
+            rg_task_delay(100);
             continue;
         }
 
@@ -228,7 +228,7 @@ static void netplay_task()
         if ((len = recvfrom(rx_sock, &packet, sizeof packet, 0, NULL, 0)) <= 0)
         {
             RG_LOGE("netplay: Socket disconnected! (recv() failed)\n");
-            rg_system_delay(100);
+            rg_task_delay(100);
             continue;
         }
 
@@ -321,7 +321,7 @@ static void netplay_task()
         }
     }
 
-    rg_system_delete_task(NULL);
+    rg_task_delete(NULL);
 }
 
 
@@ -347,7 +347,7 @@ static void netplay_init()
         ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE)); // Improves latency a lot
         ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
 
-        rg_system_create_task("rg_netplay", &netplay_task, NULL, 4096, RG_TASK_PRIORITY - 2, 1);
+        rg_task_create("rg_netplay", &netplay_task, NULL, 4096, RG_TASK_PRIORITY - 2, 1);
     }
 }
 
@@ -426,7 +426,7 @@ bool rg_netplay_quick_start(void)
         if (rg_input_key_is_pressed(RG_KEY_B))
             break;
 
-        rg_system_delay(10);
+        rg_task_delay(10);
     }
 
     rg_netplay_stop();

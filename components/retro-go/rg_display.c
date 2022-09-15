@@ -1,14 +1,13 @@
-#include <freertos/FreeRTOS.h>
-#include <freertos/queue.h>
-#include <freertos/task.h>
-#include <driver/spi_master.h>
-#include <driver/gpio.h>
-#include <string.h>
-
 #include "rg_system.h"
 #include "rg_display.h"
 
-#if defined(RG_GPIO_LCD_BCKL)
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <driver/gpio.h>
+#include <driver/spi_master.h>
+#include <string.h>
+
+#ifdef RG_GPIO_LCD_BCKL
 #include <driver/ledc.h>
 #endif
 
@@ -107,7 +106,7 @@ static void spi_task(void *arg)
     }
 
     // This should never happen
-    rg_system_delete_task(NULL);
+    rg_task_delete(NULL);
 }
 
 static void spi_init(void)
@@ -153,7 +152,7 @@ static void spi_init(void)
     ret = spi_bus_add_device(RG_SCREEN_HOST, &devcfg, &spi_dev);
     RG_ASSERT(ret == ESP_OK, "spi_bus_add_device failed.");
 
-    rg_system_create_task("rg_spi", &spi_task, NULL, 1.5 * 1024, RG_TASK_PRIORITY - 1, 1);
+    rg_task_create("rg_spi", &spi_task, NULL, 1.5 * 1024, RG_TASK_PRIORITY - 1, 1);
 }
 
 static void spi_deinit(void)
@@ -326,7 +325,7 @@ static void lcd_init(void)
 #endif
 
     rg_display_clear(C_BLACK);
-    rg_system_delay(10);
+    rg_task_delay(10);
     lcd_set_backlight(config.backlight);
 }
 
@@ -654,7 +653,7 @@ static void display_task(void *arg)
     vQueueDelete(display_task_queue);
     display_task_queue = NULL;
 
-    rg_system_delete_task(NULL);
+    rg_task_delete(NULL);
 }
 
 void rg_display_force_redraw(void)
@@ -1029,7 +1028,7 @@ void rg_display_deinit(void)
     void *stop = NULL;
     xQueueSend(display_task_queue, &stop, portMAX_DELAY);
     while (display_task_queue)
-        rg_system_delay(1);
+        rg_task_delay(1);
     lcd_deinit();
     RG_LOGI("Display terminated.\n");
 }
@@ -1051,6 +1050,6 @@ void rg_display_init(void)
         .changed = true,
     };
     lcd_init();
-    rg_system_create_task("rg_display", &display_task, NULL, 3 * 1024, 5, 1);
+    rg_task_create("rg_display", &display_task, NULL, 3 * 1024, 5, 1);
     RG_LOGI("Display ready.\n");
 }

@@ -1,9 +1,10 @@
+#include "rg_system.h"
+#include "lodepng.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 
-#include "rg_system.h"
-#include "lodepng.h"
 
 rg_image_t *rg_image_load_from_file(const char *filename, uint32_t flags)
 {

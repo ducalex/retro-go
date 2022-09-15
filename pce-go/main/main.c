@@ -174,7 +174,7 @@ static void audioTask(void *arg)
         rg_audio_submit(audiobuffer, AUDIO_BUFFER_LENGTH);
     }
 
-    rg_system_delete_task(NULL);
+    rg_task_delete(NULL);
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)
@@ -243,7 +243,7 @@ void app_main(void)
         rg_emu_load_state(app->saveSlot);
     }
 
-    rg_system_create_task("pce_sound", &audioTask, NULL, 3 * 1024, 5, 1);
+    rg_task_create("pce_sound", &audioTask, NULL, 3 * 1024, 5, 1);
 
     RunPCE();
 

@@ -4,15 +4,12 @@
 #if RG_GAMEPAD_DRIVER == 6
 #include <SDL2/SDL.h>
 #else
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
 #include <driver/gpio.h>
 #endif
 
 #if RG_GAMEPAD_DRIVER == 1 || defined(RG_BATTERY_ADC_CHANNEL)
 #include <esp_adc_cal.h>
 #include <driver/adc.h>
-static esp_adc_cal_characteristics_t adc_chars;
 #define USE_ADC_DRIVER 1
 #endif
 
@@ -20,6 +17,9 @@ static bool input_task_running = false;
 static int64_t last_gamepad_read = 0;
 static uint32_t gamepad_state = -1; // _Atomic
 static int battery_level = -1;
+#if USE_ADC_DRIVER
+static esp_adc_cal_characteristics_t adc_chars;
+#endif
 
 
 static inline uint32_t gamepad_read(void)
@@ -169,12 +169,12 @@ static void input_task(void *arg)
 
         gamepad_state = local_gamepad_state;
 
-        rg_system_delay(10);
+        rg_task_delay(10);
     }
 
     input_task_running = false;
     gamepad_state = -1;
-    rg_system_delete_task(NULL);
+    rg_task_delete(NULL);
 }
 
 void rg_input_init(void)
@@ -260,9 +260,9 @@ void rg_input_init(void)
 #endif
 
     // Start background polling
-    rg_system_create_task("rg_input", &input_task, NULL, 2 * 1024, RG_TASK_PRIORITY - 1, 1);
+    rg_task_create("rg_input", &input_task, NULL, 2 * 1024, RG_TASK_PRIORITY - 1, 1);
     while (gamepad_state == -1)
-        rg_system_delay(1);
+        rg_task_delay(1);
     RG_LOGI("Input ready. driver='%s', state=" PRINTF_BINARY_16 "\n", driver, PRINTF_BINVAL_16(gamepad_state));
 }
 
@@ -270,7 +270,7 @@ void rg_input_deinit(void)
 {
     input_task_running = false;
     // while (gamepad_state != -1)
-    //     rg_system_delay(1);
+    //     rg_task_delay(1);
     RG_LOGI("Input terminated.\n");
 }
 
@@ -296,7 +296,7 @@ bool rg_input_key_is_pressed(rg_key_t key)
 void rg_input_wait_for_key(rg_key_t key, bool pressed)
 {
     while (rg_input_key_is_pressed(key) != pressed)
-        rg_system_delay(1);
+        rg_task_delay(1);
 }
 
 bool rg_input_read_battery(float *percent, float *volts)

@@ -246,7 +246,7 @@ static void sound_task(void *arg)
     vQueueDelete(sound_task_run);
     sound_task_run = NULL;
 
-    rg_system_delete_task(NULL);
+    rg_task_delete(NULL);
 }
 
 void app_main(void)
@@ -275,7 +275,7 @@ void app_main(void)
     updates[0].buffer = rg_alloc(320 * 240, MEM_FAST);
     // updates[1].buffer = rg_alloc(320 * 240 * 2, MEM_FAST);
 
-    rg_system_create_task("gen_sound", &sound_task, NULL, 2048, 7, 1);
+    rg_task_create("gen_sound", &sound_task, NULL, 2048, 7, 1);
     rg_audio_set_sample_rate(yfm_resample ? 26634 : 53267);
 
     RG_LOGI("Genesis start\n");
