@@ -54,11 +54,18 @@ typedef struct
     int64_t busyTime, updateTime;
 } counters_t;
 
+typedef struct
+{
+    TaskHandle_t handle;
+    char name[20];
+} rg_task_t;
+
 // The trace will survive a software reset
 static RTC_NOINIT_ATTR panic_trace_t panicTrace;
 static rg_stats_t statistics;
 static rg_app_t app;
 static logbuf_t logbuf;
+static rg_task_t tasks[8];
 static int ledValue = -1;
 static int wdtCounter = 0;
 static bool exitCalled = false;
@@ -155,7 +162,7 @@ static void update_memory_statistics(void)
     statistics.freeBlockExt = heap_info.largest_free_block;
     statistics.totalMemoryExt = heap_info.total_free_bytes + heap_info.total_allocated_bytes;
 
-    statistics.freeStackMain = uxTaskGetStackHighWaterMark(app.mainTaskHandle);
+    statistics.freeStackMain = uxTaskGetStackHighWaterMark(tasks[0].handle);
 }
 
 static void update_statistics(void)
@@ -311,11 +318,13 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .refreshRate = 60,
         .sampleRate = sampleRate,
         .logLevel = RG_LOG_INFO,
-        .mainTaskHandle = rg_task_get_handle(0),
         .options = options, // TO DO: We should make a copy of it?
     };
     if (handlers)
         app.handlers = *handlers;
+
+    tasks[0].handle = xTaskGetCurrentTaskHandle();
+    strncpy(tasks[0].name, "main", 20);
 
     // Do this very early, may be needed to enable serial console
     setup_gpios();
@@ -419,9 +428,10 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     return &app;
 }
 
-void *rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, size_t stackSize, int priority, int affinity)
+bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, size_t stackSize, int priority, int affinity)
 {
-    void *handle = NULL;
+    RG_ASSERT(name && taskFunc, "bad param");
+    TaskHandle_t handle = NULL;
 
     if (affinity < 0)
         affinity = tskNO_AFFINITY;
@@ -432,29 +442,36 @@ void *rg_task_create(const char *name, void (*taskFunc)(void *data), void *data,
     if (!handle)
     {
         RG_LOGE("Task creation failed: name='%s', fn='%p', stack=%d\n", name, taskFunc, stackSize);
-        return NULL;
+        return false;
     }
 
-    // Add to tasks<rg_task_t>[]
-    return handle;
+    for (size_t i = 0; i < RG_COUNT(tasks); ++i)
+    {
+        if (tasks[i].handle == NULL)
+        {
+            tasks[i].handle = handle;
+            strncpy(tasks[i].name, name, 20);
+            return true;
+        }
+    }
+
+    RG_LOGW("Task queue full! Task '%s' is running but not tracked...\n", name);
+    return true;
 }
 
-void rg_task_delete(void *handle)
+bool rg_task_delete(const char *name)
 {
-    if (handle == NULL)
-        handle = rg_task_get_handle(0);
-
-    // TODO: Remove from tasks<rg_task_t>[]
-
-    vTaskDelete(handle);
-}
-
-void *rg_task_get_handle(const char *name)
-{
-    // This will be implemented locally when we track tasks correctly...
-    if (name == NULL)
-        return xTaskGetCurrentTaskHandle();
-    return NULL; // xTaskGetHandle(name);
+    TaskHandle_t current = xTaskGetCurrentTaskHandle();
+    for (size_t i = 0; i < RG_COUNT(tasks); ++i)
+    {
+        if ((!name && tasks[i].handle == current) || (name && strncmp(tasks[i].name, name, 20) != 0))
+        {
+            vTaskDelete(tasks[i].handle);
+            tasks[i].handle = NULL;
+            return true;
+        }
+    }
+    return false;
 }
 
 void rg_task_delay(int ms)

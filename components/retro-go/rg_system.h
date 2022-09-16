@@ -164,7 +164,6 @@ typedef struct
     bool isLauncher;
     int saveSlot;
     const char *romPath;
-    void *mainTaskHandle;
     const rg_gui_option_t *options;
     rg_handlers_t handlers;
 } rg_app_t;
@@ -206,9 +205,8 @@ rg_app_t *rg_system_get_app(void);
 rg_stats_t rg_system_get_counters(void);
 
 // Wrappers for the OS' task/thread creation API. It also keeps track of handles for debugging purposes...
-void *rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, size_t stackSize, int priority, int affinity);
-void *rg_task_get_handle(const char *name);
-void rg_task_delete(void *handle);
+bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, size_t stackSize, int priority, int affinity);
+bool rg_task_delete(const char *name);
 void rg_task_delay(int ms);
 
 char *rg_emu_get_path(rg_path_type_t type, const char *arg);
