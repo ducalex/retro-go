@@ -364,9 +364,11 @@ int gnuboy_load_rom(const char *file)
 	}
 
 	// Apply game-specific hacks
-	if (memcmp(cart.name, "SIREN GB2 ", 10) == 0
-		|| memcmp(cart.name, "DONKEY KONG", 12) == 0
-		|| memcmp(cart.name, "RES EVIL GD", 11) == 0)
+	if (memcmp(cart.name, "SIREN GB2 ", 10) == 0		// Fushigi no Dungeon: Furai no Shiren GB2 (Japan)
+		|| memcmp(cart.name, "DONKEY KONG", 12) == 0 	// Donkey Kong (all regions)
+		|| memcmp(cart.name, "RES EVIL GD", 11) == 0 	// Resident Evil Gaiden (USA and Europe)
+		|| memcmp(cart.name, "BIOHAZARDGDB", 12) == 0 	// Biohazard Gaiden (Japan)
+	)
 	{
 		MESSAGE_INFO("HACK: Window offset hack enabled\n");
 		lcd.enable_window_offset_hack = 1;
