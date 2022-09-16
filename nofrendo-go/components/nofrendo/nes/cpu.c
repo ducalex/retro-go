@@ -21,12 +21,7 @@
 **
 */
 
-#include <nofrendo.h>
-#include <string.h>
-#include "cpu.h"
-#include "dis.h"
-#include "mmc.h"
-#include "mem.h"
+#include "nes.h"
 
 /* internal CPU context */
 static nes6502_t cpu;

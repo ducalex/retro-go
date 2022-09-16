@@ -21,13 +21,8 @@
 **
 */
 
-#include <nofrendo.h>
 #include <mappers.h>
-#include <string.h>
-#include <stdlib.h>
-#include "ppu.h"
-#include "mmc.h"
-#include "rom.h"
+#include "nes.h"
 
 static mapper_t mapper;
 static rom_t *cart;

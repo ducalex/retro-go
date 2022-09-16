@@ -20,11 +20,8 @@
 ** nes/state.c: Save state support
 **
 */
-#include <nofrendo.h>
-#include <string.h>
-#include <stdio.h>
-#include "state.h"
-#include "cpu.h"
+
+#include "nes.h"
 
 /**
  * Save file format:

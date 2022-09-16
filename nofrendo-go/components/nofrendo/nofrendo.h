@@ -91,7 +91,6 @@ enum
 #define LOG_PRINTF(level, x...) printf(x)
 #define DRAM_ATTR
 #define IRAM_ATTR
-#define rg_alloc(size, type) calloc(1, (size))
 #define crc32_le(a, b, c) (0)
 #endif
 
@@ -120,7 +119,7 @@ enum
 
 /* End macros */
 
-#include <nes.h>
+#include "nes/nes.h"
 
 int nofrendo_init(int system, int sample_rate, bool stereo, void *blit, void *vsync, void *input);
 int nofrendo_start(const char *filename, const char *savefile);

@@ -21,9 +21,6 @@
 **
 */
 
-#include <nofrendo.h>
-#include <string.h>
-#include "input.h"
 #include "nes.h"
 
 static mem_t mem;

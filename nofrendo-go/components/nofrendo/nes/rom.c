@@ -21,13 +21,6 @@
 **
 */
 
-#include <nofrendo.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include "rom.h"
-#include "mmc.h"
-#include "ppu.h"
 #include "nes.h"
 #include "../database.h"
 

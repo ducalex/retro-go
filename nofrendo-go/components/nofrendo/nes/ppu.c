@@ -21,12 +21,6 @@
 **
 */
 
-#include <nofrendo.h>
-#include <string.h>
-#include "input.h"
-#include "cpu.h"
-#include "mmc.h"
-#include "ppu.h"
 #include "nes.h"
 
 /* PPU access */

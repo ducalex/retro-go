@@ -23,10 +23,8 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <nofrendo.h>
-#include <palettes.h>
-#include <input.h>
-#include <nes.h>
+#include "nofrendo.h"
+#include "palettes.h"
 
 
 int nofrendo_init(int system, int sample_rate, bool stereo, void *blit, void *vsync, void *input)

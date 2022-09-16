@@ -21,8 +21,7 @@
 **
 */
 
-#include <nofrendo.h>
-#include "input.h"
+#include "nes.h"
 
 static input_t ports[2];
 static int strobe = 0;

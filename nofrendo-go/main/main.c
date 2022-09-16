@@ -1,12 +1,7 @@
 #include <rg_system.h>
 #include <string.h>
-#include <stdio.h>
-#include <stdarg.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <nofrendo.h>
-#include <nes/input.h>
-#include <nes/state.h>
 
 #define AUDIO_SAMPLE_RATE   (32000)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
@@ -203,7 +198,7 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t 
         build_palette(pal);
         rg_display_queue_update(currentUpdate, NULL);
         rg_display_queue_update(currentUpdate, NULL);
-        usleep(50000);
+        rg_task_delay(50);
     }
 
     if (pal == NES_PALETTE_NOFRENDO)    strcpy(option->value, "Default    ");

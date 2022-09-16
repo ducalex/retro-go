@@ -21,10 +21,7 @@
 **
 */
 
-#include <nofrendo.h>
-#include <string.h>
-#include "cpu.h"
-#include "apu.h"
+#include "nes.h"
 
 #define APU_VOLUME_DECAY(x)  ((x) -= ((x) >> 7))
 

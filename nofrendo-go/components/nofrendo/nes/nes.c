@@ -21,10 +21,6 @@
 **
 */
 
-#include <nofrendo.h>
-#include <string.h>
-#include <stdlib.h>
-#include "input.h"
 #include "nes.h"
 
 static nes_t nes;

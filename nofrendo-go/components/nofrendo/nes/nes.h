@@ -24,6 +24,8 @@
 #pragma once
 
 #include <nofrendo.h>
+#include <stdlib.h>
+#include <string.h>
 #include "apu.h"
 #include "cpu.h"
 #include "ppu.h"
