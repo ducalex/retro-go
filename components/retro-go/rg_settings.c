@@ -1,9 +1,10 @@
-#include <malloc.h>
-#include <string.h>
-#include <stdio.h>
-#include <cJSON.h>
-
 #include "rg_system.h"
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <cJSON.h>
 
 static const char *config_file_path = RG_BASE_PATH_CONFIG "/retro-go.json";
 static cJSON *config_root = NULL;

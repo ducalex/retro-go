@@ -1,6 +1,5 @@
 #include <rg_system.h>
 #include <sys/stat.h>
-#include <dirent.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -37,36 +36,28 @@ static const char *get_file_path(retro_file_t *file)
     return strcat(strcat(strcpy(buffer, file->folder), "/"), file->name);
 }
 
-static int scan_folder(retro_app_t *app, const char* path, void *parent)
+static void scan_folder(retro_app_t *app, const char* path, void *parent)
 {
     RG_ASSERT(app && path, "Bad param");
 
     RG_LOGI("Scanning directory %s\n", path);
 
-    DIR* dir = opendir(path);
-    if (!dir)
-        return -1;
-
     const char *folder = const_string(path);
-    char buffer[RG_PATH_MAX];
-    struct dirent* ent;
+    rg_scandir_t *files = rg_storage_scandir(path);
 
-    while ((ent = readdir(dir)))
+    for (rg_scandir_t *entry = files; entry && entry->is_valid; ++entry)
     {
-        const char *name = ent->d_name;
         uint8_t is_valid = false;
         uint8_t type = 0x00;
 
-        if (name[0] == '.')
-            continue;
-
-        if (ent->d_type == DT_REG)
+        if (entry->is_file)
         {
-            snprintf(buffer, RG_PATH_MAX, " %s ", rg_extension(name));
+            char buffer[RG_PATH_MAX];
+            snprintf(buffer, RG_PATH_MAX, " %s ", rg_extension(entry->name));
             is_valid = strstr(app->extensions, strtolower(buffer)) != NULL;
             type = 0x00;
         }
-        else if (ent->d_type == DT_DIR)
+        else if (entry->is_dir)
         {
             is_valid = true;
             type = 0xFF;
@@ -76,7 +67,7 @@ static int scan_folder(retro_app_t *app, const char* path, void *parent)
             continue;
 
         app->files[app->files_count++] = (retro_file_t) {
-            .name = strdup(name),
+            .name = strdup(entry->name),
             .folder = folder,
             .app = (void*)app,
             .type = type,
@@ -102,9 +93,7 @@ static int scan_folder(retro_app_t *app, const char* path, void *parent)
         }
     }
 
-    closedir(dir);
-
-    return 0;
+    free(files);
 }
 
 static void application_init(retro_app_t *app)
@@ -116,15 +105,14 @@ static void application_init(retro_app_t *app)
 
     // This checks if we have crc cover folders, the idea is to skip the crc later on if we don't!
     // It adds very little delay but it could become an issue if someone has thousands of named files...
-    DIR *dir = opendir(app->paths.covers);
-    if (!dir)
+    rg_scandir_t *files = rg_storage_scandir(app->paths.covers);
+    if (!files)
         rg_storage_mkdir(app->paths.covers);
     else
     {
-        struct dirent* ent;
-        while ((ent = readdir(dir)) && !app->use_crc_covers)
-            app->use_crc_covers = ent->d_name[1] == 0 && isalnum(ent->d_name[0]);
-        closedir(dir);
+        for (rg_scandir_t *entry = files; entry->is_valid && !app->use_crc_covers; ++entry)
+            app->use_crc_covers = entry->name[1] == 0 && isalnum(entry->name[0]);
+        free(files);
     }
 
     rg_storage_mkdir(app->paths.saves);

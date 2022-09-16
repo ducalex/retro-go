@@ -1,12 +1,13 @@
-#ifdef RG_ENABLE_PROFILING
-
-#include <freertos/FreeRTOS.h>
-#include <freertos/semphr.h>
-#include <string.h>
-#include <stdio.h>
-
 #include "rg_system.h"
 #include "rg_profiler.h"
+
+#include <string.h>
+#include <stdio.h>
+#include <unistd.h>
+
+#ifdef RG_ENABLE_PROFILING
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 
 // Note this profiler might be inaccurate because of:
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=28205

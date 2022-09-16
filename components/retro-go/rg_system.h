@@ -4,14 +4,24 @@
 extern "C" {
 #endif
 
-#include <esp_idf_version.h>
-#include <esp_attr.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 
 #include "config.h"
+
+#ifdef RG_TARGET_SDL2
+#define IRAM_ATTR
+#define DRAM_ATTR
+#define RTC_NOINIT_ATTR
+#else
+#include <esp_idf_version.h>
+#include <esp_attr.h>
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 3, 0)
+#define SPI_DMA_CH_AUTO 1
+#endif
+#endif
 
 #include "rg_audio.h"
 #include "rg_display.h"
@@ -249,24 +259,6 @@ void *rg_alloc(size_t size, uint32_t caps);
 #define RG_LOGW(x, ...) rg_system_log(RG_LOG_WARN, RG_LOG_TAG, x, ## __VA_ARGS__)
 #define RG_LOGI(x, ...) rg_system_log(RG_LOG_INFO, RG_LOG_TAG, x, ## __VA_ARGS__)
 #define RG_LOGD(x, ...) rg_system_log(RG_LOG_DEBUG, RG_LOG_TAG, x, ## __VA_ARGS__)
-
-// Attributes
-
-#ifndef IRAM_ATTR
-#define IRAM_ATTR
-#endif
-
-#ifndef DRAM_ATTR
-#define DRAM_ATTR
-#endif
-
-#ifndef RTC_NOINIT_ATTR
-#define RTC_NOINIT_ATTR
-#endif
-
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 3, 0)
-#define SPI_DMA_CH_AUTO 1
-#endif
 
 #ifdef __cplusplus
 }

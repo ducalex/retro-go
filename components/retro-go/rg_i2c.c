@@ -1,12 +1,14 @@
 #include "rg_system.h"
 #include "rg_i2c.h"
 
+#include <stdlib.h>
+#include <unistd.h>
+
 #if defined(RG_GPIO_I2C_SDA) && defined(RG_GPIO_I2C_SCL)
 #include <driver/i2c.h>
 #include <esp_err.h>
 #define USE_I2C_DRIVER 1
 #endif
-#include <unistd.h>
 
 static bool i2c_initialized = false;
 static bool gpio_extender_initialized = false;

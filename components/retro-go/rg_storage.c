@@ -1,12 +1,13 @@
+#include "rg_system.h"
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#include "rg_system.h"
 
 #if RG_STORAGE_DRIVER == 1 || RG_STORAGE_DRIVER == 2
 #include <driver/sdmmc_host.h>
@@ -276,6 +277,58 @@ bool rg_storage_delete(const char *path)
     }
 
     return false;
+}
+
+rg_scandir_t *rg_storage_scandir(const char *path)
+{
+    DIR* dir = opendir(path);
+    if (!dir)
+        return NULL;
+
+    rg_scandir_t *results = malloc(4096 * sizeof(rg_scandir_t));
+    size_t count = 0;
+    struct dirent *ent;
+
+    char fullpath[RG_PATH_MAX] = {0};
+    char *basename = fullpath + sprintf(fullpath, "%s/", path);
+
+    while ((ent = readdir(dir)))
+    {
+        strncpy(basename, ent->d_name, 62);
+
+        // if (!strcmp(basename, "..") || !strcmp(basename, "."))
+        if (basename[0] == '.') // For backwards compat we'll ignore all hidden files...
+            continue;
+
+        if ((count % 10) == 0)
+        {
+            void *temp = realloc(results, (count + 11) * sizeof(rg_scandir_t));
+            if (!temp)
+            {
+                RG_LOGW("Not enough memory to finish scan!\n");
+                break;
+            }
+            results = temp;
+        }
+
+        rg_scandir_t *result = &results[count++];
+
+        strcpy(result->name, basename);
+        result->is_valid = 1;
+
+        #if defined(DT_REG) && defined(DT_DIR)
+            result->is_file = ent->d_type == DT_REG;
+            result->is_dir = ent->d_type == DT_DIR;
+        #else // stupid mingw
+            struct stat statbuf;
+            stat(fullpath, &statbuf);
+            result->is_file = S_ISREG(statbuf.st_mode);
+            result->is_dir = S_ISDIR(statbuf.st_mode);
+        #endif
+    }
+    memset(&results[count], 0, sizeof(rg_scandir_t));
+
+    return results;
 }
 
 const char *rg_dirname(const char *path)

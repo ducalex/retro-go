@@ -1,9 +1,7 @@
 #include <rg_system.h>
 #include <string.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <dirent.h>
 
 #include "applications.h"
 #include "themes.h"
@@ -19,8 +17,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         const char *themes_path = RG_BASE_PATH_THEMES;
         size_t items_count = 1;
-        struct dirent* ent;
-        DIR* dir;
+        rg_scandir_t *files;
 
         memset(&tab->status, 0, sizeof(tab->status));
         gui_resize_list(tab, 1);
@@ -32,25 +29,22 @@ static void event_handler(gui_event_t event, tab_t *tab)
             .arg = NULL,
         };
 
-        if ((dir = opendir(themes_path)))
+        if ((files = rg_storage_scandir(themes_path)))
         {
             RG_LOGI("Scanning directory %s\n", themes_path);
 
-            while ((ent = readdir(dir)))
+            for (rg_scandir_t *entry = files; entry->is_valid; ++entry)
             {
-                if (ent->d_name[0] == '.')
-                    continue;
-
-                if (ent->d_type == DT_DIR)
+                if (entry->is_dir)
                 {
                     gui_resize_list(tab, items_count + 1);
                     listbox_item_t *item = &tab->listbox.items[items_count++];
-                    strcpy(item->text, ent->d_name);
+                    strcpy(item->text, entry->name);
                     item->arg = strdup(item->text); // This could be relocated
                     item->enabled = true;
                 }
             }
-            closedir(dir);
+            free(files);
         }
 
         gui_resize_list(tab, items_count);

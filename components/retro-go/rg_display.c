@@ -1,11 +1,18 @@
 #include "rg_system.h"
 #include "rg_display.h"
 
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#ifdef RG_TARGET_SDL2
+#include <SDL2/SDL.h>
+#else
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <driver/gpio.h>
 #include <driver/spi_master.h>
-#include <string.h>
+#endif
 
 #ifdef RG_GPIO_LCD_BCKL
 #include <driver/ledc.h>
@@ -40,6 +47,7 @@ static const char *SETTING_ROTATION = "DispRotation";
 static const char *SETTING_UPDATE = "DispUpdate";
 
 #define lcd_send_data(buffer, length) spi_queue_transaction(buffer, length, 3)
+#define lcd_vsync()
 
 
 static inline uint16_t *spi_get_buffer(void)
@@ -609,7 +617,8 @@ static void display_task(void *arg)
         xQueuePeek(display_task_queue, &update, portMAX_DELAY);
         // xQueueReceive(display_task_queue, &update, portMAX_DELAY);
 
-        if (!update)
+        // Received a shutdown request!
+        if (update == (void*)-1)
             break;
 
         if (display.changed)
@@ -648,6 +657,8 @@ static void display_task(void *arg)
         }
 
         xQueueReceive(display_task_queue, &update, portMAX_DELAY);
+
+        lcd_vsync();
     }
 
     vQueueDelete(display_task_queue);
@@ -1000,6 +1011,8 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
 
         lcd_send_data(line_buffer, width * lines_per_buffer * 2);
     }
+
+    lcd_vsync();
 }
 
 void rg_display_clear(uint16_t color_le)
@@ -1025,7 +1038,7 @@ void rg_display_clear(uint16_t color_le)
 
 void rg_display_deinit(void)
 {
-    void *stop = NULL;
+    void *stop = (void*)-1;
     xQueueSend(display_task_queue, &stop, portMAX_DELAY);
     while (display_task_queue)
         rg_task_delay(1);

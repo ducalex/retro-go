@@ -1,13 +1,6 @@
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-#include <esp_heap_caps.h>
-#include <esp_partition.h>
-#include <esp_task_wdt.h>
-#include <esp_ota_ops.h>
-#include <esp_system.h>
-#include <esp_event.h>
-#include <esp_sleep.h>
-#include <driver/gpio.h>
+#include "rg_system.h"
+#include "rg_printf.h"
+
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <stdarg.h>
@@ -16,15 +9,17 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "rg_system.h"
-#include "rg_printf.h"
-
-#ifndef RG_BUILD_USER
-#define RG_BUILD_USER "ducalex"
-#endif
-// 2020-01-31 00:00:00, first retro-go commit :)
-#ifndef RG_BUILD_TIME
-#define RG_BUILD_TIME 1580446800
+#ifdef RG_TARGET_SDL2
+#include <SDL2/SDL.h>
+#else
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <esp_heap_caps.h>
+#include <esp_partition.h>
+#include <esp_ota_ops.h>
+#include <esp_system.h>
+#include <esp_sleep.h>
+#include <driver/gpio.h>
 #endif
 
 // typedef struct {
@@ -316,7 +311,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .refreshRate = 60,
         .sampleRate = sampleRate,
         .logLevel = RG_LOG_INFO,
-        .mainTaskHandle = xTaskGetCurrentTaskHandle(),
+        .mainTaskHandle = rg_task_get_handle(0),
         .options = options, // TO DO: We should make a copy of it?
     };
     if (handlers)
@@ -447,11 +442,19 @@ void *rg_task_create(const char *name, void (*taskFunc)(void *data), void *data,
 void rg_task_delete(void *handle)
 {
     if (handle == NULL)
-        handle = xTaskGetCurrentTaskHandle();
+        handle = rg_task_get_handle(0);
 
     // TODO: Remove from tasks<rg_task_t>[]
 
     vTaskDelete(handle);
+}
+
+void *rg_task_get_handle(const char *name)
+{
+    // This will be implemented locally when we track tasks correctly...
+    if (name == NULL)
+        return xTaskGetCurrentTaskHandle();
+    return NULL; // xTaskGetHandle(name);
 }
 
 void rg_task_delay(int ms)
@@ -840,6 +843,10 @@ void rg_system_vlog(int level, const char *context, const char *format, va_list 
 
     logbuf_puts(&logbuf, buffer);
     fputs(buffer, stdout);
+
+    #ifdef RG_TARGET_SDL2
+    fflush(stdout);
+    #endif
 }
 
 void rg_system_log(int level, const char *context, const char *format, ...)

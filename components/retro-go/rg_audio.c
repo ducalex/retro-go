@@ -1,9 +1,16 @@
 #include "rg_system.h"
 #include "rg_audio.h"
 
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#ifdef RG_TARGET_SDL2
+#include <SDL2/SDL.h>
+#else
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
-#include <driver/gpio.h>
+#endif
 
 #if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
 #include <driver/gpio.h>
@@ -17,10 +24,6 @@
 
 #if RG_AUDIO_USE_INT_DAC
 #include <driver/dac.h>
-#endif
-
-#if RG_AUDIO_USE_SDL2
-#include <SDL2/SDL.h>
 #endif
 
 static const rg_audio_sink_t sinks[] = {
@@ -132,8 +135,12 @@ void rg_audio_init(int sampleRate)
     }
     else if (audio.sink->type == RG_AUDIO_SINK_SDL2)
     {
+    #if RG_AUDIO_USE_SDL2
+        SDL_AudioSpec sdl2_config = {0};
+        error_code = 0;
+    #else
         RG_LOGE("This device does not support SDL2!\n");
-        error_code = -1;
+    #endif
     }
 
     if (!error_code)
@@ -338,16 +345,17 @@ void rg_audio_set_mute(bool mute)
     if (!ACQUIRE_DEVICE(1000))
         return;
 
+#if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
+    if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC)
+        i2s_zero_dma_buffer(I2S_NUM_0);
+    if (audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
+        i2s_zero_dma_buffer(I2S_NUM_0);
     #if defined(RG_GPIO_SND_AMP_ENABLE)
         gpio_set_direction(RG_GPIO_SND_AMP_ENABLE, GPIO_MODE_OUTPUT);
         gpio_set_level(RG_GPIO_SND_AMP_ENABLE, !mute);
-    #elif defined(RG_TARGET_QTPY_GAMER)
+    #elif defined(AW_HEADPHONE_EN)
         rg_i2c_gpio_set_level(AW_HEADPHONE_EN, !mute);
     #endif
-
-#if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
-    if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC || audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
-        i2s_zero_dma_buffer(I2S_NUM_0);
 #endif
 
     audio.muted = mute;

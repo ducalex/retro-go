@@ -40,6 +40,15 @@
 #define RG_PATH_MAX 255
 #endif
 
+#ifndef RG_BUILD_TIME
+// 2020-01-31 00:00:00, first retro-go commit :)
+#define RG_BUILD_TIME 1580446800
+#endif
+
+#ifndef RG_BUILD_USER
+#define RG_BUILD_USER "ducalex"
+#endif
+
 #ifndef RG_BATTERY_CALC_PERCENT
 #define RG_BATTERY_CALC_PERCENT(raw) (100)
 #endif

@@ -1,7 +1,7 @@
 #include "rg_system.h"
 #include "rg_input.h"
 
-#if RG_GAMEPAD_DRIVER == 6
+#ifdef RG_TARGET_SDL2
 #include <SDL2/SDL.h>
 #else
 #include <driver/gpio.h>

@@ -15,7 +15,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <rg_system.h>
 #include <sys/dirent.h>
 #include <sys/unistd.h>
 #include <sys/time.h>
@@ -41,6 +40,7 @@
 #include <mus2mid.h>
 #include <midifile.h>
 #include <oplplayer.h>
+#include <rg_system.h>
 
 // 22050 reduces perf by almost 15% but 11025 sounds awful on the G32...
 #ifdef RG_TARGET_MRGC_G32
