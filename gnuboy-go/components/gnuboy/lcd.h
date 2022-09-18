@@ -37,7 +37,8 @@ typedef struct
 	int cycles;
 
 	// Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
-	int enable_window_offset_hack;
+	// This hack simply constrains the window top position
+	int window_offset_hack;
 
 } gb_lcd_t;
 

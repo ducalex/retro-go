@@ -695,9 +695,9 @@ static inline void lcd_renderline()
 
 	// Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
 	// This is a hack, the real problem is elsewhere
-	if (lcd.enable_window_offset_hack && (R_LCDC & 0x20))
+	if (lcd.window_offset_hack && (R_LCDC & 0x20))
 	{
-		WT %= 12;
+		WT %= lcd.window_offset_hack;
 	}
 
 	NS = spr_enum();
