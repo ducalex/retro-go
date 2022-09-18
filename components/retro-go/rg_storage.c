@@ -300,9 +300,9 @@ rg_scandir_t *rg_storage_scandir(const char *path)
         if (basename[0] == '.') // For backwards compat we'll ignore all hidden files...
             continue;
 
-        if ((count % 10) == 0)
+        if ((count % 20) == 0)
         {
-            void *temp = realloc(results, (count + 11) * sizeof(rg_scandir_t));
+            void *temp = realloc(results, (count + 21) * sizeof(rg_scandir_t));
             if (!temp)
             {
                 RG_LOGW("Not enough memory to finish scan!\n");
