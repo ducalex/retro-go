@@ -3,43 +3,7 @@
 #include "gnuboy.h"
 #include "sound.h"
 #include "hw.h"
-#include "noise.h"
-
-static const byte dmgwave[16] =
-{
-	0xac, 0xdd, 0xda, 0x48,
-	0x36, 0x02, 0xcf, 0x16,
-	0x2c, 0x04, 0xe5, 0x2c,
-	0xac, 0xdd, 0xda, 0x48
-};
-
-static const byte cgbwave[16] =
-{
-	0x00, 0xff, 0x00, 0xff,
-	0x00, 0xff, 0x00, 0xff,
-	0x00, 0xff, 0x00, 0xff,
-	0x00, 0xff, 0x00, 0xff,
-};
-
-static const byte sqwave[4][8] =
-{
-	{  0, 0,-1, 0, 0, 0, 0, 0 },
-	{  0,-1,-1, 0, 0, 0, 0, 0 },
-	{ -1,-1,-1,-1, 0, 0, 0, 0 },
-	{ -1, 0, 0,-1,-1,-1,-1,-1 }
-};
-
-static const int freqtab[8] =
-{
-	(1<<14)*2,
-	(1<<14),
-	(1<<14)/2,
-	(1<<14)/3,
-	(1<<14)/4,
-	(1<<14)/5,
-	(1<<14)/6,
-	(1<<14)/7
-};
+#include "tables.h"
 
 gb_snd_t snd;
 
