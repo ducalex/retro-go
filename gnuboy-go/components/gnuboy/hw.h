@@ -170,16 +170,16 @@ typedef struct
 {
 	// Meta information
 	char name[20];
-	uint checksum;
-	uint colorize;
-	uint romsize;
-	uint ramsize;
+	uint16_t checksum;
+	int colorize;
+	int romsize;
+	int ramsize;
 
 	// Memory
 	byte *rombanks[512];
 	byte (*rambanks)[8192];
-	uint sram_dirty;
-	uint sram_saved;
+	unsigned sram_dirty;
+	unsigned sram_saved;
 
 	// Extra hardware
 	bool has_rumble;
@@ -206,13 +206,15 @@ typedef struct
 	byte *rmap[0x10];
 	byte *wmap[0x10];
 	byte *bios;
-	un32 ilines;
-	un32 pad;
-	n32 serial;
-	n32 hdma;
 
-	un32 hwtype;
-	un32 frames;
+	int ilines;		// Interrupt lines
+	int pad;		// Button status
+
+	int serial; 	// Serial cycle counter
+	int hdma; 		// DMA cycle counter
+
+	int hwtype;		// type of emulated device
+	int frames;		// total frames counter
 
 	// gb_cpu_t cpu;
 	// gb_lcd_t lcd;
@@ -226,39 +228,39 @@ extern gb_rtc_t rtc;
 extern gb_hw_t hw;
 
 void hw_reset(bool hard);
-void hw_setpad(uint new_pad);
+void hw_setpad(int new_pad);
 void hw_interrupt(byte i, int level);
 void hw_updatemap(void);
 void hw_hdma_cont(void);
-void hw_write(uint a, byte b);
-byte hw_read(uint a);
+void hw_write(unsigned a, byte b);
+byte hw_read(unsigned a);
 void hw_vblank(void);
 
 
-static inline byte readb(uint a)
+static inline byte readb(unsigned a)
 {
 	const byte *p = hw.rmap[a>>12];
 	return p ? p[a] : hw_read(a);
 }
 
-static inline void writeb(uint a, byte b)
+static inline void writeb(unsigned a, byte b)
 {
 	byte *p = hw.wmap[a>>12];
 	if (p) p[a] = b;
 	else hw_write(a, b);
 }
 
-static inline un16 readw(uint a)
+static inline uint16_t readw(unsigned a)
 {
 	const byte *p = hw.rmap[a >> 12];
 	if ((a & 0xFFF) == 0xFFF || !p) // Page crossed or not mapped
 	{
 		return readb(a) | (readb(a + 1) << 8);
 	}
-	return *(un16 *)(p + a);
+	return *(uint16_t *)(p + a);
 }
 
-static inline void writew(uint a, un16 w)
+static inline void writew(unsigned a, uint16_t w)
 {
 	byte *p = hw.wmap[a >> 12];
 	if ((a & 0xFFF) == 0xFFF || !p) // Page crossed or not mapped
@@ -268,6 +270,6 @@ static inline void writew(uint a, un16 w)
 	}
 	else
 	{
-		*(un16 *)(p + a) = w;
+		*(uint16_t *)(p + a) = w;
 	}
 }

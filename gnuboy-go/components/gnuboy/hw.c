@@ -115,9 +115,9 @@ void hw_interrupt(byte i, int level)
  * continues running during this mode of dma, so no special tricks to
  * stall the cpu are necessary.
  */
-static void hw_dma(uint b)
+static void hw_dma(unsigned b)
 {
-	uint a = b << 8;
+	unsigned a = b << 8;
 	for (int i = 0; i < 160; i++, a++)
 		lcd.oam.mem[i] = readb(a);
 }
@@ -134,9 +134,9 @@ static void hw_hdma(byte c)
 	}
 
 	/* Perform GDMA */
-	uint src = (R_HDMA1 << 8) | (R_HDMA2 & 0xF0);
-	uint dst = 0x8000 | ((R_HDMA3 & 0x1F) << 8) | (R_HDMA4 & 0xF0);
-	uint cnt = c + 1;
+	size_t src = (R_HDMA1 << 8) | (R_HDMA2 & 0xF0);
+	size_t dst = 0x8000 | ((R_HDMA3 & 0x1F) << 8) | (R_HDMA4 & 0xF0);
+	size_t cnt = c + 1;
 
 	/* FIXME - this should use cpu time! */
 	/*cpu_timers(102 * cnt);*/
@@ -155,9 +155,9 @@ static void hw_hdma(byte c)
 
 void hw_hdma_cont(void)
 {
-	uint src = (R_HDMA1 << 8) | (R_HDMA2 & 0xF0);
-	uint dst = 0x8000 | ((R_HDMA3 & 0x1F) << 8) | (R_HDMA4 & 0xF0);
-	uint cnt = 16;
+	size_t src = (R_HDMA1 << 8) | (R_HDMA2 & 0xF0);
+	size_t dst = 0x8000 | ((R_HDMA3 & 0x1F) << 8) | (R_HDMA4 & 0xF0);
+	size_t cnt = 16;
 
 	// if (!(hw.hdma & 0x80))
 	// 	return;
@@ -198,7 +198,7 @@ static inline void pad_refresh()
  * hw_setpad updates the state of one or more buttons on the pad and calls
  * pad_refresh() to fire an interrupt if the pad changed.
  */
-void hw_setpad(uint new_pad)
+void hw_setpad(int new_pad)
 {
 	hw.pad = new_pad & 0xFF;
 	pad_refresh();
@@ -322,7 +322,7 @@ void hw_updatemap(void)
  * mbc_write takes an address (which should be in the proper range)
  * and a byte value written to the address.
  */
-static inline void mbc_write(uint a, byte b)
+static inline void mbc_write(unsigned a, byte b)
 {
 	MESSAGE_DEBUG("mbc %d: cart bank %02X -[%04X:%02X]-> ", cart.mbc, cart.rombank, a, b);
 
@@ -442,7 +442,7 @@ static inline void mbc_write(uint a, byte b)
  * called when the write map contains a NULL for the requested address
  * region, it accepts writes to any address.
  */
-void hw_write(uint a, byte b)
+void hw_write(unsigned a, byte b)
 {
 	MESSAGE_DEBUG("write to 0x%04X: 0x%02X\n", a, b);
 
@@ -625,7 +625,7 @@ void hw_write(uint a, byte b)
  * with the read map, but it's still necessary for the final messy
  * region.
  */
-byte hw_read(uint a)
+byte hw_read(unsigned a)
 {
 	MESSAGE_DEBUG("read %04x\n", a);
 

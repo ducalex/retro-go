@@ -21,14 +21,7 @@
 #define GB_WIDTH (160)
 #define GB_HEIGHT (144)
 
-typedef unsigned int uint;
 typedef uint8_t byte;
-typedef uint8_t un8;
-typedef uint16_t un16;
-typedef uint32_t un32;
-typedef int8_t n8;
-typedef int16_t n16;
-typedef int32_t n32;
 
 typedef enum
 {
@@ -102,17 +95,22 @@ typedef struct
 {
 	struct {
 		bool enabled;
-		uint format; // gb_pixformat_t
-		uint colorize; // gb_palette_t
+		int format; // gb_pixformat_t
+		int colorize; // gb_palette_t
 		void (*blit_func)(void);
-		void *buffer;
+		union
+		{
+			uint16_t *buffer16;
+			uint8_t *buffer8;
+			void *buffer;
+		};
 		uint16_t palette[64];
 	} video;
 
 	struct {
 		bool enabled;
 		bool stereo;
-		uint samplerate;
+		long samplerate;
 		int16_t *buffer;
 		size_t pos, len;
 	} audio;
@@ -129,7 +127,7 @@ void gnuboy_reset(bool hard);
 void gnuboy_run(bool draw);
 bool gnuboy_sram_dirty(void);
 void gnuboy_load_bank(int);
-void gnuboy_set_pad(uint);
+void gnuboy_set_pad(int);
 
 void gnuboy_get_time(int *day, int *hour, int *minute, int *second);
 void gnuboy_set_time(int day, int hour, int minute, int second);

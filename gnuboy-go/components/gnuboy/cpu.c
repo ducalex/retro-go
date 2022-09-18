@@ -54,6 +54,11 @@ static const byte cb_cycles_table[256] =
 	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
 };
 
+typedef uint32_t un32;
+typedef uint16_t un16;
+typedef uint8_t un8;
+typedef int8_t n8;
+
 #define ZFLAG(n) ( (n) ? 0 : FZ )
 
 #define PUSH(w) ( (SP -= 2), (writew(SP, (w))) )
@@ -869,7 +874,7 @@ static const char *cb_mnemonic_table[256] =
 	"SET 7,B", "SET 7,C", "SET 7,D", "SET 7,E", "SET 7,H", "SET 7,L", "SET 7,(HL)", "SET 7,A",
 };
 
-void cpu_disassemble(uint pc, int count)
+void cpu_disassemble(unsigned pc, int count)
 {
 	while (count-- > 0)
 	{

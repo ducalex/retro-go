@@ -69,7 +69,7 @@ static const uint16_t colorization_palettes[48][3][4] = {
 
 gb_lcd_t lcd;
 
-#define priused(attr) ({un32 *a = (un32*)(attr); (int)((a[0]|a[1]|a[2]|a[3]|a[4]|a[5]|a[6]|a[7])&0x80808080);})
+#define priused(attr) ({uint32_t *a = (uint32_t *)(attr); (int)((a[0]|a[1]|a[2]|a[3]|a[4]|a[5]|a[6]|a[7])&0x80808080);})
 
 #define blendcpy(dest, src, b, cnt) {					\
 	byte *s = (src), *d = (dest), _b = (b), c = (cnt); 	\
@@ -141,7 +141,7 @@ static inline void tilebuf()
 		else
 			for (int i = cnt; i > 0; i--)
 			{
-				*(tilebuf++) = (0x100 + ((n8)*tilemap))
+				*(tilebuf++) = (0x100 + ((int8_t)*tilemap))
 					| (((int)*attrmap & 0x08) << 6)
 					| (((int)*attrmap & 0x60) << 5);
 				*(tilebuf++) = (((int)*attrmap & 0x07) << 2);
@@ -160,7 +160,7 @@ static inline void tilebuf()
 		else
 			for (int i = cnt; i > 0; i--)
 			{
-				*(tilebuf++) = (0x100 + ((n8)*(tilemap++)));
+				*(tilebuf++) = (0x100 + ((int8_t)*(tilemap++)));
 				tilemap += *(wrap++);
 			}
 	}
@@ -188,7 +188,7 @@ static inline void tilebuf()
 		else
 			for (int i = cnt; i > 0; i--)
 			{
-				*(tilebuf++) = (0x100 + ((n8)*(tilemap++)))
+				*(tilebuf++) = (0x100 + ((int8_t)*(tilemap++)))
 					| (((int)*attrmap & 0x08) << 6)
 					| (((int)*attrmap & 0x60) << 5);
 				*(tilebuf++) = (((int)*(attrmap++)&0x7) << 2);
@@ -201,7 +201,7 @@ static inline void tilebuf()
 				*(tilebuf++) = *(tilemap++);
 		else
 			for (int i = cnt; i > 0; i--)
-				*(tilebuf++) = (0x100 + ((n8)*(tilemap++)));
+				*(tilebuf++) = (0x100 + ((int8_t)*(tilemap++)));
 	}
 }
 
@@ -590,13 +590,11 @@ static inline void sync_palette(void)
 {
 	MESSAGE_DEBUG("Syncing palette...\n");
 
-	un16 *lcd_pal = (un16 *)lcd.pal;
-
 	if (hw.hwtype != GB_HW_CGB)
 	{
-		uint palette = host.video.colorize % GB_PALETTE_COUNT;
-		uint flags = 0b110;
-		const un16 *bgp, *obp0, *obp1;
+		int palette = host.video.colorize % GB_PALETTE_COUNT;
+		int flags = 0b110;
+		const uint16_t *bgp, *obp0, *obp1;
 
 		if (palette == GB_PALETTE_CGB && cart.colorize)
 		{
@@ -615,21 +613,21 @@ static inline void sync_palette(void)
 
 		for (int j = 0; j < 8; j += 2)
 		{
-			lcd_pal[(0+j) >> 1] = bgp[(R_BGP >> j) & 3];
-			lcd_pal[(8+j) >> 1] = bgp[(R_BGP >> j) & 3];
-			lcd_pal[(64+j) >> 1] = obp0[(R_OBP0 >> j) & 3];
-			lcd_pal[(72+j) >> 1] = obp1[(R_OBP1 >> j) & 3];
+			lcd.palette[(0+j) >> 1] = bgp[(R_BGP >> j) & 3];
+			lcd.palette[(8+j) >> 1] = bgp[(R_BGP >> j) & 3];
+			lcd.palette[(64+j) >> 1] = obp0[(R_OBP0 >> j) & 3];
+			lcd.palette[(72+j) >> 1] = obp1[(R_OBP1 >> j) & 3];
 		}
 	}
 
 	for (int i = 0; i < 64; ++i)
 	{
-		uint c = lcd_pal[i];
-		uint r = c & 0x1f;         // bit 0-4 red
-		uint g = (c >> 5) & 0x1f;  // bit 5-9 green
-		uint b = (c >> 10) & 0x1f; // bit 10-14 blue
+		int c = lcd.palette[i];   // Int is fine, we won't run in sign issues
+		int r = c & 0x1f;         // bit 0-4 red
+		int g = (c >> 5) & 0x1f;  // bit 5-9 green
+		int b = (c >> 10) & 0x1f; // bit 10-14 blue
 
-		uint out = (r << 11) | (g << 6) | (b);
+		int out = (r << 11) | (g << 6) | (b);
 
 		if (host.video.format == GB_PIXEL_565_BE)
 			host.video.palette[i] = (out << 8) | (out >> 8);
@@ -731,12 +729,12 @@ static inline void lcd_renderline()
 
 	if (host.video.format == GB_PIXEL_PALETTED)
 	{
-		memcpy(host.video.buffer + SL * 160 , BUF, 160);
+		memcpy(host.video.buffer8 + SL * 160 , BUF, 160);
 	}
 	else
 	{
-		un16 *dst = (un16*)host.video.buffer + SL * 160;
-		un16 *pal = (un16*)host.video.palette;
+		uint16_t *dst = host.video.buffer16 + SL * 160;
+		uint16_t *pal = host.video.palette;
 
 		for (int i = 0; i < 160; ++i)
 			dst[i] = pal[BUF[i]];

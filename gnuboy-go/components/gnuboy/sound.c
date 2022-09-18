@@ -130,8 +130,8 @@ void sound_emulate(void)
 	if (!snd.rate || snd.cycles < snd.rate)
 		return;
 
-	n16 *output_buf = host.audio.buffer + host.audio.pos;
-	n16 *output_end = host.audio.buffer + host.audio.len;
+	int16_t *output_buf = host.audio.buffer + host.audio.pos;
+	int16_t *output_end = host.audio.buffer + host.audio.len;
 	bool stereo = host.audio.stereo;
 
 	for (; snd.cycles >= snd.rate; snd.cycles -= snd.rate)
@@ -265,12 +265,12 @@ void sound_emulate(void)
 		}
 		else if (stereo)
 		{
-			*output_buf++ = (n16)l; //+128;
-			*output_buf++ = (n16)r; //+128;
+			*output_buf++ = (int16_t)l; //+128;
+			*output_buf++ = (int16_t)r; //+128;
 		}
 		else
 		{
-			*output_buf++ = (n16)((l+r)>>1); //+128;
+			*output_buf++ = (int16_t)((l+r)>>1); //+128;
 		}
 	}
 

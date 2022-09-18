@@ -22,7 +22,10 @@ typedef struct
 		byte mem[256];
 		gb_obj_t obj[40];
 	} oam;
-	byte pal[128];
+	union {
+		uint16_t palette[64];
+		uint8_t pal[128];
+	};
 	bool pal_dirty;
 
 	int BG[64];

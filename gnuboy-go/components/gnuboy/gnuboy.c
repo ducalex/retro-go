@@ -97,7 +97,7 @@ void gnuboy_run(bool draw)
 }
 
 
-void gnuboy_set_pad(uint pad)
+void gnuboy_set_pad(int pad)
 {
 	if (hw.pad != pad)
 	{
@@ -716,28 +716,28 @@ int gnuboy_save_state(const char *file)
 		{NULL, 0},
 	};
 
-	un32 (*header)[2] = (un32 (*)[2])buf;
+	uint32_t (*header)[2] = (uint32_t (*)[2])buf;
 
 	sav_ver = SAVE_VERSION;
 
 	for (int i = 0; svars[i].ptr; i++)
 	{
-		un32 d = 0;
+		uint32_t d = 0;
 
 		switch (svars[i].len)
 		{
 		case 1:
-			d = *(byte *)svars[i].ptr;
+			d = *(uint8_t *)svars[i].ptr;
 			break;
 		case 2:
-			d = *(un16 *)svars[i].ptr;
+			d = *(uint16_t *)svars[i].ptr;
 			break;
 		case 4:
-			d = *(un32 *)svars[i].ptr;
+			d = *(uint32_t *)svars[i].ptr;
 			break;
 		}
 
-		header[i][0] = *(un32 *)svars[i].key;
+		header[i][0] = *(uint32_t *)svars[i].key;
 		header[i][1] = LIL(d);
 	}
 
@@ -795,15 +795,15 @@ int gnuboy_load_state(const char *file)
 		}
 	}
 
-	un32 (*header)[2] = (un32 (*)[2])buf;
+	uint32_t (*header)[2] = (uint32_t (*)[2])buf;
 
 	for (int i = 0; svars[i].ptr; i++)
 	{
-		un32 d = 0;
+		uint32_t d = 0;
 
 		for (int j = 0; header[j][0]; j++)
 		{
-			if (header[j][0] == *(un32 *)svars[i].key)
+			if (header[j][0] == *(uint32_t *)svars[i].key)
 			{
 				d = LIL(header[j][1]);
 				break;
@@ -813,13 +813,13 @@ int gnuboy_load_state(const char *file)
 		switch (svars[i].len)
 		{
 		case 1:
-			*(byte *)svars[i].ptr = d;
+			*(uint8_t *)svars[i].ptr = d;
 			break;
 		case 2:
-			*(un16 *)svars[i].ptr = d;
+			*(uint16_t *)svars[i].ptr = d;
 			break;
 		case 4:
-			*(un32 *)svars[i].ptr = d;
+			*(uint32_t *)svars[i].ptr = d;
 			break;
 		}
 	}
