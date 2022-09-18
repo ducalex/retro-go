@@ -98,7 +98,7 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
       rom.flags = header->rom_type;
       rom.mapper_number = header->rom_type >> 4;
 
-      MESSAGE_INFO("ROM: CRC32:  %08X\n", rom.checksum);
+      MESSAGE_INFO("ROM: CRC32:  %08X\n", (unsigned)rom.checksum);
 
       if (header->reserved2 == 0)
       {
@@ -202,7 +202,7 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
       rom.mapper_number = 20;
       rom.system = SYS_FAMICOM;
 
-      MESSAGE_INFO("ROM: CRC32:  %08X\n", rom.checksum);
+      MESSAGE_INFO("ROM: CRC32:  %08X\n", (unsigned)rom.checksum);
 
       rom.prg_ram = malloc((rom.prg_ram_banks + rom.prg_rom_banks) * ROM_PRG_BANK_SIZE);
       rom.chr_ram = malloc(rom.chr_ram_banks * ROM_CHR_BANK_SIZE);
@@ -228,7 +228,7 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
       rom.checksum = crc32_le(0, rom.data_ptr, rom.data_len);
       rom.mapper_number = 31;
 
-      MESSAGE_INFO("ROM: CRC32:  %08X\n", rom.checksum);
+      MESSAGE_INFO("ROM: CRC32:  %08X\n", (unsigned)rom.checksum);
 
       rom.prg_ram = malloc((rom.prg_ram_banks + rom.prg_rom_banks) * ROM_PRG_BANK_SIZE);
       rom.chr_ram = malloc(rom.chr_ram_banks * ROM_CHR_BANK_SIZE);

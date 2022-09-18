@@ -92,11 +92,11 @@ typedef struct
    int prg_ram_banks;
    int chr_ram_banks;
 
-   uint32 mapper_number;
-   uint32 flags;
-   uint32 system;
-   uint32 mirroring;
-   uint32 checksum;
+   unsigned mapper_number;
+   unsigned flags;
+   unsigned system;
+   unsigned mirroring;
+   unsigned checksum;
 } rom_t;
 
 

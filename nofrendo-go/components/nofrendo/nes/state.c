@@ -291,10 +291,6 @@ _error:
 int state_load(const char* fn)
 {
    uint8 buffer[512];
-   uint32 numberOfBlocks;
-   uint32 blockVersion;
-   uint32 blockLength;
-   uint32 nextBlock = 8;
 
    nes_t *machine = nes_getptr();
    FILE *file;
@@ -313,17 +309,18 @@ int state_load(const char* fn)
       goto _error;
    }
 
-   numberOfBlocks = swap32(*((uint32*)&buffer[4]));
+   size_t numberOfBlocks = swap32(*((uint32*)&buffer[4]));
+   size_t nextBlock = 8;
 
    MESSAGE_INFO("state_load: file '%s' opened, blocks=%d.\n", fn, numberOfBlocks);
 
-   for (int blk = 0; blk < numberOfBlocks; blk++)
+   for (size_t blk = 0; blk < numberOfBlocks; blk++)
    {
       fseek(file, nextBlock, SEEK_SET);
       _fread(buffer, 12);
 
-      blockVersion = swap32(*((uint32*)&buffer[4]));
-      blockLength = swap32(*((uint32*)&buffer[8]));
+      unsigned blockVersion = swap32(*((uint32*)&buffer[4]));
+      size_t blockLength = swap32(*((uint32*)&buffer[8]));
 
       UNUSED(blockVersion);
 

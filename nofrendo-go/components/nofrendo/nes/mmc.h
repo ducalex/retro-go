@@ -63,5 +63,5 @@ struct mapper_s
 mapper_t *mmc_init(rom_t *cart);
 void mmc_shutdown(void);
 void mmc_reset(void);
-void mmc_bankprg(int size, uint32 address, int bank, uint8 *base);
-void mmc_bankchr(int size, uint32 address, int bank, uint8 *base);
+void mmc_bankprg(unsigned size, unsigned address, int bank, uint8 *base);
+void mmc_bankchr(unsigned size, unsigned address, int bank, uint8 *base);
