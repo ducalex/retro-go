@@ -1,5 +1,5 @@
-set(COMPONENT_SRCDIRS ". fonts netplay")
-set(COMPONENT_ADD_INCLUDEDIRS ". netplay")
+set(COMPONENT_SRCDIRS ". fonts libs/netplay libs/lodepng")
+set(COMPONENT_ADD_INCLUDEDIRS ". libs/netplay libs/lodepng")
 if("${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}" VERSION_GREATER_EQUAL "5.0")
     set(COMPONENT_REQUIRES "spi_flash fatfs app_update driver esp_timer esp_adc json")
 else()
