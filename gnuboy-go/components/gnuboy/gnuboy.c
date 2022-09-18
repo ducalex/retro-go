@@ -533,6 +533,7 @@ static const svar_t svars[] =
 	I4("ramb", &cart.rambank),
 	I4("enab", &cart.enableram),
 
+	// We should pack that below. Size of components could vary per platform
 	I4("rtcR", &rtc.sel),
 	I4("rtcL", &rtc.latch),
 	I4("rtcF", &rtc.flags),

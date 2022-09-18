@@ -160,10 +160,10 @@ enum {
 
 typedef struct
 {
-	n32 sel, flags, latch, dirty;
-	n32 ticks; // Ticks (60 = +1s)
-	n32 d, h, m, s; // Current time
-	n32 regs[5]; // Latched time
+	int sel, flags, latch, dirty;
+	int ticks; // Ticks (60 = +1s)
+	int d, h, m, s; // Current time
+	int regs[5]; // Latched time
 } gb_rtc_t;
 
 typedef struct

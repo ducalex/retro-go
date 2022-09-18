@@ -18,6 +18,7 @@
 #include <esp_partition.h>
 #include <esp_ota_ops.h>
 #include <esp_system.h>
+#include <esp_timer.h>
 #include <esp_sleep.h>
 #include <driver/gpio.h>
 #endif
@@ -366,9 +367,9 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     rg_gui_init();
 
     // Test for recovery request as early as possible
-    for (int timeout = 5; rg_input_key_is_pressed(RG_KEY_ANY) && timeout >= 0; --timeout)
+    for (int timeout = 5, btn; (btn = rg_input_read_gamepad() & RG_RECOVERY_BTN) && timeout >= 0; --timeout)
     {
-        RG_LOGW("Button 0x%04X being held down...\n", rg_input_read_gamepad());
+        RG_LOGW("Button "PRINTF_BINARY_16" being held down...\n", PRINTF_BINVAL_16(btn));
         rg_task_delay(100);
         if (timeout == 0)
             enter_recovery_mode();

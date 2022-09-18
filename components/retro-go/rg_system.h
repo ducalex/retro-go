@@ -175,14 +175,14 @@ typedef struct
     float totalFPS;
     float busyPercent;
     int64_t busyTime;
-    int32_t ticks;
-    int32_t totalMemoryInt;
-    int32_t totalMemoryExt;
-    int32_t freeMemoryInt;
-    int32_t freeMemoryExt;
-    int32_t freeBlockInt;
-    int32_t freeBlockExt;
-    int32_t freeStackMain;
+    int ticks;
+    int totalMemoryInt;
+    int totalMemoryExt;
+    int freeMemoryInt;
+    int freeMemoryExt;
+    int freeBlockInt;
+    int freeBlockExt;
+    int freeStackMain;
 } rg_stats_t;
 
 rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options);

@@ -49,6 +49,10 @@
 #define RG_BUILD_USER "ducalex"
 #endif
 
+#ifndef RG_RECOVERY_BTN
+#define RG_RECOVERY_BTN RG_KEY_ANY
+#endif
+
 #ifndef RG_BATTERY_CALC_PERCENT
 #define RG_BATTERY_CALC_PERCENT(raw) (100)
 #endif
