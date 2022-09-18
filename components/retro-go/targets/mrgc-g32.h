@@ -60,18 +60,18 @@
 #define RG_GAMEPAD_HAS_MENU_BTN     1
 #define RG_GAMEPAD_HAS_OPTION_BTN   0
 // Note: Depending on the driver, the button map can represent bits, registers, keys, or gpios.
-#define RG_GAMEPAD_MAP_MENU         (8)
-#define RG_GAMEPAD_MAP_OPTION       (-1)
-#define RG_GAMEPAD_MAP_START        (0)
-#define RG_GAMEPAD_MAP_SELECT       (1)
-#define RG_GAMEPAD_MAP_UP           (2)
-#define RG_GAMEPAD_MAP_RIGHT        (5)
-#define RG_GAMEPAD_MAP_DOWN         (3)
-#define RG_GAMEPAD_MAP_LEFT         (4)
-#define RG_GAMEPAD_MAP_A            (6)
-#define RG_GAMEPAD_MAP_B            (7)
-#define RG_GAMEPAD_MAP_X            (-1)
-#define RG_GAMEPAD_MAP_Y            (-1)
+#define RG_GAMEPAD_MAP_MENU         (1<<8)
+#define RG_GAMEPAD_MAP_OPTION       (0)
+#define RG_GAMEPAD_MAP_START        (1<<0)
+#define RG_GAMEPAD_MAP_SELECT       (1<<1)
+#define RG_GAMEPAD_MAP_UP           (1<<2)
+#define RG_GAMEPAD_MAP_RIGHT        (1<<5)
+#define RG_GAMEPAD_MAP_DOWN         (1<<3)
+#define RG_GAMEPAD_MAP_LEFT         (1<<4)
+#define RG_GAMEPAD_MAP_A            (1<<6)
+#define RG_GAMEPAD_MAP_B            (1<<7)
+#define RG_GAMEPAD_MAP_X            (0)
+#define RG_GAMEPAD_MAP_Y            (0)
 
 // Battery
 // #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0

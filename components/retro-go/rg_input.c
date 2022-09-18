@@ -52,16 +52,16 @@ static inline uint32_t gamepad_read(void)
     {
         int buttons = ~((data[2] << 8) | data[1]);
 
-        if (buttons & (1<<RG_GAMEPAD_MAP_MENU)) state |= RG_KEY_MENU;
-        if (buttons & (1<<RG_GAMEPAD_MAP_OPTION)) state |= RG_KEY_OPTION;
-        if (buttons & (1<<RG_GAMEPAD_MAP_START)) state |= RG_KEY_START;
-        if (buttons & (1<<RG_GAMEPAD_MAP_SELECT)) state |= RG_KEY_SELECT;
-        if (buttons & (1<<RG_GAMEPAD_MAP_UP)) state |= RG_KEY_UP;
-        if (buttons & (1<<RG_GAMEPAD_MAP_RIGHT)) state |= RG_KEY_RIGHT;
-        if (buttons & (1<<RG_GAMEPAD_MAP_DOWN)) state |= RG_KEY_DOWN;
-        if (buttons & (1<<RG_GAMEPAD_MAP_LEFT)) state |= RG_KEY_LEFT;
-        if (buttons & (1<<RG_GAMEPAD_MAP_A)) state |= RG_KEY_A;
-        if (buttons & (1<<RG_GAMEPAD_MAP_B)) state |= RG_KEY_B;
+        if (buttons & RG_GAMEPAD_MAP_MENU) state |= RG_KEY_MENU;
+        if (buttons & RG_GAMEPAD_MAP_OPTION) state |= RG_KEY_OPTION;
+        if (buttons & RG_GAMEPAD_MAP_START) state |= RG_KEY_START;
+        if (buttons & RG_GAMEPAD_MAP_SELECT) state |= RG_KEY_SELECT;
+        if (buttons & RG_GAMEPAD_MAP_UP) state |= RG_KEY_UP;
+        if (buttons & RG_GAMEPAD_MAP_RIGHT) state |= RG_KEY_RIGHT;
+        if (buttons & RG_GAMEPAD_MAP_DOWN) state |= RG_KEY_DOWN;
+        if (buttons & RG_GAMEPAD_MAP_LEFT) state |= RG_KEY_LEFT;
+        if (buttons & RG_GAMEPAD_MAP_A) state |= RG_KEY_A;
+        if (buttons & RG_GAMEPAD_MAP_B) state |= RG_KEY_B;
 
         battery_level = data[4];
 
@@ -77,16 +77,16 @@ static inline uint32_t gamepad_read(void)
 
     uint16_t buttons = ~(rg_i2c_gpio_read_port(0) | rg_i2c_gpio_read_port(1) << 8);
 
-    if (buttons & (1<<RG_GAMEPAD_MAP_MENU)) state |= RG_KEY_MENU;
-    if (buttons & (1<<RG_GAMEPAD_MAP_OPTION)) state |= RG_KEY_OPTION;
-    if (buttons & (1<<RG_GAMEPAD_MAP_START)) state |= RG_KEY_START;
-    if (buttons & (1<<RG_GAMEPAD_MAP_SELECT)) state |= RG_KEY_SELECT;
-    if (buttons & (1<<RG_GAMEPAD_MAP_UP)) state |= RG_KEY_UP;
-    if (buttons & (1<<RG_GAMEPAD_MAP_RIGHT)) state |= RG_KEY_RIGHT;
-    if (buttons & (1<<RG_GAMEPAD_MAP_DOWN)) state |= RG_KEY_DOWN;
-    if (buttons & (1<<RG_GAMEPAD_MAP_LEFT)) state |= RG_KEY_LEFT;
-    if (buttons & (1<<RG_GAMEPAD_MAP_A)) state |= RG_KEY_A;
-    if (buttons & (1<<RG_GAMEPAD_MAP_B)) state |= RG_KEY_B;
+    if (buttons & RG_GAMEPAD_MAP_MENU) state |= RG_KEY_MENU;
+    if (buttons & RG_GAMEPAD_MAP_OPTION) state |= RG_KEY_OPTION;
+    if (buttons & RG_GAMEPAD_MAP_START) state |= RG_KEY_START;
+    if (buttons & RG_GAMEPAD_MAP_SELECT) state |= RG_KEY_SELECT;
+    if (buttons & RG_GAMEPAD_MAP_UP) state |= RG_KEY_UP;
+    if (buttons & RG_GAMEPAD_MAP_RIGHT) state |= RG_KEY_RIGHT;
+    if (buttons & RG_GAMEPAD_MAP_DOWN) state |= RG_KEY_DOWN;
+    if (buttons & RG_GAMEPAD_MAP_LEFT) state |= RG_KEY_LEFT;
+    if (buttons & RG_GAMEPAD_MAP_A) state |= RG_KEY_A;
+    if (buttons & RG_GAMEPAD_MAP_B) state |= RG_KEY_B;
 
     battery_level = 99;
 
