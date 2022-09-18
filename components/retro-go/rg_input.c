@@ -187,8 +187,8 @@ void rg_input_init(void)
     const char *driver = "GPIO";
 
     adc1_config_width(ADC_WIDTH_MAX - 1);
-    adc1_config_channel_atten(RG_GPIO_GAMEPAD_X, ADC_ATTEN_11db);
-    adc1_config_channel_atten(RG_GPIO_GAMEPAD_Y, ADC_ATTEN_11db);
+    adc1_config_channel_atten(RG_GPIO_GAMEPAD_X, ADC_ATTEN_DB_11);
+    adc1_config_channel_atten(RG_GPIO_GAMEPAD_Y, ADC_ATTEN_DB_11);
 
     gpio_set_direction(RG_GPIO_GAMEPAD_MENU, GPIO_MODE_INPUT);
     gpio_set_pull_mode(RG_GPIO_GAMEPAD_MENU, GPIO_PULLUP_ONLY);
@@ -255,8 +255,8 @@ void rg_input_init(void)
 
 #if USE_ADC_DRIVER
     adc1_config_width(ADC_WIDTH_MAX - 1);
-    adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_11db);
-    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_11db, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
+    adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11);
+    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
 #endif
 
     // Start background polling

@@ -21,6 +21,9 @@
 #include <esp_timer.h>
 #include <esp_sleep.h>
 #include <driver/gpio.h>
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#include <esp_chip_info.h>
+#endif
 #endif
 
 // typedef struct {
