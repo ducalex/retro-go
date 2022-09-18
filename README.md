@@ -111,9 +111,9 @@ Some emulators support loading a BIOS. The files should be placed as follows:
 # Building Retro-Go
 
 ## Prerequisites
-You will need a working installation of esp-idf [4.0.x](https://docs.espressif.com/projects/esp-idf/en/release-v4.0/get-started/index.html#get-started-get-prerequisites) or [4.1.x](https://docs.espressif.com/projects/esp-idf/en/release-v4.1/get-started/index.html#get-started-get-prerequisites) and only the CMake (default) build system is supported.
+You will need a working installation of esp-idf [4.1](https://docs.espressif.com/projects/esp-idf/en/release-v4.1/get-started/index.html#get-started-get-prerequisites) or superior. Esp-idf 5.0 is not currently supported but we are working on it!
 
-_Note: Versions 4.2 and 4.3 will also work but there are unresolved performance issues at this time._
+_Note: Official builds use 4.1.2. Versions 4.2, 4.3, and 4.4 have unresolved performance issues at this time._
 
 ### ESP-IDF Patches
 Patching esp-idf may be required for full functionality. Patches are located in `tools/patches` and can be applied to your global esp-idf installation, they will not break your other projects/devices.
