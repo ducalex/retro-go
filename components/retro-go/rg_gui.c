@@ -448,7 +448,7 @@ static size_t get_dialog_items_count(const rg_gui_option_t *options)
     if (options == NULL)
         return 0;
 
-    for (int i = 0; i < 32; i++)
+    for (int i = 0; i < 101; i++)
     {
         if (options[i].flags == RG_DIALOG_FLAG_LAST) {
             return i;
@@ -457,7 +457,7 @@ static size_t get_dialog_items_count(const rg_gui_option_t *options)
     return 0;
 }
 
-void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int sel)
+void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int sel)
 {
     const size_t options_count = get_dialog_items_count(options);
     const int sep_width = TEXT_RECT(": ", 0).width;
@@ -469,8 +469,8 @@ void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int 
     const int row_padding_x = 8;
 
     int box_width = box_padding * 2;
-    int box_height = box_padding * 2 + (header ? font_height + 6 : 0);
-    int inner_width = TEXT_RECT(header, 0).width;
+    int box_height = box_padding * 2 + (title ? font_height + 6 : 0);
+    int inner_width = TEXT_RECT(title, 0).width;
     int max_inner_width = max_box_width - sep_width - (row_padding_x + box_padding) * 2;
     int col1_width = -1;
     int col2_width = -1;
@@ -515,10 +515,10 @@ void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int 
     int x = box_x + box_padding;
     int y = box_y + box_padding;
 
-    if (header)
+    if (title)
     {
         int width = inner_width + row_padding_x * 2;
-        rg_gui_draw_text(x, y, width, header, gui.style.box_header, gui.style.box_background, RG_TEXT_ALIGN_CENTER);
+        rg_gui_draw_text(x, y, width, title, gui.style.box_header, gui.style.box_background, RG_TEXT_ALIGN_CENTER);
         rg_gui_draw_rect(x, y + font_height, width, 6, 0, 0, gui.style.box_background);
         y += font_height + 6;
     }
@@ -608,7 +608,7 @@ void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int 
     rg_gui_flush();
 }
 
-int rg_gui_dialog(const char *header, const rg_gui_option_t *options_const, int selected_index)
+int rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, int selected_index)
 {
     size_t options_count = get_dialog_items_count(options_const);
     int sel = selected_index < 0 ? (options_count + selected_index) : selected_index;
@@ -640,7 +640,7 @@ int rg_gui_dialog(const char *header, const rg_gui_option_t *options_const, int 
     }
     RG_LOGI("text_buffer usage = %d\n", (intptr_t)(text_buffer_ptr - text_buffer));
 
-    rg_gui_draw_dialog(header, options, sel);
+    rg_gui_draw_dialog(title, options, sel);
     rg_input_wait_for_key(RG_KEY_ALL, false);
     rg_task_delay(100);
 
@@ -714,7 +714,7 @@ int rg_gui_dialog(const char *header, const rg_gui_option_t *options_const, int 
             }
             if (options[sel].update_cb)
                 event = options[sel].update_cb(&options[sel], RG_DIALOG_FOCUS);
-            rg_gui_draw_dialog(header, options, sel);
+            rg_gui_draw_dialog(title, options, sel);
             sel_old = sel;
         }
 
@@ -754,6 +754,48 @@ void rg_gui_alert(const char *title, const char *message)
         RG_DIALOG_CHOICE_LAST
     };
     rg_gui_dialog(title, message ? options : options + 1, -1);
+}
+
+char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path))
+{
+    rg_scandir_t *files = rg_storage_scandir(path, validator);
+
+    if (!files || !files[0].is_valid)
+    {
+        free(files);
+        rg_gui_alert(title, "Folder is empty.");
+        return NULL;
+    }
+
+    size_t count = 0;
+    while (files[count].is_valid)
+        count++;
+
+    RG_LOGI("count=%d\n", count);
+
+    // Unfortunately, at this time, any more than that will blow the stack.
+    count = RG_MIN(count, 20);
+
+    rg_gui_option_t *options = calloc(count + 1, sizeof(rg_gui_option_t));
+    for (size_t i = 0; i < count; ++i)
+    {
+        // To do: check extension...
+        options[i].arg = i;
+        options[i].flags = 1;
+        options[i].label = files[i].name;
+    }
+    options[count] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
+
+    int sel = rg_gui_dialog(title, options, 0);
+    char *filename = NULL;
+
+    if (sel >= 0 && sel < count)
+        filename = strdup(files[sel].name);
+
+    free(options);
+    free(files);
+
+    return filename;
 }
 
 static rg_gui_event_t volume_update_cb(rg_gui_option_t *option, rg_gui_event_t event)

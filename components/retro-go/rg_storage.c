@@ -279,7 +279,7 @@ bool rg_storage_delete(const char *path)
     return false;
 }
 
-rg_scandir_t *rg_storage_scandir(const char *path)
+rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char *path))
 {
     DIR* dir = opendir(path);
     if (!dir)
@@ -296,8 +296,10 @@ rg_scandir_t *rg_storage_scandir(const char *path)
     {
         strncpy(basename, ent->d_name, 62);
 
-        // if (!strcmp(basename, "..") || !strcmp(basename, "."))
         if (basename[0] == '.') // For backwards compat we'll ignore all hidden files...
+            continue;
+
+        if (validator && !validator(fullpath))
             continue;
 
         if ((count % 20) == 0)

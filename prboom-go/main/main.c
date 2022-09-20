@@ -500,44 +500,12 @@ static void event_handler(int event, void *arg)
     return;
 }
 
-const char *iwad_picker(const char *path)
+bool is_iwad(const char *path)
 {
-    rg_gui_option_t files[32];
-    char buffer[1024];
-    char *ptr = buffer;
-    size_t count = 0;
-    struct dirent* ent;
-    size_t len;
-    FILE *fp;
-    DIR* dir = opendir(path);
-    if (!dir)
-        return NULL;
-
-    while ((ent = readdir(dir)) && count < 32)
-    {
-        if ((len = strlen(ent->d_name)) < 4 || strcasecmp(ent->d_name + (len - 4), ".wad") != 0)
-            continue;
-
-        snprintf(ptr, RG_PATH_MAX, "%s/%s", path, ent->d_name);
-        if ((fp = fopen(ptr, "rb")) && fgetc(fp) == 'I' && fgetc(fp) == 'W')
-        {
-            files[count] = (rg_gui_option_t){count, strcpy(ptr, ent->d_name), NULL, 1};
-            ptr += len + 1;
-            count++;
-        }
-        fclose(fp);
-    }
-    closedir(dir);
-
-    if (count > 1)
-    {
-        files[count] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
-        int sel = rg_gui_dialog("Select WAD file", files, 0);
-        if (sel >= 0 && sel < count)
-            return strdup(files[sel].label);
-    }
-
-    return strdup(count ? buffer : "(none)");
+    FILE *fp = fopen(path, "rb");
+    bool valid = fp && fgetc(fp) == 'I' && fgetc(fp) == 'W';
+    fclose(fp);
+    return valid;
 }
 
 void app_main()
@@ -574,7 +542,7 @@ void app_main()
     }
 
     if (!iwad)
-        iwad = iwad_picker(I_DoomExeDir());
+        iwad = rg_gui_file_picker("Select WAD file", I_DoomExeDir(), is_iwad);
 
     if (pwad)
     {
@@ -586,6 +554,8 @@ void app_main()
         myargv = (const char *[]){"doom", "-save", save, "-iwad", iwad};
         myargc = 5;
     }
+
+    rg_display_clear(C_BLACK);
 
     Z_Init();
     D_DoomMain();

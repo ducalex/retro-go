@@ -33,7 +33,7 @@ bool rg_storage_read_file(const char *path, void **data_ptr, size_t *data_len);
 bool rg_storage_write_file(const char *path, const void *data_ptr, const size_t data_len);
 bool rg_storage_delete(const char *path);
 bool rg_storage_mkdir(const char *dir);
-rg_scandir_t *rg_storage_scandir(const char *path);
+rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char *path));
 
 const char *rg_dirname(const char *path);
 const char *rg_basename(const char *path);

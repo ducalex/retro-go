@@ -76,7 +76,6 @@ static bool exitCalled = false;
 static bool initialized = false;
 
 static const char *SETTING_BOOT_NAME = "BootName";
-static const char *SETTING_BOOT_PART = "BootPart";
 static const char *SETTING_BOOT_ARGS = "BootArgs";
 static const char *SETTING_BOOT_FLAGS = "BootFlags";
 
@@ -799,7 +798,6 @@ void rg_system_restart(void)
 
 void rg_system_start_app(const char *app, const char *name, const char *args, uint32_t flags)
 {
-    rg_settings_set_string(NS_GLOBAL, SETTING_BOOT_PART, app);
     rg_settings_set_string(NS_GLOBAL, SETTING_BOOT_NAME, name);
     rg_settings_set_string(NS_GLOBAL, SETTING_BOOT_ARGS, args);
     rg_settings_set_number(NS_GLOBAL, SETTING_BOOT_FLAGS, flags);

@@ -25,7 +25,7 @@ static struct __attribute__((__packed__))
 } *crc_cache;
 static bool crc_cache_dirty = true;
 
-static retro_app_t apps[32];
+static retro_app_t *apps[24];
 static int apps_count = 0;
 
 
@@ -43,7 +43,7 @@ static void scan_folder(retro_app_t *app, const char* path, void *parent)
     RG_LOGI("Scanning directory %s\n", path);
 
     const char *folder = const_string(path);
-    rg_scandir_t *files = rg_storage_scandir(path);
+    rg_scandir_t *files = rg_storage_scandir(path, NULL);
 
     for (rg_scandir_t *entry = files; entry && entry->is_valid; ++entry)
     {
@@ -105,7 +105,7 @@ static void application_init(retro_app_t *app)
 
     // This checks if we have crc cover folders, the idea is to skip the crc later on if we don't!
     // It adds very little delay but it could become an issue if someone has thousands of named files...
-    rg_scandir_t *files = rg_storage_scandir(app->paths.covers);
+    rg_scandir_t *files = rg_storage_scandir(app->paths.covers, NULL);
     if (!files)
         rg_storage_mkdir(app->paths.covers);
     else
@@ -246,7 +246,7 @@ void crc_cache_idle_task(tab_t *tab)
         // Find the currently focused app, if any
         for (int i = 0; i < apps_count; i++)
         {
-            if (tab && tab->arg == &apps[i])
+            if (tab && tab->arg == apps[i])
             {
                 start_offset = i;
                 break;
@@ -255,7 +255,7 @@ void crc_cache_idle_task(tab_t *tab)
 
         for (int i = 0; i < apps_count && remaining > 0; i++)
         {
-            retro_app_t *app = &apps[(start_offset + i) % apps_count];
+            retro_app_t *app = apps[(start_offset + i) % apps_count];
             int processed = 0;
 
             if (!app->available || app->crc_scan_done)
@@ -457,13 +457,13 @@ bool application_path_to_file(const char *path, retro_file_t *file)
 
     for (int i = 0; i < apps_count; ++i)
     {
-        size_t baselen = strlen(apps[i].paths.roms);
-        if (strncmp(path, apps[i].paths.roms, baselen) == 0 && path[baselen] == '/')
+        size_t baselen = strlen(apps[i]->paths.roms);
+        if (strncmp(path, apps[i]->paths.roms, baselen) == 0 && path[baselen] == '/')
         {
             *file = (retro_file_t) {
                 .name = strdup(rg_basename(path)),
                 .folder = const_string(rg_dirname(path)),
-                .app = &apps[i],
+                .app = apps[i],
                 .is_valid = true,
             };
             return true;
@@ -655,8 +655,8 @@ static void application(const char *desc, const char *name, const char *exts, co
         return;
     }
 
-    retro_app_t *app = &apps[apps_count++];
-    memset(app, 0, sizeof(retro_app_t));
+    retro_app_t *app = calloc(1, sizeof(retro_app_t));
+    apps[apps_count++] = app;
 
     snprintf(app->description, 60, "%s", desc);
     snprintf(app->short_name, 60, "%s", name);
