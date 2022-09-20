@@ -9,6 +9,7 @@
 
 gb_host_t host;
 
+
 // Note: Eventually we'll just pass a gb_host_t to init...
 // But for now assume it's been configured before we were alled!
 int gnuboy_init(int samplerate, bool stereo, int pixformat, void *blit_func)
@@ -22,7 +23,10 @@ int gnuboy_init(int samplerate, bool stereo, int pixformat, void *blit_func)
 		.audio.samplerate = samplerate,
 		.audio.stereo = stereo,
 	};
-	// gnuboy_reset(true);
+	hw.cpu = cpu_init();
+	hw.snd = sound_init();
+	hw.lcd = lcd_init();
+	hw.cart = &cart;
 	return 0;
 }
 
@@ -367,17 +371,18 @@ int gnuboy_load_rom(const char *file)
 	if (memcmp(cart.name, "SIREN GB2 ", 10) == 0 || memcmp(cart.name, "DONKEY KONG", 12) == 0)
 	{
 		MESSAGE_INFO("HACK: Window offset hack enabled (12)\n");
-		lcd.window_offset_hack = 12;
+		hw.compat.window_offset = 12;
 	}
 	else if (memcmp(cart.name, "RES EVIL GD", 11) == 0 || memcmp(cart.name, "BIOHAZARDGDB", 12) == 0)
 	{
 		MESSAGE_INFO("HACK: Window offset hack enabled (10)\n");
-		lcd.window_offset_hack = 10;
+		hw.compat.window_offset = 10;
 	}
 	else
 	{
-		lcd.window_offset_hack = 0;
+		hw.compat.window_offset = 0;
 	}
+
 	return 0;
 }
 
@@ -412,21 +417,21 @@ void gnuboy_free_rom(void)
 
 void gnuboy_get_time(int *day, int *hour, int *minute, int *second)
 {
-	if (day) *day = rtc.d;
-	if (hour) *hour = rtc.h;
-	if (minute) *minute = rtc.m;
-	if (second) *second = rtc.s;
+	if (day) *day = cart.rtc.d;
+	if (hour) *hour = cart.rtc.h;
+	if (minute) *minute = cart.rtc.m;
+	if (second) *second = cart.rtc.s;
 }
 
 
 void gnuboy_set_time(int day, int hour, int minute, int second)
 {
-	rtc.d = day % 365;
-	rtc.h = hour % 24;
-	rtc.m = minute % 60;
-	rtc.s = second % 60;
-	rtc.ticks = 0;
-	rtc.dirty = 0;
+	cart.rtc.d = day % 365;
+	cart.rtc.h = hour % 24;
+	cart.rtc.m = minute % 60;
+	cart.rtc.s = second % 60;
+	cart.rtc.ticks = 0;
+	cart.rtc.dirty = 0;
 }
 
 
@@ -538,19 +543,19 @@ static const svar_t svars[] =
 	I4("enab", &cart.enableram),
 
 	// We should pack that below. Size of components could vary per platform
-	I4("rtcR", &rtc.sel),
-	I4("rtcL", &rtc.latch),
-	I4("rtcF", &rtc.flags),
-	I4("rtcd", &rtc.d),
-	I4("rtch", &rtc.h),
-	I4("rtcm", &rtc.m),
-	I4("rtcs", &rtc.s),
-	I4("rtct", &rtc.ticks),
-	I1("rtR8", &rtc.regs[0]),
-	I1("rtR9", &rtc.regs[1]),
-	I1("rtRA", &rtc.regs[2]),
-	I1("rtRB", &rtc.regs[3]),
-	I1("rtRC", &rtc.regs[4]),
+	I4("rtcR", &cart.rtc.sel),
+	I4("rtcL", &cart.rtc.latch),
+	I4("rtcF", &cart.rtc.flags),
+	I4("rtcd", &cart.rtc.d),
+	I4("rtch", &cart.rtc.h),
+	I4("rtcm", &cart.rtc.m),
+	I4("rtcs", &cart.rtc.s),
+	I4("rtct", &cart.rtc.ticks),
+	I1("rtR8", &cart.rtc.regs[0]),
+	I1("rtR9", &cart.rtc.regs[1]),
+	I1("rtRA", &cart.rtc.regs[2]),
+	I1("rtRB", &cart.rtc.regs[3]),
+	I1("rtRC", &cart.rtc.regs[4]),
 
 	I4("S1on", &snd.ch[0].on),
 	I4("S1p ", &snd.ch[0].pos),
@@ -615,7 +620,7 @@ int gnuboy_load_sram(const char *file)
 
 		if (fseek(f, cart.ramsize * 8192, SEEK_SET) == 0 && fread(&rtc_buf, 48, 1, f) == 1)
 		{
-			rtc = (gb_rtc_t){
+			cart.rtc = (gb_rtc_t){
 				.s = rtc_buf[0],
 				.m = rtc_buf[1],
 				.h = rtc_buf[2],
@@ -623,7 +628,7 @@ int gnuboy_load_sram(const char *file)
 				.flags = rtc_buf[4],
 				.regs = {rtc_buf[5], rtc_buf[6], rtc_buf[7], rtc_buf[8], rtc_buf[9]},
 			};
-			MESSAGE_INFO("Loaded RTC section %03d %02d:%02d:%02d.\n", rtc.d, rtc.h, rtc.m, rtc.s);
+			MESSAGE_INFO("Loaded RTC section %03d %02d:%02d:%02d.\n", cart.rtc.d, cart.rtc.h, cart.rtc.m, cart.rtc.s);
 		}
 	}
 
@@ -670,19 +675,19 @@ int gnuboy_save_sram(const char *file, bool quick_save)
 
 	if (cart.has_rtc)
 	{
-		uint64_t rt = RTC_BASE + rtc.s + (rtc.m * 60) + (rtc.h * 3600) + (rtc.d * 86400);
+		uint64_t rt = RTC_BASE + cart.rtc.s + (cart.rtc.m * 60) + (cart.rtc.h * 3600) + (cart.rtc.d * 86400);
 		uint32_t *rtp = (uint32_t*)&rt;
 		uint32_t rtc_buf[12] = {
-			rtc.s,
-			rtc.m,
-			rtc.h,
-			rtc.d,
-			rtc.flags,
-			rtc.regs[0],
-			rtc.regs[1],
-			rtc.regs[2],
-			rtc.regs[3],
-			rtc.regs[4],
+			cart.rtc.s,
+			cart.rtc.m,
+			cart.rtc.h,
+			cart.rtc.d,
+			cart.rtc.flags,
+			cart.rtc.regs[0],
+			cart.rtc.regs[1],
+			cart.rtc.regs[2],
+			cart.rtc.regs[3],
+			cart.rtc.regs[4],
 			rtp[0],
 			rtp[1],
 		};

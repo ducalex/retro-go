@@ -6,79 +6,78 @@
 #include "lcd.h"
 
 gb_cart_t cart;
-gb_rtc_t rtc;
 gb_hw_t hw;
 
 
 static void rtc_latch(byte b)
 {
-	if ((rtc.latch ^ b) & b & 1)
+	if ((cart.rtc.latch ^ b) & b & 1)
 	{
-		rtc.regs[0] = rtc.s;
-		rtc.regs[1] = rtc.m;
-		rtc.regs[2] = rtc.h;
-		rtc.regs[3] = rtc.d;
-		rtc.regs[4] = rtc.flags;
+		cart.rtc.regs[0] = cart.rtc.s;
+		cart.rtc.regs[1] = cart.rtc.m;
+		cart.rtc.regs[2] = cart.rtc.h;
+		cart.rtc.regs[3] = cart.rtc.d;
+		cart.rtc.regs[4] = cart.rtc.flags;
 	}
-	rtc.latch = b & 1;
+	cart.rtc.latch = b & 1;
 }
 
 
 static void rtc_write(byte b)
 {
-	switch (rtc.sel & 0xf)
+	switch (cart.rtc.sel & 0xf)
 	{
 	case 0x8: // Seconds
-		rtc.regs[0] = b;
-		rtc.s = b % 60;
+		cart.rtc.regs[0] = b;
+		cart.rtc.s = b % 60;
 		break;
 	case 0x9: // Minutes
-		rtc.regs[1] = b;
-		rtc.m = b % 60;
+		cart.rtc.regs[1] = b;
+		cart.rtc.m = b % 60;
 		break;
 	case 0xA: // Hours
-		rtc.regs[2] = b;
-		rtc.h = b % 24;
+		cart.rtc.regs[2] = b;
+		cart.rtc.h = b % 24;
 		break;
 	case 0xB: // Days (lower 8 bits)
-		rtc.regs[3] = b;
-		rtc.d = ((rtc.d & 0x100) | b) % 365;
+		cart.rtc.regs[3] = b;
+		cart.rtc.d = ((cart.rtc.d & 0x100) | b) % 365;
 		break;
 	case 0xC: // Flags (days upper 1 bit, carry, stop)
-		rtc.regs[4] = b;
-		rtc.flags = b;
-		rtc.d = ((rtc.d & 0xff) | ((b&1)<<9)) % 365;
+		cart.rtc.regs[4] = b;
+		cart.rtc.flags = b;
+		cart.rtc.d = ((cart.rtc.d & 0xff) | ((b&1)<<9)) % 365;
 		break;
 	}
-	rtc.dirty = 1;
+	cart.rtc.dirty = 1;
 }
 
 
 static void rtc_tick()
 {
-	if ((rtc.flags & 0x40))
+	if ((cart.rtc.flags & 0x40))
 		return; // rtc stop
 
-	if (++rtc.ticks >= 60)
+	if (++cart.rtc.ticks >= 60)
 	{
-		if (++rtc.s >= 60)
+		if (++cart.rtc.s >= 60)
 		{
-			if (++rtc.m >= 60)
+			if (++cart.rtc.m >= 60)
 			{
-				if (++rtc.h >= 24)
+				if (++cart.rtc.h >= 24)
 				{
-					if (++rtc.d >= 365)
+					if (++cart.rtc.d >= 365)
 					{
-						rtc.d = 0;
-						rtc.flags |= 0x80;
+						cart.rtc.d = 0;
+						cart.rtc.flags |= 0x80;
 					}
-					rtc.h = 0;
+					cart.rtc.h = 0;
 				}
-				rtc.m = 0;
+				cart.rtc.m = 0;
 			}
-			rtc.s = 0;
+			cart.rtc.s = 0;
 		}
-		rtc.ticks = 0;
+		cart.rtc.ticks = 0;
 	}
 }
 
@@ -205,6 +204,12 @@ void hw_setpad(int new_pad)
 }
 
 
+gb_hw_t *hw_init(void)
+{
+	return &hw;
+}
+
+
 void hw_reset(bool hard)
 {
 	hw.ilines = 0;
@@ -226,7 +231,7 @@ void hw_reset(bool hard)
 	{
 		memset(hw.rambanks, 0xff, 4096 * 8);
 		memset(cart.rambanks, 0xff, 8192 * cart.ramsize);
-		memset(&rtc, 0, sizeof(rtc));
+		memset(&cart.rtc, 0, sizeof(gb_rtc_t));
 	}
 
 	memset(hw.rmap, 0, sizeof(hw.rmap));
@@ -371,7 +376,7 @@ static inline void mbc_write(unsigned a, byte b)
 			cart.rombank = b & 0x7F;
 			break;
 		case 0x4000:
-			rtc.sel = b & 0x0f;
+			cart.rtc.sel = b & 0x0f;
 			cart.rambank = b & 0x03;
 			break;
 		case 0x6000:
@@ -463,7 +468,7 @@ void hw_write(unsigned a, byte b)
 		if (!cart.enableram)
 			break;
 
-		if (rtc.sel & 8)
+		if (cart.rtc.sel & 8)
 		{
 			rtc_write(b);
 		}
@@ -654,8 +659,8 @@ byte hw_read(unsigned a)
 	case 0xA000: // Cart RAM or RTC
 		if (!cart.enableram)
 			return 0xFF;
-		if (rtc.sel & 8)
-			return rtc.regs[rtc.sel & 7];
+		if (cart.rtc.sel & 8)
+			return cart.rtc.regs[cart.rtc.sel & 7];
 		return cart.rambanks[cart.rambank][a & 0x1FFF];
 
 	case 0xC000: // System RAM

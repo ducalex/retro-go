@@ -204,6 +204,12 @@ label: op(b); break;
 gb_cpu_t cpu;
 
 
+gb_cpu_t *cpu_init(void)
+{
+	return &cpu;
+}
+
+/* reset */
 void cpu_reset(bool hard)
 {
 	cpu.double_speed = 0;
@@ -800,7 +806,7 @@ _skip:
 
 		/* Advance fixed-speed counters */
 		lcd_emulate(count);
-		snd.cycles += count; // sound_advance(count);
+		sound_advance(count);
 		// sound_emulate(count);
 
 		// Here we could calculate when the next event is going to happen

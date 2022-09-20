@@ -12,11 +12,6 @@ typedef struct
 
 typedef struct
 {
-	int pat, x, v, pal, pri;
-} gb_vs_t;
-
-typedef struct
-{
 	byte vbank[2][8192];
 	union {
 		byte mem[256];
@@ -32,21 +27,16 @@ typedef struct
 	int WND[64];
 	byte BUF[0x100];
 	byte PRI[0x100];
-	gb_vs_t VS[16];
 
-	int S, T, U, V;
-	int WX, WY, WT, WV;
+	int WX, WY;
 
 	int cycles;
-
-	// Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
-	// This hack simply constrains the window top position
-	int window_offset_hack;
 
 } gb_lcd_t;
 
 extern gb_lcd_t lcd;
 
+gb_lcd_t *lcd_init(void);
 void lcd_reset(bool hard);
 void lcd_emulate(int cycles);
 void lcd_stat_trigger(void);

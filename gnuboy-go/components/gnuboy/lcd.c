@@ -8,21 +8,17 @@
 #include "cpu.h"
 #include "tables.h"
 
+typedef struct
+{
+	int pat, x, v, pal, pri;
+} gb_vs_t;
+
 #define BG (lcd.BG)
 #define WND (lcd.WND)
 #define BUF (lcd.BUF)
 #define PRI (lcd.PRI)
-#define VS (lcd.VS)
-#define S lcd.S /* tilemap position */
-#define T lcd.T
-#define U lcd.U /* position within tile */
-#define V lcd.V
 #define WX lcd.WX
 #define WY lcd.WY
-#define WT lcd.WT
-#define WV lcd.WV
-
-gb_lcd_t lcd;
 
 #define priused(attr) ({uint32_t *a = (uint32_t *)(attr); (int)((a[0]|a[1]|a[2]|a[3]|a[4]|a[5]|a[6]|a[7])&0x80808080);})
 
@@ -30,6 +26,8 @@ gb_lcd_t lcd;
 	byte *s = (src), *d = (dest), _b = (b), c = (cnt); 	\
 	while(c--) *(d + c) = *(s + c) | _b; 				\
 }
+
+gb_lcd_t lcd;
 
 
 /**
@@ -61,7 +59,7 @@ static inline byte *get_patpix(int tile, int x)
 	return pix;
 }
 
-static inline void tilebuf()
+static inline void tilebuf(int S, int T, int WT)
 {
 	int cnt, base;
 	byte *tilemap, *attrmap;
@@ -160,7 +158,7 @@ static inline void tilebuf()
 	}
 }
 
-static inline void bg_scan()
+static inline void bg_scan(int U, int V)
 {
 	int cnt;
 	byte *src, *dest;
@@ -186,7 +184,7 @@ static inline void bg_scan()
 	}
 }
 
-static inline void wnd_scan()
+static inline void wnd_scan(int WV)
 {
 	int cnt;
 	byte *src, *dest;
@@ -205,7 +203,7 @@ static inline void wnd_scan()
 	}
 }
 
-static inline void bg_scan_pri()
+static inline void bg_scan_pri(int S, int T, int U)
 {
 	int cnt, i;
 	byte *src, *dest;
@@ -238,7 +236,7 @@ static inline void bg_scan_pri()
 	memset(dest, src[i&31]&128, cnt);
 }
 
-static inline void wnd_scan_pri()
+static inline void wnd_scan_pri(int WT)
 {
 	int cnt, i;
 	byte *src, *dest;
@@ -266,7 +264,7 @@ static inline void wnd_scan_pri()
 	memset(dest, src[i]&128, cnt);
 }
 
-static inline void bg_scan_color()
+static inline void bg_scan_color(int U, int V)
 {
 	int cnt;
 	byte *src, *dest;
@@ -292,7 +290,7 @@ static inline void bg_scan_color()
 	}
 }
 
-static inline void wnd_scan_color()
+static inline void wnd_scan_color(int WV)
 {
 	int cnt;
 	byte *src, *dest;
@@ -313,7 +311,7 @@ static inline void wnd_scan_color()
 	}
 }
 
-static inline int spr_enum()
+static inline int spr_enum(gb_vs_t *VS)
 {
 	if (!(R_LCDC & 0x02))
 		return 0;
@@ -392,16 +390,15 @@ static inline int spr_enum()
 	return NS;
 }
 
-static inline void spr_scan(int ns)
+static inline void spr_scan(gb_vs_t *VS, int ns)
 {
 	byte *src, *dest, *bg, *pri;
 	int i, b, x, pal;
-	gb_vs_t *vs;
 	byte bgdup[256];
 
 	memcpy(bgdup, BUF, 256);
 
-	vs = &VS[ns-1];
+	gb_vs_t *vs = &VS[ns-1];
 
 	for (; ns; ns--, vs--)
 	{
@@ -453,25 +450,30 @@ static inline void spr_scan(int ns)
 	}
 }
 
+
+gb_lcd_t *lcd_init(void)
+{
+	return &lcd;
+}
+
+
 void lcd_reset(bool hard)
 {
 	if (hard)
 	{
-		memset(&lcd.vbank, 0, sizeof(lcd.vbank));
-		memset(&lcd.oam, 0, sizeof(lcd.oam));
-		memset(&lcd.pal, 0, sizeof(lcd.pal));
+		memset(lcd.vbank, 0, 0x4000);
+		memset(&lcd.oam, 0, 256);
+		memset(&lcd.pal, 0, 128);
 	}
 
 	memset(BG, 0, sizeof(BG));
 	memset(WND, 0, sizeof(WND));
 	memset(BUF, 0, sizeof(BUF));
 	memset(PRI, 0, sizeof(PRI));
-	memset(VS, 0, sizeof(VS));
 
-	WX = WY = WT = WV = 0;
-	S = T = U = V = 0;
-
+	WX = 0;
 	WY = R_WY;
+
 	lcd.pal_dirty = 1;
 
 	/* set lcdc ahead of cpu by 19us; see A
@@ -630,50 +632,50 @@ static inline void lcd_renderline()
 	if (!host.video.enabled || !host.video.buffer)
 		return;
 
-	int SX, SY, SL, NS;
+	gb_vs_t VS[10];
 
-	SL = R_LY;
-	SX = R_SCX;
-	SY = (R_SCY + SL) & 0xff;
-	S = SX >> 3;
-	T = SY >> 3;
-	U = SX & 7;
-	V = SY & 7;
+	int SL = R_LY;
+	int SX = R_SCX;
+	int SY = (R_SCY + SL) & 0xff;
+	int S = SX >> 3;
+	int T = SY >> 3;
+	int U = SX & 7;
+	int V = SY & 7;
 
 	WX = R_WX - 7;
 	if (WY>SL || WY<0 || WY>143 || WX<-7 || WX>160 || !(R_LCDC&0x20))
 		WX = 160;
-	WT = (SL - WY) >> 3;
-	WV = (SL - WY) & 7;
+	int WV = (SL - WY) & 7;
+	int WT = (SL - WY) >> 3;
 
 	// Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
 	// This is a hack, the real problem is elsewhere
-	if (lcd.window_offset_hack && (R_LCDC & 0x20))
+	if (hw.compat.window_offset && (R_LCDC & 0x20))
 	{
-		WT %= lcd.window_offset_hack;
+		WT %= hw.compat.window_offset;
 	}
 
-	NS = spr_enum();
-	tilebuf();
+	int NS = spr_enum(VS);
+	tilebuf(S, T, WT);
 
 	if (hw.hwtype == GB_HW_CGB)
 	{
-		bg_scan_color();
-		wnd_scan_color();
+		bg_scan_color(U, V);
+		wnd_scan_color(WV);
 		if (NS)
 		{
-			bg_scan_pri();
-			wnd_scan_pri();
+			bg_scan_pri(S, T, U);
+			wnd_scan_pri(WT);
 		}
 	}
 	else
 	{
-		bg_scan();
-		wnd_scan();
+		bg_scan(U, V);
+		wnd_scan(WV);
 		blendcpy(BUF+WX, BUF+WX, 0x04, 160-WX);
 	}
 
-	spr_scan(NS);
+	spr_scan(VS, NS);
 
 	// Real hardware allows palette change to occur between each scanline but very few games take
 	// advantage of this. So we can switch to once per frame if performance becomes a problem...

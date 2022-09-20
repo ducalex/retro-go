@@ -144,6 +144,9 @@
 #define R_NR52 REG(RI_NR52)
 
 #include "gnuboy.h"
+#include "sound.h"
+#include "cpu.h"
+#include "lcd.h"
 
 enum {
 	MBC_NONE = 0,
@@ -186,6 +189,7 @@ typedef struct
 	bool has_sensor;
 	bool has_battery;
 	bool has_rtc;
+	gb_rtc_t rtc;
 
 	// MBC stuff
 	int mbc;
@@ -216,17 +220,22 @@ typedef struct
 	int hwtype;		// type of emulated device
 	int frames;		// total frames counter
 
-	// gb_cpu_t cpu;
-	// gb_lcd_t lcd;
-	// gb_snd_t snd;
-	// gb_cart_t cart;
-	// gb_rtc_t rtc;
+	struct {
+		// Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
+		// This hack simply constrains the window top position
+		int window_offset;
+	} compat;
+
+	gb_cpu_t *cpu;
+	gb_lcd_t *lcd;
+	gb_snd_t *snd;
+	gb_cart_t *cart;
 } gb_hw_t;
 
 extern gb_cart_t cart;
-extern gb_rtc_t rtc;
 extern gb_hw_t hw;
 
+gb_hw_t *hw_init(void);
 void hw_reset(bool hard);
 void hw_setpad(int new_pad);
 void hw_interrupt(byte i, int level);

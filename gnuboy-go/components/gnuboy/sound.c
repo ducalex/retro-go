@@ -5,8 +5,6 @@
 #include "hw.h"
 #include "tables.h"
 
-gb_snd_t snd;
-
 #define S1 (snd.ch[0])
 #define S2 (snd.ch[1])
 #define S3 (snd.ch[2])
@@ -16,6 +14,8 @@ gb_snd_t snd;
 #define s2_freq() {int d = 2048 - (((R_NR24&7)<<8) + R_NR23); S2.freq = (snd.rate > (d<<4)) ? 0 : (snd.rate << 17)/d;}
 #define s3_freq() {int d = 2048 - (((R_NR34&7)<<8) + R_NR33); S3.freq = (snd.rate > (d<<3)) ? 0 : (snd.rate << 21)/d;}
 #define s4_freq() {S4.freq = (freqtab[R_NR43&7] >> (R_NR43 >> 4)) * snd.rate; if (S4.freq >> 18) S4.freq = 1<<18;}
+
+gb_snd_t snd;
 
 
 void sound_dirty(void)
@@ -46,7 +46,7 @@ void sound_dirty(void)
 	s4_freq();
 }
 
-void sound_off(void)
+static void sound_off(void)
 {
 	memset(&S1, 0, sizeof S1);
 	memset(&S2, 0, sizeof S2);
@@ -73,9 +73,9 @@ void sound_off(void)
 	sound_dirty();
 }
 
-void sound_advance(int cycles)
+gb_snd_t *sound_init(void)
 {
-	snd.cycles += cycles;
+	return &snd;
 }
 
 void sound_reset(bool hard)

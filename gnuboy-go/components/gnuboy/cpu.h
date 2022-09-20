@@ -56,6 +56,7 @@ typedef struct
 
 extern gb_cpu_t cpu;
 
+gb_cpu_t *cpu_init(void);
 void cpu_reset(bool hard);
 int  cpu_emulate(int cycles);
 void cpu_burn(int cycles);

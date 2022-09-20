@@ -220,7 +220,7 @@ static void auto_sram_update(void)
         rg_system_set_led(1);
         if (gnuboy_save_sram(sramFile, true) != 0)
         {
-            MESSAGE_ERROR("sram_save() failed...\n");
+            RG_LOGE("sram_save() failed...\n");
         }
         rg_system_set_led(0);
     }
@@ -252,7 +252,7 @@ void app_main(void)
     sramFile = rg_emu_get_path(RG_PATH_SAVE_SRAM, app->romPath);
 
     if (!rg_storage_mkdir(rg_dirname(sramFile)))
-        MESSAGE_ERROR("Unable to create SRAM folder...");
+        RG_LOGE("Unable to create SRAM folder...");
 
     // Initialize the emulator
     gnuboy_init(AUDIO_SAMPLE_RATE, true, GB_PIXEL_565_BE, &blit_frame);
