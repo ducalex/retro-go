@@ -140,8 +140,8 @@ typedef struct {
 	uint32_t ROM_CRC;
 
 	// For performance reasons we trap read/writes to unmapped areas:
-	uint8_t IOAREA[0x04];    // This will overflow into NULLRAM
-	uint8_t NULLRAM[0x2000];
+	uint8_t *IOAREA;
+	uint8_t *NULLRAM;
 
 	// PCE->PC Palette convetion array
 	// Each of the 512 available PCE colors (333 RGB -> 512 colors)

@@ -27,11 +27,11 @@ pce_reset(bool hard)
 	memset(&PCE.Timer, 0, sizeof(PCE.Timer));
 
 	if (hard) {
-		memset(&PCE.RAM, 0, sizeof(PCE.RAM));
-		memset(&PCE.VRAM, 0, sizeof(PCE.VRAM));
-		memset(&PCE.SPRAM, 0, sizeof(PCE.SPRAM));
-		memset(&PCE.Palette, 0, sizeof(PCE.Palette));
-		memset(&PCE.NULLRAM, 0xFF, sizeof(PCE.NULLRAM));
+		memset(PCE.RAM, 0, 0x2000);
+		memset(PCE.VRAM, 0, 0x10000);
+		memset(PCE.SPRAM, 0, 512);
+		memset(PCE.Palette, 0, 512);
+		memset(PCE.NULLRAM, 0xFF, 0x2000);
 	}
 
 	IO_VDC_REG[VPR].B.h = 0x0f;
@@ -67,6 +67,9 @@ pce_reset(bool hard)
 int
 pce_init(void)
 {
+	PCE.NULLRAM = malloc(0x2000);
+	PCE.IOAREA = PCE.NULLRAM + 4;
+
 	for (int i = 0; i < 0xFF; i++) {
 		PCE.MemoryMapR[i] = PCE.NULLRAM;
 		PCE.MemoryMapW[i] = PCE.NULLRAM;
@@ -93,6 +96,8 @@ pce_term(void)
 	PCE.ExRAM = NULL;
 	free(PCE.ROM);
 	PCE.ROM = NULL;
+	free(PCE.NULLRAM);
+	PCE.NULLRAM = NULL;
 }
 
 
