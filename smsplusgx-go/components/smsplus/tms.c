@@ -358,7 +358,6 @@ void make_tms_tables(void)
     }
 
     /* Make bitmap data expansion table */
-    memset(bp_expand, 0, sizeof(bp_expand));
     for(i = 0; i < 256; i++)
     {
         for(j = 0; j < 8; j++)

@@ -23,7 +23,6 @@ typedef signed long int int32;
 #define crc32_le(a, b, c) rg_crc32(a, b, c)
 #else
 #define LOG_PRINTF(level, x...) printf(x)
-#define DRAM_ATTR
 #define IRAM_ATTR
 #define crc32_le(a, b, c) (0)
 #endif
@@ -33,21 +32,21 @@ typedef signed long int int32;
 #define MESSAGE_INFO(x, ...)  LOG_PRINTF(3, " * %s: " x, __func__, ## __VA_ARGS__)
 #define MESSAGE_DEBUG(x, ...) LOG_PRINTF(4, ">> %s: " x, __func__, ## __VA_ARGS__)
 
-#include "z80.h"
-#include "sms.h"
-#include "pio.h"
-#include "memz80.h"
-#include "vdp.h"
-#include "render.h"
-#include "tms.h"
-#include "sn76489.h"
-#include "emu2413.h"
-#include "ym2413.h"
-#include "fmintf.h"
-#include "sound.h"
-#include "system.h"
-#include "loadrom.h"
 // #include "config.h"
+#include "cpu/z80.h"
+#include "memz80.h"
+#include "loadrom.h"
+#include "pio.h"
+#include "render.h"
+#include "sms.h"
 #include "state.h"
+#include "system.h"
+#include "tms.h"
+#include "vdp.h"
+#include "sound/sn76489.h"
+#include "sound/emu2413.h"
+#include "sound/ym2413.h"
+#include "sound/fmintf.h"
+#include "sound/sound.h"
 
 #endif /* _SHARED_H_ */

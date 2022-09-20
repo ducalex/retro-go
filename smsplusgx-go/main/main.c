@@ -3,15 +3,6 @@
 #include "../components/smsplus/shared.h"
 
 #define AUDIO_SAMPLE_RATE   (32000)
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
-
-#define SMS_WIDTH 256
-#define SMS_HEIGHT 192
-
-#define GG_WIDTH 160
-#define GG_HEIGHT 144
-
-static rg_audio_sample_t audioBuffer[AUDIO_BUFFER_LENGTH];
 
 static rg_video_update_t updates[2];
 static rg_video_update_t *currentUpdate = &updates[0];
@@ -136,10 +127,9 @@ void app_main(void)
     option.overscan = 0;
     option.extra_gg = 0;
 
-    system_init2();
-    system_reset();
+    system_poweron();
 
-    app->refreshRate = (sms.display == DISPLAY_NTSC) ? 60 : 50;
+    app->refreshRate = (sms.display == DISPLAY_NTSC) ? FPS_NTSC : FPS_PAL;
 
     updates[0].buffer += bitmap.viewport.x;
     updates[1].buffer += bitmap.viewport.x;
@@ -319,13 +309,16 @@ void app_main(void)
         // Tick before submitting audio/syncing
         rg_system_tick(elapsed);
 
-        // Audio is used to pace emulation :)
-        size_t length = snd.sample_count;
-        for (size_t i = 0; i < length; i++)
+        // The emulator's sound buffer isn't in a very convenient format, we must remix it.
+        size_t sample_count = snd.sample_count;
+        rg_audio_sample_t mixbuffer[sample_count];
+        for (size_t i = 0; i < sample_count; i++)
         {
-            audioBuffer[i].left = snd.stream[0][i] * 2.75f;
-            audioBuffer[i].right = snd.stream[1][i] * 2.75f;
+            mixbuffer[i].left = snd.stream[0][i] * 2.75f;
+            mixbuffer[i].right = snd.stream[1][i] * 2.75f;
         }
-        rg_audio_submit(audioBuffer, length);
+
+        // Audio is used to pace emulation :)
+        rg_audio_submit(mixbuffer, sample_count);
     }
 }

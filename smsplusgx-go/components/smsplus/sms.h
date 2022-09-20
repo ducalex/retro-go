@@ -79,6 +79,11 @@ enum {
 #define IS_SMS    (sms.console & HWTYPE_SMS)
 #define IS_GG     (sms.console & HWTYPE_GG)
 
+#define SMS_WIDTH  256
+#define SMS_HEIGHT 192
+#define GG_WIDTH   160
+#define GG_HEIGHT  144
+
 enum {
   TERRITORY_DOMESTIC  = 0,
   TERRITORY_EXPORT    = 1

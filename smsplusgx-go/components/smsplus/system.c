@@ -144,7 +144,7 @@ void system_reset_config()
   option.extra_gg     = 0;
 }
 
-void system_init2(void)
+static void system_init2(void)
 {
   sms_init();
   pio_init();

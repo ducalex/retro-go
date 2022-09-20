@@ -215,7 +215,7 @@ static UINT8 SZHV_dec[256]; /* zero, sign, half carry and overflow flags DEC r8 
 static UINT8 *SZHVC_add = 0;
 static UINT8 *SZHVC_sub = 0;
 
-DRAM_ATTR static const UINT8 cc[6][0x100] = {
+static const UINT8 cc[6][0x100] = {
   { // Z80_TABLE_op
     4,10, 7, 6, 4, 4, 7, 4, 4,11, 7, 6, 4, 4, 7, 4,
     8,10, 7, 6, 4, 4, 7, 4,12,11, 7, 6, 4, 4, 7, 4,

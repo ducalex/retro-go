@@ -38,7 +38,7 @@ typedef struct
   const char *name;
 } rominfo_t;
 
-const rominfo_t game_list[GAME_DATABASE_CNT] =
+static const rominfo_t game_list[GAME_DATABASE_CNT] =
 {
   /* games requiring CODEMASTER mapper */
   {0x29822980, 0, DEVICE_PAD2B, MAPPER_CODIES, DISPLAY_PAL, TERRITORY_EXPORT, CONSOLE_SMS2,

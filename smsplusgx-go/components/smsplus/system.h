@@ -124,7 +124,6 @@ extern option_t option;   /* EMulator configuration */
 /* Function prototypes */
 extern void system_frame(int skip);
 extern void system_reset_config();
-extern void system_init2(void);
 extern void system_shutdown(void);
 extern void system_reset(void);
 extern void system_manage_sram(uint8 *sram, int slot, int mode);
