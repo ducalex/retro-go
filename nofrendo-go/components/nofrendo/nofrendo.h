@@ -27,6 +27,12 @@
 #define APP_STRING  "Nofrendo"
 #define APP_VERSION "3.0"
 
+#ifdef RETRO_GO
+#include <rg_system.h>
+#define LOG_PRINTF(level, x...) rg_system_log(RG_LOG_USER, NULL, x)
+#define crc32_le(a, b, c) rg_crc32(a, b, c)
+#endif
+
 /* Configuration */
 
 /* Uncomment to enable debugging messages */
@@ -82,42 +88,46 @@ enum
 
 /* End basic types */
 
-/* Macros */
-#ifdef RETRO_GO
-#include <rg_system.h>
-#define LOG_PRINTF(level, x...) rg_system_log(RG_LOG_USER, NULL, x)
-#define crc32_le(a, b, c) rg_crc32(a, b, c)
-#else
+
+/* Logging */
+
+#ifndef LOG_PRINTF
 #define LOG_PRINTF(level, x...) printf(x)
-#define DRAM_ATTR
-#define IRAM_ATTR
-#define crc32_le(a, b, c) (0)
 #endif
 
-#ifdef NOFRENDO_DEBUG
-#define MESSAGE_ERROR(x, ...) LOG_PRINTF(1, "!! %s: " x, __func__, ## __VA_ARGS__)
-#define MESSAGE_WARN(x, ...)  LOG_PRINTF(2, "** %s: " x, __func__, ## __VA_ARGS__)
-#define MESSAGE_INFO(x, ...)  LOG_PRINTF(3, "%s: " x, __func__, ## __VA_ARGS__)
-#define MESSAGE_DEBUG(x, ...) LOG_PRINTF(4, "> %s: " x, __func__, ## __VA_ARGS__)
-#define MESSAGE_TRACE(x, ...) LOG_PRINTF(4, "~ %s: " x, __func__, ## __VA_ARGS__)
-#define ASSERT(expr) while (!(expr)) { LOG_PRINTF(1, "ASSERTION FAILED IN %s: " #expr "\n", __func__); abort(); }
-#else
 #define MESSAGE_ERROR(x...) LOG_PRINTF(1, "!! " x)
 #define MESSAGE_WARN(x...)  LOG_PRINTF(2, " ! " x)
 #define MESSAGE_INFO(x...)  LOG_PRINTF(3, x)
+#ifdef NOFRENDO_DEBUG
+#define MESSAGE_DEBUG(x, ...) LOG_PRINTF(4, "> %s: " x, __func__, ## __VA_ARGS__)
+#else
 #define MESSAGE_DEBUG(x...)
-#define ASSERT(expr)
 #endif
+#define MESSAGE_TRACE(x, ...) LOG_PRINTF(4, "~ %s: " x, __func__, ## __VA_ARGS__)
 
-#if !defined(MIN)
-#define MIN(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
-#define MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
-#endif
+/* End logging */
 
-#define INLINE static inline __attribute__((__always_inline__))
+
+/* Macros */
+
+#define ASSERT(expr) while (!(expr)) { LOG_PRINTF(1, "ASSERTION FAILED IN %s: " #expr "\n", __func__); abort(); }
 #define UNUSED(x) (void)x
 
+#undef MIN
+#define MIN(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
+#undef MAX
+#define MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
+
+#ifndef crc32_le
+#define crc32_le(a, b) (0)
+#endif
+
+#ifndef IRAM_ATTR
+#define IRAM_ATTR
+#endif
+
 /* End macros */
+
 
 #include "nes/nes.h"
 

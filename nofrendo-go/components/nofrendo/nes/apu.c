@@ -111,7 +111,7 @@ void apu_getcontext(apu_t *dest_apu)
    *dest_apu = apu;
 }
 
-INLINE void apu_build_luts(int num_samples)
+static void apu_build_luts(int num_samples)
 {
    /* lut used for enveloping and frequency sweeps */
    for (int i = 0; i < 16; i++)
@@ -134,7 +134,7 @@ INLINE void apu_build_luts(int num_samples)
 ** reg3: 0-2=high freq, 7-4=vbl length counter
 */
 #define  APU_MAKE_RECTANGLE(ch) \
-INLINE int apu_rectangle_##ch(void) \
+static inline int apu_rectangle_##ch(void) \
 { \
    int output, total, num_times; \
 \
@@ -226,7 +226,7 @@ APU_MAKE_RECTANGLE(1)
 ** reg2: low 8 bits of frequency
 ** reg3: 7-3=length counter, 2-0=high 3 bits of frequency
 */
-INLINE int apu_triangle(void)
+static inline int apu_triangle(void)
 {
    APU_VOLUME_DECAY(apu.triangle.output_vol);
 
@@ -272,7 +272,7 @@ output:
 ** reg2: 7=small(93 byte) sample,3-0=freq lookup
 ** reg3: 7-4=vbl length counter
 */
-INLINE int apu_noise(void)
+static inline int apu_noise(void)
 {
    int outvol = 0;
    int num_times = 0;
@@ -336,7 +336,7 @@ output:
 }
 
 
-INLINE void apu_dmcreload(void)
+static inline void apu_dmcreload(void)
 {
    apu.dmc.address = apu.dmc.cached_addr;
    apu.dmc.dma_length = apu.dmc.cached_dmalength;
@@ -350,7 +350,7 @@ INLINE void apu_dmcreload(void)
 ** reg2: 8 bits of 64-byte aligned address offset : $C000 + (value * 64)
 ** reg3: length, (value * 16) + 1
 */
-INLINE int apu_dmc(void)
+static inline int apu_dmc(void)
 {
    APU_VOLUME_DECAY(apu.dmc.output_vol);
 
@@ -778,6 +778,7 @@ apu_t *apu_init(int sample_rate, bool stereo)
 {
    memset(&apu, 0, sizeof(apu_t));
 
+   apu.buffer = calloc(sample_rate / 50 + 2, stereo ? 4 : 2);
    apu.sample_rate = sample_rate;
    apu.stereo = stereo;
    apu.ext = NULL;
@@ -797,6 +798,8 @@ void apu_shutdown()
 {
    if (apu.ext && apu.ext->shutdown)
       apu.ext->shutdown();
+   free(apu.buffer);
+   apu.buffer = NULL;
 }
 
 void apu_setext(apuext_t *ext)

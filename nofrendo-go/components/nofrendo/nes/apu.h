@@ -23,9 +23,6 @@
 
 #pragma once
 
-// This is the worst case scenario, 44.1khz stereo running PAL
-#define  APU_SAMPLES_PER_FRAME ((44100 / 50 + 1) * 2)
-
 #define  APU_WRA0       0x4000
 #define  APU_WRA1       0x4001
 #define  APU_WRA2       0x4002
@@ -192,7 +189,7 @@ typedef struct
    int sample_rate;
    bool stereo;
 
-   short buffer[APU_SAMPLES_PER_FRAME];
+   short *buffer;
 
    int prev_sample;
 

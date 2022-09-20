@@ -13,7 +13,6 @@ extern "C" {
 
 #ifdef RG_TARGET_SDL2
 #define IRAM_ATTR
-#define DRAM_ATTR
 #define RTC_NOINIT_ATTR
 #else
 #include <esp_idf_version.h>

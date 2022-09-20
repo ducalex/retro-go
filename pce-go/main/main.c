@@ -28,7 +28,6 @@ static int skipFrames = 0;
 static uint8_t *framebuffers[2];
 
 static bool emulationPaused = false; // This should probably be a mutex
-static rg_audio_sample_t audiobuffer[AUDIO_BUFFER_LENGTH * 2];
 static rg_video_update_t updates[2];
 static rg_video_update_t *currentUpdate = &updates[0];
 static rg_app_t *app;
@@ -68,7 +67,7 @@ uint8_t *osd_gfx_framebuffer(int width, int height)
 {
     if (width != current_width || height != current_height)
     {
-        MESSAGE_INFO("Resolution changed to: %dx%d\n", width, height);
+        RG_LOGI("Resolution changed to: %dx%d\n", width, height);
 
         // PCE-GO needs 16 columns of scratch space + horizontally center
         int offset_center = 16 + ((XBUF_WIDTH - width) / 2);
@@ -113,7 +112,7 @@ void osd_vsync(void)
 
     if (sleep > frameTime)
     {
-        MESSAGE_ERROR("Our vsync timer seems to have overflowed! (%dus)\n", sleep);
+        RG_LOGE("Our vsync timer seems to have overflowed! (%dus)\n", sleep);
     }
     else if (sleep > 0)
     {
@@ -163,7 +162,8 @@ void osd_input_read(uint8_t joypads[8])
 
 static void audioTask(void *arg)
 {
-    MESSAGE_INFO("task started.\n");
+    rg_audio_sample_t audiobuffer[AUDIO_BUFFER_LENGTH];
+    RG_LOGI("task started.\n");
 
     while (1)
     {

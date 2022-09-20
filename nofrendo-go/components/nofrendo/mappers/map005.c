@@ -151,7 +151,7 @@ static void chr_update()
     }
 }
 
-INLINE void chr_switch(int reg, int value)
+static inline void chr_switch(int reg, int value)
 {
     chr_banks[reg] = value | chr_upper_bits;
     // chr_update();
@@ -162,13 +162,13 @@ INLINE void chr_switch(int reg, int value)
         mmc_bankvrom(1, reg * 0x400, chr_banks[reg]);
 }
 
-INLINE void nametable_update(uint8 value)
+static inline void nametable_update(uint8 value)
 {
     nametable_mapping = value;
     ppu_setnametables(value & 3, (value >> 2) & 3, (value >> 4) & 3, value >> 6);
 }
 
-INLINE void nametable_fill()
+static inline void nametable_fill()
 {
     memset(ppu_getnametable(3), fill_mode.tile, 32 * 30); // 32 tiles per row, 30 rows
     memset(ppu_getnametable(3) + 32 * 30, (fill_mode.color | fill_mode.color << 2 | fill_mode.color << 4 | fill_mode.color << 6), 64);

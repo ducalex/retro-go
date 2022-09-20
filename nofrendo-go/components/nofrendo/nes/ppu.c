@@ -40,6 +40,8 @@
 /* Runtime settings */
 #define OPT(n)                (ppu.options[(n)])
 
+#define INLINE static inline __attribute__((__always_inline__))
+
 /* the NES PPU */
 static ppu_t ppu;
 
@@ -754,7 +756,7 @@ void ppu_shutdown(void)
 /*************************************************/
 /* TODO: all this stuff should go somewhere else */
 /*************************************************/
-INLINE void draw_box(uint8 *bmp, int x, int y, int height)
+static void draw_box(uint8 *bmp, int x, int y, int height)
 {
    int i;
    uint8 *vid;
@@ -773,7 +775,7 @@ INLINE void draw_box(uint8 *bmp, int x, int y, int height)
       *vid++ = NES_GUI_GRAY;
 }
 
-INLINE void draw_deadsprite(uint8 *bmp, int x, int y, int height)
+static void draw_deadsprite(uint8 *bmp, int x, int y, int height)
 {
    int i, j, index;
    uint8 *vid;
@@ -799,7 +801,7 @@ INLINE void draw_deadsprite(uint8 *bmp, int x, int y, int height)
    }
 }
 
-INLINE void draw_sprite(uint8 *bmp, int x, int y, uint8 tile_num, uint8 attrib)
+static void draw_sprite(uint8 *bmp, int x, int y, uint8 tile_num, uint8 attrib)
 {
    int line, height;
    int col_high, tile_addr;
