@@ -102,7 +102,7 @@ void hw_interrupt(byte i, int level)
 		{
 			// Wake up the CPU when an enabled interrupt occurs
 			// IME doesn't matter at this point, only IE
-			cpu.halted = 0;
+			hw.cpu->halted = 0;
 		}
 	}
 }
@@ -520,7 +520,7 @@ void hw_write(unsigned a, byte b)
 				if (r >= 0x51 && r <= 0x70)
 					return;
 				if (r >= 0x47 && r <= 0x49)
-					lcd.pal_dirty |= REG(r) != b;
+					if (REG(r) != b) lcd_pal_dirty();
 				// The few other GBC-only registers are harmless
 				// and we let them fall through.
 			}
@@ -587,12 +587,12 @@ void hw_write(unsigned a, byte b)
 				break;
 			case RI_BCPD: // GBC only
 				lcd.pal[R_BCPS & 0x3F] = b;
-				lcd.pal_dirty = true;
+				lcd_pal_dirty();
 				if (R_BCPS & 0x80) R_BCPS = (R_BCPS+1) & 0xBF;
 				break;
 			case RI_OCPD: // GBC only
 				lcd.pal[64 + (R_OCPS & 0x3F)] = b;
-				lcd.pal_dirty = true;
+				lcd_pal_dirty();
 				R_OCPD = b;
 				if (R_OCPS & 0x80) R_OCPS = (R_OCPS+1) & 0xBF;
 				break;

@@ -457,6 +457,12 @@ gb_lcd_t *lcd_init(void)
 }
 
 
+void lcd_pal_dirty(void)
+{
+	lcd.pal_dirty = true;
+}
+
+
 void lcd_reset(bool hard)
 {
 	if (hard)
@@ -474,7 +480,7 @@ void lcd_reset(bool hard)
 	WX = 0;
 	WY = R_WY;
 
-	lcd.pal_dirty = 1;
+	lcd_pal_dirty();
 
 	/* set lcdc ahead of cpu by 19us; see A
 			Set lcdc ahead of cpu by 19us (matches minimal hblank duration according
@@ -748,7 +754,7 @@ void lcd_emulate(int cycles)
 				this better be done here or within stat_change(),
 				otherwise CPU will have a chance to run	for some time
 				before interrupt is triggered */
-				if (cpu.halted)
+				if (hw.cpu->halted)
 				{
 					hw_interrupt(IF_VBLANK, 1);
 					lcd.cycles += 228;

@@ -54,8 +54,6 @@ typedef struct
 	unsigned disassemble;
 } gb_cpu_t;
 
-extern gb_cpu_t cpu;
-
 gb_cpu_t *cpu_init(void);
 void cpu_reset(bool hard);
 int  cpu_emulate(int cycles);

@@ -201,7 +201,7 @@ case (base)+7: b = A; \
 label: op(b); break;
 
 
-gb_cpu_t cpu;
+static gb_cpu_t cpu;
 
 
 gb_cpu_t *cpu_init(void)
@@ -784,7 +784,7 @@ next:
 
 	default:
 		MESSAGE_ERROR("invalid opcode 0x%02X at address 0x%04X, rombank = %d\n",
-			op, (PC-1) & 0xffff, cart.rombank);
+			op, (PC-1) & 0xffff, hw.cart->rombank);
 		break; // abort();
 	}
 

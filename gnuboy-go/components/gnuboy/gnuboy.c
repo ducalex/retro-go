@@ -7,6 +7,9 @@
 #include "sound.h"
 #include "lcd.h"
 
+// Set in the far future for VBA-M support
+#define RTC_BASE 1893456000
+
 gb_host_t host;
 
 
@@ -456,7 +459,7 @@ int gnuboy_get_palette(void)
 void gnuboy_set_palette(gb_palette_t pal)
 {
 	host.video.colorize = pal;
-	lcd.pal_dirty = true;
+	lcd_pal_dirty();
 }
 
 
@@ -464,131 +467,6 @@ bool gnuboy_sram_dirty(void)
 {
 	return cart.sram_dirty != 0;
 }
-
-
-/**
- * Save state file format is:
- * GB:
- * 0x0000 - 0x0BFF: svars
- * 0x0CF0 - 0x0CFF: snd.wave
- * 0x0D00 - 0x0DFF: hw.ioregs
- * 0x0E00 - 0x0E80: lcd.pal
- * 0x0F00 - 0x0FFF: lcd.oam
- * 0x1000 - 0x2FFF: RAM
- * 0x3000 - 0x4FFF: VRAM
- * 0x5000 - 0x...:  SRAM
- *
- * GBC:
- * 0x0000 - 0x0BFF: svars
- * 0x0CF0 - 0x0CFF: snd.wave
- * 0x0D00 - 0x0DFF: hw.ioregs
- * 0x0E00 - 0x0EFF: lcd.pal
- * 0x0F00 - 0x0FFF: lcd.oam
- * 0x1000 - 0x8FFF: RAM
- * 0x9000 - 0xCFFF: VRAM
- * 0xD000 - 0x...:  SRAM
- *
- */
-
-#define SAVE_VERSION 0x107
-
-#define I1(s, p) { 1, s, p }
-#define I2(s, p) { 2, s, p }
-#define I4(s, p) { 4, s, p }
-#define END { 0, "\0\0\0\0", 0 }
-
-typedef struct
-{
-	size_t len;
-	char key[4];
-	void *ptr;
-} svar_t;
-
-typedef struct
-{
-	void *ptr;
-	size_t len;
-} sblock_t;
-
-static uint32_t sav_ver;
-
-static const svar_t svars[] =
-{
-	I4("GbSs", &sav_ver),
-
-	I2("PC  ", &PC),
-	I2("SP  ", &SP),
-	I2("BC  ", &BC),
-	I2("DE  ", &DE),
-	I2("HL  ", &HL),
-	I2("AF  ", &AF),
-
-	I4("IME ", &cpu.ime),
-	I4("ima ", &cpu.ima),
-	I4("spd ", &cpu.double_speed),
-	I4("halt", &cpu.halted),
-	I4("div ", &cpu.div),
-	I4("tim ", &cpu.timer),
-	I4("lcdc", &lcd.cycles),
-	I4("snd ", &snd.cycles),
-
-	I4("ints", &hw.ilines),
-	I4("pad ", &hw.pad),
-	I4("hdma", &hw.hdma),
-	I4("seri", &hw.serial),
-
-	I4("mbcm", &cart.bankmode),
-	I4("romb", &cart.rombank),
-	I4("ramb", &cart.rambank),
-	I4("enab", &cart.enableram),
-
-	// We should pack that below. Size of components could vary per platform
-	I4("rtcR", &cart.rtc.sel),
-	I4("rtcL", &cart.rtc.latch),
-	I4("rtcF", &cart.rtc.flags),
-	I4("rtcd", &cart.rtc.d),
-	I4("rtch", &cart.rtc.h),
-	I4("rtcm", &cart.rtc.m),
-	I4("rtcs", &cart.rtc.s),
-	I4("rtct", &cart.rtc.ticks),
-	I1("rtR8", &cart.rtc.regs[0]),
-	I1("rtR9", &cart.rtc.regs[1]),
-	I1("rtRA", &cart.rtc.regs[2]),
-	I1("rtRB", &cart.rtc.regs[3]),
-	I1("rtRC", &cart.rtc.regs[4]),
-
-	I4("S1on", &snd.ch[0].on),
-	I4("S1p ", &snd.ch[0].pos),
-	I4("S1c ", &snd.ch[0].cnt),
-	I4("S1ec", &snd.ch[0].encnt),
-	I4("S1sc", &snd.ch[0].swcnt),
-	I4("S1sf", &snd.ch[0].swfreq),
-
-	I4("S2on", &snd.ch[1].on),
-	I4("S2p ", &snd.ch[1].pos),
-	I4("S2c ", &snd.ch[1].cnt),
-	I4("S2ec", &snd.ch[1].encnt),
-
-	I4("S3on", &snd.ch[2].on),
-	I4("S3p ", &snd.ch[2].pos),
-	I4("S3c ", &snd.ch[2].cnt),
-
-	I4("S4on", &snd.ch[3].on),
-	I4("S4p ", &snd.ch[3].pos),
-	I4("S4c ", &snd.ch[3].cnt),
-	I4("S4ec", &snd.ch[3].encnt),
-
-	END
-};
-
-// Set in the far future for VBA-M support
-#define RTC_BASE 1893456000
-
-#ifndef IS_BIG_ENDIAN
-#define LIL(x) (x)
-#else
-#define LIL(x) ((x<<24)|((x&0xff00)<<8)|((x>>8)&0xff00)|(x>>24))
-#endif
 
 
 int gnuboy_load_sram(const char *file)
@@ -703,61 +581,245 @@ int gnuboy_save_sram(const char *file, bool quick_save)
 }
 
 
-int gnuboy_save_state(const char *file)
+
+/**
+ * Save state file format is:
+ * GB:
+ * 0x0000 - 0x0BFF: svars
+ * 0x0CF0 - 0x0CFF: hw.snd->wave
+ * 0x0D00 - 0x0DFF: hw.ioregs
+ * 0x0E00 - 0x0E80: lcd.pal
+ * 0x0F00 - 0x0FFF: lcd.oam
+ * 0x1000 - 0x2FFF: RAM
+ * 0x3000 - 0x4FFF: VRAM
+ * 0x5000 - 0x...:  SRAM
+ *
+ * GBC:
+ * 0x0000 - 0x0BFF: svars
+ * 0x0CF0 - 0x0CFF: hw.snd->wave
+ * 0x0D00 - 0x0DFF: hw.ioregs
+ * 0x0E00 - 0x0EFF: lcd.pal
+ * 0x0F00 - 0x0FFF: lcd.oam
+ * 0x1000 - 0x8FFF: RAM
+ * 0x9000 - 0xCFFF: VRAM
+ * 0xD000 - 0x...:  SRAM
+ *
+ */
+
+#ifndef IS_BIG_ENDIAN
+#define LIL(x) (x)
+#else
+#define LIL(x) ((x<<24)|((x&0xff00)<<8)|((x>>8)&0xff00)|(x>>24))
+#endif
+
+#define SAVE_VERSION 0x107
+
+#define I1(s, p) { 1, s, p }
+#define I2(s, p) { 2, s, p }
+#define I4(s, p) { 4, s, p }
+#define END { 0, "\0\0\0\0", 0 }
+
+typedef struct
 {
+	size_t len;
+	char key[4];
+	void *ptr;
+} svar_t;
+
+typedef struct
+{
+	void *ptr;
+	size_t len;
+} sblock_t;
+
+
+static int do_save_load(const char *file, bool save)
+{
+	uint32_t sav_ver = SAVE_VERSION;
+	const svar_t svars[] =
+	{
+		I4("GbSs", &sav_ver),
+
+		I2("PC  ", &W(hw.cpu->pc)),
+		I2("SP  ", &W(hw.cpu->sp)),
+		I2("BC  ", &W(hw.cpu->bc)),
+		I2("DE  ", &W(hw.cpu->de)),
+		I2("HL  ", &W(hw.cpu->hl)),
+		I2("AF  ", &W(hw.cpu->af)),
+
+		I4("IME ", &hw.cpu->ime),
+		I4("ima ", &hw.cpu->ima),
+		I4("spd ", &hw.cpu->double_speed),
+		I4("halt", &hw.cpu->halted),
+		I4("div ", &hw.cpu->div),
+		I4("tim ", &hw.cpu->timer),
+		I4("lcdc", &hw.lcd->cycles),
+		I4("snd ", &hw.snd->cycles),
+
+		I4("ints", &hw.ilines),
+		I4("pad ", &hw.pad),
+		I4("hdma", &hw.hdma),
+		I4("seri", &hw.serial),
+
+		I4("mbcm", &hw.cart->bankmode),
+		I4("romb", &hw.cart->rombank),
+		I4("ramb", &hw.cart->rambank),
+		I4("enab", &hw.cart->enableram),
+
+		// We should pack that below. Size of components could vary per platform
+		I4("rtcR", &hw.cart->rtc.sel),
+		I4("rtcL", &hw.cart->rtc.latch),
+		I4("rtcF", &hw.cart->rtc.flags),
+		I4("rtcd", &hw.cart->rtc.d),
+		I4("rtch", &hw.cart->rtc.h),
+		I4("rtcm", &hw.cart->rtc.m),
+		I4("rtcs", &hw.cart->rtc.s),
+		I4("rtct", &hw.cart->rtc.ticks),
+		I1("rtR8", &hw.cart->rtc.regs[0]),
+		I1("rtR9", &hw.cart->rtc.regs[1]),
+		I1("rtRA", &hw.cart->rtc.regs[2]),
+		I1("rtRB", &hw.cart->rtc.regs[3]),
+		I1("rtRC", &hw.cart->rtc.regs[4]),
+
+		I4("S1on", &hw.snd->ch[0].on),
+		I4("S1p ", &hw.snd->ch[0].pos),
+		I4("S1c ", &hw.snd->ch[0].cnt),
+		I4("S1ec", &hw.snd->ch[0].encnt),
+		I4("S1sc", &hw.snd->ch[0].swcnt),
+		I4("S1sf", &hw.snd->ch[0].swfreq),
+
+		I4("S2on", &hw.snd->ch[1].on),
+		I4("S2p ", &hw.snd->ch[1].pos),
+		I4("S2c ", &hw.snd->ch[1].cnt),
+		I4("S2ec", &hw.snd->ch[1].encnt),
+
+		I4("S3on", &hw.snd->ch[2].on),
+		I4("S3p ", &hw.snd->ch[2].pos),
+		I4("S3c ", &hw.snd->ch[2].cnt),
+
+		I4("S4on", &hw.snd->ch[3].on),
+		I4("S4p ", &hw.snd->ch[3].pos),
+		I4("S4c ", &hw.snd->ch[3].cnt),
+		I4("S4ec", &hw.snd->ch[3].encnt),
+
+		END
+	};
+
 	byte *buf = calloc(1, 4096);
 	if (!buf) return -2;
 
-	FILE *fp = fopen(file, "wb");
-	if (!fp) goto _error;
+	uint32_t (*header)[2] = (uint32_t (*)[2])buf;
 
 	bool is_cgb = hw.hwtype == GB_HW_CGB;
 
 	sblock_t blocks[] = {
 		{buf, 1},
 		{hw.rambanks, is_cgb ? 8 : 2},
-		{lcd.vbank, is_cgb ? 4 : 2},
+		{hw.lcd->vbank, is_cgb ? 4 : 2},
 		{cart.rambanks, cart.ramsize * 2},
 		{NULL, 0},
 	};
 
-	uint32_t (*header)[2] = (uint32_t (*)[2])buf;
+	FILE *fp = NULL;
 
-	sav_ver = SAVE_VERSION;
-
-	for (int i = 0; svars[i].ptr; i++)
+	if (save)
 	{
-		uint32_t d = 0;
-
-		switch (svars[i].len)
-		{
-		case 1:
-			d = *(uint8_t *)svars[i].ptr;
-			break;
-		case 2:
-			d = *(uint16_t *)svars[i].ptr;
-			break;
-		case 4:
-			d = *(uint32_t *)svars[i].ptr;
-			break;
-		}
-
-		header[i][0] = *(uint32_t *)svars[i].key;
-		header[i][1] = LIL(d);
-	}
-
-	memcpy(buf+0xD00, hw.ioregs, sizeof hw.ioregs);
-	memcpy(buf+0xE00, lcd.pal, sizeof lcd.pal);
-	memcpy(buf+0xF00, lcd.oam.mem, sizeof lcd.oam);
-	memcpy(buf+0xCF0, snd.wave, sizeof snd.wave);
-
-	for (int i = 0; blocks[i].ptr != NULL; i++)
-	{
-		if (fwrite(blocks[i].ptr, 4096, blocks[i].len, fp) < 1)
-		{
-			MESSAGE_ERROR("Write error in block %d\n", i);
+		if (!(fp = fopen(file, "wb")))
 			goto _error;
+
+		for (int i = 0; svars[i].ptr; i++)
+		{
+			uint32_t d = 0;
+
+			switch (svars[i].len)
+			{
+			case 1:
+				d = *(uint8_t *)svars[i].ptr;
+				break;
+			case 2:
+				d = *(uint16_t *)svars[i].ptr;
+				break;
+			case 4:
+				d = *(uint32_t *)svars[i].ptr;
+				break;
+			}
+
+			header[i][0] = *(uint32_t *)svars[i].key;
+			header[i][1] = LIL(d);
 		}
+
+		memcpy(buf + 0xD00, hw.ioregs, 256);
+		memcpy(buf + 0xE00, hw.lcd->pal, 128);
+		memcpy(buf + 0xF00, hw.lcd->oam.mem, 256);
+		memcpy(buf + 0xCF0, hw.snd->wave, 16);
+
+		for (int i = 0; blocks[i].ptr != NULL; i++)
+		{
+			if (fwrite(blocks[i].ptr, 4096, blocks[i].len, fp) < 1)
+			{
+				MESSAGE_ERROR("Write error in block %d\n", i);
+				goto _error;
+			}
+		}
+	}
+	else
+	{
+		if (!(fp = fopen(file, "rb")))
+			goto _error;
+
+		for (int i = 0; blocks[i].ptr != NULL; i++)
+		{
+			if (fread(blocks[i].ptr, 4096, blocks[i].len, fp) < 1)
+			{
+				MESSAGE_ERROR("Read error in block %d\n", i);
+				goto _error;
+			}
+		}
+
+		for (int i = 0; svars[i].ptr; i++)
+		{
+			uint32_t d = 0;
+
+			for (int j = 0; header[j][0]; j++)
+			{
+				if (header[j][0] == *(uint32_t *)svars[i].key)
+				{
+					d = LIL(header[j][1]);
+					break;
+				}
+			}
+
+			switch (svars[i].len)
+			{
+			case 1:
+				*(uint8_t *)svars[i].ptr = d;
+				break;
+			case 2:
+				*(uint16_t *)svars[i].ptr = d;
+				break;
+			case 4:
+				*(uint32_t *)svars[i].ptr = d;
+				break;
+			}
+		}
+
+		if (sav_ver != SAVE_VERSION)
+			MESSAGE_ERROR("Save file version mismatch!\n");
+
+		memcpy(hw.ioregs, buf + 0xD00, 256);
+		memcpy(hw.lcd->pal, buf + 0xE00, 128);
+		memcpy(hw.lcd->oam.mem, buf + 0xF00, 256);
+		memcpy(hw.snd->wave, buf + 0xCF0, 16);
+
+		// Disable BIOS. This is a hack to support old saves
+		R_BIOS = 0x1;
+
+		// Older saves might overflow this
+		cart.rambank &= (cart.ramsize - 1);
+
+		lcd_pal_dirty();
+		sound_dirty();
+		hw_updatemap();
 	}
 
 	fclose(fp);
@@ -773,88 +835,13 @@ _error:
 }
 
 
+int gnuboy_save_state(const char *file)
+{
+	return do_save_load(file, true);
+}
+
+
 int gnuboy_load_state(const char *file)
 {
-	byte* buf = calloc(1, 4096);
-	if (!buf) return -2;
-
-	FILE *fp = fopen(file, "rb");
-	if (!fp) goto _error;
-
-	bool is_cgb = hw.hwtype == GB_HW_CGB;
-
-	sblock_t blocks[] = {
-		{buf, 1},
-		{hw.rambanks, is_cgb ? 8 : 2},
-		{lcd.vbank, is_cgb ? 4 : 2},
-		{cart.rambanks, cart.ramsize * 2},
-		{NULL, 0},
-	};
-
-	for (int i = 0; blocks[i].ptr != NULL; i++)
-	{
-		if (fread(blocks[i].ptr, 4096, blocks[i].len, fp) < 1)
-		{
-			MESSAGE_ERROR("Read error in block %d\n", i);
-			goto _error;
-		}
-	}
-
-	uint32_t (*header)[2] = (uint32_t (*)[2])buf;
-
-	for (int i = 0; svars[i].ptr; i++)
-	{
-		uint32_t d = 0;
-
-		for (int j = 0; header[j][0]; j++)
-		{
-			if (header[j][0] == *(uint32_t *)svars[i].key)
-			{
-				d = LIL(header[j][1]);
-				break;
-			}
-		}
-
-		switch (svars[i].len)
-		{
-		case 1:
-			*(uint8_t *)svars[i].ptr = d;
-			break;
-		case 2:
-			*(uint16_t *)svars[i].ptr = d;
-			break;
-		case 4:
-			*(uint32_t *)svars[i].ptr = d;
-			break;
-		}
-	}
-
-	if (sav_ver != SAVE_VERSION)
-		MESSAGE_ERROR("Save file version mismatch!\n");
-
-	memcpy(hw.ioregs, buf+0xD00, sizeof hw.ioregs);
-	memcpy(lcd.pal, buf+0xE00, sizeof lcd.pal);
-	memcpy(lcd.oam.mem, buf+0xF00, sizeof lcd.oam);
-	memcpy(snd.wave, buf+0xCF0, sizeof snd.wave);
-
-	fclose(fp);
-	free(buf);
-
-	// Disable BIOS. This is a hack to support old saves
-	R_BIOS = 0x1;
-
-	// Older saves might overflow this
-	cart.rambank &= (cart.ramsize - 1);
-
-	lcd.pal_dirty = true;
-	sound_dirty();
-	hw_updatemap();
-
-	return 0;
-
-_error:
-	if (fp) fclose(fp);
-	if (buf) free(buf);
-
-	return -1;
+	return do_save_load(file, false);
 }
