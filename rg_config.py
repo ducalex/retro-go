@@ -19,4 +19,5 @@ PROJECT_APPS = {
   'snes9x-go':    [0, 0, 655360],
   'prboom-go':    [0, 0, 720896],
   'gwenesis-go':  [0, 0, 917504],
+  'duke3d-go':  [0, 0, 917504],
 }

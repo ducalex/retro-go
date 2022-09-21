@@ -1,0 +1,5 @@
+set(COMPONENT_SRCS "fx_man.c dsl.c ll_man.c multivoc.c mv_mix.c mvreverb.c nodpmi.c pitch.c user.c usrhooks.c nomusic.c")
+set(COMPONENT_ADD_INCLUDEDIRS ".")
+set(COMPONENT_REQUIRES "duke3d")
+register_component()
+rg_setup_compile_options(-Wno-error=pointer-sign -Wno-error=maybe-uninitialized)
