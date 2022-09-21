@@ -13,6 +13,10 @@
 #define USE_ADC_DRIVER 1
 #endif
 
+#if RG_GAMEPAD_DRIVER == 2
+#include <unistd.h>
+#endif
+
 static bool input_task_running = false;
 static int64_t last_gamepad_read = 0;
 static uint32_t gamepad_state = -1; // _Atomic
@@ -44,6 +48,23 @@ static inline uint32_t gamepad_read(void)
     if (!gpio_get_level(RG_GPIO_GAMEPAD_B))      state |= RG_KEY_B;
 
 #elif RG_GAMEPAD_DRIVER == 2  // Serial
+    gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 0);
+    usleep(5);
+    gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 1);
+    usleep(1);
+
+    for (int i = 0; i < 8; i++) {
+	int pinValue = gpio_get_level(RG_GPIO_GAMEPAD_DATA);
+	state |= pinValue << (7 - i);
+
+	gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 0);
+	usleep(1);
+	gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 1);
+	usleep(1);
+    }
+
+    if (!gpio_get_level(RG_GPIO_GAMEPAD_MENU))   state |= RG_KEY_MENU;
+    if (!gpio_get_level(RG_GPIO_GAMEPAD_OPTION)) state |= RG_KEY_OPTION;
 
 #elif RG_GAMEPAD_DRIVER == 3  // I2C
 
@@ -210,6 +231,9 @@ void rg_input_init(void)
     gpio_set_direction(RG_GPIO_GAMEPAD_CLOCK, GPIO_MODE_OUTPUT);
     gpio_set_direction(RG_GPIO_GAMEPAD_LATCH, GPIO_MODE_OUTPUT);
     gpio_set_direction(RG_GPIO_GAMEPAD_DATA, GPIO_MODE_INPUT);
+
+    gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 0);
+    gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 1);
 
 #elif RG_GAMEPAD_DRIVER == 3  // I2C
 
