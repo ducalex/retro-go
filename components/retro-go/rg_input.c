@@ -1,6 +1,9 @@
 #include "rg_system.h"
 #include "rg_input.h"
 
+#include <stdlib.h>
+#include <unistd.h>
+
 #ifdef RG_TARGET_SDL2
 #include <SDL2/SDL.h>
 #else
@@ -11,10 +14,6 @@
 #include <esp_adc_cal.h>
 #include <driver/adc.h>
 #define USE_ADC_DRIVER 1
-#endif
-
-#if RG_GAMEPAD_DRIVER == 2
-#include <unistd.h>
 #endif
 
 static bool input_task_running = false;
