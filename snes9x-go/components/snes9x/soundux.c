@@ -19,9 +19,10 @@
 #define CLIP8(v) \
 (v) = (((v) <= -128) ? -128 : (((v) >= 127) ? 127 : (v)))
 
-static int32_t *Echo;
-static int32_t *MixBuffer;
-static int32_t *EchoBuffer;
+static int32_t wave[SOUND_BUFFER_SIZE];
+static int32_t *Echo; // 24000
+static int32_t *MixBuffer; // [SOUND_BUFFER_SIZE]
+static int32_t *EchoBuffer; // [SOUND_BUFFER_SIZE]
 static int32_t FilterTaps [8];
 static uint8_t FilterTapDefinitionBitfield;
 /* In the above, bit I is set if FilterTaps[I] is non-zero. */
@@ -452,8 +453,6 @@ void DecodeBlock(Channel* ch)
 
 static INLINE void MixStereo(int32_t sample_count)
 {
-   static int32_t wave[SOUND_BUFFER_SIZE];
-
    int32_t pitch_mod = SoundData.pitch_mod & ~APU.DSP[APU_NON];
 
    uint32_t J;

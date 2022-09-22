@@ -180,9 +180,26 @@ static INLINE uint16_t COLOR_SUB(uint16_t C1, uint16_t C2)
 	return retval;
 }
 
+#ifdef NO_ZERO_LUT
+static INLINE uint16_t COLOR_SUB1_2(uint16_t C1, uint16_t C2)
+{
+   // if the top bit of the color value is zero then the value is zero, otherwise its just the value
+   int C = (((C1) | RGB_HI_BITS_MASKx2) - ((C2) & RGB_REMOVE_LOW_BITS_MASK)) >> 1;
+   int r, g, b;
+   DECOMPOSE_PIXEL(C, r, g, b);
+   if (r & 0x10)
+      r = 0;
+   if (g & GREEN_HI_BIT)
+      g = 0;
+   if (b & 0x10)
+      b = 0;
+   return BUILD_PIXEL(r, g, b);
+}
+#else
 #define COLOR_SUB1_2(C1, C2) \
 GFX.ZERO [(((C1) | RGB_HI_BITS_MASKx2) - \
            ((C2) & RGB_REMOVE_LOW_BITS_MASK)) >> 1]
+#endif
 
 typedef void (*NormalTileRenderer)(uint32_t Tile, int32_t Offset, uint32_t StartLine, uint32_t LineCount);
 typedef void (*ClippedTileRenderer)(uint32_t Tile, int32_t Offset, uint32_t StartPixel, uint32_t Width, uint32_t StartLine, uint32_t LineCount);

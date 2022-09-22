@@ -11,4 +11,5 @@ rg_setup_compile_options(
     -Wno-error=restrict
     -Wno-array-bounds
     -O2
+    -DNO_ZERO_LUT
 )
