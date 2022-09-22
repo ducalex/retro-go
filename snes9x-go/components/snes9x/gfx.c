@@ -593,7 +593,11 @@ void S9xSetupOBJ(void)
    {
       int32_t j, Y;
       /* First, find out which sprites are on which lines */
-      uint8_t OBJOnLine[SNES_HEIGHT_EXTENDED][128];
+      // uint8_t OBJOnLine[SNES_HEIGHT_EXTENDED][128];
+
+      // We can't afford 30K on the stack. But maybe we have a better buffer to abuse?
+      uint8_t (*OBJOnLine)[128] = Memory.FillRAM;
+
       /* We only initialise this per line, as needed. [Neb]
        * Bonus: We can quickly avoid looping if a line has no OBJs. */
       bool AnyOBJOnLine[SNES_HEIGHT_EXTENDED];
