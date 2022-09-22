@@ -246,10 +246,8 @@ static char* Safe(const char* s)
 /**********************************************************************************************/
 bool S9xInitMemory(void)
 {
-   /* DS2 DMA notes: These would do well to be allocated with 32 extra bytes
-      so they can be 32-byte aligned. [Neb] */
    Memory.RAM   = (uint8_t*) calloc(0x20000, 1);
-   Memory.SRAM  = (uint8_t*) calloc(0x20000, 1);
+   Memory.SRAM  = (uint8_t*) calloc(0x10000, 1);
    Memory.VRAM  = (uint8_t*) calloc(0x10000, 1);
    Memory.ROM   = (uint8_t*) calloc(MAX_ROM_SIZE + 0x200, 1);
    Memory.FillRAM = calloc(0x8000, 1);
@@ -258,7 +256,7 @@ bool S9xInitMemory(void)
    Memory.BlockIsRAM = calloc(MEMMAP_NUM_BLOCKS, 1);
    Memory.BlockIsROM = calloc(MEMMAP_NUM_BLOCKS, 1);
 
-   if (!Memory.MemorySpeed || !Memory.BlockIsRAM || !Memory.BlockIsROM)
+   if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM || !Memory.ROM || !Memory.MemorySpeed || !Memory.BlockIsRAM || !Memory.BlockIsROM)
    {
       S9xDeinitMemory();
       return false;
@@ -272,7 +270,7 @@ bool S9xInitMemory(void)
    IPPU.TileCached [TILE_4BIT] = (uint8_t*) calloc(MAX_4BIT_TILES, 1);
    IPPU.TileCached [TILE_8BIT] = (uint8_t*) calloc(MAX_8BIT_TILES, 1);
 
-   if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM || !Memory.ROM || !IPPU.TileCache [TILE_2BIT] || !IPPU.TileCache [TILE_4BIT] || !IPPU.TileCache [TILE_8BIT] || !IPPU.TileCached [TILE_2BIT] || !IPPU.TileCached [TILE_4BIT] ||  !IPPU.TileCached [TILE_8BIT])
+   if (!IPPU.TileCache [TILE_2BIT] || !IPPU.TileCache [TILE_4BIT] || !IPPU.TileCache [TILE_8BIT] || !IPPU.TileCached [TILE_2BIT] || !IPPU.TileCached [TILE_4BIT] ||  !IPPU.TileCached [TILE_8BIT])
    {
       S9xDeinitMemory();
       return false;
@@ -1061,6 +1059,12 @@ void InitROM(bool Interleaved)
    }
 
    Memory.SRAMMask = Memory.SRAMSize ? ((1 << (Memory.SRAMSize + 3)) * 128) - 1 : 0;
+
+   if (Memory.SRAMMask > 0xffff)
+   {
+      printf("WARNING: SRAM was reduced to 64K by me. If you see this message, tell me about it.\n");
+      Memory.SRAMMask = 0xffff;
+   }
 
 #ifndef USE_BLARGG_APU
    IAPU.OneCycle = ONE_APU_CYCLE;
