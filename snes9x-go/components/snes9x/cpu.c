@@ -57,8 +57,8 @@ void S9xResetCPU()
 
 static void CommonS9xReset()
 {
-   memset(Memory.FillRAM, 0, 0x8000);
-   memset(Memory.VRAM, 0x00, 0x10000);
+   memset(Memory.FillRAM, 0, FILLRAM_SIZE);
+   memset(Memory.VRAM, 0x00, VRAM_SIZE);
 
    S9xResetCPU();
    S9xResetSRTC();
@@ -76,7 +76,7 @@ void S9xReset()
 {
    CommonS9xReset();
    S9xResetPPU();
-   memset(Memory.RAM, 0x55, 0x20000);
+   memset(Memory.RAM, 0x55, RAM_SIZE);
 }
 
 void S9xSoftReset()

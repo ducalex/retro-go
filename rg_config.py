@@ -16,7 +16,7 @@ PROJECT_APPS = {
   'smsplusgx-go': [0, 0, 393216],
   'pce-go':       [0, 0, 327680],
   'handy-go':     [0, 0, 393216],
-  'snes9x-go':    [0, 0, 655360],
+  'snes9x-go':    [0, 0, 524288],
   'prboom-go':    [0, 0, 720896],
   'gwenesis-go':  [0, 0, 917504],
 }

@@ -246,9 +246,9 @@ static char* Safe(const char* s)
 /**********************************************************************************************/
 bool S9xInitMemory(void)
 {
-   Memory.RAM   = (uint8_t*) calloc(0x20000, 1);
-   Memory.SRAM  = (uint8_t*) calloc(0x10000, 1);
-   Memory.VRAM  = (uint8_t*) calloc(0x10000, 1);
+   Memory.RAM   = (uint8_t*) calloc(RAM_SIZE, 1);
+   Memory.SRAM  = (uint8_t*) calloc(SRAM_SIZE, 1);
+   Memory.VRAM  = (uint8_t*) calloc(VRAM_SIZE, 1);
    Memory.ROM   = (uint8_t*) calloc(MAX_ROM_SIZE + 0x200, 1);
    Memory.FillRAM = calloc(0x8000, 1);
 

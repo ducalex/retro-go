@@ -21,7 +21,6 @@ void S9xDoDMA(uint8_t Channel)
    int32_t count;
    int32_t inc;
    SDMA* d;
-   bool in_sa1_dma = false;
    bool s7_wrap = false;
 
    if (Channel > 7 || CPU.InDMA)
@@ -80,11 +79,6 @@ void S9xDoDMA(uint8_t Channel)
       if (!base)
          base = Memory.ROM;
 
-      if (in_sa1_dma)
-      {
-         base = &Memory.ROM [MAX_ROM_SIZE - 0x10000];
-         p = 0;
-      }
       if (inc > 0)
          d->AAddress += count;
       else if (inc < 0)
