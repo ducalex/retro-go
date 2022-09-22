@@ -90,9 +90,9 @@ enum
 
 enum
 {
-   MAP_TYPE_I_O,
-   MAP_TYPE_ROM,
-   MAP_TYPE_RAM
+   MAP_TYPE_I_O = 1,
+   MAP_TYPE_ROM = 2,
+   MAP_TYPE_RAM = 3
 };
 
 typedef struct
@@ -108,9 +108,8 @@ typedef struct
    uint16_t SRAMMask;
    uint8_t  SRAMSize;
    uint8_t* Map[MEMMAP_NUM_BLOCKS];
-   uint8_t* MemorySpeed ; //[MEMMAP_NUM_BLOCKS];
-   uint8_t* BlockIsRAM  ; //[MEMMAP_NUM_BLOCKS];
-   uint8_t* BlockIsROM  ; //[MEMMAP_NUM_BLOCKS];
+   uint8_t  MemorySpeed[MEMMAP_NUM_BLOCKS];
+   uint8_t  BlockType[MEMMAP_NUM_BLOCKS];
    char     ROMName     [ROM_NAME_LEN];
    char     ROMId       [5];
    char     CompanyId   [3];

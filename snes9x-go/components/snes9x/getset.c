@@ -17,7 +17,7 @@ uint8_t S9xGetByte(uint32_t Address)
 
    if (GetAddress >= (uint8_t*) MAP_LAST)
    {
-      if (Memory.BlockIsRAM [block])
+      if (Memory.BlockType[block] == MAP_TYPE_RAM)
          CPU.WaitAddress = CPU.PCAtOpcodeStart;
       return GetAddress[Address & 0xffff];
    }
@@ -70,7 +70,7 @@ uint16_t S9xGetWord(uint32_t Address)
 
    if (GetAddress >= (uint8_t*) MAP_LAST)
    {
-      if (Memory.BlockIsRAM [block])
+      if (Memory.BlockType[block] == MAP_TYPE_RAM)
          CPU.WaitAddress = CPU.PCAtOpcodeStart;
 #ifdef FAST_LSB_WORD_ACCESS
       return *(uint16_t*) (GetAddress + (Address & 0xffff));
@@ -119,7 +119,7 @@ void S9xSetByte(uint8_t Byte, uint32_t Address)
    int32_t block;
    uint8_t* SetAddress = Memory.Map [block = ((Address >> MEMMAP_SHIFT) & MEMMAP_MASK)];
 
-   if (Memory.BlockIsROM[block])
+   if (Memory.BlockType[block] == MAP_TYPE_ROM)
       SetAddress = (uint8_t*) MAP_NONE;
 
    CPU.WaitAddress = NULL;
@@ -192,7 +192,7 @@ void S9xSetWord(uint16_t Word, uint32_t Address)
    CPU.WaitAddress = NULL;
    SetAddress = Memory.Map [block = ((Address >> MEMMAP_SHIFT) & MEMMAP_MASK)];
 
-   if (Memory.BlockIsROM[block])
+   if (Memory.BlockType[block] == MAP_TYPE_ROM)
       SetAddress = (uint8_t*) MAP_NONE;
 
    if ((intptr_t) SetAddress != MAP_CPU || !CPU.InDMA)
