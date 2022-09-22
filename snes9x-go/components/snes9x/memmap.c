@@ -264,11 +264,13 @@ bool S9xInitMemory(void)
 
    IPPU.TileCache [TILE_2BIT] = (uint8_t*) calloc(MAX_2BIT_TILES, 128);
    IPPU.TileCache [TILE_4BIT] = (uint8_t*) calloc(MAX_4BIT_TILES, 128);
-   IPPU.TileCache [TILE_8BIT] = (uint8_t*) calloc(MAX_8BIT_TILES, 128);
+   // IPPU.TileCache [TILE_8BIT] = (uint8_t*) calloc(MAX_8BIT_TILES, 128);
+   IPPU.TileCache [TILE_8BIT] = &IPPU.TileCache [TILE_2BIT][(MAX_2BIT_TILES * 128) - (MAX_8BIT_TILES * 128)];
 
    IPPU.TileCached [TILE_2BIT] = (uint8_t*) calloc(MAX_2BIT_TILES, 1);
    IPPU.TileCached [TILE_4BIT] = (uint8_t*) calloc(MAX_4BIT_TILES, 1);
-   IPPU.TileCached [TILE_8BIT] = (uint8_t*) calloc(MAX_8BIT_TILES, 1);
+   // IPPU.TileCached [TILE_8BIT] = (uint8_t*) calloc(MAX_8BIT_TILES, 1);
+   IPPU.TileCached [TILE_8BIT] = &IPPU.TileCached [TILE_2BIT][MAX_2BIT_TILES - MAX_8BIT_TILES];
 
    if (!IPPU.TileCache [TILE_2BIT] || !IPPU.TileCache [TILE_4BIT] || !IPPU.TileCache [TILE_8BIT] || !IPPU.TileCached [TILE_2BIT] || !IPPU.TileCached [TILE_4BIT] ||  !IPPU.TileCached [TILE_8BIT])
    {

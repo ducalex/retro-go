@@ -1636,6 +1636,19 @@ static void DrawBackground(uint32_t BGMode, uint32_t bg, uint8_t Z1, uint8_t Z2)
    BG.PaletteMask = PaletteMasks[BGMode][bg];
    BG.DirectColourMode = (BGMode == 3 || BGMode == 4) && bg == 0 && (GFX.r2130 & 1);
 
+   // In my previous port I had a more elaborate solution to use a unified buffer for all sizes.
+   // But i'm lazy right now and this cheap way still saves 132KB!
+   int mode = Depths[BGMode][bg];
+   if (mode == 0 || mode == 2)
+   {
+      static int prev_mode = -1;
+      if (mode != prev_mode) {
+         memset(IPPU.TileCached[2], 0, MAX_8BIT_TILES);
+         printf("bye!");
+         prev_mode = mode;
+      }
+   }
+
    if (PPU.BGMosaic [bg] && PPU.Mosaic > 1)
    {
       DrawBackgroundMosaic(BGMode, bg, Z1, Z2);
