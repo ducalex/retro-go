@@ -1016,10 +1016,15 @@ void S9xSetPlaybackRate(uint32_t playback_rate)
       S9xSetSoundFrequency(i, SoundData.channels [i].hertz);
 }
 
-bool S9xInitSound()
+bool S9xInitSound(int32_t buffer_ms, int32_t lag_ms)
 {
-   MixBuffer = calloc(SOUND_BUFFER_SIZE, sizeof(MixBuffer[0]));
-   // EchoBuffer = calloc(SOUND_BUFFER_SIZE, sizeof(EchoBuffer[0]));
+   size_t sample_count = (buffer_ms * 44100 / 1000) * 2;
+
+   if (sample_count < SOUND_BUFFER_SIZE)
+      sample_count = SOUND_BUFFER_SIZE;
+
+   MixBuffer = calloc(sample_count, sizeof(MixBuffer[0]));
+   // EchoBuffer = calloc(sample_count, sizeof(EchoBuffer[0]));
    // Echo = calloc(24000, sizeof(Echo[0]));
    EchoBuffer = Echo = NULL; // avoid warnings, yay
    so.playback_rate = 0;

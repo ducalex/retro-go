@@ -75,7 +75,7 @@ void S9xDecacheSamples(void);
 void S9xSetAPUControl(uint8_t byte);
 void S9xSetAPUDSP(uint8_t byte);
 uint8_t S9xGetAPUDSP(void);
-bool S9xInitSound(void);
+bool S9xInitSound(int32_t buffer_ms, int32_t lag_ms);
 void S9xPrintAPUState(void);
 extern uint8_t S9xAPUCycles [256];       /* Scaled cycle lengths */
 extern uint8_t S9xAPUCycleLengths [256]; /* Raw data. */
