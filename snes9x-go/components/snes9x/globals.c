@@ -65,13 +65,6 @@ bool finishedFrame = false;
 
 #ifndef USE_BLARGG_APU
 SoundStatus so;
-
-int32_t Echo [24000];
-int32_t MixBuffer [SOUND_BUFFER_SIZE];
-int32_t EchoBuffer [SOUND_BUFFER_SIZE];
-int32_t FilterTaps [8];
-uint32_t Z = 0;
-int32_t Loop [16];
 #endif
 uint16_t SignExtend [2] =
 {

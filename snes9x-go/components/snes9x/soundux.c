@@ -19,29 +19,30 @@
 #define CLIP8(v) \
 (v) = (((v) <= -128) ? -128 : (((v) >= 127) ? 127 : (v)))
 
-extern int32_t Echo [24000];
-extern int32_t MixBuffer [SOUND_BUFFER_SIZE];
-extern int32_t EchoBuffer [SOUND_BUFFER_SIZE];
-extern int32_t FilterTaps [8];
+static int32_t *Echo;
+static int32_t *MixBuffer;
+static int32_t *EchoBuffer;
+static int32_t FilterTaps [8];
 static uint8_t FilterTapDefinitionBitfield;
 /* In the above, bit I is set if FilterTaps[I] is non-zero. */
-extern uint32_t Z;
-extern int32_t Loop [16];
+static uint32_t Z;
+static int32_t Loop [16];
 
 extern int32_t FilterValues[4][2];
 extern int32_t NoiseFreq [32];
-uint32_t AttackRate [16] =
+
+static const uint32_t AttackRate [16] =
 {
    4100, 2600, 1500, 1000, 640, 380, 260, 160,
    96,   64,   40,   24,   16,  10,  6,   1
 };
 
-uint32_t DecayRate [8] =
+static const uint32_t DecayRate [8] =
 {
    1200, 740, 440, 290, 180, 110, 74, 37
 };
 
-uint32_t DecreaseRateExp [32] =
+static const uint32_t DecreaseRateExp [32] =
 {
    0xFFFFFFFF, 38000, 28000, 24000, 19000, 14000, 12000, 9400,
    7100,       5900,  4700,  3500,  2900,  2400,  1800,  1500,
@@ -49,7 +50,7 @@ uint32_t DecreaseRateExp [32] =
    180,        150,   110,   92,    74,    55,    37,    18
 };
 
-uint32_t IncreaseRate [32] =
+static const uint32_t IncreaseRate [32] =
 {
    0xFFFFFFFF, 4100, 3100, 2600, 2000, 1500, 1300, 1000,
    770,        640,  510,  380,  320,  260,  190,  160,
@@ -60,12 +61,12 @@ uint32_t IncreaseRate [32] =
 #define SustainRate DecreaseRateExp
 
 /* precalculated env rates for S9xSetEnvRate */
-uint32_t AttackERate     [16][10];
-uint32_t DecayERate       [8][10];
-uint32_t SustainERate    [32][10];
-uint32_t IncreaseERate   [32][10];
-uint32_t DecreaseERateExp[32][10];
-uint32_t KeyOffERate         [10];
+static uint32_t AttackERate     [16][10];
+static uint32_t DecayERate       [8][10];
+static uint32_t SustainERate    [32][10];
+static uint32_t IncreaseERate   [32][10];
+static uint32_t DecreaseERateExp[32][10];
+static uint32_t KeyOffERate         [10];
 
 #define FIXED_POINT 0x10000UL
 #define FIXED_POINT_REMAINDER 0xffffUL
@@ -190,7 +191,7 @@ void S9xSetEchoEnable(uint8_t byte)
       byte = 0;
    if (byte && !SoundData.echo_enable)
    {
-      memset(Echo, 0, sizeof(Echo));
+      // memset(Echo, 0, 24000 * sizeof(Echo[0]));
       memset(Loop, 0, sizeof(Loop));
    }
 
@@ -742,12 +743,13 @@ void S9xMixSamples(int16_t* buffer, int32_t sample_count)
    int32_t J;
    int32_t I;
 
-   if (SoundData.echo_enable)
-      memset(EchoBuffer, 0, sample_count * sizeof(EchoBuffer [0]));
+   // if (SoundData.echo_enable)
+   //    memset(EchoBuffer, 0, sample_count * sizeof(EchoBuffer [0]));
    memset(MixBuffer, 0, sample_count * sizeof(MixBuffer [0]));
    MixStereo(sample_count);
 
    /* Mix and convert waveforms */
+   #if 0
    if (SoundData.echo_enable && SoundData.echo_buffer_size)
    {
       /* 16-bit stereo sound with echo enabled ... */
@@ -797,6 +799,7 @@ void S9xMixSamples(int16_t* buffer, int32_t sample_count)
       }
    }
    else
+   #endif
    {
       /* 16-bit mono or stereo sound, no echo */
       for (J = 0; J < sample_count; J++)
@@ -817,12 +820,13 @@ void S9xMixSamplesLowPass(int16_t* buffer, int32_t sample_count, int32_t low_pas
    int32_t low_pass_factor_a = low_pass_range;
    int32_t low_pass_factor_b = 0x10000 - low_pass_factor_a;
 
-   if (SoundData.echo_enable)
-      memset(EchoBuffer, 0, sample_count * sizeof(EchoBuffer [0]));
+   // if (SoundData.echo_enable)
+   //    memset(EchoBuffer, 0, sample_count * sizeof(EchoBuffer [0]));
    memset(MixBuffer, 0, sample_count * sizeof(MixBuffer [0]));
    MixStereo(sample_count);
 
    /* Mix and convert waveforms */
+   #if 0
    if (SoundData.echo_enable && SoundData.echo_buffer_size)
    {
       /* 16-bit stereo sound with echo enabled ... */
@@ -886,6 +890,7 @@ void S9xMixSamplesLowPass(int16_t* buffer, int32_t sample_count, int32_t low_pas
       }
    }
    else
+   #endif
    {
       /* 16-bit mono or stereo sound, no echo */
       for (J = 0; J < sample_count; J++)
@@ -1013,6 +1018,10 @@ void S9xSetPlaybackRate(uint32_t playback_rate)
 
 bool S9xInitSound()
 {
+   MixBuffer = calloc(SOUND_BUFFER_SIZE, sizeof(MixBuffer[0]));
+   // EchoBuffer = calloc(SOUND_BUFFER_SIZE, sizeof(EchoBuffer[0]));
+   // Echo = calloc(24000, sizeof(Echo[0]));
+   EchoBuffer = Echo = NULL; // avoid warnings, yay
    so.playback_rate = 0;
    S9xResetSound(true);
    return true;
