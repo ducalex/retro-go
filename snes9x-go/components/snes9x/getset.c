@@ -117,7 +117,11 @@ uint16_t S9xGetWord(uint32_t Address)
 void S9xSetByte(uint8_t Byte, uint32_t Address)
 {
    int32_t block;
-   uint8_t* SetAddress = Memory.WriteMap [block = ((Address >> MEMMAP_SHIFT) & MEMMAP_MASK)];
+   uint8_t* SetAddress = Memory.Map [block = ((Address >> MEMMAP_SHIFT) & MEMMAP_MASK)];
+
+   if (Memory.BlockIsROM[block])
+      SetAddress = (uint8_t*) MAP_NONE;
+
    CPU.WaitAddress = NULL;
 
    if ((intptr_t) SetAddress != MAP_CPU || !CPU.InDMA)
@@ -186,7 +190,10 @@ void S9xSetWord(uint16_t Word, uint32_t Address)
    }
 
    CPU.WaitAddress = NULL;
-   SetAddress = Memory.WriteMap [block = ((Address >> MEMMAP_SHIFT) & MEMMAP_MASK)];
+   SetAddress = Memory.Map [block = ((Address >> MEMMAP_SHIFT) & MEMMAP_MASK)];
+
+   if (Memory.BlockIsROM[block])
+      SetAddress = (uint8_t*) MAP_NONE;
 
    if ((intptr_t) SetAddress != MAP_CPU || !CPU.InDMA)
       CPU.Cycles += Memory.MemorySpeed [block] << 1;

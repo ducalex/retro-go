@@ -8,6 +8,8 @@
 #include <string.h>
 #include <sys/types.h>
 
+#include <rg_system.h>
+
 #ifndef INLINE
 #define INLINE inline
 #endif

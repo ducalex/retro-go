@@ -81,7 +81,7 @@ enum
 
 enum
 {
-   MAX_ROM_SIZE = 0x800000
+   MAX_ROM_SIZE = 0x200000
 };
 
 enum
@@ -97,18 +97,16 @@ typedef struct
    uint8_t* ROM;
    uint8_t* VRAM;
    uint8_t* SRAM;
-   uint8_t* BWRAM;
    uint8_t* FillRAM;
    uint8_t* C4RAM;
    bool     HiROM;
    bool     LoROM;
    uint16_t SRAMMask;
    uint8_t  SRAMSize;
-   uint8_t* Map         [MEMMAP_NUM_BLOCKS];
-   uint8_t* WriteMap    [MEMMAP_NUM_BLOCKS];
-   uint8_t  MemorySpeed [MEMMAP_NUM_BLOCKS];
-   uint8_t  BlockIsRAM  [MEMMAP_NUM_BLOCKS];
-   uint8_t  BlockIsROM  [MEMMAP_NUM_BLOCKS];
+   uint8_t* Map[MEMMAP_NUM_BLOCKS];
+   uint8_t* MemorySpeed ; //[MEMMAP_NUM_BLOCKS];
+   uint8_t* BlockIsRAM  ; //[MEMMAP_NUM_BLOCKS];
+   uint8_t* BlockIsROM  ; //[MEMMAP_NUM_BLOCKS];
    char     ROMName     [ROM_NAME_LEN];
    char     ROMId       [5];
    char     CompanyId   [3];
@@ -124,7 +122,6 @@ typedef struct
    char     ROMFilename [_MAX_PATH];
    uint8_t  ROMRegion;
    uint8_t  ExtendedFormat;
-   uint8_t* BSRAM;
 } CMemory;
 
 void ResetSpeedMap(void);

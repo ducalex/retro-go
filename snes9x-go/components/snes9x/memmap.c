@@ -251,14 +251,18 @@ bool S9xInitMemory(void)
    Memory.RAM   = (uint8_t*) calloc(0x20000, 1);
    Memory.SRAM  = (uint8_t*) calloc(0x20000, 1);
    Memory.VRAM  = (uint8_t*) calloc(0x10000, 1);
-   Memory.BSRAM = (uint8_t*) calloc(0x80000, 1);
-   /* Don't bother initializing ROM, we will load a game anyway. */
-#ifdef DS2_DMA
-   Memory.ROM   = (uint8_t*) AlignedMalloc(MAX_ROM_SIZE + 0x200 + 0x8000, 32, &PtrAdj.ROM);
-#else
-   Memory.ROM   = (uint8_t*) malloc(MAX_ROM_SIZE + 0x200 + 0x8000);
-#endif
-   Memory.FillRAM = NULL;
+   Memory.ROM   = (uint8_t*) calloc(MAX_ROM_SIZE + 0x200, 1);
+   Memory.FillRAM = calloc(0x8000, 1);
+
+   Memory.MemorySpeed = calloc(MEMMAP_NUM_BLOCKS, 1);
+   Memory.BlockIsRAM = calloc(MEMMAP_NUM_BLOCKS, 1);
+   Memory.BlockIsROM = calloc(MEMMAP_NUM_BLOCKS, 1);
+
+   if (!Memory.MemorySpeed || !Memory.BlockIsRAM || !Memory.BlockIsROM)
+   {
+      S9xDeinitMemory();
+      return false;
+   }
 
    IPPU.TileCache [TILE_2BIT] = (uint8_t*) calloc(MAX_2BIT_TILES, 128);
    IPPU.TileCache [TILE_4BIT] = (uint8_t*) calloc(MAX_4BIT_TILES, 128);
@@ -268,25 +272,11 @@ bool S9xInitMemory(void)
    IPPU.TileCached [TILE_4BIT] = (uint8_t*) calloc(MAX_4BIT_TILES, 1);
    IPPU.TileCached [TILE_8BIT] = (uint8_t*) calloc(MAX_8BIT_TILES, 1);
 
-   if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM || !Memory.ROM || !Memory.BSRAM || !IPPU.TileCache [TILE_2BIT] || !IPPU.TileCache [TILE_4BIT] || !IPPU.TileCache [TILE_8BIT] || !IPPU.TileCached [TILE_2BIT] || !IPPU.TileCached [TILE_4BIT] ||  !IPPU.TileCached [TILE_8BIT])
+   if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM || !Memory.ROM || !IPPU.TileCache [TILE_2BIT] || !IPPU.TileCache [TILE_4BIT] || !IPPU.TileCache [TILE_8BIT] || !IPPU.TileCached [TILE_2BIT] || !IPPU.TileCached [TILE_4BIT] ||  !IPPU.TileCached [TILE_8BIT])
    {
       S9xDeinitMemory();
       return false;
    }
-
-   /* FillRAM uses first 32K of ROM image area, otherwise space just
-      wasted. Might be read by the SuperFX code. */
-   Memory.FillRAM = Memory.ROM;
-
-   /* Add 0x8000 to ROM image pointer to stop SuperFX code accessing
-      unallocated memory (can cause crash on some ports). */
-   Memory.ROM += 0x8000; /* still 32-byte aligned */
-
-   SuperFX.pvRegisters = &Memory.FillRAM [0x3000];
-   SuperFX.nRamBanks = 2; /* Most only use 1.  1 = 64KB, 2 = 128KB = 1024Mb */
-   SuperFX.pvRam = Memory.SRAM;
-   SuperFX.nRomBanks = (2 * 1024 * 1024) / (32 * 1024);
-   SuperFX.pvRom = (uint8_t*) Memory.ROM;
 
    return true;
 }
@@ -311,19 +301,13 @@ void S9xDeinitMemory(void)
    }
    if (Memory.ROM)
    {
-      Memory.ROM -= 0x8000;
-#ifdef DS2_RAM
-      AlignedFree(ROM, PtrAdj.ROM);
-#else
       free(Memory.ROM);
-#endif
       Memory.ROM = NULL;
    }
-
-   if (Memory.BSRAM)
+   if (Memory.FillRAM)
    {
-      free(Memory.BSRAM);
-      Memory.BSRAM = NULL;
+      free(Memory.FillRAM);
+      Memory.FillRAM = NULL;
    }
 
    for (t = 0; t <= TILE_8BIT; t++)
@@ -1154,13 +1138,6 @@ void map_index(uint32_t bank_s, uint32_t bank_e, uint32_t addr_s, uint32_t addr_
 
 void WriteProtectROM(void)
 {
-   int32_t c;
-
-   /* memmove converted: Different mallocs [Neb] */
-   memcpy(Memory.WriteMap, Memory.Map, sizeof(Memory.Map));
-   for (c = 0; c < 0x1000; c++)
-      if (Memory.BlockIsROM [c])
-         Memory.WriteMap [c] = (uint8_t*) MAP_NONE;
 }
 
 void MapRAM(void)
