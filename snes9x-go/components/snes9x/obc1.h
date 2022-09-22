@@ -1,25 +1,10 @@
-/*****************************************************************************\
-     Snes9x - Portable Super Nintendo Entertainment System (TM) emulator.
-                This file is licensed under the Snes9x License.
-   For further information, consult the LICENSE file in the root directory.
-\*****************************************************************************/
+/* This file is part of Snes9x. See LICENSE file. */
 
 #ifndef _OBC1_H_
 #define _OBC1_H_
 
-struct SOBC1
-{
-	uint16	address;
-	uint16	basePtr;
-	uint16	shift;
-};
-
-extern struct SOBC1	OBC1;
-
-void S9xSetOBC1 (uint8, uint16);
-uint8 S9xGetOBC1 (uint16);
-void S9xResetOBC1 (void);
-uint8 * S9xGetBasePointerOBC1 (uint16);
-uint8 * S9xGetMemPointerOBC1 (uint16);
-
+uint8_t GetOBC1(uint16_t Address);
+void SetOBC1(uint8_t Byte, uint16_t Address);
+uint8_t* GetMemPointerOBC1(uint32_t Address);
+void ResetOBC1(void);
 #endif

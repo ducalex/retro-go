@@ -1,52 +1,53 @@
-/*****************************************************************************\
-     Snes9x - Portable Super Nintendo Entertainment System (TM) emulator.
-                This file is licensed under the Snes9x License.
-   For further information, consult the LICENSE file in the root directory.
-\*****************************************************************************/
+/* This file is part of Snes9x. See LICENSE file. */
 
 #ifndef _SAR_H_
 #define _SAR_H_
 
+#include <stdint.h>
+
+#include "port.h"
+
 #ifdef RIGHTSHIFT_IS_SAR
-#define SAR(b, n)	((b) >> (n))
+#define SAR8(b, n)  ((b) >> (n))
+#define SAR16(b, n) ((b) >> (n))
+#define SAR32(b, n) ((b) >> (n))
+#define SAR64(b, n) ((b) >> (n))
 #else
 
-static inline int8 SAR (const int8 b, const int n)
+static INLINE int8_t SAR8(const int8_t b, const int32_t n)
 {
-#ifndef RIGHTSHIFT_int8_IS_SAR
-	if (b < 0)
-		return ((b >> n) | (-1 << (8  - n)));
+#ifndef RIGHTSHIFT_INT8_IS_SAR
+   if (b < 0)
+      return (b >> n) | (~0u << (8 - n));
 #endif
-	return (b >> n);
+   return b >> n;
 }
 
-static inline int16 SAR (const int16 b, const int n)
+static INLINE int16_t SAR16(const int16_t b, const int32_t n)
 {
-#ifndef RIGHTSHIFT_int16_IS_SAR
-	if (b < 0)
-		return ((b >> n) | (-1 << (16 - n)));
+#ifndef RIGHTSHIFT_INT16_IS_SAR
+   if (b < 0)
+      return (b >> n) | (~0u << (16 - n));
 #endif
-	return (b >> n);
+   return b >> n;
 }
 
-static inline int32 SAR (const int32 b, const int n)
+static INLINE int32_t SAR32(const int32_t b, const int32_t n)
 {
-#ifndef RIGHTSHIFT_int32_IS_SAR
-	if (b < 0)
-		return ((b >> n) | (-1 << (32 - n)));
+#ifndef RIGHTSHIFT_INT32_IS_SAR
+   if (b < 0)
+      return (b >> n) | (~0u << (32 - n));
 #endif
-	return (b >> n);
+   return b >> n;
 }
 
-static inline int64 SAR (const int64 b, const int n)
+static INLINE int64_t SAR64(const int64_t b, const int32_t n)
 {
-#ifndef RIGHTSHIFT_int64_IS_SAR
-	if (b < 0)
-		return ((b >> n) | (-1 << (64 - n)));
+#ifndef RIGHTSHIFT_INT64_IS_SAR
+   if (b < 0)
+      return (b >> n) | (~0u << (64 - n));
 #endif
-	return (b >> n);
+   return b >> n;
 }
-
 #endif
-
 #endif
