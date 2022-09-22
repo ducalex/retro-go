@@ -73,28 +73,6 @@ void rg_audio_init(int sampleRate)
     audio.volume = (int)rg_settings_get_number(NS_GLOBAL, SETTING_VOLUME, 50);
     audio.sampleRate = sampleRate;
 
-#if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
-    i2s_config_t i2s_config = {
-        .mode = I2S_MODE_MASTER | I2S_MODE_TX,
-        .sample_rate = sampleRate,
-        .bits_per_sample = 16,
-	    .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
-#ifdef RG_TARGET_ESPLAY_S3
-	    .communication_format = I2S_COMM_FORMAT_STAND_I2S | I2S_COMM_FORMAT_STAND_MSB,
-	    .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1, // ESP_INTR_FLAG_LEVEL1
-	    .dma_buf_count = 8, // Goal is to have ~800 samples over 2-8 buffers (3x270 or 5x180 are pretty good)
-	    .dma_buf_len = 534, // The unit is stereo samples (4 bytes) (optimize for 533 usage)
-	    .use_apll = false, // S3 cant use apll
-#else
-        .communication_format = I2S_COMM_FORMAT_STAND_I2S,
-		.intr_alloc_flags = 0, // ESP_INTR_FLAG_LEVEL1
-        .dma_buf_count = 4, // Goal is to have ~800 samples over 2-8 buffers (3x270 or 5x180 are pretty good)
-        .dma_buf_len = 180, // The unit is stereo samples (4 bytes) (optimize for 533 usage)
-        .use_apll = true, // External DAC may care about accuracy
-#endif
-    };
-#endif
-
     int error_code = -1;
 
     if (audio.sink->type == RG_AUDIO_SINK_DUMMY)
@@ -104,10 +82,16 @@ void rg_audio_init(int sampleRate)
     else if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC)
     {
     #if RG_AUDIO_USE_INT_DAC
-        i2s_config.mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN;
-        i2s_config.communication_format = I2S_COMM_FORMAT_STAND_MSB;
-        i2s_config.use_apll = false;
-        esp_err_t ret = i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
+        esp_err_t ret = i2s_driver_install(I2S_NUM_0, &(i2s_config_t){
+            .mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN,
+            .sample_rate = sampleRate,
+            .bits_per_sample = 16,
+            .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
+            .communication_format = I2S_COMM_FORMAT_STAND_MSB,
+            .intr_alloc_flags = 0, // ESP_INTR_FLAG_LEVEL1
+            .dma_buf_count = 4, // Goal is to have ~800 samples over 2-8 buffers (3x270 or 5x180 are pretty good)
+            .dma_buf_len = 180, // The unit is stereo samples (4 bytes) (optimize for 533 usage)
+        }, 0, NULL);
         if (ret == ESP_OK)
             ret = i2s_set_dac_mode(RG_AUDIO_USE_INT_DAC);
         error_code = ret;
@@ -118,7 +102,25 @@ void rg_audio_init(int sampleRate)
     else if (audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
     {
     #if RG_AUDIO_USE_EXT_DAC
-        esp_err_t ret = i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
+        esp_err_t ret = i2s_driver_install(I2S_NUM_0, &(i2s_config_t){
+            .mode = I2S_MODE_MASTER | I2S_MODE_TX,
+            .sample_rate = sampleRate,
+            .bits_per_sample = 16,
+            .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
+        #ifdef RG_TARGET_ESPLAY_S3
+            .communication_format = I2S_COMM_FORMAT_STAND_I2S | I2S_COMM_FORMAT_STAND_MSB,
+            .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1, // ESP_INTR_FLAG_LEVEL1
+            .dma_buf_count = 8, // Goal is to have ~800 samples over 2-8 buffers (3x270 or 5x180 are pretty good)
+            .dma_buf_len = 534, // The unit is stereo samples (4 bytes) (optimize for 533 usage)
+            .use_apll = false, // S3 cant use apll
+        #else
+            .communication_format = I2S_COMM_FORMAT_STAND_I2S,
+            .intr_alloc_flags = 0, // ESP_INTR_FLAG_LEVEL1
+            .dma_buf_count = 4, // Goal is to have ~800 samples over 2-8 buffers (3x270 or 5x180 are pretty good)
+            .dma_buf_len = 180, // The unit is stereo samples (4 bytes) (optimize for 533 usage)
+            .use_apll = true, // External DAC may care about accuracy
+        #endif
+        }, 0, NULL);
         if (ret == ESP_OK)
         {
             ret = i2s_set_pin(I2S_NUM_0, &(i2s_pin_config_t) {
@@ -173,9 +175,9 @@ void rg_audio_deinit(void)
     {
         // Nothing to do!
     }
-#if RG_AUDIO_USE_INT_DAC
     else if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC)
     {
+    #if RG_AUDIO_USE_INT_DAC
         i2s_driver_uninstall(I2S_NUM_0);
         if (RG_AUDIO_USE_INT_DAC & I2S_DAC_CHANNEL_RIGHT_EN)
             dac_output_disable(DAC_CHANNEL_1);
@@ -185,11 +187,11 @@ void rg_audio_deinit(void)
         #ifdef RG_GPIO_SND_AMP_ENABLE
         gpio_reset_pin(RG_GPIO_SND_AMP_ENABLE);
         #endif
+    #endif
     }
-#endif
-#if RG_AUDIO_USE_EXT_DAC
     else if (audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
     {
+    #if RG_AUDIO_USE_EXT_DAC
         i2s_driver_uninstall(I2S_NUM_0);
         gpio_reset_pin(RG_GPIO_SND_I2S_BCK);
         gpio_reset_pin(RG_GPIO_SND_I2S_DATA);
@@ -197,14 +199,14 @@ void rg_audio_deinit(void)
         #ifdef RG_GPIO_SND_AMP_ENABLE
         gpio_reset_pin(RG_GPIO_SND_AMP_ENABLE);
         #endif
+    #endif
     }
-#endif
-#if RG_AUDIO_USE_SDL2
     else if (audio.sink->type == RG_AUDIO_SINK_SDL2)
     {
+    #if RG_AUDIO_USE_SDL2
         // ...
+    #endif
     }
-#endif
 
     RG_LOGI("Audio terminated. sink='%s'\n", audio.sink->name);
     audio.sink = NULL;
@@ -230,9 +232,9 @@ void rg_audio_submit(const rg_audio_sample_t *samples, size_t count)
         // usleep(RG_MAX(dummyBusyUntil - rg_system_timer(), 1000));
         dummyBusyUntil = rg_system_timer() + ((audio.sampleRate * 1000) / count);
     }
-#if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
     else if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC || audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
     {
+    #if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
         float volume = audio.muted ? 0.f : (audio.volume * 0.01f);
         rg_audio_sample_t buffer[180];
         size_t written = 0;
@@ -279,14 +281,14 @@ void rg_audio_submit(const rg_audio_sample_t *samples, size_t count)
                 pos = 0;
             }
         }
+    #endif
     }
-#endif
-#if RG_AUDIO_USE_SDL2
     else if (audio.sink->type == RG_AUDIO_SINK_SDL2)
     {
+    #if RG_AUDIO_USE_SDL2
         //
+    #endif
     }
-#endif
 
     RELEASE_DEVICE();
 
