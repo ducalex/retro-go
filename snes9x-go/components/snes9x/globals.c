@@ -7,12 +7,8 @@
 #include "cpuexec.h"
 #include "apu.h"
 #include "dma.h"
-#include "fxemu.h"
 #include "gfx.h"
 #include "soundux.h"
-#include "cheats.h"
-#include "sa1.h"
-#include "spc7110.h"
 
 char String[513];
 
@@ -27,8 +23,6 @@ SSoundData SoundData;
 
 SSettings Settings;
 SDSP1 DSP1;
-SSA1 SA1;
-
 SnesModel M1SNES = {1, 3, 2};
 SnesModel M2SNES = {2, 4, 3};
 SnesModel* Model = &M1SNES;
@@ -38,8 +32,6 @@ int32_t OpAddress = 0;
 CMemory Memory;
 
 uint8_t OpenBus = 0;
-
-FxInit_s SuperFX;
 
 SPPU PPU;
 InternalPPU IPPU;
@@ -66,8 +58,6 @@ uint32_t odd_high[4][16];
 uint32_t odd_low[4][16];
 uint32_t even_high[4][16];
 uint32_t even_low[4][16];
-
-SCheatData Cheat;
 
 #ifdef LAGFIX
 bool finishedFrame = false;

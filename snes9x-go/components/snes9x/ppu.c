@@ -7,14 +7,8 @@
 #include "apu.h"
 #include "dma.h"
 #include "display.h"
-#include "sa1.h"
-#include "sdd1.h"
 #include "srtc.h"
-#include "spc7110.h"
-#include "fxemu.h"
-#include "fxinst.h"
 
-extern FxInit_s SuperFX;
 extern uint8_t mul_brightness [16][32];
 
 uint32_t justifiers = 0xffff00aa;
@@ -96,46 +90,6 @@ void S9xFixColourBrightness()
       IPPU.Green [i] = IPPU.XB [(PPU.CGDATA [i] >> 5) & 0x1f];
       IPPU.Blue [i] = IPPU.XB [(PPU.CGDATA [i] >> 10) & 0x1f];
       IPPU.ScreenColors [i] = BUILD_PIXEL(IPPU.Red [i], IPPU.Green [i], IPPU.Blue [i]);
-   }
-}
-
-static void S9xSetSuperFX(uint8_t Byte, uint16_t Address)
-{
-   uint8_t old_fill_ram;
-   if (!Settings.SuperFX)
-      return;
-
-   old_fill_ram = Memory.FillRAM[Address];
-   Memory.FillRAM[Address] = Byte;
-
-   switch (Address)
-   {
-      case 0x3030:
-         if ((old_fill_ram ^ Byte) & FLG_G)
-         {
-            Memory.FillRAM [Address] = Byte;
-            if (Byte & FLG_G) /* Go flag has been changed */
-               S9xSuperFXExec();
-            else
-               FxFlushCache();
-         }
-         break;
-      case 0x3034:
-      case 0x3036:
-         Memory.FillRAM [Address] &= 0x7f;
-         break;
-      case 0x3038:
-         fx_dirtySCBR();
-         break;
-      case 0x303c:
-         fx_updateRamBank(Byte);
-         break;
-      case 0x301f:
-         Memory.FillRAM [0x3000 + GSU_SFR] |= FLG_G;
-         S9xSuperFXExec();
-         break;
-      default:
-         break;
    }
 }
 
@@ -657,21 +611,10 @@ void S9xSetPPU(uint8_t Byte, uint16_t Address)
    }
    else
    {
-      if (Settings.SA1)
-      {
-         if (Address >= 0x2200 && Address < 0x23ff)
-            S9xSetSA1(Byte, Address);
-         else
-            Memory.FillRAM [Address] = Byte;
-         return;
-      }
-      else if (Address == 0x2801 && Settings.SRTC) /* Dai Kaijyu Monogatari II */
+      if (Address == 0x2801 && Settings.SRTC) /* Dai Kaijyu Monogatari II */
          S9xSetSRTC(Byte, Address);
       else if (Address >= 0x3000 && Address < 0x3300)
-      {
-         S9xSetSuperFX(Byte, Address);
          return;
-      }
    }
    Memory.FillRAM[Address] = Byte;
 }
@@ -928,9 +871,7 @@ uint8_t S9xGetPPU(uint16_t Address)
    }
    else
    {
-      if (Settings.SA1 && Address >= 0x2200)
-         return S9xGetSA1(Address);
-      else if (Settings.SRTC && Address == 2800)
+      if (Settings.SRTC && Address == 2800)
          return S9xGetSRTC(Address);
 
       if (Address <= 0x2fff || Address >= 0x3300)
@@ -1346,18 +1287,12 @@ void S9xSetCPU(uint8_t byte, uint16_t Address)
       case 0x4800:
       case 0x4801:
       case 0x4802:
-      case 0x4803:
-         if (Settings.SPC7110)
-            S9xSetSPC7110(byte, Address);
+      case 0x4803: /* SPC7110 */
          break;
       case 0x4804:
       case 0x4805:
       case 0x4806:
       case 0x4807: /* These registers are used by both the S-DD1 and the SPC7110 */
-         if (Settings.SPC7110)
-            S9xSetSPC7110(byte, Address);
-         else
-            S9xSetSDD1MemoryMap(Address - 0x4804, byte & 7);
          break;
       case 0x4808:
       case 0x4809:
@@ -1397,9 +1332,7 @@ void S9xSetCPU(uint8_t byte, uint16_t Address)
       case 0x4834:
       case 0x4840:
       case 0x4841:
-      case 0x4842:
-         if (Settings.SPC7110)
-            S9xSetSPC7110(byte, Address);
+      case 0x4842: /* SPC7110 */
          break;
       }
    Memory.FillRAM [Address] = byte;
@@ -1639,10 +1572,6 @@ uint8_t S9xGetCPU(uint16_t Address)
       case 0x437F:
          return (uint8_t) Memory.FillRAM [Address | 0xf];
       default:
-         if (Address >= 0x4800 && Settings.SPC7110)
-            return S9xGetSPC7110(Address);
-         if (Address >= 0x4800 && Address <= 0x4807 && Settings.SDD1)
-            return Memory.FillRAM[Address];
          return OpenBus;
       }
 }
@@ -2118,24 +2047,5 @@ void S9xUpdateJoypads()
       Memory.FillRAM [0x421a] = 0x0E;
       Memory.FillRAM [0x421b] = 0;
       S9xUpdateJustifiers();
-   }
-}
-
-void S9xSuperFXExec()
-{
-   if (Settings.SuperFX)
-   {
-      if ((Memory.FillRAM [0x3000 + GSU_SFR] & FLG_G) && (Memory.FillRAM [0x3000 + GSU_SCMR] & 0x18) == 0x18)
-      {
-         int32_t GSUStatus;
-
-         if (!Settings.WinterGold || Settings.StarfoxHack)
-            FxEmulate(~0);
-         else
-            FxEmulate((Memory.FillRAM [0x3000 + GSU_CLSR] & 1) ? 700 : 350);
-         GSUStatus = Memory.FillRAM [0x3000 + GSU_SFR] | (Memory.FillRAM [0x3000 + GSU_SFR + 1] << 8);
-         if ((GSUStatus & (FLG_G | FLG_IRQ)) == FLG_IRQ)
-            S9xSetIRQ(GSU_IRQ_SOURCE); /* Trigger a GSU IRQ. */
-      }
    }
 }

@@ -7,20 +7,8 @@
 #include "cpuexec.h"
 #include "apu.h"
 #include "dma.h"
-#include "fxemu.h"
-#include "sa1.h"
-#include "cheats.h"
 #include "srtc.h"
-#include "sdd1.h"
-#include "spc7110.h"
 #include "obc1.h"
-
-extern FxInit_s SuperFX;
-
-void S9xResetSuperFX()
-{
-   FxReset(&SuperFX);
-}
 
 void S9xResetCPU()
 {
@@ -69,29 +57,19 @@ void S9xResetCPU()
 
 static void CommonS9xReset()
 {
-   if (Settings.SuperFX)
-      S9xResetSuperFX();
-
    memset(Memory.FillRAM, 0, 0x8000);
    memset(Memory.VRAM, 0x00, 0x10000);
 
-   if (Settings.SPC7110)
-      S9xSpc7110Reset();
    S9xResetCPU();
    S9xResetSRTC();
-   if (Settings.SDD1)
-      S9xResetSDD1();
 
    S9xResetDMA();
    S9xResetAPU();
    S9xResetDSP1();
    if (Settings.OBC1)
       ResetOBC1();
-   S9xSA1Init();
    if (Settings.C4)
       S9xInitC4();
-
-   S9xInitCheatData();
 }
 
 void S9xReset()

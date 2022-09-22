@@ -6,12 +6,6 @@
 #include "cpuexec.h"
 #include "dma.h"
 #include "apu.h"
-#include "sa1.h"
-#include "sdd1emu.h"
-#include "spc7110.h"
-#include "spc7110dec.h"
-
-static uint8_t sdd1_decode_buffer[0x10000];
 
 extern int32_t HDMA_ModeByteCounts [8];
 extern uint8_t* HDMAMemPointers [8];
@@ -28,8 +22,6 @@ void S9xDoDMA(uint8_t Channel)
    int32_t inc;
    SDMA* d;
    bool in_sa1_dma = false;
-   uint8_t* in_sdd1_dma = NULL;
-   uint8_t* spc7110_dma = NULL;
    bool s7_wrap = false;
 
    if (Channel > 7 || CPU.InDMA)
@@ -62,148 +54,6 @@ void S9xDoDMA(uint8_t Channel)
             FLUSH_REDRAW();
          break;
    }
-   if (Settings.SDD1)
-   {
-      if (d->AAddressFixed && Memory.FillRAM [0x4801] > 0)
-      {
-         uint8_t* in_ptr;
-         /* XXX: Should probably verify that we're DMAing from ROM?
-          * And somewhere we should make sure we're not running across a mapping boundary too. */
-         inc = !d->AAddressDecrement ? 1 : -1;
-
-         in_ptr = GetBasePointer(((d->ABank << 16) | d->AAddress));
-         if (in_ptr)
-         {
-            in_ptr += d->AAddress;
-            SDD1_decompress(sdd1_decode_buffer, in_ptr, d->TransferBytes);
-         }
-         in_sdd1_dma = sdd1_decode_buffer;
-      }
-
-      Memory.FillRAM [0x4801] = 0;
-   }
-   if (Settings.SPC7110 && (d->AAddress == 0x4800 || d->ABank == 0x50))
-   {
-      int32_t c, icount;
-      spc7110_dma = &s7r.bank50[0];
-
-      for(c = 0; c < count; c++)
-         s7r.bank50[c] = spc7110dec_read();
-
-      icount       = (s7r.reg4809 | (s7r.reg480A << 8)) - count;
-      s7r.reg4809  = 0x00ff & icount;
-      s7r.reg480A  = (0xff00 & icount) >> 8;
-      inc          = 1;
-      d->AAddress -= count;
-   }
-   if (d->BAddress == 0x18 && SA1.in_char_dma && (d->ABank & 0xf0) == 0x40)
-   {
-      /* Perform packed bitmap to PPU character format conversion on the
-       * data before transmitting it to V-RAM via-DMA. */
-      int32_t i;
-      int32_t num_chars = 1 << ((Memory.FillRAM [0x2231] >> 2) & 7);
-      int32_t depth = (Memory.FillRAM [0x2231] & 3) == 0 ? 8 : (Memory.FillRAM [0x2231] & 3) == 1 ? 4 : 2;
-      int32_t bytes_per_char = 8 * depth;
-      int32_t bytes_per_line = depth * num_chars;
-      int32_t char_line_bytes = bytes_per_char * num_chars;
-      uint32_t addr = (d->AAddress / char_line_bytes) * char_line_bytes;
-      uint8_t* base = GetBasePointer((d->ABank << 16) + addr) + addr;
-      uint8_t* buffer = &Memory.ROM [MAX_ROM_SIZE - 0x10000];
-      uint8_t* p = buffer;
-      uint32_t inc = char_line_bytes - (d->AAddress % char_line_bytes);
-      uint32_t char_count = inc / bytes_per_char;
-      in_sa1_dma = true;
-
-      switch (depth)
-      {
-         case 2:
-            for (i = 0 ; i < count ; i += inc, base += char_line_bytes, inc = char_line_bytes, char_count = num_chars)
-            {
-               uint32_t j;
-               uint8_t* line = base + (num_chars - char_count) * 2;
-               for (j = 0 ; j < char_count && p - buffer < count ; j++, line += 2)
-               {
-                  int32_t b, l;
-                  uint8_t* q = line;
-                  for (l = 0; l < 8; l++, q += bytes_per_line)
-                  {
-                     for (b = 0; b < 2; b++)
-                     {
-                        uint8_t r = *(q + b);
-                        p[0] = (p[0] << 1) | ((r >> 0) & 1);
-                        p[1] = (p[1] << 1) | ((r >> 1) & 1);
-                        p[0] = (p[0] << 1) | ((r >> 2) & 1);
-                        p[1] = (p[1] << 1) | ((r >> 3) & 1);
-                        p[0] = (p[0] << 1) | ((r >> 4) & 1);
-                        p[1] = (p[1] << 1) | ((r >> 5) & 1);
-                        p[0] = (p[0] << 1) | ((r >> 6) & 1);
-                        p[1] = (p[1] << 1) | ((r >> 7) & 1);
-                     }
-                     p += 2;
-                  }
-               }
-            }
-            break;
-         case 4:
-            for (i = 0 ; i < count ; i += inc, base += char_line_bytes, inc = char_line_bytes, char_count = num_chars)
-            {
-               uint32_t j;
-               uint8_t* line = base + (num_chars - char_count) * 4;
-               for (j = 0 ; j < char_count && p - buffer < count ; j++, line += 4)
-               {
-                  uint8_t* q = line;
-                  int32_t b, l;
-                  for (l = 0; l < 8; l++, q += bytes_per_line)
-                  {
-                     for (b = 0; b < 4; b++)
-                     {
-                        uint8_t r = *(q + b);
-                        p[0]  = (p[0]  << 1) | ((r >> 0) & 1);
-                        p[1]  = (p[1]  << 1) | ((r >> 1) & 1);
-                        p[16] = (p[16] << 1) | ((r >> 2) & 1);
-                        p[17] = (p[17] << 1) | ((r >> 3) & 1);
-                        p[0]  = (p[0]  << 1) | ((r >> 4) & 1);
-                        p[1]  = (p[1]  << 1) | ((r >> 5) & 1);
-                        p[16] = (p[16] << 1) | ((r >> 6) & 1);
-                        p[17] = (p[17] << 1) | ((r >> 7) & 1);
-                     }
-                     p += 2;
-                  }
-                  p += 32 - 16;
-               }
-            }
-            break;
-         case 8:
-            for(i = 0 ; i < count ; i += inc, base += char_line_bytes, inc = char_line_bytes, char_count = num_chars)
-            {
-               uint8_t* line = base + (num_chars - char_count) * 8;
-               uint32_t j;
-               for(j = 0 ; j < char_count && p - buffer < count ; j++, line += 8)
-               {
-                  uint8_t* q = line;
-                  int32_t b, l;
-                  for (l = 0; l < 8; l++, q += bytes_per_line)
-                  {
-                     for (b = 0; b < 8; b++)
-                     {
-                        uint8_t r = *(q + b);
-                        p[0]  = (p[0]  << 1) | ((r >> 0) & 1);
-                        p[1]  = (p[1]  << 1) | ((r >> 1) & 1);
-                        p[16] = (p[16] << 1) | ((r >> 2) & 1);
-                        p[17] = (p[17] << 1) | ((r >> 3) & 1);
-                        p[32] = (p[32] << 1) | ((r >> 4) & 1);
-                        p[33] = (p[33] << 1) | ((r >> 5) & 1);
-                        p[48] = (p[48] << 1) | ((r >> 6) & 1);
-                        p[49] = (p[49] << 1) | ((r >> 7) & 1);
-                     }
-                     p += 2;
-                  }
-                  p += 64 - 16;
-               }
-            }
-            break;
-      }
-   }
 
    if (!d->TransferDirection)
    {
@@ -233,16 +83,6 @@ void S9xDoDMA(uint8_t Channel)
       if (in_sa1_dma)
       {
          base = &Memory.ROM [MAX_ROM_SIZE - 0x10000];
-         p = 0;
-      }
-      if (in_sdd1_dma)
-      {
-         base = in_sdd1_dma;
-         p = 0;
-      }
-      if (spc7110_dma)
-      {
-         base = spc7110_dma;
          p = 0;
       }
       if (inc > 0)
@@ -544,15 +384,8 @@ void S9xDoDMA(uint8_t Channel)
    IAPU.APUExecuting = Settings.APUEnabled;
    APU_EXECUTE();
 #endif
-   if (Settings.SuperFX)
-      while (CPU.Cycles > CPU.NextEvent)
-         S9xDoHBlankProcessing_SFX();
-   else
-      while (CPU.Cycles > CPU.NextEvent)
-         S9xDoHBlankProcessing_NoSFX();
-
-   if (Settings.SPC7110 && spc7110_dma && s7_wrap)
-      free(spc7110_dma);
+   while (CPU.Cycles > CPU.NextEvent)
+      S9xDoHBlankProcessing();
 
 update_address:
    /* Super Punch-Out requires that the A-BUS address be updated after the DMA transfer. */

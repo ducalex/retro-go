@@ -8,8 +8,6 @@
 #include "snes9x.h"
 #include "memmap.h"
 #include "apu.h"
-#include "sa1.h"
-#include "spc7110.h"
 #include "cpuexec.h"
 #include "cpuaddr.h"
 #include "cpuops.h"

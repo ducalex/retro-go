@@ -8,7 +8,6 @@
 #include "display.h"
 #include "gfx.h"
 #include "apu.h"
-#include "cheats.h"
 
 
 #define M7 19
@@ -225,86 +224,8 @@ bool S9xInitGFX(void)
    GFX.PPLx2 = GFX.Pitch;
    S9xFixColourBrightness();
 
-#if defined(USE_OLD_COLOUR_OPS)
-   /* Pre-1.60 colour operations */
-   if (!(GFX.X2 = (uint16_t*) malloc(sizeof(uint16_t) * 0x10000)))
-      return false;
-
-   if (!(GFX.ZERO_OR_X2 = (uint16_t*) malloc(sizeof(uint16_t) * 0x10000)) || !(GFX.ZERO = (uint16_t*) malloc(sizeof(uint16_t) * 0x10000)))
-   {
-      if (GFX.ZERO_OR_X2)
-      {
-         free(GFX.ZERO_OR_X2);
-         GFX.ZERO_OR_X2 = NULL;
-      }
-      if (GFX.X2)
-      {
-         free(GFX.X2);
-         GFX.X2 = NULL;
-      }
-      return false;
-   }
-
-   /* Build a lookup table that multiplies a packed RGB value by 2 with
-    * saturation. */
-   for (r = 0; r <= MAX_RED; r++)
-   {
-      uint32_t r2 = r << 1;
-      if (r2 > MAX_RED)
-         r2 = MAX_RED;
-      for (g = 0; g <= MAX_GREEN; g++)
-      {
-         uint32_t g2 = g << 1;
-         if (g2 > MAX_GREEN)
-            g2 = MAX_GREEN;
-         for (b = 0; b <= MAX_BLUE; b++)
-         {
-            uint32_t b2 = b << 1;
-            if (b2 > MAX_BLUE)
-               b2 = MAX_BLUE;
-            GFX.X2 [BUILD_PIXEL2(r, g, b)] = BUILD_PIXEL2(r2, g2, b2);
-            GFX.X2 [BUILD_PIXEL2(r, g, b) & ~ALPHA_BITS_MASK] = BUILD_PIXEL2(r2, g2, b2);
-         }
-      }
-   }
-   memset(GFX.ZERO, 0, 0x10000 * sizeof(uint16_t));
-   memset(GFX.ZERO_OR_X2, 0, 0x10000 * sizeof(uint16_t));
-   /* Build a lookup table that if the top bit of the color value is zero
-    * then the value is zero, otherwise multiply the value by 2. Used by
-    * the color subtraction code. */
-   for (r = 0; r <= MAX_RED; r++)
-   {
-      uint32_t r2 = r;
-      if ((r2 & 0x10) == 0)
-         r2 = 0;
-      else
-         r2 = (r2 << 1) & MAX_RED;
-
-      for (g = 0; g <= MAX_GREEN; g++)
-      {
-         uint32_t g2 = g;
-         if ((g2 & GREEN_HI_BIT) == 0)
-            g2 = 0;
-         else
-            g2 = (g2 << 1) & MAX_GREEN;
-
-         for (b = 0; b <= MAX_BLUE; b++)
-         {
-            uint32_t b2 = b;
-            if ((b2 & 0x10) == 0)
-               b2 = 0;
-            else
-               b2 = (b2 << 1) & MAX_BLUE;
-
-            GFX.ZERO_OR_X2 [BUILD_PIXEL2(r, g, b)] = BUILD_PIXEL2(r2, g2, b2);
-            GFX.ZERO_OR_X2 [BUILD_PIXEL2(r, g, b) & ~ALPHA_BITS_MASK] = BUILD_PIXEL2(MAX(1, r2), MAX(1, g2), MAX(1, b2));
-         }
-      }
-   }
-#else
    if (!(GFX.ZERO = (uint16_t*) malloc(sizeof(uint16_t) * 0x10000)))
       return false;
-#endif
 
    /* Build a lookup table that if the top bit of the color value is zero
     * then the value is zero, otherwise its just the value. */
@@ -342,19 +263,6 @@ bool S9xInitGFX(void)
 void S9xDeinitGFX(void)
 {
    /* Free any memory allocated in S9xInitGFX */
-#if defined(USE_OLD_COLOUR_OPS)
-   /* Pre-1.60 colour operations */
-   if (GFX.X2)
-   {
-      free(GFX.X2);
-      GFX.X2 = NULL;
-   }
-   if (GFX.ZERO_OR_X2)
-   {
-      free(GFX.ZERO_OR_X2);
-      GFX.ZERO_OR_X2 = NULL;
-   }
-#endif
    if (GFX.ZERO)
    {
       free(GFX.ZERO);
@@ -490,8 +398,6 @@ void S9xEndScreenRefresh(void)
 #ifdef LAGFIX
    finishedFrame = true;
 #endif
-
-   S9xApplyCheats();
 
    if (CPU.SRAMModified)
       CPU.SRAMModified = false;

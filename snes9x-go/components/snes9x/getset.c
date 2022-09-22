@@ -3,10 +3,7 @@
 #include "ppu.h"
 #include "dsp1.h"
 #include "cpuexec.h"
-#include "sa1.h"
-#include "spc7110.h"
 #include "obc1.h"
-#include "seta.h"
 
 extern uint8_t OpenBus;
 
@@ -43,20 +40,14 @@ uint8_t S9xGetByte(uint32_t Address)
    case MAP_RONLY_SRAM:
    case MAP_HIROM_SRAM:
       return Memory.SRAM[((Address & 0x7fff) - 0x6000 + ((Address & 0xf0000) >> 3)) & Memory.SRAMMask];
-   case MAP_BWRAM:
-      return Memory.BWRAM[(Address & 0x7fff) - 0x6000];
    case MAP_C4:
       return S9xGetC4(Address & 0xffff);
+   case MAP_BWRAM:
    case MAP_SPC7110_ROM:
-      return S9xGetSPC7110Byte(Address);
    case MAP_SPC7110_DRAM:
-      return S9xGetSPC7110(0x4800);
    case MAP_OBC_RAM:
-      return GetOBC1(Address & 0xffff);
    case MAP_SETA_DSP:
-      return S9xGetSetaDSP(Address);
    case MAP_SETA_RISC:
-      return S9xGetST018(Address);
    default:
       return OpenBus;
    }
@@ -110,24 +101,14 @@ uint16_t S9xGetWord(uint32_t Address)
       /* BJ: no FAST_LSB_WORD_ACCESS here, since if Memory.SRAMMask=0x7ff
        * then the high byte doesn't follow the low byte. */
       return *(Memory.SRAM + (((Address & 0x7fff) - 0x6000 + ((Address & 0xf0000) >> 3)) & Memory.SRAMMask)) | (*(Memory.SRAM + ((((Address + 1) & 0x7fff) - 0x6000 + (((Address + 1) & 0xf0000) >> 3)) & Memory.SRAMMask)) << 8);
-   case MAP_BWRAM:
-#ifdef FAST_LSB_WORD_ACCESS
-      return *(uint16_t*) (Memory.BWRAM + ((Address & 0x7fff) - 0x6000));
-#else
-      return *(Memory.BWRAM + ((Address & 0x7fff) - 0x6000)) | (*(Memory.BWRAM + (((Address + 1) & 0x7fff) - 0x6000)) << 8);
-#endif
    case MAP_C4:
       return S9xGetC4(Address & 0xffff) | (S9xGetC4((Address + 1) & 0xffff) << 8);
+   case MAP_BWRAM:
    case MAP_SPC7110_ROM:
-      return S9xGetSPC7110Byte(Address) | (S9xGetSPC7110Byte(Address + 1)) << 8;
    case MAP_SPC7110_DRAM:
-      return S9xGetSPC7110(0x4800) | (S9xGetSPC7110(0x4800) << 8);
    case MAP_OBC_RAM:
-      return GetOBC1(Address & 0xFFFF) | (GetOBC1((Address + 1) & 0xFFFF) << 8);
    case MAP_SETA_DSP:
-      return S9xGetSetaDSP(Address) | (S9xGetSetaDSP((Address + 1)) << 8);
    case MAP_SETA_RISC:
-      return S9xGetST018(Address) | (S9xGetST018((Address + 1)) << 8);
    default:
       return OpenBus | (OpenBus << 8);
    }
@@ -145,11 +126,6 @@ void S9xSetByte(uint8_t Byte, uint32_t Address)
    if (SetAddress >= (uint8_t*) MAP_LAST)
    {
       SetAddress += Address & 0xffff;
-      if (SetAddress == SA1.WaitByteAddress1 || SetAddress == SA1.WaitByteAddress2)
-      {
-         SA1.Executing = SA1.S9xOpcodes != NULL;
-         SA1.WaitCounter = 0;
-      }
       *SetAddress = Byte;
       return;
    }
@@ -180,12 +156,9 @@ void S9xSetByte(uint8_t Byte, uint32_t Address)
       }
       return;
    case MAP_BWRAM:
-      *(Memory.BWRAM + ((Address & 0x7fff) - 0x6000)) = Byte;
-      CPU.SRAMModified = true;
       return;
    case MAP_SA1RAM:
       *(Memory.SRAM + (Address & 0xffff)) = Byte;
-      SA1.Executing = !SA1.Waiting;
       break;
    case MAP_C4:
       S9xSetC4(Byte, Address & 0xffff);
@@ -194,11 +167,7 @@ void S9xSetByte(uint8_t Byte, uint32_t Address)
       SetOBC1(Byte, Address & 0xFFFF);
       return;
    case MAP_SETA_DSP:
-      S9xSetSetaDSP(Byte, Address);
-      return;
    case MAP_SETA_RISC:
-      S9xSetST018(Byte, Address);
-      return;
    default:
       return;
    }
@@ -225,11 +194,6 @@ void S9xSetWord(uint16_t Word, uint32_t Address)
    if (SetAddress >= (uint8_t*) MAP_LAST)
    {
       SetAddress += Address & 0xffff;
-      if (SetAddress == SA1.WaitByteAddress1 || SetAddress == SA1.WaitByteAddress2)
-      {
-         SA1.Executing = SA1.S9xOpcodes != NULL;
-         SA1.WaitCounter = 0;
-      }
 #ifdef FAST_LSB_WORD_ACCESS
       *(uint16_t*)SetAddress = Word;
 #else
@@ -274,18 +238,10 @@ void S9xSetWord(uint16_t Word, uint32_t Address)
       }
       return;
    case MAP_BWRAM:
-#ifdef FAST_LSB_WORD_ACCESS
-      *(uint16_t*)(Memory.BWRAM + ((Address & 0x7fff) - 0x6000)) = Word;
-#else
-      *(Memory.BWRAM + ((Address & 0x7fff) - 0x6000)) = (uint8_t) Word;
-      *(Memory.BWRAM + (((Address + 1) & 0x7fff) - 0x6000)) = (uint8_t) (Word >> 8);
-#endif
-      CPU.SRAMModified = true;
       return;
    case MAP_SA1RAM:
       *(Memory.SRAM + (Address & 0xffff)) = (uint8_t) Word;
       *(Memory.SRAM + ((Address + 1) & 0xffff)) = (uint8_t)(Word >> 8);
-      SA1.Executing = !SA1.Waiting;
       break;
    case MAP_C4:
       S9xSetC4(Word & 0xff, Address & 0xffff);
@@ -296,13 +252,7 @@ void S9xSetWord(uint16_t Word, uint32_t Address)
       SetOBC1((uint8_t)(Word >> 8), (Address + 1) & 0xffff);
       return;
    case MAP_SETA_DSP:
-      S9xSetSetaDSP(Word & 0xff, Address);
-      S9xSetSetaDSP((uint8_t)(Word >> 8), (Address + 1));
-      return;
    case MAP_SETA_RISC:
-      S9xSetST018(Word & 0xff, Address);
-      S9xSetST018((uint8_t)(Word >> 8), (Address + 1));
-      return;
    default:
       return;
    }
@@ -313,14 +263,8 @@ uint8_t* GetBasePointer(uint32_t Address)
    uint8_t* GetAddress = Memory.Map [(Address >> MEMMAP_SHIFT) & MEMMAP_MASK];
    if (GetAddress >= (uint8_t*) MAP_LAST)
       return GetAddress;
-   if (Settings.SPC7110 && ((Address & 0x7FFFFF) == 0x4800))
-      return s7r.bank50;
    switch ((intptr_t) GetAddress)
    {
-   case MAP_SPC7110_DRAM:
-      return s7r.bank50;
-   case MAP_SPC7110_ROM:
-      return Get7110BasePtr(Address);
    case MAP_PPU: /*just a guess, but it looks like this should match the CPU as a source. */
    case MAP_CPU: /*fixes Ogre Battle's green lines */
    case MAP_OBC_RAM:
@@ -332,7 +276,7 @@ uint8_t* GetBasePointer(uint32_t Address)
    case MAP_SETA_DSP:
       return Memory.SRAM;
    case MAP_BWRAM:
-      return Memory.BWRAM - 0x6000;
+      return NULL;
    case MAP_HIROM_SRAM:
       return Memory.SRAM - 0x6000;
    case MAP_C4:
@@ -348,13 +292,8 @@ uint8_t* S9xGetMemPointer(uint32_t Address)
    if (GetAddress >= (uint8_t*) MAP_LAST)
       return GetAddress + (Address & 0xffff);
 
-   if (Settings.SPC7110 && ((Address & 0x7FFFFF) == 0x4800))
-      return s7r.bank50;
-
    switch ((intptr_t) GetAddress)
    {
-   case MAP_SPC7110_DRAM:
-      return &s7r.bank50[Address & 0xffff];
    case MAP_PPU:
       return Memory.FillRAM + (Address & 0xffff);
    case MAP_CPU:
@@ -365,7 +304,7 @@ uint8_t* S9xGetMemPointer(uint32_t Address)
    case MAP_LOROM_SRAM:
       return Memory.SRAM + (Address & 0xffff);
    case MAP_BWRAM:
-      return Memory.BWRAM - 0x6000 + (Address & 0xffff);
+      return NULL;
    case MAP_HIROM_SRAM:
       return Memory.SRAM - 0x6000 + (Address & 0xffff);
    case MAP_C4:
@@ -399,9 +338,9 @@ void S9xSetPCBase(uint32_t Address)
       case MAP_DSP:
          CPU.PCBase = Memory.FillRAM - 0x6000;
          break;
-      case MAP_BWRAM:
-         CPU.PCBase = Memory.BWRAM - 0x6000;
-         break;
+      // case MAP_BWRAM:
+      //    CPU.PCBase = Memory.BWRAM - 0x6000;
+      //    break;
       case MAP_HIROM_SRAM:
          CPU.PCBase = Memory.SRAM - 0x6000;
          break;

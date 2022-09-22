@@ -12,14 +12,6 @@ typedef struct
 #include "memmap.h"
 #include "65c816.h"
 
-#define DO_HBLANK_CHECK_SFX() \
-    if (CPU.Cycles >= CPU.NextEvent) \
-       S9xDoHBlankProcessing_SFX ();
-
-#define DO_HBLANK_CHECK_NoSFX() \
-    if (CPU.Cycles >= CPU.NextEvent) \
-       S9xDoHBlankProcessing_NoSFX ();
-
 typedef struct
 {
    uint8_t*   UNUSED1;
@@ -40,8 +32,7 @@ typedef struct
 void S9xMainLoop(void);
 void S9xReset(void);
 void S9xSoftReset(void);
-void S9xDoHBlankProcessing_SFX(void);
-void S9xDoHBlankProcessing_NoSFX(void);
+void S9xDoHBlankProcessing(void);
 void S9xClearIRQ(uint32_t source);
 void S9xSetIRQ(uint32_t source);
 
