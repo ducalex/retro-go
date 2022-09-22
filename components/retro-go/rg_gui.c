@@ -1,4 +1,5 @@
 #include "rg_system.h"
+#include "rg_network.h"
 #include "rg_gui.h"
 
 #include <cJSON.h>
@@ -394,6 +395,11 @@ void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resampl
 
 void rg_gui_draw_battery(int x_pos, int y_pos)
 {
+    if (x_pos < 0)
+        x_pos += gui.screen_width;
+    if (y_pos < 0)
+        y_pos += gui.screen_height;
+
     int width = 20, height = 10;
     int width_fill = width;
     rg_color_t color_fill = C_DARK_GRAY;
@@ -412,13 +418,35 @@ void rg_gui_draw_battery(int x_pos, int y_pos)
             color_fill = C_FOREST_GREEN;
     }
 
-    if (x_pos < 0) x_pos += gui.screen_width;
-    if (y_pos < 0) y_pos += gui.screen_height;
-
     rg_gui_draw_rect(x_pos, y_pos, width + 2, height, 1, color_border, -1);
     rg_gui_draw_rect(x_pos + width + 2, y_pos + 2, 2, height - 4, 1, color_border, -1);
     rg_gui_draw_rect(x_pos + 1, y_pos + 1, width_fill, height - 2, 0, 0, color_fill);
     rg_gui_draw_rect(x_pos + 1 + width_fill, y_pos + 1, width - width_fill, 8, 0, 0, color_empty);
+}
+
+void rg_gui_draw_radio(int x_pos, int y_pos)
+{
+    if (x_pos < 0)
+        x_pos += gui.screen_width;
+    if (y_pos < 0)
+        y_pos += gui.screen_height;
+
+    rg_network_t net = rg_network_get_info();
+    rg_color_t color_fill = net.connected ? C_GREEN : -1;
+    rg_color_t color_border = net.connected ? C_SILVER : C_DIM_GRAY;
+
+    if (!net.initialized)
+        return;
+
+    int seg_width = 4;
+    y_pos += 6;
+    rg_gui_draw_rect(x_pos, y_pos, seg_width, 4, 1, color_border, color_fill);
+    x_pos += seg_width + 2;
+    y_pos -= 3;
+    rg_gui_draw_rect(x_pos, y_pos, seg_width, 7, 1, color_border, color_fill);
+    x_pos += seg_width + 2;
+    y_pos -= 3;
+    rg_gui_draw_rect(x_pos, y_pos, seg_width, 10, 1, color_border, color_fill);
 }
 
 void rg_gui_draw_hourglass(void)
@@ -976,6 +1004,7 @@ static void draw_game_status_bars(void)
     rg_gui_draw_text(0, 0, gui.screen_width, header, C_WHITE, C_BLACK, RG_TEXT_ALIGN_TOP);
     rg_gui_draw_text(0, 0, gui.screen_width, footer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_BOTTOM);
     rg_gui_draw_battery(-26, 3);
+    rg_gui_draw_radio(-62, 3);
 }
 
 int rg_gui_options_menu(void)
@@ -1056,8 +1085,11 @@ int rg_gui_about_menu(const rg_gui_option_t *extra_options)
         strcat(build_ver, ")");
     }
 
-    // rg_network_t *info = rg_network_get_info();
-    sprintf(network_str, "%.30s", "unavailable");
+    rg_network_t info = rg_network_get_info();
+    if (info.connected) sprintf(network_str, "%s\n%s", info.ssid, info.local_addr);
+    else if (info.connecting) strcpy(network_str, "connecting...");
+    else if (info.connected) strcpy(network_str, "disconnected");
+    else strcpy(network_str, "unavailable");
 
     int sel = rg_gui_dialog("Retro-Go", options, -1);
 

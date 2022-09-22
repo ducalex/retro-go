@@ -10,7 +10,7 @@ PROJECT_NAME = "Retro-Go"
 PROJECT_ICON = "icon.raw"
 PROJECT_APPS = {
   # Project name  Type, SubType, Size
-  'launcher':     [0, 0, 327680],
+  'launcher':     [0, 0, 786432],
   'nofrendo-go':  [0, 0, 393216],
   'gnuboy-go':    [0, 0, 327680],
   'smsplusgx-go': [0, 0, 393216],

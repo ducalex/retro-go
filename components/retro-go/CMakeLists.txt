@@ -1,9 +1,9 @@
 set(COMPONENT_SRCDIRS ". fonts libs/netplay libs/lodepng")
 set(COMPONENT_ADD_INCLUDEDIRS ". libs/netplay libs/lodepng")
 if("${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}" VERSION_GREATER_EQUAL "5.0")
-    set(COMPONENT_REQUIRES "spi_flash fatfs app_update driver esp_timer esp_adc json")
+    set(COMPONENT_REQUIRES "spi_flash fatfs nvs_flash app_update driver esp_timer esp_adc json")
 else()
-    set(COMPONENT_REQUIRES "spi_flash fatfs app_update esp_adc_cal esp32 json")
+    set(COMPONENT_REQUIRES "spi_flash fatfs nvs_flash app_update esp_adc_cal esp32 json")
 endif()
 register_component()
 
@@ -21,6 +21,10 @@ set_source_files_properties(
     PROPERTIES COMPILE_FLAGS
     -O3
 )
+
+if($ENV{RG_ENABLE_WIFI})
+    component_compile_options(-DRG_ENABLE_WIFI)
+endif()
 
 if($ENV{RG_ENABLE_PROFILING})
     component_compile_options(-DRG_ENABLE_PROFILING -finstrument-functions)

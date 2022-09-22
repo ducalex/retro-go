@@ -24,6 +24,10 @@ macro(rg_setup_compile_options)
         component_compile_options(-O3)
     endif()
 
+    if($ENV{RG_ENABLE_WIFI})
+        component_compile_options(-DRG_ENABLE_WIFI)
+    endif()
+
     if($ENV{RG_ENABLE_PROFILING})
         # Still debating whether -fno-inline is necessary or not...
         component_compile_options(-DRG_ENABLE_PROFILING -finstrument-functions)

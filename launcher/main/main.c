@@ -1,4 +1,5 @@
 #include <rg_system.h>
+#include <rg_network.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -317,14 +318,13 @@ void app_main(void)
         try_migrate();
     }
 
-    rg_gui_set_buffered(true);
+    rg_network_init();
+    rg_network_wifi_start(RG_WIFI_STA, NULL, NULL, 0);
 
     gui_init();
     applications_init();
     bookmarks_init();
     themes_init();
-
-    ftp_server_start();
 
     retro_loop();
 }

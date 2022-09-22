@@ -53,6 +53,7 @@ void gui_init(void)
     // Always enter browse mode when leaving an emulator
     gui.browse = gui.start_screen == 2 || (!gui.start_screen && rg_system_get_app()->bootType == RG_RST_RESTART);
     gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
+    rg_gui_set_buffered(true);
 }
 
 void gui_event(gui_event_t event, tab_t *tab)
@@ -404,6 +405,7 @@ void gui_draw_status(tab_t *tab)
     char *txt_right = tab->status[tab->status[1].right[0] ? 1 : 0].right;
 
     rg_gui_draw_battery(-27, 3);
+    rg_gui_draw_radio(-54, 3);
     rg_gui_draw_text(status_x, status_y, gui.width, txt_right, C_SNOW, C_TRANSPARENT, RG_TEXT_ALIGN_LEFT);
     rg_gui_draw_text(status_x, status_y, 0, txt_left, C_WHITE, C_TRANSPARENT, RG_TEXT_ALIGN_RIGHT);
 }
