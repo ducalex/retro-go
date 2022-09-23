@@ -27,7 +27,7 @@ static rg_app_t *app;
 
 static bool apu_enabled = true;
 static bool lowpass_filter = false;
-static int frameskip = 3;
+static int frameskip = 4;
 
 bool overclock_cycles = false;
 int one_c = 4, slow_one_c = 5, two_c = 6;
@@ -185,13 +185,11 @@ bool S9xInitDisplay(void)
 {
     GFX.Pitch = SNES_WIDTH * 2;
     GFX.ZPitch = SNES_WIDTH;
-    GFX.Screen = (uint8_t *)malloc(GFX.Pitch * (SNES_HEIGHT_EXTENDED + 2)) + SNES_HEIGHT_EXTENDED;
-    GFX.SubScreen = (uint8_t *)malloc(GFX.Pitch * (SNES_HEIGHT_EXTENDED + 2)) + SNES_HEIGHT_EXTENDED;
-    GFX.ZBuffer = (uint8_t *)malloc(GFX.ZPitch * (SNES_HEIGHT_EXTENDED + 2)) + SNES_HEIGHT_EXTENDED;
-    GFX.SubZBuffer = (uint8_t *)malloc(GFX.ZPitch * (SNES_HEIGHT_EXTENDED + 2)) + SNES_HEIGHT_EXTENDED;
-    GFX.Delta = (GFX.SubScreen - GFX.Screen) >> 1;
-    updates[0].buffer = GFX.Screen;
-    return true;
+    GFX.Screen = currentUpdate->buffer;
+    GFX.SubScreen = malloc(GFX.Pitch * SNES_HEIGHT_EXTENDED);
+    GFX.ZBuffer = malloc(GFX.ZPitch * SNES_HEIGHT_EXTENDED);
+    GFX.SubZBuffer = malloc(GFX.ZPitch * SNES_HEIGHT_EXTENDED);
+    return GFX.Screen && GFX.SubScreen && GFX.ZBuffer && GFX.SubZBuffer;
 }
 
 void S9xDeinitDisplay(void)
@@ -266,18 +264,17 @@ void app_main(void)
 	};
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
 
+    updates[0].buffer = malloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2);
+
     rg_display_set_source_format(SNES_WIDTH, SNES_HEIGHT, 0, 0, SNES_WIDTH * 2, RG_PIXEL_565_LE);
 
     update_keymap(rg_settings_get_number(NS_APP, SETTING_KEYMAP, 0));
 
-    memset(&Settings, 0, sizeof(Settings));
-    Settings.JoystickEnabled = false;
     Settings.CyclesPercentage = 100;
     Settings.H_Max = SNES_CYCLES_PER_SCANLINE;
     Settings.FrameTimePAL = 20000;
     Settings.FrameTimeNTSC = 16667;
     Settings.ControllerOption = SNES_JOYPAD;
-    Settings.ApplyCheats = false;
     Settings.HBlankStart = (256 * Settings.H_Max) / SNES_HCOUNTER_MAX;
     Settings.SoundPlaybackRate = AUDIO_SAMPLE_RATE;
     Settings.DisableSoundEcho = false;
