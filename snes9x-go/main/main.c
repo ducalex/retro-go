@@ -332,9 +332,9 @@ void app_main(void)
     if (apu_enabled)
     {
         if (lowpass_filter)
-            S9xMixSamplesLowPass(&mixbuffer, AUDIO_BUFFER_LENGTH << 1, (60 * 65536) / 100);
+            S9xMixSamplesLowPass((void *)mixbuffer, AUDIO_BUFFER_LENGTH << 1, (60 * 65536) / 100);
         else
-            S9xMixSamples(&mixbuffer, AUDIO_BUFFER_LENGTH << 1);
+            S9xMixSamples((void *)mixbuffer, AUDIO_BUFFER_LENGTH << 1);
     }
 #endif
 

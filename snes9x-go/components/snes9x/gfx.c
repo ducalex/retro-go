@@ -598,7 +598,7 @@ void S9xSetupOBJ(void)
       // uint8_t OBJOnLine[SNES_HEIGHT_EXTENDED][128];
 
       // We can't afford 30K on the stack. But maybe we have a better buffer to abuse?
-      uint8_t (*OBJOnLine)[128] = GFX.SubScreen;
+      uint8_t (*OBJOnLine)[128] = (void *)GFX.SubScreen;
 
       /* We only initialise this per line, as needed. [Neb]
        * Bonus: We can quickly avoid looping if a line has no OBJs. */

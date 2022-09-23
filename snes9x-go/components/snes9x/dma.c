@@ -21,7 +21,6 @@ void S9xDoDMA(uint8_t Channel)
    int32_t count;
    int32_t inc;
    SDMA* d;
-   bool s7_wrap = false;
 
    if (Channel > 7 || CPU.InDMA)
       return;
