@@ -172,7 +172,8 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
 			option++;
 
 			dismissed = rg_gui_dialog("Controls", options, 0) == -1;
-			rg_display_clear(C_BLACK);
+            rg_display_queue_update(currentUpdate, NULL);
+            rg_display_sync();
 		}
 	}
 
