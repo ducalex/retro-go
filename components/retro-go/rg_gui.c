@@ -471,6 +471,38 @@ void rg_gui_clear(rg_color_t color)
         rg_display_clear(color);
 }
 
+void rg_gui_draw_status_bars(void)
+{
+    int max_len = RG_MIN(gui.screen_width / RG_MAX(gui.style.font->width, 7), 99);
+    char header[100] = {0};
+    char footer[100] = {0};
+
+    const rg_app_t *app = rg_system_get_app();
+    rg_stats_t stats = rg_system_get_counters();
+
+    if (!app->initialized || app->isLauncher)
+        return;
+
+    snprintf(header, 100, "SPEED: %.0f%% (%.0f/%.0f) / BUSY: %.0f%%",
+        round(stats.totalFPS / app->refreshRate * 100.f),
+        round(stats.totalFPS - stats.skippedFPS),
+        round(stats.totalFPS),
+        round(stats.busyPercent));
+
+    if (app->romPath && strlen(app->romPath) > max_len)
+        snprintf(footer, 100, "...%s", app->romPath + (strlen(app->romPath) - (max_len - 3)));
+    else if (app->romPath)
+        snprintf(footer, 100, "%s", app->romPath);
+    else
+        snprintf(footer, 100, "Retro-Go %s", app->version);
+
+    rg_gui_draw_text(0, 0, gui.screen_width, header, C_WHITE, C_BLACK, RG_TEXT_ALIGN_TOP);
+    rg_gui_draw_text(0, 0, gui.screen_width, footer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_BOTTOM);
+
+    rg_gui_draw_battery(-26, 3);
+    rg_gui_draw_radio(-54, 3);
+}
+
 static size_t get_dialog_items_count(const rg_gui_option_t *options)
 {
     if (options == NULL)
@@ -668,6 +700,7 @@ int rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, int s
     }
     RG_LOGI("text_buffer usage = %d\n", (intptr_t)(text_buffer_ptr - text_buffer));
 
+    rg_gui_draw_status_bars();
     rg_gui_draw_dialog(title, options, sel);
     rg_input_wait_for_key(RG_KEY_ALL, false);
     rg_task_delay(100);
@@ -727,6 +760,9 @@ int rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, int s
 
         if (event == RG_DIALOG_CLOSE)
             break;
+
+        if (sel_old == -1)
+            rg_gui_draw_status_bars();
 
         if (sel_old != sel)
         {
@@ -981,32 +1017,6 @@ static rg_gui_event_t font_type_cb(rg_gui_option_t *option, rg_gui_event_t event
     return RG_DIALOG_VOID;
 }
 
-static void draw_game_status_bars(void)
-{
-    int max_len = RG_MIN(gui.screen_width / RG_MAX(gui.style.font->width, 7), 99);
-    char header[100] = {0};
-    char footer[100] = {0};
-
-    rg_stats_t stats = rg_system_get_counters();
-    const rg_app_t *app = rg_system_get_app();
-
-    snprintf(header, 100, "SPEED: %.0f%% (%.0f/%.0f) / BUSY: %.0f%%",
-        round(stats.totalFPS / app->refreshRate * 100.f),
-        round(stats.totalFPS - stats.skippedFPS),
-        round(stats.totalFPS),
-        round(stats.busyPercent));
-
-    if (app->romPath && strlen(app->romPath) > max_len)
-        snprintf(footer, 100, "...%s", app->romPath + (strlen(app->romPath) - (max_len - 3)));
-    else if (app->romPath)
-        snprintf(footer, 100, "%s", app->romPath);
-
-    rg_gui_draw_text(0, 0, gui.screen_width, header, C_WHITE, C_BLACK, RG_TEXT_ALIGN_TOP);
-    rg_gui_draw_text(0, 0, gui.screen_width, footer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_BOTTOM);
-    rg_gui_draw_battery(-26, 3);
-    rg_gui_draw_radio(-62, 3);
-}
-
 int rg_gui_options_menu(void)
 {
     rg_gui_option_t options[24];
@@ -1039,9 +1049,6 @@ int rg_gui_options_menu(void)
     *opt++ = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
 
     rg_audio_set_mute(true);
-
-    if (!app->isLauncher)
-        draw_game_status_bars();
 
     int sel = rg_gui_dialog("Options", options, 0);
 
@@ -1261,7 +1268,6 @@ int rg_gui_game_menu(void)
     int slot, sel;
 
     rg_audio_set_mute(true);
-    draw_game_status_bars();
 
     sel = rg_gui_dialog("Retro-Go", choices, 0);
 

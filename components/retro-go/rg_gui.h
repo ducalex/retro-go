@@ -88,6 +88,7 @@ void rg_gui_draw_radio(int x_pos, int y_pos);
 void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int sel);
 void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resample, const rg_image_t *img);
 void rg_gui_draw_hourglass(void); // This should be moved to system or display...
+void rg_gui_draw_status_bars(void);
 
 void rg_gui_show_info(const char *text, rg_color_t color, int timeout_ms);
 int  rg_gui_dialog(const char *title, const rg_gui_option_t *options, int selected_index);

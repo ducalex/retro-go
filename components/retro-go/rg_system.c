@@ -73,7 +73,6 @@ static rg_task_t tasks[8];
 static int ledValue = -1;
 static int wdtCounter = 0;
 static bool exitCalled = false;
-static bool initialized = false;
 
 static const char *SETTING_BOOT_NAME = "BootName";
 static const char *SETTING_BOOT_ARGS = "BootArgs";
@@ -425,7 +424,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 
     rg_task_create("rg_system", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY, -1);
 
-    initialized = true;
+    app.initialized = true;
 
     RG_LOGI("Retro-Go ready.\n\n");
 

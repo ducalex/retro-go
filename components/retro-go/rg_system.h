@@ -160,11 +160,12 @@ typedef struct
     int refreshRate;
     int sampleRate;
     int logLevel;
-    bool isLauncher;
+    int isLauncher;
     int saveSlot;
     const char *romPath;
     const rg_gui_option_t *options;
     rg_handlers_t handlers;
+    bool initialized;
 } rg_app_t;
 
 typedef struct
