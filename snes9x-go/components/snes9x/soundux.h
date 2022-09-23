@@ -40,6 +40,8 @@ enum
 
 #define SOUND_BUFS      4
 
+#define SPC_SAVE_STATE_BLOCK_SIZE (sizeof(APU) + sizeof(IAPU) + 0x10000 + sizeof(SoundData))
+
 typedef struct
 {
    int32_t  playback_rate;

@@ -14,6 +14,7 @@
 #include "gfx.h"
 #include "cpuexec.h"
 #include "srtc.h"
+#include "save.h"
 
 #include "keymap.h"
 
@@ -53,16 +54,17 @@ static bool screenshot_handler(const char *filename, int width, int height)
 
 static bool save_state_handler(const char *filename)
 {
-    return 0;
+    return S9xSaveState(filename);
 }
 
 static bool load_state_handler(const char *filename)
 {
-    return 1;
+    return S9xLoadState(filename);
 }
 
 static bool reset_handler(bool hard)
 {
+    S9xReset();
     return true;
 }
 
