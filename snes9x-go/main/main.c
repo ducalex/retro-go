@@ -311,16 +311,34 @@ void app_main(void)
 
     printf("%s\n", Memory.ROMName);
 
+    bool menuCancelled = false;
+    bool menuPressed = false;
     int frames = 0;
 
-    while (true)
+    while (1)
     {
         uint32_t joystick = rg_input_read_gamepad();
 
-        if (joystick & RG_KEY_MENU)
-            rg_gui_game_menu();
-        if (joystick & RG_KEY_OPTION)
+        if (menuPressed && !(joystick & RG_KEY_MENU))
+        {
+            if (!menuCancelled)
+            {
+                usleep(50 * 1000);
+                rg_gui_game_menu();
+            }
+            menuCancelled = false;
+        }
+        else if (joystick & RG_KEY_OPTION)
+        {
             rg_gui_options_menu();
+        }
+
+        menuPressed = joystick & RG_KEY_MENU;
+
+        if (menuPressed && joystick & ~RG_KEY_MENU)
+        {
+            menuCancelled = true;
+        }
 
         int64_t startTime = rg_system_timer();
 
