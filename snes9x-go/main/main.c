@@ -184,10 +184,11 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
 bool S9xInitDisplay(void)
 {
     GFX.Pitch = SNES_WIDTH * 2;
+    GFX.ZPitch = SNES_WIDTH;
     GFX.Screen = (uint8_t *)malloc(GFX.Pitch * (SNES_HEIGHT_EXTENDED + 2)) + SNES_HEIGHT_EXTENDED;
     GFX.SubScreen = (uint8_t *)malloc(GFX.Pitch * (SNES_HEIGHT_EXTENDED + 2)) + SNES_HEIGHT_EXTENDED;
-    GFX.ZBuffer = (uint8_t *)malloc((GFX.Pitch >> 1) * (SNES_HEIGHT_EXTENDED + 2)) + SNES_HEIGHT_EXTENDED;
-    GFX.SubZBuffer = (uint8_t *)malloc((GFX.Pitch >> 1) * (SNES_HEIGHT_EXTENDED + 2)) + SNES_HEIGHT_EXTENDED;
+    GFX.ZBuffer = (uint8_t *)malloc(GFX.ZPitch * (SNES_HEIGHT_EXTENDED + 2)) + SNES_HEIGHT_EXTENDED;
+    GFX.SubZBuffer = (uint8_t *)malloc(GFX.ZPitch * (SNES_HEIGHT_EXTENDED + 2)) + SNES_HEIGHT_EXTENDED;
     GFX.Delta = (GFX.SubScreen - GFX.Screen) >> 1;
     updates[0].buffer = GFX.Screen;
     return true;

@@ -338,11 +338,18 @@ again:
       fseek(fp, 0, SEEK_END);
       TotalFileSize = ftell(fp);
       fseek(fp, 0, SEEK_SET);
-      fread(Memory.ROM, TotalFileSize, 1, fp);
+      fread(Memory.ROM, MIN(TotalFileSize, MAX_ROM_SIZE), 1, fp);
       fclose(fp);
    }
 
    printf("%s %d %p\n", filename, TotalFileSize, fp);
+
+   if (TotalFileSize > MAX_ROM_SIZE)
+   {
+      printf("WARNING: ROM TOO BIG!\n");
+      // TotalFileSize = MAX_ROM_SIZE; // For debugging
+      TotalFileSize = 0; // For releases
+   }
 
    if (!TotalFileSize)
       return false; /* it ends here */

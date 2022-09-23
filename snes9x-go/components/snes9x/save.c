@@ -19,8 +19,11 @@ bool S9xSaveState(const char *filename)
    bool success = false;
    FILE *fp = NULL;
 
-   if (!(buffer = malloc(400 * 1024)))
-      return false;
+   // if (!(buffer = malloc(400 * 1024)))
+   //    return false;
+
+   // To allow for bigger ROM we'll abuse this cache instead, it is 512KB
+   buffer = IPPU.TileCache;
 
    if (!(fp = fopen(filename, "wb")))
       goto done;
@@ -63,8 +66,10 @@ bool S9xSaveState(const char *filename)
    success = true;
 
 done:
-   if (fp) fclose(fp);
-   free(buffer);
+   if (buffer && buffer != IPPU.TileCache)
+      free(buffer);
+   if (fp)
+      fclose(fp);
    return success;
 }
 
@@ -74,23 +79,29 @@ bool S9xLoadState(const char *filename)
    bool success = false;
    FILE *fp = NULL;
 
-   if (!(buffer = malloc(400 * 1024)))
-      return false;
+   // if (!(buffer = malloc(400 * 1024)))
+   //    return false;
+
+   // To allow for bigger ROM we'll abuse this cache instead, it is 512KB
+   buffer = IPPU.TileCache;
+
+   S9xReset(); // Must be done before reading if using IPPU.TileCache
 
    if (!(fp = fopen(filename, "rb")))
       goto done;
 
-   if (fread(buffer, 1, 400 * 1024, fp) < 16)
+   if (fread(buffer, 1, 16, fp) < 16)
       goto done;
 
    if (memcmp(header, buffer, sizeof(header)) != 0)
       goto done;
 
-   S9xReset();
+   if (fread(buffer, 1, 400 * 1024, fp) < 64000)
+      goto done;
 
    uint8_t *IAPU_RAM = IAPU.RAM;
 
-   buffer_ptr = buffer + sizeof(header);
+   buffer_ptr = buffer;
 
    memcpy(&CPU, buffer_ptr, sizeof(CPU));
    buffer_ptr += sizeof(CPU);
@@ -143,7 +154,9 @@ bool S9xLoadState(const char *filename)
 
    success = true;
 done:
-   if (fp) fclose(fp);
-   free(buffer);
+   if (buffer && buffer != IPPU.TileCache)
+      free(buffer);
+   if (fp)
+      fclose(fp);
    return success;
 }

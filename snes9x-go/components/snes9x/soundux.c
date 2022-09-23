@@ -1,7 +1,6 @@
 /* This file is part of Snes9x. See LICENSE file. */
 
 #ifndef USE_BLARGG_APU
-#pragma GCC optimize("O3")
 
 #include <stdlib.h>
 #include <string.h>
