@@ -327,12 +327,14 @@ void app_main(void)
             {
                 usleep(50 * 1000);
                 rg_gui_game_menu();
+                rg_audio_set_sample_rate(app->sampleRate * app->speed);
             }
             menuCancelled = false;
         }
         else if (joystick & RG_KEY_OPTION)
         {
             rg_gui_options_menu();
+            rg_audio_set_sample_rate(app->sampleRate * app->speed);
         }
 
         menuPressed = joystick & RG_KEY_MENU;
