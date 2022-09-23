@@ -1687,9 +1687,7 @@ static void CommonPPUReset()
    IPPU.RenderThisFrame = true;
    IPPU.DirectColourMapsNeedRebuild = true;
    IPPU.FrameCount = 0;
-   memset(IPPU.TileCached [TILE_2BIT], 0, MAX_2BIT_TILES);
-   memset(IPPU.TileCached [TILE_4BIT], 0, MAX_4BIT_TILES);
-   memset(IPPU.TileCached [TILE_8BIT], 0, MAX_8BIT_TILES);
+   memset(IPPU.TileCached, 0, MAX_2BIT_TILES);
    IPPU.FirstVRAMRead = false;
    IPPU.Interlace = false;
    IPPU.DoubleWidthPixels = false;

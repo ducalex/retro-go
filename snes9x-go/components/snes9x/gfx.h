@@ -95,6 +95,7 @@ typedef struct
    uint32_t StartPalette;
    uint32_t PaletteShift;
    uint32_t PaletteMask;
+   uint8_t  Depth;
    uint8_t* Buffer;
    uint8_t* Buffered;
    bool     DirectColourMode;

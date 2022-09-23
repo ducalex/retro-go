@@ -701,8 +701,9 @@ static void DrawOBJS(bool OnMain, uint8_t D)
    BG.StartPalette = 128;
    BG.PaletteShift = 4;
    BG.PaletteMask = 7;
-   BG.Buffer = IPPU.TileCache [TILE_4BIT];
-   BG.Buffered = IPPU.TileCached [TILE_4BIT];
+   BG.Depth = TILE_4BIT;
+   BG.Buffer = IPPU.TileCache;
+   BG.Buffered = IPPU.TileCached;
    BG.NameSelect = PPU.OBJNameSelect;
    BG.DirectColourMode = false;
    GFX.PixSize = 1;
@@ -1628,24 +1629,12 @@ static void DrawBackground(uint32_t BGMode, uint32_t bg, uint8_t Z1, uint8_t Z2)
    BG.TileShift = TileShifts[BGMode][bg];
    BG.TileAddress = PPU.BG[bg].NameBase << 1;
    BG.NameSelect = 0;
-   BG.Buffer = IPPU.TileCache [Depths [BGMode][bg]];
-   BG.Buffered = IPPU.TileCached [Depths [BGMode][bg]];
+   BG.Depth = Depths [BGMode][bg];
+   BG.Buffer = IPPU.TileCache;
+   BG.Buffered = IPPU.TileCached;
    BG.PaletteShift = PaletteShifts[BGMode][bg];
    BG.PaletteMask = PaletteMasks[BGMode][bg];
    BG.DirectColourMode = (BGMode == 3 || BGMode == 4) && bg == 0 && (GFX.r2130 & 1);
-
-   // In my previous port I had a more elaborate solution to use a unified buffer for all sizes.
-   // But i'm lazy right now and this cheap way still saves 132KB!
-   int mode = Depths[BGMode][bg];
-   if (mode == TILE_2BIT || mode == TILE_8BIT)
-   {
-      static int prev_mode = -1;
-      if (mode != prev_mode) {
-         memset(IPPU.TileCached[2], 0, MAX_8BIT_TILES);
-         // printf("bye!");
-         prev_mode = mode;
-      }
-   }
 
    if (PPU.BGMosaic [bg] && PPU.Mosaic > 1)
    {

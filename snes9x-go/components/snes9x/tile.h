@@ -16,8 +16,11 @@
        TileAddr += BG.NameSelect; \
     TileAddr &= 0xffff; \
     pCache = &BG.Buffer[(TileNumber = (TileAddr >> BG.TileShift)) << 6]; \
-    if (!BG.Buffered [TileNumber]) \
-       BG.Buffered[TileNumber] = ConvertTile (pCache, TileAddr); \
+    if (BG.Buffered [TileNumber] != (0x10|BG.Depth)) \
+    { \
+      BG.Buffered[TileAddr >> 4] = BG.Buffered[TileAddr >> 5] = BG.Buffered[TileAddr >> 6] = false; \
+      BG.Buffered[TileNumber] = ConvertTile (pCache, TileAddr); \
+    } \
     if (BG.Buffered [TileNumber] == BLANK_TILE) \
        return; \
     if (BG.DirectColourMode) \

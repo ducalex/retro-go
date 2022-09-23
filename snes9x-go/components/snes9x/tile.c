@@ -121,7 +121,7 @@ static uint8_t ConvertTile(uint8_t* pCache, uint32_t TileAddr)
       }
       break;
    }
-   return non_zero ? 1 : BLANK_TILE;
+   return non_zero ? (0x10|BG.Depth) : BLANK_TILE;
 }
 
 #define PLOT_PIXEL(screen, pixel) (pixel)

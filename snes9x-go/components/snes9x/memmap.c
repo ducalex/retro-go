@@ -252,17 +252,10 @@ bool S9xInitMemory(void)
    Memory.ROM   = (uint8_t*) calloc(MAX_ROM_SIZE + 0x200, 1);
    Memory.FillRAM = (uint8_t*) calloc(0x8000, 1);
 
-   IPPU.TileCache [TILE_2BIT] = (uint8_t*) calloc(MAX_2BIT_TILES, 128);
-   IPPU.TileCache [TILE_4BIT] = (uint8_t*) calloc(MAX_4BIT_TILES, 128);
-   // IPPU.TileCache [TILE_8BIT] = (uint8_t*) calloc(MAX_8BIT_TILES, 128);
-   IPPU.TileCache [TILE_8BIT] = &IPPU.TileCache [TILE_2BIT][(MAX_2BIT_TILES * 128) - (MAX_8BIT_TILES * 128)];
+   IPPU.TileCache = (uint8_t*) calloc(MAX_2BIT_TILES, 128);
+   IPPU.TileCached = (uint8_t*) calloc(MAX_2BIT_TILES, 1);
 
-   IPPU.TileCached [TILE_2BIT] = (uint8_t*) calloc(MAX_2BIT_TILES, 1);
-   IPPU.TileCached [TILE_4BIT] = (uint8_t*) calloc(MAX_4BIT_TILES, 1);
-   // IPPU.TileCached [TILE_8BIT] = (uint8_t*) calloc(MAX_8BIT_TILES, 1);
-   IPPU.TileCached [TILE_8BIT] = &IPPU.TileCached [TILE_2BIT][MAX_2BIT_TILES - MAX_8BIT_TILES];
-
-   if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM || !Memory.ROM || !IPPU.TileCache [TILE_2BIT] || !IPPU.TileCache [TILE_4BIT] || !IPPU.TileCache [TILE_8BIT] || !IPPU.TileCached [TILE_2BIT] || !IPPU.TileCached [TILE_4BIT] ||  !IPPU.TileCached [TILE_8BIT])
+   if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM || !Memory.ROM || !IPPU.TileCache || !IPPU.TileCached)
    {
       S9xDeinitMemory();
       return false;
@@ -300,18 +293,16 @@ void S9xDeinitMemory(void)
       Memory.FillRAM = NULL;
    }
 
-   for (t = 0; t <= TILE_8BIT; t++)
+   if (IPPU.TileCached)
    {
-      if (IPPU.TileCache[t])
-      {
-         free(IPPU.TileCache[t]);
-         IPPU.TileCache[t] = NULL;
-      }
-      if (IPPU.TileCached[t])
-      {
-         free(IPPU.TileCached[t]);
-         IPPU.TileCached[t] = NULL;
-      }
+      free(IPPU.TileCached);
+      IPPU.TileCached = NULL;
+   }
+
+   if (IPPU.TileCache)
+   {
+      free(IPPU.TileCache);
+      IPPU.TileCache = NULL;
    }
 
    /* Ensure that we free the static char
