@@ -15,9 +15,6 @@ uint8_t DSP2GetByte(uint16_t address);
 void DSP3SetByte(uint8_t byte, uint16_t address);
 uint8_t DSP3GetByte(uint16_t address);
 
-void DSP4SetByte(uint8_t byte, uint16_t address);
-uint8_t DSP4GetByte(uint16_t address);
-
 typedef struct
 {
    bool     waiting4command;

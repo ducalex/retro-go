@@ -1,5 +1,6 @@
 /* This file is part of Snes9x. See LICENSE file. */
 
+#ifdef INSIDE_DSP1_C
 #include <stdarg.h>
 #include <math.h>
 #include <string.h>
@@ -1161,3 +1162,4 @@ void DSPOp2F(void)
 {
    Op2FSize = 0x100;
 }
+#endif

@@ -862,10 +862,6 @@ void InitROM(bool Interleaved)
          /* SetDSP = &DSP3SetByte; */
          /* GetDSP = &DSP3GetByte; */
          break;
-      case 4: /* DSP4 */
-         SetDSP = &DSP4SetByte;
-         GetDSP = &DSP4GetByte;
-         break;
       default:
          SetDSP = NULL;
          GetDSP = NULL;

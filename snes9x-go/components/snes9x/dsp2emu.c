@@ -1,5 +1,6 @@
 /* This file is part of Snes9x. See LICENSE file. */
 
+#ifdef INSIDE_DSP1_C
 uint16_t DSP2Op09Word1 = 0;
 uint16_t DSP2Op09Word2 = 0;
 bool DSP2Op05HasLen = false;
@@ -110,3 +111,4 @@ void DSP2_Op0D(void)
       DSP1.output[i] = (pixel_low << 4) | pixel_high;
    }
 }
+#endif
