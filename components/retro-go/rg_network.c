@@ -52,9 +52,8 @@ rg_network_t rg_network_get_info(void)
     return netstate;
 }
 
-bool rg_network_wifi_stop(void)
+void rg_network_wifi_stop(void)
 {
-    return true;
     // fail:
     //     return false;
 }
@@ -85,7 +84,7 @@ fail:
     return false;
 }
 
-bool rg_network_deinit(void)
+void rg_network_deinit(void)
 {
 #ifdef RG_ENABLE_WIFI
     esp_wifi_stop();
@@ -93,13 +92,12 @@ bool rg_network_deinit(void)
     esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler);
     esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler);
 #endif
-    return true;
 }
 
 bool rg_network_init(void)
 {
     if (netstate.initialized)
-        return;
+        return true;
 
     // Preload values from configuration
     char *temp;

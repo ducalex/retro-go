@@ -27,7 +27,7 @@ typedef struct
 } rg_network_t;
 
 bool rg_network_init(void);
-bool rg_network_deinit(void);
+void rg_network_deinit(void);
 bool rg_network_wifi_start(int mode, const char *ssid, const char *password, int channel);
-bool rg_network_wifi_stop(void);
+void rg_network_wifi_stop(void);
 rg_network_t rg_network_get_info(void);
