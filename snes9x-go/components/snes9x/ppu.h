@@ -48,9 +48,9 @@ typedef struct
    bool     HalfWidthPixels;
    int32_t  RenderedScreenHeight;
    int32_t  RenderedScreenWidth;
-   uint32_t Red          [256];
-   uint32_t Green        [256];
-   uint32_t Blue         [256];
+   uint8_t  Red          [256];
+   uint8_t  Green        [256];
+   uint8_t  Blue         [256];
    uint8_t* XB;
    uint16_t ScreenColors [256];
    int32_t  PreviousLine;
