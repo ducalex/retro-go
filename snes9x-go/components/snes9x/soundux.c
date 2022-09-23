@@ -1,6 +1,7 @@
 /* This file is part of Snes9x. See LICENSE file. */
 
 #ifndef USE_BLARGG_APU
+#pragma GCC optimize("O3")
 
 #include <stdlib.h>
 #include <string.h>
@@ -19,7 +20,7 @@
 #define CLIP8(v) \
 (v) = (((v) <= -128) ? -128 : (((v) >= 127) ? 127 : (v)))
 
-static int32_t wave[SOUND_BUFFER_SIZE];
+static int32_t *wave; // [SOUND_BUFFER_SIZE];
 static int32_t *Echo; // 24000
 static int32_t *MixBuffer; // [SOUND_BUFFER_SIZE]
 static int32_t *EchoBuffer; // [SOUND_BUFFER_SIZE]
@@ -192,7 +193,7 @@ void S9xSetEchoEnable(uint8_t byte)
       byte = 0;
    if (byte && !SoundData.echo_enable)
    {
-      // memset(Echo, 0, 24000 * sizeof(Echo[0]));
+      memset(Echo, 0, 24000 * sizeof(Echo[0]));
       memset(Loop, 0, sizeof(Loop));
    }
 
@@ -742,13 +743,12 @@ void S9xMixSamples(int16_t* buffer, int32_t sample_count)
    int32_t J;
    int32_t I;
 
-   // if (SoundData.echo_enable)
-   //    memset(EchoBuffer, 0, sample_count * sizeof(EchoBuffer [0]));
+   if (SoundData.echo_enable)
+      memset(EchoBuffer, 0, sample_count * sizeof(EchoBuffer [0]));
    memset(MixBuffer, 0, sample_count * sizeof(MixBuffer [0]));
    MixStereo(sample_count);
 
    /* Mix and convert waveforms */
-   #if 0
    if (SoundData.echo_enable && SoundData.echo_buffer_size)
    {
       /* 16-bit stereo sound with echo enabled ... */
@@ -798,7 +798,6 @@ void S9xMixSamples(int16_t* buffer, int32_t sample_count)
       }
    }
    else
-   #endif
    {
       /* 16-bit mono or stereo sound, no echo */
       for (J = 0; J < sample_count; J++)
@@ -819,13 +818,12 @@ void S9xMixSamplesLowPass(int16_t* buffer, int32_t sample_count, int32_t low_pas
    int32_t low_pass_factor_a = low_pass_range;
    int32_t low_pass_factor_b = 0x10000 - low_pass_factor_a;
 
-   // if (SoundData.echo_enable)
-   //    memset(EchoBuffer, 0, sample_count * sizeof(EchoBuffer [0]));
+   if (SoundData.echo_enable)
+      memset(EchoBuffer, 0, sample_count * sizeof(EchoBuffer [0]));
    memset(MixBuffer, 0, sample_count * sizeof(MixBuffer [0]));
    MixStereo(sample_count);
 
    /* Mix and convert waveforms */
-   #if 0
    if (SoundData.echo_enable && SoundData.echo_buffer_size)
    {
       /* 16-bit stereo sound with echo enabled ... */
@@ -889,7 +887,6 @@ void S9xMixSamplesLowPass(int16_t* buffer, int32_t sample_count, int32_t low_pas
       }
    }
    else
-   #endif
    {
       /* 16-bit mono or stereo sound, no echo */
       for (J = 0; J < sample_count; J++)
@@ -1017,17 +1014,20 @@ void S9xSetPlaybackRate(uint32_t playback_rate)
 
 bool S9xInitSound(int32_t buffer_ms, int32_t lag_ms)
 {
-   size_t sample_count = (buffer_ms * 44100 / 1000) * 2;
+   size_t sample_rate = Settings.SoundPlaybackRate * 2;
+   size_t sample_count = (buffer_ms * sample_rate / 1000);
 
-   if (sample_count < SOUND_BUFFER_SIZE)
-      sample_count = SOUND_BUFFER_SIZE;
+   if (sample_count < sample_rate / 50)
+      sample_count = sample_rate / 50;
 
+   wave = calloc(sample_count, sizeof(wave[0]));
    MixBuffer = calloc(sample_count, sizeof(MixBuffer[0]));
-   // EchoBuffer = calloc(sample_count, sizeof(EchoBuffer[0]));
-   // Echo = calloc(24000, sizeof(Echo[0]));
-   EchoBuffer = Echo = NULL; // avoid warnings, yay
+   EchoBuffer = calloc(sample_count, sizeof(EchoBuffer[0]));
+   Echo = calloc(24000, sizeof(Echo[0]));
    so.playback_rate = 0;
    S9xResetSound(true);
+
+   printf("Sound buffer size = %d\n", sample_count);
    return true;
 }
 

@@ -158,7 +158,7 @@ To resolve the backtrace you will need the application's elf file. If lost, you 
 I don't want to maintain non-ESP32 ports in this repository but let me know if I can make small changes to make your own port easier! The absolute minimum requirements for Retro-Go are roughly:
 - Processor: 200Mhz 32bit little-endian
 - Memory: 2MB
-- Compiler: C99 and C++03 (for lynx and snes)
+- Compiler: C99 (and C++03 for handy-go)
 
 Whilst all applications were heavily modified or even redesigned for our constrained needs, special care is taken to keep 
 Retro-Go and ESP32-specific code exclusively in their port file (main.c). This makes reusing them in your own codebase very easy!

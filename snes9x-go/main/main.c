@@ -18,7 +18,7 @@
 
 #include "keymap.h"
 
-#define AUDIO_SAMPLE_RATE (22050)
+#define AUDIO_SAMPLE_RATE (32040)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60)
 
 static rg_video_update_t updates[2];
@@ -279,6 +279,7 @@ void app_main(void)
     Settings.ApplyCheats = false;
     Settings.HBlankStart = (256 * Settings.H_Max) / SNES_HCOUNTER_MAX;
     Settings.SoundPlaybackRate = AUDIO_SAMPLE_RATE;
+    Settings.DisableSoundEcho = false;
     Settings.InterpolatedSound = true;
 #ifdef USE_BLARGG_APU
     Settings.SoundInputRate = AUDIO_SAMPLE_RATE;
