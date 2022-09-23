@@ -117,8 +117,6 @@ extern uint32_t odd_low   [4][16];
 extern SBG BG;
 extern uint16_t DirectColourMaps [8][256];
 
-extern uint8_t mul_brightness [16][32];
-
 /* Could use BSWAP instruction on Intel port... */
 #define SWAP_DWORD(dword) dword = ((((dword) & 0x000000ff) << 24) \
                                 |  (((dword) & 0x0000ff00) <<  8) \

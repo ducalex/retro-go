@@ -8,6 +8,7 @@ rg_setup_compile_options(
     -Wno-array-bounds
     -Wno-implicit-fallthrough
     -O2
+    -DRIGHTSHIFT_IS_SAR
     -DFAST_LSB_WORD_ACCESS
     -DNO_ZERO_LUT
 )
