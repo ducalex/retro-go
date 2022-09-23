@@ -35,16 +35,16 @@
 #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
 
 // Status LED
-#define RG_GPIO_LED                 GPIO_NUM_2
+#define RG_GPIO_LED                 GPIO_NUM_38
 
 // I2C BUS
-#define RG_GPIO_I2C_SDA             GPIO_NUM_10
-#define RG_GPIO_I2C_SCL             GPIO_NUM_11
+#define RG_GPIO_I2C_SDA             GPIO_NUM_47
+#define RG_GPIO_I2C_SCL             GPIO_NUM_48
 
 // Built-in gamepad
-#define RG_GPIO_GAMEPAD_L           GPIO_NUM_40
-#define RG_GPIO_GAMEPAD_R           GPIO_NUM_41
-#define RG_GPIO_GAMEPAD_MENU        GPIO_NUM_42
+#define RG_GPIO_GAMEPAD_L           GPIO_NUM_2
+#define RG_GPIO_GAMEPAD_R           GPIO_NUM_5
+#define RG_GPIO_GAMEPAD_MENU        GPIO_NUM_9
 
 // SNES-style gamepad
 // #define RG_GPIO_GAMEPAD_LATCH       GPIO_NUM_NC
@@ -53,20 +53,20 @@
 
 // SPI Display
 #define RG_GPIO_LCD_MISO            GPIO_NUM_NC
-#define RG_GPIO_LCD_MOSI            GPIO_NUM_12
-#define RG_GPIO_LCD_CLK             GPIO_NUM_48
-#define RG_GPIO_LCD_CS              GPIO_NUM_8
-#define RG_GPIO_LCD_DC              GPIO_NUM_47
-#define RG_GPIO_LCD_BCKL            GPIO_NUM_39
-#define RG_GPIO_LCD_RST             GPIO_NUM_3
+#define RG_GPIO_LCD_MOSI            GPIO_NUM_11
+#define RG_GPIO_LCD_CLK             GPIO_NUM_14
+#define RG_GPIO_LCD_CS              GPIO_NUM_12
+#define RG_GPIO_LCD_DC              GPIO_NUM_13
+#define RG_GPIO_LCD_BCKL            GPIO_NUM_10
+#define RG_GPIO_LCD_RST             GPIO_NUM_21
 
 // SPI SD Card
-#define RG_GPIO_SDSPI_CMD          GPIO_NUM_14
-#define RG_GPIO_SDSPI_CLK          GPIO_NUM_21
-#define RG_GPIO_SDSPI_D0           GPIO_NUM_17
+#define RG_GPIO_SDSPI_CMD          GPIO_NUM_41
+#define RG_GPIO_SDSPI_CLK          GPIO_NUM_40
+#define RG_GPIO_SDSPI_D0           GPIO_NUM_39
 
 // External I2S DAC
-#define RG_GPIO_SND_I2S_BCK         38
-#define RG_GPIO_SND_I2S_WS          13
-#define RG_GPIO_SND_I2S_DATA        9
-#define RG_GPIO_SND_AMP_ENABLE      18
+#define RG_GPIO_SND_I2S_BCK         GPIO_NUM_18
+#define RG_GPIO_SND_I2S_WS          GPIO_NUM_17
+#define RG_GPIO_SND_I2S_DATA        GPIO_NUM_6
+#define RG_GPIO_SND_AMP_ENABLE      GPIO_NUM_3
