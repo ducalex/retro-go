@@ -42,16 +42,8 @@ static const char *SETTING_KEYMAP = "keymap";
 
 static void update_keymap(int id)
 {
-	// keymap_id = id % KEYMAPS_COUNT;
-
-	// memcpy(&keymap, &KEYMAPS[keymap_id], sizeof(keymap));
-
-	// S9xUnmapAllControls();
-
-	// for (int i = 0; i < keymap.size; i++)
-	// {
-	// 	S9xMapButtonT(i, keymap.keys[i].action);
-	// }
+	keymap_id = id % KEYMAPS_COUNT;
+	memcpy(&keymap, &KEYMAPS[keymap_id], sizeof(keymap));
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)
@@ -148,19 +140,30 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
 			option->flags = RG_DIALOG_FLAG_NORMAL;
 			option++;
 
+            option->label = "snes9x  ";
+            option->value = "handheld";
+            option->flags = RG_DIALOG_FLAG_NORMAL;
+            option->update_cb = &change_keymap_cb;
+            option++;
+
 			for (int i = 0; i < keymap.size; i++)
 			{
 				// keys[i].key_id contains a bitmask, convert to bit number
-				int key_id = log2(keymap.keys[i].key_id);
+				int local_button = log2(keymap.keys[i].local_mask);
+				int mod_button = log2(keymap.keys[i].mod_mask);
+				int snes9x_button = log2(keymap.keys[i].snes9x_mask);
 
 				// For now we don't display the D-PAD because it doesn't fit on large font
-				if (key_id < 4)
+				if (local_button < 4)
 					continue;
 
-				const char *key = KEYNAMES[key_id];
-				const char *mod = (keymap.keys[i].mod1) ? "MENU + " : "";
-				option->label = keymap.keys[i].action;
-				option->value = strcat(strcpy(values[i], mod), key);
+                if (keymap.keys[i].mod_mask)
+                    sprintf(values[i], "%s + %s", CONSOLE_BUTTONS[mod_button], CONSOLE_BUTTONS[local_button]);
+                else
+                    sprintf(values[i], "%s", CONSOLE_BUTTONS[local_button]);
+
+                option->label = SNES_BUTTONS[snes9x_button];
+				option->value = values[i];
 				option->flags = RG_DIALOG_FLAG_NORMAL;
 				option->update_cb = &change_keymap_cb;
 				option++;
@@ -202,20 +205,16 @@ uint32_t S9xReadJoypad(int32_t port)
 
     uint32_t joystick = rg_input_read_gamepad();
     uint32_t joypad = 0;
-    if (joystick & RG_KEY_MENU)
-        rg_gui_game_menu();
-    if (joystick & RG_KEY_OPTION)
-        rg_gui_options_menu();
-    if (joystick & RG_KEY_UP)       joypad |= SNES_UP_MASK;
-    if (joystick & RG_KEY_DOWN)     joypad |= SNES_DOWN_MASK;
-    if (joystick & RG_KEY_LEFT)     joypad |= SNES_LEFT_MASK;
-    if (joystick & RG_KEY_RIGHT)    joypad |= SNES_RIGHT_MASK;
-    if (joystick & RG_KEY_START)    joypad |= SNES_START_MASK;
-    if (joystick & RG_KEY_SELECT)   joypad |= SNES_A_MASK;
-    if (joystick & RG_KEY_A)        joypad |= SNES_B_MASK;
-    if (joystick & RG_KEY_B)        joypad |= SNES_Y_MASK;
-    // if (joystick & RG_KEY_START)    joypad |= SNES_X_MASK;
-    // if (joystick & RG_KEY_SELECT)   joypad |= SNES_Y_MASK;
+
+    for (int i = 0; i < keymap.size; ++i)
+    {
+        uint32_t bitmask = keymap.keys[i].local_mask | keymap.keys[i].mod_mask;
+        if (bitmask && bitmask == (joystick & bitmask))
+        {
+            joypad |= keymap.keys[i].snes9x_mask;
+        }
+    }
+
     return joypad;
 }
 
@@ -265,6 +264,8 @@ void app_main(void)
 		RG_DIALOG_CHOICE_LAST
 	};
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
+
+    update_keymap(rg_settings_get_number(NS_APP, SETTING_KEYMAP, 0));
 
     memset(&Settings, 0, sizeof(Settings));
     Settings.JoystickEnabled = false;
