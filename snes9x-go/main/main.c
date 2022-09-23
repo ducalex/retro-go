@@ -265,6 +265,8 @@ void app_main(void)
 	};
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
 
+    rg_display_set_source_format(SNES_WIDTH, SNES_HEIGHT, 0, 0, SNES_WIDTH * 2, RG_PIXEL_565_LE);
+
     update_keymap(rg_settings_get_number(NS_APP, SETTING_KEYMAP, 0));
 
     memset(&Settings, 0, sizeof(Settings));
@@ -307,9 +309,10 @@ void app_main(void)
     S9xSetPlaybackRate(Settings.SoundPlaybackRate);
 #endif
 
-    rg_display_set_source_format(SNES_WIDTH, SNES_HEIGHT, 0, 0, GFX.Pitch, RG_PIXEL_565_LE);
-
-    printf("%s\n", Memory.ROMName);
+    if (app->bootFlags & RG_BOOT_RESUME)
+    {
+        rg_emu_load_state(app->saveSlot);
+    }
 
     bool menuCancelled = false;
     bool menuPressed = false;

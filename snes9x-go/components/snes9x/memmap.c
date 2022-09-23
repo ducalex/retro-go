@@ -1042,6 +1042,8 @@ void InitROM(bool Interleaved)
       *p = 0;
    }
 
+   printf("Rom loaded: %s\n", Memory.ROMName);
+
    Memory.SRAMMask = Memory.SRAMSize ? ((1 << (Memory.SRAMSize + 3)) * 128) - 1 : 0;
 
 #ifndef USE_BLARGG_APU
