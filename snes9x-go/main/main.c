@@ -21,8 +21,6 @@
 #define AUDIO_SAMPLE_RATE (22050)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60)
 
-static rg_audio_sample_t mixbuffer[AUDIO_BUFFER_LENGTH];
-
 static rg_video_update_t updates[2];
 static rg_video_update_t *currentUpdate = &updates[0];
 static rg_app_t *app;
@@ -33,7 +31,6 @@ static int frameskip = 3;
 
 bool overclock_cycles = false;
 int one_c = 4, slow_one_c = 5, two_c = 6;
-bool reduce_sprite_flicker = false;
 
 static int keymap_id = 0;
 static keymap_t keymap;
@@ -245,6 +242,7 @@ static void S9xAudioCallback(void)
 {
     S9xFinalizeSamples();
     size_t available_samples = S9xGetSampleCount();
+    rg_audio_sample_t mixbuffer[available_samples];
     S9xMixSamples(&mixbuffer, available_samples);
     rg_audio_submit(mixbuffer, available_samples >> 1);
 }
@@ -305,6 +303,7 @@ void app_main(void)
 #ifdef USE_BLARGG_APU
     S9xSetSamplesAvailableCallback(S9xAudioCallback);
 #else
+    rg_audio_sample_t mixbuffer[AUDIO_BUFFER_LENGTH];
     S9xSetPlaybackRate(Settings.SoundPlaybackRate);
 #endif
 
@@ -326,19 +325,18 @@ void app_main(void)
         int64_t startTime = rg_system_timer();
 
         IPPU.RenderThisFrame = (frames++ % frameskip) == 0;
+        GFX.Screen = currentUpdate->buffer;
+
         if (!apu_enabled) // don't touch APUEnabled if not needed
             Settings.APUEnabled = false;
 
         S9xMainLoop();
 
 #ifndef USE_BLARGG_APU
-    if (apu_enabled)
-    {
-        if (lowpass_filter)
-            S9xMixSamplesLowPass((void *)mixbuffer, AUDIO_BUFFER_LENGTH << 1, (60 * 65536) / 100);
-        else
-            S9xMixSamples((void *)mixbuffer, AUDIO_BUFFER_LENGTH << 1);
-    }
+    if (apu_enabled && lowpass_filter)
+        S9xMixSamplesLowPass((void *)mixbuffer, AUDIO_BUFFER_LENGTH << 1, (60 * 65536) / 100);
+    else if (apu_enabled)
+        S9xMixSamples((void *)mixbuffer, AUDIO_BUFFER_LENGTH << 1);
 #endif
 
         int elapsed = rg_system_timer() - startTime;
