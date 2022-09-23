@@ -169,7 +169,7 @@ Retro-Go and ESP32-specific code exclusively in their port file (main.c). This m
 - The NES/GBC/SMS emulators and base library were originally from the "Triforce" fork of the [official Go-Play firmware](https://github.com/othercrashoverride/go-play) by crashoverride, Nemo1984, and many others.
 - PCE-GO is a fork of [HuExpress](https://github.com/kallisti5/huexpress) and [pelle7's port](https://github.com/pelle7/odroid-go-pcengine-huexpress/) was used as reference.
 - The Lynx emulator is a port of [libretro-handy](https://github.com/libretro/libretro-handy).
-- The SNES emulator is a port of [Snes9x 1.60](https://github.com/snes9xgit/snes9x/).
+- The SNES emulator is a port of [Snes9x 2005](https://github.com/libretro/snes9x2005).
 - The DOOM engine is a port of [PrBoom 2.5.0](http://prboom.sourceforge.net/).
 - The Mega Drive emulator is a port of [Gwenesis](https://github.com/bzhxx/gwenesis/) by bzhxx.
 - PNG support is provided by [lodepng](https://github.com/lvandeve/lodepng/).
