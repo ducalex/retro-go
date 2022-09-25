@@ -23,7 +23,11 @@
 #endif
 
 #if RG_AUDIO_USE_INT_DAC
-#include <driver/dac.h>
+#ifdef CONFIG_IDF_TARGET_ESP32
+    #include <driver/dac.h>
+#else
+    #error "Only the ESP32 has a DAC! Please set RG_AUDIO_USE_INT_DAC to 0 in your target file."
+#endif
 #endif
 
 static const rg_audio_sink_t sinks[] = {
