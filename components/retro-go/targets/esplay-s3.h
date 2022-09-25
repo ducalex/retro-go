@@ -27,9 +27,24 @@
 #define RG_SCREEN_MARGIN_RIGHT      0
 
 // Input
-#define RG_GAMEPAD_DRIVER           5   // 1 = ODROID-GO, 2 = Serial, 3 = MRGC-IO 5 = ESPLAY
+#define RG_GAMEPAD_DRIVER           3   // 1 = ODROID-GO, 2 = Serial, 3 = I2C
 #define RG_GAMEPAD_HAS_MENU_BTN     1
 #define RG_GAMEPAD_HAS_OPTION_BTN   1
+// Note: Depending on the driver, the button map can represent bits, registers, keys, or gpios.
+#define RG_GAMEPAD_MAP_MENU         (0)
+#define RG_GAMEPAD_MAP_OPTION       (0)
+#define RG_GAMEPAD_MAP_START        (1<<0)
+#define RG_GAMEPAD_MAP_SELECT       (1<<1)
+#define RG_GAMEPAD_MAP_UP           (1<<2)
+#define RG_GAMEPAD_MAP_RIGHT        (1<<5)
+#define RG_GAMEPAD_MAP_DOWN         (1<<3)
+#define RG_GAMEPAD_MAP_LEFT         (1<<4)
+#define RG_GAMEPAD_MAP_A            (1<<6)
+#define RG_GAMEPAD_MAP_B            (1<<7)
+#define RG_GAMEPAD_MAP_X            (0)
+#define RG_GAMEPAD_MAP_Y            (0)
+
+// Battery
 #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_3
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
@@ -45,6 +60,7 @@
 #define RG_GPIO_GAMEPAD_L           GPIO_NUM_40
 #define RG_GPIO_GAMEPAD_R           GPIO_NUM_41
 #define RG_GPIO_GAMEPAD_MENU        GPIO_NUM_42
+#define RG_GPIO_GAMEPAD_OPTION      GPIO_NUM_41
 
 // SNES-style gamepad
 // #define RG_GPIO_GAMEPAD_LATCH       GPIO_NUM_NC
