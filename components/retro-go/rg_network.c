@@ -30,6 +30,12 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
     {
         esp_wifi_connect();
     }
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
+    {
+        RG_LOGE("Got disconnected from AP. Reconnecting...\n");
+        rg_system_event(RG_EVENT_NETWORK_DISCONNECTED, NULL);
+        esp_wifi_connect();
+    }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
@@ -37,6 +43,7 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
         snprintf(netstate.local_addr, 16, IPSTR, IP2STR(&event->ip_info.ip));
         netstate.connected = true;
         netstate.connecting = false;
+        rg_system_event(RG_EVENT_NETWORK_CONNECTED, NULL);
     }
     RG_LOGI("%d %d\n", (int)event_base, (int)event_id);
 }

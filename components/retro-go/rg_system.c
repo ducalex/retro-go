@@ -506,9 +506,9 @@ IRAM_ATTR int64_t rg_system_timer(void)
     return esp_timer_get_time();
 }
 
-void rg_system_event(rg_event_t event, void *arg)
+void rg_system_event(int event, void *arg)
 {
-    RG_LOGD("Event %d(%p)\n", event, arg);
+    RG_LOGD("Dispatching event:%d arg:%p\n", event, arg);
     if (app.handlers.event)
         app.handlers.event(event, arg);
 }

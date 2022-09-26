@@ -92,20 +92,19 @@ typedef enum
 {
     RG_EVENT_TYPE_SYSTEM  = 0xF1000000,
     RG_EVENT_TYPE_POWER   = 0xF2000000,
-    RG_EVENT_TYPE_NETPLAY = 0xF3000000,
+    RG_EVENT_TYPE_NETWORK = 0xF3000000,
+    RG_EVENT_TYPE_NETPLAY = 0xF4000000,
     RG_EVENT_TYPE_MASK    = 0xFF000000,
 } rg_event_type_t;
 
-typedef enum
+enum
 {
     RG_EVENT_UNRESPONSIVE = RG_EVENT_TYPE_SYSTEM | 1,
     RG_EVENT_LOWMEMORY    = RG_EVENT_TYPE_SYSTEM | 2,
     RG_EVENT_REDRAW       = RG_EVENT_TYPE_SYSTEM | 3,
-    RG_EVENT_SHUTDOWN     = RG_EVENT_TYPE_POWER + 1,
-    RG_EVENT_SLEEP        = RG_EVENT_TYPE_POWER + 1,
-    RG_EVENT_NETPLAY      = RG_EVENT_TYPE_NETPLAY,
-    RG_EVENT_MASK         = 0xFFFF,
-} rg_event_t;
+    RG_EVENT_SHUTDOWN     = RG_EVENT_TYPE_POWER | 1,
+    RG_EVENT_SLEEP        = RG_EVENT_TYPE_POWER | 2,
+};
 
 typedef bool (*rg_state_handler_t)(const char *filename);
 typedef bool (*rg_reset_handler_t)(bool hard);
@@ -199,7 +198,7 @@ void rg_system_tick(int busyTime);
 void rg_system_vlog(int level, const char *context, const char *format, va_list va);
 void rg_system_log(int level, const char *context, const char *format, ...) __attribute__((format(printf,3,4)));
 bool rg_system_save_trace(const char *filename, bool append);
-void rg_system_event(rg_event_t event, void *data);
+void rg_system_event(int event, void *data);
 int64_t rg_system_timer(void);
 rg_app_t *rg_system_get_app(void);
 rg_stats_t rg_system_get_counters(void);
