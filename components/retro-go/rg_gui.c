@@ -1,5 +1,4 @@
 #include "rg_system.h"
-#include "rg_network.h"
 #include "rg_gui.h"
 
 #include <cJSON.h>

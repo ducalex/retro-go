@@ -1,5 +1,4 @@
 #include <rg_system.h>
-#include <rg_network.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>

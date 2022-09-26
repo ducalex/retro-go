@@ -418,10 +418,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     rg_profiler_init();
     #endif
 
-    #ifdef RG_ENABLE_NETPLAY
-    rg_netplay_init(app.handlers.event);
-    #endif
-
     rg_task_create("rg_system", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY, -1);
 
     app.initialized = true;

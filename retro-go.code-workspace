@@ -49,7 +49,9 @@
 			"INLINE=",
 			"uint=unsigned int",
 			"CONFIG_FREERTOS_HZ=100",
-			"CONFIG_TCPIP_LWIP=1"
+			"CONFIG_TCPIP_LWIP=1",
+			"RG_ENABLE_NETPLAY=",
+			"RG_ENABLE_NETWORKING=",
 		],
 		"C_Cpp.default.includePath": [
 			"${workspaceFolder}/components/**",
