@@ -289,12 +289,13 @@ rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char 
     size_t count = 0;
     struct dirent *ent;
 
-    char fullpath[RG_PATH_MAX] = {0};
+    char fullpath[RG_PATH_MAX + 1] = {0};
     char *basename = fullpath + sprintf(fullpath, "%s/", path);
+    size_t basename_len = RG_PATH_MAX - (basename - fullpath);
 
     while ((ent = readdir(dir)))
     {
-        strncpy(basename, ent->d_name, 62);
+        strncpy(basename, ent->d_name, basename_len);
 
         if (basename[0] == '.') // For backwards compat we'll ignore all hidden files...
             continue;
