@@ -35,4 +35,5 @@ bool rg_network_init(void);
 void rg_network_deinit(void);
 bool rg_network_wifi_start(int mode, const char *ssid, const char *password, int channel);
 void rg_network_wifi_stop(void);
+bool rg_network_sync_time(const char *host, int *out_delta);
 rg_network_t rg_network_get_info(void);

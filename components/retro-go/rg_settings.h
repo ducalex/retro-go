@@ -7,6 +7,7 @@
 #define NS_GLOBAL ((char *)-1)
 #define NS_APP    ((char *)-2)
 #define NS_FILE   ((char *)-3)
+#define NS_WIFI   ((char *)-4)
 
 void rg_settings_init(void);
 void rg_settings_commit(void);

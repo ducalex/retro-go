@@ -200,6 +200,7 @@ void rg_system_vlog(int level, const char *context, const char *format, va_list 
 void rg_system_log(int level, const char *context, const char *format, ...) __attribute__((format(printf,3,4)));
 bool rg_system_save_trace(const char *filename, bool append);
 void rg_system_event(int event, void *data);
+void rg_system_save_rtc(void);
 int64_t rg_system_timer(void);
 rg_app_t *rg_system_get_app(void);
 rg_stats_t rg_system_get_counters(void);

@@ -17,6 +17,8 @@ static cJSON *json_root(const char *name)
 
     if (name == NS_GLOBAL)
         name = "global";
+    else if (name == NS_WIFI)
+        name = "wifi";
     else if (name == NS_APP)
         name = rg_system_get_app()->configNs;
     else if (name == NS_FILE)
