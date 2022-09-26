@@ -317,9 +317,6 @@ void app_main(void)
         try_migrate();
     }
 
-    rg_network_init();
-    rg_network_wifi_start(RG_WIFI_STA, NULL, NULL, 0);
-
     gui_init();
     applications_init();
     bookmarks_init();

@@ -1,6 +1,4 @@
 cmake_minimum_required(VERSION 3.5)
-set(ENV{RG_ENABLE_WIFI} "1")
 set(COMPONENTS "main wifi retro-go app_trace bootloader esptool_py")
 include(../base.cmake)
 project(launcher)
-set(ENV{RG_ENABLE_WIFI} "0")
