@@ -262,8 +262,13 @@ void rg_input_init(void)
 
 #elif RG_GAMEPAD_DRIVER == 5 // I2C ESPLAY
 
-	const char *driver = "ESPLAY-I2C";
-
+    const char *driver = "ESPLAY-I2C";
+    gpio_set_direction(RG_GPIO_GAMEPAD_L, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(RG_GPIO_GAMEPAD_L, GPIO_PULLUP_ONLY);
+    gpio_set_direction(RG_GPIO_GAMEPAD_R, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(RG_GPIO_GAMEPAD_R, GPIO_PULLUP_ONLY);
+    gpio_set_direction(RG_GPIO_GAMEPAD_MENU, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(RG_GPIO_GAMEPAD_MENU, GPIO_PULLUP_ONLY);
     rg_i2c_init();
 
 #elif RG_GAMEPAD_DRIVER == 6 // SDL2
