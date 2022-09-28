@@ -856,6 +856,13 @@ void rg_system_vlog(int level, const char *context, const char *format, va_list 
 
     len += vsnprintf(buffer + len, sizeof(buffer) - len, format, va);
 
+    // Append a newline if needed only when possible
+    if (len > 0 && buffer[len - 1] != '\n')
+    {
+        buffer[len++] = '\n';
+        buffer[len] = 0;
+    }
+
     logbuf_puts(&logbuf, buffer);
     fputs(buffer, stdout);
 
