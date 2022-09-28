@@ -1,134 +1,173 @@
-#if 0
-#include <freertos/FreeRTOS.h>
-#include <tcpip_adapter.h>
+/*
+ * Based on Espressif's HTTP File Server Example
+ */
+#include "rg_system.h"
+
+#ifdef RG_ENABLE_NETWORKING
 #include <esp_http_server.h>
-#include <esp_system.h>
-#include <esp_event.h>
-// #include <esp_netif.h>
-#include <esp_wifi.h>
-#include <esp_log.h>
-#include <string.h>
-#include <unistd.h>
-#include <assert.h>
-#include <netdb.h>
-#include <rg_system.h>
+#include <sys/unistd.h>
+#include <sys/stat.h>
+#include <dirent.h>
 
-tcpip_adapter_ip_info_t ip_info;
-static char local_ipv4[16];
-static bool wifi_ready = false;
+static const char header_html[] = {
+    "<!DOCTYPE html><html><body>"
+    "<div style='float:right'>"
+    "   <label>Upload a file <input id='newfile' type='file'></label>"
+    "</div>"
+    "<h1>Retro-Go File Server</h1>"
+    "<form method='post'>"
+    "<table class='fixed' border='1'>"
+        "<col width='800px' /><col width='300px' /><col width='300px' /><col width='100px' />"
+        "<thead><tr><th>Name</th><th>Type</th><th>Size (Bytes)</th><th>Delete</th></tr></thead>"
+        "<tbody>"
+};
+static const char footer_html[] = {
+    "</tbody></table>"
+    "</form>"
+    "</body></html>"
+};
 
-#define WIFI_SSID "RETRO-GO"
-#define WIFI_CHANNEL 12
+static httpd_handle_t server = NULL;
+static char *scratch_buffer = NULL;
 
 
-static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+static esp_err_t http_get_handler(httpd_req_t *req)
 {
-    if (event_id == IP_EVENT_AP_STAIPASSIGNED) // A client connected to us
-    {
-        tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info);
-        sprintf(local_ipv4, IPSTR, IP2STR(&ip_info.ip));
-        wifi_ready = true;
+    struct stat file_stat;
+    char entrysize[16];
+    struct dirent *entry;
+    FILE *fd = NULL;
+
+    char filepath[RG_PATH_MAX];
+    size_t filepath_len = sprintf(filepath, "%s/%s", RG_STORAGE_ROOT, req->uri + strlen("/"));
+
+    while (filepath[filepath_len-1] == '/') {
+        filepath[--filepath_len] = 0;
     }
-    else if (event_id == IP_EVENT_STA_GOT_IP) // We connected to an AP
-    {
-        tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ip_info);
-        sprintf(local_ipv4, IPSTR, IP2STR(&ip_info.ip));
-        wifi_ready = true;
+
+    RG_LOGI("local path = %s\n", filepath);
+
+    // 404
+    if (stat(filepath, &file_stat) == -1) {
+        RG_LOGE("Failed to stat path : %s", filepath);
+        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Path does not exist");
+        return ESP_FAIL;
     }
-}
 
-
-static esp_err_t http_handler(httpd_req_t *req)
-{
-    if (req->method == HTTP_POST)
-    {
-        char content[100];
-        size_t bytes = 0;
-
-        while (bytes < req->content_len)
-        {
-            int ret = httpd_req_recv(req, content, sizeof(content));
-            if (ret < 0)
-            {
-                return ESP_FAIL;
-            }
-            bytes += ret;
+    // Directory
+    if (S_ISDIR(file_stat.st_mode)) {
+        RG_LOGI("Listing dir %s\n", filepath);
+        DIR *dir = opendir(filepath);
+        if (!dir) {
+            httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Directory does not exist");
+            return ESP_FAIL;
         }
+
+        httpd_resp_sendstr_chunk(req, header_html);
+
+        while ((entry = readdir(dir)) != NULL) {
+            strcpy(filepath + filepath_len, "/");
+            strcat(filepath, entry->d_name);
+            if (stat(filepath, &file_stat) == -1) {
+                continue;
+            }
+            sprintf(entrysize, "%ld", file_stat.st_size);
+            sprintf(scratch_buffer,
+                "<tr><td><a href='%s%s%s'>%s</a></td><td>%s</td><td>%s</td><td>"
+                "<button type='submit' name='delete' value='%s'>Delete</button></form></td></tr>",
+                req->uri, entry->d_name, S_ISDIR(file_stat.st_mode) ? "/" : "",
+                entry->d_name, S_ISDIR(file_stat.st_mode) ? "dir" : "file", entrysize,
+                entry->d_name
+            );
+            httpd_resp_sendstr_chunk(req, scratch_buffer);
+        }
+        closedir(dir);
+
+        filepath[filepath_len] = 0;
+
+        httpd_resp_sendstr_chunk(req, footer_html);
+        httpd_resp_sendstr_chunk(req, NULL);
+        return ESP_OK;
+    }
+    // Serve file
+    else if ((fd = fopen(filepath, "rb"))) {
+        RG_LOGI("Sending file %s\n", filepath);
+
+        bool is_text = strstr(filepath, ".json") || strstr(filepath, ".log") || strstr(filepath, ".txt");
+        httpd_resp_set_type(req, is_text ? "text/plain" : "application/binary");
+
+        char *chunk = scratch_buffer;
+        size_t chunksize;
+        do {
+            chunksize = fread(chunk, 1, 8192, fd);
+            if (chunksize > 0) {
+                /* Send the buffer contents as HTTP response chunk */
+                if (httpd_resp_send_chunk(req, chunk, chunksize) != ESP_OK) {
+                    fclose(fd);
+                    RG_LOGE("File sending failed!");
+                    goto fail;
+                }
+            }
+        } while (chunksize != 0);
+        fclose(fd);
+        httpd_resp_send_chunk(req, NULL, 0);
+        RG_LOGI("File sending complete");
+        return ESP_OK;
     }
 
-    httpd_resp_send(req, "Hello World!", HTTPD_RESP_USE_STRLEN);
+fail:
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to serve your request");
+    RG_LOGE("Failed to serve request for : %s", filepath);
+    return ESP_FAIL;
+}
+
+static esp_err_t http_post_handler(httpd_req_t *req)
+{
+    const char *filename = NULL; // POST[delete]
+    char filepath[RG_PATH_MAX];
+    size_t filepath_len = sprintf(filepath, "%s/%s/%s", RG_STORAGE_ROOT, req->uri, filename);
+
+    while (filepath[filepath_len-1] == '/') {
+        filepath[--filepath_len] = 0;
+    }
+
+    RG_LOGI("local path = %s\n", filepath);
+
+    if (unlink(filepath) == -1 && rmdir(filepath) == -1) {
+        RG_LOGE("Unlink failed");
+    }
+
+    httpd_resp_set_status(req, "303 See Other");
+    httpd_resp_set_hdr(req, "Location", req->uri);
+    httpd_resp_sendstr(req, "File deleted successfully");
     return ESP_OK;
-}
-
-
-static void ftp_server_task(void *arg)
-{
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    wifi_mode_t mode = arg ? WIFI_MODE_STA : WIFI_MODE_AP;
-    httpd_handle_t http_server = NULL;
-    httpd_config_t http_config = HTTPD_DEFAULT_CONFIG();
-
-    wifi_ready = false;
-
-    tcpip_adapter_init();
-    esp_event_loop_create_default();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
-    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-    ESP_ERROR_CHECK(esp_wifi_set_config(mode, &(wifi_config_t){
-        .sta.ssid = WIFI_SSID,
-        .sta.channel = WIFI_CHANNEL,
-    }));
-    ESP_ERROR_CHECK(esp_wifi_set_config(mode, &(wifi_config_t){
-        .ap.ssid = WIFI_SSID,
-        .ap.authmode = WIFI_AUTH_OPEN,
-        .ap.channel = WIFI_CHANNEL,
-        .ap.max_connection = 2,
-    }));
-    ESP_ERROR_CHECK(esp_wifi_set_mode(mode));
-    ESP_ERROR_CHECK(esp_wifi_start());
-    if (mode == WIFI_MODE_STA)
-        ESP_ERROR_CHECK(esp_wifi_connect());
-
-    // Wait for Wifi to connect/start
-    for (int i = 0; i < 1000 && !wifi_ready; i++)
-    {
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
-
-    if (!wifi_ready)
-    {
-        RG_LOGE("Wifi init failure.\n");
-        return;
-    }
-
-    RG_LOGI("Wifi connected. Local IP = %s\n", local_ipv4);
-
-    if (httpd_start(&http_server, &http_config) == ESP_OK)
-    {
-        httpd_register_uri_handler(http_server, &(httpd_uri_t){"/", HTTP_GET, http_handler, 0});
-        httpd_register_uri_handler(http_server, &(httpd_uri_t){"/", HTTP_POST, http_handler, 0});
-        RG_LOGI("Web Server started!\n");
-    }
-
-    while (1)
-    {
-        vTaskDelay(10);
-    }
-
-    httpd_stop(http_server);
-}
-
-void ftp_server_start(void)
-{
-    ftp_server_task(1);
 }
 
 void ftp_server_stop(void)
 {
 
 }
-#else
-void ftp_server_start(void) {}
-void ftp_server_stop(void) {}
+
+void ftp_server_start(void)
+{
+    scratch_buffer = calloc(1, 8192);
+
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.uri_match_fn = httpd_uri_match_wildcard;
+    ESP_ERROR_CHECK(httpd_start(&server, &config));
+
+    httpd_register_uri_handler(server, &(httpd_uri_t){
+        .uri       = "/*",
+        .method    = HTTP_GET,
+        .handler   = http_get_handler,
+    });
+
+    httpd_register_uri_handler(server, &(httpd_uri_t){
+        .uri       = "/*",
+        .method    = HTTP_POST,
+        .handler   = http_post_handler,
+    });
+
+    RG_LOGI("File server started");
+}
 #endif

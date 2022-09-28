@@ -150,6 +150,11 @@ bool rg_network_sync_time(const char *host, int *out_delta)
     return false;
 }
 
+bool rg_network_connect(const char *ssid, const char *password)
+{
+    return rg_network_wifi_start(RG_WIFI_STA, ssid, password, 0);
+}
+
 void rg_network_deinit(void)
 {
 #ifdef RG_ENABLE_NETWORKING
@@ -191,6 +196,8 @@ bool rg_network_init(void)
     netstate.initialized = true;
     return true;
 fail:
+#else
+    RG_LOGE("Network was disabled at build time!\n");
 #endif
     return false;
 }

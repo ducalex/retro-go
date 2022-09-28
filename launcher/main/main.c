@@ -322,5 +322,9 @@ void app_main(void)
     bookmarks_init();
     themes_init();
 
+    // rg_network_init();
+    // rg_network_connect(NULL, NULL);
+    // ftp_server_start();
+
     retro_loop();
 }
