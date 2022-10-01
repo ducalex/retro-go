@@ -111,7 +111,7 @@ Some emulators support loading a BIOS. The files should be placed as follows:
 # Building Retro-Go
 
 ## Prerequisites
-You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/release-v4.3/esp32/get-started/index.html#get-started-get-prerequisites). Versions 4.0 to 4.4 are supported, 3.3 and 5.0 are not.
+You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/release-v4.3/esp32/get-started/index.html#get-started-get-prerequisites). Only versions 4.1 to 4.4 are supported. Support for 5.0 is coming soon.
 
 _Note: As of retro-go 1.35, I use 4.3.3. Version 4.1.x was used for 1.20 to 1.34 versions._
 
