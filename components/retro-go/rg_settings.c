@@ -98,6 +98,8 @@ void rg_settings_commit(void)
 
     if (unsaved_changes > 0)
         RG_LOGE("Save failed! %p\n", fp);
+    else
+        rg_storage_commit();
 
     cJSON_free(buffer);
 }
@@ -108,7 +110,7 @@ void rg_settings_reset(void)
     cJSON_Delete(config_root);
     config_root = cJSON_CreateObject();
     unsaved_changes++;
-    rg_storage_commit();
+    rg_settings_commit();
 }
 
 double rg_settings_get_number(const char *section, const char *key, double default_value)

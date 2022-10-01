@@ -191,8 +191,6 @@ void rg_storage_commit(void)
 {
     if (!disk_mounted)
         return;
-
-    rg_settings_commit();
     // flush buffers();
 }
 

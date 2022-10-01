@@ -760,7 +760,7 @@ static void shutdown_cleanup(void)
     rg_gui_draw_hourglass();                    // ...
     rg_system_event(RG_EVENT_SHUTDOWN, NULL);   // Allow apps to save their state if they want
     rg_audio_deinit();                          // Disable sound ASAP to avoid audio garbage
-    rg_system_save_rtc();                       // RTC might save to storage, do it before
+    // rg_system_save_rtc();                       // RTC might save to storage, do it before
     rg_storage_deinit();                        // Unmount storage
     rg_input_wait_for_key(RG_KEY_ALL, false);   // Wait for all keys to be released (boot is sensitive to GPIO0,32,33)
     rg_input_deinit();                          // Now we can shutdown input

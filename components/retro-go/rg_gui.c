@@ -1051,7 +1051,8 @@ int rg_gui_options_menu(void)
 
     int sel = rg_gui_dialog("Options", options, 0);
 
-    rg_storage_commit();
+    rg_settings_commit();
+    rg_system_save_rtc();
     rg_audio_set_mute(false);
 
     return sel;
@@ -1098,6 +1099,9 @@ int rg_gui_about_menu(const rg_gui_option_t *extra_options)
     else strcpy(network_str, "unavailable");
 
     int sel = rg_gui_dialog("Retro-Go", options, -1);
+
+    rg_settings_commit();
+    rg_system_save_rtc();
 
     switch (sel)
     {

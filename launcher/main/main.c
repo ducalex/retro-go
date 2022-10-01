@@ -174,7 +174,7 @@ static void retro_loop(void)
             rg_gui_options_menu();
 
             gui_save_config();
-            rg_storage_commit();
+            rg_settings_commit();
             redraw_pending = true;
         }
 
@@ -261,7 +261,7 @@ static void try_migrate(void)
         rename(RG_STORAGE_ROOT "/odroid/recent.txt", RG_BASE_PATH_CONFIG "/recent.txt");
     #endif
         rg_settings_set_number(NS_GLOBAL, "Migration", 1290);
-        rg_storage_commit();
+        rg_settings_commit();
     }
 
     // Some of our save formats have diverged and cause issue when they're shared with Go-Play
@@ -274,7 +274,7 @@ static void try_migrate(void)
                 "Please copy the contents of:\n /odroid/data\nto\n /retro-go/saves.");
     #endif
         rg_settings_set_number(NS_GLOBAL, "Migration", 1390);
-        rg_storage_commit();
+        rg_settings_commit();
     }
 }
 
