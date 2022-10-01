@@ -1,3 +1,11 @@
+# Retro-Go 1.35 (2022-10-??)
+- SNES: New Snes9x port (based on 2005 version) with sound!
+- Launcher: Network time sync support (TBD)
+- Launcher: Network file manager (TBD)
+- All: Fixed some crash recovery issues
+- Releases are now build with esp-idf 4.3.3
+
+
 # Retro-Go 1.34 (2022-09-18)
 - SNES: Fixed crash when opening menu
 - NES: Implemented mapper 185
