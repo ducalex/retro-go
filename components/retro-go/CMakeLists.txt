@@ -22,16 +22,14 @@ set_source_files_properties(
     -O3
 )
 
-if($ENV{RG_ENABLE_WIFI})
-    component_compile_options(-DRG_ENABLE_WIFI)
+if($ENV{RG_ENABLE_NETPLAY})
+    component_compile_options(-DRG_ENABLE_NETWORKING -DRG_ENABLE_NETPLAY)
+elseif($ENV{RG_ENABLE_NETWORKING})
+    component_compile_options(-DRG_ENABLE_NETWORKING)
 endif()
 
 if($ENV{RG_ENABLE_PROFILING})
     component_compile_options(-DRG_ENABLE_PROFILING -finstrument-functions)
-endif()
-
-if($ENV{RG_ENABLE_NETPLAY})
-    component_compile_options(-DRG_ENABLE_NETPLAY)
 endif()
 
 if($ENV{RG_BUILD_TIME})
