@@ -42,10 +42,6 @@ if os.path.exists("rg_config.py"):
 #       PROJECT_APPS[basename(dirname(file))] = [0, 0, 0, 0]
 
 
-if not os.getenv("IDF_PATH"):
-    exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
-
-
 class Symbol:
     def __init__(self, address, name, source="??:?", inlined=None):
         self.address = int(str(address), 0)
@@ -208,7 +204,7 @@ def build_app(app, device_type, with_profiling=False, with_networking=False):
     os.putenv("RG_ENABLE_NETWORKING", "1" if with_networking else "0")
     os.putenv("RG_BUILD_TARGET", re.sub(r'[^A-Z0-9]', '_', device_type.upper()))
     os.putenv("RG_BUILD_TIME", str(int(time.time())))
-    os.putenv("PROJECT_VER", PROJECT_VER)
+    os.putenv("RG_BUILD_VERSION", PROJECT_VER)
     subprocess.run("idf.py app", shell=True, check=True, cwd=os.path.join(os.getcwd(), app))
 
     try:
@@ -298,6 +294,9 @@ parser.add_argument(
     "--target", default=DEFAULT_TARGET, choices=set(TARGETS), help="Device to target"
 )
 parser.add_argument(
+    "--idf-target", default=None, choices=["esp32", "esp32s2", "esp32s3"], help="ESP SOC to target"
+)
+parser.add_argument(
     "--with-networking", action="store_const", const=True, help="Build with networking enabled"
 )
 parser.add_argument(
@@ -307,6 +306,12 @@ parser.add_argument(
     "--baud", default=DEFAULT_BAUD, help="Serial baudrate to use for flashing"
 )
 args = parser.parse_args()
+
+
+if not os.getenv("IDF_PATH"):
+    exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
+elif args.idf_target:
+    os.putenv("IDF_TARGET", args.idf_target)
 
 
 command = args.command
