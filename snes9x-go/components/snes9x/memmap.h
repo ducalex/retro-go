@@ -81,7 +81,7 @@ enum
 
 enum
 {
-   MAX_ROM_SIZE = 0x280000,
+   MAX_ROM_SIZE = 0x240000,
    RAM_SIZE = 0x20000,
    SRAM_SIZE = 0x10000, // 0x20000,
    VRAM_SIZE = 0x10000,

@@ -10,125 +10,72 @@
 #include "srtc.h"
 #include "soundux.h"
 
-const char header[16] = "SNES9X_000000001";
+static const char header[16] = "SNES9X_000000002";
 
 
 bool S9xSaveState(const char *filename)
 {
-   uint8_t *buffer, *buffer_ptr;
-   bool success = false;
+   size_t chunks = 0;
    FILE *fp = NULL;
 
-   // if (!(buffer = malloc(400 * 1024)))
-   //    return false;
-
-   // To allow for bigger ROM we'll abuse this cache instead, it is 512KB
-   buffer = IPPU.TileCache;
-
    if (!(fp = fopen(filename, "wb")))
-      goto done;
+      return false;
 
-   buffer_ptr = buffer;
+   chunks += fwrite(&header, sizeof(header), 1, fp);
+   chunks += fwrite(&CPU, sizeof(CPU), 1, fp);
+   chunks += fwrite(&ICPU, sizeof(ICPU), 1, fp);
+   chunks += fwrite(&PPU, sizeof(PPU), 1, fp);
+   chunks += fwrite(&DMA, sizeof(DMA), 1, fp);
+   chunks += fwrite(Memory.VRAM, VRAM_SIZE, 1, fp);
+   chunks += fwrite(Memory.RAM, RAM_SIZE, 1, fp);
+   chunks += fwrite(Memory.SRAM, SRAM_SIZE, 1, fp);
+   chunks += fwrite(Memory.FillRAM, FILLRAM_SIZE, 1, fp);
+   chunks += fwrite(&APU, sizeof(APU), 1, fp);
+   chunks += fwrite(&IAPU, sizeof(IAPU), 1, fp);
+   chunks += fwrite(IAPU.RAM, 0x10000, 1, fp);
+   chunks += fwrite(&SoundData, sizeof(SoundData), 1, fp);
 
-   memcpy(buffer_ptr, &header, sizeof(header));
-   buffer_ptr += sizeof(header);
-   memcpy(buffer_ptr, &CPU, sizeof(CPU));
-   buffer_ptr += sizeof(CPU);
-   memcpy(buffer_ptr, &ICPU, sizeof(ICPU));
-   buffer_ptr += sizeof(ICPU);
-   memcpy(buffer_ptr, &PPU, sizeof(PPU));
-   buffer_ptr += sizeof(PPU);
-   memcpy(buffer_ptr, &DMA, sizeof(DMA));
-   buffer_ptr += sizeof(DMA);
-   memcpy(buffer_ptr, Memory.VRAM, VRAM_SIZE);
-   buffer_ptr += VRAM_SIZE;
-   memcpy(buffer_ptr, Memory.RAM, RAM_SIZE);
-   buffer_ptr += RAM_SIZE;
-   memcpy(buffer_ptr, Memory.SRAM, SRAM_SIZE);
-   buffer_ptr += SRAM_SIZE;
-   memcpy(buffer_ptr, Memory.FillRAM, FILLRAM_SIZE);
-   buffer_ptr += FILLRAM_SIZE;
-   memcpy(buffer_ptr, &APU, sizeof(APU));
-   buffer_ptr += sizeof(APU);
-   memcpy(buffer_ptr, &IAPU, sizeof(IAPU));
-   buffer_ptr += sizeof(IAPU);
-   memcpy(buffer_ptr, IAPU.RAM, 0x10000);
-   buffer_ptr += 0x10000;
-   memcpy(buffer_ptr, &SoundData, sizeof(SoundData));
-   buffer_ptr += sizeof(SoundData);
+   printf("Saved chunks = %d\n", chunks);
 
-   printf("Save size = %d\n", buffer_ptr - buffer);
+   fclose(fp);
 
-   if (fwrite(buffer, buffer_ptr - buffer, 1, fp) != 1)
-      goto done;
-
-   // We've made it, yay!
-   success = true;
-
-done:
-   if (buffer && buffer != IPPU.TileCache)
-      free(buffer);
-   if (fp)
-      fclose(fp);
-   return success;
+   return chunks == 13;
 }
 
 bool S9xLoadState(const char *filename)
 {
-   uint8_t *buffer, *buffer_ptr;
-   bool success = false;
+   uint8_t buffer[512];
+   size_t chunks = 0;
    FILE *fp = NULL;
 
-   // if (!(buffer = malloc(400 * 1024)))
-   //    return false;
-
-   // To allow for bigger ROM we'll abuse this cache instead, it is 512KB
-   buffer = IPPU.TileCache;
-
-   S9xReset(); // Must be done before reading if using IPPU.TileCache
-
    if (!(fp = fopen(filename, "rb")))
-      goto done;
+      return false;
 
-   if (fread(buffer, 1, 16, fp) < 16)
-      goto done;
+   if (!fread(buffer, 16, 1, fp) || memcmp(header, buffer, sizeof(header)) != 0)
+   {
+      printf("Wrong header found\n");
+      goto fail;
+   }
 
-   if (memcmp(header, buffer, sizeof(header)) != 0)
-      goto done;
-
-   if (fread(buffer, 1, 400 * 1024, fp) < 64000)
-      goto done;
+   // At this point we can't go back and a failure will corrupt the state anyway
+   S9xReset();
 
    uint8_t *IAPU_RAM = IAPU.RAM;
 
-   buffer_ptr = buffer;
+   chunks += fread(&CPU, sizeof(CPU), 1, fp);
+   chunks += fread(&ICPU, sizeof(ICPU), 1, fp);
+   chunks += fread(&PPU, sizeof(PPU), 1, fp);
+   chunks += fread(&DMA, sizeof(DMA), 1, fp);
+   chunks += fread(Memory.VRAM, VRAM_SIZE, 1, fp);
+   chunks += fread(Memory.RAM, RAM_SIZE, 1, fp);
+   chunks += fread(Memory.SRAM, SRAM_SIZE, 1, fp);
+   chunks += fread(Memory.FillRAM, FILLRAM_SIZE, 1, fp);
+   chunks += fread(&APU, sizeof(APU), 1, fp);
+   chunks += fread(&IAPU, sizeof(IAPU), 1, fp);
+   chunks += fread(IAPU.RAM, 0x10000, 1, fp);
+   chunks += fread(&SoundData, sizeof(SoundData), 1, fp);
 
-   memcpy(&CPU, buffer_ptr, sizeof(CPU));
-   buffer_ptr += sizeof(CPU);
-   memcpy(&ICPU, buffer_ptr, sizeof(ICPU));
-   buffer_ptr += sizeof(ICPU);
-   memcpy(&PPU, buffer_ptr, sizeof(PPU));
-   buffer_ptr += sizeof(PPU);
-   memcpy(&DMA, buffer_ptr, sizeof(DMA));
-   buffer_ptr += sizeof(DMA);
-   memcpy(Memory.VRAM, buffer_ptr, VRAM_SIZE);
-   buffer_ptr += VRAM_SIZE;
-   memcpy(Memory.RAM, buffer_ptr, RAM_SIZE);
-   buffer_ptr += RAM_SIZE;
-   memcpy(Memory.SRAM, buffer_ptr, SRAM_SIZE);
-   buffer_ptr += SRAM_SIZE;
-   memcpy(Memory.FillRAM, buffer_ptr, FILLRAM_SIZE);
-   buffer_ptr += FILLRAM_SIZE;
-   memcpy(&APU, buffer_ptr, sizeof(APU));
-   buffer_ptr += sizeof(APU);
-   memcpy(&IAPU, buffer_ptr, sizeof(IAPU));
-   buffer_ptr += sizeof(IAPU);
-   memcpy(IAPU.RAM, buffer_ptr, 0x10000);
-   buffer_ptr += 0x10000;
-   memcpy(&SoundData, buffer_ptr, sizeof(SoundData));
-   buffer_ptr += sizeof(SoundData);
-
-   printf("Load size = %d\n", buffer_ptr - buffer);
+   printf("Loaded chunks = %d\n", chunks);
 
    // Fixing up registers and pointers:
 
@@ -152,11 +99,10 @@ bool S9xLoadState(const char *filename)
    S9xFixCycles();
    S9xReschedule();
 
-   success = true;
-done:
-   if (buffer && buffer != IPPU.TileCache)
-      free(buffer);
-   if (fp)
-      fclose(fp);
-   return success;
+   fclose(fp);
+   return true;
+
+fail:
+   fclose(fp);
+   return false;
 }
