@@ -250,13 +250,15 @@ void rg_audio_submit(const rg_audio_sample_t *samples, size_t count)
         size_t written = 0;
         size_t pos = 0;
 
+        // In speaker mode we use left and right as a differential mono output to increase resolution.
+        bool differential = audio.sink->type == RG_AUDIO_SINK_I2S_DAC;
+
         for (size_t i = 0; i < count; ++i)
         {
             int left = samples[i].left * volume;
             int right = samples[i].right * volume;
 
-            // In speaker mode we use left and right as a differential mono output to increase resolution.
-            if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC)
+            if (differential)
             {
                 int sample = (left + right) >> 1;
                 if (sample > 0x7F00)

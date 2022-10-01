@@ -1,4 +1,5 @@
 #include <rg_system.h>
+#include <sys/time.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,6 +12,7 @@
 #include "themes.h"
 #include "gui.h"
 
+static bool time_changed = false;
 
 static rg_gui_event_t toggle_tab_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
@@ -115,6 +117,14 @@ static void retro_loop(void)
 
     while (true)
     {
+        if (time_changed)
+        {
+            time_t time_sec = time(NULL);
+            rg_gui_alert("Time synced", asctime(gmtime(&time_sec)));
+            rg_system_save_rtc();
+            time_changed = false;
+        }
+
         if (!tab->enabled && !change_tab)
         {
             change_tab = 1;
@@ -282,6 +292,10 @@ void event_handler(int event, void *arg)
 {
     if (event == RG_EVENT_REDRAW)
         gui_redraw();
+#ifdef RG_ENABLE_NETWORKING
+    if (event == RG_EVENT_NETWORK_CONNECTED)
+        time_changed = rg_network_sync_time("pool.ntp.org", 0);
+#endif
 }
 
 void app_main(void)
@@ -317,14 +331,15 @@ void app_main(void)
         try_migrate();
     }
 
+#ifdef RG_ENABLE_NETWORKING
+    rg_network_init();
+    rg_network_wifi_start(RG_WIFI_STA, NULL, NULL, 0);
+#endif
+
     gui_init();
     applications_init();
     bookmarks_init();
     themes_init();
-
-    // rg_network_init();
-    // rg_network_connect(NULL, NULL);
-    // ftp_server_start();
 
     retro_loop();
 }
