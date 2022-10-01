@@ -1,85 +1,99 @@
-/*****************************************************************************\
-     Snes9x - Portable Super Nintendo Entertainment System (TM) emulator.
-                This file is licensed under the Snes9x License.
-   For further information, consult the LICENSE file in the root directory.
-\*****************************************************************************/
+/* This file is part of Snes9x. See LICENSE file. */
 
 #ifndef _PORT_H_
 #define _PORT_H_
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <limits.h>
-#include <time.h>
+#include <stdbool.h>
 #include <string.h>
-#include <strings.h>
 #include <sys/types.h>
 
-#ifndef PIXEL_FORMAT
+#include <rg_system.h>
+
+#ifndef INLINE
+#define INLINE inline
+#endif
+
+#ifdef PSP
+#define PIXEL_FORMAT BGR555
+#else
 #define PIXEL_FORMAT RGB565
 #endif
-
-// typedef unsigned char		bool8;
-typedef bool				bool8;
-typedef intptr_t			pint;
-typedef int8_t				int8;
-typedef uint8_t				uint8;
-typedef int16_t				int16;
-typedef uint16_t			uint16;
-typedef int32_t				int32;
-typedef uint32_t			uint32;
-typedef int64_t				int64;
-typedef uint64_t			uint64;
-
-#ifndef TRUE
-#define TRUE	1
-#endif
-#ifndef FALSE
-#define FALSE	0
-#endif
-
-#undef PATH_MAX
-#define PATH_MAX 512
-
-#define _MAX_DRIVE	1
-#define _MAX_DIR	PATH_MAX
-#define _MAX_FNAME	PATH_MAX
-#define _MAX_EXT	PATH_MAX
-#define _MAX_PATH	PATH_MAX
-
-#ifndef TITLE
-#define TITLE "Snes9x"
-#endif
-
-#if defined(__i386__) || defined(__i486__) || defined(__i586__) || defined(__i686__) || defined(__x86_64__) || defined(__alpha__) || defined(__MIPSEL__) || defined(_M_IX86) || defined(_M_X64) || defined(_XBOX1) || defined(__arm__) || defined(ANDROID) || defined(__aarch64__) || (defined(__BYTE_ORDER__) && __BYTE_ORDER == __ORDER_LITTLE_ENDIAN__) || defined(IS_LITTLE_ENDIAN)
-#define LSB_FIRST
-#define FAST_LSB_WORD_ACCESS
-#else
-#define MSB_FIRST
-#endif
-
-#ifdef FAST_LSB_WORD_ACCESS
-#define READ_WORD(s)		(*(uint16 *) (s))
-#define READ_3WORD(s)		(*(uint32 *) (s) & 0x00ffffff)
-#define READ_DWORD(s)		(*(uint32 *) (s))
-#define WRITE_WORD(s, d)	*(uint16 *) (s) = (d)
-#define WRITE_3WORD(s, d)	*(uint16 *) (s) = (uint16) (d), *((uint8 *) (s) + 2) = (uint8) ((d) >> 16)
-#define WRITE_DWORD(s, d)	*(uint32 *) (s) = (d)
-#else
-#define READ_WORD(s)		(*(uint8 *) (s) | (*((uint8 *) (s) + 1) << 8))
-#define READ_3WORD(s)		(*(uint8 *) (s) | (*((uint8 *) (s) + 1) << 8) | (*((uint8 *) (s) + 2) << 16))
-#define READ_DWORD(s)		(*(uint8 *) (s) | (*((uint8 *) (s) + 1) << 8) | (*((uint8 *) (s) + 2) << 16) | (*((uint8 *) (s) + 3) << 24))
-#define WRITE_WORD(s, d)	*(uint8 *) (s) = (uint8) (d), *((uint8 *) (s) + 1) = (uint8) ((d) >> 8)
-#define WRITE_3WORD(s, d)	*(uint8 *) (s) = (uint8) (d), *((uint8 *) (s) + 1) = (uint8) ((d) >> 8), *((uint8 *) (s) + 2) = (uint8) ((d) >> 16)
-#define WRITE_DWORD(s, d)	*(uint8 *) (s) = (uint8) (d), *((uint8 *) (s) + 1) = (uint8) ((d) >> 8), *((uint8 *) (s) + 2) = (uint8) ((d) >> 16), *((uint8 *) (s) + 3) = (uint8) ((d) >> 24)
-#endif
-
-#define SWAP_WORD(s)		(s) = (((s) & 0xff) <<  8) | (((s) & 0xff00) >> 8)
-#define SWAP_DWORD(s)		(s) = (((s) & 0xff) << 24) | (((s) & 0xff00) << 8) | (((s) & 0xff0000) >> 8) | (((s) & 0xff000000) >> 24)
+/* The above is used to disable the 16-bit graphics mode checks sprinkled
+ * throughout the code, if the pixel format is always 16-bit. */
 
 #include "pixform.h"
 
+#ifndef _WIN32
+
+#ifndef PATH_MAX
+#define PATH_MAX 1024
+#endif
+
+#ifndef _MAX_DIR
+#define _MAX_DIR   PATH_MAX
+#endif
+
+#ifndef _MAX_DRIVE
+#define _MAX_DRIVE 1
+#endif
+
+#ifndef _MAX_FNAME
+#define _MAX_FNAME PATH_MAX
+#endif
+
+#ifndef _MAX_EXT
+#define _MAX_EXT   PATH_MAX
+#endif
+
+#ifndef _MAX_PATH
+#define _MAX_PATH  PATH_MAX
+#endif
+#else /* _WIN32 */
+#define strcasecmp  stricmp
+#define strncasecmp strnicmp
+#endif
+
+#define SLASH_STR "/"
+#define SLASH_CHAR '/'
+
+#if defined(__i386__)  || defined(__i486__) || defined(__i586__) || defined(_XBOX1) || defined(__alpha__)
+#define FAST_LSB_WORD_ACCESS
+#elif defined(__MIPSEL__)
+/* On little-endian MIPS, a 16-bit word can be read directly from an address
+ * only if it's aligned. */
+#define FAST_ALIGNED_LSB_WORD_ACCESS
+#endif
+
+#define ABS(X)   ((X) <  0  ? -(X) : (X))
+#define MIN(A,B) ((A) < (B) ?  (A) : (B))
+#define MAX(A,B) ((A) > (B) ?  (A) : (B))
+
+/* Integer square root by Halleck's method, with Legalize's speedup */
+static INLINE int32_t _isqrt(int32_t val)
+{
+   int32_t squaredbit, remainder, root;
+
+   if (val < 1)
+      return 0;
+
+   squaredbit  = 1 << 30;
+   remainder = val;
+   root = 0;
+
+   while (squaredbit > 0)
+   {
+      if (remainder >= (squaredbit | root))
+      {
+         remainder -= (squaredbit | root);
+         root >>= 1;
+         root |= squaredbit;
+      }
+      else
+         root >>= 1;
+      squaredbit >>= 2;
+   }
+
+   return root;
+}
 #endif
