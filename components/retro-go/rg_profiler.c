@@ -96,12 +96,12 @@ NO_PROFILE void rg_profiler_print(void)
 
 NO_PROFILE void rg_profiler_push(char *section_name)
 {
-
+    //
 }
 
 NO_PROFILE void rg_profiler_pop(void)
 {
-
+    //
 }
 
 NO_PROFILE void __cyg_profile_func_enter(void *this_fn, void *call_site)

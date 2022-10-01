@@ -21,10 +21,6 @@ typedef struct
     rg_profile_frame_t frames[512];
 } rg_profile_t;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 void rg_profiler_init(void);
 void rg_profiler_free(void);
 void rg_profiler_start(void);
@@ -33,8 +29,12 @@ void rg_profiler_print(void);
 void rg_profiler_push(char *section_name);
 void rg_profiler_pop(void);
 
-void __cyg_profile_func_enter(void *this_fn, void *call_site);
-void __cyg_profile_func_exit(void *this_fn, void *call_site);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+    void __cyg_profile_func_enter(void *this_fn, void *call_site);
+    void __cyg_profile_func_exit(void *this_fn, void *call_site);
 
 #ifdef __cplusplus
 }

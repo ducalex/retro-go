@@ -6,14 +6,15 @@
 #include <unistd.h>
 
 #define TRY(x)                           \
-    if ((err = (x)) != ESP_OK) {         \
+    if ((err = (x)) != ESP_OK)           \
+    {                                    \
         RG_LOGE("%s = 0x%x\n", #x, err); \
         goto fail;                       \
     }
 
 static rg_network_t netstate = {0};
 
-static const char *SETTING_WIFI_SSID     = "ssid";
+static const char *SETTING_WIFI_SSID = "ssid";
 static const char *SETTING_WIFI_PASSWORD = "password";
 
 
@@ -78,7 +79,8 @@ bool rg_network_wifi_start(int mode, const char *ssid, const char *password, int
     memcpy(wifi_config.sta.ssid, netstate.ssid, 32);
     memcpy(wifi_config.sta.password, netstate.password, 64);
     esp_err_t err;
-    RG_LOGI("Connecting to '%s' with password '%s'...\n", (char*)wifi_config.sta.ssid, (char*)wifi_config.sta.password);
+    RG_LOGI("Connecting to '%s' with password '%s'...\n", (char *)wifi_config.sta.ssid,
+            (char *)wifi_config.sta.password);
     TRY(esp_wifi_set_mode(WIFI_MODE_STA));
     TRY(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     TRY(esp_wifi_start());
@@ -93,7 +95,8 @@ rg_network_t rg_network_get_info(void)
 {
 #ifdef RG_ENABLE_NETWORKING
     wifi_ap_record_t wifidata;
-    if (netstate.connected) {
+    if (netstate.connected)
+    {
         if (esp_wifi_sta_get_ap_info(&wifidata) == ESP_OK)
             netstate.rssi = wifidata.rssi;
     }
@@ -107,11 +110,12 @@ bool rg_network_sync_time(const char *host, int *out_delta)
     int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     struct hostent *server = gethostbyname(host);
     struct sockaddr_in serv_addr = {};
-    struct timeval timeout = { 2, 0 };
+    struct timeval timeout = {2, 0};
     struct timeval ntp_time = {0, 0};
     struct timeval cur_time;
 
-    if (server == NULL) {
+    if (server == NULL)
+    {
         RG_LOGE("Failed to resolve NTP server hostname");
         return false;
     }
@@ -123,7 +127,7 @@ bool rg_network_sync_time(const char *host, int *out_delta)
     uint32_t ntp_packet[12] = {0x0000001B, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // li, vn, mode.
 
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-    connect(sockfd, (void*)&serv_addr, sizeof(serv_addr));
+    connect(sockfd, (void *)&serv_addr, sizeof(serv_addr));
     send(sockfd, &ntp_packet, sizeof(ntp_packet), 0);
 
     if (recv(sockfd, &ntp_packet, sizeof(ntp_packet), 0) >= 0)
@@ -138,8 +142,8 @@ bool rg_network_sync_time(const char *host, int *out_delta)
         int64_t now_millis = ((int64_t)ntp_time.tv_sec * 1000000 + ntp_time.tv_usec) / 1000;
         int ntp_time_delta = (now_millis - prev_millis);
 
-        RG_LOGI("Received Time: %.24s, we were %dms %s\n", ctime(&ntp_time.tv_sec),
-            abs((int)ntp_time_delta), ntp_time_delta < 0 ? "ahead" : "behind");
+        RG_LOGI("Received Time: %.24s, we were %dms %s\n", ctime(&ntp_time.tv_sec), abs((int)ntp_time_delta),
+                ntp_time_delta < 0 ? "ahead" : "behind");
 
         if (out_delta)
             *out_delta = ntp_time_delta;

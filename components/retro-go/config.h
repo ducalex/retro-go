@@ -1,17 +1,17 @@
 #if defined(RG_TARGET_ODROID_GO)
-    #include "targets/odroid-go.h"
+#include "targets/odroid-go.h"
 #elif defined(RG_TARGET_MRGC_G32)
-    #include "targets/mrgc-g32.h"
+#include "targets/mrgc-g32.h"
 #elif defined(RG_TARGET_QTPY_GAMER)
-    #include "targets/qtpy-gamer.h"
+#include "targets/qtpy-gamer.h"
 #elif defined(RG_TARGET_RETRO_ESP32)
-    #include "targets/retro-esp32.h"
+#include "targets/retro-esp32.h"
 #elif defined(RG_TARGET_SDL2)
-    #include "targets/sdl2.h"
+#include "targets/sdl2.h"
 #else
-    #warning "No target defined. Defaulting to ODROID-GO."
-    #include "targets/odroid-go.h"
-    #define RG_TARGET_ODROID_GO
+#warning "No target defined. Defaulting to ODROID-GO."
+#include "targets/odroid-go.h"
+#define RG_TARGET_ODROID_GO
 #endif
 
 // #ifndef RG_ENABLE_NETPLAY
@@ -33,7 +33,7 @@
 #endif
 
 #ifndef RG_APP_FACTORY
-#define RG_APP_FACTORY  NULL
+#define RG_APP_FACTORY NULL
 #endif
 
 #ifndef RG_PATH_MAX
@@ -59,8 +59,4 @@
 
 #ifndef RG_BATTERY_CALC_VOLTAGE
 #define RG_BATTERY_CALC_VOLTAGE(raw) (0)
-#endif
-
-#ifdef RG_ENABLE_WIFI
-#define RG_ENABLE_NETWORKING
 #endif

@@ -368,7 +368,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     // Test for recovery request as early as possible
     for (int timeout = 5, btn; (btn = rg_input_read_gamepad() & RG_RECOVERY_BTN) && timeout >= 0; --timeout)
     {
-        RG_LOGW("Button "PRINTF_BINARY_16" being held down...\n", PRINTF_BINVAL_16(btn));
+        RG_LOGW("Button " PRINTF_BINARY_16 " being held down...\n", PRINTF_BINVAL_16(btn));
         rg_task_delay(100);
         if (timeout == 0)
             enter_recovery_mode();
@@ -756,16 +756,16 @@ bool rg_emu_reset(bool hard)
 
 static void shutdown_cleanup(void)
 {
-    rg_display_clear(C_BLACK);                  // Let the user know that something is happening
-    rg_gui_draw_hourglass();                    // ...
-    rg_system_event(RG_EVENT_SHUTDOWN, NULL);   // Allow apps to save their state if they want
-    rg_audio_deinit();                          // Disable sound ASAP to avoid audio garbage
-    // rg_system_save_rtc();                       // RTC might save to storage, do it before
-    rg_storage_deinit();                        // Unmount storage
-    rg_input_wait_for_key(RG_KEY_ALL, false);   // Wait for all keys to be released (boot is sensitive to GPIO0,32,33)
-    rg_input_deinit();                          // Now we can shutdown input
-    rg_i2c_deinit();                            // Must be after input, sound, and rtc
-    rg_display_deinit();                        // Do this very last to reduce flicker time
+    rg_display_clear(C_BLACK);                // Let the user know that something is happening
+    rg_gui_draw_hourglass();                  // ...
+    rg_system_event(RG_EVENT_SHUTDOWN, NULL); // Allow apps to save their state if they want
+    rg_audio_deinit();                        // Disable sound ASAP to avoid audio garbage
+    // rg_system_save_rtc();                     // RTC might save to storage, do it before
+    rg_storage_deinit();                      // Unmount storage
+    rg_input_wait_for_key(RG_KEY_ALL, false); // Wait for all keys to be released (boot is sensitive to GPIO0,32,33)
+    rg_input_deinit();                        // Now we can shutdown input
+    rg_i2c_deinit();                          // Must be after input, sound, and rtc
+    rg_display_deinit();                      // Do this very last to reduce flicker time
 }
 
 void rg_system_shutdown(void)
@@ -774,7 +774,8 @@ void rg_system_shutdown(void)
     exitCalled = true;
     shutdown_cleanup();
     vTaskSuspendAll();
-    while (1);
+    while (1)
+        ;
 }
 
 void rg_system_sleep(void)
@@ -931,7 +932,7 @@ int rg_system_get_led(void)
     return ledValue;
 }
 
-uint32_t rg_crc32(uint32_t crc, const uint8_t* buf, uint32_t len)
+uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, uint32_t len)
 {
     // This is part of the ROM but finding the correct header is annoying as it differs per SOC...
     extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
@@ -966,7 +967,7 @@ void *rg_alloc(size_t size, uint32_t caps)
 
     size_t available = heap_caps_get_largest_free_block(esp_caps);
     // Loosen the caps and try again
-    if ((ptr = heap_caps_calloc(1, size, esp_caps & ~(MALLOC_CAP_SPIRAM|MALLOC_CAP_INTERNAL))))
+    if ((ptr = heap_caps_calloc(1, size, esp_caps & ~(MALLOC_CAP_SPIRAM | MALLOC_CAP_INTERNAL))))
     {
         RG_LOGW("SIZE=%u, CAPS=%s, PTR=%p << CAPS not fully met! (available: %d)\n",
                     size, caps_list, ptr, available);

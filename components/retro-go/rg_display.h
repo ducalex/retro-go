@@ -80,12 +80,14 @@ typedef struct
 
 typedef struct
 {
-    struct {
+    struct
+    {
         int width;
         int height;
         int format;
     } screen;
-    struct {
+    struct
+    {
         int width;
         int height;
         int x_pos;
@@ -93,7 +95,8 @@ typedef struct
         int x_inc;
         int y_inc;
     } viewport;
-    struct {
+    struct
+    {
         int width;
         int height;
         int stride;

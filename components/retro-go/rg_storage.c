@@ -143,7 +143,7 @@ void rg_storage_init(void)
 #elif RG_STORAGE_DRIVER == 4 // SPI Flash
 
     wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
-    esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, "storage", &s_wl_handle)
+    esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, "storage", &s_wl_handle);
     error_code = err;
 
 #else
@@ -279,7 +279,7 @@ bool rg_storage_delete(const char *path)
 
 rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char *path))
 {
-    DIR* dir = opendir(path);
+    DIR *dir = opendir(path);
     if (!dir)
         return NULL;
 
@@ -317,15 +317,15 @@ rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char 
         strcpy(result->name, basename);
         result->is_valid = 1;
 
-        #if defined(DT_REG) && defined(DT_DIR)
-            result->is_file = ent->d_type == DT_REG;
-            result->is_dir = ent->d_type == DT_DIR;
-        #else // stupid mingw
-            struct stat statbuf;
-            stat(fullpath, &statbuf);
-            result->is_file = S_ISREG(statbuf.st_mode);
-            result->is_dir = S_ISDIR(statbuf.st_mode);
-        #endif
+    #if defined(DT_REG) && defined(DT_DIR)
+        result->is_file = ent->d_type == DT_REG;
+        result->is_dir = ent->d_type == DT_DIR;
+    #else // stupid mingw
+        struct stat statbuf;
+        stat(fullpath, &statbuf);
+        result->is_file = S_ISREG(statbuf.st_mode);
+        result->is_dir = S_ISDIR(statbuf.st_mode);
+    #endif
     }
     memset(&results[count], 0, sizeof(rg_scandir_t));
 
