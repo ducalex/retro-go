@@ -145,11 +145,20 @@ static esp_err_t http_post_handler(httpd_req_t *req)
 
 void ftp_server_stop(void)
 {
+    if (!server) // Already stopped
+        return;
 
+    httpd_stop(server);
+    server = NULL;
+    free(scratch_buffer);
+    scratch_buffer = NULL;
 }
 
 void ftp_server_start(void)
 {
+    if (server) // Already started
+        return;
+
     scratch_buffer = calloc(1, 8192);
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
