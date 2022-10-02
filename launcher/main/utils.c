@@ -26,27 +26,3 @@ const char *const_string(const char *str)
 
     return str;
 }
-
-char *strtolower(char *str)
-{
-    if (!str)
-        return NULL;
-
-    for (char *c = str; *c; c++)
-        if (*c >= 'A' && *c <= 'Z')
-            *c += 32;
-
-    return str;
-}
-
-char *strtoupper(char *str)
-{
-    if (!str)
-        return NULL;
-
-    for (char *c = str; *c; c++)
-        if (*c >= 'a' && *c <= 'z')
-            *c -= 32;
-
-    return str;
-}

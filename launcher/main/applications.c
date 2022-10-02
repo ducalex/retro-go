@@ -54,7 +54,7 @@ static void scan_folder(retro_app_t *app, const char* path, void *parent)
         {
             char buffer[RG_PATH_MAX];
             snprintf(buffer, RG_PATH_MAX, " %s ", rg_extension(entry->name));
-            is_valid = strstr(app->extensions, strtolower(buffer)) != NULL;
+            is_valid = strstr(app->extensions, rg_strtolower(buffer)) != NULL;
             type = 0x00;
         }
         else if (entry->is_dir)
@@ -662,9 +662,9 @@ static void application(const char *desc, const char *name, const char *exts, co
     snprintf(app->short_name, 60, "%s", name);
     snprintf(app->partition, 60, "%s", part);
     snprintf(app->extensions, 60, " %s ", exts);
-    strtolower(app->partition);
-    strtolower(app->short_name);
-    strtolower(app->extensions);
+    rg_strtolower(app->partition);
+    rg_strtolower(app->short_name);
+    rg_strtolower(app->extensions);
     snprintf(app->paths.covers, RG_PATH_MAX, RG_BASE_PATH_COVERS "/%s", app->short_name);
     snprintf(app->paths.saves, RG_PATH_MAX, RG_BASE_PATH_SAVES "/%s", app->short_name);
     snprintf(app->paths.roms, RG_PATH_MAX, RG_BASE_PATH_ROMS "/%s", app->short_name);

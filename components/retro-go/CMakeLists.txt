@@ -29,7 +29,7 @@ elseif($ENV{RG_ENABLE_NETWORKING})
 endif()
 
 if($ENV{RG_ENABLE_PROFILING})
-    component_compile_options(-DRG_ENABLE_PROFILING -finstrument-functions)
+    component_compile_options(-DRG_ENABLE_PROFILING)
 endif()
 
 if($ENV{RG_BUILD_TIME})

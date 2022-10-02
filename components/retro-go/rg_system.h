@@ -30,8 +30,8 @@ extern "C" {
 #include "rg_network.h"
 #include "rg_gui.h"
 #include "rg_i2c.h"
-#include "rg_profiler.h"
 #include "rg_printf.h"
+#include "rg_utils.h"
 
 #ifdef RG_ENABLE_NETPLAY
 #include "rg_netplay.h"
@@ -217,7 +217,6 @@ bool rg_emu_reset(bool hard);
 bool rg_emu_screenshot(const char *filename, int width, int height);
 rg_emu_state_t *rg_emu_get_states(const char *romPath, size_t slots);
 
-uint32_t rg_crc32(uint32_t crc, const uint8_t* buf, uint32_t len);
 void *rg_alloc(size_t size, uint32_t caps);
 
 #define MEM_ANY   (0)
@@ -236,15 +235,6 @@ void *rg_alloc(size_t size, uint32_t caps);
 // #define gpio_get_level(num, level) (((num) & I2C) ? rg_gpio_set_level((num) & ~I2C) : (gpio_get_level)(num, level))
 // #define gpio_set_direction(num, mode) (((num) & I2C) ? rg_gpio_set_direction((num) & ~I2C) : (gpio_set_direction)(num, level) == ESP_OK)
 
-#define RG_TIMER_INIT() int64_t _rgts_ = rg_system_timer(), _rgtl_ = rg_system_timer();
-#define RG_TIMER_LAP(name) \
-    RG_LOGX("Lap %s: %.2f   Total: %.2f\n", #name, (rg_system_timer() - _rgtl_) / 1000.f, \
-            (rg_system_timer() - _rgts_) / 1000.f); _rgtl_ = rg_system_timer();
-
-#define RG_MIN(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
-#define RG_MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
-#define RG_COUNT(array) (sizeof(array) / sizeof((array)[0]))
-
 // This should really support printf format...
 #define RG_PANIC(x) rg_system_panic(__func__, x)
 #define RG_ASSERT(cond, msg) while (!(cond)) { RG_PANIC("Assertion failed: `" #cond "` : " msg); }
@@ -258,6 +248,10 @@ void *rg_alloc(size_t size, uint32_t caps);
 #define RG_LOGW(x, ...) rg_system_log(RG_LOG_WARN, RG_LOG_TAG, x, ## __VA_ARGS__)
 #define RG_LOGI(x, ...) rg_system_log(RG_LOG_INFO, RG_LOG_TAG, x, ## __VA_ARGS__)
 #define RG_LOGD(x, ...) rg_system_log(RG_LOG_DEBUG, RG_LOG_TAG, x, ## __VA_ARGS__)
+
+void __cyg_profile_func_enter(void *this_fn, void *call_site);
+void __cyg_profile_func_exit(void *this_fn, void *call_site);
+#define NO_PROFILE __attribute((no_instrument_function))
 
 #ifdef __cplusplus
 }

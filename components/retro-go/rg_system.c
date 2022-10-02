@@ -13,6 +13,7 @@
 #include <SDL2/SDL.h>
 #else
 #include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 #include <freertos/task.h>
 #include <esp_heap_caps.h>
 #include <esp_partition.h>
@@ -26,21 +27,12 @@
 #endif
 #endif
 
-// typedef struct {
-// } rg_task_t;
-
 #define RG_LOGBUF_SIZE 2048
 typedef struct
 {
     char buffer[RG_LOGBUF_SIZE];
     size_t cursor;
 } logbuf_t;
-
-#define logbuf_putc(buf, c) (buf)->buffer[(buf)->cursor++] = c, (buf)->cursor %= RG_LOGBUF_SIZE;
-#define logbuf_puts(buf, str) for (const char *ptr = str; *ptr; ptr++) logbuf_putc(buf, *ptr);
-
-#define WDT_TIMEOUT 10000000
-#define WDT_RELOAD(val) wdtCounter = (val)
 
 #define RG_STRUCT_MAGIC 0x12345678
 typedef struct
@@ -54,7 +46,7 @@ typedef struct
 
 typedef struct
 {
-    uint32_t totalFrames, fullFrames, ticks;
+    int32_t totalFrames, fullFrames, ticks;
     int64_t busyTime, updateTime;
 } counters_t;
 
@@ -63,6 +55,23 @@ typedef struct
     TaskHandle_t handle;
     char name[20];
 } rg_task_t;
+
+#ifdef RG_ENABLE_PROFILING
+typedef struct
+{
+    void *func_ptr, *caller_ptr;
+    int32_t num_calls, run_time;
+    int64_t enter_time;
+} profile_frame_t;
+
+static struct
+{
+    int64_t time_started;
+    int32_t total_frames;
+    SemaphoreHandle_t lock;
+    profile_frame_t frames[512];
+} *profile;
+#endif
 
 // The trace will survive a software reset
 static RTC_NOINIT_ATTR panic_trace_t panicTrace;
@@ -77,6 +86,12 @@ static bool exitCalled = false;
 static const char *SETTING_BOOT_NAME = "BootName";
 static const char *SETTING_BOOT_ARGS = "BootArgs";
 static const char *SETTING_BOOT_FLAGS = "BootFlags";
+
+#define WDT_TIMEOUT 10000000
+#define WDT_RELOAD(val) wdtCounter = (val)
+
+#define logbuf_putc(buf, c) (buf)->buffer[(buf)->cursor++] = c, (buf)->cursor %= RG_LOGBUF_SIZE;
+#define logbuf_puts(buf, str) for (const char *ptr = str; *ptr; ptr++) logbuf_putc(buf, *ptr);
 
 
 static void rtc_time_init(void)
@@ -193,6 +208,7 @@ static void update_statistics(void)
 static void system_monitor_task(void *arg)
 {
     int64_t lastLoop = rg_system_timer();
+    int32_t numLoop = 0;
     float batteryPercent = 0.f;
     bool ledState = false;
 
@@ -243,16 +259,12 @@ static void system_monitor_task(void *arg)
         }
 
         #ifdef RG_ENABLE_PROFILING
-            static int loops = 0;
-            if (((loops++) % 10) == 0)
-            {
-                rg_profiler_stop();
-                rg_profiler_print();
-                rg_profiler_start();
-            }
+            if ((numLoop % 10) == 0)
+                rg_system_dump_profile();
         #endif
 
         rg_task_delay(1000);
+        numLoop++;
     }
 
     rg_task_delete(NULL);
@@ -415,7 +427,8 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 
     #ifdef RG_ENABLE_PROFILING
     RG_LOGI("Profiling has been enabled at compile time!\n");
-    rg_profiler_init();
+    profile = rg_alloc(sizeof(*profile), MEM_SLOW);
+    profile->lock = xSemaphoreCreateMutex();
     #endif
 
     rg_task_create("rg_system", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY, -1);
@@ -932,13 +945,6 @@ int rg_system_get_led(void)
     return ledValue;
 }
 
-uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, uint32_t len)
-{
-    // This is part of the ROM but finding the correct header is annoying as it differs per SOC...
-    extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
-    return crc32_le(crc, buf, len);
-}
-
 // Note: You should use calloc/malloc everywhere possible. This function is used to ensure
 // that some memory is put in specific regions for performance or hardware reasons.
 // Memory from this function should be freed with free()
@@ -977,3 +983,90 @@ void *rg_alloc(size_t size, uint32_t caps)
     RG_LOGE("SIZE=%u, CAPS=%s << FAILED! (available: %d)\n", size, caps_list, available);
     RG_PANIC("Memory allocation failed!");
 }
+
+#ifdef RG_ENABLE_PROFILING
+// Note this profiler might be inaccurate because of:
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=28205
+
+// We also need to add multi-core support. Currently it's not an issue
+// because all our profiled code runs on the same core.
+
+#define LOCK_PROFILE()   xSemaphoreTake(lock, pdMS_TO_TICKS(10000));
+#define UNLOCK_PROFILE() xSemaphoreGive(lock);
+
+NO_PROFILE static inline profile_frame_t *find_frame(void *this_fn, void *call_site)
+{
+    for (int i = 0; i < 512; ++i)
+    {
+        profile_frame_t *frame = &profile->frames[i];
+        if (frame->func_ptr == 0)
+        {
+            profile->total_frames = RG_MAX(profile->total_frames, i + 1);
+            frame->func_ptr = this_fn;
+        }
+        if (frame->func_ptr == this_fn) // && frame->caller_ptr == call_site)
+            return frame;
+    }
+
+    RG_PANIC("Profile memory exhausted!");
+}
+
+NO_PROFILE void rg_system_dump_profile(void)
+{
+    LOCK_PROFILE();
+
+    printf("RGD:PROF:BEGIN %d %d\n", profile->total_frames, (int)(rg_system_timer() - profile->time_started));
+
+    for (int i = 0; i < profile->total_frames; ++i)
+    {
+        profile_frame_t *frame = &profile->frames[i];
+
+        printf(
+            "RGD:PROF:DATA %p\t%p\t%u\t%u\n",
+            frame->caller_ptr,
+            frame->func_ptr,
+            frame->num_calls,
+            frame->run_time
+        );
+    }
+
+    printf("RGD:PROF:END\n");
+
+    memset(profile->frames, 0, sizeof(profile->frames));
+    profile->time_started = rg_system_timer();
+    profile->total_frames = 0;
+
+    UNLOCK_PROFILE();
+}
+
+NO_PROFILE void __cyg_profile_func_enter(void *this_fn, void *call_site)
+{
+    if (!profile)
+        return;
+
+    int64_t now = rg_system_timer();
+    LOCK_PROFILE();
+    profile_frame_t *fn = find_frame(this_fn, call_site);
+    // Recursion will need a real stack, this is absurd
+    if (fn->enter_time != 0)
+        fn->run_time += now - fn->enter_time;
+    fn->enter_time = rg_system_timer(); // not now, because we delayed execution
+    fn->num_calls++;
+    UNLOCK_PROFILE();
+}
+
+NO_PROFILE void __cyg_profile_func_exit(void *this_fn, void *call_site)
+{
+    if (!profile)
+        return;
+
+    int64_t now = rg_system_timer();
+    LOCK_PROFILE();
+    profile_frame_t *fn = find_frame(this_fn, call_site);
+    // Ignore if profiler was disabled when function entered
+    if (fn->enter_time != 0)
+        fn->run_time += now - fn->enter_time;
+    fn->enter_time = 0;
+    UNLOCK_PROFILE();
+}
+#endif
