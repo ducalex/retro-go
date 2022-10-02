@@ -60,3 +60,7 @@
 #ifndef RG_BATTERY_CALC_VOLTAGE
 #define RG_BATTERY_CALC_VOLTAGE(raw) (0)
 #endif
+
+#ifndef RG_GPIO_LED
+#define RG_GPIO_LED (-1)
+#endif

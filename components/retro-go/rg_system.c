@@ -309,8 +309,9 @@ static void setup_gpios(void)
     gpio_reset_pin(GPIO_NUM_14);
     gpio_reset_pin(GPIO_NUM_15);
 #endif
-#ifdef RG_GPIO_LED
-    gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
+#ifndef RG_TARGET_SDL2
+    if (RG_GPIO_LED != GPIO_NUM_NC)
+        gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
 #endif
 }
 
@@ -933,8 +934,8 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
 
 void rg_system_set_led(int value)
 {
-#ifdef RG_GPIO_LED
-    if (ledValue != value)
+#ifndef RG_TARGET_SDL2
+    if (RG_GPIO_LED > -1 && ledValue != value)
         gpio_set_level(RG_GPIO_LED, value);
 #endif
     ledValue = value;
