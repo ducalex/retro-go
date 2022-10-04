@@ -303,12 +303,12 @@ void app_main(void)
 
         /* Reset the difference clocks and audio index */
         system_clock = 0;
-        zclk = 0;
+        zclk = z80_enabled ? 0 : 0x1000000;
 
-        ym2612_clock = 0;
+        ym2612_clock = yfm_enabled ? 0 : 0x1000000;
         ym2612_index = 0;
 
-        sn76489_clock = INT_MAX;
+        sn76489_clock = yfm_enabled ? 0 : 0x1000000;
         sn76489_index = 0;
 
         scan_line = 0;
@@ -316,11 +316,7 @@ void app_main(void)
         while (scan_line < lines_per_frame)
         {
             m68k_run(system_clock + VDP_CYCLES_PER_LINE);
-            if (z80_enabled) {
-                z80_run(system_clock + VDP_CYCLES_PER_LINE);
-            } else {
-                zclk = system_clock + VDP_CYCLES_PER_LINE * 4; // Prevent z80_sync from running
-            }
+            z80_run(system_clock + VDP_CYCLES_PER_LINE);
 
             /* Audio */
             /*  GWENESIS_AUDIO_ACCURATE:
@@ -396,6 +392,8 @@ void app_main(void)
         int elapsed = get_elapsed_time_since(startTime);
         rg_system_tick(elapsed);
 
-        rg_audio_submit(gwenesis_ym2612_buffer, AUDIO_BUFFER_LENGTH >> 1);
+        if (yfm_enabled || z80_enabled) {
+            rg_audio_submit(gwenesis_ym2612_buffer, AUDIO_BUFFER_LENGTH >> 1);
+        }
     }
 }
