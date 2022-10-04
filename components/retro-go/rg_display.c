@@ -31,6 +31,8 @@ static rg_display_counters_t counters;
 static rg_display_config_t config;
 static rg_display_t display;
 
+// static rg_video_update_t updates[2];
+
 static struct
 {
     uint8_t start  : 1; // Indicates this line or column is safe to start an update on
@@ -685,6 +687,11 @@ rg_display_config_t rg_display_get_config(void)
 {
     return config;
 }
+
+// rg_video_update_t *rg_display_get_updates(void)
+// {
+//     return updates;
+// }
 
 void rg_display_set_update_mode(display_update_t update_mode)
 {

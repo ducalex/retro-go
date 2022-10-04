@@ -812,6 +812,7 @@ void rg_system_start_app(const char *app, const char *name, const char *args, ui
     rg_settings_set_string(NS_GLOBAL, SETTING_BOOT_NAME, name);
     rg_settings_set_string(NS_GLOBAL, SETTING_BOOT_ARGS, args);
     rg_settings_set_number(NS_GLOBAL, SETTING_BOOT_FLAGS, flags);
+    rg_settings_commit();
     rg_system_set_boot_app(app);
     rg_system_restart();
 }
