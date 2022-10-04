@@ -206,14 +206,12 @@ void ym_log(const char *subs, const char *fmt, ...) {
 *   TL_RES_LEN - sinus resolution (X axis)
 */
 #define TL_TAB_LEN (13*2*TL_RES_LEN)
-// static signed int tl_tab[TL_TAB_LEN];
-static INT16 tl_tab[2*TL_RES_LEN];
+static signed int tl_tab[TL_TAB_LEN];
 
 #define ENV_QUIET    (TL_TAB_LEN>>3)
 
 /* sin waveform table in 'decibel' scale */
-// static unsigned int sin_tab[SIN_LEN];
-static UINT16 sin_tab[SIN_LEN];
+static unsigned int sin_tab[SIN_LEN] ;
 
 /* sustain level table (3dB per step) */
 /* bit0, bit1, bit2, bit3, bit4, bit5, bit6 */
@@ -1472,8 +1470,7 @@ INLINE signed int op_calc(UINT32 phase, unsigned int env, unsigned int pm)
 
   if (p >= TL_TAB_LEN)
     return 0;
-  // return tl_tab[p];
-  return tl_tab[p & 0x1FF] >> (p >> 9);
+  return tl_tab[p];
 }
 
 INLINE signed int op_calc1(UINT32 phase, unsigned int env, unsigned int pm)
@@ -1482,8 +1479,7 @@ INLINE signed int op_calc1(UINT32 phase, unsigned int env, unsigned int pm)
 
   if (p >= TL_TAB_LEN)
     return 0;
-  // return tl_tab[p];
-  return tl_tab[p & 0x1FF] >> (p >> 9);
+  return tl_tab[p];
 }
 
 INLINE void chan_calc(FM_CH *CH, int num)
@@ -1876,11 +1872,11 @@ static void init_tables(void)
     /* yyyyyyyy = 8-bits decimal part (0-TL_RES_LEN)                                            */
     /* xxxxx    = 5-bits integer 'shift' value (0-31) but, since Power table output is 13 bits, */
     /*            any value above 13 (included) would be discarded.                             */
-    // for (i=1; i<13; i++)
-    // {
-    //   tl_tab[ x*2+0 + i*2*TL_RES_LEN ] =  tl_tab[ x*2+0 ]>>i;
-    //   tl_tab[ x*2+1 + i*2*TL_RES_LEN ] = -tl_tab[ x*2+0 + i*2*TL_RES_LEN ];
-    // }
+    for (i=1; i<13; i++)
+    {
+      tl_tab[ x*2+0 + i*2*TL_RES_LEN ] =  tl_tab[ x*2+0 ]>>i;
+      tl_tab[ x*2+1 + i*2*TL_RES_LEN ] = -tl_tab[ x*2+0 + i*2*TL_RES_LEN ];
+    }
   }
 
 # define M_PI		3.14159265358979323846	/* pi */
