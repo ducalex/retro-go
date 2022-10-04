@@ -12,7 +12,11 @@
 /**     commercially. Please, notify me, if you make any    **/   
 /**     changes to this file.                               **/
 /*************************************************************/
-// #pragma GCC optimize("Ofast")
+#if GNW_TARGET_MARIO !=0 || GNW_TARGET_ZELDA!=0
+  #pragma GCC optimize("Ofast")
+#endif
+
+#define GENESIS 1
 
 #include "Z80.h"
 #include "Tables.h"
@@ -56,6 +60,12 @@ INLINE byte RdZ80(word A) { return(Page[A>>13][A&0x1FFF]); }
 #define FAST_RDOP
 extern byte *RAM[];
 INLINE byte OpZ80(word A) { return(RAM[A>>13][A&0x1FFF]); }
+#endif
+
+#ifdef GENESIS
+#define FAST_RDOP
+extern byte *Z80_RAM[];
+INLINE byte OpZ80(word A) { return(Z80_RAM[A>>13][A&0x1FFF]); }
 #endif
 
 /** FAST_RDOP ************************************************/
@@ -491,6 +501,7 @@ void ResetZ80(Z80 *R)
   R->R        = 0x00;
   R->IFF      = 0x00;
   R->ICount   = R->IPeriod;
+  R->RunCycles =0;
   R->IRequest = INT_NONE;
   R->IBackup  = 0;
 
@@ -503,10 +514,15 @@ void ResetZ80(Z80 *R)
 /** negative, and current register values in R.             **/
 /*************************************************************/
 #ifdef EXECZ80
+int GetRunCyclesZ80(register Z80 *R)
+{
+  return(R->ICount - R->RunCycles);
+}
 int ExecZ80(register Z80 *R,register int RunCycles)
 {
   register byte I;
   register pair J;
+  R->RunCycles = R->ICount;
 
   for(R->ICount=RunCycles;;)
   {

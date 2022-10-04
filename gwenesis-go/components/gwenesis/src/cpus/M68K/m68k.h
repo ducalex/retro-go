@@ -1,3 +1,6 @@
+#ifndef M68K__HEADER
+#define M68K__HEADER
+
 /* ======================================================================== */
 /* ========================= LICENSING & COPYRIGHT ======================== */
 /* ======================================================================== */
@@ -8,36 +11,136 @@
  * A portable Motorola M680x0 processor emulation engine.
  * Copyright Karl Stenerud.  All rights reserved.
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
+ * This code may be freely used for non-commercial purposes as long as this
+ * copyright notice remains unaltered in the source code and any binary files
+ * containing this code in compiled form.
  *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
-
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+ * All other licensing terms must be negotiated with the author
+ * (Karl Stenerud).
+ *
+ * The latest version of this code can be obtained at:
+ * http://kstenerud.cjb.net
  */
 
-#ifndef M68K__HEADER
-#define M68K__HEADER
+ /* Modified by Eke-Eke for Genesis Plus GX:
 
-#ifdef __cplusplus
-extern "C" {
+    - removed unused stuff to reduce memory usage / optimize execution (multiple CPU types support, NMI support, ...)
+    - moved stuff to compile statically in a single object file
+    - implemented support for global cycle count (shared by 68k & Z80 CPU)
+    - added support for interrupt latency (Sesame's Street Counting Cafe, Fatal Rewind)
+    - added proper cycle use on reset
+    - added cycle accurate timings for MUL/DIV instructions (thanks to Jorge Cwik !) 
+    - fixed undocumented flags for DIV instructions (Blood Shot)
+    - fixed undocumented behaviors for ABCD/SBCD/NBCD instructions (thanks to flamewing for his test ROM)
+    - improved auto-vectored interrupts acknowledge cycle timing accuracy
+    - added MAIN-CPU & SUB-CPU support for Mega CD emulation
+    
+  */
+
+/* ======================================================================== */
+/* ================================ INCLUDES ============================== */
+/* ======================================================================== */
+
+#include <setjmp.h>
+#include "macros.h"
+#ifdef HOOK_CPU
+#include "cpuhook.h"
 #endif
 
-#ifndef ARRAY_LENGTH
-#define ARRAY_LENGTH(x)         (sizeof(x) / sizeof(x[0]))
+/* ======================================================================== */
+/* ==================== ARCHITECTURE-DEPENDANT DEFINES ==================== */
+/* ======================================================================== */
+
+/* Check for > 32bit sizes */
+#if UINT_MAX > 0xffffffff
+  #define M68K_INT_GT_32_BIT  1
+#else
+  #define M68K_INT_GT_32_BIT  0
 #endif
 
+/* Data types used in this emulation core */
+#undef sint8
+#undef sint16
+#undef sint32
+#undef sint64
+#undef uint8
+#undef uint16
+#undef uint32
+#undef uint64
+#undef sint
+#undef uint
+
+#define sint8  signed   char      /* ASG: changed from char to signed char */
+#define sint16 signed   short
+#define sint32 signed   int      /* AWJ: changed from long to int */
+#define uint8  unsigned char
+#define uint16 unsigned short
+#define uint32 unsigned int      /* AWJ: changed from long to int */
+
+/* signed and unsigned int must be at least 32 bits wide */
+#define sint   signed   int
+#define uint   unsigned int
+
+
+#if M68K_USE_64_BIT
+#define sint64 signed   long long
+#define uint64 unsigned long long
+#else
+#define sint64 sint32
+#define uint64 uint32
+#endif /* M68K_USE_64_BIT */
+
+
+
+/* Allow for architectures that don't have 8-bit sizes */
+/*#if UCHAR_MAX == 0xff*/
+  #define MAKE_INT_8(A) (sint8)(A)
+/*#else
+  #undef  sint8
+  #define sint8  signed   int
+  #undef  uint8
+  #define uint8  unsigned int
+  INLINE sint MAKE_INT_8(uint value)
+  {
+    return (value & 0x80) ? value | ~0xff : value & 0xff;
+  }*/
+/*#endif *//* UCHAR_MAX == 0xff */
+
+
+/* Allow for architectures that don't have 16-bit sizes */
+/*#if USHRT_MAX == 0xffff*/
+  #define MAKE_INT_16(A) (sint16)(A)
+/*#else
+  #undef  sint16
+  #define sint16 signed   int
+  #undef  uint16
+  #define uint16 unsigned int
+  INLINE sint MAKE_INT_16(uint value)
+  {
+    return (value & 0x8000) ? value | ~0xffff : value & 0xffff;
+  }*/
+/*#endif *//* USHRT_MAX == 0xffff */
+
+
+/* Allow for architectures that don't have 32-bit sizes */
+/*#if UINT_MAX == 0xffffffff*/
+  #define MAKE_INT_32(A) (sint32)(A)
+/*#else
+  #undef  sint32
+  #define sint32  signed   int
+  #undef  uint32
+  #define uint32  unsigned int
+  INLINE sint MAKE_INT_32(uint value)
+  {
+    return (value & 0x80000000) ? value | ~0xffffffff : value & 0xffffffff;
+  }*/
+/*#endif *//* UINT_MAX == 0xffffffff */
+
+
+
+/* ======================================================================== */
+/* ============================ GENERAL DEFINES =========================== */
+/*** BZHXX ***/
 #ifndef FALSE
 #define FALSE 0
 #define TRUE 1
@@ -47,190 +150,75 @@ extern "C" {
 #define RAM_SWAP
 
 // 16/32 bits acces to RAM/ROM
-#ifdef _HOST_
-	extern unsigned char ROM_DATA[];
+
+#if GNW_TARGET_MARIO != 0 | GNW_TARGET_ZELDA != 0
+
+	extern unsigned char *ROM_DATA;
+	extern unsigned char *M68K_RAM;
 #else
-	extern const unsigned char* ROM_DATA;
+
+	extern unsigned char *ROM_DATA;
+	extern unsigned char M68K_RAM[];
 #endif
 
-extern unsigned char M68K_RAM[];
-//extern unsigned char* M68K_RAM;
-
-//#include "main.h"
-
-#if 0
 #define FETCH8ROM(A) ((ROM_DATA[((A) ^ 1)]))
 #define FETCH16ROM(A) ((*(unsigned short *)&ROM_DATA[(A)]))
-#define FETCH32ROM(A) ( (*(unsigned int *)&ROM_DATA[(A)] << 16) | (*(unsigned int *)&ROM_DATA[(A)] >> 16))
-
-//#define FETCH32ROM(A) ( ( (*(unsigned short *)&ROM_DATA[(A)]) << 16)  | ( (*(unsigned short *)&ROM_DATA[(A+2)]) ))
-//#define FETCH32ROM(A)  ((ROM_DATA[(A)] << 16) | (ROM_DATA[(A) + 1] << 24) | (ROM_DATA[(A) + 2]) | (ROM_DATA[(A) + 3] << 8))
-
-#define WRITE8RAM(A, V) (M68K_RAM[(A ^ 1) & 0xFFFF] = (V))
-#define WRITE16RAM(A, V) ((*(unsigned short *)&M68K_RAM[(A)&0XFFFF] = (V)))
-#define WRITE32RAM(A, V)                                                       \
-  ((*(unsigned int *)&M68K_RAM[(A)&0XFFFF] =( ((V) << 16) | ((V) >> 16) ) ))
-
-#define FETCH8RAM(A) ((M68K_RAM[(A ^ 1) & 0xFFFF]))
-#define FETCH16RAM(A) ((*(unsigned short *)&M68K_RAM[(A)&0XFFFF]))
-#define FETCH32RAM(A) ( (*(unsigned int *)&M68K_RAM[(A&0XFFFF)] << 16) | (*(unsigned int *)&M68K_RAM[(A&0XFFFF)] >> 16))
-
-//#define FETCH32RAM(A)   ((M68K_RAM[(A&0XFFFF)] << 16) | (M68K_RAM[(A&0XFFFF) + 1] << 24) | (M68K_RAM[(A&0XFFFF) + 2]) | (M68K_RAM[(A&0XFFFF) + 3] << 8))
-//#define FETCH32RAM(A) ( ( (*(unsigned short *)&M68K_RAM[(A)&0XFFFF]) << 16)  | ( (*(unsigned short *)&M68K_RAM[(A+2)&0XFFFF]) ))
-
-#else
-//#include "stm32h7b0xx.h" 
-#define FETCH8ROM(A) ((ROM_DATA[((A) ^ 1)]))
-#define FETCH16ROM(A) ((*(unsigned short *)&ROM_DATA[(A)]))
-//#define FETCH32ROM(A)  ((ROM_DATA[(A)] << 16) | (ROM_DATA[(A) + 1] << 24) | (ROM_DATA[(A) + 2]) | (ROM_DATA[(A) + 3] << 8))
 #define FETCH32ROM(A) ( (*(unsigned int *)&ROM_DATA[(A)] << 16) | (*(unsigned int *)&ROM_DATA[(A)] >> 16) )
 
-//#define FETCH32ROM(A) ( __ROR(*(unsigned int *)&ROM_DATA[(A)] , 16))
-//#define FETCH32ROM(A) ( ( (*(unsigned short *)&ROM_DATA[(A)]) << 16)  | ( (*(unsigned short *)&ROM_DATA[(A+2)]) ))
+#if GNW_TARGET_MARIO !=0 || GNW_TARGET_ZELDA!=0
+
+/* Direct access to ITCRAM as M68KRAM on STM32H7 mapped at 0x0 !!  */
+#define FETCH8RAM(A)    (*(unsigned char  *)(((A)&0XFFFF) ^ 1))
+#define FETCH16RAM(A)   (*(unsigned short *)((A)&0XFFFF))
+#define FETCH32RAM(A) (((*(unsigned int *)((A)&0XFFFF)) << 16) | ((*(unsigned int *)((A)&0XFFFF)) >> 16))
+
+#define WRITE8RAM(A, V)  ((*(unsigned char  *)(((A)&0XFFFF) ^ 1)) = (V))
+#define WRITE16RAM(A, V) ((*(unsigned short *)( (A)&0XFFFF))      = (V))
+#define WRITE32RAM(A, V) ((*(unsigned int   *)( (A)&0XFFFF))      = (((V) << 16) | ((V) >> 16)))
+#else
 
 #define FETCH8RAM(A) ((M68K_RAM[(A ^ 1) & 0xFFFF]))
 #define FETCH16RAM(A) ((*(unsigned short *)&M68K_RAM[(A)&0XFFFF]))
-//#define FETCH32RAM(A) ( __ROR(*(unsigned int *)&M68K_RAM[(A&0XFFFF)], 16))
 #define FETCH32RAM(A) ( (*(unsigned int *)&M68K_RAM[(A&0XFFFF)] << 16) | (*(unsigned int *)&M68K_RAM[(A&0XFFFF)] >> 16) )
-//#define FETCH32RAM(A) ((M68K_RAM[(A&0XFFFF)] << 16) | (M68K_RAM[(A&0XFFFF) + 1] << 24) | (M68K_RAM[(A&0XFFFF) + 2]) | (M68K_RAM[(A&0XFFFF) + 3] << 8))
 
 #define WRITE8RAM(A, V) (M68K_RAM[(A ^ 1) & 0xFFFF] = (V))
 #define WRITE16RAM(A, V) ((*(unsigned short *)&M68K_RAM[(A)&0XFFFF] = (V)))
 #define WRITE32RAM(A, V) ((*(unsigned int *)&M68K_RAM[(A)&0XFFFF] =( ((V) << 16) | ((V) >> 16) ) ))
 
-//#define WRITE32RAM(A, V) ((*(unsigned int *)&M68K_RAM[(A)&0XFFFF] =( __ROR((V),16)  ) ))
+#endif
 
 #define m68k_read_immediate_16(A) ( ( (A) & 0x800000) ? FETCH16RAM((A)) : FETCH16ROM((A)) )
-
 #define m68k_read_immediate_32(A) ( ( (A) & 0x800000) ? FETCH32RAM((A)) : FETCH32ROM((A)) )
 
-// #define m68k_read_immediate_16(A) ( FETCH16ROM((A))  )
-
-// #define m68k_read_immediate_32(A) ( FETCH32ROM((A))  )
-
 #define m68k_read_pcrelative_8(A) ( FETCH8ROM((A)) )
-
 #define m68k_read_pcrelative_16(A) ( FETCH16ROM((A)) )
-
 #define m68k_read_pcrelative_32(A) ( FETCH32ROM((A)) )
 
-#endif
-/*
-#if 1
+/* Read from anywhere */
+unsigned int  m68k_read_memory_8(unsigned int address);
+unsigned int  m68k_read_memory_16(unsigned int address);
+unsigned int  m68k_read_memory_32(unsigned int address);
 
-#ifdef ROM_SWAP
+/* Read data immediately following the PC */
+// unsigned int  m68k_read_immediate_16(unsigned int address);
+// unsigned int  m68k_read_immediate_32(unsigned int address);
 
-#define FETCH8ROM(A) ((ROM_DATA[((A) ^ 1)]))
-#define FETCH16ROM(A) ((*(unsigned short *)&ROM_DATA[(A)]))
-#define FETCH32ROM(A)                                                          \
-  ((ROM_DATA[(A)] << 16) | (ROM_DATA[(A) + 1] << 24) | (ROM_DATA[(A) + 2]) |   \
-   (ROM_DATA[(A) + 3] << 8))
+/* Read data relative to the PC */
+//unsigned int  m68k_read_pcrelative_8(unsigned int address);
+//unsigned int  m68k_read_pcrelative_16(unsigned int address);
+//unsigned int  m68k_read_pcrelative_32(unsigned int address);
 
-#endif
+/* Memory access for the disassembler */
+unsigned int m68k_read_disassembler_8  (unsigned int address);
+unsigned int m68k_read_disassembler_16 (unsigned int address);
+unsigned int m68k_read_disassembler_32 (unsigned int address);
 
-#else
+/* Write to anywhere */
+void m68k_write_memory_8(unsigned int address, unsigned int value);
+void m68k_write_memory_16(unsigned int address, unsigned int value);
+void m68k_write_memory_32(unsigned int address, unsigned int value);
 
-#define FETCH8ROM(A) ((ROM_DATA[(A)]))
-#define FETCH16ROM(A) ((ROM_DATA[(A) + 1]) | (ROM_DATA[(A)] << 8))
-#define FETCH32ROM(A)                                                          \
-  ((ROM_DATA[(A)] << 24) | (ROM_DATA[(A) + 1] << 16) |                         \
-   (ROM_DATA[(A) + 2] << 8) | (ROM_DATA[(A) + 3]))
-
-#endif
-
-#if  0
-
-#define WRITE8RAM(A, V) (M68K_RAM[(A ^ 1) & 0xFFFF] = (V))
-#define WRITE16RAM(A, V) ((*(unsigned short *)&M68K_RAM[(A)&0XFFFF] = (V)))
-#define WRITE32RAM(A, V) ((*(unsigned int *)  &M68K_RAM[(A)&0XFFFF] = (((V) >> 16) | ((V) << 16))))
-
-#define FETCH8RAM(A) ((M68K_RAM[(A ^ 1) & 0XFFFF]))
-#define FETCH16RAM(A) ((*(unsigned short *)&ROM_DATA[(A)]))
-#define FETCH32RAM(A)                                                          \
-  ((M68K_RAM[(A & 0XFFFF)] << 16) | (M68K_RAM[(A & 0XFFFF) + 1] << 24) |       \
-   (M68K_RAM[(A & 0XFFFF) + 2]) | (M68K_RAM[(A & 0XFFFF) + 3]) << 8)
-
-#else
-#define FETCH8RAM(A) ((M68K_RAM[(A)&0XFFFF]))
-#define FETCH16RAM(A)                                                          \
-  ((M68K_RAM[(A & 0XFFFF) + 1]) | (M68K_RAM[(A & 0XFFFF)] << 8))
-#define FETCH32RAM(A)                                                          \
-  ((M68K_RAM[(A & 0XFFFF)] << 24) | (M68K_RAM[(A & 0XFFFF) + 1] << 16) |       \
-   (M68K_RAM[(A & 0XFFFF) + 2] << 8) | (M68K_RAM[(A & 0XFFFF) + 3]))
-#endif
-
-//optimized ROM & RAM access using ARM CMIS	
-#endif
-#if 0
-
-#include "main.h"
-
-#ifdef ROM_SWAP
-
-	#define FETCH8ROM(A) ((ROM_DATA[((A) ^ 1)]))
-	#define FETCH16ROM(A)  ( (*(unsigned short *)&ROM_DATA[(A)]))
-    #define FETCH32ROM(A)  (__ROR ( *(unsigned int *) &ROM_DATA[(A)],16) )
-
-
-#else
-
-	#define FETCH8ROM(A) ((ROM_DATA[(A)]))
-	#define FETCH16ROM(A)  (__REV16(*(unsigned short *)&ROM_DATA[(A)]))
-	#define FETCH32ROM(A)  (__REV  ( *(unsigned int *) &ROM_DATA[(A)]))
-
-#endif
-#endif
-
-#ifdef RAM_SWAP
-
-	#define WRITE8RAM(A,V) (M68K_RAM[(A^1) & 0xFFFF] = (V))
-	#define WRITE16RAM(A,V) ( (*(unsigned short *)&M68K_RAM[(A) & 0XFFFF] = (V) ) )
-	#define WRITE32RAM(A,V) ( (*(unsigned int *)  &M68K_RAM[(A) & 0XFFFF] = __ROR((V),16)) )
-
-	#define FETCH8RAM(A) ((M68K_RAM[(A^1) & 0xFFFF]))
-	#define FETCH16RAM(A)  ((*(unsigned short *)&M68K_RAM[(A) & 0XFFFF]))
-	#define FETCH32RAM(A)  (__ROR ( *(unsigned int *) &M68K_RAM[(A) & 0XFFFF],16))
-
-#else
-
-	#define WRITE8RAM(A,V) (M68K_RAM[(A) & 0xFFFF] = (V))
-	#define WRITE16RAM(A,V) ( (*(unsigned short *)&M68K_RAM[(A) & 0XFFFF] = __REV16(V)) )
-
-	#define FETCH8RAM(A) ((M68K_RAM[(A) & 0xFFFF]))
-	#define FETCH16RAM(A)  (__REV16(*(unsigned short *)&M68K_RAM[(A) & 0XFFFF]));
-	#define FETCH32RAM(A)  (__REV  ( *(unsigned int *) &M68K_RAM[(A) & 0XFFFF]));
-
-#endif
-
-#endif
-
-// #ifdef SWAP_ROM
-// #define m68k_read_pcrelative_8(A)  (ROM_DATA[(A^1)])
-// #define m68k_read_pcrelative_16(A) ( *(unsigned short *)(&(ROM_DATA[A])) )
-// #define m68k_read_pcrelative_32(A) ( (*(unsigned short *)&ROM_DATA[address] << 16) | (*(unsigned short *)&ROM_DATA[address+2]) )
-
-// #else
-// #define m68k_read_pcrelative_8(A) ROM_DATA[A]
-// #define m68k_read_pcrelative_16(A) ( ((ROM_DATA[A]) << 8)  | (ROM_DATA[(A + 1)]) )
-// #define m68k_read_pcrelative_32(A) ( ((ROM_DATA[A]) << 24) | ((ROM_DATA[(A + 1)]) << 16) | (((ROM_DATA[(A+2)]) << 8) | (ROM_DATA[(A + 3)])) )
-
-// #endif
-*/
-
-/* ======================================================================== */
-/* ============================= CONFIGURATION ============================ */
-/* ======================================================================== */
-
-/* Import the configuration for this build */
-#ifdef MUSASHI_CNF
-#include MUSASHI_CNF
-#else
-#include "m68kconf.h"
-#endif
-
-/* ======================================================================== */
-/* ============================ GENERAL DEFINES =========================== */
-
+/*** BZHXX ***/
 /* ======================================================================== */
 
 /* There are 7 levels of interrupt to the 68K.
@@ -264,125 +252,116 @@ extern unsigned char M68K_RAM[];
 #define M68K_INT_ACK_SPURIOUS      0xfffffffe
 
 
-/* CPU types for use in m68k_set_cpu_type() */
-enum
-{
-	M68K_CPU_TYPE_INVALID,
-	M68K_CPU_TYPE_68000,
-	M68K_CPU_TYPE_68010,
-	M68K_CPU_TYPE_68EC020,
-	M68K_CPU_TYPE_68020,
-	M68K_CPU_TYPE_68EC030,
-	M68K_CPU_TYPE_68030,
-	M68K_CPU_TYPE_68EC040,
-	M68K_CPU_TYPE_68LC040,
-	M68K_CPU_TYPE_68040,
-	M68K_CPU_TYPE_SCC68070
-};
-
 /* Registers used by m68k_get_reg() and m68k_set_reg() */
 typedef enum
 {
-	/* Real registers */
-	M68K_REG_D0,		/* Data registers */
-	M68K_REG_D1,
-	M68K_REG_D2,
-	M68K_REG_D3,
-	M68K_REG_D4,
-	M68K_REG_D5,
-	M68K_REG_D6,
-	M68K_REG_D7,
-	M68K_REG_A0,		/* Address registers */
-	M68K_REG_A1,
-	M68K_REG_A2,
-	M68K_REG_A3,
-	M68K_REG_A4,
-	M68K_REG_A5,
-	M68K_REG_A6,
-	M68K_REG_A7,
-	M68K_REG_PC,		/* Program Counter */
-	M68K_REG_SR,		/* Status Register */
-	M68K_REG_SP,		/* The current Stack Pointer (located in A7) */
-	M68K_REG_USP,		/* User Stack Pointer */
-	M68K_REG_ISP,		/* Interrupt Stack Pointer */
-	M68K_REG_MSP,		/* Master Stack Pointer */
-	M68K_REG_SFC,		/* Source Function Code */
-	M68K_REG_DFC,		/* Destination Function Code */
-	M68K_REG_VBR,		/* Vector Base Register */
-	M68K_REG_CACR,		/* Cache Control Register */
-	M68K_REG_CAAR,		/* Cache Address Register */
+  /* Real registers */
+  M68K_REG_D0,    /* Data registers */
+  M68K_REG_D1,
+  M68K_REG_D2,
+  M68K_REG_D3,
+  M68K_REG_D4,
+  M68K_REG_D5,
+  M68K_REG_D6,
+  M68K_REG_D7,
+  M68K_REG_A0,    /* Address registers */
+  M68K_REG_A1,
+  M68K_REG_A2,
+  M68K_REG_A3,
+  M68K_REG_A4,
+  M68K_REG_A5,
+  M68K_REG_A6,
+  M68K_REG_A7,
+  M68K_REG_PC,    /* Program Counter */
+  M68K_REG_SR,    /* Status Register */
+  M68K_REG_SP,    /* The current Stack Pointer (located in A7) */
+  M68K_REG_USP,   /* User Stack Pointer */
+  M68K_REG_ISP,   /* Interrupt Stack Pointer */
 
-	/* Assumed registers */
-	/* These are cheat registers which emulate the 1-longword prefetch
-	 * present in the 68000 and 68010.
-	 */
-	M68K_REG_PREF_ADDR,	/* Last prefetch address */
-	M68K_REG_PREF_DATA,	/* Last prefetch data */
+#if M68K_EMULATE_PREFETCH
+  /* Assumed registers */
+  /* These are cheat registers which emulate the 1-longword prefetch
+   * present in the 68000 and 68010.
+   */
+  M68K_REG_PREF_ADDR,  /* Last prefetch address */
+  M68K_REG_PREF_DATA,  /* Last prefetch data */
+#endif
 
-	/* Convenience registers */
-	M68K_REG_PPC,		/* Previous value in the program counter */
-	M68K_REG_IR,		/* Instruction register */
-	M68K_REG_CPU_TYPE	/* Type of CPU being run */
+  /* Convenience registers */
+  M68K_REG_IR    /* Instruction register */
 } m68k_register_t;
 
-/* ======================================================================== */
-/* ====================== FUNCTIONS CALLED BY THE CPU ===================== */
-/* ======================================================================== */
 
-/* You will have to implement these functions */
+/* 68k memory map structure */
+typedef struct 
+{
+  unsigned char *base;                             /* memory-based access (ROM, RAM) */
+  unsigned int (*read8)(unsigned int address);               /* I/O byte read access */
+  unsigned int (*read16)(unsigned int address);              /* I/O word read access */
+  void (*write8)(unsigned int address, unsigned int data);  /* I/O byte write access */
+  void (*write16)(unsigned int address, unsigned int data); /* I/O word write access */
+} cpu_memory_map;
 
-/* read/write functions called by the CPU to access memory.
- * while values used are 32 bits, only the appropriate number
- * of bits are relevant (i.e. in write_memory_8, only the lower 8 bits
- * of value should be written to memory).
- *
- * NOTE: I have separated the immediate and PC-relative memory fetches
- *       from the other memory fetches because some systems require
- *       differentiation between PROGRAM and DATA fetches (usually
- *       for security setups such as encryption).
- *       This separation can either be achieved by setting
- *       M68K_SEPARATE_READS in m68kconf.h and defining
- *       the read functions, or by setting M68K_EMULATE_FC and
- *       making a function code callback function.
- *       Using the callback offers better emulation coverage
- *       because you can also monitor whether the CPU is in SYSTEM or
- *       USER mode, but it is also slower.
- */
+/* 68k idle loop detection */
+typedef struct
+{
+  uint pc;
+  uint cycle;
+  uint detected;
+} cpu_idle_t;
 
-/* Read from anywhere */
-unsigned int  m68k_read_memory_8(unsigned int address);
-unsigned int  m68k_read_memory_16(unsigned int address);
-unsigned int  m68k_read_memory_32(unsigned int address);
+typedef struct
+{
+  cpu_memory_map memory_map[256]; /* memory mapping */
 
-/* Read data immediately following the PC */
-// unsigned int  m68k_read_immediate_16(unsigned int address);
-// unsigned int  m68k_read_immediate_32(unsigned int address);
+  cpu_idle_t poll;      /* polling detection */
 
-/* Read data relative to the PC */
-//unsigned int  m68k_read_pcrelative_8(unsigned int address);
-//unsigned int  m68k_read_pcrelative_16(unsigned int address);
-//unsigned int  m68k_read_pcrelative_32(unsigned int address);
+  uint cycles;          /* current master cycle count */ 
+  uint cycle_end;       /* aimed master cycle count for current execution frame */
 
-/* Memory access for the disassembler */
-unsigned int m68k_read_disassembler_8  (unsigned int address);
-unsigned int m68k_read_disassembler_16 (unsigned int address);
-unsigned int m68k_read_disassembler_32 (unsigned int address);
+  uint dar[16];         /* Data and Address Registers */
+  uint pc;              /* Program Counter */
+  uint sp[5];           /* User and Interrupt Stack Pointers */
+  uint ir;              /* Instruction Register */
+  uint t1_flag;         /* Trace 1 */
+  uint s_flag;          /* Supervisor */
+  uint x_flag;          /* Extend */
+  uint n_flag;          /* Negative */
+  uint not_z_flag;      /* Zero, inverted for speedups */
+  uint v_flag;          /* Overflow */
+  uint c_flag;          /* Carry */
+  uint int_mask;        /* I0-I2 */
+  uint int_level;       /* State of interrupt pins IPL0-IPL2 -- ASG: changed from ints_pending */
+  uint stopped;         /* Stopped state */
 
-/* Write to anywhere */
-void m68k_write_memory_8(unsigned int address, unsigned int value);
-void m68k_write_memory_16(unsigned int address, unsigned int value);
-void m68k_write_memory_32(unsigned int address, unsigned int value);
+  uint pref_addr;       /* Last prefetch address */
+  uint pref_data;       /* Data in the prefetch queue */
 
-/* Special call to simulate undocumented 68k behavior when move.l with a
- * predecrement destination mode is executed.
- * To simulate real 68k behavior, first write the high word to
- * [address+2], and then write the low word to [address].
- *
- * Enable this functionality with M68K_SIMULATE_PD_WRITES in m68kconf.h.
- */
-void m68k_write_memory_32_pd(unsigned int address, unsigned int value);
+  uint instr_mode;      /* Stores whether we are in instruction mode or group 0/1 exception mode */
+  uint run_mode;        /* Stores whether we are processing a reset, bus error, address error, or something else */
+  uint aerr_enabled;    /* Enables/deisables address error checks at runtime */
+  jmp_buf aerr_trap;    /* Address error jump */
+  uint aerr_address;    /* Address error location */
+  uint aerr_write_mode; /* Address error write mode */
+  uint aerr_fc;         /* Address error FC code */
 
+  uint tracing;         /* Tracing enable flag */
 
+  uint address_space;   /* Current FC code */
+
+#ifdef M68K_OVERCLOCK_SHIFT
+  int cycle_ratio;
+#endif
+
+  /* Callbacks to host */
+  int  (*int_ack_callback)(int int_line);           /* Interrupt Acknowledge */
+  void (*reset_instr_callback)(void);               /* Called when a RESET instruction is encountered */
+  int  (*tas_instr_callback)(void);                 /* Called when a TAS instruction is encountered, allows / disallows writeback */
+  void (*set_fc_callback)(unsigned int new_fc);     /* Called when the CPU function code changes */
+} m68ki_cpu_core;
+
+/* CPU cores */
+extern m68ki_cpu_core m68k;
 
 /* ======================================================================== */
 /* ============================== CALLBACKS =============================== */
@@ -396,6 +375,7 @@ void m68k_write_memory_32_pd(unsigned int address, unsigned int value);
  * callback or have assigned a callback of NULL.
  */
 
+#if M68K_EMULATE_INT_ACK == OPT_ON
 /* Set the callback for an interrupt acknowledge.
  * You must enable M68K_EMULATE_INT_ACK in m68kconf.h.
  * The CPU will call the callback with the interrupt level being acknowledged.
@@ -407,48 +387,27 @@ void m68k_write_memory_32_pd(unsigned int address, unsigned int value);
  * Default behavior: return M68K_INT_ACK_AUTOVECTOR.
  */
 void m68k_set_int_ack_callback(int  (*callback)(int int_level));
+#endif
 
-
-/* Set the callback for a breakpoint acknowledge (68010+).
- * You must enable M68K_EMULATE_BKPT_ACK in m68kconf.h.
- * The CPU will call the callback with whatever was in the data field of the
- * BKPT instruction for 68020+, or 0 for 68010.
- * Default behavior: do nothing.
- */
-void m68k_set_bkpt_ack_callback(void (*callback)(unsigned int data));
-
-
+#if M68K_EMULATE_RESET == OPT_ON
 /* Set the callback for the RESET instruction.
  * You must enable M68K_EMULATE_RESET in m68kconf.h.
  * The CPU calls this callback every time it encounters a RESET instruction.
  * Default behavior: do nothing.
  */
 void m68k_set_reset_instr_callback(void  (*callback)(void));
+#endif
 
-
-/* Set the callback for informing of a large PC change.
- * You must enable M68K_MONITOR_PC in m68kconf.h.
- * The CPU calls this callback with the new PC value every time the PC changes
- * by a large value (currently set for changes by longwords).
- * Default behavior: do nothing.
- */
-void m68k_set_pc_changed_callback(void  (*callback)(unsigned int new_pc));
-
+#if M68K_TAS_HAS_CALLBACK == OPT_ON
 /* Set the callback for the TAS instruction.
  * You must enable M68K_TAS_HAS_CALLBACK in m68kconf.h.
  * The CPU calls this callback every time it encounters a TAS instruction.
  * Default behavior: return 1, allow writeback.
  */
 void m68k_set_tas_instr_callback(int  (*callback)(void));
+#endif
 
-/* Set the callback for illegal instructions.
- * You must enable M68K_ILLG_HAS_CALLBACK in m68kconf.h.
- * The CPU calls this callback every time it encounters an illegal instruction
- * which must return 1 if it handles the instruction normally or 0 if it's really an illegal instruction.
- * Default behavior: return 0, exception will occur.
- */
-void m68k_set_illg_instr_callback(int  (*callback)(int));
-
+#if M68K_EMULATE_FC == OPT_ON
 /* Set the callback for CPU function code changes.
  * You must enable M68K_EMULATE_FC in m68kconf.h.
  * The CPU calls this callback with the function code before every memory
@@ -457,130 +416,62 @@ void m68k_set_illg_instr_callback(int  (*callback)(int));
  * Default behavior: do nothing.
  */
 void m68k_set_fc_callback(void  (*callback)(unsigned int new_fc));
-
-
-/* Set a callback for the instruction cycle of the CPU.
- * You must enable M68K_INSTRUCTION_HOOK in m68kconf.h.
- * The CPU calls this callback just before fetching the opcode in the
- * instruction cycle.
- * Default behavior: do nothing.
- */
-void m68k_set_instr_hook_callback(void  (*callback)(unsigned int pc));
-
+#endif
 
 
 /* ======================================================================== */
 /* ====================== FUNCTIONS TO ACCESS THE CPU ===================== */
 /* ======================================================================== */
 
-/* Use this function to set the CPU type you want to emulate.
- * Currently supported types are: M68K_CPU_TYPE_68000, M68K_CPU_TYPE_68010,
- * M68K_CPU_TYPE_EC020, and M68K_CPU_TYPE_68020.
- */
-void m68k_set_cpu_type(unsigned int cpu_type);
-
 /* Do whatever initialisations the core requires.  Should be called
  * at least once at init time.
  */
-void m68k_init(void);
+extern void m68k_init(void);
 
 /* Pulse the RESET pin on the CPU.
  * You *MUST* reset the CPU at least once to initialize the emulation
- * Note: If you didn't call m68k_set_cpu_type() before resetting
- *       the CPU for the first time, the CPU will be set to
- *       M68K_CPU_TYPE_68000.
  */
-void m68k_pulse_reset(void);
+extern void m68k_pulse_reset(void);
 
-/* execute num_cycles worth of instructions.  returns number of cycles used */
-//int
-void m68k_execute(int num_cycles);
+/* Run until given cycle count is reached */
+extern void m68k_run(unsigned int cycles);
 
-/* These functions let you read/write/modify the number of cycles left to run
- * while m68k_execute() is running.
- * These are useful if the 68k accesses a memory-mapped port on another device
- * that requires immediate processing by another CPU.
- */
-int m68k_cycles_run(void);              /* Number of cycles run so far */
-int m68k_cycles_remaining(void);        /* Number of cycles left */
-void m68k_modify_timeslice(int cycles); /* Modify cycles left */
-void m68k_end_timeslice(void);          /* End timeslice now */
+/* Get current instruction execution time */
+extern int m68k_cycles(void);
+
+/* Number of cycles run so far from start of frame */
+extern int m68k_cycles_master(void);
+
+/* Number of cycles run so far from run call */
+extern int m68k_cycles_run(void);
 
 /* Set the IPL0-IPL2 pins on the CPU (IRQ).
  * A transition from < 7 to 7 will cause a non-maskable interrupt (NMI).
  * Setting IRQ to 0 will clear an interrupt request.
  */
-void m68k_set_irq(unsigned int int_level);
-
-/* Set the virtual irq lines, where the highest level
- * active line is automatically selected.  If you use this function,
- * do not use m68k_set_irq.
- */
-void m68k_set_virq(unsigned int level, unsigned int active);
-unsigned int m68k_get_virq(unsigned int level);
+extern void m68k_set_irq(unsigned int int_level);
+extern void m68k_set_irq_delay(unsigned int int_level);
+extern void m68k_update_irq(unsigned int mask);
 
 /* Halt the CPU as if you pulsed the HALT pin. */
-void m68k_pulse_halt(void);
-
-
-/* Trigger a bus error exception */
-void m68k_pulse_bus_error(void);
-
-
-/* Context switching to allow multiple CPUs */
-
-/* Get the size of the cpu context in bytes */
-unsigned int m68k_context_size(void);
-
-/* Get a cpu context */
-unsigned int m68k_get_context(void* dst);
-
-/* set the current cpu context */
-void m68k_set_context(void* dst);
-
-/* Register the CPU state information */
-void m68k_state_register(const char *type, int index);
-
+extern void m68k_pulse_halt(void);
+extern void m68k_clear_halt(void);
 
 /* Peek at the internals of a CPU context.  This can either be a context
  * retrieved using m68k_get_context() or the currently running context.
  * If context is NULL, the currently running CPU context will be used.
  */
-unsigned int m68k_get_reg(void* context, m68k_register_t reg);
+extern unsigned int m68k_get_reg(m68k_register_t reg);
 
 /* Poke values into the internals of the currently running CPU context */
-void m68k_set_reg(m68k_register_t reg, unsigned int value);
+extern void m68k_set_reg(m68k_register_t reg, unsigned int value);
 
-/* Check if an instruction is valid for the specified CPU type */
-unsigned int m68k_is_valid_instruction(unsigned int instruction, unsigned int cpu_type);
-
-/* Disassemble 1 instruction using the epecified CPU type at pc.  Stores
- * disassembly in str_buff and returns the size of the instruction in bytes.
- */
-unsigned int m68k_disassemble(char* str_buff, unsigned int pc, unsigned int cpu_type);
-
-/* Same as above but accepts raw opcode data directly rather than fetching
- * via the read/write interfaces.
- */
-unsigned int m68k_disassemble_raw(char* str_buff, unsigned int pc, const unsigned char* opdata, const unsigned char* argdata, unsigned int cpu_type);
-
-
-/* ======================================================================== */
-/* ============================== MAME STUFF ============================== */
-/* ======================================================================== */
-
-#if M68K_COMPILE_FOR_MAME == OPT_ON
-#include "m68kmame.h"
-#endif /* M68K_COMPILE_FOR_MAME */
-
+/* Load/Save state of CPU */
+extern void gwenesis_m68k_save_state();
+extern void gwenesis_m68k_load_state();
 
 /* ======================================================================== */
 /* ============================== END OF FILE ============================= */
 /* ======================================================================== */
-
-#ifdef __cplusplus
-}
-#endif
-
 
 #endif /* M68K__HEADER */

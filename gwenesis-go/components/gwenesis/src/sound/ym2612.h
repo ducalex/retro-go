@@ -16,12 +16,18 @@
 #ifndef _H_YM2612_
 #define _H_YM2612_
 
+extern int16_t gwenesis_ym2612_buffer[];
+extern int ym2612_index;
+extern int ym2612_clock;
+
 extern void YM2612Init(void);
-extern void YM2612Config(unsigned char dac_bits);
+extern void YM2612Config(unsigned char dac_bits); //,unsigned int AUDIO_FREQ_DIVISOR);
 extern void YM2612ResetChip(void);
-extern void YM2612Update(int16_t *buffer, int length);
-extern void YM2612Write(unsigned int a, unsigned int v);
-extern unsigned int YM2612Read(void);
+//extern void YM2612Update(int16_t *buffer, int length);
+extern void YM2612Write(unsigned int a, unsigned int v, int target);
+extern void ym2612_run(int target);
+extern unsigned int YM2612Read(int target);
+
 #if 0
 extern int YM2612LoadContext(unsigned char *state);
 extern int YM2612SaveContext(unsigned char *state);

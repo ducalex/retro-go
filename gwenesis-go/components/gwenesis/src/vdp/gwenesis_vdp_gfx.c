@@ -27,26 +27,29 @@ __license__ = "GPLv3"
 
 //#include <assert.h>
 
-// #pragma GCC optimize("Ofast")
+#if GNW_TARGET_MARIO !=0 || GNW_TARGET_ZELDA!=0
+  #pragma GCC optimize("Ofast")
+#endif
 
+#if GNW_TARGET_MARIO != 0 | GNW_TARGET_ZELDA != 0
 
-#if _HOST_
+typedef unsigned char uint8_t;
+typedef unsigned short uint16_t;
+#include "stm32h7b0xx.h"
+extern unsigned char* VRAM;
+
+#else
+
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
-extern unsigned char VRAM[];
-#else
-typedef unsigned char uint8_t;
-typedef unsigned short uint16_t;
-// #include "stm32h7b0xx.h"
-extern unsigned char* VRAM;
+extern unsigned char *VRAM;
+
 #endif
 
 extern unsigned short CRAM[];            // CRAM - Palettes
 extern unsigned char SAT_CACHE[]__attribute__((aligned(4)));        // Sprite cache
 extern unsigned char gwenesis_vdp_regs[]; // Registers
-
-//extern unsigned frame_count;
 
 extern unsigned short CRAM565[];    // CRAM - Palettes
 
@@ -65,17 +68,18 @@ static uint8_t *screen_buffer=0;
 
 enum { PIX_OVERFLOW = 32 };
 
-static uint8_t render_buffer[SCREEN_WIDTH + PIX_OVERFLOW*2]; //__attribute__((section("._dtcram")));// __attribute__((aligned(4)));
-static uint8_t sprite_buffer[SCREEN_WIDTH + PIX_OVERFLOW*2]; //_attribute__((section("._dtcram")));//  __attribute__((aligned(4)));
-
+static uint8_t render_buffer[SCREEN_WIDTH + PIX_OVERFLOW*2];
+static uint8_t sprite_buffer[SCREEN_WIDTH + PIX_OVERFLOW*2];
 
 // Define VIDEO MODE
-uint8_t mode_h40;
-uint8_t mode_pal;
+static int mode_h40;
+int mode_pal;
 
 // Define screen W/H
 int screen_width;
 int screen_height;
+
+int gwenesis_H32upscaler;
 
 int sprite_overflow;
 bool sprite_collision;
@@ -91,7 +95,26 @@ static int Window_lastcol;
 // 16 bits access to VRAM
 #define FETCH16VRAM(A)  ( (VRAM[(A)+1]) | (VRAM[(A)] << 8) )
 
+#define VDP_GFX_DISABLE_LOGGING 1
 
+#if !VDP_GFX_DISABLE_LOGGING
+#include <stdarg.h>
+void vdpg_log(const char *subs, const char *fmt, ...) {
+  extern int frame_counter;
+  extern int scan_line;
+
+  va_list va;
+
+  printf("%06d:%03d :[%s] vc:%03x hc:%03x", frame_counter, scan_line, subs,gwenesis_vdp_vcounter(),gwenesis_vdp_hcounter());
+
+  va_start(va, fmt);
+  vfprintf(stdout, fmt, va);
+  va_end(va);
+  printf("\n");
+}
+#else
+	#define vdpg_log(...)  do {} while(0)
+#endif
 /******************************************************************************
  *
  *  set screen buffers in which the rendering occurs
@@ -223,13 +246,13 @@ void draw_pattern_fliph_sprite_over_planes(uint8_t *scr, uint32_t p, uint8_t att
   else {
 
   /*  not transparent pixel to write AND not already a sprite or higher priority*/
-  if (((PIX1(p))) && ((scr[6] & PIXATTR_SPRITE_HIPRI) == 0)) scr[6] = attrs | (PIX1(p));
   if (((PIX7(p))) && ((scr[0] & PIXATTR_SPRITE_HIPRI) == 0)) scr[0] = attrs | (PIX7(p));
   if (((PIX6(p))) && ((scr[1] & PIXATTR_SPRITE_HIPRI) == 0)) scr[1] = attrs | (PIX6(p));
   if (((PIX5(p))) && ((scr[2] & PIXATTR_SPRITE_HIPRI) == 0)) scr[2] = attrs | (PIX5(p));
   if (((PIX4(p))) && ((scr[3] & PIXATTR_SPRITE_HIPRI) == 0)) scr[3] = attrs | (PIX4(p));
   if (((PIX3(p))) && ((scr[4] & PIXATTR_SPRITE_HIPRI) == 0)) scr[4] = attrs | (PIX3(p));
   if (((PIX2(p))) && ((scr[5] & PIXATTR_SPRITE_HIPRI) == 0)) scr[5] = attrs | (PIX2(p));
+  if (((PIX1(p))) && ((scr[6] & PIXATTR_SPRITE_HIPRI) == 0)) scr[6] = attrs | (PIX1(p));
   if (((PIX0(p))) && ((scr[7] & PIXATTR_SPRITE_HIPRI) == 0)) scr[7] = attrs | (PIX0(p));
   
   }
@@ -961,10 +984,37 @@ void gwenesis_vdp_render_config()
  *
  ******************************************************************************/
 
+//#define CONV(b)   ((0b11 1110 0000 0000 0000 0000 0000 & b)>>10) | ((0b00000 1111 1100 0000 0000 & b)>>5) | ((0b0000000000011111 & b))
+//#define SPACE(c)  ((0b00 0000 0000 1111 1000 0000 0000 & c)<<10) | ((0b00000 0000 0111 1110 0000 & c)<<5) | ((0b0000000000011111 & c))
+
+#define CONV(b)   ((0x3e00000 & b)>>10) | ((0xfc00 & b)>>5) | ((0x1f & b))
+#define SPACE(c)  ((0xe800 & c)<<10) | ((0x7e0 & c)<<5) | ((0x1f & c))
+
+__attribute__((optimize("unroll-loops"))) static void
+blit_4to5_line(uint16_t *in, uint16_t *out) {
+
+  uint16_t *src_row = in;
+  uint16_t *dest_row = out;
+  for (int x_src = 0, x_dst = 0; x_src < 256; x_src += 4, x_dst += 5) {
+    uint32_t b0 = SPACE(src_row[x_src]);
+    uint32_t b1 = SPACE(src_row[x_src + 1]);
+    uint32_t b2 = SPACE(src_row[x_src + 2]);
+    uint32_t b3 = SPACE(src_row[x_src + 3]);
+
+    dest_row[x_dst] = CONV(b0);
+    dest_row[x_dst + 1] = CONV((b0 + b0 + b0 + b1) >> 2);
+    dest_row[x_dst + 2] = CONV((b1 + b2) >> 1);
+    dest_row[x_dst + 3] = CONV((b2 + b2 + b2 + b3) >> 2);
+    dest_row[x_dst + 4] = CONV(b3);
+  }
+}
+
 void gwenesis_vdp_render_line(int line)
 {
   mode_h40 = REG12_MODE_H40;
-  mode_pal = REG1_PAL;
+  //mode_pal = REG1_PAL;
+
+  vdpg_log(__FUNCTION__,": %3d",line);
 
   //unsigned int line = scan_line;
   //  if (line == 0) gwenesis_vdp_render_config();
@@ -973,7 +1023,7 @@ void gwenesis_vdp_render_line(int line)
   if (BITS(gwenesis_vdp_regs[12], 1, 2) != 0)
     return;
 
-  if (line >= (mode_pal ? 240 : 224))
+  if (line >= (REG1_PAL ? 240 : 224))
     return;
 
 #ifdef _HOST_
@@ -1112,6 +1162,7 @@ void gwenesis_vdp_render_line(int line)
 }
 
 void gwenesis_vdp_gfx_save_state() {
+  /*
   SaveState* state;
   state = saveGwenesisStateOpenForWrite("vdp_gfx");
   saveGwenesisStateSetBuffer(state, "render_buffer", render_buffer, sizeof(render_buffer));
@@ -1127,9 +1178,11 @@ void gwenesis_vdp_gfx_save_state() {
   saveGwenesisStateSet(state, "PlanA_lastcol", PlanA_lastcol);
   saveGwenesisStateSet(state, "Window_firstcol", Window_firstcol);
   saveGwenesisStateSet(state, "Window_lastcol", Window_lastcol);
+  */
 }
 
 void gwenesis_vdp_gfx_load_state() {
+  /*
     SaveState* state = saveGwenesisStateOpenForRead("vdp_gfx");
     saveGwenesisStateGetBuffer(state, "render_buffer", render_buffer, sizeof(render_buffer));
     saveGwenesisStateGetBuffer(state, "sprite_buffer", sprite_buffer, sizeof(sprite_buffer));
@@ -1144,4 +1197,5 @@ void gwenesis_vdp_gfx_load_state() {
     PlanA_lastcol = saveGwenesisStateGet(state, "PlanA_lastcol");
     Window_firstcol = saveGwenesisStateGet(state, "Window_firstcol");
     Window_lastcol = saveGwenesisStateGet(state, "Window_lastcol");
+    */
 }

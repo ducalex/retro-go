@@ -12,26 +12,27 @@
 #include "gwenesis_io.h"
 #include "gwenesis_vdp.h"
 #include "gwenesis_savestate.h"
-
-const unsigned char *ROM_DATA;
-size_t ROM_DATA_LENGTH;
-unsigned char *VRAM;
-unsigned int scan_line;
-uint64_t m68k_clock;
-extern uint64_t zclk;
+#include "gwenesis_sn76489.h"
 
 #define AUDIO_SAMPLE_RATE (53267)
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 120 + 1)
+#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 1)
 
-static int16_t audioBuffer[AUDIO_BUFFER_LENGTH * 2];
+extern unsigned char* VRAM;
+extern int zclk;
+int system_clock;
+int scan_line;
+
+int16_t gwenesis_sn76489_buffer[AUDIO_BUFFER_LENGTH];
+int sn76489_index;
+int sn76489_clock;
+int16_t gwenesis_ym2612_buffer[AUDIO_BUFFER_LENGTH];
+int ym2612_index;
+int ym2612_clock;
 
 static rg_video_update_t updates[2];
 static rg_video_update_t *currentUpdate = &updates[0];
 
 static rg_app_t *app;
-
-#define WAIT_FOR_Z80_RUN() while (uxQueueMessagesWaiting(sound_task_run));
-static QueueHandle_t sound_task_run;
 
 static bool yfm_enabled = true;
 static bool yfm_resample = true;
@@ -192,63 +193,6 @@ static bool reset_handler(bool hard)
     return true;
 }
 
-static void sound_task(void *arg)
-{
-    sound_task_run = xQueueCreate(1, sizeof(uint64_t));
-
-    uint64_t system_clock;
-    size_t audio_index = 0;
-
-    while (true)
-    {
-        xQueuePeek(sound_task_run, &system_clock, portMAX_DELAY);
-        if (!z80_enabled)
-            zclk = system_clock * 2; // To infinity, and beyond!
-        z80_run(system_clock);
-        xQueueReceive(sound_task_run, &system_clock, portMAX_DELAY);
-
-        if (!yfm_enabled)
-            continue;
-
-        // This is essentially magic to get close enough. Not accurate at all.
-        size_t audio_step = 3 + (scan_line & 1);
-        YM2612Update(&audioBuffer[audio_index * 2], audio_step);
-        audio_index += audio_step;
-
-        // Submit at end of frame or whenever the buffer is full
-        if (scan_line == 261 || audio_index >= AUDIO_BUFFER_LENGTH - 4)
-        {
-            int carry = 0;
-
-            if (yfm_resample > 0)
-            {
-                // Resampling deals with even number of samples, carry what's left
-                carry = (audio_index & 1) ? (audio_index - 1) : 0;
-                for (size_t i = 0; i < audio_index - 1; ++i)
-                {
-                    audioBuffer[i] = (audioBuffer[i*2] + audioBuffer[(i+1)*2]) >> 1;
-                }
-                audio_index >>= 1;
-            }
-
-            rg_audio_submit((void*)audioBuffer, audio_index);
-            audio_index = 0;
-
-            if (carry)
-            {
-                audioBuffer[0] = audioBuffer[carry*2-1];
-                audioBuffer[1] = audioBuffer[carry*2-0];
-                audio_index = 1;
-            }
-        }
-    }
-
-    vQueueDelete(sound_task_run);
-    sound_task_run = NULL;
-
-    rg_task_delete(NULL);
-}
-
 void app_main(void)
 {
     const rg_handlers_t handlers = {
@@ -259,7 +203,7 @@ void app_main(void)
     };
     const rg_gui_option_t options[] = {
         {1, "YFM emulation", "On", 1, &yfm_update_cb},
-        {2, "Down sampling", "On", 1, &sampling_update_cb},
+        // {2, "Down sampling", "On", 1, &sampling_update_cb},
         {3, "Z80 emulation", "On", 1, &z80_update_cb},
         RG_DIALOG_CHOICE_LAST
     };
@@ -267,7 +211,7 @@ void app_main(void)
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
 
     yfm_enabled = rg_settings_get_number(NS_APP, SETTING_YFM_EMULATION, 1);
-    yfm_resample = rg_settings_get_number(NS_APP, SETTING_YFM_RESAMPLE, 1);
+    // yfm_resample = rg_settings_get_number(NS_APP, SETTING_YFM_RESAMPLE, 1);
     z80_enabled = rg_settings_get_number(NS_APP, SETTING_Z80_EMULATION, 1);
 
     VRAM = rg_alloc(VRAM_MAX_SIZE, MEM_FAST);
@@ -275,43 +219,25 @@ void app_main(void)
     updates[0].buffer = rg_alloc(320 * 240, MEM_FAST);
     // updates[1].buffer = rg_alloc(320 * 240 * 2, MEM_FAST);
 
-    rg_task_create("gen_sound", &sound_task, NULL, 2048, 7, 1);
-    rg_audio_set_sample_rate(yfm_resample ? 26634 : 53267);
+    // rg_task_create("gen_sound", &sound_task, NULL, 2048, 7, 1);
+    // rg_audio_set_sample_rate(yfm_resample ? 26634 : 53267);
+    rg_audio_set_sample_rate(26634);
 
     RG_LOGI("Genesis start\n");
 
     FILE *fp = fopen(app->romPath, "rb");
-    if (fp)
-    {
-        uint8_t *buffer = rg_alloc(0x300000, MEM_SLOW);
-        ROM_DATA = buffer;
-        ROM_DATA_LENGTH = fread(buffer, 1, 0x300000, fp);
-        for (size_t i = 0; i < ROM_DATA_LENGTH; i += 2)
-        {
-            uint8_t z = buffer[i];
-            buffer[i] = buffer[i + 1];
-            buffer[i + 1] = z;
-        }
-        fclose(fp);
-        RG_LOGI("ROM SIZE = %d\n", ROM_DATA_LENGTH);
-    } else {
+    if (!fp)
         RG_PANIC("Rom load failed");
-    }
+    fseek(fp, 0, SEEK_END);
+    size_t rom_size = ftell(fp);
+    void *rom_data = malloc((rom_size & ~0xFFFF) + 0x10000);
+    fseek(fp, 0, SEEK_SET);
+    fread(rom_data, 1, rom_size, fp);
+    fclose(fp);
 
-    extern unsigned char gwenesis_vdp_regs[0x20];
-    extern unsigned int gwenesis_vdp_status;
-    extern unsigned short CRAM565[256];
-    extern unsigned int screen_width, screen_height;
-    extern int mode_pal;
-    extern int hint_pending;
-
-    uint32_t keymap[8] = {RG_KEY_UP, RG_KEY_DOWN, RG_KEY_LEFT, RG_KEY_RIGHT, RG_KEY_A, RG_KEY_B, RG_KEY_SELECT, RG_KEY_START};
-    uint32_t joystick = 0, joystick_old;
-    uint64_t system_clock = 0;
-    uint32_t frames = 0;
-
-    RG_LOGI("load_cartridge()\n");
-    load_cartridge();
+    RG_LOGI("load_cartridge(%p, %d)\n", rom_data, rom_size);
+    load_cartridge(rom_data, rom_size);
+    // free(rom_data); // load_cartridge takes ownership
 
     RG_LOGI("power_on()\n");
     power_on();
@@ -324,8 +250,18 @@ void app_main(void)
         rg_emu_load_state(app->saveSlot);
     }
 
+    extern unsigned char gwenesis_vdp_regs[0x20];
+    extern unsigned int gwenesis_vdp_status;
+    extern unsigned short CRAM565[256];
+    extern unsigned int screen_width, screen_height;
+    extern int hint_pending;
+
+    uint32_t keymap[8] = {RG_KEY_UP, RG_KEY_DOWN, RG_KEY_LEFT, RG_KEY_RIGHT, RG_KEY_A, RG_KEY_B, RG_KEY_SELECT, RG_KEY_START};
+    uint32_t joystick = 0, joystick_old;
+    uint32_t frames = 0;
+
     RG_LOGI("rg_display_set_source_format()\n");
-    rg_display_set_source_format(320, mode_pal ? 240 : 224, 0, 0, 320, RG_PIXEL_PAL565_BE);
+    rg_display_set_source_format(320, REG1_PAL ? 240 : 224, 0, 0, 320, RG_PIXEL_PAL565_BE);
 
     RG_LOGI("emulation loop\n");
     while (true)
@@ -354,59 +290,95 @@ void app_main(void)
         int64_t startTime = rg_system_timer();
         bool drawFrame = (frames++ & 3) == 3;
 
+        int lines_per_frame = REG1_PAL ? LINES_PER_FRAME_PAL : LINES_PER_FRAME_NTSC;
+        int vert_screen_offset = REG1_PAL ? 0 : 320 * (240 - 224) / 2;
+        int hori_screen_offset = 0; //REG12_MODE_H40 ? 0 : (320 - 256) / 2;
         int hint_counter = gwenesis_vdp_regs[10];
 
+        screen_height = REG1_PAL ? 240 : 224;
         screen_width = REG12_MODE_H40 ? 320 : 256;
-        screen_height = 224;
 
-        gwenesis_vdp_set_buffer(currentUpdate->buffer + (320 - screen_width)); // / 2 * 2
+        gwenesis_vdp_set_buffer(currentUpdate->buffer + (vert_screen_offset + hori_screen_offset)); // / 2 * 2
         gwenesis_vdp_render_config();
 
-        for (scan_line = 0; scan_line < 262; scan_line++)
+        /* Reset the difference clocks and audio index */
+        system_clock = 0;
+        zclk = z80_enabled ? 0 : 0x1000000;
+
+        ym2612_clock = yfm_enabled ? 0 : 0x1000000;
+        ym2612_index = 0;
+
+        sn76489_clock = yfm_enabled ? 0 : 0x1000000;
+        sn76489_index = 0;
+
+        scan_line = 0;
+
+        while (scan_line < lines_per_frame)
         {
-            system_clock += VDP_CYCLES_PER_LINE;
+            m68k_run(system_clock + VDP_CYCLES_PER_LINE);
+            z80_run(system_clock + VDP_CYCLES_PER_LINE);
 
-            WAIT_FOR_Z80_RUN(); // m68k_run might call z80_sync, we don't want to conflict
-            m68k_execute(VDP_CYCLES_PER_LINE / M68K_FREQ_DIVISOR);
-            // system_clock -= m68k_cycles_remaining() * M68K_FREQ_DIVISOR;
-            xQueueSend(sound_task_run, &system_clock, portMAX_DELAY);
+            /* Audio */
+            /*  GWENESIS_AUDIO_ACCURATE:
+            *    =1 : cycle accurate mode. audio is refreshed when CPUs are performing a R/W access
+            *    =0 : line  accurate mode. audio is refreshed every lines.
+            */
+            if (GWENESIS_AUDIO_ACCURATE == 0) {
+                gwenesis_SN76489_run(system_clock + VDP_CYCLES_PER_LINE);
+                ym2612_run(system_clock + VDP_CYCLES_PER_LINE);
+            }
 
-            if (drawFrame && scan_line < screen_height)
-                gwenesis_vdp_render_line(scan_line);
+            /* Video */
+            if (drawFrame)
+                gwenesis_vdp_render_line(scan_line); /* render scan_line */
 
             // On these lines, the line counter interrupt is reloaded
-            if ((scan_line == 0) || (scan_line > screen_height))
+            if ((scan_line == 0) || (scan_line > screen_height)) {
+                //  if (REG0_LINE_INTERRUPT != 0)
+                //    printf("HINTERRUPT counter reloaded: (scan_line: %d, new
+                //    counter: %d)\n", scan_line, REG10_LINE_COUNTER);
                 hint_counter = REG10_LINE_COUNTER;
+            }
 
             // interrupt line counter
-            if (--hint_counter < 0)
-            {
-                if (REG0_LINE_INTERRUPT && (scan_line <= screen_height))
-                {
+            if (--hint_counter < 0) {
+                if ((REG0_LINE_INTERRUPT != 0) && (scan_line <= screen_height)) {
                     hint_pending = 1;
+                    // printf("Line int pending %d\n",scan_line);
                     if ((gwenesis_vdp_status & STATUS_VIRQPENDING) == 0)
-                        m68k_set_irq(4);
+                    m68k_update_irq(4);
                 }
                 hint_counter = REG10_LINE_COUNTER;
             }
 
+            scan_line++;
+
             // vblank begin at the end of last rendered line
-            if (scan_line == (screen_height - 1))
-            {
-                if (REG1_VBLANK_INTERRUPT)
-                {
+            if (scan_line == screen_height) {
+                if (REG1_VBLANK_INTERRUPT != 0) {
                     gwenesis_vdp_status |= STATUS_VIRQPENDING;
                     m68k_set_irq(6);
                 }
-                WAIT_FOR_Z80_RUN();
                 z80_irq_line(1);
             }
-            else if (scan_line == screen_height)
-            {
-                WAIT_FOR_Z80_RUN();
+            if (scan_line == (screen_height + 1)) {
                 z80_irq_line(0);
             }
+
+            system_clock += VDP_CYCLES_PER_LINE;
         }
+
+        /* Audio
+        * synchronize YM2612 and SN76489 to system_clock
+        * it completes the missing audio sample for accurate audio mode
+        */
+        if (GWENESIS_AUDIO_ACCURATE == 1) {
+            gwenesis_SN76489_run(system_clock);
+            ym2612_run(system_clock);
+        }
+
+        // reset m68k cycles to the begin of next frame cycle
+        m68k.cycles -= system_clock;
 
         if (drawFrame)
         {
@@ -419,5 +391,9 @@ void app_main(void)
 
         int elapsed = rg_system_timer() - startTime;
         rg_system_tick(elapsed);
+
+        if (yfm_enabled || z80_enabled) {
+            rg_audio_submit(gwenesis_ym2612_buffer, AUDIO_BUFFER_LENGTH >> 1);
+        }
     }
 }

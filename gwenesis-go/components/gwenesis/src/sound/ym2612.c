@@ -128,12 +128,18 @@
 /*    YM2610B : PSG:3ch FM:6ch ADPCM(18.5KHz):6ch DeltaT ADPCM:1ch      */
 /************************************************************************/
 
-// #pragma GCC optimize("Ofast")
-
+#if GNW_TARGET_MARIO !=0 || GNW_TARGET_ZELDA!=0
+  #pragma GCC optimize("Ofast")
+#endif
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+
+#include "ym2612.h"
+#include "gwenesis_bus.h"
+#include "gwenesis_savestate.h"
+
 typedef uint32_t UINT32;
 typedef uint16_t UINT16;
 typedef uint8_t UINT8;
@@ -142,9 +148,28 @@ typedef int32_t INT32;
 typedef int16_t INT16;
 typedef int8_t INT8;
 #define INLINE static
-#include "gwenesis_savestate.h"
 
-//#include "shared.h"
+
+#define YM2612_DISABLE_LOGGING 1
+
+#if !YM2612_DISABLE_LOGGING
+#include <stdarg.h>
+void ym_log(const char *subs, const char *fmt, ...) {
+  extern int frame_counter;
+  extern int scan_line;
+
+  va_list va;
+
+  printf("%06d:%03d :[%s] ", frame_counter, scan_line, subs);
+
+  va_start(va, fmt);
+  vfprintf(stdout, fmt, va);
+  va_end(va);
+  printf("\n");
+}
+#else
+	#define ym_log(...)  do {} while(0)
+#endif
 
 #define GW_TARGET 1
 /* envelope generator */
@@ -181,14 +206,12 @@ typedef int8_t INT8;
 *   TL_RES_LEN - sinus resolution (X axis)
 */
 #define TL_TAB_LEN (13*2*TL_RES_LEN)
-// static signed int tl_tab[TL_TAB_LEN];
-static INT16 tl_tab[2*TL_RES_LEN];
+static signed int tl_tab[TL_TAB_LEN];
 
 #define ENV_QUIET    (TL_TAB_LEN>>3)
 
 /* sin waveform table in 'decibel' scale */
-// static unsigned int sin_tab[SIN_LEN];
-static UINT16 sin_tab[SIN_LEN];
+static unsigned int sin_tab[SIN_LEN] ;
 
 /* sustain level table (3dB per step) */
 /* bit0, bit1, bit2, bit3, bit4, bit5, bit6 */
@@ -483,11 +506,7 @@ static const UINT8 lfo_pm_output[7*8][8]={
 
 /* all 128 LFO PM waveforms */
 #if GW_TARGET
-// static INT16 lfo_pm_table[128*8*16];// __attribute__((section("._dtcram")));  /* 128 combinations of 7 bits meaningful (of F-NUMBER), 8 LFO depths, 32 LFO output levels per one depth */
-static UINT8 lfo_pm_table[128*8*16];
-
-//only positive value
-//static INT32 lfo_pm_table[128*8*16];// __attribute__((section("._dtcram")));  /* 128 combinations of 7 bits meaningful (of F-NUMBER), 8 LFO depths, 32 LFO output levels per one depth */
+static UINT8 lfo_pm_table[128*8*16];  /* 128 combinations of 7 bits meaningful (of F-NUMBER), 8 LFO depths, 32 LFO output levels per one depth */
 #else
 static INT32 lfo_pm_table[128*8*32] ;  /* 128 combinations of 7 bits meaningful (of F-NUMBER), 8 LFO depths, 32 LFO output levels per one depth */
 #endif
@@ -626,10 +645,11 @@ typedef struct
 /***********************************************************/
 typedef struct
 {
-  FM_CH   CH[6];  /* channel state */
-  UINT8   dacen;  /* DAC mode  */
+  FM_CH CH[6];  /* channel state */
+  UINT8 dacen;  /* DAC mode  */
   INT32 dacout; /* DAC output */
-  FM_OPN  OPN;    /* OPN state */
+  FM_OPN OPN;   /* OPN state */
+  UINT32 divisor; /* sample rate divsor in system clock */
 
 } YM2612;
 
@@ -1450,8 +1470,7 @@ INLINE signed int op_calc(UINT32 phase, unsigned int env, unsigned int pm)
 
   if (p >= TL_TAB_LEN)
     return 0;
-  // return tl_tab[p];
-  return tl_tab[p & 0x1FF] >> (p >> 9);
+  return tl_tab[p];
 }
 
 INLINE signed int op_calc1(UINT32 phase, unsigned int env, unsigned int pm)
@@ -1460,8 +1479,7 @@ INLINE signed int op_calc1(UINT32 phase, unsigned int env, unsigned int pm)
 
   if (p >= TL_TAB_LEN)
     return 0;
-  // return tl_tab[p];
-  return tl_tab[p & 0x1FF] >> (p >> 9);
+  return tl_tab[p];
 }
 
 INLINE void chan_calc(FM_CH *CH, int num)
@@ -1854,11 +1872,11 @@ static void init_tables(void)
     /* yyyyyyyy = 8-bits decimal part (0-TL_RES_LEN)                                            */
     /* xxxxx    = 5-bits integer 'shift' value (0-31) but, since Power table output is 13 bits, */
     /*            any value above 13 (included) would be discarded.                             */
-    // for (i=1; i<13; i++)
-    // {
-    //   tl_tab[ x*2+0 + i*2*TL_RES_LEN ] =  tl_tab[ x*2+0 ]>>i;
-    //   tl_tab[ x*2+1 + i*2*TL_RES_LEN ] = -tl_tab[ x*2+0 + i*2*TL_RES_LEN ];
-    // }
+    for (i=1; i<13; i++)
+    {
+      tl_tab[ x*2+0 + i*2*TL_RES_LEN ] =  tl_tab[ x*2+0 ]>>i;
+      tl_tab[ x*2+1 + i*2*TL_RES_LEN ] = -tl_tab[ x*2+0 + i*2*TL_RES_LEN ];
+    }
   }
 
 # define M_PI		3.14159265358979323846	/* pi */
@@ -1993,79 +2011,12 @@ void YM2612ResetChip(void)
   }
 }
 
-/* ym2612 write */
-/* n = number  */
-/* a = address */
-/* v = value   */
-void YM2612Write(unsigned int a, unsigned int v)
-{
-  //printf("YM2612 write @%x:%x \n",a,v);
-
-  v &= 0xff;  /* adjust to 8 bit bus */
-
-  switch( a )
-  {
-    case 0:  /* address port 0 */
-      ym2612.OPN.ST.address = v;
-      break;
-
-    case 2:  /* address port 1 */
-      ym2612.OPN.ST.address = v | 0x100;
-      break;
-
-    default:  /* data port */
-    {
-      int addr = ym2612.OPN.ST.address; /* verified by Nemesis on real YM2612 */
-      switch( addr & 0x1f0 )
-      {
-        case 0x20:  /* 0x20-0x2f Mode */
-          switch( addr )
-          {
-          case 0x2a: /* DAC data (ym2612) */
-            //ym2612.dacout = v << 6; //((int)v - 0x80) << 6; /* convert to 14-bit signed output */
-            ym2612.dacout = ((int)v - 0x80) * 64; /* convert to signed output */
-            //printf("WriteDAC : %x:%x\n",v,ym2612.dacout);
-            break;
-          case 0x2b: /* DAC Sel  (ym2612) */
-            /* b7 = dac enable */
-            //printf("WriteDAC : %x:%x\n",v,ym2612.dacout);
-            ym2612.dacen = v & 0x80;
-            break;
-          default: /* OPN section */
-            /* write register */
-            OPNWriteMode(addr, v);
-          }
-          break;
-        default:  /* 0x30-0xff OPN section */
-          /* write register */
-          OPNWriteReg(addr,v);
-      }
-      break;
-    }
-  }
-}
-
-unsigned int YM2612Read(void)
-{
-   // //printf("YM2612 read status %x\n",ym2612.OPN.ST.status);
-
-  return ym2612.OPN.ST.status & 0xff;
-}
-
+/* YM2612 execution */
 /* Generate samples for ym2612 */
-void YM2612Update(int16_t *buffer, int length)
+static inline void YM2612Update(int16_t *buffer, int length)
 {
   int i;
-  int lt,rt;
-
-  // extern scan_line;
-  // if (scan_line == 0) {
-  //   printf("\n samples :\n");
-  //   printf("%d ", length);
-
-  // } else {
-  //   printf("%d ", length);
-  // }
+  int lt;
 
   /* refresh PG increments and EG rates if required */
   refresh_fc_eg_chan(&ym2612.CH[0]);
@@ -2074,12 +2025,9 @@ void YM2612Update(int16_t *buffer, int length)
   if (!(ym2612.OPN.ST.mode & 0xC0))
   {
     refresh_fc_eg_chan(&ym2612.CH[2]);
-    //printf("mode CSM\n");
   }
   else
   {
-      //  printf("mode 3SLOT\n");
-
     /* 3SLOT MODE (operator order is 0,1,3,2) */
     if(ym2612.CH[2].SLOT[SLOT1].Incr==-1)
     {
@@ -2116,10 +2064,8 @@ void YM2612Update(int16_t *buffer, int length)
     else
     {
       /* DAC Mode */
-      //printf("DAC\n");
       out_fm[5] = ym2612.dacout;
       chan_calc(&ym2612.CH[0],5);
-      //printf("DAC,%x\n",out_fm[5]);
     }
 
     /* advance LFO */
@@ -2135,30 +2081,20 @@ void YM2612Update(int16_t *buffer, int length)
       ym2612.OPN.eg_cnt++;
       advance_eg_channels(&ym2612.CH[0], ym2612.OPN.eg_cnt);
     }
-#if 1
-    /* 14-bit accumulator channels outputs (range is -8192;+8192) */
-    if (out_fm[0] > 8192) out_fm[0] = 8192;
+    /* 14-bit accumulator channels outputs (range is -8192;+8191) */
+    if (out_fm[0] > 8191) out_fm[0] = 8191;
     else if (out_fm[0] < -8192) out_fm[0] = -8192;
-    if (out_fm[1] > 8192) out_fm[1] = 8192;
+    if (out_fm[1] > 8191) out_fm[1] = 8191;
     else if (out_fm[1] < -8192) out_fm[1] = -8192;
-    if (out_fm[2] > 8192) out_fm[2] = 8192;
+    if (out_fm[2] > 8191) out_fm[2] = 8191;
     else if (out_fm[2] < -8192) out_fm[2] = -8192;
-    if (out_fm[3] > 8192) out_fm[3] = 8192;
+    if (out_fm[3] > 8191) out_fm[3] = 8191;
     else if (out_fm[3] < -8192) out_fm[3] = -8192;
-    if (out_fm[4] > 8192) out_fm[4] = 8192;
+    if (out_fm[4] > 8191) out_fm[4] = 8191;
     else if (out_fm[4] < -8192) out_fm[4] = -8192;
-    if (out_fm[5] > 8192) out_fm[5] = 8192;
+    if (out_fm[5] > 8191) out_fm[5] = 8191;
     else if (out_fm[5] < -8192) out_fm[5] = -8192;
-#else
-    out_fm[0] =__SSAT(out_fm[0], 14);
-    out_fm[1] =__SSAT(out_fm[1], 14);
-    out_fm[2] =__SSAT(out_fm[2], 14);
-    out_fm[3] =__SSAT(out_fm[3], 14);
-    out_fm[4] =__SSAT(out_fm[4], 14);
-    out_fm[5] =__SSAT(out_fm[5], 14);
-
-#endif
-
+    
     /* stereo DAC channels outputs mixing  */
     #if 0
     lt  = ((out_fm[0]) & ym2612.OPN.pan[0]);
@@ -2175,22 +2111,20 @@ void YM2612Update(int16_t *buffer, int length)
     rt += ((out_fm[5]) & ym2612.OPN.pan[11]);
     #endif
     lt  = out_fm[0];
-    rt  = out_fm[0];
+   // rt  = out_fm[0];
     lt += out_fm[1];
-    rt += out_fm[1];
+   // rt += out_fm[1];
     lt += out_fm[2];
-    rt += out_fm[2];
+   // rt += out_fm[2];
     lt += out_fm[3];
-    rt += out_fm[3];
+   // rt += out_fm[3];
     lt += out_fm[4];
-    rt += out_fm[4];
+    //rt += out_fm[4];
     lt += out_fm[5];
-    rt += out_fm[5];
+   // rt += out_fm[5];
 
     *buffer++ = lt;
-    *buffer++ = rt;
 
-    //printf("lt:%d rt:%d %x:%x\n",lt,rt,lt,rt);
     /* CSM mode: if CSM Key ON has occured, CSM Key OFF need to be sent       */
     /* only if Timer A does not overflow again (i.e CSM Key ON not set again) */
     ym2612.OPN.SL3.key_csm <<= 1;
@@ -2214,9 +2148,90 @@ void YM2612Update(int16_t *buffer, int length)
   INTERNAL_TIMER_B(length);
 }
 
-void YM2612Config(unsigned char dac_bits)
+void ym2612_run( int target) {
+
+  if ( ym2612_clock >= target) {
+    return;
+  }
+  int ym2612_prev_index = ym2612_index;
+  ym2612_index += (target-ym2612_clock) / ym2612.divisor;
+  if (ym2612_index > ym2612_prev_index) {
+    YM2612Update(gwenesis_ym2612_buffer + ym2612_prev_index, ym2612_index-ym2612_prev_index);
+    ym2612_clock = ym2612_index*ym2612.divisor;
+
+  } else {
+    ym2612_index = ym2612_prev_index;
+  }
+}
+
+/* ym2612 write */
+/* n = number  */
+/* a = address */
+/* v = value   */
+void YM2612Write(unsigned int a, unsigned int v,  int target)
 {
- //printf("config dac %dbits\n",dac_bits);
+  ym_log(__FUNCTION__," %06x : %02x",a,v);
+
+  //Sync
+  if (GWENESIS_AUDIO_ACCURATE == 1)
+    ym2612_run(target); 
+
+  v &= 0xff;  /* adjust to 8 bit bus */
+
+  switch( a )
+  {
+    case 0:  /* address port 0 */
+      ym2612.OPN.ST.address = v;
+      break;
+
+    case 2:  /* address port 1 */
+      ym2612.OPN.ST.address = v | 0x100;
+      break;
+
+    default:  /* data port */
+    {
+      int addr = ym2612.OPN.ST.address; /* verified by Nemesis on real YM2612 */
+      switch( addr & 0x1f0 )
+      {
+        case 0x20:  /* 0x20-0x2f Mode */
+          switch( addr )
+          {
+          case 0x2a: /* DAC data (ym2612) */
+            ym2612.dacout =((int)v - 0x80) << 6; /* convert to 14-bit signed output */
+            //ym2612.dacout = ((int)v - 0x80) * 64; /* convert to signed output */
+            //printf("WriteDAC : %x:%x\n",v,ym2612.dacout);
+            break;
+          case 0x2b: /* DAC Sel  (ym2612) */
+            /* b7 = dac enable */
+            //printf("WriteDAC : %x:%x\n",v,ym2612.dacout);
+            ym2612.dacen = v & 0x80;
+            break;
+          default: /* OPN section */
+            /* write register */
+            OPNWriteMode(addr, v);
+          }
+          break;
+        default:  /* 0x30-0xff OPN section */
+          /* write register */
+          OPNWriteReg(addr,v);
+      }
+      break;
+    }
+  }
+}
+
+unsigned int YM2612Read(int target)
+{
+  // //Sync
+  if (GWENESIS_AUDIO_ACCURATE == 1)
+    ym2612_run(target);
+  ym_log(__FUNCTION__, "%02x",ym2612.OPN.ST.status & 0xff);
+  return ym2612.OPN.ST.status & 0xff;
+}
+
+
+void YM2612Config(unsigned char dac_bits) //,unsigned int AUDIO_FREQ_DIVISOR)
+{
    int i;
 
   /* DAC precision (normally 9-bit on real hardware, implemented through simple 14-bit channel output bitmasking) */
@@ -2230,6 +2245,7 @@ void YM2612Config(unsigned char dac_bits)
       ym2612.OPN.pan[i] = bitmask;
     }
   }
+  ym2612.divisor = AUDIO_FREQ_DIVISOR;
 }
 
 void YM2612SaveRegs(uint8_t *regs)
@@ -2239,7 +2255,7 @@ void YM2612SaveRegs(uint8_t *regs)
 
 void YM2612LoadRegs(uint8_t *regs)
 {
-  int i,c,s;
+  int i;
   for (i=0;i<sizeof(OPNREGS);++i)
   {
     if (i <= 0x30)
