@@ -313,7 +313,11 @@ void app_main(void)
         while (scan_line < lines_per_frame)
         {
             m68k_run(system_clock + VDP_CYCLES_PER_LINE);
-            z80_run(system_clock + VDP_CYCLES_PER_LINE);
+            if (z80_enabled) {
+                z80_run(system_clock + VDP_CYCLES_PER_LINE);
+            } else {
+                zclk = system_clock + VDP_CYCLES_PER_LINE * 4; // Prevent z80_sync from running
+            }
 
             /* Audio */
             /*  GWENESIS_AUDIO_ACCURATE:
