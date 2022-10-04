@@ -228,13 +228,16 @@ void app_main(void)
     FILE *fp = fopen(app->romPath, "rb");
     if (!fp)
         RG_PANIC("Rom load failed");
-    void *rom_data = malloc(0x300000);
-    size_t rom_size = fread(rom_data, 1, 0x300000, fp);
+    fseek(fp, 0, SEEK_END);
+    size_t rom_size = ftell(fp);
+    void *rom_data = malloc((rom_size & ~0xFFFF) + 0x10000);
+    fseek(fp, 0, SEEK_SET);
+    fread(rom_data, 1, rom_size, fp);
     fclose(fp);
 
     RG_LOGI("load_cartridge(%p, %d)\n", rom_data, rom_size);
     load_cartridge(rom_data, rom_size);
-    free(rom_data);
+    // free(rom_data); // load_cartridge takes ownership
 
     RG_LOGI("power_on()\n");
     power_on();

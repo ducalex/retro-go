@@ -114,7 +114,8 @@ void load_cartridge(unsigned char *buffer, size_t size)
     z80_pulse_reset();
 
     // Copy file contents to CPU ROM memory
-    ROM_DATA = malloc(size); // MAX_ROM_SIZE
+    // ROM_DATA = malloc(size); // MAX_ROM_SIZE
+    ROM_DATA = buffer;
 
     #ifdef ROM_SWAP
     bus_log(__FUNCTION__,"--ROM swap mode--");
