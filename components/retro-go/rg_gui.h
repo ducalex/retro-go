@@ -67,9 +67,8 @@ struct rg_gui_option_s
 #define RG_DIALOG_FLAG_DISABLED  0 // (1 << 0)
 #define RG_DIALOG_FLAG_NORMAL    1 // (1 << 1)
 #define RG_DIALOG_FLAG_SKIP     -1 // (1 << 2)
-#define RG_DIALOG_FLAG_LAST      0xF0F0
 
-#define RG_DIALOG_CHOICE_LAST {0, NULL, NULL, RG_DIALOG_FLAG_LAST, NULL}
+#define RG_DIALOG_CHOICE_LAST {0, NULL, NULL, 0, NULL}
 #define RG_DIALOG_SEPARATOR   {0, "----------", NULL, RG_DIALOG_FLAG_SKIP, NULL}
 
 #define TEXT_RECT(text, max) rg_gui_draw_text(-(max), 0, 0, (text), 0, 0, RG_TEXT_MULTILINE|RG_TEXT_DUMMY_DRAW)

@@ -688,11 +688,6 @@ rg_display_config_t rg_display_get_config(void)
     return config;
 }
 
-// rg_video_update_t *rg_display_get_updates(void)
-// {
-//     return updates;
-// }
-
 void rg_display_set_update_mode(display_update_t update_mode)
 {
     config.update_mode = RG_MIN(RG_MAX(0, update_mode), RG_DISPLAY_UPDATE_COUNT - 1);
@@ -792,7 +787,7 @@ bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame,
 }
 
 IRAM_ATTR
-rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const rg_video_update_t *previousUpdate)
+rg_update_t rg_display_submit(/*const*/ rg_video_update_t *update, const rg_video_update_t *previousUpdate)
 {
     const int64_t time_start = rg_system_timer();
     // RG_ASSERT(display.source.width && display.source.height, "Source format not set!");
@@ -955,6 +950,12 @@ void rg_display_set_source_format(int width, int height, int crop_h, int crop_v,
     display.source.pixlen = format & RG_PIXEL_PAL ? 1 : 2;
     display.source.offset = (display.source.crop_v * stride) + (display.source.crop_h * display.source.pixlen);
     display.changed = true;
+}
+
+bool rg_display_is_busy(void)
+{
+    return uxQueueMessagesWaiting(spi_transactions) < SPI_TRANSACTION_COUNT
+        || uxQueueMessagesWaiting(display_task_queue);
 }
 
 void rg_display_sync(void)

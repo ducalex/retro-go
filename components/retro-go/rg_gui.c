@@ -504,16 +504,16 @@ void rg_gui_draw_status_bars(void)
 
 static size_t get_dialog_items_count(const rg_gui_option_t *options)
 {
-    if (options == NULL)
+    const rg_gui_option_t last = RG_DIALOG_CHOICE_LAST;
+    size_t count = 0;
+
+    if (!options)
         return 0;
 
-    for (int i = 0; i < 101; i++)
-    {
-        if (options[i].flags == RG_DIALOG_FLAG_LAST) {
-            return i;
-        }
-    }
-    return 0;
+    while (memcmp(options++, &last, sizeof(last)) != 0)
+        count++;
+
+    return count;
 }
 
 void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int sel)
