@@ -22,8 +22,7 @@
 **
 */
 
-#include <nofrendo.h>
-#include <mmc.h>
+#include "nes/nes.h"
 
 
 static void map_write(uint32 address, uint8 value)

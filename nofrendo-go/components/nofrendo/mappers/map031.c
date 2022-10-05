@@ -22,9 +22,7 @@
 **
 */
 
-#include <nofrendo.h>
-#include <string.h>
-#include <mmc.h>
+#include "nes/nes.h"
 
 static const nsfheader_t *header;
 static rom_t *cart;

@@ -21,7 +21,7 @@
 **
 */
 
-#include <mappers.h>
+#include "mappers/mappers.h"
 #include "nes.h"
 
 static mapper_t mapper;

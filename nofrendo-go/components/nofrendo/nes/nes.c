@@ -280,7 +280,7 @@ nes_t *nes_init(nes_type_t system, int sample_rate, bool stereo)
         goto _fail;
 
     /* memory */
-    nes.mem = mem_init();
+    nes.mem = mem_init_();
     if (NULL == nes.mem)
         goto _fail;
 

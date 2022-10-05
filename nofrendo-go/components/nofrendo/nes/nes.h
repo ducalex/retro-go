@@ -23,9 +23,18 @@
 
 #pragma once
 
-#include <nofrendo.h>
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
+typedef int8_t int8;
+typedef uint8_t uint8;
+typedef uint16_t uint16;
+typedef uint32_t uint32;
+
+#include <nofrendo.h>
 #include "apu.h"
 #include "cpu.h"
 #include "ppu.h"
@@ -33,6 +42,7 @@
 #include "mem.h"
 #include "rom.h"
 #include "input.h"
+#include "utils.h"
 
 #define NES_SCREEN_WIDTH      (256)
 #define NES_SCREEN_HEIGHT     (240)
@@ -108,7 +118,6 @@ typedef struct
     bool frameskip;
     bool poweroff;
     bool pause;
-
 } nes_t;
 
 nes_t *nes_getptr(void);

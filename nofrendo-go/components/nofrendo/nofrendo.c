@@ -25,7 +25,7 @@
 #include <string.h>
 #include "nofrendo.h"
 #include "palettes.h"
-
+#include "nes/nes.h"
 
 int nofrendo_init(int system, int sample_rate, bool stereo, void *blit, void *vsync, void *input)
 {

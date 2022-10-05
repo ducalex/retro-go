@@ -202,7 +202,7 @@ void mem_reset(void)
    ASSERT(num_write_handlers <= MEM_HANDLERS_MAX);
 }
 
-mem_t *mem_init(void)
+mem_t *mem_init_(void)
 {
    // memset(&mem, 0, sizeof(mem));
    mem_reset();

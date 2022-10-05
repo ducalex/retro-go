@@ -1,6 +1,6 @@
 #pragma once
 
-#include <mmc.h>
+#include "nes/mmc.h"
 
 /* mapper interfaces */
 extern mapintf_t map0_intf;

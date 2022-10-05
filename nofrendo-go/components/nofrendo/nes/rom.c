@@ -21,6 +21,7 @@
 **
 */
 
+#include <stdio.h>
 #include "nes.h"
 #include "../database.h"
 
@@ -90,7 +91,7 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
          rom.prg_rom += 0x200;
       }
 
-      rom.checksum = crc32_le(0, rom.prg_rom, size - (rom.prg_rom - data));
+      rom.checksum = CRC32(0, rom.prg_rom, size - (rom.prg_rom - data));
       rom.prg_rom_banks = header->prg_banks * 2;
       rom.chr_rom_banks = header->chr_banks;
       rom.prg_ram_banks = 1; // 8KB. Not specified by iNES
@@ -198,7 +199,7 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
       rom.prg_ram_banks = 4; // The FDS adapter contains 32KB to store game program
       rom.chr_ram_banks = 1; // The FDS adapter contains 8KB
       rom.prg_rom_banks = 1; // This will contain the FDS BIOS
-      rom.checksum = crc32_le(0, rom.data_ptr, rom.data_len);
+      rom.checksum = CRC32(0, rom.data_ptr, rom.data_len);
       rom.mapper_number = 20;
       rom.system = SYS_FAMICOM;
 
@@ -225,7 +226,7 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
       rom.prg_ram_banks = 1; // Some songs may need it. I store a bootstrap program there at the moment
       rom.chr_ram_banks = 1; // Not used but some code might assume it will be present...
       rom.prg_rom_banks = 4; // This is actually PRG-RAM but some of our code assumes PRG-ROM to be present...
-      rom.checksum = crc32_le(0, rom.data_ptr, rom.data_len);
+      rom.checksum = CRC32(0, rom.data_ptr, rom.data_len);
       rom.mapper_number = 31;
 
       MESSAGE_INFO("ROM: CRC32:  %08X\n", (unsigned)rom.checksum);

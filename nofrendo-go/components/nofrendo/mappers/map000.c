@@ -21,7 +21,8 @@
 **
 */
 
-#include <mmc.h>
+#include "nes/nes.h"
+
 
 mapintf_t map0_intf =
 {

@@ -21,8 +21,7 @@
 **
 */
 
-#include <nofrendo.h>
-#include <mmc.h>
+#include "nes/nes.h"
 
 static bool is_battletoads = 0;
 

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <nofrendo.h>
+#include <nes/nes.h>
 
 #define AUDIO_SAMPLE_RATE   (32000)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)

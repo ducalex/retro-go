@@ -21,9 +21,7 @@
 **
 */
 
-#include <nofrendo.h>
-#include <mmc.h>
-#include <nes.h>
+#include "nes/nes.h"
 
 #define  MAP40_IRQ_PERIOD  (4096 / NES_CYCLES_PER_SCANLINE)
 

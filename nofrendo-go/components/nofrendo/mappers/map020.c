@@ -25,11 +25,7 @@
 ** convenient place to hook into the memory map, sound, and save state systems.
 */
 
-#include <nofrendo.h>
-#include <string.h>
-#include <stdlib.h>
-#include <mmc.h>
-#include <nes.h>
+#include "nes/nes.h"
 
 #define FDS_CLOCK (NES_CPU_CLOCK_NTSC / 2)
 #define SEEK_TIME 100 // 150

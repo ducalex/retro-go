@@ -21,8 +21,7 @@
 **
 */
 
-#include <nofrendo.h>
-#include <mmc.h>
+#include "nes/nes.h"
 
 static int select_c000 = 0;
 

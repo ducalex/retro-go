@@ -22,10 +22,7 @@
 **
 */
 
-#include <nofrendo.h>
-#include <string.h>
-#include <mmc.h>
-#include <nes.h>
+#include "nes/nes.h"
 
 static uint8 prg_mode;
 static uint8 chr_mode;
@@ -439,8 +436,8 @@ static uint8 map_vram_read(uint32 address, uint8 value)
     }
     #else
     // Silence warnings for now
-    UNUSED(is_nt_attr_read);
-    UNUSED(split_tile);
+    (void)is_nt_attr_read;
+    (void)split_tile;
     #endif
     return value;
 }

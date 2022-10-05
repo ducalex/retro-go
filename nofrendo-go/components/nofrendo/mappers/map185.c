@@ -22,9 +22,7 @@
 **
 */
 
-#include <nofrendo.h>
-#include <string.h>
-#include <mmc.h>
+#include "nes/nes.h"
 
 static uint8 reg = 0;
 

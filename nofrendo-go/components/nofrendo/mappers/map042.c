@@ -22,9 +22,7 @@
 **
 */
 
-#include <nofrendo.h>
-#include <mmc.h>
-#include <nes.h>
+#include "nes/nes.h"
 
 static struct
 {

@@ -26,7 +26,7 @@
 typedef struct mapper_s mapper_t;
 typedef const mapper_t mapintf_t;
 
-#include <nofrendo.h>
+#include "nes.h"
 #include "state.h"
 #include "apu.h"
 #include "rom.h"

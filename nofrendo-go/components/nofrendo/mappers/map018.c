@@ -21,8 +21,7 @@
 **
 */
 
-#include <nofrendo.h>
-#include <mmc.h>
+#include "nes/nes.h"
 
 #define  VRC_PBANK(bank, value, high) \
 do { \

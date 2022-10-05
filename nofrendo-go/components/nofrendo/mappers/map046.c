@@ -22,8 +22,7 @@
 **
 */
 
-#include <nofrendo.h>
-#include <mmc.h>
+#include "nes/nes.h"
 
 static uint32 prg_bank;
 static uint32 chr_bank;

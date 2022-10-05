@@ -21,10 +21,7 @@
 **
 */
 
-#include <nofrendo.h>
-#include <mmc.h>
-#include <stdlib.h>
-#include <string.h>
+#include "nes/nes.h"
 
 static struct
 {

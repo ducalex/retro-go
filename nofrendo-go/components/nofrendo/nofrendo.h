@@ -27,12 +27,6 @@
 #define APP_STRING  "Nofrendo"
 #define APP_VERSION "3.0"
 
-#ifdef RETRO_GO
-#include <rg_system.h>
-#define LOG_PRINTF(level, x...) rg_system_log(RG_LOG_USER, NULL, x)
-#define crc32_le(a, b, c) rg_crc32(a, b, c)
-#endif
-
 /* Configuration */
 
 /* Uncomment to enable debugging messages */
@@ -49,18 +43,7 @@
 
 /* End configuration */
 
-
-/* Basic types */
-
 #include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-
-typedef int8_t int8;
-typedef uint8_t uint8;
-typedef uint16_t uint16;
-typedef uint32_t uint32;
 
 typedef enum
 {
@@ -85,51 +68,6 @@ enum
     NES_GUI_GREEN,
     NES_GUI_BLUE,
 };
-
-/* End basic types */
-
-
-/* Logging */
-
-#ifndef LOG_PRINTF
-#define LOG_PRINTF(level, x...) printf(x)
-#endif
-
-#define MESSAGE_ERROR(x...) LOG_PRINTF(1, "!! " x)
-#define MESSAGE_WARN(x...)  LOG_PRINTF(2, " ! " x)
-#define MESSAGE_INFO(x...)  LOG_PRINTF(3, x)
-#ifdef NOFRENDO_DEBUG
-#define MESSAGE_DEBUG(x, ...) LOG_PRINTF(4, "> %s: " x, __func__, ## __VA_ARGS__)
-#else
-#define MESSAGE_DEBUG(x...)
-#endif
-#define MESSAGE_TRACE(x, ...) LOG_PRINTF(4, "~ %s: " x, __func__, ## __VA_ARGS__)
-
-/* End logging */
-
-
-/* Macros */
-
-#define ASSERT(expr) while (!(expr)) { LOG_PRINTF(1, "ASSERTION FAILED IN %s: " #expr "\n", __func__); abort(); }
-#define UNUSED(x) (void)x
-
-#undef MIN
-#define MIN(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
-#undef MAX
-#define MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
-
-#ifndef crc32_le
-#define crc32_le(a, b) (0)
-#endif
-
-#ifndef IRAM_ATTR
-#define IRAM_ATTR
-#endif
-
-/* End macros */
-
-
-#include "nes/nes.h"
 
 int nofrendo_init(int system, int sample_rate, bool stereo, void *blit, void *vsync, void *input);
 int nofrendo_start(const char *filename, const char *savefile);
