@@ -49,11 +49,12 @@ __license__ = "GPLv3"
 #ifdef GW_JPEG_SUPPORT
 #include "hw_jpeg_decoder.h"
 
+
 /* instances for JPEG decoder */
 // Internal buffer for hardware JPEG decoder
 #define JPEG_BUFFER_SIZE ((uint32_t)(GW_SCREEN_WIDTH * GW_SCREEN_HEIGHT * 3 / 2))
 
-static uint8_t *JPEG_Buffer;
+static uint8_t JPEG_Buffer[JPEG_BUFFER_SIZE] __attribute__((aligned(4)));
 #endif
 
 //ROM in RAM
@@ -286,7 +287,7 @@ bool gw_romloader_rom2ram()
       /* cleanup Frame buffer with black color (in case of background cropped) */
       memset((unsigned char *)FrameDst, 0x0, GW_SCREEN_HEIGHT*GW_SCREEN_WIDTH*2);
 
-      assert(JPEG_DecodeToFrameInit(malloc(JPEG_BUFFER_SIZE),JPEG_BUFFER_SIZE) == 0);
+      assert(JPEG_DecodeToFrameInit((uint32_t)&JPEG_Buffer,JPEG_BUFFER_SIZE) == 0);
 
       // get jpeg image size
 
