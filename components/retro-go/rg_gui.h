@@ -84,6 +84,7 @@ void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, co
 void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size, rg_color_t border_color, rg_color_t fill_color);
 void rg_gui_draw_battery(int x_pos, int y_pos);
 void rg_gui_draw_radio(int x_pos, int y_pos);
+void rg_gui_draw_time(int x_pos, int y_pos);
 void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int sel);
 void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resample, const rg_image_t *img);
 void rg_gui_draw_hourglass(void); // This should be moved to system or display...

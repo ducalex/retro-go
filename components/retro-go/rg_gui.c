@@ -448,6 +448,22 @@ void rg_gui_draw_radio(int x_pos, int y_pos)
     rg_gui_draw_rect(x_pos, y_pos, seg_width, 10, 1, color_border, color_fill);
 }
 
+void rg_gui_draw_time(int x_pos, int y_pos)
+{
+    if (x_pos < 0)
+        x_pos += gui.screen_width;
+    if (y_pos < 0)
+        y_pos += gui.screen_height;
+
+    char buffer[10];
+    time_t time_sec = time(NULL);
+    struct tm *time = localtime(&time_sec);
+
+    // FIXME: Use a fixed small font here, that's why we're doing it in rg_gui...
+    sprintf(buffer, "%02d:%02d", time->tm_hour, time->tm_min);
+    rg_gui_draw_text(x_pos, y_pos, 0, buffer, C_WHITE, C_TRANSPARENT, 0);
+}
+
 void rg_gui_draw_hourglass(void)
 {
     rg_display_write((gui.screen_width / 2) - (image_hourglass.width / 2),
