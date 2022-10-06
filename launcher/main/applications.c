@@ -690,6 +690,7 @@ void applications_init(void)
     application("Atari 2600", "a26", "a26", "stella-go", 0);
     application("Neo Geo Pocket Color", "ngp", "ngp ngc", "ngpocket-go", 0);
     application("DOOM", "doom", "wad", "prboom-go", 0);
+    application("Game & Watch", "gw", "gw", "gw-emulator", 0);
     // Special app to bootstrap native esp32 binaries from the SD card
     application("Bootstrap", "apps", "bin elf", "bootstrap", 0);
 
