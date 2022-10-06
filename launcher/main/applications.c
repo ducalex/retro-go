@@ -683,7 +683,7 @@ void applications_init(void)
     application("Nintendo Gameboy Color", "gbc", "gbc gb", "gnuboy-go", 0);
     application("Sega Master System", "sms", "sms sg", "smsplusgx-go", 0);
     application("Sega Game Gear", "gg", "gg", "smsplusgx-go", 0);
-    application("Sega Mega Drive", "md", "md gen", "gwenesis-go", 0);
+    application("Sega Mega Drive", "md", "md gen", "gwenesis", 0);
     application("ColecoVision", "col", "col", "smsplusgx-go", 0);
     application("PC Engine", "pce", "pce", "pce-go", 0);
     application("Atari Lynx", "lnx", "lnx", "handy-go", 64);

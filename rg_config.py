@@ -18,5 +18,5 @@ PROJECT_APPS = {
   'handy-go':     [0, 0, 393216],
   'snes9x-go':    [0, 0, 655360],
   'prboom-go':    [0, 0, 786432],
-  'gwenesis-go':  [0, 0, 983040],
+  'gwenesis':     [0, 0, 983040],
 }
