@@ -5,7 +5,7 @@ have been heavily optimized to reduce their cpu, memory, and flash needs without
 compatibility!
 
 ### Supported systems:
-- Nintendo: **NES, SNES (slow), Gameboy, Gameboy Color**
+- Nintendo: **NES, SNES (slow), Gameboy, Gameboy Color, Game & Watch**
 - Sega: **SG-1000, Master System, Mega Drive / Genesis, Game Gear**
 - Coleco: **Colecovision**
 - NEC: **PC Engine**
