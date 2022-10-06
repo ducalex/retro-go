@@ -681,16 +681,17 @@ void applications_init(void)
     application("Super Nintendo", "snes", "smc sfc", "snes9x-go", 0);
     application("Nintendo Gameboy", "gb", "gb gbc", "gnuboy-go", 0);
     application("Nintendo Gameboy Color", "gbc", "gbc gb", "gnuboy-go", 0);
+    application("Nintendo Game & Watch", "gw", "gw", "gw-emulator", 0);
     application("Sega Master System", "sms", "sms sg", "smsplusgx-go", 0);
     application("Sega Game Gear", "gg", "gg", "smsplusgx-go", 0);
     application("Sega Mega Drive", "md", "md gen", "gwenesis", 0);
-    application("ColecoVision", "col", "col", "smsplusgx-go", 0);
-    application("PC Engine", "pce", "pce", "pce-go", 0);
+    application("Coleco ColecoVision", "col", "col", "smsplusgx-go", 0);
+    application("NEC PC Engine", "pce", "pce", "pce-go", 0);
     application("Atari Lynx", "lnx", "lnx", "handy-go", 64);
-    application("Atari 2600", "a26", "a26", "stella-go", 0);
-    application("Neo Geo Pocket Color", "ngp", "ngp ngc", "ngpocket-go", 0);
+    // application("Atari 2600", "a26", "a26", "stella-go", 0);
+    // application("Neo Geo Pocket Color", "ngp", "ngp ngc", "ngpocket-go", 0);
     application("DOOM", "doom", "wad", "prboom-go", 0);
-    application("Game & Watch", "gw", "gw", "gw-emulator", 0);
+
     // Special app to bootstrap native esp32 binaries from the SD card
     application("Bootstrap", "apps", "bin elf", "bootstrap", 0);
 
