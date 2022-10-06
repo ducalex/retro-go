@@ -7,6 +7,9 @@
 			"path": "gnuboy-go"
 		},
 		{
+			"path": "gw-emulator"
+		},
+		{
 			"path": "gwenesis"
 		},
 		{
@@ -17,9 +20,6 @@
 		},
 		{
 			"path": "nofrendo-go"
-		},
-		{
-			"path": "gw-emulator"
 		},
 		{
 			"path": "pce-go"

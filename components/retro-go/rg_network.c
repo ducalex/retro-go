@@ -93,7 +93,7 @@ fail:
 
 rg_network_t rg_network_get_info(void)
 {
-#ifdef RG_ENABLE_NETWORKING
+#if 0
     wifi_ap_record_t wifidata;
     if (netstate.connected)
     {
