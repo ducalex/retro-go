@@ -332,27 +332,36 @@ bool LoadROM(const char* filename)
    retry_count = 0;
 
 again:
-   TotalFileSize = 0;
-   if ((fp = fopen(filename, "rb")))
+   if (filename == NULL)
+   {
+      printf("Using Memory.ROM as is.\n");
+   }
+   else if ((fp = fopen(filename, "rb")))
    {
       fseek(fp, 0, SEEK_END);
-      TotalFileSize = ftell(fp);
+      Memory.ROM_Size = ftell(fp);
       fseek(fp, 0, SEEK_SET);
-      fread(Memory.ROM, MIN(TotalFileSize, MAX_ROM_SIZE), 1, fp);
+      fread(Memory.ROM, MIN(Memory.ROM_Size, MAX_ROM_SIZE), 1, fp);
       fclose(fp);
    }
-
-   printf("%s %d %p\n", filename, TotalFileSize, fp);
+   else
+   {
+      printf("Failed to open %s\n", filename);
+      return false;
+   }
+   TotalFileSize = Memory.ROM_Size;
 
    if (TotalFileSize > MAX_ROM_SIZE)
    {
-      printf("WARNING: ROM TOO BIG!\n");
-      // TotalFileSize = MAX_ROM_SIZE; // For debugging
-      TotalFileSize = 0; // For releases
+      printf("WARNING: ROM TOO BIG (%d)!\n", TotalFileSize);
+      TotalFileSize = MAX_ROM_SIZE; // for debugging
+      // return false; // for releases
+   }
+   else if (TotalFileSize < 1024)
+   {
+      return false; /* it ends here */
    }
 
-   if (!TotalFileSize)
-      return false; /* it ends here */
    // CheckForIPSPatch(filename, Memory.HeaderCount != 0, &TotalFileSize);
    /* fix hacked games here. */
    if ((strncmp("HONKAKUHA IGO GOSEI", (char*)&Memory.ROM[0x7FC0], 19) == 0) && (Memory.ROM[0x7FD5] != 0x31))

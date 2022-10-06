@@ -125,6 +125,7 @@ typedef struct
    char     ROMFilename [_MAX_PATH];
    uint8_t  ROMRegion;
    uint8_t  ExtendedFormat;
+   uint32_t ROM_Size; // size of *ROM content
 } CMemory;
 
 void ResetSpeedMap(void);
