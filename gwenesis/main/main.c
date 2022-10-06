@@ -253,12 +253,13 @@ void app_main(void)
     extern unsigned int screen_width, screen_height;
     extern int hint_pending;
 
+    unsigned int prev_screen_height = 0, prev_screen_width = 0;
+
     uint32_t keymap[8] = {RG_KEY_UP, RG_KEY_DOWN, RG_KEY_LEFT, RG_KEY_RIGHT, RG_KEY_A, RG_KEY_B, RG_KEY_SELECT, RG_KEY_START};
     uint32_t joystick = 0, joystick_old;
     uint32_t frames = 0;
 
     RG_LOGI("rg_display_set_source_format()\n");
-    rg_display_set_source_format(320, REG1_PAL ? 240 : 224, 0, 0, 320, RG_PIXEL_PAL565_BE);
 
     RG_LOGI("emulation loop\n");
     while (true)
@@ -288,14 +289,19 @@ void app_main(void)
         bool drawFrame = (frames++ & 3) == 3;
 
         int lines_per_frame = REG1_PAL ? LINES_PER_FRAME_PAL : LINES_PER_FRAME_NTSC;
-        int vert_screen_offset = REG1_PAL ? 0 : 320 * (240 - 224) / 2;
-        int hori_screen_offset = 0; //REG12_MODE_H40 ? 0 : (320 - 256) / 2;
         int hint_counter = gwenesis_vdp_regs[10];
 
-        screen_height = REG1_PAL ? 240 : 224;
         screen_width = REG12_MODE_H40 ? 320 : 256;
+        screen_height = REG1_PAL ? 240 : 224;
 
-        gwenesis_vdp_set_buffer(currentUpdate->buffer + (vert_screen_offset + hori_screen_offset)); // / 2 * 2
+        if (screen_width != prev_screen_width || prev_screen_height != screen_height)
+        {
+            rg_display_set_source_format(screen_width, screen_height, 0, 0, 320, RG_PIXEL_PAL565_BE);
+            prev_screen_width = screen_width;
+            prev_screen_height = screen_height;
+        }
+
+        gwenesis_vdp_set_buffer(currentUpdate->buffer);
         gwenesis_vdp_render_config();
 
         /* Reset the difference clocks and audio index */
