@@ -19,6 +19,9 @@
 			"path": "nofrendo-go"
 		},
 		{
+			"path": "gw-emulator"
+		},
+		{
 			"path": "pce-go"
 		},
 		{

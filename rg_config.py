@@ -19,4 +19,5 @@ PROJECT_APPS = {
   'snes9x-go':    [0, 0, 655360],
   'prboom-go':    [0, 0, 786432],
   'gwenesis':     [0, 0, 983040],
+  'gw-emulator':  [0, 0, 327680],
 }
