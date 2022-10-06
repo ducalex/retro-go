@@ -120,7 +120,7 @@ static void retro_loop(void)
         if (time_changed)
         {
             time_t time_sec = time(NULL);
-            rg_gui_alert("Time synced", asctime(gmtime(&time_sec)));
+            // rg_gui_alert("Time synced", asctime(gmtime(&time_sec)));
             rg_system_save_rtc();
             time_changed = false;
         }

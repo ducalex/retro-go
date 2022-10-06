@@ -86,6 +86,7 @@ static bool exitCalled = false;
 static const char *SETTING_BOOT_NAME = "BootName";
 static const char *SETTING_BOOT_ARGS = "BootArgs";
 static const char *SETTING_BOOT_FLAGS = "BootFlags";
+static const char *SETTING_TIMEZONE = "Timezone";
 
 #define WDT_TIMEOUT 10000000
 #define WDT_RELOAD(val) wdtCounter = (val)
@@ -419,6 +420,8 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     if (app.bootFlags & RG_BOOT_ONCE)
         rg_system_set_boot_app(RG_APP_LAUNCHER);
 
+    setenv("TZ", rg_settings_get_string(NS_GLOBAL, SETTING_TIMEZONE, "EST+5"), 1);
+    tzset();
     rtc_time_init();
 
     // Do these last to not interfere with panic handling above
