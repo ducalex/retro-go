@@ -114,8 +114,12 @@ void load_cartridge(unsigned char *buffer, size_t size)
     z80_pulse_reset();
 
     // Copy file contents to CPU ROM memory
+    #ifdef RETRO_GO
+    ROM_DATA = buffer;
+    #else
     ROM_DATA = realloc(ROM_DATA, (size & ~0xFFFF) + 0x10000); // 64KB align just in case
     memcpy(ROM_DATA, buffer, size);
+    #endif
 
     #ifdef ROM_SWAP
     bus_log(__FUNCTION__,"--ROM swap mode--");
