@@ -36,8 +36,9 @@ static const char SAVESTATE_HEADER[8] = "PCE_V010";
 static save_var_t SaveStateVars[] =
 {
 	// Arrays
-	SVAR_A("RAM", PCE.RAM),      SVAR_A("VRAM", PCE.VRAM),  SVAR_A("SPRAM", PCE.SPRAM),
-	SVAR_A("PAL", PCE.Palette),  SVAR_A("MMR", PCE.MMR),
+	SVAR_N("RAM", PCE.RAM, 0x2000),             SVAR_N("VRAM", PCE.VRAM, 0x10000),
+	SVAR_N("SPRAM", PCE.SPRAM, 512),            SVAR_N("PAL", PCE.Palette, 512),
+	SVAR_A("MMR", PCE.MMR),
 
 	// CPU registers
 	SVAR_2("CPU.PC", CPU.PC),    SVAR_1("CPU.A", CPU.A),    SVAR_1("CPU.X", CPU.X),

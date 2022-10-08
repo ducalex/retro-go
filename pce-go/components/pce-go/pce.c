@@ -67,8 +67,14 @@ pce_reset(bool hard)
 int
 pce_init(void)
 {
+	PCE.VRAM = malloc(0x10000);
 	PCE.NULLRAM = malloc(0x2000);
 	PCE.IOAREA = PCE.NULLRAM + 4;
+
+	if (!PCE.VRAM || !PCE.NULLRAM) {
+		pce_term();
+		return -1;
+	}
 
 	for (int i = 0; i < 0xFF; i++) {
 		PCE.MemoryMapR[i] = PCE.NULLRAM;
@@ -92,6 +98,8 @@ pce_init(void)
 void
 pce_term(void)
 {
+	free(PCE.VRAM);
+	PCE.VRAM = NULL;
 	free(PCE.ExRAM);
 	PCE.ExRAM = NULL;
 	free(PCE.ROM);
