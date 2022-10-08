@@ -1,7 +1,16 @@
+# Table of contents
+- [Description](#description)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Issues](#issues)
+- [Building](#building)
+- [Acknowledgements](#acknowledgements)
+- [License](#license)
+
 # Description
-Retro-Go is a firmware to play retro games on ESP32-based devices (officially supported are 
-ODROID-GO and MRGC-G32). The project consists of a launcher and half a dozen applications that 
-have been heavily optimized to reduce their cpu, memory, and flash needs without reducing 
+Retro-Go is a firmware to play retro games on ESP32-based devices (officially supported are
+ODROID-GO and MRGC-G32). The project consists of a launcher and half a dozen applications that
+have been heavily optimized to reduce their cpu, memory, and flash needs without reducing
 compatibility!
 
 ### Supported systems:
@@ -31,6 +40,7 @@ compatibility!
 
 
 # Installation
+
 ### ODROID-GO
   1. Download `retro-go_1.x_odroid-go.fw` from the release page and copy it to `/odroid/firmware` on your sdcard.
   2. Power up the device while holding down B.
@@ -44,71 +54,89 @@ compatibility!
 ### Generic ESP32
 This method is intended to be used when .fw support isn't available (when porting to a new device) or undesirable (devices with smaller flash).
   1. Build a .img file (refer to [Building Retro-Go](#building-retro-go) below)
-  2. Flash the image: `esptool.py write_flash --flash_size detect 0x0 retro-go_*.img`  
-      _Note: Your particular device may require extra steps (like holding a button during power up) or different esptool flags._
+  2. Flash the image: `esptool.py write_flash --flash_size detect 0x0 retro-go_*.img`
+      _Note: Your particular device may require extra steps (like holding a button during power up), different esptool flags, or modifying base.sdkconfig._
 
-# Game covers 
-Game covers should be placed in the `romart` folder at the base of your sd card. You can obtain a pre-made pack from 
+
+# Usage
+
+## Game covers
+Game covers should be placed in the `romart` folder at the base of your sd card. You can obtain a pre-made pack from
 this repository or from the release page. Retro-Go is also compatible with the older Go-Play romart pack.
 
 ### Adding covers
-The preferred cover art format is PNG with a resolution of max 160x168 and I recommend post-processing your 
-PNG with [pngquant](https://pngquant.org/) or [imagemagick](https://imagemagick.org/script/index.php)'s 
+The preferred cover art format is PNG with a resolution of max 160x168 and I recommend post-processing your
+PNG with [pngquant](https://pngquant.org/) or [imagemagick](https://imagemagick.org/script/index.php)'s
 `-colors 255` for smaller file sizes.
 
 You can use one of two naming schemes:
-- Using the CRC32 (press A -> Properties in the launcher to find it). Assuming a CRC of ABCDE123, the cover file 
+- Using the CRC32 (press A -> Properties in the launcher to find it). Assuming a CRC of ABCDE123, the cover file
   will be `/romart/nes/A/ABCDE123.png`.
-- Using the rom file name. Assuming a rom named `myrom.nes`, the cover file will be 
+- Using the rom file name. Assuming a rom named `myrom.nes`, the cover file will be
   `/romart/nes/myrom.nes.png` (notice the inclusion of the rom extension).
 
+## BIOS files
+Some emulators support loading a BIOS. The files should be placed as follows:
+- GB: `/retro-go/system/gb_bios.bin`
+- GBC: `/retro-go/system/gbc_bios.bin`
+- FDS: `/retro-go/system/fds_bios.bin`
 
-# Problems and solutions
+## Wifi
+**Important: Wifi features are only present in CI builds at this time. This notice will be removed once it makes its way to a release.**
+
+### Configuration
+You need to add a wifi section in your `/retro-go/config/retro-go.json` file. It should look like this:
+````json
+{
+  "global": {
+    // ...
+  },
+  "wifi": {
+    "ssid": "my-network",
+    "password": "my-password"
+  }
+}
+````
+If you are unfamiliar with JSON syntax you can run your config file [through a validator](https://jsonlint.com/)
+to confirm that it is correct.
+
+### Time synchronization
+Time synchronization happens in the launcher, immediately after a successful connection to the network.
+I will add instructions for the timezone soon.
+
+### File manager
+You can find the IP of your device in the *about* menu of retro-go. Then on your PC navigate to
+http://192.168.x.x/ to access the file manager.
+
+
+# Issues
 
 ### Black screen / Boot loops
 Retro-Go typically detects and resolves application crashes and freezes automatically. However, if you do
-get stuck in a boot loop, you can hold `DOWN` while powering up the device to return to the launcher. 
+get stuck in a boot loop, you can hold `DOWN` while powering up the device to return to the launcher.
 
 ### Artifacts or tearing
 Retro-Go uses partial screen updating to achieve a higher framerate and reduce tearing. This method isn't
 perfect however, if you notice display issues or stuttering you can try changing the `Update` option.
 
 ### Sound quality
-The volume isn't correctly attenuated on the GO, resulting in upper volume levels that are too loud and 
+The volume isn't correctly attenuated on the GO, resulting in upper volume levels that are too loud and
 lower levels that are distorted due to DAC resolution. A quick way to improve the audio is to cut one
-of the speaker wire and add a `33 Ohm (or thereabout)` resistor in series. Soldering is better but not 
+of the speaker wire and add a `33 Ohm (or thereabout)` resistor in series. Soldering is better but not
 required, twisting the wires tightly will work just fine.
 [A more involved solution can be seen here.](https://wiki.odroid.com/odroid_go/silent_volume)
 
 ### Game Boy SRAM *(aka Save/Battery/Backup RAM)*
-In Retro-Go, save states will provide you with the best and most reliable save experience. That being said, please 
-read on if you need or want SRAM saves. The SRAM format is compatible with VisualBoyAdvance so it may be used to 
+In Retro-Go, save states will provide you with the best and most reliable save experience. That being said, please
+read on if you need or want SRAM saves. The SRAM format is compatible with VisualBoyAdvance so it may be used to
 import or export saves.
 
-You can configure automatic SRAM saving in the options menu. A longer delay will reduce stuttering at the cost 
-of losing data when powering down too quickly. Also note that when *resuming* a game, Retro-Go will give priority 
+You can configure automatic SRAM saving in the options menu. A longer delay will reduce stuttering at the cost
+of losing data when powering down too quickly. Also note that when *resuming* a game, Retro-Go will give priority
 to a save state if present.
 
 
-# BIOS files
-Some emulators support loading a BIOS. The files should be placed as follows:
-- GB: `/retro-go/system/gb_bios.bin`
-- GBC: `/retro-go/system/gbc_bios.bin`
-- FDS: `/retro-go/system/fds_bios.bin`
-
-
-# Future plans / Feature requests
-- Cheats support (In progress)
-- Famicom Disk System (In progress)
-- SGB enhanced palette support (In progress)
-- Netplay (Stalled)
-- More emulators (Atari 2600/5200/7800, Neo Geo Pocket, Arduboy)
-- WiFi file manager
-- Chip sound player
-- Sleep mode
-
-
-# Building Retro-Go
+# Building
 
 ## Prerequisites
 You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/release-v4.3/esp32/get-started/index.html#get-started-get-prerequisites). Only versions 4.1 to 4.4 are supported. Support for 5.0 is coming soon.
@@ -122,9 +150,9 @@ Patching esp-idf may be required for full functionality. Patches are located in 
 - `enable-exfat`: Enable exFAT support. I don't recommended it but it works if you need it.
 
 ## Build everything and generate .fw:
-- Generate a .fw file to be installed with odroid-go-firmware (SD Card):  
+- Generate a .fw file to be installed with odroid-go-firmware (SD Card):
     `./rg_tool.py build-fw` or `./rg_tool.py release` (clean build)
-- Generate a .img to be flashed with esptool.py (Serial):  
+- Generate a .img to be flashed with esptool.py (Serial):
     `./rg_tool.py build-img` or `./rg_tool.py release` (clean build)
 
 For a smaller build you can also specify which apps you want, for example the launcher + DOOM only:
@@ -136,7 +164,7 @@ It would be tedious to build, move to SD, and flash a full .fw all the time duri
 2. Monitor: `./rg_tool.py --port=COM3 monitor prboom-go`
 3. Flash then monitor: `./rg_tool.py --port=COM3 run prboom-go`
 
-## Environment variables 
+## Environment variables
 rg_tool.py supports a few environment variables if you want to avoid passing flags all the time:
 - `RG_TOOL_TARGET` represents --target
 - `RG_TOOL_BAUD` represents --baud
@@ -144,10 +172,6 @@ rg_tool.py supports a few environment variables if you want to avoid passing fla
 
 ## Changing the launcher's images
 All images used by the launcher (headers, logos) are located in `launcher/images`. If you edit them you must run the `launcher/gen_images.py` script to regenerate `images.c`. Magenta (rgb(255, 0, 255) / 0xF81F) is used as the transparency colour.
-
-## Changing or adding fonts
-Fonts are found in `components/retro-go/fonts`. There are basic instructions in `fonts.h` on how to add fonts. 
-In short you need to generate a font.c file and add it to fonts.h. It'll try to add better instructions soon...
 
 ## Capturing crash logs
 When a panic occurs, Retro-Go has the ability to save debugging information to `/sd/crash.log`. This provides users with a simple way of recovering a backtrace (and often more) without having to install drivers and serial console software. A weak hook is installed into esp-idf panic's putchar, allowing us to save each chars in RTC RAM. Then, after the system resets, we can move that data to the sd card. You will find a small esp-idf patch to enable this feature in tools/patches.
@@ -160,7 +184,7 @@ I don't want to maintain non-ESP32 ports in this repository but let me know if I
 - Memory: 2MB
 - Compiler: C99 (and C++03 for handy-go)
 
-Whilst all applications were heavily modified or even redesigned for our constrained needs, special care is taken to keep 
+Whilst all applications were heavily modified or even redesigned for our constrained needs, special care is taken to keep
 Retro-Go and ESP32-specific code exclusively in their port file (main.c). This makes reusing them in your own codebase very easy!
 
 
