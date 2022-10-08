@@ -6,10 +6,7 @@ typedef struct
 {
 	byte vbank[2][8192];
 	byte oam[256];
-	union {
-		uint16_t palette[64];
-		uint8_t pal[128];
-	};
+	byte pal[128];
 	int cycles;
 } gb_lcd_t;
 

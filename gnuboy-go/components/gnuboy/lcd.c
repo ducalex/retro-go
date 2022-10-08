@@ -547,39 +547,41 @@ static inline void sync_palette(void)
 {
 	MESSAGE_DEBUG("Syncing palette...\n");
 
+	uint16_t *colors = (uint16_t *)lcd.pal;
+
 	if (hw.hwtype != GB_HW_CGB)
 	{
-		int palette = host.video.colorize % GB_PALETTE_COUNT;
+		int pal_num = host.video.colorize % GB_PALETTE_COUNT;
 		int flags = 0b110;
 		const uint16_t *bgp, *obp0, *obp1;
 
-		if (palette == GB_PALETTE_CGB && cart.colorize)
+		if (pal_num == GB_PALETTE_CGB && cart.colorize)
 		{
-			palette = cart.colorize & 0x1F;
+			pal_num = cart.colorize & 0x1F;
 			flags = (cart.colorize & 0xE0) >> 5;
 		}
 
-		bgp = colorization_palettes[palette][2];
-		obp0 = colorization_palettes[palette][(flags & 1) ? 0 : 1];
-		obp1 = colorization_palettes[palette][(flags & 2) ? 0 : 1];
+		bgp = colorization_palettes[pal_num][2];
+		obp0 = colorization_palettes[pal_num][(flags & 1) ? 0 : 1];
+		obp1 = colorization_palettes[pal_num][(flags & 2) ? 0 : 1];
 
 		// Some special cases
 		if (!(flags & 4)) {
-			obp1 = colorization_palettes[palette][2];
+			obp1 = colorization_palettes[pal_num][2];
 		}
 
 		for (int j = 0; j < 8; j += 2)
 		{
-			lcd.palette[(0+j) >> 1] = bgp[(R_BGP >> j) & 3];
-			lcd.palette[(8+j) >> 1] = bgp[(R_BGP >> j) & 3];
-			lcd.palette[(64+j) >> 1] = obp0[(R_OBP0 >> j) & 3];
-			lcd.palette[(72+j) >> 1] = obp1[(R_OBP1 >> j) & 3];
+			colors[(0+j) >> 1] = bgp[(R_BGP >> j) & 3];
+			colors[(8+j) >> 1] = bgp[(R_BGP >> j) & 3];
+			colors[(64+j) >> 1] = obp0[(R_OBP0 >> j) & 3];
+			colors[(72+j) >> 1] = obp1[(R_OBP1 >> j) & 3];
 		}
 	}
 
 	for (int i = 0; i < 64; ++i)
 	{
-		int c = lcd.palette[i];   // Int is fine, we won't run in sign issues
+		int c = colors[i];        // Int is fine, we won't run in sign issues
 		int r = c & 0x1f;         // bit 0-4 red
 		int g = (c >> 5) & 0x1f;  // bit 5-9 green
 		int b = (c >> 10) & 0x1f; // bit 10-14 blue

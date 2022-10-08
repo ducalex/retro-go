@@ -20,4 +20,5 @@ PROJECT_APPS = {
   'prboom-go':    [0, 0, 786432],
   'gwenesis':     [0, 0, 983040],
   'gw-emulator':  [0, 0, 327680],
+  # 'retro-run':    [0, 0, 1048576],
 }

@@ -98,8 +98,7 @@ typedef struct
 		int format; // gb_pixformat_t
 		int colorize; // gb_palette_t
 		void (*blit_func)(void);
-		union
-		{
+		union {
 			uint16_t *buffer16;
 			uint8_t *buffer8;
 			void *buffer;

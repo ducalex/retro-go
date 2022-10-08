@@ -167,7 +167,7 @@ extern "C" void app_main(void)
         .memWrite = NULL,
     };
     const rg_gui_option_t options[] = {
-        {100, "Rotation", NULL, 1, &rotation_cb},
+        {100, "Rotation", "Auto", 1, &rotation_cb},
         RG_DIALOG_CHOICE_LAST
     };
 
