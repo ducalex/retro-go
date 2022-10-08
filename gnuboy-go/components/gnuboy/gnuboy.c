@@ -161,7 +161,7 @@ void gnuboy_load_bank(int bank)
 	}
 
 	// Load the 16K page
-	if (fseek(cart.romFile, OFFSET, SEEK_SET)
+	if (fseek(cart.romFile, OFFSET, SEEK_SET) != 0
 		|| !fread(cart.rombanks[bank], BANK_SIZE, 1, cart.romFile))
 	{
 		MESSAGE_WARN("ROM bank loading failed\n");
@@ -750,7 +750,7 @@ static int do_save_load(const char *file, bool save)
 
 		memcpy(buf + 0xD00, hw.ioregs, 256);
 		memcpy(buf + 0xE00, hw.lcd->pal, 128);
-		memcpy(buf + 0xF00, hw.lcd->oam.mem, 256);
+		memcpy(buf + 0xF00, hw.lcd->oam, 256);
 		memcpy(buf + 0xCF0, hw.snd->wave, 16);
 
 		for (int i = 0; blocks[i].ptr != NULL; i++)
@@ -808,7 +808,7 @@ static int do_save_load(const char *file, bool save)
 
 		memcpy(hw.ioregs, buf + 0xD00, 256);
 		memcpy(hw.lcd->pal, buf + 0xE00, 128);
-		memcpy(hw.lcd->oam.mem, buf + 0xF00, 256);
+		memcpy(hw.lcd->oam, buf + 0xF00, 256);
 		memcpy(hw.snd->wave, buf + 0xCF0, 16);
 
 		// Disable BIOS. This is a hack to support old saves

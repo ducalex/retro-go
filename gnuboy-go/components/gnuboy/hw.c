@@ -118,7 +118,7 @@ static void hw_dma(unsigned b)
 {
 	unsigned a = b << 8;
 	for (int i = 0; i < 160; i++, a++)
-		lcd.oam.mem[i] = readb(a);
+		lcd.oam[i] = readb(a);
 }
 
 
@@ -498,7 +498,7 @@ void hw_write(unsigned a, byte b)
 		// Video: 0xFE00 - 0xFE9F
 		else if ((a & 0xFF00) == 0xFE00)
 		{
-			if (a < 0xFEA0) lcd.oam.mem[a & 0xFF] = b;
+			if (a < 0xFEA0) lcd.oam[a & 0xFF] = b;
 		}
 		// Sound: 0xFF10 - 0xFF3F
 		else if (a >= 0xFF10 && a <= 0xFF3F)
@@ -677,7 +677,7 @@ byte hw_read(unsigned a)
 		// Video: 0xFE00 - 0xFE9F
 		else if ((a & 0xFF00) == 0xFE00)
 		{
-			return (a < 0xFEA0) ? lcd.oam.mem[a & 0xFF] : 0xFF;
+			return (a < 0xFEA0) ? lcd.oam[a & 0xFF] : 0xFF;
 		}
 		// Sound: 0xFF10 - 0xFF3F
 		else if (a >= 0xFF10 && a <= 0xFF3F)

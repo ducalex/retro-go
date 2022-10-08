@@ -10,15 +10,8 @@
 
 typedef struct
 {
-	int pat, x, v, pal, pri;
+	int v, x, pat, pal, pri;
 } gb_vs_t;
-
-#define BG (lcd.BG)
-#define WND (lcd.WND)
-#define BUF (lcd.BUF)
-#define PRI (lcd.PRI)
-#define WX lcd.WX
-#define WY lcd.WY
 
 #define priused(attr) ({uint32_t *a = (uint32_t *)(attr); (int)((a[0]|a[1]|a[2]|a[3]|a[4]|a[5]|a[6]|a[7])&0x80808080);})
 
@@ -28,6 +21,10 @@ typedef struct
 }
 
 gb_lcd_t lcd;
+
+static byte BUF[0x100];
+static int WX, WY;
+static bool pal_dirty;
 
 
 /**
@@ -59,7 +56,7 @@ static inline byte *get_patpix(int tile, int x)
 	return pix;
 }
 
-static inline void tilebuf(int S, int T, int WT)
+static inline void tilebuf(int S, int T, int WT, int *WND, int *BG)
 {
 	int cnt, base;
 	byte *tilemap, *attrmap;
@@ -158,7 +155,7 @@ static inline void tilebuf(int S, int T, int WT)
 	}
 }
 
-static inline void bg_scan(int U, int V)
+static inline void bg_scan(int U, int V, int *BG)
 {
 	int cnt;
 	byte *src, *dest;
@@ -184,7 +181,7 @@ static inline void bg_scan(int U, int V)
 	}
 }
 
-static inline void wnd_scan(int WV)
+static inline void wnd_scan(int WV, int *WND)
 {
 	int cnt;
 	byte *src, *dest;
@@ -203,7 +200,7 @@ static inline void wnd_scan(int WV)
 	}
 }
 
-static inline void bg_scan_pri(int S, int T, int U)
+static inline void bg_scan_pri(int S, int T, int U, byte *PRI)
 {
 	int cnt, i;
 	byte *src, *dest;
@@ -236,7 +233,7 @@ static inline void bg_scan_pri(int S, int T, int U)
 	memset(dest, src[i&31]&128, cnt);
 }
 
-static inline void wnd_scan_pri(int WT)
+static inline void wnd_scan_pri(int WT, byte *PRI)
 {
 	int cnt, i;
 	byte *src, *dest;
@@ -264,7 +261,7 @@ static inline void wnd_scan_pri(int WT)
 	memset(dest, src[i]&128, cnt);
 }
 
-static inline void bg_scan_color(int U, int V)
+static inline void bg_scan_color(int U, int V, int *BG)
 {
 	int cnt;
 	byte *src, *dest;
@@ -290,7 +287,7 @@ static inline void bg_scan_color(int U, int V)
 	}
 }
 
-static inline void wnd_scan_color(int WV)
+static inline void wnd_scan_color(int WV, int *WND)
 {
 	int cnt;
 	byte *src, *dest;
@@ -390,7 +387,7 @@ static inline int spr_enum(gb_vs_t *VS)
 	return NS;
 }
 
-static inline void spr_scan(gb_vs_t *VS, int ns)
+static inline void spr_scan(gb_vs_t *VS, int ns, byte *PRI)
 {
 	byte *src, *dest, *bg, *pri;
 	int i, b, x, pal;
@@ -459,7 +456,7 @@ gb_lcd_t *lcd_init(void)
 
 void lcd_pal_dirty(void)
 {
-	lcd.pal_dirty = true;
+	pal_dirty = true;
 }
 
 
@@ -472,10 +469,7 @@ void lcd_reset(bool hard)
 		memset(&lcd.pal, 0, 128);
 	}
 
-	memset(BG, 0, sizeof(BG));
-	memset(WND, 0, sizeof(WND));
 	memset(BUF, 0, sizeof(BUF));
-	memset(PRI, 0, sizeof(PRI));
 
 	WX = 0;
 	WY = R_WY;
@@ -598,7 +592,7 @@ static inline void sync_palette(void)
 			host.video.palette[i] = out;
 	}
 
-	lcd.pal_dirty = false;
+	pal_dirty = false;
 }
 
 
@@ -624,7 +618,7 @@ static inline void sync_palette(void)
 	adds up to exactly 228 double-speed cycles (109us).
 
 	LCDC emulation begins with R_LCDC set to "operation enabled", R_LY
-	set to line #0 and R_STAT set to state-hblank. lcd.cycles is also
+	set to line #0 and R_STAT set to state-hblank. CYCLES is also
 	set to zero, to begin emulation we call lcd_emulate() once to
 	force-advance LCD through the first iteration.
 
@@ -638,6 +632,9 @@ static inline void lcd_renderline()
 	if (!host.video.enabled || !host.video.buffer)
 		return;
 
+	byte PRI[0x100];
+	int WND[64];
+	int BG[64];
 	gb_vs_t VS[10];
 
 	int SL = R_LY;
@@ -662,30 +659,30 @@ static inline void lcd_renderline()
 	}
 
 	int NS = spr_enum(VS);
-	tilebuf(S, T, WT);
+	tilebuf(S, T, WT, WND, BG);
 
 	if (hw.hwtype == GB_HW_CGB)
 	{
-		bg_scan_color(U, V);
-		wnd_scan_color(WV);
+		bg_scan_color(U, V, BG);
+		wnd_scan_color(WV, WND);
 		if (NS)
 		{
-			bg_scan_pri(S, T, U);
-			wnd_scan_pri(WT);
+			bg_scan_pri(S, T, U, PRI);
+			wnd_scan_pri(WT, PRI);
 		}
 	}
 	else
 	{
-		bg_scan(U, V);
-		wnd_scan(WV);
+		bg_scan(U, V, BG);
+		wnd_scan(WV, WND);
 		blendcpy(BUF+WX, BUF+WX, 0x04, 160-WX);
 	}
 
-	spr_scan(VS, NS);
+	spr_scan(VS, NS, PRI);
 
 	// Real hardware allows palette change to occur between each scanline but very few games take
 	// advantage of this. So we can switch to once per frame if performance becomes a problem...
-	if (lcd.pal_dirty) // && SL == 0)
+	if (pal_dirty) // && SL == 0)
 	{
 		sync_palette();
 	}
