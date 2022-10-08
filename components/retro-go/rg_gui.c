@@ -1149,7 +1149,7 @@ int rg_gui_debug_menu(const rg_gui_option_t *extra_options)
 {
     char screen_res[20], source_res[20], scaled_res[20];
     char stack_hwm[20], heap_free[20], block_free[20];
-    char system_rtc[20], uptime[20];
+    char local_time[32], timezone[32], uptime[20];
 
     const rg_gui_option_t options[] = {
         {0, "Screen Res", screen_res, 1, NULL},
@@ -1158,14 +1158,14 @@ int rg_gui_debug_menu(const rg_gui_option_t *extra_options)
         {0, "Stack HWM ", stack_hwm, 1, NULL},
         {0, "Heap free ", heap_free, 1, NULL},
         {0, "Block free", block_free, 1, NULL},
-        {0, "System RTC", system_rtc, 1, NULL},
+        {0, "Local time", local_time, 1, NULL},
+        {0, "Timezone  ", timezone, 1, NULL},
         {0, "Uptime    ", uptime, 1, NULL},
         RG_DIALOG_SEPARATOR,
         {1000, "Save screenshot", NULL, 1, NULL},
         {2000, "Save trace", NULL, 1, NULL},
         {3000, "Cheats", NULL, 1, NULL},
         {4000, "Crash", NULL, 1, NULL},
-        {5000, "Random time", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
 
@@ -1173,14 +1173,15 @@ int rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     rg_stats_t stats = rg_system_get_counters();
     time_t now = time(NULL);
 
-    strftime(system_rtc, 20, "%F %T", gmtime(&now));
-    sprintf(screen_res, "%dx%d", display->screen.width, display->screen.height);
-    sprintf(source_res, "%dx%d", display->source.width, display->source.height);
-    sprintf(scaled_res, "%dx%d", display->viewport.width, display->viewport.height);
-    sprintf(stack_hwm, "%d", stats.freeStackMain);
-    sprintf(heap_free, "%d+%d", stats.freeMemoryInt, stats.freeMemoryExt);
-    sprintf(block_free, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);
-    sprintf(uptime, "%ds", (int)(rg_system_timer() / 1000000));
+    strftime(local_time, 32, "%F %T", localtime(&now));
+    snprintf(timezone, 32, "%s", getenv("TZ") ?: "N/A");
+    snprintf(screen_res, 20, "%dx%d", display->screen.width, display->screen.height);
+    snprintf(source_res, 20, "%dx%d", display->source.width, display->source.height);
+    snprintf(scaled_res, 20, "%dx%d", display->viewport.width, display->viewport.height);
+    snprintf(stack_hwm, 20, "%d", stats.freeStackMain);
+    snprintf(heap_free, 20, "%d+%d", stats.freeMemoryInt, stats.freeMemoryExt);
+    snprintf(block_free, 20, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);
+    snprintf(uptime, 20, "%ds", (int)(rg_system_timer() / 1000000));
 
     int sel = rg_gui_dialog("Debugging", options, 0);
 
@@ -1196,16 +1197,11 @@ int rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     {
         RG_PANIC("Crash test!");
     }
-    else if (sel == 5000)
-    {
-        struct timeval tv = {rand() % 1893474000, 0};
-        settimeofday(&tv, NULL);
-    }
 
     return sel;
 }
 
-rg_emu_state_t *savestate;
+static rg_emu_state_t *savestate;
 
 static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
