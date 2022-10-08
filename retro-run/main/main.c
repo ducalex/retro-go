@@ -24,6 +24,8 @@ void app_main(void)
         pce_main();
     else if (strcmp(app->configNs, "gw") == 0)
         gw_main();
+    else if (strcmp(app->configNs, "lnx") == 0)
+        lnx_main();
 
     RG_PANIC("Unknown emulator!");
 }

@@ -1,5 +1,5 @@
 extern "C" {
-#include <rg_system.h>
+#include "shared.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -7,14 +7,11 @@ extern "C" {
 
 #include <handy.h>
 
+#undef AUDIO_SAMPLE_RATE
+#undef AUDIO_BUFFER_LENGTH
 #define AUDIO_SAMPLE_RATE   (HANDY_AUDIO_SAMPLE_FREQ)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 40)
 
-static rg_audio_sample_t audioBuffer[AUDIO_BUFFER_LENGTH];
-
-static rg_video_update_t updates[2];
-static rg_video_update_t *currentUpdate = &updates[0];
-static rg_app_t *app = NULL;
 static CSystem *lynx = NULL;
 
 static int dpad_mapped_up;
@@ -155,7 +152,7 @@ static bool reset_handler(bool hard)
     return true;
 }
 
-extern "C" void app_main(void)
+extern "C" void lnx_main(void)
 {
     const rg_handlers_t handlers = {
         .loadState = &load_state_handler,
@@ -167,11 +164,14 @@ extern "C" void app_main(void)
         .memWrite = NULL,
     };
     const rg_gui_option_t options[] = {
-        {100, "Rotation", "Auto", 1, &rotation_cb},
+        {100, "Rotation", (char *)"Auto", 1, &rotation_cb},
         RG_DIALOG_CHOICE_LAST
     };
 
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
+    app->sampleRate = AUDIO_SAMPLE_RATE;
+    app->options = options;
+    app->handlers = handlers;
+    rg_audio_set_sample_rate(app->sampleRate);
 
     // the HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH is deliberate because of rotation
     updates[0].buffer = (void*)rg_alloc(HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH * 2, MEM_FAST);

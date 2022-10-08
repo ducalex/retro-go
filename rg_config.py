@@ -11,9 +11,8 @@ PROJECT_ICON = "icon.raw"
 PROJECT_APPS = {
   # Project name  Type, SubType, Size
   'launcher':     [0, 0, 786432],
-  'retro-run':    [0, 0, 524288],
+  'retro-run':    [0, 0, 655360],
   'smsplusgx-go': [0, 0, 393216],
-  'handy-go':     [0, 0, 393216],
   'snes9x-go':    [0, 0, 524288],
   'prboom-go':    [0, 0, 786432],
   'gwenesis':     [0, 0, 983040],

@@ -21,3 +21,4 @@ extern void gbc_main();
 extern void nes_main();
 extern void pce_main();
 extern void gw_main();
+extern void lnx_main();

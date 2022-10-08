@@ -63,7 +63,6 @@ class CRam : public CLynxBase
 
       CRam(UBYTE *filedata, ULONG filesize)
       {
-         mRamData = new UBYTE[RAM_SIZE];
          if (filedata && filesize > 64 && memcmp(filedata + 6, "BS93", 4) == 0) {
             #ifdef MSB_FIRST
             mHomebrewAddr = filedata[2] << 8 | filedata[3];
@@ -90,10 +89,6 @@ class CRam : public CLynxBase
          if (mHomebrewData) {
             delete[] mHomebrewData;
             mHomebrewData=NULL;
-         }
-         if (mRamData) {
-            delete[] mRamData;
-            mRamData=NULL;
          }
       }
 
@@ -138,7 +133,7 @@ class CRam : public CLynxBase
    // Data members
 
    private:
-      UBYTE	*mRamData;
+      UBYTE	mRamData[RAM_SIZE];
       UBYTE	*mHomebrewData;
       ULONG	mHomebrewSize;
       ULONG mHomebrewAddr;

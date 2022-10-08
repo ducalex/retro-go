@@ -687,7 +687,7 @@ void applications_init(void)
     application("Sega Mega Drive", "md", "md gen", "gwenesis", 0);
     application("Coleco ColecoVision", "col", "col", "smsplusgx-go", 0);
     application("NEC PC Engine", "pce", "pce", "retro-run", 0);
-    application("Atari Lynx", "lnx", "lnx", "handy-go", 64);
+    application("Atari Lynx", "lnx", "lnx", "retro-run", 64);
     // application("Atari 2600", "a26", "a26", "stella-go", 0);
     // application("Neo Geo Pocket Color", "ngp", "ngp ngc", "ngpocket-go", 0);
     application("DOOM", "doom", "wad", "prboom-go", 0);
