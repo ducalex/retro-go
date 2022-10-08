@@ -10,7 +10,7 @@
 
 typedef struct
 {
-	int v, x, pat, pal, pri;
+	short v, x, pat, pal, pri;
 } gb_vs_t;
 
 #define priused(attr) ({uint32_t *a = (uint32_t *)(attr); (int)((a[0]|a[1]|a[2]|a[3]|a[4]|a[5]|a[6]|a[7])&0x80808080);})
@@ -313,36 +313,32 @@ static inline int spr_enum(gb_vs_t *VS)
 	if (!(R_LCDC & 0x02))
 		return 0;
 
-	gb_vs_t ts[10];
 	int line = R_LY;
 	int NS = 0;
 
 	for (int i = 0; i < 40; ++i)
 	{
-		gb_obj_t *obj = &lcd.oam.obj[i];
-		int v, pat;
+		const struct {byte y, x, pat, flags;} *obj = (void *)&lcd.oam[i * 4];
 
 		if (line >= obj->y || line + 16 < obj->y)
 			continue;
 		if (line + 8 >= obj->y && !(R_LCDC & 0x04))
 			continue;
 
-		VS[NS].x = (int)obj->x - 8;
-		v = line - (int)obj->y + 16;
+		int x = (int)obj->x - 8;
+		int v = line - (int)obj->y + 16;
+		int pat, pal;
 
 		if (hw.hwtype == GB_HW_CGB)
 		{
-			pat = obj->pat | (((int)obj->flags & 0x60) << 5)
-				| (((int)obj->flags & 0x08) << 6);
-			VS[NS].pal = 32 + ((obj->flags & 0x07) << 2);
+			pat = obj->pat | (((int)obj->flags & 0x60) << 5) | (((int)obj->flags & 0x08) << 6);
+			pal = 32 + ((obj->flags & 0x07) << 2);
 		}
 		else
 		{
 			pat = obj->pat | (((int)obj->flags & 0x60) << 5);
-			VS[NS].pal = 32 + ((obj->flags & 0x10) >> 2);
+			pal = 32 + ((obj->flags & 0x10) >> 2);
 		}
-
-		VS[NS].pri = (obj->flags & 0x80) >> 7;
 
 		if ((R_LCDC & 0x04))
 		{
@@ -355,16 +351,21 @@ static inline int spr_enum(gb_vs_t *VS)
 			if (obj->flags & 0x40) pat ^= 1;
 		}
 
-		VS[NS].pat = pat;
 		VS[NS].v = v;
+		VS[NS].x = x;
+		VS[NS].pat = pat;
+		VS[NS].pal = pal;
+		VS[NS].pri = (obj->flags & 0x80) >> 7;
 
-		if (++NS == 10) break;
+		if (++NS == 10)
+			break;
 	}
 
 	// Sort sprites
 	if (hw.hwtype != GB_HW_CGB)
 	{
 		/* not quite optimal but it finally works! */
+		gb_vs_t sorted[10];
 		for (int i = 0; i < NS; ++i)
 		{
 			int l = 0;
@@ -377,11 +378,10 @@ static inline int spr_enum(gb_vs_t *VS)
 					x = VS[j].x;
 				}
 			}
-			ts[i] = VS[l];
+			sorted[i] = VS[l];
 			VS[l].x = 160;
 		}
-
-		memcpy(VS, ts, sizeof(ts));
+		memcpy(VS, sorted, sizeof(sorted));
 	}
 
 	return NS;
