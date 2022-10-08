@@ -4,12 +4,6 @@
 			"path": "components"
 		},
 		{
-			"path": "gnuboy-go"
-		},
-		{
-			"path": "gw-emulator"
-		},
-		{
 			"path": "gwenesis"
 		},
 		{
@@ -19,13 +13,10 @@
 			"path": "launcher"
 		},
 		{
-			"path": "nofrendo-go"
-		},
-		{
-			"path": "pce-go"
-		},
-		{
 			"path": "prboom-go"
+		},
+		{
+			"path": "retro-run"
 		},
 		{
 			"path": "smsplusgx-go"

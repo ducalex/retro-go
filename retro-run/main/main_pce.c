@@ -1,12 +1,5 @@
-/*****************************************/
-/* ESP32 (retro-go) Graphics Engine     */
-/* Released under the GPL license        */
-/*                                       */
-/* Original Author:                      */
-/*	ducalex                              */
-/*****************************************/
+#include "shared.h"
 
-#include <rg_system.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdarg.h>
@@ -17,20 +10,19 @@
 #include <pce-go.h>
 #include <psg.h>
 
+#undef AUDIO_SAMPLE_RATE
+#undef AUDIO_BUFFER_LENGTH
+
 #define AUDIO_SAMPLE_RATE 22050
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 / 5)
 
+static bool emulationPaused = false; // This should probably be a mutex
 static int current_height = 0;
 static int current_width = 0;
 static int overscan = false;
 static int downsample = false;
 static int skipFrames = 0;
 static uint8_t *framebuffers[2];
-
-static bool emulationPaused = false; // This should probably be a mutex
-static rg_video_update_t updates[2];
-static rg_video_update_t *currentUpdate = &updates[0];
-static rg_app_t *app;
 
 static const char *SETTING_AUDIOTYPE = "audiotype";
 static const char *SETTING_OVERSCAN  = "overscan";
@@ -162,7 +154,6 @@ void osd_input_read(uint8_t joypads[8])
 
 static void audioTask(void *arg)
 {
-    rg_audio_sample_t audiobuffer[AUDIO_BUFFER_LENGTH];
     RG_LOGI("task started.\n");
 
     while (1)
@@ -170,8 +161,8 @@ static void audioTask(void *arg)
         // TODO: Clearly we need to add a better way to remain in sync with the main task...
         while (emulationPaused)
             usleep(20 * 1000);
-        psg_update((void*)audiobuffer, AUDIO_BUFFER_LENGTH, downsample);
-        rg_audio_submit(audiobuffer, AUDIO_BUFFER_LENGTH);
+        psg_update((void*)audioBuffer, AUDIO_BUFFER_LENGTH, downsample);
+        rg_audio_submit(audioBuffer, AUDIO_BUFFER_LENGTH);
     }
 
     rg_task_delete(NULL);
@@ -205,7 +196,7 @@ static bool reset_handler(bool hard)
     return true;
 }
 
-void app_main(void)
+void pce_main(void)
 {
     const rg_handlers_t handlers = {
         .loadState = &load_state_handler,
@@ -219,7 +210,13 @@ void app_main(void)
         RG_DIALOG_CHOICE_LAST
     };
 
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
+    app->sampleRate = AUDIO_SAMPLE_RATE;
+    app->options = options;
+    app->handlers = handlers;
+    rg_audio_set_sample_rate(app->sampleRate);
+
+    emulationPaused = true;
+    rg_task_create("pce_sound", &audioTask, NULL, 2 * 1024, 5, 1);
 
     framebuffers[0] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_FAST);
     framebuffers[1] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_FAST);
@@ -243,8 +240,7 @@ void app_main(void)
         rg_emu_load_state(app->saveSlot);
     }
 
-    rg_task_create("pce_sound", &audioTask, NULL, 3 * 1024, 5, 1);
-
+    emulationPaused = false;
     RunPCE();
 
     RG_PANIC("PCE-GO died.");

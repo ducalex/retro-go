@@ -677,16 +677,16 @@ static void application(const char *desc, const char *name, const char *exts, co
 
 void applications_init(void)
 {
-    application("Nintendo Entertainment System", "nes", "nes fc fds nsf", "nofrendo-go", 16);
+    application("Nintendo Entertainment System", "nes", "nes fc fds nsf", "retro-run", 16);
     application("Super Nintendo", "snes", "smc sfc", "snes9x-go", 0);
-    application("Nintendo Gameboy", "gb", "gb gbc", "gnuboy-go", 0);
-    application("Nintendo Gameboy Color", "gbc", "gbc gb", "gnuboy-go", 0);
-    application("Nintendo Game & Watch", "gw", "gw", "gw-emulator", 0);
+    application("Nintendo Gameboy", "gb", "gb gbc", "retro-run", 0);
+    application("Nintendo Gameboy Color", "gbc", "gbc gb", "retro-run", 0);
+    application("Nintendo Game & Watch", "gw", "gw", "retro-run", 0);
     application("Sega Master System", "sms", "sms sg", "smsplusgx-go", 0);
     application("Sega Game Gear", "gg", "gg", "smsplusgx-go", 0);
     application("Sega Mega Drive", "md", "md gen", "gwenesis", 0);
     application("Coleco ColecoVision", "col", "col", "smsplusgx-go", 0);
-    application("NEC PC Engine", "pce", "pce", "pce-go", 0);
+    application("NEC PC Engine", "pce", "pce", "retro-run", 0);
     application("Atari Lynx", "lnx", "lnx", "handy-go", 64);
     // application("Atari 2600", "a26", "a26", "stella-go", 0);
     // application("Neo Geo Pocket Color", "ngp", "ngp ngc", "ngpocket-go", 0);

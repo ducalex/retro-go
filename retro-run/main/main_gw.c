@@ -1,4 +1,5 @@
-#include <rg_system.h>
+#include "shared.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
@@ -11,12 +12,8 @@
 /* access to internals for debug purpose */
 #include <sm510.h>
 
+#undef AUDIO_SAMPLE_RATE
 #define AUDIO_SAMPLE_RATE   (32768)
-
-static rg_video_update_t updates[2];
-static rg_video_update_t *currentUpdate = &updates[0];
-
-static rg_app_t *app;
 
 unsigned char *ROM_DATA;
 unsigned int ROM_DATA_LENGTH;
@@ -107,7 +104,7 @@ unsigned int gw_get_buttons()
     return hw_buttons;
 }
 
-void app_main(void)
+void gw_main(void)
 {
     const rg_handlers_t handlers = {
         .loadState = &gw_system_LoadState,
@@ -117,8 +114,11 @@ void app_main(void)
         RG_DIALOG_CHOICE_LAST
     };
 
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
     app->refreshRate = GW_REFRESH_RATE;
+    app->sampleRate = AUDIO_SAMPLE_RATE;
+    app->options = options;
+    app->handlers = handlers;
+    rg_audio_set_sample_rate(app->sampleRate);
 
     updates[0].buffer = malloc(GW_SCREEN_WIDTH * GW_SCREEN_HEIGHT * 2);
 

@@ -1,20 +1,7 @@
-#include <rg_system.h>
-#include <string.h>
-#include <stdlib.h>
+#include "shared.h"
+
 #include <nofrendo.h>
 #include <nes/nes.h>
-
-#define AUDIO_SAMPLE_RATE   (32000)
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
-
-static rg_video_update_t updates[2];
-static rg_video_update_t *currentUpdate = &updates[0];
-static rg_video_update_t *previousUpdate = NULL;
-
-static rg_app_t *app;
-
-static uint32_t joystick1;
-static uint32_t *localJoystick = &joystick1;
 
 static int fullFrame = 0;
 static int overscan = true;
@@ -22,13 +9,6 @@ static int autocrop = 0;
 static int palette = 0;
 static int crop_h, crop_v;
 static nes_t *nes;
-
-#ifdef RG_ENABLE_NETPLAY
-static uint32_t *remoteJoystick = &joystick2;
-static uint32_t joystick2;
-
-static bool netplay = false;
-#endif
 
 static const char *SETTING_AUTOCROP = "autocrop";
 static const char *SETTING_OVERSCAN = "overscan";
@@ -40,43 +20,6 @@ static const char *SETTING_SPRITELIMIT = "spritelimit";
 static void event_handler(int event, void *arg)
 {
 #ifdef RG_ENABLE_NETPLAY
-    bool new_netplay;
-
-    switch (event)
-    {
-    case NETPLAY_EVENT_STATUS_CHANGED:
-        new_netplay = (rg_netplay_status() == NETPLAY_STATUS_CONNECTED);
-
-        if (netplay && !new_netplay)
-        {
-            rg_gui_alert("Netplay", "Connection lost!");
-        }
-        else if (!netplay && new_netplay)
-        {
-            // displayScalingMode = RG_DISPLAY_SCALING_FILL;
-            // displayFilterMode = RG_DISPLAY_FILTER_NONE;
-            // forceVideoRefresh = true;
-            input_connect(1, NES_JOYPAD);
-            nes_reset(true);
-        }
-
-        netplay = new_netplay;
-        break;
-
-    default:
-        break;
-    }
-
-    if (netplay && rg_netplay_mode() == NETPLAY_MODE_GUEST)
-    {
-        localJoystick = &joystick2;
-        remoteJoystick = &joystick1;
-    }
-    else
-    {
-        localJoystick = &joystick1;
-        remoteJoystick = &joystick2;
-    }
 #endif
 }
 
@@ -240,7 +183,7 @@ static void nsf_draw_overlay(void)
 }
 
 
-void app_main(void)
+void nes_main(void)
 {
     const rg_handlers_t handlers = {
         .loadState = &load_state_handler,
@@ -257,7 +200,8 @@ void app_main(void)
         RG_DIALOG_CHOICE_LAST
     };
 
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
+    app->options = options;
+    app->handlers = handlers;
 
     overscan = rg_settings_get_number(NS_APP, SETTING_OVERSCAN, 1);
     autocrop = rg_settings_get_number(NS_APP, SETTING_AUTOCROP, 0);
@@ -302,11 +246,11 @@ void app_main(void)
 
     while (true)
     {
-        *localJoystick = rg_input_read_gamepad();
+        uint32_t joystick = rg_input_read_gamepad();
 
-        if (*localJoystick & (RG_KEY_MENU|RG_KEY_OPTION))
+        if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
         {
-            if (*localJoystick & RG_KEY_MENU)
+            if (joystick & RG_KEY_MENU)
                 rg_gui_game_menu();
             else
                 rg_gui_options_menu();
@@ -319,32 +263,15 @@ void app_main(void)
         bool drawFrame = !skipFrames && !nsfPlayer;
         int buttons = 0;
 
-        if (joystick1 & RG_KEY_START)  buttons |= NES_PAD_START;
-        if (joystick1 & RG_KEY_SELECT) buttons |= NES_PAD_SELECT;
-        if (joystick1 & RG_KEY_UP)     buttons |= NES_PAD_UP;
-        if (joystick1 & RG_KEY_RIGHT)  buttons |= NES_PAD_RIGHT;
-        if (joystick1 & RG_KEY_DOWN)   buttons |= NES_PAD_DOWN;
-        if (joystick1 & RG_KEY_LEFT)   buttons |= NES_PAD_LEFT;
-        if (joystick1 & RG_KEY_A)      buttons |= NES_PAD_A;
-        if (joystick1 & RG_KEY_B)      buttons |= NES_PAD_B;
+        if (joystick & RG_KEY_START)  buttons |= NES_PAD_START;
+        if (joystick & RG_KEY_SELECT) buttons |= NES_PAD_SELECT;
+        if (joystick & RG_KEY_UP)     buttons |= NES_PAD_UP;
+        if (joystick & RG_KEY_RIGHT)  buttons |= NES_PAD_RIGHT;
+        if (joystick & RG_KEY_DOWN)   buttons |= NES_PAD_DOWN;
+        if (joystick & RG_KEY_LEFT)   buttons |= NES_PAD_LEFT;
+        if (joystick & RG_KEY_A)      buttons |= NES_PAD_A;
+        if (joystick & RG_KEY_B)      buttons |= NES_PAD_B;
         input_update(0, buttons);
-
-    #ifdef RG_ENABLE_NETPLAY
-        if (netplay)
-        {
-            rg_netplay_sync(localJoystick, remoteJoystick, sizeof(*localJoystick));
-            uint buttons = 0;
-            if (joystick2 & RG_KEY_START)  buttons |= NES_PAD_START;
-            if (joystick2 & RG_KEY_SELECT) buttons |= NES_PAD_SELECT;
-            if (joystick2 & RG_KEY_UP)     buttons |= NES_PAD_UP;
-            if (joystick2 & RG_KEY_RIGHT)  buttons |= NES_PAD_RIGHT;
-            if (joystick2 & RG_KEY_DOWN)   buttons |= NES_PAD_DOWN;
-            if (joystick2 & RG_KEY_LEFT)   buttons |= NES_PAD_LEFT;
-            if (joystick2 & RG_KEY_A)      buttons |= NES_PAD_A;
-            if (joystick2 & RG_KEY_B)      buttons |= NES_PAD_B;
-            input_update(1, buttons);
-        }
-    #endif
 
         nes_emulate(drawFrame);
 

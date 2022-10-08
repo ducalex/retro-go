@@ -127,14 +127,14 @@ Patching esp-idf may be required for full functionality. Patches are located in 
 - Generate a .img to be flashed with esptool.py (Serial):  
     `./rg_tool.py build-img` or `./rg_tool.py release` (clean build)
 
-For a smaller build you can also specify which apps you want, for example the launcher + nes + gameboy only:
-1. `./rg_tool.py build-fw launcher nofrendo-go gnuboy-go`
+For a smaller build you can also specify which apps you want, for example the launcher + DOOM only:
+1. `./rg_tool.py build-fw launcher prboom-go`
 
 ## Build, flash, and monitor individual apps for faster development:
 It would be tedious to build, move to SD, and flash a full .fw all the time during development. Instead you can:
-1. Flash: `./rg_tool.py --port=COM3 flash nofrendo-go`
-2. Monitor: `./rg_tool.py --port=COM3 monitor nofrendo-go`
-3. Flash then monitor: `./rg_tool.py --port=COM3 run nofrendo-go`
+1. Flash: `./rg_tool.py --port=COM3 flash prboom-go`
+2. Monitor: `./rg_tool.py --port=COM3 monitor prboom-go`
+3. Flash then monitor: `./rg_tool.py --port=COM3 run prboom-go`
 
 ## Environment variables 
 rg_tool.py supports a few environment variables if you want to avoid passing flags all the time:

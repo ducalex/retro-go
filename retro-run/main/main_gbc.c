@@ -1,15 +1,8 @@
-#include <rg_system.h>
+#include "shared.h"
+
 #include <sys/time.h>
 #include <unistd.h>
-#include <string.h>
 #include <gnuboy.h>
-
-#define AUDIO_SAMPLE_RATE   (32000)
-
-static rg_video_update_t updates[2];
-static rg_video_update_t *currentUpdate = &updates[0];
-
-static rg_app_t *app;
 
 static bool fullFrame = false;
 static long skipFrames = 20; // The 20 is to hide startup flicker in some games
@@ -226,7 +219,7 @@ static void auto_sram_update(void)
     }
 }
 
-void app_main(void)
+void gbc_main(void)
 {
     const rg_handlers_t handlers = {
         .loadState = &load_state_handler,
@@ -241,7 +234,8 @@ void app_main(void)
         RG_DIALOG_CHOICE_LAST
     };
 
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
+    app->options = options;
+    app->handlers = handlers;
 
     updates[0].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
     updates[1].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
