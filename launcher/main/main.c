@@ -7,10 +7,10 @@
 #include <unistd.h>
 
 #include "applications.h"
-#include "fileserver.h"
 #include "bookmarks.h"
 #include "themes.h"
 #include "gui.h"
+#include "webui.h"
 
 static bool time_changed = false;
 
@@ -296,7 +296,7 @@ void event_handler(int event, void *arg)
     if (event == RG_EVENT_NETWORK_CONNECTED)
     {
         time_changed = rg_network_sync_time("pool.ntp.org", 0);
-        ftp_server_start();
+        webui_start();
     }
 #endif
 }

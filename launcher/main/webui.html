@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head><title>Retro-Go Webui</title></head>
+<body>
+    <h1>Retro-Go Web Interface</h1>
+    cmd: <input type='text' id='rg_cmd' value='list'><br>
+    arg1: <input type='text' id='rg_arg1' value='/sd/roms'><br>
+    arg2: <input type='text' id='rg_arg2'><br>
+    <button onclick='api_req(window.rg_cmd.value, window.rg_arg1.value, window.rg_arg2.value);'>send</button>
+    <script>
+        function api_req(cmd, arg1, arg2) {
+            var xmlhttp = new XMLHttpRequest();
+            xmlhttp.addEventListener('load', function () { alert(this.responseText) });
+            xmlhttp.open('POST', '/api');
+            xmlhttp.send(JSON.stringify({ cmd, arg1, arg2 }));
+        }
+    </script>
+</body>
+</html>
