@@ -27,6 +27,6 @@ extern int32_t tanval;
 
 int16_t _atan2(int16_t x, int16_t y);
 
-extern int16_t C4CosTable[];
-extern int16_t C4SinTable[];
+extern const int16_t C4CosTable[];
+extern const int16_t C4SinTable[];
 #endif

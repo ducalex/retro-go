@@ -696,7 +696,7 @@ void S9xSetC4(uint8_t byte, uint16_t Address)
       memmove(Memory.C4RAM + (READ_WORD(Memory.C4RAM + 0x1f45) & 0x1fff), S9xGetMemPointer(READ_3WORD(Memory.C4RAM + 0x1f40)), READ_WORD(Memory.C4RAM + 0x1f43));
 }
 
-int16_t C4SinTable[512] =
+const int16_t C4SinTable[512] =
 {
     0,      402,    804,    1206,   1607,   2009,   2410,   2811,
     3211,   3611,   4011,   4409,   4808,   5205,   5602,   5997,
@@ -764,7 +764,7 @@ int16_t C4SinTable[512] =
    -3211,  -2811,  -2410,  -2009,  -1607,  -1206,   -804,   -402
 };
 
-int16_t C4CosTable[512] =
+const int16_t C4CosTable[512] =
 {
     32767,  32765,  32758,  32745,  32728,  32706,  32679,  32647,
     32610,  32568,  32521,  32469,  32413,  32351,  32285,  32214,
