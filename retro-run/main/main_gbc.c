@@ -213,7 +213,7 @@ static void auto_sram_update(void)
         rg_system_set_led(1);
         if (gnuboy_save_sram(sramFile, true) != 0)
         {
-            RG_LOGE("sram_save() failed...\n");
+            RG_LOGE("sram_save() failed...");
         }
         rg_system_set_led(0);
     }
@@ -234,8 +234,7 @@ void gbc_main(void)
         RG_DIALOG_CHOICE_LAST
     };
 
-    app->options = options;
-    app->handlers = handlers;
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
 
     updates[0].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
     updates[1].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);

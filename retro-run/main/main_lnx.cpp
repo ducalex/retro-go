@@ -168,10 +168,7 @@ extern "C" void lnx_main(void)
         RG_DIALOG_CHOICE_LAST
     };
 
-    app->sampleRate = AUDIO_SAMPLE_RATE;
-    app->options = options;
-    app->handlers = handlers;
-    rg_audio_set_sample_rate(app->sampleRate);
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
 
     // the HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH is deliberate because of rotation
     updates[0].buffer = (void*)rg_alloc(HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH * 2, MEM_FAST);

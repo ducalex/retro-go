@@ -316,8 +316,23 @@ static void setup_gpios(void)
 #endif
 }
 
+rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options)
+{
+    if (!app.initialized)
+        return rg_system_init(sampleRate, handlers, options);
+
+    app.options = options;
+    app.handlers = handlers ? (rg_handlers_t){} : *handlers;
+    app.sampleRate = sampleRate;
+    tasks[0].handle = xTaskGetCurrentTaskHandle();
+    rg_audio_set_sample_rate(app.sampleRate);
+
+    return &app;
+}
+
 rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options)
 {
+    RG_ASSERT(app.initialized == false, "rg_system_init() was already called.");
     const esp_app_desc_t *esp_app = esp_ota_get_app_description();
 
     app = (rg_app_t){
@@ -337,8 +352,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .options = options, // TO DO: We should make a copy of it?
     };
 
-    tasks[0].handle = xTaskGetCurrentTaskHandle();
-    strncpy(tasks[0].name, "main", 20);
+    tasks[0] = (rg_task_t){xTaskGetCurrentTaskHandle(), "main"};
 
     // Do this very early, may be needed to enable serial console
     setup_gpios();
@@ -390,9 +404,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 
     rg_gui_draw_hourglass();
     rg_audio_init(sampleRate);
-
-    // At this point the timer will provide enough entropy
-    srand((unsigned)rg_system_timer());
 
     // Show alert if we've just rebooted from a panic
     if (esp_reset_reason() == ESP_RST_PANIC)

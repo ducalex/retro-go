@@ -59,7 +59,7 @@ uint8_t *osd_gfx_framebuffer(int width, int height)
 {
     if (width != current_width || height != current_height)
     {
-        RG_LOGI("Resolution changed to: %dx%d\n", width, height);
+        RG_LOGI("Resolution changed to: %dx%d", width, height);
 
         // PCE-GO needs 16 columns of scratch space + horizontally center
         int offset_center = 16 + ((XBUF_WIDTH - width) / 2);
@@ -104,7 +104,7 @@ void osd_vsync(void)
 
     if (sleep > frameTime)
     {
-        RG_LOGE("Our vsync timer seems to have overflowed! (%dus)\n", sleep);
+        RG_LOGE("Our vsync timer seems to have overflowed! (%dus)", sleep);
     }
     else if (sleep > 0)
     {
@@ -154,7 +154,7 @@ void osd_input_read(uint8_t joypads[8])
 
 static void audioTask(void *arg)
 {
-    RG_LOGI("task started.\n");
+    RG_LOGI("task started.");
 
     while (1)
     {
@@ -210,10 +210,7 @@ void pce_main(void)
         RG_DIALOG_CHOICE_LAST
     };
 
-    app->sampleRate = AUDIO_SAMPLE_RATE;
-    app->options = options;
-    app->handlers = handlers;
-    rg_audio_set_sample_rate(app->sampleRate);
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
 
     emulationPaused = true;
     rg_task_create("pce_sound", &audioTask, NULL, 2 * 1024, 5, 1);

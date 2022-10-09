@@ -126,11 +126,8 @@ void gw_main(void)
         RG_DIALOG_CHOICE_LAST,
     };
 
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
     app->refreshRate = GW_REFRESH_RATE;
-    app->sampleRate = AUDIO_SAMPLE_RATE;
-    app->options = options;
-    app->handlers = handlers;
-    rg_audio_set_sample_rate(app->sampleRate);
 
     updates[0].buffer = malloc(GW_SCREEN_WIDTH * GW_SCREEN_HEIGHT * 2);
 

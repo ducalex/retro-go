@@ -186,6 +186,7 @@ typedef struct
 } rg_stats_t;
 
 rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options);
+rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options);
 void rg_system_panic(const char *context, const char *message) __attribute__((noreturn));
 void rg_system_shutdown(void) __attribute__((noreturn));
 void rg_system_sleep(void) __attribute__((noreturn));
