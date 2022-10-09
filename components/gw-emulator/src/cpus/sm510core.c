@@ -18,7 +18,7 @@
 void sm510_device_start()
 {
 	m_prgwidth  = 12;
-	m_datawidth = 7;	
+	m_datawidth = 7;
 	m_prgmask   = (1 << m_prgwidth) - 1;
 	m_datamask  = (1 << m_datawidth) - 1;
 
@@ -89,7 +89,7 @@ void sm510_device_reset()
 //-------------------------------------------------
 //  buzzer controller
 //-------------------------------------------------
-inline void sm510_clock_melody()
+static inline void sm510_clock_melody()
 {
 	u8 out = 0;
 
@@ -133,7 +133,7 @@ inline bool sm510_wake_me_up()
 }
 
 /********** 1 second timer *********/
-inline void sm510_div_timer_cb()
+static inline void sm510_div_timer_cb()
 {
 	m_div = (m_div + 1) & 0x7fff;
 
@@ -148,7 +148,7 @@ inline void sm510_div_timer_cb()
 	sm510_clock_melody();
 }
 
-inline void sm510_div_timer(int nb_inst)
+static inline void sm510_div_timer(int nb_inst)
 {
 	if (nb_inst > 0)
 		for ( int toctoc=0; toctoc < m_clk_div*nb_inst; toctoc++ )
@@ -157,7 +157,7 @@ inline void sm510_div_timer(int nb_inst)
 
 /*************************************/
 
-inline void sm510_get_opcode_param()
+static inline void sm510_get_opcode_param()
 {
 	// LBL, TL, TML opcodes are 2 bytes
 	if (m_op == 0x5f || (m_op & 0xf0) == 0x70)
@@ -165,7 +165,7 @@ inline void sm510_get_opcode_param()
 		m_icount--;
 
 		m_param = read_byte_program(m_pc);
-		
+
 		increment_pc();
 	}
 }
@@ -259,7 +259,7 @@ void sm510_execute_run()
 	while (m_icount > 0)
 	{
 		m_icount--;
-			
+
 		if (m_halt && !sm510_wake_me_up())
 		{
 			sm510_div_timer(reamining_icount);
@@ -275,7 +275,7 @@ void sm510_execute_run()
 
 		// fetch next opcode
 		m_op = read_byte_program(m_pc);
-		
+
 		increment_pc();
 		sm510_get_opcode_param();
 

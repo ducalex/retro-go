@@ -24,7 +24,7 @@ un8 *melody_rom;
 //-------------------------------------------------
 //  melody controller
 //-------------------------------------------------
-inline void sm511_clock_melody()
+static inline void sm511_clock_melody()
 {
 	if (!melody_rom)
 		return;
@@ -104,7 +104,7 @@ void sm511_device_reset()
 }
 
 /********** 1 second timer *********/
-inline void sm511_div_timer_cb()
+static inline void sm511_div_timer_cb()
 {
 	m_div = (m_div + 1) & 0x7fff;
 
@@ -123,7 +123,7 @@ inline void sm511_div_timer_cb()
 }
 
 /********** 1 second timer *********/
-inline void sm511_div_timer(int nb_inst)
+static inline void sm511_div_timer(int nb_inst)
 {
 	if (nb_inst > 0)
 		for (int toctoc=0; toctoc < m_clk_div*nb_inst; toctoc++ )
@@ -225,7 +225,7 @@ void sm511_execute_one()
 	m_sbm = (m_op == 0x02);
 }
 
-inline void sm511_get_opcode_param()
+static inline void sm511_get_opcode_param()
 {
 	// LBL, PRE, TL, TML and prefix opcodes are 2 bytes
 	if ((m_op >= 0x5f && m_op <= 0x61) || (m_op & 0xf0) == 0x70 || (m_op & 0xfc) == 0x68)
@@ -264,7 +264,7 @@ void sm511_execute_run()
 
 		// fetch next opcode
 		m_op = read_byte_program(m_pc);
-		
+
 		increment_pc();
 		sm511_get_opcode_param();
 
@@ -279,7 +279,7 @@ void sm511_execute_run()
 
 		// clock: spent time
 		sm511_div_timer(reamining_icount-m_icount);
-			
+
 		reamining_icount=m_icount;
 
 	}
