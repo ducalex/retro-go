@@ -353,10 +353,10 @@ int gnuboy_load_rom(const char *file)
 	MESSAGE_INFO("Cart loaded: name='%s', hw=%s, mbc=%s, romsize=%dK, ramsize=%dK, colorize=%d\n",
 		cart.name, hw_types[hw.hwtype], mbc_names[cart.mbc], cart.romsize * 16, cart.ramsize * 8, cart.colorize);
 
-	// Gameboy color games can be very large so we only load 1024K for faster boot
-	// Also 4/8MB games do not fully fit, our bank manager takes care of swapping.
+	// Gameboy color games can be very large so we preload a maximum of 128 banks for faster boot
+	// Also 4/8MB games do not fully fit anyway, we need to leave room for our bank manager's swapping.
 
-	int preload = cart.romsize < 64 ? cart.romsize : 64;
+	int preload = cart.romsize < 128 ? cart.romsize : 128;
 
 	if (cart.romsize > 64 && (strncmp(cart.name, "RAYMAN", 6) == 0 || strncmp(cart.name, "NONAME", 6) == 0))
 	{
