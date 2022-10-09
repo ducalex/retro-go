@@ -95,7 +95,7 @@ static const char *SETTING_TIMEZONE = "Timezone";
 #define logbuf_puts(buf, str) for (const char *ptr = str; *ptr; ptr++) logbuf_putc(buf, *ptr);
 
 
-static void rtc_time_init(void)
+void rg_system_load_time(void)
 {
     time_t time_sec = RG_BUILD_TIME;
     FILE *fp;
@@ -118,7 +118,7 @@ static void rtc_time_init(void)
     RG_LOGI("Time is now: %s\n", asctime(localtime(&time_sec)));
 }
 
-void rg_system_save_rtc(void)
+void rg_system_save_time(void)
 {
     time_t time_sec = time(NULL);
     FILE *fp;
@@ -135,6 +135,13 @@ void rg_system_save_rtc(void)
         RG_LOGI("System time saved to DS3231.\n");
     }
 #endif
+}
+
+void rg_system_set_timezone(const char *TZ)
+{
+    rg_settings_set_string(NS_GLOBAL, SETTING_TIMEZONE, TZ);
+    setenv("TZ", TZ, 1);
+    tzset();
 }
 
 static void exit_handler(void)
@@ -431,9 +438,8 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     if (app.bootFlags & RG_BOOT_ONCE)
         rg_system_set_boot_app(RG_APP_LAUNCHER);
 
-    setenv("TZ", rg_settings_get_string(NS_GLOBAL, SETTING_TIMEZONE, "EST+5"), 1);
-    tzset();
-    rtc_time_init();
+    rg_system_set_timezone(rg_settings_get_string(NS_GLOBAL, SETTING_TIMEZONE, "EST+5"));
+    rg_system_load_time();
 
     // Do these last to not interfere with panic handling above
     if (handlers)
@@ -699,7 +705,7 @@ bool rg_emu_save_state(uint8_t slot)
     #undef tempname
     free(filename);
 
-    rg_system_save_rtc();
+    rg_system_save_time();
     rg_storage_commit();
     rg_system_set_led(0);
 
@@ -788,7 +794,7 @@ static void shutdown_cleanup(void)
     rg_gui_draw_hourglass();                  // ...
     rg_system_event(RG_EVENT_SHUTDOWN, NULL); // Allow apps to save their state if they want
     rg_audio_deinit();                        // Disable sound ASAP to avoid audio garbage
-    // rg_system_save_rtc();                     // RTC might save to storage, do it before
+    // rg_system_save_time();                     // RTC might save to storage, do it before
     rg_storage_deinit();                      // Unmount storage
     rg_input_wait_for_key(RG_KEY_ALL, false); // Wait for all keys to be released (boot is sensitive to GPIO0,32,33)
     rg_input_deinit();                        // Now we can shutdown input
@@ -920,7 +926,7 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
     FILE *fp = fopen(filename, "w");
     if (fp)
     {
-        fprintf(fp, "Application: %s\n", app.name);
+        fprintf(fp, "Application: %s (%s)\n", app.name, app.configNs);
         fprintf(fp, "Version: %s\n", app.version);
         fprintf(fp, "Build date: %s %s\n", app.buildDate, app.buildTime);
         fprintf(fp, "Toolchain: %s\n", app.toolchain);

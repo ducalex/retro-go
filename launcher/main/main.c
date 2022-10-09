@@ -11,8 +11,7 @@
 #include "themes.h"
 #include "gui.h"
 #include "webui.h"
-
-static bool time_changed = false;
+#include "timezones.h"
 
 static rg_gui_event_t toggle_tab_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
@@ -40,6 +39,40 @@ static rg_gui_event_t toggle_tabs_cb(rg_gui_option_t *option, rg_gui_event_t eve
         rg_gui_dialog("Tabs Visibility", options, 0);
         gui_redraw();
     }
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t timezone_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    rg_gui_option_t options[timezones_count + 1];
+
+    if (event == RG_DIALOG_ENTER)
+    {
+        for (size_t i = 0; i < timezones_count; i++)
+            options[i] = (rg_gui_option_t){i, timezones[i].name, NULL, 1, NULL};
+        options[timezones_count] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
+
+        int sel = rg_gui_dialog("Timezone", options, 0);
+        if (sel >= 0 && sel < timezones_count)
+        {
+            rg_settings_set_string(NS_GLOBAL, "Timezone", timezones[sel].TZ);
+            setenv("TZ", timezones[sel].TZ, 1);
+            tzset();
+        }
+        gui_redraw();
+    }
+
+    strcpy(option->value, getenv("TZ"));
+
+    for (size_t i = 0; i < timezones_count; i++)
+    {
+        if (strcmp(timezones[i].TZ, option->value) == 0)
+        {
+            strcpy(option->value, timezones[i].name);
+            break;
+        }
+    }
+
     return RG_DIALOG_VOID;
 }
 
@@ -117,14 +150,6 @@ static void retro_loop(void)
 
     while (true)
     {
-        if (time_changed)
-        {
-            time_t time_sec = time(NULL);
-            // rg_gui_alert("Time synced", asctime(gmtime(&time_sec)));
-            rg_system_save_rtc();
-            time_changed = false;
-        }
-
         if (!tab->enabled && !change_tab)
         {
             change_tab = 1;
@@ -295,7 +320,8 @@ void event_handler(int event, void *arg)
 #ifdef RG_ENABLE_NETWORKING
     if (event == RG_EVENT_NETWORK_CONNECTED)
     {
-        time_changed = rg_network_sync_time("pool.ntp.org", 0);
+        if (rg_network_sync_time("pool.ntp.org", 0))
+            rg_system_save_time();
         webui_start();
     }
 #endif
@@ -312,6 +338,7 @@ void app_main(void)
         {0, "Start screen", "...", 1, &start_screen_cb},
         {0, "Hide tabs   ", "...", 1, &toggle_tabs_cb},
         {0, "Startup app ", "...", 1, &startup_app_cb},
+        {0, "Timezone    ", "...", 1, &timezone_cb},
     #if !RG_GAMEPAD_HAS_OPTION_BTN
         RG_DIALOG_SEPARATOR,
         {0, "About Retro-Go", NULL,  1, &about_app_cb},
