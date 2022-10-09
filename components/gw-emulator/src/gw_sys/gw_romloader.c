@@ -132,7 +132,7 @@ keyboard[9] is B   (8 bits lsb)
 
 bool gw_romloader_rom2ram()
 {
-   GW_ROM = (uint32_t *)malloc(GW_ROM_SIZE_MAX);
+   GW_ROM = malloc(GW_ROM_SIZE_MAX);
 
    /* src pointer to the ROM data in the external flash (raw or LZ4) */
    const unsigned char *src = (unsigned char *)ROM_DATA;
@@ -268,6 +268,8 @@ bool gw_romloader_rom2ram()
    {
       printf("RGB565 background\n");
       gw_background = (unsigned short *)&GW_ROM[gw_head.background_pixel];
+
+      (void)rom_size_compressed_src; // unused
    }
 #ifdef GW_JPEG_SUPPORT
    // otherwise we get the background from JPEG file
