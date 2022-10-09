@@ -12,13 +12,8 @@
 /* access to internals for debug purpose */
 #include <sm510.h>
 
-#undef AUDIO_SAMPLE_RATE
-#define AUDIO_SAMPLE_RATE   (32768)
-
 unsigned char *ROM_DATA;
 unsigned int ROM_DATA_LENGTH;
-
-// static uint8_t state_save_buffer[sizeof(gw_state_t)];
 
 /* keys inpus (hw & sw) */
 static bool softkey_time_pressed = 0;
@@ -27,8 +22,8 @@ static bool softkey_A_pressed = 0;
 static bool softkey_only = 0;
 static int softkey_duration = 0;
 
-static void gw_set_time() {
-
+static void gw_set_time()
+{
     // Get time. According to STM docs, both functions need to be called at once.
     time_t time_sec = time(NULL);
     struct tm *rtc = localtime(&time_sec);
@@ -43,9 +38,9 @@ static void gw_set_time() {
     printf("Set time done!\n");
 }
 
-static void gw_check_time() {
-
-    static unsigned int is_gw_time_sync=0;
+static void gw_check_time()
+{
+    static unsigned int is_gw_time_sync = 0;
 
     // Update time before we can set it
     time_t time_sec = time(NULL);
@@ -58,7 +53,8 @@ static void gw_check_time() {
     time.seconds = rtc->tm_sec;
 
     // update time every 30s
-    if ( (time.seconds == 30) || (is_gw_time_sync==0) ) {
+    if ((time.seconds == 30) || (is_gw_time_sync == 0))
+    {
         is_gw_time_sync = 1;
         gw_system_set_time(time);
     }
@@ -66,17 +62,27 @@ static void gw_check_time() {
 static bool gw_system_SaveState(const char *pathName)
 {
     printf("Saving state...\n");
-    // memset(state_save_buffer, '\x00', sizeof(state_save_buffer));
-    // gw_state_save(state_save_buffer);
-    // store_save(ACTIVE_FILE->save_address, state_save_buffer, sizeof(state_save_buffer));
-    return false;
+    gw_state_t state_save_buffer = {0};
+    gw_state_save(&state_save_buffer);
+    FILE *fp = fopen(pathName, "wb");
+    if (!fp)
+        return false;
+    bool success = fwrite(&state_save_buffer, sizeof(gw_state_t), 1, fp);
+    fclose(fp);
+    return success;
 }
 
 static bool gw_system_LoadState(const char *pathName)
 {
     printf("Loading state...\n");
-    // return gw_state_load((unsigned char *)(ACTIVE_FILE->save_address));
-    return false;
+    FILE *fp = fopen(pathName, "rb");
+    if (!fp)
+        return false;
+    gw_state_t state_save_buffer;
+    bool success = fread(&state_save_buffer, sizeof(gw_state_t), 1, fp)
+        && gw_state_load(&state_save_buffer);
+    fclose(fp);
+    return success;
 }
 
 /* callback to get buttons state */
@@ -104,14 +110,20 @@ unsigned int gw_get_buttons()
     return hw_buttons;
 }
 
+static bool screenshot_handler(const char *filename, int width, int height)
+{
+    return rg_display_save_frame(filename, currentUpdate, width, height);
+}
+
 void gw_main(void)
 {
     const rg_handlers_t handlers = {
         .loadState = &gw_system_LoadState,
         .saveState = &gw_system_SaveState,
+        .screenshot = &screenshot_handler,
     };
     const rg_gui_option_t options[] = {
-        RG_DIALOG_CHOICE_LAST
+        RG_DIALOG_CHOICE_LAST,
     };
 
     app->refreshRate = GW_REFRESH_RATE;
@@ -162,16 +174,14 @@ void gw_main(void)
 
     /* check if we have to load state */
     bool LoadState_done = false;
-    if (app->bootFlags & RG_BOOT_RESUME) {
-        LoadState_done = gw_system_LoadState(NULL);
-        if (LoadState_done) {
-            gw_check_time();
-            gw_set_time();
-        }
+    if (app->bootFlags & RG_BOOT_RESUME)
+    {
+        LoadState_done = rg_emu_load_state(app->saveSlot);
     }
 
     /* emulate watch mode */
-    if (!LoadState_done) {
+    if (!LoadState_done)
+    {
         softkey_time_pressed = 0;
         softkey_alarm_pressed = 0;
         softkey_A_pressed = 0;
@@ -184,13 +194,13 @@ void gw_main(void)
         gw_system_reset();
 
         // From reset state : run
-        gw_system_run(GW_AUDIO_FREQ*2);
+        gw_system_run(GW_AUDIO_FREQ * 2);
 
         // press TIME to exit TIME settings mode
         softkey_time_pressed = 1;
-        gw_system_run(GW_AUDIO_FREQ/2);
+        gw_system_run(GW_AUDIO_FREQ / 2);
         softkey_time_pressed = 0;
-        gw_system_run(GW_AUDIO_FREQ*2);
+        gw_system_run(GW_AUDIO_FREQ * 2);
 
         // synchronize G&W with RTC and run
         gw_check_time();
@@ -199,7 +209,7 @@ void gw_main(void)
 
         // press A required by some game
         softkey_A_pressed = 1;
-        gw_system_run(GW_AUDIO_FREQ/2);
+        gw_system_run(GW_AUDIO_FREQ / 2);
         softkey_A_pressed = 0;
         gw_system_run(GW_AUDIO_FREQ);
 
@@ -213,19 +223,20 @@ void gw_main(void)
     while (true)
     {
         /* refresh internal G&W timer on emulated CPU state transition */
-        if (previous_m_halt != m_halt) gw_check_time();
+        if (previous_m_halt != m_halt)
+            gw_check_time();
 
         previous_m_halt = m_halt;
 
-        //hardware keys
-        uint32_t joystick = rg_input_read_gamepad() ;
+        // hardware keys
+        uint32_t joystick = rg_input_read_gamepad();
 
         if (joystick & RG_KEY_MENU)
             rg_gui_game_menu();
         else if (joystick & RG_KEY_OPTION)
             rg_gui_options_menu();
 
-        //soft keys emulation
+        // soft keys emulation
         if (softkey_duration > 0)
             softkey_duration--;
 
@@ -234,7 +245,6 @@ void gw_main(void)
             softkey_time_pressed = 0;
             softkey_alarm_pressed = 0;
         }
-
 
         int64_t startTime = rg_system_timer();
         bool drawFrame = true;

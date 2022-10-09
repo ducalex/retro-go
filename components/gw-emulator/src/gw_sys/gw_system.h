@@ -58,8 +58,8 @@ bool gw_system_romload();
 // get buttons state
 unsigned int gw_get_buttons();
 
-bool gw_state_load(unsigned char *src_ptr);
-bool gw_state_save(unsigned char *dest_ptr);
+bool gw_state_load(void *src_ptr);
+bool gw_state_save(void *dest_ptr);
 
 typedef struct gw_time_s
 {

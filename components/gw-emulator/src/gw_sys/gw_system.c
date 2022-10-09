@@ -670,7 +670,7 @@ void gw_system_shutdown(void)
 static gw_state_t save_state;
 
 /* save state */
-bool gw_state_save(unsigned char *dest_ptr)
+bool gw_state_save(void *dest_ptr)
 {
 	/* add header and signature */
 	memcpy(&save_state.magic_word, GW_MAGIC_WORD, 8);
@@ -748,7 +748,7 @@ bool gw_state_save(unsigned char *dest_ptr)
 }
 
 /* load state */
-bool gw_state_load(unsigned char *src_ptr)
+bool gw_state_load(void *src_ptr)
 {
 
 	memcpy(&save_state, src_ptr, sizeof(save_state));
