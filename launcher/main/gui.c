@@ -168,7 +168,8 @@ const rg_image_t *gui_get_image(const char *type, const char *subtype)
 tab_t *gui_get_current_tab(void)
 {
     tab_t *tab = gui_get_tab(gui.selected);
-    RG_ASSERT(tab, "current tab is NULL!");
+    if (!tab)
+        RG_LOGE("current tab is NULL!");
     return tab;
 }
 
@@ -188,9 +189,9 @@ void gui_set_status(tab_t *tab, const char *left, const char *right)
 {
     if (!tab)
         tab = gui_get_current_tab();
-    if (left)
+    if (tab && left)
         strcpy(tab->status[1].left, left);
-    if (right)
+    if (tab && right)
         strcpy(tab->status[1].right, right);
 }
 
@@ -219,11 +220,12 @@ void gui_save_config(void)
 
 listbox_item_t *gui_get_selected_item(tab_t *tab)
 {
-    listbox_t *list = &tab->listbox;
-
-    if (list->cursor >= 0 && list->cursor < list->length)
-        return &list->items[list->cursor];
-
+    if (tab)
+    {
+        listbox_t *list = &tab->listbox;
+        if (list->cursor >= 0 && list->cursor < list->length)
+            return &list->items[list->cursor];
+    }
     return NULL;
 }
 
@@ -341,7 +343,11 @@ void gui_scroll_list(tab_t *tab, scroll_mode_t mode, int arg)
 void gui_redraw(void)
 {
     tab_t *tab = gui_get_current_tab();
-    if (gui.browse)
+    if (!tab)
+    {
+        RG_LOGW("No tab to redraw...");
+    }
+    else if (gui.browse)
     {
         gui_draw_background(tab, 4);
         gui_draw_header(tab, 0);
@@ -444,7 +450,8 @@ void gui_draw_list(tab_t *tab)
 
 void gui_set_preview(tab_t *tab, rg_image_t *preview)
 {
-    RG_ASSERT(tab, "bad params");
+    if (!tab)
+        return;
 
     if (tab->preview)
         rg_image_free(tab->preview);

@@ -328,9 +328,10 @@ rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, const 
     if (!app.initialized)
         return rg_system_init(sampleRate, handlers, options);
 
-    app.options = options;
-    app.handlers = handlers ? (rg_handlers_t){} : *handlers;
     app.sampleRate = sampleRate;
+    if (handlers)
+        app.handlers = *handlers;
+    app.options = options;
     tasks[0].handle = xTaskGetCurrentTaskHandle();
     rg_audio_set_sample_rate(app.sampleRate);
 

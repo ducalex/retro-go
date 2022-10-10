@@ -148,6 +148,12 @@ static void retro_loop(void)
     int browse_last = -1;
     bool redraw_pending = true;
 
+    if (!tab)
+    {
+        gui.selected = 0;
+        tab = gui_get_current_tab();
+    }
+
     while (true)
     {
         if (!tab->enabled && !change_tab)
