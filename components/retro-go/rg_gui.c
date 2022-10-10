@@ -837,7 +837,7 @@ void rg_gui_alert(const char *title, const char *message)
 
 char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path))
 {
-    rg_scandir_t *files = rg_storage_scandir(path, validator);
+    rg_scandir_t *files = rg_storage_scandir(path, validator, false);
 
     if (!files || !files[0].is_valid)
     {

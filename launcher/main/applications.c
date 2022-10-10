@@ -43,7 +43,7 @@ static void scan_folder(retro_app_t *app, const char* path, void *parent)
     RG_LOGI("Scanning directory %s\n", path);
 
     const char *folder = const_string(path);
-    rg_scandir_t *files = rg_storage_scandir(path, NULL);
+    rg_scandir_t *files = rg_storage_scandir(path, NULL, false);
 
     for (rg_scandir_t *entry = files; entry && entry->is_valid; ++entry)
     {
@@ -105,7 +105,7 @@ static void application_init(retro_app_t *app)
 
     // This checks if we have crc cover folders, the idea is to skip the crc later on if we don't!
     // It adds very little delay but it could become an issue if someone has thousands of named files...
-    rg_scandir_t *files = rg_storage_scandir(app->paths.covers, NULL);
+    rg_scandir_t *files = rg_storage_scandir(app->paths.covers, NULL, false);
     if (!files)
         rg_storage_mkdir(app->paths.covers);
     else

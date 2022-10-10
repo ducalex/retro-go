@@ -29,7 +29,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
             .arg = NULL,
         };
 
-        if ((files = rg_storage_scandir(themes_path, NULL)))
+        if ((files = rg_storage_scandir(themes_path, NULL, false)))
         {
             RG_LOGI("Scanning directory %s\n", themes_path);
 

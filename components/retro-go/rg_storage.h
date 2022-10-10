@@ -16,10 +16,11 @@
 
 typedef struct __attribute__((packed))
 {
-    uint8_t is_valid : 1;
-    uint8_t is_file  : 1;
-    uint8_t is_dir   : 1;
-    char name[79];
+    uint32_t is_valid : 1;
+    uint32_t is_file  : 1;
+    uint32_t is_dir   : 1;
+    uint32_t size     : 24;
+    char name[76];
 } rg_scandir_t;
 
 void rg_storage_init(void);
@@ -33,4 +34,4 @@ bool rg_storage_read_file(const char *path, void **data_ptr, size_t *data_len);
 bool rg_storage_write_file(const char *path, const void *data_ptr, const size_t data_len);
 bool rg_storage_delete(const char *path);
 bool rg_storage_mkdir(const char *dir);
-rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char *path));
+rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char *path), bool do_stat);
