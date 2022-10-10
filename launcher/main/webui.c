@@ -7,23 +7,8 @@
 #include <dirent.h>
 #include <cJSON.h>
 
-static const char html[] = {
-    "<!DOCTYPE html><html><body>"
-    "<h1>Retro-Go File Server</h1>"
-    "cmd: <input type='text' id='rg_cmd' value='list'><br>"
-    "arg1: <input type='text' id='rg_arg1' value='/sd/roms'><br>"
-    "arg2: <input type='text' id='rg_arg2'><br>"
-    "<button onclick='api_req(window.rg_cmd.value, window.rg_arg1.value, window.rg_arg2.value);'>send</button>"
-    "<script>"
-    "function api_req(cmd, arg1, arg2) {"
-    "   var xmlhttp = new XMLHttpRequest();"
-    "   xmlhttp.addEventListener('load', function(){alert(this.responseText)});"
-    "   xmlhttp.open('POST', '/api');"
-    "   xmlhttp.send(JSON.stringify({cmd, arg1, arg2}));"
-    "}"
-    "</script>"
-    "</body></html>"
-};
+// static const char webui_html[];
+#include "webui.html.h"
 
 static httpd_handle_t server;
 
@@ -31,6 +16,7 @@ static httpd_handle_t server;
 static esp_err_t http_api_handler(httpd_req_t *req)
 {
     char buffer[1024] = {0};
+    esp_err_t ret = ESP_OK;
 
     if (httpd_req_recv(req, buffer, sizeof(buffer)) <= 0) {
         return ESP_FAIL;
@@ -59,7 +45,7 @@ static esp_err_t http_api_handler(httpd_req_t *req)
         {
             cJSON *obj = cJSON_CreateObject();
             cJSON_AddStringToObject(obj, "name", entry->name);
-            cJSON_AddBoolToObject(obj, "is_idr", entry->is_dir);
+            cJSON_AddBoolToObject(obj, "is_dir", entry->is_dir);
             cJSON_AddItemToArray(list, obj);
         }
         free(files);
@@ -73,37 +59,52 @@ static esp_err_t http_api_handler(httpd_req_t *req)
     else if (strcmp(cmd, "delete") == 0)
     {
         cJSON_AddStringToObject(response, "path", arg1);
-        cJSON_AddBoolToObject(response, "success", unlink(arg1) == 0 || rmdir(arg1) == 0);
+        cJSON_AddBoolToObject(response, "success", rg_storage_delete(arg1));
     }
     else if (strcmp(cmd, "download") == 0)
     {
-        // send file contents
+        RG_LOGI("Sending file %s\n", arg1);
+
+        FILE *fp = fopen(arg1, "rb");
+        if (!fp)
+            goto fail;
+
+        httpd_resp_set_type(req, "application/binary");
+        for (size_t size; (size = fread(buffer, 1, sizeof(buffer), fp));)
+        {
+            httpd_resp_send_chunk(req, buffer, size);
+        }
+        fclose(fp);
+        httpd_resp_send_chunk(req, NULL, 0);
+        RG_LOGI("File sending complete");
+        goto done;
     }
     else
     {
         cJSON_AddBoolToObject(response, "success", false);
     }
 
-    // Set Content-Type to json
-
+    // Send JSON response
     char *response_text = cJSON_Print(response);
+    httpd_resp_set_type(req, "application/json");
     httpd_resp_sendstr(req, response_text);
     free(response_text);
-
-    cJSON_free(response);
-    cJSON_free(content);
-    return ESP_OK;
+    goto done;
 
 fail:
     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Server error");
+    RG_LOGE("Request failed!");
+    ret = ESP_FAIL;
+
+done:
     cJSON_free(response);
     cJSON_free(content);
-    return ESP_FAIL;
+    return ret;
 }
 
 static esp_err_t http_get_handler(httpd_req_t *req)
 {
-    httpd_resp_sendstr(req, html);
+    httpd_resp_sendstr(req, webui_html);
     return ESP_OK;
 }
 
@@ -145,4 +146,5 @@ void webui_start(void)
 
     RG_LOGI("File server started");
 }
+
 #endif

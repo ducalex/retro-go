@@ -1,19 +1,92 @@
 <!DOCTYPE html>
 <html>
 <head><title>Retro-Go Webui</title></head>
-<body>
+<body style='width:600px;margin:0 auto;'>
     <h1>Retro-Go Web Interface</h1>
-    cmd: <input type='text' id='rg_cmd' value='list'><br>
-    arg1: <input type='text' id='rg_arg1' value='/sd/roms'><br>
-    arg2: <input type='text' id='rg_arg2'><br>
-    <button onclick='api_req(window.rg_cmd.value, window.rg_arg1.value, window.rg_arg2.value);'>send</button>
+    <h3 id='subtitle'></h3>
+    <div>
+        <table id='filebrowser'>
+            <thead><tr><th style='width: 400px'>Filename</th><th>Action</th></tr></thead>
+            <tbody></tbody>
+        </table>
+        <hr>
+        Upload files: <input type='file' id='upload' multiple>
+    </div>
     <script>
-        function api_req(cmd, arg1, arg2) {
+        let current_path = '';
+        function $(selector) {
+            return document.querySelector(selector);
+        }
+        function basename(path) {
+            return path.match('(.*)\/(.*)')[2];
+        }
+        function dirname(path) {
+            return path.match('(.*)\/(.*)')[1];
+        }
+        function api_req(cmd, arg1, arg2, callback, type) {
+            callback = callback || function () { console.log(this.response) };
             var xmlhttp = new XMLHttpRequest();
-            xmlhttp.addEventListener('load', function () { alert(this.responseText) });
+            xmlhttp.responseType = type || 'json';
+            xmlhttp.addEventListener('load', callback);
             xmlhttp.open('POST', '/api');
             xmlhttp.send(JSON.stringify({ cmd, arg1, arg2 }));
         }
+        function delete_file(path) {
+            if (confirm("Delete item?")) {
+                api_req('delete', path, null, function () {
+                    update_view(dirname(path));
+                });
+            }
+        }
+        function rename_file(path) {
+            let new_path = prompt("New name", path);
+            if (new_path) {
+                api_req('rename', path, new_path, function () {
+                    update_view(dirname(path));
+                });
+            }
+        }
+        function download_file(path) {
+            api_req('download', path, null, function () {
+                var blobURL = URL.createObjectURL(this.response);
+                var a = document.createElement('a');
+                document.body.appendChild(a);
+                a.download = basename(path);
+                a.style = 'display: none';
+                a.href = blobURL;
+                a.click();
+            }, 'blob');
+        }
+        function upload_file() {
+            let files = $('#upload');
+            for (let file of files) {
+                // blah blah
+            }
+            update_view(current_path);
+        }
+        function update_view(path) {
+            api_req('list', path, '', function () {
+                let html = '<tr><td><a href="#" onclick="update_view(\'' + dirname(path) + '\')">..</a></td></tr>';
+                let files = this.response.files;
+                files.sort((a, b) => (a.name < b.name ? -1 : (a.name > b.name ? 1 : 0)));
+                files.sort((a, b) => (a.is_dir > b.is_dir ? -1 : (a.is_dir < b.is_dir ? 1 : 0)));
+                for (let f of files) {
+                    f.path = path + '/' + f.name;
+                    html += '<tr>';
+                    if (f.is_dir) {
+                        html += '<td><a href="#" onclick="update_view(\'' + f.path + '\')">' + f.name + '/</a></td>';
+                    } else {
+                        html += '<td><a href="#" onclick="download_file(\'' + f.path + '\')">' + f.name + '</a></td>';
+                    }
+                    html += '<td><button onclick="rename_file(\'' + f.path + '\')">Rename</button> <button onclick="delete_file(\'' + f.path + '\')">Delete</button></td>';
+                    html += '</tr>';
+                }
+                $('#filebrowser tbody').innerHTML = html;
+                $('#subtitle').innerText = path;
+                current_path = path;
+            });
+        }
+        update_view('/sd');
     </script>
 </body>
 </html>
