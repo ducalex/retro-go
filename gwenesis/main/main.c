@@ -1,5 +1,6 @@
 #include <rg_system.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 /* Gwenesis Emulator */
 #include "m68k.h"
