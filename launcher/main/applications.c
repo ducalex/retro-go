@@ -235,6 +235,9 @@ static void crc_cache_update(retro_file_t *file)
 
 void crc_cache_idle_task(tab_t *tab)
 {
+    // FIXME: Disabled for now because it interferes with the webserver...
+    return;
+
     if (!crc_cache)
         return;
 

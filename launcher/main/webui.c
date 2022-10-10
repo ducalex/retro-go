@@ -12,14 +12,12 @@
 #include "webui.html.h"
 
 static httpd_handle_t server;
-static char http_buffer[0x4000];
 
 
 static esp_err_t http_api_handler(httpd_req_t *req)
 {
+    char http_buffer[0x1000] = {0};
     esp_err_t ret = ESP_OK;
-
-    memset(http_buffer, 0, sizeof(http_buffer));
 
     if (httpd_req_recv(req, http_buffer, sizeof(http_buffer)) <= 0) {
         return ESP_FAIL;
@@ -116,6 +114,34 @@ done:
     return ret;
 }
 
+static esp_err_t http_upload_handler(httpd_req_t *req)
+{
+    char http_buffer[0x1000];
+
+    // FIXME: We must decode req->uri...
+    FILE *fp = fopen(req->uri, "wb");
+    if (!fp)
+        return ESP_FAIL;
+
+    for (int pos = 0; pos < req->content_len;)
+    {
+        int length = httpd_req_recv(req, http_buffer, sizeof(http_buffer));
+        if (length <= 0)
+            break;
+        if (!fwrite(http_buffer, length, 1, fp))
+        {
+            RG_LOGI("Write failure at %d bytes", pos);
+            break;
+        }
+        pos += length;
+    }
+
+    fclose(fp);
+
+    httpd_resp_sendstr(req, "OK");
+    return ESP_OK;
+}
+
 static esp_err_t http_get_handler(httpd_req_t *req)
 {
     httpd_resp_sendstr(req, webui_html);
@@ -137,6 +163,7 @@ void webui_start(void)
         return;
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.stack_size = 8192;
     config.uri_match_fn = httpd_uri_match_wildcard;
     ESP_ERROR_CHECK(httpd_start(&server, &config));
 
@@ -152,11 +179,11 @@ void webui_start(void)
         .handler   = http_api_handler,
     });
 
-    // httpd_register_uri_handler(server, &(httpd_uri_t){
-    //     .uri       = "/upload",
-    //     .method    = HTTP_POST,
-    //     .handler   = http_upload_handler,
-    // });
+    httpd_register_uri_handler(server, &(httpd_uri_t){
+        .uri       = "/*",
+        .method    = HTTP_PUT,
+        .handler   = http_upload_handler,
+    });
 
     RG_LOGI("File server started");
 }
