@@ -687,7 +687,7 @@ void applications_init(void)
     application("Nintendo Game & Watch", "gw", "gw", "retro-run", 0);
     application("Sega Master System", "sms", "sms sg", "smsplusgx-go", 0);
     application("Sega Game Gear", "gg", "gg", "smsplusgx-go", 0);
-    application("Sega Mega Drive", "md", "md gen", "gwenesis", 0);
+    application("Sega Mega Drive", "md", "md gen bin", "gwenesis", 0);
     application("Coleco ColecoVision", "col", "col", "smsplusgx-go", 0);
     application("NEC PC Engine", "pce", "pce", "retro-run", 0);
     application("Atari Lynx", "lnx", "lnx", "retro-run", 64);
