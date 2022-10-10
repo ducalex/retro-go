@@ -16,7 +16,8 @@
 static rg_gui_event_t toggle_tab_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     tab_t *tab = gui.tabs[option->arg];
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
         tab->enabled = !tab->enabled;
     }
     strcpy(option->value, tab->enabled ? "Show" : "Hide");
@@ -25,15 +26,15 @@ static rg_gui_event_t toggle_tab_cb(rg_gui_option_t *option, rg_gui_event_t even
 
 static rg_gui_event_t toggle_tabs_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    if (event == RG_DIALOG_ENTER) {
+    if (event == RG_DIALOG_ENTER)
+    {
         rg_gui_option_t options[gui.tabcount + 1];
         rg_gui_option_t *option = &options[0];
 
         for (int i = 0; i < gui.tabcount; ++i)
         {
-            *option++ = (rg_gui_option_t) {i, gui.tabs[i]->name, "...", 1, &toggle_tab_cb};
+            *option++ = (rg_gui_option_t){i, gui.tabs[i]->name, "...", 1, &toggle_tab_cb};
         }
-
         *option++ = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
 
         rg_gui_dialog("Tabs Visibility", options, 0);
@@ -81,23 +82,24 @@ static rg_gui_event_t start_screen_cb(rg_gui_option_t *option, rg_gui_event_t ev
     const char *modes[] = {"Auto", "Carousel", "Browser"};
     int max = 2;
 
-    if (event == RG_DIALOG_PREV && --gui.start_screen < 0) gui.start_screen = max;
-    if (event == RG_DIALOG_NEXT && ++gui.start_screen > max) gui.start_screen = 0;
+    if (event == RG_DIALOG_PREV && --gui.start_screen < 0)
+        gui.start_screen = max;
+    if (event == RG_DIALOG_NEXT && ++gui.start_screen > max)
+        gui.start_screen = 0;
 
-    strcpy(option->value, modes[gui.start_screen % (max+1)]);
+    strcpy(option->value, modes[gui.start_screen % (max + 1)]);
     return RG_DIALOG_VOID;
 }
 
 static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    if (event == RG_DIALOG_PREV) {
-        if (--gui.show_preview < 0) gui.show_preview = PREVIEW_MODE_COUNT - 1;
+    if (event == RG_DIALOG_PREV && --gui.show_preview < 0)
+        gui.show_preview = PREVIEW_MODE_COUNT - 1;
+    if (event == RG_DIALOG_NEXT && ++gui.show_preview >= PREVIEW_MODE_COUNT)
+        gui.show_preview = 0;
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
         gui_set_preview(gui_get_current_tab(), NULL);
-    }
-    if (event == RG_DIALOG_NEXT) {
-        if (++gui.show_preview >= PREVIEW_MODE_COUNT) gui.show_preview = 0;
-        gui_set_preview(gui_get_current_tab(), NULL);
-    }
+
     const char *values[] = {"None      ", "Cover,Save", "Save,Cover", "Cover only", "Save only "};
     strcpy(option->value, values[gui.show_preview % PREVIEW_MODE_COUNT]);
     return RG_DIALOG_VOID;
@@ -106,14 +108,14 @@ static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t ev
 static rg_gui_event_t color_theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int max = gui_themes_count - 1;
-    if (event == RG_DIALOG_PREV) {
-        if (--gui.color_theme < 0) gui.color_theme = max;
+
+    if (event == RG_DIALOG_PREV && --gui.color_theme < 0)
+        gui.color_theme = max;
+    if (event == RG_DIALOG_NEXT && ++gui.color_theme > max)
+        gui.color_theme = 0;
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
         gui_redraw();
-    }
-    if (event == RG_DIALOG_NEXT) {
-        if (++gui.color_theme > max) gui.color_theme = 0;
-        gui_redraw();
-    }
+
     sprintf(option->value, "%d/%d", gui.color_theme + 1, max + 1);
     return RG_DIALOG_VOID;
 }
@@ -123,10 +125,12 @@ static rg_gui_event_t startup_app_cb(rg_gui_option_t *option, rg_gui_event_t eve
     const char *modes[] = {"Last game", "Launcher"};
     int max = 1;
 
-    if (event == RG_DIALOG_PREV && --gui.startup < 0) gui.startup = max;
-    if (event == RG_DIALOG_NEXT && ++gui.startup > max) gui.startup = 0;
+    if (event == RG_DIALOG_PREV && --gui.startup < 0)
+        gui.startup = max;
+    if (event == RG_DIALOG_NEXT && ++gui.startup > max)
+        gui.startup = 0;
 
-    strcpy(option->value, modes[gui.startup % (max+1)]);
+    strcpy(option->value, modes[gui.startup % (max + 1)]);
     return RG_DIALOG_VOID;
 }
 
