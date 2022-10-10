@@ -36,6 +36,7 @@ static bool yfm_enabled = true;
 static bool yfm_resample = true;
 static bool z80_enabled = true;
 static bool sn76489_enabled = true;
+static int frameskip = 3;
 
 static FILE *savestate_fp = NULL;
 static int savestate_errors = 0;
@@ -44,6 +45,7 @@ static const char *SETTING_YFM_EMULATION = "yfm_enable";
 static const char *SETTING_YFM_RESAMPLE = "sampling";
 static const char *SETTING_Z80_EMULATION = "z80_enable";
 static const char *SETTING_SN76489_EMULATION = "sn_enable";
+static const char *SETTING_FRAMESKIP = "frameskip";
 
 // --- MAIN
 
@@ -169,6 +171,20 @@ static rg_gui_event_t sampling_update_cb(rg_gui_option_t *option, rg_gui_event_t
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t frameskip_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
+        frameskip += (event == RG_DIALOG_PREV) ? -1 : 1;
+        frameskip = RG_MAX(frameskip, 1);
+        rg_settings_set_number(NS_APP, SETTING_FRAMESKIP, frameskip);
+    }
+
+    sprintf(option->value, "%d", frameskip);
+
+    return RG_DIALOG_VOID;
+}
+
 static bool screenshot_handler(const char *filename, int width, int height)
 {
     return rg_display_save_frame(filename, currentUpdate, width, height);
@@ -219,6 +235,7 @@ void app_main(void)
         {1, "SN76489 emulation", "On", 1, &sn76489_update_cb},
         // {2, "Down sampling", "On", 1, &sampling_update_cb},
         {3, "Z80 emulation", "On", 1, &z80_update_cb},
+		{2, "Frameskip", "", 1, &frameskip_cb},
         RG_DIALOG_CHOICE_LAST
     };
 
@@ -228,6 +245,7 @@ void app_main(void)
     sn76489_enabled = rg_settings_get_number(NS_APP, SETTING_SN76489_EMULATION, 1);
     // yfm_resample = rg_settings_get_number(NS_APP, SETTING_YFM_RESAMPLE, 1);
     z80_enabled = rg_settings_get_number(NS_APP, SETTING_Z80_EMULATION, 1);
+    frameskip = rg_settings_get_number(NS_APP, SETTING_FRAMESKIP, frameskip);
 
     VRAM = rg_alloc(VRAM_MAX_SIZE, MEM_FAST);
 
@@ -304,7 +322,7 @@ void app_main(void)
         }
 
         int64_t startTime = rg_system_timer();
-        bool drawFrame = (frames++ & 3) == 3;
+        bool drawFrame = (frames++ % frameskip) == 0;
 
         int lines_per_frame = REG1_PAL ? LINES_PER_FRAME_PAL : LINES_PER_FRAME_NTSC;
         int hint_counter = gwenesis_vdp_regs[10];
@@ -414,7 +432,7 @@ void app_main(void)
         rg_system_tick(elapsed);
 
         if (yfm_enabled || z80_enabled) {
-            rg_audio_submit(gwenesis_ym2612_buffer, AUDIO_BUFFER_LENGTH >> 1);
+            rg_audio_submit((void *)gwenesis_ym2612_buffer, AUDIO_BUFFER_LENGTH >> 1);
         }
     }
 }

@@ -35,6 +35,7 @@ int one_c = 4, slow_one_c = 5, two_c = 6;
 static int keymap_id = 0;
 static keymap_t keymap;
 
+static const char *SETTING_FRAMESKIP = "frameskip";
 static const char *SETTING_KEYMAP = "keymap";
 // --- MAIN
 
@@ -80,10 +81,12 @@ static rg_gui_event_t apu_toggle_cb(rg_gui_option_t *option, rg_gui_event_t even
 
 static rg_gui_event_t frameskip_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    if (event == RG_DIALOG_PREV) frameskip--;
-    if (event == RG_DIALOG_NEXT) frameskip++;
-
-    frameskip = RG_MAX(frameskip, 1);
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
+        frameskip += (event == RG_DIALOG_PREV) ? -1 : 1;
+        frameskip = RG_MAX(frameskip, 1);
+        rg_settings_set_number(NS_APP, SETTING_FRAMESKIP, frameskip);
+    }
 
     sprintf(option->value, "%d", frameskip);
 
@@ -263,6 +266,8 @@ void app_main(void)
 		RG_DIALOG_CHOICE_LAST
 	};
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
+
+    frameskip = rg_settings_get_number(NS_APP, SETTING_FRAMESKIP, frameskip);
 
     updates[0].buffer = malloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2);
 
