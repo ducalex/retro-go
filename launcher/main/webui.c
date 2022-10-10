@@ -5,6 +5,7 @@
 #include <sys/unistd.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <stdio.h>
 #include <cJSON.h>
 
 // static const char webui_html[];
@@ -62,6 +63,17 @@ static esp_err_t http_api_handler(httpd_req_t *req)
     {
         cJSON_AddStringToObject(response, "path", arg1);
         cJSON_AddBoolToObject(response, "success", rg_storage_delete(arg1));
+    }
+    else if (strcmp(cmd, "mkdir") == 0)
+    {
+        cJSON_AddStringToObject(response, "path", arg1);
+        cJSON_AddBoolToObject(response, "success", rg_storage_mkdir(arg1));
+    }
+    else if (strcmp(cmd, "touch") == 0)
+    {
+        FILE *fp = fopen(arg1, "wb");
+        cJSON_AddStringToObject(response, "path", arg1);
+        cJSON_AddBoolToObject(response, "success", fp && fclose(fp) == 0);
     }
     else if (strcmp(cmd, "download") == 0)
     {
