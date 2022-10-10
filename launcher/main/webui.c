@@ -133,6 +133,7 @@ static esp_err_t http_upload_handler(httpd_req_t *req)
             RG_LOGI("Write failure at %d bytes", pos);
             break;
         }
+        rg_task_delay(10);
         pos += length;
     }
 
