@@ -35,6 +35,7 @@ static rg_app_t *app;
 static bool yfm_enabled = true;
 static bool yfm_resample = true;
 static bool z80_enabled = true;
+static bool sn76489_enabled = true;
 
 static FILE *savestate_fp = NULL;
 static int savestate_errors = 0;
@@ -42,6 +43,8 @@ static int savestate_errors = 0;
 static const char *SETTING_YFM_EMULATION = "yfm_enable";
 static const char *SETTING_YFM_RESAMPLE = "sampling";
 static const char *SETTING_Z80_EMULATION = "z80_enable";
+static const char *SETTING_SN76489_EMULATION = "sn_enable";
+
 // --- MAIN
 
 typedef struct {
@@ -129,6 +132,18 @@ static rg_gui_event_t yfm_update_cb(rg_gui_option_t *option, rg_gui_event_t even
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t sn76489_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
+        sn76489_enabled = !sn76489_enabled;
+        rg_settings_set_number(NS_APP, SETTING_SN76489_EMULATION, sn76489_enabled);
+    }
+    strcpy(option->value, sn76489_enabled ? "On " : "Off");
+
+    return RG_DIALOG_VOID;
+}
+
 static rg_gui_event_t z80_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
@@ -201,6 +216,7 @@ void app_main(void)
     };
     const rg_gui_option_t options[] = {
         {1, "YFM emulation", "On", 1, &yfm_update_cb},
+        {1, "SN76489 emulation", "On", 1, &sn76489_update_cb},
         // {2, "Down sampling", "On", 1, &sampling_update_cb},
         {3, "Z80 emulation", "On", 1, &z80_update_cb},
         RG_DIALOG_CHOICE_LAST
@@ -209,6 +225,7 @@ void app_main(void)
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
 
     yfm_enabled = rg_settings_get_number(NS_APP, SETTING_YFM_EMULATION, 1);
+    sn76489_enabled = rg_settings_get_number(NS_APP, SETTING_SN76489_EMULATION, 1);
     // yfm_resample = rg_settings_get_number(NS_APP, SETTING_YFM_RESAMPLE, 1);
     z80_enabled = rg_settings_get_number(NS_APP, SETTING_Z80_EMULATION, 1);
 
@@ -312,7 +329,7 @@ void app_main(void)
         ym2612_clock = yfm_enabled ? 0 : 0x1000000;
         ym2612_index = 0;
 
-        sn76489_clock = yfm_enabled ? 0 : 0x1000000;
+        sn76489_clock = sn76489_enabled ? 0 : 0x1000000;
         sn76489_index = 0;
 
         scan_line = 0;
@@ -333,7 +350,7 @@ void app_main(void)
             }
 
             /* Video */
-            if (drawFrame)
+            if (drawFrame && scan_line < screen_height)
                 gwenesis_vdp_render_line(scan_line); /* render scan_line */
 
             // On these lines, the line counter interrupt is reloaded
