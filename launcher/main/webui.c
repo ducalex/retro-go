@@ -134,7 +134,7 @@ static esp_err_t http_upload_handler(httpd_req_t *req)
             RG_LOGI("Write failure at %d bytes", pos);
             break;
         }
-        rg_task_delay(10);
+        rg_task_delay(0);
         pos += length;
     }
 
@@ -165,7 +165,7 @@ void webui_start(void)
         return;
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.stack_size = 8192;
+    config.stack_size = 12 * 1024;
     config.uri_match_fn = httpd_uri_match_wildcard;
     ESP_ERROR_CHECK(httpd_start(&server, &config));
 
