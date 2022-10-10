@@ -11,18 +11,20 @@
 #include "webui.html.h"
 
 static httpd_handle_t server;
+static char http_buffer[0x4000];
 
 
 static esp_err_t http_api_handler(httpd_req_t *req)
 {
-    char buffer[1024] = {0};
     esp_err_t ret = ESP_OK;
 
-    if (httpd_req_recv(req, buffer, sizeof(buffer)) <= 0) {
+    memset(http_buffer, 0, sizeof(http_buffer));
+
+    if (httpd_req_recv(req, http_buffer, sizeof(http_buffer)) <= 0) {
         return ESP_FAIL;
     }
 
-    cJSON *content = cJSON_Parse(buffer);
+    cJSON *content = cJSON_Parse(http_buffer);
     cJSON *response = cJSON_CreateObject();
 
     if (!content || !response) {
@@ -70,9 +72,9 @@ static esp_err_t http_api_handler(httpd_req_t *req)
             goto fail;
 
         httpd_resp_set_type(req, "application/binary");
-        for (size_t size; (size = fread(buffer, 1, sizeof(buffer), fp));)
+        for (size_t size; (size = fread(http_buffer, 1, sizeof(http_buffer), fp));)
         {
-            httpd_resp_send_chunk(req, buffer, size);
+            httpd_resp_send_chunk(req, http_buffer, size);
         }
         fclose(fp);
         httpd_resp_send_chunk(req, NULL, 0);
