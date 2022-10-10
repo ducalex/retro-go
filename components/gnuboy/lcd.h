@@ -4,7 +4,7 @@
 
 typedef struct
 {
-	byte vbank[2][8192];
+	byte (*vbank)[8192]; // [2]
 	byte oam[256];
 	byte pal[128];
 	int cycles;

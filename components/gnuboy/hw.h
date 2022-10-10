@@ -205,7 +205,7 @@ typedef struct
 
 typedef struct
 {
-	byte rambanks[8][4096];
+	byte (*rambanks)[4096]; // [8]
 	byte ioregs[256];
 	byte *rmap[0x10];
 	byte *wmap[0x10];

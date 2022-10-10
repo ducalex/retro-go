@@ -450,6 +450,7 @@ static inline void spr_scan(gb_vs_t *VS, int ns, byte *PRI)
 
 gb_lcd_t *lcd_init(void)
 {
+	lcd.vbank = calloc(2, 8192);
 	return &lcd;
 }
 
@@ -464,7 +465,7 @@ void lcd_reset(bool hard)
 {
 	if (hard)
 	{
-		memset(lcd.vbank, 0, 0x4000);
+		memset(lcd.vbank, 0, 2 * 8192);
 		memset(&lcd.oam, 0, 256);
 		memset(&lcd.pal, 0, 128);
 	}

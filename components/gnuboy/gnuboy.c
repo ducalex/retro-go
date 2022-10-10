@@ -26,10 +26,7 @@ int gnuboy_init(int samplerate, bool stereo, int pixformat, void *blit_func)
 		.audio.samplerate = samplerate,
 		.audio.stereo = stereo,
 	};
-	hw.cpu = cpu_init();
-	hw.snd = sound_init();
-	hw.lcd = lcd_init();
-	hw.cart = &cart;
+	hw_init();
 	return 0;
 }
 

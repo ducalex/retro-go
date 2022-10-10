@@ -206,6 +206,11 @@ void hw_setpad(int new_pad)
 
 gb_hw_t *hw_init(void)
 {
+	hw.rambanks = calloc(8, 4096);
+	hw.snd = sound_init();
+	hw.lcd = lcd_init();
+	hw.cpu = cpu_init();
+	hw.cart = &cart;
 	return &hw;
 }
 
@@ -217,7 +222,7 @@ void hw_reset(bool hard)
 	hw.hdma = 0;
 	hw.pad = 0;
 
-	memset(hw.ioregs, 0, sizeof(hw.ioregs));
+	memset(hw.ioregs, 0, 256);
 	R_P1 = 0xFF;
 	R_LCDC = 0x91;
 	R_BGP = 0xFC;
@@ -229,8 +234,8 @@ void hw_reset(bool hard)
 
 	if (hard)
 	{
-		memset(hw.rambanks, 0xff, 4096 * 8);
-		memset(cart.rambanks, 0xff, 8192 * cart.ramsize);
+		memset(hw.rambanks, 0xff, 8 * 4096);
+		memset(cart.rambanks, 0xff, cart.ramsize * 8192);
 		memset(&cart.rtc, 0, sizeof(gb_rtc_t));
 	}
 
