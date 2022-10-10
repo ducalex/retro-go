@@ -19,7 +19,7 @@ typedef struct __attribute__((packed))
     uint8_t is_valid : 1;
     uint8_t is_file  : 1;
     uint8_t is_dir   : 1;
-    char name[63];
+    char name[79];
 } rg_scandir_t;
 
 void rg_storage_init(void);

@@ -283,7 +283,8 @@ rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char 
     if (!dir)
         return NULL;
 
-    rg_scandir_t *results = malloc(4096 * sizeof(rg_scandir_t));
+    rg_scandir_t *results = calloc(1, sizeof(rg_scandir_t));
+    size_t capacity = 0;
     size_t count = 0;
     struct dirent *ent;
 
@@ -301,9 +302,10 @@ rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char 
         if (validator && !validator(fullpath))
             continue;
 
-        if ((count % 20) == 0)
+        if (count + 1 >= capacity)
         {
-            void *temp = realloc(results, (count + 21) * sizeof(rg_scandir_t));
+            capacity += 100;
+            void *temp = realloc(results, (capacity + 1) * sizeof(rg_scandir_t));
             if (!temp)
             {
                 RG_LOGW("Not enough memory to finish scan!\n");
@@ -314,7 +316,7 @@ rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char 
 
         rg_scandir_t *result = &results[count++];
 
-        strcpy(result->name, basename);
+        strncpy(result->name, basename, sizeof(result->name) - 1);
         result->is_valid = 1;
 
     #if defined(DT_REG) && defined(DT_DIR)
