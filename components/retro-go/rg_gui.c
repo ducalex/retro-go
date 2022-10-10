@@ -448,7 +448,7 @@ void rg_gui_draw_radio(int x_pos, int y_pos)
     rg_gui_draw_rect(x_pos, y_pos, seg_width, 10, 1, color_border, color_fill);
 }
 
-void rg_gui_draw_time(int x_pos, int y_pos)
+void rg_gui_draw_clock(int x_pos, int y_pos)
 {
     if (x_pos < 0)
         x_pos += gui.screen_width;
