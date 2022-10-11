@@ -119,7 +119,7 @@ typedef struct {
 
 typedef struct {
 	// Main memory
-	uint8_t RAM[0x2000];
+	uint8_t *RAM; // [0x2000]
 
 	// Video RAM
 	uint16_t *VRAM; // [0x8000]

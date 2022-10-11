@@ -67,11 +67,12 @@ pce_reset(bool hard)
 int
 pce_init(void)
 {
+	PCE.RAM = malloc(0x2000);
 	PCE.VRAM = malloc(0x10000);
 	PCE.NULLRAM = malloc(0x2000);
 	PCE.IOAREA = PCE.NULLRAM + 4;
 
-	if (!PCE.VRAM || !PCE.NULLRAM) {
+	if (!PCE.RAM || !PCE.VRAM || !PCE.NULLRAM) {
 		pce_term();
 		return -1;
 	}
@@ -98,6 +99,8 @@ pce_init(void)
 void
 pce_term(void)
 {
+	free(PCE.RAM);
+	PCE.RAM = NULL;
 	free(PCE.VRAM);
 	PCE.VRAM = NULL;
 	free(PCE.ExRAM);
