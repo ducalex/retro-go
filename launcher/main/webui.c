@@ -101,7 +101,7 @@ static esp_err_t http_api_handler(httpd_req_t *req)
 
 static esp_err_t http_upload_handler(httpd_req_t *req)
 {
-    char *http_buffer = malloc(0x8000);
+    char *http_buffer = malloc(0x10000);
     char *filename = urldecode(req->uri);
 
     RG_LOGI("Receiving file: %s", filename);
@@ -144,7 +144,7 @@ static esp_err_t http_upload_handler(httpd_req_t *req)
 
 static esp_err_t http_download_handler(httpd_req_t *req)
 {
-    char *http_buffer = malloc(0x8000);
+    char *http_buffer = malloc(0x10000);
     char *filename = urldecode(req->uri);
     const char *ext = rg_extension(filename);
     FILE *fp;

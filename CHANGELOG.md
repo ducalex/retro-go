@@ -1,10 +1,11 @@
 # Retro-Go 1.35 (2022-10-??)
 - SNES: New Snes9x port (based on 2005 version) with sound!
-- GEN: Improved compatibility (updated from upstream)
+- GEN: Improved compatibility (updated from bzhxx's upstream)
 - GW: Added Game & Watch emulator by bzhxx
 - Lynx: Fixed crash when opening options menu
 - Launcher: Network time sync support
-- Launcher: Network file manager (TBD)
+- Launcher: HTTP file manager
+- Launcher: Increased max filename length to ~72 characters
 - All: Fixed some crash recovery issues
 - Releases are now built with esp-idf 4.3
 
