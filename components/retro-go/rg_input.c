@@ -300,6 +300,9 @@ long rg_input_gamepad_last_read(void)
 uint32_t rg_input_read_gamepad(void)
 {
     last_gamepad_read = rg_system_timer();
+#ifdef RG_TARGET_SDL2
+    SDL_PumpEvents();
+#endif
     return gamepad_state;
 }
 

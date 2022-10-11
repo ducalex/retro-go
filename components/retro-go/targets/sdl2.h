@@ -7,7 +7,7 @@
 #define RG_STORAGE_DRIVER           0       // 0 = Host, 1 = SDSPI, 2 = SDMMC, 3 = USB, 4 = Flash
 #define RG_STORAGE_HOST             0       // Used by SDSPI and SDMMC
 #define RG_STORAGE_SPEED            0       // Used by SDSPI and SDMMC
-#define RG_STORAGE_ROOT             ".."    // Storage mount point
+#define RG_STORAGE_ROOT             "."     // Storage mount point
 
 // Audio
 #define RG_AUDIO_USE_INT_DAC        0   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
@@ -30,7 +30,7 @@
 // Input
 #define RG_GAMEPAD_DRIVER           6   // 1 = ODROID-GO, 2 = Serial, 3 = I2C, 4 = QTPY, 5 = ESPLAY-S3, 6 = SDL2
 #define RG_GAMEPAD_HAS_MENU_BTN     1
-#define RG_GAMEPAD_HAS_OPTION_BTN   0
+#define RG_GAMEPAD_HAS_OPTION_BTN   1
 // Note: Depending on the driver, the button map can represent bits, registers, keys, or gpios.
 #define RG_GAMEPAD_MAP_MENU         SDL_SCANCODE_ESCAPE
 #define RG_GAMEPAD_MAP_OPTION       SDL_SCANCODE_TAB

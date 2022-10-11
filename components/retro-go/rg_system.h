@@ -11,15 +11,15 @@ extern "C" {
 
 #include "config.h"
 
-#ifdef RG_TARGET_SDL2
-#define IRAM_ATTR
-#define RTC_NOINIT_ATTR
-#else
+#ifndef RG_TARGET_SDL2
 #include <esp_idf_version.h>
 #include <esp_attr.h>
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 3, 0)
 #define SPI_DMA_CH_AUTO 1
 #endif
+#else
+#define IRAM_ATTR
+#define RTC_NOINIT_ATTR
 #endif
 
 #include "rg_audio.h"

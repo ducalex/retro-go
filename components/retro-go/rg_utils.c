@@ -83,7 +83,22 @@ const char *rg_relpath(const char *path)
 
 uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, uint32_t len)
 {
+#ifndef RG_TARGET_SDL2
     // This is part of the ROM but finding the correct header is annoying as it differs per SOC...
     extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
     return crc32_le(crc, buf, len);
+#else
+    // Derived from: http://www.hackersdelight.org/hdcodetxt/crc.c.txt
+    crc = ~crc;
+    for (size_t i = 0; i < len; ++i)
+    {
+        crc = crc ^ buf[i];
+        for (int j = 7; j >= 0; j--)     // Do eight times.
+        {
+            uint32_t mask = -(crc & 1);
+            crc = (crc >> 1) ^ (0xEDB88320 & mask);
+        }
+    }
+   return ~crc;
+#endif
 }

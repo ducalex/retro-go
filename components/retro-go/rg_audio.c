@@ -54,6 +54,7 @@ static const char *SETTING_OUTPUT = "AudioSink";
 static const char *SETTING_VOLUME = "Volume";
 static const char *SETTING_FILTER = "AudioFilter";
 
+#ifndef RG_TARGET_SDL2
 #define ACQUIRE_DEVICE(timeout)                        \
     ({                                                 \
         int x = xSemaphoreTake(audioDevLock, timeout); \
@@ -62,7 +63,10 @@ static const char *SETTING_FILTER = "AudioFilter";
         x;                                             \
     })
 #define RELEASE_DEVICE() xSemaphoreGive(audioDevLock);
-
+#else
+#define ACQUIRE_DEVICE(timeout) (1)
+#define RELEASE_DEVICE()
+#endif
 
 void rg_audio_init(int sampleRate)
 {

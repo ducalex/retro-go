@@ -9,9 +9,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifdef RG_TARGET_SDL2
-#include <SDL2/SDL.h>
-#else
+#ifndef RG_TARGET_SDL2
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
@@ -25,6 +23,8 @@
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #include <esp_chip_info.h>
 #endif
+#else
+#include <SDL2/SDL.h>
 #endif
 
 #define RG_LOGBUF_SIZE 2048
@@ -112,8 +112,9 @@ void rg_system_load_time(void)
         fclose(fp);
         RG_LOGI("Time loaded from storage\n");
     }
-
+#ifndef RG_TARGET_SDL2
     settimeofday(&(struct timeval){time_sec, 0}, NULL);
+#endif
     time_sec = time(NULL); // Read it back to be sure it worked
     RG_LOGI("Time is now: %s\n", asctime(localtime(&time_sec)));
 }
@@ -176,6 +177,7 @@ IRAM_ATTR void esp_panic_putchar_hook(char c)
 
 static void update_memory_statistics(void)
 {
+#ifndef RG_TARGET_SDL2
     multi_heap_info_t heap_info;
 
     heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
@@ -188,6 +190,7 @@ static void update_memory_statistics(void)
     statistics.totalMemoryExt = heap_info.total_free_bytes + heap_info.total_allocated_bytes;
 
     statistics.freeStackMain = uxTaskGetStackHighWaterMark(tasks[0].handle);
+#endif
 }
 
 static void update_statistics(void)
@@ -352,7 +355,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .toolchain = esp_get_idf_version(),
         .bootArgs = NULL,
         .bootFlags = 0,
-        .bootType = esp_reset_reason() == ESP_RST_SW ? RG_RST_RESTART : RG_RST_POWERON,
+        .bootType = RG_RST_POWERON,
         .speed = 1.f,
         .refreshRate = 60,
         .sampleRate = sampleRate,
@@ -370,10 +373,17 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     printf(" built for: %s. aud=%d disp=%d pad=%d sd=%d cfg=%d\n", RG_TARGET_NAME, 0, 0, 0, 0, 0);
     printf("========================================================\n\n");
 
+    #ifndef RG_TARGET_SDL2
+    esp_reset_reason_t r_reason = esp_reset_reason();
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
     RG_LOGI("Chip info: model %d rev%d (%d cores), reset reason: %d\n",
-        chip_info.model, chip_info.revision, chip_info.cores, esp_reset_reason());
+        chip_info.model, chip_info.revision, chip_info.cores, r_reason);
+    if (r_reason == ESP_RST_PANIC || r_reason == ESP_RST_TASK_WDT || r_reason == ESP_RST_INT_WDT)
+        app.bootType = RG_RST_PANIC;
+    else if (r_reason == ESP_RST_SW)
+        app.bootType = RG_RST_RESTART;
+    #endif
 
     update_memory_statistics();
     RG_LOGI("Internal memory: free=%d, total=%d\n", statistics.freeMemoryInt, statistics.totalMemoryInt);
@@ -414,7 +424,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     rg_audio_init(sampleRate);
 
     // Show alert if we've just rebooted from a panic
-    if (esp_reset_reason() == ESP_RST_PANIC)
+    if (app.bootType == RG_RST_PANIC)
     {
         char message[400] = "Application crashed";
 
@@ -467,11 +477,15 @@ bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, 
     RG_ASSERT(name && taskFunc, "bad param");
     TaskHandle_t handle = NULL;
 
+#ifndef RG_TARGET_SDL2
     if (affinity < 0)
         affinity = tskNO_AFFINITY;
-
     if (xTaskCreatePinnedToCore(taskFunc, name, stackSize, data, priority, &handle, affinity) != pdPASS)
         handle = NULL; // should already be NULL...
+#else
+    if ((handle = SDL_CreateThread(taskFunc, name, data)))
+        SDL_DetachThread(handle);
+#endif
 
     if (!handle)
     {
@@ -500,7 +514,9 @@ bool rg_task_delete(const char *name)
     {
         if ((!name && tasks[i].handle == current) || (name && strncmp(tasks[i].name, name, 20) != 0))
         {
+        #ifndef RG_TARGET_SDL2
             vTaskDelete(tasks[i].handle);
+        #endif
             tasks[i].handle = NULL;
             return true;
         }
@@ -512,7 +528,12 @@ void rg_task_delay(int ms)
 {
     // Note: rg_task_delay MUST yield at least once, even if ms = 0
     // Keep in mind that delay may not be very accurate, use usleep().
+#ifndef RG_TARGET_SDL2
     vTaskDelay(pdMS_TO_TICKS(ms));
+#else
+    SDL_PumpEvents();
+    SDL_Delay(ms);
+#endif
 }
 
 rg_app_t *rg_system_get_app(void)
@@ -534,7 +555,11 @@ IRAM_ATTR void rg_system_tick(int busyTime)
 
 IRAM_ATTR int64_t rg_system_timer(void)
 {
+#ifndef RG_TARGET_SDL2
     return esp_timer_get_time();
+#else
+    return SDL_GetTicks() * 1000;
+#endif
 }
 
 void rg_system_event(int event, void *arg)
@@ -973,6 +998,7 @@ int rg_system_get_led(void)
 // Memory from this function should be freed with free()
 void *rg_alloc(size_t size, uint32_t caps)
 {
+#ifndef RG_TARGET_SDL2
     char caps_list[36] = {0};
     uint32_t esp_caps = 0;
     void *ptr;
@@ -1005,6 +1031,9 @@ void *rg_alloc(size_t size, uint32_t caps)
 
     RG_LOGE("SIZE=%u, CAPS=%s << FAILED! (available: %d)\n", size, caps_list, available);
     RG_PANIC("Memory allocation failed!");
+#else
+    return calloc(1, size);
+#endif
 }
 
 #ifdef RG_ENABLE_PROFILING
