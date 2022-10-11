@@ -88,7 +88,7 @@ bool rg_gui_set_theme(const char *theme_name)
     rg_settings_set_string(NS_GLOBAL, SETTING_THEME, theme_name);
     strcpy(gui.theme, theme_name ?: "");
 
-    cJSON_free(theme);
+    cJSON_Delete(theme);
 
     if (gui.initialized)
         rg_system_event(RG_EVENT_REDRAW, NULL);
