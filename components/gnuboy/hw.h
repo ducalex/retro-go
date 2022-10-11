@@ -206,10 +206,15 @@ typedef struct
 typedef struct
 {
 	byte (*rambanks)[4096]; // [8]
+	byte (*vbanks)[8192]; // [2]
 	byte ioregs[256];
+	byte oam[256];
+	byte pal[128];
 	byte *rmap[0x10];
 	byte *wmap[0x10];
 	byte *bios;
+
+	int cycles;		// LCDC cycles (master emulation counter)
 
 	int ilines;		// Interrupt lines
 	int pad;		// Button status
@@ -227,7 +232,6 @@ typedef struct
 	} compat;
 
 	gb_cpu_t *cpu;
-	gb_lcd_t *lcd;
 	gb_snd_t *snd;
 	gb_cart_t *cart;
 } gb_hw_t;

@@ -20,8 +20,6 @@ typedef struct
 	while(c--) *(d + c) = *(s + c) | _b; 				\
 }
 
-gb_lcd_t lcd;
-
 static byte BUF[0x100];
 static int WX, WY;
 static bool pal_dirty;
@@ -34,7 +32,7 @@ static bool pal_dirty;
 __attribute__((optimize("unroll-loops")))
 static inline byte *get_patpix(int tile, int x)
 {
-	const byte *vram = lcd.vbank[0];
+	const byte *vram = hw.vbanks[0];
 	static byte pix[8];
 
 	if (tile & (1 << 11)) // Vertical Flip
@@ -71,8 +69,8 @@ static inline void tilebuf(int S, int T, int WT, int *WND, int *BG)
 	const int8_t *wrap = wraptable + S;
 
 	base = ((R_LCDC&0x08)?0x1C00:0x1800) + (T<<5) + S;
-	tilemap = lcd.vbank[0] + base;
-	attrmap = lcd.vbank[1] + base;
+	tilemap = hw.vbanks[0] + base;
+	attrmap = hw.vbanks[1] + base;
 	tilebuf = BG;
 	cnt = ((WX + 7) >> 3) + 1;
 
@@ -120,8 +118,8 @@ static inline void tilebuf(int S, int T, int WT, int *WND, int *BG)
 	/* Window tiles */
 
 	base = ((R_LCDC&0x40)?0x1C00:0x1800) + (WT<<5);
-	tilemap = lcd.vbank[0] + base;
-	attrmap = lcd.vbank[1] + base;
+	tilemap = hw.vbanks[0] + base;
+	attrmap = hw.vbanks[1] + base;
 	tilebuf = WND;
 	cnt = ((160 - WX) >> 3) + 1;
 
@@ -210,7 +208,7 @@ static inline void bg_scan_pri(int S, int T, int U, byte *PRI)
 	i = S;
 	cnt = WX;
 	dest = PRI;
-	src = lcd.vbank[1] + ((R_LCDC&0x08)?0x1C00:0x1800) + (T<<5);
+	src = hw.vbanks[1] + ((R_LCDC&0x08)?0x1C00:0x1800) + (T<<5);
 
 	if (!priused(src))
 	{
@@ -243,7 +241,7 @@ static inline void wnd_scan_pri(int WT, byte *PRI)
 	i = 0;
 	cnt = 160 - WX;
 	dest = PRI + WX;
-	src = lcd.vbank[1] + ((R_LCDC&0x40)?0x1C00:0x1800) + (WT<<5);
+	src = hw.vbanks[1] + ((R_LCDC&0x40)?0x1C00:0x1800) + (WT<<5);
 
 	if (!priused(src))
 	{
@@ -318,7 +316,7 @@ static inline int spr_enum(gb_vs_t *VS)
 
 	for (int i = 0; i < 40; ++i)
 	{
-		const struct {byte y, x, pat, flags;} *obj = (void *)&lcd.oam[i * 4];
+		const struct {byte y, x, pat, flags;} *obj = (void *)&hw.oam[i * 4];
 
 		if (line >= obj->y || line + 16 < obj->y)
 			continue;
@@ -448,10 +446,9 @@ static inline void spr_scan(gb_vs_t *VS, int ns, byte *PRI)
 }
 
 
-gb_lcd_t *lcd_init(void)
+void lcd_init(void)
 {
-	lcd.vbank = calloc(2, 8192);
-	return &lcd;
+	return;
 }
 
 
@@ -465,9 +462,9 @@ void lcd_reset(bool hard)
 {
 	if (hard)
 	{
-		memset(lcd.vbank, 0, 2 * 8192);
-		memset(&lcd.oam, 0, 256);
-		memset(&lcd.pal, 0, 128);
+		memset(hw.vbanks, 0, 2 * 8192);
+		memset(&hw.oam, 0, 256);
+		memset(&hw.pal, 0, 128);
 	}
 
 	memset(BUF, 0, sizeof(BUF));
@@ -479,11 +476,11 @@ void lcd_reset(bool hard)
 
 	/* set lcdc ahead of cpu by 19us; see A
 			Set lcdc ahead of cpu by 19us (matches minimal hblank duration according
-			to some docs). Value from lcd.cycles (when positive) is used to drive CPU,
+			to some docs). Value from hw.cycles (when positive) is used to drive CPU,
 			setting some ahead-time at startup is necessary to begin emulation.
 	FIXME: leave value at 0, use lcd_emulate() to actually send lcdc ahead
 	*/
-	lcd.cycles = 40;
+	hw.cycles = 40;
 }
 
 
@@ -538,7 +535,7 @@ void lcd_lcdc_change(byte b)
 	{
 		R_LY = 0;
 		stat_change(2);
-		lcd.cycles = 40;  // Correct value seems to be 38
+		hw.cycles = 40;  // Correct value seems to be 38
 		WY = R_WY;
 	}
 }
@@ -548,7 +545,7 @@ static inline void sync_palette(void)
 {
 	MESSAGE_DEBUG("Syncing palette...\n");
 
-	uint16_t *colors = (uint16_t *)lcd.pal;
+	uint16_t *colors = (uint16_t *)hw.pal;
 
 	if (hw.hwtype != GB_HW_CGB)
 	{
@@ -706,16 +703,16 @@ static inline void lcd_renderline()
 
 void lcd_emulate(int cycles)
 {
-	lcd.cycles -= cycles;
+	hw.cycles -= cycles;
 
-	if (lcd.cycles > 0)
+	if (hw.cycles > 0)
 		return;
 
 	/* LCD disabled */
 	if (!(R_LCDC & 0x80))
 	{
 		/* LCDC operation disabled (short route) */
-		while (lcd.cycles <= 0)
+		while (hw.cycles <= 0)
 		{
 			switch (R_STAT & 3)
 			{
@@ -723,11 +720,11 @@ void lcd_emulate(int cycles)
 			case 1: /* vblank */
 				// lcd_renderline();
 				stat_change(2);
-				lcd.cycles += 40;
+				hw.cycles += 40;
 				break;
 			case 2: /* search */
 				stat_change(3);
-				lcd.cycles += 86;
+				hw.cycles += 86;
 				break;
 			case 3: /* transfer */
 				stat_change(0);
@@ -735,14 +732,14 @@ void lcd_emulate(int cycles)
 				if (hw.hdma & 0x80)
 					hw_hdma_cont();
 				else
-					lcd.cycles += 102;
+					hw.cycles += 102;
 				break;
 			}
 			return;
 		}
 	}
 
-	while (lcd.cycles <= 0)
+	while (hw.cycles <= 0)
 	{
 		switch (R_STAT & 3)
 		{
@@ -757,9 +754,9 @@ void lcd_emulate(int cycles)
 				if (hw.cpu->halted)
 				{
 					hw_interrupt(IF_VBLANK, 1);
-					lcd.cycles += 228;
+					hw.cycles += 228;
 				}
-				else lcd.cycles += 10;
+				else hw.cycles += 10;
 				stat_change(1); /* -> vblank */
 				break;
 			}
@@ -769,33 +766,33 @@ void lcd_emulate(int cycles)
 				hw_interrupt(IF_STAT, 0);
 
 			stat_change(2); /* -> search */
-			lcd.cycles += 40;
+			hw.cycles += 40;
 			break;
 		case 1:
 			/* vblank -> */
 			if (!(hw.ilines & IF_VBLANK))
 			{
 				hw_interrupt(IF_VBLANK, 1);
-				lcd.cycles += 218;
+				hw.cycles += 218;
 				break;
 			}
 			if (R_LY == 0)
 			{
 				WY = R_WY;
 				stat_change(2); /* -> search */
-				lcd.cycles += 40;
+				hw.cycles += 40;
 				break;
 			}
 			else if (R_LY < 152)
-				lcd.cycles += 228;
+				hw.cycles += 228;
 			else if (R_LY == 152)
 				/* Handling special case on the last line; see
 				docs/HACKING */
-				lcd.cycles += 28;
+				hw.cycles += 28;
 			else
 			{
 				R_LY = -1;
-				lcd.cycles += 200;
+				hw.cycles += 200;
 			}
 			R_LY++;
 			lcd_stat_trigger();
@@ -804,7 +801,7 @@ void lcd_emulate(int cycles)
 			/* search -> */
 			lcd_renderline();
 			stat_change(3); /* -> transfer */
-			lcd.cycles += 86;
+			hw.cycles += 86;
 			break;
 		case 3:
 			/* transfer -> */
@@ -813,7 +810,7 @@ void lcd_emulate(int cycles)
 				hw_hdma_cont();
 			/* FIXME -- how much of the hblank does hdma use?? */
 			/* else */
-			lcd.cycles += 102;
+			hw.cycles += 102;
 			break;
 		}
 	}

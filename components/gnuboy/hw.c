@@ -118,7 +118,7 @@ static void hw_dma(unsigned b)
 {
 	unsigned a = b << 8;
 	for (int i = 0; i < 160; i++, a++)
-		lcd.oam[i] = readb(a);
+		hw.oam[i] = readb(a);
 }
 
 
@@ -207,10 +207,17 @@ void hw_setpad(int new_pad)
 gb_hw_t *hw_init(void)
 {
 	hw.rambanks = calloc(8, 4096);
+	hw.vbanks = calloc(2, 8192);
 	hw.snd = sound_init();
-	hw.lcd = lcd_init();
 	hw.cpu = cpu_init();
 	hw.cart = &cart;
+
+	if (!hw.rambanks || !hw.vbanks || !hw.cpu || !hw.snd)
+	{
+		// hw_deinit();
+		return NULL;
+	}
+
 	return &hw;
 }
 
@@ -302,8 +309,8 @@ void hw_updatemap(void)
 	hw.rmap[0x7] = hw.rmap[0x4];
 
 	// Video RAM
-	hw.rmap[0x8] = hw.wmap[0x8] = lcd.vbank[R_VBK & 1] - 0x8000;
-	hw.rmap[0x9] = hw.wmap[0x9] = lcd.vbank[R_VBK & 1] - 0x8000;
+	hw.rmap[0x8] = hw.wmap[0x8] = hw.vbanks[R_VBK & 1] - 0x8000;
+	hw.rmap[0x9] = hw.wmap[0x9] = hw.vbanks[R_VBK & 1] - 0x8000;
 
 	// Cartridge RAM
 	hw.rmap[0xA] = hw.wmap[0xA] = NULL;
@@ -466,7 +473,7 @@ void hw_write(unsigned a, byte b)
 		break;
 
 	case 0x8000: // Video RAM
-		lcd.vbank[R_VBK&1][a & 0x1FFF] = b;
+		hw.vbanks[R_VBK&1][a & 0x1FFF] = b;
 		break;
 
 	case 0xA000: // Save RAM or RTC
@@ -503,7 +510,7 @@ void hw_write(unsigned a, byte b)
 		// Video: 0xFE00 - 0xFE9F
 		else if ((a & 0xFF00) == 0xFE00)
 		{
-			if (a < 0xFEA0) lcd.oam[a & 0xFF] = b;
+			if (a < 0xFEA0) hw.oam[a & 0xFF] = b;
 		}
 		// Sound: 0xFF10 - 0xFF3F
 		else if (a >= 0xFF10 && a <= 0xFF3F)
@@ -584,19 +591,19 @@ void hw_write(unsigned a, byte b)
 				break;
 			case RI_BCPS: // GBC only
 				R_BCPS = b & 0xBF;
-				R_BCPD = lcd.pal[b & 0x3F];
+				R_BCPD = hw.pal[b & 0x3F];
 				break;
 			case RI_OCPS: // GBC only
 				R_OCPS = b & 0xBF;
-				R_OCPD = lcd.pal[64 + (b & 0x3F)];
+				R_OCPD = hw.pal[64 + (b & 0x3F)];
 				break;
 			case RI_BCPD: // GBC only
-				lcd.pal[R_BCPS & 0x3F] = b;
+				hw.pal[R_BCPS & 0x3F] = b;
 				lcd_pal_dirty();
 				if (R_BCPS & 0x80) R_BCPS = (R_BCPS+1) & 0xBF;
 				break;
 			case RI_OCPD: // GBC only
-				lcd.pal[64 + (R_OCPS & 0x3F)] = b;
+				hw.pal[64 + (R_OCPS & 0x3F)] = b;
 				lcd_pal_dirty();
 				R_OCPD = b;
 				if (R_OCPS & 0x80) R_OCPS = (R_OCPS+1) & 0xBF;
@@ -659,7 +666,7 @@ byte hw_read(unsigned a)
 		return cart.rombanks[cart.rombank][a & 0x3FFF];
 
 	case 0x8000: // Video RAM
-		return lcd.vbank[R_VBK&1][a & 0x1FFF];
+		return hw.vbanks[R_VBK&1][a & 0x1FFF];
 
 	case 0xA000: // Cart RAM or RTC
 		if (!cart.enableram)
@@ -682,7 +689,7 @@ byte hw_read(unsigned a)
 		// Video: 0xFE00 - 0xFE9F
 		else if ((a & 0xFF00) == 0xFE00)
 		{
-			return (a < 0xFEA0) ? lcd.oam[a & 0xFF] : 0xFF;
+			return (a < 0xFEA0) ? hw.oam[a & 0xFF] : 0xFF;
 		}
 		// Sound: 0xFF10 - 0xFF3F
 		else if (a >= 0xFF10 && a <= 0xFF3F)

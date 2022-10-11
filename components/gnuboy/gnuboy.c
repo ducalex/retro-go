@@ -26,7 +26,8 @@ int gnuboy_init(int samplerate, bool stereo, int pixformat, void *blit_func)
 		.audio.samplerate = samplerate,
 		.audio.stereo = stereo,
 	};
-	hw_init();
+	if (!hw_init())
+		return -1;
 	return 0;
 }
 
@@ -75,7 +76,7 @@ void gnuboy_run(bool draw)
 	altogether, R_LY is always 0 at this point */
 	while (R_LY > 0 && R_LY < 144) {
 		/* Step through visible line scanning phase */
-		cpu_emulate(lcd.cycles);
+		cpu_emulate(hw.cycles);
 	}
 
 	/* When using GB_PIXEL_PALETTED, the host should draw the frame in this callback because
@@ -96,7 +97,7 @@ void gnuboy_run(bool draw)
 
 	while (R_LY > 0) {
 		/* Step through vblank phase */
-		cpu_emulate(lcd.cycles);
+		cpu_emulate(hw.cycles);
 	}
 }
 
@@ -650,7 +651,7 @@ static int do_save_load(const char *file, bool save)
 		I4("halt", &hw.cpu->halted),
 		I4("div ", &hw.cpu->div),
 		I4("tim ", &hw.cpu->timer),
-		I4("lcdc", &hw.lcd->cycles),
+		I4("lcdc", &hw.cycles),
 		I4("snd ", &hw.snd->cycles),
 
 		I4("ints", &hw.ilines),
@@ -712,7 +713,7 @@ static int do_save_load(const char *file, bool save)
 	sblock_t blocks[] = {
 		{buf, 1},
 		{hw.rambanks, is_cgb ? 8 : 2},
-		{hw.lcd->vbank, is_cgb ? 4 : 2},
+		{hw.vbanks, is_cgb ? 4 : 2},
 		{cart.rambanks, cart.ramsize * 2},
 		{NULL, 0},
 	};
@@ -746,8 +747,8 @@ static int do_save_load(const char *file, bool save)
 		}
 
 		memcpy(buf + 0xD00, hw.ioregs, 256);
-		memcpy(buf + 0xE00, hw.lcd->pal, 128);
-		memcpy(buf + 0xF00, hw.lcd->oam, 256);
+		memcpy(buf + 0xE00, hw.pal, 128);
+		memcpy(buf + 0xF00, hw.oam, 256);
 		memcpy(buf + 0xCF0, hw.snd->wave, 16);
 
 		for (int i = 0; blocks[i].ptr != NULL; i++)
@@ -804,8 +805,8 @@ static int do_save_load(const char *file, bool save)
 			MESSAGE_ERROR("Save file version mismatch!\n");
 
 		memcpy(hw.ioregs, buf + 0xD00, 256);
-		memcpy(hw.lcd->pal, buf + 0xE00, 128);
-		memcpy(hw.lcd->oam, buf + 0xF00, 256);
+		memcpy(hw.pal, buf + 0xE00, 128);
+		memcpy(hw.oam, buf + 0xF00, 256);
 		memcpy(hw.snd->wave, buf + 0xCF0, 16);
 
 		// Disable BIOS. This is a hack to support old saves
