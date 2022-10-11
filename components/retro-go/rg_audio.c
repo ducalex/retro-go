@@ -5,11 +5,11 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifdef RG_TARGET_SDL2
-#include <SDL2/SDL.h>
-#else
+#ifndef RG_TARGET_SDL2
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
+#else
+#include <SDL2/SDL.h>
 #endif
 
 #if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC

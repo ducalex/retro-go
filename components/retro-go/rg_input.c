@@ -4,10 +4,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#ifdef RG_TARGET_SDL2
-#include <SDL2/SDL.h>
-#else
+#ifndef RG_TARGET_SDL2
 #include <driver/gpio.h>
+#else
+#include <SDL2/SDL.h>
 #endif
 
 #if RG_GAMEPAD_DRIVER == 1 || defined(RG_BATTERY_ADC_CHANNEL)

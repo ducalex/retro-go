@@ -26,13 +26,13 @@ compatibility!
 - Favorites and recently played
 - GB color palettes, RTC adjust and save
 - NES color palettes, PAL roms, NSF support
-- More emulators, applications
+- More emulators and applications
 - Scaling and filtering options
 - Better performance and compatibility
 - Turbo Speed/Fast forward
 - Customizable launcher
 - Cover art and save state previews
-- exFAT support
+- HTTP file manager
 - And more!
 
 ### Screenshots
@@ -195,7 +195,8 @@ Retro-Go and ESP32-specific code exclusively in their port file (main.c). This m
 - The Lynx emulator is a port of [libretro-handy](https://github.com/libretro/libretro-handy).
 - The SNES emulator is a port of [Snes9x 2005](https://github.com/libretro/snes9x2005).
 - The DOOM engine is a port of [PrBoom 2.5.0](http://prboom.sourceforge.net/).
-- The Mega Drive emulator is a port of [Gwenesis](https://github.com/bzhxx/gwenesis/) by bzhxx.
+- The Genesis emulator is a port of [Gwenesis](https://github.com/bzhxx/gwenesis/) by bzhxx.
+- The Game & Watch emulator is a port of [lcd-game-emulator](https://github.com/bzhxx/lcd-game-emulator) by bzhxx.
 - PNG support is provided by [lodepng](https://github.com/lvandeve/lodepng/).
 - PCE cover art is from [Christian_Haitian](https://github.com/christianhaitian).
 - Some icons from [Rokey](https://iconarchive.com/show/seed-icons-by-rokey.html).
