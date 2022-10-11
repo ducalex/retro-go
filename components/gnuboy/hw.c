@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdlib.h>
 #include "gnuboy.h"
 #include "sound.h"
 #include "cpu.h"
