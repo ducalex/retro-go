@@ -1,4 +1,5 @@
 #include "rg_system.h"
+#include "gui.h"
 
 #ifdef RG_ENABLE_NETWORKING
 #include <esp_http_server.h>
@@ -51,6 +52,8 @@ static esp_err_t http_api_handler(httpd_req_t *req)
 
     cJSON *response = cJSON_CreateObject();
 
+    gui.http_lock = true;
+
     if (strcmp(cmd, "list") == 0)
     {
         cJSON *array = cJSON_AddArrayToObject(response, "files");
@@ -83,6 +86,8 @@ static esp_err_t http_api_handler(httpd_req_t *req)
         success = (fp = fopen(arg1, "wb")) && fclose(fp) == 0;
     }
 
+    gui.http_lock = false;
+
     cJSON_AddBoolToObject(response, "success", success);
 
     char *response_text = cJSON_Print(response);
@@ -101,6 +106,9 @@ static esp_err_t http_upload_handler(httpd_req_t *req)
     char *filename = urldecode(req->uri);
 
     RG_LOGI("Receiving file: %s", filename);
+
+    gui.http_lock = true;
+    rg_task_delay(100);
 
     FILE *fp = fopen(filename, "wb");
     if (!fp)
@@ -125,6 +133,8 @@ static esp_err_t http_upload_handler(httpd_req_t *req)
     fclose(fp);
     free(filename);
 
+    gui.http_lock = false;
+
     if (received < req->content_len)
     {
         RG_LOGE("Received %d/%d bytes", received, req->content_len);
@@ -144,6 +154,8 @@ static esp_err_t http_download_handler(httpd_req_t *req)
     FILE *fp;
 
     RG_LOGI("Serving file: %s", filename);
+
+    gui.http_lock = true;
 
     if ((fp = fopen(filename, "rb")))
     {
@@ -167,6 +179,8 @@ static esp_err_t http_download_handler(httpd_req_t *req)
         httpd_resp_send_404(req);
     }
     free(filename);
+
+    gui.http_lock = false;
 
     return ESP_OK;
 }

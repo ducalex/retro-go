@@ -279,6 +279,12 @@ static void retro_loop(void)
             gui.idle_counter = 0;
             next_idle_event = rg_system_timer() + 100000;
         }
+        else if (gui.http_lock)
+        {
+            rg_gui_draw_dialog("HTTP Server Busy...", NULL, 0);
+            while (gui.http_lock) // Note: Maybe we should yield on user action, even if risky?
+                usleep(100 * 1000);
+        }
         else if (rg_system_timer() >= next_idle_event)
         {
             gui.idle_counter++;

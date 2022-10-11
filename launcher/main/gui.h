@@ -114,6 +114,7 @@ typedef struct {
     int height;
     image_t images[128];
     uint32_t joystick;
+    bool http_lock; // FIXME: should be a mutex...
 } retro_gui_t;
 
 extern retro_gui_t gui;
