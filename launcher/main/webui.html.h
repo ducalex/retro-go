@@ -101,7 +101,7 @@ static const char webui_html[] = {
 "            };"
 "            api_req('list', path, '', function () {"
 "                let html = '<tr><td>' + btn('..', 'update_view', dirname(path)) + '</td></tr>';"
-"                let files = this.response.data;"
+"                let files = this.response.files;"
 "                files.sort((a, b) => (a.name < b.name ? -1 : (a.name > b.name ? 1 : 0)));"
 "                files.sort((a, b) => (a.is_dir > b.is_dir ? -1 : (a.is_dir < b.is_dir ? 1 : 0)));"
 "                for (let f of files) {"

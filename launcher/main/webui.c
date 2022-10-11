@@ -13,6 +13,7 @@
 #include "webui.html.h"
 
 static httpd_handle_t server;
+static char *http_buffer;
 
 static char *urldecode(const char *str)
 {
@@ -37,24 +38,22 @@ static esp_err_t http_api_handler(httpd_req_t *req)
     bool success = false;
     FILE *fp;
 
-    if (httpd_req_recv(req, http_buffer, sizeof(http_buffer)) <= 0) {
+    if (httpd_req_recv(req, http_buffer, sizeof(http_buffer)) < 2)
         return ESP_FAIL;
-    }
 
     cJSON *content = cJSON_Parse(http_buffer);
-    cJSON *data = NULL;
-
-    if (!content) {
+    if (!content)
        return ESP_FAIL;
-    }
 
     const char *cmd  = cJSON_GetStringValue(cJSON_GetObjectItem(content, "cmd")) ?: "-";
     const char *arg1 = cJSON_GetStringValue(cJSON_GetObjectItem(content, "arg1")) ?: "";
     const char *arg2 = cJSON_GetStringValue(cJSON_GetObjectItem(content, "arg2")) ?: "";
 
+    cJSON *response = cJSON_CreateObject();
+
     if (strcmp(cmd, "list") == 0)
     {
-        data = cJSON_CreateArray();
+        cJSON *array = cJSON_AddArrayToObject(response, "files");
         rg_scandir_t *files = rg_storage_scandir(arg1, NULL, true);
         for (rg_scandir_t *entry = files; entry && entry->is_valid; ++entry)
         {
@@ -62,9 +61,9 @@ static esp_err_t http_api_handler(httpd_req_t *req)
             cJSON_AddStringToObject(obj, "name", entry->name);
             cJSON_AddNumberToObject(obj, "size", entry->size);
             cJSON_AddBoolToObject(obj, "is_dir", entry->is_dir);
-            cJSON_AddItemToArray(data, obj);
+            cJSON_AddItemToArray(array, obj);
         }
-        success = data && files;
+        success = array && files;
         free(files);
     }
     else if (strcmp(cmd, "rename") == 0)
@@ -84,24 +83,21 @@ static esp_err_t http_api_handler(httpd_req_t *req)
         success = (fp = fopen(arg1, "wb")) && fclose(fp) == 0;
     }
 
-    cJSON *response = cJSON_CreateObject();
-    cJSON_AddStringToObject(response, "cmd", cmd);
-    cJSON_AddItemToObject(response, "data", data);
     cJSON_AddBoolToObject(response, "success", success);
+
     char *response_text = cJSON_Print(response);
     httpd_resp_set_type(req, "application/json");
     httpd_resp_sendstr(req, response_text);
-
     free(response_text);
-    cJSON_free(response);
-    cJSON_free(content);
+
+    cJSON_Delete(response);
+    cJSON_Delete(content);
 
     return ESP_OK;
 }
 
 static esp_err_t http_upload_handler(httpd_req_t *req)
 {
-    char *http_buffer = malloc(0x10000);
     char *filename = urldecode(req->uri);
 
     RG_LOGI("Receiving file: %s", filename);
@@ -128,7 +124,6 @@ static esp_err_t http_upload_handler(httpd_req_t *req)
 
     fclose(fp);
     free(filename);
-    free(http_buffer);
 
     if (received < req->content_len)
     {
@@ -144,7 +139,6 @@ static esp_err_t http_upload_handler(httpd_req_t *req)
 
 static esp_err_t http_download_handler(httpd_req_t *req)
 {
-    char *http_buffer = malloc(0x10000);
     char *filename = urldecode(req->uri);
     const char *ext = rg_extension(filename);
     FILE *fp;
@@ -173,7 +167,6 @@ static esp_err_t http_download_handler(httpd_req_t *req)
         httpd_resp_send_404(req);
     }
     free(filename);
-    free(http_buffer);
 
     return ESP_OK;
 }
@@ -202,6 +195,8 @@ void webui_start(void)
     config.uri_match_fn = httpd_uri_match_wildcard;
     ESP_ERROR_CHECK(httpd_start(&server, &config));
 
+    http_buffer = malloc(0x20000);
+
     httpd_register_uri_handler(server, &(httpd_uri_t){
         .uri       = "/",
         .method    = HTTP_GET,
@@ -226,6 +221,7 @@ void webui_start(void)
         .handler   = http_upload_handler,
     });
 
+    RG_ASSERT(http_buffer && server, "Something went wrong starting server");
     RG_LOGI("File server started");
 }
 
