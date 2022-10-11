@@ -33,8 +33,7 @@ static char *urldecode(const char *str)
 
 static esp_err_t http_api_handler(httpd_req_t *req)
 {
-    char http_buffer[0x1000] = {0};
-    esp_err_t ret = ESP_OK;
+    char http_buffer[1024] = {0};
     bool success = false;
     FILE *fp;
 
@@ -84,36 +83,7 @@ static esp_err_t http_api_handler(httpd_req_t *req)
     {
         success = (fp = fopen(arg1, "wb")) && fclose(fp) == 0;
     }
-    else if (strcmp(cmd, "download") == 0)
-    {
-        if ((fp = fopen(arg1, "rb")))
-        {
-            const char *ext = rg_extension(arg1);
-            if (ext && (strcmp(ext, "json") == 0 || strcmp(ext, "log") == 0))
-                httpd_resp_set_type(req, "text/plain");
-            else if (ext && strcmp(ext, "png") == 0)
-                httpd_resp_set_type(req, "image/png");
-            else
-                httpd_resp_set_type(req, "application/binary");
 
-            for (size_t size; (size = fread(http_buffer, 1, sizeof(http_buffer), fp));)
-            {
-                httpd_resp_send_chunk(req, http_buffer, size);
-            }
-
-            httpd_resp_send_chunk(req, NULL, 0);
-            fclose(fp);
-
-            RG_LOGI("File transfer complete: %s\n", arg1);
-            goto cleanup;
-        }
-
-        RG_LOGE("File transfer failed: %s", arg1);
-        ret = ESP_FAIL;
-        goto cleanup;
-    }
-
-    // Send JSON response
     cJSON *response = cJSON_CreateObject();
     cJSON_AddStringToObject(response, "cmd", cmd);
     cJSON_AddItemToObject(response, "data", data);
@@ -121,17 +91,17 @@ static esp_err_t http_api_handler(httpd_req_t *req)
     char *response_text = cJSON_Print(response);
     httpd_resp_set_type(req, "application/json");
     httpd_resp_sendstr(req, response_text);
+
     free(response_text);
     cJSON_free(response);
-
-cleanup:
     cJSON_free(content);
-    return ret;
+
+    return ESP_OK;
 }
 
 static esp_err_t http_upload_handler(httpd_req_t *req)
 {
-    char http_buffer[0x1000];
+    char *http_buffer = malloc(0x8000);
     char *filename = urldecode(req->uri);
 
     RG_LOGI("Receiving file: %s", filename);
@@ -144,7 +114,7 @@ static esp_err_t http_upload_handler(httpd_req_t *req)
 
     while (received < req->content_len)
     {
-        int length = httpd_req_recv(req, http_buffer, sizeof(http_buffer));
+        int length = httpd_req_recv(req, http_buffer, 0x8000);
         if (length <= 0)
             break;
         if (!fwrite(http_buffer, length, 1, fp))
@@ -158,16 +128,53 @@ static esp_err_t http_upload_handler(httpd_req_t *req)
 
     fclose(fp);
     free(filename);
+    free(http_buffer);
 
     if (received < req->content_len)
     {
         RG_LOGE("Received %d/%d bytes", received, req->content_len);
         httpd_resp_sendstr(req, "ERROR");
-        return ESP_FAIL;
+        return ESP_OK;
     }
 
     RG_LOGI("Received %d/%d bytes", received, req->content_len);
     httpd_resp_sendstr(req, "OK");
+    return ESP_OK;
+}
+
+static esp_err_t http_download_handler(httpd_req_t *req)
+{
+    char *http_buffer = malloc(0x8000);
+    char *filename = urldecode(req->uri);
+    const char *ext = rg_extension(filename);
+    FILE *fp;
+
+    RG_LOGI("Serving file: %s", filename);
+
+    if ((fp = fopen(filename, "rb")))
+    {
+        if (ext && (strcmp(ext, "json") == 0 || strcmp(ext, "log") == 0 || strcmp(ext, "txt") == 0))
+            httpd_resp_set_type(req, "text/plain");
+        else if (ext && (strcmp(ext, "png") == 0))
+            httpd_resp_set_type(req, "image/png");
+        else if (ext && (strcmp(ext, "jpg") == 0))
+            httpd_resp_set_type(req, "image/jpg");
+        else
+            httpd_resp_set_type(req, "application/binary");
+
+        for (size_t len; (len = fread(http_buffer, 1, 0x8000, fp));)
+            httpd_resp_send_chunk(req, http_buffer, len);
+
+        httpd_resp_send_chunk(req, NULL, 0);
+        fclose(fp);
+    }
+    else
+    {
+        httpd_resp_send_404(req);
+    }
+    free(filename);
+    free(http_buffer);
+
     return ESP_OK;
 }
 
@@ -192,7 +199,6 @@ void webui_start(void)
         return;
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.stack_size = 12 * 1024;
     config.uri_match_fn = httpd_uri_match_wildcard;
     ESP_ERROR_CHECK(httpd_start(&server, &config));
 
@@ -206,6 +212,12 @@ void webui_start(void)
         .uri       = "/api",
         .method    = HTTP_POST,
         .handler   = http_api_handler,
+    });
+
+    httpd_register_uri_handler(server, &(httpd_uri_t){
+        .uri       = "/*",
+        .method    = HTTP_GET,
+        .handler   = http_download_handler,
     });
 
     httpd_register_uri_handler(server, &(httpd_uri_t){
