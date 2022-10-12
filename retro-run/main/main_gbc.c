@@ -16,6 +16,13 @@ static const char *SETTING_PALETTE  = "Palette";
 // --- MAIN
 
 
+static void set_rtc_time(void)
+{
+    time_t timer = time(NULL);
+    struct tm *info = localtime(&timer);
+    gnuboy_set_time(info->tm_yday, info->tm_hour, info->tm_min, info->tm_sec);
+}
+
 static bool screenshot_handler(const char *filename, int width, int height)
 {
     return rg_display_save_frame(filename, currentUpdate, width, height);
@@ -54,11 +61,7 @@ static bool reset_handler(bool hard)
     autoSaveSRAM_Timer = 0;
 
     if (hard)
-    {
-        time_t timer = time(NULL);
-        struct tm *info = localtime(&timer);
-        gnuboy_set_time(info->tm_yday, info->tm_hour, info->tm_min, info->tm_sec);
-    }
+        set_rtc_time();
 
     return true;
 }
@@ -265,6 +268,7 @@ void gbc_main(void)
 
     // Hard reset to have a clean slate
     gnuboy_reset(true);
+    set_rtc_time();
 
     // Load saved state or SRAM
     if (app->bootFlags & RG_BOOT_RESUME)
