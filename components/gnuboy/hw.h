@@ -74,7 +74,7 @@
 #define RI_NR51 0x25
 #define RI_NR52 0x26
 
-#define REG(n) hw.ioregs[(n)]
+#define REG(n) GB.ioregs[(n)]
 
 /* General internal/io stuff */
 #define R_P1    REG(RI_P1)
@@ -142,6 +142,8 @@
 #define R_NR50 REG(RI_NR50)
 #define R_NR51 REG(RI_NR51)
 #define R_NR52 REG(RI_NR52)
+
+#define IS_CGB (GB.hwtype == GB_HW_CGB)
 
 #include "gnuboy.h"
 #include "sound.h"
@@ -237,7 +239,7 @@ typedef struct
 } gb_hw_t;
 
 extern gb_cart_t cart;
-extern gb_hw_t hw;
+extern gb_hw_t GB;
 
 gb_hw_t *hw_init(void);
 void hw_reset(bool hard);
@@ -252,20 +254,20 @@ void hw_vblank(void);
 
 static inline byte readb(unsigned a)
 {
-	const byte *p = hw.rmap[a>>12];
+	const byte *p = GB.rmap[a>>12];
 	return p ? p[a] : hw_read(a);
 }
 
 static inline void writeb(unsigned a, byte b)
 {
-	byte *p = hw.wmap[a>>12];
+	byte *p = GB.wmap[a>>12];
 	if (p) p[a] = b;
 	else hw_write(a, b);
 }
 
 static inline uint16_t readw(unsigned a)
 {
-	const byte *p = hw.rmap[a >> 12];
+	const byte *p = GB.rmap[a >> 12];
 	if ((a & 0xFFF) == 0xFFF || !p) // Page crossed or not mapped
 	{
 		return readb(a) | (readb(a + 1) << 8);
@@ -275,7 +277,7 @@ static inline uint16_t readw(unsigned a)
 
 static inline void writew(unsigned a, uint16_t w)
 {
-	byte *p = hw.wmap[a >> 12];
+	byte *p = GB.wmap[a >> 12];
 	if ((a & 0xFFF) == 0xFFF || !p) // Page crossed or not mapped
 	{
 		writeb(a, w);

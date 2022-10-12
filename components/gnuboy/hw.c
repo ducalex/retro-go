@@ -7,8 +7,9 @@
 #include "lcd.h"
 
 gb_cart_t cart;
-gb_hw_t hw;
+gb_hw_t GB;
 
+#define hw GB
 
 static void rtc_latch(byte b)
 {
@@ -321,7 +322,7 @@ void hw_updatemap(void)
 	hw.rmap[0xC] = hw.wmap[0xC] = hw.rambanks[0] - 0xC000;
 
 	// Work RAM (GBC)
-	if (hw.hwtype == GB_HW_CGB)
+	if (IS_CGB)
 		hw.rmap[0xD] = hw.wmap[0xD] = hw.rambanks[(R_SVBK & 0x7) ?: 1] - 0xD000;
 
 	// Mirror of 0xC000
@@ -528,7 +529,7 @@ void hw_write(unsigned a, byte b)
 		{
 			int r = a & 0xFF;
 
-			if (hw.hwtype != GB_HW_CGB)
+			if (!IS_CGB)
 			{
 				if (r >= 0x51 && r <= 0x70)
 					return;
@@ -578,7 +579,7 @@ void hw_write(unsigned a, byte b)
 				break;
 			case RI_STAT:
 				R_STAT = (R_STAT & 0x07) | (b & 0x78);
-				if (hw.hwtype != GB_HW_CGB && !(R_STAT & 2)) /* DMG STAT write bug => interrupt */
+				if (!IS_CGB && !(R_STAT & 2)) /* DMG STAT write bug => interrupt */
 					hw_interrupt(IF_STAT, 1);
 				lcd_stat_trigger();
 				break;
@@ -655,7 +656,7 @@ byte hw_read(unsigned a)
 		{
 			if (a < 0x100)
 				return hw.bios[a];
-			if (a >= 0x200 && hw.hwtype == GB_HW_CGB)
+			if (a >= 0x200 && IS_CGB)
 				return hw.bios[a];
 		}
 		// fall through

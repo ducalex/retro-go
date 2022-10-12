@@ -220,9 +220,9 @@ void cpu_reset(bool hard)
 	IME = 0;
 	IMA = 0;
 
-	PC = hw.bios ? 0x0000 : 0x0100;
+	PC = GB.bios ? 0x0000 : 0x0100;
 	SP = 0xFFFE;
-	AF = (hw.hwtype == GB_HW_CGB) ? 0x11B0 : 0x01B0;
+	AF = IS_CGB ? 0x11B0 : 0x01B0;
 	BC = 0x0013;
 	DE = 0x00D8;
 	HL = 0x014D;
@@ -259,14 +259,14 @@ static inline void timer_advance(int cycles)
 /* cnt - time to emulate, expressed in real clock cycles */
 static inline void serial_advance(int cycles)
 {
-	if (hw.serial > 0)
+	if (GB.serial > 0)
 	{
-		hw.serial -= cycles << 1;
-		if (hw.serial <= 0)
+		GB.serial -= cycles << 1;
+		if (GB.serial <= 0)
 		{
 			R_SB = 0xFF;
 			R_SC &= 0x7f;
-			hw.serial = 0;
+			GB.serial = 0;
 			hw_interrupt(IF_SERIAL, 1);
 			hw_interrupt(IF_SERIAL, 0);
 		}
@@ -784,7 +784,7 @@ next:
 
 	default:
 		MESSAGE_ERROR("invalid opcode 0x%02X at address 0x%04X, rombank = %d\n",
-			op, (PC-1) & 0xffff, hw.cart->rombank);
+			op, (PC-1) & 0xffff, GB.cart->rombank);
 		break; // abort();
 	}
 

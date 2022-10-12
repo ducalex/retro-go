@@ -7,6 +7,8 @@
 #include "sound.h"
 #include "lcd.h"
 
+#define hw GB
+
 // Set in the far future for VBA-M support
 #define RTC_BASE 1893456000
 
@@ -276,7 +278,7 @@ int gnuboy_load_rom(const char *file)
 	}
 
 	// Detect colorization palette that the real GBC would be using
-	if (hw.hwtype != GB_HW_CGB)
+	if (!IS_CGB)
 	{
 		//
 		// The following algorithm was adapted from visualboyadvance-m at
@@ -708,12 +710,10 @@ static int do_save_load(const char *file, bool save)
 
 	uint32_t (*header)[2] = (uint32_t (*)[2])buf;
 
-	bool is_cgb = hw.hwtype == GB_HW_CGB;
-
 	sblock_t blocks[] = {
 		{buf, 1},
-		{hw.rambanks, is_cgb ? 8 : 2},
-		{hw.vbanks, is_cgb ? 4 : 2},
+		{hw.rambanks, IS_CGB ? 8 : 2},
+		{hw.vbanks, IS_CGB ? 4 : 2},
 		{cart.rambanks, cart.ramsize * 2},
 		{NULL, 0},
 	};

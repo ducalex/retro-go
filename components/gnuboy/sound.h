@@ -20,4 +20,4 @@ void sound_write(byte r, byte b);
 void sound_dirty(void);
 void sound_reset(bool hard);
 void sound_emulate(void);
-#define sound_advance(count) hw.snd->cycles += (count)
+#define sound_advance(count) GB.snd->cycles += (count)

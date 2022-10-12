@@ -81,8 +81,8 @@ gb_snd_t *sound_init(void)
 void sound_reset(bool hard)
 {
 	memset(&snd, 0, sizeof(snd));
-	memcpy(snd.wave, hw.hwtype == GB_HW_CGB ? cgbwave : dmgwave, 16);
-	memcpy(hw.ioregs + 0x30, snd.wave, 16);
+	memcpy(snd.wave, IS_CGB ? cgbwave : dmgwave, 16);
+	memcpy(GB.ioregs + 0x30, snd.wave, 16);
 	snd.rate = (int)(((1<<21) / (double)host.audio.samplerate) + 0.5);
 	host.audio.pos = 0;
 	sound_off();
