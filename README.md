@@ -32,7 +32,8 @@ compatibility!
 - Turbo Speed/Fast forward
 - Customizable launcher
 - Cover art and save state previews
-- HTTP file manager
+- Multiple save slots per game
+- Wifi file manager
 - And more!
 
 ### Screenshots
@@ -64,16 +65,9 @@ This method is intended to be used when .fw support isn't available (when portin
 Game covers should be placed in the `romart` folder at the base of your sd card. You can obtain a pre-made pack from
 this repository or from the release page. Retro-Go is also compatible with the older Go-Play romart pack.
 
-### Adding covers
-The preferred cover art format is PNG with a resolution of max 160x168 and I recommend post-processing your
-PNG with [pngquant](https://pngquant.org/) or [imagemagick](https://imagemagick.org/script/index.php)'s
-`-colors 255` for smaller file sizes.
-
-You can use one of two naming schemes:
-- Using the CRC32 (press A -> Properties in the launcher to find it). Assuming a CRC of ABCDE123, the cover file
-  will be `/romart/nes/A/ABCDE123.png`.
-- Using the rom file name. Assuming a rom named `myrom.nes`, the cover file will be
-  `/romart/nes/myrom.nes.png` (notice the inclusion of the rom extension).
+You can add missing cover art by creating a PNG image (160x168, 8bit) named according to the following scheme:
+`/romart/nes/A/ABCDE123.png` where `nes` is the same as the rom folder, and `ABCDE123` is the CRC32 of the game
+(press A -> Properties in the launcher to find it).
 
 ## BIOS files
 Some emulators support loading a BIOS. The files should be placed as follows:
