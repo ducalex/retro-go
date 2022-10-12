@@ -76,14 +76,14 @@ Some emulators support loading a BIOS. The files should be placed as follows:
 - FDS: `/retro-go/system/fds_bios.bin`
 
 ## Wifi
-**Important: Wifi features are only present in CI builds at this time. This notice will be removed once it makes its way to a release.**
 
-### Configuration
-You need to add a wifi section in your `/retro-go/config/retro-go.json` file. It should look like this:
+To use wifi you will need to add your config to `/retro-go/config/retro-go.json` file.
+It should look like this:
+
 ````json
 {
   "global": {
-    // ...
+    ...
   },
   "wifi": {
     "ssid": "my-network",
@@ -91,12 +91,14 @@ You need to add a wifi section in your `/retro-go/config/retro-go.json` file. It
   }
 }
 ````
+
 If you are unfamiliar with JSON syntax you can run your config file [through a validator](https://jsonlint.com/)
 to confirm that it is correct.
 
 ### Time synchronization
-Time synchronization happens in the launcher, immediately after a successful connection to the network.
-I will add instructions for the timezone soon.
+Time synchronization happens in the launcher immediately after a successful connection to the network.
+This is done via NTP by contacting `pool.ntp.org` and cannot be disabled at this time.
+Timezone can be configured in the launcher's options menu.
 
 ### File manager
 You can find the IP of your device in the *about* menu of retro-go. Then on your PC navigate to
