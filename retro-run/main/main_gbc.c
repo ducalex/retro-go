@@ -44,6 +44,7 @@ static bool load_state_handler(const char *filename)
 
         return false;
     }
+    set_rtc_time();
 
     skipFrames = 0;
     autoSaveSRAM_Timer = 0;
@@ -268,13 +269,15 @@ void gbc_main(void)
 
     // Hard reset to have a clean slate
     gnuboy_reset(true);
-    set_rtc_time();
 
     // Load saved state or SRAM
     if (app->bootFlags & RG_BOOT_RESUME)
         rg_emu_load_state(app->saveSlot);
     else
         gnuboy_load_sram(sramFile);
+
+    // Do this after loading a state, to overwrite the RTC
+    set_rtc_time();
 
     // Don't show palette option for GBC
     if (gnuboy_get_hwtype() == GB_HW_CGB)
