@@ -98,10 +98,10 @@ static void scan_folder(retro_app_t *app, const char* path, void *parent)
 
 static void application_init(retro_app_t *app)
 {
-    if (app->initialized)
-        return;
-
     RG_LOGI("Initializing application '%s' (%s)\n", app->description, app->partition);
+
+    if (app->initialized)
+        app->files_count = 0;
 
     // This checks if we have crc cover folders, the idea is to skip the crc later on if we don't!
     // It adds very little delay but it could become an issue if someone has thousands of named files...

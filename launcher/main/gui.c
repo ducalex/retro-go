@@ -106,6 +106,18 @@ tab_t *gui_get_tab(int index)
     return (index >= 0 && index < gui.tabcount) ? gui.tabs[index] : NULL;
 }
 
+void gui_invalidate(void)
+{
+    // This super lazy method will cause memory leaks, but it's better than nothing for now.
+    for (size_t i = 0; i < gui.tabcount; ++i)
+    {
+        if (!gui.tabs[i]->initialized)
+            continue;
+        gui_event(TAB_INIT, gui.tabs[i]);
+        gui_event(TAB_REFRESH, gui.tabs[i]);
+    }
+}
+
 const rg_image_t *gui_get_image(const char *type, const char *subtype)
 {
     char path[RG_PATH_MAX], name[64];

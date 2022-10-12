@@ -87,6 +87,7 @@ static esp_err_t http_api_handler(httpd_req_t *req)
     }
 
     gui.http_lock = false;
+    gui_invalidate();
 
     cJSON_AddBoolToObject(response, "success", success);
 
@@ -134,6 +135,7 @@ static esp_err_t http_upload_handler(httpd_req_t *req)
     free(filename);
 
     gui.http_lock = false;
+    gui_invalidate();
 
     if (received < req->content_len)
     {
