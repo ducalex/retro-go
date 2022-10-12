@@ -163,10 +163,6 @@ static void crc_cache_init(void)
         }
         fclose(fp);
     }
-    else
-    {
-        rg_storage_mkdir(RG_BASE_PATH_CACHE);
-    }
 }
 
 static uint32_t crc_cache_calc_key(retro_file_t *file)

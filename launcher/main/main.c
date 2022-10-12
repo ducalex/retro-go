@@ -373,7 +373,6 @@ void app_main(void)
     {
         rg_storage_mkdir(RG_BASE_PATH_CACHE);
         rg_storage_mkdir(RG_BASE_PATH_CONFIG);
-        rg_storage_mkdir(RG_BASE_PATH_SYSTEM);
         try_migrate();
     }
 

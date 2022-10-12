@@ -71,9 +71,9 @@ You can add missing cover art by creating a PNG image (160x168, 8bit) named acco
 
 ## BIOS files
 Some emulators support loading a BIOS. The files should be placed as follows:
-- GB: `/retro-go/system/gb_bios.bin`
-- GBC: `/retro-go/system/gbc_bios.bin`
-- FDS: `/retro-go/system/fds_bios.bin`
+- GB: `/retro-go/bios/gb_bios.bin`
+- GBC: `/retro-go/bios/gbc_bios.bin`
+- FDS: `/retro-go/bios/fds_bios.bin`
 
 ## Wifi
 

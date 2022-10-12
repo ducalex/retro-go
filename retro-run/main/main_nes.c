@@ -212,7 +212,7 @@ void nes_main(void)
         RG_PANIC("Init failed.");
     }
 
-    int ret = nes_insertcart(app->romPath, RG_BASE_PATH_SYSTEM "/fds_bios.bin");
+    int ret = nes_insertcart(app->romPath, RG_BASE_PATH_BIOS "/fds_bios.bin");
     if (ret == -1)
         RG_PANIC("ROM load failed.");
     else if (ret == -2)

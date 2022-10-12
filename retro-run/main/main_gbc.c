@@ -261,9 +261,9 @@ void gbc_main(void)
 
     // Load BIOS
     if (gnuboy_get_hwtype() == GB_HW_CGB)
-        gnuboy_load_bios(RG_BASE_PATH_SYSTEM "/gbc_bios.bin");
+        gnuboy_load_bios(RG_BASE_PATH_BIOS "/gbc_bios.bin");
     else
-        gnuboy_load_bios(RG_BASE_PATH_SYSTEM "/gb_bios.bin");
+        gnuboy_load_bios(RG_BASE_PATH_BIOS "/gb_bios.bin");
 
     gnuboy_set_palette(rg_settings_get_number(NS_APP, SETTING_PALETTE, GB_PALETTE_CGB));
 
