@@ -75,6 +75,7 @@ static struct
 
 // The trace will survive a software reset
 static RTC_NOINIT_ATTR panic_trace_t panicTrace;
+static RTC_NOINIT_ATTR time_t rtcValue;
 static rg_stats_t statistics;
 static rg_app_t app;
 static logbuf_t logbuf;
@@ -97,7 +98,7 @@ static const char *SETTING_TIMEZONE = "Timezone";
 
 void rg_system_load_time(void)
 {
-    time_t time_sec = RG_BUILD_TIME;
+    time_t time_sec = RG_MAX(rtcValue, RG_BUILD_TIME);
     FILE *fp;
 #if 0
     if (rg_i2c_read(0x68, 0x00, data, sizeof(data)))
@@ -231,6 +232,7 @@ static void system_monitor_task(void *arg)
     {
         int loopTime_us = lastLoop - rg_system_timer();
         lastLoop = rg_system_timer();
+        rtcValue = time(NULL);
 
         // Maybe we should *try* to wait for vsync before updating?
         update_statistics();

@@ -37,12 +37,11 @@
 
 		"C_Cpp.default.defines": [
 			"RETRO_GO",
-			"INLINE=",
-			"uint=unsigned int",
 			"CONFIG_FREERTOS_HZ=100",
 			"CONFIG_TCPIP_LWIP=1",
 			"RG_ENABLE_NETPLAY=",
 			"RG_ENABLE_NETWORKING=",
+			"RTC_NOINIT_ATTR=",
 		],
 		"C_Cpp.default.includePath": [
 			"${workspaceFolder}/components/**",

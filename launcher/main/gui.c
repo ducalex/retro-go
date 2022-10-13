@@ -30,6 +30,7 @@ retro_gui_t gui;
 #define SETTING_THEME           "Theme"
 #define SETTING_COLOR_THEME     "ColorTheme"
 #define SETTING_SHOW_PREVIEW    "ShowPreview"
+#define SETTING_HIDDEN_TABS     "HiddenTabs"
 #define SETTING_HIDE_TAB(name)  strcat((char[99]){"HideTab."}, (name))
 
 static int max_visible_lines(const tab_t *tab, int *_line_height)
@@ -42,9 +43,10 @@ static int max_visible_lines(const tab_t *tab, int *_line_height)
 void gui_init(void)
 {
     gui = (retro_gui_t){
-        .selected     = rg_settings_get_number(NS_APP, SETTING_SELECTED_TAB, 0),
+        .selected_tab = rg_settings_get_number(NS_APP, SETTING_SELECTED_TAB, 0),
+        .startup_mode = rg_settings_get_number(NS_APP, SETTING_STARTUP_MODE, 0),
+        .hidden_tabs  = rg_settings_get_string(NS_APP, SETTING_HIDDEN_TABS, ""),
         .color_theme  = rg_settings_get_number(NS_APP, SETTING_COLOR_THEME, 0),
-        .startup      = rg_settings_get_number(NS_APP, SETTING_STARTUP_MODE, 0),
         .start_screen = rg_settings_get_number(NS_APP, SETTING_START_SCREEN, 0),
         .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, 2),
         .width        = rg_display_get_info()->screen.width,
@@ -66,8 +68,8 @@ tab_t *gui_add_tab(const char *name, const char *desc, void *arg, void *event_ha
 {
     tab_t *tab = calloc(1, sizeof(tab_t));
 
-    sprintf(tab->name, "%.63s", name);
-    sprintf(tab->desc, "%.127s", desc);
+    snprintf(tab->name, sizeof(tab->name), "%s", name);
+    snprintf(tab->desc, sizeof(tab->desc), "%s", desc);
     sprintf(tab->status[1].left, "Loading...");
 
     tab->event_handler = event_handler;
@@ -82,9 +84,9 @@ tab_t *gui_add_tab(const char *name, const char *desc, void *arg, void *event_ha
         .sort_mode = SORT_TEXT_ASC,
     };
 
-    gui.tabs[gui.tabcount++] = tab;
+    gui.tabs[gui.tabs_count++] = tab;
 
-    RG_LOGI("Tab '%s' added at index %d\n", tab->name, gui.tabcount - 1);
+    RG_LOGI("Tab '%s' added at index %d\n", tab->name, gui.tabs_count - 1);
 
     return tab;
 }
@@ -103,13 +105,13 @@ void gui_init_tab(tab_t *tab)
 
 tab_t *gui_get_tab(int index)
 {
-    return (index >= 0 && index < gui.tabcount) ? gui.tabs[index] : NULL;
+    return (index >= 0 && index < gui.tabs_count) ? gui.tabs[index] : NULL;
 }
 
 void gui_invalidate(void)
 {
     // This super lazy method will cause memory leaks, but it's better than nothing for now.
-    for (size_t i = 0; i < gui.tabcount; ++i)
+    for (size_t i = 0; i < gui.tabs_count; ++i)
     {
         if (!gui.tabs[i]->initialized)
             continue;
@@ -179,7 +181,7 @@ const rg_image_t *gui_get_image(const char *type, const char *subtype)
 
 tab_t *gui_get_current_tab(void)
 {
-    tab_t *tab = gui_get_tab(gui.selected);
+    tab_t *tab = gui_get_tab(gui.selected_tab);
     if (!tab)
         RG_LOGE("current tab is NULL!");
     return tab;
@@ -187,14 +189,14 @@ tab_t *gui_get_current_tab(void)
 
 tab_t *gui_set_current_tab(int index)
 {
-    index %= gui.tabcount;
+    index %= gui.tabs_count;
 
     if (index < 0)
-        index += gui.tabcount;
+        index += gui.tabs_count;
 
-    gui.selected = index;
+    gui.selected_tab = index;
 
-    return gui_get_tab(gui.selected);
+    return gui_get_tab(gui.selected_tab);
 }
 
 void gui_set_status(tab_t *tab, const char *left, const char *right)
@@ -221,12 +223,13 @@ void gui_set_theme(const char *name)
 
 void gui_save_config(void)
 {
-    rg_settings_set_number(NS_APP, SETTING_SELECTED_TAB, gui.selected);
+    rg_settings_set_number(NS_APP, SETTING_SELECTED_TAB, gui.selected_tab);
     rg_settings_set_number(NS_APP, SETTING_START_SCREEN, gui.start_screen);
     rg_settings_set_number(NS_APP, SETTING_SHOW_PREVIEW, gui.show_preview);
     rg_settings_set_number(NS_APP, SETTING_COLOR_THEME, gui.color_theme);
-    rg_settings_set_number(NS_APP, SETTING_STARTUP_MODE, gui.startup);
-    for (int i = 0; i < gui.tabcount; i++)
+    rg_settings_set_number(NS_APP, SETTING_STARTUP_MODE, gui.startup_mode);
+    rg_settings_set_string(NS_APP, SETTING_HIDDEN_TABS, gui.hidden_tabs);
+    for (int i = 0; i < gui.tabs_count; i++)
         rg_settings_set_number(NS_APP, SETTING_HIDE_TAB(gui.tabs[i]->name), !gui.tabs[i]->enabled);
 }
 
@@ -524,21 +527,21 @@ void gui_load_preview(tab_t *tab)
             continue;
 
         if (type == 0x1 && app->use_crc_covers && application_get_file_crc32(file)) // Game cover (old format)
-            sprintf(path, "%s/%X/%08X.art", app->paths.covers, file->checksum >> 28, file->checksum);
+            snprintf(path, RG_PATH_MAX, "%s/%X/%08X.art", app->paths.covers, file->checksum >> 28, file->checksum);
         else if (type == 0x2 && app->use_crc_covers && application_get_file_crc32(file)) // Game cover (png)
-            sprintf(path, "%s/%X/%08X.png", app->paths.covers, file->checksum >> 28, file->checksum);
+            snprintf(path, RG_PATH_MAX, "%s/%X/%08X.png", app->paths.covers, file->checksum >> 28, file->checksum);
         else if (type == 0x3) // Game cover (based on filename)
-            sprintf(path, "%s/%s.png", app->paths.covers, file->name);
+            snprintf(path, RG_PATH_MAX, "%s/%s.png", app->paths.covers, file->name);
         else if (type == 0x4) // Save state screenshot (png)
         {
-            sprintf(path, "%s/%s", file->folder, file->name);
+            snprintf(path, RG_PATH_MAX, "%s/%s", file->folder, file->name);
             rg_emu_state_t *state = rg_emu_get_states(path, 4);
             if (state->lastused)
-                strcpy(path, state->lastused->preview);
+                snprintf(path, RG_PATH_MAX, "%s", state->lastused->preview);
             else if (state->latest)
-                strcpy(path, state->latest->preview);
+                snprintf(path, RG_PATH_MAX, "%s", state->latest->preview);
             else
-                strcpy(path, "/lazy/invalid/path");
+                snprintf(path, RG_PATH_MAX, "%s", "/lazy/invalid/path");
             free(state);
         }
         else

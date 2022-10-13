@@ -84,8 +84,8 @@ typedef void (*gui_event_handler_t)(gui_event_t event, void *arg);
 // } navpath_t;
 
 typedef struct tab_s {
-    char name[64];
-    char desc[128];
+    char name[16];
+    char desc[64];
     struct {
         char left[24];
         char right[24];
@@ -101,18 +101,19 @@ typedef struct tab_s {
 
 typedef struct {
     tab_t *tabs[32];
-    int tabcount;
-    int selected;
-    int startup;
+    size_t tabs_count;
+    int selected_tab;
+    int startup_mode;
     int browse;
+    char *hidden_tabs;
     const char *theme;
     int color_theme;
     int start_screen;
     int show_preview;
-    int idle_counter;
     int width;
     int height;
     image_t images[128];
+    uint32_t idle_counter;
     uint32_t joystick;
     bool http_lock; // FIXME: should be a mutex...
 } retro_gui_t;

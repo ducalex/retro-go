@@ -73,9 +73,7 @@ const char *rg_relpath(const char *path)
     if (strncmp(path, RG_STORAGE_ROOT, strlen(RG_STORAGE_ROOT)) == 0)
     {
         const char *relpath = path + strlen(RG_STORAGE_ROOT);
-        if (relpath[0] == '/')
-            path = relpath + 1;
-        else if (relpath[0] == 0)
+        if (relpath[0] == '/' || relpath[0] == 0)
             path = relpath;
     }
     return path;

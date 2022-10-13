@@ -128,7 +128,7 @@ static void application_start(retro_file_t *file, int load_state)
     char *part = strdup(file->app->partition);
     char *name = strdup(file->app->short_name);
     char *path = strdup(get_file_path(file));
-    int flags = (gui.startup ? RG_BOOT_ONCE : 0);
+    int flags = (gui.startup_mode ? RG_BOOT_ONCE : 0);
     if (load_state != -1)
     {
         flags |= RG_BOOT_RESUME;
@@ -657,10 +657,10 @@ static void application(const char *desc, const char *name, const char *exts, co
     retro_app_t *app = calloc(1, sizeof(retro_app_t));
     apps[apps_count++] = app;
 
-    snprintf(app->description, 60, "%s", desc);
-    snprintf(app->short_name, 60, "%s", name);
-    snprintf(app->partition, 60, "%s", part);
-    snprintf(app->extensions, 60, " %s ", exts);
+    snprintf(app->description, sizeof(app->description), "%s", desc);
+    snprintf(app->short_name, sizeof(app->short_name), "%s", name);
+    snprintf(app->partition, sizeof(app->partition), "%s", part);
+    snprintf(app->extensions, sizeof(app->extensions), " %s ", exts);
     rg_strtolower(app->partition);
     rg_strtolower(app->short_name);
     rg_strtolower(app->extensions);

@@ -366,10 +366,10 @@ void app_main(void)
         S9xMixSamples((void *)mixbuffer, AUDIO_BUFFER_LENGTH << 1);
 #endif
 
-        int elapsed = rg_system_timer() - startTime;
-
         if (IPPU.RenderThisFrame)
             rg_display_queue_update(&updates[0], NULL);
+
+        int elapsed = rg_system_timer() - startTime;
 
 #ifndef USE_BLARGG_APU
     if (apu_enabled)

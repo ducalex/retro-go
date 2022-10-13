@@ -211,7 +211,7 @@ void webui_start(void)
     config.uri_match_fn = httpd_uri_match_wildcard;
     ESP_ERROR_CHECK(httpd_start(&server, &config));
 
-    http_buffer = malloc(0x20000);
+    http_buffer = malloc(0x10000);
 
     httpd_register_uri_handler(server, &(httpd_uri_t){
         .uri       = "/",

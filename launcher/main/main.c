@@ -28,14 +28,11 @@ static rg_gui_event_t toggle_tabs_cb(rg_gui_option_t *option, rg_gui_event_t eve
 {
     if (event == RG_DIALOG_ENTER)
     {
-        rg_gui_option_t options[gui.tabcount + 1];
-        rg_gui_option_t *option = &options[0];
+        rg_gui_option_t options[gui.tabs_count + 1];
 
-        for (int i = 0; i < gui.tabcount; ++i)
-        {
-            *option++ = (rg_gui_option_t){i, gui.tabs[i]->name, "...", 1, &toggle_tab_cb};
-        }
-        *option++ = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
+        for (size_t i = 0; i < gui.tabs_count; ++i)
+            options[i] = (rg_gui_option_t){i, gui.tabs[i]->name, "...", 1, &toggle_tab_cb};
+        options[gui.tabs_count] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
 
         rg_gui_dialog("Tabs Visibility", options, 0);
         gui_redraw();
@@ -125,12 +122,12 @@ static rg_gui_event_t startup_app_cb(rg_gui_option_t *option, rg_gui_event_t eve
     const char *modes[] = {"Last game", "Launcher"};
     int max = 1;
 
-    if (event == RG_DIALOG_PREV && --gui.startup < 0)
-        gui.startup = max;
-    if (event == RG_DIALOG_NEXT && ++gui.startup > max)
-        gui.startup = 0;
+    if (event == RG_DIALOG_PREV && --gui.startup_mode < 0)
+        gui.startup_mode = max;
+    if (event == RG_DIALOG_NEXT && ++gui.startup_mode > max)
+        gui.startup_mode = 0;
 
-    strcpy(option->value, modes[gui.startup % (max + 1)]);
+    strcpy(option->value, modes[gui.startup_mode % (max + 1)]);
     return RG_DIALOG_VOID;
 }
 
@@ -154,7 +151,7 @@ static void retro_loop(void)
 
     if (!tab)
     {
-        gui.selected = 0;
+        gui.selected_tab = 0;
         tab = gui_get_current_tab();
     }
 
@@ -170,9 +167,9 @@ static void retro_loop(void)
             if (change_tab)
             {
                 gui_event(TAB_LEAVE, tab);
-                tab = gui_set_current_tab(gui.selected + change_tab);
-                for (int tabs = gui.tabcount; !tab->enabled && --tabs > 0;)
-                    tab = gui_set_current_tab(gui.selected + change_tab);
+                tab = gui_set_current_tab(gui.selected_tab + change_tab);
+                for (int tabs = gui.tabs_count; !tab->enabled && --tabs > 0;)
+                    tab = gui_set_current_tab(gui.selected_tab + change_tab);
                 change_tab = 0;
             }
 
