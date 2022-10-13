@@ -37,6 +37,7 @@ static keymap_t keymap;
 
 static const char *SETTING_FRAMESKIP = "frameskip";
 static const char *SETTING_KEYMAP = "keymap";
+static const char *SETTING_APU_EMULATION = "apu";
 // --- MAIN
 
 static void update_keymap(int id)
@@ -71,7 +72,7 @@ static rg_gui_event_t apu_toggle_cb(rg_gui_option_t *option, rg_gui_event_t even
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
         apu_enabled = !apu_enabled;
-        Settings.APUEnabled = apu_enabled;
+        rg_settings_set_number(NS_APP, SETTING_APU_EMULATION, apu_enabled);
     }
 
     sprintf(option->value, "%s", apu_enabled ? "On " : "Off");
@@ -260,7 +261,7 @@ void app_main(void)
     };
 	const rg_gui_option_t options[] = {
 		{2, "APU enable", (char*)"", 1, &apu_toggle_cb},
-		{2, "LP Filter", (char*)"", 1, &lowpass_filter_cb},
+		// {2, "LP Filter", (char*)"", 1, &lowpass_filter_cb},
 		{2, "Frameskip", (char*)"", 1, &frameskip_cb},
 		{2, "Controls", (char*)"", 1, &menu_keymap_cb},
 		RG_DIALOG_CHOICE_LAST
@@ -268,6 +269,7 @@ void app_main(void)
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
 
     frameskip = rg_settings_get_number(NS_APP, SETTING_FRAMESKIP, frameskip);
+    apu_enabled = rg_settings_get_number(NS_APP, SETTING_APU_EMULATION, 1);
 
     updates[0].buffer = malloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2);
 
@@ -354,27 +356,28 @@ void app_main(void)
         IPPU.RenderThisFrame = (frames++ % frameskip) == 0;
         GFX.Screen = currentUpdate->buffer;
 
-        if (!apu_enabled) // don't touch APUEnabled if not needed
-            Settings.APUEnabled = false;
+    #ifndef USE_BLARGG_APU
+        // Fully disabling the APU isn't possible at this point.
+        if (!apu_enabled)
+            Settings.APUEnabled = false, IAPU.APUExecuting = false;
+    #endif
 
         S9xMainLoop();
 
-#ifndef USE_BLARGG_APU
-    if (apu_enabled && lowpass_filter)
-        S9xMixSamplesLowPass((void *)mixbuffer, AUDIO_BUFFER_LENGTH << 1, (60 * 65536) / 100);
-    else if (apu_enabled)
-        S9xMixSamples((void *)mixbuffer, AUDIO_BUFFER_LENGTH << 1);
-#endif
-
         if (IPPU.RenderThisFrame)
-            rg_display_queue_update(&updates[0], NULL);
+            rg_display_queue_update(currentUpdate, NULL);
+
+    #ifndef USE_BLARGG_APU
+        if (apu_enabled)
+            S9xMixSamples((void *)mixbuffer, AUDIO_BUFFER_LENGTH << 1);
+    #endif
 
         int elapsed = rg_system_timer() - startTime;
 
-#ifndef USE_BLARGG_APU
-    if (apu_enabled)
-        rg_audio_submit(mixbuffer, AUDIO_BUFFER_LENGTH);
-#endif
+    #ifndef USE_BLARGG_APU
+        if (apu_enabled)
+            rg_audio_submit(mixbuffer, AUDIO_BUFFER_LENGTH);
+    #endif
 
         rg_system_tick(elapsed);
     }
