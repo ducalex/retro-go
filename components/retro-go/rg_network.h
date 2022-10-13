@@ -26,6 +26,7 @@ typedef struct
     int rssi, state;
     char local_addr[16];
     char remote_addr[16];
+    bool configured;
     bool connected;
     bool connecting;
     bool initialized;

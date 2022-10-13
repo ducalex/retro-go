@@ -1108,11 +1108,11 @@ int rg_gui_about_menu(const rg_gui_option_t *extra_options)
         strcat(build_ver, ")");
     }
 
-    rg_network_t info = rg_network_get_info();
-    if (info.connected) sprintf(network_str, "%s\n%s", info.ssid, info.local_addr);
-    else if (info.connecting) strcpy(network_str, "connecting...");
-    else if (info.connected) strcpy(network_str, "disconnected");
-    else strcpy(network_str, "unavailable");
+    rg_network_t net = rg_network_get_info();
+    if (net.connected) sprintf(network_str, "%s\n%s", net.ssid, net.local_addr);
+    else if (net.connecting) strcpy(network_str, "connecting...");
+    else if (net.configured) strcpy(network_str, "disconnected");
+    else strcpy(network_str, "not configured");
 
     int sel = rg_gui_dialog("Retro-Go", options, -1);
 

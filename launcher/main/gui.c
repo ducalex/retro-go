@@ -426,10 +426,12 @@ void gui_draw_status(tab_t *tab)
     char *txt_right = tab->status[tab->status[1].right[0] ? 1 : 0].right;
 
     rg_gui_draw_battery(-27, 3);
-    rg_gui_draw_radio(-50, 3);
-    // We need a rg_system_rtc_has_been_set_or_something() method instead, other sources could set time.
-    // if (rg_network_get_info().initialized)
-    rg_gui_draw_clock(-94, 3);
+
+    if (rg_network_get_info().configured)
+    {
+        rg_gui_draw_radio(-50, 3);
+        rg_gui_draw_clock(-94, 3);
+    }
 
     rg_gui_draw_text(status_x, status_y, gui.width, txt_right, C_SNOW, C_TRANSPARENT, RG_TEXT_ALIGN_LEFT);
     rg_gui_draw_text(status_x, status_y, 0, txt_left, C_WHITE, C_TRANSPARENT, RG_TEXT_ALIGN_RIGHT);

@@ -68,6 +68,7 @@ bool rg_network_wifi_start(int mode, const char *ssid, const char *password, int
         RG_LOGI("Replacing SSID '%s' with '%s'.\n", netstate.ssid, ssid);
         snprintf(netstate.ssid, 32, "%s", ssid);
         snprintf(netstate.password, 64, "%s", password ?: "");
+        netstate.configured = true;
     }
     if (!netstate.ssid[0])
     {
@@ -197,6 +198,7 @@ bool rg_network_init(void)
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     TRY(esp_wifi_init(&cfg));
 
+    netstate.configured = netstate.ssid[0] != 0;
     netstate.initialized = true;
     return true;
 fail:
