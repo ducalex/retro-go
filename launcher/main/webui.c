@@ -209,7 +209,13 @@ void webui_start(void)
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.uri_match_fn = httpd_uri_match_wildcard;
-    ESP_ERROR_CHECK(httpd_start(&server, &config));
+
+    esp_err_t err = httpd_start(&server, &config);
+    if (err != ESP_OK)
+    {
+        RG_LOGE("Failed to start webserver: 0x%03X", err);
+        return;
+    }
 
     http_buffer = malloc(0x10000);
 
@@ -238,7 +244,7 @@ void webui_start(void)
     });
 
     RG_ASSERT(http_buffer && server, "Something went wrong starting server");
-    RG_LOGI("File server started");
+    RG_LOGI("Web server started");
 }
 
 #endif
