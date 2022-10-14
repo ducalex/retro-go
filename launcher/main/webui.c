@@ -57,7 +57,7 @@ static esp_err_t http_api_handler(httpd_req_t *req)
     if (strcmp(cmd, "list") == 0)
     {
         cJSON *array = cJSON_AddArrayToObject(response, "files");
-        rg_scandir_t *files = rg_storage_scandir(arg1, NULL, true);
+        rg_scandir_t *files = rg_storage_scandir(arg1, NULL, RG_SCANDIR_SORT | RG_SCANDIR_STAT);
         for (rg_scandir_t *entry = files; entry && entry->is_valid; ++entry)
         {
             cJSON *obj = cJSON_CreateObject();

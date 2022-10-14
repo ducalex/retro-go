@@ -23,6 +23,12 @@ typedef struct __attribute__((packed))
     char name[76];
 } rg_scandir_t;
 
+enum
+{
+    RG_SCANDIR_STAT = 1, // This will populate file size
+    RG_SCANDIR_SORT = 2, // This will sort using natural order
+};
+
 void rg_storage_init(void);
 void rg_storage_deinit(void);
 bool rg_storage_format(void);
@@ -34,4 +40,4 @@ bool rg_storage_read_file(const char *path, void **data_ptr, size_t *data_len);
 bool rg_storage_write_file(const char *path, const void *data_ptr, const size_t data_len);
 bool rg_storage_delete(const char *path);
 bool rg_storage_mkdir(const char *dir);
-rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char *path), bool do_stat);
+rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char *path), uint32_t flags);

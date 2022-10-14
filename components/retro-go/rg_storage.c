@@ -277,7 +277,13 @@ bool rg_storage_delete(const char *path)
     return false;
 }
 
-rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char *path), bool do_stat)
+static int scandir_natural_sort(const void *a, const void *b)
+{
+    // FIXME: Do something...
+    return 0;
+}
+
+rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char *path), uint32_t flags)
 {
     DIR *dir = opendir(path);
     if (!dir)
@@ -323,10 +329,10 @@ rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char 
             result->is_file = ent->d_type == DT_REG;
             result->is_dir = ent->d_type == DT_DIR;
         #else
-            do_stat = true;
+            flags |= RG_SCANDIR_STAT;
         #endif
 
-        if (do_stat && stat(fullpath, &statbuf) == 0)
+        if ((flags & RG_SCANDIR_STAT) && stat(fullpath, &statbuf) == 0)
         {
             result->is_file = S_ISREG(statbuf.st_mode);
             result->is_dir = S_ISDIR(statbuf.st_mode);
@@ -334,6 +340,11 @@ rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char 
         }
     }
     memset(&results[count], 0, sizeof(rg_scandir_t));
+
+    if (flags & RG_SCANDIR_SORT)
+    {
+        qsort(results, count, sizeof(rg_scandir_t), scandir_natural_sort);
+    }
 
     return results;
 }
