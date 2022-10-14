@@ -189,7 +189,7 @@ tab_t *gui_get_current_tab(void)
 
 tab_t *gui_set_current_tab(int index)
 {
-    index %= gui.tabs_count;
+    index %= (int)gui.tabs_count;
 
     if (index < 0)
         index += gui.tabs_count;
