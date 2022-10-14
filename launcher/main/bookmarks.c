@@ -116,6 +116,7 @@ static void book_load(book_type_t book_type)
     retro_file_t tmp_file;
     char line_buffer[169] = {0};
 
+    // FIXME: We should leverage cJSON here instead...
     FILE *fp = fopen(book->path, "r");
     if (fp)
     {
@@ -140,6 +141,7 @@ static void book_save(book_type_t book_type)
 {
     book_t *book = &books[book_type];
 
+    // FIXME: We should leverage cJSON here instead...
     FILE *fp = fopen(book->path, "w");
     if (!fp && rg_storage_mkdir(rg_dirname(book->path)))
     {

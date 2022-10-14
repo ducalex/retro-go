@@ -1286,6 +1286,9 @@ int rg_gui_game_menu(void)
 
     sel = rg_gui_dialog("Retro-Go", choices, 0);
 
+    rg_settings_commit();
+    rg_system_save_time();
+
     if (sel == 3000)
     {
         const rg_gui_option_t choices[] = {

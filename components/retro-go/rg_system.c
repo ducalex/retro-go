@@ -228,7 +228,7 @@ static void system_monitor_task(void *arg)
     rg_task_delay(2500);
     WDT_RELOAD(WDT_TIMEOUT);
 
-    while (1)
+    while (!exitCalled)
     {
         int loopTime_us = lastLoop - rg_system_timer();
         lastLoop = rg_system_timer();
@@ -275,6 +275,12 @@ static void system_monitor_task(void *arg)
             if ((numLoop % 10) == 0)
                 rg_system_dump_profile();
         #endif
+
+        // if ((numLoop % 300) == 299)
+        // {
+        //     RG_LOGI("Saving system time");
+        //     rg_system_save_time();
+        // }
 
         rg_task_delay(1000);
         numLoop++;
@@ -733,7 +739,6 @@ bool rg_emu_save_state(uint8_t slot)
     #undef tempname
     free(filename);
 
-    rg_system_save_time();
     rg_storage_commit();
     rg_system_set_led(0);
 
@@ -822,7 +827,7 @@ static void shutdown_cleanup(void)
     rg_gui_draw_hourglass();                  // ...
     rg_system_event(RG_EVENT_SHUTDOWN, NULL); // Allow apps to save their state if they want
     rg_audio_deinit();                        // Disable sound ASAP to avoid audio garbage
-    // rg_system_save_time();                     // RTC might save to storage, do it before
+    // rg_system_save_time();                    // RTC might save to storage, do it before
     rg_storage_deinit();                      // Unmount storage
     rg_input_wait_for_key(RG_KEY_ALL, false); // Wait for all keys to be released (boot is sensitive to GPIO0,32,33)
     rg_input_deinit();                        // Now we can shutdown input
@@ -860,6 +865,7 @@ void rg_system_start_app(const char *app, const char *name, const char *args, ui
     rg_settings_set_string(NS_GLOBAL, SETTING_BOOT_NAME, name);
     rg_settings_set_string(NS_GLOBAL, SETTING_BOOT_ARGS, args);
     rg_settings_set_number(NS_GLOBAL, SETTING_BOOT_FLAGS, flags);
+    rg_system_save_time();
     rg_settings_commit();
     rg_system_set_boot_app(app);
     rg_system_restart();
