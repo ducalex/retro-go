@@ -107,7 +107,7 @@ void rg_system_load_time(void)
     }
     else
 #endif
-    if ((fp = fopen(RG_BASE_PATH_CONFIG "/clock.bin", "rb")))
+    if ((fp = fopen(RG_BASE_PATH_CACHE "/clock.bin", "rb")))
     {
         fread(&time_sec, sizeof(time_sec), 1, fp);
         fclose(fp);
@@ -125,7 +125,7 @@ void rg_system_save_time(void)
     time_t time_sec = time(NULL);
     FILE *fp;
     // We always save to storage in case the RTC disappears.
-    if ((fp = fopen(RG_BASE_PATH_CONFIG "/clock.bin", "wb")))
+    if ((fp = fopen(RG_BASE_PATH_CACHE "/clock.bin", "wb")))
     {
         fwrite(&time_sec, sizeof(time_sec), 1, fp);
         fclose(fp);
@@ -150,11 +150,7 @@ static void exit_handler(void)
 {
     RG_LOGI("Exit handler called.\n");
     if (!exitCalled)
-    {
-        exitCalled = true;
-        rg_system_set_boot_app(RG_APP_LAUNCHER);
-        rg_system_restart();
-    }
+        rg_system_switch_app(RG_APP_LAUNCHER, 0, 0, 0);
 }
 
 static inline void begin_panic_trace(const char *context, const char *message)
@@ -309,12 +305,10 @@ static void enter_recovery_mode(void)
             rg_settings_reset();
             break;
         case 1:
-            rg_system_set_boot_app(RG_APP_FACTORY);
-            rg_system_restart();
+            rg_system_switch_app(RG_APP_FACTORY, RG_APP_FACTORY, 0, 0);
         case 2:
         default:
-            rg_system_set_boot_app(RG_APP_LAUNCHER);
-            rg_system_restart();
+            rg_system_switch_app(RG_APP_FACTORY, RG_APP_LAUNCHER, 0, 0);
         }
     }
 }
@@ -381,7 +375,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     printf(" built for: %s. aud=%d disp=%d pad=%d sd=%d cfg=%d\n", RG_TARGET_NAME, 0, 0, 0, 0, 0);
     printf("========================================================\n\n");
 
-    #ifndef RG_TARGET_SDL2
+#ifndef RG_TARGET_SDL2
     esp_reset_reason_t r_reason = esp_reset_reason();
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
@@ -391,7 +385,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         app.bootType = RG_RST_PANIC;
     else if (r_reason == ESP_RST_SW)
         app.bootType = RG_RST_RESTART;
-    #endif
+#endif
 
     update_memory_statistics();
     RG_LOGI("Internal memory: free=%d, total=%d\n", statistics.freeMemoryInt, statistics.totalMemoryInt);
@@ -408,9 +402,9 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     }
     else
     {
-        app.configNs = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_NAME, app.name);
-        app.bootArgs = rg_settings_get_string(NS_GLOBAL, SETTING_BOOT_ARGS, "");
-        app.bootFlags = rg_settings_get_number(NS_GLOBAL, SETTING_BOOT_FLAGS, 0);
+        app.configNs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_NAME, app.name);
+        app.bootArgs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_ARGS, "");
+        app.bootFlags = rg_settings_get_number(NS_BOOT, SETTING_BOOT_FLAGS, 0);
         app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
         app.romPath = app.bootArgs;
     }
@@ -449,13 +443,15 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         RG_LOGW("Aborting: panic!\n");
         rg_display_clear(C_BLUE);
         rg_gui_alert("System Panic!", message);
-        rg_system_set_boot_app(RG_APP_LAUNCHER);
-        rg_system_restart();
+        rg_system_switch_app(RG_APP_LAUNCHER, 0, 0, 0);
     }
     panicTrace.magicWord = 0;
 
+#ifndef RG_TARGET_SDL2
     if (app.bootFlags & RG_BOOT_ONCE)
-        rg_system_set_boot_app(RG_APP_LAUNCHER);
+        esp_ota_set_boot_partition(esp_partition_find_first(
+            ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, RG_APP_LAUNCHER));
+#endif
 
     rg_system_set_timezone(rg_settings_get_string(NS_GLOBAL, SETTING_TIMEZONE, "EST+5"));
     rg_system_load_time();
@@ -646,7 +642,7 @@ static void emu_update_save_slot(uint8_t slot)
         app.bootFlags &= ~RG_BOOT_SLOT_MASK;
         app.bootFlags |= app.saveSlot << 4;
         app.bootFlags |= RG_BOOT_RESUME;
-        rg_settings_set_number(NS_GLOBAL, SETTING_BOOT_FLAGS, app.bootFlags);
+        rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, app.bootFlags);
     }
 
     rg_storage_commit();
@@ -848,6 +844,7 @@ void rg_system_shutdown(void)
 void rg_system_sleep(void)
 {
     RG_LOGI("Going to sleep!\n");
+    exitCalled = true;
     shutdown_cleanup();
     rg_task_delay(1000);
     esp_deep_sleep_start();
@@ -855,43 +852,40 @@ void rg_system_sleep(void)
 
 void rg_system_restart(void)
 {
+    RG_LOGI("Restarting system.\n");
     exitCalled = true;
     shutdown_cleanup();
     esp_restart();
 }
 
-void rg_system_start_app(const char *app, const char *name, const char *args, uint32_t flags)
+void rg_system_switch_app(const char *partition, const char *name, const char *args, uint32_t flags)
 {
-    rg_settings_set_string(NS_GLOBAL, SETTING_BOOT_NAME, name);
-    rg_settings_set_string(NS_GLOBAL, SETTING_BOOT_ARGS, args);
-    rg_settings_set_number(NS_GLOBAL, SETTING_BOOT_FLAGS, flags);
-    rg_system_save_time();
-    rg_settings_commit();
-    rg_system_set_boot_app(app);
-    rg_system_restart();
-}
+    RG_LOGI("Switching to app %s (%s)!\n", partition, name ?: "-");
+    exitCalled = true;
 
-bool rg_system_find_app(const char *app)
-{
-    return esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, app) != NULL;
-}
+    if (app.initialized)
+    {
+        rg_settings_set_string(NS_BOOT, SETTING_BOOT_NAME, name);
+        rg_settings_set_string(NS_BOOT, SETTING_BOOT_ARGS, args);
+        rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, flags);
+        rg_system_save_time();
+        rg_settings_commit();
+    }
 
-void rg_system_set_boot_app(const char *app)
-{
-    const esp_partition_t* partition = esp_partition_find_first(
-            ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, app);
-
-    if (partition == NULL)
-        RG_PANIC("Unable to set boot app: App not found!");
-
-    esp_err_t err = esp_ota_set_boot_partition(partition);
+    esp_err_t err = esp_ota_set_boot_partition(esp_partition_find_first(
+            ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partition));
     if (err != ESP_OK)
     {
         RG_LOGE("esp_ota_set_boot_partition returned 0x%02X!\n", err);
         RG_PANIC("Unable to set boot app!");
     }
 
-    RG_LOGI("Boot partition set to %d '%s'\n", partition->subtype, partition->label);
+    rg_system_restart();
+}
+
+bool rg_system_have_app(const char *app)
+{
+    return esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, app) != NULL;
 }
 
 void rg_system_panic(const char *context, const char *message)

@@ -1122,8 +1122,7 @@ int rg_gui_about_menu(const rg_gui_option_t *extra_options)
     switch (sel)
     {
         case 1000:
-            rg_system_set_boot_app(RG_APP_FACTORY);
-            rg_system_restart();
+            rg_system_switch_app(RG_APP_FACTORY, RG_APP_FACTORY, 0, 0);
             break;
         case 2000:
             if (rg_gui_confirm("Reset all settings?", NULL, false)) {
@@ -1302,7 +1301,7 @@ int rg_gui_game_menu(void)
     switch (sel)
     {
         case 1000: if ((slot = rg_gui_savestate_menu("Save", 0, 0)) >= 0) rg_emu_save_state(slot); break;
-        case 2000: if ((slot = rg_gui_savestate_menu("Save", 0, 0)) >= 0) {rg_emu_save_state(slot); exit(0);} break;
+        case 2000: if ((slot = rg_gui_savestate_menu("Save", 0, 0)) >= 0) {rg_emu_save_state(slot); rg_system_switch_app(RG_APP_LAUNCHER, 0, 0, 0);} break;
         case 3001: if ((slot = rg_gui_savestate_menu("Load", 0, 0)) >= 0) rg_emu_load_state(slot); break;
         case 3002: rg_emu_reset(false); break;
         case 3003: rg_emu_reset(true); break;
@@ -1311,7 +1310,7 @@ int rg_gui_game_menu(void)
     #endif
         case 5500: rg_gui_options_menu(); break;
         case 6000: rg_gui_about_menu(NULL); break;
-        case 7000: exit(0); break;
+        case 7000: rg_system_switch_app(RG_APP_LAUNCHER, 0, 0, 0); break;
     }
 
     rg_audio_set_mute(false);

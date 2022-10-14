@@ -6,140 +6,145 @@
 #include <unistd.h>
 #include <cJSON.h>
 
-static const char *config_file_path = RG_BASE_PATH_CONFIG "/retro-go.json";
 static cJSON *config_root = NULL;
-static int unsaved_changes = 0;
 
 
-static cJSON *json_root(const char *name)
+static FILE *open_config_file(const char *name, const char *mode)
+{
+    char pathbuf[RG_PATH_MAX];
+    snprintf(pathbuf, RG_PATH_MAX, "%s/%s.json", RG_BASE_PATH_CONFIG, name);
+    RG_LOGI("Opening %s for %s", pathbuf, mode);
+    FILE *fp = fopen(pathbuf, mode);
+    if (!fp)
+    {
+        rg_storage_mkdir(rg_dirname(pathbuf));
+        rg_storage_delete(pathbuf);
+        fp = fopen(pathbuf, mode);
+    }
+    return fp;
+}
+
+static cJSON *json_root(const char *name, bool mode)
 {
     RG_ASSERT(config_root, "json_root called before settings were initialized!");
 
     if (name == NS_GLOBAL)
         name = "global";
-    else if (name == NS_WIFI)
-        name = "wifi";
     else if (name == NS_APP)
         name = rg_system_get_app()->configNs;
     else if (name == NS_FILE)
-        name = rg_system_get_app()->romPath;
+        name = rg_basename(rg_system_get_app()->romPath);
+    else if (name == NS_WIFI)
+        name = "wifi";
+    else if (name == NS_BOOT)
+        name = "boot";
 
-    cJSON *myroot;
+    cJSON *branch = cJSON_GetObjectItem(config_root, name);
+    if (!branch)
+    {
+        branch = cJSON_AddObjectToObject(config_root, name);
+        cJSON_AddStringToObject(branch, "namespace", name);
+        cJSON_AddNumberToObject(branch, "changed", 0);
+        FILE *fp = open_config_file(name, "rb");
+        if (fp)
+        {
+            fseek(fp, 0, SEEK_END);
+            long length = ftell(fp);
+            fseek(fp, 0, SEEK_SET);
+            char *buffer = calloc(1, length + 1);
+            if (fread(buffer, 1, length, fp))
+                cJSON_AddItemToObject(branch, "values", cJSON_Parse(buffer));
+            free(buffer);
+            fclose(fp);
+        }
+    }
 
-    if (!name)
+    cJSON *root = cJSON_GetObjectItem(branch, "values");
+    if (!cJSON_IsObject(root))
     {
-        myroot = config_root;
-    }
-    else if (!(myroot = cJSON_GetObjectItem(config_root, name)))
-    {
-        myroot = cJSON_AddObjectToObject(config_root, name);
-    }
-    else if (!cJSON_IsObject(myroot))
-    {
-        myroot = cJSON_CreateObject();
-        cJSON_ReplaceItemInObject(config_root, name, myroot);
+        cJSON_DeleteItemFromObject(branch, "values");
+        root = cJSON_AddObjectToObject(branch, "values");
     }
 
-    return myroot;
+    if (mode)
+    {
+       cJSON_SetNumberHelper(cJSON_GetObjectItem(branch, "changed"), 1);
+    }
+
+    return root;
+}
+
+static void update_value(const char *section, const char *key, cJSON *new_value)
+{
+    cJSON *obj = cJSON_GetObjectItem(json_root(section, 0), key);
+    if (obj == NULL)
+        cJSON_AddItemToObject(json_root(section, 1), key, new_value);
+    else if (!cJSON_Compare(obj, new_value, true))
+        cJSON_ReplaceItemInObject(json_root(section, 1), key, new_value);
+    else
+        cJSON_Delete(new_value);
 }
 
 void rg_settings_init(void)
 {
-    FILE *fp = fopen(config_file_path, "rb");
-    if (fp)
-    {
-        fseek(fp, 0, SEEK_END);
-        long length = ftell(fp);
-        fseek(fp, 0, SEEK_SET);
-        char *buffer = calloc(1, length + 1);
-        if (fread(buffer, 1, length, fp))
-            config_root = cJSON_Parse(buffer);
-        free(buffer);
-        fclose(fp);
-    }
-
-    if (!config_root)
-    {
-        RG_LOGW("Failed to load settings from %s.\n", config_file_path);
-        config_root = cJSON_CreateObject();
-        return;
-    }
-
-    RG_LOGI("Settings loaded from %s.\n", config_file_path);
+    config_root = cJSON_CreateObject();
+    json_root(NS_GLOBAL, 0);
+    json_root(NS_BOOT, 0);
 }
 
 void rg_settings_commit(void)
 {
-    if (!unsaved_changes)
+    if (!config_root)
         return;
 
-    RG_LOGI("Saving %d change(s)...\n", unsaved_changes);
-
-    char *buffer = cJSON_Print(config_root);
-    if (!buffer)
+    for (cJSON *branch = config_root->child; branch; branch = branch->next)
     {
-        RG_LOGE("cJSON_Print() failed.\n");
-        return;
+        char *name = cJSON_GetStringValue(cJSON_GetObjectItem(branch, "namespace"));
+        int changed = cJSON_GetNumberValue(cJSON_GetObjectItem(branch, "changed"));
+
+        if (!changed)
+            continue;
+
+        char *buffer = cJSON_Print(cJSON_GetObjectItem(branch, "values"));
+        if (!buffer)
+            continue;
+
+        FILE *fp = open_config_file(name, "wb");
+        if (fp)
+        {
+            if (fputs(buffer, fp) >= 0)
+                cJSON_SetNumberHelper(cJSON_GetObjectItem(branch, "changed"), 0);
+            fclose(fp);
+        }
+
+        cJSON_free(buffer);
     }
 
-    FILE *fp = fopen(config_file_path, "wb");
-    if (!fp)
-    {
-        rg_storage_delete(config_file_path);
-        rg_storage_mkdir(rg_dirname(config_file_path));
-        fp = fopen(config_file_path, "wb");
-    }
-    if (fp)
-    {
-        if (fputs(buffer, fp) >= 0)
-            unsaved_changes = 0;
-        fclose(fp);
-    }
-
-    if (unsaved_changes > 0)
-        RG_LOGE("Save failed! %p\n", fp);
-    else
-        rg_storage_commit();
-
-    cJSON_free(buffer);
+    rg_storage_commit();
 }
 
 void rg_settings_reset(void)
 {
     RG_LOGI("Clearing settings...\n");
+    rg_storage_delete(RG_BASE_PATH_CONFIG);
     cJSON_Delete(config_root);
     config_root = cJSON_CreateObject();
-    unsaved_changes++;
-    rg_settings_commit();
 }
 
 double rg_settings_get_number(const char *section, const char *key, double default_value)
 {
-    cJSON *obj = cJSON_GetObjectItem(json_root(section), key);
+    cJSON *obj = cJSON_GetObjectItem(json_root(section, 0), key);
     return obj ? obj->valuedouble : default_value;
 }
 
 void rg_settings_set_number(const char *section, const char *key, double value)
 {
-    cJSON *root = json_root(section);
-    cJSON *obj = cJSON_GetObjectItem(root, key);
-
-    if (!cJSON_IsNumber(obj))
-    {
-        cJSON_Delete(cJSON_DetachItemViaPointer(root, obj));
-        cJSON_AddNumberToObject(root, key, value);
-        unsaved_changes++;
-    }
-    else if (obj->valuedouble != value)
-    {
-        cJSON_SetNumberHelper(obj, value);
-        unsaved_changes++;
-    }
+    update_value(section, key, cJSON_CreateNumber(value));
 }
 
 char *rg_settings_get_string(const char *section, const char *key, const char *default_value)
 {
-    cJSON *obj = cJSON_GetObjectItem(json_root(section), key);
+    cJSON *obj = cJSON_GetObjectItem(json_root(section, 0), key);
     if (cJSON_IsString(obj))
         return strdup(obj->valuestring);
     return default_value ? strdup(default_value) : NULL;
@@ -147,32 +152,10 @@ char *rg_settings_get_string(const char *section, const char *key, const char *d
 
 void rg_settings_set_string(const char *section, const char *key, const char *value)
 {
-    cJSON *root = json_root(section);
-    cJSON *obj = cJSON_GetObjectItem(root, key);
-    cJSON *newobj = value ? cJSON_CreateString(value) : cJSON_CreateNull();
-
-    if (obj == NULL)
-    {
-        cJSON_AddItemToObject(root, key, newobj);
-        unsaved_changes++;
-    }
-    else if (!cJSON_Compare(obj, newobj, true))
-    {
-        cJSON_ReplaceItemInObject(root, key, newobj);
-        unsaved_changes++;
-    }
-    else
-    {
-        cJSON_Delete(newobj);
-    }
+    update_value(section, key, value ? cJSON_CreateString(value) : cJSON_CreateNull());
 }
 
 void rg_settings_delete(const char *section, const char *key)
 {
-    cJSON *root = json_root(section);
-    if (key)
-        cJSON_DeleteItemFromObject(root, key);
-    else if (root != config_root)
-        cJSON_Delete(cJSON_DetachItemViaPointer(config_root, root));
-    unsaved_changes++;
+    cJSON_DeleteItemFromObject(json_root(section, 1), key);
 }

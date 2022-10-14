@@ -77,23 +77,15 @@ Some emulators support loading a BIOS. The files should be placed as follows:
 
 ## Wifi
 
-To use wifi you will need to add your config to `/retro-go/config/retro-go.json` file.
+To use wifi you will need to add your config to `/retro-go/config/wifi.json` file.
 It should look like this:
 
 ````json
 {
-  "global": {
-    ...
-  },
-  "wifi": {
-    "ssid": "my-network",
-    "password": "my-password"
-  }
+  "ssid": "my-network",
+  "password": "my-password"
 }
 ````
-
-If you are unfamiliar with JSON syntax you can run your config file [through a validator](https://jsonlint.com/)
-to confirm that it is correct.
 
 ### Time synchronization
 Time synchronization happens in the launcher immediately after a successful connection to the network.

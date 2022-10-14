@@ -191,9 +191,8 @@ void rg_system_panic(const char *context, const char *message) __attribute__((no
 void rg_system_shutdown(void) __attribute__((noreturn));
 void rg_system_sleep(void) __attribute__((noreturn));
 void rg_system_restart(void) __attribute__((noreturn));
-void rg_system_start_app(const char *app, const char *name, const char *args, uint32_t flags) __attribute__((noreturn));
-void rg_system_set_boot_app(const char *app);
-bool rg_system_find_app(const char *app);
+void rg_system_switch_app(const char *part, const char *name, const char *args, uint32_t flags) __attribute__((noreturn));
+bool rg_system_have_app(const char *app);
 void rg_system_set_led(int value);
 int  rg_system_get_led(void);
 void rg_system_tick(int busyTime);
