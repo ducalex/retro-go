@@ -27,7 +27,7 @@ jobs:
         docker run --rm -v $(pwd)/build:/build retro-go:latest sh -c "cp /app/*.fw /build"
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: binaries
         path: build/*.fw
