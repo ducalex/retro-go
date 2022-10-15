@@ -429,6 +429,4 @@ ShutdownPCE()
 	gfx_term();
 	psg_term();
 	pce_term();
-
-	exit(0);
 }

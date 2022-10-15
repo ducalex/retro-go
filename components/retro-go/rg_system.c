@@ -146,13 +146,6 @@ void rg_system_set_timezone(const char *TZ)
     tzset();
 }
 
-static void exit_handler(void)
-{
-    RG_LOGI("Exit handler called.\n");
-    if (!exitCalled)
-        rg_system_switch_app(RG_APP_LAUNCHER, 0, 0, 0);
-}
-
 static inline void begin_panic_trace(const char *context, const char *message)
 {
     panicTrace.magicWord = RG_STRUCT_MAGIC;
@@ -459,7 +452,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     // Do these last to not interfere with panic handling above
     if (handlers)
         app.handlers = *handlers;
-    atexit(&exit_handler);
 
     #ifdef RG_ENABLE_PROFILING
     RG_LOGI("Profiling has been enabled at compile time!\n");
@@ -823,7 +815,7 @@ static void shutdown_cleanup(void)
     rg_gui_draw_hourglass();                  // ...
     rg_system_event(RG_EVENT_SHUTDOWN, NULL); // Allow apps to save their state if they want
     rg_audio_deinit();                        // Disable sound ASAP to avoid audio garbage
-    // rg_system_save_time();                    // RTC might save to storage, do it before
+    rg_system_save_time();                    // RTC might save to storage, do it before
     rg_storage_deinit();                      // Unmount storage
     rg_input_wait_for_key(RG_KEY_ALL, false); // Wait for all keys to be released (boot is sensitive to GPIO0,32,33)
     rg_input_deinit();                        // Now we can shutdown input
@@ -868,7 +860,6 @@ void rg_system_switch_app(const char *partition, const char *name, const char *a
         rg_settings_set_string(NS_BOOT, SETTING_BOOT_NAME, name);
         rg_settings_set_string(NS_BOOT, SETTING_BOOT_ARGS, args);
         rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, flags);
-        rg_system_save_time();
         rg_settings_commit();
     }
 
