@@ -105,16 +105,14 @@ static rg_gui_event_t theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
     {
-        // char *path = rg_gui_file_picker("Theme", RG_BASE_PATH_THEMES, NULL);
-        // if (path)
-        // {
-        //     gui_set_theme(rg_basename(path));
-        //     rg_gui_set_theme(rg_basename(path));
-        //     free(path);
-        // }
+        char *path = rg_gui_file_picker("Theme", RG_BASE_PATH_THEMES, NULL);
+        const char *theme = path ? rg_basename(path) : NULL;
+        gui_set_theme(theme);
+        rg_gui_set_theme(theme);
+        free(path);
     }
 
-    sprintf(option->value, "%s", "Default");
+    sprintf(option->value, "%s", gui.theme ?: "Default");
     return RG_DIALOG_VOID;
 }
 

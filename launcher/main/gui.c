@@ -425,12 +425,12 @@ void gui_draw_status(tab_t *tab)
     char *txt_left = tab->status[tab->status[1].left[0] ? 1 : 0].left;
     char *txt_right = tab->status[tab->status[1].right[0] ? 1 : 0].right;
 
-    rg_gui_draw_battery(-27, 3);
+    rg_gui_draw_battery(-22, 3);
 
     if (rg_network_get_info().configured)
     {
-        rg_gui_draw_radio(-50, 3);
-        rg_gui_draw_clock(-94, 3);
+        rg_gui_draw_radio(-45, 3);
+        rg_gui_draw_clock(-(50 + TEXT_RECT("00:00", 0).width), 3);
     }
 
     rg_gui_draw_text(status_x, status_y, gui.width, txt_right, C_SNOW, C_TRANSPARENT, RG_TEXT_ALIGN_LEFT);

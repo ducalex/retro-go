@@ -399,7 +399,7 @@ void rg_gui_draw_battery(int x_pos, int y_pos)
     if (y_pos < 0)
         y_pos += gui.screen_height;
 
-    int width = 20, height = 10;
+    int width = 16, height = 10;
     int width_fill = width;
     rg_color_t color_fill = C_DARK_GRAY;
     rg_color_t color_border = C_SILVER;
@@ -514,7 +514,7 @@ void rg_gui_draw_status_bars(void)
     rg_gui_draw_text(0, 0, gui.screen_width, header, C_WHITE, C_BLACK, RG_TEXT_ALIGN_TOP);
     rg_gui_draw_text(0, 0, gui.screen_width, footer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_BOTTOM);
 
-    rg_gui_draw_battery(-26, 3);
+    rg_gui_draw_battery(-22, 3);
     rg_gui_draw_radio(-54, 3);
 }
 
