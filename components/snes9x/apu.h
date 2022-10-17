@@ -79,7 +79,7 @@ bool S9xInitSound(int32_t buffer_ms, int32_t lag_ms);
 void S9xPrintAPUState(void);
 extern uint8_t S9xAPUCycles [256];       /* Scaled cycle lengths */
 extern uint8_t S9xAPUCycleLengths [256]; /* Raw data. */
-extern void (*S9xApuOpcodes [256])(void);
+extern void (* const S9xApuOpcodes [256])(void);
 
 #define APU_VOL_LEFT  0x00
 #define APU_VOL_RIGHT 0x01

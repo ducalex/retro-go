@@ -18,6 +18,7 @@ extern "C" {
 #define SPI_DMA_CH_AUTO 1
 #endif
 #else
+#define EXT_RAM_ATTR
 #define IRAM_ATTR
 #define RTC_NOINIT_ATTR
 #endif

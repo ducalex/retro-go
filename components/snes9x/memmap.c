@@ -30,7 +30,7 @@
 #define MAP_RONLY_SRAM_OR_NONE (Memory.SRAMSize == 0 ? (uint8_t*) MAP_NONE : (uint8_t*) MAP_RONLY_SRAM)
 
 static int32_t retry_count = 0;
-static uint8_t bytes0x2000 [0x2000];
+static uint8_t *bytes0x2000; //  [0x2000];
 static bool is_bsx(uint8_t*);
 static bool bs_name(uint8_t*);
 
@@ -255,7 +255,10 @@ bool S9xInitMemory(void)
    IPPU.TileCache = (uint8_t*) calloc(MAX_2BIT_TILES, 128);
    IPPU.TileCached = (uint8_t*) calloc(MAX_2BIT_TILES, 1);
 
-   if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM || !Memory.ROM || !IPPU.TileCache || !IPPU.TileCached)
+   bytes0x2000 = (uint8_t *)calloc(0x2000, 1);
+
+   if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM || !Memory.ROM
+      || !IPPU.TileCache || !IPPU.TileCached || !bytes0x2000)
    {
       S9xDeinitMemory();
       return false;
@@ -303,6 +306,12 @@ void S9xDeinitMemory(void)
    {
       free(IPPU.TileCache);
       IPPU.TileCache = NULL;
+   }
+
+   if (bytes0x2000)
+   {
+      free(bytes0x2000);
+      bytes0x2000 = NULL;
    }
 
    /* Ensure that we free the static char
