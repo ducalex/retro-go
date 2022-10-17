@@ -8,7 +8,6 @@
 
 #include "applications.h"
 #include "bookmarks.h"
-#include "themes.h"
 #include "gui.h"
 #include "webui.h"
 #include "timezones.h"
@@ -99,6 +98,23 @@ static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t ev
 
     const char *values[] = {"None      ", "Cover,Save", "Save,Cover", "Cover only", "Save only "};
     strcpy(option->value, values[gui.show_preview % PREVIEW_MODE_COUNT]);
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        // char *path = rg_gui_file_picker("Theme", RG_BASE_PATH_THEMES, NULL);
+        // if (path)
+        // {
+        //     gui_set_theme(rg_basename(path));
+        //     rg_gui_set_theme(rg_basename(path));
+        //     free(path);
+        // }
+    }
+
+    sprintf(option->value, "%s", "Default");
     return RG_DIALOG_VOID;
 }
 
@@ -346,7 +362,8 @@ void app_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, "Color theme ", "...", 1, &color_theme_cb},
+        {0, "Theme       ", "...", 1, &theme_cb},
+        {0, " - Color    ", "...", 1, &color_theme_cb},
         {0, "Preview     ", "...", 1, &show_preview_cb},
         {0, "Start screen", "...", 1, &start_screen_cb},
         {0, "Hide tabs   ", "...", 1, &toggle_tabs_cb},
@@ -381,7 +398,6 @@ void app_main(void)
     gui_init();
     applications_init();
     bookmarks_init();
-    themes_init();
 
     retro_loop();
 }
