@@ -1,6 +1,6 @@
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 set(EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/components")
-if (DEFINED "RG_TARGET_ESPLAY_S3")
+if ("$ENV{RG_BUILD_TARGET}" STREQUAL "ESPLAY_S3")
     message("SDKCONFIG_DEFAULTS: ${CMAKE_CURRENT_LIST_DIR}/baseS3.sdkconfig")
     set(SDKCONFIG_DEFAULTS "${CMAKE_CURRENT_LIST_DIR}/baseS3.sdkconfig")
 else()
