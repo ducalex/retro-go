@@ -1,3 +1,15 @@
+# Retro-Go 1.35 (2022-10-18)
+- SNES: New Snes9x port (based on 2005 version) with sound!
+- GEN: Improved compatibility (updated from bzhxx's upstream)
+- GW: Added Game & Watch emulator by bzhxx
+- Lynx: Fixed crash when opening options menu
+- Launcher: Added web file manager
+- Launcher: Added network time sync
+- Launcher: Increased max filename length to ~72 characters
+- All: Fixed some crash recovery issues
+- Releases are now built with esp-idf 4.3
+
+
 # Retro-Go 1.34 (2022-09-18)
 - SNES: Fixed crash when opening menu
 - NES: Implemented mapper 185
@@ -15,7 +27,7 @@
 
 
 # Retro-Go 1.32.1 (2022-05-21)
-- Launcher: Fixed savestate screenshot using the wrong file name (#13) 
+- Launcher: Fixed savestate screenshot using the wrong file name (#13)
 
 
 # Retro-Go 1.32 (2022-04-27)
@@ -47,7 +59,7 @@
 - PCE: Many sprites issues fixed by Macs75
 - PCE: New save state format (incompatible with old saves, but extensible going forward...)
 - Added key repetition in dialogs (when holding an arrow key, for example)
-- We now have continuous integration thanks to tomzx 
+- We now have continuous integration thanks to tomzx
 
 
 # Retro-Go 1.29.1 (2021-12-23)
@@ -229,7 +241,7 @@ Also some internal changes:
 - ALL: Better panic handling that might show the crash reason now
 
 
-# 2020-08-01 
+# 2020-08-01
 - NES: Compatibility hack to fix glitches in Zen Intergalactic, Power Blade, Kirby, SMB3
 - NES: Fixed volume issues above level 5
 - Launcher: Misc UI improvements
@@ -237,7 +249,7 @@ Also some internal changes:
 - Retro-Go is now compiled with esp-idf 4.0
 
 
-# 2020-06-29 
+# 2020-06-29
 - Added file property dialog (press B)
 - Minor UI tweaks
 - Fixed crash on some devices when the battery is full or charging
@@ -245,7 +257,7 @@ Also some internal changes:
 - Fixed most scaling issues (some games still have horizontal bars in PCE)
 
 
-# 2020-06-13 
+# 2020-06-13
 - NES: Fixed palette not applied
 - NES: Fixed some bugs with auto crop
 - PCE: Fixed US encoded roms
@@ -255,7 +267,7 @@ Also some internal changes:
 - Lynx: Lynx is now playable (rotation support still missing)
 
 
-# 2020-05-30 
+# 2020-05-30
 - NES: New option to detect and crop the blank leftmost column in some games (eg SMB3)
 - NES: Implemented Mapper 193 (War in the Gulf)
 - NES: Fixed shadows in Aussie Rules Footy
@@ -272,7 +284,7 @@ Also some internal changes:
 - All: Firmware size is back to a mere 2.56MB (including PCE and Lynx!)
 
 
-# 2020-05-04 
+# 2020-05-04
 - PCE: Improved performance, all tested games run at 100% speed with higher refresh rate
 - PCE: Save states fully implemented
 - NES: Enabled support for mappers 41, 42, 46, 50, 73, 93, 160, 229 (bootlegs/multicarts)
@@ -280,7 +292,7 @@ Also some internal changes:
 - Smaller firmware size (3.5 to 3MB)
 
 
-# 2020-04-27 
+# 2020-04-27
 - PC Engine emulation!
 - Colecovision no longer needs a BIOS
 - Smaller binary sizes (though the .fw is padded to the same as before)
@@ -294,7 +306,7 @@ Known issues:
 - Save states support in PCE is experimental. Loading is also manual only (start a game -> Reload).
 
 
-# 2020-03-20 
+# 2020-03-20
 - NES: PAL games support
 - NES: Fixed Cheetahmen 2 (Impl. Mapper 228)
 - GB: Fixed Altered Space 3-D Adventure
@@ -302,7 +314,7 @@ Known issues:
 - GB: Performance improvement
 
 
-# 2020-03-13 
+# 2020-03-13
 - NES: Color palette support (FirebrandX)
 - NES: Option to disable sprite limit (sprite flicker)
 - NES: Fixed SMB3 (Broken in 2020-03-10)
@@ -313,7 +325,7 @@ Known issues:
 - All: Fixed filter alignment issue (mostly visible in GB)
 
 
-# 2020-03-10 
+# 2020-03-10
 - New: Bilinear filtering available for all emulators
 - Launcher: Fix SPI conflicts that froze the application
 - NES: Fix crash during save/load in some games
@@ -325,7 +337,7 @@ Known issues:
 - Misc bug fixes
 
 
-# 2020-02-23 
+# 2020-02-23
 - Display code optimization with 5-10% FPS throughput increase
 - Friendlier in-game fatal errors that allow to return to launcher
 - Many bug fixes
@@ -339,19 +351,19 @@ Known issues:
 - Launcher: File extensions are now hidden
 
 
-# 2020-02-11 
+# 2020-02-11
 - New scaling options
 - 8MB GBC game support
 - Significant size reduction
 - Bug fixes
 
 
-# 2020-02-05 
+# 2020-02-05
 - Fixed Game Gear aspect ratio
 - PNG support for cover art
 - Option to reduce cover art loading delay
 - Experimental ZIP support for NES/SMS/GG ROMS
 
- 
-# 2020-02-01 
+
+# 2020-02-01
 - Initial release

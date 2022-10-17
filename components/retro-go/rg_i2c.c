@@ -85,8 +85,7 @@ bool rg_i2c_read(uint8_t addr, int reg, void *read_data, size_t read_len)
     return true;
 fail:
     i2c_cmd_link_delete(cmd);
-    RG_LOGE("Read from 0x%02x failed. reg=%d, err=0x%x, init=%d\n", addr, reg, err,
-            i2c_initialized);
+    RG_LOGE("Read from 0x%02X failed. reg=0x%02X, err=0x%03X, init=%d\n", addr, reg, err, i2c_initialized);
 #endif
     return false;
 }
@@ -112,7 +111,8 @@ bool rg_i2c_write(uint8_t addr, int reg, const void *write_data, size_t write_le
     i2c_cmd_link_delete(cmd);
     return true;
 fail:
-    RG_LOGE("Write to 0x%02x failed. reg=%d, err=0x%x, init=%d\n", addr, reg, err, i2c_initialized);
+    i2c_cmd_link_delete(cmd);
+    RG_LOGE("Write to 0x%02X failed. reg=0x%02X, err=0x%03X, init=%d\n", addr, reg, err, i2c_initialized);
 #endif
     return false;
 }

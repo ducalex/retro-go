@@ -143,7 +143,7 @@ void rg_storage_init(void)
 #elif RG_STORAGE_DRIVER == 4 // SPI Flash
 
     wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
-    esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, "storage", &s_wl_handle)
+    esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, "storage", &s_wl_handle);
     error_code = err;
 
 #else
@@ -191,8 +191,6 @@ void rg_storage_commit(void)
 {
     if (!disk_mounted)
         return;
-
-    rg_settings_commit();
     // flush buffers();
 }
 
@@ -279,22 +277,31 @@ bool rg_storage_delete(const char *path)
     return false;
 }
 
-rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char *path))
+static int scandir_natural_sort(const void *a, const void *b)
 {
-    DIR* dir = opendir(path);
+    // FIXME: Do something...
+    return 0;
+}
+
+rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char *path), uint32_t flags)
+{
+    DIR *dir = opendir(path);
     if (!dir)
         return NULL;
 
-    rg_scandir_t *results = malloc(4096 * sizeof(rg_scandir_t));
+    rg_scandir_t *results = calloc(1, sizeof(rg_scandir_t));
+    size_t capacity = 0;
     size_t count = 0;
     struct dirent *ent;
+    struct stat statbuf;
 
-    char fullpath[RG_PATH_MAX] = {0};
+    char fullpath[RG_PATH_MAX + 1] = {0};
     char *basename = fullpath + sprintf(fullpath, "%s/", path);
+    size_t basename_len = RG_PATH_MAX - (basename - fullpath);
 
     while ((ent = readdir(dir)))
     {
-        strncpy(basename, ent->d_name, 62);
+        strncpy(basename, ent->d_name, basename_len);
 
         if (basename[0] == '.') // For backwards compat we'll ignore all hidden files...
             continue;
@@ -302,9 +309,10 @@ rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char 
         if (validator && !validator(fullpath))
             continue;
 
-        if ((count % 20) == 0)
+        if (count + 1 >= capacity)
         {
-            void *temp = realloc(results, (count + 21) * sizeof(rg_scandir_t));
+            capacity += 100;
+            void *temp = realloc(results, (capacity + 1) * sizeof(rg_scandir_t));
             if (!temp)
             {
                 RG_LOGW("Not enough memory to finish scan!\n");
@@ -315,66 +323,28 @@ rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char 
 
         rg_scandir_t *result = &results[count++];
 
-        strcpy(result->name, basename);
+        strncpy(result->name, basename, sizeof(result->name) - 1);
         result->is_valid = 1;
-
         #if defined(DT_REG) && defined(DT_DIR)
             result->is_file = ent->d_type == DT_REG;
             result->is_dir = ent->d_type == DT_DIR;
-        #else // stupid mingw
-            struct stat statbuf;
-            stat(fullpath, &statbuf);
+        #else
+            flags |= RG_SCANDIR_STAT;
+        #endif
+
+        if ((flags & RG_SCANDIR_STAT) && stat(fullpath, &statbuf) == 0)
+        {
             result->is_file = S_ISREG(statbuf.st_mode);
             result->is_dir = S_ISDIR(statbuf.st_mode);
-        #endif
+            result->size = statbuf.st_size;
+        }
     }
     memset(&results[count], 0, sizeof(rg_scandir_t));
 
-    return results;
-}
-
-const char *rg_dirname(const char *path)
-{
-    static char buffer[100];
-    const char *basename = strrchr(path, '/');
-    ptrdiff_t length = basename - path;
-
-    if (!path || !basename)
-        return ".";
-
-    if (path[0] == '/' && path[1] == 0)
-        return "/";
-
-    RG_ASSERT(length < 100, "to do: use heap");
-
-    strncpy(buffer, path, length);
-    buffer[length] = 0;
-
-    return buffer;
-}
-
-const char *rg_basename(const char *path)
-{
-    const char *name = strrchr(path, '/');
-    return name ? name + 1 : path;
-}
-
-const char *rg_extension(const char *path)
-{
-    const char *basename = rg_basename(path);
-    const char *ext = strrchr(basename, '.');
-    return ext ? ext + 1 : NULL;
-}
-
-const char *rg_relpath(const char *path)
-{
-    if (strncmp(path, RG_STORAGE_ROOT, strlen(RG_STORAGE_ROOT)) == 0)
+    if (flags & RG_SCANDIR_SORT)
     {
-        const char *relpath = path + strlen(RG_STORAGE_ROOT);
-        if (relpath[0] == '/')
-            path = relpath + 1;
-        else if (relpath[0] == 0)
-            path = relpath;
+        qsort(results, count, sizeof(rg_scandir_t), scandir_natural_sort);
     }
-    return path;
+
+    return results;
 }

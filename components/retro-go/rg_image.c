@@ -65,9 +65,9 @@ rg_image_t *rg_image_load_from_memory(const uint8_t *data, size_t data_len, uint
             for (size_t i = 0; i < pixel_count; ++i)
             {
                 // TO DO: Properly scale values instead of discarding extra bits
-                *dest++ = (((src[0] >> 3) & 0x1F) << 11)
-                        | (((src[1] >> 2) & 0x3F) << 5)
-                        | (((src[2] >> 3) & 0x1F));
+                *dest++ = (((src[0] >> 3) & 0x1F) << 11)  // Red
+                          | (((src[1] >> 2) & 0x3F) << 5) // Green
+                          | (((src[2] >> 3) & 0x1F));     // Blue
                 src += 3;
             }
         }

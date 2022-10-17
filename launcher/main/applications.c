@@ -43,7 +43,7 @@ static void scan_folder(retro_app_t *app, const char* path, void *parent)
     RG_LOGI("Scanning directory %s\n", path);
 
     const char *folder = const_string(path);
-    rg_scandir_t *files = rg_storage_scandir(path, NULL);
+    rg_scandir_t *files = rg_storage_scandir(path, NULL, false);
 
     for (rg_scandir_t *entry = files; entry && entry->is_valid; ++entry)
     {
@@ -54,7 +54,7 @@ static void scan_folder(retro_app_t *app, const char* path, void *parent)
         {
             char buffer[RG_PATH_MAX];
             snprintf(buffer, RG_PATH_MAX, " %s ", rg_extension(entry->name));
-            is_valid = strstr(app->extensions, strtolower(buffer)) != NULL;
+            is_valid = strstr(app->extensions, rg_strtolower(buffer)) != NULL;
             type = 0x00;
         }
         else if (entry->is_dir)
@@ -98,14 +98,14 @@ static void scan_folder(retro_app_t *app, const char* path, void *parent)
 
 static void application_init(retro_app_t *app)
 {
-    if (app->initialized)
-        return;
-
     RG_LOGI("Initializing application '%s' (%s)\n", app->description, app->partition);
+
+    if (app->initialized)
+        app->files_count = 0;
 
     // This checks if we have crc cover folders, the idea is to skip the crc later on if we don't!
     // It adds very little delay but it could become an issue if someone has thousands of named files...
-    rg_scandir_t *files = rg_storage_scandir(app->paths.covers, NULL);
+    rg_scandir_t *files = rg_storage_scandir(app->paths.covers, NULL, false);
     if (!files)
         rg_storage_mkdir(app->paths.covers);
     else
@@ -128,14 +128,14 @@ static void application_start(retro_file_t *file, int load_state)
     char *part = strdup(file->app->partition);
     char *name = strdup(file->app->short_name);
     char *path = strdup(get_file_path(file));
-    int flags = (gui.startup ? RG_BOOT_ONCE : 0);
+    int flags = (gui.startup_mode ? RG_BOOT_ONCE : 0);
     if (load_state != -1)
     {
         flags |= RG_BOOT_RESUME;
         flags |= (load_state << 4) & RG_BOOT_SLOT_MASK;
     }
     bookmark_add(BOOK_TYPE_RECENT, file); // This could relocate *file, but we no longer need it
-    rg_system_start_app(part, name, path, flags);
+    rg_system_switch_app(part, name, path, flags);
 }
 
 static void crc_cache_init(void)
@@ -162,10 +162,6 @@ static void crc_cache_init(void)
             crc_cache->count = 0;
         }
         fclose(fp);
-    }
-    else
-    {
-        rg_storage_mkdir(RG_BASE_PATH_CACHE);
     }
 }
 
@@ -235,6 +231,9 @@ static void crc_cache_update(retro_file_t *file)
 
 void crc_cache_idle_task(tab_t *tab)
 {
+    // FIXME: Disabled for now because it interferes with the webserver...
+    return;
+
     if (!crc_cache)
         return;
 
@@ -649,7 +648,7 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
 
 static void application(const char *desc, const char *name, const char *exts, const char *part, uint16_t crc_offset)
 {
-    if (!rg_system_find_app(part))
+    if (!rg_system_have_app(part))
     {
         RG_LOGI("Application '%s' (%s) not present, skipping\n", desc, part);
         return;
@@ -658,17 +657,17 @@ static void application(const char *desc, const char *name, const char *exts, co
     retro_app_t *app = calloc(1, sizeof(retro_app_t));
     apps[apps_count++] = app;
 
-    snprintf(app->description, 60, "%s", desc);
-    snprintf(app->short_name, 60, "%s", name);
-    snprintf(app->partition, 60, "%s", part);
-    snprintf(app->extensions, 60, " %s ", exts);
-    strtolower(app->partition);
-    strtolower(app->short_name);
-    strtolower(app->extensions);
+    snprintf(app->description, sizeof(app->description), "%s", desc);
+    snprintf(app->short_name, sizeof(app->short_name), "%s", name);
+    snprintf(app->partition, sizeof(app->partition), "%s", part);
+    snprintf(app->extensions, sizeof(app->extensions), " %s ", exts);
+    rg_strtolower(app->partition);
+    rg_strtolower(app->short_name);
+    rg_strtolower(app->extensions);
     snprintf(app->paths.covers, RG_PATH_MAX, RG_BASE_PATH_COVERS "/%s", app->short_name);
     snprintf(app->paths.saves, RG_PATH_MAX, RG_BASE_PATH_SAVES "/%s", app->short_name);
     snprintf(app->paths.roms, RG_PATH_MAX, RG_BASE_PATH_ROMS "/%s", app->short_name);
-    app->available = rg_system_find_app(app->partition);
+    app->available = rg_system_have_app(app->partition);
     app->files = calloc(10, sizeof(retro_file_t));
     app->crc_offset = crc_offset;
 
@@ -677,19 +676,21 @@ static void application(const char *desc, const char *name, const char *exts, co
 
 void applications_init(void)
 {
-    application("Nintendo Entertainment System", "nes", "nes fc fds nsf", "nofrendo-go", 16);
+    application("Nintendo Entertainment System", "nes", "nes fc fds nsf", "retro-run", 16);
     application("Super Nintendo", "snes", "smc sfc", "snes9x-go", 0);
-    application("Nintendo Gameboy", "gb", "gb gbc", "gnuboy-go", 0);
-    application("Nintendo Gameboy Color", "gbc", "gbc gb", "gnuboy-go", 0);
+    application("Nintendo Gameboy", "gb", "gb gbc", "retro-run", 0);
+    application("Nintendo Gameboy Color", "gbc", "gbc gb", "retro-run", 0);
+    application("Nintendo Game & Watch", "gw", "gw", "retro-run", 0);
     application("Sega Master System", "sms", "sms sg", "smsplusgx-go", 0);
     application("Sega Game Gear", "gg", "gg", "smsplusgx-go", 0);
-    application("Sega Mega Drive", "md", "md gen", "gwenesis-go", 0);
-    application("ColecoVision", "col", "col", "smsplusgx-go", 0);
-    application("PC Engine", "pce", "pce", "pce-go", 0);
-    application("Atari Lynx", "lnx", "lnx", "handy-go", 64);
-    application("Atari 2600", "a26", "a26", "stella-go", 0);
-    application("Neo Geo Pocket Color", "ngp", "ngp ngc", "ngpocket-go", 0);
+    application("Sega Mega Drive", "md", "md gen bin", "gwenesis", 0);
+    application("Coleco ColecoVision", "col", "col", "smsplusgx-go", 0);
+    application("NEC PC Engine", "pce", "pce", "retro-run", 0);
+    application("Atari Lynx", "lnx", "lnx", "retro-run", 64);
+    // application("Atari 2600", "a26", "a26", "stella-go", 0);
+    // application("Neo Geo Pocket Color", "ngp", "ngp ngc", "ngpocket-go", 0);
     application("DOOM", "doom", "wad", "prboom-go", 0);
+
     // Special app to bootstrap native esp32 binaries from the SD card
     application("Bootstrap", "apps", "bin elf", "bootstrap", 0);
 

@@ -80,12 +80,14 @@ typedef struct
 
 typedef struct
 {
-    struct {
+    struct
+    {
         int width;
         int height;
         int format;
     } screen;
-    struct {
+    struct
+    {
         int width;
         int height;
         int x_pos;
@@ -93,7 +95,8 @@ typedef struct
         int x_inc;
         int y_inc;
     } viewport;
-    struct {
+    struct
+    {
         int width;
         int height;
         int stride;
@@ -127,10 +130,13 @@ void rg_display_write(int left, int top, int width, int height, int stride,
                       const uint16_t *buffer); // , bool little_endian);
 void rg_display_clear(uint16_t color_le);
 void rg_display_sync(void);
+bool rg_display_is_busy(void);
 void rg_display_force_redraw(void);
 bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame, int width, int height);
 void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, int format);
-rg_update_t rg_display_queue_update(/*const*/ rg_video_update_t *update, const rg_video_update_t *previousUpdate);
+
+rg_update_t rg_display_submit(/*const*/ rg_video_update_t *update, const rg_video_update_t *previousUpdate);
+#define rg_display_queue_update rg_display_submit
 
 rg_display_counters_t rg_display_get_counters(void);
 rg_display_config_t rg_display_get_config(void);

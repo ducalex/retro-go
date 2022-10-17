@@ -67,9 +67,8 @@ struct rg_gui_option_s
 #define RG_DIALOG_FLAG_DISABLED  0 // (1 << 0)
 #define RG_DIALOG_FLAG_NORMAL    1 // (1 << 1)
 #define RG_DIALOG_FLAG_SKIP     -1 // (1 << 2)
-#define RG_DIALOG_FLAG_LAST      0xF0F0
 
-#define RG_DIALOG_CHOICE_LAST {0, NULL, NULL, RG_DIALOG_FLAG_LAST, NULL}
+#define RG_DIALOG_CHOICE_LAST {0, NULL, NULL, 0, NULL}
 #define RG_DIALOG_SEPARATOR   {0, "----------", NULL, RG_DIALOG_FLAG_SKIP, NULL}
 
 #define TEXT_RECT(text, max) rg_gui_draw_text(-(max), 0, 0, (text), 0, 0, RG_TEXT_MULTILINE|RG_TEXT_DUMMY_DRAW)
@@ -84,9 +83,12 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, rg
 void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer);
 void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size, rg_color_t border_color, rg_color_t fill_color);
 void rg_gui_draw_battery(int x_pos, int y_pos);
+void rg_gui_draw_radio(int x_pos, int y_pos);
+void rg_gui_draw_clock(int x_pos, int y_pos);
 void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int sel);
 void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resample, const rg_image_t *img);
 void rg_gui_draw_hourglass(void); // This should be moved to system or display...
+void rg_gui_draw_status_bars(void);
 
 void rg_gui_show_info(const char *text, rg_color_t color, int timeout_ms);
 int  rg_gui_dialog(const char *title, const rg_gui_option_t *options, int selected_index);

@@ -1,22 +1,32 @@
 diff --git a/components/esp_system/panic.c b/components/esp_system/panic.c
-index 7391bd0b0..502ebb51e 100644
+index 92d3e27..eeaf6da 100644
 --- a/components/esp_system/panic.c
 +++ b/components/esp_system/panic.c
-@@ -64,11 +64,17 @@ static wdt_hal_context_t wdt1_context = {.inst = WDT_MWDT1, .mwdt_dev = &TIMERG1
+@@ -72,6 +72,11 @@ static wdt_hal_context_t rtc_wdt_ctx = {.inst = WDT_RWDT, .rwdt_dev = &RTCCNTL};
 
- static uart_hal_context_t s_panic_uart = { .dev = CONFIG_ESP_CONSOLE_UART_NUM == 0 ? &UART0 : &UART1 };
+ #if !CONFIG_ESP_SYSTEM_PANIC_SILENT_REBOOT
 
 +void __attribute__((weak)) esp_panic_putchar_hook(char c)
 +{
 +    // nothing
 +}
 +
+ #if CONFIG_ESP_CONSOLE_UART
+ static uart_hal_context_t s_panic_uart = { .dev = CONFIG_ESP_CONSOLE_UART_NUM == 0 ? &UART0 :&UART1 };
+
+@@ -80,6 +85,7 @@ void panic_print_char(const char c)
+     uint32_t sz = 0;
+     while (!uart_hal_get_txfifo_len(&s_panic_uart));
+     uart_hal_write_txfifo(&s_panic_uart, (uint8_t *) &c, 1, &sz);
++    esp_panic_putchar_hook(c);
+ }
+ #endif // CONFIG_ESP_CONSOLE_UART
+
+@@ -88,6 +94,7 @@ void panic_print_char(const char c)
  void panic_print_char(const char c)
  {
-     uint32_t sz = 0;
-     while(!uart_hal_get_txfifo_len(&s_panic_uart));
-     uart_hal_write_txfifo(&s_panic_uart, (uint8_t*) &c, 1, &sz);
-+       esp_panic_putchar_hook(c);
+     esp_usb_console_write_buf(&c, 1);
++    esp_panic_putchar_hook(c);
+     /* result ignored */
  }
-
- void panic_print_str(const char *str)
+ #endif // CONFIG_ESP_CONSOLE_USB_CDC

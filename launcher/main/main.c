@@ -1,4 +1,5 @@
 #include <rg_system.h>
+#include <sys/time.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,16 +7,16 @@
 #include <unistd.h>
 
 #include "applications.h"
-#include "fileserver.h"
 #include "bookmarks.h"
-#include "themes.h"
 #include "gui.h"
-
+#include "webui.h"
+#include "timezones.h"
 
 static rg_gui_event_t toggle_tab_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     tab_t *tab = gui.tabs[option->arg];
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
         tab->enabled = !tab->enabled;
     }
     strcpy(option->value, tab->enabled ? "Show" : "Hide");
@@ -24,20 +25,51 @@ static rg_gui_event_t toggle_tab_cb(rg_gui_option_t *option, rg_gui_event_t even
 
 static rg_gui_event_t toggle_tabs_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    if (event == RG_DIALOG_ENTER) {
-        rg_gui_option_t options[gui.tabcount + 1];
-        rg_gui_option_t *option = &options[0];
+    if (event == RG_DIALOG_ENTER)
+    {
+        rg_gui_option_t options[gui.tabs_count + 1];
 
-        for (int i = 0; i < gui.tabcount; ++i)
-        {
-            *option++ = (rg_gui_option_t) {i, gui.tabs[i]->name, "...", 1, &toggle_tab_cb};
-        }
-
-        *option++ = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
+        for (size_t i = 0; i < gui.tabs_count; ++i)
+            options[i] = (rg_gui_option_t){i, gui.tabs[i]->name, "...", 1, &toggle_tab_cb};
+        options[gui.tabs_count] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
 
         rg_gui_dialog("Tabs Visibility", options, 0);
         gui_redraw();
     }
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t timezone_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    rg_gui_option_t options[timezones_count + 1];
+
+    if (event == RG_DIALOG_ENTER)
+    {
+        for (size_t i = 0; i < timezones_count; i++)
+            options[i] = (rg_gui_option_t){i, timezones[i].name, NULL, 1, NULL};
+        options[timezones_count] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
+
+        int sel = rg_gui_dialog("Timezone", options, 0);
+        if (sel >= 0 && sel < timezones_count)
+        {
+            rg_settings_set_string(NS_GLOBAL, "Timezone", timezones[sel].TZ);
+            setenv("TZ", timezones[sel].TZ, 1);
+            tzset();
+        }
+        gui_redraw();
+    }
+
+    strcpy(option->value, getenv("TZ"));
+
+    for (size_t i = 0; i < timezones_count; i++)
+    {
+        if (strcmp(timezones[i].TZ, option->value) == 0)
+        {
+            strcpy(option->value, timezones[i].name);
+            break;
+        }
+    }
+
     return RG_DIALOG_VOID;
 }
 
@@ -46,39 +78,55 @@ static rg_gui_event_t start_screen_cb(rg_gui_option_t *option, rg_gui_event_t ev
     const char *modes[] = {"Auto", "Carousel", "Browser"};
     int max = 2;
 
-    if (event == RG_DIALOG_PREV && --gui.start_screen < 0) gui.start_screen = max;
-    if (event == RG_DIALOG_NEXT && ++gui.start_screen > max) gui.start_screen = 0;
+    if (event == RG_DIALOG_PREV && --gui.start_screen < 0)
+        gui.start_screen = max;
+    if (event == RG_DIALOG_NEXT && ++gui.start_screen > max)
+        gui.start_screen = 0;
 
-    strcpy(option->value, modes[gui.start_screen % (max+1)]);
+    strcpy(option->value, modes[gui.start_screen % (max + 1)]);
     return RG_DIALOG_VOID;
 }
 
 static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    if (event == RG_DIALOG_PREV) {
-        if (--gui.show_preview < 0) gui.show_preview = PREVIEW_MODE_COUNT - 1;
+    if (event == RG_DIALOG_PREV && --gui.show_preview < 0)
+        gui.show_preview = PREVIEW_MODE_COUNT - 1;
+    if (event == RG_DIALOG_NEXT && ++gui.show_preview >= PREVIEW_MODE_COUNT)
+        gui.show_preview = 0;
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
         gui_set_preview(gui_get_current_tab(), NULL);
-    }
-    if (event == RG_DIALOG_NEXT) {
-        if (++gui.show_preview >= PREVIEW_MODE_COUNT) gui.show_preview = 0;
-        gui_set_preview(gui_get_current_tab(), NULL);
-    }
+
     const char *values[] = {"None      ", "Cover,Save", "Save,Cover", "Cover only", "Save only "};
     strcpy(option->value, values[gui.show_preview % PREVIEW_MODE_COUNT]);
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        char *path = rg_gui_file_picker("Theme", RG_BASE_PATH_THEMES, NULL);
+        const char *theme = path ? rg_basename(path) : NULL;
+        gui_set_theme(theme);
+        rg_gui_set_theme(theme);
+        free(path);
+    }
+
+    sprintf(option->value, "%s", gui.theme ?: "Default");
     return RG_DIALOG_VOID;
 }
 
 static rg_gui_event_t color_theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int max = gui_themes_count - 1;
-    if (event == RG_DIALOG_PREV) {
-        if (--gui.color_theme < 0) gui.color_theme = max;
+
+    if (event == RG_DIALOG_PREV && --gui.color_theme < 0)
+        gui.color_theme = max;
+    if (event == RG_DIALOG_NEXT && ++gui.color_theme > max)
+        gui.color_theme = 0;
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
         gui_redraw();
-    }
-    if (event == RG_DIALOG_NEXT) {
-        if (++gui.color_theme > max) gui.color_theme = 0;
-        gui_redraw();
-    }
+
     sprintf(option->value, "%d/%d", gui.color_theme + 1, max + 1);
     return RG_DIALOG_VOID;
 }
@@ -88,10 +136,12 @@ static rg_gui_event_t startup_app_cb(rg_gui_option_t *option, rg_gui_event_t eve
     const char *modes[] = {"Last game", "Launcher"};
     int max = 1;
 
-    if (event == RG_DIALOG_PREV && --gui.startup < 0) gui.startup = max;
-    if (event == RG_DIALOG_NEXT && ++gui.startup > max) gui.startup = 0;
+    if (event == RG_DIALOG_PREV && --gui.startup_mode < 0)
+        gui.startup_mode = max;
+    if (event == RG_DIALOG_NEXT && ++gui.startup_mode > max)
+        gui.startup_mode = 0;
 
-    strcpy(option->value, modes[gui.startup % (max+1)]);
+    strcpy(option->value, modes[gui.startup_mode % (max + 1)]);
     return RG_DIALOG_VOID;
 }
 
@@ -113,6 +163,12 @@ static void retro_loop(void)
     int browse_last = -1;
     bool redraw_pending = true;
 
+    if (!tab)
+    {
+        gui.selected_tab = 0;
+        tab = gui_get_current_tab();
+    }
+
     while (true)
     {
         if (!tab->enabled && !change_tab)
@@ -125,9 +181,9 @@ static void retro_loop(void)
             if (change_tab)
             {
                 gui_event(TAB_LEAVE, tab);
-                tab = gui_set_current_tab(gui.selected + change_tab);
-                for (int tabs = gui.tabcount; !tab->enabled && --tabs > 0;)
-                    tab = gui_set_current_tab(gui.selected + change_tab);
+                tab = gui_set_current_tab(gui.selected_tab + change_tab);
+                for (int tabs = gui.tabs_count; !tab->enabled && --tabs > 0;)
+                    tab = gui_set_current_tab(gui.selected_tab + change_tab);
                 change_tab = 0;
             }
 
@@ -174,7 +230,7 @@ static void retro_loop(void)
             rg_gui_options_menu();
 
             gui_save_config();
-            rg_storage_commit();
+            rg_settings_commit();
             redraw_pending = true;
         }
 
@@ -234,6 +290,12 @@ static void retro_loop(void)
             gui.idle_counter = 0;
             next_idle_event = rg_system_timer() + 100000;
         }
+        else if (gui.http_lock)
+        {
+            rg_gui_draw_dialog("HTTP Server Busy...", NULL, 0);
+            while (gui.http_lock) // Note: Maybe we should yield on user action, even if risky?
+                usleep(100 * 1000);
+        }
         else if (rg_system_timer() >= next_idle_event)
         {
             gui.idle_counter++;
@@ -261,7 +323,7 @@ static void try_migrate(void)
         rename(RG_STORAGE_ROOT "/odroid/recent.txt", RG_BASE_PATH_CONFIG "/recent.txt");
     #endif
         rg_settings_set_number(NS_GLOBAL, "Migration", 1290);
-        rg_storage_commit();
+        rg_settings_commit();
     }
 
     // Some of our save formats have diverged and cause issue when they're shared with Go-Play
@@ -274,7 +336,7 @@ static void try_migrate(void)
                 "Please copy the contents of:\n /odroid/data\nto\n /retro-go/saves.");
     #endif
         rg_settings_set_number(NS_GLOBAL, "Migration", 1390);
-        rg_storage_commit();
+        rg_settings_commit();
     }
 }
 
@@ -290,11 +352,13 @@ void app_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, "Color theme ", "...", 1, &color_theme_cb},
+        {0, "Theme       ", "...", 1, &theme_cb},
+        {0, " - Color    ", "...", 1, &color_theme_cb},
         {0, "Preview     ", "...", 1, &show_preview_cb},
         {0, "Start screen", "...", 1, &start_screen_cb},
         {0, "Hide tabs   ", "...", 1, &toggle_tabs_cb},
         {0, "Startup app ", "...", 1, &startup_app_cb},
+        {0, "Timezone    ", "...", 1, &timezone_cb},
     #if !RG_GAMEPAD_HAS_OPTION_BTN
         RG_DIALOG_SEPARATOR,
         {0, "About Retro-Go", NULL,  1, &about_app_cb},
@@ -313,18 +377,18 @@ void app_main(void)
     {
         rg_storage_mkdir(RG_BASE_PATH_CACHE);
         rg_storage_mkdir(RG_BASE_PATH_CONFIG);
-        rg_storage_mkdir(RG_BASE_PATH_SYSTEM);
         try_migrate();
     }
 
-    rg_gui_set_buffered(true);
+#ifdef RG_ENABLE_NETWORKING
+    rg_network_init();
+    rg_network_wifi_start(NULL, NULL, 0);
+    webui_start();
+#endif
 
     gui_init();
     applications_init();
     bookmarks_init();
-    themes_init();
-
-    ftp_server_start();
 
     retro_loop();
 }

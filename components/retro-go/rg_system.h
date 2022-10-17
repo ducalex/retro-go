@@ -11,15 +11,16 @@ extern "C" {
 
 #include "config.h"
 
-#ifdef RG_TARGET_SDL2
-#define IRAM_ATTR
-#define RTC_NOINIT_ATTR
-#else
+#ifndef RG_TARGET_SDL2
 #include <esp_idf_version.h>
 #include <esp_attr.h>
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 3, 0)
 #define SPI_DMA_CH_AUTO 1
 #endif
+#else
+#define EXT_RAM_ATTR
+#define IRAM_ATTR
+#define RTC_NOINIT_ATTR
 #endif
 
 #include "rg_audio.h"
@@ -27,10 +28,11 @@ extern "C" {
 #include "rg_input.h"
 #include "rg_storage.h"
 #include "rg_settings.h"
+#include "rg_network.h"
 #include "rg_gui.h"
 #include "rg_i2c.h"
-#include "rg_profiler.h"
 #include "rg_printf.h"
+#include "rg_utils.h"
 
 #ifdef RG_ENABLE_NETPLAY
 #include "rg_netplay.h"
@@ -92,20 +94,19 @@ typedef enum
 {
     RG_EVENT_TYPE_SYSTEM  = 0xF1000000,
     RG_EVENT_TYPE_POWER   = 0xF2000000,
-    RG_EVENT_TYPE_NETPLAY = 0xF3000000,
+    RG_EVENT_TYPE_NETWORK = 0xF3000000,
+    RG_EVENT_TYPE_NETPLAY = 0xF4000000,
     RG_EVENT_TYPE_MASK    = 0xFF000000,
 } rg_event_type_t;
 
-typedef enum
+enum
 {
     RG_EVENT_UNRESPONSIVE = RG_EVENT_TYPE_SYSTEM | 1,
     RG_EVENT_LOWMEMORY    = RG_EVENT_TYPE_SYSTEM | 2,
     RG_EVENT_REDRAW       = RG_EVENT_TYPE_SYSTEM | 3,
-    RG_EVENT_SHUTDOWN     = RG_EVENT_TYPE_POWER + 1,
-    RG_EVENT_SLEEP        = RG_EVENT_TYPE_POWER + 1,
-    RG_EVENT_NETPLAY      = RG_EVENT_TYPE_NETPLAY,
-    RG_EVENT_MASK         = 0xFFFF,
-} rg_event_t;
+    RG_EVENT_SHUTDOWN     = RG_EVENT_TYPE_POWER | 1,
+    RG_EVENT_SLEEP        = RG_EVENT_TYPE_POWER | 2,
+};
 
 typedef bool (*rg_state_handler_t)(const char *filename);
 typedef bool (*rg_reset_handler_t)(bool hard);
@@ -160,11 +161,12 @@ typedef struct
     int refreshRate;
     int sampleRate;
     int logLevel;
-    bool isLauncher;
+    int isLauncher;
     int saveSlot;
     const char *romPath;
     const rg_gui_option_t *options;
     rg_handlers_t handlers;
+    bool initialized;
 } rg_app_t;
 
 typedef struct
@@ -185,23 +187,28 @@ typedef struct
 } rg_stats_t;
 
 rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options);
+rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options);
 void rg_system_panic(const char *context, const char *message) __attribute__((noreturn));
 void rg_system_shutdown(void) __attribute__((noreturn));
 void rg_system_sleep(void) __attribute__((noreturn));
 void rg_system_restart(void) __attribute__((noreturn));
-void rg_system_start_app(const char *app, const char *name, const char *args, uint32_t flags) __attribute__((noreturn));
-void rg_system_set_boot_app(const char *app);
-bool rg_system_find_app(const char *app);
+void rg_system_switch_app(const char *part, const char *name, const char *args, uint32_t flags) __attribute__((noreturn));
+bool rg_system_have_app(const char *app);
 void rg_system_set_led(int value);
 int  rg_system_get_led(void);
 void rg_system_tick(int busyTime);
 void rg_system_vlog(int level, const char *context, const char *format, va_list va);
 void rg_system_log(int level, const char *context, const char *format, ...) __attribute__((format(printf,3,4)));
 bool rg_system_save_trace(const char *filename, bool append);
-void rg_system_event(rg_event_t event, void *data);
+void rg_system_event(int event, void *data);
 int64_t rg_system_timer(void);
 rg_app_t *rg_system_get_app(void);
 rg_stats_t rg_system_get_counters(void);
+
+// RTC and time-related functions
+void rg_system_set_timezone(const char *TZ);
+void rg_system_load_time(void);
+void rg_system_save_time(void);
 
 // Wrappers for the OS' task/thread creation API. It also keeps track of handles for debugging purposes...
 bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, size_t stackSize, int priority, int affinity);
@@ -215,7 +222,6 @@ bool rg_emu_reset(bool hard);
 bool rg_emu_screenshot(const char *filename, int width, int height);
 rg_emu_state_t *rg_emu_get_states(const char *romPath, size_t slots);
 
-uint32_t rg_crc32(uint32_t crc, const uint8_t* buf, uint32_t len);
 void *rg_alloc(size_t size, uint32_t caps);
 
 #define MEM_ANY   (0)
@@ -234,15 +240,6 @@ void *rg_alloc(size_t size, uint32_t caps);
 // #define gpio_get_level(num, level) (((num) & I2C) ? rg_gpio_set_level((num) & ~I2C) : (gpio_get_level)(num, level))
 // #define gpio_set_direction(num, mode) (((num) & I2C) ? rg_gpio_set_direction((num) & ~I2C) : (gpio_set_direction)(num, level) == ESP_OK)
 
-#define RG_TIMER_INIT() int64_t _rgts_ = rg_system_timer(), _rgtl_ = rg_system_timer();
-#define RG_TIMER_LAP(name) \
-    RG_LOGX("Lap %s: %.2f   Total: %.2f\n", #name, (rg_system_timer() - _rgtl_) / 1000.f, \
-            (rg_system_timer() - _rgts_) / 1000.f); _rgtl_ = rg_system_timer();
-
-#define RG_MIN(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a < _b ? _a : _b; })
-#define RG_MAX(a, b) ({__typeof__(a) _a = (a); __typeof__(b) _b = (b);_a > _b ? _a : _b; })
-#define RG_COUNT(array) (sizeof(array) / sizeof((array)[0]))
-
 // This should really support printf format...
 #define RG_PANIC(x) rg_system_panic(__func__, x)
 #define RG_ASSERT(cond, msg) while (!(cond)) { RG_PANIC("Assertion failed: `" #cond "` : " msg); }
@@ -256,6 +253,10 @@ void *rg_alloc(size_t size, uint32_t caps);
 #define RG_LOGW(x, ...) rg_system_log(RG_LOG_WARN, RG_LOG_TAG, x, ## __VA_ARGS__)
 #define RG_LOGI(x, ...) rg_system_log(RG_LOG_INFO, RG_LOG_TAG, x, ## __VA_ARGS__)
 #define RG_LOGD(x, ...) rg_system_log(RG_LOG_DEBUG, RG_LOG_TAG, x, ## __VA_ARGS__)
+
+void __cyg_profile_func_enter(void *this_fn, void *call_site);
+void __cyg_profile_func_exit(void *this_fn, void *call_site);
+#define NO_PROFILE __attribute((no_instrument_function))
 
 #ifdef __cplusplus
 }

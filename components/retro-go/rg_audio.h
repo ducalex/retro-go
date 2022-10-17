@@ -55,8 +55,8 @@ const rg_audio_sink_t *rg_audio_get_sinks(size_t *count);
 const rg_audio_sink_t *rg_audio_get_sink(void);
 void rg_audio_set_sink(rg_sink_type_t sink);
 
-int  rg_audio_get_volume(void);
+int rg_audio_get_volume(void);
 void rg_audio_set_volume(int percent);
 void rg_audio_set_mute(bool mute);
-int  rg_audio_get_sample_rate(void);
+int rg_audio_get_sample_rate(void);
 void rg_audio_set_sample_rate(int sampleRate);

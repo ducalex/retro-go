@@ -42,10 +42,6 @@ if os.path.exists("rg_config.py"):
 #       PROJECT_APPS[basename(dirname(file))] = [0, 0, 0, 0]
 
 
-if not os.getenv("IDF_PATH"):
-    exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
-
-
 class Symbol:
     def __init__(self, address, name, source="??:?", inlined=None):
         self.address = int(str(address), 0)
@@ -201,14 +197,14 @@ def clean_app(app):
     print("Done.\n")
 
 
-def build_app(app, device_type, with_profiling=False, with_netplay=False):
+def build_app(app, device_type, with_profiling=False, with_networking=False):
     # To do: clean up if any of the flags changed since last build
     print("Building app '%s'" % app)
     os.putenv("RG_ENABLE_PROFILING", "1" if with_profiling else "0")
-    os.putenv("RG_ENABLE_NETPLAY", "1" if with_netplay else "0")
+    os.putenv("RG_ENABLE_NETWORKING", "1" if with_networking else "0")
     os.putenv("RG_BUILD_TARGET", re.sub(r'[^A-Z0-9]', '_', device_type.upper()))
     os.putenv("RG_BUILD_TIME", str(int(time.time())))
-    os.putenv("PROJECT_VER", PROJECT_VER)
+    os.putenv("RG_BUILD_VERSION", PROJECT_VER)
     subprocess.run("idf.py app", shell=True, check=True, cwd=os.path.join(os.getcwd(), app))
 
     try:
@@ -216,6 +212,8 @@ def build_app(app, device_type, with_profiling=False, with_netplay=False):
         with open(os.path.join(app, "build", app + ".bin"), "r+b") as fp:
             fp.seek(23)
             fp.write(b"\0")
+            fp.seek(0, os.SEEK_END)
+            print(" size=%d " % fp.tell(), end="")
         print("done!\n")
     except: # don't really care if that fails
         print("failed!\n")
@@ -296,7 +294,10 @@ parser.add_argument(
     "--target", default=DEFAULT_TARGET, choices=set(TARGETS), help="Device to target"
 )
 parser.add_argument(
-    "--with-netplay", action="store_const", const=True, help="Build with netplay enabled"
+    "--idf-target", default=None, choices=["esp32", "esp32s2", "esp32s3"], help="ESP SOC to target"
+)
+parser.add_argument(
+    "--with-networking", action="store_const", const=True, help="Build with networking enabled"
 )
 parser.add_argument(
     "--port", default=DEFAULT_PORT, help="Serial port to use for flash and monitor"
@@ -305,6 +306,12 @@ parser.add_argument(
     "--baud", default=DEFAULT_BAUD, help="Serial baudrate to use for flashing"
 )
 args = parser.parse_args()
+
+
+if not os.getenv("IDF_PATH"):
+    exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
+elif args.idf_target:
+    os.putenv("IDF_TARGET", args.idf_target)
 
 
 command = args.command
@@ -323,7 +330,7 @@ if command in ["clean", "release"]:
 if command in ["build", "build-fw", "build-img", "release", "run", "profile"]:
     print("=== Step: Building ===\n")
     for app in apps:
-        build_app(app, args.target, command == "profile", args.with_netplay)
+        build_app(app, args.target, command == "profile", args.with_networking)
 
 if command in ["build-fw", "release"]:
     print("=== Step: Packing ===\n")
