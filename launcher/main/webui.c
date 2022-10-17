@@ -72,22 +72,25 @@ static esp_err_t http_api_handler(httpd_req_t *req)
     else if (strcmp(cmd, "rename") == 0)
     {
         success = rename(arg1, arg2) == 0;
+        gui_invalidate();
     }
     else if (strcmp(cmd, "delete") == 0)
     {
         success = rg_storage_delete(arg1);
+        gui_invalidate();
     }
     else if (strcmp(cmd, "mkdir") == 0)
     {
         success = rg_storage_mkdir(arg1);
+        gui_invalidate();
     }
     else if (strcmp(cmd, "touch") == 0)
     {
         success = (fp = fopen(arg1, "wb")) && fclose(fp) == 0;
+        gui_invalidate();
     }
 
     gui.http_lock = false;
-    gui_invalidate();
 
     cJSON_AddBoolToObject(response, "success", success);
 

@@ -13,6 +13,7 @@
     }
 
 static rg_network_t netstate = {0};
+static bool initialized = false;
 
 static const char *SETTING_WIFI_SSID = "ssid";
 static const char *SETTING_WIFI_PASSWORD = "password";
@@ -29,7 +30,7 @@ static const char *SETTING_WIFI_PASSWORD = "password";
 #include <sys/socket.h>
 #include <netdb.h>
 
-static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+static void network_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
     {
@@ -38,37 +39,46 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
         RG_LOGE("Got disconnected from AP. Reconnecting...\n");
+        netstate.state = RG_WIFI_CONNECTING;
         rg_system_event(RG_EVENT_NETWORK_DISCONNECTED, NULL);
         esp_wifi_connect();
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-        RG_LOGI("Got IP:" IPSTR "\n", IP2STR(&event->ip_info.ip));
+        wifi_ap_record_t wifidata;
         snprintf(netstate.local_addr, 16, IPSTR, IP2STR(&event->ip_info.ip));
-        netstate.connected = true;
-        netstate.connecting = false;
+        if (esp_wifi_sta_get_ap_info(&wifidata) == ESP_OK)
+            netstate.rssi = wifidata.rssi;
+        netstate.state = RG_WIFI_CONNECTED;
+        RG_LOGI("Connected! IP: %s, RSSI: %d", netstate.local_addr, netstate.rssi);
+        if (rg_network_sync_time("pool.ntp.org", 0))
+            rg_system_save_time();
         rg_system_event(RG_EVENT_NETWORK_CONNECTED, NULL);
     }
-    RG_LOGI("%d %d\n", (int)event_base, (int)event_id);
+    else
+    {
+        RG_LOGI("Event: %d %d\n", (int)event_base, (int)event_id);
+    }
 }
 #endif
 
 void rg_network_wifi_stop(void)
 {
-    // fail:
-    //     return false;
+#ifdef RG_ENABLE_NETWORKING
+    esp_wifi_stop();
+    netstate.state = RG_WIFI_DISCONNECTED;
+#endif
 }
 
-bool rg_network_wifi_start(int mode, const char *ssid, const char *password, int channel)
+bool rg_network_wifi_start(const char *ssid, const char *password, int channel)
 {
-    RG_ASSERT(netstate.initialized, "Please call rg_network_init() first");
+    RG_ASSERT(initialized, "Please call rg_network_init() first");
     if (ssid)
     {
         RG_LOGI("Replacing SSID '%s' with '%s'.\n", netstate.ssid, ssid);
         snprintf(netstate.ssid, 32, "%s", ssid);
         snprintf(netstate.password, 64, "%s", password ?: "");
-        netstate.configured = true;
     }
     if (!netstate.ssid[0])
     {
@@ -85,7 +95,7 @@ bool rg_network_wifi_start(int mode, const char *ssid, const char *password, int
     TRY(esp_wifi_set_mode(WIFI_MODE_STA));
     TRY(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     TRY(esp_wifi_start());
-    netstate.connecting = true;
+    netstate.state = RG_WIFI_CONNECTING;
     return true;
 fail:
 #endif
@@ -94,13 +104,7 @@ fail:
 
 rg_network_t rg_network_get_info(void)
 {
-#if 0
-    wifi_ap_record_t wifidata;
-    if (netstate.connected)
-    {
-        if (esp_wifi_sta_get_ap_info(&wifidata) == ESP_OK)
-            netstate.rssi = wifidata.rssi;
-    }
+#ifdef RG_ENABLE_NETWORKING
 #endif
     return netstate;
 }
@@ -155,24 +159,19 @@ bool rg_network_sync_time(const char *host, int *out_delta)
     return false;
 }
 
-bool rg_network_connect(const char *ssid, const char *password)
-{
-    return rg_network_wifi_start(RG_WIFI_STA, ssid, password, 0);
-}
-
 void rg_network_deinit(void)
 {
 #ifdef RG_ENABLE_NETWORKING
     esp_wifi_stop();
     esp_wifi_deinit();
-    esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler);
-    esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler);
+    esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &network_event_handler);
+    esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &network_event_handler);
 #endif
 }
 
 bool rg_network_init(void)
 {
-    if (netstate.initialized)
+    if (initialized)
         return true;
 
     // Preload values from configuration
@@ -192,14 +191,13 @@ bool rg_network_init(void)
     TRY(esp_event_loop_create_default());
     esp_netif_create_default_wifi_sta();
 
-    TRY(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
-    TRY(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL));
+    TRY(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &network_event_handler, NULL));
+    TRY(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &network_event_handler, NULL));
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     TRY(esp_wifi_init(&cfg));
 
-    netstate.configured = netstate.ssid[0] != 0;
-    netstate.initialized = true;
+    initialized = true;
     return true;
 fail:
 #else

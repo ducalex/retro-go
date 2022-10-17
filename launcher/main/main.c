@@ -344,14 +344,6 @@ void event_handler(int event, void *arg)
 {
     if (event == RG_EVENT_REDRAW)
         gui_redraw();
-#ifdef RG_ENABLE_NETWORKING
-    if (event == RG_EVENT_NETWORK_CONNECTED)
-    {
-        if (rg_network_sync_time("pool.ntp.org", 0))
-            rg_system_save_time();
-        webui_start();
-    }
-#endif
 }
 
 void app_main(void)
@@ -390,7 +382,8 @@ void app_main(void)
 
 #ifdef RG_ENABLE_NETWORKING
     rg_network_init();
-    rg_network_wifi_start(RG_WIFI_STA, NULL, NULL, 0);
+    rg_network_wifi_start(NULL, NULL, 0);
+    webui_start();
 #endif
 
     gui_init();
