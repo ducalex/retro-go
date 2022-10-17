@@ -81,7 +81,7 @@ bool rg_gui_set_theme(const char *theme_name)
     gui.style.box_border = get_theme_value(theme, "box_border", C_DIM_GRAY);
     gui.style.item_standard = get_theme_value(theme, "item_standard", C_WHITE);
     gui.style.item_disabled = get_theme_value(theme, "item_disabled", C_GRAY);
-    gui.style.scrollbar = get_theme_value(theme, "scrollbar", C_RED);
+    gui.style.scrollbar = get_theme_value(theme, "scrollbar", C_WHITE);
 
     RG_LOGI("Theme set to '%s'!\n", theme_name ?: "(none)");
 
@@ -664,20 +664,20 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
     // Basic scroll indicators are overlayed at the end...
     if (top_i > 0)
     {
-        int x = box_x + inner_width + box_padding;
-        int y = box_y + box_padding - 1;
-        rg_gui_draw_rect(x, y, 3, 3, 0, 0, gui.style.scrollbar);
-        rg_gui_draw_rect(x + 6, y, 3, 3, 0, 0, gui.style.scrollbar);
-        rg_gui_draw_rect(x + 12, y, 3, 3, 0, 0, gui.style.scrollbar);
+        int x = box_x + box_width - 10;
+        int y = box_y + box_padding + 2;
+        rg_gui_draw_rect(x + 0, y - 0, 6, 2, 0, 0, gui.style.scrollbar);
+        rg_gui_draw_rect(x + 1, y - 2, 4, 2, 0, 0, gui.style.scrollbar);
+        rg_gui_draw_rect(x + 2, y - 4, 2, 2, 0, 0, gui.style.scrollbar);
     }
 
     if (i < options_count)
     {
-        int x = box_x + inner_width + box_padding;
-        int y = box_y + box_height - box_padding - 1;
-        rg_gui_draw_rect(x, y, 3, 3, 0, 0, gui.style.scrollbar);
-        rg_gui_draw_rect(x + 6, y, 3, 3, 0, 0, gui.style.scrollbar);
-        rg_gui_draw_rect(x + 12, y, 3, 3, 0, 0, gui.style.scrollbar);
+        int x = box_x + box_width - 10;
+        int y = box_y + box_height - 6;
+        rg_gui_draw_rect(x + 0, y - 4, 6, 2, 0, 0, gui.style.scrollbar);
+        rg_gui_draw_rect(x + 1, y - 2, 4, 2, 0, 0, gui.style.scrollbar);
+        rg_gui_draw_rect(x + 2, y - 0, 2, 2, 0, 0, gui.style.scrollbar);
     }
 
     rg_gui_flush();
