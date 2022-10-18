@@ -17,6 +17,7 @@
 #define SVAR_4(k, v) { {k, 4, 4}, &v }
 #define SVAR_A(k, v) { {k, 0, sizeof(v)}, &v }
 #define SVAR_N(k, v, n) { {k, 0, n}, &v }
+#define SVAR_P(k, v, n) { {k, 5, n}, &v }
 #define SVAR_END { {"END", 0, 0}, NULL }
 
 typedef struct __attribute__((packed))
@@ -36,7 +37,7 @@ static const char SAVESTATE_HEADER[8] = "PCE_V010";
 static save_var_t SaveStateVars[] =
 {
 	// Arrays
-	SVAR_N("RAM", PCE.RAM, 0x2000),             SVAR_N("VRAM", PCE.VRAM, 0x10000),
+	SVAR_P("RAM", PCE.RAM, 0x2000),             SVAR_P("VRAM", PCE.VRAM, 0x10000),
 	SVAR_N("SPRAM", PCE.SPRAM, 512),            SVAR_N("PAL", PCE.Palette, 512),
 	SVAR_A("MMR", PCE.MMR),
 
@@ -349,15 +350,16 @@ LoadState(const char *name)
 		{
 			if (strncmp(var->desc.key, block.key, 12) == 0)
 			{
+				void *ptr = var->desc.type == 5 ? *((void**)var->ptr) : var->ptr;
 				size_t len = MIN((size_t)var->desc.len, (size_t)block.len);
-				if (!fread(var->ptr, len, 1, fp))
+				if (!fread(ptr, len, 1, fp))
 				{
 					MESSAGE_ERROR("fread error reading block data\n");
 					goto _cleanup;
 				}
 				if (len < var->desc.len)
 				{
-					memset(var->ptr + len, 0, var->desc.len - len);
+					memset(ptr + len, 0, var->desc.len - len);
 				}
 				MESSAGE_INFO("Loaded %s\n", var->desc.key);
 				break;
@@ -398,12 +400,14 @@ SaveState(const char *name)
 
 	for (save_var_t *var = SaveStateVars; var->ptr; var++)
 	{
+		void *ptr = var->desc.type == 5 ? *((void**)var->ptr) : var->ptr;
+		size_t len = var->desc.len;
 		if (!fwrite(&var->desc, sizeof(var->desc), 1, fp))
 		{
 			MESSAGE_ERROR("fwrite error desc\n");
 			goto _cleanup;
 		}
-		if (!fwrite(var->ptr, var->desc.len, 1, fp))
+		if (!fwrite(ptr, len, 1, fp))
 		{
 			MESSAGE_ERROR("fwrite error value\n");
 			goto _cleanup;
