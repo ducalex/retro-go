@@ -102,6 +102,9 @@ int rg_gui_game_menu(void);
 int rg_gui_about_menu(const rg_gui_option_t *extra_options);
 int rg_gui_debug_menu(const rg_gui_option_t *extra_options);
 
+// Creates a 565LE color from C_RGB(255, 255, 255)
+#define C_RGB(r, g, b) ((((r) >> 3) << 11) | (((g) >> 2) << 5) | (((b) & 0x1F)))
+
 /* -------------------------------------------------------------------------------- */
 /* -- µGUI COLORS                                                                -- */
 /* -- Source: http://www.rapidtables.com/web/color/RGB_Color.htm                 -- */

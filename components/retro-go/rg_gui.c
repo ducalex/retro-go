@@ -11,10 +11,12 @@
 #include "bitmaps/image_hourglass.h"
 #include "fonts/fonts.h"
 
-static struct {
+static struct
+{
     uint16_t *screen_buffer, *draw_buffer;
     int screen_width, screen_height;
-    struct {
+    struct
+    {
         const rg_font_t *font;
         int font_type;
         int font_points;
