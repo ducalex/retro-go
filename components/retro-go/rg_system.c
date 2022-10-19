@@ -363,6 +363,11 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     // Do this very early, may be needed to enable serial console
     setup_gpios();
 
+#ifdef RG_TARGET_SDL2
+    freopen("stdout.txt", "w", stdout);
+    freopen("stderr.txt", "w", stderr);
+#endif
+
     printf("\n========================================================\n");
     printf("%s %s (%s %s)\n", app.name, app.version, app.buildDate, app.buildTime);
     printf(" built for: %s. aud=%d disp=%d pad=%d sd=%d cfg=%d\n", RG_TARGET_NAME, 0, 0, 0, 0, 0);
@@ -876,7 +881,11 @@ void rg_system_switch_app(const char *partition, const char *name, const char *a
 
 bool rg_system_have_app(const char *app)
 {
+#ifndef RG_TARGET_SDL2
     return esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, app) != NULL;
+#else
+    return true;
+#endif
 }
 
 void rg_system_panic(const char *context, const char *message)
