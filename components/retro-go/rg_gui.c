@@ -98,6 +98,11 @@ bool rg_gui_set_theme(const char *theme_name)
     return true;
 }
 
+const char *rg_gui_get_theme(void)
+{
+    return strlen(gui.theme) ? gui.theme : NULL;
+}
+
 void rg_gui_set_buffered(bool buffered)
 {
     if (!buffered)
@@ -1034,21 +1039,36 @@ static rg_gui_event_t font_type_cb(rg_gui_option_t *option, rg_gui_event_t event
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        char *path = rg_gui_file_picker("Theme", RG_BASE_PATH_THEMES, NULL);
+        const char *theme = path ? rg_basename(path) : NULL;
+        rg_gui_set_theme(theme);
+        free(path);
+    }
+
+    sprintf(option->value, "%s", rg_gui_get_theme() ?: "Default");
+    return RG_DIALOG_VOID;
+}
+
 int rg_gui_options_menu(void)
 {
     rg_gui_option_t options[24];
     rg_gui_option_t *opt = &options[0];
     rg_app_t *app = rg_system_get_app();
 
-    *opt++ = (rg_gui_option_t){0, "Brightness", "50%",  1, &brightness_update_cb};
-    *opt++ = (rg_gui_option_t){0, "Volume    ", "50%",  1, &volume_update_cb};
+    *opt++ = (rg_gui_option_t){0, "Brightness", "50%", 1, &brightness_update_cb};
+    *opt++ = (rg_gui_option_t){0, "Volume    ", "50%", 1, &volume_update_cb};
     *opt++ = (rg_gui_option_t){0, "Audio out ", "Speaker", 1, &audio_update_cb};
 
     // Global settings that aren't essential to show when inside a game
     if (app->isLauncher)
     {
-        *opt++ = (rg_gui_option_t){0, "Disk LED   ", "...", 1, &disk_activity_cb};
-        *opt++ = (rg_gui_option_t){0, "Font type  ", "...", 1, &font_type_cb};
+        *opt++ = (rg_gui_option_t){0, "Disk LED  ", "...", 1, &disk_activity_cb};
+        *opt++ = (rg_gui_option_t){0, "Font type ", "...", 1, &font_type_cb};
+        *opt++ = (rg_gui_option_t){0, "Theme     ", "...", 1, &theme_cb};
     }
     // App settings that are shown only inside a game
     else

@@ -9,7 +9,6 @@
 
 #include "applications.h"
 #include "bookmarks.h"
-#include "utils.h"
 #include "gui.h"
 
 #define CRC_CACHE_MAGIC 0x21112222

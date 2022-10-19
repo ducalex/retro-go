@@ -5,7 +5,6 @@
 #include <stdio.h>
 
 #include "bookmarks.h"
-#include "utils.h"
 #include "gui.h"
 
 static book_t books[BOOK_TYPE_COUNT];

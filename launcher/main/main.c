@@ -12,6 +12,8 @@
 #include "webui.h"
 #include "timezones.h"
 
+static rg_app_t *app;
+
 static rg_gui_event_t toggle_tab_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     tab_t *tab = gui.tabs[option->arg];
@@ -51,11 +53,7 @@ static rg_gui_event_t timezone_cb(rg_gui_option_t *option, rg_gui_event_t event)
 
         int sel = rg_gui_dialog("Timezone", options, 0);
         if (sel >= 0 && sel < timezones_count)
-        {
-            rg_settings_set_string(NS_GLOBAL, "Timezone", timezones[sel].TZ);
-            setenv("TZ", timezones[sel].TZ, 1);
-            tzset();
-        }
+            rg_system_set_timezone(timezones[sel].TZ);
         gui_redraw();
     }
 
@@ -101,21 +99,6 @@ static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t ev
     return RG_DIALOG_VOID;
 }
 
-static rg_gui_event_t theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-    {
-        char *path = rg_gui_file_picker("Theme", RG_BASE_PATH_THEMES, NULL);
-        const char *theme = path ? rg_basename(path) : NULL;
-        gui_set_theme(theme);
-        rg_gui_set_theme(theme);
-        free(path);
-    }
-
-    sprintf(option->value, "%s", gui.theme ?: "Default");
-    return RG_DIALOG_VOID;
-}
-
 static rg_gui_event_t color_theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int max = gui_themes_count - 1;
@@ -154,7 +137,7 @@ static rg_gui_event_t about_app_cb(rg_gui_option_t *option, rg_gui_event_t event
 
 static void retro_loop(void)
 {
-    tab_t *tab = gui_get_current_tab();
+    tab_t *tab = NULL;
     int64_t next_repeat = 0;
     int64_t next_idle_event = 0;
     int repeats = 0;
@@ -163,6 +146,17 @@ static void retro_loop(void)
     int browse_last = -1;
     bool redraw_pending = true;
 
+    gui_init();
+    applications_init();
+    bookmarks_init();
+
+#ifdef RG_ENABLE_NETWORKING
+    rg_network_init();
+    rg_network_wifi_start(NULL, NULL, 0);
+    webui_start();
+#endif
+
+    tab = gui_get_current_tab();
     if (!tab)
     {
         gui.selected_tab = 0;
@@ -229,6 +223,7 @@ static void retro_loop(void)
         #endif
             rg_gui_options_menu();
 
+            gui_set_theme(rg_gui_get_theme());
             gui_save_config();
             rg_settings_commit();
             redraw_pending = true;
@@ -352,7 +347,6 @@ void app_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, "Theme       ", "...", 1, &theme_cb},
         {0, " - Color    ", "...", 1, &color_theme_cb},
         {0, "Preview     ", "...", 1, &show_preview_cb},
         {0, "Start screen", "...", 1, &start_screen_cb},
@@ -366,7 +360,9 @@ void app_main(void)
         RG_DIALOG_CHOICE_LAST
     };
 
-    rg_system_init(32000, &handlers, options);
+    app = rg_system_init(32000, &handlers, options);
+    app->configNs = "launcher";
+    app->isLauncher = true;
 
     if (!rg_storage_ready())
     {
@@ -379,16 +375,6 @@ void app_main(void)
         rg_storage_mkdir(RG_BASE_PATH_CONFIG);
         try_migrate();
     }
-
-#ifdef RG_ENABLE_NETWORKING
-    rg_network_init();
-    rg_network_wifi_start(NULL, NULL, 0);
-    webui_start();
-#endif
-
-    gui_init();
-    applications_init();
-    bookmarks_init();
 
     retro_loop();
 }

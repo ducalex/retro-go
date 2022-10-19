@@ -100,3 +100,26 @@ uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, uint32_t len)
    return ~crc;
 #endif
 }
+
+const char *const_string(const char *str)
+{
+    static const char **strings = NULL;
+    static size_t strings_count = 0;
+
+    if (!str)
+        return NULL;
+
+    // To do : use hashmap or something faster
+    for (int i = 0; i < strings_count; i++)
+        if (strcmp(strings[i], str) == 0)
+            return strings[i];
+
+    str = strdup(str);
+
+    strings = realloc(strings, (strings_count + 1) * sizeof(char*));
+    RG_ASSERT(strings && str, "alloc failed");
+
+    strings[strings_count++] = str;
+
+    return str;
+}

@@ -79,6 +79,7 @@ void rg_gui_clear(rg_color_t color); // like rg_display_clear but takes gui scre
 void rg_gui_set_buffered(bool buffered);
 bool rg_gui_set_font_type(int type);
 bool rg_gui_set_theme(const char *theme_name);
+const char *rg_gui_get_theme(void);
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, rg_color_t color_fg, rg_color_t color_bg, uint32_t flags);
 void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer);
 void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size, rg_color_t border_color, rg_color_t fill_color);

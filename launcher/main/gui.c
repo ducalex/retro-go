@@ -6,7 +6,6 @@
 #include <unistd.h>
 
 #include "applications.h"
-#include "utils.h"
 #include "gui.h"
 
 #define HEADER_HEIGHT       (50)

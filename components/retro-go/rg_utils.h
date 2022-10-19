@@ -25,3 +25,5 @@ const char *rg_extension(const char *path);
 const char *rg_relpath(const char *path);
 
 uint32_t rg_crc32(uint32_t crc, const uint8_t* buf, uint32_t len);
+
+const char *const_string(const char *str);
