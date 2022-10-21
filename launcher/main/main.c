@@ -8,6 +8,7 @@
 
 #include "applications.h"
 #include "bookmarks.h"
+#include "music.h"
 #include "gui.h"
 #include "webui.h"
 #include "timezones.h"
@@ -149,6 +150,7 @@ static void retro_loop(void)
     gui_init();
     applications_init();
     bookmarks_init();
+    music_init();
 
 #ifdef RG_ENABLE_NETWORKING
     rg_network_init();

@@ -28,7 +28,9 @@ typedef struct __attribute__((packed))
 {
     int16_t left;
     int16_t right;
-} rg_audio_sample_t;
+} rg_audio_frame_t;
+
+typedef rg_audio_frame_t rg_audio_sample_t;
 
 typedef struct
 {
@@ -47,7 +49,7 @@ typedef struct
 
 void rg_audio_init(int sampleRate);
 void rg_audio_deinit(void);
-void rg_audio_submit(const rg_audio_sample_t *samples, size_t count);
+void rg_audio_submit(const rg_audio_frame_t *frames, size_t count);
 const rg_audio_t *rg_audio_get_info(void);
 rg_audio_counters_t rg_audio_get_counters(void);
 
