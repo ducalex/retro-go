@@ -144,7 +144,8 @@ static esp_err_t http_upload_handler(httpd_req_t *req)
     {
         RG_LOGE("Received %d/%d bytes", received, req->content_len);
         httpd_resp_sendstr(req, "ERROR");
-        return ESP_OK;
+        unlink(filename);
+        return ESP_FAIL;
     }
 
     RG_LOGI("Received %d/%d bytes", received, req->content_len);
