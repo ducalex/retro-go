@@ -75,6 +75,9 @@ Some emulators support loading a BIOS. The files should be placed as follows:
 - GBC: `/retro-go/bios/gbc_bios.bin`
 - FDS: `/retro-go/bios/fds_bios.bin`
 
+## Game & Watch
+The roms must be packed with [LCD-Game-Shrinker](https://github.com/bzhxx/LCD-Game-Shrinker) and a tutorial can be [found here](https://gist.github.com/DNA64/16fed499d6bd4664b78b4c0a9638e4ef).
+
 ## Wifi
 
 To use wifi you will need to add your config to `/retro-go/config/wifi.json` file.
