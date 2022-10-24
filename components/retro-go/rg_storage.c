@@ -337,6 +337,7 @@ rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char 
             result->is_file = S_ISREG(statbuf.st_mode);
             result->is_dir = S_ISDIR(statbuf.st_mode);
             result->size = statbuf.st_size;
+            result->mtime = statbuf.st_mtim.tv_sec;
         }
     }
     memset(&results[count], 0, sizeof(rg_scandir_t));
