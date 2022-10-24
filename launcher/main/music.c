@@ -103,40 +103,42 @@ static void tab_refresh(tab_t *tab)
 
 static void music_player(void *arg)
 {
-    char filepath[RG_PATH_MAX];
-    rg_audio_frame_t buffer[180];
+    rg_audio_frame_t *buffer = malloc(180 * sizeof(rg_audio_frame_t));
     drmp3 *mp3 = malloc(sizeof(drmp3));
+    char filepath[RG_PATH_MAX];
 
     while (1)
     {
         xQueueReceive(playback_queue, &filepath, portMAX_DELAY);
 
         RG_LOGI("Playing file '%s'", filepath);
+
         if (drmp3_init_file(mp3, filepath, NULL))
         {
             rg_audio_set_sample_rate(mp3->sampleRate);
 
             while (!mp3->atEnd && !uxQueueMessagesWaiting(playback_queue))
             {
-                drmp3_uint64 len = drmp3_read_pcm_frames_s16(mp3, 180, (int16_t *)buffer);
+                drmp3_uint64 len = drmp3_read_pcm_frames_s16(mp3, 180, (drmp3_int16 *)buffer);
                 rg_audio_submit(buffer, len);
-                // rg_task_delay(0);
             }
-
-            memset(buffer, 0, sizeof(buffer));
-            rg_audio_submit(buffer, 180);
 
             drmp3_uninit(mp3);
         }
     }
+
+    free(buffer);
+    free(mp3);
 
     rg_task_delete(NULL);
 }
 
 void music_init(void)
 {
+    #if 0
     gui_add_tab("Music", "Music Player", NULL, event_handler);
 
     playback_queue = xQueueCreate(1, RG_PATH_MAX);
-    rg_task_create("music_player", &music_player, NULL, 24000, RG_TASK_PRIORITY, -1);
+    rg_task_create("music_player", &music_player, NULL, 32000, RG_TASK_PRIORITY, -1);
+    #endif
 }
