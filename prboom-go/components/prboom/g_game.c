@@ -2855,7 +2855,7 @@ boolean G_CheckDemoStatus (void)
   if (demoplayback)
     {
       if (singledemo)
-        exit(0);  // killough
+        I_SafeExit(0);  // killough
 
       if (demolumpnum != -1) {
   // cph - unlock the demo lump

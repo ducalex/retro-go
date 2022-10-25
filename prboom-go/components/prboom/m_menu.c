@@ -1320,7 +1320,7 @@ static void M_RestartLevelResponse(int ch)
     return;
 
   if (demorecording)
-    exit(0);
+    I_SafeExit(0);
 
   currentMenu->lastOn = itemOn;
   M_ClearMenus();
@@ -1513,7 +1513,7 @@ static void M_QuitResponse(int ch)
       i--;
     }
   }
-  exit(0); // killough
+  I_SafeExit(0); // killough
 }
 
 static void M_QuitDOOM(int choice)

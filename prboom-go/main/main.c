@@ -200,6 +200,11 @@ void I_uSleep(unsigned long usecs)
     usleep(usecs);
 }
 
+void I_SafeExit(int rc)
+{
+    rg_system_switch_app(RG_APP_LAUNCHER, RG_APP_LAUNCHER, 0, 0);
+}
+
 const char *I_DoomExeDir(void)
 {
     return RG_BASE_PATH_ROMS "/doom";
