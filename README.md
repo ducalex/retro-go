@@ -37,7 +37,7 @@ compatibility!
 - And more!
 
 ### Screenshots
-![Preview](retro-go-preview.jpg)
+![Preview](assets/retro-go-preview.jpg)
 
 
 # Installation

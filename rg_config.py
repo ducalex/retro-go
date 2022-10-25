@@ -7,7 +7,7 @@
 # - Subtypes and offsets and size may be adjusted when building a .fw or .img
 
 PROJECT_NAME = "Retro-Go"
-PROJECT_ICON = "icon.raw"
+PROJECT_ICON = "assets/icon.raw"
 PROJECT_APPS = {
   # Project name  Type, SubType, Size
   'launcher':     [0, 0, 786432],
