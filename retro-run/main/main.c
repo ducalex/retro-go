@@ -26,6 +26,8 @@ void app_main(void)
         gw_main();
     else if (strcmp(app->configNs, "lnx") == 0)
         lnx_main();
+    else if (strcmp(app->configNs, "snes") == 0)
+        snes_main();
 
     RG_PANIC("Unknown emulator!");
 }

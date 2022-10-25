@@ -320,6 +320,8 @@ void app_main(void)
         rg_emu_load_state(app->saveSlot);
     }
 
+    app->refreshRate = Memory.ROMFramesPerSecond;
+
     bool menuCancelled = false;
     bool menuPressed = false;
     int frames = 0;
