@@ -23,7 +23,7 @@ static const char webui_html[] = {
 "            <input style='opacity: 0; position: absolute;' type='file' id='upload' multiple='multiple' onchange='upload_files()'>"
 "            <button style='pointer-events: none;'>Upload files</button>"
 "        </label>"
-"        <label id='status'>"
+"        <label id='status'></label>"
 "    </div>"
 "    <h3 style='padding-top:.2em;'><label id='subtitle'></label></h3>"
 "    <div>"
