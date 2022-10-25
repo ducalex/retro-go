@@ -26,5 +26,5 @@ for file in glob.glob("images/*.png"):
 
 output += "\nconst binfile_t *builtin_images[] = {%s\n0\n};\n" % refs
 
-with open("main/images.c", "w", newline="") as f:
+with open("images.c", "w", newline="") as f:
     f.write(output)
