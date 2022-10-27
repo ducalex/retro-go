@@ -1,7 +1,8 @@
-#include <rg_system.h>
-#include <string.h>
-
+#include "rg_system.h"
 #include "rg_utils.h"
+
+#include <stdlib.h>
+#include <string.h>
 
 char *rg_strtolower(char *str)
 {
