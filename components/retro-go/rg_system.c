@@ -988,49 +988,6 @@ int rg_system_get_led(void)
     return ledValue;
 }
 
-// Note: You should use calloc/malloc everywhere possible. This function is used to ensure
-// that some memory is put in specific regions for performance or hardware reasons.
-// Memory from this function should be freed with free()
-void *rg_alloc(size_t size, uint32_t caps)
-{
-#ifndef RG_TARGET_SDL2
-    char caps_list[36] = {0};
-    uint32_t esp_caps = 0;
-    void *ptr;
-
-    esp_caps |= (caps & MEM_SLOW ? MALLOC_CAP_SPIRAM : (caps & MEM_FAST ? MALLOC_CAP_INTERNAL : 0));
-    esp_caps |= (caps & MEM_DMA ? MALLOC_CAP_DMA : 0);
-    esp_caps |= (caps & MEM_EXEC ? MALLOC_CAP_EXEC : 0);
-    esp_caps |= (caps & MEM_32BIT ? MALLOC_CAP_32BIT : MALLOC_CAP_8BIT);
-
-    if (esp_caps & MALLOC_CAP_SPIRAM)   strcat(caps_list, "SPIRAM|");
-    if (esp_caps & MALLOC_CAP_INTERNAL) strcat(caps_list, "INTERNAL|");
-    if (esp_caps & MALLOC_CAP_DMA)      strcat(caps_list, "DMA|");
-    if (esp_caps & MALLOC_CAP_EXEC)     strcat(caps_list, "IRAM|");
-    strcat(caps_list, (esp_caps & MALLOC_CAP_32BIT) ? "32BIT" : "8BIT");
-
-    if ((ptr = heap_caps_calloc(1, size, esp_caps)))
-    {
-        RG_LOGI("SIZE=%u, CAPS=%s, PTR=%p\n", size, caps_list, ptr);
-        return ptr;
-    }
-
-    size_t available = heap_caps_get_largest_free_block(esp_caps);
-    // Loosen the caps and try again
-    if ((ptr = heap_caps_calloc(1, size, esp_caps & ~(MALLOC_CAP_SPIRAM | MALLOC_CAP_INTERNAL))))
-    {
-        RG_LOGW("SIZE=%u, CAPS=%s, PTR=%p << CAPS not fully met! (available: %d)\n",
-                    size, caps_list, ptr, available);
-        return ptr;
-    }
-
-    RG_LOGE("SIZE=%u, CAPS=%s << FAILED! (available: %d)\n", size, caps_list, available);
-    RG_PANIC("Memory allocation failed!");
-#else
-    return calloc(1, size);
-#endif
-}
-
 #ifdef RG_ENABLE_PROFILING
 // Note this profiler might be inaccurate because of:
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=28205

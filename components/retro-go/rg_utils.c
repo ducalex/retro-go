@@ -4,6 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef RG_TARGET_SDL2
+#include <esp_heap_caps.h>
+#endif
+
 char *rg_strtolower(char *str)
 {
     if (!str)
@@ -123,4 +127,51 @@ const char *const_string(const char *str)
     strings[strings_count++] = str;
 
     return str;
+}
+
+// Note: You should use calloc/malloc everywhere possible. This function is used to ensure
+// that some memory is put in specific regions for performance or hardware reasons.
+// Memory from this function should be freed with free()
+void *rg_alloc(size_t size, uint32_t caps)
+{
+    char caps_list[36] = "";
+    size_t available = 0;
+    void *ptr;
+
+    if (caps & MEM_SLOW)   strcat(caps_list, "SPIRAM|");
+    if (caps & MEM_FAST) strcat(caps_list, "INTERNAL|");
+    if (caps & MEM_DMA)      strcat(caps_list, "DMA|");
+    if (caps & MEM_EXEC)     strcat(caps_list, "IRAM|");
+    strcat(caps_list, (caps & MEM_32BIT) ? "32BIT" : "8BIT");
+
+#ifndef RG_TARGET_SDL2
+    uint32_t esp_caps = 0;
+    esp_caps |= (caps & MEM_SLOW ? MALLOC_CAP_SPIRAM : (caps & MEM_FAST ? MALLOC_CAP_INTERNAL : 0));
+    esp_caps |= (caps & MEM_DMA ? MALLOC_CAP_DMA : 0);
+    esp_caps |= (caps & MEM_EXEC ? MALLOC_CAP_EXEC : 0);
+    esp_caps |= (caps & MEM_32BIT ? MALLOC_CAP_32BIT : MALLOC_CAP_8BIT);
+
+    if (!(ptr = heap_caps_calloc(1, size, esp_caps)))
+    {
+        available = heap_caps_get_largest_free_block(esp_caps);
+        // Loosen the caps and try again
+        if ((ptr = heap_caps_calloc(1, size, esp_caps & ~(MALLOC_CAP_SPIRAM | MALLOC_CAP_INTERNAL))))
+        {
+            RG_LOGW("SIZE=%u, CAPS=%s, PTR=%p << CAPS not fully met! (available: %d)\n",
+                        size, caps_list, ptr, available);
+            return ptr;
+        }
+    }
+#else
+    ptr = calloc(1, size);
+#endif
+
+    if (!ptr)
+    {
+        RG_LOGE("SIZE=%u, CAPS=%s << FAILED! (available: %d)\n", size, caps_list, available);
+        RG_PANIC("Memory allocation failed!");
+    }
+
+    RG_LOGI("SIZE=%u, CAPS=%s, PTR=%p\n", size, caps_list, ptr);
+    return ptr;
 }
