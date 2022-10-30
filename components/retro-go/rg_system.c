@@ -295,13 +295,12 @@ static void enter_recovery_mode(void)
         case 0:
             rg_storage_delete(RG_BASE_PATH_CONFIG);
             rg_storage_delete(RG_BASE_PATH_CACHE);
-            rg_settings_reset();
             break;
         case 1:
             rg_system_switch_app(RG_APP_FACTORY, RG_APP_FACTORY, 0, 0);
         case 2:
         default:
-            rg_system_switch_app(RG_APP_FACTORY, RG_APP_LAUNCHER, 0, 0);
+            rg_system_switch_app(RG_APP_LAUNCHER, RG_APP_LAUNCHER, 0, 0);
         }
     }
 }
@@ -390,10 +389,22 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     RG_LOGI("Internal memory: free=%d, total=%d\n", statistics.freeMemoryInt, statistics.totalMemoryInt);
     RG_LOGI("External memory: free=%d, total=%d\n", statistics.freeMemoryExt, statistics.totalMemoryExt);
 
-    rg_input_init();
     rg_storage_init();
-    rg_settings_init();
+    rg_input_init();
 
+    // Test for recovery request as early as possible
+    for (int timeout = 5, btn; (btn = rg_input_read_gamepad() & RG_RECOVERY_BTN) && timeout >= 0; --timeout)
+    {
+        RG_LOGW("Button " PRINTF_BINARY_16 " being held down...\n", PRINTF_BINVAL_16(btn));
+        rg_task_delay(100);
+        if (timeout > 0)
+            continue;
+        rg_display_init();
+        rg_gui_init();
+        enter_recovery_mode();
+    }
+
+    rg_settings_init();
     app.configNs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_NAME, app.name);
     app.bootArgs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_ARGS, "");
     app.bootFlags = rg_settings_get_number(NS_BOOT, SETTING_BOOT_FLAGS, 0);
@@ -402,19 +413,10 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 
     rg_display_init();
     rg_gui_init();
-
-    // Test for recovery request as early as possible
-    for (int timeout = 5, btn; (btn = rg_input_read_gamepad() & RG_RECOVERY_BTN) && timeout >= 0; --timeout)
-    {
-        RG_LOGW("Button " PRINTF_BINARY_16 " being held down...\n", PRINTF_BINVAL_16(btn));
-        rg_task_delay(100);
-        if (timeout == 0)
-            enter_recovery_mode();
-    }
+    rg_audio_init(sampleRate);
 
     rg_storage_set_activity_led(rg_storage_get_activity_led());
     rg_gui_draw_hourglass();
-    rg_audio_init(sampleRate);
 
     // Show alert if we've just rebooted from a panic
     if (app.bootType == RG_RST_PANIC)
