@@ -362,6 +362,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 
     // Do this very early, may be needed to enable serial console
     setup_gpios();
+    rg_system_set_led(0);
 
 #ifdef RG_TARGET_SDL2
     freopen("stdout.txt", "w", stdout);
@@ -389,10 +390,9 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     RG_LOGI("Internal memory: free=%d, total=%d\n", statistics.freeMemoryInt, statistics.totalMemoryInt);
     RG_LOGI("External memory: free=%d, total=%d\n", statistics.freeMemoryExt, statistics.totalMemoryExt);
 
-    rg_system_set_led(0);
-
-    // Storage must be initialized first (SPI bus, settings, assets, etc)
+    rg_input_init();
     rg_storage_init();
+    rg_settings_init();
 
     app.configNs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_NAME, app.name);
     app.bootArgs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_ARGS, "");
@@ -400,7 +400,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
     app.romPath = app.bootArgs;
 
-    rg_input_init(); // Must be first for the qtpy (input -> aw9523 -> lcd)
     rg_display_init();
     rg_gui_init();
 
@@ -413,6 +412,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
             enter_recovery_mode();
     }
 
+    rg_storage_set_activity_led(rg_storage_get_activity_led());
     rg_gui_draw_hourglass();
     rg_audio_init(sampleRate);
 
@@ -451,11 +451,11 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     if (handlers)
         app.handlers = *handlers;
 
-    #ifdef RG_ENABLE_PROFILING
+#ifdef RG_ENABLE_PROFILING
     RG_LOGI("Profiling has been enabled at compile time!\n");
     profile = rg_alloc(sizeof(*profile), MEM_SLOW);
     profile->lock = xSemaphoreCreateMutex();
-    #endif
+#endif
 
     rg_task_create("rg_system", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY, -1);
 
