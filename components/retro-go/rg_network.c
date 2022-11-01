@@ -125,7 +125,8 @@ bool rg_network_sync_time(const char *host, int *out_delta)
         return false;
     }
 
-    memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, server->h_length);
+    size_t addr_length = RG_MIN(server->h_length, sizeof(serv_addr.sin_addr.s_addr));
+    memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, addr_length);
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(123);
 

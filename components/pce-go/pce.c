@@ -187,7 +187,7 @@ cart_write(uint16_t A, uint8_t V)
 }
 
 
-IRAM_ATTR inline uint8_t
+inline uint8_t
 pce_readIO(uint16_t A)
 {
 	uint8_t ret = 0xFF; // Open Bus
@@ -306,7 +306,7 @@ pce_readIO(uint16_t A)
 }
 
 
-IRAM_ATTR inline void
+inline void
 pce_writeIO(uint16_t A, uint8_t V)
 {
 	TRACE_IO("IO Write %02x at %04x\n", V, A);

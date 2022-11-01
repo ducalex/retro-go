@@ -295,13 +295,12 @@ static void enter_recovery_mode(void)
         case 0:
             rg_storage_delete(RG_BASE_PATH_CONFIG);
             rg_storage_delete(RG_BASE_PATH_CACHE);
-            rg_settings_reset();
             break;
         case 1:
             rg_system_switch_app(RG_APP_FACTORY, RG_APP_FACTORY, 0, 0);
         case 2:
         default:
-            rg_system_switch_app(RG_APP_FACTORY, RG_APP_LAUNCHER, 0, 0);
+            rg_system_switch_app(RG_APP_LAUNCHER, RG_APP_LAUNCHER, 0, 0);
         }
     }
 }
@@ -362,6 +361,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 
     // Do this very early, may be needed to enable serial console
     setup_gpios();
+    rg_system_set_led(0);
 
 #ifdef RG_TARGET_SDL2
     freopen("stdout.txt", "w", stdout);
@@ -389,32 +389,34 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     RG_LOGI("Internal memory: free=%d, total=%d\n", statistics.freeMemoryInt, statistics.totalMemoryInt);
     RG_LOGI("External memory: free=%d, total=%d\n", statistics.freeMemoryExt, statistics.totalMemoryExt);
 
-    rg_system_set_led(0);
-
-    // Storage must be initialized first (SPI bus, settings, assets, etc)
     rg_storage_init();
-
-    app.configNs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_NAME, app.name);
-    app.bootArgs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_ARGS, "");
-    app.bootFlags = rg_settings_get_number(NS_BOOT, SETTING_BOOT_FLAGS, 0);
-    app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
-    app.romPath = app.bootArgs;
-
-    rg_input_init(); // Must be first for the qtpy (input -> aw9523 -> lcd)
-    rg_display_init();
-    rg_gui_init();
+    rg_input_init();
 
     // Test for recovery request as early as possible
     for (int timeout = 5, btn; (btn = rg_input_read_gamepad() & RG_RECOVERY_BTN) && timeout >= 0; --timeout)
     {
         RG_LOGW("Button " PRINTF_BINARY_16 " being held down...\n", PRINTF_BINVAL_16(btn));
         rg_task_delay(100);
-        if (timeout == 0)
-            enter_recovery_mode();
+        if (timeout > 0)
+            continue;
+        rg_display_init();
+        rg_gui_init();
+        enter_recovery_mode();
     }
 
-    rg_gui_draw_hourglass();
+    rg_settings_init();
+    app.configNs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_NAME, app.name);
+    app.bootArgs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_ARGS, "");
+    app.bootFlags = rg_settings_get_number(NS_BOOT, SETTING_BOOT_FLAGS, 0);
+    app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
+    app.romPath = app.bootArgs;
+
+    rg_display_init();
+    rg_gui_init();
     rg_audio_init(sampleRate);
+
+    rg_storage_set_activity_led(rg_storage_get_activity_led());
+    rg_gui_draw_hourglass();
 
     // Show alert if we've just rebooted from a panic
     if (app.bootType == RG_RST_PANIC)
@@ -451,11 +453,11 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     if (handlers)
         app.handlers = *handlers;
 
-    #ifdef RG_ENABLE_PROFILING
+#ifdef RG_ENABLE_PROFILING
     RG_LOGI("Profiling has been enabled at compile time!\n");
     profile = rg_alloc(sizeof(*profile), MEM_SLOW);
     profile->lock = xSemaphoreCreateMutex();
-    #endif
+#endif
 
     rg_task_create("rg_system", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY, -1);
 
@@ -986,49 +988,6 @@ void rg_system_set_led(int value)
 int rg_system_get_led(void)
 {
     return ledValue;
-}
-
-// Note: You should use calloc/malloc everywhere possible. This function is used to ensure
-// that some memory is put in specific regions for performance or hardware reasons.
-// Memory from this function should be freed with free()
-void *rg_alloc(size_t size, uint32_t caps)
-{
-#ifndef RG_TARGET_SDL2
-    char caps_list[36] = {0};
-    uint32_t esp_caps = 0;
-    void *ptr;
-
-    esp_caps |= (caps & MEM_SLOW ? MALLOC_CAP_SPIRAM : (caps & MEM_FAST ? MALLOC_CAP_INTERNAL : 0));
-    esp_caps |= (caps & MEM_DMA ? MALLOC_CAP_DMA : 0);
-    esp_caps |= (caps & MEM_EXEC ? MALLOC_CAP_EXEC : 0);
-    esp_caps |= (caps & MEM_32BIT ? MALLOC_CAP_32BIT : MALLOC_CAP_8BIT);
-
-    if (esp_caps & MALLOC_CAP_SPIRAM)   strcat(caps_list, "SPIRAM|");
-    if (esp_caps & MALLOC_CAP_INTERNAL) strcat(caps_list, "INTERNAL|");
-    if (esp_caps & MALLOC_CAP_DMA)      strcat(caps_list, "DMA|");
-    if (esp_caps & MALLOC_CAP_EXEC)     strcat(caps_list, "IRAM|");
-    strcat(caps_list, (esp_caps & MALLOC_CAP_32BIT) ? "32BIT" : "8BIT");
-
-    if ((ptr = heap_caps_calloc(1, size, esp_caps)))
-    {
-        RG_LOGI("SIZE=%u, CAPS=%s, PTR=%p\n", size, caps_list, ptr);
-        return ptr;
-    }
-
-    size_t available = heap_caps_get_largest_free_block(esp_caps);
-    // Loosen the caps and try again
-    if ((ptr = heap_caps_calloc(1, size, esp_caps & ~(MALLOC_CAP_SPIRAM | MALLOC_CAP_INTERNAL))))
-    {
-        RG_LOGW("SIZE=%u, CAPS=%s, PTR=%p << CAPS not fully met! (available: %d)\n",
-                    size, caps_list, ptr, available);
-        return ptr;
-    }
-
-    RG_LOGE("SIZE=%u, CAPS=%s << FAILED! (available: %d)\n", size, caps_list, available);
-    RG_PANIC("Memory allocation failed!");
-#else
-    return calloc(1, size);
-#endif
 }
 
 #ifdef RG_ENABLE_PROFILING

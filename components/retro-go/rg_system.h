@@ -222,18 +222,6 @@ bool rg_emu_reset(bool hard);
 bool rg_emu_screenshot(const char *filename, int width, int height);
 rg_emu_state_t *rg_emu_get_states(const char *romPath, size_t slots);
 
-void *rg_alloc(size_t size, uint32_t caps);
-
-#define MEM_ANY   (0)
-#define MEM_SLOW  (1)
-#define MEM_FAST  (2)
-#define MEM_DMA   (4)
-#define MEM_8BIT  (8)
-#define MEM_32BIT (16)
-#define MEM_EXEC  (32)
-
-#define PTR_IN_SPIRAM(ptr) ((void*)(ptr) >= (void*)0x3F800000 && (void*)(ptr) < (void*)0x3FC00000)
-
 /* Utilities */
 
 // #define gpio_set_level(num, level) (((num) & I2C) ? rg_gpio_set_level((num) & ~I2C) : (gpio_set_level)(num, level) == ESP_OK)

@@ -1148,8 +1148,6 @@ int rg_gui_about_menu(const rg_gui_option_t *extra_options)
             break;
         case 2000:
             if (rg_gui_confirm("Reset all settings?", NULL, false)) {
-                rg_storage_delete(RG_BASE_PATH_CONFIG);
-                rg_storage_delete(RG_BASE_PATH_CACHE);
                 rg_settings_reset();
                 rg_system_restart();
             }

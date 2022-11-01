@@ -32,7 +32,7 @@ void rg_storage_set_activity_led(bool enable)
 
 bool rg_storage_get_activity_led(void)
 {
-    return disk_led;
+    return rg_settings_get_number(NS_GLOBAL, SETTING_DISK_ACTIVITY, disk_led);
 }
 
 #if RG_STORAGE_DRIVER == 1 || RG_STORAGE_DRIVER == 2
@@ -157,10 +157,7 @@ void rg_storage_init(void)
     else
         RG_LOGE("Storage mounting failed. driver=%d, err=0x%x\n", RG_STORAGE_DRIVER, error_code);
 
-    rg_settings_init();
-
     disk_mounted = !error_code;
-    disk_led = rg_settings_get_number(NS_GLOBAL, SETTING_DISK_ACTIVITY, 1);
 }
 
 void rg_storage_deinit(void)

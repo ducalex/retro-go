@@ -2,6 +2,7 @@
 #include "rg_input.h"
 
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #ifndef RG_TARGET_SDL2
@@ -143,12 +144,13 @@ static inline uint32_t gamepad_read(void)
 static void input_task(void *arg)
 {
     const uint8_t debounce_level = 0x03;
-    uint8_t debounce[RG_KEY_COUNT] = {0};
+    uint8_t debounce[RG_KEY_COUNT];
     uint32_t local_gamepad_state = 0;
 
     // Discard the first read, it contains garbage in certain drivers
     gamepad_read();
 
+    memset(debounce, debounce_level, sizeof(debounce));
     input_task_running = true;
 
     while (input_task_running)
