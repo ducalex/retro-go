@@ -16,8 +16,11 @@
 static httpd_handle_t server;
 static char *http_buffer;
 
+static bool wifi_state;
 static bool webui_state;
+
 static const char *SETTING_WEBUI  = "HTTPFileServer";
+static const char *SETTING_WIFI = "WiFi";
 
 static char *urldecode(const char *str)
 {
@@ -254,6 +257,24 @@ void webui_start(void)
 
     RG_ASSERT(http_buffer && server, "Something went wrong starting server");
     RG_LOGI("Web server started");
+}
+
+void wifi_set_switch(bool enable)
+{
+    rg_settings_set_number(NS_WIFI, SETTING_WIFI, enable);
+    wifi_state = enable;
+    if (wifi_state)
+    {
+        rg_network_wifi_start(NULL, NULL, 0);
+    } else
+    {
+        rg_network_wifi_stop();
+    }
+}
+
+bool wifi_get_switch(void)
+{
+    return rg_settings_get_number(NS_WIFI, SETTING_WIFI, wifi_state);
 }
 
 void webui_set_switch(bool enable)

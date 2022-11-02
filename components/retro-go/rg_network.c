@@ -14,9 +14,7 @@
 
 static rg_network_t netstate = {0};
 static bool initialized = false;
-static bool wifi_state;
 
-static const char *SETTING_WIFI = "WiFi";
 static const char *SETTING_WIFI_SSID = "ssid";
 static const char *SETTING_WIFI_PASSWORD = "password";
 
@@ -31,24 +29,6 @@ static const char *SETTING_WIFI_PASSWORD = "password";
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <netdb.h>
-
-void rg_network_set_wifi_switch(bool enable)
-{
-    rg_settings_set_number(NS_WIFI, SETTING_WIFI, enable);
-    wifi_state = enable;
-    if (wifi_state)
-    {
-        rg_network_wifi_start(NULL, NULL, 0);
-    } else
-    {
-        rg_network_wifi_stop();
-    }
-}
-
-bool rg_network_get_wifi_switch(void)
-{
-    return rg_settings_get_number(NS_WIFI, SETTING_WIFI, wifi_state);
-}
 
 static void network_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
@@ -119,7 +99,6 @@ bool rg_network_wifi_start(const char *ssid, const char *password, int channel)
     return true;
 fail:
 #endif
-
     return false;
 }
 
