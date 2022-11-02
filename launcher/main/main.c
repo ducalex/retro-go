@@ -154,7 +154,8 @@ static void retro_loop(void)
 
 #ifdef RG_ENABLE_NETWORKING
     rg_network_init();
-    rg_network_wifi_start(NULL, NULL, 0);
+    rg_network_set_wifi_switch(rg_network_get_wifi_switch());
+    
     webui_start();
 #endif
 
