@@ -106,7 +106,6 @@ bool rg_network_wifi_start(const char *ssid, const char *password, int channel)
         return false;
     }
 #ifdef RG_ENABLE_NETWORKING
-if (wifi_state) {
     wifi_config_t wifi_config = {0};
     memcpy(wifi_config.sta.ssid, netstate.ssid, 32);
     memcpy(wifi_config.sta.password, netstate.password, 64);
@@ -118,9 +117,9 @@ if (wifi_state) {
     TRY(esp_wifi_start());
     netstate.state = RG_WIFI_CONNECTING;
     return true;
-}
 fail:
 #endif
+
     return false;
 }
 
