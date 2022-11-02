@@ -100,6 +100,15 @@ static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t ev
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t webui_switch_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
+        webui_set_switch(!webui_get_switch());
+    }
+    strcpy(option->value, webui_get_switch() ? "On " : "Off");
+    return RG_DIALOG_VOID;
+}
+
 static rg_gui_event_t color_theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int max = gui_themes_count - 1;
@@ -155,8 +164,7 @@ static void retro_loop(void)
 #ifdef RG_ENABLE_NETWORKING
     rg_network_init();
     rg_network_set_wifi_switch(rg_network_get_wifi_switch());
-    
-    webui_start();
+    webui_set_switch(webui_get_switch());
 #endif
 
     tab = gui_get_current_tab();
@@ -350,6 +358,7 @@ void app_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
+        {0, "File server", "...", 1, &webui_switch_cb},
         {0, " - Color    ", "...", 1, &color_theme_cb},
         {0, "Preview     ", "...", 1, &show_preview_cb},
         {0, "Start screen", "...", 1, &start_screen_cb},
