@@ -35,11 +35,6 @@ static inline uint32_t gamepad_read(void)
     int joyX = adc1_get_raw(RG_GPIO_GAMEPAD_X);
     int joyY = adc1_get_raw(RG_GPIO_GAMEPAD_Y);
 
-    if (joyY > 2048 + 1024) state |= RG_KEY_UP;
-    else if (joyY > 1024)   state |= RG_KEY_DOWN;
-    if (joyX > 2048 + 1024) state |= RG_KEY_LEFT;
-    else if (joyX > 1024)   state |= RG_KEY_RIGHT;
-
     if (!gpio_get_level(RG_GPIO_GAMEPAD_MENU))   state |= RG_KEY_MENU;
     if (!gpio_get_level(RG_GPIO_GAMEPAD_OPTION)) state |= RG_KEY_OPTION;
     if (!gpio_get_level(RG_GPIO_GAMEPAD_SELECT)) state |= RG_KEY_SELECT;
@@ -47,28 +42,39 @@ static inline uint32_t gamepad_read(void)
     if (!gpio_get_level(RG_GPIO_GAMEPAD_A))      state |= RG_KEY_A;
     if (!gpio_get_level(RG_GPIO_GAMEPAD_B))      state |= RG_KEY_B;
 
+    #ifndef RG_TARGET_RETRO_ESP32
+        if (joyY > 2048 + 1024) state |= RG_KEY_UP;
+        else if (joyY > 1024)   state |= RG_KEY_DOWN;
+        if (joyX > 2048 + 1024) state |= RG_KEY_LEFT;
+        else if (joyX > 1024)   state |= RG_KEY_RIGHT;
+    #else
+        if (joyY > 2048) state |= RG_KEY_UP;
+        else if (joyY > 1024) state |= RG_KEY_DOWN;
+        if (joyX > 2048) state |= RG_KEY_LEFT;
+        else if (joyX > 1024) state |= RG_KEY_RIGHT;
+        if (state == (RG_KEY_SELECT|RG_KEY_A))
+            state = RG_KEY_OPTION;
+        if (state == (RG_KEY_START|RG_KEY_SELECT))
+            state = RG_KEY_MENU;
+    #endif
+
 #elif RG_GAMEPAD_DRIVER == 2  // Serial
+
     gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 0);
     usleep(5);
     gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 1);
     usleep(1);
 
-    for (int i = 0; i < 8; i++) {
-	int pinValue = gpio_get_level(RG_GPIO_GAMEPAD_DATA);
-	state |= pinValue << (7 - i);
+    for (int i = 0; i < 8; i++)
+    {
+        int pinValue = gpio_get_level(RG_GPIO_GAMEPAD_DATA);
+        state |= pinValue << (7 - i);
 
-	gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 0);
-	usleep(1);
-	gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 1);
-	usleep(1);
+        gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 0);
+        usleep(1);
+        gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 1);
+        usleep(1);
     }
-
-    #ifdef RG_GPIO_GAMEPAD_MENU
-    if (!gpio_get_level(RG_GPIO_GAMEPAD_MENU))   state |= RG_KEY_MENU;
-    #endif
-    #ifdef RG_GPIO_GAMEPAD_OPTION
-    if (!gpio_get_level(RG_GPIO_GAMEPAD_OPTION)) state |= RG_KEY_OPTION;
-    #endif
 
 #elif RG_GAMEPAD_DRIVER == 3  // I2C
 
@@ -90,12 +96,6 @@ static inline uint32_t gamepad_read(void)
 
         battery_level = data[4];
     }
-    #ifdef RG_GPIO_GAMEPAD_MENU
-        if (!gpio_get_level(RG_GPIO_GAMEPAD_MENU)) state |= RG_KEY_MENU;
-    #endif
-    #ifdef RG_GPIO_GAMEPAD_OPTION
-	    if (!gpio_get_level(RG_GPIO_GAMEPAD_OPTION)) state |= RG_KEY_OPTION;
-    #endif
 
 #elif RG_GAMEPAD_DRIVER == 4  // I2C via AW9523
 
