@@ -34,17 +34,32 @@ static inline uint32_t gamepad_read(void)
     int joyX = adc1_get_raw(RG_GPIO_GAMEPAD_X);
     int joyY = adc1_get_raw(RG_GPIO_GAMEPAD_Y);
 
-    if (joyY > 2048 + 1024) state |= RG_KEY_UP;
-    else if (joyY > 1024)   state |= RG_KEY_DOWN;
-    if (joyX > 2048 + 1024) state |= RG_KEY_LEFT;
-    else if (joyX > 1024)   state |= RG_KEY_RIGHT;
-
     if (!gpio_get_level(RG_GPIO_GAMEPAD_MENU))   state |= RG_KEY_MENU;
     if (!gpio_get_level(RG_GPIO_GAMEPAD_OPTION)) state |= RG_KEY_OPTION;
     if (!gpio_get_level(RG_GPIO_GAMEPAD_SELECT)) state |= RG_KEY_SELECT;
     if (!gpio_get_level(RG_GPIO_GAMEPAD_START))  state |= RG_KEY_START;
     if (!gpio_get_level(RG_GPIO_GAMEPAD_A))      state |= RG_KEY_A;
     if (!gpio_get_level(RG_GPIO_GAMEPAD_B))      state |= RG_KEY_B;
+
+    #if RG_SCREEN_TYPE == 32
+        if(joyY > 2048) state |= RG_KEY_UP;
+        if(joyY > 1024 && joyY < 2048) state |= RG_KEY_DOWN;
+        if(joyX > 2048) state |= RG_KEY_LEFT;
+        if(joyX > 1024 && joyX < 2048) state |= RG_KEY_RIGHT;
+
+        if (state == (RG_KEY_SELECT|RG_KEY_A))
+            state = RG_KEY_OPTION;
+
+        if (state == (RG_KEY_START|RG_KEY_SELECT))
+            state = RG_KEY_MENU;
+    #else
+        if (joyY > 2048 + 1024) state |= RG_KEY_UP;
+        else if (joyY > 1024)   state |= RG_KEY_DOWN;
+        if (joyX > 2048 + 1024) state |= RG_KEY_LEFT;
+        else if (joyX > 1024)   state |= RG_KEY_RIGHT;
+
+
+    #endif
 
 #elif RG_GAMEPAD_DRIVER == 2  // Serial
     gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 0);
