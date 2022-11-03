@@ -1,16 +1,16 @@
 #if defined(RG_TARGET_ODROID_GO)
-#include "targets/odroid-go.h"
+#include "targets/odroid-go/config.h"
 #elif defined(RG_TARGET_MRGC_G32)
-#include "targets/mrgc-g32.h"
+#include "targets/mrgc-g32/config.h"
 #elif defined(RG_TARGET_QTPY_GAMER)
-#include "targets/qtpy-gamer.h"
+#include "targets/qtpy-gamer/config.h"
 #elif defined(RG_TARGET_RETRO_ESP32)
-#include "targets/retro-esp32.h"
+#include "targets/retro-esp32/config.h"
 #elif defined(RG_TARGET_SDL2)
-#include "targets/sdl2.h"
+#include "targets/sdl2/config.h"
 #else
 #warning "No target defined. Defaulting to ODROID-GO."
-#include "targets/odroid-go.h"
+#include "targets/odroid-go/config.h"
 #define RG_TARGET_ODROID_GO
 #endif
 

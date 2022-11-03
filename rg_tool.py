@@ -18,8 +18,8 @@ except:
     pass
 
 TARGETS = ["odroid-go"] # We just need to specify the default, the others are discovered below
-for t in glob.glob("components/retro-go/targets/*.h"):
-    TARGETS.append(os.path.basename(t)[0:-2])
+for t in glob.glob("components/retro-go/targets/*/config.h"):
+    TARGETS.append(os.path.basename(os.path.dirname(t)))
 
 DEFAULT_TARGET = os.getenv("RG_TOOL_TARGET", TARGETS[0])
 DEFAULT_BAUD = os.getenv("RG_TOOL_BAUD", "1152000")
@@ -121,7 +121,7 @@ def analyze_profile(frames):
         debug_print("")
 
 
-def build_firmware(apps, device_type):
+def build_firmware(apps, device_type, fw_format="odroid-go"):
     print("Building firmware with: %s\n" % " ".join(apps))
     args = [
         sys.executable,
@@ -131,7 +131,7 @@ def build_firmware(apps, device_type):
         PROJECT_ICON
     ]
 
-    if device_type in ["mrgc-g32", "esplay"]:
+    if fw_format == "esplay":
         args.append("--esplay")
 
     for app in apps:
@@ -294,9 +294,6 @@ parser.add_argument(
     "--target", default=DEFAULT_TARGET, choices=set(TARGETS), help="Device to target"
 )
 parser.add_argument(
-    "--idf-target", default=None, choices=["esp32", "esp32s2", "esp32s3"], help="ESP SOC to target"
-)
-parser.add_argument(
     "--without-networking", action="store_const", const=True, help="Build without networking enabled"
 )
 parser.add_argument(
@@ -307,15 +304,19 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-
-if not os.getenv("IDF_PATH"):
-    exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
-elif args.idf_target:
-    os.putenv("IDF_TARGET", args.idf_target)
-
+try:
+    with open(f"components/retro-go/targets/{args.target}/build.py", "rb") as f:
+        exec(f.read())
+except:
+    pass
 
 command = args.command
 apps = [app for app in PROJECT_APPS.keys() if app in args.apps or "all" in args.apps]
+
+
+if not os.getenv("IDF_PATH"):
+    exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
+
 
 if command in ["build-fw", "build-img", "release"]:
     if "launcher" not in apps:
@@ -334,7 +335,7 @@ if command in ["build", "build-fw", "build-img", "release", "run", "profile"]:
 
 if command in ["build-fw", "release"]:
     print("=== Step: Packing ===\n")
-    build_firmware(apps, args.target)
+    build_firmware(apps, args.target, os.getenv("FW_FORMAT", "odroid-go"))
 
 if command in ["build-img", "release"]:
     print("=== Step: Packing ===\n")
