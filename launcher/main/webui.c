@@ -16,8 +16,8 @@
 static httpd_handle_t server;
 static char *http_buffer;
 
-static bool wifi_state;
-static bool webui_state;
+static bool wifi_state = true;
+static bool webui_state = true;
 
 static const char *SETTING_WEBUI  = "HTTPFileServer";
 static const char *SETTING_WIFI = "WiFi";
