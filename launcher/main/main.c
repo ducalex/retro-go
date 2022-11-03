@@ -100,6 +100,24 @@ static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t ev
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t wifi_switch_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
+        wifi_set_switch(!wifi_get_switch());
+    }
+    strcpy(option->value, wifi_get_switch() ? "On " : "Off");
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t webui_switch_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
+        webui_set_switch(!webui_get_switch());
+    }
+    strcpy(option->value, webui_get_switch() ? "On " : "Off");
+    return RG_DIALOG_VOID;
+}
+
 static rg_gui_event_t color_theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int max = gui_themes_count - 1;
@@ -154,8 +172,8 @@ static void retro_loop(void)
 
 #ifdef RG_ENABLE_NETWORKING
     rg_network_init();
-    rg_network_wifi_start(NULL, NULL, 0);
-    webui_start();
+    wifi_set_switch(wifi_get_switch());
+    webui_set_switch(webui_get_switch());
 #endif
 
     tab = gui_get_current_tab();
@@ -354,6 +372,8 @@ void app_main(void)
         {0, "Start screen", "...", 1, &start_screen_cb},
         {0, "Hide tabs   ", "...", 1, &toggle_tabs_cb},
         {0, "Startup app ", "...", 1, &startup_app_cb},
+        {0, "Wi-Fi"       , "...", 1, &wifi_switch_cb},
+        {0, "File server" , "...", 1, &webui_switch_cb},
         {0, "Timezone    ", "...", 1, &timezone_cb},
     #if !RG_GAMEPAD_HAS_OPTION_BTN
         RG_DIALOG_SEPARATOR,
