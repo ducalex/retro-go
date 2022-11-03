@@ -118,6 +118,21 @@ static rg_gui_event_t webui_switch_cb(rg_gui_option_t *option, rg_gui_event_t ev
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t wifi_options_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        const rg_gui_option_t options[] = {
+            {0, "Wi-Fi"       , "...", 1, &wifi_switch_cb},
+            {0, "File server" , "...", 1, &webui_switch_cb},
+            {0, "Time sync" , "On", 0, NULL},
+            RG_DIALOG_CHOICE_LAST,
+        };
+        rg_gui_dialog("Wifi Options", options, 0);
+    }
+    return RG_DIALOG_VOID;
+}
+
 static rg_gui_event_t color_theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int max = gui_themes_count - 1;
@@ -372,9 +387,8 @@ void app_main(void)
         {0, "Start screen", "...", 1, &start_screen_cb},
         {0, "Hide tabs   ", "...", 1, &toggle_tabs_cb},
         {0, "Startup app ", "...", 1, &startup_app_cb},
-        {0, "Wi-Fi"       , "...", 1, &wifi_switch_cb},
-        {0, "File server" , "...", 1, &webui_switch_cb},
         {0, "Timezone    ", "...", 1, &timezone_cb},
+        {0, "Wi-Fi options...", NULL,  1, &wifi_options_cb},
     #if !RG_GAMEPAD_HAS_OPTION_BTN
         RG_DIALOG_SEPARATOR,
         {0, "About Retro-Go", NULL,  1, &about_app_cb},
