@@ -152,7 +152,7 @@ static bool reset_handler(bool hard)
     return true;
 }
 
-extern "C" void lnx_main(void)
+extern "C" void lynx_main(void)
 {
     const rg_handlers_t handlers = {
         .loadState = &load_state_handler,

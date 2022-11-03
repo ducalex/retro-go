@@ -17,9 +17,10 @@ extern rg_app_t *app;
 
 extern uint8_t shared_memory_block_64K[0x10000];
 
+void launcher_main();
 void gbc_main();
 void nes_main();
 void pce_main();
 void gw_main();
-void lnx_main();
+void lynx_main();
 void snes_main();
