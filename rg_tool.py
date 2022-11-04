@@ -304,24 +304,21 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-try:
-    with open(f"components/retro-go/targets/{args.target}/build.py", "rb") as f:
-        exec(f.read())
-except:
-    pass
-
 command = args.command
 apps = [app for app in PROJECT_APPS.keys() if app in args.apps or "all" in args.apps]
 
+
+if os.path.exists(f"components/retro-go/targets/{args.target}/env.py"):
+    with open(f"components/retro-go/targets/{args.target}/env.py", "rb") as f:
+        exec(f.read())
 
 if not os.getenv("IDF_PATH"):
     exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
 
 
-if command in ["build-fw", "build-img", "release"]:
-    if "launcher" not in apps:
-        print("\nWARNING: The launcher is mandatory for those apps and will be included!\n")
-        apps.insert(0, "launcher")
+if command in ["build-fw", "build-img", "release"] and "launcher" not in apps:
+    print("\nWARNING: The launcher is mandatory for those apps and will be included!\n")
+    apps.insert(0, "launcher")
 
 if command in ["clean", "release"]:
     print("=== Step: Cleaning ===\n")
