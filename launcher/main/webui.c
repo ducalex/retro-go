@@ -212,6 +212,9 @@ void webui_stop(void)
 
     httpd_stop(server);
     server = NULL;
+
+    free(http_buffer);
+    http_buffer = NULL;
 }
 
 void webui_start(void)

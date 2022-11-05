@@ -266,6 +266,6 @@ bool bookmark_remove(book_type_t book_type, const retro_file_t *file)
 
 void bookmarks_init(void)
 {
-    book_init(BOOK_TYPE_FAVORITE, "favorite", "Favorites", 500);
-    book_init(BOOK_TYPE_RECENT, "recent", "Recently played", 50);
+    book_init(BOOK_TYPE_FAVORITE, "favorite", "Favorites", 2000);
+    book_init(BOOK_TYPE_RECENT, "recent", "Recently played", 100);
 }
