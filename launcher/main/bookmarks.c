@@ -51,9 +51,8 @@ static void event_handler(gui_event_t event, tab_t *tab)
     }
 }
 
-static void tab_refresh(book_type_t book_type)
+static void tab_refresh(book_t *book)
 {
-    book_t *book = &books[book_type];
     tab_t *tab = book->tab;
     size_t items_count = 0;
 
@@ -65,7 +64,7 @@ static void tab_refresh(book_type_t book_type)
     if (book->count)
     {
         gui_resize_list(tab, book->count);
-        for (int i = 0; i < book->count; i++)
+        for (int i = 0; i < book->capacity; i++)
         {
             retro_file_t *file = &book->items[i];
             if (file->is_valid)
@@ -94,24 +93,52 @@ static void tab_refresh(book_type_t book_type)
     }
 }
 
-static void book_append(book_type_t book_type, retro_file_t *new_item)
+static void book_repack(book_t *book)
 {
-    book_t *book = &books[book_type];
-
-    if (book->capacity <= book->count + 1)
+    // Repack the array
+    book->count = 0;
+    for (size_t i = 0; i < book->capacity; i++)
     {
-        book->capacity += 10;
-        book->items = realloc(book->items, book->capacity * sizeof(retro_file_t));
+        retro_file_t *item = &book->items[i];
+        if (!item->is_valid)
+            continue;
+        if (book->count != i)
+            book->items[book->count] = *item;
+        book->count++;
     }
+}
 
+static void book_append(book_t *book, const retro_file_t *new_item)
+{
+    // Remove the oldest item if we need the space
+    while (book->count >= book->capacity)
+    {
+        book->items[0].is_valid = false;
+        book_repack(book);
+    }
     book->items[book->count] = *new_item;
     book->items[book->count].is_valid = true;
     book->count++;
 }
 
-static void book_load(book_type_t book_type)
+static retro_file_t *book_find(book_t *book, const retro_file_t *file)
 {
-    book_t *book = &books[book_type];
+    for (size_t i = 0; i < book->capacity; i++)
+    {
+        retro_file_t *entry = &book->items[i];
+        if (!entry->is_valid)
+            continue;
+        if (file == NULL) // return first entry
+            return entry;
+        if (entry->folder == file->folder && !strcmp(entry->name, file->name))
+            return entry;
+    }
+
+    return NULL;
+}
+
+static void book_load(book_t *book)
+{
     retro_file_t tmp_file;
     char line_buffer[169] = {0};
 
@@ -128,7 +155,7 @@ static void book_load(book_type_t book_type)
                 line_buffer[len - 1] = 0;
 
             if (application_path_to_file(line_buffer, &tmp_file))
-                book_append(book_type, &tmp_file);
+                book_append(book, &tmp_file);
             else
                 RG_LOGW("Unknown path form: '%s'\n", line_buffer);
         }
@@ -136,10 +163,8 @@ static void book_load(book_type_t book_type)
     }
 }
 
-static void book_save(book_type_t book_type)
+static void book_save(book_t *book)
 {
-    book_t *book = &books[book_type];
-
     // FIXME: We should leverage cJSON here instead...
     FILE *fp = fopen(book->path, "w");
     if (!fp && rg_storage_mkdir(rg_dirname(book->path)))
@@ -148,18 +173,17 @@ static void book_save(book_type_t book_type)
     }
     if (fp)
     {
-        int remaining = book->max_items;
-        for (int i = book->count - 1; i >= 0; i--)
+        for (size_t i = 0; i < book->capacity; i++)
         {
             retro_file_t *file = &book->items[i];
-            if (file->is_valid && remaining-- > 0)
+            if (file->is_valid)
                 fprintf(fp, "%s/%s\n", file->folder, file->name);
         }
         fclose(fp);
     }
 }
 
-static void book_init(book_type_t book_type, const char *name, const char *desc, size_t max_items)
+static void book_init(book_type_t book_type, const char *name, const char *desc, size_t capacity)
 {
     book_t *book = &books[book_type];
     char path[RG_PATH_MAX + 1];
@@ -168,26 +192,27 @@ static void book_init(book_type_t book_type, const char *name, const char *desc,
 
     book->name = strdup(name);
     book->path = strdup(path);
+    book->capacity = capacity;
+    book->count = 0;
+    book->items = calloc(capacity + 1, sizeof(retro_file_t));
     book->tab = gui_add_tab(name, desc, book, event_handler);
     book->initialized = true;
-    book->max_items = max_items;
 
     if (book_type == BOOK_TYPE_RECENT)
     {
-        book->tab->listbox.sort_mode = SORT_ID_ASC;
+        book->tab->listbox.sort_mode = SORT_ID_DESC;
         book->tab->listbox.cursor = 0;
     }
 
-    book_load(book_type);
-    tab_refresh(book_type);
+    book_load(book);
+    tab_refresh(book);
 }
 
-
-retro_file_t *bookmark_find_first(book_type_t book_type, retro_app_t *app)
+retro_file_t *bookmark_find_by_app(book_type_t book_type, const retro_app_t *app)
 {
     book_t *book = &books[book_type];
 
-    for (int i = 0; i < book->count; i++)
+    for (size_t i = 0; i < book->capacity; i++)
     {
         if (book->items[i].is_valid && (!app || book->items[i].app == app))
         {
@@ -198,69 +223,49 @@ retro_file_t *bookmark_find_first(book_type_t book_type, retro_app_t *app)
     return NULL;
 }
 
-bool bookmark_exists(book_type_t book, retro_file_t *file)
+bool bookmark_exists(book_type_t book_type, const retro_file_t *file)
 {
-    RG_ASSERT(file, "bad param");
-
-    for (int i = 0; i < books[book].count; i++)
-    {
-        retro_file_t *entry = &books[book].items[i];
-        if (entry->is_valid && entry->folder == file->folder && !strcmp(entry->name, file->name))
-        {
-            return true;
-        }
-    }
-
-    return false;
+    return book_find(&books[book_type], file) != NULL;
 }
 
-bool bookmark_add(book_type_t book, retro_file_t *file)
+bool bookmark_add(book_type_t book_type, const retro_file_t *file)
 {
     RG_ASSERT(file, "bad param");
-    // For most book types we want unique entries. I'd prefer to keep the old one and let the calling
-    // code decide what to do, but deleting the old entry is simpler for most book types who try
-    // to update something... For the RECENT type we also don't want to disturb the order
-    for (int i = 0; i < books[book].count; i++)
-    {
-        retro_file_t *entry = &books[book].items[i];
-        if (entry->is_valid && entry->folder == file->folder && !strcmp(entry->name, file->name))
-            entry->is_valid = false;
-    }
+    book_t *book = &books[book_type];
+
+    for (retro_file_t *item; (item = book_find(book, file));)
+        item->is_valid = false;
 
     book_append(book, file);
-    tab_refresh(book);
     book_save(book);
+    tab_refresh(book);
 
     return true;
 }
 
-bool bookmark_remove(book_type_t book, retro_file_t *file)
+bool bookmark_remove(book_type_t book_type, const retro_file_t *file)
 {
-    RG_ASSERT(file, "bad param");
-
+    book_t *book = &books[book_type];
     size_t found = 0;
 
-    for (int i = 0; i < books[book].count; i++)
+    for (retro_file_t *item; (item = book_find(book, file));)
     {
-        retro_file_t *entry = &books[book].items[i];
-        if (entry->is_valid && entry->folder == file->folder && !strcmp(entry->name, file->name))
-        {
-            entry->is_valid = false;
-            found++;
-        }
+        item->is_valid = false;
+        found++;
     }
 
     if (found == 0)
         return false;
 
-    tab_refresh(book);
+    book_repack(book);
     book_save(book);
+    tab_refresh(book);
 
     return true;
 }
 
 void bookmarks_init(void)
 {
-    book_init(BOOK_TYPE_FAVORITE, "favorite", "Favorites", 1000);
-    book_init(BOOK_TYPE_RECENT, "recent", "Recently played", 32);
+    book_init(BOOK_TYPE_FAVORITE, "favorite", "Favorites", 500);
+    book_init(BOOK_TYPE_RECENT, "recent", "Recently played", 50);
 }

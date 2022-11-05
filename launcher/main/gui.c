@@ -230,6 +230,7 @@ void gui_save_config(void)
     rg_settings_set_string(NS_APP, SETTING_HIDDEN_TABS, gui.hidden_tabs);
     for (int i = 0; i < gui.tabs_count; i++)
         rg_settings_set_number(NS_APP, SETTING_HIDE_TAB(gui.tabs[i]->name), !gui.tabs[i]->enabled);
+    rg_settings_commit();
 }
 
 listbox_item_t *gui_get_selected_item(tab_t *tab)

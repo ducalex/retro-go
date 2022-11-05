@@ -369,7 +369,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
 
     if (event == TAB_INIT)
     {
-        retro_file_t *selected = bookmark_find_first(BOOK_TYPE_RECENT, app);
+        retro_file_t *selected = bookmark_find_by_app(BOOK_TYPE_RECENT, app);
         tab->navpath = selected ? selected->folder : NULL;
 
         application_init(app);
