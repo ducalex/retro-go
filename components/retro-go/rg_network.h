@@ -29,4 +29,7 @@ bool rg_network_wifi_start_ap(const char *ssid, const char *password, int channe
 bool rg_network_wifi_start(const char *ssid, const char *password, int channel);
 void rg_network_wifi_stop(void);
 bool rg_network_sync_time(const char *host, int *out_delta);
+void rg_network_set_wifi_slot(int slot);
+int rg_network_get_wifi_slot(void);
+void rg_network_get_ap_list(void);
 rg_network_t rg_network_get_info(void);

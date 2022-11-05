@@ -1,5 +1,6 @@
 #include "rg_system.h"
 #include "rg_network.h"
+#include "rg_network_wifi.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -14,10 +15,11 @@
 
 static rg_network_t netstate = {0};
 static bool initialized = false;
+static int wifi_slot = 0;
 
-static const char *SETTING_WIFI_SSID = "ssid";
-static const char *SETTING_WIFI_PASSWORD = "password";
-
+static const char *SETTING_WIFI_SSID;
+static const char *SETTING_WIFI_PASSWORD;
+static const char *SETTING_WIFI_SLOT = "slot";
 
 #ifdef RG_ENABLE_NETWORKING
 #include <esp_system.h>
@@ -29,6 +31,35 @@ static const char *SETTING_WIFI_PASSWORD = "password";
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <netdb.h>
+
+void rg_network_get_ap_list(void)
+{
+    static char slot[6];
+    static char *ssid;
+    for (int i = 0; i < MAX_AP_LIST; i++)
+    {
+        sprintf(slot, "ssid%d", i);
+        ssid = rg_settings_get_string(NS_WIFI, slot, NULL);
+        ap_list[i] = ssid;
+    }
+}
+
+void rg_network_set_wifi_slot(int slot)
+{
+    rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, slot);
+    wifi_slot = slot;
+    static char ssidx[6];
+    static char passwordx[10];
+    sprintf(ssidx, "ssid%d", slot);
+    sprintf(passwordx, "password%d", slot);
+    SETTING_WIFI_SSID = ssidx;
+    SETTING_WIFI_PASSWORD = passwordx;
+}
+
+int rg_network_get_wifi_slot(void)
+{
+    return rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, wifi_slot);
+}
 
 static void network_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
