@@ -441,9 +441,6 @@ void rg_gui_draw_radio(int x_pos, int y_pos)
     rg_color_t color_fill = (net.state == RG_WIFI_CONNECTED) ? C_GREEN : -1;
     rg_color_t color_border = (net.state == RG_WIFI_CONNECTED) ? C_SILVER : C_DIM_GRAY;
 
-    if (net.state == RG_WIFI_INVALID)
-        return;
-
     int seg_width = 4;
     y_pos += 6;
     rg_gui_draw_rect(x_pos, y_pos, seg_width, 4, 1, color_border, color_fill);

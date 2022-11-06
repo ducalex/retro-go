@@ -267,12 +267,9 @@ void wifi_set_switch(bool enable)
     rg_settings_set_number(NS_WIFI, SETTING_WIFI, enable);
     wifi_state = enable;
     if (wifi_state)
-    {
-        rg_network_wifi_start(NULL, NULL, 0);
-    } else
-    {
+        rg_network_wifi_start();
+    else
         rg_network_wifi_stop();
-    }
 }
 
 bool wifi_get_switch(void)
