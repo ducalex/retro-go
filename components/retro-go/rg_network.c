@@ -12,8 +12,8 @@
         goto fail;                       \
     }
 
-static rg_network_t netstate = {0};
-static rg_wifi_config_t config = {0};
+static rg_network_t network = {0};
+static rg_wifi_config_t wifi_config = {0};
 static bool initialized = false;
 
 static const char *SETTING_WIFI_SSID = "ssid";
@@ -40,18 +40,18 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int32_
         if (event_id == WIFI_EVENT_STA_STOP || event_id == WIFI_EVENT_AP_STOP)
         {
             RG_LOGI("Wifi stopped.\n");
-            netstate.state = RG_WIFI_DISCONNECTED;
+            network.state = RG_NETWORK_DISCONNECTED;
         }
         else if (event_id == WIFI_EVENT_STA_START)
         {
-            RG_LOGI("Connecting to '%s'...\n", config.ssid);
-            netstate.state = RG_WIFI_CONNECTING;
+            RG_LOGI("Connecting to '%s'...\n", wifi_config.ssid);
+            network.state = RG_NETWORK_CONNECTING;
             esp_wifi_connect();
         }
         else if (event_id == WIFI_EVENT_STA_DISCONNECTED)
         {
             RG_LOGW("Got disconnected from AP. Reconnecting...\n");
-            netstate.state = RG_WIFI_CONNECTING;
+            network.state = RG_NETWORK_CONNECTING;
             rg_system_event(RG_EVENT_NETWORK_DISCONNECTED, NULL);
             esp_wifi_connect();
         }
@@ -59,10 +59,10 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int32_
         {
             tcpip_adapter_ip_info_t ip_info;
             if (tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info) == ESP_OK)
-                snprintf(netstate.local_addr, 16, IPSTR, IP2STR(&ip_info.ip));
+                snprintf(network.ip_addr, 16, IPSTR, IP2STR(&ip_info.ip));
 
-            RG_LOGI("Access point started! IP: %s\n", netstate.local_addr);
-            netstate.state = RG_WIFI_CONNECTED;
+            RG_LOGI("Access point started! IP: %s\n", network.ip_addr);
+            network.state = RG_NETWORK_CONNECTED;
             rg_system_event(RG_EVENT_NETWORK_CONNECTED, NULL);
         }
     }
@@ -71,17 +71,17 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int32_
         if (event_id == IP_EVENT_STA_GOT_IP)
         {
             ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-            snprintf(netstate.local_addr, 16, IPSTR, IP2STR(&event->ip_info.ip));
+            snprintf(network.ip_addr, 16, IPSTR, IP2STR(&event->ip_info.ip));
 
             wifi_ap_record_t wifidata;
             if (esp_wifi_sta_get_ap_info(&wifidata) == ESP_OK)
             {
-                netstate.channel = wifidata.primary;
-                netstate.rssi = wifidata.rssi;
+                network.channel = wifidata.primary;
+                network.rssi = wifidata.rssi;
             }
 
-            RG_LOGI("Connected! IP: %s, RSSI: %d", netstate.local_addr, netstate.rssi);
-            netstate.state = RG_WIFI_CONNECTED;
+            RG_LOGI("Connected! IP: %s, RSSI: %d", network.ip_addr, network.rssi);
+            network.state = RG_NETWORK_CONNECTED;
             if (rg_network_sync_time("pool.ntp.org", 0))
                 rg_system_save_time();
             rg_system_event(RG_EVENT_NETWORK_CONNECTED, NULL);
@@ -101,11 +101,11 @@ void rg_network_wifi_stop(void)
 
 bool rg_network_wifi_set_config(const char *ssid, const char *password, int channel, bool ap_mode)
 {
-    snprintf(config.ssid, 32, "%s", ssid ?: "");
-    snprintf(config.password, 64, "%s", password ?: "");
-    config.channel = channel;
-    config.ap_mode = ap_mode;
-    memcpy(netstate.ssid, config.ssid, 32);
+    snprintf(wifi_config.ssid, 32, "%s", ssid ?: "");
+    snprintf(wifi_config.password, 64, "%s", password ?: "");
+    wifi_config.channel = channel;
+    wifi_config.ap_mode = ap_mode;
+    memcpy(network.name, wifi_config.ssid, 32);
     return true;
 }
 
@@ -113,32 +113,32 @@ bool rg_network_wifi_start(void)
 {
     RG_ASSERT(initialized, "Please call rg_network_init() first");
 #ifdef RG_ENABLE_NETWORKING
-    wifi_config_t wifi_config = {0};
+    wifi_config_t config = {0};
     esp_err_t err;
 
-    if (!config.ssid[0])
+    if (!wifi_config.ssid[0])
     {
         RG_LOGW("Can't start wifi: No SSID has been configured.\n");
         return false;
     }
 
-    if (config.ap_mode)
+    if (wifi_config.ap_mode)
     {
-        memcpy(wifi_config.ap.ssid, config.ssid, 32);
-        memcpy(wifi_config.ap.password, config.password, 64);
-        wifi_config.ap.channel = config.channel;
-        wifi_config.ap.max_connection = 1;
+        memcpy(config.ap.ssid, wifi_config.ssid, 32);
+        memcpy(config.ap.password, wifi_config.password, 64);
+        config.ap.channel = wifi_config.channel;
+        config.ap.max_connection = 1;
         TRY(esp_wifi_set_mode(WIFI_MODE_AP));
-        TRY(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
+        TRY(esp_wifi_set_config(WIFI_IF_AP, &config));
         TRY(esp_wifi_start());
     }
     else
     {
-        memcpy(wifi_config.sta.ssid, config.ssid, 32);
-        memcpy(wifi_config.sta.password, config.password, 64);
-        wifi_config.sta.channel = config.channel;
+        memcpy(config.sta.ssid, wifi_config.ssid, 32);
+        memcpy(config.sta.password, wifi_config.password, 64);
+        config.sta.channel = wifi_config.channel;
         TRY(esp_wifi_set_mode(WIFI_MODE_STA));
-        TRY(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+        TRY(esp_wifi_set_config(WIFI_IF_STA, &config));
         TRY(esp_wifi_start());
     }
     return true;
@@ -149,7 +149,7 @@ fail:
 
 rg_network_t rg_network_get_info(void)
 {
-    return netstate;
+    return network;
 }
 
 bool rg_network_sync_time(const char *host, int *out_delta)

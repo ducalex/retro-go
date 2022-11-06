@@ -438,8 +438,8 @@ void rg_gui_draw_radio(int x_pos, int y_pos)
         y_pos += gui.screen_height;
 
     rg_network_t net = rg_network_get_info();
-    rg_color_t color_fill = (net.state == RG_WIFI_CONNECTED) ? C_GREEN : -1;
-    rg_color_t color_border = (net.state == RG_WIFI_CONNECTED) ? C_SILVER : C_DIM_GRAY;
+    rg_color_t color_fill = (net.state == RG_NETWORK_CONNECTED) ? C_GREEN : -1;
+    rg_color_t color_border = (net.state == RG_NETWORK_CONNECTED) ? C_SILVER : C_DIM_GRAY;
 
     int seg_width = 4;
     y_pos += 6;
@@ -1128,9 +1128,9 @@ int rg_gui_about_menu(const rg_gui_option_t *extra_options)
     }
 
     rg_network_t net = rg_network_get_info();
-    if (net.state == RG_WIFI_CONNECTED) sprintf(network_str, "%s\n%s", net.ssid, net.local_addr);
-    else if (net.state == RG_WIFI_CONNECTING) strcpy(network_str, "connecting...");
-    else if (net.ssid[0]) strcpy(network_str, "disconnected");
+    if (net.state == RG_NETWORK_CONNECTED) sprintf(network_str, "%s\n%s", net.name, net.ip_addr);
+    else if (net.state == RG_NETWORK_CONNECTING) strcpy(network_str, "connecting...");
+    else if (net.name[0]) strcpy(network_str, "disconnected");
     else strcpy(network_str, "not configured");
 
     int sel = rg_gui_dialog("Retro-Go", options, -1);

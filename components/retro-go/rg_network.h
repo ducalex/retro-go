@@ -3,13 +3,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef enum
-{
-    RG_WIFI_DISCONNECTED,
-    RG_WIFI_CONNECTING,
-    RG_WIFI_CONNECTED,
-} rg_wifi_state_t;
-
 #define RG_EVENT_NETWORK_DISCONNECTED (RG_EVENT_TYPE_NETWORK | 1)
 #define RG_EVENT_NETWORK_CONNECTED    (RG_EVENT_TYPE_NETWORK | 2)
 
@@ -21,11 +14,17 @@ typedef struct
     bool ap_mode;
 } rg_wifi_config_t;
 
+typedef enum
+{
+    RG_NETWORK_DISCONNECTED,
+    RG_NETWORK_CONNECTING,
+    RG_NETWORK_CONNECTED,
+} rg_network_state_t;
+
 typedef struct
 {
-    char ssid[32];
-    char local_addr[16];
-    char remote_addr[16];
+    char name[32];
+    char ip_addr[16];
     int channel, rssi;
     int state;
 } rg_network_t;
