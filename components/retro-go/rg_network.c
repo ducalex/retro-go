@@ -99,12 +99,12 @@ void rg_network_wifi_stop(void)
 #endif
 }
 
-bool rg_network_wifi_set_config(const char *ssid, const char *password, int channel, bool ap_mode)
+bool rg_network_wifi_set_config(const char *ssid, const char *password, int channel, int mode)
 {
     snprintf(wifi_config.ssid, 32, "%s", ssid ?: "");
     snprintf(wifi_config.password, 64, "%s", password ?: "");
     wifi_config.channel = channel;
-    wifi_config.ap_mode = ap_mode;
+    wifi_config.ap_mode = mode;
     memcpy(network.name, wifi_config.ssid, 32);
     return true;
 }
