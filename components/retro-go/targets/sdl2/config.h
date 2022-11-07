@@ -44,6 +44,8 @@
 #define RG_GAMEPAD_MAP_B            SDL_SCANCODE_X
 #define RG_GAMEPAD_MAP_X            SDL_SCANCODE_A
 #define RG_GAMEPAD_MAP_Y            SDL_SCANCODE_S
+#define RG_GAMEPAD_MAP_L            SDL_SCANCODE_Q
+#define RG_GAMEPAD_MAP_R            SDL_SCANCODE_W
 
 // Battery
 // #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0

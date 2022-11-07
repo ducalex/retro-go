@@ -14,14 +14,13 @@
 #if RG_GAMEPAD_DRIVER == 1 || defined(RG_BATTERY_ADC_CHANNEL)
 #include <esp_adc_cal.h>
 #include <driver/adc.h>
-#define USE_ADC_DRIVER 1
 #endif
 
 static bool input_task_running = false;
 static int64_t last_gamepad_read = 0;
 static uint32_t gamepad_state = -1; // _Atomic
 static int battery_level = -1;
-#if USE_ADC_DRIVER
+#if defined(RG_BATTERY_ADC_CHANNEL)
 static esp_adc_cal_characteristics_t adc_chars;
 #endif
 
@@ -81,7 +80,7 @@ static inline uint32_t gamepad_read(void)
     uint8_t data[5];
     if (rg_i2c_read(0x20, -1, &data, 5))
     {
-        int buttons = ~((data[2] << 8) | data[1]);
+        uint32_t buttons = ~((data[2] << 8) | data[1]);
 
         if (buttons & RG_GAMEPAD_MAP_MENU) state |= RG_KEY_MENU;
         if (buttons & RG_GAMEPAD_MAP_OPTION) state |= RG_KEY_OPTION;
@@ -93,13 +92,17 @@ static inline uint32_t gamepad_read(void)
         if (buttons & RG_GAMEPAD_MAP_LEFT) state |= RG_KEY_LEFT;
         if (buttons & RG_GAMEPAD_MAP_A) state |= RG_KEY_A;
         if (buttons & RG_GAMEPAD_MAP_B) state |= RG_KEY_B;
+        if (buttons & RG_GAMEPAD_MAP_X) state |= RG_KEY_X;
+        if (buttons & RG_GAMEPAD_MAP_Y) state |= RG_KEY_Y;
+        if (buttons & RG_GAMEPAD_MAP_L) state |= RG_KEY_L;
+        if (buttons & RG_GAMEPAD_MAP_R) state |= RG_KEY_R;
 
         battery_level = data[4];
     }
 
 #elif RG_GAMEPAD_DRIVER == 4  // I2C via AW9523
 
-    uint16_t buttons = ~(rg_i2c_gpio_read_port(0) | rg_i2c_gpio_read_port(1) << 8);
+    uint32_t buttons = ~(rg_i2c_gpio_read_port(0) | rg_i2c_gpio_read_port(1) << 8);
 
     if (buttons & RG_GAMEPAD_MAP_MENU) state |= RG_KEY_MENU;
     if (buttons & RG_GAMEPAD_MAP_OPTION) state |= RG_KEY_OPTION;
@@ -111,6 +114,10 @@ static inline uint32_t gamepad_read(void)
     if (buttons & RG_GAMEPAD_MAP_LEFT) state |= RG_KEY_LEFT;
     if (buttons & RG_GAMEPAD_MAP_A) state |= RG_KEY_A;
     if (buttons & RG_GAMEPAD_MAP_B) state |= RG_KEY_B;
+    if (buttons & RG_GAMEPAD_MAP_X) state |= RG_KEY_X;
+    if (buttons & RG_GAMEPAD_MAP_Y) state |= RG_KEY_Y;
+    if (buttons & RG_GAMEPAD_MAP_L) state |= RG_KEY_L;
+    if (buttons & RG_GAMEPAD_MAP_R) state |= RG_KEY_R;
 
     battery_level = 99;
 
@@ -128,6 +135,10 @@ static inline uint32_t gamepad_read(void)
     if (keys[RG_GAMEPAD_MAP_RIGHT]) state |= RG_KEY_RIGHT;
     if (keys[RG_GAMEPAD_MAP_A]) state |= RG_KEY_A;
     if (keys[RG_GAMEPAD_MAP_B]) state |= RG_KEY_B;
+    if (keys[RG_GAMEPAD_MAP_X]) state |= RG_KEY_X;
+    if (keys[RG_GAMEPAD_MAP_Y]) state |= RG_KEY_Y;
+    if (keys[RG_GAMEPAD_MAP_L]) state |= RG_KEY_L;
+    if (keys[RG_GAMEPAD_MAP_R]) state |= RG_KEY_R;
 
 #endif
 
@@ -219,26 +230,11 @@ void rg_input_init(void)
     gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 0);
     gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 1);
 
-    #ifdef RG_GPIO_GAMEPAD_MENU
-    gpio_set_direction(RG_GPIO_GAMEPAD_MENU, GPIO_MODE_INPUT);
-    gpio_set_pull_mode(RG_GPIO_GAMEPAD_MENU, GPIO_PULLUP_ONLY);
-    #endif
-    #ifdef RG_GPIO_GAMEPAD_OPTION
-    gpio_set_direction(RG_GPIO_GAMEPAD_OPTION, GPIO_MODE_INPUT);
-    #endif
-
 #elif RG_GAMEPAD_DRIVER == 3  // I2C
 
     const char *driver = "I2C";
 
     rg_i2c_init();
-
-    #ifdef RG_GPIO_GAMEPAD_MENU
-    gpio_set_direction(RG_GPIO_GAMEPAD_MENU, GPIO_MODE_INPUT);
-    #endif
-    #ifdef RG_GPIO_GAMEPAD_OPTION
-    gpio_set_direction(RG_GPIO_GAMEPAD_OPTION, GPIO_MODE_INPUT);
-    #endif
 
 #elif RG_GAMEPAD_DRIVER == 4  // I2C w/AW9523
 
@@ -270,9 +266,9 @@ void rg_input_init(void)
 
 #endif
 
-#if USE_ADC_DRIVER
+#if defined(RG_BATTERY_ADC_CHANNEL)
     adc1_config_width(ADC_WIDTH_MAX - 1);
-    adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11);
+    adc1_config_channel_atten(RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11);
     esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
 #endif
 

@@ -11,15 +11,17 @@ typedef enum
     RG_KEY_LEFT    = (1 << 3),
     RG_KEY_SELECT  = (1 << 4),
     RG_KEY_START   = (1 << 5),
-    RG_KEY_A       = (1 << 6),
-    RG_KEY_B       = (1 << 7),
-    RG_KEY_MENU    = (1 << 8),
-    RG_KEY_OPTION  = (1 << 9),
+    RG_KEY_MENU    = (1 << 6),
+    RG_KEY_OPTION  = (1 << 7),
+    RG_KEY_A       = (1 << 8),
+    RG_KEY_B       = (1 << 9),
     RG_KEY_X       = (1 << 10),
     RG_KEY_Y       = (1 << 11),
+    RG_KEY_L       = (1 << 12),
+    RG_KEY_R       = (1 << 13),
     RG_KEY_ANY     = 0xFFFF,
     RG_KEY_ALL     = 0xFFFF,
-    RG_KEY_COUNT   = 12,
+    RG_KEY_COUNT   = 14,
 } rg_key_t;
 
 void rg_input_init(void);

@@ -43,6 +43,8 @@
 #define RG_GAMEPAD_MAP_B            (1<<7)
 #define RG_GAMEPAD_MAP_X            (0)
 #define RG_GAMEPAD_MAP_Y            (0)
+#define RG_GAMEPAD_MAP_L            (0)
+#define RG_GAMEPAD_MAP_R            (0)
 
 // Battery
 // #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0
