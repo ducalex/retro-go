@@ -19,7 +19,7 @@ static char *http_buffer;
 static bool wifi_state = true;
 static bool webui_state = true;
 
-static const char *SETTING_WEBUI  = "HTTPFileServer";
+static const char *SETTING_WEBUI = "HTTPFileServer";
 static const char *SETTING_WIFI = "WiFi";
 
 static char *urldecode(const char *str)
@@ -50,9 +50,9 @@ static esp_err_t http_api_handler(httpd_req_t *req)
 
     cJSON *content = cJSON_Parse(http_buffer);
     if (!content)
-       return ESP_FAIL;
+        return ESP_FAIL;
 
-    const char *cmd  = cJSON_GetStringValue(cJSON_GetObjectItem(content, "cmd")) ?: "-";
+    const char *cmd = cJSON_GetStringValue(cJSON_GetObjectItem(content, "cmd")) ?: "-";
     const char *arg1 = cJSON_GetStringValue(cJSON_GetObjectItem(content, "arg1")) ?: "";
     const char *arg2 = cJSON_GetStringValue(cJSON_GetObjectItem(content, "arg2")) ?: "";
 
@@ -264,8 +264,9 @@ void webui_start(void)
 
 void wifi_set_switch(bool enable)
 {
-    rg_settings_set_number(NS_WIFI, SETTING_WIFI, enable);
+    rg_settings_set_number(NS_APP, SETTING_WIFI, enable);
     wifi_state = enable;
+
     if (wifi_state)
         rg_network_wifi_start();
     else
@@ -274,25 +275,22 @@ void wifi_set_switch(bool enable)
 
 bool wifi_get_switch(void)
 {
-    return rg_settings_get_number(NS_WIFI, SETTING_WIFI, wifi_state);
+    return rg_settings_get_number(NS_APP, SETTING_WIFI, wifi_state);
 }
 
 void webui_set_switch(bool enable)
 {
-    rg_settings_set_number(NS_WIFI, SETTING_WEBUI, enable);
+    rg_settings_set_number(NS_APP, SETTING_WEBUI, enable);
     webui_state = enable;
 
     if (webui_state)
-    {
         webui_start();
-    } else
-    {
+    else
         webui_stop();
-    }
 }
 
 bool webui_get_switch(void)
 {
-    return rg_settings_get_number(NS_WIFI, SETTING_WEBUI, webui_state);
+    return rg_settings_get_number(NS_APP, SETTING_WEBUI, webui_state);
 }
 #endif
