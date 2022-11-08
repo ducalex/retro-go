@@ -20,6 +20,7 @@ static const char *SETTING_WIFI_SSID = "ssid";
 static const char *SETTING_WIFI_PASSWORD = "password";
 static const char *SETTING_WIFI_CHANNEL = "channel";
 static const char *SETTING_WIFI_MODE = "mode";
+static const char *SETTING_WIFI_SLOT = "slot";
 
 
 #ifdef RG_ENABLE_NETWORKING
@@ -97,6 +98,43 @@ void rg_network_wifi_stop(void)
 #ifdef RG_ENABLE_NETWORKING
     esp_wifi_stop();
 #endif
+}
+
+bool rg_network_wifi_load_config(int slot)
+{
+    char key_ssid[16], key_password[16], key_channel[16], key_mode[16];
+
+    if (slot < -1 || slot > 999)
+        return false;
+
+    if (slot == -1)
+    {
+        snprintf(key_ssid, 16, "%s", SETTING_WIFI_SSID);
+        snprintf(key_password, 16, "%s", SETTING_WIFI_PASSWORD);
+        snprintf(key_channel, 16, "%s", SETTING_WIFI_CHANNEL);
+        snprintf(key_mode, 16, "%s", SETTING_WIFI_MODE);
+    }
+    else
+    {
+        snprintf(key_ssid, 16, "%s%d", SETTING_WIFI_SSID, slot);
+        snprintf(key_password, 16, "%s%d", SETTING_WIFI_PASSWORD, slot);
+        snprintf(key_channel, 16, "%s%d", SETTING_WIFI_CHANNEL, slot);
+        snprintf(key_mode, 16, "%s%d", SETTING_WIFI_MODE, slot);
+    }
+
+    RG_LOGI("Looking for '%s' (slot %d)\n", key_ssid, slot);
+
+    char *ssid = rg_settings_get_string(NS_WIFI, key_ssid, NULL);
+    char *pass = rg_settings_get_string(NS_WIFI, key_password, NULL);
+    int channel = rg_settings_get_number(NS_WIFI, key_channel, 0);
+    int ap_mode = rg_settings_get_number(NS_WIFI, key_mode, 0);
+
+    if (!ssid && !pass)
+        return false;
+
+    rg_network_wifi_set_config(ssid, pass, channel, ap_mode);
+    free(ssid), free(pass);
+    return false;
 }
 
 bool rg_network_wifi_set_config(const char *ssid, const char *password, int channel, int mode)
@@ -239,13 +277,10 @@ bool rg_network_init(void)
     TRY(esp_wifi_init(&cfg));
     TRY(esp_wifi_set_storage(WIFI_STORAGE_RAM));
 
-    // Preload values from configuration
-    char *ssid = rg_settings_get_string(NS_WIFI, SETTING_WIFI_SSID, NULL);
-    char *pass = rg_settings_get_string(NS_WIFI, SETTING_WIFI_PASSWORD, NULL);
-    int channel = rg_settings_get_number(NS_WIFI, SETTING_WIFI_CHANNEL, 0);
-    int ap_mode = rg_settings_get_number(NS_WIFI, SETTING_WIFI_MODE, 0);
-    rg_network_wifi_set_config(ssid, pass, channel, ap_mode);
-    free(ssid), free(pass);
+    // We try loading the specified slot (if any), and fallback to no slot
+    int slot = rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, -1);
+    if (!rg_network_wifi_load_config(slot) && slot != -1)
+        rg_network_wifi_load_config(-1);
 
     initialized = true;
     return true;

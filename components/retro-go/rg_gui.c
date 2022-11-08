@@ -1129,9 +1129,9 @@ int rg_gui_about_menu(const rg_gui_option_t *extra_options)
 
     rg_network_t net = rg_network_get_info();
     if (net.state == RG_NETWORK_CONNECTED) sprintf(network_str, "%s\n%s", net.name, net.ip_addr);
-    else if (net.state == RG_NETWORK_CONNECTING) strcpy(network_str, "connecting...");
-    else if (net.name[0]) strcpy(network_str, "disconnected");
-    else strcpy(network_str, "not configured");
+    else if (net.state == RG_NETWORK_CONNECTING) sprintf(network_str, "%s\n%s", net.name, "connecting...");
+    else if (net.name[0]) sprintf(network_str, "%s\n%s", net.name, "disconnected");
+    else strcpy(network_str, "disconnected");
 
     int sel = rg_gui_dialog("Retro-Go", options, -1);
 
