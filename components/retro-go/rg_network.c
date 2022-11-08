@@ -93,13 +93,6 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int32_
 }
 #endif
 
-void rg_network_wifi_stop(void)
-{
-#ifdef RG_ENABLE_NETWORKING
-    esp_wifi_stop();
-#endif
-}
-
 bool rg_network_wifi_load_config(int slot)
 {
     char key_ssid[16], key_password[16], key_channel[16], key_mode[16];
@@ -143,7 +136,6 @@ bool rg_network_wifi_set_config(const char *ssid, const char *password, int chan
     snprintf(wifi_config.password, 64, "%s", password ?: "");
     wifi_config.channel = channel;
     wifi_config.ap_mode = mode;
-    memcpy(network.name, wifi_config.ssid, 32);
     return true;
 }
 
@@ -159,6 +151,8 @@ bool rg_network_wifi_start(void)
         RG_LOGW("Can't start wifi: No SSID has been configured.\n");
         return false;
     }
+
+    memcpy(network.name, wifi_config.ssid, 32);
 
     if (wifi_config.ap_mode)
     {
@@ -183,6 +177,14 @@ bool rg_network_wifi_start(void)
 fail:
 #endif
     return false;
+}
+
+void rg_network_wifi_stop(void)
+{
+    memset(network.name, 0, 32);
+#ifdef RG_ENABLE_NETWORKING
+    esp_wifi_stop();
+#endif
 }
 
 rg_network_t rg_network_get_info(void)
