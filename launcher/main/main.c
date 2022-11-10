@@ -129,7 +129,11 @@ static rg_gui_event_t wifi_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
         if (sel >= 0 && sel < MAX_AP_LIST)
         {
             rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, sel);
-            rg_network_wifi_load_config(sel);
+            if (rg_network_wifi_load_config(sel))
+            {
+                rg_network_wifi_stop();
+                rg_network_wifi_start();
+            }
         }
         gui_redraw();
     }
