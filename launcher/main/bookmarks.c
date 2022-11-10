@@ -212,7 +212,8 @@ retro_file_t *bookmark_find_by_app(book_type_t book_type, const retro_app_t *app
 {
     book_t *book = &books[book_type];
 
-    for (size_t i = 0; i < book->capacity; i++)
+    // Find the last entry (most recent)
+    for (int i = book->capacity - 1; i >= 0; --i)
     {
         if (book->items[i].is_valid && (!app || book->items[i].app == app))
         {
