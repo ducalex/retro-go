@@ -13,6 +13,10 @@
 #include "webui.h"
 #include "timezones.h"
 
+#define MAX_AP_LIST 5
+
+static const char *SETTING_WIFI_SLOT = "slot";
+
 static rg_app_t *app;
 
 static rg_gui_event_t toggle_tab_cb(rg_gui_option_t *option, rg_gui_event_t event)
@@ -109,6 +113,29 @@ static rg_gui_event_t wifi_switch_cb(rg_gui_option_t *option, rg_gui_event_t eve
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t wifi_select_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    rg_gui_option_t options[MAX_AP_LIST + 1];
+    if (event == RG_DIALOG_ENTER) {
+        for (size_t i = 0; i < MAX_AP_LIST; i++)
+        {
+            char slot[6];
+            sprintf(slot, "ssid%d", i);
+            char *ap_name = rg_settings_get_string(NS_WIFI, slot, NULL);
+            options[i] = (rg_gui_option_t){i, ap_name, NULL, 1, NULL};
+        }
+        options[MAX_AP_LIST] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
+        int sel = rg_gui_dialog("Select saved AP", options, 0);
+        if (sel >= 0 && sel < MAX_AP_LIST)
+        {
+            rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, sel);
+            rg_network_wifi_load_config(sel);
+        }
+        gui_redraw();
+    }
+    return RG_DIALOG_VOID;
+ }
+
 static rg_gui_event_t webui_switch_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
@@ -124,6 +151,7 @@ static rg_gui_event_t wifi_options_cb(rg_gui_option_t *option, rg_gui_event_t ev
     {
         const rg_gui_option_t options[] = {
             {0, "Wi-Fi"       , "...", 1, &wifi_switch_cb},
+            {0, "Wi-Fi select", "...", 1, &wifi_select_cb},
             {0, "File server" , "...", 1, &webui_switch_cb},
             {0, "Time sync" , "On", 0, NULL},
             RG_DIALOG_CHOICE_LAST,
