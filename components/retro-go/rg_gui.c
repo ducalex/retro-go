@@ -519,7 +519,7 @@ void rg_gui_draw_status_bars(void)
     rg_gui_draw_text(0, 0, gui.screen_width, footer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_BOTTOM);
 
     rg_gui_draw_battery(-22, 3);
-    rg_gui_draw_radio(-54, 3);
+    // rg_gui_draw_radio(-45, 3);
 }
 
 static size_t get_dialog_items_count(const rg_gui_option_t *options)
