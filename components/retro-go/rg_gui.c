@@ -1113,9 +1113,9 @@ int rg_gui_about_menu(const rg_gui_option_t *extra_options)
 
     const rg_app_t *app = rg_system_get_app();
 
-    sprintf(build_ver, "%.30s", app->version);
-    sprintf(build_date, "%s %.5s", app->buildDate, app->buildTime);
-    sprintf(build_user, "%.30s", app->buildUser);
+    snprintf(build_ver, 30, "%s", app->version);
+    snprintf(build_date, 30, "%s %s", app->buildDate, app->buildTime);
+    snprintf(build_user, 30, "%s", app->buildUser);
 
     char *rel_hash = strstr(build_ver, "-0-g");
     if (rel_hash)
@@ -1128,10 +1128,14 @@ int rg_gui_about_menu(const rg_gui_option_t *extra_options)
     }
 
     rg_network_t net = rg_network_get_info();
-    if (net.state == RG_NETWORK_CONNECTED) sprintf(network_str, "%s\n%s", net.name, net.ip_addr);
-    else if (net.state == RG_NETWORK_CONNECTING) sprintf(network_str, "%s\n%s", net.name, "connecting...");
-    else if (net.name[0]) sprintf(network_str, "%s\n%s", net.name, "disconnected");
-    else strcpy(network_str, "disconnected");
+    if (net.state == RG_NETWORK_CONNECTED)
+        snprintf(network_str, 64, "%s\n%s", net.name, net.ip_addr);
+    else if (net.state == RG_NETWORK_CONNECTING)
+        snprintf(network_str, 64, "%s\n%s", net.name, "connecting...");
+    else if (net.name[0])
+        snprintf(network_str, 64, "%s\n%s", net.name, "disconnected");
+    else
+        snprintf(network_str, 64, "%s", "disconnected");
 
     int sel = rg_gui_dialog("Retro-Go", options, -1);
 
