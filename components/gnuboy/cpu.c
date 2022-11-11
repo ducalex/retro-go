@@ -885,7 +885,7 @@ void cpu_disassemble(unsigned pc, int count)
 	while (count-- > 0)
 	{
 		const char *pattern;
-		char operands[16]
+		char operands[16];
 		char mnemonic[64];
 		byte ops[3];
 		int j = 0, k = 0;
@@ -908,13 +908,13 @@ void cpu_disassemble(unsigned pc, int count)
 		{
 			if (*pattern == '%')
 			{
-				pattern++;
-				switch (*pattern)
+				switch (*(pattern + 1))
 				{
 				case 'B':
 				case 'b':
 					ops[k] = readb(pc++);
 					j += sprintf(mnemonic + j, "%02Xh", ops[k++]);
+					pattern += 2;
 					break;
 				case 'W':
 				case 'w':
@@ -922,12 +922,16 @@ void cpu_disassemble(unsigned pc, int count)
 					ops[k+1] = readb(pc++);
 					j += sprintf(mnemonic + j, "%04Xh", ((ops[k+1] << 8) | ops[k]));
 					k += 2;
+					pattern += 2;
 					break;
 				case 'O':
 				case 'o':
 					ops[k] = readb(pc++);
 					j += sprintf(mnemonic + j, "%+d", (n8)(ops[k++]));
+					pattern += 2;
 					break;
+				default:
+					mnemonic[j++] = *pattern++;
 				}
 			}
 			else
@@ -940,7 +944,7 @@ void cpu_disassemble(unsigned pc, int count)
 		if (k == 3)
 			sprintf(operands, "%02X %02X %02X", ops[0], ops[1], ops[2]);
 		else if (k == 2)
-			sprintf(operands, "%02X", ops[0], ops[1]);
+			sprintf(operands, "%02X %02X", ops[0], ops[1]);
 		else
 			sprintf(operands, "%02X", ops[0]);
 
