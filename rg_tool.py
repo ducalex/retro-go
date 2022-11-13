@@ -131,7 +131,7 @@ def build_firmware(apps, device_type):
         PROJECT_ICON
     ]
 
-    if device_type in ["mrgc-g32", "esplay"]:
+    if device_type in ["mrgc-g32", "esplay", "mrgc-gbm"]:
         args.append("--esplay")
 
     for app in apps:
