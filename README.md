@@ -161,6 +161,10 @@ rg_tool.py supports a few environment variables if you want to avoid passing fla
 - `RG_TOOL_BAUD` represents --baud
 - `RG_TOOL_PORT` represents --port
 
+## Windows
+Running `./rg_tool.py ...` on Windows might invoke the wrong Python interpreter (causing the build to fail)
+or even do nothing at all. In such cases you should use `python rg_tool.py ...` instead.
+
 ## Changing the launcher's images
 All images used by the launcher (headers, logos) are located in `launcher/main/images`. If you edit them you must run the `launcher/main/gen_images.py` script to regenerate `images.c`. Magenta (rgb(255, 0, 255) / 0xF81F) is used as the transparency colour.
 

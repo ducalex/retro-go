@@ -303,6 +303,7 @@ next:
 	/* Handle interrupts */
 	if (IME && (temp = R_IF & R_IE))
 	{
+		// printf("Interrupt: IF=%02X IE=%02X\n", R_IF, R_IE);
 		COND_EXEC_INT(IF_VBLANK, 0);
 		COND_EXEC_INT(IF_STAT, 1);
 		COND_EXEC_INT(IF_TIMER, 2);
@@ -312,7 +313,7 @@ next:
 	IME = IMA;
 
 	// if (cpu.disassemble)
-	// 	debug_disassemble(PC, 1);
+	// 	cpu_disassemble(PC, 1);
 
 	op = FETCH;
 	clen = cycles_table[op];
