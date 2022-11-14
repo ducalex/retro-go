@@ -14,7 +14,7 @@
 
 
 // Parts:
-// Unknown ESP-32 (Metal shield removed from module) (SOC)
+// Unknown ESP-32 (Most likely ESP32-WROVER-B) (SOC)
 
 
 // Target definition
@@ -66,7 +66,7 @@
 #define RG_GAMEPAD_MAP_Y            (0)
 
 // Battery
-#define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0 // Default 0, commented out.
+// #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0 // Default 0, commented out.
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) - 170) / 30.f * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) (0)
 
