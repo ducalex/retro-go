@@ -529,50 +529,32 @@ void hw_write(unsigned a, byte b)
 		{
 			int r = a & 0xFF;
 
-			if (!IS_CGB)
+			switch (r)
 			{
-				if (r >= 0x51 && r <= 0x70)
-					return;
-				if (r >= 0x47 && r <= 0x49)
-					if (REG(r) != b) lcd_pal_dirty();
-				// The few other GBC-only registers are harmless
-				// and we let them fall through.
-			}
-
-			switch(r)
-			{
-			case RI_TIMA:
-			case RI_TMA:
-			case RI_TAC:
-			case RI_SCY:
-			case RI_SCX:
-			case RI_WY:
-			case RI_WX:
-			case RI_BGP:
-			case RI_OBP0:
-			case RI_OBP1:
-				REG(r) = b;
-				break;
-			case RI_IF:
-			case RI_IE:
-				REG(r) = b & 0x1F;
-				break;
 			case RI_P1:
 				REG(r) = b;
 				pad_refresh();
+				break;
+			case RI_SB:
+				REG(r) = b;
 				break;
 			case RI_SC:
 				if ((b & 0x81) == 0x81)
 					hw.serial = 1952; // 8 * 122us;
 				else
 					hw.serial = 0;
-				R_SC = b; /* & 0x7f; */
-				break;
-			case RI_SB:
-				REG(r) = b;
+				REG(r) = b; /* & 0x7f; */
 				break;
 			case RI_DIV:
 				REG(r) = 0;
+				break;
+			case RI_TIMA:
+			case RI_TMA:
+			case RI_TAC:
+				REG(r) = b;
+				break;
+			case RI_IF:
+				REG(r) = b & 0x1F;
 				break;
 			case RI_LCDC:
 				lcd_lcdc_change(b);
@@ -583,6 +565,10 @@ void hw_write(unsigned a, byte b)
 					hw_interrupt(IF_STAT, 1);
 				lcd_stat_trigger();
 				break;
+			case RI_SCY:
+			case RI_SCX:
+				REG(r) = b;
+				break;
 			case RI_LYC:
 				REG(r) = b;
 				lcd_stat_trigger();
@@ -590,50 +576,72 @@ void hw_write(unsigned a, byte b)
 			case RI_DMA:
 				hw_dma(b);
 				break;
-			case RI_VBK: // GBC only
-				REG(r) = b | 0xFE;
-				hw_updatemap();
-				break;
-			case RI_BCPS: // GBC only
-				R_BCPS = b & 0xBF;
-				R_BCPD = hw.pal[b & 0x3F];
-				break;
-			case RI_OCPS: // GBC only
-				R_OCPS = b & 0xBF;
-				R_OCPD = hw.pal[64 + (b & 0x3F)];
-				break;
-			case RI_BCPD: // GBC only
-				hw.pal[R_BCPS & 0x3F] = b;
+			case RI_BGP:
+			case RI_OBP0:
+			case RI_OBP1:
+				if (REG(r) == b)
+					break;
+				REG(r) = b;
 				lcd_pal_dirty();
-				R_BCPD = b;
-				if (R_BCPS & 0x80) R_BCPS = (R_BCPS+1) & 0xBF;
 				break;
-			case RI_OCPD: // GBC only
-				hw.pal[64 + (R_OCPS & 0x3F)] = b;
-				lcd_pal_dirty();
-				R_OCPD = b;
-				if (R_OCPS & 0x80) R_OCPS = (R_OCPS+1) & 0xBF;
-				break;
-			case RI_SVBK: // GBC only
-				REG(r) = b | 0xF8;
-				hw_updatemap();
-				break;
-			case RI_KEY1: // GBC only
-				REG(r) = (REG(r) & 0x80) | (b & 0x01);
+			case RI_WY:
+			case RI_WX:
+				REG(r) = b;
 				break;
 			case RI_BIOS:
 				REG(r) = b;
 				hw_updatemap();
 				break;
-			case RI_HDMA1: // GBC only
-			case RI_HDMA2: // GBC only
-			case RI_HDMA3: // GBC only
-			case RI_HDMA4: // GBC only
-				REG(r) = b;
+			case RI_IE:
+				REG(r) = b & 0x1F;
 				break;
-			case RI_HDMA5: // GBC only
-				hw_hdma(b);
-				break;
+			default:
+				if (!IS_CGB)
+					break;
+				// Gameboy Color registers
+				switch (r)
+				{
+				case RI_KEY1:
+					REG(r) = (REG(r) & 0x80) | (b & 0x01);
+					break;
+				case RI_VBK:
+					REG(r) = b | 0xFE;
+					hw_updatemap();
+					break;
+				case RI_HDMA1:
+				case RI_HDMA2:
+				case RI_HDMA3:
+				case RI_HDMA4:
+					REG(r) = b;
+					break;
+				case RI_HDMA5:
+					hw_hdma(b);
+					break;
+				case RI_BCPS:
+					R_BCPS = b & 0xBF;
+					R_BCPD = hw.pal[b & 0x3F];
+					break;
+				case RI_BCPD:
+					hw.pal[R_BCPS & 0x3F] = b;
+					lcd_pal_dirty();
+					R_BCPD = b;
+					if (R_BCPS & 0x80) R_BCPS = (R_BCPS+1) & 0xBF;
+					break;
+				case RI_OCPS:
+					R_OCPS = b & 0xBF;
+					R_OCPD = hw.pal[64 + (b & 0x3F)];
+					break;
+				case RI_OCPD:
+					hw.pal[64 + (R_OCPS & 0x3F)] = b;
+					lcd_pal_dirty();
+					R_OCPD = b;
+					if (R_OCPS & 0x80) R_OCPS = (R_OCPS+1) & 0xBF;
+					break;
+				case RI_SVBK:
+					REG(r) = b | 0xF8;
+					hw_updatemap();
+					break;
+				}
 			}
 		}
 	}
