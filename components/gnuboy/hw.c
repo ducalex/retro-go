@@ -587,6 +587,9 @@ void hw_write(unsigned a, byte b)
 				REG(r) = b;
 				lcd_stat_trigger();
 				break;
+			case RI_DMA:
+				hw_dma(b);
+				break;
 			case RI_VBK: // GBC only
 				REG(r) = b | 0xFE;
 				hw_updatemap();
@@ -602,6 +605,7 @@ void hw_write(unsigned a, byte b)
 			case RI_BCPD: // GBC only
 				hw.pal[R_BCPS & 0x3F] = b;
 				lcd_pal_dirty();
+				R_BCPD = b;
 				if (R_BCPS & 0x80) R_BCPS = (R_BCPS+1) & 0xBF;
 				break;
 			case RI_OCPD: // GBC only
@@ -613,9 +617,6 @@ void hw_write(unsigned a, byte b)
 			case RI_SVBK: // GBC only
 				REG(r) = b | 0xF8;
 				hw_updatemap();
-				break;
-			case RI_DMA:
-				hw_dma(b);
 				break;
 			case RI_KEY1: // GBC only
 				REG(r) = (REG(r) & 0x80) | (b & 0x01);
