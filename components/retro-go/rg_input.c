@@ -25,6 +25,28 @@ static esp_adc_cal_characteristics_t adc_chars;
 #endif
 
 
+static inline int battery_read(void)
+{
+#if defined(RG_BATTERY_ADC_CHANNEL)
+
+    uint32_t adc_sample = 0;
+    for (int i = 0; i < 4; ++i)
+        adc_sample += esp_adc_cal_raw_to_voltage(adc1_get_raw(RG_BATTERY_ADC_CHANNEL), &adc_chars);
+    return adc_sample / 4;
+
+#elif RG_GAMEPAD_DRIVER == 3 /* I2C */
+
+    uint8_t data[5];
+    if (rg_i2c_read(0x20, -1, &data, 5))
+        return data[4];
+    return -1;
+
+#else
+    // No battery or unknown
+    return -1;
+#endif
+}
+
 static inline uint32_t gamepad_read(void)
 {
     uint32_t state = 0;
@@ -96,8 +118,6 @@ static inline uint32_t gamepad_read(void)
         if (buttons & RG_GAMEPAD_MAP_Y) state |= RG_KEY_Y;
         if (buttons & RG_GAMEPAD_MAP_L) state |= RG_KEY_L;
         if (buttons & RG_GAMEPAD_MAP_R) state |= RG_KEY_R;
-
-        battery_level = data[4];
     }
 
 #elif RG_GAMEPAD_DRIVER == 4  // I2C via AW9523
@@ -118,8 +138,6 @@ static inline uint32_t gamepad_read(void)
     if (buttons & RG_GAMEPAD_MAP_Y) state |= RG_KEY_Y;
     if (buttons & RG_GAMEPAD_MAP_L) state |= RG_KEY_L;
     if (buttons & RG_GAMEPAD_MAP_R) state |= RG_KEY_R;
-
-    battery_level = 99;
 
 #elif RG_GAMEPAD_DRIVER == 6
 
@@ -157,9 +175,7 @@ static void input_task(void *arg)
     const uint8_t debounce_level = 0x03;
     uint8_t debounce[RG_KEY_COUNT];
     uint32_t local_gamepad_state = 0;
-
-    // Discard the first read, it contains garbage in certain drivers
-    gamepad_read();
+    uint32_t loop_count = 0;
 
     memset(debounce, debounce_level, sizeof(debounce));
     input_task_running = true;
@@ -185,7 +201,17 @@ static void input_task(void *arg)
 
         gamepad_state = local_gamepad_state;
 
+        if ((loop_count % 100) == 0)
+        {
+            int level = battery_read();
+            if (level > 0 && battery_level > 0)
+                battery_level = (battery_level + level) / 2;
+            else
+                battery_level = level;
+        }
+
         rg_task_delay(10);
+        loop_count++;
     }
 
     input_task_running = false;
@@ -235,6 +261,7 @@ void rg_input_init(void)
     const char *driver = "I2C";
 
     rg_i2c_init();
+    gamepad_read(); // First read contains garbage
 
 #elif RG_GAMEPAD_DRIVER == 4  // I2C w/AW9523
 
@@ -291,7 +318,6 @@ long rg_input_gamepad_last_read(void)
 {
     if (!last_gamepad_read)
         return 0;
-
     return rg_system_timer() - last_gamepad_read;
 }
 
@@ -317,26 +343,7 @@ void rg_input_wait_for_key(rg_key_t key, bool pressed)
 
 bool rg_input_read_battery(float *percent, float *volts)
 {
-#if defined(RG_BATTERY_ADC_CHANNEL)
-    uint32_t adc_sample = 0;
-
-    for (int i = 0; i < 4; ++i)
-    {
-        adc_sample += esp_adc_cal_raw_to_voltage(adc1_get_raw(RG_BATTERY_ADC_CHANNEL), &adc_chars);
-    }
-    adc_sample /= 4;
-
-    // We no longer do that because time between calls to read_battery can be significant.
-    // If we really care we could average values on the caller side...
-    // adc_sample += battery_level;
-    // adc_sample /= 2;
-
-    battery_level = adc_sample;
-#else
-    // We could read i2c here but the i2c API isn't threadsafe, so we'll rely on the input task.
-#endif
-
-    if (battery_level == -1) // No battery or error?
+    if (battery_level < 0) // No battery or error?
         return false;
 
     if (percent)
