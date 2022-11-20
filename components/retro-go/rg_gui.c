@@ -382,7 +382,7 @@ void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resampl
 {
     if (img && resample && (width && height) && (width != img->width || height != img->height))
     {
-        RG_LOGI("Resampling image (%dx%d => %dx%d)\n", img->width, img->height, width, height);
+        RG_LOGD("Resampling image (%dx%d => %dx%d)\n", img->width, img->height, width, height);
         rg_image_t *new_img = rg_image_copy_resampled(img, width, height, 0);
         rg_gui_copy_buffer(x_pos, y_pos, width, height, new_img->width * 2, new_img->data);
         rg_image_free(new_img);
