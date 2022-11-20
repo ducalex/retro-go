@@ -5,10 +5,10 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifndef RG_TARGET_SDL2
-#include <driver/gpio.h>
-#else
+#ifdef RG_TARGET_SDL2
 #include <SDL2/SDL.h>
+#else
+#include <driver/gpio.h>
 #endif
 
 #if RG_GAMEPAD_DRIVER == 1 || defined(RG_BATTERY_ADC_CHANNEL)
