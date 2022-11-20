@@ -546,18 +546,19 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
     const int box_padding = 6;
     const int row_padding_y = 0; // now handled by draw_text
     const int row_padding_x = 8;
+    const int max_inner_width = max_box_width - sep_width - (row_padding_x + box_padding) * 2;
+    const int min_row_height = TEXT_RECT(" ", max_inner_width).height + row_padding_y * 2;
 
     int box_width = box_padding * 2;
     int box_height = box_padding * 2 + (title ? font_height + 6 : 0);
     int inner_width = TEXT_RECT(title, 0).width;
-    int max_inner_width = max_box_width - sep_width - (row_padding_x + box_padding) * 2;
     int col1_width = -1;
     int col2_width = -1;
     int row_height[options_count];
 
     for (size_t i = 0; i < options_count; i++)
     {
-        rg_rect_t label = {0, font_height};
+        rg_rect_t label = {0, min_row_height};
         rg_rect_t value = {0};
 
         if (options[i].label)
