@@ -68,7 +68,7 @@ typedef uint32_t ULONG;
 
 #define HANDY_SYSTEM_FREQ                       16000000
 #define HANDY_TIMER_FREQ                        20
-#define HANDY_AUDIO_SAMPLE_FREQ                 24000 // 48000
+#define HANDY_AUDIO_SAMPLE_FREQ                 32000 // 48000
 #define HANDY_AUDIO_SAMPLE_PERIOD               (HANDY_SYSTEM_FREQ/HANDY_AUDIO_SAMPLE_FREQ)
 
 // for a bit over one frame of 16bit stereo

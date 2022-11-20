@@ -2,5 +2,6 @@
 
 void snes_main(void)
 {
-    // Not currently used, see snes9x-go in root
+    // Currently a separate app, see snes9x-go in project's root
+    rg_system_switch_app("snes9x-go", "snes", 0, 0);
 }

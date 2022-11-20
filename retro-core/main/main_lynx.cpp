@@ -7,11 +7,6 @@ extern "C" {
 
 #include <handy.h>
 
-#undef AUDIO_SAMPLE_RATE
-#undef AUDIO_BUFFER_LENGTH
-#define AUDIO_SAMPLE_RATE   (HANDY_AUDIO_SAMPLE_FREQ)
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 40)
-
 static CSystem *lynx = NULL;
 
 static int dpad_mapped_up;
