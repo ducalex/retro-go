@@ -20,6 +20,7 @@
 
 #define AUDIO_SAMPLE_RATE (32040)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60)
+#define AUDIO_LOW_PASS_RANGE ((60 * 65536) / 100)
 
 static rg_video_update_t updates[2];
 static rg_video_update_t *currentUpdate = &updates[0];
@@ -42,8 +43,8 @@ static const char *SETTING_APU_EMULATION = "apu";
 
 static void update_keymap(int id)
 {
-	keymap_id = id % KEYMAPS_COUNT;
-	memcpy(&keymap, &KEYMAPS[keymap_id], sizeof(keymap));
+    keymap_id = id % KEYMAPS_COUNT;
+    keymap = KEYMAPS[keymap_id];
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)
@@ -106,42 +107,44 @@ static rg_gui_event_t lowpass_filter_cb(rg_gui_option_t *option, rg_gui_event_t 
 
 static rg_gui_event_t change_keymap_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-	if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
-	{
-		if (event == RG_DIALOG_PREV && --keymap_id < 0) keymap_id = KEYMAPS_COUNT - 1;
-		if (event == RG_DIALOG_NEXT && ++keymap_id > KEYMAPS_COUNT - 1) keymap_id = 0;
-		update_keymap(keymap_id);
-		rg_settings_set_number(NS_APP, SETTING_KEYMAP, keymap_id);
-		return RG_DIALOG_CLOSE;
-	}
-	else if (event == RG_DIALOG_ENTER || event == RG_DIALOG_ALT)
-	{
-		return RG_DIALOG_DISMISS;
-	}
-	return RG_DIALOG_VOID;
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
+        if (event == RG_DIALOG_PREV && --keymap_id < 0)
+            keymap_id = KEYMAPS_COUNT - 1;
+        if (event == RG_DIALOG_NEXT && ++keymap_id > KEYMAPS_COUNT - 1)
+            keymap_id = 0;
+        update_keymap(keymap_id);
+        rg_settings_set_number(NS_APP, SETTING_KEYMAP, keymap_id);
+        return RG_DIALOG_CLOSE;
+    }
+    else if (event == RG_DIALOG_ENTER || event == RG_DIALOG_ALT)
+    {
+        return RG_DIALOG_DISMISS;
+    }
+    return RG_DIALOG_VOID;
 }
 
 static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
-	{
-		rg_gui_option_t options[16 + 4] = {};
-		char values[16][16];
-		char profile[32];
-		bool dismissed = false;
+    {
+        rg_gui_option_t options[16 + 4] = {};
+        char values[16][16];
+        char profile[32];
+        bool dismissed = false;
 
-		while (!dismissed)
-		{
-			rg_gui_option_t *option = options;
+        while (!dismissed)
+        {
+            rg_gui_option_t *option = options;
 
-			option->label = "Profile";
-			option->value = strcat(strcat(strcpy(profile, "< "), keymap.name), " >");
-			option->flags = RG_DIALOG_FLAG_NORMAL;
-			option->update_cb = &change_keymap_cb;
-			option++;
+            option->label = "Profile";
+            option->value = strcat(strcat(strcpy(profile, "< "), keymap.name), " >");
+            option->flags = RG_DIALOG_FLAG_NORMAL;
+            option->update_cb = &change_keymap_cb;
+            option++;
 
-			option->flags = RG_DIALOG_FLAG_NORMAL;
-			option++;
+            option->flags = RG_DIALOG_FLAG_NORMAL;
+            option++;
 
             option->label = "snes9x  ";
             option->value = "handheld";
@@ -149,16 +152,16 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
             option->update_cb = &change_keymap_cb;
             option++;
 
-			for (int i = 0; i < keymap.size; i++)
-			{
-				// keys[i].key_id contains a bitmask, convert to bit number
-				int local_button = log2(keymap.keys[i].local_mask);
-				int mod_button = log2(keymap.keys[i].mod_mask);
-				int snes9x_button = log2(keymap.keys[i].snes9x_mask);
+            for (int i = 0; i < keymap.size; i++)
+            {
+                // keys[i].key_id contains a bitmask, convert to bit number
+                int local_button = log2(keymap.keys[i].local_mask);
+                int mod_button = log2(keymap.keys[i].mod_mask);
+                int snes9x_button = log2(keymap.keys[i].snes9x_mask);
 
-				// For now we don't display the D-PAD because it doesn't fit on large font
-				if (local_button < 4)
-					continue;
+                // For now we don't display the D-PAD because it doesn't fit on large font
+                if (local_button < 4)
+                    continue;
 
                 if (keymap.keys[i].mod_mask)
                     sprintf(values[i], "%s + %s", CONSOLE_BUTTONS[mod_button], CONSOLE_BUTTONS[local_button]);
@@ -166,21 +169,21 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
                     sprintf(values[i], "%s", CONSOLE_BUTTONS[local_button]);
 
                 option->label = SNES_BUTTONS[snes9x_button];
-				option->value = values[i];
-				option->flags = RG_DIALOG_FLAG_NORMAL;
-				option->update_cb = &change_keymap_cb;
-				option++;
-			}
+                option->value = values[i];
+                option->flags = RG_DIALOG_FLAG_NORMAL;
+                option->update_cb = &change_keymap_cb;
+                option++;
+            }
 
-			*option++ = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
+            *option++ = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
 
-			dismissed = rg_gui_dialog("Controls", options, 0) == -1;
+            dismissed = rg_gui_dialog("Controls", options, 0) == -1;
             rg_display_queue_update(currentUpdate, NULL);
             rg_display_sync();
-		}
-	}
+        }
+    }
 
-	strcpy(option->value, keymap.name);
+    strcpy(option->value, keymap.name);
 
     return RG_DIALOG_VOID;
 }
@@ -259,13 +262,13 @@ void app_main(void)
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
     };
-	const rg_gui_option_t options[] = {
-		{2, "APU enable", (char*)"", 1, &apu_toggle_cb},
-		// {2, "LP Filter", (char*)"", 1, &lowpass_filter_cb},
-		{2, "Frameskip", (char*)"", 1, &frameskip_cb},
-		{2, "Controls", (char*)"", 1, &menu_keymap_cb},
-		RG_DIALOG_CHOICE_LAST
-	};
+    const rg_gui_option_t options[] = {
+        {2, "APU enable", (char *)"", 1, &apu_toggle_cb},
+        {2, "LP Filter", (char*)"", 1, &lowpass_filter_cb},
+        {2, "Frameskip", (char *)"", 1, &frameskip_cb},
+        {2, "Controls", (char *)"", 1, &menu_keymap_cb},
+        RG_DIALOG_CHOICE_LAST,
+    };
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
 
     frameskip = rg_settings_get_number(NS_APP, SETTING_FRAMESKIP, frameskip);
@@ -370,7 +373,9 @@ void app_main(void)
             rg_display_queue_update(currentUpdate, NULL);
 
     #ifndef USE_BLARGG_APU
-        if (apu_enabled)
+        if (apu_enabled && lowpass_filter)
+            S9xMixSamplesLowPass((void *)mixbuffer, AUDIO_BUFFER_LENGTH << 1, AUDIO_LOW_PASS_RANGE);
+        else if (apu_enabled)
             S9xMixSamples((void *)mixbuffer, AUDIO_BUFFER_LENGTH << 1);
     #endif
 
