@@ -304,7 +304,7 @@ static void tab_refresh(tab_t *tab)
     memset(&tab->status, 0, sizeof(tab->status));
 
     const char *basepath = const_string(app->paths.roms);
-    const char *folder = tab->navpath ?: basepath;
+    const char *folder = const_string(tab->navpath ?: basepath);
     size_t items_count = 0;
     char *ext = NULL;
 
