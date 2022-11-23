@@ -6,6 +6,7 @@
 - Wifi and WebUI improvements
 - Improved recovery mode reliability
 
+
 # Retro-Go 1.35 (2022-10-18)
 - SNES: New Snes9x port (based on 2005 version) with sound!
 - GEN: Improved compatibility (updated from bzhxx's upstream)
