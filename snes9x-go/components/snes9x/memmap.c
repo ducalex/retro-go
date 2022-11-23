@@ -332,6 +332,8 @@ bool LoadROM(const char* filename)
    bool Tales = false;
    FILE *fp;
 
+   printf("Loading ROM: '%s'\n", filename ?: '(null)');
+
    Memory.ExtendedFormat = NOPE;
 
    memset(bytes0x2000, 0, 0x2000);
@@ -369,6 +371,13 @@ again:
    else if (TotalFileSize < 1024)
    {
       return false; /* it ends here */
+   }
+
+   if ((TotalFileSize & 0x7FF) == 512)
+   {
+      printf("Skipping header\n");
+      memmove(Memory.ROM, Memory.ROM + 512, TotalFileSize - 512);
+      TotalFileSize -= 512;
    }
 
    // CheckForIPSPatch(filename, Memory.HeaderCount != 0, &TotalFileSize);
