@@ -115,21 +115,28 @@ static rg_gui_event_t wifi_switch_cb(rg_gui_option_t *option, rg_gui_event_t eve
 
 static rg_gui_event_t wifi_select_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    rg_gui_option_t options[MAX_AP_LIST + 1];
-    if (event == RG_DIALOG_ENTER) {
+    if (event == RG_DIALOG_ENTER)
+    {
+        rg_gui_option_t options[MAX_AP_LIST + 2];
+        size_t index = 0;
+
         for (size_t i = 0; i < MAX_AP_LIST; i++)
         {
             char slot[6];
             sprintf(slot, "ssid%d", i);
             char *ap_name = rg_settings_get_string(NS_WIFI, slot, NULL);
-            options[i] = (rg_gui_option_t){i, ap_name, NULL, 1, NULL};
+            options[index++] = (rg_gui_option_t){i, ap_name ?: "(empty)", NULL, ap_name ? 1 : 0, NULL};
         }
-        options[MAX_AP_LIST] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
-        int sel = rg_gui_dialog("Select saved AP", options, 0);
-        if (sel >= 0 && sel < MAX_AP_LIST)
+        char *ap_name = rg_settings_get_string(NS_WIFI, "ssid", NULL);
+        options[index++] = (rg_gui_option_t){999, ap_name ?: "(empty)", NULL, ap_name ? 1 : 0, NULL};
+        options[index++] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
+
+        int sel = rg_gui_dialog("Select saved AP", options, rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, 0));
+        if (sel >= 0)
         {
-            rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, sel);
-            if (rg_network_wifi_load_config(sel))
+            int slot = (sel == 999) ? -1 : sel;
+            rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, slot);
+            if (rg_network_wifi_load_config(slot))
             {
                 rg_network_wifi_stop();
                 rg_network_wifi_start();
