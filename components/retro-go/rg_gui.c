@@ -1102,7 +1102,9 @@ int rg_gui_about_menu(const rg_gui_option_t *extra_options)
         {0, "Version", build_ver, 1, NULL},
         {0, "Date", build_date, 1, NULL},
         {0, "By", build_user, 1, NULL},
+    #ifdef RG_ENABLE_NETWORKING
         {0, "Network", network_str, 1, NULL},
+    #endif
         RG_DIALOG_SEPARATOR,
         {1000, "Reboot to firmware", NULL, 1, NULL},
         {2000, "Reset settings", NULL, 1, NULL},
