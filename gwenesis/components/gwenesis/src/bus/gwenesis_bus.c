@@ -121,6 +121,24 @@ void load_cartridge(unsigned char *buffer, size_t size)
     memcpy(ROM_DATA, buffer, size);
     #endif
 
+    // https://github.com/franckverrot/EmulationResources/blob/master/consoles/megadrive/genesis_rom.txt
+    if (ROM_DATA[1] == 0x03 && ROM_DATA[8] == 0xAA && ROM_DATA[9] == 0xBB)
+    {
+      printf("--SMD de-interleave mode--\n");
+      memmove(ROM_DATA, ROM_DATA + 512, size - 512);
+      uint8 *temp = malloc(0x4000);
+      for (size_t i = 0; i < size; i += 0x4000)
+      {
+        memcpy(temp, ROM_DATA + i, 0x4000);
+        for (size_t j = 0; j < 0x2000; ++j)
+        {
+          ROM_DATA[i + (j * 2) + 0] = temp[0x2000 + j];
+          ROM_DATA[i + (j * 2) + 1] = temp[0x0000 + j];
+        }
+      }
+      free(temp);
+    }
+
     #ifdef ROM_SWAP
     bus_log(__FUNCTION__,"--ROM swap mode--");
     for (int i=0; i < size;i+=2 )
