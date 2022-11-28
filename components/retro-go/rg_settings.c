@@ -54,7 +54,15 @@ static cJSON *json_root(const char *name, bool mode)
             fseek(fp, 0, SEEK_SET);
             char *buffer = calloc(1, length + 1);
             if (fread(buffer, 1, length, fp))
-                cJSON_AddItemToObject(branch, "values", cJSON_Parse(buffer));
+            {
+                cJSON *values = cJSON_Parse(buffer);
+                if (!values)
+                {
+                    RG_LOGE("Parse failed in config file '%s'", name);
+                    values = cJSON_CreateObject();
+                }
+                cJSON_AddItemToObject(branch, "values", values);
+            }
             free(buffer);
             fclose(fp);
         }
