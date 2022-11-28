@@ -332,7 +332,7 @@ bool LoadROM(const char* filename)
    bool Tales = false;
    FILE *fp;
 
-   printf("Loading ROM: '%s'\n", filename ?: '(null)');
+   printf("Loading ROM: '%s'\n", filename ?: "(null)");
 
    Memory.ExtendedFormat = NOPE;
 
