@@ -1,7 +1,8 @@
-# Retro-Go 1.36 (2022-11-??)
+# Retro-Go 1.36 (2022-11-28)
 - GBC: Fixed Pokemon Trading Card Game
 - SNES: Added support for ROMs with extra headers
 - SNES: Added low pass filter toggle
+- Lynx: Changed samplerate to fix some audio issues
 - Launcher: Fixed recently played list
 - Wifi and WebUI improvements
 - Improved recovery mode reliability
