@@ -86,16 +86,29 @@ static inline uint32_t gamepad_read(void)
     gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 1);
     usleep(1);
 
-    for (int i = 0; i < 8; i++)
+    uint32_t buttons = 0;
+    for (int i = 0; i < 16; i++)
     {
-        int pinValue = gpio_get_level(RG_GPIO_GAMEPAD_DATA);
-        state |= pinValue << (7 - i);
-
+        buttons |= gpio_get_level(RG_GPIO_GAMEPAD_DATA) << (15 - i);
         gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 0);
         usleep(1);
         gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 1);
         usleep(1);
     }
+    if (buttons & RG_GAMEPAD_MAP_MENU) state |= RG_KEY_MENU;
+    if (buttons & RG_GAMEPAD_MAP_OPTION) state |= RG_KEY_OPTION;
+    if (buttons & RG_GAMEPAD_MAP_START) state |= RG_KEY_START;
+    if (buttons & RG_GAMEPAD_MAP_SELECT) state |= RG_KEY_SELECT;
+    if (buttons & RG_GAMEPAD_MAP_UP) state |= RG_KEY_UP;
+    if (buttons & RG_GAMEPAD_MAP_RIGHT) state |= RG_KEY_RIGHT;
+    if (buttons & RG_GAMEPAD_MAP_DOWN) state |= RG_KEY_DOWN;
+    if (buttons & RG_GAMEPAD_MAP_LEFT) state |= RG_KEY_LEFT;
+    if (buttons & RG_GAMEPAD_MAP_A) state |= RG_KEY_A;
+    if (buttons & RG_GAMEPAD_MAP_B) state |= RG_KEY_B;
+    if (buttons & RG_GAMEPAD_MAP_X) state |= RG_KEY_X;
+    if (buttons & RG_GAMEPAD_MAP_Y) state |= RG_KEY_Y;
+    if (buttons & RG_GAMEPAD_MAP_L) state |= RG_KEY_L;
+    if (buttons & RG_GAMEPAD_MAP_R) state |= RG_KEY_R;
 
 #elif RG_GAMEPAD_DRIVER == 3  // I2C
 

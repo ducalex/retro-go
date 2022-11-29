@@ -2,6 +2,7 @@
 - GBC: Fixed Pokemon Trading Card Game
 - SNES: Added support for ROMs with extra headers
 - SNES: Added low pass filter toggle
+- GEN: Added support for interleaved ROMs
 - Lynx: Changed samplerate to fix some audio issues
 - Launcher: Fixed recently played list
 - Wifi and WebUI improvements
