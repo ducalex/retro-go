@@ -1,4 +1,4 @@
 import os
 
-os.putenv("IDF_TARGET", "esp32s3")
-os.putenv("FW_FORMAT", "esplay")
+os.environ["IDF_TARGET"] = "esp32"
+os.environ["FW_FORMAT"] = "esplay"
