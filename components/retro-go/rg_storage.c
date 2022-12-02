@@ -280,6 +280,7 @@ static int scandir_natural_sort(const void *a, const void *b)
     return 0;
 }
 
+// FIXME: rg_scandir_t should probably be {count, items[]} to avoid walking the array to get the count...
 rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char *path), uint32_t flags)
 {
     DIR *dir = opendir(path);

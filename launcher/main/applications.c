@@ -65,6 +65,19 @@ static void scan_folder(retro_app_t *app, const char* path, void *parent)
         if (!is_valid)
             continue;
 
+        if (app->files_count + 1 > app->files_capacity)
+        {
+            size_t new_capacity = app->files_capacity * 1.5;
+            retro_file_t *new_buf = realloc(app->files, new_capacity * sizeof(retro_file_t));
+            if (!new_buf)
+            {
+                RG_LOGW("Ran out of memory, file scanning stopped at %d entries ...\n", app->files_count);
+                break;
+            }
+            app->files = new_buf;
+            app->files_capacity = new_capacity;
+        }
+
         app->files[app->files_count++] = (retro_file_t) {
             .name = strdup(entry->name),
             .folder = folder,
@@ -72,18 +85,6 @@ static void scan_folder(retro_app_t *app, const char* path, void *parent)
             .type = type,
             .is_valid = true,
         };
-
-        if ((app->files_count % 10) == 0)
-        {
-            size_t new_size = (app->files_count + 10 + 2) * sizeof(retro_file_t);
-            retro_file_t *new_buf = realloc(app->files, new_size);
-            if (!new_buf)
-            {
-                RG_LOGW("Ran out of memory, file scanning stopped at %d entries ...\n", app->files_count);
-                break;
-            }
-            app->files = new_buf;
-        }
 
         if (type == 0xFF)
         {
@@ -667,7 +668,8 @@ static void application(const char *desc, const char *name, const char *exts, co
     snprintf(app->paths.saves, RG_PATH_MAX, RG_BASE_PATH_SAVES "/%s", app->short_name);
     snprintf(app->paths.roms, RG_PATH_MAX, RG_BASE_PATH_ROMS "/%s", app->short_name);
     app->available = rg_system_have_app(app->partition);
-    app->files = calloc(10, sizeof(retro_file_t));
+    app->files = calloc(100, sizeof(retro_file_t));
+    app->files_capacity = 100;
     app->crc_offset = crc_offset;
 
     gui_add_tab(app->short_name, app->description, app, event_handler);
