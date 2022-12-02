@@ -128,8 +128,8 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
 {
     if (event == RG_DIALOG_ENTER)
     {
-        rg_gui_option_t options[keymap.size + 4];
-        char values[keymap.size][16];
+        rg_gui_option_t options[RG_COUNT(keymap.keys) + 4];
+        char values[RG_COUNT(keymap.keys)][16];
         char profile[32];
         bool dismissed = false;
 
