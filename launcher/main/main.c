@@ -61,7 +61,7 @@ static rg_gui_event_t timezone_cb(rg_gui_option_t *option, rg_gui_event_t event)
         options[timezones_count] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
 
         int sel = rg_gui_dialog("Timezone", options, 0);
-        if (sel >= 0 && sel < timezones_count)
+        if (sel != RG_DIALOG_CANCELLED)
             rg_system_set_timezone(timezones[sel].TZ);
         gui_redraw();
     }
@@ -132,15 +132,14 @@ static rg_gui_event_t wifi_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
             options[index++] = (rg_gui_option_t){i, ap_name ?: "(empty)", NULL, ap_name ? 1 : 0, NULL};
         }
         char *ap_name = rg_settings_get_string(NS_WIFI, "ssid", NULL);
-        options[index++] = (rg_gui_option_t){999, ap_name ?: "(empty)", NULL, ap_name ? 1 : 0, NULL};
+        options[index++] = (rg_gui_option_t){-1, ap_name ?: "(empty)", NULL, ap_name ? 1 : 0, NULL};
         options[index++] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
 
         int sel = rg_gui_dialog("Select saved AP", options, rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, 0));
-        if (sel >= 0)
+        if (sel != RG_DIALOG_CANCELLED)
         {
-            int slot = (sel == 999) ? -1 : sel;
-            rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, slot);
-            if (rg_network_wifi_load_config(slot))
+            rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, sel);
+            if (rg_network_wifi_load_config(sel))
             {
                 rg_network_wifi_stop();
                 rg_network_wifi_start();
