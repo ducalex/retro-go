@@ -1,3 +1,11 @@
+# Retro-Go 1.36.2 (2022-12-??)
+- SNES: Fixed crash in controls menu
+
+
+# Retro-Go 1.36.1 (2022-11-29)
+- Fixed MRGC/esplay builds
+
+
 # Retro-Go 1.36 (2022-11-28)
 - GBC: Fixed Pokemon Trading Card Game
 - SNES: Added support for ROMs with extra headers
