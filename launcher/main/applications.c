@@ -292,6 +292,7 @@ void crc_cache_idle_task(tab_t *tab)
 
             gui_set_status(tab, "", "");
             gui_redraw(); // gui_draw_status(tab);
+            rg_system_tick(0);
         }
     }
 

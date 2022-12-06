@@ -176,6 +176,7 @@ typedef struct
     float totalFPS;
     float busyPercent;
     int64_t busyTime;
+    int64_t lastTick;
     int ticks;
     int totalMemoryInt;
     int totalMemoryExt;

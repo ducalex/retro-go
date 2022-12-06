@@ -381,6 +381,8 @@ static void retro_loop(void)
         {
             usleep(10000);
         }
+
+        rg_system_tick(0);
     }
 }
 

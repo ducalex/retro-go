@@ -249,7 +249,7 @@ static void system_monitor_task(void *arg)
 
         if ((wdtCounter -= loopTime_us) <= 0)
         {
-            if (rg_input_gamepad_last_read() > WDT_TIMEOUT)
+            if ((lastLoop - statistics.lastTick) > WDT_TIMEOUT)
             {
             #ifdef RG_ENABLE_PROFILING
                 RG_LOGW("Application unresponsive!\n");
@@ -544,6 +544,7 @@ rg_stats_t rg_system_get_counters(void)
 
 IRAM_ATTR void rg_system_tick(int busyTime)
 {
+    statistics.lastTick = rg_system_timer();
     statistics.busyTime += busyTime;
     statistics.ticks++;
     // WDT_RELOAD(WDT_TIMEOUT);

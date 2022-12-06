@@ -26,7 +26,6 @@ typedef enum
 
 void rg_input_init(void);
 void rg_input_deinit(void);
-long rg_input_gamepad_last_read(void);
 bool rg_input_key_is_pressed(rg_key_t key);
 void rg_input_wait_for_key(rg_key_t key, bool pressed);
 uint32_t rg_input_read_gamepad(void);

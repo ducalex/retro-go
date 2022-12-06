@@ -17,7 +17,6 @@
 #endif
 
 static bool input_task_running = false;
-static int64_t last_gamepad_read = 0;
 static uint32_t gamepad_state = -1; // _Atomic
 static int battery_level = -1;
 #if defined(RG_BATTERY_ADC_CHANNEL)
@@ -327,16 +326,8 @@ void rg_input_deinit(void)
     RG_LOGI("Input terminated.\n");
 }
 
-long rg_input_gamepad_last_read(void)
-{
-    if (!last_gamepad_read)
-        return 0;
-    return rg_system_timer() - last_gamepad_read;
-}
-
 uint32_t rg_input_read_gamepad(void)
 {
-    last_gamepad_read = rg_system_timer();
 #ifdef RG_TARGET_SDL2
     SDL_PumpEvents();
 #endif
@@ -351,7 +342,10 @@ bool rg_input_key_is_pressed(rg_key_t key)
 void rg_input_wait_for_key(rg_key_t key, bool pressed)
 {
     while (rg_input_key_is_pressed(key) != pressed)
-        rg_task_delay(1);
+    {
+        rg_task_delay(10);
+        rg_system_tick(0);
+    }
 }
 
 bool rg_input_read_battery(float *percent, float *volts)
