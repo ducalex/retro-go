@@ -159,6 +159,20 @@ static rg_gui_event_t webui_switch_cb(rg_gui_option_t *option, rg_gui_event_t ev
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t wifi_access_point_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        if (rg_gui_confirm("Wi-Fi AP", "Start access point?\n\nSSID: retro-go\nPassword: retro-go", true))
+        {
+            rg_network_wifi_stop();
+            rg_network_wifi_set_config("retro-go", "retro-go", 6, 1);
+            rg_network_wifi_start();
+        }
+    }
+    return RG_DIALOG_VOID;
+}
+
 static rg_gui_event_t wifi_options_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
@@ -166,6 +180,8 @@ static rg_gui_event_t wifi_options_cb(rg_gui_option_t *option, rg_gui_event_t ev
         const rg_gui_option_t options[] = {
             {0, "Wi-Fi"       , "...", 1, &wifi_switch_cb},
             {0, "Wi-Fi select", "...", 1, &wifi_select_cb},
+            {0, "Wi-Fi Access Point", NULL, 1, &wifi_access_point_cb},
+            RG_DIALOG_SEPARATOR,
             {0, "File server" , "...", 1, &webui_switch_cb},
             {0, "Time sync" , "On", 0, NULL},
             RG_DIALOG_CHOICE_LAST,
@@ -242,6 +258,19 @@ static void retro_loop(void)
 
     while (true)
     {
+        // At the moment the HTTP server has absolute priority because it may change UI elements.
+        // It's also risky to let the user do file accesses at the same time (thread safety, SPI, etc)...
+        if (gui.http_lock)
+        {
+            rg_gui_draw_dialog("HTTP Server Busy...", NULL, 0);
+            redraw_pending = true;
+            while (gui.http_lock)
+            {
+                rg_task_delay(100);
+                rg_system_tick(0);
+            }
+        }
+
         if (!tab->enabled && !change_tab)
         {
             change_tab = 1;
@@ -361,12 +390,6 @@ static void retro_loop(void)
         {
             gui.idle_counter = 0;
             next_idle_event = rg_system_timer() + 100000;
-        }
-        else if (gui.http_lock)
-        {
-            rg_gui_draw_dialog("HTTP Server Busy...", NULL, 0);
-            while (gui.http_lock) // Note: Maybe we should yield on user action, even if risky?
-                usleep(100 * 1000);
         }
         else if (rg_system_timer() >= next_idle_event)
         {
