@@ -158,7 +158,7 @@ bool rg_network_wifi_start(void)
     {
         memcpy(config.ap.ssid, wifi_config.ssid, 32);
         memcpy(config.ap.password, wifi_config.password, 64);
-        config.ap.authmode = wifi_config.password[0] ? WIFI_AUTH_WPA_WPA2_PSK : WIFI_AUTH_OPEN;
+        config.ap.authmode = wifi_config.password[0] ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN;
         config.ap.channel = wifi_config.channel;
         config.ap.max_connection = 1;
         TRY(esp_wifi_set_mode(WIFI_MODE_AP));
