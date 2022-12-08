@@ -1,5 +1,6 @@
-# Retro-Go 1.36.2 (2022-12-??)
+# Retro-Go 1.36.2 (2022-12-07)
 - SNES: Fixed crash in controls menu
+- Launcher: Start wifi access point
 
 
 # Retro-Go 1.36.1 (2022-11-29)
