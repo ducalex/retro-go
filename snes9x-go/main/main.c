@@ -180,7 +180,7 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
 
             *option++ = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
 
-            dismissed = rg_gui_dialog("Controls", options, 0) == RG_DIALOG_CANCELLED;
+            dismissed = rg_gui_dialog("Controls", options, 0) == -1;
             rg_display_queue_update(currentUpdate, NULL);
             rg_display_sync();
         }
