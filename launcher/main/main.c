@@ -6,6 +6,10 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifdef CONFIG_IDF_TARGET
+#include <esp_heap_caps.h>
+#endif
+
 #include "applications.h"
 #include "bookmarks.h"
 #include "music.h"
@@ -57,7 +61,7 @@ static rg_gui_event_t timezone_cb(rg_gui_option_t *option, rg_gui_event_t event)
         options[timezones_count] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
 
         int sel = rg_gui_dialog("Timezone", options, 0);
-        if (sel >= 0 && sel < timezones_count)
+        if (sel != RG_DIALOG_CANCELLED)
             rg_system_set_timezone(timezones[sel].TZ);
         gui_redraw();
     }
@@ -128,15 +132,14 @@ static rg_gui_event_t wifi_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
             options[index++] = (rg_gui_option_t){i, ap_name ?: "(empty)", NULL, ap_name ? 1 : 0, NULL};
         }
         char *ap_name = rg_settings_get_string(NS_WIFI, "ssid", NULL);
-        options[index++] = (rg_gui_option_t){999, ap_name ?: "(empty)", NULL, ap_name ? 1 : 0, NULL};
+        options[index++] = (rg_gui_option_t){-1, ap_name ?: "(empty)", NULL, ap_name ? 1 : 0, NULL};
         options[index++] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
 
         int sel = rg_gui_dialog("Select saved AP", options, rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, 0));
-        if (sel >= 0)
+        if (sel != RG_DIALOG_CANCELLED)
         {
-            int slot = (sel == 999) ? -1 : sel;
-            rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, slot);
-            if (rg_network_wifi_load_config(slot))
+            rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, sel);
+            if (rg_network_wifi_load_config(sel))
             {
                 rg_network_wifi_stop();
                 rg_network_wifi_start();
@@ -156,6 +159,20 @@ static rg_gui_event_t webui_switch_cb(rg_gui_option_t *option, rg_gui_event_t ev
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t wifi_access_point_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        if (rg_gui_confirm("Wi-Fi AP", "Start access point?\n\nSSID: retro-go\nPassword: retro-go", true))
+        {
+            rg_network_wifi_stop();
+            rg_network_wifi_set_config("retro-go", "retro-go", 6, 1);
+            rg_network_wifi_start();
+        }
+    }
+    return RG_DIALOG_VOID;
+}
+
 static rg_gui_event_t wifi_options_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
@@ -163,6 +180,8 @@ static rg_gui_event_t wifi_options_cb(rg_gui_option_t *option, rg_gui_event_t ev
         const rg_gui_option_t options[] = {
             {0, "Wi-Fi"       , "...", 1, &wifi_switch_cb},
             {0, "Wi-Fi select", "...", 1, &wifi_select_cb},
+            {0, "Wi-Fi Access Point", NULL, 1, &wifi_access_point_cb},
+            RG_DIALOG_SEPARATOR,
             {0, "File server" , "...", 1, &webui_switch_cb},
             {0, "Time sync" , "On", 0, NULL},
             RG_DIALOG_CHOICE_LAST,
@@ -239,6 +258,19 @@ static void retro_loop(void)
 
     while (true)
     {
+        // At the moment the HTTP server has absolute priority because it may change UI elements.
+        // It's also risky to let the user do file accesses at the same time (thread safety, SPI, etc)...
+        if (gui.http_lock)
+        {
+            rg_gui_draw_dialog("HTTP Server Busy...", NULL, 0);
+            redraw_pending = true;
+            while (gui.http_lock)
+            {
+                rg_task_delay(100);
+                rg_system_tick(0);
+            }
+        }
+
         if (!tab->enabled && !change_tab)
         {
             change_tab = 1;
@@ -359,12 +391,6 @@ static void retro_loop(void)
             gui.idle_counter = 0;
             next_idle_event = rg_system_timer() + 100000;
         }
-        else if (gui.http_lock)
-        {
-            rg_gui_draw_dialog("HTTP Server Busy...", NULL, 0);
-            while (gui.http_lock) // Note: Maybe we should yield on user action, even if risky?
-                usleep(100 * 1000);
-        }
         else if (rg_system_timer() >= next_idle_event)
         {
             gui.idle_counter++;
@@ -378,6 +404,8 @@ static void retro_loop(void)
         {
             usleep(10000);
         }
+
+        rg_system_tick(0);
     }
 }
 
@@ -450,6 +478,13 @@ void app_main(void)
         rg_storage_mkdir(RG_BASE_PATH_CONFIG);
         try_migrate();
     }
+
+#ifdef CONFIG_IDF_TARGET
+    // The launcher makes a lot of small allocations and it sometimes fills internal RAM, causing the SD Card driver to
+    // stop working. Lowering CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL and manually using rg_alloc to do internal allocs when
+    // needed is a better solution, but that would have to be done for every app. This is a good workaround for now.
+    heap_caps_malloc_extmem_enable(1024);
+#endif
 
     retro_loop();
 }

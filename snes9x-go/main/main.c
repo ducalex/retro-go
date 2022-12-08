@@ -128,8 +128,8 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
 {
     if (event == RG_DIALOG_ENTER)
     {
-        rg_gui_option_t options[keymap.size + 4];
-        char values[keymap.size][16];
+        rg_gui_option_t options[RG_COUNT(keymap.keys) + 4];
+        char values[RG_COUNT(keymap.keys)][16];
         char profile[32];
         bool dismissed = false;
 
@@ -177,7 +177,7 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
 
             *option++ = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
 
-            dismissed = rg_gui_dialog("Controls", options, 0) == -1;
+            dismissed = rg_gui_dialog("Controls", options, 0) == RG_DIALOG_CANCELLED;
             rg_display_queue_update(currentUpdate, NULL);
             rg_display_sync();
         }

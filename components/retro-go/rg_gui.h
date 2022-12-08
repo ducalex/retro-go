@@ -71,6 +71,8 @@ struct rg_gui_option_s
 #define RG_DIALOG_CHOICE_LAST {0, NULL, NULL, 0, NULL}
 #define RG_DIALOG_SEPARATOR   {0, "----------", NULL, RG_DIALOG_FLAG_SKIP, NULL}
 
+#define RG_DIALOG_CANCELLED -0x7654321
+
 #define TEXT_RECT(text, max) rg_gui_draw_text(-(max), 0, 0, (text), 0, 0, RG_TEXT_MULTILINE|RG_TEXT_DUMMY_DRAW)
 
 void rg_gui_init(void);
@@ -98,10 +100,10 @@ void rg_gui_alert(const char *title, const char *message);
 char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path));
 
 int rg_gui_savestate_menu(const char *title, const char *rom_path, bool quick_return);
-int rg_gui_options_menu(void);
-int rg_gui_game_menu(void);
-int rg_gui_about_menu(const rg_gui_option_t *extra_options);
-int rg_gui_debug_menu(const rg_gui_option_t *extra_options);
+void rg_gui_options_menu(void);
+void rg_gui_game_menu(void);
+void rg_gui_about_menu(const rg_gui_option_t *extra_options);
+void rg_gui_debug_menu(const rg_gui_option_t *extra_options);
 
 // Creates a 565LE color from C_RGB(255, 255, 255)
 #define C_RGB(r, g, b) ((((r) >> 3) << 11) | (((g) >> 2) << 5) | (((b) & 0x1F)))

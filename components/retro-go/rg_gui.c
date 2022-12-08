@@ -803,6 +803,7 @@ int rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, int s
         }
 
         rg_task_delay(20);
+        rg_system_tick(0);
     }
 
     rg_input_wait_for_key(joystick, false);
@@ -1051,7 +1052,7 @@ static rg_gui_event_t theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
     return RG_DIALOG_VOID;
 }
 
-int rg_gui_options_menu(void)
+void rg_gui_options_menu(void)
 {
     rg_gui_option_t options[24];
     rg_gui_option_t *opt = &options[0];
@@ -1085,16 +1086,14 @@ int rg_gui_options_menu(void)
 
     rg_audio_set_mute(true);
 
-    int sel = rg_gui_dialog("Options", options, 0);
+    rg_gui_dialog("Options", options, 0);
 
     rg_settings_commit();
     rg_system_save_time();
     rg_audio_set_mute(false);
-
-    return sel;
 }
 
-int rg_gui_about_menu(const rg_gui_option_t *extra_options)
+void rg_gui_about_menu(const rg_gui_option_t *extra_options)
 {
     char build_ver[32], build_date[32], build_user[32], network_str[64];
 
@@ -1164,11 +1163,9 @@ int rg_gui_about_menu(const rg_gui_option_t *extra_options)
             rg_gui_debug_menu(NULL);
             break;
     }
-
-    return sel;
 }
 
-int rg_gui_debug_menu(const rg_gui_option_t *extra_options)
+void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
 {
     char screen_res[20], source_res[20], scaled_res[20];
     char stack_hwm[20], heap_free[20], block_free[20];
@@ -1206,22 +1203,18 @@ int rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     snprintf(block_free, 20, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);
     snprintf(uptime, 20, "%ds", (int)(rg_system_timer() / 1000000));
 
-    int sel = rg_gui_dialog("Debugging", options, 0);
-
-    if (sel == 1000)
+    switch (rg_gui_dialog("Debugging", options, 0))
     {
+    case 1000:
         rg_emu_screenshot(RG_STORAGE_ROOT "/screenshot.png", 0, 0);
-    }
-    else if (sel == 2000)
-    {
+        break;
+    case 2000:
         rg_system_save_trace(RG_STORAGE_ROOT "/trace.txt", 0);
-    }
-    else if (sel == 4000)
-    {
+        break;
+    case 4000:
         RG_PANIC("Crash test!");
+        break;
     }
-
-    return sel;
 }
 
 static rg_emu_state_t *savestate;
@@ -1282,10 +1275,13 @@ int rg_gui_savestate_menu(const char *title, const char *rom_path, bool quick_re
 
     free(savestate);
 
+    if (sel == RG_DIALOG_CANCELLED)
+        return -1;
+
     return sel;
 }
 
-int rg_gui_game_menu(void)
+void rg_gui_game_menu(void)
 {
     const rg_gui_option_t choices[] = {
         {1000, "Save & Continue", NULL,  1, NULL},
@@ -1338,6 +1334,4 @@ int rg_gui_game_menu(void)
     }
 
     rg_audio_set_mute(false);
-
-    return sel;
 }
