@@ -813,7 +813,7 @@ int rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, int s
     free(text_buffer);
 
     if (sel == -1)
-        return -1;
+        return RG_DIALOG_CANCELLED;
 
     return options[sel].arg;
 }
