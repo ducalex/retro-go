@@ -88,7 +88,7 @@ uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, uint32_t len)
 {
 #ifndef RG_TARGET_SDL2
     // This is part of the ROM but finding the correct header is annoying as it differs per SOC...
-    extern uint32_t crc32_le(uint32_t crc, const uint8_t * buf, uint32_t len);
+    extern uint32_t crc32_le(uint32_t crc, const uint8_t *buf, uint32_t len);
     return crc32_le(crc, buf, len);
 #else
     // Derived from: http://www.hackersdelight.org/hdcodetxt/crc.c.txt
@@ -96,13 +96,13 @@ uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, uint32_t len)
     for (size_t i = 0; i < len; ++i)
     {
         crc = crc ^ buf[i];
-        for (int j = 7; j >= 0; j--)     // Do eight times.
+        for (int j = 7; j >= 0; j--) // Do eight times.
         {
             uint32_t mask = -(crc & 1);
             crc = (crc >> 1) ^ (0xEDB88320 & mask);
         }
     }
-   return ~crc;
+    return ~crc;
 #endif
 }
 
@@ -121,7 +121,7 @@ const char *const_string(const char *str)
 
     str = strdup(str);
 
-    strings = realloc(strings, (strings_count + 1) * sizeof(char*));
+    strings = realloc(strings, (strings_count + 1) * sizeof(char *));
     RG_ASSERT(strings && str, "alloc failed");
 
     strings[strings_count++] = str;
@@ -138,10 +138,14 @@ void *rg_alloc(size_t size, uint32_t caps)
     size_t available = 0;
     void *ptr;
 
-    if (caps & MEM_SLOW)   strcat(caps_list, "SPIRAM|");
-    if (caps & MEM_FAST) strcat(caps_list, "INTERNAL|");
-    if (caps & MEM_DMA)      strcat(caps_list, "DMA|");
-    if (caps & MEM_EXEC)     strcat(caps_list, "IRAM|");
+    if (caps & MEM_SLOW)
+        strcat(caps_list, "SPIRAM|");
+    if (caps & MEM_FAST)
+        strcat(caps_list, "INTERNAL|");
+    if (caps & MEM_DMA)
+        strcat(caps_list, "DMA|");
+    if (caps & MEM_EXEC)
+        strcat(caps_list, "IRAM|");
     strcat(caps_list, (caps & MEM_32BIT) ? "32BIT" : "8BIT");
 
 #ifndef RG_TARGET_SDL2
@@ -157,8 +161,8 @@ void *rg_alloc(size_t size, uint32_t caps)
         // Loosen the caps and try again
         if ((ptr = heap_caps_calloc(1, size, esp_caps & ~(MALLOC_CAP_SPIRAM | MALLOC_CAP_INTERNAL))))
         {
-            RG_LOGW("SIZE=%u, CAPS=%s, PTR=%p << CAPS not fully met! (available: %d)\n",
-                        size, caps_list, ptr, available);
+            RG_LOGW("SIZE=%u, CAPS=%s, PTR=%p << CAPS not fully met! (available: %d)\n", size, caps_list, ptr,
+                    available);
             return ptr;
         }
     }

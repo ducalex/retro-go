@@ -77,7 +77,7 @@ static cJSON *json_root(const char *name, bool mode)
 
     if (mode)
     {
-       cJSON_SetNumberHelper(cJSON_GetObjectItem(branch, "changed"), 1);
+        cJSON_SetNumberHelper(cJSON_GetObjectItem(branch, "changed"), 1);
     }
 
     return root;

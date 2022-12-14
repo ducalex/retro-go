@@ -31,8 +31,8 @@ static struct
     bool initialized;
 } gui;
 
-static const char *SETTING_FONTTYPE  = "FontType";
-static const char *SETTING_THEME     = "Theme";
+static const char *SETTING_FONTTYPE = "FontType";
+static const char *SETTING_THEME = "Theme";
 
 
 void rg_gui_init(void)
@@ -131,7 +131,7 @@ void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, co
         for (int y = 0; y < height; ++y)
         {
             uint16_t *dst = gui.screen_buffer + (top + y) * gui.screen_width + left;
-            const uint16_t *src = (void*)buffer + y * stride;
+            const uint16_t *src = (void *)buffer + y * stride;
             for (int x = 0; x < width; ++x)
                 if (src[x] != C_TRANSPARENT)
                     dst[x] = src[x];
@@ -707,11 +707,13 @@ int rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, int s
     for (size_t i = 0; i < options_count; i++)
     {
         rg_gui_option_t *option = &options[i];
-        if (option->value && text_buffer) {
+        if (option->value && text_buffer)
+        {
             option->value = strcpy(text_buffer_ptr, option->value);
             text_buffer_ptr += strlen(text_buffer_ptr) + 24;
         }
-        if (option->label && text_buffer) {
+        if (option->label && text_buffer)
+        {
             option->label = strcpy(text_buffer_ptr, option->label);
             text_buffer_ptr += strlen(text_buffer_ptr) + 24;
         }
@@ -822,9 +824,9 @@ bool rg_gui_confirm(const char *title, const char *message, bool default_yes)
 {
     const rg_gui_option_t options[] = {
         {0, (char *)message, NULL, -1, NULL},
-        {0, "", NULL, -1, NULL},
-        {1, "Yes", NULL, 1, NULL},
-        {0, "No ", NULL, 1, NULL},
+        {0, "",              NULL, -1, NULL},
+        {1, "Yes",           NULL, 1,  NULL},
+        {0, "No ",           NULL, 1,  NULL},
         RG_DIALOG_CHOICE_LAST
     };
     return rg_gui_dialog(title, message ? options : options + 1, default_yes ? -2 : -1) == 1;
@@ -834,8 +836,8 @@ void rg_gui_alert(const char *title, const char *message)
 {
     const rg_gui_option_t options[] = {
         {0, (char *)message, NULL, -1, NULL},
-        {0, "", NULL, -1, NULL},
-        {1, "OK", NULL, 1, NULL},
+        {0, "",              NULL, -1, NULL},
+        {1, "OK",            NULL, 1,  NULL},
         RG_DIALOG_CHOICE_LAST
     };
     rg_gui_dialog(title, message ? options : options + 1, -1);
@@ -1016,7 +1018,8 @@ static rg_gui_event_t speedup_update_cb(rg_gui_option_t *option, rg_gui_event_t 
 
 static rg_gui_event_t disk_activity_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
         rg_storage_set_activity_led(!rg_storage_get_activity_led());
     }
     strcpy(option->value, rg_storage_get_activity_led() ? "On " : "Off");
@@ -1027,10 +1030,12 @@ static rg_gui_event_t font_type_cb(rg_gui_option_t *option, rg_gui_event_t event
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
-        if (event == RG_DIALOG_PREV && !rg_gui_set_font_type(gui.style.font_type - 1)) {
+        if (event == RG_DIALOG_PREV && !rg_gui_set_font_type(gui.style.font_type - 1))
+        {
             rg_gui_set_font_type(0);
         }
-        if (event == RG_DIALOG_NEXT && !rg_gui_set_font_type(gui.style.font_type + 1)) {
+        if (event == RG_DIALOG_NEXT && !rg_gui_set_font_type(gui.style.font_type + 1))
+        {
             rg_gui_set_font_type(0);
         }
     }

@@ -236,7 +236,7 @@ void rg_input_init(void)
     if (input_task_running)
         return;
 
-#if RG_GAMEPAD_DRIVER == 1  // GPIO
+#if RG_GAMEPAD_DRIVER == 1 // GPIO
 
     const char *driver = "GPIO";
 
@@ -257,7 +257,7 @@ void rg_input_init(void)
     gpio_set_direction(RG_GPIO_GAMEPAD_B, GPIO_MODE_INPUT);
     gpio_set_pull_mode(RG_GPIO_GAMEPAD_B, GPIO_PULLUP_ONLY);
 
-#elif RG_GAMEPAD_DRIVER == 2  // Serial
+#elif RG_GAMEPAD_DRIVER == 2 // Serial
 
     const char *driver = "SERIAL";
 
@@ -268,14 +268,14 @@ void rg_input_init(void)
     gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 0);
     gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 1);
 
-#elif RG_GAMEPAD_DRIVER == 3  // I2C
+#elif RG_GAMEPAD_DRIVER == 3 // I2C
 
     const char *driver = "I2C";
 
     rg_i2c_init();
     gamepad_read(); // First read contains garbage
 
-#elif RG_GAMEPAD_DRIVER == 4  // I2C w/AW9523
+#elif RG_GAMEPAD_DRIVER == 4 // I2C w/AW9523
 
     const char *driver = "AW9523-I2C";
 
@@ -297,7 +297,7 @@ void rg_input_init(void)
 
 #elif RG_GAMEPAD_DRIVER == 6 // SDL2
 
-	const char *driver = "SDL2";
+    const char *driver = "SDL2";
 
 #else
 

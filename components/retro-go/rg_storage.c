@@ -323,12 +323,12 @@ rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char 
 
         strncpy(result->name, basename, sizeof(result->name) - 1);
         result->is_valid = 1;
-        #if defined(DT_REG) && defined(DT_DIR)
-            result->is_file = ent->d_type == DT_REG;
-            result->is_dir = ent->d_type == DT_DIR;
-        #else
-            flags |= RG_SCANDIR_STAT;
-        #endif
+    #if defined(DT_REG) && defined(DT_DIR)
+        result->is_file = ent->d_type == DT_REG;
+        result->is_dir = ent->d_type == DT_DIR;
+    #else
+        flags |= RG_SCANDIR_STAT;
+    #endif
 
         if ((flags & RG_SCANDIR_STAT) && stat(fullpath, &statbuf) == 0)
         {
