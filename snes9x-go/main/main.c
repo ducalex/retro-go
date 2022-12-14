@@ -128,14 +128,14 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
 {
     if (event == RG_DIALOG_ENTER)
     {
-        rg_gui_option_t options[RG_COUNT(keymap.keys) + 4];
-        char values[RG_COUNT(keymap.keys)][16];
-        char profile[32];
         bool dismissed = false;
 
         while (!dismissed)
         {
+            rg_gui_option_t options[keymap.size + 4];
             rg_gui_option_t *option = options;
+            char values[keymap.size][20];
+            char profile[32];
 
             option->label = "Profile";
             option->value = strcat(strcat(strcpy(profile, "< "), keymap.name), " >");
@@ -143,7 +143,10 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
             option->update_cb = &change_keymap_cb;
             option++;
 
+            option->label = "";
+            option->value = NULL;
             option->flags = RG_DIALOG_FLAG_NORMAL;
+            option->update_cb = &change_keymap_cb;
             option++;
 
             option->label = "snes9x  ";
