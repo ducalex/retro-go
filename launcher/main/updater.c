@@ -58,32 +58,27 @@ void updater_show_dialog(void)
     rg_gui_draw_hourglass();
 
     releases_t *releases = get_releases_from_github();
-    rg_gui_option_t *options = NULL;
 
-    if (!releases || releases->count == 0)
+    if (releases && releases->count > 0)
+    {
+        rg_gui_option_t options[releases->count + 1];
+        rg_gui_option_t *opt = options;
+
+        for (size_t i = 0; i < releases->count; i++)
+            *opt++ = (rg_gui_option_t){i, releases->releases[i].name, NULL, 1, NULL};
+        *opt++ = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
+
+        int sel = rg_gui_dialog("Download release:", options, 0);
+        if (sel != RG_DIALOG_CANCELLED)
+        {
+            char *url = releases->releases[sel].url;
+            RG_LOGI("Downloading '%s' to '/odroid/firmware'...", url);
+        }
+    }
+    else
     {
         rg_gui_alert("Error", "Received empty list");
-        goto cleanup;
     }
 
-    options = malloc(sizeof(rg_gui_option_t) * (releases->count + 1));
-    rg_gui_option_t *option = options;
-
-    for (size_t i = 0; i < releases->count; i++)
-    {
-        *option++ = (rg_gui_option_t){i, releases->releases[i].name, NULL, 1, NULL};
-    }
-    *option++ = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
-
-    int sel = rg_gui_dialog("Download release:", options, 0);
-
-    if (sel != RG_DIALOG_CANCELLED)
-    {
-        char *url = releases->releases[sel].url;
-        RG_LOGI("Downloading '%s' to '/odroid/firmware'...", url);
-    }
-
-cleanup:
     free(releases);
-    free(options);
 }

@@ -297,6 +297,7 @@ fail:
 
 rg_http_req_t *rg_network_http_open(const char *url, const rg_http_cfg_t *cfg)
 {
+    RG_ASSERT(url, "bad param");
 #ifdef RG_ENABLE_NETWORKING
     esp_http_client_config_t http_config = {.url = url};
     esp_http_client_handle_t http_client = esp_http_client_init(&http_config);
@@ -331,6 +332,7 @@ fail:
 
 int rg_network_http_read(rg_http_req_t *req, void *buffer, size_t buffer_len)
 {
+    RG_ASSERT(req && buffer, "bad param");
 #ifdef RG_ENABLE_NETWORKING
     int len = esp_http_client_read_response(req->client, buffer, buffer_len);
     if (len > 0)
@@ -344,9 +346,9 @@ int rg_network_http_read(rg_http_req_t *req, void *buffer, size_t buffer_len)
 
 void rg_network_http_close(rg_http_req_t *req)
 {
-    if (!req)
-        return;
 #ifdef RG_ENABLE_NETWORKING
+    if (req == NULL)
+        return;
     esp_http_client_cleanup(req->client);
     req->client = NULL;
     free(req);
