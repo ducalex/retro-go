@@ -16,6 +16,7 @@
 #include "gui.h"
 #include "webui.h"
 #include "timezones.h"
+#include "updater.h"
 
 #define MAX_AP_LIST 5
 
@@ -220,10 +221,26 @@ static rg_gui_event_t startup_app_cb(rg_gui_option_t *option, rg_gui_event_t eve
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t updater_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+        updater_show_dialog();
+    return RG_DIALOG_VOID;
+}
+
+static void show_about_menu(void)
+{
+    const rg_gui_option_t options[] = {
+        {0, "Check for updates", NULL, 1, &updater_cb},
+        RG_DIALOG_OPTION_LAST,
+    };
+    rg_gui_about_menu(options);
+}
+
 static rg_gui_event_t about_app_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
-        rg_gui_about_menu(NULL);
+        show_about_menu();
     return RG_DIALOG_VOID;
 }
 
@@ -324,7 +341,7 @@ static void retro_loop(void)
         {
         #if RG_GAMEPAD_HAS_OPTION_BTN
             if (joystick == RG_KEY_MENU)
-                rg_gui_about_menu(NULL);
+                show_about_menu();
             else
         #endif
             rg_gui_options_menu();
