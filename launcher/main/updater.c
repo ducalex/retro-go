@@ -5,6 +5,7 @@
 
 typedef struct
 {
+    char date[12];
     char name[32];
     char url[96];
     size_t size;
@@ -12,9 +13,10 @@ typedef struct
 
 typedef struct
 {
-    size_t count;
+    size_t length;
     release_t releases[];
 } releases_t;
+
 
 static releases_t *get_releases_from_github(void)
 {
@@ -33,17 +35,19 @@ static releases_t *get_releases_from_github(void)
     if (!(releases = cJSON_Parse(buffer)))
         goto cleanup;
 
-    int num_releases = cJSON_GetArraySize(releases);
-    res = malloc(sizeof(releases_t) + (num_releases * sizeof(release_t)));
-    res->count = num_releases;
+    // Limit to 10 because our dialog system isn't super reliable with large lists :(
+    size_t num_releases = RG_MIN(cJSON_GetArraySize(releases), 10);
+    RG_LOGI("num_releases = %d", num_releases);
 
-    for (int i = 0; i < num_releases; i++)
+    res = malloc(sizeof(releases_t) + (num_releases * sizeof(release_t)));
+    res->length = num_releases;
+
+    for (size_t i = 0; i < num_releases; i++)
     {
         cJSON *el = cJSON_GetArrayItem(releases, i);
-        cJSON *name = cJSON_GetObjectItem(el, "name");
-        cJSON *url = cJSON_GetObjectItem(el, "url");
-        snprintf(res->releases[i].name, 32, "%s", cJSON_GetStringValue(name));
-        snprintf(res->releases[i].url, 96, "%s", cJSON_GetStringValue(url));
+        snprintf(res->releases[i].date, 10, "%s", cJSON_GetStringValue(cJSON_GetObjectItem(el, "published_at")));
+        snprintf(res->releases[i].name, 32, "%s", cJSON_GetStringValue(cJSON_GetObjectItem(el, "name")));
+        snprintf(res->releases[i].url, 96, "%s", cJSON_GetStringValue(cJSON_GetObjectItem(el, "url")));
     }
 
 cleanup:
@@ -57,22 +61,24 @@ void updater_show_dialog(void)
 {
     rg_gui_draw_hourglass();
 
-    releases_t *releases = get_releases_from_github();
+    releases_t *res = get_releases_from_github();
 
-    if (releases && releases->count > 0)
+    if (res && res->length > 0)
     {
-        rg_gui_option_t options[releases->count + 1];
+        rg_gui_option_t options[res->length + 1];
         rg_gui_option_t *opt = options;
 
-        for (size_t i = 0; i < releases->count; i++)
-            *opt++ = (rg_gui_option_t){i, releases->releases[i].name, NULL, 1, NULL};
+        for (size_t i = 0; i < res->length; i++)
+        {
+            release_t *release = &res->releases[i];
+            *opt++ = (rg_gui_option_t){i, release->name, release->date, 1, NULL};
+        }
         *opt++ = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
 
         int sel = rg_gui_dialog("Download release:", options, 0);
         if (sel != RG_DIALOG_CANCELLED)
         {
-            char *url = releases->releases[sel].url;
-            RG_LOGI("Downloading '%s' to '/odroid/firmware'...", url);
+            RG_LOGI("Downloading '%s' to '/odroid/firmware'...", res->releases[sel].url);
         }
     }
     else
@@ -80,5 +86,5 @@ void updater_show_dialog(void)
         rg_gui_alert("Error", "Received empty list");
     }
 
-    free(releases);
+    free(res);
 }
