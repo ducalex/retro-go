@@ -18,10 +18,52 @@ typedef struct
 } releases_t;
 
 
+static int download_file(const char *url, const char *filename)
+{
+    rg_http_req_t *req = NULL;
+    FILE *fp = NULL;
+    void *buffer = NULL;
+    int received = 0;
+    int written = 0;
+    int len;
+    int ret = -1;
+
+    if (!(req = rg_network_http_open(url, NULL)))
+        goto cleanup;
+
+    if (!(fp = fopen(filename, "wb")))
+        goto cleanup;
+
+    if (!(buffer = malloc(16 * 1024)))
+        goto cleanup;
+
+    while ((len = rg_network_http_read(req, buffer, 16 * 1024)) > 0)
+    {
+        written += fwrite(buffer, 1, len, fp);
+        received += len;
+        // we'll probably need to feed the watchdog here...
+    }
+
+    if (received == written)
+    {
+        ret = 0;
+    }
+    else
+    {
+        // oh oh
+    }
+
+cleanup:
+    rg_network_http_close(req);
+    free(buffer);
+    fclose(fp);
+
+    return ret;
+}
+
 static releases_t *get_releases_from_github(void)
 {
-    size_t max_length = 256 * 1024;
-    char *buffer = malloc(max_length);
+    char *buffer = NULL;
     rg_http_req_t *req = NULL;
     releases_t *res = NULL;
     cJSON *releases = NULL;
@@ -29,7 +71,12 @@ static releases_t *get_releases_from_github(void)
     if (!(req = rg_network_http_open("https://api.github.com/repos/ducalex/retro-go/releases", NULL)))
         goto cleanup;
 
-    if (rg_network_http_read(req, buffer, max_length) < 16)
+    size_t buffer_length = RG_MAX(256 * 1024, req->content_length);
+
+    if (!(buffer = malloc(buffer_length)))
+        goto cleanup;
+
+    if (rg_network_http_read(req, buffer, buffer_length) < 16)
         goto cleanup;
 
     if (!(releases = cJSON_Parse(buffer)))

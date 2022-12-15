@@ -47,8 +47,8 @@ typedef struct
 {
     rg_http_cfg_t config;
     int status_code;
-    int total_bytes;
-    int read_bytes;
+    int content_length;
+    int received_bytes;
     void *client;
 } rg_http_req_t;
 

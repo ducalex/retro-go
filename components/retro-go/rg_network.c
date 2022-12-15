@@ -303,7 +303,10 @@ rg_http_req_t *rg_network_http_open(const char *url, const rg_http_cfg_t *cfg)
     esp_http_client_handle_t http_client = esp_http_client_init(&http_config);
 
     if (!http_client)
+    {
+        RG_LOGE("Error creating client");
         goto fail;
+    }
 
     if (esp_http_client_open(http_client, 0) != ESP_OK)
     {
@@ -319,8 +322,8 @@ rg_http_req_t *rg_network_http_open(const char *url, const rg_http_cfg_t *cfg)
 
     rg_http_req_t *req = calloc(1, sizeof(rg_http_req_t));
     req->status_code = esp_http_client_get_status_code(http_client);
-    req->total_bytes = esp_http_client_get_content_length(http_client);
-    req->read_bytes = 0;
+    req->content_length = esp_http_client_get_content_length(http_client);
+    req->received_bytes = 0;
     req->client = (void *)http_client;
     return req;
 
@@ -334,14 +337,17 @@ int rg_network_http_read(rg_http_req_t *req, void *buffer, size_t buffer_len)
 {
     RG_ASSERT(req && buffer, "bad param");
 #ifdef RG_ENABLE_NETWORKING
+    // if (req->content_length >= 0 && req->received_bytes >= req->content_length)
+    //     return 0;
     int len = esp_http_client_read_response(req->client, buffer, buffer_len);
     if (len > 0)
-        req->read_bytes += len;
+        req->received_bytes += len;
     else
         esp_http_client_close(req->client);
     return len;
-#endif
+#else
     return -1;
+#endif
 }
 
 void rg_network_http_close(rg_http_req_t *req)
