@@ -68,8 +68,8 @@ struct rg_gui_option_s
 #define RG_DIALOG_FLAG_NORMAL   (1)  // (1 << 1)
 #define RG_DIALOG_FLAG_SKIP     (-1) // (1 << 2)
 
-#define RG_DIALOG_OPTION_LAST {0, NULL, NULL, 0, NULL}
-#define RG_DIALOG_CHOICE_LAST RG_DIALOG_OPTION_LAST
+#define RG_DIALOG_CHOICE_LAST {0, NULL, NULL, 0, NULL}
+#define RG_DIALOG_END         RG_DIALOG_CHOICE_LAST
 #define RG_DIALOG_SEPARATOR   {0, "----------", NULL, RG_DIALOG_FLAG_SKIP, NULL}
 
 #define RG_DIALOG_CANCELLED -0x7654321
