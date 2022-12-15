@@ -1102,21 +1102,26 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
 {
     char build_ver[32], build_date[32], build_user[32], network_str[64];
 
-    const rg_gui_option_t options[] = {
-        {0, "Version", build_ver, 1, NULL},
-        {0, "Date", build_date, 1, NULL},
-        {0, "By", build_user, 1, NULL},
-    #ifdef RG_ENABLE_NETWORKING
-        {0, "Network", network_str, 1, NULL},
-    #endif
-        RG_DIALOG_SEPARATOR,
-        {1000, "Reboot to firmware", NULL, 1, NULL},
-        {2000, "Reset settings", NULL, 1, NULL},
-        {3000, "Clear cache", NULL, 1, NULL},
-        {4000, "Debug", NULL, 1, NULL},
-        {0000, "Close", NULL, 1, NULL},
-        RG_DIALOG_CHOICE_LAST
-    };
+    size_t extra_options_count = get_dialog_items_count(extra_options);
+
+    rg_gui_option_t options[16 + extra_options_count];
+    rg_gui_option_t *opt = &options[0];
+
+    *opt++ = (rg_gui_option_t){0, "Version", build_ver, 1, NULL};
+    *opt++ = (rg_gui_option_t){0, "Date", build_date, 1, NULL};
+    *opt++ = (rg_gui_option_t){0, "By", build_user, 1, NULL};
+#ifdef RG_ENABLE_NETWORKING
+    *opt++ = (rg_gui_option_t){0, "Network", network_str, 1, NULL};
+#endif
+    *opt++ = (rg_gui_option_t)RG_DIALOG_SEPARATOR;
+    for (size_t i = 0; i < extra_options_count; i++)
+        *opt++ = extra_options[i];
+    *opt++ = (rg_gui_option_t){1000, "Reboot to firmware", NULL, 1, NULL};
+    *opt++ = (rg_gui_option_t){2000, "Reset settings", NULL, 1, NULL};
+    *opt++ = (rg_gui_option_t){3000, "Clear cache", NULL, 1, NULL};
+    *opt++ = (rg_gui_option_t){4000, "Debug", NULL, 1, NULL};
+    *opt++ = (rg_gui_option_t){0000, "Close", NULL, 1, NULL};
+    *opt++ = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
 
     const rg_app_t *app = rg_system_get_app();
 
