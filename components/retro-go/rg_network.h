@@ -37,3 +37,21 @@ bool rg_network_wifi_start(void);
 void rg_network_wifi_stop(void);
 bool rg_network_sync_time(const char *host, int *out_delta);
 rg_network_t rg_network_get_info(void);
+
+typedef struct
+{
+
+} rg_http_cfg_t;
+
+typedef struct
+{
+    rg_http_cfg_t config;
+    int status_code;
+    int total_bytes;
+    int read_bytes;
+    void *client;
+} rg_http_req_t;
+
+rg_http_req_t *rg_network_http_open(const char *url, const rg_http_cfg_t *cfg);
+int rg_network_http_read(rg_http_req_t *req, void *buffer, size_t buffer_len);
+void rg_network_http_close(rg_http_req_t *req);
