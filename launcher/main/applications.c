@@ -546,7 +546,7 @@ static void show_file_info(retro_file_t *file)
         RG_DIALOG_SEPARATOR,
         {5, "Delete file", NULL, 1, NULL},
         {1, "Close", NULL, 1, NULL},
-        RG_DIALOG_CHOICE_LAST
+        RG_DIALOG_END,
     };
 
     sprintf(filesize, "%ld KB", st.st_size / 1024);
@@ -598,7 +598,7 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
         {2, "Delete save", NULL, has_save || has_sram, NULL},
         RG_DIALOG_SEPARATOR,
         {4, "Properties", NULL, 1, NULL},
-        RG_DIALOG_CHOICE_LAST
+        RG_DIALOG_END,
     };
 
     int sel = rg_gui_dialog(NULL, choices, has_save ? 0 : 1);
