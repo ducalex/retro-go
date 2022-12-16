@@ -132,9 +132,9 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
 
         while (!dismissed)
         {
-            rg_gui_option_t options[keymap.size + 4];
+            rg_gui_option_t options[20];
             rg_gui_option_t *option = options;
-            char values[keymap.size][20];
+            char values[16][20];
             char profile[32];
 
             option->label = "Profile";
@@ -155,21 +155,24 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
             option->update_cb = &change_keymap_cb;
             option++;
 
-            for (int i = 0; i < keymap.size; i++)
+            for (int i = 0; i < RG_COUNT(keymap.keys); i++)
             {
-                // keys[i].key_id contains a bitmask, convert to bit number
-                int local_button = log2(keymap.keys[i].local_mask);
-                int mod_button = log2(keymap.keys[i].mod_mask);
-                int snes9x_button = log2(keymap.keys[i].snes9x_mask);
+                int local_button = keymap.keys[i].local_mask;
+                int mod_button = keymap.keys[i].mod_mask;
+                int snes9x_button = log2(keymap.keys[i].snes9x_mask); // convert bitmask to bit number
+
+                // Empty mapping
+                if (snes9x_button < 4)
+                    continue;
 
                 // For now we don't display the D-PAD because it doesn't fit on large font
-                if (local_button < 4)
+                if (local_button & (RG_KEY_UP|RG_KEY_DOWN|RG_KEY_LEFT|RG_KEY_RIGHT))
                     continue;
 
                 if (keymap.keys[i].mod_mask)
-                    sprintf(values[i], "%s + %s", CONSOLE_BUTTONS[mod_button], CONSOLE_BUTTONS[local_button]);
+                    sprintf(values[i], "%s + %s", rg_input_get_key_name(mod_button), rg_input_get_key_name(local_button));
                 else
-                    sprintf(values[i], "%s", CONSOLE_BUTTONS[local_button]);
+                    sprintf(values[i], "%s", rg_input_get_key_name(local_button));
 
                 option->label = SNES_BUTTONS[snes9x_button];
                 option->value = values[i];
@@ -214,7 +217,7 @@ uint32_t S9xReadJoypad(int32_t port)
     uint32_t joystick = rg_input_read_gamepad();
     uint32_t joypad = 0;
 
-    for (int i = 0; i < keymap.size; ++i)
+    for (int i = 0; i < RG_COUNT(keymap.keys); ++i)
     {
         uint32_t bitmask = keymap.keys[i].local_mask | keymap.keys[i].mod_mask;
         if (bitmask && bitmask == (joystick & bitmask))

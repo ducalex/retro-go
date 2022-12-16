@@ -364,3 +364,26 @@ bool rg_input_read_battery(float *percent, float *volts)
 
     return true;
 }
+
+const char *rg_input_get_key_name(rg_key_t key)
+{
+    switch (key)
+    {
+    case RG_KEY_UP: return "Up";
+    case RG_KEY_RIGHT: return "Right";
+    case RG_KEY_DOWN: return "Down";
+    case RG_KEY_LEFT: return "Left";
+    case RG_KEY_SELECT: return "Select";
+    case RG_KEY_START: return "Start";
+    case RG_KEY_MENU: return "Menu";
+    case RG_KEY_OPTION: return "Option";
+    case RG_KEY_A: return "A";
+    case RG_KEY_B: return "B";
+    case RG_KEY_X: return "X";
+    case RG_KEY_Y: return "Y";
+    case RG_KEY_L: return "Left Shoulder";
+    case RG_KEY_R: return "Right Shoulder";
+    case RG_KEY_NONE: return "None";
+    default: return "Unknown";
+    }
+}

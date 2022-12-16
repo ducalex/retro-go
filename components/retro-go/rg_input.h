@@ -19,14 +19,16 @@ typedef enum
     RG_KEY_Y       = (1 << 11),
     RG_KEY_L       = (1 << 12),
     RG_KEY_R       = (1 << 13),
+    RG_KEY_COUNT   = 14,
     RG_KEY_ANY     = 0xFFFF,
     RG_KEY_ALL     = 0xFFFF,
-    RG_KEY_COUNT   = 14,
+    RG_KEY_NONE    = 0,
 } rg_key_t;
 
 void rg_input_init(void);
 void rg_input_deinit(void);
 bool rg_input_key_is_pressed(rg_key_t key);
 void rg_input_wait_for_key(rg_key_t key, bool pressed);
+const char *rg_input_get_key_name(rg_key_t key);
 uint32_t rg_input_read_gamepad(void);
 bool rg_input_read_battery(float *percent, float *volts);
