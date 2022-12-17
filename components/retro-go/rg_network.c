@@ -299,15 +299,17 @@ rg_http_req_t *rg_network_http_open(const char *url, const rg_http_cfg_t *cfg)
 {
     RG_ASSERT(url, "bad param");
 #ifdef RG_ENABLE_NETWORKING
-    esp_http_client_config_t http_config = {.url = url};
+    esp_http_client_config_t http_config = {.url = url, .buffer_size = 1024, .buffer_size_tx = 1024};
     esp_http_client_handle_t http_client = esp_http_client_init(&http_config);
+    rg_http_req_t *req = calloc(1, sizeof(rg_http_req_t));
 
-    if (!http_client)
+    if (!http_client || !req)
     {
         RG_LOGE("Error creating client");
         goto fail;
     }
 
+try_again:
     if (esp_http_client_open(http_client, 0) != ESP_OK)
     {
         RG_LOGE("Error opening connection");
@@ -320,15 +322,26 @@ rg_http_req_t *rg_network_http_open(const char *url, const rg_http_cfg_t *cfg)
         goto fail;
     }
 
-    rg_http_req_t *req = calloc(1, sizeof(rg_http_req_t));
     req->status_code = esp_http_client_get_status_code(http_client);
     req->content_length = esp_http_client_get_content_length(http_client);
-    req->received_bytes = 0;
     req->client = (void *)http_client;
+
+    if (req->status_code == 301 || req->status_code == 302)
+    {
+        if (req->redirections < 5)
+        {
+            esp_http_client_set_redirection(http_client);
+            esp_http_client_close(http_client);
+            req->redirections++;
+            goto try_again;
+        }
+    }
+
     return req;
 
 fail:
     esp_http_client_cleanup(http_client);
+    free(req);
 #endif
     return NULL;
 }

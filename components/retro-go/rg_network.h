@@ -49,6 +49,7 @@ typedef struct
     int status_code;
     int content_length;
     int received_bytes;
+    int redirections;
     void *client;
 } rg_http_req_t;
 

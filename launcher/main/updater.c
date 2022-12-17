@@ -1,22 +1,30 @@
 #include "rg_system.h"
 #include "gui.h"
 
+#include <string.h>
 #include <cJSON.h>
+
+#define GITHUB_RELEASES_URL "https://api.github.com/repos/ducalex/retro-go/releases"
+
+#ifdef RG_TARGET_ODROID_GO
+#define DOWNLOAD_LOCATION RG_STORAGE_ROOT "/odroid/firmware"
+#else
+#define DOWNLOAD_LOCATION RG_STORAGE_ROOT "/espgbc/firmware"
+#endif
 
 static int download_file(const char *url, const char *filename)
 {
     RG_ASSERT(url && filename, "bad param");
 
-    RG_LOGI("Downloading: '%s' to '%s'", url, filename);
-    rg_gui_draw_hourglass();
-
     rg_http_req_t *req = NULL;
     FILE *fp = NULL;
     void *buffer = NULL;
     int received = 0;
-    int written = 0;
     int len;
     int ret = -1;
+
+    RG_LOGI("Downloading: '%s' to '%s'", url, filename);
+    rg_gui_draw_dialog("Connecting...", NULL, 0);
 
     if (!(req = rg_network_http_open(url, NULL)))
         goto cleanup;
@@ -27,22 +35,21 @@ static int download_file(const char *url, const char *filename)
     if (!(buffer = malloc(16 * 1024)))
         goto cleanup;
 
+    rg_gui_draw_dialog("Receiving...", NULL, 0);
+
     while ((len = rg_network_http_read(req, buffer, 16 * 1024)) > 0)
     {
-        written += fwrite(buffer, 1, len, fp);
         received += len;
-        // we'll probably need to feed the watchdog here...
-        RG_LOGI("Received: %d  /  Written: %d", received, written);
+        fwrite(buffer, 1, len, fp);
+        sprintf(buffer, "Received %d / %d", received, req->content_length);
+        rg_gui_draw_dialog(buffer, NULL, 0);
+        rg_system_tick(0);
     }
 
-    if (received == written)
-    {
+    if (req->content_length == received)
         ret = 0;
-    }
-    else
-    {
-        // oh oh
-    }
+    else if (req->content_length == -1)
+        ret = 0;
 
 cleanup:
     rg_network_http_close(req);
@@ -85,7 +92,7 @@ cleanup:
 
 void updater_show_dialog(void)
 {
-    cJSON *releases = fetch_json("https://api.github.com/repos/ducalex/retro-go/releases");
+    cJSON *releases = fetch_json(GITHUB_RELEASES_URL);
     size_t releases_length = RG_MIN(cJSON_GetArraySize(releases), 16);
 
     rg_gui_option_t options[releases_length + 1];
@@ -117,7 +124,7 @@ void updater_show_dialog(void)
         rg_gui_option_t *opt = options;
 
         *opt++ = (rg_gui_option_t){0, "Date", release_date, -1, NULL};
-        *opt++ = (rg_gui_option_t){0, "Files:", NULL, -1, NULL};
+        *opt++ = (rg_gui_option_t){0, "Downloads:", NULL, -1, NULL};
 
         for (int i = 0; i < assets_length; i++)
         {
@@ -130,9 +137,27 @@ void updater_show_dialog(void)
         if (sel != RG_DIALOG_CANCELLED)
         {
             cJSON *asset = cJSON_GetArrayItem(assets, sel);
-            char *asset_url = cJSON_GetStringValue(cJSON_GetObjectItem(asset, "browser_download_url"));
-            char *dest_path = "/sd/odroid/firmware/retro_go-update.fw";
-            download_file(asset_url, dest_path);
+            char *asset_name = strdup(cJSON_GetStringValue(cJSON_GetObjectItem(asset, "name")));
+            char *asset_url = strdup(cJSON_GetStringValue(cJSON_GetObjectItem(asset, "browser_download_url")));
+            char *dest_path = malloc(RG_PATH_MAX);
+            snprintf(dest_path, RG_PATH_MAX, "%s/%s", DOWNLOAD_LOCATION, asset_name);
+
+            // This is a bit ugly but at this point we need to free some internal heap because mbedtls
+            // doesn't seem to want to use SPIRAM :(
+            cJSON_Delete(releases);
+
+            // Clean the screen, make it easier to see progress
+            gui_redraw();
+
+            if (download_file(asset_url, dest_path) == 0)
+                rg_gui_alert("Download complete!", dest_path);
+            else
+                rg_gui_alert("Download failed!", dest_path);
+
+            free(asset_name);
+            free(asset_url);
+            free(dest_path);
+            return;
         }
     }
 
