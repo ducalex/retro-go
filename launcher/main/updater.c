@@ -89,7 +89,7 @@ static cJSON *fetch_json(const char *url)
 
     size_t buffer_length = RG_MAX(256 * 1024, req->content_length);
 
-    if (!(buffer = malloc(buffer_length)))
+    if (!(buffer = calloc(1, buffer_length + 1)))
         goto cleanup;
 
     if (rg_network_http_read(req, buffer, buffer_length) < 16)
