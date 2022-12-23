@@ -93,8 +93,8 @@ static int Window_firstcol;
 static int Window_lastcol;
 
 // 16 bits access to VRAM
+// #define FETCH16VRAM(A)  ({size_t addr = (A); (VRAM[addr+1]) | (VRAM[addr] << 8);})
 #define FETCH16VRAM(A)  ( (VRAM[(A)+1]) | (VRAM[(A)] << 8) )
-
 #define VDP_GFX_DISABLE_LOGGING 1
 
 #if !VDP_GFX_DISABLE_LOGGING

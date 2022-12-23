@@ -239,22 +239,21 @@ void app_main(void)
         RG_DIALOG_CHOICE_LAST
     };
 
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
+    app = rg_system_init(AUDIO_SAMPLE_RATE / 2, &handlers, options);
 
     yfm_enabled = rg_settings_get_number(NS_APP, SETTING_YFM_EMULATION, 1);
-    sn76489_enabled = rg_settings_get_number(NS_APP, SETTING_SN76489_EMULATION, 1);
+    sn76489_enabled = rg_settings_get_number(NS_APP, SETTING_SN76489_EMULATION, 0);
     // yfm_resample = rg_settings_get_number(NS_APP, SETTING_YFM_RESAMPLE, 1);
     z80_enabled = rg_settings_get_number(NS_APP, SETTING_Z80_EMULATION, 1);
     frameskip = rg_settings_get_number(NS_APP, SETTING_FRAMESKIP, frameskip);
 
-    VRAM = rg_alloc(VRAM_MAX_SIZE, MEM_FAST);
-
     updates[0].buffer = rg_alloc(320 * 240, MEM_FAST);
-    // updates[1].buffer = rg_alloc(320 * 240 * 2, MEM_FAST);
+    // updates[1].buffer = rg_alloc(320 * 240, MEM_FAST);
+
+    VRAM = rg_alloc(VRAM_MAX_SIZE, MEM_FAST);
 
     // rg_task_create("gen_sound", &sound_task, NULL, 2048, 7, 1);
     // rg_audio_set_sample_rate(yfm_resample ? 26634 : 53267);
-    rg_audio_set_sample_rate(26634);
 
     RG_LOGI("Genesis start\n");
 
