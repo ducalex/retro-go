@@ -1,3 +1,9 @@
+# Retro-Go 1.37 (2022-12-??)
+- SNES: Fixed controls menu labels
+- GEN: Small performance improvement
+- Launcher: Added tool to download updates
+
+
 # Retro-Go 1.36.3 (2022-12-14)
 - SNES: Fixed freeze in controls menu (hopefully for real this time...)
 
