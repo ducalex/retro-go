@@ -1098,9 +1098,54 @@ void rg_gui_options_menu(void)
     rg_audio_set_mute(false);
 }
 
+void rg_gui_sysinfo_menu(void)
+{
+    char screen_str[32], network_str[64], memory_str[32];
+    char storage_str[32], localtime_str[32], uptime[32];
+
+    const rg_gui_option_t options[] = {
+        {0, "Console", RG_TARGET_NAME, 1, NULL},
+        {0, "Screen", screen_str, 1, NULL},
+        {0, "Memory", memory_str, 1, NULL},
+        {0, "Network", network_str, 1, NULL},
+        // {0, "Storage", storage_str, 1, NULL},
+        {0, "RTC", localtime_str, 1, NULL},
+        {0, "Uptime", uptime, 1, NULL},
+        RG_DIALOG_SEPARATOR,
+        {0, "Close", NULL, 1, NULL},
+        RG_DIALOG_CHOICE_LAST
+    };
+
+    const rg_display_t *display = rg_display_get_info();
+    rg_stats_t stats = rg_system_get_counters();
+    time_t now = time(NULL);
+
+    snprintf(screen_str, 32, "%dx%d (%d)", display->screen.width, display->screen.height, display->screen.format);
+    snprintf(memory_str, 32, "%dKB + %dKB", stats.totalMemoryInt / 1024, stats.totalMemoryExt / 1024);
+    snprintf(uptime, 32, "%ds", (int)(rg_system_timer() / 1000000));
+    snprintf(storage_str, 32, "%s", "N/A");
+    strftime(localtime_str, 32, "%F %T", localtime(&now));
+
+#ifdef RG_ENABLE_NETWORKING
+    rg_network_t net = rg_network_get_info();
+    if (net.state == RG_NETWORK_CONNECTED)
+        snprintf(network_str, 64, "%s\n%s", net.name, net.ip_addr);
+    else if (net.state == RG_NETWORK_CONNECTING)
+        snprintf(network_str, 64, "%s\n%s", net.name, "connecting...");
+    else if (net.name[0])
+        snprintf(network_str, 64, "%s\n%s", net.name, "disconnected");
+    else
+        snprintf(network_str, 64, "%s", "disconnected");
+#else
+    strcpy(network_str, "No adapter");
+#endif
+
+    rg_gui_dialog("System Information", options, -1);
+}
+
 void rg_gui_about_menu(const rg_gui_option_t *extra_options)
 {
-    char build_ver[32], build_date[32], build_user[32], network_str[64];
+    char build_ver[32], build_date[32], build_user[32];
 
     size_t extra_options_count = get_dialog_items_count(extra_options);
 
@@ -1110,17 +1155,12 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
     *opt++ = (rg_gui_option_t){0, "Version", build_ver, 1, NULL};
     *opt++ = (rg_gui_option_t){0, "Date", build_date, 1, NULL};
     *opt++ = (rg_gui_option_t){0, "By", build_user, 1, NULL};
-#ifdef RG_ENABLE_NETWORKING
-    *opt++ = (rg_gui_option_t){0, "Network", network_str, 1, NULL};
-#endif
     *opt++ = (rg_gui_option_t)RG_DIALOG_SEPARATOR;
+    *opt++ = (rg_gui_option_t){1000, "System information", NULL, 1, NULL};
     for (size_t i = 0; i < extra_options_count; i++)
         *opt++ = extra_options[i];
-    *opt++ = (rg_gui_option_t){1000, "Reboot to firmware", NULL, 1, NULL};
     *opt++ = (rg_gui_option_t){2000, "Reset settings", NULL, 1, NULL};
-    *opt++ = (rg_gui_option_t){3000, "Clear cache", NULL, 1, NULL};
-    *opt++ = (rg_gui_option_t){4000, "Debug", NULL, 1, NULL};
-    *opt++ = (rg_gui_option_t){0000, "Close", NULL, 1, NULL};
+    *opt++ = (rg_gui_option_t){3000, "Debug", NULL, 1, NULL};
     *opt++ = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
 
     const rg_app_t *app = rg_system_get_app();
@@ -1139,39 +1179,28 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
         strcat(build_ver, ")");
     }
 
-    rg_network_t net = rg_network_get_info();
-    if (net.state == RG_NETWORK_CONNECTED)
-        snprintf(network_str, 64, "%s\n%s", net.name, net.ip_addr);
-    else if (net.state == RG_NETWORK_CONNECTING)
-        snprintf(network_str, 64, "%s\n%s", net.name, "connecting...");
-    else if (net.name[0])
-        snprintf(network_str, 64, "%s\n%s", net.name, "disconnected");
-    else
-        snprintf(network_str, 64, "%s", "disconnected");
-
-    int sel = rg_gui_dialog("Retro-Go", options, -1);
-
-    rg_settings_commit();
-    rg_system_save_time();
-
-    switch (sel)
+    while (true)
     {
-        case 1000:
-            rg_system_switch_app(RG_APP_FACTORY, RG_APP_FACTORY, 0, 0);
-            break;
-        case 2000:
-            if (rg_gui_confirm("Reset all settings?", NULL, false)) {
-                rg_settings_reset();
-                rg_system_restart();
-            }
-            break;
-        case 3000:
-            rg_storage_delete(RG_BASE_PATH_CACHE);
-            rg_system_restart();
-            break;
-        case 4000:
-            rg_gui_debug_menu(NULL);
-            break;
+        switch (rg_gui_dialog("Retro-Go", options, 4))
+        {
+            case 1000:
+                rg_gui_sysinfo_menu();
+                break;
+            case 2000:
+                if (rg_gui_confirm("Reset all settings?", NULL, false)) {
+                    rg_storage_delete(RG_BASE_PATH_CACHE);
+                    rg_settings_reset();
+                    rg_system_restart();
+                    return;
+                }
+                break;
+            case 3000:
+                rg_gui_debug_menu(NULL);
+                break;
+            default:
+                return;
+        }
+        rg_system_event(RG_EVENT_REDRAW, NULL);
     }
 }
 
@@ -1192,10 +1221,12 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
         {0, "Timezone  ", timezone, 1, NULL},
         {0, "Uptime    ", uptime, 1, NULL},
         RG_DIALOG_SEPARATOR,
-        {1000, "Save screenshot", NULL, 1, NULL},
-        {2000, "Save trace", NULL, 1, NULL},
-        {3000, "Cheats", NULL, 1, NULL},
-        {4000, "Crash", NULL, 1, NULL},
+        {1, "Reboot to firmware", NULL, 1, NULL},
+        {2, "Clear cache", NULL, 1, NULL},
+        {3, "Save screenshot", NULL, 1, NULL},
+        {4, "Save trace", NULL, 1, NULL},
+        {5, "Cheats", NULL, 1, NULL},
+        {6, "Crash", NULL, 1, NULL},
         RG_DIALOG_CHOICE_LAST
     };
 
@@ -1215,13 +1246,22 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
 
     switch (rg_gui_dialog("Debugging", options, 0))
     {
-    case 1000:
+    case 1:
+        rg_system_switch_app(RG_APP_FACTORY, RG_APP_FACTORY, 0, 0);
+        break;
+    case 2:
+        rg_storage_delete(RG_BASE_PATH_CACHE);
+        rg_system_restart();
+        break;
+    case 3:
         rg_emu_screenshot(RG_STORAGE_ROOT "/screenshot.png", 0, 0);
         break;
-    case 2000:
+    case 4:
         rg_system_save_trace(RG_STORAGE_ROOT "/trace.txt", 0);
         break;
-    case 4000:
+    case 5:
+        break;
+    case 6:
         RG_PANIC("Crash test!");
         break;
     }

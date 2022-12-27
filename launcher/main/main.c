@@ -226,7 +226,10 @@ static rg_gui_event_t startup_app_cb(rg_gui_option_t *option, rg_gui_event_t eve
 static rg_gui_event_t updater_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
+    {
         updater_show_dialog();
+        gui_redraw();
+    }
     return RG_DIALOG_VOID;
 }
 
