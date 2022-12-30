@@ -3,7 +3,6 @@
 typedef struct
 {
 	char name[16];
-	size_t size;
 	struct {
 		uint16_t snes9x_mask;
 		uint16_t local_mask;
@@ -12,7 +11,7 @@ typedef struct
 } keymap_t;
 
 static const keymap_t KEYMAPS[] = {
-	{"Type A", 12, {
+	{"Type A", {
 		{SNES_A_MASK, RG_KEY_A, 0},
 		{SNES_B_MASK, RG_KEY_B, 0},
 		{SNES_X_MASK, RG_KEY_START, 0},
@@ -26,7 +25,7 @@ static const keymap_t KEYMAPS[] = {
 		{SNES_LEFT_MASK, RG_KEY_LEFT, 0},
 		{SNES_RIGHT_MASK, RG_KEY_RIGHT, 0},
 	}},
-	{"Type B", 12, {
+	{"Type B", {
 		{SNES_A_MASK, RG_KEY_START, 0},
 		{SNES_B_MASK, RG_KEY_A, 0},
 		{SNES_X_MASK, RG_KEY_SELECT, 0},
@@ -40,9 +39,13 @@ static const keymap_t KEYMAPS[] = {
 		{SNES_LEFT_MASK, RG_KEY_LEFT, 0},
 		{SNES_RIGHT_MASK, RG_KEY_RIGHT, 0},
 	}},
-	{"Type C", 8, {
+	{"Type C", {
 		{SNES_A_MASK, RG_KEY_A, 0},
 		{SNES_B_MASK, RG_KEY_B, 0},
+		{SNES_X_MASK, 0, 0},
+		{SNES_Y_MASK, 0, 0},
+		{SNES_TL_MASK, 0, 0},
+		{SNES_TR_MASK, 0, 0},
 		{SNES_START_MASK, RG_KEY_START, 0},
 		{SNES_SELECT_MASK, RG_KEY_SELECT, 0},
 		{SNES_UP_MASK, RG_KEY_UP, 0},
@@ -54,10 +57,6 @@ static const keymap_t KEYMAPS[] = {
 
 static const size_t KEYMAPS_COUNT = (sizeof(KEYMAPS) / sizeof(keymap_t));
 
-static const char *CONSOLE_BUTTONS[] = {
-	"UP", "RIGHT", "DOWN", "LEFT", "SELECT", "START", "A", "B", "MENU", "OPTION", "NONE", "NONE"
-};
-
 static const char *SNES_BUTTONS[] = {
-	"NONE", "NONE", "NONE", "NONE", "TR", "TL", "X", "A", "RIGHT", "LEFT", "DOWN", "UP", "START", "SELECT", "Y", "B"
+	"None", "None", "None", "None", "R", "L", "X", "A", "Right", "Left", "Down", "Up", "Start", "Select", "Y", "B"
 };

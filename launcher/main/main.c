@@ -16,6 +16,7 @@
 #include "gui.h"
 #include "webui.h"
 #include "timezones.h"
+#include "updater.h"
 
 #define MAX_AP_LIST 5
 
@@ -39,10 +40,11 @@ static rg_gui_event_t toggle_tabs_cb(rg_gui_option_t *option, rg_gui_event_t eve
     if (event == RG_DIALOG_ENTER)
     {
         rg_gui_option_t options[gui.tabs_count + 1];
+        rg_gui_option_t *opt = options;
 
         for (size_t i = 0; i < gui.tabs_count; ++i)
-            options[i] = (rg_gui_option_t){i, gui.tabs[i]->name, "...", 1, &toggle_tab_cb};
-        options[gui.tabs_count] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
+            *opt++ = (rg_gui_option_t){i, gui.tabs[i]->name, "...", 1, &toggle_tab_cb};
+        *opt++ = (rg_gui_option_t)RG_DIALOG_END;
 
         rg_gui_dialog("Tabs Visibility", options, 0);
         gui_redraw();
@@ -52,13 +54,14 @@ static rg_gui_event_t toggle_tabs_cb(rg_gui_option_t *option, rg_gui_event_t eve
 
 static rg_gui_event_t timezone_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    rg_gui_option_t options[timezones_count + 1];
-
     if (event == RG_DIALOG_ENTER)
     {
+        rg_gui_option_t options[timezones_count + 1];
+        rg_gui_option_t *opt = options;
+
         for (size_t i = 0; i < timezones_count; i++)
-            options[i] = (rg_gui_option_t){i, timezones[i].name, NULL, 1, NULL};
-        options[timezones_count] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
+            *opt++ = (rg_gui_option_t){i, timezones[i].name, NULL, 1, NULL};
+        *opt++ = (rg_gui_option_t)RG_DIALOG_END;
 
         int sel = rg_gui_dialog("Timezone", options, 0);
         if (sel != RG_DIALOG_CANCELLED)
@@ -122,18 +125,18 @@ static rg_gui_event_t wifi_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
     if (event == RG_DIALOG_ENTER)
     {
         rg_gui_option_t options[MAX_AP_LIST + 2];
-        size_t index = 0;
+        rg_gui_option_t *opt = options;
 
         for (size_t i = 0; i < MAX_AP_LIST; i++)
         {
             char slot[6];
             sprintf(slot, "ssid%d", i);
             char *ap_name = rg_settings_get_string(NS_WIFI, slot, NULL);
-            options[index++] = (rg_gui_option_t){i, ap_name ?: "(empty)", NULL, ap_name ? 1 : 0, NULL};
+            *opt++ = (rg_gui_option_t){i, ap_name ?: "(empty)", NULL, ap_name ? 1 : 0, NULL};
         }
         char *ap_name = rg_settings_get_string(NS_WIFI, "ssid", NULL);
-        options[index++] = (rg_gui_option_t){-1, ap_name ?: "(empty)", NULL, ap_name ? 1 : 0, NULL};
-        options[index++] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
+        *opt++ = (rg_gui_option_t){-1, ap_name ?: "(empty)", NULL, ap_name ? 1 : 0, NULL};
+        *opt++ = (rg_gui_option_t)RG_DIALOG_END;
 
         int sel = rg_gui_dialog("Select saved AP", options, rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, 0));
         if (sel != RG_DIALOG_CANCELLED)
@@ -184,7 +187,7 @@ static rg_gui_event_t wifi_options_cb(rg_gui_option_t *option, rg_gui_event_t ev
             RG_DIALOG_SEPARATOR,
             {0, "File server" , "...", 1, &webui_switch_cb},
             {0, "Time sync" , "On", 0, NULL},
-            RG_DIALOG_CHOICE_LAST,
+            RG_DIALOG_END,
         };
         rg_gui_dialog("Wifi Options", options, 0);
     }
@@ -220,10 +223,29 @@ static rg_gui_event_t startup_app_cb(rg_gui_option_t *option, rg_gui_event_t eve
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t updater_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        updater_show_dialog();
+        gui_redraw();
+    }
+    return RG_DIALOG_VOID;
+}
+
+static void show_about_menu(void)
+{
+    const rg_gui_option_t options[] = {
+        {0, "Check for updates", NULL, 1, &updater_cb},
+        RG_DIALOG_END,
+    };
+    rg_gui_about_menu(options);
+}
+
 static rg_gui_event_t about_app_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
-        rg_gui_about_menu(NULL);
+        show_about_menu();
     return RG_DIALOG_VOID;
 }
 
@@ -324,7 +346,7 @@ static void retro_loop(void)
         {
         #if RG_GAMEPAD_HAS_OPTION_BTN
             if (joystick == RG_KEY_MENU)
-                rg_gui_about_menu(NULL);
+                show_about_menu();
             else
         #endif
             rg_gui_options_menu();
@@ -460,7 +482,7 @@ void app_main(void)
         RG_DIALOG_SEPARATOR,
         {0, "About Retro-Go", NULL,  1, &about_app_cb},
     #endif
-        RG_DIALOG_CHOICE_LAST
+        RG_DIALOG_END,
     };
 
     app = rg_system_init(32000, &handlers, options);

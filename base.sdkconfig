@@ -156,3 +156,9 @@ CONFIG_HTTPD_PURGE_BUF_LEN=32
 # CONFIG_HTTPD_LOG_PURGE_DATA is not set
 # CONFIG_HTTPD_WS_SUPPORT is not set
 # end of HTTP Server
+
+
+# TLS
+# Not ideal but I don't want to deal with CAs right now :(
+CONFIG_ESP_TLS_INSECURE=y
+CONFIG_ESP_TLS_SKIP_SERVER_CERT_VERIFY=y

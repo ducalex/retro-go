@@ -80,13 +80,24 @@ The roms must be packed with [LCD-Game-Shrinker](https://github.com/bzhxx/LCD-Ga
 
 ## Wifi
 
-To use wifi you will need to add your config to `/retro-go/config/wifi.json` file.
-It should look like this:
+To use wifi you will need to create a `/retro-go/config/wifi.json` config file. Its content should look like this:
 
 ````json
 {
   "ssid": "my-network",
   "password": "my-password"
+}
+````
+
+Multiple networks can be defined using the following format (then selectable in the Options menu):
+````json
+{
+  "ssid0": "my-network",
+  "password0": "my-password",
+  "ssid1": "my-network",
+  "password1": "my-password",
+  "ssid2": "my-network",
+  "password2": "my-password"
 }
 ````
 

@@ -236,7 +236,7 @@ void rg_input_init(void)
     if (input_task_running)
         return;
 
-#if RG_GAMEPAD_DRIVER == 1  // GPIO
+#if RG_GAMEPAD_DRIVER == 1 // GPIO
 
     const char *driver = "GPIO";
 
@@ -257,7 +257,7 @@ void rg_input_init(void)
     gpio_set_direction(RG_GPIO_GAMEPAD_B, GPIO_MODE_INPUT);
     gpio_set_pull_mode(RG_GPIO_GAMEPAD_B, GPIO_PULLUP_ONLY);
 
-#elif RG_GAMEPAD_DRIVER == 2  // Serial
+#elif RG_GAMEPAD_DRIVER == 2 // Serial
 
     const char *driver = "SERIAL";
 
@@ -268,14 +268,14 @@ void rg_input_init(void)
     gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 0);
     gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 1);
 
-#elif RG_GAMEPAD_DRIVER == 3  // I2C
+#elif RG_GAMEPAD_DRIVER == 3 // I2C
 
     const char *driver = "I2C";
 
     rg_i2c_init();
     gamepad_read(); // First read contains garbage
 
-#elif RG_GAMEPAD_DRIVER == 4  // I2C w/AW9523
+#elif RG_GAMEPAD_DRIVER == 4 // I2C w/AW9523
 
     const char *driver = "AW9523-I2C";
 
@@ -297,7 +297,7 @@ void rg_input_init(void)
 
 #elif RG_GAMEPAD_DRIVER == 6 // SDL2
 
-	const char *driver = "SDL2";
+    const char *driver = "SDL2";
 
 #else
 
@@ -363,4 +363,27 @@ bool rg_input_read_battery(float *percent, float *volts)
         *volts = RG_BATTERY_CALC_VOLTAGE(battery_level);
 
     return true;
+}
+
+const char *rg_input_get_key_name(rg_key_t key)
+{
+    switch (key)
+    {
+    case RG_KEY_UP: return "Up";
+    case RG_KEY_RIGHT: return "Right";
+    case RG_KEY_DOWN: return "Down";
+    case RG_KEY_LEFT: return "Left";
+    case RG_KEY_SELECT: return "Select";
+    case RG_KEY_START: return "Start";
+    case RG_KEY_MENU: return "Menu";
+    case RG_KEY_OPTION: return "Option";
+    case RG_KEY_A: return "A";
+    case RG_KEY_B: return "B";
+    case RG_KEY_X: return "X";
+    case RG_KEY_Y: return "Y";
+    case RG_KEY_L: return "Left Shoulder";
+    case RG_KEY_R: return "Right Shoulder";
+    case RG_KEY_NONE: return "None";
+    default: return "Unknown";
+    }
 }

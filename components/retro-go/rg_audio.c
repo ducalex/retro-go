@@ -31,7 +31,9 @@
 #endif
 
 static const rg_audio_sink_t sinks[] = {
+#if !RG_AUDIO_USE_INT_DAC && !RG_AUDIO_USE_EXT_DAC
     {RG_AUDIO_SINK_DUMMY,   0, "Dummy"  },
+#endif
 #if RG_AUDIO_USE_INT_DAC
     {RG_AUDIO_SINK_I2S_DAC, 0, "Speaker"},
 #endif
@@ -77,7 +79,7 @@ void rg_audio_init(int sampleRate)
 
     ACQUIRE_DEVICE(1000);
 
-    int sinkType = (int)rg_settings_get_number(NS_GLOBAL, SETTING_OUTPUT, sinks[RG_COUNT(sinks) > 1 ? 1 : 0].type);
+    int sinkType = (int)rg_settings_get_number(NS_GLOBAL, SETTING_OUTPUT, sinks[0].type);
     for (size_t i = 0; i < RG_COUNT(sinks); ++i)
     {
         if (!audio.sink || sinks[i].type == sinkType)

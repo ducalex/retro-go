@@ -64,12 +64,13 @@ struct rg_gui_option_s
     rg_gui_callback_t update_cb;
 };
 
-#define RG_DIALOG_FLAG_DISABLED  0 // (1 << 0)
-#define RG_DIALOG_FLAG_NORMAL    1 // (1 << 1)
-#define RG_DIALOG_FLAG_SKIP     -1 // (1 << 2)
+#define RG_DIALOG_FLAG_DISABLED (0)  // (1 << 0)
+#define RG_DIALOG_FLAG_NORMAL   (1)  // (1 << 1)
+#define RG_DIALOG_FLAG_SKIP     (-1) // (1 << 2)
 
 #define RG_DIALOG_CHOICE_LAST {0, NULL, NULL, 0, NULL}
 #define RG_DIALOG_SEPARATOR   {0, "----------", NULL, RG_DIALOG_FLAG_SKIP, NULL}
+#define RG_DIALOG_END         RG_DIALOG_CHOICE_LAST
 
 #define RG_DIALOG_CANCELLED -0x7654321
 
