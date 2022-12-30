@@ -1,4 +1,4 @@
-# Retro-Go 1.37 (2022-12-??)
+# Retro-Go 1.37 (2022-12-30)
 - SNES: Fixed controls menu labels
 - GEN: Small performance improvement
 - Launcher: Added tool to download updates
