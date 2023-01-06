@@ -6,7 +6,9 @@
 
 #define GITHUB_RELEASES_URL "https://api.github.com/repos/ducalex/retro-go/releases"
 
-#ifdef RG_TARGET_ODROID_GO
+#if defined(RG_TARGET_ODROID_GO)
+#define DOWNLOAD_LOCATION RG_STORAGE_ROOT "/odroid/firmware"
+#elif defined(RG_TARGET_RETRO_ESP32)
 #define DOWNLOAD_LOCATION RG_STORAGE_ROOT "/odroid/firmware"
 #else
 #define DOWNLOAD_LOCATION RG_STORAGE_ROOT "/espgbc/firmware"
