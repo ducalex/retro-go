@@ -15,6 +15,7 @@ void S9xSetupOBJ(void);
 void S9xUpdateScreen(void);
 void RenderLine(uint8_t line);
 void S9xBuildDirectColourMaps(void);
+void S9xBuildTileBitmasks(void);
 
 bool S9xInitGFX(void);
 void S9xDeinitGFX(void);
@@ -111,10 +112,6 @@ typedef struct
    int16_t CentreY;
 } SLineMatrixData;
 
-extern uint32_t even_high [4][16];
-extern uint32_t even_low  [4][16];
-extern uint32_t odd_high  [4][16];
-extern uint32_t odd_low   [4][16];
 extern SBG BG;
 extern uint16_t DirectColourMaps [8][256];
 

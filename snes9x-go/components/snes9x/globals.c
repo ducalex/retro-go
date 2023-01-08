@@ -10,8 +10,6 @@
 #include "gfx.h"
 #include "soundux.h"
 
-char String[513];
-
 SICPU ICPU;
 SCPUState CPU;
 
@@ -44,20 +42,6 @@ uint8_t* HDMABasePointers [8];
 SBG BG;
 
 SGFX GFX;
-SLineData LineData[240];
-SLineMatrixData LineMatrixData [240];
-
-uint8_t Mode7Depths [2];
-NormalTileRenderer DrawTilePtr = NULL;
-ClippedTileRenderer DrawClippedTilePtr = NULL;
-NormalTileRenderer DrawHiResTilePtr = NULL;
-ClippedTileRenderer DrawHiResClippedTilePtr = NULL;
-LargePixelRenderer DrawLargePixelPtr = NULL;
-
-uint32_t odd_high[4][16];
-uint32_t odd_low[4][16];
-uint32_t even_high[4][16];
-uint32_t even_low[4][16];
 
 #ifdef LAGFIX
 bool finishedFrame = false;
@@ -66,10 +50,6 @@ bool finishedFrame = false;
 #ifndef USE_BLARGG_APU
 SoundStatus so;
 #endif
-uint16_t SignExtend [2] =
-{
-   0x00, 0xff00
-};
 
 /*modified per anomie Mode 5 findings */
 int32_t HDMA_ModeByteCounts [8] =
@@ -77,98 +57,13 @@ int32_t HDMA_ModeByteCounts [8] =
    1, 2, 2, 4, 4, 4, 2, 4
 };
 
-uint8_t BitShifts[8][4] =
-{
-   {2, 2, 2, 2}, /* 0 */
-   {4, 4, 2, 0}, /* 1 */
-   {4, 4, 0, 0}, /* 2 */
-   {8, 4, 0, 0}, /* 3 */
-   {8, 2, 0, 0}, /* 4 */
-   {4, 2, 0, 0}, /* 5 */
-   {4, 0, 0, 0}, /* 6 */
-   {8, 0, 0, 0}  /* 7 */
-};
-uint8_t TileShifts[8][4] =
-{
-   {4, 4, 4, 4}, /* 0 */
-   {5, 5, 4, 0}, /* 1 */
-   {5, 5, 0, 0}, /* 2 */
-   {6, 5, 0, 0}, /* 3 */
-   {6, 4, 0, 0}, /* 4 */
-   {5, 4, 0, 0}, /* 5 */
-   {5, 0, 0, 0}, /* 6 */
-   {6, 0, 0, 0}  /* 7 */
-};
-uint8_t PaletteShifts[8][4] =
-{
-   {2, 2, 2, 2}, /* 0 */
-   {4, 4, 2, 0}, /* 1 */
-   {4, 4, 0, 0}, /* 2 */
-   {0, 4, 0, 0}, /* 3 */
-   {0, 2, 0, 0}, /* 4 */
-   {4, 2, 0, 0}, /* 5 */
-   {4, 0, 0, 0}, /* 6 */
-   {0, 0, 0, 0}  /* 7 */
-};
-uint8_t PaletteMasks[8][4] =
-{
-   {7, 7, 7, 7}, /* 0 */
-   {7, 7, 7, 0}, /* 1 */
-   {7, 7, 0, 0}, /* 2 */
-   {0, 7, 0, 0}, /* 3 */
-   {0, 7, 0, 0}, /* 4 */
-   {7, 7, 0, 0}, /* 5 */
-   {7, 0, 0, 0}, /* 6 */
-   {0, 0, 0, 0}  /* 7 */
-};
-uint8_t Depths[8][4] =
-{
-   {TILE_2BIT, TILE_2BIT, TILE_2BIT, TILE_2BIT}, /* 0 */
-   {TILE_4BIT, TILE_4BIT, TILE_2BIT, 0},         /* 1 */
-   {TILE_4BIT, TILE_4BIT, 0,         0},         /* 2 */
-   {TILE_8BIT, TILE_4BIT, 0,         0},         /* 3 */
-   {TILE_8BIT, TILE_2BIT, 0,         0},         /* 4 */
-   {TILE_4BIT, TILE_2BIT, 0,         0},         /* 5 */
-   {TILE_4BIT, 0,         0,         0},         /* 6 */
-   {0,         0,         0,         0}          /* 7 */
-};
-uint8_t BGSizes [2] =
-{
-   8, 16
-};
 uint16_t DirectColourMaps [8][256];
-
-int32_t FilterValues[4][2] =
-{
-   {0,    0},
-   {240,  0},
-   {488, -240},
-   {460, -208}
-};
 
 int32_t NoiseFreq [32] =
 {
    0, 16, 21, 25, 31, 42, 50, 63, 84, 100, 125, 167, 200, 250, 333,
    400, 500, 667, 800, 1000, 1300, 1600, 2000, 2700, 3200, 4000,
    5300, 6400, 8000, 10700, 16000, 32000
-};
-
-uint32_t HeadMask [4] =
-{
-#ifdef MSB_FIRST
-   0xffffffff, 0x00ffffff, 0x0000ffff, 0x000000ff
-#else
-   0xffffffff, 0xffffff00, 0xffff0000, 0xff000000
-#endif
-};
-
-uint32_t TailMask [5] =
-{
-#ifdef MSB_FIRST
-   0x00000000, 0xff000000, 0xffff0000, 0xffffff00, 0xffffffff
-#else
-   0x00000000, 0x000000ff, 0x0000ffff, 0x00ffffff, 0xffffffff
-#endif
 };
 
 uint8_t APUROM [64] =

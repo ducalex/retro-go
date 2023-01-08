@@ -29,7 +29,6 @@ static uint8_t FilterTapDefinitionBitfield;
 static uint32_t Z;
 static int32_t Loop [16];
 
-extern int32_t FilterValues[4][2];
 extern int32_t NoiseFreq [32];
 
 static const uint32_t AttackRate [16] =

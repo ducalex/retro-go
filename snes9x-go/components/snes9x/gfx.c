@@ -14,25 +14,77 @@
 
 void ComputeClipWindows(void);
 
-extern uint8_t BitShifts    [8][4];
-extern uint8_t TileShifts   [8][4];
-extern uint8_t PaletteShifts[8][4];
-extern uint8_t PaletteMasks [8][4];
-extern uint8_t Depths       [8][4];
-extern uint8_t BGSizes      [2];
-
-extern NormalTileRenderer  DrawTilePtr;
-extern ClippedTileRenderer DrawClippedTilePtr;
-extern NormalTileRenderer  DrawHiResTilePtr;
-extern ClippedTileRenderer DrawHiResClippedTilePtr;
-extern LargePixelRenderer  DrawLargePixelPtr;
+static uint8_t BitShifts[8][4] =
+{
+   {2, 2, 2, 2}, /* 0 */
+   {4, 4, 2, 0}, /* 1 */
+   {4, 4, 0, 0}, /* 2 */
+   {8, 4, 0, 0}, /* 3 */
+   {8, 2, 0, 0}, /* 4 */
+   {4, 2, 0, 0}, /* 5 */
+   {4, 0, 0, 0}, /* 6 */
+   {8, 0, 0, 0}  /* 7 */
+};
+static uint8_t TileShifts[8][4] =
+{
+   {4, 4, 4, 4}, /* 0 */
+   {5, 5, 4, 0}, /* 1 */
+   {5, 5, 0, 0}, /* 2 */
+   {6, 5, 0, 0}, /* 3 */
+   {6, 4, 0, 0}, /* 4 */
+   {5, 4, 0, 0}, /* 5 */
+   {5, 0, 0, 0}, /* 6 */
+   {6, 0, 0, 0}  /* 7 */
+};
+static uint8_t PaletteShifts[8][4] =
+{
+   {2, 2, 2, 2}, /* 0 */
+   {4, 4, 2, 0}, /* 1 */
+   {4, 4, 0, 0}, /* 2 */
+   {0, 4, 0, 0}, /* 3 */
+   {0, 2, 0, 0}, /* 4 */
+   {4, 2, 0, 0}, /* 5 */
+   {4, 0, 0, 0}, /* 6 */
+   {0, 0, 0, 0}  /* 7 */
+};
+static uint8_t PaletteMasks[8][4] =
+{
+   {7, 7, 7, 7}, /* 0 */
+   {7, 7, 7, 0}, /* 1 */
+   {7, 7, 0, 0}, /* 2 */
+   {0, 7, 0, 0}, /* 3 */
+   {0, 7, 0, 0}, /* 4 */
+   {7, 7, 0, 0}, /* 5 */
+   {7, 0, 0, 0}, /* 6 */
+   {0, 0, 0, 0}  /* 7 */
+};
+static uint8_t Depths[8][4] =
+{
+   {TILE_2BIT, TILE_2BIT, TILE_2BIT, TILE_2BIT}, /* 0 */
+   {TILE_4BIT, TILE_4BIT, TILE_2BIT, 0},         /* 1 */
+   {TILE_4BIT, TILE_4BIT, 0,         0},         /* 2 */
+   {TILE_8BIT, TILE_4BIT, 0,         0},         /* 3 */
+   {TILE_8BIT, TILE_2BIT, 0,         0},         /* 4 */
+   {TILE_4BIT, TILE_2BIT, 0,         0},         /* 5 */
+   {TILE_4BIT, 0,         0,         0},         /* 6 */
+   {0,         0,         0,         0}          /* 7 */
+};
+static uint8_t BGSizes [2] =
+{
+   8, 16
+};
+static NormalTileRenderer  DrawTilePtr;
+static ClippedTileRenderer DrawClippedTilePtr;
+static NormalTileRenderer  DrawHiResTilePtr;
+static ClippedTileRenderer DrawHiResClippedTilePtr;
+static LargePixelRenderer  DrawLargePixelPtr;
 
 extern SBG BG;
 
-extern SLineData LineData[240];
-extern SLineMatrixData LineMatrixData [240];
+static SLineData LineData[240];
+static SLineMatrixData LineMatrixData [240];
 
-extern uint8_t  Mode7Depths [2];
+static uint8_t  Mode7Depths [2];
 
 #define CLIP_10_BIT_SIGNED(a) \
    ((a) & ((1 << 10) - 1)) + (((((a) & (1 << 13)) ^ (1 << 13)) - (1 << 13)) >> 3)
@@ -108,101 +160,6 @@ void DrawLargePixel16Sub1_2(uint32_t Tile, int32_t Offset, uint32_t StartPixel, 
 
 bool S9xInitGFX(void)
 {
-   uint32_t r, g, b;
-   uint32_t PixelOdd = 1;
-   uint32_t PixelEven = 2;
-   uint8_t bitshift;
-   for (bitshift = 0; bitshift < 4; bitshift++)
-   {
-      int32_t i;
-      for (i = 0; i < 16; i++)
-      {
-         uint32_t h = 0;
-         uint32_t l = 0;
-
-#if defined(MSB_FIRST)
-         if (i & 8)
-            h |= (PixelOdd << 24);
-         if (i & 4)
-            h |= (PixelOdd << 16);
-         if (i & 2)
-            h |= (PixelOdd << 8);
-         if (i & 1)
-            h |= PixelOdd;
-         if (i & 8)
-            l |= (PixelOdd << 24);
-         if (i & 4)
-            l |= (PixelOdd << 16);
-         if (i & 2)
-            l |= (PixelOdd << 8);
-         if (i & 1)
-            l |= PixelOdd;
-#else
-         if (i & 8)
-            h |= PixelOdd;
-         if (i & 4)
-            h |= PixelOdd << 8;
-         if (i & 2)
-            h |= PixelOdd << 16;
-         if (i & 1)
-            h |= PixelOdd << 24;
-         if (i & 8)
-            l |= PixelOdd;
-         if (i & 4)
-            l |= PixelOdd << 8;
-         if (i & 2)
-            l |= PixelOdd << 16;
-         if (i & 1)
-            l |= PixelOdd << 24;
-#endif
-
-         odd_high[bitshift][i] = h;
-         odd_low[bitshift][i] = l;
-         h = l = 0;
-
-#if defined(MSB_FIRST)
-         if (i & 8)
-            h |= (PixelEven << 24);
-         if (i & 4)
-            h |= (PixelEven << 16);
-         if (i & 2)
-            h |= (PixelEven << 8);
-         if (i & 1)
-            h |= PixelEven;
-         if (i & 8)
-            l |= (PixelEven << 24);
-         if (i & 4)
-            l |= (PixelEven << 16);
-         if (i & 2)
-            l |= (PixelEven << 8);
-         if (i & 1)
-            l |= PixelEven;
-#else
-         if (i & 8)
-            h |= PixelEven;
-         if (i & 4)
-            h |= PixelEven << 8;
-         if (i & 2)
-            h |= PixelEven << 16;
-         if (i & 1)
-            h |= PixelEven << 24;
-         if (i & 8)
-            l |= PixelEven;
-         if (i & 4)
-            l |= PixelEven << 8;
-         if (i & 2)
-            l |= PixelEven << 16;
-         if (i & 1)
-            l |= PixelEven << 24;
-#endif
-
-         even_high[bitshift][i] = h;
-         even_low[bitshift][i] = l;
-      }
-      PixelEven <<= 2;
-      PixelOdd <<= 2;
-   }
-
    GFX.RealPitch = GFX.Pitch2 = GFX.Pitch;
    GFX.ZPitch = GFX.Pitch;
    GFX.ZPitch >>= 1;
@@ -221,6 +178,8 @@ bool S9xInitGFX(void)
    GFX.PPL = GFX.Pitch >> 1;
    GFX.PPLx2 = GFX.Pitch;
    S9xFixColourBrightness();
+
+   S9xBuildTileBitmasks();
 
 #ifndef NO_ZERO_LUT
    if (!(GFX.ZERO = (uint16_t*) malloc(sizeof(uint16_t) * 0x10000)))

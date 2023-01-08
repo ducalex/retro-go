@@ -8,7 +8,6 @@
 #define FIRST_VISIBLE_LINE 1
 
 extern uint8_t  GetBank;
-extern uint16_t SignExtend [2];
 
 #define TILE_2BIT 0
 #define TILE_4BIT 1
@@ -258,6 +257,8 @@ static INLINE void REGISTER_2104(uint8_t byte)
       int32_t addr = ((PPU.OAMAddr & 0x10f) << 1) + (PPU.OAMFlip & 1);
       if (byte != PPU.OAMData [addr])
       {
+         uint32_t SignExtend[2] = {0x00, 0xff00};
+
          SOBJ* pObj;
          FLUSH_REDRAW();
          PPU.OAMData [addr] = byte;
