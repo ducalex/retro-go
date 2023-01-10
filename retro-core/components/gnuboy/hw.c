@@ -386,12 +386,13 @@ static inline void mbc_write(unsigned a, byte b)
 			cart.enableram = ((b & 0x0F) == 0x0A);
 			break;
 		case 0x2000:
-			if ((b & 0x7F) == 0) b = 0x01;
-			cart.rombank = b & 0x7F;
+			cart.rombank = b & (cart.romsize - 1);
+			if (cart.rombank == 0)
+				cart.rombank = 1;
 			break;
 		case 0x4000:
 			cart.rtc.sel = b & 0x0f;
-			cart.rambank = b & 0x03;
+			cart.rambank = b & 0x07 & (cart.ramsize - 1);
 			break;
 		case 0x6000:
 			rtc_latch(b);
