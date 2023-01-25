@@ -64,6 +64,9 @@ static rg_gui_event_t scroll_mode_cb(rg_gui_option_t *option, rg_gui_event_t eve
 
     gui.scroll_mode %= SCROLL_MODE_COUNT;
 
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+        gui_redraw();
+
     strcpy(option->value, modes[gui.scroll_mode]);
     return RG_DIALOG_VOID;
 }
@@ -125,10 +128,20 @@ static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t ev
     if (event == RG_DIALOG_NEXT && ++gui.show_preview > max)
         gui.show_preview = 0;
 
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
-        gui_set_preview(gui_get_current_tab(), NULL);
-
     gui.show_preview %= PREVIEW_MODE_COUNT;
+
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
+        gui_set_preview(gui_get_current_tab(), NULL);
+        if (gui.browse)
+        {
+            // Ugly hack otherwise gui_load_preview will abort...
+            rg_input_wait_for_key(RG_KEY_ALL, false);
+            gui.joystick = 0;
+            gui_load_preview(gui_get_current_tab());
+        }
+        gui_redraw();
+    }
 
     strcpy(option->value, modes[gui.show_preview]);
     return RG_DIALOG_VOID;
@@ -142,6 +155,9 @@ static rg_gui_event_t color_theme_cb(rg_gui_option_t *option, rg_gui_event_t eve
         gui.color_theme = max;
     if (event == RG_DIALOG_NEXT && ++gui.color_theme > max)
         gui.color_theme = 0;
+
+    gui.color_theme %= gui_themes_count;
+
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
         gui_redraw();
 
@@ -169,12 +185,13 @@ static rg_gui_event_t launcher_options_cb(rg_gui_option_t *option, rg_gui_event_
     {
         const rg_gui_option_t options[] = {
             {0, "Color theme ", "...", 1, &color_theme_cb},
-            {0, "Scroll mode ", "...", 1, &scroll_mode_cb},
             {0, "Preview     ", "...", 1, &show_preview_cb},
+            {0, "Scroll mode ", "...", 1, &scroll_mode_cb},
             {0, "Start screen", "...", 1, &start_screen_cb},
             {0, "Hide tabs   ", "...", 1, &toggle_tabs_cb},
             RG_DIALOG_END,
         };
+        gui_redraw(); // clear main menu
         rg_gui_dialog("Launcher Options", options, 0);
     }
     return RG_DIALOG_VOID;
@@ -258,6 +275,7 @@ static rg_gui_event_t wifi_options_cb(rg_gui_option_t *option, rg_gui_event_t ev
             {0, "Time sync" , "On", 0, NULL},
             RG_DIALOG_END,
         };
+        gui_redraw(); // clear main menu
         rg_gui_dialog("Wifi Options", options, 0);
     }
     return RG_DIALOG_VOID;
