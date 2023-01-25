@@ -126,14 +126,14 @@ static inline uint32_t gamepad_read(void)
 
 #elif RG_GAMEPAD_DRIVER == 6
 
-    int *numkeys = 0;
+    int numkeys = 0;
     const uint8_t *keys = SDL_GetKeyboardState(&numkeys);
 
     for (size_t i = 0; i < keymap_size; ++i)
     {
         if (keymap[i].src < 0 || keymap[i].src >= numkeys)
             continue;
-        if (keys[keymap[i].map])
+        if (keys[keymap[i].src])
             state |= keymap[i].key;
     }
 
