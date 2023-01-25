@@ -59,7 +59,8 @@
 #define RG_GAMEPAD_DRIVER           3   // 1 = ODROID-GO, 2 = Serial, 3 = I2C, 4 = AW9523, 5 = ESPLAY-S3, 6 = SDL2
 #define RG_GAMEPAD_HAS_MENU_BTN     1
 #define RG_GAMEPAD_HAS_OPTION_BTN   0
-// Note: Depending on the driver, the button map can represent bits, registers, keys, or gpios.
+// Note: Depending on the driver, the button map can be a bitmask, an index, or a GPIO.
+// Refer to rg_input.c to see all available RG_KEY_*
 #define RG_GAMEPAD_MAP {\
     {RG_KEY_UP,     (1<<2)},\
     {RG_KEY_RIGHT,  (1<<5)},\

@@ -30,7 +30,8 @@
 #define RG_GAMEPAD_DRIVER           3   // 1 = ODROID-GO, 2 = Serial, 3 = I2C
 #define RG_GAMEPAD_HAS_MENU_BTN     1
 #define RG_GAMEPAD_HAS_OPTION_BTN   1
-// Note: Depending on the driver, the button map can represent bits, registers, keys, or gpios.
+// Note: Depending on the driver, the button map can be a bitmask, an index, or a GPIO.
+// Refer to rg_input.c to see all available RG_KEY_*
 #define RG_GAMEPAD_MAP {\
     {RG_KEY_UP,     (1<<2)},\
     {RG_KEY_RIGHT,  (1<<5)},\
@@ -59,11 +60,6 @@
 #define RG_GPIO_GAMEPAD_R           GPIO_NUM_41
 #define RG_GPIO_GAMEPAD_MENU        GPIO_NUM_42
 #define RG_GPIO_GAMEPAD_OPTION      GPIO_NUM_41
-
-// SNES-style gamepad
-// #define RG_GPIO_GAMEPAD_LATCH       GPIO_NUM_NC
-// #define RG_GPIO_GAMEPAD_CLOCK       GPIO_NUM_NC
-// #define RG_GPIO_GAMEPAD_DATA        GPIO_NUM_NC
 
 // SPI Display
 #define RG_GPIO_LCD_MISO            GPIO_NUM_NC
