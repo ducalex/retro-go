@@ -466,6 +466,21 @@ void gui_draw_list(tab_t *tab)
     {
         line_offset = (list->cursor / lines) * lines;
     }
+    else if (gui.scroll_mode == SCROLL_MODE_STICKY)
+    {
+        if (list->cursor < lines / 2)
+        {
+            line_offset = 0;
+        }
+        else if (list->cursor > list->length - (lines / 2))
+        {
+            line_offset = list->length - lines;
+        }
+        else
+        {
+            line_offset = list->cursor - (lines / 2);
+        }
+    }
     else // (gui.scroll_mode == SCROLL_MODE_CENTER)
     {
         line_offset = list->cursor - (lines / 2);

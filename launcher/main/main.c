@@ -54,7 +54,7 @@ static rg_gui_event_t toggle_tabs_cb(rg_gui_option_t *option, rg_gui_event_t eve
 
 static rg_gui_event_t scroll_mode_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    const char *modes[SCROLL_MODE_COUNT] = {"Center", "Paging"};
+    const char *modes[SCROLL_MODE_COUNT] = {"Center", "Paging", "Sticky"};
     const int max = SCROLL_MODE_COUNT - 1;
 
     if (event == RG_DIALOG_PREV && --gui.scroll_mode < 0)

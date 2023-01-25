@@ -13,6 +13,7 @@ typedef enum {
 typedef enum {
     SCROLL_MODE_CENTER,
     SCROLL_MODE_PAGING,
+    SCROLL_MODE_STICKY,
     // SCROLL_MODE_EDGE,
     SCROLL_MODE_COUNT,
 } scroll_mode_t;
