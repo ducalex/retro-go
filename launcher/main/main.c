@@ -118,6 +118,51 @@ static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t ev
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t color_theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    int max = gui_themes_count - 1;
+
+    if (event == RG_DIALOG_PREV && --gui.color_theme < 0)
+        gui.color_theme = max;
+    if (event == RG_DIALOG_NEXT && ++gui.color_theme > max)
+        gui.color_theme = 0;
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+        gui_redraw();
+
+    sprintf(option->value, "%d/%d", gui.color_theme + 1, max + 1);
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t startup_app_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    const char *modes[] = {"Last game", "Launcher"};
+    int max = 1;
+
+    if (event == RG_DIALOG_PREV && --gui.startup_mode < 0)
+        gui.startup_mode = max;
+    if (event == RG_DIALOG_NEXT && ++gui.startup_mode > max)
+        gui.startup_mode = 0;
+
+    strcpy(option->value, modes[gui.startup_mode % (max + 1)]);
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t launcher_options_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        const rg_gui_option_t options[] = {
+            {0, "Color theme ", "...", 1, &color_theme_cb},
+            {0, "Preview     ", "...", 1, &show_preview_cb},
+            {0, "Start screen", "...", 1, &start_screen_cb},
+            {0, "Hide tabs   ", "...", 1, &toggle_tabs_cb},
+            RG_DIALOG_END,
+        };
+        rg_gui_dialog("Launcher Options", options, 0);
+    }
+    return RG_DIALOG_VOID;
+}
+
 static rg_gui_event_t wifi_switch_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
@@ -198,35 +243,6 @@ static rg_gui_event_t wifi_options_cb(rg_gui_option_t *option, rg_gui_event_t ev
         };
         rg_gui_dialog("Wifi Options", options, 0);
     }
-    return RG_DIALOG_VOID;
-}
-
-static rg_gui_event_t color_theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    int max = gui_themes_count - 1;
-
-    if (event == RG_DIALOG_PREV && --gui.color_theme < 0)
-        gui.color_theme = max;
-    if (event == RG_DIALOG_NEXT && ++gui.color_theme > max)
-        gui.color_theme = 0;
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
-        gui_redraw();
-
-    sprintf(option->value, "%d/%d", gui.color_theme + 1, max + 1);
-    return RG_DIALOG_VOID;
-}
-
-static rg_gui_event_t startup_app_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    const char *modes[] = {"Last game", "Launcher"};
-    int max = 1;
-
-    if (event == RG_DIALOG_PREV && --gui.startup_mode < 0)
-        gui.startup_mode = max;
-    if (event == RG_DIALOG_NEXT && ++gui.startup_mode > max)
-        gui.startup_mode = 0;
-
-    strcpy(option->value, modes[gui.startup_mode % (max + 1)]);
     return RG_DIALOG_VOID;
 }
 
@@ -478,13 +494,10 @@ void app_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, " - Color    ", "...", 1, &color_theme_cb},
-        {0, "Preview     ", "...", 1, &show_preview_cb},
-        {0, "Start screen", "...", 1, &start_screen_cb},
-        {0, "Hide tabs   ", "...", 1, &toggle_tabs_cb},
         {0, "Startup app ", "...", 1, &startup_app_cb},
         {0, "Timezone    ", "...", 1, &timezone_cb},
-        {0, "Wi-Fi options...", NULL,  1, &wifi_options_cb},
+        {0, "Launcher options", NULL,  1, &launcher_options_cb},
+        {0, "Wi-Fi options", NULL,  1, &wifi_options_cb},
     #if !RG_GAMEPAD_HAS_OPTION_BTN
         RG_DIALOG_SEPARATOR,
         {0, "About Retro-Go", NULL,  1, &about_app_cb},
