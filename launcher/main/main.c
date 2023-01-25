@@ -85,29 +85,36 @@ static rg_gui_event_t timezone_cb(rg_gui_option_t *option, rg_gui_event_t event)
 
 static rg_gui_event_t start_screen_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    const char *modes[] = {"Auto", "Carousel", "Browser"};
-    int max = 2;
+    const char *modes[START_SCREEN_COUNT] = {"Auto", "Carousel", "Browser"};
+    const int max = START_SCREEN_COUNT - 1;
 
     if (event == RG_DIALOG_PREV && --gui.start_screen < 0)
         gui.start_screen = max;
     if (event == RG_DIALOG_NEXT && ++gui.start_screen > max)
         gui.start_screen = 0;
 
-    strcpy(option->value, modes[gui.start_screen % (max + 1)]);
+    gui.start_screen %= START_SCREEN_COUNT;
+
+    strcpy(option->value, modes[gui.start_screen]);
     return RG_DIALOG_VOID;
 }
 
 static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
+    const char *modes[] = {"None      ", "Cover,Save", "Save,Cover", "Cover only", "Save only "};
+    const int max = PREVIEW_MODE_COUNT - 1;
+
     if (event == RG_DIALOG_PREV && --gui.show_preview < 0)
-        gui.show_preview = PREVIEW_MODE_COUNT - 1;
-    if (event == RG_DIALOG_NEXT && ++gui.show_preview >= PREVIEW_MODE_COUNT)
+        gui.show_preview = max;
+    if (event == RG_DIALOG_NEXT && ++gui.show_preview > max)
         gui.show_preview = 0;
+
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
         gui_set_preview(gui_get_current_tab(), NULL);
 
-    const char *values[] = {"None      ", "Cover,Save", "Save,Cover", "Cover only", "Save only "};
-    strcpy(option->value, values[gui.show_preview % PREVIEW_MODE_COUNT]);
+    gui.show_preview %= PREVIEW_MODE_COUNT;
+
+    strcpy(option->value, modes[gui.show_preview]);
     return RG_DIALOG_VOID;
 }
 

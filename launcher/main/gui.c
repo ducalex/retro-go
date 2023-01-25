@@ -46,13 +46,14 @@ void gui_init(void)
         .startup_mode = rg_settings_get_number(NS_APP, SETTING_STARTUP_MODE, 0),
         .hidden_tabs  = rg_settings_get_string(NS_APP, SETTING_HIDDEN_TABS, ""),
         .color_theme  = rg_settings_get_number(NS_APP, SETTING_COLOR_THEME, 0),
-        .start_screen = rg_settings_get_number(NS_APP, SETTING_START_SCREEN, 0),
-        .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, 2),
+        .start_screen = rg_settings_get_number(NS_APP, SETTING_START_SCREEN, START_SCREEN_AUTO),
+        .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, PREVIEW_MODE_SAVE_COVER),
         .width        = rg_display_get_info()->screen.width,
         .height       = rg_display_get_info()->screen.height,
     };
     // Always enter browse mode when leaving an emulator
-    gui.browse = gui.start_screen == 2 || (!gui.start_screen && rg_system_get_app()->bootType == RG_RST_RESTART);
+    gui.browse = gui.start_screen == START_SCREEN_BROWSER ||
+                 (gui.start_screen == START_SCREEN_AUTO && rg_system_get_app()->bootType == RG_RST_RESTART);
     gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
     rg_gui_set_buffered(true);
 }
@@ -303,7 +304,7 @@ void gui_resize_list(tab_t *tab, int new_size)
         list->cursor = new_size ? new_size - 1 : 0;
 }
 
-void gui_scroll_list(tab_t *tab, scroll_mode_t mode, int arg)
+void gui_scroll_list(tab_t *tab, scroll_whence_t mode, int arg)
 {
     listbox_t *list = &tab->listbox;
 
