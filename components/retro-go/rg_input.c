@@ -16,6 +16,8 @@
 #include <driver/adc.h>
 #endif
 
+static const struct {int key, src;} keymap[] = RG_GAMEPAD_MAP;
+static const size_t keymap_size = RG_COUNT(keymap);
 static bool input_task_running = false;
 static uint32_t gamepad_state = -1; // _Atomic
 static int battery_level = -1;
@@ -55,13 +57,14 @@ static inline uint32_t gamepad_read(void)
     int joyX = adc1_get_raw(RG_GPIO_GAMEPAD_X);
     int joyY = adc1_get_raw(RG_GPIO_GAMEPAD_Y);
 
-    if (!gpio_get_level(RG_GPIO_GAMEPAD_MENU))   state |= RG_KEY_MENU;
-    if (!gpio_get_level(RG_GPIO_GAMEPAD_OPTION)) state |= RG_KEY_OPTION;
-    if (!gpio_get_level(RG_GPIO_GAMEPAD_SELECT)) state |= RG_KEY_SELECT;
-    if (!gpio_get_level(RG_GPIO_GAMEPAD_START))  state |= RG_KEY_START;
-    if (!gpio_get_level(RG_GPIO_GAMEPAD_A))      state |= RG_KEY_A;
-    if (!gpio_get_level(RG_GPIO_GAMEPAD_B))      state |= RG_KEY_B;
+    // Buttons
+    for (size_t i = 0; i < keymap_size; ++i)
+    {
+        if (!gpio_get_level(keymap[i].src))
+            state |= keymap[i].key;
+    }
 
+    // D-PAD
     #ifndef RG_TARGET_RETRO_ESP32
         if (joyY > 2048 + 1024) state |= RG_KEY_UP;
         else if (joyY > 1024)   state |= RG_KEY_DOWN;
@@ -72,10 +75,6 @@ static inline uint32_t gamepad_read(void)
         else if (joyY > 1024) state |= RG_KEY_DOWN;
         if (joyX > 2048) state |= RG_KEY_LEFT;
         else if (joyX > 1024) state |= RG_KEY_RIGHT;
-        if (state == (RG_KEY_SELECT|RG_KEY_A))
-            state = RG_KEY_OPTION;
-        if (state == (RG_KEY_START|RG_KEY_SELECT))
-            state = RG_KEY_MENU;
     #endif
 
 #elif RG_GAMEPAD_DRIVER == 2  // Serial
@@ -94,20 +93,12 @@ static inline uint32_t gamepad_read(void)
         gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 1);
         usleep(1);
     }
-    if (buttons & RG_GAMEPAD_MAP_MENU) state |= RG_KEY_MENU;
-    if (buttons & RG_GAMEPAD_MAP_OPTION) state |= RG_KEY_OPTION;
-    if (buttons & RG_GAMEPAD_MAP_START) state |= RG_KEY_START;
-    if (buttons & RG_GAMEPAD_MAP_SELECT) state |= RG_KEY_SELECT;
-    if (buttons & RG_GAMEPAD_MAP_UP) state |= RG_KEY_UP;
-    if (buttons & RG_GAMEPAD_MAP_RIGHT) state |= RG_KEY_RIGHT;
-    if (buttons & RG_GAMEPAD_MAP_DOWN) state |= RG_KEY_DOWN;
-    if (buttons & RG_GAMEPAD_MAP_LEFT) state |= RG_KEY_LEFT;
-    if (buttons & RG_GAMEPAD_MAP_A) state |= RG_KEY_A;
-    if (buttons & RG_GAMEPAD_MAP_B) state |= RG_KEY_B;
-    if (buttons & RG_GAMEPAD_MAP_X) state |= RG_KEY_X;
-    if (buttons & RG_GAMEPAD_MAP_Y) state |= RG_KEY_Y;
-    if (buttons & RG_GAMEPAD_MAP_L) state |= RG_KEY_L;
-    if (buttons & RG_GAMEPAD_MAP_R) state |= RG_KEY_R;
+
+    for (size_t i = 0; i < keymap_size; ++i)
+    {
+        if ((buttons & keymap[i].src) == keymap[i].src)
+            state |= keymap[i].key;
+    }
 
 #elif RG_GAMEPAD_DRIVER == 3  // I2C
 
@@ -116,67 +107,46 @@ static inline uint32_t gamepad_read(void)
     {
         uint32_t buttons = ~((data[2] << 8) | data[1]);
 
-        if (buttons & RG_GAMEPAD_MAP_MENU) state |= RG_KEY_MENU;
-        if (buttons & RG_GAMEPAD_MAP_OPTION) state |= RG_KEY_OPTION;
-        if (buttons & RG_GAMEPAD_MAP_START) state |= RG_KEY_START;
-        if (buttons & RG_GAMEPAD_MAP_SELECT) state |= RG_KEY_SELECT;
-        if (buttons & RG_GAMEPAD_MAP_UP) state |= RG_KEY_UP;
-        if (buttons & RG_GAMEPAD_MAP_RIGHT) state |= RG_KEY_RIGHT;
-        if (buttons & RG_GAMEPAD_MAP_DOWN) state |= RG_KEY_DOWN;
-        if (buttons & RG_GAMEPAD_MAP_LEFT) state |= RG_KEY_LEFT;
-        if (buttons & RG_GAMEPAD_MAP_A) state |= RG_KEY_A;
-        if (buttons & RG_GAMEPAD_MAP_B) state |= RG_KEY_B;
-        if (buttons & RG_GAMEPAD_MAP_X) state |= RG_KEY_X;
-        if (buttons & RG_GAMEPAD_MAP_Y) state |= RG_KEY_Y;
-        if (buttons & RG_GAMEPAD_MAP_L) state |= RG_KEY_L;
-        if (buttons & RG_GAMEPAD_MAP_R) state |= RG_KEY_R;
+        for (size_t i = 0; i < keymap_size; ++i)
+        {
+            if ((buttons & keymap[i].src) == keymap[i].src)
+                state |= keymap[i].key;
+        }
     }
 
 #elif RG_GAMEPAD_DRIVER == 4  // I2C via AW9523
 
     uint32_t buttons = ~(rg_i2c_gpio_read_port(0) | rg_i2c_gpio_read_port(1) << 8);
 
-    if (buttons & RG_GAMEPAD_MAP_MENU) state |= RG_KEY_MENU;
-    if (buttons & RG_GAMEPAD_MAP_OPTION) state |= RG_KEY_OPTION;
-    if (buttons & RG_GAMEPAD_MAP_START) state |= RG_KEY_START;
-    if (buttons & RG_GAMEPAD_MAP_SELECT) state |= RG_KEY_SELECT;
-    if (buttons & RG_GAMEPAD_MAP_UP) state |= RG_KEY_UP;
-    if (buttons & RG_GAMEPAD_MAP_RIGHT) state |= RG_KEY_RIGHT;
-    if (buttons & RG_GAMEPAD_MAP_DOWN) state |= RG_KEY_DOWN;
-    if (buttons & RG_GAMEPAD_MAP_LEFT) state |= RG_KEY_LEFT;
-    if (buttons & RG_GAMEPAD_MAP_A) state |= RG_KEY_A;
-    if (buttons & RG_GAMEPAD_MAP_B) state |= RG_KEY_B;
-    if (buttons & RG_GAMEPAD_MAP_X) state |= RG_KEY_X;
-    if (buttons & RG_GAMEPAD_MAP_Y) state |= RG_KEY_Y;
-    if (buttons & RG_GAMEPAD_MAP_L) state |= RG_KEY_L;
-    if (buttons & RG_GAMEPAD_MAP_R) state |= RG_KEY_R;
+    for (size_t i = 0; i < keymap_size; ++i)
+    {
+        if ((buttons & keymap[i].src) == keymap[i].src)
+            state |= keymap[i].key;
+    }
 
 #elif RG_GAMEPAD_DRIVER == 6
 
-    const uint8_t *keys = SDL_GetKeyboardState(NULL);
+    int *numkeys = 0;
+    const uint8_t *keys = SDL_GetKeyboardState(&numkeys);
 
-    if (keys[RG_GAMEPAD_MAP_MENU]) state |= RG_KEY_MENU;
-    if (keys[RG_GAMEPAD_MAP_OPTION]) state |= RG_KEY_OPTION;
-    if (keys[RG_GAMEPAD_MAP_START]) state |= RG_KEY_START;
-    if (keys[RG_GAMEPAD_MAP_SELECT]) state |= RG_KEY_SELECT;
-    if (keys[RG_GAMEPAD_MAP_UP]) state |= RG_KEY_UP;
-    if (keys[RG_GAMEPAD_MAP_LEFT]) state |= RG_KEY_LEFT;
-    if (keys[RG_GAMEPAD_MAP_DOWN]) state |= RG_KEY_DOWN;
-    if (keys[RG_GAMEPAD_MAP_RIGHT]) state |= RG_KEY_RIGHT;
-    if (keys[RG_GAMEPAD_MAP_A]) state |= RG_KEY_A;
-    if (keys[RG_GAMEPAD_MAP_B]) state |= RG_KEY_B;
-    if (keys[RG_GAMEPAD_MAP_X]) state |= RG_KEY_X;
-    if (keys[RG_GAMEPAD_MAP_Y]) state |= RG_KEY_Y;
-    if (keys[RG_GAMEPAD_MAP_L]) state |= RG_KEY_L;
-    if (keys[RG_GAMEPAD_MAP_R]) state |= RG_KEY_R;
+    for (size_t i = 0; i < keymap_size; ++i)
+    {
+        if (keymap[i].src < 0 || keymap[i].src >= numkeys)
+            continue;
+        if (keys[keymap[i].map])
+            state |= keymap[i].key;
+    }
 
 #endif
 
     // Virtual buttons (combos) to replace essential missing buttons.
 #if !RG_GAMEPAD_HAS_MENU_BTN
-    state &= ~RG_KEY_MENU;
-    if (state == (RG_KEY_START|RG_KEY_SELECT))
+    if (state == (RG_KEY_SELECT|RG_KEY_START))
         state = RG_KEY_MENU;
+#endif
+#if !RG_GAMEPAD_HAS_OPTION_BTN
+    if (state == (RG_KEY_SELECT|RG_KEY_A))
+        state = RG_KEY_OPTION;
 #endif
 
     return state;

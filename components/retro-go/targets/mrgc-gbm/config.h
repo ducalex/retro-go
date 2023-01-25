@@ -2,11 +2,11 @@
 // Original firmware source code: GBA ESP32 link on https://www.myretrogamecase.com/pages/retro-handheld-gaming-firmware
 // Source code is in the "esplay-base-firmware" directory of the .rar archive in the above link.
 
-// Note: As of Late 2022, the owner of this shop has vanished from the net. Orders may not be fulfilled. 
+// Note: As of Late 2022, the owner of this shop has vanished from the net. Orders may not be fulfilled.
 
 // Known issues:
 // Battery meter needs to be configured.
-// Cropping most noticeable on NES, SNES, Genesis, PC Engine. 
+// Cropping most noticeable on NES, SNES, Genesis, PC Engine.
 // Scaling option for above should eventually be removed or changed if downscaling is added.
 // Disk LED does nothing (or isn't mapped yet) and should be removed for this target.
 // Sometimes takes more than one attempt to flash. (Stock bootloader problem? Hardware?)
@@ -52,18 +52,17 @@
  * With the plastic shell, the buttons are: S/P,    Reset,  Sound,  On/Off
  * Left to right, these buttons are:        (1<<0), (1<<1), (1<<8), null?
  */
-#define RG_GAMEPAD_MAP_MENU         (1<<8) 
-#define RG_GAMEPAD_MAP_OPTION       (0)
-#define RG_GAMEPAD_MAP_START        (1<<1)
-#define RG_GAMEPAD_MAP_SELECT       (1<<0)
-#define RG_GAMEPAD_MAP_UP           (1<<2)
-#define RG_GAMEPAD_MAP_RIGHT        (1<<5)
-#define RG_GAMEPAD_MAP_DOWN         (1<<3)
-#define RG_GAMEPAD_MAP_LEFT         (1<<4)
-#define RG_GAMEPAD_MAP_A            (1<<6)
-#define RG_GAMEPAD_MAP_B            (1<<7)
-#define RG_GAMEPAD_MAP_X            (0)
-#define RG_GAMEPAD_MAP_Y            (0)
+#define RG_GAMEPAD_MAP {\
+    {RG_KEY_UP,     (1<<2)},\
+    {RG_KEY_RIGHT,  (1<<5)},\
+    {RG_KEY_DOWN,   (1<<3)},\
+    {RG_KEY_LEFT,   (1<<4)},\
+    {RG_KEY_SELECT, (1<<0)},\
+    {RG_KEY_START,  (1<<1)},\
+    {RG_KEY_MENU,   (1<<8)},\
+    {RG_KEY_A,      (1<<6)},\
+    {RG_KEY_B,      (1<<7)},\
+}
 
 // Battery
 // #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0 // Default 0, commented out.

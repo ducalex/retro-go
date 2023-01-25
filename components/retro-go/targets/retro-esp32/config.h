@@ -28,8 +28,16 @@
 
 // Input
 #define RG_GAMEPAD_DRIVER           1   // 1 = ODROID-GO, 2 = Serial, 3 = I2C, 4 = AW9523, 5 = ESPLAY-S3, 6 = SDL2
-#define RG_GAMEPAD_HAS_MENU_BTN     1
+#define RG_GAMEPAD_HAS_MENU_BTN     0
 #define RG_GAMEPAD_HAS_OPTION_BTN   0
+#define RG_GAMEPAD_MAP {\
+    {RG_KEY_SELECT, RG_GPIO_GAMEPAD_SELECT},\
+    {RG_KEY_START,  RG_GPIO_GAMEPAD_START},\
+    {RG_KEY_A,      RG_GPIO_GAMEPAD_A},\
+    {RG_KEY_B,      RG_GPIO_GAMEPAD_B},\
+}
+
+// Battery
 #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)

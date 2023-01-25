@@ -32,20 +32,22 @@
 #define RG_GAMEPAD_HAS_MENU_BTN     1
 #define RG_GAMEPAD_HAS_OPTION_BTN   1
 // Note: Depending on the driver, the button map can represent bits, registers, keys, or gpios.
-#define RG_GAMEPAD_MAP_MENU         SDL_SCANCODE_ESCAPE
-#define RG_GAMEPAD_MAP_OPTION       SDL_SCANCODE_TAB
-#define RG_GAMEPAD_MAP_START        SDL_SCANCODE_SPACE
-#define RG_GAMEPAD_MAP_SELECT       SDL_SCANCODE_0
-#define RG_GAMEPAD_MAP_UP           SDL_SCANCODE_UP
-#define RG_GAMEPAD_MAP_RIGHT        SDL_SCANCODE_RIGHT
-#define RG_GAMEPAD_MAP_DOWN         SDL_SCANCODE_DOWN
-#define RG_GAMEPAD_MAP_LEFT         SDL_SCANCODE_LEFT
-#define RG_GAMEPAD_MAP_A            SDL_SCANCODE_Z
-#define RG_GAMEPAD_MAP_B            SDL_SCANCODE_X
-#define RG_GAMEPAD_MAP_X            SDL_SCANCODE_A
-#define RG_GAMEPAD_MAP_Y            SDL_SCANCODE_S
-#define RG_GAMEPAD_MAP_L            SDL_SCANCODE_Q
-#define RG_GAMEPAD_MAP_R            SDL_SCANCODE_W
+#define RG_GAMEPAD_MAP {\
+    {RG_KEY_UP,     SDL_SCANCODE_UP},\
+    {RG_KEY_RIGHT,  SDL_SCANCODE_RIGHT},\
+    {RG_KEY_DOWN,   SDL_SCANCODE_DOWN},\
+    {RG_KEY_LEFT,   SDL_SCANCODE_LEFT},\
+    {RG_KEY_SELECT, SDL_SCANCODE_0},\
+    {RG_KEY_START,  SDL_SCANCODE_SPACE},\
+    {RG_KEY_MENU,   SDL_SCANCODE_ESCAPE},\
+    {RG_KEY_OPTION, SDL_SCANCODE_TAB},\
+    {RG_KEY_A,      SDL_SCANCODE_Z},\
+    {RG_KEY_B,      SDL_SCANCODE_X},\
+    {RG_KEY_X,      SDL_SCANCODE_A},\
+    {RG_KEY_Y,      SDL_SCANCODE_S},\
+    {RG_KEY_L,      SDL_SCANCODE_Q},\
+    {RG_KEY_R,      SDL_SCANCODE_W},\
+}
 
 // Battery
 // #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0
