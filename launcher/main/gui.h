@@ -11,6 +11,13 @@ typedef enum {
 } start_screen_t;
 
 typedef enum {
+    SCROLL_MODE_CENTER,
+    SCROLL_MODE_PAGING,
+    // SCROLL_MODE_EDGE,
+    SCROLL_MODE_COUNT,
+} scroll_mode_t;
+
+typedef enum {
     TAB_ACTION,
     TAB_BACK,
     TAB_SCROLL,
@@ -117,6 +124,7 @@ typedef struct {
     int color_theme;
     int start_screen;
     int show_preview;
+    int scroll_mode;
     int width;
     int height;
     image_t images[128];

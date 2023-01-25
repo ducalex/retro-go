@@ -52,6 +52,22 @@ static rg_gui_event_t toggle_tabs_cb(rg_gui_option_t *option, rg_gui_event_t eve
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t scroll_mode_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    const char *modes[SCROLL_MODE_COUNT] = {"Center", "Paging"};
+    const int max = SCROLL_MODE_COUNT - 1;
+
+    if (event == RG_DIALOG_PREV && --gui.scroll_mode < 0)
+        gui.scroll_mode = max;
+    if (event == RG_DIALOG_NEXT && ++gui.scroll_mode > max)
+        gui.scroll_mode = 0;
+
+    gui.scroll_mode %= SCROLL_MODE_COUNT;
+
+    strcpy(option->value, modes[gui.scroll_mode]);
+    return RG_DIALOG_VOID;
+}
+
 static rg_gui_event_t timezone_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
@@ -153,6 +169,7 @@ static rg_gui_event_t launcher_options_cb(rg_gui_option_t *option, rg_gui_event_
     {
         const rg_gui_option_t options[] = {
             {0, "Color theme ", "...", 1, &color_theme_cb},
+            {0, "Scroll mode ", "...", 1, &scroll_mode_cb},
             {0, "Preview     ", "...", 1, &show_preview_cb},
             {0, "Start screen", "...", 1, &start_screen_cb},
             {0, "Hide tabs   ", "...", 1, &toggle_tabs_cb},

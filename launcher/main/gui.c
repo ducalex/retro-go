@@ -29,6 +29,7 @@ retro_gui_t gui;
 #define SETTING_THEME           "Theme"
 #define SETTING_COLOR_THEME     "ColorTheme"
 #define SETTING_SHOW_PREVIEW    "ShowPreview"
+#define SETTING_SCROLL_MODE     "ScrollMode"
 #define SETTING_HIDDEN_TABS     "HiddenTabs"
 #define SETTING_HIDE_TAB(name)  strcat((char[99]){"HideTab."}, (name))
 
@@ -48,6 +49,7 @@ void gui_init(void)
         .color_theme  = rg_settings_get_number(NS_APP, SETTING_COLOR_THEME, 0),
         .start_screen = rg_settings_get_number(NS_APP, SETTING_START_SCREEN, START_SCREEN_AUTO),
         .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, PREVIEW_MODE_SAVE_COVER),
+        .scroll_mode  = rg_settings_get_number(NS_APP, SETTING_SCROLL_MODE, SCROLL_MODE_CENTER),
         .width        = rg_display_get_info()->screen.width,
         .height       = rg_display_get_info()->screen.height,
     };
@@ -226,6 +228,7 @@ void gui_save_config(void)
     rg_settings_set_number(NS_APP, SETTING_SELECTED_TAB, gui.selected_tab);
     rg_settings_set_number(NS_APP, SETTING_START_SCREEN, gui.start_screen);
     rg_settings_set_number(NS_APP, SETTING_SHOW_PREVIEW, gui.show_preview);
+    rg_settings_set_number(NS_APP, SETTING_SCROLL_MODE, gui.scroll_mode);
     rg_settings_set_number(NS_APP, SETTING_COLOR_THEME, gui.color_theme);
     rg_settings_set_number(NS_APP, SETTING_STARTUP_MODE, gui.startup_mode);
     rg_settings_set_string(NS_APP, SETTING_HIDDEN_TABS, gui.hidden_tabs);
@@ -326,15 +329,15 @@ void gui_scroll_list(tab_t *tab, scroll_whence_t mode, int arg)
     }
     else if (mode == SCROLL_PAGE)
     {
-        int start = list->items[cur_cursor].text[0];
+        // int start = list->items[cur_cursor].text[0];
         int direction = arg > 0 ? 1 : -1;
-        for (int max = max_visible_lines(tab, NULL) - 2; max > 0; --max)
+        for (int max = max_visible_lines(tab, NULL); max > 0; --max)
         {
             cur_cursor += direction;
             if (cur_cursor < 0 || cur_cursor >= list->length)
                 break;
-            if (start != list->items[cur_cursor].text[0])
-                break;
+            // if (start != list->items[cur_cursor].text[0])
+            //     break;
         }
     }
 
@@ -448,6 +451,7 @@ void gui_draw_list(tab_t *tab)
     const listbox_t *list = &tab->listbox;
     int line_height, top = HEADER_HEIGHT + 6;
     int lines = max_visible_lines(tab, &line_height);
+    int line_offset = 0;
 
     if (tab->navpath)
     {
@@ -458,9 +462,18 @@ void gui_draw_list(tab_t *tab)
 
     top += ((gui.height - top) - (lines * line_height)) / 2;
 
+    if (gui.scroll_mode == SCROLL_MODE_PAGING)
+    {
+        line_offset = (list->cursor / lines) * lines;
+    }
+    else // (gui.scroll_mode == SCROLL_MODE_CENTER)
+    {
+        line_offset = list->cursor - (lines / 2);
+    }
+
     for (int i = 0; i < lines; i++)
     {
-        int idx = list->cursor + i - (lines / 2);
+        int idx = line_offset + i;
         int selected = idx == list->cursor;
         char *label = (idx >= 0 && idx < list->length) ? list->items[idx].text : "";
         top += rg_gui_draw_text(0, top, gui.width, label, fg[selected], bg[selected], 0).height;
