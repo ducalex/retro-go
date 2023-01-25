@@ -31,7 +31,7 @@
 #define RG_GAMEPAD_HAS_MENU_BTN     0
 #define RG_GAMEPAD_HAS_OPTION_BTN   0
 // Note: Depending on the driver, the button map can be a bitmask, an index, or a GPIO.
-// Refer to rg_input.c to see all available RG_KEY_*
+// Refer to rg_input.h to see all available RG_KEY_*
 #define RG_GAMEPAD_MAP {\
     {RG_KEY_SELECT, RG_GPIO_GAMEPAD_SELECT},\
     {RG_KEY_START,  RG_GPIO_GAMEPAD_START},\
