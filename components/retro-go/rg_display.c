@@ -355,7 +355,7 @@ static void lcd_init(void)
     ILI9341_CMD(0xC0, {0x26});                                  // Power control 
     ILI9341_CMD(0xC1, {0x11});                                  // Power control  
     ILI9341_CMD(0xC5, {0x35, 0x3E});                            // VCM control
-    ILI9341_CMD(0x36, {(0x20|0x80|0x08)});                      // Memory Access Control
+    ILI9341_CMD(0x36, {(0x20|0x08)});                           // Memory Access Control
     ILI9341_CMD(0x3A, {0x55});                                  // Pixel Format Set RGB565
     ILI9341_CMD(0xB1, {0x00, 0x1B});                            // Frame Rate Control (1B=70, 1F=61, 10=119)
     ILI9341_CMD(0xB6, {0x0A, 0xA2});                            // Display Function Control
@@ -369,8 +369,8 @@ static void lcd_init(void)
     ILI9341_CMD(0x2C, {0x00}); 
     ILI9341_CMD(0xB7, {0x07});
     ILI9341_CMD(0xB6, {0x0A, 0x82, 0x27, 0x00});    
-    ILI9341_CMD(0x11, {0x80});                                   //Exit Sleep
-    ILI9341_CMD(0x29, {0x80});                                   //Display on
+    ILI9341_CMD(0x11, {0x80});                                  //Exit Sleep
+    ILI9341_CMD(0x29, {0x80});                        
 #else
     #error "LCD init sequence is not defined for this device!"
 #endif
