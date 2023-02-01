@@ -197,6 +197,7 @@ static rg_gui_event_t launcher_options_cb(rg_gui_option_t *option, rg_gui_event_
     return RG_DIALOG_VOID;
 }
 
+#ifdef RG_ENABLE_NETWORKING
 static rg_gui_event_t wifi_switch_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
@@ -237,7 +238,7 @@ static rg_gui_event_t wifi_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
         gui_redraw();
     }
     return RG_DIALOG_VOID;
- }
+}
 
 static rg_gui_event_t webui_switch_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
@@ -290,11 +291,14 @@ static rg_gui_event_t updater_cb(rg_gui_option_t *option, rg_gui_event_t event)
     }
     return RG_DIALOG_VOID;
 }
+#endif
 
 static void show_about_menu(void)
 {
     const rg_gui_option_t options[] = {
+    #ifdef RG_ENABLE_NETWORKING
         {0, "Check for updates", NULL, 1, &updater_cb},
+    #endif
         RG_DIALOG_END,
     };
     rg_gui_about_menu(options);
@@ -532,7 +536,9 @@ void app_main(void)
         {0, "Startup app ", "...", 1, &startup_app_cb},
         {0, "Timezone    ", "...", 1, &timezone_cb},
         {0, "Launcher options", NULL,  1, &launcher_options_cb},
+    #ifdef RG_ENABLE_NETWORKING
         {0, "Wi-Fi options", NULL,  1, &wifi_options_cb},
+    #endif
     #if !RG_GAMEPAD_HAS_OPTION_BTN
         RG_DIALOG_SEPARATOR,
         {0, "About Retro-Go", NULL,  1, &about_app_cb},
