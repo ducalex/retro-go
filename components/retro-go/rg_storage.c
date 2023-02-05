@@ -14,7 +14,7 @@
 #include <esp_vfs_fat.h>
 #endif
 
-#if defined(__MINGW32__) || defined(__MINGW64__)
+#if defined(_WIN32) || defined(_WIN64)
 #define mkdir(A, B) mkdir(A)
 #endif
 

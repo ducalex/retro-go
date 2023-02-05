@@ -1,6 +1,7 @@
 #include "rg_system.h"
 #include "gui.h"
 
+#include <malloc.h>
 #include <string.h>
 #include <cJSON.h>
 

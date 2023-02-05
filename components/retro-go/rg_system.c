@@ -863,7 +863,7 @@ void rg_system_switch_app(const char *partition, const char *name, const char *a
         rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, flags);
         rg_settings_commit();
     }
-
+#ifndef RG_TARGET_SDL2
     esp_err_t err = esp_ota_set_boot_partition(esp_partition_find_first(
             ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partition));
     if (err != ESP_OK)
@@ -871,7 +871,7 @@ void rg_system_switch_app(const char *partition, const char *name, const char *a
         RG_LOGE("esp_ota_set_boot_partition returned 0x%02X!\n", err);
         RG_PANIC("Unable to set boot app!");
     }
-
+#endif
     rg_system_restart();
 }
 

@@ -1,4 +1,3 @@
-#include <sys/param.h>
 #include <stdlib.h>
 #include <string.h>
 #include "gnuboy.h"

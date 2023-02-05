@@ -21,7 +21,7 @@
 //  - Fields: Controller Type, Bus Conflicts, VsSystemType, PpuModel
 //  - Combined work ram and save ram
 
-#include "nes/nes.h"
+// #include "nes/nes.h"
 
 typedef struct __attribute__((packed))
 {
