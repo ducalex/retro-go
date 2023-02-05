@@ -231,9 +231,10 @@ static void lcd_init(void)
 #endif
 
 #define ILI9341_CMD(cmd, data...) {const uint8_t x[] = data; ili9341_cmd(cmd, x, sizeof(x));}
+    ILI9341_CMD(0x01, {});      // Reset
+    usleep(5 * 1000);           // Wait 5ms after reset
+    ILI9341_CMD(0x3A, {0X05});  // Pixel Format Set RGB565
 #if RG_SCREEN_TYPE == 0 // LCD Model (ODROID-GO)
-    ILI9341_CMD(0x01, {});     // Reset
-    ILI9341_CMD(0x3A, {0x55}); // Pixel Format Set RGB565
     ILI9341_CMD(0xCF, {0x00, 0xc3, 0x30});
     ILI9341_CMD(0xED, {0x64, 0x03, 0x12, 0x81});
     ILI9341_CMD(0xE8, {0x85, 0x00, 0x78});
@@ -252,12 +253,8 @@ static void lcd_init(void)
     ILI9341_CMD(0x26, {0x01});                                  // Gamma curve selected
     ILI9341_CMD(0xE0, {0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, 0x4E, 0xF1, 0x37, 0x07, 0x10, 0x03, 0x0E, 0x09, 0x00}); // Set Gamma
     ILI9341_CMD(0xE1, {0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F}); // Set Gamma
-    ILI9341_CMD(0x11, {}); // Exit Sleep
-    ILI9341_CMD(0x29, {}); // Display on
 #elif RG_SCREEN_TYPE == 1 // LCD Model (MRGC-G32)
-    ILI9341_CMD(0x01, {});     // Reset
-    ILI9341_CMD(0x3A, {0x55}); // Pixel Format Set RGB565
-    ILI9341_CMD(0x36, {(0x00|0x00|0x00)});
+    ILI9341_CMD(0x36, {0x00});
     ILI9341_CMD(0xB1, {0x00, 0x10});                            // Frame Rate Control (1B=70, 1F=61, 10=119)
     ILI9341_CMD(0xB2, {0x0c, 0x0c, 0x00, 0x33, 0x33});
     ILI9341_CMD(0xB7, {0x35});
@@ -270,20 +267,10 @@ static void lcd_init(void)
     ILI9341_CMD(0xD0, {0xA4, 0xA1});
     ILI9341_CMD(0xE0, {0xD0, 0x00, 0x03, 0x09, 0x13, 0x1C, 0x3A, 0x55, 0x48, 0x18, 0x12, 0x0E, 0x19, 0x1E});
     ILI9341_CMD(0xE1, {0xD0, 0x00, 0x03, 0x09, 0x05, 0x25, 0x3A, 0x55, 0x50, 0x3D, 0x1C, 0x1D, 0x1D, 0x1E});
-    ILI9341_CMD(0x11, {}); // Exit Sleep
-    ILI9341_CMD(0x29, {}); // Display on
 #elif RG_SCREEN_TYPE == 2 // LCD Model (QT-PY Gamer)
-    ILI9341_CMD(0x01, {});     // Reset
-    ILI9341_CMD(0x11, {}); // Exit Sleep
-    ILI9341_CMD(0x3A, {0x55}); // Pixel Format Set RGB565
     ILI9341_CMD(0x36, {0xC0});
-    ILI9341_CMD(0x2A, {0, 0, 0, 240}); // CASET
-    ILI9341_CMD(0x2B, {0, 0, 320>>8, 320&0xFF}); // RASET
-    ILI9341_CMD(0x21, {});
-    ILI9341_CMD(0x29, {}); // Display on
+    ILI9341_CMD(0x21, {}); // Invert colors
 #elif RG_SCREEN_TYPE == 32 // LCD Model (Retro-ESP32)
-    ILI9341_CMD(0x01, {});     // Reset
-    ILI9341_CMD(0x3A, {0x55}); // Pixel Format Set RGB565
     ILI9341_CMD(0xCF, {0x00, 0xc3, 0x30});
     ILI9341_CMD(0xED, {0x64, 0x03, 0x12, 0x81});
     ILI9341_CMD(0xE8, {0x85, 0x00, 0x78});
@@ -294,9 +281,7 @@ static void lcd_init(void)
     ILI9341_CMD(0xC1, {0x12});                                  // Power control   //SAP[2:0];BT[3:0]
     ILI9341_CMD(0xC5, {0x32, 0x3C});                            // VCM control
     ILI9341_CMD(0xC7, {0x91});                                  // VCM control2
-    ILI9341_CMD(0x36, {(0x20|0x80|0x08)});                      // Memory Access Control
     ILI9341_CMD(0x36, {(0x40|0x80|0x08)});                      // Memory Access Control
-    //ILI9341_CMD(0x21, {0x80});                                  // invert colors
     ILI9341_CMD(0xB1, {0x00, 0x10});                            // Frame Rate Control (1B=70, 1F=61, 10=119)
     ILI9341_CMD(0xB6, {0x0A, 0xA2});                            // Display Function Control
     ILI9341_CMD(0xF6, {0x01, 0x30});
@@ -304,12 +289,7 @@ static void lcd_init(void)
     ILI9341_CMD(0x26, {0x01});                                  // Gamma curve selected
     ILI9341_CMD(0xE0, {0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, 0x4E, 0xF1, 0x37, 0x07, 0x10, 0x03, 0x0E, 0x09, 0x00}); // Set Gamma
     ILI9341_CMD(0xE1, {0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F}); // Set Gamma
-    ILI9341_CMD(0x11, {}); // Exit Sleep
-    ILI9341_CMD(0x29, {}); // Display on
 #elif RG_SCREEN_TYPE == 4
-	ILI9341_CMD(0x01, {});  // Reset
-	usleep(120 * 1000);
-	ILI9341_CMD(0x3A, {0X05});  //65k mode
 	ILI9341_CMD(0xC5, {0x1A}); //VCOM
 	ILI9341_CMD(0x36, {0x60}); //Display Rotation
 	ILI9341_CMD(0xB2, {0x05, 0x05, 0x00, 0x33, 0x33});  //Porch Setting
@@ -325,16 +305,10 @@ static void lcd_init(void)
 	ILI9341_CMD(0xE9, {0x09,0x09,0x08});  //Equalize time control
 	ILI9341_CMD(0xE0, {0xD0,0x05,0x09,0x09,0x08,0x14,0x28,0x33,0x3F,0x07,0x13,0x14,0x28,0x30});   //Set Gamma
 	ILI9341_CMD(0xE1, {0xD0, 0x05, 0x09, 0x09, 0x08, 0x03, 0x24, 0x32, 0x32, 0x3B, 0x14, 0x13, 0x28, 0x2F, 0x1F});   //Set Gamma
-	ILI9341_CMD(0x20, {0x00});   //Reverse Display
-	ILI9341_CMD(0x11, {0x03});   //Exit Sleep
-	ILI9341_CMD(0x29, {0x03});   //Display on
-	usleep(100 * 1000);
 #elif RG_SCREEN_TYPE == 5 // Game Box Mini Screen
-    ILI9341_CMD(0x3A, {0x55}); // Pixel Format Set RGB565
-    ILI9341_CMD(0x0c, {0x0c, 0x00, 0x33, 0x33});
     ILI9341_CMD(0xB7, {0x72});
     ILI9341_CMD(0xBB, {0x3d});
-    ILI9341_CMD(0xC0, {0x2C});                                  // Power control 
+    ILI9341_CMD(0xC0, {0x2C});                                  // Power control
     ILI9341_CMD(0xC2, {0x01, 0xFF});
     ILI9341_CMD(0xC3, {0x19});
     ILI9341_CMD(0xC4, {0x20});
@@ -342,12 +316,13 @@ static void lcd_init(void)
     ILI9341_CMD(0xD0, {0xA4, 0xA1});
     ILI9341_CMD(0xE0, {0xD0, 0x00, 0x05, 0x0E, 0x15, 0x0D, 0x37, 0x43, 0x47, 0x09, 0x15, 0x12, 0x16, 0x19}); // Set Gamma
     ILI9341_CMD(0xE1, {0xD0, 0x00, 0x05, 0x0D, 0x0C, 0x06, 0x2D, 0x44, 0x40, 0x0E, 0x1C, 0x18, 0x16, 0x19}); // Set Gamma
-    ILI9341_CMD(0x21, {0x80});   
-    ILI9341_CMD(0x11, {0x80}); // Exit Sleep
-    ILI9341_CMD(0x29, {0x80}); // Display on
+    ILI9341_CMD(0x21, {}); // Invert colors
 #else
     #error "LCD init sequence is not defined for this device!"
 #endif
+    ILI9341_CMD(0x11, {}); // Exit Sleep
+    usleep(5 * 1000);      // Wait 5ms after sleep out
+    ILI9341_CMD(0x29, {}); // Display on
 
     rg_display_clear(C_BLACK);
     rg_task_delay(10);
@@ -380,8 +355,6 @@ static void lcd_set_window(int left, int top, int width, int height)
     ili9341_cmd(0x2A, (uint8_t[]){left >> 8, left & 0xff, right >> 8, right & 0xff}, 4); // Horiz
     ili9341_cmd(0x2B, (uint8_t[]){top >> 8, top & 0xff, bottom >> 8, bottom & 0xff}, 4); // Vert
     ili9341_cmd(0x2C, NULL, 0); // Memory write
-    // if (height > 1)
-    //     ili9341_cmd(0x3C, NULL, 0); // Memory write continue
 }
 
 static inline unsigned blend_pixels(unsigned a, unsigned b)
