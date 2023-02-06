@@ -3,7 +3,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #ifndef RG_TARGET_SDL2
 #include <freertos/FreeRTOS.h>

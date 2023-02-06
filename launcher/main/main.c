@@ -486,7 +486,7 @@ static void retro_loop(void)
         }
         else if (gui.idle_counter)
         {
-            usleep(10000);
+            rg_task_delay(10);
         }
 
         rg_system_tick(0);

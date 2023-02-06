@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 #include <time.h>
 #include <math.h>
 
@@ -343,7 +342,7 @@ void app_main(void)
         {
             if (!menuCancelled)
             {
-                usleep(50 * 1000);
+                rg_task_delay(50);
                 rg_gui_game_menu();
                 rg_audio_set_sample_rate(app->sampleRate * app->speed);
             }

@@ -83,7 +83,7 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t 
         rg_settings_set_number(NS_APP, SETTING_PALETTE, pal);
         gnuboy_set_palette(pal);
         gnuboy_run(true);
-        usleep(50000);
+        rg_task_delay(50);
     }
 
     if (pal == GB_PALETTE_DMG)

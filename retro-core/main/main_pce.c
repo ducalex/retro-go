@@ -160,7 +160,7 @@ static void audioTask(void *arg)
     {
         // TODO: Clearly we need to add a better way to remain in sync with the main task...
         while (emulationPaused)
-            usleep(20 * 1000);
+            rg_task_delay(20);
         psg_update((void*)audioBuffer, AUDIO_BUFFER_LENGTH, downsample);
         rg_audio_submit(audioBuffer, AUDIO_BUFFER_LENGTH);
     }

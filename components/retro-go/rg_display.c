@@ -175,8 +175,6 @@ static void ili9341_cmd(uint8_t cmd, const void *data, size_t data_len)
     spi_queue_transaction(&cmd, 1, 0);
     if (data && data_len > 0)
         spi_queue_transaction(data, data_len, 1);
-    // if ((cmd & 0xE0) == 0x00)
-    //     usleep(5000);
 }
 
 static void lcd_set_backlight(double percent)
