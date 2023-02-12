@@ -62,8 +62,7 @@ This method is intended to be used when .fw support isn't available (when portin
 # Usage
 
 ## Game covers
-Game covers should be placed in the `romart` folder at the base of your sd card. You can obtain a pre-made pack from
-this repository or from the release page. Retro-Go is also compatible with the older Go-Play romart pack.
+Game covers should be placed in the `romart` folder at the base of your sd card. You can obtain a pre-made pack [here](https://github.com/ducalex/retro-go-covers). Retro-Go is also compatible with the older Go-Play romart pack.
 
 You can add missing cover art by creating a PNG image (160x168, 8bit) named according to the following scheme:
 `/romart/nes/A/ABCDE123.png` where `nes` is the same as the rom folder, and `ABCDE123` is the CRC32 of the game
