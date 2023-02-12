@@ -10,6 +10,8 @@
 #include "targets/sdl2/config.h"
 #elif defined(RG_TARGET_MRGC_GBM)
 #include "targets/mrgc-gbm/config.h"
+#elif defined(RG_TARGET_ESPLAY_MICRO)
+#include "targets/esplay-micro/config.h"
 #else
 #warning "No target defined. Defaulting to ODROID-GO."
 #include "targets/odroid-go/config.h"
