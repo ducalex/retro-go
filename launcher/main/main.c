@@ -229,7 +229,8 @@ static rg_gui_event_t wifi_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
         if (sel != RG_DIALOG_CANCELLED)
         {
             rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, sel);
-            if (rg_network_wifi_load_config(sel))
+            rg_network_wifi_load_config(sel);
+            if (wifi_get_switch())
             {
                 rg_network_wifi_stop();
                 rg_network_wifi_start();
@@ -255,6 +256,7 @@ static rg_gui_event_t wifi_access_point_cb(rg_gui_option_t *option, rg_gui_event
     {
         if (rg_gui_confirm("Wi-Fi AP", "Start access point?\n\nSSID: retro-go\nPassword: retro-go", true))
         {
+            // We don't care about wifi_get_switch() here, we're starting the AP anyway.
             rg_network_wifi_stop();
             rg_network_wifi_set_config("retro-go", "retro-go", 6, 1);
             rg_network_wifi_start();

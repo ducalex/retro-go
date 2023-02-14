@@ -182,10 +182,12 @@ fail:
 
 void rg_network_wifi_stop(void)
 {
-    memset(network.name, 0, 32);
+    RG_ASSERT(initialized, "Please call rg_network_init() first");
 #ifdef RG_ENABLE_NETWORKING
     esp_wifi_stop();
+    rg_task_delay(100);
 #endif
+    memset(network.name, 0, 32);
 }
 
 rg_network_t rg_network_get_info(void)
