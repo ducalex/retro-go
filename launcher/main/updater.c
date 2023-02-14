@@ -1,6 +1,7 @@
 #include "rg_system.h"
 #include "gui.h"
 
+#ifdef RG_ENABLE_NETWORKING
 #include <malloc.h>
 #include <string.h>
 #include <cJSON.h>
@@ -191,3 +192,4 @@ void updater_show_dialog(void)
         free(releases[i].assets);
     free(releases);
 }
+#endif

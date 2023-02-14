@@ -16,12 +16,6 @@
 static httpd_handle_t server;
 static char *http_buffer;
 
-static bool wifi_state = true;
-static bool webui_state = true;
-
-static const char *SETTING_WEBUI = "HTTPFileServer";
-static const char *SETTING_WIFI = "WiFi";
-
 static char *urldecode(const char *str)
 {
     char *new_string = strdup(str);
@@ -262,35 +256,4 @@ void webui_start(void)
     RG_LOGI("Web server started");
 }
 
-void wifi_set_switch(bool enable)
-{
-    rg_settings_set_number(NS_APP, SETTING_WIFI, enable);
-    wifi_state = enable;
-
-    if (wifi_state)
-        rg_network_wifi_start();
-    else
-        rg_network_wifi_stop();
-}
-
-bool wifi_get_switch(void)
-{
-    return rg_settings_get_number(NS_APP, SETTING_WIFI, wifi_state);
-}
-
-void webui_set_switch(bool enable)
-{
-    rg_settings_set_number(NS_APP, SETTING_WEBUI, enable);
-    webui_state = enable;
-
-    if (webui_state)
-        webui_start();
-    else
-        webui_stop();
-}
-
-bool webui_get_switch(void)
-{
-    return rg_settings_get_number(NS_APP, SETTING_WEBUI, webui_state);
-}
 #endif

@@ -14,20 +14,16 @@
 #include "bookmarks.h"
 #include "music.h"
 #include "gui.h"
-#include "webui.h"
-#include "timezones.h"
+#include "wifi.h"
 #include "updater.h"
-
-#define MAX_AP_LIST 5
-
-static const char *SETTING_WIFI_SLOT = "slot";
+#include "timezones.h"
 
 static rg_app_t *app;
 
 static rg_gui_event_t toggle_tab_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     tab_t *tab = gui.tabs[option->arg];
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT || event == RG_DIALOG_ENTER)
     {
         tab->enabled = !tab->enabled;
     }
@@ -198,88 +194,12 @@ static rg_gui_event_t launcher_options_cb(rg_gui_option_t *option, rg_gui_event_
 }
 
 #ifdef RG_ENABLE_NETWORKING
-static rg_gui_event_t wifi_switch_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
-        wifi_set_switch(!wifi_get_switch());
-    }
-    strcpy(option->value, wifi_get_switch() ? "On " : "Off");
-    return RG_DIALOG_VOID;
-}
-
-static rg_gui_event_t wifi_select_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-    {
-        rg_gui_option_t options[MAX_AP_LIST + 2];
-        rg_gui_option_t *opt = options;
-
-        for (size_t i = 0; i < MAX_AP_LIST; i++)
-        {
-            char slot[6];
-            sprintf(slot, "ssid%d", i);
-            char *ap_name = rg_settings_get_string(NS_WIFI, slot, NULL);
-            *opt++ = (rg_gui_option_t){i, ap_name ?: "(empty)", NULL, ap_name ? 1 : 0, NULL};
-        }
-        char *ap_name = rg_settings_get_string(NS_WIFI, "ssid", NULL);
-        *opt++ = (rg_gui_option_t){-1, ap_name ?: "(empty)", NULL, ap_name ? 1 : 0, NULL};
-        *opt++ = (rg_gui_option_t)RG_DIALOG_END;
-
-        int sel = rg_gui_dialog("Select saved AP", options, rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, 0));
-        if (sel != RG_DIALOG_CANCELLED)
-        {
-            rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, sel);
-            rg_network_wifi_load_config(sel);
-            if (wifi_get_switch())
-            {
-                rg_network_wifi_stop();
-                rg_network_wifi_start();
-            }
-        }
-        gui_redraw();
-    }
-    return RG_DIALOG_VOID;
-}
-
-static rg_gui_event_t webui_switch_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
-        webui_set_switch(!webui_get_switch());
-    }
-    strcpy(option->value, webui_get_switch() ? "On " : "Off");
-    return RG_DIALOG_VOID;
-}
-
-static rg_gui_event_t wifi_access_point_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-    {
-        if (rg_gui_confirm("Wi-Fi AP", "Start access point?\n\nSSID: retro-go\nPassword: retro-go", true))
-        {
-            // We don't care about wifi_get_switch() here, we're starting the AP anyway.
-            rg_network_wifi_stop();
-            rg_network_wifi_set_config("retro-go", "retro-go", 6, 1);
-            rg_network_wifi_start();
-        }
-    }
-    return RG_DIALOG_VOID;
-}
-
 static rg_gui_event_t wifi_options_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
     {
-        const rg_gui_option_t options[] = {
-            {0, "Wi-Fi"       , "...", 1, &wifi_switch_cb},
-            {0, "Wi-Fi select", "...", 1, &wifi_select_cb},
-            {0, "Wi-Fi Access Point", NULL, 1, &wifi_access_point_cb},
-            RG_DIALOG_SEPARATOR,
-            {0, "File server" , "...", 1, &webui_switch_cb},
-            {0, "Time sync" , "On", 0, NULL},
-            RG_DIALOG_END,
-        };
-        gui_redraw(); // clear main menu
-        rg_gui_dialog("Wifi Options", options, 0);
+        wifi_show_dialog();
+        gui_redraw();
     }
     return RG_DIALOG_VOID;
 }
@@ -330,9 +250,7 @@ static void retro_loop(void)
     music_init();
 
 #ifdef RG_ENABLE_NETWORKING
-    rg_network_init();
-    wifi_set_switch(wifi_get_switch());
-    webui_set_switch(webui_get_switch());
+    wifi_init();
 #endif
 
     tab = gui_get_current_tab();
