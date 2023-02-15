@@ -11,7 +11,7 @@
 static bool wifi_enable = false;
 static bool webui_enable = false;
 
-static const char *SETTING_WIFI = "Enable";
+static const char *SETTING_WIFI_ENABLE = "Enable";
 static const char *SETTING_WIFI_SLOT = "Slot";
 static const char *SETTING_WEBUI = "HTTPFileServer";
 static const size_t MAX_AP_LIST = 5;
@@ -41,7 +41,7 @@ static rg_gui_event_t wifi_switch_cb(rg_gui_option_t *option, rg_gui_event_t eve
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT || event == RG_DIALOG_ENTER)
     {
         wifi_toggle(!wifi_enable);
-        rg_settings_set_number(NS_WIFI, SETTING_WIFI, wifi_enable);
+        rg_settings_set_number(NS_WIFI, SETTING_WIFI_ENABLE, wifi_enable);
     }
     strcpy(option->value, wifi_enable ? "On " : "Off");
     return RG_DIALOG_VOID;
@@ -121,7 +121,7 @@ void wifi_show_dialog(void)
 void wifi_init(void)
 {
     rg_network_init();
-    wifi_toggle(rg_settings_get_number(NS_WIFI, SETTING_WIFI, true));
+    wifi_toggle(rg_settings_get_number(NS_WIFI, SETTING_WIFI_ENABLE, true));
     webui_toggle(rg_settings_get_number(NS_APP, SETTING_WEBUI, true));
 }
 #endif
