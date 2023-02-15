@@ -206,7 +206,7 @@ void nes_main(void)
     autocrop = rg_settings_get_number(NS_APP, SETTING_AUTOCROP, 0);
     palette = rg_settings_get_number(NS_APP, SETTING_PALETTE, 0);
 
-    nes = nes_init(SYS_DETECT, AUDIO_SAMPLE_RATE, true);
+    nes = nes_init(SYS_DETECT, app->sampleRate, true);
     if (!nes)
     {
         RG_PANIC("Init failed.");

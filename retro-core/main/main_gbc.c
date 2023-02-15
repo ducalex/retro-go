@@ -252,7 +252,7 @@ void gbc_main(void)
         RG_LOGE("Unable to create SRAM folder...");
 
     // Initialize the emulator
-    if (gnuboy_init(AUDIO_SAMPLE_RATE, true, GB_PIXEL_565_BE, &blit_frame) < 0)
+    if (gnuboy_init(app->sampleRate, true, GB_PIXEL_565_BE, &blit_frame) < 0)
         RG_PANIC("EMulator init failed!");
 
     // Load ROM

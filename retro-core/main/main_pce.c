@@ -11,10 +11,7 @@
 #include <psg.h>
 
 #undef AUDIO_SAMPLE_RATE
-#undef AUDIO_BUFFER_LENGTH
-
 #define AUDIO_SAMPLE_RATE 22050
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 / 5)
 
 static bool emulationPaused = false; // This should probably be a mutex
 static int current_height = 0;
@@ -154,15 +151,16 @@ void osd_input_read(uint8_t joypads[8])
 
 static void audioTask(void *arg)
 {
-    RG_LOGI("task started.");
+    const size_t numSamples = 62; // TODO: Find the best value
 
+    RG_LOGI("task started. numSamples=%d.", numSamples);
     while (1)
     {
         // TODO: Clearly we need to add a better way to remain in sync with the main task...
         while (emulationPaused)
             rg_task_delay(20);
-        psg_update((void*)audioBuffer, AUDIO_BUFFER_LENGTH, downsample);
-        rg_audio_submit(audioBuffer, AUDIO_BUFFER_LENGTH);
+        psg_update((void*)audioBuffer, numSamples, downsample);
+        rg_audio_submit(audioBuffer, numSamples);
     }
 
     rg_task_delete(NULL);
@@ -230,7 +228,7 @@ void pce_main(void)
     }
     free(palette);
 
-    InitPCE(AUDIO_SAMPLE_RATE, true, app->romPath);
+    InitPCE(app->sampleRate, true, app->romPath);
 
     if (app->bootFlags & RG_BOOT_RESUME)
     {
