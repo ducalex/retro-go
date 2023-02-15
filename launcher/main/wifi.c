@@ -14,7 +14,7 @@ static bool webui_enable = false;
 static const char *SETTING_WIFI = "Enable";
 static const char *SETTING_WIFI_SLOT = "Slot";
 static const char *SETTING_WEBUI = "HTTPFileServer";
-static const int MAX_AP_LIST = 5;
+static const size_t MAX_AP_LIST = 5;
 
 static void wifi_toggle(bool enable)
 {
