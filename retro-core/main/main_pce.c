@@ -81,9 +81,9 @@ void osd_vsync(void)
         skipFrames--;
     }
 
-    int32_t frameTime = 1000000 / 60 / app->speed;
     int64_t curtime = rg_system_timer();
-    int32_t sleep = frameTime - (curtime - lasttime);
+    int frameTime = 1000000 / 60 / app->speed;
+    int sleep = frameTime - (curtime - lasttime);
 
     if (sleep > frameTime)
     {
