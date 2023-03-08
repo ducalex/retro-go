@@ -4,11 +4,24 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef RG_TARGET_SDL2
+#ifdef RG_TARGET_SDL2
+#include <SDL2/SDL.h>
+#define CREATE_DEVICE_LOCK()
+#define ACQUIRE_DEVICE(timeout) (1)
+#define RELEASE_DEVICE()
+#else
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
-#else
-#include <SDL2/SDL.h>
+#define CREATE_DEVICE_LOCK() audioDevLock = audioDevLock ?: xSemaphoreCreateMutex()
+#define ACQUIRE_DEVICE(timeout)                        \
+    ({                                                 \
+        int x = xSemaphoreTake(audioDevLock, timeout); \
+        if (!x)                                        \
+            RG_LOGE("Failed to acquire lock!\n");      \
+        x;                                             \
+    })
+#define RELEASE_DEVICE() xSemaphoreGive(audioDevLock)
+static SemaphoreHandle_t audioDevLock;
 #endif
 
 #if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
@@ -47,35 +60,18 @@ static const rg_audio_sink_t sinks[] = {
 
 static rg_audio_t audio;
 static rg_audio_counters_t counters;
-
-static SemaphoreHandle_t audioDevLock;
 static int64_t dummyBusyUntil = 0;
 
 static const char *SETTING_OUTPUT = "AudioSink";
 static const char *SETTING_VOLUME = "Volume";
 static const char *SETTING_FILTER = "AudioFilter";
 
-#ifndef RG_TARGET_SDL2
-#define ACQUIRE_DEVICE(timeout)                        \
-    ({                                                 \
-        int x = xSemaphoreTake(audioDevLock, timeout); \
-        if (!x)                                        \
-            RG_LOGE("Failed to acquire lock!\n");      \
-        x;                                             \
-    })
-#define RELEASE_DEVICE() xSemaphoreGive(audioDevLock);
-#else
-#define ACQUIRE_DEVICE(timeout) (1)
-#define RELEASE_DEVICE()
-#endif
 
 void rg_audio_init(int sampleRate)
 {
     RG_ASSERT(audio.sink == NULL, "Audio sink already initialized!");
 
-    if (audioDevLock == NULL)
-        audioDevLock = xSemaphoreCreateMutex();
-
+    CREATE_DEVICE_LOCK();
     ACQUIRE_DEVICE(1000);
 
     int sinkType = (int)rg_settings_get_number(NS_GLOBAL, SETTING_OUTPUT, sinks[0].type);
