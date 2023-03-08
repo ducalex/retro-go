@@ -5,19 +5,23 @@
 #include <gnuboy.h>
 
 static bool fullFrame = false;
-static long skipFrames = 20; // The 20 is to hide startup flicker in some games
+static int skipFrames = 20; // The 20 is to hide startup flicker in some games
 
 static const char *sramFile;
-static long autoSaveSRAM = 0;
-static long autoSaveSRAM_Timer = 0;
+static int autoSaveSRAM = 0;
+static int autoSaveSRAM_Timer = 0;
+static int useSystemTime = true;
 
 static const char *SETTING_SAVESRAM = "SaveSRAM";
 static const char *SETTING_PALETTE  = "Palette";
+static const char *SETTING_SYSTIME = "SysTime";
 // --- MAIN
 
 
-static void set_rtc_time(void)
+static void update_rtc_time(void)
 {
+    if (!useSystemTime)
+        return;
     time_t timer = time(NULL);
     struct tm *info = localtime(&timer);
     gnuboy_set_time(info->tm_yday, info->tm_hour, info->tm_min, info->tm_sec);
@@ -41,10 +45,12 @@ static bool load_state_handler(const char *filename)
         // which is a hard reset and load sram if present
         gnuboy_reset(true);
         gnuboy_load_sram(sramFile);
+        update_rtc_time();
 
         return false;
     }
-    set_rtc_time();
+
+    update_rtc_time();
 
     skipFrames = 0;
     autoSaveSRAM_Timer = 0;
@@ -56,13 +62,11 @@ static bool load_state_handler(const char *filename)
 static bool reset_handler(bool hard)
 {
     gnuboy_reset(hard);
+    update_rtc_time();
 
     fullFrame = false;
     skipFrames = 20;
     autoSaveSRAM_Timer = 0;
-
-    if (hard)
-        set_rtc_time();
 
     return true;
 }
@@ -115,7 +119,7 @@ static rg_gui_event_t sram_autosave_cb(rg_gui_option_t *option, rg_gui_event_t e
     }
 
     if (autoSaveSRAM == 0) strcpy(option->value, "Off ");
-    else sprintf(option->value, "%3lds", autoSaveSRAM);
+    else sprintf(option->value, "%3ds", autoSaveSRAM);
 
     return RG_DIALOG_VOID;
 }
@@ -245,7 +249,8 @@ void gbc_main(void)
 
     rg_display_set_source_format(GB_WIDTH, GB_HEIGHT, 0, 0, GB_WIDTH * 2, RG_PIXEL_565_BE);
 
-    autoSaveSRAM = rg_settings_get_number(NS_APP, SETTING_SAVESRAM, 0);
+    useSystemTime = (int)rg_settings_get_number(NS_APP, SETTING_SYSTIME, 1);
+    autoSaveSRAM = (int)rg_settings_get_number(NS_APP, SETTING_SAVESRAM, 0);
     sramFile = rg_emu_get_path(RG_PATH_SAVE_SRAM, app->romPath);
 
     if (!rg_storage_mkdir(rg_dirname(sramFile)))
@@ -276,8 +281,7 @@ void gbc_main(void)
     else
         gnuboy_load_sram(sramFile);
 
-    // Do this after loading a state, to overwrite the RTC
-    set_rtc_time();
+    update_rtc_time();
 
     // Don't show palette option for GBC
     if (gnuboy_get_hwtype() == GB_HW_CGB)
