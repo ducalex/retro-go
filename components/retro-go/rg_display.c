@@ -191,9 +191,9 @@ static void lcd_set_backlight(double percent)
 #endif
 
     if (error_code)
-        RG_LOGE("failed setting backlight to %.2f%% (0x%02X)\n", 100 * level, error_code);
+        RG_LOGE("failed setting backlight to %d%% (0x%02X)\n", (int)(100 * level), error_code);
     else
-        RG_LOGI("backlight set to %.2f%%\n", 100 * level);
+        RG_LOGI("backlight set to %d%%\n", (int)(100 * level));
 }
 
 static void lcd_set_window(int left, int top, int width, int height)

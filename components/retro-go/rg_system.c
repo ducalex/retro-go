@@ -234,18 +234,19 @@ static void system_monitor_task(void *arg)
                 rg_system_set_led((ledState = 0));
         }
 
-        RG_LOGX("STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%.2f, FPS:%.2f (SKIP:%d, PART:%d, FULL:%d), BATT:%.2f\n",
+        // Try to avoid complex conversions that could allocate, prefer rounding/ceiling if necessary.
+        RG_LOGX("STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (SKIP:%d, PART:%d, FULL:%d), BATT:%d\n",
             statistics.freeStackMain,
             statistics.freeMemoryInt / 1024,
             statistics.freeMemoryExt / 1024,
             statistics.freeBlockInt / 1024,
             statistics.freeBlockExt / 1024,
-            statistics.busyPercent,
-            statistics.totalFPS,
-            (int)(statistics.skippedFPS + 0.9f),
-            (int)(statistics.totalFPS - statistics.skippedFPS - statistics.fullFPS + 0.9f),
-            (int)(statistics.fullFPS + 0.9f),
-            batteryPercent);
+            (int)(statistics.busyPercent + 0.5f),
+            (int)(statistics.totalFPS + 0.5f),
+            (int)(statistics.skippedFPS + 0.5f),
+            (int)(statistics.totalFPS - statistics.skippedFPS - statistics.fullFPS + 0.5f),
+            (int)(statistics.fullFPS + 0.5f),
+            (int)(batteryPercent + 0.5f));
 
         if ((wdtCounter -= loopTime_us) <= 0)
         {

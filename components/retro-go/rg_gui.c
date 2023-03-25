@@ -502,11 +502,11 @@ void rg_gui_draw_status_bars(void)
     if (!app->initialized || app->isLauncher)
         return;
 
-    snprintf(header, 100, "SPEED: %.0f%% (%.0f/%.0f) / BUSY: %.0f%%",
-        round(stats.totalFPS / app->refreshRate * 100.f),
-        round(stats.totalFPS - stats.skippedFPS),
-        round(stats.totalFPS),
-        round(stats.busyPercent));
+    snprintf(header, 100, "SPEED: %d%% (%d/%d) / BUSY: %d%%",
+        (int)round(stats.totalFPS / app->refreshRate * 100.f),
+        (int)round(stats.totalFPS - stats.skippedFPS),
+        (int)round(stats.totalFPS),
+        (int)round(stats.busyPercent));
 
     if (app->romPath && strlen(app->romPath) > max_len)
         snprintf(footer, 100, "...%s", app->romPath + (strlen(app->romPath) - (max_len - 3)));
