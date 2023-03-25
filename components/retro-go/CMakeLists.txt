@@ -14,7 +14,6 @@ register_component()
 component_compile_options(
     -DLODEPNG_NO_COMPILE_ANCILLARY_CHUNKS
     -DLODEPNG_NO_COMPILE_ERROR_TEXT
-    -DRG_REPLACE_PRINTF_FUNCTIONS
     -Os
     -Wno-unused-function
 )
