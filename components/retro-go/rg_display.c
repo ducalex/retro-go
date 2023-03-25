@@ -37,7 +37,6 @@ static rg_display_counters_t counters;
 static rg_display_config_t config;
 static rg_display_osd_t osd;
 static rg_display_t display;
-static int current_x, current_y;
 static struct
 {
     uint8_t start  : 1; // Indicates this line or column is safe to start an update on
@@ -180,16 +179,6 @@ static void ili9341_cmd(uint8_t cmd, const void *data, size_t data_len)
         spi_queue_transaction(data, data_len, 1);
 }
 
-static inline lcd_buffer_t lcd_get_buffer(void)
-{
-#ifdef RG_TARGET_SDL2
-    static uint16_t buffer[RG_SCREEN_WIDTH * 8];
-    return (lcd_buffer_t){&buffer, RG_COUNT(buffer)};
-#else
-    return (lcd_buffer_t){spi_get_buffer(), SPI_BUFFER_LENGTH};
-#endif
-}
-
 static void lcd_set_backlight(double percent)
 {
     double level = RG_MIN(RG_MAX(percent / 100.0, 0), 1.0);
@@ -207,35 +196,45 @@ static void lcd_set_backlight(double percent)
         RG_LOGI("backlight set to %.2f%%\n", 100 * level);
 }
 
+static void lcd_set_window(int left, int top, int width, int height)
+{
+    int right = left + width - 1;
+    int bottom = top + height - 1;
+
+    if (left < 0 || top < 0 || right >= RG_SCREEN_WIDTH || bottom >= RG_SCREEN_HEIGHT)
+    {
+        RG_LOGW("Bad lcd window (x0=%d, y0=%d, x1=%d, y1=%d)\n", left, top, right, bottom);
+    }
+
+    ili9341_cmd(0x2A, (uint8_t[]){left >> 8, left & 0xff, right >> 8, right & 0xff}, 4); // Horiz
+    ili9341_cmd(0x2B, (uint8_t[]){top >> 8, top & 0xff, bottom >> 8, bottom & 0xff}, 4); // Vert
+    ili9341_cmd(0x2C, NULL, 0); // Memory write
+}
+
+static inline void lcd_send_data(const void *buffer, size_t length)
+{
+    spi_queue_transaction(buffer, length, 3);
+}
+
+static inline lcd_buffer_t lcd_get_buffer(void)
+{
+#ifdef RG_TARGET_SDL2
+    static uint16_t buffer[RG_SCREEN_WIDTH * 8];
+    return (lcd_buffer_t){&buffer, RG_COUNT(buffer)};
+#else
+    return (lcd_buffer_t){spi_get_buffer(), SPI_BUFFER_LENGTH};
+#endif
+}
+
 static void lcd_send_buffer(int left, int top, int width, int height, lcd_buffer_t *buffer)
 {
     // FIXME: Here we should probably acquire a lock to avoid parallel lcd_send_buffer calls...
-    if (current_x != left || current_y != top)
-    {
-        int right = left + width - 1;
-        int bottom = RG_SCREEN_HEIGHT - 1;
-
-        if (left < 0 || top < 0 || right >= RG_SCREEN_WIDTH || bottom >= RG_SCREEN_HEIGHT)
-        {
-            RG_LOGW("Bad lcd window (x0=%d, y0=%d, x1=%d, y1=%d)\n", left, top, right, bottom);
-        }
-
-        ili9341_cmd(0x2A, (uint8_t[]){left >> 8, left & 0xff, right >> 8, right & 0xff}, 4); // Horiz
-        ili9341_cmd(0x2B, (uint8_t[]){top >> 8, top & 0xff, bottom >> 8, bottom & 0xff}, 4); // Vert
-        ili9341_cmd(0x2C, NULL, 0); // Memory write
-    }
-    else
-    {
-        // Currently the last command will always be 0x2C so we can continue from there instead of sending 0x3C
-        // ili9341_cmd(0x3C, NULL, 0); // Memory write continue
-    }
+    lcd_set_window(left, top, width, height);
     if (osd.buffer)
     {
         // FIXME: Here we should check if we draw over the OSD region and, if so, redraw the OSD to buffer->ptr.
     }
-    spi_queue_transaction(buffer->ptr, width * height * 2, 3);
-    current_x = left;
-    current_y = top + height;
+    lcd_send_data(buffer->ptr, width * height * 2);
 }
 
 static void lcd_init(void)
@@ -390,9 +389,6 @@ static void lcd_init(void)
     usleep(5 * 1000);      // Wait 5ms after sleep out
     ILI9341_CMD(0x29, {}); // Display on
 
-    current_x = -1;
-    current_y = -1;
-
     rg_display_clear(C_BLACK);
     rg_task_delay(10);
     lcd_set_backlight(config.backlight);
@@ -456,6 +452,7 @@ static inline void write_rect(int left, int top, int width, int height,
     const int screen_top = display.viewport.y_pos + scaled_top;
     const int screen_left = display.viewport.x_pos + scaled_left;
     const int screen_bottom = RG_MIN(screen_top + scaled_height, screen_height);
+    const int lines_per_buffer = SPI_BUFFER_LENGTH / scaled_width;
     const int ix_acc = (x_inc * scaled_left) % screen_width;
     const int filter_mode = config.scaling ? config.filter : 0;
     const bool filter_y = filter_mode == RG_DISPLAY_FILTER_VERT || filter_mode == RG_DISPLAY_FILTER_BOTH;
@@ -471,11 +468,16 @@ static inline void write_rect(int left, int top, int width, int height,
 
     buffer.u8 = framebuffer + display.source.offset + (top * stride) + (left * display.source.pixlen);
 
-    for (int y = 0, screen_y = screen_top; y < height && screen_y < screen_bottom;)
+    lcd_set_window(
+        screen_left + RG_SCREEN_MARGIN_LEFT,
+        screen_top + RG_SCREEN_MARGIN_TOP,
+        scaled_width,
+        scaled_height
+    );
+
+    for (int y = 0, screen_y = screen_top; y < height;)
     {
-        lcd_buffer_t lcd_buffer = lcd_get_buffer();
-        uint16_t *line_buffer = lcd_buffer.ptr;
-        int lines_to_copy = RG_MIN(lcd_buffer.length / scaled_width, screen_bottom - screen_y);
+        int lines_to_copy = RG_MIN(lines_per_buffer, screen_bottom - screen_y);
 
         // The vertical filter requires a block to start and end with unscaled lines
         if (filter_y)
@@ -485,18 +487,26 @@ static inline void write_rect(int left, int top, int width, int height,
                 --lines_to_copy;
         }
 
+        if (lines_to_copy < 1)
+        {
+            break;
+        }
+
+        uint16_t *line_buffer = lcd_get_buffer().ptr;
+        uint16_t *line_buffer_ptr = line_buffer;
+
         for (int i = 0; i < lines_to_copy; ++i)
         {
             if (i > 0 && screen_line_is_empty[screen_y])
             {
-                memcpy(line_buffer, line_buffer - scaled_width, scaled_width * 2);
-                line_buffer += scaled_width;
+                memcpy(line_buffer_ptr, line_buffer_ptr - scaled_width, scaled_width * 2);
+                line_buffer_ptr += scaled_width;
             }
             else
             {
                 #define RENDER_LINE(pixel) { \
                     for (int x = 0, x_acc = ix_acc; x < width;) { \
-                        *line_buffer++ = (pixel); \
+                        *line_buffer_ptr++ = (pixel); \
                         x_acc += x_inc; \
                         while (x_acc >= screen_width) { \
                             x_acc -= screen_width; \
@@ -534,7 +544,7 @@ static inline void write_rect(int left, int top, int width, int height,
                 // Filter X
                 if (filter_x)
                 {
-                    uint16_t *buffer = lcd_buffer.ptr + y * scaled_width;
+                    uint16_t *buffer = line_buffer + y * scaled_width;
                     for (int x = 0, frame_x = 0, prev_frame_x = -1, x_acc = ix_acc; x < scaled_width; ++x)
                     {
                         if (frame_x == prev_frame_x && x > 0 && x + 1 < scaled_width)
@@ -555,9 +565,9 @@ static inline void write_rect(int left, int top, int width, int height,
                 // Filter Y
                 if (filter_y && fill_line > 0)
                 {
-                    uint16_t *lineA = lcd_buffer.ptr + (fill_line - 1) * scaled_width;
-                    uint16_t *lineB = lcd_buffer.ptr + (fill_line + 0) * scaled_width;
-                    uint16_t *lineC = lcd_buffer.ptr + (fill_line + 1) * scaled_width;
+                    uint16_t *lineA = line_buffer + (fill_line - 1) * scaled_width;
+                    uint16_t *lineB = line_buffer + (fill_line + 0) * scaled_width;
+                    uint16_t *lineC = line_buffer + (fill_line + 1) * scaled_width;
                     for (size_t x = 0; x < scaled_width; ++x)
                     {
                         lineB[x] = blend_pixels(lineA[x], lineC[x]);
@@ -567,12 +577,7 @@ static inline void write_rect(int left, int top, int width, int height,
             }
         }
 
-        lcd_send_buffer(
-            RG_SCREEN_MARGIN_LEFT + screen_left,
-            RG_SCREEN_MARGIN_TOP + screen_y - lines_to_copy,
-            scaled_width,
-            lines_to_copy,
-            &lcd_buffer);
+        lcd_send_data(line_buffer, scaled_width * lines_to_copy * 2);
     }
 }
 
@@ -1015,6 +1020,13 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
     if (width < 0 || height < 0)
         return;
 
+    // This will work for now because we rarely draw from different threads (so all we need is ensure
+    // that we're not interrupting a display update). But what we SHOULD be doing is acquire a lock
+    // before every call to lcd_set_window and release it only after the last call to lcd_send_data.
+    rg_display_sync();
+
+    lcd_set_window(left + RG_SCREEN_MARGIN_LEFT, top + RG_SCREEN_MARGIN_TOP, width, height);
+
     for (size_t y = 0; y < height;)
     {
         lcd_buffer_t lcd_buffer = lcd_get_buffer();
@@ -1031,13 +1043,15 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
             }
         }
 
-        lcd_send_buffer(RG_SCREEN_MARGIN_LEFT + left, RG_SCREEN_MARGIN_TOP + top + y, width, num_lines, &lcd_buffer);
+        lcd_send_data(lcd_buffer.ptr, width * num_lines * 2);
         y += num_lines;
     }
 }
 
 void rg_display_clear(uint16_t color_le)
 {
+    lcd_set_window(0, 0, RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT); // We ignore margins here
+
     uint16_t color_be = (color_le << 8) | (color_le >> 8);
     for (size_t y = 0; y < RG_SCREEN_HEIGHT;)
     {
@@ -1045,7 +1059,7 @@ void rg_display_clear(uint16_t color_le)
         size_t num_lines = RG_MIN(buffer.length / RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT - y);
         for (size_t j = 0; j < buffer.length; ++j)
             buffer.ptr[j] = color_be;
-        lcd_send_buffer(0, y, RG_SCREEN_WIDTH, num_lines, &buffer);
+        lcd_send_data(buffer.ptr, RG_SCREEN_WIDTH * num_lines * 2);
         y += num_lines;
     }
 }
