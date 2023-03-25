@@ -18,9 +18,9 @@
 #include <driver/ledc.h>
 #endif
 
-#define SPI_TRANSACTION_COUNT (10)
-#define SPI_BUFFER_COUNT      (6)
-#define SPI_BUFFER_LENGTH     (4 * 320) // In pixels (uint16)
+#define SPI_TRANSACTION_COUNT (8)
+#define SPI_BUFFER_COUNT      (5)
+#define SPI_BUFFER_LENGTH     (320 * 4) // In pixels (uint16)
 
 static spi_device_handle_t spi_dev;
 static QueueHandle_t spi_transactions;
@@ -89,6 +89,7 @@ static inline void spi_queue_transaction(const void *data, size_t length, uint32
     else
     {
         t->tx_buffer = memcpy(spi_get_buffer(), data, length);
+        t->user = (void *)(type | 2);
     }
 
     if (spi_device_queue_trans(spi_dev, t, pdMS_TO_TICKS(2500)) != ESP_OK)
