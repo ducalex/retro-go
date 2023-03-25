@@ -267,7 +267,8 @@ bool rg_storage_delete(const char *path)
         {
             if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
                 continue;
-            snprintf(pathbuf, sizeof(pathbuf), "%s/%s", path, ent->d_name);
+            if (snprintf(pathbuf, sizeof(pathbuf), "%s/%s", path, ent->d_name) > sizeof(pathbuf))
+                continue; // path truncated or error, don't do anything...
             rg_storage_delete(pathbuf);
         }
         closedir(dir);

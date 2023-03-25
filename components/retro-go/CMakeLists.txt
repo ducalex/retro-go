@@ -16,6 +16,7 @@ component_compile_options(
     -DLODEPNG_NO_COMPILE_ERROR_TEXT
     -DRG_REPLACE_PRINTF_FUNCTIONS
     -Os
+    -Wno-unused-function
 )
 set_source_files_properties(
     rg_audio.c rg_display.c

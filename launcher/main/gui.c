@@ -496,6 +496,7 @@ void gui_load_preview(tab_t *tab)
     listbox_item_t *item = gui_get_selected_item(tab);
     bool show_missing_cover = false;
     char path[RG_PATH_MAX + 1];
+    size_t path_len;
     uint32_t order;
 
     gui_set_preview(tab, NULL);
@@ -544,27 +545,27 @@ void gui_load_preview(tab_t *tab)
             continue;
 
         if (type == 0x1 && app->use_crc_covers && application_get_file_crc32(file)) // Game cover (old format)
-            snprintf(path, RG_PATH_MAX, "%s/%X/%08X.art", app->paths.covers, file->checksum >> 28, file->checksum);
+            path_len = snprintf(path, RG_PATH_MAX, "%s/%X/%08X.art", app->paths.covers, file->checksum >> 28, file->checksum);
         else if (type == 0x2 && app->use_crc_covers && application_get_file_crc32(file)) // Game cover (png)
-            snprintf(path, RG_PATH_MAX, "%s/%X/%08X.png", app->paths.covers, file->checksum >> 28, file->checksum);
+            path_len = snprintf(path, RG_PATH_MAX, "%s/%X/%08X.png", app->paths.covers, file->checksum >> 28, file->checksum);
         else if (type == 0x3) // Game cover (based on filename)
-            snprintf(path, RG_PATH_MAX, "%s/%s.png", app->paths.covers, file->name);
+            path_len = snprintf(path, RG_PATH_MAX, "%s/%s.png", app->paths.covers, file->name);
         else if (type == 0x4) // Save state screenshot (png)
         {
-            snprintf(path, RG_PATH_MAX, "%s/%s", file->folder, file->name);
+            path_len = snprintf(path, RG_PATH_MAX, "%s/%s", file->folder, file->name);
             rg_emu_state_t *state = rg_emu_get_states(path, 4);
             if (state->lastused)
-                snprintf(path, RG_PATH_MAX, "%s", state->lastused->preview);
+                path_len = snprintf(path, RG_PATH_MAX, "%s", state->lastused->preview);
             else if (state->latest)
-                snprintf(path, RG_PATH_MAX, "%s", state->latest->preview);
+                path_len = snprintf(path, RG_PATH_MAX, "%s", state->latest->preview);
             else
-                snprintf(path, RG_PATH_MAX, "%s", "/lazy/invalid/path");
+                path_len = snprintf(path, RG_PATH_MAX, "%s", "/lazy/invalid/path");
             free(state);
         }
         else
             continue;
 
-        if (access(path, F_OK) == 0)
+        if (path_len < RG_PATH_MAX && access(path, F_OK) == 0)
         {
             gui_set_preview(tab, rg_image_load_from_file(path, 0));
             if (!tab->preview)
