@@ -1,4 +1,4 @@
-# Retro-Go 1.38 (2023-03-??)
+# Retro-Go 1.38 (2023-03-28)
 - GBC: Added support for MBC30 (For Pokemon Crystal romhacks)
 - Launcher: Added a new scroll behavior (Options -> Scroll mode)
 
