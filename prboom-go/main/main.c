@@ -119,7 +119,7 @@ static rg_gui_event_t gamma_update_cb(rg_gui_option_t *option, rg_gui_event_t ev
         I_SetPalette(current_palette);
         rg_display_queue_update(&update, NULL);
         rg_settings_set_number(NS_APP, SETTING_GAMMA, gamma);
-        usleep(50000);
+        rg_task_delay(50);
     }
 
     sprintf(option->value, "%d/%d", gamma, max);

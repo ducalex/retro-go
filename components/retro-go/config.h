@@ -68,3 +68,7 @@
 #ifndef RG_GPIO_LED
 #define RG_GPIO_LED (-1)
 #endif
+
+#ifndef RG_GAMEPAD_MAP
+#define RG_GAMEPAD_MAP {}
+#endif

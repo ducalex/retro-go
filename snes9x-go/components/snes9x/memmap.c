@@ -365,8 +365,8 @@ again:
    if (TotalFileSize > MAX_ROM_SIZE)
    {
       printf("WARNING: ROM TOO BIG (%d)!\n", TotalFileSize);
-      TotalFileSize = MAX_ROM_SIZE; // for debugging
-      // return false; // for releases
+      TotalFileSize = MAX_ROM_SIZE;
+      return false; // comment to try to run it anyway
    }
    else if (TotalFileSize < 1024)
    {

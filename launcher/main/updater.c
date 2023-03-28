@@ -1,15 +1,17 @@
 #include "rg_system.h"
 #include "gui.h"
 
+#ifdef RG_ENABLE_NETWORKING
+#include <malloc.h>
 #include <string.h>
 #include <cJSON.h>
 
 #define GITHUB_RELEASES_URL "https://api.github.com/repos/ducalex/retro-go/releases"
 
-#ifdef RG_TARGET_ODROID_GO
-#define DOWNLOAD_LOCATION RG_STORAGE_ROOT "/odroid/firmware"
-#else
+#if defined(RG_TARGET_MRGC_G32)
 #define DOWNLOAD_LOCATION RG_STORAGE_ROOT "/espgbc/firmware"
+#else
+#define DOWNLOAD_LOCATION RG_STORAGE_ROOT "/odroid/firmware"
 #endif
 
 typedef struct
@@ -190,3 +192,4 @@ void updater_show_dialog(void)
         free(releases[i].assets);
     free(releases);
 }
+#endif

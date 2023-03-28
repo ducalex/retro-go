@@ -4,6 +4,20 @@
 #include <stdbool.h>
 
 typedef enum {
+    START_SCREEN_AUTO,
+    START_SCREEN_CAROUSEL,
+    START_SCREEN_BROWSER,
+    START_SCREEN_COUNT,
+} start_screen_t;
+
+typedef enum {
+    SCROLL_MODE_CENTER,
+    SCROLL_MODE_PAGING,
+    // SCROLL_MODE_EDGE,
+    SCROLL_MODE_COUNT,
+} scroll_mode_t;
+
+typedef enum {
     TAB_ACTION,
     TAB_BACK,
     TAB_SCROLL,
@@ -20,7 +34,7 @@ typedef enum {
     SCROLL_END,
     SCROLL_LINE,
     SCROLL_PAGE,
-} scroll_mode_t;
+} scroll_whence_t;
 
 typedef enum {
     SORT_NONE,
@@ -37,7 +51,7 @@ typedef enum {
     PREVIEW_MODE_COVER_ONLY,
     PREVIEW_MODE_SAVE_ONLY,
     PREVIEW_MODE_COUNT
-} preview_modes_t;
+} preview_mode_t;
 
 typedef struct {
     struct {
@@ -110,6 +124,7 @@ typedef struct {
     int color_theme;
     int start_screen;
     int show_preview;
+    int scroll_mode;
     int width;
     int height;
     image_t images[128];
@@ -132,7 +147,7 @@ void gui_init_tab(tab_t *tab);
 const rg_image_t *gui_get_image(const char *type, const char *subtype);
 
 void gui_sort_list(tab_t *tab);
-void gui_scroll_list(tab_t *tab, scroll_mode_t mode, int arg);
+void gui_scroll_list(tab_t *tab, scroll_whence_t mode, int arg);
 void gui_resize_list(tab_t *tab, int new_size);
 listbox_item_t *gui_get_selected_item(tab_t *tab);
 

@@ -80,6 +80,13 @@ typedef struct
 
 typedef struct
 {
+    uint16_t *buffer;
+    size_t width;
+    size_t height;
+} rg_display_osd_t;
+
+typedef struct
+{
     struct
     {
         int width;

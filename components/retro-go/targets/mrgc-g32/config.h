@@ -59,21 +59,19 @@
 #define RG_GAMEPAD_DRIVER           3   // 1 = ODROID-GO, 2 = Serial, 3 = I2C, 4 = AW9523, 5 = ESPLAY-S3, 6 = SDL2
 #define RG_GAMEPAD_HAS_MENU_BTN     1
 #define RG_GAMEPAD_HAS_OPTION_BTN   0
-// Note: Depending on the driver, the button map can represent bits, registers, keys, or gpios.
-#define RG_GAMEPAD_MAP_MENU         (1<<8)
-#define RG_GAMEPAD_MAP_OPTION       (0)
-#define RG_GAMEPAD_MAP_START        (1<<0)
-#define RG_GAMEPAD_MAP_SELECT       (1<<1)
-#define RG_GAMEPAD_MAP_UP           (1<<2)
-#define RG_GAMEPAD_MAP_RIGHT        (1<<5)
-#define RG_GAMEPAD_MAP_DOWN         (1<<3)
-#define RG_GAMEPAD_MAP_LEFT         (1<<4)
-#define RG_GAMEPAD_MAP_A            (1<<6)
-#define RG_GAMEPAD_MAP_B            (1<<7)
-#define RG_GAMEPAD_MAP_X            (0)
-#define RG_GAMEPAD_MAP_Y            (0)
-#define RG_GAMEPAD_MAP_L            (0)
-#define RG_GAMEPAD_MAP_R            (0)
+// Note: Depending on the driver, the button map can be a bitmask, an index, or a GPIO.
+// Refer to rg_input.h to see all available RG_KEY_*
+#define RG_GAMEPAD_MAP {\
+    {RG_KEY_UP,     (1<<2)},\
+    {RG_KEY_RIGHT,  (1<<5)},\
+    {RG_KEY_DOWN,   (1<<3)},\
+    {RG_KEY_LEFT,   (1<<4)},\
+    {RG_KEY_SELECT, (1<<1)},\
+    {RG_KEY_START,  (1<<0)},\
+    {RG_KEY_MENU,   (1<<8)},\
+    {RG_KEY_A,      (1<<6)},\
+    {RG_KEY_B,      (1<<7)},\
+}
 
 // Battery
 // #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0

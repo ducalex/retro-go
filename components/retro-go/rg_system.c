@@ -1,5 +1,4 @@
 #include "rg_system.h"
-#include "rg_printf.h"
 
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -234,18 +233,19 @@ static void system_monitor_task(void *arg)
                 rg_system_set_led((ledState = 0));
         }
 
-        RG_LOGX("STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%.2f, FPS:%.2f (SKIP:%d, PART:%d, FULL:%d), BATT:%.2f\n",
+        // Try to avoid complex conversions that could allocate, prefer rounding/ceiling if necessary.
+        RG_LOGX("STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (SKIP:%d, PART:%d, FULL:%d), BATT:%d\n",
             statistics.freeStackMain,
             statistics.freeMemoryInt / 1024,
             statistics.freeMemoryExt / 1024,
             statistics.freeBlockInt / 1024,
             statistics.freeBlockExt / 1024,
-            statistics.busyPercent,
-            statistics.totalFPS,
-            (int)(statistics.skippedFPS + 0.9f),
-            (int)(statistics.totalFPS - statistics.skippedFPS - statistics.fullFPS + 0.9f),
-            (int)(statistics.fullFPS + 0.9f),
-            batteryPercent);
+            (int)(statistics.busyPercent + 0.5f),
+            (int)(statistics.totalFPS + 0.5f),
+            (int)(statistics.skippedFPS + 0.5f),
+            (int)(statistics.totalFPS - statistics.skippedFPS - statistics.fullFPS + 0.5f),
+            (int)(statistics.fullFPS + 0.5f),
+            (int)(batteryPercent + 0.5f));
 
         if ((wdtCounter -= loopTime_us) <= 0)
         {
@@ -863,7 +863,7 @@ void rg_system_switch_app(const char *partition, const char *name, const char *a
         rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, flags);
         rg_settings_commit();
     }
-
+#ifndef RG_TARGET_SDL2
     esp_err_t err = esp_ota_set_boot_partition(esp_partition_find_first(
             ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partition));
     if (err != ESP_OK)
@@ -871,7 +871,7 @@ void rg_system_switch_app(const char *partition, const char *name, const char *a
         RG_LOGE("esp_ota_set_boot_partition returned 0x%02X!\n", err);
         RG_PANIC("Unable to set boot app!");
     }
-
+#endif
     rg_system_restart();
 }
 

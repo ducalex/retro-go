@@ -1,10 +1,11 @@
 set(COMPONENT_SRCDIRS ". fonts libs/netplay libs/lodepng")
 set(COMPONENT_ADD_INCLUDEDIRS ". libs/netplay libs/lodepng")
-if($ENV{RG_ENABLE_NETWORKING})
-    set(COMPONENT_REQUIRES "spi_flash fatfs nvs_flash esp_http_client app_update esp_adc_cal esp32 json")
-else()
-    set(COMPONENT_REQUIRES "spi_flash fatfs app_update esp_adc_cal esp32 json")
-endif()
+
+# esp-idf 4.1 - 4.4
+set(COMPONENT_REQUIRES "spi_flash fatfs app_update esp_adc_cal json nvs_flash esp_wifi esp_http_client")
+# esp-idf 5.0 -
+#set(COMPONENT_REQUIRES "spi_flash fatfs app_update esp_adc esp_timer json nvs_flash esp_wifi esp_http_client")
+
 register_component()
 
 # Small size is preferred because of the small cache and most things here aren't performance sensitive!
@@ -13,8 +14,8 @@ register_component()
 component_compile_options(
     -DLODEPNG_NO_COMPILE_ANCILLARY_CHUNKS
     -DLODEPNG_NO_COMPILE_ERROR_TEXT
-    -DRG_REPLACE_PRINTF_FUNCTIONS
     -Os
+    -Wno-unused-function
 )
 set_source_files_properties(
     rg_audio.c rg_display.c

@@ -1,3 +1,8 @@
+# Retro-Go 1.38 (2023-03-28)
+- GBC: Added support for MBC30 (For Pokemon Crystal romhacks)
+- Launcher: Added a new scroll behavior (Options -> Scroll mode)
+
+
 # Retro-Go 1.37 (2022-12-30)
 - SNES: Fixed controls menu labels
 - GEN: Small performance improvement

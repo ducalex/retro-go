@@ -58,6 +58,8 @@
 		"C_Cpp.default.cppStandard": "c++11",
 		"C_Cpp.default.intelliSenseMode": "gcc-x86",
 		"cSpell.words": [
+			"apll",
+			"coleco",
 			"espressif",
 			"gnuboy",
 			"gpio",
@@ -67,6 +69,7 @@
 			"mkimg",
 			"MOSI",
 			"MRGC",
+			"NOINIT",
 			"newboy",
 			"newfrendo",
 			"ngpocket",

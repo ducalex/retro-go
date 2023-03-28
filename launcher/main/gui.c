@@ -29,6 +29,7 @@ retro_gui_t gui;
 #define SETTING_THEME           "Theme"
 #define SETTING_COLOR_THEME     "ColorTheme"
 #define SETTING_SHOW_PREVIEW    "ShowPreview"
+#define SETTING_SCROLL_MODE     "ScrollMode"
 #define SETTING_HIDDEN_TABS     "HiddenTabs"
 #define SETTING_HIDE_TAB(name)  strcat((char[99]){"HideTab."}, (name))
 
@@ -46,13 +47,15 @@ void gui_init(void)
         .startup_mode = rg_settings_get_number(NS_APP, SETTING_STARTUP_MODE, 0),
         .hidden_tabs  = rg_settings_get_string(NS_APP, SETTING_HIDDEN_TABS, ""),
         .color_theme  = rg_settings_get_number(NS_APP, SETTING_COLOR_THEME, 0),
-        .start_screen = rg_settings_get_number(NS_APP, SETTING_START_SCREEN, 0),
-        .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, 2),
+        .start_screen = rg_settings_get_number(NS_APP, SETTING_START_SCREEN, START_SCREEN_AUTO),
+        .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, PREVIEW_MODE_SAVE_COVER),
+        .scroll_mode  = rg_settings_get_number(NS_APP, SETTING_SCROLL_MODE, SCROLL_MODE_CENTER),
         .width        = rg_display_get_info()->screen.width,
         .height       = rg_display_get_info()->screen.height,
     };
     // Always enter browse mode when leaving an emulator
-    gui.browse = gui.start_screen == 2 || (!gui.start_screen && rg_system_get_app()->bootType == RG_RST_RESTART);
+    gui.browse = gui.start_screen == START_SCREEN_BROWSER ||
+                 (gui.start_screen == START_SCREEN_AUTO && rg_system_get_app()->bootType == RG_RST_RESTART);
     gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
     rg_gui_set_buffered(true);
 }
@@ -225,6 +228,7 @@ void gui_save_config(void)
     rg_settings_set_number(NS_APP, SETTING_SELECTED_TAB, gui.selected_tab);
     rg_settings_set_number(NS_APP, SETTING_START_SCREEN, gui.start_screen);
     rg_settings_set_number(NS_APP, SETTING_SHOW_PREVIEW, gui.show_preview);
+    rg_settings_set_number(NS_APP, SETTING_SCROLL_MODE, gui.scroll_mode);
     rg_settings_set_number(NS_APP, SETTING_COLOR_THEME, gui.color_theme);
     rg_settings_set_number(NS_APP, SETTING_STARTUP_MODE, gui.startup_mode);
     rg_settings_set_string(NS_APP, SETTING_HIDDEN_TABS, gui.hidden_tabs);
@@ -303,7 +307,7 @@ void gui_resize_list(tab_t *tab, int new_size)
         list->cursor = new_size ? new_size - 1 : 0;
 }
 
-void gui_scroll_list(tab_t *tab, scroll_mode_t mode, int arg)
+void gui_scroll_list(tab_t *tab, scroll_whence_t mode, int arg)
 {
     listbox_t *list = &tab->listbox;
 
@@ -325,15 +329,15 @@ void gui_scroll_list(tab_t *tab, scroll_mode_t mode, int arg)
     }
     else if (mode == SCROLL_PAGE)
     {
-        int start = list->items[cur_cursor].text[0];
+        // int start = list->items[cur_cursor].text[0];
         int direction = arg > 0 ? 1 : -1;
-        for (int max = max_visible_lines(tab, NULL) - 2; max > 0; --max)
+        for (int max = max_visible_lines(tab, NULL); max > 0; --max)
         {
             cur_cursor += direction;
             if (cur_cursor < 0 || cur_cursor >= list->length)
                 break;
-            if (start != list->items[cur_cursor].text[0])
-                break;
+            // if (start != list->items[cur_cursor].text[0])
+            //     break;
         }
     }
 
@@ -447,6 +451,7 @@ void gui_draw_list(tab_t *tab)
     const listbox_t *list = &tab->listbox;
     int line_height, top = HEADER_HEIGHT + 6;
     int lines = max_visible_lines(tab, &line_height);
+    int line_offset = 0;
 
     if (tab->navpath)
     {
@@ -457,9 +462,18 @@ void gui_draw_list(tab_t *tab)
 
     top += ((gui.height - top) - (lines * line_height)) / 2;
 
+    if (gui.scroll_mode == SCROLL_MODE_PAGING)
+    {
+        line_offset = (list->cursor / lines) * lines;
+    }
+    else // (gui.scroll_mode == SCROLL_MODE_CENTER)
+    {
+        line_offset = list->cursor - (lines / 2);
+    }
+
     for (int i = 0; i < lines; i++)
     {
-        int idx = list->cursor + i - (lines / 2);
+        int idx = line_offset + i;
         int selected = idx == list->cursor;
         char *label = (idx >= 0 && idx < list->length) ? list->items[idx].text : "";
         top += rg_gui_draw_text(0, top, gui.width, label, fg[selected], bg[selected], 0).height;
@@ -482,6 +496,7 @@ void gui_load_preview(tab_t *tab)
     listbox_item_t *item = gui_get_selected_item(tab);
     bool show_missing_cover = false;
     char path[RG_PATH_MAX + 1];
+    size_t path_len;
     uint32_t order;
 
     gui_set_preview(tab, NULL);
@@ -530,27 +545,27 @@ void gui_load_preview(tab_t *tab)
             continue;
 
         if (type == 0x1 && app->use_crc_covers && application_get_file_crc32(file)) // Game cover (old format)
-            snprintf(path, RG_PATH_MAX, "%s/%X/%08X.art", app->paths.covers, file->checksum >> 28, file->checksum);
+            path_len = snprintf(path, RG_PATH_MAX, "%s/%X/%08X.art", app->paths.covers, file->checksum >> 28, file->checksum);
         else if (type == 0x2 && app->use_crc_covers && application_get_file_crc32(file)) // Game cover (png)
-            snprintf(path, RG_PATH_MAX, "%s/%X/%08X.png", app->paths.covers, file->checksum >> 28, file->checksum);
+            path_len = snprintf(path, RG_PATH_MAX, "%s/%X/%08X.png", app->paths.covers, file->checksum >> 28, file->checksum);
         else if (type == 0x3) // Game cover (based on filename)
-            snprintf(path, RG_PATH_MAX, "%s/%s.png", app->paths.covers, file->name);
+            path_len = snprintf(path, RG_PATH_MAX, "%s/%s.png", app->paths.covers, file->name);
         else if (type == 0x4) // Save state screenshot (png)
         {
-            snprintf(path, RG_PATH_MAX, "%s/%s", file->folder, file->name);
+            path_len = snprintf(path, RG_PATH_MAX, "%s/%s", file->folder, file->name);
             rg_emu_state_t *state = rg_emu_get_states(path, 4);
             if (state->lastused)
-                snprintf(path, RG_PATH_MAX, "%s", state->lastused->preview);
+                path_len = snprintf(path, RG_PATH_MAX, "%s", state->lastused->preview);
             else if (state->latest)
-                snprintf(path, RG_PATH_MAX, "%s", state->latest->preview);
+                path_len = snprintf(path, RG_PATH_MAX, "%s", state->latest->preview);
             else
-                snprintf(path, RG_PATH_MAX, "%s", "/lazy/invalid/path");
+                path_len = snprintf(path, RG_PATH_MAX, "%s", "/lazy/invalid/path");
             free(state);
         }
         else
             continue;
 
-        if (access(path, F_OK) == 0)
+        if (path_len < RG_PATH_MAX && access(path, F_OK) == 0)
         {
             gui_set_preview(tab, rg_image_load_from_file(path, 0));
             if (!tab->preview)

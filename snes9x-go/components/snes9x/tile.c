@@ -8,8 +8,125 @@
 #include "gfx.h"
 #include "tile.h"
 
-extern uint32_t HeadMask [4];
-extern uint32_t TailMask [5];
+static uint32_t HeadMask [4] =
+{
+#ifdef MSB_FIRST
+   0xffffffff, 0x00ffffff, 0x0000ffff, 0x000000ff
+#else
+   0xffffffff, 0xffffff00, 0xffff0000, 0xff000000
+#endif
+};
+static uint32_t TailMask [5] =
+{
+#ifdef MSB_FIRST
+   0x00000000, 0xff000000, 0xffff0000, 0xffffff00, 0xffffffff
+#else
+   0x00000000, 0x000000ff, 0x0000ffff, 0x00ffffff, 0xffffffff
+#endif
+};
+
+static uint32_t odd_high[4][16];
+static uint32_t odd_low[4][16];
+static uint32_t even_high[4][16];
+static uint32_t even_low[4][16];
+
+void S9xBuildTileBitmasks(void)
+{
+   uint32_t r, g, b;
+   uint32_t PixelOdd = 1;
+   uint32_t PixelEven = 2;
+   uint8_t bitshift;
+   for (bitshift = 0; bitshift < 4; bitshift++)
+   {
+      int32_t i;
+      for (i = 0; i < 16; i++)
+      {
+         uint32_t h = 0;
+         uint32_t l = 0;
+
+#if defined(MSB_FIRST)
+         if (i & 8)
+            h |= (PixelOdd << 24);
+         if (i & 4)
+            h |= (PixelOdd << 16);
+         if (i & 2)
+            h |= (PixelOdd << 8);
+         if (i & 1)
+            h |= PixelOdd;
+         if (i & 8)
+            l |= (PixelOdd << 24);
+         if (i & 4)
+            l |= (PixelOdd << 16);
+         if (i & 2)
+            l |= (PixelOdd << 8);
+         if (i & 1)
+            l |= PixelOdd;
+#else
+         if (i & 8)
+            h |= PixelOdd;
+         if (i & 4)
+            h |= PixelOdd << 8;
+         if (i & 2)
+            h |= PixelOdd << 16;
+         if (i & 1)
+            h |= PixelOdd << 24;
+         if (i & 8)
+            l |= PixelOdd;
+         if (i & 4)
+            l |= PixelOdd << 8;
+         if (i & 2)
+            l |= PixelOdd << 16;
+         if (i & 1)
+            l |= PixelOdd << 24;
+#endif
+
+         odd_high[bitshift][i] = h;
+         odd_low[bitshift][i] = l;
+         h = l = 0;
+
+#if defined(MSB_FIRST)
+         if (i & 8)
+            h |= (PixelEven << 24);
+         if (i & 4)
+            h |= (PixelEven << 16);
+         if (i & 2)
+            h |= (PixelEven << 8);
+         if (i & 1)
+            h |= PixelEven;
+         if (i & 8)
+            l |= (PixelEven << 24);
+         if (i & 4)
+            l |= (PixelEven << 16);
+         if (i & 2)
+            l |= (PixelEven << 8);
+         if (i & 1)
+            l |= PixelEven;
+#else
+         if (i & 8)
+            h |= PixelEven;
+         if (i & 4)
+            h |= PixelEven << 8;
+         if (i & 2)
+            h |= PixelEven << 16;
+         if (i & 1)
+            h |= PixelEven << 24;
+         if (i & 8)
+            l |= PixelEven;
+         if (i & 4)
+            l |= PixelEven << 8;
+         if (i & 2)
+            l |= PixelEven << 16;
+         if (i & 1)
+            l |= PixelEven << 24;
+#endif
+
+         even_high[bitshift][i] = h;
+         even_low[bitshift][i] = l;
+      }
+      PixelEven <<= 2;
+      PixelOdd <<= 2;
+   }
+}
 
 static uint8_t ConvertTile(uint8_t* pCache, uint32_t TileAddr)
 {

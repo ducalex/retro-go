@@ -11,20 +11,15 @@
 #include <psg.h>
 
 #undef AUDIO_SAMPLE_RATE
-#undef AUDIO_BUFFER_LENGTH
-
 #define AUDIO_SAMPLE_RATE 22050
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 / 5)
 
 static bool emulationPaused = false; // This should probably be a mutex
 static int current_height = 0;
 static int current_width = 0;
 static int overscan = false;
-static int downsample = false;
 static int skipFrames = 0;
 static uint8_t *framebuffers[2];
 
-static const char *SETTING_AUDIOTYPE = "audiotype";
 static const char *SETTING_OVERSCAN  = "overscan";
 // --- MAIN
 
@@ -39,18 +34,6 @@ static rg_gui_event_t overscan_update_cb(rg_gui_option_t *option, rg_gui_event_t
     }
 
     strcpy(option->value, overscan ? "On " : "Off");
-
-    return RG_DIALOG_VOID;
-}
-
-static rg_gui_event_t sampletype_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
-        downsample ^= 1;
-        rg_settings_set_number(NS_APP, SETTING_AUDIOTYPE, downsample);
-    }
-
-    strcpy(option->value, downsample ? "On " : "Off");
 
     return RG_DIALOG_VOID;
 }
@@ -98,9 +81,9 @@ void osd_vsync(void)
         skipFrames--;
     }
 
-    int32_t frameTime = 1000000 / 60 / app->speed;
     int64_t curtime = rg_system_timer();
-    int32_t sleep = frameTime - (curtime - lasttime);
+    int frameTime = 1000000 / 60 / app->speed;
+    int sleep = frameTime - (curtime - lasttime);
 
     if (sleep > frameTime)
     {
@@ -154,15 +137,16 @@ void osd_input_read(uint8_t joypads[8])
 
 static void audioTask(void *arg)
 {
-    RG_LOGI("task started.");
+    const size_t numSamples = 62; // TODO: Find the best value
 
+    RG_LOGI("task started. numSamples=%d.", numSamples);
     while (1)
     {
         // TODO: Clearly we need to add a better way to remain in sync with the main task...
         while (emulationPaused)
-            usleep(20 * 1000);
-        psg_update((void*)audioBuffer, AUDIO_BUFFER_LENGTH, downsample);
-        rg_audio_submit(audioBuffer, AUDIO_BUFFER_LENGTH);
+            rg_task_delay(20);
+        psg_update((void*)audioBuffer, numSamples, 0xFF);
+        rg_audio_submit(audioBuffer, numSamples);
     }
 
     rg_task_delete(NULL);
@@ -206,7 +190,6 @@ void pce_main(void)
     };
     const rg_gui_option_t options[] = {
         {2, "Overscan      ", "On ", 1, &overscan_update_cb},
-        {3, "Unsigned audio", "Off", 1, &sampletype_update_cb},
         RG_DIALOG_CHOICE_LAST
     };
 
@@ -219,7 +202,6 @@ void pce_main(void)
     framebuffers[1] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_FAST);
 
     overscan = rg_settings_get_number(NS_APP, SETTING_OVERSCAN, 1);
-    downsample = rg_settings_get_number(NS_APP, SETTING_AUDIOTYPE, 0);
 
     uint16_t *palette = PalettePCE(16);
     for (int i = 0; i < 256; i++)
@@ -230,7 +212,7 @@ void pce_main(void)
     }
     free(palette);
 
-    InitPCE(AUDIO_SAMPLE_RATE, true, app->romPath);
+    InitPCE(app->sampleRate, true, app->romPath);
 
     if (app->bootFlags & RG_BOOT_RESUME)
     {

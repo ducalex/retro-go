@@ -14,20 +14,16 @@
 #include "bookmarks.h"
 #include "music.h"
 #include "gui.h"
-#include "webui.h"
-#include "timezones.h"
+#include "wifi.h"
 #include "updater.h"
-
-#define MAX_AP_LIST 5
-
-static const char *SETTING_WIFI_SLOT = "slot";
+#include "timezones.h"
 
 static rg_app_t *app;
 
 static rg_gui_event_t toggle_tab_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     tab_t *tab = gui.tabs[option->arg];
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT || event == RG_DIALOG_ENTER)
     {
         tab->enabled = !tab->enabled;
     }
@@ -49,6 +45,25 @@ static rg_gui_event_t toggle_tabs_cb(rg_gui_option_t *option, rg_gui_event_t eve
         rg_gui_dialog("Tabs Visibility", options, 0);
         gui_redraw();
     }
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t scroll_mode_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    const char *modes[SCROLL_MODE_COUNT] = {"Center", "Paging"};
+    const int max = SCROLL_MODE_COUNT - 1;
+
+    if (event == RG_DIALOG_PREV && --gui.scroll_mode < 0)
+        gui.scroll_mode = max;
+    if (event == RG_DIALOG_NEXT && ++gui.scroll_mode > max)
+        gui.scroll_mode = 0;
+
+    gui.scroll_mode %= SCROLL_MODE_COUNT;
+
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+        gui_redraw();
+
+    strcpy(option->value, modes[gui.scroll_mode]);
     return RG_DIALOG_VOID;
 }
 
@@ -85,112 +100,46 @@ static rg_gui_event_t timezone_cb(rg_gui_option_t *option, rg_gui_event_t event)
 
 static rg_gui_event_t start_screen_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    const char *modes[] = {"Auto", "Carousel", "Browser"};
-    int max = 2;
+    const char *modes[START_SCREEN_COUNT] = {"Auto", "Carousel", "Browser"};
+    const int max = START_SCREEN_COUNT - 1;
 
     if (event == RG_DIALOG_PREV && --gui.start_screen < 0)
         gui.start_screen = max;
     if (event == RG_DIALOG_NEXT && ++gui.start_screen > max)
         gui.start_screen = 0;
 
-    strcpy(option->value, modes[gui.start_screen % (max + 1)]);
+    gui.start_screen %= START_SCREEN_COUNT;
+
+    strcpy(option->value, modes[gui.start_screen]);
     return RG_DIALOG_VOID;
 }
 
 static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
+    const char *modes[] = {"None      ", "Cover,Save", "Save,Cover", "Cover only", "Save only "};
+    const int max = PREVIEW_MODE_COUNT - 1;
+
     if (event == RG_DIALOG_PREV && --gui.show_preview < 0)
-        gui.show_preview = PREVIEW_MODE_COUNT - 1;
-    if (event == RG_DIALOG_NEXT && ++gui.show_preview >= PREVIEW_MODE_COUNT)
+        gui.show_preview = max;
+    if (event == RG_DIALOG_NEXT && ++gui.show_preview > max)
         gui.show_preview = 0;
+
+    gui.show_preview %= PREVIEW_MODE_COUNT;
+
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
-        gui_set_preview(gui_get_current_tab(), NULL);
-
-    const char *values[] = {"None      ", "Cover,Save", "Save,Cover", "Cover only", "Save only "};
-    strcpy(option->value, values[gui.show_preview % PREVIEW_MODE_COUNT]);
-    return RG_DIALOG_VOID;
-}
-
-static rg_gui_event_t wifi_switch_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
-        wifi_set_switch(!wifi_get_switch());
-    }
-    strcpy(option->value, wifi_get_switch() ? "On " : "Off");
-    return RG_DIALOG_VOID;
-}
-
-static rg_gui_event_t wifi_select_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
     {
-        rg_gui_option_t options[MAX_AP_LIST + 2];
-        rg_gui_option_t *opt = options;
-
-        for (size_t i = 0; i < MAX_AP_LIST; i++)
+        gui_set_preview(gui_get_current_tab(), NULL);
+        if (gui.browse)
         {
-            char slot[6];
-            sprintf(slot, "ssid%d", i);
-            char *ap_name = rg_settings_get_string(NS_WIFI, slot, NULL);
-            *opt++ = (rg_gui_option_t){i, ap_name ?: "(empty)", NULL, ap_name ? 1 : 0, NULL};
-        }
-        char *ap_name = rg_settings_get_string(NS_WIFI, "ssid", NULL);
-        *opt++ = (rg_gui_option_t){-1, ap_name ?: "(empty)", NULL, ap_name ? 1 : 0, NULL};
-        *opt++ = (rg_gui_option_t)RG_DIALOG_END;
-
-        int sel = rg_gui_dialog("Select saved AP", options, rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, 0));
-        if (sel != RG_DIALOG_CANCELLED)
-        {
-            rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, sel);
-            if (rg_network_wifi_load_config(sel))
-            {
-                rg_network_wifi_stop();
-                rg_network_wifi_start();
-            }
+            // Ugly hack otherwise gui_load_preview will abort...
+            rg_input_wait_for_key(RG_KEY_ALL, false);
+            gui.joystick = 0;
+            gui_load_preview(gui_get_current_tab());
         }
         gui_redraw();
     }
-    return RG_DIALOG_VOID;
- }
 
-static rg_gui_event_t webui_switch_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
-        webui_set_switch(!webui_get_switch());
-    }
-    strcpy(option->value, webui_get_switch() ? "On " : "Off");
-    return RG_DIALOG_VOID;
-}
-
-static rg_gui_event_t wifi_access_point_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-    {
-        if (rg_gui_confirm("Wi-Fi AP", "Start access point?\n\nSSID: retro-go\nPassword: retro-go", true))
-        {
-            rg_network_wifi_stop();
-            rg_network_wifi_set_config("retro-go", "retro-go", 6, 1);
-            rg_network_wifi_start();
-        }
-    }
-    return RG_DIALOG_VOID;
-}
-
-static rg_gui_event_t wifi_options_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-    {
-        const rg_gui_option_t options[] = {
-            {0, "Wi-Fi"       , "...", 1, &wifi_switch_cb},
-            {0, "Wi-Fi select", "...", 1, &wifi_select_cb},
-            {0, "Wi-Fi Access Point", NULL, 1, &wifi_access_point_cb},
-            RG_DIALOG_SEPARATOR,
-            {0, "File server" , "...", 1, &webui_switch_cb},
-            {0, "Time sync" , "On", 0, NULL},
-            RG_DIALOG_END,
-        };
-        rg_gui_dialog("Wifi Options", options, 0);
-    }
+    strcpy(option->value, modes[gui.show_preview]);
     return RG_DIALOG_VOID;
 }
 
@@ -202,6 +151,9 @@ static rg_gui_event_t color_theme_cb(rg_gui_option_t *option, rg_gui_event_t eve
         gui.color_theme = max;
     if (event == RG_DIALOG_NEXT && ++gui.color_theme > max)
         gui.color_theme = 0;
+
+    gui.color_theme %= gui_themes_count;
+
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
         gui_redraw();
 
@@ -223,6 +175,35 @@ static rg_gui_event_t startup_app_cb(rg_gui_option_t *option, rg_gui_event_t eve
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t launcher_options_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        const rg_gui_option_t options[] = {
+            {0, "Color theme ", "...", 1, &color_theme_cb},
+            {0, "Preview     ", "...", 1, &show_preview_cb},
+            {0, "Scroll mode ", "...", 1, &scroll_mode_cb},
+            {0, "Start screen", "...", 1, &start_screen_cb},
+            {0, "Hide tabs   ", "...", 1, &toggle_tabs_cb},
+            RG_DIALOG_END,
+        };
+        gui_redraw(); // clear main menu
+        rg_gui_dialog("Launcher Options", options, 0);
+    }
+    return RG_DIALOG_VOID;
+}
+
+#ifdef RG_ENABLE_NETWORKING
+static rg_gui_event_t wifi_options_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        wifi_show_dialog();
+        gui_redraw();
+    }
+    return RG_DIALOG_VOID;
+}
+
 static rg_gui_event_t updater_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
@@ -232,11 +213,14 @@ static rg_gui_event_t updater_cb(rg_gui_option_t *option, rg_gui_event_t event)
     }
     return RG_DIALOG_VOID;
 }
+#endif
 
 static void show_about_menu(void)
 {
     const rg_gui_option_t options[] = {
+    #ifdef RG_ENABLE_NETWORKING
         {0, "Check for updates", NULL, 1, &updater_cb},
+    #endif
         RG_DIALOG_END,
     };
     rg_gui_about_menu(options);
@@ -266,9 +250,7 @@ static void retro_loop(void)
     music_init();
 
 #ifdef RG_ENABLE_NETWORKING
-    rg_network_init();
-    wifi_set_switch(wifi_get_switch());
-    webui_set_switch(webui_get_switch());
+    wifi_init();
 #endif
 
     tab = gui_get_current_tab();
@@ -424,7 +406,7 @@ static void retro_loop(void)
         }
         else if (gui.idle_counter)
         {
-            usleep(10000);
+            rg_task_delay(10);
         }
 
         rg_system_tick(0);
@@ -471,13 +453,12 @@ void app_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, " - Color    ", "...", 1, &color_theme_cb},
-        {0, "Preview     ", "...", 1, &show_preview_cb},
-        {0, "Start screen", "...", 1, &start_screen_cb},
-        {0, "Hide tabs   ", "...", 1, &toggle_tabs_cb},
         {0, "Startup app ", "...", 1, &startup_app_cb},
         {0, "Timezone    ", "...", 1, &timezone_cb},
-        {0, "Wi-Fi options...", NULL,  1, &wifi_options_cb},
+        {0, "Launcher options", NULL,  1, &launcher_options_cb},
+    #ifdef RG_ENABLE_NETWORKING
+        {0, "Wi-Fi options", NULL,  1, &wifi_options_cb},
+    #endif
     #if !RG_GAMEPAD_HAS_OPTION_BTN
         RG_DIALOG_SEPARATOR,
         {0, "About Retro-Go", NULL,  1, &about_app_cb},

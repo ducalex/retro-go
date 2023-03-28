@@ -143,7 +143,7 @@ static bool reset_handler(bool hard)
 {
     // This isn't nice but lynx->Reset() crashes...
     delete lynx;
-    lynx = new CSystem(app->romPath, MIKIE_PIXEL_FORMAT_16BPP_565_BE, AUDIO_SAMPLE_RATE);
+    lynx = new CSystem(app->romPath, MIKIE_PIXEL_FORMAT_16BPP_565_BE, app->sampleRate);
     return true;
 }
 
@@ -173,7 +173,7 @@ extern "C" void lynx_main(void)
     app->refreshRate = 60;
 
     // Init emulator
-    lynx = new CSystem(app->romPath, MIKIE_PIXEL_FORMAT_16BPP_565_BE, AUDIO_SAMPLE_RATE);
+    lynx = new CSystem(app->romPath, MIKIE_PIXEL_FORMAT_16BPP_565_BE, app->sampleRate);
 
     if (lynx->mFileType == HANDY_FILETYPE_ILLEGAL)
     {
@@ -191,7 +191,7 @@ extern "C" void lynx_main(void)
 
     set_display_mode();
 
-    float sampleTime = AUDIO_SAMPLE_RATE / 1000000.f;
+    float sampleTime = 1000000.f / app->sampleRate;
     long skipFrames = 0;
     bool fullFrame = 0;
 
@@ -206,7 +206,7 @@ extern "C" void lynx_main(void)
                 rg_gui_game_menu();
             else
                 rg_gui_options_menu();
-            sampleTime = AUDIO_SAMPLE_RATE / 1000000.f * app->speed;
+            sampleTime = 1000000.f / (app->sampleRate * app->speed);
             rg_audio_set_sample_rate(app->sampleRate * app->speed);
         }
 
@@ -245,7 +245,7 @@ extern "C" void lynx_main(void)
             if (app->speed > 1.f)
                 skipFrames += (int)app->speed * 2;
             // The Lynx uses a variable framerate so we use the count of generated audio samples as reference instead
-            else if (elapsed > ((gAudioBufferPointer/2) * sampleTime))
+            else if (elapsed > ((gAudioBufferPointer / 2) * sampleTime))
                 skipFrames += 1;
             else if (drawFrame && fullFrame) // This could be avoided when scaling != full
                 skipFrames += 1;

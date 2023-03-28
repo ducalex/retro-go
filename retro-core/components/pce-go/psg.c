@@ -192,7 +192,7 @@ psg_term(void)
 
 
 void
-psg_update(int16_t *output, size_t length, bool downsample)
+psg_update(int16_t *output, size_t length, uint32_t channels)
 {
 	int lvol = (PCE.PSG.volume >> 4);
 	int rvol = (PCE.PSG.volume & 0x0F);
@@ -208,16 +208,13 @@ psg_update(int16_t *output, size_t length, bool downsample)
 		sample_t mix_buffer[length + 1];
 		psg_update_chan(mix_buffer, i, length);
 
-		if (downsample) {
-			for (int j = 0; j < length; j += 2) {
-				output[j] += (uint8_t)mix_buffer[j] * lvol;
-				output[j + 1] += (uint8_t)mix_buffer[j + 1] * rvol;
-			}
-		} else {
-			for (int j = 0; j < length; j += 2) {
-				output[j] += mix_buffer[j] * lvol;
-				output[j + 1] += mix_buffer[j + 1] * rvol;
-			}
+		// We still emulate disabled channel, we just don't mix them with the output
+		if (!(channels & (1 << i)))
+			continue;
+
+		for (int j = 0; j < length; j += 2) {
+			output[j] += mix_buffer[j] * lvol;
+			output[j + 1] += mix_buffer[j + 1] * rvol;
 		}
 	}
 }
