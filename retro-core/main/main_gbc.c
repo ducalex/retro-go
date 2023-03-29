@@ -91,15 +91,15 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t 
     }
 
     if (pal == GB_PALETTE_DMG)
-        strcpy(option->value, "GB DMG   ");
+        strcpy(option->value, "DMG   ");
     else if (pal == GB_PALETTE_MGB0)
-        strcpy(option->value, "GB Pocket");
+        strcpy(option->value, "Pocket");
     else if (pal == GB_PALETTE_MGB1)
-        strcpy(option->value, "GB Light ");
+        strcpy(option->value, "Light ");
     else if (pal == GB_PALETTE_CGB)
-        strcpy(option->value, "GB Color ");
+        strcpy(option->value, "GBC   ");
     else if (pal == GB_PALETTE_SGB)
-        strcpy(option->value, "Super GB ");
+        strcpy(option->value, "SGB   ");
     else
         sprintf(option->value, "%d/%d   ", pal + 1, max - 1);
 
@@ -150,6 +150,13 @@ static rg_gui_event_t rtc_t_update_cb(rg_gui_option_t *option, rg_gui_event_t ev
         if (event == RG_DIALOG_NEXT && ++s > 59) s = 0;
         sprintf(option->value, "%02d", s);
     }
+    if (option->arg == 'x') {
+        if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT) {
+            useSystemTime = !useSystemTime;
+            rg_settings_set_number(NS_APP, SETTING_SYSTIME, useSystemTime);
+        }
+        strcpy(option->value, useSystemTime ? "Yes" : "No ");
+    }
 
     gnuboy_set_time(d, h, m, s);
 
@@ -166,43 +173,14 @@ static rg_gui_event_t rtc_update_cb(rg_gui_option_t *option, rg_gui_event_t even
             {'h', "Hour", "00", 1, &rtc_t_update_cb},
             {'m', "Min",  "00", 1, &rtc_t_update_cb},
             {'s', "Sec",  "00", 1, &rtc_t_update_cb},
+            {'x', "Sync",  "Yes", 1, &rtc_t_update_cb},
             RG_DIALOG_CHOICE_LAST
         };
-        rg_gui_dialog("Set Clock", choices, 0);
+        rg_gui_dialog("RTC config", choices, 0);
     }
     int h, m;
     gnuboy_get_time(NULL, &h, &m, NULL);
     sprintf(option->value, "%02d:%02d", h, m);
-    return RG_DIALOG_VOID;
-}
-
-static rg_gui_event_t sram_settings_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-    {
-        const rg_gui_option_t options[] = {
-            {0, "Auto save SRAM", "Off", 1, &sram_autosave_cb},
-            {1, "Save SRAM now ", NULL, 1, NULL},
-            {0, "Close ", NULL, 1, NULL},
-            RG_DIALOG_CHOICE_LAST
-        };
-
-        if (rg_gui_dialog("Save RAM", options, 0) == 1)
-        {
-            rg_system_set_led(1);
-
-            int ret = gnuboy_save_sram(sramFile, false);
-
-            if (ret == -1)
-                rg_gui_alert("Nothing to save", "Cart has no Battery or SRAM!");
-            else if (ret < 0)
-                rg_gui_alert("Save write failed!", sramFile);
-
-            rg_system_set_led(0);
-
-            return RG_DIALOG_CLOSE;
-        }
-    }
     return RG_DIALOG_VOID;
 }
 
@@ -212,19 +190,6 @@ static void blit_frame(void)
     fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
     currentUpdate = previousUpdate;
     host.video.buffer = currentUpdate->buffer;
-}
-
-static void auto_sram_update(void)
-{
-    if (autoSaveSRAM > 0 && gnuboy_sram_dirty())
-    {
-        rg_system_set_led(1);
-        if (gnuboy_save_sram(sramFile, true) != 0)
-        {
-            RG_LOGE("sram_save() failed...");
-        }
-        rg_system_set_led(0);
-    }
 }
 
 void gbc_main(void)
@@ -237,8 +202,8 @@ void gbc_main(void)
     };
     const rg_gui_option_t options[] = {
         {0, "Palette", "7/7", 1, &palette_update_cb},
-        {0, "Set clock", "00:00", 1, &rtc_update_cb},
-        {0, "SRAM options...", NULL, 1, &sram_settings_cb},
+        {0, "RTC config", "00:00", 1, &rtc_update_cb},
+        {0, "SRAM autosave", "Off", 1, &sram_autosave_cb},
         RG_DIALOG_CHOICE_LAST
     };
 
@@ -258,7 +223,7 @@ void gbc_main(void)
 
     // Initialize the emulator
     if (gnuboy_init(app->sampleRate, true, GB_PIXEL_565_BE, &blit_frame) < 0)
-        RG_PANIC("EMulator init failed!");
+        RG_PANIC("Emulator init failed!");
 
     // Load ROM
     if (gnuboy_load_rom(app->romPath) < 0)
@@ -270,7 +235,7 @@ void gbc_main(void)
     else
         gnuboy_load_bios(RG_BASE_PATH_BIOS "/gb_bios.bin");
 
-    gnuboy_set_palette(rg_settings_get_number(NS_APP, SETTING_PALETTE, GB_PALETTE_CGB));
+    gnuboy_set_palette(rg_settings_get_number(NS_APP, SETTING_PALETTE, GB_PALETTE_DMG));
 
     // Hard reset to have a clean slate
     gnuboy_reset(true);
@@ -300,9 +265,12 @@ void gbc_main(void)
 
         if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
         {
-            auto_sram_update();
             if (joystick & RG_KEY_MENU)
+            {
+                if (gnuboy_sram_dirty()) // save in case the user quits
+                    gnuboy_save_sram(sramFile, false);
                 rg_gui_game_menu();
+            }
             else
                 rg_gui_options_menu();
             rg_audio_set_sample_rate(app->sampleRate * app->speed);
@@ -338,11 +306,7 @@ void gbc_main(void)
             }
             else if (--autoSaveSRAM_Timer == 0)
             {
-                auto_sram_update();
-
-                #if RG_STORAGE_DRIVER == 1 // This is only necessary when the SPI bus is shared
-                skipFrames += 5;
-                #endif
+                gnuboy_save_sram(sramFile, true);
             }
         }
 
