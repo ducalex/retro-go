@@ -31,8 +31,9 @@ static int apps_count = 0;
 static const char *get_file_path(retro_file_t *file)
 {
     static char buffer[RG_PATH_MAX + 1];
-    if (file == NULL) return NULL;
-    return strcat(strcat(strcpy(buffer, file->folder), "/"), file->name);
+    RG_ASSERT(file, "Bad param");
+    snprintf(buffer, RG_PATH_MAX, "%s/%s", file->folder, file->name);
+    return buffer;
 }
 
 static void scan_folder(retro_app_t *app, const char* path, void *parent)
