@@ -75,7 +75,7 @@ static rg_gui_event_t apu_toggle_cb(rg_gui_option_t *option, rg_gui_event_t even
         rg_settings_set_number(NS_APP, SETTING_APU_EMULATION, apu_enabled);
     }
 
-    sprintf(option->value, "%s", apu_enabled ? "On " : "Off");
+    strcpy(option->value, apu_enabled ? "On " : "Off");
 
     return RG_DIALOG_VOID;
 }
@@ -99,7 +99,7 @@ static rg_gui_event_t lowpass_filter_cb(rg_gui_option_t *option, rg_gui_event_t 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
         lowpass_filter = !lowpass_filter;
 
-    sprintf(option->value, "%s", lowpass_filter ? "On" : "Off");
+    strcpy(option->value, lowpass_filter ? "On" : "Off");
 
     return RG_DIALOG_VOID;
 }

@@ -23,7 +23,7 @@ typedef struct retro_app_s
     char description[64];
     char short_name[24];
     char partition[24];
-    char extensions[24];
+    char extensions[32];
     struct {
         char covers[RG_PATH_MAX];
         char saves[RG_PATH_MAX];
