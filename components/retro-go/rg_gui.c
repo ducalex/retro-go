@@ -508,7 +508,7 @@ void rg_gui_draw_status_bars(void)
         (int)round(stats.totalFPS),
         (int)round(stats.busyPercent));
 
-    if (app->romPath && strlen(app->romPath) > max_len)
+    if (app->romPath && strlen(app->romPath) > max_len - 1)
         snprintf(footer, max_len, "...%s", app->romPath + (strlen(app->romPath) - (max_len - 4)));
     else if (app->romPath)
         snprintf(footer, max_len, "%s", app->romPath);
@@ -720,7 +720,7 @@ int rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, int s
         if (option->update_cb)
             option->update_cb(option, RG_DIALOG_INIT);
     }
-    RG_LOGI("text_buffer usage = %d\n", (intptr_t)(text_buffer_ptr - text_buffer));
+    RG_LOGD("text_buffer usage = %d\n", (intptr_t)(text_buffer_ptr - text_buffer));
 
     rg_gui_draw_status_bars();
     rg_gui_draw_dialog(title, options, sel);
