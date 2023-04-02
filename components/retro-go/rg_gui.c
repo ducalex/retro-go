@@ -492,9 +492,9 @@ void rg_gui_clear(rg_color_t color)
 
 void rg_gui_draw_status_bars(void)
 {
-    int max_len = RG_MIN(gui.screen_width / RG_MAX(gui.style.font->width, 7), 99);
-    char header[100] = {0};
-    char footer[100] = {0};
+    size_t max_len = RG_MIN(gui.screen_width / RG_MAX(gui.style.font->width, 7), 99) + 1;
+    char header[max_len];
+    char footer[max_len];
 
     const rg_app_t *app = rg_system_get_app();
     rg_stats_t stats = rg_system_get_counters();
@@ -502,18 +502,18 @@ void rg_gui_draw_status_bars(void)
     if (!app->initialized || app->isLauncher)
         return;
 
-    snprintf(header, 100, "SPEED: %d%% (%d/%d) / BUSY: %d%%",
+    snprintf(header, max_len, "SPEED: %d%% (%d/%d) / BUSY: %d%%",
         (int)round(stats.totalFPS / app->refreshRate * 100.f),
         (int)round(stats.totalFPS - stats.skippedFPS),
         (int)round(stats.totalFPS),
         (int)round(stats.busyPercent));
 
-    if (app->romPath && strlen(app->romPath) > max_len)
-        snprintf(footer, 100, "...%s", app->romPath + (strlen(app->romPath) - (max_len - 3)));
+    if (app->romPath && strlen(app->romPath) > max_len - 1)
+        snprintf(footer, max_len, "...%s", app->romPath + (strlen(app->romPath) - (max_len - 4)));
     else if (app->romPath)
-        snprintf(footer, 100, "%s", app->romPath);
+        snprintf(footer, max_len, "%s", app->romPath);
     else
-        snprintf(footer, 100, "Retro-Go %s", app->version);
+        snprintf(footer, max_len, "Retro-Go %s", app->version);
 
     rg_gui_draw_text(0, 0, gui.screen_width, header, C_WHITE, C_BLACK, RG_TEXT_ALIGN_TOP);
     rg_gui_draw_text(0, 0, gui.screen_width, footer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_BOTTOM);
@@ -720,7 +720,7 @@ int rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, int s
         if (option->update_cb)
             option->update_cb(option, RG_DIALOG_INIT);
     }
-    RG_LOGI("text_buffer usage = %d\n", (intptr_t)(text_buffer_ptr - text_buffer));
+    RG_LOGD("text_buffer usage = %d\n", (intptr_t)(text_buffer_ptr - text_buffer));
 
     rg_gui_draw_status_bars();
     rg_gui_draw_dialog(title, options, sel);
@@ -1053,7 +1053,7 @@ static rg_gui_event_t theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
         free(path);
     }
 
-    sprintf(option->value, "%s", rg_gui_get_theme() ?: "Default");
+    strcpy(option->value, rg_gui_get_theme() ?: "Default");
     return RG_DIALOG_VOID;
 }
 
@@ -1168,16 +1168,6 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
     snprintf(build_ver, 30, "%s", app->version);
     snprintf(build_date, 30, "%s %s", app->buildDate, app->buildTime);
     snprintf(build_user, 30, "%s", app->buildUser);
-
-    char *rel_hash = strstr(build_ver, "-0-g");
-    if (rel_hash)
-    {
-        rel_hash[0] = ' ';
-        rel_hash[1] = ' ';
-        rel_hash[2] = ' ';
-        rel_hash[3] = '(';
-        strcat(build_ver, ")");
-    }
 
     while (true)
     {

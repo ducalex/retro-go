@@ -151,20 +151,28 @@ void updater_show_dialog(void)
     for (int i = 0; i < releases_count; ++i)
     {
         cJSON *release_json = cJSON_GetArrayItem(releases_json, i);
+        char *name = cJSON_GetStringValue(cJSON_GetObjectItem(release_json, "name"));
+        char *date = cJSON_GetStringValue(cJSON_GetObjectItem(release_json, "published_at"));
+
+        snprintf(releases[i].name, 32, "%s", name ?: "N/A");
+        snprintf(releases[i].date, 32, "%s", date ?: "N/A");
+
         cJSON *assets_json = cJSON_GetObjectItem(release_json, "assets");
         size_t assets_count = cJSON_GetArraySize(assets_json);
-
-        snprintf(releases[i].name, 32, "%s", cJSON_GetStringValue(cJSON_GetObjectItem(release_json, "name")));
-        snprintf(releases[i].date, 32, "%s", cJSON_GetStringValue(cJSON_GetObjectItem(release_json, "published_at")));
         releases[i].assets = calloc(assets_count, sizeof(asset_t));
-        releases[i].assets_count = assets_count;
+        releases[i].assets_count = 0;
 
         for (int j = 0; j < assets_count; ++j)
         {
             cJSON *asset_json = cJSON_GetArrayItem(assets_json, j);
-            asset_t *asset = &releases[i].assets[j];
-            snprintf(asset->name, 32, "%s", cJSON_GetStringValue(cJSON_GetObjectItem(asset_json, "name")));
-            snprintf(asset->url, 256, "%s", cJSON_GetStringValue(cJSON_GetObjectItem(asset_json, "browser_download_url")));
+            char *name = cJSON_GetStringValue(cJSON_GetObjectItem(asset_json, "name"));
+            char *url = cJSON_GetStringValue(cJSON_GetObjectItem(asset_json, "browser_download_url"));
+            if (name && url)
+            {
+                asset_t *asset = &releases[i].assets[releases[i].assets_count++];
+                snprintf(asset->name, 32, "%s", name);
+                snprintf(asset->url, 256, "%s", url);
+            }
         }
     }
 

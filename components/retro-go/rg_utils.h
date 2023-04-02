@@ -40,9 +40,11 @@
 #define PRINTF_BINARY_32 PRINTF_BINARY_16 " " PRINTF_BINARY_16
 #define PRINTF_BINVAL_32(i) PRINTF_BINVAL_16((i) >> 16), PRINTF_BINVAL_16(i)
 
+size_t strlcpy(char *dst, const char *src, size_t size);
+size_t strlcat(char *dst, const char *src, size_t size);
+
 char *rg_strtolower(char *str);
 char *rg_strtoupper(char *str);
-size_t rg_strlcpy(char *dst, const char *src, size_t size);
 const char *rg_dirname(const char *path);
 const char *rg_basename(const char *path);
 const char *rg_extension(const char *path);

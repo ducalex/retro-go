@@ -68,6 +68,8 @@ void gui_event(gui_event_t event, tab_t *tab)
 
 tab_t *gui_add_tab(const char *name, const char *desc, void *arg, void *event_handler)
 {
+    RG_ASSERT(name && desc, "Bad param");
+
     tab_t *tab = calloc(1, sizeof(tab_t));
 
     snprintf(tab->name, sizeof(tab->name), "%s", name);

@@ -31,8 +31,9 @@ static int apps_count = 0;
 static const char *get_file_path(retro_file_t *file)
 {
     static char buffer[RG_PATH_MAX + 1];
-    if (file == NULL) return NULL;
-    return strcat(strcat(strcpy(buffer, file->folder), "/"), file->name);
+    RG_ASSERT(file, "Bad param");
+    snprintf(buffer, RG_PATH_MAX, "%s/%s", file->folder, file->name);
+    return buffer;
 }
 
 static void scan_folder(retro_app_t *app, const char* path, void *parent)
@@ -43,17 +44,18 @@ static void scan_folder(retro_app_t *app, const char* path, void *parent)
 
     const char *folder = const_string(path);
     rg_scandir_t *files = rg_storage_scandir(path, NULL, false);
+    char ext_buf[32];
 
     for (rg_scandir_t *entry = files; entry && entry->is_valid; ++entry)
     {
+        const char *ext = rg_extension(entry->name);
         uint8_t is_valid = false;
         uint8_t type = 0x00;
 
-        if (entry->is_file)
+        if (entry->is_file && ext != NULL)
         {
-            char buffer[RG_PATH_MAX];
-            snprintf(buffer, RG_PATH_MAX, " %s ", rg_extension(entry->name));
-            is_valid = strstr(app->extensions, rg_strtolower(buffer)) != NULL;
+            snprintf(ext_buf, sizeof(ext_buf), " %s ", ext);
+            is_valid = strstr(app->extensions, rg_strtolower(ext_buf)) != NULL;
             type = 0x00;
         }
         else if (entry->is_dir)
@@ -321,7 +323,7 @@ static void tab_refresh(tab_t *tab)
         {
             retro_file_t *file = &app->files[i];
 
-            if (!file->is_valid)
+            if (!file->is_valid || !file->name)
                 continue;
 
             if (file->folder != folder && strcmp(file->folder, folder) != 0)
@@ -649,6 +651,8 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
 
 static void application(const char *desc, const char *name, const char *exts, const char *part, uint16_t crc_offset)
 {
+    RG_ASSERT(desc && name && exts && part, "Bad param");
+
     if (!rg_system_have_app(part))
     {
         RG_LOGI("Application '%s' (%s) not present, skipping\n", desc, part);

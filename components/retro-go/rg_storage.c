@@ -202,64 +202,49 @@ bool rg_storage_mkdir(const char *dir)
 {
     RG_ASSERT(dir, "Bad param");
 
-    char temp[RG_PATH_MAX + 1];
-    int ret = mkdir(dir, 0777);
+    if (mkdir(dir, 0777) == 0)
+        return true;
 
-    if (ret == -1)
+    // FIXME: Might want to stat to see if it's a dir
+    if (errno == EEXIST)
+        return true;
+
+    // Possibly missing some parents, try creating them
+    char *temp = strdup(dir);
+    for (char *p = temp + strlen(RG_STORAGE_ROOT) + 1; *p; p++)
     {
-        if (errno == EEXIST)
-            return true;
-
-        strncpy(temp, dir, RG_PATH_MAX);
-
-        for (char *p = temp + strlen(RG_STORAGE_ROOT) + 1; *p; p++)
+        if (*p == '/')
         {
-            if (*p == '/')
+            *p = 0;
+            if (strlen(temp) > 0)
             {
-                *p = 0;
-                if (strlen(temp) > 0)
-                {
-                    RG_LOGI("Creating %s\n", temp);
-                    mkdir(temp, 0777);
-                }
-                *p = '/';
-                while (*(p + 1) == '/')
-                    p++;
+                mkdir(temp, 0777);
             }
+            *p = '/';
+            while (*(p + 1) == '/')
+                p++;
         }
-
-        ret = mkdir(temp, 0777);
     }
+    free(temp);
 
-    if (ret == 0)
-    {
-        RG_LOGI("Folder created %s\n", dir);
-    }
+    // Finally try again
+    if (mkdir(dir, 0777) == 0)
+        return true;
 
-    return (ret == 0);
+    return false;
 }
 
 bool rg_storage_delete(const char *path)
 {
     RG_ASSERT(path, "Bad param");
-    DIR *dir;
 
-    if (unlink(path) == 0)
-    {
-        RG_LOGI("Deleted file %s\n", path);
+    // errno has proven to be somewhat unreliable across our targets
+    // let's use a bruteforce approach...
+    if (unlink(path) == 0 || rmdir(path) == 0)
         return true;
-    }
-    else if (errno == ENOENT)
-    {
-        // The path already doesn't exist!
-        return true;
-    }
-    else if (rmdir(path) == 0)
-    {
-        RG_LOGI("Deleted empty folder %s\n", path);
-        return true;
-    }
-    else if ((dir = opendir(path)))
+
+    DIR *dir = opendir(path);
+    if (dir)
     {
         char pathbuf[128]; // Smaller than RG_PATH_MAX to prevent issues due to lazy recursion...
         struct dirent *ent;
@@ -272,11 +257,7 @@ bool rg_storage_delete(const char *path)
             rg_storage_delete(pathbuf);
         }
         closedir(dir);
-        if (rmdir(path) == 0)
-        {
-            RG_LOGI("Deleted folder %s\n", path);
-            return true;
-        }
+        return rmdir(path) == 0;
     }
 
     return false;
