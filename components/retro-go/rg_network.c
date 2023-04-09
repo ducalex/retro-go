@@ -11,17 +11,6 @@
         goto fail;                       \
     }
 
-static rg_network_t network = {0};
-static rg_wifi_config_t wifi_config = {0};
-static bool initialized = false;
-
-static const char *SETTING_WIFI_SSID = "ssid";
-static const char *SETTING_WIFI_PASSWORD = "password";
-static const char *SETTING_WIFI_CHANNEL = "channel";
-static const char *SETTING_WIFI_MODE = "mode";
-static const char *SETTING_WIFI_SLOT = "slot";
-
-
 #ifdef RG_ENABLE_NETWORKING
 #include <esp_http_client.h>
 #include <esp_system.h>
@@ -33,6 +22,16 @@ static const char *SETTING_WIFI_SLOT = "slot";
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <netdb.h>
+
+static rg_network_t network = {0};
+static rg_wifi_config_t wifi_config = {0};
+static bool initialized = false;
+
+static const char *SETTING_WIFI_SSID = "ssid";
+static const char *SETTING_WIFI_PASSWORD = "password";
+static const char *SETTING_WIFI_CHANNEL = "channel";
+static const char *SETTING_WIFI_MODE = "mode";
+static const char *SETTING_WIFI_SLOT = "slot";
 
 static void network_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
@@ -95,6 +94,7 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int32_
 
 bool rg_network_wifi_load_config(int slot)
 {
+#ifdef RG_ENABLE_NETWORKING
     char key_ssid[16], key_password[16], key_channel[16], key_mode[16];
 
     if (slot < -1 || slot > 999)
@@ -116,33 +116,40 @@ bool rg_network_wifi_load_config(int slot)
     }
 
     RG_LOGI("Looking for '%s' (slot %d)\n", key_ssid, slot);
+    rg_wifi_config_t config = {0};
+    char *ptr;
 
-    char *ssid = rg_settings_get_string(NS_WIFI, key_ssid, NULL);
-    char *pass = rg_settings_get_string(NS_WIFI, key_password, NULL);
-    int channel = rg_settings_get_number(NS_WIFI, key_channel, 0);
-    int ap_mode = rg_settings_get_number(NS_WIFI, key_mode, 0);
+    if ((ptr = rg_settings_get_string(NS_WIFI, key_ssid, NULL)))
+        strncpy(config.ssid, ptr, 32), free(ptr);
+    if ((ptr = rg_settings_get_string(NS_WIFI, key_password, NULL)))
+        strncpy(config.password, ptr, 64), free(ptr);
+    config.channel = rg_settings_get_number(NS_WIFI, key_channel, 0);
+    config.ap_mode = rg_settings_get_number(NS_WIFI, key_mode, 0);
 
-    if (!ssid && !pass)
+    if (!config.ssid[0])
         return false;
 
-    rg_network_wifi_set_config(ssid, pass, channel, ap_mode);
-    free(ssid), free(pass);
+    return rg_network_wifi_set_config(&config);
+#else
     return false;
+#endif
 }
 
-bool rg_network_wifi_set_config(const char *ssid, const char *password, int channel, int mode)
+bool rg_network_wifi_set_config(const rg_wifi_config_t *config)
 {
-    snprintf(wifi_config.ssid, 32, "%s", ssid ?: "");
-    snprintf(wifi_config.password, 64, "%s", password ?: "");
-    wifi_config.channel = channel;
-    wifi_config.ap_mode = mode;
+#ifdef RG_ENABLE_NETWORKING
+    RG_ASSERT(config, "bad param");
+    wifi_config = *config;
     return true;
+#else
+    return false;
+#endif
 }
 
 bool rg_network_wifi_start(void)
 {
-    RG_ASSERT(initialized, "Please call rg_network_init() first");
 #ifdef RG_ENABLE_NETWORKING
+    RG_ASSERT(initialized, "Please call rg_network_init() first");
     wifi_config_t config = {0};
     esp_err_t err;
 
@@ -182,22 +189,27 @@ fail:
 
 void rg_network_wifi_stop(void)
 {
-    RG_ASSERT(initialized, "Please call rg_network_init() first");
 #ifdef RG_ENABLE_NETWORKING
+    RG_ASSERT(initialized, "Please call rg_network_init() first");
     esp_wifi_stop();
     rg_task_delay(100);
-#endif
     memset(network.name, 0, 32);
+#endif
 }
 
 rg_network_t rg_network_get_info(void)
 {
+#ifdef RG_ENABLE_NETWORKING
     return network;
+#else
+    return (rg_network_t){0};
+#endif
 }
 
 bool rg_network_sync_time(const char *host, int *out_delta)
 {
 #ifdef RG_ENABLE_NETWORKING
+    RG_ASSERT(host, "bad param");
     int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     struct hostent *server = gethostbyname(host);
     struct sockaddr_in serv_addr = {};
@@ -258,10 +270,10 @@ void rg_network_deinit(void)
 
 bool rg_network_init(void)
 {
+#ifdef RG_ENABLE_NETWORKING
     if (initialized)
         return true;
 
-#ifdef RG_ENABLE_NETWORKING
     // Init event loop first
     esp_err_t err;
     TRY(esp_event_loop_create_default());
