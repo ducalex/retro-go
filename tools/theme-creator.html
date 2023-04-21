@@ -1,225 +1,412 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <title>Retro-Go theme creator</title>
-        <style>
-            body {
-                font-family: "Consolas", "Monaco", "Lucida Console", monospace;
-            }
-            h1 {
-                text-align: center;
-            }
-            #container {
-                width: 80%;
-                margin: 0 auto;
-            }
-            #left-pane {
-                width: 49%;
-                float: left;
-            }
-            #right-pane {
-                width: 49%;
-                float: right;
-            }
-            #preview {
-                transform: scale(2);
-                transform-origin: 0 0;
-                width: 320px;
-                height: 240px;
-                border: 1px solid black;
-                position: relative;
-                background-color: black;
-                color: white;
-                font-size: 12px;
-            }
-            #preview * {
-                padding: 0px;
-                margin: 0px;
-            }
-            #preview .header {
-                width: 320px;
-                height: 56px;
-                position: absolute;
-                top: 0px;
-                left: 0px;
-            }
-            #preview .logo {
-                width: 47px;
-                height: 51px;
-                position: absolute;
-                top: 0px;
-                left: 0px;
-            }
-            #preview .banner {
-                width: 272px;
-                height: 32px;
-                position: absolute;
-                top: 0px;
-                left: 48px;
-            }
-            #preview .status {
-                width: 128px;
-                position: absolute;
-                top: 35px;
-                left: 58px;
-            }
-            #preview .notification {
-                width: 104px;
-                position: absolute;
-                top: 35px;
-                left: 216px;
-                color: green;
-                text-align: right;
-            }
-            #preview .list {
-                width: 128px;
-                position: absolute;
-                top: 56px;
-                left: 0px;
-                height: 184px;
-                width: 100%;
-                background-image: linear-gradient(black, blue);
-            }
-            #preview .list > div {
-                height: 1em;
-            }
-            #preview .list .normal {
-                color: #AAA;
-            }
-        </style>
-        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    </head>
-    <body>
-        <h1>Theme creator</h1>
-        <div id="container">
-            <div id="left-pane">
-                <form id="controls" autocomplete="off">
-                    <div class="input">Header &gt; Background color: <input id="header-color-bg" type="color" value="#000000"></div>
-                    <div class="input">Header &gt; Foreground color: <input id="header-color-fg" type="color" value="#FFFFFF"></div>
-                    <div class="input">List &gt; Background color 1: <input id="list-color-bg1" type="color" value="#000000"></div>
-                    <div class="input">List &gt; Background color 2: <input id="list-color-bg2" type="color" value="#0000FF"></div>
-                    <div class="input">List &gt; Normal text color: <input  id="list-color-txt-fg" type="color" value="#848284"></div>
-                    <div class="input">List &gt; Normal text background: <input id="list-color-txt-bg" type="color" value="#00000000"></div>
-                    <div class="input">List &gt; Selected text color: <input id="list-color-sel-fg" type="color" value="#FFFFFF"></div>
-                    <div class="input">List &gt; Selected text background: <input id="list-color-sel-bg" type="color" value="#00000000"></div>
-                    <div class="input">Dialog &gt; Background color: <input id="dialog-color-bg" type="color" value="#000000"></div>
-                    <div class="input">Dialog &gt; Foreground color: <input id="dialog-color-fg" type="color" value="#FFFFFF"></div>
-                    <input id="reset-all" type="reset">
-                </form>
-                <hr>
-                <textarea id="theme-data" cols="40" rows="15"></textarea>
-            </div>
-            <div id="right-pane">
-                <div id="preview">
-                    <div class="header">
-                        <img class="logo" src="../launcher/images/logo_nes.png">
-                        <img class="banner" src="../launcher/images/header_nes.png">
-                        <div class="battery">
+  <head>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Open+Sans&display=swap');
+      @import url("https://fonts.googleapis.com/css2?family=DotGothic16&display=swap:400,100,500,300italic,500italic,700italic,900,300");
 
-                        </div>
-                        <div class="status">
-                            Games: 100
-                        </div>
-                        <div class="notification">
-                            CRC32
-                        </div>
-                    </div>
-                    <div class="list">
-                        <div class="normal">MY VERY VERY LONG GAME.NES</div>
-                        <div class="normal">MY VERY VERY LONG GAME.NES</div>
-                        <div class="normal">MY VERY VERY LONG GAME.NES</div>
-                        <div class="normal">MY VERY VERY VERY LONG GAME.NES</div>
-                        <div class="normal">MY VERY VERY LONG GAME.NES</div>
-                        <div class="normal">MY VERY VERY LONG GAME.NES</div>
-                        <div class="normal">MY VERY VERY LONG GAME.NES</div>
-                        <div class="selected">SELECTED GAME NAME.NES</div>
-                        <div class="normal">OTHER GAME NAME.NES</div>
-                        <div class="normal">OTHER GAME NAME.NES</div>
-                        <div class="normal">OTHER GAME NAME.NES</div>
-                        <div class="normal">OTHER GAME NAME.NES</div>
-                        <div class="normal">OTHER GAME NAME.NES</div>
-                        <div class="normal">OTHER GAME NAME.NES</div>
-                        <div class="normal">OTHER GAME NAME.NES</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <script>
-            function main() {
-                let colors = {
-                    header_bg: $('#header-color-bg'),
-                    header_fg: $('#header-color-fg'),
-                    list_bg1: $('#list-color-bg1'),
-                    list_bg2: $('#list-color-bg2'),
-                    list_txt_bg: $('#list-color-txt-bg'),
-                    list_txt_fg: $('#list-color-txt-fg'),
-                    list_sel_bg: $('#list-color-sel-bg'),
-                    list_sel_fg: $('#list-color-sel-fg'),
-                    dialog_bg: $('#dialog-color-bg'),
-                    dialog_fg: $('#dialog-color-fg'),
-                };
+      :root {
+        /**
+          * dimensions
+          */
+        --header-height: calc(72/16 * 1rem);
+        --footer-height: calc(36/16 * 1rem);
+        --aside-width: calc(320/16 * 1rem);
+        --aside-collapsed-width: calc(50/16 * 1rem);
+        --section-header-height: calc(144/16 * 1rem);
+        /**
+          * colors
+          */
+        --header-background: hsl(0, 0%, 100%);
+        --footer-background: hsl(0, 0%, 10%);
+        --aside-background: hsl(240, 7%, 94%);
+        --body-background: hsl(240, 7%, 97%);
+        --main-background: var(--body-background);
+        --logo-primary-color: hsl(193, 100%, 64%);
+        --pallete-background: hsl(0, 0%, 85%);
 
-                function css2rg(color) {
+        /**
+          * shadows
+          */
+        --pixel-size: 2px;
+        --pixel-gap: 1px;
+        --shadow-depth: 5px;
+        --shadow: #00000022;
+        --header_bg: transparent;
+        --header_fg: transparent;
+        --list_bg1: transparent;
+        --list_bg2: transparent;
+        --list_txt_fg: transparent;
+        --list_txt_bg: transparent;
+        --list_sel_fg: transparent;
+        --list_sel_bg: transparent;
+        --dialog_bg: transparent;
+        --base-color: #5e785d;
+      }
 
-                }
+      body {
+        display: grid;
+        grid-template-areas:
+          "header header"
+          "aside main"
+          "footer footer";
+        grid-template-columns: auto 1fr;
+        grid-template-rows: var(--header-height) 1fr var(--footer-height);
+        width: 100vw;
+        height: 100vh;
+        margin: 0;
+        padding: 0;
+        background: var(--body-background);
+        font-family: 'Open Sans';
+      }
 
-                function rg2css(color) {
+      header {
+        grid-area: header;
+        display: flex;
+        background: var(--header-background);
+      }
 
-                }
+      header h1 {
+        display: flex;
+        align-items: center;
+        padding-inline: calc(16 / 16 * 1rem);
+        margin: 0;
+      }
 
-                function updateColors() {
-                    $('#preview .header').css({"color": colors.header_fg.val(), "background-color": colors.header_bg.val()});
-                    $('#preview .list .normal').css({"color": colors.list_txt_fg.val()}); // , "background-color": colors.list_txt_bg.val()
-                    $('#preview .list .selected').css({"color": colors.list_sel_fg.val()}); // , "background-color": colors.list_sel_bg.val()
-                    $('#preview .list').css({"background-image": "linear-gradient(" + colors.list_bg1.val() + ", " + colors.list_bg2.val() + ")"});
-                }
+      aside {
+        grid-area: aside;
+        background: var(--aside-background);
+        display: flex;
+        flex-direction: column;
+        user-select: none;
+      }
 
-                function updateData() {
-                    let data = {};
-                    for (let key in colors) {
-                        data[key] = colors[key].val();
-                    }
-                    $('#theme-data').val(JSON.stringify(data, null, 2));
-                }
+      aside > nav {
+        width: var(--aside-width);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        padding-block: 0.5rem;
+      }
 
-                $('#controls input').change(function() {
-                    updateColors();
-                    updateData();
-                });
+      main {
+        grid-area: main;
+        display: grid;
+        grid-template-areas:
+          "preview code";
+        grid-template-columns: calc(480 / 16 * 1rem) auto;
+        grid-template-rows: 1fr;
+        gap: 1rem;
+        padding: 1rem;
+      }
 
-                $('#reset-all').mouseup(function() {
-                    setTimeout(function() {
-                        updateColors();
-                        updateData();
-                    }, 50);
-                });
+      preview {
+        grid-area: preview;
+        background: var(--main-background);
+        width: calc(480 / 16 * 1rem);
+        aspect-ratio: 4 / 3;
+        background: linear-gradient(to bottom, var(--list_bg1), var(--list_bg2)) ;
+        box-shadow: inset var(--shadow-depth) var(--shadow-depth) calc(var(--shadow-depth) * 2) var(--shadow),
+                    inset calc(var(--shadow-depth) * -1) calc(var(--shadow-depth) * -1) calc(var(--shadow-depth) * 2) var(--shadow);
+        font-family: "DotGothic16";
+        font-size: 1rem;
+        color: var(--base-color);
+      }
 
-                $('#theme-data').on("keyup change", function() {
-                    try {
-                        let data = JSON.parse(this.value);
-                        for (let key in colors) {
-                            colors[key].val(data[key]);
-                        }
-                        updateColors();
-                    } catch(err) {
-                        // ignore
-                    }
-                });
+      preview:before {
+        content: "";
+        position: absolute;
+        width: calc(480 / 16 * 1rem);
+        aspect-ratio: 4 / 3;
+        background: linear-gradient(to right, var(--shadow) var(--pixel-gap), transparent var(--pixel-gap)),
+                    linear-gradient(to bottom, var(--shadow) var(--pixel-gap), transparent var(--pixel-gap));
+        background-size: var(--pixel-size) var(--pixel-size), var(--pixel-size) var(--pixel-size);
+      }
 
-                updateColors();
-                updateData();
-            }
+      preview header {
+        display: flex;
+        align-items: center;
+        background: var(--header_bg);
+        color: var(--header_fg);
+        padding-inline: 1.25rem;
+        padding-block: 2rem;
+      }
 
-            // This nonsense is to make it work in htmlpreview.github.io
-            if (typeof $ != 'undefined') {
-                main();
-            } else {
-                script = document.createElement('script');
-                script.type = 'text/javascript';
-                script.src = 'https://code.jquery.com/jquery-3.6.0.min.js';
-                script.onload = main;
-                document.getElementsByTagName('head')[0].appendChild(script);
-            }
-        </script>
-    </body>
+      preview header h2 {
+        line-height: 0;
+        margin: 0;
+        padding: 0;
+      }
+
+      preview ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        color: var(--list_txt_fg);
+      }
+
+      preview ul li {
+        padding-inline: 1rem;
+        padding-block: 0.5rem;
+        margin: 0;
+      }
+
+      preview ul li.selected {
+        color: var(--list_sel_fg);
+      }
+
+      preview ul.highlight li {
+        background: var(--list_txt_bg);
+      }
+
+      preview ul.highlight li.selected {
+        background: var(--list_sel_bg);
+      }
+
+      pre {
+        background: wheat;
+        padding: 1rem;
+        margin: 0;
+      }
+
+      code {
+        grid-area: code;
+        font-size: 1.25rem;
+      }
+
+      footer {
+        grid-area: footer;
+        background: var(--footer-background);
+      }
+
+      /* palette */
+      palette-chip {
+        --size: 2.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: calc(var(--aside-width) - 2rem);
+        border: solid 0.125rem hsl(0, 0%, 80%);
+        border-radius: var(--size);
+        padding: 0.125rem;
+        font-size: calc(12 / 16 * 1rem);
+        background: var(--pallete-background);
+      }
+
+      palette-chip input[type=color] {
+        width: var(--size);
+        height: var(--size);
+        border: none;
+        background: none;
+        outline: none;
+        position: relative;
+      }
+
+      palette-chip input[type=color]:before {
+        --d: calc(var(--size) / 2.65);
+        --od: calc(var(--d) + 0.45rem);
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: var(--size);
+        height: var(--size);
+        background: radial-gradient(
+                      circle at center,
+                      transparent var(--d),
+                      var(--pallete-background) var(--d),
+                      var(--pallete-background) calc(var(--od)),
+                      rgba(0,0,0,0.1) calc(var(--od)),
+                      transparent calc(var(--od))
+                    );
+      }
+
+      palette-chip input[type=color]::-webkit-color-swatch {
+        border: none;
+      }
+
+      palette-chip prop {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        margin-right: 1rem;
+      }
+
+      palette-chip prop strong {
+        color:hsl(0, 0%, 10%);
+        font-weight: 600;
+      }
+
+      palette-chip prop span {
+        color:hsl(0, 0%, 50%);
+        font-weight: 400;
+        font-style: italic;
+      }
+
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Retro Go Theme Creator</h1>
+    </header>
+    <aside>
+      <nav>
+      </nav>
+    </aside>
+    <main>
+      <preview>
+        <header>
+          <h2>System Name</h2>
+        </header>
+        <ul>
+          <li>Game Name</li>
+          <li class="selected">Selected Game Name</li>
+        </ul>
+        <ul class="highlight">
+          <li>Game Name /w background</li>
+          <li class="selected">Selected Game Name /w background</li>
+        </ul>
+      </preview>
+      <pre><code></code></pre>
+    </main>
+    <footer></footer>
+  </body>
+  <script>
+    /**
+     * main
+     */
+     const colors = [{
+        title: 'Header > Background',
+        property: "header_bg",
+        color: "#000000"
+      },
+      {
+        title: 'Header > Foreground',
+        property: "header_fg",
+        color: "#FFFFFF"
+      },
+      {
+        title: 'List > Background',
+        property: "list_bg1",
+        color: "#000000"
+      },
+      {
+        title: 'List > Background',
+        property: "list_bg2",
+        color: "#0000FF"
+      },
+      {
+        title: 'List > Text > Foreground',
+        property: "list_txt_fg",
+        color: "#848284"
+      },
+      {
+        title: 'List > Text Background',
+        property: "list_txt_bg",
+        color: "#000000"
+      },
+      {
+        title: 'List > Selected Text > Foreground',
+        property: "list_sel_fg",
+        color: "#FFFFFF"
+      },
+      {
+        title: 'List > Selected Text > Background',
+        property: "list_sel_bg",
+        color: "#000000"
+      },
+      {
+        title: 'Dialog > Background',
+        property: "dialog_bg",
+        color: "#000000"
+      },
+      {
+        title: 'Dialog > Foreground',
+        property: "dialog_fg",
+        color: "#FFFFFF"
+      }
+    ]
+
+    update = (colors) => {
+      const object = {};
+      colors.forEach(color => {
+        object[color.property] = color.color;
+        document.documentElement.style.setProperty(`--${color.property}`, color.color);
+      });
+      document.querySelector('code').innerHTML = JSON.stringify(object, null, 2);
+    }
+
+    class PaletteChip extends HTMLElement {
+      constructor(chip) {
+        super();
+        this.color = chip.color || '#000000';
+        this.title = chip.title || 'Color';
+        this.property = chip.property || 'color';
+      }
+
+      appendHTML = (color) => {
+        return `
+          <input type="color" property="${this.property}" value="${this.color}">
+          <prop>
+            <strong>${this.title}</strong>
+            <span>${this.property} ${this.color}</span>
+          </prop>
+        `;
+      };
+
+      connectedCallback() {
+        this.style.setProperty("--color", this.color);
+        this.setAttribute("property", this.property);
+        this.innerHTML = this.appendHTML(this.color);
+        this.addEventListener('change', (e) => {
+          this.color = e.target.value;
+          this.style.setProperty("--color", this.color);
+          this.querySelector('span').innerHTML = `${this.property} ${this.color}`;
+          const property = colors.find(color => color.property === e.target.getAttribute("property"));
+          property.color = e.target.value;
+          update(colors);
+        });
+      }
+
+      hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ?
+          `${parseInt(result[1], 16)},${parseInt(result[2], 16)},${parseInt(result[3], 16)}` :
+          null;
+      };
+
+      rgbToHsl([r, g, b]) {
+        r /= 255;
+        g /= 255;
+        b /= 255;
+        const l = Math.max(r, g, b);
+        const s = l - Math.min(r, g, b);
+        const h = s ?
+          l === r ?
+          (g - b) / s :
+          l === g ?
+          2 + (b - r) / s :
+          4 + (r - g) / s :
+          0;
+        return [
+          Math.ceil(60 * h < 0 ? 60 * h + 360 : 60 * h),
+          Math.ceil(100 * (s ? (l <= 0.5 ? s / (2 * l - s) : s / (2 - (2 * l - s))) : 0)),
+          Math.ceil((100 * (2 * l - s)) / 2),
+        ];
+      };
+    }
+
+    customElements.define('palette-chip', PaletteChip);
+
+    const theme = document.querySelector("nav");
+
+    colors.forEach(chip => {
+      theme.appendChild(new PaletteChip(chip));
+    });
+
+    update(colors);
+  </script>
 </html>
