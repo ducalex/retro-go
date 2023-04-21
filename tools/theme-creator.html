@@ -336,7 +336,7 @@
         object[color.property] = color.color;
         document.documentElement.style.setProperty(`--${color.property}`, color.color);
       });
-      return object;
+      document.querySelector('code').innerHTML = JSON.stringify(object, null, 2);
     }
 
     class PaletteChip extends HTMLElement {
@@ -361,10 +361,14 @@
         this.style.setProperty("--color", this.color);
         this.setAttribute("property", this.property);
         this.innerHTML = this.appendHTML(this.color);
-      }
-
-      attributeChangedCallback(name, oldValue, newValue) {
-        this.innerHTML = this.appendHTML(this.color);
+        this.addEventListener('change', (e) => {
+          this.color = e.target.value;
+          this.style.setProperty("--color", this.color);
+          this.querySelector('span').innerHTML = `${this.property} ${this.color}`;
+          const property = colors.find(color => color.property === e.target.getAttribute("property"));
+          property.color = e.target.value;
+          update(colors);
+        });
       }
 
       hexToRgb(hex) {
@@ -403,20 +407,6 @@
       theme.appendChild(new PaletteChip(chip));
     });
 
-    const chips = document.querySelectorAll("palette-chip");
-    chips.forEach(chip => {
-      chip.addEventListener("change", e => {
-        const property = colors.find(color => color.property === e.target.getAttribute("property"));
-        property.color = e.target.value;
-        e.target.parentNode.style.setProperty("--color", e.target.value);
-        const code = document.querySelector("code");
-        e.target.parentNode.querySelector("span").innerHTML = `${property.property} ${property.color}`;
-        code.innerHTML = JSON.stringify(update(colors), null, 2);
-      });
-    });
-
-    const code = document.querySelector("code");
-          code.innerHTML = JSON.stringify(update(colors), null, 2);
-          console.log(JSON.stringify(update(colors), null, 2))
+    update(colors);
   </script>
 </html>
