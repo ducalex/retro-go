@@ -3,6 +3,7 @@
 - [Installation](#installation)
 - [Usage](#usage)
 - [Issues](#issues)
+- [Theming](#theming)
 - [Building](#building)
 - [Acknowledgements](#acknowledgements)
 - [License](#license)
@@ -135,6 +136,10 @@ import or export saves.
 You can configure automatic SRAM saving in the options menu. A longer delay will reduce stuttering at the cost
 of losing data when powering down too quickly. Also note that when *resuming* a game, Retro-Go will give priority
 to a save state if present.
+
+
+# Theming
+Instructions moved to [docs/THEMING.md](docs/THEMING.md).
 
 
 # Building
