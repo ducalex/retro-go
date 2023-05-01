@@ -128,13 +128,13 @@ typedef struct {
     int width;
     int height;
     image_t images[128];
+    theme_t themes[4];
     uint32_t idle_counter;
     uint32_t joystick;
     bool http_lock; // FIXME: should be a mutex...
 } retro_gui_t;
 
 extern retro_gui_t gui;
-extern const int gui_themes_count;
 extern const binfile_t *builtin_images[];
 
 tab_t *gui_add_tab(const char *name, const char *desc, void *arg, void *event_handler);
@@ -153,7 +153,7 @@ listbox_item_t *gui_get_selected_item(tab_t *tab);
 
 void gui_init(void);
 void gui_invalidate(void);
-void gui_set_theme(const char *name);
+void gui_update_theme(void);
 void gui_save_config(void);
 void gui_event(gui_event_t event, tab_t *tab);
 void gui_redraw(void);

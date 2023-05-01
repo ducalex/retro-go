@@ -27,7 +27,8 @@ static struct
         rg_color_t item_disabled;
         rg_color_t scrollbar;
     } style;
-    char theme[32];
+    char theme_name[32];
+    cJSON *theme_obj;
     bool initialized;
 } gui;
 
@@ -45,24 +46,19 @@ void rg_gui_init(void)
     gui.initialized = true;
 }
 
-static int get_theme_value(cJSON *theme, const char *key, int default_value)
-{
-    cJSON *obj = cJSON_GetObjectItem(theme, key);
-    if (obj && cJSON_IsNumber(obj))
-        return obj->valueint;
-    // TODO: We must parse stringy hex values!
-    return default_value;
-}
-
 bool rg_gui_set_theme(const char *theme_name)
 {
-    char theme_path[RG_PATH_MAX];
-    cJSON *theme = NULL;
+    char pathbuf[RG_PATH_MAX];
+    cJSON *new_theme = NULL;
+
+    // Cleanup the current theme
+    cJSON_Delete(gui.theme_obj);
+    gui.theme_obj = NULL;
 
     if (theme_name && theme_name[0])
     {
-        snprintf(theme_path, RG_PATH_MAX, "%s/%s/theme.json", RG_BASE_PATH_THEMES, theme_name);
-        FILE *fp = fopen(theme_path, "rb");
+        snprintf(pathbuf, RG_PATH_MAX, "%s/%s/theme.json", RG_BASE_PATH_THEMES, theme_name);
+        FILE *fp = fopen(pathbuf, "rb");
         if (fp)
         {
             fseek(fp, 0, SEEK_END);
@@ -70,27 +66,35 @@ bool rg_gui_set_theme(const char *theme_name)
             fseek(fp, 0, SEEK_SET);
             char *buffer = calloc(1, length + 1);
             if (fread(buffer, 1, length, fp))
-                theme = cJSON_Parse(buffer);
+                new_theme = cJSON_Parse(buffer);
             free(buffer);
             fclose(fp);
+            if (!new_theme)
+                RG_LOGE("Failed to load theme JSON from '%s'!\n", pathbuf);
         }
-        if (!theme)
-            RG_LOGE("Failed to load theme '%s'!\n", theme_name);
     }
 
-    gui.style.box_background = get_theme_value(theme, "box_background", C_NAVY);
-    gui.style.box_header = get_theme_value(theme, "box_header", C_WHITE);
-    gui.style.box_border = get_theme_value(theme, "box_border", C_DIM_GRAY);
-    gui.style.item_standard = get_theme_value(theme, "item_standard", C_WHITE);
-    gui.style.item_disabled = get_theme_value(theme, "item_disabled", C_GRAY);
-    gui.style.scrollbar = get_theme_value(theme, "scrollbar", C_WHITE);
+    if (new_theme)
+    {
+        rg_settings_set_string(NS_GLOBAL, SETTING_THEME, theme_name);
+        strcpy(gui.theme_name, theme_name);
+        gui.theme_obj = new_theme;
+        RG_LOGI("Theme set to '%s'!\n", theme_name);
+    }
+    else
+    {
+        rg_settings_set_string(NS_GLOBAL, SETTING_THEME, NULL);
+        strcpy(gui.theme_name, "");
+        gui.theme_obj = NULL;
+        RG_LOGI("Using built-in theme!\n");
+    }
 
-    RG_LOGI("Theme set to '%s'!\n", theme_name ?: "(none)");
-
-    rg_settings_set_string(NS_GLOBAL, SETTING_THEME, theme_name);
-    strcpy(gui.theme, theme_name ?: "");
-
-    cJSON_Delete(theme);
+    gui.style.box_background = rg_gui_get_theme_value("dialog", "background", C_NAVY);
+    gui.style.box_header = rg_gui_get_theme_value("dialog", "header", C_WHITE);
+    gui.style.box_border = rg_gui_get_theme_value("dialog", "border", C_DIM_GRAY);
+    gui.style.item_standard = rg_gui_get_theme_value("dialog", "item_standard", C_WHITE);
+    gui.style.item_disabled = rg_gui_get_theme_value("dialog", "item_disabled", C_GRAY);
+    gui.style.scrollbar = rg_gui_get_theme_value("dialog", "scrollbar", C_WHITE);
 
     if (gui.initialized)
         rg_system_event(RG_EVENT_REDRAW, NULL);
@@ -98,9 +102,32 @@ bool rg_gui_set_theme(const char *theme_name)
     return true;
 }
 
-const char *rg_gui_get_theme(void)
+int rg_gui_get_theme_value(const char *section, const char *key, int default_value)
 {
-    return strlen(gui.theme) ? gui.theme : NULL;
+    cJSON *root = section ? cJSON_GetObjectItem(gui.theme_obj, section) : gui.theme_obj;
+    if (cJSON_IsObject(root))
+    {
+        cJSON *obj = cJSON_GetObjectItem(root, key);
+        if (cJSON_IsNumber(obj))
+            return obj->valueint;
+        if (cJSON_IsString(obj))
+            return (int)strtol(obj->valuestring, NULL, 0);
+    }
+    return default_value;
+}
+
+rg_image_t *rg_gui_get_theme_image(const char *name)
+{
+    char pathbuf[RG_PATH_MAX];
+    if (!name || !rg_gui_get_theme_name())
+        return NULL;
+    snprintf(pathbuf, RG_PATH_MAX, "%s/%s/%s", RG_BASE_PATH_THEMES, rg_gui_get_theme_name(), name);
+    return rg_image_load_from_file(pathbuf, 0);
+}
+
+const char *rg_gui_get_theme_name(void)
+{
+    return gui.theme_name[0] ? gui.theme_name : NULL;
 }
 
 void rg_gui_set_buffered(bool buffered)
@@ -1053,7 +1080,7 @@ static rg_gui_event_t theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
         free(path);
     }
 
-    strcpy(option->value, rg_gui_get_theme() ?: "Default");
+    strcpy(option->value, rg_gui_get_theme_name() ?: "Default");
     return RG_DIALOG_VOID;
 }
 
