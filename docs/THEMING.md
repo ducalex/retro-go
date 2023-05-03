@@ -20,7 +20,9 @@ A theme is a folder placed in `sd:/retro-go/themes` containing the following fil
 All fields are optional (you'll have to dig in the source if you need to know the default value...).
 
 <!-- FIXME: We should settle on a specific endianness and document it... -->
-Colors are RGB565 and can be represented as integers or hex strings.
+<!-- FIXME: Document where transparency is applicable, also make review code to ensure it's correctly converted to C_TRANSPARENT where needed. -->
+<!-- FIXME2: Instead of -1 maybe we should accept the string "transparent", it's more explicit. -->
+Colors are RGB565 and can be represented as integers or hex strings. The special value `-1` means transparent.
 
 ````json
 {
