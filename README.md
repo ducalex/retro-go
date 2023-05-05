@@ -139,11 +139,11 @@ to a save state if present.
 
 
 # Theming
-Instructions moved to [docs/THEMING.md](docs/THEMING.md).
+Instructions moved to [THEMING.md](THEMING.md).
 
 
 # Building
-Instructions moved to [docs/BUILDING.md](docs/BUILDING.md).
+Instructions moved to [CONTRIBUTING.md](CONTRIBUTING.md).
 
 
 # Acknowledgements
