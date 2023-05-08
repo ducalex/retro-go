@@ -210,25 +210,25 @@ void gui_update_theme(void)
     }
 
     // Load our four color schemes from gui theme
-    gui.themes[0].list.standard_bg = rg_gui_get_theme_value("launcher_1", "list_standard_bg", C_TRANSPARENT);
-    gui.themes[0].list.standard_fg = rg_gui_get_theme_value("launcher_1", "list_standard_fg", C_GRAY);
-    gui.themes[0].list.selected_bg = rg_gui_get_theme_value("launcher_1", "list_selected_bg", C_TRANSPARENT);
-    gui.themes[0].list.selected_fg = rg_gui_get_theme_value("launcher_1", "list_selected_bg", C_WHITE);
+    gui.themes[0].list.standard_bg = rg_gui_get_theme_color("launcher_1", "list_standard_bg", C_TRANSPARENT);
+    gui.themes[0].list.standard_fg = rg_gui_get_theme_color("launcher_1", "list_standard_fg", C_GRAY);
+    gui.themes[0].list.selected_bg = rg_gui_get_theme_color("launcher_1", "list_selected_bg", C_TRANSPARENT);
+    gui.themes[0].list.selected_fg = rg_gui_get_theme_color("launcher_1", "list_selected_bg", C_WHITE);
 
-    gui.themes[1].list.standard_bg = rg_gui_get_theme_value("launcher_2", "list_standard_bg", C_TRANSPARENT);
-    gui.themes[1].list.standard_fg = rg_gui_get_theme_value("launcher_2", "list_standard_fg", C_GRAY);
-    gui.themes[1].list.selected_bg = rg_gui_get_theme_value("launcher_2", "list_selected_bg", C_TRANSPARENT);
-    gui.themes[1].list.selected_fg = rg_gui_get_theme_value("launcher_2", "list_selected_bg", C_GREEN);
+    gui.themes[1].list.standard_bg = rg_gui_get_theme_color("launcher_2", "list_standard_bg", C_TRANSPARENT);
+    gui.themes[1].list.standard_fg = rg_gui_get_theme_color("launcher_2", "list_standard_fg", C_GRAY);
+    gui.themes[1].list.selected_bg = rg_gui_get_theme_color("launcher_2", "list_selected_bg", C_TRANSPARENT);
+    gui.themes[1].list.selected_fg = rg_gui_get_theme_color("launcher_2", "list_selected_bg", C_GREEN);
 
-    gui.themes[2].list.standard_bg = rg_gui_get_theme_value("launcher_3", "list_standard_bg", C_TRANSPARENT);
-    gui.themes[2].list.standard_fg = rg_gui_get_theme_value("launcher_3", "list_standard_fg", C_GRAY);
-    gui.themes[2].list.selected_bg = rg_gui_get_theme_value("launcher_3", "list_selected_bg", C_WHITE);
-    gui.themes[2].list.selected_fg = rg_gui_get_theme_value("launcher_3", "list_selected_bg", C_BLACK);
+    gui.themes[2].list.standard_bg = rg_gui_get_theme_color("launcher_3", "list_standard_bg", C_TRANSPARENT);
+    gui.themes[2].list.standard_fg = rg_gui_get_theme_color("launcher_3", "list_standard_fg", C_GRAY);
+    gui.themes[2].list.selected_bg = rg_gui_get_theme_color("launcher_3", "list_selected_bg", C_WHITE);
+    gui.themes[2].list.selected_fg = rg_gui_get_theme_color("launcher_3", "list_selected_bg", C_BLACK);
 
-    gui.themes[3].list.standard_bg = rg_gui_get_theme_value("launcher_4", "list_standard_bg", C_TRANSPARENT);
-    gui.themes[3].list.standard_fg = rg_gui_get_theme_value("launcher_4", "list_standard_fg", C_DARK_GRAY);
-    gui.themes[3].list.selected_bg = rg_gui_get_theme_value("launcher_4", "list_selected_bg", C_WHITE);
-    gui.themes[3].list.selected_fg = rg_gui_get_theme_value("launcher_4", "list_selected_bg", C_BLACK);
+    gui.themes[3].list.standard_bg = rg_gui_get_theme_color("launcher_4", "list_standard_bg", C_TRANSPARENT);
+    gui.themes[3].list.standard_fg = rg_gui_get_theme_color("launcher_4", "list_standard_fg", C_DARK_GRAY);
+    gui.themes[3].list.selected_bg = rg_gui_get_theme_color("launcher_4", "list_selected_bg", C_WHITE);
+    gui.themes[3].list.selected_fg = rg_gui_get_theme_color("launcher_4", "list_selected_bg", C_BLACK);
 }
 
 void gui_save_config(void)

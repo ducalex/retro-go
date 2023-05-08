@@ -78,6 +78,8 @@ bool rg_gui_set_theme(const char *theme_name)
     {
         rg_settings_set_string(NS_GLOBAL, SETTING_THEME, theme_name);
         strcpy(gui.theme_name, theme_name);
+        // FIXME: Keeping the theme around uses quite a lot of internal memory (about 3KB)...
+        //        We should probably convert it to a regular array or hashmap.
         gui.theme_obj = new_theme;
         RG_LOGI("Theme set to '%s'!\n", theme_name);
     }
@@ -89,12 +91,12 @@ bool rg_gui_set_theme(const char *theme_name)
         RG_LOGI("Using built-in theme!\n");
     }
 
-    gui.style.box_background = rg_gui_get_theme_value("dialog", "background", C_NAVY);
-    gui.style.box_header = rg_gui_get_theme_value("dialog", "header", C_WHITE);
-    gui.style.box_border = rg_gui_get_theme_value("dialog", "border", C_DIM_GRAY);
-    gui.style.item_standard = rg_gui_get_theme_value("dialog", "item_standard", C_WHITE);
-    gui.style.item_disabled = rg_gui_get_theme_value("dialog", "item_disabled", C_GRAY);
-    gui.style.scrollbar = rg_gui_get_theme_value("dialog", "scrollbar", C_WHITE);
+    gui.style.box_background = rg_gui_get_theme_color("dialog", "background", C_NAVY);
+    gui.style.box_header = rg_gui_get_theme_color("dialog", "header", C_WHITE);
+    gui.style.box_border = rg_gui_get_theme_color("dialog", "border", C_DIM_GRAY);
+    gui.style.item_standard = rg_gui_get_theme_color("dialog", "item_standard", C_WHITE);
+    gui.style.item_disabled = rg_gui_get_theme_color("dialog", "item_disabled", C_GRAY);
+    gui.style.scrollbar = rg_gui_get_theme_color("dialog", "scrollbar", C_WHITE);
 
     if (gui.initialized)
         rg_system_event(RG_EVENT_REDRAW, NULL);
@@ -102,18 +104,17 @@ bool rg_gui_set_theme(const char *theme_name)
     return true;
 }
 
-int rg_gui_get_theme_value(const char *section, const char *key, int default_value)
+int rg_gui_get_theme_color(const char *section, const char *key, int default_value)
 {
     cJSON *root = section ? cJSON_GetObjectItem(gui.theme_obj, section) : gui.theme_obj;
-    if (cJSON_IsObject(root))
-    {
-        cJSON *obj = cJSON_GetObjectItem(root, key);
-        if (cJSON_IsNumber(obj))
-            return obj->valueint;
-        if (cJSON_IsString(obj))
-            return (int)strtol(obj->valuestring, NULL, 0);
-    }
-    return default_value;
+    cJSON *obj = cJSON_GetObjectItem(root, key);
+    if (cJSON_IsNumber(obj))
+        return obj->valueint;
+    if (!cJSON_IsString(obj))
+        return default_value;
+    if (strcmp(obj->string, "transparent") == 0)
+        return C_TRANSPARENT;
+    return (int)strtol(obj->valuestring, NULL, 0);
 }
 
 rg_image_t *rg_gui_get_theme_image(const char *name)
