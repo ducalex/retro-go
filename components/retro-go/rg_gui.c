@@ -104,7 +104,7 @@ bool rg_gui_set_theme(const char *theme_name)
     return true;
 }
 
-int rg_gui_get_theme_color(const char *section, const char *key, int default_value)
+rg_color_t rg_gui_get_theme_color(const char *section, const char *key, rg_color_t default_value)
 {
     cJSON *root = section ? cJSON_GetObjectItem(gui.theme_obj, section) : gui.theme_obj;
     cJSON *obj = cJSON_GetObjectItem(root, key);
