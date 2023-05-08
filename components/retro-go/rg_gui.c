@@ -110,11 +110,16 @@ int rg_gui_get_theme_color(const char *section, const char *key, int default_val
     cJSON *obj = cJSON_GetObjectItem(root, key);
     if (cJSON_IsNumber(obj))
         return obj->valueint;
-    if (!cJSON_IsString(obj))
+    char *strval = cJSON_GetStringValue(obj);
+    if (!strval || strlen(strval) < 4)
         return default_value;
-    if (strcmp(obj->string, "transparent") == 0)
+    if (strcmp(strval, "transparent") == 0)
         return C_TRANSPARENT;
-    return (int)strtol(obj->valuestring, NULL, 0);
+    int intval = (int)strtol(strval, NULL, 0);
+    // It is better to specify colors as RGB565 to avoid data loss, but we also accept RGB888 for convenience
+    if (strlen(strval) == 8 && strval[0] == '0' && strval[1] == 'x')
+        return (((intval >> 19) & 0x1F) << 11) | (((intval >> 10) & 0x3F) << 5) | (((intval >> 3) & 0x1F));
+    return intval;
 }
 
 rg_image_t *rg_gui_get_theme_image(const char *name)
