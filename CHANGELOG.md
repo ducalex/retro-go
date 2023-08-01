@@ -1,3 +1,9 @@
+# Retro-Go 1.39 (2023-??-??)
+- Launcher: Reject names that are too long instead of being weird
+- Theming support is now tested and documented
+- Added DAC pinout for ODROID-GO
+
+
 # Retro-Go 1.38.1 (2023-04-02)
 - GBC: Added switch to disable RTC sync with system time
 - Launcher: Fixed crash when files without extensions were present
