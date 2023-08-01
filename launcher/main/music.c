@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "dr_mp3.h"
+#include "libs/dr_mp3.h"
 #include "music.h"
 #include "gui.h"
 
@@ -136,7 +136,7 @@ static void music_player(void *arg)
 
 void music_init(void)
 {
-    gui_add_tab("Music", "Music Player", NULL, event_handler);
+    gui_add_tab("music", "Music Player", NULL, event_handler);
 
     playback_queue = xQueueCreate(1, RG_PATH_MAX);
     rg_task_create("music_player", &music_player, NULL, 32000, RG_TASK_PRIORITY, -1);

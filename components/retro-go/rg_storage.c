@@ -272,6 +272,8 @@ static int scandir_natural_sort(const void *a, const void *b)
 // FIXME: rg_scandir_t should probably be {count, items[]} to avoid walking the array to get the count...
 rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char *path), uint32_t flags)
 {
+    RG_ASSERT(path, "Bad param");
+
     DIR *dir = opendir(path);
     if (!dir)
         return NULL;
@@ -282,16 +284,21 @@ rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char 
     struct dirent *ent;
     struct stat statbuf;
 
-    char fullpath[RG_PATH_MAX + 1] = {0};
-    char *basename = fullpath + sprintf(fullpath, "%s/", path);
-    size_t basename_len = RG_PATH_MAX - (basename - fullpath);
+    size_t path_len = strlen(path) + 1;
+    size_t name_maxlen = sizeof(results[0].name) - 1;
+    char fullpath[path_len + name_maxlen + 1];
+
+    sprintf(fullpath, "%s/", path);
 
     while ((ent = readdir(dir)))
     {
-        strncpy(basename, ent->d_name, basename_len);
-
-        if (basename[0] == '.') // For backwards compat we'll ignore all hidden files...
+        if (ent->d_name[0] == '.') // Ignore all dot files
             continue;
+
+        if (strlen(ent->d_name) > name_maxlen) // Filename is too long
+            continue;
+
+        strcpy(fullpath + path_len, ent->d_name);
 
         if (validator && !validator(fullpath))
             continue;
@@ -310,7 +317,7 @@ rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char 
 
         rg_scandir_t *result = &results[count++];
 
-        strncpy(result->name, basename, sizeof(result->name) - 1);
+        strcpy(result->name, ent->d_name);
         result->is_valid = 1;
     #if defined(DT_REG) && defined(DT_DIR)
         result->is_file = ent->d_type == DT_REG;

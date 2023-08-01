@@ -145,14 +145,14 @@ static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t ev
 
 static rg_gui_event_t color_theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    int max = gui_themes_count - 1;
+    int max = RG_COUNT(gui.themes) - 1;
 
     if (event == RG_DIALOG_PREV && --gui.color_theme < 0)
         gui.color_theme = max;
     if (event == RG_DIALOG_NEXT && ++gui.color_theme > max)
         gui.color_theme = 0;
 
-    gui.color_theme %= gui_themes_count;
+    gui.color_theme %= RG_COUNT(gui.themes);
 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
         gui_redraw();
@@ -333,7 +333,7 @@ static void retro_loop(void)
         #endif
             rg_gui_options_menu();
 
-            gui_set_theme(rg_gui_get_theme());
+            gui_update_theme();
             gui_save_config();
             rg_settings_commit();
             redraw_pending = true;

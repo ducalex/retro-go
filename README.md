@@ -3,6 +3,7 @@
 - [Installation](#installation)
 - [Usage](#usage)
 - [Issues](#issues)
+- [Theming](#theming)
 - [Building](#building)
 - [Acknowledgements](#acknowledgements)
 - [License](#license)
@@ -109,6 +110,28 @@ Timezone can be configured in the launcher's options menu.
 You can find the IP of your device in the *about* menu of retro-go. Then on your PC navigate to
 http://192.168.x.x/ to access the file manager.
 
+## External DAC (headphones)
+
+Retro-Go supports [the external DAC mod for the ODROID-GO](https://github.com/backofficeshow/odroid-go-audio-hat)
+which allows high quality audio through headphones. You can switch to it in the menu `Audio Out: Ext DAC`.
+
+<details>
+  <summary>Pinout</summary>
+
+  | GO PIN | PCM5102A PIN |
+  |--------|---------|
+  | 1 | GND |
+  | 2 | - |
+  | 3 | LCK |
+  | 4 | DIN |
+  | 5 | BCK |
+  | 6 | VIN |
+  | 7 | - |
+  | 8 | - |
+  | 9 | - |
+  | 10 | - |
+</details>
+
 
 # Issues
 
@@ -126,6 +149,7 @@ lower levels that are distorted due to DAC resolution. A quick way to improve th
 of the speaker wire and add a `33 Ohm (or thereabout)` resistor in series. Soldering is better but not
 required, twisting the wires tightly will work just fine.
 [A more involved solution can be seen here.](https://wiki.odroid.com/odroid_go/silent_volume)
+Alternatively you can use the headphones DAC mod mentioned earlier in this document.
 
 ### Game Boy SRAM *(aka Save/Battery/Backup RAM)*
 In Retro-Go, save states will provide you with the best and most reliable save experience. That being said, please
@@ -137,60 +161,12 @@ of losing data when powering down too quickly. Also note that when *resuming* a 
 to a save state if present.
 
 
+# Theming
+Instructions moved to [THEMING.md](THEMING.md).
+
+
 # Building
-
-## Prerequisites
-You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/release-v4.3/esp32/get-started/index.html#get-started-get-prerequisites). Only versions 4.1 to 4.4 are supported. Support for 5.0 is coming soon.
-
-_Note: As of retro-go 1.35, I use 4.3.3. Version 4.1.x was used for 1.20 to 1.34 versions._
-
-### ESP-IDF Patches
-Patching esp-idf may be required for full functionality. Patches are located in `tools/patches` and can be applied to your global esp-idf installation, they will not break your other projects/devices.
-- `sdcard-fix`: This patch is mandatory for the ODROID-GO (and clones).
-- `panic-hook`: This is to help users report bugs, see `Capturing crash logs` below for more details. The patch is optional but recommended.
-- `enable-exfat`: Enable exFAT support. I don't recommended it but it works if you need it.
-
-## Build everything and generate .fw:
-- Generate a .fw file to be installed with odroid-go-firmware (SD Card):
-    `./rg_tool.py build-fw` or `./rg_tool.py release` (clean build)
-- Generate a .img to be flashed with esptool.py (Serial):
-    `./rg_tool.py build-img` or `./rg_tool.py release` (clean build)
-
-For a smaller build you can also specify which apps you want, for example the launcher + DOOM only:
-1. `./rg_tool.py build-fw launcher prboom-go`
-
-## Build, flash, and monitor individual apps for faster development:
-It would be tedious to build, move to SD, and flash a full .fw all the time during development. Instead you can:
-1. Flash: `./rg_tool.py --port=COM3 flash prboom-go`
-2. Monitor: `./rg_tool.py --port=COM3 monitor prboom-go`
-3. Flash then monitor: `./rg_tool.py --port=COM3 run prboom-go`
-
-## Environment variables
-rg_tool.py supports a few environment variables if you want to avoid passing flags all the time:
-- `RG_TOOL_TARGET` represents --target
-- `RG_TOOL_BAUD` represents --baud
-- `RG_TOOL_PORT` represents --port
-
-## Windows
-Running `./rg_tool.py ...` on Windows might invoke the wrong Python interpreter (causing the build to fail)
-or even do nothing at all. In such cases you should use `python rg_tool.py ...` instead.
-
-## Changing the launcher's images
-All images used by the launcher (headers, logos) are located in `launcher/main/images`. If you edit them you must run the `launcher/main/gen_images.py` script to regenerate `images.c`. Magenta (rgb(255, 0, 255) / 0xF81F) is used as the transparency colour.
-
-## Capturing crash logs
-When a panic occurs, Retro-Go has the ability to save debugging information to `/sd/crash.log`. This provides users with a simple way of recovering a backtrace (and often more) without having to install drivers and serial console software. A weak hook is installed into esp-idf panic's putchar, allowing us to save each chars in RTC RAM. Then, after the system resets, we can move that data to the sd card. You will find a small esp-idf patch to enable this feature in tools/patches.
-
-To resolve the backtrace you will need the application's elf file. If lost, you can recreate it by building the app again **using the same esp-idf and retro-go versions**. Then you can run `xtensa-esp32-elf-addr2line -ifCe app-name/build/app-name.elf`.
-
-## Porting
-I don't want to maintain non-ESP32 ports in this repository but let me know if I can make small changes to make your own port easier! The absolute minimum requirements for Retro-Go are roughly:
-- Processor: 200Mhz 32bit little-endian
-- Memory: 2MB
-- Compiler: C99 (and C++03 for handy-go)
-
-Whilst all applications were heavily modified or even redesigned for our constrained needs, special care is taken to keep
-Retro-Go and ESP32-specific code exclusively in their port file (main.c). This makes reusing them in your own codebase very easy!
+Instructions moved to [CONTRIBUTING.md](CONTRIBUTING.md).
 
 
 # Acknowledgements

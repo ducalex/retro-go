@@ -95,7 +95,12 @@ static rg_gui_event_t wifi_access_point_cb(rg_gui_option_t *option, rg_gui_event
         if (rg_gui_confirm("Wi-Fi AP", "Start access point?\n\nSSID: retro-go\nPassword: retro-go", true))
         {
             rg_network_wifi_stop();
-            rg_network_wifi_set_config("retro-go", "retro-go", 6, 1);
+            rg_network_wifi_set_config(&(const rg_wifi_config_t){
+                .ssid = "retro-go",
+                .password = "retro-go",
+                .channel = 6,
+                .ap_mode = true,
+            });
             rg_network_wifi_start();
             wifi_toggle(true);
         }

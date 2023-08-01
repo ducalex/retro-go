@@ -20,7 +20,7 @@ typedef struct __attribute__((packed))
     uint8_t is_file  : 1;
     uint8_t is_dir   : 1;
     uint8_t unused   : 5;
-    char name[75];
+    char name[91];
     int32_t mtime, size;
 } rg_scandir_t;
 

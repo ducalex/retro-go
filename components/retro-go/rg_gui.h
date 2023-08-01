@@ -81,8 +81,10 @@ void rg_gui_flush(void); // no effect if buffered = false
 void rg_gui_clear(rg_color_t color); // like rg_display_clear but takes gui screen buffering into account
 void rg_gui_set_buffered(bool buffered);
 bool rg_gui_set_font_type(int type);
-bool rg_gui_set_theme(const char *theme_name);
-const char *rg_gui_get_theme(void);
+bool rg_gui_set_theme(const char *name);
+const char *rg_gui_get_theme_name(void);
+rg_image_t *rg_gui_get_theme_image(const char *name);
+rg_color_t rg_gui_get_theme_color(const char *section, const char *key, rg_color_t default_value);
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, rg_color_t color_fg, rg_color_t color_bg, uint32_t flags);
 void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer);
 void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size, rg_color_t border_color, rg_color_t fill_color);

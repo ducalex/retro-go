@@ -13,14 +13,6 @@
 #define PREVIEW_HEIGHT      ((int)(gui.height * 0.70f))
 #define PREVIEW_WIDTH       ((int)(gui.width * 0.50f))
 
-static const theme_t gui_themes[] = {
-    {{C_TRANSPARENT, C_GRAY, C_TRANSPARENT, C_WHITE}},
-    {{C_TRANSPARENT, C_GRAY, C_TRANSPARENT, C_GREEN}},
-    {{C_TRANSPARENT, C_GRAY, C_WHITE, C_BLACK}},
-    {{C_TRANSPARENT, C_DARK_GRAY, C_WHITE, C_BLACK}},
-};
-const int gui_themes_count = RG_COUNT(gui_themes);
-
 retro_gui_t gui;
 
 #define SETTING_SELECTED_TAB    "SelectedTab"
@@ -56,7 +48,7 @@ void gui_init(void)
     // Always enter browse mode when leaving an emulator
     gui.browse = gui.start_screen == START_SCREEN_BROWSER ||
                  (gui.start_screen == START_SCREEN_AUTO && rg_system_get_app()->bootType == RG_RST_RESTART);
-    gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
+    gui_update_theme();
     rg_gui_set_buffered(true);
 }
 
@@ -126,7 +118,7 @@ void gui_invalidate(void)
 
 const rg_image_t *gui_get_image(const char *type, const char *subtype)
 {
-    char path[RG_PATH_MAX], name[64];
+    char name[64];
 
     if (subtype && *subtype)
         sprintf(name, "%s_%s.png", type, subtype);
@@ -146,16 +138,10 @@ const rg_image_t *gui_get_image(const char *type, const char *subtype)
     image->id = fileid;
     image->img = NULL;
 
-    // Try SD card if a theme is selected
-    if (gui.theme)
+    // Try to get image from theme
+    if (!(image->img = rg_gui_get_theme_image(name)))
     {
-        sprintf(path, RG_BASE_PATH_THEMES "/%s/%s", gui.theme, name);
-        image->img = rg_image_load_from_file(path, 0);
-    }
-
-    // Then fallback to built-in images
-    if (!image->img)
-    {
+        // Then fallback to built-in images
         for (const binfile_t **img = builtin_images; *img; img++)
         {
             if (strcmp((*img)->name, name) == 0)
@@ -213,8 +199,9 @@ void gui_set_status(tab_t *tab, const char *left, const char *right)
         strcpy(tab->status[1].right, right);
 }
 
-void gui_set_theme(const char *name)
+void gui_update_theme(void)
 {
+    // Flush our image cache to make sure the new images are loaded next time
     for (image_t *image = gui.images; image->id; ++image)
     {
         rg_image_free(image->img);
@@ -222,7 +209,26 @@ void gui_set_theme(const char *name)
         image->img = NULL;
     }
 
-    gui.theme = const_string(name);
+    // Load our four color schemes from gui theme
+    gui.themes[0].list.standard_bg = rg_gui_get_theme_color("launcher_1", "list_standard_bg", C_TRANSPARENT);
+    gui.themes[0].list.standard_fg = rg_gui_get_theme_color("launcher_1", "list_standard_fg", C_GRAY);
+    gui.themes[0].list.selected_bg = rg_gui_get_theme_color("launcher_1", "list_selected_bg", C_TRANSPARENT);
+    gui.themes[0].list.selected_fg = rg_gui_get_theme_color("launcher_1", "list_selected_bg", C_WHITE);
+
+    gui.themes[1].list.standard_bg = rg_gui_get_theme_color("launcher_2", "list_standard_bg", C_TRANSPARENT);
+    gui.themes[1].list.standard_fg = rg_gui_get_theme_color("launcher_2", "list_standard_fg", C_GRAY);
+    gui.themes[1].list.selected_bg = rg_gui_get_theme_color("launcher_2", "list_selected_bg", C_TRANSPARENT);
+    gui.themes[1].list.selected_fg = rg_gui_get_theme_color("launcher_2", "list_selected_bg", C_GREEN);
+
+    gui.themes[2].list.standard_bg = rg_gui_get_theme_color("launcher_3", "list_standard_bg", C_TRANSPARENT);
+    gui.themes[2].list.standard_fg = rg_gui_get_theme_color("launcher_3", "list_standard_fg", C_GRAY);
+    gui.themes[2].list.selected_bg = rg_gui_get_theme_color("launcher_3", "list_selected_bg", C_WHITE);
+    gui.themes[2].list.selected_fg = rg_gui_get_theme_color("launcher_3", "list_selected_bg", C_BLACK);
+
+    gui.themes[3].list.standard_bg = rg_gui_get_theme_color("launcher_4", "list_standard_bg", C_TRANSPARENT);
+    gui.themes[3].list.standard_fg = rg_gui_get_theme_color("launcher_4", "list_standard_fg", C_DARK_GRAY);
+    gui.themes[3].list.selected_bg = rg_gui_get_theme_color("launcher_4", "list_selected_bg", C_WHITE);
+    gui.themes[3].list.selected_fg = rg_gui_get_theme_color("launcher_4", "list_selected_bg", C_BLACK);
 }
 
 void gui_save_config(void)
@@ -446,7 +452,7 @@ void gui_draw_status(tab_t *tab)
 
 void gui_draw_list(tab_t *tab)
 {
-    const theme_t *theme = &gui_themes[gui.color_theme % gui_themes_count];
+    const theme_t *theme = &gui.themes[gui.color_theme % RG_COUNT(gui.themes)];
     rg_color_t fg[2] = {theme->list.standard_fg, theme->list.selected_fg};
     rg_color_t bg[2] = {theme->list.standard_bg, theme->list.selected_bg};
 
