@@ -110,6 +110,28 @@ Timezone can be configured in the launcher's options menu.
 You can find the IP of your device in the *about* menu of retro-go. Then on your PC navigate to
 http://192.168.x.x/ to access the file manager.
 
+## External DAC (headphones)
+
+Retro-Go supports [the external DAC mod for the ODROID-GO](https://github.com/backofficeshow/odroid-go-audio-hat)
+which allows high quality audio through headphones. You can switch to it in the menu `Audio Out: Ext DAC`.
+
+<details>
+  <summary>Pinout</summary>
+
+  | GO PIN | PCM5102A PIN |
+  |--------|---------|
+  | 1 | GND |
+  | 2 | - |
+  | 3 | LCK |
+  | 4 | DIN |
+  | 5 | BCK |
+  | 6 | VIN |
+  | 7 | - |
+  | 8 | - |
+  | 9 | - |
+  | 10 | - |
+</details>
+
 
 # Issues
 
@@ -127,6 +149,7 @@ lower levels that are distorted due to DAC resolution. A quick way to improve th
 of the speaker wire and add a `33 Ohm (or thereabout)` resistor in series. Soldering is better but not
 required, twisting the wires tightly will work just fine.
 [A more involved solution can be seen here.](https://wiki.odroid.com/odroid_go/silent_volume)
+Alternatively you can use the headphones DAC mod mentioned earlier in this document.
 
 ### Game Boy SRAM *(aka Save/Battery/Backup RAM)*
 In Retro-Go, save states will provide you with the best and most reliable save experience. That being said, please
