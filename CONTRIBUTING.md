@@ -14,7 +14,7 @@ Patching esp-idf may be required for full functionality. Patches are located in 
 
 ## Obtaining the code
 
-You can simply download a zip from the project's front page and extract it, but using git is better for development.
+Using git is the preferred method but you can also download a zip from the project's front page and extract it if you want, Retro-Go has no external dependencies.
 
 There are generally two active git branches on retro-go:
 - `master` contains the code form the most recent release and is usually tested and known to be working
