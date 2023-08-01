@@ -1,3 +1,4 @@
+#if 0
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 
@@ -140,3 +141,9 @@ void music_init(void)
     playback_queue = xQueueCreate(1, RG_PATH_MAX);
     rg_task_create("music_player", &music_player, NULL, 32000, RG_TASK_PRIORITY, -1);
 }
+
+#else
+void music_init(void)
+{
+}
+#endif
