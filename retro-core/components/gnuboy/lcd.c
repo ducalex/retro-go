@@ -759,7 +759,10 @@ void lcd_emulate(int cycles)
 					hw_interrupt(IF_VBLANK, 1);
 					CYCLES += 228;
 				}
-				else CYCLES += 10;
+				else
+				{
+					CYCLES += 10;
+				}
 				stat_change(1); /* -> vblank */
 				break;
 			}
@@ -786,12 +789,16 @@ void lcd_emulate(int cycles)
 				CYCLES += 40;
 				break;
 			}
-			else if (R_LY < 152)
+			else if (R_LY < 153)
+			{
 				CYCLES += 228;
-			else if (R_LY == 152)
+			}
+			else if (R_LY == 153)
+			{
 				/* Handling special case on the last line; see
 				docs/HACKING */
 				CYCLES += 28;
+			}
 			else
 			{
 				R_LY = -1;

@@ -72,7 +72,7 @@ void gnuboy_run(bool draw)
 
 	// LCD is powered down, it won't touch LY or do vblank
 	if (!(R_LCDC & 0x80)) {
-		cycles += 152 * 228;
+		cycles += 154 * 228;
 		cycles -= cpu_emulate(cycles);
 		return;
 	}

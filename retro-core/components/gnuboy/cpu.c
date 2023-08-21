@@ -7,6 +7,7 @@
 // For cycle accurate emulation this needs to be 1
 // Anything above 10 have diminishing returns
 #define COUNTERS_TICK_PERIOD 8
+#define CPU_DISASSEMBLER 0
 
 static const byte cycles_table[256] =
 {
@@ -312,8 +313,10 @@ next:
 	}
 	IME = IMA;
 
-	// if (cpu.disassemble)
-	// 	cpu_disassemble(PC, 1);
+#if CPU_DISASSEMBLER
+	if (cpu.disassemble && !rg_input_read_gamepad())
+		cpu_disassemble(PC, 1);
+#endif
 
 	op = FETCH;
 	clen = cycles_table[op];
@@ -823,7 +826,7 @@ _skip:
 }
 
 
-#ifdef CPU_DISASSEMBLER
+#if CPU_DISASSEMBLER
 
 static const char *mnemonic_table[256] =
 {
@@ -951,22 +954,13 @@ void cpu_disassemble(unsigned pc, int count)
 
 		printf(
 			"%04X: %-10.10s %-16.16s"
-			" SP=%04X.%04X BC=%04X.%02X.%02X DE=%04X.%02X"
-			" HL=%04X.%02X A=%02X F=%02X %c%c%c%c%c"
+			" SP=%04X BC=%04X DE=%04X HL=%04X A=%02X F=%02X"
+			" %c%c%c%c%c"
 			" IE=%02X IF=%02X LCDC=%02X STAT=%02X LY=%02X LYC=%02X"
 			" \n",
-			baseaddr,
-			operands,
-			mnemonic,
-			SP, readw(SP),
-			BC, readb(BC), readb(0xFF00 | C),
-			DE, readb(DE),
-			HL, readb(HL), A,
-			F, (IME ? 'I' : '-'),
-			((F & 0x80) ? 'Z' : '-'),
-			((F & 0x40) ? 'N' : '-'),
-			((F & 0x20) ? 'H' : '-'),
-			((F & 0x10) ? 'C' : '-'),
+			baseaddr, operands, mnemonic,
+			SP, BC, DE, HL, A, F,
+			(IME ? 'I' : '-'), ((F & 0x80) ? 'Z' : '-'), ((F & 0x40) ? 'N' : '-'), ((F & 0x20) ? 'H' : '-'), ((F & 0x10) ? 'C' : '-'),
 			R_IE, R_IF, R_LCDC, R_STAT, R_LY, R_LYC
 		);
 	}
