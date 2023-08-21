@@ -68,37 +68,33 @@ void gnuboy_reset(bool hard)
 void gnuboy_run(bool draw)
 {
 	host.video.enabled = draw;
-	/* FIXME: judging by the time specified this was intended
-	to emulate through vblank phase which is handled at the
-	end of the loop. */
-	cpu_emulate(2280);
+	int cycles = 0;
 
-	/* FIXME: R_LY >= 0; comparsion to zero can also be removed
-	altogether, R_LY is always 0 at this point */
-	while (R_LY > 0 && R_LY < 144) {
-		/* Step through visible line scanning phase */
-		cpu_emulate(hw.cycles);
+	// LCD is powered down, it won't touch LY or do vblank
+	if (!(R_LCDC & 0x80)) {
+		cycles += 152 * 228;
+		cycles -= cpu_emulate(cycles);
+		return;
 	}
 
-	/* When using GB_PIXEL_PALETTED, the host should draw the frame in this callback because
-	   the palette can be modified below before gnuboy_run returns. */
+	// We emulate until vblank (0..144)
+	while (R_LY <= 144) {
+		cycles += 228;
+		cycles -= cpu_emulate(cycles);
+	}
+
+	/* When using GB_PIXEL_PALETTED, the host should draw the frame in this callback
+	   because the palette can be modified below before gnuboy_run returns. */
 	if (draw && host.video.blit_func) {
 		(host.video.blit_func)();
 	}
 
 	hw_vblank();
 
-	if (!(R_LCDC & 0x80)) {
-		/* LCDC operation stopped */
-		/* FIXME: judging by the time specified, this is
-		intended to emulate through visible line scanning
-		phase, even though we are already at vblank here */
-		cpu_emulate(32832);
-	}
-
+	// Emulate vblank (145...0)
 	while (R_LY > 0) {
-		/* Step through vblank phase */
-		cpu_emulate(hw.cycles);
+		cycles += 228;
+		cycles -= cpu_emulate(cycles);
 	}
 }
 
