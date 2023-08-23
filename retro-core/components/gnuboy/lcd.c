@@ -789,17 +789,15 @@ void lcd_emulate(int cycles)
 				CYCLES += 40;
 				break;
 			}
-			else if (R_LY < 153)
+			else if (R_LY < 152)
 			{
 				CYCLES += 228;
 			}
-			else if (R_LY == 153)
+			else if (R_LY == 152)
 			{
-				/* Handling special case on the last line; see
-				docs/HACKING */
 				CYCLES += 28;
 			}
-			else
+			else // R_LY == 153
 			{
 				R_LY = -1;
 				CYCLES += 200;
