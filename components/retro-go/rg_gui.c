@@ -154,9 +154,12 @@ void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, co
 {
     if (gui.screen_buffer)
     {
-        if (left < 0) left += gui.screen_width;
-        if (top < 0) top += gui.screen_height;
-        if (stride < width) stride = width * 2;
+        if (left < 0)
+            left += gui.screen_width;
+        if (top < 0)
+            top += gui.screen_height;
+        if (stride < width)
+            stride = width * 2;
 
         width = RG_MIN(width, gui.screen_width - left);
         height = RG_MIN(height, gui.screen_height - top);
@@ -216,10 +219,13 @@ static size_t get_glyph(uint16_t *output, const rg_font_t *font, int points, uin
             if (output)
             {
                 int ch = 0, mask = 0x80;
-                for (int y = 0; y < height; y++) {
+                for (int y = 0; y < height; y++)
+                {
                     output[adjYOffset + y] = 0;
-                    for (int x = 0; x < width; x++) {
-                        if (((x + (y * width)) % 8) == 0) {
+                    for (int x = 0; x < width; x++)
+                    {
+                        if (((x + (y * width)) % 8) == 0)
+                        {
                             mask = 0x80;
                             ch = *data++;
                         }
@@ -271,9 +277,12 @@ bool rg_gui_set_font_type(int type)
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
                            rg_color_t color_fg, rg_color_t color_bg, uint32_t flags)
 {
-    if (x_pos < 0) x_pos += gui.screen_width;
-    if (y_pos < 0) y_pos += gui.screen_height;
-    if (!text || *text == 0) text = " ";
+    if (x_pos < 0)
+        x_pos += gui.screen_width;
+    if (y_pos < 0)
+        y_pos += gui.screen_height;
+    if (!text || *text == 0)
+        text = " ";
 
     int padding = (flags & RG_TEXT_NO_PADDING) ? 0 : 1;
     int font_height = gui.style.font_points;
@@ -284,7 +293,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
     {
         // Find the longest line to determine our box width
         int line_width = padding * 2;
-        for (const char *ptr = text; *ptr; )
+        for (const char *ptr = text; *ptr;)
         {
             int chr = *ptr++;
             line_width += get_glyph(0, font, font_height, chr);
@@ -312,7 +321,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
     {
         int x_offset = padding;
 
-        for (size_t p = draw_width * line_height; p--; )
+        for (size_t p = draw_width * line_height; p--;)
             gui.draw_buffer[p] = color_bg;
 
         if (flags & (RG_TEXT_ALIGN_LEFT|RG_TEXT_ALIGN_CENTER))
@@ -389,9 +398,9 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_si
         while (p--)
             gui.draw_buffer[p] = border_color;
 
-        rg_gui_copy_buffer(x_pos, y_pos, width, border_size, 0, gui.draw_buffer); // Top
+        rg_gui_copy_buffer(x_pos, y_pos, width, border_size, 0, gui.draw_buffer);                        // Top
         rg_gui_copy_buffer(x_pos, y_pos + height - border_size, width, border_size, 0, gui.draw_buffer); // Bottom
-        rg_gui_copy_buffer(x_pos, y_pos, border_size, height, 0, gui.draw_buffer); // Left
+        rg_gui_copy_buffer(x_pos, y_pos, border_size, height, 0, gui.draw_buffer);                       // Left
         rg_gui_copy_buffer(x_pos + width - border_size, y_pos, border_size, height, 0, gui.draw_buffer); // Right
 
         x_pos += border_size;
@@ -923,8 +932,10 @@ static rg_gui_event_t volume_update_cb(rg_gui_option_t *option, rg_gui_event_t e
     int level = rg_audio_get_volume();
     int prev_level = level;
 
-    if (event == RG_DIALOG_PREV) level -= 5;
-    if (event == RG_DIALOG_NEXT) level += 5;
+    if (event == RG_DIALOG_PREV)
+        level -= 5;
+    if (event == RG_DIALOG_NEXT)
+        level += 5;
 
     level -= (level % 5);
 
@@ -941,8 +952,10 @@ static rg_gui_event_t brightness_update_cb(rg_gui_option_t *option, rg_gui_event
     int level = rg_display_get_backlight();
     int prev_level = level;
 
-    if (event == RG_DIALOG_PREV) level -= 10;
-    if (event == RG_DIALOG_NEXT) level += 10;
+    if (event == RG_DIALOG_PREV)
+        level -= 10;
+    if (event == RG_DIALOG_NEXT)
+        level += 10;
 
     level -= (level % 10);
 
@@ -968,8 +981,10 @@ static rg_gui_event_t audio_update_cb(rg_gui_option_t *option, rg_gui_event_t ev
 
     int prev_sink = sink;
 
-    if (event == RG_DIALOG_PREV && --sink < 0) sink = max;
-    if (event == RG_DIALOG_NEXT && ++sink > max) sink = 0;
+    if (event == RG_DIALOG_PREV && --sink < 0)
+        sink = max;
+    if (event == RG_DIALOG_NEXT && ++sink > max)
+        sink = 0;
 
     if (sink != prev_sink)
         rg_audio_set_sink(sinks[sink].type);
@@ -985,16 +1000,22 @@ static rg_gui_event_t filter_update_cb(rg_gui_option_t *option, rg_gui_event_t e
     int mode = rg_display_get_filter();
     int prev_mode = mode;
 
-    if (event == RG_DIALOG_PREV && --mode < 0) mode = max;
-    if (event == RG_DIALOG_NEXT && ++mode > max) mode = 0;
+    if (event == RG_DIALOG_PREV && --mode < 0)
+        mode = max;
+    if (event == RG_DIALOG_NEXT && ++mode > max)
+        mode = 0;
 
     if (mode != prev_mode)
         rg_display_set_filter(mode);
 
-    if (mode == RG_DISPLAY_FILTER_OFF)   strcpy(option->value, "Off  ");
-    if (mode == RG_DISPLAY_FILTER_HORIZ) strcpy(option->value, "Horiz");
-    if (mode == RG_DISPLAY_FILTER_VERT)  strcpy(option->value, "Vert ");
-    if (mode == RG_DISPLAY_FILTER_BOTH)  strcpy(option->value, "Both ");
+    if (mode == RG_DISPLAY_FILTER_OFF)
+        strcpy(option->value, "Off  ");
+    if (mode == RG_DISPLAY_FILTER_HORIZ)
+        strcpy(option->value, "Horiz");
+    if (mode == RG_DISPLAY_FILTER_VERT)
+        strcpy(option->value, "Vert ");
+    if (mode == RG_DISPLAY_FILTER_BOTH)
+        strcpy(option->value, "Both ");
 
     return RG_DIALOG_VOID;
 }
@@ -1005,15 +1026,20 @@ static rg_gui_event_t scaling_update_cb(rg_gui_option_t *option, rg_gui_event_t 
     int mode = rg_display_get_scaling();
     int prev_mode = mode;
 
-    if (event == RG_DIALOG_PREV && --mode < 0) mode =  max; // 0;
-    if (event == RG_DIALOG_NEXT && ++mode > max) mode = 0;  // max;
+    if (event == RG_DIALOG_PREV && --mode < 0)
+        mode = max; // 0;
+    if (event == RG_DIALOG_NEXT && ++mode > max)
+        mode = 0; // max;
 
     if (mode != prev_mode)
         rg_display_set_scaling(mode);
 
-    if (mode == RG_DISPLAY_SCALING_OFF)  strcpy(option->value, "Off  ");
-    if (mode == RG_DISPLAY_SCALING_FIT)  strcpy(option->value, "Fit ");
-    if (mode == RG_DISPLAY_SCALING_FILL) strcpy(option->value, "Full ");
+    if (mode == RG_DISPLAY_SCALING_OFF)
+        strcpy(option->value, "Off  ");
+    if (mode == RG_DISPLAY_SCALING_FIT)
+        strcpy(option->value, "Fit ");
+    if (mode == RG_DISPLAY_SCALING_FILL)
+        strcpy(option->value, "Full ");
 
     return RG_DIALOG_VOID;
 }
@@ -1024,14 +1050,18 @@ static rg_gui_event_t update_mode_update_cb(rg_gui_option_t *option, rg_gui_even
     int mode = rg_display_get_update_mode();
     int prev_mode = mode;
 
-    if (event == RG_DIALOG_PREV && --mode < 0) mode =  max; // 0;
-    if (event == RG_DIALOG_NEXT && ++mode > max) mode = 0;  // max;
+    if (event == RG_DIALOG_PREV && --mode < 0)
+        mode = max; // 0;
+    if (event == RG_DIALOG_NEXT && ++mode > max)
+        mode = 0; // max;
 
     if (mode != prev_mode)
         rg_display_set_update_mode(mode);
 
-    if (mode == RG_DISPLAY_UPDATE_PARTIAL)   strcpy(option->value, "Partial");
-    if (mode == RG_DISPLAY_UPDATE_FULL)      strcpy(option->value, "Full   ");
+    if (mode == RG_DISPLAY_UPDATE_PARTIAL)
+        strcpy(option->value, "Partial");
+    if (mode == RG_DISPLAY_UPDATE_FULL)
+        strcpy(option->value, "Full   ");
     // if (mode == RG_DISPLAY_UPDATE_INTERLACE) strcpy(option->value, "Interlace");
 
     return RG_DIALOG_VOID;
@@ -1041,8 +1071,10 @@ static rg_gui_event_t speedup_update_cb(rg_gui_option_t *option, rg_gui_event_t 
 {
     rg_app_t *app = rg_system_get_app();
 
-    if (event == RG_DIALOG_PREV && (app->speed -= 0.5f) < 0.5f) app->speed = 2.5f;
-    if (event == RG_DIALOG_NEXT && (app->speed += 0.5f) > 2.5f) app->speed = 0.5f;
+    if (event == RG_DIALOG_PREV && (app->speed -= 0.5f) < 0.5f)
+        app->speed = 2.5f;
+    if (event == RG_DIALOG_NEXT && (app->speed += 0.5f) > 2.5f)
+        app->speed = 0.5f;
 
     sprintf(option->value, "%.1fx", app->speed);
 
@@ -1327,10 +1359,10 @@ static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
 int rg_gui_savestate_menu(const char *title, const char *rom_path, bool quick_return)
 {
     rg_gui_option_t choices[] = {
-        {0, "Slot 0", NULL,  1, &slot_select_cb},
-        {1, "Slot 1", NULL,  1, &slot_select_cb},
-        {2, "Slot 2", NULL,  1, &slot_select_cb},
-        {3, "Slot 3", NULL,  1, &slot_select_cb},
+        {0, "Slot 0", NULL, 1, &slot_select_cb},
+        {1, "Slot 1", NULL, 1, &slot_select_cb},
+        {2, "Slot 2", NULL, 1, &slot_select_cb},
+        {3, "Slot 3", NULL, 1, &slot_select_cb},
         RG_DIALOG_CHOICE_LAST
     };
     int sel;
