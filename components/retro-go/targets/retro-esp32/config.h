@@ -23,8 +23,8 @@
 #define RG_SCREEN_ROTATE            0
 #define RG_SCREEN_MARGIN_TOP        0
 #define RG_SCREEN_MARGIN_BOTTOM     0
-#define RG_SCREEN_MARGIN_LEFT       15
-#define RG_SCREEN_MARGIN_RIGHT      20
+#define RG_SCREEN_MARGIN_LEFT       5
+#define RG_SCREEN_MARGIN_RIGHT      15
 
 // Input
 #define RG_GAMEPAD_DRIVER           1   // 1 = ODROID-GO, 2 = Serial, 3 = I2C, 4 = AW9523, 5 = ESPLAY-S3, 6 = SDL2
