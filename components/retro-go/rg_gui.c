@@ -1276,7 +1276,7 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     }
     else
     {
-        snprintf(battery_info, sizeof(battery_info), "Battery: N/A");
+        snprintf(battery_info, sizeof(battery_info), "N/A");
     }
 
     switch (rg_gui_dialog("Debugging", options, 0))
