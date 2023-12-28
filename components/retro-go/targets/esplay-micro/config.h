@@ -2,8 +2,7 @@
 // This port developed for the Micro V2 listed above. Compatibility with the elusive V1 is unknown.
 
 // WORK IN PROGRESS!
-// Issues: Menu, L, and R aren't properly mapped yet. Menu and Select are both mapped to Select for now.
-// Battery meter isn't working yet.
+// Issues: Menu, L, and R aren't properly mapped yet.
 
 // Parts:
 // - ESP32-WROVER-B (SoC 16MB Flash + 8MB PSRAM)
