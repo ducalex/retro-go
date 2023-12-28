@@ -42,13 +42,13 @@
 
 // Input
 #define RG_GAMEPAD_DRIVER           3   // 1 = ODROID-GO, 2 = Serial, 3 = I2C, 4 = AW9523, 5 = ESPLAY-S3, 6 = SDL2
-#define RG_GAMEPAD_HAS_MENU_BTN     1
+#define RG_GAMEPAD_HAS_MENU_BTN     0
 #define RG_GAMEPAD_HAS_OPTION_BTN   0
 
 // Note: Depending on the driver, the button map can be a bitmask, an index, or a GPIO.
 // Refer to rg_input.h to see all available RG_KEY_*
 // A and B silkscreen on the board are swapped relative to standard Nintendo layout
-// Temporarily shared mapping between Menu and Select until Menu mapping is found.
+// Temporarily unmapped menu and option. Start + Select activates menu.
 #define RG_GAMEPAD_MAP {\
     {RG_KEY_UP,     (1<<2)},\
     {RG_KEY_RIGHT,  (1<<5)},\
@@ -56,7 +56,6 @@
     {RG_KEY_LEFT,   (1<<4)},\
     {RG_KEY_SELECT, (1<<1)},\
     {RG_KEY_START,  (1<<8)},\
-    {RG_KEY_MENU,   (1<<1)},\
     {RG_KEY_A,      (1<<7)},\
     {RG_KEY_B,      (1<<6)},\
 }
@@ -74,7 +73,7 @@
 // Battery
 // #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_3
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) - 170) / 30.f * 100.f)
-#define RG_BATTERY_CALC_VOLTAGE(raw) (0)
+#define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
 
 // Status LED
 #define RG_GPIO_LED                 GPIO_NUM_13 // Causes the "power" LED to blink on disk access.
