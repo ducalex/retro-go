@@ -297,10 +297,10 @@ static void enter_recovery_mode(void)
             rg_storage_delete(RG_BASE_PATH_CACHE);
             break;
         case 1:
-            rg_system_switch_app(RG_APP_FACTORY, RG_APP_FACTORY, 0, 0);
+            rg_system_switch_app(RG_APP_FACTORY, 0, 0, 0);
         case 2:
         default:
-            rg_system_switch_app(RG_APP_LAUNCHER, RG_APP_LAUNCHER, 0, 0);
+            rg_system_switch_app(RG_APP_LAUNCHER, 0, 0, 0);
         }
     }
 }
@@ -436,7 +436,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         RG_LOGW("Aborting: panic!\n");
         rg_display_clear(C_BLUE);
         rg_gui_alert("System Panic!", message);
-        rg_system_switch_app(RG_APP_LAUNCHER, 0, 0, 0);
+        rg_system_exit();
     }
     panicTrace.magicWord = 0;
 
@@ -849,6 +849,12 @@ void rg_system_restart(void)
     exitCalled = true;
     shutdown_cleanup();
     esp_restart();
+}
+
+void rg_system_exit(void)
+{
+    RG_LOGI("Exiting application.\n");
+    rg_system_switch_app(RG_APP_LAUNCHER, 0, 0, 0);
 }
 
 void rg_system_switch_app(const char *partition, const char *name, const char *args, uint32_t flags)

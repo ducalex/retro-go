@@ -134,7 +134,7 @@ static rg_gui_event_t view_release_cb(rg_gui_option_t *option, rg_gui_event_t ev
             if (ret != 0)
                 rg_gui_alert("Download failed!", "...");
             else if (rg_gui_confirm("Download complete!", "Reboot to flash?", true))
-                rg_system_switch_app(RG_APP_FACTORY, RG_APP_FACTORY, NULL, 0);
+                rg_system_switch_app(RG_APP_FACTORY, NULL, NULL, 0);
         }
         gui_redraw();
     }

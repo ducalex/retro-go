@@ -202,7 +202,7 @@ void I_uSleep(unsigned long usecs)
 
 void I_SafeExit(int rc)
 {
-    rg_system_switch_app(RG_APP_LAUNCHER, RG_APP_LAUNCHER, 0, 0);
+    rg_system_exit();
 }
 
 const char *I_DoomExeDir(void)
