@@ -84,7 +84,7 @@ static rg_gui_event_t timezone_cb(rg_gui_option_t *option, rg_gui_event_t event)
         gui_redraw();
     }
 
-    strcpy(option->value, getenv("TZ"));
+    strcpy(option->value, getenv("TZ") ?: "N/A");
 
     for (size_t i = 0; i < timezones_count; i++)
     {
