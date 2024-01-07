@@ -1232,6 +1232,8 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     char screen_res[20], source_res[20], scaled_res[20];
     char stack_hwm[20], heap_free[20], block_free[20];
     char local_time[32], timezone[32], uptime[20];
+    char battery_info[25];
+
 
     const rg_gui_option_t options[] = {
         {0, "Screen Res", screen_res, 1, NULL},
@@ -1243,6 +1245,7 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
         {0, "Local time", local_time, 1, NULL},
         {0, "Timezone  ", timezone, 1, NULL},
         {0, "Uptime    ", uptime, 1, NULL},
+        {0, "Battery", battery_info, 1, NULL},
         RG_DIALOG_SEPARATOR,
         {1, "Reboot to firmware", NULL, 1, NULL},
         {2, "Clear cache", NULL, 1, NULL},
@@ -1266,6 +1269,15 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     snprintf(heap_free, 20, "%d+%d", stats.freeMemoryInt, stats.freeMemoryExt);
     snprintf(block_free, 20, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);
     snprintf(uptime, 20, "%ds", (int)(rg_system_timer() / 1000000));
+    float batteryPct, batteryVlt;
+    if (rg_input_read_battery(&batteryPct, &batteryVlt))
+    {
+        snprintf(battery_info, sizeof(battery_info), "%.2f%% | %.2fV", batteryPct, batteryVlt);
+    }
+    else
+    {
+        snprintf(battery_info, sizeof(battery_info), "N/A");
+    }
 
     switch (rg_gui_dialog("Debugging", options, 0))
     {
