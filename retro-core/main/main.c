@@ -25,8 +25,6 @@ void app_main(void)
         gw_main();
     else if (strcmp(app->configNs, "lnx") == 0)
         lynx_main();
-    else if (strcmp(app->configNs, "snes") == 0)
-        snes_main();
     else
         launcher_main();
 
