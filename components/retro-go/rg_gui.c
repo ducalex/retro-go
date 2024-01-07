@@ -566,16 +566,13 @@ void rg_gui_draw_status_bars(void)
 
 static size_t get_dialog_items_count(const rg_gui_option_t *options)
 {
-    const rg_gui_option_t last = RG_DIALOG_CHOICE_LAST;
-    size_t count = 0;
-
     if (!options)
         return 0;
 
-    while (memcmp(options++, &last, sizeof(last)) != 0)
-        count++;
-
-    return count;
+    const rg_gui_option_t *opt = options;
+    while (opt->arg || opt->label || opt->value || opt->flags || opt->update_cb)
+        opt++;
+    return opt - options;
 }
 
 void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int sel)
