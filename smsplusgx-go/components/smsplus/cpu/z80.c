@@ -135,6 +135,13 @@
 #define LOG(x)
 #endif
 
+unsigned char *cpu_readmap[64];
+unsigned char *cpu_writemap[64];
+
+void (*cpu_writemem16)(int address, int data);
+void (*cpu_writeport16)(uint16 port, uint8 data);
+uint8 (*cpu_readport16)(uint16 port);
+
 int z80_cycle_count = 0;        /* running total of cycles executed */
 
 #define CF  0x01

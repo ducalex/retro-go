@@ -9,7 +9,6 @@ _Note: As of retro-go 1.35, I use 4.3.3. Version 4.1.x was used for 1.20 to 1.34
 Patching esp-idf may be required for full functionality. Patches are located in `tools/patches` and can be applied to your global esp-idf installation, they will not break your other projects/devices.
 - `sdcard-fix`: This patch is mandatory for the ODROID-GO (and clones).
 - `panic-hook`: This is to help users report bugs, see `Capturing crash logs` below for more details. The patch is optional but recommended.
-- `enable-exfat`: Enable exFAT support. I don't recommended it but it works if you need it.
 
 
 ## Obtaining the code

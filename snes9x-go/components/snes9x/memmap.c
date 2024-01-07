@@ -251,6 +251,7 @@ bool S9xInitMemory(void)
    Memory.VRAM  = (uint8_t*) calloc(VRAM_SIZE, 1);
    Memory.ROM   = (uint8_t*) calloc(MAX_ROM_SIZE + 0x200, 1);
    Memory.FillRAM = (uint8_t*) calloc(0x8000, 1);
+   Memory.ROM_Size = MAX_ROM_SIZE + 0x200;
 
    IPPU.TileCache = (uint8_t*) calloc(MAX_2BIT_TILES, 128);
    IPPU.TileCached = (uint8_t*) calloc(MAX_2BIT_TILES, 1);
@@ -327,7 +328,7 @@ void S9xDeinitMemory(void)
 bool LoadROM(const char* filename)
 {
    int32_t hi_score, lo_score;
-   int32_t TotalFileSize = 0;
+   size_t TotalFileSize = 0;
    bool Interleaved = false;
    bool Tales = false;
    FILE *fp;
@@ -346,13 +347,14 @@ again:
    if (filename == NULL)
    {
       printf("Using Memory.ROM as is.\n");
+      TotalFileSize = Memory.ROM_Size;
    }
    else if ((fp = fopen(filename, "rb")))
    {
       fseek(fp, 0, SEEK_END);
-      Memory.ROM_Size = ftell(fp);
+      TotalFileSize = ftell(fp);
       fseek(fp, 0, SEEK_SET);
-      fread(Memory.ROM, MIN(Memory.ROM_Size, MAX_ROM_SIZE), 1, fp);
+      fread(Memory.ROM, Memory.ROM_Size, 1, fp);
       fclose(fp);
    }
    else
@@ -360,12 +362,11 @@ again:
       printf("Failed to open %s\n", filename);
       return false;
    }
-   TotalFileSize = Memory.ROM_Size;
 
-   if (TotalFileSize > MAX_ROM_SIZE)
+   if (TotalFileSize > Memory.ROM_Size)
    {
-      printf("WARNING: ROM TOO BIG (%d)!\n", TotalFileSize);
-      TotalFileSize = MAX_ROM_SIZE;
+      printf("WARNING: ROM TOO BIG (%u)!\n", (unsigned)TotalFileSize);
+      TotalFileSize = Memory.ROM_Size;
       return false; // comment to try to run it anyway
    }
    else if (TotalFileSize < 1024)

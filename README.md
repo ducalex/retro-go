@@ -166,7 +166,7 @@ Instructions moved to [THEMING.md](THEMING.md).
 
 
 # Building
-Instructions moved to [CONTRIBUTING.md](CONTRIBUTING.md).
+Instructions moved to [BUILDING.md](BUILDING.md).
 
 
 # Acknowledgements
