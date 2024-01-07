@@ -1,4 +1,5 @@
 #include "rg_system.h"
+#include "rg_image.h"
 #include "lodepng.h"
 
 #include <stdlib.h>
