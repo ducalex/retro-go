@@ -1288,8 +1288,8 @@ IRAM_ATTR int nes6502_execute(int cycles)
       OPCODE(0x57, SRE(6, ZP_IND_X, ZP_WRITEBYTE, baddr));          /* SRE $nn,X */
       OPCODE(0x58, CLI());                                          /* CLI */
       OPCODE(0x59, EOR(4, ABS_IND_Y_BYTE_READ));                    /* EOR $nnnn,Y */
-      OPCODE(0x5B, SRE(7, ABS_IND_Y, writebyte, addr));             /* SRE $nnnn,Y */
       OPCODE(0x5A, NOP());                                          /* NOP */
+      OPCODE(0x5B, SRE(7, ABS_IND_Y, writebyte, addr));             /* SRE $nnnn,Y */
       OPCODE(0x5C, TOP());                                          /* NOP $nnnn,X */
       OPCODE(0x5D, EOR(4, ABS_IND_X_BYTE_READ));                    /* EOR $nnnn,X */
       OPCODE(0x5E, LSR(7, ABS_IND_X, writebyte, addr));             /* LSR $nnnn,X */
@@ -1441,8 +1441,8 @@ IRAM_ATTR int nes6502_execute(int cycles)
       OPCODE(0xE7, ISB(5, ZERO_PAGE, ZP_WRITEBYTE, baddr));         /* ISB $nn */
       OPCODE(0xE8, INX());                                          /* INX */
       OPCODE(0xE9, SBC(2, IMMEDIATE_BYTE));                         /* SBC #$nn */
-      OPCODE(0xEB, SBC(2, IMMEDIATE_BYTE));                         /* USBC #$nn */
       OPCODE(0xEA, NOP());                                          /* NOP */
+      OPCODE(0xEB, SBC(2, IMMEDIATE_BYTE));                         /* USBC #$nn */
       OPCODE(0xEC, CPX(4, ABSOLUTE_BYTE));                          /* CPX $nnnn */
       OPCODE(0xED, SBC(4, ABSOLUTE_BYTE));                          /* SBC $nnnn */
       OPCODE(0xEE, INC(6, ABSOLUTE, writebyte, addr));              /* INC $nnnn */
