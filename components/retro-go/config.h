@@ -12,6 +12,8 @@
 #include "targets/mrgc-gbm/config.h"
 #elif defined(RG_TARGET_ESPLAY_MICRO)
 #include "targets/esplay-micro/config.h"
+#elif defined(RG_TARGET_ESPLAY_S3)
+#include "targets/esplay-s3/config.h"
 #else
 #warning "No target defined. Defaulting to ODROID-GO."
 #include "targets/odroid-go/config.h"
@@ -47,6 +49,10 @@
 #ifndef RG_BUILD_TIME
 // 2020-01-31 00:00:00, first retro-go commit :)
 #define RG_BUILD_TIME 1580446800
+#endif
+
+#ifndef RG_BUILD_DATE
+#define RG_BUILD_DATE __DATE__ " " __TIME__
 #endif
 
 #ifndef RG_BUILD_USER

@@ -197,11 +197,11 @@ def clean_app(app):
     print("Done.\n")
 
 
-def build_app(app, device_type, with_profiling=False, without_networking=False):
+def build_app(app, device_type, with_profiling=False, no_networking=False):
     # To do: clean up if any of the flags changed since last build
     print("Building app '%s'" % app)
     os.putenv("RG_ENABLE_PROFILING", "1" if with_profiling else "0")
-    os.putenv("RG_ENABLE_NETWORKING", "0" if without_networking else "1")
+    os.putenv("RG_ENABLE_NETWORKING", "0" if no_networking else "1")
     os.putenv("RG_BUILD_TARGET", re.sub(r'[^A-Z0-9]', '_', device_type.upper()))
     os.putenv("RG_BUILD_TIME", str(int(time.time())))
     os.putenv("RG_BUILD_VERSION", PROJECT_VER)
@@ -294,7 +294,7 @@ parser.add_argument(
     "--target", default=DEFAULT_TARGET, choices=set(TARGETS), help="Device to target"
 )
 parser.add_argument(
-    "--without-networking", action="store_const", const=True, help="Build without networking enabled"
+    "--no-networking", action="store_const", const=True, help="Build without networking support"
 )
 parser.add_argument(
     "--port", default=DEFAULT_PORT, help="Serial port to use for flash and monitor"
@@ -328,7 +328,7 @@ if command in ["clean", "release"]:
 if command in ["build", "build-fw", "build-img", "release", "run", "profile"]:
     print("=== Step: Building ===\n")
     for app in apps:
-        build_app(app, args.target, command == "profile", args.without_networking)
+        build_app(app, args.target, command == "profile", args.no_networking)
 
 if command in ["build-fw", "release"]:
     print("=== Step: Packing ===\n")
