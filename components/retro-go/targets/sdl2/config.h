@@ -19,8 +19,8 @@
 #define RG_SCREEN_HOST              0
 #define RG_SCREEN_SPEED             0
 #define RG_SCREEN_TYPE              0
-#define RG_SCREEN_WIDTH             640
-#define RG_SCREEN_HEIGHT            480
+#define RG_SCREEN_WIDTH             320
+#define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
 #define RG_SCREEN_MARGIN_TOP        0
 #define RG_SCREEN_MARGIN_BOTTOM     0
@@ -42,10 +42,10 @@
     {RG_KEY_START,  SDL_SCANCODE_SPACE},\
     {RG_KEY_MENU,   SDL_SCANCODE_ESCAPE},\
     {RG_KEY_OPTION, SDL_SCANCODE_TAB},\
-    {RG_KEY_A,      SDL_SCANCODE_Z},\
-    {RG_KEY_B,      SDL_SCANCODE_X},\
-    {RG_KEY_X,      SDL_SCANCODE_A},\
-    {RG_KEY_Y,      SDL_SCANCODE_S},\
+    {RG_KEY_A,      SDL_SCANCODE_X},\
+    {RG_KEY_B,      SDL_SCANCODE_Z},\
+    {RG_KEY_X,      SDL_SCANCODE_S},\
+    {RG_KEY_Y,      SDL_SCANCODE_A},\
     {RG_KEY_L,      SDL_SCANCODE_Q},\
     {RG_KEY_R,      SDL_SCANCODE_W},\
 }
