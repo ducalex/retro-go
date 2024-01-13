@@ -11,8 +11,9 @@ extern "C" {
 
 #include "config.h"
 
-#ifndef RG_TARGET_SDL2
+#ifdef ESP_PLATFORM
 #include <esp_idf_version.h>
+#include <esp_heap_caps.h>
 #include <esp_attr.h>
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 3, 0)
 #define SPI_DMA_CH_AUTO 1
@@ -146,12 +147,11 @@ typedef struct
 
 typedef struct
 {
-    const char *name;
-    const char *version;
-    const char *buildDate;
-    const char *buildTime;
-    const char *buildUser;
-    const char *toolchain;
+    char name[32];
+    char version[32];
+    char buildDate[32];
+    char buildUser[32];
+    char buildTool[32];
     const char *configNs;
     const char *bootArgs;
     uint32_t bootFlags;

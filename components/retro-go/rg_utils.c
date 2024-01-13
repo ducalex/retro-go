@@ -4,9 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef RG_TARGET_SDL2
-#include <esp_heap_caps.h>
-#endif
 
 char *rg_strtolower(char *str)
 {
@@ -86,7 +83,7 @@ const char *rg_relpath(const char *path)
 
 uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, uint32_t len)
 {
-#ifndef RG_TARGET_SDL2
+#ifdef CONFIG_IDF_TARGET
     // This is part of the ROM but finding the correct header is annoying as it differs per SOC...
     extern uint32_t crc32_le(uint32_t crc, const uint8_t *buf, uint32_t len);
     return crc32_le(crc, buf, len);
@@ -148,7 +145,7 @@ void *rg_alloc(size_t size, uint32_t caps)
         strcat(caps_list, "IRAM|");
     strcat(caps_list, (caps & MEM_32BIT) ? "32BIT" : "8BIT");
 
-#ifndef RG_TARGET_SDL2
+#ifdef ESP_PLATFORM
     uint32_t esp_caps = 0;
     esp_caps |= (caps & MEM_SLOW ? MALLOC_CAP_SPIRAM : (caps & MEM_FAST ? MALLOC_CAP_INTERNAL : 0));
     esp_caps |= (caps & MEM_DMA ? MALLOC_CAP_DMA : 0);

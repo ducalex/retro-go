@@ -312,6 +312,9 @@ if os.path.exists(f"components/retro-go/targets/{args.target}/env.py"):
     with open(f"components/retro-go/targets/{args.target}/env.py", "rb") as f:
         exec(f.read())
 
+if os.path.exists(f"components/retro-go/targets/{args.target}/sdkconfig"):
+    os.environ["SDKCONFIG_DEFAULTS"] = f"../components/retro-go/targets/{args.target}/sdkconfig"
+
 if not os.getenv("IDF_PATH"):
     exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
 

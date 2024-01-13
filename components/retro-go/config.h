@@ -46,6 +46,18 @@
 #define RG_PATH_MAX 255
 #endif
 
+#ifndef RG_PROJECT_NAME
+#define RG_PROJECT_NAME "unknown"
+#endif
+
+#ifndef RG_PROJECT_VERSION
+#define RG_PROJECT_VERSION "unknown"
+#endif
+
+#ifndef RG_PROJECT_AUTHOR
+#define RG_PROJECT_AUTHOR "ducalex"
+#endif
+
 #ifndef RG_BUILD_TIME
 // 2020-01-31 00:00:00, first retro-go commit :)
 #define RG_BUILD_TIME 1580446800
@@ -57,6 +69,10 @@
 
 #ifndef RG_BUILD_USER
 #define RG_BUILD_USER "ducalex"
+#endif
+
+#ifndef RG_BUILD_TOOL
+#define RG_BUILD_TOOL "unknown"
 #endif
 
 #ifndef RG_RECOVERY_BTN

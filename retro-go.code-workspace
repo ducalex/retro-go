@@ -42,6 +42,7 @@
 			"RG_ENABLE_NETPLAY=",
 			"RG_ENABLE_NETWORKING=",
 			"RTC_NOINIT_ATTR=",
+			"ESP_PLATFORM="
 		],
 		"C_Cpp.default.includePath": [
 			"${workspaceFolder}/components/**",

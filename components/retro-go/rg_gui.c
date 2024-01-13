@@ -1228,7 +1228,7 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
     const rg_app_t *app = rg_system_get_app();
 
     snprintf(build_ver, sizeof(build_ver), "%s", app->version);
-    snprintf(build_date, sizeof(build_date), "%s %s", app->buildDate, app->buildTime);
+    snprintf(build_date, sizeof(build_date), "%s", app->buildDate);
     snprintf(build_user, sizeof(build_user), "%s", app->buildUser);
     snprintf(title, sizeof(title), "About Retro-Go"); // , app->name
 

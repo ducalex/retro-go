@@ -8,7 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifndef RG_TARGET_SDL2
+#ifdef ESP_PLATFORM
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
@@ -19,9 +19,6 @@
 #include <esp_timer.h>
 #include <esp_sleep.h>
 #include <driver/gpio.h>
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-#include <esp_chip_info.h>
-#endif
 #else
 #include <SDL2/SDL.h>
 #endif
@@ -112,7 +109,7 @@ void rg_system_load_time(void)
         fclose(fp);
         RG_LOGI("Time loaded from storage\n");
     }
-#ifndef RG_TARGET_SDL2
+#ifdef ESP_PLATFORM
     settimeofday(&(struct timeval){time_sec, 0}, NULL);
 #endif
     time_sec = time(NULL); // Read it back to be sure it worked
@@ -166,7 +163,7 @@ IRAM_ATTR void esp_panic_putchar_hook(char c)
 
 static void update_memory_statistics(void)
 {
-#ifndef RG_TARGET_SDL2
+#ifdef ESP_PLATFORM
     multi_heap_info_t heap_info;
 
     heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
@@ -314,7 +311,7 @@ static void setup_gpios(void)
     gpio_reset_pin(GPIO_NUM_14);
     gpio_reset_pin(GPIO_NUM_15);
 #endif
-#ifndef RG_TARGET_SDL2
+#ifdef ESP_PLATFORM
     if (RG_GPIO_LED != GPIO_NUM_NC)
         gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
 #endif
@@ -338,15 +335,13 @@ rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, const 
 rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options)
 {
     RG_ASSERT(app.initialized == false, "rg_system_init() was already called.");
-    const esp_app_desc_t *esp_app = esp_ota_get_app_description();
 
     app = (rg_app_t){
-        .name = esp_app->project_name,
-        .version = esp_app->version,
-        .buildDate = esp_app->date,
-        .buildTime = esp_app->time,
+        .name = RG_PROJECT_NAME,
+        .version = RG_PROJECT_VERSION,
+        .buildDate = RG_BUILD_DATE,
         .buildUser = RG_BUILD_USER,
-        .toolchain = esp_get_idf_version(),
+        .buildTool = RG_BUILD_TOOL,
         .bootArgs = NULL,
         .bootFlags = 0,
         .bootType = RG_RST_POWERON,
@@ -357,33 +352,33 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .options = options, // TO DO: We should make a copy of it?
     };
 
+#ifdef ESP_PLATFORM
+    const esp_app_desc_t *esp_app = esp_ota_get_app_description();
+    snprintf(app.name, sizeof(app.name), "%s", esp_app->project_name);
+    snprintf(app.version, sizeof(app.version), "%s", esp_app->version);
+    snprintf(app.buildDate, sizeof(app.buildDate), "%s %s", esp_app->date, esp_app->time);
+    snprintf(app.buildTool, sizeof(app.buildTool), "%s", esp_app->idf_ver);
+    esp_reset_reason_t r_reason = esp_reset_reason();
+    if (r_reason == ESP_RST_PANIC || r_reason == ESP_RST_TASK_WDT || r_reason == ESP_RST_INT_WDT)
+        app.bootType = RG_RST_PANIC;
+    else if (r_reason == ESP_RST_SW)
+        app.bootType = RG_RST_RESTART;
+#else
+    snprintf(app.buildTool, sizeof(app.buildTool), "SDL2 %d.%d.%d / CC %s", 1, 1, 1, __VERSION__);
+    freopen("stdout.txt", "w", stdout);
+    freopen("stderr.txt", "w", stderr);
+#endif
+
     tasks[0] = (rg_task_t){xTaskGetCurrentTaskHandle(), "main"};
 
     // Do this very early, may be needed to enable serial console
     setup_gpios();
     rg_system_set_led(0);
 
-#ifdef RG_TARGET_SDL2
-    freopen("stdout.txt", "w", stdout);
-    freopen("stderr.txt", "w", stderr);
-#endif
-
     printf("\n========================================================\n");
-    printf("%s %s (%s %s)\n", app.name, app.version, app.buildDate, app.buildTime);
+    printf("%s %s (%s)\n", app.name, app.version, app.buildDate);
     printf(" built for: %s. aud=%d disp=%d pad=%d sd=%d cfg=%d\n", RG_TARGET_NAME, 0, 0, 0, 0, 0);
     printf("========================================================\n\n");
-
-#ifndef RG_TARGET_SDL2
-    esp_reset_reason_t r_reason = esp_reset_reason();
-    esp_chip_info_t chip_info;
-    esp_chip_info(&chip_info);
-    RG_LOGI("Chip info: model %d rev%d (%d cores), reset reason: %d\n",
-        chip_info.model, chip_info.revision, chip_info.cores, r_reason);
-    if (r_reason == ESP_RST_PANIC || r_reason == ESP_RST_TASK_WDT || r_reason == ESP_RST_INT_WDT)
-        app.bootType = RG_RST_PANIC;
-    else if (r_reason == ESP_RST_SW)
-        app.bootType = RG_RST_RESTART;
-#endif
 
     update_memory_statistics();
     RG_LOGI("Internal memory: free=%d, total=%d\n", statistics.freeMemoryInt, statistics.totalMemoryInt);
@@ -440,7 +435,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     }
     panicTrace.magicWord = 0;
 
-#ifndef RG_TARGET_SDL2
+#ifdef ESP_PLATFORM
     if (app.bootFlags & RG_BOOT_ONCE)
         esp_ota_set_boot_partition(esp_partition_find_first(
             ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, RG_APP_LAUNCHER));
@@ -473,7 +468,7 @@ bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, 
     RG_ASSERT(name && taskFunc, "bad param");
     TaskHandle_t handle = NULL;
 
-#ifndef RG_TARGET_SDL2
+#ifdef ESP_PLATFORM
     if (affinity < 0)
         affinity = tskNO_AFFINITY;
     if (xTaskCreatePinnedToCore(taskFunc, name, stackSize, data, priority, &handle, affinity) != pdPASS)
@@ -510,7 +505,7 @@ bool rg_task_delete(const char *name)
     {
         if ((!name && tasks[i].handle == current) || (name && strncmp(tasks[i].name, name, 20) != 0))
         {
-        #ifndef RG_TARGET_SDL2
+        #ifdef ESP_PLATFORM
             vTaskDelete(tasks[i].handle);
         #endif
             tasks[i].handle = NULL;
@@ -524,7 +519,7 @@ void rg_task_delay(int ms)
 {
     // Note: rg_task_delay MUST yield at least once, even if ms = 0
     // Keep in mind that delay may not be very accurate, use usleep().
-#ifndef RG_TARGET_SDL2
+#ifdef ESP_PLATFORM
     vTaskDelay(pdMS_TO_TICKS(ms));
 #else
     SDL_PumpEvents();
@@ -552,7 +547,7 @@ IRAM_ATTR void rg_system_tick(int busyTime)
 
 IRAM_ATTR int64_t rg_system_timer(void)
 {
-#ifndef RG_TARGET_SDL2
+#ifdef ESP_PLATFORM
     return esp_timer_get_time();
 #else
     return SDL_GetTicks() * 1000;
@@ -869,7 +864,7 @@ void rg_system_switch_app(const char *partition, const char *name, const char *a
         rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, flags);
         rg_settings_commit();
     }
-#ifndef RG_TARGET_SDL2
+#ifdef ESP_PLATFORM
     esp_err_t err = esp_ota_set_boot_partition(esp_partition_find_first(
             ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partition));
     if (err != ESP_OK)
@@ -883,7 +878,7 @@ void rg_system_switch_app(const char *partition, const char *name, const char *a
 
 bool rg_system_have_app(const char *app)
 {
-#ifndef RG_TARGET_SDL2
+#ifdef ESP_PLATFORM
     return esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, app) != NULL;
 #else
     return true;
@@ -958,8 +953,8 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
     {
         fprintf(fp, "Application: %s (%s)\n", app.name, app.configNs);
         fprintf(fp, "Version: %s\n", app.version);
-        fprintf(fp, "Build date: %s %s\n", app.buildDate, app.buildTime);
-        fprintf(fp, "Toolchain: %s\n", app.toolchain);
+        fprintf(fp, "Build date: %s\n", app.buildDate);
+        fprintf(fp, "Toolchain: %s\n", app.buildTool);
         fprintf(fp, "Total memory: %d + %d\n", stats->totalMemoryInt, stats->totalMemoryExt);
         fprintf(fp, "Free memory: %d + %d\n", stats->freeMemoryInt, stats->freeMemoryExt);
         fprintf(fp, "Free block: %d + %d\n", stats->freeBlockInt, stats->freeBlockExt);
@@ -985,7 +980,7 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
 
 void rg_system_set_led(int value)
 {
-#ifndef RG_TARGET_SDL2
+#ifdef ESP_PLATFORM
     if (RG_GPIO_LED > -1 && ledValue != value)
         gpio_set_level(RG_GPIO_LED, value);
 #endif

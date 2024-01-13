@@ -2,8 +2,8 @@
 .vscode/
 build/
 *.exe
-sdkconfig.old
-sdkconfig
+/*/sdkconfig.old
+/*/sdkconfig
 /*.fw
 /*.img
 /*.zip

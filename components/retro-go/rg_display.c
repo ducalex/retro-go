@@ -18,19 +18,15 @@
 #include <driver/ledc.h>
 #endif
 
+#define LCD_BUFFER_LENGTH     (RG_SCREEN_WIDTH * 4) // In pixels
+
 #define SPI_TRANSACTION_COUNT (8)
 #define SPI_BUFFER_COUNT      (5)
-#define SPI_BUFFER_LENGTH     (320 * 4) // In pixels (uint16)
+#define SPI_BUFFER_LENGTH     (LCD_BUFFER_LENGTH * 2)
 
 static spi_device_handle_t spi_dev;
 static QueueHandle_t spi_transactions;
 static QueueHandle_t spi_buffers;
-
-typedef struct
-{
-    uint16_t *ptr;
-    size_t length;
-} lcd_buffer_t;
 
 static QueueHandle_t display_task_queue;
 static rg_display_counters_t counters;
@@ -42,8 +38,8 @@ static struct
     uint8_t start  : 1; // Indicates this line or column is safe to start an update on
     uint8_t stop   : 1; // Indicates this line or column is safe to end an update on
     uint8_t repeat : 6; // How many times the line or column is repeated by the scaler or filter
-} filter_lines[320];
-static uint8_t screen_line_is_empty[RG_SCREEN_HEIGHT];
+} filter_lines[320]; // This is source height
+static uint8_t screen_line_is_empty[RG_SCREEN_HEIGHT + 1];
 
 static const char *SETTING_BACKLIGHT = "DispBacklight";
 static const char *SETTING_SCALING = "DispScaling";
@@ -133,7 +129,7 @@ static void spi_init(void)
 
     while (uxQueueSpacesAvailable(spi_buffers))
     {
-        void *buffer = rg_alloc(SPI_BUFFER_LENGTH * 2, MEM_DMA);
+        void *buffer = rg_alloc(SPI_BUFFER_LENGTH, MEM_DMA);
         xQueueSend(spi_buffers, &buffer, portMAX_DELAY);
     }
 
@@ -211,22 +207,22 @@ static void lcd_set_window(int left, int top, int width, int height)
     ili9341_cmd(0x2C, NULL, 0); // Memory write
 }
 
-static inline void lcd_send_data(const void *buffer, size_t length)
+static inline void lcd_send_data(const uint16_t *buffer, size_t length)
 {
-    spi_queue_transaction(buffer, length, 3);
+    spi_queue_transaction(buffer, length * 2, 3);
 }
 
-static inline lcd_buffer_t lcd_get_buffer(void)
+static inline uint16_t *lcd_get_buffer(void)
 {
 #ifdef RG_TARGET_SDL2
-    static uint16_t buffer[RG_SCREEN_WIDTH * 8];
-    return (lcd_buffer_t){&buffer, RG_COUNT(buffer)};
+    static uint16_t buffer[LCD_BUFFER_LENGTH];
+    return buffer;
 #else
-    return (lcd_buffer_t){spi_get_buffer(), SPI_BUFFER_LENGTH};
+    return spi_get_buffer();
 #endif
 }
 
-static void lcd_send_buffer(int left, int top, int width, int height, lcd_buffer_t *buffer)
+static void lcd_send_buffer(int left, int top, int width, int height, const uint16_t *buffer)
 {
     // FIXME: Here we should probably acquire a lock to avoid parallel lcd_send_buffer calls...
     lcd_set_window(left, top, width, height);
@@ -234,7 +230,7 @@ static void lcd_send_buffer(int left, int top, int width, int height, lcd_buffer
     {
         // FIXME: Here we should check if we draw over the OSD region and, if so, redraw the OSD to buffer->ptr.
     }
-    lcd_send_data(buffer->ptr, width * height * 2);
+    lcd_send_data(buffer, width * height);
 }
 
 static void lcd_init(void)
@@ -452,7 +448,7 @@ static inline void write_rect(int left, int top, int width, int height,
     const int screen_top = display.viewport.y_pos + scaled_top;
     const int screen_left = display.viewport.x_pos + scaled_left;
     const int screen_bottom = RG_MIN(screen_top + scaled_height, screen_height);
-    const int lines_per_buffer = SPI_BUFFER_LENGTH / scaled_width;
+    const int lines_per_buffer = LCD_BUFFER_LENGTH / scaled_width;
     const int ix_acc = (x_inc * scaled_left) % screen_width;
     const int filter_mode = config.scaling ? config.filter : 0;
     const bool filter_y = filter_mode == RG_DISPLAY_FILTER_VERT || filter_mode == RG_DISPLAY_FILTER_BOTH;
@@ -492,7 +488,7 @@ static inline void write_rect(int left, int top, int width, int height,
             break;
         }
 
-        uint16_t *line_buffer = lcd_get_buffer().ptr;
+        uint16_t *line_buffer = lcd_get_buffer();
         uint16_t *line_buffer_ptr = line_buffer;
 
         for (int i = 0; i < lines_to_copy; ++i)
@@ -577,7 +573,7 @@ static inline void write_rect(int left, int top, int width, int height,
             }
         }
 
-        lcd_send_data(line_buffer, scaled_width * lines_to_copy * 2);
+        lcd_send_data(line_buffer, scaled_width * lines_to_copy);
     }
 }
 
@@ -621,7 +617,7 @@ static void update_viewport_scaling(void)
     // Build boundary tables used by filtering
 
     memset(filter_lines, 1, sizeof(filter_lines));
-    memset(screen_line_is_empty, 0, RG_SCREEN_HEIGHT);
+    memset(screen_line_is_empty, 0, sizeof(screen_line_is_empty));
 
     int y_acc = (display.viewport.y_inc * display.viewport.y_pos) % display.screen.height;
 
@@ -1029,21 +1025,19 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
 
     for (size_t y = 0; y < height;)
     {
-        lcd_buffer_t lcd_buffer = lcd_get_buffer();
-        size_t num_lines = RG_MIN(lcd_buffer.length / width, height - y);
+        uint16_t *lcd_buffer = lcd_get_buffer();
+        size_t num_lines = RG_MIN(LCD_BUFFER_LENGTH / width, height - y);
 
         // Copy line by line because stride may not match width
         for (size_t line = 0; line < num_lines; ++line)
         {
             uint16_t *src = (void *)buffer + ((y + line) * stride);
-            uint16_t *dst = lcd_buffer.ptr + (line * width);
+            uint16_t *dst = lcd_buffer + (line * width);
             for (size_t i = 0; i < width; ++i)
-            {
                 dst[i] = (src[i] >> 8) | (src[i] << 8);
-            }
         }
 
-        lcd_send_data(lcd_buffer.ptr, width * num_lines * 2);
+        lcd_send_data(lcd_buffer, width * num_lines);
         y += num_lines;
     }
 }
@@ -1055,11 +1049,12 @@ void rg_display_clear(uint16_t color_le)
     uint16_t color_be = (color_le << 8) | (color_le >> 8);
     for (size_t y = 0; y < RG_SCREEN_HEIGHT;)
     {
-        lcd_buffer_t buffer = lcd_get_buffer();
-        size_t num_lines = RG_MIN(buffer.length / RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT - y);
-        for (size_t j = 0; j < buffer.length; ++j)
-            buffer.ptr[j] = color_be;
-        lcd_send_data(buffer.ptr, RG_SCREEN_WIDTH * num_lines * 2);
+        uint16_t *buffer = lcd_get_buffer();
+        size_t num_lines = RG_MIN(LCD_BUFFER_LENGTH / RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT - y);
+        size_t pixels = RG_SCREEN_WIDTH * num_lines;
+        for (size_t j = 0; j < pixels; ++j)
+            buffer[j] = color_be;
+        lcd_send_data(buffer, pixels);
         y += num_lines;
     }
 }
