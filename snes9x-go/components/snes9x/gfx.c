@@ -187,7 +187,7 @@ bool S9xInitGFX(void)
 
    /* Build a lookup table that if the top bit of the color value is zero
     * then the value is zero, otherwise its just the value. */
-   for (r = 0; r <= MAX_RED; r++)
+   for (uint32_t r = 0; r <= MAX_RED; r++)
    {
       uint32_t r2 = r;
       if ((r2 & 0x10) == 0)
@@ -195,14 +195,14 @@ bool S9xInitGFX(void)
       else
          r2 &= ~0x10;
 
-      for (g = 0; g <= MAX_GREEN; g++)
+      for (uint32_t g = 0; g <= MAX_GREEN; g++)
       {
          uint32_t g2 = g;
          if ((g2 & GREEN_HI_BIT) == 0)
             g2 = 0;
          else
             g2 &= ~GREEN_HI_BIT;
-         for (b = 0; b <= MAX_BLUE; b++)
+         for (uint32_t b = 0; b <= MAX_BLUE; b++)
          {
             uint32_t b2 = b;
             if ((b2 & 0x10) == 0)

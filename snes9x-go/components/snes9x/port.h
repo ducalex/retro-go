@@ -6,6 +6,7 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/types.h>
 
 #ifdef RETRO_GO
@@ -53,9 +54,6 @@
 #ifndef _MAX_PATH
 #define _MAX_PATH  PATH_MAX
 #endif
-#else /* _WIN32 */
-#define strcasecmp  stricmp
-#define strncasecmp strnicmp
 #endif
 
 #define SLASH_STR "/"

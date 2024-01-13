@@ -1207,7 +1207,7 @@ void rg_gui_sysinfo_menu(void)
 
 void rg_gui_about_menu(const rg_gui_option_t *extra_options)
 {
-    char build_ver[32], build_date[32], build_user[32];
+    char build_ver[40], build_date[40], build_user[40], title[40];
 
     size_t extra_options_count = get_dialog_items_count(extra_options);
 
@@ -1227,13 +1227,14 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
 
     const rg_app_t *app = rg_system_get_app();
 
-    snprintf(build_ver, 30, "%s", app->version);
-    snprintf(build_date, 30, "%s %s", app->buildDate, app->buildTime);
-    snprintf(build_user, 30, "%s", app->buildUser);
+    snprintf(build_ver, sizeof(build_ver), "%s", app->version);
+    snprintf(build_date, sizeof(build_date), "%s %s", app->buildDate, app->buildTime);
+    snprintf(build_user, sizeof(build_user), "%s", app->buildUser);
+    snprintf(title, sizeof(title), "About Retro-Go"); // , app->name
 
     while (true)
     {
-        switch (rg_gui_dialog("Retro-Go", options, 4))
+        switch (rg_gui_dialog(title, options, 4))
         {
             case 1000:
                 rg_gui_sysinfo_menu();
