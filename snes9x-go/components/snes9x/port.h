@@ -11,8 +11,6 @@
 
 #ifdef RETRO_GO
 #include <rg_system.h>
-#else
-#define EXT_RAM_ATTR
 #endif
 
 #ifndef INLINE

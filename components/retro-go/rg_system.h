@@ -19,7 +19,6 @@ extern "C" {
 #define SPI_DMA_CH_AUTO 1
 #endif
 #else
-#define EXT_RAM_ATTR
 #define IRAM_ATTR
 #define RTC_NOINIT_ATTR
 #endif
@@ -213,7 +212,6 @@ void rg_system_save_time(void);
 
 // Wrappers for the OS' task/thread creation API. It also keeps track of handles for debugging purposes...
 bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, size_t stackSize, int priority, int affinity);
-bool rg_task_delete(const char *name);
 void rg_task_delay(int ms);
 
 char *rg_emu_get_path(rg_path_type_t type, const char *arg);

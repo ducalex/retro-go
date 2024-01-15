@@ -130,8 +130,6 @@ static void music_player(void *arg)
 
     free(buffer);
     free(mp3);
-
-    rg_task_delete(NULL);
 }
 
 void music_init(void)

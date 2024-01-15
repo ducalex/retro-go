@@ -48,8 +48,10 @@ typedef struct
 
 typedef struct
 {
-    TaskHandle_t handle;
-    char name[20];
+    void (*func)(void *arg);
+    void *arg;
+    void *handle;
+    char name[16];
 } rg_task_t;
 
 #ifdef RG_ENABLE_PROFILING
@@ -91,56 +93,6 @@ static const char *SETTING_TIMEZONE = "Timezone";
 #define logbuf_putc(buf, c) (buf)->buffer[(buf)->cursor++] = c, (buf)->cursor %= RG_LOGBUF_SIZE;
 #define logbuf_puts(buf, str) for (const char *ptr = str; *ptr; ptr++) logbuf_putc(buf, *ptr);
 
-
-void rg_system_load_time(void)
-{
-    time_t time_sec = RG_MAX(rtcValue, RG_BUILD_TIME);
-    FILE *fp;
-#if 0
-    if (rg_i2c_read(0x68, 0x00, data, sizeof(data)))
-    {
-        RG_LOGI("Time loaded from DS3231\n");
-    }
-    else
-#endif
-    if ((fp = fopen(RG_BASE_PATH_CACHE "/clock.bin", "rb")))
-    {
-        fread(&time_sec, sizeof(time_sec), 1, fp);
-        fclose(fp);
-        RG_LOGI("Time loaded from storage\n");
-    }
-#ifdef ESP_PLATFORM
-    settimeofday(&(struct timeval){time_sec, 0}, NULL);
-#endif
-    time_sec = time(NULL); // Read it back to be sure it worked
-    RG_LOGI("Time is now: %s\n", asctime(localtime(&time_sec)));
-}
-
-void rg_system_save_time(void)
-{
-    time_t time_sec = time(NULL);
-    FILE *fp;
-    // We always save to storage in case the RTC disappears.
-    if ((fp = fopen(RG_BASE_PATH_CACHE "/clock.bin", "wb")))
-    {
-        fwrite(&time_sec, sizeof(time_sec), 1, fp);
-        fclose(fp);
-        RG_LOGI("System time saved to storage.\n");
-    }
-#if 0
-    if (rg_i2c_write(0x68, 0x00, data, sizeof(data)))
-    {
-        RG_LOGI("System time saved to DS3231.\n");
-    }
-#endif
-}
-
-void rg_system_set_timezone(const char *TZ)
-{
-    rg_settings_set_string(NS_GLOBAL, SETTING_TIMEZONE, TZ);
-    setenv("TZ", TZ, 1);
-    tzset();
-}
 
 static inline void begin_panic_trace(const char *context, const char *message)
 {
@@ -271,8 +223,6 @@ static void system_monitor_task(void *arg)
         rg_task_delay(1000);
         numLoop++;
     }
-
-    rg_task_delete(NULL);
 }
 
 static void enter_recovery_mode(void)
@@ -326,7 +276,6 @@ rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, const 
     if (handlers)
         app.handlers = *handlers;
     app.options = options;
-    tasks[0].handle = xTaskGetCurrentTaskHandle();
     rg_audio_set_sample_rate(app.sampleRate);
 
     return &app;
@@ -363,13 +312,13 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         app.bootType = RG_RST_PANIC;
     else if (r_reason == ESP_RST_SW)
         app.bootType = RG_RST_RESTART;
+    tasks[0] = (rg_task_t){NULL, NULL, xTaskGetCurrentTaskHandle(), "main"};
 #else
     snprintf(app.buildTool, sizeof(app.buildTool), "SDL2 %d.%d.%d / CC %s", 1, 1, 1, __VERSION__);
     freopen("stdout.txt", "w", stdout);
     freopen("stderr.txt", "w", stderr);
+    tasks[0] = (rg_task_t){NULL, NULL, SDL_ThreadID(), "main"};
 #endif
-
-    tasks[0] = (rg_task_t){xTaskGetCurrentTaskHandle(), "main"};
 
     // Do this very early, may be needed to enable serial console
     setup_gpios();
@@ -463,55 +412,63 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     return &app;
 }
 
+// FIXME: None of this is threadsafe. It works for now, but eventually it needs fixing...
+
+#ifdef ESP_PLATFORM
+static void task_wrapper(void *arg)
+{
+    rg_task_t *task = arg;
+    task->handle = xTaskGetCurrentTaskHandle();
+    (task->func)(task->arg);
+    task->func = NULL;
+    vTaskDelete(NULL);
+}
+#else
+static int task_wrapper(void *arg)
+{
+    rg_task_t *task = arg;
+    task->handle = SDL_ThreadID();
+    (task->func)(task->arg);
+    task->func = NULL;
+    return 0;
+}
+#endif
+
 bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, size_t stackSize, int priority, int affinity)
 {
     RG_ASSERT(name && taskFunc, "bad param");
-    TaskHandle_t handle = NULL;
+    rg_task_t *task = NULL;
+
+    for (size_t i = 1; i < RG_COUNT(tasks); ++i)
+    {
+        if (tasks[i].func)
+            continue;
+        task = &tasks[i];
+        break;
+    }
+    RG_ASSERT(task, "Out of task slots");
+
+    task->func = taskFunc;
+    task->arg = data;
+    task->handle = 0;
+    strncpy(task->name, name, 16);
 
 #ifdef ESP_PLATFORM
+    TaskHandle_t handle = NULL;
     if (affinity < 0)
         affinity = tskNO_AFFINITY;
-    if (xTaskCreatePinnedToCore(taskFunc, name, stackSize, data, priority, &handle, affinity) != pdPASS)
-        handle = NULL; // should already be NULL...
+    if (xTaskCreatePinnedToCore(task_wrapper, name, stackSize, task, priority, &handle, affinity) == pdPASS)
+        return true;
 #else
-    if ((handle = SDL_CreateThread(taskFunc, name, data)))
-        SDL_DetachThread(handle);
+    SDL_Thread *thread = SDL_CreateThread(task_wrapper, name, task);
+    SDL_DetachThread(thread);
+    if (thread)
+        return true;
 #endif
 
-    if (!handle)
-    {
-        RG_LOGE("Task creation failed: name='%s', fn='%p', stack=%d\n", name, taskFunc, stackSize);
-        return false;
-    }
+    RG_LOGE("Task creation failed: name='%s', fn='%p', stack=%d\n", name, taskFunc, stackSize);
+    task->func = NULL;
 
-    for (size_t i = 0; i < RG_COUNT(tasks); ++i)
-    {
-        if (tasks[i].handle == NULL)
-        {
-            tasks[i].handle = handle;
-            strncpy(tasks[i].name, name, 20);
-            return true;
-        }
-    }
-
-    RG_LOGW("Task queue full! Task '%s' is running but not tracked...\n", name);
-    return true;
-}
-
-bool rg_task_delete(const char *name)
-{
-    TaskHandle_t current = xTaskGetCurrentTaskHandle();
-    for (size_t i = 0; i < RG_COUNT(tasks); ++i)
-    {
-        if ((!name && tasks[i].handle == current) || (name && strncmp(tasks[i].name, name, 20) != 0))
-        {
-        #ifdef ESP_PLATFORM
-            vTaskDelete(tasks[i].handle);
-        #endif
-            tasks[i].handle = NULL;
-            return true;
-        }
-    }
     return false;
 }
 
@@ -524,6 +481,58 @@ void rg_task_delay(int ms)
 #else
     SDL_PumpEvents();
     SDL_Delay(ms);
+#endif
+}
+
+void rg_system_load_time(void)
+{
+    time_t time_sec = RG_MAX(rtcValue, RG_BUILD_TIME);
+    FILE *fp;
+#if 0
+    if (rg_i2c_read(0x68, 0x00, data, sizeof(data)))
+    {
+        RG_LOGI("Time loaded from DS3231\n");
+    }
+    else
+#endif
+    if ((fp = fopen(RG_BASE_PATH_CACHE "/clock.bin", "rb")))
+    {
+        fread(&time_sec, sizeof(time_sec), 1, fp);
+        fclose(fp);
+        RG_LOGI("Time loaded from storage\n");
+    }
+#ifdef ESP_PLATFORM
+    settimeofday(&(struct timeval){time_sec, 0}, NULL);
+#endif
+    time_sec = time(NULL); // Read it back to be sure it worked
+    RG_LOGI("Time is now: %s\n", asctime(localtime(&time_sec)));
+}
+
+void rg_system_save_time(void)
+{
+    time_t time_sec = time(NULL);
+    FILE *fp;
+    // We always save to storage in case the RTC disappears.
+    if ((fp = fopen(RG_BASE_PATH_CACHE "/clock.bin", "wb")))
+    {
+        fwrite(&time_sec, sizeof(time_sec), 1, fp);
+        fclose(fp);
+        RG_LOGI("System time saved to storage.\n");
+    }
+#if 0
+    if (rg_i2c_write(0x68, 0x00, data, sizeof(data)))
+    {
+        RG_LOGI("System time saved to DS3231.\n");
+    }
+#endif
+}
+
+void rg_system_set_timezone(const char *TZ)
+{
+    rg_settings_set_string(NS_GLOBAL, SETTING_TIMEZONE, TZ);
+#ifdef ESP_PLATFORM
+    setenv("TZ", TZ, 1);
+    tzset();
 #endif
 }
 

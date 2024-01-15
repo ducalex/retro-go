@@ -320,8 +320,6 @@ static void netplay_task()
                 RG_LOGE("netplay: Received unknown packet type 0x%02x\n", packet.cmd);
         }
     }
-
-    rg_task_delete(NULL);
 }
 
 

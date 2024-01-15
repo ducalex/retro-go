@@ -111,9 +111,6 @@ static void spi_task(void *arg)
             xQueueSend(spi_buffers, &t->tx_buffer, 0);
         xQueueSend(spi_transactions, &t, 0);
     }
-
-    // This should never happen
-    rg_task_delete(NULL);
 }
 
 static void spi_init(void)
@@ -697,8 +694,6 @@ static void display_task(void *arg)
 
     vQueueDelete(display_task_queue);
     display_task_queue = NULL;
-
-    rg_task_delete(NULL);
 }
 
 void rg_display_force_redraw(void)

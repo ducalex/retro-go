@@ -148,8 +148,6 @@ static void audioTask(void *arg)
         psg_update((void*)audioBuffer, numSamples, 0xFF);
         rg_audio_submit(audioBuffer, numSamples);
     }
-
-    rg_task_delete(NULL);
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)

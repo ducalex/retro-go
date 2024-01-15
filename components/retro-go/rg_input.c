@@ -198,7 +198,6 @@ static void input_task(void *arg)
 
     input_task_running = false;
     gamepad_state = -1;
-    rg_task_delete(NULL);
 }
 
 void rg_input_init(void)
