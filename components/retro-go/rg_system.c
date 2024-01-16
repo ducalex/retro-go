@@ -833,9 +833,13 @@ void rg_system_shutdown(void)
     RG_LOGI("Halting system.\n");
     exitCalled = true;
     shutdown_cleanup();
+#ifdef ESP_PLATFORM
     vTaskSuspendAll();
     while (1)
         ;
+#else
+    exit(0);
+#endif
 }
 
 void rg_system_sleep(void)
@@ -844,7 +848,11 @@ void rg_system_sleep(void)
     exitCalled = true;
     shutdown_cleanup();
     rg_task_delay(1000);
+#ifdef ESP_PLATFORM
     esp_deep_sleep_start();
+#else
+    exit(0);
+#endif
 }
 
 void rg_system_restart(void)
@@ -852,7 +860,11 @@ void rg_system_restart(void)
     RG_LOGI("Restarting system.\n");
     exitCalled = true;
     shutdown_cleanup();
+#ifdef ESP_PLATFORM
     esp_restart();
+#else
+    exit(0);
+#endif
 }
 
 void rg_system_exit(void)

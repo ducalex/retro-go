@@ -5,17 +5,16 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifdef RG_TARGET_SDL2
-#include <SDL2/SDL.h>
-#else
+#ifdef ESP_PLATFORM
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <driver/gpio.h>
 #include <driver/spi_master.h>
-#endif
-
 #ifdef RG_GPIO_LCD_BCKL
 #include <driver/ledc.h>
+#endif
+#else
+#include <SDL2/SDL.h>
 #endif
 
 #define LCD_BUFFER_LENGTH     (RG_SCREEN_WIDTH * 4) // In pixels
@@ -48,14 +47,6 @@ static const char *SETTING_ROTATION = "DispRotation";
 static const char *SETTING_UPDATE = "DispUpdate";
 
 
-static inline uint16_t *spi_get_buffer(void)
-{
-    uint16_t *buffer;
-    if (xQueueReceive(spi_buffers, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
-        RG_PANIC("display");
-    return buffer;
-}
-
 static inline void spi_queue_transaction(const void *data, size_t length, uint32_t type)
 {
     spi_transaction_t *t;
@@ -83,7 +74,10 @@ static inline void spi_queue_transaction(const void *data, size_t length, uint32
     }
     else
     {
-        t->tx_buffer = memcpy(spi_get_buffer(), data, length);
+        void *tx_buffer;
+        if (xQueueReceive(spi_buffers, &tx_buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
+            RG_PANIC("display");
+        t->tx_buffer = memcpy(tx_buffer, data, length);
         t->user = (void *)(type | 2);
     }
 
@@ -211,11 +205,14 @@ static inline void lcd_send_data(const uint16_t *buffer, size_t length)
 
 static inline uint16_t *lcd_get_buffer(void)
 {
-#ifdef RG_TARGET_SDL2
-    static uint16_t buffer[LCD_BUFFER_LENGTH];
+#ifdef ESP_PLATFORM
+    uint16_t *buffer;
+    if (xQueueReceive(spi_buffers, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
+        RG_PANIC("display");
     return buffer;
 #else
-    return spi_get_buffer();
+    static uint16_t buffer[LCD_BUFFER_LENGTH];
+    return buffer;
 #endif
 }
 

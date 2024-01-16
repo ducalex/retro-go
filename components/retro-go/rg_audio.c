@@ -4,14 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef RG_TARGET_SDL2
-#include <SDL2/SDL.h>
-#define CREATE_DEVICE_LOCK()
-#define ACQUIRE_DEVICE(timeout) (1)
-#define RELEASE_DEVICE()
-#else
+#ifdef ESP_PLATFORM
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
+#include <driver/gpio.h>
 #define CREATE_DEVICE_LOCK() audioDevLock = audioDevLock ?: xSemaphoreCreateMutex()
 #define ACQUIRE_DEVICE(timeout)                        \
     ({                                                 \
@@ -22,10 +18,14 @@
     })
 #define RELEASE_DEVICE() xSemaphoreGive(audioDevLock)
 static SemaphoreHandle_t audioDevLock;
+#else
+#include <SDL2/SDL.h>
+#define CREATE_DEVICE_LOCK()
+#define ACQUIRE_DEVICE(timeout) (1)
+#define RELEASE_DEVICE()
 #endif
 
 #if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
-#include <driver/gpio.h>
 #include <driver/i2s.h>
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 2, 0)
 // The inversion is deliberate, it was a bug in older esp-idf
@@ -248,51 +248,56 @@ void rg_audio_submit(const rg_audio_frame_t *frames, size_t count)
     #if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
         float volume = audio.muted ? 0.f : (audio.volume * 0.01f);
         rg_audio_frame_t buffer[180];
-        size_t written = 0;
-        size_t pos = 0;
-
-        // In speaker mode we use left and right as a differential mono output to increase resolution.
-        bool differential = audio.sink->type == RG_AUDIO_SINK_I2S_DAC;
 
         for (size_t i = 0; i < count; ++i)
         {
-            int left = frames[i].left * volume;
-            int right = frames[i].right * volume;
+            size_t written = 0;
+            size_t pos = 0;
 
-            if (differential)
+            if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC)
             {
-                int sample = (left + right) >> 1;
-                if (sample > 0x7F00)
+                while (i < count && pos < RG_COUNT(buffer))
                 {
-                    left = 0x8000 + (sample - 0x7F00);
-                    right = -0x8000 + 0x7F00;
+                    // In speaker mode we use left and right as a differential mono output to increase resolution.
+                    int left = frames[i].left * volume;
+                    int right = frames[i].right * volume;
+                    int sample = (left + right) >> 1;
+                    if (sample > 0x7F00)
+                    {
+                        left = 0x8000 + (sample - 0x7F00);
+                        right = -0x8000 + 0x7F00;
+                    }
+                    else if (sample < -0x7F00)
+                    {
+                        left = 0x8000 + (sample + 0x7F00);
+                        right = -0x8000 + -0x7F00;
+                    }
+                    else
+                    {
+                        left = 0x8000;
+                        right = -0x8000 + sample;
+                    }
+
+                    // Clipping   (not necessary, we have (int16 * vol) and volume is never more than 1.0)
+                    // if (left > 32767) left = 32767; else if (left < -32768) left = -32767;
+                    // if (right > 32767) right = 32767; else if (right < -32768) right = -32767;
+
+                    // Queue
+                    buffer[pos].left = left;
+                    buffer[pos].right = right;
                 }
-                else if (sample < -0x7F00)
+            }
+            else
+            {
+                while (i < count && pos < RG_COUNT(buffer))
                 {
-                    left = 0x8000 + (sample + 0x7F00);
-                    right = -0x8000 + -0x7F00;
-                }
-                else
-                {
-                    left = 0x8000;
-                    right = -0x8000 + sample;
+                    buffer[pos].left = frames[i].left * volume;
+                    buffer[pos].right = frames[i].right * volume;
                 }
             }
 
-            // Clipping   (not necessary, we have (int16 * vol) and volume is never more than 1.0)
-            // if (left > 32767) left = 32767; else if (left < -32768) left = -32767;
-            // if (right > 32767) right = 32767; else if (right < -32768) right = -32767;
-
-            // Queue
-            buffer[pos].left = left;
-            buffer[pos].right = right;
-
-            if (i == count - 1 || ++pos == RG_COUNT(buffer))
-            {
-                if (i2s_write(I2S_NUM_0, (void *)buffer, pos * 4, &written, 1000) != ESP_OK)
-                    RG_LOGW("I2S Submission error! Written: %d/%d\n", written, pos * 4);
-                pos = 0;
-            }
+            if (i2s_write(I2S_NUM_0, (void *)buffer, pos * 4, &written, 1000) != ESP_OK)
+                RG_LOGW("I2S Submission error! Written: %d/%d\n", written, pos * 4);
         }
     #endif
     }
