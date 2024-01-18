@@ -203,7 +203,6 @@ def build_app(app, device_type, with_profiling=False, no_networking=False):
     os.putenv("RG_ENABLE_PROFILING", "1" if with_profiling else "0")
     os.putenv("RG_ENABLE_NETWORKING", "0" if no_networking else "1")
     os.putenv("RG_BUILD_TARGET", re.sub(r'[^A-Z0-9]', '_', device_type.upper()))
-    os.putenv("RG_BUILD_TIME", str(int(time.time())))
     os.putenv("RG_BUILD_VERSION", PROJECT_VER)
     subprocess.run("idf.py app", shell=True, check=True, cwd=os.path.join(os.getcwd(), app))
 

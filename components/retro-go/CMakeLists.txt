@@ -36,10 +36,11 @@ if($ENV{RG_ENABLE_PROFILING})
     component_compile_options(-DRG_ENABLE_PROFILING)
 endif()
 
-if($ENV{RG_BUILD_TIME})
-    component_compile_options(-DRG_BUILD_TIME=$ENV{RG_BUILD_TIME})
-endif()
-
 set(RG_TARGET "RG_TARGET_$ENV{RG_BUILD_TARGET}")
+string(TIMESTAMP RG_TIME "%s")
+
+message(STATUS "Target: ${RG_TARGET}")
+message(STATUS "Time: ${RG_TIME}")
+
+component_compile_options(-DRG_BUILD_TIME=${RG_TIME})
 component_compile_options(-D${RG_TARGET})
-message("Target: ${RG_TARGET}")
