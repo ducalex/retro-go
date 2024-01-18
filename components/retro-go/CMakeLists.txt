@@ -1,10 +1,13 @@
 set(COMPONENT_SRCDIRS ". fonts libs/netplay libs/lodepng")
 set(COMPONENT_ADD_INCLUDEDIRS ". libs/netplay libs/lodepng")
 
-# esp-idf 4.1 - 4.4
-set(COMPONENT_REQUIRES "spi_flash fatfs app_update esp_adc_cal json nvs_flash esp_wifi esp_http_client")
-# esp-idf 5.0 -
-#set(COMPONENT_REQUIRES "spi_flash fatfs app_update json nvs_flash esp_adc esp_timer esp_psram esp_wifi esp_http_client")
+message(STATUS "ESP-IDF version: ${IDF_VER}")
+
+if(IDF_VER MATCHES "^v5\.") # esp-idf 5.0 -
+    set(COMPONENT_REQUIRES "spi_flash fatfs app_update json nvs_flash esp_adc esp_timer esp_psram esp_wifi esp_http_client")
+else() # esp-idf 4.1 - 4.4
+    set(COMPONENT_REQUIRES "spi_flash fatfs app_update esp_adc_cal json nvs_flash esp_wifi esp_http_client")
+endif()
 
 register_component()
 
