@@ -164,7 +164,7 @@ def build_image(apps, device_type):
 
     try:
         cwd = os.path.join(os.getcwd(), list(apps)[0])
-        subprocess.run("idf.py bootloader", stdout=subprocess.DEVNULL, shell=True, check=True, cwd=cwd)
+        subprocess.run("idf.py bootloader", shell=True, check=True, cwd=cwd)
         with open(os.path.join(cwd, "build", "bootloader", "bootloader.bin"), "rb") as f:
             bootloader_bin = f.read()
         image_data[0x1000:0x1000+len(bootloader_bin)] = bootloader_bin
@@ -307,15 +307,15 @@ command = args.command
 apps = [app for app in PROJECT_APPS.keys() if app in args.apps or "all" in args.apps]
 
 
+if not os.getenv("IDF_PATH"):
+    exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
+
+if os.path.exists(f"components/retro-go/targets/{args.target}/sdkconfig"):
+    os.environ["SDKCONFIG_DEFAULTS"] = os.path.abspath(f"components/retro-go/targets/{args.target}/sdkconfig")
+
 if os.path.exists(f"components/retro-go/targets/{args.target}/env.py"):
     with open(f"components/retro-go/targets/{args.target}/env.py", "rb") as f:
         exec(f.read())
-
-if os.path.exists(f"components/retro-go/targets/{args.target}/sdkconfig"):
-    os.environ["SDKCONFIG_DEFAULTS"] = f"../components/retro-go/targets/{args.target}/sdkconfig"
-
-if not os.getenv("IDF_PATH"):
-    exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
 
 
 if command in ["build-fw", "build-img", "release"] and "launcher" not in apps:
