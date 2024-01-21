@@ -281,7 +281,7 @@ void rg_input_init(void)
 #endif
 
     // Start background polling
-    rg_task_create("rg_input", &input_task, NULL, 2 * 1024, RG_TASK_PRIORITY - 1, 1);
+    rg_task_create("rg_input", &input_task, NULL, 3 * 1024, RG_TASK_PRIORITY - 1, 1);
     while (gamepad_state == -1)
         rg_task_delay(1);
     RG_LOGI("Input ready. driver='%s', state=" PRINTF_BINARY_16 "\n", driver, PRINTF_BINVAL_16(gamepad_state));
