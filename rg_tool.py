@@ -179,7 +179,7 @@ def build_image(apps, device_type, img_format="esp32"):
         exit("Error building bootloader")
 
     if img_format == "esp32s3":
-        image_data[0x0:0x0+len(bootloader_bin)] = bootloader_bin
+        image_data[0x0000:0x0000+len(bootloader_bin)] = bootloader_bin
         image_data[0x8000:0x8000+len(table_bin)] = table_bin
     else:
         image_data[0x1000:0x1000+len(bootloader_bin)] = bootloader_bin
@@ -213,18 +213,7 @@ def build_app(app, device_type, with_profiling=False, no_networking=False):
     os.putenv("RG_BUILD_TARGET", re.sub(r'[^A-Z0-9]', '_', device_type.upper()))
     os.putenv("RG_BUILD_VERSION", PROJECT_VER)
     subprocess.run("idf.py app", shell=True, check=True, cwd=os.path.join(os.getcwd(), app))
-
-    try:
-        print("\nPatching esp_image_header_t to skip sha256 on boot... ", end="")
-        with open(os.path.join(app, "build", app + ".bin"), "r+b") as fp:
-            fp.seek(23)
-            fp.write(b"\0")
-            fp.seek(0, os.SEEK_END)
-            print(" size=%d " % fp.tell(), end="")
-        print("done!\n")
-    except: # don't really care if that fails
-        print("failed!\n")
-        pass
+    print("Done.\n")
 
 
 def monitor_app(app, port, baudrate=115200):
