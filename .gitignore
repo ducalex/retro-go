@@ -5,6 +5,9 @@
 /*.img
 /*.zip
 
+/partitions.bin
+/partitions.csv
+
 __pycache__/
 .DS_Store/
 .vscode/

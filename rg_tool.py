@@ -13,7 +13,7 @@ import os
 
 try:
     sys.path.append(os.path.join(os.environ["IDF_PATH"], "components", "partition_table"))
-    import serial, parttool, gen_esp32part
+    import serial, parttool
 except:
     pass
 
@@ -154,13 +154,21 @@ def build_image(apps, device_type, img_format="esp32"):
     ]
 
     for app in apps:
-        part = PROJECT_APPS[app]
         with open(os.path.join(app, "build", app + ".bin"), "rb") as f:
             data = f.read()
-        part_size = max(part[2], math.ceil(len(data) / 0x10000) * 0x10000)
+        part_size = max(PROJECT_APPS[app][2], math.ceil(len(data) / 0x10000) * 0x10000)
         table_csv.append("%s, app, ota_%d, %d, %d" % (app, table_ota, len(image_data), part_size))
         table_ota += 1
         image_data += data + b"\xFF" * (part_size - len(data))
+
+    try:
+        with open("partitions.csv", "w") as f:
+            f.write("\n".join(table_csv))
+        subprocess.run("gen_esp32part.py partitions.csv partitions.bin", shell=True, check=True)
+        with open("partitions.bin", "rb") as f:
+            table_bin = f.read()
+    except:
+        exit("Error generating partition table")
 
     try:
         cwd = os.path.join(os.getcwd(), list(apps)[0])
@@ -169,11 +177,6 @@ def build_image(apps, device_type, img_format="esp32"):
             bootloader_bin = f.read()
     except:
         exit("Error building bootloader")
-
-    try:
-        table_bin = gen_esp32part.PartitionTable.from_csv("\n".join(table_csv)).to_binary()
-    except:
-        exit("Error generating partition table")
 
     if img_format == "esp32s3":
         image_data[0x0:0x0+len(bootloader_bin)] = bootloader_bin
