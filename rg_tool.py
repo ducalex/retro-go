@@ -11,12 +11,6 @@ import sys
 import re
 import os
 
-try:
-    sys.path.append(os.path.join(os.environ["IDF_PATH"], "components", "partition_table"))
-    import serial, parttool
-except:
-    pass
-
 TARGETS = ["odroid-go"] # We just need to specify the default, the others are discovered below
 for t in glob.glob("components/retro-go/targets/*/config.h"):
     TARGETS.append(os.path.basename(os.path.dirname(t)))
@@ -217,9 +211,13 @@ def build_app(app, device_type, with_profiling=False, no_networking=False):
 
 
 def monitor_app(app, port, baudrate=115200):
-    print("Starting monitor for app '%s'" % app)
-    mon = serial.Serial(port, baudrate=baudrate, timeout=0)
-    elf = os.path.join(app, "build", app + ".elf")
+    print(f"Starting monitor for app {app} on port {port}")
+    try:
+        import serial
+        mon = serial.Serial(port, baudrate=baudrate, timeout=0)
+        elf = os.path.join(app, "build", app + ".elf")
+    except:
+        exit("Failed to load the serial module. You can try running 'pip install pyserial'.")
 
     mon.setDTR(False)
     mon.setRTS(False)
@@ -308,7 +306,7 @@ if not os.getenv("IDF_PATH"):
     exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
 
 if os.path.exists(f"components/retro-go/targets/{args.target}/sdkconfig"):
-    os.environ["SDKCONFIG_DEFAULTS"] = os.path.abspath(f"components/retro-go/targets/{args.target}/sdkconfig")
+    os.putenv("SDKCONFIG_DEFAULTS", os.path.abspath(f"components/retro-go/targets/{args.target}/sdkconfig"))
 
 if os.path.exists(f"components/retro-go/targets/{args.target}/env.py"):
     with open(f"components/retro-go/targets/{args.target}/env.py", "rb") as f:
@@ -339,27 +337,27 @@ if command in ["build-img", "release"]:
 
 if command in ["flash", "run", "profile"]:
     print("=== Step: Flashing ===\n")
-    if "parttool" not in globals():
-        exit("Failed to load the parttool module from your esp-idf framework.")
+    os.putenv("ESPTOOL_CHIP", os.getenv("IDF_TARGET", "auto"))
+    os.putenv("ESPTOOL_BAUD", args.baud)
+    os.putenv("ESPTOOL_PORT", args.port)
     try:
-        pt = parttool.ParttoolTarget(args.port, args.baud)
+        print("Reading device's partition table...")
+        subprocess.run("esptool.py read_flash 0x8000 0x1000 partitions.bin", check=True, shell=True)
     except:
-        exit("Failed to read device's partition table!")
+        exit("Failed to read partition table")
     try:
         for app in apps:
             print("Flashing app '%s'" % app)
-            pt.write_partition(parttool.PartitionName(app), os.path.join(app, "build", app + ".bin"))
-    except Exception as e:
-        print("Error: {}".format(e))
-        if "does not exist" in str(e):
-            print("This indicates that the partition table on your device is incorrect.")
-            print("Make sure you've installed a recent retro-go-*.fw!")
-        exit("Task failed.")
+            subprocess.run([
+                "parttool.py",
+                "--partition-table-file", "partitions.bin",
+                "write_partition", "--partition-name", app, "--input", os.path.join(app, "build", app + ".bin")
+            ], check=True, shell=True)
+    except:
+        exit("Failed")
 
 if command in ["monitor", "run", "profile"]:
     print("=== Step: Monitoring ===\n")
-    if "serial" not in globals():
-        exit("Failed to load the serial module. You can try running 'pip install pyserial'.")
     if len(apps) == 1:
         monitor_app(apps[0], args.port)
     else:
