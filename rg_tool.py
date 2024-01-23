@@ -339,6 +339,7 @@ try:
         os.putenv("ESPTOOL_PORT", args.port)
         print("Reading device's partition table...")
         subprocess.run("esptool.py read_flash 0x8000 0x1000 partitions.bin", check=True, shell=True)
+        subprocess.run("gen_esp32part.py partitions.bin", shell=True)
         for app in apps:
             print("Flashing app '%s'" % app)
             subprocess.run([
@@ -354,7 +355,7 @@ try:
         else:
             monitor_app("dummy", args.port)
 
-    print("All done!")
+    print("\nAll done!")
 
 except KeyboardInterrupt as e:
     exit("\n")
