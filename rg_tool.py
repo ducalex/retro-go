@@ -155,22 +155,18 @@ def build_image(apps, device_type, img_format="esp32"):
         table_ota += 1
         image_data += data + b"\xFF" * (part_size - len(data))
 
-    try:
-        with open("partitions.csv", "w") as f:
-            f.write("\n".join(table_csv))
-        subprocess.run("gen_esp32part.py partitions.csv partitions.bin", shell=True, check=True)
-        with open("partitions.bin", "rb") as f:
-            table_bin = f.read()
-    except:
-        exit("Error generating partition table")
+    print("Generating partition table...")
+    with open("partitions.csv", "w") as f:
+        f.write("\n".join(table_csv))
+    subprocess.run("gen_esp32part.py partitions.csv partitions.bin", shell=True, check=True)
+    with open("partitions.bin", "rb") as f:
+        table_bin = f.read()
 
-    try:
-        cwd = os.path.join(os.getcwd(), list(apps)[0])
-        subprocess.run("idf.py bootloader", shell=True, check=True, cwd=cwd)
-        with open(os.path.join(cwd, "build", "bootloader", "bootloader.bin"), "rb") as f:
-            bootloader_bin = f.read()
-    except:
-        exit("Error building bootloader")
+    print("Building bootloader...")
+    cwd = os.path.join(os.getcwd(), list(apps)[0])
+    subprocess.run("idf.py bootloader", shell=True, check=True, cwd=cwd)
+    with open(os.path.join(cwd, "build", "bootloader", "bootloader.bin"), "rb") as f:
+        bootloader_bin = f.read()
 
     if img_format == "esp32s3":
         image_data[0x0000:0x0000+len(bootloader_bin)] = bootloader_bin
@@ -313,39 +309,36 @@ if os.path.exists(f"components/retro-go/targets/{args.target}/env.py"):
         exec(f.read())
 
 
-if command in ["build-fw", "build-img", "release"] and "launcher" not in apps:
-    print("\nWARNING: The launcher is mandatory for those apps and will be included!\n")
-    apps.insert(0, "launcher")
+try:
+    if command in ["build-fw", "build-img", "release"] and "launcher" not in apps:
+        print("\nWARNING: The launcher is mandatory for those apps and will be included!\n")
+        apps.insert(0, "launcher")
 
-if command in ["clean", "release"]:
-    print("=== Step: Cleaning ===\n")
-    for app in apps:
-        clean_app(app)
+    if command in ["clean", "release"]:
+        print("=== Step: Cleaning ===\n")
+        for app in apps:
+            clean_app(app)
 
-if command in ["build", "build-fw", "build-img", "release", "run", "profile"]:
-    print("=== Step: Building ===\n")
-    for app in apps:
-        build_app(app, args.target, command == "profile", args.no_networking)
+    if command in ["build", "build-fw", "build-img", "release", "run", "profile"]:
+        print("=== Step: Building ===\n")
+        for app in apps:
+            build_app(app, args.target, command == "profile", args.no_networking)
 
-if command in ["build-fw", "release"]:
-    print("=== Step: Packing ===\n")
-    build_firmware(apps, args.target, os.getenv("FW_FORMAT"))
+    if command in ["build-fw", "release"]:
+        print("=== Step: Packing ===\n")
+        build_firmware(apps, args.target, os.getenv("FW_FORMAT"))
 
-if command in ["build-img", "release"]:
-    print("=== Step: Packing ===\n")
-    build_image(apps, args.target, os.getenv("IMG_FORMAT", os.getenv("IDF_TARGET")))
+    if command in ["build-img", "release"]:
+        print("=== Step: Packing ===\n")
+        build_image(apps, args.target, os.getenv("IMG_FORMAT", os.getenv("IDF_TARGET")))
 
-if command in ["flash", "run", "profile"]:
-    print("=== Step: Flashing ===\n")
-    os.putenv("ESPTOOL_CHIP", os.getenv("IDF_TARGET", "auto"))
-    os.putenv("ESPTOOL_BAUD", args.baud)
-    os.putenv("ESPTOOL_PORT", args.port)
-    try:
+    if command in ["flash", "run", "profile"]:
+        print("=== Step: Flashing ===\n")
+        os.putenv("ESPTOOL_CHIP", os.getenv("IDF_TARGET", "auto"))
+        os.putenv("ESPTOOL_BAUD", args.baud)
+        os.putenv("ESPTOOL_PORT", args.port)
         print("Reading device's partition table...")
         subprocess.run("esptool.py read_flash 0x8000 0x1000 partitions.bin", check=True, shell=True)
-    except:
-        exit("Failed to read partition table")
-    try:
         for app in apps:
             print("Flashing app '%s'" % app)
             subprocess.run([
@@ -353,14 +346,18 @@ if command in ["flash", "run", "profile"]:
                 "--partition-table-file", "partitions.bin",
                 "write_partition", "--partition-name", app, "--input", os.path.join(app, "build", app + ".bin")
             ], check=True, shell=True)
-    except:
-        exit("Failed")
 
-if command in ["monitor", "run", "profile"]:
-    print("=== Step: Monitoring ===\n")
-    if len(apps) == 1:
-        monitor_app(apps[0], args.port)
-    else:
-        monitor_app("dummy", args.port)
+    if command in ["monitor", "run", "profile"]:
+        print("=== Step: Monitoring ===\n")
+        if len(apps) == 1:
+            monitor_app(apps[0], args.port)
+        else:
+            monitor_app("dummy", args.port)
 
-print("All done!")
+    print("All done!")
+
+except KeyboardInterrupt as e:
+    exit("\n")
+
+except Exception as e:
+    exit(f"\nTask failed: {e}")
