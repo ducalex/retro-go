@@ -142,7 +142,7 @@ def build_firmware(apps, device_type, fw_format="odroid-go"):
     subprocess.run(args, check=True)
 
 
-def build_image(apps, device_type):
+def build_image(apps, device_type, img_format="esp32"):
     print("Building image with: %s\n" % " ".join(apps))
     image_file = ("%s_%s_%s.img" % (PROJECT_NAME, PROJECT_VER, device_type)).lower()
     image_data = bytearray(b"\xFF" * 0x10000)
@@ -167,15 +167,20 @@ def build_image(apps, device_type):
         subprocess.run("idf.py bootloader", shell=True, check=True, cwd=cwd)
         with open(os.path.join(cwd, "build", "bootloader", "bootloader.bin"), "rb") as f:
             bootloader_bin = f.read()
-        image_data[0x1000:0x1000+len(bootloader_bin)] = bootloader_bin
     except:
         exit("Error building bootloader")
 
     try:
         table_bin = gen_esp32part.PartitionTable.from_csv("\n".join(table_csv)).to_binary()
-        image_data[0x8000:0x8000+len(table_bin)] = table_bin
     except:
         exit("Error generating partition table")
+
+    if img_format == "esp32s3":
+        image_data[0x0:0x0+len(bootloader_bin)] = bootloader_bin
+        image_data[0x8000:0x8000+len(table_bin)] = table_bin
+    else:
+        image_data[0x1000:0x1000+len(bootloader_bin)] = bootloader_bin
+        image_data[0x8000:0x8000+len(table_bin)] = table_bin
 
     with open(image_file, "wb") as f:
         f.write(image_data)
@@ -334,11 +339,11 @@ if command in ["build", "build-fw", "build-img", "release", "run", "profile"]:
 
 if command in ["build-fw", "release"]:
     print("=== Step: Packing ===\n")
-    build_firmware(apps, args.target, os.getenv("FW_FORMAT", "odroid-go"))
+    build_firmware(apps, args.target, os.getenv("FW_FORMAT"))
 
 if command in ["build-img", "release"]:
     print("=== Step: Packing ===\n")
-    build_image(apps, args.target)
+    build_image(apps, args.target, os.getenv("IMG_FORMAT", os.getenv("IDF_TARGET")))
 
 if command in ["flash", "run", "profile"]:
     print("=== Step: Flashing ===\n")
