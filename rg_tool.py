@@ -206,6 +206,20 @@ def build_app(app, device_type, with_profiling=False, no_networking=False):
     print("Done.\n")
 
 
+def flash_app(app, port, baudrate=1152000):
+    os.putenv("ESPTOOL_CHIP", os.getenv("IDF_TARGET", "auto"))
+    os.putenv("ESPTOOL_BAUD", baudrate)
+    os.putenv("ESPTOOL_PORT", port)
+    if not os.path.exists("partitions.bin"):
+        print("Reading device's partition table...")
+        subprocess.run("esptool.py read_flash 0x8000 0x1000 partitions.bin", check=True, shell=True)
+        subprocess.run("gen_esp32part.py partitions.bin", shell=True)
+    app_bin = os.path.join(app, "build", app + ".bin")
+    print(f"Flashing '{app_bin}' to port {port}")
+    args = ["parttool.py", "--partition-table-file", "partitions.bin", "write_partition", "--partition-name", app, "--input", app_bin]
+    subprocess.run(args, check=True, shell=True)
+
+
 def monitor_app(app, port, baudrate=115200):
     print(f"Starting monitor for app {app} on port {port}")
     try:
@@ -334,26 +348,14 @@ try:
 
     if command in ["flash", "run", "profile"]:
         print("=== Step: Flashing ===\n")
-        os.putenv("ESPTOOL_CHIP", os.getenv("IDF_TARGET", "auto"))
-        os.putenv("ESPTOOL_BAUD", args.baud)
-        os.putenv("ESPTOOL_PORT", args.port)
-        print("Reading device's partition table...")
-        subprocess.run("esptool.py read_flash 0x8000 0x1000 partitions.bin", check=True, shell=True)
-        subprocess.run("gen_esp32part.py partitions.bin", shell=True)
+        try: os.unlink("partitions.bin")
+        except: pass
         for app in apps:
-            print("Flashing app '%s'" % app)
-            subprocess.run([
-                "parttool.py",
-                "--partition-table-file", "partitions.bin",
-                "write_partition", "--partition-name", app, "--input", os.path.join(app, "build", app + ".bin")
-            ], check=True, shell=True)
+            flash_app(app, args.port, args.baud)
 
     if command in ["monitor", "run", "profile"]:
         print("=== Step: Monitoring ===\n")
-        if len(apps) == 1:
-            monitor_app(apps[0], args.port)
-        else:
-            monitor_app("dummy", args.port)
+        monitor_app(apps[0] if len(apps) else "dummy", args.port)
 
     print("All done!")
 
