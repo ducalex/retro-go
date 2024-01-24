@@ -178,7 +178,7 @@ def build_image(apps, device_type, img_format="esp32"):
     with open(image_file, "wb") as f:
         f.write(image_data)
 
-    print("Saved image '%s' (%d bytes)\n" % (image_file, len(image_data)))
+    print("\nSaved image '%s' (%d bytes)\n" % (image_file, len(image_data)))
 
 
 def clean_app(app):
