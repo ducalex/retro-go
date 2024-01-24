@@ -136,8 +136,7 @@ void rg_display_deinit(void);
 void rg_display_write(int left, int top, int width, int height, int stride,
                       const uint16_t *buffer); // , bool little_endian);
 void rg_display_clear(uint16_t color_le);
-void rg_display_sync(void);
-bool rg_display_is_busy(void);
+bool rg_display_sync(bool block);
 void rg_display_force_redraw(void);
 bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame, int width, int height);
 void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, int format);

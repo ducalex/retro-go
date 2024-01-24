@@ -252,7 +252,7 @@ void gw_main(void)
         gw_system_run(GW_SYSTEM_CYCLES);
 
         /* update the screen only if there is no pending frame to render */
-        if (!rg_display_is_busy() && drawFrame)
+        if (rg_display_sync(0) && drawFrame)
         {
             gw_system_blit(currentUpdate->buffer);
             rg_display_queue_update(currentUpdate, NULL);

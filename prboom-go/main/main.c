@@ -141,7 +141,7 @@ void I_UpdateNoBlit(void)
 void I_FinishUpdate(void)
 {
     rg_display_queue_update(&update, NULL);
-    rg_display_sync(); // Wait for update->buffer to be released
+    rg_display_sync(true); // Wait for update->buffer to be released
 }
 
 bool I_StartDisplay(void)

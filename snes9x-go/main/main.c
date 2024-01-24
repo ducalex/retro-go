@@ -184,7 +184,7 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
 
             dismissed = rg_gui_dialog("Controls", options, 0) == RG_DIALOG_CANCELLED;
             rg_display_queue_update(currentUpdate, NULL);
-            rg_display_sync();
+            rg_display_sync(true);
         }
     }
 

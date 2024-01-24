@@ -34,7 +34,6 @@
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341
 #define RG_SCREEN_HOST              SPI2_HOST
 #define RG_SCREEN_SPEED             SPI_MASTER_FREQ_40M
-#define RG_SCREEN_TYPE              5   // Game Box Mini 240x192 screen
 #define RG_SCREEN_WIDTH             240
 #define RG_SCREEN_HEIGHT            230 // Display height 192 plus margin? Was 232
 #define RG_SCREEN_ROTATE            0
@@ -42,6 +41,18 @@
 #define RG_SCREEN_MARGIN_BOTTOM     2  // Too little gives you garbage under the bottom bezel.
 #define RG_SCREEN_MARGIN_LEFT       0
 #define RG_SCREEN_MARGIN_RIGHT      0
+#define RG_SCREEN_INIT()                                                                                   \
+    ILI9341_CMD(0xB7, 0x72);                                                                               \
+    ILI9341_CMD(0xBB, 0x3d);                                                                               \
+    ILI9341_CMD(0xC0, 0x2C);                                                                               \
+    ILI9341_CMD(0xC2, 0x01, 0xFF);                                                                         \
+    ILI9341_CMD(0xC3, 0x19);                                                                               \
+    ILI9341_CMD(0xC4, 0x20);                                                                               \
+    ILI9341_CMD(0xC6, 0x0f);                                                                               \
+    ILI9341_CMD(0xD0, 0xA4, 0xA1);                                                                         \
+    ILI9341_CMD(0xE0, 0xD0, 0x00, 0x05, 0x0E, 0x15, 0x0D, 0x37, 0x43, 0x47, 0x09, 0x15, 0x12, 0x16, 0x19); \
+    ILI9341_CMD(0xE1, 0xD0, 0x00, 0x05, 0x0D, 0x0C, 0x06, 0x2D, 0x44, 0x40, 0x0E, 0x1C, 0x18, 0x16, 0x19); \
+    ILI9341_CMD(0x21);
 
 // Input
 #define RG_GAMEPAD_DRIVER           3   // 1 = ODROID-GO, 2 = Serial, 3 = I2C, 4 = AW9523, 5 = ESPLAY-S3, 6 = SDL2

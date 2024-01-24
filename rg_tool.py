@@ -355,7 +355,7 @@ try:
         else:
             monitor_app("dummy", args.port)
 
-    print("\nAll done!")
+    print("All done!")
 
 except KeyboardInterrupt as e:
     exit("\n")

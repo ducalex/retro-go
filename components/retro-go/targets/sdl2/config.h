@@ -18,7 +18,6 @@
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341
 #define RG_SCREEN_HOST              0
 #define RG_SCREEN_SPEED             0
-#define RG_SCREEN_TYPE              0
 #define RG_SCREEN_WIDTH             320
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
@@ -26,6 +25,7 @@
 #define RG_SCREEN_MARGIN_BOTTOM     0
 #define RG_SCREEN_MARGIN_LEFT       0
 #define RG_SCREEN_MARGIN_RIGHT      0
+#define RG_SCREEN_INIT()
 
 // Input
 #define RG_GAMEPAD_DRIVER           6   // 1 = ODROID-GO, 2 = Serial, 3 = I2C, 4 = QTPY, 5 = ESPLAY-S3, 6 = SDL2

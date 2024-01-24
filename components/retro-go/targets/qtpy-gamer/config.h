@@ -17,7 +17,6 @@
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341
 #define RG_SCREEN_HOST              SPI2_HOST
 #define RG_SCREEN_SPEED             SPI_MASTER_FREQ_40M
-#define RG_SCREEN_TYPE              2
 #define RG_SCREEN_WIDTH             240
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
@@ -25,6 +24,10 @@
 #define RG_SCREEN_MARGIN_BOTTOM     -80
 #define RG_SCREEN_MARGIN_LEFT       0
 #define RG_SCREEN_MARGIN_RIGHT      0
+#define RG_SCREEN_INIT()          \
+    ILI9341_CMD(0x36, 0xC0); \
+    ILI9341_CMD(0x21); /* Invert colors */
+
 
 // Input
 #define RG_GAMEPAD_DRIVER           4   // 1 = ODROID-GO, 2 = Serial, 3 = I2C, 4 = AW9523, 5 = ESPLAY-S3, 6 = SDL2
