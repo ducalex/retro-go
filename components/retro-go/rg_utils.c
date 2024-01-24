@@ -83,7 +83,7 @@ const char *rg_relpath(const char *path)
 
 uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, uint32_t len)
 {
-#ifdef CONFIG_IDF_TARGET
+#ifdef ESP_PLATFORM
     // This is part of the ROM but finding the correct header is annoying as it differs per SOC...
     extern uint32_t crc32_le(uint32_t crc, const uint8_t *buf, uint32_t len);
     return crc32_le(crc, buf, len);

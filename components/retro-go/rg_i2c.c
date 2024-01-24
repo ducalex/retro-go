@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#if defined(RG_GPIO_I2C_SDA) && defined(RG_GPIO_I2C_SCL)
+#if defined(ESP_PLATFORM) && (RG_GPIO_I2C_SDA) && defined(RG_GPIO_I2C_SCL)
 #include <driver/i2c.h>
 #include <esp_err.h>
 #define USE_I2C_DRIVER 1
