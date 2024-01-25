@@ -265,11 +265,18 @@ int gnuboy_load_rom(const char *file)
 		cart.ramsize = 1;
 	}
 
-	cart.rambanks = malloc(8192 * cart.ramsize);
+	cart.rambanks = calloc(cart.ramsize, 0x2000);
 	if (!cart.rambanks)
 	{
 		MESSAGE_ERROR("SRAM alloc failed");
 		return -3;
+	}
+
+	cart.rombanks = calloc(cart.romsize, sizeof(uint8_t *));
+	if (!cart.rombanks)
+	{
+		MESSAGE_ERROR("ROMBANKS alloc failed");
+		return -4;
 	}
 
 	// Detect colorization palette that the real GBC would be using
@@ -387,13 +394,16 @@ int gnuboy_load_rom(const char *file)
 
 void gnuboy_free_rom(void)
 {
-	for (int i = 0; i < 512; i++)
+	for (int i = 0; i < cart.romsize; i++)
 	{
 		if (cart.rombanks[i]) {
 			free(cart.rombanks[i]);
 			cart.rombanks[i] = NULL;
 		}
 	}
+	free(cart.rombanks);
+	cart.rombanks = NULL;
+
 	free(cart.rambanks);
 	cart.rambanks = NULL;
 

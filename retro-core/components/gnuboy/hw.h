@@ -181,7 +181,7 @@ typedef struct
 	int ramsize;
 
 	// Memory
-	byte *rombanks[512];
+	byte **rombanks; // [512];
 	byte (*rambanks)[8192];
 	unsigned sram_dirty;
 	unsigned sram_saved;
