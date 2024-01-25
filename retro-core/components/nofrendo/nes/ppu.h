@@ -94,7 +94,7 @@ typedef struct
 typedef struct
 {
    /* The NES has only 2 nametables, but we allocate 4 for mappers to use */
-   uint8 nametab[0x400 * 4];
+   uint8 *nametab; // [0x400 * 4];
 
    /* Sprite memory */
    uint8 oam[256];
@@ -132,7 +132,7 @@ typedef struct
    bool vram_present;
 
    /* Misc runtime options */
-   int options[16];
+   uint8_t options[16];
 } ppu_t;
 
 /* Mirroring / Paging */
@@ -149,8 +149,8 @@ void ppu_reset(void);
 void ppu_shutdown(void);
 bool ppu_enabled(void);
 bool ppu_inframe(void);
-void ppu_setopt(ppu_option_t n, int val);
-int  ppu_getopt(ppu_option_t n);
+void ppu_setopt(ppu_option_t n, uint8_t val);
+uint8_t ppu_getopt(ppu_option_t n);
 
 void ppu_setlatchfunc(ppu_latchfunc_t func);
 void ppu_setvreadfunc(ppu_vreadfunc_t func);

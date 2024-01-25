@@ -337,7 +337,7 @@ IRAM_ATTR void ppu_write(uint32 address, uint8 value)
    }
 }
 
-void ppu_setopt(ppu_option_t n, int val)
+void ppu_setopt(ppu_option_t n, uint8_t val)
 {
    // Some options need special care
    switch (n)
@@ -349,7 +349,7 @@ void ppu_setopt(ppu_option_t n, int val)
    ppu.options[n] = val;
 }
 
-int ppu_getopt(ppu_option_t n)
+uint8_t ppu_getopt(ppu_option_t n)
 {
    return ppu.options[n];
 }
@@ -719,7 +719,7 @@ IRAM_ATTR void ppu_scanline(uint8 *bmp, int scanline, bool draw_flag)
 
 void ppu_reset()
 {
-   memset(ppu.nametab, 0, sizeof(ppu.nametab));
+   memset(ppu.nametab, 0, 0x400 * 4);
    memset(ppu.oam, 0, sizeof(ppu.oam));
 
    ppu.ctrl0 = 0;
@@ -738,6 +738,10 @@ ppu_t *ppu_init(void)
 {
    memset(&ppu, 0, sizeof(ppu_t));
 
+   ppu.nametab = malloc(0x400 * 4);
+   if (!ppu.nametab)
+      return NULL;
+
    ppu_setopt(PPU_DRAW_BACKGROUND, true);
    ppu_setopt(PPU_DRAW_SPRITES, true);
    ppu_setopt(PPU_LIMIT_SPRITES, true);
@@ -747,7 +751,7 @@ ppu_t *ppu_init(void)
 
 void ppu_shutdown(void)
 {
-   //
+   free(ppu.nametab);
 }
 
 
