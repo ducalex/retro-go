@@ -164,8 +164,8 @@ typedef struct {
 	uint8_t MMR[8];
 
 	// Effective memory map
-	uint8_t *MemoryMapR[256];
-	uint8_t *MemoryMapW[256];
+	uint8_t **MemoryMapR; // [256];
+	uint8_t **MemoryMapW; // [256];
 
 	// Street Fighter 2 Mapper
 	uint8_t SF2;
