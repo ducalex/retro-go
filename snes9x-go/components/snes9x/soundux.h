@@ -35,7 +35,7 @@ enum
 #define SOUND_DECODE_LENGTH 16
 
 #define NUM_CHANNELS    8
-#define SOUND_BUFFER_SIZE (2 * 44100 / 50)
+#define SOUND_BUFFER_SIZE (2 * 33040 / 50)
 #define MAX_BUFFER_SIZE SOUND_BUFFER_SIZE
 
 #define SOUND_BUFS      4

@@ -13,23 +13,52 @@
 #include "memmap.h"
 #include "cpuexec.h"
 
-#define CLIP16(v) \
-(v) = (((v) <= -32768) ? -32768 : (((v) >= 32767) ? 32767 : (v)))
+static struct {
+   int32_t wave[SOUND_BUFFER_SIZE];
+   int32_t Echo [24000];
+   int32_t MixBuffer [SOUND_BUFFER_SIZE];
+   int32_t EchoBuffer [SOUND_BUFFER_SIZE];
+   int32_t FilterTaps [8];
+   uint8_t FilterTapDefinitionBitfield;
+   /* In the above, bit I is set if FilterTaps[I] is non-zero. */
+   uint32_t Z;
+   int32_t Loop [16];
 
-#define CLIP8(v) \
-(v) = (((v) <= -128) ? -128 : (((v) >= 127) ? 127 : (v)))
+   /* precalculated env rates for S9xSetEnvRate */
+   uint32_t AttackERate     [16][10];
+   uint32_t DecayERate       [8][10];
+   uint32_t SustainERate    [32][10];
+   uint32_t IncreaseERate   [32][10];
+   uint32_t DecreaseERateExp[32][10];
+   uint32_t KeyOffERate         [10];
 
-static int32_t *wave; // [SOUND_BUFFER_SIZE];
-static int32_t *Echo; // 24000
-static int32_t *MixBuffer; // [SOUND_BUFFER_SIZE]
-static int32_t *EchoBuffer; // [SOUND_BUFFER_SIZE]
-static int32_t FilterTaps [8];
-static uint8_t FilterTapDefinitionBitfield;
-/* In the above, bit I is set if FilterTaps[I] is non-zero. */
-static uint32_t Z;
-static int32_t Loop [16];
+   /* Used by S9xMixSamplesLowPass() to store the
+   * last output samples for the next iteration
+   * of the low pass filter. This should go in
+   * the SSoundData struct, but doing so would
+   * break compatibility with existing save
+   * states (with little in the way of tangible
+   * benefits) */
+   int32_t MixOutputPrev[2];
+} *LocalState;
 
-extern int32_t NoiseFreq [32];
+#define wave LocalState->wave
+#define Echo LocalState->Echo
+#define MixBuffer LocalState->MixBuffer
+#define EchoBuffer LocalState->EchoBuffer
+#define FilterTaps LocalState->FilterTaps
+#define FilterTapDefinitionBitfield LocalState->FilterTapDefinitionBitfield
+#define Z LocalState->Z
+#define Loop LocalState->Loop
+#define AttackERate LocalState->AttackERate
+#define DecayERate LocalState->DecayERate
+#define SustainERate LocalState->SustainERate
+#define IncreaseERate LocalState->IncreaseERate
+#define DecreaseERateExp LocalState->DecreaseERateExp
+#define KeyOffERate LocalState->KeyOffERate
+#define MixOutputPrev LocalState->MixOutputPrev
+
+extern const int32_t NoiseFreq [32];
 
 static const uint32_t AttackRate [16] =
 {
@@ -60,14 +89,6 @@ static const uint32_t IncreaseRate [32] =
 
 #define SustainRate DecreaseRateExp
 
-/* precalculated env rates for S9xSetEnvRate */
-static uint32_t AttackERate     [16][10];
-static uint32_t DecayERate       [8][10];
-static uint32_t SustainERate    [32][10];
-static uint32_t IncreaseERate   [32][10];
-static uint32_t DecreaseERateExp[32][10];
-static uint32_t KeyOffERate         [10];
-
 #define FIXED_POINT 0x10000UL
 #define FIXED_POINT_REMAINDER 0xffffUL
 #define FIXED_POINT_SHIFT 16
@@ -75,21 +96,18 @@ static uint32_t KeyOffERate         [10];
 #define VOL_DIV16 0x0080
 #define ENVX_SHIFT 24
 
+#define CLIP16(v) \
+(v) = (((v) <= -32768) ? -32768 : (((v) >= 32767) ? 32767 : (v)))
+
+#define CLIP8(v) \
+(v) = (((v) <= -128) ? -128 : (((v) >= 127) ? 127 : (v)))
+
 /* F is channel's current frequency and M is the 16-bit modulation waveform
  * from the previous channel multiplied by the current envelope volume level. */
 #define PITCH_MOD(F,M) ((F) * ((((uint32_t) (M)) + 0x800000) >> 16) >> 7)
 
 #define LAST_SAMPLE 0xffffff
 #define JUST_PLAYED_LAST_SAMPLE(c) ((c)->sample_pointer >= LAST_SAMPLE)
-
-/* Used by S9xMixSamplesLowPass() to store the
- * last output samples for the next iteration
- * of the low pass filter. This should go in
- * the SSoundData struct, but doing so would
- * break compatibility with existing save
- * states (with little in the way of tangible
- * benefits) */
-static int32_t MixOutputPrev[2];
 
 static INLINE uint8_t* S9xGetSampleAddress(int32_t sample_number)
 {
@@ -191,7 +209,7 @@ void S9xSetEchoEnable(uint8_t byte)
       byte = 0;
    if (byte && !SoundData.echo_enable)
    {
-      memset(Echo, 0, 24000 * sizeof(Echo[0]));
+      memset(Echo, 0, sizeof(Echo));
       memset(Loop, 0, sizeof(Loop));
    }
 
@@ -974,10 +992,7 @@ void S9xSetPlaybackRate(uint32_t playback_rate)
 
    if (playback_rate)
    {
-      static int32_t steps [] =
-      {
-         0, 64, 619, 619, 128, 1, 64, 55, 64, 619
-      };
+      int32_t steps [] = {0, 64, 619, 619, 128, 1, 64, 55, 64, 619};
       int32_t i, u;
 
       /* notaz: calculate a value (let's call it freqbase) to simplify channel freq calculations later. */
@@ -1012,20 +1027,11 @@ void S9xSetPlaybackRate(uint32_t playback_rate)
 
 bool S9xInitSound(int32_t buffer_ms, int32_t lag_ms)
 {
-   size_t sample_rate = Settings.SoundPlaybackRate * 2;
-   size_t sample_count = (buffer_ms * sample_rate / 1000);
-
-   if (sample_count < sample_rate / 50)
-      sample_count = sample_rate / 50;
-
-   wave = calloc(sample_count, sizeof(wave[0]));
-   MixBuffer = calloc(sample_count, sizeof(MixBuffer[0]));
-   EchoBuffer = calloc(sample_count, sizeof(EchoBuffer[0]));
-   Echo = calloc(24000, sizeof(Echo[0]));
+   LocalState = calloc(1, sizeof(*LocalState));
+   if (!LocalState)
+      return false;
    so.playback_rate = 0;
    S9xResetSound(true);
-
-   printf("Sound buffer size = %d\n", sample_count);
    return true;
 }
 
