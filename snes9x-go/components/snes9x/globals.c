@@ -17,13 +17,11 @@ SCPUState CPU;
 SAPU APU;
 SIAPU IAPU;
 SSoundData SoundData;
+SoundStatus so;
 #endif
 
 SSettings Settings;
 SDSP1 DSP1;
-SnesModel M1SNES = {1, 3, 2};
-SnesModel M2SNES = {2, 4, 3};
-SnesModel* Model = &M1SNES;
 
 int32_t OpAddress = 0;
 
@@ -45,10 +43,6 @@ SGFX GFX;
 
 #ifdef LAGFIX
 bool finishedFrame = false;
-#endif
-
-#ifndef USE_BLARGG_APU
-SoundStatus so;
 #endif
 
 /*modified per anomie Mode 5 findings */

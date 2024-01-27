@@ -178,7 +178,7 @@ void S9xDoHBlankProcessing()
             PPU.OAMFlip = 0;
          }
 
-         Memory.FillRAM[0x4210] = 0x80 | Model->_5A22;
+         Memory.FillRAM[0x4210] = 0x80 | SNES_5A22;
          if (Memory.FillRAM[0x4200] & 0x80)
          {
             CPU.NMIActive = true;
@@ -192,7 +192,7 @@ void S9xDoHBlankProcessing()
 
       if (CPU.V_Counter == FIRST_VISIBLE_LINE)
       {
-         Memory.FillRAM[0x4210] = Model->_5A22;
+         Memory.FillRAM[0x4210] = SNES_5A22;
          CPU.Flags &= ~NMI_FLAG;
          S9xStartScreenRefresh();
       }

@@ -15,7 +15,6 @@ void S9xSetupOBJ(void);
 void S9xUpdateScreen(void);
 void RenderLine(uint8_t line);
 void S9xBuildDirectColourMaps(void);
-void S9xBuildTileBitmasks(void);
 
 bool S9xInitGFX(void);
 void S9xDeinitGFX(void);

@@ -14,7 +14,7 @@
 
 void ComputeClipWindows(void);
 
-static uint8_t BitShifts[8][4] =
+static const uint8_t BitShifts[8][4] =
 {
    {2, 2, 2, 2}, /* 0 */
    {4, 4, 2, 0}, /* 1 */
@@ -25,7 +25,7 @@ static uint8_t BitShifts[8][4] =
    {4, 0, 0, 0}, /* 6 */
    {8, 0, 0, 0}  /* 7 */
 };
-static uint8_t TileShifts[8][4] =
+static const uint8_t TileShifts[8][4] =
 {
    {4, 4, 4, 4}, /* 0 */
    {5, 5, 4, 0}, /* 1 */
@@ -36,7 +36,7 @@ static uint8_t TileShifts[8][4] =
    {5, 0, 0, 0}, /* 6 */
    {6, 0, 0, 0}  /* 7 */
 };
-static uint8_t PaletteShifts[8][4] =
+static const uint8_t PaletteShifts[8][4] =
 {
    {2, 2, 2, 2}, /* 0 */
    {4, 4, 2, 0}, /* 1 */
@@ -47,7 +47,7 @@ static uint8_t PaletteShifts[8][4] =
    {4, 0, 0, 0}, /* 6 */
    {0, 0, 0, 0}  /* 7 */
 };
-static uint8_t PaletteMasks[8][4] =
+static const uint8_t PaletteMasks[8][4] =
 {
    {7, 7, 7, 7}, /* 0 */
    {7, 7, 7, 0}, /* 1 */
@@ -58,7 +58,7 @@ static uint8_t PaletteMasks[8][4] =
    {7, 0, 0, 0}, /* 6 */
    {0, 0, 0, 0}  /* 7 */
 };
-static uint8_t Depths[8][4] =
+static const uint8_t Depths[8][4] =
 {
    {TILE_2BIT, TILE_2BIT, TILE_2BIT, TILE_2BIT}, /* 0 */
    {TILE_4BIT, TILE_4BIT, TILE_2BIT, 0},         /* 1 */
@@ -69,10 +69,7 @@ static uint8_t Depths[8][4] =
    {TILE_4BIT, 0,         0,         0},         /* 6 */
    {0,         0,         0,         0}          /* 7 */
 };
-static uint8_t BGSizes [2] =
-{
-   8, 16
-};
+
 static NormalTileRenderer  DrawTilePtr;
 static ClippedTileRenderer DrawClippedTilePtr;
 static NormalTileRenderer  DrawHiResTilePtr;
@@ -178,8 +175,6 @@ bool S9xInitGFX(void)
    GFX.PPL = GFX.Pitch >> 1;
    GFX.PPLx2 = GFX.Pitch;
    S9xFixColourBrightness();
-
-   S9xBuildTileBitmasks();
 
 #ifndef NO_ZERO_LUT
    if (!(GFX.ZERO = (uint16_t*) malloc(sizeof(uint16_t) * 0x10000)))
@@ -1583,7 +1578,7 @@ static void DrawBackground(uint32_t BGMode, uint32_t bg, uint8_t Z1, uint8_t Z2)
    int32_t OffsetShift;
    GFX.PixSize = 1;
 
-   BG.TileSize = BGSizes [PPU.BG[bg].BGSize];
+   BG.TileSize = 8 << (PPU.BG[bg].BGSize);
    BG.BitShift = BitShifts[BGMode][bg];
    BG.TileShift = TileShifts[BGMode][bg];
    BG.TileAddress = PPU.BG[bg].NameBase << 1;

@@ -11,8 +11,8 @@
 
 extern uint8_t mul_brightness [16][32];
 
-uint32_t justifiers = 0xffff00aa;
-uint8_t in_bit = 0;
+static uint32_t justifiers = 0xffff00aa;
+static uint8_t in_bit = 0;
 
 extern uint8_t* HDMAMemPointers [8];
 
@@ -269,8 +269,8 @@ void S9xSetPPU(uint8_t Byte, uint16_t Address)
          }
          if (Byte & 0x0c)
          {
-            static uint16_t IncCount [4] = { 0, 32, 64, 128 };
-            static uint16_t Shift [4] = { 0, 5, 6, 7 };
+            const uint16_t IncCount [4] = { 0, 32, 64, 128 };
+            const uint16_t Shift [4] = { 0, 5, 6, 7 };
             uint8_t i = (Byte & 0x0c) >> 2;
             PPU.VMA.FullGraphicCount = IncCount [i];
             PPU.VMA.Mask1 = IncCount [i] * 8 - 1;
@@ -760,11 +760,11 @@ uint8_t S9xGetPPU(uint16_t Address)
          return (PPU.OpenBus2 = byte);
       case 0x213E: /* PPU time and range over flags */
          FLUSH_REDRAW();
-         byte = (PPU.OpenBus1 & 0x10) | PPU.RangeTimeOver | Model->_5C77;
+         byte = (PPU.OpenBus1 & 0x10) | PPU.RangeTimeOver | SNES_5C77;
          return (PPU.OpenBus1 = byte);
       case 0x213F: /* NTSC/PAL and which field flags */
          PPU.VBeamFlip = PPU.HBeamFlip = 0;
-         byte = (PPU.OpenBus2 & 0x20) | (Memory.FillRAM[0x213f] & 0xc0) | (Settings.PAL ? 0x10 : 0) | Model->_5C78;
+         byte = (PPU.OpenBus2 & 0x20) | (Memory.FillRAM[0x213f] & 0xc0) | (Settings.PAL ? 0x10 : 0) | SNES_5C78;
          Memory.FillRAM[0x213f] &= ~0x40;
          return (PPU.OpenBus2 = byte);
       case 0x2140:
@@ -879,11 +879,11 @@ uint8_t S9xGetPPU(uint16_t Address)
          switch (Address)
          {
          case 0x21c2:
-            if (Model->_5C77 == 2)
+            if (SNES_5C77 == 2)
                return 0x20;
             return OpenBus;
          case 0x21c3:
-            if (Model->_5C77 == 2)
+            if (SNES_5C77 == 2)
                return 0;
             return OpenBus;
          default:
@@ -1106,7 +1106,7 @@ void S9xSetCPU(uint8_t byte, uint16_t Address)
       case 0x420f: /* --->>> Unknown */
          break;
       case 0x4210: /* NMI ocurred flag (reset on read or write) */
-         Memory.FillRAM[0x4210] = Model->_5A22;
+         Memory.FillRAM[0x4210] = SNES_5A22;
          return;
       case 0x4211: /* IRQ ocurred flag (reset on read or write) */
          CLEAR_IRQ_SOURCE(PPU_V_BEAM_IRQ_SOURCE | PPU_H_BEAM_IRQ_SOURCE);
@@ -1427,8 +1427,8 @@ uint8_t S9xGetCPU(uint16_t Address)
       case 0x4210:
          CPU.WaitAddress = CPU.PCAtOpcodeStart;
          byte = Memory.FillRAM[0x4210];
-         Memory.FillRAM[0x4210] = Model->_5A22; /* SNEeSe returns 2 for 5A22 version. */
-         return (byte & 0x80) | (OpenBus & 0x70) | Model->_5A22;
+         Memory.FillRAM[0x4210] = SNES_5A22; /* SNEeSe returns 2 for 5A22 version. */
+         return (byte & 0x80) | (OpenBus & 0x70) | SNES_5A22;
       case 0x4211:
          byte = (CPU.IRQActive & (PPU_V_BEAM_IRQ_SOURCE | PPU_H_BEAM_IRQ_SOURCE)) ? 0x80 : 0;
          CLEAR_IRQ_SOURCE(PPU_V_BEAM_IRQ_SOURCE | PPU_H_BEAM_IRQ_SOURCE);
@@ -1851,7 +1851,7 @@ void ProcessSuperScope()
 
          PPU.VBeamPosLatched = (uint16_t)(y + 1);
          PPU.HBeamPosLatched = (uint16_t) x;
-         Memory.FillRAM [0x213F] |= 0x40 | Model->_5C78;
+         Memory.FillRAM [0x213F] |= 0x40 | SNES_5C78;
       }
       IPPU.Joypads [1] = scope;
    }
@@ -1935,7 +1935,7 @@ void S9xUpdateJustifiers()
 
       if (last_p1)
       {
-         Memory.FillRAM [0x213F] = Model->_5C78;
+         Memory.FillRAM [0x213F] = SNES_5C78;
 
          if (Settings.SecondJustifier) /* process latch as Justifier 2 */
          {
@@ -1945,14 +1945,14 @@ void S9xUpdateJustifiers()
                {
                   PPU.VBeamPosLatched = (uint16_t)(y + 1);
                   PPU.HBeamPosLatched = (uint16_t) x;
-                  Memory.FillRAM [0x213F] |= 0x40 | Model->_5C78;
+                  Memory.FillRAM [0x213F] |= 0x40 | SNES_5C78;
                }
             }
          }
       }
       else
       {
-         Memory.FillRAM [0x213F] = Model->_5C78;
+         Memory.FillRAM [0x213F] = SNES_5C78;
 
          if (IPPU.Controller == SNES_JUSTIFIER) /* emulate player 1. */
          {
@@ -1960,7 +1960,7 @@ void S9xUpdateJustifiers()
             {
                PPU.VBeamPosLatched = (uint16_t)(y + 1);
                PPU.HBeamPosLatched = (uint16_t) x;
-               Memory.FillRAM [0x213F] |= 0x40 | Model->_5C78;
+               Memory.FillRAM [0x213F] |= 0x40 | SNES_5C78;
             }
          }
       }
@@ -1971,13 +1971,13 @@ void S9xUpdateJustifiers()
          {
             PPU.VBeamPosLatched = (uint16_t)(y + 1);
             PPU.HBeamPosLatched = (uint16_t) x;
-            Memory.FillRAM [0x213F] |= 0x40 | Model->_5C78;
+            Memory.FillRAM [0x213F] |= 0x40 | SNES_5C78;
          }
          else
-            Memory.FillRAM [0x213F] = Model->_5C78;
+            Memory.FillRAM [0x213F] = SNES_5C78;
       }
       else
-         Memory.FillRAM [0x213F] = Model->_5C78;
+         Memory.FillRAM [0x213F] = SNES_5C78;
    }
 }
 
