@@ -4,8 +4,7 @@
 #define _apumemory_h_
 
 
-extern uint8_t W4;
-extern uint8_t APUROM[64];
+extern const uint8_t APUROM[64];
 
 static INLINE uint8_t S9xAPUGetByteZ(uint8_t Address)
 {

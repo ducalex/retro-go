@@ -9,7 +9,7 @@
 #include "display.h"
 #include "srtc.h"
 
-extern uint8_t mul_brightness [16][32];
+extern const uint8_t mul_brightness [16][32];
 
 static uint32_t justifiers = 0xffff00aa;
 static uint8_t in_bit = 0;
