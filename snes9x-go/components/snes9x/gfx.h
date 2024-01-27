@@ -21,6 +21,17 @@ void S9xDeinitGFX(void);
 
 typedef struct
 {
+   uint8_t RTOFlags;
+   int16_t Tiles;
+   struct
+   {
+      int8_t  Sprite;
+      uint8_t Line;
+   } OBJ[32];
+} SOBJLines;
+
+typedef struct
+{
    uint8_t*    Screen;
    uint8_t*    SubScreen;
    uint8_t*    ZBuffer;
@@ -48,19 +59,7 @@ typedef struct
    uint32_t    Mode7PriorityMask;
    uint8_t     OBJWidths[128];
    uint8_t     OBJVisibleTiles[128];
-
-   struct
-   {
-      uint8_t RTOFlags;
-      int16_t Tiles;
-
-      struct
-      {
-         int8_t  Sprite;
-         uint8_t Line;
-      } OBJ[32];
-   } OBJLines [SNES_HEIGHT_EXTENDED];
-
+   SOBJLines   *OBJLines; // [SNES_HEIGHT_EXTENDED];
    uint8_t     r212c;
    uint8_t     r212d;
    uint8_t     r2130;

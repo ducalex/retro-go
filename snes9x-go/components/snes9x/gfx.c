@@ -9,11 +9,6 @@
 #include "gfx.h"
 #include "apu.h"
 
-
-#define M7 19
-
-void ComputeClipWindows(void);
-
 static const uint8_t BitShifts[8][4] =
 {
    {2, 2, 2, 2}, /* 0 */
@@ -75,13 +70,16 @@ static ClippedTileRenderer DrawClippedTilePtr;
 static NormalTileRenderer  DrawHiResTilePtr;
 static ClippedTileRenderer DrawHiResClippedTilePtr;
 static LargePixelRenderer  DrawLargePixelPtr;
-
-extern SBG BG;
-
-static SLineData LineData[240];
-static SLineMatrixData LineMatrixData [240];
-
 static uint8_t  Mode7Depths [2];
+
+static struct {
+   SLineData LineData[240];
+   SLineMatrixData LineMatrixData[240];
+   SOBJLines OBJLines[SNES_HEIGHT_EXTENDED];
+} *LocalState;
+
+#define LineData LocalState->LineData
+#define LineMatrixData LocalState->LineMatrixData
 
 #define CLIP_10_BIT_SIGNED(a) \
    ((a) & ((1 << 10) - 1)) + (((((a) & (1 << 13)) ^ (1 << 13)) - (1 << 13)) >> 3)
@@ -127,6 +125,9 @@ static uint8_t  Mode7Depths [2];
     }
 
 #define BLACK BUILD_PIXEL(0,0,0)
+#define M7 19
+
+void ComputeClipWindows(void);
 
 void DrawTile16(uint32_t Tile, int32_t Offset, uint32_t StartLine, uint32_t LineCount);
 void DrawClippedTile16(uint32_t Tile, int32_t Offset, uint32_t StartPixel, uint32_t Width, uint32_t StartLine, uint32_t LineCount);
@@ -157,6 +158,11 @@ void DrawLargePixel16Sub1_2(uint32_t Tile, int32_t Offset, uint32_t StartPixel, 
 
 bool S9xInitGFX(void)
 {
+   LocalState = calloc(1, sizeof(*LocalState));
+   if (!LocalState)
+      return false;
+
+   GFX.OBJLines = LocalState->OBJLines;
    GFX.RealPitch = GFX.Pitch2 = GFX.Pitch;
    GFX.ZPitch = GFX.Pitch;
    GFX.ZPitch >>= 1;
@@ -221,6 +227,11 @@ void S9xDeinitGFX(void)
    {
       free(GFX.ZERO);
       GFX.ZERO = NULL;
+   }
+   if (LocalState)
+   {
+      free(LocalState);
+      LocalState = NULL;
    }
 }
 

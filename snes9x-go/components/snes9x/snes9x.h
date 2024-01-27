@@ -43,9 +43,15 @@
 
 #define SNES_CYCLES_PER_SCANLINE ((uint32_t) ((SNES_SCANLINE_TIME / SNES_CLOCK_LEN) * 6 + 0.5))
 
+#ifdef SNES_OVERCLOCK_CYCLES
 #define ONE_CYCLE        (overclock_cycles ? one_c : 6u)
 #define SLOW_ONE_CYCLE   (overclock_cycles ? slow_one_c : 8u)
 #define TWO_CYCLES       (overclock_cycles ? two_c : 12u)
+#else
+#define ONE_CYCLE        (6u)
+#define SLOW_ONE_CYCLE   (8u)
+#define TWO_CYCLES       (12u)
+#endif
 
 #define SNES_TR_MASK     (1u << 4)
 #define SNES_TL_MASK     (1u << 5)
