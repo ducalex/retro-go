@@ -45,8 +45,6 @@ SGFX GFX;
 bool finishedFrame = false;
 #endif
 
-uint16_t DirectColourMaps [8][256];
-
 const int32_t NoiseFreq [32] =
 {
    0, 16, 21, 25, 31, 42, 50, 63, 84, 100, 125, 167, 200, 250, 333,

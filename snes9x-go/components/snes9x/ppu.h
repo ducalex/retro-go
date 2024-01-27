@@ -36,7 +36,6 @@ typedef struct
    uint8_t  HDMA;
    bool     OBJChanged;
    bool     RenderThisFrame;
-   bool     DirectColourMapsNeedRebuild;
    uint32_t FrameCount;
    uint8_t* TileCache;
    uint8_t* TileCached;
@@ -51,7 +50,8 @@ typedef struct
    uint8_t  Green        [256];
    uint8_t  Blue         [256];
    const uint8_t* XB;
-   uint16_t ScreenColors [256];
+   uint16_t *ScreenColors; // [256];
+   uint16_t *DirectColors; // [256 * 8];
    int32_t  PreviousLine;
    int32_t  CurrentLine;
    int32_t  Controller;

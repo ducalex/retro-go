@@ -251,13 +251,15 @@ bool S9xInitMemory(void)
    Memory.FillRAM = (uint8_t*) calloc(0x8000, 1);
    Memory.ROM_Size = MAX_ROM_SIZE + 0x200;
 
+   IPPU.ScreenColors = (uint16_t *)calloc(256 * 9, sizeof(uint16_t));
+   IPPU.DirectColors = IPPU.ScreenColors + 256;
    IPPU.TileCache = (uint8_t*) calloc(MAX_2BIT_TILES, 128);
    IPPU.TileCached = (uint8_t*) calloc(MAX_2BIT_TILES, 1);
 
    bytes0x2000 = (uint8_t *)calloc(0x2000, 1);
 
    if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM || !Memory.ROM
-      || !IPPU.TileCache || !IPPU.TileCached || !bytes0x2000)
+      || !IPPU.ScreenColors || !IPPU.TileCache || !IPPU.TileCached || !bytes0x2000)
    {
       S9xDeinitMemory();
       return false;
@@ -293,6 +295,12 @@ void S9xDeinitMemory(void)
    {
       free(Memory.FillRAM);
       Memory.FillRAM = NULL;
+   }
+
+   if (IPPU.ScreenColors)
+   {
+      free(IPPU.ScreenColors);
+      IPPU.ScreenColors = NULL;
    }
 
    if (IPPU.TileCached)

@@ -14,7 +14,6 @@ void S9xEndScreenRefresh(void);
 void S9xSetupOBJ(void);
 void S9xUpdateScreen(void);
 void RenderLine(uint8_t line);
-void S9xBuildDirectColourMaps(void);
 
 bool S9xInitGFX(void);
 void S9xDeinitGFX(void);
@@ -111,7 +110,6 @@ typedef struct
 } SLineMatrixData;
 
 extern SBG BG;
-extern uint16_t DirectColourMaps [8][256];
 
 /* Could use BSWAP instruction on Intel port... */
 #define SWAP_DWORD(dword) dword = ((((dword) & 0x000000ff) << 24) \

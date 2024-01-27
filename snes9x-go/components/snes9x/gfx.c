@@ -171,7 +171,6 @@ bool S9xInitGFX(void)
 
    IPPU.OBJChanged = true;
 
-   IPPU.DirectColourMapsNeedRebuild = true;
    GFX.PixSize = 1;
    DrawTilePtr = DrawTile16;
    DrawClippedTilePtr = DrawClippedTile16;
@@ -233,15 +232,6 @@ void S9xDeinitGFX(void)
       free(LocalState);
       LocalState = NULL;
    }
-}
-
-void S9xBuildDirectColourMaps(void)
-{
-   uint32_t p, c;
-   for (p = 0; p < 8; p++)
-      for (c = 0; c < 256; c++)
-         DirectColourMaps [p][c] = BUILD_PIXEL(((c & 7) << 2) | ((p & 1) << 1), ((c & 0x38) >> 1) | (p & 2), ((c & 0xc0) >> 3) | (p & 4)); /* XXX: Brightness */
-   IPPU.DirectColourMapsNeedRebuild = false;
 }
 
 void S9xStartScreenRefresh(void)
@@ -1877,7 +1867,7 @@ static void DrawBackground(uint32_t BGMode, uint32_t bg, uint8_t Z1, uint8_t Z2)
     uint32_t Left = 0; \
     uint32_t Right = 256; \
     uint32_t ClipCount; \
-    uint16_t* ScreenColors = IPPU.ScreenColors; \
+    uint16_t* ScreenColors; \
     uint8_t* VRAM1; \
     uint32_t Line; \
     uint8_t* Depth; \
@@ -1886,11 +1876,9 @@ static void DrawBackground(uint32_t BGMode, uint32_t bg, uint8_t Z1, uint8_t Z2)
 \
     VRAM1 = Memory.VRAM + 1; \
     if (GFX.r2130 & 1) \
-    { \
-    if (IPPU.DirectColourMapsNeedRebuild) \
-       S9xBuildDirectColourMaps (); \
-    ScreenColors = DirectColourMaps [0]; \
-    } \
+        ScreenColors = IPPU.DirectColors; \
+    else \
+        ScreenColors = IPPU.ScreenColors; \
 \
     ClipCount = GFX.pCurrentClip->Count [bg]; \
 \
@@ -2061,11 +2049,7 @@ static void DrawBGMode7Background16Sub1_2(uint8_t * Screen, int32_t bg)
     uint8_t *VRAM1 = Memory.VRAM + 1; \
     uint32_t b; \
     if (GFX.r2130 & 1) \
-    { \
-        if (IPPU.DirectColourMapsNeedRebuild) \
-            S9xBuildDirectColourMaps (); \
-        ScreenColors = DirectColourMaps [0]; \
-    } \
+        ScreenColors = IPPU.DirectColors; \
     else \
         ScreenColors = IPPU.ScreenColors; \
     \

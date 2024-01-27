@@ -81,16 +81,18 @@ void S9xUpdateHTimer()
 
 void S9xFixColourBrightness()
 {
-   int32_t i;
-
    IPPU.XB = mul_brightness [PPU.Brightness];
-   for (i = 0; i < 256; i++)
+   for (size_t i = 0; i < 256; i++)
    {
       IPPU.Red [i] = IPPU.XB [PPU.CGDATA [i] & 0x1f];
       IPPU.Green [i] = IPPU.XB [(PPU.CGDATA [i] >> 5) & 0x1f];
       IPPU.Blue [i] = IPPU.XB [(PPU.CGDATA [i] >> 10) & 0x1f];
       IPPU.ScreenColors [i] = BUILD_PIXEL(IPPU.Red [i], IPPU.Green [i], IPPU.Blue [i]);
    }
+
+   for (size_t p = 0; p < 8; p++)
+      for (size_t c = 0; c < 256; c++)
+         IPPU.DirectColors [p * 256 + c] = BUILD_PIXEL(((c & 7) << 2) | ((p & 1) << 1), ((c & 0x38) >> 1) | (p & 2), ((c & 0xc0) >> 3) | (p & 4)); /* XXX: Brightness */
 }
 
 /******************************************************************************/
@@ -110,7 +112,6 @@ void S9xSetPPU(uint8_t Byte, uint16_t Address)
             if (PPU.Brightness != (Byte & 0xF))
             {
                IPPU.ColorsChanged = true;
-               IPPU.DirectColourMapsNeedRebuild = true;
                PPU.Brightness = Byte & 0xF;
                S9xFixColourBrightness();
             }
@@ -1685,7 +1686,6 @@ static void CommonPPUReset()
    IPPU.HDMA = 0;
    IPPU.OBJChanged = true;
    IPPU.RenderThisFrame = true;
-   IPPU.DirectColourMapsNeedRebuild = true;
    IPPU.FrameCount = 0;
    memset(IPPU.TileCached, 0, MAX_2BIT_TILES);
    IPPU.FirstVRAMRead = false;
