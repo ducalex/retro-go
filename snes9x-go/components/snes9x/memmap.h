@@ -108,8 +108,10 @@ typedef struct
    uint16_t SRAMMask;
    uint8_t  SRAMSize;
    uint8_t* Map[MEMMAP_NUM_BLOCKS];
-   uint8_t  MemorySpeed[MEMMAP_NUM_BLOCKS];
-   uint8_t  BlockType[MEMMAP_NUM_BLOCKS];
+   struct {
+      uint8_t Speed:5;
+      uint8_t Type:3;
+   } MapInfo[MEMMAP_NUM_BLOCKS];
    char     ROMName     [ROM_NAME_LEN];
    char     ROMId       [5];
    char     CompanyId   [3];
