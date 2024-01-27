@@ -32,8 +32,8 @@ typedef struct {
   uint8 th_dir[2];    /* TH pin direction */
 } io_state;
 
-static io_state io_lut[2][256];
-static io_state *io_current;
+static io_state io_control;
+static io_state *io_current = &io_control;
 
 
 /*
@@ -61,39 +61,35 @@ static io_state *io_current;
   It also means that for compatibility, it defaults to an input-only state (ie. with all the low bits set) on startup.
 */
 
+static void update(int i, int j)
+{
+  /* Common control: pin direction */
+  io_control.tr_dir[0]   = (i & 0x01) ? PIN_DIR_IN : PIN_DIR_OUT;
+  io_control.th_dir[0]   = (i & 0x02) ? PIN_DIR_IN : PIN_DIR_OUT;
+  io_control.tr_dir[1]   = (i & 0x04) ? PIN_DIR_IN : PIN_DIR_OUT;
+  io_control.th_dir[1]   = (i & 0x08) ? PIN_DIR_IN : PIN_DIR_OUT;
+
+  if (j == 1)
+  {
+    /* Programmable output state (Export machines only) */
+    io_control.tr_level[0] = (i & 0x01) ? PIN_LVL_HI : (i & 0x10) ? PIN_LVL_HI : PIN_LVL_LO;
+    io_control.th_level[0] = (i & 0x02) ? PIN_LVL_HI : (i & 0x20) ? PIN_LVL_HI : PIN_LVL_LO;
+    io_control.tr_level[1] = (i & 0x04) ? PIN_LVL_HI : (i & 0x40) ? PIN_LVL_HI : PIN_LVL_LO;
+    io_control.th_level[1] = (i & 0x08) ? PIN_LVL_HI : (i & 0x80) ? PIN_LVL_HI : PIN_LVL_LO;
+  }
+  else
+  {
+    /* Fixed output state (Domestic machines only) */
+    io_control.tr_level[0] = (i & 0x01) ? PIN_LVL_HI : PIN_LVL_LO;
+    io_control.th_level[0] = (i & 0x02) ? PIN_LVL_HI : PIN_LVL_LO;
+    io_control.tr_level[1] = (i & 0x04) ? PIN_LVL_HI : PIN_LVL_LO;
+    io_control.th_level[1] = (i & 0x08) ? PIN_LVL_HI : PIN_LVL_LO;
+  }
+}
+
 void pio_init(void)
 {
-  int i, j;
-
-  /* Make pin state LUT */
-  for(j = 0; j < 2; j++)
-  {
-    for(i = 0; i < 0x100; i++)
-    {
-      /* Common control: pin direction */
-      io_lut[j][i].tr_dir[0]   = (i & 0x01) ? PIN_DIR_IN : PIN_DIR_OUT;
-      io_lut[j][i].th_dir[0]   = (i & 0x02) ? PIN_DIR_IN : PIN_DIR_OUT;
-      io_lut[j][i].tr_dir[1]   = (i & 0x04) ? PIN_DIR_IN : PIN_DIR_OUT;
-      io_lut[j][i].th_dir[1]   = (i & 0x08) ? PIN_DIR_IN : PIN_DIR_OUT;
-
-      if(j == 1)
-      {
-        /* Programmable output state (Export machines only) */
-        io_lut[j][i].tr_level[0] = (i & 0x01) ? PIN_LVL_HI : (i & 0x10) ? PIN_LVL_HI : PIN_LVL_LO;
-        io_lut[j][i].th_level[0] = (i & 0x02) ? PIN_LVL_HI : (i & 0x20) ? PIN_LVL_HI : PIN_LVL_LO;
-        io_lut[j][i].tr_level[1] = (i & 0x04) ? PIN_LVL_HI : (i & 0x40) ? PIN_LVL_HI : PIN_LVL_LO;
-        io_lut[j][i].th_level[1] = (i & 0x08) ? PIN_LVL_HI : (i & 0x80) ? PIN_LVL_HI : PIN_LVL_LO;
-      }
-      else
-      {
-        /* Fixed output state (Domestic machines only) */
-        io_lut[j][i].tr_level[0] = (i & 0x01) ? PIN_LVL_HI : PIN_LVL_LO;
-        io_lut[j][i].th_level[0] = (i & 0x02) ? PIN_LVL_HI : PIN_LVL_LO;
-        io_lut[j][i].tr_level[1] = (i & 0x04) ? PIN_LVL_HI : PIN_LVL_LO;
-        io_lut[j][i].th_level[1] = (i & 0x08) ? PIN_LVL_HI : PIN_LVL_LO;
-      }
-    }
-  }
+  /* Nothing to do */
 }
 
 void pio_reset(void)
@@ -108,7 +104,6 @@ void pio_reset(void)
   input.analog[0][1] = 96;
 
   /* SMS I/O power-on defaults */
-  io_current = &io_lut[sms.territory][0xFF];
   pio_ctrl_w(0xFF);
 }
 
@@ -128,7 +123,7 @@ void pio_ctrl_w(uint8 data)
   th_level[1] = io_current->th_level[1];
 
   /* HCounter is latched on TH Low->High transition */
-  io_current = &io_lut[sms.territory][data];
+  update(sms.territory, data);
   if ((io_current->th_dir[0]   == PIN_DIR_IN) &&
        (io_current->th_level[0] == PIN_LVL_HI) &&
        (th_level[0] == PIN_LVL_LO)
