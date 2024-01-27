@@ -251,6 +251,9 @@ bool S9xInitMemory(void)
    Memory.FillRAM = (uint8_t*) calloc(0x8000, 1);
    Memory.ROM_Size = MAX_ROM_SIZE + 0x200;
 
+   Memory.Map = (uint8_t**)calloc(MEMMAP_NUM_BLOCKS, sizeof(uint8_t*));
+   Memory.MapInfo = (SMapInfo*)calloc(MEMMAP_NUM_BLOCKS, sizeof(SMapInfo));
+
    IPPU.ScreenColors = (uint16_t *)calloc(256 * 9, sizeof(uint16_t));
    IPPU.DirectColors = IPPU.ScreenColors + 256;
    IPPU.TileCache = (uint8_t*) calloc(MAX_2BIT_TILES, 128);
@@ -258,7 +261,7 @@ bool S9xInitMemory(void)
 
    bytes0x2000 = (uint8_t *)calloc(0x2000, 1);
 
-   if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM || !Memory.ROM
+   if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM || !Memory.ROM || !Memory.Map || !Memory.MapInfo
       || !IPPU.ScreenColors || !IPPU.TileCache || !IPPU.TileCached || !bytes0x2000)
    {
       S9xDeinitMemory();
@@ -295,6 +298,16 @@ void S9xDeinitMemory(void)
    {
       free(Memory.FillRAM);
       Memory.FillRAM = NULL;
+   }
+   if (Memory.Map)
+   {
+      free(Memory.Map);
+      Memory.Map = NULL;
+   }
+   if (Memory.MapInfo)
+   {
+      free(Memory.MapInfo);
+      Memory.MapInfo = NULL;
    }
 
    if (IPPU.ScreenColors)
