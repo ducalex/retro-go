@@ -85,11 +85,11 @@ static void rtc_tick()
 
 
 /*
- * hw_interrupt changes the virtual interrupt line(s) defined by i
+ * gb_hw_interrupt changes the virtual interrupt line(s) defined by i
  * The interrupt fires (added to R_IF) when the line transitions from 0 to 1.
  * It does not refire if the line was already high.
  */
-void hw_interrupt(byte i, int level)
+void gb_hw_interrupt(byte i, int level)
 {
 	if (level == 0)
 	{
@@ -154,7 +154,7 @@ static void hw_hdma(byte c)
 	R_HDMA5 = 0xFF;
 }
 
-void hw_hdma_cont(void)
+void gb_hw_hdma_cont(void)
 {
 	size_t src = (R_HDMA1 << 8) | (R_HDMA2 & 0xF0);
 	size_t dst = 0x8000 | ((R_HDMA3 & 0x1F) << 8) | (R_HDMA4 & 0xF0);
@@ -189,30 +189,31 @@ static inline void pad_refresh()
 	R_P1 ^= 0x0F;
 	if (oldp1 & ~R_P1 & 0x0F)
 	{
-		hw_interrupt(IF_PAD, 1);
-		hw_interrupt(IF_PAD, 0);
+		gb_hw_interrupt(IF_PAD, 1);
+		gb_hw_interrupt(IF_PAD, 0);
 	}
 }
 
 
 /*
- * hw_setpad updates the state of one or more buttons on the pad and calls
+ * gb_hw_setpad updates the state of one or more buttons on the pad and calls
  * pad_refresh() to fire an interrupt if the pad changed.
  */
-void hw_setpad(int new_pad)
+void gb_hw_setpad(int new_pad)
 {
 	hw.pad = new_pad & 0xFF;
 	pad_refresh();
 }
 
 
-gb_hw_t *hw_init(void)
+gb_hw_t *gb_hw_init(void)
 {
 	hw.rambanks = calloc(8, 4096);
 	hw.vbanks = calloc(2, 8192);
-	hw.snd = sound_init();
-	hw.cpu = cpu_init();
+	hw.snd = gb_sound_init();
+	hw.cpu = gb_cpu_init();
 	hw.cart = &cart;
+	gb_lcd_init();
 
 	if (!hw.rambanks || !hw.vbanks || !hw.cpu || !hw.snd)
 	{
@@ -224,7 +225,7 @@ gb_hw_t *hw_init(void)
 }
 
 
-void hw_reset(bool hard)
+void gb_hw_reset(bool hard)
 {
 	hw.ilines = 0;
 	hw.serial = 0;
@@ -256,19 +257,19 @@ void hw_reset(bool hard)
 	cart.rombank = 1;
 	cart.rambank = 0;
 	cart.enableram = 0;
-	hw_updatemap();
+	gb_hw_updatemap();
 }
 
 
 /*
- * hw_vblank is called once per frame at vblank and should take care
+ * gb_hw_vblank is called once per frame at vblank and should take care
  * of things like rtc/sound/serial advance, emulation throttling, etc.
  */
-void hw_vblank(void)
+void gb_hw_vblank(void)
 {
 	hw.frames++;
 	rtc_tick();
-	sound_emulate();
+	gb_sound_emulate();
 }
 
 
@@ -280,10 +281,10 @@ void hw_vblank(void)
  * region in host system memory. For ranges that require special
  * processing, the pointer is NULL.
  *
- * hw_updatemap is called whenever bank changes or other operations
+ * gb_hw_updatemap is called whenever bank changes or other operations
  * make the old maps potentially invalid.
  */
-void hw_updatemap(void)
+void gb_hw_updatemap(void)
 {
 	int rombank = cart.rombank & (cart.romsize - 1);
 
@@ -298,7 +299,7 @@ void hw_updatemap(void)
 	hw.rmap[0x2] = cart.rombanks[0];
 	hw.rmap[0x3] = cart.rombanks[0];
 
-	// Force bios to go through hw_read (speed doesn't really matter here)
+	// Force bios to go through gb_hw_read (speed doesn't really matter here)
 	if (hw.bios && (R_BIOS & 1) == 0)
 	{
 		hw.rmap[0x0] = NULL;
@@ -453,16 +454,16 @@ static inline void mbc_write(unsigned a, byte b)
 
 	MESSAGE_DEBUG("%02X\n", cart.rombank);
 
-	hw_updatemap();
+	gb_hw_updatemap();
 }
 
 
 /*
- * hw_write is the basic write function. Although it should only be
+ * gb_hw_write is the basic write function. Although it should only be
  * called when the write map contains a NULL for the requested address
  * region, it accepts writes to any address.
  */
-void hw_write(unsigned a, byte b)
+void gb_hw_write(unsigned a, byte b)
 {
 	MESSAGE_DEBUG("write to 0x%04X: 0x%02X\n", a, b);
 
@@ -518,7 +519,7 @@ void hw_write(unsigned a, byte b)
 		// Sound: 0xFF10 - 0xFF3F
 		else if (a >= 0xFF10 && a <= 0xFF3F)
 		{
-			sound_write(a & 0xFF, b);
+			gb_sound_write(a & 0xFF, b);
 		}
 		// High RAM: 0xFF80 - 0xFFFE
 		else if (a >= 0xFF80 && a <= 0xFFFE)
@@ -558,13 +559,13 @@ void hw_write(unsigned a, byte b)
 				REG(r) = b & 0x1F;
 				break;
 			case RI_LCDC:
-				lcd_lcdc_change(b);
+				gb_lcd_lcdc_change(b);
 				break;
 			case RI_STAT:
 				R_STAT = (R_STAT & 0x07) | (b & 0x78);
 				if (!IS_CGB && !(R_STAT & 2)) /* DMG STAT write bug => interrupt */
-					hw_interrupt(IF_STAT, 1);
-				lcd_stat_trigger();
+					gb_hw_interrupt(IF_STAT, 1);
+				gb_lcd_stat_trigger();
 				break;
 			case RI_SCY:
 			case RI_SCX:
@@ -572,7 +573,7 @@ void hw_write(unsigned a, byte b)
 				break;
 			case RI_LYC:
 				REG(r) = b;
-				lcd_stat_trigger();
+				gb_lcd_stat_trigger();
 				break;
 			case RI_DMA:
 				hw_dma(b);
@@ -583,7 +584,7 @@ void hw_write(unsigned a, byte b)
 				if (REG(r) == b)
 					break;
 				REG(r) = b;
-				lcd_pal_dirty();
+				gb_lcd_pal_dirty();
 				break;
 			case RI_WY:
 			case RI_WX:
@@ -591,7 +592,7 @@ void hw_write(unsigned a, byte b)
 				break;
 			case RI_BIOS:
 				REG(r) = b;
-				hw_updatemap();
+				gb_hw_updatemap();
 				break;
 			case RI_IE:
 				REG(r) = b & 0x1F;
@@ -607,7 +608,7 @@ void hw_write(unsigned a, byte b)
 					break;
 				case RI_VBK:
 					REG(r) = b | 0xFE;
-					hw_updatemap();
+					gb_hw_updatemap();
 					break;
 				case RI_HDMA1:
 				case RI_HDMA2:
@@ -624,7 +625,7 @@ void hw_write(unsigned a, byte b)
 					break;
 				case RI_BCPD:
 					hw.pal[R_BCPS & 0x3F] = b;
-					lcd_pal_dirty();
+					gb_lcd_pal_dirty();
 					R_BCPD = b;
 					if (R_BCPS & 0x80) R_BCPS = (R_BCPS+1) & 0xBF;
 					break;
@@ -634,13 +635,13 @@ void hw_write(unsigned a, byte b)
 					break;
 				case RI_OCPD:
 					hw.pal[64 + (R_OCPS & 0x3F)] = b;
-					lcd_pal_dirty();
+					gb_lcd_pal_dirty();
 					R_OCPD = b;
 					if (R_OCPS & 0x80) R_OCPS = (R_OCPS+1) & 0xBF;
 					break;
 				case RI_SVBK:
 					REG(r) = b | 0xF8;
-					hw_updatemap();
+					gb_hw_updatemap();
 					break;
 				}
 			}
@@ -650,11 +651,11 @@ void hw_write(unsigned a, byte b)
 
 
 /*
- * hw_read is the basic read function...not useful for much anymore
+ * gb_hw_read is the basic read function...not useful for much anymore
  * with the read map, but it's still necessary for the final messy
  * region.
  */
-byte hw_read(unsigned a)
+byte gb_hw_read(unsigned a)
 {
 	MESSAGE_DEBUG("read %04x\n", a);
 
@@ -707,7 +708,7 @@ byte hw_read(unsigned a)
 		else if (a >= 0xFF10 && a <= 0xFF3F)
 		{
 			// Make sure sound emulation is all caught up
-			sound_emulate();
+			gb_sound_emulate();
 		}
 		// High RAM: 0xFF80 - 0xFFFE
 		// else if ((a & 0xFF80) == 0xFF80)

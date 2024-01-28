@@ -27,7 +27,7 @@ int gnuboy_init(int samplerate, bool stereo, int pixformat, void *blit_func)
 		.audio.samplerate = samplerate,
 		.audio.stereo = stereo,
 	};
-	if (!hw_init())
+	if (!gb_hw_init())
 		return -1;
 	return 0;
 }
@@ -40,10 +40,10 @@ int gnuboy_init(int samplerate, bool stereo, int pixformat, void *blit_func)
  */
 void gnuboy_reset(bool hard)
 {
-	hw_reset(hard);
-	lcd_reset(hard);
-	cpu_reset(hard);
-	sound_reset(hard);
+	gb_hw_reset(hard);
+	gb_lcd_reset(hard);
+	gb_cpu_reset(hard);
+	gb_sound_reset(hard);
 }
 
 
@@ -73,14 +73,14 @@ void gnuboy_run(bool draw)
 	// LCD is powered down, it won't touch LY or do vblank
 	if (!(R_LCDC & 0x80)) {
 		cycles += 154 * 228;
-		cycles -= cpu_emulate(cycles);
+		cycles -= gb_cpu_emulate(cycles);
 		return;
 	}
 
 	// We emulate until vblank (0..144)
 	while (R_LY <= 144) {
 		cycles += 228;
-		cycles -= cpu_emulate(cycles);
+		cycles -= gb_cpu_emulate(cycles);
 	}
 
 	/* When using GB_PIXEL_PALETTED, the host should draw the frame in this callback
@@ -89,12 +89,12 @@ void gnuboy_run(bool draw)
 		(host.video.blit_func)();
 	}
 
-	hw_vblank();
+	gb_hw_vblank();
 
 	// Emulate vblank (145...0)
 	while (R_LY > 0) {
 		cycles += 228;
-		cycles -= cpu_emulate(cycles);
+		cycles -= gb_cpu_emulate(cycles);
 	}
 }
 
@@ -103,7 +103,7 @@ void gnuboy_set_pad(int pad)
 {
 	if (hw.pad != pad)
 	{
-		hw_setpad(pad);
+		gb_hw_setpad(pad);
 	}
 }
 
@@ -464,7 +464,7 @@ int gnuboy_get_palette(void)
 void gnuboy_set_palette(gb_palette_t pal)
 {
 	host.video.colorize = pal;
-	lcd_pal_dirty();
+	gb_lcd_pal_dirty();
 }
 
 
@@ -820,9 +820,9 @@ static int do_save_load(const char *file, bool save)
 		// Older saves might overflow this
 		cart.rambank &= (cart.ramsize - 1);
 
-		lcd_pal_dirty();
-		sound_dirty();
-		hw_updatemap();
+		gb_lcd_pal_dirty();
+		gb_sound_dirty();
+		gb_hw_updatemap();
 	}
 
 	fclose(fp);

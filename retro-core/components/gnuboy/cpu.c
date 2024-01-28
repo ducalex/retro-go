@@ -205,13 +205,13 @@ label: op(b); break;
 static gb_cpu_t cpu;
 
 
-gb_cpu_t *cpu_init(void)
+gb_cpu_t *gb_cpu_init(void)
 {
 	return &cpu;
 }
 
 /* reset */
-void cpu_reset(bool hard)
+void gb_cpu_reset(bool hard)
 {
 	cpu.double_speed = 0;
 	cpu.halted = 0;
@@ -248,8 +248,8 @@ static inline void timer_advance(int cycles)
 			cpu.timer &= 0x1ff;
 			if (tima >= 256)
 			{
-				hw_interrupt(IF_TIMER, 1);
-				hw_interrupt(IF_TIMER, 0);
+				gb_hw_interrupt(IF_TIMER, 1);
+				gb_hw_interrupt(IF_TIMER, 0);
 				tima = R_TMA;
 			}
 			R_TIMA = tima;
@@ -268,13 +268,13 @@ static inline void serial_advance(int cycles)
 			R_SB = 0xFF;
 			R_SC &= 0x7f;
 			GB.serial = 0;
-			hw_interrupt(IF_SERIAL, 1);
-			hw_interrupt(IF_SERIAL, 0);
+			gb_hw_interrupt(IF_SERIAL, 1);
+			gb_hw_interrupt(IF_SERIAL, 0);
 		}
 	}
 }
 
-/* cpu_emulate()
+/* gb_cpu_emulate()
 	Emulate CPU for time no less than specified
 
 	cycles - time to emulate, expressed in double-speed cycles
@@ -283,13 +283,13 @@ static inline void serial_advance(int cycles)
 	Might emulate up to cycles+(11) time units (longest op takes 12
 	cycles in single-speed mode)
 */
-IRAM_ATTR int cpu_emulate(int cycles)
+IRAM_ATTR int gb_cpu_emulate(int cycles)
 {
 	int clen, temp;
 	int remaining = cycles;
 	int count = 0;
 	byte op, b;
-	cpu_reg_t acc;
+	gb_cpu_reg_t acc;
 
 	if (!cpu.double_speed)
 		remaining >>= 1;
@@ -315,7 +315,7 @@ next:
 
 #if CPU_DISASSEMBLER
 	if (cpu.disassemble && !rg_input_read_gamepad())
-		cpu_disassemble(PC, 1);
+		gb_cpu_disassemble(PC, 1);
 #endif
 
 	op = FETCH;
@@ -809,9 +809,9 @@ _skip:
 			count <<= 1;
 
 		/* Advance fixed-speed counters */
-		lcd_emulate(count);
-		sound_advance(count);
-		// sound_emulate(count);
+		gb_lcd_emulate(count);
+		gb_sound_advance(count);
+		// gb_sound_emulate(count);
 
 		// Here we could calculate when the next event is going to happen
 		// So that we can skip even more cycles, but it doesn't seem to save
@@ -884,7 +884,7 @@ static const char *cb_mnemonic_table[256] =
 	"SET 7,B", "SET 7,C", "SET 7,D", "SET 7,E", "SET 7,H", "SET 7,L", "SET 7,(HL)", "SET 7,A",
 };
 
-void cpu_disassemble(unsigned pc, int count)
+void gb_cpu_disassemble(unsigned pc, int count)
 {
 	while (count-- > 0)
 	{

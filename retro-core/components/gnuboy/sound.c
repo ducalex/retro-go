@@ -18,7 +18,7 @@
 static gb_snd_t snd;
 
 
-void sound_dirty(void)
+void gb_sound_dirty(void)
 {
 	S1.swlen = ((R_NR10>>4) & 7) << 14;
 	S1.len = (64-(R_NR11&63)) << 13;
@@ -70,15 +70,15 @@ static void sound_off(void)
 	R_NR50 = 0x77;
 	R_NR51 = 0xF3;
 	R_NR52 = 0x70;
-	sound_dirty();
+	gb_sound_dirty();
 }
 
-gb_snd_t *sound_init(void)
+gb_snd_t *gb_sound_init(void)
 {
 	return &snd;
 }
 
-void sound_reset(bool hard)
+void gb_sound_reset(bool hard)
 {
 	memset(&snd, 0, sizeof(snd));
 	memcpy(snd.wave, IS_CGB ? cgbwave : dmgwave, 16);
@@ -89,7 +89,7 @@ void sound_reset(bool hard)
 	R_NR52 = 0xF1;
 }
 
-void sound_emulate(void)
+void gb_sound_emulate(void)
 {
 	if (!snd.rate || snd.cycles < snd.rate)
 		return;
@@ -243,13 +243,13 @@ void sound_emulate(void)
 	R_NR52 = (R_NR52&0xf0) | S1.on | (S2.on<<1) | (S3.on<<2) | (S4.on<<3);
 }
 
-void sound_write(byte r, byte b)
+void gb_sound_write(byte r, byte b)
 {
 	if (!(R_NR52 & 128) && r != RI_NR52)
 		return;
 
 	if (snd.cycles >= snd.rate)
-		sound_emulate();
+		gb_sound_emulate();
 
 	switch (r)
 	{
