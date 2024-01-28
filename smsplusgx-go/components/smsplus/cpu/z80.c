@@ -128,6 +128,7 @@
 
 #define ALWAYS_INLINE static inline __attribute__((always_inline))
 #define INLINE static inline
+#define NO_INLINE static __attribute__((noinline))
 
 #if VERBOSE
 #define LOG(x)  logerror x
@@ -1169,13 +1170,11 @@ static const UINT8 cc[6][0x100] = {
 }
 
 
-static void EXEC_OP(UINT8 opcode);
-
 /**********************************************************
 * opcodes with DD/FD CB prefix
 * rotate, shift and bit operations with (IX+o)
 **********************************************************/
-INLINE void EXEC_XYCB(UINT8 opcode)
+NO_INLINE void EXEC_XYCB(UINT8 opcode)
 {
   CC(xycb, opcode);
 
@@ -1774,7 +1773,7 @@ ALWAYS_INLINE void EXEC_CB(UINT8 opcode)
 /**********************************************************
  * IX register related opcodes (DD prefix)
  **********************************************************/
-ALWAYS_INLINE void EXEC_DD(UINT8 opcode)
+NO_INLINE void EXEC_DD(UINT8 opcode)
 {
 exec_dd:
   CC(dd, opcode);
@@ -1872,13 +1871,13 @@ exec_dd:
   }
 
   // Illegal OP codes map to main opcodes
-  EXEC_OP(opcode);
+  // EXEC_OP(opcode);
 }
 
 /**********************************************************
  * IY register related opcodes (FD prefix)
  **********************************************************/
-ALWAYS_INLINE void EXEC_FD(UINT8 opcode)
+NO_INLINE void EXEC_FD(UINT8 opcode)
 {
 exec_fd:
   CC(fd, opcode);
@@ -1976,13 +1975,13 @@ exec_fd:
   }
 
   // Illegal OP codes map to main opcodes
-  EXEC_OP(opcode);
+  // EXEC_OP(opcode);
 }
 
 /**********************************************************
  * special opcodes (ED prefix)
  **********************************************************/
-ALWAYS_INLINE void EXEC_ED(UINT8 opcode)
+NO_INLINE void EXEC_ED(UINT8 opcode)
 {
   CC(ed, opcode);
 
@@ -2074,7 +2073,7 @@ ALWAYS_INLINE void EXEC_ED(UINT8 opcode)
 /**********************************************************
  * main opcodes
  **********************************************************/
-IRAM_ATTR static void EXEC_OP(UINT8 opcode)
+ALWAYS_INLINE void EXEC_OP(UINT8 opcode)
 {
   CC(op, opcode);
 
@@ -2559,7 +2558,7 @@ void z80_exit(void)
 /****************************************************************************
  * Execute 'cycles' T-states. Return number of T-states really executed
  ****************************************************************************/
-int z80_execute(int cycles)
+IRAM_ATTR int z80_execute(int cycles)
 {
   z80_ICount = cycles;
   z80_requested_cycles = z80_ICount;
