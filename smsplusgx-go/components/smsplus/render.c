@@ -371,7 +371,7 @@ void render_mode(int skip)
 }
 
 /* Draw a line of the display */
-IRAM_ATTR void render_line(int line)
+void render_line(int line)
 {
   int view = 1;
   int overscan = option.overscan;
@@ -509,7 +509,7 @@ static inline void* tile_get(int attr, int line)
 }
 
 /* Draw the Master System background */
-IRAM_ATTR void render_bg_sms(int line)
+void render_bg_sms(int line)
 {
   int locked = 0;
   int yscroll_mask = (vdp.extended) ? 256 : 224;
@@ -593,7 +593,7 @@ IRAM_ATTR void render_bg_sms(int line)
 
 
 /* Draw sprites */
-IRAM_ATTR void render_obj_sms(int line)
+void render_obj_sms(int line)
 {
   int i,x,start,end,xp,yp,n;
   uint8 sp,bg;

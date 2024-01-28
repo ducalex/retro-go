@@ -24,11 +24,18 @@
 
 int text_counter;               /* Text offset counter */
 
-static uint8 mc_lookup[16][256][8];    /* Expand BD, PG data into 8-bit pixels (MC) */
-static uint8 tms_lookup[16][256][2];   /* Expand BD, PG data into 8-bit pixels (G1,G2) */
-static uint8 tms_obj_lut[16*256];      /* Look up priority between SG and display pixels */
-static uint8 txt_lookup[256][2];       /* Expand BD, PG data into 8-bit pixels (TX) */
-static uint8 bp_expand[256][8];        /* Expand PG data into 8-bit pixels */
+static struct {
+    uint8 mc_lookup[16][256][8];    /* Expand BD, PG data into 8-bit pixels (MC) */
+    uint8 tms_lookup[16][256][2];   /* Expand BD, PG data into 8-bit pixels (G1,G2) */
+    uint8 tms_obj_lut[16*256];      /* Look up priority between SG and display pixels */
+    uint8 txt_lookup[256][2];       /* Expand BD, PG data into 8-bit pixels (TX) */
+    uint8 bp_expand[256][8];        /* Expand PG data into 8-bit pixels */
+} *tables;
+#define mc_lookup tables->mc_lookup
+#define tms_lookup tables->tms_lookup
+#define tms_obj_lut tables->tms_obj_lut
+#define txt_lookup tables->txt_lookup
+#define bp_expand tables->bp_expand
 
 static const uint8 diff_mask[]  = {0x07, 0x07, 0x0F, 0x0F};
 static const uint8 name_mask[]  = {0xFF, 0xFF, 0xFC, 0xFC};
@@ -293,6 +300,11 @@ void make_tms_tables(void)
     int i, j, x;
     int bd, pg, ct;
     int sx, bx;
+
+    if (!tables)
+        tables = calloc(1, sizeof(*tables));
+
+    assert(tables != NULL);
 
     for(sx = 0; sx < 16; sx++)
     {
