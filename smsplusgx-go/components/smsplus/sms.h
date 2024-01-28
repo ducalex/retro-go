@@ -135,21 +135,21 @@ typedef struct
   uint8 enabled;
   uint8 pages;
   uint8 fcr[4];
-}  __attribute__((packed, aligned(1))) bios_t;
+} bios_t;
 
 typedef struct
 {
   uint8 *rom;
-  uint8 pages;
   uint8 *fcr;
+  uint8 pages;
   uint8 mapper;
-}  __attribute__((packed, aligned(1))) slot_t;
+} slot_t;
 
 typedef struct {
   uint8* rom; //[0x2000];  /* BIOS ROM */
   uint8 pio_mode;     /* PIO mode */
   uint8 keypad[2];    /* Keypad inputs */
-}  __attribute__((packed, aligned(1))) t_coleco;
+} t_coleco;
 
 /* Global data */
 extern sms_t sms;
