@@ -214,14 +214,28 @@ static int z80_requested_cycles = 0;   /* requested cycles to execute this times
 
 static UINT32 EA;
 
-static UINT8 SZ[256];       /* zero and sign flags */
-static UINT8 SZ_BIT[256];   /* zero, sign and parity/overflow (=zero) flags for BIT opcode */
-static UINT8 SZP[256];      /* zero, sign and parity flags */
-static UINT8 SZHV_inc[256]; /* zero, sign, half carry and overflow flags INC r8 */
-static UINT8 SZHV_dec[256]; /* zero, sign, half carry and overflow flags DEC r8 */
+static UINT8 SZP[256];                            /* zero, sign and parity flags */
 
-static UINT8 *SZHVC_add = 0;
-static UINT8 *SZHVC_sub = 0;
+#define SZ(i) ((i) ? ((i) & (SF|YF|XF)) : (ZF))   /* zero and sign flags */
+#define SZ_BIT(i) ((i) ? ((i) & SF) : (ZF|PF))    /* zero, sign and parity/overflow (=zero) flags for BIT opcode */
+
+#define SZHVC_sub(c) {                                \
+  int oldval = A, newval = res;                       \
+  int val = oldval - newval - c;                      \
+  F = NF | SZ(newval);                                \
+  if ((val^oldval) & (oldval^newval) & 0x80) F |= VF; \
+  if ((newval & 0x0f) + c > (oldval & 0x0f)) F |= HF; \
+  if (newval + c > oldval) F |= CF;                   \
+}
+
+#define SZHVC_add(c) {                                \
+  int oldval = A, newval = res;                       \
+  int val = newval - oldval - c;                      \
+  F = SZ(newval);                                     \
+  if ((val^oldval^0x80) & (val^newval) & 0x80) F |= VF;\
+  if ((newval & 0x0f) - c < (oldval & 0x0f)) F |= HF; \
+  if (newval - c < oldval) F |= CF;                   \
+}
 
 static const UINT8 cc[6][0x100] = {
   { // Z80_TABLE_op
@@ -557,7 +571,7 @@ static const UINT8 cc[6][0x100] = {
  ***************************************************************/
 #define LD_A_R {                         \
   A = (R & 0x7f) | R2;                   \
-  F = (F & CF) | SZ[A] | ( IFF2 << 2 );  \
+  F = (F & CF) | SZ(A) | ( IFF2 << 2 );  \
 }
 
 /***************************************************************
@@ -572,7 +586,7 @@ static const UINT8 cc[6][0x100] = {
  ***************************************************************/
 #define LD_A_I {                         \
   A = I;                                 \
-  F = (F & CF) | SZ[A] | ( IFF2 << 2 );  \
+  F = (F & CF) | SZ(A) | ( IFF2 << 2 );  \
 }
 
 /***************************************************************
@@ -588,7 +602,9 @@ static const UINT8 cc[6][0x100] = {
  ***************************************************************/
 #define INC(value) ({                     \
   UINT8 res = ((value) + 1);              \
-  F = (F & CF) | SZHV_inc[res];           \
+  F = (F & CF) | SZ(res);                 \
+  if (res == 0x80) F |= VF;               \
+  else if ((res & 0x0f) == 0x00) F |= HF; \
   res;                                    \
 })
 
@@ -597,7 +613,9 @@ static const UINT8 cc[6][0x100] = {
  ***************************************************************/
 #define DEC(value) ({                     \
   UINT8 res = ((value) - 1);              \
-  F = (F & CF) | SZHV_dec[res];           \
+  F = (F & CF) | SZ(res) | NF;            \
+  if (res == 0x7f) F |= VF|HF;            \
+  else if ((res & 0x0f) == 0x0f) F |= HF; \
   res;                                    \
 })
 
@@ -662,9 +680,8 @@ static const UINT8 cc[6][0x100] = {
  * ADD  A,n
  ***************************************************************/
 #define ADD(value) {                        \
-  UINT32 ah = AFD & 0xff00;                 \
-  UINT32 res = (UINT8)((ah >> 8) + value);  \
-  F = SZHVC_add[ah | res];                  \
+  UINT32 res = (UINT8)(A + value);          \
+  SZHVC_add(0);                             \
   A = res;                                  \
 }
 
@@ -672,9 +689,9 @@ static const UINT8 cc[6][0x100] = {
  * ADC  A,n
  ***************************************************************/
 #define ADC(value) {                           \
-  UINT32 ah = AFD & 0xff00, c = AFD & 1;       \
-  UINT32 res = (UINT8)((ah >> 8) + value + c); \
-  F = SZHVC_add[(c << 16) | ah | res];         \
+  UINT32 c = AFD & 1;                          \
+  UINT32 res = (UINT8)(A + value + c);         \
+  SZHVC_add(c);                                \
   A = res;                                     \
 }
 
@@ -682,9 +699,8 @@ static const UINT8 cc[6][0x100] = {
  * SUB  n
  ***************************************************************/
 #define SUB(value) {                        \
-  UINT32 ah = AFD & 0xff00;                 \
-  UINT32 res = (UINT8)((ah >> 8) - value);  \
-  F = SZHVC_sub[ah | res];                  \
+  UINT32 res = (UINT8)(A - value);          \
+  SZHVC_sub(0);                             \
   A = res;                                  \
 }
 
@@ -692,9 +708,9 @@ static const UINT8 cc[6][0x100] = {
  * SBC  A,n
  ***************************************************************/
 #define SBC(value) {                            \
-  UINT32 ah = AFD & 0xff00, c = AFD & 1;        \
-  UINT32 res = (UINT8)((ah >> 8) - value - c);  \
-  F = SZHVC_sub[(c<<16) | ah | res];            \
+  UINT32 c = AFD & 1;                           \
+  UINT32 res = (UINT8)(A - value - c);          \
+  SZHVC_sub(c);                                 \
   A = res;                                      \
 }
 
@@ -749,10 +765,9 @@ static const UINT8 cc[6][0x100] = {
  ***************************************************************/
 #define CP(value) {                         \
   UINT32 val = value;                       \
-  UINT32 ah = AFD & 0xff00;                 \
-  UINT32 res = (UINT8)((ah >> 8) - val);    \
-  F = (SZHVC_sub[ah | res] & ~(YF | XF)) |  \
-    (val & (YF | XF));                      \
+  UINT32 res = (UINT8)(A - val);            \
+  SZHVC_sub(0);                             \
+  F = (F & ~(YF | XF)) | (val & (YF | XF)); \
 }
 
 /***************************************************************
@@ -927,19 +942,19 @@ static const UINT8 cc[6][0x100] = {
  ***************************************************************/
 #undef BIT
 #define BIT(bit,reg)                      \
-  F = (F & CF) | HF | (SZ_BIT[reg & (1<<bit)] & ~(YF|XF)) | (reg & (YF|XF));
+  F = (F & CF) | HF | SZ_BIT(reg & (1<<bit)) | (reg & (YF|XF));
 
 /***************************************************************
  * BIT  bit,(HL)
  ***************************************************************/
 #define BIT_HL(bit, reg)                    \
-  F = (F & CF) | HF | (SZ_BIT[reg & (1<<bit)] & ~(YF|XF)) | (WZ_H & (YF|XF));
+  F = (F & CF) | HF | SZ_BIT(reg & (1<<bit)) | (WZ_H & (YF|XF));
 
 /***************************************************************
  * BIT  bit,(IX/Y+o)
  ***************************************************************/
 #define BIT_XY(bit,reg)                     \
-  F = (F & CF) | HF | (SZ_BIT[reg & (1<<bit)] & ~(YF|XF)) | ((EA>>8) & (YF|XF));
+  F = (F & CF) | HF | SZ_BIT(reg & (1<<bit)) | ((EA>>8) & (YF|XF));
 
 /***************************************************************
  * RES  bit,r8
@@ -972,7 +987,7 @@ static const UINT8 cc[6][0x100] = {
   UINT8 res = A - val;                                  \
   WZ++;                                                 \
   HL++; BC--;                                           \
-  F = (F & CF) | (SZ[res]&~(YF|XF)) | ((A^val^res)&HF) | NF;  \
+  F = (F & CF) | (SZ(res)&~(YF|XF)) | ((A^val^res)&HF) | NF;  \
   if( F & HF ) res -= 1;                                \
   if( res & 0x02 ) F |= YF; /* bit 1 -> flag 5 */       \
   if( res & 0x08 ) F |= XF; /* bit 3 -> flag 3 */       \
@@ -990,7 +1005,7 @@ static const UINT8 cc[6][0x100] = {
   B--;                            \
   WM( HL, io );                        \
   HL++;                            \
-  F = SZ[B];                          \
+  F = SZ(B);                          \
   t = (unsigned)((C + 1) & 0xff) + (unsigned)io;        \
   if( io & SF ) F |= NF;                    \
   if( t & 0x100 ) F |= HF | CF;                \
@@ -1007,7 +1022,7 @@ static const UINT8 cc[6][0x100] = {
   WZ = BC + 1;  \
   OUT( BC, io );                        \
   HL++;                            \
-  F = SZ[B];                          \
+  F = SZ(B);                          \
   t = (unsigned)L + (unsigned)io;                \
   if( io & SF ) F |= NF;                    \
   if( t & 0x100 ) F |= HF | CF;                \
@@ -1035,7 +1050,7 @@ static const UINT8 cc[6][0x100] = {
   UINT8 res = A - val;                    \
   WZ--;  \
   HL--; BC--;                          \
-  F = (F & CF) | (SZ[res]&~(YF|XF)) | ((A^val^res)&HF) | NF;  \
+  F = (F & CF) | (SZ(res)&~(YF|XF)) | ((A^val^res)&HF) | NF;  \
   if( F & HF ) res -= 1;                    \
   if( res & 0x02 ) F |= YF; /* bit 1 -> flag 5 */        \
   if( res & 0x08 ) F |= XF; /* bit 3 -> flag 3 */        \
@@ -1053,7 +1068,7 @@ static const UINT8 cc[6][0x100] = {
   B--;                            \
   WM( HL, io );                        \
   HL--;                            \
-  F = SZ[B];                          \
+  F = SZ(B);                          \
   t = ((unsigned)(C - 1) & 0xff) + (unsigned)io;        \
   if( io & SF ) F |= NF;                    \
   if( t & 0x100 ) F |= HF | CF;                \
@@ -1070,7 +1085,7 @@ static const UINT8 cc[6][0x100] = {
   WZ = BC - 1;  \
   OUT( BC, io );                        \
   HL--;                            \
-  F = SZ[B];                          \
+  F = SZ(B);                          \
   t = (unsigned)L + (unsigned)io;                \
   if( io & SF ) F |= NF;                    \
   if( t & 0x100 ) F |= HF | CF;                \
@@ -2438,69 +2453,9 @@ ALWAYS_INLINE void take_interrupt(void)
  ****************************************************************************/
 void z80_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-  int i, p;
-
-  if( !SZHVC_add || !SZHVC_sub )
+  for (int i = 0; i < 256; i++)
   {
-    int oldval, newval, val;
-    UINT8 *padd, *padc, *psub, *psbc;
-    /* allocate big flag arrays once */
-    SZHVC_add = (UINT8 *)malloc(2*256*256);
-    SZHVC_sub = (UINT8 *)malloc(2*256*256);
-    if( !SZHVC_add || !SZHVC_sub )
-    {
-      return;
-    }
-    padd = &SZHVC_add[  0*256];
-    padc = &SZHVC_add[256*256];
-    psub = &SZHVC_sub[  0*256];
-    psbc = &SZHVC_sub[256*256];
-    for (oldval = 0; oldval < 256; oldval++)
-    {
-      for (newval = 0; newval < 256; newval++)
-      {
-        /* add or adc w/o carry set */
-        val = newval - oldval;
-        *padd = (newval) ? ((newval & 0x80) ? SF : 0) : ZF;
-        *padd |= (newval & (YF | XF));  /* undocumented flag bits 5+3 */
-        if( (newval & 0x0f) < (oldval & 0x0f) ) *padd |= HF;
-        if( newval < oldval ) *padd |= CF;
-        if( (val^oldval^0x80) & (val^newval) & 0x80 ) *padd |= VF;
-        padd++;
-
-        /* adc with carry set */
-        val = newval - oldval - 1;
-        *padc = (newval) ? ((newval & 0x80) ? SF : 0) : ZF;
-        *padc |= (newval & (YF | XF));  /* undocumented flag bits 5+3 */
-        if( (newval & 0x0f) <= (oldval & 0x0f) ) *padc |= HF;
-        if( newval <= oldval ) *padc |= CF;
-        if( (val^oldval^0x80) & (val^newval) & 0x80 ) *padc |= VF;
-        padc++;
-
-        /* cp, sub or sbc w/o carry set */
-        val = oldval - newval;
-        *psub = NF | ((newval) ? ((newval & 0x80) ? SF : 0) : ZF);
-        *psub |= (newval & (YF | XF));  /* undocumented flag bits 5+3 */
-        if( (newval & 0x0f) > (oldval & 0x0f) ) *psub |= HF;
-        if( newval > oldval ) *psub |= CF;
-        if( (val^oldval) & (oldval^newval) & 0x80 ) *psub |= VF;
-        psub++;
-
-        /* sbc with carry set */
-        val = oldval - newval - 1;
-        *psbc = NF | ((newval) ? ((newval & 0x80) ? SF : 0) : ZF);
-        *psbc |= (newval & (YF | XF));  /* undocumented flag bits 5+3 */
-        if( (newval & 0x0f) >= (oldval & 0x0f) ) *psbc |= HF;
-        if( newval >= oldval ) *psbc |= CF;
-        if( (val^oldval) & (oldval^newval) & 0x80 ) *psbc |= VF;
-        psbc++;
-      }
-    }
-  }
-
-  for (i = 0; i < 256; i++)
-  {
-    p = 0;
+    int p = 0;
     if( i&0x01 ) ++p;
     if( i&0x02 ) ++p;
     if( i&0x04 ) ++p;
@@ -2509,17 +2464,7 @@ void z80_init(int index, int clock, const void *config, int (*irqcallback)(int))
     if( i&0x20 ) ++p;
     if( i&0x40 ) ++p;
     if( i&0x80 ) ++p;
-    SZ[i] = i ? i & SF : ZF;
-    SZ[i] |= (i & (YF | XF));    /* undocumented flag bits 5+3 */
-    SZ_BIT[i] = i ? i & SF : ZF | PF;
-    SZ_BIT[i] |= (i & (YF | XF));  /* undocumented flag bits 5+3 */
-    SZP[i] = SZ[i] | ((p & 1) ? 0 : PF);
-    SZHV_inc[i] = SZ[i];
-    if( i == 0x80 ) SZHV_inc[i] |= VF;
-    if( (i & 0x0f) == 0x00 ) SZHV_inc[i] |= HF;
-    SZHV_dec[i] = SZ[i] | NF;
-    if( i == 0x7f ) SZHV_dec[i] |= VF;
-    if( (i & 0x0f) == 0x0f ) SZHV_dec[i] |= HF;
+    SZP[i] = SZ(i) | ((p & 1) ? 0 : PF);
   }
 
   /* Reset registers to their initial values */
@@ -2549,10 +2494,7 @@ void z80_reset(void)
 
 void z80_exit(void)
 {
-  if (SZHVC_add) free(SZHVC_add);
-  SZHVC_add = NULL;
-  if (SZHVC_sub) free(SZHVC_sub);
-  SZHVC_sub = NULL;
+  /* Nothing to do */
 }
 
 /****************************************************************************
