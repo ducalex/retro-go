@@ -84,7 +84,7 @@ void gb_sound_reset(bool hard)
 	memcpy(snd.wave, IS_CGB ? cgbwave : dmgwave, 16);
 	memcpy(GB.ioregs + 0x30, snd.wave, 16);
 	snd.rate = (int)(((1<<21) / (double)host.audio.samplerate) + 0.5);
-	host.audio.pos = 0;
+	GB.audio.pos = 0;
 	sound_off();
 	R_NR52 = 0xF1;
 }
@@ -96,7 +96,7 @@ void gb_sound_emulate(void)
 
 	int16_t *output_buf = host.audio.buffer + host.audio.pos;
 	int16_t *output_end = host.audio.buffer + host.audio.len;
-	bool stereo = host.audio.stereo;
+	bool stereo = host.audio.format == GB_AUDIO_STEREO_S16;
 
 	for (; snd.cycles >= snd.rate; snd.cycles -= snd.rate)
 	{
@@ -223,11 +223,19 @@ void gb_sound_emulate(void)
 		l <<= 4;
 		r <<= 4;
 
-		if (!output_buf || output_buf >= output_end)
-		{
+		if (!output_buf)
 			continue;
+
+		if (output_buf >= output_end)
+		{
+			// MESSAGE_WARN("Overflow\n");
+			if (host.audio.callback)
+				(host.audio.callback)(host.audio.buffer, output_buf - host.audio.buffer);
+			output_buf = host.audio.buffer;
+			host.audio.pos = 0;
 		}
-		else if (stereo)
+
+		if (stereo)
 		{
 			*output_buf++ = (int16_t)l; //+128;
 			*output_buf++ = (int16_t)r; //+128;

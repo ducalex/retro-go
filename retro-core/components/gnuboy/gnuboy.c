@@ -11,21 +11,17 @@
 // Set in the far future for VBA-M support
 #define RTC_BASE 1893456000
 
-gb_host_t host;
-
-
 // Note: Eventually we'll just pass a gb_host_t to init...
 // But for now assume it's been configured before we were alled!
-int gnuboy_init(int samplerate, bool stereo, int pixformat, void *blit_func)
+int gnuboy_init(int samplerate, gb_audio_fmt_t audio_fmt, gb_video_fmt_t video_fmt, gb_video_cb_t *video_callback, gb_audio_cb_t *audio_callback)
 {
-	host = (gb_host_t){
+	GB = (gnuboy_t){
 		.video.colorize = GB_PALETTE_CGB,
-		.video.format = pixformat,
-		.video.blit_func = blit_func,
-		.audio.buffer = malloc(samplerate / 4),
-		.audio.len = samplerate / 8,
+		.video.format = video_fmt,
+		.video.callback = video_callback,
 		.audio.samplerate = samplerate,
-		.audio.stereo = stereo,
+		.audio.format = audio_fmt,
+		.audio.callback = audio_callback,
 	};
 	if (!gb_hw_init())
 		return -1;
@@ -44,6 +40,19 @@ void gnuboy_reset(bool hard)
 	gb_lcd_reset(hard);
 	gb_cpu_reset(hard);
 	gb_sound_reset(hard);
+}
+
+
+void gnuboy_set_framebuffer(void *buffer)
+{
+	GB.video.buffer = buffer;
+}
+
+
+void gnuboy_set_soundbuffer(void *buffer, size_t length)
+{
+	GB.audio.buffer = buffer;
+	GB.audio.len = length;
 }
 
 
@@ -67,7 +76,9 @@ void gnuboy_reset(bool hard)
 */
 void gnuboy_run(bool draw)
 {
-	host.video.enabled = draw;
+	GB.video.enabled = draw;
+	GB.audio.pos = 0;
+
 	int cycles = 0;
 
 	// LCD is powered down, it won't touch LY or do vblank
@@ -85,8 +96,8 @@ void gnuboy_run(bool draw)
 
 	/* When using GB_PIXEL_PALETTED, the host should draw the frame in this callback
 	   because the palette can be modified below before gnuboy_run returns. */
-	if (draw && host.video.blit_func) {
-		(host.video.blit_func)();
+	if (draw && GB.video.callback) {
+		(GB.video.callback)(GB.video.buffer);
 	}
 
 	gb_hw_vblank();
@@ -95,6 +106,10 @@ void gnuboy_run(bool draw)
 	while (R_LY > 0) {
 		cycles += 228;
 		cycles -= gb_cpu_emulate(cycles);
+	}
+
+	if (GB.audio.callback && GB.audio.pos > 0) {
+		(GB.audio.callback)(GB.audio.buffer, GB.audio.pos);
 	}
 }
 
@@ -457,13 +472,13 @@ void gnuboy_set_hwtype(gb_hwtype_t type)
 
 int gnuboy_get_palette(void)
 {
-	return host.video.colorize;
+	return GB.video.colorize;
 }
 
 
 void gnuboy_set_palette(gb_palette_t pal)
 {
-	host.video.colorize = pal;
+	GB.video.colorize = pal;
 	gb_lcd_pal_dirty();
 }
 

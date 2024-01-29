@@ -7,6 +7,9 @@
 static bool fullFrame = false;
 static int skipFrames = 20; // The 20 is to hide startup flicker in some games
 
+static int video_time;
+static int audio_time;
+
 static const char *sramFile;
 static int autoSaveSRAM = 0;
 static int autoSaveSRAM_Timer = 0;
@@ -184,12 +187,22 @@ static rg_gui_event_t rtc_update_cb(rg_gui_option_t *option, rg_gui_event_t even
     return RG_DIALOG_VOID;
 }
 
-static void blit_frame(void)
+static void video_callback(void *buffer)
 {
+    int64_t startTime = rg_system_timer();
     rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
-    fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
+    fullFrame = rg_display_submit(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
     currentUpdate = previousUpdate;
-    host.video.buffer = currentUpdate->buffer;
+    gnuboy_set_framebuffer(currentUpdate->buffer);
+    video_time += rg_system_timer() - startTime;
+}
+
+
+static void audio_callback(void *buffer, size_t length)
+{
+    int64_t startTime = rg_system_timer();
+    rg_audio_submit(buffer, length >> 1);
+    audio_time += rg_system_timer() - startTime;
 }
 
 void gbc_main(void)
@@ -222,8 +235,11 @@ void gbc_main(void)
         RG_LOGE("Unable to create SRAM folder...");
 
     // Initialize the emulator
-    if (gnuboy_init(app->sampleRate, true, GB_PIXEL_565_BE, &blit_frame) < 0)
+    if (gnuboy_init(app->sampleRate, GB_AUDIO_STEREO_S16, GB_PIXEL_565_BE, &video_callback, &audio_callback) < 0)
         RG_PANIC("Emulator init failed!");
+
+    gnuboy_set_framebuffer(currentUpdate->buffer);
+    gnuboy_set_soundbuffer((void *)audioBuffer, sizeof(audioBuffer) / 2);
 
     // Load ROM
     if (gnuboy_load_rom(app->romPath) < 0)
@@ -256,8 +272,6 @@ void gbc_main(void)
 
     int joystick_old = -1;
     int joystick = 0;
-
-    host.video.buffer = currentUpdate->buffer;
 
     while (true)
     {
@@ -293,6 +307,8 @@ void gbc_main(void)
         int64_t startTime = rg_system_timer();
         bool drawFrame = !skipFrames;
 
+        video_time = audio_time = 0;
+
         gnuboy_run(drawFrame);
 
         if (autoSaveSRAM > 0)
@@ -311,9 +327,11 @@ void gbc_main(void)
         }
 
         int elapsed = rg_system_timer() - startTime;
+        elapsed -= audio_time;
 
         if (skipFrames == 0)
         {
+            // This is all nonsense, we should sample lag on a per second basis or something...
             int frameTime = 1000000 / (60 * app->speed);
             if (elapsed > frameTime - 2000) // It takes about 2ms to copy the audio buffer
                 skipFrames = (elapsed + frameTime / 2) / frameTime;
@@ -329,9 +347,5 @@ void gbc_main(void)
 
         // Tick before submitting audio/syncing
         rg_system_tick(elapsed);
-
-        // Audio is used to pace emulation :)
-        rg_audio_submit((void*)host.audio.buffer, host.audio.pos >> 1);
-        host.audio.pos = 0;
     }
 }

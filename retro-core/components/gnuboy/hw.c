@@ -7,7 +7,7 @@
 #include "lcd.h"
 
 gb_cart_t cart;
-gb_hw_t GB;
+gnuboy_t GB;
 
 #define hw GB
 
@@ -206,7 +206,7 @@ void gb_hw_setpad(int new_pad)
 }
 
 
-gb_hw_t *gb_hw_init(void)
+bool gb_hw_init(void)
 {
 	hw.rambanks = calloc(8, 4096);
 	hw.vbanks = calloc(2, 8192);
@@ -218,10 +218,10 @@ gb_hw_t *gb_hw_init(void)
 	if (!hw.rambanks || !hw.vbanks || !hw.cpu || !hw.snd)
 	{
 		// hw_deinit();
-		return NULL;
+		return false;
 	}
 
-	return &hw;
+	return true;
 }
 
 
