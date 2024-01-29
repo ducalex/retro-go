@@ -117,6 +117,10 @@ void sms_init(void)
 {
   z80_init(0, 0, 0, sms_irq_callback);
 
+  if (!sms.wram)
+    sms.wram = malloc(0x2000);
+  assert(sms.wram != NULL);
+
   /* Initialize port handlers */
   MESSAGE_INFO("sms.console= %#04x\n", sms.console);
 
@@ -164,7 +168,8 @@ void sms_init(void)
 
 void sms_shutdown(void)
 {
-  /* Nothing to do */
+  free(sms.wram);
+  sms.wram = NULL;
 }
 
 void sms_reset(void)

@@ -104,7 +104,7 @@ typedef struct {
 
 typedef struct
 {
-  uint8 wram[0x2000];
+  uint8 *wram; // [0x2000];
 
   uint8 paused;
   uint8 save;

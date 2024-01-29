@@ -147,6 +147,10 @@ void vdp_init(void)
   /* number of scanlines */
   vdp.lpf = sms.display ? 313 : 262;
 
+  if (!vdp.vram)
+    vdp.vram = malloc(0x4000);
+  assert(vdp.vram != NULL);
+
   /* reset viewport */
   viewport_check();
   bitmap.viewport.changed = 1;
@@ -154,7 +158,8 @@ void vdp_init(void)
 
 void vdp_shutdown(void)
 {
-  //
+  free(vdp.vram);
+  vdp.vram = NULL;
 }
 
 /* Reset VDP emulation */
