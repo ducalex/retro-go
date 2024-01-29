@@ -47,11 +47,10 @@ typedef struct
   UINT8  nmi_pending;    /* nmi pending */
   UINT8  irq_state;      /* irq line state */
   UINT8  after_ei;      /* are we in the EI shadow? */
-  UINT8 _pad00;
 
   const struct z80_irq_daisy_chain *daisy;
   int    (*irq_callback)(int irqline);
-} __attribute__((packed, aligned(1))) Z80_Regs;
+} Z80_Regs;
 
 
 extern int z80_cycle_count;

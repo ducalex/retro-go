@@ -119,14 +119,12 @@ typedef struct
   uint8 use_fm;
   uint8 memctrl;
   uint8 ioctrl;
-  uint8 _pad00;
-
-  sio_t sio;
 
   uint8 device[2];
   uint8 gun_offset;
-  uint8 _pad01;
-}  __attribute__((packed, aligned(1))) sms_t;
+
+  sio_t sio;
+} sms_t;
 
 /* BIOS ROM */
 typedef struct

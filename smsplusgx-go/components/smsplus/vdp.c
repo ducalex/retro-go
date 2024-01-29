@@ -161,7 +161,19 @@ void vdp_shutdown(void)
 void vdp_reset(void)
 {
   /* reset VDP structure */
-  memset(&vdp, 0, sizeof(vdp_t));
+  memset(vdp.vram, 0, 0x4000);
+  memset(vdp.cram, 0, 0x40);
+  memset(vdp.reg, 0, 0x10);
+  vdp.status = 0x00;
+  vdp.latch = 0x00;
+  vdp.pending = 0x00;
+  vdp.addr = 0x0000;
+  vdp.code = 0x00;
+  vdp.buffer = 0x00;
+  vdp.vint_pending = 0;
+  vdp.hint_pending = 0;
+  vdp.cram_latch = 0x0000;
+  vdp.spr_ovr = 0x00;
 
   /* number of scanlines */
   vdp.lpf = sms.display ? 313 : 262;
@@ -195,6 +207,7 @@ void vdp_reset(void)
   vdp.sa    = (vdp.reg[5] <<  7) & 0x3F80;
   vdp.sg    = (vdp.reg[6] << 11) & 0x3800;
   vdp.bd    = (vdp.reg[7] & 0x0F);
+  vdp.pn    = 0x00;
 
   bitmap.viewport.changed = 1;
 }

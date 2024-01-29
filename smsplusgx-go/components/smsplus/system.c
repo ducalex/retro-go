@@ -24,10 +24,7 @@
 
 #include "shared.h"
 
-bitmap_t bitmap;
-cart_t cart;
-input_t input;
-option_t option;
+smsplus_t smsplus;
 
 /* Run the virtual console emulation for one frame */
 void system_frame(int skip)

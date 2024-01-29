@@ -116,10 +116,19 @@ typedef struct
 } option_t;
 
 /* Global variables */
-extern bitmap_t bitmap;   /* Display bitmap */
-extern cart_t cart;       /* Game cartridge data */
-extern input_t input;     /* Controller input */
-extern option_t option;   /* EMulator configuration */
+typedef struct
+{
+  bitmap_t bitmap;   /* Display bitmap */
+  cart_t cart;       /* Game cartridge data */
+  input_t input;     /* Controller input */
+  option_t option;   /* EMulator configuration */
+} smsplus_t;
+
+extern smsplus_t smsplus;
+#define bitmap smsplus.bitmap
+#define cart smsplus.cart
+#define input smsplus.input
+#define option smsplus.option
 
 /* Function prototypes */
 extern void system_frame(int skip);

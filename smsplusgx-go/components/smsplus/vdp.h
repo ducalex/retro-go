@@ -53,15 +53,15 @@ typedef struct
     uint8 code;
     uint8 buffer;
 
-    int pn;
-    int ct;
-    int pg;
-    int sa;
-    int sg;
-    int ntab;
-    int satb;
-    int line;
-    int left;
+    int32 pn;
+    int32 ct;
+    int32 pg;
+    int32 sa;
+    int32 sg;
+    int32 ntab;
+    int32 satb;
+    int32 line;
+    int32 left;
 
     uint16 lpf;
     uint8 height;
@@ -77,9 +77,7 @@ typedef struct
 
     uint8 spr_ovr;
     uint8 bd;
-    uint8 _pad00;
-    uint8 _pad01;
-} __attribute__((packed, aligned(1))) vdp_t;
+} vdp_t;
 
 /* Global data */
 extern vdp_t vdp;

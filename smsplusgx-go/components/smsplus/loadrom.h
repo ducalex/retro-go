@@ -27,6 +27,7 @@
 
 /* Function prototypes */
 int load_rom(const char *filename);
+void set_rom_config(void);
 
 #endif /* _LOADROM_H_ */
 

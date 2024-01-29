@@ -170,7 +170,7 @@ void sms_reset(void)
 
   /* clear SMS context */
   memset(dummy_memory, data_bus_pullup, sizeof(dummy_memory));
-  memset(sms.wram, 0, sizeof(sms.wram));
+  memset(sms.wram, 0, 0x2000);
   sms.paused    = 0x00;
   sms.save      = 0x00;
   sms.fm_detect = 0x00;
