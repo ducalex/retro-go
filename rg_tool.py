@@ -198,11 +198,12 @@ def clean_app(app):
 def build_app(app, device_type, with_profiling=False, no_networking=False):
     # To do: clean up if any of the flags changed since last build
     print("Building app '%s'" % app)
-    os.putenv("RG_ENABLE_PROFILING", "1" if with_profiling else "0")
-    os.putenv("RG_ENABLE_NETWORKING", "0" if no_networking else "1")
-    os.putenv("RG_BUILD_TARGET", re.sub(r'[^A-Z0-9]', '_', device_type.upper()))
-    os.putenv("RG_BUILD_VERSION", PROJECT_VER)
-    subprocess.run("idf.py app", shell=True, check=True, cwd=os.path.join(os.getcwd(), app))
+    args = ["idf.py", "app"]
+    args.append(f"-DRG_PROJECT_VERSION={PROJECT_VER}")
+    args.append(f"-DRG_BUILD_TARGET={re.sub(r'[^A-Z0-9]', '_', device_type.upper())}")
+    args.append(f"-DRG_ENABLE_PROFILING={1 if with_profiling else 0}")
+    args.append(f"-DRG_ENABLE_NETWORKING={0 if no_networking else 1}")
+    subprocess.run(args, shell=True, check=True, cwd=os.path.join(os.getcwd(), app))
     print("Done.\n")
 
 

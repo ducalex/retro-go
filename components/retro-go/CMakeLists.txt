@@ -26,17 +26,21 @@ set_source_files_properties(
     -O3
 )
 
-if($ENV{RG_ENABLE_NETPLAY})
+if(RG_ENABLE_NETPLAY)
     component_compile_options(-DRG_ENABLE_NETWORKING -DRG_ENABLE_NETPLAY)
-elseif($ENV{RG_ENABLE_NETWORKING})
+elseif(RG_ENABLE_NETWORKING)
     component_compile_options(-DRG_ENABLE_NETWORKING)
 endif()
 
-if($ENV{RG_ENABLE_PROFILING})
+if(RG_ENABLE_PROFILING)
     component_compile_options(-DRG_ENABLE_PROFILING)
 endif()
 
-set(RG_TARGET "RG_TARGET_$ENV{RG_BUILD_TARGET}")
+if(RG_PROJECT_VERSION)
+    component_compile_options(-DRG_PROJECT_VERSION="${RG_PROJECT_VERSION}")
+endif()
+
+set(RG_TARGET "RG_TARGET_${RG_BUILD_TARGET}")
 string(TIMESTAMP RG_TIME "%s")
 
 message(STATUS "Target: ${RG_TARGET}")
