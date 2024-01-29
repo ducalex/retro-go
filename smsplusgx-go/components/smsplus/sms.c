@@ -36,21 +36,24 @@ t_coleco coleco;
 
 uint8 dummy_memory[0x400];
 
-static void writemem_mapper_none(int offset, int data)
+static uint8 readmem_mapper_none(uint16 addr)
+{
+  return cpu_readmap[addr >> 10][addr & 0x03FF];
+}
+
+static void writemem_mapper_none(uint16 offset, uint8 data)
 {
   cpu_writemap[offset >> 10][offset & 0x03FF] = data;
 }
 
-static void writemem_mapper_sega(int offset, int data)
+static void writemem_mapper_sega(uint16 offset, uint8 data)
 {
-  if(offset >= 0xFFFC)
-  {
+  if (offset >= 0xFFFC)
     mapper_16k_w(offset & 3, data);
-  }
   cpu_writemap[offset >> 10][offset & 0x03FF] = data;
 }
 
-static void writemem_mapper_codies(int offset, int data)
+static void writemem_mapper_codies(uint16 offset, uint8 data)
 {
   if (offset == 0x0000)
     mapper_16k_w(1,data);
@@ -62,7 +65,7 @@ static void writemem_mapper_codies(int offset, int data)
     cpu_writemap[offset >> 10][offset & 0x03FF] = data;
 }
 
-static void writemem_mapper_korea_msx(int offset, int data)
+static void writemem_mapper_korea_msx(uint16 offset, uint8 data)
 {
   if (offset <= 0x0003)
     mapper_8k_w(offset,data);
@@ -70,7 +73,7 @@ static void writemem_mapper_korea_msx(int offset, int data)
     cpu_writemap[offset >> 10][offset & 0x03FF] = data;
 }
 
-static void writemem_mapper_korea(int offset, int data)
+static void writemem_mapper_korea(uint16 offset, uint8 data)
 {
   if (offset == 0xA000)
     mapper_16k_w(3,data);
@@ -84,23 +87,28 @@ void mapper_reset(void)
   switch(slot.mapper)
   {
     case MAPPER_NONE:
-      cpu_writemem16 = writemem_mapper_none;
+      Z80.mem_read = readmem_mapper_none;
+      Z80.mem_write = writemem_mapper_none;
       break;
 
     case MAPPER_CODIES:
-      cpu_writemem16 = writemem_mapper_codies;
+      Z80.mem_read = readmem_mapper_none;
+      Z80.mem_write = writemem_mapper_codies;
       break;
 
     case MAPPER_KOREA:
-      cpu_writemem16 = writemem_mapper_korea;
+      Z80.mem_read = readmem_mapper_none;
+      Z80.mem_write = writemem_mapper_korea;
       break;
 
     case MAPPER_KOREA_MSX:
-      cpu_writemem16 = writemem_mapper_korea_msx;
+      Z80.mem_read = readmem_mapper_none;
+      Z80.mem_write = writemem_mapper_korea_msx;
       break;
 
     default:
-      cpu_writemem16 = writemem_mapper_sega;
+      Z80.mem_read = readmem_mapper_none;
+      Z80.mem_write = writemem_mapper_sega;
       break;
   }
 }
@@ -115,40 +123,40 @@ void sms_init(void)
   switch(sms.console)
   {
     case CONSOLE_COLECO:
-      cpu_writeport16 = coleco_port_w;
-      cpu_readport16 = coleco_port_r;
+      Z80.port_write = coleco_port_w;
+      Z80.port_read = coleco_port_r;
       data_bus_pullup = 0xFF;
       break;
 
     case CONSOLE_SG1000:
     case CONSOLE_SC3000:
     case CONSOLE_SF7000:
-      cpu_writeport16 = tms_port_w;
-      cpu_readport16 = tms_port_r;
+      Z80.port_write = tms_port_w;
+      Z80.port_read = tms_port_r;
       data_bus_pullup = 0xFF;
       break;
 
     case CONSOLE_SMS:
-      cpu_writeport16 = sms_port_w;
-      cpu_readport16 = sms_port_r;
+      Z80.port_write = sms_port_w;
+      Z80.port_read = sms_port_r;
       data_bus_pullup = 0x00;
       break;
 
     case CONSOLE_SMS2:
-      cpu_writeport16 = sms_port_w;
-      cpu_readport16 = sms_port_r;
+      Z80.port_write = sms_port_w;
+      Z80.port_read = sms_port_r;
       data_bus_pullup = 0xFF;
       break;
 
     case CONSOLE_GG:
-      cpu_writeport16 = gg_port_w;
-      cpu_readport16 = gg_port_r;
+      Z80.port_write = gg_port_w;
+      Z80.port_read = gg_port_r;
       data_bus_pullup = 0xFF;
       break;
 
     case CONSOLE_GGMS:
-      cpu_writeport16 = ggms_port_w;
-      cpu_readport16 = ggms_port_r;
+      Z80.port_write = ggms_port_w;
+      Z80.port_read = ggms_port_r;
       data_bus_pullup = 0xFF;
       break;
   }

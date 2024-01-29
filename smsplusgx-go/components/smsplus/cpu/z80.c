@@ -139,10 +139,6 @@
 unsigned char *cpu_readmap[64];
 unsigned char *cpu_writemap[64];
 
-void (*cpu_writemem16)(int address, int data);
-void (*cpu_writeport16)(uint16 port, uint8 data);
-uint8 (*cpu_readport16)(uint16 port);
-
 int z80_cycle_count = 0;        /* running total of cycles executed */
 
 #define CF  0x01
@@ -379,17 +375,18 @@ static const UINT8 cc[6][0x100] = {
 /***************************************************************
  * Input a byte from given I/O port
  ***************************************************************/
-#define IN(port) cpu_readport16(port)
+#define IN(port) Z80.port_read(port)
 
 /***************************************************************
  * Output a byte to given I/O port
  ***************************************************************/
-#define OUT(port,value) cpu_writeport16(port,value)
+#define OUT(port,value) Z80.port_write(port, value)
 
 /***************************************************************
  * Read a byte from given memory location
  ***************************************************************/
 #define RM(addr) (cpu_readmap[(addr) >> 10][(addr) & 0x03FF])
+// #define RM(addr) Z80.mem_read(addr)
 
 /***************************************************************
  * Read a word from given memory location
@@ -402,7 +399,7 @@ static const UINT8 cc[6][0x100] = {
 /***************************************************************
  * Write a byte to given memory location
  ***************************************************************/
-#define WM(addr,value) cpu_writemem16(addr,value)
+#define WM(addr,value) Z80.mem_write(addr, value)
 
 /***************************************************************
  * Write a word to given memory location
@@ -1489,7 +1486,7 @@ NO_INLINE void EXEC_XYCB(UINT8 opcode)
  * opcodes with CB prefix
  * rotate, shift and bit operations
  **********************************************************/
-ALWAYS_INLINE void EXEC_CB(UINT8 opcode)
+NO_INLINE void EXEC_CB(UINT8 opcode)
 {
   CC(cb, opcode);
 

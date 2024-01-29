@@ -50,6 +50,12 @@ typedef struct
 
   const struct z80_irq_daisy_chain *daisy;
   int    (*irq_callback)(int irqline);
+
+  uint8 (*mem_read)(uint16 address);
+  void (*mem_write)(uint16 address, uint8 data);
+
+  void (*port_write)(uint16 port, uint8 data);
+  uint8 (*port_read)(uint16 port);
 } Z80_Regs;
 
 
@@ -69,11 +75,5 @@ int z80_get_elapsed_cycles(void);
 
 extern unsigned char *cpu_readmap[64];
 extern unsigned char *cpu_writemap[64];
-
-extern void (*cpu_writemem16)(int address, int data);
-extern void (*cpu_writeport16)(uint16 port, uint8 data);
-extern uint8 (*cpu_readport16)(uint16 port);
-
-
 
 #endif
