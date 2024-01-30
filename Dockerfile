@@ -12,7 +12,7 @@ RUN cd /opt/esp/idf && \
 	patch --ignore-whitespace -p1 -i "/app/tools/patches/sdcard-fix (esp-idf 4.2 and 4.3).diff"
 
 # Build
-RUN chsh -s /bin/bash
+SHELL ["/bin/bash", "-c"]
 RUN . /opt/esp/idf/export.sh && \
 	python rg_tool.py --target=odroid-go release && \
 	python rg_tool.py --target=mrgc-g32 release
