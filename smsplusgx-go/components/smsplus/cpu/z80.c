@@ -127,7 +127,6 @@
 #define VERBOSE 0
 
 #define ALWAYS_INLINE static inline __attribute__((always_inline))
-#define INLINE static inline
 #define NO_INLINE static __attribute__((noinline))
 
 #if VERBOSE
@@ -210,28 +209,12 @@ static int z80_requested_cycles = 0;   /* requested cycles to execute this times
 
 static UINT32 EA;
 
-static UINT8 SZP[256];                            /* zero, sign and parity flags */
-
 #define SZ(i) ((i) ? ((i) & (SF|YF|XF)) : (ZF))   /* zero and sign flags */
 #define SZ_BIT(i) ((i) ? ((i) & SF) : (ZF|PF))    /* zero, sign and parity/overflow (=zero) flags for BIT opcode */
 
-#define SZHVC_sub(c) {                                \
-  int oldval = A, newval = res;                       \
-  int val = oldval - newval - c;                      \
-  F = NF | SZ(newval);                                \
-  if ((val^oldval) & (oldval^newval) & 0x80) F |= VF; \
-  if ((newval & 0x0f) + c > (oldval & 0x0f)) F |= HF; \
-  if (newval + c > oldval) F |= CF;                   \
-}
-
-#define SZHVC_add(c) {                                \
-  int oldval = A, newval = res;                       \
-  int val = newval - oldval - c;                      \
-  F = SZ(newval);                                     \
-  if ((val^oldval^0x80) & (val^newval) & 0x80) F |= VF;\
-  if ((newval & 0x0f) - c < (oldval & 0x0f)) F |= HF; \
-  if (newval - c < oldval) F |= CF;                   \
-}
+static UINT8 SZP[256];      /* zero, sign and parity flags */
+static UINT8 *SZHVC_add = 0;
+static UINT8 *SZHVC_sub = 0;
 
 static const UINT8 cc[6][0x100] = {
   { // Z80_TABLE_op
@@ -677,8 +660,9 @@ static const UINT8 cc[6][0x100] = {
  * ADD  A,n
  ***************************************************************/
 #define ADD(value) {                        \
-  UINT32 res = (UINT8)(A + value);          \
-  SZHVC_add(0);                             \
+  UINT32 ah = AFD & 0xff00;                 \
+  UINT32 res = (UINT8)((ah >> 8) + value);  \
+  F = SZHVC_add[ah | res];                  \
   A = res;                                  \
 }
 
@@ -686,9 +670,9 @@ static const UINT8 cc[6][0x100] = {
  * ADC  A,n
  ***************************************************************/
 #define ADC(value) {                           \
-  UINT32 c = AFD & 1;                          \
-  UINT32 res = (UINT8)(A + value + c);         \
-  SZHVC_add(c);                                \
+  UINT32 ah = AFD & 0xff00, c = AFD & 1;       \
+  UINT32 res = (UINT8)((ah >> 8) + value + c); \
+  F = SZHVC_add[(c << 16) | ah | res];         \
   A = res;                                     \
 }
 
@@ -696,8 +680,9 @@ static const UINT8 cc[6][0x100] = {
  * SUB  n
  ***************************************************************/
 #define SUB(value) {                        \
-  UINT32 res = (UINT8)(A - value);          \
-  SZHVC_sub(0);                             \
+  UINT32 ah = AFD & 0xff00;                 \
+  UINT32 res = (UINT8)((ah >> 8) - value);  \
+  F = SZHVC_sub[ah | res];                  \
   A = res;                                  \
 }
 
@@ -705,9 +690,9 @@ static const UINT8 cc[6][0x100] = {
  * SBC  A,n
  ***************************************************************/
 #define SBC(value) {                            \
-  UINT32 c = AFD & 1;                           \
-  UINT32 res = (UINT8)(A - value - c);          \
-  SZHVC_sub(c);                                 \
+  UINT32 ah = AFD & 0xff00, c = AFD & 1;        \
+  UINT32 res = (UINT8)((ah >> 8) - value - c);  \
+  F = SZHVC_sub[(c<<16) | ah | res];            \
   A = res;                                      \
 }
 
@@ -762,9 +747,10 @@ static const UINT8 cc[6][0x100] = {
  ***************************************************************/
 #define CP(value) {                         \
   UINT32 val = value;                       \
-  UINT32 res = (UINT8)(A - val);            \
-  SZHVC_sub(0);                             \
-  F = (F & ~(YF | XF)) | (val & (YF | XF)); \
+  UINT32 ah = AFD & 0xff00;                 \
+  UINT32 res = (UINT8)((ah >> 8) - val);    \
+  F = (SZHVC_sub[ah | res] & ~(YF | XF)) |  \
+    (val & (YF | XF));                      \
 }
 
 /***************************************************************
@@ -2450,9 +2436,69 @@ ALWAYS_INLINE void take_interrupt(void)
  ****************************************************************************/
 void z80_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-  for (int i = 0; i < 256; i++)
+  int i, p;
+
+  if( !SZHVC_add || !SZHVC_sub )
   {
-    int p = 0;
+    int oldval, newval, val;
+    UINT8 *padd, *padc, *psub, *psbc;
+    /* allocate big flag arrays once */
+    SZHVC_add = (UINT8 *)malloc(2*256*256);
+    SZHVC_sub = (UINT8 *)malloc(2*256*256);
+    if( !SZHVC_add || !SZHVC_sub )
+    {
+      return;
+    }
+    padd = &SZHVC_add[  0*256];
+    padc = &SZHVC_add[256*256];
+    psub = &SZHVC_sub[  0*256];
+    psbc = &SZHVC_sub[256*256];
+    for (oldval = 0; oldval < 256; oldval++)
+    {
+      for (newval = 0; newval < 256; newval++)
+      {
+        /* add or adc w/o carry set */
+        val = newval - oldval;
+        *padd = (newval) ? ((newval & 0x80) ? SF : 0) : ZF;
+        *padd |= (newval & (YF | XF));  /* undocumented flag bits 5+3 */
+        if( (newval & 0x0f) < (oldval & 0x0f) ) *padd |= HF;
+        if( newval < oldval ) *padd |= CF;
+        if( (val^oldval^0x80) & (val^newval) & 0x80 ) *padd |= VF;
+        padd++;
+
+        /* adc with carry set */
+        val = newval - oldval - 1;
+        *padc = (newval) ? ((newval & 0x80) ? SF : 0) : ZF;
+        *padc |= (newval & (YF | XF));  /* undocumented flag bits 5+3 */
+        if( (newval & 0x0f) <= (oldval & 0x0f) ) *padc |= HF;
+        if( newval <= oldval ) *padc |= CF;
+        if( (val^oldval^0x80) & (val^newval) & 0x80 ) *padc |= VF;
+        padc++;
+
+        /* cp, sub or sbc w/o carry set */
+        val = oldval - newval;
+        *psub = NF | ((newval) ? ((newval & 0x80) ? SF : 0) : ZF);
+        *psub |= (newval & (YF | XF));  /* undocumented flag bits 5+3 */
+        if( (newval & 0x0f) > (oldval & 0x0f) ) *psub |= HF;
+        if( newval > oldval ) *psub |= CF;
+        if( (val^oldval) & (oldval^newval) & 0x80 ) *psub |= VF;
+        psub++;
+
+        /* sbc with carry set */
+        val = oldval - newval - 1;
+        *psbc = NF | ((newval) ? ((newval & 0x80) ? SF : 0) : ZF);
+        *psbc |= (newval & (YF | XF));  /* undocumented flag bits 5+3 */
+        if( (newval & 0x0f) >= (oldval & 0x0f) ) *psbc |= HF;
+        if( newval >= oldval ) *psbc |= CF;
+        if( (val^oldval) & (oldval^newval) & 0x80 ) *psbc |= VF;
+        psbc++;
+      }
+    }
+  }
+
+  for (i = 0; i < 256; i++)
+  {
+    p = 0;
     if( i&0x01 ) ++p;
     if( i&0x02 ) ++p;
     if( i&0x04 ) ++p;
@@ -2491,7 +2537,10 @@ void z80_reset(void)
 
 void z80_exit(void)
 {
-  /* Nothing to do */
+  if (SZHVC_add) free(SZHVC_add);
+  SZHVC_add = NULL;
+  if (SZHVC_sub) free(SZHVC_sub);
+  SZHVC_sub = NULL;
 }
 
 /****************************************************************************
