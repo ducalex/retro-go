@@ -115,11 +115,15 @@ def analyze_profile(frames):
         debug_print("")
 
 
+def run(cmd, cwd=None, check=True):
+    print(f"Running command: {' '.join(cmd)}")
+    return subprocess.run(cmd, shell=os.name == 'nt', cwd=cwd, check=check)
+
+
 def build_firmware(apps, device_type, fw_format="odroid-go"):
     print("Building firmware with: %s\n" % " ".join(apps))
     args = [
-        sys.executable,
-        "tools/mkfw.py",
+        os.path.join("tools", "mkfw.py"),
         ("%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, device_type)).lower(),
         ("%s %s" % (PROJECT_NAME, PROJECT_VER)),
         PROJECT_ICON
@@ -132,8 +136,7 @@ def build_firmware(apps, device_type, fw_format="odroid-go"):
         part = PROJECT_APPS[app]
         args += [str(part[0]), str(part[1]), str(part[2]), app, os.path.join(app, "build", app + ".bin")]
 
-    print("Running: %s" % ' '.join(shlex.quote(arg) for arg in args[1:]))
-    subprocess.run(args, check=True)
+    run(args)
 
 
 def build_image(apps, device_type, img_format="esp32"):
@@ -158,14 +161,13 @@ def build_image(apps, device_type, img_format="esp32"):
     print("Generating partition table...")
     with open("partitions.csv", "w") as f:
         f.write("\n".join(table_csv))
-    subprocess.run("gen_esp32part.py partitions.csv partitions.bin", shell=True, check=True)
+    run(["gen_esp32part.py", "partitions.csv", "partitions.bin"])
     with open("partitions.bin", "rb") as f:
         table_bin = f.read()
 
     print("Building bootloader...")
-    cwd = os.path.join(os.getcwd(), list(apps)[0])
-    subprocess.run("idf.py bootloader", shell=True, check=True, cwd=cwd)
-    with open(os.path.join(cwd, "build", "bootloader", "bootloader.bin"), "rb") as f:
+    run(["idf.py", "bootloader"], cwd=os.path.join(os.getcwd(), list(apps)[0]))
+    with open(os.path.join(os.getcwd(), list(apps)[0], "build", "bootloader", "bootloader.bin"), "rb") as f:
         bootloader_bin = f.read()
 
     if img_format == "esp32s3":
@@ -203,8 +205,7 @@ def build_app(app, device_type, with_profiling=False, no_networking=False):
     args.append(f"-DRG_BUILD_TARGET={re.sub(r'[^A-Z0-9]', '_', device_type.upper())}")
     args.append(f"-DRG_ENABLE_PROFILING={1 if with_profiling else 0}")
     args.append(f"-DRG_ENABLE_NETWORKING={0 if no_networking else 1}")
-    print(f"Running {' '.join(args)}")
-    subprocess.run(" ".join(args), shell=True, check=True, cwd=os.path.join(os.getcwd(), app))
+    run(args, cwd=os.path.join(os.getcwd(), app))
     print("Done.\n")
 
 
@@ -214,12 +215,11 @@ def flash_app(app, port, baudrate=1152000):
     os.putenv("ESPTOOL_PORT", port)
     if not os.path.exists("partitions.bin"):
         print("Reading device's partition table...")
-        subprocess.run("esptool.py read_flash 0x8000 0x1000 partitions.bin", check=True, shell=True)
-        subprocess.run("gen_esp32part.py partitions.bin", shell=True)
+        run(["esptool.py", "read_flash", "0x8000", "0x1000", "partitions.bin"], check=False)
+        run(["gen_esp32part.py", "partitions.bin"], check=False)
     app_bin = os.path.join(app, "build", app + ".bin")
     print(f"Flashing '{app_bin}' to port {port}")
-    args = ["parttool.py", "--partition-table-file", "partitions.bin", "write_partition", "--partition-name", app, "--input", app_bin]
-    subprocess.run(args, check=True, shell=True)
+    run(["parttool.py", "--partition-table-file", "partitions.bin", "write_partition", "--partition-name", app, "--input", app_bin])
 
 
 def monitor_app(app, port, baudrate=115200):
