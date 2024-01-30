@@ -7,7 +7,7 @@
 #include "lcd.h"
 
 gb_cart_t cart;
-gnuboy_t GB;
+gb_t GB;
 
 #define hw GB
 

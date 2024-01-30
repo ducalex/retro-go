@@ -259,10 +259,10 @@ typedef struct
 		// This hack simply constrains the window top position
 		int window_offset;
 	} compat;
-} gnuboy_t;
+} gb_t;
 
 extern gb_cart_t cart;
-extern gnuboy_t GB;
+extern gb_t GB;
 #define host GB
 
 bool gb_hw_init(void);

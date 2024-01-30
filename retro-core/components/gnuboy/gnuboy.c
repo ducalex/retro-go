@@ -15,7 +15,7 @@
 // But for now assume it's been configured before we were alled!
 int gnuboy_init(int samplerate, gb_audio_fmt_t audio_fmt, gb_video_fmt_t video_fmt, gb_video_cb_t *video_callback, gb_audio_cb_t *audio_callback)
 {
-	GB = (gnuboy_t){
+	GB = (gb_t){
 		.video.colorize = GB_PALETTE_CGB,
 		.video.format = video_fmt,
 		.video.callback = video_callback,
