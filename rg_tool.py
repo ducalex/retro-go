@@ -203,7 +203,8 @@ def build_app(app, device_type, with_profiling=False, no_networking=False):
     args.append(f"-DRG_BUILD_TARGET={re.sub(r'[^A-Z0-9]', '_', device_type.upper())}")
     args.append(f"-DRG_ENABLE_PROFILING={1 if with_profiling else 0}")
     args.append(f"-DRG_ENABLE_NETWORKING={0 if no_networking else 1}")
-    subprocess.run(args, shell=True, check=True, cwd=os.path.join(os.getcwd(), app))
+    print(f"Running {' '.join(args)}")
+    subprocess.run(" ".join(args), shell=True, check=True, cwd=os.path.join(os.getcwd(), app))
     print("Done.\n")
 
 
