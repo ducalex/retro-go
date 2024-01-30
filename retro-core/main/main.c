@@ -21,10 +21,14 @@ void app_main(void)
         nes_main();
     else if (strcmp(app->configNs, "pce") == 0)
         pce_main();
+    // else if (strcmp(app->configNs, "sms") == 0)
+    //     sms_main();
     else if (strcmp(app->configNs, "gw") == 0)
         gw_main();
     else if (strcmp(app->configNs, "lnx") == 0)
         lynx_main();
+    // else if (strcmp(app->configNs, "snes") == 0)
+    //     snes_main();
     else
         launcher_main();
 

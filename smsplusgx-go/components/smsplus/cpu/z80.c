@@ -1164,9 +1164,26 @@ static const UINT8 cc[6][0x100] = {
  ***************************************************************/
 #define EI {                  \
   IFF1 = IFF2 = 1;            \
-  Z80.after_ei = TRUE;        \
+  Z80.after_ei = true;        \
 }
 
+/**********************************************************
+* Default/dummy read/write functions
+**********************************************************/
+static UINT8 dummy_read(UINT16 addr)
+{
+  return 0;
+}
+
+static void dummy_write(UINT16 addr, UINT8 val)
+{
+  //
+}
+
+static UINT16 dummy_irq(UINT8 param)
+{
+  return 0xFF;
+}
 
 /**********************************************************
 * opcodes with DD/FD CB prefix
@@ -1176,296 +1193,90 @@ NO_INLINE void EXEC_XYCB(UINT8 opcode)
 {
   CC(xycb, opcode);
 
-  switch(opcode)
+	UINT8 temp, *r;
+
+	switch (opcode & 7)
+	{
+	case 0: r = &B; break;
+	case 1: r = &C; break;
+	case 2: r = &D; break;
+	case 3: r = &E; break;
+	case 4: r = &H; break;
+	case 5: r = &L; break;
+	case 6: r = &temp; break;
+	case 7: r = &A; break;
+	}
+
+  opcode >>= 3;
+
+  switch (opcode)
   {
-    OP(0x00, { B = RLC( RM(EA) ); WM( EA,B );            }); /* RLC  B=(XY+o)    */
-    OP(0x01, { C = RLC( RM(EA) ); WM( EA,C );            }); /* RLC  C=(XY+o)    */
-    OP(0x02, { D = RLC( RM(EA) ); WM( EA,D );            }); /* RLC  D=(XY+o)    */
-    OP(0x03, { E = RLC( RM(EA) ); WM( EA,E );            }); /* RLC  E=(XY+o)    */
-    OP(0x04, { H = RLC( RM(EA) ); WM( EA,H );            }); /* RLC  H=(XY+o)    */
-    OP(0x05, { L = RLC( RM(EA) ); WM( EA,L );            }); /* RLC  L=(XY+o)    */
-    OP(0x06, { WM( EA, RLC( RM(EA) ) );                  }); /* RLC  (XY+o)      */
-    OP(0x07, { A = RLC( RM(EA) ); WM( EA,A );            }); /* RLC  A=(XY+o)    */
+    case 0x00: /* RLC  r=(XY+o)    */
+      *r = RLC(RM(EA));
+      break;
 
-    OP(0x08, { B = RRC( RM(EA) ); WM( EA,B );            }); /* RRC  B=(XY+o)    */
-    OP(0x09, { C = RRC( RM(EA) ); WM( EA,C );            }); /* RRC  C=(XY+o)    */
-    OP(0x0a, { D = RRC( RM(EA) ); WM( EA,D );            }); /* RRC  D=(XY+o)    */
-    OP(0x0b, { E = RRC( RM(EA) ); WM( EA,E );            }); /* RRC  E=(XY+o)    */
-    OP(0x0c, { H = RRC( RM(EA) ); WM( EA,H );            }); /* RRC  H=(XY+o)    */
-    OP(0x0d, { L = RRC( RM(EA) ); WM( EA,L );            }); /* RRC  L=(XY+o)    */
-    OP(0x0e, { WM( EA,RRC( RM(EA) ) );                   }); /* RRC  (XY+o)      */
-    OP(0x0f, { A = RRC( RM(EA) ); WM( EA,A );            }); /* RRC  A=(XY+o)    */
+    case 0x01: /* RL   r=(XY+o)    */
+      *r = RRC(RM(EA));
+      break;
 
-    OP(0x10, { B = RL( RM(EA) ); WM( EA,B );             }); /* RL   B=(XY+o)    */
-    OP(0x11, { C = RL( RM(EA) ); WM( EA,C );             }); /* RL   C=(XY+o)    */
-    OP(0x12, { D = RL( RM(EA) ); WM( EA,D );             }); /* RL   D=(XY+o)    */
-    OP(0x13, { E = RL( RM(EA) ); WM( EA,E );             }); /* RL   E=(XY+o)    */
-    OP(0x14, { H = RL( RM(EA) ); WM( EA,H );             }); /* RL   H=(XY+o)    */
-    OP(0x15, { L = RL( RM(EA) ); WM( EA,L );             }); /* RL   L=(XY+o)    */
-    OP(0x16, { WM( EA,RL( RM(EA) ) );                    }); /* RL   (XY+o)      */
-    OP(0x17, { A = RL( RM(EA) ); WM( EA,A );             }); /* RL   A=(XY+o)    */
+    case 0x02: /* RL   r=(XY+o)    */
+      *r = RL(RM(EA));
+      break;
 
-    OP(0x18, { B = RR( RM(EA) ); WM( EA,B );             }); /* RR   B=(XY+o)    */
-    OP(0x19, { C = RR( RM(EA) ); WM( EA,C );             }); /* RR   C=(XY+o)    */
-    OP(0x1a, { D = RR( RM(EA) ); WM( EA,D );             }); /* RR   D=(XY+o)    */
-    OP(0x1b, { E = RR( RM(EA) ); WM( EA,E );             }); /* RR   E=(XY+o)    */
-    OP(0x1c, { H = RR( RM(EA) ); WM( EA,H );             }); /* RR   H=(XY+o)    */
-    OP(0x1d, { L = RR( RM(EA) ); WM( EA,L );             }); /* RR   L=(XY+o)    */
-    OP(0x1e, { WM( EA,RR( RM(EA) ) );                    }); /* RR   (XY+o)      */
-    OP(0x1f, { A = RR( RM(EA) ); WM( EA,A );             }); /* RR   A=(XY+o)    */
+    case 0x03: /* RR   r=(XY+o)    */
+      *r = RR(RM(EA));
+      break;
 
-    OP(0x20, { B = SLA( RM(EA) ); WM( EA,B );            }); /* SLA  B=(XY+o)    */
-    OP(0x21, { C = SLA( RM(EA) ); WM( EA,C );            }); /* SLA  C=(XY+o)    */
-    OP(0x22, { D = SLA( RM(EA) ); WM( EA,D );            }); /* SLA  D=(XY+o)    */
-    OP(0x23, { E = SLA( RM(EA) ); WM( EA,E );            }); /* SLA  E=(XY+o)    */
-    OP(0x24, { H = SLA( RM(EA) ); WM( EA,H );            }); /* SLA  H=(XY+o)    */
-    OP(0x25, { L = SLA( RM(EA) ); WM( EA,L );            }); /* SLA  L=(XY+o)    */
-    OP(0x26, { WM( EA,SLA( RM(EA) ) );                   }); /* SLA  (XY+o)      */
-    OP(0x27, { A = SLA( RM(EA) ); WM( EA,A );            }); /* SLA  A=(XY+o)    */
+    case 0x04: /* SLA  r=(XY+o)    */
+      *r = SLA(RM(EA));
+      break;
 
-    OP(0x28, { B = SRA( RM(EA) ); WM( EA,B );            }); /* SRA  B=(XY+o)    */
-    OP(0x29, { C = SRA( RM(EA) ); WM( EA,C );            }); /* SRA  C=(XY+o)    */
-    OP(0x2a, { D = SRA( RM(EA) ); WM( EA,D );            }); /* SRA  D=(XY+o)    */
-    OP(0x2b, { E = SRA( RM(EA) ); WM( EA,E );            }); /* SRA  E=(XY+o)    */
-    OP(0x2c, { H = SRA( RM(EA) ); WM( EA,H );            }); /* SRA  H=(XY+o)    */
-    OP(0x2d, { L = SRA( RM(EA) ); WM( EA,L );            }); /* SRA  L=(XY+o)    */
-    OP(0x2e, { WM( EA,SRA( RM(EA) ) );                   }); /* SRA  (XY+o)      */
-    OP(0x2f, { A = SRA( RM(EA) ); WM( EA,A );            }); /* SRA  A=(XY+o)    */
+    case 0x05: /* SRA  r=(XY+o)    */
+      *r = SRA(RM(EA));
+      break;
 
-    OP(0x30, { B = SLL( RM(EA) ); WM( EA,B );            }); /* SLL  B=(XY+o)    */
-    OP(0x31, { C = SLL( RM(EA) ); WM( EA,C );            }); /* SLL  C=(XY+o)    */
-    OP(0x32, { D = SLL( RM(EA) ); WM( EA,D );            }); /* SLL  D=(XY+o)    */
-    OP(0x33, { E = SLL( RM(EA) ); WM( EA,E );            }); /* SLL  E=(XY+o)    */
-    OP(0x34, { H = SLL( RM(EA) ); WM( EA,H );            }); /* SLL  H=(XY+o)    */
-    OP(0x35, { L = SLL( RM(EA) ); WM( EA,L );            }); /* SLL  L=(XY+o)    */
-    OP(0x36, { WM( EA,SLL( RM(EA) ) );                   }); /* SLL  (XY+o)      */
-    OP(0x37, { A = SLL( RM(EA) ); WM( EA,A );            }); /* SLL  A=(XY+o)    */
+    case 0x06: /* SLL  r=(XY+o)    */
+      *r = SLL(RM(EA));
+      break;
 
-    OP(0x38, { B = SRL( RM(EA) ); WM( EA,B );            }); /* SRL  B=(XY+o)    */
-    OP(0x39, { C = SRL( RM(EA) ); WM( EA,C );            }); /* SRL  C=(XY+o)    */
-    OP(0x3a, { D = SRL( RM(EA) ); WM( EA,D );            }); /* SRL  D=(XY+o)    */
-    OP(0x3b, { E = SRL( RM(EA) ); WM( EA,E );            }); /* SRL  E=(XY+o)    */
-    OP(0x3c, { H = SRL( RM(EA) ); WM( EA,H );            }); /* SRL  H=(XY+o)    */
-    OP(0x3d, { L = SRL( RM(EA) ); WM( EA,L );            }); /* SRL  L=(XY+o)    */
-    OP(0x3e, { WM( EA,SRL( RM(EA) ) );                   }); /* SRL  (XY+o)      */
-    OP(0x3f, { A = SRL( RM(EA) ); WM( EA,A );            }); /* SRL  A=(XY+o)    */
+    case 0x07: /* SRL  r=(XY+o)    */
+      *r = SRL(RM(EA));
+      break;
 
-    case 0x40:
-    case 0x41:
-    case 0x42:
-    case 0x43:
-    case 0x44:
-    case 0x45:
-    case 0x46:
-    OP(0x47, { BIT_XY(0,RM(EA));                         }); /* BIT  0,(XY+o)    */
+    case 0x08: /* BIT n, (XY+o)    */
+    case 0x09:
+    case 0x0A:
+    case 0x0B:
+    case 0x0C:
+    case 0x0D:
+    case 0x0E:
+    case 0x0F:
+      BIT_XY((opcode & 7), RM(EA));
+      return;
 
-    case 0x48:
-    case 0x49:
-    case 0x4a:
-    case 0x4b:
-    case 0x4c:
-    case 0x4d:
-    case 0x4e:
-    OP(0x4f, { BIT_XY(1,RM(EA));                         }); /* BIT  1,(XY+o)    */
+    case 0x10: /* RES  n,r=(XY+o)    */
+    case 0x11:
+    case 0x12:
+    case 0x13:
+    case 0x14:
+    case 0x15:
+    case 0x16:
+    case 0x17:
+      *r = RES((opcode & 7), RM(EA));
+      break;
 
-    case 0x50:
-    case 0x51:
-    case 0x52:
-    case 0x53:
-    case 0x54:
-    case 0x55:
-    case 0x56:
-    OP(0x57, { BIT_XY(2,RM(EA));                         }); /* BIT  2,(XY+o)    */
-
-    case 0x58:
-    case 0x59:
-    case 0x5a:
-    case 0x5b:
-    case 0x5c:
-    case 0x5d:
-    case 0x5e:
-    OP(0x5f, { BIT_XY(3,RM(EA));                         }); /* BIT  3,(XY+o)    */
-
-    case 0x60:
-    case 0x61:
-    case 0x62:
-    case 0x63:
-    case 0x64:
-    case 0x65:
-    case 0x66:
-    OP(0x67, { BIT_XY(4,RM(EA));                         }); /* BIT  4,(XY+o)    */
-
-    case 0x68:
-    case 0x69:
-    case 0x6a:
-    case 0x6b:
-    case 0x6c:
-    case 0x6d:
-    case 0x6e:
-    OP(0x6f, { BIT_XY(5,RM(EA));                         }); /* BIT  5,(XY+o)    */
-
-    case 0x70:
-    case 0x71:
-    case 0x72:
-    case 0x73:
-    case 0x74:
-    case 0x75:
-    case 0x76:
-    OP(0x77, { BIT_XY(6,RM(EA));                         }); /* BIT  6,(XY+o)    */
-
-    case 0x78:
-    case 0x79:
-    case 0x7a:
-    case 0x7b:
-    case 0x7c:
-    case 0x7d:
-    case 0x7e:
-    OP(0x7f, { BIT_XY(7,RM(EA));                         }); /* BIT  7,(XY+o)    */
-
-    OP(0x80, { B = RES(0, RM(EA) ); WM( EA,B );          }); /* RES  0,B=(XY+o)  */
-    OP(0x81, { C = RES(0, RM(EA) ); WM( EA,C );          }); /* RES  0,C=(XY+o)  */
-    OP(0x82, { D = RES(0, RM(EA) ); WM( EA,D );          }); /* RES  0,D=(XY+o)  */
-    OP(0x83, { E = RES(0, RM(EA) ); WM( EA,E );          }); /* RES  0,E=(XY+o)  */
-    OP(0x84, { H = RES(0, RM(EA) ); WM( EA,H );          }); /* RES  0,H=(XY+o)  */
-    OP(0x85, { L = RES(0, RM(EA) ); WM( EA,L );          }); /* RES  0,L=(XY+o)  */
-    OP(0x86, { WM( EA, RES(0,RM(EA)) );                  }); /* RES  0,(XY+o)    */
-    OP(0x87, { A = RES(0, RM(EA) ); WM( EA,A );          }); /* RES  0,A=(XY+o)  */
-
-    OP(0x88, { B = RES(1, RM(EA) ); WM( EA,B );          }); /* RES  1,B=(XY+o)  */
-    OP(0x89, { C = RES(1, RM(EA) ); WM( EA,C );          }); /* RES  1,C=(XY+o)  */
-    OP(0x8a, { D = RES(1, RM(EA) ); WM( EA,D );          }); /* RES  1,D=(XY+o)  */
-    OP(0x8b, { E = RES(1, RM(EA) ); WM( EA,E );          }); /* RES  1,E=(XY+o)  */
-    OP(0x8c, { H = RES(1, RM(EA) ); WM( EA,H );          }); /* RES  1,H=(XY+o)  */
-    OP(0x8d, { L = RES(1, RM(EA) ); WM( EA,L );          }); /* RES  1,L=(XY+o)  */
-    OP(0x8e, { WM( EA, RES(1,RM(EA)) );                  }); /* RES  1,(XY+o)    */
-    OP(0x8f, { A = RES(1, RM(EA) ); WM( EA,A );          }); /* RES  1,A=(XY+o)  */
-
-    OP(0x90, { B = RES(2, RM(EA) ); WM( EA,B );          }); /* RES  2,B=(XY+o)  */
-    OP(0x91, { C = RES(2, RM(EA) ); WM( EA,C );          }); /* RES  2,C=(XY+o)  */
-    OP(0x92, { D = RES(2, RM(EA) ); WM( EA,D );          }); /* RES  2,D=(XY+o)  */
-    OP(0x93, { E = RES(2, RM(EA) ); WM( EA,E );          }); /* RES  2,E=(XY+o)  */
-    OP(0x94, { H = RES(2, RM(EA) ); WM( EA,H );          }); /* RES  2,H=(XY+o)  */
-    OP(0x95, { L = RES(2, RM(EA) ); WM( EA,L );          }); /* RES  2,L=(XY+o)  */
-    OP(0x96, { WM( EA, RES(2,RM(EA)) );                  }); /* RES  2,(XY+o)    */
-    OP(0x97, { A = RES(2, RM(EA) ); WM( EA,A );          }); /* RES  2,A=(XY+o)  */
-
-    OP(0x98, { B = RES(3, RM(EA) ); WM( EA,B );          }); /* RES  3,B=(XY+o)  */
-    OP(0x99, { C = RES(3, RM(EA) ); WM( EA,C );          }); /* RES  3,C=(XY+o)  */
-    OP(0x9a, { D = RES(3, RM(EA) ); WM( EA,D );          }); /* RES  3,D=(XY+o)  */
-    OP(0x9b, { E = RES(3, RM(EA) ); WM( EA,E );          }); /* RES  3,E=(XY+o)  */
-    OP(0x9c, { H = RES(3, RM(EA) ); WM( EA,H );          }); /* RES  3,H=(XY+o)  */
-    OP(0x9d, { L = RES(3, RM(EA) ); WM( EA,L );          }); /* RES  3,L=(XY+o)  */
-    OP(0x9e, { WM( EA, RES(3,RM(EA)) );                  }); /* RES  3,(XY+o)    */
-    OP(0x9f, { A = RES(3, RM(EA) ); WM( EA,A );          }); /* RES  3,A=(XY+o)  */
-
-    OP(0xa0, { B = RES(4, RM(EA) ); WM( EA,B );          }); /* RES  4,B=(XY+o)  */
-    OP(0xa1, { C = RES(4, RM(EA) ); WM( EA,C );          }); /* RES  4,C=(XY+o)  */
-    OP(0xa2, { D = RES(4, RM(EA) ); WM( EA,D );          }); /* RES  4,D=(XY+o)  */
-    OP(0xa3, { E = RES(4, RM(EA) ); WM( EA,E );          }); /* RES  4,E=(XY+o)  */
-    OP(0xa4, { H = RES(4, RM(EA) ); WM( EA,H );          }); /* RES  4,H=(XY+o)  */
-    OP(0xa5, { L = RES(4, RM(EA) ); WM( EA,L );          }); /* RES  4,L=(XY+o)  */
-    OP(0xa6, { WM( EA, RES(4,RM(EA)) );                  }); /* RES  4,(XY+o)    */
-    OP(0xa7, { A = RES(4, RM(EA) ); WM( EA,A );          }); /* RES  4,A=(XY+o)  */
-
-    OP(0xa8, { B = RES(5, RM(EA) ); WM( EA,B );          }); /* RES  5,B=(XY+o)  */
-    OP(0xa9, { C = RES(5, RM(EA) ); WM( EA,C );          }); /* RES  5,C=(XY+o)  */
-    OP(0xaa, { D = RES(5, RM(EA) ); WM( EA,D );          }); /* RES  5,D=(XY+o)  */
-    OP(0xab, { E = RES(5, RM(EA) ); WM( EA,E );          }); /* RES  5,E=(XY+o)  */
-    OP(0xac, { H = RES(5, RM(EA) ); WM( EA,H );          }); /* RES  5,H=(XY+o)  */
-    OP(0xad, { L = RES(5, RM(EA) ); WM( EA,L );          }); /* RES  5,L=(XY+o)  */
-    OP(0xae, { WM( EA, RES(5,RM(EA)) );                  }); /* RES  5,(XY+o)    */
-    OP(0xaf, { A = RES(5, RM(EA) ); WM( EA,A );          }); /* RES  5,A=(XY+o)  */
-
-    OP(0xb0, { B = RES(6, RM(EA) ); WM( EA,B );          }); /* RES  6,B=(XY+o)  */
-    OP(0xb1, { C = RES(6, RM(EA) ); WM( EA,C );          }); /* RES  6,C=(XY+o)  */
-    OP(0xb2, { D = RES(6, RM(EA) ); WM( EA,D );          }); /* RES  6,D=(XY+o)  */
-    OP(0xb3, { E = RES(6, RM(EA) ); WM( EA,E );          }); /* RES  6,E=(XY+o)  */
-    OP(0xb4, { H = RES(6, RM(EA) ); WM( EA,H );          }); /* RES  6,H=(XY+o)  */
-    OP(0xb5, { L = RES(6, RM(EA) ); WM( EA,L );          }); /* RES  6,L=(XY+o)  */
-    OP(0xb6, { WM( EA, RES(6,RM(EA)) );                  }); /* RES  6,(XY+o)    */
-    OP(0xb7, { A = RES(6, RM(EA) ); WM( EA,A );          }); /* RES  6,A=(XY+o)  */
-
-    OP(0xb8, { B = RES(7, RM(EA) ); WM( EA,B );          }); /* RES  7,B=(XY+o)  */
-    OP(0xb9, { C = RES(7, RM(EA) ); WM( EA,C );          }); /* RES  7,C=(XY+o)  */
-    OP(0xba, { D = RES(7, RM(EA) ); WM( EA,D );          }); /* RES  7,D=(XY+o)  */
-    OP(0xbb, { E = RES(7, RM(EA) ); WM( EA,E );          }); /* RES  7,E=(XY+o)  */
-    OP(0xbc, { H = RES(7, RM(EA) ); WM( EA,H );          }); /* RES  7,H=(XY+o)  */
-    OP(0xbd, { L = RES(7, RM(EA) ); WM( EA,L );          }); /* RES  7,L=(XY+o)  */
-    OP(0xbe, { WM( EA, RES(7,RM(EA)) );                  }); /* RES  7,(XY+o)    */
-    OP(0xbf, { A = RES(7, RM(EA) ); WM( EA,A );          }); /* RES  7,A=(XY+o)  */
-
-    OP(0xc0, { B = SET(0, RM(EA) ); WM( EA,B );          }); /* SET  0,B=(XY+o)  */
-    OP(0xc1, { C = SET(0, RM(EA) ); WM( EA,C );          }); /* SET  0,C=(XY+o)  */
-    OP(0xc2, { D = SET(0, RM(EA) ); WM( EA,D );          }); /* SET  0,D=(XY+o)  */
-    OP(0xc3, { E = SET(0, RM(EA) ); WM( EA,E );          }); /* SET  0,E=(XY+o)  */
-    OP(0xc4, { H = SET(0, RM(EA) ); WM( EA,H );          }); /* SET  0,H=(XY+o)  */
-    OP(0xc5, { L = SET(0, RM(EA) ); WM( EA,L );          }); /* SET  0,L=(XY+o)  */
-    OP(0xc6, { WM( EA, SET(0,RM(EA)) );                  }); /* SET  0,(XY+o)    */
-    OP(0xc7, { A = SET(0, RM(EA) ); WM( EA,A );          }); /* SET  0,A=(XY+o)  */
-
-    OP(0xc8, { B = SET(1, RM(EA) ); WM( EA,B );          }); /* SET  1,B=(XY+o)  */
-    OP(0xc9, { C = SET(1, RM(EA) ); WM( EA,C );          }); /* SET  1,C=(XY+o)  */
-    OP(0xca, { D = SET(1, RM(EA) ); WM( EA,D );          }); /* SET  1,D=(XY+o)  */
-    OP(0xcb, { E = SET(1, RM(EA) ); WM( EA,E );          }); /* SET  1,E=(XY+o)  */
-    OP(0xcc, { H = SET(1, RM(EA) ); WM( EA,H );          }); /* SET  1,H=(XY+o)  */
-    OP(0xcd, { L = SET(1, RM(EA) ); WM( EA,L );          }); /* SET  1,L=(XY+o)  */
-    OP(0xce, { WM( EA, SET(1,RM(EA)) );                  }); /* SET  1,(XY+o)    */
-    OP(0xcf, { A = SET(1, RM(EA) ); WM( EA,A );          }); /* SET  1,A=(XY+o)  */
-
-    OP(0xd0, { B = SET(2, RM(EA) ); WM( EA,B );          }); /* SET  2,B=(XY+o)  */
-    OP(0xd1, { C = SET(2, RM(EA) ); WM( EA,C );          }); /* SET  2,C=(XY+o)  */
-    OP(0xd2, { D = SET(2, RM(EA) ); WM( EA,D );          }); /* SET  2,D=(XY+o)  */
-    OP(0xd3, { E = SET(2, RM(EA) ); WM( EA,E );          }); /* SET  2,E=(XY+o)  */
-    OP(0xd4, { H = SET(2, RM(EA) ); WM( EA,H );          }); /* SET  2,H=(XY+o)  */
-    OP(0xd5, { L = SET(2, RM(EA) ); WM( EA,L );          }); /* SET  2,L=(XY+o)  */
-    OP(0xd6, { WM( EA, SET(2,RM(EA)) );                  }); /* SET  2,(XY+o)    */
-    OP(0xd7, { A = SET(2, RM(EA) ); WM( EA,A );          }); /* SET  2,A=(XY+o)  */
-
-    OP(0xd8, { B = SET(3, RM(EA) ); WM( EA,B );          }); /* SET  3,B=(XY+o)  */
-    OP(0xd9, { C = SET(3, RM(EA) ); WM( EA,C );          }); /* SET  3,C=(XY+o)  */
-    OP(0xda, { D = SET(3, RM(EA) ); WM( EA,D );          }); /* SET  3,D=(XY+o)  */
-    OP(0xdb, { E = SET(3, RM(EA) ); WM( EA,E );          }); /* SET  3,E=(XY+o)  */
-    OP(0xdc, { H = SET(3, RM(EA) ); WM( EA,H );          }); /* SET  3,H=(XY+o)  */
-    OP(0xdd, { L = SET(3, RM(EA) ); WM( EA,L );          }); /* SET  3,L=(XY+o)  */
-    OP(0xde, { WM( EA, SET(3,RM(EA)) );                  }); /* SET  3,(XY+o)    */
-    OP(0xdf, { A = SET(3, RM(EA) ); WM( EA,A );          }); /* SET  3,A=(XY+o)  */
-
-    OP(0xe0, { B = SET(4, RM(EA) ); WM( EA,B );          }); /* SET  4,B=(XY+o)  */
-    OP(0xe1, { C = SET(4, RM(EA) ); WM( EA,C );          }); /* SET  4,C=(XY+o)  */
-    OP(0xe2, { D = SET(4, RM(EA) ); WM( EA,D );          }); /* SET  4,D=(XY+o)  */
-    OP(0xe3, { E = SET(4, RM(EA) ); WM( EA,E );          }); /* SET  4,E=(XY+o)  */
-    OP(0xe4, { H = SET(4, RM(EA) ); WM( EA,H );          }); /* SET  4,H=(XY+o)  */
-    OP(0xe5, { L = SET(4, RM(EA) ); WM( EA,L );          }); /* SET  4,L=(XY+o)  */
-    OP(0xe6, { WM( EA, SET(4,RM(EA)) );                  }); /* SET  4,(XY+o)    */
-    OP(0xe7, { A = SET(4, RM(EA) ); WM( EA,A );          }); /* SET  4,A=(XY+o)  */
-
-    OP(0xe8, { B = SET(5, RM(EA) ); WM( EA,B );          }); /* SET  5,B=(XY+o)  */
-    OP(0xe9, { C = SET(5, RM(EA) ); WM( EA,C );          }); /* SET  5,C=(XY+o)  */
-    OP(0xea, { D = SET(5, RM(EA) ); WM( EA,D );          }); /* SET  5,D=(XY+o)  */
-    OP(0xeb, { E = SET(5, RM(EA) ); WM( EA,E );          }); /* SET  5,E=(XY+o)  */
-    OP(0xec, { H = SET(5, RM(EA) ); WM( EA,H );          }); /* SET  5,H=(XY+o)  */
-    OP(0xed, { L = SET(5, RM(EA) ); WM( EA,L );          }); /* SET  5,L=(XY+o)  */
-    OP(0xee, { WM( EA, SET(5,RM(EA)) );                  }); /* SET  5,(XY+o)    */
-    OP(0xef, { A = SET(5, RM(EA) ); WM( EA,A );          }); /* SET  5,A=(XY+o)  */
-
-    OP(0xf0, { B = SET(6, RM(EA) ); WM( EA,B );          }); /* SET  6,B=(XY+o)  */
-    OP(0xf1, { C = SET(6, RM(EA) ); WM( EA,C );          }); /* SET  6,C=(XY+o)  */
-    OP(0xf2, { D = SET(6, RM(EA) ); WM( EA,D );          }); /* SET  6,D=(XY+o)  */
-    OP(0xf3, { E = SET(6, RM(EA) ); WM( EA,E );          }); /* SET  6,E=(XY+o)  */
-    OP(0xf4, { H = SET(6, RM(EA) ); WM( EA,H );          }); /* SET  6,H=(XY+o)  */
-    OP(0xf5, { L = SET(6, RM(EA) ); WM( EA,L );          }); /* SET  6,L=(XY+o)  */
-    OP(0xf6, { WM( EA, SET(6,RM(EA)) );                  }); /* SET  6,(XY+o)    */
-    OP(0xf7, { A = SET(6, RM(EA) ); WM( EA,A );          }); /* SET  6,A=(XY+o)  */
-
-    OP(0xf8, { B = SET(7, RM(EA) ); WM( EA,B );          }); /* SET  7,B=(XY+o)  */
-    OP(0xf9, { C = SET(7, RM(EA) ); WM( EA,C );          }); /* SET  7,C=(XY+o)  */
-    OP(0xfa, { D = SET(7, RM(EA) ); WM( EA,D );          }); /* SET  7,D=(XY+o)  */
-    OP(0xfb, { E = SET(7, RM(EA) ); WM( EA,E );          }); /* SET  7,E=(XY+o)  */
-    OP(0xfc, { H = SET(7, RM(EA) ); WM( EA,H );          }); /* SET  7,H=(XY+o)  */
-    OP(0xfd, { L = SET(7, RM(EA) ); WM( EA,L );          }); /* SET  7,L=(XY+o)  */
-    OP(0xfe, { WM( EA, SET(7,RM(EA)) );                  }); /* SET  7,(XY+o)    */
-    OP(0xff, { A = SET(7, RM(EA) ); WM( EA,A );          }); /* SET  7,A=(XY+o)  */
+    case 0x18: /* SET  n,r=(XY+o)    */
+    case 0x19:
+    case 0x1A:
+    case 0x1B:
+    case 0x1C:
+    case 0x1D:
+    case 0x1E:
+    case 0x1F:
+      *r = SET((opcode & 7), RM(EA));
+      break;
   }
+  WM(EA, *r);
 }
 
 /**********************************************************
@@ -1476,296 +1287,92 @@ NO_INLINE void EXEC_CB(UINT8 opcode)
 {
   CC(cb, opcode);
 
-  switch(opcode)
-  {
-    OP(0x00, { B = RLC(B);                      }); /* RLC  B           */
-    OP(0x01, { C = RLC(C);                      }); /* RLC  C           */
-    OP(0x02, { D = RLC(D);                      }); /* RLC  D           */
-    OP(0x03, { E = RLC(E);                      }); /* RLC  E           */
-    OP(0x04, { H = RLC(H);                      }); /* RLC  H           */
-    OP(0x05, { L = RLC(L);                      }); /* RLC  L           */
-    OP(0x06, { WM( HL, RLC(RM(HL)) );           }); /* RLC  (HL)        */
-    OP(0x07, { A = RLC(A);                      }); /* RLC  A           */
+	UINT8 hl, *r;
 
-    OP(0x08, { B = RRC(B);                      }); /* RRC  B           */
-    OP(0x09, { C = RRC(C);                      }); /* RRC  C           */
-    OP(0x0a, { D = RRC(D);                      }); /* RRC  D           */
-    OP(0x0b, { E = RRC(E);                      }); /* RRC  E           */
-    OP(0x0c, { H = RRC(H);                      }); /* RRC  H           */
-    OP(0x0d, { L = RRC(L);                      }); /* RRC  L           */
-    OP(0x0e, { WM( HL, RRC(RM(HL)) );           }); /* RRC  (HL)        */
-    OP(0x0f, { A = RRC(A);                      }); /* RRC  A           */
+	switch (opcode & 7)
+	{
+	case 0: r = &B; break;
+	case 1: r = &C; break;
+	case 2: r = &D; break;
+	case 3: r = &E; break;
+	case 4: r = &H; break;
+	case 5: r = &L; break;
+	case 6: r = &hl; hl = RM(HL); break;
+	case 7: r = &A; break;
+	}
 
-    OP(0x10, { B = RL(B);                       }); /* RL   B           */
-    OP(0x11, { C = RL(C);                       }); /* RL   C           */
-    OP(0x12, { D = RL(D);                       }); /* RL   D           */
-    OP(0x13, { E = RL(E);                       }); /* RL   E           */
-    OP(0x14, { H = RL(H);                       }); /* RL   H           */
-    OP(0x15, { L = RL(L);                       }); /* RL   L           */
-    OP(0x16, { WM( HL, RL(RM(HL)) );            }); /* RL   (HL)        */
-    OP(0x17, { A = RL(A);                       }); /* RL   A           */
+	opcode >>= 3;
 
-    OP(0x18, { B = RR(B);                       }); /* RR   B           */
-    OP(0x19, { C = RR(C);                       }); /* RR   C           */
-    OP(0x1a, { D = RR(D);                       }); /* RR   D           */
-    OP(0x1b, { E = RR(E);                       }); /* RR   E           */
-    OP(0x1c, { H = RR(H);                       }); /* RR   H           */
-    OP(0x1d, { L = RR(L);                       }); /* RR   L           */
-    OP(0x1e, { WM( HL, RR(RM(HL)) );            }); /* RR   (HL)        */
-    OP(0x1f, { A = RR(A);                       }); /* RR   A           */
+	switch (opcode)
+	{
+	case 0x00: /* RLC  r           */
+    *r = RLC(*r);
+    break;
 
-    OP(0x20, { B = SLA(B);                      }); /* SLA  B           */
-    OP(0x21, { C = SLA(C);                      }); /* SLA  C           */
-    OP(0x22, { D = SLA(D);                      }); /* SLA  D           */
-    OP(0x23, { E = SLA(E);                      }); /* SLA  E           */
-    OP(0x24, { H = SLA(H);                      }); /* SLA  H           */
-    OP(0x25, { L = SLA(L);                      }); /* SLA  L           */
-    OP(0x26, { WM( HL, SLA(RM(HL)) );           }); /* SLA  (HL)        */
-    OP(0x27, { A = SLA(A);                      }); /* SLA  A           */
+  case 0x01: /* RRC  B           */
+    *r = RRC(*r);
+    break;
 
-    OP(0x28, { B = SRA(B);                      }); /* SRA  B           */
-    OP(0x29, { C = SRA(C);                      }); /* SRA  C           */
-    OP(0x2a, { D = SRA(D);                      }); /* SRA  D           */
-    OP(0x2b, { E = SRA(E);                      }); /* SRA  E           */
-    OP(0x2c, { H = SRA(H);                      }); /* SRA  H           */
-    OP(0x2d, { L = SRA(L);                      }); /* SRA  L           */
-    OP(0x2e, { WM( HL, SRA(RM(HL)) );           }); /* SRA  (HL)        */
-    OP(0x2f, { A = SRA(A);                      }); /* SRA  A           */
+  case 0x02: /* RL  r            */
+    *r = RL(*r);
+    break;
 
-    OP(0x30, { B = SLL(B);                      }); /* SLL  B           */
-    OP(0x31, { C = SLL(C);                      }); /* SLL  C           */
-    OP(0x32, { D = SLL(D);                      }); /* SLL  D           */
-    OP(0x33, { E = SLL(E);                      }); /* SLL  E           */
-    OP(0x34, { H = SLL(H);                      }); /* SLL  H           */
-    OP(0x35, { L = SLL(L);                      }); /* SLL  L           */
-    OP(0x36, { WM( HL, SLL(RM(HL)) );           }); /* SLL  (HL)        */
-    OP(0x37, { A = SLL(A);                      }); /* SLL  A           */
+  case 0x03: /* RR  r            */
+    *r = RR(*r);
+    break;
 
-    OP(0x38, { B = SRL(B);                      }); /* SRL  B           */
-    OP(0x39, { C = SRL(C);                      }); /* SRL  C           */
-    OP(0x3a, { D = SRL(D);                      }); /* SRL  D           */
-    OP(0x3b, { E = SRL(E);                      }); /* SRL  E           */
-    OP(0x3c, { H = SRL(H);                      }); /* SRL  H           */
-    OP(0x3d, { L = SRL(L);                      }); /* SRL  L           */
-    OP(0x3e, { WM( HL, SRL(RM(HL)) );           }); /* SRL  (HL)        */
-    OP(0x3f, { A = SRL(A);                      }); /* SRL  A           */
+  case 0x04: /* SLA  r           */
+    *r = SLA(*r);
+    break;
 
-    OP(0x40, { BIT(0,B);                        }); /* BIT  0,B         */
-    OP(0x41, { BIT(0,C);                        }); /* BIT  0,C         */
-    OP(0x42, { BIT(0,D);                        }); /* BIT  0,D         */
-    OP(0x43, { BIT(0,E);                        }); /* BIT  0,E         */
-    OP(0x44, { BIT(0,H);                        }); /* BIT  0,H         */
-    OP(0x45, { BIT(0,L);                        }); /* BIT  0,L         */
-    OP(0x46, { BIT_HL(0,RM(HL));                }); /* BIT  0,(HL)      */
-    OP(0x47, { BIT(0,A);                        }); /* BIT  0,A         */
+  case 0x05: /* SRA  r           */
+    *r = SRA(*r);
+    break;
 
-    OP(0x48, { BIT(1,B);                        }); /* BIT  1,B         */
-    OP(0x49, { BIT(1,C);                        }); /* BIT  1,C         */
-    OP(0x4a, { BIT(1,D);                        }); /* BIT  1,D         */
-    OP(0x4b, { BIT(1,E);                        }); /* BIT  1,E         */
-    OP(0x4c, { BIT(1,H);                        }); /* BIT  1,H         */
-    OP(0x4d, { BIT(1,L);                        }); /* BIT  1,L         */
-    OP(0x4e, { BIT_HL(1,RM(HL));                }); /* BIT  1,(HL)      */
-    OP(0x4f, { BIT(1,A);                        }); /* BIT  1,A         */
+  case 0x06: /* SLL  r           */
+    *r = SLL(*r);
+    break;
 
-    OP(0x50, { BIT(2,B);                        }); /* BIT  2,B         */
-    OP(0x51, { BIT(2,C);                        }); /* BIT  2,C         */
-    OP(0x52, { BIT(2,D);                        }); /* BIT  2,D         */
-    OP(0x53, { BIT(2,E);                        }); /* BIT  2,E         */
-    OP(0x54, { BIT(2,H);                        }); /* BIT  2,H         */
-    OP(0x55, { BIT(2,L);                        }); /* BIT  2,L         */
-    OP(0x56, { BIT_HL(2,RM(HL));                }); /* BIT  2,(HL)      */
-    OP(0x57, { BIT(2,A);                        }); /* BIT  2,A         */
+  case 0x07: /* SRL  r           */
+    *r = SRL(*r);
+    break;
 
-    OP(0x58, { BIT(3,B);                        }); /* BIT  3,B         */
-    OP(0x59, { BIT(3,C);                        }); /* BIT  3,C         */
-    OP(0x5a, { BIT(3,D);                        }); /* BIT  3,D         */
-    OP(0x5b, { BIT(3,E);                        }); /* BIT  3,E         */
-    OP(0x5c, { BIT(3,H);                        }); /* BIT  3,H         */
-    OP(0x5d, { BIT(3,L);                        }); /* BIT  3,L         */
-    OP(0x5e, { BIT_HL(3,RM(HL));                }); /* BIT  3,(HL)      */
-    OP(0x5f, { BIT(3,A);                        }); /* BIT  3,A         */
+	case 0x08: /* BIT  n,r         */
+	case 0x09:
+	case 0x0A:
+	case 0x0B:
+	case 0x0C:
+	case 0x0D:
+	case 0x0E:
+	case 0x0F:
+    BIT((opcode & 7), *r);
+    return;
 
-    OP(0x60, { BIT(4,B);                        }); /* BIT  4,B         */
-    OP(0x61, { BIT(4,C);                        }); /* BIT  4,C         */
-    OP(0x62, { BIT(4,D);                        }); /* BIT  4,D         */
-    OP(0x63, { BIT(4,E);                        }); /* BIT  4,E         */
-    OP(0x64, { BIT(4,H);                        }); /* BIT  4,H         */
-    OP(0x65, { BIT(4,L);                        }); /* BIT  4,L         */
-    OP(0x66, { BIT_HL(4,RM(HL));                }); /* BIT  4,(HL)      */
-    OP(0x67, { BIT(4,A);                        }); /* BIT  4,A         */
+  case 0x10: /* RES  n,r         */
+	case 0x11:
+	case 0x12:
+	case 0x13:
+	case 0x14:
+	case 0x15:
+	case 0x16:
+	case 0x17:
+    *r = RES((opcode & 7), *r);
+    break;
 
-    OP(0x68, { BIT(5,B);                        }); /* BIT  5,B         */
-    OP(0x69, { BIT(5,C);                        }); /* BIT  5,C         */
-    OP(0x6a, { BIT(5,D);                        }); /* BIT  5,D         */
-    OP(0x6b, { BIT(5,E);                        }); /* BIT  5,E         */
-    OP(0x6c, { BIT(5,H);                        }); /* BIT  5,H         */
-    OP(0x6d, { BIT(5,L);                        }); /* BIT  5,L         */
-    OP(0x6e, { BIT_HL(5,RM(HL));                }); /* BIT  5,(HL)      */
-    OP(0x6f, { BIT(5,A);                        }); /* BIT  5,A         */
+  case 0x18: /* SET  n,r         */
+	case 0x19:
+	case 0x1A:
+	case 0x1B:
+	case 0x1C:
+	case 0x1D:
+	case 0x1E:
+	case 0x1F:
+    *r = SET((opcode & 7), *r);
+    break;
+	}
 
-    OP(0x70, { BIT(6,B);                        }); /* BIT  6,B         */
-    OP(0x71, { BIT(6,C);                        }); /* BIT  6,C         */
-    OP(0x72, { BIT(6,D);                        }); /* BIT  6,D         */
-    OP(0x73, { BIT(6,E);                        }); /* BIT  6,E         */
-    OP(0x74, { BIT(6,H);                        }); /* BIT  6,H         */
-    OP(0x75, { BIT(6,L);                        }); /* BIT  6,L         */
-    OP(0x76, { BIT_HL(6,RM(HL));                }); /* BIT  6,(HL)      */
-    OP(0x77, { BIT(6,A);                        }); /* BIT  6,A         */
-
-    OP(0x78, { BIT(7,B);                        }); /* BIT  7,B         */
-    OP(0x79, { BIT(7,C);                        }); /* BIT  7,C         */
-    OP(0x7a, { BIT(7,D);                        }); /* BIT  7,D         */
-    OP(0x7b, { BIT(7,E);                        }); /* BIT  7,E         */
-    OP(0x7c, { BIT(7,H);                        }); /* BIT  7,H         */
-    OP(0x7d, { BIT(7,L);                        }); /* BIT  7,L         */
-    OP(0x7e, { BIT_HL(7,RM(HL));                }); /* BIT  7,(HL)      */
-    OP(0x7f, { BIT(7,A);                        }); /* BIT  7,A         */
-
-    OP(0x80, { B = RES(0,B);                    }); /* RES  0,B         */
-    OP(0x81, { C = RES(0,C);                    }); /* RES  0,C         */
-    OP(0x82, { D = RES(0,D);                    }); /* RES  0,D         */
-    OP(0x83, { E = RES(0,E);                    }); /* RES  0,E         */
-    OP(0x84, { H = RES(0,H);                    }); /* RES  0,H         */
-    OP(0x85, { L = RES(0,L);                    }); /* RES  0,L         */
-    OP(0x86, { WM( HL, RES(0,RM(HL)) );         }); /* RES  0,(HL)      */
-    OP(0x87, { A = RES(0,A);                    }); /* RES  0,A         */
-
-    OP(0x88, { B = RES(1,B);                    }); /* RES  1,B         */
-    OP(0x89, { C = RES(1,C);                    }); /* RES  1,C         */
-    OP(0x8a, { D = RES(1,D);                    }); /* RES  1,D         */
-    OP(0x8b, { E = RES(1,E);                    }); /* RES  1,E         */
-    OP(0x8c, { H = RES(1,H);                    }); /* RES  1,H         */
-    OP(0x8d, { L = RES(1,L);                    }); /* RES  1,L         */
-    OP(0x8e, { WM( HL, RES(1,RM(HL)) );         }); /* RES  1,(HL)      */
-    OP(0x8f, { A = RES(1,A);                    }); /* RES  1,A         */
-
-    OP(0x90, { B = RES(2,B);                    }); /* RES  2,B         */
-    OP(0x91, { C = RES(2,C);                    }); /* RES  2,C         */
-    OP(0x92, { D = RES(2,D);                    }); /* RES  2,D         */
-    OP(0x93, { E = RES(2,E);                    }); /* RES  2,E         */
-    OP(0x94, { H = RES(2,H);                    }); /* RES  2,H         */
-    OP(0x95, { L = RES(2,L);                    }); /* RES  2,L         */
-    OP(0x96, { WM( HL, RES(2,RM(HL)) );         }); /* RES  2,(HL)      */
-    OP(0x97, { A = RES(2,A);                    }); /* RES  2,A         */
-
-    OP(0x98, { B = RES(3,B);                    }); /* RES  3,B         */
-    OP(0x99, { C = RES(3,C);                    }); /* RES  3,C         */
-    OP(0x9a, { D = RES(3,D);                    }); /* RES  3,D         */
-    OP(0x9b, { E = RES(3,E);                    }); /* RES  3,E         */
-    OP(0x9c, { H = RES(3,H);                    }); /* RES  3,H         */
-    OP(0x9d, { L = RES(3,L);                    }); /* RES  3,L         */
-    OP(0x9e, { WM( HL, RES(3,RM(HL)) );         }); /* RES  3,(HL)      */
-    OP(0x9f, { A = RES(3,A);                    }); /* RES  3,A         */
-
-    OP(0xa0, { B = RES(4,B);                    }); /* RES  4,B         */
-    OP(0xa1, { C = RES(4,C);                    }); /* RES  4,C         */
-    OP(0xa2, { D = RES(4,D);                    }); /* RES  4,D         */
-    OP(0xa3, { E = RES(4,E);                    }); /* RES  4,E         */
-    OP(0xa4, { H = RES(4,H);                    }); /* RES  4,H         */
-    OP(0xa5, { L = RES(4,L);                    }); /* RES  4,L         */
-    OP(0xa6, { WM( HL, RES(4,RM(HL)) );         }); /* RES  4,(HL)      */
-    OP(0xa7, { A = RES(4,A);                    }); /* RES  4,A         */
-
-    OP(0xa8, { B = RES(5,B);                    }); /* RES  5,B         */
-    OP(0xa9, { C = RES(5,C);                    }); /* RES  5,C         */
-    OP(0xaa, { D = RES(5,D);                    }); /* RES  5,D         */
-    OP(0xab, { E = RES(5,E);                    }); /* RES  5,E         */
-    OP(0xac, { H = RES(5,H);                    }); /* RES  5,H         */
-    OP(0xad, { L = RES(5,L);                    }); /* RES  5,L         */
-    OP(0xae, { WM( HL, RES(5,RM(HL)) );         }); /* RES  5,(HL)      */
-    OP(0xaf, { A = RES(5,A);                    }); /* RES  5,A         */
-
-    OP(0xb0, { B = RES(6,B);                    }); /* RES  6,B         */
-    OP(0xb1, { C = RES(6,C);                    }); /* RES  6,C         */
-    OP(0xb2, { D = RES(6,D);                    }); /* RES  6,D         */
-    OP(0xb3, { E = RES(6,E);                    }); /* RES  6,E         */
-    OP(0xb4, { H = RES(6,H);                    }); /* RES  6,H         */
-    OP(0xb5, { L = RES(6,L);                    }); /* RES  6,L         */
-    OP(0xb6, { WM( HL, RES(6,RM(HL)) );         }); /* RES  6,(HL)      */
-    OP(0xb7, { A = RES(6,A);                    }); /* RES  6,A         */
-
-    OP(0xb8, { B = RES(7,B);                    }); /* RES  7,B         */
-    OP(0xb9, { C = RES(7,C);                    }); /* RES  7,C         */
-    OP(0xba, { D = RES(7,D);                    }); /* RES  7,D         */
-    OP(0xbb, { E = RES(7,E);                    }); /* RES  7,E         */
-    OP(0xbc, { H = RES(7,H);                    }); /* RES  7,H         */
-    OP(0xbd, { L = RES(7,L);                    }); /* RES  7,L         */
-    OP(0xbe, { WM( HL, RES(7,RM(HL)) );         }); /* RES  7,(HL)      */
-    OP(0xbf, { A = RES(7,A);                    }); /* RES  7,A         */
-
-    OP(0xc0, { B = SET(0,B);                    }); /* SET  0,B         */
-    OP(0xc1, { C = SET(0,C);                    }); /* SET  0,C         */
-    OP(0xc2, { D = SET(0,D);                    }); /* SET  0,D         */
-    OP(0xc3, { E = SET(0,E);                    }); /* SET  0,E         */
-    OP(0xc4, { H = SET(0,H);                    }); /* SET  0,H         */
-    OP(0xc5, { L = SET(0,L);                    }); /* SET  0,L         */
-    OP(0xc6, { WM( HL, SET(0,RM(HL)) );         }); /* SET  0,(HL)      */
-    OP(0xc7, { A = SET(0,A);                    }); /* SET  0,A         */
-
-    OP(0xc8, { B = SET(1,B);                    }); /* SET  1,B         */
-    OP(0xc9, { C = SET(1,C);                    }); /* SET  1,C         */
-    OP(0xca, { D = SET(1,D);                    }); /* SET  1,D         */
-    OP(0xcb, { E = SET(1,E);                    }); /* SET  1,E         */
-    OP(0xcc, { H = SET(1,H);                    }); /* SET  1,H         */
-    OP(0xcd, { L = SET(1,L);                    }); /* SET  1,L         */
-    OP(0xce, { WM( HL, SET(1,RM(HL)) );         }); /* SET  1,(HL)      */
-    OP(0xcf, { A = SET(1,A);                    }); /* SET  1,A         */
-
-    OP(0xd0, { B = SET(2,B);                    }); /* SET  2,B         */
-    OP(0xd1, { C = SET(2,C);                    }); /* SET  2,C         */
-    OP(0xd2, { D = SET(2,D);                    }); /* SET  2,D         */
-    OP(0xd3, { E = SET(2,E);                    }); /* SET  2,E         */
-    OP(0xd4, { H = SET(2,H);                    }); /* SET  2,H         */
-    OP(0xd5, { L = SET(2,L);                    }); /* SET  2,L         */
-    OP(0xd6, { WM( HL, SET(2,RM(HL)) );         }); /* SET  2,(HL)      */
-    OP(0xd7, { A = SET(2,A);                    }); /* SET  2,A         */
-
-    OP(0xd8, { B = SET(3,B);                    }); /* SET  3,B         */
-    OP(0xd9, { C = SET(3,C);                    }); /* SET  3,C         */
-    OP(0xda, { D = SET(3,D);                    }); /* SET  3,D         */
-    OP(0xdb, { E = SET(3,E);                    }); /* SET  3,E         */
-    OP(0xdc, { H = SET(3,H);                    }); /* SET  3,H         */
-    OP(0xdd, { L = SET(3,L);                    }); /* SET  3,L         */
-    OP(0xde, { WM( HL, SET(3,RM(HL)) );         }); /* SET  3,(HL)      */
-    OP(0xdf, { A = SET(3,A);                    }); /* SET  3,A         */
-
-    OP(0xe0, { B = SET(4,B);                    }); /* SET  4,B         */
-    OP(0xe1, { C = SET(4,C);                    }); /* SET  4,C         */
-    OP(0xe2, { D = SET(4,D);                    }); /* SET  4,D         */
-    OP(0xe3, { E = SET(4,E);                    }); /* SET  4,E         */
-    OP(0xe4, { H = SET(4,H);                    }); /* SET  4,H         */
-    OP(0xe5, { L = SET(4,L);                    }); /* SET  4,L         */
-    OP(0xe6, { WM( HL, SET(4,RM(HL)) );         }); /* SET  4,(HL)      */
-    OP(0xe7, { A = SET(4,A);                    }); /* SET  4,A         */
-
-    OP(0xe8, { B = SET(5,B);                    }); /* SET  5,B         */
-    OP(0xe9, { C = SET(5,C);                    }); /* SET  5,C         */
-    OP(0xea, { D = SET(5,D);                    }); /* SET  5,D         */
-    OP(0xeb, { E = SET(5,E);                    }); /* SET  5,E         */
-    OP(0xec, { H = SET(5,H);                    }); /* SET  5,H         */
-    OP(0xed, { L = SET(5,L);                    }); /* SET  5,L         */
-    OP(0xee, { WM( HL, SET(5,RM(HL)) );         }); /* SET  5,(HL)      */
-    OP(0xef, { A = SET(5,A);                    }); /* SET  5,A         */
-
-    OP(0xf0, { B = SET(6,B);                    }); /* SET  6,B         */
-    OP(0xf1, { C = SET(6,C);                    }); /* SET  6,C         */
-    OP(0xf2, { D = SET(6,D);                    }); /* SET  6,D         */
-    OP(0xf3, { E = SET(6,E);                    }); /* SET  6,E         */
-    OP(0xf4, { H = SET(6,H);                    }); /* SET  6,H         */
-    OP(0xf5, { L = SET(6,L);                    }); /* SET  6,L         */
-    OP(0xf6, { WM( HL, SET(6,RM(HL)) );         }); /* SET  6,(HL)      */
-    OP(0xf7, { A = SET(6,A);                    }); /* SET  6,A         */
-
-    OP(0xf8, { B = SET(7,B);                    }); /* SET  7,B         */
-    OP(0xf9, { C = SET(7,C);                    }); /* SET  7,C         */
-    OP(0xfa, { D = SET(7,D);                    }); /* SET  7,D         */
-    OP(0xfb, { E = SET(7,E);                    }); /* SET  7,E         */
-    OP(0xfc, { H = SET(7,H);                    }); /* SET  7,H         */
-    OP(0xfd, { L = SET(7,L);                    }); /* SET  7,L         */
-    OP(0xfe, { WM( HL, SET(7,RM(HL)) );         }); /* SET  7,(HL)      */
-    OP(0xff, { A = SET(7,A);                    }); /* SET  7,A         */
-  }
+	if (r == &hl)
+		WM(HL, hl);
 }
 
 /**********************************************************
@@ -2517,6 +2124,10 @@ void z80_init(int index, int clock, const void *config, int (*irqcallback)(int))
   SP = 0xdff0; /* fix Shadow Dancer & Ace of Aces (normally set by BIOS) */
   Z80.daisy = config;
   Z80.irq_callback = irqcallback;
+  Z80.mem_read = dummy_read;
+  Z80.mem_write = dummy_write;
+  Z80.port_read = dummy_read;
+  Z80.port_write = dummy_write;
 }
 
 /****************************************************************************
@@ -2532,7 +2143,7 @@ void z80_reset(void)
   IFF1 = IFF2 = 0;
   HALT = 0;
   WZ = PCD;
-  Z80.after_ei = FALSE;
+  Z80.after_ei = false;
 }
 
 void z80_exit(void)
@@ -2565,7 +2176,7 @@ IRAM_ATTR int z80_execute(int cycles)
     PCD = 0x0066;
     WZ = PCD;
     z80_ICount -= 11;
-    Z80.nmi_pending = FALSE;
+    Z80.nmi_pending = false;
   }
 
   while( z80_ICount > 0 )
@@ -2573,7 +2184,7 @@ IRAM_ATTR int z80_execute(int cycles)
     /* check for IRQs before each instruction */
     if (Z80.irq_state != CLEAR_LINE && IFF1 && !Z80.after_ei)
       take_interrupt();
-    Z80.after_ei = FALSE;
+    Z80.after_ei = false;
 
     if (z80_ICount > 0)
     {
@@ -2629,7 +2240,7 @@ void z80_set_irq_line(int irqline, int state)
   {
     /* mark an NMI pending on the rising edge */
     if (Z80.nmi_state == CLEAR_LINE && state != CLEAR_LINE)
-      Z80.nmi_pending = TRUE;
+      Z80.nmi_pending = true;
     Z80.nmi_state = state;
   }
   else

@@ -62,6 +62,9 @@ typedef struct
 extern int z80_cycle_count;
 extern Z80_Regs Z80;
 
+extern unsigned char *cpu_readmap[64];
+extern unsigned char *cpu_writemap[64];
+
 void z80_init(int index, int clock, const void *config, int (*irqcallback)(int));
 void z80_reset (void);
 void z80_exit (void);
@@ -72,8 +75,5 @@ void z80_set_context (void *src);
 void z80_set_irq_line(int irqline, int state);
 void z80_reset_cycle_count(void);
 int z80_get_elapsed_cycles(void);
-
-extern unsigned char *cpu_readmap[64];
-extern unsigned char *cpu_writemap[64];
 
 #endif
