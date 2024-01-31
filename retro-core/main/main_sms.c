@@ -1,13 +1,6 @@
-#include <rg_system.h>
+#include "shared.h"
 
-#include "../components/smsplus/shared.h"
-
-#define AUDIO_SAMPLE_RATE   (32000)
-
-static rg_video_update_t updates[2];
-static rg_video_update_t *currentUpdate = &updates[0];
-
-static rg_app_t *app;
+#include "smsplus.h"
 
 static uint32_t joystick1;
 static uint32_t *localJoystick = &joystick1;
@@ -96,7 +89,7 @@ static bool reset_handler(bool hard)
     return true;
 }
 
-void app_main(void)
+void sms_main(void)
 {
     const rg_handlers_t handlers = {
         .loadState = &load_state_handler,
@@ -106,7 +99,7 @@ void app_main(void)
         .screenshot = &screenshot_handler,
     };
 
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, NULL);
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
 
     updates[0].buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
     updates[1].buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
